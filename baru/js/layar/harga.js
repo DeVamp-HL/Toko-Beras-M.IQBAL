@@ -14,7 +14,7 @@ import * as FB from './foto-bon-logika.js';
 import * as BL from './belanja-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, kabarKiriman } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, kabarKiriman, ingatStokKemasan } from '../data/toko.js';
 import { kkSertakanKiriman } from '../data/katalog-kasir.js';
 import * as JB from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
@@ -22,7 +22,6 @@ import * as AR from './arsip-logika.js';
 import * as WB from './wadah-bernama-logika.js';
 // putaran 30: daftar Kelas mutu (merek pemasok → kelas)
 import * as KM from './kelas-merek-logika.js';
-import { hitungStokKemasan } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';   // 25c: setelan jenis beras pindah dari sistem lama
 // putaran 29: bayar bon menjaga isi kantong yang dipilih (tunai laci/brankas · transfer rekening) — saldo per tempat dari uang-logika
 import { saldoKantong } from './uang-logika.js';
@@ -404,7 +403,7 @@ export function pasangLayarHarga(akar, opsi) {
   }
   // putaran 27 (Bagian 3): barang di balik baris harga ini — kalau habis: Isi · Arsipkan · Hapus
   function gambarArsipBarang(s, b) {
-    const u = b.st.id === 'S' || b.st.id === 'L' ? 0 : b.st.kg; const kem = u && hitungStokKemasan()[kunciKemasan(b.merk, u)]; const kunci = kem ? AR.arKunciKemasan(b.merk, u) : AR.arKunciBeras(b.merk); const K = AR.arKeadaan(kunci);
+    const u = b.st.id === 'S' || b.st.id === 'L' ? 0 : b.st.kg; const kem = u && ingatStokKemasan()[kunciKemasan(b.merk, u)]; const kunci = kem ? AR.arKunciKemasan(b.merk, u) : AR.arKunciBeras(b.merk); const K = AR.arKeadaan(kunci);
     if (!K.nol && K.pernah) return h`<div class="ket" data-k="ar-ket" style="font-size: 11px;">${K.judul}: sisa ${K.sisaTeks} menurut buku — arsip hanya untuk barang yang sudah habis.</div>`;
     return h`<div class="pita-info" data-k="ar-${kunci}">${K.judul} ${K.nol ? 'habis' : 'bersisa ' + K.sisaTeks}${K.pernah ? '' : ' · belum pernah bertransaksi'} — mau diapakan?
       <div class="tombol-baris rapat"><div class="kaca-btn aktif" data-aksi="arIsi" data-kunci="${kunci}">Isi — ${K.jenis === 'kemasan' ? 'adukan' : 'barang masuk'}</div>${K.nol ? h`<div class="kaca-btn" data-aksi="arArsip" data-kunci="${kunci}">Arsipkan</div>` : ''}${K.bisaHapus ? h`<div class="kaca-btn ${s.arYakin === kunci ? 'awas' : 'putus'}" data-aksi="arHapus" data-kunci="${kunci}">${s.arYakin === kunci ? 'YAKIN hapus' : 'Hapus'}</div>` : ''}</div>

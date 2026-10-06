@@ -15,7 +15,7 @@
 //   · omzet tahun lalu per TAHUN (omzetTahunan) & aturan berlabel tahun pajak yang diperiksa.
 import { hitungLabaRentang } from '../mesin/beku.js';
 import { bulanDari, namaBulanPanjang } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, cacheMentah, kunciSampai, jumlahNota, potretBulan, potretTahun, tahunDitutup, tahunDiarsip, awalPotret, eraBerAcara } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, cacheMentah, kunciSampai, jumlahNota, potretBulan, potretTahun, tahunDitutup, tahunDiarsip, awalPotret, eraBerAcara, ingatPerVersi } from '../data/toko.js';
 import { lpHariRentang } from './laporan-logika.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong } from './uang-logika.js';
@@ -78,10 +78,14 @@ export function pjAdaNomorPribadi(teks) {
 const PJ_TOLAK_NOMOR = 'Jangan menyimpan NIK, NPWP, atau nomor rekening di sini — cukup nama. (Deretan 10 angka atau lebih ditolak.)';
 
 // ==================== omzet sistem: SATU sumber ====================
-/** Omzet satu bulan dari mesin laba (penjualan yang masih berlaku, dikurangi retur). Dipakai layar Pajak DAN DK3. */
-export function pjOmzetSistem(key) {
+/** Omzet satu bulan dari mesin laba (penjualan yang masih berlaku, dikurangi retur). Dipakai layar Pajak DAN DK3. n = nota, bukan baris (39b no. 20). */
+// owner 3 Okt (patah-patah): diingat per versi cache + bulan — Laporan › Bulanan dulu menghitungnya ±48× per gambar (12 bulan + rekap pajak setahun per bulan).
+// Potret tahun yang ditutup (Paket B) juga hanya isi cache (berita acara), jadi ikut diingat.
+export function pjOmzetSistem(key) { return ingatPerVersi('pjOmzetSistem|' + key, () => pjOmzetSistemHitung(key)); }
+function pjOmzetSistemHitung(key) {
   const Pt = potretBulan(key); if (Pt) return { omzet: Number(Pt.omzet) || 0, n: Number(Pt.n) || 0 };   // Paket B: bulan di tahun yang sudah ditutup buku
-  const L = hitungLabaRentang((t) => !!t && bulanDari(t) === key); return { omzet: L.omzetPenuh, n: jumlahNota((t) => !!t && bulanDari(t) === key) }; }   // n = nota, bukan baris (39b no. 20)
+  const L = hitungLabaRentang((t) => !!t && bulanDari(t) === key); return { omzet: L.omzetPenuh, n: jumlahNota((t) => !!t && bulanDari(t) === key) };
+}
 /** Tanggal nota pertama di sistem (penjualan apa pun) — bulan sebelumnya TIDAK ada di sistem; bulan pertama bisa terisi sebagian.
  *  Paket B (R4): nota tahun yang sudah ditutup buku sudah diarsip → nota pertama sepanjang masa dari potret. Tahun SESUDAH tutup buku yang dikerjakan di sistem
  *  ini tercatat sejak 1 Januari (tanpa potret pun) — nota pertama 2 Jan tidak membuat Januari "sebagian / belum lengkap". */
@@ -198,7 +202,8 @@ const pjNama = (key) => namaBulanPanjang(key + '-01');
  * masih berlaku (baris yang sama yang dihitung mesin): potongan nota (potonganTransaksi) + tawar di BAWAH harga daftar (hargaAsliSatuan + negoSelisih < 0;
  * satuannya beda per jalur, jadi dihitung lewat RASIO harga daftar / harga jadi). Tawar ke atas bukan potongan. Retur tetap mengurangi kedua angka; unit bonus tidak dihitung.
  */
-export function pjPotonganBulan(key) {
+export function pjPotonganBulan(key) { return ingatPerVersi('pjPotonganBulan|' + key, () => pjPotonganBulanHitung(key)); }
+function pjPotonganBulanHitung(key) {
   const Pt = potretBulan(key); if (Pt && Pt.potongan) return Object.assign({}, Pt.potongan);   // Paket B: tahun yang sudah ditutup buku
   let nota = 0, tawar = 0, n = 0, tanpaDaftar = 0;
   ambilPenjualan().forEach((p) => {
@@ -218,8 +223,14 @@ export function pjPotonganBulan(key) {
  * Kumulatif PPh = sistem + catatan lama + usaha lain WP yang sama (+ usaha pasangan bila satu kesatuan / belum diketahui); ambang Rp4,8 miliar = itu + usaha pasangan.
  * sebelumPotongan = omzet mesin + potongan nota & tawar (pjPotonganBulan) — angka kedua untuk konsultan, tidak dipakai menghitung.
  */
+// owner 3 Okt (patah-patah): diingat per versi cache + tahun + HARI (status lewat tempo, bulan berjalan & proyeksi ambang hanya membaca tanggal hari ini) —
+// Menu, Beranda › Perlu perhatian, Kunci bulan (sekali per bulan yang diperiksa) dan Laporan memanggilnya tiap gambar.
 export function pjTahun(tahun, kini) {
-  const iso = hariIniIso(kini || new Date(Date.now())); const kiniKey = pjKey(iso); const th = Number(tahun || kiniKey.slice(0, 4)); const P = pjProfil(th);
+  const iso = hariIniIso(kini || new Date(Date.now())); const th = Number(tahun || pjKey(iso).slice(0, 4));
+  return ingatPerVersi('pjTahun|' + th + '|' + iso, () => pjTahunHitung(th, iso));
+}
+function pjTahunHitung(tahun, iso) {
+  const kiniKey = pjKey(iso); const th = Number(tahun || kiniKey.slice(0, 4)); const P = pjProfil(th);
   const awal = pjAwalSistem(); const kAwal = awal ? pjKey(awal) : null; const hitung = P.jenisWp !== 'badan' && P.tarifPerMil > 0; const bebas = P.batasBebas || 0; const AP = pjAturanPasangan(P.statusPasangan);
   const setoran = pjSetoranSemua(); const akhirBulan = th < Number(kiniKey.slice(0, 4)) ? 12 : th > Number(kiniKey.slice(0, 4)) ? 0 : Number(kiniKey.slice(5, 7));
   const daftar = []; let kum = 0, kumGabung = 0, lengkapSejauhIni = true, kosong = 0;

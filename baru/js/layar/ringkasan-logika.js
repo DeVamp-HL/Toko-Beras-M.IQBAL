@@ -8,9 +8,9 @@
 //    tanggal yang sama) — dan layar MENOLAK membandingkan kalau jendela pembandingnya mendahului catatan pertama toko;
 //  - periode berjalan digambar bertepi putus (kelas 'berjalan'), yang belum terjadi tipis ('rel'), yang sebelum ada catatan 'absen';
 //  - BACA SAJA: layar ini tidak menulis apa pun.
-import { hitungLabaRentang, hitungPiutang, hitungUtangPemasok, hitungStokKarungPerMerk, hitungStokKemasan, hitungLajuPakai, kasPada } from '../mesin/beku.js';
-import { bakuCaraBayar, daftarGerakanKas, pesananBelumTuntas, namaBulanPanjang, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja, kunciNota, returUangPerHari, lajuLintas, potretTahun, potretHari, tahunDiarsip, awalPotret } from '../data/toko.js';
+import { hitungLabaRentang, hitungPiutang, hitungUtangPemasok, hitungLajuPakai, kasPada } from '../mesin/beku.js';
+import { bakuCaraBayar, pesananBelumTuntas, namaBulanPanjang, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
+import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja, kunciNota, returUangPerHari, lajuLintas, potretTahun, potretHari, tahunDiarsip, awalPotret, ingatStokKarung, ingatStokKemasan, ingatGerakanKas, ingatKasPada } from '../data/toko.js';
 import { hariIniIso, RP, lebihBayarDari } from '../inti/format.js';
 
 export const SKALA = [['langsung', 'Langsung'], ['menit', 'Menit'], ['jam', 'Jam'], ['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan'], ['tahun', 'Tahun']];
@@ -247,9 +247,9 @@ export function susunRingkasan(skala, ix, kini) {
 
 /** Kas: total semua kantong dari mesin kasPada(); null = titik kas belum disetel di perangkat ini (layar menolak menebak). */
 export function susunKas(kini) {
-  const hari = rkIso(kini); const titik = ambilTitikKas(); const total = kasPada();
+  const hari = rkIso(kini); const titik = ambilTitikKas(); const total = ingatKasPada();
   let masukLaci = 0, masukRek = 0, keluar = 0;
-  daftarGerakanKas().forEach((r) => { if (r.t !== hari) return; if (r.masuk > 0) { if (r.kantong === 'rekening') masukRek += r.masuk; else masukLaci += r.masuk; } keluar += r.keluar || 0; });
+  ingatGerakanKas().forEach((r) => { if (r.t !== hari) return; if (r.masuk > 0) { if (r.kantong === 'rekening') masukRek += r.masuk; else masukLaci += r.masuk; } keluar += r.keluar || 0; });
   return { adaTitik: !!titik && total !== null, total, titikTanggal: titik ? titik.tanggal : '', masukLaci, masukRek, keluar };
 }
 
@@ -266,7 +266,7 @@ export function susunPerhatian() {
   const up = hitungUtangPemasok(); const totalUp = up.reduce((a, x) => a + (x.totalUtang || 0), 0);
   const bonTertua = Math.max(0, ...up.map((x) => Math.max(0, ...(x.bon || []).map((b) => b.umurHari || 0))));
   if (totalUp > 0) out.push({ teks: 'Utang ke pemasok · ' + up.filter((x) => x.totalUtang > 0).length + ' pemasok' + (bonTertua ? ' · bon tertua ' + bonTertua + ' hari' : ''), nilai: RP(totalUp), awas: false });
-  const laju = lajuLintas(hitungLajuPakai()); const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const tipis = [];
+  const laju = lajuLintas(hitungLajuPakai()); const stokK = ingatStokKarung(); const stokM = ingatStokKemasan(); const tipis = [];
   Object.keys(stokMerekSaja(stokK)).forEach((m) => { const l = (laju.kgMerk || {})[m] || 0; const sisa = stokK[m].sisaKg || 0; if (l > 0 && sisa / l <= AMBANG_HARI_KRITIS) tipis.push({ nama: m, hari: Math.max(0, sisa / l) }); });
   Object.keys(stokM).forEach((k) => { const l = (laju.unitKemasan || {})[k] || 0; const sisa = stokM[k].sisaUnit || 0; if (l > 0 && sisa / l <= AMBANG_HARI_KRITIS) tipis.push({ nama: stokM[k].namaProduk + ' ' + stokM[k].ukuranKemasan + ' kg', hari: Math.max(0, sisa / l) }); });
   tipis.sort((a, b) => a.hari - b.hari);

@@ -8,9 +8,8 @@
 // Tidak ada pindah buku, modal tidak berubah. Harga lalu kelas MEMAKAI ULANG riwayatModal (stok-hpp-logika) — bukan sumber kebenaran ketiga.
 // Tebakan kelas hanya dari tiga sumber: nama = nama wadah, catatan karung ber-`wadah`, resep wadah. Tidak dari harga, tidak dari jenis beras (petunjuk saja).
 // Tanpa DOM; nama berawalan km (bundel uji satu lingkup). Dijaga alat-uji/uji_kelas_merek.py.
-import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { jenisUntukMerk } from '../mesin/pembantu.js';
-import { cacheMentah, ambilWadahLiteran, ambilHargaKarung, petaBukuWadah, petaUkuran } from '../data/toko.js';
+import { cacheMentah, ambilWadahLiteran, ambilHargaKarung, petaBukuWadah, petaUkuran, ingatStokKarung } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 import { aturWadah, wdTerbaru } from './jual-logika.js';
 import { wbLiteranLangsung, wbSusunGantiNama } from './wadah-bernama-logika.js';
@@ -36,7 +35,7 @@ const kmWadah = () => { const out = {}; aturWadah().daftar.forEach((w) => { out[
 /** Nama beras berbuku karung (buku stok atau katalog per kg) tanpa buku khusus wadah & buku per ukuran — calon anggota / calon kelas. */
 export function kmNamaBerbuku() {
   const bw = petaBukuWadah(); const uk = petaUkuran(); const out = {};
-  Object.keys(hitungStokKarungPerMerk()).forEach((m) => { out[m] = true; }); ambilHargaKarung().forEach((h) => { if (h.merk) out[String(h.merk)] = true; });
+  Object.keys(ingatStokKarung()).forEach((m) => { out[m] = true; }); ambilHargaKarung().forEach((h) => { if (h.merk) out[String(h.merk)] = true; });
   return Object.keys(out).filter((m) => !bw[m] && !uk[m]).sort((a, b) => a.localeCompare(b));
 }
 /** Boleh jadi kelas? Nama wadah, atau merek berbuku; bukan varian ("X · Y"), bukan buku khusus / buku ukuran. */
@@ -161,7 +160,7 @@ export function kmHargaLaluKelas(kelas, pemasok, kecualiBatchId) {
 /** Harga lalu satu MEREK: angka = mesin (hargaTerakhirPerKg, urutan id), tanggal & pemasok dari riwayatModal; saat koreksi (kecualiBatchId) = kedatangan sebelum batch itu. */
 export function kmHargaLaluMerk(merk, kecualiBatchId) {
   const m = kmBersih(merk); if (!m) return null; const riw = riwayatModal(m).filter((r) => r.jenis === 'kedatangan' && (!kecualiBatchId || String(r.batchId) !== String(kecualiBatchId)));
-  const st = hitungStokKarungPerMerk()[m]; const akhir = riw[riw.length - 1] || null;
+  const st = ingatStokKarung()[m]; const akhir = riw[riw.length - 1] || null;
   const harga = kecualiBatchId ? (akhir ? Math.round(akhir.hargaPerKg) : 0) : (st ? Math.round(st.hargaTerakhirPerKg || 0) : 0);
   if (!(harga > 0)) return null;
   return { merk: m, harga, tanggal: akhir ? akhir.tanggal : '', tanggalTeks: akhir ? kmTgl(akhir.tanggal) : '', pemasok: akhir ? akhir.pemasok : '', fondasi: !!(akhir && akhir.fondasi), merkPemasok: akhir ? String(akhir.merkPemasok || '') : '' };

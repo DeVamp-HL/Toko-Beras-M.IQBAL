@@ -14,7 +14,7 @@
 // Tanpa DOM; nama berawalan wb (bundel uji satu lingkup). Dijaga alat-uji/uji_wadah_bernama.py & uji_cocokkan_terpisah.py.
 import { hitungStokKarungPerMerk, hitungStokBahanLiteran } from '../mesin/beku.js';
 import { RASIO_KONVERSI, RASIO_DEFAULT, hargaKarungUtuh, cariHargaKarungPerKg } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, ambilSemuaBatch, ambilProduksiBerlaku, ambilPenyesuaianStok, ambilBahanLiteran, cacheMentah, tolakKunci, denganCacheSementara, kunciStokWadah, petaStokWadah, kunciKarungWadah, kunciKarungBelakang, merkAsalKunci, petaBukuWadah, petaUkuran, indukTerpisah } from '../data/toko.js';
+import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, ambilSemuaBatch, ambilProduksiBerlaku, ambilPenyesuaianStok, ambilBahanLiteran, cacheMentah, tolakKunci, denganCacheSementara, kunciStokWadah, petaStokWadah, kunciKarungWadah, kunciKarungBelakang, merkAsalKunci, petaBukuWadah, petaUkuran, indukTerpisah, ingatStokKarung } from '../data/toko.js';
 import { aturWadah, karungUntukWadah, karungBelakang, semuaKarungTerbuka, wdSesudah, wdTerbaru, tinggiWadah, beratKarungBuka, DAFTAR_WADAH, kolamDitutup, wdLokasiDoc, wdLokasiSumber } from './jual-logika.js';
 import { RP, tanggalPendek } from '../inti/format.js';
 
@@ -62,7 +62,7 @@ export function wbDasar(tanda, W) {
 export function wbKomposisi(W, s) {
   const tanda = wbTanda(W);
   if (wbAktif(W)) {   // putaran 28: stok wadah sendiri — isi = buku kunci wadah (dikurangi yang dipegang keranjang aktif & struk parkir)
-    const k = wbKunci(W); const st = hitungStokKarungPerMerk()[k]; let kg = st ? st.sisaKg || 0 : 0;
+    const k = wbKunci(W); const st = ingatStokKarung()[k]; let kg = st ? st.sisaKg || 0 : 0;
     if (s) { const pegang = (daftar) => (daftar || []).forEach((b) => wbPecahanBaris(b.trx, W).forEach((x) => { kg -= x.kg; })); pegang(s.keranjang); (s.antrean || []).forEach((a) => pegang(a.beku && a.beku.items)); }
     kg = wbB3(kg); const bagian = {}; if (Math.abs(kg) >= 0.0005) bagian[k] = kg;
     // "sejak" = titik samakan NYATA terakhir (pindahan awal cuma memindah angka tercatat — susut wajar dihitung dari hitungan sebelumnya)
@@ -108,14 +108,14 @@ export function wbPecah(W, kg, s) {
 }
 /** Modal per kg isi wadah SEKARANG = rata-rata tertimbang bagian positif (kg × modal buku tiap merek asal). Kosong → modal karung di belakangnya. */
 export function wbModalPerKg(W, s) {
-  const stok = hitungStokKarungPerMerk(); const K = wbKomposisi(W, s); const hpp = (m) => (stok[m] || {}).hppTerakhirPerKg || 0;
+  const stok = ingatStokKarung(); const K = wbKomposisi(W, s); const hpp = (m) => (stok[m] || {}).hppTerakhirPerKg || 0;
   const kg = K.positif.reduce((a, x) => a + x.kg, 0);
   if (kg > 0) return K.positif.reduce((a, x) => a + x.kg * hpp(x.merk), 0) / kg;
   return hpp(wbMerkCadangan(W)) || hpp(W);
 }
 /** Harga BELI terbaru per kg isi wadah = rata-rata tertimbang harga beli terakhir tiap merek asal (penanda "harga beli naik" di katalog). */
 export function wbBeliPerKg(W) {
-  const stok = hitungStokKarungPerMerk(); const K = wbKomposisi(W); const beli = (m) => (stok[m] || {}).hargaTerakhirPerKg || 0;
+  const stok = ingatStokKarung(); const K = wbKomposisi(W); const beli = (m) => (stok[m] || {}).hargaTerakhirPerKg || 0;
   if (K.stokSendiri) { const kn = karungUntukWadah(W); return beli(wbMerkAsal(kn.merk)) || wbModalPerKg(W); }   // buku wadah tidak pernah dibeli — harga beli karung di belakangnya (39: lewat merek asalnya)
   const kg = K.positif.reduce((a, x) => a + x.kg, 0);
   if (kg > 0) return K.positif.reduce((a, x) => a + x.kg * beli(x.merk), 0) / kg;
@@ -232,7 +232,7 @@ const wbHariAntara = (dari, ke) => (dari && ke ? Math.round((new Date(ke + 'T00:
 const wbAngkaKetik = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); return t === '' ? null : Number(t.replace(',', '.')); };
 /** Karung sisihan / bongkaran wadah W: { kunci, lahir, bukuKg, sisaKg (kolam), diketahui }. */
 export function wbKarungWadah(W) {
-  const k = kunciKarungWadah(W); const st = hitungStokKarungPerMerk()[k]; const kr = karungBelakang(k, '');
+  const k = kunciKarungWadah(W); const st = ingatStokKarung()[k]; const kr = karungBelakang(k, '');
   return { kunci: k, lahir: !!st, bukuKg: st ? wbB2(st.sisaKg || 0) : 0, sisaKg: kr.diketahui ? wbB2(kr.sisaMentahKg) : 0, diketahui: kr.diketahui };
 }
 const wbDokKarungWadah = (W, kg, w, tanda) => ({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karung', merk: kunciKarungWadah(W), kg: wbB2(kg), lepas: true, asal: 'wadah', dariWadah: W }, tanda || {}) });
@@ -419,7 +419,7 @@ const wbAngkaKg = (v) => Number(String(v === undefined || v === null ? '' : v).t
 
 /** Karung belakang wadah W merek M: buku (mesin) vs kolam (catatan) — dua sisi, selisihnya disebut. */
 export function wbKarungBelakang(W, M) {
-  const k = wbKunciKB(W, M); const st = hitungStokKarungPerMerk()[k]; const kr = karungBelakang(k, W);
+  const k = wbKunciKB(W, M); const st = ingatStokKarung()[k]; const kr = karungBelakang(k, W);
   const bukuKg = st ? wbB2(st.sisaKg || 0) : 0; const kolamKg = kr.diketahui ? wbB2(kr.sisaMentahKg) : 0;
   return { kunci: k, wadah: W, merk: M, lahir: !!st, bukuKg, kolamKg, diketahui: kr.diketahui, selisihKg: kr.diketahui ? wbB2(kolamKg - bukuKg) : 0, hpp: st ? st.hppTerakhirPerKg || 0 : 0, penuhKg: beratKarungBuka(M) };
 }
@@ -496,7 +496,7 @@ export function wbSusunIsiUlangTiga(W, M, takaran, w, s, opsi) {
  * dibandingkan dengan buku merek itu → kekurangan. bisa = boleh diaktifkan (isi diketahui, tidak minus, semua merek punya buku); cukup = tanpa kekurangan.
  */
 export function wbDaftarAktivasi() {
-  const A = aturWadah(); const peta = petaStokWadah(); const stok = hitungStokKarungPerMerk(); const bw = petaBukuWadah(); const semuaKolam = semuaKarungTerbuka();
+  const A = aturWadah(); const peta = petaStokWadah(); const stok = ingatStokKarung(); const bw = petaBukuWadah(); const semuaKolam = semuaKarungTerbuka();
   return A.daftar.map((W, i) => {
     const aktif = wbAktif(W, peta); const K = wbKomposisi(W);
     const kolam = semuaKolam.filter((k) => k.lokasi === W && !bw[k.merk] && k.sisaMentahKg > 0.004).map((k) => ({ merk: k.merk, kg: wbB2(k.sisaMentahKg) }));
@@ -619,7 +619,7 @@ export function wbSelisihWadah(W, s, bebasLiter) {
   const K = wbKomposisi(W, s); const tw = tinggiWadah(W, s || null); const out = []; if (!tw) return { ada: false, baris: [], teks: '' };
   if (!K.stokSendiri) {
     if (tw.diketahui && bebasLiter !== undefined && bebasLiter !== null) { const bebasKg = wbB2(Number(bebasLiter) * wbRasio(W)); const sel = wbB2(tw.sisaNyataKg - bebasKg);
-      if (Math.abs(sel) > 0.05) { const stok = hitungStokKarungPerMerk(); const pembatas = K.positif.map((x) => 'buku ' + x.merk + ' ' + wbKG((stok[x.merk] || {}).sisaKg || 0)).join(', ') || 'buku ' + wbMerkCadangan(W);
+      if (Math.abs(sel) > 0.05) { const stok = ingatStokKarung(); const pembatas = K.positif.map((x) => 'buku ' + x.merk + ' ' + wbKG((stok[x.merk] || {}).sisaKg || 0)).join(', ') || 'buku ' + wbMerkCadangan(W);
         out.push({ jenis: 'buku-merek', selisihKg: sel, teks: 'bebas dijual ' + String(Number(bebasLiter)).replace('.', ',') + ' L (' + pembatas + ') ≠ isi kotak ±' + wbKG(tw.sisaNyataKg) + ' — selisih ' + wbKG(Math.abs(sel)) + (sel > 0 ? ' lebih di kotak' : ' lebih di buku') + ' → aktifkan buku wadah (Stok › Wadah literan)' }); } }
   } else {
     // tinjauan K4: karung yang sudah dikembalikan tidak disuruh ditimbang; sisa pengembalian lama → kartu "Buku karung yang tertinggal"; selisih biasa → samakan
@@ -659,7 +659,7 @@ function wbSisaKembaliLama(kunci, prod) {
  * Yang tidak utuh lagi (sudah dikembalikan dengan kode baru, termakan isi ulang, dsb.) TIDAK disentuh — urusan Cocokkan.
  */
 export function wbKarungTertinggal() {
-  const bw = petaBukuWadah(); const stok = hitungStokKarungPerMerk(); const kolam = semuaKarungTerbuka(); const prod = ambilProduksiBerlaku(); const tertutup = []; const berdiri = [];
+  const bw = petaBukuWadah(); const stok = ingatStokKarung(); const kolam = semuaKarungTerbuka(); const prod = ambilProduksiBerlaku(); const tertutup = []; const berdiri = [];
   Object.keys(bw).sort().forEach((k) => { const b = bw[k]; if (b.jenis !== 'belakang' || !b.merk || !stok[k]) return; const buku = wbB2(stok[k].sisaKg || 0); if (buku <= 0.004) return;
     const lama = wbSisaKembaliLama(k, prod); if (lama <= 0.05) return;
     const di = kolam.filter((x) => x.merk === k); const hidup = di.filter((x) => !kolamDitutup(k, x.lokasi));

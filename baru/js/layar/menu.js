@@ -75,8 +75,10 @@ export function pasangLayarMenu(akar, opsi) {
   function ukurSimpanan() {
     let ls = null; try { let b = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); b += (k.length + String(localStorage.getItem(k) || '').length) * 2; } ls = Math.round(b / 1024); } catch (e) { ls = null; }
     let auto = null; try { auto = localStorage.getItem('miqbal_backup_auto_tanggal') || null; } catch (e) { auto = null; }
-    set({ lsKb: ls, autoTanggal: auto, lamaInfo: hitungLama() });
-    try { if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then((e) => set({ usageKb: Math.round((e.usage || 0) / 1024), quotaKb: Math.round((e.quota || 0) / 1024) })).catch(() => {}); } catch (e) { /* abaikan */ }
+    // owner 3 Okt (Menu patah-patah): keadaan hanya disetel bila angkanya BERUBAH — tiap setel menggambar ulang Menu, dan buka Menu dulu menggambar 2–3 kali
+    const beda = (p) => { const s = st(); const u = {}; Object.keys(p).forEach((k) => { if (JSON.stringify(s[k]) !== JSON.stringify(p[k])) u[k] = p[k]; }); if (Object.keys(u).length) set(u); };
+    beda({ lsKb: ls, autoTanggal: auto, lamaInfo: hitungLama() });
+    try { if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then((e) => beda({ usageKb: Math.round((e.usage || 0) / 1024), quotaKb: Math.round((e.quota || 0) / 1024) })).catch(() => {}); } catch (e) { /* abaikan */ }
   }
   // ---- tujuan tiap baris: layar sistem baru atau lembar Sistem di dalam Menu. Tujuan 'lama' (tautan ke sistem lama) dibuang 3 Okt 2026: sistem
   // lama pensiun (owner) dan menu-logika.js sudah tidak punya baris yang menunjuknya ----

@@ -10,10 +10,10 @@
 //    cuma setelan (katalog harga nama itu, jenis beras, draf/label/sengaja, arsip). Pernah bertransaksi → tidak ada tombol hapus, yang ada Arsipkan.
 //  · Katalog HP kasir: nama arsip disaring dari HASIL susunIsiKatalogKasir (fungsi salinan tidak diubah) — lihat data/katalog-kasir.js.
 // Tanpa DOM; nama berawalan ar (bundel uji satu lingkup). Dijaga alat-uji/uji_arsip_produk.py.
-import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
+import { hitungStokKemasan } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
 import { ambilSemuaBatch, ambilPenjualanSemua, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilRetur, ambilKarantina, ambilWadahLiteran,
-  ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilPetaJenisBeras, cacheMentah } from '../data/toko.js';
+  ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilPetaJenisBeras, cacheMentah, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 
 export const AR_ID = 'produkArsip';
@@ -57,8 +57,8 @@ export function arPernahTransaksi(kunci) {
 /** Keadaan satu barang untuk tiga pilihan (Isi · Arsipkan · Hapus): sisa, nol, pernah transaksi, sudah arsip. */
 export function arKeadaan(kunci) {
   const u = arUrai(kunci); let sisa = 0; let satuan = 'kg';
-  if (u.jenis === 'beras') { const s = hitungStokKarungPerMerk()[u.nama]; sisa = s ? Math.round((s.sisaKg || 0) * 100) / 100 : 0; }
-  else if (u.jenis === 'kemasan') { const s = hitungStokKemasan()[kunciKemasan(u.nama, u.ukuran)]; sisa = s ? s.sisaUnit || 0 : 0; satuan = 'unit'; }
+  if (u.jenis === 'beras') { const s = ingatStokKarung()[u.nama]; sisa = s ? Math.round((s.sisaKg || 0) * 100) / 100 : 0; }
+  else if (u.jenis === 'kemasan') { const s = ingatStokKemasan()[kunciKemasan(u.nama, u.ukuran)]; sisa = s ? s.sisaUnit || 0 : 0; satuan = 'unit'; }
   const nol = Math.abs(sisa) < 0.005; const pernah = arPernahTransaksi(kunci); const arsip = !!arPeta()[String(kunci)];
   return { kunci: String(kunci), jenis: u.jenis, nama: u.nama, ukuran: u.ukuran, judul: u.jenis === 'kemasan' ? u.nama + ' ' + String(u.ukuran).replace('.', ',') + ' kg' : u.nama, sisa, satuan, nol, pernah, arsip,
     bisaArsip: nol && !arsip, bisaHapus: !pernah, sisaTeks: satuan === 'kg' ? arKG(sisa) : sisa + ' unit' };
@@ -125,8 +125,8 @@ export function arSaringKatalogKasir(isi, peta) {
 export function arSembunyiHarga(merk, sid, peta) {
   const p = peta || arPeta(); const berasArsip = !!p[arKunciBeras(merk)];
   if (sid === 'S' || sid === 'L') return berasArsip;
-  const u = Number(String(sid).slice(1)); const kem = hitungStokKemasan()[kunciKemasan(merk, u)]; const kemAktif = !!kem && !p[arKunciKemasan(merk, u)];
-  const karungAktif = !!hitungStokKarungPerMerk()[merk] && !berasArsip;
+  const u = Number(String(sid).slice(1)); const kem = ingatStokKemasan()[kunciKemasan(merk, u)]; const kemAktif = !!kem && !p[arKunciKemasan(merk, u)];
+  const karungAktif = !!ingatStokKarung()[merk] && !berasArsip;
   return !kemAktif && !karungAktif && (berasArsip || !!p[arKunciKemasan(merk, u)]);
 }
 /** Ringkasan untuk layar Produk arsip. */

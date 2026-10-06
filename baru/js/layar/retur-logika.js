@@ -14,8 +14,8 @@
 //  - tukar: TIDAK ditulis di sini — disusun lengkap lalu DIIKAT ke keranjang Jual (tukarModel 'kreditBarangGabung');
 //    retur + penjualan penggantinya lahir dalam SATU tulisan saat nota dicatat (jual-logika.js susunNotaDokumen).
 import { rtDasarNota, rtKalimatLebih, rtKunciNota, kunciPelanggan, bakuCaraBayar, formatTanggal, merkPunyaKarungBerat, kunciKemasan, namaSingkatTrx, tkApakahYatim, tkSetTertaut, tkTargetPengganti, tkPenjualanHidup, caraBayarKunci } from '../mesin/pembantu.js';
-import { hitungStokKarungPerMerk, hitungStokKemasan, hitungPiutang } from '../mesin/beku.js';
-import { ambilPenjualan, ambilRetur, tolakKunci, stokMerekSaja, petaUkuran, indukTerpisah } from '../data/toko.js';
+import { hitungPiutang } from '../mesin/beku.js';
+import { ambilPenjualan, ambilRetur, tolakKunci, stokMerekSaja, petaUkuran, indukTerpisah, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { hariIniIso, RP, DESIMAL, LEBIH_AMBANG } from '../inti/format.js';
 
 export const ALASAN_RETUR = ['salah beli', 'kualitas kurang', 'kelebihan', 'kemasan rusak'];
@@ -240,11 +240,11 @@ export function daftarBarangRetur() {
   const jual = ambilPenjualan(); const retur = ambilRetur(); const karung = []; const kemasan = [];
   // putaran 28: buku per ukuran — 'Merek 25 kg' cuma karung 25 kg; induknya yang sudah dipisah tidak lagi menerima retur ukuran itu (masuk ke buku ukurannya)
   const uk = petaUkuran(); const tp = indukTerpisah();
-  Object.keys(stokMerekSaja(hitungStokKarungPerMerk())).sort().forEach((merk) => { [50, 25].forEach((b) => { if (uk[merk] ? b !== uk[merk].berat : !!(tp[merk] && tp[merk][b])) return; if (!merkPunyaKarungBerat(merk, b)) return;
+  Object.keys(stokMerekSaja(ingatStokKarung())).sort().forEach((merk) => { [50, 25].forEach((b) => { if (uk[merk] ? b !== uk[merk].berat : !!(tp[merk] && tp[merk][b])) return; if (!merkPunyaKarungBerat(merk, b)) return;
     const terjual = jual.filter((p) => p.jenis === 'karung' && p.merkSumber === merk && (p.beratKarungAcuan || 50) === b).reduce((a, p) => a + (p.jumlahKarung || 0), 0);
     const diretur = retur.filter((r) => r.jenisAsal === 'karung' && r.merkSumber === merk && (r.beratKarungAcuan || 50) === b).reduce((a, r) => a + (r.jumlahKarung || 0), 0);
     karung.push({ kunci: merk + '|' + b, merk, berat: b, nama: merk + ' ' + b + ' kg', terjual, diretur, satuan: 'karung' }); }); });
-  const sk = hitungStokKemasan(); Object.keys(sk).sort().forEach((k) => { const x = sk[k]; const uk = parseFloat(x.ukuranKemasan);
+  const sk = ingatStokKemasan(); Object.keys(sk).sort().forEach((k) => { const x = sk[k]; const uk = parseFloat(x.ukuranKemasan);
     const terjual = jual.filter((p) => p.jenis === 'kemasan' && p.namaProduk === x.namaProduk && parseFloat(p.ukuranKemasan) === uk).reduce((a, p) => a + (p.jumlahUnit || 0), 0);
     const diretur = retur.filter((r) => r.jenisAsal === 'kemasan' && r.namaProduk === x.namaProduk && parseFloat(r.ukuranKemasan) === uk).reduce((a, r) => a + (r.jumlahUnit || 0), 0);
     kemasan.push({ kunci: k, namaProduk: x.namaProduk, ukuran: uk, nama: x.namaProduk + ' ' + uk + ' kg', terjual, diretur, satuan: 'unit' }); });

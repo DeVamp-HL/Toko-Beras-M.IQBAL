@@ -130,7 +130,7 @@ KONTROL = [
     ('tebakan /baru/ beda dari sistem lama (sidik pembantu)', {'baru/js/mesin/pembantu.js': [("if (/^IR42/i.test(m)) return 'IR42';", "if (/^IR42/i.test(m)) return 'IR64';")]}, ('statis',)),
     ('salinan perangkat menang atas dokumen', {'baru/js/data/toko.js': [("  if (dok && dok.peta && typeof dok.peta === 'object' && !Array.isArray(dok.peta)) return Object.assign({}, dok.peta);\n", "")]}, ('jsc',)),
     ('dokumen jenis beras berbentuk lain (kolom tambahan)', {'baru/js/layar/jenis-beras-logika.js': [("data: { id: 'jenisBeras', peta, diubahPada: w.kini } }]", "data: { id: 'jenisBeras', peta, diubahPada: w.kini, versi: 2 } }]")]}, ('jsc',)),
-    ('nama tak dikenal boleh diisi', {'baru/js/layar/jenis-beras-logika.js': [("if (semuaMerkDikenal().indexOf(m) < 0) return", "if (false) return")]}, ('jsc',)),
+    ('nama tak dikenal boleh diisi', {'baru/js/layar/jenis-beras-logika.js': [("if (ingatMerkDikenal().indexOf(m) < 0) return", "if (false) return")]}, ('jsc',)),
     ('jenis lain yang diketik tidak jadi pilihan', {'baru/js/layar/jenis-beras-logika.js': [("return PILIHAN_JENIS_BERAS.slice().concat(lain.sort((a, b) => a.localeCompare(b)));", "return PILIHAN_JENIS_BERAS.slice();")]}, ('jsc',)),
     ('saring rak Jual tidak menyaring', {'baru/js/layar/jenis-beras-logika.js': [("return !jenis ? (daftar || []) : (daftar || []).filter((c) => jbJenisChip(c) === jenis);", "return daftar || [];")]}, ('jsc',)),
     ('kemasan di Jual dibaca sebagai nama utuh "Kembang|5"', {'baru/js/layar/jenis-beras-logika.js': [("(c && c.jalur === 'kemasan' ? String(c.kunci || '').split('|')[0] : String((c && (c.indukUkuran || c.kunci)) || ''))", "String((c && c.kunci) || '')")]}, ('jsc',)),

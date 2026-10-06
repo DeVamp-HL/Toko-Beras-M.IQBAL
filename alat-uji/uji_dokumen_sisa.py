@@ -238,7 +238,7 @@ def periksa_statis(t):
     gambar = re.findall(r'^  function gambar\w*\(.*?(?=^  function |^  return \{)', mn, re.S | re.M)
     baca_gambar = [g.split('(')[0].split()[-1] for g in gambar if re.search(r'bacaLama\(|hitungLama\(|localStorage\.|ssSimpananLama\(', g)]
     ok('menu.js: sisa lama dihitung saat lembar dibuka (ukurSimpanan → hitungLama → lamaInfo) — TIDAK ada fungsi gambar* yang membaca localStorage / menghitung sisa lama',
-       len(gambar) >= 5 and not baca_gambar and 'set({ lsKb: ls, autoTanggal: auto, lamaInfo: hitungLama() });' in mn and '${(() => { const LM = s.lamaInfo;' in mn, baca_gambar)
+       len(gambar) >= 5 and not baca_gambar and 'beda({ lsKb: ls, autoTanggal: auto, lamaInfo: hitungLama() });' in mn and '${(() => { const LM = s.lamaInfo;' in mn, baca_gambar)
     pel = t[PEL]
     ok('pelanggan.js: tombol "Kartu piutang berkop" hanya untuk akun yang boleh membuka Laporan (bolehBukaLayar), aksinya ikut menjaga',
        "${opsi.keTujuan && bolehBukaLayar(opsi.akun ? opsi.akun() : null, 'laporan') ? h`<div class=\"tombol-baris\" data-k=\"kartu-piutang\">" in pel

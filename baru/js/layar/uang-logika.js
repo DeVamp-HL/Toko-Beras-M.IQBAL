@@ -10,9 +10,9 @@
 // Empat arti uang keluar (K1) ditulis sebelum disimpan: biaya toko (kas −, laba −) · toko berutang ke owner (kas tetap, laba −, utang +) · ambil
 // pribadi/prive (kas −, laba tetap) · bukan urusan toko (tidak ditulis). Semua dokumen = bentuk sistem lama (pengeluaranHarian kategori toko/owner/
 // tokoDompet) + kolom `dari`. Kasbon owner = kasbonMutasi a.n. "Owner" (mesin kasbon, neraca & tutup buku sudah menghitungnya) bertanda owner: true.
-import { kasPada, hitungKasbon, hitungLabaBersihRentang, hitungUtangOwner } from '../mesin/beku.js';
-import { daftarGerakanKas, daftarModalOwner, kunciPelanggan, POS_BIAYA_BULANAN, namaBulanPanjang, akhirBulanIso } from '../mesin/pembantu.js';
-import { ambilTitikKas, ambilAmplopLaba, ambilPindahUang, ambilPengeluaranHarian, ambilKasbonMutasi, ambilModalOwner, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, ambilBiayaBulanan, ambilPiutangMutasi, ambilBahanKemasan, ambilBahanLiteran, cacheMentah, ambilTutupHari } from '../data/toko.js';
+import { hitungKasbon, hitungLabaBersihRentang, hitungUtangOwner } from '../mesin/beku.js';
+import { daftarModalOwner, kunciPelanggan, POS_BIAYA_BULANAN, namaBulanPanjang, akhirBulanIso } from '../mesin/pembantu.js';
+import { ambilTitikKas, ambilAmplopLaba, ambilPindahUang, ambilPengeluaranHarian, ambilKasbonMutasi, ambilModalOwner, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, ambilBiayaBulanan, ambilPiutangMutasi, ambilBahanKemasan, ambilBahanLiteran, cacheMentah, ambilTutupHari, ingatGerakanKas, ingatKasPada } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek, jamKini } from '../inti/format.js';
 import { TEMPAT_UANG, aturBon } from './bon-pemasok-logika.js';
 
@@ -69,14 +69,14 @@ function ugBulanDariNama(teks) { const m = String(teks).trim().match(/^(\S+)\s+(
 export function saldoKantong(sampai, titikPakai) {
   // titikPakai (tutup buku): patokan lain dari titik kas sekarang — mis. hitungan tutup hari 31 Des saat titik kas sudah maju ke Januari. Pembanding mesin (kasPada)
   // selalu memakai titik kas sekarang, jadi dengan titikPakai `mesin`/`cocok` tidak diisi.
-  const t = titikPakai || ambilTitikKas(); const kosong = { ada: false, titik: t, laci: null, brankas: null, rekening: null, amplop: null, total: null, mesin: titikPakai ? null : kasPada(sampai || null) };
+  const t = titikPakai || ambilTitikKas(); const kosong = { ada: false, titik: t, laci: null, brankas: null, rekening: null, amplop: null, total: null, mesin: titikPakai ? null : ingatKasPada(sampai || null) };
   if (!t || (sampai && sampai < t.tanggal)) return kosong;
   const s = { laci: Number(t.laci) || 0, brankas: Number(t.brankas) || 0, rekening: Number(t.rekening) || 0, amplop: Number(t.amplop) || 0 };
   const dalam = (x) => x > t.tanggal && (!sampai || x <= sampai); const peta = ugPetaKantong();
-  daftarGerakanKas().forEach((r) => { if (!dalam(r.t)) return; const k = ugKantongBaris(r, peta); if (r.masuk > 0) s[k] += r.masuk; if (r.keluar > 0) s[k] -= r.keluar; });
+  ingatGerakanKas().forEach((r) => { if (!dalam(r.t)) return; const k = ugKantongBaris(r, peta); if (r.masuk > 0) s[k] += r.masuk; if (r.keluar > 0) s[k] -= r.keluar; });
   ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || !dalam(a.tanggal || '')) return; const n = Number(a.nominal) || 0; if (a.tipe === 'ambil') { s.amplop -= n; s.laci += n; } else { s.laci -= n; s.amplop += n; } });
   ambilPindahUang().forEach((p) => { if (!dalam(p.tanggal || '')) return; const n = Number(p.nominal) || 0; if (s[p.dari] !== undefined) s[p.dari] -= n; if (s[p.ke] !== undefined) s[p.ke] += n; });
-  const total = s.laci + s.brankas + s.rekening + s.amplop; const mesin = titikPakai ? null : kasPada(sampai || null);
+  const total = s.laci + s.brankas + s.rekening + s.amplop; const mesin = titikPakai ? null : ingatKasPada(sampai || null);
   return { ada: true, titik: t, laci: s.laci, brankas: s.brankas, rekening: s.rekening, amplop: s.amplop, total, mesin, cocok: titikPakai ? null : mesin !== null && Math.abs(total - mesin) < 0.5,
     minus: ['laci', 'brankas', 'rekening', 'amplop'].filter((k) => s[k] < -0.5), teksTitik: 'titik kas ' + tanggalPendek(t.tanggal) };
 }

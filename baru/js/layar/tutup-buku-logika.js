@@ -15,7 +15,7 @@
 // & modal owner · upah yang belum dibayar tercatat menyeberang · ringkasan tahun untuk KR1 / laju / pelanggan · perkiraan kuota · catatan susulan sesudah penanda.
 import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungPiutang, hitungKasbon, hitungUtangPemasok, hitungUtangOwner, saldoAmplop } from '../mesin/beku.js';
 import { tbCutoff, tbPunyaBerat, kunciPelanggan, merkPunyaKarungBerat, labelBahan, pesananBelumTuntas, KOLEKSI_PESANAN } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilPesanan, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, petaStokWadah, petaBukuWadah, petaUkuran, ukuranDigabung, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache, hapusTertunda, CACHE_PEMBUKA, eraBuku, ringkasKreditLaju, kunciNota, versiCache } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPesanan, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, petaStokWadah, petaBukuWadah, petaUkuran, ukuranDigabung, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache, hapusTertunda, CACHE_PEMBUKA, eraBuku, ringkasKreditLaju, kunciNota, versiCache, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { KOLEKSI } from '../data/koleksi.js';
 import { KP_BATAS_GET, kpPotong, kpNilaiKiriman, kpBulanDok, kpBebas, kpIdx, kpWib } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, lebihBayarDari, kalimatLebih } from '../inti/format.js';
@@ -118,8 +118,8 @@ export function gerbangBuku(tahun, kini, lokal, lewati) {
  */
 export function minusBuku(sampai) {
   const d = []; const tambah = (jenis, teks, jalan) => d.push({ jenis, teks, jalan });
-  const K = hitungStokKarungPerMerk(sampai); Object.keys(K).sort().forEach((m) => { const s = K[m].sisaKg; if (s <= -0.01) tambah('beras', 'Buku ' + m + ' minus ' + KG(-s), 'hitung isinya di Stok › Cocokkan (opname), atau catat kedatangan / pindah buku yang terlupa'); });
-  const KM = hitungStokKemasan(sampai); Object.keys(KM).sort().forEach((k) => { const s = KM[k]; if (s.sisaUnit < -0.001) tambah('kemasan', s.namaProduk + ' ' + String(s.ukuranKemasan).replace('.', ',') + ' kg minus ' + ANGKA(-s.sisaUnit) + ' kantong', 'hitung kemasannya di Stok › Cocokkan › kemasan, atau catat adukan yang terlupa'); });
+  const K = ingatStokKarung(sampai); Object.keys(K).sort().forEach((m) => { const s = K[m].sisaKg; if (s <= -0.01) tambah('beras', 'Buku ' + m + ' minus ' + KG(-s), 'hitung isinya di Stok › Cocokkan (opname), atau catat kedatangan / pindah buku yang terlupa'); });
+  const KM = ingatStokKemasan(sampai); Object.keys(KM).sort().forEach((k) => { const s = KM[k]; if (s.sisaUnit < -0.001) tambah('kemasan', s.namaProduk + ' ' + String(s.ukuranKemasan).replace('.', ',') + ' kg minus ' + ANGKA(-s.sisaUnit) + ' kantong', 'hitung kemasannya di Stok › Cocokkan › kemasan, atau catat adukan yang terlupa'); });
   const BK = hitungStokBahanKemasan(sampai), BL = hitungStokBahanLiteran(sampai);
   [[BK, 'kantong kemasan'], [BL, 'kantong literan']].forEach(([peta, jenis]) => Object.keys(peta).sort().forEach((j) => { if (peta[j].sisaPcs < -0.001) tambah('kantong', labelBahan(j) + ' minus ' + ANGKA(-peta[j].sisaPcs) + ' lembar', 'hitung ' + jenis + ' di Stok › Kantong, atau catat pembelian kantong yang terlupa'); }));
   lebihBayarDari(hitungPiutang(sampai)).orang.forEach((o) => tambah('pelanggan', o.nama + ': ' + kalimatLebih(o), o.uang > 0.5 ? 'kembalikan uangnya atau catat bon yang terlupa (Pelanggan)' : 'balik hapus bukunya (Pelanggan)'));
@@ -143,10 +143,10 @@ export function upahPada(sampai) {
 }
 /** 12 baris yang menyeberang (+ baris lain: modal owner dan upah belum dibayar), dihitung mesin pada tanggal `sampai`; kas per tempat dari saldoKantong(sampaiKas). Rupiah stok dibulatkan PER MEREK (sama dengan yang ditulis di saldo pembuka). */
 export function barisBuku(sampai, sampaiKas, titikPakai) {
-  const stokK = hitungStokKarungPerMerk(sampai); let kg = 0, rpK = 0, nK = 0; Object.keys(stokK).forEach((m) => { const s = stokK[m]; if (Math.abs(s.sisaKg) < 0.01) return; nK += 1; kg += s.sisaKg; rpK += Math.round(s.sisaKg * (s.hppTerakhirPerKg || 0)); });
+  const stokK = ingatStokKarung(sampai); let kg = 0, rpK = 0, nK = 0; Object.keys(stokK).forEach((m) => { const s = stokK[m]; if (Math.abs(s.sisaKg) < 0.01) return; nK += 1; kg += s.sisaKg; rpK += Math.round(s.sisaKg * (s.hppTerakhirPerKg || 0)); });
   // A5 (siap 2027): baris TIDAK LAGI BUTA MINUS — kemasan, kantong, piutang, kasbon yang minus / dibayar lebih ikut dijumlah, dan kelebihan bayar ke pemasok &
   // owner mengurangi utangnya. Saldo pembuka hanya membawa yang bersisa, jadi sisi "sesudah" berbeda (≠) selama itu belum dibereskan (gerbang g6).
-  const stokM = hitungStokKemasan(sampai); let unit = 0, rpM = 0, minM = 0; Object.keys(stokM).forEach((k) => { const s = stokM[k]; if (!(Math.abs(s.sisaUnit) > 1e-9)) return; unit += s.sisaUnit; rpM += s.sisaUnit * (s.hppRataRataPerUnit || 0); if (s.sisaUnit < 0) minM += 1; });
+  const stokM = ingatStokKemasan(sampai); let unit = 0, rpM = 0, minM = 0; Object.keys(stokM).forEach((k) => { const s = stokM[k]; if (!(Math.abs(s.sisaUnit) > 1e-9)) return; unit += s.sisaUnit; rpM += s.sisaUnit * (s.hppRataRataPerUnit || 0); if (s.sisaUnit < 0) minM += 1; });
   const bk = hitungStokBahanKemasan(sampai), bl = hitungStokBahanLiteran(sampai); let pcs = 0, rpB = 0, minB = 0; Object.keys(bk).forEach((j) => { if (Math.abs(bk[j].sisaPcs) > 1e-9) { pcs += bk[j].sisaPcs; rpB += Math.round(bk[j].sisaPcs * (bk[j].hppPerPcs || 0)); if (bk[j].sisaPcs < 0) minB += 1; } }); Object.keys(bl).forEach((j) => { if (Math.abs(bl[j].sisaPcs) > 1e-9) { pcs += bl[j].sisaPcs; rpB += Math.round(bl[j].sisaPcs * (bl[j].hargaPerPcs || 0)); if (bl[j].sisaPcs < 0) minB += 1; } });
   const semuaPiutang = hitungPiutang(sampai); const piutang = semuaPiutang.filter((x) => x.sisa > 0); const lebihP = semuaPiutang.filter((x) => x.sisa < -0.5); const kasbon = hitungKasbon(sampai).filter((x) => Math.abs(x.sisa) >= 0.5); const kO = kunciPelanggan(NAMA_KASBON_OWNER);
   // no. 4: saldo pembuka mesin (hitungSaldoTutup) hanya membawa piutang sisa > 0 dan dokumen pembayarannya diarsipkan → kelebihan bayar pelanggan lenyap dari buku

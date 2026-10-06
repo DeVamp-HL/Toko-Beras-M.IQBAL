@@ -13,7 +13,7 @@
 // SATU perangkat; penolakan "sudah dikoreksi" tetap berlaku dari salinan itu.
 import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
-import { ambilKarantina, ambilRetur, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, tolakKunci } from '../data/toko.js';
+import { ambilKarantina, ambilRetur, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, tolakKunci, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 
 export const TINDAKAN_KARANTINA = [['layak_jual', 'Ternyata layak jual → kembali ke stok'], ['dirework', 'Rework → masuk stok lagi'], ['dikembalikan_pemasok', 'Balik ke pemasok'], ['dibuang', 'Buang']];
@@ -28,7 +28,7 @@ const kqSesudah = (r) => { const jamR = r.jam || '00:00'; return (x) => (x.tangg
 /** Stok & modal barang karantina menurut mesin: karung per kg, kemasan per unit. */
 function kqStok(k) {
   const karung = k.jenisAsal !== 'kemasan'; const kunci = karung ? k.merkSumber : kunciKemasan(k.namaProduk, k.ukuranKemasan);
-  const st = kunci ? (karung ? hitungStokKarungPerMerk() : hitungStokKemasan())[kunci] : null; if (!st) return null;
+  const st = kunci ? (karung ? ingatStokKarung() : ingatStokKemasan())[kunci] : null; if (!st) return null;
   return { karung, kunci, sisa: karung ? st.sisaKg : st.sisaUnit, hpp: karung ? (st.hppTerakhirPerKg || 0) : (st.hppRataRataPerUnit || 0), satuan: karung ? 'kg' : 'unit' };
 }
 /** Jumlah yang kembali dalam satuan mesin: karung = kg, kemasan = unit (dari retur, atau dibulatkan dari kg karantina). */

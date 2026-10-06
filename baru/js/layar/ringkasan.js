@@ -48,7 +48,8 @@ export function pasangLayarRingkasan(akar, opsi) {
   const pemilik = () => { const a = opsi.akun ? opsi.akun() : null; return !!a && a.jenis === 'owner'; };
   let tampilan = (() => { try { return localStorage.getItem(KUNCI_TAMPILAN) === 'cincin' ? 'cincin' : 'dasbor'; } catch (e) { return 'dasbor'; } })();
   const modeDasbor = () => tampilan === 'dasbor' && pemilik();
-  let dasbor = null, dbHasil = null, dbKunci = '';   // dbHasil dihitung ulang hanya saat data berubah, hari berganti, atau rentang diganti
+  // dbHasil dihitung ulang hanya saat data berubah atau hari berganti (dbKunci = hari); ganti rentang cuma menghitung tren (dbRentang)
+  let dasbor = null, dbHasil = null, dbKunci = '', dbRentang = '';
   let skala = (() => { try { return localStorage.getItem(KUNCI_SKALA) || 'jam'; } catch (e) { return 'jam'; } })();
   if (!R.SKALA.some((s) => s[0] === skala)) skala = 'jam';
   let ix = null, tampil = false, menitLama = -1, kunciNotaLama = null, angkaTampil = null, rafAngka = 0, sektorKini = [], pilihId = null, jamPilih = 0, detikTotal = 0, jagaAngka = 0;
@@ -132,8 +133,9 @@ export function pasangLayarRingkasan(akar, opsi) {
   /** Dasbor owner: hitung (kalau basi) lalu gambar. masuk = animasi masuk ringan (buka dasbor, ganti rentang). */
   function gambarDasbor(masuk) {
     if (!dasbor || !$('rkDasbor')) return;
-    const k = kini(); const kunci = hariIniIso(k) + '|' + dasbor.rentang();
-    if (!dbHasil || dbKunci !== kunci) { dbHasil = susunDasbor(k, dasbor.rentang()); dbKunci = kunci; }
+    const k = kini(); const kunci = hariIniIso(k); const r = dasbor.rentang();
+    if (!dbHasil || dbKunci !== kunci) { dbHasil = susunDasbor(k, r); dbKunci = kunci; dbRentang = r; }
+    else if (dbRentang !== r) { dbHasil = susunDasbor(k, r, dbHasil); dbRentang = r; }
     dasbor.gambar(dbHasil, masuk);
   }
   function gantiSkala(k) { if (k === skala || !R.SKALA.some((s) => s[0] === k)) return; skala = k; pilihId = null; try { localStorage.setItem(KUNCI_SKALA, k); } catch (e) { /* abaikan */ } perbarui('skala'); }
@@ -206,7 +208,7 @@ export function pasangLayarRingkasan(akar, opsi) {
     if (dsb) {
       menitLama = k.getHours() * 60 + k.getMinutes();
       // tiap menit: digambar ulang hanya kalau hari berganti (kunci basi); data baru & buka layar selalu
-      if (sebab !== 'menit' || !dbHasil || dbKunci !== hariIniIso(k) + '|' + dasbor.rentang()) gambarDasbor(sebab === 'tampil');
+      if (sebab !== 'menit' || !dbHasil || dbKunci !== hariIniIso(k) || dbRentang !== dasbor.rentang()) gambarDasbor(sebab === 'tampil');
       detak(true); return;
     }
     if (!ix) ix = R.bangunIndeks();
@@ -251,7 +253,10 @@ export function pasangLayarRingkasan(akar, opsi) {
   const perbaruiData = () => perbarui('data');
   const perbaruiTampil = () => perbarui('tampil');   // owner 29 Sep: dulu digambar langsung di ketukan (±80 ms menahan pindah layar)
   const basiSemua = () => { ix = null; dbHasil = null; };   // indeks cincin & hasil dasbor dihitung ulang di gambar berikutnya
-  dengarkan(() => { basiSemua(); nanti(perbaruiData); });
+  // owner 3 Okt (patah-patah): denyut HP (perangkatStatus, tiap ±5 menit per perangkat) & jejak tulisan (logAktivitas) tidak dibaca dasbor maupun indeks cincin
+  // (pola BUKAN_RAK di Jual) — keduanya tidak membasikan hasil itu; Perlu perhatian (denyut kasir, antrean) tetap dihitung ulang di perbarui()
+  const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas']);
+  dengarkan((nama) => { if (!BUKAN_DASBOR.has(nama)) basiSemua(); nanti(perbaruiData); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) perbarui('data'); });   // kembali ke depan → angka & cincin diselaraskan
 
   // putaran 23d: Beranda tidak punya kolom isian — tidak ada yang ditanyakan atau dikosongkan saat ganti orang (tirai sudah mengosongkan tampilannya)

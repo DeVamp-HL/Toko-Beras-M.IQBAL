@@ -107,8 +107,11 @@ export function dbTren(rentang, kini) {
     sumber: 'Laporan › ' + (rentang === 'hari' ? 'Harian' : rentang === 'minggu' ? 'Mingguan' : 'Bulanan'), nama, hariIni: iso };
 }
 
-/** Seluruh dasbor untuk satu saat. Tiap kelompok dibungkus: galat di satu kelompok tampil sebagai kalimat di kelompok itu, kelompok lain tetap jalan. */
-export function susunDasbor(kini, rentang) {
+/** Seluruh dasbor untuk satu saat. Tiap kelompok dibungkus: galat di satu kelompok tampil sebagai kalimat di kelompok itu, kelompok lain tetap jalan.
+ *  lama (owner 3 Okt, ganti rentang patah-patah): hasil dasbor saat & data yang SAMA — hanya tren yang memakai rentang, jadi hari ini · bulan ini · stok ·
+ *  tagihan diambil dari situ dan cuma tren yang dihitung (dulu seluruh dasbor dihitung ulang tiap ganti Hari / Minggu / Bulan). */
+export function susunDasbor(kini, rentang, lama) {
   const aman = (nama, f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor ' + nama, e); return { galat: String((e && e.message) || e) }; } };
+  if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, tren: aman('tren', () => dbTren(rentang, kini)) };
   return { hari: aman('hari ini', () => dbHariIni(kini)), bulan: aman('bulan ini', () => dbBulanIni(kini)), stok: aman('stok', () => dbStok(kini)), tagihan: aman('tagihan', () => dbTagihan(kini)), tren: aman('tren', () => dbTren(rentang, kini)) };
 }

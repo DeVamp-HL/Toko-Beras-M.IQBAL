@@ -13,9 +13,9 @@
 //  - penyesuaianStok (dariTutup = tanggal) untuk timbang cepat yang beda; pindahUang {id 'pd-'+tanggal} laci → brankas untuk amankan laci.
 //  - setoranKas 'st-' & modalOwner 'mo-st-' bernominal 0 (kompatibilitas: tutup ulang dari sistem lama menimpa id yang sama).
 //  - pengaturan/titikKas = isi tempat uang SESUDAH tutup (laci akhir, rekening, amplop + sisihan, brankas + amankan) — patokan kas maju, inti ritualnya.
-import { kasPada, hitungStokKarungPerMerk, thDorongRiwayat } from '../mesin/beku.js';
-import { daftarGerakanKas, caraBayarKunci } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah, kunciNota, returUangPerHari } from '../data/toko.js';
+import { thDorongRiwayat } from '../mesin/beku.js';
+import { caraBayarKunci } from '../mesin/pembantu.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah, kunciNota, returUangPerHari, ingatStokKarung, ingatGerakanKas } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { aturHarga, hgPct } from './harga-logika.js';
 import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan, ugLabaBersih, ugSesudahTitik } from './uang-logika.js';
@@ -71,7 +71,7 @@ export function ringkasHari(iso) {
  *  Literan dari wadah aktif memang tercatat merkSumber = kunci bukunya, jadi tanpa saringan ini ia ikut masuk tiga terbanyak. */
 export function barangTimbang(iso) {
   const bw = petaBukuWadah(); const kg = {}; ambilPenjualan().forEach((p) => { if (p.tanggal !== iso || !p.merkSumber || bw[String(p.merkSumber)]) return; kg[p.merkSumber] = (kg[p.merkSumber] || 0) + (Number(p.totalKg) || 0); });
-  const stok = hitungStokKarungPerMerk(iso); return Object.keys(kg).sort((a, b) => kg[b] - kg[a]).slice(0, 3).map((m) => ({ merk: m, keluar: tdB1(kg[m]), sistem: tdB1((stok[m] || {}).sisaKg || 0), hpp: (stok[m] || {}).hppTerakhirPerKg || 0 }));
+  const stok = ingatStokKarung(iso); return Object.keys(kg).sort((a, b) => kg[b] - kg[a]).slice(0, 3).map((m) => ({ merk: m, keluar: tdB1(kg[m]), sistem: tdB1((stok[m] || {}).sisaKg || 0), hpp: (stok[m] || {}).hppTerakhirPerKg || 0 }));
 }
 const TD_KELOMPOK = [[/^Pelunasan piutang/, 'Bon dibayar tunai', 1], [/^Kasbon kembali/, 'Kasbon dikembalikan', 1], [/^Modal owner disetor|^Pinjaman/, 'Uang owner masuk', 1], [/nambah\)/, 'Tukar — pelanggan menambah', 1],
   [/^Harian — /, 'Uang keluar toko', -1], [/^Prive owner/, 'Ambil pribadi', -1], [/^Gaji /, 'Upah', -1], [/^Bayar bon /, 'Bayar bon pemasok', -1], [/^Kasbon — /, 'Kasbon karyawan/owner', -1], [/^Belanja beras|^Bongkar/, 'Belanja beras & bongkar', -1], [/^Setoran ke owner|^Modal owner ditarik/, 'Tarik modal / setoran', -1], [/^Bayar utang ke owner/, 'Bayar utang ke owner', -1], [/^Refund|^Selisih tukar|^Tukar/, 'Retur & tukar', -1], [/^Beli /, 'Beli kantong & bahan', -1], [/ — biaya /, 'Biaya bulanan', -1]];
@@ -83,12 +83,12 @@ export function rumusLaci(iso) {
   // gerakan laci hari ini = selisih saldoKantong(iso) − saldoKantong(kemarin) dijelaskan per kelompok (kelompoknya dari label mesin)
   // 39b no. 13: tempat tiap baris = aturan saldoKantong (uang keluar dari brankas / rekening bukan keluar laci) — Σ baris kertas = seharusnya
   const tempatnya = kantongGerakan();
-  daftarGerakanKas().forEach((r) => { if (r.t !== iso || !(r.t > t.tanggal)) return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label)); const kantong = tempatnya(r);
+  ingatGerakanKas().forEach((r) => { if (r.t !== iso || !(r.t > t.tanggal)) return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label)); const kantong = tempatnya(r);
     if (r.masuk > 0 && kantong === 'laci') dorong(k ? k[1] : 'Jual tunai', 1, r.masuk); if (r.keluar > 0 && kantong === 'laci') dorong(k ? k[1] : 'Keluar lain', -1, r.keluar); });
   // tinjauan 39b UU38-1: catatan bertanggal hari titik kas yang dicatat SESUDAH titik dipasang (mis. nota 21.30 sesudah tutup 21.00) belum ada di hitungan
   // fisik malam itu — masuk "seharusnya" laci tutup berikutnya (atau tutup ulang), bukan jadi lebih/kurang kas yang dihitung lagi di laba (no. 38)
   const susul = ugSesudahTitik(t); const kataSusul = ' · dicatat sesudah tutup ' + tanggalPendek(t.tanggal); let nSusul = 0;
-  daftarGerakanKas().forEach((r) => { if (!susul(r) || tempatnya(r) !== 'laci') return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label));
+  ingatGerakanKas().forEach((r) => { if (!susul(r) || tempatnya(r) !== 'laci') return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label));
     if (r.masuk > 0) { dorong((k ? k[1] : 'Jual tunai') + kataSusul, 1, r.masuk); nSusul += r.masuk; } if (r.keluar > 0) { dorong((k ? k[1] : 'Keluar lain') + kataSusul, -1, r.keluar); nSusul -= r.keluar; } });
   ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || a.tanggal !== iso || !(iso > t.tanggal)) return; dorong(a.tipe === 'ambil' ? 'Diambil dari amplop laba' : 'Disisihkan ke amplop laba', a.tipe === 'ambil' ? 1 : -1, Number(a.nominal) || 0); });
   ambilPindahUang().forEach((p) => { if (p.tanggal !== iso || !(iso > t.tanggal)) return; if (p.dari === 'laci') dorong('Dipindah ke ' + ugNamaTempat(p.ke).toLowerCase(), -1, Number(p.nominal) || 0); if (p.ke === 'laci') dorong('Diisi dari ' + ugNamaTempat(p.dari).toLowerCase(), 1, Number(p.nominal) || 0); });

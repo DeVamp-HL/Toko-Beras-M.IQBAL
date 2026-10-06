@@ -4,9 +4,8 @@
 // tebakan dari namanya (tebakJenisBeras); daftar nama = semuaMerkDikenal (stok karung, kemasan, katalog karung); pilihan = PILIHAN_JENIS_BERAS.
 // Salah isi hanya menggeser pengelompokan — tidak ada angka uang, stok, atau harga yang berubah (docs/peta-pindahan-terakhir.md §3).
 // Tanpa DOM; nama berawalan jb (bundel uji satu lingkup). Dijaga alat-uji/uji_setelan_jenis_beras.py.
-import { jenisUntukMerk, semuaMerkDikenal, PILIHAN_JENIS_BERAS } from '../mesin/pembantu.js';
-import { hitungStokKarungPerMerk } from '../mesin/beku.js';
-import { ambilPetaJenisBeras, petaBukuWadah, petaUkuran } from '../data/toko.js';
+import { jenisUntukMerk, PILIHAN_JENIS_BERAS } from '../mesin/pembantu.js';
+import { ambilPetaJenisBeras, petaBukuWadah, petaUkuran, ingatStokKarung, ingatMerkDikenal } from '../data/toko.js';
 
 export const JB_BELUM = 'Belum diisi jenisnya';   // sama dengan layar Stok sistem lama
 export const jbJenisMerk = (merk) => jenisUntukMerk(merk);
@@ -23,7 +22,7 @@ export function jbPilihan() {
 export function jbDaftar() {
   const peta = ambilPetaJenisBeras(); const bw = petaBukuWadah(); const uk = petaUkuran();
   // putaran 28: buku khusus (isi wadah, karung sisihan, kemasan adukan dibuka) & buku per ukuran ikut jenis induknya — tidak diatur sendiri di sini
-  const baris = semuaMerkDikenal().filter((m) => !bw[m] && !uk[m]).map((m) => {
+  const baris = ingatMerkDikenal().filter((m) => !bw[m] && !uk[m]).map((m) => {
     const ada = Object.prototype.hasOwnProperty.call(peta, m); const jenis = jenisUntukMerk(m);
     return { merk: m, jenis, asal: ada ? (jenis ? 'owner' : 'kosong') : jenis ? 'tebakan' : '' };
   });
@@ -33,7 +32,7 @@ export function jbDaftar() {
 export function susunJenisBeras(merk, jenis, w) {
   const m = String(merk || ''); const j = jbBersih(jenis);
   if (!m) return { tolak: 'Nama berasnya kosong' };
-  if (semuaMerkDikenal().indexOf(m) < 0) return { tolak: m + ' tidak dikenal di stok maupun katalog — jenisnya diisi sesudah namanya muncul di Barang masuk, Adukan, atau Katalog' };
+  if (ingatMerkDikenal().indexOf(m) < 0) return { tolak: m + ' tidak dikenal di stok maupun katalog — jenisnya diisi sesudah namanya muncul di Barang masuk, Adukan, atau Katalog' };
   if (j.length > JB_BATAS) return { tolak: 'Nama jenis paling panjang ' + JB_BATAS + ' huruf' };
   const peta = ambilPetaJenisBeras();
   if (Object.prototype.hasOwnProperty.call(peta, m) && String(peta[m]) === j) return { tolak: m + ' sudah ' + (j ? 'berjenis ' + j : 'dikosongkan') };
@@ -43,7 +42,7 @@ export function susunJenisBeras(merk, jenis, w) {
 }
 /** Stok › Gudang: total kg karung per jenis — urutan sistem lama (IR64 dulu, yang belum diisi paling bawah). Nama bersisa 0 tidak ikut. */
 export function jbKelompokStok() {
-  const stok = hitungStokKarungPerMerk(); const per = {}; const bukuWadah = petaBukuWadah(); const ukuran = petaUkuran();
+  const stok = ingatStokKarung(); const per = {}; const bukuWadah = petaBukuWadah(); const ukuran = petaUkuran();
   // putaran 28: buku milik wadah ('Wadah <nama>' & 'Karung wadah <nama>') ikut jenis NAMA wadahnya (isinya beras jenis itu)
   Object.keys(stok).filter((m) => stok[m].sisaKg !== 0).forEach((m) => { const j = jenisUntukMerk(bukuWadah[m] ? bukuWadah[m].wadah : ukuran[m] ? ukuran[m].induk : m) || JB_BELUM; (per[j] = per[j] || []).push(m); });
   return Object.keys(per).sort((a, b) => (a === JB_BELUM) - (b === JB_BELUM) || (b === 'IR64') - (a === 'IR64') || a.localeCompare(b))

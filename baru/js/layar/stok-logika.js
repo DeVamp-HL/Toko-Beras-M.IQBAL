@@ -11,9 +11,9 @@
 //      menurunkan TUMPUKAN saat itu juga; takar menurunkan karung & menaikkan wadah; literan terjual menurunkan wadah & buku. Jumlahnya menutup.
 // Kejujuran: yang tidak bisa dihitung DISEBUT (tak ada laju, belum bisa dinilai, belum pernah dicocokkan) — tidak digambar nol.
 // BACA SAJA kecuali tab Wadah (takar isi ulang, karung terbuka di belakang wadah, susunan & angka kebijakan → koleksi wadahLiteran, alat ukur bukan buku stok).
-import { hitungStokKarungPerMerk, hitungStokKemasan, hitungLajuPakai } from '../mesin/beku.js';
+import { hitungLajuPakai } from '../mesin/beku.js';
 import { merkPunyaKarungBerat, JENDELA_LAJU_HARI, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilSemuaBatch, ambilProduksiBerlaku, ambilRetur, ambilKarantina, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilWadahLiteran, petaStokWadah, stokMerekSaja, petaBukuWadah, lajuLintas } from '../data/toko.js';
+import { ambilPenjualan, ambilSemuaBatch, ambilProduksiBerlaku, ambilRetur, ambilKarantina, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilWadahLiteran, petaStokWadah, stokMerekSaja, petaBukuWadah, lajuLintas, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 import { tinggiWadah, aturWadah, resepWadah, karungBelakang, karungUntukWadah, wadahPemegang, semuaKarungTerbuka, tumpukanGudang, pindahNama, hitunganFisik, notaTembusBelumCocok, beratKarungBuka } from './jual-logika.js';
 // putaran 27: isi wadah per merek asal
@@ -30,7 +30,7 @@ const skSelisihHari = (dariIso, keIso) => Math.round((new Date(keIso + 'T00:00:0
 
 /** Daftar barang gudang: tiap merek karung & tiap kemasan, dengan sisa, laju, hari-habis, nilai. */
 export function daftarBarang() {
-  const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const laju = lajuLintas(hitungLajuPakai()); const out = []; const wadahStok = petaBukuWadah();
+  const stokK = ingatStokKarung(); const stokM = ingatStokKemasan(); const laju = lajuLintas(hitungLajuPakai()); const out = []; const wadahStok = petaBukuWadah();
   Object.keys(stokK).sort().forEach((m) => {
     const sisa = stokK[m].sisaKg || 0; const l = (laju.kgMerk || {})[m] || 0; const hpp = stokK[m].hppTerakhirPerKg || 0;
     const terbaru = stokK[m].hargaTerakhirPerKg || 0;
@@ -111,7 +111,7 @@ function jwbCocok(barang, hari) {
  * Angkanya dari tumpukanGudang() — tumpukan = beras nama itu di toko − karung terbuka − isi wadah, jadi membuka satu karung langsung menurunkan tumpukan.
  */
 export function susunLokasi() {
-  const siap = { stok: hitungStokKarungPerMerk(), pindah: pindahNama(), kolam: semuaKarungTerbuka(), bagian: wbBagianMerk() };
+  const siap = { stok: ingatStokKarung(), pindah: pindahNama(), kolam: semuaKarungTerbuka(), bagian: wbBagianMerk() };
   return Object.keys(stokMerekSaja(siap.stok)).sort().map((m) => tumpukanGudang(m, siap)).filter((t) => t.adaBuku && (Math.abs(t.bukuKg) > 0.004 || Math.abs(t.diBelakangKg) > 0.004 || Math.abs(t.diWadahKg) > 0.004 || t.pindahKeluarKg || t.pindahMasukKg));
 }
 function jwbLokasi() {
@@ -152,7 +152,7 @@ export function susunGudang(tanya, kini) {
  */
 export function susunWadah(s) {
   const atur = aturWadah();
-  const siap = { stok: hitungStokKarungPerMerk(), pindah: pindahNama(), kolam: semuaKarungTerbuka(), bagian: wbBagianMerk() };
+  const siap = { stok: ingatStokKarung(), pindah: pindahNama(), kolam: semuaKarungTerbuka(), bagian: wbBagianMerk() };
   // putaran 39: karung di belakang wadah aktif bernama kunci bukunya — tumpukan & nama tampil memakai MEREK ASALNYA
   // putaran 39c: slot KOSONG (karung terakhir dikembalikan / habis dihapus) → kartu wadah menggambar karung "?" garis putus, bukan kolam lama yang sudah ditutup
   const daftar = atur.daftar.map((m, i) => { const kn = karungUntukWadah(m); const asal = wbMerkAsal(kn.merk); const kr = kn.kosong ? { merk: kn.merk, lokasi: m, diketahui: false, penuhKg: beratKarungBuka(asal), wadah: '', yatim: false, kosong: true, alasanKosong: kn.alasanKosong, terakhirMerk: kn.terakhirMerk } : karungBelakang(kn.merk, m);

@@ -6,9 +6,8 @@
 // hanya KELEBIHAN (barang > uang yang masuk) — aturan owner 9 Agu 2026 ([[rinci-darurat-fleksibel-scope]]). Tanggal & jam baris = tanggal & jam karcisnya (uangnya masuk hari itu).
 // Rapikan (perluKoreksi): bentuk koreksi (koreksiDari + alasanKoreksi, tanpa asalDarurat) dan jumlahnya harus menutup nominal PERSIS (uang tetap).
 // Tarik balik (urungkanRinciTrx): seluruh grup dibatalkan, catatan kantong id+1 dihapus, karcis asli dipulihkan — hanya bila grupnya masih utuh.
-import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { penjualanMasihBerlaku, bakuCaraBayar, hargaKarungUtuh, namaSingkatTrx, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilHargaLiteran, ambilHargaKemasan, tolakKunci, butuhGet } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilHargaLiteran, ambilHargaKemasan, tolakKunci, butuhGet, ingatStokKarung } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, hariIniIso, tanggalPendek, jamSetempat } from '../inti/format.js';
 import { susunRak, masukkan, terapkanNego, periksaStokKeranjang, pecahItemsWadah, aturWadah } from './jual-logika.js';
@@ -39,7 +38,7 @@ export function daftarKarcis(kini) {
 export function tebakanKarcis(nominal) {
   const n = Math.round(Number(nominal) || 0); if (!(n > 0)) return [];
   // putaran 27: harga liter yang dipakai rak = wadah + merek literan langsung
-  const hasil = []; const stokK = hitungStokKarungPerMerk(); const lk = aturWadah().daftar.concat(wbLiteranLangsung().daftar); const literan = ambilHargaLiteran().filter((h) => h.hargaPerLiter > 0 && lk.indexOf(h.merk) >= 0); const kemasan = ambilHargaKemasan().filter((h) => h.hargaPerUnit > 0);
+  const hasil = []; const stokK = ingatStokKarung(); const lk = aturWadah().daftar.concat(wbLiteranLangsung().daftar); const literan = ambilHargaLiteran().filter((h) => h.hargaPerLiter > 0 && lk.indexOf(h.merk) >= 0); const kemasan = ambilHargaKemasan().filter((h) => h.hargaPerUnit > 0);
   literan.forEach((h) => { const L = Math.round(n / h.hargaPerLiter * 2) / 2; if (!(L >= 0.5 && L <= 40)) return; const katalog = Math.round(L * h.hargaPerLiter); const selisih = n - katalog;
     if (selisih === 0) hasil.push({ tepat: true, label: h.merk + ' ' + String(L).replace('.', ',') + ' L', isi: [{ jalur: 'literan', kunci: h.merk, jumlah: L }] });
     else if (Math.abs(selisih) < KC_TOLERANSI_BULAT) hasil.push({ tepat: false, label: h.merk + ' ' + String(L).replace('.', ',') + ' L · bulat ' + (selisih > 0 ? '+' : '−') + RP(Math.abs(selisih)), isi: [{ jalur: 'literan', kunci: h.merk, jumlah: L, hargaPas: n }] }); });
