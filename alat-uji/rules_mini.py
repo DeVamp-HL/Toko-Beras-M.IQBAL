@@ -215,7 +215,9 @@ def jalur_bagian(teks):
                     if d == 0: break
                     d -= 1
                 j += 1
-            p = Pengurai(token(teks[i + 2:j])); out.append(('ek', p.ekspresi())); i = j + 1; continue
+            p = Pengurai(token(teks[i + 2:j])); out.append(('ek', p.ekspresi()))
+            if p.lihat()[0] != 'akhir': raise Galat('jalur $(…) tidak terurai habis: ' + teks)
+            i = j + 1; continue
         buf += teks[i]; i += 1
     if buf: out.append(('lit', buf))
     return out
@@ -261,7 +263,9 @@ class Rules:
             allows = []
             for a in re.finditer(r'allow ([a-z, ]+): if (.*?);', m.group(3), re.S):
                 ops = [x.strip() for x in a.group(1).split(',')]
-                allows.append((ops, Pengurai(token(a.group(2))).ekspresi(), re.sub(r'\s+', ' ', a.group(2)).strip()))
+                pu = Pengurai(token(a.group(2))); pohon = pu.ekspresi()
+                if pu.lihat()[0] != 'akhir': raise Galat('allow %s di %s tidak terurai habis (sisa %r)' % (a.group(1), m.group(1), pu.lihat()))   # bentuk asing = berhenti, bukan diam
+                allows.append((ops, pohon, re.sub(r'\s+', ' ', a.group(2)).strip()))
             self.blok[m.group(1)] = (m.group(2), allows)
 
     # db = { 'koleksi/id': data(dict) } ; sesudah = keadaan sesudah batch (getAfter / existsAfter)
