@@ -1,6 +1,7 @@
 /* LAYAR PELANGGAN — PL1 Kenali (Sketsa · Tampah · Belanja · Jam · Minggu · Benang · Hafalan), PL2 Bon (Buku · Papan · Umur), PL3 THR (Daftar · Meja · Amplop).
    Aturan yang belum ada di identitas.css, di-scope .layar-pelanggan. Warna BENDANYA (polaroid, buku bon, tampah, papan gabus) dibiarkan hangat di kedua mode. */
-main.layar-pelanggan { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 120px; max-width: 1480px; margin: 0 auto; }
+/* owner 3 Okt (iPhone berponi): jarak poni SESUDAH shorthand padding, sama dengan layar lain — dulu kepala Pelanggan (judul, pil akun, mode) tertutup tudung jam */
+main.layar-pelanggan { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 120px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); max-width: 1480px; margin: 0 auto; }
 @media (min-width: 1100px) { main.layar-pelanggan { padding: 22px 28px 40px; } }
 .layar-pelanggan section { display: flex; flex-direction: column; gap: 10px; }
 .layar-pelanggan .jalur.kisi { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; } .layar-pelanggan .jalur.kisi .seg { text-align: center; white-space: nowrap; padding: 0 6px; min-height: 36px; font-size: 12px; }

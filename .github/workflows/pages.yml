@@ -180,6 +180,9 @@ jobs:
       # ---- owner 3 Okt: "Gua mau layar jual lebih smooth" — rak Jual disusun inkremental ----
       - name: "Rak Jual inkremental (owner 3 Okt): sesudah tiap ubahan keranjang / struk parkir, susunRakLanjut = susunRak persis (urutan, kelompok, Sering, rak Wadah, isian berat) — kasus tepi bernama + urutan acak berbenih tetap, hanya chip yang terpengaruh dihitung ulang; layar Jual asli: ubahan keranjang → lanjutan, data / pelanggan / tukar → penuh, HTML tiap jalur = susun penuh (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_rak_inkremental.py && python3 alat-uji/uji_rak_inkremental.py --kontrol
+      # ---- owner 3 Okt: /baru/ dipakai sebagai web app Safari (Mac) + Safari iPhone/iPad — cacat khas WebKit ----
+      - name: "Safari/WebKit (owner 3 Okt): sandi tidak terkunci selagi fokus & dilepas di pointerdown, jarak poni tiap layar, :hover menu samping hanya untuk kursor, tanpa kolom bulan, touchstart pasif (:active iOS), penjaga muat-ulang modul kenal kalimat Safari, jarak aman kiri/kanan, minus di #rtSelisih, WA/cetak Laporan dibuka di ketukan lalu nomornya dicatat (statis + jsc + kontrol)"
+        run: python3 alat-uji/uji_safari_webkit.py && python3 alat-uji/uji_safari_webkit.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

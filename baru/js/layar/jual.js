@@ -162,6 +162,8 @@ export function pasangLayarJual(akar, opsi) {
     rtTanpaBuka: () => set(Object.assign(RT.returAwal(), { rtCari: S().rtCari, lembar: 'returTanpa', ketik: '' })),
     rtJenis: ({ v }) => set({ rtJenis: v, rtBarang: '', rtYakin: false, ketik: '' }),
     rtBarang: ({ k }) => set({ rtBarang: k, rtYakin: false }),
+    // owner 3 Okt (iPhone): kolom #rtSelisih TANPA inputmode angka — papan angka iPhone tidak punya tanda minus, padahal minus = pembeli menambah
+    // (dibaca retur-logika). Papan ketik biasa punya '-' di lapisan 123.
     rtSelisih: (v) => set({ rtSelisih: String(v || '').slice(0, 15) }),
     catatReturTanpa: async () => {
       const r = RT.susunReturTanpaNota(S(), L.waktuSekarang(S().sekarang || undefined));
@@ -825,7 +827,7 @@ export function pasangLayarJual(akar, opsi) {
         <input class="ketik-nama" id="rtAlasan" type="text" value="${s.rtAlasan}" data-ketik="rtAlasan" placeholder="atau tulis alasannya">
         <div class="label">Diselesaikan dengan</div>
         <div class="tombol-baris"><div class="kaca-btn ${tukar ? '' : 'aktif'}" data-aksi="rtPenyelesaian" data-v="refund">Uang kembali</div><div class="kaca-btn ${tukar ? 'aktif' : ''}" data-aksi="rtPenyelesaian" data-v="tukar">Tukar barang</div></div>
-        ${tukar ? h`<input class="ketik-nama" id="rtSelisih" type="text" inputmode="numeric" value="${s.rtSelisih}" data-ketik="rtSelisih" placeholder="selisih tukar (Rp) — 0 kalau tidak ada; minus = pembeli menambah"><div class="pita-info">Penggantinya dijual seperti biasa dengan pil <b>pengganti retur</b> di baris keranjang (omzet Rp0, modal tetap keluar).</div>`
+        ${tukar ? h`<input class="ketik-nama" id="rtSelisih" type="text" value="${s.rtSelisih}" data-ketik="rtSelisih" placeholder="selisih tukar (Rp) — 0 kalau tidak ada; minus = pembeli menambah"><div class="pita-info">Penggantinya dijual seperti biasa dengan pil <b>pengganti retur</b> di baris keranjang (omzet Rp0, modal tetap keluar).</div>`
           : h`<input class="ketik-nama" id="rtNominal" type="text" inputmode="numeric" value="${s.rtNominal}" data-ketik="rtNominal" placeholder="uang yang dikembalikan (Rp) — wajib">`}
         ${s.kabar && s.kabarAwas ? h`<div class="pita-info awas">${s.kabar}</div>` : ''}
         <div class="utama ${s.rtYakin ? 'pegas' : ''}" data-aksi="catatReturTanpa">${s.rtYakin ? 'YA, MEMANG BENAR — CATAT' : tukar ? 'CATAT RETUR TUKAR (tanpa nota)' : 'CATAT RETUR · uang keluar ' + RP(L.angkaRupiah(s.rtNominal))}</div>
