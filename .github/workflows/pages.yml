@@ -35,7 +35,7 @@ jobs:
       #   · harness jsc (alat-uji/harness, dua langkah) DIHAPUS — objeknya hilang: ia mengevaluasi modul index.html. /baru/ dievaluasi di jsc lewat
       #     bundel_baru di tiap uji_*_baru, kasir darurat dimuat di Chrome sungguhan di job uji-peramban.
       #   · pindah_mesin.py --periksa DIHAPUS — sumber kebenaran mesin beku kini baru/js/mesin/beku.js + pembantu.js, dijaga beku2.py --sidik.
-      - name: "Kasir darurat — sintaks script, lantai Chrome 80, id ganda, onclick, getElementById, batas gerak (dulu index.html, pensiun 3 Okt)"
+      - name: "Kasir darurat — sintaks script, lantai Chrome 80, id ganda, handler sebaris (huruf besar/kecil, tanpa kutip; ber-CSP = gagal), getElementById, batas gerak (dulu index.html, pensiun 3 Okt)"
         run: alat-uji/periksa.sh kasir-darurat-nominal.html
 
       - name: "periksa.sh — kontrol positif (salinan rusak wajib gagal, halaman tanpa script ditolak)"
@@ -165,7 +165,7 @@ jobs:
         run: python3 alat-uji/uji_tata_letak_ringkasan_stok.py && python3 alat-uji/uji_tata_letak_ringkasan_stok.py --kontrol
       - name: "Rapi-rapi tata letak layar lain (36): tujuh layar kerja di Mac selebar 1720 & berpinggir sama, kolom samping tiga-kolom clamp(vw) (1280 tidak menyempit), Menu tetap kolom N1 860"
         run: python3 alat-uji/uji_tata_letak_layar_lain.py && python3 alat-uji/uji_tata_letak_layar_lain.py --kontrol
-      - name: "CSP /baru/ (keputusan owner 1 Okt: Pasang): meta sebelum script, hash script sebaris = isinya, sumber luar & koneksi Firebase diizinkan, tanpa onclick sebaris"
+      - name: "CSP /baru/ (keputusan owner 1 Okt: Pasang) + kasir darurat (3 Okt, kasir-v32: hash saja, koneksi persis Firebase REST, data-aksi ↔ penangan) + pengalih: meta sebelum script, hash script sebaris = isinya, tanpa onclick sebaris"
         run: python3 alat-uji/uji_csp.py && python3 alat-uji/uji_csp.py --kontrol
       - name: "Audit 39b no. 28: kabar sesudah kiriman jujur — antre = \"Tersimpan di perangkat, menunggu server\" di enam layar + Jual (panel wadah, umum, setelan, pesanan, tarik balik, batal nota) + kiriman bertahap; pil kepala menyebut yang DITOLAK server (jsc)"
         run: python3 alat-uji/uji_kabar_antre.py && python3 alat-uji/uji_kabar_antre.py --kontrol
@@ -201,7 +201,7 @@ jobs:
 
       - name: "Tirai & ganti orang (23c/23d): 0 angka rupiah sebelum masuk, keranjang & isian tujuh layar tidak terbawa ke akun berikutnya — Chrome headless + kontrol (keluar 4 = GAGAL JARINGAN)"
         run: python3 -u alat-uji/uji_layar_kunci.py && python3 -u alat-uji/uji_layar_kunci.py --kontrol
-      - name: "Antrean kasir (25b): karcis ditolak server dipisah, sisanya tetap terkirim; 401 → layar masuk; sinyal/429/503 → tetap antre; denyut & versi; tahan muat ulang — Chrome headless + Firestore palsu + kontrol"
+      - name: "Antrean kasir (25b): karcis ditolak server dipisah, sisanya tetap terkirim; 401 → layar masuk; sinyal/429/503 → tetap antre; denyut & versi; tahan muat ulang; tombol sungguhan diketuk di bawah CSP halaman (kanari diblokir, nol pelanggaran) — Chrome headless + Firestore palsu + kontrol"
         run: python3 -u alat-uji/uji_antrean_kasir.py && python3 -u alat-uji/uji_antrean_kasir.py --kontrol
       # uji_sistem_lama_bacasaja.py (25b B: penjaga tulis index.html) DIHAPUS 3 Okt 2026 bersama objeknya — sistem lama pensiun, index.html kini
       # halaman pengalih tanpa script (tidak ada jalan tulis lagi di situs).

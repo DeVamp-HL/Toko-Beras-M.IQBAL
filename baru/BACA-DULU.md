@@ -1140,7 +1140,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 |---|---|
 | `alat-uji/beku2.py --sidik` / `--uji-diri` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` dan tiap fungsi & konstanta `js/mesin/pembantu.js` = `alat-uji/pembantu.sha256`; alat terbukti melihat mutasi (sampai 2 Okt: `pindah_mesin.py --periksa`, pensiun 3 Okt) |
 | `alat-uji/uji_pensiun_sistem_lama.py` (+ `--kontrol`) | 3 Okt: pengalih `index.html` & `kasir.html` ada; `FILES` sw-kasir = berkas yang ada & tanpa `kasir.html`; langkah CI / seed HawkScan / manifest menunjuk berkas yang ada; `/baru/` tanpa tautan sistem lama |
-| `alat-uji/uji_csp.py` (+ `--kontrol`) | CSP `/baru/` (bagian "CSP /baru/" di bawah) + pengalih `index.html` & `kasir.html`: tanpa script, CSP `default-src 'none'`, mengalihkan ke `baru/` |
+| `alat-uji/uji_csp.py` (+ `--kontrol`) | CSP `/baru/` (bagian "CSP /baru/" di bawah) + **kasir darurat** (hash saja, koneksi persis Firebase REST, `worker-src 'self'`, `data-aksi` ↔ penangan, tanpa handler sebaris — bagian "CSP kasir darurat") + pengalih `index.html` & `kasir.html`: tanpa script, CSP `default-src 'none'`, mengalihkan ke `baru/` |
 | `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 338 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar + tata letak + wadah literan: takar, karung bernama di belakang, campuran, susunan, rantai stok & pindah nama + WADAH DIJUAL: rak berharga, buku kantong, modal/tanpa modal, hasil samping, repack dijual/ditanggung/upah, atur harga + STRUK: kertas 58/80, WA, menutup, bon, aturan otomatis, setelan) di kotak pasir; 154 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis sistem lama (`KUNCI_DOK_LAMA`, dibekukan dari tag `sistem-lama-terakhir`) |
 | `alat-uji/uji_ringkasan_baru.py` (+ `--kontrol`) | 28 skenario logika Ringkasan (jam tetap, zona waktu dikunci WIB) + 14 kontrol; di cadangan toko: omzet hari/bulan/tahun = jumlah langsung barisnya |
 | `alat-uji/uji_stok_baru.py` (+ `--kontrol`) | 135 skenario logika Stok (jam & zona waktu dikunci; rantai stok "Berasnya ada di mana?", karung bernama; barang masuk, cocokkan, adukan, karantina; kantong, tempat simpan, HPP: replika rumus = mesin, koreksi = batch yang sama, massal semua-atau-tidak) + 91 kontrol; di cadangan toko: nilai stok layar = mesin neraca, kolom dokumen catat dikenal cadangan, replika HPP = mesin untuk semua nama |
@@ -1158,7 +1158,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_kunci_periode.py` (+ `--kontrol`) | 45 skenario kunci periode (WIB & tenggang 3 hari, tiap ⛔, hari tanpa tutup, kunci/buka satu langkah, pembalik hari ini, keputusan K1–K6, penjaga pusat & kirim bertahap, final bulanan, pajak) + 39 kontrol; di cadangan toko: kunci Agustus → Juli & Agustus byte-sama, satu retur hari ini mengubah September saja |
 | `alat-uji/uji_tutup_buku_bertahap.py` (+ `--kontrol`) | tutup buku bertahap: 40 nama → 3 kiriman ≤ 18, berita acara berjalan di kiriman 1 & penanda di kiriman terakhir, tahun lama utuh sampai penanda (era, FINAL, piutang tidak dobel), putus di kiriman 2 → lanjut tanpa kirim ulang, arsip terputus → lanjut, batal (dari berjalan / terkunci / terputus) per ≤ 18, titik kas tahun dari tutup hari 31 Des, periksa ulang hari ini (penjualan 1 Jan), langkah 7 tahun terkunci; 4 statis uang.js; 17 kontrol; asap data toko 5 Jan 2027 |
 | `alat-uji/peta_akses.py --kiriman` bagian owner | kiriman owner yang menyentuh bulan lampau, dua keadaan (tanpa kunci / Agustus terkunci), fungsi asli ≤ 18 pemeriksaan kunci; tiap penulis koleksi bertanggal wajib terdaftar — 25 DIUKUR (semua yang ber-perulangan: nota 40 baris, batal nota, ini dia, cocokkan, tutup hari, tutup buku & batalnya, arsip per 18), 20 beralasan (jumlah dokumen tetap); arsip dipotong `KP_BATAS_GET`; kasir darurat 1 dokumen per permintaan |
-| `alat-uji/uji_antrean_kasir.py` (+ `--kontrol`, `--gambar DIR`) | 25b: kasir darurat di Chrome headless + Firestore palsu — karcis ke-2 dari 5 ditolak (sisanya masuk), 401, sinyal/429/503, belum masuk, denyut & versi, tahan muat ulang; statis versi (darurat = sw = /baru/); /baru/ ⛔ versi & Perlu perhatian. Sampai 2 Okt juga kasir.html (+ buku kecil bayar bon) — dihapus bersama kasir.html |
+| `alat-uji/uji_antrean_kasir.py` (+ `--kontrol`, `--gambar DIR`) | 25b: kasir darurat di Chrome headless + Firestore palsu — karcis ke-2 dari 5 ditolak (sisanya masuk), 401, sinyal/429/503, belum masuk, denyut & versi, tahan muat ulang; tombol sungguhan diketuk (klik DOM) di bawah CSP halaman yang sama — kanari ber-`onclick` sebaris diblokir & tercatat, nol pelanggaran lain (3 Okt); statis versi (darurat = sw = /baru/) & salinan uji (hash halaman + skenario, tanpa `'unsafe-inline'`); /baru/ ⛔ versi & Perlu perhatian. Sampai 2 Okt juga kasir.html (+ buku kecil bayar bon) — dihapus bersama kasir.html |
 | `alat-uji/uji_bayar_bon_terkunci.py` (+ `--kontrol`) | 25b C: bayar bon pemasok/pelanggan dari bulan terkunci lolos — teks rules dicocokkan + model + jalur sistem baru; asap data toko lokal |
 | `alat-uji/uji_batal_karcis.py` (+ `--kontrol`) | 25b: batal karcis kasir darurat di /baru/ — field = `mulaiBatalkanTrx` sistem lama (`FIELD_LAMA`, dibekukan dari tag `sistem-lama-terakhir`) & dokumen pembatalan sungguhan di cadangan lokal |
 | `alat-uji/uji_cocokkan_terpisah.py` (+ `--kontrol`) | 27·1: 23 skenario cocokkan tumpukan vs wadah (selisih ke merek asal, susut wajar, isi ulang lupa, rantai stok tidak bergeser) + 16 kontrol; asap: 8 wadah di cadangan dicocokkan |
@@ -1412,7 +1412,7 @@ penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembu
 `www.gstatic.com` (SDK Firebase) + HASH script sebaris (tanpa `'unsafe-inline'`); gaya sendiri + `'unsafe-inline'` (atribut style di templat) + Google Fonts;
 koneksi HANYA Firestore & Auth Firebase; `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`. Ubah script sebaris → `python3 alat-uji/uji_csp.py --pasang`.
 Templat layar TIDAK boleh memakai `on…="…"` / `javascript:` (diblokir) — tetap `data-aksi`. Pensiun `kasir.html` sudah mendarat (3 Okt 2026); CSP
-**kasir darurat** (memindah 27 handler statis + 3 di `innerHTML` ke `data-aksi`) BELUM — putaran tersendiri. Nomor versi `kasir-v*` kini dipegang kasir
+**kasir darurat** juga sudah (kasir-v32, bagian "CSP kasir darurat" di akhir berkas). Nomor versi `kasir-v*` kini dipegang kasir
 darurat, `sw-kasir.js`, dan `KK_VERSI_KASIR_TERBARU`. Pengalih `index.html` & `kasir.html`: CSP `default-src 'none'` tanpa script (`uji_csp.py`).
 
 ## Audit 39b no. 40 — bulan sebelum awal buku tampil, tidak dijumlah sebagai rugi (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
@@ -1555,4 +1555,42 @@ Prasyarat owner beres hari itu (HP kasir melapor 0 antrean / 0 ditolak; perangka
   `kasir.html`, pembaca piutang sistem lama, `golonganJawaban` kembar) dihapus beserta kontrolnya; alasannya di docstring masing-masing.
   `periksa.sh` & `lingkup.py` kini memeriksa kasir darurat (`periksa.sh --kontrol` baru menggantikan kontrol harness).
 - **Tidak dikerjakan di sini (tindak lanjut owner):** tab Kasir & PIN tanpa pembaca, `piutang` + `bayarBon*` di katalog kasir tanpa pembaca, hak kasir@
-  yang tidak dipakai di rules, pembersih salinan lokal sistem lama, pemulih dari berkas di `/baru/`, CSP kasir darurat, `404.html`.
+  yang tidak dipakai di rules, pembersih salinan lokal sistem lama, pemulih dari berkas di `/baru/`, CSP kasir darurat (mendarat di bagian berikut),
+  `404.html`.
+
+## CSP kasir darurat (3 Okt 2026, kasir-v32; cabang `pensiun/csp-darurat`, di atas main sesudah PR #103 `pensiun/bumi-hangus`)
+
+Sisa perintah owner "hapus sistem lama + kasir.html + CSP kasir darurat". `kasir-darurat-nominal.html` (HP penjaga) kini memasang
+`<meta http-equiv="Content-Security-Policy">` tepat sesudah `<meta charset>`, sebelum `<style>`/`<link>`/`<script>`:
+- `script-src` = HANYA hash script sebaris (satu script klasik) — tanpa `'unsafe-inline'`, `'unsafe-eval'`, `'self'`. Ubah script → `python3
+  alat-uji/uji_csp.py --pasang` (kini menulis hash `/baru/` DAN kasir darurat).
+- `connect-src 'self'` + PERSIS Firestore / identitytoolkit / securetoken (REST tanpa SDK — tanpa gstatic, beda dengan `/baru/`); `worker-src 'self'`
+  (tanpa itu pendaftaran `sw-kasir.js` jatuh ke `script-src` yang cuma hash → diblokir); `style-src 'self' 'unsafe-inline'` (blok `<style>` & satu
+  atribut style); `img-src 'self'`; `default-src 'self'`; `object-src 'none'`; `base-uri 'none'`; `form-action 'none'`.
+- **Handler sebaris dipindah** (CSP tanpa `'unsafe-inline'` memblokirnya diam-diam — tombol tampil tapi mati): 24 di HTML statis (23 `onclick` + 1
+  `oninput`) dan 3 di string `innerHTML` (hapus barang, tuts bernama, tuts harga) → `data-aksi` (ketukan) / `data-aksi-ketik` (ketikan) + `data-nilai`,
+  satu fungsi `jalankanAksi` di `document` untuk `click` & `input`, tabel `AKSI` memanggil fungsi yang SAMA dengan argumen yang sama (angka papan
+  & cara bayar sebagai teks — `'000'` tetap `'000'`; nomor baris / tuts / harga sebagai angka). Tombol nonaktif tidak bereaksi (seperti dulu).
+  Fungsi tetap global (`tekanAngka`, `simpanNominal`, dll. dipanggil alat uji).
+- Rantai versi: `sw-kasir.js` `kasir-v32`, `VERSI_APLIKASI` `kasir-v32` + `LABEL_VERSI` "versi 3 Okt b", `KK_VERSI_KASIR_TERBARU` `kasir-v32`;
+  `KP_VERSI_KASIR_25B` tetap `kasir-v26`. Literal di `uji_antrean_kasir.py` & `uji_katalog_kasir.py` ikut.
+- `uji_csp.py`: aturan per halaman + 25 kontrol kasir darurat (yang mengubah script menulis ulang hash salinannya, dan wajib menjatuhkan pemeriksaan
+  yang dituju — bukan sekadar hash basi). Pemeriksaan statis baru: tiap `data-aksi` punya penangan, tiap penangan dipakai, tiap `<button>` membawa
+  `data-aksi`, pendengar delegasi ada, tanpa handler sebaris di HTML maupun string yang dirangkai / `setAttribute('on…')`.
+- Uji peramban yang menyuntik script ke salinan kasir darurat (`uji_antrean_kasir.py`, `uji_katalog_kasir.py`, dan `beban_kasir_darurat.py` lewat
+  `uji_antrean_kasir.siapkan`) memakai CSP halaman yang SAMA: `script-src` salinan = hash halaman (apa adanya; dihitung ulang lewat
+  `uji_csp.tulis_hash` hanya kalau kontrol mengubah halaman) + hash skenario yang disuntik, TANPA `'unsafe-inline'` (`csp_salinan` — lihat
+  "Perkuat" di bawah; versi pertama cabang ini masih melonggarkan ke `'unsafe-inline'`).
+- **Perkuat (temuan tinjauan, owner 3 Okt):** (A) jaring statis punya titik buta — `<script type="…">` sebaris tidak di-hash & tidak dipindai,
+  `onClick` (huruf besar) dan `on…=` TANPA kutip lolos, di `uji_csp.py` maupun `periksa.sh` bagian 4 (yang tetap mencetak "LULUS — tidak ada
+  handler sebaris"). Kini: script sebaris = semua `<script>` tanpa `src` (atribut & huruf besar apa pun), jumlah tag `<script>` kasir darurat WAJIB =
+  jumlah yang di-hash, pola atribut `re.I` + kutip opsional (`ATRIBUT_ON`, `PERISTIWA_JS`); `periksa.sh` bagian 4 mengimpor `uji_csp.cari_sebaris`
+  (satu pola, satu tempat) dan GAGAL bila ada satu saja handler sebaris di halaman ber-CSP tanpa `'unsafe-inline'`. Kontrol baru `uji_csp.py`
+  (8, semuanya DIAM di alat lama) + `periksa.sh --kontrol` (5, wajib gagal DI bagian 4). (B) uji peramban tidak bisa menangkap tombol yang mati
+  karena CSP — salinannya `'unsafe-inline'` dan skenarionya memanggil fungsi langsung. Kini: CSP salinan = hash halaman + hash skenario;
+  `PENJAGA_CSP` (disisip sebelum meta, tidak terkena CSP) mencatat tiap `securitypolicyviolation`; tiap pemuatan mengetuk tombol KANARI
+  ber-`onclick` sebaris yang WAJIB diblokir & tercatat (bukti CSP berlaku & pendengar hidup) dan menuntut NOL pelanggaran lain; skenario baru
+  `ketukTombol` mengetuk papan angka, "000", + BARANG BERIKUTNYA, hapus barang (tombol `innerHTML`), HAPUS, KREDIT, ketik nama, SIMPAN lewat klik
+  DOM; muat ulang mengetuk pita, Tutup & arsip (dulu fungsi langsung). Salinan uji diperiksa statis tanpa peramban (`periksa_salinan`), +10
+  kontrol `uji_antrean_kasir` & +2 `uji_katalog_kasir` (yang mengganti alat uji sendiri lewat kunci `'@nama'` — `ganti_alat`). Uji peramban
+  HANYA di CI; di Mac dijalankan bagian statis/jsc dengan Chrome ditolak, dan salinan dibangun dengan server & Chrome ditiru.

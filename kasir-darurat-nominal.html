@@ -2,6 +2,9 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<!-- CSP (3 Okt 2026, kasir-v32): script HANYA yang hash-nya tercantum (tanpa 'unsafe-inline' — tombol memakai data-aksi), koneksi HANYA Firestore &
+     Auth Firebase (REST), service worker dari situs sendiri. Ubah isi script sebaris → python3 alat-uji/uji_csp.py --pasang (hash baru). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-xuOSfEtuTmc9M9VMwexUmYkB1LHCxsXU4ZfUq0eWeIM='; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Kasir Darurat — Toko Beras M.IQBAL</title>
 <meta name="description" content="Catat nominal uang masuk saat darurat. Cuma omzet — tanpa produk, tanpa stok.">
@@ -245,7 +248,7 @@
 <div id="bilahAtas"><span><b>M.IQBAL</b> <small id="versiApp"></small></span><span id="chipStatus">Menyambungkan…</span></div>
 <!-- Pita DITOLAK (25b): karcis yang ditolak server tidak lagi menahan karcis lain, tapi juga
      tidak boleh diam — penjaga harus bisa menunjukkannya ke owner untuk dicatat ulang. -->
-<div id="pitaDitolak" onclick="bukaDaftarDitolak()"></div>
+<div id="pitaDitolak" data-aksi="bukaDitolak"></div>
 <div id="judulDarurat">Kasir Darurat — Catat Per Barang</div>
 
 <div id="lcd"><div id="lcdAngka">Rp0</div></div>
@@ -262,29 +265,29 @@
 <div id="umurHargaD"></div>
 <div id="tutsHargaCepat"></div>
 <div id="papan">
-  <button type="button" onclick="tekanAngka('1')">1</button>
-  <button type="button" onclick="tekanAngka('2')">2</button>
-  <button type="button" onclick="tekanAngka('3')">3</button>
-  <button type="button" onclick="tekanAngka('4')">4</button>
-  <button type="button" onclick="tekanAngka('5')">5</button>
-  <button type="button" onclick="tekanAngka('6')">6</button>
-  <button type="button" onclick="tekanAngka('7')">7</button>
-  <button type="button" onclick="tekanAngka('8')">8</button>
-  <button type="button" onclick="tekanAngka('9')">9</button>
-  <button type="button" class="op" onclick="tekanAngka('000')">000</button>
-  <button type="button" onclick="tekanAngka('0')">0</button>
-  <button type="button" class="op" onclick="hapusAngka()">HAPUS</button>
+  <button type="button" data-aksi="angka" data-nilai="1">1</button>
+  <button type="button" data-aksi="angka" data-nilai="2">2</button>
+  <button type="button" data-aksi="angka" data-nilai="3">3</button>
+  <button type="button" data-aksi="angka" data-nilai="4">4</button>
+  <button type="button" data-aksi="angka" data-nilai="5">5</button>
+  <button type="button" data-aksi="angka" data-nilai="6">6</button>
+  <button type="button" data-aksi="angka" data-nilai="7">7</button>
+  <button type="button" data-aksi="angka" data-nilai="8">8</button>
+  <button type="button" data-aksi="angka" data-nilai="9">9</button>
+  <button type="button" class="op" data-aksi="angka" data-nilai="000">000</button>
+  <button type="button" data-aksi="angka" data-nilai="0">0</button>
+  <button type="button" class="op" data-aksi="hapusAngka">HAPUS</button>
 </div>
 <!-- Kata-katanya sengaja panjang & jelas, bukan cuma tanda "+": pemakainya gaptek dan
      tombol ini menentukan apakah barangnya bisa ditelusuri nanti atau tidak. -->
-<button type="button" id="btnTambahBaris" onclick="tambahBaris()">+ BARANG BERIKUTNYA</button>
+<button type="button" id="btnTambahBaris" data-aksi="tambahBaris">+ BARANG BERIKUTNYA</button>
 <div id="pilihBayarD">
-  <button type="button" id="bayarD-Tunai" class="pilih" onclick="pilihBayarD('Tunai')">TUNAI</button>
-  <button type="button" id="bayarD-Qris" onclick="pilihBayarD('Qris')">QRIS</button>
-  <button type="button" id="bayarD-Kredit" onclick="pilihBayarD('Kredit')">KREDIT</button>
+  <button type="button" id="bayarD-Tunai" class="pilih" data-aksi="bayar" data-nilai="Tunai">TUNAI</button>
+  <button type="button" id="bayarD-Qris" data-aksi="bayar" data-nilai="Qris">QRIS</button>
+  <button type="button" id="bayarD-Kredit" data-aksi="bayar" data-nilai="Kredit">KREDIT</button>
 </div>
 <div id="barisNamaD">
-  <input type="text" id="namaPembeliD" placeholder="Nama pembeli (wajib kalau kredit)" autocomplete="off" oninput="tandaiNamaD()">
+  <input type="text" id="namaPembeliD" placeholder="Nama pembeli (wajib kalau kredit)" autocomplete="off" data-aksi-ketik="tandaiNama">
 </div>
 <!-- Catatan barang nego (13 Agu 2026): harga tawar-menawar tidak akan pernah ketemu di
      katalog — tanpa catatan, berbulan-bulan kemudian owner harus bertanya lagi ke
@@ -293,22 +296,22 @@
 <div id="barisKetD">
   <input type="text" id="ketNegoD" placeholder="Catatan barang nego (opsional) — mis. wangi nego bu haji" autocomplete="off">
 </div>
-<button type="button" id="btnSimpan" onclick="simpanNominal()">SIMPAN</button>
+<button type="button" id="btnSimpan" data-aksi="simpan">SIMPAN</button>
 
 <div id="pesanOk">Tersimpan</div>
 
 <!-- Audit Fase 0 (26 Agu 2026): dulu "Lewati" menutup layar login DIAM-DIAM — transaksi
      menumpuk di antrean HP yang tidak akan pernah terkirim, dan kalau HP hilang/di-clear,
      uangnya lenyap tanpa jejak. Bilah ini menolak untuk diam. -->
-<div id="barAntrean" onclick="tampilkanLayarLogin(false)"></div>
+<div id="barAntrean" data-aksi="bukaLogin"></div>
 
 <div id="layarLogin" class="lapisan">
   <h2>MASUK SEKALI DI HP INI</h2>
   <p id="loginPesan">HP ini belum masuk. Masukkan sandi toko (sekali saja).</p>
   <input type="password" id="inputSandiLogin" placeholder="Sandi toko" autocomplete="current-password">
   <p id="salahLogin">Sandi salah.</p>
-  <button type="button" id="btnLogin" onclick="kirimLogin()">Masuk</button>
-  <button type="button" class="redup" onclick="lewatiLogin()">Lewati dulu — tetap bisa catat</button>
+  <button type="button" id="btnLogin" data-aksi="masuk">Masuk</button>
+  <button type="button" class="redup" data-aksi="lewatiLogin">Lewati dulu — tetap bisa catat</button>
   <p style="font-size:.78rem;">Catatan tetap tersimpan di HP walau dilewati, dikirim otomatis setelah masuk.</p>
 </div>
 
@@ -318,8 +321,8 @@
     <b>tidak hilang</b>: tetap tersimpan di HP ini. Tunjukkan ke owner supaya dicatat ulang bertanggal hari ini.
     Karcis lain tetap terkirim seperti biasa.</p>
   <div id="isiDitolak"></div>
-  <button type="button" onclick="tutupDaftarDitolak()">Tutup</button>
-  <button type="button" id="btnArsipDitolak" class="redup" onclick="arsipkanDitolak()">Owner sudah mencatat ulang semuanya</button>
+  <button type="button" data-aksi="tutupDitolak">Tutup</button>
+  <button type="button" id="btnArsipDitolak" class="redup" data-aksi="arsipDitolak">Owner sudah mencatat ulang semuanya</button>
 </div>
 
 <script>
@@ -347,8 +350,8 @@ var K_DITOLAK_ARSIP = 'darurat_ditolak_arsip_v1';   // ditolak yang sudah dicata
 // VERSI yang BENAR-BENAR berjalan: SAMA dengan VERSI di sw-kasir.js (uji_antrean_kasir.py
 // memeriksanya). Dikirim di denyut dan tampil di bilah atas. Sampai 25b denyut berkata
 // 'kasir-v24' padahal cache sudah v25 — owner membaca versi yang salah tanpa tahu.
-var VERSI_APLIKASI = 'kasir-v31';
-var LABEL_VERSI = 'versi 3 Okt';
+var VERSI_APLIKASI = 'kasir-v32';
+var LABEL_VERSI = 'versi 3 Okt b';
 var K_LOG = 'darurat_log_v1';           // catatan lokal per HP untuk daftar "hari ini"
 var K_OPERATOR = 'kasir_operator_v1';   // ikut kasir: kalau ada nama penjaga, ikut tercatat
 var K_RINGKASAN = 'kasir_ringkasan_v1';  // BERSAMA kasir.html — katalog beku untuk tuts bernama barang
@@ -770,7 +773,7 @@ function gambarBaris() {
     return '<div class="br"><span class="no">' + (i + 1) + '</span>' +
       '<span class="lbl">' + (it.p ? esk(it.p.label) : '') + '</span>' +
       '<span class="nilai">' + rupiah(it.h) + '</span>' +
-      '<button type="button" onclick="hapusBaris(' + i + ')" aria-label="Hapus barang ' + (i + 1) + '">&times;</button></div>';
+      '<button type="button" data-aksi="hapusBaris" data-nilai="' + i + '" aria-label="Hapus barang ' + (i + 1) + '">&times;</button></div>';
   }).join('') + (bulat > 0
     ? '<div class="br bulat"><span class="lbl">Pembulatan tunai Rp500</span>' +
       '<span class="nilai">+' + rupiah(bulat) + '</span></div>'
@@ -876,7 +879,7 @@ function gambarTutsCepat() {
   if (daftarProdukD.length > 0) {
     wadah.className = 'produk';
     wadah.innerHTML = daftarProdukD.map(function (q, i) {
-      return '<button type="button" onclick="tambahProdukD(' + i + ')">' + esk(q.label) +
+      return '<button type="button" data-aksi="produk" data-nilai="' + i + '">' + esk(q.label) +
         '<small>' + Math.round(q.harga).toLocaleString('id-ID') + '</small></button>';
     }).join('');
     return;
@@ -884,7 +887,7 @@ function gambarTutsCepat() {
   wadah.className = '';
   wadah.innerHTML = hargaSering().map(function (h) {
     // Tanpa "Rp" — tombolnya sempit dan angkanya yang harus terbaca sekilas.
-    return '<button type="button" onclick="tambahHargaCepat(' + h + ')">' + Math.round(h).toLocaleString('id-ID') + '</button>';
+    return '<button type="button" data-aksi="hargaCepat" data-nilai="' + h + '">' + Math.round(h).toLocaleString('id-ID') + '</button>';
   }).join('');
 }
 function tambahProdukD(i) {
@@ -1107,6 +1110,50 @@ window.lewatiLogin = lewatiLogin;
 window.bukaDaftarDitolak = bukaDaftarDitolak;
 window.tutupDaftarDitolak = tutupDaftarDitolak;
 window.arsipkanDitolak = arsipkanDitolak;
+
+// ---------- tombol & kolom: data-aksi + SATU pendengar (CSP, kasir-v32, 3 Okt 2026) ----------
+// Halaman ini memasang CSP lewat meta di kepala halaman: script hanya yang hash-nya tercantum, TANPA 'unsafe-inline'. Handler sebaris (atribut on…
+// di tombol) DIBLOKIR peramban diam-diam — tombol tetap tampil tapi mati, tanpa galat apa pun. Maka tombol & kolom hanya membawa NAMA aksi
+// (data-aksi untuk ketukan, data-aksi-ketik untuk ketikan; argumennya di data-nilai), dan satu pendengar di document memanggil fungsi yang
+// SAMA dengan argumen yang SAMA seperti dulu. Tombol yang dibangun lewat innerHTML (hapus barang, tuts bernama, tuts harga) ikut tertangkap
+// karena pendengarnya di document. Fungsinya tetap global (alat uji memanggilnya langsung).
+// uji_csp.py menjaga: tiap data-aksi punya penangan di AKSI, tiap penangan dipakai, tiap tombol membawa data-aksi, tidak ada atribut on… tersisa
+// (huruf besar/kecil, berkutip atau tanpa kutip, di HTML maupun string innerHTML; periksa.sh bagian 4 memakai pola yang sama). uji_antrean_kasir.py
+// mengetuk tombolnya di peramban di bawah CSP halaman ini (tanpa 'unsafe-inline') dan menuntut nol pelanggaran CSP (owner 3 Okt, perkuat).
+// data-nilai: angka papan & cara bayar dibaca sebagai TEKS ('000' harus tetap '000'); nomor baris / nomor tuts / harga dibaca sebagai ANGKA.
+var AKSI = {
+  angka: function (el) { tekanAngka(el.getAttribute('data-nilai')); },
+  hapusAngka: function () { hapusAngka(); },
+  tambahBaris: function () { tambahBaris(); },
+  hapusBaris: function (el) { hapusBaris(Number(el.getAttribute('data-nilai'))); },
+  produk: function (el) { tambahProdukD(Number(el.getAttribute('data-nilai'))); },
+  hargaCepat: function (el) { tambahHargaCepat(Number(el.getAttribute('data-nilai'))); },
+  bayar: function (el) { pilihBayarD(el.getAttribute('data-nilai')); },
+  tandaiNama: function () { tandaiNamaD(); },
+  simpan: function () { simpanNominal(); },
+  bukaLogin: function () { tampilkanLayarLogin(false); },
+  masuk: function () { kirimLogin(); },
+  lewatiLogin: function () { lewatiLogin(); },
+  bukaDitolak: function () { bukaDaftarDitolak(); },
+  tutupDitolak: function () { tutupDaftarDitolak(); },
+  arsipDitolak: function () { arsipkanDitolak(); }
+};
+// Naik dari elemen yang diketuk (bisa <small> di dalam tuts) ke elemen pertama yang membawa atributnya. Ditulis dengan parentNode, bukan
+// closest(), supaya WebView Android lama tetap jalan.
+function pemegangAksi(el, atribut) {
+  for (; el && el !== document; el = el.parentNode) {
+    if (el.nodeType === 1 && el.getAttribute(atribut)) return el;
+  }
+  return null;
+}
+function jalankanAksi(e) {
+  var el = pemegangAksi(e.target, e.type === 'input' ? 'data-aksi-ketik' : 'data-aksi');
+  if (!el || el.disabled) return;   // tombol nonaktif (mis. Masuk saat memeriksa sandi) tidak bereaksi — sama seperti handler sebaris dulu
+  var nama = el.getAttribute(e.type === 'input' ? 'data-aksi-ketik' : 'data-aksi');
+  if (Object.prototype.hasOwnProperty.call(AKSI, nama)) AKSI[nama](el);
+}
+document.addEventListener('click', jalankanAksi);
+document.addEventListener('input', jalankanAksi);
 
 // ---------- versi baru benar-benar terpasang (putaran 25b) ----------
 // Service worker menyajikan berkas dari cache dulu. HP yang layarnya dibiarkan terbuka
