@@ -252,7 +252,10 @@ export function pasangLayarUang(akar, opsi) {
     bkSusulanCatat: async () => { const S = BK.susulanBuku(); if (!S) return set({ kabar: 'Tidak ada catatan susulan', kabarAwas: false }); await tulis(BK.susunCatatSusulan(S.tahun, waktu())); },
     // ---- KUNCI BULAN (putaran 25)
     kpCentang: ({ id }) => { const c = Object.assign({}, st().kpCentang); c[id] = !c[id]; set({ kpCentang: c, kpSiap: false }); },
-    kpPutus: ({ iso: t, jenis }) => { const p = Object.assign({}, st().kpPutus); if (p[t] && p[t].jenis === jenis) delete p[t]; else p[t] = { jenis, alasan: (p[t] || {}).alasan || '' }; set({ kpPutus: p, kpSiap: false }); },
+    // siap 2027: putusan TERSIMPAN (Tutup buku langkah 1) jadi titik awal — ketukan pada pilihan yang sudah aktif tidak menghapus alasannya (mencabut putusan
+    // tersimpan hanya di Tutup buku); pilihan lain membawa alasannya
+    kpPutus: ({ iso: t, jenis }) => { const p = Object.assign({}, st().kpPutus); const aktif = putusanKunci(st())[t];
+      if (aktif && aktif.jenis === jenis) { if (!p[t]) return; delete p[t]; } else p[t] = { jenis, alasan: (aktif || {}).alasan || '' }; set({ kpPutus: p, kpSiap: false }); },
     kpAlasanHari: (v, el) => { const p = Object.assign({}, st().kpPutus); const t = el.dataset.tgl; p[t] = Object.assign({ jenis: 'diterima' }, p[t] || {}, { alasan: String(v).slice(0, 120) }); set({ kpPutus: p, kpSiap: false }); },
     kpKunci: async () => {
       const s = st(); const c = KP.kpCalon(kini()); if (!c) return set({ kabar: 'Semua bulan yang sudah lewat sudah terkunci', kabarAwas: false });
@@ -611,7 +614,7 @@ export function pasangLayarUang(akar, opsi) {
     const cap = (k) => h`<span class="th-cap ${beres(k) ? 'beres' : ''}">${beres(k) ? 'beres' : 'belum'}</span>`;
     const sobek = (no, judul, k, isi) => h`<div class="th-sobek"></div><div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;"><span class="label">${no} · ${judul}</span>${cap(k)}</div><div class="th-blok" data-k="bb-${k}">${isi}</div>`;
     const mode = h`<div class="tb-mode" data-k="mode"><div class="kaca-btn ${latihan ? 'aktif' : ''}" data-aksi="bkMode" data-m="latihan">Latihan</div><div class="kaca-btn ${!latihan ? 'aktif' : ''} ${T.bolehSungguhan ? '' : 'putus'}" data-aksi="bkMode" data-m="sungguhan">Sungguhan</div></div>
-      <div class="tb-pita ${latihan ? '' : 'sungguh'}">${latihan ? 'LATIHAN — tidak ada satu pun yang berubah. Ulangi sesering yang perlu. ' + T.teks : 'SUNGGUHAN — yang dikerjakan di sini benar-benar mengunci tahun ' + T.tahun + '.'}</div>`;
+      <div class="tb-pita ${latihan ? '' : 'sungguh'}">${latihan ? 'LATIHAN — ritual ini tidak mengubah apa pun; hanya "Simpan putusan" per tanggal di langkah 1 yang tersimpan sungguhan. Ulangi sesering yang perlu. ' + T.teks : 'SUNGGUHAN — yang dikerjakan di sini benar-benar mengunci tahun ' + T.tahun + '.'}</div>`;
     const periksa = h`<div>${G.daftar.map((g) => h`<div class="tb-cek ${g.ok ? 'ok' : 'tidak'}" data-k="g-${g.id}"><span class="t">${g.ok ? '✓' : '!'}</span><div><div>${g.teks}</div><div class="k">${g.ket}</div>${g.id === 'g1' && g.hari && g.hari.length ? putusanG1(s, g) : ''}${g.id === 'g6' && g.rincian && g.rincian.length ? h`<div data-k="g6-rinci" style="display: flex; flex-direction: column; gap: 3px; margin-top: 4px;">${g.rincian.slice(0, 20).map((x) => h`<div class="k"><b>${x.teks}</b> — ${x.jalan}</div>`)}${g.rincian.length > 20 ? h`<div class="k">… dan ${g.rincian.length - 20} lagi</div>` : ''}</div>` : ''}</div><div>${!g.ok && g.aksi ? (g.bisaLewati ? h`<div class="kaca-btn kecil" data-aksi="bkLewatiG3">${g.aksi}</div>` : h`<span class="ket" style="font-size: 10.5px;">${g.aksi}</span>`) : ''}</div></div>`)}</div>
       ${kuotaBuku(T)}
       <div class="utama ${!latihan && !G.semuaOk ? 'redup' : ''}" data-aksi="bkPeriksa">${!latihan && !G.semuaOk ? G.belum + ' hal belum beres — bereskan dulu' : latihan && !G.semuaOk ? 'LANJUT (latihan — yang belum beres diabaikan)' : 'SEMUA BERES · LANJUT'}</div>`;

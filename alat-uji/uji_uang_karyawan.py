@@ -172,7 +172,7 @@ if __name__ == '__main__':
             'nama kembar toko/karyawan diterima': js.replace("if (kembar.length) return { tolak: '\"' + kembar[0] + '\" ada di keperluan toko DAN karyawan — pilih salah satu tujuannya' };", ""),
             'keperluan karyawan terukur dari semua catatan toko (tidak dipilah)': js.replace("(kategori === 'karyawan' ? h.untuk === 'karyawan' : h.untuk !== 'karyawan')", "true"),
             'biaya admin pindah uang tanpa tujuan': js.replace("const adm = { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal,", "const adm = { id: w.idUnik(), kategori: 'toko', tanggal: w.tanggal,"),
-            'ambil pribadi kartu mengabaikan tarik modal': js.replace("const tarik = daftarModalOwner().filter((m) => m.tipe !== 'setor' && !m.pinjaman && dlm(m.tanggal))", "const tarik = daftarModalOwner().filter((m) => false)"),
+            'ambil pribadi kartu mengabaikan tarik modal': js.replace("const tarik = daftarModalOwner().filter((m) => m.tipe !== 'setor' && !m.pinjaman && !m.tutupBuku && dlm(m.tanggal))", "const tarik = daftarModalOwner().filter((m) => false)"),   # siap 2027: pembuka modal tutup buku bukan tarikan
             'bulan tanpa catatan digambar sebagai nol': js.replace("const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && L.nSusut === 0 && !gajiRows.length && !L.jatahBulanan;", "const tanpaCatatan = false;"),
             'bulan terkunci tidak ditandai final': js.replace("final: lpFinal(key), tanpaCatatan, L,", "final: false, tanpaCatatan, L,"),
             'susut dianggap di atas laba kotor (dimasukkan ke biaya toko)': js.replace("const biayaToko = P.tokoSemua + posLain; const nonUpah = P.karyawan;", "const biayaToko = P.tokoSemua + posLain - L.susutStok; const nonUpah = P.karyawan;"),

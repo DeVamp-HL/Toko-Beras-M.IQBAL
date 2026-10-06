@@ -115,7 +115,11 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - **Kuota:** pembatalan sesudah arsip penuh butuh ± sebesar ritualnya lagi — angkanya tampil di langkah 1 ("Kalau dibatalkan sesudah arsip"). Di Spark
   itu tidak muat di hari yang sama dengan ritualnya: toko tidak buka sampai pembatalan tuntas sesudah reset kuota berikutnya.
 - Catatan bertanggal tahun lama yang mendarat SESUDAH penanda (karcis HP penjaga yang tertahan tanpa sinyal) tidak ikut diarsip; pita menyebutnya dan
-  jalannya ("sudah dicatat" — catatannya tidak dihapus). Itu bukan alasan membatalkan.
+  jalannya ("sudah dicatat" — catatannya tidak dihapus). Itu bukan alasan membatalkan. Kalimatnya per jenis: nota (uang di laci LEBIH, omzet tahun itu
+  kurang), pengeluaran (uang KURANG, biaya tahun itu kurang → labanya terlihat lebih besar), catatan lain (selisih uang muncul di tutup hari berikutnya).
+- **Pesanan** bertanggal Desember yang belum tuntas saat ritual memang TIDAK diarsip (masih berjalan). Dicatat di hasil periksa saat arsip habis dan
+  di berita acara saat selesai (`tertinggal`); kalau dibayar / dibatalkan di Januari, ia **bukan** catatan susulan — pesanan bukan uang & bukan stok,
+  notanya bertanggal hari bayar.
 
 ### 3. Sesudah "selesai"
 
@@ -151,7 +155,8 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] 31 Des malam: Menu › Sistem › Perangkat — tiap perangkat antrean 0 dan ditolak 0; HP penjaga lalu dimatikan.
 
 **1 Jan 2027 (Jumat, toko tutup), sesudah 15.00 WIB:**
-- [ ] Kuota Spark harian kembali penuh pukul **15.00 WIB** (Minggu pertama November – Minggu kedua Maret; selain itu 14.00 WIB). Console › Firestore ›
+- [ ] Kuota Spark harian kembali penuh pukul **15.00 WIB** (tengah malam waktu Pasifik; 15.00 WIB dari Senin sesudah Minggu pertama November sampai
+      Minggu kedua Maret, selain itu 14.00 WIB — layar menghitungnya dari zona America/Los_Angeles, juga di hari pergantian). Console › Firestore ›
       Usage: kuota hari itu belum terpakai.
 - [ ] Mac, tab peramban (bukan web app iPhone/iPad), SATU perangkat, jangan muat ulang aplikasi.
 - [ ] Uang › Tutup buku › **SUNGGUHAN** → langkah 1: g1–g6 semua ✓. Baca kartu **Perkiraan kuota Firestore**: "TIDAK MUAT" = jangan mulai hari itu;
@@ -169,3 +174,19 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       perlu membuka kredit per nota sampai April.
 - [ ] Kunci bulan Januari 2027 paling cepat 4 Feb, HANYA sesudah tutup buku 2026 "selesai" (daftar periksa kunci bulan menolak sendiri, Beranda
       tidak menyuruh mengunci selama itu).
+- Saldo pembuka **modal owner** bertanggal 31 Des 00.00 (`modalOwner`, `tutupBuku: true`) membawa JUMLAH modal yang tertanam — bukan setoran atau
+  penarikan. Ambil pribadi Desember, buku Owner & toko ("Modal owner dibawa dari tahun lalu"), bukti setoran, dan buku kas harian 31 Des tidak
+  menghitungnya sebagai gerakan uang. Laporan arus kas mesin (Desember / 31 Des tahun yang sudah ditutup) masih menyebutnya "Modal owner disetor/
+  ditarik — Saldo pembuka…": itu **bukan** uang yang bergerak; angka tahun yang ditutup dibaca dari berita acara sampai layar Laporan & Pajak bisa
+  membaca tahun yang ditutup (paket B).
+
+## Buntu Januari 2028 — dicatat, BELUM dibangun (7 Okt 2026)
+
+Mulai 2027 kunci bulan berjalan (keputusan owner 1 Okt). Begitu SATU bulan 2027 dikunci, tutup buku 2027 sungguhan ditolak (`tahunBuku`: tahun yang
+punya bulan terkunci — arsipnya memindah catatan bulan terkunci, saldo pembuka piutang bertanggal utang tertua). Di saat yang sama butir ⛔
+"Tutup buku 2027 sudah selesai" (siap 2027 A2) menahan kunci bulan 2028 mana pun dan menyuruh menyelesaikan tutup buku di Uang › Tutup buku — yang
+justru mustahil. Akibatnya Januari 2028: tutup buku 2027 tidak bisa jalan, kunci bulan 2028 tidak bisa jalan.
+
+Penutupnya = **paket tutup buku 2027** (keputusan owner: pengecualian sempit; bentuknya dirancang di paket itu — bandingkan pilihan C/D di
+`docs/peta-kunci-periode.md`), harus siap **sebelum ritual 1 Jan 2028**. Sampai paket itu ada, butir itu di Januari 2028 memang belum punya jalan
+keluar dari layar.

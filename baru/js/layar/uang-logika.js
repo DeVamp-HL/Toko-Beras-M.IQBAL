@@ -115,7 +115,8 @@ export function priveRentang(awal, akhir) {
   const dlm = (t) => (t || '') >= awal && (t || '') <= akhir;
   const prive = ambilPengeluaranHarian().filter((h) => h.kategori === 'owner' && dlm(h.tanggal)).reduce((a, h) => a + (Number(h.nominal) || 0), 0);
   const alih = ambilKasbonMutasi().filter((m) => m.tipe === 'bayar' && m.alih === 'prive' && ugKasbonOwner(m) && dlm(m.tanggal)).reduce((a, m) => a + (Number(m.nominal) || 0), 0);
-  const tarik = daftarModalOwner().filter((m) => m.tipe !== 'setor' && !m.pinjaman && dlm(m.tanggal)).reduce((a, m) => a + (Number(m.nominal) || 0), 0);
+  // siap 2027 (A4): saldo pembuka modal owner tutup buku (bertanggal 31 Des, bertanda tutupBuku) membawa JUMLAH modal yang tertanam — bukan tarikan Desember
+  const tarik = daftarModalOwner().filter((m) => m.tipe !== 'setor' && !m.pinjaman && !m.tutupBuku && dlm(m.tanggal)).reduce((a, m) => a + (Number(m.nominal) || 0), 0);
   return { prive, alih, tarik, total: prive + alih + tarik, awal, akhir };
 }
 /** Ambil pribadi bulan ini (awal bulan sampai iso). */
