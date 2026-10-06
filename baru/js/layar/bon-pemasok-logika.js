@@ -9,7 +9,7 @@
 // Uang toko: sistem lama tidak punya saldo per kantong, yang bisa dijaga TOTAL kas (kasPada; null bila titik kas belum disetel) — "dari mana uangnya" dicatat sebagai kolom.
 import { hitungUtangPemasok, kasPada } from '../mesin/beku.js';
 import { batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, cacheMentah, kunciSampai, namaSistemPemasok } from '../data/toko.js';
+import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, ambilTutupHari, cacheMentah, kunciSampai, namaSistemPemasok, tolakKunci, denganCacheSementara } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
 export const ATUR_BON_BAWAAN = { dekatHari: 7, admin: [{ nama: 'BI-FAST', n: 2500 }, { nama: 'Transfer antarbank', n: 6500 }] };
@@ -75,7 +75,7 @@ export function susunBon(kini) {
       status: !jatuh ? 'tanpaTempo' : sisaHari < 0 ? 'lewat' : sisaHari <= atur.dekatHari ? 'dekat' : 'jauh' }); }); });
   bon.forEach((b) => { b.tempoTeks = b.status === 'tanpaTempo' ? 'tempo belum disepakati' : b.status === 'lewat' ? 'LEWAT ' + (-b.sisaHari) + ' hari (jatuh tempo ' + tanggalPendek(b.jatuh) + ')' : b.sisaHari === 0 ? 'jatuh tempo HARI INI' : 'jatuh tempo ' + tanggalPendek(b.jatuh) + ' · ' + b.sisaHari + ' hari lagi';
     b.ket = (b.umur === null || b.umur === undefined ? 'umur tidak diketahui' : 'umur ' + b.umur + ' hari') + (b.dibayar > 0 ? ' · sudah dibayar ' + RP(b.dibayar) + ' dari ' + RP(b.nilai) : '') + (b.jenis === 'saldoAwal' ? ' · bon lama (sebelum sistem)' : '');
-    b.cap = b.jenis === 'saldoAwal' ? 'bon lama' : b.dibayar > 0 ? 'sebagian' : ''; b.isi = b.jenis === 'saldoAwal' ? (b.catatan || 'bon lama sebelum sistem') : bpIsiBatch(b.id); });
+    b.cap = b.jenis === 'saldoAwal' ? 'bon lama' : b.dibayar > 0 ? 'sebagian' : ''; b.isi = b.jenis === 'saldoAwal' ? (b.catatan || 'bon lama sebelum sistem') : bpIsiBatch(b.id); b.noBon = bpNoBon(b.id); });
   const urutTua = (a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || (Number(a.id) || 0) - (Number(b.id) || 0);
   const total = bon.reduce((a, b) => a + b.sisa, 0); const tekor = up.reduce((a, x) => a + (x.tekor || 0), 0);
   const tusukan = up.map((px) => { const d = bon.filter((b) => b.pemasok === px.pemasok).sort(urutTua); const T = tempoPemasok(px.pemasok); return { pemasok: px.pemasok, tempo: T, tekor: px.tekor || 0, total: d.reduce((a, b) => a + b.sisa, 0), bon: d.map((b, i) => Object.assign({}, b, { saran: i === 0 && d.length > 1 })) }; }).filter((t) => t.bon.length || t.tekor > 0);
@@ -91,15 +91,17 @@ export function susunBon(kini) {
     ringkas: [{ a: String(lewat.length), l: 'lewat tempo', nyala: lewat.length > 0 }, { a: RP(jml(lewat) + jml(dekat)), l: 'jatuh ≤ ' + atur.dekatHari + ' hari', nyala: false }, { a: String(tanpaTempo.length), l: 'tanpa tempo', nyala: false }],
     cukupTeks: !berTempo.length ? 'Belum ada bon yang bisa diramal jatuh temponya.' : kas === null ? 'Uang toko belum bisa dihitung, jadi belum bisa dibandingkan dengan bon yang jatuh tempo.' : habisSudah ? 'Uang toko TIDAK cukup untuk semua bon yang sudah punya tempo.' : 'Uang toko cukup untuk semua bon yang sudah punya tempo.', kurang: habisSudah };
 }
+/** Nomor bon pemasok (owner 7 Okt: pembetulan bon) — kolom noBon di kedatangan / bon lama; '' = belum dicatat. */
+function bpNoBon(id) { const b = ambilSemuaBatch().find((x) => String(x.id) === String(id)) || ambilUtangPemasokMutasi().find((x) => String(x.id) === String(id) && x.tipe === 'saldoAwal'); return b && b.noBon ? String(b.noBon) : ''; }
 function bpIsiBatch(id) { const b = ambilSemuaBatch().find((x) => String(x.id) === String(id)); if (!b) return ''; const ml = b.merkList || []; const kg = ml.reduce((a, m) => a + (Number(m.totalKg) || 0), 0); return ml.map((m) => m.merk).filter(Boolean).slice(0, 4).join(', ') + (ml.length > 4 ? ' …' : '') + (kg ? ' · ' + Math.round(kg).toLocaleString('id-ID') + ' kg' : ''); }
 
 /** Buku bon per pemasok: barang datang lewat bon (+), bon lama (+), bayar (−), utang jadi berapa (saldo berjalan). */
 export function bukuBon(nama) {
   const k = kunciPelanggan(nama); const kej = [];
-  ambilSemuaBatch().forEach((b) => { if (b.stokAwal || !batchDiutang(b) || kunciPelanggan(b.pemasok) !== k) return; kej.push({ t: b.tanggal || '', j: b.jam || '', u: 0, teks: 'Barang datang — bon', ket: bpIsiBatch(b.id), n: Math.round((b.merkList || []).reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0)) }); });
+  ambilSemuaBatch().forEach((b) => { if (b.stokAwal || !batchDiutang(b) || kunciPelanggan(b.pemasok) !== k) return; kej.push({ t: b.tanggal || '', j: b.jam || '', u: 0, teks: 'Barang datang — bon' + (b.noBon ? ' No. ' + b.noBon : ''), ket: bpIsiBatch(b.id), n: Math.round((b.merkList || []).reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0)), bonId: String(b.id) }); });
   ambilUtangPemasokMutasi().forEach((m) => { if (kunciPelanggan(m.pemasok) !== k) return;
-    if (m.tipe === 'saldoAwal') kej.push({ t: m.bonTanggal || '', j: '', u: 0, teks: 'Bon lama (sebelum sistem)', ket: m.catatan || (m.bonTanggal ? '' : 'tanggal bon tidak diketahui'), n: Math.round(Number(m.nominal) || 0) });
-    else if (m.tipe === 'bayar') kej.push({ t: m.tanggal || '', j: m.jam || '', u: 1, teks: 'Bayar bon' + (m.bonTanggal ? ' ' + tanggalPendek(m.bonTanggal) : '') + (m.dari === 'rekening' ? ' · transfer' : m.dari ? ' · tunai' : ''), cara: caraDari(m.dari), ket: (m.dari ? 'dari ' + namaTempat(m.dari) : 'kantong tidak dicatat (sistem lama)') + (Number(m.biayaAdmin) > 0 ? ' · admin ' + RP(m.biayaAdmin) + (m.adminNama ? ' ' + m.adminNama : '') + ' (biaya toko, bukan utang)' : '') + (m.catatan ? ' · ' + m.catatan : ''), n: -Math.round(Number(m.nominal) || 0), id: m.id }); });
+    if (m.tipe === 'saldoAwal') kej.push({ t: m.bonTanggal || '', j: '', u: 0, teks: 'Bon lama (sebelum sistem)' + (m.noBon ? ' No. ' + m.noBon : ''), ket: (m.catatan || (m.bonTanggal ? '' : 'tanggal bon tidak diketahui')) + (m.alasanKoreksi ? ' · dibetulkan: ' + m.alasanKoreksi : ''), n: Math.round(Number(m.nominal) || 0), bonId: String(m.id) });
+    else if (m.tipe === 'bayar') kej.push({ t: m.tanggal || '', j: m.jam || '', u: 1, teks: 'Bayar bon' + (m.bonTanggal ? ' ' + tanggalPendek(m.bonTanggal) : '') + (m.dari === 'rekening' ? ' · transfer' : m.dari ? ' · tunai' : ''), cara: caraDari(m.dari), ket: (m.dari ? 'dari ' + namaTempat(m.dari) : 'kantong tidak dicatat (sistem lama)') + (Number(m.biayaAdmin) > 0 ? ' · admin ' + RP(m.biayaAdmin) + (m.adminNama ? ' ' + m.adminNama : '') + ' (biaya toko, bukan utang)' : '') + (m.catatan ? ' · ' + m.catatan : '') + (m.alasanKoreksi ? ' · DIBETULKAN: ' + ((m.riwayat || []).slice(-1)[0] || {}).teks : ''), n: -Math.round(Number(m.nominal) || 0), id: m.id, bonId: String(m.bonId || '') }); });
   kej.sort((a, b) => a.t.localeCompare(b.t) || a.u - b.u || a.j.localeCompare(b.j)); let sd = 0;
   const baris = kej.map((e) => { sd += e.n; return Object.assign({}, e, { saldo: sd }); });
   return { baris, saldo: sd };
@@ -164,4 +166,144 @@ export function susunKartu(nama, isi, w) {
   const tempo = bpKosong(isi.tempo) ? 0 : Math.round(bpAngka(isi.tempo)); if (!(tempo >= 0 && tempo <= 120)) return { tolak: 'Tempo bon: 0–120 hari (0 = belum disepakati)' };
   const data = { id: kunciPelanggan(nm), nama: p ? p.nama : nm, kontak: String(isi.kontak || '').trim().slice(0, 30), catatan: String(isi.catatan || '').trim().slice(0, 160), orang: String(isi.orang || '').trim().slice(0, 40), tempo, diubahPada: w.kini };
   return { dokumen: [{ koleksi: 'pemasokCatatan', data }], patch: { kartu: null, kabar: 'Kartu ' + data.nama + ' tersimpan — ' + (tempo > 0 ? 'tiap bonnya diramal jatuh tempo ' + tempo + ' hari sesudah barang datang' : 'tempo kartu kosong, dipakai tempo umum ' + tempoUmum().hari + ' hari'), kabarAwas: false } };
+}
+
+// ---- PEMBETULAN BON (owner 7 Okt 2026) ----
+// Owner 7 Okt: "Bon 31 Agustus sudah tidak ada. Adanya tanggal 18/28 September dan 05 Oktober. Sepertinya gua salah catat di sistem." Dulu pembayaran yang
+// salah tunjuk hanya bisa diurungkan 90 detik. Pembetulan = OWNER saja (layar Harga & Pemasok owner saja; utangPemasokMutasi owner saja di rules), dengan ALASAN,
+// menulis ulang dokumen yang sama dengan JEJAK — `riwayat` (nilai lama → baru, tanggal, jam, alasan) + `alasanKoreksi` (pola Koreksi kedatangan), bukan
+// menimpa diam-diam. Angkanya tetap dari mesin beku hitungUtangPemasok (tidak disentuh):
+//   · PINDAH pembayaran ke bon lain pemasok yang sama (bon itu sudah ada saat pembayaran dicatat): bonId & bonTanggal diganti. Utang total, kas, laba TIDAK
+//     berubah — yang bergeser cuma bon mana yang lunas; kelebihan mengalir ke bon tertua yang belum lunas (aturan mesin) dan DISEBUT.
+//   · JUMLAH pembayaran (salah ketik): utang & kas bergeser sebesar selisihnya (kas di tempat uang pembayaran itu), laba tetap.
+//   · NOMOR bon pemasok (nomor di kertas bon): kolom `noBon` di dokumen bonnya (kedatangan / bon lama) — tanpa alasanKoreksi di kedatangan (bukan koreksi
+//     barang: garis waktu HPP & harga lalu kelas tidak menandainya "dikoreksi"); Koreksi kedatangan membawanya.
+//   · Bon LAMA (sebelum sistem): tanggal & nilai. Tanggal & nilai bon KEDATANGAN = tanggal & harga barangnya → Stok › Barang masuk › koreksi (satu kebenaran;
+//     terkunci bila bon itu sudah dibayar — pindahkan dulu pembayarannya di sini).
+// Bulan terkunci (kunci periode) DITOLAK dengan kalimatnya (tolakKunci; rules v4 menolak juga).
+export const BP_ALASAN_MIN = 5;
+const bpNama = (n) => String(n || '').trim();
+const bpNilaiBatch = (b) => Math.round((b.merkList || []).reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0));
+const bpUrutDok = (a, b) => String(a.tanggal || '').localeCompare(String(b.tanggal || '')) || String(a.jam || '').localeCompare(String(b.jam || '')) || (Number(a.id) || 0) - (Number(b.id) || 0);
+export const bpLabelBon = (b) => (b ? 'bon ' + (b.tanggal ? tanggalPendek(b.tanggal) : 'tanpa tanggal') + (b.noBon ? ' No. ' + b.noBon : '') : 'bon yang tidak ada lagi');
+const bpRiwayat = (lama, w, isi) => (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([Object.assign({ tanggal: w.tanggal, jam: w.jam }, isi)]);
+const bpAlasan = (a) => String(a || '').trim().replace(/\s+/g, ' ').slice(0, 160);
+/**
+ * Semua bon SATU pemasok (nama persis seperti mesin), yang sudah lunas juga, urut tertua: { id, jenis 'batch' | 'saldoAwal', koleksi, tanggal, nilai, sisa,
+ * dibayar (mesin: nilai − sisa), noBon, dok, bayar [pembayaran yang menunjuknya], dipindahDari [pembayaran yang dulu menunjuknya] }.
+ */
+export function bpSemuaBon(pemasok) {
+  const P = bpNama(pemasok); const out = [];
+  ambilSemuaBatch().forEach((b) => { if (b.stokAwal || !batchDiutang(b) || bpNama(b.pemasok) !== P) return; out.push({ id: String(b.id), jenis: 'batch', koleksi: 'batchMasuk', tanggal: b.tanggal || '', nilai: bpNilaiBatch(b), noBon: String(b.noBon || ''), dok: b, isi: bpIsiBatch(b.id) }); });
+  ambilUtangPemasokMutasi().forEach((m) => { if (m.tipe !== 'saldoAwal' || bpNama(m.pemasok) !== P) return; out.push({ id: String(m.id), jenis: 'saldoAwal', koleksi: 'utangPemasokMutasi', tanggal: m.bonTanggal || '', nilai: Math.round(Number(m.nominal) || 0), noBon: String(m.noBon || ''), dok: m, isi: m.catatan || 'bon lama sebelum sistem' }); });
+  const sisa = {}; hitungUtangPemasok().forEach((px) => { if (bpNama(px.pemasok) !== P) return; (px.bon || []).forEach((b) => { sisa[String(b.id)] = Math.round(b.sisa || 0); }); });
+  const bayar = ambilUtangPemasokMutasi().filter((m) => m.tipe === 'bayar' && bpNama(m.pemasok) === P).sort(bpUrutDok);
+  out.forEach((b) => { b.sisa = sisa[b.id] !== undefined ? sisa[b.id] : 0; b.dibayar = b.nilai - b.sisa; b.bayar = bayar.filter((m) => String(m.bonId || '') === b.id);
+    b.dipindahDari = bayar.filter((m) => String(m.bonId || '') !== b.id && (m.riwayat || []).some((r) => r && r.jenis === 'pindahBon' && r.dari && String(r.dari.bonId || '') === b.id));
+    b.riwayat = Array.isArray(b.dok.riwayat) ? b.dok.riwayat : []; b.label = bpLabelBon(b); });
+  return out.sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || (Number(a.id) || 0) - (Number(b.id) || 0));
+}
+/** Rincian satu bon untuk lembar Betulkan bon: bon itu, semua bon pemasoknya, pembayaran yang tidak menunjuk bon yang ada (mengalir ke bon tertua). */
+export function bpRincianBon(bonId, pemasok) {
+  const semua = bpSemuaBon(pemasok); const bon = semua.find((b) => b.id === String(bonId)) || null; const ada = {}; semua.forEach((b) => { ada[b.id] = 1; });
+  const tanpaTunjuk = ambilUtangPemasokMutasi().filter((m) => m.tipe === 'bayar' && bpNama(m.pemasok) === bpNama(pemasok) && !ada[String(m.bonId || '')]).sort(bpUrutDok);
+  return { bon, semua, tanpaTunjuk, pemasok: bpNama(pemasok), total: semua.reduce((a, b) => a + b.sisa, 0) };
+}
+const bpCariBayar = (id) => ambilUtangPemasokMutasi().find((x) => String(x.id) === String(id) && x.tipe === 'bayar') || null;
+const bpPerubahanSisa = (sebelum, sesudah) => sebelum.map((b) => { const s = sesudah.find((x) => x.id === b.id) || { sisa: 0 }; return { id: b.id, label: b.label, dari: b.sisa, ke: s.sisa }; }).filter((x) => x.dari !== x.ke);
+/** PINDAH pembayaran bayarId ke bon keBonId (pemasok yang sama): hitungan sebelum ⇄ sesudah lewat mesin, kalimatnya, alasan penolakan. */
+export function hitungPindahBayar(bayarId, keBonId) {
+  const m = bpCariBayar(bayarId); if (!m) return { tolak: 'Pembayaran itu sudah tidak ada' };
+  const P = bpNama(m.pemasok); const semua = bpSemuaBon(P); const dari = semua.find((b) => b.id === String(m.bonId || '')) || null; const ke = semua.find((b) => b.id === String(keBonId || '')) || null;
+  let tolak = '';
+  if (!ke) tolak = 'Pilih bon ' + P + ' yang sebenarnya dibayar';
+  else if (dari && dari.id === ke.id) tolak = 'Pembayaran ini sudah menunjuk ' + ke.label;
+  else if (ke.tanggal && m.tanggal && ke.tanggal > m.tanggal) tolak = 'Bon ' + tanggalPendek(ke.tanggal) + ' belum ada waktu pembayaran ' + tanggalPendek(m.tanggal) + ' dicatat — pembayaran tidak bisa menunjuk bon yang datang sesudahnya';
+  else tolak = tolakKunci('utangPemasokMutasi', m, 'pembayaran bulan itu tidak bisa dipindah lagi');
+  const baru = Object.assign({}, m, { bonId: ke ? ke.id : String(m.bonId || ''), bonTanggal: ke ? (ke.tanggal || null) : (m.bonTanggal || null) });
+  const sesudah = ke ? denganCacheSementara([{ koleksi: 'utangPemasokMutasi', data: baru }], () => bpSemuaBon(P)) : semua;
+  const ubah = bpPerubahanSisa(semua, sesudah); const lain = ubah.filter((x) => (!dari || x.id !== dari.id) && (!ke || x.id !== ke.id));
+  const T0 = semua.reduce((a, b) => a + b.sisa, 0); const T1 = sesudah.reduce((a, b) => a + b.sisa, 0);
+  // KELEBIHAN (sanggahan E2): pembayaran lebih besar dari sisa bon tujuan → sisanya mengalir ke bon tertua yang belum lunas (aturan mesin). Disebut berapa,
+  // kenapa, dan bon mana yang menerimanya — termasuk bila itu bon ASAL (sisanya naik kurang dari nominal pembayaran: "bon 18 Sep sisa 44,625 jt, bukan 44,86 jt").
+  const nom = Math.round(Number(m.nominal) || 0); const lebih = ke ? Math.max(0, nom - ke.sisa) : 0;
+  const terima = !lebih || !dari ? [] : sesudah.map((b) => { const s0 = (semua.find((x) => x.id === b.id) || { sisa: 0 }).sisa; const harap = b.id === dari.id ? s0 + nom : s0; return { id: b.id, label: b.label, asal: b.id === dari.id, n: b.id === ke.id ? 0 : harap - b.sisa }; }).filter((x) => x.n > 0);
+  const kataLebih = !lebih ? '' : ' · KELEBIHAN ' + RP(lebih) + ' (pembayaran ' + RP(nom) + ' > sisa ' + ke.label + ' ' + RP(ke.sisa) + ') mengalir ke bon tertua yang belum lunas'
+    + (terima.length ? ': ' + terima.map((x) => x.label + (x.asal ? ' (bon asal pembayaran ini)' : '') + ' ' + RP(x.n)).join(', ') : ' (aturan mesin)');
+  return { m, dari, ke, baru, sebelum: semua, sesudah, ubah, lain, lebih, terima, total: { dari: T0, ke: T1 }, tolak,
+    arti: ke && !tolak ? 'Pembayaran ' + tanggalPendek(m.tanggal) + ' ' + RP(nom) + ': ' + bpLabelBon(dari) + ' → ' + ke.label + ' · '
+      + ubah.map((x) => x.label + ' sisa ' + RP(x.dari) + ' → ' + RP(x.ke)).join(' · ') + kataLebih
+      + (lain.length && !lebih ? ' (pembayaran lain yang mengalir ke bon tertua ikut bergeser — aturan mesin)' : '')
+      + ' · utang ke ' + P + ' ' + (T0 === T1 ? 'tetap ' + RP(T1) : RP(T0) + ' → ' + RP(T1)) + ' · uang toko & laba TIDAK berubah' : '' };
+}
+export function susunPindahBayar(bayarId, keBonId, alasan, w) {
+  const H = hitungPindahBayar(bayarId, keBonId); if (H.tolak) return { tolak: H.tolak };
+  const al = bpAlasan(alasan); if (al.length < BP_ALASAN_MIN) return { tolak: 'Tulis alasannya dulu (mis. "pemasok: bon 31 Agu yang lunas, bukan 18 Sep") — jejaknya disimpan bersama pembayaran ini' };
+  const data = Object.assign({}, H.baru, { alasanKoreksi: al, dikoreksiPada: w.kini,
+    riwayat: bpRiwayat(H.m, w, { jenis: 'pindahBon', teks: 'dipindah dari ' + bpLabelBon(H.dari) + ' ke ' + H.ke.label + ': ' + al, dari: { bonId: String(H.m.bonId || ''), bonTanggal: H.m.bonTanggal || null }, ke: { bonId: H.ke.id, bonTanggal: H.ke.tanggal || null }, alasan: al }) });
+  return { dokumen: [{ koleksi: 'utangPemasokMutasi', data }], patch: { betul: null, kabar: 'Pembetulan tersimpan — ' + H.arti + '. Nilai lama ada di riwayat pembayaran itu.', kabarAwas: !!H.lain.length || H.lebih > 0 } };
+}
+/**
+ * Betulkan JUMLAH satu pembayaran (salah ketik): utang & kas bergeser sebesar selisihnya; laba tetap. PENJAGA BESARAN (sanggahan E2): selisih BESAR wajib
+ * ketukan kedua dengan kalimat yang menyebut angka lama → baru — jumlah baru ≥ 2× / ≤ ½ yang lama (nol kelebihan / kurang satu), kenaikan melebihi sisa bon
+ * yang ditunjuk (kelebihannya mengalir ke bon lain), uang toko jadi minus, atau pembayaran TUNAI dari laci di hari yang sudah DITUTUP (selisih laci malam
+ * itu ikut bergeser — tutup hari tidak dihitung ulang otomatis).
+ */
+export function hitungNominalBayar(bayarId, ketik) {
+  const m = bpCariBayar(bayarId); if (!m) return { tolak: 'Pembayaran itu sudah tidak ada' };
+  const P = bpNama(m.pemasok); const n = Math.round(bpAngka(ketik)); const lama = Math.round(Number(m.nominal) || 0); let tolak = '';
+  if (!(n > 0)) tolak = 'Ketik jumlah yang sebenarnya dibayar'; else if (n === lama) tolak = 'Jumlahnya sama dengan yang tercatat'; else tolak = tolakKunci('utangPemasokMutasi', m, 'jumlah pembayaran bulan itu tidak bisa diubah lagi');
+  const baru = Object.assign({}, m, { nominal: n > 0 ? n : lama }); const semua = bpSemuaBon(P); const kas0 = kasPada();
+  const sesudah = n > 0 ? denganCacheSementara([{ koleksi: 'utangPemasokMutasi', data: baru }], () => ({ bon: bpSemuaBon(P), kas: kasPada(), kasHari: m.tanggal ? kasPada(m.tanggal) : null })) : { bon: semua, kas: kas0, kasHari: null };
+  const T0 = semua.reduce((a, b) => a + b.sisa, 0); const T1 = sesudah.bon.reduce((a, b) => a + b.sisa, 0); const d = n - lama; const tempat = namaTempat(m.dari || 'laci');
+  const bonDitunjuk = semua.find((b) => b.id === String(m.bonId || '')) || null; const besar = [];
+  if (n > 0 && !tolak) {
+    if (lama > 0 && n >= lama * 2) besar.push(RP(lama) + ' → ' + RP(n) + ' = ' + String(Math.round(n / lama * 10) / 10).replace('.', ',') + '× lipat (nol kelebihan?)');
+    else if (n * 2 <= lama) besar.push(RP(lama) + ' → ' + RP(n) + ' = tinggal ' + Math.round(n / lama * 100) + ' % (nol kurang satu?)');
+    if (d > 0 && bonDitunjuk && d > bonDitunjuk.sisa) besar.push('naik ' + RP(d) + ', lebih dari sisa ' + bonDitunjuk.label + ' ' + RP(bonDitunjuk.sisa) + ' — kelebihannya mengalir ke bon lain');
+    if (d > 0 && sesudah.kas !== null && sesudah.kas < 0) besar.push('uang toko jadi MINUS ' + RP(-sesudah.kas));
+    else if (d > 0 && sesudah.kasHari !== null && sesudah.kasHari !== undefined && sesudah.kasHari < 0) besar.push('uang toko akhir hari ' + tanggalPendek(m.tanggal) + ' jadi MINUS ' + RP(-sesudah.kasHari));
+    if ((m.dari || 'laci') === 'laci' && ambilTutupHari().some((x) => x && x.tanggal === m.tanggal)) besar.push('hari ' + tanggalPendek(m.tanggal) + ' sudah DITUTUP — selisih laci malam itu ikut bergeser (tutup hari tidak dihitung ulang)');
+  }
+  return { m, n, lama, baru, ubah: bpPerubahanSisa(semua, sesudah.bon), total: { dari: T0, ke: T1 }, kas: { dari: kas0, ke: sesudah.kas }, tolak, besar,
+    besarTeks: besar.length ? 'Jumlah pembayaran ' + tanggalPendek(m.tanggal) + ' berubah BESAR: ' + RP(lama) + ' → ' + RP(n) + ' · ' + besar.join(' · ') : '',
+    arti: !tolak ? 'Pembayaran ' + tanggalPendek(m.tanggal) + ' ' + RP(lama) + ' → ' + RP(n) + ' · utang ke ' + P + ' ' + RP(T0) + ' → ' + RP(T1) + ' · uang toko (' + (m.dari ? tempat : 'kantong tidak dicatat') + ') ' + (d > 0 ? 'berkurang ' : 'bertambah ') + RP(Math.abs(d))
+      + (kas0 !== null && sesudah.kas !== null && kas0 === sesudah.kas ? ' di hari itu (titik kas sesudahnya sudah menyerapnya — kas sekarang tetap)' : '') + ' · laba TIDAK berubah' : '' };
+}
+export function susunNominalBayar(bayarId, ketik, alasan, w, yakin) {
+  const H = hitungNominalBayar(bayarId, ketik); if (H.tolak) return { tolak: H.tolak };
+  const al = bpAlasan(alasan); if (al.length < BP_ALASAN_MIN) return { tolak: 'Tulis alasannya dulu (mis. "salah ketik — yang diserahkan Rp…") — jejaknya disimpan bersama pembayaran ini' };
+  if (H.besar.length && !yakin) return { tolak: H.besarTeks + '. Ketuk sekali lagi kalau memang benar.', perluYakin: true };
+  const data = Object.assign({}, H.baru, { alasanKoreksi: al, dikoreksiPada: w.kini, riwayat: bpRiwayat(H.m, w, { jenis: 'nominalBayar', teks: 'jumlah ' + RP(H.lama) + ' → ' + RP(H.n) + ': ' + al, dari: H.lama, ke: H.n, alasan: al }) });
+  return { dokumen: [{ koleksi: 'utangPemasokMutasi', data }], patch: { betul: null, kabar: 'Pembetulan tersimpan — ' + H.arti + '. Jumlah lama ada di riwayat pembayaran itu.', kabarAwas: false } };
+}
+/** NOMOR bon pemasok (nomor di kertas bon). Mengganti nomor yang sudah ada wajib beralasan; nomor yang sama di bon lain pemasok yang sama ditolak. */
+export function susunNoBon(bonId, pemasok, no, alasan, w) {
+  const semua = bpSemuaBon(pemasok); const b = semua.find((x) => x.id === String(bonId)); if (!b) return { tolak: 'Bon itu tidak ada' };
+  const nb = String(no || '').trim().replace(/\s+/g, ' ').slice(0, 30); if (!nb) return { tolak: 'Ketik nomor bonnya (angka di kertas bon pemasok)' };
+  if (nb === b.noBon) return { tolak: 'Nomor bon itu sudah tercatat' };
+  const kembar = semua.find((x) => x.id !== b.id && x.noBon === nb); if (kembar) return { tolak: 'Nomor ' + nb + ' sudah dipakai ' + kembar.label + ' — satu kertas bon untuk satu kedatangan' };
+  const al = bpAlasan(alasan); if (b.noBon && al.length < BP_ALASAN_MIN) return { tolak: 'Nomor lama ' + b.noBon + ' diganti — tulis alasannya dulu' };
+  const kunci = tolakKunci(b.koleksi, b.dok, 'nomor bonnya tidak bisa ditulis lagi'); if (kunci) return { tolak: kunci };
+  const data = Object.assign({}, b.dok, { noBon: nb, riwayat: bpRiwayat(b.dok, w, { jenis: 'noBon', teks: (b.noBon ? 'nomor bon ' + b.noBon + ' → ' + nb : 'nomor bon pemasok ' + nb) + (al ? ': ' + al : ''), dari: b.noBon || '', ke: nb, alasan: al }) });
+  return { dokumen: [{ koleksi: b.koleksi, data }], patch: { kabar: 'Nomor bon ' + nb + ' dicatat di bon ' + (b.tanggal ? tanggalPendek(b.tanggal) : 'tanpa tanggal') + ' ' + bpNama(pemasok) + (b.noBon ? ' (dulu ' + b.noBon + ')' : '') + ' — utang, kas, dan laba tidak berubah', kabarAwas: false } };
+}
+/** Bon LAMA (sebelum sistem): tanggal & nilai dibetulkan. isi = { tgl ('' = tidak diketahui), ketik }. */
+export function hitungBetulBonLama(bonId, isi) {
+  const m = ambilUtangPemasokMutasi().find((x) => String(x.id) === String(bonId) && x.tipe === 'saldoAwal') || null; if (!m) return { tolak: 'Hanya bon LAMA (sebelum sistem) yang dibetulkan di sini — bon kedatangan lewat Stok › Barang masuk › koreksi' };
+  const P = bpNama(m.pemasok); const I = Object.assign({ tgl: m.bonTanggal || '', ketik: String(m.nominal || '') }, isi || {}); const n = Math.round(bpAngka(I.ketik)); const tgl = String(I.tgl || '').trim();
+  let tolak = '';
+  if (!(n > 0)) tolak = 'Ketik nilai bonnya'; else if (tgl && !/^\d{4}-\d{2}-\d{2}$/.test(tgl)) tolak = 'Tanggal bon tidak terbaca';
+  else if (n === Math.round(Number(m.nominal) || 0) && tgl === String(m.bonTanggal || '')) tolak = 'Tidak ada yang berubah';
+  else tolak = tolakKunci('utangPemasokMutasi', m, 'bon lama bulan itu tidak bisa diubah lagi') || tolakKunci('utangPemasokMutasi', Object.assign({}, m, { bonTanggal: tgl || null }), 'tanggal baru jatuh di bulan terkunci');
+  const baru = Object.assign({}, m, { nominal: n > 0 ? n : m.nominal, bonTanggal: tgl || null }); const semua = bpSemuaBon(P);
+  const sesudah = n > 0 ? denganCacheSementara([{ koleksi: 'utangPemasokMutasi', data: baru }], () => bpSemuaBon(P)) : semua; const T0 = semua.reduce((a, b) => a + b.sisa, 0); const T1 = sesudah.reduce((a, b) => a + b.sisa, 0);
+  return { m, n, tgl, baru, ubah: bpPerubahanSisa(semua, sesudah), total: { dari: T0, ke: T1 }, tolak,
+    arti: !tolak ? 'Bon lama ' + P + ': nilai ' + RP(m.nominal || 0) + ' → ' + RP(n) + ', tanggal ' + (m.bonTanggal ? tanggalPendek(m.bonTanggal) : 'tidak diketahui') + ' → ' + (tgl ? tanggalPendek(tgl) : 'tidak diketahui') + ' · utang ke ' + P + ' ' + RP(T0) + ' → ' + RP(T1) + ' · uang toko, stok, dan laba TIDAK berubah' : '' };
+}
+export function susunBetulBonLama(bonId, isi, alasan, w) {
+  const H = hitungBetulBonLama(bonId, isi); if (H.tolak) return { tolak: H.tolak };
+  const al = bpAlasan(alasan); if (al.length < BP_ALASAN_MIN) return { tolak: 'Tulis alasannya dulu — jejaknya disimpan bersama bon ini' };
+  const data = Object.assign({}, H.baru, { alasanKoreksi: al, dikoreksiPada: w.kini, riwayat: bpRiwayat(H.m, w, { jenis: 'bonLama', teks: 'nilai ' + RP(H.m.nominal || 0) + ' → ' + RP(H.n) + ', tanggal ' + (H.m.bonTanggal || '—') + ' → ' + (H.tgl || '—') + ': ' + al, dari: { nominal: H.m.nominal, bonTanggal: H.m.bonTanggal || null }, ke: { nominal: H.n, bonTanggal: H.tgl || null }, alasan: al }) });
+  return { dokumen: [{ koleksi: 'utangPemasokMutasi', data }], patch: { betul: null, kabar: 'Pembetulan tersimpan — ' + H.arti + '. Nilai lama ada di riwayat bon itu.', kabarAwas: false } };
 }

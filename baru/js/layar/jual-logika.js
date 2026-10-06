@@ -33,7 +33,7 @@ import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisW
 import { wbDariWadah, wbPecahanBaris, wbBagianMerk, wbKomposisi, wbPecah, wbModalPerKg, wbRasio, wbMerkCadangan, wbLiteranLangsung, MEREK_KARUNG_BAWAAN } from './wadah-bernama-logika.js';
 // putaran 28: wadah punya stok sendiri
 // putaran 39: karung belakang = buku sendiri (wbDokBukaKB, wbKunciKB, wbMerkAsal), pindah bertanda (wbPindahTembusBelumCocok)
-import { wbAktif, wbKunci, wbDokLahir, wbDokPindah, wbDokBukaKB, wbKunciKB, wbMerkAsal, wbBukuKhusus, wbPindahTembusBelumCocok } from './wadah-bernama-logika.js';
+import { wbAktif, wbKunci, wbDokLahir, wbDokPindah, wbDokBukaKB, wbKunciKB, wbMerkAsal, wbBukuKhusus, wbPindahTembusBelumCocok, wbSertakanKarungBekas } from './wadah-bernama-logika.js';
 import { arPeta, arBeras, arKemasan } from './arsip-logika.js';
 import { skChip, skTrxPegang, skPecah, skHapusPemecah } from './setengah-logika.js';
 import { gabungTakaran } from './struk-logika.js';
@@ -1250,8 +1250,8 @@ export function aturWadah() {
  * Satu tempat memegang satu kolam karung per nama; dua wadah boleh sama-sama memegang karung bernama sama — dihitung TERPISAH (temuan tinjau 22 Sep).
  * Catatan sebelum 21 Sep (tanpa kolom wadah/lepas) dianggap di belakang wadah senama bila namanya nama wadah, selain itu bahan campuran.
  */
-const wdLokasiDoc = (d, daftar) => (d.wadah ? String(d.wadah) : d.lepas ? '' : (daftar.indexOf(String(d.merk)) >= 0 ? String(d.merk) : ''));
-const wdLokasiSumber = (x, daftar) => (x.dari !== undefined && x.dari !== null ? String(x.dari) : (daftar.indexOf(String(x.merk)) >= 0 ? String(x.merk) : ''));
+export const wdLokasiDoc = (d, daftar) => (d.wadah ? String(d.wadah) : d.lepas ? '' : (daftar.indexOf(String(d.merk)) >= 0 ? String(d.merk) : ''));
+export const wdLokasiSumber = (x, daftar) => (x.dari !== undefined && x.dari !== null ? String(x.dari) : (daftar.indexOf(String(x.merk)) >= 0 ? String(x.merk) : ''));
 /**
  * Karung yang sedang berdiri di belakang satu wadah. Putaran 39c (owner 30 Sep: deretan cuma 8 slot, karung habis bisa dihapus, yang dikembalikan jadi "?"):
  * per MEREK diambil catatan 'karung'/'karungIsi' terbaru di tempat itu; kolam yang sudah DITUTUP (karungIsi 0 bertanda dikembalikan / selesai / pindahAwal)
@@ -1288,7 +1288,7 @@ export function karungLepasDeretan() { return deretanKarung().filter((k) => !k.n
  * merek apa pun dari pemasok — dibuka dari tumpukan lewat isi ulang. Sisa kolam > 0,5 kg → bukan habis (samakan / kembalikan dulu). Buku karung belakang masih
  * > 0,5 kg padahal karungnya habis → ketukan kedua (yakin) mencatat SUSUT sebesar bukunya (penyesuaianStok kunci buku itu, alasan "karung habis") — tidak diam.
  */
-export function susunHapusKarungHabis(merk, lokasi, w, yakin) {
+export function susunHapusKarungHabis(merk, lokasi, w, yakin, opsi) {
   const L = String(lokasi || ''); const k = karungBelakang(merk, L); const letak = L ? 'di belakang wadah ' + L : 'karung lepas';
   const bwS = petaBukuWadah()[merk]; const nama = bwS && bwS.jenis === 'belakang' && bwS.merk ? bwS.merk : merk;
   if (!k.diketahui) return { tolak: 'Karung ' + nama + ' itu belum pernah ditandai — tidak ada yang perlu dihapus' };
@@ -1302,7 +1302,8 @@ export function susunHapusKarungHabis(merk, lokasi, w, yakin) {
     dokumen.push({ koleksi: 'penyesuaianStok', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk, kgSistem: buku, kgFisik: 0, selisihKg: wdB2(-buku), alasan: 'karung habis — dihapus dari deretan', nilaiRp: Math.round(-buku * hpp), hppPerKgSaatOpname: hpp, bagian: 'karung', wadah: L } });
   }
   const dicatat = Math.abs(buku) > 0.004 ? (buku > 0 ? ', susut ' + wdKG(buku) + ' dicatat (buku karung belakang 0)' : ', lebih ' + wdKG(-buku) + ' dicatat (buku karung belakang minus → 0)') : '';
-  return { dokumen, patch: { kabar: 'Karung ' + nama + ' ' + letak + ' habis — dihapus dari deretan' + dicatat + '. Karung berikutnya dibuka dari tumpukan saat isi ulang (merek apa pun).', kabarAwas: Math.abs(buku) > 0.5, drPilih: null, krKetik: '', drYakin: false } };
+  // owner 7 Okt: karung di belakang wadah yang habis = karung bekas +1 (sekali saja per karung — wadah-bernama-logika.js wbKarungBekasKiriman)
+  return wbSertakanKarungBekas({ dokumen, patch: { kabar: 'Karung ' + nama + ' ' + letak + ' habis — dihapus dari deretan' + dicatat + '. Karung berikutnya dibuka dari tumpukan saat isi ulang (merek apa pun).', kabarAwas: Math.abs(buku) > 0.5, drPilih: null, krKetik: '', drYakin: false } }, w, opsi);
 }
 /** Wadah-wadah yang karung di belakangnya bernama ini — yang TERCATAT dulu, lalu yang cuma senama (belum dicatat). */
 export function wadahPemegang(merk) { const d = aturWadah().daftar.map((w) => karungUntukWadah(w)).filter((x) => x.merk === merk); return d.filter((x) => x.dariCatatan).concat(d.filter((x) => !x.dariCatatan)).map((x) => x.wadah); }
@@ -1447,7 +1448,10 @@ export function beratKarungBuka(merk) { const asal = wbMerkAsal(merk); const u =
 export function susunBukaKarung(merk, w, wadah, asal, opsi) {
   if (!merk) return { tolak: 'Pilih dulu karung apa yang dibuka' };
   const atur = aturWadah(); const di = wadah && atur.daftar.indexOf(wadah) >= 0 ? wadah : '';
-  if (asal && asal.jenis === 'adukan') return susunBukaKemasan(asal.namaProduk || merk, asal.ukuran, w, di);
+  // owner 7 Okt (sanggahan E2 lanjutan): membuka karung baru di kolam yang karung terbarunya sudah 0 kg = karung lama itu jadi karung bekas di kiriman yang sama
+  // (tanpa ini karung kosong itu tidak pernah lahir — "hapus karung habis" menolak begitu kolamnya berisi lagi). Akun bukan-owner: dititip (opsi.staf).
+  const kb = { staf: !!(opsi && opsi.staf) };
+  if (asal && asal.jenis === 'adukan') return wbSertakanKarungBekas(susunBukaKemasan(asal.namaProduk || merk, asal.ukuran, w, di), w, kb);
   if (asal && asal.jenis === 'masuk') { const b = ambilSemuaBatch().find((x) => String(x.id) === String(asal.batchId));
     if (!b || b.stokAwal || b.tutupBuku || !(b.merkList || []).some((m) => m.merk === merk && m.satuan === 'karung')) return { tolak: 'Kedatangan itu tidak memuat karung ' + merk + ' — pilih dari daftar "baru datang"' }; }
   // putaran 39 (owner 29 Sep #1): di belakang wadah AKTIF, karung yang dibuka = BUKU SENDIRI 'Karung belakang <wadah> · <merek>' — pindah buku merek → karung belakang,
@@ -1455,19 +1459,19 @@ export function susunBukaKarung(merk, w, wadah, asal, opsi) {
   if (di && wbAktif(di) && !wbBukuKhusus(merk)) {
     const b = wbDokBukaKB(di, merk, 1, w, Object.assign({}, opsi || {}, asal && asal.jenis === 'masuk' ? { asal: { asal: 'masuk', batchId: asal.batchId } } : {}), []); if (b.tolak) return b;
     const masukB = asal && asal.jenis === 'masuk';
-    return { dokumen: b.dokumen, gudang: { merk, kgKarung: b.berat, dariKg: b.buku, keKg: b.sesudahKg, dariKarung: Math.max(0, Math.floor((b.buku + 0.0001) / b.berat)), keKarung: Math.max(0, Math.floor((b.sesudahKg + 0.0001) / b.berat)) }, tandai: b.tandai, kurang: b.kurang,
+    return wbSertakanKarungBekas({ dokumen: b.dokumen, gudang: { merk, kgKarung: b.berat, dariKg: b.buku, keKg: b.sesudahKg, dariKarung: Math.max(0, Math.floor((b.buku + 0.0001) / b.berat)), keKarung: Math.max(0, Math.floor((b.sesudahKg + 0.0001) / b.berat)) }, tandai: b.tandai, kurang: b.kurang,
       patch: { kabar: 'Satu karung ' + merk + ' ' + b.berat + ' kg ' + (masukB ? 'yang baru datang dari pemasok' : 'diambil dari tumpukan gudang') + ', dibuka di belakang wadah ' + di + ' — BUKU: ' + merk + ' ' + wdKG(b.buku) + ' → ' + wdKG(b.sesudahKg) + ', ' + b.kunci + ' +' + wdKG(b.kg) + ' (modal ikut)'
-        + (b.tandai ? '. Buku ' + merk + ' KURANG ' + wdKG(b.kurang) + ' — DITANDAI untuk dicocokkan (dibiarkan minus sampai dihitung)' : ''), kabarAwas: b.tandai } };
+        + (b.tandai ? '. Buku ' + merk + ' KURANG ' + wdKG(b.kurang) + ' — DITANDAI untuk dicocokkan (dibiarkan minus sampai dihitung)' : ''), kabarAwas: b.tandai } }, w, kb);
   }
   const t = tumpukanGudang(merk);
   if (!t.adaBuku) return { tolak: merk + ' tidak ada di buku gudang — karung di belakang wadah diambil dari karung yang tercatat masuk gudang' };
   const kg = beratKarungBuka(merk); const sesudah = wdB2(t.kg - kg); const masuk = asal && asal.jenis === 'masuk';
   // putaran 28 (tiga pintu, owner 28 Sep): karung yang BARU DATANG dari pemasok = karung gudang yang sama di buku (kedatangannya sudah dicatat di Barang masuk);
   // asal & batchId dicatat di catatan karung sebagai jejak, bukunya tetap buku merek itu
-  return { dokumen: [{ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karung', merk, kg }, di ? { wadah: di } : { lepas: true }, masuk ? { asal: 'masuk', batchId: asal.batchId } : {}) }],
+  return wbSertakanKarungBekas({ dokumen: [{ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karung', merk, kg }, di ? { wadah: di } : { lepas: true }, masuk ? { asal: 'masuk', batchId: asal.batchId } : {}) }],
     gudang: { merk, kgKarung: kg, dariKg: t.kg, keKg: sesudah, dariKarung: t.karung, keKarung: Math.max(0, Math.floor((sesudah + 0.0001) / kg)) },
     patch: { kabar: 'Satu karung ' + merk + ' ' + kg + ' kg ' + (masuk ? 'yang baru datang dari pemasok' : 'diambil dari tumpukan gudang') + (di ? ', dibuka di belakang wadah ' + di : ' (karung bahan campuran)') + ' — tumpukan ' + merk + ': ' + wdKG(t.kg) + ' → ' + wdKG(sesudah)
-      + (sesudah < -0.0001 ? '. MENURUT BUKU tumpukannya tidak sampai satu karung — tetap dicatat; cocokkan stok ' + merk : ''), kabarAwas: sesudah < -0.0001 } };
+      + (sesudah < -0.0001 ? '. MENURUT BUKU tumpukannya tidak sampai satu karung — tetap dicatat; cocokkan stok ' + merk : ''), kabarAwas: sesudah < -0.0001 } }, w, kb);
 }
 /**
  * Pintu ketiga (owner 28 Sep "hasil produksi"): satu KEMASAN JADI hasil adukan (25 / 50 kg) dibuka di belakang wadah. Stok kemasan turun 1 unit dan
@@ -1502,7 +1506,7 @@ export function calonBukaKarung(hari) {
   return { tumpukan: calonKarung(), masuk, adukan };
 }
 /** SAMAKAN karung terbuka dengan kenyataan: sisanya memang segini. wadah = di belakang wadah mana karung itu berada (menetapkan nama karung wadah itu). */
-export function susunSamakanKarung(merk, isiKg, w, wadah) {
+export function susunSamakanKarung(merk, isiKg, w, wadah, opsi) {
   const kg = Math.round(wdAngka(isiKg) * 10) / 10;
   if (!merk) return { tolak: 'Pilih dulu karung apa yang terbuka' };
   if (String(isiKg === undefined || isiKg === null ? '' : isiKg).trim() === '') return { tolak: 'Ketik dulu sisa karungnya (kg) — kotak isiannya masih kosong' };
@@ -1511,8 +1515,9 @@ export function susunSamakanKarung(merk, isiKg, w, wadah) {
   if (!(kg >= 0) || kg > penuh) return { tolak: 'Sisa karung harus di antara 0 dan ' + String(penuh).replace('.', ',') + ' kg' };
   const di = wadah && aturWadah().daftar.indexOf(wadah) >= 0 ? wadah : '';
   const diam = di && bwS && bwS.jenis !== 'wadah' && karungUntukWadah(di).merk !== merk ? { diamSlot: true } : {};   // audit 39b no. 5: karung kedua tidak jadi karung terdepan
-  return { dokumen: [{ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk, isiKg: kg }, di ? { wadah: di } : (wadah === '' ? { lepas: true } : {}), diam) }],
-    patch: { kabar: 'Karung terbuka ' + (bwS && bwS.jenis === 'belakang' && bwS.merk ? bwS.merk : merk) + (di ? ' di belakang wadah ' + di : '') + ' disamakan: sisanya ±' + wdKG(kg), kabarAwas: false } };
+  // owner 7 Okt: disamakan 0 = karung habis → karung bekas +1; karung bekas yang ternyata masih berisi → kelahirannya dicabut
+  return wbSertakanKarungBekas({ dokumen: [{ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk, isiKg: kg }, di ? { wadah: di } : (wadah === '' ? { lepas: true } : {}), diam) }],
+    patch: { kabar: 'Karung terbuka ' + (bwS && bwS.jenis === 'belakang' && bwS.merk ? bwS.merk : merk) + (di ? ' di belakang wadah ' + di : '') + ' disamakan: sisanya ±' + wdKG(kg), kabarAwas: false } }, w, opsi);
 }
 
 /** Beras yang boleh ditaruh di satu kotak wadah: yang punya harga literan dan belum punya wadah. */
@@ -1678,13 +1683,14 @@ export function susunTakarWadah(merk, baris, w, s, opsi) {
     const dibukaA = h.sumber.filter((x) => x.bukaKarung); const butaA = h.sumber.filter((x) => !x.karung.diketahui && !x.bukuBelakang);
     const stokS = denganCacheSementara(dokumen.filter((d) => d.koleksi !== 'wadahLiteran' || d.data.id !== idT), () => hitungStokKarungPerMerk());
     const minusA = h.sumber.filter((x) => !x.bukuBelakang && ((stokS[x.merk] || {}).sisaKg || 0) - x.kg < -0.004);
-    return { dokumen, hitung: h, gudang, pindahBuku: pindah.data, tandai: kurangTandai > 0.004, kurang: wdB2(kurangTandai),
+    // owner 7 Okt: karung di belakang yang dituang habis = karung bekas +1 (akun bukan-owner: dititip, owner mencatatnya)
+    return wbSertakanKarungBekas({ dokumen, hitung: h, gudang, pindahBuku: pindah.data, tandai: kurangTandai > 0.004, kurang: wdB2(kurangTandai),
       patch: { kabar: 'Wadah ' + merk + ' diisi ' + h.takar + ' takar = ' + wdKG(h.kg) + (h.sumber.length > 1 ? ' (' + h.sumber.map((x) => 'karung ' + namaS(x) + ' ' + x.takar).join(' + ') + ')' : ' dari karung ' + namaS(h.sumber[0])) + ' → isinya ±' + wdKG(h.isiBaru) + (h.sumber.some((x) => x.seadanya) ? ' · SEADANYA: ' + h.sumber.filter((x) => x.seadanya).map((x) => 'karung ' + (x.merkAsal || x.merk) + ' tinggal ' + wdKG(x.kg) + ' dari ' + wdKG(x.kgMinta) + ' yang diminta').join(', ') + ' — karungnya kini bersih 0, karung baru dari tumpukan ditanya sesudah ini' : '')
         + ' · BUKU: ' + h.sumber.map((x) => (x.bukuBelakang ? 'karung belakang ' + namaS(x) : x.merk) + ' −' + wdKG(x.kg)).join(', ') + ' → ' + kunci + ' +' + wdKG(h.kg) + ' (modal ikut)'
         + (dibukaA.length ? ' · karung di belakang habis: ' + dibukaA.map((x) => x.bukaKarung + ' karung ' + namaS(x)).join(', ') + ' diambil dari tumpukan' + (gudang.length ? ' gudang (' + gudang.map((g) => g.merk + ' ' + wdKG(g.dariKg) + ' → ' + wdKG(g.keKg)).join(', ') + ')' : '') : '')
         + (kurangTandai > 0.004 ? ' · buku merek KURANG ' + wdKG(kurangTandai) + ' — DITANDAI untuk dicocokkan (dibiarkan minus sampai dihitung)' : '')
         + (minusA.length ? ' · buku ' + minusA.map((x) => x.merk).join(', ') + ' jadi MINUS — cocokkan tumpukannya' : '')
-        + (butaA.length ? ' · karung terbuka ' + butaA.map((x) => x.merk).join(', ') + ' belum pernah ditandai, jadi sisanya belum bisa digambar' : ''), kabarAwas: !!minusA.length || kurangTandai > 0.004 } };
+        + (butaA.length ? ' · karung terbuka ' + butaA.map((x) => x.merk).join(', ') + ' belum pernah ditandai, jadi sisanya belum bisa digambar' : ''), kabarAwas: !!minusA.length || kurangTandai > 0.004 } }, w, { staf: Number(s && s.batasDok) > 0 });
   }
   // putaran 27 (Bagian 5, owner 27 Sep): takar TIDAK lagi memindahkan buku ke nama wadah — kg tiap takar tetap milik MEREK ASAL karungnya (komposisi wadah);
   // literannya nanti memotong buku merek-merek asal itu saat terjual. Dokumen takar bertanda bukuAsal. (Pindah buku lama tetap terbaca untuk catatan lama.)
@@ -1695,11 +1701,11 @@ export function susunTakarWadah(merk, baris, w, s, opsi) {
   const lewatL = alasanBatasTakar(s, dokumen, h); if (lewatL) return { tolak: lewatL };
   const dibuka = h.sumber.filter((x) => x.bukaKarung); const buta = h.sumber.filter((x) => !x.karung.diketahui);
   const lintas = h.sumber.some((x) => x.merk !== merk);
-  return { dokumen, hitung: h, gudang, pindahBuku: null,
+  return wbSertakanKarungBekas({ dokumen, hitung: h, gudang, pindahBuku: null,
     patch: { kabar: 'Wadah ' + merk + ' diisi ' + h.takar + ' takar = ' + wdKG(h.kg) + (h.sumber.length > 1 || lintas ? ' (' + h.sumber.map((x) => 'karung ' + x.merk + ' ' + x.takar).join(' + ') + ')' : '') + ' → isinya ±' + wdKG(h.isiBaru) + (h.sumber.some((x) => x.seadanya) ? ' · SEADANYA: ' + h.sumber.filter((x) => x.seadanya).map((x) => 'karung ' + (x.merkAsal || x.merk) + ' tinggal ' + wdKG(x.kg) + ' dari ' + wdKG(x.kgMinta) + ' yang diminta').join(', ') + ' — karungnya kini bersih 0, karung baru dari tumpukan ditanya sesudah ini' : '')
       + (dibuka.length ? ' · karung di belakang habis: ' + dibuka.map((x) => x.bukaKarung + ' karung ' + x.merk).join(', ') + ' diambil dari tumpukan' + (gudang.length ? ' gudang (' + gudang.map((g) => g.merk + ' ' + wdKG(g.dariKg) + ' → ' + wdKG(g.keKg)).join(', ') + ')' : '') : '')
       + (lintas ? ' · buku tiap merek TIDAK dipindah — isinya tercatat per merek asal, literannya memotong buku merek asal saat terjual' : '')
-      + (buta.length ? ' · karung terbuka ' + buta.map((x) => x.merk).join(', ') + ' belum pernah ditandai, jadi sisanya belum bisa digambar' : ''), kabarAwas: false } };
+      + (buta.length ? ' · karung terbuka ' + buta.map((x) => x.merk).join(', ') + ' belum pernah ditandai, jadi sisanya belum bisa digambar' : ''), kabarAwas: false } }, w, { staf: Number(s && s.batasDok) > 0 });
 }
 
 /**
@@ -1768,7 +1774,7 @@ export function saranBenang(nama) {
  * papan kapur tidak lagi menyebutnya). Kalau sudah ada takar / titik samakan → ditulis karungIsi 0 bertanda `dikembalikan` (sisanya kembali ke tumpukan lewat hitungan).
  * Ketukan kedua (yakin) wajib — ini mengubah angka tumpukan.
  */
-export function susunKembalikanKarung(merk, lokasi, w, yakin) {
+export function susunKembalikanKarung(merk, lokasi, w, yakin, opsi) {
   const L = String(lokasi || ''); const k = karungBelakang(merk, L);
   if (!k.diketahui) return { tolak: 'Karung ' + merk + ' itu belum pernah ditandai — tidak ada yang perlu dikembalikan' };
   const daftar = aturWadah().daftar; const semua = ambilWadahLiteran(); const diSini = (d) => d.merk === merk && wdLokasiDoc(d, daftar) === L;
@@ -1789,5 +1795,6 @@ export function susunKembalikanKarung(merk, lokasi, w, yakin) {
   const dokumen = [{ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk, isiKg: 0, dikembalikan: true, sisaSebelumKg: k.sisaKg }, L ? { wadah: L } : { lepas: true }) }];
   if (berbuku && bukuKB > 0.004) dokumen.push(wbDokPindah([{ merk, kg: bukuKB }], bwS.merk, w, { kembaliTumpukan: L, keterangan: 'Karung ' + bwS.merk + ' dikembalikan ke tumpukan dari belakang wadah ' + L + ': ' + wdKG(bukuKB) + ' pindah buku ' + merk + ' → ' + bwS.merk }));
   if (berbuku && bukuKB < -0.004) dokumen.push(wbDokPindah([{ merk: bwS.merk, kg: wdB2(-bukuKB) }], merk, w, { kembaliTumpukan: L, keterangan: 'Karung ' + bwS.merk + ' dikembalikan dari belakang wadah ' + L + ' dengan buku minus ' + wdKG(-bukuKB) + ': pindah buku ' + bwS.merk + ' → ' + merk + ' supaya bukunya 0' }));
-  return { dokumen, patch: { kabar: 'Karung ' + nama + ' (' + letak + ') dikembalikan ke tumpukan: ' + (berbuku ? 'buku karung belakang ' + wdKG(bukuKB) + ' dipindah balik ke buku ' + nama + (bedaKB ? ' (catatan karungnya ±' + wdKG(k.sisaKg) + ' — selisihnya ketahuan saat tumpukan ' + nama + ' dicocokkan)' : '') : 'sisa ±' + wdKG(k.sisaKg) + ' dihitung kembali ke tumpukan gudang ' + nama), kabarAwas: bedaKB, drPilih: null, krKetik: '' } };
+  // owner 7 Okt: karung yang sudah tercatat jadi karung bekas lalu dikembalikan ke tumpukan → kelahiran karung bekasnya dicabut di kiriman yang sama
+  return wbSertakanKarungBekas({ dokumen, patch: { kabar: 'Karung ' + nama + ' (' + letak + ') dikembalikan ke tumpukan: ' + (berbuku ? 'buku karung belakang ' + wdKG(bukuKB) + ' dipindah balik ke buku ' + nama + (bedaKB ? ' (catatan karungnya ±' + wdKG(k.sisaKg) + ' — selisihnya ketahuan saat tumpukan ' + nama + ' dicocokkan)' : '') : 'sisa ±' + wdKG(k.sisaKg) + ' dihitung kembali ke tumpukan gudang ' + nama), kabarAwas: bedaKB, drPilih: null, krKetik: '' } }, w, opsi);
 }

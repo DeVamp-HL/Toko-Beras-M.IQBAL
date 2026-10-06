@@ -502,7 +502,8 @@ export function pasangLayarJual(akar, opsi) {
   // panel isi ulang wadah (takar demi takar) — penangan bersama dengan layar Stok
   async function tulisWadah(r) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
-    try { const x = await tulisDokumen(r.dokumen); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; }
+    // owner 7 Okt (karung bekas): kelahiran hari ini yang dicabut ikut dihapus di kiriman yang sama (r.hapus, owner) — pola tulis() layar Stok; tanpa ini kabarnya berbohong
+    try { const x = await tulisDokumen(r.dokumen, r.hapus, { jejakHapus: r.jejakHapus }); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; }
       set(Object.assign({}, r.patch, { kabar: kabarKiriman(x, r.patch.kabar) })); return true; }
     catch (e) { set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }

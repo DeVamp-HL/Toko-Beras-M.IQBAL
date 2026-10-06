@@ -94,6 +94,8 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
 const harga = pasangLayarHarga(document.getElementById('layarHarga'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 27: Isi barang habis dari katalog
+  // owner 7 Okt: foto bon pemasok — koleksi fotoBon dibaca sekali saat bon dibuka (tidak didengar); di mode cadangan = simulasi di memori layar
+  foto: { ada: () => sumberData().jenis === 'firestore', baca: (idBon) => fb.bacaFotoBon(idBon), simpan: (d) => fb.simpanFotoBon(d), hapus: (id, idBon) => fb.hapusFotoBon(id, idBon) },
   keTujuan: (t) => keTujuan(t) });   // putaran 29: "catat isi rekening dulu" dari lembar bayar bon → Uang › Pindah uang (keTujuan didefinisikan di bawah; dipanggil saat ketukan)
 // Uang (putaran 18): layar ketujuh — Uang keluar · Orang & upah · Owner & toko · Pindah uang · Tutup hari · Tutup buku. Dibuka dari Menu; di Mac ada di menu samping.
 // putaran 25: daftar periksa Kunci bulan membaca kiriman tertahan/ditolak di perangkat ini + nota yang diparkir di Jual (keadaan lokal, bukan server)
