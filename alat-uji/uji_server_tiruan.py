@@ -5,7 +5,8 @@ uji_server_tiruan.py — SERVER TIRUAN /baru/ (gladi tutup buku di Firebase Emul
 
 Yang dijaga (baru/js/data/server-tiruan.js dijalankan sungguhan di jsc; firebase.js, app.js, index.html dibaca sumbernya):
   · ?emulator=host:port hanya berlaku di halaman localhost / 127.0.0.1 — di situs sungguhan (github.io) DIABAIKAN (null, bukan galat);
-  · alamat emulator wajib localhost / 127.0.0.1 + port angka 1–65535 — host lain / port rusak = ditolak (aplikasi tetap ke data toko);
+  · alamat emulator wajib localhost / 127.0.0.1 + port angka 1–65535 — host lain / port rusak / kosong = ditolak, dan yang ditolak GAGAL-TERTUTUP:
+    firebase.js mulai() berhenti SEBELUM initializeApp (tidak tersambung ke data toko maupun ke mana pun), app.js memasang bilah "SERVER TIRUAN DITOLAK";
   · Auth bawaan port 9099 di host yang sama; ?emulatorAuth= hanya alamat lokal;
   · proyeknya proyek "demo-…" yang BUKAN proyek toko, dan setelan aplikasinya tanpa kunci API toko;
   · firebase.js: emulator disambung HANYA di belakang serverTiruanAktif(), tepat sesudah initializeFirestore / getAuth (sebelum dipakai apa pun);
@@ -39,6 +40,11 @@ var t2 = S(Q({ emulator: 'localhost:8181', emulatorAuth: 'LOCALHOST:9199' }), 'L
 ok('halaman localhost + ?emulatorAuth= lokal → dipakai (huruf besar/kecil bebas)', !!t2 && !t2.tolak && t2.firestore.host === 'localhost' && t2.firestore.port === 8181 && t2.auth === 'http://localhost:9199', J(t2));
 ['firestore.googleapis.com:443', 'evil.example:8080', '10.0.0.5:8080', '127.0.0.1', '127.0.0.1:0', '127.0.0.1:70000', '127.0.0.1:80a', 'http://127.0.0.1:8080', '127.0.0.1:8080/x', ' :8080']
   .forEach(function (a) { var r = S(Q({ emulator: a }), 'localhost'); ok('alamat emulator Firestore ' + J(a) + ' DITOLAK (bukan lokal / port rusak)', !!r && !!r.tolak && !r.firestore, J(r)); });
+var k0 = S(Q({ emulator: '' }), 'localhost');
+ok('halaman lokal + ?emulator= KOSONG → tetap permintaan, DITOLAK (gagal-tertutup, bukan jatuh ke data toko)', !!k0 && !!k0.tolak && !k0.firestore, J(k0));
+ok('situs sungguhan + ?emulator= kosong → diabaikan (null)', S(Q({ emulator: '' }), 'devamp-hl.github.io') === null);
+var k1 = S(Q({ emulator: '127.0.0.1:8080', emulatorAuth: '' }), '127.0.0.1');
+ok('?emulatorAuth= KOSONG → DITOLAK (bukan diam-diam port bawaan)', !!k1 && !!k1.tolak, J(k1));
 ['evil.example:9099', '127.0.0.1', '192.168.1.2:9099'].forEach(function (a) { var r = S(Q({ emulator: '127.0.0.1:8080', emulatorAuth: a }), 'localhost'); ok('alamat emulator Auth ' + J(a) + ' DITOLAK', !!r && !!r.tolak, J(r)); });
 ok('proyek tiruan = proyek "demo-…" (Firebase tidak pernah menyambungkannya ke server sungguhan) dan BUKAN proyek toko', /^demo-/.test(PROYEK_TIRUAN) && PROYEK_TIRUAN !== PROYEK_TOKO, PROYEK_TIRUAN);
 var c = configTiruan(t);
@@ -71,6 +77,9 @@ def periksa_statis(T=None):
     ti, fb, ap, html = baca(TIRUAN, T), baca(FB, T), baca(APP, T), baca(HTML, T)
     c.append(('server-tiruan.js tanpa impor (diuji apa adanya di jsc)', not re.search(r'^\s*import\b', ti, re.M), ''))
     m = re.search(r'export function mulai\(saatAkun\) \{(.*?)\n\}', fb, re.S); mulai = m.group(1) if m else ''
+    i_tolak = mulai.find('const tolakT = tolakServerTiruan(); if (tolakT) { status.galat = tolakT; beriTahu(); return; }'); i_app = mulai.find('app = initializeApp(')
+    c.append(('firebase.js mulai(): server tiruan DITOLAK → berhenti SEBELUM initializeApp (gagal-tertutup: tidak tersambung ke data toko maupun ke mana pun)',
+              0 <= i_tolak < i_app, (i_tolak, i_app)))
     c.append(('firebase.js mulai(): T = serverTiruanAktif(); initializeApp(T ? configTiruan(T) : …) — proyek demo, bukan proyek toko, selama tiruan aktif',
               'const T = serverTiruanAktif();' in mulai and 'initializeApp(T ? configTiruan(T) : (proyekUji() || firebaseConfig))' in mulai, mulai[:200]))
     i_db = mulai.find('db = initializeFirestore('); i_fs = mulai.find('if (T) connectFirestoreEmulator(db, T.firestore.host, T.firestore.port);')
@@ -84,9 +93,10 @@ def periksa_statis(T=None):
     D, _ = uji_csp.csp_dari(html); cs = (D or {}).get('connect-src', [])
     lokal = [x for x in cs if re.search(r'^http:|localhost|127\.0\.0\.1|\[::1\]|:\d+$', x)]
     c.append(('CSP situs baru/index.html TIDAK dilonggarkan: connect-src tanpa http://, localhost, 127.0.0.1, port', bool(cs) and not lokal, lokal or cs))
-    i = ap.find("const T = fb.serverTiruanAktif(); if (!T) return;"); blok = ap[i:ap.find('})();', i)] if i >= 0 else ''
-    c.append(('app.js: bilah "SERVER TIRUAN" dipasang selama fb.serverTiruanAktif() (orang tidak mengira itu data toko)',
-              "'<span>SERVER TIRUAN <b></b>" in blok and 'document.body.appendChild(bilah);' in blok, blok[:160]))
+    i = ap.find("const tolak = fb.tolakServerTiruan(); const T = fb.serverTiruanAktif(); if (!tolak && !T) return;"); blok = ap[i:ap.find('})();', i)] if i >= 0 else ''
+    c.append(('app.js: bilah "SERVER TIRUAN" dipasang selama fb.serverTiruanAktif(), bilah "SERVER TIRUAN DITOLAK" yang menetap bila ditolak (bukan kabar sebentar)',
+              "'<span>SERVER TIRUAN <b></b>" in blok and "'<span>SERVER TIRUAN DITOLAK — <b></b></span>'" in blok and 'document.body.appendChild(bilah);' in blok
+              and 'kabarSebentar' not in blok, blok[:160]))
     c.append(('index.html: server-tiruan.js dipramuat (graf impor app.js)', '<link rel="modulepreload" href="js/data/server-tiruan.js">' in html, ''))
     return c
 
@@ -104,7 +114,10 @@ KONTROL = [
     ('emulator boleh di host mana pun', {TIRUAN: [("if (HOST_LOKAL.indexOf(host) < 0 || !(port >= 1 && port <= 65535)) return null;", "if (!(port >= 1 && port <= 65535)) return null;")]}),
     ('port tidak diperiksa', {TIRUAN: [("if (HOST_LOKAL.indexOf(host) < 0 || !(port >= 1 && port <= 65535)) return null;", "if (HOST_LOKAL.indexOf(host) < 0) return null;")]}),
     ('proyek tiruan = proyek toko', {TIRUAN: [("export const PROYEK_TIRUAN = 'demo-gladi-toko';", "export const PROYEK_TIRUAN = 'toko-beras-m-iqbal';")]}),
-    ('emulator Auth host bebas', {TIRUAN: [("const au = mintaAuth ? alamatLokal(mintaAuth) :", "const au = mintaAuth ? { host: mintaAuth.split(':')[0], port: Number(mintaAuth.split(':')[1]) } :")]}),
+    ('emulator Auth host bebas', {TIRUAN: [("const au = mintaAuth !== null && mintaAuth !== undefined ? alamatLokal(mintaAuth) :", "const au = mintaAuth ? { host: mintaAuth.split(':')[0], port: Number(mintaAuth.split(':')[1]) } :")]}),
+    ('server tiruan yang ditolak jatuh ke proyek toko (gagal-terbuka)', {FB: [("  const tolakT = tolakServerTiruan(); if (tolakT) { status.galat = tolakT; beriTahu(); return; }\n", '')]}),
+    ('?emulator= kosong dianggap tidak diminta', {TIRUAN: [("  if (minta === null || minta === undefined) return null;", "  if (!minta) return null;")]}),
+    ('bilah DITOLAK hanya kabar sebentar', {APP: [("bilah.innerHTML = tolak ? '<span>SERVER TIRUAN DITOLAK — <b></b></span>' : ", "if (tolak) kabarSebentar(tolak); bilah.innerHTML = ")]}),
     ('firebase.js menyambung emulator tanpa penjaga', {FB: [('  if (T) connectFirestoreEmulator(db, T.firestore.host, T.firestore.port);', '  connectFirestoreEmulator(db, (T || { firestore: {} }).firestore.host, 8080);')]}),
     ('firebase.js memakai setelan toko walau tiruan aktif', {FB: [('initializeApp(T ? configTiruan(T) : (proyekUji() || firebaseConfig))', 'initializeApp(proyekUji() || firebaseConfig)')]}),
     ('emulator Auth disambung sesudah auth dipakai', {FB: [("  if (T) connectAuthEmulator(auth, T.auth, { disableWarnings: true });\n", ''),
@@ -132,8 +145,9 @@ if __name__ == '__main__':
             try: T = rusak(ganti)
             except AssertionError as e: print('KONTROL BASI  ' + nama + ' · ' + str(e)); kode = 3; continue
             l, g = semua(T)
-            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:150] if g else '-'))
-            if not g: kode = 3
+            b = bool(g) and not any(x.startswith('JSC JATUH') for x in g)   # jsc yang jatuh bukan bunyi kontrol — penjaganya tidak dinilai sama sekali
+            print(('BERBUNYI ' if b else 'DIAM!!   ') + nama + ' → ' + (g[0][:150] if g else '-'))
+            if not b: kode = 3
         sys.exit(kode)
     l, g = semua()
     print('SERVER TIRUAN /baru/ (gladi emulator): %d lulus · %d gagal' % (l, len(g)))

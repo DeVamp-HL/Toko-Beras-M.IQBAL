@@ -1,7 +1,9 @@
 // SERVER TIRUAN (gladi tutup buku, 7 Okt 2026): /baru/ bicara ke Firebase Emulator Suite (Firestore + Auth) — HANYA untuk uji di runner GitHub.
 // Alamat: /baru/?emulator=127.0.0.1:8080 (Firestore) [&emulatorAuth=127.0.0.1:9099 (Auth; bawaan: host yang sama, port 9099)].
-// Penjaga (semua wajib, kalau satu gagal parameter DIABAIKAN dan aplikasi tersambung ke data toko seperti biasa):
-//   · halaman dibuka dari localhost / 127.0.0.1 — di situs sungguhan (github.io) parameter ini tidak berarti apa-apa;
+// Penjaga:
+//   · halaman BUKAN localhost / 127.0.0.1 (situs sungguhan, github.io): parameter ini DIABAIKAN — aplikasi ke data toko seperti biasa;
+//   · halaman lokal yang MEMINTA server tiruan (?emulator= ada, walau kosong) dengan alamat yang salah: GAGAL-TERTUTUP — { tolak }, firebase.js tidak
+//     menyambung ke server MANA PUN (bukan jatuh ke data toko) dan app.js memasang bilah merah "SERVER TIRUAN DITOLAK" (tinjauan 7 Okt);
 //   · alamat emulator juga localhost / 127.0.0.1 dengan port angka — tidak bisa diarahkan ke server lain;
 //   · proyeknya proyek "demo-" (PROYEK_TIRUAN): kalau sambungan ke emulator gagal, permintaan jatuh ke proyek yang tidak ada, BUKAN ke data toko.
 // CSP baru/index.html TIDAK dilonggarkan untuk ini: connect-src situs tetap Firebase saja, jadi peramban memblokir sambungan ke emulator di situs.
@@ -21,18 +23,18 @@ export function alamatLokal(teks) {
 
 /**
  * Setelan server tiruan dari alamat halaman. q = URLSearchParams halaman, namaHost = location.hostname.
- * → null (tidak diminta, atau halaman bukan lokal — diam) · { tolak: kalimat } (diminta di halaman lokal tapi alamatnya salah) ·
+ * → null (tidak diminta, atau halaman bukan lokal — diam) · { tolak: kalimat } (diminta di halaman lokal tapi alamatnya salah — GAGAL-TERTUTUP) ·
  *   { firestore: { host, port }, auth: 'http://host:port', proyek }.
  */
 export function serverTiruan(q, namaHost) {
   const minta = q && typeof q.get === 'function' ? q.get('emulator') : null;
-  if (!minta) return null;
+  if (minta === null || minta === undefined) return null;   // tidak diminta. ?emulator= kosong TETAP permintaan → ditolak di bawah (bukan jatuh ke data toko)
   if (HOST_LOKAL.indexOf(String(namaHost || '').toLowerCase()) < 0) return null;
   const fs = alamatLokal(minta);
-  if (!fs) return { tolak: 'Alamat emulator Firestore harus localhost / 127.0.0.1 dengan port (mis. 127.0.0.1:8080) — diabaikan' };
+  if (!fs) return { tolak: 'Alamat emulator Firestore harus localhost / 127.0.0.1 dengan port (mis. 127.0.0.1:8080). Aplikasi tidak disambungkan ke data mana pun.' };
   const mintaAuth = q.get('emulatorAuth');
-  const au = mintaAuth ? alamatLokal(mintaAuth) : { host: fs.host, port: PORT_AUTH_BAWAAN };
-  if (!au) return { tolak: 'Alamat emulator Auth harus localhost / 127.0.0.1 dengan port (mis. 127.0.0.1:9099) — diabaikan' };
+  const au = mintaAuth !== null && mintaAuth !== undefined ? alamatLokal(mintaAuth) : { host: fs.host, port: PORT_AUTH_BAWAAN };
+  if (!au) return { tolak: 'Alamat emulator Auth harus localhost / 127.0.0.1 dengan port (mis. 127.0.0.1:9099). Aplikasi tidak disambungkan ke data mana pun.' };
   return { firestore: fs, auth: 'http://' + au.host + ':' + au.port, proyek: PROYEK_TIRUAN };
 }
 

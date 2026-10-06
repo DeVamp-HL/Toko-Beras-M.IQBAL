@@ -42,6 +42,7 @@ export function aturProyekUjiDariAlamat(q) {
 export function proyekUji() { try { const c = JSON.parse(localStorage.getItem(KUNCI_PROYEK_UJI) || 'null'); return c && c.projectId && c.projectId !== PROYEK_TOKO ? c : null; } catch (e) { return null; } }
 // ---- SERVER TIRUAN (gladi tutup buku di runner GitHub, 7 Okt 2026): server-tiruan.js. Aktif HANYA di halaman localhost / 127.0.0.1 dengan
 // ?emulator=host:port — Firestore & Auth ke Firebase Emulator Suite, proyek demo. Di situs sungguhan parameter ini diabaikan (dan CSP situs memblokirnya).
+// Diminta di halaman lokal tapi alamatnya ditolak = GAGAL-TERTUTUP: mulai() tidak menyambung ke server mana pun (tinjauan 7 Okt: dulu jatuh ke proyek toko).
 let _tiruan;
 function bacaTiruan() {
   if (_tiruan !== undefined) return _tiruan;
@@ -80,6 +81,8 @@ let _lepasAkses = null;   // pendengar dokumen aksesAkun milik akun bukan-owner 
 /** saatAkun(akun) dipanggil tiap keadaan akun berubah (keluar · belum terdaftar · nonaktif · kasir@ · owner · aktif) — app.js menggambar layar masuknya. */
 export function mulai(saatAkun) {
   if (app) return;
+  // server tiruan diminta tapi ditolak: tidak tersambung ke mana pun — gerbang masuk tetap tertutup tanpa formulir, bilah merah menyebut sebabnya (app.js)
+  const tolakT = tolakServerTiruan(); if (tolakT) { status.galat = tolakT; beriTahu(); return; }
   const T = serverTiruanAktif();
   // server tiruan (gladi) > proyek uji (kalau disetel di perangkat ini) > proyek toko — cache & sesi Firebase terpisah per proyek
   app = initializeApp(T ? configTiruan(T) : (proyekUji() || firebaseConfig));

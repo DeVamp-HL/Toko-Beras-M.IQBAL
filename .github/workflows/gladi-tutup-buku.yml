@@ -1,8 +1,9 @@
 # GLADI TUTUP BUKU di SERVER TIRUAN — HANYA di runner (CLAUDE.md, keputusan owner 27 Sep 2026: peramban & emulator tidak di Mac owner). Tidak menerbitkan apa pun.
 # Firebase Emulator Suite (Firestore + Auth) dengan aturan = firestore.rules repo, diisi DATA CONTOH sintetis skala toko (alat-uji/gladi_data_contoh.py, benih
 # tetap — bukan data toko; cadangan asli tidak pernah ada di runner), lalu /baru/ ASLI di Chrome headless lewat ?emulator= menjalankan Uang › Tutup buku:
-# LATIHAN (tanpa menulis), SUNGGUHAN yang diblokir gerbang, dan ritual penuh dengan server yang menolak di tengah (lanjutkan / batalkan sebelum & sesudah
-# penanda) sampai selesai. Tiap langkah: baca / tulis / hapus emulator vs batas Spark. Proyek emulator "demo-gladi-toko": tanpa kredensial, tanpa data toko.
+# LATIHAN (tanpa menulis), SUNGGUHAN yang diblokir gerbang lalu dibuka lewat putusan per tanggal (Paket A), dan ritual penuh di data yang sama — putusan,
+# server yang menolak di tengah (lanjutkan / batalkan sebelum & sesudah penanda) sampai selesai, tiap titik diperiksa di SERVER. Tiap langkah dan tiap jalur
+# (ritual bersih · batal) : baca / tulis / hapus vs batas Spark. Proyek emulator "demo-gladi-toko": tanpa kredensial, tanpa data toko.
 # Manual: Actions › Gladi tutup buku › Run workflow. Otomatis di PR yang menyentuh tutup buku, kunci periode, uang, aturan server, sambungan Firebase.
 name: Gladi tutup buku
 
@@ -130,10 +131,21 @@ jobs:
         run: |
           if [ -f gladi-hasil/ringkasan.md ]; then cat gladi-hasil/ringkasan.md >> "$GITHUB_STEP_SUMMARY"; else echo "Ringkasan gladi tidak terbentuk — lihat log langkah GLADI." >> "$GITHUB_STEP_SUMMARY"; fi
 
-      - name: "KONTROL — salinan uji dirusak (latihan menulis, gerbang g1 dibuang, satu koleksi tidak dimuat) wajib ketahuan"
+      # Tiap kontrol di EMULATOR SENDIRI (sama dengan skenario): sesi kanal halaman kontrol sebelumnya tidak boleh membanjiri muat kontrol berikutnya — kontrol
+      # yang ceknya ikut gagal karena antrean emulator dihitung DIAM, bukan berbunyi.
+      - name: "KONTROL — salinan uji dirusak (latihan menulis, latihan menulis tertunda, gerbang g1 dibuang, satu koleksi tidak dimuat, pemulihan arsip kurang satu) wajib ketahuan karena sebab yang benar"
         if: success() && (github.event_name == 'pull_request' || github.event.inputs.kontrol == 'true')
         working-directory: ${{ runner.temp }}/proyek-gladi
-        run: firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --kontrol"
+        run: |
+          N=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --jumlah-kontrol); test "$N" -ge 1
+          gagal=0
+          for i in $(seq 1 "$N"); do
+            echo "::group::kontrol $i dari $N"
+            rm -f firestore-debug.log
+            firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --kontrol $i" || gagal=1
+            echo "::endgroup::"
+          done
+          exit $gagal
 
       - name: Log firebase-tools ke artefak
         if: always()
