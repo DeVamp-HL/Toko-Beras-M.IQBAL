@@ -265,8 +265,12 @@ Sejak cabang hemat baca, `firestore.rules` di repo = **v7** (v6 + kirim ulang ka
 
 - **Selama aturan darurat (v3) terpasang**, hapus dari `/baru/` yang membawa batu nisan DITOLAK server (v3 tidak mengenal `batuNisan`) — kirimannya
   pindah ke Menu › Sistem › Perangkat › Antrean "ditolak". Jangan menghapus apa pun di `/baru/` selama jendela darurat; jendelanya tetap sesingkat
-  mungkin. Kirim ulang karcis kasir darurat kasir-v33 yang jawabannya hilang juga ditolak v3 (karcisnya sudah masuk; buang dari daftar ditolak HP sesudah
-  dicocokkan).
+  mungkin. Kirim ulang karcis kasir darurat kasir-v33 yang jawabannya hilang TIDAK ikut ditolak (tinjauan 7 Okt): `:commit` yang ditolak v3 dikirim sekali
+  lagi dengan cara lama (PATCH, `updateMask` = kolom karcis — cap yang sudah ada dibiarkan), dan itu lolos `tulisUlangSama` v3. Kalau HP tetap menyebut
+  karcis "ditolak" (versi lama), cocokkan dulu dengan Jual `/baru/` sebelum dicatat ulang.
+- **Catatan yang dibuat LAGI tanpa cap sesudah dihapus** (Console, HP kasir lama) tidak tersembunyi selamanya oleh batu nisannya: baca penuh perangkat
+  owner melihatnya masih ada di server → tampil lagi & disentuh. Kalau satu catatan tampak hilang hanya di perangkat yang hemat baca, tekan "Baca penuh
+  sekarang" di perangkat itu.
 - **Catatan yang dipulihkan sistem lama TIDAK bercap jam server.** Perangkat yang hemat baca menyala tidak mendengarnya lewat ubahan. Sesudah langkah 3,
   di `/baru/` perangkat owner: Menu › Sistem › Perangkat › **Hemat baca** → **"Minta semua perangkat baca penuh"** (dua ketukan). Tiap perangkat owner
   membaca penuh sekali (±9 rb baca per perangkat; rem kuota bisa menundanya ke hari kuota berikutnya — layar menyebutnya).

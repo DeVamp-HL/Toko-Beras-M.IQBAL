@@ -7,11 +7,14 @@
 // Diperiksa statis oleh alat-uji/periksa_rules.py (CI). Uji server: docs/uji-rules-v7.md (Playground ★; v6: docs/uji-rules-v6.md).
 // v7 yang berubah dari v6 (owner 7 Okt 2026, hemat baca — keputusan owner 3 Okt): (1) fungsi ulangKasirBercap() + satu suku di update penjualan: kasir darurat
 //   kasir-v33 mengirim nota lewat REST :commit dengan capServer = REQUEST_TIME — kirim ulang karcis yang sama hanya berbeda di capServer, dan capServer itu
-//   jam server permintaan ini. stokBahanLiteran & piutangMutasi TIDAK berubah (hanya ditulis kasir.html, pensiun). (2) blok batuNisan (owner saja): satu
+//   jam server permintaan ini, ATAU capServer tidak ada sama sekali: HP yang masih kasir-v32 mengirim ulang nota (PATCH utuh tanpa cap) yang sudah disentuh
+//   perangkat owner yang hemat baca (tinjauan 7 Okt — dulu kiriman ulang itu ditolak, nota yang SUDAH masuk pindah ke "ditolak" di HP → risiko dicatat dua
+//   kali). stokBahanLiteran & piutangMutasi TIDAK berubah (hanya ditulis kasir.html, pensiun). (2) blok batuNisan (owner saja): satu
 //   dokumen per catatan koleksi hemat yang dihapus owner, di writeBatch yang sama dengan hapusnya; capServer wajib jam server. Tanpa get(): 0 access call.
 //   SENGAJA tidak berubah: create penjualan kasir@ (capServer boleh ada atau tidak — nota HP v32 tetap masuk), denyut & pesanan staf (tidak dicap),
 //   tutupBukuAcara (tidak dicap — kirim ulang identik SDK tetap lolos tulisUlangSama), semua create/update lain (tidak membatasi kunci → capServer lolos).
-// Jalan mundur v7: JANGAN tempel firestore.rules.v6 selama kode bercap berjalan — hapus /baru/ (ber-batu nisan) & kirim ulang karcis kasir-v33 akan DITOLAK.
+// Jalan mundur v7: JANGAN tempel firestore.rules.v6 selama kode bercap berjalan — hapus /baru/ (ber-batu nisan) akan DITOLAK (kirim ulang karcis kasir-v33
+//   yang ditolak jatuh ke cara lama: PATCH tanpa cap dengan updateMask = kolom karcis, lolos tulisUlangSama v6/v3 — nota tidak dobel).
 //   Mundur hemat baca = saklar (Menu › Sistem › Perangkat › Hemat baca, atau /baru/?hemat=mati), bukan rules. v6 baru boleh ditempel balik SESUDAH kode
 //   bercap dibalik (git revert) dan HP kasir kembali ke kasir-v32.
 // Jalan mundur v6: firestore.rules.v5 (disimpan utuh) — tempel v5 = berita acara tutup buku kembali owner-saja tanpa urutan (kiriman telat bisa menimpanya);
@@ -79,9 +82,11 @@ service cloud.firestore {
     function tulisUlangSama() {
       return request.resource.data == resource.data;
     }
-    // v7 (hemat baca): kirim-ulang kasir@ lewat REST :commit + transform REQUEST_TIME — isinya sama persis kecuali capServer, dan capServer = jam server permintaan ini
+    // v7 (hemat baca): kirim-ulang kasir@ — isinya sama persis KECUALI capServer, dan capServer = jam server permintaan ini (REST :commit + transform
+    // REQUEST_TIME, kasir-v33) ATAU tidak ada sama sekali (HP kasir-v32: PATCH utuh tanpa cap atas nota yang sudah disentuh perangkat owner)
     function ulangKasirBercap() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && request.resource.data.capServer == request.time;
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer'])
+        && (!request.resource.data.keys().hasAny(['capServer']) || request.resource.data.capServer == request.time);
     }
 
     // ---- akun bukan-owner (aksesAkun/{uid}) — SATU get() per evaluasi ----

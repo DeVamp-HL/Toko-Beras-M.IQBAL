@@ -256,7 +256,7 @@ function pasangHemat(koleksi, tandaiSiap) {
       nisan: (B, cb, galat) => dengar(query(collection(db, HB_KOLEKSI_NISAN), lewat(B)), { includeMetadataChanges: true }, cb, galat),
       hitung: (k) => getCountFromServer(collection(db, k)).then((s) => s.data().count),
       klaim: (dok) => setDoc(doc(db, 'aturanToko', HB_ID_KLAIM), dok),   // klaim baca penuh harian: dokumen setelan (tetap), tanpa jejak — seperti katalog kasir
-      sentuh: (k, ids) => sentuhCap(k, ids),
+      sentuh: (k, ids, lihat) => sentuhCap(k, ids, lihat),
       tulisNisan: (k, ids) => tulisNisanSaja(k, ids),
     },
     keluar: {
@@ -511,33 +511,39 @@ function jagaTulisHemat() {
   if (_hemat.adaMati()) return 'Tab ini berhenti menerima data dari server — muat ulang aplikasi dulu (catatan di antrean aman).';
   return '';
 }
-/** Pendeteksi (perangkat yang baca penuh harian / tombol Console): catatan yang berubah / lahir TANPA cap disentuh capServer — perangkat lain menerimanya lewat
- *  delta. Owner saja, per potongan KP_BATAS_GET (≤ 18 pemeriksaan kunci), catatan bulan terkunci dilewati, satu baris jejak per potongan. */
-async function sentuhCap(koleksi, ids) {
-  if (!db || !status.akun || status.akun.jenis !== 'owner' || !hbHemat(koleksi) || jagaTulisHemat()) return { n: 0 };
-  const boleh = (ids || []).filter((id) => { const d = dokDiCache(koleksi, id); return d && !tolakKunci(koleksi, d); });
-  let n = 0;
+/** Pendeteksi (perangkat yang baca penuh harian / tombol Console): catatan yang berubah / lahir / LAHIR ULANG tanpa cap disentuh capServer — perangkat lain
+ *  menerimanya lewat delta. Owner saja, per potongan KP_BATAS_GET (≤ 18 pemeriksaan kunci), catatan bulan terkunci dilewati, satu baris jejak per potongan.
+ *  lihat(id) = isi MENTAH (snapshot server F / simpanan perangkat, SEBELUM saringan batu nisan): catatan lahir ulang yang tersembunyi nisan TIDAK ada di memori
+ *  (dokDiCache), dan dulu tidak pernah disentuh (tinjauan 7 Okt). → { n, tunda }: tunda = id yang belum terkirim (tab tidak boleh menulis / potongan ditolak) —
+ *  sesi hemat menyimpan & mengulangnya. */
+async function sentuhCap(koleksi, ids, lihat) {
+  if (!db || !status.akun || status.akun.jenis !== 'owner' || !hbHemat(koleksi)) return { n: 0, tunda: [] };
+  if (jagaTulisHemat()) return { n: 0, tunda: (ids || []).slice() };
+  const isi = (id) => (typeof lihat === 'function' ? lihat(id) : dokDiCache(koleksi, id));
+  const boleh = (ids || []).filter((id) => { const d = isi(id); return d && !tolakKunci(koleksi, d); });
+  let n = 0; const tunda = [];
   for (let i = 0; i < boleh.length; i += POTONG) {
     const b = writeBatch(db); const potong = boleh.slice(i, i + POTONG);
     potong.forEach((id) => b.update(doc(db, koleksi, String(id)), { capServer: serverTimestamp() }));
     const log = { id: idUnik(), pada: new Date().toISOString(), aksi: 'sentuh-cap', koleksi, idDok: String(potong[0]), oleh: pemegangPerangkat(), olehUid: status.akun.uid, perangkat: perangkatRingkas(), ringkas: 'sentuh cap ' + potong.length + ' catatan (berubah / lahir tanpa cap jam server)' };
     b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
-    await b.commit(); n += potong.length;
+    try { await b.commit(); n += potong.length; } catch (e) { potong.forEach((id) => tunda.push(id)); }
   }
-  return { n };
+  return { n, tunda };
 }
-/** Pendeteksi: catatan yang hilang dari server tanpa batu nisan (Console, perangkat sebelum aturan v7) → nisannya ditulis sekarang. */
+/** Pendeteksi: catatan yang hilang dari server tanpa batu nisan (Console, perangkat sebelum aturan v7) → nisannya ditulis sekarang. → { n, tunda } (lihat sentuhCap). */
 async function tulisNisanSaja(koleksi, ids) {
-  if (!db || !_nisanSah || !status.akun || status.akun.jenis !== 'owner' || !hbHemat(koleksi) || jagaTulisHemat()) return { n: 0 };
-  let n = 0;
+  if (!db || !_nisanSah || !status.akun || status.akun.jenis !== 'owner' || !hbHemat(koleksi)) return { n: 0, tunda: [] };
+  if (jagaTulisHemat()) return { n: 0, tunda: (ids || []).slice() };
+  let n = 0; const tunda = [];
   for (let i = 0; i < (ids || []).length; i += 400) {
     const b = writeBatch(db); const potong = ids.slice(i, i + 400);
     potong.forEach((id) => b.set(doc(db, HB_KOLEKSI_NISAN, nisanId(koleksi, id)), nisanDok(koleksi, id, status.akun.uid)));
     const log = { id: idUnik(), pada: new Date().toISOString(), aksi: 'nisan', koleksi, idDok: String(potong[0]), oleh: pemegangPerangkat(), olehUid: status.akun.uid, perangkat: perangkatRingkas(), ringkas: 'batu nisan ' + potong.length + ' catatan yang hilang dari server tanpa kabar' };
     b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
-    await b.commit(); n += potong.length;
+    try { await b.commit(); n += potong.length; } catch (e) { potong.forEach((id) => tunda.push(id)); }
   }
-  return { n };
+  return { n, tunda };
 }
 /** Kunci tab kalah (tab lain menekan "Pakai di sini"): klien Firestore tab ini dihentikan — antrean IndexedDB dikirim klien pemegang. */
 export async function berhenti(sebab) {
@@ -548,10 +554,12 @@ export async function berhenti(sebab) {
 }
 // ---- hemat baca untuk layar (Menu › Sistem › Perangkat › Hemat baca) ----
 export function setelSaklarHemat(nyala) { return hbSetelSaklar(_penyimpanHemat, !!nyala); }
-/** Catatan koleksi hemat di perangkat ini TANPA cap jam server yang lahir/diubah sesudah kode bercap jalan di peramban ini (7 hari terakhir). */
+/** Catatan koleksi hemat di perangkat ini TANPA cap jam server yang lahir/diubah sesudah kode bercap jalan di peramban ini (7 hari terakhir). Cap dari peta
+ *  samping pendengar penuh (_cap, saklar mati) atau dari simpanan sesi hemat (saklar nyala — _cap koleksi hemat kosong, dulu SEMUA catatan terhitung
+ *  "tanpa cap" dan baris statis berbohong; tinjauan 7 Okt). */
 function hitungStatis() {
   const batas = Math.max(HB_MULAI_MS, _kodeBercap || 0, Date.now() - 7 * 86400000); let n = 0;
-  hbKoleksiHemat().forEach((nama) => { const k = KOLEKSI.find((x) => x.nama === nama); const c = _cap[nama] || {}; if (!k) return; cacheMentah(k.cache).forEach((d) => { if (hbTanpaCapStatis(d, c[String(d.id)], batas)) n += 1; }); });
+  hbKoleksiHemat().forEach((nama) => { const k = KOLEKSI.find((x) => x.nama === nama); const c = (_hemat ? _hemat.capPeta(nama) : _cap[nama]) || {}; if (!k) return; cacheMentah(k.cache).forEach((d) => { if (hbTanpaCapStatis(d, c[String(d.id)], batas)) n += 1; }); });
   return n;
 }
 export function hematKeadaan() {
@@ -561,7 +569,9 @@ export function hematKeadaan() {
   return Object.assign(_hemat.keadaan(), dasar);
 }
 export function hematSiapNyala() {
-  return hbSiapNyala({ perangkat: cacheMentah('perangkat'), kiniMs: Date.now(), nisanSah: _nisanSah, statis: hitungStatis(), ownerEmail: EMAIL_OWNER });
+  // saklar nyala: umur denyut dinilai dengan jam SERVER saat denyut itu terlihat berubah (bukan `pada` = jam perangkat penulis); mati: seperti sebelumnya
+  const s = _hemat ? _hemat.keadaan().kiniS : null;
+  return hbSiapNyala({ perangkat: cacheMentah('perangkat'), kiniMs: s !== null ? s : Date.now(), lihat: _hemat ? _hemat.lihatDenyut() : null, nisanSah: _nisanSah, statis: hitungStatis(), ownerEmail: EMAIL_OWNER });
 }
 // tombol owner = manual (menembus rem kuota); tiap baca penuh juga mendeteksi & menyentuh ubahan tanpa cap (Console)
 export function hematBacaPenuh(sebab) { if (!_hemat) return false; _hemat.bacaPenuh(null, sebab || 'tombol "Baca penuh sekarang"', true); beriTahu(); return true; }

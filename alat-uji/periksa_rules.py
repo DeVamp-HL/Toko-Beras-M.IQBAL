@@ -21,7 +21,8 @@ Membuktikan bentuk rules, bukan perilaku server (itu docs/uji-rules-v4.md: Playg
      tanpa get(). MODEL: fungsi rules itu APA ADANYA diterjemahkan ke Python lalu dinilai pada tulisan SAH dari kode (wajib boleh) dan tulisan TELAT
      (wajib ditolak). Model bukan server — bukti server = docs/uji-rules-v6.md (Playground ★).
  10. (v7, hemat baca — owner 7 Okt 2026) HANYA DUA TAMBAHAN atas firestore.rules.v6: (a) ulangKasirBercap() = affectedKeys().hasOnly(['capServer']) &&
-     capServer == request.time, dipakai HANYA sebagai suku `kasir() && ulangKasirBercap()` di update penjualan (stokBahanLiteran & piutangMutasi tetap
+     (capServer tidak ada || capServer == request.time) — tidak ada = HP kasir-v32 mengirim ulang nota yang sudah disentuh perangkat owner (tinjauan
+     7 Okt), dipakai HANYA sebagai suku `kasir() && ulangKasirBercap()` di update penjualan (stokBahanLiteran & piutangMutasi tetap
      tulis-ulang identik); (b) blok batuNisan: read & delete owner(), create/update owner() && capServer == request.time, tanpa staf/kasir/get().
      Selain itu ISI SAMA dengan firestore.rules.v6 (dibandingkan tanpa komentar & spasi) — v7 hanya menambah, aman terbit sebelum kode bercap.
 
@@ -299,7 +300,8 @@ def periksa_buku(rules, B):
 
 V6_TEKS = None   # kontrol: pengganti isi firestore.rules.v6
 BANDING_V6 = True   # kontrol lama (sebelum v7) mematikannya supaya pemeriksa khususnya sendiri yang wajib berbunyi
-UKB_WAJIB = "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && request.resource.data.capServer == request.time;"
+UKB_WAJIB = ("return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && (!request.resource.data.keys().hasAny(['capServer']) "
+             "|| request.resource.data.capServer == request.time);")
 NISAN_WAJIB = {'get': 'if owner()', 'list': 'if owner()', 'create': 'if owner() && request.resource.data.capServer == request.time',
                'update': 'if owner() && request.resource.data.capServer == request.time', 'delete': 'if owner()'}
 
@@ -309,7 +311,7 @@ def periksa_v7(rules):
     cacat = []; R = tanpa_komentar(rules); B = blok_rules(R); F = fungsi_rules(R)
     rata = lambda t: re.sub(r'\s+', ' ', t).strip()
     ukb = rata(F.get('ulangKasirBercap', ''))
-    if ukb != UKB_WAJIB: cacat.append('ulangKasirBercap() bukan "hanya capServer yang berbeda DAN capServer == request.time": ' + (ukb or '(tidak ada)'))
+    if ukb != UKB_WAJIB: cacat.append('ulangKasirBercap() bukan "hanya capServer yang berbeda DAN (capServer tidak ada ATAU == request.time)": ' + (ukb or '(tidak ada)'))
     for n, b in B.items():
         if 'ulangKasirBercap' not in b: continue
         if n != 'penjualan': cacat.append(n + ': ulangKasirBercap() dipakai di luar penjualan (koleksi kasir lain tetap tulis-ulang identik — hanya ditulis kasir.html yang pensiun)')
@@ -494,10 +496,14 @@ if __name__ == '__main__':
                                                                                 "    function pemegangBuku(d) { return get(/databases/$(database)/documents/aturanToko/tutupBuku).data.get('x', d.get('pemegang', {}).get('id', '')); }"),
         }
         # 10 · v7 (hemat baca, owner 7 Okt 2026): dua tambahan saja, persis bentuknya
-        UKB = "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && request.resource.data.capServer == request.time;"
+        UKB = ("return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer'])\n"
+               "        && (!request.resource.data.keys().hasAny(['capServer']) || request.resource.data.capServer == request.time);")
+        assert UKB in R, 'kontrol basi: bentuk ulangKasirBercap di firestore.rules'
         rusak.update({
             'v7: kirim ulang kasir@ boleh mengubah hargaTotal juga (hasOnly diperluas)': R.replace(UKB, UKB.replace("hasOnly(['capServer'])", "hasOnly(['capServer', 'hargaTotal'])")),
             'v7: ulangKasirBercap tanpa == request.time (cap nilai HP diterima)': R.replace(UKB, "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']);"),
+            'v7: kirim ulang HP kasir-v32 (cap dibuang) DITOLAK lagi — nota yang sudah masuk pindah ke "ditolak"': R.replace(UKB, "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && request.resource.data.capServer == request.time;"),
+            'v7: cap boleh dibuang walau isi lain berubah (kurung salah)': R.replace(UKB, "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer'])\n        && !request.resource.data.keys().hasAny(['capServer']) || request.resource.data.capServer == request.time;"),
             'v7: ulangKasirBercap dipasang juga di stokBahanLiteran': R.replace("allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());\n      allow delete: if owner() && tglLama('tanggal');\n    }\n\n    match /katalogHargaLiteran/{id} {",
                                                                             "allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());\n      allow delete: if owner() && tglLama('tanggal');\n    }\n\n    match /katalogHargaLiteran/{id} {"),
             'v7: suku kirim ulang bercap dicabut dari penjualan (kasir-v33 ditolak)': R.replace(" || (kasir() && ulangKasirBercap());", ";"),
@@ -531,5 +537,5 @@ if __name__ == '__main__':
     print('RULES v7 LULUS: %d blok koleksi · TANPA payung (tidak ada match rekursif / wildcard koleksi) · owner via email · jalur kasir@ utuh & dipersempit · '
           'tulis bukan-owner wajib uid · daftar peran = akses.js · kunci periode di %d koleksi bertanggal (= kunci-periode.js), tenggang minimal %d hari, '
           'satu get() dokumen kunci per operasi, bukan-owner tanpa get() kunci, pajak tidak dikunci (K6) · berita acara tutup buku hanya maju (model: %d tulisan '
-          'boleh, %d tulisan telat/mundur ditolak; tanpa get()) · v7 = v6 + kirim ulang kasir@ bercap (penjualan saja, hanya capServer = request.time) + '
+          'boleh, %d tulisan telat/mundur ditolak; tanpa get()) · v7 = v6 + kirim ulang kasir@ bercap (penjualan saja, hanya capServer: = request.time atau dibuang HP kasir-v32) + '
           'batu nisan owner (capServer = request.time), selebihnya sama dengan firestore.rules.v6' % (len(B), len(KOL), TMIN, nS, nT))

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <!-- CSP (3 Okt 2026, kasir-v32): script HANYA yang hash-nya tercantum (tanpa 'unsafe-inline' — tombol memakai data-aksi), koneksi HANYA Firestore &
      Auth Firebase (REST), service worker dari situs sendiri. Ubah isi script sebaris → python3 alat-uji/uji_csp.py --pasang (hash baru). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-bcYnGrPpZKR0P7ptjtbHBEWszFtwwOwqZcua8lpoVF4='; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-BcGBFTw+Mwv4n7CxGW/qRFOQ53Z7ym6w546Z8tT5UlI='; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Kasir Darurat — Toko Beras M.IQBAL</title>
 <meta name="description" content="Catat nominal uang masuk saat darurat. Cuma omzet — tanpa produk, tanpa stok.">
@@ -343,6 +343,7 @@ var DASAR = 'https://firestore.googleapis.com/v1/projects/' + PROYEK + '/databas
 // Hemat baca (owner 7 Okt 2026, kasir-v33): nota (koleksi penjualan) dikirim lewat :commit + transform capServer = REQUEST_TIME (jam SERVER saat
 // permintaan diterima) — perangkat owner yang hemat baca mendengar catatan bercap jam server, bukan jam HP. Isinya ditimpa utuh seperti PATCH dulu
 // (tanpa updateMask). Kirim ulang karcis yang sama: rules v7 ulangKasirBercap (hanya capServer yang berbeda). Denyut & koleksi lain tetap PATCH.
+// Nota yang :commit-nya DITOLAK tidak langsung dinyatakan ditolak: dikirim sekali lagi dengan CARA LAMA (kolomLama) — aman di rules v6 / v3 juga.
 var URL_COMMIT = 'https://firestore.googleapis.com/v1/projects/' + PROYEK + '/databases/(default)/documents:commit';
 var NAMA_DOK = 'projects/' + PROYEK + '/databases/(default)/documents/';
 var EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
@@ -597,9 +598,17 @@ function kirimAntrean(manual) {
     var a2 = ambilAntrean();
     if (a2.length === 0) { selesai(true); return; }
     var item = a2[0];
-    var fields = (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })();
     // kasir-v33 (hemat baca): nota = :commit bercap jam server (lihat URL_COMMIT); isi karcis & golonganJawaban sama dengan PATCH dulu
     var bercap = item.koleksi === 'penjualan';
+    kirimItem(item, bercap, false);
+  };
+  // caraLama = nota yang :commit-nya DITOLAK dikirim sekali lagi lewat PATCH TANPA cap, updateMask = kolom karcis (kolomLama). Sebabnya: kiriman :commit
+  // pertama yang jawabannya hilang (sinyal putus) SUDAH menaruh nota + capServer di server; kirim ulang :commit membawa capServer lain → di rules v6 / v3
+  // (sebelum v7 terbit, atau aturan darurat) DITOLAK, padahal notanya sudah masuk → pindah ke "ditolak" → disuruh catat ulang → omzet dobel. PATCH dengan
+  // updateMask membiarkan capServer yang sudah ada → isi sesudah = isi sebelum → lolos tulisUlangSama di v6, v3, v7. Nota yang memang ditolak (bulan terkunci)
+  // ditolak juga oleh cara lama → baru masuk daftar ditolak. Tidak bergantung urutan "rules v7 terbit dulu" (tinjauan 7 Okt).
+  var kirimItem = function (item, bercap, caraLama) {
+    var fields = (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })();
     denganAuth(bercap ? {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ writes: [{ update: { name: NAMA_DOK + item.koleksi + '/' + item.docId, fields: fields },
@@ -612,11 +621,12 @@ function kirimAntrean(manual) {
       if (!(opsi.headers && opsi.headers.Authorization)) {
         selesai(false); if (!sudahLogin()) tampilkanLayarLogin(true); return;
       }
-      return fetch(bercap ? URL_COMMIT + '?key=' + KUNCI_API : DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, opsi).then(function (r) {
+      return fetch(bercap ? URL_COMMIT + '?key=' + KUNCI_API : DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API + (caraLama ? kolomLama(fields) : ''), opsi).then(function (r) {
         var g = golonganJawaban(r.status, true);
         if (g === 'masuk') { cabutDariAntrean(item); kirimSatu(); return; }
         if (g === 'masuk-ulang') { lupakanKunciSesi(); selesai(false); tampilkanLayarLogin(true); return; }
         if (g === 'ditolak-aturan' || g === 'ditolak-lain') {
+          if (bercap) { kirimItem(item, false, true); return; }   // :commit ditolak → cara lama sekali (lihat kirimItem), baru dinyatakan ditolak
           return r.json().catch(function () { return null; }).then(function (isi) {
             if (!pindahKeDitolak(item, r.status, isi, g)) { selesai(false); return; }
             gambarPitaDitolak();
@@ -628,6 +638,12 @@ function kirimAntrean(manual) {
     }).catch(function () { selesai(false); });
   };
   kirimSatu();
+}
+// updateMask.fieldPaths untuk CARA LAMA (kirimItem): tepat kolom karcis yang dikirim; nama kolom di luar huruf/angka/garis bawah dikutip backtick.
+function kolomLama(fields) {
+  var q = '';
+  for (var k in fields) q += '&updateMask.fieldPaths=' + encodeURIComponent(/^[A-Za-z_][A-Za-z_0-9]*$/.test(k) ? k : '`' + k.replace(/\\/g, '\\\\').replace(/`/g, '\\`') + '`');
+  return q;
 }
 // 401: kunci sesi yang tersimpan sudah tidak dipercaya server. Kunci sesi dibuang supaya
 // kiriman berikutnya menyegarkannya dulu; kunci masuk (refreshToken) tetap disimpan.

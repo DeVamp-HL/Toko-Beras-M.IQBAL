@@ -11,8 +11,10 @@
 //   S = pendengar server `capServer > B` (B = tanda air koleksi itu di perangkat ini − 60 menit) — menarik ubahan ke simpanan;
 //   F = baca penuh (kueri SENDIRI limit 1.000.000 — tidak pernah "selesai" dari view lama) — harian per TOKO oleh perangkat owner pertama sesudah reset kuota
 //       (14.00 WIB s/d 31 Okt, 15.00 WIB mulai 1 Nov), ≤ 14 hari sekali per perangkat, dan tiap kali ragu (simpanan kosong, hitungan server beda, penulis tanpa cap);
-//   N = batu nisan `capServer > Bn` — kabar hapus untuk catatan lama yang tidak ikut jendela S.
-// Jam: semua batas memakai capServer (jam server), BUKAN jam perangkat — jam perangkat yang mundur tidak menggeser tanda air.
+//   N = batu nisan `capServer > Bn` — kabar hapus untuk catatan lama yang tidak ikut jendela S. Nisan hanya menyembunyikan versi yang LEBIH TUA darinya
+//       (catatan yang dibuat lagi sesudah dihapus — bercap lebih baru, atau terlihat masih ada di baca penuh SERVER — tampil).
+// Jam: semua batas memakai capServer (jam server), BUKAN jam perangkat — jam perangkat yang mundur tidak menggeser tanda air. Jam server perangkat ini HANYA
+// dari gema denyut sendiri (tinjauan 7 Okt): cap di data tidak pernah menggeser jam — satu catatan ber-cap tahun 2099 tidak menyeret tanda air ke sana.
 import { KOLEKSI } from './koleksi.js';
 import { kpNomorVersiKasir } from './kunci-periode.js';
 
@@ -37,6 +39,7 @@ export const HB_TOTAL_HARI = 14;
 export const HB_TAB_SEGAR_MS = 12000;
 export const HB_TAB_DETAK_MS = 4000;
 export const HB_KLAIM_BASI_MS = 1800000;           // klaim baca penuh harian yang belum selesai 30 menit boleh diambil perangkat lain
+export const HB_ULANG_MAKS = 5;                    // temuan pendeteksi yang gagal dikirim dicoba lagi tiap menit, paling banyak 5 kali
 export const HB_KOLEKSI_REST = ['penjualan', 'stokBahanLiteran', 'piutangMutasi'];   // koleksi yang (pernah) ditulis HP kasir lewat REST
 export const HB_KOLEKSI_NISAN = 'batuNisan';
 export const HB_ID_KLAIM = 'hematHarian';          // aturanToko/hematHarian = baca penuh harian per toko (+ gen "semua perangkat baca penuh")
@@ -150,15 +153,35 @@ export function hbDasarDipercaya(rk, c) {
 
 // ---------- penulis tanpa cap (dari denyut perangkatStatus — koleksi tetap) ----------
 /**
- * daftar = denyut semua perangkat. kiniMs = jam server (atau jam perangkat bila belum tahu). → { penuh: { koleksi: sebab }, peristiwa: [{ kunci, T, sebab }] }.
+ * Jam denyut p: jam SERVER saat perangkat ini melihat denyut itu BERUBAH (lihat = { id: ms }, hbLihatDenyut) — `pada` ditulis jam perangkat PENULIS, dan tab
+ * lama yang jamnya terlambat > 15 menit dulu dinilai "sudah lama" padahal baru saja menulis (tinjauan 7 Okt). Belum pernah terlihat berubah = `pada`.
+ */
+export function hbJamDenyut(p, lihat) { const s = lihat ? hbAngka(lihat[String(p && p.id)]) : null; return s !== null ? s : Date.parse((p && p.pada) || ''); }
+/**
+ * Catat jam server saat denyut tiap perangkat BERUBAH selagi perangkat ini mendengar. L = rekam { id: { pada, s } } (tahan lama), sesi = { id: pada } (sesi
+ * ini). Berubah selagi tidak didengar (beda dengan rekam, belum terlihat sesi ini) = jamnya tidak diketahui → dibuang (kembali ke `pada`). → { id: ms }.
+ */
+export function hbLihatDenyut(L, sesi, daftar, kiniS) {
+  (daftar || []).forEach((p) => {
+    if (!p || p.id === undefined) return; const id = String(p.id), pada = String(p.pada || ''); const lama = L[id];
+    if (sesi[id] !== undefined && sesi[id] !== pada && hbAngka(kiniS) !== null) L[id] = { pada, s: kiniS };
+    else if (lama && lama.pada !== pada) delete L[id];
+    sesi[id] = pada;
+  });
+  const out = {};
+  Object.keys(L).forEach((id) => { const x = L[id]; if (!x || !(hbAngka(kiniS) === null || kiniS - x.s <= (HB_KASIR_HARI + 1) * hbHari)) { delete L[id]; return; } out[id] = x.s; });
+  return out;
+}
+/**
+ * daftar = denyut semua perangkat. kiniMs = jam server (atau jam perangkat bila belum tahu). lihat = hbLihatDenyut. → { penuh: { koleksi: sebab }, peristiwa: [{ kunci, T, sebab }] }.
  * Kasir darurat < HB_VERSI_KASIR_CAP ≤ 14 hari → penjualan penuh. kasir.html (pensiun) ≤ 14 hari → tiga koleksi REST penuh. Tab /baru/ versi lama atau sistem
  * lama ≤ 15 menit → SEMUA penuh; lebih lama = peristiwa TAHAN LAMA (perangkat yang belum baca penuh sesudahnya wajib baca penuh sekali, lalu lepas).
  */
-export function hbGerbangPenulis(daftar, kiniMs, koleksi) {
+export function hbGerbangPenulis(daftar, kiniMs, koleksi, lihat) {
   const penuh = {}, peristiwa = [];
   const tandai = (ks, sebab) => ks.forEach((k) => { if (!penuh[k]) penuh[k] = sebab; });
   (daftar || []).forEach((p) => {
-    if (!p) return; const t = Date.parse(p.pada || ''); if (!isFinite(t)) return; const umur = kiniMs - t; if (umur > HB_KASIR_HARI * hbHari) return;
+    if (!p) return; const t = hbJamDenyut(p, lihat); if (!isFinite(t)) return; const umur = kiniMs - t; if (umur > HB_KASIR_HARI * hbHari) return;
     const app = String(p.aplikasi || ''); const nama = String(p.nama || p.id || 'perangkat tanpa nama');
     if (app === 'darurat') { if (kpNomorVersiKasir(p.versi) < kpNomorVersiKasir(HB_VERSI_KASIR_CAP)) tandai(['penjualan'], 'HP kasir ' + nama + ' masih ' + (p.versi || 'versi lama') + ' (nota tanpa cap jam server)'); return; }
     if (app === 'kasir') { tandai(HB_KOLEKSI_REST, 'kasir.html di ' + nama + ' masih berdenyut'); return; }
@@ -202,20 +225,38 @@ export function hbRencana(k, c) {
 }
 
 // ---------- batu nisan ----------
-/** dok = [{ id, cap, tunda, data }] (V mentah), nisan = { id: capMs }. Disembunyikan bila ada nisan, TIDAK tertunda, dan cap dokumen tidak lebih baru dari nisannya. */
-export function hbSaringNisan(dok, nisan) {
+/**
+ * Batu nisan t menyembunyikan versi dokumen d ({ cap, tunda }) HANYA bila versi itu lebih tua dari nisannya: tidak tertunda, cap tidak lebih baru dari nisan,
+ * dan tidak terbukti LAHIR ULANG (lahirT = nisan yang berlaku saat baca penuh SERVER perangkat ini melihat catatan itu masih ada — catatan tanpa cap yang
+ * dibuat lagi sesudah dihapus: HP kasir lama kirim ulang, tab lama, Console). Tanpa lahirT catatan seperti itu tersembunyi selamanya (tinjauan 7 Okt).
+ */
+export function hbTersembunyiNisan(d, t, lahirT) {
+  if (t === undefined || !d || d.tunda) return false;
+  if (typeof d.cap === 'number' && typeof t === 'number' && d.cap > t) return false;
+  if (typeof lahirT === 'number' && typeof t === 'number' && lahirT >= t) return false;
+  return true;
+}
+/** dok = [{ id, cap, tunda, data }] (V mentah), nisan = { id: capMs }, lahir = { id: nisan saat terlihat lahir ulang }. → { tampil, tersembunyi }. */
+export function hbSaringNisan(dok, nisan, lahir) {
   if (!nisan) return { tampil: dok, tersembunyi: 0 };
-  const tampil = []; let n = 0;
-  dok.forEach((d) => { const t = nisan[d.id]; if (t !== undefined && !d.tunda && !(typeof d.cap === 'number' && typeof t === 'number' && d.cap > t)) n += 1; else tampil.push(d); });
+  const tampil = []; let n = 0; const L = lahir || {};
+  dok.forEach((d) => { if (hbTersembunyiNisan(d, nisan[d.id], L[d.id])) n += 1; else tampil.push(d); });
   return { tampil, tersembunyi: n };
 }
+/** Snapshot SERVER baca penuh Z = { id: { cap, tunda } }: catatan yang ADA di server tapi akan disembunyikan nisannya = lahir ulang. → [id]. */
+export function hbLahirUlang(Z, nisan, lahir) {
+  if (!nisan) return []; const L = lahir || {};
+  return Object.keys(Z || {}).filter((id) => { const b = Z[id]; return !!b && !b.tunda && hbTersembunyiNisan(b, nisan[id], L[id]); });
+}
 /**
- * Batas pendengar nisan Bn = min(Wt koleksi, jam server) − 60 menit. Wt (baca penuh TERAKHIR), BUKAN B delta: catatan yang dihapus sebelum baca penuh terakhir
+ * Batas pendengar nisan Bn = min(jam baca penuh terakhir tiap koleksi (totalPada), jam server) − 60 menit. Catatan yang dihapus sebelum baca penuh terakhir
  * sudah dibuang dari simpanan oleh baca penuh itu; yang dihapus sesudahnya masih mentah di simpanan dan hanya disembunyikan nisan — nisan itu wajib ikut
- * jendela N walau B delta-nya sudah maju lewat Wd. Koleksi tanpa Wt sedang dibaca penuh (yang dihapus sebelum selesai ikut dibuang). TIDAK PERNAH 0. null = tunggu.
+ * jendela N. BUKAN Wt (cap tertinggi di data): koleksi yang jarang ditulis menahan Wt di tulisan terakhirnya berbulan-bulan, dan tiap buka semua nisan
+ * sejak itu dibaca ulang (tinjauan 7 Okt). totalPada paling tua ±14 hari (baca penuh berkala). Koleksi tanpa totalPada sedang dibaca penuh (yang dihapus
+ * sebelum selesai ikut dibuang). TIDAK PERNAH 0. null = tunggu.
  */
-export function hbBatasNisan(daftarWt, kiniS) {
-  const c = (daftarWt || []).filter((x) => hbAngka(x) > 0).map((x) => x - HB_MARGIN_MS); if (hbAngka(kiniS) > 0) c.push(kiniS - HB_MARGIN_MS);
+export function hbBatasNisan(daftarTotal, kiniS) {
+  const c = (daftarTotal || []).filter((x) => hbAngka(x) > 0).map((x) => x - HB_MARGIN_MS); if (hbAngka(kiniS) > 0) c.push(kiniS - HB_MARGIN_MS);
   return c.length ? Math.min.apply(null, c) : null;
 }
 
@@ -326,9 +367,9 @@ export function hbKunciTab(penyimpan, jam, sesi) {
 }
 
 // ---------- daftar siap-nyala (owner menyalakan sesudah hijau 3 hari berturut-turut) ----------
-/** c = { perangkat (denyut), kiniMs, nisanSah, statis (catatan tanpa cap 7 hari di perangkat ini), ownerEmail }. → [{ id, teks, ok, ket }] */
+/** c = { perangkat (denyut), kiniMs, lihat (hbLihatDenyut, saat nyala), nisanSah, statis (catatan tanpa cap 7 hari di perangkat ini), ownerEmail }. → [{ id, teks, ok, ket }] */
 export function hbSiapNyala(c) {
-  const x = c || {}; const kini = x.kiniMs; const umur = (p) => kini - Date.parse(p.pada || '');
+  const x = c || {}; const kini = x.kiniMs; const umur = (p) => kini - hbJamDenyut(p, x.lihat);
   const P = (x.perangkat || []).filter((p) => p && isFinite(Date.parse(p.pada || '')));
   const lama = P.filter((p) => umur(p) <= 7 * hbHari && (String(p.aplikasi || '') !== 'baru' ? ['darurat', 'kasir'].indexOf(String(p.aplikasi || '')) < 0 : !/^baru-c\d+$/.test(String(p.versi || ''))));
   const kasir = P.filter((p) => umur(p) <= HB_KASIR_HARI * hbHari && (String(p.aplikasi) === 'kasir' || (String(p.aplikasi) === 'darurat' && kpNomorVersiKasir(p.versi) < kpNomorVersiKasir(HB_VERSI_KASIR_CAP))));
@@ -348,30 +389,37 @@ export function hbSiapNyala(c) {
 // SESI HEMAT — satu per pemasangan pendengar owner (saklar nyala). o = {
 //   koleksi: [nama koleksi hemat], R: rekam (hbBacaRekam), simpan(), jam() → ms perangkat, jadwal(fn, ms) → h, batal(h), idPerangkat, namaPerangkat, online,
 //   milikTab() → bool, hapusTunda(k) → n,
-//   sdk: { cache(k, cb, galat), delta(k, B, cb, galat), penuh(k, cb, galat), nisan(B, cb, galat) → lepas;  hitung(k) → Promise<n>;  klaim(dok), sentuh(k, ids),
-//          tulisNisan(k, ids) → Promise }   — snapshot cb: { dariCache, dok: [{ id, tunda, capMentah, isi() }] }
+//   sdk: { cache(k, cb, galat), delta(k, B, cb, galat), penuh(k, cb, galat), nisan(B, cb, galat) → lepas;  hitung(k) → Promise<n>;  klaim(dok) → Promise;
+//          sentuh(k, ids, lihat(id) → isi mentah | null), tulisNisan(k, ids) → Promise<{ n, tunda: [id yang belum terkirim — diulang] }> }
+//          — snapshot cb: { dariCache, dok: [{ id, tunda, capMentah, isi() }] }
 //   keluar: { pasok(k, data[]), tunda(k, [{ id, data }]), siap(k), periksa(k, terperiksa), berubah(), mati(k) } }
 // =====================================================================================================================================================
 export function hbSesi(o) {
   const R = o.R; const K = {}; const jam = o.jam;
-  const G = { skew: null, online: o.online !== false, tersembunyiSejak: 0, tetap: { perangkat: [], acara: [], klaim: null, ada: false }, gerbang: { penuh: {}, peristiwa: [] },
-    bkAktif: false, sidikBk: '', nisan: {}, nLepas: null, nB: null, nTerkini: false, nGalat: '', capGlobal: null, hapusSesi: {}, minta: {}, temuan: {},
+  const G = { skew: null, gemaS: null, online: o.online !== false, tersembunyiSejak: 0, tetap: { perangkat: [], acara: [], klaim: null, ada: false }, gerbang: { penuh: {}, peristiwa: [] },
+    bkAktif: false, sidikBk: '', nisan: {}, nLepas: null, nB: null, nTerkini: false, nGalat: '', hapusSesi: {}, minta: {}, temuan: {}, lihatSesi: {}, ulangJalan: {}, temuanGagal: 0,
     hidup: hbPenjagaHidup(), hidupH: null, klaimJalan: false, klaimSaya: false, klaimMulai: 0, klaimKabar: '', genMinta: {}, jalurPenuh: '', berhenti: false, kabar: '' };
   const kiniS = () => (G.skew === null ? null : jam() + G.skew);
+  // jam "baca penuh terakhir" (totalPada → batas nisan Bn, umur 14 hari): kiniS, tapi paling jauh 10 menit sesudah jam server gema denyut TERAKHIR — jam
+  // perangkat yang melompat maju sesudah gema tidak menaruh totalPada (lalu Bn) di masa depan; tab yang lama tanpa gema mencatat jam lebih tua (aman)
+  const kiniSTercatat = () => { const s = kiniS(); return s === null || G.gemaS === null ? s : Math.min(s, G.gemaS + HB_JEPIT_MS); };
   const hariKini = () => (kiniS() === null ? '' : hbHariKuota(kiniS()));
   const rk = (k) => (R.k[k] = R.k[k] || {});
   const hariR = () => { const h = hariKini(); if (h && R.hari.H !== h) R.hari = { H: h, otomatis: {}, mulai: {}, baca: 0 }; return R.hari; };
   const simpan = () => { try { o.simpan(); } catch (e) { /* rekam gagal disimpan = baca penuh lagi nanti (biaya), bukan angka salah */ } };
   const tambahBaca = (n) => { hariR().baca = (R.hari.baca || 0) + Math.max(0, n || 0); };
   const tundaN = (k) => { const v = K[k].v; return Object.keys(v).filter((id) => v[id].tunda).length; };
-  const kecuali = (k) => (id) => { const v = K[k].v[id]; const t = (G.nisan[k] || {})[id]; return !!((G.hapusSesi[k] || {})[id]) || (!!v && t !== undefined && !v.tunda && !(typeof v.cap === 'number' && typeof t === 'number' && v.cap > t)); };
+  const lahirK = (k) => rk(k).lahir || {};
+  const kecuali = (k) => (id) => { const v = K[k].v[id]; return !!((G.hapusSesi[k] || {})[id]) || hbTersembunyiNisan(v, (G.nisan[k] || {})[id], lahirK(k)[id]); };
   const vLihat = (k) => (id) => { const v = K[k].v[id]; return v ? { cap: v.cap, tunda: v.tunda, sidik: () => hbSidik(v.data) } : null; };
-  const catatCap = (c) => { if (typeof c === 'number' && (G.capGlobal === null || c > G.capGlobal)) { G.capGlobal = c; if (G.skew !== null && jam() + G.skew < c) G.skew = c - jam(); } };
+  // isi MENTAH koleksi k di simpanan perangkat (V, SEBELUM saringan nisan) — penyentuh memeriksa kunci bulan dari sini, bukan dari memori yang sudah disaring
+  const lihatV = (k) => (id) => { const v = K[k] && K[k].v[id]; return v ? v.data : null; };
+  const lihatDenyut = () => hbLihatDenyut(R.lihat || (R.lihat = {}), G.lihatSesi, G.tetap.perangkat, kiniS());
 
   // ---- V: simpanan perangkat → memori (disaring nisan) ----
   function pasokK(k) {
     const st = K[k]; const daftar = Object.keys(st.v).map((id) => Object.assign({ id }, st.v[id]));
-    const S = hbSaringNisan(daftar, G.nisan[k]); st.tersembunyi = S.tersembunyi;
+    const S = hbSaringNisan(daftar, G.nisan[k], lahirK(k)); st.tersembunyi = S.tersembunyi;
     o.keluar.pasok(k, S.tampil.map((d) => d.data)); o.keluar.tunda(k, daftar.filter((d) => d.tunda).map((d) => ({ id: d.id, data: d.data })));
   }
   function vMasuk(k, snap) {
@@ -397,9 +445,11 @@ export function hbSesi(o) {
   function siapK(k) { const st = K[k]; if (st.siap) return; st.siap = true; o.keluar.siap(k); }
 
   // ---- rencana ----
+  // tutup buku berubah sejak baca penuh terakhir koleksi k di perangkat ini (ritual berjalan selagi perangkat ini tertutup)
+  const bkBeda = (k) => hbAngka(rk(k).totalPada) !== null && (rk(k).bk || '') !== G.sidikBk;
   function konteks(k) {
     const st = K[k]; const r = rk(k);
-    return { rk: r, dipercaya: st.dipercaya, sebabDasar: st.sebabDasar, gerbang: G.gerbang, bkAktif: G.bkAktif, bkBeda: hbAngka(r.totalPada) !== null && (r.bk || '') !== G.sidikBk,
+    return { rk: r, dipercaya: st.dipercaya, sebabDasar: st.sebabDasar, gerbang: G.gerbang, bkAktif: G.bkAktif, bkBeda: bkBeda(k),
       gen: hbGen(G.tetap.klaim, k), kiniS: kiniS(), harian: G.klaimSaya && !(st.fSelesai && st.fSelesaiPada >= G.klaimMulai), minta: G.minta, jalurPenuh: G.jalurPenuh };
   }
   function putuskanSemua() { if (G.berhenti || !G.tetap.ada || !o.koleksi.every((k) => K[k].vAda)) return; o.koleksi.forEach(putuskan); pastikanN(); }
@@ -438,7 +488,7 @@ export function hbSesi(o) {
     const kini = jam(); const prev = st.sPrev || {}; const kini2 = {}; let maks = null, baru = 0;
     (snap.dok || []).forEach((d) => { if (d.tunda) return; const c = hbCapMs(d.capMentah); if (typeof c !== 'number') return; kini2[d.id] = c; if (maks === null || c > maks) maks = c;
       if (prev[d.id] !== c) { baru += 1; G.hidup.catat(k, d.id, { cap: c }, kini); } });
-    st.sPrev = kini2; if (maks !== null) st.wdCalon = Math.max(st.wdCalon || 0, maks); catatCap(maks); tambahBaca(baru);
+    st.sPrev = kini2; if (maks !== null) st.wdCalon = Math.max(st.wdCalon || 0, maks); tambahBaca(baru);
     st.sTerkini = true;
     G.hidup.cocokkan(k, vLihat(k), kecuali(k)); jadwalHidup();
     cekHitung(k); nilaiPeriksa(k);
@@ -465,6 +515,12 @@ export function hbSesi(o) {
       peta[d.id] = { cap: c, sidik: hbSidik(d.isi()) }; if (typeof c === 'number' && (maks === null || c > maks)) maks = c; });
     if (snap.dariCache) { if (!st.fAwal) st.fAwal = peta; st.fTerkini = false; nilaiPeriksa(k); return; }
     if (!st.fAwal) { st.fAwal = {}; st.fAwalKosong = true; }
+    // isi MENTAH snapshot server ini untuk penyentuh (kunci bulan) — catatan lahir ulang yang tersembunyi nisan tidak ada di memori
+    const dokF = {}; (snap.dok || []).forEach((d) => { if (!d.tunda) dokF[d.id] = d; });
+    const lihatF = (id) => { const d = dokF[id]; if (!d) return lihatV(k)(id); const x = d.isi(); hbKupas(x); return x; };
+    // LAHIR ULANG (tinjauan 7 Okt): ada di snapshot SERVER padahal batu nisannya berlaku = dibuat lagi sesudah dihapus → bukti dicatat di rekam (nisan berhenti
+    // menyembunyikannya di perangkat ini) & catatannya disentuh (cap jam server baru > nisan) supaya perangkat lain ikut melihatnya
+    const lahir = catatLahir(k, peta);
     const kini = jam(); const prev = st.fPrev || st.fAwal || {}; let baru = 0;
     Object.keys(peta).forEach((id) => { const a = prev[id], b = peta[id]; if (b.tunda) return; if (a && !a.tunda && a.cap === b.cap && a.sidik === b.sidik) return;
       baru += 1; G.hidup.catat(k, id, typeof b.cap === 'number' ? { cap: b.cap } : { sidik: b.sidik }, kini); });
@@ -473,8 +529,9 @@ export function hbSesi(o) {
     // PENDETEKSI di SETIAP snapshot server F (baca penuh maupun dengar penuh), dibanding snapshot F sebelumnya (pertama: simpanan) — catatan yang berubah /
     // lahir / hilang TANPA cap disentuh atau diberi nisan, jadi perangkat lain menerimanya lewat delta. Hanya kalau dasar perangkat ini dipercaya (simpanan
     // kosong / belum terbaca penuh tidak membanjiri sentuhan). Tanpa ini, baca penuh perangkat mana pun "menelan" ubahan Console diam-diam.
-    if (st.dipercaya && !(st.fAwalKosong && !st.fPrev)) deteksi(k, prev, peta);
-    st.fPrev = peta; st.fN = n; st.fMaks = maks; st.fTerkini = true; catatCap(maks);
+    if (st.dipercaya && !(st.fAwalKosong && !st.fPrev)) deteksi(k, prev, peta, lahir, lihatF);
+    else if (lahir.length && !G.bkAktif) kirimTemuan(k, 's', lahir, lihatF);
+    st.fPrev = peta; st.fN = n; st.fMaks = maks; st.fTerkini = true;
     G.hidup.cocokkan(k, vLihat(k), kecuali(k)); jadwalHidup();
     if (!st.fSelesai) cekSelesaiF(k); else if (G.klaimSaya) cekKlaimSelesai();
     nilaiPeriksa(k);
@@ -496,7 +553,7 @@ export function hbSesi(o) {
   function selesaiF(k) {
     const st = K[k]; const s = kiniS(); if (s === null) { st.fTungguJam = true; return; }
     st.fTungguJam = false; const r = rk(k);
-    Object.assign(r, { Wt: hbJepit(st.fMaks, s), n: st.fN, totalPada: s, gen: hbGen(G.tetap.klaim, k), bk: G.sidikBk, cocokPada: s });
+    Object.assign(r, { Wt: hbJepit(st.fMaks, s), n: st.fN, totalPada: kiniSTercatat(), gen: hbGen(G.tetap.klaim, k), bk: G.sidikBk, cocokPada: s });
     const beres = Object.assign({}, r.gerbangBeres || {}); G.gerbang.peristiwa.forEach((p) => { beres[p.kunci] = s; });
     Object.keys(beres).forEach((x) => { if (!(s - beres[x] <= (HB_KASIR_HARI + 1) * hbHari)) delete beres[x]; }); r.gerbangBeres = beres;
     const H = hariR(); if (st.otomatis && st.fMode === 'total') H.otomatis[k] = (H.otomatis[k] || 0) + 1;
@@ -510,7 +567,7 @@ export function hbSesi(o) {
   // ---- N: batu nisan ----
   function pastikanN() {
     if (G.berhenti) return;
-    const Bn = hbBatasNisan(o.koleksi.map((k) => rk(k).Wt), kiniS()); if (Bn === null) return;
+    const Bn = hbBatasNisan(o.koleksi.map((k) => rk(k).totalPada), kiniS()); if (Bn === null) return;
     if (G.nLepas && G.nB !== null && Bn >= G.nB) return;
     if (G.nLepas) { try { G.nLepas(); } catch (e) { /* abaikan */ } }
     G.nB = Bn; G.nTerkini = false; tambahBaca(1);
@@ -520,9 +577,19 @@ export function hbSesi(o) {
     if (G.berhenti) return; G.nGalat = '';
     const baru = {}; let n = 0;
     (snap.dok || []).forEach((d) => { if (d.tunda) return; const x = d.isi(); const c = hbCapMs(d.capMentah); if (typeof c !== 'number' || !x || !x.koleksi || x.idDok === undefined) return;
-      const m = baru[x.koleksi] || (baru[x.koleksi] = {}); const id = String(x.idDok); if (!(m[id] >= c)) m[id] = c; n += 1; catatCap(c); });
+      const m = baru[x.koleksi] || (baru[x.koleksi] = {}); const id = String(x.idDok); if (!(m[id] >= c)) m[id] = c; n += 1; });
     const kena = o.koleksi.filter((k) => JSON.stringify(baru[k] || {}) !== JSON.stringify(G.nisan[k] || {}));
     G.nisan = baru; if (!snap.dariCache) { G.nTerkini = true; tambahBaca(kena.length ? n : 0); } else G.nTerkini = false;
+    if (!snap.dariCache) {
+      // bukti lahir ulang yang nisannya sudah keluar jendela N, atau berganti nisan LEBIH BARU (dihapus lagi), dibuang
+      let ubah = false;
+      o.koleksi.forEach((k) => { const L = rk(k).lahir; if (!L) return; Object.keys(L).forEach((id) => { const t = (baru[k] || {})[id]; if (t === undefined || t > L[id]) { delete L[id]; ubah = true; } }); });
+      if (ubah) simpan();
+      // nisan berubah: catatan yang kini disembunyikannya mungkin LAHIR ULANG (baca penuh sebelumnya melihatnya sebelum nisan ini tiba) → hitungan server
+      // dinilai lagi (beda → baca penuh → pendeteksi); koleksi yang F-nya menempel diperiksa dari snapshot server F terakhir SESUDAH semua pendengar
+      // peristiwa yang sama dikabari (jadwal 0 — kalau tidak, hapus yang tiba lewat N lebih dulu dari F terbaca "lahir ulang")
+      kena.forEach((k) => { K[k].cocokPada = 0; if (K[k].fLepas && K[k].fTerkini) o.jadwal(() => cekLahirF(k), 0); });
+    }
     kena.forEach(pasokK); o.koleksi.forEach((k) => { G.hidup.cocokkan(k, vLihat(k), kecuali(k)); cekHitung(k); nilaiPeriksa(k); });
   }
 
@@ -549,14 +616,47 @@ export function hbSesi(o) {
   }
 
   // ---- pendeteksi tanpa cap (tiap snapshot server F) ----
-  function deteksi(k, sebelum, sekarang) {
-    const t = hbPeriksaTanpaCap(sebelum, sekarang, G.nisan[k], true, G.hapusSesi[k]);
-    const r = hbRencanaSentuh(t, G.bkAktif); const tm = G.temuan[k] || (G.temuan[k] = { ubah: 0, baru: 0, hilang: 0 });
+  function deteksi(k, sebelum, sekarang, lahir, lihat) {
+    const t = hbPeriksaTanpaCap(sebelum, sekarang, G.nisan[k], true, G.hapusSesi[k]); const tm = G.temuan[k] || (G.temuan[k] = { ubah: 0, baru: 0, hilang: 0 });
+    // koleksi yang DENGAR PENUH karena penulis tanpa cap (HP kasir < kasir-v33, kasir.html, tab /baru/ lama): semua perangkat owner melihat gerbang yang sama
+    // dan mendengarnya penuh — catatan yang LAHIR tanpa cap tidak disentuh (tulisan ganda + satu baris jejak per nota per perangkat tanpa guna, dan nota HP
+    // lama yang dikirim ulang sesudah disentuh dulu ditolak rules). Perangkat yang absen selama gerbang menangkapnya lewat hitungan server / baca penuh ≤ 14 hari.
+    if (G.gerbang.penuh[k] && t.baru.length) { tm.lewat = (tm.lewat || 0) + t.baru.length; t.baru = []; }
+    // tutup buku berubah sejak baca penuh terakhir perangkat ini: catatan yang hilang dari server = DIARSIPKAN (arsip tanpa batu nisan), bukan dihapus tanpa
+    // kabar — tanpa ini tiap perangkat yang tertutup selama ritual menulis ratusan batu nisan (atau gen baru → semua perangkat baca penuh) tiap 2 Jan
+    if (bkBeda(k) && t.hilang.length) { tm.arsip = (tm.arsip || 0) + t.hilang.length; t.hilang = []; }
+    const r = hbRencanaSentuh(t, G.bkAktif);
     tm.ubah += t.ubah.length; tm.baru += t.baru.length; tm.hilang += t.hilang.length;
     if (r.gen) G.genMinta[k] = true;
-    if (r.sentuh.length) o.sdk.sentuh(k, r.sentuh).catch(() => {});
-    if (r.nisan.length) o.sdk.tulisNisan(k, r.nisan).catch(() => {});
+    // catatan LAHIR ULANG selalu disentuh (kecuali tutup buku berjalan) — juga saat > 400 temuan (gen tidak menolong: nisan tetap menyembunyikannya)
+    const sentuh = G.bkAktif ? r.sentuh : r.sentuh.concat((lahir || []).filter((id) => r.sentuh.indexOf(id) < 0));
+    kirimTemuan(k, 's', sentuh, lihat); kirimTemuan(k, 'n', r.nisan);
     if (r.gen && !G.klaimSaya) cekGen();
+  }
+  /** Catatan di snapshot server Z yang tersembunyi nisan padahal ada di server = lahir ulang → bukti dicatat di rekam (tahan muat ulang), memori dipasok ulang. */
+  function catatLahir(k, Z) {
+    const ids = hbLahirUlang(Z, G.nisan[k], lahirK(k)); if (!ids.length) return ids;
+    const L = rk(k).lahir || (rk(k).lahir = {}); ids.forEach((id) => { L[id] = G.nisan[k][id]; }); simpan(); pasokK(k); return ids;
+  }
+  function cekLahirF(k) { const st = K[k]; if (G.berhenti || !st.fLepas || !st.fTerkini || !st.fPrev) return; const ids = catatLahir(k, st.fPrev); if (ids.length && !G.bkAktif) kirimTemuan(k, 's', ids); }
+  // TEMUAN dikirim lewat antrean di rekam: yang GAGAL (ditolak server, tab ini tidak boleh menulis) dicoba lagi tiap menit ≤ HB_ULANG_MAKS kali, juga sesudah
+  // muat ulang — dulu dibuang diam-diam, padahal snapshot F berikutnya sudah tidak melihat bedanya lagi (tinjauan 7 Okt). jenis 's' = sentuh, 'n' = nisan.
+  function kirimTemuan(k, jenis, ids, lihat) {
+    if (!ids || !ids.length) return;
+    const U = R.ulang || (R.ulang = {}); const q = U[k] || (U[k] = {}); const m = q[jenis] || (q[jenis] = {});
+    ids.forEach((id) => { if (m[id] === undefined) m[id] = 0; }); simpan();
+    kirimUlang(k, jenis, lihat);
+  }
+  function kirimUlang(k, jenis, lihat) {
+    const kunci = k + '|' + jenis; if (G.ulangJalan[kunci] || G.berhenti || !K[k]) return;
+    const m = ((R.ulang || {})[k] || {})[jenis]; const ids = m ? Object.keys(m) : []; if (!ids.length) return;
+    ids.forEach((id) => { m[id] += 1; }); G.ulangJalan[kunci] = true;
+    const janji = jenis === 's' ? o.sdk.sentuh(k, ids, lihat || lihatV(k)) : o.sdk.tulisNisan(k, ids);
+    Promise.resolve(janji).then((h) => h, () => ({ tunda: ids })).then((h) => {
+      G.ulangJalan[kunci] = false; const tunda = (h && h.tunda) || [];
+      ids.forEach((id) => { if (tunda.indexOf(id) < 0) delete m[id]; else if (m[id] >= HB_ULANG_MAKS) { delete m[id]; G.temuanGagal += 1; } });
+      simpan(); o.keluar.berubah();
+    });
   }
   // gen baru dari perangkat INI: koleksi yang baru saja dibaca penuh di sini tidak perlu dibaca penuh lagi
   function samakanGen(gen) { Object.keys(G.genMinta).forEach((k) => { if (K[k] && (K[k].fSelesai || (K[k].mode === 'penuh' && K[k].fTerkini))) rk(k).gen = hbGen({ gen }, k); }); simpan(); }
@@ -628,7 +728,8 @@ export function hbSesi(o) {
     /** Masukan dari pendengar koleksi TETAP: { perangkat: denyut[], acara: tutupBukuAcara[], klaim: aturanToko/hematHarian | null }. */
     setelTetap(t) {
       const lamaBk = G.sidikBk; Object.assign(G.tetap, t || {}); G.tetap.ada = true;
-      G.gerbang = hbGerbangPenulis(G.tetap.perangkat, kiniS() !== null ? kiniS() : jam(), o.koleksi);
+      const lihatLama = JSON.stringify(R.lihat || {}); const lihat = lihatDenyut(); if (JSON.stringify(R.lihat) !== lihatLama) simpan();
+      G.gerbang = hbGerbangPenulis(G.tetap.perangkat, kiniS() !== null ? kiniS() : jam(), o.koleksi, lihat);
       G.bkAktif = hbBkAktif(G.tetap.acara); G.sidikBk = hbSidikBk(G.tetap.acara);
       if (lamaBk && G.sidikBk !== lamaBk) o.koleksi.forEach((k) => { const st = K[k]; if (st.mode === 'penuh' && st.fTerkini && hbAngka(rk(k).totalPada) !== null) rk(k).bk = G.sidikBk; });
       putuskanSemua(); nilaiKlaim(); o.keluar.berubah();
@@ -636,10 +737,10 @@ export function hbSesi(o) {
     /** Gema jam server: capServer denyut perangkat ini yang baru diakui server, tiba saat jam perangkat = perangkatMs. */
     gemaServer(serverMs, perangkatMs) {
       if (!(hbAngka(serverMs) > 0) || !(hbAngka(perangkatMs) > 0)) return;
-      G.skew = serverMs - perangkatMs; if (G.capGlobal !== null && jam() + G.skew < G.capGlobal) G.skew = G.capGlobal - jam();
+      G.skew = serverMs - perangkatMs; G.gemaS = serverMs;   // HANYA dari gema denyut sendiri — cap di data (bisa tahun 2099) tidak pernah menggeser jam server
       R.skew = G.skew; simpan();
       o.koleksi.forEach((k) => { if (K[k].fTungguJam) selesaiF(k); });
-      G.gerbang = hbGerbangPenulis(G.tetap.perangkat, kiniS(), o.koleksi);
+      G.gerbang = hbGerbangPenulis(G.tetap.perangkat, kiniS(), o.koleksi, lihatDenyut());
       putuskanSemua(); nilaiKlaim();
     },
     online(ya) {
@@ -659,6 +760,7 @@ export function hbSesi(o) {
       o.koleksi.forEach((k) => { const st = K[k]; if (!st.sLepas || !st.sTerkini) return; const r = hbBatasDelta(rk(k), kiniS(), hariKini());
         if (r.B !== null && r.baru && r.B > st.sB) { Object.assign(rk(k), { B: r.B, hariB: r.hariB, nB: r.nB }); simpan(); try { st.sLepas(); } catch (e) { /* abaikan */ } st.sLepas = null; st.sUlang = 0; pastikanS(k); } });
       nilaiKlaim(); cekHidup();
+      Object.keys(R.ulang || {}).forEach((k) => { if (K[k]) ['s', 'n'].forEach((j) => kirimUlang(k, j)); });
     },
     /** Tombol "Baca penuh sekarang" / "Saya baru mengubah lewat Console" (manual = menembus rem). Tiap baca penuh juga MENDETEKSI ubahan tanpa cap & menyentuhnya. */
     bacaPenuh(daftar, sebab, manual) { minta(daftar && daftar.length ? daftar : null, sebab || 'tombol baca penuh', manual !== false); },
@@ -701,10 +803,15 @@ export function hbSesi(o) {
       const s = kiniS();
       return { nyala: true, jamServer: s !== null, kiniS: s, hari: s !== null ? hbHariKuota(s) : '', jamReset: s !== null ? hbJamResetWib(s) : '', koleksi: daftar,
         belum: daftar.filter((x) => !x.terperiksa).map((x) => x.k), vMati: daftar.some((x) => x.vMati), nisanTerkini: G.nTerkini, nisanGalat: G.nGalat,
-        totalSesiIni: daftar.every((x) => x.selesaiSesi), klaim: G.tetap.klaim, klaimSaya: G.klaimSaya, klaimKabar: G.klaimKabar, temuan: G.temuan, jalurPenuh: G.jalurPenuh, kabar: G.kabar,
+        totalSesiIni: daftar.every((x) => x.selesaiSesi), klaim: G.tetap.klaim, klaimSaya: G.klaimSaya, klaimKabar: G.klaimKabar, temuan: G.temuan, jalurPenuh: G.jalurPenuh,
+        kabar: [G.kabar, G.temuanGagal ? G.temuanGagal + ' catatan berubah tanpa cap gagal ditandai untuk perangkat lain — tekan "Saya baru mengubah data lewat Console"' : ''].filter((x) => !!x).join(' · '),
         baca: { perangkat: R.hari.baca || 0, toko: hbPerkiraanToko(G.tetap.perangkat, R.hari.H, o.idPerangkat, R.hari.baca) } };
     },
     ringkasDenyut() { const H = hariR(); return { hari: H.H || '', baca: Math.round(H.baca || 0) }; },
+    /** cap per id di simpanan perangkat (V) koleksi k — daftar siap-nyala "statis" saat nyala (peta samping _cap hanya diisi pendengar penuh). */
+    capPeta(k) { const v = K[k] ? K[k].v : {}; const o2 = {}; Object.keys(v).forEach((id) => { o2[id] = v[id].cap; }); return o2; },
+    /** jam server saat denyut tiap perangkat terlihat berubah (umur denyut daftar siap-nyala). */
+    lihatDenyut() { return Object.assign({}, lihatDenyut()); },
     berhenti() {
       G.berhenti = true;
       o.koleksi.forEach((k) => { const st = K[k]; if (!st) return; [st.vLepas, st.sLepas, st.fLepas].forEach((f) => { if (f) { try { f(); } catch (e) { /* abaikan */ } } }); st.vLepas = st.sLepas = st.fLepas = null; });

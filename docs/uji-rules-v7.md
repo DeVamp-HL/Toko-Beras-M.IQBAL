@@ -7,10 +7,14 @@ Rules = TUGAS OWNER. Kasus v6 tetap di `docs/uji-rules-v6.md`.
 
 ## Yang berubah v6 → v7 (HANYA menambah)
 
-1. Fungsi `ulangKasirBercap()` = isi baru sama persis dengan isi lama kecuali `capServer`, dan `capServer == request.time`. Dipakai SATU tempat: suku
-   `(kasir() && ulangKasirBercap())` di `allow update` **penjualan**. Kasir darurat `kasir-v33` mengirim nota lewat REST `:commit` dengan transform
-   `capServer = REQUEST_TIME`; kalau jawaban server hilang (sinyal putus) lalu karcis dikirim ulang, isinya sama tetapi `capServer` berbeda — di v6 itu
-   DITOLAK (`tulisUlangSama`) dan karcis pindah ke daftar "ditolak" padahal sudah masuk.
+1. Fungsi `ulangKasirBercap()` = isi baru sama persis dengan isi lama kecuali `capServer`, dan `capServer` itu **jam server permintaan ini ATAU tidak ada
+   sama sekali**. Dipakai SATU tempat: suku `(kasir() && ulangKasirBercap())` di `allow update` **penjualan**.
+   - Kasir darurat `kasir-v33` mengirim nota lewat REST `:commit` dengan transform `capServer = REQUEST_TIME`; kalau jawaban server hilang (sinyal putus)
+     lalu karcis dikirim ulang, isinya sama tetapi `capServer` berbeda — di v6 `tulisUlangSama` menolaknya.
+   - (tinjauan 7 Okt) HP yang MASIH `kasir-v32` mengirim ulang nota lewat PATCH utuh tanpa `capServer`. Kalau nota itu sudah disentuh perangkat owner yang
+     hemat baca (dapat `capServer`), kiriman ulangnya membuang `capServer` — draf v7 pertama menolaknya, nota yang SUDAH masuk pindah ke "ditolak" di HP dan
+     penjaga disuruh mencatat ulang (omzet dobel). Kini `capServer` yang dibuang juga diterima. (Kode `/baru/` juga tidak lagi menyentuh nota baru tanpa cap
+     selama HP kasir lama masih berdenyut.)
 2. Blok `batuNisan/{id}`: read & delete owner; create/update owner **dan** `capServer == request.time`. `/baru/` menulis satu batu nisan per catatan
    koleksi hemat yang dihapus, di writeBatch yang sama dengan hapusnya. Tanpa blok ini rules v6 menolak SELURUH batch (hapus tidak jalan).
 
@@ -18,8 +22,12 @@ Tidak berubah: create penjualan kasir@ (`capServer` boleh ada atau tidak — HP 
 tulis-ulang identik), semua aturan staf, tutupBukuAcara, perangkatStatus, aturanToko. Tanpa `get()` baru: access call tidak bertambah.
 
 **Kode aman sebelum v7 terbit**: `/baru/` baru menulis batu nisan sesudah owner TERBUKTI bisa membaca `batuNisan` (aturan v7) di perangkat itu — sebelum
-itu hapus berjalan seperti dulu. Yang belum aman: **kasir darurat kasir-v33** (kirim ulang karcis yang sama ditolak v6). Karena itu v7 diterbitkan
-**sebelum** cabang `perbaikan/hemat-baca` digabung.
+itu hapus berjalan seperti dulu. **Kasir darurat kasir-v33** (tinjauan 7 Okt): nota yang `:commit`-nya DITOLAK dikirim sekali lagi dengan CARA LAMA —
+PATCH tanpa cap, `updateMask` = kolom karcis, jadi `capServer` yang sudah ada di server dibiarkan dan isi sesudah = isi sebelum → lolos `tulisUlangSama`
+di v6, v3 (aturan darurat), dan v7. Nota baru dinyatakan "ditolak" hanya kalau cara lama juga ditolak (bulan terkunci). Diuji jsc dengan fungsi asli
+`kirimAntrean` + server palsu bermodel rules (`alat-uji/uji_hemat_baca.py` bagian E) dan di peramban CI (`uji_antrean_kasir.py`, skenario kirim ulang v6).
+Walau begitu urutannya TETAP: **v7 diterbitkan dulu, baru cabang `perbaikan/hemat-baca` digabung** (owner bilang "merge") — cara lama hanya jaring
+pengaman, jalannya yang dimaksud adalah v7.
 
 **Mundur**: JANGAN tempel `firestore.rules.v6` selama kode bercap berjalan (hapus /baru/ ber-batu nisan & kirim ulang karcis kasir-v33 ditolak). Mundur
 hemat baca = saklar (Menu › Sistem › Perangkat › Hemat baca, atau `/baru/?hemat=mati`). v6 hanya boleh ditempel balik sesudah kode bercap dibalik.
@@ -28,7 +36,8 @@ hemat baca = saklar (Menu › Sistem › Perangkat › Hemat baca, atau `/baru/?
 
 1. Cek Console › Firestore › **Usage** dulu (Playground ikut kuota baca Spark; kerjakan sesudah 14.00 WIB bila kuota hari itu menipis).
 2. **Tempel `firestore.rules`** dari cabang ke editor — **belum Publish**: `git show perbaikan/hemat-baca:firestore.rules | LANG=en_US.UTF-8 pbcopy`.
-   Verifikasi: kepala berbunyi `ATURAN FIRESTORE v7`, ada fungsi `ulangKasirBercap`, ada blok `match /batuNisan/{id}` dengan tiga baris `allow`.
+   Verifikasi: kepala berbunyi `ATURAN FIRESTORE v7`, ada fungsi `ulangKasirBercap` yang memuat `keys().hasAny(['capServer'])` (versi sesudah tinjauan
+   7 Okt — draf pertama tanpa baris itu JANGAN diterbitkan), ada blok `match /batuNisan/{id}` dengan tiga baris `allow`.
 3. Jalankan **A** (wajib LOLOS), **B** (wajib DITOLAK), **C** (regresi = suite ★ `docs/uji-rules-v6.md` bagian A–C, diulang dengan v7 di editor).
 4. **Publish** (owner). Claude membaca Console › Rules lewat Chrome owner: kepala versi aktif = `v7`.
 5. Sesudah terbit: satu nota dari kasir darurat yang MASIH v32 masuk (create tanpa cap tetap boleh) → lihat di Jual `/baru/`.
@@ -40,7 +49,8 @@ hemat baca = saklar (Menu › Sistem › Perangkat › Hemat baca, atau `/baru/?
 atau `"owner@tokoberasmiqbal.web.app"` (kasus owner), huruf kecil. Untuk staf: email lain + dokumen `aksesAkun/<uid>` contoh seperti di uji v6.
 
 Dokumen uji (tab Data, dibuat owner sebagai admin; **hapus lagi sesudahnya**): `penjualan/uji-v7-nota` = `{ id: "uji-v7-nota", tanggal: <hari ini
-YYYY-MM-DD>, hargaTotal: 1000, namaProduk: "Contoh" }` (tanpa capServer).
+YYYY-MM-DD>, hargaTotal: 1000, namaProduk: "Contoh" }` (tanpa capServer), dan `penjualan/uji-v7-bercap` = isi yang sama dengan `id: "uji-v7-bercap"` +
+`capServer: <timestamp apa saja>` (nota yang sudah disentuh perangkat owner).
 
 > **Batas Playground**: `request.time` di Playground = jam simulasi; Playground tidak bisa mengisi kolom dengan transform server. Kasus yang menuntut
 > `capServer == request.time` hanya bisa dibuktikan DITOLAK (nilai ketikan ≠ jam server). Bukti "diterima" = langkah 5–6 (nota sungguhan) dan, untuk batu
@@ -54,6 +64,7 @@ YYYY-MM-DD>, hargaTotal: 1000, namaProduk: "Contoh" }` (tanpa capServer).
 | ★A2 | kasir@ | update `penjualan/uji-v7-nota` | isi SAMA PERSIS dengan dokumen uji | kirim ulang identik (v2) tetap boleh |
 | ★A3 | owner@ | get `batuNisan/uji-v7` | — | owner membaca batu nisan (pendengar N) |
 | ★A4 | owner@ | delete `batuNisan/uji-v7` | — | owner boleh membereskan |
+| ★A5 | kasir@ | update `penjualan/uji-v7-bercap` | isi dokumen uji TANPA `capServer` (kolom lain sama persis) | HP kasir-v32 kirim ulang nota yang sudah disentuh (tinjauan 7 Okt) |
 
 ## B · wajib DITOLAK
 
@@ -66,6 +77,7 @@ YYYY-MM-DD>, hargaTotal: 1000, namaProduk: "Contoh" }` (tanpa capServer).
 | ★B5 | staf aktif | create `batuNisan/uji-v7` | `{ capServer: <timestamp> }` | staf tidak menulis batu nisan |
 | ★B6 | owner@ | create `batuNisan/uji-v7` | `{ id: "penjualan|x", koleksi: "penjualan", idDok: "x", capServer: <timestamp ketikan> }` | cap nisan wajib jam server |
 | ★B7 | kasir@ | get `batuNisan/uji-v7` | — | kasir@ tidak membaca batu nisan |
+| ★B8 | kasir@ | update `penjualan/uji-v7-bercap` | isi dokumen uji TANPA `capServer` + `hargaTotal: 2000` | membuang cap tidak membuka jalan mengubah isi |
 
 ## C · regresi
 
@@ -74,4 +86,4 @@ statis: `periksa_rules.py` menuntut isi selain dua tambahan sama dengan `firesto
 
 ## Hasil Playground
 
-(diisi saat owner menjalankannya: tanggal, ★A1–A4 lolos, ★B1–B7 ditolak, regresi v6 sama, Publish jam berapa, kepala versi aktif dibaca Claude)
+(diisi saat owner menjalankannya: tanggal, ★A1–A5 lolos, ★B1–B8 ditolak, regresi v6 sama, Publish jam berapa, kepala versi aktif dibaca Claude)

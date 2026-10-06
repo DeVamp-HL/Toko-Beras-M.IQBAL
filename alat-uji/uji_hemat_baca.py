@@ -12,10 +12,16 @@ uji_hemat_baca.py — HEMAT BACA tahap 1–2 (owner 7 Okt 2026, siap 2027; spesi
       jendela delta), Console tanpa cap → pendeteksi harian menyentuh, nota HP kasir lama (gerbang penulis → dengar penuh; tanpa gerbang → hitungan beda →
       baca penuh), jam perangkat mundur 3 hari & maju 2 hari, perangkat lama tutup > 14 hari, jadwal baca penuh harian per toko (Okt & Nov), tab yang turun
       dari primer (pendengar simpanan mati), rem kuota.
+      T (tinjauan 7 Okt): gerbang HP kasir lama tidak menyentuh nota baru tanpa cap; cap 2099 tidak menggeser jam server perangkat; catatan LAHIR ULANG tanpa
+      cap sesudah nisannya tampil lagi (juga bulan terkunci, tahan muat ulang, dihapus lagi → sembunyi); temuan gagal dikirim diulang; Bn = jam baca penuh
+      terakhir; arsip tutup buku bukan "hilang"; umur denyut = jam server saat terlihat berubah.
   C · firebase.js DIJALANKAN di jsc dengan SDK palsu: saklar MATI = pendengar persis sebelum 7 Okt (satu pendengar penuh per koleksi + katalog, tanpa
       source 'cache' / where capServer / limit 1.000.000), capServer dikupas sebelum memori; saklar NYALA = koleksi hemat lewat pendengar simpanan, koleksi
       tetap penuh; tulisBerkas: cap HANYA koleksi hemat (bukan berita acara tutup buku, pesanan, setelan, katalog, jejak), salinan antre tanpa sentinel,
       batu nisan di batch yang sama HANYA sesudah aturan v7 terbukti, uang-kritis ditolak bila belum segar, tab yang kalah tidak menulis; denyut owner bercap.
+  C (tinjauan 7 Okt): penyentuh memakai isi MENTAH sesi hemat (lahir ulang), tab tanpa hak tulis mengembalikan temuan sebagai "tunda", baris statis siap-nyala.
+  E · KASIR DARURAT di jsc: kirimAntrean ASLI (dipotong dari halaman) + Firestore REST palsu bermodel rules v3/v6/v7 — jawaban :commit hilang lalu kirim
+      ulang: v6/v3 → cara lama PATCH updateMask MASUK (bukan "ditolak"), v7 → :commit diterima; bulan terkunci → kedua cara ditolak → "ditolak".
   D · STATIS: SETIAP jalan tulis SDK di baru/js membawa capServer atau tercatat sengaja tanpa cap (koleksi tetap / jejak / katalog / arsip) beserta alasannya;
       adaptor SDK (simpanan tanpa GC, delta capServer, baca penuh kueri sendiri, nisan); kasir darurat: nota lewat :commit + REQUEST_TIME tanpa updateMask,
       denyut tetap PATCH; rantai versi kasir-v33.
@@ -88,7 +94,7 @@ ok('batas delta: TETAP sehari (target S yang sama dipakai ulang); digeser maju b
 var b5 = hbBatasDelta(rk2, T0 + 20 * JM, '2026-10-07');
 ok('batas delta: hari kuota baru → dihitung ulang dari tanda air; tanpa tanda air → null (wajib baca penuh); jam server belum diketahui → B lama dipakai (aman)',
   b5.B === T0 - 30 * MNT && b5.hariB === '2026-10-07' && hbBatasDelta({}, T0, '2026-10-07').B === null && hbBatasDelta(rk2, null, '').B === rk2.B, J([b5, hbBatasDelta(rk2, null, '')]));
-ok('batas nisan: min(Wt) − 60 menit (Wd TIDAK dipakai), koleksi tanpa Wt diabaikan, jam server − 60 menit sebagai batas atas; tidak pernah 0; tanpa apa pun = tunggu',
+ok('batas nisan: min(jam baca penuh terakhir tiap koleksi) − 60 menit, koleksi yang belum pernah dibaca penuh diabaikan, jam server − 60 menit sebagai batas atas; tidak pernah 0; tanpa apa pun = tunggu',
   hbBatasNisan([T0 - 2 * HR, null, T0 - 1 * HR], T0) === T0 - 2 * HR - JM && hbBatasNisan([null, null], T0) === T0 - JM && hbBatasNisan([null], null) === null && hbBatasNisan([0, undefined], T0) === T0 - JM);
 ok('jepit: cap 2099 (Console) dijepit ke jam server + 10 menit; koleksi kosong = jam server', hbJepit(Z('2099-01-01T00:00:00Z'), T0) === T0 + 10 * MNT && hbJepit(null, T0) === T0 && hbJepit(T0 - HR, T0) === T0 - HR);
 // cap & kupas
@@ -100,6 +106,13 @@ var V = [{ id: 'a', cap: T0 - HR, data: {} }, { id: 'b', cap: T0 + HR, data: {} 
 var SN = hbSaringNisan(V, { a: T0, b: T0, c: T0, d: T0, e: T0, f: T0 });
 ok('saring nisan: dihapus → sembunyi; dibuat ULANG bercap lebih baru → tampil; dibuat ulang tapi masih tertunda → tampil; tanpa cap / "peta" / cap sama → sembunyi; tanpa nisan → tampil',
   J(SN.tampil.map(function (x) { return x.id; })) === '["b","c","g"]' && SN.tersembunyi === 4, J(SN));
+// tinjauan 7 Okt: catatan yang LAHIR ULANG tanpa cap sesudah nisannya (HP kasir lama kirim ulang, Console) dulu tersembunyi selamanya
+var SN2 = hbSaringNisan(V, { a: T0, b: T0, c: T0, d: T0, e: T0, f: T0 }, { d: T0, e: T0 - 1, f: T0 });
+ok('saring nisan: LAHIR ULANG terbukti baca penuh server (bukti = nisan yang berlaku saat itu) → tampil walau tanpa cap / "peta" / cap sama; nisan LEBIH BARU dari buktinya (dihapus lagi) → sembunyi',
+  J(SN2.tampil.map(function (x) { return x.id; })) === '["b","c","d","f","g"]' && SN2.tersembunyi === 2, J(SN2));
+var LU = hbLahirUlang({ a: { cap: T0 - HR }, b: { cap: T0 + HR }, d: { cap: undefined }, t1: { tunda: true }, z: { cap: undefined }, e: { cap: 'peta' } }, { a: T0, b: T0, d: T0, t1: T0, e: T0 }, { d: T0 });
+ok('lahir ulang: ada di snapshot SERVER padahal nisannya akan menyembunyikannya (cap lebih tua / tanpa / "peta"); bukan: cap lebih baru, sudah terbukti, tertunda, tanpa nisan',
+  J(LU.sort()) === '["a","e"]', J(LU));
 // hitungan
 ok('nilai hitungan: cocok bila server = mentah − tersembunyi; kurang / lebih; ada tulisan / hapus tertunda atau galat = belum',
   hbNilaiHitung({ server: 10, mentah: 12, tersembunyi: 2 }) === 'cocok' && hbNilaiHitung({ server: 11, mentah: 12, tersembunyi: 2 }) === 'kurang' && hbNilaiHitung({ server: 9, mentah: 12, tersembunyi: 2 }) === 'lebih'
@@ -114,6 +127,17 @@ ok('gerbang penulis: kasir.html (pensiun) ≤ 14 hari → tiga koleksi REST deng
 var GP3 = hbGerbangPenulis([den('mac', 'baru', 'baru', 10)], T0, KOLH), GP4 = hbGerbangPenulis([den('mac', 'baru', 'baru', 40), den('ipad', 'sistem', '', 120)], T0, KOLH), GP5 = hbGerbangPenulis([den('mac', 'baru', 'baru-c1', 1)], T0, KOLH);
 ok('gerbang penulis: tab /baru/ versi lama ≤ 15 menit → SEMUA koleksi hemat dengar penuh; lebih lama = peristiwa tahan lama (juga sistem lama); baru-c1 = bercap, tidak apa-apa',
   KOLH.every(function (k) { return !!GP3.penuh[k]; }) && !Object.keys(GP4.penuh).length && GP4.peristiwa.length === 2 && !Object.keys(GP5.penuh).length && !GP5.peristiwa.length, J([GP3, GP4, GP5]));
+// tinjauan 7 Okt: umur denyut = jam SERVER saat denyut terlihat BERUBAH di perangkat ini, bukan `pada` (jam perangkat penulis — tab lama jamnya bisa terlambat)
+var tabL = function (menitLalu) { return { id: 'tab', nama: 'tab', aplikasi: 'baru', versi: 'baru', pada: new Date(T0 - menitLalu * MNT).toISOString() }; };
+var LD = {}, sesiD = {};
+var ld0 = hbLihatDenyut(LD, sesiD, [tabL(60)], T0 - 30 * MNT);          // pertama terlihat: berubah selagi perangkat ini tidak mendengar → jam tidak diketahui
+var ld1 = hbLihatDenyut(LD, sesiD, [tabL(20)], T0);                     // BERUBAH selagi didengar; jam tab itu terlambat 20 menit
+var GP6 = hbGerbangPenulis([tabL(20)], T0 + MNT, KOLH, ld1), GP7 = hbGerbangPenulis([tabL(20)], T0 + MNT, KOLH);
+ok('umur denyut: tab /baru/ lama yang jamnya terlambat 20 menit dan BARU SAJA menulis (perubahan denyutnya terlihat) → SEMUA koleksi dengar penuh; tanpa jam terlihat dulu = peristiwa saja',
+  !('tab' in ld0) && ld1.tab === T0 && KOLH.every(function (k) { return !!GP6.penuh[k]; }) && !Object.keys(GP7.penuh).length && GP7.peristiwa.length === 1, J([ld0, ld1, GP6, GP7]));
+var ld2 = hbLihatDenyut(LD, {}, [tabL(20)], T0 + 2 * HR), ld3 = hbLihatDenyut(LD, {}, [tabL(5)], T0 + 3 * HR), ld4 = hbLihatDenyut({ tab: { pada: 'x', s: T0 - 20 * HR } }, {}, [], T0);
+ok('umur denyut: jam yang terlihat TAHAN muat ulang (rekam) selama `pada` sama; berubah selagi tidak didengar → dibuang (kembali ke `pada`); > 15 hari → dibuang',
+  ld2.tab === T0 && !('tab' in ld3) && !('tab' in ld4), J([ld2, ld3, ld4]));
 var pr = GP4.peristiwa[0];
 ok('peristiwa tahan lama: perangkat yang baca penuh terakhirnya < peristiwa + 15 menit WAJIB baca penuh sekali; sesudah dibereskan / baca penuh lebih baru → lepas',
   !!hbTotalDariPeristiwa({ Wt: pr.T - HR }, [pr]) && !hbTotalDariPeristiwa({ Wt: pr.T + 20 * MNT }, [pr]) && !hbTotalDariPeristiwa({ Wt: pr.T - HR, gerbangBeres: (function () { var o = {}; o[pr.kunci] = 1; return o; })() }, [pr]));
@@ -176,6 +200,10 @@ var SNY = hbSiapNyala({ perangkat: [den('mac', 'baru', 'baru-c1', 5), den('hp', 
 var SNY2 = hbSiapNyala({ perangkat: [den('mac', 'baru', 'baru', 5), den('hp', 'darurat', 'kasir-v32', 30)].map(function (p) { p.akun = p.id === 'mac' ? 'owner@tokoberasmiqbal.web.app' : 'kasir@x'; p.antrean = 0; return p; }), kiniMs: T0, nisanSah: false, statis: 3, ownerEmail: 'owner@tokoberasmiqbal.web.app' });
 ok('daftar siap-nyala: aturan v7 · tanpa tab lama / sistem lama 7 hari · HP kasir ≥ kasir-v33 14 hari · owner baru-c1 antrean 0 · tanpa catatan baru tak bercap → hijau semua / merah semua',
   SNY.every(function (x) { return x.ok; }) && SNY2.every(function (x) { return !x.ok; }), J([SNY, SNY2]));
+var tabLama8 = { id: 'tab', nama: 'tab', aplikasi: 'baru', versi: 'baru', pada: new Date(T0 - 8 * HR).toISOString() };
+var SNY3 = hbSiapNyala({ perangkat: [tabLama8], kiniMs: T0, lihat: { tab: T0 - HR }, nisanSah: true, statis: 0, ownerEmail: 'x' }), SNY4 = hbSiapNyala({ perangkat: [tabLama8], kiniMs: T0, nisanSah: true, statis: 0, ownerEmail: 'x' });
+ok('daftar siap-nyala: tab lama yang `pada`-nya 8 hari lalu (jam tab terlambat) tapi terlihat BERUBAH kemarin → merah; tanpa jam terlihat → menurut `pada`',
+  !SNY3.find(function (x) { return x.id === 'lama'; }).ok && SNY4.find(function (x) { return x.id === 'lama'; }).ok, J([SNY3[1], SNY4[1]]));
 ok('saklar: bawaan MATI (tidak ada / rusak / penyimpanan diblokir); disetel per perangkat', !hbSaklar({ baca: function () { return null; } }) && !hbSaklar({ baca: function () { throw new Error('blokir'); } }) && hbSaklar({ baca: function () { return 'nyala'; } }) && !hbSaklar({ baca: function () { return 'ya'; } }));
 ok('kelas koleksi: 48 hemat, tetap = setelan/berita acara/denyut/akun/pesanan, jejak = logAktivitas', hbKoleksiHemat().length === 48 && hbKelas('tutupBukuAcara') === 'tetap' && hbKelas('pesanan') === 'tetap' && hbKelas('logAktivitas') === 'jejak' && hbHemat('penjualan') && !hbHemat('aturanToko') && !hbHemat('ringkasanKasir'), hbKoleksiHemat().length);
 
@@ -229,7 +257,7 @@ Perangkat.prototype.gema = function () { if (this.sesi) this.sesi.gemaServer(S.j
 var KOL = ['penjualan', 'stokBahanLiteran', 'piutangMutasi', 'pengeluaranHarian'];
 var NAMA_K = KOL.slice();
 Perangkat.prototype.buka = function (opsi) {
-  var self = this; this.tutup(); this.mem = {}; this.siap = {}; this.periksa = {}; this.mati = []; this.klaimTulis = 0; this.sentuhN = 0;
+  var self = this; this.tutup(); this.mem = {}; this.siap = {}; this.periksa = {}; this.mati = []; this.klaimTulis = 0; this.sentuhN = 0; this.nisanTulis = 0; this.sentuhGagal = this.sentuhGagal || 0;
   var peny = { baca: function (k) { return self.ls[k] === undefined ? null : self.ls[k]; }, tulis: function (k, v) { self.ls[k] = String(v); }, hapus: function (k) { delete self.ls[k]; } };
   var R = hbBacaRekam(peny, 'proyek-uji', 'uid-owner'); this.R = R;
   this.sesi = hbSesi({ koleksi: NAMA_K, R: R, simpan: function () { hbSimpanRekam(peny, R, self.jam()); }, jam: function () { return self.jam(); },
@@ -239,8 +267,12 @@ Perangkat.prototype.buka = function (opsi) {
       penuh: function (k, cb) { return self.dengar('penuh', k, null, cb); }, nisan: function (B, cb) { return self.dengar('nisan', 'batuNisan', B, cb); },
       hitung: function (k) { return self.online ? Promise.resolve(S.ids(k).length) : Promise.reject({ code: 'unavailable' }); },
       klaim: function (dok) { self.klaimTulis++; S.klaim = salin(dok); antri(function () { S.dev.forEach(function (p) { p.tetap(); }); }); return Promise.resolve(); },
-      sentuh: function (k, ids) { self.sentuhN += ids.length; ids.forEach(function (id) { var e = S.kol(k)[id]; if (e) { e.cap = S.jam; S.siar(k, id); } }); return Promise.resolve({ n: ids.length }); },
-      tulisNisan: function (k, ids) { ids.forEach(function (id) { S.nisan[k + '|' + id] = { data: { id: k + '|' + id, koleksi: k, idDok: String(id) }, cap: S.jam }; S.siar('batuNisan', k + '|' + id); }); return Promise.resolve({ n: ids.length }); } },
+      // penyentuh SEPERTI firebase.js sentuhCap: hanya catatan yang ada di isi MENTAH (lihat — sebelum saringan nisan) dan bukan bulan terkunci (S.kunci);
+      // sentuhGagal = potongan ditolak / tab tidak boleh menulis → { tunda } (sesi menyimpan & mengulangnya)
+      sentuh: function (k, ids, lihat) { if (self.sentuhGagal > 0) { self.sentuhGagal--; return Promise.resolve({ n: 0, tunda: ids.slice() }); }
+        var boleh = ids.filter(function (id) { return !!(lihat ? lihat(id) : memDok(self, k, id)) && !(S.kunci && S.kunci[id]); });
+        self.sentuhN += boleh.length; boleh.forEach(function (id) { var e = S.kol(k)[id]; if (e) { e.cap = S.jam; S.siar(k, id); } }); return Promise.resolve({ n: boleh.length, tunda: [] }); },
+      tulisNisan: function (k, ids) { self.nisanTulis += ids.length; ids.forEach(function (id) { S.nisan[k + '|' + id] = { data: { id: k + '|' + id, koleksi: k, idDok: String(id) }, cap: S.jam }; S.siar('batuNisan', k + '|' + id); }); return Promise.resolve({ n: ids.length, tunda: [] }); } },
     keluar: { pasok: function (k, data) { self.mem[k] = data; }, tunda: function () {}, siap: function (k) { self.siap[k] = true; }, periksa: function (k, ya) { self.periksa[k] = ya; }, berubah: function () {}, mati: function (k) { self.mati.push(k); } } }).mulai();
   if (opsi && opsi.tetap === false) return this.sesi;
   tuntas(); if (!(opsi && opsi.tanpaGema)) this.gema(); this.tetap(); tuntas(); return this.sesi;
@@ -391,6 +423,118 @@ ok('B11 uang-kritis: hitungan server BEDA (nota tanpa cap) → DITOLAK "belum co
 maju(20000);
 ok('B11: sesudah dibaca ulang nota itu masuk', memId(F0, 'penjualan').indexOf('k3') >= 0, J(beda(F0)));
 
+// ===================== T · TINJAUAN 7 OKT (temuan penyanggah) =====================
+function tokoBaru(iso) { S = new Server(Z(iso)); S.klaim = { id: 'hematHarian', hari: hbHariKuota(S.jam), perangkat: 'lain', selesai: S.jam }; }
+function klaimHariIni() { S.klaim = { id: 'hematHarian', hari: hbHariKuota(S.jam), perangkat: 'lain', selesai: S.jam }; }
+var notaN = function (id, n, tgl) { return { id: id, tanggal: tgl || '2026-11-10', hargaTotal: n, namaPelanggan: 'Pembeli Contoh' }; };
+var hpKasir = function (versi) { return { id: 'd-hp', nama: 'HP contoh', aplikasi: 'darurat', versi: versi, pada: new Date(S.jam - 5 * MNT).toISOString(), akun: 'kasir@x' }; };
+
+// ---- T1 · HP kasir < kasir-v33 (gerbang dengar penuh): nota baru tanpa cap TIDAK disentuh; perangkat yang absen menangkapnya lewat hitungan server
+tokoBaru('2026-11-10T03:00:00Z'); S.tulis('penjualan', 'p1', notaN('p1', 1000), true);
+var A1 = new Perangkat('mac-t1'); A1.buka(); var B1 = new Perangkat('ipad-t1'); B1.buka(); B1.tutup(); maju(MNT);
+S.perangkat = [hpKasir('kasir-v32')]; A1.tetap(); tuntas();
+S.tulis('penjualan', 'k1', notaN('k1', 15000), false); tuntas(); maju(2000);
+ok('T1 gerbang HP kasir lama: nota tanpa cap terlihat seketika (dengar penuh) dan TIDAK disentuh — tanpa tulisan ganda, dan kirim ulang HP v32 tidak bertabrakan dengan cap',
+  keadaanK(A1, 'penjualan').mode === 'penuh' && memId(A1, 'penjualan').indexOf('k1') >= 0 && A1.sentuhN === 0 && S.kol('penjualan').k1.cap === undefined && (A1.sesi._G.temuan.penjualan || {}).lewat === 1,
+  J([A1.sentuhN, S.kol('penjualan').k1, A1.sesi._G.temuan]));
+S.perangkat = [hpKasir('kasir-v33')]; A1.tetap(); tuntas(); maju(2 * JM); klaimHariIni(); B1.buka(); maju(20000); tuntas();
+ok('T1: perangkat yang ABSEN selama gerbang (iPad) menangkap nota tanpa cap itu lewat hitungan server → baca penuh', memId(B1, 'penjualan').indexOf('k1') >= 0 && samaServer(B1) && B1.periksa.penjualan === true, J(beda(B1)));
+A1.tutup(); B1.tutup();
+
+// ---- T2 · satu catatan ber-capServer tahun 2099 (Console / klien rusak — rules tidak memeriksa cap koleksi hemat)
+tokoBaru('2026-11-10T03:00:00Z'); S.tulis('penjualan', 'p1', notaN('p1', 1000), true);
+var A2 = new Perangkat('mac-t2'); A2.buka(); var B2 = new Perangkat('ipad-t2'); B2.buka(); var skew2 = A2.sesi._G.skew;
+S.kol('penjualan').z = { data: notaN('z', 5), cap: Z('2099-01-01T00:00:00Z') }; S.siar('penjualan', 'z'); tuntas();
+// tanpa gema denyut baru di antaranya: hitungan berkala (30 menit) mencatat tanda air Wd dengan jam server perangkat ini
+maju(31 * MNT); A2.sesi.tik(); tuntas(); maju(20000); tuntas();
+var rk2 = A2.R.k.penjualan;
+ok('T2 cap 2099: jam server perangkat TIDAK ikut ke 2099 (selisih jam hanya dari gema denyut), tanda air ≤ jam server + 10 menit, batas delta di masa kini, hari kuota benar',
+  A2.sesi._G.skew === skew2 && Math.max(rk2.Wt || 0, rk2.Wd || 0) <= S.jam + 10 * MNT && rk2.B < S.jam && A2.sesi.keadaan().hari === hbHariKuota(S.jam) && memId(A2, 'penjualan').indexOf('z') >= 0,
+  J({ skew: A2.sesi._G.skew, Wt: rk2.Wt, Wd: rk2.Wd, B: rk2.B, jam: S.jam, hari: A2.sesi.keadaan().hari }));
+A2.tutup(); maju(26 * JM); klaimHariIni(); B2.tulis('penjualan', 'p2', notaN('p2', 2000)); tuntas(); A2.buka(); maju(5000); tuntas();
+var dA2 = A2.L.filter(function (L) { return L.aktif && L.jenis === 'delta' && L.k === 'penjualan'; });
+ok('T2: besoknya nota baru dari perangkat lain sampai lewat DELTA (batas delta sekitar jam server, bukan tahun 2098), tanpa baca penuh',
+  memId(A2, 'penjualan').indexOf('p2') >= 0 && dA2.length === 1 && dA2[0].B < S.jam && dA2[0].B > S.jam - 3 * HR && !A2.L.some(function (L) { return L.aktif && L.jenis === 'penuh'; }),
+  J({ delta: dA2.map(function (L) { return new Date(L.B).toISOString(); }), mem: memId(A2, 'penjualan') }));
+A2.tutup(); B2.tutup();
+
+// ---- T3 · catatan LAHIR ULANG tanpa cap sesudah batu nisannya (HP kasir v32 mengirim ulang karcis yang jawabannya hilang, sesudah owner menghapusnya)
+tokoBaru('2026-11-10T03:00:00Z');
+S.jam -= 3 * HR; S.tulis('penjualan', 'x', notaN('x', 7000), false); S.tulis('penjualan', 'y', notaN('y', 8000, '2026-08-31'), false); S.jam += 3 * HR;   // nota lama tanpa cap
+S.tulis('penjualan', 'p1', notaN('p1', 1000), true);
+var A3 = new Perangkat('mac-t3'); A3.buka(); var B3 = new Perangkat('ipad-t3'); B3.buka();
+A3.hapusDok('penjualan', 'x'); tuntas(); maju(1000);
+ok('T3: owner menghapus nota lama x (batu nisan di batch yang sama) → hilang di kedua perangkat', memId(A3, 'penjualan').indexOf('x') < 0 && memId(B3, 'penjualan').indexOf('x') < 0 && !!S.nisan['penjualan|x']);
+S.tulis('penjualan', 'x', notaN('x', 7000), false); tuntas();
+maju(31 * MNT); A3.sesi.tik(); B3.sesi.tik(); tuntas(); maju(20000); tuntas();
+ok('T3 LAHIR ULANG: hitungan server beda → baca penuh → nota ADA di snapshot server padahal nisannya berlaku → tampil lagi di kedua perangkat & disentuh (cap jam server > nisan)',
+  memId(A3, 'penjualan').indexOf('x') >= 0 && memId(B3, 'penjualan').indexOf('x') >= 0 && typeof S.kol('penjualan').x.cap === 'number' && S.kol('penjualan').x.cap > S.nisan['penjualan|x'].cap && samaServer(A3) && samaServer(B3),
+  J({ A: memId(A3, 'penjualan'), B: memId(B3, 'penjualan'), x: S.kol('penjualan').x, nisan: S.nisan['penjualan|x'], kA: keadaanK(A3, 'penjualan'), kB: keadaanK(B3, 'penjualan') }));
+// bulan terkunci (Console): tidak bisa disentuh → tiap perangkat memegang BUKTI dari baca penuhnya sendiri; hitungan cocok, tidak membaca penuh berulang
+// (hari kuota berikutnya — hari ini dua baca penuh otomatis per koleksi sudah terpakai: perangkat baru + x)
+maju(24 * JM); klaimHariIni(); A3.gema(); B3.gema(); A3.tetap(); B3.tetap(); tuntas();
+S.kunci = { y: true }; S.hapus('penjualan', 'y', true); tuntas(); maju(1000); var tY = S.nisan['penjualan|y'].cap;
+S.tulis('penjualan', 'y', notaN('y', 8000, '2026-08-31'), false); tuntas();
+maju(31 * MNT); A3.sesi.tik(); B3.sesi.tik(); tuntas(); maju(20000); tuntas();
+var mulaiA3 = A3.R.hari.mulai.penjualan || 0, mulaiB3 = B3.R.hari.mulai.penjualan || 0;
+maju(31 * MNT); A3.sesi.tik(); B3.sesi.tik(); tuntas(); maju(20000); tuntas();
+ok('T3 lahir ulang di bulan TERKUNCI (tidak bisa disentuh): bukti baca penuh server di rekam tiap perangkat → tampil; hitungan server cocok → tidak membaca penuh berulang',
+  S.kol('penjualan').y.cap === undefined && memId(A3, 'penjualan').indexOf('y') >= 0 && memId(B3, 'penjualan').indexOf('y') >= 0 && A3.R.k.penjualan.lahir.y === tY && B3.R.k.penjualan.lahir.y === tY
+  && (A3.R.hari.mulai.penjualan || 0) === mulaiA3 && (B3.R.hari.mulai.penjualan || 0) === mulaiB3 && A3.periksa.penjualan === true && B3.periksa.penjualan === true,
+  J({ A: memId(A3, 'penjualan'), lahirA: A3.R.k.penjualan.lahir, mulai: [mulaiA3, A3.R.hari.mulai.penjualan, mulaiB3, B3.R.hari.mulai.penjualan], kA: keadaanK(A3, 'penjualan') }));
+A3.tutup(); A3.buka(); maju(5000); tuntas();
+ok('T3: bukti lahir ulang TAHAN muat ulang (rekam) — sesudah dibuka lagi y tetap tampil', memId(A3, 'penjualan').indexOf('y') >= 0 && samaServer(A3), J(beda(A3)));
+S.hapus('penjualan', 'y', true); tuntas(); maju(1000);
+ok('T3: dihapus LAGI (nisan lebih baru dari buktinya) → tersembunyi lagi, bukti lama dibuang', memId(A3, 'penjualan').indexOf('y') < 0 && memId(B3, 'penjualan').indexOf('y') < 0 && !('y' in (A3.R.k.penjualan.lahir || {})), J([memId(A3, 'penjualan'), A3.R.k.penjualan.lahir]));
+A3.tutup(); B3.tutup(); S.kunci = null;
+
+// ---- T4 · temuan pendeteksi yang GAGAL dikirim disimpan & dicoba lagi (dulu dibuang diam-diam)
+tokoBaru('2026-11-10T03:00:00Z');
+S.jam -= 3 * HR; S.tulis('penjualan', 'p1', notaN('p1', 1000), true); S.jam += 3 * HR; S.tulis('penjualan', 'p0', notaN('p0', 500), true);
+var A4 = new Perangkat('mac-t4'); A4.buka(); var B4 = new Perangkat('ipad-t4'); B4.buka();
+S.tulis('penjualan', 'p1', notaN('p1', 99000), 'tetap'); tuntas();   // Console mengubah nota LAMA (cap di luar jendela delta) tanpa menyentuh cap
+A4.sentuhGagal = 1; A4.sesi.bacaPenuh(['penjualan'], 'owner mengubah data lewat Console', true); tuntas(); maju(20000); tuntas();
+var u4 = J(A4.R.ulang || {});
+ok('T4: sentuhan yang gagal dikirim DISIMPAN di rekam perangkat (bukan dibuang); perangkat lain belum menerimanya', /"p1"/.test(u4) && memDok(B4, 'penjualan', 'p1').hargaTotal === 1000 && memDok(A4, 'penjualan', 'p1').hargaTotal === 99000, u4);
+maju(MNT); A4.sesi.tik(); tuntas();
+ok('T4: dicoba lagi (tiap menit) → tersentuh → perangkat lain menerimanya lewat delta; antrean temuan kosong', memDok(B4, 'penjualan', 'p1').hargaTotal === 99000 && !/"p1"/.test(J(A4.R.ulang || {})), J([memDok(B4, 'penjualan', 'p1'), A4.R.ulang]));
+A4.tutup(); B4.tutup();
+
+// ---- T5 · batas pendengar nisan = jam baca penuh terakhir (koleksi yang sepi tidak menahan Bn di tulisan terakhirnya)
+tokoBaru('2026-10-08T03:00:00Z'); S.tulis('pengeluaranHarian', 'h1', { id: 'h1', tanggal: '2026-10-08', nominal: 1 }, true);
+S.jam = Z('2027-03-01T03:00:00Z'); S.tulis('penjualan', 'p1', notaN('p1', 1, '2027-03-01'), true); klaimHariIni();
+var A5 = new Perangkat('mac-t5'); A5.buka();
+var N5 = A5.L.filter(function (L) { return L.aktif && L.jenis === 'nisan'; }).map(function (L) { return L.B; });
+ok('T5 batas nisan dari jam baca penuh terakhir (1 Mar 2027 − 60 menit), BUKAN cap tertinggi pengeluaranHarian (8 Okt 2026) — nisan tidak dibaca ulang berbulan-bulan tiap buka',
+  N5.length === 1 && N5[0] >= S.jam - JM - MNT && A5.R.k.pengeluaranHarian.Wt < Z('2026-10-09T00:00:00Z'), J({ N: N5.map(function (x) { return new Date(x).toISOString(); }) }));
+// jam perangkat MELOMPAT maju 1 hari sesudah gema denyut, lalu baca penuh selesai: "baca penuh terakhir" tidak tercatat di masa depan (Bn tetap di masa kini)
+A5.geser += HR; A5.sesi.bacaPenuh(['penjualan'], 'tombol', true); tuntas(); maju(1000);
+ok('T5: jam perangkat melompat maju sesudah gema → jam baca penuh terakhir dijepit ≤ jam server gema terakhir + 10 menit (batas nisan tidak pernah di masa depan)',
+  A5.R.k.penjualan.totalPada <= S.jam + 10 * MNT && A5.R.k.penjualan.totalPada >= S.jam - 10 * MNT, J({ total: new Date(A5.R.k.penjualan.totalPada).toISOString(), jam: new Date(S.jam).toISOString() }));
+A5.tutup();
+
+// ---- T6 · sesudah tutup buku: catatan yang DIARSIPKAN (hilang dari server tanpa batu nisan) bukan "hilang tanpa kabar"
+tokoBaru('2027-01-02T09:00:00Z');
+S.jam -= 2 * HR * 24; ['a1', 'a2', 'a3'].forEach(function (id, i) { S.tulis('penjualan', id, notaN(id, 100 + i, '2026-12-3' + i), true); }); S.jam += 2 * HR * 24;
+S.tulis('penjualan', 'b1', notaN('b1', 9, '2027-01-02'), true);
+var A6 = new Perangkat('mac-t6'); A6.buka(); A6.tutup(); var n6 = Object.keys(S.nisan).length;
+S.acara = [{ tahun: 2026, status: 'selesai', paraf: { pada: '2027-01-02T10:00:00Z' } }]; ['a1', 'a2', 'a3'].forEach(function (id) { S.hapus('penjualan', id, false); });
+maju(2 * JM); klaimHariIni(); A6.buka(); maju(20000); tuntas();
+ok('T6 tutup buku berubah selagi perangkat tertutup: baca penuh, catatan 2026 yang diarsipkan hilang dari memori TANPA batu nisan baru (bukan temuan "hilang tanpa kabar")',
+  samaServer(A6) && Object.keys(S.nisan).length === n6 && A6.nisanTulis === 0 && (A6.sesi._G.temuan.penjualan || {}).arsip === 3 && !(A6.sesi._G.temuan.penjualan || {}).hilang,
+  J({ beda: beda(A6), nisan: Object.keys(S.nisan), temuan: A6.sesi._G.temuan }));
+A6.tutup();
+
+// ---- T7 · umur denyut tab /baru/ lama dinilai dengan jam SERVER saat perubahannya terlihat (jam tab terlambat 20 menit)
+tokoBaru('2026-11-10T03:00:00Z'); S.tulis('penjualan', 'p1', notaN('p1', 1000), true);
+var A7 = new Perangkat('mac-t7'); A7.buka();
+var tabT7 = function (lalu) { return { id: 'tab-lama', nama: 'Laptop contoh', aplikasi: 'baru', versi: 'baru', pada: new Date(S.jam - lalu).toISOString(), akun: 'owner@x' }; };
+S.perangkat = [tabT7(3 * JM)]; A7.tetap(); tuntas(); var m7 = keadaanK(A7, 'penjualan').mode;
+maju(5 * MNT); S.perangkat = [tabT7(20 * MNT)]; A7.tetap(); tuntas();
+ok('T7: tab lama terakhir terlihat 3 jam lalu → biasa (delta); tab itu MENULIS LAGI sekarang dengan jam terlambat 20 menit → SEMUA koleksi dengar penuh (dulu dianggap "sudah lama")',
+  m7 === 'delta' && NAMA_K.every(function (k) { return keadaanK(A7, k).mode === 'penuh'; }), J([m7, NAMA_K.map(function (k) { return keadaanK(A7, k).mode; })]));
+A7.tutup();
+
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
@@ -480,6 +624,24 @@ if (__MODE === 'mati') {
   kirimDenyut(true); Lps.cb(snapP(_denyutKirim.pada, _denyutKirim.ms + 777));
   ok('C7 gema jam server: denyut lama (sesi sebelumnya, cap berjam-jam lalu) TIDAK dipakai; denyut sesi ini yang diakui server → selisih jam = cap − jam kirim', skew0 === null && _hemat._G.skew === 777, J([skew0, _hemat._G.skew]));
   ok('C7: memori denyut tanpa capServer (dikupas)', !('capServer' in (cacheMentah('perangkat')[0] || {})));
+  // ---- C8 · penyentuh memakai isi MENTAH sesi hemat: catatan LAHIR ULANG yang tersembunyi nisan tidak ada di memori (dokDiCache) — dulu tidak pernah disentuh
+  var Vp = D5.find(function (L) { return L.opsi && L.opsi.source === 'cache' && L.ref.nama === 'penjualan'; });
+  var T8 = Date.UTC(2026, 9, 8, 3);
+  var mk8 = function (id, cap) { return { id: id, metadata: { hasPendingWrites: false }, get: function (f) { return f === 'capServer' ? cap : undefined; },
+    data: function () { var x = { id: id, tanggal: '2026-10-08', hargaTotal: 1000, namaPelanggan: 'Pembeli Contoh', diubahPada: '2099-01-01T00:00:00.000Z' }; if (cap !== undefined) x.capServer = cap; return x; } }; };
+  _hemat._G.nisan = { penjualan: { x1: T8 } };
+  Vp.cb({ metadata: { fromCache: true }, docs: [mk8('x1', undefined), mk8('x2', { toMillis: function () { return T8 - 5000; } }), mk8('x3', undefined)] }); drainMicrotasks();
+  __rek.tulis = []; var s8a = null, s8b = null;
+  sentuhCap('penjualan', ['x1']).then(function (r) { s8a = r; }); drainMicrotasks();
+  sentuhCap('penjualan', ['x1'], function (id) { var v = _hemat._K.penjualan.v[id]; return v ? v.data : null; }).then(function (r) { s8b = r; }); drainMicrotasks();
+  var op8 = (__rek.tulis[0] || [])[0] || [];
+  ok('C8 penyentuh: catatan LAHIR ULANG (tersembunyi nisan, tidak di memori) disentuh lewat isi mentah simpanan sesi hemat — tanpa isi mentah nol tulisan',
+    cacheMentah('penjualan').map(function (d) { return String(d.id); }).sort().join() === 'x2,x3' && s8a && s8a.n === 0 && s8b && s8b.n === 1 && __rek.tulis.length === 1
+    && op8[0] === 'update' && op8[1] === 'penjualan' && op8[2] === 'x1' && CAP(op8[3]), J([s8a, s8b, __rek.tulis]));
+  // ---- C10 · daftar siap-nyala "statis" saat nyala: cap dari simpanan sesi hemat (peta samping _cap hanya diisi pendengar penuh)
+  var st10 = hematSiapNyala().find(function (x) { return x.id === 'statis'; });
+  ok('C10 siap-nyala saat NYALA: catatan BERCAP tidak dihitung "tanpa cap" (x2), catatan tanpa cap yang tampil dihitung (x3) — baris statis tidak berbohong',
+    hitungStatis() === 1 && st10 && !st10.ok && /^1 catatan/.test(st10.ket), J([hitungStatis(), st10]));
   // uang-kritis & kunci tab di penulis pusat
   var asli = _hemat; _hemat = { pastikanSegar: function () { return Promise.resolve({ ok: false, pesan: 'data penjualan belum cocok dengan server — uji' }); }, adaMati: function () { return false; }, catatHapus: function () {}, keadaan: asli.keadaan, ringkasDenyut: asli.ringkasDenyut };
   var u1 = null, u2 = null; __rek.tulis = [];
@@ -491,6 +653,10 @@ if (__MODE === 'mati') {
   tulisBerkas([{ koleksi: 'penjualan', data: { id: 'n6', tanggal: '2026-10-07', hargaTotal: 6000 } }], []).then(function (r) { u3 = r; }); drainMicrotasks();
   ok('C6 kunci tab: tab yang KALAH (tab lain menekan "Pakai di sini") tidak menulis apa pun', u3 && u3.gagal && /tab lain/.test(u3.pesan), J(u3));
   _hemat = asli;
+  // ---- C9 · penyentuh di tab yang tidak boleh menulis: temuannya DIKEMBALIKAN (tunda) supaya sesi hemat mengulangnya — dulu { n: 0 } = dibuang diam-diam
+  __rek.tulis = []; var s9 = null, n9 = null;
+  sentuhCap('penjualan', ['x2'], function () { return { id: 'x2', tanggal: '2026-10-08' }; }).then(function (r) { s9 = r; }); tulisNisanSaja('penjualan', ['h9']).then(function (r) { n9 = r; }); drainMicrotasks();
+  ok('C9 tab kalah kunci: sentuhan & batu nisan pendeteksi tidak ditulis, id-nya kembali sebagai "tunda" (diulang sesi hemat)', s9 && s9.n === 0 && J(s9.tunda) === '["x2"]' && n9 && J(n9.tunda) === '["h9"]' && !__rek.tulis.length, J([s9, n9]));
 }
 print(J({ lulus: lulus, gagal: gagal }));
 """
@@ -583,6 +749,96 @@ def statis(t):
     return out
 
 
+# ---------- E · KASIR DARURAT di jsc: fungsi ASLI kirimAntrean (dipotong dari halaman) + Firestore REST palsu bermodel rules (v3 / v6 / v7) ----------
+# Tinjauan 7 Okt: kasir-v33 mengirim nota lewat :commit + capServer REQUEST_TIME. Jawaban :commit yang HILANG (sinyal putus) lalu kirim ulang :commit = cap lain
+# → rules v6 / v3 (sebelum v7 terbit, atau aturan darurat) MENOLAK padahal notanya sudah masuk → dulu pindah ke "ditolak" → catat ulang → omzet dobel.
+# Kini nota yang :commit-nya ditolak dikirim sekali lagi dengan CARA LAMA (PATCH, updateMask = kolom karcis) sebelum dinyatakan ditolak. Peramban asli: CI.
+KASIR_FUNGSI = ['keFs', 'ambilAntrean', 'simpanAntrean', 'ambilGagal', 'golonganJawaban', 'pindahKeDitolak', 'cabutDariAntrean', 'kirimAntrean', 'kolomLama']
+KASIR_VAR = ['PROYEK', 'KUNCI_API', 'DASAR', 'URL_COMMIT', 'NAMA_DOK', 'K_ANTREAN', 'K_GAGAL', 'sedangKirim']
+KASIR_PRA = r"""
+var __ls = {}; var localStorage = { getItem: function (k) { return Object.prototype.hasOwnProperty.call(__ls, k) ? __ls[k] : null; }, setItem: function (k, v) { __ls[k] = String(v); }, removeItem: function (k) { delete __ls[k]; } };
+var navigator = { onLine: true }; var __login = 0;
+function setStatus() {} function kirimDenyutD() {} function gambarPitaDitolak() {} function lupakanKunciSesi() {} function tampilkanLayarLogin() { __login++; }
+function sudahLogin() { return true; }
+function denganAuth(opsi) { opsi = opsi || {}; opsi.headers = opsi.headers || {}; opsi.headers.Authorization = 'Bearer t-uji'; return Promise.resolve(opsi); }
+// ---- Firestore REST palsu: dokumen tersimpan, rules kasir@ penjualan: create = bulan tidak terkunci; update = tulisUlangSama (v3, v6) atau + ulangKasirBercap (v7)
+var SRV = { aturan: 'v7', dok: {}, hilang: 0, kunciBulan: '2026-08', minta: [], jam: 1000 };
+function nilaiFs(v) { if (!v) return null; if ('stringValue' in v) return v.stringValue; if ('integerValue' in v) return Number(v.integerValue); if ('doubleValue' in v) return v.doubleValue;
+  if ('booleanValue' in v) return v.booleanValue; if ('nullValue' in v) return null; if ('mapValue' in v) { var o = {}, f = v.mapValue.fields || {}; for (var k in f) o[k] = nilaiFs(f[k]); return o; } return null; }
+function urut(v) { return v && typeof v === 'object' ? Object.keys(v).sort().reduce(function (o, k) { o[k] = urut(v[k]); return o; }, {}) : v; }
+function sama(a, b) { return JSON.stringify(urut(a)) === JSON.stringify(urut(b)); }
+function jawab(status, isi) { return Promise.resolve({ status: status, json: function () { return Promise.resolve(isi || {}); } }); }
+function fetch(url, opsi) {
+  var komit = url.indexOf('/documents:commit') >= 0, nama, fields, cap = false, mask = null;
+  if (komit) { var w = JSON.parse(opsi.body).writes; if (w.length !== 1) return jawab(400, {}); w = w[0]; nama = w.update.name.split('/documents/')[1]; fields = w.update.fields;
+    cap = (w.updateTransforms || []).some(function (x) { return x.fieldPath === 'capServer' && x.setToServerValue === 'REQUEST_TIME'; }); if (w.updateMask) mask = w.updateMask.fieldPaths; }
+  else { var u = url.split('/documents/')[1]; nama = decodeURIComponent(u.split('?')[0]); fields = JSON.parse(opsi.body).fields;
+    var ms = (u.split('?')[1] || '').split('&').filter(function (x) { return x.indexOf('updateMask.fieldPaths=') === 0; }).map(function (x) { return decodeURIComponent(x.slice(22)); }); if (ms.length) mask = ms; }
+  var data = {}; for (var k in fields) data[k] = nilaiFs(fields[k]);
+  var lama = SRV.dok[nama], jamMinta = ++SRV.jam, baru;
+  if (mask) { baru = Object.assign({}, lama || {}); mask.forEach(function (f) { if (f in data) baru[f] = data[f]; else delete baru[f]; }); } else baru = data;
+  if (cap) baru.capServer = { jam: jamMinta };
+  SRV.minta.push(komit ? 'commit' : mask ? 'patch-mask' : 'patch');
+  var boleh;
+  if (!lama) boleh = String(data.tanggal || '').slice(0, 7) > SRV.kunciBulan;
+  else { var beda = Object.keys(Object.assign({}, lama, baru)).filter(function (x) { return !sama(lama[x], baru[x]); });
+    var ukb = beda.every(function (x) { return x === 'capServer'; }) && (!('capServer' in baru) || (baru.capServer && baru.capServer.jam === jamMinta));
+    boleh = !beda.length || (SRV.aturan === 'v7' && ukb); }
+  if (!boleh) return jawab(403, { error: { code: 403, status: 'PERMISSION_DENIED' } });
+  SRV.dok[nama] = baru;
+  if (SRV.hilang > 0) { SRV.hilang--; return Promise.reject(new TypeError('Failed to fetch')); }   // tulisan MASUK, jawabannya hilang di jalan
+  return jawab(200, {});
+}
+"""
+KASIR_SKENARIO = r"""
+var gagal = [], lulus = 0; function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket !== undefined ? ' → ' + String(typeof ket === 'string' ? ket : JSON.stringify(ket)).slice(0, 500) : '')); }
+var J = JSON.stringify;
+function karcis(id, h, tgl) { return { koleksi: 'penjualan', docId: String(id), data: { id: id, tanggal: tgl || '2026-10-07', jam: '10:00', jenis: 'kasir_darurat_nominal', namaProduk: '(tidak tercatat — kasir darurat)',
+  hargaTotal: h, caraBayar: 'Tunai', namaPelanggan: '', grupNota: id, oleh: '(darurat tanpa nama)', perangkat: 'd-uji' } }; }
+function mulaiE(aturan, antrean) { SRV.aturan = aturan; SRV.dok = {}; SRV.minta = []; SRV.hilang = 0; __ls = {}; localStorage.setItem(K_ANTREAN, J(antrean)); sedangKirim = false; }
+function jalanE() { kirimAntrean(true); drainMicrotasks(); }
+function potret() { var d = SRV.dok; var ks = Object.keys(d); return { antrean: ambilAntrean().length, ditolak: ambilGagal().map(function (x) { return x.ditolak && x.ditolak.status; }), minta: SRV.minta.slice(),
+  server: ks.length, cap: ks.map(function (k) { return d[k].capServer ? d[k].capServer.jam : null; }) }; }
+var ID = 1791331200001.25, ID2 = 1791331200002.5;
+['v6', 'v3'].forEach(function (a) {
+  mulaiE(a, [karcis(ID, 6100)]); SRV.hilang = 1; jalanE(); var p0 = potret(); jalanE(); var p1 = potret();
+  ok('E1 rules ' + a + ' (v7 belum terbit / aturan darurat): jawaban :commit HILANG → kirim ulang :commit ditolak (cap beda) → CARA LAMA (PATCH, updateMask) MASUK — nota tidak pindah ke "ditolak", cap pertama tetap',
+    p0.antrean === 1 && p0.server === 1 && p1.antrean === 0 && !p1.ditolak.length && J(p1.minta) === '["commit","commit","patch-mask"]' && p1.server === 1 && J(p1.cap) === J(p0.cap) && p1.cap[0] !== null, J([p0, p1]));
+});
+mulaiE('v7', [karcis(ID, 6100)]); SRV.hilang = 1; jalanE(); jalanE(); var e2 = potret();
+ok('E2 rules v7: kirim ulang :commit (hanya cap berbeda) diterima ulangKasirBercap — tanpa cara lama, nota bercap', e2.antrean === 0 && !e2.ditolak.length && J(e2.minta) === '["commit","commit"]' && e2.cap[0] !== null, J(e2));
+['v6', 'v7'].forEach(function (a) {
+  mulaiE(a, [karcis(ID, 5100), karcis(ID2, 5200, '2026-08-31'), karcis(ID2 + 1, 5300)]); jalanE(); var e3 = potret(); jalanE(); var e3b = potret();
+  ok('E3 rules ' + a + ': karcis bulan TERKUNCI — :commit ditolak, cara lama juga ditolak → baru masuk daftar "ditolak" (403); karcis lain jalan; tidak dikirim ulang',
+    e3.antrean === 0 && J(e3.ditolak) === '[403]' && J(e3.minta) === '["commit","commit","patch-mask","commit"]' && e3.server === 2 && J(e3b.minta) === J(e3.minta), J([e3, e3b]));
+});
+// HP baru naik dari kasir-v32 ke v33 dengan karcis yang SUDAH masuk lewat PATCH v32 (tanpa cap) tapi jawabannya hilang
+mulaiE('v6', [karcis(ID, 6100)]); SRV.dok['penjualan/' + ID] = (function () { var x = karcis(ID, 6100).data; return JSON.parse(J(x)); })(); jalanE(); var e4 = potret();
+ok('E4 rules v6: nota yang sudah masuk lewat PATCH v32 (tanpa cap) dikirim ulang kasir-v33 → :commit ditolak → cara lama identik → MASUK (tanpa cap, seperti dulu)',
+  e4.antrean === 0 && !e4.ditolak.length && J(e4.minta) === '["commit","patch-mask"]' && e4.cap[0] === null, J(e4));
+mulaiE('v7', [karcis(ID, 6100)]); SRV.dok['penjualan/' + ID] = JSON.parse(J(karcis(ID, 6100).data)); jalanE(); var e5 = potret();
+ok('E5 rules v7: nota v32 tanpa cap dikirim ulang kasir-v33 → :commit diterima (cap ditambahkan = jam server permintaan itu)', e5.antrean === 0 && !e5.ditolak.length && J(e5.minta) === '["commit"]' && e5.cap[0] !== null, J(e5));
+ok('E kolomLama: updateMask = tepat kolom karcis; nama kolom di luar huruf/angka/garis bawah dikutip backtick', kolomLama({ a: 1, b_2: 1, 'x-y': 1 }) === '&updateMask.fieldPaths=a&updateMask.fieldPaths=b_2&updateMask.fieldPaths=' + encodeURIComponent('`x-y`'), kolomLama({ a: 1, b_2: 1, 'x-y': 1 }));
+print(J({ lulus: lulus, gagal: gagal }));
+"""
+
+
+def kasir_jsc(t):
+    """E · kirimAntrean ASLI kasir darurat (fungsi & var dipotong dari script halaman) di jsc dengan Firestore REST palsu bermodel rules."""
+    d = t['kasir-darurat-nominal.html']; potong = []
+    for v in KASIR_VAR:
+        m = re.search(r'^var ' + v + r' = [^\n]*;', d, re.M)
+        if not m: return [('E · kasir darurat: var ' + v + ' ditemukan', False, '')]
+        potong.append(m.group(0))
+    for f in KASIR_FUNGSI:
+        m = re.search(r'\nfunction ' + f + r'\([^)]*\) \{.*?\n\}\n', d, re.S)
+        if not m: return [('E · kasir darurat: function ' + f + ' ditemukan', False, '')]
+        potong.append(m.group(0))
+    h, e = jalan(KASIR_PRA + '\n'.join(potong) + '\n' + KASIR_SKENARIO)
+    if h is None: return [('E · kasir darurat jsc jalan', False, e)]
+    return [('E · ' + str(i), True, '') for i in range(h['lulus'])] + [('E · ' + x, False, '') for x in h['gagal']]
+
+
 SDK_URL = 'https://www.gstatic.com/firebasejs/10.13.0/'
 
 
@@ -613,7 +869,7 @@ def tautan_modul(t):
 
 
 def utama(t):
-    hasil = statis(t)
+    hasil = statis(t) + kasir_jsc(t)
     ok_t, ket_t = tautan_modul(t)
     hasil.append(('statis · semua modul /baru/ dari app.js terurai & tertaut di jsc (modul ES, SDK palsu) — tanpa SyntaxError / impor yang tidak diekspor', ok_t, ket_t))
     js = bundel(t, MURNI)
@@ -643,9 +899,14 @@ HB = 'baru/js/data/hemat-baca.js'; FB = 'baru/js/data/firebase.js'; KD = 'kasir-
 KONTROL = [
     ('(a) delta mendengar diubahPada (jam HP), bukan capServer', {FB: [("const lewat = (B) => where('capServer', '>', Timestamp.fromMillis(B));", "const lewat = (B) => where('diubahPada', '>', new Date(B).toISOString());")]}),
     ('(b) baca penuh = collection(k) polos (berbagi view simpanan — "selesai" tanpa server)', {FB: [("penuh: (k, cb, galat) => dengar(query(collection(db, k), limit(HB_LIMIT_F)),", "penuh: (k, cb, galat) => dengar(collection(db, k),")]}),
-    ('(c) batu nisan tanpa banding cap → catatan yang dibuat ulang tetap tersembunyi', {HB: [("!(typeof d.cap === 'number' && typeof t === 'number' && d.cap > t)) n += 1;", ") n += 1;")]}),
+    # tinjauan 7 Okt: dulu penggantinya menghasilkan "&& ) n += 1;" — SyntaxError, berbunyi karena jsc gagal jalan, bukan karena saringan nisan. Kini kerusakan SEMANTIK.
+    ('(c) batu nisan tanpa banding cap → catatan yang dibuat ulang bercap lebih baru tetap tersembunyi', {HB: [("  if (typeof d.cap === 'number' && typeof t === 'number' && d.cap > t) return false;\n", "")]}),
+    ('(c2) batu nisan mengabaikan bukti LAHIR ULANG (catatan tanpa cap yang dibuat lagi sesudah dihapus tersembunyi selamanya)', {HB: [("  if (typeof lahirT === 'number' && typeof t === 'number' && lahirT >= t) return false;\n", "")]}),
+    ('(c3) pendeteksi tidak mencatat lahir ulang dari snapshot server baca penuh', {HB: [("    const lahir = catatLahir(k, peta);", "    const lahir = [];")]}),
+    ('(c4) penyentuh memeriksa memori yang sudah disaring nisan (catatan lahir ulang tidak pernah disentuh)', {FB: [("const isi = (id) => (typeof lihat === 'function' ? lihat(id) : dokDiCache(koleksi, id));", "const isi = (id) => dokDiCache(koleksi, id);")]}),
+    ('(c5) bukti lahir ulang tidak dibuang saat dihapus LAGI (nisan lebih baru)', {HB: [("if (t === undefined || t > L[id]) { delete L[id]; ubah = true; }", "if (t === undefined) { delete L[id]; ubah = true; }")]}),
     ('(d) Bn = 0 bila Wt kosong (seluruh riwayat nisan dibaca tiap buka)', {HB: [("  return c.length ? Math.min.apply(null, c) : null;\n}", "  return c.length ? Math.min.apply(null, c) : 0;\n}"), ("if (hbAngka(kiniS) > 0) c.push(kiniS - HB_MARGIN_MS);", "")]}),
-    ('(e) tanda air dari jam PERANGKAT (bukan cap server)', {HB: [("Object.assign(r, { Wt: hbJepit(st.fMaks, s), n: st.fN, totalPada: s,", "Object.assign(r, { Wt: jam(), n: st.fN, totalPada: s,")]}),
+    ('(e) tanda air dari jam PERANGKAT (bukan cap server)', {HB: [("Object.assign(r, { Wt: hbJepit(st.fMaks, s), n: st.fN, totalPada: kiniSTercatat(),", "Object.assign(r, { Wt: jam(), n: st.fN, totalPada: kiniSTercatat(),")]}),
     ('(f) jepit + 10 menit dibuang (cap 2099 membekukan delta)', {HB: [("const c = hbAngka(capMaks); if (c === null) return kiniS; return Math.min(c, kiniS + HB_JEPIT_MS);", "const c = hbAngka(capMaks); if (c === null) return kiniS; return c;")]}),
     ('(g) hari kuota selalu UTC−7 (reset 15.00 WIB sesudah 1 Nov terlewat)', {HB: [("export function hbMusimPanasAS(ms) { const y = new Date(ms).getUTCFullYear(); return ms >= hbMingguKe(y, 2, 2, 10) && ms < hbMingguKe(y, 10, 1, 9); }", "export function hbMusimPanasAS(ms) { return true; }")]}),
     ('(h) hitungan server tanpa mengurangi yang tersembunyi nisan', {HB: [("const lokal = (h.mentah || 0) - (h.tersembunyi || 0);", "const lokal = (h.mentah || 0);")]}),
@@ -681,7 +942,20 @@ KONTROL = [
     ('(tab) kunci tab diambil SESUDAH Firestore dimulai (dua klien sempat hidup)', {'baru/js/app.js': [("const pakai = () => { kt.ambil(); jagaKunciTab(kt); fb.mulai(gambarAkun); };", "const pakai = () => { fb.mulai(gambarAkun); kt.ambil(); jagaKunciTab(kt); };")]}),
     ('(tab) tab yang kalah tidak menghentikan Firestore-nya', {'baru/js/app.js': [("    fb.berhenti('Aplikasi dipakai di tab lain peramban ini", "    void ('Aplikasi dipakai di tab lain peramban ini")]}),
     ('(tab) saklar mati tetap memakai kunci tab', {'baru/js/app.js': [("  if (!fb.hematNyala()) { fb.mulai(gambarAkun); return; }\n", "")]}),
-    ('(z) pendeteksi tidak menyentuh (ubahan Console tak pernah sampai ke perangkat lain)', {HB: [("if (r.sentuh.length) o.sdk.sentuh(k, r.sentuh).catch(() => {});", "")]}),
+    ('(z) pendeteksi tidak menyentuh (ubahan Console tak pernah sampai ke perangkat lain)', {HB: [("kirimTemuan(k, 's', sentuh, lihat); kirimTemuan(k, 'n', r.nisan);", "kirimTemuan(k, 'n', r.nisan);")]}),
+    # ---- tinjauan 7 Okt (penyanggah): tiap perbaikan wajib berbunyi karena SEBAB yang benar ----
+    ('(T1) pendeteksi menyentuh nota HP kasir lama di koleksi yang DENGAR PENUH karena gerbang (tulisan ganda; kirim ulang HP v32 bertabrakan)', {HB: [("    if (G.gerbang.penuh[k] && t.baru.length) { tm.lewat = (tm.lewat || 0) + t.baru.length; t.baru = []; }\n", "")]}),
+    ('(T2) cap data (tahun 2099) menggeser jam server perangkat (catatCap lama)', {HB: [("if (maks !== null) st.wdCalon = Math.max(st.wdCalon || 0, maks); tambahBaca(baru);",
+        "if (maks !== null) { st.wdCalon = Math.max(st.wdCalon || 0, maks); if (G.skew !== null && jam() + G.skew < maks) G.skew = maks - jam(); } tambahBaca(baru);")]}),
+    ('(T4) temuan pendeteksi yang gagal dikirim dibuang (tidak diulang)', {HB: [("ids.forEach((id) => { if (tunda.indexOf(id) < 0) delete m[id];", "ids.forEach((id) => { if (true) delete m[id];")]}),
+    ('(T4) penyentuh mengembalikan { n: 0 } di tab yang tidak boleh menulis (temuan hilang)', {FB: [("  if (jagaTulisHemat()) return { n: 0, tunda: (ids || []).slice() };\n  const isi = ", "  if (jagaTulisHemat()) return { n: 0, tunda: [] };\n  const isi = ")]}),
+    ('(T5) batas nisan dari cap tertinggi di data (Wt), bukan jam baca penuh terakhir', {HB: [("const Bn = hbBatasNisan(o.koleksi.map((k) => rk(k).totalPada), kiniS());", "const Bn = hbBatasNisan(o.koleksi.map((k) => rk(k).Wt), kiniS());")]}),
+    ('(T5) jam baca penuh terakhir dari jam perangkat yang melompat (tanpa jepit gema terakhir) — Bn bisa di masa depan', {HB: [("totalPada: kiniSTercatat(), gen:", "totalPada: s, gen:")]}),
+    ('(T6) catatan yang DIARSIPKAN tutup buku dianggap "hilang tanpa kabar" (batu nisan massal)', {HB: [("    if (bkBeda(k) && t.hilang.length) { tm.arsip = (tm.arsip || 0) + t.hilang.length; t.hilang = []; }\n", "")]}),
+    ('(T7) umur denyut dari `pada` (jam perangkat penulis), bukan jam server saat terlihat berubah', {HB: [("const s = lihat ? hbAngka(lihat[String(p && p.id)]) : null;", "const s = null;")]}),
+    ('(statis) daftar siap-nyala saat nyala membaca peta samping pendengar penuh (_cap) — semua catatan hemat "tanpa cap"', {FB: [("const c = (_hemat ? _hemat.capPeta(nama) : _cap[nama]) || {};", "const c = _cap[nama] || {};")]}),
+    ('(kasir) nota yang :commit-nya ditolak langsung dinyatakan ditolak (tanpa cara lama — kirim ulang di rules v6 / v3 jadi "ditolak", omzet dobel)', {KD: [("          if (bercap) { kirimItem(item, false, true); return; }   // :commit ditolak → cara lama sekali (lihat kirimItem), baru dinyatakan ditolak\n", "")]}),
+    ('(kasir) cara lama tanpa updateMask (PATCH utuh membuang capServer kiriman pertama → v6 menolak)', {KD: [("+ (caraLama ? kolomLama(fields) : '')", "+ ''")]}),
     ('(z) baca penuh harian per PERANGKAT diam-diam berhenti (klaim tidak pernah ditulis)', {HB: [("if (k.hari !== hari) return { klaim: true, hari, sebab:", "if (false) return { klaim: true, hari, sebab:")]}),
 ]
 

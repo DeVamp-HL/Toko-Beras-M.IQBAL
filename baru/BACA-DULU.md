@@ -2047,19 +2047,31 @@ lapisan dengar baru di balik saklar per perangkat yang bawaannya MATI.
   baca penuh harian per toko (dokumen `aturanToko/hematHarian`); pendeteksi tanpa cap di tiap baca penuh; penulis tanpa cap dari denyut; hitungan server;
   rem kuota; satu tab per peramban (kunci tab di app.js sebelum Firestore dimulai); pendengar simpanan hidup; uang-kritis & katalog kasir dijaga.
 - Kasir darurat **kasir-v33** ("versi 7 Okt"): nota lewat REST `:commit` + `updateTransforms capServer REQUEST_TIME` (tanpa updateMask); denyut tetap PATCH.
+  `:commit` yang DITOLAK → sekali lagi CARA LAMA (PATCH tanpa cap, `updateMask` = kolom karcis; cap yang sudah ada di server dibiarkan) sebelum karcis
+  dinyatakan ditolak — kirim ulang sesudah jawaban hilang lolos `tulisUlangSama` di v6 / v3 juga (tinjauan 7 Okt).
   Rantai versi: `sw-kasir.js`, `VERSI_APLIKASI`/`LABEL_VERSI`, `KK_VERSI_KASIR_TERBARU`, `HB_VERSI_KASIR_CAP`, literal `uji_antrean_kasir.py` &
   `uji_katalog_kasir.py`; hash CSP kasir darurat ditulis ulang (`uji_csp.py --pasang`).
-- **Rules v7** = v6 + `ulangKasirBercap()` (update penjualan kasir@) + blok `batuNisan`; `firestore.rules.v6` disimpan utuh. `periksa_rules.py` menuntut
+- **Rules v7** = v6 + `ulangKasirBercap()` (update penjualan kasir@: hanya `capServer` yang beda — jam server, atau DIBUANG kiriman ulang HP kasir-v32)
+  + blok `batuNisan`; `firestore.rules.v6` disimpan utuh. `periksa_rules.py` menuntut
   isi lain SAMA dengan v6 (+ 10 kontrol v7; kontrol lama tetap wajib tertangkap pemeriksa khususnya).
 - Uji: `alat-uji/uji_hemat_baca.py` (+ `--kontrol`, 35 kerusakan) — murni, server mainan (jam perangkat mundur/maju, absen > 14 hari, hapus dalam/luar
   jendela delta, Console tanpa cap, HP kasir lama, jadwal 14.00/15.00 WIB per toko, tab mati, rem), firebase.js dengan SDK palsu (saklar mati/nyala),
   statis tiap jalan tulis. `uji_layar_kunci.py` & `uji_denyut_per_akun.py`: SDK palsu ikut mengekspor permukaan baru. `uji_antrean_kasir.py`: server palsu
   memahami `:commit` + kontrol "nota kembali PATCH".
 
+**Tinjauan 7 Okt (penyanggah, sebelum PR)** — dibetulkan: kirim ulang HP < kasir-v33 saat nyala tidak lagi ditolak (rules + pendeteksi tidak menyentuh
+catatan lahir tanpa cap di koleksi yang dengar penuh karena gerbang); `capServer` masa depan tidak menggeser jam server perangkat (jam hanya dari gema
+denyut); catatan LAHIR ULANG tanpa cap sesudah batu nisannya tampil lagi (bukti baca penuh server di rekam + sentuh lewat isi mentah); temuan pendeteksi
+yang gagal dikirim diulang (rekam, ≤ 5 kali); kasir-v33 jatuh ke cara lama bila `:commit` ditolak; baris "statis" siap-nyala benar saat nyala; Bn = jam
+baca penuh terakhir; catatan arsip tutup buku bukan "hilang tanpa kabar"; umur denyut = jam server saat terlihat berubah; kontrol (c) semantik. Rincian &
+uji: `docs/rancangan-hemat-baca.md` bagian "Tinjauan 7 Okt". Saklar MATI dibuktikan lagi: firebase.js cabang vs `main` di jsc — pendengar, memori,
+tulisan (selain cap jam server yang disengaja), simpanan, pendengar staf SAMA.
+
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 
-1. **Rules v7 terbit DULU** (owner lewat Console, Playground `docs/uji-rules-v7.md`; Claude membaca lewat Chrome owner). Satu nota dari HP kasir yang
-   masih v32 masuk. Tanpa v7: kirim ulang karcis kasir-v33 ditolak dan batu nisan tidak pernah ditulis.
+1. **Rules v7 terbit DULU — JANGAN merge sebelum itu** (owner lewat Console, Playground `docs/uji-rules-v7.md` ★A1–A5 lolos, ★B1–B8 ditolak; Claude
+   membaca lewat Chrome owner). Satu nota dari HP kasir yang masih v32 masuk. Tanpa v7: batu nisan tidak pernah ditulis (hemat baca tidak bisa
+   dinyalakan) dan kirim ulang karcis kasir-v33 hanya selamat lewat cara lama (jaring pengaman, bukan jalan utama).
 2. **Gabung cabang** (saklar MATI — baca belum berubah). CI hijau, termasuk job peramban (antrean kasir dengan `:commit`).
 3. **HP penjaga** dibuka sekali sampai bilah atas "versi 7 Okt" (kasir-v33). **Semua tab `/baru/`** di tiap perangkat dimuat ulang (denyut `baru-c1`).
 4. **Daftar siap-nyala hijau 3 hari berturut-turut** (Menu › Sistem › Perangkat › Hemat baca): aturan v7 terbukti · tanpa tab `/baru/` lama / sistem
