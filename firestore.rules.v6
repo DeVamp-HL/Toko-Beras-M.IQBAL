@@ -1,20 +1,10 @@
 // ============================================================================
-// ATURAN FIRESTORE v7 — Toko Beras M.IQBAL (DRAF 7 Okt 2026, hemat baca — owner menerbitkan lewat Console SEBELUM kode bercap digabung): v6 + kirim-ulang
-// kasir@ bercap (hemat baca) + batu nisan. HANYA MENAMBAH — tidak ada aturan v6 yang dipersempit, jadi v7 aman terbit sebelum kode baru.
+// ATURAN FIRESTORE v6 — Toko Beras M.IQBAL (2 Okt 2026, Playground lulus; terbit lewat Console oleh owner): v5 + berita acara tutup buku hanya maju
 // Berkas KANONIK ber-versi. DEPLOY: salin-tempel ke Console > Firestore > Rules (owner; pola putaran 25).
 // Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep) + docs/peta-wadah-satu-buku.md §8 (v5)
-// + docs/rancangan-tutup-buku-bertahap.md §11 (v6) + docs/rancangan-hemat-baca.md (v7).
-// Diperiksa statis oleh alat-uji/periksa_rules.py (CI). Uji server: docs/uji-rules-v7.md (Playground ★; v6: docs/uji-rules-v6.md).
-// v7 yang berubah dari v6 (owner 7 Okt 2026, hemat baca — keputusan owner 3 Okt): (1) fungsi ulangKasirBercap() + satu suku di update penjualan: kasir darurat
-//   kasir-v33 mengirim nota lewat REST :commit dengan capServer = REQUEST_TIME — kirim ulang karcis yang sama hanya berbeda di capServer, dan capServer itu
-//   jam server permintaan ini. stokBahanLiteran & piutangMutasi TIDAK berubah (hanya ditulis kasir.html, pensiun). (2) blok batuNisan (owner saja): satu
-//   dokumen per catatan koleksi hemat yang dihapus owner, di writeBatch yang sama dengan hapusnya; capServer wajib jam server. Tanpa get(): 0 access call.
-//   SENGAJA tidak berubah: create penjualan kasir@ (capServer boleh ada atau tidak — nota HP v32 tetap masuk), denyut & pesanan staf (tidak dicap),
-//   tutupBukuAcara (tidak dicap — kirim ulang identik SDK tetap lolos tulisUlangSama), semua create/update lain (tidak membatasi kunci → capServer lolos).
-// Jalan mundur v7: JANGAN tempel firestore.rules.v6 selama kode bercap berjalan — hapus /baru/ (ber-batu nisan) & kirim ulang karcis kasir-v33 akan DITOLAK.
-//   Mundur hemat baca = saklar (Menu › Sistem › Perangkat › Hemat baca, atau /baru/?hemat=mati), bukan rules. v6 baru boleh ditempel balik SESUDAH kode
-//   bercap dibalik (git revert) dan HP kasir kembali ke kasir-v32.
-// Jalan mundur v6: firestore.rules.v5 (disimpan utuh) — tempel v5 = berita acara tutup buku kembali owner-saja tanpa urutan (kiriman telat bisa menimpanya);
+// + docs/rancangan-tutup-buku-bertahap.md §11 (v6).
+// Diperiksa statis oleh alat-uji/periksa_rules.py (CI). Uji server: docs/uji-rules-v6.md (Playground ★; v5: docs/uji-rules-v5.md).
+// Jalan mundur: firestore.rules.v5 (disimpan utuh) — tempel v5 = berita acara tutup buku kembali owner-saja tanpa urutan (kiriman telat bisa menimpanya);
 // firestore.rules.v4 = karyawan tidak bisa menuang/mengecek wadah dari akunnya; firestore.rules.v3 = kunci periode MATI, semua bulan bisa ditulis lagi.
 // v6 yang berubah dari v5: HANYA update tutupBukuAcara (+ 6 fungsi kecil di atas bloknya, tanpa get()). Dalam satu percobaan (paraf.pada) status hanya
 //   maju; percobaan baru hanya di atas 'dibatalkan' dan jam mulainya lebih baru; pemegang hanya berganti lewat ambil alih. Baca, create, delete = owner, sama.
@@ -78,10 +68,6 @@ service cloud.firestore {
     // KIRIM-ULANG ANTREAN KASIR WAJIB IDEMPOTEN (v2, dipertahankan untuk kasir@): update hanya kalau isinya SAMA PERSIS.
     function tulisUlangSama() {
       return request.resource.data == resource.data;
-    }
-    // v7 (hemat baca): kirim-ulang kasir@ lewat REST :commit + transform REQUEST_TIME — isinya sama persis kecuali capServer, dan capServer = jam server permintaan ini
-    function ulangKasirBercap() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && request.resource.data.capServer == request.time;
     }
 
     // ---- akun bukan-owner (aksesAkun/{uid}) — SATU get() per evaluasi ----
@@ -187,7 +173,7 @@ service cloud.firestore {
     match /penjualan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
       allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (stafBuatJual(['ben', 'karyawan'], ['ben']) && tglStaf('tanggal'));   // Kredit (jualBon): ben saja
-      allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());
+      allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());
       allow delete: if owner() && tglLama('tanggal');
     }
 
@@ -383,14 +369,6 @@ service cloud.firestore {
       allow read: if owner();
       allow create: if owner() || kasir() || stafJejak(['ben', 'karyawan']);   // bukan-owner: SATU baris per kiriman berisi daftar dokumen
       allow update, delete: if owner();
-    }
-
-    // v7 (hemat baca): batu nisan — satu dokumen per catatan koleksi hemat yang DIHAPUS owner lewat /baru/ ('<koleksi>|<id>'), ditulis di writeBatch YANG SAMA
-    // dengan hapusnya. capServer wajib jam server permintaan itu. Owner saja (staf belum memakai hemat baca). Tanpa get(): 0 access call. Tidak pernah dihapus otomatis.
-    match /batuNisan/{id} {
-      allow read: if owner();
-      allow create, update: if owner() && request.resource.data.capServer == request.time;
-      allow delete: if owner();
     }
 
     match /cadanganCatatan/{id} {

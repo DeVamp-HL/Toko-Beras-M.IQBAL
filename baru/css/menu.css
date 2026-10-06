@@ -49,6 +49,10 @@ main.layar-menu { position: relative; z-index: 1; display: flex; flex-direction:
 .layar-menu .jalur.kisi5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; }
 .layar-menu .jalur.kisi3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
 .layar-menu .jalur.kisi2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+/* owner 7 Okt (hemat baca): Sistem › Perangkat punya 4 tab — 2 × 2 di HP, sebaris di layar lebar */
+.layar-menu .jalur.kisi4 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+@media (min-width: 720px) { .layar-menu .jalur.kisi4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.hb-baris { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 3px 0; border-bottom: 1px solid var(--garis, rgba(127,127,127,.15)); font-size: 12px; }
 .layar-menu .jalur[class*="kisi"] .seg { text-align: center; white-space: nowrap; padding: 0 6px; min-height: 36px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
 .mn-grup.pita .mn-kepala .label { color: var(--aktif); }
 .mn-grup.sekarang .mn-kepala .label { color: var(--aktif); }

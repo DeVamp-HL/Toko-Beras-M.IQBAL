@@ -257,3 +257,21 @@ justru mustahil. Akibatnya Januari 2028: tutup buku 2027 tidak bisa jalan, kunci
 Penutupnya = **paket tutup buku 2027** (keputusan owner: pengecualian sempit; bentuknya dirancang di paket itu — bandingkan pilihan C/D di
 `docs/peta-kunci-periode.md`), harus siap **sebelum ritual 1 Jan 2028**. Sampai paket itu ada, butir itu di Januari 2028 memang belum punya jalan
 keluar dari layar.
+
+## Hemat baca (sejak 7 Okt 2026 — `docs/rancangan-hemat-baca.md`)
+
+Sejak cabang hemat baca, `firestore.rules` di repo = **v7** (v6 + kirim ulang kasir@ bercap + batu nisan). Langkah 3 & 4 di atas memakai berkas itu
+(hitung SHA-256 dari repo saat itu) dan ★ `docs/uji-rules-v7.md` + `docs/uji-rules-v6.md`.
+
+- **Selama aturan darurat (v3) terpasang**, hapus dari `/baru/` yang membawa batu nisan DITOLAK server (v3 tidak mengenal `batuNisan`) — kirimannya
+  pindah ke Menu › Sistem › Perangkat › Antrean "ditolak". Jangan menghapus apa pun di `/baru/` selama jendela darurat; jendelanya tetap sesingkat
+  mungkin. Kirim ulang karcis kasir darurat kasir-v33 yang jawabannya hilang juga ditolak v3 (karcisnya sudah masuk; buang dari daftar ditolak HP sesudah
+  dicocokkan).
+- **Catatan yang dipulihkan sistem lama TIDAK bercap jam server.** Perangkat yang hemat baca menyala tidak mendengarnya lewat ubahan. Sesudah langkah 3,
+  di `/baru/` perangkat owner: Menu › Sistem › Perangkat › **Hemat baca** → **"Minta semua perangkat baca penuh"** (dua ketukan). Tiap perangkat owner
+  membaca penuh sekali (±9 rb baca per perangkat; rem kuota bisa menundanya ke hari kuota berikutnya — layar menyebutnya).
+- **Mengubah / menghapus data lewat Console** (owner): sesudahnya tekan **"Saya baru mengubah data lewat Console"** di perangkat owner — perangkat itu
+  membaca penuh, menyentuh catatan yang berubah tanpa cap, dan menulis batu nisan untuk yang dihapus; perangkat lain menerimanya lewat ubahan.
+  Lupa menekan = baru sampai di baca penuh harian toko berikutnya (sesudah 14.00 / 15.00 WIB).
+- **Mematikan hemat baca** di satu perangkat tanpa membuka layar: buka `/baru/?hemat=mati`. Perangkat itu kembali membaca semua catatan tiap dibuka.
+- **JANGAN tempel `firestore.rules.v6`** sebagai "mundur" selama kode bercap berjalan (lihat kepala `firestore.rules`). Mundur hemat baca = saklar.

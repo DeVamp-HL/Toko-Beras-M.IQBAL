@@ -100,7 +100,7 @@ jobs:
         run: python3 alat-uji/uji_akses_baru.py && python3 alat-uji/uji_akses_baru.py --kontrol
       - name: "Kisi SS2 ditegakkan penjaga (audit 39b no. 22): nego & potongan, hak yang diputar owner, kisi bawaan tanpa tolak palsu — fungsi susun asli (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_kisi_ss2.py && python3 alat-uji/uji_kisi_ss2.py --kontrol
-      - name: "firestore.rules v6 (draf) — pemeriksa statis (tanpa payung, kunci periode di tiap koleksi bertanggal, blok per koleksi, owner via email, jalur kasir@, uid penulis termasuk stafBuatWadah/stafBuatLahir (39), peran = akses.js, berita acara tutup buku hanya maju — model) + kontrol"
+      - name: "firestore.rules v7 (draf, hemat baca) — pemeriksa statis (tanpa payung, kunci periode di tiap koleksi bertanggal, blok per koleksi, owner via email, jalur kasir@, uid penulis termasuk stafBuatWadah/stafBuatLahir (39), peran = akses.js, berita acara tutup buku hanya maju — model; v7 = v6 + kirim ulang kasir@ bercap di penjualan + batu nisan owner, selebihnya sama dengan firestore.rules.v6) + kontrol"
         run: python3 alat-uji/periksa_rules.py && python3 alat-uji/periksa_rules.py --kontrol
       - name: "Isian lokal (23d): tiap kolom ketik & kunci localStorage layar dijaga penjaga isian — statis + kontrol"
         run: python3 alat-uji/uji_isian_lokal.py && python3 alat-uji/uji_isian_lokal.py --kontrol
@@ -222,6 +222,9 @@ jobs:
         run: python3 alat-uji/uji_server_tiruan.py && python3 alat-uji/uji_server_tiruan.py --kontrol
       - name: "Data contoh gladi tutup buku dinilai logika /baru/ asli (12 baris sama, gerbang per varian, kiriman bertahap ≤ 18, tanpa minus) + salinan uji gladi statis (+ kontrol)"
         run: python3 alat-uji/gladi_data_contoh.py --periksa && python3 alat-uji/gladi_data_contoh.py --kontrol && python3 alat-uji/gladi_tutup_buku.py --periksa-salinan
+      # ---- owner 7 Okt 2026 (siap 2027): HEMAT BACA tahap 1–2 — saklar bawaan MATI; rules v7, cap jam server di tiap tulisan koleksi hemat, batu nisan ----
+      - name: "Hemat baca (owner 7 Okt): hari kuota Pasifik (reset 14.00/15.00 WIB), tanda air per koleksi per perangkat dari cap SERVER, batu nisan, baca penuh harian per toko, penulis tanpa cap, pendeteksi + sentuh, rem kuota, kunci tab, pendengar simpanan hidup — server mainan (jam perangkat mundur/maju, perangkat absen > 14 hari, hapus dalam/luar jendela delta); firebase.js saklar MATI = pendengar sebelum 7 Okt, cap hanya koleksi hemat, nisan hanya sesudah aturan v7; SETIAP jalan tulis bercap atau beralasan; kasir darurat :commit + REQUEST_TIME (jsc + statis + kontrol)"
+        run: python3 alat-uji/uji_hemat_baca.py && python3 alat-uji/uji_hemat_baca.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

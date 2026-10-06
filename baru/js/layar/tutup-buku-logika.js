@@ -109,6 +109,10 @@ export function gerbangBuku(tahun, kini, lokal, lewati) {
       ket: M.n ? M.n + ' hal — ' + M.daftar.slice(0, 3).map((x) => x.teks).join(' · ') + (M.n > 3 ? ' · …' : '') + '. Kalau dibiarkan, angkanya hilang dari buku saat tahun ditutup.' : 'tidak ada buku yang minus, tidak ada yang dibayar lebih',
       aksi: M.n ? 'Bereskan satu per satu (jalannya di tiap baris)' : '', bisaLewati: false, rincian: M.daftar },
   ];
+  // owner 7 Okt (hemat baca nyala): tutup buku (setahun sekali) dimulai hanya sesudah perangkat ini membaca penuh SEMUA koleksi di sesi ini — angka 31 Des tidak
+  // boleh dari simpanan yang belum terperiksa. Hemat baca mati: butir ini tidak ada (daftar sama dengan sebelumnya).
+  if (L.hemat && L.hemat.nyala) g.push({ id: 'g7', teks: 'Perangkat ini sudah membaca penuh semua catatan sesi ini (hemat baca)', ok: !!L.hemat.totalSesiIni,
+    ket: L.hemat.totalSesiIni ? 'semua koleksi dibaca penuh & cocok dengan server' : 'hemat baca nyala — angka dari simpanan perangkat belum dibaca penuh sesi ini', aksi: L.hemat.totalSesiIni ? '' : 'Baca penuh dulu: Menu › Sistem › Perangkat › Hemat baca', bisaLewati: false });
   return { daftar: g, semuaOk: g.every((x) => x.ok), belum: g.filter((x) => !x.ok).length, belumTutup, belumPutus, hari: hariG1 };
 }
 /**

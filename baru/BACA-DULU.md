@@ -2031,3 +2031,40 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
   bahasa mesin) + statis; `--kontrol` (logika, tutup-buku-logika, toko.js, uang.js); `--cadangan=<lokal>` (dilewati di CI): 27 dari 27 sama pada 5 Jan &
   20 Feb 2027. `uji_kinerja_gerak`: jumlah `_versiCache += 1` di toko.js 5 → 7 (jalan baru `denganCacheSaring`). `uji_tutup_buku_bertahap`: jangkar kontrol
   ikut bentuk patokan baru; N5 memakai jam mulai yang sebenarnya (07.00).
+
+## Hemat baca tahap 1–2 (owner 7 Okt 2026, siap 2027; cabang `perbaikan/hemat-baca`) — saklar bawaan MATI
+
+Keputusan owner K1 (7 Okt): tetap Spark + hemat baca, menyala ≤ 20 Nov. Rancangan & batasnya: `docs/rancangan-hemat-baca.md`; uji rules:
+`docs/uji-rules-v7.md`; jalan darurat: `docs/prosedur-pulih-darurat.md` bagian "Hemat baca". Tahap 1–2 = rules v7 + kode yang MENGECAP tulisannya dan
+lapisan dengar baru di balik saklar per perangkat yang bawaannya MATI.
+
+- **Saklar MATI = pendengar persis sebelum 7 Okt** (dicek jsc: satu pendengar server penuh per koleksi + katalog). Yang tetap berubah: `capServer`
+  (jam server) di tulisan 48 koleksi hemat lewat `tulisBerkas` / `perbaruiBerkas` / `pulihkanBerkas`; capServer DIKUPAS dari tiap snapshot sebelum memori
+  (mesin beku, cadangan, katalog tidak melihatnya); batu nisan `batuNisan/<koleksi>|<id>` di batch hapus koleksi hemat — HANYA sesudah perangkat itu
+  terbukti bisa membaca `batuNisan` (aturan v7; 1 baca sekali, `miqbal_hemat_nisan_sah_v1`); denyut `versi: 'baru-c1'` + `capServer` di denyut owner.
+- **Saklar NYALA** (owner; Menu › Sistem › Perangkat › Hemat baca, dua ketukan, aplikasi dimuat ulang; mati darurat `/baru/?hemat=mati`): koleksi hemat
+  lewat `hbSesi` (`baru/js/data/hemat-baca.js`, murni) — simpanan perangkat (V) + delta `capServer > B` (S) + batu nisan (N) + baca penuh kueri sendiri (F);
+  baca penuh harian per toko (dokumen `aturanToko/hematHarian`); pendeteksi tanpa cap di tiap baca penuh; penulis tanpa cap dari denyut; hitungan server;
+  rem kuota; satu tab per peramban (kunci tab di app.js sebelum Firestore dimulai); pendengar simpanan hidup; uang-kritis & katalog kasir dijaga.
+- Kasir darurat **kasir-v33** ("versi 7 Okt"): nota lewat REST `:commit` + `updateTransforms capServer REQUEST_TIME` (tanpa updateMask); denyut tetap PATCH.
+  Rantai versi: `sw-kasir.js`, `VERSI_APLIKASI`/`LABEL_VERSI`, `KK_VERSI_KASIR_TERBARU`, `HB_VERSI_KASIR_CAP`, literal `uji_antrean_kasir.py` &
+  `uji_katalog_kasir.py`; hash CSP kasir darurat ditulis ulang (`uji_csp.py --pasang`).
+- **Rules v7** = v6 + `ulangKasirBercap()` (update penjualan kasir@) + blok `batuNisan`; `firestore.rules.v6` disimpan utuh. `periksa_rules.py` menuntut
+  isi lain SAMA dengan v6 (+ 10 kontrol v7; kontrol lama tetap wajib tertangkap pemeriksa khususnya).
+- Uji: `alat-uji/uji_hemat_baca.py` (+ `--kontrol`, 35 kerusakan) — murni, server mainan (jam perangkat mundur/maju, absen > 14 hari, hapus dalam/luar
+  jendela delta, Console tanpa cap, HP kasir lama, jadwal 14.00/15.00 WIB per toko, tab mati, rem), firebase.js dengan SDK palsu (saklar mati/nyala),
+  statis tiap jalan tulis. `uji_layar_kunci.py` & `uji_denyut_per_akun.py`: SDK palsu ikut mengekspor permukaan baru. `uji_antrean_kasir.py`: server palsu
+  memahami `:commit` + kontrol "nota kembali PATCH".
+
+### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
+
+1. **Rules v7 terbit DULU** (owner lewat Console, Playground `docs/uji-rules-v7.md`; Claude membaca lewat Chrome owner). Satu nota dari HP kasir yang
+   masih v32 masuk. Tanpa v7: kirim ulang karcis kasir-v33 ditolak dan batu nisan tidak pernah ditulis.
+2. **Gabung cabang** (saklar MATI — baca belum berubah). CI hijau, termasuk job peramban (antrean kasir dengan `:commit`).
+3. **HP penjaga** dibuka sekali sampai bilah atas "versi 7 Okt" (kasir-v33). **Semua tab `/baru/`** di tiap perangkat dimuat ulang (denyut `baru-c1`).
+4. **Daftar siap-nyala hijau 3 hari berturut-turut** (Menu › Sistem › Perangkat › Hemat baca): aturan v7 terbukti · tanpa tab `/baru/` lama / sistem
+   lama 7 hari · semua HP kasir ≥ kasir-v33 dalam 14 hari · tiap perangkat owner `baru-c1` antrean 0 · tanpa catatan baru tak bercap.
+5. **Owner menyalakan** di tiap perangkat owner (tiap perangkat membaca penuh sekali, ±9 rb baca; nyalakan berselang, bukan sekaligus).
+6. Esoknya Claude membaca tab Usage Console (baca saja) sehari sebelum & sesudah, dibandingkan dengan "perkiraan baca hari ini" di panel Hemat baca.
+7. Sesudah nyala: ubah data lewat Console → tekan "Saya baru mengubah data lewat Console"; tutup buku 2026 (sesudah 1 Jan 2027 15.00 WIB) dimulai
+   sesudah "Baca penuh sekarang" di perangkat pemegang (butir g6 daftar periksa tutup buku).

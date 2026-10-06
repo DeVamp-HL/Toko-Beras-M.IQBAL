@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <!-- CSP (3 Okt 2026, kasir-v32): script HANYA yang hash-nya tercantum (tanpa 'unsafe-inline' — tombol memakai data-aksi), koneksi HANYA Firestore &
      Auth Firebase (REST), service worker dari situs sendiri. Ubah isi script sebaris → python3 alat-uji/uji_csp.py --pasang (hash baru). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-xuOSfEtuTmc9M9VMwexUmYkB1LHCxsXU4ZfUq0eWeIM='; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-bcYnGrPpZKR0P7ptjtbHBEWszFtwwOwqZcua8lpoVF4='; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Kasir Darurat — Toko Beras M.IQBAL</title>
 <meta name="description" content="Catat nominal uang masuk saat darurat. Cuma omzet — tanpa produk, tanpa stok.">
@@ -340,6 +340,11 @@ if (!String.prototype.padStart) {
 var PROYEK = 'toko-beras-m-iqbal';
 var KUNCI_API = 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA';
 var DASAR = 'https://firestore.googleapis.com/v1/projects/' + PROYEK + '/databases/(default)/documents/';
+// Hemat baca (owner 7 Okt 2026, kasir-v33): nota (koleksi penjualan) dikirim lewat :commit + transform capServer = REQUEST_TIME (jam SERVER saat
+// permintaan diterima) — perangkat owner yang hemat baca mendengar catatan bercap jam server, bukan jam HP. Isinya ditimpa utuh seperti PATCH dulu
+// (tanpa updateMask). Kirim ulang karcis yang sama: rules v7 ulangKasirBercap (hanya capServer yang berbeda). Denyut & koleksi lain tetap PATCH.
+var URL_COMMIT = 'https://firestore.googleapis.com/v1/projects/' + PROYEK + '/databases/(default)/documents:commit';
+var NAMA_DOK = 'projects/' + PROYEK + '/databases/(default)/documents/';
 var EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
 var URL_MASUK = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + KUNCI_API;
 var URL_SEGARKAN_TOKEN = 'https://securetoken.googleapis.com/v1/token?key=' + KUNCI_API;
@@ -350,8 +355,8 @@ var K_DITOLAK_ARSIP = 'darurat_ditolak_arsip_v1';   // ditolak yang sudah dicata
 // VERSI yang BENAR-BENAR berjalan: SAMA dengan VERSI di sw-kasir.js (uji_antrean_kasir.py
 // memeriksanya). Dikirim di denyut dan tampil di bilah atas. Sampai 25b denyut berkata
 // 'kasir-v24' padahal cache sudah v25 — owner membaca versi yang salah tanpa tahu.
-var VERSI_APLIKASI = 'kasir-v32';
-var LABEL_VERSI = 'versi 3 Okt b';
+var VERSI_APLIKASI = 'kasir-v33';
+var LABEL_VERSI = 'versi 7 Okt';
 var K_LOG = 'darurat_log_v1';           // catatan lokal per HP untuk daftar "hari ini"
 var K_OPERATOR = 'kasir_operator_v1';   // ikut kasir: kalau ada nama penjaga, ikut tercatat
 var K_RINGKASAN = 'kasir_ringkasan_v1';  // BERSAMA kasir.html — katalog beku untuk tuts bernama barang
@@ -592,15 +597,22 @@ function kirimAntrean(manual) {
     var a2 = ambilAntrean();
     if (a2.length === 0) { selesai(true); return; }
     var item = a2[0];
-    denganAuth({
+    var fields = (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })();
+    // kasir-v33 (hemat baca): nota = :commit bercap jam server (lihat URL_COMMIT); isi karcis & golonganJawaban sama dengan PATCH dulu
+    var bercap = item.koleksi === 'penjualan';
+    denganAuth(bercap ? {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ writes: [{ update: { name: NAMA_DOK + item.koleksi + '/' + item.docId, fields: fields },
+        updateTransforms: [{ fieldPath: 'capServer', setToServerValue: 'REQUEST_TIME' }] }] })
+    } : {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })() })
+      body: JSON.stringify({ fields: fields })
     }).then(function (opsi) {
       // Kunci masuk tidak bisa disegarkan (sinyal putus saat menyegarkan): tetap antre, ulang nanti.
       if (!(opsi.headers && opsi.headers.Authorization)) {
         selesai(false); if (!sudahLogin()) tampilkanLayarLogin(true); return;
       }
-      return fetch(DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, opsi).then(function (r) {
+      return fetch(bercap ? URL_COMMIT + '?key=' + KUNCI_API : DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, opsi).then(function (r) {
         var g = golonganJawaban(r.status, true);
         if (g === 'masuk') { cabutDariAntrean(item); kirimSatu(); return; }
         if (g === 'masuk-ulang') { lupakanKunciSesi(); selesai(false); tampilkanLayarLogin(true); return; }

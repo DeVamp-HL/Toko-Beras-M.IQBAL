@@ -1,6 +1,9 @@
 // Daftar koleksi Firestore yang dibaca sistem baru — SATU tabel, tanpa impor.
 // `urut` = kolom pengurut (terbaru dulu), sama dengan pasangSinkronisasi() di index.html.
 // `cache` = nama cache di toko.js yang diisi koleksi itu.
+// `kelas` (hemat baca, owner 7 Okt 2026 — siap 2027): tanpa kelas = koleksi HEMAT (saklar nyala: simpanan perangkat + ubahan bercap capServer + batu nisan);
+// 'tetap' = selalu didengar penuh dari server (kecil / ditulis tanpa cap: setelan, berita acara tutup buku, denyut, akun, pesanan yang diubah staf);
+// 'jejak' = logAktivitas (berbatas `batas` baris terbaru, tidak bercap). baru/js/data/hemat-baca.js membaca kolom ini; saklar mati = kolom ini tidak dipakai.
 export const KOLEKSI = [
   { nama: 'batchMasuk',          urut: 'id',    cache: 'batch' },
   { nama: 'biayaBulanan',        urut: 'bulan', cache: 'bulanan' },
@@ -19,7 +22,7 @@ export const KOLEKSI = [
   { nama: 'penyesuaianStok',     urut: 'id',    cache: 'penyesuaian' },
   { nama: 'tutupHari',           urut: 'id',    cache: 'tutup' },
   { nama: 'pelangganCatatan',    urut: 'id',    cache: 'pelangganCat' },
-  { nama: 'pesanan',             urut: 'id',    cache: 'pesanan' },
+  { nama: 'pesanan',             urut: 'id',    cache: 'pesanan', kelas: 'tetap' },
   { nama: 'titipanHarian',       urut: 'id',    cache: 'titipan' },
   { nama: 'setoranKas',          urut: 'id',    cache: 'setoran' },
   { nama: 'penyesuaianKemasan',  urut: 'id',    cache: 'penyKemasan' },
@@ -37,7 +40,7 @@ export const KOLEKSI = [
   { nama: 'wadahLiteran',        urut: 'id',    cache: 'wadah' },
   // KOLEKSI BARU sistem baru (23 Sep 2026): angka kebijakan owner untuk pencatatan stok (id tetap, mis. 'catatStok') dan jejak kedatangan
   // yang dihapus (beralasan). Sistem lama tidak membacanya; aturan Firestore jatuh ke "owner saja".
-  { nama: 'aturanToko',          urut: 'id',    cache: 'aturan' },
+  { nama: 'aturanToko',          urut: 'id',    cache: 'aturan', kelas: 'tetap' },
   { nama: 'bukuHapus',           urut: 'id',    cache: 'bukuHapus' },
   { nama: 'tagihPelanggan',      urut: 'id',    cache: 'tagih' },       // tagihan bon lewat WhatsApp + janji bayar (putaran 13)
   { nama: 'pelangganTitip',      urut: 'id',    cache: 'titip' },       // yang datang bukan orangnya (benang merah)
@@ -45,8 +48,8 @@ export const KOLEKSI = [
   //  perangkatStatus = denyut tiap perangkat (koleksi sistem lama; sistem baru ikut menulis denyutnya sendiri, `aplikasi: 'baru'`).
   //  logAktivitas    = jejak siapa menulis apa (koleksi sistem lama); DIBACA TERBATAS `batas` baris terbaru — bukan seluruh koleksi.
   //  cadanganCatatan, pengingat, persetujuan, pindahStok = koleksi BARU sistem baru (aturan Firestore jatuh ke "owner saja").
-  { nama: 'perangkatStatus',     urut: 'pada',  cache: 'perangkat' },
-  { nama: 'logAktivitas',        urut: 'pada',  cache: 'log', batas: 150 },
+  { nama: 'perangkatStatus',     urut: 'pada',  cache: 'perangkat', kelas: 'tetap' },
+  { nama: 'logAktivitas',        urut: 'pada',  cache: 'log', batas: 150, kelas: 'jejak' },
   { nama: 'cadanganCatatan',     urut: 'id',    cache: 'cadangan' },     // tiap cadangan berkas yang diunduh dari sistem baru
   { nama: 'pengingat',           urut: 'id',    cache: 'pengingat' },    // keadaan tiap pengingat (selesai / ditunda / WA hari ini)
   { nama: 'persetujuan',         urut: 'id',    cache: 'persetujuan' },  // permintaan "minta owner" dari tablet/Mac + keputusannya
@@ -57,7 +60,7 @@ export const KOLEKSI = [
   { nama: 'strukKeluar',         urut: 'id',    cache: 'strukKeluar' },
   // Putaran 16 (23 Sep 2026) — Stok ST4–ST6: pengaturan = koleksi sistem lama (dokumen tempatSimpan {peta} = peta tempat simpan yang sama dengan index.html);
   //  pindahTempat = catatan pindah tempat; koreksiHpp = jejak koreksi harga kedatangan per nama (Δ nilai rak). Dua terakhir koleksi BARU (owner saja).
-  { nama: 'pengaturan',          urut: 'id',    cache: 'pengaturan' },
+  { nama: 'pengaturan',          urut: 'id',    cache: 'pengaturan', kelas: 'tetap' },
   { nama: 'pindahTempat',        urut: 'id',    cache: 'pindahTempat' },
   { nama: 'koreksiHpp',          urut: 'id',    cache: 'koreksiHpp' },
   // Putaran 17 (23 Sep 2026) — HARGA & PEMASOK: hargaPasar = catatan owner harga toko lain per harga (id = kunci merek|satuan); hargaTerbit = tiap kali katalog
@@ -73,7 +76,7 @@ export const KOLEKSI = [
   { nama: 'pindahUang',          urut: 'id',    cache: 'pindahUang' },
   { nama: 'absenKaryawan',       urut: 'id',    cache: 'absen' },
   { nama: 'slipUpah',            urut: 'id',    cache: 'slipUpah' },
-  { nama: 'tutupBukuAcara',      urut: 'id',    cache: 'tutupBukuAcara' },
+  { nama: 'tutupBukuAcara',      urut: 'id',    cache: 'tutupBukuAcara', kelas: 'tetap' },
   // Putaran 19 (23 Sep 2026) — LAPORAN & DOKUMEN: dokumenCetak = tiap dokumen yang keluar bernomor urut (laporan berkop, rekap omzet, bukti, slip, kartu, salinan nota):
   //  nomor, jenis, judul, periode, cara (cetak/pdf/wa), versi kop, DRAF atau final, salinan ke-N untuk nota. Kop & identitas usaha, ragam kop per dokumen, nomor awal,
   //  tarif/batas/tanda-lapor rekap omzet, aset tetap = dokumen aturanToko (identitas, dokumen, rekapOmzet, laporan). Koleksi BARU (aturan Firestore: owner saja).
@@ -81,8 +84,8 @@ export const KOLEKSI = [
   // Putaran 23 (24 Sep 2026) — AKUN PER ORANG: aksesAkun/{uid} = peran & aktif tiap akun bukan-owner (ditulis owner; dibaca rules lewat get());
   //  permintaanAkses/{uid} = "minta didaftarkan" dari akun yang belum terdaftar. Hanya OWNER yang mendengarkan kedua koleksi ini;
   //  akun bukan-owner mendengarkan dokumen aksesAkun-nya sendiri saja (firebase.js). Lihat docs/peta-hak-akses.md.
-  { nama: 'aksesAkun',           urut: 'id',    cache: 'aksesAkun' },
-  { nama: 'permintaanAkses',     urut: 'pada',  cache: 'permintaanAkses' },
+  { nama: 'aksesAkun',           urut: 'id',    cache: 'aksesAkun', kelas: 'tetap' },
+  { nama: 'permintaanAkses',     urut: 'pada',  cache: 'permintaanAkses', kelas: 'tetap' },
   // Putaran 24 (24 Sep 2026) — MODUL PAJAK (owner saja): pajakOmzetLuar/{YYYY-MM|sumber} = omzet yang DIKETIK owner (catatan lama sebelum sistem,
   //  usaha lain WP yang sama, usaha pasangan); pajakSetoran = tiap setoran PPh final (masa, tanggal, jumlah, NTPN) + potret omzet & perkiraan saat dicatat.
   //  Profil wajib pajak = field tambahan di aturanToko/rekapOmzet. TIDAK ada NIK, NPWP, atau nomor rekening di dokumen mana pun.

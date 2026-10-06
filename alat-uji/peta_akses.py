@@ -594,11 +594,14 @@ def periksa_owner(teks_sumber=None):
     fb = (teks_sumber or {}).get('baru/js/data/firebase.js') or open(os.path.join(AKAR, 'baru/js/data/firebase.js'), encoding='utf-8').read()
     if 'const POTONG = KP_BATAS_GET;' not in fb or fb.count('i += POTONG') < 2 or fb.count('daftar.slice(i, i + POTONG)') < 2:
         cacat.append('arsip / pengembalian tutup buku tidak dipotong per KP_BATAS_GET (firebase.js POTONG) — satu potongan bisa > 18 pemeriksaan kunci')
-    # (a3) kasir@ (kasir darurat, tidak disentuh putaran 25): SATU dokumen per permintaan REST (PATCH) → ≤ 1 pemeriksaan kunci per permintaan (batas 10).
+    # (a3) kasir@ (kasir darurat, tidak disentuh putaran 25): SATU dokumen per permintaan REST → ≤ 1 pemeriksaan kunci per permintaan (batas 10).
     # kasir.html pensiun 3 Okt 2026 (owner) — kini halaman pengalih tanpa script, tidak mengirim apa pun.
+    # Hemat baca (owner 7 Okt 2026, kasir-v33): nota lewat :commit — tetap SATU tulisan per permintaan (writes = satu dokumen karcis + transform capServer,
+    # dibangun di SATU tempat kirimSatu). Commit kedua / batch / transaksi = banyak dokumen sekaligus → ukur ulang.
     for k in ('kasir-darurat-nominal.html',):
         t = (teks_sumber or {}).get(k) or open(os.path.join(AKAR, k), encoding='utf-8').read()
-        if re.search(r'documents:commit|:batchWrite|writeBatch|runTransaction', t): cacat.append(k + ': kasir@ mengirim banyak dokumen sekaligus — hitungan "≤ 1 pemeriksaan kunci per permintaan" tidak berlaku lagi, ukur ulang')
+        satu = t.count('documents:commit') <= 1 and t.count('writes: [') <= 1 and (t.count('documents:commit') == 0 or "body: JSON.stringify({ writes: [{ update: { name: NAMA_DOK + item.koleksi + '/' + item.docId, fields: fields }," in t)
+        if re.search(r':batchWrite|writeBatch|runTransaction', t) or not satu: cacat.append(k + ': kasir@ mengirim banyak dokumen sekaligus — hitungan "≤ 1 pemeriksaan kunci per permintaan" tidak berlaku lagi, ukur ulang')
     # (b) jsc: fungsi asli dua keadaan
     teks = dict((m, (teks_sumber or {}).get(m) or open(os.path.join(AKAR, m), encoding='utf-8').read()) for m in uji_kunci_periode.MODUL)
     js = uji_kunci_periode.satu_lingkup('\n'.join([bundel_baru.PRELUDE] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(teks[m]) for m in uji_kunci_periode.MODUL]))

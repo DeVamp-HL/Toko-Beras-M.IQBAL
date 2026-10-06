@@ -27,7 +27,7 @@ export const KK_KOLEKSI = 'ringkasanKasir';
 export const KK_ID = 'aktif';
 export const KK_JEDA_MS = 4000;
 // Versi kasir TERBARU yang disajikan = VERSI sw-kasir.js (uji_katalog_kasir.py & uji_antrean_kasir.py membandingkannya; naik bersama).
-export const KK_VERSI_KASIR_TERBARU = 'kasir-v32';
+export const KK_VERSI_KASIR_TERBARU = 'kasir-v33';
 // Versi PERTAMA yang mengambil katalog sendiri tiap layar HP dinyalakan & tiap 5 menit (25c). Di bawahnya = harga baru baru sampai saat dibuka ulang;
 // di antara ini dan versi terbaru (39b no. 4: v27 belum punya buku kecil bayar bon) = cukup diberi tahu, pemeriksaan katalog lamanya tetap jalan.
 export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';
@@ -82,7 +82,9 @@ export function kkTertinggal(isi) {
 }
 /**
  * Gerbang terbit otomatis. k = { owner, sumber, koleksiSiap, koleksiTotal, dariCache (jumlah koleksi yang jawaban terakhirnya dari salinan perangkat),
- * ditolak (jumlah pendengar ditolak rules), online }. → { boleh, sebab }.
+ * ditolak (jumlah pendengar ditolak rules), online, hemat }. → { boleh, sebab }.
+ * hemat (owner 7 Okt, hemat baca nyala — firebase.js gerbangHemat): null saat saklar mati; selain itu { boleh, sebab } tambahan (semua koleksi hemat
+ * terperiksa dengan server, hitungan koleksi HP kasir ≤ 35 menit, kunci tab, tanpa ayunan antarperangkat). Kalau ragu, TIDAK terbit.
  */
 export function kkBolehTerbit(k) {
   if (!k || !k.owner) return { boleh: false, sebab: 'bukan owner — katalog kasir hanya diterbitkan owner' };
@@ -92,6 +94,7 @@ export function kkBolehTerbit(k) {
   if (!(k.koleksiTotal > 0) || k.koleksiSiap < k.koleksiTotal) return { boleh: false, sebab: 'data belum termuat semua' };
   if (k.dariCache > 0) return { boleh: false, sebab: 'sebagian data masih salinan perangkat (belum dijawab server)' };
   if (_kkServer.ada === null || !_kkServer.dariServer) return { boleh: false, sebab: 'katalog di server belum terbaca' };
+  if (k.hemat && !k.hemat.boleh) return { boleh: false, sebab: 'hemat baca: ' + (k.hemat.sebab || 'data belum terperiksa') };
   return { boleh: true, sebab: '' };
 }
 /**

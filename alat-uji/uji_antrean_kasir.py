@@ -98,24 +98,30 @@ KEPALA = r"""<script>
     if (!P.jaringan) return Promise.reject(new TypeError('Failed to fetch'));
     if (url.indexOf('securetoken.googleapis.com') >= 0) return jawab(200, { id_token: 't-uji-segar', refresh_token: 'r-uji', expires_in: '3600' });
     if (url.indexOf('identitytoolkit.googleapis.com') >= 0) return jawab(200, { idToken: 't-uji', refreshToken: 'r-uji', expiresIn: '3600' });
-    var m = /\/documents\/([^/?]+)\/([^?]+)/.exec(url); if (!m) return jawab(404, {});
+    // hemat baca (owner 7 Okt, kasir-v33): nota = POST …/documents:commit { writes: [{ update: { name, fields }, updateTransforms: [capServer REQUEST_TIME] }] }
+    // — server palsu memahami bentuk itu (dokumen dari `name`), mencatat apakah capServer = jam server tanpa updateMask, lalu menjawab persis seperti PATCH
+    var komit = /\/documents:commit(\?|$)/.test(url), tulisK = null;
+    if (komit) { try { tulisK = JSON.parse(opsi.body).writes[0]; } catch (e) { tulisK = null; } if (!tulisK || !tulisK.update || !tulisK.update.name) return jawab(400, { error: { code: 400, status: 'INVALID_ARGUMENT' } }); }
+    var m = komit ? /\/documents\/([^/]+)\/(.+)$/.exec(tulisK.update.name) : /\/documents\/([^/?]+)\/([^?]+)/.exec(url); if (!m) return jawab(404, {});
     var koleksi = m[1], id = decodeURIComponent(m[2]), metode = String(opsi.method || 'GET').toUpperCase();
     var kunci = !!(opsi.headers && opsi.headers.Authorization);
+    var cap = komit && !tulisK.updateMask && (tulisK.updateTransforms || []).some(function (t) { return t.fieldPath === 'capServer' && t.setToServerValue === 'REQUEST_TIME'; });
     if (metode === 'GET') {
       // 39b no. 4: katalog ringkasanKasir/aktif dilayani dari localStorage '__uji_katalog' { waktu (updateTime server), isi } — lewat keFs halaman itu sendiri
       var kat = null; try { kat = koleksi === 'ringkasanKasir' ? JSON.parse(localStorage.getItem('__uji_katalog') || 'null') : null; } catch (e) {}
       if (kat && typeof keFs === 'function') { var fk = {}; for (var kk in kat.isi) fk[kk] = keFs(kat.isi[kk]); return jawab(200, { name: 'katalog', fields: fk, updateTime: kat.waktu }); }
       return jawab(404, { error: { code: 404, status: 'NOT_FOUND' } });
     }
-    var data = {}; try { var f = JSON.parse(opsi.body).fields || {}; for (var k in f) data[k] = nilai(f[k]); } catch (e) {}
+    var data = {}; try { var f = (komit ? tulisK.update.fields : JSON.parse(opsi.body).fields) || {}; for (var k in f) data[k] = nilai(f[k]); } catch (e) {}
     if (koleksi === 'perangkatStatus') { P.denyut.push(data); return jawab(200, {}); }
-    P.permintaan.push({ koleksi: koleksi, id: id, kunci: kunci, hargaTotal: data.hargaTotal, tanggal: data.tanggal });
+    P.permintaan.push({ koleksi: koleksi, id: id, kunci: kunci, hargaTotal: data.hargaTotal, tanggal: data.tanggal, komit: komit, cap: cap });
     if (!kunci) { P.tanpaKunci++; return jawab(403, TOLAK); }                        // server sungguhan: request.auth == null → ditolak rules
     if (P.mode === '401') return jawab(401, { error: { code: 401, message: 'Request had invalid authentication credentials.', status: 'UNAUTHENTICATED' } });
     if (P.mode === '429') return jawab(429, { error: { code: 429, message: 'Quota exceeded.', status: 'RESOURCE_EXHAUSTED' } });
     if (P.mode === '503') return jawab(503, { error: { code: 503, message: 'The service is currently unavailable.', status: 'UNAVAILABLE' } });
     if (P.sampaiBulan && String(data.tanggal || '').slice(0, 7) <= P.sampaiBulan) return jawab(403, TOLAK);   // rules v4 kasir@: tglBaru di bulan terkunci
-    P.masuk.push({ koleksi: koleksi, id: id, hargaTotal: data.hargaTotal, tanggal: data.tanggal, nominal: data.nominal, nama: data.namaPelanggan, cara: data.caraBayar });
+    P.masuk.push({ koleksi: koleksi, id: id, hargaTotal: data.hargaTotal, tanggal: data.tanggal, nominal: data.nominal, nama: data.namaPelanggan, cara: data.caraBayar, cap: cap });
+    if (komit) return jawab(200, { writeResults: [{ updateTime: '2026-10-07T03:00:00.000000Z' }], commitTime: '2026-10-07T03:00:00.000000Z' });
     return jawab(200, koleksi === 'piutangMutasi' ? { name: 'dok', fields: {}, updateTime: '2026-09-30T03:00:00.000000Z' } : { name: 'dok', fields: {} });
   };
 })();
@@ -152,7 +158,7 @@ SKENARIO = r"""<script>
       ditolak: L(A.gagal).map(function (x) { return { h: x.data && x.data.hargaTotal, t: x.data && x.data.tanggal, alasan: x.ditolak && x.ditolak.alasan, status: x.ditolak && x.ditolak.status }; }),
       arsip: L(A.arsip).map(function (x) { return x.data && x.data.hargaTotal; }), masuk: P.masuk.map(function (x) { return x.hargaTotal; }), login: tampil('layarLogin'),
       pita: pita && getComputedStyle(pita).display !== 'none' ? pita.textContent : '', chip: document.getElementById('chipStatus').textContent,
-      permintaan: P.permintaan.map(function (x) { return x.hargaTotal; }), tanpaKunci: P.tanpaKunci }; };
+      permintaan: P.permintaan.map(function (x) { return x.hargaTotal; }), tanpaKunci: P.tanpaKunci, bercap: P.masuk.map(function (x) { return !!x.cap; }) }; };
   try {
     var s = new URLSearchParams(location.search).get('s') || 'utama';
     hasil.kanari = window.__csp ? await window.__csp.kanari() : null;   // CSP halaman berlaku di salinan & pendengar pelanggaran hidup
@@ -470,6 +476,7 @@ def periksa_peramban(berkas, u, m, versi_sw):
     S = u['skenario']
     j = S['jaringanPutus']; ok('sinyal putus: antrean utuh (3), tidak ada yang "ditolak", layar masuk tidak muncul', j['antrean'] == [1100, 1200, 1300] and not j['ditolak'] and not j['login'], j)
     j = S['jaringanPulih']; ok('sinyal kembali → dicoba lagi → ketiganya masuk berurutan, antrean kosong', j['masuk'] == [1100, 1200, 1300] and not j['antrean'] and not j['ditolak'], j)
+    ok('hemat baca (kasir-v33): ketiga nota dikirim lewat :commit dengan capServer = REQUEST_TIME, tanpa updateMask (ditimpa utuh seperti PATCH dulu)', j.get('bercap') == [True, True, True], j.get('bercap'))
     for k, n in (('sibuk429', '429 (kuota / sibuk)'), ('sibuk503', '503 (server galat)')):
         j = S[k]; ok(n + ': antrean utuh (2), tidak ada yang "ditolak", layar masuk tidak muncul', j['antrean'] == [2100, 2200] and not j['ditolak'] and not j['login'] and not j['masuk'], j)
     j = S['sibukPulih']; ok('server pulih → keduanya masuk', j['masuk'] == [2100, 2200] and not j['antrean'] and not j['ditolak'], j)
@@ -506,7 +513,7 @@ def periksa_peramban(berkas, u, m, versi_sw):
     ok('Tutup DIKETUK → daftar ditolak tertutup', m.get('sesudahTutup') is False, m.get('sesudahTutup'))
     ok('"sudah dicatat ulang": satu ketukan TIDAK memindah apa pun', len(m['sesudahSatuKetuk']['ditolak']) == 1 and not m['sesudahSatuKetuk']['arsip'], m['sesudahSatuKetuk'])
     ok('ketukan kedua MEMINDAH ke arsip (tidak dihapus), pita hilang', not m['sesudahDuaKetuk']['ditolak'] and m['sesudahDuaKetuk']['arsip'] == [5200] and not m['sesudahDuaKetuk']['pita'], m['sesudahDuaKetuk'])
-    ok('versi yang berjalan tampil di layar ("versi 3 Okt b" — naik bersama kasir-v32)', m.get('versiLayar') == 'versi 3 Okt b', m.get('versiLayar'))
+    ok('versi yang berjalan tampil di layar ("versi 7 Okt" — naik bersama kasir-v33)', m.get('versiLayar') == 'versi 7 Okt', m.get('versiLayar'))
     return out
 
 
@@ -679,7 +686,9 @@ KONTROL = [
     ('arsip "sudah dicatat ulang" satu ketukan', {DARURAT: [("  if (!yakinArsip) {\n    yakinArsip = true;", "  if (false) {\n    yakinArsip = true;")]}, None, ['peramban']),
     # 25c: sesudah versi, denyut kasir darurat membawa `katalog` (baris versinya berakhir koma) — kontrol mengganti nilainya saja
     ('denyut masih versi tulis-tangan lama', {DARURAT: [("    versi: VERSI_APLIKASI,\n", "    versi: 'kasir-v24',\n")]}, None, ['statis', 'peramban']),
-    ('sw-kasir.js naik tanpa kasir ikut (VERSI beda)', {'sw-kasir.js': [("const VERSI = 'kasir-v32';", "const VERSI = 'kasir-v33';")]}, None, ['statis']),
+    # hemat baca (owner 7 Okt, kasir-v33): nota kembali PATCH tanpa cap jam server — perangkat owner yang hemat baca tidak pernah mendengarnya lewat delta
+    ('nota kembali dikirim PATCH tanpa capServer (hemat baca buta terhadap nota HP)', {DARURAT: [("var bercap = item.koleksi === 'penjualan';", "var bercap = false;")]}, None, ['peramban']),
+    ('sw-kasir.js naik tanpa kasir ikut (VERSI beda)', {'sw-kasir.js': [("const VERSI = 'kasir-v33';", "const VERSI = 'kasir-v34';")]}, None, ['statis']),
     ('service worker memakai cache HTTP lama', {'sw-kasir.js': [("c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))", "c.addAll(FILES)")]}, None, ['statis']),
     ('meta CSP kasir darurat tanpa script-src (salinan uji tidak bisa menambah hash skenario)', {DARURAT: [("script-src 'sha256-", "script-sumber 'sha256-")]}, None, ['statis']),
     # owner 3 Okt (perkuat): salinan uji memakai CSP halaman (bukan 'unsafe-inline'), tombol diketuk lewat klik DOM, pelanggaran CSP dihitung (+ kanari)

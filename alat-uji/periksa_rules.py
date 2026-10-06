@@ -20,6 +20,10 @@ Membuktikan bentuk rules, bukan perilaku server (itu docs/uji-rules-v4.md: Playg
   9. (v6, draf 1 Okt 2026) BERITA ACARA TUTUP BUKU HANYA MAJU: blok tutupBukuAcara = baca/create/delete owner, update owner && ubahBukuSah(…), fungsinya
      tanpa get(). MODEL: fungsi rules itu APA ADANYA diterjemahkan ke Python lalu dinilai pada tulisan SAH dari kode (wajib boleh) dan tulisan TELAT
      (wajib ditolak). Model bukan server — bukti server = docs/uji-rules-v6.md (Playground ★).
+ 10. (v7, hemat baca — owner 7 Okt 2026) HANYA DUA TAMBAHAN atas firestore.rules.v6: (a) ulangKasirBercap() = affectedKeys().hasOnly(['capServer']) &&
+     capServer == request.time, dipakai HANYA sebagai suku `kasir() && ulangKasirBercap()` di update penjualan (stokBahanLiteran & piutangMutasi tetap
+     tulis-ulang identik); (b) blok batuNisan: read & delete owner(), create/update owner() && capServer == request.time, tanpa staf/kasir/get().
+     Selain itu ISI SAMA dengan firestore.rules.v6 (dibandingkan tanpa komentar & spasi) — v7 hanya menambah, aman terbit sebelum kode bercap.
 
     python3 alat-uji/periksa_rules.py            → LULUS / daftar cacat (keluar 2)
     python3 alat-uji/periksa_rules.py --kontrol  → berkas rules cacat buatan WAJIB gagal (keluar 3 kalau ada yang lolos)
@@ -137,7 +141,10 @@ def periksa_kunci(rules, B, F):
                     # kasir@ (kasir darurat): create dinilai kunci seperti owner (tglBaru, ≤ 1 get per permintaan satu dokumen); update HANYA tulis-ulang identik; TIDAK PERNAH hapus
                     if 'kasir()' in suku and op == 'delete': cacat.append('%s: kasir@ boleh menghapus catatan bertanggal: %s' % (n, suku)); continue
                     if 'kasir()' in suku and op == 'update':
-                        if re.sub(r'^\((.*)\)$', r'\1', rata(suku)) != 'kasir() && tulisUlangSama()': cacat.append('%s: update kasir@ bukan tulis-ulang identik: %s' % (n, suku))
+                        s0 = re.sub(r'^\((.*)\)$', r'\1', rata(suku))
+                        # v7 (hemat baca): kirim ulang bercap HANYA di penjualan (kasir darurat kasir-v33); koleksi kasir lain tetap tulis-ulang identik
+                        if s0 == 'kasir() && ulangKasirBercap()' and n == 'penjualan': continue
+                        if s0 != 'kasir() && tulisUlangSama()': cacat.append('%s: update kasir@ bukan tulis-ulang identik: %s' % (n, suku))
                         continue
                     if re.search(r'\bstaf\w*\(', suku):
                         if "tglStaf('%s')" % f not in suku: cacat.append('%s: %s bukan-owner tanpa tglStaf(%s): %s' % (n, op, f, suku))
@@ -290,9 +297,49 @@ def periksa_buku(rules, B):
     return cacat
 
 
+V6_TEKS = None   # kontrol: pengganti isi firestore.rules.v6
+BANDING_V6 = True   # kontrol lama (sebelum v7) mematikannya supaya pemeriksa khususnya sendiri yang wajib berbunyi
+UKB_WAJIB = "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && request.resource.data.capServer == request.time;"
+NISAN_WAJIB = {'get': 'if owner()', 'list': 'if owner()', 'create': 'if owner() && request.resource.data.capServer == request.time',
+               'update': 'if owner() && request.resource.data.capServer == request.time', 'delete': 'if owner()'}
+
+
+def periksa_v7(rules):
+    """10 · v7 (hemat baca, owner 7 Okt 2026): HANYA dua tambahan atas firestore.rules.v6."""
+    cacat = []; R = tanpa_komentar(rules); B = blok_rules(R); F = fungsi_rules(R)
+    rata = lambda t: re.sub(r'\s+', ' ', t).strip()
+    ukb = rata(F.get('ulangKasirBercap', ''))
+    if ukb != UKB_WAJIB: cacat.append('ulangKasirBercap() bukan "hanya capServer yang berbeda DAN capServer == request.time": ' + (ukb or '(tidak ada)'))
+    for n, b in B.items():
+        if 'ulangKasirBercap' not in b: continue
+        if n != 'penjualan': cacat.append(n + ': ulangKasirBercap() dipakai di luar penjualan (koleksi kasir lain tetap tulis-ulang identik — hanya ditulis kasir.html yang pensiun)')
+        for op in ('get', 'list', 'create', 'delete'):
+            if any('ulangKasirBercap' in x for x in allow(b, op)): cacat.append(n + ': ulangKasirBercap() di allow ' + op)
+    if not any('(kasir() && ulangKasirBercap())' in rata(x) for x in allow(B.get('penjualan', ''), 'update')): cacat.append('penjualan: suku (kasir() && ulangKasirBercap()) tidak ada di allow update — kirim ulang karcis kasir-v33 akan ditolak')
+    for n, badan in F.items():
+        if n != 'ulangKasirBercap' and 'ulangKasirBercap' in badan: cacat.append('ulangKasirBercap() dipanggil dari fungsi ' + n)
+    bn = B.get('batuNisan', '')
+    if not bn: cacat.append('blok batuNisan tidak ada — hapus /baru/ yang membawa batu nisan akan ditolak seluruh batch-nya')
+    else:
+        for op, w in NISAN_WAJIB.items():
+            xs = [rata(x) for x in allow(bn, op)]
+            if xs != [w]: cacat.append('batuNisan: allow %s bukan "%s": %s' % (op, w, xs))
+        if re.search(r'\b(staf\w*|kasir|masuk)\(|get\(/|exists\(', bn): cacat.append('batuNisan: terbuka untuk selain owner / membaca dokumen lain (access call)')
+    # selain dua tambahan: ISI SAMA dengan v6 (tanpa komentar & spasi) — v7 tidak boleh mempersempit / melonggarkan apa pun diam-diam
+    v6 = V6_TEKS if V6_TEKS is not None else baca('firestore.rules.v6')
+    sisa = re.sub(r"\n    function ulangKasirBercap\(\) \{.*?\n    \}\n", '\n', R, flags=re.S).replace(' || (kasir() && ulangKasirBercap())', '')
+    sisa = re.sub(r"\n    match /batuNisan/\{\w+\} \{.*?\n    \}\n", '\n', sisa, flags=re.S)
+    a, b = rata(sisa), rata(tanpa_komentar(v6))
+    if BANDING_V6 and a != b:
+        i = next((j for j in range(min(len(a), len(b))) if a[j] != b[j]), min(len(a), len(b)))
+        cacat.append('v7 mengubah lebih dari dua tambahan atas firestore.rules.v6 — dekat "…%s…" (v6: "…%s…")' % (a[max(0, i - 50):i + 50], b[max(0, i - 50):i + 50]))
+    return cacat
+
+
 def periksa(rules, koleksi_js, akses_js):
     cacat = []
     rules = tanpa_komentar(rules)
+    cacat += periksa_v7(rules)
     KOL = re.findall(r"\{ nama: '(\w+)',", koleksi_js); B = blok_rules(rules); F = fungsi_rules(rules)
     BACA = daftar_js(akses_js, 'BACA_STAF') or []; DOK = peta_js(akses_js, 'DOK_STAF') or {}; BUAT = peta_js(akses_js, 'BUAT_STAF') or {}
     KREDIT = daftar_js(akses_js, 'KREDIT_STAF') or []
@@ -446,6 +493,20 @@ if __name__ == '__main__':
             'v6: fungsi tutup buku membaca dokumen lain (access call)': R.replace("    function pemegangBuku(d) { return d.get('pemegang', {}).get('id', ''); }",
                                                                                 "    function pemegangBuku(d) { return get(/databases/$(database)/documents/aturanToko/tutupBuku).data.get('x', d.get('pemegang', {}).get('id', '')); }"),
         }
+        # 10 · v7 (hemat baca, owner 7 Okt 2026): dua tambahan saja, persis bentuknya
+        UKB = "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && request.resource.data.capServer == request.time;"
+        rusak.update({
+            'v7: kirim ulang kasir@ boleh mengubah hargaTotal juga (hasOnly diperluas)': R.replace(UKB, UKB.replace("hasOnly(['capServer'])", "hasOnly(['capServer', 'hargaTotal'])")),
+            'v7: ulangKasirBercap tanpa == request.time (cap nilai HP diterima)': R.replace(UKB, "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']);"),
+            'v7: ulangKasirBercap dipasang juga di stokBahanLiteran': R.replace("allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());\n      allow delete: if owner() && tglLama('tanggal');\n    }\n\n    match /katalogHargaLiteran/{id} {",
+                                                                            "allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());\n      allow delete: if owner() && tglLama('tanggal');\n    }\n\n    match /katalogHargaLiteran/{id} {"),
+            'v7: suku kirim ulang bercap dicabut dari penjualan (kasir-v33 ditolak)': R.replace(" || (kasir() && ulangKasirBercap());", ";"),
+            'v7: batu nisan terbaca staf': R.replace("    match /batuNisan/{id} {\n      allow read: if owner();", "    match /batuNisan/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);"),
+            'v7: batu nisan tertulis staf': R.replace("      allow create, update: if owner() && request.resource.data.capServer == request.time;", "      allow create, update: if (owner() || stafBuat(['ben', 'karyawan'])) && request.resource.data.capServer == request.time;"),
+            'v7: batu nisan tanpa request.time (cap jam HP diterima)': R.replace("      allow create, update: if owner() && request.resource.data.capServer == request.time;", "      allow create, update: if owner();"),
+            'v7: blok batu nisan hilang (hapus /baru/ ditolak seluruh batch)': re.sub(r"\n    match /batuNisan/\{id\} \{.*?\n    \}\n", '\n', R, flags=re.S),
+            'v7: baris lain berubah dari v6 (bentuk lain, arti sama — tetap wajib ketahuan)': R.replace("    match /pengingat/{id} {\n      allow read, write: if owner();", "    match /pengingat/{id} {\n      allow read: if owner();\n      allow write: if owner();"),
+        })
         kode = 0
         KPJ = baca('baru/js/data/kunci-periode.js')
         rusak['tenggang minimal 1 di rules DAN kunci-periode.js (di bawah keputusan owner 3 hari)'] = (R.replace("function tenggangMin() { return 3; }", "function tenggangMin() { return 1; }"),
@@ -456,6 +517,8 @@ if __name__ == '__main__':
                 isi, KP_TEKS = isi
                 if KP_TEKS == KPJ: print('KONTROL BASI  ' + nama); kode = 3; continue
             if isi == R: print('KONTROL BASI  ' + nama); kode = 3; continue
+            # kontrol lama (sebelum v7) WAJIB tertangkap pemeriksa KHUSUSNYA — pembanding "sama dengan v6" (yang menangkap perubahan apa pun) dimatikan untuknya
+            BANDING_V6 = nama.startswith('v7:')
             c = periksa(isi, K, A)
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
@@ -465,7 +528,8 @@ if __name__ == '__main__':
     if c: print('RULES CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
     KOL, TMIN = kp_js()
     nS = sum(1 for k in KASUS_BUKU if k[4]); nT = len(KASUS_BUKU) - nS
-    print('RULES v6 LULUS: %d blok koleksi · TANPA payung (tidak ada match rekursif / wildcard koleksi) · owner via email · jalur kasir@ utuh & dipersempit · '
+    print('RULES v7 LULUS: %d blok koleksi · TANPA payung (tidak ada match rekursif / wildcard koleksi) · owner via email · jalur kasir@ utuh & dipersempit · '
           'tulis bukan-owner wajib uid · daftar peran = akses.js · kunci periode di %d koleksi bertanggal (= kunci-periode.js), tenggang minimal %d hari, '
           'satu get() dokumen kunci per operasi, bukan-owner tanpa get() kunci, pajak tidak dikunci (K6) · berita acara tutup buku hanya maju (model: %d tulisan '
-          'boleh, %d tulisan telat/mundur ditolak; tanpa get())' % (len(B), len(KOL), TMIN, nS, nT))
+          'boleh, %d tulisan telat/mundur ditolak; tanpa get()) · v7 = v6 + kirim ulang kasir@ bercap (penjualan saja, hanya capServer = request.time) + '
+          'batu nisan owner (capServer = request.time), selebihnya sama dengan firestore.rules.v6' % (len(B), len(KOL), TMIN, nS, nT))
