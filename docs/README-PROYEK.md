@@ -1,7 +1,9 @@
 # Sistem Toko Beras M.IQBAL — panduan proyek
 
 Sistem kasir + pembukuan toko beras yang berbicara langsung ke Firebase Firestore, diterbitkan lewat GitHub Pages dari cabang `main`.
-Dua sistem hidup berdampingan di atas data yang SAMA: sistem baru `baru/` (sistem utama owner) dan sistem lama `index.html` (satu berkas).
+Sistem yang hidup: `baru/` (sistem utama owner) + kasir darurat staf. Sistem lama (`index.html`, satu berkas) dan kasir owner (`kasir.html`)
+**pensiun 3 Okt 2026** (owner: "bumi hanguskan"): keduanya kini halaman pengalih ke `baru/`; versi terakhirnya utuh di tag git `sistem-lama-terakhir`
+(commit `48a694d`) — jalan mundur di `docs/prosedur-pulih-darurat.md`.
 Tidak ada build, tidak ada framework, tidak ada Node. Dokumen ini tentang *cara kerja repo*;
 keputusan desain produk ada di `KEPUTUSAN-DESAIN.md`.
 
@@ -10,11 +12,11 @@ keputusan desain produk ada di `KEPUTUSAN-DESAIN.md`.
 | Berkas | Peran |
 |---|---|
 | `baru/` | **Sistem utama owner** (sejak Sep 2026; panduannya `baru/BACA-DULU.md`). Kelak dibungkus menjadi aplikasi native — lihat bagian Arah di bawah. |
-| `index.html` | **Sistem lama** (alat pemilik). Tidak diperbaiki lagi (keputusan owner 19 Sep 2026); **pensiun setelah `baru/` lengkap**. |
-| `kasir.html` | Kasir ringan **alat pemilik** (nama berkasnya menyesatkan). |
-| `kasir-darurat-nominal.html` + `sw-kasir.js` + `manifest-kasir.json` | Kasir **staf** (PWA offline). Kelak digantikan tablet kasir (lihat Arah) — **jangan disentuh** sampai itu. Setiap perubahan `kasir*.html` wajib menaikkan `VERSI` di `sw-kasir.js`. |
+| `index.html` | **Halaman pengalih** ke `baru/` (sejak 3 Okt 2026): tanpa script, CSP `default-src 'none'` (dijaga `alat-uji/uji_csp.py`). Sengaja tidak dihapus — perangkat tanpa service worker yang membuka alamat lama tidak kena 404. `manifest-sistem.json` tetap ditautkan supaya ikon yang sudah terpasang sah. Sistem lamanya ada di tag `sistem-lama-terakhir`. |
+| `kasir.html` | **Halaman pengalih** ke `baru/` (sejak 3 Okt 2026; dulu kasir ringan alat pemilik). `sw-kasir.js` v31 tidak lagi menyimpannya di cache, jadi pengalih selalu datang dari jaringan. |
+| `kasir-darurat-nominal.html` + `sw-kasir.js` | Kasir **staf** (PWA offline). Kelak digantikan tablet kasir (lihat Arah) — **jangan disentuh** sampai itu. Setiap perubahan `kasir-darurat-nominal.html` wajib menaikkan `VERSI` di `sw-kasir.js` (bersama `VERSI_APLIKASI` + `LABEL_VERSI` darurat dan `KK_VERSI_KASIR_TERBARU` di `baru/js/data/katalog-kasir.js`). `FILES` service worker hanya boleh berisi berkas yang ADA (`alat-uji/uji_pensiun_sistem_lama.py`). |
 | `firestore.rules` + `firebase.json` | Aturan akses Firestore. Rules dipasang ke Console oleh pemilik. |
-| `lib/lz-string.js` + `lib/kemas-worker.js` | Kompresi cadangan 28 koleksi di localStorage (LZ-string, dikompres di Web Worker supaya utas utama tidak tersendat). Tanpa berkas ini sistem tetap jalan dengan cadangan polos. Sumber: cdnjs `lz-string/1.5.0/lz-string.js` (header berkas menyebut 1.4.5), sha256 `550034b8…dab0e5e`. **Mundur ke versi index.html yang belum mengenal cadangan terkompresi WAJIB didahului `polosKanCadangan()` dari konsol di tiap HP** — versi lama mati saat boot membaca cadangan terkompresi. |
+| ~~`lib/`~~, ~~`manifest-kasir.json`~~, ~~`icon-kasir-192/512.png`~~ | **Dihapus 3 Okt 2026** bersama sistem lama (hanya dipakai `index.html` / `kasir.html` lama). Ada di tag `sistem-lama-terakhir` — prosedur pulih mengambil POHON tag, bukan `index.html` saja, supaya `lib/` ikut. |
 | `alat-uji/` | Jaring pengaman yang dijalankan CI sebelum terbit (lihat bawah). |
 | `alat-audit/audit.py` | Pemeriksa independen (Python) yang menghitung ulang uang dari berkas backup. |
 | `.github/workflows/pages.yml` | CI: job `uji` di setiap push/PR; `terbitkan` hanya di `main` sesudah `uji` hijau. |
@@ -29,7 +31,8 @@ Catatan bisnis (omzet, piutang, utang, harga beli) **tidak pernah** masuk repo �
   `index.html` — itu **bahan, bukan keputusan**.
 - **Tablet kasir = offline-first**, satu perangkat dipakai bergantian, semua akun seizin owner. Pilihan identitasnya (login per orang, atau satu
   akun tablet + PIN per orang) diputuskan di putaran tablet; putaran 23 (akun per orang) sengaja tidak menutup salah satunya.
-- **`index.html` pensiun** setelah `baru/` lengkap. Sampai saat itu keduanya membaca & menulis data yang sama.
+- **`index.html` & `kasir.html` pensiun 3 Okt 2026** (owner: "bumi hanguskan"; prasyarat owner beres hari itu: HP kasir melapor 0 antrean / 0 ditolak,
+  perangkat lama ditandai tidak dipakai). Rincian & yang ikut hilang: `docs/peta-pensiun-sistem-lama.md` §8.
 
 ## Jaring pengaman (`alat-uji/`)
 
@@ -37,30 +40,34 @@ Semua bisa dijalankan dari folder mana pun, tanpa Node, cukup macOS (jsc bawaan)
 
 | Perintah | Membuktikan | Gagal = |
 |---|---|---|
-| `alat-uji/periksa.sh index.html` | sintaks modul (jsc), tidak ada sintaks pasca-Chrome-80, id DOM unik, `onclick` menunjuk fungsi yang ada, `getElementById` menunjuk id yang ada | keluar ≠ 0 |
-| `alat-uji/harness/jalankan.sh index.html` | **seluruh modul** bisa dievaluasi sampai baris terakhir di JavaScriptCore dengan DOM & Firebase palsu — satu ReferenceError/TDZ di lingkup modul mematikan seluruh aplikasi | 3 |
-| `alat-uji/harness/jalankan.sh --kontrol` | harness itu sendiri bisa GAGAL: dua modul cacat sengaja (TDZ, referensi hilang) wajib gagal | 3 |
-| `python3 alat-uji/beku2.py --sidik` | tubuh **28 mesin uang beku** byte-identik dengan `alat-uji/beku.sha256` | 2 |
+| `alat-uji/periksa.sh` (bawaan `kasir-darurat-nominal.html`) | sintaks script (jsc), tidak ada sintaks pasca-Chrome-80, id DOM unik, `onclick` menunjuk fungsi yang ada, `getElementById` menunjuk id yang ada, batas gerak kasir. Berkas tanpa `<script>` (pengalih) DITOLAK | keluar ≠ 0 |
+| `alat-uji/periksa.sh --kontrol` | salinan rusak (sintaks, pasca-Chrome-80, id ganda, gerak) wajib gagal; salinan utuh lulus | 3 |
+| `python3 alat-uji/beku2.py --sidik` | tubuh **26 mesin uang beku** (`baru/js/mesin/beku.js`) byte-identik dengan `alat-uji/beku.sha256`, dan **55 fungsi + 36 konstanta pembantu** (`pembantu.js`) dengan `alat-uji/pembantu.sha256` | 2 |
 | `python3 alat-uji/beku2.py --lama main` | sama, tapi dibandingkan ke `main` (dipakai di cabang kerja) | 2 |
-| `python3 alat-uji/beku2.py --uji-diri` | alat pembanding terbukti MELIHAT perubahan (mutasi di memori pada satu mesin & satu kontrol) | 3 |
-| `python3 alat-uji/lingkup.py index.html` | tidak ada nama fungsi yang dipanggil tanpa pernah dideklarasikan (statis, kasar) | 2 |
+| `python3 alat-uji/beku2.py --uji-diri` | alat pembanding terbukti MELIHAT perubahan (mutasi di memori pada satu mesin, satu fungsi & satu konstanta pembantu, satu fungsi tanpa kunci) | 3 |
+| `python3 alat-uji/lingkup.py` (bawaan `kasir-darurat-nominal.html`) | tidak ada nama fungsi yang dipanggil tanpa pernah dideklarasikan (statis, kasar) | 2 |
 | `python3 alat-uji/lingkup.py --kontrol` | pemeriksa lingkup terbukti menangkap nama palsu | 3 |
+| `python3 alat-uji/uji_pensiun_sistem_lama.py` (+ `--kontrol`) | pengalih ada; `FILES` service worker = berkas yang ada & tanpa `kasir.html`; langkah CI / seed HawkScan / manifest menunjuk berkas yang ada; `/baru/` tanpa tautan sistem lama | 1 / 3 |
 
-Harness menyemai 28 kunci cadangan koleksi dengan `[]` supaya jalur *baca* cadangan ikut dievaluasi —
-tanpa itu TDZ pada keadaan pembaca cadangan pernah lolos (13 Sep 2026).
+Sisanya (kotak pasir `/baru/` di jsc, uji peramban di runner) terdaftar di `.github/workflows/pages.yml` dan `baru/BACA-DULU.md` › Gerbang.
 
-Yang **tidak** dibuktikan alat-alat ini: tampilan, klik, dan angka. Untuk itu ada kotak pasir
-tulis-nol di peramban (lihat `docs/` putaran berikutnya) dan uji identitas dari konsol
-(`ujiUtangOwner()`, `ujiKonsistensiLaporan()`, `ujiPenjagaCadangan()`).
+**Pensiun 3 Okt 2026 — yang dihapus bersama objeknya** (alasan juga tertulis di `pages.yml`): `alat-uji/harness/` (mengevaluasi modul
+`index.html`), `alat-uji/pindah_mesin.py` (menyalin mesin dari `index.html`; sumber kebenaran kini `baru/js/mesin/` + `beku2.py`),
+`uji_sistem_lama_bacasaja.py` (penjaga tulis `index.html`), dan empat penjaga pola yang hanya membaca `index.html` dan tidak dijalankan CI:
+`uji_dua_arah.py`, `uji_gagal_tertutup.py`, `uji_onclick_aman.py`, `uji_stok_minus.py` (+ `ukur_jepitan.sh`). Apakah keempat pola cacat itu
+(jepitan dua arah, gerbang yang gagal membuka, onclick tanpa escape, stok minus dibaca "0") sudah punya penjaga setara di `/baru/` BELUM diperiksa
+satu per satu; onclick sebaris di `/baru/` sudah tertutup CSP (`uji_csp.py`).
 
-### Membekukan ulang mesin uang
-`alat-uji/beku.sha256` hanya boleh berubah lewat `python3 alat-uji/beku2.py --catat`
-**atas perintah pemilik**, dalam commit yang menyebut "membekukan ulang" dan mesin mana yang
-berubah beserta alasannya. CI menolak deploy bila sidik tidak cocok.
+### Membekukan ulang mesin uang (= membuka mesin)
+`alat-uji/beku.sha256` & `alat-uji/pembantu.sha256` hanya boleh berubah lewat `python3 alat-uji/beku2.py --catat`
+**atas perintah pemilik**, dalam commit yang menyebut "membekukan ulang" dan mesin/pembantu mana yang
+berubah beserta alasannya. CI menolak deploy bila sidik tidak cocok. Sejak 3 Okt 2026 mesinnya disunting langsung di
+`baru/js/mesin/beku.js` / `pembantu.js` (dulu disalin dari `index.html` oleh `pindah_mesin.py`, kini pensiun). Kepala komentar kedua berkas
+itu masih menyebut `pindah_mesin.py` — sengaja dibiarkan, karena berkas mesin hanya dibuka atas izin owner.
 
 ## Prinsip kerja
 
-1. **28 mesin uang beku byte-identik.** `beku2.py` dijalankan sebelum setiap commit; hasilnya
+1. **26 mesin uang beku + pembantunya byte-identik.** `beku2.py --sidik` dijalankan sebelum setiap commit; hasilnya
    ditempel di laporan putaran. Komentar di dalam tubuh mesin pun tidak disentuh.
 2. **Satu putaran = satu cabang = satu gerbang pemilik.** Commit ke cabang, lapor, berhenti.
    Merge/push ke `main` hanya sesudah pemilik memeriksa putaran itu; izin tidak menyeberang
@@ -81,6 +88,6 @@ berubah beserta alasannya. CI menolak deploy bila sidik tidak cocok.
    kode, atau contoh hitung.
 
 ## Menjalankan secara lokal
-`python3 -m http.server 8731` dari akar repo, lalu buka `http://localhost:8731/index.html`.
-Login memakai akun Firebase toko; untuk uji tanpa menulis ke toko, pakai kotak pasir tulis-nol
-(dibangun dari `index.html` dengan Firebase distub — dokumentasinya menyusul di `docs/`).
+`python3 -m http.server 8731 --bind 127.0.0.1` dari akar repo, lalu buka `http://localhost:8731/baru/index.html` (atau `/`, yang mengalihkan
+ke sana). Login memakai akun Firebase toko — angka & tulisan sungguhan; untuk uji tanpa menulis ke toko pakai kotak pasir `alat-uji/uji_*_baru.py`.
+Server dimatikan sesudah dipakai. Menjalankan **sistem lama** (darurat): `docs/prosedur-pulih-darurat.md`.

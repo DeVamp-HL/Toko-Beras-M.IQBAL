@@ -157,3 +157,35 @@ lewat ketik PULIHKAN (mode pulih meloloskan semua tulisan, tidak bergantung pada
 `TULIS_TERBUKA` kosong. Pita: **"Sistem lama hanya untuk membaca riwayat dan pemulihan darurat."** Dijaga `alat-uji/uji_sistem_lama_bacasaja.py`
 (diperbarui ke keputusan ini, jumlah pemeriksaan sama) dan `alat-uji/uji_katalog_kasir.py`.
 
+## 8. Dihapus 3 Okt 2026 (perintah owner: "bumi hanguskan")
+
+Owner memutuskan sistem lama (`index.html` di akar) **dan** `kasir.html` dibumihanguskan. Prasyarat owner beres hari itu: HP kasir melapor 0 antrean /
+0 ditolak, dan perangkat lama ditandai "sudah tidak dipakai" di `/baru/` (tanpa itu daftar periksa kunci bulan bisa macet permanen, karena perangkat
+yang denyut terakhirnya melapor antrean/ditolak tidak bisa dinyatakan tidak dipakai lagi).
+
+- **Versi terakhir keduanya utuh** di tag git **`sistem-lama-terakhir`** (commit `48a694d`, beserta `lib/`, `manifest-kasir.json`, ikon kasir 192/512).
+  §1–7 di atas = sejarah sampai tag itu.
+- **Di situs:** `index.html` & `kasir.html` kini **halaman pengalih** ke `/baru/` — tanpa script, meta refresh + tautan, CSP
+  `default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'` (+ `manifest-src 'self'` di `index.html`, yang
+  tetap menautkan `manifest-sistem.json`). Sengaja tidak dihapus: perangkat tanpa service worker yang membuka alamat lama tidak kena 404. Dijaga
+  `alat-uji/uji_csp.py` + `alat-uji/uji_pensiun_sistem_lama.py`.
+- **`sw-kasir.js` v31:** `FILES` hanya berkas yang ada (kasir darurat + ikon 180/32); `kasir.html` tidak lagi disimpan/disajikan dari cache, jadi
+  pengalih terbaru dari jaringan yang tampil. Cache v30 (berisi `kasir.html` lama) terhapus saat v31 aktif. Kasir darurat hanya ikut naik versi
+  (`VERSI_APLIKASI` kasir-v31, label "versi 3 Okt"); `KK_VERSI_KASIR_TERBARU` = kasir-v31; lantai kunci bulan `KP_VERSI_KASIR_25B` tetap kasir-v26.
+  Beranda `/baru/` tidak lagi menyebut perangkat `kasir.html` (aplikasi `kasir`, kode k-) sebagai "versi baru terpasang saat dibuka ulang".
+- **Ikut dihapus dari repo:** `lib/lz-string.js`, `lib/kemas-worker.js`, `manifest-kasir.json`, `icon-kasir-192.png`, `icon-kasir-512.png`;
+  alat uji yang objeknya hilang: `alat-uji/harness/`, `pindah_mesin.py`, `uji_sistem_lama_bacasaja.py`, `uji_dua_arah.py`, `uji_gagal_tertutup.py`,
+  `uji_onclick_aman.py`, `uji_stok_minus.py`, `ukur_jepitan.sh`.
+- **Pembanding uji yang dulu membaca `index.html`/`kasir.html`:** penyusun & aturan sistem lama di `baru/js/mesin/pembantu.js` kini **terkunci sidik**
+  (`alat-uji/pembantu.sha256`, 55 fungsi + 36 konstanta — dicatat saat terbukti byte-sama dengan `index.html` di tag); kunci dokumen yang ditulis
+  sistem lama (katalog kasir, jenis beras, operator & PIN, pembatalan karcis, retur & karantina) dibekukan di uji masing-masing, diekstrak dari tag.
+  Sumber kebenaran mesin beku = `baru/js/mesin/beku.js` + `pembantu.js`, gerbang `beku2.py --sidik`; `tulisSaldoPembuka` & `thPagar` pensiun
+  (baris acuannya di `beku.sha256` dibiarkan, dilewati).
+- **Jalan mundur:** `docs/prosedur-pulih-darurat.md` — sistem lama dijalankan di komputer dari POHON tag (bukan diterbitkan lagi), hanya untuk
+  memulihkan dari berkas cadangan; keterbatasannya (27 dari 56 koleksi) tertulis di sana.
+
+**Tindak lanjut yang SENGAJA tidak dikerjakan di putaran ini (keputusan owner):** tab Menu › Kasir & PIN di `/baru/` kehilangan pembaca
+(`pengaturan/aksesKasir` & `pengaturan/keamanan`); katalog kasir masih membawa `piutang` + `bayarBon*` yang kini tanpa pembaca (dibaca akun kasir@);
+hak kasir@ di rules (baca `aksesKasir`, create `piutangMutasi`/`stokBahanLiteran`) tidak dipakai lagi; salinan lokal sistem lama di localStorage tidak
+punya tombol pembersih; `/baru/` belum punya pemulih dari berkas; `404.html` di akar (opsional).
+

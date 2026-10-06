@@ -808,7 +808,7 @@ ok('S8: pelunasan LAMA tanpa tautan tetap ditemukan (tanggal + jam + nama + cata
 ok('S8: nota BON murni Deka di menit yang sama tetap "BON — belum dibayar" (pelunasan tidak menutup ke TOTAL-nya; milik Bu Suti tidak ikut)', n8c && n8c.cara === 'Kredit' && n8c.total === 144000 && st8c.dibayarBeli === null && ada8(st8c, /^BON — belum dibayar$/) && !ada8(st8c, /^Dibayar saat beli/), st8c.teks);
 ok('S8: nota TUNAI tidak pernah mencari pelunasan (bayarSaatBeli hanya untuk nota bon)', bayarSaatBeli(notaDari({ grupNota: 'g1' })) === null);
 
-// kunci dokumen yang dihasilkan — dibandingkan python dengan kunci yang DITULIS index.html (cadangan toko belum punya retur bernota)
+// kunci dokumen yang dihasilkan — dibandingkan python dengan kunci yang DITULIS sistem lama (KUNCI_DOK_LAMA; cadangan toko belum punya retur bernota)
 var KUNCI = { retur: {}, karantina: {} };
 [rd, r0].forEach(function (d) { Object.keys(d || {}).forEach(function (k) { KUNCI.retur[k] = 1; }); });
 Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
@@ -878,29 +878,27 @@ def jalan(js):
     return json.loads(r.stdout.strip().split('\n')[-1]), ''
 
 
-def kunci_ditulis_index(nama_fungsi):
-    """Teks fungsi-fungsi index.html yang MENULIS dokumen itu — sumber kebenaran bentuk dokumen saat data nyatanya belum ada."""
-    import re
-    html = open(os.path.join(AKAR, 'index.html'), encoding='utf-8').read()
-    teks = ''
-    for nm in nama_fungsi:
-        m = re.search(r'\n  (?:async )?function ' + nm + r'\(', html)
-        if not m: continue
-        akhir = re.search(r'\n  (?:async )?function \w+\(', html[m.end():])
-        teks += html[m.start(): m.end() + (akhir.start() if akhir else 20000)]
-    return teks
+# Kunci dokumen retur & karantina yang juga DITULIS sistem lama — sumber kebenaran bentuk dokumen selama data nyatanya belum ada. Sampai 2 Okt 2026
+# dicari langsung di teks fungsi penulisnya di index.html (simpanRetur, simpanKeranjangJual, tkIkatRetur → retur; tulisReturDanKarantina → karantina).
+# Sejak sistem lama pensiun (owner 3 Okt) DIBEKUKAN di sini: kunci yang dihasilkan skenario /baru/ pada 3 Okt, masing-masing terbukti ditulis
+# index.html di tag sistem-lama-terakhir (commit 48a694d) dengan pola pencarian yang sama. Kunci baru yang SENGAJA ditambah masuk daftar ini dengan alasan.
+KUNCI_DOK_LAMA = {
+    'retur': ['jenisAsal', 'namaProduk', 'ukuranKemasan', 'jumlahUnit', 'totalKg', 'notaAsalId', 'notaAsalTanggal', 'notaAsalKunci', 'hargaPerSatuanNota',
+              'satuanNota', 'jumlahDikembalikan', 'nilaiDikembalikan', 'dasarHargaNota', 'kondisi', 'penyelesaian', 'catatan', 'id', 'tanggal', 'jam',
+              'nominalSistem', 'alasanTimpaNominal', 'nominalRefund', 'merkSumber', 'jumlahKarung', 'beratKarungAcuan', 'selisihHargaTukar', 'tukarModel',
+              'penjualanPenggantiTrxId', 'hitunganTukarSistem'],
+    'karantina': ['id', 'tanggal', 'asalRetur', 'jenisAsal', 'namaProduk', 'ukuranKemasan', 'merkSumber', 'totalKg', 'catatan', 'statusTindakan'],
+}
 
 
 def utama(js):
     h, e = jalan(js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e]
     gagal = h['gagal']
-    # bentuk dokumen retur & karantina: tiap kunci yang ditulis sistem baru harus kunci yang juga ditulis index.html
-    sumber = {'retur': kunci_ditulis_index(['simpanRetur', 'simpanKeranjangJual', 'tkIkatRetur']), 'karantina': kunci_ditulis_index(['tulisReturDanKarantina'])}
-    import re
+    # bentuk dokumen retur & karantina: tiap kunci yang ditulis sistem baru harus kunci yang juga ditulis sistem lama (KUNCI_DOK_LAMA)
     for kol, daftar in (h.get('kunci') or {}).items():
-        asing = [k for k in daftar if not re.search(r'\b' + re.escape(k) + r'\s*[:=]|\b' + re.escape(k) + r'\b\s*[,}]|\.' + re.escape(k) + r'\s*=', sumber.get(kol, ''))]
-        if asing: gagal.append('kunci dokumen %s yang TIDAK ditulis index.html: %s' % (kol, asing))
+        asing = [k for k in daftar if k not in KUNCI_DOK_LAMA.get(kol, [])]
+        if asing: gagal.append('kunci dokumen %s yang TIDAK ditulis sistem lama: %s' % (kol, asing))
         if not daftar: gagal.append('kunci dokumen %s kosong — skenario tidak menghasilkannya' % kol)
     return h['lulus'], gagal
 
@@ -1082,8 +1080,8 @@ if __name__ == '__main__':
             'hitungan tumpukan memakai angka terjepit nol (lupa catat isi ulang menggeser tumpukan diam-diam)': js.replace("const diWadah = wdB2(bagian[merk] || 0);", "const diWadah = wdB2(Math.max(0, bagian[merk] || 0));"),   # putaran 27: bagian di wadah dari komposisi (mentah)
             'campuran bawaan tidak mengikuti karung di belakang wadah': js.replace(": [{ merk: karungUntukWadah(merk).merk, takar: 1 }]; }", ": [{ merk, takar: 1 }]; }"),
             'calon karung memuat nama yang tumpukannya sudah habis': js.replace(".filter((t) => t.adaBuku && t.kg > 0);\n}", ".filter((t) => t.adaBuku);\n}"),
-            'dokumen retur membawa kunci yang tidak dikenal index.html': js.replace("kondisi: s.rtKondisi, penyelesaian:", "kunciAsingUji: 1, kondisi: s.rtKondisi, penyelesaian:"),
-            'dokumen karantina membawa kunci yang tidak dikenal index.html': js.replace("statusTindakan: 'belum_diputuskan' } };", "statusTindakan: 'belum_diputuskan', kunciAsingUji: 1 } };"),
+            'dokumen retur membawa kunci yang tidak dikenal sistem lama': js.replace("kondisi: s.rtKondisi, penyelesaian:", "kunciAsingUji: 1, kondisi: s.rtKondisi, penyelesaian:"),
+            'dokumen karantina membawa kunci yang tidak dikenal sistem lama': js.replace("statusTindakan: 'belum_diputuskan' } };", "statusTindakan: 'belum_diputuskan', kunciAsingUji: 1 } };"),
             'dua tukar diikat ke satu keranjang': js.replace("if (s.tukar) return { kabar: 'Keranjang ini MASIH terikat tukar: '", "if (false) return { kabar: 'Keranjang ini MASIH terikat tukar: '"),
             # ---- 39b no. 9: buka kredit sekali milik struk ----
             '39b-9: parkir tidak menutup buka kredit (bocor ke pembeli berikutnya)': js.replace("penggantiTanya: null, kreditDibuka: false,\n    aktifId: s.idBerikut", "penggantiTanya: null,\n    aktifId: s.idBerikut"),

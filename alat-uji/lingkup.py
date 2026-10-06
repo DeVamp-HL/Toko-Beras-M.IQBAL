@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-lingkup.py — pemeriksa STATIS: nama fungsi yang DIPANGGIL di modul index.html tapi tidak
+lingkup.py — pemeriksa STATIS: nama fungsi yang DIPANGGIL di script sebaris sebuah halaman tapi tidak
 pernah DIDEKLARASIKAN di mana pun (function/const/let/var/parameter/import) dan bukan
-global peramban. Menangkap kelas cacat yang harness jsc lewatkan: salah nama di dalam
-fungsi yang baru jalan sesudah klik (harness hanya mengevaluasi tingkat modul).
+global peramban. Menangkap kelas cacat yang lolos pemeriksaan sintaks: salah nama di dalam
+fungsi yang baru jalan sesudah ketukan.
+
+Sasaran: kasir-darurat-nominal.html (satu <script> klasik). Sampai 2 Okt 2026 sasarannya modul index.html; sejak sistem lama
+& kasir.html pensiun (owner 3 Okt 2026) index.html hanya halaman pengalih tanpa script. /baru/ (modul ES) dijaga periksa_impor.py +
+kotak pasir uji_*_baru.
 
 Kasar: tidak memahami lingkup — nama yang dideklarasikan DI MANA PUN dianggap ada. Jadi ia
-tidak menangkap "benar namanya, salah lingkupnya". Untuk itu ada harness + kotak pasir.
+tidak menangkap "benar namanya, salah lingkupnya". Untuk itu ada kotak pasir & uji peramban.
 
-  python3 alat-uji/lingkup.py [index.html]   → 0 bersih, 2 ada nama tanpa deklarasi
+  python3 alat-uji/lingkup.py [berkas.html]  → 0 bersih, 2 ada nama tanpa deklarasi (bawaan kasir-darurat-nominal.html)
   python3 alat-uji/lingkup.py --kontrol      → suntik panggilan ke nama palsu, wajib tertangkap (3 bila tidak)
 """
 import re, sys, os
@@ -32,10 +36,11 @@ KATA_KUNCI = set('if for while switch catch return function async await typeof n
 
 
 def modul_dari(html):
-    m = re.search(r'<script type="module">(.*?)</script>', html, re.S)
-    if not m:
-        sys.exit('tidak ada <script type="module">')
-    return m.group(1)
+    """Gabungan semua <script> sebaris (klasik atau type="module", tanpa src). Tanpa satu pun → berhenti (bukan 'bersih' dengan nol nama)."""
+    blok = [m.group(2) for m in re.finditer(r'<script([^>]*)>(.*?)</script>', html, re.S | re.I) if 'src=' not in m.group(1).lower()]
+    if not blok:
+        sys.exit('TOLAK: tidak ada <script> sebaris — tidak ada yang diperiksa')
+    return '\n'.join(blok)
 
 
 def bungkam(js):
@@ -78,12 +83,12 @@ def periksa(html):
 
 
 def main(argv):
-    berkas = os.path.join(AKAR, 'index.html')
+    berkas = os.path.join(AKAR, 'kasir-darurat-nominal.html')
     if '--kontrol' in argv:
         html = open(berkas, encoding='utf-8').read()
-        jangkar = '\n  const firebaseConfig = {'
-        assert html.count(jangkar) == 1
-        html = html.replace(jangkar, '\n  fungsiTakAdaKontrol();' + jangkar, 1)
+        jangkar = '\nvar DASAR = '
+        assert html.count(jangkar) == 1, 'kontrol basi: jangkar ' + jangkar.strip()
+        html = html.replace(jangkar, '\nfungsiTakAdaKontrol();' + jangkar, 1)
         n, hilang = periksa(html)
         if 'fungsiTakAdaKontrol' in hilang:
             print('KONTROL   : panggilan ke nama palsu tertangkap (deklarasi %d)' % n)
