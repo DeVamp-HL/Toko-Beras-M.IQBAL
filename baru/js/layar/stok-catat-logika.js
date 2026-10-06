@@ -20,7 +20,7 @@ import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilHargaKarung, ambilProduk
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { hitunganFisik, tumpukanGudang, aturWadah, pindahNama, semuaKarungTerbuka, karungUntukWadah, karungBelakang, beratKarungBuka, ckCocokTerakhir, ckKalimatMundur, kolamDitutup } from './jual-logika.js';
 import { wbKomposisi, wbBagianMerk, wbKomposisiBaru, wbKomposisiTurunanKg, wbModalPerKg, wbRasio, wbNamaKelas, wbDokLahir, wbDokPindah, wbLiteranLangsung, wbKarungTertinggal, wbSertakanKarungBekas } from './wadah-bernama-logika.js';
-import { vrPerluTanya, vrNama, vrDokJenis, vrAda, VR_BATAS_BAWAAN } from './varian-logika.js';
+import { vrPerluTanya, vrNama, vrDokJenis, vrAda, vrGerakBuku, VR_BATAS_BAWAAN } from './varian-logika.js';
 import { arBeras, arKunciBeras, arDokPulihBanyak, arPeta } from './arsip-logika.js';
 // putaran 30: kelas mutu merek (harga lalu per kelas, merek baru → kelas, kelas tanpa wadah)
 import { kmKelasMerk, kmKelasSendiri, kmCalonKelas, kmHargaLaluKelas, kmHargaLaluMerk, kmArah, kmKalimatKelas, kmDokKelas } from './kelas-merek-logika.js';
@@ -141,9 +141,12 @@ export function hitungMasuk(draf) {
     // harga lalu: merek dikenal = mesin (+ tanggal & pemasok dari riwayat); merek baru berkelas = kedatangan terakhir KELAS itu (pemasok yang dipilih diutamakan)
     const lalu = merk && !masalah ? kmHargaLaluMerk(merk, draf.id) : null; const laluKelas = baru && kelasBaris && !keSendiri ? kmHargaLaluKelas(kelasBaris, pemasokDraf, null) : null;
     const arah = kmArah(harga, lalu ? lalu.harga : laluKelas ? laluKelas.harga : 0); const kelasTanya = baru && !keSendiri && laluKelas ? kmKalimatKelas(harga, laluKelas) : '';
-    return { ke: i + 1, merk, merkSimpan, indukUkuran, varian: pilih, namaMutu: String(b.namaMutu || ''), vr, jumlahKarung: jumlah, beratKarung: berat, hargaPerKg: harga, totalKg: ckB2(jumlah * berat), subtotalHarga: Math.round(jumlah * berat * harga), terisi, masalah, sah: terisi && !masalah,
+    // owner 7 Okt (FJN berbuku + FJN · Imperial di katalog): nama yang SUDAH berbuku tapi punya varian → pita "yang datang ini yang mana?" — bukan penolakan,
+    // supaya karung yang dimaksud varian tidak masuk buku induk diam-diam. Koreksi kedatangan, baris yang sudah dijawab sama/beda mutu: tidak ditawari.
+    const varianInduk = !draf.id && !baru && !!merk && !pilih && merk.indexOf('·') < 0 && !wadahStok[merk] && !ukuran[merk] && !kelas[merk] && !sendiri[merk] ? ckSaranVarian(merk).filter((v) => v.nama.indexOf(' · ') > 0) : [];
+    return { ke: i + 1, merk, merkSimpan, indukUkuran, merkAsal: asalKoreksi, varian: pilih, namaMutu: String(b.namaMutu || ''), vr, jumlahKarung: jumlah, beratKarung: berat, hargaPerKg: harga, totalKg: ckB2(jumlah * berat), subtotalHarga: Math.round(jumlah * berat * harga), terisi, masalah, sah: terisi && !masalah,
       hargaLalu: merk ? hargaSebelumnya(merk) : 0,
-      merkKetik, baru, saranVarian, kelas: kelasBaris, kelasAsal, kelasPilih, keSendiri, merkPemasok, lalu, laluKelas, arah, kelasTanya, calonKelas: baru ? calonKelas : [] }; });
+      merkKetik, baru, saranVarian, varianInduk, kelas: kelasBaris, kelasAsal, kelasPilih, keSendiri, merkPemasok, lalu, laluKelas, arah, kelasTanya, calonKelas: baru ? calonKelas : [] }; });
   const sah = baris.filter((b) => b.sah);
   const bal = ckBarisBal(lamaB); const nilaiBal = bal.reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0);
   const hpp = hitungHppMerkDalamBatch(sah.map((b) => ({ merk: b.merkSimpan, totalKg: b.totalKg, subtotalHarga: b.subtotalHarga })).concat(bal.map((m) => ({ merk: m.merk, totalKg: Number(m.totalKg) || 0, subtotalHarga: Number(m.subtotalHarga) || 0 }))), bongkar);
@@ -222,6 +225,9 @@ export function susunSimpanMasuk(draf, w, yakin) {
   // putaran 25: kedatangan bulan terkunci tidak bisa dikoreksi (K2); kedatangan baru tidak boleh bertanggal bulan terkunci
   const kunci = (lama && tolakKunci('batchMasuk', lama, 'kedatangan ini tidak bisa dikoreksi. Jumlah kg yang salah: Stok › Cocokkan HARI INI. harga modal kedatangan bulan terkunci tidak bisa dikoreksi; selisihnya terbawa ke HPP penjualan sisa stoknya (keputusan owner K2)')) || tolakKunciTanggal(draf.tanggal, 'kedatangan tidak bisa dicatat di bulan itu; catat dengan tanggal hari ini dan sebut tanggal aslinya di alasan');
   if (kunci) return { tolak: kunci, pembalik: lama ? 'cocok' : '' };
+  // tinjauan E1 (no. 3): koreksi yang memindah kg antar nama di buku yang sudah bergerak → ditolak + jalan lain (pindah buku / Cocokkan); tidak boleh stok hantu
+  const geser = lama ? ckGeserKoreksi(lama, ckBarisGeser(h)) : null;
+  if (geser && geser.tolak) return { tolak: geser.tolak, pembalik: geser.pindah.length ? 'pindahNama' : 'cocok', pindahTeks: geser.pindahTeks };
   const cara = draf.caraBayar === 'utang' ? 'utang' : 'tunai';
   const bb = lama ? ckBayarBon(lama) : null;   // audit 39b no. 2: bon yang sudah dibayar (pembayaran bertunjuk) — cara bayar, pemasok, tanggal & nilai minimal dikunci
   if (bb && bb.dibayar <= 0 && bb.dibayarMesin > 0 && String(draf.tanggal) !== String(lama.tanggal || '')) return { tolak: 'Bon kedatangan ini sudah terbayar ' + RP(bb.dibayarMesin) + ' menurut buku bon (aliran pembayaran pemasok ini) — tanggal datangnya (' + tanggalPendek(lama.tanggal) + ') tidak bisa diubah: urutan bon tertua & neraca per tanggal ikut bergeser.' + CK_BETUL_BAYAR };
@@ -254,6 +260,62 @@ export function susunSimpanMasuk(draf, w, yakin) {
       + (cara === 'utang' ? ' — jadi bon pemasok' + tempo : ' — tunai, keluar dari laci hari ini') + (h.bongkar ? '; bongkar selalu tunai' : '') + '. Stok & modal tiap nama ikut berubah.'
       + (varianBaru.length ? ' Varian: ' + varianBaru.map((x) => x.merk + (x.baru ? ' (nama baru, jenis beras ikut ' + x.induk + ')' : ' (gabung ke varian yang sudah ada)')).join(', ') + ' — kolam lama tidak disentuh.' : '')
       + (dp ? ' Dipulihkan dari arsip: ' + pulih.map((k) => k.slice(2)).join(', ') + '.' : '') + (ketKelas.length ? ' Kelas: ' + ketKelas.join('; ') + '.' : ''), kabarAwas: false } };
+}
+// ---------- KOREKSI YANG MEMINDAH KG ANTAR NAMA (tinjauan E1 no. 3) ----------
+const ckKgPerNama = (rows) => { const o = {}; (rows || []).forEach((m) => { if (!m || m.bentuk === 'bal' || !m.merk) return; o[m.merk] = ckB2((o[m.merk] || 0) + (Number(m.totalKg) || 0)); }); return o; };
+/** Baris karung draf koreksi untuk ckGeserKoreksi: nama buku sesudah koreksi, kg, dan nama yang tertulis sebelumnya (merkAsal draf). */
+const ckBarisGeser = (h) => h.sah.map((b) => ({ merk: b.merkSimpan, totalKg: b.totalKg, merkAsal: b.merkAsal || '' }));
+/**
+ * Koreksi / hapus kedatangan yang MENGGESER kg antar NAMA buku. lama = kedatangan tersimpan; baruRows = baris karung sesudahnya ([] = dihapus).
+ *  · (a) kg pindah nama (ganti nama baris, atau satu nama turun sementara nama lain naik) padahal buku nama lama SUDAH BERGERAK sejak tanggal kedatangan itu
+ *    (terjual / diaduk / dipindah / diretur / dicocokkan — vrGerakBuku): karungnya mungkin sudah keluar atas nama lama, buku nama baru akan berisi karung yang
+ *    sudah tidak ada dan nama lama minus. Jalan lain: kedatangan dibiarkan, SISA buku nama lama pindah buku ke nama baru (pindah, modal ikut) — ckSusunPindahKoreksi.
+ *  · (b) nama lama HILANG dari semua kedatangan padahal bukunya pernah bergerak: mesin beku melewatkan catatan atas nama tanpa baris batch → catatan itu lepas
+ *    dari buku dan stoknya muncul lagi (stok HANTU; contoh kotak pasir: total 1.250 → 1.300 kg). Jalan lain: Cocokkan, atau pindah buku bila namanya yang salah.
+ * Nama yang bukunya belum bergerak (atau hanya bergerak SEBELUM kedatangan ini dan masih punya kedatangan lain) boleh diganti seperti biasa.
+ * → { tolak: '' | kalimat, pindah: [{ dari, ke, kg }], pindahTeks }
+ */
+export function ckGeserKoreksi(lama, baruRows) {
+  const hasil = { tolak: '', pindah: [], pindahTeks: '' }; if (!lama) return hasil;
+  const kL = ckKgPerNama(lama.merkList), kB = ckKgPerNama(baruRows);
+  const turun = Object.keys(kL).filter((m) => (kB[m] || 0) < kL[m] - 0.004); const naik = Object.keys(kB).filter((m) => kB[m] > (kL[m] || 0) + 0.004);
+  if (!turun.length) return hasil;
+  const sejak = String(lama.tanggal || ''); const tgl = tanggalPendek(sejak) || 'tanpa tanggal';
+  const lainAda = (m) => ambilSemuaBatch().some((b) => String(b.id) !== String(lama.id) && (b.merkList || []).some((x) => x && x.merk === m && x.bentuk !== 'bal'));
+  const masalah = [];
+  turun.forEach((m) => { const hilang = !((kB[m] || 0) > 0.004) && !lainAda(m); const gS = naik.length ? vrGerakBuku(m, sejak) : []; const gA = hilang ? vrGerakBuku(m, '') : [];
+    if (gS.length || gA.length) masalah.push({ m, hilang, gerak: gS.length ? gS : gA, sejak: gS.length > 0 }); });
+  if (!masalah.length) return hasil;
+  // pasangan nama lama → nama baru: baris yang diganti namanya (merkAsal draf); tanpa itu, geseran satu-satu dari selisih kg
+  const pasang = []; const tambah = (dari, ke, kg) => { if (!(kg > 0.004) || dari === ke) return; const ada = pasang.find((x) => x.dari === dari && x.ke === ke); if (ada) ada.kg = ckB2(ada.kg + kg); else pasang.push({ dari, ke, kg: ckB2(kg) }); };
+  (baruRows || []).forEach((r) => { if (r && r.merkAsal && r.merkAsal !== r.merk && turun.indexOf(r.merkAsal) >= 0 && naik.indexOf(r.merk) >= 0) tambah(r.merkAsal, r.merk, Math.min(Number(r.totalKg) || 0, kB[r.merk] - (kL[r.merk] || 0))); });
+  const gantiNama = pasang.length > 0;   // ada baris yang benar-benar diganti namanya (bukan jumlah satu nama turun + baris lain bertambah)
+  if (!pasang.length && turun.length === 1 && naik.length === 1) tambah(turun[0], naik[0], Math.min(kL[turun[0]] - (kB[turun[0]] || 0), kB[naik[0]] - (kL[naik[0]] || 0)));
+  // yang bisa dipindah buku = sisa buku nama lama yang SEKARANG ada (bagian yang sudah keluar tidak ikut), paling banyak kg yang digeser
+  const stok = hitungStokKarungPerMerk(); const sisa = {};
+  masalah.filter((x) => x.sejak).forEach((x) => { sisa[x.m] = Math.max(0, ckB2((stok[x.m] || {}).sisaKg || 0)); });
+  pasang.forEach((p) => { if (sisa[p.dari] === undefined) return; const kg = ckB2(Math.min(p.kg, sisa[p.dari])); sisa[p.dari] = ckB2(sisa[p.dari] - kg); if (kg > 0.004) hasil.pindah.push({ dari: p.dari, ke: p.ke, kg }); });
+  hasil.pindahTeks = hasil.pindah.map((x) => 'Pindah buku ' + ckKG(x.kg) + ' ' + x.dari + ' → ' + x.ke).join(' · ');
+  hasil.tolak = masalah.map((x) => x.sejak
+    ? x.m + ' di kedatangan ' + tgl + ' tidak bisa dipindah ke nama lain lewat koreksi: buku ' + x.m + ' sudah ' + x.gerak.join(' / ') + ' sejak kedatangan itu — karungnya mungkin sudah keluar atas nama ' + x.m + ', jadi nama baru akan berisi karung yang sudah tidak ada.'
+      + (hasil.pindah.some((y) => y.dari === x.m) ? ' Jalan lain: nama di kedatangan ini dibiarkan, SISA buku ' + x.m + ' sekarang dipindah buku ke nama barunya (modal ikut, nilai stok & laba tetap) — tombol di bawah.' : ' Sisa buku ' + x.m + ' sekarang ' + ckKG(Math.max(0, (stok[x.m] || {}).sisaKg || 0)) + ' — tidak ada yang bisa dipindah buku; kalau karungnya masih ada di gudang, hitung lewat Stok › Cocokkan.')
+    : x.m + ' hanya tertulis di kedatangan ' + tgl + ' dan bukunya sudah ' + x.gerak.join(' / ') + ': tanpa baris ini catatan itu lepas dari buku dan stoknya muncul lagi (stok hantu). Barang yang tidak pernah ada: Stok › Cocokkan HARI INI (kg turun); nama yang salah: ganti nama barisnya saja (jangan dihapus) supaya sisa bukunya bisa dipindah buku.').join(' ')
+    + (!gantiNama && masalah.some((x) => x.sejak) ? ' Kalau maksudnya hanya membetulkan jumlah ' + masalah.filter((x) => x.sejak).map((x) => x.m).join(', ') + ' dan menambah baris lain, simpan sebagai dua koreksi terpisah.' : '');
+  return hasil;
+}
+/**
+ * JALAN LAIN koreksi nama yang ditolak (tinjauan E1 no. 3): kedatangan TIDAK diubah; sisa buku nama lama sekarang pindah buku ke nama baru — buku nama baru
+ * lahir bila perlu (batch 0 kg) + produksiKemasan jadi-karung-utuh (modal rata-rata nama lama ikut; nilai stok & laba tetap). Dua ketukan.
+ */
+export function ckSusunPindahKoreksi(draf, w, yakin) {
+  const lama = draf && draf.id ? ambilSemuaBatch().find((b) => String(b.id) === String(draf.id)) : null; if (!lama) return { tolak: 'Kedatangan yang dikoreksi sudah tidak ada' };
+  const G = ckGeserKoreksi(lama, ckBarisGeser(hitungMasuk(draf))); if (!G.pindah.length) return { tolak: 'Tidak ada sisa buku yang bisa dipindah untuk koreksi ini' };
+  const alasan = String(draf.alasan || '').trim(); const tgl = tanggalPendek(lama.tanggal);
+  if (!yakin) return { tolak: G.pindahTeks + ' — modal ikut, nilai stok & laba tetap; kedatangan ' + tgl + ' tidak diubah. Ketuk sekali lagi', perluYakin: true };
+  const dokumen = []; const lahir = wbDokLahir(G.pindah.map((x) => ({ merk: x.ke })), w); if (lahir) dokumen.push(lahir);
+  G.pindah.forEach((x) => dokumen.push(wbDokPindah([{ merk: x.dari, kg: x.kg }], x.ke, w, { pindahNama: { dari: x.dari, ke: x.ke, kedatangan: String(lama.id) },
+    keterangan: 'Pindah buku ' + ckKG(x.kg) + ' ' + x.dari + ' → ' + x.ke + ' (nama di kedatangan ' + tgl + ' salah' + (alasan ? ': ' + alasan : '') + ')' })));
+  return { dokumen, patch: { kabar: G.pindahTeks + ' — tersimpan. Kedatangan ' + tgl + ' tetap atas nama lamanya; modal ikut, nilai stok & laba tidak berubah.', kabarAwas: false } };
 }
 // ---------- BUKU PER UKURAN (owner 28 Sep: karung 50 kg & 25 kg merek yang sama = buku masing-masing) ----------
 /** Merek yang TIDAK memakai buku per ukuran (audit 39b no. 35, owner 30 Sep): dijual per liter langsung dari karungnya, atau kelas mutu tanpa wadah (kelas sendiri). */
@@ -320,6 +382,8 @@ export function susunHapusKedatangan(id, alasan, w) {
   if (ccFondasi(b)) return { tolak: 'Batch fondasi (' + (b.tutupBuku ? 'saldo pembuka tutup buku' : 'stok awal') + ') menopang seluruh stok & modal — tidak bisa dihapus dari sini' };
   const kunci = tolakKunci('batchMasuk', b, 'kedatangan ini tidak bisa dihapus. Barang yang tidak pernah ada: Stok › Cocokkan HARI INI (kg turun). Utang/uang yang terlanjur tercatat tidak punya pembetul (K2)'); if (kunci) return { tolak: kunci, pembalik: 'cocok' };   // putaran 25
   const bb = ckBayarBon(b); if (bb.dibayar > 0) return { tolak: ckKalimatBayar(bb) + ' — kedatangan ini tidak bisa dihapus: uangnya sudah keluar untuk bon ini. ' + CK_PINDAH + '.' + CK_BETUL_BAYAR };   // audit 39b no. 2
+  // tinjauan E1 (no. 3): nama yang HANYA ada di kedatangan ini dan bukunya sudah bergerak → menghapusnya membuat catatan itu lepas dari buku (stok hantu)
+  const lepas = ckGeserKoreksi(b, []); if (lepas.tolak) return { tolak: lepas.tolak, pembalik: 'cocok' };
   if (ckKosong(alasan)) return { tolak: 'Hapus kedatangan butuh alasan — supaya jejaknya bisa dibaca nanti' };
   const pasangan = ambilProduksi().filter((p) => String(p.dariBatch || '') === String(id));
   const k = daftarKedatangan(1e9).find((x) => String(x.id) === String(id));

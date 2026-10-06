@@ -48,7 +48,7 @@ export function pasangLayarStok(akar, opsi) {
   const KUNCI_RINCIAN_LAIN = 'miqbal_rincian_wadah_lain_v1';
   const rincianLainAwal = () => { try { return localStorage.getItem(KUNCI_RINCIAN_LAIN) === '1'; } catch (e) { return false; } };
   const awal = () => ({ tab: S.TAB_STOK.some((t) => t[0] === tabAwal) ? tabAwal : 'gudang', tanya: 'beli', kabar: '', kabarAwas: false, wadahAktif: null, isiW: null, rincianLain: rincianLainAwal(), krKetik: '', krNama: '', krAsal: null, krPilih: false, lainPilih: false, gnKetik: '', akYakin: '', tandai: null, shKetik: '', bgKetik: '', bgAlasan: '', bgYakin: false, atur: null, drPilih: null, drYakin: false, tpTab: 'tiga',
-    lembar: null, masuk: null, cocok: null, aturC: null, yakinM: false, yakinHapus: false, yakinC: {}, puKetik: {}, puYakin: '', guYakin: '', ttgYakin: false, kbsYakin: false, kbNilai: '', kbNilaiYakin: false,
+    lembar: null, masuk: null, cocok: null, aturC: null, yakinM: false, yakinHapus: false, yakinC: {}, puKetik: {}, puYakin: '', guYakin: '', ttgYakin: false, kbsYakin: false, kbNilai: '', kbNilaiYakin: false, kpTeks: '', kpYakin: false,
     adukan: null, yakinA: {}, yakinHapusA: false, bukaA: null, koreksiA: { total: '', alasan: '' }, qBuka: null, qAlasan: '', qYakin: '',
     // putaran 16: Kantong (ST4), Tempat simpan (ST5), HPP (ST6)
     kt: { jenis: '', jumlah: '', harga: '', toko: '' }, ktTab: 'rak', ktYakin: {}, ktHapus: null, ktAlasan: '', ktYakinHapus: false, aturKt: null,
@@ -188,11 +188,12 @@ export function pasangLayarStok(akar, opsi) {
     mLepasBaris: ({ i }) => ubahMasuk((d) => { if (d.baris.length > 1) d.baris.splice(Number(i), 1); else d.baris[0] = C.barisMasukKosong(); }),
     mBaru: () => { simpanLokal(KUNCI_DRAF_MASUK, null); set({ masuk: C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false, kabar: '' }); },
     mSimpan: async () => { const d = st().masuk; if (!d) return; const r = C.susunSimpanMasuk(d, waktu(), st().yakinM);
-      if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true, yakinM: !!r.perluYakin }); return; }
+      // tinjauan E1: tolakan koreksi membawa jalan lainnya (r.pembalik: 'cocok' → Cocokkan hari ini · 'pindahNama' → pindah buku sisa nama lama ke nama baru)
+      if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true, yakinM: !!r.perluYakin, kpPembalik: r.pembalik || null, kpTeks: r.pindahTeks || '', kpYakin: false }); return; }
       if (await tulis(r)) { simpanLokal(KUNCI_DRAF_MASUK, null); set({ masuk: C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false }); sekali(akar.querySelector('.stok-masuk'), 'pegas', 520); } },
     mKoreksi: ({ id }) => { const d = C.drafDariKedatangan(id); if (!d) return; if (d.fondasi) return set({ kabar: 'Batch fondasi (stok awal / saldo pembuka) menopang seluruh stok & modal — tidak diubah dari sini', kabarAwas: true });
       set({ masuk: d, yakinM: false, yakinHapus: false, kabar: d.adaBal ? 'Kedatangan ini punya baris bal (beli jadi) — baris itu tidak ikut diubah dari sini' : '', kabarAwas: false }); },
-    mHapus: async () => { const d = st().masuk; if (!d || !d.id) return; if (!st().yakinHapus) { const r0 = C.susunHapusKedatangan(d.id, d.alasan, waktu()); if (r0.tolak) return set({ kabar: r0.tolak, kabarAwas: true }); return set({ yakinHapus: true, kabar: 'Ketuk sekali lagi untuk menghapus kedatangan ini — stok & modal dihitung ulang tanpa kedatangan ini', kabarAwas: true }); }
+    mHapus: async () => { const d = st().masuk; if (!d || !d.id) return; if (!st().yakinHapus) { const r0 = C.susunHapusKedatangan(d.id, d.alasan, waktu()); if (r0.tolak) return set({ kabar: r0.tolak, kabarAwas: true, kpPembalik: r0.pembalik || null }); return set({ yakinHapus: true, kabar: 'Ketuk sekali lagi untuk menghapus kedatangan ini — stok & modal dihitung ulang tanpa kedatangan ini', kabarAwas: true }); }
       const r = C.susunHapusKedatangan(d.id, d.alasan, waktu());
       if (await tulis(r)) { simpanLokal(KUNCI_DRAF_MASUK, null); set({ masuk: C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false }); } },
     // aturan pencatatan (angka kebijakan owner)
@@ -248,6 +249,10 @@ export function pasangLayarStok(akar, opsi) {
     // ---- COCOKKAN (ST3): hitungan keliling gudang di keadaan layar + localStorage; ditulis saat SIMPAN
     bukaCocok: () => set({ lembar: 'cocok', cocok: drafCocok(), yakinC: {}, kabar: '', aturC: null }),
     // putaran 25: tombol pembalik "Bulan X terkunci — cocokkan stok HARI INI": buka Cocokkan langsung di barang catatan asalnya
+    // tinjauan E1 (no. 3): koreksi nama yang ditolak karena buku nama lama sudah bergerak → pindah buku sisanya (dua ketukan); kedatangan tidak diubah
+    kpPindahNama: async () => { const d = st().masuk; if (!d) return; const r = C.ckSusunPindahKoreksi(d, waktu(), st().kpYakin);
+      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, kpYakin: !!r.perluYakin, kpPembalik: r.perluYakin ? 'pindahNama' : null });
+      if (await tulis(r)) { simpanLokal(KUNCI_DRAF_MASUK, null); set({ masuk: C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false, kpYakin: false, kpTeks: '' }); } },
     kpCocok: ({ kunci }) => { AKSI.bukaCocok({}); if (kunci) { const kk = String(kunci).replace(/^beras\|/, 'tumpukan|'); const tb = kk.split('|')[0]; if (C.TAB_COCOK.some((x) => x[0] === tb)) AKSI.cTab({ t: tb }); AKSI.cBuka({ kunci: kk }); } set({ kpPembalik: null, kabar: 'Cocokkan HARI INI — hitung fisiknya, selisihnya tercatat hari ini (catatan bulan terkunci tidak disentuh)', kabarAwas: false }); },
     cTab: ({ t }) => ubahCocok((c) => { c.tab = C.tabCocokSah(t); c.buka = null; kosongkanKetik(c); }),
     cBuka: ({ kunci }) => ubahCocok((c) => { c.buka = c.buka === kunci ? null : kunci; kosongkanKetik(c); }),
@@ -335,6 +340,7 @@ export function pasangLayarStok(akar, opsi) {
       </header>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
       ${s.kabar && s.kpPembalik === 'cocok' ? h`<div class="kaca-btn putus" data-k="kabar-pembalik" data-aksi="kpCocok" data-kunci="" style="align-self: flex-start;">Buat Cocokkan hari ini</div>` : ''}
+      ${s.kabar && s.kpPembalik === 'pindahNama' ? h`<div class="kaca-btn ${s.kpYakin ? 'awas' : 'aktif emas'}" data-k="kabar-pindah" data-aksi="kpPindahNama" style="align-self: flex-start;">${s.kpYakin ? 'YAKIN — ' : ''}${s.kpTeks || 'Pindah buku sisanya'}</div>` : ''}
       ${s.lembar === 'masuk' ? gambarMasuk(s) : s.lembar === 'cocok' ? gambarCocok(s) : s.lembar === 'adukan' ? gambarAdukan(s) : s.lembar === 'kantong' ? gambarKantong(s) : s.lembar === 'tempat' ? gambarTempat(s) : s.lembar === 'hpp' ? gambarHpp(s) : h`<div class="jalur" data-k="tab">${S.TAB_STOK.map(([id, nm]) => h`<div class="seg ${s.tab === id ? 'aktif' : ''}" data-aksi="tab" data-t="${id}">${nm}</div>`)}</div>
       ${s.tab === 'gudang' ? gambarGudang(s, k) : s.tab === 'wadah' ? gambarTabWadah(s) : s.tab === 'kapur' ? gambarKapur(k) : gambarKarantina(s)}`}
     `);
@@ -729,6 +735,9 @@ export function pasangLayarStok(akar, opsi) {
         ${b.saranVarian && b.saranVarian.length ? h`<div class="pita-info emas" data-k="msv-${i}"><div><b>${b.merkKetik}</b> sudah dicatat sebagai <b>${b.saranVarian.map((v) => v.nama).join(' / ')}</b> — pakai itu?</div>
           <div class="tombol-baris rapat" data-k="msv-pil-${i}">${b.saranVarian.map((v) => h`<div class="kaca-btn aktif emas" data-aksi="mPakaiVarian" data-i="${i}" data-merk="${v.nama}">pakai ${v.nama}${v.bukuKg > 0.004 ? ' · buku ' + KG(v.bukuKg) : ''}</div>`)}</div>
           <div class="ket">Satu ketukan: stoknya masuk buku yang sama. Kalau memang barang lain, biarkan — baris ini jadi nama baru ${b.merkKetik}.</div></div>` : ''}
+        ${b.varianInduk && b.varianInduk.length ? h`<div class="pita-info emas" data-k="mvi-${i}"><div><b>${b.merk}</b> punya varian <b>${b.varianInduk.map((v) => v.nama).join(' / ')}</b> — karung yang datang ini yang mana?</div>
+          <div class="tombol-baris rapat" data-k="mvi-pil-${i}">${b.varianInduk.map((v) => h`<div class="kaca-btn aktif emas" data-aksi="mPakaiVarian" data-i="${i}" data-merk="${v.nama}">masuk ${v.nama}${v.bukuKg > 0.004 ? ' · isi buku ' + KG(v.bukuKg) : ''}</div>`)}</div>
+          <div class="ket">Satu ketukan: karungnya masuk buku varian itu. Kalau memang ${b.merk} biasa, biarkan — masuk buku ${b.merk}.</div></div>` : ''}
         ${b.baru ? h`<div class="pita-info ${b.kelas || b.kelasPilih ? '' : 'emas'}" data-k="mk-${i}">${b.keSendiri ? h`Merek baru <b>${b.merkKetik}</b> dicatat sebagai <b>${b.merk}</b> · merek pemasok ${b.merkKetik}${b.lalu ? ' · lalu ' + RP(b.lalu.harga) + ' (' + b.lalu.tanggalTeks + (b.lalu.pemasok && !b.lalu.fondasi ? ' · ' + b.lalu.pemasok : '') + ')' : ' · belum ada harga lalu'}` : b.kelas ? h`Merek baru <b>${b.merkKetik}</b> · kelas <b>${b.kelas}</b>${b.kelasAsal === 'tebakan' ? ' (tebakan — ketuk kelas lain kalau keliru)' : ''}${b.laluKelas ? ' · lalu ' + RP(b.laluKelas.harga) + ' (' + b.laluKelas.merk + (b.laluKelas.merkPemasok ? ' (' + b.laluKelas.merkPemasok + ')' : '') + ' · ' + b.laluKelas.tanggalTeks + ' · ' + b.laluKelas.pemasok + ')' + (b.laluKelas.lain.length ? ' · pemasok lain: ' + b.laluKelas.lain.map((x) => x.pemasok + ' ' + RP(x.harga) + ' (' + x.tanggalTeks + ')').join(', ') : '') : ' · kelas ini belum punya kedatangan nyata'}` : b.kelasPilih ? h`Merek baru <b>${b.merkKetik}</b> · tanpa kelas — harga lalunya nanti dari merek ini sendiri` : h`Merek baru <b>${b.merkKetik}</b> — kelas mana? (boleh tanpa kelas; simpan tidak menunggu jawaban ini)`}
           <div class="tombol-baris rapat" data-k="mk-pil-${i}">${b.calonKelas.map((c) => h`<div class="kaca-btn kecil ${b.kelas === c.nama ? 'aktif' : ''}" data-aksi="mKelas" data-i="${i}" data-kelas="${c.nama}">${c.nama}${c.jenis === 'sendiri' ? ' · buku' : ''}</div>`)}<div class="kaca-btn kecil ${b.kelasPilih && !b.kelas ? 'aktif' : ''}" data-aksi="mKelas" data-i="${i}" data-kelas="">tanpa kelas</div></div>
           ${b.kelasTanya ? h`<div class="ket awas-teks">${b.kelasTanya}</div>` : ''}</div>` : ''}

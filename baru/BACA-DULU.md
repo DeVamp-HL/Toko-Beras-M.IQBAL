@@ -1147,7 +1147,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_stok_baru.py` (+ `--kontrol`) | 135 skenario logika Stok (jam & zona waktu dikunci; rantai stok "Berasnya ada di mana?", karung bernama; barang masuk, cocokkan, adukan, karantina; kantong, tempat simpan, HPP: replika rumus = mesin, koreksi = batch yang sama, massal semua-atau-tidak) + 91 kontrol; di cadangan toko: nilai stok layar = mesin neraca, kolom dokumen catat dikenal cadangan, replika HPP = mesin untuk semua nama |
 | `alat-uji/uji_pelanggan_baru.py` (+ `--kontrol`) | 57 skenario logika Pelanggan (jam dikunci penuh — `new Date()` pun; orang, wajah, tampah, belanja, jam, minggu, benang, hafalan, kartu, gabung, atur, THR, bon, tagih, bayar, hapus buku, hapus nama, 23b ciri dicabut & Bersihkan) + 56 kontrol; di cadangan toko: kunjungan/belanja/sisa bon = baris nyata & mesin, kolom dokumen dikenal, pratinjau Bersihkan + suntikan byte-sama |
 | `alat-uji/uji_menu_baru.py` (+ `--kontrol`) | 53 skenario logika Menu & Sistem (tempo bon per pemasok sejak putaran 17) (jam dikunci penuh; silang jam, laci, tanya, jam, orang, tertutup, cari; perangkat, jejak, peran, persetujuan, cadangan, lokasi & pindah stok, pengingat, atur) + 32 kontrol; di cadangan toko: laci pemasok/piutang = mesin, pita = silang, berkas cadangan memuat semua koleksi lama |
-| `alat-uji/uji_harga_baru.py` (+ `--kontrol`) | 105 skenario logika Harga & Pemasok (jam dikunci; katalog: baris, status, draf, pasar, sengaja, usul, kalimat, dampak, belah, papan/WA, terbit satu batch, label; bon: mesin beku, tempo kartu/umum, tusukan, garis & kas, buku, bayar + admin, urung, bon lama, kartu, atur; belanja: saran, sumber harga, truk, penuhi, kertas, pesanan WA, datang/batal, atur) + 47 kontrol; di cadangan toko: tiap dokumen katalog = satu baris dengan angka yang sama (harga milik nama yang diarsipkan dihitung terpisah), total bon = mesin, hari habis = mesin, kolom dokumen dikenal |
+| `alat-uji/uji_harga_baru.py` (+ `--kontrol`) | 124 skenario logika Harga & Pemasok (jam dikunci; katalog: baris, status, draf, pasar, sengaja, usul, kalimat, dampak, belah, papan/WA, terbit satu batch, label; bon: mesin beku, tempo kartu/umum, tusukan, garis & kas, buku, bayar + admin, urung, bon lama, kartu, atur; belanja: saran, sumber harga, truk, penuhi, kertas, pesanan WA, datang/batal, atur; owner 7 Okt: daftar & pesanan per harga beli terakhir; tinjauan E1: perlu & saran per baris harga dari stok & laju gabungan, Daftar lengkap, stok 0, arsip, umur harga, baris hampir kembar, merek lalu) + kontrol; di cadangan toko: tiap dokumen katalog = satu baris dengan angka yang sama (harga milik nama yang diarsipkan dihitung terpisah), total bon = mesin, hari habis = mesin, kolom dokumen dikenal, pesanan per harga Σ = per merek, tiap baris harga Σ sisa / Σ bagian saran = gabungannya |
 | `alat-uji/uji_laporan_baru.py` (+ `--kontrol`) | 67 skenario logika Laporan & Dokumen (+ Mingguan & Tahunan) (laba bulan = mesin, tunai = bersih − margin bon, MDR dipisah, tangga menutup; rekap hari = arus kas, teks WA; enam bulan, inti, rekap omzet: kumulatif, tanda lapor hanya final, tarif/batas/tanggal owner, bukti Σ; neraca dua sisi + aset tetap + pembanding; identitas berversi + struk ikut, ragam kop, nomor awal; laporan berkop DRAF/final, arus kas = kasPada, paket bank hanya final, banding; dokumen kecil lima jenis, salinan ke-N, nota batal ditolak; kop belum lengkap menolak semua) + 33 kontrol (NPWP bawaan tidak dicetak, peringatan NIK); di cadangan toko: laba bulan & laba-rugi berkop = mesin, neraca seimbang |
 | `alat-uji/uji_uang_baru.py` (+ `--kontrol`) | 129 skenario logika Uang (+ HR, gaji tengah bulan, bonus) (saldo per tempat = kasPada di tiap langkah; K1 arti/penjaga/kasbon owner/titipan/tagihan; K4 pindah + admin + rutin; K2 sejak terakhir dibayar, hari kosong, bayar = baris bertanggal + 'Dipotong upah' + slip; K3 delapan perbuatan; K5 hitung laci, QRIS/MDR, sisih, timbang, amankan, tutup sekaligus, tutup ulang; K6 gerbang, 12 baris sebelum/sesudah, pembuka = sistem lama, kunci + arsip, batal, selesai) + 40 kontrol; di cadangan toko: identitas kantong (bila titik ada), posisi owner, karyawan, tagihan |
 | `alat-uji/uji_akses_baru.py` (+ `--kontrol`) | 33 skenario akses per orang (keadaan akun, owner hanya via email, pendengar/layar/tombol per peran, penjaga kiriman = peta, pagar 18, batas per akun, atribusi olehUid, satu jejak per kiriman, salinan antre, SS2 akun & kisi = kebenaran server, tirai 8 layar, ganti orang & isian tujuh layar, pil akun, sambungan firebase.js/app.js diperiksa sumbernya) + 43 kontrol |
@@ -1163,7 +1163,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_bayar_bon_terkunci.py` (+ `--kontrol`) | 25b C: bayar bon pemasok/pelanggan dari bulan terkunci lolos — teks rules dicocokkan + model + jalur sistem baru; asap data toko lokal |
 | `alat-uji/uji_batal_karcis.py` (+ `--kontrol`) | 25b: batal karcis kasir darurat di /baru/ — field = `mulaiBatalkanTrx` sistem lama (`FIELD_LAMA`, dibekukan dari tag `sistem-lama-terakhir`) & dokumen pembatalan sungguhan di cadangan lokal |
 | `alat-uji/uji_cocokkan_terpisah.py` (+ `--kontrol`) | 27·1: 23 skenario cocokkan tumpukan vs wadah (selisih ke merek asal, susut wajar, isi ulang lupa, rantai stok tidak bergeser) + 16 kontrol; asap: 8 wadah di cadangan dicocokkan |
-| `alat-uji/uji_varian_merek.py` (+ `--kontrol`) | 27·2: 21 skenario varian (batas owner, sama/beda mutu, kolam lama byte-sama, jenis ikut induk, harga varian, induk tanpa nama kelas) + 12 kontrol; asap: tiap merek bermodal jadi varian, nama kelas ditolak |
+| `alat-uji/uji_varian_merek.py` (+ `--kontrol`) | 27·2: 21 skenario varian (batas owner, sama/beda mutu, kolam lama byte-sama, jenis ikut induk, harga varian, induk tanpa nama kelas; owner 7 Okt: varian dari Harga saat induk berstok — ikut / kosong, koreksi kedatangan atau pindah buku, pita Barang masuk; tinjauan E1: buku induk lahir 0 kg di jalur koreksi, koreksi / hapus kedatangan di buku yang sudah bergerak ditolak + pindah buku sisa) + kontrol; asap: tiap merek bermodal jadi varian, nama kelas ditolak, tiap merek berstok "ikut" → nilai stok sama, koreksi/hapus kedatangan nyata yang lolos tanpa stok hantu |
 | `alat-uji/uji_arsip_produk.py` (+ `--kontrol`) | 27·3: 19 skenario arsip (hanya yang habis, hilang dari rak/katalog/label/katalog HP kasir = penyusun sistem lama (pembantu.js, terkunci sidik) minus arsip, hapus tanpa transaksi, pulihkan) + 13 kontrol |
 | `alat-uji/uji_setengah_karung.py` (+ `--kontrol`) | 27·4: 18 skenario ½ karung (harga, langit-langit 50 kg, pemecah Adukan satu kiriman, modal dipindah utuh, batal; 28b: saat merinci karcis — pemecah bertanggal & berjam karcis, tarik balik mencabutnya) + 14 kontrol |
 | `alat-uji/uji_wadah_bernama.py` (+ `--kontrol`) | 27·5: 28 skenario wadah bernama (NG 30 + Kumala 20 → 5 L memotong buku 3 : 2, HPP tertimbang, tanpa buku nama wadah, identitas, struk satu baris, karcis, katalog, kelas ditolak, ganti nama, hapus harga liter tidak dipakai) + 21 kontrol; asap cadangan + ASAP GLOBAL omzet/laba/neraca tiap bulan byte-sama dengan main |
@@ -1794,3 +1794,81 @@ Mesin beku tidak disentuh; `firestore.rules` tidak diubah (kebutuhan rules v7 di
 - Uji (CI): `uji_karung_bekas_lahir.py`, `uji_pembetulan_bon.py`, `uji_foto_bon.py` (+ kontrol); `uji_safari_webkit.py` (8 tanggal: kolom tanggal = pemilih
   tanggal); `uji_wadah_satu_buku.py` & `uji_jual_baru.py` (lima skenario lama yang menghabiskan karung kini membawa +1 karung bekas); `peta_akses.py`
   (OWNER_JALUR semua jalur yang dibungkus).
+
+## Paket E-1 — belanja per harga beli & varian dari stok induk (7 Okt 2026, cabang `perbaikan/belanja-harga-varian`)
+
+Dua butir owner 7 Okt. Tanpa koleksi baru, rules tidak berubah, mesin beku tidak disentuh. Kolom baru hanya `pesananPemasok.barisHarga` dan tanda
+`jadiVarian` di dokumen pindah buku (`produksiKemasan`); keduanya diabaikan mesin.
+- **Belanja pakai harga modal, bukan nama merek** (owner: "belanja pakai harga modal yang sudah ada sebelumnya"; nama merek karung berganti-ganti,
+  pemasok mengenal barangnya dari harga). `belanja-logika.js` `blKelompokHarga`: baris belanja satu pemasok dikelompokkan per **harga beli terakhir
+  per kg dari pemasok itu** (harga yang sama yang menghitung rp barisnya) × berat karung × jenis beras. Merek yang seharga = satu baris, karung/kg/rp
+  dijumlah apa adanya (Σ kelompok = Σ per merek, diuji di kotak pasir & data toko). Jenis ikut di kunci supaya IR64 & IR42 yang kebetulan seharga
+  tidak digabung (pemasok bisa salah kirim); buku per ukuran memakai jenis induknya. Merek tanpa harga beli = baris sendiri "harga belum tercatat".
+  - Pesan WhatsApp: `• <jenis> Rp<harga>/kg — <n> karung × <berat> kg (merek lalu: <kode karung>)`, termurah dulu; kode = bagian nama sebelum " · "
+    (nama mutu buatan toko tidak dikenal pemasok). Dokumen `pesananPemasok` tetap mencatat `baris` per merek (penanda "sudah dipesan" per merek) +
+    `barisHarga` [{hargaPerKg, berat, jenis, karung, kg, merk[]}] = yang dikirim. Daftar "Pesanan ke pemasok" memakai `barisHarga` bila ada.
+  - Layar: tab **Daftar** dan daftar di bawah **Isi truk** = satu baris per harga, merek-merek seharga jadi keterangan kecil (karung, sisa, hari);
+    − / + / centang membagi karung ke merek di dalamnya (`ubahKelompok`: + ke merek yang paling cepat habis sesudah pesanan, − dari yang paling
+    lama cukup; `ketukKelompok`). Potongan bak truk per harga. **Kapan habis** & kartu ringkas tetap per merek (itu soal stok); ganti pemasok tetap di sana.
+  - Ikut ditambal: buku per ukuran `'Merek 25 kg'` yang dipisah lewat pindah jadi-karung-utuh dulu tampak "punya karung 50 kg" → disarankan & dipesan
+    dalam karung 50 kg. Kini beratnya dari peta ukuran (25 kg); kg saran tetap, jumlah karungnya yang benar.
+- **Varian merek baru dari Harga ketika induknya masih berstok** (kejadian nyata: barang masuk diketik nama pendek, lalu "+ Varian merek baru" —
+  stok tetap di nama pendek, varian kosong: stok bercabang diam-diam). `varian-logika.js` `vrStokInduk` / `vrSusunBuatDariHarga(…, bawa)`:
+  induk bersisa WAJIB dijawab (`perluBawa`) — **"Ya — stok ikut jadi varian ini"** atau **"Bukan — varian kosong"**. Ikut, di kiriman yang sama:
+  - buku induk UTUH (isinya hanya kedatangan; tidak ada jual / adukan / pindah buku / retur / cocokkan / stok awal atas namanya; tidak di bulan
+    terkunci) → kedatangannya **dikoreksi**: baris atas nama induk jadi nama varian (baris lain, uang, pemasok, tanggal tetap; `alasanKoreksi` +
+    `riwayat` seperti koreksi Buku kedatangan). Stok, modal, riwayat harga beli & pemasok ikut varian — Belanja langsung tahu harganya.
+  - selain itu → buku varian **lahir** (batch 0 kg, supaya penjualannya dipotong mesin) + **pindah buku** seluruh sisa induk (jadi-karung-utuh,
+    modal rata-rata ikut, tanda `jadiVarian`); kedatangan lama tetap atas nama induk.
+  - modal untuk "di bawah modal" & `modalSaatSetel` katalog = modal induk (`vrSusunTerbitHarga(…, modalDari)`). Nilai stok & laba tidak berubah.
+  - nama varian yang SUDAH ADA dengan buku kosong sedangkan induknya berstok (stok bercabang yang terlanjur, `vrBisaIkutKeAda`): kartu yang sama
+    menawarkan "PINDAHKAN STOK <induk> KE <varian>" — hanya dokumen stok di atas (`vrDokIkut`), katalog & harganya tidak diubah. Varian yang berisi tetap "sudah ada".
+  - paling banyak 10 kedatangan dikoreksi sekaligus (`VR_KOREKSI_MAKS`, batas pemeriksaan kunci server); lebih dari itu → pindah buku.
+- **Barang masuk**: nama yang SUDAH berbuku tapi punya varian berbuku/berkatalog → pita emas "<merek> punya varian … — karung yang datang ini
+  yang mana?" dengan tombol "masuk <varian>" (`hitungMasuk` → `varianInduk`; tidak memblokir; koreksi & baris yang sudah dijawab sama/beda mutu
+  tidak ditawari). Melengkapi petunjuk audit 39b no. 43 (yang hanya untuk nama tanpa buku).
+- Uji: `uji_harga_baru.py` (+7 skenario per harga, asap data toko: dua daftar pesanan, Σ per pemasok sama, tiap merek di tepat satu kelompok,
+  baris "Jumlah" WA sama; +11 kontrol), `uji_varian_merek.py` (+16 skenario: tanya wajib, koreksi kedatangan, pindah buku + penjualan varian
+  terpotong, modal induk, kosong, varian yang sudah ada kosong / berisi, bulan terkunci, pita Barang masuk; asap data toko: tiap merek berstok "ikut" di cache sementara → buku varian =
+  sisa & modal induk, nilai stok sama; salinan kedatangan nyata terbaru lewat jalur koreksi → buku & total bon sama; +15 kontrol termasuk 2 statis). `peta_akses.py`:
+  `vrSusunBuatDariHarga` dicatat di OWNER_JALUR (paling banyak 10 kedatangan dikoreksi, atau 1 lahir + 1 pindah buku hari ini).
+- **Tinjauan E1 (sanggahan, 7 Okt) — semua temuan sedang & ringan dibereskan di cabang yang sama:**
+  - **Perlu & saran per BARIS HARGA** (`blBagiSaran`): pemasok mengenal barangnya dari harga, jadi stok barang itu = Σ sisa merek seharga (pemasok × harga
+    × berat × jenis) dan lakunya = Σ laju. Hari = Σ sisa ÷ Σ laju; saran = laju × target − sisa, ke atas ke karung penuh; perlu = hari ≤ ambang, saran > 0,
+    tidak ada pesanan menunggu di baris itu. Karung saran dibagi ke merek di dalamnya satu-satu ke yang paling cepat habis (tanpa laju / sudah dipesan
+    tidak menerima). Merek sendirian = rumus lama persis. Dulu: merek habis 1 hari disarankan penuh padahal merek seharga punya stok ratusan kg.
+    "Pakai saran" per pemasok & semua (`pakaiSaran`, satu pintu), centang baris harga (`ketukKelompok`), dan **Penuhi truk** (baris harga yang stok
+    gabungannya paling cepat habis dulu) memakai hitungan yang sama. Tombolnya menyebut "N baris harga · K karung".
+  - **Daftar** memuat baris harga yang perlu (atau sudah berisi) LENGKAP dengan merek seharganya, juga yang tidak perlu — stoknya terlihat; merek itu
+    tidak muncul lagi di "Belum perlu — tapi boleh ditambah". **Kapan habis** tetap per merek, tapi merek yang stoknya sendiri ≤ ambang dan ditutup merek
+    seharga pindah ke kelompok "Habis dalam N hari — ada yang seharga" dengan kalimat gabungannya (`tutup`, `gabungTeks`).
+  - Ikut ditambal karena memengaruhi saran gabungan: stok 0 (atau minus) yang MASIH laku = "habis hari ini" (`hariHabis`; dulu "belum ada gerak — tidak
+    ditebak", tidak pernah disarankan — Stok › Apa yang harus dibeli sudah menghitungnya habis); nama yang **diarsipkan** tidak ikut belanja.
+  - **Umur harga**: harga yang lebih tua dari kiriman terakhir pemasok itu ditulis umurnya, juga di WhatsApp — `• IR64 Rp…/kg (harga 18 Sep) — …` —
+    supaya tidak terbaca harga yang diminta toko. Tanggal & "merek lalu" satu baris dibaca dari SEMUA merek seharga pemasok itu, bukan hanya yang dipesan.
+  - **Baris hampir kembar dirapikan bila aman** (`blHargaKelas` / `blPakaiHarga`): merek berkelas mutu yang DIPETAKAN (owner / nama wadah / kelas sendiri;
+    tebakan tidak) yang harganya lebih tua dari kiriman terbaru kelas yang sama dari pemasok itu ikut harga kelas terbaru itu — hanya bila di kiriman
+    terbaru itu harganya SATU dan bedanya masih dalam batas "sama barangnya" owner (Barang masuk › Atur, `vrBatas`, bawaan 5 %). Selain itu harganya
+    sendiri, ditandai umurnya. Rp perkiraan & dokumen pesanan memakai harga yang dipakai (`pakai`); harga lamanya tetap disebut di keterangan baris.
+  - **Merek lalu** tidak lagi menyebut nama buatan toko (nama wadah / kelas mutu `wbNamaKelas`, kelas sendiri `kmKelasSendiri`, nama berisi "campuran");
+    merek pemasok yang tercatat di baris kedatangan (`merkPemasok`, kelas tanpa wadah) dipakai bila ada (`daftarPemasok` kini menyimpannya per riwayat harga).
+  - **Jalur koreksi kedatangan varian** (`vrDokIkut`, buku induk utuh) kini juga menulis **batch lahir 0 kg atas nama induk** di kiriman yang sama
+    (dihitung sesudah koreksi diterapkan sementara — `wbDokLahir` melewati nama yang masih tertulis). Dulu buku induk hilang dari `hitungStokKarungPerMerk`,
+    sehingga catatan atas nama induk yang tiba sesudahnya (perangkat dengan cache lama, keranjang parkir, kiriman tertunda — juga bila cache baca tidak
+    lengkap) lenyap diam-diam dari stok. Kini memotong buku induk jadi minus yang terlihat. Total kg & nilai stok seluruh toko tetap sama (kotak pasir & data toko).
+  - **Koreksi / hapus kedatangan di buku yang sudah bergerak** (`ckGeserKoreksi`, satu tempat; gerak buku = `vrGerakBuku`, juga dipakai `vrStokInduk`):
+    koreksi yang memindah kg antar nama (ganti nama baris, atau satu nama turun sementara nama lain naik) DITOLAK bila buku nama lama sudah terjual /
+    diaduk / dipindah / diretur / dicocokkan pada tanggal kedatangan itu atau sesudahnya (gerak sebelum kedatangan, dengan kedatangan lain yang masih ada,
+    tidak menolak). Koreksi yang menghapus baris & hapus kedatangan DITOLAK bila namanya hanya tertulis di situ dan bukunya pernah bergerak — tanpa baris
+    batch mesin melewatkan catatan itu (stok hantu; kotak pasir: total 1.250 → 1.300 kg). Jalan lain di layar: tombol **pindah buku** SISA buku nama lama
+    ke nama baru (`ckSusunPindahKoreksi`, dua ketukan, buku nama baru lahir bila perlu, modal ikut, kedatangan tidak diubah) atau **Cocokkan hari ini**.
+    Jumlah satu nama turun sekaligus baris lain ditambah (tanpa ganti nama) → petunjuk: simpan sebagai dua koreksi terpisah (keduanya boleh sendiri-sendiri).
+  - Kecil: penangan mati `blKetuk` dibuang; kalimat & sorotan kartu Varian hanya untuk pilihan yang tersedia sekarang (`pilihSah` — "kosong" yang
+    tertinggal dari nama mutu sebelumnya tidak digambar); kontrol "dokumen pesanan tanpa barisHarga" kini berbunyi lewat `ok()`, bukan karena jsc jatuh.
+  - Uji: `uji_harga_baru.py` +11 skenario E1 (gabungan tidak perlu / perlu & pembagian, Daftar lengkap, pakai saran & centang, WA, stok 0, arsip, penuhi
+    per baris harga, baris hampir kembar & yang tidak aman, umur harga, merek lalu) + asap data toko (tiap baris harga: Σ sisa = gabungan, Σ bagian =
+    saran, perlu konsisten, tanpa nama arsip) + 16 kontrol E1 (7 jangkar lama diperbarui). `uji_varian_merek.py` +12 skenario & 1 pemeriksaan statis (batch lahir induk, penjualan
+    terlambat terpotong, koreksi ganti nama ditolak + bukti hantu, pindah buku sisa, nama belum bergerak / bergerak sebelum kedatangan boleh, cocokkan &
+    adukan, hapus baris / kedatangan) + asap data toko (kedatangan nyata terbaru: tiap ganti nama & hapus yang lolos tanpa stok hantu; koreksi kedatangan
+    FJN yang sudah diaduk ditolak; jalur koreksi varian: total kg sama, penjualan terlambat terpotong) + 11 kontrol logika + 5 kontrol statis. `peta_akses.py`:
+    `ckSusunPindahKoreksi` dicatat. Rules v7 tidak perlu: semua tulisan owner ke koleksi yang sudah ada (batch lahir & produksiKemasan create hari ini).
