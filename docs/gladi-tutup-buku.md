@@ -65,12 +65,15 @@ Setelah itu teks repo dipasang lagi. Berkas `firestore.rules` sendiri tidak diub
 
 **Kontrol** (`--kontrol`, tiap kontrol di emulator sendiri): salinan uji dirusak, lalu cek sasarannya wajib gagal. Kontrol dihitung berbunyi hanya
 kalau skenarionya jalan sampai akhir, cek sasaran gagal bukan karena langkahnya tidak tercapai, cek lain tidak ikut gagal (kecuali yang memang
-terkena), dan bukti kerusakannya terlihat di langkah yang benar. Ada lima kontrol:
+terkena), dan bukti kerusakannya terlihat di langkah yang benar. Kontrol yang skenarionya jatuh dihitung DIAM, bukan berbunyi. Run 7 Okt
+membuktikan perlunya aturan ini: kontrol "satu koleksi tidak dimuat" yang lama ternyata membuat layar Uang tidak tampil, tetapi dulu tetap
+dihitung berbunyi. Ada lima kontrol:
 
 - latihan yang menulis di langkah 4;
 - latihan yang menulis 5,5 detik sesudah langkah terakhir (hanya langkah diam yang melihatnya);
 - gerbang g1 yang tidak memblokir;
-- salinan yang memuat satu koleksi tidak lengkap (hanya 10 dokumen terbaru);
+- salinan yang memuat satu koleksi tidak lengkap (hanya 10 dokumen terbaru; skenario `muatSaja`, karena data yang kurang juga membuat kunci
+  LATIHAN menolak "12 baris tidak sama");
 - pemulihan arsip yang melewatkan satu dokumen (skenario `ritualPendek`: kunci penuh lalu BATALKAN sesudah penanda). Ini wajib ketahuan dari isi
   server.
 

@@ -143,6 +143,7 @@ jobs:
             echo "::group::kontrol $i dari $N"
             rm -f firestore-debug.log
             firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --kontrol $i" || gagal=1
+            tail -c 20000000 firestore-debug.log > "$GITHUB_WORKSPACE/gladi-hasil/firestore-debug-kontrol-$i.log" 2>/dev/null || true
             echo "::endgroup::"
           done
           exit $gagal

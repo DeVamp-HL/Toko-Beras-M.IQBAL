@@ -62,7 +62,7 @@ DIDENGAR = set(re.findall(r"\{ nama: '(\w+)'", open(os.path.join(AKAR, 'baru/js/
 TAK_TERCAPAI = 'langkah tidak tercapai'   # ket cek yang langkahnya tidak dijalankan — kontrol yang hanya "gagal" karena ini dihitung DIAM
 CHROME = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser',
                            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'] if os.path.exists(p)), None)
-TUNGGU_SKENARIO = {'latihan': 900, 'gerbang': 900, 'ritual': 6000, 'ritualPendek': 3600}
+TUNGGU_SKENARIO = {'latihan': 900, 'gerbang': 900, 'ritual': 6000, 'ritualPendek': 3600, 'muatSaja': 900}
 
 
 def alamat_emulator():
@@ -466,12 +466,18 @@ const L = {
     await lapor('masuk', { akun: ST.akun.jenis, sumber: toko.sumberData(), bilah: teksBilah() });
   },
   async muatPenuh() {
-    const t0 = performance.now();
-    await sampai(() => ST.koleksiTotal > 0 && ST.koleksiSiap >= ST.koleksiTotal, 600000, 'semua koleksi termuat');
-    try { await sampai(() => (window.__gladiBaca || {}).dokumen >= K.harapBaca, 180000, 'dokumen data contoh sampai di halaman'); } catch (e) { konsol.push('muat penuh: ' + e.message); }
-    await tunggu(2500);
+    // muat yang tidak selesai TETAP dilaporkan dulu (run 7 Okt kontrol 3: 600 dtk tanpa laporan → sebabnya tidak terbaca): server uji mencatat antrean
+    // emulator selama muat, cache per koleksi & dokumen yang sampai per koleksi; baru sesudah itu skenario berhenti
+    const t0 = performance.now(); let gagalMuat = '';
+    try { await sampai(() => ST.koleksiTotal > 0 && ST.koleksiSiap >= ST.koleksiTotal, 300000, 'semua koleksi termuat'); } catch (e) { gagalMuat = e.message; }
+    if (!gagalMuat) {
+      try { await sampai(() => (window.__gladiBaca || {}).dokumen >= K.harapBaca, 180000, 'dokumen data contoh sampai di halaman'); } catch (e) { konsol.push('muat penuh: ' + e.message); }
+      await tunggu(2500);
+    }
     const n = {}; KOLEKSI.forEach((k) => { n[k.nama] = toko.cacheMentah(k.cache).length; });
-    await lapor('muat penuh', { detik: Math.round((performance.now() - t0) / 100) / 10, koleksiSiap: ST.koleksiSiap, koleksiTotal: ST.koleksiTotal, ditolak: ST.ditolak || [], galat: ST.galat || '', offline: !!ST.offline, cache: n });
+    await lapor('muat penuh', { detik: Math.round((performance.now() - t0) / 100) / 10, koleksiSiap: ST.koleksiSiap, koleksiTotal: ST.koleksiTotal, ditolak: ST.ditolak || [], galat: ST.galat || '', offline: !!ST.offline, cache: n,
+      gagalMuat, diterima: salinBaca().perKoleksi });
+    if (gagalMuat) throw new Error(gagalMuat + ' — koleksi siap ' + ST.koleksiSiap + ' dari ' + ST.koleksiTotal + ', dokumen diterima ' + salinBaca().dokumen);
   },
   async bukaTutupBuku() {
     document.querySelector('[data-tujuan="uang"]').click();
@@ -570,7 +576,9 @@ SKENARIO = {
     'gerbang': ('macet', DC.JAM_SUNGGUHAN, ['masuk', 'muatPenuh', 'bukaTutupBuku', 'sungguhan', 'gerbangDiblokir', 'putusanG1', 'periksaBeres', 'diam']),
     'ritual': ('macet', DC.JAM_SUNGGUHAN, ['masuk', 'muatPenuh', 'bukaTutupBuku', 'sungguhan', 'putusanG1', 'sampaiParaf', 'kunciTerputusPembuka', 'batalkanSebelumPenanda',
                                            'mulaiLagi', 'kunciTerputusArsip', 'lanjutkan', 'batalkanSesudahPenanda', 'mulaiLagi', 'kunciPenuh', 'selesai', 'diam']),
-    # kontrol saja (bukan bawaan workflow): kunci penuh lalu batalkan sesudah penanda — cukup untuk kontrol pemulihan arsip, separuh waktu ritual
+    # kontrol saja (bukan bawaan workflow): muat penuh saja — kerusakan yang membuat data kurang tidak boleh ikut menjatuhkan langkah tutup buku sesudahnya
+    'muatSaja': ('macet', DC.JAM_LATIHAN, ['masuk', 'muatPenuh', 'diam']),
+    # kontrol saja: kunci penuh lalu batalkan sesudah penanda — cukup untuk kontrol pemulihan arsip, separuh waktu ritual
     'ritualPendek': ('macet', DC.JAM_SUNGGUHAN, ['masuk', 'muatPenuh', 'bukaTutupBuku', 'sungguhan', 'putusanG1', 'sampaiParaf', 'kunciPenuh', 'batalkanSesudahPenanda', 'diam']),
 }
 SKENARIO_BAWAAN = ['latihan', 'gerbang', 'ritual']
@@ -830,7 +838,11 @@ def cek_ritual(S, data, c):
         kait_cek(c, 'SELESAI di SERVER: berita acara "selesai", arsipTahun = semua dokumen 2026 asli (= nArsip), 0 tersisa, saldo pembuka = nPembuka, penanda tutupBuku 2026', s)
 
 
-CEK = {'latihan': cek_latihan, 'gerbang': cek_gerbang, 'ritual': cek_ritual, 'ritualPendek': cek_ritual}
+def cek_muat(S, data, c):
+    cek_umum(S, data, c)
+
+
+CEK = {'latihan': cek_latihan, 'gerbang': cek_gerbang, 'ritual': cek_ritual, 'ritualPendek': cek_ritual, 'muatSaja': cek_muat}
 
 
 # jalur biaya kuota (skenario ritual): langkah mana yang dijumlah. Ritual BERSIH = yang dikerjakan owner tanpa penolakan/pembatalan: masuk, muat, putusan,
@@ -991,8 +1003,9 @@ KONTROL = [
      'sasaran': 'gerbang g1 tampil MEMBLOKIR', 'boleh': ['tombol periksa redup', 'mengetuk periksa DITOLAK'],
      'bukti': ('g1 tampil beres saat SUNGGUHAN dipilih walau 23 hari belum diputus', lambda S: any(g['id'] == 'g1' and g['ok'] for g in (info(L_(S, 'SUNGGUHAN dipilih'), 'gerbang') or [])))},
     # run 7 Okt (#106): koleksi yang DIBUANG dari koleksi.js membuat layar Uang tidak tampil → skenario jatuh, dulu tetap dihitung "berbunyi". Kini koleksinya
-    # tetap didengar tetapi hanya 10 dokumen terbaru (pendengar berbatas, seperti jejak) — aplikasi jalan, data yang sampai di halaman kurang.
-    {'nama': 'salinan memuat satu koleksi tidak lengkap (muat penuh kurang)', 'skenario': 'latihan',
+    # tetap didengar tetapi hanya 10 dokumen terbaru (pendengar berbatas, seperti jejak). Skenarionya muat saja: dengan pengeluaran yang kurang, kunci
+    # LATIHAN menolak "12 baris tidak sama" (run berikutnya) — benar untuk data yang kurang, tetapi bukan yang diuji kontrol ini.
+    {'nama': 'salinan memuat satu koleksi tidak lengkap (muat penuh kurang)', 'skenario': 'muatSaja',
      'rusak': [('js/data/koleksi.js', "  { nama: 'pengeluaranHarian',   urut: 'id',    cache: 'harian' },", "  { nama: 'pengeluaranHarian',   urut: 'id',    cache: 'harian', batas: 10 },")],
      'sasaran': 'muat penuh: semua koleksi siap', 'boleh': [],
      'bukti': ('cek muat penuh menyebut pengeluaranHarian hanya 10 dokumen di halaman', lambda S: (((next((x['ket'] for x in S['cek'] if x['nama'].startswith('muat penuh')), None) or {}).get('beda') or {}).get('pengeluaranHarian') or [None])[0] == 10)},
@@ -1120,6 +1133,8 @@ if __name__ == '__main__':
                 print('DIAM!!   ' + k['nama'] + ' → ' + ' · '.join(alasan), flush=True)
                 for S in lap['skenario']:
                     for x in S['cek']: print('    %s %s%s' % ('✓' if x['ok'] else '✗', x['nama'], '' if x['ok'] else ' → ' + json.dumps(x['ket'], ensure_ascii=False)[:300]))
+                    for b in (S.get('konsol') or [])[-8:]: print('    konsol: ' + b[:300])
+                    for b in (S.get('ekorChrome') or [])[-12:]: print('    chrome: ' + b[:300].replace('::', ': :'))
                 kode = 3
         sys.exit(kode)
     daftar = [x.strip() for x in opsi('--skenario', os.environ.get('GLADI_SKENARIO') or ','.join(SKENARIO_BAWAAN)).split(',') if x.strip()]
