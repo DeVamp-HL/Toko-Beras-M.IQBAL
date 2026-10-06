@@ -69,12 +69,14 @@ export function pasangLayarHarga(akar, opsi) {
   const S1 = () => HG.hgSemua(kini());
   // ---- owner 7 Okt: FOTO BON. Firestore: opsi.foto (app.js → firebase.js, koleksi fotoBon dibaca sekali saat lembar bon dibuka). Mode cadangan: simulasi di memori
   // layar ini saja (tidak tertulis ke mana pun). Alat gambar peramban (kanvas) diserahkan ke foto-bon-logika.js (diuji di jsc dengan kanvas tiruan).
-  const fotoSim = {}; const KABAR_ANTRE_FOTO = 'Tersimpan di perangkat, menunggu server — ';
+  // Foto yang kirimannya belum diakui server (persistentLocalCache Firestore menahannya di perangkat) dihitung di fotoAntre — dibatasi FB.FBN_ANTRE_MAKS, ditandai
+  // `antre` di daftar, dan TIDAK disebut tersimpan sampai `selesai` (firebase.js) mengakui / menolaknya.
+  const fotoSim = {}; let fotoAntre = 0; const KABAR_PERMISI_FOTO = 'server belum membuka tempat foto bon (rules v7 — owner menerbitkannya di Firebase Console)';
   const fotoFirestore = () => !!(opsi.foto && opsi.foto.ada && opsi.foto.ada());
   async function muatFoto(b) {
     if (!b) return; set({ foto: { idBon: b.id, muat: 'muat', daftar: [], pesan: '', besar: null, yakinHapus: null, proses: false } });
     if (!fotoFirestore()) return set({ foto: Object.assign({}, st().foto, { muat: 'ada', daftar: (fotoSim[b.id] || []).slice(), pesan: 'SIMULASI (cadangan): foto hanya disimpan di memori layar ini' }) });
-    try { const d = await opsi.foto.baca(b.id); const F = st().foto; if (!F || F.idBon !== b.id) return; set({ foto: Object.assign({}, F, { muat: 'ada', daftar: d || [] }) }); }
+    try { const d = await opsi.foto.baca(b.id); const F = st().foto; if (!F || F.idBon !== b.id) return; set({ foto: Object.assign({}, F, { muat: 'ada', daftar: d || [], pesan: d && d.dariCache ? 'dibaca dari cache perangkat (server belum terjangkau)' : '' }) }); }
     catch (e) { const F = st().foto; if (!F || F.idBon !== b.id) return; const kode = String((e && (e.code || e.message)) || e);
       set({ foto: Object.assign({}, F, { muat: 'galat', pesan: /permission/i.test(kode) ? 'Server belum membuka tempat foto bon (rules v7 — diterbitkan owner di Firebase Console). Sesudah terbit, foto bisa dibaca & disimpan.' : 'Foto belum bisa dibaca: ' + kode }) }); }
   }
@@ -89,17 +91,26 @@ export function pasangLayarHarga(akar, opsi) {
   });
   async function fotoDipilih(el) {
     const berkas = Array.from((el && el.files) || []); if (el) el.value = ''; const d = st().betul; const F = st().foto; if (!berkas.length || !d || !F) return;
-    const b = BP.bpRincianBon(d.bonId, d.pemasok).bon; if (!b || F.idBon !== b.id) return;
+    const b = BP.bpRincianBon(d.bonId, d.pemasok).bon; if (!b || F.idBon !== b.id || F.proses) return;
     set({ foto: Object.assign({}, F, { proses: true }), kabar: 'Mengecilkan foto…', kabarAwas: false });
     for (const f of berkas) {
-      const hasil = await FB.fbnKecilkan(f, alatFoto()); const r = FB.fbnSusunSimpan(Object.assign({ pemasok: d.pemasok }, b), hasil, waktu(), st().foto.daftar);
+      const hasil = await FB.fbnKecilkan(f, alatFoto()); const r = FB.fbnSusunSimpan(Object.assign({ pemasok: d.pemasok }, b), hasil, waktu(), st().foto.daftar, fotoAntre);
       if (r.tolak) { set({ foto: Object.assign({}, st().foto, { proses: false }), kabar: r.tolak, kabarAwas: true }); return; }
       const x = fotoFirestore() ? await opsi.foto.simpan(r.data) : { ok: true, simulasi: true, data: r.data };
-      if (x && x.gagal) { set({ foto: Object.assign({}, st().foto, { proses: false }), kabar: 'Foto TIDAK tersimpan: ' + (/permission/i.test(x.pesan) ? 'server belum membuka tempat foto bon (rules v7 — owner menerbitkannya di Firebase Console)' : x.pesan), kabarAwas: true }); return; }
+      if (x && x.gagal) { set({ foto: Object.assign({}, st().foto, { proses: false }), kabar: 'Foto TIDAK tersimpan: ' + (/permission/i.test(x.pesan) ? KABAR_PERMISI_FOTO : x.pesan), kabarAwas: true }); return; }
       if (x && x.simulasi) fotoSim[b.id] = (fotoSim[b.id] || []).concat([r.data]);
-      set({ foto: Object.assign({}, st().foto, { daftar: (st().foto.daftar || []).concat([x.data || r.data]) }), kabar: (x && x.simulasi ? 'SIMULASI — ' : x && x.antre ? KABAR_ANTRE_FOTO : '') + r.patch.kabar, kabarAwas: false });
+      if (x && x.antre) { fotoAntre += 1; ikutiAntre(x.selesai, String(r.data.id), b.id); }
+      set({ foto: Object.assign({}, st().foto, { daftar: (st().foto.daftar || []).concat([Object.assign({}, x.data || r.data, x && x.antre ? { antre: true } : {})]) }),
+        kabar: x && x.antre ? FB.fbnKabarAntre(r.data) : (x && x.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar, kabarAwas: !!(x && x.antre) });
     }
     set({ foto: Object.assign({}, st().foto, { proses: false }) });
+  }
+  // kiriman foto yang menunggu: diakui → tanda `antre` dilepas & dikabarkan; ditolak → fotonya DIBUANG dari daftar dengan kabar (tidak ada foto "tersimpan" yang hilang diam-diam)
+  function ikutiAntre(selesai, id, idBon) {
+    const urus = (y) => { fotoAntre = Math.max(0, fotoAntre - 1); const F2 = st().foto; const di = !!(F2 && F2.idBon === idBon);
+      if (y && y.ok) return set(Object.assign(di ? { foto: Object.assign({}, F2, { daftar: (F2.daftar || []).map((z) => (String(z.id) === id ? Object.assign({}, z, { antre: false }) : z)) }) } : {}, { kabar: 'Foto bon yang tadi menunggu sudah SAMPAI di server', kabarAwas: false }));
+      set(Object.assign(di ? { foto: Object.assign({}, F2, { daftar: (F2.daftar || []).filter((z) => String(z.id) !== id) }) } : {}, { kabar: 'Foto bon yang tadi menunggu DITOLAK server — TIDAK tersimpan: ' + (y && /permission/i.test(y.pesan || '') ? KABAR_PERMISI_FOTO : (y && y.pesan) || 'tanpa keterangan'), kabarAwas: true })); };
+    if (selesai && typeof selesai.then === 'function') selesai.then(urus, (e) => urus({ gagal: true, pesan: String((e && e.message) || e) })); else urus({ gagal: true, pesan: 'kiriman foto tidak bisa diikuti' });
   }
 
   const AKSI = {
@@ -197,20 +208,24 @@ export function pasangLayarHarga(akar, opsi) {
     bpBetulBuka: ({ pemasok, bon }) => { const R = BP.bpRincianBon(bon, pemasok); const b = R.bon; if (!b) return set({ kabar: 'Bon itu sudah tidak ada', kabarAwas: true });
       set({ betul: { pemasok, bonId: String(bon), bayarId: '', mode: '', keBon: '', ketik: '', alasan: '', no: b.noBon || '', tgl: b.jenis === 'saldoAwal' ? (b.tanggal || '') : '', lama: b.jenis === 'saldoAwal' ? String(b.nilai) : '' }, bayar: null, lama: null, kartu: null, kabar: '' }); keAtas(); muatFoto(b); },
     bpBetulTutup: () => set({ betul: null, foto: null }),
-    bpBetulBayar: ({ id, mode }) => { const d = st().betul; const sama = d.bayarId === String(id) && d.mode === mode; set({ betul: Object.assign({}, d, { bayarId: sama ? '' : String(id), mode: sama ? '' : mode, keBon: '', ketik: '' }) }); },
+    bpBetulBayar: ({ id, mode }) => { const d = st().betul; const sama = d.bayarId === String(id) && d.mode === mode; set({ betul: Object.assign({}, d, { bayarId: sama ? '' : String(id), mode: sama ? '' : mode, keBon: '', ketik: '', yakinN: '' }) }); },
     bpBetulKe: ({ bon }) => set({ betul: Object.assign({}, st().betul, { keBon: String(bon) }) }),
-    bpBetulKetik: (v, el) => { const d = Object.assign({}, st().betul || {}); const k = el.dataset.kolom; d[k] = String(v).slice(0, k === 'alasan' ? 160 : k === 'no' ? 30 : 14); set({ betul: d }); },
+    bpBetulKetik: (v, el) => { const d = Object.assign({}, st().betul || {}); const k = el.dataset.kolom; d[k] = String(v).slice(0, k === 'alasan' ? 160 : k === 'no' ? 30 : 14); if (k === 'ketik') d.yakinN = ''; set({ betul: d }); },
     bpBetulPindah: async () => { const d = st().betul; if (d) await tulis(BP.susunPindahBayar(d.bayarId, d.keBon, d.alasan, waktu())); },
-    bpBetulNominal: async () => { const d = st().betul; if (d) await tulis(BP.susunNominalBayar(d.bayarId, d.ketik, d.alasan, waktu())); },
+    // sanggahan E2: selisih BESAR (≥ 2× / ≤ ½, melebihi sisa bon, kas minus, hari yang sudah ditutup) = ketukan kedua untuk angka yang SAMA; kalimatnya menyebut lama → baru
+    bpBetulNominal: async () => { const d = st().betul; if (!d) return; const r = BP.susunNominalBayar(d.bayarId, d.ketik, d.alasan, waktu(), d.yakinN === String(d.ketik));
+      if (r.perluYakin) return set({ betul: Object.assign({}, d, { yakinN: String(d.ketik) }), kabar: r.tolak, kabarAwas: true }); await tulis(r); },
     bpBetulNo: async () => { const d = st().betul; if (d && await tulis(BP.susunNoBon(d.bonId, d.pemasok, d.no, d.alasan, waktu()))) set({ betul: Object.assign({}, st().betul, { alasan: '' }) }); },
     bpBetulLama: async () => { const d = st().betul; if (d) await tulis(BP.susunBetulBonLama(d.bonId, { tgl: d.tgl, ketik: d.lama }, d.alasan, waktu())); },
     bpKeKoreksiMasuk: () => { set({ betul: null, foto: null }); if (opsi.bukaStok) opsi.bukaStok('masuk'); else set({ kabar: 'Tanggal & nilai bon kedatangan dibetulkan di Stok › Barang masuk › Buku kedatangan › koreksi', kabarAwas: false }); },
-    fotoAmbil: ({ cara }) => { const el = akar.querySelector(cara === 'kamera' ? '#fotoBonKamera' : '#fotoBonGaleri'); if (el) el.click(); },
+    fotoAmbil: ({ cara }) => { const F = st().foto; if (F && F.proses) return set({ kabar: 'Foto sebelumnya masih diproses — tunggu sebentar', kabarAwas: true });
+      if (fotoAntre >= FB.FBN_ANTRE_MAKS) return set({ kabar: 'Foto sebelumnya BELUM sampai server — tunggu kabar "sampai di server" dulu', kabarAwas: true });
+      const el = akar.querySelector(cara === 'kamera' ? '#fotoBonKamera' : '#fotoBonGaleri'); if (el) el.click(); },
     fotoBesar: ({ id }) => set({ foto: Object.assign({}, st().foto, { besar: st().foto && st().foto.besar === id ? null : id }) }),
     fotoHapus: async ({ id }) => { const F = st().foto; if (!F) return; if (F.yakinHapus !== id) return set({ foto: Object.assign({}, F, { yakinHapus: id }), kabar: 'Ketuk sekali lagi untuk menghapus foto bon itu (tidak bisa dibatalkan)', kabarAwas: true });
       const r = opsi.foto && opsi.foto.ada() ? await opsi.foto.hapus(id, F.idBon) : { ok: true, simulasi: true }; if (r && r.gagal) return set({ kabar: 'Foto TIDAK terhapus: ' + r.pesan, kabarAwas: true });
       if (r && r.simulasi) fotoSim[F.idBon] = (fotoSim[F.idBon] || []).filter((x) => String(x.id) !== String(id));
-      const kini2 = st().foto; set({ foto: Object.assign({}, kini2, { daftar: (kini2.daftar || []).filter((x) => String(x.id) !== String(id)), yakinHapus: null, besar: null }), kabar: (r && r.simulasi ? 'SIMULASI — ' : r && r.antre ? KABAR_ANTRE_FOTO : '') + 'Foto bon dihapus', kabarAwas: false }); },
+      const kini2 = st().foto; set({ foto: Object.assign({}, kini2, { daftar: (kini2.daftar || []).filter((x) => String(x.id) !== String(id)), yakinHapus: null, besar: null }), kabar: r && r.antre ? 'Penghapusan foto BELUM sampai server (sinyal lambat) — fotonya disembunyikan di sini; buka lagi bon ini nanti untuk memastikan' : (r && r.simulasi ? 'SIMULASI — ' : '') + 'Foto bon dihapus', kabarAwas: !!(r && r.antre) }); },
     // ---- H3 BELANJA
     tabL: ({ t }) => { set({ tabL: t, kabar: '' }); ingatTab(); },
     blPemasok: ({ p }) => set({ pemasokBelanja: p, kabar: '' }),
@@ -509,13 +524,14 @@ export function pasangLayarHarga(akar, opsi) {
         <div class="utama ${!H || H.tolak ? 'redup' : ''}" data-aksi="bpBetulPindah">PINDAHKAN PEMBAYARAN ${RP(m.nominal || 0)}</div>` : ''}
       ${m && d.mode === 'nominal' ? h`<div class="hg-ketik-baris"><input class="ketik-nama" id="bpBetulKetik" type="text" inputmode="numeric" placeholder="jumlah yang sebenarnya dibayar" value="${d.ketik}" data-ketik="bpBetulKetik" data-kolom="ketik"></div>
         <div class="pita-info ${H && H.tolak ? 'awas' : 'emas'}" data-k="arti-nominal">${H ? H.tolak || H.arti : ''}</div>${alasanIsian('bpBetulAlasanN')}
-        <div class="utama ${!H || H.tolak ? 'redup' : ''}" data-aksi="bpBetulNominal">BETULKAN JUMLAH PEMBAYARAN</div>` : ''}
+        ${H && !H.tolak && H.besar.length ? h`<div class="pita-info awas" data-k="besar-nominal">${H.besarTeks}. Ketukan kedua yang menyimpan.</div>` : ''}
+        <div class="utama ${!H || H.tolak ? 'redup' : ''}" data-aksi="bpBetulNominal">${H && !H.tolak && H.besar.length && d.yakinN === String(d.ketik) ? 'YAKIN — ' + RP(H.lama) + ' → ' + RP(H.n) : 'BETULKAN JUMLAH PEMBAYARAN'}</div>` : ''}
       ${b.dipindahDari.length ? h`<div class="ket" data-k="dipindah">Dulu menunjuk bon ini, sudah dipindah: ${b.dipindahDari.map((x) => tanggalPendek(x.tanggal) + ' ' + RP(x.nominal || 0) + ' → ' + (((x.riwayat || []).filter((r) => r && r.jenis === 'pindahBon').slice(-1)[0] || {}).teks || '')).join(' · ')}</div>` : ''}
       <div class="label">Nomor bon pemasok</div>
       <div class="hg-ketik-baris"><input class="ketik-nama" id="bpBetulNo" type="text" placeholder="nomor di kertas bon (mis. 12345)" value="${d.no}" data-ketik="bpBetulKetik" data-kolom="no"><div class="kaca-btn ${d.no && d.no !== b.noBon ? 'aktif emas' : ''}" data-aksi="bpBetulNo">${b.noBon ? 'ganti nomor' : 'simpan nomor'}</div></div>
       ${b.noBon && d.no !== b.noBon ? alasanIsian('bpBetulAlasanNo') : ''}
       <div class="label">Tanggal & nilai bon</div>
-      ${b.jenis === 'saldoAwal' ? h`<div class="ps-form dua"><div><div class="ket">Nilai bon (Rp)</div><input class="ketik-nama" id="bpBetulLama" type="text" inputmode="numeric" value="${d.lama}" data-ketik="bpBetulKetik" data-kolom="lama"></div><div><div class="ket">Tanggal bon (tahun-bulan-tanggal, kosong = tidak diketahui)</div><input class="ketik-nama" id="bpBetulTgl" type="text" inputmode="numeric" placeholder="2026-08-31" value="${d.tgl}" data-ketik="bpBetulKetik" data-kolom="tgl"></div></div>
+      ${b.jenis === 'saldoAwal' ? h`<div class="ps-form dua"><div><div class="ket">Nilai bon (Rp)</div><input class="ketik-nama" id="bpBetulLama" type="text" inputmode="numeric" value="${d.lama}" data-ketik="bpBetulKetik" data-kolom="lama"></div><div><div class="ket">Tanggal bon (kosong = tidak diketahui)</div><input class="ketik-nama" id="bpBetulTgl" type="date" value="${d.tgl}" data-ketik="bpBetulKetik" data-kolom="tgl"></div></div>
         ${Hl ? h`<div class="pita-info ${Hl.tolak ? 'awas' : 'emas'}" data-k="arti-lama">${Hl.tolak || Hl.arti}</div>${alasanIsian('bpBetulAlasanL')}<div class="utama ${Hl.tolak ? 'redup' : ''}" data-aksi="bpBetulLama">BETULKAN BON LAMA</div>` : ''}`
         : h`<div class="ket">Tanggal & nilai bon kedatangan = tanggal & harga barangnya — dibetulkan lewat Stok › Barang masuk › Buku kedatangan › koreksi (stok, modal, dan bonnya ikut).${b.bayar.length ? ' Bon ini sudah dibayar, jadi koreksi tanggal / nilai di bawah yang dibayar terkunci — pindahkan dulu pembayarannya di atas kalau memang salah tunjuk.' : ''}</div><div class="kaca-btn" data-aksi="bpKeKoreksiMasuk">Buka Barang masuk ›</div>`}
       ${b.riwayat.length ? h`<div class="label">Riwayat bon ini</div>${b.riwayat.slice(-8).reverse().map((r, i) => h`<div class="ket" data-k="rw-${i}">${r.tanggal ? tanggalPendek(r.tanggal) : ''}${r.jam ? ' ' + r.jam : ''} · ${r.teks || ''}</div>`)}` : ''}
@@ -523,14 +539,15 @@ export function pasangLayarHarga(akar, opsi) {
   }
   function gambarFoto(s, b) {
     const F = s.foto && s.foto.idBon === b.id ? s.foto : { muat: 'belum', daftar: [], pesan: '' }; const daftar = FB.fbnUrut(F.daftar, b.id); const besar = F.besar ? daftar.find((x) => String(x.id) === String(F.besar)) : null;
-    const status = F.muat === 'muat' ? 'Memuat foto bon ini…' : F.muat === 'galat' ? F.pesan : (daftar.length ? daftar.length + ' foto' : 'Belum ada foto kertas bon ini') + (F.pesan ? ' · ' + F.pesan : '');
+    const nAntre = daftar.filter((x) => x.antre).length; const tahan = !!F.proses || fotoAntre >= FB.FBN_ANTRE_MAKS;
+    const status = F.muat === 'muat' ? 'Memuat foto bon ini…' : F.muat === 'galat' ? F.pesan : (daftar.length ? daftar.length + ' foto' + (nAntre ? ' (' + nAntre + ' BELUM sampai server)' : '') : 'Belum ada foto kertas bon ini') + (F.pesan ? ' · ' + F.pesan : '');
     return h`<div class="kartu fb-kartu" data-k="foto-bon" style="gap: 6px;"><div class="label">Foto kertas bon</div><div class="ket ${F.muat === 'galat' ? 'awas-teks' : ''}">${status}</div>
-      <div class="tombol-baris rapat"><div class="kaca-btn ${F.proses ? 'redup' : 'aktif'}" data-aksi="fotoAmbil" data-cara="kamera">Ambil foto</div><div class="kaca-btn ${F.proses ? 'redup' : ''}" data-aksi="fotoAmbil" data-cara="galeri">Pilih dari galeri</div></div>
+      <div class="tombol-baris rapat"><div class="kaca-btn ${tahan ? 'mati' : 'aktif'}" data-aksi="fotoAmbil" data-cara="kamera">${F.proses ? 'Memproses foto…' : 'Ambil foto'}</div><div class="kaca-btn ${tahan ? 'mati' : ''}" data-aksi="fotoAmbil" data-cara="galeri">Pilih dari galeri</div></div>
       <input id="fotoBonKamera" class="fb-berkas" type="file" accept="image/*" capture="environment" data-foto-pilih="kamera" hidden>
       <input id="fotoBonGaleri" class="fb-berkas" type="file" accept="image/*" multiple data-foto-pilih="galeri" hidden>
-      <div class="ket" style="font-size: 10.5px;">Dikecilkan di HP ini dulu (sisi panjang ≤ ${FB.FBN_SISI} px, ±${FB.fbnKB(FB.FBN_TARGET)}), paling banyak ${FB.FBN_PALING_BANYAK} foto per bon. Foto dibaca hanya saat bon ini dibuka — tidak ikut dimuat tiap hari.</div>
+      <div class="ket" style="font-size: 10.5px;">Dikecilkan di HP ini dulu (sisi panjang ≤ ${FB.FBN_SISI} px, ±${FB.fbnKB(FB.FBN_TARGET)}), paling banyak ${FB.FBN_PALING_BANYAK} foto per bon. Foto dibaca hanya saat bon ini dibuka — tidak ikut dimuat tiap hari; yang pernah dibuka tersimpan sementara di cache Firestore perangkat ini.</div>
       ${besar ? h`<div class="fb-besar" data-k="fb-besar" data-aksi="fotoBesar" data-id="${besar.id}"><img src="${FB.fbnSrc(besar)}" alt="Foto bon besar"><div class="ket">ketuk untuk menutup</div></div>` : ''}
-      ${daftar.length ? h`<div class="fb-kisi" data-k="fb-kisi">${daftar.map((f) => h`<div class="fb-foto" data-k="fb-${f.id}"><img src="${FB.fbnSrc(f)}" alt="Foto bon" data-aksi="fotoBesar" data-id="${f.id}"><div class="ket">${f.tanggal ? tanggalPendek(f.tanggal) : ''} ${f.jam || ''} · ${FB.fbnKB(f.byte)}${f.oleh ? ' · ' + f.oleh : ''}</div><div class="kaca-btn kecil ${F.yakinHapus === String(f.id) ? 'awas' : ''}" data-aksi="fotoHapus" data-id="${f.id}">${F.yakinHapus === String(f.id) ? 'YAKIN hapus' : 'hapus'}</div></div>`)}</div>` : ''}
+      ${daftar.length ? h`<div class="fb-kisi" data-k="fb-kisi">${daftar.map((f) => h`<div class="fb-foto" data-k="fb-${f.id}"><img src="${FB.fbnSrc(f)}" alt="Foto bon" data-aksi="fotoBesar" data-id="${f.id}"><div class="ket ${f.antre ? 'awas-teks' : ''}">${f.antre ? 'BELUM sampai server' : (f.tanggal ? tanggalPendek(f.tanggal) : '') + ' ' + (f.jam || '')} · ${FB.fbnKB(f.byte)}${f.oleh ? ' · ' + f.oleh : ''}</div><div class="kaca-btn kecil ${F.yakinHapus === String(f.id) ? 'awas' : ''}" data-aksi="fotoHapus" data-id="${f.id}">${F.yakinHapus === String(f.id) ? 'YAKIN hapus' : 'hapus'}</div></div>`)}</div>` : ''}
       </div>`;
   }
   function gambarBayar(s, B) {

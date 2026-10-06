@@ -3,7 +3,10 @@
 // kalau masih besar mutu diturunkan, lalu ukurannya) dan disimpan sebagai satu dokumen per foto di koleksi Firestore TERPISAH `fotoBon`
 // { id, idBon, pemasok, tanggal, jam, jenis 'image/jpeg', base64, lebar, tinggi, byte } (+ oleh/olehUid/perangkat dari penulis). Firebase Storage TIDAK
 // dipakai (paket Spark). Koleksi ini TIDAK didengar terus-menerus: dibaca sekali saat lembar bon dibuka (tidak menambah baca penuh harian), tidak ikut
-// cache/cadangan toko (foto ±300 KB per lembar — cadangan & baca penuh harian WAJIB melewatinya). Owner saja (Harga & Pemasok = layar owner).
+// cache TOKO aplikasi (toko.js) maupun cadangan berkas (foto ±300 KB per lembar — cadangan & baca penuh harian WAJIB melewatinya). JUJURNYA: Firestore
+// sendiri memakai persistentLocalCache (firebase.js), jadi foto yang pernah DIBACA dan foto yang MENUNGGU dikirim tetap tersimpan di IndexedDB perangkat
+// (dibersihkan Firestore sendiri sesuai batas cache bawaannya, ±40 MB). Foto yang menunggu server (kiriman belum diakui) dibatasi FBN_ANTRE_MAKS dan
+// TIDAK disebut tersimpan sampai server mengakuinya (atau menolaknya — fotonya lalu dibuang dari daftar dengan kabar). Owner saja (Harga & Pemasok = layar owner).
 // Alat gambar (kanvas peramban) DISERAHKAN pemanggil (`alat`), supaya pengecil & penyimpan diuji di jsc dengan kanvas tiruan.
 import { tanggalPendek } from '../inti/format.js';
 
@@ -14,6 +17,7 @@ export const FBN_SKALA = [1, 0.8, 0.64, 0.5];       // sesudah mutu terendah mas
 export const FBN_TARGET = 300 * 1024;               // sasaran ukuran satu foto (byte JPEG)
 export const FBN_BATAS = 700 * 1024;                // batas keras: base64 ±933 KB < 1 MiB dokumen Firestore
 export const FBN_PALING_BANYAK = 6;                 // foto per bon
+export const FBN_ANTRE_MAKS = 1;                    // foto yang boleh MENUNGGU server sekaligus (sinyal lambat) — yang berikutnya ditolak sampai yang ini diakui
 const fbnB = (n) => Math.round(n);
 /** Ukuran sesudah dikecilkan: sisi panjang ≤ sisi (tidak pernah dibesarkan). */
 export function fbnUkuran(lebar, tinggi, sisi) {
@@ -51,13 +55,14 @@ export async function fbnKecilkan(sumber, alat) {
   if (terkecil && terkecil.byte <= FBN_BATAS) return Object.assign(terkecil, { coba, lebihTarget: true });
   return { tolak: 'Foto masih ' + fbnKB(terkecil ? terkecil.byte : 0) + ' sesudah dikecilkan — lebih dari ' + fbnKB(FBN_BATAS) + '. Foto ulang lebih dekat / tanpa latar' };
 }
-/** Dokumen satu foto bon. ada = foto bon itu yang sudah tersimpan (untuk batas jumlah). */
-export function fbnSusunSimpan(bon, hasil, w, ada) {
+/** Dokumen satu foto bon. ada = foto bon itu yang sudah tersimpan (untuk batas jumlah); antre = jumlah foto yang masih menunggu server di perangkat ini. */
+export function fbnSusunSimpan(bon, hasil, w, ada, antre) {
   if (!bon || !bon.id) return { tolak: 'Pilih bonnya dulu' };
   if (!hasil || hasil.tolak) return { tolak: (hasil && hasil.tolak) || 'Belum ada foto' };
   if (!/^image\/(jpeg|png|webp)$/.test(String(hasil.jenis || '')) || !hasil.base64) return { tolak: 'Foto tidak terbaca' };
   const byte = fbnByte(hasil.base64); if (byte > FBN_BATAS) return { tolak: 'Foto ' + fbnKB(byte) + ' lebih dari ' + fbnKB(FBN_BATAS) + ' — kecilkan dulu' };
   if ((ada || []).length >= FBN_PALING_BANYAK) return { tolak: 'Bon ini sudah punya ' + FBN_PALING_BANYAK + ' foto — hapus yang tidak perlu dulu' };
+  if ((Number(antre) || 0) >= FBN_ANTRE_MAKS) return { tolak: 'Foto sebelumnya BELUM sampai server (sinyal lambat) — tunggu kabar "sampai di server" dulu, baru tambah foto lagi' };
   const data = { id: String(w.idUnik()), idBon: String(bon.id), pemasok: String(bon.pemasok || ''), tanggalBon: String(bon.tanggal || ''), noBon: String(bon.noBon || ''), tanggal: w.tanggal, jam: w.jam,
     jenis: hasil.jenis, base64: hasil.base64, byte, lebar: fbnB(hasil.lebar) || 0, tinggi: fbnB(hasil.tinggi) || 0 };
   return { data, patch: { kabar: 'Foto bon ' + (bon.tanggal ? tanggalPendek(bon.tanggal) + ' ' : '') + String(bon.pemasok || '') + ' tersimpan (' + fbnKB(byte) + ', ' + data.lebar + '×' + data.tinggi + ' px' + (hasil.lebihTarget ? ' — di atas sasaran ' + fbnKB(FBN_TARGET) + ', tetap di bawah batas' : '') + ')', kabarAwas: false } };
@@ -65,4 +70,8 @@ export function fbnSusunSimpan(bon, hasil, w, ada) {
 /** Urut foto: terbaru dulu; hanya milik bon itu. */
 export function fbnUrut(daftar, idBon) {
   return (daftar || []).filter((d) => d && String(d.idBon) === String(idBon) && d.base64).sort((a, b) => String(b.tanggal + ' ' + b.jam).localeCompare(String(a.tanggal + ' ' + a.jam)) || (Number(b.id) || 0) - (Number(a.id) || 0));
+}
+/** Kalimat jujur untuk foto yang kirimannya belum diakui server: BELUM tersimpan di server, sementara ada di perangkat ini (cache Firestore). */
+export function fbnKabarAntre(data) {
+  return 'Foto bon ' + (data && data.tanggalBon ? tanggalPendek(data.tanggalBon) + ' ' : '') + String((data && data.pemasok) || '') + ' BELUM sampai server (sinyal lambat) — sementara hanya ada di perangkat ini; kabar menyusul saat server menerima atau menolaknya. Buka lagi bon ini nanti untuk memastikan.';
 }

@@ -5,7 +5,10 @@ uji_pembetulan_bon.py — owner 7 Okt 2026: PEMBETULAN BON PEMASOK di Harga & Pe
   · PINDAH pembayaran ke bon lain pemasok yang sama: dokumen yang SAMA ditulis ulang (bonId & bonTanggal baru) + `riwayat` (nilai lama → baru, alasan) +
     `alasanKoreksi`; alasan wajib; bon yang datang SESUDAH pembayaran ditolak; utang total, kas, laba TIDAK berubah, yang bergeser bon mana yang lunas
     (mesin beku; kelebihan mengalir ke bon tertua dan disebut).
-  · JUMLAH pembayaran: utang & kas bergeser sebesar selisihnya, laba tetap; jejak di riwayat.
+  · KELEBIHAN saat pindah (pembayaran > sisa bon tujuan) disebut: berapa, kenapa, dan bon mana yang menerimanya — juga bila itu bon ASAL (sanggahan E2).
+  · JUMLAH pembayaran: utang & kas bergeser sebesar selisihnya, laba tetap; jejak di riwayat. PENJAGA BESARAN (sanggahan E2): ≥ 2× / ≤ ½, kenaikan melebihi
+    sisa bon yang ditunjuk, uang toko jadi minus, atau hari tunai yang sudah ditutup → ketukan kedua, kalimatnya menyebut angka lama → baru.
+  · Tanggal bon lama = pemilih tanggal (type="date"; papan angka iPhone tidak punya '-').
   · NOMOR bon pemasok: kolom noBon di kedatangan (tanpa alasanKoreksi — bukan koreksi barang) / bon lama; ganti nomor wajib alasan; nomor kembar ditolak;
     Koreksi kedatangan membawanya; tampil di tusukan & Buku bon.
   · Bon LAMA: tanggal & nilai dibetulkan berjejak.
@@ -69,6 +72,9 @@ ok('semua bon pemasok (yang lunas juga), urut tertua: bon lama 1 Agu, 10 Agu, 20
 var H1 = hitungPindahBayar('p3', 'b2');
 ok('hitung pindah 12 Sep 12 jt: bon 1 Sep → bon 20 Agu; 20 Agu sisa 11 jt → 0, 1 Sep 0 → 11 jt (kelebihan 1 jt mengalir ke bon tertua yang belum lunas = 1 Sep); utang TETAP; arti menyebut uang toko & laba tidak berubah',
   !H1.tolak && H1.total.dari === 11000000 && H1.total.ke === 11000000 && J(H1.ubah.map(function (x) { return [x.id, x.dari, x.ke]; })) === J([['b2', 11000000, 0], ['b3', 0, 11000000]]) && /utang ke PEMASOK CONTOH tetap Rp11\.000\.000 · uang toko & laba TIDAK berubah/.test(H1.arti) && /bon 1 Sep 2026 → bon 20 Agu 2026/.test(H1.arti), J(H1));
+ok('KELEBIHAN disebut (sanggahan E2): Rp1 jt = pembayaran Rp12 jt > sisa bon 20 Agu Rp11 jt, mengalir ke bon 1 Sep — dan itu bon ASAL pembayaran ini (sisanya naik Rp11 jt, bukan Rp12 jt)',
+  H1.lebih === 1000000 && H1.terima.length === 1 && H1.terima[0].id === 'b3' && H1.terima[0].asal === true && H1.terima[0].n === 1000000
+  && /KELEBIHAN Rp1\.000\.000 \(pembayaran Rp12\.000\.000 > sisa bon 20 Agu 2026 Rp11\.000\.000\) mengalir ke bon tertua yang belum lunas: bon 1 Sep 2026 \(bon asal pembayaran ini\) Rp1\.000\.000/.test(H1.arti), J([H1.lebih, H1.terima, H1.arti]));
 ok('pindah tanpa alasan DITOLAK; alasan kurang dari 5 huruf ditolak', /Tulis alasannya dulu/.test(susunPindahBayar('p3', 'b2', '', W).tolak || '') && /Tulis alasannya dulu/.test(susunPindahBayar('p3', 'b2', 'ok', W).tolak || ''));
 ok('ke bon yang datang SESUDAH pembayaran DITOLAK; ke bon yang sama ditolak; bon tidak ada ditolak; pembayaran tidak ada ditolak',
   /Bon 1 Sep 2026 belum ada waktu pembayaran 25 Agu 2026 dicatat/.test(hitungPindahBayar('p1', 'b3').tolak || '') && /sudah menunjuk/.test(hitungPindahBayar('p3', 'b3').tolak || '') && /Pilih bon/.test(hitungPindahBayar('p3', 'xx').tolak || '') && /sudah tidak ada/.test(hitungPindahBayar('zz', 'b2').tolak || ''));
@@ -86,7 +92,23 @@ var H2 = hitungNominalBayar('p3', '11.000.000');
 ok('hitung jumlah 12 jt → 11 jt: utang 11 jt → 12 jt (kelebihan 1 jt hilang), kas NAIK 1 jt (brankas), laba tetap', !H2.tolak && H2.total.dari === 11000000 && H2.total.ke === 12000000 && H2.kas.ke - H2.kas.dari === 1000000 && /uang toko \(Brankas\) bertambah Rp1\.000\.000/.test(H2.arti) && /laba TIDAK berubah/.test(H2.arti), J(H2));
 ok('jumlah sama / kosong / tanpa alasan ditolak', /sama dengan yang tercatat/.test(hitungNominalBayar('p3', '12000000').tolak || '') && /Ketik jumlah/.test(hitungNominalBayar('p3', '').tolak || '') && /Tulis alasannya/.test(susunNominalBayar('p3', '11000000', '', W).tolak || ''));
 var R2 = susunNominalBayar('p3', '11.000.000', 'salah ketik — yang diserahkan 11 jt', W); terap(R2); var d2 = bayar('p3');
+ok('selisih kecil (12 jt → 11 jt) bukan "besar" — satu ketukan', H2.besar.length === 0, J(H2.besar));
 ok('sesudahnya: nominal 11 jt, riwayat dua baris (pindahBon lalu nominalBayar {dari 12 jt, ke 11 jt}); utang 12 jt; kas +1 jt; laba tetap', d2.nominal === 11000000 && d2.riwayat.length === 2 && d2.riwayat[1].jenis === 'nominalBayar' && d2.riwayat[1].dari === 12000000 && d2.riwayat[1].ke === 11000000 && utang() === 12000000 && kasPada() === K0 + 1000000 && laba() === L0, J([d2, utang(), kasPada()]));
+
+// ---- 2b · PENJAGA BESARAN jumlah pembayaran (sanggahan E2): selisih besar = ketukan kedua, kalimat menyebut lama → baru
+var H2b = hitungNominalBayar('p3', '110.000.000'); var R2b = susunNominalBayar('p3', '110.000.000', 'salah ketik nol', W);
+ok('11 jt → 110 jt (nol kelebihan): BESAR — "10× lipat", naik melebihi sisa bon 20 Agu; ketukan pertama DITOLAK minta ketukan kedua, kalimat menyebut Rp11.000.000 → Rp110.000.000; tanpa dokumen',
+  !H2b.tolak && H2b.besar.length >= 2 && /10× lipat/.test(H2b.besarTeks) && /lebih dari sisa bon 20 Agu 2026/.test(H2b.besarTeks) && R2b.perluYakin === true && /Rp11\.000\.000 → Rp110\.000\.000/.test(R2b.tolak) && /Ketuk sekali lagi/.test(R2b.tolak) && !R2b.dokumen, J([H2b.besarTeks, R2b]));
+var R2c = susunNominalBayar('p3', '110.000.000', 'salah ketik nol', W, true);
+ok('ketukan kedua (yakin) → dokumen pembetulan ditulis (owner yang memutuskan)', !R2c.tolak && R2c.dokumen.length === 1 && R2c.dokumen[0].data.nominal === 110000000, J(R2c));
+ok('11 jt → 1,1 jt (nol kurang satu): BESAR — "tinggal 10 %"', /tinggal 10 %/.test(hitungNominalBayar('p3', '1.100.000').besarTeks), hitungNominalBayar('p3', '1.100.000').besarTeks);
+pasok('tutupHari', [{ id: 'th1', tanggal: '2026-08-25', jam: '21:00' }]);
+var H2d = hitungNominalBayar('p1', '4.900.000');
+ok('pembayaran TUNAI dari laci di hari yang sudah DITUTUP (25 Agu): BESAR walau selisihnya kecil — kalimat menyebut tutup hari tidak dihitung ulang', H2d.besar.length === 1 && /hari 25 Agu 2026 sudah DITUTUP/.test(H2d.besarTeks) && /Rp5\.000\.000 → Rp4\.900\.000/.test(H2d.besarTeks), J(H2d.besar));
+pasok('tutupHari', []);
+ok('hari yang sama tanpa tutup hari → bukan besar', hitungNominalBayar('p1', '4.900.000').besar.length === 0);
+var kasSkr = kasPada(); var Hk = hitungNominalBayar('p2', String(10000000 + kasSkr + 1000000));
+ok('kenaikan yang membuat uang toko MINUS → BESAR, kalimat menyebut minusnya', kasSkr > 0 && /uang toko jadi MINUS Rp1\.000\.000/.test(Hk.besarTeks), J([kasSkr, Hk.besarTeks]));
 
 // ---- 3 · NOMOR bon
 var R3 = susunNoBon('b2', P, '  12345 ', '', W); var d3 = R3.dokumen[0].data;
@@ -144,15 +166,18 @@ def jalan_utama(js, pakai_cadangan):
     return h['lulus'], h['gagal'], h.get('asap')
 
 
-def statis():
-    """Koreksi kedatangan membawa noBon; layar memasang pembetulan (owner) & bulan terkunci lewat tolakKunci."""
-    g = []
-    sc = open(os.path.join(AKAR, 'baru/js/layar/stok-catat-logika.js'), encoding='utf-8').read()
+def statis(teks=None):
+    """Koreksi kedatangan membawa noBon; layar memasang pembetulan (owner) & bulan terkunci lewat tolakKunci; tanggal bon lama = pemilih tanggal; jumlah BESAR = dua ketukan."""
+    g = []; T = teks or {}
+    def baca(p): return T[p] if p in T else open(os.path.join(AKAR, p), encoding='utf-8').read()
+    sc = baca('baru/js/layar/stok-catat-logika.js')
     if "['oleh', 'perangkat', 'catatan', 'noBon'].indexOf(k) >= 0" not in sc: g.append('koreksi kedatangan tidak membawa noBon')
-    hj = open(os.path.join(AKAR, 'baru/js/layar/harga.js'), encoding='utf-8').read()
+    hj = baca('baru/js/layar/harga.js')
     for aksi in ['bpBetulBuka', 'bpBetulPindah', 'bpBetulNominal', 'bpBetulNo', 'bpBetulLama']:
         if ('data-aksi="' + aksi + '"') not in hj or (aksi + ':') not in hj: g.append('layar: tombol/penangan ' + aksi + ' tidak lengkap')
-    bp = open(os.path.join(AKAR, 'baru/js/layar/bon-pemasok-logika.js'), encoding='utf-8').read()
+    if '<input class="ketik-nama" id="bpBetulTgl" type="date" value="${d.tgl}" data-ketik="bpBetulKetik" data-kolom="tgl">' not in hj: g.append('tanggal bon lama bukan pemilih tanggal (type="date") — papan angka iPhone tidak punya "-"')
+    if "BP.susunNominalBayar(d.bayarId, d.ketik, d.alasan, waktu(), d.yakinN === String(d.ketik))" not in hj or 'if (r.perluYakin) return set({ betul: Object.assign({}, d, { yakinN: String(d.ketik) })' not in hj: g.append('layar: jumlah pembayaran BESAR tanpa ketukan kedua')
+    bp = baca('baru/js/layar/bon-pemasok-logika.js')
     if bp.count("tolakKunci('utangPemasokMutasi'") < 3: g.append('pembetulan pembayaran/bon lama tanpa penjaga bulan terkunci')
     return g
 
@@ -171,11 +196,27 @@ if __name__ == '__main__':
             'sisa bon lunas dibaca nilai (bukan mesin)': js.replace("out.forEach((b) => { b.sisa = sisa[b.id] !== undefined ? sisa[b.id] : 0;", "out.forEach((b) => { b.sisa = sisa[b.id] !== undefined ? sisa[b.id] : b.nilai;"),
             'jumlah pembayaran tanpa alasan diterima': js.replace("const al = bpAlasan(alasan); if (al.length < BP_ALASAN_MIN) return { tolak: 'Tulis alasannya dulu (mis. \"salah ketik", "const al = bpAlasan(alasan); if (false) return { tolak: 'Tulis alasannya dulu (mis. \"salah ketik"),
             'buku bon tidak menyebut pembetulan': js.replace("+ (m.alasanKoreksi ? ' · DIBETULKAN: ' + ((m.riwayat || []).slice(-1)[0] || {}).teks : '')", ""),
+            'kelebihan saat pindah tidak disebut': js.replace("const nom = Math.round(Number(m.nominal) || 0); const lebih = ke ? Math.max(0, nom - ke.sisa) : 0;", "const nom = Math.round(Number(m.nominal) || 0); const lebih = 0;"),
+            'kelebihan ke bon asal tidak dikenali (cuma bon "lain")': js.replace("const harap = b.id === dari.id ? s0 + nom : s0;", "const harap = s0;"),
+            'jumlah besar tanpa ketukan kedua': js.replace("  if (H.besar.length && !yakin) return { tolak: H.besarTeks + '. Ketuk sekali lagi kalau memang benar.', perluYakin: true };", ""),
+            'penjaga besaran tanpa hitungan lipat': js.replace("    if (lama > 0 && n >= lama * 2) besar.push(", "    if (false) besar.push("),
+            'hari yang sudah ditutup tidak disebut': js.replace("if ((m.dari || 'laci') === 'laci' && ambilTutupHari().some((x) => x && x.tanggal === m.tanggal)) besar.push(", "if (false) besar.push("),
+            'uang toko minus tidak dijaga': js.replace("    if (d > 0 && sesudah.kas !== null && sesudah.kas < 0) besar.push(", "    if (false) besar.push("),
         }
         kode = 0
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
             l, g, _ = jalan_utama(isi, False)
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
+            if not g: kode = 3
+        hj0 = open(os.path.join(AKAR, 'baru/js/layar/harga.js'), encoding='utf-8').read()
+        statis_rusak = {
+            'tanggal bon lama kembali ke kotak teks inputmode numeric (iPhone tanpa "-")': {'baru/js/layar/harga.js': hj0.replace('id="bpBetulTgl" type="date" value=', 'id="bpBetulTgl" type="text" inputmode="numeric" placeholder="2026-08-31" value=', 1)},
+            'layar mengirim jumlah BESAR tanpa ketukan kedua': {'baru/js/layar/harga.js': hj0.replace("d.yakinN === String(d.ketik));", "true);", 1)},
+        }
+        for nama, tk in statis_rusak.items():
+            if all(v == open(os.path.join(AKAR, k), encoding='utf-8').read() for k, v in tk.items()): print('KONTROL BASI  ' + nama); kode = 3; continue
+            g = statis(tk)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
         sys.exit(kode)

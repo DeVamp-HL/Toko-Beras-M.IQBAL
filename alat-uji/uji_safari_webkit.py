@@ -17,6 +17,8 @@ uji_safari_webkit.py — cacat khas Safari/WebKit di /baru/ (owner 3 Okt 2026: /
   7 JARAK    kerangka.css: body digeser env(safe-area-inset-left/right) (iPhone miring), aturan ≥1100 body padding-left 72px tetap menang;
              lembar tablet ikut jarak aman kanan.
   8 MINUS    kolom yang menerima minus (#rtSelisih, placeholder "minus") tanpa inputmode angka — papan angka iPhone tidak punya '-'.
+             (owner 7 Okt, sanggahan E2) kolom TANGGAL (id …Tgl / …Tanggal, data-kolom tgl / tanggal) = pemilih tanggal type="date", tidak pernah kotak teks
+             inputmode angka — format 2026-08-31 butuh '-'.
   9 GESTUR   Laporan keluarkan(): WA / dialog cetak dibuka SINKRON di ketukan, baru nomornya dicatat (jsc dengan pemblokir jendela ala Safari);
              nomor dokumen = nomor yang dicatat, satu per ketukan; catatan gagal → kabar jujur; bukaWa tanpa 'noopener' (selalu null).
  10 WA LAIN  (owner 7 Okt, sisa #104) Uang & Harga: bukaWa tanpa 'noopener' — jsc: jendela yang terbuka DIKEMBALIKAN (bukan null) & opener-nya diputus;
@@ -289,6 +291,15 @@ def periksa(t):
             if ('id="rtSelisih"' in tag or re.search(r'placeholder="[^"]*\bminus\b', tag)) and re.search(r'inputmode="(numeric|decimal)"', tag): salah.append(b + ':' + str(t[b][:m.start()].count('\n') + 1))
     ada = '<input class="ketik-nama" id="rtSelisih"' in t[JUAL]
     c.append(('8 minus: #rtSelisih & kolom ber-placeholder "minus" tanpa inputmode angka (papan angka iPhone tanpa tanda minus)', ada and not salah, salah or ('rtSelisih ada' if ada else 'rtSelisih HILANG')))
+    tgl = []; nTgl = 0
+    for b in t:
+        if not b.endswith('.js'): continue
+        for m in re.finditer(r'<input\b[^>]*>', t[b]):
+            tag = m.group(0)
+            if re.search(r'\bid="\w*(Tgl|Tanggal)\w*"', tag) or re.search(r'\bdata-kolom="(tgl|tanggal)"', tag):
+                nTgl += 1
+                if 'type="date"' not in tag or re.search(r'inputmode="(numeric|decimal)"', tag): tgl.append(b + ':' + str(t[b][:m.start()].count('\n') + 1))
+    c.append(('8 tanggal: kolom tanggal (#bpBetulTgl, #bpLamaTgl, …) = pemilih tanggal type="date", bukan kotak teks inputmode angka (format 2026-08-31 butuh "-")', nTgl >= 4 and not tgl and 'id="bpBetulTgl" type="date"' in t[HARGA], tgl or ('kolom tanggal ' + str(nTgl))))
 
     # ---- 9 GESTUR ----
     lap = t[LAP]
@@ -367,6 +378,7 @@ KONTROL = [
     ('7 jarak: aturan ≥1100 body padding-left 72px hilang (isi masuk ke bawah menu samping)', {KER: [('  body { padding-left: 72px; }\n', '')]}),
     ('7 jarak: lembar tablet tidak ikut jarak aman kanan', {KER: [('right: calc(14px + env(safe-area-inset-right, 0px)); top: 14px; bottom: 100px;', 'right: 14px; top: 14px; bottom: 100px;')]}),
     ('8 minus: #rtSelisih diberi inputmode angka lagi (lama)', {JUAL: [('<input class="ketik-nama" id="rtSelisih" type="text" value=', '<input class="ketik-nama" id="rtSelisih" type="text" inputmode="numeric" value=')]}),
+    ('8 tanggal: tanggal bon lama di lembar Betulkan bon kembali ke kotak teks inputmode angka (sanggahan E2)', {HARGA: [('id="bpBetulTgl" type="date" value=', 'id="bpBetulTgl" type="text" inputmode="numeric" placeholder="2026-08-31" value=')]}),
     ('9 gestur: WA/cetak dibuka sesudah menunggu (gestur habis, seperti dulu)', {LAP: [('    let w = true;\n', '    await null; let w = true;\n')]}),
     ("9 gestur: bukaWa memakai 'noopener' lagi (selalu null → kabar ditahan palsu)", {LAP: [("encodeURIComponent(teks), '_blank'); if (w)", "encodeURIComponent(teks), '_blank', 'noopener'); if (w)")]}),
     ('9 gestur: catatan nomor gagal → diam (kabar tidak menyebut dokumen sudah keluar)', {LAP: [('if (!(await tulis(r))) { set({ kabar: (w ?', 'if (!(await tulis(r))) { return; set({ kabar: (w ?')]}),

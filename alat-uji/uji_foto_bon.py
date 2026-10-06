@@ -7,9 +7,14 @@ uji_foto_bon.py — owner 7 Okt 2026: "buatkan fitur foto BON kalo bisa". Tanpa 
     Berkas yang bukan gambar → ditolak dengan kalimat. Byte dihitung dari base64 (padding).
   · Penyimpan (fbnSusunSimpan): satu dokumen per foto {idBon, pemasok, tanggalBon, noBon, tanggal, jam, jenis, base64, byte, lebar, tinggi} — bon wajib,
     paling banyak 6 foto per bon, di atas batas ditolak; oleh/olehUid diisi penulis (bukan logika).
-  · STATIS: koleksi fotoBon TIDAK ada di KOLEKSI (tidak didengar → tidak ikut baca penuh harian, cache, cadangan); firebase.js membacanya sekali per bon
-    (getDocs + where idBon) dan menulis/menghapus tanpa salinan antre lokal, owner saja; layar memakai input berkas accept image/* + capture kamera,
-    pilihan berkas lewat peristiwa change (tanpa handler sebaris); CSP img-src memuat data: & blob:; modulepreload memuat foto-bon-logika.js.
+  · Foto yang MENUNGGU server (sanggahan E2): paling banyak FBN_ANTRE_MAKS sekaligus — yang berikutnya ditolak dengan kalimat; kabarnya jujur "BELUM sampai
+    server" (bukan "tersimpan").
+  · STATIS: koleksi fotoBon TIDAK ada di KOLEKSI (tidak didengar → tidak ikut baca penuh harian, cache toko, cadangan); firebase.js membacanya sekali per bon
+    (getDocs + where idBon; kiriman yang belum diakui bertanda antre) dan menulis/menghapus tanpa salinan antre lokal, owner saja; kiriman yang belum diakui
+    20 detik mengembalikan `selesai` (diakui / ditolak) — layar menandai foto itu "BELUM sampai server", membuangnya dari daftar bila ditolak, membatasi
+    antre, dan mematikan tombol foto selama proses; kalimat cache jujur (persistentLocalCache Firestore menyimpan foto di perangkat); layar memakai input
+    berkas accept image/* + capture kamera, pilihan berkas lewat peristiwa change (tanpa handler sebaris); CSP img-src memuat data: & blob:; modulepreload
+    memuat foto-bon-logika.js.
 
     python3 alat-uji/uji_foto_bon.py            → N lulus · 0 gagal
     python3 alat-uji/uji_foto_bon.py --kontrol  → logika yang dirusak wajib ketahuan (keluar 3 kalau ada yang diam)
@@ -58,6 +63,8 @@ var BON = { id: 'b9', pemasok: 'PEMASOK CONTOH', tanggal: '2026-10-05', noBon: '
     ok('tanpa bon ditolak; hasil yang ditolak diteruskan kalimatnya; 6 foto sudah ada → ditolak; base64 di atas batas → ditolak; jenis bukan gambar → ditolak',
       /Pilih bonnya/.test(fbnSusunSimpan(null, H1, W, []).tolak || '') && fbnSusunSimpan(BON, H4, W, []).tolak === H4.tolak && /sudah punya 6 foto/.test(fbnSusunSimpan(BON, H1, W, enam).tolak || '')
       && /lebih dari/.test(fbnSusunSimpan(BON, { jenis: 'image/jpeg', base64: new Array(Math.ceil(FBN_BATAS / 3) * 4 + 9).join('A'), lebar: 1, tinggi: 1 }, W, []).tolak || '') && /tidak terbaca/.test(fbnSusunSimpan(BON, { jenis: 'text/html', base64: 'QUJD' }, W, []).tolak || ''));
+    ok('foto MENUNGGU server sudah ' + FBN_ANTRE_MAKS + ' → foto berikutnya DITOLAK ("BELUM sampai server … tunggu"); 0 antre → boleh', FBN_ANTRE_MAKS === 1 && /BELUM sampai server/.test(fbnSusunSimpan(BON, H1, W, [], 1).tolak || '') && !fbnSusunSimpan(BON, H1, W, [], 0).tolak, J(fbnSusunSimpan(BON, H1, W, [], 1)));
+    ok('kabar foto antre jujur: "BELUM sampai server … sementara hanya ada di perangkat ini; kabar menyusul" — tidak menyebut tersimpan', /^Foto bon 5 Okt 2026 PEMASOK CONTOH BELUM sampai server \(sinyal lambat\) — sementara hanya ada di perangkat ini; kabar menyusul/.test(fbnKabarAntre(S1.data)) && !/tersimpan/i.test(fbnKabarAntre(S1.data)), fbnKabarAntre(S1.data));
     var u = fbnUrut([{ id: 1, idBon: 'b9', tanggal: '2026-10-06', jam: '10:00', base64: 'A' }, { id: 2, idBon: 'b8', tanggal: '2026-10-07', jam: '10:00', base64: 'A' }, { id: 3, idBon: 'b9', tanggal: '2026-10-07', jam: '08:00', base64: 'A' }, { id: 4, idBon: 'b9', tanggal: '2026-10-07', jam: '09:00' }], 'b9');
     ok('urut foto satu bon: terbaru dulu, bon lain & dokumen tanpa isi dibuang', J(u.map(function (x) { return x.id; })) === J([3, 1]), J(u));
     ok('konstanta: sisi 1600, mutu awal 0,6, sasaran 300 KB, batas 700 KB (< 1 MiB dokumen sesudah base64), 6 foto per bon, koleksi fotoBon', FBN_SISI === 1600 && FBN_MUTU[0] === 0.6 && FBN_TARGET === 300 * 1024 && FBN_BATAS === 700 * 1024 && Math.ceil(FBN_BATAS / 3) * 4 < 1048576 - 4096 && FBN_PALING_BANYAK === 6 && FBN_KOLEKSI === 'fotoBon');
@@ -97,6 +104,18 @@ def statis(teks=None):
     if '<link rel="modulepreload" href="js/layar/foto-bon-logika.js">' not in idx: g.append('modulepreload foto-bon-logika.js belum ada')
     app = baca('baru/js/app.js'); n += 1
     if 'baca: (idBon) => fb.bacaFotoBon(idBon)' not in app: g.append('app.js tidak menyerahkan pembaca foto ke layar Harga')
+    n += 1
+    if 'selesai: janji.then(() => ({ ok: true }), (e) => ({ gagal: true' not in (m2.group(1) if m2 else ''): g.append('simpanFotoBon tidak mengembalikan janji akhir kiriman (selesai) saat antre — layar tidak bisa tahu diakui / ditolak')
+    n += 1
+    if 'd.metadata && d.metadata.hasPendingWrites ? { antre: true }' not in (m.group(1) if m else ''): g.append('bacaFotoBon tidak menandai foto yang kirimannya belum diakui (antre)')
+    n += 1
+    if 'persistentLocalCache' not in fb[fb.find('// ---- FOTO BON'):fb.find('const KOLEKSI_FOTO_BON')] or 'persistentLocalCache' not in baca('baru/js/layar/foto-bon-logika.js'): g.append('kalimat cache foto tidak jujur (persistentLocalCache Firestore tidak disebut)')
+    n += 1
+    if 'ikutiAntre(x.selesai, String(r.data.id), b.id)' not in hj or "filter((z) => String(z.id) !== id)" not in hj or 'FB.fbnKabarAntre(r.data)' not in hj: g.append('layar: foto antre disebut tersimpan / foto yang ditolak server tidak dibuang dari daftar')
+    n += 1
+    if 'FB.fbnSusunSimpan(Object.assign({ pemasok: d.pemasok }, b), hasil, waktu(), st().foto.daftar, fotoAntre)' not in hj: g.append('layar: foto antre tidak dibatasi')
+    n += 1
+    if "const tahan = !!F.proses || fotoAntre >= FB.FBN_ANTRE_MAKS;" not in hj or "kaca-btn ${tahan ? 'mati' : 'aktif'}\" data-aksi=\"fotoAmbil\"" not in hj or 'if (F && F.proses) return set(' not in hj: g.append('layar: tombol foto tidak mati selama proses / antre')
     cad = baca('baru/js/data/cadangan.js'); n += 1
     if 'fotoBon' in cad: g.append('cadangan memuat fotoBon')
     return n - len(g), g
@@ -114,6 +133,8 @@ if __name__ == '__main__':
             'berhenti di percobaan pertama walau di atas sasaran': js.replace("      if (hasil.byte <= FBN_TARGET) return Object.assign(hasil, { lebihTarget: false });", "      return Object.assign(hasil, { lebihTarget: false });"),
             'di atas batas tetap dipakai': js.replace("  if (terkecil && terkecil.byte <= FBN_BATAS) return Object.assign(terkecil, { coba, lebihTarget: true });", "  if (terkecil) return Object.assign(terkecil, { coba, lebihTarget: true });"),
             'tanpa batas jumlah foto per bon': js.replace("  if ((ada || []).length >= FBN_PALING_BANYAK)", "  if (false)"),
+            'foto antre tanpa batas': js.replace("  if ((Number(antre) || 0) >= FBN_ANTRE_MAKS)", "  if (false)"),
+            'kabar foto antre menyebut tersimpan': js.replace("' BELUM sampai server (sinyal lambat) — sementara hanya ada di perangkat ini; kabar menyusul", "' tersimpan — sementara hanya ada di perangkat ini; kabar menyusul"),
             'urutan mutu dibalik (ukuran dulu)': js.replace("const FBN_SKALA = [1, 0.8, 0.64, 0.5];", "const FBN_SKALA = [0.5, 0.64, 0.8, 1];"),
         }
         kode = 0
@@ -127,6 +148,10 @@ if __name__ == '__main__':
             'foto disalin ke antre lokal': {'baru/js/data/firebase.js': open(os.path.join(AKAR, 'baru/js/data/firebase.js'), encoding='utf-8').read().replace("  const b = writeBatch(db); b.set(doc(db, KOLEKSI_FOTO_BON, String(d.id)), d);", "  antre.tambah({ id: 'f', dokumen: [d] }); const b = writeBatch(db); b.set(doc(db, KOLEKSI_FOTO_BON, String(d.id)), d);", 1)},
             'kamera tanpa capture': {'baru/js/layar/harga.js': open(os.path.join(AKAR, 'baru/js/layar/harga.js'), encoding='utf-8').read().replace('capture="environment" ', '', 1)},
             'CSP img-src tanpa data:': {'baru/index.html': open(os.path.join(AKAR, 'baru/index.html'), encoding='utf-8').read().replace("img-src 'self' data: blob:;", "img-src 'self' blob:;", 1)},
+            'simpan foto tanpa janji akhir (selesai)': {'baru/js/data/firebase.js': open(os.path.join(AKAR, 'baru/js/data/firebase.js'), encoding='utf-8').read().replace("return h.lewat ? { antre: true, data: d, selesai: janji.then(() => ({ ok: true }), (e) => ({ gagal: true, pesan: String((e && (e.code || e.message)) || e) })) } : { ok: true, data: d };", "return h.lewat ? { antre: true, data: d } : { ok: true, data: d };", 1)},
+            'layar menyebut foto antre tersimpan': {'baru/js/layar/harga.js': open(os.path.join(AKAR, 'baru/js/layar/harga.js'), encoding='utf-8').read().replace('kabar: x && x.antre ? FB.fbnKabarAntre(r.data) : (x && x.simulasi', 'kabar: x && x.antre ? r.patch.kabar : (x && x.simulasi', 1)},
+            'tombol foto tetap hidup selama proses': {'baru/js/layar/harga.js': open(os.path.join(AKAR, 'baru/js/layar/harga.js'), encoding='utf-8').read().replace("const tahan = !!F.proses || fotoAntre >= FB.FBN_ANTRE_MAKS;", "const tahan = false;", 1)},
+            'kalimat cache foto tanpa persistentLocalCache': {'baru/js/layar/foto-bon-logika.js': open(os.path.join(AKAR, 'baru/js/layar/foto-bon-logika.js'), encoding='utf-8').read().replace('persistentLocalCache', 'cache', 1)},
         }
         for nama, t in statis_rusak.items():
             if any(v == open(os.path.join(AKAR, k), encoding='utf-8').read() for k, v in t.items()): print('KONTROL BASI  ' + nama); kode = 3; continue

@@ -14,7 +14,7 @@
 // Tanpa DOM; nama berawalan wb (bundel uji satu lingkup). Dijaga alat-uji/uji_wadah_bernama.py & uji_cocokkan_terpisah.py.
 import { hitungStokKarungPerMerk, hitungStokBahanLiteran } from '../mesin/beku.js';
 import { RASIO_KONVERSI, RASIO_DEFAULT, hargaKarungUtuh, cariHargaKarungPerKg } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, ambilSemuaBatch, ambilProduksiBerlaku, ambilPenyesuaianStok, ambilBahanLiteran, denganCacheSementara, kunciStokWadah, petaStokWadah, kunciKarungWadah, kunciKarungBelakang, merkAsalKunci, petaBukuWadah, petaUkuran, indukTerpisah } from '../data/toko.js';
+import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, ambilSemuaBatch, ambilProduksiBerlaku, ambilPenyesuaianStok, ambilBahanLiteran, cacheMentah, tolakKunci, denganCacheSementara, kunciStokWadah, petaStokWadah, kunciKarungWadah, kunciKarungBelakang, merkAsalKunci, petaBukuWadah, petaUkuran, indukTerpisah } from '../data/toko.js';
 import { aturWadah, karungUntukWadah, karungBelakang, semuaKarungTerbuka, wdSesudah, wdTerbaru, tinggiWadah, beratKarungBuka, DAFTAR_WADAH, kolamDitutup, wdLokasiDoc, wdLokasiSumber } from './jual-logika.js';
 import { RP, tanggalPendek } from '../inti/format.js';
 
@@ -689,24 +689,45 @@ export function wbSusunPindahTertinggal(w) {
 //     yang pertama. Karung yang masih BERDIRI = karung terbaru di kolam itu sebanyak ⌈(sisa − 0,5 kg) ÷ berat karung⌉ (yang lebih tua dituang habis lebih
 //     dulu); sisa ≤ 0,5 kg = HABIS (batas yang sama dengan deretan & "hapus karung habis"), karung terbarunya masih tegak sebagai karung kosong.
 //   · Tiap kiriman yang menyentuh kolam di belakang wadah (isi ulang tiga ketukan, − / + takar, hapus karung habis, samakan, cocokkan wadah, kembalikan)
-//     dibandingkan sebelum ⇄ sesudah: karung yang berdiri sebelumnya dan tidak lagi sesudahnya = LAHIR jadi karung bekas di kiriman yang sama; karung yang
-//     sudah jadi karung bekas tapi berdiri lagi sesudahnya (samakan / cocokkan menemukan isinya) atau dikembalikan ke tumpukan = DIBATALKAN.
-//   · Sekali saja: tiap kelahiran membawa `karungId` (id catatan buka karungnya) — karung yang sama lewat dua jalur (isi ulang lalu "hapus karung habis") tidak dobel.
-//   · Dokumen = stokBahanLiteran tipe 'opname' jumlah +1 jenis 'karungbekas' bertanda `lahirKarungBekas` — jalur mesin beku untuk lembar GRATIS (menggeser sisa,
-//     tidak ikut membagi harga rata-rata; lihat hitungStokBahanLiteran). nilaiRp = harga per lembar karung bekas di buku mesin (= yang dipakai neraca dan HPP
-//     saat dipakai): neraca naik sebesar itu dan laba naik sebesar itu lewat baris "Susut & selisih stok" (sisi kredit keputusan 15 Sep). Batal = dokumennya dihapus.
+//     dibandingkan sebelum ⇄ sesudah pada himpunan karung yang SAMA — semua karung kolam itu sejak terakhir ditutup + yang dibuka di kiriman ini:
+//       LAHIR = berdiri sebelumnya (atau dibuka di kiriman ini) ∧ tidak berdiri sesudahnya ∧ belum jadi karung bekas;
+//       BATAL = sudah jadi karung bekas ∧ berdiri lagi sesudahnya (samakan / cocokkan menemukan isinya — juga karung yang lebih tua dari yang berdiri
+//               sebelumnya), atau berdiri sebelumnya lalu dikembalikan ke tumpukan.
+//   · Sekali saja: tiap kelahiran membawa `karungId` (id catatan buka karungnya). Urutan peristiwa per karung — dokumen kelahiran, catatan pembalik, tanda
+//     titipan — menurut waktu (wdSesudah); peristiwa terakhir 'lahir' = karung itu sudah karung bekas.
+//   · Dokumen kelahiran = stokBahanLiteran tipe 'opname' jumlah +1 jenis 'karungbekas' bertanda `lahirKarungBekas` — jalur mesin beku untuk lembar GRATIS
+//     (menggeser sisa, tidak ikut membagi harga rata-rata; lihat hitungStokBahanLiteran). nilaiRp = harga per lembar karung bekas DI BUKU mesin (= yang dipakai
+//     neraca dan HPP saat lembarnya dipakai): neraca naik = laba naik lewat baris "Susut & selisih stok" (sisi kredit keputusan 15 Sep). Harga buku itu = NILAI
+//     KARUNG BEKAS setelan owner (wbKbNilai; bawaan = keputusan owner 15 Sep) begitu owner menerapkannya ke buku (wbSusunNilaiKarungBekas). Memasang setelan di
+//     nilaiRp tanpa buku mesin ikut bergerak membuat neraca ≠ laba — jadi sebelum diterapkan kabarnya menyebut selisih itu terang.
+//   · BATAL tidak pernah mengubah catatan bulan lampau: dokumen kelahiran bertanggal HARI INI yang nilainya masih = harga buku → dihapus di kiriman yang sama;
+//     selain itu CATATAN PEMBALIK bertanggal hari ini (opname −1 bertanda `lahirKarungBekas` + `batal`, nilaiRp −harga buku) — kelahirannya tetap di tanggalnya,
+//     laba bulan lalu tidak bergeser surut, bulan terkunci tidak tersentuh (kiriman tidak pernah ditolak kunci periode karena karung bekas).
 //   · Akun bukan-owner belum boleh menulis stokBahanLiteran selain 'pakai' (rules v5) → kelahiran / pembatalan DITITIP sebagai tanda `karungBekas` di catatan
-//     wadahLiteran kiriman itu sendiri; owner mencatatnya sekali ketuk (wbSusunKarungBekasTunda). Urutan kejadian per karung = tanda & dokumen kelahiran
-//     menurut waktu (wdSesudah); yang terakhir menentukan.
+//     wadahLiteran kiriman itu sendiri; owner mencatatnya sekali ketuk (wbSusunKarungBekasTunda).
 export const WB_KB_HABIS_KG = 0.5;
 export const WB_KB_JENIS = 'karungbekas';
-/** Peristiwa karung bekas per karungId: { lahir: dokumen kelahiran di buku | null, akhir: 'lahir' | 'batal', tanda: tanda titipan terakhir }. */
+export const WB_KB_NILAI_BAWAAN = 1500;     // keputusan owner 15 Sep 2026: satu lembar karung bekas dihargai Rp1.500 — angka kebijakan, diubah owner di Stok › Wadah literan
+export const WB_KB_NILAI_MAKS = 100000;
+/** Nilai karung bekas: setelan owner (aturanToko/karungBekas.nilaiLembar; belum diatur → bawaan keputusan 15 Sep) ⇄ harga per lembar di buku mesin. */
+export function wbKbNilai() {
+  const a = cacheMentah('aturan').find((d) => String(d.id) === 'karungBekas') || null; const n = a ? Math.round(Number(a.nilaiLembar)) : NaN; const diatur = isFinite(n) && n > 0;
+  const st = hitungStokBahanLiteran()[WB_KB_JENIS] || {}; const buku = Math.round(Number(st.hargaPerPcs) || 0); const setelan = diatur ? n : WB_KB_NILAI_BAWAAN;
+  return { setelan, diatur, buku, selaras: buku === setelan, sisa: Math.round(Number(st.sisaPcs) || 0), totalBeli: Number(st.totalBeli) || 0, totalHargaBeli: Number(st.totalHargaBeli) || 0, dok: a };
+}
+/** Kalimat nilai di kabar kelahiran / pembatalan: harga buku, dan bila belum = setelan owner, selisihnya disebut (tidak ada status yang berbohong soal uang). */
+const wbKbKataNilai = (N) => (N.buku > 0 ? ', dinilai ' + RP(N.buku) + '/lembar' + (N.selaras ? ' (setelan owner)' : ' = harga buku karung bekas; setelan owner ' + RP(N.setelan) + ' belum diterapkan ke buku — Stok › Wadah literan') + '; ikut laba sebagai selisih stok'
+  : ', harga buku karung bekas Rp0 — setelan owner ' + RP(N.setelan) + ' belum diterapkan ke buku (Stok › Wadah literan)');
+/** Peristiwa karung bekas per karungId, lama → baru. → { akhir 'lahir' | 'batal', lahir: dokumen kelahiran yang BERLAKU di buku | null, tanda: tanda titipan terakhir | null }. */
 function wbKbPeristiwa() {
-  const peta = {}; const dapat = (id) => (peta[id] = peta[id] || { lahir: null, akhir: '', pada: null, tanda: null });
-  const catat = (id, aksi, pada, tanda) => { const p = dapat(id); if (!p.pada || wdSesudah(pada, p.pada)) { p.akhir = aksi; p.pada = pada; p.tanda = tanda || p.tanda; } };
-  ambilBahanLiteran().forEach((d) => { if (!d.lahirKarungBekas || d.karungId === undefined || d.karungId === null) return; const id = String(d.karungId); dapat(id).lahir = d; catat(id, 'lahir', d, null); });
+  const ev = {}; const tambah = (id, e) => { (ev[id] = ev[id] || []).push(e); };
+  ambilBahanLiteran().forEach((d) => { if (!d.lahirKarungBekas || d.karungId === undefined || d.karungId === null) return; tambah(String(d.karungId), { aksi: d.batal ? 'batal' : 'lahir', d, pada: d }); });
   ambilWadahLiteran().forEach((d) => (Array.isArray(d.karungBekas) ? d.karungBekas : []).forEach((t) => { if (!t || t.karungId === undefined || t.karungId === null) return;
-    catat(String(t.karungId), t.aksi === 'batal' ? 'batal' : 'lahir', d, Object.assign({ dariId: d.id, tanggalAsal: d.tanggal || '', jamAsal: d.jam || '', olehAsal: d.oleh || '' }, t)); }));
+    tambah(String(t.karungId), { aksi: t.aksi === 'batal' ? 'batal' : 'lahir', tanda: Object.assign({ dariId: d.id, tanggalAsal: d.tanggal || '', jamAsal: d.jam || '', olehAsal: d.oleh || '' }, t), pada: d }); }));
+  const peta = {};
+  Object.keys(ev).forEach((id) => { const E = ev[id].slice().sort((a, b) => (wdSesudah(a.pada, b.pada) ? 1 : wdSesudah(b.pada, a.pada) ? -1 : 0));
+    const buku = E.filter((e) => e.d); const bAkhir = buku.length ? buku[buku.length - 1] : null; const tanda = E.filter((e) => e.tanda);
+    peta[id] = { akhir: E[E.length - 1].aksi, lahir: bAkhir && bAkhir.aksi === 'lahir' ? bAkhir.d : null, tanda: tanda.length ? tanda[tanda.length - 1].tanda : null }; });
   return peta;
 }
 /** Karung di kolam (nama × tempat) sejak kolam itu terakhir ditutup — urut lama → baru. Kolam lama tanpa catatan buka: catatan isi pertamanya mewakili karungnya. */
@@ -717,8 +738,19 @@ function wbKbSegmen(merk, L, daftar, semua) {
   return (i0 >= 0 && (k0 < 0 || i0 < k0) ? [seg[i0]] : []).concat(seg.filter((d) => d.tipe === 'karung'));
 }
 /**
+ * Pembatalan satu kelahiran yang BERLAKU di buku (owner): dokumen kelahiran hari ini yang nilainya masih = harga buku → { hapus }; selain itu → { dokumen }
+ * catatan pembalik bertanggal hari ini (opname −1, nilaiRp −harga buku). Tidak pernah menyentuh catatan bulan lampau.
+ */
+function wbKbCabut(x, lahirDok, w, sisa, harga, dariId) {
+  if (String(lahirDok.tanggal || '') === String(w.tanggal) && Math.round(Number(lahirDok.nilaiRp) || 0) === harga && !tolakKunci('stokBahanLiteran', lahirDok)) return { hapus: { koleksi: 'stokBahanLiteran', id: lahirDok.id } };
+  return { dokumen: { koleksi: 'stokBahanLiteran', data: { id: w.idUnik(), tipe: 'opname', jenis: WB_KB_JENIS, jumlah: -1, hargaTotal: 0, tanggal: w.tanggal, jam: w.jam, pcsSistem: sisa, pcsFisik: sisa - 1,
+    catatan: 'Karung ' + (x.merkAsal || x.merk) + ' di belakang wadah ' + x.wadah + ' ' + (x.kembali ? 'dikembalikan ke tumpukan' : 'ternyata belum habis') + ' → karung bekas yang tercatat ' + (lahirDok.tanggal ? tanggalPendek(lahirDok.tanggal) : 'dulu') + ' dicabut (catatan pembalik hari ini)',
+    nilaiRp: harga ? -harga : 0, hargaPerPcsSaatOpname: harga, lahirKarungBekas: true, batal: true, karungId: String(x.karungId), lahirId: lahirDok.id, kolam: x.merk, wadah: x.wadah, merkAsal: x.merkAsal || x.merk, ukuranKg: x.ukuranKg, dariId } } };
+}
+/**
  * Karung bekas yang LAHIR / DIBATALKAN oleh satu kiriman (dokumen = [{ koleksi, data }] yang akan ditulis). opsi.staf = akun bukan-owner (tanda titipan).
- * → { dokumen (kelahiran owner), hapus (pembatalan owner), lahir [], batal [], kabar }. Tanda titipan ditulis ke catatan wadahLiteran kiriman itu sendiri.
+ * → { dokumen (kelahiran & catatan pembalik owner), hapus (kelahiran hari ini yang dicabut, owner), lahir [], batal [], kabar }. Tanda titipan ditulis ke catatan
+ * wadahLiteran kiriman itu sendiri.
  */
 export function wbKarungBekasKiriman(dokumen, w, opsi) {
   const O = opsi || {}; const daftar = aturWadah().daftar; const semua = ambilWadahLiteran();
@@ -737,12 +769,15 @@ export function wbKarungBekasKiriman(dokumen, w, opsi) {
     const sebelum = karungBelakang(merk, L); const sesudah = denganCacheSementara(dokumen, () => karungBelakang(merk, L));
     const C0 = wbKbSegmen(merk, L, daftar, semua); const pre = sebelum.diketahui ? sebelum.sisaMentahKg : 0;
     const n0 = pre > WB_KB_HABIS_KG ? Math.min(C0.length, nKarung(pre)) : (C0.length ? 1 : 0);
-    const hadir = C0.slice(C0.length - n0).concat(baru.filter((d) => d.tipe === 'karung' && diSini(d)));
-    const nPost = kembali ? 0 : Math.min(hadir.length, nKarung(sesudah.diketahui ? sesudah.sisaMentahKg : 0));
+    const dibuka = baru.filter((d) => d.tipe === 'karung' && diSini(d));
+    const S = C0.concat(dibuka);                                   // semua karung kolam ini (lama → baru) — himpunan yang SAMA untuk sebelum & sesudah
+    const calon = C0.slice(C0.length - n0).concat(dibuka);         // berdiri SEBELUM kiriman, atau dibuka di kiriman ini
+    const nPost = kembali ? 0 : Math.min(S.length, nKarung(sesudah.diketahui ? sesudah.sisaMentahKg : 0));
+    const berdiri = {}; S.slice(S.length - nPost).forEach((k) => { berdiri[String(k.id)] = k; });   // berdiri SESUDAH kiriman
     const asal = wbMerkAsal(merk, bw); const isi = (k) => ({ karungId: String(k.id), merk, wadah: L, merkAsal: asal, ukuranKg: k.tipe === 'karung' ? (Number(k.kg) || berat) : berat });
-    hadir.forEach((k, i) => { const id = String(k.id); const habis = !kembali && i < hadir.length - nPost;
-      if (habis && !sudah(id)) lahir.push(Object.assign(isi(k), { punyaDok: !!(P[id] && P[id].lahir) }));
-      else if (!habis && sudah(id)) batal.push(Object.assign(isi(k), { dok: P[id].lahir, kembali })); }); });
+    const dicatat = {};
+    calon.forEach((k) => { const id = String(k.id); if (kembali || berdiri[id] || sudah(id) || dicatat[id]) return; dicatat[id] = 1; lahir.push(Object.assign(isi(k), { punyaDok: !!(P[id] && P[id].lahir) })); });
+    (kembali ? calon : S.filter((k) => berdiri[String(k.id)])).forEach((k) => { const id = String(k.id); if (!sudah(id) || dicatat[id]) return; dicatat[id] = 1; batal.push(Object.assign(isi(k), { dok: P[id].lahir, kembali })); }); });
   if (!lahir.length && !batal.length) return kosong;
   const host = baru.find((d) => d.tipe === 'takar') || baru[0]; const tanda = []; const out = { dokumen: [], hapus: [], lahir, batal, kabar: '' };
   const nama = (d) => d.map((x) => x.merkAsal + ' (' + x.wadah + ')').join(', ');
@@ -752,27 +787,27 @@ export function wbKarungBekasKiriman(dokumen, w, opsi) {
     lahir.forEach((x) => tanda.push(tandaDari(x, 'lahir'))); batal.forEach((x) => tanda.push(tandaDari(x, 'batal')));
     out.kabar = (lahir.length ? ' · karung ' + nama(lahir) + ' habis → ' + lahir.length + ' karung bekas MENUNGGU owner mencatatnya ke buku (Stok › Wadah literan)' : '') + (batal.length ? kataBatal + ' → catatan karung bekasnya menunggu owner dicabut' : '');
   } else {
-    const st = hitungStokBahanLiteran()[WB_KB_JENIS] || {}; const s0 = Math.round(Number(st.sisaPcs) || 0); const harga = Math.round(Number(st.hargaPerPcs) || 0); let sisa = s0;
+    const N = wbKbNilai(); const harga = N.buku; const s0 = N.sisa; let sisa = s0; let nPembalik = 0;
     lahir.forEach((x) => {
-      // dokumen kelahirannya masih ada (pembatalan titipan belum dicatat owner) → cukup tanda, tidak dobel
+      // dokumen kelahirannya masih berlaku (pembatalan titipan belum dicatat owner) → cukup tanda, tidak dobel
       if (x.punyaDok) { tanda.push(tandaDari(x, 'lahir')); return; }
       out.dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: w.idUnik(), tipe: 'opname', jenis: WB_KB_JENIS, jumlah: 1, hargaTotal: 0, tanggal: w.tanggal, jam: w.jam, pcsSistem: sisa, pcsFisik: sisa + 1,
         catatan: 'Karung ' + x.merkAsal + ' di belakang wadah ' + x.wadah + ' habis → jadi karung bekas', nilaiRp: harga, hargaPerPcsSaatOpname: harga, lahirKarungBekas: true, karungId: x.karungId, kolam: x.merk, wadah: x.wadah,
         merkAsal: x.merkAsal, ukuranKg: x.ukuranKg, dariId: host.id } }); sisa += 1; });
-    batal.forEach((x) => { if (x.dok) out.hapus.push({ koleksi: 'stokBahanLiteran', id: x.dok.id }); tanda.push(tandaDari(x, 'batal')); });
-    const nB = out.hapus.length; const s1 = s0 + out.dokumen.length - nB;
-    out.kabar = (lahir.length ? ' · karung ' + nama(lahir) + ' habis → +' + lahir.length + ' karung bekas' : '') + (batal.length ? kataBatal + ' → catatan karung bekasnya dicabut' : '')
-      + (out.dokumen.length || nB ? ' (buku karung bekas ' + s0 + ' → ' + s1 + ' lembar' + (harga > 0 ? ', dinilai ' + RP(harga) + '/lembar = modal karung bekas di buku; ikut laba sebagai selisih stok' : ', modal karung bekas di buku Rp0') + ')' : '');
+    batal.forEach((x) => { if (x.dok) { const c = wbKbCabut(x, x.dok, w, sisa, harga, host.id); if (c.hapus) out.hapus.push(c.hapus); else { out.dokumen.push(c.dokumen); nPembalik += 1; } sisa -= 1; } tanda.push(tandaDari(x, 'batal')); });
+    out.kabar = (lahir.length ? ' · karung ' + nama(lahir) + ' habis → +' + lahir.length + ' karung bekas' : '') + (batal.length ? kataBatal + ' → catatan karung bekasnya dicabut' + (nPembalik ? ' (catatan pembalik bertanggal hari ini — kelahirannya tetap di tanggalnya)' : '') : '')
+      + (sisa !== s0 || out.hapus.length || nPembalik ? ' (buku karung bekas ' + s0 + ' → ' + sisa + ' lembar' + wbKbKataNilai(N) + ')' : '');
   }
   if (tanda.length) host.karungBekas = (Array.isArray(host.karungBekas) ? host.karungBekas : []).concat(tanda);
   return out;
 }
-/** Sertakan kelahiran / pembatalan karung bekas ke hasil susun* jalur karung di belakang wadah (r.dokumen, r.hapus, kalimat kabar). r dikembalikan. */
+/** Sertakan kelahiran / pembatalan karung bekas ke hasil susun* jalur karung di belakang wadah (r.dokumen, r.hapus + r.jejakHapus, kalimat kabar). r dikembalikan. */
 export function wbSertakanKarungBekas(r, w, opsi) {
   if (!r || r.tolak || !Array.isArray(r.dokumen) || !r.dokumen.length) return r;
   const K = wbKarungBekasKiriman(r.dokumen, w, opsi); if (!K.lahir.length && !K.batal.length) return r;
-  K.dokumen.forEach((d) => r.dokumen.push(d)); if (K.hapus.length) r.hapus = (r.hapus || []).concat(K.hapus);
-  r.karungBekas = { lahir: K.lahir.length, batal: K.batal.length, titip: !!(opsi && opsi.staf) };
+  K.dokumen.forEach((d) => r.dokumen.push(d));
+  if (K.hapus.length) { r.hapus = (r.hapus || []).concat(K.hapus); r.jejakHapus = (r.jejakHapus ? r.jejakHapus + ' · ' : '') + 'karung bekas dicabut (kelahiran hari ini): ' + K.batal.filter((x) => x.dok).map((x) => x.merkAsal + ' ' + x.wadah).join(', '); }
+  r.karungBekas = { lahir: K.lahir.length, batal: K.batal.length, titip: !!(opsi && opsi.staf), hapus: K.hapus.length };
   if (r.patch) r.patch = Object.assign({}, r.patch, { kabar: String(r.patch.kabar || '') + K.kabar });
   return r;
 }
@@ -783,15 +818,53 @@ export function wbKarungBekasTunda() {
     else if (p.akhir === 'batal' && p.lahir) batal.push(Object.assign({}, p.tanda || {}, { karungId: id, dok: p.lahir })); });
   return { lahir, batal, n: lahir.length + batal.length };
 }
-/** Owner: catat semua titipan karung bekas sekali kirim — kelahiran bertanggal HARI INI (tanggal asal disebut di catatannya), pembatalan = dokumennya dihapus. */
+/**
+ * Owner: catat semua titipan karung bekas sekali kirim — kelahiran bertanggal HARI INI (tanggal asal disebut di catatannya); pembatalan = kelahiran hari ini
+ * dihapus, selain itu catatan pembalik hari ini (wbKbCabut — catatan bulan lampau tidak disentuh).
+ */
 export function wbSusunKarungBekasTunda(w) {
   const T = wbKarungBekasTunda(); if (!T.n) return { tolak: 'Tidak ada karung bekas yang menunggu dicatat' };
-  const st = hitungStokBahanLiteran()[WB_KB_JENIS] || {}; const s0 = Math.round(Number(st.sisaPcs) || 0); const harga = Math.round(Number(st.hargaPerPcs) || 0); let sisa = s0; const dokumen = [];
+  const N = wbKbNilai(); const harga = N.buku; const s0 = N.sisa; let sisa = s0; const dokumen = []; const hapus = [];
   T.lahir.forEach((x) => { dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: w.idUnik(), tipe: 'opname', jenis: WB_KB_JENIS, jumlah: 1, hargaTotal: 0, tanggal: w.tanggal, jam: w.jam, pcsSistem: sisa, pcsFisik: sisa + 1,
     catatan: 'Karung ' + (x.merkAsal || x.merk) + ' di belakang wadah ' + x.wadah + ' habis' + (x.tanggalAsal ? ' ' + tanggalPendek(x.tanggalAsal) + (x.jamAsal ? ' ' + x.jamAsal : '') : '') + (x.olehAsal ? ' (dicatat ' + x.olehAsal + ')' : '') + ' → jadi karung bekas',
     nilaiRp: harga, hargaPerPcsSaatOpname: harga, lahirKarungBekas: true, karungId: x.karungId, kolam: x.merk, wadah: x.wadah, merkAsal: x.merkAsal || x.merk, ukuranKg: x.ukuranKg, dariId: x.dariId, dariTitipan: true } }); sisa += 1; });
-  const hapus = T.batal.map((x) => ({ koleksi: 'stokBahanLiteran', id: x.dok.id }));
-  return { dokumen, hapus, jejakHapus: 'karung bekas dibatalkan (titipan akun bukan-owner): ' + T.batal.map((x) => (x.merkAsal || x.merk) + ' ' + x.wadah).join(', '),
-    patch: { kbsYakin: false, kabar: 'Karung bekas dicatat: ' + (T.lahir.length ? '+' + T.lahir.length + ' lahir' : '') + (T.batal.length ? (T.lahir.length ? ', ' : '') + T.batal.length + ' dicabut' : '') + ' — buku karung bekas ' + s0 + ' → ' + (s0 + T.lahir.length - T.batal.length) + ' lembar'
-      + (harga > 0 ? ' (' + RP(harga) + '/lembar; laba bergerak sebesar itu lewat selisih stok)' : ''), kabarAwas: false } };
+  let nPembalik = 0;
+  T.batal.forEach((x) => { const c = wbKbCabut(x, x.dok, w, sisa, harga, x.dariId || ''); if (c.hapus) hapus.push(c.hapus); else { dokumen.push(c.dokumen); nPembalik += 1; } sisa -= 1; });
+  return { dokumen, hapus, jejakHapus: hapus.length ? 'karung bekas dibatalkan (titipan akun bukan-owner, kelahiran hari ini): ' + T.batal.filter((x) => hapus.some((h) => String(h.id) === String(x.dok.id))).map((x) => (x.merkAsal || x.merk) + ' ' + x.wadah).join(', ') : '',
+    patch: { kbsYakin: false, kabar: 'Karung bekas dicatat: ' + (T.lahir.length ? '+' + T.lahir.length + ' lahir' : '') + (T.batal.length ? (T.lahir.length ? ', ' : '') + T.batal.length + ' dicabut' + (nPembalik ? ' (' + nPembalik + ' lewat catatan pembalik hari ini)' : '') : '') + ' — buku karung bekas ' + s0 + ' → ' + sisa + ' lembar'
+      + wbKbKataNilai(N), kabarAwas: false } };
+}
+/**
+ * Owner: setel NILAI KARUNG BEKAS per lembar (angka kebijakan; bawaan = keputusan owner 15 Sep) DAN terapkan ke buku mesin — supaya karung bekas yang lahir
+ * dinilai setelan itu dan neraca = laba tetap menutup. Mesin menilai rak karung bekas dengan rata-rata (Σ harga ÷ Σ lembar baris beli / saldo awal); baris
+ * lamanya TIDAK diubah. Yang ditambah, bertanggal HARI INI: satu catatan PENYETEL harga (tipe 'saldoAwal' jumlah 0 — bukan uang: pembaca kas hanya membaca
+ * 'beli'; buku tanpa baris berharga: jumlah 1 dinetralkan opname −1) sebesar nilai × Σ lembar − Σ harga, dan satu catatan SELISIH NILAI (tipe 'opname'
+ * jumlah 0) sebesar lembar di rak × (nilai baru − harga buku): neraca naik = laba HARI INI naik sebesar itu, bulan lalu tidak berubah. Keduanya bertanda
+ * `nilaiKarungBekas` (bukan hitungan fisik). Dua ketukan bila rupiah bergerak. Hitungannya diperiksa ulang lewat mesin sebelum dikirim (harga buku = nilai,
+ * sisa tetap, Δ nilai rak = Δ laba) — tidak menutup = ditolak, tidak ada yang dikirim.
+ */
+export function wbSusunNilaiKarungBekas(ketik, w, yakin) {
+  const N = wbKbNilai(); const t = String(ketik === undefined || ketik === null ? '' : ketik).trim().replace(/^rp\s*/i, '');
+  if (t !== '' && !/^\d{1,3}(\.\d{3})*$|^\d+$/.test(t)) return { tolak: 'Ketik nilai SATU lembar dalam rupiah, angka saja (mis. 1500)' };
+  const v = t === '' ? N.setelan : Math.round(Number(t.replace(/\./g, '')));
+  if (!(v >= 1 && v <= WB_KB_NILAI_MAKS)) return { tolak: 'Nilai satu lembar karung bekas harus ' + RP(1) + '–' + RP(WB_KB_NILAI_MAKS) };
+  const ubahSetelan = !N.diatur || N.setelan !== v; const ubahBuku = N.buku !== v;
+  if (!ubahSetelan && !ubahBuku) return { tolak: 'Nilai karung bekas sudah ' + RP(v) + '/lembar — di setelan dan di buku' };
+  const riwayat = (N.dok && Array.isArray(N.dok.riwayat) ? N.dok.riwayat : []).concat([{ tanggal: w.tanggal, jam: w.jam, dari: N.diatur ? N.setelan : null, ke: v, bukuDari: N.buku }]).slice(-20);
+  const dokumen = [{ koleksi: 'aturanToko', data: { id: 'karungBekas', tanggal: w.tanggal, jam: w.jam, nilaiLembar: v, riwayat } }];
+  const rak = Math.max(0, N.sisa); const delta = ubahBuku ? rak * (v - N.buku) : 0;
+  if (ubahBuku) {
+    const tanpaHarga = !(N.totalBeli > 0); const catatan = 'Nilai karung bekas disetel ' + RP(N.buku) + ' → ' + RP(v) + '/lembar (setelan owner) — baris belanja lamanya tidak diubah';
+    dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: w.idUnik(), tipe: 'saldoAwal', jenis: WB_KB_JENIS, jumlah: tanpaHarga ? 1 : 0, hargaTotal: tanpaHarga ? v : Math.round(v * N.totalBeli - N.totalHargaBeli), tanggal: w.tanggal, jam: w.jam, nilaiKarungBekas: true, catatan } });
+    if (tanpaHarga || delta) dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: w.idUnik(), tipe: 'opname', jenis: WB_KB_JENIS, jumlah: tanpaHarga ? -1 : 0, hargaTotal: 0, tanggal: w.tanggal, jam: w.jam, pcsSistem: N.sisa + (tanpaHarga ? 1 : 0), pcsFisik: N.sisa,
+      nilaiRp: delta, hargaPerPcsSaatOpname: v, nilaiKarungBekas: true, catatan: catatan + ' · ' + rak + ' lembar di rak' } });
+  }
+  // diperiksa ulang lewat mesin beku: harga buku = nilai, sisa tetap, Δ nilai rak (neraca) = Δ laba
+  const S1 = denganCacheSementara(dokumen, () => { const s = hitungStokBahanLiteran()[WB_KB_JENIS] || {}; return { harga: Math.round(Number(s.hargaPerPcs) || 0), sisa: Math.round(Number(s.sisaPcs) || 0) }; });
+  if (ubahBuku && (S1.harga !== v || S1.sisa !== N.sisa || Math.max(0, S1.sisa) * S1.harga - rak * N.buku !== delta)) return { tolak: 'Hitungan penyetel nilai karung bekas tidak menutup (buku jadi ' + RP(S1.harga) + ', sisa ' + S1.sisa + ') — tidak ada yang dikirim' };
+  const arah = delta >= 0 ? 'naik' : 'turun';
+  const akibat = !ubahBuku ? 'buku sudah ' + RP(v) + '/lembar, tidak ada rupiah yang bergerak'
+    : 'buku karung bekas ' + RP(N.buku) + ' → ' + RP(v) + '/lembar: ' + rak + ' lembar di rak ' + arah + ' ' + RP(Math.abs(delta)) + ' = laba HARI INI ' + arah + ' ' + RP(Math.abs(delta)) + ' (selisih nilai, bukan uang masuk; bulan lalu & baris belanja lamanya tidak berubah). Sesudahnya karung bekas yang lahir dinilai ' + RP(v) + ' dan yang dipakai / dijual dibebankan ' + RP(v) + ' per lembar';
+  if (ubahBuku && !yakin) return { tolak: 'Ketuk sekali lagi untuk menerapkan nilai karung bekas ' + RP(v) + '/lembar — ' + akibat, perluYakin: true };
+  return { dokumen, hitung: { v, delta, rak, dari: N.buku }, patch: { kbNilai: '', kbNilaiYakin: false, kabar: 'Nilai karung bekas ' + RP(v) + '/lembar tersimpan sebagai setelan owner — ' + akibat, kabarAwas: false } };
 }
