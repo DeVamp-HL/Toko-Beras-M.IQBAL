@@ -1181,6 +1181,9 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; sisi lama dari `git show sistem-lama-terakhir:index.html` sejak 3 Okt; 5 kontrol) |
 | `alat-uji/uji_safari_webkit.py` (+ `--kontrol`) | owner 3 Okt (web app Safari Mac + Safari iPhone/iPad): sembilan cacat khas WebKit, statis + jsc tanpa peramban — sandi tidak dikunci readonly selagi fokus & dilepas di pointerdown; tiap `main.layar-*` berjarak poni sesudah shorthand padding; `:hover` kerangka hanya di `@media (hover: hover) and (pointer: fine)` (menu samping iPad); tanpa kolom `month`/`week` & pil bulan Omzet di luar sistem tergambar (jsc); touchstart pasif di document (`:active` iOS); penjaga muat-ulang modul kenal "Importing binding name" Safari (jsc menjalankan script sebaris); body berjarak aman kiri/kanan, ≥1100 tetap 72px; `#rtSelisih` tanpa inputmode angka (minus); Laporan `keluarkan()` membuka WA / dialog cetak di ketukan lalu mencatat nomor (jsc dengan pemblokir jendela ala Safari); 26 kontrol |
 | `alat-uji/uji_dokumen_sisa.py` (+ `--kontrol`) | owner 7 Okt: daftar harga & harga yang naik untuk pelanggan (katalog terbit, riwayat `hargaTerbit`, draf tidak ikut, turun/kembali/baru disebut, tanpa riwayat ditolak), paket bank bernomor dihitung dulu, jalan pintas Harga/Pelanggan → Laporan, simpanan lokal sistem lama (daftar beku = tag dikurangi kunci `/baru/` & kasir darurat — di CI tag diambil dulu & `--wajib-tag`; antrean berisi dijaga sampai berkasnya dinyatakan tersimpan; berkas tanpa PIN owner; dua ketukan; dihitung saat lembar dibuka), kartu piutang hanya untuk hak Laporan, peringatan kuota, kalimat "lewat sistem lama" / jalur berkas di layar (jsc kotak pasir + statis; kontrol) |
+| `alat-uji/uji_jual_nego.py` (+ `--kontrol`) | owner 7 Okt (JS2-C): batas nego per orang — bawaan & setelan (ngAtur = ssAtur/ssPeran), batas naik ke langkah & tidak di atas katalog, putusan owner / peran Ben / karyawan (dalam jatah, minta owner, di bawah modal + alasan, kisi "tidak", modal belum tercatat), alur minta → owner memutus (papan persetujuan) → dipakai sekali, baris bernego dibangun ulang, kolom nego di nota, penjaga kiriman, Buku Nego, layar asli (lembar nego & Buku Nego) + 21 kontrol |
+| `alat-uji/uji_keranjang_tahan.py` (+ `--kontrol`) | owner 7 Okt: keranjang & struk parkir bertahan saat dimuat ulang — layar Jual asli di jsc + penyimpanan sesi tiruan: per akun + hari ini, tanpa tukar / karcis / nota terakhir / uang, cermin stok ikut pulih, akun & hari lain dibuang, layar berisi tidak ditimpa, dibersihkan sesudah nota & ganti orang, tidak menulis sebelum pemulihan, mode privat tidak jatuh + 10 kontrol |
+| `alat-uji/uji_catat_nota_cepat.py` (+ `--kontrol`) | owner 7 Okt: simpan nota lebih cepat — rak identitas = rak penuh tanpa kolom sisa; PEMBANDING dokumen nota cara baru vs lama byte-sama (15 hasil: nota, periksa ulang, tembus, ubah jumlah, bonus, nego); panggilan buku stok mesin ≤ ⅓; cadangan toko lokal: ms simpanNota lama vs baru + dokumen sama + 5 kontrol |
 
 Membuka mesin (HANYA atas perintah owner): sunting `js/mesin/beku.js` / `pembantu.js` langsung → `python3 alat-uji/beku2.py --catat` → sebut di pesan
 commit mesin/pembantu mana & kenapa. (Sampai 2 Okt mesin disalin ulang dari `index.html` oleh `pindah_mesin.py` — pensiun 3 Okt.)
@@ -1654,3 +1657,47 @@ stok ×2, identitas) dibungkus `@media (hover: hover) and (pointer: fine)` di TE
   Jual) atau kalimat jujur (hapus uang keluar / batalkan bayar bon sesudah 90 detik, memberi tanggal bayar gaji baris lama: belum ada tombolnya).
   "Minta Claude" untuk memulihkan cadangan → catatan "Prosedur pulih darurat" (`docs/prosedur-pulih-darurat.md`; di layar disebut dengan nama, bukan
   jalur berkas).
+## Paket Jual (owner 7 Okt 2026): batas nego per orang · keranjang bertahan saat dimuat ulang · simpan nota lebih cepat (cabang `perbaikan/jual-nego-keranjang`)
+
+**J1 · BATAS NEGO PER ORANG (JS2-C "Buku Nego", dikunci owner 18 Sep)** — `js/layar/nego-logika.js` (tanpa DOM), dipakai `jual-logika.js` (`terapkanNego`,
+`putusNego`, `susunMintaNego`, `setujuSiap`, baris bernego yang dibangun ulang) dan `jual.js` (lembar nego, Buku Nego).
+- **Jatah** = persen MARGIN barang (katalog − modal per satuan barang; kemasan: modal ÷ unit bayar + bonus, rumus yang sama dengan kabar "DI BAWAH MODAL"
+  sebelumnya). Bawaan rancangan: owner 100 % (tetap — owner tidak meminta ke dirinya sendiri), peran Ben 50 % (`jatahBen` yang sudah ada), karyawan giliran
+  0 % (tidak boleh nego). **Setelan owner** di Menu › Sistem › Peran › Atur (dokumen `aturanToko/peran`, dibaca juga oleh akun karyawan): `jatahBen`,
+  `jatahKaryawan`, `jatahAkun` (per akun terdaftar, kosong = ikut peran), `bawahModal` (siapa boleh menjual di bawah modal: `owner` / peran / `uid:…`,
+  bawaan owner saja), `langkahNego` (bawaan Rp500). Bawaan satu sumber: `NG_BAWAAN` (nego-logika) dipakai `SS_ATUR_BAWAAN.peran` (sistem-logika).
+- **Batas** = katalog − margin × jatah, dibulatkan ke kelipatan langkah KE ATAS (tidak pernah melewati jatah, tidak pernah di atas katalog); jatah 100 % =
+  modal (rupiah bulat ke atas). Modal belum tercatat = batas belum bisa dihitung.
+- **Putusan** (`ngPutus`): sama dengan katalog → nego dilepas; di atas katalog → boleh; dalam jatah → dipakai; di bawah jatah (≥ modal) → **minta owner**,
+  harga baris TIDAK berubah (rancangan: "harga notanya belum berubah sampai disetujui"); di bawah modal → hanya yang diizinkan DAN dengan alasan (owner
+  langsung; bukan-owner tetap minta owner); kisi SS2 `nego` = "tidak boleh" → di bawah jatah ditolak; modal belum tercatat → owner boleh (diberi tahu),
+  bukan-owner minta owner. Lantai Rp500 tetap. Modal hanya disebut ke owner.
+- **Minta owner**: dokumen `persetujuan` `{ tindakan: 'nego', status: 'menunggu', negoUid, barang (kunci baris), label, satuan, jumlah, hargaAsli,
+  hargaMinta, batas, jatah, alasan, nominal = selisih total }` — papan yang SAMA dengan Menu › Sistem › Peran › Persetujuan; owner memutus lewat
+  `susunPutusPersetujuan` (menolak wajib alasan) dari Buku Nego atau papan itu. Disetujui → yang meminta mengetik harga yang sama (atau ketuk "pakai" di
+  pita) → baris `negoStatus: 'disetujui'` + `negoSetujuId`; **sekali pakai** (nota berlaku / keranjang lain yang memegangnya), untuk jumlah ≤ yang diminta.
+  **BELUM HIDUP untuk akun karyawan**: `firestore.rules` masih "owner saja" untuk koleksi `persetujuan` (dan bukan-owner tidak membacanya) — tombol MINTA
+  OWNER mati berkata sebabnya + jalan keluar (pakai batas jatah, atau owner yang mencatat nota). Penjaga bentuknya sudah ada di `periksaKiriman`; begitu
+  rules membuka, `BUAT_STAF.persetujuan` & `BACA_STAF` di `akses.js` ikut (periksa_rules menyamakannya) dan alurnya hidup.
+- **Jejak per baris nota**: `hargaAsliSatuan` (katalog), `negoSelisih`, `negoStatus` (`jatah` · `naik` · `disetujui` · `bawahModal`), `negoBatas`,
+  `negoJatah`, `negoAlasan`, `negoSetujuId`; siapa = atribusi `oleh`/`olehUid`. **Buku Nego** (owner: pita "N permintaan nego menunggu owner", tautan di
+  lembar nego & tab Riwayat): tiap nego hari ini + permintaan yang menunggu, selisih per satuan × jumlah, total potongan.
+- **Penjaga kiriman** (`akses.js negoDalamJatah`): baris bukan-owner yang DALAM jatah (`negoStatus 'jatah'`, harga ≥ `negoBatas`, 0 < `negoJatah` ≤ jatah
+  akun yang mengirim — app.js `setelSumberHak` menambah `jatahNego`) atau disetujui (`negoSetujuId`) bukan tindakan "nego di bawah jatah"; nego bentuk
+  lama / di bawah batas / jatah lebih besar / di bawah modal tetap tindakan nego (tertutup untuk bukan-owner). Potongan nota TIDAK berubah (tetap
+  tindakan nego, owner saja untuk bukan-owner).
+- Tombol nego: owner selalu; bukan-owner bila punya jatah > 0 atau kisi nego bukan "tidak boleh" (`ngBolehNego`). Karyawan bawaan (0 %, "tidak") → mati.
+
+**J2 · KERANJANG & STRUK PARKIR BERTAHAN SAAT DIMUAT ULANG** ("Ya, simpan di perangkat") — penyimpanan **SESI** tab ini (`sessionStorage`,
+`KUNCI_SIMPAN_KERANJANG`), bukan localStorage: tab lain tidak ikut memegang keranjang yang sama, jadi satu keranjang tidak bisa dicatat dua kali.
+- Isi per akun (uid) + tanggal: keranjang, struk parkir, struk aktif, pelanggan, cara bayar, potongan, ikatan pesanan. TIDAK: tukar (struk / keranjang
+  bertukar tidak disimpan), karcis yang dirinci, nota terakhir, uang diterima, buka kredit sekali. Batas 200.000 huruf.
+- Dipulihkan saat akun yang masuk diketahui (`app.js gambarAkun` → `layar.pulihkanKeranjang`) bila akun & tanggal sama dan layar belum berisi; sebelum
+  itu layar tidak menulis (gambar pertama tidak menghapus simpanan). Akun lain / hari lain → dibuang. Cermin stok yang dipegang ikut (rak memakai
+  `sinkronKeranjang` atas keadaan yang dipulihkan). Dihapus begitu keranjang & parkir kosong (nota tercatat / dibuang) dan saat ganti orang
+  (`lupakanOrang`). Semua akses dibungkus try/catch (mode privat Safari). Tidak bertahan bila TAB / web app ditutup (penyimpanan sesi ikut hilang).
+
+**J3 · SIMPAN NOTA LEBIH CEPAT** — `simpanNota` memeriksa ulang stok lewat `chipDariBaris` → `rakUntukChip`, yang dulu menyusun SELURUH rak (sisa tiap
+chip, Sering) tiap kali data berubah — dan data selalu berubah sesudah tiap nota. Kini rak IDENTITAS (`susunRak(s, { identitas: true })`: chip, nama,
+harga, modal, urutan, rak Wadah, isian berat karung sama; tanpa sisa/Sering/kelompok). Cadangan toko lokal (jsc): simpanNota ±84 ms → ±18 ms; dokumen
+nota byte-sama (`uji_catat_nota_cepat.py`, pembanding cara lama vs baru).

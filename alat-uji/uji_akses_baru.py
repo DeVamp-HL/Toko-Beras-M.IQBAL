@@ -22,7 +22,7 @@ sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/data/antre-lokal.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
-                                  'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js',
+                                  'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/sistem-logika.js',
                                   'baru/js/layar/arsip-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/data/katalog-kasir.js',
                                   'baru/js/layar/struk-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/riwayat-logika.js']   # 39b no. 37: riwayat memakai rtDasarRetur (retur-logika)
 JAM = ("var __RealDate = Date; var __KINI = new __RealDate('2026-09-24T10:00:00+07:00').getTime();\n"
@@ -277,7 +277,7 @@ var iTanya = A.indexOf("(await tanyaIsian(daftar, B, hanyaKeranjang)) !== 'koson
 ok('ganti orang (23c keranjang → 23d semua isian): Keluar dengan isian DITANYA dulu (sebelum pertanyaan catatan belum terkirim), isian ketujuh layar dilupakan tepat sebelum keluar; keluar dari tempat lain / nonaktif / akun berbeda = dilupakan tanpa ditanya; kalimat owner persis',
   iTanya > 0 && iBelum > iTanya && iLupa > iBelum && A.indexOf("if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { lupakanSemua(); uidKeranjang = ''; return; }") > 0 && A.indexOf('if (uidKeranjang && uidKeranjang !== akun.uid) lupakanSemua();') > 0
   && A.indexOf("const LAYAR_ISIAN = () => [['Jual', 'jual', layar], ['Stok', 'stok', stok], ['Pelanggan', 'pelanggan', pelanggan], ['Harga', 'harga', harga], ['Uang', 'uang', uang], ['Laporan', 'laporan', laporan], ['Menu', 'menu', menu]];") > 0
-  && SUMBER.layar_jual.indexOf('lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))') > 0 && SUMBER.html.indexOf('id="modalKeranjang"') > 0);
+  && SUMBER.layar_jual.indexOf('lupakanOrang: () => { lupakanSimpanan(); K.setel((s) => L.keadaanOrangBerikutnya(s)); }') > 0 && SUMBER.html.indexOf('id="modalKeranjang"') > 0);   // owner 7 Okt: simpanan keranjang tab ini ikut dilupakan
 // ---- 13 · PIL AKUN (owner 24 Sep): nama yang masuk SELALU terlihat di pil kepala; Keluar satu ketukan lewat pil; tirai menutup lembar akun (uji peramban: uji_layar_kunci.py)
 var iRingkas = A.indexOf('function statusRingkas() {'), tubuhRingkas = iRingkas > 0 ? A.slice(iRingkas, A.indexOf('\n}', iRingkas)) : '';
 ok('pil akun: nama yang masuk selalu di depan (juga saat memuat / tanpa internet / menunggu server) — satu-satunya jalan keluar statusRingkas; tirai menutup lembar akun; kedelapan layar memasang pil data-pil-akun',

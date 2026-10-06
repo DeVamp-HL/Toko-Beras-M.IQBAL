@@ -45,7 +45,7 @@ from uji_antrean_kasir import CHROME, layani, buka, hasil_dari, teks_stat  # noq
 import uji_antrean_kasir as UA  # noqa: E402  (owner 3 Okt, perkuat: PENJAGA_CSP, csp_salinan & periksa dibaca saat dipakai — kontrol bisa menggantinya)
 
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/data/katalog-kasir.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/data/katalog-kasir.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js']
 BERKAS = ['baru/js/mesin/pembantu.js', 'baru/js/data/firebase.js', 'baru/js/layar/harga.js', 'baru/js/layar/ringkasan.js', 'kasir-darurat-nominal.html',
           'sw-kasir.js', 'baru/js/data/kunci-periode.js'] + MODUL
 JAM = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"

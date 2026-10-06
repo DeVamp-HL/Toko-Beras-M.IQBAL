@@ -86,7 +86,8 @@ export function pakaiTebakan(s, t) {
     const chip = (rak[x.jalur] || []).find((c) => c.kunci === x.kunci && (!x.berat || c.berat === x.berat)); if (!chip) return { kabar: x.kunci + ' tidak ada di rak (harga/stoknya tidak terbaca) — pilih barangnya sendiri', kabarAwas: true };
     const p = masukkan(Object.assign({}, st, { pilih: chip, ketik: '' }), x.jumlah); if (p.kabarAwas) return p;
     st = Object.assign(st, p);
-    if (x.hargaPas) { const b = st.keranjang[st.keranjang.length - 1]; const q = terapkanNego(st, b.id, Math.round(x.hargaPas / x.jumlah)); if (q.keranjang) { st = Object.assign(st, q); const bb = st.keranjang[st.keranjang.length - 1]; if (bb.trx.hargaTotal !== x.hargaPas) bb.trx.hargaTotal = x.hargaPas; } }
+    // owner 7 Okt (JS2-C): harga PAS karcis = penjualan yang SUDAH terjadi di kasir darurat — di bawah modal pun dicatat apa adanya, alasannya tertulis
+    if (x.hargaPas) { const b = st.keranjang[st.keranjang.length - 1]; const q = terapkanNego(Object.assign({}, st, { negoAlasan: 'harga pas karcis kasir darurat' }), b.id, Math.round(x.hargaPas / x.jumlah)); if (q.keranjang) { st = Object.assign(st, q); const bb = st.keranjang[st.keranjang.length - 1]; if (bb.trx.hargaTotal !== x.hargaPas) bb.trx.hargaTotal = x.hargaPas; } }
   }
   return { keranjang: st.keranjang, urutBaris: st.urutBaris, pilih: null, lembar: null, ketik: '', kcPilih: null, kabar: 'Tebakan dipakai: ' + t.label + ' — periksa lalu SIMPAN RINCIAN', kabarAwas: false };
 }

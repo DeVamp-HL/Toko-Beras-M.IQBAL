@@ -13,7 +13,10 @@ import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir da
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
 import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman } from '../data/toko.js';
-import { tombolAkun, tombolLuarKisi, batasBarisNota, batasDokumenKirim, bukanOwner } from './akses-layar.js';
+import { tombolAkun, tombolLuarKisi, batasBarisNota, batasDokumenKirim, bukanOwner, hakAkun, bolehMintaOwner } from './akses-layar.js';
+// owner 7 Okt (JS2-C): batas nego per orang + Buku Nego; keputusan owner atas permintaan nego = penyusun papan persetujuan yang sama (Menu › Sistem › Peran)
+import * as NG from './nego-logika.js';
+import { susunPutusPersetujuan } from './sistem-logika.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
 import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit, sejajarkanLagi } from './adegan.js';
 
@@ -40,6 +43,8 @@ export function pasangLayarJual(akar, opsi) {
   const S = () => K.baca();
   // putaran 23c: akun bukan-owner — batas baris per nota (batas sekali kirim ke server) ikut ke logika setiap kali keranjang bertambah / nota dicatat
   const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });   // putaran 31b: hanya owner boleh jual dulu tandai dicocokkan
+  // owner 7 Okt (JS2-C): batas nego per orang — akun yang masuk & kisi nego-nya ikut ke logika nego (tawar, bangun ulang baris bernego, minta owner)
+  const SBN = () => Object.assign(SB(), { negoAkun: opsi.akun ? opsi.akun() : null, negoHak: hakAkun(opsi.akun ? opsi.akun() : null, 'nego') });
 
   // 25c (owner 27 Sep): jenis beras juga di Jual — BARIS SARING di atas rak, bukan tata letak baru: urutan rak per ukuran, termurah dulu (desain
   // Jual yang dikunci) tetap. Pilihan saring = tampilan saja (bukan isian, bukan data), ikut ke jalur lain selama jenisnya ada di sana.
@@ -79,11 +84,22 @@ export function pasangLayarJual(akar, opsi) {
     },
     bukaKeranjang: () => set({ lembar: S().lembar === 'keranjang' ? null : 'keranjang' }),
     hapusBaris: ({ id }) => set(L.hapusBaris(S(), id)),
-    kurangBaris: ({ id, langkah }) => set(L.ubahJumlahBaris(S(), id, -Number(langkah || 1))),
-    tambahBaris: ({ id, langkah }) => set(L.ubahJumlahBaris(S(), id, Number(langkah || 1))),
-    // audit 39b no. 22: nego & potongan nota = tindakan SS2 'nego' (kisi × server) — tombol mati berkata sebabnya, seperti jual bon
-    nego: ({ id }) => { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'nego'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ negoId: id, lembar: 'nego', ketik: '' }); },
-    terapkanNego: () => set(L.terapkanNego(S(), S().negoId, L.angkaKetik(S().ketik))),
+    // owner 7 Okt: baris bernego yang dibangun ulang diputus lagi atas nama akun yang masuk (SBN)
+    kurangBaris: ({ id, langkah }) => set(L.ubahJumlahBaris(SBN(), id, -Number(langkah || 1))),
+    tambahBaris: ({ id, langkah }) => set(L.ubahJumlahBaris(SBN(), id, Number(langkah || 1))),
+    // audit 39b no. 22: potongan nota = tindakan SS2 'nego' (kisi × server) — tombol mati berkata sebabnya, seperti jual bon.
+    // owner 7 Okt (JS2-C): NEGO harga per baris terbuka bagi yang punya jatah (% margin, setelan owner per orang) — lebih dalam dari jatah minta owner
+    nego: ({ id }) => { const a = opsi.akun ? opsi.akun() : null; const tb = NG.ngBolehNego(a, hakAkun(a, 'nego')); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ negoId: id, lembar: 'nego', ketik: '', negoAlasan: '', negoMinta: null }); },
+    terapkanNego: () => set(L.terapkanNego(SBN(), S().negoId, L.angkaKetik(S().ketik))),
+    negoAlasan: (v) => set({ negoAlasan: String(v || '').slice(0, 80) }),
+    pakaiBatasNego: () => { const m = S().negoMinta; if (m && m.batas) set(L.terapkanNego(SBN(), m.id, m.batas)); },
+    mintaOwnerNego: () => { const a = opsi.akun ? opsi.akun() : null; const mb = bolehMintaOwner(a) || {}; if (!mb.boleh) return set({ kabar: mb.kalimat || 'Minta owner belum bisa dari perangkat ini', kabarAwas: true }); tulisUmum(L.susunMintaNego(SBN(), L.waktuSekarang(S().sekarang || undefined))); },
+    pakaiSetuju: ({ id, harga }) => set(L.terapkanNego(SBN(), id, Number(harga))),
+    // Buku Nego (JS2-C): owner melihat tiap nego hari ini & memutus permintaan nego — keputusan = susunPutusPersetujuan (papan persetujuan yang sama)
+    bukaBukuNego: () => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ lembar: 'bukuNego', ngAlasanTolak: '', kabar: '' }); },
+    ngAlasanTolak: (v) => set({ ngAlasanTolak: String(v || '').slice(0, 80) }),
+    ngSetujui: ({ id }) => tulisUmum(susunPutusPersetujuan(id, true, '', L.waktuSekarang(S().sekarang || undefined))),
+    ngTolak: async ({ id }) => { await tulisUmum(susunPutusPersetujuan(id, false, S().ngAlasanTolak, L.waktuSekarang(S().sekarang || undefined))); if (!S().kabarAwas) set({ ngAlasanTolak: '' }); },
     bukaPotongan: () => { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'nego'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ lembar: 'potongan', ketik: '' }); },
     terapkanPotongan: () => set(L.setelPotongan(S(), L.angkaKetik(S().ketik))),
     hapusPotongan: () => set(L.setelPotongan(S(), 0)),
@@ -197,7 +213,7 @@ export function pasangLayarJual(akar, opsi) {
     tutupKabar: () => set({ kabar: '' }),
     // ---- putaran 3 ----
     namaRepack: (v) => set({ namaRepack: String(v || '').slice(0, 60) }),
-    bonus: ({ id }) => set(L.toggleBonus(S(), id)),
+    bonus: ({ id }) => set(L.toggleBonus(SBN(), id)),
     // tinjauan no. 22: pengganti retur (nota Rp0) = retur & tukar → owner saja; bukan-owner: tombol menyebut sebabnya (penjaga kiriman juga menolak)
     penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(S(), id)); },
     bukaPesanan: ({ saring }) => set({ lembar: 'pesanan', psSaring: saring || '' }),
@@ -553,6 +569,8 @@ export function pasangLayarJual(akar, opsi) {
     const KCn = KC.daftarKarcis(s.sekarang || new Date()); const KH = KC.hitungKarcis(s);   // PUTARAN 20
     const TB = L.notaTembusBelumCocok();   // putaran 31b
     const KDH = KC.karcisDaruratHari(s.sekarang || new Date());   // PUTARAN 25b: catatan kasir darurat hari ini (batalkan yang salah ketik)
+    // owner 7 Okt (JS2-C): owner — permintaan nego yang menunggu; yang meminta — persetujuan owner yang siap dipakai di baris keranjangnya
+    const NGM = bukanOwner(opsi.akun ? opsi.akun() : null) ? 0 : NG.ngMenunggu().length; const NGS = L.setujuSiap(SBN());
     document.body.classList.toggle('ada-lembar', !!s.lembar && s.lembar !== 'keranjang');
     document.body.classList.toggle('keranjang-terbuka', s.lembar === 'keranjang');
     pasang(akar, h`
@@ -569,9 +587,11 @@ export function pasangLayarJual(akar, opsi) {
         // rapi-rapi 29 Sep: pita "Nota dicatat ke data toko … · tersambung" mengulang keadaan yang sudah tertulis di kepala → hanya tampil untuk keadaan
         // yang WAJIB dilihat (tanpa internet, ditolak server); keadaan normal / memuat cukup di bawah judul
         const aw = opsi.statusAwas ? opsi.statusAwas() : ''; return aw ? h`<div class="pita-info awas baca-saja">${aw}</div>` : ''; })()}
-      ${s.kabar || adaUrung || s.karcis || ((KCn.daftar.length || KDH.length) && s.lembar !== 'karcis') ? h`<div class="kabar-kotak">
+      ${s.kabar || adaUrung || s.karcis || NGM || NGS.length || ((KCn.daftar.length || KDH.length) && s.lembar !== 'karcis') ? h`<div class="kabar-kotak">
         ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : ''}" data-aksi="tutupKabar">${s.kabar}</div>` : ''}
         ${s.tembusTanya && s.tembusTanya.length && s.keranjang.length && s.lembar !== 'bayar' ? h`<div class="pita-info emas" data-k="pita-tembus" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Jual dulu, tandai untuk dicocokkan: ${s.tembusTanya.map((t) => t.nama + ' kurang ' + String(Math.round(t.selisihKg * 10) / 10).replace('.', ',') + ' kg').join(', ')} — buku dibiarkan minus sampai dicocokkan</span><span class="kaca-btn awas" data-aksi="simpanTembus">JUAL DULU, TANDAI</span></div>` : ''}
+        ${NGM && s.lembar !== 'bukuNego' ? h`<div class="pita-info awas" data-k="pita-nego-menunggu" data-aksi="bukaBukuNego" style="cursor: pointer;">${NGM} permintaan nego menunggu owner — ketuk untuk menyetujui / menolak (Buku nego)</div>` : ''}
+        ${NGS.map((x) => h`<div class="pita-info emas" data-k="pita-nego-siap-${x.id}" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Owner menyetujui nego ${x.label} ${RP(x.harga)}</span><span class="kaca-btn" data-aksi="pakaiSetuju" data-id="${x.id}" data-harga="${x.harga}">pakai</span></div>`)}
         ${TB.n && s.lembar !== 'karcis' ? h`<div class="pita-info awas" data-k="pita-tembus-belum">${TB.n} nota tembus stok belum dicocokkan: ${TB.ringkas} — cocokkan di Stok › Cocokkan (tanda tuntas sendiri)</div>` : ''}
         ${s.karcis ? h`<div class="pita-info emas" data-k="pita-karcis" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>${s.karcis.jenisAsal === 'karcis' ? 'RINCI KARCIS' : 'RAPIKAN NOTA'} ${KC.kcEkor(s.karcis.id)} · ${RP(s.karcis.nominal)} · ${KH ? KH.teks : ''}</span><span style="display: flex; gap: 6px;"><span class="kaca-btn" data-aksi="bukaKarcis">tebakan ›</span><span class="kaca-btn putus" data-aksi="karcisLepas">lepas</span></span></div>` : ''}
         ${!s.karcis && KCn.daftar.length && s.lembar !== 'karcis' ? h`<div class="pita-info awas" data-k="pita-antrean-karcis" data-aksi="bukaKarcis" style="cursor: pointer;">${KCn.nKarcis ? KCn.nKarcis + ' karcis kasir belum dirinci (' + RP(KCn.total) + ')' : ''}${KCn.nKarcis && KCn.nRapikan ? ' · ' : ''}${KCn.nRapikan ? KCn.nRapikan + ' nota kasir perlu dirapikan' : ''} — ketuk untuk merinci atau membatalkan yang salah ketik</div>` : ''}
@@ -598,7 +618,7 @@ export function pasangLayarJual(akar, opsi) {
         <div class="isi-keranjang">
           <div class="keranjang" data-k="keranjang-${s.aktifId}">
             ${s.keranjang.length ? s.keranjang.map((b) => h`<div class="b ${b.trx.penggantiRetur ? 'pengganti' : ''}" data-k="baris-${b.id}">
-              <div class="t"><div style="font-weight: 600;">${b.trx.label}</div><div class="ket">${DESIMAL(b.trx.jumlah)} ${b.trx.satuan} × ${RP(b.trx.hargaSatuan)}${b.trx.nego ? ' · nego' : ''}${b.trx.kemasanLiteran ? ' · ' + (b.trx.jumlahKemasanLiteranDipakai || 1) + ' kantong' : ''}${b.trx.bonusUnit ? ' · +1 bonus (stok ' + b.trx.jumlahUnit + ')' : ''}${b.trx.penggantiRetur ? ' · PENGGANTI RETUR, nilai ' + RP(b.trx.nilaiBarangPengganti) : ''}${b.trx.kemasanRepack ? ' · ' + b.trx.jumlahKemasanRepackDipakai + ' lembar ' + ((WJ.jenisWadah(b.trx.kemasanRepack) || {}).label || b.trx.kemasanRepack) + ' ditanggung toko' + (b.trx.biayaKemasanRepack ? ' (HPP +' + RP(b.trx.biayaKemasanRepack) + ')' : ' (modal belum ada)') : ''}${b.trx.upahRepack ? ' · upah repack ' + RP(b.trx.upahRepack) : ''}${b.trx.jenis === 'wadah' && b.trx.hppTotalSaatJual === undefined ? ' · tanpa modal: belum masuk hitungan laba' : ''}</div></div>
+              <div class="t"><div style="font-weight: 600;">${b.trx.label}</div><div class="ket">${DESIMAL(b.trx.jumlah)} ${b.trx.satuan} × ${RP(b.trx.hargaSatuan)}${b.trx.nego ? ' · nego' + (b.trx.negoStatus === 'disetujui' ? ' disetujui owner' : b.trx.negoStatus === 'bawahModal' ? ' di bawah modal (' + (b.trx.negoAlasan || '') + ')' : '') : ''}${b.trx.kemasanLiteran ? ' · ' + (b.trx.jumlahKemasanLiteranDipakai || 1) + ' kantong' : ''}${b.trx.bonusUnit ? ' · +1 bonus (stok ' + b.trx.jumlahUnit + ')' : ''}${b.trx.penggantiRetur ? ' · PENGGANTI RETUR, nilai ' + RP(b.trx.nilaiBarangPengganti) : ''}${b.trx.kemasanRepack ? ' · ' + b.trx.jumlahKemasanRepackDipakai + ' lembar ' + ((WJ.jenisWadah(b.trx.kemasanRepack) || {}).label || b.trx.kemasanRepack) + ' ditanggung toko' + (b.trx.biayaKemasanRepack ? ' (HPP +' + RP(b.trx.biayaKemasanRepack) + ')' : ' (modal belum ada)') : ''}${b.trx.upahRepack ? ' · upah repack ' + RP(b.trx.upahRepack) : ''}${b.trx.jenis === 'wadah' && b.trx.hppTotalSaatJual === undefined ? ' · tanpa modal: belum masuk hitungan laba' : ''}</div></div>
               <span class="step"><span data-aksi="kurangBaris" data-id="${b.id}" data-langkah="${b.trx.satuan === 'karung' ? 0.5 : 1}">−</span><span class="n">${DESIMAL(b.trx.jumlah)}</span><span data-aksi="tambahBaris" data-id="${b.id}" data-langkah="${b.trx.satuan === 'karung' ? 0.5 : 1}">+</span></span>
               <div class="h" data-aksi="nego" data-id="${b.id}" title="ketuk untuk nego">${RP(b.trx.hargaTotal)}</div>
               <span class="hapus" data-aksi="hapusBaris" data-id="${b.id}">${mentah(IKON.hapus)}</span>
@@ -667,7 +687,7 @@ export function pasangLayarJual(akar, opsi) {
   function gambarRiwayat(s) {
     const R = RW.rwSusun(s, s.sekarang || new Date()); const seg = (aksi, kunci, nilai, aktif, nama) => h`<div class="seg ${aktif ? 'aktif' : ''}" data-aksi="${aksi}" data-${kunci}="${nilai}">${nama}</div>`;
     const status = { batal: 'DIBATALKAN', dirinci: 'sudah dirinci jadi nota lain', sebagian: 'sebagian baris dibatalkan' };
-    return h`<div class="pita-info" data-k="rw-ringkas"><b>Riwayat penjualan</b> · ${R.ringkas}<br><span class="ket">${R.saringTeks}${R.saringTeks.indexOf('Saringan') === 0 ? h` · <span class="tautan" data-aksi="rwBersih">hapus saringan</span>` : ''}</span></div>
+    return h`<div class="pita-info" data-k="rw-ringkas"><b>Riwayat penjualan</b> · ${R.ringkas}<br><span class="ket">${R.saringTeks}${R.saringTeks.indexOf('Saringan') === 0 ? h` · <span class="tautan" data-aksi="rwBersih">hapus saringan</span>` : ''}${bukanOwner(opsi.akun ? opsi.akun() : null) ? '' : h` · <span class="tautan" data-aksi="bukaBukuNego">buku nego hari ini ›</span>`}</span></div>
       <input class="ketik-nama" id="rwCari" type="text" value="${s.rwCari}" data-ketik="rwCari" placeholder="cari nama pembeli / barang / nominal">
       <div class="jalur bungkus rapat" data-k="rw-periode" style="flex-wrap: wrap; overflow: visible;">${RW.RW_PERIODE.map(([id, nm]) => seg('rwPeriode', 'p', id, (s.rwPeriode || 'semua') === id, nm))}</div>
       <div class="jalur bungkus rapat" data-k="rw-jenis" style="flex-wrap: wrap; overflow: visible;">${RW.RW_JENIS.map(([id, nm]) => seg('rwJenis', 'j', id, (s.rwJenis || '') === id, nm))}</div>
@@ -760,13 +780,30 @@ export function pasangLayarJual(akar, opsi) {
       </div>`;
     }
     if (s.lembar === 'nego') {
+      // owner 7 Okt (JS2-C "Buku Nego" + tangga): katalog → batas jatah orang ini → modal (modal hanya disebut ke owner); harga yang diketik langsung diputus
       const b = s.keranjang.find((x) => x.id === s.negoId); if (!b) return '';
+      const a = opsi.akun ? opsi.akun() : null; const owner = !bukanOwner(a); const A = NG.ngAtur(); const jatah = NG.ngJatah(a, A);
+      const modal = NG.ngModalSatuan(b.trx); const batas = NG.ngBatas(b.trx.hargaAsli, modal, jatah, A.langkah); const sat = '/' + b.trx.satuan;
+      const ketik = L.angkaKetik(s.ketik); const p = ketik > 0 ? L.putusNego(SBN(), b.id, ketik) : null;
+      const m = s.negoMinta && s.negoMinta.id === b.id && s.negoMinta.harga === ketik ? s.negoMinta : null; const mb = bolehMintaOwner(a) || {};
+      const tangga = 'katalog ' + RP(b.trx.hargaAsli) + sat + (modal === null ? ' · modal belum tercatat' : (owner ? ' · modal ' + RP(Math.round(modal)) + sat : '') + ' · jatah ' + (owner ? 'owner' : (a && a.nama) || 'akun ini') + ' ' + jatah + ' % margin' + (batas !== null ? ' → paling rendah ' + RP(batas) + sat : ''));
+      const label = !p ? 'PAKAI HARGA INI' : p.status === 'minta' ? 'MINTA OWNER ›' : p.status === 'katalog' ? 'KEMBALI KE HARGA KATALOG' : p.status === 'bawahModal' ? 'PAKAI — DI BAWAH MODAL' : NG.ngBolehPakai(p) ? 'PAKAI HARGA INI' : 'BELUM BISA — lihat kalimatnya';
+      const kelas = !p ? '' : NG.ngBolehPakai(p) ? (p.status === 'bawahModal' ? 'awas' : 'emas') : 'awas';
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
-        ${kepala('Nego ' + b.trx.label, 'harga sekarang ' + RP(b.trx.hargaSatuan) + '/' + b.trx.satuan + ' · ketik harga barunya')}
-        <div class="angka">${s.ketik ? RP(L.angkaKetik(s.ketik)) : 'Rp0'}</div>
-        ${tuts('terapkanNego', 'PAKAI HARGA INI')}
+        ${kepala('Nego ' + b.trx.label, 'harga sekarang ' + RP(b.trx.hargaSatuan) + sat + (b.trx.nego ? ' (' + (NG.NG_LABEL[b.trx.negoStatus] || 'nego') + ')' : '') + ' · ketik harga barunya')}
+        <div class="ket" data-k="ng-tangga">${tangga}</div>
+        <div class="angka">${s.ketik ? RP(ketik) : 'Rp0'}</div>
+        ${p ? h`<div class="pita-info ${kelas}" data-k="ng-putus">${RP(p.harga)}${sat} · ${p.teks}</div>` : ''}
+        ${p && p.dibawahModal && NG.ngBolehBawahModal(a, A) ? h`<input class="ketik-nama" id="negoAlasan" type="text" value="${s.negoAlasan}" data-ketik="negoAlasan" placeholder="Alasan di bawah modal, mis. karung sobek (wajib, tercatat di nota)">` : ''}
+        ${m ? h`<div class="kartu" data-k="ng-minta" style="gap: 6px;"><div class="ket">Harga nota tetap ${RP(b.trx.hargaSatuan)}${sat} sampai owner menyetujui. Pembeli menunggu? Pakai batas jatah dulu, atau owner yang mencatat nota ini.</div>
+          <div class="tombol-baris rapat">${m.batas ? h`<div class="kaca-btn aktif" data-aksi="pakaiBatasNego">PAKAI BATAS ${RP(m.batas)}</div>` : ''}${mb.boleh ? h`<div class="kaca-btn aktif emas" data-aksi="mintaOwnerNego">MINTA OWNER</div>` : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="${mb.kalimat || ''}">MINTA OWNER</div>`}</div>
+          ${mb.boleh ? '' : h`<div class="ket awas-teks" style="font-size: 11px;">${mb.kalimat || ''}</div>`}</div>` : ''}
+        ${pitaTolak(s, 'nego')}
+        ${tuts('terapkanNego', label)}
+        ${owner ? h`<div class="ket" style="text-align: center; cursor: pointer; text-decoration: underline;" data-aksi="bukaBukuNego">buku nego hari ini ›</div>` : ''}
       </div>`;
     }
+    if (s.lembar === 'bukuNego') return gambarBukuNego(s, L1, muncul, kepala);
     if (s.lembar === 'potongan') {
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Potongan nota', 'nominal, dipotong dari subtotal ' + RP(t.subtotal))}
@@ -953,6 +990,25 @@ export function pasangLayarJual(akar, opsi) {
     return '';
   }
 
+  // ---------- owner 7 Okt (JS2-C): BUKU NEGO — tiap nego hari ini (siapa · barang · katalog → nego · selisih) + permintaan yang menunggu owner ----------
+  function gambarBukuNego(s, L1, muncul, kepala) {
+    const B = NG.ngBuku(hariIniIso(s.sekarang)); const owner = !bukanOwner(opsi.akun ? opsi.akun() : null);
+    const tanda = (st) => (st === 'menunggu' || st === 'bawahModal' || st === 'ditolak' ? 'pil status-diantar ng-awas' : st === 'disetujui' || st === 'dipakai' ? 'pil status-diantar' : 'pil');
+    const selisih = (x) => (x.selisih < 0 ? '−' : '+') + RP(Math.abs(x.selisih)) + ' × ' + DESIMAL(x.jumlah) + ' = ' + (x.totalSelisih < 0 ? '−' : '+') + RP(Math.abs(x.totalSelisih));
+    return h`${L1}<div class="lembar ${muncul}" data-k="lembar-bukuNego">
+      ${kepala('Buku nego', B.judul)}
+      ${pitaTolak(s, 'bukuNego')}
+      <div class="kartu daftar-nota" data-k="ng-buku" style="max-height: none;">${B.baris.map((x) => h`<div class="baris-nota" data-k="ng-${x.jenis}-${x.id}" style="cursor: default;">
+        <div class="atas"><span><b>${x.barang}</b> · ${x.oleh || '—'}${x.pembeli ? ' · ' + x.pembeli : ''}</span><span class="n">${RP(x.harga)}</span></div>
+        <div class="ket">${x.tanggal && x.tanggal !== hariIniIso(s.sekarang) ? tanggalPendek(x.tanggal) + ' ' : ''}${x.jam} · katalog ${RP(x.hargaAsli)} → ${RP(x.harga)} · ${selisih(x)}${x.jatah !== undefined && x.jatah !== null ? ' · jatah ' + x.jatah + ' %' : ''}${x.alasan ? ' · alasan: ' + x.alasan : ''}${x.alasanTolak ? ' · ditolak: ' + x.alasanTolak : ''}</div>
+        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding-top: 4px;"><span class="${tanda(x.status)}">${NG.NG_LABEL[x.status] || x.status}</span>
+          ${owner && x.jenis === 'minta' && x.status === 'menunggu' ? h`<span class="kaca-btn kecil aktif emas" data-aksi="ngSetujui" data-id="${x.id}">setujui</span><span class="kaca-btn kecil awas" data-aksi="ngTolak" data-id="${x.id}">tolak</span>` : ''}</div>
+      </div>`)}${B.baris.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Belum ada nego hari ini.</div>`}</div>
+      ${owner && B.menunggu ? h`<input class="ketik-nama" id="ngAlasanTolak" type="text" value="${s.ngAlasanTolak}" data-ketik="ngAlasanTolak" placeholder="Alasan kalau menolak (wajib) — yang meminta melihatnya">` : ''}
+      <div class="ket" style="font-size: 11px;">Tiap nego tercatat: siapa, barang apa, dari harga katalog jadi berapa, dan selisihnya. Jatah = bagian dari MARGIN barang (setelan di Menu › Sistem › Peran › Atur), jadi ikut berubah waktu modal naik. Yang "menunggu owner" belum mengubah harga notanya sampai disetujui.</div>
+    </div>`;
+  }
+
   // ---------- putaran 15: repack + wadah (merek kemasan → ukuran → lembar → dijual / ditanggung; upah per nota) ----------
   function gambarRepackWadah(s) {
     const kg = L.angkaKetik(s.ketik); const daftar = WJ.daftarAturWadah(); const dw = s.rpWadah ? daftar.find((d) => d.jenis === s.rpWadah) : null;
@@ -1021,6 +1077,21 @@ export function pasangLayarJual(akar, opsi) {
   }
 
   K.dengar(() => { gambar(); gulirkan(akar, RP); });
+  // ---- owner 7 Okt (J2, "Ya, simpan di perangkat"): keranjang & struk parkir BERTAHAN saat halaman dimuat ulang — penyimpanan SESI tab ini, per akun + hari ini
+  //      (isi & batasnya: jual-logika susunSimpanKeranjang). Baru menulis sesudah pemulihan untuk akun yang masuk dicoba (app.js → pulihkanKeranjang), supaya
+  //      keranjang kosong saat memuat tidak menghapus simpanan sebelum sempat dipulihkan. Mode privat Safari / penyimpanan penuh → diam, keranjang tetap jalan.
+  let _simpanUid = null;
+  const bacaSimpanan = () => { try { const v = sessionStorage.getItem(L.KUNCI_SIMPAN_KERANJANG); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
+  const tulisSimpanan = (v) => { try { if (v) sessionStorage.setItem(L.KUNCI_SIMPAN_KERANJANG, JSON.stringify(v)); else sessionStorage.removeItem(L.KUNCI_SIMPAN_KERANJANG); } catch (e) { /* mode privat / penuh */ } };
+  const simpanKeranjang = (s) => { if (_simpanUid) tulisSimpanan(L.susunSimpanKeranjang(s, _simpanUid, hariIniIso(s.sekarang || new Date()))); };
+  K.dengar(simpanKeranjang);
+  function pulihkanKeranjang(akun) {
+    const uid = akun && akun.uid ? String(akun.uid) : ''; if (!uid || _simpanUid === uid) return;
+    _simpanUid = uid;
+    const p = L.pulihSimpanKeranjang(bacaSimpanan(), uid, hariIniIso(S().sekarang || new Date()), S());
+    if (p) { _rakBasi = true; set(p); } else simpanKeranjang(S());   // akun lain / hari lain / layar sudah berisi → simpanan diganti keadaan sekarang (kosong = dihapus)
+  }
+  function lupakanSimpanan() { _simpanUid = null; tulisSimpanan(null); }
   let _jamUrung = null;
   K.dengar((s) => { clearTimeout(_jamUrung); if (s.notaTerakhir) _jamUrung = setTimeout(gambar, Math.max(0, L.BATAS_URUNGKAN_DETIK * 1000 - (Date.now() - s.notaTerakhir.pada) + 50)); });
   const gambarGulir = () => { gambar(); gulirkan(akar, RP); };
@@ -1028,5 +1099,6 @@ export function pasangLayarJual(akar, opsi) {
   gambar(); gulirkan(akar, RP);
   // putaran 23c: keranjang tidak terbawa ke akun berikutnya — app.js menanyakannya saat Keluar lalu melupakannya
   const tampilkan = (ya) => { const tadi = _tampil; _tampil = !!ya; if (_tampil && !tadi && (_kotor || !akar.firstElementChild)) { _kotor = false; segera(gambarGulir); } };
-  return { keadaan: K, gambar, gambarGulir, tampilkan, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s)) };
+  return { keadaan: K, gambar, gambarGulir, tampilkan, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), pulihkanKeranjang,
+    lupakanOrang: () => { lupakanSimpanan(); K.setel((s) => L.keadaanOrangBerikutnya(s)); } };   // owner 7 Okt: simpanan keranjang ikut dilupakan saat ganti orang
 }

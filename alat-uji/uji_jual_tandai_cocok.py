@@ -116,7 +116,7 @@ pulih(); mulai(); beli27('Angsa', 2); beli27('Beo', 1); terap(uangPas(s)); terap
 var tanya = simpanNota(Object.assign({}, s, { tembusBoleh: true }), W).perluTembus; terap({ tembusTanya: tanya }); var s27 = s;
 var idA = s27.keranjang[0].id; var sesudah = function (p) { return Object.assign({}, s27, lepasTembusBasi(s27, p)).tembusTanya; };
 ok('39b-27 lepasTembusBasi: hapus baris, ubah jumlah, nego, parkir, pembeli lain, buka struk lain, masukkan → pertanyaan dibuang (null)',
-  [hapusBaris(s27, idA), ubahJumlahBaris(s27, s27.keranjang[1].id, -1), terapkanNego(s27, idA, 14000), parkir(s27), pembeliLain(s27), { keranjang: [] }].every(function (p) { return !!p.keranjang && sesudah(p) === null; }),
+  [hapusBaris(s27, idA), ubahJumlahBaris(s27, s27.keranjang[1].id, -1), terapkanNego(Object.assign({}, s27, { negoAlasan: 'bahan uji' }), idA, 14000), parkir(s27), pembeliLain(s27), { keranjang: [] }].every(function (p) { return !!p.keranjang && sesudah(p) === null; }),
   J([hapusBaris(s27, idA), parkir(s27)].map(function (p) { return sesudah(p); })));
 ok('39b-27 lepasTembusBasi: patch tanpa keranjang (uang, lembar, cara, kabar), keranjang yang SAMA, dan patch yang menyetel tembusTanya sendiri (tolak / nota tercatat) dibiarkan',
   sesudah(uangPas(s27)) === tanya && sesudah({ lembar: 'bayar' }) === tanya && sesudah(pilihCara(s27, 'QRIS')) === tanya && sesudah({ keranjang: s27.keranjang }) === tanya
@@ -146,7 +146,7 @@ def periksa_statis(t):
     out = []; ok = lambda n, c, k='': out.append(('statis · ' + n, bool(c), k))
     jl = t['baru/js/layar/jual.js']; pb = t['baru/js/mesin/pembantu.js']
     ok('Jual: tembusBoleh hanya owner (bukanOwner), ketukan pertama menyimpan perluTembus, tombol "JUAL DULU, TANDAI" memanggil catatNota(true)', "tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null)" in jl and "tembusTanya: r.perluTembus || null" in jl and 'data-aksi="simpanTembus"' in jl and "simpanTembus: async () => aksi.catatNota(true)" in jl and "tembusYakin: tembusYakin === true" in jl)
-    ok('39b-27 Jual: SEMUA patch layar lewat lepasTembusBasi (keranjang berubah → pita & tombol "JUAL DULU, TANDAI" ikut dibuang); K.setel lain cuma lupakanOrang (keadaan awal)', "const set = (patch) => K.setel(L.lepasTembusBasi(K.baca(), patch));" in jl and jl.count('K.setel(') == 2 and "lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))" in jl)
+    ok('39b-27 Jual: SEMUA patch layar lewat lepasTembusBasi (keranjang berubah → pita & tombol "JUAL DULU, TANDAI" ikut dibuang); K.setel lain cuma lupakanOrang (keadaan awal)', "const set = (patch) => K.setel(L.lepasTembusBasi(K.baca(), patch));" in jl and jl.count('K.setel(') == 2 and "lupakanOrang: () => { lupakanSimpanan(); K.setel((s) => L.keadaanOrangBerikutnya(s)); }" in jl)   # owner 7 Okt: + simpanan keranjang dilupakan
     ok('Jual: pita "N nota tembus stok belum dicocokkan" dari notaTembusBelumCocok (pola pita karcis)', 'data-k="pita-tembus-belum"' in jl and 'const TB = L.notaTembusBelumCocok();' in jl and 'nota tembus stok belum dicocokkan' in jl)
     ok('katalog HP kasir (susunIsiKatalogKasir, verbatim index.html) tidak membaca perluCocokkan — kasir tetap menahan', 'perluCocokkan' not in pb)
     ok('stok-logika: kartu keempat menaruh baris tembus dari notaTembusBelumCocok', "const TB = notaTembusBelumCocok();" in t['baru/js/layar/stok-logika.js'] and "kunci: 'tembus|' + x.nama" in t['baru/js/layar/stok-logika.js'])

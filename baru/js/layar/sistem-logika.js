@@ -14,6 +14,8 @@ import { tempoPemasok } from './bon-pemasok-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
 import { semuaBon, pesanTagih } from './bon-logika.js';
 import { SERVER_BUKA } from '../data/akses.js';
+// owner 7 Okt (JS2-C): bawaan batas nego satu sumber
+import { NG_BAWAAN } from './nego-logika.js';
 
 export const ssHariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const ssTambahHari = (iso, n) => new Date((ssHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
@@ -38,7 +40,8 @@ export const SS_PENERIMA = ['Owner', 'Ben'];
 // ---------- ATUR SENDIRI — angka & daftar kebijakan owner, satu dokumen aturanToko per layar; bawaan = angka desain terkunci ----------
 export const SS_ATUR_BAWAAN = {
   perangkat: { batasAntre: 30, batasDenyut: 15, pemegang: ['Owner', 'Ben'] },
-  peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: 50, jejak: [] },
+  // owner 7 Okt (JS2-C): jatah nego per peran (% margin) + per akun (uid → %, kosong = ikut peran), siapa boleh di bawah modal ('owner' | peran | 'uid:…'), langkah batas
+  peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: NG_BAWAAN.ben, jatahKaryawan: NG_BAWAAN.karyawan, jatahAkun: {}, bawahModal: NG_BAWAAN.bawahModal.slice(), langkahNego: NG_BAWAAN.langkah, jejak: [] },
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
   pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'] },
@@ -61,7 +64,12 @@ export function susunAturSistem(id, isi, w) {
   const angka = (k, min, maks, satuan) => { const n = ssAngka(isi[k] !== undefined ? isi[k] : A[k], min, maks); if (n === null) return k + ' harus ' + min + '–' + maks + (satuan ? ' ' + satuan : ''); o[k] = Math.round(n); return ''; };
   let tolak = '';
   if (id === 'perangkat') { tolak = angka('batasAntre', 1, 600, 'menit') || angka('batasDenyut', 1, 600, 'menit'); o.pemegang = nama(isi.pemegang !== undefined ? isi.pemegang : A.pemegang); if (!tolak && !o.pemegang.some((x) => x.toLowerCase() === 'owner')) tolak = 'Owner tidak bisa dihapus dari daftar pencatat'; }
-  else if (id === 'peran') { tolak = angka('batasSekaligus', 0, 50000000, 'rupiah') || angka('jatahBen', 0, 100, '%'); o.hak = ssSalin(A.hak); o.jejak = (A.jejak || []).slice(0, 40);
+  else if (id === 'peran') { tolak = angka('batasSekaligus', 0, 50000000, 'rupiah') || angka('jatahBen', 0, 100, '%') || angka('jatahKaryawan', 0, 100, '%') || angka('langkahNego', 1, 1000000, 'rupiah'); o.hak = ssSalin(A.hak); o.jejak = (A.jejak || []).slice(0, 40);
+    // owner 7 Okt (JS2-C): jatah per akun — kosong = ikut perannya; di bawah modal — kunci yang dikenal saja (owner, peran, uid akun terdaftar)
+    const ja = isi.jatahAkun !== undefined ? isi.jatahAkun : A.jatahAkun; o.jatahAkun = {};
+    Object.keys(ja || {}).forEach((u) => { if (ssKosong(ja[u])) return; const n = ssAngka(ja[u], 0, 100); if (n === null) tolak = tolak || 'jatah nego per akun harus 0–100 %'; else o.jatahAkun[u] = Math.round(n); });
+    const kenal = ['owner'].concat(SS_PERAN_AKUN.map((p) => p.id), cacheMentah('aksesAkun').map((a) => 'uid:' + String(a.uid || a.id)));
+    o.bawahModal = (Array.isArray(isi.bawahModal) ? isi.bawahModal : A.bawahModal).map(String).filter((k, i, L) => kenal.indexOf(k) >= 0 && L.indexOf(k) === i);
     const h = isi.hak || {}; Object.keys(h).forEach((p) => { if (p === 'owner' || !SS_HAK_BAWAAN[p]) { tolak = tolak || 'Hak owner tidak diubah — owner selalu boleh semuanya'; return; } Object.keys(h[p]).forEach((t) => { if (SS_NILAI_HAK.indexOf(h[p][t]) < 0 || !SS_TINDAKAN.some((x) => x.id === t)) { tolak = tolak || 'Nilai hak tidak dikenal'; return; } o.hak[p][t] = h[p][t]; }); }); }
   else if (id === 'cadangan') tolak = angka('simpanHari', 1, 365, 'hari') || angka('ambangKuota', 10, 100, '%') || angka('cadanganTiap', 1, 30, 'hari');
   else if (id === 'lokasi') { const daftar = (Array.isArray(isi.daftar) ? isi.daftar : A.daftar).map((l, i) => ({ id: String(l.id || ('lk' + (i + 1))).trim(), nama: String(l.nama || '').trim(), alamat: String(l.alamat || '').trim().slice(0, 80), utama: !!l.utama }));
@@ -122,7 +130,7 @@ export function ssHakServer(peran, tindakan, nilai) {
 export function ssPeran() {
   const A = ssAtur('peran'); const hak = (peran, t) => (peran === 'owner' ? 'sendiri' : (A.hak[peran] || {})[t] || 'tidak');
   const tampil = (peran, t) => ssHakServer(peran, t, hak(peran, t));
-  return { tindakan: SS_TINDAKAN, hak, tampil, batasSekaligus: A.batasSekaligus, jatahBen: A.jatahBen, jejak: (A.jejak || []).slice(0, 12),
+  return { tindakan: SS_TINDAKAN, hak, tampil, batasSekaligus: A.batasSekaligus, jatahBen: A.jatahBen, jatahKaryawan: A.jatahKaryawan, jatahAkun: A.jatahAkun || {}, bawahModal: A.bawahModal || [], langkahNego: A.langkahNego, jejak: (A.jejak || []).slice(0, 12),
     peran: SS_PERAN.map((p) => ({ id: p.id, nama: p.nama, ket: p.id === 'owner' ? 'semua boleh · tidak diubah' : ['sendiri', 'server', 'owner', 'tidak'].map((v) => [SS_TINDAKAN.filter((t) => tampil(p.id, t.id).nilai === v).length, SS_LABEL_TAMPIL[v]]).filter((x) => x[0] > 0).map((x) => x[0] + ' ' + x[1]).join(' · ') })) };
 }
 /** Ketuk satu hak = memutar sendiri → minta owner → tidak boleh; hak owner tidak diubah. */

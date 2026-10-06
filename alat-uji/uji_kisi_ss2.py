@@ -42,11 +42,13 @@ var KISI0 = { ben: { hapus: 'tidak', jualBon: 'sendiri', terimaBon: 'sendiri', j
   karyawan: { atur: 'tidak', jualTunai: 'sendiri', nego: 'tidak', jualBon: 'owner', terimaBon: 'sendiri', hitungLaci: 'tidak', koreksi: 'tidak', adukan: 'sendiri', pelangganBaru: 'sendiri', kedatangan: 'sendiri', hapus: 'tidak', hargaBeli: 'tidak', uangKeluar: 'tidak' } };
 function setelKisi(ubah) { var k = JSON.parse(J(KISI0)); Object.keys(ubah || {}).forEach(function (p) { Object.keys(ubah[p]).forEach(function (t) { k[p][t] = ubah[p][t]; }); });
   pasok('aturanToko', [{ id: 'peran', hak: k, batasSekaligus: 300000, jatahBen: 50, jejak: [] }]); }
-function hak(akun) { return (ssAtur('peran').hak || {})[akun.peran] || {}; }   // = app.js:30
+// = app.js setelSumberHak: kisi peran + jatah nego akun (owner 7 Okt, JS2-C)
+function hak(akun) { return Object.assign({}, (ssAtur('peran').hak || {})[akun.peran] || {}, { jatahNego: ngJatah(akun) }); }
 function kirim(akun, dok) { return periksaKiriman(akun, (dok || []).map(function (x) { return { koleksi: x.koleksi, data: x.data, ada: false, lama: null }; }), [], hak(akun), KINI); }
 var KARUNG = function () { return { jenis: 'karung', merkSumber: 'Angsa', jumlahKarung: 1, totalKg: 50, hargaTotal: 690000, hargaSatuan: 690000, hargaAsli: 690000, jumlah: 1, hppTotalSaatJual: 650000 }; };
 function nota(cara, uang, ubah) { var s = Object.assign({ keranjang: [{ id: 'b0', trx: KARUNG() }], pelanggan: 'Pembeli Contoh', cara: cara, uang: uang, potongan: 0 }, ubah || {}); return susunNotaDokumen(s, W).dokumen; }
-function notaNego(harga) { var s = { keranjang: [{ id: 'b0', trx: KARUNG() }], pelanggan: 'Pembeli Contoh', cara: 'Tunai', uang: 1e9, potongan: 0 }; var r = terapkanNego(s, 'b0', harga); return nota('Tunai', 1e9, { keranjang: r.keranjang || s.keranjang }); }
+// owner 7 Okt (JS2-C): nego OWNER di bawah modal butuh alasan — bahan uji "nego dalam" memakai alasan supaya baris negonya memang terbentuk
+function notaNego(harga, akun) { var s = { keranjang: [{ id: 'b0', trx: KARUNG() }], pelanggan: 'Pembeli Contoh', cara: 'Tunai', uang: 1e9, potongan: 0, negoAlasan: 'bahan uji', negoAkun: akun || null, negoHak: akun ? hak(akun).nego : 'sendiri' }; var r = terapkanNego(s, 'b0', harga); return nota('Tunai', 1e9, { keranjang: r.keranjang || s.keranjang }); }
 var YAKIN = { bahan: true, kemasan: true, kantongKosong: true, kantong: true, susut: true };
 function aduk() { return susunSimpanAdukan({ tanggal: '2026-09-24', bahan: [{ merk: 'Angsa', kg: '10' }], bahanKemasan: [], hasil: [{ nama: 'Hasil Contoh', ukuran: '5', unit: '2', kantongJenis: '5kg_kembangbmw', kantongJumlah: '2' }], upah: '0', batasHasil: 8 }, W, YAKIN).dokumen; }
 function bayarBon() { return susunBayarBon(KINI, 'pembeli contoh', '100.000', 'Tunai', '', '', W).dokumen; }
@@ -57,8 +59,8 @@ var MINTA = KALIMAT_MINTA_OWNER;
 // ---- 1 · NEGO & POTONGAN (kisi bawaan; server tidak pernah membuka nego untuk bukan-owner)
 setelKisi();
 var dNego = notaNego(500), dPot = nota('Tunai', 1e9, { potongan: 689500 }), dSama = notaNego(690000);
-ok('bahan uji: nota nego Rp500 membawa negoSelisih −689.500; potongan Rp689.500 membawa potonganTransaksi; nego ke harga yang sama = negoSelisih 0',
-  dNego[0].data.negoSelisih === -689500 && dPot[0].data.potonganTransaksi === 689500 && dSama[0].data.negoSelisih === 0, J([dNego[0].data.negoSelisih, dPot[0].data.potonganTransaksi, dSama[0].data.negoSelisih]));
+ok('bahan uji: nota nego Rp500 (owner, di bawah modal, beralasan) membawa negoSelisih −689.500; potongan Rp689.500 membawa potonganTransaksi; nego ke harga yang sama = kembali ke katalog (tanpa negoSelisih)',
+  dNego[0].data.negoSelisih === -689500 && dNego[0].data.negoStatus === 'bawahModal' && dPot[0].data.potonganTransaksi === 689500 && !dSama[0].data.negoSelisih, J([dNego[0].data.negoSelisih, dNego[0].data.negoStatus, dPot[0].data.potonganTransaksi, dSama[0].data.negoSelisih]));
 var n1 = kirim(KRY, dNego), n2 = kirim(BEN, dNego), n3 = kirim(KRY, dPot), n4 = kirim(BEN, dPot), n5 = kirim(OWN, dNego);
 ok('nego: karyawan (kisi "tidak") menjual karung Rp690.000 seharga Rp500 → DITOLAK penjaga "Peran Karyawan tidak boleh nego …"', /^Peran Karyawan tidak boleh nego/.test(n1.tolak || ''), J(n1));
 ok('nego: Ben (kisi "minta owner", alurnya belum ada) → DITOLAK "Perlu persetujuan owner"', n2.tolak === MINTA, J(n2));
@@ -69,6 +71,20 @@ ok('kontrol: lembar nego dipakai tapi harganya tetap harga katalog (negoSelisih 
 setelKisi({ ben: { nego: 'sendiri' } }); var n7 = kirim(BEN, dNego);
 ok('nego: owner memutar Ben jadi "boleh sendiri" → tetap DITOLAK minta owner karena server belum membukanya (SERVER_BUKA tanpa nego) — sama dengan kisi "tertutup server"',
   n7.tolak === MINTA && ssPeran().tampil('ben', 'nego').label === 'tertutup server', J([n7, ssPeran().tampil('ben', 'nego')]));
+// owner 7 Okt (JS2-C): nego DALAM JATAH orangnya bukan "nego di bawah jatah margin" — Ben (jatah bawaan 50 %) boleh sendiri, karyawan (0 %) tidak
+setelKisi(); var dJatah = notaNego(670000, BEN), n8 = kirim(BEN, dJatah);
+ok('jatah: Ben menawar karung Rp690.000 (modal Rp650.000) jadi Rp670.000 = batas jatah 50 % → baris bertanda jatah, penjaga MENGIZINKAN', dJatah[0].data.negoStatus === 'jatah' && dJatah[0].data.negoBatas === 670000 && dJatah[0].data.negoJatah === 50 && !n8.tolak, J([dJatah[0].data, n8]));
+var dJatahK = JSON.parse(J(dJatah)); var n9 = kirim(KRY, dJatahK);
+ok('jatah: baris yang sama dikirim KARYAWAN (jatah 0 %, kisi "tidak") → DITOLAK — jatah di baris lebih besar dari jatah akunnya', /^Peran Karyawan tidak boleh nego/.test(n9.tolak || ''), J(n9));
+var dPalsu = JSON.parse(J(dJatah)); dPalsu[0].data.negoSelisih = -25000; dPalsu[0].data.hargaTotal = 665000; var n10 = kirim(BEN, dPalsu);
+ok('jatah: baris bertanda "jatah" tapi harganya Rp665.000 < batas Rp670.000 → DITOLAK minta owner', n10.tolak === MINTA, J(n10));
+var dSetuju = JSON.parse(J(dPalsu)); dSetuju[0].data.negoStatus = 'disetujui'; dSetuju[0].data.negoSetujuId = 'ps1'; var n11 = kirim(BEN, dSetuju), n12 = (function () { var d = JSON.parse(J(dSetuju)); delete d[0].data.negoSetujuId; return kirim(BEN, d); })();
+ok('jatah: nego di bawah jatah yang DISETUJUI owner (negoSetujuId) → boleh; tanda disetujui tanpa id persetujuan → DITOLAK', !n11.tolak && n12.tolak === MINTA, J([n11, n12]));
+var dLama = JSON.parse(J(dJatah)); delete dLama[0].data.negoStatus; var n13 = kirim(BEN, dLama);
+ok('jatah: nego bentuk lama (tanpa negoStatus) dari Ben → tetap DITOLAK minta owner', n13.tolak === MINTA, J(n13));
+pasok('aturanToko', [{ id: 'peran', hak: KISI0, batasSekaligus: 300000, jatahBen: 30, jejak: [] }]); var n14 = kirim(BEN, dJatah);
+ok('jatah: owner menurunkan jatah Ben jadi 30 % → baris bertanda jatah 50 % DITOLAK (jatah baris > jatah akun)', n14.tolak === MINTA, J(n14));
+setelKisi();
 
 // ---- 2 · kisi bawaan: pekerjaan harian TIDAK ditolak (tanpa tolak palsu)
 setelKisi();
@@ -100,9 +116,12 @@ setelKisi();
 
 // ---- 4 · tombol nego & potongan di layar Jual memakai kisi (sumber diperiksa: layar butuh DOM)
 var JS = SUMBER.jual;
-ok('jual.js: ketuk harga (nego) & tombol Potongan memeriksa tombolAkun(…, \'nego\') sebelum membuka lembarnya',
-  JS.indexOf("nego: ({ id }) => { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'nego'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ negoId: id, lembar: 'nego', ketik: '' }); },") >= 0
+ok('jual.js: ketuk harga (nego) memeriksa jatah & kisi orangnya (owner 7 Okt: NG.ngBolehNego) dan nego diputus dengan akun (SBN()); tombol Potongan tetap memeriksa tombolAkun(…, \'nego\')',
+  JS.indexOf("nego: ({ id }) => { const a = opsi.akun ? opsi.akun() : null; const tb = NG.ngBolehNego(a, hakAkun(a, 'nego')); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });") >= 0
+  && JS.indexOf("terapkanNego: () => set(L.terapkanNego(SBN(), S().negoId, L.angkaKetik(S().ketik))),") >= 0
   && JS.indexOf("bukaPotongan: () => { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'nego'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ lembar: 'potongan', ketik: '' }); },") >= 0);
+var bK = ngBolehNego(KRY, hak(KRY).nego), bB = ngBolehNego(BEN, hak(BEN).nego), bO = ngBolehNego(OWN, 'sendiri');
+ok('tombol nego (owner 7 Okt): karyawan (jatah 0 %, kisi "tidak") mati dengan kalimat jatah; Ben (jatah 50 %) & owner terbuka', !bK.boleh && /jatah nego/.test(bK.kalimat) && bB.boleh && bO.boleh, J([bK, bB, bO]));
 var tbK = tombolTindakan(KRY, 'nego', hak(KRY).nego, 'Nego di bawah jatah margin'), tbB = tombolTindakan(BEN, 'nego', hak(BEN).nego, 'Nego di bawah jatah margin');
 ok('tombol nego: karyawan mati "Peran Karyawan tidak boleh nego di bawah jatah margin", Ben mati minta owner', !tbK.boleh && /tidak boleh nego/.test(tbK.kalimat) && !tbB.boleh && tbB.kalimat === MINTA, J([tbK, tbB]));
 print(J({ lulus: lulus, gagal: gagal }));
@@ -126,13 +145,17 @@ if __name__ == '__main__':
     if '--kontrol' in sys.argv:
         A = 'baru/js/data/akses.js'
         rusak = {
-            'penjaga tidak menegakkan kisi (kembali ke main)': (A, "  for (const t of tindakanKiriman(D)) { if (hak[t] !== 'sendiri' || (SERVER_BUKA[t] || []).indexOf(P) < 0) return { tolak: tolakTindakan(t) }; }\n", ''),
+            'penjaga tidak menegakkan kisi (kembali ke main)': (A, "  for (const t of tindakanKiriman(D, hak.jatahNego)) { if (hak[t] !== 'sendiri' || (SERVER_BUKA[t] || []).indexOf(P) < 0) return { tolak: tolakTindakan(t) }; }\n", ''),
             'kisi ditegakkan tapi SERVER_BUKA diabaikan': (A, " || (SERVER_BUKA[t] || []).indexOf(P) < 0) return { tolak: tolakTindakan(t) }; }", ") return { tolak: tolakTindakan(t) }; }"),
             'potongan tidak dihitung nego': (A, " || (Number(d.potonganTransaksi) || 0) > 0", ''),
-            'nego tidak dihitung': (A, "if ((Number(d.negoSelisih) || 0) !== 0", "if (false"),
+            'nego tidak dihitung': (A, "if (!negoDalamJatah(d, jatahNego) ||", "if (false ||"),
+            'nego dalam jatah tidak membandingkan jatah akun (owner 7 Okt)': (A, " && jatah <= (Number(jatahNego) || 0);", ";"),
+            'nego dalam jatah tidak membandingkan batas (owner 7 Okt)': (A, "return batas > 0 && harga >= batas && jatah > 0", "return jatah > 0"),
+            'disetujui tanpa id persetujuan diterima (owner 7 Okt)': (A, "if (d.negoStatus === 'disetujui') return !!d.negoSetujuId;", "if (d.negoStatus === 'disetujui') return true;"),
             'pelunasan di nota dihitung terima bon': (A, "if (!jual.length && baru.some((x) => x.koleksi === 'piutangMutasi')) t.terimaBon = 1;", "if (baru.some((x) => x.koleksi === 'piutangMutasi')) t.terimaBon = 1;"),
             'isi ulang dihitung adukan': (A, "if (adaWadah) t.isiUlang = 1; else if", "if (false) t.isiUlang = 1; else if"),
-            'tombol nego tanpa kisi': ('jual.js', "nego: ({ id }) => { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'nego'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ negoId: id, lembar: 'nego', ketik: '' }); },", "nego: ({ id }) => set({ negoId: id, lembar: 'nego', ketik: '' }),"),
+            'tombol nego tanpa jatah & kisi': ('jual.js', "const tb = NG.ngBolehNego(a, hakAkun(a, 'nego')); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });", ""),
+            'nego diputus tanpa akun (owner 7 Okt)': ('jual.js', "terapkanNego: () => set(L.terapkanNego(SBN(), S().negoId", "terapkanNego: () => set(L.terapkanNego(S(), S().negoId"),
         }
         kode = 0
         for nama, (berkas, a, b2) in rusak.items():
