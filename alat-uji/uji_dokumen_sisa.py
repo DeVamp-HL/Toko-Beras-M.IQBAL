@@ -14,14 +14,19 @@ D1 PUSAT DOKUMEN — yang kurang dari visi owner 17 Sep, dibangun di Laporan ›
     Laporan.buka menerima `pilih`); pilihan bukan-rupiah digambar teksN.
 D3 SISA PENSIUN SISTEM LAMA (#103):
   · tombol bersihkan simpanan lokal sistem lama (Menu › Toko ini › Cadangan & simpanan): daftar kunci DIBEKUKAN dari tag sistem-lama-terakhir (dicocokkan
-    kalau tag ada di mesin ini; di CI checkout dangkal tanpa tag → dilewati & disebut), TIDAK memuat kunci /baru/ maupun kasir darurat; antrean lama yang
-    masih berisi DIJAGA sampai salinannya diunduh; dua ketukan; layar hanya membaca/menghapus kunci dari daftar itu.
+    kalau tag ada; CI mengambil tag dulu lalu memakai --wajib-tag → tanpa tag GAGAL, bukan dilewati), TIDAK memuat kunci /baru/ maupun kasir darurat;
+    antrean lama yang masih berisi DIJAGA sampai salinannya diunduh DAN berkasnya dinyatakan tersimpan (unduhan sendiri tidak memasang penanda); berkas
+    unduhan tanpa salinan PIN owner; dua ketukan; layar hanya membaca/menghapus kunci dari daftar itu, dan menghitungnya saat lembar dibuka — bukan tiap
+    Menu digambar.
+  · tinjauan 7 Okt: tombol kartu piutang di lembar bon hanya untuk akun yang boleh membuka Laporan (bolehBukaLayar); peringatan kuota menunjuk tombol
+    bersihkan hanya kalau ada sisa lama (ada/tidak dari JUMLAH simpanan, bukan KB yang dibulatkan); kalimat layar tanpa jalur berkas repo.
   · kalimat layar yang menyuruh "lewat sistem lama" (uang, harga, pelanggan, menu, akses-kasir-logika, sistem-logika) sudah diganti jalan di /baru/ atau
     kalimat jujur.
 (D2 Safari = uji_safari_webkit.py; tab Kasir & PIN = uji_operator_pin.py; 404.html = uji_csp.py & uji_pensiun_sistem_lama.py.)
 
     python3 alat-uji/uji_dokumen_sisa.py            → N lulus · 0 gagal
     python3 alat-uji/uji_dokumen_sisa.py --kontrol  → kerusakan wajib ketahuan (keluar 3 kalau ada yang diam)
+    --wajib-tag (CI)                                 → tag sistem-lama-terakhir WAJIB ada: tanpa tag pencocokan daftar beku GAGAL, bukan dilewati
 """
 import os, re, sys, json, glob, subprocess, tempfile, copy
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
@@ -29,7 +34,9 @@ sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 import uji_laporan_baru as UL  # noqa: E402  (kotak pasir & daftar modul laporan yang sama)
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = list(dict.fromkeys(UL.MODUL + ['baru/js/data/akses.js', 'baru/js/layar/sistem-logika.js']))
+MODUL = list(dict.fromkeys(UL.MODUL + ['baru/js/data/akses.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/akses-layar.js']))
+WAJIB_TAG = '--wajib-tag' in sys.argv
+AKL = 'baru/js/layar/akses-layar.js'
 LL = 'baru/js/layar/laporan-logika.js'; LAP = 'baru/js/layar/laporan.js'; SL = 'baru/js/layar/sistem-logika.js'; MENU = 'baru/js/layar/menu.js'
 HARGA = 'baru/js/layar/harga.js'; PEL = 'baru/js/layar/pelanggan.js'; APP = 'baru/js/app.js'; UANG = 'baru/js/layar/uang.js'; AKP = 'baru/js/layar/akses-kasir-logika.js'
 DARURAT = 'kasir-darurat-nominal.html'
@@ -110,9 +117,25 @@ try {
   var L2 = ssSimpananLama(ISI, true);
   ok('sesudah salinan diunduh: semua sisa sistem lama boleh dibersihkan (tetap hanya kunci daftar beku)', J(L2.dibersihkan.slice().sort()) === J(['kasir_antrean_v1', 'kasir_gagal_v1', 'miqbal_antrean_tunda_v1', 'miqbal_penjualan_v1']) && L2.dijaga.length === 0, J(L2.dibersihkan));
   ok('tanpa sisa: kalimatnya bilang tidak ada', ssSimpananLama({}, false).ada.length === 0 && /Tidak ada sisa/.test(ssSimpananLama({}, false).teks));
+  var ISIP = Object.assign({}, ISI, { miqbal_pin_owner_v1: '{"garam":"g1","acak":"ab12"}', miqbal_pin_percobaan_v1: '{"salah":2}', miqbal_owner_unlock: '1' });
+  var SP = ssSalinanLama(ISIP); var LP2 = ssSimpananLama(ISIP, true);
+  ok('berkas "unduh salinannya": salinan PIN owner, hitungan PIN salah & penanda gembok TIDAK ikut berkas (tetap ikut dibersihkan); antrean & cache lama ikut apa adanya; kunci /baru/ & kasir darurat tidak',
+     J(Object.keys(SP.isi).sort()) === J(['kasir_antrean_v1', 'kasir_gagal_v1', 'miqbal_antrean_tunda_v1', 'miqbal_penjualan_v1']) && SP.n === 4 && J(SP.dibuang.slice().sort()) === J(['miqbal_owner_unlock', 'miqbal_pin_owner_v1', 'miqbal_pin_percobaan_v1'])
+     && SP.isi.miqbal_antrean_tunda_v1 === ISI.miqbal_antrean_tunda_v1 && ['miqbal_owner_unlock', 'miqbal_pin_owner_v1', 'miqbal_pin_percobaan_v1'].every(function (k) { return LP2.dibersihkan.indexOf(k) >= 0; }), J([SP, LP2.dibersihkan]));
+  // ==================== tinjauan 7 Okt · tombol yang membuka layar lain ====================
+  var STAF = { jenis: 'aktif', peran: 'ben', nama: 'Staf', uid: 'u1' };
+  ok('kartu piutang berkop: staf (Laporan bukan haknya) tidak diberi tombol; owner, akun yang belum bisa bekerja & mode cadangan tidak disaring (= gerbang pindah() app.js)',
+     bolehBukaLayar(STAF, 'laporan') === false && bolehBukaLayar(STAF, 'pelanggan') === true && bolehBukaLayar({ jenis: 'owner', peran: 'owner' }, 'laporan') === true
+     && bolehBukaLayar(null, 'laporan') === true && bolehBukaLayar({ jenis: 'belum', uid: 'u2' }, 'laporan') === true, J([bolehBukaLayar(STAF, 'laporan'), bolehBukaLayar(STAF, 'pelanggan')]));
   var CD = ssCadangan(KINI, { lsKb: 4300, lamaKb: 3900 }); var CD0 = ssCadangan(KINI, { lsKb: 300, lamaKb: 0 });
   ok('kuota: kalimatnya menyebut sisa sistem lama yang TIDAK bertambah lagi (bukan ramalan "hari lagi penuh"); peringatan menunjuk tombol bersihkan, bukan "Setelan sistem lama"',
      /3\.900 KB di antaranya sisa sistem lama/.test(CD.kuota.ket) && !/hari lagi penuh/.test(CD.kuota.ket) && /bersihkan sisa sistem lama dengan tombol di bawah/.test(CD.kuota.awasTeks) && !/Setelan sistem lama/.test(CD.kuota.awasTeks) && /tidak ada lagi sisa sistem lama/.test(CD0.kuota.ket), J([CD.kuota.ket, CD.kuota.awasTeks, CD0.kuota.ket]));
+  var CDK = ssCadangan(KINI, { lsKb: 4300, lamaKb: 0, lamaN: 0 });
+  ok('kuota di atas ambang TANPA sisa lama: peringatan tidak menunjuk tombol bersihkan yang tidak ada (kartunya "tidak ada sisa"), menyebut simpanan sistem baru & kasir darurat sendiri',
+     CDK.kuota.awas && !/tombol di bawah/.test(CDK.kuota.awasTeks) && /sisa sistem lama sudah tidak ada/.test(CDK.kuota.awasTeks) && /tidak ada lagi sisa sistem lama/.test(CDK.kuota.ket), J([CDK.kuota.awasTeks, CDK.kuota.ket]));
+  var CDS = ssCadangan(KINI, { lsKb: 4300, lamaKb: 0.2, lamaN: 1 }); var CDN = ssCadangan(KINI, { lsKb: 4300, lamaKb: null, lamaN: null });
+  ok('kuota: sisa lama < 0,5 KB (1 simpanan) tetap disebut ADA ("kurang dari 1 KB"), bukan "tidak ada lagi"; belum/tidak terbaca = tidak mengaku apa pun',
+     /kurang dari 1 KB di antaranya sisa sistem lama/.test(CDS.kuota.ket) && /tombol di bawah/.test(CDS.kuota.awasTeks) && CDN.kuota.ket === '' && /belum terbaca/.test(CDN.kuota.awasTeks) && !/tombol di bawah/.test(CDN.kuota.awasTeks), J([CDS.kuota.ket, CDN.kuota.ket, CDN.kuota.awasTeks]));
 } catch (e) { gagal.push('JATUH: ' + (e && (e.stack || e.message) || e)); }
 print(J({ lulus: lulus, gagal: gagal }));
 """
@@ -149,7 +172,7 @@ def kunci_baru(t):
     out = set()
     for b, isi in t.items():
         if not (b.startswith('baru/js/') or b == 'baru/index.html'): continue
-        if b == SL: isi = re.sub(r'export const SS_KUNCI_LAMA = \[.*?\];|export const SS_KUNCI_LAMA_ANTREAN = \[.*?\];', '', isi, flags=re.S)
+        if b == SL: isi = re.sub(r'export const SS_KUNCI_LAMA(?:_ANTREAN|_TAK_DIUNDUH)? = \[.*?\];', '', isi, flags=re.S)
         isi = re.sub(r'^\s*//.*$', '', isi, flags=re.M)
         out |= set(re.findall(r"""['"`](miqbal_[A-Za-z0-9_]+)['"`]""", isi))
     return out
@@ -191,8 +214,10 @@ def periksa_statis(t):
     ok('daftar kunci sistem lama TIDAK memuat kunci yang dipakai /baru/ (nomor & nama perangkat, titik kas, jenis beras, miqbal_baru_* …)', not (set(KL) & KB), sorted(set(KL) & KB))
     ok('daftar kunci sistem lama TIDAK memuat kunci kasir darurat (akun, operator, katalog HP kasir, antrean darurat …)', not (set(KL) & KD), sorted(set(KL) & KD))
     tag = kunci_tag()
-    if tag is None:
-        ok('daftar kunci = kunci sistem lama di tag sistem-lama-terakhir dikurangi /baru/ & kasir darurat — DILEWATI (tag tidak ada di checkout ini)', True)
+    if tag is None and WAJIB_TAG:
+        ok('daftar kunci = kunci sistem lama di tag sistem-lama-terakhir — tag WAJIB ada (--wajib-tag; CI mengambilnya di langkah sebelumnya)', False, 'tag sistem-lama-terakhir tidak ada di checkout ini')
+    elif tag is None:
+        ok('daftar kunci = kunci sistem lama di tag sistem-lama-terakhir dikurangi /baru/ & kasir darurat — DILEWATI (tag tidak ada di checkout ini; CI memakai --wajib-tag)', True)
     else:
         harap = tag - KB - KD
         ok('daftar kunci = kunci sistem lama di tag sistem-lama-terakhir (index.html & kasir.html) dikurangi /baru/ & kasir darurat (' + str(len(harap)) + ')', set(KL) == harap,
@@ -204,16 +229,31 @@ def periksa_statis(t):
     ok('menu.js: BERSIHKAN = dua ketukan; yang dihapus hanya L.dibersihkan dari S.ssSimpananLama(bacaLama(), …)',
        bool(bersih) and 0 <= i_yakin < i_hapus and 'const L = S.ssSimpananLama(bacaLama(), st().lamaDiunduh);' in bersih and 'L.dibersihkan.forEach((k) => { try { localStorage.removeItem(k);' in bersih
        and bersih.count('localStorage.removeItem(') == 1, bersih[:200])
-    ok('menu.js: unduh salinan menandai lamaDiunduh (antrean lama berisi baru boleh dibersihkan sesudahnya)', "set({ lamaDiunduh: true," in mn and 'data-aksi="lamaUnduh"' in mn and 'data-aksi="lamaBersih"' in mn)
+    unduh = potong(mn, r"^    lamaUnduh: \(\) => \{.*?(?=^    lamaTersimpan:)"); simpan = potong(mn, r"^    lamaTersimpan: \(\) => \{.*?(?=^    lamaBersih:)")
+    ok('menu.js: unduhan TIDAK memasang penanda lamaDiunduh (a.click() tidak memberi tahu berkasnya tersimpan); tombol "berkasnya sudah tersimpan" yang memasangnya, dan hanya sesudah ada unduhan',
+       bool(unduh) and 'lamaDiunduh: true' not in unduh and "lamaBerkas: nama" in unduh and bool(simpan) and "if (!st().lamaBerkas) return set(" in simpan and "set({ lamaDiunduh: true," in simpan
+       and mn.count('lamaDiunduh: true') == 1 and 'data-aksi="lamaUnduh"' in mn and 'data-aksi="lamaBersih"' in mn
+       and '${s.lamaBerkas && !s.lamaDiunduh && LM.dijaga.length ? h`<div class="pita-info" data-k="lama-periksa">' in mn and 'data-aksi="lamaTersimpan"' in mn, unduh[:200])
+    ok('menu.js: berkas unduhan = S.ssSalinanLama (tanpa salinan PIN owner), bukan isi mentah', 'const B = S.ssSalinanLama(o);' in unduh and 'simpananSistemLama: B.isi' in unduh)
+    gambar = re.findall(r'^  function gambar\w*\(.*?(?=^  function |^  return \{)', mn, re.S | re.M)
+    baca_gambar = [g.split('(')[0].split()[-1] for g in gambar if re.search(r'bacaLama\(|hitungLama\(|localStorage\.|ssSimpananLama\(', g)]
+    ok('menu.js: sisa lama dihitung saat lembar dibuka (ukurSimpanan → hitungLama → lamaInfo) — TIDAK ada fungsi gambar* yang membaca localStorage / menghitung sisa lama',
+       len(gambar) >= 5 and not baca_gambar and 'set({ lsKb: ls, autoTanggal: auto, lamaInfo: hitungLama() });' in mn and '${(() => { const LM = s.lamaInfo;' in mn, baca_gambar)
+    pel = t[PEL]
+    ok('pelanggan.js: tombol "Kartu piutang berkop" hanya untuk akun yang boleh membuka Laporan (bolehBukaLayar), aksinya ikut menjaga',
+       "${opsi.keTujuan && bolehBukaLayar(opsi.akun ? opsi.akun() : null, 'laporan') ? h`<div class=\"tombol-baris\" data-k=\"kartu-piutang\">" in pel
+       and "kartuPiutang: ({ kunci }) => { if (!bolehBukaLayar(opsi.akun ? opsi.akun() : null, 'laporan')) return set(" in pel
+       and re.search(r"import \{[^}]*\bbolehBukaLayar\b[^}]*\} from '\./akses-layar\.js';", pel))
     # ---- D3 kalimat layar "lewat sistem lama"
     LARANG = [r'lewat sistem lama', r'bereskan di sistem lama', r'tetap di sistem lama', r'Setelan sistem lama', r'bon pemasok \(sistem lama\)', r'gembok sistem lama',
-              r'karcis darurat belum dirinci[^<]{0,12}\(sistem lama\)', r'kasir sistem lama', r'yang dicatat di sistem lama', r'sistem lama & baru', r'minta Claude']
+              r'karcis darurat belum dirinci[^<]{0,12}\(sistem lama\)', r'kasir sistem lama', r'yang dicatat di sistem lama', r'sistem lama & baru', r'minta Claude',
+              r'docs/prosedur', r'prosedur-pulih-darurat\.md', r'repo toko', r'tidak dibaca siapa pun', r'tidak dibaca sistem mana pun']
     temu = []
     for b in (UANG, HARGA, PEL, MENU, AKP, SL, LAP):
         isi = re.sub(r'^\s*//.*$', '', t[b], flags=re.M)
         for pola in LARANG:
             for m in re.finditer(pola, isi): temu.append(b.split('/')[-1] + ':' + str(isi[:m.start()].count('\n') + 1) + ' «' + m.group(0) + '»')
-    ok('kalimat layar tidak lagi menyuruh lewat sistem lama / minta Claude (uang, harga, pelanggan, menu, akses-kasir-logika, sistem-logika, laporan)', not temu, temu)
+    ok('kalimat layar tidak lagi menyuruh lewat sistem lama / minta Claude / menyebut jalur berkas repo / "tidak dibaca siapa pun" (uang, harga, pelanggan, menu, akses-kasir-logika, sistem-logika, laporan)', not temu, temu)
     return out
 
 
@@ -242,7 +282,21 @@ KONTROL = [
     ('sisa lama: kunci titik kas masuk daftar (titik kas /baru/ ikut terhapus)', {SL: [("'miqbal_tukar_setengah_v1', 'miqbal_tutup_hari_v1',", "'miqbal_tukar_setengah_v1', 'miqbal_titik_kas_v1', 'miqbal_tutup_hari_v1',")]}, ('statis', 'jsc')),
     ('sisa lama: kunci akun kasir darurat masuk daftar', {SL: [("'kasir_antrean_v1', 'kasir_bayar_bon_v1',", "'kasir_antrean_v1', 'kasir_auth_v1', 'kasir_bayar_bon_v1',")]}, ('statis', 'jsc')),
     ('sisa lama: satu kunci sistem lama hilang dari daftar (sisanya tidak pernah dibersihkan)', {SL: [("'miqbal_penjualan_v1', ", "")]}, ('statis', 'jsc')),
-    ('kuota: kembali meramal "hari lagi penuh" padahal sistem lama sudah pensiun', {SL: [("ket: lsKb === null ? '' : L.lamaKb > 0 ?", "ket: lsKb === null ? '' : true ? 'hari lagi penuh' : L.lamaKb > 0 ?")]}, ('jsc',)),
+    ('kuota: kembali meramal "hari lagi penuh" padahal sistem lama sudah pensiun', {SL: [("ket: lsKb === null || adaLama === null ? '' : adaLama ?", "ket: lsKb === null || adaLama === null ? '' : true ? 'hari lagi penuh' : adaLama ?")]}, ('jsc',)),
+    ('kuota: peringatan menunjuk tombol bersihkan walau tidak ada sisa lama (tombolnya tidak ada)', {SL: [("+ (adaLama ? 'bersihkan sisa sistem lama dengan tombol di bawah'", "+ (true ? 'bersihkan sisa sistem lama dengan tombol di bawah'")]}, ('jsc',)),
+    ('kuota: ada/tidak ada sisa lama dari KB yang dibulatkan (sisa < 0,5 KB ditulis "tidak ada lagi")', {SL: [("const adaLama = L.lamaN !== undefined && L.lamaN !== null ? Number(L.lamaN) > 0 : L.lamaKb === undefined || L.lamaKb === null ? null : Number(L.lamaKb) > 0;",
+                                                                                                     "const adaLama = L.lamaKb === undefined || L.lamaKb === null ? null : Math.round(Number(L.lamaKb)) > 0;")]}, ('jsc',)),
+    ('berkas unduhan memuat salinan PIN owner', {SL: [("if (SS_KUNCI_LAMA_TAK_DIUNDUH.indexOf(k) >= 0) { dibuang.push(k); return; } ", "")]}, ('jsc',)),
+    ('menu: berkas unduhan = isi mentah daftar beku (PIN ikut)', {MENU: [("simpananSistemLama: B.isi }", "simpananSistemLama: o }")]}, ('statis',)),
+    ('menu: unduhan langsung memasang penanda "sudah diunduh" (sebelum owner menyatakan berkasnya tersimpan)', {MENU: [("set({ lamaBerkas: nama, yakinBuang: null,", "set({ lamaBerkas: nama, lamaDiunduh: true, yakinBuang: null,")]}, ('statis',)),
+    ('menu: "berkasnya sudah tersimpan" boleh diketuk walau belum ada unduhan', {MENU: [("    lamaTersimpan: () => { if (!st().lamaBerkas) return set({ kabar: 'Unduh salinannya dulu', kabarAwas: true });\n", "    lamaTersimpan: () => {\n")]}, ('statis',)),
+    ('menu: gambar kembali menghitung sisa lama (50× getItem tiap Menu digambar)', {MENU: [("${(() => { const LM = s.lamaInfo;", "${(() => { const LM = S.ssSimpananLama(bacaLama(), s.lamaDiunduh);")]}, ('statis',)),
+    ('pelanggan: kartu piutang tampil untuk semua akun (staf tanpa Laporan)', {PEL: [("${opsi.keTujuan && bolehBukaLayar(opsi.akun ? opsi.akun() : null, 'laporan') ? h`", "${opsi.keTujuan ? h`")]}, ('statis',)),
+    ('akses-layar: bolehBukaLayar meloloskan staf ke Laporan', {AKL: [("|| bolehLayar(akun, layar);", "|| true;")]}, ('jsc',)),
+    ('laporan: kalimat layar kembali menyebut jalur berkas repo', {LAP: [('langkahnya tertulis di catatan "Prosedur pulih darurat" yang disimpan bersama kode aplikasi toko di GitHub.', 'langkahnya tertulis di docs/prosedur-pulih-darurat.md (repo toko).')]}, ('statis',)),
+    ('sistem: kalimat sisa lama kembali "tidak dibaca siapa pun"', {SL: [("Sejak pensiun 3 Okt tidak ada aplikasi di perangkat ini yang membacanya lagi,", "Sejak pensiun 3 Okt tidak dibaca siapa pun,")]}, ('statis',)),
+    # hanya pencocokan tag yang melihat ini (jsc tidak memakai miqbal_tema_v1) — butuh tag; tanpa tag & tanpa --wajib-tag kontrol ini DILEWATI dan disebut
+    ('sisa lama: kunci sistem lama yang tidak dipakai kotak pasir hilang dari daftar (hanya pencocokan tag yang melihat)', {SL: [("'miqbal_tema_v1', ", "")]}, ('statis', 'tag')),
     ('menu: BERSIHKAN tanpa ketukan kedua', {MENU: [("      if (st().yakinBuang !== 'lama') return set(", "      if (false) return set(")]}, ('statis',)),
     ('menu: layar membaca seluruh localStorage, bukan hanya daftar beku', {MENU: [("S.SS_KUNCI_LAMA.forEach((k) => { try { o[k] = localStorage.getItem(k); }", "Object.keys(localStorage).forEach((k) => { try { o[k] = localStorage.getItem(k); }")]}, ('statis',)),
     ('laporan: pilihan bukan rupiah digambar sebagai rupiah lagi', {LAP: [("${p.teksN !== undefined ? p.teksN : RP(p.n)}", "${RP(p.n)}")]}, ('statis',)),
@@ -257,14 +311,17 @@ KONTROL = [
 
 if __name__ == '__main__':
     if '--kontrol' in sys.argv:
-        diam = []; dasar = {x[0] for x in semua() if x[1]}
+        diam = []; lewat = []; dasar = {x[0] for x in semua() if x[1]}
+        ada_tag = kunci_tag() is not None
         for nama, ganti, bagian in KONTROL:
+            if 'tag' in bagian and not ada_tag and not WAJIB_TAG:
+                print('DILEWATI ' + nama + ' → tag sistem-lama-terakhir tidak ada di checkout ini (CI memakai --wajib-tag)'); lewat.append(nama); continue
             try: h = semua(ganti, bagian)
             except AssertionError as e: print('KONTROL BASI  ' + nama + ' · ' + str(e)[:160]); diam.append(nama); continue
             g = [x for x in h if not x[1] and (x[0] in dasar or x[0].startswith('jsc · '))]
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][0][:140] if g else '-'))
             if not g: diam.append(nama)
-        print('kontrol: %d/%d berbunyi' % (len(KONTROL) - len(diam), len(KONTROL))); sys.exit(3 if diam else 0)
+        print('kontrol: %d/%d berbunyi' % (len(KONTROL) - len(diam) - len(lewat), len(KONTROL) - len(lewat)) + (' · %d dilewati (tanpa tag)' % len(lewat) if lewat else '')); sys.exit(3 if diam else 0)
     h = semua(); g = [x for x in h if not x[1]]
     n = sum(1 for x in h if x[1] and x[0] != '__jsc') + next((x[2] for x in h if x[0] == '__jsc'), 0)
     for x in h:

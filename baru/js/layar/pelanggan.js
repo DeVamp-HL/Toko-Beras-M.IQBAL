@@ -11,7 +11,7 @@ import * as P from './pelanggan-logika.js';
 import * as B from './bon-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, tulisBertahap, perbaruiKolom, kabarKiriman } from '../data/toko.js';
-import { bukanOwner } from './akses-layar.js';
+import { bukanOwner, bolehBukaLayar } from './akses-layar.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -112,8 +112,10 @@ export function pasangLayarPelanggan(akar, opsi) {
     bukaOrangBon: ({ kunci }) => set({ orangBon: st().orangBon === kunci ? null : kunci, lembarBon: null, yakinHapus: false, kabar: '' }), bonTutup: () => set({ orangBon: null, lembarBon: null, yakinHapus: false }),
     lembarBon: ({ l }) => { const o = st().orangBon; const b = o ? B.lembarBon(kini(), o) : null; set({ lembarBon: st().lembarBon === l ? null : l, yakinHapus: false, janji: 7, bayar: { nominal: '', cara: 'Tunai', catatan: '', pengantar: '' }, hapusIsi: { nominal: b ? String(b.sisa) : '', alasan: '' }, kabar: '' }); },
     janjiPilih: ({ hari }) => set({ janji: Number(hari) }),
-    // owner 7 Okt: pelanggan minta daftar utangnya → Kartu piutang berkop & bernomor (Laporan › Dokumen › Dokumen kecil) dengan nama ini sudah terpilih
-    kartuPiutang: ({ kunci }) => { if (opsi.keTujuan) opsi.keTujuan({ ke: 'laporan', keluarga: 'dokumen', jenis: 'piutang', pilih: kunci }); },
+    // owner 7 Okt: pelanggan minta daftar utangnya → Kartu piutang berkop & bernomor (Laporan › Dokumen › Dokumen kecil) dengan nama ini sudah terpilih.
+    // Tombolnya hanya untuk akun yang boleh membuka Laporan (tinjauan: staf tanpa Laporan dulu hanya mendapat kabar "tidak termasuk hak").
+    kartuPiutang: ({ kunci }) => { if (!bolehBukaLayar(opsi.akun ? opsi.akun() : null, 'laporan')) return set({ kabar: 'Kartu piutang berkop dibuat di Laporan — layar itu tidak termasuk hak akun ini', kabarAwas: true });
+      if (opsi.keTujuan) opsi.keTujuan({ ke: 'laporan', keluarga: 'dokumen', jenis: 'piutang', pilih: kunci }); },
     kirimTagih: async () => { const o = st().orangBon; const p = B.pesanTagih(kini(), o); if (!p) return set({ kabar: 'Tidak ada yang perlu ditagih', kabarAwas: true }); try { window.open(p.url, '_blank'); } catch (e) { /* abaikan */ } if (await tulis(B.susunTagih(kini(), o, st().janji, waktu()))) set({ lembarBon: null }); },
     bayarKetik: (v, el) => { const b = Object.assign({}, st().bayar); b[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'nominal' ? 14 : 60); set({ bayar: b }); }, bayarCara: ({ cara }) => set({ bayar: Object.assign({}, st().bayar, { cara }) }),
     bayarSemua: () => { const b = B.lembarBon(kini(), st().orangBon); if (b) set({ bayar: Object.assign({}, st().bayar, { nominal: String(b.sisa) }) }); },
@@ -325,7 +327,7 @@ export function pasangLayarPelanggan(akar, opsi) {
     return h`<div class="kartu rincian-wadah" data-k="lembar-bon-${O.kunci}" style="gap: 8px;"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">${O.nama}</div><div class="ket">${O.sisa > 0 ? RP(O.sisa) + ' · ' + O.ket : O.status === 'lebih' ? h`<span class="awas-teks">${O.ket}</span>` : 'tidak ada bon yang terbuka'}${O.dikenali ? '' : ' · belum dikenali (kasir menolak bon baru)'}</div></div><div class="kaca-btn" data-aksi="bonTutup">tutup</div></div>
       ${O.status === 'lebih' ? h`<div class="pita-info awas" data-k="lebih-lembar">${O.lebihUang > 0.5 ? 'Uang yang masuk ' + RP(O.lebihUang) + ' lebih banyak dari semua bonnya. ' : ''}${O.lebihHapus > 0.5 ? RP(O.lebihHapus) + ' dibayar padahal sudah dihapus dari buku — hapus bukunya yang perlu dibalik (bukan uang pelanggan, jangan dikembalikan); tombol membalik hapus buku belum ada di sistem baru. ' : ''}Bukunya tidak bisa dibayar atau dihapus lagi; nota Kredit berikutnya atas nama ini memakai sisa di bawah nol ini lebih dulu.${O.lebihUang > 0.5 ? ' Uang yang dikembalikan tunai belum punya catatan di sistem baru.' : ''}</div>` : ''}
       ${O.rinci.map((r, i) => h`<div class="jawab" data-k="rb-${i}" style="cursor: default;"><span class="kiri"><div><span class="nm">${r.teks}</span><span class="w">${r.tgl}</span></div></span><span class="n">${RP(r.n)}</span></div>`)}
-      ${opsi.keTujuan ? h`<div class="tombol-baris" data-k="kartu-piutang"><div class="kaca-btn" data-aksi="kartuPiutang" data-kunci="${O.kunci}">Kartu piutang berkop · cetak / PDF / WA</div></div>` : ''}
+      ${opsi.keTujuan && bolehBukaLayar(opsi.akun ? opsi.akun() : null, 'laporan') ? h`<div class="tombol-baris" data-k="kartu-piutang"><div class="kaca-btn" data-aksi="kartuPiutang" data-kunci="${O.kunci}">Kartu piutang berkop · cetak / PDF / WA</div></div>` : ''}
       ${O.sisa > 0 ? h`<div class="tombol-baris"><div class="kaca-btn ${s.lembarBon === 'tagih' ? 'aktif' : ''}" data-aksi="lembarBon" data-l="tagih">Tagih lewat WhatsApp</div><div class="kaca-btn ${s.lembarBon === 'bayar' ? 'aktif emas' : 'aktif'}" data-aksi="lembarBon" data-l="bayar">Catat pembayaran</div><div class="kaca-btn ${s.lembarBon === 'hapus' ? 'awas' : 'putus'}" data-aksi="lembarBon" data-l="hapus">Hapus dari buku</div></div>` : ''}
       ${p ? h`<div data-k="tagih" style="display: flex; flex-direction: column; gap: 8px;"><div class="wa-pesan">${p.teks}</div><div class="ket">${p.tujuan} Janji bayar dicatat supaya besok layar tahu janji siapa yang lewat.</div>
         <div class="jalur bungkus">${p.janjiPilihan.map((j) => h`<div class="seg ${s.janji === j.hari ? 'aktif' : ''}" data-aksi="janjiPilih" data-hari="${j.hari}">${j.nama}</div>`)}</div><div class="kaca-btn aktif emas" data-aksi="kirimTagih">BUKA WHATSAPP & CATAT TAGIHAN</div></div>` : ''}

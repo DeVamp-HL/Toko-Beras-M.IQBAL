@@ -15,7 +15,8 @@ Catatan: sejak itu pengaturan/aksesKasir & pengaturan/keamanan tidak punya pemba
 STATIS:
   · acakPin /baru/ = acakPin() sistem lama: terkunci sidik (alat-uji/pembantu.sha256), dicatat saat byte-sama dengan index.html 48a694d
   · (owner 7 Okt, sisa pensiun #103) tab "Kasir & PIN" DICABUT dari menu.js — tanpa tab, impor, aksi operator/PIN, kolom PIN; tidak ada modul /baru/ lain
-    yang menulis pengaturan/aksesKasir atau pengaturan/keamanan (dokumennya tidak dibaca siapa pun lagi; datanya TIDAK dihapus)
+    yang menulis pengaturan/aksesKasir atau pengaturan/keamanan (dokumennya tidak dibaca aplikasi yang tayang; PIN owner hanya dibaca gerbang sistem lama
+    saat prosedur pulih darurat menjalankannya dari tag di komputer; datanya TIDAK dihapus)
 JSC:
   · daftar operator dari dokumen (nama = kunci peta, tidak ada nama di kode); isi PIN tidak pernah keluar dari logika; jumlah PIN terbuka dihitung
   · cabut PIN / aktif-libur / hapus (dua ketukan): dokumen berkunci sama dengan simpanModalJaga() sistem lama (KUNCI_OPERATOR), TANPA satu pun field pin;
@@ -160,13 +161,14 @@ def periksa_statis(t):
     # sampai 2 Okt: acakPin dibandingkan HURUF DEMI HURUF dengan teks index.html; sejak sistem lama pensiun (3 Okt) pembandingnya kunci sidik pembantu.sha256
     ok('acakPin /baru/ = acakPin() sistem lama: terkunci sidik (pembantu.sha256)', beku2.terkunci('acakPin', t['baru/js/mesin/pembantu.js']))
     mn = t['baru/js/layar/menu.js']
-    # owner 7 Okt (sisa pensiun #103): tab "Kasir & PIN" DICABUT — dokumennya tidak dibaca siapa pun sejak kasir.html & sistem lama pensiun 3 Okt.
+    # owner 7 Okt (sisa pensiun #103): tab "Kasir & PIN" DICABUT — dokumennya tidak dibaca aplikasi yang tayang sejak kasir.html & sistem lama pensiun 3 Okt
+    # (PIN owner hanya dibaca gerbang sistem lama saat prosedur pulih darurat menjalankannya dari tag di komputer).
     # Yang dijaga sekarang kebalikannya: tidak ada layar yang menulis dokumen itu lagi (datanya tidak dihapus; logika di atas tetap diuji).
     ok('menu.js: tab "Kasir & PIN" DICABUT — tanpa tab kasir, tanpa impor akses-kasir-logika, tanpa aksi operator/PIN, tanpa kolom PIN',
        "'Kasir & PIN'" not in mn and not re.search(r'''from\s+['"]\./akses-kasir-logika\.js['"]''', mn) and 'OP.' not in mn
        and not re.search(r'\b(opAktif|opHapus|opCabutPin|pinKetik|pinSimpan|opTambah)\s*:', mn) and 'type="password"' not in mn and 'pinIsi' not in mn)
     penulis = sorted(p for p in t if p.startswith('baru/js/') and p != 'baru/js/layar/akses-kasir-logika.js' and re.search(r"id:\s*'(aksesKasir|keamanan)'", t[p] or ''))
-    ok('tidak ada modul /baru/ lain yang menulis pengaturan/aksesKasir atau pengaturan/keamanan (tidak ada layar yang mengubah dokumen yang tidak dibaca siapa pun)', not penulis, penulis)
+    ok('tidak ada modul /baru/ lain yang menulis pengaturan/aksesKasir atau pengaturan/keamanan (tidak ada layar yang mengubah dokumen yang tidak dibaca aplikasi yang tayang)', not penulis, penulis)
     return out
 
 

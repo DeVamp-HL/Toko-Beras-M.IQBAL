@@ -391,7 +391,8 @@ pulihkan dari berkas cadangan.
   = VERSI sw-kasir.js; `KP_VERSI_KASIR_25B` tetap kasir-v26 (lantai kunci bulan).
 - **Jenis beras**: `layar/jenis-beras-logika.js` (jb). `ambilPetaJenisBeras()` = dokumen `pengaturan/jenisBeras` dulu. Harga (pil jenis di papan owner,
   lembar pilih/ketik/kosongkan, daftar "Jenis beras · N/M terisi"), Stok › Gudang (kartu per jenis), Jual (baris saring rak; urutan rak tetap).
-- **Operator & PIN**: `layar/akses-kasir-logika.js` (op), tab **Kasir & PIN** di Menu › Peran & persetujuan. Dokumen `pengaturan/aksesKasir` ditulis
+- **Operator & PIN**: `layar/akses-kasir-logika.js` (op), tab **Kasir & PIN** di Menu › Peran & persetujuan (**tab dicabut 7 Okt** — bagian "Paket dokumen &
+  sisa"; logikanya tetap diuji). Dokumen `pengaturan/aksesKasir` ditulis
   TANPA `pin` (owner: PIN operator dicabut); "Cabut PIN operator" tampil selama masih ada PIN tersimpan. PIN owner `pengaturan/keamanan` { garam, acak }
   (acakPin verbatim).
 - Uji: `uji_katalog_kasir.py` (statis + jsc + Chrome), `uji_setelan_jenis_beras.py`, `uji_operator_pin.py` (+ kontrol, CI).
@@ -1179,7 +1180,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_wadah_satu_buku.py` (+ `--kontrol`) | 39: satu buku per kotak — karung belakang = buku sendiri (buka = pindah merek → karung belakang, tuang = pindah karung belakang → wadah, kolam vs buku disebut), isi ulang tiga ketukan (1 karung / ½ / kg satu kiriman, batas menggunung), buku merek kurang → tolak + `perluTandai` → tandai (`perluCocokkan` + `selisihPerMerk`, tuntas = cocokkan bertanggal ≥ dokumen), aktivasi per wadah dari daftar (kekurangan disebut; nilai / laba / tumpukan tetap), komposisi turunan & banding, cek tutup toko (dikosongkan = sisihkan tanpa timbang), selisih dua angka; asap cadangan §8.4 & ASAP GLOBAL byte-sama dengan main |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; sisi lama dari `git show sistem-lama-terakhir:index.html` sejak 3 Okt; 5 kontrol) |
 | `alat-uji/uji_safari_webkit.py` (+ `--kontrol`) | owner 3 Okt (web app Safari Mac + Safari iPhone/iPad): sembilan cacat khas WebKit, statis + jsc tanpa peramban — sandi tidak dikunci readonly selagi fokus & dilepas di pointerdown; tiap `main.layar-*` berjarak poni sesudah shorthand padding; `:hover` kerangka hanya di `@media (hover: hover) and (pointer: fine)` (menu samping iPad); tanpa kolom `month`/`week` & pil bulan Omzet di luar sistem tergambar (jsc); touchstart pasif di document (`:active` iOS); penjaga muat-ulang modul kenal "Importing binding name" Safari (jsc menjalankan script sebaris); body berjarak aman kiri/kanan, ≥1100 tetap 72px; `#rtSelisih` tanpa inputmode angka (minus); Laporan `keluarkan()` membuka WA / dialog cetak di ketukan lalu mencatat nomor (jsc dengan pemblokir jendela ala Safari); 26 kontrol |
-| `alat-uji/uji_dokumen_sisa.py` (+ `--kontrol`) | owner 7 Okt: daftar harga & harga yang naik untuk pelanggan (katalog terbit, riwayat `hargaTerbit`, draf tidak ikut, turun/kembali/baru disebut, tanpa riwayat ditolak), paket bank bernomor dihitung dulu, jalan pintas Harga/Pelanggan → Laporan, simpanan lokal sistem lama (daftar beku = tag dikurangi kunci `/baru/` & kasir darurat; antrean berisi dijaga; dua ketukan), kalimat "lewat sistem lama" (jsc kotak pasir + statis; 25 kontrol) |
+| `alat-uji/uji_dokumen_sisa.py` (+ `--kontrol`) | owner 7 Okt: daftar harga & harga yang naik untuk pelanggan (katalog terbit, riwayat `hargaTerbit`, draf tidak ikut, turun/kembali/baru disebut, tanpa riwayat ditolak), paket bank bernomor dihitung dulu, jalan pintas Harga/Pelanggan → Laporan, simpanan lokal sistem lama (daftar beku = tag dikurangi kunci `/baru/` & kasir darurat — di CI tag diambil dulu & `--wajib-tag`; antrean berisi dijaga sampai berkasnya dinyatakan tersimpan; berkas tanpa PIN owner; dua ketukan; dihitung saat lembar dibuka), kartu piutang hanya untuk hak Laporan, peringatan kuota, kalimat "lewat sistem lama" / jalur berkas di layar (jsc kotak pasir + statis; kontrol) |
 
 Membuka mesin (HANYA atas perintah owner): sunting `js/mesin/beku.js` / `pembantu.js` langsung → `python3 alat-uji/beku2.py --catat` → sebut di pesan
 commit mesin/pembantu mana & kenapa. (Sampai 2 Okt mesin disalin ulang dari `index.html` oleh `pindah_mesin.py` — pensiun 3 Okt.)
@@ -1630,16 +1631,26 @@ SATU kiriman sesudahnya; gagal → kabar menyebut paketnya sudah keluar tanpa no
 stok ×2, identitas) dibungkus `@media (hover: hover) and (pointer: fine)` di TEMPAT aturan aslinya (kaskade tetap); zona denah `.aktif` dipisah dari `:hover`.
 
 **D3 · Sisa pensiun sistem lama (#103):**
-- Tab **Kasir & PIN** dicabut dari Menu › Peran & persetujuan (dokumen `pengaturan/aksesKasir` & `keamanan` tidak dibaca siapa pun sejak 3 Okt; datanya
+- Tab **Kasir & PIN** dicabut dari Menu › Peran & persetujuan (dokumen `pengaturan/aksesKasir` & `keamanan` tidak dibaca aplikasi yang tayang sejak 3 Okt —
+  PIN owner hanya dibaca gerbang sistem lama saat prosedur pulih darurat menjalankannya dari tag; `docs/prosedur-pulih-darurat.md` langkah 0 & 2; datanya
   TIDAK dihapus; `akses-kasir-logika.js` tidak diimpor layar mana pun lagi, tetap diuji `uji_operator_pin.py`, yang kini juga menjaga tidak ada layar
   yang menulis dua dokumen itu).
 - **Sisa sistem lama di perangkat ini** (Menu › Cadangan & simpanan): daftar kunci `SS_KUNCI_LAMA` (sistem-logika.js) DIBEKUKAN dari tag `sistem-lama-terakhir`
   dikurangi kunci yang dibaca `/baru/` (nomor & nama perangkat, titik kas, peta jenis beras, cap cadangan otomatis lama) dan kunci kasir darurat (akun,
   operator, katalog HP kasir). Layar hanya membaca/menghapus kunci daftar itu. Antrean lama yang masih berisi (catatan yang tidak pernah sampai server; yang
-  tak terbaca dianggap berisi) DIJAGA sampai salinannya diunduh ("unduh salinannya" = berkas JSON apa adanya). Bersihkan = dua ketukan. Kalimat kuota tidak
-  lagi meramal "±62 KB/hari → N hari lagi penuh" (itu pertumbuhan cadangan sistem lama yang sudah berhenti).
+  tak terbaca dianggap berisi) DIJAGA sampai salinannya diunduh DAN owner mengetuk "berkasnya sudah tersimpan" ("unduh salinannya" = berkas JSON apa
+  adanya, tanpa salinan PIN owner `SS_KUNCI_LAMA_TAK_DIUNDUH` — tetap ikut dibersihkan). Bersihkan = dua ketukan. Kalimat kuota tidak lagi meramal
+  "±62 KB/hari → N hari lagi penuh" (itu pertumbuhan cadangan sistem lama yang sudah berhenti).
+- **Tinjauan 7 Okt** (sanggahan, semua ringan): (1) unduhan tidak lagi memasang penanda "sudah diunduh" — `a.click()` tidak memberi tahu apa pun dan iOS bisa
+  membatalkan lembar unduhan; penandanya dipasang tombol "berkasnya sudah tersimpan" (`lamaTersimpan`). (2) Sisa lama DIHITUNG sekali saat lembar Sistem
+  dibuka / Menu tampil / sesudah unduh-nyatakan-bersihkan (`hitungLama` → `lamaInfo`), bukan 50× `getItem` tiap Menu digambar; localStorage tak terbaca =
+  keadaan sendiri. (3) Tombol "Kartu piutang berkop" di lembar bon hanya untuk akun yang boleh membuka Laporan (`bolehBukaLayar`, akses-layar.js = gerbang
+  `pindah()` app.js). (4) Peringatan kuota menunjuk tombol bersihkan hanya kalau ada sisa lama; ada/tidak ada diputuskan dari JUMLAH simpanan (`lamaN`),
+  bukan KB yang dibulatkan. (5) Kalimat layar tidak menyebut jalur berkas repo. (6) Di CI tag `sistem-lama-terakhir` diambil dulu (satu commit, dangkal) dan
+  `uji_dokumen_sisa.py --wajib-tag` GAGAL kalau tag tetap tidak ada — pencocokan daftar beku dengan tag tidak lagi dilewati diam-diam di CI.
 - **`404.html`** di akar: pengalih tanpa script & CSP ketat seperti `index.html`, tujuan **jalur penuh** `/Toko-Beras-M.IQBAL/baru/` (disajikan di alamat
   mana pun yang tidak ada), tanpa ikon/manifest. Dijaga `uji_csp.py` (di CI jalurnya dicocokkan ke `GITHUB_REPOSITORY`) & `uji_pensiun_sistem_lama.py`.
 - Kalimat layar yang menyuruh "lewat sistem lama" diganti jalan di `/baru/` (bayar bon pemasok → Harga & Pemasok › Bon pemasok; karcis → Jual; kasir KR1 →
   Jual) atau kalimat jujur (hapus uang keluar / batalkan bayar bon sesudah 90 detik, memberi tanggal bayar gaji baris lama: belum ada tombolnya).
-  "Minta Claude" untuk memulihkan cadangan → `docs/prosedur-pulih-darurat.md`.
+  "Minta Claude" untuk memulihkan cadangan → catatan "Prosedur pulih darurat" (`docs/prosedur-pulih-darurat.md`; di layar disebut dengan nama, bukan
+  jalur berkas).

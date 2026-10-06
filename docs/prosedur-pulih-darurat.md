@@ -47,11 +47,20 @@
      # atau tanpa worktree:  mkdir /tmp/sistem-lama && git archive sistem-lama-terakhir | tar -x -C /tmp/sistem-lama
      ```
      **Tidak diterbitkan, tidak di-commit.**
+   - **Pastikan ingat PIN owner.** Tombol **Owner** di gerbang sistem lama ("Sistem utama khusus owner") meminta PIN owner — PIN yang disetel 13 Agu
+     2026, tersimpan teracak di `pengaturan/keamanan` dan disalin ke peramban sesudah masuk. Sejak 7 Okt 2026 `/baru/` tidak punya layar untuk
+     menggantinya (tab Kasir & PIN dicabut; dokumennya tidak dihapus), dan aplikasi yang tayang tidak membacanya — gerbang ini satu-satunya pembacanya.
+     Kalau lupa, bereskan SEBELUM langkah 1 (jendela darurat jangan dibuka dulu): gerbang itu hanya kunci layar, datanya dijaga akun owner. Di Console ›
+     Firestore › `pengaturan/keamanan`, hapus field `acak`. Gerbang sistem lama meloloskan pemilik kalau PIN belum pernah tersalin ke peramban itu
+     (`mintaPinOwner` → `pinSudahDisetel` di tag), dan simpanan `localhost` memang kosong — kalau peramban komputer itu pernah membuka sistem lama di
+     `localhost:8731`, hapus dulu data situs `localhost` di setelan peramban. (Dibaca dari kode tag, belum dicoba di Console.)
 1. **Pasang aturan darurat.** Console › Firestore › Rules → tempel isi `firestore.rules.v3` → **Publish**. Catat jam. Sidik v3 yang benar:
    SHA-256 berawalan `32c55d58`.
 2. **Pulihkan.**
    - Di folder sistem lama: `python3 -m http.server 8731 --bind 127.0.0.1` → buka `http://localhost:8731/index.html`, masuk dengan akun owner.
      Simpanan lokal peramban untuk alamat `localhost` kosong — itu wajar.
+   - Gerbang "Sistem utama khusus owner" → tombol **Owner** → ketik PIN owner (lihat langkah 0). Seluruh sistem lama, termasuk Setelan › Muat
+     cadangan, ada di balik gerbang ini.
    - Setelan › Muat cadangan → pilih berkas → ketik **PULIHKAN** → tunggu kalimat "Berhasil diunggah …".
    - Sistem lama hanya **menambah** catatan yang id-nya belum ada. Tidak menimpa, tidak menghapus.
    - Berkas dari era tutup buku yang lain ditolak sendiri (penjaga era).

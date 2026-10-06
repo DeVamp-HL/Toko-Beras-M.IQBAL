@@ -185,8 +185,13 @@ jobs:
         run: python3 alat-uji/uji_safari_webkit.py && python3 alat-uji/uji_safari_webkit.py --kontrol
       # ---- owner 7 Okt: paket dokumen & sisa (D1 pusat dokumen yang kurang · D3 sisa pensiun sistem lama). D2 Safari ikut langkah di atas
       #      (WA Uang/Harga, paket bank, :hover semua stylesheet); 404.html di uji_csp & uji_pensiun_sistem_lama; tab Kasir & PIN di uji_operator_pin ----
-      - name: "Dokumen & sisa (owner 7 Okt): daftar harga & harga yang naik untuk pelanggan (katalog terbit, riwayat terbit), paket bank bernomor dihitung dulu, jalan pintas kartu piutang & daftar harga, bersihkan simpanan sistem lama (daftar beku tanpa kunci /baru/ & kasir darurat, antrean berisi dijaga, dua ketukan), kalimat 'lewat sistem lama' (kotak pasir jsc + statis + kontrol)"
-        run: python3 alat-uji/uji_dokumen_sisa.py && python3 alat-uji/uji_dokumen_sisa.py --kontrol
+      # Tinjauan 7 Okt: checkout di atas dangkal & tanpa tag, jadi pencocokan daftar kunci sistem lama dengan tag sistem-lama-terakhir dulu DILEWATI di CI
+      # (yang tetap jalan: daftar beku tidak memuat kunci /baru/ & kasir darurat). Tag diambil di sini — satu commit, dangkal; di mesin yang sudah punya
+      # tag tidak mengambil apa pun. Sesudahnya uji Dokumen & sisa jalan dengan --wajib-tag: tanpa tag = GAGAL, bukan dilewati diam-diam.
+      - name: "Ambil tag sistem-lama-terakhir (satu commit, dangkal) untuk uji Dokumen & sisa — tidak mengambil apa pun kalau tag sudah ada"
+        run: git rev-parse -q --verify refs/tags/sistem-lama-terakhir >/dev/null || git fetch --no-tags --depth=1 origin +refs/tags/sistem-lama-terakhir:refs/tags/sistem-lama-terakhir
+      - name: "Dokumen & sisa (owner 7 Okt): daftar harga & harga yang naik untuk pelanggan (katalog terbit, riwayat terbit), paket bank bernomor dihitung dulu, jalan pintas kartu piutang (hanya untuk hak Laporan) & daftar harga, bersihkan simpanan sistem lama (daftar beku = tag dikurangi kunci /baru/ & kasir darurat, antrean berisi dijaga sampai berkasnya dinyatakan tersimpan, berkas tanpa PIN owner, dua ketukan, dihitung saat lembar dibuka), peringatan kuota, kalimat 'lewat sistem lama' & jalur berkas di layar (kotak pasir jsc + statis + kontrol; tag wajib ada)"
+        run: python3 alat-uji/uji_dokumen_sisa.py --wajib-tag && python3 alat-uji/uji_dokumen_sisa.py --kontrol --wajib-tag
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"
