@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/kelas-merek-logika.js', 'baru/js/layar/varian-logika.js']   # tinjauan E1: belanja membaca kelas mutu (merek lalu, harga kelas)
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -231,7 +231,7 @@ ok('Angsa 4 karung dari SEJATI (13.600): 200 kg · 2.720.000; TUNAI → perlu ua
 var KT = HB.kertas; ok('kertas: dua pemasok, tiap lembar isi yang dipilih + yang disarankan; lainnya (belum perlu) = Pandan Wangi', KT.length === 2 && KT[0].isi.length >= 1 && HB.lainnya.some(function (b) { return b.merk === 'Pandan Wangi'; }) && !HB.lainnya.some(function (b) { return b.merk === 'IR64 Apex'; }), J(KT.map(function (k) { return k.pemasok + ':' + k.isi.map(function (b) { return b.merk; }).join('/'); })));
 ok('tulisPesan 0 karung menghapus barisnya', !tulisPesan(PS2, 'Angsa', 'SEJATI CONTOH', 0).Angsa);
 var SP = susunPesanan(PS2, 'RODA CONTOH', W, false);
-ok('pesanan RODA: teks WA berkop *Pesanan Toko Beras M.IQBAL*, baris per HARGA (owner 7 Okt) "• IR64 Rp14.500/kg — 8 karung × 50 kg (merek lalu: IR64 Apex)", jumlah; tautan wa.me/628123456790 (nomor kartu 0812… → 62812…); perkiraan harga TIDAK ikut', SP.baris[0] === '*Pesanan Toko Beras M.IQBAL*' && SP.baris.some(function (t) { return t === '• IR64 Rp14.500/kg — 8 karung × 50 kg (merek lalu: IR64 Apex)'; }) && !SP.baris.some(function (t) { return t === '• IR64 Apex — 8 karung × 50 kg'; }) && SP.baris.some(function (t) { return t === 'Jumlah 8 karung · 400 kg'; }) && !SP.baris.some(function (t) { return /Perkiraan/.test(t); }) && /^https:\/\/wa\.me\/6281234567890\?text=/.test(SP.tautan), J(SP.baris) + ' ' + SP.tautan);
+ok('pesanan RODA: teks WA berkop *Pesanan Toko Beras M.IQBAL*, baris per HARGA (owner 7 Okt) "• IR64 Rp14.500/kg — 8 karung × 50 kg" (tinjauan E1: IR64 Apex = nama wadah/kelas buatan toko, TIDAK disebut sebagai merek lalu), jumlah; tautan wa.me/628123456790 (nomor kartu 0812… → 62812…); perkiraan harga TIDAK ikut', SP.baris[0] === '*Pesanan Toko Beras M.IQBAL*' && SP.baris.some(function (t) { return t === '• IR64 Rp14.500/kg — 8 karung × 50 kg'; }) && !SP.baris.some(function (t) { return t === '• IR64 Apex — 8 karung × 50 kg'; }) && SP.baris.some(function (t) { return t === 'Jumlah 8 karung · 400 kg'; }) && !SP.baris.some(function (t) { return /Perkiraan/.test(t); }) && /^https:\/\/wa\.me\/6281234567890\?text=/.test(SP.tautan), J(SP.baris) + ' ' + SP.tautan);
 ok('dokumen pesananPemasok {pemasok, baris [{merk, karung, berat, kg, hargaPerKg}], karung 8, kg 400, rp, status menunggu, teks, keNomor}; pesan Angsa (SEJATI) tetap tersisa di daftar', SP.dokumen[0].koleksi === 'pesananPemasok' && SP.dokumen[0].data.status === 'menunggu' && SP.dokumen[0].data.baris[0].merk === 'IR64 Apex' && SP.dokumen[0].data.baris[0].hargaPerKg === 14500 && SP.dokumen[0].data.karung === 8 && SP.dokumen[0].data.keNomor === '6281234567890' && SP.pesanSisa.Angsa && !SP.pesanSisa['IR64 Apex'], J(SP.dokumen));
 ok('perkiraan harga ikut kalau diminta', susunPesanan(PS2, 'RODA CONTOH', W, true).baris.some(function (t) { return t === 'Perkiraan Rp5.800.000'; }));
 ok('pesanan ke pemasok yang tak pernah kirim / tanpa karung ditolak', /tidak dikenal/.test(susunPesanan(PS2, 'PEMASOK BARU', W, false).tolak) && /Belum ada karung/.test(susunPesanan({}, 'RODA CONTOH', W, false).tolak));
@@ -266,12 +266,12 @@ ok('atur belanja owner: ambang 2 · target 21 · muatan 3.000 (tidak lagi teruku
   var g64 = R.g.find(function (g) { return g.kunci === '50|14500|IR64'; });
   ok('7 Okt kelompok harga: Apex 8 + TH · House 3 (IR64, Rp14.500, 50 kg) = SATU baris 11 karung; SB · Royal (IR42 seharga) & Ketan 25 kg tetap baris sendiri; Angsa 25 kg berlabel jenis induknya; Σ karung/kg/rp kelompok = Σ per merek (17 karung · 750 kg)',
     R.d.length === 5 && R.g.length === 4 && jm(R.g, 'k') === R.karung && R.karung === 17 && jm(R.g, 'kg') === R.kg && R.kg === 750 && jm(R.g, 'rp') === R.rp && g64 && g64.k === 11 && J(g64.merk.map(function (b) { return b.merk; })) === J(['IR64 Apex', 'TH · House'])
-    && J(g64.kode) === J(['IR64 Apex', 'TH']) && R.g.some(function (g) { return g.kunci === '50|14500|IR42' && g.k === 2; }) && R.g.some(function (g) { return g.kunci === '25|14500|Ketan Putih' && g.k === 2; }) && R.g.some(function (g) { return g.kunci === '25|13600|IR64' && g.label === 'IR64 Rp13.600/kg'; }), J(R.g.map(function (g) { return [g.kunci, g.k, g.label, g.kode]; })));
+    && J(g64.kode) === J(['TH']) && R.g.some(function (g) { return g.kunci === '50|14500|IR42' && g.k === 2; }) && R.g.some(function (g) { return g.kunci === '25|14500|Ketan Putih' && g.k === 2; }) && R.g.some(function (g) { return g.kunci === '25|13600|IR64' && g.label === 'IR64 Rp13.600/kg'; }), J(R.g.map(function (g) { return [g.kunci, g.k, g.label, g.kode]; })));
   var SPg = susunPesanan(o, 'RODA CONTOH', W, false);
-  ok('7 Okt pesanan WA per harga: termurah dulu, satu baris per harga ("• IR64 Rp14.500/kg — 11 karung × 50 kg (merek lalu: IR64 Apex / TH)"), jumlah SAMA dengan per merek; dokumen: baris per merek tetap (penanda dipesan) + barisHarga',
-    J(SPg.baris.slice(2)) === J(['• IR64 Rp13.600/kg — 2 karung × 25 kg (merek lalu: Angsa)', '• IR42 Rp14.500/kg — 2 karung × 50 kg (merek lalu: SB)', '• IR64 Rp14.500/kg — 11 karung × 50 kg (merek lalu: IR64 Apex / TH)', '• Ketan Putih Rp14.500/kg — 2 karung × 25 kg (merek lalu: Ketan Contoh)', 'Jumlah 17 karung · 750 kg'])
-    && SPg.dokumen[0].data.baris.length === 5 && SPg.dokumen[0].data.barisHarga.length === 4 && jm(SPg.dokumen[0].data.barisHarga, 'karung') === 17 && J(SPg.dokumen[0].data.barisHarga[2]) === J({ hargaPerKg: 14500, berat: 50, jenis: 'IR64', karung: 11, kg: 550, merk: ['IR64 Apex', 'TH · House'] }), J(SPg.baris));
-  var kosongH = blKelompokHarga([{ merk: 'Tanpa Harga', k: 2, kg: 100, rp: 0, berat: 50, sumber: null, hari: null }, { merk: 'Ada Harga', k: 1, kg: 50, rp: 700000, berat: 50, sumber: { pemasok: 'X', harga: 14000, tanggal: '2026-09-01' }, hari: 4 }, { merk: 'Tanpa Harga B', k: 1, kg: 50, rp: 0, berat: 50, sumber: null, hari: null }]);
+  ok('7 Okt pesanan WA per harga: termurah dulu, satu baris per harga ("• IR64 Rp14.500/kg — 11 karung × 50 kg (merek lalu: TH)" — nama wadah IR64 Apex tidak disebut), jumlah SAMA dengan per merek; dokumen: baris per merek tetap (penanda dipesan) + barisHarga',
+    J(SPg.baris.slice(2)) === J(['• IR64 Rp13.600/kg — 2 karung × 25 kg (merek lalu: Angsa)', '• IR42 Rp14.500/kg — 2 karung × 50 kg (merek lalu: SB)', '• IR64 Rp14.500/kg — 11 karung × 50 kg (merek lalu: TH)', '• Ketan Putih Rp14.500/kg — 2 karung × 25 kg (merek lalu: Ketan Contoh)', 'Jumlah 17 karung · 750 kg'])
+    && SPg.dokumen[0].data.baris.length === 5 && Array.isArray(SPg.dokumen[0].data.barisHarga) && SPg.dokumen[0].data.barisHarga.length === 4 && jm(SPg.dokumen[0].data.barisHarga, 'karung') === 17 && J(SPg.dokumen[0].data.barisHarga[2]) === J({ hargaPerKg: 14500, berat: 50, jenis: 'IR64', karung: 11, kg: 550, merk: ['IR64 Apex', 'TH · House'] }), J(SPg.baris));
+  var kosongH = blKelompokHarga([{ merk: 'Tanpa Harga', k: 2, kg: 100, rp: 0, berat: 50, sumber: null, pakai: null, hari: null }, { merk: 'Ada Harga', k: 1, kg: 50, rp: 700000, berat: 50, sumber: { pemasok: 'X', harga: 14000, tanggal: '2026-09-01' }, pakai: { pemasok: 'X', harga: 14000, tanggal: '2026-09-01', kode: '' }, hari: 4 }, { merk: 'Tanpa Harga B', k: 1, kg: 50, rp: 0, berat: 50, sumber: null, pakai: null, hari: null }]);
   ok('7 Okt merek TANPA harga beli → tiap merek baris sendiri (tidak digabung walau sama-sama tanpa harga) bertanda "harga belum tercatat", paling akhir', kosongH.length === 3 && !kosongH[1].adaHarga && !kosongH[2].adaHarga && kosongH[1].teks === '• Tanpa Harga — 2 karung × 50 kg · harga belum tercatat' && kosongH[2].teks === '• Tanpa Harga B — 1 karung × 50 kg · harga belum tercatat' && kosongH[0].label === 'beras Rp14.000/kg', J(kosongH.map(function (g) { return g.teks; })));
   var TKg = susunTruk(H, 'RODA CONTOH'); ok('7 Okt truk: potongan bak = baris harga (4, urutan sama dengan pesanan); muatan 3.000 → baris IR64 550 kg cukup berlabel jumlah karung', J(TKg.bak.filter(function (k) { return k.kelas !== 'kosongbak'; }).map(function (k) { return k.merk; })) === J(R.g.map(function (g) { return g.kunci; })) && TKg.bak.some(function (k) { return k.merk === '50|14500|IR64' && k.t === '11'; }), J(TKg.bak));
   // − / + / centang satu baris harga: karungnya dibagi ke merek di dalamnya (laju & sisa tetap per merek)
@@ -280,6 +280,67 @@ ok('atur belanja owner: ambang 2 · target 21 · muatan 3.000 (tidak lagi teruku
   var kt = ketukKelompok(H, 'RODA CONTOH', '50|14500|IR64', o); var kt0 = tulisPesan(kt, 'SB · Royal', 'RODA CONTOH', 0); var kt2 = ketukKelompok(hitungBelanja(kt0, KINI), 'RODA CONTOH', '50|14500|IR42', kt0);
   ok('7 Okt centang baris harga berisi → semua mereknya dikosongkan; baris kosong tanpa saran → satu karung', !kt['IR64 Apex'] && !kt['TH · House'] && kt['SB · Royal'].k === 2 && kt2['SB · Royal'].k === 1, J([kt, kt2]));
   pasok('batchMasuk', bAsli); pasok('produksiKemasan', prAsli); pasok('pengaturan', pgAsli);
+})();
+// ==================== tinjauan E1 (7 Okt) · PERLU & SARAN per BARIS HARGA dari stok & laju GABUNGAN; arsip; stok 0; merek lalu; umur harga; baris hampir kembar ====================
+(function () {
+  var bAsli = cacheMentah('batch').slice(), jAsli = cacheMentah('penjualan').slice(), pgAsli = cacheMentah('pengaturan').slice(), atAsli = cacheMentah('aturan').slice();
+  var brs = function (merk, kg, h, ubah) { return Object.assign({ id: merk, merk: merk, satuan: 'karung', beratKarung: 50, jumlahKarung: kg / 50, totalKg: kg, hargaPerKg: h, subtotalHarga: kg * h }, ubah || {}); };
+  var jl = function (id, merk, kg) { return { koleksi: 'penjualan', data: { id: id, tanggal: '2026-09-15', jam: '09:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: merk, totalKg: kg, hargaTotal: kg * 16000, hppTotalSaatJual: kg * 15000, beratKarungAcuan: 50, jumlahKarung: kg / 50 } }; };
+  var peta = Object.assign({}, ((cacheMentah('pengaturan').find(function (d) { return d.id === 'jenisBeras'; }) || {}).peta) || {});
+  ['Merek Kosong', 'Merek Penuh', 'Gabung Lain', 'Nol Laku', 'Arsip Contoh', 'Dua A', 'Dua B', 'Dua Diam', 'Lama Apex', 'Jauh Apex', 'Baru Apex', 'Tebak Apex', 'Asc Lama', 'Asc Satu', 'Asc Dua', 'Bahan campuran Uji'].forEach(function (m) { peta[m] = 'IR64'; }); peta['Ketan Kelas'] = 'Ketan Putih';
+  terapkanKeCache([
+    // GABUNG: Merek Kosong (50 kg, laku 28,6/hari → habis 1 hari) seharga Merek Penuh (986 kg, laku 1/hari) → bersama 1.036 kg ÷ 29,6 = 35 hari: TIDAK perlu
+    { koleksi: 'batchMasuk', data: { id: 'g1', tanggal: '2026-09-10', jam: '08:00', pemasok: 'GABUNG CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [brs('Merek Kosong', 450, 15000), brs('Merek Penuh', 1000, 15000), brs('Gabung Lain', 300, 15500), brs('Nol Laku', 100, 16000), brs('Arsip Contoh', 100, 15000)] } },
+    // DUA: Dua A (80 kg, 30/hari) + Dua B (50 kg, 17,9/hari) + Dua Diam (100 kg, tak laku) seharga → bersama 230 kg ÷ 47,9 = 4 hari: PERLU, saran ⌈(670 − 230) / 50⌉ = 9
+    { koleksi: 'batchMasuk', data: { id: 'd1', tanggal: '2026-09-10', jam: '08:00', pemasok: 'DUA CONTOH', caraBayar: 'utang', biayaBongkar: 0, merkList: [brs('Dua A', 500, 15200), brs('Dua B', 300, 15200), brs('Dua Diam', 100, 15200)] } },
+    // KEMBAR: kelas mutu dipetakan owner; kiriman terbaru kelas IR64 Apex 12 Sep @15.100 (Baru Apex); IR64 Ascent 12 Sep DUA harga (15.300 & 15.400) = tidak ditebak
+    { koleksi: 'batchMasuk', data: { id: 'k1', tanggal: '2026-09-08', jam: '08:00', pemasok: 'KEMBAR CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [brs('Lama Apex', 200, 15000), brs('Jauh Apex', 200, 14000), brs('Tebak Apex', 100, 15050), brs('Asc Lama', 100, 15350),
+      brs('Ketan Kelas', 100, 20000, { merkPemasok: 'KK' }), brs('Bahan campuran Uji', 100, 13000)] } },
+    { koleksi: 'batchMasuk', data: { id: 'k2', tanggal: '2026-09-12', jam: '08:00', pemasok: 'KEMBAR CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [brs('Baru Apex', 200, 15100), brs('Asc Satu', 100, 15300), brs('Asc Dua', 100, 15400)] } },
+    jl('e1', 'Merek Kosong', 400), jl('e2', 'Merek Penuh', 14), jl('e3', 'Gabung Lain', 200), jl('e4', 'Nol Laku', 100), jl('e5', 'Arsip Contoh', 100), jl('e6', 'Dua A', 420), jl('e7', 'Dua B', 250),
+    { koleksi: 'pengaturan', data: { id: 'jenisBeras', peta: peta } },
+    { koleksi: 'aturanToko', data: { id: 'produkArsip', daftar: [{ kunci: 'K:Arsip Contoh', nama: 'Arsip Contoh', pada: '2026-09-18' }] } },
+    { koleksi: 'aturanToko', data: { id: 'kelasMerek', peta: { 'Lama Apex': 'IR64 Apex', 'Jauh Apex': 'IR64 Apex', 'Baru Apex': 'IR64 Apex', 'Tebak Apex': 'IR64 Apex', 'Asc Lama': 'IR64 Ascent', 'Asc Satu': 'IR64 Ascent', 'Asc Dua': 'IR64 Ascent' },
+      asal: { 'Lama Apex': 'owner', 'Jauh Apex': 'owner', 'Baru Apex': 'owner', 'Tebak Apex': 'tebakan', 'Asc Lama': 'owner', 'Asc Satu': 'owner', 'Asc Dua': 'owner' }, kelasSendiri: ['Ketan Kelas'] } }]);
+  terapkanKeCache(susunAturBelanja({ ambangHari: '7', targetHari: '14', muatanKg: '200' }, W).dokumen);
+  var H = hitungBelanja({}, KINI); var b = function (m) { return H.baris.find(function (x) { return x.merk === m; }) || null; }; var R = function (p) { return H.perP.find(function (r) { return r.pemasok === p; }); };
+  var gG = R('GABUNG CONTOH').gMilik.find(function (g) { return g.kunci === '50|15000|IR64'; });
+  ok('E1 GABUNGAN: Merek Kosong habis 1 hari tapi seharga Merek Penuh (986 kg) → baris IR64 Rp15.000 bersama 1.036 kg ±35 hari: TIDAK perlu, saran 0 (dulu 7 karung); Merek Kosong masuk "ada yang seharga", kalimatnya menyebut gabungannya',
+    b('Merek Kosong').hari === 1 && b('Merek Kosong').perlu === false && b('Merek Kosong').saranK === 0 && b('Merek Penuh').saranK === 0 && gG && gG.perlu === false && gG.saranK === 0 && /±35 hari lagi/.test(gG.hariTeks)
+    && /masih cukup bersama/.test(b('Merek Kosong').tutup) && /seharga Merek Penuh \(GABUNG CONTOH Rp15\.000\/kg\): bersama 1\.036 kg/.test(b('Merek Kosong').gabungTeks)
+    && H.kelompok.some(function (k) { return /ada yang seharga/.test(k.judul) && k.isi.some(function (x) { return x.merk === 'Merek Kosong'; }); }) && !H.kelompok.some(function (k) { return k.judul === 'Habis dalam 7 hari' && k.isi.some(function (x) { return x.merk === 'Merek Kosong'; }); })
+    && !H.kertas.some(function (r) { return r.g.some(function (g) { return g.kunci === '50|15000|IR64' && r.pemasok === 'GABUNG CONTOH'; }); }), J([b('Merek Kosong'), gG && [gG.perlu, gG.saranK, gG.hariTeks]]));
+  var gD = R('DUA CONTOH').gMilik.find(function (g) { return g.kunci === '50|15200|IR64'; });
+  ok('E1 GABUNGAN perlu: Dua A + Dua B + Dua Diam seharga → bersama 230 kg ±4 hari, saran ⌈(47,9 × 14 − 230) / 50⌉ = 9 karung (bukan 7 + 4 per merek), dibagi ke yang paling cepat habis: Dua A 6 · Dua B 3 · Dua Diam (tak laku) 0',
+    gD && gD.perlu === true && gD.saranK === 9 && b('Dua A').saranK === 6 && b('Dua B').saranK === 3 && b('Dua Diam').saranK === 0 && b('Dua A').perlu && b('Dua B').perlu && !b('Dua Diam').perlu, J(gD && gD.merk.map(function (x) { return [x.merk, x.saranK, x.perlu, x.hari]; })));
+  var kD = H.kertas.find(function (r) { return r.pemasok === 'DUA CONTOH'; });
+  ok('E1 DAFTAR: baris harga yang perlu tampil LENGKAP — Dua Diam (tidak perlu, 100 kg) ikut di lembar sebagai merek seharga, bukan di "Belum perlu — boleh ditambah"',
+    kD && kD.g.length === 1 && kD.isi.some(function (x) { return x.merk === 'Dua Diam'; }) && !H.lainnya.some(function (x) { return x.merk === 'Dua Diam'; }), J(kD && kD.isi.map(function (x) { return x.merk; })));
+  var kk = function (o, m) { return (o[m] || { k: 0 }).k; };   // karung satu merek di peta pesanan (0 bila tidak ada) — kontrol tidak boleh berbunyi karena jsc jatuh
+  var PS = pakaiSaran(H, {}, 'DUA CONTOH'); var PSall = pakaiSaran(H, {}, ''); var KT = ketukKelompok(H, 'DUA CONTOH', '50|15200|IR64', {});
+  ok('E1 "Pakai saran" (per pemasok / semua) & centang baris harga = saran GABUNGAN dibagi ke merek (Dua A 6 · Dua B 3 = 9 karung, satu baris harga); merek tanpa bagian tidak ditulis',
+    PS.baris === 1 && PS.karung === 9 && kk(PS.pesan, 'Dua A') === 6 && kk(PS.pesan, 'Dua B') === 3 && !PS.pesan['Dua Diam'] && !PS.pesan['Merek Kosong'] && J(KT) === J(PS.pesan) && kk(PSall.pesan, 'Dua A') === 6 && !PSall.pesan['Merek Kosong'] && /^Pakai saran: \d+ baris harga · \d+ karung$/.test(H.saranSemuaTeks), J([PS, KT]));
+  var WD = susunPesanan(PS.pesan, 'DUA CONTOH', W, false);
+  ok('E1 pesanan WA: satu baris "• IR64 Rp15.200/kg — 9 karung × 50 kg (merek lalu: Dua A / Dua B / Dua Diam)" — merek lalu dari SEMUA merek seharga pemasok itu, bukan hanya yang dipesan',
+    WD.baris.indexOf('• IR64 Rp15.200/kg — 9 karung × 50 kg (merek lalu: Dua A / Dua B / Dua Diam)') >= 0, J(WD.baris));
+  ok('E1 stok 0 yang masih laku = "habis hari ini" (dulu "belum ada gerak — tidak ditebak"): Nol Laku perlu, saran 2 karung; tanpa laju tetap tidak ditebak',
+    b('Nol Laku').hari === 0 && b('Nol Laku').perlu && b('Nol Laku').saranK === 2 && /habis hari ini/.test(b('Nol Laku').sisaTeks) && hariHabis(0, 0) === null && hariHabis(-5, 3) === 0, J(b('Nol Laku')));
+  ok('E1 nama yang DIARSIPKAN tidak ikut belanja (tidak disarankan walau stoknya habis & masih laku)', !b('Arsip Contoh') && !H.D.merk.some(function (x) { return x.merk === 'Arsip Contoh'; }));
+  var PF = penuhiTruk(H, 'GABUNG CONTOH', {});
+  ok('E1 penuhi truk per BARIS HARGA: 4 karung (muatan 200 kg) ke baris yang stok gabungannya paling cepat habis (Nol Laku, Gabung Lain) — Merek Kosong (habis 1 hari, tapi barisnya ±35 hari) tidak menerima',
+    PF.tambahan === 4 && !PF.pesan['Merek Kosong'] && !PF.pesan['Merek Penuh'] && kk(PF.pesan, 'Nol Laku') + kk(PF.pesan, 'Gabung Lain') === 4, J(PF));
+  // KEMBAR: umur harga, merek lalu, baris hampir kembar
+  var o = {}; ['Lama Apex', 'Baru Apex', 'Jauh Apex', 'Tebak Apex', 'Asc Lama', 'Asc Satu', 'Asc Dua', 'Ketan Kelas', 'Bahan campuran Uji'].forEach(function (m) { o = tulisPesan(o, m, 'KEMBAR CONTOH', 1); });
+  var HK = hitungBelanja(o, KINI); var bk = function (m) { return HK.baris.find(function (x) { return x.merk === m; }); }; var WK = susunPesanan(o, 'KEMBAR CONTOH', W, false);
+  ok('E1 baris hampir kembar: Lama Apex (15.000, 8 Sep) sekelas IR64 Apex dengan kiriman terbaru Baru Apex (15.100, 12 Sep), beda 0,7 % ≤ batas owner 5 % → ikut 15.100, SATU baris "• IR64 Rp15.100/kg — 2 karung × 50 kg (merek lalu: Baru Apex / Lama Apex)"; rp & dokumen pesanan memakai 15.100; harga lamanya tetap disebut',
+    bk('Lama Apex').pakai.harga === 15100 && bk('Lama Apex').pakai.lalu.harga === 15000 && bk('Lama Apex').rp === 50 * 15100 && WK.baris.indexOf('• IR64 Rp15.100/kg — 2 karung × 50 kg (merek lalu: Baru Apex / Lama Apex)') >= 0
+    && WK.dokumen[0].data.baris.find(function (x) { return x.merk === 'Lama Apex'; }).hargaPerKg === 15100 && /Lama Apex terakhir Rp15\.000 \(8 Sep\)/.test(HK.perP.find(function (r) { return r.pemasok === 'KEMBAR CONTOH'; }).g.find(function (g) { return g.harga === 15100; }).hargaTeks), J([bk('Lama Apex').pakai, WK.baris]));
+  ok('E1 TIDAK dirapikan bila tidak aman: Jauh Apex (beda 7,9 % > batas owner), Tebak Apex (kelasnya tebakan), Asc Lama (kiriman terbaru kelasnya punya DUA harga) → harganya sendiri, ditandai umurnya',
+    bk('Jauh Apex').pakai.harga === 14000 && !bk('Jauh Apex').pakai.lalu && bk('Tebak Apex').pakai.harga === 15050 && bk('Asc Lama').pakai.harga === 15350
+    && WK.baris.indexOf('• IR64 Rp14.000/kg (harga 8 Sep) — 1 karung × 50 kg (merek lalu: Jauh Apex)') >= 0 && WK.baris.indexOf('• IR64 Rp15.050/kg (harga 8 Sep) — 1 karung × 50 kg (merek lalu: Tebak Apex)') >= 0 && WK.baris.indexOf('• IR64 Rp15.350/kg (harga 8 Sep) — 1 karung × 50 kg (merek lalu: Asc Lama)') >= 0, J(WK.baris));
+  ok('E1 umur harga: harga dari kiriman TERAKHIR pemasok itu (12 Sep) tanpa umur; merek lalu = merek pemasok yang tercatat (kelas sendiri Ketan Kelas → "KK"); nama buatan toko (bahan campuran) tidak disebut',
+    WK.baris.indexOf('• IR64 Rp15.300/kg — 1 karung × 50 kg (merek lalu: Asc Satu)') >= 0 && WK.baris.indexOf('• Ketan Putih Rp20.000/kg (harga 8 Sep) — 1 karung × 50 kg (merek lalu: KK)') >= 0 && WK.baris.indexOf('• IR64 Rp13.000/kg (harga 8 Sep) — 1 karung × 50 kg') >= 0, J(WK.baris));
+  pasok('batchMasuk', bAsli); pasok('penjualan', jAsli); pasok('pengaturan', pgAsli); pasok('aturanToko', atAsli);
 })();
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
@@ -309,11 +370,21 @@ var J = JSON.stringify; var kel = { merek: 0, baris: 0, pemasok: 0 }; var WB = {
   [o1, o2].forEach(function (pes, ke) { var H = hitungBelanja(pes, KINI); H.perP.forEach(function (r) { if (!r.karung) return;
     var gk = r.g.reduce(function (a, g) { return a + g.k; }, 0), gkg = r.g.reduce(function (a, g) { return a + g.kg; }, 0), grp = r.g.reduce(function (a, g) { return a + g.rp; }, 0);
     if (gk !== r.karung || Math.abs(gkg - r.kg) > 0.001 || Math.abs(grp - r.rp) > 0.5) salah.push('kelompok harga ≠ per merek: ' + r.pemasok);
-    var nm = []; r.g.forEach(function (g) { g.merk.forEach(function (b) { nm.push(b.merk); if (g.adaHarga && (!b.sumber || b.sumber.harga !== g.harga || b.berat !== g.berat)) salah.push('harga/berat campur di kelompok: ' + b.merk); }); });
+    var nm = []; r.g.forEach(function (g) { g.merk.forEach(function (b) { nm.push(b.merk); if (g.adaHarga && (!b.pakai || b.pakai.harga !== g.harga || b.berat !== g.berat || (b.pakai.lalu ? !(b.pakai.tanggal > b.pakai.lalu.tanggal) : b.pakai.harga !== b.sumber.harga))) salah.push('harga/berat campur di kelompok: ' + b.merk); }); });
     if (J(nm.slice().sort()) !== J(r.d.map(function (b) { return b.merk; }).sort())) salah.push('merek hilang/ganda di kelompok: ' + r.pemasok);
     var P = susunPesanan(pes, r.pemasok, WB, false); if (P.tolak) { salah.push('pesanan ditolak: ' + P.tolak); return; }
     if (P.baris.filter(function (t) { return /^Jumlah /.test(t); })[0] !== 'Jumlah ' + r.karung + ' karung · ' + blKG(r.kg) || P.baris.length !== r.g.length + 3) salah.push('pesan WA: ' + r.pemasok);
     if (ke === 1) { kel.merek += r.d.length; kel.baris += r.g.length; kel.pemasok += 1; } }); }); })();
+// tinjauan E1: perlu & saran per BARIS HARGA di data toko — tiap kelompok: Σ sisa merek = sisa gabungan, Σ bagian saran = saran gabungan (kecuali tak ada merek yang bisa
+// menerima), perlu = hari gabungan ≤ ambang & saran > 0 & tidak ada yang dipesan; tidak ada nama arsip; merek yang stok sendirinya tipis tapi ditutup seharganya dihitung
+var gab = { baris: 0, perlu: 0, tutup: [] }; var ARS2 = arPeta();
+(function () { var at = D.atur; var kel = {}; D.merk.forEach(function (x) { if (ARS2['K:' + x.merk]) salah.push('nama arsip ikut belanja: ' + x.merk); if (!x.kel) { salah.push('tanpa kelompok: ' + x.merk); return; } var k = x.kel.pemasok + '|' + x.kel.kunci; (kel[k] = kel[k] || { info: x.kel, isi: [] }).isi.push(x); if (x.tutup) gab.tutup.push(x.merk); });
+  Object.keys(kel).forEach(function (k) { var G = kel[k], I = G.info; gab.baris += 1; if (I.perlu) gab.perlu += 1;
+    var sisa = Math.round(G.isi.reduce(function (a, x) { return a + x.sisa; }, 0) * 100) / 100, bagi = G.isi.reduce(function (a, x) { return a + x.saranK; }, 0), bisa = G.isi.some(function (x) { return x.laju > 0 && !x.dipesan; });
+    if (Math.abs(sisa - I.sisa) > 0.01) salah.push('sisa gabungan ≠ Σ merek: ' + k);
+    if (bisa && bagi !== I.saranK) salah.push('saran gabungan ≠ Σ bagian: ' + k);
+    if (I.perlu !== (I.hari !== null && I.hari <= at.ambangHari && I.saranK > 0 && !I.dipesan)) salah.push('perlu gabungan salah: ' + k);
+    G.isi.forEach(function (x) { if (x.perlu !== (I.perlu && x.saranK > 0)) salah.push('perlu merek ≠ bagiannya: ' + x.merk); }); }); })();
 // kolom dokumen vs cadangan (kolom baru sistem baru disebut eksplisit)
 var kenal = function (nama) { var o = {}; (CAD[nama] || []).forEach(function (d) { Object.keys(d).forEach(function (k) { o[k] = 1; }); }); return o; };
 var WX = { tanggal: '2026-09-22', jam: '10:00', kini: '2026-09-22T03:00:00.000Z', idUnik: function () { return Math.random(); } };
@@ -331,7 +402,7 @@ var kC = kenal('pemasokCatatan'); var kr = susunKartu(px ? px.pemasok : 'X', { k
 var kH = kenal('pengeluaranHarian'); if (px && (B.adaKas === false || tanpaTitik)) { var by2 = susunBayar({ pemasok: px.pemasok, bonId: px.id, ketik: '1', dari: 'rekening', adminI: 0 }, WX); if (by2.dokumen && by2.dokumen[1]) Object.keys(by2.dokumen[1].data).forEach(function (k) { if (!kH[k] && ['dariBayarBon', 'untuk'].indexOf(k) < 0) salah.push('harian.' + k); }); }
 if (tanpaTitik) pasok('pengaturan', pgAsli);
 var b0 = S.baris.find(function (b) { return b.st.id === 'S' && b.modalUnit > 0 && b.lamaN > 0; }); if (b0) { terapkanKeCache(susunUbah(b0.k, String(b0.lamaN + 100), 'jual', WX).dokumen); var T = susunTerbit(WX, true); var kK = kenal('katalogHargaKarung'); if (T.dokumen) Object.keys(T.dokumen[0].data).forEach(function (k) { if (!kK[k] && k !== 'modalSaatSetel') salah.push('katalogKarung.' + k); }); else salah.push('terbit ditolak: ' + T.tolak); }
-print(JSON.stringify({ salah: salah, catatan: catatan, baris: S.baris.length, nDok: nDok, perlu: S.perlu.length, ringkas: S.ringkas.map(function (r) { return r.l + ' ' + r.a; }).join(' · '), target: S.target, targetDariRata: S.atur.targetDariRata, bongkar: S.atur.bongkarKg, bon: B.nBon, total: B.total, lewat: B.lewat.length, merk: D.merk.length, perluBeli: D.merk.filter(function (m) { return m.perlu; }).length, muatan: D.atur.muatanKg, pemasok: D.pemasok.map(function (p) { return p.nama.split(' ')[0] + ':' + p.cara; }).join(' · '), kelompok: kel }));
+print(JSON.stringify({ salah: salah, catatan: catatan, baris: S.baris.length, nDok: nDok, perlu: S.perlu.length, ringkas: S.ringkas.map(function (r) { return r.l + ' ' + r.a; }).join(' · '), target: S.target, targetDariRata: S.atur.targetDariRata, bongkar: S.atur.bongkarKg, bon: B.nBon, total: B.total, lewat: B.lewat.length, merk: D.merk.length, perluBeli: D.merk.filter(function (m) { return m.perlu; }).length, gab: gab, muatan: D.atur.muatanKg, pemasok: D.pemasok.map(function (p) { return p.nama.split(' ')[0] + ':' + p.cara; }).join(' · '), kelompok: kel }));
 """
 
 
@@ -393,14 +464,14 @@ if __name__ == '__main__':
             'garis jatuh tempo tanpa penanda uang habis': js.replace("if (kas !== null && !habisSudah && jalan + b.sisa > kas) {", "if (false) {"),
             'kebiasaan bayar pemasok dari SATU kedatangan terakhir': js.replace("const tiga = s.cara.slice(0, 3);", "const tiga = s.cara.slice(0, 1);"),
             # ---- H3 belanja
-            'saran belanja tidak dibulatkan ke karung penuh': js.replace("const saranK = Math.ceil(butuh / berat);", "const saranK = Math.floor(butuh / berat);"),
-            'merek tanpa laju ditebak habis 0 hari': js.replace("const hariHabis = (sisa, laju) => (!(sisa > 0) || !(laju > 0) ? null : Math.floor(sisa / laju + 1e-9));", "const hariHabis = (sisa, laju) => (!(sisa > 0) ? null : !(laju > 0) ? 0 : Math.floor(sisa / laju + 1e-9));"),
-            'ambang hari setelan diabaikan': js.replace("perlu: hari !== null && hari <= atur.ambangHari && saranK > 0 && !dipesan,", "perlu: hari !== null && hari <= 7 && saranK > 0 && !dipesan,"),
+            'saran belanja tidak dibulatkan ke karung penuh': js.replace("const saranK = Math.ceil(butuh / G.berat);", "const saranK = Math.floor(butuh / G.berat);"),
+            'merek tanpa laju ditebak habis 0 hari': js.replace("const hariHabis = (sisa, laju) => (!(laju > 0) ? null : !(sisa > 0) ? 0 :", "const hariHabis = (sisa, laju) => (!(laju > 0) ? 0 : !(sisa > 0) ? 0 :"),
+            'ambang hari setelan diabaikan': js.replace("const perlu = hari !== null && hari <= atur.ambangHari && saranK > 0 && !dipesan;", "const perlu = hari !== null && hari <= 7 && saranK > 0 && !dipesan;"),
             'yang sudah dipesan tetap disarankan': js.replace("const dipesan = menunggu.find((p) => (p.baris || []).some((b) => b.merk === m)) || null;", "const dipesan = null;"),
             'muatan truk angka mati 3.000 (bukan terukur)': js.replace("muatanKg: muat === null ? muatanTerukur() : muat, muatanTerukur: muat === null,", "muatanKg: muat === null ? 3000 : muat, muatanTerukur: muat === null,"),
-            'penuhi truk menambah ke merek tanpa laju': js.replace("const calon = R.milik.filter((b) => b.laju > 0 && !b.dipesan && (!o[b.merk] || o[b.merk].p === pemasok)).map((b) => ({ b, k: b.k }));", "const calon = R.milik.filter((b) => !b.dipesan && (!o[b.merk] || o[b.merk].p === pemasok)).map((b) => ({ b, k: b.k }));"),
+            'penuhi truk menambah ke merek tanpa laju': js.replace("const calon = anggota.filter((c) => c.b.laju > 0);", "const calon = anggota;"),
             'pesanan datang tidak dibaca dari kedatangan': js.replace("const status = p.status === 'batal' ? 'batal' : p.status === 'datang' ? 'datang' : sesudah.length ? 'datang' : 'menunggu';", "const status = p.status === 'batal' ? 'batal' : p.status === 'datang' ? 'datang' : 'menunggu';"),
-            'harga termurah tanpa tanggal': js.replace("const sumber = pem.filter((p) => p.hargaPerMerk[m]).map((p) => ({ pemasok: p.nama, harga: p.hargaPerMerk[m].terakhir.hargaPerKg, tanggal: p.hargaPerMerk[m].terakhir.tanggal })).sort((a, b) => a.harga - b.harga);", "const sumber = pem.filter((p) => p.hargaPerMerk[m]).map((p) => ({ pemasok: p.nama, harga: p.hargaPerMerk[m].terakhir.hargaPerKg, tanggal: '' })).sort((a, b) => a.harga - b.harga);"),
+            'harga termurah tanpa tanggal': js.replace("tanggal: p.hargaPerMerk[m].terakhir.tanggal, kode: p.hargaPerMerk[m].terakhir.merkPemasok || '' }))", "tanggal: '', kode: p.hargaPerMerk[m].terakhir.merkPemasok || '' }))"),
             'uang belanja tunai tidak dibandingkan dengan kas': js.replace("(kas === null ? 'Uang toko belum bisa dihitung (titik kas belum disetel).' : 'Uang toko sekarang ' + RP(kas) + (rp > kas ? ' — KURANG ' + RP(rp - kas) + '.' : ' — cukup.'))", "''"),
             'nomor WhatsApp pemasok tidak dipakai': js.replace("const nomor = nomorWa(R.kontak);", "const nomor = '';"),
             # ---- owner 7 Okt: belanja per harga beli terakhir
@@ -412,9 +483,26 @@ if __name__ == '__main__':
             '7 Okt: karung kelompok tidak dijumlah': js.replace("g.k += b.k || 0;", "g.k = b.k || 0;"),
             '7 Okt: tanpa harga tidak ditandai': js.replace("(g.adaHarga ? '' : ' · harga belum tercatat')", "''"),
             '7 Okt: + baris harga ke merek yang paling LAMA cukup': js.replace("const c = g.merk.slice().sort((x, y) => cukup(x, x.k) - cukup(y, y.k)", "const c = g.merk.slice().sort((x, y) => cukup(y, y.k) - cukup(x, x.k)"),
-            '7 Okt: buku 25 kg dipesan dalam karung 50 kg': js.replace("const berat = uk[m] ? uk[m].berat : merkPunyaKarungBerat(m, 50)", "const berat = merkPunyaKarungBerat(m, 50)"),
-            '7 Okt: jenis buku per ukuran tidak dari induknya': js.replace("jenisUntukMerk(uk[b.merk] ? uk[b.merk].induk : b.merk)", "jenisUntukMerk(b.merk)"),
+            '7 Okt: buku 25 kg dipesan dalam karung 50 kg': js.replace("const blBerat = (m, uk) => (uk[m] ? uk[m].berat : merkPunyaKarungBerat(m, 50)", "const blBerat = (m, uk) => (merkPunyaKarungBerat(m, 50)"),
+            '7 Okt: jenis buku per ukuran tidak dari induknya': js.replace("String(jenisUntukMerk(blInduk(m, uk)) || '').trim()", "String(jenisUntukMerk(m) || '').trim()"),
             '7 Okt: dokumen pesanan tanpa barisHarga': js.replace("barisHarga: R.g.map(", "barisHargaX: R.g.map("),
+            # ---- tinjauan E1: perlu & saran per BARIS HARGA (stok & laju gabungan), Daftar lengkap, arsip, stok 0, merek lalu, umur harga, baris hampir kembar
+            'E1: perlu & saran per merek lagi (stok merek seharga tidak dihitung)': js.replace("const k = (x.pakai ? x.pakai.pemasok : '') + '|' + K.kunci;", "const k = x.merk;"),
+            'E1: Daftar hanya memuat merek yang perlu (merek seharga tak terlihat)': js.replace("g.forEach((x) => x.merk.forEach((b) => isi.push(b)));", "g.forEach((x) => x.merk.forEach((b) => { if (b.perlu || b.k > 0) isi.push(b); }));"),
+            'E1: merek seharga di Daftar juga muncul di "Belum perlu"': js.replace("&& !diKertas[b.merk]).sort(urutHari);", ").sort(urutHari);"),
+            'E1: saran gabungan dibagi ke merek yang paling LAMA cukup': js.replace("const c = calon.slice().sort((a, b) => cukup(a) - cukup(b) || a.merk.localeCompare(b.merk))[0];", "const c = calon.slice().sort((a, b) => cukup(b) - cukup(a) || a.merk.localeCompare(b.merk))[0];"),
+            'E1: penuhi truk per merek (stok seharga diabaikan)': js.replace("muat.sort((x, y) => cukupG(x.g) - cukupG(y.g) || ", "muat.sort((x, y) => "),
+            'E1: stok 0 yang masih laku tidak ditebak (tidak disarankan)': js.replace("const hariHabis = (sisa, laju) => (!(laju > 0) ? null : !(sisa > 0) ? 0 :", "const hariHabis = (sisa, laju) => (!(laju > 0) ? null : !(sisa > 0) ? null :"),
+            'E1: nama yang diarsipkan ikut belanja': js.replace("Array.from(merks).filter((m) => !arBeras(m, arsip)).map(", "Array.from(merks).map("),
+            'E1: merek lalu menyebut nama buatan toko (wadah / kelas)': js.replace("const tokoNama = (n) => !n || !!kelasToko[n] || /campuran/i.test(n);", "const tokoNama = (n) => !n || /campuran/i.test(n);"),
+            'E1: merek lalu menyebut bahan campuran': js.replace("const tokoNama = (n) => !n || !!kelasToko[n] || /campuran/i.test(n);", "const tokoNama = (n) => !n || !!kelasToko[n];"),
+            'E1: merek pemasok yang tercatat (kelas sendiri) tidak dipakai': js.replace("const kp = b.pakai && b.pakai.kode ? String(b.pakai.kode).trim() : '';", "const kp = '';"),
+            'E1: harga lama tanpa umur di pesan WA': js.replace("(basi ? ' (harga ' + blTglPendek(g.tanggal, terakhir) + ')' : '')", "''"),
+            'E1: baris hampir kembar tidak dirapikan': js.replace("if (dekat && r.tanggal > s.tanggal && r.harga[0] !== s.harga) return", "if (false) return"),
+            'E1: harga kelas dipakai walau bedanya melebihi batas owner': js.replace("Math.abs(r.harga[0] - s.harga) / s.harga * 100 <= vrBatas() + 1e-9", "true"),
+            'E1: harga kelas dipakai walau kiriman terbarunya dua harga': js.replace("const dekat = r && r.harga.length === 1 && s.harga > 0", "const dekat = r && s.harga > 0"),
+            'E1: harga kelas dari kelas tebakan': js.replace("o[m] = K.kelas && kmTerisi(K.asal) ? K.kelas : '';", "o[m] = K.kelas || '';"),
+            'E1: tanggal & merek lalu hanya dari merek yang dipesan': js.replace("g.kenal = g.merk.concat(lain);", "g.kenal = g.merk;"),
         }
         kode = 0
         for nama, isi in rusak.items():
@@ -432,8 +520,8 @@ if __name__ == '__main__':
         h, e = jalan("var __KINI = new Date('%sT20:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n" % tgl + js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP)
         if h is None: print('ASAP DATA TOKO: JSC JATUH ' + e); g.append('asap')
         else:
-            print('ASAP DATA TOKO (%s): %d baris harga dari %d dokumen katalog · %d perlu diputuskan · %s · target %s%s · bongkar %s/kg · bon %d = %s (lewat tempo %d) · belanja %d merek, %d perlu, muatan %s kg · %s · pesanan per harga (owner 7 Okt): %d merek → %d baris di %d pemasok, jumlah karung/kg/rp sama · yang tidak cocok: %s%s'
-                  % (os.path.basename(cad[-1]), h['baris'], h['nDok'], h['perlu'], h['ringkas'], h['target'], ' (rata-rata)' if h['targetDariRata'] else '', h['bongkar'], h['bon'], h['total'], h['lewat'], h['merk'], h['perluBeli'], h['muatan'], h['pemasok'], h['kelompok']['merek'], h['kelompok']['baris'], h['kelompok']['pemasok'], ', '.join(h['salah']) or 'tidak ada', (' · catatan (angka cadangan toko): ' + '; '.join(h['catatan'])) if h.get('catatan') else ''))
+            print('ASAP DATA TOKO (%s): %d baris harga dari %d dokumen katalog · %d perlu diputuskan · %s · target %s%s · bongkar %s/kg · bon %d = %s (lewat tempo %d) · belanja %d merek, %d perlu (tinjauan E1: %d baris harga, %d perlu; %d merek stoknya tipis tapi ditutup merek seharga), muatan %s kg · %s · pesanan per harga (owner 7 Okt): %d merek → %d baris di %d pemasok, jumlah karung/kg/rp sama · yang tidak cocok: %s%s'
+                  % (os.path.basename(cad[-1]), h['baris'], h['nDok'], h['perlu'], h['ringkas'], h['target'], ' (rata-rata)' if h['targetDariRata'] else '', h['bongkar'], h['bon'], h['total'], h['lewat'], h['merk'], h['perluBeli'], h['gab']['baris'], h['gab']['perlu'], len(h['gab']['tutup']), h['muatan'], h['pemasok'], h['kelompok']['merek'], h['kelompok']['baris'], h['kelompok']['pemasok'], ', '.join(h['salah']) or 'tidak ada', (' · catatan (angka cadangan toko): ' + '; '.join(h['catatan'])) if h.get('catatan') else ''))
             if not h['kelompok']['pemasok']: g.append('asap: pesanan per harga tidak teruji (tidak ada pemasok berkarung)')
             if h['salah']: g.append('asap: ' + ', '.join(h['salah']))
     sys.exit(2 if g else 0)

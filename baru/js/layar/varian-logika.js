@@ -11,7 +11,7 @@
 // Tanpa DOM; nama berawalan vr (bundel uji satu lingkup). Dijaga alat-uji/uji_varian_merek.py.
 import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { jenisUntukMerk, cariHargaKarungPerKg, hargaKarungUtuh } from '../mesin/pembantu.js';
-import { ambilHargaKarung, ambilPetaJenisBeras, cacheMentah, ambilSemuaBatch, ambilPenjualan, ambilProduksiBerlaku, ambilRetur, ambilPenyesuaianStok, tolakKunci } from '../data/toko.js';
+import { ambilHargaKarung, ambilPetaJenisBeras, cacheMentah, ambilSemuaBatch, ambilPenjualan, ambilProduksiBerlaku, ambilRetur, ambilPenyesuaianStok, tolakKunci, denganCacheSementara } from '../data/toko.js';
 import { RP, tanggalPendek } from '../inti/format.js';
 // owner 7 Okt: varian yang lahir dari stok induk — buku lahir & pindah buku (modal ikut) memakai pintu yang sama dengan wadah / buku per ukuran
 import { wbNamaKelas, wbDokLahir, wbDokPindah } from './wadah-bernama-logika.js';
@@ -100,6 +100,21 @@ export function vrPeringatanInduk(induk) {
 /** Pilihan merek induk untuk varian baru dari layar Harga: bukan nama varian, bukan nama wadah / kelas mutu (yang itu ditolak saat dibuat). */
 export function vrCalonInduk(daftar) { const kelas = wbNamaKelas(); return (daftar || []).filter((m) => String(m).indexOf(VR_PEMISAH) < 0 && !kelas[m]); }
 /**
+ * GERAK BUKU satu nama (tinjauan E1 — satu tempat untuk "buku ini sudah bergerak", dipakai varian dari Harga & koreksi kedatangan): catatan selain kedatangan yang
+ * memotong / mengisi buku nama itu, dari sumber yang sama dengan mesin beku — penjualan yang berlaku (merkSumber), adukan & pindah buku (produksi berlaku: sumber
+ * atau tujuan), retur, cocokkan (penyesuaianStok). sejak = 'YYYY-MM-DD' (inklusif): hanya catatan bertanggal itu atau sesudahnya; '' = semua.
+ * → daftar kata ('terjual', 'diaduk / dipindah buku', 'diretur', 'dicocokkan'); kosong = bukunya belum bergerak.
+ */
+export function vrGerakBuku(nama, sejak) {
+  const ind = vrBersih(nama); if (!ind) return [];
+  const t = (x) => !sejak || String((x && x.tanggal) || '') >= String(sejak); const out = [];
+  if (ambilPenjualan().some((p) => p && p.merkSumber === ind && t(p))) out.push('terjual');
+  if (ambilProduksiBerlaku().some((p) => p && t(p) && (p.merkSumber === ind || p.merkTujuan === ind || (Array.isArray(p.sumberList) && p.sumberList.some((x) => x && x.merk === ind))))) out.push('diaduk / dipindah buku');
+  if (ambilRetur().some((r) => r && r.merkSumber === ind && t(r))) out.push('diretur');
+  if (ambilPenyesuaianStok().some((o) => o && o.merk === ind && t(o))) out.push('dicocokkan');
+  return out;
+}
+/**
  * STOK INDUK SAAT VARIAN DIBUAT (owner 7 Okt, kejadian nyata: barang masuk diketik "FJN", lalu "+ Varian merek baru" FJN · Imperial — stoknya tetap di FJN,
  * varian kosong: stok BERCABANG diam-diam). Bacaan buku induk untuk pertanyaan "stok itu ikut jadi varian?":
  *  · sisa, dan kedatangan nyata yang memuat nama induk (tanggal, pemasok, karung, kg);
@@ -117,8 +132,7 @@ export function vrStokInduk(induk) {
     kgMasuk += kg; const t = tolakKunci('batchMasuk', b, ''); if (t && !terkunci) terkunci = t;
     datang.push({ id: b.id, tanggal: String(b.tanggal || ''), pemasok: String(b.pemasok || '').trim(), karung: brs.reduce((a, m) => a + (Number(m.jumlahKarung) || 0), 0), kg: vrB2(kg) }); });
   datang.sort((a, b) => a.tanggal.localeCompare(b.tanggal) || (Number(a.id) || 0) - (Number(b.id) || 0));
-  const dipakai = !!ind && (ambilPenjualan().some((p) => p && p.merkSumber === ind) || ambilRetur().some((r) => r && r.merkSumber === ind) || ambilPenyesuaianStok().some((o) => o && o.merk === ind)
-    || ambilProduksiBerlaku().some((p) => p && (p.merkSumber === ind || p.merkTujuan === ind || (Array.isArray(p.sumberList) && p.sumberList.some((s) => s && s.merk === ind)))));
+  const dipakai = !!ind && vrGerakBuku(ind, '').length > 0;
   const sebab = !(sisa > 0.004) ? 'stoknya kosong' : !datang.length ? 'belum pernah ada kedatangan atas nama ini' : fondasi ? 'sebagian dari stok awal / saldo pembuka' : dipakai ? 'sudah ada yang terjual, diaduk, dipindah, diretur, atau dicocokkan'
     : Math.abs(kgMasuk - sisa) >= 0.01 ? 'sisa buku tidak sama dengan jumlah kedatangannya' : terkunci ? 'kedatangannya di bulan yang sudah dikunci'
     : datang.length > VR_KOREKSI_MAKS ? 'kedatangannya lebih dari ' + VR_KOREKSI_MAKS + ' — terlalu banyak dikoreksi sekaligus' : '';
@@ -135,7 +149,9 @@ export function vrKalimatBawa(induk, nama, bawa) {
 /**
  * Dokumen "stok induk IKUT jadi varian" (owner 7 Okt) — satu pintu untuk varian baru maupun varian yang sudah ada dengan buku kosong:
  *  · buku induk UTUH → kedatangan dikoreksi: baris atas nama induk → nama varian (baris lain, uang, pemasok, tanggal tidak berubah); jejak koreksi seperti
- *    Buku kedatangan › koreksi;
+ *    Buku kedatangan › koreksi; + buku induk TETAP ADA lewat baris lahir 0 kg (tinjauan E1: tanpa baris batch, mesin beku melewatkan penjualan/adukan/retur/
+ *    cocokkan atas nama induk — catatan yang tiba sesudah kiriman ini dari perangkat dengan cache lama, keranjang parkir, atau kiriman tertunda lenyap dari stok;
+ *    dengan buku 0 kg catatan itu membuat induk MINUS yang terlihat);
  *  · selain itu → buku varian lahir (supaya mesin memotong penjualannya; dilewati bila sudah punya baris batch) lalu pindah buku seluruh sisa induk, modal ikut.
  */
 function vrDokIkut(ind, nama, S, w) {
@@ -145,7 +161,10 @@ function vrDokIkut(ind, nama, S, w) {
     S.datang.forEach((d) => { const lama = ambilSemuaBatch().find((b) => String(b.id) === String(d.id)); if (!lama) return;
       dokumen.push({ koleksi: 'batchMasuk', data: Object.assign({}, lama, { merkList: (lama.merkList || []).map((x) => (x && x.merk === ind && x.bentuk !== 'bal' ? Object.assign({}, x, { merk: nama }) : x)),
         alasanKoreksi: alasan, riwayat: (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([{ teks: 'dikoreksi: ' + alasan, tanggal: w.tanggal, jam: w.jam }]) }) }); });
-    return { dokumen, ket: ' Stok ' + ind + ' ' + vrKG(S.sisa) + ' ikut: kedatangan ' + S.teksDatang + ' dikoreksi jadi ' + nama + ' (riwayat harga beli & pemasok ikut).' };
+    // buku induk dilahirkan ulang (0 kg) DIHITUNG SESUDAH koreksi diterapkan sementara: wbDokLahir melewati nama yang masih tertulis di batch mana pun,
+    // dan sebelum koreksi nama induk masih tertulis di kedatangan yang sedang dikoreksi. Induk yang sudah punya baris lahir 0 kg → tidak ditulis lagi.
+    const lahirInduk = denganCacheSementara(dokumen, () => wbDokLahir([{ merk: ind }], w)); if (lahirInduk) dokumen.push(lahirInduk);
+    return { dokumen, ket: ' Stok ' + ind + ' ' + vrKG(S.sisa) + ' ikut: kedatangan ' + S.teksDatang + ' dikoreksi jadi ' + nama + ' (riwayat harga beli & pemasok ikut; buku ' + ind + ' tetap ada, 0 kg).' };
   }
   const lahir = wbDokLahir([{ merk: nama }], w); if (lahir) dokumen.push(lahir);
   dokumen.push(wbDokPindah([{ merk: ind, kg: S.sisa }], nama, w, { jadiVarian: { induk: ind, varian: nama }, keterangan: 'Jadi varian: ' + vrKG(S.sisa) + ' ' + ind + ' → ' + nama + ' (Harga › Varian merek)' }));

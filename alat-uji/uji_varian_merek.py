@@ -118,10 +118,19 @@ var kb72 = (T72.dokumen || []).find(function (d) { return d.koleksi === 'batchMa
 ok('7 Okt bawa + buku utuh: kedatangan b1 DIKOREKSI — hanya baris Polos jadi "Polos · Imperial" (baris lain, nilai, pemasok, tanggal tetap), alasan & riwayat koreksi tercatat; katalog varian bermodal harga beli Polos; tanpa pindah buku',
   S72.utuh === true && !T72.tolak && kb72 && kb72.data.id === 'b1' && J(kb72.data.merkList.map(function (m) { return m.merk; })) === J(['LL', 'IR64 LL', 'Kumala', 'Polos · Imperial']) && kb72.data.merkList[3].subtotalHarga === 1300000 && kb72.data.pemasok === 'PEMASOK CONTOH' && kb72.data.tanggal === '2026-09-10'
   && /jadi varian Polos · Imperial/.test(kb72.data.alasanKoreksi || '') && (kb72.data.riwayat || []).length === 1 && kk72 && kk72.data.merk === 'Polos · Imperial' && kk72.data.modalSaatSetel === 13000 && !(T72.dokumen || []).some(function (d) { return d.koleksi === 'produksiKemasan'; }) && /ikut: kedatangan 10 Sep 2026/.test(T72.patch.kabar), J([S72, T72]));
+// tinjauan E1 (no. 2): buku induk TETAP ADA di kiriman yang sama — satu baris lahir 0 kg atas nama Polos (tanpa kas, utang, belanja)
+var lh72 = (T72.dokumen || []).filter(function (d) { return d.koleksi === 'batchMasuk' && d.data.lahirBuku; });
+ok('E1 jalur koreksi: + SATU batch lahir 0 kg atas nama induk Polos di kiriman yang sama (stokAwal/lahirBuku, 0 kg, tanpa nilai) — wbDokLahir dihitung sesudah koreksi diterapkan sementara',
+  lh72.length === 1 && lh72[0].data.stokAwal === true && J(lh72[0].data.merkList.map(function (m) { return [m.merk, m.totalKg, m.subtotalHarga]; })) === J([['Polos', 0, 0]]) && /buku Polos tetap ada, 0 kg/.test(T72.patch.kabar), J(lh72));
+var kgTotal = function () { var s = hitungStokKarungPerMerk(); return Math.round(Object.keys(s).reduce(function (a, m) { return a + s[m].sisaKg; }, 0) * 100) / 100; }; var kg71 = kgTotal();
 terapkan(T72);
-ok('7 Okt sesudahnya: buku Polos · Imperial = 100 kg dengan modal & harga beli Polos yang lama; buku Polos HILANG (tidak bercabang); buku lain, nilai stok & nilai kedatangan BYTE-SAMA',
-  stok('Polos · Imperial').sisaKg === 100 && stok('Polos · Imperial').hppTerakhirPerKg === polosSt.hppTerakhirPerKg && stok('Polos · Imperial').hargaTerakhirPerKg === polosSt.hargaTerakhirPerKg && !hitungStokKarungPerMerk()['Polos'] && J(['LL', 'IR64 LL', 'Kumala'].map(stok)) === lain71 && nilaiStok() === nilai71 && nilaiBatch() === batch71, J([stok('Polos · Imperial'), polosSt]));
-ok('7 Okt: barang masuk berikutnya diketik "Polos" → ditawari Polos · Imperial (satu ketukan, audit 43)', J(hitungMasuk(draf([brs('Polos', 1, 13000)])).baris[0].saranVarian.map(function (v) { return v.nama; })) === J(['Polos · Imperial']));
+ok('7 Okt sesudahnya: buku Polos · Imperial = 100 kg dengan modal & harga beli Polos yang lama; buku Polos 0 kg (tidak bercabang, tidak hilang); buku lain, total kg, nilai stok & nilai kedatangan BYTE-SAMA',
+  stok('Polos · Imperial').sisaKg === 100 && stok('Polos · Imperial').hppTerakhirPerKg === polosSt.hppTerakhirPerKg && stok('Polos · Imperial').hargaTerakhirPerKg === polosSt.hargaTerakhirPerKg && stok('Polos').sisaKg === 0 && J(['LL', 'IR64 LL', 'Kumala'].map(stok)) === lain71 && kgTotal() === kg71 && nilaiStok() === nilai71 && nilaiBatch() === batch71, J([stok('Polos · Imperial'), stok('Polos'), polosSt]));
+// catatan atas nama induk yang TIBA SESUDAH kiriman ini (perangkat dengan cache lama, keranjang parkir, kiriman tertunda): memotong buku Polos → minus TERLIHAT, total kg turun
+terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'j72', tanggal: '2026-09-19', jam: '11:00', jenis: 'karung', merkSumber: 'Polos', totalKg: 50, jumlahKarung: 1, beratKarungAcuan: 50, hargaTotal: 700000, hppTotalSaatJual: 650000, caraBayar: 'Tunai' } }]);
+ok('E1 jalur koreksi: penjualan TERLAMBAT atas nama Polos (50 kg) → buku Polos −50 kg (terlihat), total kg turun 50 — dulu lenyap diam-diam (buku induk hilang, total tetap)', stok('Polos').sisaKg === -50 && kgTotal() === Math.round((kg71 - 50) * 100) / 100 && stok('Polos · Imperial').sisaKg === 100, J([stok('Polos'), kgTotal(), kg71]));
+terapkanKeCache([{ koleksi: 'penjualan', hapus: 'j72' }]);
+ok('7 Okt: barang masuk berikutnya diketik "Polos" (bukunya kini 0 kg) → pita "punya varian — yang mana?" menawarkan Polos · Imperial (satu ketukan)', J(hitungMasuk(draf([brs('Polos', 1, 13000)])).baris[0].varianInduk.map(function (v) { return v.nama; })) === J(['Polos · Imperial']));
 pulih();
 // bawa + buku sudah BERGERAK (LL terjual 50 kg) → buku varian lahir + pindah buku seluruh sisa, modal ikut; kedatangan lama tetap
 var ll73 = stok('LL'); var nilai73 = nilaiStok(); var S73 = vrStokInduk('LL');
@@ -198,6 +207,58 @@ ok('39b-43 tinjauan: nama yang SAMA kecuali huruf ("kumala", "th · house", "ll"
   && !ckSaranVarian('TH').some(function (v) { return v.nama === 'TH \u00b7 Lama' || v.nama === 'TH \u00b7 Karung W9'; }), J(H43c.baris.map(function (b) { return [b.merkKetik, b.baru, b.saranVarian]; })));
 var R43 = susunSimpanMasuk(draf([brs('TH · House', 2, 12000)]), W, true); var b43 = (R43.dokumen || []).find(function (d) { return d.koleksi === 'batchMasuk'; });
 ok('39b-43 sesudah "pakai TH · House" (baris diganti ke nama varian): kedatangan tercatat atas TH · House, buku varian naik 150 → 250 kg, tidak ada buku "TH" baru', !R43.tolak && b43 && b43.data.merkList[0].merk === 'TH · House' && (function () { terapkanKeCache(R43.dokumen || []); return stok('TH · House').sisaKg === 250 && !hitungStokKarungPerMerk()['TH']; })(), J([R43.tolak, b43 && b43.data.merkList]));
+// ==== tinjauan E1 (no. 3): koreksi / hapus kedatangan yang memindah kg antar NAMA di buku yang SUDAH bergerak → ditolak + jalan lain; tidak boleh stok hantu
+pulih();
+var brsK = function (merk, n, h) { return { id: '1', merk: merk, satuan: 'karung', beratKarung: 50, jumlahKarung: n, totalKg: n * 50, hargaPerKg: h, subtotalHarga: n * 50 * h }; };
+var kgSemua = function () { var s = hitungStokKarungPerMerk(); return Math.round(Object.keys(s).reduce(function (a, m) { return a + s[m].sisaKg; }, 0) * 100) / 100; };
+var nilaiSemua = function () { var s = hitungStokKarungPerMerk(); return Math.round(Object.keys(s).reduce(function (a, m) { return a + s[m].sisaKg * s[m].hppTerakhirPerKg; }, 0)); };
+var b1asli = J(ambilSemuaBatch().find(function (b) { return b.id === 'b1'; })); var kgK0 = kgSemua(), nilaiK0 = nilaiSemua();
+// bukti kotak pasir: kalau koreksi LL → "LL · Imperial" dibiarkan (LL sudah terjual 50 kg sesudah kedatangan 10 Sep), total stok naik 50 kg — stok hantu
+var hantu = denganCacheSementara([{ koleksi: 'batchMasuk', data: Object.assign(JSON.parse(b1asli), { merkList: JSON.parse(b1asli).merkList.map(function (m) { return m.merk === 'LL' ? Object.assign({}, m, { merk: 'LL · Imperial' }) : m; }) }) }], kgSemua) - kgK0;
+var dK1 = drafDariKedatangan('b1'); dK1.baris[0].merk = 'LL · Imperial'; dK1.alasan = 'salah nama'; var RK1 = susunSimpanMasuk(dK1, W, true);
+ok('E1 koreksi: ganti nama baris LL → "LL · Imperial" padahal buku LL sudah TERJUAL sesudah kedatangan 10 Sep → DITOLAK (dulu lolos & membuat stok hantu +' + hantu + ' kg); kalimat menyebut sebabnya & jalan lain; tombol = pindah buku SISA buku LL (450 kg, bukan 500)',
+  hantu === 50 && !RK1.dokumen && /^LL di kedatangan 10 Sep 2026 tidak bisa dipindah ke nama lain lewat koreksi: buku LL sudah terjual sejak kedatangan itu/.test(RK1.tolak || '') && /SISA buku LL sekarang dipindah buku ke nama barunya/.test(RK1.tolak || '')
+  && RK1.pembalik === 'pindahNama' && RK1.pindahTeks === 'Pindah buku 450 kg LL → LL · Imperial', J([hantu, RK1]));
+var PK0 = ckSusunPindahKoreksi(dK1, W); var PK1 = ckSusunPindahKoreksi(dK1, W, true);
+var lhK = (PK1.dokumen || []).filter(function (d) { return d.koleksi === 'batchMasuk'; }); var pdK = (PK1.dokumen || []).filter(function (d) { return d.koleksi === 'produksiKemasan'; });
+ok('E1 jalan lain: pindah buku dua ketukan — buku "LL · Imperial" lahir (0 kg) + pindah buku 450 kg LL → LL · Imperial (jadi-karung-utuh, modal LL, bertanda pindahNama); kedatangan b1 TIDAK ditulis',
+  PK0.perluYakin === true && /Ketuk sekali lagi$/.test(PK0.tolak || '') && !PK1.tolak && lhK.length === 1 && lhK[0].data.lahirBuku && lhK[0].data.merkList[0].merk === 'LL · Imperial' && pdK.length === 1 && pdK[0].data.jadiKarungUtuh && pdK[0].data.merkTujuan === 'LL · Imperial'
+  && J(pdK[0].data.sumberList) === J([{ merk: 'LL', kg: 450 }]) && pdK[0].data.pindahNama.dari === 'LL' && pdK[0].data.pindahNama.kedatangan === 'b1' && !(PK1.dokumen || []).some(function (d) { return d.koleksi === 'batchMasuk' && d.data.id === 'b1'; }), J(PK1));
+terapkan(PK1);
+ok('E1 sesudah pindah buku: LL 0 kg, LL · Imperial 450 kg bermodal LL; total kg & nilai stok seluruh toko SAMA; kedatangan b1 byte-sama',
+  stok('LL').sisaKg === 0 && stok('LL · Imperial').sisaKg === 450 && Math.abs(stok('LL · Imperial').hppTerakhirPerKg - 14000) < 1e-9 && kgSemua() === kgK0 && nilaiSemua() === nilaiK0 && J(ambilSemuaBatch().find(function (b) { return b.id === 'b1'; })) === b1asli, J([stok('LL'), stok('LL · Imperial'), kgSemua(), kgK0]));
+terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'jK1', tanggal: '2026-09-19', jam: '11:00', jenis: 'karung', merkSumber: 'LL · Imperial', totalKg: 50, jumlahKarung: 1, beratKarungAcuan: 50, hargaTotal: 750000, hppTotalSaatJual: 700000, caraBayar: 'Tunai' } }]);
+ok('E1 sesudah pindah buku: penjualan atas nama LL · Imperial memotong bukunya (450 → 400) — buku nama baru lahir lewat batch', stok('LL · Imperial').sisaKg === 400, J(stok('LL · Imperial')));
+pulih();
+// nama yang BELUM bergerak (Kumala) boleh diganti seperti biasa; total kg tetap
+var dK2 = drafDariKedatangan('b1'); dK2.baris[2].merk = 'Kumala · Baru'; dK2.alasan = 'salah nama'; var RK2 = susunSimpanMasuk(dK2, W, true);
+ok('E1 koreksi: ganti nama baris yang bukunya BELUM bergerak (Kumala → Kumala · Baru) tetap boleh; total kg sama', !RK2.tolak && denganCacheSementara(RK2.dokumen, kgSemua) === kgK0 && denganCacheSementara(RK2.dokumen, function () { return stok('Kumala · Baru').sisaKg; }) === 500, J(RK2.tolak || ''));
+// bergerak hanya SEBELUM kedatangan ini dan nama itu masih punya kedatangan lain → boleh; sesudahnya → ditolak
+terapkanKeCache([{ koleksi: 'batchMasuk', data: { id: 'b0', tanggal: '2026-09-01', jam: '08:00', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [brsK('IR64 LL', 2, 14800)] } },
+  { koleksi: 'penjualan', data: { id: 'jK0', tanggal: '2026-09-05', jam: '09:00', jenis: 'karung', merkSumber: 'IR64 LL', totalKg: 50, jumlahKarung: 1, beratKarungAcuan: 50, hargaTotal: 750000, hppTotalSaatJual: 740000, caraBayar: 'Tunai' } }]);
+var dK3 = drafDariKedatangan('b1'); dK3.baris[1].merk = 'IR64 LL · Super'; dK3.alasan = 'salah nama'; var RK3 = susunSimpanMasuk(dK3, W, true);
+terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'jK3', tanggal: '2026-09-11', jam: '09:00', jenis: 'karung', merkSumber: 'IR64 LL', totalKg: 50, jumlahKarung: 1, beratKarungAcuan: 50, hargaTotal: 750000, hppTotalSaatJual: 740000, caraBayar: 'Tunai' } }]);
+var RK3b = susunSimpanMasuk(dK3, W, true);
+ok('E1 koreksi: IR64 LL bergerak hanya SEBELUM kedatangan 10 Sep (terjual 5 Sep dari kedatangan 1 Sep yang masih ada) → ganti nama boleh; ada penjualan 11 Sep → ditolak', !RK3.tolak && /^IR64 LL di kedatangan 10 Sep 2026 tidak bisa dipindah/.test(RK3b.tolak || ''), J([RK3.tolak, RK3b.tolak]));
+pulih();
+// buku yang bergerak lewat COCOKKAN atau ADUKAN (bukan penjualan) sesudah kedatangan juga menolak ganti nama
+var dK6 = drafDariKedatangan('b1'); dK6.baris[2].merk = 'Kumala · Baru'; dK6.alasan = 'salah nama';
+var RK6c = denganCacheSementara([{ koleksi: 'penyesuaianStok', data: { id: 'oK6', tanggal: '2026-09-15', jam: '08:00', merk: 'Kumala', kgSistem: 500, kgFisik: 490, selisihKg: -10, alasan: 'contoh', nilaiRp: 0 } }], function () { return susunSimpanMasuk(dK6, W, true); });
+var RK6a = denganCacheSementara([{ koleksi: 'produksiKemasan', data: { id: 'pK6', tanggal: '2026-09-16', jam: '08:00', namaProduk: 'Adukan Contoh', ukuranKemasan: 5, jumlahUnit: 4, merkSumber: 'Kumala', sumberList: [{ merk: 'Kumala', kg: 20 }], kgDipakai: 20, hppPerUnit: 70000 } }], function () { return susunSimpanMasuk(dK6, W, true); });
+ok('E1 koreksi: Kumala yang bukunya bergerak lewat COCOKKAN (15 Sep) atau ADUKAN (16 Sep) sesudah kedatangan → ganti nama juga ditolak, sebabnya disebut', /buku Kumala sudah dicocokkan sejak/.test(RK6c.tolak || '') && /buku Kumala sudah diaduk \/ dipindah buku sejak/.test(RK6a.tolak || ''), J([RK6c.tolak, RK6a.tolak]));
+// hapus baris / hapus kedatangan: nama yang HANYA tertulis di situ dan bukunya pernah bergerak → stok hantu → ditolak (jalan lain: Cocokkan)
+var dK4 = drafDariKedatangan('b1'); dK4.baris.splice(0, 1); dK4.alasan = 'baris dobel'; var RK4 = susunSimpanMasuk(dK4, W, true); var HK4 = susunHapusKedatangan('b1', 'salah catat', W);
+var dK5 = drafDariKedatangan('b1'); dK5.baris[0].jumlahKarung = '9'; dK5.alasan = 'salah hitung'; var RK5 = susunSimpanMasuk(dK5, W, true);
+ok('E1 koreksi yang MENGHAPUS baris LL & hapus kedatangan b1: LL hanya tertulis di kedatangan itu dan sudah terjual → DITOLAK (stok hantu), jalan lain Cocokkan; mengurangi LL 10 → 9 karung (nama tetap ada) boleh',
+  /LL hanya tertulis di kedatangan 10 Sep 2026 dan bukunya sudah terjual/.test(RK4.tolak || '') && RK4.pembalik === 'cocok' && /LL hanya tertulis di kedatangan 10 Sep 2026/.test(HK4.tolak || '') && HK4.pembalik === 'cocok' && !RK5.tolak, J([RK4.tolak, HK4.tolak, RK5.tolak]));
+var dK7 = drafDariKedatangan('b1'); dK7.baris[0].jumlahKarung = '9'; dK7.baris.push({ merk: 'Tawon', jumlahKarung: '1', beratKarung: 50, hargaPerKg: '15000' }); dK7.alasan = 'salah hitung'; var RK7 = susunSimpanMasuk(dK7, W, true);
+var dK8 = drafDariKedatangan('b1'); dK8.baris.push({ merk: 'Tawon', jumlahKarung: '1', beratKarung: 50, hargaPerKg: '15000' }); dK8.alasan = 'baris terlupa'; var RK8 = susunSimpanMasuk(dK8, W, true);
+ok('E1 koreksi: LL turun 10 → 9 karung SEKALIGUS baris baru Tawon (kg bergeser antar nama, LL sudah terjual) → ditolak dengan petunjuk dua koreksi terpisah; menambah baris saja (tanpa yang turun) boleh',
+  /simpan sebagai dua koreksi terpisah/.test(RK7.tolak || '') && !RK8.tolak && !RK5.tolak, J([RK7.tolak, RK8.tolak]));
+terapkanKeCache([{ koleksi: 'batchMasuk', data: { id: 'b9', tanggal: '2026-09-15', jam: '08:00', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [brsK('Tawon', 2, 15000)] } }]);
+ok('E1 hapus kedatangan yang namanya belum bergerak tetap boleh (butuh alasan)', !susunHapusKedatangan('b9', 'salah catat', W).tolak && /butuh alasan/.test(susunHapusKedatangan('b9', '', W).tolak || ''));
+pulih();
+
 if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
   // audit 39b no. 43: diukur di data toko APA ADANYA (sebelum varian contoh "· Uji" dibuat di bawah)
@@ -214,7 +275,7 @@ if (CADANGAN) {
       denganCacheSementara(T.dokumen.filter(function (d) { return d.koleksi === 'batchMasuk' || d.koleksi === 'produksiKemasan'; }), function () { var s1 = hitungStokKarungPerMerk(); var sv = s1[v] || { sisaKg: NaN, hppTerakhirPerKg: NaN };
         if (!(Math.abs(sv.sisaKg - S.sisa) <= 0.01)) bawa7.salah.push(m + ': sisa varian ' + sv.sisaKg + ' vs ' + S.sisa);
         if (!(Math.abs(sv.hppTerakhirPerKg - s0[m].hppTerakhirPerKg) <= 0.01)) bawa7.salah.push(m + ': modal varian');
-        if (S.utuh ? !!s1[m] : !(Math.abs(s1[m].sisaKg) <= 0.01)) bawa7.salah.push(m + ': induk masih berisi');
+        if (!(s1[m] && Math.abs(s1[m].sisaKg) <= 0.01)) bawa7.salah.push(m + ': induk masih berisi / bukunya hilang');   // tinjauan E1: jalur koreksi pun menyisakan buku induk 0 kg
         if (!(Math.abs(nilai(s1) - n0) <= 1)) bawa7.salah.push(m + ': nilai stok bergeser'); });
       if (S.utuh) bawa7.utuh += 1; else bawa7.pindah += 1; });
     // jalur KOREKSI KEDATANGAN di data toko: salinan kedatangan nyata terbaru dengan SATU baris nama baru (belum bergerak) → stok ikut → kedatangan itu dikoreksi:
@@ -226,13 +287,36 @@ if (CADANGAN) {
         if (!S.utuh || T.tolak) { bawa7.salah.push('salinan kedatangan tidak utuh: ' + (S.sebab || T.tolak)); return; }
         denganCacheSementara(T.dokumen.filter(function (d) { return d.koleksi === 'batchMasuk' || d.koleksi === 'produksiKemasan'; }), function () { var sB = hitungStokKarungPerMerk(); var vB = sB['Asap Induk · Asap'];
           var uB = hitungUtangPemasok().reduce(function (a, x) { return a + x.totalUtang; }, 0);
-          if (!vB || J(vB) !== J(sA['Asap Induk']) || sB['Asap Induk'] || Math.abs(nilai(sB) - nA) > 1 || uB !== uA || T.dokumen.some(function (d) { return d.koleksi === 'produksiKemasan'; })) bawa7.salah.push('koreksi kedatangan di data toko: ' + J([vB, sA['Asap Induk'], uA, uB]));
-          else bawa7.koreksi = 1; }); }); }
+          if (!vB || J(vB) !== J(sA['Asap Induk']) || !sB['Asap Induk'] || Math.abs(sB['Asap Induk'].sisaKg) > 0.004 || Math.abs(nilai(sB) - nA) > 1 || uB !== uA || T.dokumen.some(function (d) { return d.koleksi === 'produksiKemasan'; })) bawa7.salah.push('koreksi kedatangan di data toko: ' + J([vB, sA['Asap Induk'], uA, uB]));
+          else bawa7.koreksi = 1;
+          // tinjauan E1: total kg sama, dan penjualan TERLAMBAT atas nama induk memotong buku induk (minus terlihat) — tidak lenyap
+          var kgT = function (st) { return Math.round(Object.keys(st).reduce(function (a, m) { return a + st[m].sisaKg; }, 0) * 100) / 100; };
+          if (Math.abs(kgT(sB) - kgT(sA)) > 0.01) bawa7.salah.push('koreksi kedatangan di data toko: total kg bergeser');
+          denganCacheSementara([{ koleksi: 'penjualan', data: { id: 'asap7j', tanggal: TGL_CAD, jam: '23:55', jenis: 'karung', merkSumber: 'Asap Induk', totalKg: 50, jumlahKarung: 1, beratKarungAcuan: 50, hargaTotal: 1, hppTotalSaatJual: 1, caraBayar: 'Tunai' } }], function () {
+            var sC = hitungStokKarungPerMerk(); if (!sC['Asap Induk'] || Math.abs(sC['Asap Induk'].sisaKg + 50) > 0.01 || Math.abs(kgT(sC) - (kgT(sB) - 50)) > 0.01) bawa7.salah.push('penjualan terlambat atas nama induk tidak memotong buku induk: ' + J(sC['Asap Induk'] || null)); }); }); }); }
     if (s0['FJN']) { var f = vrStokInduk('FJN'); var kat = ambilHargaKarung().filter(function (h) { return /^FJN · /.test(h.merk); }).map(function (h) { return h.merk; });
       var vi = hitungMasuk(draf([brs('FJN', 1, 1)], { tanggal: TGL_CAD })).baris[0].varianInduk.map(function (v) { return v.nama; });
       bawa7.fjn = { sisa: f.sisa, datang: f.datang.length, utuh: f.utuh, sebab: f.sebab, katalogVarian: kat, ditawari: vi };
       if (kat.some(function (k) { return vi.indexOf(k) < 0; })) bawa7.salah.push('FJN diketik di barang masuk tidak menawarkan variannya: ' + kat.join(', ')); }
   })();
+  // tinjauan E1 (no. 3) di data toko: 25 kedatangan nyata terbaru — tiap baris karung diganti nama ke "<nama> · Asap" lewat koreksi, dan tiap kedatangan dihapus,
+  // di cache SEMENTARA. Yang LOLOS tidak boleh membuat stok hantu: ganti nama → total kg sama; hapus → total kg turun tepat Σ kg kedatangan itu. Yang ditolak dihitung.
+  var gk = { cobaNama: 0, tolakNama: 0, pindahNama: 0, cobaHapus: 0, tolakHapus: 0, salah: [], fjn: '' };
+  (function () { var WK = { tanggal: TGL_CAD, jam: '23:50', kini: TGL_CAD + 'T16:50:00.000Z', idUnik: function () { nId += 1; return nId; } };
+    var kgS = function () { var st = hitungStokKarungPerMerk(); return Math.round(Object.keys(st).reduce(function (a, m) { return a + st[m].sisaKg; }, 0) * 100) / 100; }; var kg0 = kgS();
+    ambilSemuaBatch().filter(function (b) { return !b.stokAwal && !b.tutupBuku && !b.lahirBuku && (b.merkList || []).some(function (m) { return m.bentuk !== 'bal'; }); }).sort(function (x, y) { return String(y.tanggal).localeCompare(String(x.tanggal)) || (Number(y.id) || 0) - (Number(x.id) || 0); }).slice(0, 25).forEach(function (bt) {
+      var dr0 = drafDariKedatangan(bt.id); dr0.baris.forEach(function (_, i) { var dr = drafDariKedatangan(bt.id); dr.baris[i].merk = dr.baris[i].merk + ' · Asap'; dr.alasan = 'asap'; gk.cobaNama += 1;
+        var r = susunSimpanMasuk(dr, WK, true); if (r.tolak) { if (r.pembalik === 'pindahNama' || r.pembalik === 'cocok') { gk.tolakNama += 1; if (r.pembalik === 'pindahNama') gk.pindahNama += 1; } return; }
+        var k1 = denganCacheSementara(r.dokumen.filter(function (d) { return d.koleksi === 'batchMasuk'; }), kgS); if (Math.abs(k1 - kg0) > 0.01) gk.salah.push('ganti nama lolos tapi total kg bergeser ' + (k1 - kg0) + ' kg'); });
+      gk.cobaHapus += 1; var hp = susunHapusKedatangan(bt.id, 'asap', WK); if (hp.tolak) { if (/hanya tertulis/.test(hp.tolak)) gk.tolakHapus += 1; return; }
+      var kgB = (bt.merkList || []).filter(function (m) { return m.bentuk !== 'bal'; }).reduce(function (a, m) { return a + (Number(m.totalKg) || 0); }, 0);
+      var semua = ambilSemuaBatch(); pasok('batchMasuk', semua.filter(function (x) { return String(x.id) !== String(bt.id); })); var k2 = kgS(); pasok('batchMasuk', semua);
+      if (Math.abs(k2 - (kg0 - kgB)) > 0.01) gk.salah.push('hapus lolos tapi total kg tidak turun tepat ' + kgB + ' kg (selisih ' + Math.round((k2 - (kg0 - kgB)) * 100) / 100 + ')'); });
+    // kejadian nyata (sanggahan E1): kedatangan FJN 30 Sep sudah habis diaduk 6 Okt → koreksi FJN → "FJN · Imperial" WAJIB ditolak (dulu lahir ±250 kg hantu)
+    var bf = ambilSemuaBatch().filter(function (b) { return !b.stokAwal && !b.lahirBuku && (b.merkList || []).some(function (m) { return m.merk === 'FJN'; }); })[0];
+    if (bf) { var df = drafDariKedatangan(bf.id); df.baris.forEach(function (x) { if (x.merk === 'FJN') x.merk = 'FJN · Imperial'; }); df.alasan = 'asap'; var rf = susunSimpanMasuk(df, WK, true);
+      gk.fjn = rf.tolak ? 'ditolak (' + (rf.pembalik === 'pindahNama' ? rf.pindahTeks : 'sisa buku FJN 0 kg — tanpa pindah buku, jalan lain Cocokkan') + ')' : 'LOLOS';
+      if (!rf.tolak) gk.salah.push('koreksi FJN → FJN · Imperial lolos'); } })();
   // putaran 27 (Bagian 5): nama wadah / kelas mutu (IR64 Apex dkk.) tidak boleh lagi datang lewat barang masuk — dipisah: merek → varian, kelas → wajib ditolak
   var kelas = wbNamaKelas(); var st0 = hitungStokKarungPerMerk(); var semuaNama = Object.keys(st0).filter(function (m) { return st0[m].hppTerakhirPerKg > 0; });
   // putaran 28: buku per ukuran ('Merek 25 kg') & buku khusus wadah bukan nama barang masuk — ditolak dengan benar, jadi tidak ikut asap varian
@@ -249,7 +333,7 @@ if (CADANGAN) {
   // tinjauan 30 Sep: tiap nama berbuku (bukan varian, bukan buku khusus) yang diketik huruf kecil → buku aslinya paling depan di saran
   var hurufKecil = Object.keys(st0).filter(function (m) { return st0[m].sisaKg > 0.004 && m.indexOf('\u00b7') < 0 && !bukanMasuk[m] && !arBeras(m) && m.toLowerCase() !== m; });
   var hurufSalah = hurufKecil.filter(function (m) { var v = ckSaranVarian(m.toLowerCase()); return !v.length || v[0].nama !== m; });
-  asap = { bawa7: bawa7, hurufKecil: hurufKecil.length, hurufSalah: hurufSalah, saranToko: saranToko, nama: nama.length, tanya3: tanya3, tanya10: tanya10, tolak: R.tolak || '', lamaSama: lamaSama, jenisIkut: jenisIkut, varian: Object.keys(st1).filter(function (m) { return / · Uji$/.test(m); }).length, kelas: namaKelas.length, kelasLolos: kelasLolos };
+  asap = { gk: gk, bawa7: bawa7, hurufKecil: hurufKecil.length, hurufSalah: hurufSalah, saranToko: saranToko, nama: nama.length, tanya3: tanya3, tanya10: tanya10, tolak: R.tolak || '', lamaSama: lamaSama, jenisIkut: jenisIkut, varian: Object.keys(st1).filter(function (m) { return / · Uji$/.test(m); }).length, kelas: namaKelas.length, kelasLolos: kelasLolos };
 }
 print(J({ lulus: lulus, gagal: gagal, asap: asap }));
 """
@@ -309,7 +393,10 @@ RUSAK = {
     '7 Okt: varian dari Harga tidak bertanya walau induk berstok': ("if (S.sisa > 0.004 && !pilih) return { tolak:", "if (false) return { tolak:"),
     '7 Okt: stok induk tidak ikut walau dipilih "ikut"': ("const ikut = S.sisa > 0.004 && pilih === 'bawa';", "const ikut = false;"),
     '7 Okt: koreksi kedatangan mengganti SEMUA baris (bukan nama induk saja)': ("(x && x.merk === ind && x.bentuk !== 'bal' ? Object.assign({}, x, { merk: nama }) : x)", "(x ? Object.assign({}, x, { merk: nama }) : x)"),
-    '7 Okt: buku induk yang sudah terjual tetap dikoreksi (bukan pindah buku)': ("const dipakai = !!ind && (", "const dipakai = false && ("),
+    '7 Okt: buku induk yang sudah terjual tetap dikoreksi (bukan pindah buku)': ("const dipakai = !!ind && vrGerakBuku(ind, '').length > 0;", "const dipakai = false;"),
+    # tinjauan E1 (no. 2): jalur koreksi kedatangan menyisakan buku induk 0 kg (catatan terlambat atas nama induk tidak lenyap)
+    'E1: koreksi kedatangan varian tanpa buku induk lahir (catatan terlambat lenyap)': ("const lahirInduk = denganCacheSementara(dokumen, () => wbDokLahir([{ merk: ind }], w)); if (lahirInduk) dokumen.push(lahirInduk);", "const lahirInduk = null;"),
+    'E1: buku induk lahir dihitung sebelum koreksi (wbDokLahir melewatinya)': ("const lahirInduk = denganCacheSementara(dokumen, () => wbDokLahir([{ merk: ind }], w));", "const lahirInduk = wbDokLahir([{ merk: ind }], w);"),
     '7 Okt: pindah buku tanpa buku lahir (penjualan varian tidak terpotong)': ("const lahir = wbDokLahir([{ merk: nama }], w); if (lahir) dokumen.push(lahir);", ""),
     '7 Okt: varian yang sudah ada & kosong tidak bisa menerima stok induk': ("if (!vrBisaIkutKeAda(ind, nama)) return { tolak: nama + ' sudah ada", "if (true) return { tolak: nama + ' sudah ada"),
     '7 Okt: varian yang sudah BERISI ikut menerima stok induk': ("return !(sv && Math.abs(Number(sv.sisaKg) || 0) > 0.004) && vrStokInduk(induk).sisa > 0.004;", "return vrStokInduk(induk).sisa > 0.004;"),
@@ -319,6 +406,16 @@ RUSAK = {
     '7 Okt: pita "punya varian — yang mana?" di Barang masuk tidak muncul': ("const varianInduk = !draf.id && !baru", "const varianInduk = false && !draf.id && !baru"),
     '7 Okt: pita "punya varian" muncul juga di koreksi kedatangan': ("const varianInduk = !draf.id && !baru", "const varianInduk = !baru"),
     '7 Okt: pita "punya varian" muncul walau baris sudah dijawab sama / beda mutu': ("&& !!merk && !pilih && merk.indexOf", "&& !!merk && merk.indexOf"),
+    # tinjauan E1 (no. 3): koreksi / hapus kedatangan di buku yang sudah bergerak — tidak boleh stok hantu
+    'E1: koreksi ganti nama di buku yang sudah bergerak tidak ditolak (stok hantu)': ("if (geser && geser.tolak) return", "if (false) return"),
+    'E1: hapus kedatangan satu-satunya nama yang bergerak tidak ditolak': ("const lepas = ckGeserKoreksi(b, []); if (lepas.tolak) return", "const lepas = ckGeserKoreksi(b, []); if (false) return"),
+    'E1: nama yang hilang dari semua kedatangan tidak diperiksa': ("const hilang = !((kB[m] || 0) > 0.004) && !lainAda(m);", "const hilang = false;"),
+    'E1: gerak buku SEBELUM kedatangan ikut menolak koreksi': ("const gS = naik.length ? vrGerakBuku(m, sejak) : [];", "const gS = naik.length ? vrGerakBuku(m, '') : [];"),
+    'E1: pindah buku memindah kg yang digeser, bukan sisa buku': ("const kg = ckB2(Math.min(p.kg, sisa[p.dari]));", "const kg = ckB2(p.kg);"),
+    'E1: pindah buku tanpa buku lahir nama baru': ("const lahir = wbDokLahir(G.pindah.map((x) => ({ merk: x.ke })), w); if (lahir) dokumen.push(lahir);", "const lahir = null;"),
+    'E1: pindah buku tanpa ketukan kedua': ("if (!yakin) return { tolak: G.pindahTeks", "if (false) return { tolak: G.pindahTeks"),
+    'E1: gerak buku tidak membaca cocokkan': ("if (ambilPenyesuaianStok().some((o) => o && o.merk === ind && t(o))) out.push('dicocokkan');", ""),
+    'E1: gerak buku tidak membaca adukan / pindah buku': ("if (ambilProduksiBerlaku().some((p) => p && t(p) && (p.merkSumber === ind", "if (false && ambilProduksiBerlaku().some((p) => p && t(p) && (p.merkSumber === ind"),
 }
 
 
@@ -344,6 +441,23 @@ RUSAK_STATIS_7 = {
     'pita "punya varian" di Barang masuk hilang': ('stok', 'data-k="mvi-${i}"', 'data-k="mvi-x"'),
 }
 
+# tinjauan E1 — statis harga.js & stok.js (layar DOM tidak ikut kotak pasir): penangan mati blKetuk dibuang; "Pakai saran" lewat pakaiSaran (gabungan);
+# kalimat kartu varian dari pilihan yang tersedia; tolakan koreksi nama membawa tombol pindah buku
+def periksaE1(th, ts):
+    kurang = []
+    if 'blKetuk:' in th or 'data-aksi="blKetuk"' in th: kurang.append('harga.js masih memuat penangan mati blKetuk')
+    kurang += ['harga.js tidak memuat ' + x for x in ["BL.pakaiSaran(H, st().pesan, p)", "BL.pakaiSaran(H, st().pesan, '')", 'const kalPilih = bawaTanya && pilihSah ?', '${H.saranSemuaTeks}'] if x not in th]
+    kurang += ['stok.js tidak memuat ' + x for x in ['data-aksi="kpPindahNama"', 'kpPindahNama: async () =>', 'C.ckSusunPindahKoreksi(d, waktu(), st().kpYakin)', "kpPembalik: r.pembalik || null, kpTeks: r.pindahTeks || ''", 'kpPembalik: r0.pembalik || null'] if x not in ts]
+    return kurang
+
+RUSAK_STATIS_E1 = {
+    'penangan mati blKetuk kembali': ('harga', "    blWaBuka: ({ p }) =>", "    blKetuk: ({ merk }) => {},\n    blWaBuka: ({ p }) =>"),
+    '"Pakai saran untuk semua" kembali per merek': ('harga', "BL.pakaiSaran(H, st().pesan, '')", "BL.pakaiSaranLama(H, st().pesan, '')"),
+    'kalimat kartu varian dari pilihan yang tertinggal': ('harga', "const kalPilih = bawaTanya && pilihSah ?", "const kalPilih = bawaTanya && b.bawa ?"),
+    'tolakan koreksi nama tanpa tombol pindah buku': ('stok', 'data-aksi="kpPindahNama"', 'data-aksi="kpX"'),
+    'tolakan koreksi tidak meneruskan jalan lainnya ke layar': ('stok', "kpPembalik: r.pembalik || null, kpTeks: r.pindahTeks || ''", "kpTeks: ''"),
+}
+
 RUSAK_STATIS = {
     'satuan kg dobel di tombol pakai varian': ("' · buku ' + KG(v.bukuKg) : ''", "' · buku ' + KG(v.bukuKg) + ' kg' : ''"),
     'tombol pakai varian tanpa isi buku': ("' · buku ' + KG(v.bukuKg) : ''", "'' : ''"),
@@ -367,6 +481,13 @@ if __name__ == '__main__':
             if not k: kode = 3
         th7 = open(os.path.join(AKAR, 'baru/js/layar/harga.js'), encoding='utf-8').read()
         if periksa7okt(th7, t43): print('KONTROL BASI  statis 7 Okt (berkas asli sudah gagal: ' + ' | '.join(periksa7okt(th7, t43)) + ')'); kode = 3
+        if periksaE1(th7, t43): print('KONTROL BASI  statis E1 (berkas asli sudah gagal: ' + ' | '.join(periksaE1(th7, t43)) + ')'); kode = 3
+        for nama, (berkas, a, b) in RUSAK_STATIS_E1.items():
+            asal = th7 if berkas == 'harga' else t43
+            if asal.count(a) != 1: print('KONTROL BASI  ' + nama + ' (jangkar ' + str(asal.count(a)) + '×)'); kode = 3; continue
+            k = periksaE1(asal.replace(a, b), t43) if berkas == 'harga' else periksaE1(th7, asal.replace(a, b))
+            print(('BERBUNYI ' if k else 'DIAM!!   ') + nama + ' → ' + (k[0][:140] if k else '-'))
+            if not k: kode = 3
         for nama, (berkas, a, b) in RUSAK_STATIS_7.items():
             asal = th7 if berkas == 'harga' else t43
             if asal.count(a) != 1: print('KONTROL BASI  ' + nama + ' (jangkar ' + str(asal.count(a)) + '×)'); kode = 3; continue
@@ -380,8 +501,12 @@ if __name__ == '__main__':
     kurang43 = periksa43(t43)
     if kurang43: g.append('statis 39b no. 43 · ' + ' | '.join(kurang43))
     else: l += 1
-    kurang7 = periksa7okt(open(os.path.join(AKAR, 'baru/js/layar/harga.js'), encoding='utf-8').read(), t43)
+    th7 = open(os.path.join(AKAR, 'baru/js/layar/harga.js'), encoding='utf-8').read()
+    kurang7 = periksa7okt(th7, t43)
     if kurang7: g.append('statis 7 Okt · ' + ' | '.join(kurang7))
+    else: l += 1
+    kurangE1 = periksaE1(th7, t43)
+    if kurangE1: g.append('statis E1 · ' + ' | '.join(kurangE1))
     else: l += 1
     print('VARIAN MEREK (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
@@ -396,8 +521,12 @@ if __name__ == '__main__':
         print('   39b no. 43 tinjauan — nama berbuku diketik huruf kecil: %d diuji, buku aslinya paling depan di saran: %d%s' % (asap.get('hurufKecil', 0), asap.get('hurufKecil', 0) - len(asap.get('hurufSalah') or []), (' · SALAH: ' + ', '.join(asap['hurufSalah'])) if asap.get('hurufSalah') else ''))
         if not asap.get('hurufKecil') or asap.get('hurufSalah'): g.append('asap data toko (39b no. 43 huruf): ' + json.dumps(asap.get('hurufSalah'), ensure_ascii=False)[:300])
         b7 = asap.get('bawa7') or {}
-        print('   7 Okt — varian dari Harga dengan stok induk IKUT (cache sementara): %d merek berstok · %d lewat koreksi kedatangan (buku utuh) · %d lewat pindah buku · salinan kedatangan nyata terbaru lewat koreksi: %s · buku varian = sisa & modal induk, nilai stok & total bon sama: %s%s'
+        print('   7 Okt — varian dari Harga dengan stok induk IKUT (cache sementara): %d merek berstok · %d lewat koreksi kedatangan (buku utuh) · %d lewat pindah buku · salinan kedatangan nyata terbaru lewat koreksi (buku induk tetap ada 0 kg, total kg sama, penjualan terlambat atas nama induk terpotong): %s · buku varian = sisa & modal induk, nilai stok & total bon sama: %s%s'
               % (b7.get('utuh', 0) + b7.get('pindah', 0), b7.get('utuh', 0), b7.get('pindah', 0), 'lulus' if b7.get('koreksi') else 'TIDAK', 'ya' if not b7.get('salah') else 'TIDAK — ' + '; '.join(b7['salah'][:5]),
                  (' · FJN: sisa buku %s kg, %d kedatangan, %s; varian di katalog %s; diketik di Barang masuk → ditawari %s' % (b7['fjn']['sisa'], b7['fjn']['datang'], 'utuh' if b7['fjn']['utuh'] else 'tidak utuh (' + b7['fjn']['sebab'] + ')', ', '.join(b7['fjn']['katalogVarian']) or '-', ', '.join(b7['fjn']['ditawari']) or '-')) if b7.get('fjn') else ''))
         if b7.get('salah') or not (b7.get('utuh', 0) + b7.get('pindah', 0)) or not b7.get('koreksi'): g.append('asap data toko (7 Okt varian bawa): ' + json.dumps(b7, ensure_ascii=False)[:400])
+        gk = asap.get('gk') or {}
+        print('   tinjauan E1 — koreksi/hapus %d kedatangan nyata terbaru (paling banyak 25, cache sementara): %d ganti nama baris dicoba, %d ditolak (%d dengan pindah buku) · hapus: %d ditolak karena stok hantu · yang lolos tanpa stok hantu: %s · koreksi FJN → FJN · Imperial: %s'
+              % (gk.get('cobaHapus', 0), gk.get('cobaNama', 0), gk.get('tolakNama', 0), gk.get('pindahNama', 0), gk.get('tolakHapus', 0), 'ya' if not gk.get('salah') else 'TIDAK — ' + '; '.join(gk['salah'][:4]), gk.get('fjn') or 'kedatangan FJN tidak ada di cadangan'))
+        if gk.get('salah') or not gk.get('cobaNama') or not gk.get('cobaHapus'): g.append('asap data toko (E1 koreksi/hapus): ' + json.dumps(gk, ensure_ascii=False)[:400])
     sys.exit(2 if g else 0)
