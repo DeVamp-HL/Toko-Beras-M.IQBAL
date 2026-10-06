@@ -10,7 +10,7 @@ yang ikut dihapus, dan HP kasir tidak tertahan di versi lama:
   · sw-kasir.js: tiap berkas di FILES ADA di repo (satu saja hilang → cache.addAll ditolak, SW baru tidak pernah terpasang, HP penjaga terjebak di
     versi lama tanpa tanda); kasir.html TIDAK di FILES maupun HTML_SWR (pengalih selalu dari jaringan, tidak dari cache); HTML_SWR ⊆ FILES;
     fetch berhenti untuk berkas di luar FILES; activate menghapus cache yang namanya ≠ VERSI (cache lama berisi kasir.html lama ikut hilang)
-  · langkah CI (pages.yml, uji-beban-peramban.yml, hawkscan.yml — baris perintah & paths, bukan komentar) hanya menunjuk alat-uji/ yang ADA,
+  · langkah CI (pages.yml, uji-beban-peramban.yml, hawkscan.yml, gladi-tutup-buku.yml — baris perintah & paths, bukan komentar) hanya menunjuk alat-uji/ yang ADA,
     dan berkas yang di-shasum uji beban ADA (langkah yang menunjuk berkas hilang = main tidak terbit)
   · seed HawkScan (.github/stackhawk.yml) dan manifest-sistem.json (ikon, start_url) menunjuk berkas yang ADA
   · /baru/ tidak lagi menautkan sistem lama (../index.html)
@@ -23,7 +23,7 @@ Versi kasir (sw = kasir darurat = KK_VERSI_KASIR_TERBARU) dijaga uji_antrean_kas
 import os, re, sys, glob, json
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 PENGALIH = ['index.html', 'kasir.html']
-WORKFLOW = ['.github/workflows/pages.yml', '.github/workflows/uji-beban-peramban.yml', '.github/workflows/hawkscan.yml']
+WORKFLOW = ['.github/workflows/pages.yml', '.github/workflows/uji-beban-peramban.yml', '.github/workflows/hawkscan.yml', '.github/workflows/gladi-tutup-buku.yml']
 BERKAS = PENGALIH + WORKFLOW + ['sw-kasir.js', '.github/stackhawk.yml', 'manifest-sistem.json', 'baru/index.html', '404.html']
 # owner 7 Okt (sisa pensiun #103): 404.html = pengalih untuk alamat yang tidak ada (berkas yang dihapus bersama sistem lama, tautan lama di HP).
 # Disajikan di jalur mana pun → tujuannya jalur penuh situs; CSP & isinya dijaga uji_csp.py, keberadaannya & tujuannya di sini.

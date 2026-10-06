@@ -330,6 +330,14 @@ function gambarChipDanNav() {
   kembali.addEventListener('click', () => { try { localStorage.removeItem(fb.KUNCI_PROYEK_UJI); } catch (e) { /* abaikan */ } location.replace(location.pathname); });
   bilah.appendChild(kembali); document.body.appendChild(bilah); document.body.classList.add('proyek-uji');
 })();
+// ---- SERVER TIRUAN (gladi tutup buku, 7 Okt 2026): hanya halaman localhost / 127.0.0.1 dengan ?emulator=… — bilah merah di setiap layar seperti proyek uji ----
+(function () {
+  const tolak = fb.tolakServerTiruan(); if (tolak) kabarSebentar(tolak);
+  const T = fb.serverTiruanAktif(); if (!T) return;
+  const bilah = document.createElement('div'); bilah.className = 'bilah-uji'; bilah.setAttribute('role', 'status');
+  bilah.innerHTML = '<span>SERVER TIRUAN <b></b> — emulator, bukan data toko</span>'; bilah.querySelector('b').textContent = T.proyek;
+  document.body.appendChild(bilah); document.body.classList.add('proyek-uji');
+})();
 
 if (q.get('cadangan')) {
   muatCadangan(q.get('cadangan')).then((r) => {
