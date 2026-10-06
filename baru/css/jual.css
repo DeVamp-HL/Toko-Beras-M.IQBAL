@@ -9,7 +9,8 @@
 .seg.nanti { opacity: 0.45; cursor: default; border-style: dashed; border-color: var(--kaca-tepi); }
 .tab-antre { display: inline-flex; align-items: center; gap: 8px; }
 .tab-antre .buang { display: inline-flex; opacity: 0.7; cursor: pointer; }
-.tab-antre .buang:hover { opacity: 1; color: var(--awas); }
+/* owner 7 Okt (iPad): :hover hanya untuk kursor — WebKit sentuh menempelkannya pada yang terakhir diketuk */
+@media (hover: hover) and (pointer: fine) { .tab-antre .buang:hover { opacity: 1; color: var(--awas); } }
 
 .keranjang .b { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "t h x" "t step x" "bendera bendera bendera"; gap: 4px 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--garis); }
 /* bendera baris (putaran 3): bonus +1 kemasan, pengganti retur — pil kecil yang bisa diketuk, nyala saat aktif */

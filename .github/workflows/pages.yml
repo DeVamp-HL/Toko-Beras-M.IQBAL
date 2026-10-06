@@ -53,7 +53,7 @@ jobs:
       - name: Lingkup statis — kontrol positif
         run: python3 alat-uji/lingkup.py --kontrol
 
-      - name: "Pensiun sistem lama & kasir.html (3 Okt): pengalih ada, FILES service worker = berkas yang ada & tanpa kasir.html, langkah CI / seed HawkScan / manifest menunjuk berkas yang ada, /baru/ tanpa tautan sistem lama + kontrol"
+      - name: "Pensiun sistem lama & kasir.html (3 Okt): pengalih ada, FILES service worker = berkas yang ada & tanpa kasir.html, langkah CI / seed HawkScan / manifest menunjuk berkas yang ada, /baru/ tanpa tautan sistem lama, 404.html pengalih ke jalur penuh /baru/ (owner 7 Okt) + kontrol"
         run: python3 alat-uji/uji_pensiun_sistem_lama.py && python3 alat-uji/uji_pensiun_sistem_lama.py --kontrol
 
       - name: audit.py masih terkompilasi
@@ -122,7 +122,7 @@ jobs:
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_setelan_jenis_beras.py && python3 alat-uji/uji_setelan_jenis_beras.py --kontrol
-      - name: "Operator kasir & PIN di /baru/ (25c): PIN operator DICABUT dari dokumen yang dibaca kasir@, daftar & aktif/libur pindah, PIN owner bentuk sama (SHA-256 = hashlib, acakPin terkunci sidik) (kotak pasir + kontrol)"
+      - name: "Operator kasir & PIN (25c; owner 7 Okt: tab Kasir & PIN dicabut dari Menu, tidak ada layar yang menulis dokumennya): bentuk dokumen tanpa PIN operator, PIN owner bentuk sama (SHA-256 = hashlib, acakPin terkunci sidik) (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_operator_pin.py && python3 alat-uji/uji_operator_pin.py --kontrol
 
       # ---- PUTARAN 27 — stok & merek (owner 27 Sep) ----
@@ -165,7 +165,7 @@ jobs:
         run: python3 alat-uji/uji_tata_letak_ringkasan_stok.py && python3 alat-uji/uji_tata_letak_ringkasan_stok.py --kontrol
       - name: "Rapi-rapi tata letak layar lain (36): tujuh layar kerja di Mac selebar 1720 & berpinggir sama, kolom samping tiga-kolom clamp(vw) (1280 tidak menyempit), Menu tetap kolom N1 860"
         run: python3 alat-uji/uji_tata_letak_layar_lain.py && python3 alat-uji/uji_tata_letak_layar_lain.py --kontrol
-      - name: "CSP /baru/ (keputusan owner 1 Okt: Pasang) + kasir darurat (3 Okt, kasir-v32: hash saja, koneksi persis Firebase REST, data-aksi ↔ penangan) + pengalih: meta sebelum script, hash script sebaris = isinya, tanpa onclick sebaris"
+      - name: "CSP /baru/ (keputusan owner 1 Okt: Pasang) + kasir darurat (3 Okt, kasir-v32: hash saja, koneksi persis Firebase REST, data-aksi ↔ penangan) + pengalih (index, kasir, 404 — 7 Okt): meta sebelum script, hash script sebaris = isinya, tanpa onclick sebaris"
         run: python3 alat-uji/uji_csp.py && python3 alat-uji/uji_csp.py --kontrol
       - name: "Audit 39b no. 28: kabar sesudah kiriman jujur — antre = \"Tersimpan di perangkat, menunggu server\" di enam layar + Jual (panel wadah, umum, setelan, pesanan, tarik balik, batal nota) + kiriman bertahap; pil kepala menyebut yang DITOLAK server (jsc)"
         run: python3 alat-uji/uji_kabar_antre.py && python3 alat-uji/uji_kabar_antre.py --kontrol
@@ -181,8 +181,12 @@ jobs:
       - name: "Rak Jual inkremental (owner 3 Okt): sesudah tiap ubahan keranjang / struk parkir, susunRakLanjut = susunRak persis (urutan, kelompok, Sering, rak Wadah, isian berat) — kasus tepi bernama + urutan acak berbenih tetap, hanya chip yang terpengaruh dihitung ulang; layar Jual asli: ubahan keranjang → lanjutan, data / pelanggan / tukar → penuh, HTML tiap jalur = susun penuh (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_rak_inkremental.py && python3 alat-uji/uji_rak_inkremental.py --kontrol
       # ---- owner 3 Okt: /baru/ dipakai sebagai web app Safari (Mac) + Safari iPhone/iPad — cacat khas WebKit ----
-      - name: "Safari/WebKit (owner 3 Okt): sandi tidak terkunci selagi fokus & dilepas di pointerdown, jarak poni tiap layar, :hover menu samping hanya untuk kursor, tanpa kolom bulan, touchstart pasif (:active iOS), penjaga muat-ulang modul kenal kalimat Safari, jarak aman kiri/kanan, minus di #rtSelisih, WA/cetak Laporan dibuka di ketukan lalu nomornya dicatat (statis + jsc + kontrol)"
+      - name: "Safari/WebKit (owner 3 Okt): sandi tidak terkunci selagi fokus & dilepas di pointerdown, jarak poni tiap layar, :hover menu samping hanya untuk kursor, tanpa kolom bulan, touchstart pasif (:active iOS), penjaga muat-ulang modul kenal kalimat Safari, jarak aman kiri/kanan, minus di #rtSelisih, WA/cetak Laporan dibuka di ketukan lalu nomornya dicatat; owner 7 Okt: WA Uang & Harga tanpa noopener, paket bank dicetak di ketukan, :hover semua stylesheet hanya untuk kursor (statis + jsc + kontrol)"
         run: python3 alat-uji/uji_safari_webkit.py && python3 alat-uji/uji_safari_webkit.py --kontrol
+      # ---- owner 7 Okt: paket dokumen & sisa (D1 pusat dokumen yang kurang · D3 sisa pensiun sistem lama). D2 Safari ikut langkah di atas
+      #      (WA Uang/Harga, paket bank, :hover semua stylesheet); 404.html di uji_csp & uji_pensiun_sistem_lama; tab Kasir & PIN di uji_operator_pin ----
+      - name: "Dokumen & sisa (owner 7 Okt): daftar harga & harga yang naik untuk pelanggan (katalog terbit, riwayat terbit), paket bank bernomor dihitung dulu, jalan pintas kartu piutang & daftar harga, bersihkan simpanan sistem lama (daftar beku tanpa kunci /baru/ & kasir darurat, antrean berisi dijaga, dua ketukan), kalimat 'lewat sistem lama' (kotak pasir jsc + statis + kontrol)"
+        run: python3 alat-uji/uji_dokumen_sisa.py && python3 alat-uji/uji_dokumen_sisa.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

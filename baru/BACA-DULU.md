@@ -1179,6 +1179,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_wadah_satu_buku.py` (+ `--kontrol`) | 39: satu buku per kotak — karung belakang = buku sendiri (buka = pindah merek → karung belakang, tuang = pindah karung belakang → wadah, kolam vs buku disebut), isi ulang tiga ketukan (1 karung / ½ / kg satu kiriman, batas menggunung), buku merek kurang → tolak + `perluTandai` → tandai (`perluCocokkan` + `selisihPerMerk`, tuntas = cocokkan bertanggal ≥ dokumen), aktivasi per wadah dari daftar (kekurangan disebut; nilai / laba / tumpukan tetap), komposisi turunan & banding, cek tutup toko (dikosongkan = sisihkan tanpa timbang), selisih dua angka; asap cadangan §8.4 & ASAP GLOBAL byte-sama dengan main |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; sisi lama dari `git show sistem-lama-terakhir:index.html` sejak 3 Okt; 5 kontrol) |
 | `alat-uji/uji_safari_webkit.py` (+ `--kontrol`) | owner 3 Okt (web app Safari Mac + Safari iPhone/iPad): sembilan cacat khas WebKit, statis + jsc tanpa peramban — sandi tidak dikunci readonly selagi fokus & dilepas di pointerdown; tiap `main.layar-*` berjarak poni sesudah shorthand padding; `:hover` kerangka hanya di `@media (hover: hover) and (pointer: fine)` (menu samping iPad); tanpa kolom `month`/`week` & pil bulan Omzet di luar sistem tergambar (jsc); touchstart pasif di document (`:active` iOS); penjaga muat-ulang modul kenal "Importing binding name" Safari (jsc menjalankan script sebaris); body berjarak aman kiri/kanan, ≥1100 tetap 72px; `#rtSelisih` tanpa inputmode angka (minus); Laporan `keluarkan()` membuka WA / dialog cetak di ketukan lalu mencatat nomor (jsc dengan pemblokir jendela ala Safari); 26 kontrol |
+| `alat-uji/uji_dokumen_sisa.py` (+ `--kontrol`) | owner 7 Okt: daftar harga & harga yang naik untuk pelanggan (katalog terbit, riwayat `hargaTerbit`, draf tidak ikut, turun/kembali/baru disebut, tanpa riwayat ditolak), paket bank bernomor dihitung dulu, jalan pintas Harga/Pelanggan → Laporan, simpanan lokal sistem lama (daftar beku = tag dikurangi kunci `/baru/` & kasir darurat; antrean berisi dijaga; dua ketukan), kalimat "lewat sistem lama" (jsc kotak pasir + statis; 25 kontrol) |
 
 Membuka mesin (HANYA atas perintah owner): sunting `js/mesin/beku.js` / `pembantu.js` langsung → `python3 alat-uji/beku2.py --catat` → sebut di pesan
 commit mesin/pembantu mana & kenapa. (Sampai 2 Okt mesin disalin ulang dari `index.html` oleh `pindah_mesin.py` — pensiun 3 Okt.)
@@ -1556,7 +1557,7 @@ Prasyarat owner beres hari itu (HP kasir melapor 0 antrean / 0 ditolak; perangka
   `periksa.sh` & `lingkup.py` kini memeriksa kasir darurat (`periksa.sh --kontrol` baru menggantikan kontrol harness).
 - **Tidak dikerjakan di sini (tindak lanjut owner):** tab Kasir & PIN tanpa pembaca, `piutang` + `bayarBon*` di katalog kasir tanpa pembaca, hak kasir@
   yang tidak dipakai di rules, pembersih salinan lokal sistem lama, pemulih dari berkas di `/baru/`, CSP kasir darurat (mendarat di bagian berikut),
-  `404.html`.
+  `404.html`. (7 Okt: tab Kasir & PIN, pembersih salinan lokal, dan `404.html` SELESAI — bagian "Paket dokumen & sisa".)
 
 ## CSP kasir darurat (3 Okt 2026, kasir-v32; cabang `pensiun/csp-darurat`, di atas main sesudah PR #103 `pensiun/bumi-hangus`)
 
@@ -1594,3 +1595,51 @@ Sisa perintah owner "hapus sistem lama + kasir.html + CSP kasir darurat". `kasir
   DOM; muat ulang mengetuk pita, Tutup & arsip (dulu fungsi langsung). Salinan uji diperiksa statis tanpa peramban (`periksa_salinan`), +10
   kontrol `uji_antrean_kasir` & +2 `uji_katalog_kasir` (yang mengganti alat uji sendiri lewat kunci `'@nama'` — `ganti_alat`). Uji peramban
   HANYA di CI; di Mac dijalankan bagian statis/jsc dengan Chrome ditolak, dan salinan dibangun dengan server & Chrome ditiru.
+
+## Paket dokumen & sisa (owner 7 Okt 2026: "harus selesai semua sebelum tanggal 13"; cabang `perbaikan/dokumen-dan-sisa`)
+
+**D1 · Pusat dokumen — sensus visi owner 17 Sep + rancangan DK1–DK4 lawan `/baru/`:**
+
+| Kebutuhan | Di `/baru/` | Status |
+|---|---|---|
+| Kop & identitas usaha (DK1), dua ragam kop, versi kop | Laporan › Setelan | sudah ada |
+| Laba-rugi · neraca · arus kas 1/3/12 bulan, cap DRAF, cetakan bernomor (DK2) | Laporan › Dokumen › Laporan berkop | sudah ada |
+| Paket bank (bulan FINAL saja), banding dua bulan | Laporan › Dokumen › Paket bank / Banding | sudah ada; dialog cetak Safari dibetulkan (D2) |
+| Rekap omzet 12 bulan + bukti omzet bernomor (DK3) | Laporan › Bulanan | sudah ada |
+| Kantor pajak | Laporan › Pajak (rekap untuk konsultan) | sudah ada (tidak disentuh paket ini) |
+| Bukti setoran modal · slip upah · rekap bon pemasok (DK4) | Laporan › Dokumen kecil (+ bukti/slip teks di Uang) | sudah ada |
+| Pelanggan minta daftar utangnya: kartu piutang | Laporan › Dokumen kecil | ada, tapi tidak bisa dibuka dari Pelanggan → **dibangun**: tombol di lembar bon |
+| Struk pembelian / cetak ulang nota (SALINAN ke-N) | Jual › struk + Dokumen kecil | sudah ada |
+| Pelanggan minta **daftar harga** (kertas berkop, bernomor) | Harga › teks WA saja | **dibangun**: Dokumen kecil › Daftar harga |
+| Pelanggan minta daftar harga yang **NAIK** | — | **dibangun**: Dokumen kecil › Harga yang naik |
+| Pemerintah | tidak ada formulir khusus di DK1–DK4 | laporan berkop + kop penuh (NIB) dipakai; formulir instansi belum dirancang |
+
+- **Daftar harga** (`daftarHargaBerlaku`): katalog yang SEDANG dipakai kasir (harga terbit; draf tidak ikut, jumlah drafnya disebut), per merek dalam urutan
+  katalog, satuan bahasa pembeli (per kg · per liter · kemasan N kg · karung N kg), pilihan kelompok (semua / per kg / literan / kemasan & karung utuh) dengan
+  jumlah harga. Nama yang diarsipkan tidak ikut (`hgSemua`).
+- **Harga yang naik** (`hargaNaik`): harga sekarang (katalog) dibanding harga sebelum = `lama` di terbit PERTAMA barang itu dalam periode (barang yang baru
+  diberi harga di periode itu: harga pertamanya). Hanya yang naik dicantumkan; turun, kembali ke harga semula, dan baru diberi harga lalu tidak berubah
+  DISEBUT jumlahnya. Periode 30 (bawaan) · 7 · 90 hari · sejak awal tahun (pilihan dokumen, bukan angka kebijakan). Riwayat terbit (`hargaTerbit`) baru ada
+  sejak putaran 17 — periode yang mulai sebelum terbit pertama disebut di kertas; tanpa riwayat sama sekali dokumen DITOLAK. WA: `(+RpX)`, bukan "saldo".
+- Kop `harga` (ringkas, bisa ditukar di Setelan). Pilihan dokumen kecil yang bukan rupiah memakai `teksN`. Jalan pintas: Harga › lembar WA → dua tombol;
+  Pelanggan › lembar bon → "Kartu piutang berkop" (app.js meneruskan `keTujuan`, `laporan.buka` menerima `pilih`).
+
+**D2 · Sisa Safari (#104):** `bukaWa` Uang & Harga tanpa `'noopener'` (pola laporan.js — dulu selalu null → kabar "ditahan" palsu). Paket bank: SEMUA nomor
+dihitung dulu (`susunPaketCetakan`, urut dari nomor berikut, bentuk catatan = `susunCetakan`), dialog cetak dibuka SINKRON di ketukan, catatan nomornya
+SATU kiriman sesudahnya; gagal → kabar menyebut paketnya sudah keluar tanpa nomor tercatat. Semua `:hover` di stylesheet `/baru/` (jual, menu, pelanggan,
+stok ×2, identitas) dibungkus `@media (hover: hover) and (pointer: fine)` di TEMPAT aturan aslinya (kaskade tetap); zona denah `.aktif` dipisah dari `:hover`.
+
+**D3 · Sisa pensiun sistem lama (#103):**
+- Tab **Kasir & PIN** dicabut dari Menu › Peran & persetujuan (dokumen `pengaturan/aksesKasir` & `keamanan` tidak dibaca siapa pun sejak 3 Okt; datanya
+  TIDAK dihapus; `akses-kasir-logika.js` tidak diimpor layar mana pun lagi, tetap diuji `uji_operator_pin.py`, yang kini juga menjaga tidak ada layar
+  yang menulis dua dokumen itu).
+- **Sisa sistem lama di perangkat ini** (Menu › Cadangan & simpanan): daftar kunci `SS_KUNCI_LAMA` (sistem-logika.js) DIBEKUKAN dari tag `sistem-lama-terakhir`
+  dikurangi kunci yang dibaca `/baru/` (nomor & nama perangkat, titik kas, peta jenis beras, cap cadangan otomatis lama) dan kunci kasir darurat (akun,
+  operator, katalog HP kasir). Layar hanya membaca/menghapus kunci daftar itu. Antrean lama yang masih berisi (catatan yang tidak pernah sampai server; yang
+  tak terbaca dianggap berisi) DIJAGA sampai salinannya diunduh ("unduh salinannya" = berkas JSON apa adanya). Bersihkan = dua ketukan. Kalimat kuota tidak
+  lagi meramal "±62 KB/hari → N hari lagi penuh" (itu pertumbuhan cadangan sistem lama yang sudah berhenti).
+- **`404.html`** di akar: pengalih tanpa script & CSP ketat seperti `index.html`, tujuan **jalur penuh** `/Toko-Beras-M.IQBAL/baru/` (disajikan di alamat
+  mana pun yang tidak ada), tanpa ikon/manifest. Dijaga `uji_csp.py` (di CI jalurnya dicocokkan ke `GITHUB_REPOSITORY`) & `uji_pensiun_sistem_lama.py`.
+- Kalimat layar yang menyuruh "lewat sistem lama" diganti jalan di `/baru/` (bayar bon pemasok → Harga & Pemasok › Bon pemasok; karcis → Jual; kasir KR1 →
+  Jual) atau kalimat jujur (hapus uang keluar / batalkan bayar bon sesudah 90 detik, memberi tanggal bayar gaji baris lama: belum ada tombolnya).
+  "Minta Claude" untuk memulihkan cadangan → `docs/prosedur-pulih-darurat.md`.

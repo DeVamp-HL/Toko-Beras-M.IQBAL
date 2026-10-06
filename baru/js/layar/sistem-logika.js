@@ -223,15 +223,44 @@ export function ssCadangan(kini, lokal, hariPilih) {
   const pilih = hariPilih || iso; const hariDaftar = catatan.filter((c) => c.tanggal === pilih);
   const lsKb = L.lsKb === undefined || L.lsKb === null ? null : Number(L.lsKb); const pct = lsKb === null ? null : Math.round(lsKb / SS_LS_BATAS_KB * 100);
   const kuota = { adaAngka: lsKb !== null, kb: lsKb, batasKb: SS_LS_BATAS_KB, pct, awas: pct !== null && pct >= A.ambangKuota, sisaHari: lsKb === null ? null : Math.max(0, Math.floor((SS_LS_BATAS_KB - lsKb) / SS_LAJU_LS_KB)),
-    teks: lsKb === null ? 'Ukuran simpanan lokal tidak bisa dibaca di peramban ini' : ANGKA(lsKb) + ' KB dari ±' + ANGKA(SS_LS_BATAS_KB) + ' KB simpanan lokal (sistem lama + baru, alamat yang sama) terpakai',
-    ket: lsKb === null ? '' : 'bertambah ±' + SS_LAJU_LS_KB + ' KB/hari menurut pengukuran 15 Sep (perkiraan) → ±' + Math.max(0, Math.floor((SS_LS_BATAS_KB - lsKb) / SS_LAJU_LS_KB)) + ' hari lagi penuh',
-    awasTeks: pct === null ? '' : pct >= A.ambangKuota ? 'Di atas ambang ' + A.ambangKuota + '% (Atur): kalau penuh, layar SISTEM LAMA berhenti menyegarkan diam-diam — bersihkan cadangan lokalnya dari Setelan sistem lama' : 'Masih di bawah ambang ' + A.ambangKuota + '%' };
+    teks: lsKb === null ? 'Ukuran simpanan lokal tidak bisa dibaca di peramban ini' : ANGKA(lsKb) + ' KB dari ±' + ANGKA(SS_LS_BATAS_KB) + ' KB simpanan lokal (sistem baru, kasir darurat & sisa sistem lama — alamat yang sama) terpakai',
+    // owner 7 Okt (sisa pensiun #103): laju ±62 KB/hari dulu = cadangan SISTEM LAMA; sejak pensiun 3 Okt sisanya tidak bertambah lagi → kalimatnya menyebut
+    // sisa itu (lamaKb dari layar), bukan ramalan "hari lagi penuh" yang sudah tidak berlaku. sisaHari tetap dihitung (angka lama, tidak digambar).
+    ket: lsKb === null ? '' : L.lamaKb > 0 ? '±' + ANGKA(Math.round(L.lamaKb)) + ' KB di antaranya sisa sistem lama yang sudah pensiun (tidak bertambah lagi) — bisa dibersihkan di bawah' : L.lamaKb === 0 ? 'tidak ada lagi sisa sistem lama di perangkat ini' : '',
+    awasTeks: pct === null ? '' : pct >= A.ambangKuota ? 'Di atas ambang ' + A.ambangKuota + '% (Atur): kalau penuh, simpanan sistem baru di perangkat ini (draf, kiriman yang menunggu sinyal) bisa gagal tersimpan — bersihkan sisa sistem lama dengan tombol di bawah' : 'Masih di bawah ambang ' + A.ambangKuota + '%' };
   const simpanan = { adaAngka: L.usageKb !== undefined && L.usageKb !== null, kb: Number(L.usageKb) || 0, quotaKb: Number(L.quotaKb) || 0, pct: L.quotaKb ? Math.round((Number(L.usageKb) || 0) / Number(L.quotaKb) * 100) : null };
   const sehat = [['cadangan terakhir', terakhir ? (umurHari === 0 ? 'hari ini' : umurHari + ' hari lalu') : 'belum pernah'], ['dari sistem baru', String(catatan.filter((c) => c.sumber === 'sistem baru' && c.ok).length) + ' berkas'],
     ['otomatis sistem lama (HP ini)', L.autoTanggal ? tanggalPendek(L.autoTanggal) : 'tidak ada capnya'], ['koleksi di simpanan perangkat', L.koleksiTotal ? (L.koleksiSiap || 0) + ' dari ' + L.koleksiTotal : '—']].map((x) => ({ t: x[0], n: x[1] }));
   return { catatan, terakhir, umurHari, telat: umurHari === null || umurHari > A.cadanganTiap, kalender, hariPilih: pilih, hariDaftar, hariJudul: (pilih === iso ? 'Hari ini' : tanggalPendek(pilih)) + ': ' + (hariDaftar.length ? hariDaftar.length + ' cadangan' : 'tidak ada cadangan'), kuota, simpanan, sehat, atur: A,
     ringkas: terakhir ? 'Terakhir ' + tanggalPendek(terakhir.tanggal) + (terakhir.jam ? ' ' + terakhir.jam : '') + ' · ' + terakhir.sumber + (terakhir.kb ? ' · ' + ANGKA(terakhir.kb) + ' KB' : '') + (umurHari > A.cadanganTiap ? ' — sudah ' + umurHari + ' hari, lebih dari jadwal ' + A.cadanganTiap + ' hari' : '') : 'Belum pernah ada cadangan yang tercatat — unduh sekarang',
     era: ssEraTutupBuku() };
+}
+// owner 7 Okt (sisa pensiun #103): kunci simpanan lokal milik SISTEM LAMA (index.html) dan kasir.html lama — DIBEKUKAN dari tag git sistem-lama-terakhir
+// (48a694d). Dikurangi yang masih dibaca /baru/ (nomor & nama perangkat, titik kas, peta jenis beras, cap cadangan otomatis lama) dan yang dipakai kasir
+// darurat (akun, operator, katalog HP kasir): yang itu TIDAK ada di daftar ini, jadi tombol bersihkan tidak pernah menyentuhnya. Dijaga uji_dokumen_sisa.py.
+export const SS_KUNCI_LAMA = ['miqbal_amplop_laba_v1', 'miqbal_antrean_ditolak_v1', 'miqbal_antrean_tunda_v1', 'miqbal_batch_masuk_v2', 'miqbal_biaya_bulanan',
+  'miqbal_buka_toko_v2', 'miqbal_draf_masuk_v1', 'miqbal_gerbang_v1', 'miqbal_karantina_v1', 'miqbal_kasbon_mutasi_v1', 'miqbal_katalog_harga_karung_v1', 'miqbal_katalog_harga_kemasan_v1',
+  'miqbal_katalog_harga_literan_v1', 'miqbal_modal_owner_v1', 'miqbal_owner_unlock', 'miqbal_pelanggan_catatan_v1', 'miqbal_pemasok_catatan_v1', 'miqbal_pengeluaran_harian_v1',
+  'miqbal_penjualan_v1', 'miqbal_penyesuaian_kemasan_v1', 'miqbal_penyesuaian_stok_v1', 'miqbal_pesanan_v1', 'miqbal_pin_owner_v1', 'miqbal_pin_percobaan_v1', 'miqbal_piutang_mutasi_v1',
+  'miqbal_produksi_kemasan_v1', 'miqbal_qris_v1', 'miqbal_retur_v1', 'miqbal_ringkasan_terakhir', 'miqbal_ringkasan_terbit_v1', 'miqbal_roster_v1', 'miqbal_setoran_kas_v1',
+  'miqbal_stok_bahan_kemasan_v1', 'miqbal_stok_bahan_literan_v1', 'miqbal_tema_v1', 'miqbal_tembusan_stok_v1', 'miqbal_tempat_simpan_v1', 'miqbal_thr_pelanggan_v1', 'miqbal_titipan_harian_v1',
+  'miqbal_tukar_setengah_v1', 'miqbal_tutup_hari_v1', 'miqbal_uji_penjaga_v1', 'miqbal_utang_owner_v1', 'miqbal_utang_pemasok_v1',
+  'kasir_antrean_v1', 'kasir_bayar_bon_v1', 'kasir_ditolak_arsip_v1', 'kasir_gagal_v1', 'kasir_perangkat_v1', 'kasir_roster_v1'];
+// antrean lama = catatan yang belum pernah sampai server (larik JSON). Yang masih berisi TIDAK dibersihkan sampai salinannya diunduh (kalau ragu, menutup).
+export const SS_KUNCI_LAMA_ANTREAN = ['miqbal_antrean_tunda_v1', 'miqbal_antrean_ditolak_v1', 'kasir_antrean_v1', 'kasir_gagal_v1', 'kasir_bayar_bon_v1', 'kasir_ditolak_arsip_v1'];
+/**
+ * Sisa simpanan sistem lama di perangkat ini. isi = { kunci: teks | null } — layar membaca localStorage HANYA untuk SS_KUNCI_LAMA; sudahUnduh = salinannya
+ * sudah diunduh di layar ini. → { ada:[{ kunci, kb, antrean, n }], kb, dibersihkan:[kunci], kbBersih, dijaga:[…], nCatatan, teks }.
+ */
+export function ssSimpananLama(isi, sudahUnduh) {
+  const I = isi || {}; const ada = [];
+  SS_KUNCI_LAMA.forEach((k) => { const v = I[k]; if (v === null || v === undefined) return; const s = String(v); const antrean = SS_KUNCI_LAMA_ANTREAN.indexOf(k) >= 0; let n = null;
+    if (antrean) { try { const j = JSON.parse(s.trim() || '[]'); n = Array.isArray(j) ? j.length : j && typeof j === 'object' ? Object.keys(j).length : j ? 1 : 0; } catch (e) { n = s.trim() ? 1 : 0; } }
+    ada.push({ kunci: k, kb: (k.length + s.length) * 2 / 1024, antrean, n }); });
+  const dijaga = ada.filter((x) => x.antrean && x.n > 0 && !sudahUnduh); const bersih = ada.filter((x) => dijaga.indexOf(x) < 0);
+  const kb = ada.reduce((a, x) => a + x.kb, 0); const kbBersih = bersih.reduce((a, x) => a + x.kb, 0); const nCatatan = dijaga.reduce((a, x) => a + x.n, 0);
+  return { ada, kb, dibersihkan: bersih.map((x) => x.kunci), kbBersih, dijaga, nCatatan,
+    teks: !ada.length ? 'Tidak ada sisa simpanan sistem lama di perangkat ini.' : 'Salinan data toko yang dulu disimpan sistem lama & kasir lama di perangkat ini supaya bisa jalan tanpa internet. Sejak pensiun 3 Okt tidak dibaca siapa pun, tapi masih memakan simpanan perangkat. Membersihkannya TIDAK menghapus data toko di server; nomor & nama perangkat, titik kas, jenis beras, dan simpanan kasir darurat tidak disentuh.' };
 }
 
 // ---------- SS4 · Lokasi (fondasi) ----------
@@ -304,7 +333,7 @@ export function ssPengingat(kini, lokal, hariKe) {
 const ssDokPengingat = (p, w, tambahan) => ({ koleksi: 'pengingat', data: Object.assign({ id: p.id, jenis: p.jenis, kunci: p.kunci, jatuh: p.jatuh, teks: p.teks, tanggal: w.tanggal, jam: w.jam, status: 'tunda', catatan: p.catatan || '', tundaHari: p.tunda || 0, tundaKali: p.tundaKali || 0 }, tambahan) });
 export function susunSelesaiPengingat(p, catatan, w) {
   if (!p) return { tolak: 'Pilih pengingatnya' }; if (p.selesai) return { tolak: 'Sudah ditandai selesai' }; if (p.sisa < 0 && ssKosong(catatan)) return { tolak: 'Pengingat yang sudah lewat butuh catatan: apa yang terjadi?' };
-  return { dokumen: [ssDokPengingat(p, w, { status: 'selesai', catatan: String(catatan || '').trim().slice(0, 80) })], patch: { kabar: p.jenis === 'bon' ? 'Ditandai selesai — pembayarannya sendiri dicatat di bon pemasok (sistem lama)' : p.jenis === 'janji' ? 'Ditandai selesai — pembayarannya dicatat lewat Pelanggan → Bon' : 'Ditandai selesai', kabarAwas: false } };
+  return { dokumen: [ssDokPengingat(p, w, { status: 'selesai', catatan: String(catatan || '').trim().slice(0, 80) })], patch: { kabar: p.jenis === 'bon' ? 'Ditandai selesai — pembayarannya sendiri dicatat di bon pemasok (Harga & Pemasok → Bon pemasok)' : p.jenis === 'janji' ? 'Ditandai selesai — pembayarannya dicatat lewat Pelanggan → Bon' : 'Ditandai selesai', kabarAwas: false } };
 }
 export function susunTundaPengingat(p, w) {
   const A = ssAtur('pengingat'); if (!p) return { tolak: 'Pilih pengingatnya' }; if (p.selesai) return { tolak: 'Sudah selesai' }; if (p.tundaKali >= A.maksTunda) return { tolak: 'Sudah ditunda ' + p.tundaKali + ' kali — batasnya ' + A.maksTunda + ' (Atur). Selesaikan dengan catatan' };

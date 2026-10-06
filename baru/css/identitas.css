@@ -2,7 +2,7 @@
    Diturunkan dari papan desain J2 yang dikunci; token di body / body.gelap. Latar mode terang = platina. */
 
     body { margin: 0; font-family: Jost, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
-    a { color: #8a6512; } a:hover { color: #2b241a; }
+    a { color: #8a6512; } @media (hover: hover) and (pointer: fine) { a:hover { color: #2b241a; } }
     body { position: relative; overflow: hidden; box-sizing: border-box; color: var(--teks); background: linear-gradient(160deg, var(--bg1), var(--bg2) 48%, var(--bg3)); transition: color 480ms ease; }
     .bola { position: absolute; z-index: 0; pointer-events: none; border-radius: 50%; filter: blur(4px); transition: background 700ms ease, transform 640ms cubic-bezier(.2,.8,.2,1), opacity 640ms ease; }
     .bola.emas { width: 440px; height: 440px; right: -150px; top: -170px; background: radial-gradient(circle, var(--bola-emas), transparent 68%); }

@@ -10,6 +10,9 @@
 // dibaca owner saja. Dipakai gembok Menu sistem lama; sistem baru memakai akun. Aturan sama dengan simpanSetelPin: PIN sekarang wajib benar
 // kalau sudah disetel, PIN baru 4–8 angka, diketik dua kali.
 // Tanpa DOM; nama berawalan op (bundel uji satu lingkup). Dijaga alat-uji/uji_operator_pin.py.
+// owner 7 Okt (sisa pensiun #103): tab "Kasir & PIN" DICABUT dari Menu — sejak kasir.html & sistem lama pensiun 3 Okt kedua dokumen di atas tidak dibaca
+// siapa pun (kasir darurat tidak pernah membacanya). Modul ini tidak lagi diimpor layar mana pun; dibiarkan (dan diuji) supaya bentuk dokumennya
+// tetap terjaga kalau suatu hari dipakai lagi. Datanya di server TIDAK dihapus.
 import { cacheMentah } from '../data/toko.js';
 import { acakPin } from '../mesin/pembantu.js';
 
@@ -61,5 +64,5 @@ export async function susunPinOwner(isi, w, garamBaru) {
   const garam = garamBaru || ('g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
   const acak = await acakPin(baru, garam);
   return { dokumen: [{ koleksi: 'pengaturan', data: { id: 'keamanan', garam, acak, diubahPada: w.kini } }],
-    patch: { pinIsi: { lama: '', baru: '', ulang: '' }, kabar: 'PIN owner ' + (disetel ? 'diganti' : 'disetel') + '. Berlaku di gembok sistem lama begitu perangkatnya online.', kabarAwas: false } };
+    patch: { pinIsi: { lama: '', baru: '', ulang: '' }, kabar: 'PIN owner ' + (disetel ? 'diganti' : 'disetel') + '. Catatan: sejak sistem lama pensiun (3 Okt) PIN ini tidak dibaca sistem mana pun — sistem baru memakai akun owner.', kabarAwas: false } };
 }

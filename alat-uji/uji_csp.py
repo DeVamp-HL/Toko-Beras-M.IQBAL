@@ -30,6 +30,8 @@ PENGALIH (3 Okt 2026, owner: sistem lama & kasir.html "bumi hanguskan"): index.h
   · CSP ketat, persis: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none' — + manifest-src 'self'
     HANYA kalau halaman menautkan manifest. Meta CSP sebelum <link>/<style> pertama.
   · tiap <link href> / <img src> lokal dan berkasnya ADA di repo (ikon & manifest yang dihapus bersama sistem lama tidak boleh dirujuk).
+  · 404.html (owner 7 Okt, sisa pensiun #103): aturan yang sama, tujuan = jalur penuh situs /Toko-Beras-M.IQBAL/baru/ (disajikan di alamat mana pun yang
+    tidak ada — "baru/" relatif meleset), tanpa <link>/<img>; di CI jalurnya dicocokkan ke GITHUB_REPOSITORY.
 
 KONTROL kasir darurat yang mengubah script menulis ulang hash di salinannya ('hash': True) — supaya yang berbunyi cacat yang dituju, bukan hash basi —
 dan wajib menjatuhkan pemeriksaan yang namanya memuat 'harap' (bukan sembarang pemeriksaan).
@@ -44,6 +46,11 @@ HTML = 'baru/index.html'
 DARURAT = 'kasir-darurat-nominal.html'
 HALAMAN_HASH = [HTML, DARURAT]   # halaman ber-script sebaris yang hash-nya ditulis --pasang
 PENGALIH = ['index.html', 'kasir.html']
+# owner 7 Okt (sisa pensiun #103): 404.html = pengalih yang disajikan GitHub Pages di alamat MANA PUN yang tidak ada → tujuannya jalur penuh situs, bukan
+# "baru/" relatif (di /Toko-Beras-M.IQBAL/lib/x.js "baru/" jadi /lib/baru/). Jalur situs = /<nama repo>/ (GitHub Pages proyek); di CI dicocokkan ke
+# GITHUB_REPOSITORY. Tanpa <link>/<img> (rujukan relatif juga meleset di alamat dalam).
+PENGALIH_404 = '404.html'
+TUJUAN_404 = '/Toko-Beras-M.IQBAL/baru/'
 CSP_PENGALIH = {'default-src': ["'none'"], 'img-src': ["'self'"], 'style-src': ["'unsafe-inline'"], 'base-uri': ["'none'"], 'form-action': ["'none'"]}
 FIREBASE = ['https://firestore.googleapis.com', 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com']
 # Kasir darurat: direktif selain script-src, PERSIS (urutan sumber diabaikan). script-src = hash script sebaris saja.
@@ -67,7 +74,7 @@ TAG_SCRIPT_SEBARIS = re.compile(r'<script\b(?![^>]*\ssrc\s*=)', re.I)
 
 def baca(ganti=None, hash_ulang=False):
     t = {HTML: open(os.path.join(AKAR, HTML), encoding='utf-8').read(), DARURAT: open(os.path.join(AKAR, DARURAT), encoding='utf-8').read()}
-    for b in PENGALIH: t[b] = open(os.path.join(AKAR, b), encoding='utf-8').read()
+    for b in PENGALIH + [PENGALIH_404]: t[b] = open(os.path.join(AKAR, b), encoding='utf-8').read()
     for p in sorted(glob.glob(os.path.join(AKAR, 'baru/js/**/*.js'), recursive=True)):
         t[os.path.relpath(p, AKAR)] = open(p, encoding='utf-8').read()
     for b, pasangan in (ganti or {}).items():
@@ -160,6 +167,13 @@ def periksa(t):
               and D.get('form-action') == ["'self'"] and D.get('default-src') == ["'self'"], {k: D.get(k) for k in ('object-src', 'base-uri', 'form-action', 'default-src')}))
     c += periksa_darurat(t[DARURAT])
     for b in PENGALIH: c += periksa_pengalih(b, t[b])
+    c += periksa_pengalih(PENGALIH_404, t[PENGALIH_404], TUJUAN_404)
+    h4 = t[PENGALIH_404]
+    c.append((PENGALIH_404 + ' (pengalih): tanpa <link>/<img> — rujukan relatif meleset di alamat dalam', not re.search(r'<(?:link|img)\b', h4, re.I), re.findall(r'<(?:link|img)\b[^>]*>', h4, re.I)))
+    repo = os.environ.get('GITHUB_REPOSITORY', '')
+    harap = '/' + repo.split('/', 1)[1] + '/baru/' if '/' in repo else TUJUAN_404
+    c.append((PENGALIH_404 + ' (pengalih): tujuan = jalur situs (/<nama repo>/baru/)' + (' — dicocokkan ke GITHUB_REPOSITORY' if repo else ''),
+              TUJUAN_404 == harap and TUJUAN_404.startswith('/') and TUJUAN_404.endswith('/baru/') and os.path.isfile(os.path.join(AKAR, 'baru', 'index.html')), (TUJUAN_404, harap)))
     return c
 
 
@@ -220,12 +234,12 @@ def periksa_darurat(html):
     return c
 
 
-def periksa_pengalih(b, html):
-    """Halaman pengalih (3 Okt 2026): tanpa script, CSP ketat, mengalihkan ke baru/, rujukan lokal yang ada."""
+def periksa_pengalih(b, html, tujuan='baru/'):
+    """Halaman pengalih (3 Okt 2026): tanpa script, CSP ketat, mengalihkan ke baru/ (404.html: jalur penuh situs), rujukan lokal yang ada."""
     c = []; D, pos = csp_dari(html)
     c.append((b + ' (pengalih): TANPA <script> sama sekali', '<script' not in html.lower(), html.lower().count('<script')))
-    c.append((b + ' (pengalih): meta refresh "0; url=baru/" + tautan <a href="baru/">',
-              '<meta http-equiv="refresh" content="0; url=baru/">' in html and '<a href="baru/">' in html, ''))
+    c.append((b + ' (pengalih): meta refresh "0; url=' + tujuan + '" + tautan <a href="' + tujuan + '">',
+              '<meta http-equiv="refresh" content="0; url=' + tujuan + '">' in html and '<a href="' + tujuan + '">' in html, ''))
     if D is None: return c + [(b + ' (pengalih): meta CSP ada', False, '')]
     kepala = html[:html.find('</head>')] if '</head>' in html else html
     pertama = [i for i in (kepala.find('<link'), kepala.find('<style')) if i >= 0]
@@ -318,6 +332,13 @@ KONTROL = [
     ('pengalih kasir.html menautkan manifest tanpa manifest-src', {'kasir.html': [('<link rel="icon"', '<link rel="manifest" href="manifest-sistem.json">\n<link rel="icon"')]}),
     ('pengalih index.html merujuk ikon yang sudah dihapus', {'index.html': [('href="icon-sistem-180.png"', 'href="icon-kasir-512.png"')]}),
     ('pengalih kasir.html meta CSP sesudah stylesheet', {'kasir.html': [('<meta http-equiv="Content-Security-Policy"', '<link rel="icon" href="icon-kasir-32.png">\n<meta http-equiv="Content-Security-Policy"')]}),
+    # 404.html (owner 7 Okt, sisa pensiun #103)
+    ('404.html diberi script', {'404.html': [('<main>', '<main><script>location.href = "/Toko-Beras-M.IQBAL/baru/";</script>')]}, {'harap': '404.html'}),
+    ('404.html mengalihkan ke "baru/" relatif (meleset di alamat dalam)', {'404.html': [('content="0; url=/Toko-Beras-M.IQBAL/baru/"', 'content="0; url=baru/"')]}, {'harap': '404.html'}),
+    ('404.html tautan tombol ke "baru/" relatif', {'404.html': [('<a href="/Toko-Beras-M.IQBAL/baru/">', '<a href="baru/">')]}, {'harap': '404.html'}),
+    ('404.html merujuk ikon relatif', {'404.html': [('<meta name="theme-color"', '<link rel="icon" href="icon-sistem-32.png">\n<meta name="theme-color"')]}, {'harap': '404.html'}),
+    ("404.html CSP default-src 'self'", {'404.html': [("content=\"default-src 'none';", "content=\"default-src 'self';")]}, {'harap': '404.html'}),
+    ('404.html onclick di tombol', {'404.html': [('<a href="/Toko-Beras-M.IQBAL/baru/">', '<a href="/Toko-Beras-M.IQBAL/baru/" onclick="x()">')]}, {'harap': 'on…='}),
 ]
 
 
@@ -344,7 +365,7 @@ def main():
     hasil = periksa(baca())
     for n, ok, k in hasil:
         if not ok: print('GAGAL:', n, '→', str(k)[:400])
-    lulus = sum(1 for _, ok, _ in hasil if ok); print('CSP /baru/ + kasir darurat + pengalih index.html & kasir.html: %d lulus · %d gagal' % (lulus, len(hasil) - lulus))
+    lulus = sum(1 for _, ok, _ in hasil if ok); print('CSP /baru/ + kasir darurat + pengalih index.html, kasir.html & 404.html: %d lulus · %d gagal' % (lulus, len(hasil) - lulus))
     return 0 if lulus == len(hasil) else 1
 
 
