@@ -16,6 +16,7 @@ import { wbLiteranLangsung } from './wadah-bernama-logika.js';
 import { koleksiWadah } from './wadah-jual-logika.js';
 import { skPecah, skHapusPemecah } from './setengah-logika.js';
 import { tolakBatalReturBon } from './retur-logika.js';
+import { ngAtur } from './nego-logika.js';
 
 const KC_TERKUNCI = 'karcis ini tidak bisa dirinci lagi; stok yang terlanjur keluar dibetulkan lewat Stok › Cocokkan hari ini';
 const KC_TOLERANSI_BULAT = 500;   // literan: pecahan di bawah Rp500 tidak terpakai di lapangan (kandidatDarurat 32170)
@@ -82,14 +83,19 @@ export function pakaiTebakan(s, t) {
   // putaran 31.1: dua nama seharga → tawarkan pilihan, jangan ambil yang pertama
   if (t && t.seharga) return { kcPilih: t, kabar: t.pilihan.length + ' nama seharga untuk nominal ini (' + t.pilihan.map((p) => p.label).join(', ') + ') — ketuk namanya; tebakan tidak memilih sendiri', kabarAwas: false };
   let st = Object.assign({}, s); const rak = susunRak(st);
+  // tinjauan 7 Okt: harga PAS = penjualan yang SUDAH terjadi — owner yang merinci tidak tunduk pada daftar "boleh di bawah modal" (alasannya tetap tercatat);
+  // bukan-owner tetap lewat owner. Harga pas yang tidak bisa dipasang DISEBUT (dulu diam-diam tinggal harga katalog).
+  const A = ngAtur(); const aturPas = Object.assign({}, A, { bawahModal: A.bawahModal.indexOf('owner') >= 0 ? A.bawahModal : A.bawahModal.concat(['owner']) }); const gagalPas = [];
   for (const x of t.isi) {
     const chip = (rak[x.jalur] || []).find((c) => c.kunci === x.kunci && (!x.berat || c.berat === x.berat)); if (!chip) return { kabar: x.kunci + ' tidak ada di rak (harga/stoknya tidak terbaca) — pilih barangnya sendiri', kabarAwas: true };
     const p = masukkan(Object.assign({}, st, { pilih: chip, ketik: '' }), x.jumlah); if (p.kabarAwas) return p;
     st = Object.assign(st, p);
     // owner 7 Okt (JS2-C): harga PAS karcis = penjualan yang SUDAH terjadi di kasir darurat — di bawah modal pun dicatat apa adanya, alasannya tertulis
-    if (x.hargaPas) { const b = st.keranjang[st.keranjang.length - 1]; const q = terapkanNego(Object.assign({}, st, { negoAlasan: 'harga pas karcis kasir darurat' }), b.id, Math.round(x.hargaPas / x.jumlah)); if (q.keranjang) { st = Object.assign(st, q); const bb = st.keranjang[st.keranjang.length - 1]; if (bb.trx.hargaTotal !== x.hargaPas) bb.trx.hargaTotal = x.hargaPas; } }
+    if (x.hargaPas) { const b = st.keranjang[st.keranjang.length - 1]; const q = terapkanNego(Object.assign({}, st, { negoAlasan: 'harga pas karcis kasir darurat', negoAtur: aturPas }), b.id, Math.round(x.hargaPas / x.jumlah)); if (q.keranjang) { st = Object.assign(st, q); const bb = st.keranjang[st.keranjang.length - 1]; if (bb.trx.hargaTotal !== x.hargaPas) bb.trx.hargaTotal = x.hargaPas; }
+      else gagalPas.push(b.trx.label + ' ' + RP(x.hargaPas) + ': ' + String(q.kabar || 'tidak bisa dipasang')); }
   }
-  return { keranjang: st.keranjang, urutBaris: st.urutBaris, pilih: null, lembar: null, ketik: '', kcPilih: null, kabar: 'Tebakan dipakai: ' + t.label + ' — periksa lalu SIMPAN RINCIAN', kabarAwas: false };
+  return { keranjang: st.keranjang, urutBaris: st.urutBaris, pilih: null, lembar: null, ketik: '', kcPilih: null,
+    kabar: 'Tebakan dipakai: ' + t.label + (gagalPas.length ? ' — harga pas BELUM terpasang (' + gagalPas.join('; ') + ')' : '') + ' — periksa lalu SIMPAN RINCIAN', kabarAwas: gagalPas.length > 0 };
 }
 
 /** Uang vs barang di keranjang saat merinci. Potongan nota TIDAK dipakai (harga barangnya yang dinego). */

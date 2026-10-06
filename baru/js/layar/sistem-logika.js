@@ -183,10 +183,12 @@ export function susunUbahAkun(uid, ubah, w, yakin) {
 export function ssPersetujuan(kini) {
   const semua = cacheMentah('persetujuan').slice().sort(ssUrutTerbaru); const P = ssPeran();
   const baris = (m) => ({ id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,
+    // tinjauan 7 Okt: permintaan NEGO di bawah modal (beralasan) atau tanpa batas jatah (modal belum tercatat) tidak ikut "setujui semua yang kecil" — dilihat satu per satu
+    sekaligus: !(m.tindakan === 'nego' && (String(m.alasan || '').trim() || !(Number(m.batas) > 0))),
     teks: m.teks || '', n: Number(m.nominal) || 0, tanggal: m.tanggal || '', jam: m.jam || '', status: m.status || 'menunggu', alasanTolak: m.alasanTolak || '', diputusTanggal: m.diputusTanggal || '',
     saran: m.tindakan && P.hak(m.peran || 'karyawan', m.tindakan) === 'tidak' ? 'Peran ' + (m.dari || 'ini') + ' sebenarnya TIDAK BOLEH untuk ini — kalau sering, ubah haknya' : 'Menurut kisi hak, ini memang minta owner' });
   const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(baris); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(baris).slice(0, 20);
-  return { menunggu, riwayat, kecil: menunggu.filter((m) => m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
+  return { menunggu, riwayat, kecil: menunggu.filter((m) => m.sekaligus && m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
 }
 export function susunPutusPersetujuan(id, setuju, alasan, w) {
   const m = cacheMentah('persetujuan').find((x) => String(x.id) === String(id)); if (!m) return { tolak: 'Permintaannya tidak ditemukan' }; if (m.status && m.status !== 'menunggu') return { tolak: 'Sudah diputus ' + (m.diputusTanggal ? tanggalPendek(m.diputusTanggal) : '') };
@@ -195,9 +197,10 @@ export function susunPutusPersetujuan(id, setuju, alasan, w) {
     patch: { kabar: setuju ? 'Disetujui — ' + (m.dari || 'peminta') + ' bisa melanjutkan di perangkatnya' : 'Ditolak (' + String(alasan).trim() + ') — ' + (m.dari || 'peminta') + ' dapat kabarnya', kabarAwas: false } };
 }
 export function susunSetujuiKecil(w) {
-  const P = ssPersetujuan(new Date(w.kini)); const kecil = P.menunggu.filter((m) => m.n <= P.batas); if (!kecil.length) return { tolak: P.menunggu.length ? 'Semua permintaan di atas batas "sekaligus" (' + RP(P.batas) + ') — setujui satu per satu' : 'Tidak ada yang menunggu' };
+  const P = ssPersetujuan(new Date(w.kini)); const kecil = P.menunggu.filter((m) => m.sekaligus && m.n <= P.batas); const nSatu = P.menunggu.filter((m) => !m.sekaligus && m.n <= P.batas).length;
+  if (!kecil.length) return { tolak: P.menunggu.length ? 'Semua permintaan di atas batas "sekaligus" (' + RP(P.batas) + ')' + (nSatu ? ' atau nego di bawah modal / tanpa modal' : '') + ' — setujui satu per satu' : 'Tidak ada yang menunggu' };
   const dokumen = []; kecil.forEach((m) => { const r = susunPutusPersetujuan(m.id, true, '', w); if (r.dokumen) dokumen.push(r.dokumen[0]); });
-  return { dokumen, patch: { kabar: kecil.length + ' permintaan kecil (≤ ' + RP(P.batas) + ') disetujui sekaligus' + (P.menunggu.length - kecil.length ? '; ' + (P.menunggu.length - kecil.length) + ' yang besar masih menunggu' : ''), kabarAwas: false } };
+  return { dokumen, patch: { kabar: kecil.length + ' permintaan kecil (≤ ' + RP(P.batas) + ') disetujui sekaligus' + (P.menunggu.length - kecil.length - nSatu ? '; ' + (P.menunggu.length - kecil.length - nSatu) + ' yang besar masih menunggu' : '') + (nSatu ? '; ' + nSatu + ' nego di bawah modal / tanpa modal dilihat satu per satu' : ''), kabarAwas: false } };
 }
 
 // ---------- SS3 · Cadangan & kuota ----------

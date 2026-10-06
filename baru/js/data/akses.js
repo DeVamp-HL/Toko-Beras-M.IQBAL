@@ -203,7 +203,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };
       // owner 7 Okt (JS2-C): permintaan nego ke owner — hanya bentuk "menunggu" bertindakan nego, tanpa keputusan, dari peran yang kisinya bukan "tidak boleh".
       // Sampai rules membuka persetujuan untuk bukan-owner (BUAT_STAF di atas belum memuatnya) baris ini tidak tercapai — penjaganya disiapkan bersama layarnya.
-      if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || d.diputusPada || (hak.nego || 'tidak') === 'tidak')) return { tolak: tolakTindakan('nego') };
+      // tinjauan 7 Okt: permintaan itu harus atas nama akun yang mengirim (negoUid = uid sendiri) — persetujuannya dicocokkan ke negoUid (ngSetujuUntuk)
+      if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || d.diputusPada || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };
     } else {
       const u = UBAH_STAF[x.koleksi]; if (!u || u.peran.indexOf(P) < 0) return { tolak: tolakTindakan(TINDAKAN_DARI[x.koleksi] || 'koreksi') };
       const lama = x.lama || {}; const kunci = {}; Object.keys(lama).concat(Object.keys(d)).forEach((kk) => { kunci[kk] = true; });

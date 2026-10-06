@@ -65,7 +65,8 @@ ok('B: batas = katalog − margin × jatah: 690.000 / modal 650.000 / 50 % → 6
 ok('B: dibulatkan ke langkah KE ATAS (tidak melewati jatah): 33 % → 676.800 → 677.000; langkah 1.000 → 677.000; langkah 5.000 → 680.000', ngBatas(690000, 650000, 33, 500) === 677000 && ngBatas(690000, 650000, 33, 1000) === 677000 && ngBatas(690000, 650000, 33, 5000) === 680000, J([ngBatas(690000, 650000, 33, 500), ngBatas(690000, 650000, 33, 5000)]));
 ok('B: tidak pernah di atas katalog (margin Rp50, langkah 500 → 13.700); jatah 100 = modal dibulatkan ke rupiah (13.216,7 → 13.217); margin ≤ 0 → katalog; modal belum tercatat → null',
   ngBatas(13700, 13650, 50, 500) === 13700 && ngBatas(13800, 13216.7, 100, 500) === 13217 && ngBatas(690000, 700000, 50, 500) === 690000 && ngBatas(690000, null, 50, 500) === null, J([ngBatas(13700, 13650, 50, 500), ngBatas(13800, 13216.7, 100, 500)]));
-ok('B: modal per satuan = modal baris ÷ satuan keluar (kemasan: + bonus) — 198.000 / (2 + 1 bonus) = 66.000; karung 1.300.000 / 2 = 650.000; tanpa modal = null', ngModalSatuan({ jenis: 'kemasan', jumlah: 2, bonusUnit: 1, hppTotalSaatJual: 198000 }) === 66000 && ngModalSatuan(KRG()) === 650000 && ngModalSatuan(KRG({ hppTotalSaatJual: 0 })) === null);
+ok('B: modal per satuan BAYAR = modal baris ÷ satuan yang dibayar (tinjauan 7 Okt: kemasan berbonus — modal unit bonus ditanggung unit yang dibayar) — 198.000 / 2 = 99.000; karung 1.300.000 / 2 = 650.000; tanpa modal = null',
+  ngModalSatuan({ jenis: 'kemasan', jumlah: 2, bonusUnit: 1, hppTotalSaatJual: 198000 }) === 99000 && ngModalSatuan(KRG()) === 650000 && ngModalSatuan(KRG({ hppTotalSaatJual: 0 })) === null, J(ngModalSatuan({ jenis: 'kemasan', jumlah: 2, bonusUnit: 1, hppTotalSaatJual: 198000 })));
 
 // ---- C · owner
 var po = function (h, o) { return ngPutus(KRG(), h, OWN, o); };
@@ -162,13 +163,70 @@ var dOk = JSON.parse(J(rM.dokumen || [{ koleksi: 'persetujuan', data: {} }])); v
 var h1 = kirim(BEN, dOk), h2 = kirim(BEN, dSalah), h3 = kirim(BEN, dLain), h4 = kirim(KRY, dOk);
 ok('H: (seandainya rules dibuka) Ben mengirim permintaan nego "menunggu" → boleh; menyetujui sendiri / tindakan lain → DITOLAK; karyawan berkisi "tidak" → DITOLAK; tombol MINTA OWNER hidup',
   !h1.tolak && !!h2.tolak && !!h3.tolak && /tidak boleh/.test(h4.tolak || '') && bolehMintaOwner(BEN).boleh, J([h1, h2, h3, h4]));
+var dOrangLain = JSON.parse(J(dOk)); dOrangLain[0].data.negoUid = 'uid-kry'; var h5 = kirim(BEN, dOrangLain);
+ok('H (tinjauan 7 Okt): permintaan nego atas nama akun LAIN (negoUid bukan uid pengirim) → DITOLAK penjaga kiriman', !!h5.tolak, J(h5));
 delete BUAT_STAF.persetujuan; BACA_STAF.pop();
+
+// ---- K · tinjauan 7 Okt: nego + bonus tidak membuat uang baris di bawah modal tanpa izin (modal per satuan BAYAR)
+var sK = keadaanAwal(); sK.sekarang = new Date('2026-10-07T10:00:00+07:00');
+var terapK = function (p) { sK = Object.assign({}, sK, p || {}); sinkronKeranjang(sK); return p; };
+var cKb = function () { return susunRak(sK).kemasan.filter(function (c) { return c.kunci === 'Kembang|5'; })[0]; };
+terapK({ negoAkun: BEN, negoHak: 'owner' }); terapK(masukkan(Object.assign({}, sK, { pilih: cKb() }), 2)); var idKb = sK.keranjang[0].id; var tKb = sK.keranjang[0].trx;
+var btKb = ngBatas(tKb.hargaAsli, ngModalSatuan(tKb), 50, 500); terapK(terapkanNego(sK, idKb, btKb));
+ok('K: Ben menawar kemasan ke batas jatahnya (tanpa bonus) → dipakai, uang baris ≥ modal', sK.keranjang[0].trx.negoStatus === 'jatah' && sK.keranjang[0].trx.hargaTotal >= sK.keranjang[0].trx.hppTotalSaatJual, J(sK.keranjang[0].trx));
+var bKb = toggleBonus(sK, idKb);
+ok('K: lalu bonus +1 (modal 3 unit ditanggung 2 unit yang dibayar → di bawah modal) → DITOLAK, kalimat "nego ulang dulu"; harga baris tetap', !bKb.keranjang && /tidak berlaku lagi/.test(bKb.kabar || '') && /nego ulang dulu/.test(bKb.kabar || '') && bKb.kabarAwas, J(bKb));
+terapK({ keranjang: [], negoAkun: OWN, negoHak: 'sendiri' }); terapK(masukkan(Object.assign({}, sK, { pilih: cKb() }), 2)); idKb = sK.keranjang[0].id; tKb = sK.keranjang[0].trx;
+terapK(terapkanNego(sK, idKb, Math.ceil(ngModalSatuan(tKb)) + 500)); var bKo = toggleBonus(sK, idKb);
+ok('K: owner nego sedikit di atas modal per unit, lalu bonus +1 → di bawah modal per satuan bayar TANPA alasan → DITOLAK (tulis alasan)', sK.keranjang[0].trx.negoStatus === 'jatah' && !bKo.keranjang && /tulis alasannya/.test(bKo.kabar || ''), J(bKo));
+terapK({ keranjang: [] }); terapK(masukkan(Object.assign({}, sK, { pilih: cKb() }), 2)); idKb = sK.keranjang[0].id; terapK(toggleBonus(sK, idKb)); tKb = sK.keranjang[0].trx;
+var pKb = ngPutus(tKb, tKb.hargaAsli - 500, OWN, {});
+ok('K: bonus dulu baru nego (owner): batas & garis modal memakai modal per satuan bayar — Rp500 di bawah katalog sudah di bawah modal → perlu alasan; modal yang disebut termasuk bonus',
+  tKb.bonusUnit === 1 && pKb.status === 'perluAlasan' && Math.round(pKb.modal) === Math.round(tKb.hppTotalSaatJual / tKb.jumlah), J(pKb));
+terapK({ keranjang: [], negoAkun: null, negoHak: null });
+
+// ---- L · tinjauan 7 Okt: minta owner belum dibuka server → kalimat menyebut jalan keluar yang SUNGGUH ada (pakai batas / parkir / owner mencatat)
+var pL = ngPutus(KRG(), 669500, BEN, { hakNego: 'owner', bisaMinta: false }), pL0 = ngPutus(KRG({ hppTotalSaatJual: 0 }), 680000, BEN, { hakNego: 'owner', bisaMinta: false });
+ok('L: Ben di bawah jatah saat minta owner belum bisa → tetap MINTA (harga tidak dipakai), kalimat: belum bisa + pakai batas Rp670.000 + parkir + owner yang mencatat',
+  pL.status === 'minta' && /minta owner dari perangkat ini belum bisa/.test(pL.teks) && /pakai batas Rp670\.000/.test(pL.teks) && /parkir struk ini/.test(pL.teks) && /owner yang mencatat nota ini/.test(pL.teks) && !/— minta owner$/.test(pL.teks), pL.teks);
+ok('L: modal belum tercatat (tanpa batas) → kalimat TIDAK menawarkan "pakai batas", cuma parkir / owner mencatat', pL0.status === 'minta' && !/pakai batas/.test(pL0.teks) && /parkir struk ini/.test(pL0.teks), pL0.teks);
+var KRY_O = { jenis: 'aktif', peran: 'karyawan', nama: 'Karyawan Contoh', uid: 'uid-kry' };
+var bL1 = ngBolehNego(KRY_O, 'owner', undefined, false), bL2 = ngBolehNego(KRY_O, 'owner', undefined, true), bL3 = ngBolehNego(BEN, 'owner', undefined, false);
+ok('L: karyawan tanpa jatah, kisi "minta owner", tapi minta owner belum bisa → tombol nego MATI dengan jalan keluar; bila bisa → terbuka; Ben berjatah tetap terbuka',
+  !bL1.boleh && /belum bisa/.test(bL1.kalimat) && /parkir struk ini/.test(bL1.kalimat) && bL2.boleh && bL3.boleh, J([bL1, bL2, bL3]));
+var sL = keadaanAwal(); sL.sekarang = new Date('2026-10-07T10:00:00+07:00'); sL.negoAkun = BEN; sL.negoHak = 'owner'; sL.negoBisaMinta = false; sinkronKeranjang(sL);
+var mL = masukkan(Object.assign({}, sL, { pilih: susunRak(sL).karung.filter(function (c) { return c.kunci === 'Angsa' && c.berat === 50; })[0] }), 1); sL = Object.assign(sL, mL); sinkronKeranjang(sL);
+var tL = sL.keranjang[0].trx; var btL = ngBatas(tL.hargaAsli, ngModalSatuan(tL), 50, 500); var qL = terapkanNego(sL, sL.keranjang[0].id, btL - 500);
+ok('L: di keranjang (logika Jual) — kabar minta menyebut "belum bisa" + parkir; harga baris tidak berubah', !qL.keranjang && qL.negoMinta && /belum bisa/.test(qL.kabar) && /parkir/.test(qL.kabar), J(qL));
+sL = null;
+
+// ---- M · tinjauan 7 Okt: "setujui semua yang kecil" tidak ikut menyetujui nego di bawah modal (beralasan) / tanpa batas jatah
+pasok('persetujuan', [
+  { id: 'pk1', tindakan: 'nego', status: 'menunggu', tanggal: '2026-10-07', jam: '09:00', pada: '2026-10-07T02:00:00.000Z', dari: 'Ben Contoh', peran: 'ben', negoUid: 'uid-ben', teks: 'nego dalam modal', nominal: 5000, batas: 670000, alasan: '' },
+  { id: 'pk2', tindakan: 'nego', status: 'menunggu', tanggal: '2026-10-07', jam: '09:01', pada: '2026-10-07T02:01:00.000Z', dari: 'Ben Contoh', peran: 'ben', negoUid: 'uid-ben', teks: 'nego di bawah modal', nominal: 20000, batas: 670000, alasan: 'beras basah' },
+  { id: 'pk3', tindakan: 'nego', status: 'menunggu', tanggal: '2026-10-07', jam: '09:02', pada: '2026-10-07T02:02:00.000Z', dari: 'Ben Contoh', peran: 'ben', negoUid: 'uid-ben', teks: 'nego tanpa modal', nominal: 3000, batas: null, alasan: '' }]);
+var sk = susunSetujuiKecil(W); var idSk = (sk.dokumen || []).map(function (d) { return d.data.id; });
+ok('M: setujui sekaligus → hanya nego dalam modal (pk1); yang beralasan di bawah modal (pk2) & tanpa batas jatah (pk3) tetap menunggu, kabar menyebutnya; hitungan "kecil" di papan sama',
+  J(idSk) === '["pk1"]' && /2 nego di bawah modal \/ tanpa modal dilihat satu per satu/.test(sk.patch.kabar) && ssPersetujuan(new Date()).kecil === 1, J([idSk, sk.patch, ssPersetujuan(new Date()).kecil]));
+pasok('persetujuan', []);
+
+// ---- N · tinjauan 7 Okt: harga PAS karcis (penjualan yang sudah terjadi) — owner tidak tunduk pada daftar "boleh di bawah modal"; bukan-owner: DISEBUT, tidak diam
+pasok('aturanToko', [{ id: 'peran', bawahModal: [] }]);
+var sN = keadaanAwal(); sN.sekarang = new Date('2026-10-07T10:00:00+07:00'); sN.negoAkun = OWN; sN.negoHak = 'sendiri'; sinkronKeranjang(sN);
+var cN = susunRak(sN).karung.filter(function (c) { return c.kunci === 'Angsa' && c.berat === 50; })[0]; var modN = Math.round((cN.hppPerKg || 0) * 50); var pasN = Math.floor(modN / 500) * 500 - 10000;
+var TN = { label: 'tebakan uji', isi: [{ jalur: 'karung', kunci: 'Angsa', berat: 50, jumlah: 1, hargaPas: pasN }] };
+var rN = pakaiTebakan(sN, TN); var tN = rN.keranjang && rN.keranjang[0] && rN.keranjang[0].trx;
+ok('N: owner mencabut dirinya dari "boleh di bawah modal" → harga PAS karcis di bawah modal TETAP dipasang (bawahModal + alasan karcis)', modN > 0 && !!tN && tN.hargaTotal === pasN && tN.negoStatus === 'bawahModal' && /karcis/.test(tN.negoAlasan || '') && !rN.kabarAwas, J([modN, pasN, tN, rN.kabar]));
+sN = keadaanAwal(); sN.sekarang = new Date('2026-10-07T10:00:00+07:00'); sN.negoAkun = BEN; sN.negoHak = 'owner'; sinkronKeranjang(sN);
+var rN2 = pakaiTebakan(sN, TN);
+ok('N: bukan-owner → harga pas TIDAK dipasang tapi DISEBUT ("harga pas BELUM terpasang"), kabar awas', rN2.keranjang && rN2.keranjang[0].trx.hargaTotal !== pasN && /harga pas BELUM terpasang/.test(rN2.kabar) && rN2.kabarAwas, J(rN2.kabar));
+pasok('aturanToko', []); sN = null;
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
 STATIS = [
     ('jual.js: lembar nego menyebut modal HANYA ke owner, memutus harga yang diketik dengan akun (SBN), dan menawarkan batas jatah + minta owner', 'jual',
-     ["(owner ? ' · modal ' + RP(Math.round(modal)) + sat : '')", "const p = ketik > 0 ? L.putusNego(SBN(), b.id, ketik) : null;", 'data-aksi="pakaiBatasNego"', 'data-aksi="mintaOwnerNego"']),
+     ["(owner ? ' · modal ' + RP(Math.round(modal)) + sat + (b.trx.bonusUnit ? ' (termasuk bonus)' : '') : '')", "const p = ketik > 0 ? L.putusNego(SBN(), b.id, ketik) : null;", 'data-aksi="pakaiBatasNego"', 'data-aksi="mintaOwnerNego"', 'data-aksi="parkir" data-k="ng-parkir"']),
     ('jual.js: MINTA OWNER memeriksa bolehMintaOwner (tombol mati berkata sebab); Buku Nego hanya owner; keputusan lewat susunPutusPersetujuan (papan persetujuan yang sama)', 'jual',
      ["const mb = bolehMintaOwner(a) || {}; if (!mb.boleh) return set({ kabar: mb.kalimat", "bukaBukuNego: () => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh)",
       "ngSetujui: ({ id }) => tulisUmum(susunPutusPersetujuan(id, true, ''", "tulisUmum(susunPutusPersetujuan(id, false, S().ngAlasanTolak"]),
@@ -208,9 +266,12 @@ akunKini = BEN; JL.keadaan.setel({ lembar: null, keranjang: [], negoAlasan: '' }
 m = masukkan(Object.assign({}, sJ(), { pilih: rk().karung.filter(function (x) { return x.kunci === 'NG' && x.berat === 50; })[0] }), 1); JL.keadaan.setel({ keranjang: m.keranjang, urutBaris: m.urutBaris });
 id = sJ().keranjang[0].id; t0 = sJ().keranjang[0].trx; var bt = ngBatas(t0.hargaAsli, ngModalSatuan(t0), 50, 500);
 aJ.__aksi.nego({ id: id }); JL.keadaan.setel({ ketik: String(bt - 500) });
-ok('layar Ben: tangga menyebut jatah Ben 50 % & paling rendah, TANPA modal; harga di bawah jatah → tombol "MINTA OWNER ›"', H().indexOf('jatah Ben Contoh 50 % margin → paling rendah ' + RP(bt)) >= 0 && H().indexOf(' · modal ') < 0 && H().indexOf('MINTA OWNER ›') >= 0, H().slice(H().indexOf('ng-tangga'), H().indexOf('ng-tangga') + 300));
+// tinjauan 7 Okt: minta owner belum dibuka server (bolehMintaOwner mati) → tombol & kalimat TIDAK menjanjikan permintaan yang tidak bisa dikirim
+ok('layar Ben: tangga menyebut jatah Ben 50 % & paling rendah, TANPA modal; harga di bawah jatah → tombol "PERLU OWNER — LIHAT PILIHANNYA ›" (bukan "MINTA OWNER ›") + kalimat belum bisa',
+  H().indexOf('jatah Ben Contoh 50 % margin → paling rendah ' + RP(bt)) >= 0 && H().indexOf(' · modal ') < 0 && H().indexOf('PERLU OWNER — LIHAT PILIHANNYA ›') >= 0 && H().indexOf('MINTA OWNER ›') < 0 && /minta owner dari perangkat ini belum bisa/.test(H()), H().slice(H().indexOf('ng-tangga'), H().indexOf('ng-tangga') + 500));
 aJ.__aksi.terapkanNego();
-ok('layar Ben: ketuk → kartu minta owner: PAKAI BATAS + MINTA OWNER mati (server belum membuka), harga baris tetap', H().indexOf('data-k="ng-minta"') >= 0 && H().indexOf('PAKAI BATAS ' + RP(bt)) >= 0 && /kaca-btn mati" data-aksi="tombolMati"[^>]*>MINTA OWNER/.test(H()) && sJ().keranjang[0].trx.hargaSatuan === t0.hargaAsli, H().slice(H().indexOf('ng-minta'), H().indexOf('ng-minta') + 500));
+ok('layar Ben: ketuk → kartu: PAKAI BATAS + PARKIR STRUK + MINTA OWNER mati (server belum membuka) dengan kalimat "yang bisa sekarang", harga baris tetap',
+  H().indexOf('data-k="ng-minta"') >= 0 && H().indexOf('PAKAI BATAS ' + RP(bt)) >= 0 && H().indexOf('data-aksi="parkir" data-k="ng-parkir"') >= 0 && /kaca-btn mati" data-aksi="tombolMati"[^>]*>MINTA OWNER/.test(H()) && /Yang bisa sekarang: pakai batas jatah, parkir struk ini/.test(H()) && sJ().keranjang[0].trx.hargaSatuan === t0.hargaAsli, H().slice(H().indexOf('ng-minta'), H().indexOf('ng-minta') + 700));
 aJ.__aksi.pakaiBatasNego();
 ok('layar Ben: PAKAI BATAS → harga = batas jatah, lembar tertutup', sJ().keranjang[0].trx.hargaSatuan === bt && sJ().keranjang[0].trx.negoStatus === 'jatah' && sJ().lembar === null, J(sJ().keranjang[0].trx));
 print(J({ lulus: lulus, gagal: gagal }));
@@ -247,7 +308,7 @@ def muat():
     return dict((p, open(os.path.join(AKAR, p), encoding='utf-8').read()) for p in MODUL), dict((k, open(os.path.join(AKAR, v), encoding='utf-8').read()) for k, v in SUMBER.items())
 
 
-NG = 'baru/js/layar/nego-logika.js'; JL = 'baru/js/layar/jual-logika.js'; AK = 'baru/js/data/akses.js'; SL = 'baru/js/layar/sistem-logika.js'
+NG = 'baru/js/layar/nego-logika.js'; JL = 'baru/js/layar/jual-logika.js'; AK = 'baru/js/data/akses.js'; SL = 'baru/js/layar/sistem-logika.js'; KC = 'baru/js/layar/karcis-logika.js'
 RUSAK = [
     ('batas dibulatkan ke BAWAH (melewati jatah)', NG, "return Math.min(harga, Math.ceil(x / L - 1e-9) * L);", "return Math.min(harga, Math.floor(x / L) * L);"),
     ('jatah per akun tidak menang atas peran', NG, "if (u && a.jatahAkun[u] !== undefined) return a.jatahAkun[u];", ""),
@@ -262,17 +323,26 @@ RUSAK = [
     ('nego minta owner tetap mengubah harga baris', JL, "if (p.status === 'minta') return { negoMinta: { id, harga: p.harga, batas: p.batas, alasan: p.alasan, teks: p.teks },", "if (p.status === 'minta') return { keranjang: s.keranjang.map((x) => (x.id === id ? { id, trx: selesaikanHarga(Object.assign({}, b.trx, { hargaSatuan: p.harga }), false) } : x)), negoMinta: { id, harga: p.harga, batas: p.batas, alasan: p.alasan, teks: p.teks },"),
     ('baris bernego dibangun ulang tanpa diputus lagi', JL, "  if (!baru || !baru.nego) return { trx: baru };\n  const r = ngPutusUlang(", "  return { trx: baru };\n  const r = ngPutusUlang("),
     ('nota tidak mencatat status nego', JL, "  if (e.nego) { t.nego = true; NG_KOLOM.forEach((k) => { if (e[k] !== undefined) t[k] = e[k]; }); }", "  if (e.nego) { t.nego = true; }"),
-    ('penjaga: permintaan nego tanpa memeriksa bentuk', AK, "if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || d.diputusPada || (hak.nego || 'tidak') === 'tidak')) return { tolak: tolakTindakan('nego') };", ""),
+    ('penjaga: permintaan nego tanpa memeriksa bentuk', AK, "if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || d.diputusPada || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };", ""),
     ('Atur menerima jatah karyawan > 100 %', SL, "|| angka('jatahKaryawan', 0, 100, '%')", ""),
     ('Atur tidak menyaring kunci "di bawah modal"', SL, ".filter((k, i, L) => kenal.indexOf(k) >= 0 && L.indexOf(k) === i)", ""),
+    ('tinjauan 7 Okt: modal per unit FISIK (bonus menekan modal per satuan → nego + bonus di bawah modal lolos)', NG, "const j = Number(t && t.jumlah) || 0;\n  return hpp > 0 && j > 0 ? hpp / j : null;", "const j = (Number(t && t.jumlah) || 0) + (t && t.jenis === 'kemasan' ? Number(t.bonusUnit) || 0 : 0);\n  return hpp > 0 && j > 0 ? hpp / j : null;"),
+    ('tinjauan 7 Okt: kalimat minta owner menjanjikan permintaan walau server belum membuka', NG, "    if (o.bisaMinta === false) return P('minta',", "    if (false) return P('minta',"),
+    ('tinjauan 7 Okt: tombol nego karyawan tanpa jatah terbuka walau minta owner belum bisa', NG, "if (hakNego && hakNego !== 'tidak' && bisaMinta !== false) return", "if (hakNego && hakNego !== 'tidak') return"),
+    ('tinjauan 7 Okt: setujui sekaligus ikut menyetujui nego di bawah modal', SL, "const kecil = P.menunggu.filter((m) => m.sekaligus && m.n <= P.batas);", "const kecil = P.menunggu.filter((m) => m.n <= P.batas);"),
+    ('tinjauan 7 Okt: permintaan nego atas nama akun lain lolos penjaga', AK, " || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };", ")) return { tolak: tolakTindakan('nego') };"),
+    ('tinjauan 7 Okt: harga pas karcis tunduk pada daftar di bawah modal (owner dicabut → tidak dipasang)', KC, "negoAlasan: 'harga pas karcis kasir darurat', negoAtur: aturPas }", "negoAlasan: 'harga pas karcis kasir darurat' }"),
+    ('tinjauan 7 Okt: harga pas karcis yang gagal dipasang diam', KC, "(gagalPas.length ? ' — harga pas BELUM terpasang (' + gagalPas.join('; ') + ')' : '')", "''"),
 ]
 RUSAK_LAYAR = [
+    ('tinjauan 7 Okt: tombol nego berkata MINTA OWNER walau server belum membuka', "(mb.boleh ? 'MINTA OWNER ›' : 'PERLU OWNER — LIHAT PILIHANNYA ›')", "'MINTA OWNER ›'"),
+    ('tinjauan 7 Okt: kartu minta owner tanpa tombol parkir', '<div class="kaca-btn" data-aksi="parkir" data-k="ng-parkir">PARKIR STRUK</div>', ''),
     ('lembar nego tanpa kolom alasan di bawah modal', "${p && p.dibawahModal && NG.ngBolehBawahModal(a, A) ? h`<input", "${false ? h`<input"),
     ('Buku Nego tanpa tombol setujui / tolak', "${owner && x.jenis === 'minta' && x.status === 'menunggu' ? h`<span class=\"kaca-btn kecil aktif emas\" data-aksi=\"ngSetujui\"", "${false ? h`<span class=\"kaca-btn kecil aktif emas\" data-aksi=\"ngSetujui\""),
     ('pita permintaan nego tidak tampil', "${NGM && s.lembar !== 'bukuNego' ? h`<div class=\"pita-info awas\" data-k=\"pita-nego-menunggu\"", "${false ? h`<div class=\"pita-info awas\" data-k=\"pita-nego-menunggu\""),
 ]
 RUSAK_STATIS = [
-    ('lembar nego memajang modal ke semua orang', 'jual', "(owner ? ' · modal ' + RP(Math.round(modal)) + sat : '')", "(' · modal ' + RP(Math.round(modal)) + sat)"),
+    ('lembar nego memajang modal ke semua orang', 'jual', "(owner ? ' · modal ' + RP(Math.round(modal)) + sat + (b.trx.bonusUnit ? ' (termasuk bonus)' : '') : '')", "(' · modal ' + RP(Math.round(modal)) + sat)"),
     ('tombol MINTA OWNER tanpa memeriksa server', 'jual', "const mb = bolehMintaOwner(a) || {}; if (!mb.boleh) return set({ kabar: mb.kalimat", "const mb = { boleh: true }; if (!mb.boleh) return set({ kabar: mb.kalimat"),
 ]
 

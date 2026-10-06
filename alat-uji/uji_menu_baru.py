@@ -274,7 +274,7 @@ if __name__ == '__main__':
             'jejak "sampai" walau masih di antrean': js.replace("sampai: !tunda.has((l.koleksi || '') + '|' + String(l.idDok || ''))", "sampai: true"),
             'hak owner bisa diubah (dua penjaga dilepas)': js.replace("if (peran === 'owner') return { tolak: 'Hak owner tidak diubah", "if (false) return { tolak: 'Hak owner tidak diubah").replace("if (p === 'owner' || !SS_HAK_BAWAAN[p]) { tolak = tolak || 'Hak owner tidak diubah — owner selalu boleh semuanya'; return; }", "if (!SS_HAK_BAWAAN[p]) { o.hak[p] = {}; }"),
             'menolak permintaan tanpa alasan diterima': js.replace("if (!setuju && ssKosong(alasan)) return { tolak:", "if (false) return { tolak:"),
-            'setujui sekaligus melampaui batas': js.replace("const kecil = P.menunggu.filter((m) => m.n <= P.batas); if (!kecil.length)", "const kecil = P.menunggu; if (!kecil.length)"),
+            'setujui sekaligus melampaui batas': js.replace("const kecil = P.menunggu.filter((m) => m.sekaligus && m.n <= P.batas);", "const kecil = P.menunggu;"),
             'jejak & denyut ikut ke berkas cadangan': js.replace("if (SS_TAK_DICADANGKAN[k.nama]) return; isi[k.nama]", "isi[k.nama]"),
             'kuota tidak memperingatkan di atas ambang': js.replace("awas: pct !== null && pct >= A.ambangKuota, sisaHari", "awas: false, sisaHari"),
             '39b-19: nota hari ini dihitung dari omzet (retur penuh → nota 0)': js.replace("notaHari: new Set(hariIni.map((p) => p.grupNota || p.trxId || p.id)).size,", "notaHari: hariIni.reduce((a, p) => a + (p.hargaTotal || 0), 0) - uangR((t) => t === iso) > 0 ? 1 : 0,"),

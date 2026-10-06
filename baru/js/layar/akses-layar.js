@@ -26,6 +26,6 @@ export function hakAkun(akun, tindakan) { return bukanOwner(akun) ? ssPeran().ha
 export function bolehMintaOwner(akun) {
   if (!bukanOwner(akun)) return { boleh: false, kalimat: 'Owner tidak perlu minta persetujuan' };
   const buka = (BUAT_STAF.persetujuan || []).indexOf(akun.peran) >= 0 && BACA_STAF.indexOf('persetujuan') >= 0;
-  return buka ? { boleh: true, kalimat: '' } : { boleh: false, kalimat: 'Minta owner dari perangkat ini belum bisa — server belum membuka permintaan nego untuk akun karyawan. Pakai batas jatah, atau owner yang mencatat nota ini.' };
+  return buka ? { boleh: true, kalimat: '' } : { boleh: false, kalimat: 'Minta owner dari perangkat ini belum bisa — server belum membuka permintaan nego untuk akun karyawan. Pakai batas jatah, parkir struk ini sampai owner datang, atau owner yang mencatat nota ini.' };
 }
 export { angkaBoleh, batasBarisNota, batasHasilAdukan, batasDokumenKirim };

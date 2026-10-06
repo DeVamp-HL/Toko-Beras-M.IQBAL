@@ -45,10 +45,11 @@ export function ngBolehBawahModal(akun, A) {
   return ngOwner(akun) ? L.indexOf('owner') >= 0 : L.indexOf('uid:' + String(akun.uid || '')) >= 0 || L.indexOf(String(akun.peran || '')) >= 0;
 }
 const ngNama = (akun) => (ngOwner(akun) ? 'owner' : String(akun.nama || 'akun ini'));
-/** Modal per satuan barang (modal baris ÷ satuan yang keluar dari stok — kemasan: unit bayar + bonus; rumus yang sama dengan kabar "DI BAWAH MODAL" sebelum
- *  owner 7 Okt); null = modal belum tercatat. */
+/** Modal per satuan BAYAR (modal baris ÷ satuan yang dibayar pembeli). Kemasan berbonus: modal unit bonus ikut ditanggung unit yang dibayar — tinjauan 7 Okt:
+ *  dulu dibagi unit + bonus, sehingga nego "dalam jatah" lalu bonus +1 membuat uang baris di bawah modalnya tanpa izin. Tanpa bonus = modal per unit seperti dulu.
+ *  null = modal belum tercatat. */
 export function ngModalSatuan(t) {
-  const hpp = Number(t && t.hppTotalSaatJual); const j = (Number(t && t.jumlah) || 0) + (t && t.jenis === 'kemasan' ? Number(t.bonusUnit) || 0 : 0);
+  const hpp = Number(t && t.hppTotalSaatJual); const j = Number(t && t.jumlah) || 0;
   return hpp > 0 && j > 0 ? hpp / j : null;
 }
 /** Harga paling rendah dalam jatah: katalog − margin × jatah, naik ke kelipatan langkah, tidak di atas katalog. null = modal belum tercatat. */
@@ -69,11 +70,13 @@ export function ngKunciBarang(p) {
   if (p.jenis === 'wadah') return 'wadah|' + p.jenisWadah;
   return null;
 }
-/** Tombol nego untuk akun ini: owner selalu; bukan-owner bila punya jatah ATAU kisi nego bukan "tidak boleh" (nego lebih dalam = minta owner). */
-export function ngBolehNego(akun, hakNego, A) {
+/** Tombol nego untuk akun ini: owner selalu; bukan-owner bila punya jatah ATAU kisi nego bukan "tidak boleh" (nego lebih dalam = minta owner).
+ *  bisaMinta === false (server belum membuka permintaan ke owner): tanpa jatah tidak ada yang bisa dipakai → tombol mati dengan jalan keluarnya. */
+export function ngBolehNego(akun, hakNego, A, bisaMinta) {
   if (ngOwner(akun)) return { boleh: true, kalimat: '' };
-  if (ngJatah(akun, A) > 0 || (hakNego && hakNego !== 'tidak')) return { boleh: true, kalimat: '' };
-  return { boleh: false, kalimat: ngNama(akun) + ' tidak punya jatah nego (0 % margin) — owner yang mengatur di Menu › Sistem › Peran › Atur' };
+  if (ngJatah(akun, A) > 0) return { boleh: true, kalimat: '' };
+  if (hakNego && hakNego !== 'tidak' && bisaMinta !== false) return { boleh: true, kalimat: '' };
+  return { boleh: false, kalimat: ngNama(akun) + ' tidak punya jatah nego (0 % margin)' + (hakNego && hakNego !== 'tidak' ? ' dan minta owner dari perangkat ini belum bisa — jual di harga katalog, parkir struk ini sampai owner datang, atau owner yang mencatat nota ini' : ' — owner yang mengatur di Menu › Sistem › Peran › Atur') };
 }
 /** Persetujuan owner yang SUDAH dipakai nota yang berlaku (sekali pakai) + yang sedang dipegang keranjang / struk parkir perangkat ini. */
 function ngSetujuTerpakai(dipakai) {
@@ -92,7 +95,8 @@ export function ngSetujuUntuk(t, harga, akun, opsi) {
   return calon.filter((m) => !pakai[String(m.id)]).sort((a, b) => Number(b.hargaMinta) - Number(a.hargaMinta) || String(b.id).localeCompare(String(a.id)))[0] || null;
 }
 /**
- * Putusan satu harga nego untuk baris t oleh akun. opsi = { alasan, hakNego ('sendiri'|'owner'|'tidak' — kisi SS2 bukan-owner), setuju (persetujuan cocok), atur }.
+ * Putusan satu harga nego untuk baris t oleh akun. opsi = { alasan, hakNego ('sendiri'|'owner'|'tidak' — kisi SS2 bukan-owner), setuju (persetujuan cocok), atur,
+ * bisaMinta (false = server belum membuka permintaan ke owner untuk akun ini: kalimat 'minta' menyebut jalan keluar yang SUNGGUH ada) }.
  * status: 'tolak' · 'katalog' (sama dengan katalog — nego dilepas) · 'naik' · 'jatah' · 'disetujui' · 'bawahModal' (owner + alasan) · 'perluAlasan' · 'minta'.
  */
 export function ngPutus(t, hargaBaru, akun, opsi) {
@@ -108,6 +112,7 @@ export function ngPutus(t, hargaBaru, akun, opsi) {
   const mintaAtauTolak = (teks, x) => {
     if (setuju) return P('disetujui', 'disetujui owner (' + RP(Number(setuju.hargaMinta)) + '/' + satuan + ')', Object.assign({ setujuId: String(setuju.id) }, x || {}));
     if ((o.hakNego || 'owner') === 'tidak') return P('tolak', 'Peran ' + nm + ' tidak boleh nego di bawah jatah margin — ' + teks);
+    if (o.bisaMinta === false) return P('minta', teks + ' — perlu persetujuan owner, tapi minta owner dari perangkat ini belum bisa: ' + (batas !== null && batas < asli ? 'pakai batas ' + RP(batas) + ', ' : '') + 'parkir struk ini sampai owner datang, atau owner yang mencatat nota ini', x);
     return P('minta', teks + ' — minta owner', x);
   };
   if (modal === null) {

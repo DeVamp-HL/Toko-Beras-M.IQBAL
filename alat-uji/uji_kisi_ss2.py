@@ -117,7 +117,7 @@ setelKisi();
 // ---- 4 · tombol nego & potongan di layar Jual memakai kisi (sumber diperiksa: layar butuh DOM)
 var JS = SUMBER.jual;
 ok('jual.js: ketuk harga (nego) memeriksa jatah & kisi orangnya (owner 7 Okt: NG.ngBolehNego) dan nego diputus dengan akun (SBN()); tombol Potongan tetap memeriksa tombolAkun(…, \'nego\')',
-  JS.indexOf("nego: ({ id }) => { const a = opsi.akun ? opsi.akun() : null; const tb = NG.ngBolehNego(a, hakAkun(a, 'nego')); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });") >= 0
+  JS.indexOf("nego: ({ id }) => { const a = opsi.akun ? opsi.akun() : null; const tb = NG.ngBolehNego(a, hakAkun(a, 'nego'), undefined, !!(bolehMintaOwner(a) || {}).boleh); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });") >= 0
   && JS.indexOf("terapkanNego: () => set(L.terapkanNego(SBN(), S().negoId, L.angkaKetik(S().ketik))),") >= 0
   && JS.indexOf("bukaPotongan: () => { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'nego'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ lembar: 'potongan', ketik: '' }); },") >= 0);
 var bK = ngBolehNego(KRY, hak(KRY).nego), bB = ngBolehNego(BEN, hak(BEN).nego), bO = ngBolehNego(OWN, 'sendiri');
@@ -154,7 +154,7 @@ if __name__ == '__main__':
             'disetujui tanpa id persetujuan diterima (owner 7 Okt)': (A, "if (d.negoStatus === 'disetujui') return !!d.negoSetujuId;", "if (d.negoStatus === 'disetujui') return true;"),
             'pelunasan di nota dihitung terima bon': (A, "if (!jual.length && baru.some((x) => x.koleksi === 'piutangMutasi')) t.terimaBon = 1;", "if (baru.some((x) => x.koleksi === 'piutangMutasi')) t.terimaBon = 1;"),
             'isi ulang dihitung adukan': (A, "if (adaWadah) t.isiUlang = 1; else if", "if (false) t.isiUlang = 1; else if"),
-            'tombol nego tanpa jatah & kisi': ('jual.js', "const tb = NG.ngBolehNego(a, hakAkun(a, 'nego')); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });", ""),
+            'tombol nego tanpa jatah & kisi': ('jual.js', "const tb = NG.ngBolehNego(a, hakAkun(a, 'nego'), undefined, !!(bolehMintaOwner(a) || {}).boleh); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });", ""),
             'nego diputus tanpa akun (owner 7 Okt)': ('jual.js', "terapkanNego: () => set(L.terapkanNego(SBN(), S().negoId", "terapkanNego: () => set(L.terapkanNego(S(), S().negoId"),
         }
         kode = 0

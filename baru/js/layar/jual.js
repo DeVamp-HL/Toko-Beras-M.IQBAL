@@ -44,7 +44,8 @@ export function pasangLayarJual(akar, opsi) {
   // putaran 23c: akun bukan-owner — batas baris per nota (batas sekali kirim ke server) ikut ke logika setiap kali keranjang bertambah / nota dicatat
   const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });   // putaran 31b: hanya owner boleh jual dulu tandai dicocokkan
   // owner 7 Okt (JS2-C): batas nego per orang — akun yang masuk & kisi nego-nya ikut ke logika nego (tawar, bangun ulang baris bernego, minta owner)
-  const SBN = () => Object.assign(SB(), { negoAkun: opsi.akun ? opsi.akun() : null, negoHak: hakAkun(opsi.akun ? opsi.akun() : null, 'nego') });
+  // tinjauan 7 Okt: + bisa-tidaknya MINTA OWNER dari perangkat ini (server) — kalimat nego menyebut jalan keluar yang sungguh ada
+  const SBN = () => { const a = opsi.akun ? opsi.akun() : null; return Object.assign(SB(), { negoAkun: a, negoHak: hakAkun(a, 'nego'), negoBisaMinta: !!(bolehMintaOwner(a) || {}).boleh }); };
 
   // 25c (owner 27 Sep): jenis beras juga di Jual — BARIS SARING di atas rak, bukan tata letak baru: urutan rak per ukuran, termurah dulu (desain
   // Jual yang dikunci) tetap. Pilihan saring = tampilan saja (bukan isian, bukan data), ikut ke jalur lain selama jenisnya ada di sana.
@@ -89,7 +90,7 @@ export function pasangLayarJual(akar, opsi) {
     tambahBaris: ({ id, langkah }) => set(L.ubahJumlahBaris(SBN(), id, Number(langkah || 1))),
     // audit 39b no. 22: potongan nota = tindakan SS2 'nego' (kisi × server) — tombol mati berkata sebabnya, seperti jual bon.
     // owner 7 Okt (JS2-C): NEGO harga per baris terbuka bagi yang punya jatah (% margin, setelan owner per orang) — lebih dalam dari jatah minta owner
-    nego: ({ id }) => { const a = opsi.akun ? opsi.akun() : null; const tb = NG.ngBolehNego(a, hakAkun(a, 'nego')); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ negoId: id, lembar: 'nego', ketik: '', negoAlasan: '', negoMinta: null }); },
+    nego: ({ id }) => { const a = opsi.akun ? opsi.akun() : null; const tb = NG.ngBolehNego(a, hakAkun(a, 'nego'), undefined, !!(bolehMintaOwner(a) || {}).boleh); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ negoId: id, lembar: 'nego', ketik: '', negoAlasan: '', negoMinta: null }); },
     terapkanNego: () => set(L.terapkanNego(SBN(), S().negoId, L.angkaKetik(S().ketik))),
     negoAlasan: (v) => set({ negoAlasan: String(v || '').slice(0, 80) }),
     pakaiBatasNego: () => { const m = S().negoMinta; if (m && m.batas) set(L.terapkanNego(SBN(), m.id, m.batas)); },
@@ -125,8 +126,9 @@ export function pasangLayarJual(akar, opsi) {
       try { set({ kabar: 'Mencatat…', kabarAwas: false }); await sebingkai(); await aksi.catatNotaInti(tembusYakin); } finally { _mencatat = false; }
     },
     catatNotaInti: async (tembusYakin) => {
-      const r = L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }));
-      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, tembusTanya: r.perluTembus || null });
+      // tinjauan 7 Okt: SBN — baris yang dipulihkan sesudah muat ulang diputus ulang (nego) dengan akun yang masuk; harga berubah → keranjang diperbarui, nota ditahan
+      const r = L.simpanNota(Object.assign(SBN(), { tembusYakin: tembusYakin === true }));
+      if (r.tolak) return set(Object.assign({}, r.perbarui || {}, { kabar: r.tolak, kabarAwas: true, tembusTanya: r.perluTembus || null }));
       const keranjangTadi = S().keranjang.slice(); const uangTadi = S().cara === 'Tunai' ? S().uang : 0;
       // penutup omzet (owner 29 Sep): angka Hari ini SEBELUM nota ini ditahan selama adegan berjalan. Dipasang SEBELUM menulis (tinjauan 29 Sep):
       // Firestore memancarkan snapshot lokal sebelum server mengaku → dulu angka sempat naik, turun lagi, lalu naik saat koin mendarat.
@@ -136,6 +138,10 @@ export function pasangLayarJual(akar, opsi) {
       const lepasBila = () => { if (_tahanHari && _tahanHari.token === token) _tahanHari = null; };
       tahanRak(2500);   // menunggu server ≤1,5 detik + mulai adegan: rak lama dipakai, dilepas di bawah
       set({ kabar: 'Mencatat…', kabarAwas: false });
+      // tinjauan 7 Okt (NOTA GANDA): dokumen nota masuk antrean perangkat SEKETIKA, server ditunggu ≤1,5 detik. Selama itu simpanan keranjang = "sedang mencatat
+      // <trxId>" TANPA keranjang ini — halaman dimuat ulang di jendela itu tidak memulihkan keranjang yang notanya sudah dikirim. Selesai (tercatat / ditolak / gagal)
+      // → simpanan biasa dari keadaan sesudahnya (ditolak: keranjang masih ada, ikut tersimpan lagi).
+      tahanSimpanan({ trxId: r.nota.trxId, ringkas: r.ringkas });
       try {
         const h = await tulisDokumen(r.dokumen);
         if (h && h.gagal) { lepasBila(); lepasRak(0); return set({ kabar: 'DITOLAK, nota tidak tersimpan: ' + h.pesan, kabarAwas: true }); }
@@ -149,13 +155,14 @@ export function pasangLayarJual(akar, opsi) {
         else { lepasBila(); setTimeout(() => rayakanOmzet(L.hariIni(S()).omzet - hariTadi.omzet), 80); }
         set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI (cadangan, tidak ke Firestore) — ' : h && h.antre ? 'Tersimpan di perangkat, menunggu server — ' : 'Tersimpan — ') + r.ringkas + (r.tembus && r.tembus.some((t) => t.selisihKg > 0.004) ? ' · TEMBUS STOK, tandai dicocokkan: ' + r.tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' ' + String(Math.round(t.selisihKg * 10) / 10).replace('.', ',') + ' kg').join(', ') : '') + strukOtomatis(r) }));   // 39b no. 14 tinjauan T5
       } catch (e) { lepasBila(); lepasRak(0); set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+      finally { lepasSimpanan(); }
     },
     // 39b no. 9: hanya owner yang membuka KR1 (tanda kreditDibukaOwner); kiriman bukan-owner bertanda itu juga ditolak periksaKiriman
     bukaKredit: () => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ kreditDibuka: true, kabar: 'Kredit dibuka sekali untuk nota ini — keputusan owner, tercatat di nota', kabarAwas: false }); },
     // ---- PUTARAN 20: rinci karcis kasir darurat (karcis-logika.js) ----
     bukaKarcis: () => set({ lembar: 'karcis', kabar: '' }),
     karcisPilih: ({ id }) => set(KC.ikatKarcis(S(), id, S().sekarang || new Date())),
-    karcisTebak: ({ i, j }) => { const s = S(); if (!s.karcis) return; let T = KC.tebakanKarcis(s.karcis.nominal)[Number(i)]; if (!T) return; if (j !== undefined && T.seharga) T = T.pilihan[Number(j)]; if (!T) return; set(KC.pakaiTebakan(s, T)); },   // putaran 31.1: j = nama yang dipilih dari tebakan seharga
+    karcisTebak: ({ i, j }) => { const s = SBN(); if (!s.karcis) return; let T = KC.tebakanKarcis(s.karcis.nominal)[Number(i)]; if (!T) return; if (j !== undefined && T.seharga) T = T.pilihan[Number(j)]; if (!T) return; set(KC.pakaiTebakan(s, T)); },   // putaran 31.1: j = nama yang dipilih dari tebakan seharga
     karcisLepas: () => set(KC.lepasKarcis(S())),
     // putaran 25: pembalik untuk karcis / rincian bulan terkunci — stok dibetulkan lewat Stok › Cocokkan hari ini; barang kembali = retur hari ini
     kpKeCocok: () => { if (opsi.bukaStok) opsi.bukaStok('cocok'); else set({ kabar: 'Buka Stok › Cocokkan untuk membetulkan stok hari ini', kabarAwas: false }); },
@@ -215,7 +222,7 @@ export function pasangLayarJual(akar, opsi) {
     namaRepack: (v) => set({ namaRepack: String(v || '').slice(0, 60) }),
     bonus: ({ id }) => set(L.toggleBonus(SBN(), id)),
     // tinjauan no. 22: pengganti retur (nota Rp0) = retur & tukar → owner saja; bukan-owner: tombol menyebut sebabnya (penjaga kiriman juga menolak)
-    penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(S(), id)); },
+    penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(SBN(), id)); },
     bukaPesanan: ({ saring }) => set({ lembar: 'pesanan', psSaring: saring || '' }),
     psSaring: (v) => set({ psSaring: String(v || '').slice(0, 40) }),
     psNama: (v) => set({ psNama: String(v || '').slice(0, 40) }),
@@ -786,8 +793,9 @@ export function pasangLayarJual(akar, opsi) {
       const modal = NG.ngModalSatuan(b.trx); const batas = NG.ngBatas(b.trx.hargaAsli, modal, jatah, A.langkah); const sat = '/' + b.trx.satuan;
       const ketik = L.angkaKetik(s.ketik); const p = ketik > 0 ? L.putusNego(SBN(), b.id, ketik) : null;
       const m = s.negoMinta && s.negoMinta.id === b.id && s.negoMinta.harga === ketik ? s.negoMinta : null; const mb = bolehMintaOwner(a) || {};
-      const tangga = 'katalog ' + RP(b.trx.hargaAsli) + sat + (modal === null ? ' · modal belum tercatat' : (owner ? ' · modal ' + RP(Math.round(modal)) + sat : '') + ' · jatah ' + (owner ? 'owner' : (a && a.nama) || 'akun ini') + ' ' + jatah + ' % margin' + (batas !== null ? ' → paling rendah ' + RP(batas) + sat : ''));
-      const label = !p ? 'PAKAI HARGA INI' : p.status === 'minta' ? 'MINTA OWNER ›' : p.status === 'katalog' ? 'KEMBALI KE HARGA KATALOG' : p.status === 'bawahModal' ? 'PAKAI — DI BAWAH MODAL' : NG.ngBolehPakai(p) ? 'PAKAI HARGA INI' : 'BELUM BISA — lihat kalimatnya';
+      const batasPakai = m && m.batas && m.batas < b.trx.hargaAsli ? m.batas : null;   // jatah 0 % → batas = katalog: bukan jalan keluar
+      const tangga = 'katalog ' + RP(b.trx.hargaAsli) + sat + (modal === null ? ' · modal belum tercatat' : (owner ? ' · modal ' + RP(Math.round(modal)) + sat + (b.trx.bonusUnit ? ' (termasuk bonus)' : '') : '') + ' · jatah ' + (owner ? 'owner' : (a && a.nama) || 'akun ini') + ' ' + jatah + ' % margin' + (batas !== null ? ' → paling rendah ' + RP(batas) + sat : ''));
+      const label = !p ? 'PAKAI HARGA INI' : p.status === 'minta' ? (mb.boleh ? 'MINTA OWNER ›' : 'PERLU OWNER — LIHAT PILIHANNYA ›') : p.status === 'katalog' ? 'KEMBALI KE HARGA KATALOG' : p.status === 'bawahModal' ? 'PAKAI — DI BAWAH MODAL' : NG.ngBolehPakai(p) ? 'PAKAI HARGA INI' : 'BELUM BISA — lihat kalimatnya';
       const kelas = !p ? '' : NG.ngBolehPakai(p) ? (p.status === 'bawahModal' ? 'awas' : 'emas') : 'awas';
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Nego ' + b.trx.label, 'harga sekarang ' + RP(b.trx.hargaSatuan) + sat + (b.trx.nego ? ' (' + (NG.NG_LABEL[b.trx.negoStatus] || 'nego') + ')' : '') + ' · ketik harga barunya')}
@@ -795,8 +803,9 @@ export function pasangLayarJual(akar, opsi) {
         <div class="angka">${s.ketik ? RP(ketik) : 'Rp0'}</div>
         ${p ? h`<div class="pita-info ${kelas}" data-k="ng-putus">${RP(p.harga)}${sat} · ${p.teks}</div>` : ''}
         ${p && p.dibawahModal && NG.ngBolehBawahModal(a, A) ? h`<input class="ketik-nama" id="negoAlasan" type="text" value="${s.negoAlasan}" data-ketik="negoAlasan" placeholder="Alasan di bawah modal, mis. karung sobek (wajib, tercatat di nota)">` : ''}
-        ${m ? h`<div class="kartu" data-k="ng-minta" style="gap: 6px;"><div class="ket">Harga nota tetap ${RP(b.trx.hargaSatuan)}${sat} sampai owner menyetujui. Pembeli menunggu? Pakai batas jatah dulu, atau owner yang mencatat nota ini.</div>
-          <div class="tombol-baris rapat">${m.batas ? h`<div class="kaca-btn aktif" data-aksi="pakaiBatasNego">PAKAI BATAS ${RP(m.batas)}</div>` : ''}${mb.boleh ? h`<div class="kaca-btn aktif emas" data-aksi="mintaOwnerNego">MINTA OWNER</div>` : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="${mb.kalimat || ''}">MINTA OWNER</div>`}</div>
+        ${m ? h`<div class="kartu" data-k="ng-minta" style="gap: 6px;"><div class="ket">${mb.boleh ? 'Harga nota tetap ' + RP(b.trx.hargaSatuan) + sat + ' sampai owner menyetujui. Pembeli menunggu? ' + (batasPakai ? 'Pakai batas jatah dulu, parkir' : 'Parkir') + ' struk ini, atau owner yang mencatat nota ini.'
+            : 'Harga nota tetap ' + RP(b.trx.hargaSatuan) + sat + '. Yang bisa sekarang: ' + (batasPakai ? 'pakai batas jatah, ' : '') + 'parkir struk ini sampai owner datang, atau owner yang mencatat nota ini.'}</div>
+          <div class="tombol-baris rapat">${batasPakai ? h`<div class="kaca-btn aktif" data-aksi="pakaiBatasNego">PAKAI BATAS ${RP(batasPakai)}</div>` : ''}<div class="kaca-btn" data-aksi="parkir" data-k="ng-parkir">PARKIR STRUK</div>${mb.boleh ? h`<div class="kaca-btn aktif emas" data-aksi="mintaOwnerNego">MINTA OWNER</div>` : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="${mb.kalimat || ''}">MINTA OWNER</div>`}</div>
           ${mb.boleh ? '' : h`<div class="ket awas-teks" style="font-size: 11px;">${mb.kalimat || ''}</div>`}</div>` : ''}
         ${pitaTolak(s, 'nego')}
         ${tuts('terapkanNego', label)}
@@ -1080,15 +1089,31 @@ export function pasangLayarJual(akar, opsi) {
   // ---- owner 7 Okt (J2, "Ya, simpan di perangkat"): keranjang & struk parkir BERTAHAN saat halaman dimuat ulang — penyimpanan SESI tab ini, per akun + hari ini
   //      (isi & batasnya: jual-logika susunSimpanKeranjang). Baru menulis sesudah pemulihan untuk akun yang masuk dicoba (app.js → pulihkanKeranjang), supaya
   //      keranjang kosong saat memuat tidak menghapus simpanan sebelum sempat dipulihkan. Mode privat Safari / penyimpanan penuh → diam, keranjang tetap jalan.
-  let _simpanUid = null;
-  const bacaSimpanan = () => { try { const v = sessionStorage.getItem(L.KUNCI_SIMPAN_KERANJANG); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
-  const tulisSimpanan = (v) => { try { if (v) sessionStorage.setItem(L.KUNCI_SIMPAN_KERANJANG, JSON.stringify(v)); else sessionStorage.removeItem(L.KUNCI_SIMPAN_KERANJANG); } catch (e) { /* mode privat / penuh */ } };
-  const simpanKeranjang = (s) => { if (_simpanUid) tulisSimpanan(L.susunSimpanKeranjang(s, _simpanUid, hariIniIso(s.sekarang || new Date()))); };
+  //      Tinjauan 7 Okt: simpanan membawa id TAB ini (tab salinan tidak memulihkan keranjang tab asal) & penanda nota yang sedang dicatat (lihat jual-logika).
+  let _simpanUid = null; let _mencatatNota = null;   // { trxId, ringkas } selama nota menunggu server
+  const bacaSesi = (k) => { try { const v = sessionStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
+  const tulisSesi = (k, v) => { try { if (v) sessionStorage.setItem(k, JSON.stringify(v)); else sessionStorage.removeItem(k); } catch (e) { /* mode privat / penuh */ } };
+  const bacaSimpanan = () => bacaSesi(L.KUNCI_SIMPAN_KERANJANG);
+  const tulisSimpanan = (v) => tulisSesi(L.KUNCI_SIMPAN_KERANJANG, v);
+  // tanda tab: ditulis "dipakai" begitu layar dipasang, "ditinggal" saat halaman ditutup / dimuat ulang dengan wajar (pagehide); kembali dari tembolok mundur → dipakai lagi
+  // web app layar penuh (iOS navigator.standalone / display-mode standalone) tidak punya tab untuk digandakan — dimatikan iOS di latar tanpa pagehide = tab yang sama
+  const mandiri = (typeof navigator !== 'undefined' && navigator.standalone === true) || (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !!window.matchMedia('(display-mode: standalone)').matches);
+  const _tab = L.bacaTandaTab(bacaSesi(L.KUNCI_TAB_KERANJANG), Date.now().toString(36) + Math.random().toString(36).slice(2, 10), mandiri);
+  const tandaiTab = (ditinggal) => tulisSesi(L.KUNCI_TAB_KERANJANG, { id: _tab.id, ditinggal: !!ditinggal });
+  tandaiTab(false);
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('pagehide', () => tandaiTab(true));
+    window.addEventListener('pageshow', (e) => { if (e && e.persisted) tandaiTab(false); });
+  }
+  const simpanKeranjang = (s) => { if (_simpanUid) tulisSimpanan(L.susunSimpanKeranjang(s, _simpanUid, hariIniIso(s.sekarang || new Date()), { tab: _tab.id, mencatat: _mencatatNota })); };
+  // nota yang sedang dikirim: ditulis SEBELUM dokumennya diserahkan ke penulis (sinkron), dilepas sesudah hasilnya diketahui
+  function tahanSimpanan(nota) { _mencatatNota = nota; simpanKeranjang(S()); }
+  function lepasSimpanan() { if (!_mencatatNota) return; _mencatatNota = null; simpanKeranjang(S()); }
   K.dengar(simpanKeranjang);
   function pulihkanKeranjang(akun) {
     const uid = akun && akun.uid ? String(akun.uid) : ''; if (!uid || _simpanUid === uid) return;
     _simpanUid = uid;
-    const p = L.pulihSimpanKeranjang(bacaSimpanan(), uid, hariIniIso(S().sekarang || new Date()), S());
+    const p = L.pulihSimpanKeranjang(bacaSimpanan(), uid, hariIniIso(S().sekarang || new Date()), S(), _tab.id);
     if (p) { _rakBasi = true; set(p); } else simpanKeranjang(S());   // akun lain / hari lain / layar sudah berisi → simpanan diganti keadaan sekarang (kosong = dihapus)
   }
   function lupakanSimpanan() { _simpanUid = null; tulisSimpanan(null); }

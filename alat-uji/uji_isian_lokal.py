@@ -84,8 +84,10 @@ def periksa(sumber):
     elif kunci_jl:
         f = re.search(r'function ' + m.group(1) + r'\(\) \{([^}]*)\}', js)
         if not f or 'tulisSimpanan(null)' not in f.group(1) or '_simpanUid = null' not in f.group(1): cacat.append('jual: %s tidak menghapus simpanan / tidak berhenti menyimpan' % m.group(1))
-        tl = re.search(r"const tulisSimpanan = \(v\) => \{(.*?)\};\n", js, re.S)
-        if not tl or not all(('removeItem(L.' + kk + ')') in tl.group(1) for kk in kunci_jl): cacat.append('jual: tulisSimpanan(null) tidak menghapus kunci simpanan keranjang')
+        # tinjauan 7 Okt: penulis penyimpanan sesi satu (tulisSesi(kunci, isi) — null = removeItem kunci itu); simpanan keranjang lewat tulisSesi ke kuncinya sendiri
+        tl = re.search(r"const tulisSesi = \(k, v\) => \{(.*?)\};\n", js, re.S)
+        if not tl or 'else sessionStorage.removeItem(k);' not in tl.group(1) or 'const tulisSimpanan = (v) => tulisSesi(L.KUNCI_SIMPAN_KERANJANG, v);' not in js:
+            cacat.append('jual: tulisSimpanan(null) tidak menghapus kunci simpanan keranjang')
     return cacat
 
 
@@ -106,7 +108,8 @@ if __name__ == '__main__':
             ('Menu tidak meneruskan penjaga', 'menu', 'belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan', 'belumDisimpan: () => false, lupakanOrang: () => {}'),
             ('Jual lupa menghapus simpanan keranjang saat ganti orang (owner 7 Okt)', 'jual', 'lupakanOrang: () => { lupakanSimpanan(); K.setel(', 'lupakanOrang: () => { K.setel('),
             ('Jual: penghapus simpanan tidak menghapus apa pun (owner 7 Okt)', 'jual', 'function lupakanSimpanan() { _simpanUid = null; tulisSimpanan(null); }', 'function lupakanSimpanan() { _simpanUid = null; }'),
-            ('Jual: penulis simpanan tidak pernah removeItem (owner 7 Okt)', 'jual', 'else sessionStorage.removeItem(L.KUNCI_SIMPAN_KERANJANG);', 'else void 0;'),
+            ('Jual: penulis simpanan tidak pernah removeItem (owner 7 Okt)', 'jual', 'else sessionStorage.removeItem(k);', 'else void 0;'),
+            ('Jual: simpanan keranjang ditulis ke kunci lain (tinjauan 7 Okt)', 'jual', 'tulisSesi(L.KUNCI_SIMPAN_KERANJANG, v)', 'tulisSesi(L.KUNCI_TAB_KERANJANG, v)'),
         ]
         for nama, berkas, lama, baru in rusak:
             T = dict(S); assert lama in T[berkas], 'kontrol basi: ' + nama; T[berkas] = T[berkas].replace(lama, baru, 1)

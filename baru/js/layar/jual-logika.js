@@ -68,6 +68,7 @@ export function keadaanAwal() {
     negoAlasan: '', negoMinta: null, ngAlasanTolak: '',   // owner 7 Okt (JS2-C): alasan di bawah modal · nego yang perlu minta owner · alasan owner menolak (Buku Nego)
     pelanggan: '', cariPelanggan: '', cara: 'Tunai', uang: 0,
     antrean: [], aktifId: 1, idBerikut: 2, urutBaris: 0,
+    pulihPeriksa: [],   // tinjauan 7 Okt: id baris yang DIPULIHKAN sesudah halaman dimuat ulang — dibangun ulang dari katalog sekarang saat nota dicatat (periksaPulih)
     kreditDibuka: false, notaTerakhir: null,
     pesananId: null, psNama: '', psIsi: '', psAlamat: '', psNilai: '', psSaring: '',
     tukar: null,   // PUTARAN 4: { returDraf, kredit, ringkas } — retur tukar yang diikat ke keranjang ini (_tukarKeJual index.html 16838); PUTARAN 20: { susulanReturId, kredit 0, … } = pengganti tukar yatim
@@ -591,11 +592,12 @@ function bangunUlang(b, chip, j, s, ubah) {
 }
 /**
  * owner 7 Okt (JS2-C): baris NEGO yang dibangun ulang (jumlah / bonus / pengganti retur berubah) — putusannya dihitung ulang dengan modal & jumlah baru.
- * Masih sah → kolom nego diperbarui (batas, jatah); tidak sah lagi (mis. bonus menekan margin di bawah jatah, persetujuan owner untuk jumlah lebih sedikit) → { tolak }.
+ * Masih sah → kolom nego diperbarui (batas, jatah); tidak sah lagi (mis. bonus +1 menaikkan modal per satuan BAYAR sehingga harga nego jatuh di bawah jatah /
+ * modal, persetujuan owner untuk jumlah lebih sedikit) → { tolak }.
  */
 function negoUlang(s, baru) {
   if (!baru || !baru.nego) return { trx: baru };
-  const r = ngPutusUlang(baru, s.negoAkun || null, { hakNego: s.negoHak }); if (r.tolak) return { tolak: r.tolak };
+  const r = ngPutusUlang(baru, s.negoAkun || null, { hakNego: s.negoHak, bisaMinta: s.negoBisaMinta }); if (r.tolak) return { tolak: r.tolak };
   return { trx: selesaikanHarga(ngTandai(baru, r.p), !!baru.penggantiRetur) };
 }
 /** Langit-langit untuk baris ini tanpa dirinya sendiri di keranjang. */
@@ -674,7 +676,7 @@ export function putusNego(s, id, hargaBaru) {
   const b = (s.keranjang || []).find((x) => x.id === id); if (!b) return null;
   const akun = s.negoAkun || null;
   const setuju = ngSetujuUntuk(b.trx, Math.round(Number(hargaBaru) || 0), akun, { dipakai: setujuDipegang(s, id), tanggal: hariIniIso(s.sekarang) });
-  return ngPutus(b.trx, hargaBaru, akun, { alasan: s.negoAlasan, hakNego: s.negoHak, setuju });
+  return ngPutus(b.trx, hargaBaru, akun, { alasan: s.negoAlasan, hakNego: s.negoHak, setuju, bisaMinta: s.negoBisaMinta, atur: s.negoAtur });   // negoAtur: harga pas karcis (karcis-logika)
 }
 /**
  * Nego (owner 7 Okt, JS2-C dikunci 18 Sep): harga satuan baru menurut BATAS NEGO PER ORANG (nego-logika.js). Lantai Rp500 tetap. Dalam jatah / di atas katalog /
@@ -734,38 +736,104 @@ export function buangAntrean(s, id) { const a = s.antrean.find((x) => x.id === i
 export function pembeliLain(s) { return s.keranjang.length ? parkir(s) : { kabar: 'Keranjang sudah kosong', kreditDibuka: false }; }
 
 // ---------- KERANJANG BERTAHAN SAAT HALAMAN DIMUAT ULANG (owner 7 Okt: "Ya, simpan di perangkat") ----------
-// Disimpan di penyimpanan SESI peramban (tab ini saja — tab lain tidak ikut memegang keranjang yang sama, jadi nota tidak bisa tercatat dua kali) per AKUN (uid) +
-// TANGGAL: keranjang, struk parkir (antrean), struk aktif, pelanggan, cara bayar, potongan, ikatan pesanan. TIDAK disimpan: ikatan tukar & karcis yang sedang
-// dirinci (keranjangnya ikut tidak disimpan), nota terakhir, uang yang diterima, "buka kredit sekali". Dipulihkan saat layar Jual dipasang untuk akun yang sama di
-// hari yang sama; dibersihkan begitu keranjang & parkir kosong (nota tercatat / dikosongkan) dan saat ganti orang. Penulisnya jual.js (dibungkus try/catch).
+// Disimpan di penyimpanan SESI peramban per AKUN (uid) + TANGGAL + TAB: keranjang, struk parkir (antrean), struk aktif, pelanggan, cara bayar, potongan, ikatan
+// pesanan. TIDAK disimpan: ikatan tukar & karcis yang sedang dirinci (keranjangnya ikut tidak disimpan), nota terakhir, uang yang diterima, "buka kredit sekali".
+// Dipulihkan saat layar Jual dipasang untuk akun yang sama di hari yang sama DI TAB YANG SAMA; dibersihkan begitu keranjang & parkir kosong (nota tercatat /
+// dikosongkan) dan saat ganti orang. Penulisnya jual.js (dibungkus try/catch). Tinjauan 7 Okt — tiga penjaga supaya satu keranjang tidak tercatat dua kali:
+//  1. NOTA YANG SEDANG DICATAT: sebelum dokumennya dikirim, simpanan diganti "sedang mencatat <trxId>" TANPA keranjang itu. Halaman dimuat ulang selagi menunggu
+//     server (dokumennya sudah di antrean perangkat) → keranjang itu tidak dipulihkan, kabar menyuruh memeriksa Riwayat. Ditolak / gagal → simpanan biasa kembali.
+//  2. TAB SALINAN: "Duplikat tab" menyalin penyimpanan sesi. Tiap tab punya tanda (id + "ditinggal" saat halaman ditutup / dimuat ulang dengan wajar); tanda yang
+//     masih "dipakai" = salinan dari tab yang masih terbuka → id baru, simpanan tab asal tidak dipulihkan di sini (bacaTandaTab).
+//  3. HARGA & MODAL: baris yang dipulihkan dibangun ulang dari katalog SEKARANG saat nota dicatat (periksaPulih), bukan cuma stoknya.
 export const KUNCI_SIMPAN_KERANJANG = 'miqbal_jual_keranjang_v1';
+export const KUNCI_TAB_KERANJANG = 'miqbal_jual_tab_v1';
 export const BATAS_SIMPAN_KERANJANG = 200000;   // huruf JSON — lebih dari ini tidak disimpan (penyimpanan sesi dibagi semua layar)
-/** Isi simpanan untuk keadaan s (null = tidak ada yang perlu disimpan → simpanan dihapus). */
-export function susunSimpanKeranjang(s, uid, tanggal) {
+/**
+ * Isi simpanan untuk keadaan s (null = tidak ada yang perlu disimpan → simpanan dihapus). opsi = { tab (id tab ini), mencatat ({ trxId, ringkas } nota yang
+ * sedang dikirim — keranjang aktif TIDAK disimpan, diganti penanda) }.
+ */
+export function susunSimpanKeranjang(s, uid, tanggal, opsi) {
   if (!uid || !tanggal) return null;
-  const aktifBoleh = !s.tukar && !s.karcis;
+  const o = opsi || {};
+  const m = o.mencatat && o.mencatat.trxId !== undefined && o.mencatat.trxId !== null ? { trxId: String(o.mencatat.trxId), ringkas: String(o.mencatat.ringkas || '').slice(0, 200) } : null;
+  const aktifBoleh = !s.tukar && !s.karcis && !m;
   const keranjang = aktifBoleh ? (s.keranjang || []) : [];
   const antrean = (s.antrean || []).filter((a) => a && a.beku && !a.beku.tukar && Array.isArray(a.beku.items) && a.beku.items.length)
     .map((a) => ({ id: a.id, beku: Object.assign({}, a.beku, { uang: 0, kreditDibuka: false, tukar: null }) }));
-  if (!keranjang.length && !antrean.length) return null;
+  if (!keranjang.length && !antrean.length && !m) return null;
   const isi = { keranjang, antrean, aktifId: s.aktifId, idBerikut: s.idBerikut, urutBaris: s.urutBaris };
   if (keranjang.length) Object.assign(isi, { pelanggan: s.pelanggan || '', cara: s.cara || 'Tunai', potongan: s.potongan || 0, pesananId: s.pesananId || null });
-  const v = { v: 1, uid: String(uid), tanggal: String(tanggal), isi };
+  if (m) isi.mencatat = m;
+  const v = { v: 1, uid: String(uid), tanggal: String(tanggal), tab: String(o.tab || ''), isi };
   return JSON.stringify(v).length > BATAS_SIMPAN_KERANJANG ? null : v;
 }
-/** Patch pemulihan dari simpanan bila akun & tanggal sama dan layar belum memegang keranjang / parkir apa pun; selain itu null. */
-export function pulihSimpanKeranjang(simpanan, uid, tanggal, s) {
+/**
+ * Tanda tab saat layar Jual dipasang. v = tanda tersimpan di penyimpanan sesi { id, ditinggal }: ditinggal = halaman tab ini ditutup / dimuat ulang dengan wajar
+ * (pagehide) → tab yang SAMA, id dipertahankan. Tanda yang masih "dipakai" = penyimpanan sesi disalin dari tab yang masih terbuka (Duplikat tab), atau halaman tadi
+ * mati tidak wajar → id BARU (simpanan tab asal tidak dipulihkan di sini). Tanpa tanda = tab baru. mandiri = web app layar penuh (Tambahkan ke Layar Utama):
+ * tidak punya tab untuk digandakan, jadi tanda "dipakai" = halaman yang dimatikan sistem di latar (iOS) → tetap tab yang sama.
+ */
+export function bacaTandaTab(v, idBaru, mandiri) {
+  const t = v && typeof v === 'object' && v.id ? v : null;
+  const asal = !t ? 'baru' : t.ditinggal === true || mandiri === true ? 'muatUlang' : 'salinan';
+  return { asal, id: asal === 'muatUlang' ? String(t.id) : String(idBaru) };
+}
+/** Patch pemulihan dari simpanan bila akun, tanggal & TAB sama dan layar belum memegang keranjang / parkir apa pun; selain itu null (tab lain: kabar saja). */
+export function pulihSimpanKeranjang(simpanan, uid, tanggal, s, tab) {
   const v = simpanan; if (!v || v.v !== 1 || !uid || String(v.uid) !== String(uid) || String(v.tanggal) !== String(tanggal) || !v.isi) return null;
   if ((s.keranjang || []).length || (s.antrean || []).length) return null;
+  if (String(v.tab || '') !== String(tab || '')) return { kabar: 'Keranjang yang tersimpan tidak dipulihkan di tab ini: tab ini salinan dari tab lain (atau halaman tadi tertutup tidak wajar) — supaya satu keranjang tidak tercatat dua kali. Lanjutkan di tab asalnya, atau masukkan barangnya lagi di sini.', kabarAwas: true };
   const i = v.isi; const daftar = (x) => (Array.isArray(x) ? x.filter((b) => b && b.trx && typeof b.trx === 'object') : []);
-  const keranjang = daftar(i.keranjang); const antrean = (Array.isArray(i.antrean) ? i.antrean : []).filter((a) => a && a.beku && daftar(a.beku.items).length)
+  const m = i.mencatat && typeof i.mencatat === 'object' && i.mencatat.trxId ? i.mencatat : null;
+  const keranjang = m ? [] : daftar(i.keranjang); const antrean = (Array.isArray(i.antrean) ? i.antrean : []).filter((a) => a && a.beku && daftar(a.beku.items).length)
     .map((a) => ({ id: a.id, beku: Object.assign({}, a.beku, { items: daftar(a.beku.items), uang: 0, kreditDibuka: false, tukar: null }) }));
-  if (!keranjang.length && !antrean.length) return null;
+  if (!keranjang.length && !antrean.length && !m) return null;
   const angka = (x, cadang) => (Number.isFinite(Number(x)) && Number(x) > 0 ? Number(x) : cadang);
   const ids = antrean.map((a) => Number(a.id) || 0); const aktifId = angka(i.aktifId, 1); const idBerikut = Math.max(angka(i.idBerikut, 2), aktifId + 1, ids.length ? Math.max.apply(null, ids) + 1 : 0);
+  const pulihPeriksa = keranjang.concat(antrean.reduce((a, x) => a.concat(x.beku.items), [])).map((b) => String(b.id));
+  const parkirTeks = antrean.length ? antrean.length + ' struk parkir' : '';
+  let kabar, kabarAwas = false;
+  if (m) {
+    const ringkas = m.ringkas ? ' (' + String(m.ringkas) + ')' : '';
+    const sudah = ambilPenjualanSemua().some((p) => String(p.trxId) === String(m.trxId));
+    kabar = (sudah ? 'Nota yang sedang dicatat saat halaman dimuat ulang SUDAH tercatat' + ringkas + ' — keranjangnya tidak dipulihkan supaya tidak tercatat dua kali'
+      : 'Halaman dimuat ulang saat nota sedang dicatat' + ringkas + ' — keranjang itu TIDAK dipulihkan supaya tidak tercatat dua kali. Periksa Riwayat dulu: kalau notanya belum ada, masukkan barangnya lagi')
+      + (parkirTeks ? ' · ' + parkirTeks + ' dipulihkan' : '');
+    kabarAwas = !sudah;
+  } else kabar = 'Keranjang dipulihkan sesudah halaman dimuat ulang: ' + (keranjang.length ? keranjang.length + ' barang' : 'keranjang kosong') + (parkirTeks ? ' · ' + parkirTeks : '') + ' — stok, harga & modal diperiksa lagi dengan katalog sekarang saat nota dicatat';
   return { keranjang, antrean, aktifId, idBerikut, urutBaris: angka(i.urutBaris, keranjang.length), pelanggan: keranjang.length ? String(i.pelanggan || '') : '', cara: keranjang.length ? bakuCaraBayar(i.cara || 'Tunai') : 'Tunai',
-    potongan: keranjang.length ? Math.max(0, Math.round(Number(i.potongan) || 0)) : 0, pesananId: keranjang.length ? (i.pesananId || null) : null, uang: 0, kreditDibuka: false, lembar: null,
-    kabar: 'Keranjang dipulihkan sesudah halaman dimuat ulang: ' + (keranjang.length ? keranjang.length + ' barang' : 'keranjang kosong') + (antrean.length ? ' · ' + antrean.length + ' struk parkir' : '') + ' — stok & harga diperiksa lagi saat nota dicatat', kabarAwas: false };
+    potongan: keranjang.length ? Math.max(0, Math.round(Number(i.potongan) || 0)) : 0, pesananId: keranjang.length ? (i.pesananId || null) : null, uang: 0, kreditDibuka: false, lembar: null, pulihPeriksa,
+    kabar, kabarAwas };
+}
+// uang yang dibayar pembeli untuk satu baris — berubah = nota DITAHAN supaya kasir melihat totalnya lagi
+const UANG_BARIS = ['hargaAsli', 'hargaSatuan', 'hargaTotal', 'nilaiBarangPengganti', 'negoStatus'];
+/**
+ * Tinjauan 7 Okt: baris keranjang yang DIPULIHKAN (s.pulihPeriksa) dibangun ulang dari katalog SEKARANG (bangunUlang + negoUlang — rumus yang sama dengan ubah
+ * jumlah / bonus) sebelum nota dicatat. Harga katalog, harga baris, total, atau status nego berubah → { tolak, perbarui } (keranjang diganti hasil bangun ulang,
+ * uang diterima dikosongkan supaya diperiksa lagi); nego yang tidak sah lagi dilepas ke harga katalog dan DISEBUT. Cuma modal yang berubah → { keranjang } (dipakai
+ * diam-diam: modal tidak ditagih ke pembeli). Barang yang tidak ada lagi di rak → { tolak }. Tidak ada baris pulihan → null.
+ */
+export function periksaPulih(s) {
+  const tanda = {}; (s.pulihPeriksa || []).forEach((id) => { tanda[String(id)] = 1; });
+  if (!(s.keranjang || []).some((b) => tanda[String(b.id)])) return null;
+  const ubah = [], hilang = [];
+  const keranjang = s.keranjang.map((b) => {
+    if (!tanda[String(b.id)]) return b;
+    const chip = chipDariBaris(b.trx); const dasar = chip ? bangunUlang(b, chip, b.trx.jumlah, s) : null;
+    if (!dasar) { hilang.push(b.trx.label); return b; }
+    let nu = negoUlang(s, dasar); let lepas = '';
+    if (nu.tolak) { lepas = nu.tolak; nu = { trx: bangunUlang({ id: b.id, trx: Object.assign({}, b.trx, { nego: false }) }, chip, b.trx.jumlah, s) }; }
+    const t = nu.trx; if (!t) { hilang.push(b.trx.label); return b; }
+    if (UANG_BARIS.some((k) => String(b.trx[k]) !== String(t[k]))) {
+      ubah.push(b.trx.label + (b.trx.hargaSatuan !== t.hargaSatuan ? ' ' + RP(b.trx.hargaSatuan) + ' → ' + RP(t.hargaSatuan) + '/' + t.satuan : ' (katalog ' + RP(b.trx.hargaAsli) + ' → ' + RP(t.hargaAsli) + ', harga ' + RP(t.hargaSatuan) + '/' + t.satuan + ' tetap)')
+        + (lepas ? ' — nego dilepas: ' + lepas : ''));
+    }
+    return { id: b.id, trx: t };
+  });
+  if (hilang.length) return { tolak: hilang.join(', ') + ' tidak ada lagi di rak sekarang (harga & modalnya tidak terbaca) — hapus barisnya lalu masukkan barangnya lagi' };
+  if (!ubah.length) return { keranjang };
+  const sisa = (s.pulihPeriksa || []).filter((id) => !s.keranjang.some((b) => String(b.id) === String(id)));
+  return { tolak: 'Harga berubah sejak keranjang disimpan: ' + ubah.join('; ') + ' — keranjang sudah memakai katalog sekarang; periksa totalnya lalu terima uangnya lagi', perbarui: { keranjang, uang: 0, pulihPeriksa: sisa } };
 }
 
 // ---------- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang TIDAK boleh terbawa ke akun berikutnya ----------
@@ -1083,7 +1151,10 @@ export function waktuSekarang(d) {
 }
 
 /** Siapkan pencatatan: {tolak} atau {dokumen, patch, ringkas}. Menulisnya urusan layar (lewat toko.tulisDokumen). */
-export function simpanNota(s, w) {
+export function simpanNota(s0, w) {
+  // tinjauan 7 Okt: baris yang dipulihkan sesudah halaman dimuat ulang dibangun ulang dari katalog sekarang SEBELUM apa pun (uang, stok) diperiksa
+  const pp = periksaPulih(s0); if (pp && pp.tolak) return { tolak: pp.tolak, perbarui: pp.perbarui || null };
+  const s = pp ? Object.assign({}, s0, { keranjang: pp.keranjang }) : s0;
   const tolak0 = alasanTolak(s); if (tolak0) return { tolak: tolak0 };
   const stok = periksaStokKeranjang(s); let tembus = [];   // pemeriksaan ulang TIDAK berubah (31b)
   if (stok) {
@@ -1097,6 +1168,7 @@ export function simpanNota(s, w) {
   const n = susunNotaDokumen(s2, w || waktuSekarang(s.sekarang || undefined));
   if (n.tolak) return { tolak: n.tolak };
   const patch = { keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, negoMinta: null, negoAlasan: '', lembar: null, ketik: '', kreditDibuka: false, pesananId: null, penggantiTanya: null, tukar: null, tembusTanya: null, tembusYakin: false,
+    pulihPeriksa: (s.pulihPeriksa || []).filter((id) => !s.keranjang.some((b) => String(b.id) === String(id))),
     notaTerakhir: { trxId: n.trxId, idPenjualan: n.idPenjualan, piutangId: n.piutangId, pesanan: n.pesanan, retur: n.retur, pada: Date.now(), ringkas: n.ringkas, nama: String(s.pelanggan || '').trim() },
     kabar: 'Tersimpan — ' + n.ringkas + (tembus.length ? ' · TEMBUS STOK, tandai dicocokkan: ' + tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' ' + kgTeks(t.selisihKg)).join(', ') : ''), kabarAwas: false };
   return { dokumen: n.dokumen, patch, ringkas: n.ringkas, nota: n, tembus };
