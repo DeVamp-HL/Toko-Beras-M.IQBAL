@@ -24,7 +24,11 @@ jobs:
   uji:
     # macos-latest: jsc (JavaScriptCore) tersedia bawaan — sama dengan mesin pengembang.
     runs-on: macos-latest
-    timeout-minutes: 10
+    # Batas 10 menit dipasang 13 Sep saat pekerjaan ini masih kecil. Per 7 Okt pekerjaan ini ±6½–10 menit (70-an langkah, tergantung runner;
+    # langkah terakhir — Chrome palsu percobaan ulang + kontrolnya — sendiri ±4 menit). PR #113 (run 37529470063) dihentikan di 10 menit 23 detik
+    # di tengah langkah terakhir itu, sesudah SEMUA langkah lain lulus (0 gagal): bukan uji yang gagal, batasnya yang habis. 20 menit = ruang
+    # untuk paket berikutnya, dan uji yang macet tetap dihentikan jauh sebelum batas bawaan GitHub (6 jam).
+    timeout-minutes: 20
     steps:
       - name: Ambil isi repo
         uses: actions/checkout@v4
