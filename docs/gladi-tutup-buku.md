@@ -54,8 +54,17 @@ emulator. Angka di tiap langkah:
 
 Ketiganya dijumlah dan dibandingkan dengan batas Spark per hari: 50 rb baca, 20 rb tulis, 20 rb hapus.
 
-Keterbatasan: jam server emulator adalah jam runner, bukan jam halaman. Pemeriksaan kunci periode di aturan (`get()` bulan lampau) karena itu
-dinilai dengan bulan runner.
+Keterbatasan:
+
+- **Jam server emulator adalah jam runner, bukan jam halaman.** Pemeriksaan kunci periode di aturan (`get()` bulan lampau) karena itu dinilai
+  dengan bulan runner.
+- **Antrean WebChannel emulator dibatasi 10.000 pesan per kanal.** Run 7 Okt memakai data 17 rb dokumen. Hasilnya: "too many pending messagings in
+  the back channel (10001)", kanal Listen diputus berulang, dan halaman tidak pernah menerima data. `--help` emulator tidak punya setelan untuk
+  batas ini, dan server sungguhan tidak punya batas itu. Karena itu data gladi dibuat ±9 rb dokumen (`GLADI_SKALA` 0,65, bisa diubah dari input
+  workflow). Ringkasan menambahkan baris *perkiraan skala toko*: hasil gladi × (17.000 ÷ dokumen arsip gladi).
+- **Tiap skenario jalan di emulator sendiri.** Emulator tetap mengirimi sesi halaman yang sudah ditutup sampai kanalnya kedaluwarsa, sehingga
+  skenario berikutnya bisa terganggu. Laporan per skenario digabung di akhir (`--gabung`). Tiap langkah mencatat berapa kali antrean emulator
+  penuh, dan nilai itu wajib 0.
 
 ## Sesudah Paket A
 

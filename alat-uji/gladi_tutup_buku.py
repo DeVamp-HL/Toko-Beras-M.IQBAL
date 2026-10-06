@@ -177,10 +177,25 @@ def pasang_aturan(teks):
 
 def aturan_tolak(koleksi):
     """SALINAN firestore.rules repo dengan tulisan (create/update) ke satu koleksi ditolak server — memotong ritual di tengah seperti kuota habis /
-    sinyal putus. Hanya di emulator, sementara; firestore.rules repo TIDAK diubah."""
-    m = re.search(r'(\n    match /' + re.escape(koleksi) + r'/\{[a-zA-Z]+\} \{\n)', ATURAN_REPO)
+    sinyal putus. Hanya di emulator, sementara; firestore.rules repo TIDAK diubah.
+    Izin di rules = ATAU (allow mana pun yang lolos memberi izin), jadi menambah `allow … if false` TIDAK menolak apa pun (run 7 Okt): izin create/update
+    blok itu DICABUT — `allow read, write` jadi `allow read, delete`, `allow write` jadi `allow delete`, baris create/update dibuang. Baca & hapus tetap."""
+    m = blok_aturan(ATURAN_REPO, koleksi)
     assert m, 'blok aturan ' + koleksi + ' tidak ketemu — perbarui gladi'
-    return ATURAN_REPO[:m.end()] + '      allow create, update: if false;   // GLADI: penolakan sementara\n' + ATURAN_REPO[m.end():]
+    baris = []
+    for b in m.group(1).split('\n'):
+        t = b.strip()
+        if re.match(r'allow (create|update)(, (create|update))*:', t): continue
+        b = b.replace('allow read, write:', 'allow read, delete:').replace('allow write:', 'allow delete:')
+        assert not re.search(r'allow [^:]*\b(create|update|write)\b', b), 'bentuk allow belum dikenal gladi: ' + t
+        baris.append(b)
+    baris.append('      // GLADI: create/update DICABUT sementara (penolakan di tengah ritual)')
+    return ATURAN_REPO[:m.start(1)] + '\n'.join(baris) + ATURAN_REPO[m.end(1):]
+
+
+def blok_aturan(teks, koleksi):
+    """Isi blok `match /<koleksi>/{id} { … }` (group 1) di teks aturan."""
+    return re.search(r'\n    match /' + re.escape(koleksi) + r'/\{[a-zA-Z]+\} \{\n(.*?)\n    \}\n', teks, re.S)
 
 
 # koleksi yang diarsip tutup buku (beku.js tbDaftarKoleksi) — dibandingkan isinya sebelum ritual ↔ sesudah pembatalan
@@ -534,9 +549,10 @@ def cek_umum(S, data, c, tolak_sengaja=()):
     if not mp: c.append(('muat penuh', False, 'langkah tidak tercapai')); return
     I = mp['info']; kurang = {}
     for k, v in data.items():
-        if not isinstance(v, list) or k not in I.get('cache', {}): continue
+        if not isinstance(v, list): continue
         harap = min(150, len(v)) if k == 'logAktivitas' else len(v)
-        ada = I['cache'][k]
+        ada = (I.get('cache') or {}).get(k)
+        if ada is None: kurang[k] = ('tidak didengar halaman', harap); continue
         if (ada < harap) or (k not in ('perangkatStatus', 'logAktivitas') and ada != harap): kurang[k] = (ada, harap)
     c.append(('muat penuh: semua koleksi siap, tak ada yang ditolak aturan, isi cache = data contoh per koleksi (%d dokumen)' % sum(len(v) for v in data.values() if isinstance(v, list)),
               I.get('koleksiSiap') == I.get('koleksiTotal') and not I.get('ditolak') and not I.get('galat') and not kurang, {'siap': [I.get('koleksiSiap'), I.get('koleksiTotal')], 'ditolak': I.get('ditolak'), 'galat': I.get('galat'), 'beda': kurang}))
@@ -717,7 +733,11 @@ def periksa_salinan():
         for nama, (_, _, langkah) in SKENARIO.items():
             ada = set(re.findall(r'^  async (\w+)\(\)', SKENARIO_JS, re.M))
             c.append(('skenario %s: semua langkahnya ada di SKENARIO_JS' % nama, all(x in ada for x in langkah), [x for x in langkah if x not in ada]))
-        c.append(('aturan penolak (gladi) = salinan firestore.rules + satu baris tolak, isi lain sama', aturan_tolak('arsipTahun').replace('      allow create, update: if false;   // GLADI: penolakan sementara\n', '') == ATURAN_REPO, ''))
+        for k in ('arsipTahun', 'utangPemasokMutasi'):
+            A_ = aturan_tolak(k); blok = blok_aturan(A_, k).group(1)
+            luar = A_.replace(blok, ''); luar0 = ATURAN_REPO.replace(blok_aturan(ATURAN_REPO, k).group(1), '')
+            c.append(('aturan penolak gladi (%s): create/update/write DICABUT dari blok itu (izin rules = ATAU), baca & hapus tetap, blok lain sama persis' % k,
+                      not re.search(r'allow [^:]*\b(create|update|write)\b', blok) and 'allow read' in blok and 'delete' in blok and luar == luar0, blok))
     finally: shutil.rmtree(d, ignore_errors=True)
     return c
 
@@ -730,6 +750,28 @@ if __name__ == '__main__':
         c = periksa_salinan(); g = [x for x in c if not x[1]]
         for n, ok, k in c: print(('✓ ' if ok else '✗ ') + n + ('' if ok else ' → ' + str(k)[:300]))
         print('SALINAN UJI GLADI: %d lulus · %d gagal' % (len(c) - len(g), len(g))); sys.exit(2 if g else 0)
+    if '--gabung' in arg:
+        # workflow: tiap skenario di emulator SENDIRI (sesi WebChannel halaman yang sudah mati tetap dikirimi pesan oleh emulator sampai kanalnya
+        # kedaluwarsa — run 7 Okt: 2,2 juta baris "antrean penuh" saat ritual berjalan sesudah dua skenario lain). Laporan per skenario digabung di sini.
+        berkas = [x for x in arg[arg.index('--gabung') + 1:] if not x.startswith('--') and x.endswith('.json')]
+        lap = None
+        for b in berkas:
+            x = json.load(open(b, encoding='utf-8'))
+            if lap is None: lap = x; continue
+            lap['data'].update(x.get('data') or {}); lap['skenario'] += x.get('skenario') or []
+            lap['lulus'] = lap['lulus'] and x.get('lulus', False)
+        if lap is None: print('tidak ada laporan skenario untuk digabung'); sys.exit(2)
+        harap = [x.strip() for x in (os.environ.get('GLADI_SKENARIO') or 'latihan,gerbang,ritual').split(',') if x.strip()]
+        ada = [S['nama'] for S in lap['skenario']]; hilang = [x for x in harap if x not in ada]
+        if hilang:
+            lap['lulus'] = False
+            lap['skenario'] += [{'nama': x, 'varian': SKENARIO.get(x, ('?',))[0], 'jamHalaman': SKENARIO.get(x, ('', '?'))[1], 'detik': 0, 'langkah': [], 'galat': 'skenario tidak menghasilkan laporan (lihat log langkah GLADI)',
+                                  'konsol': [], 'cek': [{'nama': 'skenario menghasilkan laporan', 'ok': False, 'ket': 'tidak ada berkas laporan'}]} for x in hilang]
+        keluar = opsi('--keluar', ''); ring = opsi('--ringkasan', '')
+        if keluar: json.dump(lap, open(keluar, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+        md = ringkas_md(lap)
+        if ring: open(ring, 'w', encoding='utf-8').write(md)
+        print(md); sys.exit(0 if lap['lulus'] else 2)
     if os.environ.get('GITHUB_ACTIONS') != 'true':
         print('DITOLAK: gladi tutup buku menyalakan Chrome & emulator — HANYA di runner GitHub Actions (CLAUDE.md, keputusan owner 27 Sep 2026).\n'
               'Jalankan workflow "Gladi tutup buku" (Actions › Gladi tutup buku › Run workflow). Di Mac boleh: --periksa-salinan.')

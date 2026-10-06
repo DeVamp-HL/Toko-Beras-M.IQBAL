@@ -80,16 +80,6 @@ jobs:
           firebase --version; java -version; google-chrome --version
           firebase setup:emulators:firestore
 
-      # sementara (7 Okt): emulator memutus kanal saat antrean WebChannel > 10.000 pesan — adakah setelan untuk menaikkan batasnya?
-      - name: "Diagnosis: batas antrean WebChannel emulator Firestore"
-        continue-on-error: true
-        run: |
-          J=$(ls ~/.cache/firebase/emulators/cloud-firestore-emulator-*.jar | head -1); echo "$J"
-          java -jar "$J" --help 2>&1 | head -120 || true
-          mkdir -p /tmp/wc && cd /tmp/wc && unzip -q -o "$J" 'com/google/net/webchannel/*' || true
-          grep -rao "[A-Za-z_.]*[Pp]ending[A-Za-z_.]*" com/google/net/webchannel | sort | uniq -c | sort -rn | head -40 || true
-          for f in $(grep -rl "too many pending" com/google/net/webchannel); do k=$(echo "${f%.class}" | tr / .); echo "== $k"; javap -c -p -constants -cp . "$k" | grep -n -i -E "getProperty|getInteger|getLong|10000|pending|flow|Flag" | head -60; done
-
       - name: Data contoh dinilai logika /baru/ asli (31 Des LATIHAN 12 baris sama, gerbang per varian, 1 Jan kiriman bertahap ≤ 18) + kontrol
         run: python3 alat-uji/gladi_data_contoh.py --periksa && python3 alat-uji/gladi_data_contoh.py --kontrol
 
@@ -115,11 +105,25 @@ jobs:
           JSON
           cat "$P/firebase.json"
 
+      # Tiap skenario di EMULATOR SENDIRI: emulator tetap mengirimi sesi WebChannel halaman yang sudah ditutup sampai kanalnya kedaluwarsa (run 7 Okt:
+      # 2,2 juta baris "antrean penuh" ketika ritual berjalan sesudah dua skenario lain). Laporan per skenario digabung sesudahnya.
       - name: "GLADI — emulator Firestore + Auth, /baru/ di Chrome headless: latihan · gerbang · ritual"
         working-directory: ${{ runner.temp }}/proyek-gladi
         run: |
-          firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" \
-            "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --keluar '$GITHUB_WORKSPACE/gladi-hasil/laporan-gladi.json' --ringkasan '$GITHUB_WORKSPACE/gladi-hasil/ringkasan.md'"
+          gagal=0
+          IFS=',' read -ra DAFTAR <<< "$GLADI_SKENARIO"
+          for s in "${DAFTAR[@]}"; do
+            case "$s" in latihan|gerbang|ritual) ;; *) echo "skenario tidak dikenal: $s"; exit 2;; esac
+            echo "::group::skenario $s"
+            rm -f firestore-debug.log
+            firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" \
+              "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --skenario $s --keluar '$GITHUB_WORKSPACE/gladi-hasil/skenario-$s.json'" || gagal=1
+            tail -c 20000000 firestore-debug.log > "$GITHUB_WORKSPACE/gladi-hasil/firestore-debug-$s.log" 2>/dev/null || true
+            echo "::endgroup::"
+          done
+          python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --gabung "$GITHUB_WORKSPACE"/gladi-hasil/skenario-*.json \
+            --keluar "$GITHUB_WORKSPACE/gladi-hasil/laporan-gladi.json" --ringkasan "$GITHUB_WORKSPACE/gladi-hasil/ringkasan.md" || gagal=1
+          exit $gagal
 
       - name: Ringkasan gladi ke halaman run
         if: always()
@@ -131,9 +135,9 @@ jobs:
         working-directory: ${{ runner.temp }}/proyek-gladi
         run: firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --kontrol"
 
-      - name: Log emulator ke artefak
+      - name: Log firebase-tools ke artefak
         if: always()
-        run: cp "$RUNNER_TEMP"/proyek-gladi/*.log gladi-hasil/ 2>/dev/null || true
+        run: cp "$RUNNER_TEMP"/proyek-gladi/firebase-debug.log gladi-hasil/ 2>/dev/null || true
 
       - name: Artefak laporan gladi
         if: always()
