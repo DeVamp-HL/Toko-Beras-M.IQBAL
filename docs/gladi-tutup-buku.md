@@ -64,7 +64,9 @@ Keterbatasan:
   workflow). Ringkasan menambahkan baris *perkiraan skala toko*: hasil gladi × (17.000 ÷ dokumen arsip gladi).
 - **Tiap skenario jalan di emulator sendiri.** Emulator tetap mengirimi sesi halaman yang sudah ditutup sampai kanalnya kedaluwarsa, sehingga
   skenario berikutnya bisa terganggu. Laporan per skenario digabung di akhir (`--gabung`). Tiap langkah mencatat berapa kali antrean emulator
-  penuh, dan nilai itu wajib 0.
+  penuh. Nilai itu **wajib 0 sampai muat penuh selesai**, karena kalau penuh saat muat, halaman tidak pernah menerima data. Sesudah muat penuh
+  angkanya hanya dilaporkan. Asalnya sesi kanal yang sudah ditinggal halaman: SDK menyambung ulang dengan token lanjut, sedangkan emulator terus
+  mengirimi kanal lama. Run 7 Okt mencatat jutaan baris di satu run dan nol di run lain, dan di keduanya semua cek isi tetap lulus.
 
 ## Sesudah Paket A
 

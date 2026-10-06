@@ -552,8 +552,13 @@ def cek_umum(S, data, c, tolak_sengaja=()):
         if (ada < harap) or (k not in ('perangkatStatus', 'logAktivitas') and ada != harap): kurang[k] = (ada, harap)
     c.append(('muat penuh: semua koleksi siap, tak ada yang ditolak aturan, isi cache = data contoh per koleksi (%d dokumen)' % sum(len(v) for v in data.values() if isinstance(v, list)),
               I.get('koleksiSiap') == I.get('koleksiTotal') and not I.get('ditolak') and not I.get('galat') and not kurang, {'siap': [I.get('koleksiSiap'), I.get('koleksiTotal')], 'ditolak': I.get('ditolak'), 'galat': I.get('galat'), 'beda': kurang}))
-    penuh = sum((x.get('emulator') or {}).get('penuh', 0) for x in S['langkah'])
-    c.append(('emulator tidak kewalahan: antrean WebChannel tidak pernah penuh (batas emulator 10.000 pesan per kanal)', penuh == 0, {'penuh': penuh}))
+    # Antrean penuh SAAT MUAT = halaman tidak pernah menerima data (run 7 Okt, data 17 rb) → gagal. Sesudah muat penuh, antrean penuh berasal dari sesi kanal
+    # yang sudah ditinggal halaman (SDK menyambung ulang dengan token lanjut; emulator terus mengirimi kanal lama sampai kedaluwarsa — run 7 Okt: jutaan baris
+    # di satu run, nol di run lain, semua cek isi tetap lulus) → hanya dilaporkan; isi halaman sendiri dinilai cek-cek lain (cache, langkah, isi server).
+    muat = [x for x in S['langkah'] if x['nama'] in ('masuk', 'muat penuh')]
+    penuh = sum((x.get('emulator') or {}).get('penuh', 0) for x in muat)
+    S['antreanPenuhSesudahMuat'] = sum((x.get('emulator') or {}).get('penuh', 0) for x in S['langkah'] if x not in muat)
+    c.append(('emulator tidak kewalahan saat muat: antrean WebChannel tidak penuh sampai muat penuh selesai (batas emulator 10.000 pesan per kanal)', bool(muat) and penuh == 0, {'penuh': penuh}))
     bocor = [x for x in S['konsol'] if ('permission' in x.lower() or 'FirebaseError' in x) and not any(k in x for k in tolak_sengaja)]
     c.append(('tidak ada galat izin / FirebaseError di konsol halaman' + (' (selain penolakan sengaja: ' + ', '.join(tolak_sengaja) + ')' if tolak_sengaja else ''), not bocor, bocor[:3]))
 
@@ -652,6 +657,9 @@ def ringkas_md(lap):
                                                                                                         100.0 * st * f / SPARK['tulis'], 100.0 * sh * f / SPARK['hapus']))
         out += ['', 'Cek:']
         for x in S['cek']: out.append('- %s %s%s' % ('✓' if x['ok'] else '✗', x['nama'], '' if x['ok'] else ' — `' + json.dumps(x['ket'], ensure_ascii=False)[:500].replace('`', "'") + '`'))
+        if S.get('antreanPenuhSesudahMuat'):
+            out.append('- ℹ antrean WebChannel emulator penuh %s kali SESUDAH muat penuh — sesi kanal yang sudah ditinggal halaman (batas emulator, bukan server sungguhan); '
+                       'isi halaman & server dinilai cek di atas' % format(S['antreanPenuhSesudahMuat'], ',').replace(',', '.'))
         if S.get('galat'): out += ['', '```', S['galat'][:1500], '```']
         if S.get('konsol') and not ok: out += ['', 'Konsol halaman (ekor):', '```', '\n'.join(S['konsol'][-15:])[:3000], '```']
         out.append('')
