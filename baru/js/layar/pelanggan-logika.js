@@ -11,7 +11,7 @@
 // Benang (yang datang bukan orangnya) = koleksi baru `pelangganTitip`; angka & daftar kebijakan owner = `aturanToko/pelanggan`.
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, catatanPelangganBerisi } from '../mesin/pembantu.js';
-import { ambilPenjualanSemua, ambilPenjualan, ambilPiutangMutasi, ambilPelangganCatatan, ambilThrPelanggan, ambilPesanan, cacheMentah, tolakKunci, butuhGet } from '../data/toko.js';
+import { ambilPenjualanSemua, ambilPenjualan, ambilPiutangMutasi, ambilPelangganCatatan, ambilThrPelanggan, ambilPesanan, cacheMentah, tolakKunci, butuhGet, ringkasArsip } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, hariIniIso, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/format.js';
 
@@ -119,6 +119,17 @@ export function semuaOrang(kini) {
   ambilPenjualan().forEach((p) => { if (!p.namaPelanggan) return; const o = slot(p.namaPelanggan, Number(p.id) || 0); if (!o) return; const t = p.tanggal || ''; if (t) o.hari[t] = (o.hari[t] || 0) + 1; const j = plJam(p.jam); if (j !== null) o.jamList.push(j);
     o.total += p.hargaTotal || 0; const th = t.slice(0, 4); if (th) o.tahun[th] = (o.tahun[th] || 0) + (p.hargaTotal || 0); const bk = plBarangKunci(p); if (bk) o.barang[bk] = (o.barang[bk] || 0) + 1; o.nota += 1; if (!o.notaAkhir || (t + (p.jam || '')) > (o.notaAkhir.tanggal + (o.notaAkhir.jam || ''))) o.notaAkhir = p; });
   ambilPiutangMutasi().forEach((m) => { if (!m.namaPelanggan) return; const o = slot(m.namaPelanggan, Number(m.id) || 0); if (o && m.tipe === 'bayar' && m.tanggal) o.hari[m.tanggal] = (o.hari[m.tanggal] || 0) + 1; });   // nama di buku bon ikut jadi orang; pembayar bon juga DATANG (hitungPelanggan index.html) — saldo awal & hapus buku bukan kunjungan
+  // siap 2027 (owner 7 Okt, A7): orang yang catatan tahun lalunya sudah DIARSIP tutup buku dibaca dari ringkasan tahun itu (toko.js ringkasArsip) — dulu daftar
+  // pelanggan menyusut di awal Januari. Hanya orang yang tidak punya catatan hidup ≤ 31 Des lagi (selama arsip berjalan, catatan hidup yang dipakai).
+  const RA = ringkasArsip();
+  if (RA && RA.pelanggan) {
+    const hidupLama = {}; ambilPenjualan().forEach((p) => { if (p.namaPelanggan && (p.tanggal || '') <= RA.cutoff) hidupLama[kunciPelanggan(p.namaPelanggan)] = true; });
+    ambilPiutangMutasi().forEach((m) => { if (m.namaPelanggan && m.tipe === 'bayar' && (m.tanggal || '') <= RA.cutoff) hidupLama[kunciPelanggan(m.namaPelanggan)] = true; });
+    Object.keys(RA.pelanggan).forEach((k) => { if (hidupLama[k]) return; const r = RA.pelanggan[k] || {}; const o = slot(r.nama, Number(r.urut) || 0); if (!o) return;
+      Object.keys(r.hari || {}).forEach((t) => { o.hari[t] = (o.hari[t] || 0) + (Number(r.hari[t]) || 0); }); Object.keys(r.jam || {}).forEach((j) => { for (let i = 0; i < (Number(r.jam[j]) || 0); i++) o.jamList.push(Number(j)); });
+      o.total += Number(r.total) || 0; Object.keys(r.tahun || {}).forEach((th) => { o.tahun[th] = (o.tahun[th] || 0) + (Number(r.tahun[th]) || 0); });
+      Object.keys(r.barang || {}).forEach((b) => { o.barang[b] = (o.barang[b] || 0) + (Number(r.barang[b]) || 0); }); o.nota += Number(r.nota) || 0; });
+  }
   ambilPelangganCatatan().forEach((c) => slot(c.nama || c.id, 0));
   const piutang = {}; hitungPiutang().forEach((r) => { piutang[r.kunci] = r; });
   const bukan = plBukanKembar();
@@ -132,6 +143,19 @@ export function semuaOrang(kini) {
       dikenali: !!(kartu && kartu.dikenali), sejak, adaSelang, hariIni, jatuh, kosong, belumJadi, waktu: jam === null ? '' : waktuKata(jam), diharap: adaSelang && !kosong && jatuh !== null && jatuh <= 0 && !hariIni, sekarang: jam !== null && waktuKata(jam) === waktuKata(jamKini) }; });
   daftar.sort((a, b) => b.kunjungan - a.kunjungan || a.nama.localeCompare(b.nama)); daftar.forEach((o, i) => { o.no = i; o.warna = i % 6; });
   daftar.__bukan = bukan; return daftar;
+}
+/**
+ * Siap 2027 (A7): RINGKASAN per pelanggan dari catatan ≤ `cutoff` (31 Des tahun yang akan diarsip) — bahan semuaOrang yang sama persis (kunjungan per hari, jam
+ * datang sebagai sebaran per jam, belanja total & per tahun, barang, jumlah baris nota, ejaan nama terbaru). Disimpan tutup buku di batch penanda.
+ */
+export function ringkasPelangganTahun(cutoff) {
+  const peta = {}; const slot = (nama, urut) => { const k = kunciPelanggan(nama); if (!k) return null; if (!peta[k]) peta[k] = { nama: String(nama).trim(), urut: 0, hari: {}, jam: {}, total: 0, tahun: {}, barang: {}, nota: 0 };
+    if ((urut || 0) >= peta[k].urut) { peta[k].nama = String(nama).trim(); peta[k].urut = urut || 0; } return peta[k]; };
+  ambilPenjualan().forEach((p) => { const t = p.tanggal || ''; if (!p.namaPelanggan || t > cutoff) return; const o = slot(p.namaPelanggan, Number(p.id) || 0); if (!o) return; if (t) o.hari[t] = (o.hari[t] || 0) + 1;
+    const j = plJam(p.jam); if (j !== null) o.jam[j] = (o.jam[j] || 0) + 1; o.total += p.hargaTotal || 0; const th = t.slice(0, 4); if (th) o.tahun[th] = (o.tahun[th] || 0) + (p.hargaTotal || 0);
+    const bk = plBarangKunci(p); if (bk) o.barang[bk] = (o.barang[bk] || 0) + 1; o.nota += 1; });
+  ambilPiutangMutasi().forEach((m) => { const t = m.tanggal || ''; if (!m.namaPelanggan || t > cutoff) return; const o = slot(m.namaPelanggan, Number(m.id) || 0); if (o && m.tipe === 'bayar' && t) o.hari[t] = (o.hari[t] || 0) + 1; });
+  return peta;
 }
 const plTgl = (iso) => { const B = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']; return iso ? parseInt(iso.slice(8, 10), 10) + ' ' + B[parseInt(iso.slice(5, 7), 10) - 1] : ''; };
 export function datangTeks(b) {

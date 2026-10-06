@@ -7,7 +7,7 @@
 // Karung bekas tidak ada di sini: hasil samping, tidak pernah dibeli (memori karung-bekas-hasil-samping). Angka kebijakan owner: aturanToko/kantong.
 import { hitungStokBahanKemasan, hitungStokBahanLiteran, hitungLajuPakai } from '../mesin/beku.js';
 import { JENDELA_LAJU_HARI } from '../mesin/pembantu.js';
-import { ambilBahanKemasan, ambilBahanLiteran, cacheMentah, tolakKunci } from '../data/toko.js';
+import { ambilBahanKemasan, ambilBahanLiteran, cacheMentah, tolakKunci, lajuLintas } from '../data/toko.js';
 import { RP, ANGKA } from '../inti/format.js';
 import { daftarJenisWadah, jenisWadah, koleksiWadah, WJ_LANTAI_LEMBAR } from './wadah-jual-logika.js';
 
@@ -47,7 +47,7 @@ export function hargaAkhirKantong(jenis) {
 }
 /** Rak kantong: sisa dari mesin, laju pemakaian 14 hari (pcs/hari), cukup berapa hari; awas bila < hari aman (setelan owner). */
 export function rakKantong() {
-  const atur = aturKantong(); const laju = hitungLajuPakai().pcsBahan || {}; const bK = hitungStokBahanKemasan(); const bL = hitungStokBahanLiteran();
+  const atur = aturKantong(); const laju = lajuLintas(hitungLajuPakai()).pcsBahan || {}; const bK = hitungStokBahanKemasan(); const bL = hitungStokBahanLiteran();
   const daftar = jenisKantong().map((d) => {
     const st = (d.koleksi === 'stokBahanLiteran' ? bL : bK)[d.jenis] || {}; const sisa = st.sisaPcs || 0; const l = laju[d.jenis] || 0; const hariCukup = l > 0 ? sisa / l : null;
     const hk = hargaAkhirKantong(d.jenis);

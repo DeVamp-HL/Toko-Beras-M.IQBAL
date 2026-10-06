@@ -90,7 +90,10 @@ export function susunOwner(D, w) {
 /** Buku owner: tiap baris hanya menyebut saldo yang IA ubah, terbaru di atas. */
 export function bukuOwner(n) {
   const rows = [];
-  daftarModalOwner().forEach((m) => { const nn = Number(m.nominal) || 0; if (m.pinjaman) rows.push({ id: String(m.id), t: (m.tanggal || '') + ' ' + (m.jam || ''), tanggal: m.tanggal || '', jam: m.jam || '', judul: 'Pinjaman owner ke toko', ket: (m.catatan || '').replace(/^Pinjaman owner ke toko — /, '') + ' · masuk ke ' + ugNamaTempat(m.tempat || 'laci'), n: nn, arah: 1, ubah: 'utang' });
+  daftarModalOwner().forEach((m) => { const nn = Number(m.nominal) || 0;
+    // siap 2027 (A4): saldo pembuka modal owner tutup buku (bertanggal 31 Des) — bukan setoran / penarikan: tidak ada uang bergerak (juga bukan bukti setoran)
+    if (m.tutupBuku) { rows.push({ id: String(m.id), t: (m.tanggal || '') + ' ' + (m.jam || ''), tanggal: m.tanggal || '', jam: m.jam || '', judul: 'Modal owner dibawa dari tahun lalu' + (m.tipe === 'setor' ? '' : ' (minus)'), ket: 'saldo pembuka tutup buku ' + (m.tahunDari || '') + ' · tidak ada uang bergerak', n: nn, arah: 0, bawa: m.tipe === 'setor' ? 1 : -1, ubah: 'modal' }); return; }
+    if (m.pinjaman) rows.push({ id: String(m.id), t: (m.tanggal || '') + ' ' + (m.jam || ''), tanggal: m.tanggal || '', jam: m.jam || '', judul: 'Pinjaman owner ke toko', ket: (m.catatan || '').replace(/^Pinjaman owner ke toko — /, '') + ' · masuk ke ' + ugNamaTempat(m.tempat || 'laci'), n: nn, arah: 1, ubah: 'utang' });
     else if (m.tipe === 'setor') rows.push({ id: String(m.id), t: (m.tanggal || '') + ' ' + (m.jam || ''), tanggal: m.tanggal || '', jam: m.jam || '', judul: 'Setoran modal', ket: (m.catatan || '') + (m.tempat ? ' · masuk ke ' + ugNamaTempat(m.tempat) : ''), n: nn, arah: 1, ubah: 'modal' });
     else rows.push({ id: String(m.id), t: (m.tanggal || '') + ' ' + (m.jam || ''), tanggal: m.tanggal || '', jam: m.jam || '', judul: m.dariSetoran || m.dariSetoranLama ? 'Setoran tutup hari ke owner' : 'Penarikan modal', ket: (m.catatan || '') + (m.tempat ? ' · keluar dari ' + ugNamaTempat(m.tempat) : ''), n: nn, arah: -1, ubah: 'modal' }); });
   ambilUtangOwnerMutasi().forEach((m) => { const nn = Number(m.nominal) || 0; if (m.pinjaman) return;   // pasangannya sudah dibaca dari modalOwner
@@ -110,6 +113,6 @@ export function bukuOwner(n) {
   // saldo sesudah tiap baris = dihitung mundur dari posisi sekarang
   const P = posisiOwner(new Date(Date.now())); let modal = P.modal, utang = P.utangToko, kasbon = P.kasbonOwner;
   berisi.forEach((r) => { r.s = r.ubah === 'modal' ? 'modal owner jadi ' + RP(modal) : r.ubah === 'utang' ? 'toko berutang ke owner jadi ' + RP(utang) : r.ubah === 'kasbon' ? 'kasbon owner jadi ' + RP(kasbon) : 'toko berutang jadi ' + RP(utang) + ' · kasbon owner jadi ' + RP(kasbon);
-    if (r.ubah === 'modal') modal -= r.arah * r.n; else if (r.ubah === 'utang') utang -= (r.judul.indexOf('mengembalikan') >= 0 ? -r.n : r.n); else if (r.ubah === 'kasbon') kasbon -= (r.judul === 'Kasbon owner' || r.judul.indexOf('dibawa') >= 0 ? r.n : -r.n); else { utang += r.n; kasbon += r.n; } });
+    if (r.ubah === 'modal') modal -= (r.bawa || r.arah) * r.n; else if (r.ubah === 'utang') utang -= (r.judul.indexOf('mengembalikan') >= 0 ? -r.n : r.n); else if (r.ubah === 'kasbon') kasbon -= (r.judul === 'Kasbon owner' || r.judul.indexOf('dibawa') >= 0 ? r.n : -r.n); else { utang += r.n; kasbon += r.n; } });
   return berisi.slice(0, n || 40);
 }

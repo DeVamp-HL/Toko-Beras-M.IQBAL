@@ -368,3 +368,9 @@ Kunci berbentuk awalan, sedangkan tutup buku menulis saldo pembuka bertanggal la
 2026 membuat tutup buku 2026 mustahil (ditolak server). Pilihan owner: **A** — `KP_KUNCI_MULAI = '2027-01'`; bulan sebelumnya ditolak daftar periksa,
 Beranda tidak menyuruh mengunci. Pilihan lain yang ditimbang: B (buka kunci turun satu bulan per langkah — praktis tidak bisa), C (pembuka 1 Jan +
 arsip tanpa hapus — dirancang untuk 2027), D (rules v6 pengecualian sempit).
+
+**Buntu Januari 2028 (dicatat 7 Okt 2026, belum dibangun).** Bulan 2027 yang terkunci membuat tutup buku 2027 sungguhan ditolak (`tahunBuku` →
+`adaKunci`), sedangkan butir ⛔ siap 2027 A2 (`kunci-periode-logika.js` `tutupBukuLalu` ← `bkTahunSelesai`) menahan kunci bulan 2028 sampai tutup buku
+2027 selesai. Keduanya benar sendiri-sendiri; bersama-sama = buntu. Penutupnya paket **tutup buku 2027** (keputusan owner: pengecualian sempit;
+bentuknya dirancang di paket itu, bandingkan C/D di atas), harus siap sebelum ritual 1 Jan 2028. Rincian: `docs/prosedur-pulih-darurat.md`
+bab "Buntu Januari 2028".

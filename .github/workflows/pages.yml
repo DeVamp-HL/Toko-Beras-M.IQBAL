@@ -108,7 +108,7 @@ jobs:
         run: python3 alat-uji/uji_kunci_periode.py && python3 alat-uji/uji_kunci_periode.py --kontrol
       - name: "Denyut per akun (audit 39b no. 23): tablet bergiliran tidak terkunci ke akun pertama, rules perangkatStatus apa adanya, \"sudah tidak dipakai\" menyebut pemegangnya (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_denyut_per_akun.py && python3 alat-uji/uji_denyut_per_akun.py --kontrol
-      - name: "Tutup buku bertahap (rancangan Okt 2026): saldo pembuka per kiriman ≤ 18, berita acara berjalan → penanda terakhir, lanjut/batal bila terputus, titik kas tahun dari tutup hari 31 Des, periksa ulang hari ini (kotak pasir + kontrol)"
+      - name: "Tutup buku bertahap (rancangan Okt 2026) + siap 2027 (owner 7 Okt): saldo pembuka per kiriman ≤ 18, lanjut/batal, titik kas 31 Des, periksa ulang; putusan per tanggal hari tanpa tutup hari, g6 minus & kelebihan bayar, tanda buku & rak Jual, modal owner, upah belum dibayar, ringkasan KR1/laju/pelanggan, perkiraan kuota, catatan susulan (kotak pasir + kontrol; asap cadangan lokal dilewati di CI)"
         run: python3 alat-uji/uji_tutup_buku_bertahap.py && python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol
 
       # ---- PUTARAN 25b — antrean kasir tidak boleh macet ----

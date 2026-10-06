@@ -27,7 +27,7 @@
   `wadahLiteran`, `hargaTerbit`, `pindahUang`, `slipUpah`, `absenKaryawan`, `tutupBukuAcara`, `aturanToko`, `hargaWadah`, `bukuHapus` — **TIDAK ikut
   pulih** lewat jalan ini. Kalau yang hilang termasuk koleksi itu, jalan ini tidak cukup: berhenti dan putuskan dulu (owner) sebelum menyentuh rules.
 - Katalog kasir (`ringkasanKasir`) tidak ikut dipulihkan dari berkas; `/baru/` menerbitkannya ulang sendiri begitu data termuat.
-- Sekali membuka sistem lama ≈ **7,4 rb baca** dokumen (kuota Spark 50 rb baca/hari, reset 14.00 WIB). Jangan dimuat ulang berkali-kali.
+- Sekali membuka sistem lama ≈ **7,4 rb baca** dokumen (kuota Spark 50 rb baca/hari, reset 15.00 WIB November–Maret, 14.00 WIB selebihnya). Jangan dimuat ulang berkali-kali.
 - [BELUM TERVERIFIKASI] Apakah kunci API web Firebase dibatasi referrer/domain. Kalau ya, masuk dari `localhost` ditolak — periksa dulu di Console
   (Authentication › Settings › Authorized domains; Google Cloud › Credentials) sebelum jendela darurat dibuka.
 
@@ -83,3 +83,110 @@
 - Memulihkan lewat aturan yang berlaku lalu "mengulang sampai berhasil". Catatan bulan terkunci tidak akan pernah lolos.
 - Menghapus `aturanToko/kunciPeriode` supaya pemulihan lolos. Dokumen kunci tidak pernah dihapus (rules menolaknya, dan menghapus lewat Console =
   membuka semua bulan tanpa jejak).
+
+
+---
+
+## Jalan mundur tutup buku (siap 2027, owner 7 Okt 2026)
+
+Tutup buku tahunan (Uang › Tutup buku, `baru/js/layar/tutup-buku-logika.js`) menulis **saldo pembuka** tahun baru lalu **memindah** semua catatan tahun
+lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman penanda** — kiriman TERAKHIR saldo pembuka (batch pembuka bertanda
+`penandaBuku` + `pengaturan/tutupBuku` + berita acara `terkunci`). Jalan mundurnya tergantung di mana ritual berhenti:
+
+| Keadaan (pita di Uang › Tutup buku) | Angka toko | Jalan mundur | Cadangan SEBELUM |
+|---|---|---|---|
+| **Sebelum penanda** — "Tutup buku 2026: n dari N saldo pembuka sudah masuk. Tahun 2026 MASIH TERBUKA" | utuh tahun lama (saldo pembuka yang sudah masuk tidak dihitung) | **batalkan** di pita | masih sah |
+| **Sesudah penanda, sebelum selesai** — "Tahun 2026 terkunci; … catatan belum pindah ke arsip" / "… arsipnya habis" | selama arsip berjalan: stok, piutang & utang **DOBEL** | **batalkan** di pita (dua ketukan) | berkas sejarah — ditolak penjaga era |
+| **Sesudah "selesai"** | buku tahun baru | **tidak ada tombol** (lihat 3) | berkas sejarah |
+
+### 1. Sebelum penanda masuk
+
+- Ketuk **batalkan** di pita, dari perangkat yang memulai (pemegang). Saldo pembuka yang sudah masuk ditarik, per kiriman ≤ 18 pemeriksaan. Tidak ada
+  arsip yang perlu dikembalikan. Kuotanya kecil (± dua kali jumlah saldo pembuka, tulis & hapus).
+- Atau **lanjutkan** — kiriman yang sudah masuk tidak dikirim ulang.
+
+### 2. Sesudah penanda, sebelum "selesai"
+
+- **Jangan berjualan atau menagih** selama arsip belum habis (angka DOBEL) atau selama pembatalan berjalan (angka KURANG: bagian yang belum kembali
+  terbaca nol).
+- **Batalkan** (dua ketukan): berita acara `membatalkan` + era mundur + titik kas 31 Des dikembalikan (kalau titiknya belum maju) → saldo pembuka
+  ditarik → SELURUH arsip tahun itu dibaca dan dikembalikan → berita acara `dibatalkan`. Terhenti di tengah → **Lanjutkan** dari perangkat yang sama;
+  yang sudah ditarik / dikembalikan tidak diulang.
+- **Kuota:** pembatalan sesudah arsip penuh butuh ± sebesar ritualnya lagi — angkanya tampil di langkah 1 ("Kalau dibatalkan sesudah arsip"). Di Spark
+  itu tidak muat di hari yang sama dengan ritualnya: toko tidak buka sampai pembatalan tuntas sesudah reset kuota berikutnya.
+- Catatan bertanggal tahun lama yang mendarat SESUDAH penanda (karcis HP penjaga yang tertahan tanpa sinyal) tidak ikut diarsip; pita menyebutnya dan
+  jalannya ("sudah dicatat" — catatannya tidak dihapus). Itu bukan alasan membatalkan. Kalimatnya per jenis: nota (uang di laci LEBIH, omzet tahun itu
+  kurang), pengeluaran (uang KURANG, biaya tahun itu kurang → labanya terlihat lebih besar), catatan lain (selisih uang muncul di tutup hari berikutnya).
+- **Pesanan** bertanggal Desember yang belum tuntas saat ritual memang TIDAK diarsip (masih berjalan). Dicatat di hasil periksa saat arsip habis dan
+  di berita acara saat selesai (`tertinggal`); kalau dibayar / dibatalkan di Januari, ia **bukan** catatan susulan — pesanan bukan uang & bukan stok,
+  notanya bertanggal hari bayar.
+
+### 3. Sesudah "selesai"
+
+- Tidak ada tombol, dan aturan server (v6) menolak berita acara `selesai` diubah dari aplikasi. **Anggap tahun itu final:** kesalahan yang ketahuan
+  belakangan dibetulkan dengan catatan HARI INI (Stok › Cocokkan, bayar bon, catat bon yang terlupa) — bukan dengan membuka tahun lama.
+- Jalan pulang darurat (keputusan owner; belum pernah diuji di server; Claude hanya membaca & memeriksa):
+  1. Unduh cadangan keadaan sekarang — dua kali (sebelum & sesudah).
+  2. Lewat Console, hapus saldo pembuka tahun itu: dokumen ber-`tutupBuku: true` dan `tahunDari: <tahun>` di `batchMasuk` (batch `penandaBuku`
+     PERTAMA), `piutangMutasi`, `kasbonMutasi`, `produksiKemasan`, `stokBahanKemasan`, `stokBahanLiteran`, `utangPemasokMutasi`, `utangOwnerMutasi`,
+     `amplopLaba`, `modalOwner` (daftar = `CACHE_PEMBUKA` di `baru/js/data/toko.js`). Sesudah itu era mundur.
+  3. Kembalikan catatan tahun itu: tiap dokumen `arsipTahun` bertahun itu → tulis `dok` ke koleksi `koleksi` dengan id `idAsli`, lalu hapus salinan
+     arsipnya. **Belum ada alat** untuk ribuan dokumen; alternatifnya pemulih berkas (bab di atas) dengan cadangan SEBELUM — baru diterima sesudah
+     langkah 2, dan hanya 27 koleksi lama yang pulih.
+  4. Lewat Console: `pengaturan/tutupBuku` (`tahunDitutup` = tahun sebelumnya) dan berita acara (`status: 'dibatalkan'`). Titik kas: tulis ulang dari
+     hitungan laci terakhir.
+  5. Cocokkan 14 baris (Uang › Tutup buku, latihan) dengan berita acara lama, lalu catat kejadiannya di `docs/peta-kunci-periode.md`.
+- Bulan yang sudah dikunci tidak bisa ditulis siapa pun. Kunci Januari tahun baru baru boleh **sesudah** tutup buku selesai (daftar periksa kunci bulan
+  menolak sendiri) — jadi kalau jalan pulang ini dipakai, jalankan SEBELUM ada bulan tahun baru yang dikunci.
+
+## Daftar periksa ritual tutup buku 2026 (1 Jan 2027)
+
+**Sampai 31 Des (owner):**
+- [ ] Tutup hari setiap malam sampai 31 Des. Tutup hari 31 Des = tulisan TERAKHIR bertanggal 2026.
+- [ ] Hari berjualan tanpa tutup hari: Uang › Tutup buku › langkah 1 → tiap tanggal "tidak ditutup — diterima apa adanya" + alasan (min. 5 huruf),
+      **Simpan putusan** (tersimpan sungguhan, juga dari latihan; ikut berita acara). Tutup hari tidak dibuat mundur.
+- [ ] Tidak ada buku beras / kemasan / kantong yang minus, tidak ada kelebihan bayar pelanggan, bayar lebih ke pemasok / owner, atau kasbon dibayar
+      lebih (langkah 1, butir g6 menyebut buku/namanya dan jalannya: opname di Stok › Cocokkan, catat bon / kedatangan / kasbon yang terlupa).
+- [ ] Semua karcis kasir darurat dirinci; nama kembar disatukan; piutang lama diputuskan.
+- [ ] Upah karyawan dibayar & dicatat sampai 31 Des bila bisa. Yang belum dibayar tercatat di berita acara (baris "Upah karyawan yang belum dibayar");
+      kalau dibayar Januari, biayanya masuk Januari (bukan 2026).
+- [ ] Cetak / unduh rekap pajak & laporan tahunan 2026 (layar Pajak & Laporan belum membaca tahun yang sudah ditutup).
+- [ ] LATIHAN sekali (16–30 Des). Layar selalu membuka di LATIHAN.
+- [ ] 31 Des malam: Menu › Sistem › Perangkat — tiap perangkat antrean 0 dan ditolak 0; HP penjaga lalu dimatikan.
+
+**1 Jan 2027 (Jumat, toko tutup), sesudah 15.00 WIB:**
+- [ ] Kuota Spark harian kembali penuh pukul **15.00 WIB** (tengah malam waktu Pasifik; 15.00 WIB dari Senin sesudah Minggu pertama November sampai
+      Minggu kedua Maret, selain itu 14.00 WIB — layar menghitungnya dari zona America/Los_Angeles, juga di hari pergantian). Console › Firestore ›
+      Usage: kuota hari itu belum terpakai.
+- [ ] Mac, tab peramban (bukan web app iPhone/iPad), SATU perangkat, jangan muat ulang aplikasi.
+- [ ] Uang › Tutup buku › **SUNGGUHAN** → langkah 1: g1–g6 semua ✓. Baca kartu **Perkiraan kuota Firestore**: "TIDAK MUAT" = jangan mulai hari itu;
+      "MEPET" = mulai hanya kalau toko tutup.
+- [ ] Langkah 2: cadangan SEBELUM → cek berkasnya ada di Unduhan, salin ke luar Mac.
+- [ ] Langkah 3: arsip → cek berkasnya ada.
+- [ ] Langkah 4: saldo pembuka → semua 14 baris ✓ (12 baris harta & utang + modal owner + upah belum dibayar).
+- [ ] Langkah 5: paraf owner + saksi. Langkah 6: kunci (dua ketukan) → tunggu kiriman & arsip habis. Terhenti → Lanjutkan dari perangkat yang sama.
+- [ ] Pita "terkunci dan arsipnya habis … semua baris sama" → cocokkan utang pemasok & utang toko ke owner dengan catatan kertas.
+- [ ] Pita catatan susulan ("… masuk SESUDAH tutup buku …") → ikuti jalannya, ketuk "sudah dicatat".
+- [ ] Langkah 7: cadangan SESUDAH & selesai. Salin cadangan SEBELUM, berkas arsip, dan cadangan SESUDAH ke ≥ 2 tempat di luar Mac (simpan 10 tahun).
+
+**Sesudahnya:**
+- [ ] Bon pelanggan langganan, saran belanja (laju 14 hari), dan daftar pelanggan memakai ringkasan tahun 2026 yang dibawa batch penanda — tidak
+      perlu membuka kredit per nota sampai April.
+- [ ] Kunci bulan Januari 2027 paling cepat 4 Feb, HANYA sesudah tutup buku 2026 "selesai" (daftar periksa kunci bulan menolak sendiri, Beranda
+      tidak menyuruh mengunci selama itu).
+- Saldo pembuka **modal owner** bertanggal 31 Des 00.00 (`modalOwner`, `tutupBuku: true`) membawa JUMLAH modal yang tertanam — bukan setoran atau
+  penarikan. Ambil pribadi Desember, buku Owner & toko ("Modal owner dibawa dari tahun lalu"), bukti setoran, dan buku kas harian 31 Des tidak
+  menghitungnya sebagai gerakan uang. Laporan arus kas mesin (Desember / 31 Des tahun yang sudah ditutup) masih menyebutnya "Modal owner disetor/
+  ditarik — Saldo pembuka…": itu **bukan** uang yang bergerak; angka tahun yang ditutup dibaca dari berita acara sampai layar Laporan & Pajak bisa
+  membaca tahun yang ditutup (paket B).
+
+## Buntu Januari 2028 — dicatat, BELUM dibangun (7 Okt 2026)
+
+Mulai 2027 kunci bulan berjalan (keputusan owner 1 Okt). Begitu SATU bulan 2027 dikunci, tutup buku 2027 sungguhan ditolak (`tahunBuku`: tahun yang
+punya bulan terkunci — arsipnya memindah catatan bulan terkunci, saldo pembuka piutang bertanggal utang tertua). Di saat yang sama butir ⛔
+"Tutup buku 2027 sudah selesai" (siap 2027 A2) menahan kunci bulan 2028 mana pun dan menyuruh menyelesaikan tutup buku di Uang › Tutup buku — yang
+justru mustahil. Akibatnya Januari 2028: tutup buku 2027 tidak bisa jalan, kunci bulan 2028 tidak bisa jalan.
+
+Penutupnya = **paket tutup buku 2027** (keputusan owner: pengecualian sempit; bentuknya dirancang di paket itu — bandingkan pilihan C/D di
+`docs/peta-kunci-periode.md`), harus siap **sebelum ritual 1 Jan 2028**. Sampai paket itu ada, butir itu di Januari 2028 memang belum punya jalan
+keluar dari layar.

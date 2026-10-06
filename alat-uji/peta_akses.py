@@ -396,6 +396,7 @@ OWNER_JALUR = {
     'susunBayar': 'bayar bon pemasok: 1 utangPemasokMutasi + paling banyak 1 biaya admin, bertanggal hari ini',
     'susunUrungBayar': 'urung bayar bon: hapus 1 pembayaran + paling banyak 1 biaya admin (dokumen barusan)',
     'susunPeriksaArsip': 'hasil beku periksa ulang tutup buku (putaran 4 P4-4): 1 dokumen pengaturan/periksaArsip<tahun> — bukan titikKas, tidak dikunci (0 pemeriksaan)',
+    'susunCatatSusulan': 'siap 2027 (A9): 1 dokumen pengaturan/susulan<tahun> (jumlah & id catatan susulan) — bukan titikKas, tidak dikunci (0 pemeriksaan)',
     'susunTitikRekening': 'catat isi rekening (putaran 29): 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (nilai baru dinilai; tenggang 3 hari melindungi tanggal 1–3)',
     'susunBayarBon': 'terima bon: 1 piutangMutasi bertanggal hari ini', 'susunHapusBon': 'hapus buku piutang: 1 piutangMutasi bertanggal hari ini',
     'susunBayarTagihan': '1 dokumen: biayaBulanan bulan INI atau pengeluaranHarian hari ini', 'susunBonus': '2 dokumen: biayaBulanan bulan INI + slipUpah hari ini',
@@ -529,7 +530,12 @@ function ukurBerulang(keadaan) {
   // tutup buku 2026 pada 5 Jan 2027: pembuka piutang = tanggal utang TERTUA (lama) → 1 pemeriksaan per nama berutang
   [25, 10].forEach(function (nn) {
     var bon = []; for (var q = 0; q < nn; q++) bon.push(nota(9000 + q, '2026-08-' + String(2 + (q % 20)).padStart(2, '0'), 'Pengutang Contoh ' + q, 200000, { caraBayar: 'Kredit' }));
-    pasok('penjualan', cacheMentah('penjualan').concat(bon)); pasok('aturanToko', aturan0.concat(kunciB));
+    pasok('penjualan', cacheMentah('penjualan').concat(bon));
+    // siap 2027 (A1): hari berjualan tanpa tutup hari wajib diputus "diterima apa adanya" — tanpa putusan susunKunci menolak di pintu masuk
+    var tH = {}; ambilTutupHari().forEach(function (t) { tH[t.tanggal] = 1; }); var ph = {}; ambilPenjualan().forEach(function (p) { if (p.tanggal && !tH[p.tanggal]) ph[p.tanggal] = { jenis: 'diterima', alasan: 'kotak pasir — hari contoh tanpa tutup hari' }; });
+    pasok('aturanToko', aturan0.concat(kunciB, [{ id: 'putusanHari', hari: ph }]));
+    // siap 2027 (A5): kantong yang minus di kotak pasir ini dicukupkan dulu (gerbang g6 menolak tutup buku selama ada buku minus)
+    [[hitungStokBahanKemasan('2026-12-31'), 'stokBahanKemasan'], [hitungStokBahanLiteran('2026-12-31'), 'stokBahanLiteran']].forEach(function (x) { Object.keys(x[0]).forEach(function (j) { if (x[0][j].sisaPcs < 0) terapkanKeCache([{ koleksi: x[1], data: { id: 'cukup-' + j, tipe: 'beli', jenis: j, jumlah: -x[0][j].sisaPcs, hargaTotal: 0, tanggal: '2026-12-01' } }]); }); });
     pada('2027-01-05T10:00:00+07:00'); var W27 = jam('2027-01-05T10:00:00+07:00');
     // 39b no. 12: tutup buku menolak bila uang per tempat 31 Des tidak bisa dihitung — keadaan wajar = tutup hari 31 Des sudah menyetel titik kas
     localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-12-31', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }));

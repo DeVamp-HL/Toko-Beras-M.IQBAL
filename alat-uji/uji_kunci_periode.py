@@ -256,11 +256,49 @@ ok('K1 (keputusan owner 1 Okt): Agustus 2026 — butir ⛔ "Kunci bulan dimulai 
   (function () { bukaSemua(); var D = kpDaftarPeriksa('2026-08', kini(), K({ kunciMulai: undefined, putusanHari: putusSemua, centang: C_SEMUA })), Db = kpDaftarPeriksa('2026-08', kini(), K({ putusanHari: putusSemua, centang: C_SEMUA }));
     var t = butir(D, 'tundaTutupBuku'), tb = butir(Db, 'tundaTutupBuku'); var R = susunKunciBulan('2026-08', K({ kunciMulai: undefined, putusanHari: putusSemua, centang: C_SEMUA }), W, OWN, kini());
     return t && t.blokir && !t.ok && /TIDAK dikunci sampai tutup buku 2026/.test(t.ket) && tb && tb.ok && D.belum === Db.belum + 1 && !D.boleh && !!R.tolak && kpPerhatian(kini(), { siap25b: true }).length === 0; })());
-ok('K1: Januari 2027 (dicoba 10 Feb 2027) — butir "Kunci bulan dimulai Januari 2027" beres; Beranda boleh menyebut Januari 2027',
+ok('K1: Januari 2027 (dicoba 10 Feb 2027) — butir "Kunci bulan dimulai Januari 2027" beres; Beranda boleh menyebut Januari 2027 SESUDAH tutup buku 2026 selesai (siap 2027 A2)',
   (function () { var lama = __KINI; bukaSemua(); pada('2027-02-10T10:00:00+07:00'); var D = kpDaftarPeriksa('2027-01', kini(), K({ kunciMulai: undefined })); var t = butir(D, 'tundaTutupBuku');
-    kunciKe('2026-12'); var P = kpPerhatian(kini(), { siap25b: true }); __KINI = lama; bukaSemua(); return t && t.ok && P.length === 1 && /Januari 2027/.test(P[0].teks); })());
+    kunciKe('2026-12'); pasok('tutupBukuAcara', [{ id: '2026', tahun: 2026, status: 'selesai', selesaiTanggal: '2027-01-01' }]); var P = kpPerhatian(kini(), { siap25b: true }); pasok('tutupBukuAcara', []); __KINI = lama; bukaSemua(); return t && t.ok && P.length === 1 && /Januari 2027/.test(P[0].teks); })());
+// ---- siap 2027 (owner 7 Okt, A2): bulan mana pun di tahun Y+1 DITOLAK selama tutup buku tahun Y (yang punya catatan) belum SELESAI — kunci berbentuk awalan
+var A2 = function (acara) { var lama = __KINI; bukaSemua(); pasok('tutupBukuAcara', acara ? [acara] : []); pada('2027-02-10T10:00:00+07:00');
+  var D = kpDaftarPeriksa('2027-01', kini(), K({ kunciMulai: undefined, putusanHari: putusSemua, centang: C_SEMUA })); var R = susunKunciBulan('2027-01', K({ kunciMulai: undefined, putusanHari: putusSemua, centang: C_SEMUA }), W, OWN, kini());
+  kunciKe('2026-12'); var P = kpPerhatian(kini(), { siap25b: true }); var D5 = kpDaftarPeriksa('2027-05', kini(), K({ kunciMulai: undefined })); var hasil = { t: butir(D, 'tutupBukuLalu'), D: D, R: R, P: P, t5: butir(D5, 'tutupBukuLalu') };
+  pasok('tutupBukuAcara', []); __KINI = lama; bukaSemua(); return hasil; };
+var A2a = A2(null);
+ok('A2 tanpa tutup buku 2026 (catatan 2026 ada): butir ⛔ "Tutup buku 2026 sudah selesai" belum beres ("belum dikerjakan", menyebut kunci awalan) → kunci Januari 2027 DITOLAK walau hari diputus & centang lengkap; Mei 2027 juga ditolak; Beranda TIDAK menyuruh mengunci',
+  !!A2a.t && A2a.t.blokir && !A2a.t.ok && /belum dikerjakan/.test(A2a.t.ket) && /kunci berbentuk awalan/.test(A2a.t.ket) && !A2a.D.boleh && !!A2a.R.tolak && !!A2a.t5 && !A2a.t5.ok && A2a.P.length === 0, J([A2a.t, A2a.R.tolak, A2a.P]));
+var A2b = A2({ id: '2026', tahun: 2026, status: 'terkunci' });
+ok('A2 tutup buku 2026 TERKUNCI tapi belum selesai: tetap ditolak ("terkunci, belum selesai"); Beranda diam', !!A2b.t && !A2b.t.ok && /terkunci, belum selesai/.test(A2b.t.ket) && !!A2b.R.tolak && A2b.P.length === 0, J([A2b.t, A2b.P]));
+var A2c = A2({ id: '2026', tahun: 2026, status: 'selesai', selesaiTanggal: '2027-01-01' });
+ok('A2 tutup buku 2026 SELESAI: butir beres (menyebut tanggal selesai); Beranda menyebut Januari 2027', !!A2c.t && A2c.t.ok && /selesai 1 Jan 2027/.test(A2c.t.ket) && A2c.P.length === 1 && /Januari 2027/.test(A2c.P[0].teks), J([A2c.t, A2c.P]));
+ok('A2 tahun tanpa catatan (2025: catatan pertama 2026) tidak menahan apa pun', bkTahunSelesai(2025).ok && /tanpa catatan/.test(bkTahunSelesai(2025).teks), J(bkTahunSelesai(2025)));
+// sanggahan paket A: kontrol dua arah — saldo pembuka tutup buku tanpa berita acara (sistem lama / era sudah maju) juga TIDAK menahan kunci bulan
+var A2era = function (tahunDari, cek) { var b0 = cacheMentah('batch').slice(); pasok('batchMasuk', b0.concat([{ id: 'a2-pembuka', tanggal: (tahunDari + 1) + '-01-01', pemasok: 'TUTUP BUKU ' + tahunDari, biayaBongkar: 0, stokAwal: true, merkList: [], tutupBuku: true, tahunDari: tahunDari }]));
+  var h = bkTahunSelesai(cek); pasok('batchMasuk', b0); return h; };
+var A2d = A2era(2027, 2026), A2e = A2era(2026, 2026);
+ok('A2 tahun yang sudah dilewati tutup buku berikutnya (era 2027, tanpa berita acara 2026) tidak menahan', A2d.ok && /sudah lewat tutup buku/.test(A2d.teks), J(A2d));
+ok('A2 tahun yang ditutup sistem lama (saldo pembuka 2026 tanpa berita acara) tidak menahan', A2e.ok && /ditutup sistem lama/.test(A2e.teks), J(A2e));
 
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
+"""
+
+# Siap 2027 (sanggahan paket A): ASAP data toko — hari berjualan tanpa tutup hari diberi putusan TIRUAN "diterima apa adanya" (bukan putusan owner; hanya di
+# memori jsc), supaya ritual tetap diuji. Tanpa itu gerbang g1 di pintu masuk susunKunci menolak dan asap keluar kode 2 di Mac owner. Sebelum putusan dipasang,
+# pintu masuk WAJIB menolak karena g1 (penjaga A1 berbunyi di data toko). Dipakai juga uji_tutup_buku_bertahap.py.
+PUTUSAN_TIRUAN = r"""
+function putusanTiruan(tahun, w) {
+  var kini = new Date(Date.now()); var G = gerbangBuku(tahun, kini, {}, { g3: true }); var n = G.belumPutus.length; var tanpa = '';
+  if (!n) return { n: 0, tolak: '', tanpa: '', sisa: 0 };
+  var R0 = susunKunci(tahun, { paraf: { owner: true, saksi: true }, saksi: 'uji asap', langkah: {} }, w); tanpa = R0.tolak || '(diterima)';
+  var isi = {}; G.belumPutus.forEach(function (t) { isi[t] = 'asap: putusan TIRUAN, bukan putusan owner'; });
+  var P = susunPutusanHari(isi, w); if (P.tolak) return { n: n, tolak: P.tolak, tanpa: tanpa, sisa: n }; terapkanKeCache(P.dokumen);
+  return { n: n, tolak: '', tanpa: tanpa, sisa: gerbangBuku(tahun, kini, {}, { g3: true }).belumPutus.length };
+}
+function cekTiruan(PT, salah) {
+  if (PT.tolak) salah.push('putusan tiruan ditolak: ' + PT.tolak);
+  if (PT.n && !/belum ditutup & belum diputus/.test(PT.tanpa)) salah.push('tanpa putusan, tutup buku data toko TIDAK ditolak gerbang g1 (' + PT.n + ' hari): ' + PT.tanpa.slice(0, 160));
+  if (PT.sisa) salah.push('sesudah putusan tiruan masih ' + PT.sisa + ' hari belum diputus');
+}
 """
 
 ASAP = r"""
@@ -270,7 +308,10 @@ var angkaBulan = function (b) { var akhir = kpAkhirBulan(b); return J([hitungLab
 var ASAP_BULAN = ['2026-07', '2026-08', '2026-09'];
 // tutup buku 2026 dengan data toko, seolah 5 Jan 2027, TANPA bulan terkunci: pembuka piutang/bon pemasok bertanggal lama → berapa pemeriksaan kunci
 var __kiniAsap = __KINI; __KINI = new Date('2027-01-05T10:00:00+07:00').getTime(); var n27 = 90000;
-var TB = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'uji asap', langkah: {} }, { tanggal: '2027-01-05', jam: '10:00', kini: new Date(__KINI).toISOString(), idUnik: function () { n27 += 1; return n27; } });
+var wTB = { tanggal: '2027-01-05', jam: '10:00', kini: new Date(__KINI).toISOString(), idUnik: function () { n27 += 1; return n27; } };
+// siap 2027 (A1): putusan TIRUAN untuk hari berjualan tanpa tutup hari (hanya untuk tutup buku; angka bulan di bawah dihitung tanpa dokumen itu)
+var aturan0 = cacheMentah('aturan').slice(); var PT = putusanTiruan(2026, wTB); cekTiruan(PT, salah);
+var TB = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'uji asap', langkah: {} }, wTB); pasok('aturanToko', aturan0);
 // rancangan bertahap: tidak ditolak lagi — dipecah; tiap kiriman diukur PADA 5 Jan (jam asap dipulihkan sesudahnya)
 var tbK = TB.tolak ? null : TB.kiriman.map(function (k) { return k.get; }); __KINI = __kiniAsap;
 if (TB.tolak) salah.push('tutup buku data toko ditolak: ' + TB.tolak); else if (tbK.some(function (g) { return g > KP_BATAS_GET; })) salah.push('tutup buku data toko: ada kiriman > 18 pemeriksaan kunci (' + tbK.join(' + ') + ')');
@@ -294,7 +335,7 @@ if (R.tolak) salah.push('pembalik ditolak: ' + R.tolak); else {
 }
 print(JSON.stringify({ salah: salah, notaAgustus: nota ? nota.id : null, refund: R && R.dokumen ? R.dokumen[0].data.nominalRefund : null, tanggalPembalik: R && R.dokumen ? R.dokumen[0].data.tanggal : null,
   byteSama: { juli: sebelum[0] === sesudahKunci[0], agustus: sebelum[1] === sesudahKunci[1] }, bulanDiperiksa: ASAP_BULAN,
-  tutupBuku2026pada5Jan: TB.tolak ? { ditolakDiLayar: true, tolak: TB.tolak.slice(0, 120) } : { ditolakDiLayar: false, kiriman: tbK.length, pemeriksaanPerKiriman: tbK, dokumen: TB.dokumen.length } }));
+  tutupBuku2026pada5Jan: TB.tolak ? { ditolakDiLayar: true, tolak: TB.tolak.slice(0, 120) } : { ditolakDiLayar: false, kiriman: tbK.length, pemeriksaanPerKiriman: tbK, dokumen: TB.dokumen.length, putusanTiruanHari: PT.n } }));
 """
 
 
@@ -313,7 +354,9 @@ def satu_lingkup(js):
 
 
 def utama(js):
-    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + SKENARIO)
+    # sanggahan paket A: skenario yang jatuh di tengah (mis. kunci bulan ditolak lalu tulis() melempar) tetap melaporkan pemeriksaan yang sudah gagal —
+    # kontrol berbunyi dengan sebabnya, bukan hanya "JSC JATUH"
+    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\ntry {\n' + SKENARIO + '\n} catch (eJatuh) { gagal.push(\'JATUH di tengah skenario: \' + (eJatuh && eJatuh.message ? eJatuh.message : eJatuh)); print(JSON.stringify({ lulus: lulus, gagal: gagal })); }\n')
     if h is None: return 0, ['JSC JATUH: ' + e]
     return h['lulus'], h['gagal']
 
@@ -354,7 +397,7 @@ if __name__ == '__main__':
             'karantina layak jual bulan terkunci lolos': js.replace("const kunci = tolakKunci('retur', r, 'retur ini tidak bisa diubah jadi \"utuh\"; pilih \"Rework\" — barangnya kembali ke stok HARI INI'); if (kunci) return kunci;", ""),
             'SATUKAN menulis ulang nota bulan terkunci': js.replace("const penjualan = semuaJual.filter((p) => !tolakKunci('penjualan', p, '')); const tetap = semuaJual.length - penjualan.length; const pesanan", "const penjualan = semuaJual; const tetap = 0; const pesanan"),
             'SATUKAN memindah bon bulan terkunci': js.replace("  if (bonKunci) return { tolak:", "  if (false) return { tolak:"),
-            'upah menulis biaya bulan terkunci (K5)': js.replace("Object.keys(perBulan).forEach((b) => { if (b === bulanBayar || !tolakKunciTanggal(b + '-01', '')) return;", "Object.keys(perBulan).forEach((b) => { if (true) return;"),
+            'upah menulis biaya bulan terkunci (K5)': js.replace("Object.keys(perBulan).forEach((b) => { if (b === bulanBayar || !(tolakKunciTanggal(b + '-01', '') || upTahunDitutup(b))) return;", "Object.keys(perBulan).forEach((b) => { if (true) return;"),
             'bon lama tetap bertanggal bulan terkunci (K4)': js.replace("const keHariIni = !!sampai && (!D.tgl || D.tgl.slice(0, 7) <= sampai);", "const keHariIni = false;"),
             'tutup buku tidak peduli kunci (K1)': js.replace("const sampai = kunciSampai(); const adaKunci = !!sampai && sampai >= tahun + '-01';", "const sampai = kunciSampai(); const adaKunci = false;"),
             # penjaga pusat & bertahap
@@ -369,6 +412,14 @@ if __name__ == '__main__':
             'tahun final dari Januari saja': js.replace("const s = kunciSampai(); return !!s && s >= tahun + '-12'; }", "const s = kunciSampai(); return !!s && s >= tahun + '-01'; }"),
             'peringatan pajak hilang': js.replace("return pjTerkunci(key) ? '' : key < KP_KUNCI_MULAI ?", "return true ? '' : key < KP_KUNCI_MULAI ?"),
             'Beranda diam walau siap': js.replace("  const c = kpCalon(kini); if (!c || !kpBolehDikunci(c, kini, kunciTenggang())) return [];", "  return [];"),
+            # siap 2027 (A2)
+            'A2: tutup buku tahun lalu tidak dinilai (kunci Januari lolos tanpa tutup buku)': js.replace("tambah({ id: 'tutupBukuLalu', blokir: true, ok: TS.ok,", "tambah({ id: 'tutupBukuLalu', blokir: true, ok: true,"),
+            'A2: tutup buku TERKUNCI dianggap selesai': js.replace("if (a && a.status === 'selesai') return { ok: true, teks: 'tutup buku '", "if (a && (a.status === 'selesai' || a.status === 'terkunci')) return { ok: true, teks: 'tutup buku '"),
+            'A2: Beranda menyuruh mengunci walau tutup buku lalu belum selesai': js.replace("  if (!bkTahunSelesai(Number(c.slice(0, 4)) - 1).ok) return [];", ""),
+            # arah sebaliknya (sanggahan paket A): butir A2 tidak boleh menahan yang tidak perlu
+            'A2: tahun tanpa catatan ikut menahan kunci bulan': js.replace("return { ok: true, teks: 'tahun ' + tahun + ' tanpa catatan' };", "return { ok: false, teks: 'tahun ' + tahun + ' tanpa catatan' };"),
+            'A2: tahun yang sudah dilewati tutup buku berikutnya ikut menahan': js.replace("if (era !== null && era > tahun) return { ok: true,", "if (era !== null && era > tahun) return { ok: false,"),
+            'A2: tahun yang ditutup sistem lama ikut menahan': js.replace("if (!a && era !== null && era >= tahun) return { ok: true,", "if (!a && era !== null && era >= tahun) return { ok: false,"),
             '39b-38: potret kunci memakai laba mesin (tanpa lebih/kurang kas)': js.replace("const L = ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan));", "const L = { omzetPenuh: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).omzetPenuh, margin: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).margin, labaBersih: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).labaMesin };"),
         }
         kode = 0
@@ -382,7 +433,7 @@ if __name__ == '__main__':
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')), key=os.path.basename)
     if cad and not g:
-        h, e = jalan(JAM_TETAP.replace("'2026-09-24T10:00:00+07:00'", "'2026-09-25T10:00:00+07:00'") + js + '\nvar CAD = ' + open(cad[-1], encoding='utf-8').read() + ';\n' + ASAP)
+        h, e = jalan(JAM_TETAP.replace("'2026-09-24T10:00:00+07:00'", "'2026-09-25T10:00:00+07:00'") + js + '\nvar CAD = ' + open(cad[-1], encoding='utf-8').read() + ';\n' + PUTUSAN_TIRUAN + ASAP)
         if h is None: print('ASAP JATUH: ' + e); sys.exit(2)
         print('ASAP DATA TOKO (%s): %s' % (os.path.basename(cad[-1]), json.dumps(h, ensure_ascii=False)))
         if h['salah']: sys.exit(2)
