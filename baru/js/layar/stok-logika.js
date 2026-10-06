@@ -13,7 +13,7 @@
 // BACA SAJA kecuali tab Wadah (takar isi ulang, karung terbuka di belakang wadah, susunan & angka kebijakan → koleksi wadahLiteran, alat ukur bukan buku stok).
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungLajuPakai } from '../mesin/beku.js';
 import { merkPunyaKarungBerat, JENDELA_LAJU_HARI, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilSemuaBatch, ambilProduksiBerlaku, ambilRetur, ambilKarantina, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilWadahLiteran, petaStokWadah, stokMerekSaja, petaBukuWadah } from '../data/toko.js';
+import { ambilPenjualan, ambilSemuaBatch, ambilProduksiBerlaku, ambilRetur, ambilKarantina, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilWadahLiteran, petaStokWadah, stokMerekSaja, petaBukuWadah, lajuLintas } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 import { tinggiWadah, aturWadah, resepWadah, karungBelakang, karungUntukWadah, wadahPemegang, semuaKarungTerbuka, tumpukanGudang, pindahNama, hitunganFisik, notaTembusBelumCocok, beratKarungBuka } from './jual-logika.js';
 // putaran 27: isi wadah per merek asal
@@ -30,7 +30,7 @@ const skSelisihHari = (dariIso, keIso) => Math.round((new Date(keIso + 'T00:00:0
 
 /** Daftar barang gudang: tiap merek karung & tiap kemasan, dengan sisa, laju, hari-habis, nilai. */
 export function daftarBarang() {
-  const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const laju = hitungLajuPakai(); const out = []; const wadahStok = petaBukuWadah();
+  const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const laju = lajuLintas(hitungLajuPakai()); const out = []; const wadahStok = petaBukuWadah();
   Object.keys(stokK).sort().forEach((m) => {
     const sisa = stokK[m].sisaKg || 0; const l = (laju.kgMerk || {})[m] || 0; const hpp = stokK[m].hppTerakhirPerKg || 0;
     const terbaru = stokK[m].hargaTerakhirPerKg || 0;

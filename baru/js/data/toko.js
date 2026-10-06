@@ -7,7 +7,7 @@
 //    internet diserahkan ke cache tetap Firestore (IndexedDB) di js/data/firebase.js;
 //  - keranjang aktif & yang diparkir disetel oleh layar lewat setelKeranjang(), bukan variabel global.
 import { KOLEKSI } from './koleksi.js';
-import { penjualanMasihBerlaku, produksiMasihBerlaku, wzJumlahDiDaftar, uangKembaliRetur } from '../mesin/pembantu.js';
+import { penjualanMasihBerlaku, produksiMasihBerlaku, wzJumlahDiDaftar, uangKembaliRetur, kunciPelanggan, kunciKemasan, tanggalLokalIso, JENDELA_LAJU_HARI } from '../mesin/pembantu.js';
 import { kpSampai, kpTenggang, kpNilaiKiriman, kpKalimat, kpPotong, kpBulanDok, kpIdx, kpBulanStr, KP_BATAS_GET } from './kunci-periode.js';
 
 const _cache = {};
@@ -74,6 +74,14 @@ function bkKeadaan() {
 }
 export function pembukaBerlaku(x) { if (!x || !x.tutupBuku) return true; const k = bkKeadaan(); const t = Number(x.tahunDari); return !k.sembunyi[t] && (!x.bertahap || !!k.penanda[t]); }
 const bkSaring = (arr) => { const s = arr.filter(pembukaBerlaku); return s.length === arr.length ? arr : s; };
+// Siap 2027 (owner 7 Okt): koleksi yang bisa memuat SALDO PEMBUKA tutup buku (nama cache → koleksi Firestore) — satu daftar untuk era, tarik saat batal,
+// dan antrean tutup buku. modalOwner ikut sejak modal owner menyeberang tahun (dokumen pembuka setor, bertanggal 31 Des).
+export const CACHE_PEMBUKA = { batch: 'batchMasuk', piutang: 'piutangMutasi', kasbon: 'kasbonMutasi', produksi: 'produksiKemasan', bahanKemasan: 'stokBahanKemasan', bahanLiteran: 'stokBahanLiteran', utangPemasok: 'utangPemasokMutasi', utangOwner: 'utangOwnerMutasi', amplop: 'amplopLaba', modal: 'modalOwner' };
+/** ERA tutup buku = tahun saldo pembuka terakhir yang terlihat (pembukaBerlaku). `kecuali` = tahun yang tidak dihitung (pembatalan). Dibaca juga upah & lintas tahun. */
+export function eraBuku(kecuali) {
+  let t = null; Object.keys(CACHE_PEMBUKA).forEach((c) => (_cache[c] || []).forEach((x) => { if (x && x.tutupBuku && pembukaBerlaku(x)) { const n = Number(x.tahunDari); if (isFinite(n) && n !== kecuali && (t === null || n > t)) t = n; } }));
+  return t;
+}
 function bacaCadanganLokal() { return []; }   // cadangan lokal buatan sendiri tidak ada di sistem baru
 export function ambilSemuaBatch() { return bkSaring(_cache.batch); }
 export function ambilBiayaBulanan() { return _cache.bulanan; }
@@ -139,7 +147,10 @@ export function petaUkuran() {
   return out;
 }
 /** Audit 39b no. 35 (owner 30 Sep): buku per ukuran yang isinya sudah DIGABUNG balik ke induk (pindah buku bertanda gabungUkuran) — tidak lagi memisah induknya. */
-export function ukuranDigabung() { const out = {}; ambilProduksiBerlaku().forEach((p) => { if (p && p.gabungUkuran && p.gabungUkuran.dari) out[String(p.gabungUkuran.dari)] = String(p.gabungUkuran.induk || ''); }); return out; }
+export function ukuranDigabung() { const out = {}; ambilProduksiBerlaku().forEach((p) => { if (p && p.gabungUkuran && p.gabungUkuran.dari) out[String(p.gabungUkuran.dari)] = String(p.gabungUkuran.induk || ''); });
+  // siap 2027 (owner 7 Okt): dokumen pindah buku bertanda gabungUkuran ikut diarsip tutup buku — baris saldo pembuka buku itu membawa tandanya (`digabungKe`)
+  ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { if (m && m.merk && m.digabungKe && !out[String(m.merk)]) out[String(m.merk)] = String(m.digabungKe); }));
+  return out; }
 /** { 'Merek': { 25: 'Merek 25 kg' } } — merek induk yang karung 25 kg-nya sudah punya buku sendiri (buku yang sudah digabung balik ke induk tidak dihitung). */
 export function indukTerpisah() { const u = petaUkuran(); const g = ukuranDigabung(); const out = {}; Object.keys(u).forEach((n) => { if (g[n]) return; (out[u[n].induk] = out[u[n].induk] || {})[u[n].berat] = n; }); return out; }
 /** Salinan peta stok karung TANPA buku khusus (isi wadah, karung sisihan, kemasan adukan dibuka) — untuk daftar MEREK (rak karung, gudang, harga karung, …). */
@@ -165,7 +176,7 @@ export function ambilWadahLiteran() { return _cache.wadah || []; }
 export function ambilTitipanHarian() { return _cache.titipan; }
 export function ambilSetoranKas() { return _cache.setoran; }
 export function ambilAmplopLaba() { return bkSaring(_cache.amplop); }
-export function ambilModalOwner() { return _cache.modal; }
+export function ambilModalOwner() { return bkSaring(_cache.modal); }   // siap 2027: modal owner punya saldo pembuka tutup buku (bertahap)
 export function ambilUtangOwnerMutasi() { return bkSaring(_cache.utangOwner); }
 export function ambilTembusanStok() { return _cache.tembusan; }
 export function ambilUtangPemasokMutasi() { return bkSaring(_cache.utangPemasok); }
@@ -345,7 +356,8 @@ let _arsip = [];
 export function arsipSimulasi() { return _arsip.slice(); }
 /** daftar = [{ koleksi, id, data }] → dipindah ke arsipTahun (id = tahun|koleksi|id) lalu dihapus dari koleksinya. progres(sudah, total) dipanggil per potongan. */
 export async function arsipkanDokumen(tahun, daftar, progres) {
-  // K1 (owner 25 Sep): arsip yang MEMINDAH (menghapus) dokumen tidak berjalan selama ada bulan terkunci — dirancang ulang sebelum Januari 2027
+  // K1 (owner 25 Sep): arsip yang MEMINDAH (menghapus) dokumen tidak berjalan selama ada bulan terkunci. Keputusan owner 1 Okt (A): tutup buku 2026 tetap memindah;
+  // rancangan "salinan + penanda tanpa hapus" (opsi C) untuk tutup buku 2027 — berkas arsip dan cadangan SEBELUM disimpan 10 tahun di luar Mac
   const j = jagaKunci([], daftar.map((x) => ({ koleksi: x.koleksi, id: x.id }))); if (j && j.terkunci) throw new Error(j.pesan);
   if (_penulis && _penulis.arsipkan) return _penulis.arsipkan(tahun, daftar, progres);
   daftar.forEach((x) => { _arsip = _arsip.filter((a) => !(a.tahun === tahun && a.koleksi === x.koleksi && String(a.idAsli) === String(x.id))); _arsip.push({ id: tahun + '|' + x.koleksi + '|' + x.id, tahun, koleksi: x.koleksi, idAsli: x.id, dok: x.data }); });
@@ -366,5 +378,66 @@ export async function pulihkanArsip(tahun, daftar, progres) {
   _arsip = _arsip.filter((a) => a.tahun !== tahun);
   if (progres) progres(daftar.length, daftar.length);
   return { simulasi: true, n: daftar.length };
+}
+
+// ---- LINTAS TAHUN (siap 2027, owner 7 Okt) — fitur yang menghitung MUNDUR tetap benar di awal Januari sesudah tutup buku ----
+// KR1 batas bon (90 hari), laju pakai (14 hari), dan daftar pelanggan membaca penjualan HIDUP; sesudah tahun lama diarsip, rentang ≤ 31 Des kosong (tanpa ini
+// semua bon langganan ditolak sampai ±April). Saat tahun dikunci, tutup buku menulis RINGKASAN tahun itu di batch PENANDA (`ringkasTahun`) — batch yang
+// dibaca semua perangkat dan terlihat bersamaan dengan saldo pembuka (pembukaBerlaku); dibatalkan = ikut hilang. Pembaca memakai ringkasan untuk rentang
+// ≤ 31 Des dan catatan hidup untuk sesudahnya. Selama catatan hidup ≤ 31 Des masih sama dengan ringkasannya (sebelum arsip), hasilnya PERSIS angka mesin.
+// Rumus per hari di bawah = SALINAN saringan mesin beku (infoKreditPelanggan, hitungLajuPakai); uji_tutup_buku_bertahap.py menjaga keduanya tetap sama.
+export const RINGKAS_KREDIT_HARI = 90;   // KR1: tanggal ≥ hari ini − 89 (infoKreditPelanggan)
+const ltGeser = (iso, n) => { const d = new Date(String(iso) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+/** Ringkasan tahun era yang sedang terlihat (batch penanda tahun itu), atau null. */
+export function ringkasArsip() {
+  const era = eraBuku(); if (era === null) return null;
+  const b = (_cache.batch || []).find((x) => x && x.tutupBuku && x.penandaBuku && Number(x.tahunDari) === era && x.ringkasTahun && pembukaBerlaku(x));
+  return b ? b.ringkasTahun : null;
+}
+/** KR1 per hari: { kunci pelanggan: { tanggal: Σ hargaTotal } } — saringan sama dengan infoKreditPelanggan (penjualan berlaku, namaPelanggan, hargaTotal). */
+export function kreditHarian(dari, sampai) {
+  const out = {}; ambilPenjualan().forEach((t) => { const tg = t.tanggal || ''; if (!tg || tg < dari || tg > sampai) return; const k = kunciPelanggan(t.namaPelanggan); if (!k) return;
+    const o = out[k] || (out[k] = {}); o[tg] = (o[tg] || 0) + (t.hargaTotal || 0); });
+  return out;
+}
+/** Laju pakai per hari: { tanggal: { kg: {merek}, unit: {kunci kemasan}, pcs: {jenis} } } — saringan sama dengan hitungLajuPakai (belum dibagi hari). */
+export function lajuHarian(dari, sampai) {
+  const hari = {}; const h = (t) => hari[t] || (hari[t] = { kg: {}, unit: {}, pcs: {} }); const dlm = (t) => !!t && t >= dari && t <= sampai; const tb = (o, k, n) => { o[k] = (o[k] || 0) + n; };
+  ambilPenjualan().forEach((p) => { const t = p.tanggal || ''; if (!dlm(t)) return;
+    if ((p.jenis === 'karung' || p.jenis === 'repacking' || p.jenis === 'literan') && p.merkSumber) tb(h(t).kg, p.merkSumber, p.totalKg || 0);
+    if (p.jenis === 'kemasan') tb(h(t).unit, kunciKemasan(p.namaProduk, p.ukuranKemasan), p.jumlahUnit || 0); });
+  ambilProduksiBerlaku().forEach((pr) => { const t = pr.tanggal || ''; if (!dlm(t)) return;
+    if (Array.isArray(pr.sumberList) && pr.sumberList.length > 0) pr.sumberList.forEach((x) => { if (x.merk) tb(h(t).kg, x.merk, x.kg || 0); });
+    else if (pr.merkSumber && !pr.beliJadi) tb(h(t).kg, pr.merkSumber, pr.kgDipakai || 0); });
+  ambilBahanKemasan().concat(ambilBahanLiteran()).forEach((b) => { const t = b.tanggal || ''; if (b.tipe !== 'pakai' || !dlm(t)) return; tb(h(t).pcs, b.jenis, b.jumlah || 0); });
+  return hari;
+}
+/** Bagian ringkasan untuk KR1 & laju pakai (bagian pelanggan disusun pelanggan-logika). */
+export function ringkasKreditLaju(cutoff) {
+  const dariK = ltGeser(cutoff, -(RINGKAS_KREDIT_HARI - 1)), dariL = ltGeser(cutoff, -JENDELA_LAJU_HARI);
+  return { kredit: { dari: dariK, hari: kreditHarian(dariK, cutoff) }, laju: { dari: dariL, hari: lajuHarian(dariL, cutoff) } };
+}
+/** KR1 lintas tahun: info = infoKreditPelanggan(nama) (mesin beku). Rentang ≤ 31 Des diganti ringkasannya; tanpa ringkasan / sama = info apa adanya. */
+export function kreditLintas(info, nama) {
+  const R = ringkasArsip(); if (!info || !info.ada || !R || !R.kredit || !R.kredit.hari) return info;
+  const batasIso = tanggalLokalIso(new Date(Date.now() - (RINGKAS_KREDIT_HARI - 1) * 86400000)); if (batasIso > R.cutoff) return info;
+  const k = kunciPelanggan(nama); let semua = 0, hidupLama = 0, ring = 0;
+  ambilPenjualan().forEach((t) => { const tg = t.tanggal || ''; if (tg >= batasIso && kunciPelanggan(t.namaPelanggan) === k) { semua += t.hargaTotal || 0; if (tg <= R.cutoff) hidupLama += t.hargaTotal || 0; } });
+  const r = R.kredit.hari[k] || {}; Object.keys(r).forEach((d) => { if (d >= batasIso && d <= R.cutoff) ring += Number(r[d]) || 0; });
+  if (Math.abs(ring - hidupLama) < 0.5) return info;
+  const rataBulanan = Math.round((semua - hidupLama + ring) / 3);
+  return Object.assign({}, info, { rataBulanan, batas: rataBulanan * 2, lintasTahun: { tahun: R.tahun, rupiah: ring } });
+}
+/** Laju pakai lintas tahun: L = hitungLajuPakai() (mesin beku). Rentang ≤ 31 Des diganti ringkasannya, per hari & per barang; tanpa ringkasan = L apa adanya. */
+export function lajuLintas(L) {
+  const R = ringkasArsip(); if (!L || !R || !R.laju || !R.laju.hari) return L;
+  const mulai = tanggalLokalIso(new Date(Date.now() - JENDELA_LAJU_HARI * 86400000)); if (mulai > R.cutoff) return L;
+  const hidup = lajuHarian(mulai, R.cutoff); const beda = {}; const pasang = [['kg', 'kgMerk'], ['unit', 'unitKemasan'], ['pcs', 'pcsBahan']];
+  const geser = (sumber, tanda) => Object.keys(sumber).forEach((t) => { if (t < mulai || t > R.cutoff) return; pasang.forEach(([a, b]) => Object.keys(sumber[t][a] || {}).forEach((k) => { const kk = b + '|' + k; beda[kk] = (beda[kk] || 0) + tanda * (Number(sumber[t][a][k]) || 0); })); });
+  geser(R.laju.hari, 1); geser(hidup, -1);
+  const ubah = Object.keys(beda).filter((kk) => Math.abs(beda[kk]) > 1e-9); if (!ubah.length) return L;
+  const out = { kgMerk: Object.assign({}, L.kgMerk), unitKemasan: Object.assign({}, L.unitKemasan), pcsBahan: Object.assign({}, L.pcsBahan) };
+  ubah.forEach((kk) => { const i = kk.indexOf('|'); const b = kk.slice(0, i), k = kk.slice(i + 1); out[b][k] = (out[b][k] || 0) + beda[kk] / JENDELA_LAJU_HARI; });
+  return out;
 }
 

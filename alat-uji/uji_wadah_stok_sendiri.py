@@ -324,7 +324,8 @@ RUSAK = {
     'buka kemasan tidak menurunkan stok kemasan': ("sumberKemasanList: [{ namaProduk: N, ukuranKemasan: uk, unit: 1 }]", "sumberKemasanList: []"),
     'pintu "baru datang" tanpa pemeriksaan kedatangan': ("if (!b || b.stokAwal || b.tutupBuku || !(b.merkList || []).some((m) => m.merk === merk && m.satuan === 'karung')) return", "if (false) return"),
     'batch lahir tampil di buku kedatangan': ("const semua = ambilSemuaBatch().filter((b) => !b.lahirBuku).sort(", "const semua = ambilSemuaBatch().slice().sort("),
-    'tutup buku kehilangan tanda stok wadah': ("merkList.forEach((r) => { if (pw[r.merk]) r.stokWadah = pw[r.merk]; else if (bw[r.merk] && bw[r.merk].jenis === 'belakang') { r.karungBelakang = bw[r.merk].wadah; r.merkAsal = bw[r.merk].merk; } else if (bw[r.merk]) r.karungWadah = bw[r.merk].wadah; });", "merkList.forEach((r) => { });"),
+    # siap 2027: tanda buku disalin di satu tempat (pembukaBuku) bersama indukUkuran / bukuAdukan / merkPemasok / digabungKe — jangkarnya baris stokWadah
+    'tutup buku kehilangan tanda stok wadah': ("merkList.forEach((r) => { if (pw[r.merk]) r.stokWadah = pw[r.merk]; else if", "merkList.forEach((r) => { if (false) r.stokWadah = pw[r.merk]; else if"),
     'karung wadah tidak dikenali sebagai buku khusus': ("else if (m.karungWadah) out[String(m.merk)] = { jenis: 'karung', wadah: String(m.karungWadah) };", "else if (false) out[String(m.merk)] = { jenis: 'karung', wadah: String(m.karungWadah) };"),
     'kemasan adukan dibuka masuk buku merek pemasok': ("const B = kunciBukuAdukan(N, uk);", "const B = N;"),
     'sisihkan melebihi isi wadah lolos': ("if (kg > K.totalKg + 0.004) return { tolak: 'Wadah ' + W + ' menurut bukunya", "if (false) return { tolak: 'Wadah ' + W + ' menurut bukunya"),

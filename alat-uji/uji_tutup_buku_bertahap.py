@@ -59,6 +59,21 @@ Yang dijaga:
         c          Mac B batal tuntas, belum mulai lagi → HP A berhenti, TIDAK mengarsipkan (catatan itu tempatnya di buku hidup)
         pemegang · dua tab (percobaan lain, pemegang sama) · berjalan (percobaan baru baru kiriman 1) · balik (pulihBalikBuku: percobaan sama = tidak)
 
+  SIAP 2027 (owner 7 Okt 2026, paket A — "gua mau semua siap ketika sudah tahun 2027"):
+  S-A1     hari berjualan tanpa tutup hari: tanpa putusan g1 & susunKunci MENOLAK; putusan per tanggal (alasan ≥ 5) = dokumen aturanToko/putusanHari; putusan
+           riwayat kunci bulan dipakai ulang; ikut berita acara; dicabut → menolak lagi; tutup hari tidak dibuat mundur
+  S-RITUAL ritual penuh: periksa ulang 14 baris sama (12 + modal owner + upah); A3 tanda buku (25 kg, digabung, adukan, merek pemasok, berstok 0) & rak Jual
+           sebelum = sesudah; A4 modal owner menyeberang (pembuka 31 Des, bukan uang masuk); A6 upah belum dibayar sama (patokan sistem lama dibawa berita acara),
+           upah Desember yang dibayar Januari dibukukan ke Januari; A7 KR1 / laju / daftar pelanggan sebelum = sesudah (identitas dengan mesin sebelum ritual)
+  S-A5     stok/kemasan minus, kelebihan bayar pelanggan, bayar lebih ke pemasok: g6 menolak dengan kalimat & jalan beres, baris pembanding tidak buta minus
+  S-A8     perkiraan kuota tulis/hapus/baca vs batas Spark + jam reset (14.00/15.00 WIB) + peringatan MEPET / TIDAK MUAT + perkiraan Batalkan
+  S-A9     catatan 2026 yang mendarat sesudah penanda (di tengah arsip / sesudah selesai): terdeteksi, pita selesaikan (bukan lanjutkan arsip), ketukan kedua,
+           tercatat di berita acara & Beranda, "sudah dicatat" tanpa menghapus
+  S-A2     Beranda 3 Jan: tutup buku tahun lalu belum dikerjakan — kunci bulan menunggu (daftar periksa kunci bulan: uji_kunci_periode.py)
+  ASAP SIAP 2027 (cadangan LOKAL, tidak di-commit; dilewati di CI): ritual penuh pada 1 Jan 2027 15.10 & 5 Jan 2027 (+ Batalkan) dengan putusan TIRUAN:
+           semua baris sama persis, rak Jual, buku 25 kg, tanda buku, modal, upah, KR1 tiap pelanggan terdaftar, laju, daftar pelanggan, stok tiap buku sama.
+           python3 alat-uji/uji_tutup_buku_bertahap.py --asap=/jalur/backup-batch-….json   (atau env TUTUP_BUKU_ASAP=/jalur/…)
+
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
 """
@@ -82,8 +97,13 @@ function kotak(nNama, tambah) {
   pasok('aturanToko', []); pasok('tutupBukuAcara', []); pasok('pengaturan', []); while (arsipSimulasi().length) pulihkanArsip(arsipSimulasi()[0].tahun, []);
   var jual = KOTAK.penjualan.slice(); for (var q = 0; q < nNama; q++) jual.push({ id: 'k' + q, tanggal: '2026-08-' + String(2 + (q % 20)).padStart(2, '0'), jam: '10:00', caraBayar: 'Kredit', jenis: 'karung', merkSumber: 'Angsa', totalKg: 10, beratKarungAcuan: 50, jumlahKarung: 0.2, hargaTotal: 200000, hppTotalSaatJual: 130000, namaPelanggan: 'Pengutang Contoh ' + q });
   (tambah || []).forEach(function (x) { jual.push(x); }); pasok('penjualan', jual);
+  // siap 2027 (A1): hari berjualan kotak pasir tanpa tutup hari diputus "diterima apa adanya" — tanpa putusan, susunKunci menolak (gerbang g1 di pintu masuk)
+  putusSemua();
   localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify(TITIK31));
 }
+// semua tahun yang ada di kotak (P3-AAL2 menutup 2027 juga — panggil lagi sesudah menambah nota)
+function putusSemua() { var tH = {}; ambilTutupHari().forEach(function (t) { tH[t.tanggal] = 1; }); var ph = {}; ambilPenjualan().forEach(function (p) { if (p.tanggal && !tH[p.tanggal]) ph[p.tanggal] = { jenis: 'diterima', alasan: 'kotak pasir — hari contoh tanpa tutup hari' }; });
+  pasok('aturanToko', cacheMentah('aturan').filter(function (d) { return String(d.id) !== 'putusanHari'; }).concat([{ id: 'putusanHari', hari: ph }])); }
 var n0 = 50000; function jam(iso) { __KINI = new Date(iso).getTime(); return { tanggal: kpWib(new Date(iso)).iso, jam: '10:00', kini: new Date(iso).toISOString(), idUnik: function () { n0 += 1; return n0; } }; }
 var D = { paraf: { owner: true, saksi: true }, saksi: 'Saksi Contoh', langkah: {} };
 // satu kiriman "masuk server": penjaga pusat yang sama dengan layar (bulan terkunci / > 18 pemeriksaan = tidak dikirim), lalu cache
@@ -93,7 +113,7 @@ function kirim(k) { var j = jagaKunci(k.dokumen || [], k.hapus || []); if (j) { 
 function idKiriman(k) { return k.dokumen.map(function (x) { return x.koleksi + '|' + x.data.id + '|' + (x.data.status || ''); }).join(','); }
 function baris(B) { var o = {}; B.harta.concat(B.utang).forEach(function (b) { o[b.id] = b.n; }); return o; }
 function samaBaris(a, b) { return Object.keys(a).every(function (k) { return (a[k] === null && b[k] === null) || (a[k] !== null && b[k] !== null && Math.abs(a[k] - b[k]) < 0.5); }); }
-var PEMBUKA = ['batch', 'piutang', 'kasbon', 'produksi', 'bahanKemasan', 'bahanLiteran', 'utangPemasok', 'utangOwner', 'amplop'];
+var PEMBUKA = ['batch', 'piutang', 'kasbon', 'produksi', 'bahanKemasan', 'bahanLiteran', 'utangPemasok', 'utangOwner', 'amplop', 'modal'];   // siap 2027: modal owner punya saldo pembuka
 function nPembukaMentah(tahun) { var n = 0; PEMBUKA.forEach(function (c) { cacheMentah(c).forEach(function (x) { if (x.tutupBuku && Number(x.tahunDari) === tahun) n += 1; }); }); return n; }
 function acara(tahun) { return ambilTutupBukuAcara().find(function (a) { return Number(a.tahun) === tahun; }) || null; }
 var R, W, L, B;
@@ -293,10 +313,10 @@ coba('N9', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = su
   var KK = { lokal: { antreLokal: { belum: [], ditolak: [] }, antre: [] }, parkir: [], putusanHari: {}, centang: {} };
   var butirTB = function (DP) { return DP.butir.filter(function (b) { return b.id !== 'tundaTutupBuku' && /tutup buku/i.test(b.teks + ' ' + b.ket); }); };
   jam('2027-02-05T10:00:00+07:00'); var DP = kpDaftarPeriksa('2027-01', new Date(__KINI), KK); var tb = butirTB(DP);
-  ok('N9 tutup buku 2026 setengah jalan: daftar periksa Kunci bulan Januari 2027 punya butir ⛔ yang belum beres → kunci bulan ditolak', tb.length === 1 && tb[0].blokir && !tb[0].ok && !DP.boleh, J(tb));
+  ok('N9 tutup buku 2026 setengah jalan: daftar periksa Kunci bulan Januari 2027 punya butir ⛔ yang belum beres (setengah jalan + siap 2027 A2 tutup buku tahun lalu belum selesai) → kunci bulan ditolak', tb.length === 2 && tb.every(function (b) { return b.blokir && !b.ok; }) && !DP.boleh, J(tb));
   jam('2027-01-05T10:00:00+07:00'); L = lanjutBuku(2026); (L.kiriman || []).forEach(kirim); arsipkanDokumen(2026, arsipBuku(2026).daftar); var SL = susunSelesai(2026, 'cadangan-sesudah.json', W); if (!SL.tolak) kirim(SL);
   jam('2027-02-05T10:00:00+07:00'); DP = kpDaftarPeriksa('2027-01', new Date(__KINI), KK); tb = butirTB(DP);
-  ok('N9 sesudah tutup buku selesai: butir itu beres', kemajuanBuku() === null && tb.length === 1 && tb[0].ok, J([SL.tolak, tb])); });
+  ok('N9 sesudah tutup buku selesai: kedua butir beres', kemajuanBuku() === null && tb.length === 2 && tb.every(function (b) { return b.ok; }), J([SL.tolak, tb])); });
 
 // ---- putaran 3 AAL1 · HP A sedang "lanjutkan arsip" (daftar dihitung SEKALI, dikirim per 18); sesudah potongan 1 HP B membatalkan sampai tuntas → arsip HP A
 //      BERHENTI sebelum potongan berikutnya (status berita acara di cache dibaca ulang), sisa catatan 2026 tidak tersapu ke arsip sesudah "dibatalkan"
@@ -358,7 +378,7 @@ coba('P3-UTBU2', function () { kotak(40); W = jam('2027-01-02T07:00:00+07:00'); 
 //      ulang dari catatan yang masih ada). Batch PENANDA 2026 diarsipkan paling akhir → sisa pembuka 2026 tetap terlihat & ikut diarsipkan, tidak tertinggal
 coba('P3-AAL2', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); R.kiriman.forEach(kirim); arsipkanDokumen(2026, arsipBuku(2026).daftar);
   var SL = susunSelesai(2026, 'cadangan-sesudah.json', W); if (!SL.tolak) kirim(SL);
-  terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'j2027', tanggal: '2027-06-01', jam: '10:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }]);
+  terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'j2027', tanggal: '2027-06-01', jam: '10:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }]); putusSemua();
   var W2 = jam('2028-01-05T10:00:00+07:00'); var R2 = susunKunci(2027, D, W2); (R2.kiriman || []).forEach(kirim);
   var A0 = arsipBuku(2027).daftar; var n2026 = A0.filter(function (x) { return x.data.tutupBuku && Number(x.data.tahunDari) === 2026; }).length;
   arsipkanDokumen(2027, A0.slice(0, 18)); var KM = kemajuanBuku(); var A1 = arsipBuku(2027).daftar;
@@ -561,7 +581,7 @@ coba('P4-5', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = 
   var W7 = jam('2027-01-07T09:00:00+07:00'); arsipkanDokumen(2026, arsipBuku(2026).daftar); var PU = susunPeriksaArsip(2026, W7, HPA).PU || { baris: [] };
   var kas = PU.baris.filter(function (b) { return ['laci', 'brankas', 'rekening', 'amplop'].indexOf(b.id) >= 0; }), lain = PU.baris.filter(function (b) { return kas.indexOf(b) < 0; }); var kal = bkKalimatPeriksa(PU);
   ok('P4-5 4 baris uang yang sisi mesinnya tidak bisa dihitung bertanda "?" (bukan "≠"), baris lain "✓"; kalimat yang sama dengan pita: "4 baris belum bisa dihitung", tanpa TIDAK SAMA',
-    kas.length === 4 && kas.every(function (b) { return b.b === null && b.tanda === '?'; }) && lain.length === 8 && lain.every(function (b) { return b.tanda === '✓'; }) && /4 baris belum bisa dihitung/.test(kal) && !/TIDAK SAMA/.test(kal),
+    kas.length === 4 && kas.every(function (b) { return b.b === null && b.tanda === '?'; }) && lain.length === 10 && lain.every(function (b) { return b.tanda === '✓'; }) && /4 baris belum bisa dihitung/.test(kal) && !/TIDAK SAMA/.test(kal),
     J([PU.baris.map(function (b) { return b.id + ' ' + b.tanda; }), kal])); });
 
 // ---- TRV6-EKOR-1 (tinjauan rules v6) · EKOR PEMBATALAN. HP A (pemegang) membatalkan dari 'terkunci'; semua kiriman tarik masuk; HP A BEKU di tengah ekor
@@ -669,7 +689,154 @@ coba('TRV6-EKOR balik', function () { kotak(5); var d = arsipBuku(2026).daftar.s
   ok('TRV6-EKOR balik · percobaan sama = tidak diarsipkan lagi; percobaan lain terkunci = { koleksi, id: idAsli, data: dok } (bentuk arsipBuku/arsipkanDokumen)',
     !!sama && sama.length === 0 && !!lain && lain.length === 2 && lain.every(function (x, i) { return x.koleksi === d[i].koleksi && x.id === d[i].idAsli && x.data === d[i].dok; }), J([sama, lain && lain.map(function (x) { return [x.koleksi, x.id]; })])); });
 
+__SIAP2027__
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
+"""
+
+SIAP2027 = r"""
+// ==================== SIAP 2027 (owner 7 Okt 2026, paket A) — KOTAK PASIR (nama & angka contoh) ====================
+function semuaBaris(B) { var o = {}; B.harta.concat(B.utang, B.lain || []).forEach(function (b) { o[b.id] = b.n; }); return o; }
+function ritualPenuh(tahun, w, L0) { var R = susunKunci(tahun, D, w, L0); if (R.tolak) return { tolak: R.tolak }; R.kiriman.forEach(kirim); arsipkanDokumen(tahun, arsipBuku(tahun).daftar);
+  var PA = susunPeriksaArsip(tahun, w, L0, true); if (PA.dokumen) terapkanKeCache(PA.dokumen); return R; }
+function potretSiap(kini) { var hari = hariIniIso(kini); __dom['jualKarungBerat'] = { value: '50' }; var s0 = keadaanAwal(); sinkronKeranjang(s0); var rak = susunRak(s0); var chip = {};
+  ['karung', 'kemasan', 'literan', 'repack'].forEach(function (j) { rak[j].forEach(function (c) { chip[j + '|' + c.kunci + '|' + (c.berat || '')] = c.nama + '|' + c.ukuran + '|' + c.harga + '|' + Math.round((c.sisa || 0) * 1000) / 1000; }); });
+  return { baris: semuaBaris(barisBuku(hari, hari)), chip: chip, ukuran: J(petaUkuran()), terpisah: J(indukTerpisah()), digabung: J(ukuranDigabung()), wadah: J(petaBukuWadah()), modal: modalTertanam(), upah: upahPada(hari),
+    kas: J(['laci', 'brankas', 'rekening', 'amplop'].map(function (k) { var S = saldoKantong(); return S.ada ? Math.round(S[k]) : null; })) }; }
+function bedaObj(a, b) { var out = []; Object.keys(a).concat(Object.keys(b).filter(function (k) { return !(k in a); })).forEach(function (k) { if (a[k] !== b[k]) out.push(k + ': ' + a[k] + ' → ' + b[k]); }); return out; }
+function samaLaju(a, b) { return ['kgMerk', 'unitKemasan', 'pcsBahan'].every(function (g) { var x = a[g] || {}, y = b[g] || {}; return Object.keys(x).concat(Object.keys(y)).every(function (k) { return Math.abs((x[k] || 0) - (y[k] || 0)) < 1e-6; }); }); }
+function orangRingkas(kini) { return semuaOrang(kini).map(function (o) { return o.kunci + '|' + o.nama + '|' + o.kunjungan + '|' + o.terakhir + '|' + Math.round(o.total) + '|' + o.nota + '|' + o.selang + '|' + o.jam + '|' + o.pola.join('+'); }).sort().join(','); }
+
+// ---- A1 · putusan per tanggal: tanpa putusan memblokir; alasan ≥ 5; putusan kunci bulan dipakai ulang; ikut berita acara; tutup hari tidak dibuat mundur
+coba('S-A1', function () { kotak(5); W = jam('2027-01-05T10:00:00+07:00'); var kini = new Date(__KINI); pasok('aturanToko', []);
+  var G = gerbangBuku(2026, kini, {}, {}); var R0 = susunKunci(2026, D, W); var nTutup = ambilTutupHari().length;
+  ok('A1 tanpa putusan: g1 MEMBLOKIR (lewati g1 tidak berlaku) & susunKunci menolak di pintu masuk dengan hari yang belum diputus', !G.daftar[0].ok && G.belumPutus.length > 1 && !gerbangBuku(2026, kini, {}, { g1: true }).daftar[0].ok && /belum ditutup & belum diputus/.test(R0.tolak || ''), J([G.daftar[0].ket, R0.tolak]));
+  var H = G.belumPutus.slice(); var pendek = {}; H.forEach(function (t) { pendek[t] = 'abc'; });
+  ok('A1 alasan kurang dari 5 huruf ditolak', /minimal 5 huruf/.test(susunPutusanHari(pendek, W).tolak || ''));
+  terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'kunciPeriode', sampaiBulan: null, riwayat: [{ aksi: 'kunci', bulan: H[0].slice(0, 7), hari: [{ iso: H[0], jenis: 'diterima', alasan: 'diputus saat kunci bulan contoh', nNota: 1 }] }] } }]);
+  var isi = {}; H.slice(1).forEach(function (t) { isi[t] = 'lupa ditutup, uang sudah dihitung contoh'; }); var P = susunPutusanHari(isi, W); if (!P.tolak) terapkanKeCache(P.dokumen);
+  var G2 = gerbangBuku(2026, kini, {}, {});
+  ok('A1 sesudah putusan: g1 lolos — tanggal pertama memakai putusan riwayat kunci bulan, sisanya dokumen aturanToko/putusanHari; tidak ada tutup hari baru', !P.tolak && G2.daftar[0].ok && G2.hari[0].putusan && G2.hari[0].putusan.dari === 'kunci bulan' && G2.hari.slice(1).every(function (h) { return h.putusan && h.putusan.dari === 'tutup buku'; }) && ambilTutupHari().length === nTutup, J([P.tolak, G2.daftar[0]]));
+  var R = susunKunci(2026, D, W);
+  ok('A1 berita acara membawa putusan tiap tanggal (alasan & jumlah nota); teks berita acara menyebutnya', !R.tolak && R.acara.putusanHari.length === H.length && R.acara.putusanHari.every(function (h) { return h.alasan.length >= 5 && h.nNota >= 1; })
+    && /tidak ditutup, diterima apa adanya/.test(teksAcara(2026, { paraf: { owner: true, saksi: true } }, R.banding, R.sebelum, 'Saksi Contoh', W)), J(R.tolak || R.acara.putusanHari));
+  var C = {}; C[H[1]] = ''; var P2 = susunPutusanHari(C, W); if (!P2.tolak) terapkanKeCache(P2.dokumen);
+  ok('A1 putusan dicabut → g1 memblokir lagi (tanggal itu saja)', !P2.tolak && !gerbangBuku(2026, kini, {}, {}).daftar[0].ok && gerbangBuku(2026, kini, {}, {}).belumPutus.join() === H[1], J(P2.tolak)); });
+
+// ---- A3 · A4 · A6 · A7 · ritual penuh di kotak yang memuat buku khusus, modal, upah sistem lama, dan pelanggan langganan
+coba('S-RITUAL', function () { kotak(3);
+  var hari = function (dari, sampai) { var o = {}; for (var d = new Date(dari + 'T00:00:00Z'); d.toISOString().slice(0, 10) <= sampai; d.setUTCDate(d.getUTCDate() + 1)) o[d.toISOString().slice(0, 10)] = 1; return o; };
+  terapkanKeCache([
+    { koleksi: 'batchMasuk', data: { id: 'sb1', tanggal: '2026-12-01', jam: '08:00', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [
+      { merk: 'Bebek', satuan: 'karung', beratKarung: 50, jumlahKarung: 10, totalKg: 500, hargaPerKg: 12000, subtotalHarga: 6000000 },
+      { merk: 'Bebek 25 kg', satuan: 'karung', beratKarung: 25, jumlahKarung: 8, totalKg: 200, hargaPerKg: 12100, subtotalHarga: 2420000, indukUkuran: 'Bebek' },
+      { merk: 'Rusa', satuan: 'karung', beratKarung: 50, jumlahKarung: 4, totalKg: 200, hargaPerKg: 11000, subtotalHarga: 2200000 },
+      { merk: 'Rusa 25 kg', satuan: 'karung', beratKarung: 25, jumlahKarung: 2, totalKg: 50, hargaPerKg: 11000, subtotalHarga: 550000, indukUkuran: 'Rusa' },
+      { merk: 'Kelas Contoh', satuan: 'karung', beratKarung: 50, jumlahKarung: 4, totalKg: 200, hargaPerKg: 10000, subtotalHarga: 2000000, merkPemasok: 'Merek Pemasok Contoh' },
+      { merk: 'Habis Contoh', satuan: 'karung', beratKarung: 50, jumlahKarung: 2, totalKg: 100, hargaPerKg: 10500, subtotalHarga: 1050000 },
+      { merk: 'Adukan Kembang 5 kg', satuan: 'lahir', beratKarung: 0, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, bukuAdukan: 'Kembang|5' }] } },
+    { koleksi: 'produksiKemasan', data: { id: 'sg1', tanggal: '2026-12-05', jam: '09:00', namaProduk: 'Rusa', ukuranKemasan: 50, jumlahUnit: 1, kgDipakai: 50, hppSumberPerKgDipakai: 11000, jadiKarungUtuh: true, merkTujuan: 'Rusa', sumberList: [{ merk: 'Rusa 25 kg', kg: 50 }], gabungUkuran: { dari: 'Rusa 25 kg', induk: 'Rusa', berat: 25 } } },
+    { koleksi: 'penjualan', data: { id: 'sj1', tanggal: '2026-12-10', jam: '10:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Habis Contoh', totalKg: 100, beratKarungAcuan: 50, jumlahKarung: 2, hargaTotal: 1100000, hppTotalSaatJual: 1050000 } },
+    { koleksi: 'katalogHargaKarung', data: { id: 'Bebek', merk: 'Bebek', hargaPerKg: 13000 } }, { koleksi: 'katalogHargaKarung', data: { id: 'Rusa', merk: 'Rusa', hargaPerKg: 12000 } },
+    { koleksi: 'katalogHargaKarung', data: { id: 'Kelas Contoh', merk: 'Kelas Contoh', hargaPerKg: 11000 } }, { koleksi: 'katalogHargaKarung', data: { id: 'Habis Contoh', merk: 'Habis Contoh', hargaPerKg: 11500 } },
+    // A4: setoran & tarikan modal Desember (selain modal 25 jt kotak)
+    { koleksi: 'modalOwner', data: { id: 'sm1', tanggal: '2026-12-15', jam: '09:00', tipe: 'setor', nominal: 10000000, catatan: 'tambah modal contoh' } },
+    { koleksi: 'modalOwner', data: { id: 'sm2', tanggal: '2026-12-16', jam: '09:00', tipe: 'tarik', nominal: 2000000, catatan: 'tarik modal contoh' } },
+    // A6: Gama dibayar SISTEM LAMA sampai 30 Nov (biayaBulanan, ikut diarsip); hari kerja Agu & 20 Nov sudah dibayar; 1 Des – 4 Jan belum
+    { koleksi: 'biayaBulanan', data: { id: '2026-11', bulan: '2026-11', listrik: 0, internet: 0, akses: 0, keamanan: 0, rincianGaji: [{ nama: 'Gama', hari: 20, gaji: 1200000 }], tanggalBayarGaji: { Gama: '2026-11-30' }, gaji: 1200000, gajiHariOrang: 20 } },
+    { koleksi: 'absenKaryawan', data: { id: 'gama|2026-08', nama: 'Gama', bulan: '2026-08', hari: { '2026-08-20': 1, '2026-08-21': 1, '2026-08-31': 1 } } },
+    { koleksi: 'absenKaryawan', data: { id: 'gama|2026-11', nama: 'Gama', bulan: '2026-11', hari: { '2026-11-20': 1 } } },
+    { koleksi: 'absenKaryawan', data: { id: 'gama|2026-12', nama: 'Gama', bulan: '2026-12', hari: hari('2026-12-01', '2026-12-31') } },
+    { koleksi: 'absenKaryawan', data: { id: 'gama|2027-01', nama: 'Gama', bulan: '2027-01', hari: hari('2027-01-01', '2027-01-04') } },
+    // A7: pelanggan langganan terdaftar — belanja Okt–Des & Januari; pelanggan lain yang cuma belanja 2026; bahan pakai & kemasan di 14 hari terakhir tahun
+    { koleksi: 'pelangganCatatan', data: { id: 'pembeli contoh', nama: 'Pembeli Contoh', catatan: 'langganan contoh' } },
+    { koleksi: 'penjualan', data: { id: 'sk1', tanggal: '2026-10-20', jam: '09:00', caraBayar: 'Tunai', namaPelanggan: 'Pembeli Contoh', jenis: 'karung', merkSumber: 'Bebek', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 650000, hppTotalSaatJual: 600000 } },
+    { koleksi: 'penjualan', data: { id: 'sk2', tanggal: '2026-12-28', jam: '15:00', caraBayar: 'Kredit', namaPelanggan: 'Pembeli Contoh', jenis: 'karung', merkSumber: 'Bebek', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 650000, hppTotalSaatJual: 600000 } },
+    { koleksi: 'penjualan', data: { id: 'sk3', tanggal: '2027-01-03', jam: '10:00', caraBayar: 'Tunai', namaPelanggan: 'Pembeli Contoh', jenis: 'karung', merkSumber: 'Bebek 25 kg', totalKg: 25, beratKarungAcuan: 25, jumlahKarung: 1, hargaTotal: 330000, hppTotalSaatJual: 302500 } },
+    { koleksi: 'penjualan', data: { id: 'sk4', tanggal: '2026-12-29', jam: '11:00', caraBayar: 'Tunai', namaPelanggan: 'Pembeli Lama Contoh', jenis: 'karung', merkSumber: 'Kelas Contoh', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 550000, hppTotalSaatJual: 500000 } },
+    { koleksi: 'penjualan', data: { id: 'sk5', tanggal: '2026-12-30', jam: '16:00', caraBayar: 'Tunai', namaPelanggan: 'Pembeli Lama Contoh', jenis: 'karung', merkSumber: 'Rusa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 600000, hppTotalSaatJual: 550000 } },
+    { koleksi: 'stokBahanKemasan', data: { id: 'sbk1', tipe: 'beli', jenis: 'paperbag5l', jumlah: 100, hargaTotal: 100000, tanggal: '2026-12-01' } },
+    { koleksi: 'stokBahanKemasan', data: { id: 'sbk2', tipe: 'pakai', jenis: 'paperbag5l', jumlah: 6, tanggal: '2026-12-27' } },
+    // repack 14 hari terakhir (laju) · kemasan jadi yang habis pada 31 Des (chip "habis" di rak)
+    { koleksi: 'penjualan', data: { id: 'sk6', tanggal: '2026-12-26', jam: '12:00', caraBayar: 'Tunai', jenis: 'repacking', merkSumber: 'Bebek', namaProduk: 'Bebek', totalKg: 5, hargaTotal: 70000, hppTotalSaatJual: 60000 } },
+    { koleksi: 'produksiKemasan', data: { id: 'sk-p1', tanggal: '2026-12-02', jam: '09:00', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 2, hppPerUnit: 62000, kgDipakai: 10, merkSumber: 'Bebek' } },
+    { koleksi: 'penjualan', data: { id: 'sk-k1', tanggal: '2026-12-03', jam: '10:00', caraBayar: 'Tunai', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 2, totalKg: 10, hargaTotal: 144000, hppTotalSaatJual: 124000 } },
+    { koleksi: 'katalogHargaKemasan', data: { id: 'hm-kembang5', merk: 'Kembang', ukuran: 5, hargaPerUnit: 72000 } }]);
+  putusSemua(); W = jam('2027-01-05T10:00:00+07:00'); var kini = new Date(__KINI);
+  var G = gerbangBuku(2026, kini, {}, {}); ok('S gerbang: g1 (diputus) & g6 lolos di kotak ini', G.daftar[0].ok && G.daftar.filter(function (g) { return g.id === 'g6'; })[0].ok, J(G.daftar.filter(function (g) { return !g.ok; })));
+  // A7 identitas SEBELUM ritual: tanpa ringkasan, pembaca lintas tahun = angka mesin apa adanya; salinan rumus per hari = mesin
+  var kr0 = kreditLintas(infoKreditPelanggan('Pembeli Contoh'), 'Pembeli Contoh'); var lj0 = lajuLintas(hitungLajuPakai()); var org0 = orangRingkas(kini);
+  var LH = lajuHarian(tanggalLokalIso(new Date(Date.now() - 14 * 86400000)), '9999-12-31'); var lajuSalin = { kgMerk: {}, unitKemasan: {}, pcsBahan: {} };
+  Object.keys(LH).forEach(function (t) { [['kg', 'kgMerk'], ['unit', 'unitKemasan'], ['pcs', 'pcsBahan']].forEach(function (p) { Object.keys(LH[t][p[0]]).forEach(function (k) { lajuSalin[p[1]][k] = (lajuSalin[p[1]][k] || 0) + LH[t][p[0]][k] / 14; }); }); });
+  var KH = kreditHarian(tanggalLokalIso(new Date(Date.now() - 89 * 86400000)), '9999-12-31')['pembeli contoh'] || {}; var tKH = Object.keys(KH).reduce(function (a, t) { return a + KH[t]; }, 0);
+  ok('A7 identitas sebelum ritual: KR1 & laju lintas tahun = mesin apa adanya; salinan rumus per hari (lajuHarian, kreditHarian) = hitungLajuPakai & infoKreditPelanggan', J(kr0) === J(infoKreditPelanggan('Pembeli Contoh')) && J(lj0) === J(hitungLajuPakai()) && samaLaju(lajuSalin, hitungLajuPakai()) && Math.round(tKH / 3) === kr0.rataBulanan && kr0.batas > 0, J([kr0, tKH]));
+  var A = potretSiap(kini); var mo0 = modalTertanam('2026-12-31');
+  terapkanKeCache([{ koleksi: 'modalOwner', data: { id: 'uji-bertahap', tipe: 'setor', nominal: 1, tanggal: '2026-12-31', tutupBuku: true, tahunDari: 2099, bertahap: true } }]);
+  ok('A4 pembuka modal bertahap tanpa penanda tahunnya TIDAK terlihat mesin (modal tetap) — saringan yang sama dengan koleksi pembuka lain', modalTertanam('2026-12-31') === mo0, J([mo0, modalTertanam('2026-12-31')]));
+  terapkanKeCache([{ koleksi: 'modalOwner', hapus: 'uji-bertahap' }]);
+  var R = ritualPenuh(2026, W, HPA); ok('S ritual penuh diterima (kunci, semua kiriman, arsip habis)', !R.tolak && arsipBuku(2026).n === 0, R.tolak);
+  var B = potretSiap(kini); var PU = periksaUlangBuku(2026);
+  ok('S periksa ulang dari mesin: SEMUA baris sama persis (12 + modal owner + upah)', !!PU && PU.semuaSama && PU.baris.length === 14, PU && J(PU.beda));
+  var tanda = ambilSemuaBatch().filter(function (x) { return x.tutupBuku && x.penandaBuku; })[0] || { merkList: [] }; var rb = function (m) { return tanda.merkList.filter(function (x) { return x.merk === m; }); };
+  ok('A3 baris pembuka membawa tanda buku: indukUkuran (berat 25), digabungKe, bukuAdukan (bukan karungWadah), merkPemasok; buku berstok 0 lahir lagi (0 kg)',
+    rb('Bebek 25 kg').some(function (x) { return x.indukUkuran === 'Bebek' && x.beratKarung === 25; }) && rb('Rusa 25 kg').some(function (x) { return x.digabungKe === 'Rusa' && x.indukUkuran === 'Rusa'; })
+    && rb('Adukan Kembang 5 kg').length > 0 && rb('Adukan Kembang 5 kg').every(function (x) { return x.bukuAdukan === 'Kembang|5' && !x.karungWadah; }) && rb('Kelas Contoh').every(function (x) { return x.merkPemasok === 'Merek Pemasok Contoh'; })
+    && rb('Habis Contoh').length > 0 && rb('Habis Contoh').every(function (x) { return x.totalKg === 0; }), J(tanda.merkList));
+  ok('A3 petaUkuran, indukTerpisah, ukuranDigabung, petaBukuWadah sebelum = sesudah ritual', A.ukuran === B.ukuran && A.terpisah === B.terpisah && A.digabung === B.digabung && A.wadah === B.wadah && /Bebek 25 kg/.test(B.terpisah) && !/Rusa 25 kg/.test(B.terpisah), J([A.ukuran, B.ukuran, A.terpisah, B.terpisah, A.digabung, B.digabung]));
+  ok('A3 rak Jual sebelum = sesudah (chip 25 kg dari bukunya sendiri, buku & kemasan berstok 0 tetap punya chip habis)', bedaObj(A.chip, B.chip).length === 0 && !!B.chip['karung|Bebek 25 kg|25'] && !B.chip['karung|Bebek|25'] && !!B.chip['karung|Habis Contoh|50'] && !!B.chip['kemasan|Kembang|5|'], J(bedaObj(A.chip, B.chip)));
+  var mp = cacheMentah('modal').filter(function (x) { return x.tutupBuku && x.tahunDari === 2026; });
+  ok('A4 modal owner menyeberang: satu pembuka setor 33 jt (25 + 10 − 2, kotak) bertanggal 31 Des 00.00; modal 31 Des & hari ini sama; uang per tempat TIDAK berubah (bukan uang masuk)', mp.length === 1 && mp[0].tipe === 'setor' && mp[0].nominal === 33000000 && mp[0].tanggal === '2026-12-31' && mp[0].jam === '00:00' && mp[0].bertahap
+    && modalTertanam('2026-12-31') === mo0 && A.modal === B.modal && A.modal === 33000000 && A.kas === B.kas && A.baris.modal === B.baris.modal, J([mp, mo0, A.modal, B.modal, A.kas, B.kas]));
+  var ug0 = A.upah.orang.filter(function (o) { return o.nama === 'Gama'; })[0] || {}, ug1 = B.upah.orang.filter(function (o) { return o.nama === 'Gama'; })[0] || {};
+  ok('A6 upah yang belum dibayar sama sebelum/sesudah; Gama mulai 1 Des — patokan sistem lama (30 Nov) dibawa berita acara, hari Agu & 20 Nov tidak dibuka lagi', A.upah.jumlah === B.upah.jumlah && A.upah.jumlah > 0 && ug0.mulai === '2026-12-01' && ug1.mulai === '2026-12-01'
+    && (acara(2026).upah || []).some(function (o) { return o.nama === 'Gama' && o.lama === '2026-11-30'; }) && mulaiUpah('Gama', '2027-01-05').sumber === 'lama', J([A.upah, B.upah, acara(2026).upah]));
+  var kr1 = kreditLintas(infoKreditPelanggan('Pembeli Contoh'), 'Pembeli Contoh');
+  ok('A7 KR1 Pembeli Contoh sebelum = sesudah (90 hari menyeberang lewat ringkasan; mesin sendiri tinggal Januari)', kr1.batas === kr0.batas && kr1.rataBulanan === kr0.rataBulanan && !!kr1.lintasTahun && infoKreditPelanggan('Pembeli Contoh').batas < kr0.batas
+    && !alasanKunciKredit({ pelanggan: 'Pembeli Contoh', kreditDibuka: false }, 1000), J([kr0, kr1, infoKreditPelanggan('Pembeli Contoh')]));
+  ok('A7 laju pakai 14 hari sebelum = sesudah', samaLaju(lj0, lajuLintas(hitungLajuPakai())) && !samaLaju(lj0, hitungLajuPakai()), J([lj0, lajuLintas(hitungLajuPakai())]));
+  ok('A7 daftar pelanggan sebelum = sesudah (kunjungan, terakhir, belanja, jam, barang) — yang cuma belanja 2026 tidak hilang', org0 === orangRingkas(kini) && /pembeli lama contoh/.test(orangRingkas(kini)), J([org0, orangRingkas(kini)]));
+  // A6b: upah Desember dibayar 5 Jan SESUDAH tutup buku → biayanya ke Januari 2027, bukan biaya 2026 baru
+  var UB = susunBayarUpah('Gama', 'tidak', W); var bb = (UB.dokumen || []).filter(function (x) { return x.koleksi === 'biayaBulanan'; });
+  ok('A6 bayar upah 5 Jan: biayaBulanan hanya 2027-01 (hari kerja Desember dibukukan ke bulan bayar, rincian tetap 1 Des – 4 Jan); tidak ada biaya 2026 baru', !UB.tolak && bb.length === 1 && bb[0].data.bulan === '2027-01' && /tahun yang sudah ditutup buku/.test(UB.patch.kabar) && bb[0].data.rincianGaji.some(function (r) { return r.dari === '2026-12-01'; }), J(UB.tolak || bb)); });
+
+// ---- A5 · stok minus, kemasan minus, kelebihan bayar pelanggan, kelebihan bayar ke pemasok per 31 Des
+coba('S-A5', function () { kotak(3);
+  terapkanKeCache([
+    { koleksi: 'produksiKemasan', data: { id: 'sm-p1', tanggal: '2026-12-01', jam: '09:00', namaProduk: 'Kemasan Contoh', ukuranKemasan: 5, jumlahUnit: 1, hppPerUnit: 65000, kgDipakai: 5, merkSumber: 'Angsa' } },
+    { koleksi: 'penjualan', data: { id: 'sm-k1', tanggal: '2026-12-20', jam: '10:00', caraBayar: 'Tunai', jenis: 'kemasan', namaProduk: 'Kemasan Contoh', ukuranKemasan: 5, jumlahUnit: 3, totalKg: 15, hargaTotal: 210000, hppTotalSaatJual: 195000 } },
+    { koleksi: 'penjualan', data: { id: 'sm-k2', tanggal: '2026-12-20', jam: '11:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'IR64 Apex', totalKg: 500, beratKarungAcuan: 50, jumlahKarung: 10, hargaTotal: 7000000, hppTotalSaatJual: 7000000 } },
+    { koleksi: 'piutangMutasi', data: { id: 'sm-pm1', tipe: 'bayar', namaPelanggan: 'Pembeli Lebih Contoh', nominal: 50000, tanggal: '2026-12-21', jam: '10:00', caraBayar: 'Tunai' } },
+    { koleksi: 'utangPemasokMutasi', data: { id: 'sm-up1', tipe: 'bayar', pemasok: 'RODA CONTOH', nominal: 25000000, tanggal: '2026-12-22', jam: '10:00' } }]);
+  putusSemua(); W = jam('2027-01-05T10:00:00+07:00'); var G = gerbangBuku(2026, new Date(__KINI), {}, {}); var g6 = G.daftar.filter(function (g) { return g.id === 'g6'; })[0]; var teks = (g6.rincian || []).map(function (x) { return x.teks + ' — ' + x.jalan; }).join(' | ');
+  ok('A5 g6 MEMBLOKIR dengan kalimat toko per buku/nama & jalan beresnya: beras minus (opname), kemasan minus, kelebihan bayar pelanggan, bayar ke pemasok lebih', !g6.ok && !g6.bisaLewati && /Buku IR64 Apex minus 40 kg/.test(teks) && /Cocokkan/.test(teks) && /Kemasan Contoh 5 kg minus 2 kantong/.test(teks) && /Pembeli Lebih Contoh/.test(teks) && /Bayar ke RODA CONTOH lebih Rp5\.000\.000/.test(teks) && /catat bon/.test(teks), teks);
+  ok('A5 susunKunci menolak (pintu masuk)', /Tidak ada stok minus/.test(susunKunci(2026, D, W).tolak || ''), susunKunci(2026, D, W).tolak);
+  var SB = barisTahun(2026); var BD = bandingBuku(SB, sesudahDariPembuka(pembukaBuku(2026, W), SB)); var beda = BD.beda.map(function (b) { return b.id; });
+  ok('A5 baris pembanding tidak lagi buta minus: beras, kemasan, piutang (dibayar LEBIH), utang pemasok (dibayar LEBIH) berbeda sebelum/sesudah', ['beras', 'kemasan', 'piutang', 'utangP'].every(function (k) { return beda.indexOf(k) >= 0; }) && SB.utang[0].n === -5000000 && /dibayar LEBIH/.test(SB.utang[0].nama) && /MINUS/.test(SB.harta[1].nama), J([beda, SB.utang[0], SB.harta[1]])); });
+
+// ---- A8 · perkiraan kuota Firestore & jam reset
+coba('S-A8', function () { kotak(40); W = jam('2026-12-20T10:00:00+07:00'); var Q = perkiraanKuota(2026, new Date(__KINI));
+  ok('A8 perkiraan untuk 1 Jan 2027 sesudah reset 15.00 WIB: tulis ≥ 2×saldo pembuka + arsip, hapus = arsip, baca ≥ satu muat penuh; batal ≥ 2×arsip baca; kalimat saran jam, Console', Q.rencana === '2027-01-01' && Q.jamReset === 15 && Q.ritual.tulis >= 2 * Q.nPembuka + Q.nArsip && Q.ritual.hapus === Q.nArsip && Q.ritual.baca >= Q.muat && Q.batal.baca >= 2 * Q.nArsip
+    && /15\.00 WIB/.test(Q.kalimat[0]) && /Muat dalam kuota/.test(Q.kalimat[1]) && /Console/.test(Q.kalimat[3]) && !Q.lewat && !Q.mepet, J(Q));
+  ok('A8 jam reset kuota: 14.00 WIB selama musim panas AS, 15.00 WIB sejak Minggu pertama November sampai Minggu kedua Maret', jamResetKuota('2027-07-01') === 14 && jamResetKuota('2027-01-01') === 15 && jamResetKuota('2026-11-01') === 15 && jamResetKuota('2026-10-31') === 14 && jamResetKuota('2027-03-14') === 14 && jamResetKuota('2027-03-13') === 15);
+  var tadi = BATAS_SPARK.tulis; BATAS_SPARK.tulis = Math.max(1, Math.floor(Q.ritual.tulis / 2)); var Q2 = perkiraanKuota(2026, new Date(Date.parse('2027-01-02T16:00:00+07:00')));
+  BATAS_SPARK.tulis = Math.ceil(Q.ritual.tulis / 0.9); var Q3 = perkiraanKuota(2026, new Date(Date.parse('2027-01-03T16:00:00+07:00'))); BATAS_SPARK.tulis = tadi;
+  ok('A8 peringatan: lewat batas → "TIDAK MUAT … DOBEL"; > 80 % → "MEPET"', Q2.lewat && /TIDAK MUAT/.test(Q2.kalimat[1]) && /DOBEL/.test(Q2.kalimat[1]) && Q3.mepet && !Q3.lewat && /MEPET/.test(Q3.kalimat[1]), J([Q2.kalimat, Q3.kalimat])); });
+
+// ---- A9 · catatan bertanggal 2026 yang mendarat sesudah penanda (karcis HP penjaga yang tertahan offline)
+coba('S-A9', function () { kotak(5); W = jam('2027-01-02T16:00:00+07:00'); var R = susunKunci(2026, D, W, HPA); R.kiriman.forEach(kirim); var daftar = arsipBuku(2026).daftar;
+  terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'susul1', tanggal: '2026-12-31', jam: '20:30', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }]);
+  arsipkanDokumen(2026, daftar); var PA = susunPeriksaArsip(2026, W, HPA, true); if (PA.dokumen) terapkanKeCache(PA.dokumen);
+  var S = susulanBuku(); var KM = kemajuanBuku();
+  ok('A9 karcis yang masuk di tengah arsip: hasil periksa tetap dibekukan (susulan 1); pita fase selesaikan (BUKAN "lanjutkan arsip" yang akan menyapunya); kalimat & jalan beresnya', !!PA.dokumen && PA.dokumen[0].data.susulan === 1 && !!S && S.n === 1 && S.rupiah === 700000 && !!KM && KM.fase === 'selesaikan' && /SESUDAH tutup buku 2026/.test(KM.teks) && /Jangan dihapus/.test(S.jalan) && /LEBIH/.test(S.jalan), J([PA.dokumen, S && S.teks, KM]));
+  var SL = susunSelesai(2026, 'cadangan-sesudah.json', W, false, HPA); ok('A9 selesai butuh ketukan kedua yang menyebut susulan', !!SL.perluYakin && /SESUDAH tutup buku 2026/.test(SL.tolak || ''), J(SL));
+  SL = susunSelesai(2026, 'cadangan-sesudah.json', W, true, HPA); if (!SL.tolak) kirim(SL);
+  ok('A9 berita acara selesai mencatat susulan; Beranda menyebutnya; catatannya tetap di buku hidup', acara(2026).status === 'selesai' && acara(2026).susulan && acara(2026).susulan.n === 1 && bkPerhatian(new Date(__KINI)).some(function (x) { return /SESUDAH tutup buku 2026/.test(x.teks); }) && ambilPenjualanSemua().some(function (p) { return p.id === 'susul1'; }), J([SL.tolak, acara(2026).susulan]));
+  var C = susunCatatSusulan(2026, W); if (!C.tolak) terapkanKeCache(C.dokumen);
+  ok('A9 "sudah dicatat": pita hilang, catatannya TIDAK dihapus; karcis susulan berikutnya muncul lagi', !C.tolak && susulanBuku() === null && ambilPenjualanSemua().some(function (p) { return p.id === 'susul1'; })
+    && (terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'susul2', tanggal: '2026-12-30', jam: '19:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }]), !!susulanBuku() && susulanBuku().n === 1), J(C.tolak)); });
+
+// ---- A2 · Beranda: tutup buku tahun lalu yang belum selesai (owner) — kunci bulan menunggu
+coba('S-A2', function () { kotak(3); jam('2027-01-03T10:00:00+07:00');
+  ok('A2 Beranda 3 Jan 2027 tanpa tutup buku: satu baris "Tutup buku 2026 belum dikerjakan — kunci bulan 2027 menunggu"', bkPerhatian(new Date(__KINI)).some(function (x) { return /Tutup buku 2026 belum dikerjakan/.test(x.teks) && /kunci bulan 2027 menunggu/.test(x.teks); }), J(bkPerhatian(new Date(__KINI)))); });
 """
 
 ASAP = r"""
@@ -684,6 +851,75 @@ if (!R.tolak) { out.kiriman = R.kiriman.map(function (k) { return butuhGet(k.dok
 } else salah.push('ditolak: ' + R.tolak);
 out.salah = salah; print(JSON.stringify(out));
 """
+
+
+ASAP_2027 = r"""
+// ==================== ASAP SIAP 2027 — ritual tutup buku 2026 PENUH atas CADANGAN LOKAL (tidak di-commit; dilewati di CI) ====================
+// Putusan per tanggal = TIRUAN (bukan putusan owner). Tidak ada yang ditulis ke mana pun: semua di memori jsc.
+var J = JSON.stringify; var salah = []; var nId = 700000;
+function muatCad() { KOLEKSI.forEach(function (k) { pasok(k.nama, []); setelTertunda(k.nama, []); }); Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[n]); });
+  while (arsipSimulasi().length) pulihkanArsip(arsipSimulasi()[0].tahun, []); __ls = {}; __dom['jualKarungBerat'] = { value: '50' }; }
+function Wk(iso) { __KINI = new Date(iso).getTime(); return { tanggal: kpWib(new Date(iso)).iso, jam: iso.slice(11, 16), kini: new Date(iso).toISOString(), idUnik: function () { nId += 1; return 'asap' + nId; } }; }
+var LA = { idPerangkat: 'asap-mac', namaPerangkat: 'Mac asap', antre: [], menunggu: 0, offline: false };
+function kirimA(k) { var j = jagaKunci(k.dokumen || [], k.hapus || []); if (j) { salah.push('penjaga pusat menolak kiriman: ' + j.pesan); return false; }
+  if (k.hapus && k.hapus.length) terapkanKeCache(k.hapus.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; })); if (k.dokumen && k.dokumen.length) terapkanKeCache(k.dokumen); return true; }
+function potretA(kini) { var hari = hariIniIso(kini); var B = barisBuku(hari, hari); var baris = {}; B.harta.concat(B.utang, B.lain).forEach(function (b) { baris[b.id] = b.n; });
+  var s0 = keadaanAwal(); sinkronKeranjang(s0); var rak = susunRak(s0); var chip = {}; ['karung', 'kemasan', 'literan', 'repack'].forEach(function (j) { rak[j].forEach(function (c) { chip[j + '|' + c.kunci + '|' + (c.berat || '')] = c.nama + '|' + c.ukuran + '|' + c.harga + '|' + Math.round((c.sisa || 0) * 1000) / 1000; }); });
+  var kredit = {}; ambilPelangganCatatan().forEach(function (c) { var nm = c.nama || c.id; var i = kreditLintas(infoKreditPelanggan(nm), nm); if (i && i.ada) kredit[kunciPelanggan(nm)] = i.terdaftar + '|' + i.batas; });
+  var orang = {}; semuaOrang(kini).forEach(function (o) { orang[o.kunci] = o.kunjungan + '|' + o.terakhir + '|' + Math.round(o.total) + '|' + o.nota + '|' + o.selang + '|' + o.jam + '|' + o.pola.join('+'); });
+  var stok = {}; var SK = hitungStokKarungPerMerk(); Object.keys(SK).forEach(function (m) { stok[m] = Math.round(SK[m].sisaKg * 100) / 100; });
+  var kem = {}; var SM = hitungStokKemasan(); Object.keys(SM).forEach(function (k) { if (SM[k].sisaUnit > 0) kem[k] = SM[k].sisaUnit; });
+  return { baris: baris, chip: chip, ukuran: J(petaUkuran()), terpisah: J(indukTerpisah()), digabung: J(ukuranDigabung()), wadah: J(petaBukuWadah()), stokWadah: J(petaStokWadah()), modal: Math.round(modalTertanam()),
+    kredit: kredit, laju: lajuLintas(hitungLajuPakai()), orang: orang, stok: stok, kem: kem, upah: upahPada(hari).jumlah, nMerek: Object.keys(SK).length }; }
+function bedaA(a, b) { var out = []; Object.keys(a).concat(Object.keys(b).filter(function (k) { return !(k in a); })).forEach(function (k) { if (a[k] !== b[k]) out.push(k); }); return out; }
+function bedaLaju(a, b) { var out = []; ['kgMerk', 'unitKemasan', 'pcsBahan'].forEach(function (g) { var x = a[g] || {}, y = b[g] || {}; Object.keys(x).concat(Object.keys(y)).forEach(function (k) { if (Math.abs((x[k] || 0) - (y[k] || 0)) > 1e-6) out.push(g + '|' + k); }); }); return out; }
+function bedaStok(a, b) { var out = []; Object.keys(a).concat(Object.keys(b)).forEach(function (k) { if (Math.abs((a[k] || 0) - (b[k] || 0)) > 0.011) out.push(k); }); return out.filter(function (x, i) { return out.indexOf(x) === i; }); }
+function ritualA(isoJam, ujiBatal) {
+  muatCad(); var w = Wk(isoJam); var kini = new Date(__KINI); var r = { jam: isoJam }; var tanda = isoJam.slice(0, 10) + ': ';
+  var G0 = gerbangBuku(2026, kini, LA, { g3: true }); r.hariTanpaTutup = G0.hari.length; r.belumDiputus = G0.belumPutus.length;
+  var isi = {}; G0.belumPutus.forEach(function (t) { isi[t] = 'asap: putusan TIRUAN, bukan putusan owner'; }); var P = G0.belumPutus.length ? susunPutusanHari(isi, w) : { dokumen: [] };
+  if (P.tolak) salah.push(tanda + 'putusan tiruan ditolak: ' + P.tolak); else terapkanKeCache(P.dokumen);
+  var G = gerbangBuku(2026, kini, LA, { g3: true }); r.gerbang = G.daftar.map(function (g) { return g.id + (g.ok ? ' ok' : ' BELUM: ' + g.ket.slice(0, 160)); });
+  ['g1', 'g6'].forEach(function (id) { var g = G.daftar.filter(function (x) { return x.id === id; })[0]; if (!g.ok) salah.push(tanda + id + ' belum lolos: ' + g.ket.slice(0, 200)); });
+  var Q = perkiraanKuota(2026, kini); r.kuota = { rencana: Q.rencana, jam: Q.jamReset, ritual: Q.ritual, batal: Q.batal, muat: Q.muat, lewat: Q.lewat, mepet: Q.mepet };
+  var A = potretA(kini); var R = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'asap', langkah: {} }, w, LA);
+  if (R.tolak) { salah.push(tanda + 'kunci ditolak: ' + R.tolak.slice(0, 300)); return r; }
+  r.kiriman = R.kiriman.map(function (k) { return butuhGet(k.dokumen, k.hapus || []); }); r.pembuka = R.acara.nPembuka; r.arsip = R.arsip.length; r.banding = R.banding.ringkas;
+  if (!R.banding.semuaSama) salah.push(tanda + 'banding sebelum/sesudah: ' + R.banding.ringkas);
+  if (r.kiriman.some(function (g) { return g > 18; })) salah.push(tanda + 'ada kiriman > 18 pemeriksaan');
+  R.kiriman.forEach(kirimA); arsipkanDokumen(2026, arsipBuku(2026).daftar); var PA = susunPeriksaArsip(2026, w, LA, true); if (PA.dokumen) terapkanKeCache(PA.dokumen);
+  var PU = periksaUlangBuku(2026); r.periksaUlang = PU ? PU.ringkas : 'tidak bisa'; if (!PU || !PU.semuaSama) salah.push(tanda + 'periksa ulang: ' + (PU ? PU.ringkas : 'tidak bisa'));
+  var B = potretA(kini); var c = {};
+  c.baris = bedaA(A.baris, B.baris); c.chip = bedaA(A.chip, B.chip); c.kredit = bedaA(A.kredit, B.kredit); c.orang = bedaA(A.orang, B.orang); c.laju = bedaLaju(A.laju, B.laju); c.stok = bedaStok(A.stok, B.stok); c.kem = bedaStok(A.kem, B.kem);
+  ['ukuran', 'terpisah', 'digabung', 'stokWadah', 'modal', 'upah'].forEach(function (k) { if (A[k] !== B[k]) c[k] = [A[k], B[k]]; }); var wa = JSON.parse(A.wadah), wb = JSON.parse(B.wadah); var dw = Object.keys(wa).concat(Object.keys(wb)).filter(function (k) { return J(wa[k]) !== J(wb[k]); }).map(function (k) { return k + ' : ' + J(wa[k]) + ' → ' + J(wb[k]); }); if (dw.length) c.wadah = dw;
+  Object.keys(c).forEach(function (k) { if (Array.isArray(c[k]) ? c[k].length : c[k] !== undefined) salah.push(tanda + 'BEDA sebelum/sesudah · ' + k + ': ' + J(c[k]).slice(0, 400)); });
+  r.dibandingkan = { baris: Object.keys(A.baris).length, chip: Object.keys(A.chip).length, kreditTerdaftar: Object.keys(A.kredit).length, kreditBerbatas: Object.keys(A.kredit).filter(function (k) { return Number(A.kredit[k].split('|')[1]) > 0; }).length,
+    orang: Object.keys(A.orang).length, buku: Object.keys(A.stok).length, kemasanBerstok: Object.keys(A.kem).length, buku25: JSON.parse(A.ukuran) ? Object.keys(JSON.parse(A.ukuran)).length : 0 };
+  r.kemajuan = kemajuanBuku() ? kemajuanBuku().fase : null; r.susulan = susulanBuku(2026) ? susulanBuku(2026).n : 0;
+  if (ujiBatal) {
+    var BT = susunBatal(2026, arsipSimulasi().filter(function (a) { return a.tahun === 2026; }).map(function (a) { return { koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok }; }), w, LA);
+    if (BT.tolak) salah.push(tanda + 'batal ditolak: ' + BT.tolak); else { r.batalKiriman = BT.kiriman.map(function (k) { return butuhGet(k.dokumen, k.hapus || []); }); BT.kiriman.forEach(kirimA); pulihkanArsip(2026, BT.pulih); kirimA({ dokumen: [BT.akhir] });
+      if (r.batalKiriman.some(function (g) { return g > 18; })) salah.push(tanda + 'batal: kiriman > 18');
+      var C = potretA(kini); var bb = bedaA(A.baris, C.baris).concat(bedaStok(A.stok, C.stok)); if (bb.length || eraBuku() !== null) salah.push(tanda + 'sesudah BATAL tidak kembali persis: ' + J(bb).slice(0, 300)); r.batal = bb.length ? 'BEDA' : 'kembali persis'; }
+  } else {
+    var SL = susunSelesai(2026, 'asap-sesudah.json', w, false, LA); if (SL.tolak) salah.push(tanda + 'selesai ditolak: ' + SL.tolak.slice(0, 300)); else kirimA(SL);
+    r.selesai = acara(2026) ? acara(2026).status : null;
+    Wk('2027-02-05T10:00:00+07:00'); var DP = kpDaftarPeriksa('2027-01', new Date(__KINI), { lokal: { antreLokal: { belum: [], ditolak: [] }, antre: [] }, parkir: [], putusanHari: {}, centang: {} });
+    var tb = DP.butir.filter(function (b) { return b.id === 'tutupBukuLalu'; })[0]; r.kunciJanuari = tb ? (tb.ok ? 'tutup buku 2026 selesai — butir beres' : tb.ket) : 'butir tidak ada'; if (!tb || !tb.ok) salah.push(tanda + 'butir kunci Januari belum beres sesudah selesai');
+  }
+  return r;
+}
+function acara(tahun) { return ambilTutupBukuAcara().filter(function (a) { return Number(a.tahun) === tahun; })[0] || null; }
+var hasil = [ritualA('2027-01-01T15:10:00+07:00', false), ritualA('2027-01-05T10:00:00+07:00', false), ritualA('2027-01-05T10:00:00+07:00', true)];
+print(JSON.stringify({ hasil: hasil, salah: salah }));
+"""
+
+
+def asap_2027(js, berkas):
+    """Siap 2027: ritual penuh atas cadangan LOKAL (owner: tidak di-commit). Hasilnya hanya ke layar terminal; kosong `salah` = lulus."""
+    a, e = jalan(JAM + js + '\nvar CAD = ' + open(berkas, encoding='utf-8').read() + ';\n' + ASAP_2027)
+    if a is None: return None, ['ASAP SIAP 2027 JATUH: ' + e]
+    return a, a['salah']
 
 
 def jalan(js):
@@ -716,7 +952,7 @@ def batal_uang(teks=None):
 
 def utama(js, cek=None, uang=None):
     cek = cek_tiap_potongan() if cek is None else cek
-    h, e = jalan(JAM + js + '\n' + batal_uang(uang) + '\nvar UANG_CEK_TIAP_POTONGAN = ' + ('true' if cek else 'false') + ';\nvar KOTAK = ' + json.dumps(uji_uang_baru.KOTAK) + ';\n' + SKENARIO)
+    h, e = jalan(JAM + js + '\n' + batal_uang(uang) + '\nvar UANG_CEK_TIAP_POTONGAN = ' + ('true' if cek else 'false') + ';\nvar KOTAK = ' + json.dumps(uji_uang_baru.KOTAK) + ';\n' + SKENARIO.replace('__SIAP2027__', SIAP2027))
     if h is None: return 0, ['JSC JATUH: ' + e]
     return h['lulus'], h['gagal']
 
@@ -733,6 +969,18 @@ EKOR_LAMA = '\n'.join([
     "    try { await pulihkanArsip(tahun, r.pulih, balik); const sisaA = await bacaArsipTahun(tahun); if (sisaA.length) await pulihkanArsip(tahun, sisaA, balik); } catch (e) { set({ sibuk: false, progres: null, kabar: 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk \"Lanjutkan\" untuk meneruskan pembatalan', kabarAwas: true }); return false; }"])
 
 STATIS = [
+    # ---- siap 2027 (owner 7 Okt, paket A)
+    ('siap 2027 A1 · putusan per tanggal disimpan dari layar & kunci bulan memakai putusan tersimpan', ["bkPutusSimpan: async () => { await tulis(BK.susunPutusanHari(st().bkPutus, waktu())); },", "const putusanKunci = (s) => Object.assign({}, BK.putusanHari(), s.kpPutus);", "putusanHari: putusanKunci(s), centang: s.kpCentang", "${g.id === 'g1' && g.hari && g.hari.length ? putusanG1(s, g) : ''}"]),
+    ('siap 2027 A5 · rincian g6 (buku/nama & jalan beres) tampil di langkah 1', ["${g.id === 'g6' && g.rincian && g.rincian.length ?", "<b>${x.teks}</b> — ${x.jalan}"]),
+    ('siap 2027 A8 · perkiraan kuota tampil di langkah 1 (tulis/hapus/baca vs batas Spark, saran jam, Batalkan)', ["${kuotaBuku(T)}", "Q = BK.perkiraanKuota(T.tahun, kini());", "baris('Kalau dibatalkan sesudah arsip', Q.B)"]),
+    ('siap 2027 A9 · arsip yang selesai menandai sisanya SUSULAN; pita susulan & "sudah dicatat"', ["const PA = BK.susunPeriksaArsip(tahun, waktu(), lokal(), true);", "const KM = BK.kemajuanBuku(); const SU = BK.susulanBuku();", 'data-aksi="bkSusulanCatat"', "await tulis(BK.susunCatatSusulan(S.tahun, waktu()));"]),
+    ('siap 2027 A4/A6 · baris modal & upah (ikut dibandingkan, tidak masuk jumlah) tampil di lembar K6', ["${B.baris.slice(SB.harta.length + SB.utang.length).map((b) =>", "B.baris.slice(SB.harta.length, SB.harta.length + SB.utang.length)"]),
+    ('siap 2027 A2/A9 · Beranda membaca tutup buku (owner)', ["perhatianPajak(k), perhatianBuku(k), perhatianKunci(k)", "return bkPerhatian(k);"], 'baru/js/layar/ringkasan.js'),
+    ('siap 2027 A7 · KR1 di Jual (kunci kredit & kartu pelanggan) memakai lintas tahun', ["const info = kreditLintas(infoKreditPelanggan(nama), nama);", "const i = kreditLintas(infoKreditPelanggan(nama), nama);"], 'baru/js/layar/jual-logika.js'),
+    ('siap 2027 A7 · laju pakai lintas tahun di Stok, Beranda, Belanja, Kantong', ["const laju = lajuLintas(hitungLajuPakai());"], 'baru/js/layar/stok-logika.js'),
+    ('siap 2027 A7 · laju pakai lintas tahun di Beranda', ["const laju = lajuLintas(hitungLajuPakai());"], 'baru/js/layar/ringkasan-logika.js'),
+    ('siap 2027 A7 · laju pakai lintas tahun di Belanja', ["const laju = lajuLintas(hitungLajuPakai()).kgMerk || {};"], 'baru/js/layar/belanja-logika.js'),
+    ('siap 2027 A7 · laju pakai lintas tahun di Kantong', ["const laju = lajuLintas(hitungLajuPakai()).pcsBahan || {};"], 'baru/js/layar/stok-kantong-logika.js'),
     ('kiriman bertahap menunggu pengakuan server & berhenti dengan kalimat kiriman ke-n', ["await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true })", "kabar: BK.kabarBerhentiBuku(k.lanjutan ? 'lanjut' : 'kunci', tahun, k.ke, k.total, h, k)"]),
     ('§8 no. 7 · pembatalan yang berhenti memakai kalimat yang menyebut tombol yang benar', ["kabar: BK.kabarBerhentiBuku('batal', tahun, i + 1, r.kiriman.length, h)"]),
     ('pita kemajuan K6: lanjutkan / batalkan / selesaikan', ["BK.kemajuanBuku()", 'data-aksi="bkLanjut"', 'data-k="tb-selesaikan"']),
@@ -751,7 +999,7 @@ STATIS = [
      ["const cekEkor = () => { henti = BK.pulihBerhentiBuku(tahun, lokal(), r.percobaan); if (henti) throw new Error(henti); };", "potongTadi = daftar.slice(tadi, sudah); tadi = sudah; cekEkor(); potongTadi = []; });",
       "try { cekEkor(); await kembalikan(r.pulih); cekEkor(); const sisaA = await bacaArsipTahun(tahun); cekEkor(); if (sisaA.length) await kembalikan(sisaA); cekEkor(); } catch (e) {",
       "const ulang = henti ? BK.pulihBalikBuku(tahun, potongTadi, r.percobaan) : []; if (ulang.length) { try { await arsipkanDokumen(tahun, ulang); }", "kabar: henti || 'Pengembalian terhenti: '"]),
-    ('putaran 3 UTBU-1 · hasil periksa ulang dibekukan saat arsip habis (ditulis ke berita acara)', ["const PA = BK.susunPeriksaArsip(tahun, waktu(), lokal()); if (PA.dokumen) { try { await tulisDokumen(PA.dokumen, [], { tunggu: true }); }", "const PU = PA.PU || {"]),
+    ('putaran 3 UTBU-1 · hasil periksa ulang dibekukan saat arsip habis (ditulis ke berita acara)', ["const PA = BK.susunPeriksaArsip(tahun, waktu(), lokal(), true); if (PA.dokumen) { try { await tulisDokumen(PA.dokumen, [], { tunggu: true }); }", "const PU = PA.PU || {"]),
     ('putaran 3 UTBU-2 · kabar sesudah arsip memakai kalimat periksa ulang yang sama (belum bisa dihitung ≠ TIDAK SAMA)', ["' AWAS: ' + BK.bkKalimatPeriksa(PA.PU) + ' — periksa dulu, jangan diselesaikan.'"]),
     ('putaran 3 AAL3 · Lanjutkan menolak tutup buku yang tidak utuh (fase rusak) — tidak meneruskan arsip', ["if (KM.fase === 'rusak') return set({ kabar: KM.teks, kabarAwas: true });"]),
     ('putaran 3 AAL4 · Lanjutkan & Batalkan hanya dari data server (tanpa internet / salinan perangkat = ditolak)', ["bkLanjut: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ kabar: sb, kabarAwas: true });", "bkBatal: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ yakinBatalB: null, kabar: sb, kabarAwas: true });"]),
@@ -766,6 +1014,41 @@ STATIS = [
     ('putaran 4 P4-1 · pita K6 di perangkat lain: keadaan + kalimat pemegang, TANPA tombol lanjutkan / batalkan / selesai', ["const bukanP = KM ? BK.bkBukanPemegang(KM.tahun, lokal()) : '';", "${bukanP ? pitaBukan : h`<div class=\"hg-pil\"><div class=\"seg aktif ${s.sibuk ? 'mati' : ''}\" data-aksi=\"bkLanjut\">", "${bukanP ? pitaBukan : h`<div class=\"hg-pil\"><div class=\"seg aktif ${s.sibuk ? 'mati' : ''}\" data-aksi=\"bkCadangan\""]),
 ]
 RUSAK = [
+    # ---- siap 2027 (owner 7 Okt, paket A)
+    ('A1 · alasan putusan tidak dinilai (kurang dari 5 huruf diterima)', 'baru/js/layar/tutup-buku-logika.js', "const bkAlasanCukup = (a) => String(a || '').trim().length >= 5;", "const bkAlasanCukup = (a) => true;"),
+    ('A1 · kunci tanpa gerbang di pintu masuk (hari belum diputus / minus lolos)', 'baru/js/layar/tutup-buku-logika.js', "if (gTolak.length) return { tolak: 'Periksa dulu belum beres — '", "if (false) return { tolak: 'Periksa dulu belum beres — '"),
+    ('A1 · putusan riwayat kunci bulan tidak dipakai ulang', 'baru/js/layar/tutup-buku-logika.js', "if (r && r.aksi === 'kunci') (r.hari || []).forEach(", "if (false) (r.hari || []).forEach("),
+    ('A1 · berita acara tanpa putusan hari', 'baru/js/layar/tutup-buku-logika.js', "    putusanHari: G.hari.map((h) => ({ iso: h.iso,", "    putusanHariLama: G.hari.map((h) => ({ iso: h.iso,"),
+    ('A3 · tanda indukUkuran tidak dibawa (buku 25 kg terdampar)', 'baru/js/layar/tutup-buku-logika.js', "(pas.length ? pas : baris.slice(0, 1)).forEach((r) => { r.indukUkuran = pu[k].induk; });", "void pas;"),
+    ('A3 · buku berstok 0 tidak lahir lagi', 'baru/js/layar/tutup-buku-logika.js', "Object.keys(stokK).concat(Object.keys(pw)).sort().forEach((k) => {", "Object.keys(pw).sort().forEach((k) => {"),
+    ('A3 · kemasan adukan yang dibuka jadi karung wadah lagi', 'baru/js/layar/tutup-buku-logika.js', "else if (bw[r.merk] && bw[r.merk].jenis === 'adukan') r.bukuAdukan = asliAdukan[r.merk] || bw[r.merk].wadah; else if (bw[r.merk]) r.karungWadah", "else if (bw[r.merk]) r.karungWadah"),
+    ('A3 · tanda gabung balik ke induk tidak dibawa', 'baru/js/layar/tutup-buku-logika.js', "if (ug[r.merk]) r.digabungKe = ug[r.merk];", ""),
+    ('A3 · toko.js tidak membaca tanda gabung dari baris pembuka', 'baru/js/data/toko.js', "if (m && m.merk && m.digabungKe && !out[String(m.merk)]) out[String(m.merk)] = String(m.digabungKe);", ""),
+    ('A3 · merek pemasok kelas tidak dibawa', 'baru/js/layar/tutup-buku-logika.js', "if (pemasokKelas[r.merk]) r.merkPemasok = pemasokKelas[r.merk];", ""),
+    ('A3 · kemasan berstok 0 tidak lahir lagi (chip habis hilang dari rak)', 'baru/js/layar/tutup-buku-logika.js', "if (Math.abs(s.sisaUnit) > 1e-9) return;\n    d.push(", "return;\n    d.push("),
+    ('A4 · modal owner tanpa saldo pembuka', 'baru/js/layar/tutup-buku-logika.js', "if (Math.abs(modal) >= 0.5) d.push({ koleksi: 'modalOwner',", "if (false) d.push({ koleksi: 'modalOwner',"),
+    ('A4 · pembuka modal bertanggal 1 Jan (terbaca uang masuk)', 'baru/js/layar/tutup-buku-logika.js', "nominal: Math.round(Math.abs(modal)), tanggal: c, jam: '00:00',", "nominal: Math.round(Math.abs(modal)), tanggal: tglBuka, jam: '00:00',"),
+    ('A4 · modal owner tanpa saringan pembuka bertahap', 'baru/js/data/toko.js', "export function ambilModalOwner() { return bkSaring(_cache.modal); }", "export function ambilModalOwner() { return _cache.modal; }"),
+    ('A4 · baris modal owner tidak dibandingkan', 'baru/js/layar/tutup-buku-logika.js', "  const lain = [{ id: 'modal',", "  const lain = [{ id: 'modalX',"),
+    ('A5 · gerbang g6 dimatikan', 'baru/js/layar/tutup-buku-logika.js', "tanggalPendek(sampai), ok: !M.n,", "tanggalPendek(sampai), ok: true,"),
+    ('A5 · baris kemasan buta minus lagi', 'baru/js/layar/tutup-buku-logika.js', "if (!(Math.abs(s.sisaUnit) > 1e-9)) return; unit += s.sisaUnit;", "if (!(s.sisaUnit > 0)) return; unit += s.sisaUnit;"),
+    ('A5 · bayar lebih ke pemasok tidak mengurangi baris utang', 'baru/js/layar/tutup-buku-logika.js', "const utangP = up.reduce((a, x) => a + x.totalUtang, 0) - tekorP,", "const utangP = up.reduce((a, x) => a + x.totalUtang, 0),"),
+    ('A5 · baris pembuka beras minus dinilai minus (buta)', 'baru/js/layar/tutup-buku-logika.js', "j.beras += Number(m.totalKg) > 0 ? Number(m.subtotalHarga) || 0 : 0;", "j.beras += Number(m.subtotalHarga) || 0;"),
+    ('A6 · patokan gaji sistem lama tidak dibawa berita acara', 'baru/js/layar/upah-logika.js', "  const k = upKunci(nama); let sampai = '';\n  ambilTutupBukuAcara()", "  const k = upKunci(nama); let sampai = ''; return sampai;\n  ambilTutupBukuAcara()"),
+    ('A6 · upah Desember menulis biaya 2026 sesudah tutup buku', 'baru/js/layar/upah-logika.js', "!(tolakKunciTanggal(b + '-01', '') || upTahunDitutup(b))", "!tolakKunciTanggal(b + '-01', '')"),
+    ('A6 · baris upah belum dibayar tidak dibandingkan', 'baru/js/layar/tutup-buku-logika.js', "{ id: 'upah', nama: 'Upah karyawan yang belum dibayar · '", "{ id: 'upahX', nama: 'Upah karyawan yang belum dibayar · '"),
+    ('A7 · ringkasan tahun tidak ditulis di batch penanda', 'baru/js/layar/tutup-buku-logika.js', "  tanda.data.ringkasTahun = ringkasTahun(tahun);", ""),
+    ('A7 · KR1 tidak memakai ringkasan', 'baru/js/data/toko.js', "if (Math.abs(ring - hidupLama) < 0.5) return info;", "return info;"),
+    ('A7 · laju pakai tidak memakai ringkasan', 'baru/js/data/toko.js', "geser(R.laju.hari, 1); geser(hidup, -1);", "geser(hidup, -1);"),
+    ('A7 · salinan rumus laju per hari bergeser dari mesin', 'baru/js/data/toko.js', "if ((p.jenis === 'karung' || p.jenis === 'repacking' || p.jenis === 'literan') && p.merkSumber) tb(h(t).kg, p.merkSumber, p.totalKg || 0);", "if ((p.jenis === 'karung' || p.jenis === 'literan') && p.merkSumber) tb(h(t).kg, p.merkSumber, p.totalKg || 0);"),
+    ('A7 · daftar pelanggan tidak memakai ringkasan', 'baru/js/layar/pelanggan-logika.js', "  const RA = ringkasArsip();\n  if (RA && RA.pelanggan) {", "  const RA = null;\n  if (RA && RA.pelanggan) {"),
+    ('A8 · jam reset kuota selalu 14.00', 'baru/js/layar/tutup-buku-logika.js', "return iso >= minggu(2, 2) && iso < minggu(10, 1) ? 14 : 15;", "return 14;"),
+    ('A8 · peringatan MEPET tidak pernah muncul', 'baru/js/layar/tutup-buku-logika.js', "mepet = R.filter((x) => x.n <= x.batas && x.n > 0.8 * x.batas);", "mepet = R.filter((x) => false);"),
+    ('A9 · susulan disapu sebagai sisa arsip (lanjutkan arsip)', 'baru/js/layar/tutup-buku-logika.js', "if (a.status === 'terkunci') { const sisa = bkArsipHabis(tahun) ? 0 : arsipBuku(tahun).n;", "if (a.status === 'terkunci') { const sisa = arsipBuku(tahun).n;"),
+    ('A9 · hasil periksa tidak dibekukan bila ada catatan susulan', 'baru/js/layar/tutup-buku-logika.js', "(sisa && !habis)", "sisa"),
+    ('A9 · susulan tidak terdeteksi', 'baru/js/layar/tutup-buku-logika.js', "  if (!a || !(a.status === 'selesai' || (a.status === 'terkunci' && bkArsipHabis(t)))) return null;", "  return null;"),
+    ('A9 · "sudah dicatat" tidak menyembunyikan apa pun', 'baru/js/layar/tutup-buku-logika.js', "const daftar = A.daftar.filter((x) => !sudah[x.koleksi + '|' + x.id]);", "const daftar = A.daftar;"),
+    ('A2 · Beranda tidak menyebut tutup buku tahun lalu', 'baru/js/layar/tutup-buku-logika.js', "if (T.bolehSungguhan && !bkTahunSelesai(T.tahun).ok) {", "if (false) {"),
     ('saldo pembuka tidak dipecah (sekali kirim)', 'baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))",
      "const Pt = { potongan: [{ dokumen: P.dokumen.concat(penanda, [{ koleksi: 'tutupBukuAcara', data: acara }]), get: 0 }] } || kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))"),
     ('mesin melihat pembuka yang belum selesai (saringan data mati)', 'baru/js/data/toko.js', "const bkSaring = (arr) => { const s = arr.filter(pembukaBerlaku);", "const bkSaring = (arr) => { return arr; const s = arr.filter(pembukaBerlaku);"),
@@ -774,8 +1057,8 @@ RUSAK = [
      "const Pt = kpPotong(P.dokumen.map((x) => ({ dokumen: [x] })).concat([{ dokumen: [].concat(penanda,"),
     ('§8 no. 1 · batal menghapus batch penanda TERAKHIR (bukan di kiriman pertama)', 'baru/js/layar/tutup-buku-logika.js', "const P = kpPotong([{ dokumen: awal, hapus: tanda }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] }))),",
      "const P = kpPotong([{ dokumen: awal, hapus: [] }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] })), [{ dokumen: [], hapus: tanda }]),"),
-    ('era menghitung pembuka yang belum selesai', 'baru/js/layar/tutup-buku-logika.js', "if (bkTutupBuku(x) && pembukaBerlaku(x)) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } })); return t; }\nexport function aturBuku",
-     "if (bkTutupBuku(x)) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } })); return t; }\nexport function aturBuku"),
+    # siap 2027: era = toko.js eraBuku (satu tempat, juga dibaca upah)
+    ('era menghitung pembuka yang belum selesai', 'baru/js/data/toko.js', "if (x && x.tutupBuku && pembukaBerlaku(x)) { const n = Number(x.tahunDari);", "if (x && x.tutupBuku) { const n = Number(x.tahunDari);"),
     ('rencana tidak disimpan di server (berita acara berjalan tidak ikut kiriman 1)', 'baru/js/layar/tutup-buku-logika.js', "if (i === 0 && n > 1) dokumen.unshift(", "if (false) dokumen.unshift("),
     ('lanjut mengirim ulang kiriman yang sudah masuk', 'baru/js/layar/tutup-buku-logika.js', "const belumAda = a.pembuka.filter((x) => tanda.indexOf(x) < 0 && !dokDiCache(x.koleksi, x.data.id));", "const belumAda = a.pembuka.filter((x) => tanda.indexOf(x) < 0);"),
     ('lanjut tanpa memeriksa perubahan tahun lama', 'baru/js/layar/tutup-buku-logika.js', "const ub = bkBerubah(a); if (ub) return { tolak: ub };", "const ub = '';"),
@@ -793,7 +1076,7 @@ RUSAK = [
     ('§8 no. 4 · Lanjutkan & Batalkan tidak memeriksa antrean perangkat', 'baru/js/layar/tutup-buku-logika.js', "  const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };\n  const ub = bkBerubah(a);", "  const ub = bkBerubah(a);"),
     ('§8 no. 4 · pita tidak memeriksa antrean perangkat', 'baru/js/layar/tutup-buku-logika.js', "  const nT = bkTunda(tahun); if (nT) return { tahun, fase: 'tunggu', tunda: nT, teks: bkKalimatTunda(tahun, nT) };", "  const nT = 0;"),
     ('§8 no. 5 · Lanjutkan memakai patokan periksa ulang dari saat MULAI', 'baru/js/layar/tutup-buku-logika.js', "const kunci = Object.assign({}, a, { status: 'terkunci', hariIni: { tanggal: hari, baris:", "const kunci = Object.assign({}, a, { status: 'terkunci', hariIniBaru: { tanggal: hari, baris:"),
-    ('§8 no. 6 · selesai tanpa memeriksa arsip & periksa ulang', 'baru/js/layar/tutup-buku-logika.js', "  const sisa = arsipBuku(tahun).n; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '", "  const sisa = 0; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '"),
+    ('§8 no. 6 · selesai tanpa memeriksa arsip & periksa ulang', 'baru/js/layar/tutup-buku-logika.js', "  const sisa = bkArsipHabis(tahun) ? 0 : arsipBuku(tahun).n; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '", "  const sisa = 0; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '"),
     ('§8 no. 6 · selesai menerima periksa ulang yang beda tanpa ketukan kedua', 'baru/js/layar/tutup-buku-logika.js', "  if (kal && !yakin) return {", "  if (kal && !yakin && false) return {"),
     ('§8 no. 7 · pembatalan yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Kiriman ini tidak masuk", "return awal + (false ? ' Kiriman ini tidak masuk"),
     ('§8 no. 7 · tutup buku yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Tidak ada yang masuk", "return awal + (false ? ' Tidak ada yang masuk"),
@@ -801,7 +1084,7 @@ RUSAK = [
     ('§8 no. 9 · daftar periksa Kunci bulan tidak melihat tutup buku setengah jalan', 'baru/js/layar/kunci-periode-logika.js', "tambah({ id: 'tutupBukuTuntas', blokir: true, ok: !KMb,", "tambah({ id: 'tutupBukuTuntas', blokir: true, ok: true || !KMb,"),
     ('putaran 3 AAL1 · arsip tidak berhenti walau tutup buku dibatalkan dari perangkat lain', 'baru/js/layar/tutup-buku-logika.js', "const a = bkAcara(tahun); if (a && a.status === 'terkunci') return bkBukanPemegang(tahun, L);", "const a = bkAcara(tahun); if (true) return '';"),
     ('putaran 3 UTBU-1 · "selesai" & pita menghitung ulang periksa ulang (hasil yang dibekukan diabaikan)', 'baru/js/layar/tutup-buku-logika.js', "  if (!P || !Array.isArray(P.baris) || !bkPercobaan(a) ||", "  if (true ||"),
-    ('putaran 3 UTBU-1 · hasil periksa ulang tidak disusun untuk dibekukan', 'baru/js/layar/tutup-buku-logika.js', "  if (!PU || !a || a.status !== 'terkunci' || arsipBuku(tahun).n || bkBukanPemegang(tahun, L) || !bkPercobaan(a)) return { PU };", "  if (true) return { PU };"),
+    ('putaran 3 UTBU-1 · hasil periksa ulang tidak disusun untuk dibekukan', 'baru/js/layar/tutup-buku-logika.js', "  if (!PU || !a || a.status !== 'terkunci' || (sisa && !habis) || bkBukanPemegang(tahun, L) || !bkPercobaan(a)) return { PU };", "  if (true) return { PU };"),
     ('putaran 4 P4-4 · hasil beku kembali ditulis di berita acara UTUH (berstatus terkunci)', 'baru/js/layar/tutup-buku-logika.js', "  return { PU, dokumen: [{ koleksi: 'pengaturan', data: periksaArsip }] };", "  return { PU, dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, a, { periksaArsip }) }, { koleksi: 'pengaturan', data: periksaArsip }] };"),
     ('putaran 4 P4-4 · hasil beku percobaan lama dipakai percobaan berikut (tanda percobaan diabaikan)', 'baru/js/layar/tutup-buku-logika.js', " || String(P.percobaan || '') !== bkPercobaan(a)) return periksaUlangBuku(tahun);", ") return periksaUlangBuku(tahun);"),
     ('putaran 3 UTBU-2 · baris yang tidak bisa dihitung mesin disebut TIDAK SAMA', 'baru/js/layar/tutup-buku-logika.js', "beda: PU.baris.filter((b) => b.tahu && b.b !== null && !b.sama)", "beda: PU.baris.filter((b) => b.tahu && !b.sama)"),
@@ -892,4 +1175,16 @@ if __name__ == '__main__':
         if a is None: print('ASAP JATUH: ' + e); sys.exit(2)
         print('ASAP DATA TOKO (%s) pada 5 Jan 2027: %s' % (os.path.basename(cad[-1]), json.dumps(a, ensure_ascii=False)))
         if a['salah']: sys.exit(2)
+    # siap 2027: asap ritual penuh atas cadangan LOKAL (argumen --asap=… atau env TUTUP_BUKU_ASAP) — dilewati di CI (cadangan toko tidak pernah ada di repo)
+    berkas = next((x.split('=', 1)[1] for x in sys.argv if x.startswith('--asap=')), '') or os.environ.get('TUTUP_BUKU_ASAP', '')
+    if berkas and os.environ.get('GITHUB_ACTIONS'): print('ASAP SIAP 2027 dilewati (CI)')
+    elif berkas and not g:
+        a, salah = asap_2027(js, berkas)
+        if a is not None:
+            for h in a['hasil']:
+                print('ASAP SIAP 2027 %s · putusan tiruan %d hari · kiriman %s · %d pembuka · %d arsip · %s · periksa ulang: %s · %s' % (h['jam'], h.get('belumDiputus', 0), h.get('kiriman'), h.get('pembuka', 0), h.get('arsip', 0), h.get('banding', '-'), h.get('periksaUlang', '-'), h.get('batal') or h.get('kunciJanuari', '-')))
+                print('    dibandingkan: %s · kuota ritual %s · batal %s (rencana %s, reset %s.00 WIB)' % (json.dumps(h.get('dibandingkan')), json.dumps(h.get('kuota', {}).get('ritual')), json.dumps(h.get('kuota', {}).get('batal')), h.get('kuota', {}).get('rencana'), h.get('kuota', {}).get('jam')))
+        for x in salah: print('   ✗ ASAP ' + x[:500])
+        print('ASAP SIAP 2027 (%s): %s' % (os.path.basename(berkas), 'LULUS' if not salah else '%d GAGAL' % len(salah)))
+        if salah: sys.exit(2)
     sys.exit(1 if g else 0)

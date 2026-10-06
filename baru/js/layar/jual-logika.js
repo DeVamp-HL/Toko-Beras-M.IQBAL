@@ -24,7 +24,7 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
-  wzDiKeranjangParkir, sumberData, cacheMentah, versiCache, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, returUangPerHari, denganCacheSementara } from '../data/toko.js';
+  wzDiKeranjangParkir, sumberData, cacheMentah, versiCache, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, returUangPerHari, kreditLintas, denganCacheSementara } from '../data/toko.js';
 import { hariIniIso, RP, tanggalPendek, pecahLebih } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan, tolakBatalReturBon } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
@@ -478,7 +478,7 @@ export function daftarPelanggan(cari) {
 }
 export function infoPelanggan(nama) {
   if (!kunciPelanggan(nama)) return null;
-  const i = infoKreditPelanggan(nama);   // mesin beku: sisa dijepit 0 — kelebihan bayar dibaca sendiri (audit 39b no. 4)
+  const i = kreditLintas(infoKreditPelanggan(nama), nama);   // siap 2027: lintas tahun (toko.js) · mesin beku: sisa dijepit 0 — kelebihan bayar dibaca sendiri (audit 39b no. 4)
   const r = hitungPiutang().find((x) => x.kunci === kunciPelanggan(nama)); const PL = pecahLebih(r); i.lebih = PL.lebih; i.lebihUang = PL.uang; i.lebihHapus = PL.hapus;
   const pesanan = ambilPesanan().filter((p) => pesananBelumTuntas(p) && kunciPelanggan(p.namaPelanggan || p.nama) === kunciPelanggan(nama));
   return Object.assign(i, { pesanan });
@@ -910,7 +910,7 @@ export function alasanKunciKredit(s, totalKredit) {
   const nama = String(s.pelanggan || '').trim();
   if (!nama) return 'Isi nama pelanggan untuk penjualan kredit.';
   if (s.kreditDibuka) return null;   // owner membuka kredit sekali untuk nota ini (jejaknya kreditDibukaOwner)
-  const info = infoKreditPelanggan(nama);
+  const info = kreditLintas(infoKreditPelanggan(nama), nama);   // siap 2027 (owner 7 Okt, A7): 90 hari menyeberang tutup buku lewat ringkasan tahun lalu
   if (!info.terdaftar) return nama + ' belum terdaftar di buku Pelanggan — kredit dimatikan (KR1). Isi ciri, catatan, atau rute di kartunya dulu.';
   if (info.batas <= 0) return 'Belum ada riwayat belanja — batas kredit belum terbentuk (KR1).';
   if (info.sisa + totalKredit > info.batas) return 'Melewati batas kredit ' + RP(info.batas) + ' (bon ' + RP(info.sisa) + ' + nota ini ' + RP(totalKredit) + ').';

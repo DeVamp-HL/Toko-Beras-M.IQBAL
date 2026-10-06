@@ -12,7 +12,7 @@ import { RP, tanggalPendek } from '../inti/format.js';
 import { semuaOrang, pasanganKembar } from './pelanggan-logika.js';
 import { aturUpah, hitungUpah } from './upah-logika.js';
 import { pjTahun } from './pajak-logika.js';
-import { kemajuanBuku } from './tutup-buku-logika.js';
+import { kemajuanBuku, bkTahunSelesai } from './tutup-buku-logika.js';
 
 export const KP_DENYUT_MS = 24 * 3600000;   // ⛔ perangkat yang tidak berdenyut 24 jam terakhir (owner 25 Sep)
 const KP_VERSI_MS = KP_VERSI_HARI * 24 * 3600000;
@@ -75,6 +75,10 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   // utang lama), arsip, dan pembatalan ditolak server: tutup buku buntu, tidak bisa dilanjutkan maupun dibatalkan
   const KMb = kemajuanBuku();
   tambah({ id: 'tutupBukuTuntas', blokir: true, ok: !KMb, teks: 'Tidak ada tutup buku yang setengah jalan', ket: KMb ? KMb.teks + ' Tuntaskan atau batalkan dulu di Uang › Tutup buku.' : 'tidak ada' });
+  // siap 2027 (owner 7 Okt, A2): bulan mana pun di tahun Y+1 ditolak selama tutup buku tahun Y (yang punya catatan) belum SELESAI — kunci berbentuk awalan:
+  // mengunci Januari Y+1 ikut mengunci Y, lalu saldo pembuka & arsip tutup buku Y ditolak server selamanya (dulu hanya tutup buku setengah jalan yang ditolak)
+  const thLalu = Number(bulan.slice(0, 4)) - 1; const TS = bkTahunSelesai(thLalu);
+  tambah({ id: 'tutupBukuLalu', blokir: true, ok: TS.ok, teks: 'Tutup buku ' + thLalu + ' sudah selesai', ket: TS.ok ? TS.teks : TS.teks + ' — mengunci ' + nama + ' ikut mengunci ' + thLalu + ' (kunci berbentuk awalan), lalu tutup buku ' + thLalu + ' ditolak server selamanya. Selesaikan dulu di Uang › Tutup buku.' });
   const siap = KP_SIAP_25B || !!K.siap25b;
   tambah({ id: 'siap25b', blokir: true, ok: siap, teks: 'Sistem lama & kasir darurat siap menghadapi bulan terkunci (putaran 25b)', ket: siap ? 'siap' : 'BELUM — sampai putaran 25b, satu nota kasir yang tertahan offline lalu tiba sesudah bulannya terkunci membuat antrean tablet itu MACET (nota sesudahnya ikut tertahan), dan index.html memunculkan "Database terkunci" berulang. Kunci pertama menunggu 25b (keputusan owner 25 Sep).' });
   const bolehT = kpBolehDikunci(bulan, kini, tenggang);
@@ -164,6 +168,8 @@ export function kpPerhatian(kini, uji) {
   const c = kpCalon(kini); if (!c || !kpBolehDikunci(c, kini, kunciTenggang())) return [];
   // keputusan owner 1 Okt (A): bulan 2026 tidak dikunci — Beranda tidak menyuruh mengunci
   if (c < (uji && uji.kunciMulai !== undefined ? uji.kunciMulai : KP_KUNCI_MULAI)) return [];
+  // siap 2027 (A2): selama tutup buku tahun lalu belum selesai, Beranda tidak menyuruh mengunci (barisnya tutup buku: tutup-buku-logika bkPerhatian)
+  if (!bkTahunSelesai(Number(c.slice(0, 4)) - 1).ok) return [];
   const W = kpWib(kini); const telat = kpIdx(c) < W.idx - 1;
   return [{ teks: 'Kunci bulan: ' + kpNamaBulan(c) + ' belum dikunci' + (telat ? ' (sudah lebih dari sebulan)' : ''), nilai: 'Uang › Tutup buku', awas: telat }];
 }

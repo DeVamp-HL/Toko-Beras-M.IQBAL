@@ -15,7 +15,7 @@
 //  - slip        → slipUpah (koleksi baru) = jejak tiap pembayaran: rentang hari, hitungan, potongan, teks slip. "Sejak terakhir dibayar" dibaca dari sini.
 import { hitungKasbon } from '../mesin/beku.js';
 import { kunciPelanggan, akhirBulanIso, POS_BIAYA_BULANAN } from '../mesin/pembantu.js';
-import { ambilBiayaBulanan, ambilKasbonMutasi, ambilAbsenKaryawan, ambilSlipUpah, cacheMentah, tolakKunciTanggal } from '../data/toko.js';
+import { ambilBiayaBulanan, ambilKasbonMutasi, ambilAbsenKaryawan, ambilSlipUpah, cacheMentah, tolakKunciTanggal, ambilTutupBukuAcara, eraBuku } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAngka, ugKosong, ugAturDok, ugTambahHari, ugHariKe, ugKiniDari, saldoKantong, ugCukup } from './uang-logika.js';
 
@@ -104,6 +104,14 @@ function upBulanLamaTerakhir(nama) {
     else if (!belum || b.bulan > belum.bulan) belum = { bulan: b.bulan, hari: Number(r.hari) || 0, gaji: Number(r.gaji) || 0 }; });
   return { bulan, sampai, belum };
 }
+/** Siap 2027 (owner 7 Okt, A6): gaji sistem lama (biayaBulanan) ikut diarsip tutup buku — tanggal terakhir yang tertutup gajinya dibawa berita acara (`upah[].lama`). */
+function upLamaTutupBuku(nama) {
+  const k = upKunci(nama); let sampai = '';
+  ambilTutupBukuAcara().forEach((a) => { if (!a || (a.status !== 'terkunci' && a.status !== 'selesai')) return; (Array.isArray(a.upah) ? a.upah : []).forEach((o) => { if (o && upKunci(o.nama) === k && o.lama && String(o.lama) > sampai) sampai = String(o.lama); }); });
+  return sampai;
+}
+/** Bulan biaya `b` ('YYYY-MM') ada di tahun yang SUDAH ditutup buku (era) — laba tahun itu sudah dibekukan berita acara. */
+export const upTahunDitutup = (b) => { const era = eraBuku(); return era !== null && Number(String(b).slice(0, 4)) <= era; };
 /** Sejak kapan hari kerja belum dibayar: slip terakhir + 1 → tanggal bayar terakhir sistem lama + 1 → hari kerja pertama yang tercatat → hari ini;
  *  lalu dinaikkan oleh setelan owner per orang: "hitung upah sejak" / tanggal masuk (tidak pernah mundur ke hari yang sudah dibayar). */
 export function mulaiUpah(nama, iso) {
@@ -111,8 +119,9 @@ export function mulaiUpah(nama, iso) {
   let M;
   if (sampai) M = { mulai: ugTambahHari(sampai, 1), sumber: 'slip', teks: 'sejak slip terakhir (' + tanggalPendek(sampai) + ')' };
   else {
-    const L = upBulanLamaTerakhir(nama);
-    if (L.sampai) M = { mulai: ugTambahHari(L.sampai, 1), sumber: 'lama', teks: L.sampai === akhirBulanIso(L.bulan) ? 'sejak gaji bulan ' + L.bulan + ' dibayar di sistem lama' : 'sejak gaji terakhir dibayar ' + tanggalPendek(L.sampai) + ' di sistem lama', belumLama: L.belum };
+    const L = upBulanLamaTerakhir(nama); const TB = upLamaTutupBuku(nama);
+    if (L.sampai && L.sampai >= TB) M = { mulai: ugTambahHari(L.sampai, 1), sumber: 'lama', teks: L.sampai === akhirBulanIso(L.bulan) ? 'sejak gaji bulan ' + L.bulan + ' dibayar di sistem lama' : 'sejak gaji terakhir dibayar ' + tanggalPendek(L.sampai) + ' di sistem lama', belumLama: L.belum };
+    else if (TB) M = { mulai: ugTambahHari(TB, 1), sumber: 'lama', teks: 'sejak gaji terakhir dibayar ' + tanggalPendek(TB) + ' di sistem lama (dibawa berita acara tutup buku)', belumLama: L.belum };
     else { const h = hariKerja(nama); const t = Object.keys(h).sort()[0] || ''; M = t && t <= iso ? { mulai: t, sumber: 'absen', teks: 'sejak hari kerja pertama yang tercatat', belumLama: L.belum } : { mulai: iso, sumber: 'kosong', teks: 'belum ada hari kerja yang tercatat', belumLama: L.belum }; }
   }
   // setelan per orang (lembar Karyawan): "hitung upah sejak" lalu tanggal masuk — tidak pernah membuka lagi hari yang sudah tertutup pembayaran (slip / gaji lama)
@@ -225,8 +234,10 @@ export function susunBayarUpah(nama, potongPilih, w, bonusIsi) {
   const dokumen = []; const bulanan = [];
   // putaran 25 (K5, owner 25 Sep): hari kerja di bulan TERKUNCI dibukukan ke biaya bulan PEMBAYARAN (bulan terkunci tidak bisa ditulis lagi); rincian gajinya
   // tetap membawa dari/sampai yang sebenarnya. Tanpa field baru.
+  // siap 2027 (owner 7 Okt, A6): aturan yang sama untuk bulan di tahun yang SUDAH DITUTUP BUKU — upah Desember yang dibayar Januari tidak menulis biaya tahun lama
+  // sesudah laba tahun itu dibekukan berita acara (dulu menulis biayaBulanan Desember baru di buku hidup)
   const bulanBayar = String(w.tanggal).slice(0, 7); const pindahBulan = [];
-  Object.keys(perBulan).forEach((b) => { if (b === bulanBayar || !tolakKunciTanggal(b + '-01', '')) return; const t = perBulan[bulanBayar] = perBulan[bulanBayar] || { hari: 0, penuh: 0, setengah: 0, absen: 0, upah: 0 };
+  Object.keys(perBulan).forEach((b) => { if (b === bulanBayar || !(tolakKunciTanggal(b + '-01', '') || upTahunDitutup(b))) return; const t = perBulan[bulanBayar] = perBulan[bulanBayar] || { hari: 0, penuh: 0, setengah: 0, absen: 0, upah: 0 };
     ['hari', 'penuh', 'setengah', 'absen', 'upah'].forEach((k) => { t[k] += perBulan[b][k]; }); pindahBulan.push(b); delete perBulan[b]; });
   const bulanAkhir = Object.keys(perBulan).sort().slice(-1)[0];
   Object.keys(perBulan).sort().forEach((bulan) => { const p = perBulan[bulan]; const bonusIni = bulan === bulanAkhir ? H.bonus : 0; const gaji = Math.round(p.upah) + bonusIni; const lama = ambilBiayaBulanan().find((b) => b.bulan === bulan) || { id: bulan, bulan };
@@ -242,7 +253,7 @@ export function susunBayarUpah(nama, potongPilih, w, bonusIsi) {
   // slipUpah: `tarif` = tarif harian yang berlaku hari ini (bentuk lama); `satuan` & `rincianTarif` (putaran 29) merinci tiap ruas tarif dalam rentang yang dibayar
   const dokSlip = { id: w.idUnik(), nama: String(nama).trim(), dari: H.mulai, sampai, tanggal: w.tanggal, jam: w.jam, penuh: H.penuh, setengah: H.setengah, absen: H.absen, tarif: H.tarif, satuan: H.satuan, rincianTarif, upah: H.upah, bonus: H.bonus, alasanBonus: H.alasanBonus, potong: H.potong, diterima: H.diterima, sisaKasbon: H.sisaKasbon - H.potong, bulanan, kunci, teks: slip };
   dokumen.push({ koleksi: 'slipUpah', data: dokSlip });
-  return { dokumen, slip: dokSlip, patch: { bonusU: { ketik: '', alasan: '' }, kabar: 'Upah ' + String(nama).split(' ')[0] + ' ' + RP(H.diterima) + ' dibayar dari laci' + (H.bonus ? ' · bonus ' + RP(H.bonus) + ' (' + H.alasanBonus + ')' : '') + (H.potong ? ' · kasbon dipotong ' + RP(H.potong) : '') + ' · laba: gaji penuh ' + RP(H.upah) + ' dibagi rata per hari bulannya' + (H.tarifBeragam ? ' · dua tarif dalam rentang ini, dirinci di slip' : '') + (c.takTerperiksa ? ' · isi laci belum bisa dihitung, tidak diperiksa' : '') + (pindahBulan.length ? ' · hari kerja ' + pindahBulan.join(', ') + ' (bulan terkunci) dibukukan ke biaya ' + bulanBayar : ''), kabarAwas: false, bayarU: null, lembarU: 'slip', slipTeks: slip } };
+  return { dokumen, slip: dokSlip, patch: { bonusU: { ketik: '', alasan: '' }, kabar: 'Upah ' + String(nama).split(' ')[0] + ' ' + RP(H.diterima) + ' dibayar dari laci' + (H.bonus ? ' · bonus ' + RP(H.bonus) + ' (' + H.alasanBonus + ')' : '') + (H.potong ? ' · kasbon dipotong ' + RP(H.potong) : '') + ' · laba: gaji penuh ' + RP(H.upah) + ' dibagi rata per hari bulannya' + (H.tarifBeragam ? ' · dua tarif dalam rentang ini, dirinci di slip' : '') + (c.takTerperiksa ? ' · isi laci belum bisa dihitung, tidak diperiksa' : '') + (pindahBulan.length ? ' · hari kerja ' + pindahBulan.join(', ') + ' (bulan terkunci / tahun yang sudah ditutup buku) dibukukan ke biaya ' + bulanBayar : ''), kabarAwas: false, bayarU: null, lembarU: 'slip', slipTeks: slip } };
 }
 /** Slip yang sudah dibayar (sistem baru) + gaji bulanan sistem lama yang bertanggal, terbaru di atas. */
 export function riwayatUpah(nama, n) {
