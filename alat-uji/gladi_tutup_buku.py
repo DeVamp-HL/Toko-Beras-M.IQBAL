@@ -232,10 +232,6 @@ def log_emulator_baru():
     except OSError: return {'penuh': 0, 'putus': 0}
 
 
-def cakupan_aturan():
-    try: return rest('GET', FS + '/emulator/v1/projects/%s:ruleCoverage' % PROYEK, waktu=60)
-    except Exception as e: return {'galat': str(e)[:300]}
-
 
 # ============================== salinan /baru/ untuk uji ==============================
 def jam_palsu(iso):
@@ -695,7 +691,7 @@ def jalankan(daftar, sandi, rusak=None, cetak=print):
         if S['galat']: cetak('  GALAT: ' + S['galat'][:800])
         if S['konsol'] and any(not x['ok'] for x in S['cek']): cetak('  konsol: ' + ' | '.join(S['konsol'][-8:])[:1500])
         lap['skenario'].append(S)
-    lap['cakupanAturan'] = cakupan_aturan()
+    # :ruleCoverage emulator (JSON) hanya memuat posisi ekspresi tanpa hitungan (run 7 Okt) — get() di aturan tidak bisa dihitung dari sana, tidak disimpan
     lap['lulus'] = all(x['ok'] for S in lap['skenario'] for x in S['cek'])
     return lap
 
@@ -753,7 +749,10 @@ if __name__ == '__main__':
     if '--gabung' in arg:
         # workflow: tiap skenario di emulator SENDIRI (sesi WebChannel halaman yang sudah mati tetap dikirimi pesan oleh emulator sampai kanalnya
         # kedaluwarsa — run 7 Okt: 2,2 juta baris "antrean penuh" saat ritual berjalan sesudah dua skenario lain). Laporan per skenario digabung di sini.
-        berkas = [x for x in arg[arg.index('--gabung') + 1:] if not x.startswith('--') and x.endswith('.json')]
+        berkas = []
+        for x in arg[arg.index('--gabung') + 1:]:
+            if x.startswith('--'): break
+            berkas.append(x)
         lap = None
         for b in berkas:
             x = json.load(open(b, encoding='utf-8'))

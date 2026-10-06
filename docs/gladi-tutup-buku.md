@@ -49,7 +49,7 @@ Ringkasan tiap run ada di halaman ringkasan run, lengkap dengan tabel per langka
 emulator. Angka di tiap langkah:
 
 - **baca**: dokumen yang diterima pendengar halaman dari server. Dihitung lewat penghitung di salinan SDK uji. Pembacaan `get()` di dalam aturan
-  tidak ikut terhitung.
+  tidak ikut terhitung, karena `:ruleCoverage` emulator hanya berisi posisi ekspresi, tanpa jumlah. Perkiraan jumlah `get()` ada di audit kesiapan.
 - **tulis / hapus**: selisih isi emulator antara sebelum dan sesudah langkah, diambil lewat REST.
 
 Ketiganya dijumlah dan dibandingkan dengan batas Spark per hari: 50 rb baca, 20 rb tulis, 20 rb hapus.
