@@ -615,7 +615,7 @@ DOK_LAMA = {'id': 'uji-v7-lama', 'tanggal': '2021-06-15', 'hargaTotal': 1000}
 DOK_BEDA = {'id': 'uji-v7-beda', 'tanggal': '2021-06-16', 'hargaTotal': 1000}
 DOK_PULIH = {'id': 'uji-v7-pulih', 'tanggal': '2021-03-01', 'hargaTotal': 500}
 PEMBUKA = {'id': 'uji-v7-pembuka', 'tipe': 'saldoAwal', 'tutupBuku': True, 'tahunDari': 2021, 'tanggal': '2021-03-01', 'nominal': 1000}
-ACARA_2021 = {'tahun': 2021, 'status': 'terkunci', 'paraf': {'pada': '2026-10-01T00:00:00.000Z'}}
+ACARA_2021 = {'tahun': 2021, 'status': 'terkunci', 'paraf': {'pada': '2026-10-01T00:00:00.000Z'}, 'titikSebelum': {'tanggal': '2021-06-30', 'laci': 7, 'brankas': 0}}
 ACARA_2025 = {'tahun': 2025, 'mode': 'sungguhan', 'status': 'berjalan', 'paraf': {'pada': '2026-10-01T00:00:00.000Z'}}
 def _arsip(idAsli, dok): return {'id': '2021|penjualan|' + idAsli, 'tahun': 2021, 'koleksi': 'penjualan', 'idAsli': idAsli, 'dok': dok}
 DB_UJI_V7 = {
@@ -705,9 +705,8 @@ KASUS_V7 = [
     ('M-P3', 'owner HAPUS saldo pembuka tahun pintu (tarik saat Batalkan)', 'owner', 'delete', 'piutangMutasi', 'uji-v7-pembuka', None, {'piutangMutasi/uji-v7-pembuka': PEMBUKA}, True, 2),
     ('★P4', 'owner KEMBALIKAN catatan dari arsip, isinya sama', 'owner', 'create', 'penjualan', 'uji-v7-pulih', DOK_PULIH, None, True, 3),
     ('★P5', 'owner titik kas 31 Des tahun pintu (bulan terkunci)', 'owner', 'update', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2021-12-31', 'laci': 1}, None, True, 2),
-    ('★P25', 'owner titik kas 30 Jun tahun pintu (bukan 31 Des, bukan titikSebelum berita acara)', 'owner', 'update', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2021-06-30', 'laci': 1}, None, False, None),
-    ('M-P5b', 'titik kas kembali = titikSebelum berita acara tahun pintu (Batalkan)', 'owner', 'update', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2021-06-30', 'laci': 7, 'brankas': 0},
-     {'tutupBukuAcara/2021': dict(ACARA_2021, titikSebelum={'tanggal': '2021-06-30', 'laci': 7, 'brankas': 0})}, True, 3),
+    ('★P25', 'owner titik kas 30 Jun tahun pintu, isi kantong BEDA dari titikSebelum berita acara (bukan 31 Des, bukan titikSebelum persis)', 'owner', 'update', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2021-06-30', 'laci': 1}, None, False, None),
+    ('★P26', 'owner titik kas kembali = titikSebelum berita acara 2021 PERSIS (Batalkan)', 'owner', 'create', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2021-06-30', 'laci': 7, 'brankas': 0}, None, True, 3),
     ('★P6', 'owner BUKA pintu tahun lalu (berita acara 2025 berjalan SEBELUM kiriman, sampai besok)', 'owner', 'create', 'pengaturan', 'pintuBuku', PINTU_BARU, None, True, 1),
     ('★P7', 'owner TUTUP pintu', 'owner', 'update', 'pengaturan', 'pintuBuku', {'id': 'pintuBuku', 'tahun': 2021, 'status': 'tutup'}, None, True, 0),
     ('★P9', 'owner UBAH catatan bulan terkunci (pintu tidak membuka ubah)', 'owner', 'update', 'penjualan', 'uji-v7-lama', dict(DOK_LAMA, hargaTotal=2000), None, False, None),

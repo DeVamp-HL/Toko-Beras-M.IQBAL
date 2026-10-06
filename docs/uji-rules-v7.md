@@ -114,7 +114,7 @@ Tahun **2021** sengaja: tidak ada catatan toko bertanggal ≤ 2021, jadi kunci u
 |---|---|---|
 | U1 | `penjualan/uji-v7-nota` | `id` "uji-v7-nota" · `tanggal` "<hari ini YYYY-MM-DD>" · `hargaTotal` 1000 (number) · `namaProduk` "Contoh" |
 | U2 | `aturanToko/kunciPeriode` | `sampaiBulan` "2021-12" · `riwayat` (array) kosong — **WAJIB dihapus lagi** |
-| U3 | `tutupBukuAcara/2021` | `tahun` 2021 (number) · `status` "terkunci" · `paraf` (map) { `pada` "2026-10-01T00:00:00.000Z" } |
+| U3 | `tutupBukuAcara/2021` | `tahun` 2021 (number) · `status` "terkunci" · `paraf` (map) { `pada` "2026-10-01T00:00:00.000Z" } · `titikSebelum` (map) { `tanggal` "2021-06-30", `laci` 7, `brankas` 0 } |
 | U4 | `tutupBukuAcara/2025` | `tahun` 2025 (number) · `mode` "sungguhan" · `status` "berjalan" · `paraf` (map) { `pada` "2026-10-01T00:00:00.000Z" } |
 | U5 | `pengaturan/pintuBuku` | `id` "pintuBuku" · `tahun` 2021 (number) · `status` "berjalan" · `sampai` (timestamp) 1 Jan 2100 00:00 |
 | U6 | `penjualan/uji-v7-lama` | `id` "uji-v7-lama" · `tanggal` "2021-06-15" · `hargaTotal` 1000 |
@@ -149,7 +149,7 @@ Isi "PINTU": `{ id: "pintuBuku", tahun: 2025, status: "berjalan", sampai: <times
 | 13 | ★P5 | owner@ | update `pengaturan/titikKas` (dokumen nyata) | `tanggal: "2021-12-31"` | LOLOS | titik kas 31 Des tahun pintu |
 | 14 | ★P6 | owner@ | create `pengaturan/pintuBuku` | PINTU | LOLOS | buka pintu tahun lalu: berita acara 2025 (U4) sudah ada & berjalan |
 | 15 | ★P16 | owner@ | create `pengaturan/pintuBuku` | PINTU dengan `sampai` = 5 hari lagi | DITOLAK | lebih dari 72 jam |
-| 16 | ★T1 | owner@ | create `tutupBukuAcara/2024` | `{ id: "2024", tahun: 2024, mode: "sungguhan", status: "berjalan", paraf: { pada: "<tanggal hari ini>T03:00:00.000Z" } }` | LOLOS | berita acara baru berbentuk benar, jam mulai hari ini |
+| 16 | ★T1 | owner@ | create `tutupBukuAcara/2024` | `{ id: "2024", tahun: 2024, mode: "sungguhan", status: "berjalan", paraf: { pada: "<hari ini YYYY-MM-DD>T03:00:00.000Z" } }` (`paraf` = map, `pada` = string; mis. "2026-10-10T03:00:00.000Z" bila hari ini 10 Okt) | LOLOS | berita acara baru berbentuk benar, jam mulai hari ini |
 | 17 | ★T3 | owner@ | update `tutupBukuAcara/2021` | `status: "selesai"` | DITOLAK | pintu 2021 (U5) masih terbuka — selesai wajib menutup pintunya |
 | 18 | ★P19 | owner@ | **TERAKHIR**: di tab Data ubah U5 `sampai` → 1 Jan 2020, lalu ulang #6 (delete `penjualan/uji-v7-lama`) | — | DITOLAK | pintu kedaluwarsa |
 
@@ -241,7 +241,8 @@ Isi dasar ("FOTO"): `{ id: "uji-v7-foto", idBon: "b-uji", jenis: "image/jpeg", b
 | ★P17 | owner@ | create `pengaturan/pintuBuku` | PINTU dengan `tahun: <tahun ini>` | DITOLAK | tahun berjalan tidak ditutup |
 | ★P18 | owner@ | create `pengaturan/pintuBuku` | PINTU dengan `tahun: 2020` | DITOLAK | bukan tahun lalu, tanpa berita acara |
 | ★P24 | owner@ | create `pengaturan/pintuBuku` | PINTU dengan `tahun: 2021` | DITOLAK | berita acara 2021 (U3) ada, tapi bukan tahun lalu |
-| ★P25 | owner@ | update `pengaturan/titikKas` (dokumen nyata) | `tanggal: "2021-06-30"` | DITOLAK | bukan 31 Des, bukan titikSebelum berita acara |
+| ★P25 | owner@ | update `pengaturan/titikKas` (dokumen nyata) | `tanggal: "2021-06-30"`, `laci: 1` | DITOLAK | bukan 31 Des, bukan PERSIS titikSebelum berita acara (U3) |
+| ★P26 | owner@ | **create** `pengaturan/titikKas` | `{ id: "titikKas", tanggal: "2021-06-30", laci: 7, brankas: 0 }` | LOLOS | Batalkan: titik kas kembali = titikSebelum U3 persis (create = isian apa adanya) |
 
 ### T · berita acara tutup buku
 
@@ -253,7 +254,7 @@ Isi dasar ("FOTO"): `{ id: "uji-v7-foto", idBon: "b-uji", jenis: "image/jpeg", b
 
 Model CI juga menilai (tidak perlu di Playground): kirim ulang kasir-v32 tanpa `capServer` & buang cap + ubah isi (M-A5, M-B8 — Playground tidak bisa
 membuang kolom), hapus tanpa salinan arsip (M-P8), salinan arsip berisi lain / koleksi tak diarsip / id tak cocok / bulan terbuka (M-P26b–e), tarik
-saldo pembuka (M-P3), titik kas kembali = titikSebelum (M-P5b), pintu di atas berita acara selesai / dimulai sebelum tahunnya berakhir (M-P24b, M-P24c),
+saldo pembuka (M-P3), pintu di atas berita acara selesai / dimulai sebelum tahunnya berakhir (M-P24b, M-P24c),
 pintu tutup / tanpa pintu (M-P20, M-P21), catatan sesudah tahun pintu (M-P22, M-P25), `pindahUang` tidak berpintu (M-P23), titik kas mundur ke tahun
 sesudah pintu (M-P24d), ubah catatan terkunci jadi sama dengan salinannya (M-P26), pintu tahun berjalan walau berita acaranya ada (M-P27), selesai
 bersama pintu tertutup & hapus berita acara dibatalkan (M-T6, M-T7, wajib LOLOS), berita acara baru langsung selesai / id ≠ tahun (M-T8, M-T9), foto bon
