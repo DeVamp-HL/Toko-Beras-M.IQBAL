@@ -92,6 +92,15 @@ main.layar-harga.masuk > header, main.layar-harga.masuk > .jalur { animation: rk
 /* buku bon */
 .layar-harga .bn-buku { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; gap: 0 6px; align-items: baseline; min-height: 40px; padding: 5px 0; border-bottom: 1px solid var(--garis); font-size: 12px; } .layar-harga .bn-buku .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 12.5px; text-align: right; white-space: nowrap; } .layar-harga .bn-buku .sd { color: var(--redup); min-width: 72px; }
 .layar-harga .bn-buku.hd { min-height: 0; padding: 0 0 3px; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--redup); }
+/* owner 7 Okt: pembetulan bon & foto bon — cap "betulkan · foto" di kertas bon, daftar semua bon, kisi foto, foto besar selayar */
+.layar-harga .bn-cap.betul { border-color: var(--redup); color: var(--redup); border-width: 1px; transform: none; cursor: pointer; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.layar-harga .bn-semua { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 0 8px; align-items: center; min-height: 44px; padding: 5px 0; border-bottom: 1px solid var(--garis); font-size: 12px; cursor: pointer; }
+.layar-harga .bn-semua.tetap { cursor: default; } .layar-harga .bn-semua .n { text-align: right; white-space: nowrap; font-size: 11.5px; color: var(--redup); } .layar-harga .bn-semua .n .kaca-btn { display: inline-flex; margin: 2px 0; }
+.layar-harga .fb-kisi { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.layar-harga .fb-foto { display: flex; flex-direction: column; gap: 3px; } .layar-harga .fb-foto img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; border: 1px solid var(--kaca-tepi); cursor: zoom-in; background: var(--seg); }
+/* foto besar di DALAM kartunya (bukan position: fixed — leluhur beranimasi transform menjadikannya relatif ke kartu); selebar kartu, setinggi ≤ 82vh */
+.layar-harga .fb-besar { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border-radius: 10px; background: rgba(10, 10, 12, 0.86); cursor: zoom-out; }
+.layar-harga .fb-besar img { width: 100%; max-height: 82vh; object-fit: contain; border-radius: 6px; } .layar-harga .fb-besar .ket { color: #e6e1d6; }
 .layar-harga .bn-kartu { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 2px 8px; font-size: 12px; } .layar-harga .bn-kartu .l { color: var(--redup); font-size: 11px; } .layar-harga .bn-kartu .kosong { color: var(--redup); font-style: italic; }
 .layar-harga .bn-arti { font-size: 11.5px; line-height: 1.4; padding: 7px 10px; border-radius: 10px; background: var(--seg); border: 1px solid var(--kaca-tepi); display: flex; flex-direction: column; gap: 1px; }
 /* belanja — truk (warna bendanya), rel hari, kertas */

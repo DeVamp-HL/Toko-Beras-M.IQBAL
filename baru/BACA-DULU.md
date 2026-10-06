@@ -1116,7 +1116,7 @@ baru/
   js/layar/pelanggan.js     gambar & ketukan layar Pelanggan
   js/layar/menu-logika.js (laci N1, pita jam, tanya, jam, orang, tertutup, cari), sistem-logika.js (SS1–SS5)   logika Menu & Sistem tanpa DOM
   js/layar/menu.js          gambar & ketukan layar Menu + lembar Sistem
-  js/layar/harga-logika.js (katalog H1), bon-pemasok-logika.js (H2), belanja-logika.js (H3)   logika Harga & Pemasok tanpa DOM
+  js/layar/harga-logika.js (katalog H1), bon-pemasok-logika.js (H2 + pembetulan bon, owner 7 Okt), foto-bon-logika.js (foto bon, owner 7 Okt), belanja-logika.js (H3)   logika Harga & Pemasok tanpa DOM
   js/layar/harga.js         gambar & ketukan layar Harga & Pemasok (tiga keluarga, tiga lebar)
   js/layar/uang-logika.js   UANG bersama (saldo per tempat uang) + K1 Uang keluar + K4 Pindah uang (tanpa DOM)
   js/layar/upah-logika.js   K2 Orang & upah · owner-toko-logika.js K3 · tutup-hari-logika.js K5 · tutup-buku-logika.js K6 (tanpa DOM)
@@ -1178,6 +1178,9 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_riwayat_penjualan.py` (+ `--kontrol`) | 32: 16 skenario riwayat (kunci nota & urutan, takaran digabung, status batal/dirinci/karcis, retur per baris + alasan, total = Σ berlaku, per hari − retur = rekapHari, ringkas, tampilkan batal, periode & tepinya, jenis, cara, cari nama/barang/nominal/kata ganda, saringan menumpuk tanpa retur, halaman 50 & hitungan per hari, kosong) + 4 statis + 13 kontrol; asap cadangan: tiap hari omzet = rekapHari mesin, nota & total = panel Hari ini, Σ total nota = Σ baris berlaku |
 | `alat-uji/uji_kendali_biaya.py` (+ `--kontrol`) | 38: 45 skenario kendali biaya (tiap catatan tepat satu jenis & urutan pemilahannya, menutup ke mesin laba, kata owner menang, belum dipilah disebut, anggaran & lampu jatah hari ke-N, upah belum dibayar ikut, acuan median terukur, perkiraan hanya variabel, titik impas dari omzet ber-HPP & mesin sampai hari ini, pemicu per satuan & arah dibalik, pareto 80 % per kata, peringatan berurutan menunjuk pintu, tren, atur ditolak/tersimpan, tambah kata satu-kata-satu-jenis) + 23 kontrol; asap cadangan tiap bulan menutup; ASAP GLOBAL byte-sama main |
 | `alat-uji/uji_wadah_satu_buku.py` (+ `--kontrol`) | 39: satu buku per kotak — karung belakang = buku sendiri (buka = pindah merek → karung belakang, tuang = pindah karung belakang → wadah, kolam vs buku disebut), isi ulang tiga ketukan (1 karung / ½ / kg satu kiriman, batas menggunung), buku merek kurang → tolak + `perluTandai` → tandai (`perluCocokkan` + `selisihPerMerk`, tuntas = cocokkan bertanggal ≥ dokumen), aktivasi per wadah dari daftar (kekurangan disebut; nilai / laba / tumpukan tetap), komposisi turunan & banding, cek tutup toko (dikosongkan = sisihkan tanpa timbang), selisih dua angka; asap cadangan §8.4 & ASAP GLOBAL byte-sama dengan main |
+| `alat-uji/uji_karung_bekas_lahir.py` (+ `--kontrol`) | owner 7 Okt: karung di belakang wadah yang habis (isi ulang, − / + takar, hapus karung habis, samakan, cocokkan) = +1 karung bekas di kiriman yang sama, sekali per karung, dicabut bila berisi lagi / dikembalikan; dua sisi neraca = laba, rata-rata tetap; bukan-owner dititip lalu dicatat owner; asap cadangan |
+| `alat-uji/uji_pembetulan_bon.py` (+ `--kontrol`) | owner 7 Okt: pindah pembayaran / jumlah pembayaran / nomor bon / bon lama — dokumen yang sama + riwayat + alasan wajib; utang total, kas, laba tetap saat pindah; bon sesudah pembayaran & bulan terkunci ditolak; asap cadangan |
+| `alat-uji/uji_foto_bon.py` (+ `--kontrol`) | owner 7 Okt: pengecil & penyimpan foto bon dengan kanvas tiruan (jsc); fotoBon tidak didengar, dibaca sekali per bon, tanpa salinan antre lokal; input kamera/galeri; CSP img-src |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; sisi lama dari `git show sistem-lama-terakhir:index.html` sejak 3 Okt; 5 kontrol) |
 | `alat-uji/uji_safari_webkit.py` (+ `--kontrol`) | owner 3 Okt (web app Safari Mac + Safari iPhone/iPad): sembilan cacat khas WebKit, statis + jsc tanpa peramban — sandi tidak dikunci readonly selagi fokus & dilepas di pointerdown; tiap `main.layar-*` berjarak poni sesudah shorthand padding; `:hover` kerangka hanya di `@media (hover: hover) and (pointer: fine)` (menu samping iPad); tanpa kolom `month`/`week` & pil bulan Omzet di luar sistem tergambar (jsc); touchstart pasif di document (`:active` iOS); penjaga muat-ulang modul kenal "Importing binding name" Safari (jsc menjalankan script sebaris); body berjarak aman kiri/kanan, ≥1100 tetap 72px; `#rtSelisih` tanpa inputmode angka (minus); Laporan `keluarkan()` membuka WA / dialog cetak di ketukan lalu mencatat nomor (jsc dengan pemblokir jendela ala Safari); 26 kontrol |
 | `alat-uji/uji_dokumen_sisa.py` (+ `--kontrol`) | owner 7 Okt: daftar harga & harga yang naik untuk pelanggan (katalog terbit, riwayat `hargaTerbit`, draf tidak ikut, turun/kembali/baru disebut, tanpa riwayat ditolak), paket bank bernomor dihitung dulu, jalan pintas Harga/Pelanggan → Laporan, simpanan lokal sistem lama (daftar beku = tag dikurangi kunci `/baru/` & kasir darurat — di CI tag diambil dulu & `--wajib-tag`; antrean berisi dijaga sampai berkasnya dinyatakan tersimpan; berkas tanpa PIN owner; dua ketukan; dihitung saat lembar dibuka), kartu piutang hanya untuk hak Laporan, peringatan kuota, kalimat "lewat sistem lama" / jalur berkas di layar (jsc kotak pasir + statis; kontrol) |
@@ -1729,3 +1732,41 @@ menyalinnya — karena itu ada tiga penjaga (tinjauan 7 Okt, `uji_keranjang_taha
 chip, Sering) tiap kali data berubah — dan data selalu berubah sesudah tiap nota. Kini rak IDENTITAS (`susunRak(s, { identitas: true })`: chip, nama,
 harga, modal, urutan, rak Wadah, isian berat karung sama; tanpa sisa/Sering/kelompok). Cadangan toko lokal (jsc): simpanNota ±84 ms → ±18 ms; dokumen
 nota byte-sama (`uji_catat_nota_cepat.py`, pembanding cara lama vs baru).
+
+## Paket E-2 — karung bekas dari karung habis · pembetulan bon pemasok · foto bon (owner 7 Okt 2026, cabang `perbaikan/karung-bekas-bon-foto`)
+
+Mesin beku tidak disentuh; `firestore.rules` tidak diubah (kebutuhan rules v7 di bawah, diterbitkan owner sekali bersama paket lain).
+- **Karung bekas lahir dari karung habis** (owner: "karung yang ada di belakang wadah literan ketika habis 0 kg jadi karung bekas, dan stok karung bekas
+  bertambah"). `wadah-bernama-logika.js` `wbKarungBekasKiriman` / `wbSertakanKarungBekas`: tiap kiriman yang menyentuh kolam karung di belakang wadah —
+  isi ulang tiga ketukan (`wbSusunIsiUlangTiga`), − / + takar (`susunTakarWadah`), hapus karung habis, samakan karung, cocokkan wadah (`ccSimpanWadah`),
+  kembalikan — dibandingkan sebelum ⇄ sesudah: karung yang berdiri (karung terbaru di kolam itu sebanyak ⌈(sisa − 0,5) ÷ berat⌉; ≤ 0,5 kg = habis,
+  batas deretan) lalu tidak berdiri lagi = `stokBahanLiteran {tipe 'opname', jenis 'karungbekas', jumlah 1, hargaTotal 0, lahirKarungBekas, karungId,
+  kolam, wadah, merkAsal, ukuranKg, dariId, nilaiRp = hargaPerPcs mesin}` di kiriman yang SAMA. Jalur opname = jalur mesin untuk lembar gratis (sisa
+  bergeser, rata-rata tidak); neraca naik = laba naik sebesar `nilaiRp` (baris "Susut & selisih stok" — sisi kredit keputusan owner 15 Sep, sisi
+  bebannya saat lembar dipakai). Sekali per karung (`karungId` = id catatan buka karung); karung yang berisi lagi (samakan / cocokkan > 0,5 kg) atau
+  dikembalikan ke tumpukan → dokumen kelahirannya DIHAPUS di kiriman yang sama. Kelahiran bukan hitungan fisik: Cocokkan (terakhir dicocokkan, riwayat),
+  Menu Opname, dan pengingat opname melewatinya. **Akun bukan-owner**: rules v5 hanya membuka `stokBahanLiteran` tipe `pakai` → kelahiran / pembatalan
+  DITITIP sebagai tanda `karungBekas [{aksi, karungId, …}]` di catatan wadahLiteran kirimannya sendiri; Stok › Wadah literan kartu "Karung bekas menunggu
+  dicatat" (owner, dua ketukan, `wbSusunKarungBekasTunda`) — urutan peristiwa per karung (tanda & dokumen kelahiran menurut waktu) yang menentukan.
+- **Pembetulan bon pemasok** (owner: "Bon 31 Agustus sudah tidak ada … sepertinya gua salah catat"; dulu salah tunjuk cuma bisa diurungkan 90 detik).
+  `bon-pemasok-logika.js`: `bpSemuaBon` (semua bon satu pemasok termasuk yang lunas, sisa = mesin), `hitungPindahBayar` / `susunPindahBayar` (pembayaran ke
+  bon lain pemasok yang sama; bon yang datang sesudah pembayaran ditolak; utang total, kas, laba tetap — kelebihan mengalir ke bon tertua, disebut),
+  `hitungNominalBayar` / `susunNominalBayar` (salah ketik jumlah: utang & kas bergeser sebesar selisihnya), `susunNoBon` (kolom `noBon` di kedatangan /
+  bon lama; kedatangan TANPA `alasanKoreksi` — bukan koreksi barang; Koreksi kedatangan membawanya), `hitungBetulBonLama` / `susunBetulBonLama` (tanggal &
+  nilai bon lama). Semua menulis ulang dokumen yang SAMA + `riwayat` (jenis, dari, ke, alasan, tanggal, jam) + `alasanKoreksi`; alasan wajib; bulan
+  terkunci ditolak (`tolakKunci`). Tanggal & nilai bon KEDATANGAN = tanggal & harga barangnya → Stok › Barang masuk › koreksi (terkunci bila dibayar —
+  pindahkan dulu pembayarannya). Layar Harga › Bon pemasok: cap "betulkan · foto" di kertas bon, daftar "Semua bon … · betulkan & foto" di Buku bon,
+  lembar Betulkan bon (`gambarBetul`); nomor bon tampil di tusukan & Buku bon.
+- **Foto bon** (owner: "buatkan fitur foto BON kalo bisa"). `foto-bon-logika.js` (`fbn*`): dikecilkan di perangkat (kanvas; sisi panjang ≤ 1600 px, JPEG
+  0,6 → turun → ukuran diperkecil; sasaran ≤ 300 KB, batas 700 KB < 1 MiB dokumen), satu dokumen per foto di koleksi TERPISAH `fotoBon`
+  `{id, idBon, pemasok, tanggalBon, noBon, tanggal, jam, jenis, base64, byte, lebar, tinggi}` + atribusi; paling banyak 6 per bon. `fotoBon` TIDAK ada di
+  `KOLEKSI` — tidak didengar, tidak ikut baca penuh harian, cache, maupun cadangan; `firebase.js` `bacaFotoBon` (getDocs where idBon, saat lembar bon
+  dibuka) · `simpanFotoBon` / `hapusFotoBon` (owner saja, tanpa salinan antre lokal). Firebase Storage tidak dipakai (Spark). Input berkas `accept="image/*"`
+  (+ `capture="environment"` untuk kamera), pilihan lewat peristiwa `change`; CSP `img-src 'self' data: blob:` sudah memuatnya. Mode cadangan = simulasi
+  di memori layar.
+- **Kebutuhan rules v7** (owner menerbitkan): blok `match /fotoBon/{id}` — read & delete owner; create owner dengan `idBon is string`, `base64 is string`
+  & ukurannya ≤ ±960.000 karakter; tanpa update. `periksa_rules.py` mengenalnya sebagai koleksi di luar `KOLEKSI` (seperti `arsipTahun`). Opsional:
+  `stokBahanLiteran` create bukan-owner tipe `opname` hanya bila `lahirKarungBekas == true && jenis == 'karungbekas' && jumlah == 1 && hargaTotal == 0`
+  (sesudah itu titipan karyawan bisa langsung tertulis; pembatalan tetap titipan karena bukan-owner tidak menghapus).
+- Uji (CI): `uji_karung_bekas_lahir.py`, `uji_pembetulan_bon.py`, `uji_foto_bon.py` (+ kontrol); `uji_wadah_satu_buku.py` & `uji_jual_baru.py` (lima
+  skenario lama yang menghabiskan karung kini membawa +1 karung bekas).

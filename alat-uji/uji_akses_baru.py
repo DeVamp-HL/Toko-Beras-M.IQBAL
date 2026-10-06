@@ -260,8 +260,9 @@ ok('firebase.js (39b no. 45): tulis ulang kiriman ditolak memakai susunTulisUlan
     !!L2 && T2.asli.uid === 'uid-owner' && d2.pencatatAsli.uid === 'uid-kry' && / · ditulis ulang owner, pencatat asli Karyawan Contoh \(karyawan\)$/.test(L2.ringkas) && L2.pencatatAsli.uid === 'uid-kry' && L2.olehUid === 'uid-owner'
     && / · ditulis ulang owner, pencatat asli Owner \(owner\)$/.test(L3.ringkas) && L3.pencatatAsli.uid === 'uid-owner', JSON.stringify([mT && mT[1], L2, L3 && L3.ringkas]));
 })();
-ok('firebase.js: bukan-owner tidak pernah HAPUS / bersihkan / arsip; nonaktif = cabut SEMUA pendengar; satu pendengar ditolak tidak mematikan aplikasi (status.masuk tidak dimatikan)',
-  F.indexOf("if (!status.akun || status.akun.jenis !== 'owner') { const p = periksaKiriman(status.akun, [], daftar") > 0 && (F.match(/if \(pemilikSaja\(\)\)/g) || []).length === 3
+ok('firebase.js: bukan-owner tidak pernah HAPUS / bersihkan / arsip / foto bon (owner 7 Okt: baca · simpan · hapus fotoBon owner saja); nonaktif = cabut SEMUA pendengar; satu pendengar ditolak tidak mematikan aplikasi (status.masuk tidak dimatikan)',
+  F.indexOf("if (!status.akun || status.akun.jenis !== 'owner') { const p = periksaKiriman(status.akun, [], daftar") > 0 && (F.match(/if \(pemilikSaja\(\)\)/g) || []).length === 6
+  && ['bacaFotoBon(idBon)', 'simpanFotoBon(data)', 'hapusFotoBon(id, idBon)'].every(function (f) { var i = F.indexOf('export async function ' + f); return i > 0 && F.slice(i, i + 220).indexOf('if (pemilikSaja())') > 0; })
   && F.indexOf('} else { cabutPendengar(); }') > 0 && F.indexOf("includes('permission-denied')) { status.masuk = false; }") < 0);
 ok('app.js: pemilih pemegang hilang; formulir = email + sandi, sandi readonly sampai diketuk (tidak diisi otomatis), email terakhir bisa dilupakan satu ketukan; Keluar menanyakan catatan yang belum terkirim; menu menyembunyikan layar bukan-hak',
   A.indexOf('setelPemegang') < 0 && /<input id="isianSandi" type="password" class="ketik-nama" placeholder="[^"]*" autocomplete="off" readonly>/.test(SUMBER.html) && A.indexOf('lupakanEmail') > 0

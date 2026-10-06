@@ -9,6 +9,8 @@ import { pasangIsian } from '../inti/isian.js';
 import { RP, ANGKA, DESIMAL, tanggalPendek } from '../inti/format.js';
 import * as HG from './harga-logika.js';
 import * as BP from './bon-pemasok-logika.js';
+// owner 7 Okt: foto kertas bon pemasok — dikecilkan di perangkat, satu dokumen per foto di koleksi fotoBon (dibaca saat bon dibuka)
+import * as FB from './foto-bon-logika.js';
 import * as BL from './belanja-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
@@ -42,10 +44,10 @@ export function pasangLayarHarga(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ keluarga: ['katalog', 'bon', 'belanja'].indexOf(bacaLokal(KUNCI_KELUARGA)) >= 0 ? bacaLokal(KUNCI_KELUARGA) : 'katalog', kabar: '', kabarAwas: false,
     tabH: tabLokal.h || 'papan', ubah: null, ketik: '', ketikApa: 'jual', terbit: false, yakinRugi: false, kal: { arah: 'naik', merek: 'semua', satuan: 'semua', rp: 100 }, papanSisi: 'owner', wa: false, bedah: { merek: '', satuan: '', bayar: 'tunai' }, aturH: null,
-    tabB: tabLokal.b || 'tusuk', bukuNama: '', bayar: null, lama: null, kartu: null, urung: null, aturB: null,
+    tabB: tabLokal.b || 'tusuk', bukuNama: '', bayar: null, lama: null, kartu: null, urung: null, aturB: null, betul: null, foto: null,
     tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, kmUbah: null, kmDaftar: false, vrBaru: null, vrYakin: false, arYakin: '', arBuka: false, ltYakin: '' });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))]], [KUNCI_DRAF_BELANJA]);
+  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))]], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
@@ -65,6 +67,40 @@ export function pasangLayarHarga(akar, opsi) {
   const keAtas = () => { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); } };   // lembar digambar di atas daftar — ketukan dari bawah wajib melihat lembarnya
   const ubahPesan = (p) => { simpanLokal(KUNCI_DRAF_BELANJA, Object.keys(p).length ? p : null); set({ pesan: p }); };
   const S1 = () => HG.hgSemua(kini());
+  // ---- owner 7 Okt: FOTO BON. Firestore: opsi.foto (app.js → firebase.js, koleksi fotoBon dibaca sekali saat lembar bon dibuka). Mode cadangan: simulasi di memori
+  // layar ini saja (tidak tertulis ke mana pun). Alat gambar peramban (kanvas) diserahkan ke foto-bon-logika.js (diuji di jsc dengan kanvas tiruan).
+  const fotoSim = {}; const KABAR_ANTRE_FOTO = 'Tersimpan di perangkat, menunggu server — ';
+  const fotoFirestore = () => !!(opsi.foto && opsi.foto.ada && opsi.foto.ada());
+  async function muatFoto(b) {
+    if (!b) return; set({ foto: { idBon: b.id, muat: 'muat', daftar: [], pesan: '', besar: null, yakinHapus: null, proses: false } });
+    if (!fotoFirestore()) return set({ foto: Object.assign({}, st().foto, { muat: 'ada', daftar: (fotoSim[b.id] || []).slice(), pesan: 'SIMULASI (cadangan): foto hanya disimpan di memori layar ini' }) });
+    try { const d = await opsi.foto.baca(b.id); const F = st().foto; if (!F || F.idBon !== b.id) return; set({ foto: Object.assign({}, F, { muat: 'ada', daftar: d || [] }) }); }
+    catch (e) { const F = st().foto; if (!F || F.idBon !== b.id) return; const kode = String((e && (e.code || e.message)) || e);
+      set({ foto: Object.assign({}, F, { muat: 'galat', pesan: /permission/i.test(kode) ? 'Server belum membuka tempat foto bon (rules v7 — diterbitkan owner di Firebase Console). Sesudah terbit, foto bisa dibaca & disimpan.' : 'Foto belum bisa dibaca: ' + kode }) }); }
+  }
+  const alatFoto = () => ({
+    buka: async (berkas) => {
+      if (typeof createImageBitmap === 'function') { try { const g = await createImageBitmap(berkas, { imageOrientation: 'from-image' }); return { lebar: g.width, tinggi: g.height, gambar: g }; } catch (e) { /* jatuh ke <img> */ } }
+      const url = URL.createObjectURL(berkas);
+      try { const img = await new Promise((jadi, gagal) => { const i = new Image(); i.addEventListener('load', () => jadi(i)); i.addEventListener('error', () => gagal(new Error('gambar tidak terbaca'))); i.src = url; }); return { lebar: img.naturalWidth, tinggi: img.naturalHeight, gambar: img }; }
+      finally { setTimeout(() => URL.revokeObjectURL(url), 30000); }
+    },
+    jpeg: (g, w, t, mutu) => { const c = document.createElement('canvas'); c.width = w; c.height = t; const x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, t); x.drawImage(g, 0, 0, w, t); return c.toDataURL('image/jpeg', mutu); },
+  });
+  async function fotoDipilih(el) {
+    const berkas = Array.from((el && el.files) || []); if (el) el.value = ''; const d = st().betul; const F = st().foto; if (!berkas.length || !d || !F) return;
+    const b = BP.bpRincianBon(d.bonId, d.pemasok).bon; if (!b || F.idBon !== b.id) return;
+    set({ foto: Object.assign({}, F, { proses: true }), kabar: 'Mengecilkan foto…', kabarAwas: false });
+    for (const f of berkas) {
+      const hasil = await FB.fbnKecilkan(f, alatFoto()); const r = FB.fbnSusunSimpan(Object.assign({ pemasok: d.pemasok }, b), hasil, waktu(), st().foto.daftar);
+      if (r.tolak) { set({ foto: Object.assign({}, st().foto, { proses: false }), kabar: r.tolak, kabarAwas: true }); return; }
+      const x = fotoFirestore() ? await opsi.foto.simpan(r.data) : { ok: true, simulasi: true, data: r.data };
+      if (x && x.gagal) { set({ foto: Object.assign({}, st().foto, { proses: false }), kabar: 'Foto TIDAK tersimpan: ' + (/permission/i.test(x.pesan) ? 'server belum membuka tempat foto bon (rules v7 — owner menerbitkannya di Firebase Console)' : x.pesan), kabarAwas: true }); return; }
+      if (x && x.simulasi) fotoSim[b.id] = (fotoSim[b.id] || []).concat([r.data]);
+      set({ foto: Object.assign({}, st().foto, { daftar: (st().foto.daftar || []).concat([x.data || r.data]) }), kabar: (x && x.simulasi ? 'SIMULASI — ' : x && x.antre ? KABAR_ANTRE_FOTO : '') + r.patch.kabar, kabarAwas: false });
+    }
+    set({ foto: Object.assign({}, st().foto, { proses: false }) });
+  }
 
   const AKSI = {
     keluarga: ({ nama }) => { const k = nama; simpanLokal(KUNCI_KELUARGA, k); set({ keluarga: k, kabar: '', ubah: null, terbit: false, bayar: null, lama: null, kartu: null, wa: false, wa2: null }); },
@@ -157,6 +193,24 @@ export function pasangLayarHarga(akar, opsi) {
     bpAturTambah: () => { const a = JSON.parse(JSON.stringify(st().aturB)); a.admin.push({ nama: '', n: '' }); set({ aturB: a }); },
     bpAturLepas: ({ i }) => { const a = JSON.parse(JSON.stringify(st().aturB)); a.admin.splice(Number(i), 1); set({ aturB: a }); },
     simpanAturB: async () => { const a = st().aturB; if (a) await tulis(BP.susunAturBon(a, waktu())); },
+    // ---- owner 7 Okt: PEMBETULAN BON (pindah / jumlah pembayaran, nomor bon, bon lama) + FOTO BON — lembar `betul`, foto dibaca sekali saat lembar dibuka
+    bpBetulBuka: ({ pemasok, bon }) => { const R = BP.bpRincianBon(bon, pemasok); const b = R.bon; if (!b) return set({ kabar: 'Bon itu sudah tidak ada', kabarAwas: true });
+      set({ betul: { pemasok, bonId: String(bon), bayarId: '', mode: '', keBon: '', ketik: '', alasan: '', no: b.noBon || '', tgl: b.jenis === 'saldoAwal' ? (b.tanggal || '') : '', lama: b.jenis === 'saldoAwal' ? String(b.nilai) : '' }, bayar: null, lama: null, kartu: null, kabar: '' }); keAtas(); muatFoto(b); },
+    bpBetulTutup: () => set({ betul: null, foto: null }),
+    bpBetulBayar: ({ id, mode }) => { const d = st().betul; const sama = d.bayarId === String(id) && d.mode === mode; set({ betul: Object.assign({}, d, { bayarId: sama ? '' : String(id), mode: sama ? '' : mode, keBon: '', ketik: '' }) }); },
+    bpBetulKe: ({ bon }) => set({ betul: Object.assign({}, st().betul, { keBon: String(bon) }) }),
+    bpBetulKetik: (v, el) => { const d = Object.assign({}, st().betul || {}); const k = el.dataset.kolom; d[k] = String(v).slice(0, k === 'alasan' ? 160 : k === 'no' ? 30 : 14); set({ betul: d }); },
+    bpBetulPindah: async () => { const d = st().betul; if (d) await tulis(BP.susunPindahBayar(d.bayarId, d.keBon, d.alasan, waktu())); },
+    bpBetulNominal: async () => { const d = st().betul; if (d) await tulis(BP.susunNominalBayar(d.bayarId, d.ketik, d.alasan, waktu())); },
+    bpBetulNo: async () => { const d = st().betul; if (d && await tulis(BP.susunNoBon(d.bonId, d.pemasok, d.no, d.alasan, waktu()))) set({ betul: Object.assign({}, st().betul, { alasan: '' }) }); },
+    bpBetulLama: async () => { const d = st().betul; if (d) await tulis(BP.susunBetulBonLama(d.bonId, { tgl: d.tgl, ketik: d.lama }, d.alasan, waktu())); },
+    bpKeKoreksiMasuk: () => { set({ betul: null, foto: null }); if (opsi.bukaStok) opsi.bukaStok('masuk'); else set({ kabar: 'Tanggal & nilai bon kedatangan dibetulkan di Stok › Barang masuk › Buku kedatangan › koreksi', kabarAwas: false }); },
+    fotoAmbil: ({ cara }) => { const el = akar.querySelector(cara === 'kamera' ? '#fotoBonKamera' : '#fotoBonGaleri'); if (el) el.click(); },
+    fotoBesar: ({ id }) => set({ foto: Object.assign({}, st().foto, { besar: st().foto && st().foto.besar === id ? null : id }) }),
+    fotoHapus: async ({ id }) => { const F = st().foto; if (!F) return; if (F.yakinHapus !== id) return set({ foto: Object.assign({}, F, { yakinHapus: id }), kabar: 'Ketuk sekali lagi untuk menghapus foto bon itu (tidak bisa dibatalkan)', kabarAwas: true });
+      const r = opsi.foto && opsi.foto.ada() ? await opsi.foto.hapus(id, F.idBon) : { ok: true, simulasi: true }; if (r && r.gagal) return set({ kabar: 'Foto TIDAK terhapus: ' + r.pesan, kabarAwas: true });
+      if (r && r.simulasi) fotoSim[F.idBon] = (fotoSim[F.idBon] || []).filter((x) => String(x.id) !== String(id));
+      const kini2 = st().foto; set({ foto: Object.assign({}, kini2, { daftar: (kini2.daftar || []).filter((x) => String(x.id) !== String(id)), yakinHapus: null, besar: null }), kabar: (r && r.simulasi ? 'SIMULASI — ' : r && r.antre ? KABAR_ANTRE_FOTO : '') + 'Foto bon dihapus', kabarAwas: false }); },
     // ---- H3 BELANJA
     tabL: ({ t }) => { set({ tabL: t, kabar: '' }); ingatTab(); },
     blPemasok: ({ p }) => set({ pemasokBelanja: p, kabar: '' }),
@@ -178,6 +232,9 @@ export function pasangLayarHarga(akar, opsi) {
     simpanAturL: async () => { const a = st().aturL; if (a) await tulis(BL.susunAturBelanja(a, waktu())); },
   };
   delegasi(akar, AKSI);
+  // owner 7 Okt: pilihan berkas foto bon — peristiwa 'change' (Safari iOS menembakkannya untuk input berkas); penangan yang jatuh tetap dikabarkan
+  akar.addEventListener('change', (ev) => { const el = ev.target && ev.target.closest ? ev.target.closest('[data-foto-pilih]') : null;
+    if (el) fotoDipilih(el).catch((e) => set({ foto: Object.assign({}, st().foto || {}, { proses: false }), kabar: 'Foto gagal diproses: ' + String((e && e.message) || e), kabarAwas: true })); });
 
   // ====================== GAMBAR ======================
   function gambar() {
@@ -396,7 +453,7 @@ export function pasangLayarHarga(akar, opsi) {
     const urung = s.urung && Date.now() <= s.urung.sampai ? h`<div class="kaca-btn putus" data-k="urung" data-aksi="bpUrung">${s.urung.teks}</div>` : '';
     return h`<section class="hg-bon" data-k="bon">
       <div class="kartu hero bn-hero" data-k="hero" style="gap: 2px;"><div class="label" style="color: var(--hero-label);">Utang ke pemasok</div><div class="hg-besar" data-gulir="${B.total}">${RP(B.total)}</div><div style="font-weight: 600;">${B.nBon} bon · ${B.nPemasok} pemasok${B.tekor ? ' · kelebihan bayar ' + RP(B.tekor) + ' (ada kedatangan yang bonnya belum masuk buku)' : ''}</div><div class="ket">${B.kasTeks}</div></div>
-      ${s.bayar ? gambarBayar(s, B) : ''}${s.lama ? gambarBonLama(s) : ''}${s.kartu ? gambarKartu(s) : ''}${urung}
+      ${s.bayar ? gambarBayar(s, B) : ''}${s.lama ? gambarBonLama(s) : ''}${s.kartu ? gambarKartu(s) : ''}${s.betul ? gambarBetul(s) : ''}${urung}
       ${L === 'mac' ? h`<div class="hg-grid mac tiga" data-k="grid-bon"><div class="hg-kolom" data-k="k1">${gambarTusukan(s, B)}</div><div class="hg-kolom" data-k="k2">${gambarGaris(B)}</div><div class="hg-kolom" data-k="k3">${gambarBuku(s, B)}</div></div>`
         : L === 'tablet' ? h`<div class="hg-grid tablet" data-k="grid-bon"><div class="hg-kolom" data-k="k1">${gambarTusukan(s, B)}</div><div class="hg-kolom" data-k="k2">${tabBaris(tabAda.map(([id, nm]) => [id, nama(id, nm)]), tab, 'tabB')}${panel(tab)}</div></div>`
         : h`<div class="hg-kolom" data-k="grid-bon">${tabBaris(tabAda.map(([id, nm]) => [id, nama(id, nm)]), tab, 'tabB')}${panel(tab)}</div>`}
@@ -404,7 +461,7 @@ export function pasangLayarHarga(akar, opsi) {
       <div class="ket" style="font-size: 11px;">Sisa bon = nilai − yang sudah dibayar (mesin yang sama dengan sistem lama); bon yang dibayar sebagian TETAP di daftar. Satu pembayaran = satu bon; bon tertua cuma saran — lu yang memilih. Jatuh tempo = tanggal barang datang + tempo di kartu pemasok (atau tempo umum di Atur Barang masuk) — ramalan, bukan janji tertulis. Membayar bon tidak mengubah laba; biaya admin transfer masuk biaya toko.</div>
     </section>`;
   }
-  const bonSlip = (b, i, kelas) => h`<div class="bn-tusuk" data-k="slip-${b.id}"><div class="bn-slip ${i % 2 ? 'genap' : ''} ${b.jenis === 'saldoAwal' ? 'lama' : ''} ${kelas || ''}" data-aksi="bpBayarBuka" data-pemasok="${b.pemasok}" data-bon="${b.id}"><div><div class="tg">Bon ${b.tanggal ? tanggalPendek(b.tanggal) : '(tanpa tanggal)'}${b.cap ? h`<span class="bn-cap ${b.jenis === 'saldoAwal' ? 'redup' : ''}">${b.cap}</span>` : ''}${b.saran ? h`<span class="bn-cap saran">saran: ini dulu</span>` : ''}</div><div class="kt">${b.ket}</div><div class="kt ${b.status === 'lewat' ? 'awas' : ''}">${b.tempoTeks}</div>${b.isi ? h`<div class="kt">${b.isi}</div>` : ''}</div><div class="n">${RP(b.sisa)}</div></div></div>`;
+  const bonSlip = (b, i, kelas) => h`<div class="bn-tusuk" data-k="slip-${b.id}"><div class="bn-slip ${i % 2 ? 'genap' : ''} ${b.jenis === 'saldoAwal' ? 'lama' : ''} ${kelas || ''}" data-aksi="bpBayarBuka" data-pemasok="${b.pemasok}" data-bon="${b.id}"><div><div class="tg">Bon ${b.tanggal ? tanggalPendek(b.tanggal) : '(tanpa tanggal)'}${b.cap ? h`<span class="bn-cap ${b.jenis === 'saldoAwal' ? 'redup' : ''}">${b.cap}</span>` : ''}${b.saran ? h`<span class="bn-cap saran">saran: ini dulu</span>` : ''}<span class="bn-cap betul" data-aksi="bpBetulBuka" data-pemasok="${b.pemasok}" data-bon="${b.id}">${b.noBon ? 'No. ' + b.noBon + ' · ' : ''}betulkan · foto</span></div><div class="kt">${b.ket}</div><div class="kt ${b.status === 'lewat' ? 'awas' : ''}">${b.tempoTeks}</div>${b.isi ? h`<div class="kt">${b.isi}</div>` : ''}</div><div class="n">${RP(b.sisa)}</div></div></div>`;
   function gambarTusukan(s, B) {
     return h`<div class="kartu" data-k="tusukan" style="gap: 0; padding-top: 4px;">${B.tusukan.length ? B.tusukan.map((t) => h`<div data-k="tk-${t.pemasok}"><div class="bn-kepala" data-aksi="bpKartuBuka" data-nama="${t.pemasok}"><div><div class="nm">${t.pemasok}</div><div class="ket">${t.bon.length} bon · ${t.tempo.teks} · kartu ›</div></div><div class="n">${RP(t.total)}</div></div>
         ${t.bon.map((b, i) => bonSlip(b, i))}${t.tekor ? h`<div class="pita-info awas" style="margin: 6px 0;">Kelebihan bayar ${RP(t.tekor)} — ada kedatangan yang bonnya belum masuk buku.</div>` : ''}<div class="bn-dasar"></div></div>`) : h`<div class="menolak" style="padding: 10px 0;">Tidak ada bon yang masih terbuka.</div>`}
@@ -425,7 +482,56 @@ export function pasangLayarHarga(akar, opsi) {
       <div class="kartu" style="gap: 0;"><div class="bn-buku hd"><span>tgl</span><span>kejadian</span><span style="text-align: right;">naik / turun</span><span class="sd" style="text-align: right;">utang jadi</span></div>
         ${buku.baris.length ? buku.baris.map((e, i) => h`<div class="bn-buku" data-k="bb-${i}"><span class="ket">${e.t ? tanggalPendek(e.t) : 'tanpa tgl'}</span><span>${e.teks}<br><span class="ket">${e.ket}</span></span><span class="n">${(e.n > 0 ? '+' : '−') + RP(Math.abs(e.n)).replace('Rp', '')}</span><span class="n sd">${RP(e.saldo).replace('Rp', '')}</span></div>`) : h`<div class="menolak" style="padding: 8px 0;">Belum ada bon atau pembayaran atas nama ini.</div>`}
         <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0 4px;"><span style="font-weight: 600;">Utang sekarang · ${terbuka.length} bon masih terbuka</span><span class="serif" style="font-size: 19px;">${RP(terbuka.reduce((a, b) => a + b.sisa, 0))}</span></div></div>
-      ${terbuka.length ? h`<div class="utama" data-aksi="bpBayarBuka" data-pemasok="${nm}">BAYAR BON ${nm}</div>` : ''}</div>`;
+      ${terbuka.length ? h`<div class="utama" data-aksi="bpBayarBuka" data-pemasok="${nm}">BAYAR BON ${nm}</div>` : ''}
+      ${nm ? gambarSemuaBon(nm) : ''}</div>`;
+  }
+  // owner 7 Okt: tiap bon pemasok ini satu baris — yang LUNAS juga (pembayaran yang salah tunjuk sering melunasi bon yang keliru) — pintu Betulkan & Foto
+  function gambarSemuaBon(nm) {
+    const semua = BP.bpSemuaBon(nm); if (!semua.length) return '';
+    return h`<div class="kartu" data-k="semua-bon" style="gap: 0;"><div class="label" style="padding-bottom: 4px;">Semua bon ${nm} · betulkan & foto</div>
+      ${semua.slice().reverse().map((b) => h`<div class="bn-semua" data-k="sb-${b.id}" data-aksi="bpBetulBuka" data-pemasok="${nm}" data-bon="${b.id}"><span class="ket">${b.tanggal ? tanggalPendek(b.tanggal) : 'tanpa tgl'}</span><span>${b.noBon ? 'No. ' + b.noBon : h`<span class="ket">nomor belum dicatat</span>`}${b.jenis === 'saldoAwal' ? ' · bon lama' : ''}${b.riwayat.length || b.bayar.some((m) => m.alasanKoreksi) ? ' · dibetulkan' : ''}<br><span class="ket">${RP(b.nilai)} · ${b.sisa > 0 ? 'sisa ' + RP(b.sisa) : 'LUNAS'} · ${b.bayar.length} pembayaran</span></span><span class="n">betulkan ›</span></div>`)}</div>`;
+  }
+  // ---- owner 7 Okt: LEMBAR BETULKAN BON (pembetulan berjejak, owner saja) + FOTO BON
+  function gambarBetul(s) {
+    const d = s.betul; const R = BP.bpRincianBon(d.bonId, d.pemasok); const b = R.bon;
+    if (!b) return h`<div class="kartu hg-lembar" data-k="betul"><div class="ket">Bon itu sudah tidak ada.</div><div class="kaca-btn" data-aksi="bpBetulTutup">tutup</div></div>`;
+    const m = d.bayarId ? b.bayar.find((x) => String(x.id) === d.bayarId) || null : null;
+    const H = m && d.mode === 'pindah' ? BP.hitungPindahBayar(m.id, d.keBon) : m && d.mode === 'nominal' ? BP.hitungNominalBayar(m.id, d.ketik) : null;
+    const Hl = b.jenis === 'saldoAwal' && (d.tgl !== (b.tanggal || '') || String(d.lama) !== String(b.nilai)) ? BP.hitungBetulBonLama(b.id, { tgl: d.tgl, ketik: d.lama }) : null;
+    const alasanIsian = (id) => h`<input class="ketik-nama" id="${id}" type="text" placeholder="Alasan (wajib) — mis. kata pemasok / nomor di kertas bon" value="${d.alasan}" data-ketik="bpBetulKetik" data-kolom="alasan">`;
+    const baris = (x) => h`<div class="bn-semua tetap" data-k="by-${x.id}"><span class="ket">${tanggalPendek(x.tanggal)}${x.jam ? ' ' + x.jam : ''}</span><span>${RP(x.nominal || 0)}<br><span class="ket">${x.dari ? 'dari ' + x.dari : 'kantong tidak dicatat'}${x.alasanKoreksi ? ' · dibetulkan: ' + ((x.riwayat || []).slice(-1)[0] || {}).teks : ''}</span></span><span class="n"><span class="kaca-btn kecil ${d.bayarId === String(x.id) && d.mode === 'pindah' ? 'aktif' : ''}" data-aksi="bpBetulBayar" data-id="${x.id}" data-mode="pindah">pindah ke bon lain</span> <span class="kaca-btn kecil ${d.bayarId === String(x.id) && d.mode === 'nominal' ? 'aktif' : ''}" data-aksi="bpBetulBayar" data-id="${x.id}" data-mode="nominal">betulkan jumlah</span></span></div>`;
+    return h`<div class="kartu hg-lembar" data-k="betul" style="gap: 8px;"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Betulkan ${b.label} · ${d.pemasok}</div><div class="ket">nilai ${RP(b.nilai)} · dibayar ${RP(b.dibayar)} · ${b.sisa > 0 ? 'sisa ' + RP(b.sisa) : 'LUNAS'}${b.isi ? ' · ' + b.isi : ''}</div></div><div class="kaca-btn kecil" data-aksi="bpBetulTutup">×</div></div>
+      <div class="pita-info">Owner saja. Tiap pembetulan menulis ulang catatan yang sama dengan JEJAK (nilai lama, tanggal, jam, alasan) — tidak menimpa diam-diam. Bulan yang sudah dikunci ditolak.</div>
+      <div class="label">Pembayaran yang menunjuk bon ini</div>
+      ${b.bayar.length ? b.bayar.map(baris) : h`<div class="ket">Belum ada pembayaran yang menunjuk bon ini.${R.tanpaTunjuk.length ? ' ' + R.tanpaTunjuk.length + ' pembayaran ' + d.pemasok + ' tidak menunjuk bon yang ada — mengalir ke bon tertua.' : ''}</div>`}
+      ${m && d.mode === 'pindah' ? h`<div class="jalur bungkus" data-k="pilih-ke">${R.semua.filter((x) => x.id !== b.id).map((x) => h`<div class="seg ${d.keBon === x.id ? 'aktif' : ''}" data-aksi="bpBetulKe" data-bon="${x.id}" data-k="ke-${x.id}">${x.label} · ${x.sisa > 0 ? 'sisa ' + RP(x.sisa) : 'lunas'}</div>`)}</div>
+        <div class="pita-info ${H && H.tolak ? 'awas' : 'emas'}" data-k="arti-pindah">${H ? H.tolak || H.arti : ''}</div>${alasanIsian('bpBetulAlasanP')}
+        <div class="utama ${!H || H.tolak ? 'redup' : ''}" data-aksi="bpBetulPindah">PINDAHKAN PEMBAYARAN ${RP(m.nominal || 0)}</div>` : ''}
+      ${m && d.mode === 'nominal' ? h`<div class="hg-ketik-baris"><input class="ketik-nama" id="bpBetulKetik" type="text" inputmode="numeric" placeholder="jumlah yang sebenarnya dibayar" value="${d.ketik}" data-ketik="bpBetulKetik" data-kolom="ketik"></div>
+        <div class="pita-info ${H && H.tolak ? 'awas' : 'emas'}" data-k="arti-nominal">${H ? H.tolak || H.arti : ''}</div>${alasanIsian('bpBetulAlasanN')}
+        <div class="utama ${!H || H.tolak ? 'redup' : ''}" data-aksi="bpBetulNominal">BETULKAN JUMLAH PEMBAYARAN</div>` : ''}
+      ${b.dipindahDari.length ? h`<div class="ket" data-k="dipindah">Dulu menunjuk bon ini, sudah dipindah: ${b.dipindahDari.map((x) => tanggalPendek(x.tanggal) + ' ' + RP(x.nominal || 0) + ' → ' + (((x.riwayat || []).filter((r) => r && r.jenis === 'pindahBon').slice(-1)[0] || {}).teks || '')).join(' · ')}</div>` : ''}
+      <div class="label">Nomor bon pemasok</div>
+      <div class="hg-ketik-baris"><input class="ketik-nama" id="bpBetulNo" type="text" placeholder="nomor di kertas bon (mis. 12345)" value="${d.no}" data-ketik="bpBetulKetik" data-kolom="no"><div class="kaca-btn ${d.no && d.no !== b.noBon ? 'aktif emas' : ''}" data-aksi="bpBetulNo">${b.noBon ? 'ganti nomor' : 'simpan nomor'}</div></div>
+      ${b.noBon && d.no !== b.noBon ? alasanIsian('bpBetulAlasanNo') : ''}
+      <div class="label">Tanggal & nilai bon</div>
+      ${b.jenis === 'saldoAwal' ? h`<div class="ps-form dua"><div><div class="ket">Nilai bon (Rp)</div><input class="ketik-nama" id="bpBetulLama" type="text" inputmode="numeric" value="${d.lama}" data-ketik="bpBetulKetik" data-kolom="lama"></div><div><div class="ket">Tanggal bon (tahun-bulan-tanggal, kosong = tidak diketahui)</div><input class="ketik-nama" id="bpBetulTgl" type="text" inputmode="numeric" placeholder="2026-08-31" value="${d.tgl}" data-ketik="bpBetulKetik" data-kolom="tgl"></div></div>
+        ${Hl ? h`<div class="pita-info ${Hl.tolak ? 'awas' : 'emas'}" data-k="arti-lama">${Hl.tolak || Hl.arti}</div>${alasanIsian('bpBetulAlasanL')}<div class="utama ${Hl.tolak ? 'redup' : ''}" data-aksi="bpBetulLama">BETULKAN BON LAMA</div>` : ''}`
+        : h`<div class="ket">Tanggal & nilai bon kedatangan = tanggal & harga barangnya — dibetulkan lewat Stok › Barang masuk › Buku kedatangan › koreksi (stok, modal, dan bonnya ikut).${b.bayar.length ? ' Bon ini sudah dibayar, jadi koreksi tanggal / nilai di bawah yang dibayar terkunci — pindahkan dulu pembayarannya di atas kalau memang salah tunjuk.' : ''}</div><div class="kaca-btn" data-aksi="bpKeKoreksiMasuk">Buka Barang masuk ›</div>`}
+      ${b.riwayat.length ? h`<div class="label">Riwayat bon ini</div>${b.riwayat.slice(-8).reverse().map((r, i) => h`<div class="ket" data-k="rw-${i}">${r.tanggal ? tanggalPendek(r.tanggal) : ''}${r.jam ? ' ' + r.jam : ''} · ${r.teks || ''}</div>`)}` : ''}
+      ${gambarFoto(s, b)}</div>`;
+  }
+  function gambarFoto(s, b) {
+    const F = s.foto && s.foto.idBon === b.id ? s.foto : { muat: 'belum', daftar: [], pesan: '' }; const daftar = FB.fbnUrut(F.daftar, b.id); const besar = F.besar ? daftar.find((x) => String(x.id) === String(F.besar)) : null;
+    const status = F.muat === 'muat' ? 'Memuat foto bon ini…' : F.muat === 'galat' ? F.pesan : (daftar.length ? daftar.length + ' foto' : 'Belum ada foto kertas bon ini') + (F.pesan ? ' · ' + F.pesan : '');
+    return h`<div class="kartu fb-kartu" data-k="foto-bon" style="gap: 6px;"><div class="label">Foto kertas bon</div><div class="ket ${F.muat === 'galat' ? 'awas-teks' : ''}">${status}</div>
+      <div class="tombol-baris rapat"><div class="kaca-btn ${F.proses ? 'redup' : 'aktif'}" data-aksi="fotoAmbil" data-cara="kamera">Ambil foto</div><div class="kaca-btn ${F.proses ? 'redup' : ''}" data-aksi="fotoAmbil" data-cara="galeri">Pilih dari galeri</div></div>
+      <input id="fotoBonKamera" class="fb-berkas" type="file" accept="image/*" capture="environment" data-foto-pilih="kamera" hidden>
+      <input id="fotoBonGaleri" class="fb-berkas" type="file" accept="image/*" multiple data-foto-pilih="galeri" hidden>
+      <div class="ket" style="font-size: 10.5px;">Dikecilkan di HP ini dulu (sisi panjang ≤ ${FB.FBN_SISI} px, ±${FB.fbnKB(FB.FBN_TARGET)}), paling banyak ${FB.FBN_PALING_BANYAK} foto per bon. Foto dibaca hanya saat bon ini dibuka — tidak ikut dimuat tiap hari.</div>
+      ${besar ? h`<div class="fb-besar" data-k="fb-besar" data-aksi="fotoBesar" data-id="${besar.id}"><img src="${FB.fbnSrc(besar)}" alt="Foto bon besar"><div class="ket">ketuk untuk menutup</div></div>` : ''}
+      ${daftar.length ? h`<div class="fb-kisi" data-k="fb-kisi">${daftar.map((f) => h`<div class="fb-foto" data-k="fb-${f.id}"><img src="${FB.fbnSrc(f)}" alt="Foto bon" data-aksi="fotoBesar" data-id="${f.id}"><div class="ket">${f.tanggal ? tanggalPendek(f.tanggal) : ''} ${f.jam || ''} · ${FB.fbnKB(f.byte)}${f.oleh ? ' · ' + f.oleh : ''}</div><div class="kaca-btn kecil ${F.yakinHapus === String(f.id) ? 'awas' : ''}" data-aksi="fotoHapus" data-id="${f.id}">${F.yakinHapus === String(f.id) ? 'YAKIN hapus' : 'hapus'}</div></div>`)}</div>` : ''}
+      </div>`;
   }
   function gambarBayar(s, B) {
     const S = saldoKantong(); const H = BP.hitungBayar(s.bayar, kini(), S); const d = s.bayar; const isiK = (id) => (S.ada ? RP(S[id]).replace('Rp', '') : '—');

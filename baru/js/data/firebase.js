@@ -399,3 +399,34 @@ export async function pulihkanBerkas(tahun, daftar, progres) {
   return { ok: true, n: sudah };
 }
 
+// ---- FOTO BON (owner 7 Okt 2026): koleksi `fotoBon` TIDAK ada di KOLEKSI → tidak didengar, tidak ikut baca penuh harian, cache, maupun cadangan. Dibaca SEKALI
+// saat lembar bon dibuka; ditulis/dihapus langsung tanpa salinan antre lokal (satu foto ±300 KB — kuota penyimpanan perangkat). Owner saja. Butuh blok rules
+// `fotoBon` (rules v7, diterbitkan owner) — sebelum terbit server menolak dengan permission-denied dan layar menyebutnya.
+const KOLEKSI_FOTO_BON = 'fotoBon';
+const tungguServer = (janji, ms) => Promise.race([janji.then((x) => ({ x })), new Promise((r) => setTimeout(() => r({ lewat: true }), ms))]);
+export async function bacaFotoBon(idBon) {
+  if (!db) throw new Error('belum tersambung');
+  if (pemilikSaja()) throw new Error(pemilikSaja());
+  const h = await tungguServer(getDocs(query(collection(db, KOLEKSI_FOTO_BON), where('idBon', '==', String(idBon)))), 15000);
+  if (h.lewat) throw new Error('server belum menjawab dalam 15 detik');
+  const out = []; h.x.forEach((d) => out.push(d.data())); return out;
+}
+export async function simpanFotoBon(data) {
+  if (!db) throw new Error('belum tersambung');
+  if (pemilikSaja()) return { gagal: true, pesan: pemilikSaja() };
+  const akun = status.akun; const k = konteksTulis(); const d = beriAtribusiAkun(data, akun, k, false);
+  const b = writeBatch(db); b.set(doc(db, KOLEKSI_FOTO_BON, String(d.id)), d);
+  const log = { id: idUnik(), pada: k.kini, aksi: 'tulis', koleksi: KOLEKSI_FOTO_BON, idDok: String(d.id), oleh: akun.nama, olehUid: akun.uid, perangkat: k.perangkat, ringkas: 'foto bon ' + String(d.idBon) + ' · ' + Math.round((Number(d.byte) || 0) / 1024) + ' KB' };
+  b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
+  try { const h = await tungguServer(b.commit(), 20000); return h.lewat ? { antre: true, data: d } : { ok: true, data: d }; }
+  catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
+}
+export async function hapusFotoBon(id, idBon) {
+  if (!db) throw new Error('belum tersambung');
+  if (pemilikSaja()) return { gagal: true, pesan: pemilikSaja() };
+  const akun = status.akun; const k = konteksTulis(); const b = writeBatch(db); b.delete(doc(db, KOLEKSI_FOTO_BON, String(id)));
+  const log = { id: idUnik(), pada: k.kini, aksi: 'hapus', koleksi: KOLEKSI_FOTO_BON, idDok: String(id), oleh: akun.nama, olehUid: akun.uid, perangkat: k.perangkat, ringkas: 'foto bon ' + String(idBon || '') + ' dihapus' };
+  b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
+  try { const h = await tungguServer(b.commit(), 20000); return h.lewat ? { antre: true } : { ok: true }; }
+  catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
+}

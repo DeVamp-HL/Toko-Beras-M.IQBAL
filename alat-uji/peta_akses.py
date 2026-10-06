@@ -418,6 +418,14 @@ OWNER_JALUR = {
     'susunHapusKarungHabis': '1 karungIsi selesai (wadahLiteran, tidak dikunci) + paling banyak 1 penyesuaianStok susut buku karung belakang (hari ini, ketukan kedua)',
     'susunKembalikanKarung': '1 karungIsi dikembalikan (wadahLiteran, tidak dikunci) + paling banyak 1 produksiKemasan pindah buku karung belakang → merek asal (hari ini); karung tanpa buku yang belum ditakar: catatan bukanya dihapus (owner)',
     'susunBukaKemasan': '1 produksiKemasan + paling banyak 1 batchMasuk lahir 0 kg, bertanggal hari ini (+ wadahLiteran, tidak dikunci)',
+    # owner 7 Okt (paket E-2): karung bekas lahir dari karung habis (stokBahanLiteran opname +1 hari ini, sebanyak karung yang habis di kolam itu — tanpa perulangan
+    # yang membesar; dicabut = hapus dokumen kelahiran karung itu) · pembetulan bon pemasok (owner, dokumen yang SAMA ditulis ulang + riwayat; bulan terkunci ditolak logika)
+    'susunSamakanKarung': '1 karungIsi (wadahLiteran, tidak dikunci) + karung bekas lahir / dicabut untuk karung di kolam itu (stokBahanLiteran, hari ini / dokumen kelahirannya)',
+    'wbSusunKarungBekasTunda': 'owner mencatat titipan karung bekas: 1 stokBahanLiteran hari ini per titipan lahir + hapus dokumen kelahiran per titipan batal (titipan = karung habis sejak dicatat terakhir)',
+    'susunPindahBayar': 'pindah pembayaran bon pemasok: 1 utangPemasokMutasi ditulis ulang (bulan pembayaran itu — terkunci ditolak logika)',
+    'susunNominalBayar': 'jumlah pembayaran bon pemasok: 1 utangPemasokMutasi ditulis ulang (bulan pembayaran itu — terkunci ditolak logika)',
+    'susunNoBon': 'nomor bon pemasok: 1 dokumen bon (batchMasuk / utangPemasokMutasi saldoAwal) ditulis ulang + noBon (bulan bon itu — terkunci ditolak logika)',
+    'susunBetulBonLama': 'bon lama pemasok: 1 utangPemasokMutasi saldoAwal ditulis ulang (bonTanggal lama & baru — terkunci ditolak logika)',
     'susunAturHargaWadah': 'setelan hargaWadah — bukan koleksi bertanggal', 'susunRak': 'pembaca — tidak menulis', 'susunRakWadah': 'pembaca — tidak menulis',
     'susunRakLanjut': 'pembaca — tidak menulis (owner 3 Okt: rak Jual inkremental, hasilnya = susunRak)',
     'susunAturTempat': 'pengaturan tempatSimpan / aturanToko / pindahTempat — tidak ada yang dikunci (pengaturan hanya titikKas)',
