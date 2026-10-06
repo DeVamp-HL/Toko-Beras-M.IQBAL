@@ -1900,5 +1900,5 @@ tahun lama ke `arsipTahun` (tidak dimuat). Dulu sesudahnya Pajak & Laporan tahun
 - **Rapi-rapi**: omzet tahun lalu per tahun (`omzetTahunan`) + tawaran dari sistem (`pjTawarOmzetTahunLalu`); aturan pajak dicap tahun pajaknya
   (`pjAturanTahun`, `PJ_SUMBER_TAHUN` 2026) — tahun sesudahnya "[BELUM DIPERIKSA UNTUK …]".
 - Dijaga `alat-uji/uji_potret_tahun.py` (kotak pasir: sebelum ritual = sesudah ritual rupiah demi rupiah pada 5 Jan & 31 Mar 2027 untuk 23 kelompok
-  layar; setoran masa Desember di Januari; pilih tahun; Beranda & pengingat; R4 dengan & tanpa potret; Batalkan; tanpa potret; per tahun) + `--kontrol`
-  36 kerusakan + `--asap=<cadangan lokal>` (cadangan 6 Okt: semua kelompok layar 2026 sama sebelum & sesudah pada kedua jam).
+  layar; setoran masa Desember di Januari; pilih tahun; Beranda & pengingat; R4 dengan & tanpa potret; Batalkan; tanpa potret; per tahun; laporan.js ASLI
+  digambar di jsc untuk 23 keadaan) + `--kontrol` 40 kerusakan + `--asap=<cadangan lokal>` (cadangan 6 Okt: semua kelompok layar 2026 sama sebelum & sesudah pada kedua jam).

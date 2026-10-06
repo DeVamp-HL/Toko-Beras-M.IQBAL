@@ -626,7 +626,7 @@ if __name__ == '__main__':
             '39b-40: laba-rugi berkop menjumlah bulan sebelum awal buku': js.replace("const dariL = pra.length ? ab + '-01' : dari;", "const dariL = dari;"),
             '39b-40: kertas laba-rugi tanpa baris keterangan bulan sebelum awal buku': js.replace("baris.unshift({ nama: lbl + ' · sebelum awal buku — tidak dijumlah', n: null }); ", ""),
             '39b-40: Tahunan menjumlah bulan sebelum awal buku': js.replace("a + (b.sebelumBuku ? 0 : b[k] || 0)", "a + (b[k] || 0)"),
-            '39b-40: Tahunan tanpa keterangan bulan sebelum awal buku': js.replace("kosong: n === 0, sebelumBuku };", "kosong: n === 0, sebelumBuku: '' };"),
+            '39b-40: Tahunan tanpa keterangan bulan sebelum awal buku': js.replace("kosong: n === 0 && !tanpaPotret, sebelumBuku,", "kosong: n === 0 && !tanpaPotret, sebelumBuku: '',"),
             'tahunan: bulan berjalan dianggap final': js.replace("berjalan: key === kiniKey, final: lpFinal(key), omzet: Lr.omzetPenuh", "berjalan: key === kiniKey, final: true, omzet: Lr.omzetPenuh"),
             # ---- neraca
             'modal owner tidak dipisah dari laba ditahan': js.replace("const labaDitahan = aset === null ? null : aset - kewajiban - modal;", "const labaDitahan = aset === null ? null : aset - kewajiban;"),
@@ -670,7 +670,7 @@ if __name__ == '__main__':
             '39b-38: laba-rugi berkop tanpa baris lebih/kurang kas': js.replace(".concat(L.lebihKurangKas ? [{ nama: lpNamaLebihKurang(L), n: L.lebihKurangKas }] : [])", ""),
             '39b-38: Ke mana laba kotor diam soal lebih/kurang kas (tidak menutup)': js.replace("+ L.susutStok + L.lebihKurangKas) - L.labaBersih) < 0.5", "+ L.susutStok) - L.labaBersih) < 0.5"),
             '39b-38: selisih tutup hari sistem lama (tanpa selisihLaci) tidak dibaca': js.replace("const sel = (x) => Number((x && (x.selisihLaci || x.selisih)) || 0);", "const sel = (x) => Number((x && x.selisihLaci) || 0);"),
-            '39b-38: neraca memakai laba mesin (laba berjalan tanpa lebih/kurang kas)': js.replace("labaKum = ugLabaBersih(pertama, s || iso).labaBersih;", "labaKum = ugLabaBersih(pertama, s || iso).labaMesin;"),
+            '39b-38: neraca memakai laba mesin (laba berjalan tanpa lebih/kurang kas)': js.replace("return { laba: ugLabaBersih(pertama, s || iso).labaBersih, prive };", "return { laba: ugLabaBersih(pertama, s || iso).labaMesin, prive };"),
             '39b-38: Banding tanpa baris lebih/kurang kas': js.replace(".concat(A1.kas || A2.kas ? [['Lebih/kurang kas', 'kas']] : [])", ""),
             '39b-38: Tahunan tanpa jumlah lebih/kurang kas': js.replace("lebihKurangKas: jml('kas'), maks,", "lebihKurangKas: 0, maks,"),
             # ---- 39b no. 39 (owner 30 Sep): margin bon kembali ke diterima tunai saat bonnya dibayar

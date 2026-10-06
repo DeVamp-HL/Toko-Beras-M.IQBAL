@@ -19,6 +19,9 @@ R1–R5). Yang dijaga di sini:
   P6  BATALKAN tutup buku: potret tidak dibaca lagi, angka kembali dari catatan hidup (= sebelum ritual)
   P7  tahun ditutup TANPA potret (dikunci sebelum Paket B): Bukti omzet, DK3, laporan berkop, neraca menolak / '—' — tidak ada Rp0 bertanda final
   P8  omzet tahun lalu PER TAHUN + tawaran dari sistem; aturan pajak berlabel tahun pajak (rapi-rapi audit)
+  P9  LAYAR (jsc, tanpa peramban): laporan.js ASLI digambar untuk tiap keluarga (Laba, Biaya, Harian, Mingguan, Bulanan + 3 tab, Pajak 2026 & 2027 dengan
+      form setoran & omzet luar terbuka, Tahunan, Neraca, Dokumen + paket/banding) sesudah ritual — tidak jatuh, tanpa NaN/undefined, kalimat "sudah diarsip"
+      di tempatnya, pemilih tahun Pajak dengan pil 12 masa untuk 2026
 
     python3 alat-uji/uji_potret_tahun.py                 → N lulus · 0 gagal
     python3 alat-uji/uji_potret_tahun.py --kontrol       → logika yang dirusak wajib ketahuan (keluar 3 kalau ada yang diam)
@@ -288,6 +291,47 @@ coba('P8', function () {
 });
 """
 
+# ---------- P9 · laporan.js ASLI digambar di jsc (pasang/delegasi/jadwal diganti penangkap; tanpa DOM) ----------
+MODUL_LAYAR = MODUL + ['baru/js/inti/dom.js', 'baru/js/inti/kunci.js', 'baru/js/inti/keadaan.js', 'baru/js/inti/isian.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerak.js', 'baru/js/layar/laporan.js']
+LAYAR = r"""
+var __html = ''; pasang = function (akar, isi) { __html = isi && isi.__mentah ? isi.html : String(isi); }; delegasi = function () {}; gulirkan = function () {}; nanti = function () {}; segera = function () {};
+setelKunci(false); window.matchMedia = function (q) { return { matches: /1100px/.test(q) }; }; window.addEventListener = function () {}; if (typeof setTimeout === 'undefined') { var setTimeout = function () { return 0; }; var clearTimeout = function () {}; }
+var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP;
+var akarL = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0 };
+var L9 = null; var gambarL = function (patch) { L9.keadaan.setel(patch); L9.gambar(); return __html; };
+coba('P9', function () {
+  var w = persiapkan(jam('2027-01-05T10:00:00+07:00')); R = ritual(w);
+  L9 = pasangLayarLaporan(akarL, { sekarang: function () { return new Date(__KINI); }, statusRingkas: function () { return 'owner'; }, mode: function () { return 'terang'; }, gantiMode: function () {}, pindah: function () {}, keTujuan: function () {} });
+  L9.tampilkan(true); var hasil = {}; var jatuh = [];
+  var layarUji = [['laba-des', { keluarga: 'laba', bulanL: '2026-12', bukaRugi: true, bukaTT: true, bukaSusut: true }], ['laba-jan', { keluarga: 'laba', bulanL: '2027-01' }],
+    ['biaya-des', { keluarga: 'biaya', bulanK: '2026-12', bukaKb: { angkut: true } }], ['biaya-jan', { keluarga: 'biaya', bulanK: '2027-01' }],
+    ['harian-des', { keluarga: 'harian', hariH: '2026-12-30' }], ['harian-kini', { keluarga: 'harian', hariH: null }], ['mingguan-lintas', { keluarga: 'mingguan', mingguM: lpSenin('2026-12-28') }],
+    ['bulanan-ringkas', { keluarga: 'bulanan', bulanB: '2026-12', tabB: 'ringkas' }], ['bulanan-tanda', { keluarga: 'bulanan', bulanB: '2026-12', tabB: 'tanda' }], ['bulanan-bukti', { keluarga: 'bulanan', bulanB: '2026-12', tabB: 'bukti', pilihBukti: { '2026-11': true, '2026-12': true } }],
+    ['pajak-bawaan', { keluarga: 'pajak', tahunPj: null }], ['pajak-2026-form', { keluarga: 'pajak', tahunPj: 2026, drafSetor: { masaPajak: '2026-12', tanggalSetor: '2027-01-05', jumlah: '1', ntpn: '', atasNama: '', catatan: '' }, drafLuar: { bulan: '2026-12', sumber: 'catatanLama', jumlah: '', keterangan: '' }, drafPj: { wpAtasNama: '', jenisWp: 'belumDiketahui', statusPkp: 'belumDiketahui', statusPasangan: 'belumDiketahui', tahunMulaiTarifFinal: '', omzetTahunLalu: '', batasBebas: '', batasOmzet: '', tarifPerMil: '' } }],
+    ['pajak-2027', { keluarga: 'pajak', tahunPj: 2027, drafSetor: null, drafLuar: null, drafPj: null }], ['tahunan-2026', { keluarga: 'tahunan', tahunT: 2026 }], ['tahunan-2027', { keluarga: 'tahunan', tahunT: 2027 }],
+    ['neraca-31des', { keluarga: 'neraca', sampaiN: '2026-12-31' }], ['neraca-15des', { keluarga: 'neraca', sampaiN: '2026-12-15' }], ['neraca-kini', { keluarga: 'neraca', sampaiN: '' }],
+    ['dokumen-lr12', { keluarga: 'dokumen', tabD: 'laporan', jenisD: 'labarugi', keD: '2026-12', rentangD: 12 }], ['dokumen-neraca', { keluarga: 'dokumen', tabD: 'laporan', jenisD: 'neraca', keD: '2026-12', rentangD: 1 }],
+    ['dokumen-arus', { keluarga: 'dokumen', tabD: 'laporan', jenisD: 'aruskas', keD: '2027-01', rentangD: 3 }], ['dokumen-paket', { keluarga: 'dokumen', tabD: 'paket' }], ['dokumen-banding', { keluarga: 'dokumen', tabD: 'banding', keD: '2026-12', bandingD: '2026-11' }],
+    ['setelan', { keluarga: 'setelan' }]];
+  layarUji.forEach(function (x) { try { hasil[x[0]] = gambarL(x[1]); } catch (e) { jatuh.push(x[0] + ': ' + (e && e.message ? e.message : e)); hasil[x[0]] = ''; } });
+  var rusak = Object.keys(hasil).filter(function (k) { return /NaN|undefined|\[object Object\]/.test(hasil[k].replace(/data-[a-z-]+="[^"]*"/g, '')); });
+  ok('P9 laporan.js asli tergambar untuk ' + layarUji.length + ' keadaan sesudah ritual — tidak ada yang jatuh, tanpa NaN / undefined / [object Object]', !jatuh.length && !rusak.length && Object.keys(hasil).every(function (k) { return hasil[k].length > 500; }), J([jatuh, rusak, rusak.map(function (k) { var m = hasil[k].replace(/data-[a-z-]+="[^"]*"/g, '').match(/.{60}(NaN|undefined|\[object Object\]).{40}/); return m ? m[0] : ''; })]));
+  var pj = hasil['pajak-2026-form'];
+  ok('P9 Pajak 2026: pemilih tahun digambar — 2027 · berjalan, 2026 · tutup buku', /data-k="pj-pilih-tahun"/.test(pj) && /data-t="2027" data-k="pt-2027">2027 · berjalan</.test(pj) && /data-t="2026" data-k="pt-2026">2026 · tutup buku</.test(pj), (pj.match(/data-k="pt-\d+">[^<]*/g) || []).join(' | '));
+  ok('P9 Pajak 2026 (lanjutan): 2026 menyala & "tutup buku", 12 masa (pb-2026-01…12) bertanda potret, 12 pil masa setoran, 12 pil bulan omzet luar, kalimat "sudah tutup buku — angka sistem dari potret"',
+    /class="seg aktif" data-aksi="pjTahun" data-t="2026" data-k="pt-2026">2026 · tutup buku/.test(pj) && (pj.match(/data-k="pb-2026-\d\d"/g) || []).length === 12 && /potret tutup buku/.test(pj)
+    && (pj.match(/data-aksi="pjSetorKetikMasa" data-b="2026-\d\d"/g) || []).length === 12 && (pj.match(/data-aksi="pjLuarPilih" data-kunci="bulan" data-nilai="2026-\d\d"/g) || []).length === 12 && /Tahun 2026 sudah tutup buku — angka sistem dari potret/.test(pj) && /Omzet tahun 2025/.test(pj),
+    J([(pj.match(/data-k="pb-2026-\d\d"/g) || []).length, (pj.match(/data-aksi="pjSetorKetikMasa" data-b="2026-\d\d"/g) || []).length, (pj.match(/data-aksi="pjLuarPilih" data-kunci="bulan" data-nilai="2026-\d\d"/g) || []).length]));
+  ok('P9 Pajak bawaan 5 Jan 2027 = 2026 (masa Desember terutang); Pajak 2027 menawarkan omzet 2026 dari sistem & menandai aturan belum diperiksa untuk 2027',
+    /class="seg aktif" data-aksi="pjTahun" data-t="2026"/.test(hasil['pajak-bawaan']) && /data-k="pj-tawar"/.test(hasil['pajak-2027']) && /Omzet tahun 2026 belum diisi di profil/.test(hasil['pajak-2027']) && /data-k="pj-aturan-tahun"/.test(hasil['pajak-2027']));
+  ok('P9 Laba Desember 2026: "dari potret tutup buku", daftar nota rugi / tanpa modal / susut menyebut jumlahnya & "rinciannya ikut arsip"', /dari potret tutup buku/.test(hasil['laba-des']) && /rinciannya ikut arsip/.test(hasil['laba-des']) && /rinciannya sudah diarsip \(tutup buku\)/.test(hasil['laba-des']));
+  ok('P9 Harian 30 Des 2026: kartu "Rincian hari ini sudah diarsip", tanpa rekap uang/arus kas; Mingguan lintas tahun menyebut hari yang diarsip; Biaya Des menyebut potret',
+    /data-k="hari-arsip"/.test(hasil['harian-des']) && !/data-k="arus"/.test(hasil['harian-des']) && /data-k="minggu-arsip"/.test(hasil['mingguan-lintas']) && /data-k="kb-arsip"/.test(hasil['biaya-des']) && /rinciannya sudah diarsip/.test(hasil['biaya-des']));
+  ok('P9 Neraca 15 Des 2026 ditolak dengan sebab arsip (pilih 31 Des), 31 Des 2026 tergambar dari potret; Tahunan 2026 FINAL dari potret', /yang tersimpan neraca akhir tiap bulan/.test(hasil['neraca-15des']) && !/yang tersimpan neraca akhir/.test(hasil['neraca-31des']) && /FINAL — sudah tutup buku · dari potret saat dikunci/.test(hasil['tahunan-2026']));
+});
+"""
+
+
 STATIS_LAYAR = [
     ('Pajak memakai tahun pilihan (bukan tahun berjalan saja)', "  function gambarPajak(s, L) {\n    const T = PJ.pjTahun(tahunPajak(), kini());"),
     ('setoran dibuka untuk tahun pilihan', "pjSetorBuka: ({ b }) => { const T = PJ.pjTahun(tahunPajak(), kini());"),
@@ -320,11 +364,27 @@ def bundelan():
     return uji_kunci_periode.satu_lingkup(bundel_baru.bundel(MODUL))
 
 
-def utama(js, cek_statis=True):
+def bundelan_layar(ganti=None):
+    # baris import ber-komentar di ujung (laporan.js: `import { nanti, segera } from '../inti/jadwal.js';   // …`) tidak dikenali bundel_baru.polos → komentarnya
+    # dibuang dulu di sini (berkas aslinya tidak disentuh)
+    bagian = [bundel_baru.PRELUDE]
+    for m in MODUL_LAYAR:
+        teks = open(os.path.join(AKAR, m), encoding='utf-8').read()
+        teks = re.sub(r"^(\s*import\s[^;\n]*;)\s*//.*$", r"\1", teks, flags=re.M)
+        if ganti and m == 'baru/js/layar/laporan.js': assert teks.count(ganti[0]) == 1, 'jangkar kontrol layar basi: ' + ganti[0][:60]; teks = teks.replace(ganti[0], ganti[1])
+        bagian.append('\n// ===== ' + m + ' =====\n' + bundel_baru.polos(teks))
+    return uji_kunci_periode.satu_lingkup('\n'.join(bagian))
+
+
+def utama(js, cek_statis=True, js_layar=None):
     h, e = jalan(JAM + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + BERSAMA + SKENARIO + '\nprint(JSON.stringify({ lulus: lulus, gagal: gagal }));\n')
     if h is None: return 0, ['JSC JATUH: ' + e]
-    g = h['gagal'] + (statis() if cek_statis else [])
-    return h['lulus'], g
+    g = h['gagal'] + (statis() if cek_statis else []); l = h['lulus']
+    if js_layar:
+        h2, e2 = jalan(JAM + js_layar + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + BERSAMA + LAYAR + '\nprint(JSON.stringify({ lulus: lulus, gagal: gagal }));\n')
+        if h2 is None: g = g + ['P9 LAYAR JSC JATUH: ' + e2]
+        else: l += h2['lulus']; g = g + h2['gagal']
+    return l, g
 
 
 ASAP = r"""
@@ -392,6 +452,12 @@ RUSAK = [
     ('aturan tanpa label tahun pajak', 'baru/js/layar/pajak-logika.js', "const belum = !!hitung && Number(th) > diisi;", "const belum = false;"),
     ('latihan tidak menyusun potret (gagal baru ketahuan saat ritual)', 'baru/js/layar/tutup-buku-logika.js', "function potretLatihan(tahun, kini) { try { const Pt = susunPotret(tahun, kini);", "function potretLatihan(tahun, kini) { try { const Pt = { tahun, bulan: {}, hari: {} };"),
 ]
+RUSAK_LAYAR_JSC = [
+    ('laporan.js: Harian hari yang diarsip digambar seperti hari biasa (uang per cara bayar kosong)', "    if (R.diarsip) {   // Paket B", "    if (false) {   // Paket B"),
+    ('laporan.js: Laba bulan diarsip menulis "tidak ada" untuk nota rugi / tanpa modal / susut', "const DA = B.diarsip ? (B.dalamArsip || {}) : null;", "const DA = null;"),
+    ('laporan.js: Mingguan lintas tahun tanpa kalimat hari yang diarsip', "${R.diarsip || R.tanpaPotret ? h`<div class=\"pita-info\" data-k=\"minggu-arsip\">", "${false ? h`<div class=\"pita-info\" data-k=\"minggu-arsip\">"),
+    ('laporan.js: pemilih tahun Pajak tidak digambar', "    const pilihTahun = DT.length > 1 ?", "    const pilihTahun = false ?"),
+]
 RUSAK_LAYAR = [
     ('laporan.js: Pajak kembali ke tahun berjalan saja', "  function gambarPajak(s, L) {\n    const T = PJ.pjTahun(tahunPajak(), kini());", "  function gambarPajak(s, L) {\n    const T = PJ.pjTahun(null, kini());"),
     ('laporan.js: setoran hanya tahun berjalan', "pjSetorBuka: ({ b }) => { const T = PJ.pjTahun(tahunPajak(), kini());", "pjSetorBuka: ({ b }) => { const T = PJ.pjTahun(null, kini());"),
@@ -409,6 +475,13 @@ if __name__ == '__main__':
             l, g = utama(js.replace(a, b), False)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:140] if g else '-'))
             if not g: kode = 3
+        for nama, a, b in RUSAK_LAYAR_JSC:
+            try: jl = bundelan_layar((a, b))
+            except AssertionError as e: print('KONTROL BASI  ' + nama + ' (' + str(e)[:80] + ')'); kode = 3; continue
+            h2, e2 = jalan(JAM + jl + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + BERSAMA + LAYAR + '\nprint(JSON.stringify({ lulus: lulus, gagal: gagal }));\n')
+            g = ['JATUH: ' + e2] if h2 is None else h2['gagal']
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:140] if g else '-'))
+            if not g: kode = 3
         lap = open(os.path.join(AKAR, 'baru/js/layar/laporan.js'), encoding='utf-8').read()
         for nama, a, b in RUSAK_LAYAR:
             if lap.count(a) != 1: print('KONTROL BASI  ' + nama); kode = 3; continue
@@ -416,8 +489,8 @@ if __name__ == '__main__':
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:140] if g else '-'))
             if not g: kode = 3
         sys.exit(kode)
-    l, g = utama(js)
-    print('POTRET TAHUN DITUTUP (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
+    l, g = utama(js, True, bundelan_layar())
+    print('POTRET TAHUN DITUTUP (kotak pasir + layar jsc): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     berkas = next((x.split('=', 1)[1] for x in sys.argv if x.startswith('--asap=')), '') or os.environ.get('POTRET_ASAP', '')
     if berkas:

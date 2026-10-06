@@ -257,7 +257,7 @@ if __name__ == '__main__':
     if '--kontrol' in sys.argv:
         rusak = {
             'catatan lain-lain dibuang dari jumlah (tidak menutup)': js.replace("per[J.id].n += n; per[J.id].jumlah += 1;", "if (J.id !== 'lain') { per[J.id].n += n; per[J.id].jumlah += 1; }"),
-            '39b-3: penyebut potongan QRIS hanya penjualan (bayar bon QRIS tak ikut)': js.replace("mdrQris: Ka.pos.qris + kbQrisLain(X) > 0 ? mdr / (Ka.pos.qris + kbQrisLain(X)) * 100 : null,", "mdrQris: Ka.pos.qris > 0 ? mdr / Ka.pos.qris * 100 : null,"),
+            '39b-3: penyebut potongan QRIS hanya penjualan (bayar bon QRIS tak ikut)': js.replace("mdrQris: Z.qris + Z.qrisLain > 0 ? mdr / (Z.qris + Z.qrisLain) * 100 : null,", "mdrQris: Z.qris > 0 ? mdr / Z.qris * 100 : null,"),
             'kata owner tidak didahulukan dari kata bawaan': js.replace("const k = kbCocokKata(polos, A.kata[j.id] || []); if (k) return { id: j.id, dari: 'kataOwner', kata: k, kunci: k, mdr };", "void 0;"),
             'awalan kata tanpa batas kata (\"donasi\" kena \"nasi\")': js.replace("const t = ' ' + polos; for (const k of kata) { if (k && t.indexOf(' ' + k) >= 0) return k; } return '';", "for (const k of kata) { if (k && polos.indexOf(k) >= 0) return k; } return '';"),
             'kolom untuk=karyawan diabaikan': js.replace("if (ugUntukDok(h) === 'karyawan') return { id: 'karyawan', dari: 'untuk', kata: '', kunci: polos || '(tanpa keterangan)', mdr: false };", ""),
@@ -273,7 +273,7 @@ if __name__ == '__main__':
             'pareto tidak berhenti di 80 %': js.replace("inti: kum - x.n < total * batas / 100,", "inti: true,"),
             'pareto tidak mengelompokkan lewat kata': js.replace("const kunci = c.kunci || kbPolos(c.nama);", "const kunci = kbPolos(c.nama);"),
             'pemicu naik tidak pernah ditandai': js.replace("naik: delta !== null && ((naikBiaya && delta > A.ambangPemicu) || (turunBuruk && delta < -A.ambangPemicu)),", "naik: false,"),
-            'biaya karyawan per hari tanpa upah menggantung': js.replace("const hk = kbHariKerja(X.key) + (U ? U.nHari : 0); const upahSemua = X.per.upah.n + (U ? U.total : 0);", "const hk = kbHariKerja(X.key); const upahSemua = X.per.upah.n;"),
+            'biaya karyawan per hari tanpa upah menggantung': js.replace("const hk = Z.hk + (U ? U.nHari : 0); const upahSemua = X.per.upah.n + (U ? U.total : 0);", "const hk = Z.hk; const upahSemua = X.per.upah.n;"),
             'peringatan pos tetap belum dicatat hilang': js.replace("if (K.berjalan) K.posSemua.forEach((p) => { const lalu = KL.posSemua.find((x) => x.id === p.id); if (!(p.n > 0) && lalu && lalu.n > 0)", "if (false) K.posSemua.forEach((p) => { const lalu = KL.posSemua.find((x) => x.id === p.id); if (!(p.n > 0) && lalu && lalu.n > 0)"),
             'peringatan cakupan hilang': js.replace("if (K.cakupan !== null && K.cakupan < 0.95) awas('cakupan',", "if (false) awas('cakupan',"),
             'kata kembar antar jenis diterima saat atur': js.replace("if (punya[k] && punya[k] !== j.id) return { tolak: '\"' + k + '\" ada di ' + punya[k] + ' DAN ' + j.id + ' — satu kata satu jenis' };", ""),

@@ -874,8 +874,10 @@ coba('S-A4b', function () { kotak(3);
   ok('A4 buku owner: pembuka = "Modal owner dibawa dari tahun lalu (minus)" tanpa uang bergerak (arah 0), bukan setoran/penarikan; saldo mundurnya tetap benar; tidak ada di pilihan bukti setoran modal',
     !!bo && /^Modal owner dibawa dari tahun lalu \(minus\)$/.test(bo.judul) && bo.arah === 0 && /tidak ada uang bergerak/.test(bo.ket) && BO.filter(function (r) { return r.ubah === 'modal' && r.arah === 1; }).every(function (r) { return r.id !== bo.id; })
     && /modal owner jadi −?Rp/.test(bo.s), J([bo, BO.slice(0, 3)]));
-  var RH = rekapHari('2026-12-31');
-  ok('A4 buku kas 31 Des: baris pembuka modal tidak tampil (bukan gerakan uang)', !!mp && !RH.buku.some(function (r) { return String(r.id) === String(mp.id); }) && daftarGerakanKas().some(function (r) { return String(r.id) === String(mp.id); }), J(RH.buku)); });
+  // Paket B: 31 Des 2026 sudah diarsip → Harian membaca potret (buku kas hari itu ikut arsip). Jalur catatan hidup diuji tanpa berita acara di cache (perangkat
+  // yang tidak membaca berita acara / era tanpa berita acara): pembuka modal tetap bukan gerakan uang
+  var RHp = rekapHari('2026-12-31'); var acaraSimpan = cacheMentah('tutupBukuAcara').slice(); pasok('tutupBukuAcara', []); var RH = rekapHari('2026-12-31'); pasok('tutupBukuAcara', acaraSimpan);
+  ok('A4 buku kas 31 Des: baris pembuka modal tidak tampil (bukan gerakan uang) — jalur catatan hidup; jalur potret (diarsip) tanpa buku kas', !!mp && !RH.diarsip && !RH.buku.some(function (r) { return String(r.id) === String(mp.id); }) && daftarGerakanKas().some(function (r) { return String(r.id) === String(mp.id); }) && RHp.diarsip && !RHp.buku.length, J([RH.buku, RHp.diarsip])); });
 
 // ---- era tutup buku dihitung di SATU tempat (sanggahan paket A): cap era berkas cadangan (ssEraTutupBuku) = toko.js eraBuku — juga pembuka modal owner
 coba('S-ERA', function () { kotak(3);
