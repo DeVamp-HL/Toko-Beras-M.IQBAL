@@ -1,5 +1,5 @@
-// DIBUAT OLEH alat-uji/pindah_mesin.py — JANGAN DISUNTING TANGAN.
-// Tubuh tiap fungsi disalin byte demi byte dari index.html; gerbang: `python3 alat-uji/pindah_mesin.py --periksa`.
+// SUMBER KEBENARAN MESIN UANG BEKU sejak 3 Okt 2026 (dulu disalin byte demi byte dari index.html oleh pindah_mesin.py, kini pensiun) — JANGAN DISUNTING tanpa izin owner.
+// Gerbang: `python3 alat-uji/beku2.py --sidik` (sidik tiap fungsi di alat-uji/beku.sha256 & pembantu.sha256); membuka mesin = izin owner → `beku2.py --catat`.
 // Pembantu: konstanta & fungsi yang dipanggil mesin beku (bukan mesin, tapi ikut verbatim).
 import { ambilAmplopLaba, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilKarantina, ambilKasbonMutasi, ambilModalOwner, ambilPelangganCatatan, ambilPengeluaranHarian, ambilPenjualan, ambilPenjualanSemua, ambilPenyesuaianKemasan, ambilPenyesuaianStok, ambilPesanan, ambilPetaJenisBeras, ambilPiutangMutasi, ambilProduksi, ambilProduksiBerlaku, ambilRetur, ambilSemuaBatch, ambilSetoranKas, ambilTembusanStok, ambilTitikKas, ambilTutupHari, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, wzDiKeranjangAktif, wzDiKeranjangParkir } from '../data/toko.js';
 import { bayaranBiayaBulanan, hitungPiutang, hitungStokBahanLiteran, hitungStokKarungPerMerk, hitungStokKemasan, hitungUtangPemasok } from './beku.js';

@@ -1105,8 +1105,8 @@ baru/
   js/data/katalog-kasir.js   katalog HP kasir (ringkasanKasir): isi, bentuk, pembanding, gerbang terbit, Beranda (25c)
   js/mesin/beku.js      26 MESIN UANG BEKU — SUMBER KEBENARAN sejak 3 Okt 2026 (asal: disalin byte demi byte dari index.html oleh pindah_mesin.py,
                         kini pensiun); sidik alat-uji/beku.sha256, gerbang beku2.py --sidik; dibuka HANYA atas izin owner
-  js/mesin/pembantu.js  55 fungsi + 36 konstanta pembantu mesin — sama; sidik alat-uji/pembantu.sha256. Kepala komentar kedua berkas masih menyebut
-                        pindah_mesin.py: sengaja dibiarkan (berkas mesin tidak disentuh tanpa izin owner)
+  js/mesin/pembantu.js  55 fungsi + 36 konstanta pembantu mesin — sama; sidik alat-uji/pembantu.sha256. Kepala komentar kedua berkas dibetulkan 7 Okt
+                        2026 atas izin owner ("boleh mesin"); sidik tetap 26/26 & 91/91
   js/layar/jual-logika.js   logika Jual tanpa DOM (diuji di jsc); wadah-jual-logika.js (wadah dijual, harga jual wadah), struk-logika.js (struk kertas/WA + aturan otomatis)
   js/layar/jual.js          gambar & ketukan
   js/layar/wadah-panel.js   panel isi ulang wadah bersama Jual & Stok (takar demi takar sejak putaran 8; 39: tiga ketukan, kepala buku, pita tandai)

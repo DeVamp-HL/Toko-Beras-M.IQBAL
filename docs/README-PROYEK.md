@@ -63,7 +63,7 @@ satu per satu; onclick sebaris di `/baru/` dan kasir darurat (kasir-v32) sudah t
 **atas perintah pemilik**, dalam commit yang menyebut "membekukan ulang" dan mesin/pembantu mana yang
 berubah beserta alasannya. CI menolak deploy bila sidik tidak cocok. Sejak 3 Okt 2026 mesinnya disunting langsung di
 `baru/js/mesin/beku.js` / `pembantu.js` (dulu disalin dari `index.html` oleh `pindah_mesin.py`, kini pensiun). Kepala komentar kedua berkas
-itu masih menyebut `pindah_mesin.py` — sengaja dibiarkan, karena berkas mesin hanya dibuka atas izin owner.
+itu dibetulkan 7 Okt 2026 atas izin owner ("boleh mesin"): menyebut sumber kebenaran & gerbang `beku2.py --sidik`; tubuh fungsi tidak berubah.
 
 ## Prinsip kerja
 
