@@ -153,7 +153,7 @@ export function gerbangBuku(tahun, kini, lokal, lewati) {
   // #111 × Paket C: juga SATU sumber kelengkapan (hemat-baca.js hbBelumLengkap) — dibaca penuh sesi ini tapi batu nisan / ubahan belum dicocokkan lagi = belum
   if (L.hemat && L.hemat.nyala) { const hb = hbKalimatBelum(L.hemat.belumLengkap, null); const ok7 = !!L.hemat.totalSesiIni && !hb;
     g.push({ id: 'g7', teks: 'Perangkat ini sudah membaca penuh semua catatan sesi ini (hemat baca)', ok: ok7,
-      ket: ok7 ? 'semua koleksi dibaca penuh & cocok dengan server' : !L.hemat.totalSesiIni ? 'hemat baca nyala — angka dari simpanan perangkat belum dibaca penuh sesi ini' : hb, aksi: ok7 ? '' : 'Baca penuh dulu: Menu › Sistem › Perangkat › Hemat baca', bisaLewati: false }); }
+      ket: ok7 ? 'semua jenis catatan dibaca penuh & cocok dengan server' : !L.hemat.totalSesiIni ? 'hemat baca nyala — angka dari simpanan perangkat belum dibaca penuh sesi ini' : hb, aksi: ok7 ? '' : 'Baca penuh dulu: Menu › Sistem › Perangkat › Hemat baca', bisaLewati: false }); }
   return { daftar: g, semuaOk: g.every((x) => x.ok), belum: g.filter((x) => !x.ok).length, belumTutup, belumPutus, hari: hariG1 };
 }
 /**
@@ -449,8 +449,10 @@ export function susunKunci(tahun, D, w, L) {
   const T = tahunBuku(ugKiniDari(w)); if (!T.bolehSungguhan) return { tolak: 'Tahun ' + tahun + ' belum lewat 31 Desember — hanya bisa latihan' };
   if (!D.paraf || !D.paraf.owner || !D.paraf.saksi) return { tolak: 'Paraf owner dan saksi dulu' };
   const tg = bkTertunda(tahun); if (tg) return { tolak: tg };
-  // siap 2027 (pintu masuk, bukan hanya layar): hari tanpa tutup hari yang belum diputus (g1) dan stok minus / kelebihan bayar (g6) menolak kunci SUNGGUHAN
-  const G = gerbangBuku(tahun, ugKiniDari(w), {}, {}); const gTolak = G.daftar.filter((g) => (g.id === 'g1' || g.id === 'g6') && !g.ok);
+  // siap 2027 (pintu masuk, bukan hanya layar): hari tanpa tutup hari yang belum diputus (g1) dan stok minus / kelebihan bayar (g6) menolak kunci SUNGGUHAN.
+  // Sanggahan 8 Okt (#111): kelengkapan hemat baca (g7) juga di PINTU — sesudah unduh cadangan, arsip, saldo & paraf berdua, potret & saldo pembuka disusun
+  // dari seluruh buku perangkat ini; layar langkah 1 saja tidak cukup. L = lokal() layar (membawa `hemat` saat nyala); mati / tanpa L: g7 tidak ada (sama dulu)
+  const G = gerbangBuku(tahun, ugKiniDari(w), L || {}, {}); const gTolak = G.daftar.filter((g) => (g.id === 'g1' || g.id === 'g6' || g.id === 'g7') && !g.ok);
   if (gTolak.length) return { tolak: 'Periksa dulu belum beres — ' + gTolak.map((g) => g.teks + ': ' + g.ket).join(' · ') };
   const T0 = titikTahun(tahun); const sebelum = barisBuku(T.cutoff, T.cutoff, T0); const P = pembukaBuku(tahun, w); const B = bandingBuku(sebelum, sesudahDariPembuka(P, sebelum));
   if (!B.semuaSama) return { tolak: B.ringkas + ': ' + B.beda.map((b) => b.nama).join(', ') };

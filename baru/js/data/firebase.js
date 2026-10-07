@@ -514,13 +514,15 @@ function jagaTulisHemat() {
 /** Pendeteksi (perangkat yang baca penuh harian / tombol Console): catatan yang berubah / lahir / LAHIR ULANG tanpa cap disentuh capServer — perangkat lain
  *  menerimanya lewat delta. Owner saja, per potongan KP_BATAS_GET (≤ 18 pemeriksaan kunci), catatan bulan terkunci dilewati, satu baris jejak per potongan.
  *  lihat(id) = isi MENTAH (snapshot server F / simpanan perangkat, SEBELUM saringan batu nisan): catatan lahir ulang yang tersembunyi nisan TIDAK ada di memori
- *  (dokDiCache), dan dulu tidak pernah disentuh (tinjauan 7 Okt). → { n, tunda }: tunda = id yang belum terkirim (tab tidak boleh menulis / potongan ditolak) —
- *  sesi hemat menyimpan & mengulangnya. */
+ *  (dokDiCache), dan dulu tidak pernah disentuh (tinjauan 7 Okt). → { n, tunda, lewat }: tunda = id yang belum terkirim (tab tidak boleh menulis / potongan
+ *  ditolak) — sesi hemat menyimpan & mengulangnya; lewat = id di bulan TERKUNCI (tidak bisa disentuh — perangkat lain tidak menerimanya lewat delta): dulu
+ *  dibuang diam-diam, kini dilaporkan supaya sesi hemat menghitungnya (baca penuh harian toko `temuanTunda`, sanggahan 8 Okt). */
 async function sentuhCap(koleksi, ids, lihat) {
   if (!db || !status.akun || status.akun.jenis !== 'owner' || !hbHemat(koleksi)) return { n: 0, tunda: [] };
   if (jagaTulisHemat()) return { n: 0, tunda: (ids || []).slice() };
   const isi = (id) => (typeof lihat === 'function' ? lihat(id) : dokDiCache(koleksi, id));
-  const boleh = (ids || []).filter((id) => { const d = isi(id); return d && !tolakKunci(koleksi, d); });
+  const lewat = [];
+  const boleh = (ids || []).filter((id) => { const d = isi(id); if (!d) return false; if (tolakKunci(koleksi, d)) { lewat.push(id); return false; } return true; });
   let n = 0; const tunda = [];
   for (let i = 0; i < boleh.length; i += POTONG) {
     const b = writeBatch(db); const potong = boleh.slice(i, i + POTONG);
@@ -529,7 +531,7 @@ async function sentuhCap(koleksi, ids, lihat) {
     b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
     try { await b.commit(); n += potong.length; } catch (e) { potong.forEach((id) => tunda.push(id)); }
   }
-  return { n, tunda };
+  return { n, tunda, lewat };
 }
 /** Pendeteksi: catatan yang hilang dari server tanpa batu nisan (Console, perangkat sebelum aturan v7) → nisannya ditulis sekarang. → { n, tunda } (lihat sentuhCap). */
 async function tulisNisanSaja(koleksi, ids) {
@@ -548,6 +550,8 @@ async function tulisNisanSaja(koleksi, ids) {
 /** Kunci tab kalah (tab lain menekan "Pakai di sini"): klien Firestore tab ini dihentikan — antrean IndexedDB dikirim klien pemegang. */
 export async function berhenti(sebab) {
   _berhenti = String(sebab || 'Aplikasi dipakai di tab lain — tab ini berhenti. Muat ulang untuk memakainya di sini.');
+  // _hemat sengaja TIDAK di-null-kan (layar tetap membaca keadaannya): sesi yang berhenti melapor SEMUA koleksi hemat "periksa — tidak diperbarui lagi di tab
+  // ini" (hemat-baca.js belumK, sanggahan 8 Okt) — kartu pemeriksaan, kunci bulan, pajak & dokumen Laporan tidak lagi "lengkap" dari data yang membeku
   if (_hemat) { _hemat.berhenti(); }
   try { if (db) await terminate(db); } catch (e) { /* abaikan */ }
   status.galat = _berhenti; beriTahu();

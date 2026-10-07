@@ -2022,8 +2022,8 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
   `/baru/` lain yang menyuruh membuka sistem lama / `kasir.html`.
 - **Hemat baca (#111, disambungkan 8 Okt)**: koleksi yang BELUM LENGKAP di perangkat ini (SATU sumber `hemat-baca.js hbBelumLengkap`, lihat bagian
   "Kelengkapan" di bab Hemat baca) diteruskan `firebase.js hematKeadaan().belumLengkap` → `app.js lokalPerangkat` → `uang.js muatData` (`M.hemat`, hanya saat
-  nyala) → `pstKurang`: baris yang membutuhkannya = "?" dengan sebab toko ("data modal owner belum dibaca penuh hari ini — ketuk "baca penuh sekarang" (Menu ›
-  Sistem › Perangkat › Hemat baca)"), bukan ✓. Saklar mati: `M` tanpa `hemat` — kartu sama persis (`uji_periksa_sesudah.py --banding=<ref>`).
+  nyala) → `pstKurang`: baris yang membutuhkannya = "?" dengan sebab toko ("data modal owner belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB — ketuk
+  "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)"), bukan ✓. Saklar mati: `M` tanpa `hemat` — kartu sama persis (`uji_periksa_sesudah.py --banding=<ref>`).
 - Dijaga `alat-uji/uji_periksa_sesudah.py` (kotak pasir potret + buku khusus + kasbon dua orang; ritual = simulator `uji_potret_tahun.py` + hasil beku +
   selesai): semua sama (cache kembali utuh; tetap sama 20 Jan sesudah kegiatan Januari sungguhan), kapan tampil, kontrol kotak per baris (modal pembuka,
   merek pembuka dihapus, tanda 25 kg lepas, karung hilang dari rak, potret bulan hilang / omzetnya berubah, stok minus, piutang pembuka sesudah & sebelum
@@ -2072,21 +2072,38 @@ uji: `docs/rancangan-hemat-baca.md` bagian "Tinjauan 7 Okt". Saklar MATI dibukti
 tulisan (selain cap jam server yang disengaja), simpanan, pendengar staf SAMA.
 
 **Kelengkapan — SATU sumber (8 Okt, #111 × Paket C)**. `hemat-baca.js hbBelumLengkap` menjawab, per koleksi hemat di perangkat ini, apakah datanya LENGKAP
-untuk keputusan final dan sebabnya (kalimat toko). Dua jenis: **"periksa"** = belum terperiksa dengan server (persis arti `terperiksa` sejak 7 Okt — dibuktikan
-di 8192 kombinasi keadaan; tab berhenti, simpanan belum terbaca, batu nisan belum dicocokkan, dengar penuh / baca penuh masih berjalan, baca penuh wajib tapi
-ditunda rem kuota / gagal, ubahan bercap belum dicocokkan, hitungan server belum cocok) · **"harian"** = hitungan cocok tapi BELUM ADA BACA PENUH hari kuota
-ini — oleh perangkat ini maupun baca penuh harian toko yang selesai (ubahan tanpa cap jam server sejak baca penuh terakhir bisa belum terlihat; dengar penuh
-= lengkap). `terperiksaK` (gerbang katalog kasir, uang-kritis, pil kepala, tanda salinan perangkat toko.js) kini DITURUNKAN dari sumber ini.
+untuk keputusan final dan sebabnya (kalimat toko). Dua jenis: **"periksa"** = belum terperiksa dengan server (arti `terperiksa` sejak 7 Okt + tab yang
+berhenti — dibuktikan di 16384 kombinasi keadaan; tab berhenti / kalah kunci tab, simpanan belum terbaca, batu nisan belum dicocokkan, dengar penuh / baca penuh
+masih berjalan, baca penuh wajib tapi ditunda rem kuota / gagal, ubahan bercap belum dicocokkan, hitungan server belum cocok) · **"harian"** = hitungan cocok
+tapi BELUM ADA BACA PENUH sejak kuota baca terakhir direset (hari KUOTA: 14.00 WIB s/d 31 Okt, 15.00 WIB sesudahnya — kalimatnya menyebut jam itu, bukan "hari
+ini") — oleh perangkat ini maupun baca penuh harian toko yang selesai TANPA temuan tertunda untuk jenis catatan itu (ubahan tanpa cap jam server sejak baca
+penuh terakhir bisa belum terlihat; dengar penuh = lengkap). `terperiksaK` (gerbang katalog kasir, uang-kritis, pil kepala, tanda salinan perangkat toko.js)
+kini DITURUNKAN dari sumber ini.
 `hbSesi.belumLengkap()` / `keadaan().belumLengkap` → `firebase.js hematKeadaan()` (mati / staf: tanpa kolom) → `app.js` (lokalPerangkat Uang, opsi `hemat`
 Laporan). Yang memakai: kartu Pemeriksaan sesudah tutup buku (`pstKurang` "?"), daftar periksa **kunci bulan** (⛔ butir `hemat` — potret angka bulan dibekukan
-di riwayat), **Lanjutkan / Batalkan tutup buku** (`bkSambungan`), gerbang **g7** (dibaca penuh sesi ini DAN lengkap), **perkiraan kuota** tutup buku ("?" —
-tidak dihitung dari data setengah), **Laporan › Pajak** (pita "?", rekap konsultan / catat setoran / omzet tahun lalu dari sistem DITAHAN, draf tetap), panel
-Hemat baca (berapa koleksi belum dibaca penuh hari ini, tombolnya di sana). **Tutup hari & titik kas** tetap dijaga `pastikanSegar` (hitungan server ≤ 2
-menit, jenis "periksa" — rancangan K1; "belum dibaca penuh hari ini" tidak menahan tutup hari: memaksa ±9 rb baca saat rem kuota menahan baca penuh harian
-bisa menghabiskan kuota — HP kasir 429). **Tidak disambungkan** (sengaja, keputusan berikut): Stok › Cocokkan (opname menulis selisih dari buku perangkat) —
-belum dijaga hemat; tanpa internet dulu pun sama (simpanan perangkat). Saklar mati: semua di atas sama persis (`uji_periksa_sesudah.py --banding=<ref>` — kartu, gerbang, kunci bulan, Lanjutkan,
-HTML Uang & Pajak). Uji: `uji_hemat_baca.py` bagian K (+ kontrol K1–K7), `uji_periksa_sesudah.py` S7 (+ kontrol hemat, asap cadangan lokal: nyala & lengkap
-= mati; nyala & belum dibaca penuh = 13 "?" 0 ✗).
+di riwayat), **Lanjutkan / Batalkan tutup buku** (`bkSambungan`), gerbang **g7** (dibaca penuh sesi ini DAN lengkap — di layar langkah 1 DAN di pintu
+`susunKunci`), **perkiraan kuota** tutup buku ("?" — tidak dihitung dari data setengah), **Laporan › Pajak** (pita "?", rekap konsultan / catat setoran /
+omzet tahun lalu dari sistem DITAHAN, draf tetap), **dokumen Laporan untuk bank / kartu kredit** (Rekap Omzet Bulanan & Bukti Omzet = `pjOmzetSistem`,
+penjualan & retur; Neraca, laporan berkop laba-rugi / arus kas & paket bank = seluruh buku — DITAHAN "<judul> ditahan — angkanya belum bisa dipastikan: …",
+nomor cetakan tidak terpakai), panel Hemat baca (berapa jenis catatan belum lengkap PER SEBAB, tombolnya di sana). **Tutup hari & titik kas** tetap dijaga
+`pastikanSegar` (hitungan server ≤ 2 menit, jenis "periksa" — rancangan K1; "belum dibaca penuh sejak reset" tidak menahan tutup hari: memaksa ±9 rb baca saat
+rem kuota menahan baca penuh harian bisa menghabiskan kuota — HP kasir 429). **Tidak disambungkan** (sengaja, keputusan berikut): Stok › Cocokkan (opname
+menulis selisih dari buku perangkat) — belum dijaga hemat; tanpa internet dulu pun sama (simpanan perangkat). Rekap harian (satu hari, bukan dokumen untuk
+bank) dan dokumen kecil (nota, kuitansi — satu catatan) juga tidak ditahan. Saklar mati: semua di atas sama persis (`uji_periksa_sesudah.py --banding=<ref>` —
+kartu, gerbang, kunci bulan dari LAYAR, pintu susunKunci, Lanjutkan, HTML Uang, Pajak & dokumen Laporan + hasil ketukan keluar). Uji: `uji_hemat_baca.py` bagian K
+(+ kontrol K1–K15), `uji_periksa_sesudah.py` S7/S7b/S7c/S7d (+ kontrol hemat, asap cadangan lokal: nyala & lengkap = mati; nyala & belum dibaca penuh = 13 "?" 0 ✗).
+
+**Sanggahan 8 Okt (adversarial atas adc85b3)** — dibetulkan: (1) baca penuh harian TOKO menulis `selesai` hanya sesudah antrean temuan pendeteksi habis
+(sentuhan / batu nisan terkirim); yang gagal permanen (5×) atau DILEWATI karena bulannya terkunci (`sentuhCap` kini melaporkan `lewat`, dulu dibuang diam-diam)
+dihitung per jenis catatan → `temuanTunda` di `aturanToko/hematHarian` → perangkat lain "harian" untuk jenis itu ("punya ubahan yang ditemukan baca penuh
+harian toko tapi belum sampai ke perangkat ini — ketuk …"); dulu perangkat lain melapor LENGKAP padahal ubahan Console tidak pernah sampai. (2) Tab yang kalah
+kunci tab (`firebase.js berhenti`, `_hemat` tidak di-null-kan) melapor semua jenis catatan "periksa — tidak diperbarui lagi di tab ini, muat ulang aplikasi";
+uang-kritis & katalog menolak. (3) Dokumen Laporan untuk bank ditahan (di atas). (4) Pintu `susunKunci` memeriksa g7 dengan `lokal()` layar. (5) Kalimat: jam
+reset kuota disebut ("sejak kuota baca direset pukul 14.00 WIB"), 429 = "kuota baca hari ini habis — ketuk … sesudah pukul HH.MM WIB", sebab satu jenis catatan
+tidak dipinjamkan ke yang lain ("…; 2 jenis catatan lainnya <sebabnya>"), "(n jenis catatan)" sebelum petunjuk (bukan "(n bagian data)" di belakang kurung menu),
+"di perangkat ini … perangkat ini" tidak berulang. (6) Uji: `cekSatuSumber` membandingkan dengan rumus 7 Okt yang DITULIS ULANG atas keadaan sesi nyata (dulu
+tautologis), kasus K4 (baca penuh sesi ini + putus internet; kontrol K4 kini berbunyi di sana, bukan di B9), K5 (tab berhenti), K6/K6b/K6c (klaim + sentuhan gagal
+sekali / permanen / bulan terkunci), pembanding mati menggambar kartu kunci bulan dari layar & menolak pembanding kosong.
 
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 

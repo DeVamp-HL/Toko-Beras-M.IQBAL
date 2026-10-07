@@ -27,10 +27,12 @@ wadah (stokWadah), karung wadah, karung belakang (merkAsal), buku adukan, merek 
   S6  layar: uang.js ASLI digambar di jsc (Mac, tablet, HP: ringkasan, ✓ / ✗ dua angka / ✗ satu keadaan untuk baris teks / ? dengan sebab, lihat semua, unduh,
       tanpa internet, galat tanpa pesan mentah, kalimat tanpa bahasa mesin) + statis: lokal app.js membawa keadaan muat; modul ada di modulepreload
   S7  HEMAT BACA NYALA (#111 × Paket C, owner 8 Okt): koleksi yang BELUM LENGKAP di perangkat ini (SATU sumber hemat-baca.js hbBelumLengkap → firebase.js
-      hematKeadaan → app.js lokalPerangkat → uang.js muatData → pstKurang) = "?" dengan sebab toko ("data modal owner belum dibaca penuh hari ini — ketuk "baca
-      penuh sekarang" …"), bukan ✓; nyala & lengkap = SAMA PERSIS dengan mati; tanpa internet & ditolak server tetap menang; keputusan final lain memakai sumber
-      yang sama: daftar periksa kunci bulan (⛔ butir hemat), Lanjutkan/Batalkan tutup buku (bkSambungan), gerbang g7, perkiraan kuota ("?"), Laporan › Pajak
-      (pita "?", rekap konsultan / catat setoran / omzet tahun lalu dari sistem DITAHAN). Layar uang.js & laporan.js ASLI di jsc; saklar mati = HTML sama persis.
+      hematKeadaan → app.js lokalPerangkat → uang.js muatData → pstKurang) = "?" dengan sebab toko ("data modal owner belum dibaca penuh sejak kuota baca direset
+      pukul 15.00 WIB — ketuk "baca penuh sekarang" …"), bukan ✓; nyala & lengkap = SAMA PERSIS dengan mati; tanpa internet & ditolak server tetap menang; keputusan
+      final lain memakai sumber yang sama: daftar periksa kunci bulan (⛔ butir hemat), Lanjutkan/Batalkan tutup buku (bkSambungan), gerbang g7 (layar langkah 1
+      DAN pintu susunKunci), perkiraan kuota ("?"), Laporan › Pajak (pita "?", rekap konsultan / catat setoran / omzet tahun lalu dari sistem DITAHAN), dokumen
+      Laporan untuk bank (Rekap Omzet Bulanan, Bukti Omzet, Neraca, laporan berkop, paket bank — DITAHAN). Sebab satu jenis catatan tidak dipinjamkan ke yang lain.
+      Layar uang.js & laporan.js ASLI di jsc; saklar mati = HTML sama persis.
 
     python3 alat-uji/uji_periksa_sesudah.py                    → N lulus · 0 gagal
     python3 alat-uji/uji_periksa_sesudah.py --kontrol          → logika yang dirusak wajib ketahuan (keluar 3 kalau ada yang diam)
@@ -336,42 +338,49 @@ coba('S5', function () {
 });
 
 // ==================== S7 · HEMAT BACA NYALA (#111 × Paket C): koleksi yang belum lengkap → "?" dengan sebab, bukan ✓ ====================
-/** Peta kelengkapan seperti hbSesi.belumLengkap(): koleksi → "belum dibaca penuh hari ini". */
-function hbHarian(daftar) { var o = {}; daftar.forEach(function (k) { o[k] = { jenis: 'harian', sebab: HB_SEBAB_HARIAN }; }); return o; }
+/** Peta kelengkapan seperti hbSesi.belumLengkap(): koleksi → "belum dibaca penuh sejak kuota baca direset" (hari kuota 5 Jan 2027 — reset 15.00 WIB). */
+var SH7 = hbSebabHarian('2027-01-05');
+function hbHarian(daftar) { var o = {}; daftar.forEach(function (k) { o[k] = { jenis: 'harian', sebab: SH7 }; }); return o; }
 var BAHASA_MESIN_S7 = /koleksi|dokumen|chip|JSON|cache|mesin|piutangMutasi|utangPemasokMutasi|modalOwner|batchMasuk|tutupBukuAcara|pengaturan\/|capServer|delta|nisan/;
 coba('S7', function () {
   siapRitual(); var k = new Date(__KINI); var mati = pstPeriksa(k, M_OK);
   var lengkap = pstPeriksa(k, Object.assign({}, M_OK, { hemat: {} }));
   ok('S7 nyala & SEMUA lengkap (peta kelengkapan kosong) → hasil SAMA PERSIS dengan saklar mati (27 sama, beres)', mati && mati.beres && J(lengkap) === J(mati), ringkasH(lengkap));
   var H1 = pstPeriksa(k, Object.assign({}, M_OK, { hemat: hbHarian(['penjualan', 'modalOwner']) }));
-  ok('S7 nyala: modal owner belum dibaca penuh hari ini → baris modal "?" dengan sebab toko persis ("data modal owner belum dibaca penuh hari ini — ketuk \"baca penuh sekarang\" (Menu › Sistem › Perangkat › Hemat baca)"), bukan ✓; baris yang tidak membutuhkannya (perbandingan beku, pajak dari potret) tetap ✓',
-    baris(H1, 'modalPembuka').status === 'belum' && baris(H1, 'modalPembuka').sebab === 'data modal owner belum dibaca penuh hari ini — ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)'
+  ok('S7 nyala: modal owner belum dibaca penuh sejak reset → baris modal "?" dengan sebab toko persis ("data modal owner belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB — ketuk \"baca penuh sekarang\" (Menu › Sistem › Perangkat › Hemat baca)"), bukan ✓; baris yang tidak membutuhkannya (perbandingan beku, pajak dari potret) tetap ✓',
+    baris(H1, 'modalPembuka').status === 'belum' && baris(H1, 'modalPembuka').sebab === 'data modal owner belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB — ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)'
     && baris(H1, 'pajakSetor').status === 'sama' && H1.kelompok[0].baris.every(function (b) { return b.status === 'sama'; }) && !H1.beres && H1.nBeda === 0, ringkasH(H1));
   var H2 = pstPeriksa(k, Object.assign({}, M_OK, { hemat: hbHarian(hbKoleksiHemat()) }));
   var q2 = H2.kelompok.reduce(function (o, g) { return o.concat(g.baris.filter(function (b) { return b.status === 'belum'; })); }, []);
-  ok('S7 nyala: SEMUA catatan toko belum dibaca penuh hari ini → 13 dari 27 "?" (yang membaca buku hidup), 14 baris beku tetap ✓ (berita acara & hasil beku = setelan yang selalu didengar penuh); ringkasan "belum bisa diperiksa", bukan beres',
+  ok('S7 nyala: SEMUA catatan toko belum dibaca penuh sejak reset → 13 dari 27 "?" (yang membaca buku hidup), 14 baris beku tetap ✓ (berita acara & hasil beku = setelan yang selalu didengar penuh); ringkasan "belum bisa diperiksa", bukan beres',
     H2.nBelum === 13 && H2.nBeda === 0 && !H2.beres && /^13 dari 27 pemeriksaan belum bisa diperiksa — tutup buku 2026 belum bisa dinyatakan beres/.test(H2.ringkas)
-    && q2.every(function (b) { return /^data .+ belum dibaca penuh hari ini — ketuk "baca penuh sekarang" \(Menu › Sistem › Perangkat › Hemat baca\)$/.test(b.sebab) && !BAHASA_MESIN_S7.test(b.sebab); }), ringkasH(H2));
-  var H3 = pstPeriksa(k, Object.assign({}, M_OK, { hemat: { batchMasuk: { jenis: 'periksa', sebab: 'sedang dibaca penuh — tunggu sampai selesai' }, penjualan: { jenis: 'harian', sebab: HB_SEBAB_HARIAN } } }));
+    && q2.every(function (b) { return /^data .+ belum dibaca penuh sejak kuota baca direset pukul 15\.00 WIB — ketuk "baca penuh sekarang" \(Menu › Sistem › Perangkat › Hemat baca\)$/.test(b.sebab) && !BAHASA_MESIN_S7.test(b.sebab) && !/jenis catatan lainnya/.test(b.sebab); }), ringkasH(H2));
+  var H3 = pstPeriksa(k, Object.assign({}, M_OK, { hemat: { batchMasuk: { jenis: 'periksa', sebab: 'sedang dibaca penuh — tunggu sampai selesai' }, penjualan: { jenis: 'harian', sebab: SH7 } } }));
   ok('S7 nyala: sebab dari sumbernya diteruskan apa adanya — barang masuk "sedang dibaca penuh" → baris stok "data barang masuk sedang dibaca penuh — tunggu sampai selesai"',
     baris(H3, 'bukuMerek').status === 'belum' && baris(H3, 'bukuMerek').sebab === 'data barang masuk sedang dibaca penuh — tunggu sampai selesai' && baris(H3, 'modalPembuka').status === 'sama', ringkasH(H3));
   var H4 = pstPeriksa(k, Object.assign({}, M_OK, { offline: true, hemat: hbHarian(['modalOwner']) }));
   try { setelDariCache('modalOwner', true); var H5 = pstPeriksa(k, Object.assign({}, M_OK, { hemat: hbHarian(['modalOwner']) })); var H5b = pstPeriksa(k, M_OK); } finally { setelDariCache('modalOwner', false); }
   ok('S7 urutan sebab: tanpa internet menang atas hemat; sebab hemat menang atas "masih dari simpanan perangkat" (koleksi hemat yang belum terperiksa ditandai salinan perangkat oleh firebase.js); mati tetap kalimat lama',
-    /tanpa internet/.test(baris(H4, 'modalPembuka').sebab) && baris(H5, 'modalPembuka').sebab === 'data modal owner ' + HB_SEBAB_HARIAN && /masih dari simpanan perangkat, belum dijawab server/.test(baris(H5b, 'modalPembuka').sebab),
+    /tanpa internet/.test(baris(H4, 'modalPembuka').sebab) && baris(H5, 'modalPembuka').sebab === 'data modal owner ' + SH7 && /masih dari simpanan perangkat, belum dijawab server/.test(baris(H5b, 'modalPembuka').sebab),
     J([baris(H4, 'modalPembuka').sebab, baris(H5, 'modalPembuka').sebab, baris(H5b, 'modalPembuka').sebab]));
   hapusDok('pengaturan', 'periksaArsip2026');
   var H6 = pstPeriksa(k, Object.assign({}, M_OK, { hemat: hbHarian(['penjualan']) })); var H6m = pstPeriksa(k, M_OK);
-  ok('S7 hasil beku tidak ada di perangkat ini (baris perbandingan dihitung ulang dari SELURUH buku) + penjualan belum dibaca penuh hari ini → 11 baris perbandingan "?" — mati: dihitung ulang',
-    H6.kelompok[0].baris.every(function (b) { return b.status === 'belum' && /^data penjualan belum dibaca penuh hari ini/.test(b.sebab); }) && H6m.kelompok[0].baris.some(function (b) { return b.status === 'sama'; }), ringkasH(H6));
+  ok('S7 hasil beku tidak ada di perangkat ini (baris perbandingan dihitung ulang dari SELURUH buku) + penjualan belum dibaca penuh sejak reset → 11 baris perbandingan "?" — mati: dihitung ulang',
+    H6.kelompok[0].baris.every(function (b) { return b.status === 'belum' && /^data penjualan belum dibaca penuh sejak kuota baca direset/.test(b.sebab); }) && H6m.kelompok[0].baris.some(function (b) { return b.status === 'sama'; }), ringkasH(H6));
+  // sanggahan 8 Okt (d): sebab SATU jenis catatan dulu dipinjamkan ke semua ("data penjualan, retur, modal owner sedang dibaca penuh — tunggu") — owner menunggu,
+  // padahal retur & modal owner butuh ketukan "baca penuh sekarang"
+  var H7 = pstPeriksa(k, Object.assign({}, M_OK, { hemat: { penjualan: { jenis: 'periksa', sebab: 'sedang dibaca penuh — tunggu sampai selesai' }, retur: { jenis: 'harian', sebab: SH7 }, modalOwner: { jenis: 'harian', sebab: SH7 } } }));
+  var s7 = (H7.kelompok[0].baris[0] || {}).sebab || '';
+  ok('S7 (sanggahan 8 Okt) sebab tidak dipinjamkan: penjualan "sedang dibaca penuh" disebut namanya; retur & modal owner dihitung dengan sebabnya sendiri ("2 jenis catatan lainnya belum dibaca penuh sejak … — ketuk")',
+    s7 === 'data penjualan sedang dibaca penuh — tunggu sampai selesai; 2 jenis catatan lainnya ' + SH7 && !BAHASA_MESIN_S7.test(s7) && H7.kelompok[0].baris.every(function (b) { return b.status === 'belum' && b.sebab === s7; }), s7);
 });
 // ---- S7b · keputusan final LAIN dari sumber yang sama (logika): kunci bulan, Lanjutkan/Batalkan tutup buku, gerbang g7
 coba('S7b', function () {
   siapRitual(); var k = new Date(__KINI); var K0 = { lokal: { antreLokal: { belum: [], ditolak: [] }, antre: [] }, parkir: [], putusanHari: {}, centang: {} };
   var D0 = kpDaftarPeriksa('2026-12', k, K0), Dl = kpDaftarPeriksa('2026-12', k, Object.assign({}, K0, { hemat: {} })), Db = kpDaftarPeriksa('2026-12', k, Object.assign({}, K0, { hemat: hbHarian(['penjualan', 'kasbonMutasi']) }));
   var bh = Db.butir.find(function (b) { return b.id === 'hemat'; }), bl = Dl.butir.find(function (b) { return b.id === 'hemat'; });
-  ok('S7b kunci bulan: saklar mati = tanpa butir hemat (daftar sama); nyala & lengkap = ⛔ butir hemat ✓; nyala & belum dibaca penuh hari ini = ⛔ butir hemat MEMBLOKIR dengan sebab toko (potret bulan dibekukan dari seluruh buku)',
-    !D0.butir.some(function (b) { return b.id === 'hemat'; }) && bl && bl.ok && bl.blokir && bh && !bh.ok && bh.blokir && bh.ket === 'data perangkat ini ' + HB_SEBAB_HARIAN + ' (2 bagian data)' && Db.blokir === D0.blokir + 1 && !Db.boleh
+  ok('S7b kunci bulan: saklar mati = tanpa butir hemat (daftar sama); nyala & lengkap = ⛔ butir hemat ✓; nyala & belum dibaca penuh sejak reset = ⛔ butir hemat MEMBLOKIR dengan sebab toko, jumlah jenis catatan SEBELUM petunjuk (tanpa kurung ganda)',
+    !D0.butir.some(function (b) { return b.id === 'hemat'; }) && bl && bl.ok && bl.blokir && bh && !bh.ok && bh.blokir && bh.ket === 'data perangkat ini belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB (2 jenis catatan) — ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)' && Db.blokir === D0.blokir + 1 && !Db.boleh
     && J(D0.butir) === J(Dl.butir.filter(function (b) { return b.id !== 'hemat'; })), J([bh, bl, D0.blokir, Db.blokir]));
   ok('S7b Lanjutkan / Batalkan tutup buku: mati = boleh (seperti dulu); nyala & lengkap = boleh; nyala & belum lengkap = DITOLAK dengan sebab ("data perangkat ini sedang dibaca penuh …"); tanpa internet tetap kalimat lama',
     bkSambungan({}) === '' && bkSambungan({ hemat: { nyala: false } }) === '' && bkSambungan({ hemat: { nyala: true, belumLengkap: {} } }) === ''
@@ -384,8 +393,25 @@ coba('S7b', function () {
     !g7(G0) && g7(G1) && g7(G1).ok && g7(G2) && !g7(G2).ok && g7(G2).ket === 'data perangkat ini belum dicocokkan dengan catatan yang dihapus di server — tunggu sebentar' && !G2.semuaOk && g7(G3) && !g7(G3).ok && /belum dibaca penuh sesi ini/.test(g7(G3).ket),
     J([g7(G1), g7(G2), g7(G3)]));
   var SH0 = ssHemat({ nyala: false, saklar: false, owner: true }, []), SH1 = ssHemat({ nyala: true, saklar: true, owner: true, belumLengkap: hbHarian(['penjualan', 'retur']) }, []), SH2 = ssHemat({ nyala: true, saklar: true, owner: true, belumLengkap: { penjualan: { jenis: 'periksa', sebab: 'x' } } }, []);
-  ok('S7b panel Menu › Sistem › Perangkat › Hemat baca (tempat tombol "baca penuh sekarang"): nyala & 2 koleksi belum dibaca penuh hari ini → kalimat yang menyebut keputusan yang menunggu; mati / hanya belum terperiksa → kosong',
-    SH0.harianBelum === '' && SH1.harianBelum === '2 koleksi belum dibaca penuh hari ini — kartu pemeriksaan sesudah tutup buku, kunci bulan & Laporan › Pajak menunggu sampai dibaca penuh: ketuk "baca penuh sekarang" di bawah' && SH2.harianBelum === '', J([SH0.harianBelum, SH1.harianBelum]));
+  var JS = 'belum bisa dipastikan sudah dibaca penuh sejak kuota baca terakhir direset (jam server belum diterima) — tunggu sebentar';
+  var SH3 = ssHemat({ nyala: true, saklar: true, owner: true, belumLengkap: { penjualan: { jenis: 'harian', sebab: JS }, retur: { jenis: 'harian', sebab: JS }, kasbonMutasi: { jenis: 'harian', sebab: SH7 } } }, []);
+  var SH4 = ssHemat({ nyala: true, saklar: true, owner: true, klaim: { hari: '2027-01-05', nama: 'iPad contoh', selesai: 1, temuanTunda: { penjualan: 2 } } }, []);
+  ok('S7b panel Menu › Sistem › Perangkat › Hemat baca (tempat tombol "baca penuh sekarang"): nyala & 2 jenis catatan belum dibaca penuh sejak reset → kalimat per sebab ("jenis catatan", bukan "koleksi"; petunjuk menu dibuang — panelnya ini) + keputusan yang menunggu; mati / hanya belum terperiksa → kosong',
+    SH0.harianBelum === '' && SH1.harianBelum === '2 jenis catatan belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB — ketuk "baca penuh sekarang". Kartu pemeriksaan sesudah tutup buku, kunci bulan, Laporan › Pajak & dokumen Laporan menunggu sampai lengkap.' && SH2.harianBelum === '', J([SH0.harianBelum, SH1.harianBelum]));
+  ok('S7b panel (sanggahan 8 Okt): "jam server belum diterima" TIDAK dihitung sebagai "belum dibaca penuh" (dihitung per sebab); baca penuh harian toko dengan ubahan yang tidak bisa sampai ke perangkat lain disebut',
+    SH3.harianBelum === '2 jenis catatan ' + JS + '; 1 jenis catatan belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB — ketuk "baca penuh sekarang". Kartu pemeriksaan sesudah tutup buku, kunci bulan, Laporan › Pajak & dokumen Laporan menunggu sampai lengkap.'
+    && /selesai oleh iPad contoh · 2 ubahan tanpa cap belum bisa sampai ke perangkat lain/.test(SH4.harian), J([SH3.harianBelum, SH4.harian]));
+});
+// ---- S7c · (sanggahan 8 Okt) PINTU tutup buku: susunKunci memeriksa kelengkapan hemat (g7) lagi — sesudah unduh cadangan, arsip, saldo & paraf berdua,
+//      potret & saldo pembuka disusun dari seluruh buku perangkat ini. Dulu g7 hanya di layar langkah 1 (uang.js bkPeriksa)
+coba('S7c', function () {
+  var w = siapKotak(); putusSemua(w);
+  var Lb = Object.assign({}, LA, { hemat: { nyala: true, totalSesiIni: true, belumLengkap: hbHarian(['penjualan']) } }), Ll = Object.assign({}, LA, { hemat: { nyala: true, totalSesiIni: true, belumLengkap: {} } });
+  var Rb = susunKunci(2026, D, w, Lb), R0 = susunKunci(2026, D, w, LA), Rl = susunKunci(2026, D, w, Ll), Rs = susunKunci(2026, D, w, Object.assign({}, LA, { hemat: { nyala: true, totalSesiIni: false, belumLengkap: {} } }));
+  ok('S7c susunKunci (pintu masuk) dengan hemat nyala & penjualan belum dibaca penuh sejak reset → DITOLAK dengan butir g7 & sebab toko; belum dibaca penuh sesi ini → ditolak; saklar mati / nyala & lengkap → kiriman disusun (sama dengan dulu)',
+    !!Rb.tolak && /^Periksa dulu belum beres — Perangkat ini sudah membaca penuh semua catatan sesi ini \(hemat baca\): data perangkat ini belum dibaca penuh sejak kuota baca direset/.test(Rb.tolak) && !Rb.kiriman
+    && !!Rs.tolak && /belum dibaca penuh sesi ini/.test(Rs.tolak) && !R0.tolak && !!R0.kiriman && R0.kiriman.length > 0 && !Rl.tolak && !!Rl.kiriman && J(Rl.kiriman.length) === J(R0.kiriman.length),
+    J([Rb.tolak, Rs.tolak, R0.tolak, Rl.tolak]));
 });
 """
 
@@ -447,7 +473,7 @@ coba('S6', function () {
   ok('S6 (sanggahan) pemeriksaan jatuh: layar Tutup buku tetap tergambar, kartu berkalimat toko — pesan galat mentah TIDAK di layar (hanya console)', /data-k="tb-periksa"/.test(galat) && /Pemeriksaan tidak bisa dijalankan di perangkat ini — tutup buku belum bisa dinyatakan beres/.test(galat) && !/XQZ/.test(galat) && /XQZ/.test(keConsole), (galat.match(/data-k="tb-periksa".{0,300}/) || [''])[0]);
 });
 // ---- S7 · layar Uang ASLI dengan hemat baca (app.js lokalPerangkat `hemat` → muatData → pstKurang; kuota; g7; kunci bulan)
-function hbHarianL(daftar) { var o = {}; daftar.forEach(function (k) { o[k] = { jenis: 'harian', sebab: HB_SEBAB_HARIAN }; }); return o; }
+function hbHarianL(daftar) { var o = {}; daftar.forEach(function (k) { o[k] = { jenis: 'harian', sebab: hbSebabHarian('2027-01-05') }; }); return o; }
 coba('S7-layar', function () {
   siapRitual(); setelSumber('firestore', 'kotak pasir'); __muat = { koleksiSiap: 56, koleksiTotal: 56, ditolak: [], offline: false }; __lebar = 1100;
   U = buatU(); U.tampilkan(true);
@@ -461,12 +487,12 @@ coba('S7-layar', function () {
     && /class="tb-cek ok" data-k="g-g7"/.test(h2), J([potong(h2, 'data-k="tb-periksa"', 'data-aksi="pstUnduh"').length, potong(h0, 'data-k="tb-periksa"', 'data-aksi="pstUnduh"').length]));
   __hemat = { nyala: true, totalSesiIni: true, belumLengkap: hbHarianL(hbKoleksiHemat()) }; var h3 = gambarU({ keluarga: 'buku', pstRinci: true });
   var nQ = (h3.match(/class="tb-cek belum" data-k="pst-[a-zA-Z]+"><span class="t">\?<\/span>/g) || []).length; var kartu3 = teksKartu(h3);
-  ok('S7 layar: nyala & belum dibaca penuh hari ini → 13 baris digambar "?" dengan sebab toko ("… belum dibaca penuh hari ini — ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)"), ringkasan "belum bisa diperiksa", tanpa bahasa mesin',
-    nQ === 13 && /data-k="pst-ringkas">13 dari 27 pemeriksaan belum bisa diperiksa/.test(h3) && /belum bisa diperiksa — data [^<]+ belum dibaca penuh hari ini — ketuk (&quot;|")baca penuh sekarang(&quot;|") \(Menu › Sistem › Perangkat › Hemat baca\)/.test(h3) && !BAHASA_MESIN.test(kartu3) && !rusakHtml(h3),
+  ok('S7 layar: nyala & belum dibaca penuh sejak reset → 13 baris digambar "?" dengan sebab toko ("… belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB — ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)"), ringkasan "belum bisa diperiksa", tanpa bahasa mesin',
+    nQ === 13 && /data-k="pst-ringkas">13 dari 27 pemeriksaan belum bisa diperiksa/.test(h3) && /belum bisa diperiksa — data [^<]+ belum dibaca penuh sejak kuota baca direset pukul 15\.00 WIB — ketuk (&quot;|")baca penuh sekarang(&quot;|") \(Menu › Sistem › Perangkat › Hemat baca\)/.test(h3) && !BAHASA_MESIN.test(kartu3) && !rusakHtml(h3),
     J([nQ, (h3.match(/data-k="pst-ringkas">[^<]*/) || [''])[0], (kartu3.match(/.{40}(koleksi|dokumen|chip|JSON|cache|mesin).{30}/) || [''])[0]]));
   ok('S7 layar: perkiraan kuota tutup buku "?" — belum bisa dihitung dari data setengah (tanpa angka baca/tulis), sebabnya disebut; g7 belum (sebab dari sumber yang sama)',
     /data-k="tb-kuota-hemat"><span class="t">\?<\/span>/.test(h3) && /Perkiraan kuota tutup buku 2027 belum bisa dihitung/.test(h3) && !/Perkiraan kuota Firestore \(batas Spark/.test(h3) && /class="tb-cek tidak" data-k="g-g7"/.test(h3)
-    && /data-k="g-g7">[\s\S]*?data perangkat ini belum dibaca penuh hari ini/.test(h3), (h3.match(/data-k="tb-kuota[\s\S]{0,400}/) || [''])[0]);
+    && /data-k="g-g7">[\s\S]*?data perangkat ini belum dibaca penuh sejak kuota baca direset pukul 15\.00 WIB \(\d+ jenis catatan\) — ketuk/.test(h3), (h3.match(/data-k="tb-kuota[\s\S]{0,400}/) || [''])[0]);
   var kp3 = /data-k="kp-butir"/.test(h3), kp0 = /data-k="kp-butir"/.test(h0);
   ok('S7 layar: kartu kunci bulan (Desember 2026 bisa dicalonkan) — ⛔ butir hemat muncul HANYA saat nyala & memblokir; mati: tidak ada', kp0 && kp3 && !/data-k="kp-hemat"/.test(h0) && /class="tb-cek tidak" data-k="kp-hemat"/.test(h3), J([kp0, kp3]));
   __hemat = null;
@@ -482,7 +508,7 @@ setelKunci(false); window.matchMedia = function (q) { return { matches: /1100px/
 var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP;
 var akarL = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0 };
 var __hematL = null; var L9 = null; var gambarL = function (patch) { L9.keadaan.setel(patch || {}); L9.gambar(); return __html; };
-function hbHarianP(daftar) { var o = {}; daftar.forEach(function (k) { o[k] = { jenis: 'harian', sebab: HB_SEBAB_HARIAN }; }); return o; }
+function hbHarianP(daftar) { var o = {}; daftar.forEach(function (k) { o[k] = { jenis: 'harian', sebab: hbSebabHarian('2027-01-05') }; }); return o; }
 function bukaL(denganHemat) { var o = { sekarang: function () { return new Date(__KINI); }, statusRingkas: function () { return 'owner'; }, mode: function () { return 'terang'; }, gantiMode: function () {}, pindah: function () {}, keTujuan: function () {} };
   if (denganHemat) o.hemat = function () { return __hematL; }; return pasangLayarLaporan(akarL, o); }
 coba('S7-pajak', function () {
@@ -493,8 +519,8 @@ coba('S7-pajak', function () {
   ok('S7 Pajak: saklar mati / app.js tanpa hemat / nyala & lengkap / yang belum lengkap bukan data pajak (kasbon, barang masuk) → HTML Laporan › Pajak SAMA PERSIS, tanpa pita "?"',
     p0.length > 1000 && p0 === p1 && p1 === p2 && p2 === p2b && !/data-k="pj-hemat"/.test(p0), J([p0.length, p1.length, p2.length, p2b.length]));
   __hematL = { nyala: true, belumLengkap: hbHarianP(['penjualan']) }; var p3 = gambarL(P);
-  ok('S7 Pajak: penjualan belum dibaca penuh hari ini → pita "?" di atas layar: angka pajak belum bisa dipastikan + sebab toko (ketuk baca penuh sekarang); rekap konsultan ditahan',
-    /data-k="pj-hemat"><b>\?<\/b> Angka pajak di perangkat ini belum bisa dipastikan — data perangkat ini belum dibaca penuh hari ini — ketuk (&quot;|")baca penuh sekarang/.test(p3) && /Rekap untuk konsultan &amp; catat setoran ditahan sampai lengkap|Rekap untuk konsultan & catat setoran ditahan sampai lengkap/.test(p3)
+  ok('S7 Pajak: penjualan belum dibaca penuh sejak reset → pita "?" di atas layar: angka pajak belum bisa dipastikan + sebab toko (ketuk baca penuh sekarang), tanpa "di perangkat ini … perangkat ini"; rekap konsultan ditahan',
+    /data-k="pj-hemat"><b>\?<\/b> Angka pajak belum bisa dipastikan — data perangkat ini belum dibaca penuh sejak kuota baca direset pukul 15\.00 WIB — ketuk (&quot;|")baca penuh sekarang/.test(p3) && !/di perangkat ini belum bisa dipastikan/.test(p3) && /Rekap untuk konsultan &amp; catat setoran ditahan sampai lengkap|Rekap untuk konsultan & catat setoran ditahan sampai lengkap/.test(p3)
     && !/NaN|undefined|\[object Object\]/.test(p3.replace(/data-[a-z-]+="[^"]*"/g, '')), (p3.match(/data-k="pj-hemat"[^]{0,300}/) || [''])[0]);
   var nS = cacheMentah('pajakSetoran').length; var nA = cacheMentah('aturan').length;
   L9.keadaan.setel({ drafSetor: { masaPajak: '2027-01', tanggalSetor: '2027-01-05', jumlah: '1000', ntpn: '', atasNama: 'Contoh', catatan: 'setoran contoh uji' }, kabar: '' });
@@ -502,10 +528,31 @@ coba('S7-pajak', function () {
   __aksi.pjKeluar({ cara: 'cetak' }); drainMicrotasks(); var k2 = L9.keadaan.baca().kabar;
   __aksi.pjTawarPakai(); drainMicrotasks(); var k3 = L9.keadaan.baca().kabar;
   ok('S7 Pajak: catat setoran (memotret omzet & PPh) DITAHAN tanpa menulis apa pun, rekap konsultan DITAHAN, omzet tahun lalu dari sistem DITAHAN — kalimat toko + sebab, draf tetap di layar',
-    /^Setoran ditahan — angka pajak di perangkat ini belum bisa dipastikan: data perangkat ini belum dibaca penuh hari ini — ketuk "baca penuh sekarang"/.test(k1) && n1 === nS && !!L9.keadaan.baca().drafSetor
-    && /^Rekap pajak ditahan — angka pajak di perangkat ini belum bisa dipastikan: data perangkat ini belum dibaca penuh hari ini/.test(k2) && /^Omzet tahun lalu dari sistem ditahan — /.test(k3) && cacheMentah('aturan').length === nA, J([k1, k2, k3, nS, n1]));
+    /^Setoran ditahan — angka pajak belum bisa dipastikan: data perangkat ini belum dibaca penuh sejak kuota baca direset pukul 15\.00 WIB — ketuk "baca penuh sekarang"/.test(k1) && n1 === nS && !!L9.keadaan.baca().drafSetor
+    && /^Rekap pajak ditahan — angka pajak belum bisa dipastikan: data perangkat ini belum dibaca penuh sejak kuota baca direset/.test(k2) && /^Omzet tahun lalu dari sistem ditahan — /.test(k3) && cacheMentah('aturan').length === nA, J([k1, k2, k3, nS, n1]));
   __hematL = { nyala: false }; L9.keadaan.setel({ kabar: '' }); __aksi.pjSetorSimpan(); drainMicrotasks(); var n2 = cacheMentah('pajakSetoran').length;
-  ok('S7 Pajak (kontrol arah): saklar mati → setoran yang sama TERSIMPAN (penjaga hanya saat hemat baca nyala & belum lengkap)', n2 === nS + 1 && !/ditahan/.test(L9.keadaan.baca().kabar || ''), J([nS, n2, L9.keadaan.baca().kabar]));
+  ok('S7 Pajak (kontrol arah): saklar mati → setoran yang sama TERSIMPAN (penjaga hanya saat hemat baca nyala & belum lengkap)', n2 === nS + 1 && !/ditahan/.test(L9.keadaan.baca().kabar || ''), J([nS, n2, L9.keadaan.baca().kabar]));  // ---- S7d · (sanggahan 8 Okt) dokumen Laporan untuk bank / kartu kredit dari mesin yang SAMA dengan Pajak: Rekap Omzet Bulanan & Bukti Omzet (pjOmzetSistem),
+  //      Neraca & laporan berkop (seluruh buku), paket bank — DITAHAN saat hemat nyala & belum lengkap (dulu tetap keluar tanpa "?"); mati = keluar seperti dulu
+  terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'identitas', nama: 'Toko Contoh', alamat: 'Jalan Contoh 1' } }]);
+  var b26 = {}; ['2026-11', '2026-12'].forEach(function (k) { b26[k] = true; });
+  var keluarSemua = function () { var o = {}; [['blRekapKeluar', { keluarga: 'bulanan', tabB: 'ringkas' }], ['blBuktiKeluar', { keluarga: 'bulanan', tabB: 'bukti', pilihBukti: b26 }], ['nrKeluar', { keluarga: 'neraca', sampaiN: '' }],
+      ['dkKeluar', { keluarga: 'dokumen', tabD: 'laporan', jenisD: 'labarugi', keD: '2026-12', rentangD: 1 }]].forEach(function (x) { L9.keadaan.setel(Object.assign({ kabar: '' }, x[1])); __aksi[x[0]]({ cara: 'pdf' }); drainMicrotasks(); o[x[0]] = L9.keadaan.baca().kabar; });
+    L9.keadaan.setel({ kabar: '', keluarga: 'dokumen', tabD: 'paket' }); __aksi.dkPaketSusun(); drainMicrotasks(); o.paket = L9.keadaan.baca().kabar; return o; };
+  var nC0 = cacheMentah('dokumenCetak').length; __hematL = { nyala: true, belumLengkap: hbHarianP(['penjualan']) }; var kT = keluarSemua(); var nC1 = cacheMentah('dokumenCetak').length;
+  var hB = gambarL({ keluarga: 'bulanan', tabB: 'ringkas', kabar: '' }), hBk = gambarL({ keluarga: 'bulanan', tabB: 'bukti', pilihBukti: b26, kabar: '' }), hN = gambarL({ keluarga: 'neraca', kabar: '' }), hD = gambarL({ keluarga: 'dokumen', tabD: 'laporan', kabar: '' }), hP = gambarL({ keluarga: 'dokumen', tabD: 'paket', kabar: '' });
+  var BELUM = 'belum bisa dipastikan: data perangkat ini belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB';
+  ok('S7d Laporan (sanggahan 8 Okt): penjualan belum dibaca penuh sejak reset → Rekap Omzet Bulanan, Bukti Omzet, Neraca, laporan berkop & paket bank DITAHAN ("<judul> ditahan — angkanya belum bisa dipastikan: data perangkat ini …"), TANPA nomor cetakan terpakai',
+    kT.blRekapKeluar.indexOf('Rekap Omzet Bulanan ditahan — angkanya ' + BELUM) === 0 && kT.blBuktiKeluar.indexOf('Bukti Omzet ditahan — angkanya ' + BELUM) === 0 && /^Laporan Neraca ditahan — angkanya belum bisa dipastikan: data perangkat ini/.test(kT.nrKeluar)
+    && /^Laporan Laba-Rugi ditahan — angkanya belum bisa dipastikan: data perangkat ini/.test(kT.dkKeluar) && /^Paket bank ditahan — angkanya belum bisa dipastikan: data perangkat ini/.test(kT.paket) && nC1 === nC0, J([kT, nC0, nC1]));
+  ok('S7d layar: tombol keluar bertanda tolak dengan kalimat yang sama (Bulanan rekap & bukti, Neraca, Dokumen laporan & paket bank)',
+    /data-k="tolak-blRekapKeluar">Rekap Omzet Bulanan ditahan — angkanya belum bisa dipastikan/.test(hB) && /data-k="tolak-blBuktiKeluar">Bukti Omzet ditahan — angkanya belum bisa dipastikan/.test(hBk) && /data-k="tolak-nrKeluar">Laporan Neraca ditahan/.test(hN)
+    && /data-k="tolak-dkKeluar">Laporan [^<]+ ditahan — angkanya belum bisa dipastikan/.test(hD) && /data-k="tolak-paket-hemat">data perangkat ini/.test(hP) && !/NaN|undefined|\[object Object\]/.test((hB + hBk + hN + hD + hP).replace(/data-[a-z-]+="[^"]*"/g, '')),
+    J([(hB.match(/data-k="tolak-blRekapKeluar">[^<]*/) || [''])[0], (hP.match(/data-k="tolak-paket-hemat">[^<]*/) || [''])[0]]));
+  __hematL = { nyala: true, belumLengkap: hbHarianP(['kasbonMutasi']) }; var kK = keluarSemua(); var nC2 = cacheMentah('dokumenCetak').length;
+  ok('S7d: yang belum lengkap BUKAN data omzet (kasbon) → rekap & bukti omzet keluar; neraca, laporan berkop & paket bank (seluruh buku) tetap ditahan',
+    !/ditahan/.test(kK.blRekapKeluar) && !/ditahan/.test(kK.blBuktiKeluar) && /ditahan/.test(kK.nrKeluar) && /ditahan/.test(kK.dkKeluar) && /ditahan/.test(kK.paket) && nC2 === nC1 + 2, J([kK, nC1, nC2]));
+  __hematL = { nyala: false }; var kM = keluarSemua(); var nC3 = cacheMentah('dokumenCetak').length;
+  ok('S7d (kontrol arah): saklar mati → kelimanya keluar seperti dulu (nomor cetakan terpakai), tidak ada "ditahan"', !['blRekapKeluar', 'blBuktiKeluar', 'nrKeluar', 'dkKeluar', 'paket'].some(function (x) { return /ditahan/.test(kM[x] || ''); }) && nC3 > nC2 + 3, J([kM, nC2, nC3]));
 });
 """
 
@@ -592,8 +639,8 @@ function muatCad() { KOLEKSI.forEach(function (k) { pasok(k.nama, []); setelTert
     rak: baris(H, 'rakJual').ket, bukuMerek: baris(H, 'bukuMerek').ket.split(' · ')[0], kemasan: baris(H, 'bukuKemasan').ket, pembuka: baris(H, 'pembuka').a + ' catatan',
     perNama: ['piutangNama', 'kasbonNama', 'utangNama'].map(function (id) { return baris(H, id).ket.split(' · ')[0]; }), susulan: H.susulan, sesudahKunci: H.sesudahKunci, sumber: H.sumber.replace(/\(.*\)/, ''), ms: new Date().getTime() - t0 };
   if (!H.beres) salahA.push(x + ': ' + ringkasH(H).replace(/Rp[\d.]+/g, 'Rp…').slice(0, 900));
-  // hemat baca (#111): nyala & lengkap = sama persis; nyala & SEMUA belum dibaca penuh hari ini = baris yang membaca buku hidup "?" (tidak ada ✗ palsu)
-  var Hl = pstPeriksa(new Date(__KINI), Object.assign({}, M_OK, { hemat: {} })); var semuaH = {}; hbKoleksiHemat().forEach(function (n) { semuaH[n] = { jenis: 'harian', sebab: HB_SEBAB_HARIAN }; });
+  // hemat baca (#111): nyala & lengkap = sama persis; nyala & SEMUA belum dibaca penuh sejak reset = baris yang membaca buku hidup "?" (tidak ada ✗ palsu)
+  var Hl = pstPeriksa(new Date(__KINI), Object.assign({}, M_OK, { hemat: {} })); var semuaH = {}; hbKoleksiHemat().forEach(function (n) { semuaH[n] = { jenis: 'harian', sebab: hbSebabHarian('2027-01-05') }; });
   var Hh = pstPeriksa(new Date(__KINI), Object.assign({}, M_OK, { hemat: semuaH }));
   hasilA[x.slice(0, 10)].hemat = { lengkapSama: J(Hl) === J(H), belumDibacaPenuh: { belum: Hh.nBelum, beda: Hh.nBeda, sama: Hh.nSama } };
   if (J(Hl) !== J(H)) salahA.push(x + ': hemat baca nyala & lengkap TIDAK sama dengan mati');
@@ -646,10 +693,11 @@ RUSAK = [
     ('kartu tampil selamanya sesudah selesai', "return iso <= pstAkhirFeb(tahun + 1) || (s30 && iso <= s30) ?", "return true ?"),
     ('tahun kartu dari era (saldo pembuka yang terlihat), bukan berita acara — penanda hilang = kartu lenyap diam-diam', "const a = ambilTutupBukuAcara().filter((x) => x && isFinite(Number(x.tahun)) && (x.status === 'terkunci' || x.status === 'selesai'))", "const a = ambilTutupBukuAcara().filter((x) => x && Number(x.tahun) === eraBuku() && (x.status === 'terkunci' || x.status === 'selesai'))"),
     ('ringkasan "beres" walau ada yang belum bisa diperiksa', "const beres = !nBeda && !nBelum && n > 0;", "const beres = !nBeda && n > 0;"),
-    ('hemat (#111): kelengkapan perangkat diabaikan — koleksi yang belum dibaca penuh hari ini dianggap lengkap (✓ palsu)', "const hb = m.hemat ? hbBelumUntuk(m.hemat, semua ? null : perlu) : null; if (hb) return", "const hb = null; if (hb) return"),
+    ('hemat (#111): kelengkapan perangkat diabaikan — koleksi yang belum dibaca penuh sejak reset dianggap lengkap (✓ palsu)', "const hb = m.hemat ? hbBelumUntuk(m.hemat, semua ? null : perlu) : null; if (hb) return", "const hb = null; if (hb) return"),
     ('hemat (#111): kelengkapan hanya diperiksa untuk "semua" (koleksi per baris diabaikan)', "const hb = m.hemat ? hbBelumUntuk(m.hemat, semua ? null : perlu) : null;", "const hb = m.hemat && semua ? hbBelumUntuk(m.hemat, null) : null;"),
-    ('hemat (#111): sebab hemat kalah dari "masih dari simpanan perangkat" (owner menunggu sinyal, padahal harus baca penuh)', "  const hb = m.hemat ? hbBelumUntuk(m.hemat, semua ? null : perlu) : null; if (hb) return 'data ' + pstKataRingkas(hb.koleksi) + ' ' + hb.sebab;\n  const basi = (semua ? KOLEKSI.map((k) => k.nama) : perlu).filter((n) => koleksiDariCache(n)); if (basi.length) return 'data ' + pstDaftarKata(basi) + ' masih dari simpanan perangkat, belum dijawab server — tunggu sampai tersambung';\n",
-     "  const basi = (semua ? KOLEKSI.map((k) => k.nama) : perlu).filter((n) => koleksiDariCache(n)); if (basi.length) return 'data ' + pstDaftarKata(basi) + ' masih dari simpanan perangkat, belum dijawab server — tunggu sampai tersambung';\n  const hb = m.hemat ? hbBelumUntuk(m.hemat, semua ? null : perlu) : null; if (hb) return 'data ' + pstKataRingkas(hb.koleksi) + ' ' + hb.sebab;\n"),
+    ('hemat (#111): sebab hemat kalah dari "masih dari simpanan perangkat" (owner menunggu sinyal, padahal harus baca penuh)', "  const hb = m.hemat ? hbBelumUntuk(m.hemat, semua ? null : perlu) : null; if (hb) return 'data ' + pstKataRingkas(hb.utama) + ' ' + hb.sebab + hbEkorLain(hb);\n  const basi = (semua ? KOLEKSI.map((k) => k.nama) : perlu).filter((n) => koleksiDariCache(n)); if (basi.length) return 'data ' + pstDaftarKata(basi) + ' masih dari simpanan perangkat, belum dijawab server — tunggu sampai tersambung';\n",
+     "  const basi = (semua ? KOLEKSI.map((k) => k.nama) : perlu).filter((n) => koleksiDariCache(n)); if (basi.length) return 'data ' + pstDaftarKata(basi) + ' masih dari simpanan perangkat, belum dijawab server — tunggu sampai tersambung';\n  const hb = m.hemat ? hbBelumUntuk(m.hemat, semua ? null : perlu) : null; if (hb) return 'data ' + pstKataRingkas(hb.utama) + ' ' + hb.sebab + hbEkorLain(hb);\n"),
+    ('hemat (sanggahan 8 Okt): sebab satu jenis catatan dipinjamkan ke semua yang disebut (owner menunggu padahal yang lain butuh ketukan)', "if (hb) return 'data ' + pstKataRingkas(hb.utama) + ' ' + hb.sebab + hbEkorLain(hb);", "if (hb) return 'data ' + pstKataRingkas(hb.koleksi) + ' ' + hb.sebab;"),
 ]
 RUSAK_LAIN = [
     ('ritual tidak menyimpan ringkasan saldo pembuka di berita acara', 'baru/js/layar/tutup-buku-logika.js', "  acara.pembukaRingkas = ringkasPembuka(P.dokumen, tahun);\n", ""),
@@ -662,6 +710,8 @@ RUSAK_LAIN = [
     ('hemat (#111): kunci bulan tanpa ⛔ butir kelengkapan (potret bulan dibekukan dari data setengah)', 'baru/js/layar/kunci-periode-logika.js', "  if (K.hemat) { const hb = hbKalimatBelum(K.hemat, null);", "  if (false) { const hb = hbKalimatBelum(K.hemat, null);"),
     ('hemat (#111): Lanjutkan / Batalkan tutup buku dari buku yang belum lengkap', 'baru/js/layar/tutup-buku-logika.js', "  if (hb) return 'Tutup buku: ' + hb + ' — Lanjutkan atau Batalkan sesudah datanya lengkap.';", "  if (false) return 'Tutup buku: ' + hb + ' — Lanjutkan atau Batalkan sesudah datanya lengkap.';"),
     ('hemat (#111): g7 hanya "dibaca penuh sesi ini" (batu nisan & ubahan sesudahnya diabaikan)', 'baru/js/layar/tutup-buku-logika.js', "const ok7 = !!L.hemat.totalSesiIni && !hb;", "const ok7 = !!L.hemat.totalSesiIni;"),
+    ('hemat (sanggahan 8 Okt): pintu susunKunci tidak memeriksa g7 (kelengkapan hanya di layar langkah 1)', 'baru/js/layar/tutup-buku-logika.js', "(g.id === 'g1' || g.id === 'g6' || g.id === 'g7') && !g.ok", "(g.id === 'g1' || g.id === 'g6') && !g.ok"),
+    ('hemat (sanggahan 8 Okt): pintu susunKunci memanggil gerbang tanpa lokal() layar (g7 tidak pernah ada di pintu)', 'baru/js/layar/tutup-buku-logika.js', "const G = gerbangBuku(tahun, ugKiniDari(w), L || {}, {});", "const G = gerbangBuku(tahun, ugKiniDari(w), {}, {});"),
     ('cache sementara tidak dikembalikan sesudah diperiksa (layar lain membaca saldo pembuka saja)', 'baru/js/data/toko.js', "  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); _versiCache += 1; }\n}\n\n// ---- keranjang aktif", "  return fn();\n}\n\n// ---- keranjang aktif"),
 ]
 # uang.js — layar dijalankan di jsc; kontrolnya memakai bundel layar
@@ -678,6 +728,14 @@ RUSAK_PAJAK = [
     ('hemat: pita "?" pajak hilang (angka setengah tampil pasti)', "const HB = hematPajak(); if (HB) Dk.tolak", "const HB = ''; if (HB) Dk.tolak"),
     ('hemat: rekap konsultan dari data setengah tidak ditahan', "const hbK = hematPajak(); if (hbK) D.tolak", "const hbK = ''; if (hbK) D.tolak"),
     ('hemat: pajak membaca kelengkapan koleksi yang salah (penjualan tidak ikut)', "const PJ_PERLU_HEMAT = ['penjualan', 'retur', 'pajakSetoran', 'pajakOmzetLuar'];", "const PJ_PERLU_HEMAT = ['retur', 'pajakSetoran', 'pajakOmzetLuar'];"),
+    # ---- sanggahan 8 Okt (b): dokumen Laporan untuk bank / kartu kredit dari mesin yang sama — tiap penjaga berbunyi di S7d
+    ('hemat (sanggahan 8 Okt): Rekap Omzet Bulanan dari data setengah tidak ditahan', "const dokRekapJaga = () => tahanDok(dokRekap(), LP_PERLU_OMZET);", "const dokRekapJaga = () => dokRekap();"),
+    ('hemat (sanggahan 8 Okt): Bukti Omzet dari data setengah tidak ditahan', "const D = tahanDok({ kop: LP.kopUntuk(LP.pakaiKop().pakai.omzet, I), judul: 'Bukti Omzet',", "const D = ((x) => x)({ kop: LP.kopUntuk(LP.pakaiKop().pakai.omzet, I), judul: 'Bukti Omzet',"),
+    ('hemat (sanggahan 8 Okt): Neraca berkop dari data setengah tidak ditahan', "tahanDok(D, ['*']); await keluarkan(D, { jenis: 'neraca'", "await keluarkan(D, { jenis: 'neraca'"),
+    ('hemat (sanggahan 8 Okt): laporan berkop (laba-rugi / arus kas) dari data setengah tidak ditahan', "const D = tahanDok(LP.laporanBerkop(s.jenisD, s.keD || bulanKini(), s.rentangD, kini()), ['*']); await keluarkan", "const D = LP.laporanBerkop(s.jenisD, s.keD || bulanKini(), s.rentangD, kini()); await keluarkan"),
+    ('hemat (sanggahan 8 Okt): paket bank dari data setengah tidak ditahan', "const hbP = hematBelum(['*']); if (hbP) {", "const hbP = ''; if (hbP) {"),
+    ('hemat (sanggahan 8 Okt): rekap & bukti omzet membaca kelengkapan koleksi yang salah (penjualan tidak ikut)', "const LP_PERLU_OMZET = ['penjualan', 'retur'];", "const LP_PERLU_OMZET = ['retur'];"),
+    ('hemat (sanggahan 8 Okt): rekap & bukti omzet menunggu SELURUH buku (kasbon yang belum lengkap menahan omzet)', "const LP_PERLU_OMZET = ['penjualan', 'retur'];", "const LP_PERLU_OMZET = ['*'];"),
 ]
 
 
@@ -692,7 +750,12 @@ hasilB.kartu = [M_OK, { siap: false, siapN: 30, total: 56, ditolak: [] }, Object
 hasilB.gerbang = gerbangBuku(2027, kB, { antre: [], idPerangkat: 'mac-contoh', hemat: __hemat });
 hasilB.kunci = kpDaftarPeriksa('2026-12', kB, { lokal: { antreLokal: { belum: [], ditolak: [] }, antre: [] }, parkir: [], putusanHari: {}, centang: {} });
 hasilB.sambung = [bkSambungan({ hemat: __hemat }), bkSambungan({ offline: true, hemat: __hemat })];
-U = buatU(); U.tampilkan(true); hasilB.uang = [gambarU({ keluarga: 'buku' }), gambarU({ pstRinci: true })]; __muat = { koleksiSiap: 56, koleksiTotal: 56, ditolak: [], offline: true }; hasilB.uang.push(gambarU({}));
+U = buatU(); U.tampilkan(true); hasilB.uang = [gambarU({ keluarga: 'buku' }), gambarU({ pstRinci: true })];
+// sanggahan 8 Okt (e): kartu kunci bulan dari LAYAR (uang.js konteksKunci — jalan hemat yang sesungguhnya saat mati), bukan hanya kpDaftarPeriksa tanpa hemat
+hasilB.kpKartu = potong(gambarU({ keluarga: 'buku', pstRinci: false }), 'data-k="kp-butir"', 'data-aksi="kpKunci"');
+__muat = { koleksiSiap: 56, koleksiTotal: 56, ditolak: [], offline: true }; hasilB.uang.push(gambarU({})); __muat = { koleksiSiap: 56, koleksiTotal: 56, ditolak: [], offline: false };
+// pintu tutup buku (susunKunci) dengan lokal() layar saat mati — g7 tidak ada, kiriman sama
+var wB = siapKotak(); putusSemua(wB); var RB = susunKunci(2026, D, wB, Object.assign({}, LA, { hemat: __hemat })); hasilB.pintu = { tolak: RB.tolak || '', n: RB.kiriman ? RB.kiriman.length : -1 };
 print(JSON.stringify(hasilB));
 """
 BANDING_PAJAK = r"""
@@ -700,6 +763,13 @@ siapRitual(); setelSumber('firestore', 'kotak pasir'); __hematL = { nyala: false
 hasilB.pajak = [gambarL({ keluarga: 'pajak', tahunPj: 2027 }), gambarL({ keluarga: 'pajak', tahunPj: 2026 })];
 L9.keadaan.setel({ drafSetor: { masaPajak: '2027-01', tanggalSetor: '2027-01-05', jumlah: '1000', ntpn: '', atasNama: 'Contoh', catatan: 'setoran contoh uji' }, kabar: '' });
 __aksi.pjSetorSimpan(); drainMicrotasks(); __aksi.pjKeluar({ cara: 'cetak' }); drainMicrotasks(); hasilB.setor = [cacheMentah('pajakSetoran').length, L9.keadaan.baca().kabar];
+// sanggahan 8 Okt (b): dokumen Laporan (Bulanan rekap & bukti, Neraca, Dokumen laporan & paket) — HTML & hasil ketukan keluar saat mati sama persis
+terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'identitas', nama: 'Toko Contoh', alamat: 'Jalan Contoh 1' } }]); var bB = { '2026-11': true, '2026-12': true };
+hasilB.laporan = [gambarL({ keluarga: 'bulanan', tabB: 'ringkas', kabar: '' }), gambarL({ keluarga: 'bulanan', tabB: 'bukti', pilihBukti: bB, kabar: '' }), gambarL({ keluarga: 'neraca', kabar: '' }),
+  gambarL({ keluarga: 'dokumen', tabD: 'laporan', jenisD: 'labarugi', keD: '2026-12', kabar: '' }), gambarL({ keluarga: 'dokumen', tabD: 'paket', kabar: '' })];
+hasilB.keluar = [['blRekapKeluar', { keluarga: 'bulanan', tabB: 'ringkas' }], ['blBuktiKeluar', { keluarga: 'bulanan', tabB: 'bukti', pilihBukti: bB }], ['nrKeluar', { keluarga: 'neraca' }],
+  ['dkKeluar', { keluarga: 'dokumen', tabD: 'laporan', jenisD: 'labarugi', keD: '2026-12', rentangD: 1 }], ['dkPaketSusun', { keluarga: 'dokumen', tabD: 'paket' }]].map(function (x) {
+  L9.keadaan.setel(Object.assign({ kabar: '' }, x[1])); __aksi[x[0]]({ cara: 'pdf' }); drainMicrotasks(); return [x[0], L9.keadaan.baca().kabar, cacheMentah('dokumenCetak').length]; });
 print(JSON.stringify(hasilB));
 """
 
@@ -725,6 +795,10 @@ def banding_mati(ref):
             h, e = UP.jalan(awal[0] + bdl(daftar, baca) + awal[1] + depan + isi)
             if h is None: raise SystemExit('BANDING ' + nama + ' (' + sisi + ') JSC JATUH: ' + e)
             hasil[(nama, sisi)] = h
+    # sanggahan 8 Okt (e): pembanding yang tidak menggambar kartu kunci bulan / dokumen Laporan = lulus kosong
+    for sisi in ['ref', 'kerja']:
+        if 'data-k="kp-butir"' not in (hasil[('uang', sisi)].get('kpKartu') or ''): raise SystemExit('BANDING: kartu kunci bulan tidak tergambar (' + sisi + ') — pembanding kosong')
+        if len(hasil[('pajak', sisi)].get('laporan') or []) != 5: raise SystemExit('BANDING: dokumen Laporan tidak tergambar (' + sisi + ')')
     beda = []
     for nama in ['uang', 'pajak']:
         A, B = hasil[(nama, 'ref')], hasil[(nama, 'kerja')]

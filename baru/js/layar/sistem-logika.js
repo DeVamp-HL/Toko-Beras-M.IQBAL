@@ -129,15 +129,19 @@ export function ssHemat(K, siap) {
   const kapan = daftar.map((x) => x.totalPada).filter((x) => x); const S = siap || [];
   const status = !H.saklar ? 'MATI' : H.nyala ? 'NYALA' : 'NYALA, belum berjalan';
   const kl = H.klaim || null;
-  // #111 × Paket C: koleksi yang terperiksa tapi BELUM DIBACA PENUH HARI INI (SATU sumber hbBelumLengkap) — keputusan final menunggu; tombolnya ada di panel ini
-  const BL = H.belumLengkap || {}; const nHarian = Object.keys(BL).filter((k) => BL[k] && BL[k].jenis === 'harian').length;
+  // #111 × Paket C: koleksi yang terperiksa tapi belum dibaca penuh sejak kuota baca terakhir direset (SATU sumber hbBelumLengkap) — keputusan final menunggu;
+  // tombolnya ada di panel ini. Sanggahan 8 Okt: dihitung PER SEBAB (jam server belum diterima / kuota habis / ubahan toko belum sampai ≠ "belum dibaca penuh"),
+  // "jenis catatan" (bukan "koleksi"); petunjuk menu dibuang — panelnya ini
+  const BL = H.belumLengkap || {}; const grupH = {};
+  Object.keys(BL).forEach((k) => { if (!BL[k] || BL[k].jenis !== 'harian') return; const s = String(BL[k].sebab || '').replace(' (Menu › Sistem › Perangkat › Hemat baca)', ''); grupH[s] = (grupH[s] || 0) + 1; });
+  const tundaToko = kl && kl.selesai && kl.temuanTunda && typeof kl.temuanTunda === 'object' ? Object.keys(kl.temuanTunda).reduce((a, k) => a + (Number(kl.temuanTunda[k]) || 0), 0) : 0;
   return { status, nyala: !!H.nyala, saklar: !!H.saklar, owner: !!H.owner,
-    harianBelum: H.nyala && nHarian ? nHarian + ' koleksi belum dibaca penuh hari ini — kartu pemeriksaan sesudah tutup buku, kunci bulan & Laporan › Pajak menunggu sampai dibaca penuh: ketuk "baca penuh sekarang" di bawah' : '',
+    harianBelum: H.nyala && Object.keys(grupH).length ? Object.keys(grupH).map((s) => grupH[s] + ' jenis catatan ' + s).join('; ') + '. Kartu pemeriksaan sesudah tutup buku, kunci bulan, Laporan › Pajak & dokumen Laporan menunggu sampai lengkap.' : '',
     judul: 'Hemat baca: ' + status + ' di perangkat ini',
     ket: H.nyala ? 'Perangkat ini memakai simpanannya sendiri dan hanya menarik catatan yang berubah (bercap jam server). Sekali sehari satu perangkat owner membaca penuh untuk toko, sesudah kuota baca Firebase direset (' + (H.jamReset || '14.00/15.00') + ' WIB); tiap perangkat membaca penuh paling lambat 14 hari sekali.'
       : 'Mati = tiap kali aplikasi dibuka, semua catatan toko dibaca dari server (±7 rb baca; kuota gratis 50 rb sehari). Nyalakan HANYA sesudah daftar siap-nyala hijau 3 hari berturut-turut.',
     koleksi: daftar, nBelum: daftar.filter((x) => !x.ok).length, tertua: kapan.length ? Math.min.apply(null, kapan) : null, terbaru: kapan.length ? Math.max.apply(null, kapan) : null,
-    harian: !kl ? 'belum ada baca penuh harian toko' : kl.selesai ? 'baca penuh harian ' + kl.hari + ' selesai oleh ' + (kl.nama || kl.perangkat || 'perangkat owner') : 'baca penuh harian ' + kl.hari + ' sedang dikerjakan ' + (kl.nama || kl.perangkat || 'perangkat owner'),
+    harian: !kl ? 'belum ada baca penuh harian toko' : kl.selesai ? 'baca penuh harian ' + kl.hari + ' selesai oleh ' + (kl.nama || kl.perangkat || 'perangkat owner') + (tundaToko ? ' · ' + tundaToko + ' ubahan tanpa cap belum bisa sampai ke perangkat lain (perangkat lain diminta baca penuh sendiri)' : '') : 'baca penuh harian ' + kl.hari + ' sedang dikerjakan ' + (kl.nama || kl.perangkat || 'perangkat owner'),
     klaimKabar: H.klaimKabar || '', baca: H.baca || null, siap: S, siapOk: S.length > 0 && S.every((x) => x.ok),
     bolehNyala: !H.saklar && !!H.owner && !!H.nisanSah, alasanTidak: !H.owner ? 'hanya owner yang bisa menyalakan' : !H.nisanSah ? 'aturan server v7 belum terbukti di perangkat ini (owner menerbitkan rules v7 lewat Console dulu)' : '',
     kabar: [H.kabarMati, H.kabar, H.nisanKabar, H.ayunan, H.jalurPenuh, H.berhenti].filter((x) => !!x) };
