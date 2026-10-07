@@ -20,7 +20,7 @@ import { tombolAkun, tombolLuarKisi, bukanOwner, batasHasilAdukan, batasDokumenK
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 import { adeganIsiUlang, adeganBukaKarung, adeganAdukan } from './adegan.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman, kunciLuarCache } from '../data/toko.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
 import { jbKelompokStok } from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
@@ -60,6 +60,9 @@ export function pasangLayarStok(akar, opsi) {
   const ISIAN = pasangIsian(K, awal, ['isiW', 'krKetik', 'kbNilai', 'krNama', 'gnKetik', 'shKetik', 'bgKetik', 'bgAlasan', ['puKetik', (v) => !!(v && Object.keys(v).length)], 'atur', 'koreksiA', 'qAlasan', 'kt', 'ktAlasan', 'aturKt', 'aturC', ['tp', (v) => !!(v && v.pilih)], 'aturTp', ['hp', (v) => !!(v && (v.ketik || v.alasan || Object.keys(v.massal || {}).length))], 'aturHp', ['vrKetik', (v) => !!(v && Object.keys(v).some((k) => v[k]))]], [KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date();
+  // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
+  // berubah sejak gambar terakhir (kunciLuarCache) — semuanya tidak menaikkan versi data
+  let _kunciLuar = ''; const kunciLuar = () => kunciLuarCache(kini());
   const waktu = () => L.waktuSekarang(opsi.sekarang() || undefined);
   const KGs = (n) => DESIMAL(Math.round((Number(n) || 0) * 100) / 100) + ' kg';
   // atribut data-… untuk tombol yang dibangun dari daftar (nilai di-escape; tidak ada id yang menjadi kode)
@@ -329,7 +332,7 @@ export function pasangLayarStok(akar, opsi) {
   const ubahAdukan = (f) => { const d = JSON.parse(JSON.stringify(st().adukan || A.drafAdukanKosong(waktu()))); f(d); simpanLokal(KUNCI_DRAF_ADUKAN, d); set({ adukan: d, yakinA: {} }); };
   const ubahAturTp = (f) => { const a = TP.aturTempat(); const d = JSON.parse(JSON.stringify(st().aturTp || { daftar: a.daftar, batasTumpuk: String(a.batasTumpuk) })); f(d); d.yakin = false; set({ aturTp: d }); };
   function gambar() {
-    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false;
+    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; _kunciLuar = kunciLuar();
     const s = st(); const sumber = sumberData(); const k = kini();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
@@ -917,5 +920,5 @@ export function pasangLayarStok(akar, opsi) {
   dengarkan(() => nanti(gambar));
   // dipanggil layar Menu: buka lembar (masuk | cocok | adukan) atau tab (gudang | wadah | kapur | karantina) — lewat penangan yang sama dengan ketukan
   const buka = (lembar, tab, isi) => { set({ lembar: null }); if (lembar === 'masuk') { AKSI.bukaMasuk({}); if (isi && isi.merk) { ubahMasuk((d) => { const i = d.baris.findIndex((b) => !String(b.merk || '').trim()); if (i >= 0) d.baris[i].merk = isi.merk; else d.baris.push(Object.assign(C.barisMasukKosong(), { merk: isi.merk })); }); set({ kabar: 'Barang masuk untuk ' + isi.merk + ' — isi jumlah karung & harga per kg', kabarAwas: false }); } } else if (lembar === 'cocok') AKSI.bukaCocok({}); else if (lembar === 'adukan') AKSI.bukaAdukan({}); else if (lembar === 'kantong') AKSI.bukaKantong({}); else if (lembar === 'tempat') AKSI.bukaTempat({}); else if (lembar === 'hpp') AKSI.bukaHpp({}); else if (tab) AKSI.tab({ t: tab }); };
-  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } };
 }

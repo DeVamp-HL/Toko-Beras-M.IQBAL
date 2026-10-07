@@ -9,6 +9,8 @@
 import { KOLEKSI } from './koleksi.js';
 import { penjualanMasihBerlaku, produksiMasihBerlaku, wzJumlahDiDaftar, uangKembaliRetur, kunciPelanggan, kunciKemasan, tanggalLokalIso, JENDELA_LAJU_HARI, daftarGerakanKas, semuaMerkDikenal } from '../mesin/pembantu.js';
 import { kpSampai, kpTenggang, kpNilaiKiriman, kpKalimat, kpPotong, kpBulanDok, kpIdx, kpBulanStr, KP_BATAS_GET } from './kunci-periode.js';
+// hari & hari tutup aktif (JAM_BATAS_TUTUP) untuk kunciLuarCache — satu aturan jam dengan Tutup hari & cek wadah
+import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
 // mesin beku, daftarGerakanKas & semuaMerkDikenal dipakai HANYA oleh ingatan di bawah (ingatStokKarung dkk.: hasil mesin diingat per versi cache)
 import { hitungStokKarungPerMerk, hitungStokKemasan, kasPada, hitungNeraca } from '../mesin/beku.js';
 
@@ -239,6 +241,13 @@ export function ambilTitikKas() {
   if (dok && dok.tanggal && (!lokal || String(dok.diubahPada || '') > String(lokal.diubahPada || ''))) return dok;
   return lokal;
 }
+/**
+ * KUNCI KEADAAN DI LUAR CACHE (sanggahan layar mulus, 7 Okt): yang ikut digambar layar tetapi TIDAK menaikkan versi cache — HARI, HARI TUTUP AKTIF (jam 12 siang
+ * memindah "cek tutup" wadah & Tutup hari ke hari dagang berikutnya, tanggalTutupAktif) dan TITIK KAS yang terbaca (salinan perangkat bisa berubah dari tab lain
+ * tanpa data baru). Layar yang tidak menggambar ulang karena "tidak ada data baru" (dasbor, Menu & layar lain yang dibuka lagi) memakai hasil lamanya hanya
+ * bila kunci ini sama. Yang lebih halus dari hari (pita jam Menu, jam di Pelanggan) ditambahkan layarnya sendiri di belakang kunci ini.
+ */
+export function kunciLuarCache(kini) { const k = kini || new Date(); return hariIniIso(k) + '|' + tanggalTutupAktif(k) + '|' + JSON.stringify(ambilTitikKas()); }
 // Putaran 25c: jenis beras diatur di /baru/ — dokumen pengaturan/jenisBeras (bentuk sama dengan index.html) MENANG; salinan localStorage (ditulis
 // pendengar index.html / cadangan lama) hanya dipakai kalau dokumennya belum ada di cache. Dulu /baru/ HANYA membaca salinan itu, jadi sesudah sistem
 // lama tidak dibuka lagi cadangan dari /baru/ membawa peta basi (docs/peta-pindahan-terakhir.md §3).

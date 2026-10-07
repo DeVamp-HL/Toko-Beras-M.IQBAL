@@ -1940,3 +1940,18 @@ sampai 936×, buku stok mesin sampai 927×, `petaBukuWadah` 3.366×. Mesin beku 
   tanpa ingatan, hasil ingatan dibekukan (pemanggil yang mengubah → melempar), fungsi yang diingat = hitung ulang penuh (nota baru, cache sementara, titik kas
   perangkat, ganti hari & bulan), dasbor = Ringkasan segar, ongkos per ketukan; `--cadangan <berkas>` = asap atas data toko (lokal saja). Uji jsc lama
   (bundel_baru, satu lingkup) memuat toko.js juga, jadi ingatannya ikut teruji di sana.
+- **Sanggahan (7 Okt) — kunci luar cache**: yang DIGAMBAR layar tetapi tidak menaikkan versi data (hari, jam 12 siang = hari tutup aktif, titik kas
+  salinan perangkat) dulu bisa tertinggal: dasbor yang dibuka 11.58 tetap menulis "cek tutup" kemarin sesudah 12.00 (denyut HP, jejak, ganti rentang, detak
+  menit), kas per tempat tetap angka lama sesudah titik kas perangkat berubah; Menu yang dibuka lagi esok pagi tetap memajang tanggal & pita jam kemarin.
+  - `toko.js kunciLuarCache(kini)` = hari · `tanggalTutupAktif` · JSON titik kas yang terbaca — SATU tempat. Dasbor: `dbKunci` = kunci ini (di `gambarDasbor`
+    DAN detak menit); hasil lama (denyut HP, jejak, ganti rentang) dipakai hanya bila kuncinya sama. Ini juga menutup basi lama di detak menit (sudah ada
+    sebelum cabang ini: lewat jam 12 / titik kas berubah tanpa data baru).
+  - Menu: kunci gambar terakhir = kunci luar + pita jam (+ menit selagi Sistem › Perangkat terbuka: "denyut N menit lalu"); `tampilkan(true)` menggambar
+    ulang bila kuncinya berubah. Dibuka lagi dengan kunci sama tetap tanpa gambar ulang.
+  - Pola yang sama (sudah ada sejak 29 Sep, `_kotor`): Stok (Wadah literan "cek tutup", Gudang), Harga (Bon pemasok, Belanja), Laporan (Harian, Neraca),
+    Uang (Tutup hari, Pindah uang, Tutup buku) dan Pelanggan (kunci + JAM: Kenali membaca jam sekarang) yang dibuka lagi tanpa data baru kini digambar
+    ulang bila kuncinya berubah. Indeks cincin (`bangunIndeks`, membaca potret tahun < tahun jam sekarang) dibangun ulang saat tahun berganti.
+  - Dijaga `uji_layar_mulus.py` › KUNCI LUAR: 21 kejadian tanpa data baru (dasbor 7, Menu 4, Stok 2, Uang 3, Harga 2, Laporan 2, Pelanggan 1) = gambar segar
+    saat itu juga, tiap kasus wajib TAJAM (gambar segar memang berubah); indeks cincin 1× saat tahun berganti, 0× di detak biasa; +13 kontrol yang wajib
+    berbunyi KARENA sebabnya (elemen ke-4 RUSAK). Kode sebelum sanggahan: 21/21 basi; main sebelum cabang ini: 12/21 basi (dasbor di detak menit, semua
+    kasus layar lain — Menu dulu selalu digambar ulang, dasbor dulu disegarkan denyut HP).

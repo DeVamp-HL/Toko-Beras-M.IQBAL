@@ -14,7 +14,7 @@ import * as FB from './foto-bon-logika.js';
 import * as BL from './belanja-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, kabarKiriman, ingatStokKemasan } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, kabarKiriman, ingatStokKemasan, kunciLuarCache } from '../data/toko.js';
 import { kkSertakanKiriman } from '../data/katalog-kasir.js';
 import * as JB from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
@@ -49,6 +49,9 @@ export function pasangLayarHarga(akar, opsi) {
   const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))]], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
+  // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
+  // berubah sejak gambar terakhir (kunciLuarCache) — semuanya tidak menaikkan versi data
+  let _kunciLuar = ''; const kunciLuar = () => kunciLuarCache(kini());
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
   const ingatTab = () => simpanLokal(KUNCI_TAB, { h: st().tabH, b: st().tabB, l: st().tabL });
 
@@ -257,7 +260,7 @@ export function pasangLayarHarga(akar, opsi) {
 
   // ====================== GAMBAR ======================
   function gambar() {
-    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; const s = st(); const sumber = sumberData(); const L = lebar();
+    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; _kunciLuar = kunciLuar(); const s = st(); const sumber = sumberData(); const L = lebar();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">
@@ -693,5 +696,5 @@ export function pasangLayarHarga(akar, opsi) {
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
   // dipanggil layar Menu / Stok: buka keluarga (katalog | bon | belanja) — lewat penangan yang sama dengan ketukan; pemasok = buka bukunya
   const buka = (keluarga, t) => { AKSI.keluarga({ nama: ['katalog', 'bon', 'belanja'].indexOf(keluarga) >= 0 ? keluarga : 'katalog' }); if (t && t.pemasok) set({ bukuNama: t.pemasok, tabB: 'buku' }); if (t && t.tab) set(keluarga === 'katalog' ? { tabH: t.tab } : keluarga === 'bon' ? { tabB: t.tab } : { tabL: t.tab }); };
-  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } };
 }

@@ -15,6 +15,10 @@ cache naik), tiap tab & sub-tab, ketik di tiap kolom, ketuk tombol yang tidak me
   · FUNGSI (hasil sebelum vs sesudah): tiap fungsi yang diingat = hitung ulang penuh (mesin langsung / tanpaIngatan), byte-sama — awal, sesudah nota baru,
     di dalam & sesudah cache sementara, sesudah titik kas perangkat berubah, dan melewati pergantian hari & bulan.
   · ORAKEL DASBOR: tiap sesudah aksi Dasbor, isinya = Ringkasan yang baru dipasang (hitung segar) — ganti rentang & denyut HP tidak meninggalkan kartu basi.
+  · KUNCI LUAR (sanggahan 7 Okt): yang digambar tetapi TIDAK menaikkan versi data — jam 12 siang (hari tutup aktif), hari, pita jam Menu, jam Pelanggan, menit
+    Sistem › Perangkat, titik kas perangkat, tahun baru. Dasbor (detak menit, denyut HP, jejak, ganti rentang), Menu, Stok › Wadah literan & Gudang, Uang ›
+    Tutup hari / Pindah uang / Tutup buku, Harga › Bon pemasok & Belanja, Laporan › Harian & Neraca, Pelanggan › Kenali yang dibuka lagi TANPA data baru =
+    gambar segar saat itu juga; tiap kasus wajib TAJAM (gambar segar memang berubah). Indeks cincin dibangun ulang saat tahun berganti tanpa data baru.
   · ONGKOS (hitungan panggilan, pasti): Tempat simpan menyusun rantai stok sekali per gambar; ketukan Katalog harga tanpa data baru tidak menghitung buku stok;
     ganti rentang Dasbor tidak menghitung stok; denyut HP tidak menyusun dasbor; Menu dibuka lagi tanpa data baru tidak digambar; Laporan › Bulanan tidak
     menghitung omzet 12 bulan ulang; ketukan Uang tidak menyusun gerakan kas ulang.
@@ -114,7 +118,8 @@ var bekukan = function (o) { if (!o || typeof o !== 'object' || Object.isFrozen(
 if (MODE === 'mati') D.setelIngatan({ mati: true }); else if (MODE === 'beku') D.setelIngatan({ beku: bekukan });
 // penghitung panggilan (lewat ekspor modul: memanggil dari modul lain; panggilan di dalam modul yang sama tidak terhitung)
 var HITUNG = { 'baru/js/mesin/beku.js': ['hitungStokKarungPerMerk', 'hitungStokKemasan', 'hitungLabaRentang', 'kasPada'], 'baru/js/mesin/pembantu.js': ['daftarGerakanKas'],
-  'baru/js/layar/wadah-bernama-logika.js': ['wbBagianMerk'], 'baru/js/layar/stok-logika.js': ['daftarBarang'], 'baru/js/layar/dasbor-logika.js': ['susunDasbor'] };
+  'baru/js/layar/wadah-bernama-logika.js': ['wbBagianMerk'], 'baru/js/layar/stok-logika.js': ['daftarBarang'], 'baru/js/layar/dasbor-logika.js': ['susunDasbor'],
+  'baru/js/layar/ringkasan-logika.js': ['bangunIndeks'] };
 var __n = {};
 Object.keys(HITUNG).forEach(function (m) { HITUNG[m].forEach(function (f) { var asli = __E[m][f]; __E[m][f] = function () { __n[f] = (__n[f] || 0) + 1; return asli.apply(this, arguments); }; }); });
 __sambungSemua();
@@ -358,6 +363,79 @@ satuLayar('menu', LM, AM, function () {
   var b = 0; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); b += (k.length + String(localStorage.getItem(k) || '').length) * 2; }
   HASIL.info.menuLsKb = { keadaan: LM.keadaan.baca().lsKb, harap: Math.round(b / 1024) };
 });
+// ---- TANDINGAN KUNCI LUAR (sanggahan 7 Okt): yang DIGAMBAR layar tetapi TIDAK menaikkan versi data — jam 12 siang (hari tutup aktif), hari, pita jam Menu,
+// jam Pelanggan, menit Sistem › Perangkat, titik kas perangkat, tahun (indeks cincin). Layar yang hidup terus (dibuka lagi tanpa data baru, detak menit, denyut
+// HP, jejak tulisan, ganti rentang) harus SAMA dengan gambar segar pada saat yang sama. `berubah` = gambar segar memang beda dari gambar sebelum kejadian
+// (kasusnya tajam — tidak lulus karena isinya kebetulan sama). ms = ongkos kejadian itu (jam dinding).
+HASIL.tandingan = [];
+if (MODE !== 'mati') (function () {
+  var HARI0 = F.hariIniIso(new Date(JAM));
+  var jamPada = function (iso, hm) { return new __DateAsli(iso + 'T' + hm + ':00+07:00').getTime(); };
+  var hariKe = function (n) { return F.hariIniIso(new __DateAsli(jamPada(HARI0, '12:00') + n * 86400000)); };
+  var potong = function (a, b) { var i = 0; while (i < a.length && a[i] === b[i]) i++; return a.slice(Math.max(0, i - 60), i + 90) + ' ≠ ' + b.slice(Math.max(0, i - 60), i + 90); };
+  var catat = function (nama, hidup, segar, lama, ms) { HASIL.tandingan.push({ nama: nama, sama: hidup === segar, berubah: segar !== lama, ada: segar.length > 200, ms: Math.round(ms * 10) / 10, contoh: hidup === segar ? '' : potong(hidup, segar) }); };
+  var waktuKejadian = function (f) { var t0 = preciseTime(); try { f(); } catch (e) { console.error('tandingan', e); } __tuntas(); var ms = (preciseTime() - t0) * 1000; __sisa(); return ms; };
+  // DASBOR: dasbor yang hidup terus vs Ringkasan yang baru dipasang (orakel yang sama dengan orakelDasbor)
+  var dbHtml = function (A) { return (A.querySelector('#rkDasbor') || {}).__html || ''; };
+  var dbSegar = function () { var A2 = new __El('main'); var gb = __gb; var R2 = RG.pasangLayarRingkasan(A2, opsi); R2.tampilkan(true); __tuntas(); __sisa(); var x = dbHtml(A2); R2.tampilkan(false); __tuntas(); __sisa(); __gb = gb; return x; };
+  var buka = function (jam) { R.tampilkan(false); __tuntas(); __sisa(); __KINI = jam; R.tampilkan(true); __tuntas(); __sisa(); };
+  var denyut = function (id) { D.pasok('perangkatStatus', D.cacheMentah('perangkat').concat([{ id: id, pada: new Date().toISOString(), aplikasi: 'kasir', antrean: 0 }])); };
+  var dasbor = function (nama, jam0, jam1, f) { buka(jam0); var lama = dbHtml(AR); if (jam1) __KINI = jam1; var ms = waktuKejadian(f); catat('Dasbor · ' + nama, dbHtml(AR), dbSegar(), lama, ms); };
+  dasbor('dibuka 11.58, detak menit 12.02 tanpa data ("cek tutup" wadah pindah hari)', jamPada(HARI0, '11:58'), jamPada(HARI0, '12:02'), function () { __interval.forEach(function (f) { f(); }); });
+  dasbor('dibuka 11.58, denyut HP 12.02', jamPada(hariKe(1), '11:58'), jamPada(hariKe(1), '12:02'), function () { denyut('p-tand1'); });
+  dasbor('dibuka 11.58, jejak tulisan 12.02', jamPada(hariKe(2), '11:58'), jamPada(hariKe(2), '12:02'), function () { D.pasok('logAktivitas', D.cacheMentah('log').concat([{ id: 'l-tand', pada: new Date().toISOString(), ringkas: 'uji' }])); });
+  dasbor('dibuka 11.58, ganti rentang minggu 12.02', jamPada(hariKe(3), '11:58'), jamPada(hariKe(3), '12:02'), function () { klik('rkDasbor', { dbRentang: 'minggu' }); });
+  dasbor('titik kas perangkat berubah lalu ganti rentang bulan', jamPada(hariKe(3), '13:00'), null, function () { titikBaru(); klik('rkDasbor', { dbRentang: 'bulan' }); });
+  dasbor('titik kas perangkat berubah lalu denyut HP', jamPada(hariKe(3), '13:10'), null, function () { titikBaru(); denyut('p-tand2'); });
+  dasbor('titik kas perangkat berubah lalu detak menit', jamPada(hariKe(3), '13:20'), jamPada(hariKe(3), '13:21'), function () { titikBaru(); __interval.forEach(function (f) { f(); }); });
+  klik('rkDasbor', { dbRentang: 'hari' }); R.tampilkan(false); __tuntas(); __sisa();
+  // LAYAR LAIN: ditutup di jam0, dibuka lagi di jam1 TANPA data baru (ubah = hanya titik kas perangkat) → sama dengan gambar paksa segar saat itu juga
+  var layar = function (nama, L, A, jam0, siapkan, jam1, ubah) {
+    L.tampilkan(false); __tuntas(); __sisa(); __KINI = jam0;
+    if (siapkan) { try { siapkan(); } catch (e) { console.error('siapkan ' + nama, e); } __tuntas(); __sisa(); }
+    L.tampilkan(true); __tuntas(); __sisa(); L.gambar(); __tuntas(); __sisa(); var lama = A.__html;
+    L.tampilkan(false); __tuntas(); __sisa(); __KINI = jam1;
+    if (ubah) { ubah(); __tuntas(); __sisa(); }
+    var ms = waktuKejadian(function () { L.tampilkan(true); }); var hidup = A.__html;
+    L.gambar(); __tuntas(); __sisa(); catat(nama, hidup, A.__html, lama, ms);
+  };
+  var AU = AK.uang, LU = LY.uang, AH = AK.harga, LH = LY.harga, AL = AK.laporan, LL = LY.laporan, AP = AK.pelanggan, LP = LY.pelanggan;
+  layar('Menu · dibuka 20.00, dibuka lagi esok 09.00', LM, AM, jamPada(hariKe(4), '20:00'), function () { LM.keadaan.setel({ sistem: null, susunan: 'laci' }); }, jamPada(hariKe(5), '09:00'));
+  layar('Menu · pita jam berganti Sore → Malam (hari sama, sesudah 12.00)', LM, AM, jamPada(hariKe(5), '16:00'), null, jamPada(hariKe(5), '18:00'));
+  layar('Menu (yang bertanya) · titik kas perangkat berubah', LM, AM, jamPada(hariKe(5), '18:30'), function () { LM.keadaan.setel({ susunan: 'tanya' }); }, jamPada(hariKe(5), '18:30'), titikBaru);
+  layar('Menu › Sistem › Perangkat · dibuka lagi 10 menit kemudian (denyut N menit lalu)', LM, AM, jamPada(hariKe(5), '19:00'), function () { LM.keadaan.setel({ susunan: 'laci', sistem: 'perangkat' }); D.pasok('perangkatStatus', D.cacheMentah('perangkat').concat([{ id: 'p-mac', pada: new Date().toISOString(), aplikasi: 'baru', antrean: 0 }])); }, jamPada(hariKe(5), '19:10'));
+  LM.keadaan.setel({ sistem: null, susunan: 'laci' }); LM.tampilkan(false); __tuntas(); __sisa();
+  // wadah pertama diberi stok sendiri (pindahan awal, jalur tulis asli) + cek tutup toko 20.00 kemarin: sebelum 12.00 rinciannya ("Karung di belakang…" dibuka)
+  // memajang cek itu, sesudahnya "belum dicek"
+  var WB = __E['baru/js/layar/wadah-bernama-logika.js'], nU = 0; var W0 = JL.aturWadah().daftar[0];
+  var wkt = function (iso, jam) { return { tanggal: iso, jam: jam, kini: new Date().toISOString(), idUnik: function () { nU += 1; return 9100000000000 + nU; } }; };
+  layar('Stok › Wadah literan · dibuka lagi sesudah 12.00 (cek tutup)', LS, AS, jamPada(hariKe(6), '11:58'), function () {
+    var P = WB.wbSusunPindahAwal(wkt(hariKe(5), '19:55'), W0); if (!P.tolak) D.terapkanKeCache(P.dokumen);
+    var C = WB.wbSusunCek(W0, 'sesuai', wkt(hariKe(5), '20:00')); if (!C.tolak) D.terapkanKeCache(C.dokumen);
+    D.pasok('wadahLiteran', D.cacheMentah('wadah').slice());   // pendengar data berbunyi seperti sesudah tulisan sungguhan (versi data layar naik)
+    ketuk(AS, 'tab', { t: 'wadah' }); LS.keadaan.setel({ wadahAktif: W0, rincianLain: true }); }, jamPada(hariKe(6), '12:02'));
+  layar('Stok › Gudang · dibuka lagi esok hari', LS, AS, jamPada(hariKe(6), '13:00'), function () { ketuk(AS, 'tab', { t: 'gudang' }); }, jamPada(hariKe(7), '13:00'));
+  LS.tampilkan(false); __tuntas(); __sisa();
+  layar('Uang › Tutup hari · dibuka lagi sesudah 12.00 (hari dagang yang ditutup)', LU, AU, jamPada(hariKe(7), '11:58'), function () { ketuk(AU, 'keluarga', { nama: 'tutup' }); }, jamPada(hariKe(7), '12:02'));
+  layar('Uang › Pindah uang · titik kas perangkat berubah', LU, AU, jamPada(hariKe(7), '13:00'), function () { ketuk(AU, 'keluarga', { nama: 'pindah' }); }, jamPada(hariKe(7), '13:00'), titikBaru);
+  LU.tampilkan(false); __tuntas(); __sisa();
+  layar('Harga › Bon pemasok · titik kas perangkat berubah', LH, AH, jamPada(hariKe(7), '14:00'), function () { ketuk(AH, 'keluarga', { nama: 'bon' }); }, jamPada(hariKe(7), '14:00'), titikBaru);
+  layar('Harga › Belanja · dibuka lagi esok hari', LH, AH, jamPada(hariKe(7), '14:00'), function () { ketuk(AH, 'keluarga', { nama: 'belanja' }); }, jamPada(hariKe(8), '14:00'));
+  LH.tampilkan(false); __tuntas(); __sisa();
+  layar('Laporan › Harian · dibuka lagi esok hari', LL, AL, jamPada(hariKe(8), '20:00'), function () { ketuk(AL, 'keluarga', { nama: 'harian' }); }, jamPada(hariKe(9), '13:00'));
+  layar('Laporan › Neraca · titik kas perangkat berubah', LL, AL, jamPada(hariKe(9), '13:00'), function () { ketuk(AL, 'keluarga', { nama: 'neraca' }); }, jamPada(hariKe(9), '13:00'), titikBaru);
+  LL.tampilkan(false); __tuntas(); __sisa();
+  layar('Pelanggan › Kenali · jam berganti siang → sore (hari sama)', LP, AP, jamPada(hariKe(9), '13:00'), function () { ketuk(AP, 'keluarga', { ke: 'kenali' }); }, jamPada(hariKe(9), '16:00'));
+  LP.tampilkan(false); __tuntas(); __sisa();
+  // TAHUN BARU tanpa data baru: Uang › Tutup buku membaca tahun yang bisa ditutup; indeks cincin membaca potret tahun < tahun jam sekarang
+  var th = Number(HARI0.slice(0, 4));
+  layar('Uang › Tutup buku · dibuka lagi sesudah tahun baru', LU, AU, jamPada(th + '-12-31', '20:00'), function () { ketuk(AU, 'keluarga', { nama: 'buku' }); }, jamPada((th + 1) + '-01-02', '13:00'));
+  LU.tampilkan(false); __tuntas(); __sisa();
+  klik('rkSaklar', { tampil: 'cincin' }); buka(jamPada(th + '-12-31', '23:58')); var n = {};
+  __n = {}; __KINI = jamPada(th + '-12-31', '23:59'); __interval.forEach(function (f) { f(); }); __tuntas(); __sisa(); n.samaTahun = __n.bangunIndeks || 0;
+  __n = {}; __KINI = jamPada((th + 1) + '-01-01', '00:01'); __interval.forEach(function (f) { f(); }); __tuntas(); __sisa(); n.gantiTahun = __n.bangunIndeks || 0;
+  HASIL.info.cincinTahun = n; R.tampilkan(false); __tuntas(); __sisa();
+})();
 HASIL.galat = __galat.slice(0, 40); HASIL.info.nGalat = __galat.length;
 print('@@HASIL@@' + JSON.stringify(HASIL));
 """
@@ -419,7 +497,17 @@ def periksa(H, nama_kotak, data_toko=False):
        B['info'].get('notaMenambah') and B['info'].get('titikMengubahKas') and sum(1 for x in B['fungsi'] if x['ada']) >= len(B['fungsi']) * 0.6, B['info'])
     m = B['info'].get('menuLsKb') or {}
     ok('%s · Menu: simpanan perangkat bertambah → angka simpanan di keadaan Menu ikut (%s KB)' % (nama_kotak, m.get('harap')), m.get('keadaan') == m.get('harap') and m.get('harap'), m)
+    # KUNCI LUAR (sanggahan 7 Okt): kejadian tanpa data baru — layar yang hidup terus = gambar segar saat itu juga
+    for nm, X in [('hidup', B)] + ([('beku', C)] if C else []):
+        T = X.get('tandingan') or []; salah = [x for x in T if not x['sama']]
+        ok('%s · KUNCI LUAR %s: %d kejadian tanpa data baru (jam 12 siang, hari, pita jam, jam, menit, titik kas perangkat, tahun baru) — layar yang hidup terus = gambar segar' % (nama_kotak, nm, len(T)),
+           len(T) >= 21 and not salah, [(x['nama'], x['contoh'][:220]) for x in salah[:2]] or len(T))
+    ci = B['info'].get('cincinTahun') or {}
+    ok('%s · Cincin: indeks dibangun ulang saat tahun berganti tanpa data baru (1×), tidak di detak menit biasa (0×)' % nama_kotak, ci.get('gantiTahun') == 1 and ci.get('samaTahun') == 0, ci)
     if data_toko: return l, g
+    T = B.get('tandingan') or []
+    ok('cakupan KUNCI LUAR: tiap kejadian benar-benar mengubah gambar segar (kasus tajam — tidak lulus karena isinya kebetulan sama)', T and all(x['berubah'] and x['ada'] for x in T),
+       [x['nama'] for x in T if not (x['berubah'] and x['ada'])])
     # ONGKOS (hitungan panggilan, pasti) — rangkaian DENGAN ingatan
     cari = lambda layar, pola: [a for a in B['aksi'] if a['layar'] == layar and re.search(pola, a['aksi'])]
     P = lambda a, f: (a['panggil'] or {}).get(f, 0)
@@ -485,8 +573,22 @@ RUSAK = [
     ('penjualan dianggap tidak dibaca dasbor (nota baru tidak tergambar)', 'layar', {'baru/js/layar/ringkasan.js': [("const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas']);", "const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas', 'penjualan']);")]}),
     ('Menu menyetel keadaan simpanan walau sama (gambar ulang tiap dibuka)', 'layar', {'baru/js/layar/menu.js': [("if (Object.keys(u).length) set(u); };", "set(p); };")]}),
     ('Menu tidak pernah menyetel simpanan yang berubah', 'layar', {'baru/js/layar/menu.js': [("if (Object.keys(u).length) set(u); };", "};")]}),
-    ('omzet pajak per bulan tidak diingat (Bulanan ±60 hitungan lagi)', 'ingatan', {'baru/js/layar/pajak-logika.js': [("return ingatPerVersi('pjOmzetSistem|' + key, () => {", "return ((kunci, f) => f())('pjOmzetSistem|' + key, () => {")]}),
+    ('omzet pajak per bulan tidak diingat (Bulanan ±60 hitungan lagi)', 'ingatan', {'baru/js/layar/pajak-logika.js': [("return ingatPerVersi('pjOmzetSistem|' + key, () => pjOmzetSistemHitung(key));", "return pjOmzetSistemHitung(key);")]}),
     ('saldo kantong kembali memakai gerakan kas tanpa ingatan', 'ingatan', {'baru/js/data/toko.js': [("export function ingatGerakanKas() { return ingatPerVersi('gerakanKas', daftarGerakanKas); }", "export function ingatGerakanKas() { return daftarGerakanKas(); }")]}),
+    # sanggahan 7 Okt — KUNCI LUAR: jalur 'kunci' = hanya rangkaian dengan ingatan diulang; elemen ke-4 = sebab yang WAJIB muncul di kegagalan
+    ('dasbor memakai hasil lama selama HARI sama (sebelum sanggahan: tanpa jam 12 & titik kas)', 'kunci', {'baru/js/layar/ringkasan.js': [("const kunci = kunciLuarCache(k);", "const kunci = hariIniIso(k);"), ("dbKunci !== kunciLuarCache(k)", "dbKunci !== hariIniIso(k)")]}, 'KUNCI LUAR hidup'),
+    ('kunci luar tanpa hari tutup aktif (jam 12 siang)', 'kunci', {'baru/js/data/toko.js': [("return hariIniIso(k) + '|' + tanggalTutupAktif(k) + '|' + JSON.stringify(ambilTitikKas());", "return hariIniIso(k) + '|' + JSON.stringify(ambilTitikKas());")]}, 'KUNCI LUAR hidup'),
+    ('kunci luar tanpa titik kas perangkat', 'kunci', {'baru/js/data/toko.js': [("return hariIniIso(k) + '|' + tanggalTutupAktif(k) + '|' + JSON.stringify(ambilTitikKas());", "return hariIniIso(k) + '|' + tanggalTutupAktif(k);")]}, 'KUNCI LUAR hidup'),
+    ('Menu dibuka lagi tanpa memeriksa kunci gambar (sebelum sanggahan)', 'kunci', {'baru/js/layar/menu.js': [("|| !akar.firstElementChild || _kunciGambar !== kunciGambar())) segera(gambar);", "|| !akar.firstElementChild)) segera(gambar);")]}, 'KUNCI LUAR hidup'),
+    ('kunci Menu tanpa pita jam', 'kunci', {'baru/js/layar/menu.js': [("return kunciLuarCache(d) + '|' + M.mnBagianDari(d.getHours()) +", "return kunciLuarCache(d) +")]}, 'KUNCI LUAR hidup'),
+    ('kunci Menu tanpa menit selagi Sistem › Perangkat terbuka', 'kunci', {'baru/js/layar/menu.js': [(" + (st().sistem === 'perangkat' ? '|' + Math.floor(d.getTime() / 60000) : '')", "")]}, 'KUNCI LUAR hidup'),
+    ('Stok dibuka lagi tanpa kunci luar', 'kunci', {'baru/js/layar/stok.js': [("|| !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar);", "|| !akar.firstElementChild)) segera(gambar);")]}, 'KUNCI LUAR hidup'),
+    ('Uang dibuka lagi tanpa kunci luar', 'kunci', {'baru/js/layar/uang.js': [("|| !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar);", "|| !akar.firstElementChild)) segera(gambar);")]}, 'KUNCI LUAR hidup'),
+    ('Harga dibuka lagi tanpa kunci luar', 'kunci', {'baru/js/layar/harga.js': [("|| !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar);", "|| !akar.firstElementChild)) segera(gambar);")]}, 'KUNCI LUAR hidup'),
+    ('Laporan dibuka lagi tanpa kunci luar', 'kunci', {'baru/js/layar/laporan.js': [("|| !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar);", "|| !akar.firstElementChild)) segera(gambar);")]}, 'KUNCI LUAR hidup'),
+    ('Pelanggan dibuka lagi tanpa kunci luar', 'kunci', {'baru/js/layar/pelanggan.js': [("|| !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar);", "|| !akar.firstElementChild)) segera(gambar);")]}, 'KUNCI LUAR hidup'),
+    ('kunci Pelanggan tanpa jam', 'kunci', {'baru/js/layar/pelanggan.js': [("return kunciLuarCache(d) + '|' + d.getHours();", "return kunciLuarCache(d);")]}, 'KUNCI LUAR hidup'),
+    ('indeks cincin tanpa tahun (tahun baru tanpa data baru)', 'kunci', {'baru/js/layar/ringkasan.js': [("if (!ix || ixTahun !== thIx)", "if (!ix)")]}, 'Cincin: indeks'),
 ]
 
 
@@ -495,16 +597,19 @@ def main():
         dasar, e = satu_kotak()
         if dasar is None: print('JSC JATUH (dasar): ' + e); return 2
         diam = 0
-        for nama, jalur, gnt in RUSAK:
-            # jalur ingatan: hanya rangkaian dengan ingatan diulang · beku: hanya rangkaian beku · layar: tanpa & dengan ingatan diulang (beku tidak dipakai)
-            ulang = {'ingatan': ('hidup',), 'beku': ('beku',), 'layar': ('mati', 'hidup')}[jalur]
+        for x in RUSAK:
+            nama, jalur, gnt = x[:3]; harap = x[3] if len(x) > 3 else None
+            # jalur ingatan / kunci: hanya rangkaian dengan ingatan diulang · beku: hanya rangkaian beku · layar: tanpa & dengan ingatan diulang (beku tidak dipakai)
+            ulang = {'ingatan': ('hidup',), 'kunci': ('hidup',), 'beku': ('beku',), 'layar': ('mati', 'hidup')}[jalur]
             pakai = dict((m, dasar[m]) for m in ('mati', 'hidup', 'beku') if m not in ulang and not (jalur == 'layar' and m == 'beku'))
             try: H, e = satu_kotak(gnt, ulang, pakai)
             except AssertionError as x: print('KONTROL BASI ' + nama + ' — ' + str(x)); diam += 1; continue
             if H is None: g = ['JSC JATUH: ' + e[:200]]
             else: _, g = periksa(H, 'kotak pasir')
-            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + (' → ' + g[0][:170] if g else ''))
-            if not g: diam += 1
+            # harap (kontrol KUNCI LUAR): kegagalan WAJIB menyebut sebabnya — berbunyi karena hal lain = dihitung diam
+            sebab = [y for y in g if not harap or harap in y]
+            print(('BERBUNYI ' if sebab else 'SEBAB LAIN!' if g else 'DIAM!!   ') + nama + (' → ' + (sebab or g)[0][:170] if g else ''))
+            if not sebab: diam += 1
         print('kontrol: %d/%d berbunyi' % (len(RUSAK) - diam, len(RUSAK))); return 3 if diam else 0
     H, e = satu_kotak()
     if H is None: print('LAYAR MULUS: JSC JATUH — ' + e); return 2

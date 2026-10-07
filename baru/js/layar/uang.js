@@ -19,7 +19,7 @@ import { tombolAkun } from './akses-layar.js';
 import { waktuSekarang } from './jual-logika.js';
 import { ssBerkasCadangan, susunCatatCadangan } from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip, kabarKiriman } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip, kabarKiriman, kunciLuarCache } from '../data/toko.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -50,6 +50,9 @@ export function pasangLayarUang(akar, opsi) {
   const ISIAN = pasangIsian(K, awal, ['catat', 'bayarT', 'tolakT', 'aturK', 'kasbonK', 'bonusU', 'aturU', 'karyawanDraf', 'aksiO', 'bukti', 'pindah', 'aturP', 'rekIsi', 'draf', 'aturT', 'langkahB', 'parafB', 'saksiB', 'cad1', 'arsipNama', 'kpCentang', 'kpPutus', 'kpBuka', 'kpAtur', 'bkPutus'], [[KUNCI_DRAF_TUTUP, (t) => { try { return JSON.parse(t).iso === iso(); } catch (e) { return false; } }]]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
+  // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
+  // berubah sejak gambar terakhir (kunciLuarCache) — semuanya tidak menaikkan versi data
+  let _kunciLuar = ''; const kunciLuar = () => kunciLuarCache(kini());
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
   const lokal = () => (opsi.lokal ? opsi.lokal() : {});
 
@@ -332,7 +335,7 @@ export function pasangLayarUang(akar, opsi) {
 
   // ================= GAMBAR =================
   function gambar() {
-    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; const s = st(); const sumber = sumberData(); const L = lebar();
+    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; _kunciLuar = kunciLuar(); const s = st(); const sumber = sumberData(); const L = lebar();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">
@@ -657,5 +660,5 @@ export function pasangLayarUang(akar, opsi) {
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
   // dipanggil layar Menu: buka keluarga (keluar | upah | owner | pindah | tutup | buku) lewat penangan yang sama dengan ketukan
   const buka = (keluarga, t) => { AKSI.keluarga({ nama: UG.KELUARGA_UANG.some((k) => k[0] === keluarga) ? keluarga : 'keluar' }); if (t && t.tab && keluarga === 'keluar') set({ tabK: t.tab }); if (t && t.orang && keluarga === 'upah') set({ orangU: t.orang }); if (t && t.rek && keluarga === 'pindah') set({ rekIsi: { ketik: '' } }); };
-  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } };
 }

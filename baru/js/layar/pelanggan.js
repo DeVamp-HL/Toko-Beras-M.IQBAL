@@ -10,7 +10,7 @@ import { RP, DESIMAL, tanggalPendek, hariIniIso, jamKini, kalimatLebih, ringkasL
 import * as P from './pelanggan-logika.js';
 import * as B from './bon-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, tulisBertahap, perbaruiKolom, kabarKiriman } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, tulisBertahap, perbaruiKolom, kabarKiriman, kunciLuarCache } from '../data/toko.js';
 import { bukanOwner, bolehBukaLayar } from './akses-layar.js';
 
 const IKON = {
@@ -54,6 +54,9 @@ export function pasangLayarPelanggan(akar, opsi) {
   const ISIAN = pasangIsian(K, awal, ['kartu', 'baru', 'gabung', 'atur', 'bayar', 'hapusIsi', 'beri', 'titip'], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
+  // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif, titik kas perangkat (kunciLuarCache) atau JAM
+  // berubah sejak gambar terakhir — Kenali membaca jam sekarang (pagi / siang / sore, jam kedatangan); semuanya tidak menaikkan versi data
+  let _kunciLuar = ''; const kunciLuar = () => { const d = kini(); return kunciLuarCache(d) + '|' + d.getHours(); };
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
   const ingatTab = () => simpanLokal(KUNCI_TAB, { keluarga: st().keluarga, tabK: st().tabK });
   // putaran 25: hapus + dokumen dalam SATU kiriman yang hasilnya diperiksa; SATUKAN / hapus nama yang menyebar ke bulan-bulan lalu (r.kelompok) dikirim BERTAHAP
@@ -149,7 +152,7 @@ export function pasangLayarPelanggan(akar, opsi) {
   delegasi(akar, AKSI);
 
   function gambar() {
-    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false;
+    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; _kunciLuar = kunciLuar();
     const s = st(); const sumber = sumberData(); const d = kini();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
@@ -415,5 +418,5 @@ export function pasangLayarPelanggan(akar, opsi) {
   dengarkan(() => nanti(gambar));
   // dipanggil layar Menu: buka keluarga (kenali | bon | thr), dan kalau ada, kartu / bon satu orang — lewat penangan yang sama dengan ketukan
   const buka = (keluarga, orang) => { AKSI.keluarga({ ke: keluarga || 'kenali' }); if (orang && keluarga === 'bon') AKSI.bukaOrangBon({ kunci: orang }); else if (orang) AKSI.bukaKartu({ kunci: orang }); };
-  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } };
 }
