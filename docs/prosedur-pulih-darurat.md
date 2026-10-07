@@ -297,8 +297,9 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       (simpan 10 tahun).
 - [ ] **Perangkat lain sesudah ritual** (iPhone, iPad, HP lain yang membuka `/baru/` dan tertutup selama ritual): buka satu per satu, sekali, dan
       biarkan membaca penuh sendiri.
-      Perangkat itu membuka dengan catatan 2026 di simpanannya SEKALIGUS saldo pembuka, jadi angkanya DOBEL sampai bacanya selesai. SEBELUM dipakai untuk
-      Jual, bayar bon, bayar bon pemasok, atau membaca stok:
+      Perangkat yang hemat bacanya MATI membuka dengan catatan 2026 di simpanannya SEKALIGUS saldo pembuka, jadi angkanya DOBEL sementara sampai bacanya
+      selesai. Perangkat owner yang hemat bacanya NYALA tidak dobel, tapi angkanya lama (isi simpanannya saat terakhir dibuka) atau kosong sampai pil
+      tidak lagi menulis "memuat…" atau "memeriksa data (…)". SEBELUM dipakai untuk Jual, bayar bon, bayar bon pemasok, atau membaca stok:
       - Perangkat owner yang hemat bacanya NYALA: tunggu sampai pil status di bilah atas tidak lagi menulis "memuat…" atau "memeriksa data (…)".
       - Perangkat yang hemat bacanya MATI (semua perangkat staf, dan perangkat owner yang belum dinyalakan): pil itu TIDAK bisa dipegang — "memuat…"
         sudah hilang begitu simpanan perangkat terbaca, sebelum server selesai mengirim arsip & saldo pembuka. Buka dengan internet, tunggu ±1 menit

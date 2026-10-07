@@ -2210,6 +2210,15 @@ seketika dari simpanan, tirai menunggu satu jawaban server berita acara. Tanpa i
 C14, C15 (+ 17 kontrol P5a–P5f); rincian: `docs/rancangan-hemat-baca.md` bagian "Hemat baca × arsip tutup buku". Butir "Perangkat lain sesudah ritual" di
 prosedur tetap: tunggu "memuat…" / "memeriksa data" hilang sebelum berjualan (perangkat hemat baca MATI tetap bisa dobel sementara).
 
+**Sanggahan P5 (8 Okt).** (1) Mac yang menjalankan ritual, ditutup di tengah ritual (K11 TIDAK MUAT) lalu dibuka lagi: dulu memori KOSONG sampai server
+menjawab berita acara (sisa arsip di Uang › Tutup buku terbaca habis) — kini memori kosong hanya bila simpanan bisa bercampur DAN berita acara yang terbaca
+(simpanan atau server) tidak menyebut tutup buku berjalan; berganti → ditentukan ulang. (2) Tersambung tapi server diam (kuota baca habis sampai reset, sinyal
+lemah): dulu tirai "memuat" menunggu tanpa batas — kini siap sesudah 30 detik dari simpanan (memori tetap beku, belum terperiksa), kabar, kelengkapan &
+penolakan uang-kritis menyebut "server belum menjawab sejak aplikasi dibuka", bukan "tunggu sebentar". (3) Koleksi yang dengar penuh karena penulis tanpa
+cap (bukan karena tutup buku berjalan) juga ditahan; tahan berakhir saat dengar penuh TERKINI (memori tidak tertinggal beku selagi uang-kritis menganggapnya
+segar). (4) Server mainan: pendengar simpanan berbunyi hanya bila isinya berubah — baris pelepas memori beku kini dijaga. Uji T6e2, T6e3, T6h, T6i, T6j
+(+ 14 kontrol); kalimat prosedur "Perangkat lain sesudah ritual" kini membedakan hemat baca NYALA (tidak dobel, angka lama/kosong) dan MATI (dobel sementara).
+
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 
 Status sesudah PR #111 digabung: langkah 1–2 SELESAI; langkah 3–7 = tugas owner (sesudah 13 Okt tidak ada lagi yang mengerjakannya untuk owner).

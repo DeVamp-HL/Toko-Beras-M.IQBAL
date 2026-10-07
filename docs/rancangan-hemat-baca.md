@@ -149,11 +149,12 @@ sampai reset kuota. Berita acara dari SIMPANAN dulu (basi) → tutup buku tampak
 | Bagian | Sekarang |
 |---|---|
 | (a) rencana | tutup buku berubah sejak baca penuh terakhir (`bkBeda`), atau baca penuh sesudah tutup buku terputus di sesi lalu (`bkCampur`) → baca penuh **WAJIB**: seperti tombol (menembus rem, tidak turun ke delta, tidak dihitung otomatis), didahulukan dari permintaan otomatis (hitungan beda). Gagal → sebabnya disebut, dicoba lagi sesudah 10 menit seperti baca penuh otomatis (bukan tiap kabar koleksi tetap — tiap ulang = seluruh koleksi dibaca) |
-| (b) TAHAN | koleksi DITAHAN selama baca penuh sesi ini belum selesai DAN (berita acara belum dijawab SERVER sesi ini · tutup buku berubah · simpanan bisa bercampur). Ditahan = tidak siap (tirai memuat), tanpa S, memori BEKU = isi simpanan saat mulai ditahan + tulisan perangkat ini sendiri (`catatTulis` dari `tulisBerkas`) — tanpa catatan tambahan dari server dan tanpa pembuangan setengah jalan (limbo F: dokumen baru tiba lebih dulu, catatan arsip terbuang belakangan). Selesai → memori dari simpanan (= server), siap, S dipasang |
+| (b) TAHAN | koleksi DITAHAN selama baca penuh sesi ini belum menjawab koleksi itu DAN (berita acara belum dijawab SERVER sesi ini · tutup buku berubah · simpanan bisa bercampur). "Menjawab" = baca penuh sekali selesai (hitungan server cocok), atau dengar penuh TERKINI (snapshot server tanpa limbo — simpanan koleksi itu = server; gerbang uang-kritis menganggapnya segar, jadi memori tidak boleh tertinggal beku menunggu hitungan). Ditahan = tidak siap (tirai memuat), tanpa S, memori BEKU = isi simpanan saat mulai ditahan + tulisan perangkat ini sendiri lewat `tulisBerkas` (`catatTulis`; `perbaruiBerkas` & `pulihkanBerkas` tidak — pulihkan berjalan saat tutup buku dibatalkan, yang didengar penuh; perbarui = alat bersih sekali) − catatan yang dihapus perangkat ini — tanpa catatan tambahan dari server dan tanpa pembuangan setengah jalan (limbo F: dokumen baru tiba lebih dulu, catatan arsip terbuang belakangan). Selesai → memori dari simpanan (= server), siap, S dipasang. Koleksi yang dengar penuh karena penulis tanpa cap (HP kasir lama, kasir.html, tab lama — bukan karena tutup buku berjalan) juga ditahan (sanggahan P5; dulu dikecualikan → DOBEL selama limbo) |
 | (b) berita acara | `firebase.js kabariTetap` meneruskan `acaraServer` (jawaban terakhir pendengar `tutupBukuAcara` bukan dari simpanan perangkat); sekali benar di sesi itu, tetap benar. Buka biasa: memori tetap seketika dari simpanan, tirai memuat menunggu satu jawaban server berita acara (dulu siap seketika) |
-| (b) bercampur | F yang berjalan selama tutup buku berjalan / sesudah tutup buku berubah menandai rekam `bkCampur` (simpanan bisa memuat saldo pembuka + catatan arsip yang belum terbuang); dibuang saat F selesai tanpa tutup buku berjalan, atau saat dengar penuh terkini ketika ritual berakhir. Sesi berikut yang menemukan tanda ini memulai memorinya KOSONG (+ tulisan sendiri) sampai baca penuh wajib selesai |
-| tidak ditahan | perangkat yang MENJALANKAN / terbuka selama ritual (dengar penuh, berita acara terjawab server): memori mengikuti ritual seperti dulu — saldo pembuka masuk, catatan arsip keluar seketika |
-| tanpa internet | tirai tidak menggantung: siap dari simpanan (memori tetap beku), pil kepala & kabar mengaku |
+| (b) bercampur | F yang berjalan selama tutup buku berjalan / sesudah tutup buku berubah menandai rekam `bkCampur` (simpanan bisa memuat saldo pembuka + catatan arsip yang belum terbuang); dibuang saat F selesai tanpa tutup buku berjalan, atau saat dengar penuh terkini ketika ritual berakhir. Sesi berikut yang menemukan tanda ini memulai memorinya KOSONG (+ tulisan sendiri) sampai baca penuh wajib selesai — KECUALI selama berita acara yang terbaca (dari simpanan atau server) menyebut tutup buku BERJALAN: simpanan itu = keadaan ritual yang terakhir diikuti perangkat ini (mis. Mac yang menjalankan ritual, ditutup di tengah ritual — K11 TIDAK MUAT), jadi memori = simpanan itu dan sisa arsip di Uang › Tutup buku terbaca benar (sanggahan P5; dulu kosong sampai server menjawab → sisa arsip terbaca habis). Berita acara berganti (server: ritual sudah selesai) → memori beku ditentukan ulang: kosong |
+| tidak ditahan | perangkat yang MENJALANKAN / terbuka selama ritual (dengar penuh KARENA tutup buku berjalan, berita acara terjawab server): memori mengikuti ritual seperti dulu — saldo pembuka masuk; catatan arsip keluar seketika di perangkat yang mengarsip, sedangkan perangkat yang dibuka di tengah ritual memegang catatan yang sudah diarsipkan sampai limbo baca penuhnya selesai |
+| tanpa internet | tirai tidak menggantung: siap dari simpanan (memori tetap beku), pil kepala & kabar mengaku. Juga saat putus di tengah baca penuh wajib |
+| server diam | tersambung tapi berita acara belum dijawab server 30 detik sejak dibuka (kuota baca habis sampai reset 14.00/15.00 WIB, sinyal lemah — sanggahan P5; dulu tirai menunggu tanpa batas): siap dari simpanan (memori tetap beku), belum terperiksa (uang-kritis & katalog tertutup); kabar, kelengkapan & penolakan uang-kritis menyebut "server belum menjawab sejak aplikasi dibuka (kuota baca habis atau sinyal lemah)" — bukan "tunggu sebentar". Server menjawab → kabar itu dibuang |
 | kelengkapan | baca penuh yang sedang berjalan disebut lebih dulu dari "ubahan terbaru" ("sedang dibaca penuh — tunggu sampai selesai"): koleksi yang ditahan baru memasang S sesudah F |
 
 **Uji** (`alat-uji/uji_hemat_baca.py`, jsc, server mainan dengan baca penuh LAMBAT: dipasang → jawaban server masuk simpanan → limbo membuang catatan arsip):
@@ -162,13 +163,26 @@ acara dari server, tanpa baca penuh); **T6b** (tertutup selama ritual, F lambat:
 tampil; + rem kuota aktif dari denyut perangkat ritual: F tetap jalan & selesai tanpa ketukan); **T6c** (berita acara dari simpanan dulu); T6d (F terputus di
 tengah limbo → sesi berikut memori kosong, bukan dobel); T6e (perangkat ritual sendiri tidak dibekukan); T6f (F wajib gagal: tirai lepas, memori beku, jeda 10
 menit); T6g (simpanan bercampur tanpa internet: tirai lepas, memori kosong, kabar mengaku); C14 (`acaraServer` dari `fromCache`), C15 (`tulisBerkas` →
-`catatTulis`). T6b & T6c MERAH di kode sebelum obat; 17 kontrol baru (P5a–P5f), kontrol (i) disesuaikan — semuanya berbunyi. Limbo SDK sungguhan belum diuji
-di peramban (lihat "Belum dibangun"; uji peramban hanya di runner CI).
+`catatTulis`; kiriman uang-kritis yang ditolak sebelum dikirim tidak dicatat). T6b & T6c MERAH di kode sebelum obat; 17 kontrol baru (P5a–P5f), kontrol (i)
+disesuaikan. Limbo SDK sungguhan belum diuji di peramban (lihat "Belum dibangun"; uji peramban hanya di runner CI).
 
-**Sisa yang diakui.** Selama baca penuh wajib berjalan (detik sampai ± semenit untuk ±18 rb catatan), layar menggambar keadaan SEBELUM ritual (catatan tahun
-lalu tanpa saldo pembuka — saldo stok, piutang & utang sama, rinciannya lama) atau kosong (simpanan bercampur), dengan "memuat…" di kepala. Butir "Perangkat
-lain sesudah ritual" di daftar periksa 1 Jan (`docs/prosedur-pulih-darurat.md`, PR #119) tetap berlaku sebagai penjaga kedua: buka, tunggu "memuat" & pil
-hilang, baru berjualan.
+**Sanggahan P5 (8 Okt).** Server mainan: pendengar simpanan kini berbunyi HANYA bila isi simpanannya berubah (seperti SDK) — dulu dikabari ulang tiap S/F
+dipasang, jadi baris pelepas memori beku (`selesaiF`, `lepasTahan`) tidak dijaga uji apa pun; mode "server diam" (tersambung, server tidak menjawab) dan
+hitungan server yang dijawab belakangan. Uji baru: **T6e2** (Mac yang menjalankan ritual ditutup di tengah ritual, dibuka lagi saat server diam: memori =
+simpanannya, bukan kosong; tirai lepas sesudah 30 detik, kabar & kelengkapan "server belum menjawab", uang-kritis menolak), **T6e3** (perangkat lain ditutup di
+tengah ritual, ritual selesai selagi tertutup: berita acara simpanan "terkunci" → simpanan; server "selesai" → kosong sampai baca penuh selesai), **T6h**
+(putus internet di tengah baca penuh wajib: tirai lepas, memori beku; hapus sendiri hilang dari memori beku), **T6i** (dengar penuh karena kasir.html di
+perangkat tertutup selama ritual: ditahan, tidak dobel; terkini → memori = server sebelum hitungan menjawab), **T6j** (server diam tanpa tutup buku: 29 detik
+memuat, 30 detik siap dengan sebabnya); T6d ditambah catatan baru perangkat lain selama tombol baca penuh. T6e2, T6e3, T6i & T6j MERAH di kode sebelum
+sanggahan; 14 kontrol baru (P5b, P5d, P5e, P5f), 4 kontrol P5 disesuaikan — seluruh `--kontrol` berbunyi.
+
+**Sisa yang diakui.** Selama baca penuh wajib berjalan (detik sampai ± semenit untuk ±18 rb catatan), layar menggambar isi simpanan perangkat itu saat
+terakhir dibuka (tanpa catatan perangkat lain sesudahnya — saldo stok, piutang & utang bisa beda dengan server, jangan dipakai) atau kosong (simpanan
+bercampur), dengan "memuat…" di kepala. Selama berita acara menyebut tutup buku berjalan, perangkat yang tertutup di tengah ritual menggambar keadaan ritual
+yang terakhir diikutinya (catatan tahun lalu yang belum diarsip + saldo pembuka — seperti perangkat yang terbuka selama ritual). Server diam: sesudah 30 detik
+angka yang sama tampil tanpa tirai, dengan kabar & pil "memeriksa data"; baca penuh wajib yang macet karena kuota habis SESUDAH berita acara terjawab tetap
+"memuat…" sampai reset. Butir "Perangkat lain sesudah ritual" di daftar periksa 1 Jan (`docs/prosedur-pulih-darurat.md`, PR #119) tetap berlaku sebagai
+penjaga kedua: buka, tunggu "memuat" & pil hilang, baru berjualan.
 
 ## Belum dibangun (tahap berikut / bila perlu)
 
