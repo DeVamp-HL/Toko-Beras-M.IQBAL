@@ -1,5 +1,9 @@
 # Rancangan: Tutup buku BERTAHAP (K6) — siap sebelum Desember 2026
 
+> **Status terbaru:** tutup buku bertahap digabung 1 Okt 2026 (PR #92); rules v6 (§10–§11, "draf … MENUNGGU OWNER") TERBIT 2 Okt (PR #93) lalu
+> diganti v7 7 Okt 18.25 WIB; butir §0 "TETAP menunggu owner" SELESAI — kunci bulan 2026 ditunda (K1, 1 Okt: kunci pertama Januari 2027) dan tahun
+> berbulan terkunci (mulai 2027) ditutup lewat pintu tutup buku rules v7 (K8, 7 Okt; `docs/uji-rules-v7.md`). Isi lama tidak ditulis ulang.
+
 Dasar: main `7de3e7a` (worktree baca), cadangan toko `_privat/backup-batch-miqbal-2026-10-01.json` (diunduh 1 Okt 02.06 WIB), keputusan owner 1 Okt:
 "atur saja dengan semestinya; lolosin dulu 18 nama yang berhutang" → batas **18 pemeriksaan kunci per kiriman TETAP**, saldo pembuka dipecah.
 Semua hitungan memakai `jsc` atas bundel modul `/baru/` (kotak pasir). **Tidak ada peramban yang dinyalakan.** Mesin beku tidak disentuh (28/28 byte-identik).
@@ -234,7 +238,7 @@ wadah satu buku 134, kinerja gerak 74, tata letak 37/17/9, periksa impor/komenta
 5. **Latihan:** mode LATIHAN K6 (tidak menulis) + uji kotak pasir CI sudah mencakup logikanya. Proyek Firebase uji untuk gladi sungguhan = belum ada jalurnya
    (aplikasi satu konfigurasi); tidak wajib. Sesudah terbit: owner menjalankan LATIHAN sekali di Desember (daftar periksa & 12 baris).
 6. **Tugas data:** tidak ada sekarang. Sesudah terbit, cadangan sesudah tiap tutup hari Desember tetap wajib (dua cadangan K6).
-7. **Sesudah ritual (Paket C, 8 Okt 2026):** pemeriksaan cadangan SESUDAH tidak lagi dikerjakan di luar aplikasi. Owner membaca kartu **Pemeriksaan sesudah
+7. **Sesudah ritual (Paket C, 7 Okt 2026):** pemeriksaan cadangan SESUDAH tidak lagi dikerjakan di luar aplikasi. Owner membaca kartu **Pemeriksaan sesudah
    tutup buku** di Uang › Tutup buku (§12) sebelum mengetuk "selesai", mengunduh hasilnya (berkas) bersama cadangan SESUDAH, dan membukanya lagi sebelum
    mengunci Januari (≥ 4 Feb). Langkah lengkap: `docs/prosedur-pulih-darurat.md` (daftar periksa ritual & bab "Pemeriksaan sesudah tutup buku").
 
@@ -456,7 +460,7 @@ Yang tetap diakui:
   percobaan baru tidak ikut (potongan yang mendarat sudah menimpanya).
 - Arsip ulang yang gagal (sinyal putus, bulan terkunci K1) hanya dicatat di konsol; kalimat berhenti tetap tampil.
 
-## 12. Paket C (8 Okt 2026): pemeriksaan sesudah tutup buku DI APLIKASI
+## 12. Paket C (7 Okt 2026): pemeriksaan sesudah tutup buku DI APLIKASI
 
 Langganan pembantu kode owner berakhir 13 Okt 2026. Rencana tutup buku 2026 (audit kesiapan, bagian 1–10 Jan 2027) masih memuat butir "cadangan SESUDAH
 diperiksa (hanya baca): semua baris perbandingan + modal, buku 25 kg di rak Jual, pajak 2026 dari potret, tidak ada minus" yang dikerjakan di luar aplikasi.

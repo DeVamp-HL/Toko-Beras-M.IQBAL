@@ -1,5 +1,9 @@
 # Peta pindahan terakhir — putaran 25c, Tahap 0
 
+> **USANG — sejarah putaran 25c.** Sistem lama pensiun (keputusan owner 3 Okt 2026, PR #103): `index.html` & `kasir.html` kini halaman pengalih
+> tanpa script, versi terakhirnya di tag git `sistem-lama-terakhir`. Yang di bawah menyebut `index.html` sebagai aplikasi yang masih hidup. Jalan
+> mundur §9 (revert merge 25c, terbitkan katalog dari `index.html`) TIDAK berlaku lagi — jalan yang berlaku ada di pita §9.
+
 **Status (27 Sep 2026): Tahap 0 sempat BERHENTI di dua titik; owner memilih hari itu juga (§7), lalu Bagian A–D dibangun (§8).** Katalog kasir
 memuat modal, dan modal itu **dipakai** oleh HP kasir untuk mencatat modal nota; PIN operator kasir tersimpan tanpa diacak di dokumen yang bisa
 dibaca akun kasir. Dua-duanya menyentuh bentuk dokumen dan aturan server, jadi tidak dipindah sebelum owner memilih.
@@ -242,6 +246,18 @@ sistem lama, pita baru) dan `uji_antrean_kasir.py` (label "versi 25c"; lantai ku
 Aturan server v4 tidak berubah.
 
 ## 9. Jalan mundur — kalau katalog pertama dari `/baru/` ternyata salah
+
+> **USANG — langkah 1–6 di bawah sejarah 25c, jangan dikerjakan.** `index.html` sekarang pengalih tanpa script (tidak bisa menerbitkan katalog, tidak ada
+> "Terbitkan katalog sekarang"), dan revert merge 25c (`4bdb5b9`) di atas `main` sekarang bentrok di banyak berkas (±30, dicoba di salinan sementara
+> saat audit kesiapan Okt 2026). **Jalan yang berlaku kalau katalog kasir salah:** (1) penjaga memakai **tuts angka** saja — karcis angka polos tidak
+> memakai katalog; (2) owner membetulkan harganya di **Harga & Pemasok › Katalog harga** `/baru/` lalu mengetuk **TERBITKAN … HARGA** — harga draf
+> belum sampai ke mana pun sebelum diterbitkan, dan katalog kasir ikut di kiriman terbit yang sama; (3) tidak ada tombol terpisah untuk katalog kasir:
+> selain ikut kiriman terbit, ia terbit sendiri ±4 detik sesudah data berubah, dari perangkat owner yang terbuka & tersambung. Kalau kabar sesudah
+> TERBITKAN menulis "Katalog HP kasir BELUM ikut kiriman ini (…)", sebabnya ada di kurung itu (bukan owner, tidak tersambung, data belum termuat semua,
+> hemat baca belum terperiksa) — katalog terbit sendiri begitu sebabnya hilang. Di Beranda, baris "Katalog kasir: ada perubahan … belum sampai" bertanda
+> "menunggu terbit" = biarkan perangkat owner terbuka & tersambung sampai data termuat penuh; bertanda "gagal terbit" = sebab gagalnya tertulis di baris
+> itu; (4) Beranda menulis "Katalog kasir: diperbarui …" dengan jam terbit terakhir — tunggu sampai jamnya sesudah pembetulan; (5) nota yang terlanjur
+> memakai harga salah dibetulkan lewat retur / koreksi seperti nota lain.
 
 Katalog (`ringkasanKasir/aktif`) adalah dokumen TURUNAN: satu dokumen, ditimpa utuh tiap terbit, tidak ada riwayat. Yang bisa rusak kalau isinya salah:
 harga & modal di **tombol bernama barang** HP penjaga dan di **kasir kalkulator**, serta daftar bon di kasir kalkulator. **Karcis angka polos HP penjaga

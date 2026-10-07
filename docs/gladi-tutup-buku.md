@@ -111,8 +111,9 @@ Ringkasan tiap run ada di halaman ringkasan run. Artefak `laporan-gladi-tutup-bu
   terhitung, karena `:ruleCoverage` emulator hanya berisi posisi ekspresi tanpa jumlah. Perkiraan kuota halaman memasukkannya.
 - **tulis / hapus**: selisih isi emulator antara sebelum dan sesudah langkah, diambil lewat REST.
 
-**Per jalur** (skenario ritual), di skala gladi dan perkiraan skala toko (× 17.000 ÷ dokumen arsip gladi), dibandingkan dengan batas Spark per
-hari (50 rb baca, 20 rb tulis, 20 rb hapus) dan dengan kartu **Perkiraan kuota Firestore** di halaman:
+**Per jalur** (skenario ritual), di skala gladi dan perkiraan skala toko (× 17.000 ÷ dokumen arsip gladi; 17.000 = catatan 2026 saja, 8 Agu–31 Des —
+setahun penuh ±2,5–3× itu, lihat "Tutup buku 2027" di bawah), dibandingkan dengan batas Spark per hari (50 rb baca, 20 rb tulis, 20 rb hapus) dan
+dengan kartu **Perkiraan kuota Firestore** di halaman:
 
 - **ritual bersih**: yang dikerjakan owner tanpa penolakan atau pembatalan: masuk, muat penuh, putusan, lalu langkah 1–7 percobaan terakhir sampai
   selesai, dan diam;
@@ -123,15 +124,28 @@ hari (50 rb baca, 20 rb tulis, 20 rb hapus) dan dengan kartu **Perkiraan kuota F
 Jalur di atas 80% batas diberi peringatan ⚠, dan di atas 100% diberi ⛔.
 
 **Batalkan sesudah penanda di hari yang sama dengan ritualnya tidak muat kuota Spark.** Ritual bersih sendiri sudah ±18 rb tulis dan ±17 rb hapus
-di skala toko (±90% dan ±85%). Pembatalan sesudah arsip penuh menambah kira-kira sebanyak itu lagi, ditambah ±17 rb baca. Kalau owner membatalkan
-sesudah penanda, pembatalannya baru bisa tuntas sesudah kuota reset berikutnya (15.00 WIB), dan toko jangan berjualan sampai tuntas. Kartu
+di skala toko (±90% dan ±85% pada skala ±17 rb catatan; dengan laju cadangan toko 6 Okt tulisnya kini ±98–104%, lihat paragraf berikut).
+Pembatalan sesudah arsip penuh menambah kira-kira sebanyak itu lagi, ditambah ±17 rb baca. Kalau owner membatalkan sesudah penanda, pembatalannya
+baru bisa tuntas sesudah kuota reset berikutnya (15.00 WIB), dan toko jangan berjualan sampai tuntas. Kartu
 **Perkiraan kuota Firestore** di halaman menyebut hal yang sama.
 
 **Tahun yang SEMUA bulannya terkunci (skenario `pintu`, rules v7) tidak muat satu hari meski tanpa pembatalan.** Catatan bulan terkunci dipindah 3 per
-kiriman (5 pemeriksaan server per catatan), ditambah satu baris jejak per kiriman. Run 7 Okt (37568246193) diproyeksikan ke skala toko: ritual bersih
-±23,5 rb tulis (117%), ±17 rb hapus (85%); kartu perkiraan kuota di halaman menghitung angka yang sama (1.844 tulis di skala gladi, terukur 1.854).
-Ritual 2026 (tanpa bulan terkunci) ±18,9 rb tulis (94%). Tutup buku 2027 di Januari 2028 karena itu akan berhenti di kuota hari itu dan diteruskan
-dengan **Lanjutkan** sesudah reset 15.00 WIB — jangan berjualan sampai tuntas.
+kiriman (5 pemeriksaan server per catatan), ditambah satu baris jejak per kiriman. Run 7 Okt (37568246193) diproyeksikan ke skala ±17 rb catatan —
+catatan 2026 SAJA (8 Agu–31 Des), bukan setahun penuh: ritual bersih ±23,5 rb tulis (117%), ±17 rb hapus (85%); kartu perkiraan kuota di halaman
+menghitung angka yang sama (1.844 tulis di skala gladi, terukur 1.854). Ritual 2026 (tanpa bulan terkunci): proyeksi dari laju cadangan toko 6 Okt
+sekarang **±98–104%** batas tulis — bisa MEPET atau TIDAK MUAT (dulu ditulis ±18,9 rb = 94%).
+
+**Tutup buku 2027 (Januari 2028) mengarsip SETAHUN PENUH.** Dengan laju cadangan toko 6 Okt (±117–141 catatan sehari) arsipnya ±43–51 rb catatan, ±2,5–3×
+skala 117% di atas. Rumus kartu, rata-rata per catatan setahun dengan Januari–November terkunci: tulis ±1,3 · hapus 1 · baca ±5,9 (5 pemeriksaan server
+tiap catatan bulan terkunci, dihitung tanpa potongan cache, + sekali muat) — dihitung ulang dari kode oleh `alat-uji/uji_dokumen_owner.py`. Hasilnya tulis
+**±280–335%**, hapus **±215–255%**, baca **±505–600%** batas Spark sehari: **BEBERAPA hari kuota, bukan satu** — tulis & hapus saja ±3–4 hari, baca menurut
+kartu (perkiraan atas) ±6–7 hari. Tiap kali kuota habis arsip berhenti dan diteruskan dengan **Lanjutkan** sesudah reset 15.00 WIB — jangan berjualan
+sampai tuntas. Angka sebenarnya = kartu **Perkiraan kuota Firestore** di langkah 1 pada hari itu.
+
+Keputusan owner K11 (8 Okt 2026): kalau kartu kuota 1 Jan berbunyi TIDAK MUAT, ritual tetap dimulai 1 Jan sesudah reset; toko TUTUP Sabtu 2 Jan 2027
+(tidak jualan, tidak menagih) sampai sesudah 15.00 WIB, Lanjutkan dari Mac yang sama, tunggu arsip habis. Tutup buku 2027: ritual Sabtu 1 Jan 2028
+sesudah reset, toko tutup sesudahnya sampai Lanjutkan & arsip habis — menurut proyeksi setahun penuh di atas bisa BEBERAPA hari berturut-turut. K11
+untuk 2028 diputuskan atas proyeksi lama (±117%, satu hari kuota); bagian 2028-nya ditanyakan ulang ke owner.
 
 **Jam server = jam halaman** (sejak rules v7). Rules v7 menilai berita acara baru (jam mulai = tanggal server ± 1 hari, tahun lampau), pintu
 tutup buku (hanya tahun lalu, ≤ 72 jam dari jam server), dan kunci periode dengan **jam server**. Halaman gladi berjam palsu (31 Des 2026 / 1 Jan /
