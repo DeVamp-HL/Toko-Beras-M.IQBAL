@@ -51,7 +51,7 @@ Penjaga yang berbunyi (semuanya di `hbSesi`, diuji `alat-uji/uji_hemat_baca.py`)
 - **Pendengar simpanan hidup**: ubahan yang dibawa S/F wajib terlihat di V dalam 5 detik; tidak → tirai "muat ulang", penulis menolak.
 - **Satu klien Firestore per peramban** (kunci tab localStorage): tab kedua bertanya "Pakai di sini"; tab yang kalah `terminate()`.
 - **Rem kuota**: baca penuh OTOMATIS ditunda bila perkiraan baca toko hari ini > 80% kuota; ≤ 2 otomatis/koleksi/hari; 3× mulai tanpa selesai → berhenti.
-  Tombol manual menembus.
+  Tombol manual menembus; baca penuh WAJIB karena tutup buku berubah juga (audit P5, bagian di bawah).
 - **Uang-kritis** (tutup hari, titik kas, kunci bulan, tutup buku): hitungan server ≤ 2 menit untuk semua koleksi hemat, kalau tidak DITOLAK dengan kalimat.
 - **Katalog kasir**: terbit hanya bila semua koleksi hemat terperiksa, hitungan koleksi HP kasir ≤ 35 menit, kunci tab dipegang, tanpa ayunan antarperangkat
   (dua perangkat berbeda hitungan → berhenti + baca penuh), ≤ 6 terbit otomatis per jam.
@@ -134,6 +134,41 @@ Lengkap: dengar penuh terkini; atau terperiksa DAN (dibaca penuh perangkat ini p
 atau dilewati karena bulannya terkunci (`sentuhCap` → `lewat`) dihitung per jenis catatan di `temuanTunda`. Kalimat untuk banyak jenis catatan
 (`hbKalimatBelum`): "data perangkat ini <keadaan> (n jenis catatan) — <petunjuk>; m jenis catatan lainnya <sebabnya>" — sebab satu jenis tidak dipinjamkan ke
 yang lain. Keputusan yang memakainya dan yang sengaja tidak: lihat `baru/BACA-DULU.md` bab Hemat baca, bagian "Kelengkapan".
+
+## Hemat baca × arsip tutup buku (audit P5, 8 Okt) — perangkat yang tertutup selama ritual
+
+**Celah.** Arsip tutup buku menghapus TANPA batu nisan (`firebase.js arsipkanBerkas`), jadi catatan tahun lalu di simpanan perangkat owner yang tertutup
+selama ritual hanya dibuang baca penuh (F); catatan yang lebih tua dari jendela S tidak dibuang S maupun N. Saldo pembukanya bercap baru → datang lewat S.
+Dulu: V pertama → simpanan "dipercaya" (hanya jumlah yang dibandingkan) → siap, tirai "memuat" lepas SEBELUM berita acara terbaca; S membawa saldo pembuka →
+memori = catatan tahun lalu + saldo pembuka = stok, bon & utang **DOBEL** di Jual, Gudang, Pelanggan, bon (uang-kritis, katalog & kartu Paket C sudah
+tertahan). Baca penuh karena tutup buku berubah tergolong otomatis → bisa ditahan rem kuota (denyut perangkat ritual ±45 rb baca hari itu) → dobel bertahan
+sampai reset kuota. Berita acara dari SIMPANAN dulu (basi) → tutup buku tampak tidak berubah → F tidak jalan sama sekali sampai jawaban server tiba.
+
+**Obat (`hemat-baca.js`, `firebase.js`).**
+
+| Bagian | Sekarang |
+|---|---|
+| (a) rencana | tutup buku berubah sejak baca penuh terakhir (`bkBeda`), atau baca penuh sesudah tutup buku terputus di sesi lalu (`bkCampur`) → baca penuh **WAJIB**: seperti tombol (menembus rem, tidak turun ke delta, tidak dihitung otomatis), didahulukan dari permintaan otomatis (hitungan beda). Gagal → sebabnya disebut, dicoba lagi sesudah 10 menit seperti baca penuh otomatis (bukan tiap kabar koleksi tetap — tiap ulang = seluruh koleksi dibaca) |
+| (b) TAHAN | koleksi DITAHAN selama baca penuh sesi ini belum selesai DAN (berita acara belum dijawab SERVER sesi ini · tutup buku berubah · simpanan bisa bercampur). Ditahan = tidak siap (tirai memuat), tanpa S, memori BEKU = isi simpanan saat mulai ditahan + tulisan perangkat ini sendiri (`catatTulis` dari `tulisBerkas`) — tanpa catatan tambahan dari server dan tanpa pembuangan setengah jalan (limbo F: dokumen baru tiba lebih dulu, catatan arsip terbuang belakangan). Selesai → memori dari simpanan (= server), siap, S dipasang |
+| (b) berita acara | `firebase.js kabariTetap` meneruskan `acaraServer` (jawaban terakhir pendengar `tutupBukuAcara` bukan dari simpanan perangkat); sekali benar di sesi itu, tetap benar. Buka biasa: memori tetap seketika dari simpanan, tirai memuat menunggu satu jawaban server berita acara (dulu siap seketika) |
+| (b) bercampur | F yang berjalan selama tutup buku berjalan / sesudah tutup buku berubah menandai rekam `bkCampur` (simpanan bisa memuat saldo pembuka + catatan arsip yang belum terbuang); dibuang saat F selesai tanpa tutup buku berjalan, atau saat dengar penuh terkini ketika ritual berakhir. Sesi berikut yang menemukan tanda ini memulai memorinya KOSONG (+ tulisan sendiri) sampai baca penuh wajib selesai |
+| tidak ditahan | perangkat yang MENJALANKAN / terbuka selama ritual (dengar penuh, berita acara terjawab server): memori mengikuti ritual seperti dulu — saldo pembuka masuk, catatan arsip keluar seketika |
+| tanpa internet | tirai tidak menggantung: siap dari simpanan (memori tetap beku), pil kepala & kabar mengaku |
+| kelengkapan | baca penuh yang sedang berjalan disebut lebih dulu dari "ubahan terbaru" ("sedang dibaca penuh — tunggu sampai selesai"): koleksi yang ditahan baru memasang S sesudah F |
+
+**Uji** (`alat-uji/uji_hemat_baca.py`, jsc, server mainan dengan baca penuh LAMBAT: dipasang → jawaban server masuk simpanan → limbo membuang catatan arsip):
+murni rencana wajib; B1 (perangkat baru: tirai tetap selama F berjalan walau berita acara terjawab), B2 (buka biasa: memori seketika, siap sesudah berita
+acara dari server, tanpa baca penuh); **T6b** (tertutup selama ritual, F lambat: tidak pernah dobel di tiap tahap, tirai memuat, tanpa S, tulisan sendiri
+tampil; + rem kuota aktif dari denyut perangkat ritual: F tetap jalan & selesai tanpa ketukan); **T6c** (berita acara dari simpanan dulu); T6d (F terputus di
+tengah limbo → sesi berikut memori kosong, bukan dobel); T6e (perangkat ritual sendiri tidak dibekukan); T6f (F wajib gagal: tirai lepas, memori beku, jeda 10
+menit); T6g (simpanan bercampur tanpa internet: tirai lepas, memori kosong, kabar mengaku); C14 (`acaraServer` dari `fromCache`), C15 (`tulisBerkas` →
+`catatTulis`). T6b & T6c MERAH di kode sebelum obat; 17 kontrol baru (P5a–P5f), kontrol (i) disesuaikan — semuanya berbunyi. Limbo SDK sungguhan belum diuji
+di peramban (lihat "Belum dibangun"; uji peramban hanya di runner CI).
+
+**Sisa yang diakui.** Selama baca penuh wajib berjalan (detik sampai ± semenit untuk ±18 rb catatan), layar menggambar keadaan SEBELUM ritual (catatan tahun
+lalu tanpa saldo pembuka — saldo stok, piutang & utang sama, rinciannya lama) atau kosong (simpanan bercampur), dengan "memuat…" di kepala. Butir "Perangkat
+lain sesudah ritual" di daftar periksa 1 Jan (`docs/prosedur-pulih-darurat.md`, PR #119) tetap berlaku sebagai penjaga kedua: buka, tunggu "memuat" & pil
+hilang, baru berjualan.
 
 ## Belum dibangun (tahap berikut / bila perlu)
 

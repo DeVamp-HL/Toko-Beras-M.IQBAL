@@ -236,7 +236,9 @@ function kabariTetap(nama, snap, tunda) {
     if (typeof c === 'number' && d && d.pada === _denyutKirim.pada && _gemaTerakhir !== _denyutKirim.pada && !tunda.some((t) => t.id === id)) { _gemaTerakhir = _denyutKirim.pada; _hemat.gemaServer(c, _denyutKirim.ms); }
   }
   if (!Object.keys(TETAP_HEMAT).every((n) => _tetapAda[n])) return;
-  _hemat.setelTetap({ perangkat: cacheMentah('perangkat'), acara: cacheMentah('tutupBukuAcara'), klaim: dokDiCache('aturanToko', HB_ID_KLAIM) });
+  // audit P5: acaraServer = jawaban terakhir pendengar berita acara tutup buku dari SERVER — berita acara dari simpanan perangkat bisa basi (tutup buku tampak
+  // tidak berubah), jadi sesi hemat menahan koleksinya (tirai memuat, tanpa S, memori beku) sampai ini benar
+  _hemat.setelTetap({ perangkat: cacheMentah('perangkat'), acara: cacheMentah('tutupBukuAcara'), klaim: dokDiCache('aturanToko', HB_ID_KLAIM), acaraServer: _dariCache.tutupBukuAcara === false });
 }
 const snapPolos = (snap) => ({ dariCache: !!(snap.metadata && snap.metadata.fromCache),
   dok: snap.docs.map((d) => ({ id: d.id, tunda: !!(d.metadata && d.metadata.hasPendingWrites), capMentah: d.get('capServer'), isi: () => d.data() })) });
@@ -449,6 +451,8 @@ export async function tulisBerkas(daftar, hapus, opsi) {
     const d = beriAtribusiAkun(x.data, akun, k, x.ada);
     // owner 7 Okt: koleksi hemat bercap jam server (SESUDAH penjaga kiriman; salinan antre & `ditulis` tetap tanpa sentinel)
     b.set(doc(db, x.koleksi, String(d.id)), pasangCap(x.koleksi, d)); ditulis.push({ koleksi: x.koleksi, data: d });
+    // audit P5: tulisan perangkat ini tetap tampil selagi koleksinya ditahan tutup buku (memori beku sampai baca penuh selesai)
+    if (_hemat) _hemat.catatTulis(x.koleksi, d.id);
     if (owner) {   // owner: satu baris jejak per dokumen, seperti catatLogAktivitas index.html (+ olehUid)
       const log = { id: idUnik(), pada: k.kini, aksi: d.dibatalkan ? 'batalkan' : (d.dikoreksiOleh ? 'tandai-koreksi' : 'tulis'),
         koleksi: x.koleksi, idDok: String(d.id), oleh: d.diubahOleh, olehUid: akun.uid, perangkat: k.perangkat, ringkas: ringkasDok(d) };

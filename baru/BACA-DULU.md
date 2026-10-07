@@ -2198,6 +2198,18 @@ tidak dipinjamkan ke yang lain ("…; 2 jenis catatan lainnya <sebabnya>"), "(n 
 tautologis), kasus K4 (baca penuh sesi ini + putus internet; kontrol K4 kini berbunyi di sana, bukan di B9), K5 (tab berhenti), K6/K6b/K6c (klaim + sentuhan gagal
 sekali / permanen / bulan terkunci), pembanding mati menggambar kartu kunci bulan dari layar & menolak pembanding kosong.
 
+**Audit P5 (8 Okt) — hemat baca × arsip tutup buku.** Arsip tutup buku menghapus tanpa batu nisan; perangkat owner yang hemat bacanya NYALA dan tertutup
+selama ritual dulu membuka dengan catatan tahun lalu dari simpanannya SEKALIGUS saldo pembuka yang dibawa S (stok, bon, utang DOBEL di Jual, Gudang,
+Pelanggan, bon), tirai "memuat" sudah lepas, dan baca penuhnya bisa ditahan rem kuota sampai reset. Kini (`hemat-baca.js` + `firebase.js`): baca penuh karena
+tutup buku berubah = **WAJIB** (seperti tombol: menembus rem, tidak turun ke delta; gagal → jeda 10 menit); koleksi **DITAHAN** selama baca penuh sesi itu
+belum selesai DAN berita acara belum dijawab SERVER (`acaraServer` dari `fromCache` pendengar `tutupBukuAcara` — berita acara dari simpanan bisa basi) /
+tutup buku berubah / simpanan bisa bercampur (rekam `bkCampur`, baca penuh sesudah tutup buku terputus di sesi lalu → memori mulai kosong). Ditahan =
+tirai memuat, tanpa S, memori BEKU (isi simpanan saat ditahan + tulisan perangkat ini sendiri lewat `catatTulis`) — tidak pernah catatan arsip + saldo
+pembuka sekaligus, juga selama limbo baca penuh. Perangkat yang menjalankan / terbuka selama ritual (dengar penuh) tidak ditahan. Buka biasa: memori tetap
+seketika dari simpanan, tirai menunggu satu jawaban server berita acara. Tanpa internet: tirai tidak menggantung. Uji `uji_hemat_baca.py` B1, B2, T6b–T6g,
+C14, C15 (+ 17 kontrol P5a–P5f); rincian: `docs/rancangan-hemat-baca.md` bagian "Hemat baca × arsip tutup buku". Butir "Perangkat lain sesudah ritual" di
+prosedur tetap: tunggu "memuat…" / "memeriksa data" hilang sebelum berjualan (perangkat hemat baca MATI tetap bisa dobel sementara).
+
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 
 Status sesudah PR #111 digabung: langkah 1–2 SELESAI; langkah 3–7 = tugas owner (sesudah 13 Okt tidak ada lagi yang mengerjakannya untuk owner).
