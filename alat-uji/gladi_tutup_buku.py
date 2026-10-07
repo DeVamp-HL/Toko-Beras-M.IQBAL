@@ -1048,8 +1048,8 @@ KONTROL = [
      'sasaran': 'muat penuh: semua koleksi siap', 'boleh': [],
      'bukti': ('cek muat penuh menyebut pengeluaranHarian hanya 10 dokumen di halaman', lambda S: (((next((x['ket'] for x in S['cek'] if x['nama'].startswith('muat penuh')), None) or {}).get('beda') or {}).get('pengeluaranHarian') or [None])[0] == 10)},
     {'nama': 'pemulihan arsip melewatkan satu dokumen (BATALKAN sesudah penanda)', 'skenario': 'ritualPendek',
-     'rusak': [('js/data/firebase.js', "    potong.forEach((x) => { b.set(doc(db, x.koleksi, String(x.idAsli)), x.dok); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });",
-                "    potong.forEach((x, j) => { if (i + j === 0) return; b.set(doc(db, x.koleksi, String(x.idAsli)), x.dok); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });")],
+     'rusak': [('js/data/firebase.js', "    potong.forEach((x) => { b.set(doc(db, x.koleksi, String(x.idAsli)), pasangCap(x.koleksi, x.dok)); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });",
+                "    potong.forEach((x, j) => { if (i + j === 0) return; b.set(doc(db, x.koleksi, String(x.idAsli)), pasangCap(x.koleksi, x.dok)); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });")],
      'sasaran': 'BATALKAN SESUDAH PENANDA di SERVER', 'boleh': [],
      'bukti': ('server: 1 dokumen tertinggal di arsipTahun & kurang 1 di koleksi asal', lambda S: ((L_(S, 'BATALKAN sesudah penanda') or {}).get('kait') or {}).get('arsip') == 1
                and sum((((L_(S, 'BATALKAN sesudah penanda') or {}).get('kait') or {}).get('banding') or {}).get('kurang', {}).values()) == 1)},

@@ -337,6 +337,10 @@ function gambarChipDanNav() {
   kembali.addEventListener('click', () => { try { localStorage.removeItem(fb.KUNCI_PROYEK_UJI); } catch (e) { /* abaikan */ } location.replace(location.pathname); });
   bilah.appendChild(kembali); document.body.appendChild(bilah); document.body.classList.add('proyek-uji');
 })();
+// ---- HEMAT BACA: /baru/?hemat=mati = saklar perangkat ini MATI tanpa membuka layar (jalan darurat owner 7 Okt; docs/prosedur-pulih-darurat.md) ----
+const hematMatiDariAlamat = q.get('hemat') === 'mati';
+if (hematMatiDariAlamat) { fb.setelSaklarHemat(false); location.replace(location.pathname); }
+let _tiraiTab = null;   // tirai kunci tab / tab berhenti menerima data (hemat baca nyala) — dideklarasikan sebelum Firebase dimulai
 // ---- SERVER TIRUAN (gladi tutup buku, 7 Okt 2026): hanya halaman localhost / 127.0.0.1 dengan ?emulator=… — bilah merah di setiap layar seperti proyek uji.
 // Diminta tapi alamatnya ditolak: bilah "SERVER TIRUAN DITOLAK" yang menetap (firebase.js tidak tersambung ke mana pun — gagal-tertutup) ----
 (function () {
@@ -346,10 +350,6 @@ function gambarChipDanNav() {
   bilah.querySelector('b').textContent = tolak || T.proyek;
   document.body.appendChild(bilah); document.body.classList.add('proyek-uji');
 })();
-// ---- HEMAT BACA: /baru/?hemat=mati = saklar perangkat ini MATI tanpa membuka layar (jalan darurat owner 7 Okt; docs/prosedur-pulih-darurat.md) ----
-const hematMatiDariAlamat = q.get('hemat') === 'mati';
-if (hematMatiDariAlamat) { fb.setelSaklarHemat(false); location.replace(location.pathname); }
-let _tiraiTab = null;   // tirai kunci tab / tab berhenti menerima data (hemat baca nyala) — dideklarasikan sebelum Firebase dimulai
 
 if (q.get('cadangan')) {
   muatCadangan(q.get('cadangan')).then((r) => {
