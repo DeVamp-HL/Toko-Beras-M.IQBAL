@@ -1962,7 +1962,9 @@ sampai 936×, buku stok mesin sampai 927×, `petaBukuWadah` 3.366×. Mesin beku 
     berbunyi KARENA sebabnya (elemen ke-4 RUSAK). Kode sebelum sanggahan: 21/21 basi; main sebelum cabang ini: 12/21 basi (dasbor di detak menit, semua
     kasus layar lain — Menu dulu selalu digambar ulang, dasbor dulu disegarkan denyut HP).
 
-## Paket C — pemeriksaan sesudah tutup buku di aplikasi (8 Okt 2026, cabang `perbaikan/periksa-sesudah-tutup-buku`)
+## Paket C — pemeriksaan sesudah tutup buku di aplikasi (7 Okt 2026, cabang `perbaikan/periksa-sesudah-tutup-buku`)
+
+*Catatan tanggal: commit Paket C & sanggahan #111 menyebut 8 Okt; pekerjaannya 7 Okt (WIB).*
 
 Rencana tutup buku 2026 dulu memuat butir "cadangan SESUDAH diperiksa (hanya baca): baris perbandingan + modal, buku 25 kg di rak Jual, pajak 2026 dari
 potret, tidak ada minus" yang dikerjakan di luar aplikasi. Sesudah 13 Okt 2026 tidak ada lagi yang mengerjakannya → aplikasi memeriksa sendiri, owner
@@ -2020,7 +2022,7 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
 - **MM7 (sisa audit 39b)**: kalimat daftar Retur untuk nota ber-bonus sudah menunjuk "Tidak ada notanya? Retur ketik tangan" di `/baru/` sejak 2 Okt
   (9686b61; ketik tangan menerima kemasan per unit). Komentar kepala `retur-logika.js` yang masih menyebut sistem lama dibetulkan. Tidak ada kalimat layar
   `/baru/` lain yang menyuruh membuka sistem lama / `kasir.html`.
-- **Hemat baca (#111, disambungkan 8 Okt)**: koleksi yang BELUM LENGKAP di perangkat ini (SATU sumber `hemat-baca.js hbBelumLengkap`, lihat bagian
+- **Hemat baca (#111, disambungkan 7 Okt)**: koleksi yang BELUM LENGKAP di perangkat ini (SATU sumber `hemat-baca.js hbBelumLengkap`, lihat bagian
   "Kelengkapan" di bab Hemat baca) diteruskan `firebase.js hematKeadaan().belumLengkap` → `app.js lokalPerangkat` → `uang.js muatData` (`M.hemat`, hanya saat
   nyala) → `pstKurang`: baris yang membutuhkannya = "?" dengan sebab toko ("data modal owner belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB — ketuk
   "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)"), bukan ✓. Saklar mati: `M` tanpa `hemat` — kartu sama persis (`uji_periksa_sesudah.py --banding=<ref>`).
@@ -2046,7 +2048,7 @@ lapisan dengar baru di balik saklar per perangkat yang bawaannya MATI.
   (jam server) di tulisan 48 koleksi hemat lewat `tulisBerkas` / `perbaruiBerkas` / `pulihkanBerkas`; capServer DIKUPAS dari tiap snapshot sebelum memori
   (mesin beku, cadangan, katalog tidak melihatnya); batu nisan `batuNisan/<koleksi>|<id>` di batch hapus koleksi hemat — HANYA sesudah perangkat itu
   terbukti bisa membaca `batuNisan` (aturan v7; 1 baca sekali, `miqbal_hemat_nisan_sah_v1`); denyut `versi: 'baru-c1'` + `capServer` di denyut owner.
-- **Saklar NYALA** (owner; Menu › Sistem › Perangkat › Hemat baca, dua ketukan, aplikasi dimuat ulang; mati darurat `/baru/?hemat=mati`): koleksi hemat
+- **Saklar NYALA** (owner; Menu › Toko ini › Perangkat & antrean › Hemat baca, dua ketukan, aplikasi dimuat ulang; mati darurat `/baru/?hemat=mati`): koleksi hemat
   lewat `hbSesi` (`baru/js/data/hemat-baca.js`, murni) — simpanan perangkat (V) + delta `capServer > B` (S) + batu nisan (N) + baca penuh kueri sendiri (F);
   baca penuh harian per toko (dokumen `aturanToko/hematHarian`); pendeteksi tanpa cap di tiap baca penuh; penulis tanpa cap dari denyut; hitungan server;
   rem kuota; satu tab per peramban (kunci tab di app.js sebelum Firestore dimulai); pendengar simpanan hidup; uang-kritis & katalog kasir dijaga.
@@ -2071,7 +2073,7 @@ baca penuh terakhir; catatan arsip tutup buku bukan "hilang tanpa kabar"; umur d
 uji: `docs/rancangan-hemat-baca.md` bagian "Tinjauan 7 Okt". Saklar MATI dibuktikan lagi: firebase.js cabang vs `main` di jsc — pendengar, memori,
 tulisan (selain cap jam server yang disengaja), simpanan, pendengar staf SAMA.
 
-**Kelengkapan — SATU sumber (8 Okt, #111 × Paket C)**. `hemat-baca.js hbBelumLengkap` menjawab, per koleksi hemat di perangkat ini, apakah datanya LENGKAP
+**Kelengkapan — SATU sumber (7 Okt, #111 × Paket C)**. `hemat-baca.js hbBelumLengkap` menjawab, per koleksi hemat di perangkat ini, apakah datanya LENGKAP
 untuk keputusan final dan sebabnya (kalimat toko). Dua jenis: **"periksa"** = belum terperiksa dengan server (arti `terperiksa` sejak 7 Okt + tab yang
 berhenti — dibuktikan di 16384 kombinasi keadaan; tab berhenti / kalah kunci tab, simpanan belum terbaca, batu nisan belum dicocokkan, dengar penuh / baca penuh
 masih berjalan, baca penuh wajib tapi ditunda rem kuota / gagal, ubahan bercap belum dicocokkan, hitungan server belum cocok) · **"harian"** = hitungan cocok
@@ -2093,7 +2095,7 @@ bank) dan dokumen kecil (nota, kuitansi — satu catatan) juga tidak ditahan. Sa
 kartu, gerbang, kunci bulan dari LAYAR, pintu susunKunci, Lanjutkan, HTML Uang, Pajak & dokumen Laporan + hasil ketukan keluar). Uji: `uji_hemat_baca.py` bagian K
 (+ kontrol K1–K15), `uji_periksa_sesudah.py` S7/S7b/S7c/S7d (+ kontrol hemat, asap cadangan lokal: nyala & lengkap = mati; nyala & belum dibaca penuh = 13 "?" 0 ✗).
 
-**Sanggahan 8 Okt (adversarial atas adc85b3)** — dibetulkan: (1) baca penuh harian TOKO menulis `selesai` hanya sesudah antrean temuan pendeteksi habis
+**Sanggahan 7 Okt (adversarial atas adc85b3)** — dibetulkan: (1) baca penuh harian TOKO menulis `selesai` hanya sesudah antrean temuan pendeteksi habis
 (sentuhan / batu nisan terkirim); yang gagal permanen (5×) atau DILEWATI karena bulannya terkunci (`sentuhCap` kini melaporkan `lewat`, dulu dibuang diam-diam)
 dihitung per jenis catatan → `temuanTunda` di `aturanToko/hematHarian` → perangkat lain "harian" untuk jenis itu ("punya ubahan yang ditemukan baca penuh
 harian toko tapi belum sampai ke perangkat ini — ketuk …"); dulu perangkat lain melapor LENGKAP padahal ubahan Console tidak pernah sampai. (2) Tab yang kalah
@@ -2107,15 +2109,25 @@ sekali / permanen / bulan terkunci), pembanding mati menggambar kartu kunci bula
 
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 
-1. **Rules v7 FINAL terbit DULU — JANGAN merge sebelum itu** (owner lewat Console, Playground `docs/uji-rules-v7.md` 17 kasus "Wajib owner" sesuai kolom
-   "Wajib", bagian lain opsional; dokumen uji dihapus lagi; Claude membaca lewat Chrome owner). Satu nota dari HP kasir yang masih v32 masuk. Tanpa v7: batu nisan tidak pernah ditulis (hemat baca tidak bisa
-   dinyalakan) dan kirim ulang karcis kasir-v33 hanya selamat lewat cara lama (jaring pengaman, bukan jalan utama).
-2. **Gabung cabang** (saklar MATI — baca belum berubah). CI hijau, termasuk job peramban (antrean kasir dengan `:commit`).
+Status sesudah PR #111 digabung: langkah 1–2 SELESAI; langkah 3–7 = tugas owner (sesudah 13 Okt tidak ada lagi yang mengerjakannya untuk owner).
+
+1. **SELESAI 7 Okt 2026 — Rules v7 FINAL TERBIT 18.25 WIB** (Playground, dokumen uji dihapus, Publish; sidik isi editor = versi aktif = `firestore.rules`
+   repo, SHA-256 `e0ed6a975dd5…`, 49.960 byte). Nota kasir darurat dari HP penjaga yang masih versi lama masuk 18.27. Rincian & batas Playground:
+   `docs/uji-rules-v7.md` bagian "Hasil Playground". (Dulu langkah ini berbunyi "terbit DULU — JANGAN merge sebelum itu".)
+2. **SELESAI 7 Okt 2026 21.25 WIB — cabang digabung** (PR #111, `9491bf7`; saklar MATI — baca belum berubah). Job Pages di `main` hijau (run
+   37636513613); run PR sebelumnya hijau termasuk Uji rules di emulator, Gladi tutup buku & Uji beban peramban.
 3. **HP penjaga** dibuka sekali sampai bilah atas "versi 7 Okt" (kasir-v33). **Semua tab `/baru/`** di tiap perangkat dimuat ulang (denyut `baru-c1`).
-4. **Daftar siap-nyala hijau 3 hari berturut-turut** (Menu › Sistem › Perangkat › Hemat baca): aturan v7 terbukti · tanpa tab `/baru/` lama / sistem
-   lama 7 hari · semua HP kasir ≥ kasir-v33 dalam 14 hari · tiap perangkat owner `baru-c1` antrean 0 · tanpa catatan baru tak bercap.
+   **Belum ditandai**: baru ditandai sesudah owner melihat denyut kasir-v33 di Menu › Toko ini › Perangkat & antrean. Muat ulang semua tab tetap tugas
+   owner.
+4. **Daftar siap-nyala hijau 3 hari berturut-turut** (Menu › Toko ini › Perangkat & antrean › Hemat baca): aturan v7 terbukti · tanpa tab `/baru/`
+   lama / sistem lama 7 hari · semua HP kasir ≥ kasir-v33 dalam 14 hari · tiap perangkat owner `baru-c1` antrean 0 · tanpa catatan baru tak bercap.
 5. **Owner menyalakan** di tiap perangkat owner (tiap perangkat membaca penuh sekali, ±9 rb baca; nyalakan berselang, bukan sekaligus).
-6. Esoknya Claude membaca tab Usage Console (baca saja) sehari sebelum & sesudah, dibandingkan dengan "perkiraan baca hari ini" di panel Hemat baca.
+6. **Owner membandingkan tagihan baca** (Console › Firestore › Usage; langkahnya juga di `docs/prosedur-pulih-darurat.md` bab "Hemat baca"):
+   (a) sehari SEBELUM perangkat pertama dinyalakan, catat jumlah baca harian di Usage sebagai patokan — panel Hemat baca hanya menampilkan "Perkiraan
+   baca hari ini" saat NYALA, jadi patokan "sebelum" hanya ada di Usage; (b) hari nyala jangan dipakai pembanding (tiap perangkat membaca penuh sekali,
+   ±9 rb baca); (c) pada hari kuota sesudahnya, sesaat sebelum reset, tulis angka "Perkiraan baca hari ini … toko ±N" (Menu › Toko ini › Perangkat &
+   antrean › Hemat baca) lalu cocokkan dengan Usage hari yang sama; (d) kalau Usage tidak turun, jauh di atas perkiraan, mendekati 50 rb, atau HP kasir kena
+   kuota habis (429) → matikan hemat baca per perangkat. Batas angkanya owner yang menentukan.
 7. Sesudah nyala: ubah data lewat Console → tekan "Saya baru mengubah data lewat Console"; tutup buku 2026 (sesudah 1 Jan 2027 15.00 WIB) dimulai
    sesudah "Baca penuh sekarang" di perangkat pemegang (butir g7 daftar periksa tutup buku — g6 = stok minus & kelebihan bayar, paket A).
 
@@ -2165,7 +2177,22 @@ dalam satu kiriman, pintu tahun lain, berita acara selesai tanpa menutup pintu, 
 diterima. Papan persetujuan & Buku Nego owner menghitung ulang angka permintaan nego (`ngPeriksaMinta`: barang, harga minta, jumlah + katalog sekarang);
 permintaan nego tidak ikut "setujui semua yang kecil".
 
-**Langkah owner** (urutan lengkap di isi PR #111 & `docs/uji-rules-v7.md`): Playground + Publish v7 → satu nota kasir darurat masuk → merge PR #111 → HP
-penjaga dibuka sekali (kasir-v33) → hemat baca dinyalakan menurut daftar siap-nyala (≤ 20 Nov). Tutup buku 2027 (Januari 2028) tidak perlu langkah rules
-apa pun lagi.
+**Langkah owner** (urutan lengkap di isi PR #111 & `docs/uji-rules-v7.md`): Playground + Publish v7 ✓ (7 Okt 18.25 WIB) → satu nota kasir darurat masuk ✓
+(18.27) → merge PR #111 ✓ (7 Okt 21.25 WIB, `9491bf7`) → HP penjaga dibuka sekali (kasir-v33; ditandai sesudah owner melihat denyutnya di Perangkat &
+antrean) → hemat baca dinyalakan menurut daftar siap-nyala (≤ 20 Nov). Tutup buku 2027 (Januari 2028) tidak perlu langkah rules apa pun lagi.
 
+## Keputusan owner 8 Okt 2026 — K9–K12 (siap 2027)
+
+- **K9** modal awal 8 Agu DIBIARKAN, tidak dicatat: berita acara tutup buku & Neraca berkop memuat SATU kalimat tetap bahwa selisih "belum terjelaskan"
+  berasal dari posisi toko sebelum sistem mulai mencatat 8 Agu 2026 (modal awal tidak pernah dicatat), angka pastinya urusan konsultan. Kalimat itu
+  dipasang di aplikasi oleh PR #121 (paket P2: `laporan-logika.js LP_KALIMAT_MODAL_AWAL`, dipakai berita acara tutup buku & Neraca berkop). Kalau kalimat
+  itu TIDAK tercetak di kertas Neraca berkop / berita acara (PR itu belum digabung), owner menyampaikannya sendiri ke konsultan bersama PDF Neraca 31 Des
+  (`docs/prosedur-pulih-darurat.md`, daftar periksa ritual tutup buku).
+- **K10** karcis kasir darurat yang isinya ≠ nominal DITERIMA APA ADANYA per kelompok (Agustus kurang; September lebih karena dirinci dua kali oleh sistem
+  lama), alasannya tertulis, angkanya diserahkan ke konsultan — JANGAN dirinci ulang (stok terpotong dua kali).
+- **K11** kartu kuota 1 Jan berbunyi TIDAK MUAT → ritual tetap dimulai 1 Jan sesudah reset; toko TUTUP Sabtu 2 Jan 2027 (tidak jualan, tidak menagih)
+  sampai sesudah 15.00 WIB, Lanjutkan dari Mac yang sama, tunggu arsip habis. Tutup buku 2027: ritual Sabtu 1 Jan 2028 sesudah reset, toko tutup
+  sesudahnya sampai Lanjutkan & arsip habis — setahun penuh bisa BEBERAPA hari kuota berturut-turut (`docs/uji-rules-v7.md` paragraf "Setahun penuh 2027").
+  K11 untuk 2028 diputuskan atas proyeksi lama (±117%, satu hari kuota); bagian 2028-nya ditanyakan ulang ke owner.
+- **K12** tugas "isi cara bayar dua kedatangan Agustus lewat Console" DITUTUP: tidak dikerjakan — angka sama (`docs/peta-kunci-periode.md` §10).
+- Dijaga `alat-uji/uji_dokumen_owner.py` (+ kontrol): proyeksi kuota 2028 dihitung ulang dari rumus kartu, bunyi K11 2028, jalan sementara K9.

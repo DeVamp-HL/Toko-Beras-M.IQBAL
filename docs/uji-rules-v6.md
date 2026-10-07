@@ -1,4 +1,10 @@
-# Uji rules v6 di server — berita acara tutup buku hanya maju (DRAF, belum terbit)
+# Uji rules v6 di server — berita acara tutup buku hanya maju (TERBIT 2 Okt 2026, diganti v7 7 Okt — sejarah)
+
+> **Status:** v6 TERBIT 2 Okt 2026 dini hari (PR #93, `b412581`), diganti **v7** 7 Okt 2026 18.25 WIB (`docs/uji-rules-v7.md`). Berkas ini sejarah —
+> jangan dipakai untuk memeriksa rules yang terbit. Penjaga "hanya maju" v6 ikut di v7 dan dibuktikan atas teks v7 di emulator (45 kasus H). Kalau
+> kasus di bawah diulang di Playground atas v7, hasilnya BERBEDA: **★A15** (create berita acara `uji-v6-baru` tahun 1990) dan **★C3** (delete berita acara
+> `selesai`) wajib LOLOS di sini tetapi DITOLAK v7 (berita acara baru wajib id = tahun, mode sungguhan & jam mulai hari ini; hanya yang `dibatalkan`
+> boleh dihapus); **★A4** dan **★A6** (jadi `selesai` / `dibatalkan`) memanggil `getAfter` lewat `acaraTutupPintu`, yang tidak didukung Playground.
 
 `alat-uji/periksa_rules.py` memeriksa **bentuk** rules di CI, dan untuk v6 juga menilai fungsi rules `tutupBukuAcara` APA ADANYA (diterjemahkan ke
 Python) pada semua kasus di bawah — itu model, bukan server. Berkas ini untuk **perilaku server**: kasus yang dijalankan owner di **Rules Playground**
@@ -28,7 +34,8 @@ berita acara — (1) jalan MULAI: kiriman pertama tertahan di HP A, owner menunt
 (2) ambil alih: HP lama masih menyimpan kiriman; (3) ekor pembatalan HP beku menulis `dibatalkan` di atas percobaan baru yang `selesai`. Di v6 tulisan
 berita acara itu DITOLAK server (untuk (3) server hanya menolak berita acaranya; pengembalian arsipnya sejak 2 Okt dihentikan kode — TRV6-EKOR-1, lihat "Batas yang diketahui"); karena kiriman tutup buku satu writeBatch, saldo pembuka yang ikut di kiriman itu juga tidak masuk (tidak ada "setengah").
 
-**Mundur** = tempel `firestore.rules.v5` (berita acara kembali owner-saja tanpa urutan; kiriman telat bisa menimpa lagi).
+**Mundur** = tempel `firestore.rules.v5` (berita acara kembali owner-saja tanpa urutan; kiriman telat bisa menimpa lagi). **Sejak v7 terbit DICABUT** —
+mundur rules yang berlaku: `docs/uji-rules-v7.md` bagian "Mundur".
 
 **Kapan**: tidak mendesak — berita acara hanya ditulis saat tutup buku sungguhan (paling cepat sesudah 31 Des 2026). v6 harus sudah terbit **sebelum**
 owner menekan "Kunci tahun 2026".
@@ -184,14 +191,20 @@ Satu saja ★ yang meleset = **jangan Publish**; kirim nomornya ke Claude Code. 
 
 ## Kalau sesudah v6 terbit tutup buku DITOLAK
 
-Kabar layar K6 menyebut kiriman ke-n "tulis ditolak: permission-denied" dan salinannya ada di Menu › Sistem › Perangkat (ditolak server). **Jangan
-tulis ulang kiriman tutup buku yang ditolak** dan jangan ketuk berulang-ulang. Sejak 13 Okt 2026 owner mengerjakannya sendiri:
+> **Sejak v7 terbit (7 Okt 2026) langkah 3 di bawah ("tempel `firestore.rules.v5`") DICABUT.** v5 tidak punya penjaga berita acara v6 maupun lima
+> ubahan v7; menempelnya menolak yang juga ditolak bila v6 ditempel — lihat `docs/uji-rules-v7.md` bagian "Mundur" (hapus ber-batu nisan, permintaan nego
+> staf, foto bon, tutup buku 2027). Langkah 1–2 di bawah juga sejarah: yang berlaku sejak v7 (isinya sama, sebab jam ditambah pintu tutup buku) ada di
+> `docs/uji-rules-v7.md` bagian "Kalau kiriman tutup buku DITOLAK server". Jalan darurat rules: `docs/prosedur-pulih-darurat.md`.
+
+Kabar layar K6 menyebut kiriman ke-n "tulis ditolak: permission-denied" dan salinannya ada di Menu › Toko ini › Perangkat & antrean › Antrean kirim
+(ditolak server). **Jangan tulis ulang kiriman tutup buku yang ditolak** dan jangan ketuk berulang-ulang. Sejak 13 Okt 2026 owner mengerjakannya sendiri:
 1. Catat kalimat kabarnya (foto layar untuk arsip sendiri). Penyebab yang diharapkan = kiriman yang memang telat (perangkat lain / percobaan lama) — itu
    yang dijaga v6, dan pita tutup buku tetap benar: ikuti pitanya (Lanjutkan / Batalkan dari perangkat pemegang).
 2. Penyebab lain yang bisa dibereskan sendiri: **jam perangkat** (Setelan › Umum › Tanggal & Waktu → "Setel otomatis" di iPhone/iPad; Pengaturan Sistem ›
    Umum › Tanggal & Waktu di Mac), lalu ketuk Lanjutkan sekali. Tetap ditolak → **Batalkan** dari perangkat pemegang, tunggu tuntas, coba lagi besok sesudah
    reset kuota.
-3. Jalan terakhir (rules lama tanpa penjaga berita acara — hanya selama ritual): Console › Firestore › Rules → tempel isi `firestore.rules.v5` dari repo
+3. **DICABUT 7 Okt (lihat catatan di atas) — JANGAN dikerjakan.** Dulu: jalan terakhir (rules lama tanpa penjaga berita acara — hanya selama ritual):
+   Console › Firestore › Rules → tempel isi `firestore.rules.v5` dari repo
    (`git show origin/main:firestore.rules.v5 | LANG=en_US.UTF-8 pbcopy`) → **Publish** → catat jam → ulangi langkah ritual yang ditolak → sesudah ritual
    tuntas tempel lagi `firestore.rules` dari repo (`git show origin/main:firestore.rules | LANG=en_US.UTF-8 pbcopy`) → **Publish** → cocokkan isi editor
    dengan `shasum -a 256 firestore.rules` → catat jam. Tulis kejadiannya di `docs/peta-kunci-periode.md`.

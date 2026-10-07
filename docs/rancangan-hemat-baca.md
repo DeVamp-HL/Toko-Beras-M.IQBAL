@@ -99,8 +99,8 @@ perangkat sudah kebal cap masa depan, catatannya tetap tampil dan tidak menggese
 
 ## Keputusan tahap ini yang diambil sendiri (bukan dari spesifikasi kata per kata)
 
-- **Saklar per perangkat** (localStorage `miqbal_hemat_saklar_v1`, tombol di Menu › Sistem › Perangkat › Hemat baca, dua ketukan, lalu muat ulang) — bukan
-  dokumen toko `aturanToko/hematBaca`. Jalan darurat: `/baru/?hemat=mati`. Mematikan = kembali dengar penuh, tanpa terbit ulang.
+- **Saklar per perangkat** (localStorage `miqbal_hemat_saklar_v1`, tombol di Menu › Toko ini › Perangkat & antrean › Hemat baca, dua ketukan, lalu
+  muat ulang) — bukan dokumen toko `aturanToko/hematBaca`. Jalan darurat: `/baru/?hemat=mati`. Mematikan = kembali dengar penuh, tanpa terbit ulang.
 - **Batu nisan menunggu bukti aturan v7** (owner bisa membaca `batuNisan`) — kode ini aman walau tergabung sebelum rules v7 terbit: hapus tetap seperti dulu.
   Saklar NYALA juga butuh bukti itu.
 - **Kunci tab hanya saat NYALA** (MATI = tidak berubah apa-apa).
@@ -108,7 +108,7 @@ perangkat sudah kebal cap masa depan, catatannya tetap tampil dan tidak menggese
   sebelum perangkat pendeteksi melihatnya (temuan uji server mainan B6).
 - `capServer` denyut owner dipakai sebagai gema jam server (spesifikasi: `padaServer`); `padaServer` tetap ikut dikupas.
 
-## Kelengkapan — SATU sumber (8 Okt, #111 × Paket C)
+## Kelengkapan — SATU sumber (7 Okt, #111 × Paket C)
 
 `hbBelumLengkap(c)` (murni) → `null` (lengkap) atau `{ jenis, sebab }`; `hbSesi.belumLengkap()` → `{ koleksi: { jenis, sebab } }`, ikut `keadaan()` dan
 `firebase.js hematKeadaan()`. `terperiksaK` = bukan jenis "periksa" (rumus 7 Okt + tab yang berhenti — uji K: 16384 kombinasi; sesi nyata dibandingkan
@@ -124,13 +124,13 @@ dengan rumus yang ditulis ulang di uji).
 | periksa | ubahan bercap (S) belum terkini | belum dicocokkan dengan ubahan terbaru di server — tunggu sebentar |
 | periksa | baca penuh sekali sedang berjalan · hitungan server belum cocok sesi ini | sedang dibaca penuh … · belum dicocokkan dengan server — tunggu sebentar |
 | periksa | tanpa internet (keadaan apa pun di atas) | belum dicocokkan dengan server — perangkat ini tanpa internet |
-| harian | terperiksa, tapi baca penuh terakhir perangkat ini BUKAN hari kuota ini dan baca penuh harian toko hari ini belum selesai | belum dibaca penuh sejak kuota baca direset pukul 14.00/15.00 WIB — ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca) |
+| harian | terperiksa, tapi baca penuh terakhir perangkat ini BUKAN hari kuota ini dan baca penuh harian toko hari ini belum selesai | belum dibaca penuh sejak kuota baca direset pukul 14.00/15.00 WIB — ketuk "baca penuh sekarang" (Menu › Toko ini › Perangkat & antrean › Hemat baca — `HB_TEMPAT`, PR #121) |
 | harian | baca penuh harian toko hari ini selesai, tapi `temuanTunda` jenis catatan ini > 0 (sentuhan gagal permanen / bulan terkunci) | punya ubahan yang ditemukan baca penuh harian toko tapi belum sampai ke perangkat ini — ketuk "baca penuh sekarang" (…) |
 | harian | baca penuh terakhir gagal 429 (kuota habis), hitungan cocok | belum bisa dibaca penuh karena kuota baca hari ini habis — ketuk "baca penuh sekarang" sesudah pukul HH.MM WIB (…) |
 | harian | jam server belum diterima (hari kuota tidak diketahui) | belum bisa dipastikan sudah dibaca penuh sejak kuota baca terakhir direset (jam server belum diterima) — tunggu sebentar |
 
 Lengkap: dengar penuh terkini; atau terperiksa DAN (dibaca penuh perangkat ini pada hari kuota ini ATAU baca penuh harian toko hari ini selesai tanpa
-`temuanTunda` jenis catatan itu). Baca penuh harian toko menulis `selesai` hanya sesudah antrean temuan pendeteksi habis (sanggahan 8 Okt); yang gagal permanen
+`temuanTunda` jenis catatan itu). Baca penuh harian toko menulis `selesai` hanya sesudah antrean temuan pendeteksi habis (sanggahan 7 Okt); yang gagal permanen
 atau dilewati karena bulannya terkunci (`sentuhCap` → `lewat`) dihitung per jenis catatan di `temuanTunda`. Kalimat untuk banyak jenis catatan
 (`hbKalimatBelum`): "data perangkat ini <keadaan> (n jenis catatan) — <petunjuk>; m jenis catatan lainnya <sebabnya>" — sebab satu jenis tidak dipinjamkan ke
 yang lain. Keputusan yang memakainya dan yang sengaja tidak: lihat `baru/BACA-DULU.md` bab Hemat baca, bagian "Kelengkapan".
@@ -141,4 +141,6 @@ yang lain. Keputusan yang memakainya dan yang sengaja tidak: lihat `baru/BACA-DU
 - Pembersih nisan per dokumen (`getDocFromServer`) & `nisanTuntas`; arsip besar → `clearIndexedDbPersistence`.
 - Deteksi "antrean warisan" (mutasi kode lama di antrean IndexedDB) — pendeteksi statis & pendeteksi F menangkap akibatnya.
 - Uji peramban CI dengan emulator Firestore (demosi tab, F berkueri sendiri, limbo, REST `:commit` terhadap rules v7) — kasus B1–B12 spesifikasi.
-- Perkiraan baca toko dari denyut adalah perkiraan; tagihan sebenarnya dibaca di tab Usage Console sehari sebelum & sesudah nyala.
+- Perkiraan baca toko dari denyut adalah perkiraan; tagihan sebenarnya dibaca **owner** di Console › Firestore › Usage: patokan sehari sebelum perangkat
+  pertama dinyalakan (panel hanya menampilkan "Perkiraan baca hari ini" saat nyala), hari nyala tidak dipakai pembanding, lalu Usage dicocokkan dengan
+  perkiraan toko sesaat sebelum reset. Langkahnya: `docs/prosedur-pulih-darurat.md` bab "Hemat baca" dan `baru/BACA-DULU.md` bab Hemat baca, langkah 6.
