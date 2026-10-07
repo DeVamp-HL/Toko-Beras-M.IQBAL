@@ -3,7 +3,9 @@
 # tetap — bukan data toko; cadangan asli tidak pernah ada di runner), lalu /baru/ ASLI di Chrome headless lewat ?emulator= menjalankan Uang › Tutup buku:
 # LATIHAN (tanpa menulis), SUNGGUHAN yang diblokir gerbang lalu dibuka lewat putusan per tanggal (Paket A), dan ritual penuh di data yang sama — putusan,
 # server yang menolak di tengah (lanjutkan / batalkan sebelum & sesudah penanda) sampai selesai, tiap titik diperiksa di SERVER. Tiap langkah dan tiap jalur
-# (ritual bersih · batal) : baca / tulis / hapus vs batas Spark. Proyek emulator "demo-gladi-toko": tanpa kredensial, tanpa data toko.
+# (ritual bersih · batal) : baca / tulis / hapus vs batas Spark. Rules v7: skenario PINTU di data TERKUNCI (semua bulan 2026 dikunci) — tutup buku lewat pintu,
+# batal, selesai menutup pintu, pintu kedaluwarsa ditolak; jam JVM emulator = jam halaman (libfaketime, diukur). Proyek emulator "demo-gladi-toko": tanpa
+# kredensial, tanpa data toko.
 # Manual: Actions › Gladi tutup buku › Run workflow. Otomatis di PR yang menyentuh tutup buku, kunci periode, uang, aturan server, sambungan Firebase.
 name: Gladi tutup buku
 
@@ -11,8 +13,8 @@ on:
   workflow_dispatch:
     inputs:
       skenario:
-        description: 'Skenario (dipisah koma): latihan, gerbang, ritual'
-        default: 'latihan,gerbang,ritual'
+        description: 'Skenario (dipisah koma): latihan, gerbang, ritual, pintu'
+        default: 'latihan,gerbang,ritual,pintu'
       kontrol:
         description: 'Jalankan juga kontrol (salinan uji yang dirusak wajib ketahuan)'
         type: boolean
@@ -52,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 170
     env:
-      GLADI_SKENARIO: ${{ github.event.inputs.skenario || 'latihan,gerbang,ritual' }}
+      GLADI_SKENARIO: ${{ github.event.inputs.skenario || 'latihan,gerbang,ritual,pintu' }}
       GLADI_SKALA: ${{ github.event.inputs.skala || '0.65' }}
     steps:
       - name: Ambil isi repo
@@ -135,13 +137,13 @@ jobs:
 
       # Tiap skenario di EMULATOR SENDIRI: emulator tetap mengirimi sesi WebChannel halaman yang sudah ditutup sampai kanalnya kedaluwarsa (run 7 Okt:
       # 2,2 juta baris "antrean penuh" ketika ritual berjalan sesudah dua skenario lain). Laporan per skenario digabung sesudahnya.
-      - name: "GLADI — emulator Firestore + Auth, /baru/ di Chrome headless: latihan · gerbang · ritual"
+      - name: "GLADI — emulator Firestore + Auth, /baru/ di Chrome headless: latihan · gerbang · ritual · pintu (rules v7, data terkunci)"
         working-directory: ${{ runner.temp }}/proyek-gladi
         run: |
           gagal=0
           IFS=',' read -ra DAFTAR <<< "$GLADI_SKENARIO"
           for s in "${DAFTAR[@]}"; do
-            case "$s" in latihan|gerbang|ritual) ;; *) echo "skenario tidak dikenal: $s"; exit 2;; esac
+            case "$s" in latihan|gerbang|ritual|pintu) ;; *) echo "skenario tidak dikenal: $s"; exit 2;; esac
             echo "::group::skenario $s"
             rm -f firestore-debug.log
             export GLADI_GESER_JAM=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --geser-jam "$s"); echo "jam JVM emulator digeser $GLADI_GESER_JAM dtk"
@@ -161,7 +163,7 @@ jobs:
 
       # Tiap kontrol di EMULATOR SENDIRI (sama dengan skenario): sesi kanal halaman kontrol sebelumnya tidak boleh membanjiri muat kontrol berikutnya — kontrol
       # yang ceknya ikut gagal karena antrean emulator dihitung DIAM, bukan berbunyi.
-      - name: "KONTROL — salinan uji dirusak (latihan menulis, latihan menulis tertunda, gerbang g1 dibuang, satu koleksi tidak lengkap, pemulihan arsip kurang satu) wajib ketahuan karena sebab yang benar"
+      - name: "KONTROL — salinan uji dirusak (latihan menulis, latihan menulis tertunda, gerbang g1 dibuang, satu koleksi tidak lengkap, pemulihan arsip kurang satu, selesai tanpa menutup pintu) wajib ketahuan karena sebab yang benar"
         if: success() && (github.event_name == 'pull_request' || github.event.inputs.kontrol == 'true')
         working-directory: ${{ runner.temp }}/proyek-gladi
         run: |

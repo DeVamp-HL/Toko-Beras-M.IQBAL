@@ -100,26 +100,27 @@ var KASIR_UJI = (function () {
   };
 })();
 
-// ---- HOST node (runner): node kasir_emulator.js <berkas permintaan JSON> → JSON hasil di stdout. Hanya Firestore EMULATOR yang boleh disentuh. ----
+// ---- HOST node (runner): node kasir_emulator.js <berkas permintaan JSON> → JSON hasil di stdout. Hanya Firestore EMULATOR yang boleh disentuh.
+// Halaman (dan inti di atas) dijalankan di KONTEKS vm SENDIRI: tiruan setTimeout / fetch / navigator halaman tidak mengganggu node (fetch bawaan node =
+// undici memakai setTimeout global dan .unref() — run 7 Okt: "this.timeout.unref is not a function" saat tiruan dipasang di global node).
 if (typeof process !== 'undefined' && process.versions && process.versions.node && typeof require === 'function' && require.main === module) {
   (async function () {
-    var fs = require('fs');
+    var fs = require('fs'), vm = require('vm');
     var M = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
     var asal = 'https://firestore.googleapis.com/v1/projects/' + M.proyekHalaman + '/';
     var tuju = 'http://' + M.emulator + '/v1/projects/' + M.proyekEmulator + '/';
-    var fetchAsli = fetch;   // fetch bawaan node — disimpan sebelum diganti tiruan halaman
     var H = {
-      tidur: function (ms) { return new Promise(function (r) { setTimeoutAsli(r, ms); }); },
+      tidur: function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); },
       fetch: function (url, opsi) {
         if (url.indexOf(asal) !== 0) return Promise.reject(new Error('alamat di luar Firestore halaman (tidak dikirim ke mana pun): ' + url.slice(0, 80)));
         var o = Object.assign({}, opsi);
         if (typeof o.body === 'string') o.body = o.body.split('projects/' + M.proyekHalaman + '/').join('projects/' + M.proyekEmulator + '/');
-        return fetchAsli(tuju + url.slice(asal.length), o);
+        return fetch(tuju + url.slice(asal.length), o);
       }
     };
-    var setTimeoutAsli = setTimeout;
-    var skrip = fs.readFileSync(M.skrip, 'utf8');
-    var h = await KASIR_UJI.jalankan(H, skrip, M.simpanan, M.aksi);
+    var ctx = vm.createContext({ console: console });
+    vm.runInContext(fs.readFileSync(__filename, 'utf8'), ctx, { filename: 'kasir_emulator.js' });
+    var h = await ctx.KASIR_UJI.jalankan(H, fs.readFileSync(M.skrip, 'utf8'), M.simpanan, M.aksi);
     process.stdout.write(JSON.stringify(h) + '\n');
   })().catch(function (e) { process.stdout.write(JSON.stringify({ galat: String(e && e.stack || e) }) + '\n'); });
 }

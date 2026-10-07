@@ -22,7 +22,14 @@ SKENARIO (urutannya = urutan ritual owner; langkah tiap skenario = daftar nama d
            (arsip dikembalikan, pembuka ditarik); mulai lagi → selesai (cadangan sesudah) → DIAM. Klaim tiap titik DIPERIKSA DI SERVER (REST emulator, bukan
            cache halaman): berita acara, arsipTahun = dokumen 2026 yang asli, dokumen 2026 tersisa di koleksi asal, saldo pembuka = nPembuka, penanda
            tutupBuku, titik kas & isi 21 koleksi 2026 sesudah batal = sebelum ritual.
-  ritualPendek (kontrol saja) kunci penuh lalu BATALKAN SESUDAH PENANDA — pemulihan arsip yang dirusak di salinan wajib ketahuan dari isi server.
+  pintu    (rules v7, pintu tutup buku) 5 Jan 2027 15.30 WIB, data TERKUNCI (gladi_data_contoh varian terkunci: kunci periode sampai Desember 2026 — semua bulan
+           tahun yang ditutup terkunci — + dua pindahan uang bertanggal bulan terkunci yang tidak diarsip). Jam server emulator = jam halaman (libfaketime,
+           --geser-jam; diukur). SUNGGUHAN → putusan → paraf → kunci penuh LEWAT PINTU (kiriman 1 berita acara sendirian, kiriman 2 membuka pintu, saldo pembuka,
+           titik kas 31 Des, arsip) → BATALKAN sesudah penanda → mulai lagi → kunci penuh → selesai menutup pintu. Tiap titik di SERVER: pintu terbuka (2026,
+           ≤ 72 jam dari jam server) / tertutup, arsipTahun = ISI catatan asli (bukan hanya id), pindahan uang bulan terkunci utuh, titik kas 31 Des. Sesudah
+           halaman selesai (REST, token owner contoh dari emulator Auth): pintu yang dibuat KEDALUWARSA → mengembalikan catatan dari arsip & menghapus catatan
+           bulan terkunci yang salinannya ada DITOLAK server; pintu yang sama dengan `sampai` besok → diterima (bukti sebabnya jam pintu).
+  pintuPendek (kontrol saja) data terkunci: kunci penuh lalu selesai — selesai yang TIDAK menutup pintu (salinan dirusak) wajib ditolak server.
 Tiap langkah: baca (dokumen yang diterima pendengar halaman — penghitung di salinan SDK uji — DITAMBAH tulisan halaman sendiri ke koleksi yang didengarnya,
 yang ditagih Firestore tetapi tidak memicu docChange baru; get() di aturan tidak terukur), tulis & hapus (beda isi emulator lewat REST sebelum ↔ sesudah
 langkah). Ringkasan: per langkah, lalu per JALUR (ritual bersih percobaan terakhir · kunci berhenti + batal sebelum penanda · batal sesudah penanda) di
@@ -63,7 +70,7 @@ DIDENGAR = set(re.findall(r"\{ nama: '(\w+)'", open(os.path.join(AKAR, 'baru/js/
 TAK_TERCAPAI = 'langkah tidak tercapai'   # ket cek yang langkahnya tidak dijalankan — kontrol yang hanya "gagal" karena ini dihitung DIAM
 CHROME = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser',
                            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'] if os.path.exists(p)), None)
-TUNGGU_SKENARIO = {'latihan': 900, 'gerbang': 900, 'ritual': 6000, 'ritualPendek': 3600, 'muatSaja': 900}
+TUNGGU_SKENARIO = {'latihan': 900, 'gerbang': 900, 'ritual': 6000, 'ritualPendek': 3600, 'muatSaja': 900, 'pintu': 6000, 'pintuPendek': 3600}
 
 
 def alamat_emulator():
@@ -207,6 +214,14 @@ ATURAN_REPO = open(os.path.join(AKAR, 'firestore.rules'), encoding='utf-8').read
 BATAS_JAM = 900   # selisih jam server − jam halaman yang diterima (dtk): emulator menyala ± 1 menit sebelum halaman dimuat
 
 
+def waktu(teks):
+    """timestampValue REST ('…Z', pecahan detik sampai 9 angka) / ISO berzona → datetime berzona."""
+    t = str(teks).replace('Z', '+00:00')
+    m = re.match(r'^(.*T\d\d:\d\d:\d\d)(\.\d+)?(.*)$', t)
+    if m and m.group(2): t = m.group(1) + m.group(2)[:7].ljust(7, '0') + m.group(3)
+    return datetime.datetime.fromisoformat(t)
+
+
 def geser_jam(jam_iso):
     """FAKETIME libfaketime ('+N' / '-N' detik) supaya jam JVM emulator = jam_iso SEKARANG."""
     n = int(round(datetime.datetime.fromisoformat(jam_iso).timestamp() - time.time()))
@@ -225,7 +240,7 @@ def jam_server():
 
 def banding_jam(jam_halaman):
     """→ {'server', 'halaman', 'selisihDetik', 'ok', 'geser'}: jam server diukur, dibanding jam halaman skenario."""
-    sv = jam_server(); t = datetime.datetime.fromisoformat(sv.replace('Z', '+00:00')).timestamp()
+    sv = jam_server(); t = waktu(sv).timestamp()
     sel = round(t - datetime.datetime.fromisoformat(jam_halaman).timestamp(), 1)
     return {'server': sv, 'halaman': jam_halaman, 'selisihDetik': sel, 'ok': abs(sel) <= BATAS_JAM, 'geser': os.environ.get('GLADI_GESER_JAM', '')}
 
@@ -337,6 +352,84 @@ def keadaan_server(jenis, awal, batas=120):
             g.append('penanda pengaturan/tutupBuku %s — harusnya dinetralkan (tahunDitutup 0, dibatalkan 2026)' % r['tutupBuku'])
     r['gagal'] = g; r['ok'] = not g
     return r
+
+
+def awal_pintu():
+    """awal_ritual + pindahan uang (catatan bulan terkunci yang TIDAK diarsip — wajib utuh selama pintu terbuka)."""
+    a = awal_ritual(); a['pindahUang'] = potret_isi(['pindahUang']).get('pindahUang', {}); return a
+
+
+def tanpa_cap(d): return {k: v for k, v in (d or {}).items() if k != 'capServer'}
+
+
+def keadaan_pintu(jenis, awal, batas=120):
+    """keadaan_server + PINTU (rules v7): pintu tahun 2026 terbuka ≤ 72 jam dari jam server (arsip habis) / tertutup (batal, selesai); arsipTahun = ISI catatan
+    asli; pindahan uang bulan terkunci utuh; titik kas 31 Des 2026."""
+    r = keadaan_server(jenis, awal, batas); g = r['gagal']
+    p = ambil_dok('pengaturan', 'pintuBuku') or {}; sv = waktu(jam_server())
+    try: sampai = waktu(p.get('sampai'))
+    except ValueError: sampai = None
+    jam = round((sampai - sv).total_seconds() / 3600.0, 1) if sampai else None
+    r['pintu'] = {'tahun': p.get('tahun'), 'status': p.get('status'), 'jamTersisa': jam}
+    if jenis == 'arsipHabis':
+        if not (p.get('status') == 'berjalan' and p.get('tahun') == 2026 and jam is not None and 0 < jam <= 72): g.append('pintu tutup buku di server tidak terbuka untuk 2026 (≤ 72 jam dari jam server): %s' % r['pintu'])
+    elif p and p.get('status') != 'tutup': g.append('pintu tutup buku di server masih %s sesudah %s' % (r['pintu'], jenis))
+    pu = potret_isi(['pindahUang']).get('pindahUang', {})
+    if pu != awal.get('pindahUang'): g.append('pindahan uang bulan terkunci (tidak diarsip) BERUBAH di server: %d → %d dokumen' % (len(awal.get('pindahUang') or {}), len(pu)))
+    if jenis in ('arsipHabis', 'selesai'):
+        A = potret_isi(['arsipTahun']).get('arsipTahun', {}); beda = []
+        for i, a in A.items():
+            if not i.startswith('2026|'): continue
+            _, k, j = i.split('|', 2); asli = (awal['isi'].get(k) or {}).get(j)
+            if asli is None or tanpa_cap(a.get('dok')) != tanpa_cap(asli) or a.get('tahun') != 2026 or a.get('koleksi') != k or a.get('idAsli') != j: beda.append(i)
+        r['arsipIsiBeda'] = len(beda)
+        if beda: g.append('%d salinan arsipTahun ≠ isi catatan aslinya (contoh %s)' % (len(beda), beda[0]))
+    tk = ambil_dok('pengaturan', 'titikKas') or {}
+    if tk.get('tanggal') != '2026-12-31': g.append('titik kas di server bertanggal %s, harusnya 31 Des 2026' % tk.get('tanggal'))
+    r['ok'] = not g
+    return r
+
+
+def token_owner(sandi):
+    """id token owner contoh dari emulator Auth (masuk dengan sandi gladi — hanya emulator)."""
+    return rest('POST', AUTH + '/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo-kunci-gladi',
+                {'email': EMAIL_OWNER, 'password': sandi, 'returnSecureToken': True})['idToken']
+
+
+def kode_rest(metode, url, data, kepala):
+    """→ kode HTTP (403 = ditolak rules) tanpa melempar."""
+    try: rest(metode, url, data, kepala, waktu=60); return 200
+    except RuntimeError as e:
+        m = re.search(r'HTTP (\d+)', str(e)); return int(m.group(1)) if m else -1
+
+
+def uji_pintu_kedaluwarsa(sandi):
+    """Sesudah skenario pintu (halaman sudah ditutup): pintu tutup buku 2026 dibuat KEDALUWARSA (Bearer owner = admin emulator), lalu dengan TOKEN OWNER
+    (rules menilai) catatan bulan terkunci dikembalikan dari arsip / dihapus — wajib DITOLAK; pintu yang sama dengan `sampai` besok → DITERIMA (kontrol:
+    sebab penolakannya jam pintu). Pengembalian = bentuk pulihkanBerkas firebase.js (isi salinan + capServer jam server)."""
+    A = potret_isi(['arsipTahun']).get('arsipTahun', {}); pilih = sorted(i for i in A if i.startswith('2026|penjualan|'))
+    if not pilih: return [{'langkah': 'arsip 2026 penjualan', 'ok': False, 'ket': 'tidak ada salinan arsip penjualan 2026 di server'}]
+    aid = pilih[0]; _, kol, id_ = aid.split('|', 2); dok = A[aid]['dok']
+    K = {'Authorization': 'Bearer ' + token_owner(sandi)}; komit = FS + '/v1/' + DB + '/documents:commit'; nama = DB + '/documents/' + kol + '/' + id_
+    sv = waktu(jam_server())
+    def pintu(jam):
+        t = (sv + datetime.timedelta(hours=jam)).astimezone(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+        f = {'id': ke_nilai('pintuBuku'), 'tahun': ke_nilai(2026), 'status': ke_nilai('berjalan'), 'gladi': ke_nilai('uji pintu kedaluwarsa'), 'sampai': {'timestampValue': t}}
+        rest('POST', komit, {'writes': [{'update': {'name': DB + '/documents/pengaturan/pintuBuku', 'fields': f}}]}, OWNER)
+        return t
+    kembali = {'writes': [{'update': {'name': nama, 'fields': {a: ke_nilai(b) for a, b in tanpa_cap(dok).items()}}, 'currentDocument': {'exists': False},
+                           'updateTransforms': [{'fieldPath': 'capServer', 'setToServerValue': 'REQUEST_TIME'}]}]}
+    hapus = {'writes': [{'delete': nama}]}
+    out = []
+    for langkah, jam, badan, harap in (('pintu KEDALUWARSA (sampai 1 jam lalu): owner mengembalikan %s dari arsip' % aid, -1, kembali, 403),
+                                       ('pintu yang sama, sampai BESOK: owner mengembalikan %s dari arsip' % aid, 24, kembali, 200),
+                                       ('pintu KEDALUWARSA: owner menghapus catatan bulan terkunci yang salinan arsipnya ada', -1, hapus, 403),
+                                       ('pintu yang sama, sampai BESOK: owner menghapus catatan itu (arsip = pindah)', 24, hapus, 200)):
+        t = pintu(jam); k = kode_rest('POST', komit, badan, K)
+        out.append({'langkah': langkah, 'sampai': t, 'kode': k, 'harap': harap, 'ok': k == harap})
+    tulis_rest([('pengaturan', 'pintuBuku', {'id': 'pintuBuku', 'tahun': 2026, 'status': 'tutup', 'gladi': 'uji pintu kedaluwarsa selesai'})])
+    out.append({'langkah': 'sesudah uji: salinan arsip %s masih ada, catatan aslinya tidak ada (seperti sesudah selesai)' % aid, 'ok': ambil_dok('arsipTahun', aid) is not None and ambil_dok(kol, id_) is None})
+    return out
 
 
 def putusan_server(hari, alasan, batas=60):
@@ -616,10 +709,15 @@ SKENARIO = {
                                            'mulaiLagi', 'kunciTerputusArsip', 'lanjutkan', 'batalkanSesudahPenanda', 'mulaiLagi', 'kunciPenuh', 'selesai', 'diam']),
     # kontrol saja (bukan bawaan workflow): muat penuh saja — kerusakan yang membuat data kurang tidak boleh ikut menjatuhkan langkah tutup buku sesudahnya
     'muatSaja': ('macet', DC.JAM_LATIHAN, ['masuk', 'muatPenuh', 'diam']),
+    # rules v7: data TERKUNCI (semua bulan 2026), jam server = jam halaman 5 Jan 2027 — ritual lewat pintu, batal, mulai lagi, selesai menutup pintu
+    'pintu': ('terkunci', DC.JAM_PINTU, ['masuk', 'muatPenuh', 'bukaTutupBuku', 'sungguhan', 'putusanG1', 'sampaiParaf', 'kunciPenuh', 'batalkanSesudahPenanda', 'mulaiLagi',
+                                          'kunciPenuh', 'selesai', 'diam']),
+    # kontrol saja: data terkunci, kunci penuh lalu selesai — separuh waktu skenario pintu
+    'pintuPendek': ('terkunci', DC.JAM_PINTU, ['masuk', 'muatPenuh', 'bukaTutupBuku', 'sungguhan', 'putusanG1', 'sampaiParaf', 'kunciPenuh', 'selesai', 'diam']),
     # kontrol saja: kunci penuh lalu batalkan sesudah penanda — cukup untuk kontrol pemulihan arsip, separuh waktu ritual
     'ritualPendek': ('macet', DC.JAM_SUNGGUHAN, ['masuk', 'muatPenuh', 'bukaTutupBuku', 'sungguhan', 'putusanG1', 'sampaiParaf', 'kunciPenuh', 'batalkanSesudahPenanda', 'diam']),
 }
-SKENARIO_BAWAAN = ['latihan', 'gerbang', 'ritual']
+SKENARIO_BAWAAN = ['latihan', 'gerbang', 'ritual', 'pintu']
 
 
 # ============================== server uji ==============================
@@ -892,7 +990,37 @@ def cek_muat(S, data, c):
     cek_umum(S, data, c)
 
 
-CEK = {'latihan': cek_latihan, 'gerbang': cek_gerbang, 'ritual': cek_ritual, 'ritualPendek': cek_ritual, 'muatSaja': cek_muat}
+def cek_pintu(S, data, c):
+    """rules v7, data terkunci: ritual lewat pintu — halaman (berita acara di cache) DAN server (REST): pintu, arsip = isi asli, catatan terkunci lain utuh."""
+    cek_umum(S, data, c)
+    minta = S.get('langkahDiminta') or []
+    cek_putusan(S, data, c)
+    k1 = L_(S, '6 kunci → saldo pembuka + arsip penuh')
+    c.append(('KUNCI lewat pintu (halaman): berita acara "terkunci", tidak ada yang tertunda, tanpa kabar awas', bool(k1) and (info(k1, 'acara') or {}).get('status') == 'terkunci' and not info(k1, 'km')
+              and not info(k1, 'kabarAwas'), {k: info(k1, k) for k in ('acara', 'km', 'kabar', 'kabarAwas')} if k1 else TAK_TERCAPAI))
+    kait_cek(c, 'KUNCI di SERVER: pintu 2026 TERBUKA (≤ 72 jam dari jam server), arsipTahun = ISI semua catatan 2026 asli (= nArsip), saldo pembuka = nPembuka, pindahan uang '
+             'bulan terkunci utuh, titik kas 31 Des', k1)
+    if 'batalkanSesudahPenanda' in minta:
+        b2 = L_(S, 'BATALKAN sesudah penanda')
+        c.append(('BATALKAN lewat pintu (halaman): berita acara "dibatalkan", era kembali kosong, tidak ada yang tertunda', bool(b2) and (info(b2, 'acara') or {}).get('status') == 'dibatalkan'
+                  and info(b2, 'era') is None and not info(b2, 'km') and b2['hapus'] > 0, {k: info(b2, k) for k in ('acara', 'era', 'km', 'kabar')} if b2 else TAK_TERCAPAI))
+        kait_cek(c, 'BATALKAN di SERVER: isi %d koleksi 2026 = sebelum ritual, arsipTahun kosong, saldo pembuka ditarik, titik kas kembali, pintu TERTUTUP, pindahan uang utuh' % len(KOLEKSI_2026), b2)
+        k2 = L_(S, '6 kunci → saldo pembuka + arsip penuh', -1)
+        c.append(('KUNCI kedua sesudah mulai lagi (halaman): berita acara "terkunci"', bool(k2) and k2 is not k1 and (info(k2, 'acara') or {}).get('status') == 'terkunci' and not info(k2, 'kabarAwas'),
+                  {k: info(k2, k) for k in ('acara', 'km', 'kabar')} if k2 and k2 is not k1 else TAK_TERCAPAI))
+        kait_cek(c, 'KUNCI kedua di SERVER: pintu dibuka lagi, arsip = isi asli, pindahan uang utuh', k2 if k2 is not k1 else None)
+    s = L_(S, '7 cadangan sesudah · SELESAI')
+    c.append(('SELESAI (halaman): berita acara "selesai", era 2026, tidak ada yang tertunda', bool(s) and (info(s, 'acara') or {}).get('status') == 'selesai' and info(s, 'era') == 2026 and not info(s, 'km'),
+              {k: info(s, k) for k in ('acara', 'era', 'km', 'kabar')} if s else TAK_TERCAPAI))
+    kait_cek(c, 'SELESAI di SERVER: berita acara "selesai" & pintu TERTUTUP, arsipTahun = isi asli, saldo pembuka = nPembuka, pindahan uang utuh', s)
+    if 'pintuKedaluwarsa' in S:
+        for x in S['pintuKedaluwarsa']:
+            c.append(('sesudah selesai (REST, token owner): ' + x['langkah'] + (' → wajib %s' % ('DITOLAK (403)' if x.get('harap') == 403 else 'DITERIMA') if x.get('harap') else ''), x['ok'],
+                      {k: x.get(k) for k in ('kode', 'harap', 'sampai', 'ket') if x.get(k) is not None}))
+
+
+CEK = {'latihan': cek_latihan, 'gerbang': cek_gerbang, 'ritual': cek_ritual, 'ritualPendek': cek_ritual, 'muatSaja': cek_muat, 'pintu': cek_pintu, 'pintuPendek': cek_pintu}
+PASCA = {'pintu': uji_pintu_kedaluwarsa}   # uji server sesudah halaman ditutup (sandi owner contoh)
 
 
 # jalur biaya kuota (skenario ritual): langkah mana yang dijumlah. Ritual BERSIH = yang dikerjakan owner tanpa penolakan/pembatalan: masuk, muat, putusan,
@@ -1028,6 +1156,10 @@ def jalankan(daftar, sandi, rusak=None, cetak=print):
             # pemeriksa SERVER per langkah (dijalankan di dalam langkah itu, halaman menunggu): putusan, lalu tiap titik ritual dibanding isi sebelum ritual
             hari = data['gladi']['hariTanpaTutup']
             kait = {'putusan per tanggal disimpan': (lambda hari=hari: putusan_server(hari, DC.ALASAN_PUTUS))}
+            if CEK[nama] is cek_pintu:
+                awal = awal_pintu()
+                for langkah, jenis in (('6 kunci → saldo pembuka + arsip penuh', 'arsipHabis'), ('BATALKAN sesudah penanda', 'batalSesudah'), ('7 cadangan sesudah · SELESAI', 'selesai')):
+                    kait[langkah] = (lambda jenis=jenis, awal=awal: keadaan_pintu(jenis, awal))
             if CEK[nama] is cek_ritual:
                 awal = awal_ritual()
                 for langkah, jenis in (('6 kunci → kiriman saldo pembuka ditolak server', 'berjalan'), ('BATALKAN sebelum penanda', 'batalSebelum'),
@@ -1045,10 +1177,13 @@ def jalankan(daftar, sandi, rusak=None, cetak=print):
             for b in (S.get('konsol') or [])[-10:]: cetak('    konsol: ' + b[:300])
             coba_ulang.catat('skenario ' + nama, sebab, 2, 2, log=S.get('ekorChrome') or [])
         if ulang: S['dicobaUlang'] = ulang
+        if nama in PASCA and S.get('selesai') and not S.get('galat'):
+            try: S['pintuKedaluwarsa'] = PASCA[nama](sandi)
+            except Exception as e: S['pintuKedaluwarsa'] = [{'langkah': 'uji pintu kedaluwarsa jatuh', 'ok': False, 'ket': str(e)[:300]}]
         c = []
         CEK[nama](S, data, c)
         S['cek'] = [{'nama': a, 'ok': bool(b), 'ket': k} for a, b, k in c]
-        if CEK[nama] is cek_ritual: S['kuota'] = kuota_ritual(S, lap)
+        if CEK[nama] in (cek_ritual, cek_pintu): S['kuota'] = kuota_ritual(S, lap)
         for x in S['cek']: cetak('  %s %s%s' % ('✓' if x['ok'] else '✗', x['nama'], '' if x['ok'] else ' → ' + json.dumps(x['ket'], ensure_ascii=False)[:400]))
         for x in (S.get('kuota') or {}).get('peringatan', []): cetak('  ' + x)
         if S['galat']: cetak('  GALAT: ' + S['galat'][:800])
@@ -1091,6 +1226,16 @@ KONTROL = [
      'bukti': ('server: 1 dokumen tertinggal di arsipTahun & kurang 1 di koleksi asal', lambda S: ((L_(S, 'BATALKAN sesudah penanda') or {}).get('kait') or {}).get('arsip') == 1
                and sum((((L_(S, 'BATALKAN sesudah penanda') or {}).get('kait') or {}).get('banding') or {}).get('kurang', {}).values()) == 1)},
 ]
+
+
+KONTROL.append(
+    # rules v7 (acaraTutupPintu): berita acara 'selesai' hanya bila pintu tahun itu TERTUTUP sesudah kiriman itu — salinan yang lupa menutup pintu wajib ditolak
+    # SERVER saat selesai (bukan cuma model): berita acara tetap "terkunci", pintu tetap "berjalan"
+    {'nama': 'selesai TIDAK menutup pintu tutup buku (data terkunci)', 'skenario': 'pintuPendek',
+     'rusak': [('js/layar/tutup-buku-logika.js', "}) }].concat(bkTutupPintu(tahun, w)), patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup.", "}) }], patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup.")],
+     'sasaran': 'SELESAI di SERVER', 'boleh': ['SELESAI (halaman)', 'tidak ada galat izin'],
+     'bukti': ('server saat selesai: berita acara tetap "terkunci", pintu tetap "berjalan"', lambda S: ((L_(S, '7 cadangan sesudah · SELESAI') or {}).get('kait') or {}).get('acara') == 'terkunci'
+               and (((L_(S, '7 cadangan sesudah · SELESAI') or {}).get('kait') or {}).get('pintu') or {}).get('status') == 'berjalan')})
 
 
 def nilai_kontrol(k, lap):
