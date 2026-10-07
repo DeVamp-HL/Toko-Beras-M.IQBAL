@@ -19,9 +19,11 @@
 // SEMUA angka uang dari mesin beku yang sama (hitungLabaBersihRentang lewat ugLabaBersih = + lebih/kurang kas, bayaranBiayaBulanan, hitungArusKasInti) — modul ini hanya MEMILAH lalu MEMBANDINGKAN.
 // Wajib MENUTUP: Σ jenis harian = harianToko mesin; upah + tagihan tetap = jatahBulanan mesin; margin − Σ jenis − hapus buku + susut = laba bersih mesin.
 // Tidak ada perilaku uang yang berubah; yang BARU ditulis hanya aturanToko/kendaliBiaya. Nama pembantu diprefiks `kb` (bundel uji jsc satu lingkup).
+// Paket B (siap 2027): bulan di tahun yang sudah ditutup buku = POTRET saat kunci (kendaliPotret di bawah, ditulis tutup buku) — jumlah per jenis & bahan pemicu
+// tetap, rincian per catatan sudah diarsip (disebut, bukan digambar kosong). Bulan lalu (Desember) untuk pemicu & acuan Januari ikut membaca potret.
 import { hitungArusKasInti, bayaranBiayaBulanan } from '../mesin/beku.js';
 import { akhirBulanIso, bulanDari, POS_BIAYA_BULANAN, hppTercatat, caraBayarKunci } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPengeluaranHarian, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilPiutangMutasi, ambilKasbonMutasi } from '../data/toko.js';
+import { ambilPenjualan, ambilPengeluaranHarian, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilPiutangMutasi, ambilKasbonMutasi, potretBulan } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong, ugUntukDok, adalahMdr, ugLabaBersih } from './uang-logika.js';
 import { lpFinal, lpNamaBulan, lpBulanPendek, daftarBulan, lpAwalBuku, lpKetSebelumBuku } from './laporan-logika.js';
@@ -78,6 +80,7 @@ export function jenisCatatan(h, A) {
 
 // ---------- inti satu bulan (dipakai bulan ini, bulan lalu, acuan, tren) ----------
 function kbInti(key, kini, B, A) {
+  const Pt = potretBulan(key); if (Pt && Pt.kb) return kbDariPotret(key, kini, Pt);   // Paket B: tahun yang sudah ditutup buku
   const iso = hariIniIso(kini); const awal = key + '-01', akhir = akhirBulanIso(key); const L = ugLabaBersih(awal, akhir, B);
   const berjalan = key === kbKey(iso); const nHari = Number(akhir.slice(8, 10)); const hariJalan = berjalan ? Math.max(1, Math.min(nHari, Number(iso.slice(8, 10)))) : nHari;
   const per = {}; JENIS_BIAYA.forEach((j) => { per[j.id] = { n: 0, jumlah: 0, catatan: [] }; });
@@ -98,6 +101,24 @@ function kbInti(key, kini, B, A) {
   const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && L.nSusut === 0 && !rows.length;
   return { key, nama: lpNamaBulan(key), pendek: lpBulanPendek(key, true), berjalan, final: lpFinal(key), nHari, hariJalan, L, per, posSemua, susut, hapus, semuaBiaya, biayaToko: L.biayaToko, omzet: L.omzetPenuh, omzetHitung: L.omzetHitung, margin: L.margin, labaBersih: L.labaBersih,
     kgTerjual, kgHitung, nKg, belumDipilah, nBelum, dariKata, menutup, cocokHarian, cocokTetap, tanpaCatatan, cakupan: L.omzetHitung + L.omzetTanpaHpp > 0 ? L.omzetHitung / (L.omzetHitung + L.omzetTanpaHpp) : null, awal, akhir };
+}
+/** Paket B · inti satu bulan dari potret (tahun yang ditutup): bentuk sama dengan kbInti; rincian per catatan kosong (sudah diarsip) dan `diarsip` menyebutnya. */
+function kbDariPotret(key, kini, Pt) {
+  const X = Pt.kb; const awal = key + '-01', akhir = akhirBulanIso(key); const per = {};
+  JENIS_BIAYA.forEach((j) => { const p = (X.per && X.per[j.id]) || {}; per[j.id] = { n: Number(p.n) || 0, jumlah: Number(p.jumlah) || 0, catatan: [] }; });
+  return Object.assign({}, X, { key, nama: lpNamaBulan(key), pendek: lpBulanPendek(key, true), berjalan: key === kbKey(hariIniIso(kini)), final: lpFinal(key), L: Object.assign({ dariIso: awal, sampaiIso: akhir }, Pt.L), per, awal, akhir, diarsip: true });
+}
+/** Bahan pemicu satu bulan (kedatangan, kantong, hari kerja, uang QRIS, potongan QRIS) dari catatan; bulan yang sudah ditutup memakai potretnya. */
+function kbDasarPemicu(X, B) {
+  if (X.pemicu) return X.pemicu;
+  const Ka = hitungArusKasInti((t) => !!t && t >= X.awal && t <= X.akhir, B);
+  return { D: kbKedatangan(X.key), T: kbKantong(X.key), hk: kbHariKerja(X.key), qris: Ka.pos.qris, qrisLain: kbQrisLain(X), mdr: X.per.keuangan.catatan.filter((c) => c.mdr).reduce((a, c) => a + c.n, 0) };
+}
+/** Paket B · POTRET kendali biaya satu bulan untuk berita acara tutup buku: kbInti (jumlah per jenis, tanpa rincian per catatan) + bahan pemicu. L ikut potret bulan. */
+export function kendaliPotret(key, kini, bayaran) {
+  const B = bayaran || bayaranBiayaBulanan(); const X = kbInti(key, kini, B, aturKendali()); const per = {}; JENIS_BIAYA.forEach((j) => { per[j.id] = { n: X.per[j.id].n, jumlah: X.per[j.id].jumlah }; });
+  const out = {}; Object.keys(X).forEach((k) => { if (['key', 'nama', 'pendek', 'berjalan', 'final', 'L', 'per', 'awal', 'akhir'].indexOf(k) < 0) out[k] = X[k]; });
+  return Object.assign(out, { per, pemicu: kbDasarPemicu(X, B) });
 }
 /** Upah bulan `key` yang BELUM DIBAYAR sampai hari ini (dari absen, upah-logika: hari sejak terakhir dibayar) — [PERKIRAAN] bukan angka mesin laba. */
 export function upahMenggantung(key, kini) {
@@ -143,7 +164,8 @@ export function drafDariAcuan(K, draf) { const d = Object.assign({}, draf || {})
 /** Omzet yang harus dicapai supaya margin kotor menutup biaya di bawahnya: biaya ÷ rasio margin (margin ÷ omzet ber-HPP). Bulan berjalan: juga "sampai hari ini" dari mesin (awal bulan → hari ini). */
 export function titikImpas(K, kini, bayaran) {
   const rasio = K.omzetHitung > 0 ? K.margin / K.omzetHitung : null; const biaya = K.semuaBiaya; const omzetImpas = rasio > 0 ? Math.round(biaya / rasio) : null;
-  const iso = hariIniIso(kini); const sampai = K.berjalan ? (iso < K.akhir ? iso : K.akhir) : K.akhir; const Lj = ugLabaBersih(K.awal, sampai, bayaran || bayaranBiayaBulanan());
+  // Paket B: bulan yang sudah ditutup buku (catatannya diarsip) = laba sebulan penuh dari potret, bentuk sama dengan ugLabaBersih
+  const iso = hariIniIso(kini); const sampai = K.berjalan ? (iso < K.akhir ? iso : K.akhir) : K.akhir; const Lj = K.diarsip && !K.berjalan ? K.L : ugLabaBersih(K.awal, sampai, bayaran || bayaranBiayaBulanan());
   // 39b no. 38: impas = margin kotor menutup biaya — lebih/kurang kas bukan biaya, jadi dihitung dari laba mesin; laba bersih yang DISEBUT = laba bersih toko
   const menutupKini = Lj.labaMesin >= 0; const kurang = menutupKini ? 0 : -Lj.labaMesin; const omzetKurang = kurang > 0 && rasio > 0 ? Math.round(kurang / rasio) : 0;
   const hariSisa = K.berjalan ? K.nHari - K.hariJalan : 0;
@@ -165,9 +187,10 @@ const kbQrisLain = (X) => ambilPiutangMutasi().concat(ambilKasbonMutasi()).filte
 function kbHariKerja(key) { let h = 0; ambilBiayaBulanan().forEach((b) => { if (b.bulan !== key) return; (b.rincianGaji || []).forEach((r) => { h += Number(r.hari) || 0; }); }); return h; }
 export function pemicuBiaya(K, bayaran) {
   const B = bayaran || bayaranBiayaBulanan(); const KL = K.KL; const A = K.A;
-  const satu = (X, U) => { const D = kbKedatangan(X.key); const T = kbKantong(X.key); const hk = kbHariKerja(X.key) + (U ? U.nHari : 0); const upahSemua = X.per.upah.n + (U ? U.total : 0); const Ka = hitungArusKasInti((t) => !!t && t >= X.awal && t <= X.akhir, B); const mdr = X.per.keuangan.catatan.filter((c) => c.mdr).reduce((a, c) => a + c.n, 0);
+  // Paket B: bahan pemicu (kedatangan, kantong, hari kerja, uang & potongan QRIS) lewat kbDasarPemicu — bulan yang sudah ditutup buku membaca potretnya
+  const satu = (X, U) => { const Z = kbDasarPemicu(X, B); const D = Z.D; const T = Z.T; const hk = Z.hk + (U ? U.nHari : 0); const upahSemua = X.per.upah.n + (U ? U.total : 0); const mdr = Z.mdr;
     return { biayaKg: X.kgTerjual > 0 ? X.biayaToko / X.kgTerjual : null, hppKg: X.kgHitung > 0 ? X.L.hpp / X.kgHitung : null, jualKg: X.kgHitung > 0 ? X.omzetHitung / X.kgHitung : null, marginKg: X.kgHitung > 0 ? X.margin / X.kgHitung : null,
-      bongkarKg: D.kg > 0 ? D.bongkar / D.kg : null, beliKg: D.kg > 0 ? D.rp / D.kg : null, mdrQris: Ka.pos.qris + kbQrisLain(X) > 0 ? mdr / (Ka.pos.qris + kbQrisLain(X)) * 100 : null, karyawanHari: hk > 0 ? (upahSemua + X.per.karyawan.n) / hk : null, kantongLembar: T.lembar > 0 ? T.rp / T.lembar : null, susutKg: X.kgTerjual > 0 ? X.susut / X.kgTerjual : null, D, T, hk, qris: Ka.pos.qris }; };
+      bongkarKg: D.kg > 0 ? D.bongkar / D.kg : null, beliKg: D.kg > 0 ? D.rp / D.kg : null, mdrQris: Z.qris + Z.qrisLain > 0 ? mdr / (Z.qris + Z.qrisLain) * 100 : null, karyawanHari: hk > 0 ? (upahSemua + X.per.karyawan.n) / hk : null, kantongLembar: T.lembar > 0 ? T.rp / T.lembar : null, susutKg: X.kgTerjual > 0 ? X.susut / X.kgTerjual : null, D, T, hk, qris: Z.qris }; };
   const N = satu(K, K.U), NL = satu(KL, K.UL);
   const DAFTAR = [['biayaKg', 'Biaya toko per kg terjual', 'Rp/kg', 'biaya toko mesin ÷ kg semua nota ber-kg'], ['hppKg', 'HPP per kg terjual', 'Rp/kg', 'HPP mesin ÷ kg nota ber-HPP'], ['jualKg', 'Harga jual per kg', 'Rp/kg', 'omzet ber-HPP ÷ kg nota ber-HPP'], ['marginKg', 'Margin kotor per kg', 'Rp/kg', 'harga jual − HPP per kg'],
     ['beliKg', 'Harga beli per kg (kedatangan)', 'Rp/kg', 'Σ harga beras ÷ Σ kg kedatangan bulan itu'], ['bongkarKg', 'Bongkar per kg kedatangan', 'Rp/kg', 'Σ bongkar ÷ Σ kg kedatangan (tertanam di HPP)'], ['mdrQris', 'Potongan QRIS dari uang QRIS', '%', 'catatan bertanda MDR ÷ semua uang QRIS (penjualan + bayar bon + kasbon kembali)'],
@@ -186,7 +209,9 @@ export function paretoBiaya(K, batasPct) {
   const semua = Object.keys(peta).map((k) => peta[k]).filter((x) => x.n > 0).sort((a, b) => b.n - a.n); const total = semua.reduce((a, x) => a + x.n, 0); let kum = 0;
   const daftar = semua.map((x) => { kum += x.n; const pct = kbPct(x.n, total); const kumPct = kbPct(kum, total); return Object.assign(x, { pct, kumPct, inti: kum - x.n < total * batas / 100, jenisNama: (JENIS_BIAYA.concat(JENIS_BAWAH).find((j) => j.id === x.jenis) || {}).nama || x.jenis }); });
   const inti = daftar.filter((x) => x.inti);
-  return { daftar, inti, total, batas, nInti: inti.length, nSemua: daftar.length, teks: daftar.length ? inti.length + ' dari ' + daftar.length + ' pos membentuk ' + kbPctTeks(inti.length ? inti[inti.length - 1].kumPct : 0) + ' biaya (' + RP(total) + ')' : 'Belum ada biaya tercatat.' };
+  // Paket B: bulan yang sudah ditutup buku — rincian per catatan ikut arsip, jadi pareto hanya dari baris susut/hapus buku; kalimatnya menyebut itu, bukan "belum ada biaya"
+  const arsip = K.diarsip ? 'Rincian per catatan ' + K.nama + ' sudah diarsip (tutup buku) — jumlah per jenis di atas dari potret saat tahun dikunci.' : '';
+  return { daftar, inti, total, batas, nInti: inti.length, nSemua: daftar.length, diarsip: !!K.diarsip, teks: arsip || (daftar.length ? inti.length + ' dari ' + daftar.length + ' pos membentuk ' + kbPctTeks(inti.length ? inti[inti.length - 1].kumPct : 0) + ' biaya (' + RP(total) + ')' : 'Belum ada biaya tercatat.') };
 }
 
 // ---------- peringatan: yang bengkak, hilang, atau belum lengkap — tiap baris menunjuk pintunya ----------

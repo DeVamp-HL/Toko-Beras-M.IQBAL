@@ -123,9 +123,11 @@ ok('omzet berubah SESUDAH disetor (nota Mei tambahan 2 jt) → status "angka ber
 var PH = pjPerhatian(KINI);
 ok('beranda (owner): SATU baris pajak menyebut lewat tempo, kurang/berubah — berlabel perkiraan', PH.length === 1 && /lewat tempo/.test(PH[0].teks) && /berubah/.test(PH[0].teks) && /bukan nasihat pajak/.test(PH[0].teks) && PH[0].awas, J(PH));
 var SG = pjSumberPengingat(KINI);
-ok('pengingat pajak: bulan lalu (Agu) terutang & belum disetor → satu sumber jatuh 15 Sep dengan KAP-KJS 411128-420', SG.length === 1 && SG[0].jenis === 'pajak' && SG[0].jatuh === '2026-09-15' && SG[0].n === 350000 && /411128-420/.test(SG[0].ket), J(SG));
+// Paket B (R2): pengingat menyebut SEMUA masa yang terutang & belum disetor (dulu hanya bulan lalu — masa yang terlewat lenyap begitu bulan berganti)
+ok('pengingat pajak: semua masa terutang yang belum disetor — Jul (jatuh 15 Agu, sudah lewat) & Agu (jatuh 15 Sep), masing-masing dengan KAP-KJS 411128-420; Apr–Jun (ada setoran) tidak',
+  SG.length === 2 && SG.every(function (x) { return x.jenis === 'pajak' && /411128-420/.test(x.ket); }) && SG[0].kunci === '2026-07' && SG[0].jatuh === '2026-08-15' && SG[0].n === 300000 && SG[1].kunci === '2026-08' && SG[1].jatuh === '2026-09-15' && SG[1].n === 350000, J(SG));
 tulis(susunSetoran({ masaPajak: '2026-08', tanggalSetor: '2026-09-18', jumlah: '350.000', ntpn: '9999000011112222' }, W, KINI));
-ok('sesudah Agu disetor → pengingat pajak hilang', pjSumberPengingat(KINI).length === 0);
+ok('sesudah Agu disetor → pengingat Agu hilang, Jul (belum disetor) tetap', pjSumberPengingat(KINI).length === 1 && pjSumberPengingat(KINI)[0].kunci === '2026-07', J(pjSumberPengingat(KINI)));
 ok('hapus catatan setoran butuh ketukan kedua', susunHapusSetoran(cacheMentah('pajakSetoran')[0].id).perluYakin === true && !!susunHapusSetoran(cacheMentah('pajakSetoran')[0].id, true).hapus);
 
 // ---- 8 · dua ambang
@@ -135,7 +137,8 @@ ok('di 85 % ke atas kalimatnya menyebut yang perlu ditanyakan ke konsultan: tari
 var AM = pjTahun(2026, KINI).ambang;
 ok('proyeksi akhir tahun [PERKIRAAN] = kumulatif + rata-rata harian 30 hari terakhir (60 jt / 30 = 2 jt) × sisa hari (103) = 902 + 206 = 1.108 jt', AM.proyeksi.rata === 2 * JT && AM.proyeksi.sisaHari === 103 && AM.proyeksi.n === 1108 * JT && /PERKIRAAN/.test(AM.teks), J(AM));
 tulis(susunProfilPajak({ omzetTahunLalu: '5.000.000.000' }, W));
-ok('omzet tahun lalu > batas atas → peringatan tetap "tarif 0,5 % kemungkinan tidak berlaku tahun ini. Tanyakan konsultan." — hitungan tetap tampil', /kemungkinan tidak berlaku tahun ini/.test(pjTahun(2026, KINI).peringatanTahunLalu) && pjTahun(2026, KINI).totalPph > 0);
+ok('omzet tahun lalu > batas atas → peringatan menyebut TAHUNNYA (Paket B): "Omzet tahun 2025 melewati batas — tarif 0,5 % kemungkinan tidak berlaku tahun 2026. Tanyakan konsultan." — hitungan tetap tampil; tersimpan per tahun (omzetTahunan 2025)',
+  /^Omzet tahun 2025 melewati batas — tarif 0,5 % kemungkinan tidak berlaku tahun 2026\. Tanyakan konsultan\.$/.test(pjTahun(2026, KINI).peringatanTahunLalu) && pjTahun(2026, KINI).totalPph > 0 && pjProfil().omzetTahunan['2025'] === 5000 * JT && pjTahun(2026, KINI).omzetTahunLalu === 5000 * JT && !pjTahun(2027, new Date('2027-02-01T10:00:00+07:00')).peringatanTahunLalu, pjTahun(2026, KINI).peringatanTahunLalu);
 tulis(susunProfilPajak({ omzetTahunLalu: '' }, W));
 ok('omzet tahun lalu dikosongkan = tidak diketahui (null), bukan nol; peringatan hilang', pjProfil().omzetTahunLalu === null && !pjTahun(2026, KINI).peringatanTahunLalu);
 
@@ -240,13 +243,13 @@ if __name__ == '__main__':
             'ambang 85 % hilang': js.replace("export const PJ_AMBANG = [70, 85, 95, 100];", "export const PJ_AMBANG = [70, 95, 100];").replace("const PJ_AMBANG = [70, 85, 95, 100];", "const PJ_AMBANG = [70, 95, 100];"),
             'proyeksi tanpa sisa hari': js.replace("n: Math.round(kumGabung + rata * sisa)", "n: Math.round(kumGabung)"),
             'badan diberi angka tebakan': js.replace("const hitung = P.jenisWp !== 'badan' && P.tarifPerMil > 0;", "const hitung = P.tarifPerMil > 0;"),
-            'peringatan omzet tahun lalu hilang': js.replace("P.omzetTahunLalu > P.batasOmzet ? 'Omzet tahun lalu melewati batas", "false ? 'Omzet tahun lalu melewati batas"),
+            'peringatan omzet tahun lalu hilang': js.replace("o > P.batasOmzet ? 'Omzet tahun ' + (Number(th) - 1) + ' melewati batas", "false ? 'Omzet tahun ' + (Number(th) - 1) + ' melewati batas"),
             'penulis lama DK3 (tandai lapor) menimpa tanpa menggabung → profil hilang': js.replace("data: pjGabungRekap({ lapor }, w)", "data: { id: 'rekapOmzet', tanggal: w.tanggal, jam: w.jam, tarifPerMil: A.tarifPerMil, batasOmzet: A.batasOmzet, tanggalLapor: A.tanggalLapor, lapor }"),
             'penulis lama DK3 (atur tarif) menimpa tanpa menggabung → profil hilang': js.replace("data: pjGabungRekap({ tarifPerMil: Math.round(tarif), batasOmzet: Math.round(batas), tanggalLapor: Math.round(tgl), lapor: A.lapor }, w)", "data: { id: 'rekapOmzet', tanggal: w.tanggal, jam: w.jam, tarifPerMil: Math.round(tarif), batasOmzet: Math.round(batas), tanggalLapor: Math.round(tgl), lapor: A.lapor }"),
             'DK3 kembali ke rumus lama (tanpa batas bebas)': js.replace("perkiraan: pb ? pb.pph : null,", "perkiraan: A.tarifPerMil ? Math.round(S.omzet * A.tarifPerMil / 1000) : null,"),
             'NIK/NPWP boleh disimpan': js.replace("return x.replace(/\\D/g, '').length >= 10; });", "return false; });"),
             'setoran mundur tanpa catatan diterima': js.replace("if ((mundur || !ntpn) && !cat) return", "if (false) return"),
-            'pengingat berbunyi walau sudah disetor': js.replace("if (!b || !T.hitung || !(b.pph > 0) || b.setor.length) return [];", "if (!b || !T.hitung || !(b.pph > 0)) return [];"),
+            'pengingat berbunyi walau sudah disetor': js.replace("if (b.berjalan || !(b.pph > 0) || b.setor.length) return;", "if (b.berjalan || !(b.pph > 0)) return;"),
             'sumber aturan yang belum terverifikasi ditulis sebagai fakta': js.replace("baris.push({ nama: (s.terverifikasi ? '' : '[BELUM TERVERIFIKASI] ') + s.klaim, teks: '' })", "baris.push({ nama: s.klaim, teks: '' })"),
         }
         kode = 0

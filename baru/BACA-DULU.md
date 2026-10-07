@@ -1122,6 +1122,7 @@ baru/
   js/layar/upah-logika.js   K2 Orang & upah · owner-toko-logika.js K3 · tutup-hari-logika.js K5 · tutup-buku-logika.js K6 (tanpa DOM)
   js/layar/uang.js          gambar & ketukan layar Uang (enam keluarga, tiga lebar)
   js/layar/laporan-logika.js, pajak-logika.js, kendali-biaya-logika.js (38: jenis · anggaran · lampu · pemicu · impas · pareto)   logika Laporan tanpa DOM
+  js/layar/potret-logika.js POTRET tahun yang ditutup buku (Paket B siap 2027) — disusun saat Kunci tahun, dibaca lewat toko.js potretBulan/potretHari
   js/layar/laporan.js       gambar & ketukan layar Laporan (Laba · Biaya · Harian · Mingguan · Bulanan · Pajak · Tahunan · Neraca · Dokumen · Setelan)
 ```
 Tidak pernah dipindah, PENSIUN bersama sistem lama (3 Okt 2026): `tulisSaldoPembuka` (ritual Tutup Buku lama) & `thPagar` (pagar Tutup Hari lama) —
@@ -1872,3 +1873,48 @@ Dua butir owner 7 Okt. Tanpa koleksi baru, rules tidak berubah, mesin beku tidak
     adukan, hapus baris / kedatangan) + asap data toko (kedatangan nyata terbaru: tiap ganti nama & hapus yang lolos tanpa stok hantu; koreksi kedatangan
     FJN yang sudah diaduk ditolak; jalur koreksi varian: total kg sama, penjualan terlambat terpotong) + 11 kontrol logika + 5 kontrol statis. `peta_akses.py`:
     `ckSusunPindahKoreksi` dicatat. Rules v7 tidak perlu: semua tulisan owner ke koleksi yang sudah ada (batch lahir & produksiKemasan create hari ini).
+
+## Paket B — Laporan & Pajak membaca tahun yang sudah ditutup (owner 7 Okt 2026, cabang `perbaikan/laporan-pajak-tahun-ditutup`)
+
+Siap 2027, audit kesiapan H1/H2 R1–R5. Tutup buku memindah catatan
+tahun lama ke `arsipTahun` (tidak dimuat). Dulu sesudahnya Pajak & Laporan tahun itu jadi Rp0 bertanda FINAL, layar Pajak terkunci di tahun berjalan
+(setoran masa Desember tidak bisa dicatat di Januari, rekap SPT tidak bisa dicetak), dan Januari dicap "belum lengkap" karena awal sistem pindah.
+- **Potret** (`layar/potret-logika.js` `susunPotret`): saat Kunci tahun (`tutup-buku-logika.js susunKunci`, SEBELUM arsip) keluaran fungsi layar yang SAMA
+  ditulis ke berita acara `tutupBukuAcara/{tahun}.potret` (owner saja; ikut kiriman berita acara yang sudah ada — rules tidak berubah): per bulan
+  `pjOmzetSistem`, `pjPotonganBulan`, `labaBulan` (L = `ugLabaBersih`), `keManaLabaKotor`, `intiBulan`, `hitungArusKasInti`, `kendaliPotret` (per jenis +
+  bahan pemicu), `lpKasAkhirBulan` + `neracaPada` akhir bulan; per hari `hitungLabaRentang` + `jumlahNota`; nota pertama sistem & catatan pertama toko.
+  Daftar per catatan TIDAK dipotret (jumlahnya disimpan, layar menyebut "sudah diarsip"). Gagal disusun = kunci DITOLAK; LATIHAN menyusunnya juga
+  (`potretLatihan`) dan menyebut hasilnya. Cadangan 6 Okt: ±100 KB per berita acara.
+- **Pembaca** (`data/toko.js`): tahun DIARSIP = tahun ≤ era yang berita acaranya di sistem ini terkunci/selesai (`tahunDiarsip`). Diarsip + potret →
+  `potretBulan` / `potretHari` menggantikan catatan hidup tahun itu SELURUHNYA (pesanan belum tuntas & catatan susulan tidak dijumlah dua kali).
+  Diarsip tanpa potret → `tanpaPotret`: Bukti omzet, laporan berkop & neraca ditolak, DK3/Tahunan/Pajak menulis "—". Dibatalkan → era turun → catatan
+  hidup lagi. Era tanpa berita acara (saldo pembuka sistem lama) → catatan hidup seperti dulu.
+- **Layar**: Pajak (`pjOmzetSistem`, `pjPotonganBulan`, `pjAwalSistem`), Laporan (`labaBulan`, `keManaLabaKotor`, `intiBulan`, `rekapOmzet`, `rekapTahun`,
+  `enamBulan`, `lpPertama`, `rekapHari`, `hariTerakhir`, `rekapMinggu`, `neracaPada`/`neracaTanggal`, `lpKasAkhirBulan`, `laporanBerkop` lewat
+  `lpLabaRentang`/`lpArusRentang` = Σ per bulan, `bandingLabaRugi`), Biaya (`kbInti`, pemicu, titik impas, pareto), Dasbor (`dbTren` lewat
+  `lpHariRentang`). Neraca sesudah tutup buku: laba ditahan tahun lalu dari potret neraca 31 Des + catatan sesudahnya (`lpLabaKum`).
+- **Pilih tahun di Pajak** (`pjDaftarTahun`, `pjTahunBawaan`): tahun berjalan + tahun lalu yang punya nota/potret, isian di luar sistem, atau setoran;
+  bawaan Januari–Maret = tahun lalu selama masih ada masa terutang. Tahun lalu = 12 masa (pil setoran & omzet di luar sistem), rekap konsultan dicetak
+  untuk tahun pilihan. Beranda (`pjPerhatian`) Januari–Maret juga memeriksa tahun lalu dan menyebut masa lewat tempo yang datanya belum lengkap ("paling
+  sedikit"); pengingat (`pjSumberPengingat`) = SEMUA masa terutang yang belum disetor, tahun ini & tahun lalu.
+- **Awal sistem** (R4): nota pertama sepanjang masa dari potret; tahun SESUDAH tutup buku sistem ini tercatat sejak 1 Januari (`eraBerAcara`).
+- **Rapi-rapi**: omzet tahun lalu per tahun (`omzetTahunan`) + tawaran dari sistem (`pjTawarOmzetTahunLalu`); aturan pajak dicap tahun pajaknya
+  (`pjAturanTahun`, `PJ_SUMBER_TAHUN` 2026) — tahun sesudahnya "[BELUM DIPERIKSA UNTUK …]".
+- Dijaga `alat-uji/uji_potret_tahun.py` (kotak pasir: sebelum ritual = sesudah ritual rupiah demi rupiah pada 5 Jan & 31 Mar 2027 untuk 23 kelompok
+  layar; setoran masa Desember di Januari; pilih tahun; Beranda & pengingat; R4 dengan & tanpa potret; Batalkan; tanpa potret; per tahun; laporan.js ASLI
+  digambar di jsc untuk 23 keadaan) + `--kontrol` 57 kerusakan + `--asap=<cadangan lokal>` (cadangan 6 Okt: semua kelompok layar 2026 sama sebelum & sesudah pada kedua jam).
+- **Sanggahan Paket B** (sebelum merge):
+  - Pajak tahun yang sudah ditutup buku = FINAL: `pjTerkunci` membaca `tahunDitutup` (pembaca yang sama dengan `lpFinal`), jadi 12 masa 2026 bertanda
+    "tutup buku" (bukan "belum dikunci") dan setoran Desember tidak lagi diberi pita "masih bisa bergeser".
+  - Catatan pertama toko SATU sumber: `toko.js catatanPertama` (Laporan `lpPertama` & Menu — umur buku, pintu "Laporan satu bulan penuh"); salinan di
+    menu-logika dihapus.
+  - Margin bon tahun lalu yang dibayar sesudah ritual: saldo awal piutang pembuka membawa bon yang masih terbuka (`marginBon` [{ sisa, nilai, margin, nota }],
+    `laporan-logika.js lpBonTerbuka`, urutan potong buku bon); `lpMarginBonLepas` memecahnya lagi jadi bon asalnya. Diterima tunai bulan bayar = sebelum ritual.
+    Σ sisa ≠ saldo (diubah tangan) → dibaca seperti saldo awal biasa (margin 0).
+  - Arus kas lintas tahun yang belum final (mis. Nov – Jan di Januari): kas awal dari potret `kasTitik` (kasPada akhir bulan saat dikunci), kalau tidak ada
+    kas akhir bulan dari tutup hari (`lpKasPadaLintas`).
+  - Cincin (Ringkasan): hari tahun yang ditutup dibaca dari potret hari (`bangunIndeks`); pembanding "jam segini" yang jatuh di hari tutup buku disebut
+    ("rincian per jam ikut arsip"), tidak dihitung Rp0.
+  - Aturan pajak PER TAHUN (`aturanToko/rekapOmzet.aturanTahun { 'YYYY': … }`, `PJ_KOLOM_TAHUN`): kolom lama = aturan terbaru (tahun berjalan & DK3);
+    begitu aturan terbaru berubah, tahun lalu yang belum punya entri dibekukan dulu dengan aturan lamanya (`pjGabungRekap`). Profil diubah dari layar tahun
+    lalu = hanya tahun itu. Tahun ber-potret yang aturannya beda dengan saat dikunci disebut di layar & rekap konsultan ("[DIUBAH SESUDAH TUTUP BUKU]").

@@ -21,6 +21,23 @@ Semua sumber dilihat **24 September 2026**. Klaim yang belum terverifikasi tampi
 | 9 | **NTPN** = 16 karakter gabungan angka & huruf | [pajak.go.id/en/node/111191](https://pajak.go.id/en/node/111191) (2020) · definisi: [JDIH Kemenkeu](https://jdih.kemenkeu.go.id/kamus-hukum/nomor-transaksi-penerimaan-negara?id=03ff7123542bd5d9fc6dd9ffa70eb9fc) | **[BELUM TERVERIFIKASI]** untuk era Coretax → aplikasi hanya memperingatkan, tidak memblokir |
 | 10 | Aturan **pembulatan** PPh final | tidak ditemukan di PMK 164/2023 | **[BELUM TERVERIFIKASI]** → aplikasi membulatkan ke **bawah** ke rupiah penuh |
 
+## Tahun pajak (Paket B, Okt 2026)
+
+- Sumber di tabel atas dilihat **24 Sep 2026** dan diperiksa untuk **tahun pajak 2026** (`PJ_SUMBER_TAHUN` di `pajak-logika.js`). Aturan yang diisi
+  tombol "Pakai aturan PP 55/2022 jo. PP 20/2026" dicap tahun pajak layar yang membukanya (`sumberAturan.tahun`). Layar & cetakan tahun
+  SESUDAHNYA menulis **[BELUM DIPERIKSA UNTUK <tahun>]** sampai owner/konsultan memastikan aturan tahun itu dan menekan tombolnya dari layar tahun itu
+  — angka tarif & batas tidak dianggap sama diam-diam.
+- **Omzet tahun lalu** disimpan per tahun (`omzetTahunan { 'YYYY': n }` di profil). Peringatan "tarif 0,5 % kemungkinan tidak berlaku" dan cetakan
+  menyebut tahunnya ("Omzet tahun 2026"). Untuk tahun yang tercatat di sistem, layar menawarkan kumulatif gabung tahun itu (sistem/potret + isian
+  di luar sistem) — hanya tawaran; angka konsultan menang. Kolom lama `omzetTahunLalu` (tanpa peta) dibaca sebagai omzet 2025.
+- Tahun yang sudah **ditutup buku** dihitung dari potret berita acara (omzet mesin, nota, potongan nota per bulan) + isian di luar sistem & setoran yang
+  tetap hidup; masa Desember dicatat di Januari dari layar tahun itu.
+- **Aturan per tahun pajak.** Jenis WP, status PKP, status pasangan, tarif, batas bebas, batas atas & sumber aturan tersimpan per tahun: mengubah aturan
+  tahun berjalan (layar Pajak atau DK3) membekukan aturan tahun lalu dengan nilai lamanya, dan mengubahnya dari layar tahun lalu hanya mengubah tahun itu.
+  Jadi PPh 2026 (rekap SPT 2026, status setoran Desember) tidak ikut berubah kalau tarif/batas 2027 diubah. Kalau aturan tahun yang sudah ditutup buku
+  berbeda dengan saat tahun itu dikunci, layar & cetakan menyebutnya beserta aturan dan perkiraan PPh saat dikunci.
+- Masa di tahun yang sudah ditutup buku = final (sama dengan Laporan): tidak ada peringatan "masih bisa bergeser" saat setoran dicatat.
+
 ## Yang ditemukan di sumber dan memengaruhi angka
 
 - **Peredaran bruto sebelum potongan.** PMK 164/2023 Pasal 6 ayat (2): peredaran bruto = imbalan *sebelum dikurangi potongan penjualan,

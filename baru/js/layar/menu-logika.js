@@ -11,7 +11,7 @@ import { cariHargaKarungPerKg, kunciPelanggan } from '../mesin/pembantu.js';
 import { tempoPemasok } from './bon-pemasok-logika.js';
 // putaran 18: saldo per tempat uang (laci · brankas · rekening · amplop) — satu kebenaran dengan layar Uang
 import { saldoKantong, ugLabaBersih } from './uang-logika.js';
-import { ambilPenjualan, ambilSemuaBatch, ambilTutupHari, ambilPengeluaranHarian, ambilPiutangMutasi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilProduksiBerlaku, ambilPemasokCatatan, ambilTitikKas, cacheMentah, stokMerekSaja } from '../data/toko.js';
+import { ambilPenjualan, ambilTutupHari, ambilPengeluaranHarian, ambilPiutangMutasi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilProduksiBerlaku, ambilPemasokCatatan, ambilTitikKas, cacheMentah, stokMerekSaja, catatanPertama } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek, lebihBayarDari, kalimatLebih, ringkasLebih } from '../inti/format.js';
 import { semuaBon } from './bon-logika.js';
 import { semuaOrang } from './pelanggan-logika.js';
@@ -56,7 +56,8 @@ export function susunPita(kini, bag) {
 
 // ---------- pembantu angka bersama ----------
 const mnAwalBulan = (iso) => iso.slice(0, 7) + '-01';
-function mnCatatanPertama() { let t = ''; ambilPenjualan().concat(ambilSemuaBatch().filter((b) => !b.stokAwal && !b.tutupBuku)).forEach((d) => { if (d.tanggal && (!t || d.tanggal < t)) t = d.tanggal; }); return t; }
+// catatan pertama toko (umur buku, pintu "satu bulan penuh") = toko.js catatanPertama — SATU sumber dengan Laporan (lpPertama); dulu salinan sendiri dari
+// catatan hidup, jadi sesudah tutup buku pintunya tertutup lagi sementara Laporan tetap membaca tahun yang diarsip dari potretnya (sanggahan Paket B)
 const mnTempo = () => { const d = cacheMentah('aturan').find((x) => String(x.id) === 'catatStok'); const n = d ? Number(d.tempoHari) : NaN; return isFinite(n) && n > 0 ? n : 21; };
 function mnUtang(iso) { const up = hitungUtangPemasok(); const tempo = mnTempo(); const bon = []; up.forEach((px) => { const T = tempoPemasok(px.pemasok); (px.bon || []).forEach((b) => bon.push(Object.assign({ pemasok: px.pemasok, tempoHari: T.hari, jatuh: b.tanggal && T.hari > 0 ? ssTambahHari(b.tanggal, T.hari) : '', lewat: b.tanggal && T.hari > 0 ? ssHariKe(iso) - ssHariKe(ssTambahHari(b.tanggal, T.hari)) : null }, b))); });
   return { up, total: up.reduce((a, x) => a + (x.totalUtang || 0), 0), n: up.filter((x) => x.totalUtang > 0).length, bon, lewat: bon.filter((b) => b.lewat !== null && b.lewat > 0), tempo, tekor: up.reduce((a, x) => a + (x.tekor || 0), 0), berikut: bon.filter((b) => b.jatuh).sort((a, b) => a.jatuh.localeCompare(b.jatuh))[0] || null }; }
@@ -71,7 +72,7 @@ function mnKatalog() { const k = ambilHargaKarung(), m = ambilHargaKemasan(), l 
 export function susunLaci(kini, lokal) {
   const iso = hariIniIso(kini); const L = lokal || {};
   const U = mnUtang(iso); const semuaB = semuaBon(kini); const LB = lebihBayarDari(semuaB); const bon = semuaB.filter((b) => b.sisa > 0); const totalBon = bon.reduce((a, b) => a + b.sisa, 0); const macet = bon.filter((b) => b.status === 'macet').length; const tagih = bon.filter((b) => b.status === 'janjiLewat' || b.status === 'perluTagih').length;
-  const pertama = mnCatatanPertama(); const umur = pertama ? ssHariKe(iso) - ssHariKe(pertama) + 1 : 0; const laba = ugLabaBersih(mnAwalBulan(iso), iso);
+  const pertama = catatanPertama(); const umur = pertama ? ssHariKe(iso) - ssHariKe(pertama) + 1 : 0; const laba = ugLabaBersih(mnAwalBulan(iso), iso);
   const K = mnKatalog(); const O = mnOpname(); const opUmur = O.akhir ? ssHariKe(iso) - ssHariKe(O.akhir) : null;
   const prod = ambilProduksiBerlaku(); const prodBulan = new Set(prod.filter((p) => (p.tanggal || '') >= mnAwalBulan(iso) && !p.dariTakar && !p.bukaKemasan).map((p) => p.batchProduksi || p.id)).size; const prodSemua = new Set(prod.filter((p) => !p.dariTakar).map((p) => p.batchProduksi || p.id)).size;
   const era = ssEraTutupBuku(); const tahunLalu = pertama && Number(pertama.slice(0, 4)) < kini.getFullYear();
@@ -159,7 +160,7 @@ export function susunMenurutOrang(kini) {
 
 // ---------- N8 · MENU YANG MENOLAK: pintu yang tertutup karena bukunya belum bisa menjawab ----------
 export function susunTertutup(kini) {
-  const iso = hariIniIso(kini); const era = ssEraTutupBuku(); const pertama = mnCatatanPertama(); const O = mnOpname(); const kartuPemasok = ambilPemasokCatatan().length; const hapus = ambilPiutangMutasi().filter((m) => m.tipe === 'hapusBuku').length;
+  const iso = hariIniIso(kini); const era = ssEraTutupBuku(); const pertama = catatanPertama(); const O = mnOpname(); const kartuPemasok = ambilPemasokCatatan().length; const hapus = ambilPiutangMutasi().filter((m) => m.tipe === 'hapusBuku').length;
   let bulanPenuh = 0; if (pertama) { let b = pertama.slice(0, 7); for (let i = 0; i < 240; i++) { const y = Number(b.slice(0, 4)), m = Number(b.slice(5, 7)); const awal = b + '-01'; const akhir = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); if (akhir >= iso) break; if (awal >= pertama) bulanPenuh += 1; b = (m === 12 ? (y + 1) + '-01' : y + '-' + String(m + 1).padStart(2, '0')); } }
   const telusur = ambilPenjualan().filter((p) => p.batchId || p.dariBatch || p.kedatanganId).length;
   const pintu = (id, ikon, judul, tertutup, sub, angka, cap, jawab, tujuan) => ({ id, ikon, judul, tertutup, sub, angka, cap, awas: tertutup, jawab, tujuan });

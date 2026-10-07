@@ -22,6 +22,8 @@ import { RP, ANGKA, KG, hariIniIso, tanggalPendek, lebihBayarDari, kalimatLebih 
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
 import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
 import { ringkasPelangganTahun } from './pelanggan-logika.js';
+import { susunPotret, ringkasPotret } from './potret-logika.js';
+import { lpBonTerbuka } from './laporan-logika.js';
 
 export const LANGKAH_BUKU = [['periksa', 'Periksa dulu'], ['cadangan1', 'Cadangan sebelum mulai'], ['arsip', 'Simpan arsip'], ['saldo', 'Susun saldo pembuka'], ['paraf', 'Paraf dua orang'], ['kunci', 'Kunci tahun'], ['cadangan2', 'Cadangan sesudahnya & selesai']];
 const bkTutupBuku = (x) => !!(x && x.tutupBuku);
@@ -217,7 +219,11 @@ export function pembukaBuku(tahun, w) {
     d.push({ koleksi: 'produksiKemasan', data: Object.assign({ id: w.idUnik(), tanggal: tglBuka, namaProduk: s.namaProduk, ukuranKemasan: s.ukuranKemasan, jumlahUnit: 0, hppPerUnit: 0, merkSumber: 'BELI JADI', kgDipakai: 0, beliJadi: true, stokAwal: true }, tb) }); });
   saldo.bahanK.forEach((x) => d.push({ koleksi: 'stokBahanKemasan', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', jenis: x.jenis, jumlah: x.sisaPcs, hargaTotal: Math.round(x.sisaPcs * x.hargaRata), tanggal: tglBuka, catatan: 'Saldo pembuka tutup buku ' + tahun }, tb) }));
   saldo.bahanL.forEach((x) => d.push({ koleksi: 'stokBahanLiteran', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', jenis: x.jenis, jumlah: x.sisaPcs, hargaTotal: Math.round(x.sisaPcs * x.hargaRata), tanggal: tglBuka, catatan: 'Saldo pembuka tutup buku ' + tahun }, tb) }));
-  saldo.piutang.forEach((x) => d.push({ koleksi: 'piutangMutasi', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', namaPelanggan: x.nama, nominal: x.sisa, tanggal: x.tanggalTertua, jam: '00:00', catatan: 'Saldo pembuka tutup buku ' + tahun + ' — tanggal mengikuti utang tertuanya supaya umurnya jujur' }, tb) }));
+  // Paket B (sanggahan): saldo awal piutang MEMBAWA bon-bon yang masih terbuka (sisa, nilai & margin asli, nota — lpBonTerbuka, urutan potong buku bon), supaya
+  // margin bon tahun ini yang dibayar sesudah ritual kembali ke "diterima tunai" bulan bayarnya persis seperti sebelum ritual. Σ sisa ≠ saldo → tidak dibawa.
+  const bonBuka = lpBonTerbuka(c);
+  saldo.piutang.forEach((x) => { const mb = bonBuka[kunciPelanggan(x.nama)] || []; const cocok = mb.length && Math.abs(mb.reduce((a, b) => a + b.sisa, 0) - x.sisa) < 1;
+    d.push({ koleksi: 'piutangMutasi', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', namaPelanggan: x.nama, nominal: x.sisa, tanggal: x.tanggalTertua, jam: '00:00', catatan: 'Saldo pembuka tutup buku ' + tahun + ' — tanggal mengikuti utang tertuanya supaya umurnya jujur' }, cocok ? { marginBon: mb } : {}, tb) }); });
   saldo.kasbon.forEach((x) => d.push({ koleksi: 'kasbonMutasi', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', namaPegawai: x.nama, nominal: x.sisa, tanggal: tglBuka, jam: '00:00', catatan: 'Saldo pembuka tutup buku ' + tahun }, kunciPelanggan(x.nama) === kunciPelanggan(NAMA_KASBON_OWNER) ? { owner: true } : {}, tb) }));
   saldo.utangPemasok.forEach((px) => px.bon.forEach((b) => d.push({ koleksi: 'utangPemasokMutasi', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', pemasok: px.pemasok, nominal: b.sisa, bonTanggal: b.bonTanggal, tanggal: tglBuka, catatan: 'Saldo pembuka tutup buku ' + tahun + (b.catatan ? ' — ' + b.catatan : '') }, tb) })));
   if (saldo.amplop > 0) d.push({ koleksi: 'amplopLaba', data: Object.assign({ id: w.idUnik(), tipe: 'setor', nominal: saldo.amplop, tanggal: tglBuka, jam: '00:00', catatan: 'Saldo pembuka tutup buku ' + tahun + ' — isi amplop laba yang menyeberang tahun' }, tb) });
@@ -231,6 +237,8 @@ export function pembukaBuku(tahun, w) {
 }
 /** A7 · ringkasan tahun yang akan diarsip, disusun dari catatan hidup SEBELUM kunci: KR1 per pelanggan per hari (90 hari terakhir), laju pakai per hari (14), riwayat pelanggan. */
 export function ringkasTahun(tahun) { const c = tbCutoff(tahun); return Object.assign({ versi: 1, tahun, cutoff: c }, ringkasKreditLaju(c), { pelanggan: ringkasPelangganTahun(c) }); }
+/** Paket B · potret tahun dari catatan hidup TANPA menulis apa pun — langkah Kunci di LATIHAN menyusunnya juga, supaya kalau gagal ketahuan sebelum ritual. */
+export function potretLatihan(tahun, kini) { try { const Pt = susunPotret(tahun, kini); return { ok: true, teks: ringkasPotret(Pt), ukuran: JSON.stringify(Pt).length }; } catch (e) { return { ok: false, teks: 'Potret ' + tahun + ' GAGAL disusun: ' + String((e && e.message) || e).slice(0, 160) + ' — kunci sungguhan akan ditolak sampai ini dibetulkan.' }; } }
 /** "Sesudah" dari susunan pembuka (belum ditulis): tiap baris dijumlah dari dokumennya; kas per tempat = titik yang akan ditulis. */
 export function sesudahDariPembuka(P, sebelum) {
   const j = { beras: 0, kemasan: 0, bahan: 0, piutang: 0, kasbonK: 0, kasbonO: 0, amplop: 0, utangP: 0, utangO: 0, modal: 0, upah: 0 }; const kO = kunciPelanggan(NAMA_KASBON_OWNER);
@@ -360,6 +368,9 @@ export function susunKunci(tahun, D, w, L) {
   // A7 (siap 2027): ringkasan tahun ini (KR1 90 hari, laju pakai 14 hari, riwayat per pelanggan) menumpang batch penanda — terlihat bersamaan dengan saldo
   // pembuka di semua perangkat (toko.js ringkasArsip), hilang bersama penanda bila dibatalkan
   tanda.data.ringkasTahun = ringkasTahun(tahun);
+  // PAKET B (siap 2027): POTRET tahun ini (pajak & omzet, laba-rugi, biaya per jenis, arus kas, neraca akhir bulan per bulan; omzet per hari) di berita acara —
+  // Laporan, Pajak & Dasbor membacanya sesudah arsip (toko.js potretBulan). Gagal disusun = kunci DITOLAK: tanpa potret, layar tahun ini jadi Rp0 bertanda FINAL.
+  try { acara.potret = susunPotret(tahun, ugKiniDari(w)); } catch (e) { return { tolak: 'Potret ' + tahun + ' gagal disusun (' + String((e && e.message) || e).slice(0, 160) + ') — tahun TIDAK dikunci, supaya Laporan & Pajak ' + tahun + ' tidak jadi Rp0 sesudah arsip. Kirim tangkapan layar ini.' }; }
   // (a) tiap dokumen pembuka satu kelompok (urutan pembukaBuku); batch penanda + penanda + berita acara terkunci = kelompok TERAKHIR, jadi selalu di kiriman terakhir
   const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] })).concat([{ dokumen: [tanda].concat(penanda, [{ koleksi: 'tutupBukuAcara', data: acara }]) }]), dokDiCache, ugKiniDari(w));
   if (Pt.tolak) return { tolak: Pt.tolak };
@@ -367,7 +378,7 @@ export function susunKunci(tahun, D, w, L) {
   const berjalan = Object.assign({}, acara, { status: 'berjalan', pembuka: P.dokumen, penanda });
   const kiriman = bkKirimanDari(berjalan);
   return { kiriman, dokumen: [].concat.apply([], kiriman.map((k) => k.dokumen)), arsip: A.daftar, acara, sebelum, banding: B, titik, titikTahun: T0,
-    patch: { kabar: 'Tahun ' + tahun + ' DIKUNCI: ' + P.dokumen.length + ' dokumen saldo pembuka ditulis dalam ' + kiriman.length + ' kiriman, ' + ANGKA(A.n) + ' dokumen tahun ' + tahun + ' dipindah ke arsip (tidak dihapus). Selesaikan dengan cadangan sesudahnya.', kabarAwas: false } };
+    patch: { kabar: 'Tahun ' + tahun + ' DIKUNCI: ' + P.dokumen.length + ' dokumen saldo pembuka ditulis dalam ' + kiriman.length + ' kiriman, ' + ANGKA(A.n) + ' dokumen tahun ' + tahun + ' dipindah ke arsip (tidak dihapus); potret ' + tahun + ' tersimpan di berita acara. Selesaikan dengan cadangan sesudahnya.', kabarAwas: false } };
 }
 const bkAcara = (tahun) => ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null;
 /** (b) Kiriman dari berita acara 'berjalan' — sama persis dengan yang disusun saat mulai (id tetap), jadi bisa dilanjutkan dari perangkat mana pun. */

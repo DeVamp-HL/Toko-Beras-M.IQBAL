@@ -441,3 +441,38 @@ export function lajuLintas(L) {
   return out;
 }
 
+// ---- POTRET TAHUN YANG DITUTUP (Paket B siap 2027, owner 7 Okt) — Laporan, Pajak & Dasbor membaca tahun yang sudah diarsip ----
+// Saat tahun dikunci, tutup buku menyimpan POTRET tahun itu di berita acaranya (tutupBukuAcara/{tahun}.potret, owner saja; disusun layar/potret-logika.js dari
+// fungsi sumber yang SAMA dengan layarnya). Arsip lalu memindah catatan tahun itu keluar dari memori — tanpa potret, Pajak & Laporan tahun itu jadi Rp0 bertanda
+// FINAL. SATU aturan untuk semua pembaca: tahun DIARSIP = tahun ≤ era (saldo pembuka terlihat, pembukaBerlaku) yang berita acaranya di sistem ini terkunci/selesai.
+// Tahun diarsip ber-potret → potret MENGGANTIKAN catatan hidup tahun itu SELURUHNYA (yang masih tersisa — pesanan belum tuntas, catatan susulan A9 — tidak dijumlah
+// dua kali). Tahun diarsip TANPA potret (dikunci sebelum Paket B) → layar menyebutnya, tidak menggambar Rp0. Dibatalkan = era turun = tidak diarsip lagi.
+// Era tanpa berita acara (saldo pembuka sistem lama) tidak tersentuh: dibaca dari catatan hidup seperti sebelumnya.
+let _ptMemo = null;
+function ptKeadaan() {
+  if (_ptMemo && _ptMemo.v === _versiCache) return _ptMemo;
+  const era = eraBuku(); const potret = {}; const diarsip = {};
+  if (era !== null) (_cache.tutupBukuAcara || []).forEach((a) => { const t = Number(a && a.tahun); if (!isFinite(t) || t > era || (a.status !== 'terkunci' && a.status !== 'selesai')) return; diarsip[t] = true; if (a.potret && a.potret.bulan && Number(a.potret.tahun) === t) potret[t] = a.potret; });
+  _ptMemo = { v: _versiCache, era, potret, diarsip }; return _ptMemo;
+}
+/** Tahun (atau 'YYYY-MM' / 'YYYY-MM-DD') sudah ditutup buku — era ≥ tahun itu (juga saldo pembuka sistem lama). */
+export function tahunDitutup(t) { const k = ptKeadaan(); return k.era !== null && Number(String(t).slice(0, 4)) <= k.era; }
+/** Tahun yang catatannya DIARSIP tutup buku sistem ini (berita acara terkunci/selesai, era ≥ tahun) — catatan hidup tahun itu tidak lagi lengkap. */
+export function tahunDiarsip(t) { return !!ptKeadaan().diarsip[Number(String(t).slice(0, 4))]; }
+/** Era yang ditutup LEWAT SISTEM INI — tahun itu tercatat di sistem; null = belum ada / ditutup sistem lama. */
+export function eraBerAcara() { const k = ptKeadaan(); return k.era !== null && k.diarsip[k.era] ? k.era : null; }
+/** Potret tahun yang diarsip (berita acara terkunci/selesai), atau null. */
+export function potretTahun(t) { return ptKeadaan().potret[Number(String(t).slice(0, 4))] || null; }
+/** Satu bulan ('YYYY-MM') dari potret tahunnya, atau null (tahun belum diarsip / tanpa potret). */
+export function potretBulan(key) { const P = potretTahun(key); return P ? P.bulan[String(key).slice(0, 7)] || null : null; }
+/** Satu hari ('YYYY-MM-DD') dari potret: { omzet, margin, tanpaHpp, retur, nota } — hari tanpa catatan = nol (potretnya ada); null = tahun tanpa potret. */
+export function potretHari(iso) {
+  const P = potretTahun(iso); if (!P) return null; const x = (P.hari && P.hari[String(iso).slice(0, 10)]) || [];
+  return { omzet: Number(x[0]) || 0, margin: Number(x[1]) || 0, tanpaHpp: Number(x[2]) || 0, retur: Number(x[3]) || 0, nota: Number(x[4]) || 0 };
+}
+/** Nilai `kolom` paling awal dari semua potret yang terbaca ('awalSistem' = nota pertama sistem, 'pertama' = catatan pertama toko); '' = tidak ada. */
+export function awalPotret(kolom) { let p = ''; const P = ptKeadaan().potret; Object.keys(P).forEach((t) => { const x = String(P[t][kolom] || ''); if (x && (!p || x < p)) p = x; }); return p; }
+/** Tanggal CATATAN PERTAMA toko (nota apa pun atau kedatangan sungguhan — bukan saldo pembuka tutup buku) = awal buku. SATU sumber untuk Laporan (lpPertama:
+ *  daftar bulan, awal buku) dan Menu (umur buku, pintu "satu bulan penuh") — sanggahan Paket B: Menu dulu punya salinan sendiri dari catatan hidup, jadi sesudah
+ *  ritual pintunya tertutup lagi ("4 hari") sementara Laporan tetap membaca 2026. Catatan tahun yang sudah ditutup buku sudah diarsip → dari potretnya. */
+export function catatanPertama() { let p = ''; ambilPenjualanSemua().forEach((d) => { if (d.tanggal && (!p || d.tanggal < p)) p = d.tanggal; }); ambilSemuaBatch().forEach((b) => { if (!b.stokAwal && !b.tutupBuku && b.tanggal && (!p || b.tanggal < p)) p = b.tanggal; }); const q = awalPotret('pertama'); return q && (!p || q < p) ? q : p; }
