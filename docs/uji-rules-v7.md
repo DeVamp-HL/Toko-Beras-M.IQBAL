@@ -61,6 +61,10 @@ dibalik (git revert) dan HP kasir kembali ke kasir-v32.
 
 ## Urutan (satu kali duduk ± 35 menit, saat toko tutup; jangan klik **Publish** sebelum langkah 5)
 
+> **SEJARAH — dijalankan 7 Okt 2026, jangan diulang.** v7 TERBIT 18.25 WIB (bagian "Hasil Playground"). Urutan di bawah menyerahkan beberapa
+> pekerjaan ke Claude ("kirim ke Claude", "Claude membaca") karena waktu itu masih ada pembantu kode; sesudah 13 Okt tidak ada. Untuk memeriksa atau
+> memulihkan rules yang terbit, JANGAN membuat dokumen uji U1–U11 di data toko dan jangan mengulang urutan ini — pakai `docs/prosedur-pulih-darurat.md`.
+
 1. **Persiapan** — v6 masih yang terbit. Cek Console › Firestore › **Usage** dulu (Playground ikut kuota baca Spark; kerjakan sesudah 14.00 WIB bila kuota
    hari itu menipis). **Sebelum membuat apa pun, buka Console › Firestore › Data › `aturanToko` dan lihat apakah dokumen `kunciPeriode` SUDAH ADA.**
    Sudah ada (berarti kunci bulan sungguhan) → **BERHENTI**: jangan buat U2, jangan hapus dokumen itu, kirim tangkapan layarnya ke Claude (dokumen kunci
@@ -90,7 +94,8 @@ dibalik (git revert) dan HP kasir kembali ke kasir-v32.
 5. **Publish** (owner). Isi editor harus persis `firestore.rules` di repo. Lalu Console › Rules menampilkan versi aktif — baris 2 `ATURAN FIRESTORE v7
    FINAL` (Claude membaca lewat Chrome owner, atau owner melihatnya sendiri).
 6. **Sesudah terbit**: satu nota dari kasir darurat (HP penjaga, MASIH versi lama) → pastikan masuk di layar Jual `/baru/`. Tidak masuk → tempel
-   `firestore.rules.v6` (kode cabang belum digabung, jadi masih aman) dan kabari Claude.
+   `firestore.rules.v6` (kode cabang belum digabung, jadi masih aman) dan kabari Claude. **Hanya berlaku 7 Okt sebelum merge; sesudah #111
+   digabung v6 TIDAK BOLEH ditempel** (bagian "Mundur" di atas).
 7. Baru sesudah itu **PR #111 digabung** (owner bilang "merge"; Pages hijau). HP penjaga dibuka sekali sampai bilah atas berbunyi **"versi 7 Okt"**
    (kasir-v33). Langkah sesudahnya (hemat baca, foto bon, nego staf): lihat isi PR #111.
 
@@ -141,6 +146,10 @@ Garis tegak di jalur arsip memang bagian id dokumen (`2021|penjualan|uji-v7-lama
 dokumen NYATA `pengaturan/titikKas` tanpa mengubahnya (Playground tidak menulis) — dokumen itu BUKAN dokumen uji, JANGAN dihapus.
 
 ## Wajib owner (17 kasus — berurutan, nomor 17 paling akhir)
+
+> **Catatan sesudah 7 Okt** (daftar & urutannya sengaja tidak diubah — `alat-uji/periksa_rules.py` & `alat-uji/uji_rules_emulator.py` membacanya):
+> di Playground hanya #1–5, 8, 9 yang bisa dinilai (#2 pun tanpa bisa membedakan sebabnya); #6, 7, 10–17 **tidak bisa dinilai** (`getAfter` tidak
+> didukung / *timestamp* ketikan bukan *timestamp* — bagian "Hasil Playground", batas a & b). Buktinya emulator (bagian "Bukti emulator").
 
 Isi "PINTU": `{ id: "pintuBuku", tahun: 2025, status: "berjalan", sampai: <timestamp BESOK jam yang sama> }` (pilih tanggal besok di pemilih tanggal
 *timestamp*). Isi "PEMBUKA": `{ id: "uji-v7-pb-baru", tipe: "saldoAwal", tutupBuku: true, tahunDari: 2021, tanggal: "2021-03-01", nominal: 1000 }`.
@@ -346,8 +355,11 @@ sesudah pembetulan: deskripsi PR #111.
 
 **Temuan kuota (bukan rules)**: tutup buku tahun yang SEMUA bulannya terkunci memindah catatan 3 per kiriman (5 pemeriksaan per catatan) + satu baris
 jejak per kiriman. Diproyeksikan ke skala toko (±17 rb catatan setahun) ritual bersih menulis **±23,5 rb dokumen = 117% batas Spark sehari** (ritual
-2026 tanpa bulan terkunci ±18,9 rb = 94%). Kartu "Perkiraan kuota Firestore" di halaman memperkirakan angka yang sama (1.844 vs terukur 1.854 di skala
+2026 tanpa bulan terkunci: proyeksi dari laju cadangan toko 6 Okt sekarang **±98–104%** batas tulis — bisa MEPET atau TIDAK MUAT; dulu ditulis
+±18,9 rb = 94%). Kartu "Perkiraan kuota Firestore" di halaman memperkirakan angka yang sama (1.844 vs terukur 1.854 di skala
 gladi). Tutup buku 2027 (Januari 2028) karena itu akan berhenti di kuota dan dilanjutkan dengan "Lanjutkan" sesudah reset 15.00 WIB.
+Keputusan owner K11 (8 Okt 2026): kalau kartu kuota 1 Jan berbunyi TIDAK MUAT, ritual tetap dimulai 1 Jan sesudah reset; toko TUTUP Sabtu 2 Jan 2027
+(tidak jualan, tidak menagih) sampai sesudah 15.00 WIB, Lanjutkan dari Mac yang sama, tunggu arsip habis — sama untuk Sabtu 1 Jan 2028.
 
 Tidak ada kasus yang perilaku server-nya beda dari kolom Wajib → `firestore.rules` **tidak diubah** oleh bukti ini. Langkah owner di Playground
 TETAP: emulator memakai mesin rules yang sama tetapi bukan proyek toko, sedangkan Playground menilai teks yang akan diterbitkan atas data proyek

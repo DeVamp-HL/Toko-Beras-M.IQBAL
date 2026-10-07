@@ -1,5 +1,7 @@
 # Peta kendali biaya (cost controlling) — putaran 38
 
+> **Status terbaru:** digabung ke `main` 29 Sep 2026 21.25 WIB (PR #63, `60d0177`); "menunggu pemeriksaan owner sebelum merge" di bawah = sejarah.
+
 **Status (29 Sep 2026): dibangun di cabang `kendali/38-kendali-biaya`, menunggu pemeriksaan owner sebelum merge.** Tidak ada perilaku uang yang
 berubah: 28 mesin beku utuh, dan `uji_kendali_biaya.py` membuktikan laba tiap bulan **byte-sama** dengan `main` (ASAP GLOBAL). Yang baru:
 satu keluarga di Laporan (**Biaya**), satu modul logika tanpa DOM (`baru/js/layar/kendali-biaya-logika.js`), satu dokumen setelan owner

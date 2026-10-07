@@ -15,6 +15,10 @@ logika yang berubah. Sumbernya: kode `baru/` di main `a339f51`, `index.html` dan
 > **Status Okt 2026:** "tiap kiriman ≤ 18" + "dilanjutkan & dibatalkan per potongan" = tutup buku bertahap (`baru/BACA-DULU.md`, `uji_tutup_buku_bertahap.py`;
 > cadangan 1 Okt seolah 5 Jan 2027: 24 pemeriksaan → 2 kiriman 18 + 6). Yang TETAP menunggu owner: bulan terkunci di tahun yang ditutup (pembuka bertanggal
 > lama & arsip yang menghapus ditolak server) — tutup buku sungguhan masih ditolak selama ada bulan terkunci di tahun itu.
+>
+> **Status terbaru (sesudah rules v7 terbit 7 Okt 2026):** yang "TETAP menunggu owner" di atas DITUTUP — kunci bulan 2026 ditunda (K1, 1 Okt;
+> `KP_KUNCI_MULAI = '2027-01'`) dan tahun berbulan terkunci ditutup lewat pintu tutup buku rules v7 (K8) — lihat bagian "Keputusan owner 1 Okt 2026"
+> di akhir. §10 ditutup owner (K12): tidak dikerjakan, angka sama.
 
 ## 0. Ringkas
 
@@ -350,6 +354,9 @@ tidak menyentuh bulan lalu (dan tidak memakai access call).
 
 ## 10. Cara bayar kedatangan 13 & 22 Agu diisi `tunai` (putaran 25b, C.2) — lewat Console, oleh owner
 
+> **DITUTUP 8 Okt 2026 — keputusan owner K12: tidak dikerjakan, angka sama** (cara bayar kosong dibaca tunai; Agustus tidak pernah dikunci). Tabel di
+> bawah = rencana lama, baris "Diubah oleh" & "Pemeriksaan sesudahnya" diisi sesuai keputusan itu.
+
 Pemeriksaan owner (26 Sep 2026): data kedatangan dan utang pemasok di sistem sudah sesuai kenyataan. U.D. Sejati Jaya selalu dibayar tunai; dua
 kedatangannya di Agustus tidak punya field `caraBayar`. Diisi **sebelum** Agustus dikunci — sesudah dikunci kedatangan bulan itu tidak bisa diubah.
 
@@ -358,9 +365,9 @@ kedatangannya di Agustus tidak punya field `caraBayar`. Diisi **sebelum** Agustu
 | Dokumen | `batchMasuk/1786615121139.5242` (kedatangan 13 Agu 2026) · `batchMasuk/1787389037374.6638` (kedatangan 22 Agu 2026) |
 | Perubahan | tambah satu field `caraBayar` = `"tunai"` (string). Field lain tidak disentuh — bentuk dokumen lama, tanpa field baru, tanpa atribusi aplikasi |
 | Cara | Console › Firestore › Data (owner menulis; keputusan owner C.2 pilihan b). Tidak ada jalur aplikasi yang bisa mengisinya tanpa field baru: sistem lama tidak punya ubah kedatangan, koreksi kedatangan `/baru/` menambah `jam`, `alasanKoreksi`, `riwayat` dan menomori ulang baris merek |
-| Diubah oleh | owner — **tanggal & jam: diisi sesudah owner selesai** |
+| Diubah oleh | **tidak diubah** — tugas ditutup owner 8 Okt 2026 (K12). Kedua dokumen tetap tanpa `caraBayar` (rencana lama: owner mengisinya lewat Console) |
 | Akibat yang diperkirakan | tidak ada angka yang berubah: semua mesin sudah menganggap cara bayar kosong = tunai (`batchDiutang` = `caraBayar === 'utang'`), jadi uang laci sudah berkurang di hari kedatangan dan kedua kedatangan tidak pernah masuk utang pemasok. Dihitung di kotak pasir dengan cadangan 26 Sep 00.12 WIB: uang Agustus (masuk, keluar, 1.689 gerakan), utang pemasok, laba Agustus, neraca 31 Agu, stok & modal per merek — sebelum = sesudah |
-| Pemeriksaan sesudahnya | Claude membaca kedua dokumen di Console lewat Chrome owner (hanya membaca), lalu menghitung ulang uang Agustus di kotak pasir dari cadangan baru: **harus sama persis** dengan hitungan sebelumnya (angkanya di laporan sesi, tidak di repo publik). Hasil: **diisi sesudah pemeriksaan** |
+| Pemeriksaan sesudahnya | tidak ada yang diubah, jadi tidak ada yang diperiksa sesudahnya (rencana lama: Claude membaca kedua dokumen di Console lalu menghitung ulang uang Agustus di kotak pasir). Dicek ulang atas cadangan toko 6 Okt (lokal, hanya dibaca): kedua dokumen tanpa `caraBayar`; cara bayar kosong dibaca tunai (`baru/js/mesin/pembantu.js` `batchDiutang`, `beku.js`), jadi angka sama dengan seandainya diisi `tunai`; Agustus tidak pernah dikunci (`baru/js/data/kunci-periode.js` `KP_KUNCI_MULAI = '2027-01'`) |
 
 ## Keputusan owner 1 Okt 2026 — kunci bulan 2026 ditunda (K1)
 

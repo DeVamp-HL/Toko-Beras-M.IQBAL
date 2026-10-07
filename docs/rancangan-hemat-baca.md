@@ -108,7 +108,7 @@ perangkat sudah kebal cap masa depan, catatannya tetap tampil dan tidak menggese
   sebelum perangkat pendeteksi melihatnya (temuan uji server mainan B6).
 - `capServer` denyut owner dipakai sebagai gema jam server (spesifikasi: `padaServer`); `padaServer` tetap ikut dikupas.
 
-## Kelengkapan — SATU sumber (8 Okt, #111 × Paket C)
+## Kelengkapan — SATU sumber (7 Okt, #111 × Paket C)
 
 `hbBelumLengkap(c)` (murni) → `null` (lengkap) atau `{ jenis, sebab }`; `hbSesi.belumLengkap()` → `{ koleksi: { jenis, sebab } }`, ikut `keadaan()` dan
 `firebase.js hematKeadaan()`. `terperiksaK` = bukan jenis "periksa" (rumus 7 Okt + tab yang berhenti — uji K: 16384 kombinasi; sesi nyata dibandingkan
@@ -130,7 +130,7 @@ dengan rumus yang ditulis ulang di uji).
 | harian | jam server belum diterima (hari kuota tidak diketahui) | belum bisa dipastikan sudah dibaca penuh sejak kuota baca terakhir direset (jam server belum diterima) — tunggu sebentar |
 
 Lengkap: dengar penuh terkini; atau terperiksa DAN (dibaca penuh perangkat ini pada hari kuota ini ATAU baca penuh harian toko hari ini selesai tanpa
-`temuanTunda` jenis catatan itu). Baca penuh harian toko menulis `selesai` hanya sesudah antrean temuan pendeteksi habis (sanggahan 8 Okt); yang gagal permanen
+`temuanTunda` jenis catatan itu). Baca penuh harian toko menulis `selesai` hanya sesudah antrean temuan pendeteksi habis (sanggahan 7 Okt); yang gagal permanen
 atau dilewati karena bulannya terkunci (`sentuhCap` → `lewat`) dihitung per jenis catatan di `temuanTunda`. Kalimat untuk banyak jenis catatan
 (`hbKalimatBelum`): "data perangkat ini <keadaan> (n jenis catatan) — <petunjuk>; m jenis catatan lainnya <sebabnya>" — sebab satu jenis tidak dipinjamkan ke
 yang lain. Keputusan yang memakainya dan yang sengaja tidak: lihat `baru/BACA-DULU.md` bab Hemat baca, bagian "Kelengkapan".
@@ -141,4 +141,6 @@ yang lain. Keputusan yang memakainya dan yang sengaja tidak: lihat `baru/BACA-DU
 - Pembersih nisan per dokumen (`getDocFromServer`) & `nisanTuntas`; arsip besar → `clearIndexedDbPersistence`.
 - Deteksi "antrean warisan" (mutasi kode lama di antrean IndexedDB) — pendeteksi statis & pendeteksi F menangkap akibatnya.
 - Uji peramban CI dengan emulator Firestore (demosi tab, F berkueri sendiri, limbo, REST `:commit` terhadap rules v7) — kasus B1–B12 spesifikasi.
-- Perkiraan baca toko dari denyut adalah perkiraan; tagihan sebenarnya dibaca di tab Usage Console sehari sebelum & sesudah nyala.
+- Perkiraan baca toko dari denyut adalah perkiraan; tagihan sebenarnya dibaca **owner** di Console › Firestore › Usage: patokan sehari sebelum perangkat
+  pertama dinyalakan (panel hanya menampilkan "Perkiraan baca hari ini" saat nyala), hari nyala tidak dipakai pembanding, lalu Usage dicocokkan dengan
+  perkiraan toko sesaat sebelum reset. Langkahnya: `docs/prosedur-pulih-darurat.md` bab "Hemat baca" dan `baru/BACA-DULU.md` bab Hemat baca, langkah 6.

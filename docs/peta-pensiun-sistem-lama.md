@@ -1,5 +1,9 @@
 # Peta pensiun sistem lama — putaran 25b, Tahap 0
 
+> **Status terbaru:** sistem lama & `kasir.html` PENSIUN (keputusan owner 3 Okt 2026, PR #103): `index.html` kini halaman pengalih tanpa script — tidak
+> ada lagi baca riwayat atau pulihkan di sana; versi terakhirnya di tag git `sistem-lama-terakhir`, jalan darurat `docs/prosedur-pulih-darurat.md`. Isi di
+> bawah = sejarah 25b/25c, tidak ditulis ulang.
+
 **Status (27 Sep 2026, putaran 25c): yang tersisa di `index.html` hanya MEMBACA riwayat dan PULIHKAN dari berkas cadangan (§7).** Sebelumnya
 (26 Sep): `index.html` hanya-baca lewat satu penjaga — keputusan owner (b) dipersempit, §5–§6. Tahap 0 sempat berhenti karena daftar
 fitur tulis yang hanya ada di `index.html` (§3) berisi lebih dari pembatalan karcis darurat; owner lalu memutuskan mana yang dikunci dan mana yang tetap

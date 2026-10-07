@@ -91,3 +91,7 @@ itu dibetulkan 7 Okt 2026 atas izin owner ("boleh mesin"): menyebut sumber keben
 `python3 -m http.server 8731 --bind 127.0.0.1` dari akar repo, lalu buka `http://localhost:8731/baru/index.html` (atau `/`, yang mengalihkan
 ke sana). Login memakai akun Firebase toko — angka & tulisan sungguhan; untuk uji tanpa menulis ke toko pakai kotak pasir `alat-uji/uji_*_baru.py`.
 Server dimatikan sesudah dipakai. Menjalankan **sistem lama** (darurat): `docs/prosedur-pulih-darurat.md`.
+Catatan (temuan audit kesiapan Okt 2026): kunci API web toko **dibatasi referrer** — 1 Okt 2026 masuk dari `localhost:8776` dijawab 403 ("Requests
+from referer … are blocked"); `localhost:8731` belum dicoba. Kalau masuk dari alamat lokal ditolak, alamatnya harus diizinkan dulu di Google Cloud
+Console › APIs & Services › Credentials › Browser key › Website restrictions dan dicabut lagi sesudahnya (tugas owner; lihat
+`docs/prosedur-pulih-darurat.md`).

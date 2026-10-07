@@ -123,15 +123,19 @@ hari (50 rb baca, 20 rb tulis, 20 rb hapus) dan dengan kartu **Perkiraan kuota F
 Jalur di atas 80% batas diberi peringatan ⚠, dan di atas 100% diberi ⛔.
 
 **Batalkan sesudah penanda di hari yang sama dengan ritualnya tidak muat kuota Spark.** Ritual bersih sendiri sudah ±18 rb tulis dan ±17 rb hapus
-di skala toko (±90% dan ±85%). Pembatalan sesudah arsip penuh menambah kira-kira sebanyak itu lagi, ditambah ±17 rb baca. Kalau owner membatalkan
-sesudah penanda, pembatalannya baru bisa tuntas sesudah kuota reset berikutnya (15.00 WIB), dan toko jangan berjualan sampai tuntas. Kartu
+di skala toko (±90% dan ±85% pada skala ±17 rb catatan; dengan laju cadangan toko 6 Okt tulisnya kini ±98–104%, lihat paragraf berikut).
+Pembatalan sesudah arsip penuh menambah kira-kira sebanyak itu lagi, ditambah ±17 rb baca. Kalau owner membatalkan sesudah penanda, pembatalannya
+baru bisa tuntas sesudah kuota reset berikutnya (15.00 WIB), dan toko jangan berjualan sampai tuntas. Kartu
 **Perkiraan kuota Firestore** di halaman menyebut hal yang sama.
 
 **Tahun yang SEMUA bulannya terkunci (skenario `pintu`, rules v7) tidak muat satu hari meski tanpa pembatalan.** Catatan bulan terkunci dipindah 3 per
 kiriman (5 pemeriksaan server per catatan), ditambah satu baris jejak per kiriman. Run 7 Okt (37568246193) diproyeksikan ke skala toko: ritual bersih
 ±23,5 rb tulis (117%), ±17 rb hapus (85%); kartu perkiraan kuota di halaman menghitung angka yang sama (1.844 tulis di skala gladi, terukur 1.854).
-Ritual 2026 (tanpa bulan terkunci) ±18,9 rb tulis (94%). Tutup buku 2027 di Januari 2028 karena itu akan berhenti di kuota hari itu dan diteruskan
-dengan **Lanjutkan** sesudah reset 15.00 WIB — jangan berjualan sampai tuntas.
+Ritual 2026 (tanpa bulan terkunci): proyeksi dari laju cadangan toko 6 Okt sekarang **±98–104%** batas tulis — bisa MEPET atau TIDAK MUAT (dulu
+ditulis ±18,9 rb = 94%). Tutup buku 2027 di Januari 2028 karena itu akan berhenti di kuota hari itu dan diteruskan
+dengan **Lanjutkan** sesudah reset 15.00 WIB — jangan berjualan sampai tuntas. Keputusan owner K11 (8 Okt 2026): kalau kartu kuota 1 Jan berbunyi
+TIDAK MUAT, ritual tetap dimulai 1 Jan sesudah reset; toko TUTUP Sabtu 2 Jan 2027 (tidak jualan, tidak menagih) sampai sesudah 15.00 WIB,
+Lanjutkan dari Mac yang sama, tunggu arsip habis — sama untuk Sabtu 1 Jan 2028.
 
 **Jam server = jam halaman** (sejak rules v7). Rules v7 menilai berita acara baru (jam mulai = tanggal server ± 1 hari, tahun lampau), pintu
 tutup buku (hanya tahun lalu, ≤ 72 jam dari jam server), dan kunci periode dengan **jam server**. Halaman gladi berjam palsu (31 Des 2026 / 1 Jan /
