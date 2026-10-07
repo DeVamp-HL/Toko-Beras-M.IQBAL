@@ -56,12 +56,12 @@ export function pasangLayarUang(akar, opsi) {
   let _kunciLuar = ''; const kunciLuar = () => kunciLuarCache(kini());
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
   const lokal = () => (opsi.lokal ? opsi.lokal() : {});
-  // Paket C: keadaan muat data di perangkat ini untuk kartu "Pemeriksaan sesudah tutup buku" — koleksi yang belum dimuat / ditolak server = "belum bisa diperiksa"
-  const muatData = () => { const S = sumberData(); const L = lokal(); if (S.jenis === 'cadangan') return { siap: true, siapN: 0, total: 0, ditolak: [] };
-    if (S.jenis !== 'firestore') return { siap: false, siapN: 0, total: 0, ditolak: [] };
+  // Paket C: keadaan muat data di perangkat ini untuk kartu "Pemeriksaan sesudah tutup buku" — koleksi yang belum dimuat / ditolak server, atau perangkat tanpa
+  // internet (angka dari simpanan perangkat) = "belum bisa diperiksa". Salinan perangkat per koleksi dibaca logikanya sendiri (toko.js koleksiDariCache).
+  const muatData = () => { const S = sumberData(); const L = lokal(); if (S.jenis === 'cadangan') return { siap: true, siapN: 0, total: 0, ditolak: [], offline: false };
+    if (S.jenis !== 'firestore') return { siap: false, siapN: 0, total: 0, ditolak: [], offline: !!L.offline };
     const total = Number(L.koleksiTotal) || 0, siapN = Number(L.koleksiSiap) || 0;
-    // sebagian = koleksi yang sengaja dimuat sebagian (hemat baca, bila ada) — baris yang membutuhkannya "belum bisa diperiksa"
-    return { siap: !total || siapN >= total, siapN, total, ditolak: Array.isArray(L.ditolak) ? L.ditolak.slice() : [], sebagian: Array.isArray(L.sebagian) ? L.sebagian.slice() : [] }; };
+    return { siap: !total || siapN >= total, siapN, total, ditolak: Array.isArray(L.ditolak) ? L.ditolak.slice() : [], offline: !!L.offline }; };
 
   async function tulis(r, tanpaKabar) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
@@ -259,7 +259,7 @@ export function pasangLayarUang(akar, opsi) {
     bkPutusKetik: (v, el) => { const p = Object.assign({}, st().bkPutus); p[el.dataset.tgl] = String(v).slice(0, 120); set({ bkPutus: p }); },
     bkPutusSimpan: async () => { await tulis(BK.susunPutusanHari(st().bkPutus, waktu())); },
     bkPutusCabut: async ({ iso: t }) => { const p = {}; p[t] = ''; await tulis(BK.susunPutusanHari(p, waktu())); },
-    // Paket C: kartu pemeriksaan sesudah tutup buku — tampilkan semua baris / unduh hasilnya (JSON, disimpan bersama cadangan SESUDAH)
+    // Paket C: kartu pemeriksaan sesudah tutup buku — tampilkan semua baris / unduh hasilnya (berkas, disimpan bersama cadangan SESUDAH)
     pstRinci: () => set({ pstRinci: !st().pstRinci }),
     pstUnduh: () => { let H = null; try { H = PST.pstPeriksa(kini(), muatData()); } catch (e) { console.error('pemeriksaan sesudah tutup buku', e); }
       if (!H) return set({ kabar: 'Tidak ada pemeriksaan tutup buku yang bisa diunduh sekarang', kabarAwas: true });
@@ -628,13 +628,16 @@ export function pasangLayarUang(akar, opsi) {
   const PST_TANDA = { sama: '✓', beda: '✗', belum: '?' };
   function kartuPeriksa(s) {
     let H = null;
+    // galat: kalimat toko di layar, rinciannya (pesan mentah) hanya di console
     try { H = PST.pstPeriksa(kini(), muatData()); } catch (e) {
       console.error('pemeriksaan sesudah tutup buku', e);
-      return h`<div class="kartu awas" data-k="tb-periksa" style="gap: 6px;"><div class="label">Pemeriksaan sesudah tutup buku</div><div class="ket awas-teks">Pemeriksaan tidak bisa dijalankan di perangkat ini (${String((e && e.message) || e).slice(0, 120)}) — tutup buku belum bisa dinyatakan beres. Tutup lalu buka lagi aplikasinya sekali; kalau tetap begini, pegangannya pita tutup buku ("… semua baris sama" = baris perbandingan dari mesin), dan simpan cadangan SEBELUM & SESUDAH berdua.</div></div>`;
+      return h`<div class="kartu awas" data-k="tb-periksa" style="gap: 6px;"><div class="label">Pemeriksaan sesudah tutup buku</div><div class="ket awas-teks">Pemeriksaan tidak bisa dijalankan di perangkat ini — tutup buku belum bisa dinyatakan beres. Tutup lalu buka lagi aplikasinya sekali; kalau tetap begini, pegangannya pita tutup buku ("… semua baris sama" = baris perbandingan), dan simpan cadangan SEBELUM & SESUDAH berdua.</div></div>`;
     }
     if (!H) return '';
     const ada = (n) => n !== null && n !== undefined;
-    const angka = (x) => (x.status === 'belum' ? (ada(x.a) ? 'sebelum ' + PST.pstTeks(x.a, x.satuan) + ' · sesudah —' : '—') : x.status === 'beda' ? PST.pstTeks(x.a, x.satuan) + ' → ' + PST.pstTeks(x.b, x.satuan) : PST.pstTeks(ada(x.b) ? x.b : x.a, x.satuan));
+    // baris bersatuan teks (rak Jual, stok minus) = SATU keadaan sekarang tanpa panah; angka = sebelum → sesudah; belum bisa diperiksa = '—'
+    const angka = (x) => (x.satuan === 'teks' ? (x.status === 'belum' || !ada(x.a) ? '—' : PST.pstTeks(x.a, 'teks'))
+      : x.status === 'belum' ? (ada(x.a) ? 'sebelum ' + PST.pstTeks(x.a, x.satuan) + ' · sesudah —' : '—') : x.status === 'beda' ? PST.pstTeks(x.a, x.satuan) + ' → ' + PST.pstTeks(x.b, x.satuan) : PST.pstTeks(ada(x.b) ? x.b : x.a, x.satuan));
     const baris = (x) => h`<div class="tb-cek ${x.status === 'sama' ? 'ok' : x.status === 'beda' ? 'tidak' : 'belum'}" data-k="pst-${x.id}"><span class="t">${PST_TANDA[x.status]}</span><div><div>${x.judul}</div>${x.status === 'belum' ? h`<div class="k">belum bisa diperiksa — ${x.sebab}</div>` : x.ket ? h`<div class="k">${x.ket}</div>` : ''}${x.status === 'beda' && x.rincian.length ? h`<div class="k">${x.rincian.join(' · ')}</div>` : ''}</div><div class="pst-n">${angka(x)}</div></div>`;
     const kel = H.kelompok.map((g) => {
       const nb = g.baris.filter((x) => x.status === 'beda').length, nq = g.baris.filter((x) => x.status === 'belum').length; const tampil = g.baris.filter((x) => s.pstRinci || x.status !== 'sama');
@@ -646,7 +649,7 @@ export function pasangLayarUang(akar, opsi) {
       <div class="ket" style="font-size: 11px;">Diperiksa aplikasi sendiri dari data di perangkat ini (tidak membaca server lagi, tidak menulis apa pun) · ${tanggalPendek(H.diperiksa)} · berita acara ${H.status === 'selesai' ? 'selesai ' + tanggalPendek(H.selesai) : 'terkunci, belum selesai'}.</div>
       ${H.petunjuk.map((p, i) => h`<div class="pita-info ${H.nBeda ? 'awas' : 'emas'}" data-k="pst-petunjuk-${i}">${p}</div>`)}
       ${kel}
-      <div class="hg-pil"><div class="seg" data-aksi="pstRinci">${s.pstRinci ? 'sembunyikan baris yang sama' : 'lihat semua ' + H.n + ' baris'}</div><div class="seg aktif" data-aksi="pstUnduh">unduh hasil pemeriksaan (JSON)</div></div></div>`;
+      <div class="hg-pil"><div class="seg" data-aksi="pstRinci">${s.pstRinci ? 'sembunyikan baris yang sama' : 'lihat semua ' + H.n + ' baris'}</div><div class="seg aktif" data-aksi="pstUnduh">unduh hasil pemeriksaan (berkas)</div></div></div>`;
   }
 
   // ---------- K6 · TUTUP BUKU (Berita Acara)

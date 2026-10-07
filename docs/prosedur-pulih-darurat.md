@@ -74,7 +74,7 @@
    - Unduh cadangan kedua (sesudah).
    - Di `/baru/`: daftar periksa kunci bulan, dan angka bulan terkunci (laba, neraca) — bandingkan dengan sebelum kejadian.
    - Kalau kejadiannya sesudah tutup buku (Januari–Februari, atau sebelum berita acara "selesai"): Uang › Tutup buku › kartu **Pemeriksaan sesudah tutup
-     buku** harus kembali "Semua … pemeriksaan sama". Unduh hasilnya (tombol "unduh hasil pemeriksaan (JSON)") dan simpan bersama cadangan kedua.
+     buku** harus kembali "Semua … pemeriksaan sama". Unduh hasilnya (tombol "unduh hasil pemeriksaan (berkas)") dan simpan bersama cadangan kedua.
    - Tulis kejadiannya di `docs/peta-kunci-periode.md`: tanggal, jam buka dan tutup jendela darurat, alasan, berkas cadangan yang dipakai, dan siapa
      yang menempel aturan.
 
@@ -178,12 +178,12 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] Pita "terkunci dan arsipnya habis … semua baris sama" → cocokkan utang pemasok & utang toko ke owner dengan catatan kertas.
 - [ ] Pita catatan susulan ("… masuk SESUDAH tutup buku …") → ikuti jalannya, ketuk "sudah dicatat".
 - [ ] **Kartu "Pemeriksaan sesudah tutup buku 2026"** (paling atas di Uang › Tutup buku, muncul sendiri begitu arsip habis) — ini pengganti pemeriksaan
-      cadangan SESUDAH yang dulu dikerjakan di luar aplikasi. Harus berbunyi **"Semua 24 pemeriksaan sama — tutup buku 2026 beres"** (jumlahnya bisa beda
+      cadangan SESUDAH yang dulu dikerjakan di luar aplikasi. Harus berbunyi **"Semua 27 pemeriksaan sama — tutup buku 2026 beres"** (jumlahnya bisa beda
       kalau barisnya bertambah; yang penting "Semua … sama"). Lihat bab "Pemeriksaan sesudah tutup buku" di bawah untuk arti tiap baris dan jalannya.
       - "… pemeriksaan beda — jangan jualan/menagih dulu" → JANGAN ketuk "selesai". Ikuti petunjuk di kartu: batalkan (pita, dua ketukan, dari perangkat
         yang memulai), tunggu tuntas, ulangi ritual dari langkah 1.
       - "… belum bisa diperiksa" → BUKAN lulus. Tunggu sampai data selesai dimuat & antrean kosong (Menu › Sistem › Perangkat), lalu buka Tutup buku lagi.
-- [ ] Langkah 7: cadangan SESUDAH & selesai. Lalu di kartu pemeriksaan ketuk **"unduh hasil pemeriksaan (JSON)"**
+- [ ] Langkah 7: cadangan SESUDAH & selesai. Lalu di kartu pemeriksaan ketuk **"unduh hasil pemeriksaan (berkas)"**
       (`pemeriksaan-tutup-buku-2026-miqbal.json`). Salin cadangan SEBELUM, berkas arsip, cadangan SESUDAH, dan hasil pemeriksaan ke ≥ 2 tempat di luar Mac
       (simpan 10 tahun).
 
@@ -216,26 +216,33 @@ Pengganti butir "cadangan SESUDAH diperiksa (hanya baca)" di rencana tutup buku:
 (ritual telat: 30 hari sesudah selesai). Tahun berikutnya pun sama (tahun = yang terakhir ditutup). Kartu HANYA MEMBACA data yang sudah ada di perangkat:
 tidak membaca server lagi, tidak menulis apa pun.
 
-**Tiga keadaan tiap baris** — ✓ **sama** · ✗ **beda** (dua angkanya: sebelum → sesudah) · ? **belum bisa diperiksa** (sebabnya ditulis). "?" BUKAN lulus.
+**Tiga keadaan tiap baris** — ✓ **sama** · ✗ **beda** (dua angkanya: sebelum → sesudah; baris rak Jual & stok minus: keadaannya sekarang) · ? **belum bisa
+diperiksa** (sebabnya ditulis: data belum dimuat, ditolak server, perangkat tanpa internet, data masih simpanan perangkat, atau masih menunggu server). "?"
+BUKAN lulus.
 Ringkasan di atas: "Semua N pemeriksaan sama — tutup buku 2026 beres", "K pemeriksaan beda — jangan jualan/menagih dulu, lihat barisnya", atau "M dari N
-pemeriksaan belum bisa diperiksa …". Tombol "lihat semua N baris" menampilkan baris yang sama; "unduh hasil pemeriksaan (JSON)" menyimpan hasilnya
+pemeriksaan belum bisa diperiksa …". Tombol "lihat semua N baris" menampilkan baris yang sama; "unduh hasil pemeriksaan (berkas)" menyimpan hasilnya
 (`pemeriksaan-tutup-buku-<tahun>-miqbal.json`) — simpan bersama cadangan SESUDAH.
 
 | Kelompok | Yang diperiksa | Kalau ✗ beda |
 |---|---|---|
 | 1 · Baris perbandingan | stok beras, kemasan, kantong, kasbon, uang per tempat, modal, upah belum dibayar: angka mesin sebelum = sesudah ritual pada hari tutup buku (hasil yang dibekukan saat arsip habis) | belum selesai → batalkan di pita, ulangi; sudah selesai → lihat "Jalan keluar" |
 | 2 · Modal owner | saldo pembuka modal (dibaca mesin) = modal di neraca 31 Des yang tersimpan di potret | sama |
-| 3 · Saldo pembuka & rak Jual | semua saldo pembuka yang direncanakan berita acara ada di buku, dijumlah lagi = berita acara 31 Des; buku beras per merek & kemasan per produk saat tahun baru dibuka = ringkasan saldo pembuka di berita acara; tanda buku 25 kg / wadah / adukan / karung belakang terbaca; buku 25 kg tampil di rak Jual atas nama induknya, merek berharga tidak hilang dari rak | jangan jual merek yang disebut; jalan seperti kelompok 1 |
-| 4 · Pajak dari potret | 12 bulan potret lengkap; omzet Laporan › Pajak = potret; setoran yang tercatat saat dikunci masih ada (setoran sesudahnya boleh menambah); 12 masa bertanda "tutup buku" | SPT & setoran Desember pakai PDF Rekap pajak + Laporan Tahunan yang disimpan sebelum ritual; setoran yang hilang dicatat lagi dari bukti setornya (NTPN) di Laporan › Pajak |
+| 3 · Saldo pembuka & rak Jual | semua saldo pembuka yang direncanakan berita acara ada di buku, dijumlah lagi = berita acara 31 Des (bon lama pemasok yang dibetulkan owner sesudahnya dibandingkan dengan nilainya saat kunci, dan disebut); buku beras per merek & kemasan per produk saat tahun baru dibuka = sisa per merek / produk di catatan 31 Des yang disimpan berita acara saat kunci; tanda buku 25 kg / wadah / adukan / karung belakang terbaca; buku 25 kg tampil di rak Jual atas nama induknya, merek berharga tidak hilang dari rak | jangan jual merek yang disebut; jalan seperti kelompok 1 |
+| 4 · Pajak dari potret | 12 bulan potret lengkap; omzet Laporan › Pajak = potret; setoran yang tercatat saat dikunci masih ada — jumlahnya dan tiap NTPN-nya (setoran sesudahnya boleh menambah, tapi tidak menutupi bukti setor yang hilang); 12 masa bertanda "tutup buku" | SPT & setoran Desember pakai PDF Rekap pajak + Laporan Tahunan yang disimpan sebelum ritual; setoran yang hilang dicatat lagi dari bukti setornya (NTPN) di Laporan › Pajak |
 | 5 · Stok minus | saldo pembuka tidak membawa stok minus (merek, wadah, kemasan, kantong). Minus HARI INI karena catatan sesudahnya disebut di keterangan, bukan ✗ | hitung isinya di Stok › Cocokkan / Stok › Kantong |
-| 6 · Utang & piutang | utang pemasok, utang toko ke owner, piutang pelanggan sebelum = sesudah ritual (baris yang sama dengan kelompok 1, tidak dihitung dua kali) | cocokkan dengan catatan kertas; jalan seperti kelompok 1 |
+| 6 · Utang & piutang | utang pemasok, utang toko ke owner, piutang pelanggan sebelum = sesudah ritual (baris yang sama dengan kelompok 1, tidak dihitung dua kali); bon per pelanggan, kasbon per orang, utang per pemasok saat tahun baru dibuka = catatan 31 Des (total sama tapi pindah orang tetap berbunyi) | cocokkan dengan catatan kertas; jangan menagih / memotong upah / bayar bon yang disebut dulu; jalan seperti kelompok 1 |
+
+**Catatan yang masuk SESUDAH kunci** (karcis HP penjaga yang tertahan tanpa sinyal: bertanggal 2026, atau bertanggal hari ritual tapi ditulis sebelum kunci)
+TIDAK ikut dibandingkan — bukan bagian ritual. Kartu menyebut jumlahnya ("… catatan masuk SESUDAH tutup buku 2026 dikunci … Itu bukan alasan
+membatalkan") dan tetap boleh "Semua … sama"; yang bertanggal 2026 diurus pita catatan susulan ("sudah dicatat"). Nota yang ditulis SESUDAH jam kunci di
+hari ritual tetap terhitung — jangan berjualan selama arsip berjalan.
 
 **Jalan keluar (tanpa orang luar):**
 - Berita acara **belum selesai** (pita "terkunci dan arsipnya habis"): JANGAN ketuk "selesai". Ketuk **batalkan** di pita (dua ketukan, dari perangkat yang
   memulai), tunggu sampai tuntas, ulangi ritual dari langkah 1 — kuotanya lihat "Kalau dibatalkan sesudah arsip" di langkah 1.
 - Berita acara **sudah selesai**: beda kecil yang jelas sebabnya dibetulkan dengan catatan HARI INI (Stok › Cocokkan, catat bon / bayar bon yang terlupa).
   Beda besar → bab "Jalan mundur tutup buku" no. 3 (lewat Console).
-- **"? belum bisa diperiksa"**: tunggu data selesai dimuat & antrean kosong (Menu › Sistem › Perangkat), buka Tutup buku lagi. Kalau sebabnya "titik kas
+- **"? belum bisa diperiksa"**: sambungkan internet, tunggu data selesai dimuat & antrean kosong (Menu › Sistem › Perangkat), buka Tutup buku lagi. Kalau sebabnya "titik kas
   sudah maju": angka "sebelum" di baris uang dicocokkan sendiri dengan hitungan tutup hari tanggal itu (Uang › Tutup hari › riwayat).
 - Kartu menulis "Pemeriksaan tidak bisa dijalankan di perangkat ini": tutup lalu buka lagi aplikasinya sekali; kalau tetap, pegangannya pita tutup buku
   ("… semua baris sama") dan kedua berkas cadangan.

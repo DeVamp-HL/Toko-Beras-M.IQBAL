@@ -272,12 +272,14 @@ export function denganCacheSementara(daftar, fn) {
 }
 /**
  * Paket C (siap 2027, 8 Okt 2026): jalankan fn di atas cache yang DISARING sementara — koleksi `nama` (nama Firestore) hanya menyisakan dokumen yang lolos
- * `lolos(dok)`; koleksi lain apa adanya. Tanpa memberi tahu pendengar, dan cache dikembalikan persis sesudahnya (juga kalau fn melempar) — pola
- * denganCacheSementara. Dipakai kartu "Pemeriksaan sesudah tutup buku": buku & rak Jual saat buku tahun baru DIBUKA (catatan gerak tinggal saldo pembuka).
+ * `lolos(dok, namaKoleksi)`; koleksi lain apa adanya. `ganti(dok, namaKoleksi)` (boleh tidak ada) = dokumen yang dipakai sebagai gantinya (salinan, mis. saldo
+ * pembuka seperti saat kunci). Tanpa memberi tahu pendengar, dan cache dikembalikan persis sesudahnya (juga kalau fn melempar) — pola denganCacheSementara.
+ * Dipakai kartu "Pemeriksaan sesudah tutup buku" (buku & rak Jual saat buku tahun baru DIBUKA) dan periksa ulang tutup buku (tanpa catatan sesudah kunci).
  */
-export function denganCacheSaring(nama, lolos, fn) {
+export function denganCacheSaring(nama, lolos, fn, ganti) {
   const simpan = {};
-  (nama || []).forEach((n) => { const k = KOLEKSI.find((x) => x.nama === n); if (!k || k.cache in simpan) return; simpan[k.cache] = _cache[k.cache]; _cache[k.cache] = (_cache[k.cache] || []).filter((d) => lolos(d)); });
+  (nama || []).forEach((n) => { const k = KOLEKSI.find((x) => x.nama === n); if (!k || k.cache in simpan) return; simpan[k.cache] = _cache[k.cache];
+    _cache[k.cache] = (_cache[k.cache] || []).filter((d) => lolos(d, n)).map((d) => (ganti ? ganti(d, n) : d)); });
   _versiCache += 1;
   try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); _versiCache += 1; }
 }

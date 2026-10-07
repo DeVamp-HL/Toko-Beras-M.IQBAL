@@ -235,7 +235,7 @@ wadah satu buku 134, kinerja gerak 74, tata letak 37/17/9, periksa impor/komenta
    (aplikasi satu konfigurasi); tidak wajib. Sesudah terbit: owner menjalankan LATIHAN sekali di Desember (daftar periksa & 12 baris).
 6. **Tugas data:** tidak ada sekarang. Sesudah terbit, cadangan sesudah tiap tutup hari Desember tetap wajib (dua cadangan K6).
 7. **Sesudah ritual (Paket C, 8 Okt 2026):** pemeriksaan cadangan SESUDAH tidak lagi dikerjakan di luar aplikasi. Owner membaca kartu **Pemeriksaan sesudah
-   tutup buku** di Uang › Tutup buku (§12) sebelum mengetuk "selesai", mengunduh hasilnya (JSON) bersama cadangan SESUDAH, dan membukanya lagi sebelum
+   tutup buku** di Uang › Tutup buku (§12) sebelum mengetuk "selesai", mengunduh hasilnya (berkas) bersama cadangan SESUDAH, dan membukanya lagi sebelum
    mengunci Januari (≥ 4 Feb). Langkah lengkap: `docs/prosedur-pulih-darurat.md` (daftar periksa ritual & bab "Pemeriksaan sesudah tutup buku").
 
 ---
@@ -465,10 +465,17 @@ tidak disentuh.
 
 - **Kartu** "Pemeriksaan sesudah tutup buku <tahun>" di Uang › Tutup buku: tampil di fase selesaikan (terkunci, arsip habis) dan sepanjang Januari–Februari
   tahun berikutnya (ritual telat: 30 hari sesudah selesai). Tahun = berita acara terkunci/selesai TERAKHIR (bukan era — penanda yang hilang tetap berbunyi).
-- **Hanya membaca cache**; koleksi yang belum dimuat / ditolak server / masih menunggu server = "belum bisa diperiksa" (bukan lulus). 24 baris, 6 kelompok:
+- **Hanya membaca cache**; koleksi yang belum dimuat / ditolak server / masih salinan perangkat / masih menunggu server, atau perangkat tanpa internet =
+  "belum bisa diperiksa" (bukan lulus). 27 baris, 6 kelompok:
   baris perbandingan (`bkPeriksaDipakai`, hasil beku §10 UTBU-1) · modal pembuka = neraca 31 Des potret · saldo pembuka & rak Jual & buku 25 kg saat tahun
   baru DIBUKA (koleksi gerak disaring sementara tinggal saldo pembuka — `toko.js denganCacheSaring`) · pajak dari potret · stok minus di saldo pembuka ·
-  utang & piutang (baris kelompok pertama yang sama).
-- **Berita acara** kini membawa `pembukaRingkas` (`ringkasPembuka`: baris saldo pembuka per buku & kemasan per produk) — pembanding beku untuk kartu.
+  utang & piutang (baris kelompok pertama yang sama + per pelanggan / orang kasbon / pemasok saat dibuka).
+- **Berita acara** kini membawa `pembukaRingkas` (`ringkasPembuka(dokumen, tahun)` versi 2: baris saldo pembuka yang DITULIS per buku & kemasan per produk,
+  dan `sebelum` = pembanding yang berdiri sendiri dari catatan hidup 31 Des — sisa per merek, produk, pelanggan, orang kasbon, pemasok) dan patokan hari
+  tutup buku membawa `jam` + `ada` (catatan 1 Jan … hari itu yang sudah ada saat kunci / Lanjutkan).
+- **Sanggahan Paket C (A9):** `periksaUlangBuku` (jadi juga hasil beku §10 UTBU-1, pita & "selesai") tidak menghitung catatan yang masuk SESUDAH kunci —
+  susulan bertanggal ≤ 31 Des yang tersisa sesudah arsip, dan catatan bertanggal 1 Jan … hari patokan yang belum ada saat patokan dengan jam sebelum jam
+  patokan (`bkSesudahKunci`). Dulu karcis susulan membuat "Stok beras TIDAK SAMA" beku, bertentangan dengan pita susulan (§2 prosedur: bukan alasan
+  membatalkan). Jumlahnya dibawa hasil beku (`susulan`, `sesudahKunci`). Nota yang ditulis sesudah jam kunci tetap terhitung (P3-UTBU1 & LP3-Z1 tetap).
 - Rinci: `baru/BACA-DULU.md` (Paket C) · langkah owner: `docs/prosedur-pulih-darurat.md` · uji: `alat-uji/uji_periksa_sesudah.py` (+ `--kontrol`,
   `--cadangan=` lokal).

@@ -1970,38 +1970,64 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
   ritualnya telat. Tahun = tahun TERAKHIR yang berita acaranya terkunci / selesai (dibaca dari berita acara, bukan era: penanda yang hilang tetap berbunyi).
   Juga untuk tutup buku tahun-tahun berikutnya.
 - **Logika** `layar/periksa-sesudah-logika.js` (tanpa DOM, awalan `pst`): `pstTahun`, `pstPeriksa(kini, muat)`, `pstBerkas`. HANYA MEMBACA cache — tanpa baca
-  server tambahan, tidak menulis apa pun. Tiga keadaan per baris: **sama ✓** · **beda ✗** (dua angkanya) · **belum bisa diperiksa ?** (sebabnya; BUKAN
-  lulus). Keadaan muat dari `app.js lokalPerangkat` (`koleksiSiap / koleksiTotal / ditolak`) dan antrean tutup buku (`kemajuanBuku` fase tunggu).
-- **24 baris dalam 6 kelompok** (kotak pasir & cadangan 6 Okt):
-  1. baris perbandingan sebelum = sesudah ritual (11) — `bkPeriksaDipakai` (hasil yang DIBEKUKAN saat arsip habis, `pengaturan/periksaArsip<tahun>`; tidak
-     ada → `periksaUlangBuku`, uang per tempat yang tidak bisa dihitung mundur = "?"). Sekarang diekspor dan membawa `beku` (tanggal dibekukan).
-  2. modal owner: `modalTertanam(31 Des)` sesudah ritual (= saldo pembuka modal) vs modal di neraca 31 Des POTRET (tanpa potret: `acara.modal`).
-  3. saldo pembuka, buku 25 kg & rak Jual (4): (a) dokumen pembuka di rencana kiriman berita acara ada & terlihat mesin, dijumlah lagi dengan rumus langkah
-     4 (`sesudahDariPembuka`) = sisi "sebelum" berita acara; (b) buku beras per merek & (c) kemasan jadi per produk SAAT TAHUN BARU DIBUKA = ringkasan
-     saldo pembuka yang dibekukan di berita acara; (d) tanda buku dibaca lagi (25 kg, wadah, karung wadah, adukan, karung belakang, digabung) & `susunRak`
-     (identitas) menampilkan buku 25 kg atas nama induknya, buku khusus bukan chip karung, merek berharga tidak hilang (tanpa harga / diarsipkan disebut).
-     "Saat dibuka" = `toko.js denganCacheSaring` (BARU): koleksi gerak (daftar `tbDaftarKoleksi`) disaring SEMENTARA tinggal saldo pembuka tahun itu,
-     tanpa memberi tahu pendengar, dikembalikan persis sesudahnya (pola `denganCacheSementara`; `_versiCache` naik 2×). Isian `#jualKarungBerat` dikembalikan.
+  server tambahan, tidak menulis apa pun. Tiga keadaan per baris: **sama ✓** · **beda ✗** (dua angka sebelum → sesudah; baris teks — rak Jual, stok minus —
+  SATU keadaan sekarang tanpa panah) · **belum bisa diperiksa ?** (sebabnya; BUKAN lulus). Sebab "?": data belum dimuat (`app.js lokalPerangkat`
+  `koleksiSiap / koleksiTotal`), data ditolak server (`ditolak`), perangkat tanpa internet (`offline`), data masih salinan perangkat (`toko.js
+  koleksiDariCache` — pita tutup buku juga menolak melanjutkan dari salinan perangkat), kiriman tutup buku / berita acara / hasil beku
+  (`pengaturan/periksaArsip<tahun>`) masih menunggu server. Sebab ditulis dengan kata toko (`PST_KATA`: "catatan bon pelanggan", "bon pemasok", "modal
+  owner" …), bukan nama koleksi; galat cukup di console.
+- **27 baris dalam 6 kelompok** (kotak pasir & cadangan 6 Okt):
+  1. baris perbandingan sebelum = sesudah ritual (11) — `bkPeriksaDipakai` (hasil yang DIBEKUKAN saat arsip habis; tidak ada → `periksaUlangBuku`, uang per
+     tempat yang tidak bisa dihitung mundur = "?"). Diekspor dan membawa `beku` (tanggal, jumlah catatan sesudah kunci).
+  2. modal owner: saldo pembuka modal (`modalTertanam(31 Des)` SAAT BUKU DIBUKA — setoran modal susulan bertanggal tahun lama tidak ikut) vs modal di neraca
+     31 Des POTRET (tanpa potret: `acara.modal`).
+  3. saldo pembuka, buku 25 kg & rak Jual (4): (a) catatan pembuka di rencana kiriman berita acara ada & terlihat mesin, dijumlah lagi dengan rumus langkah
+     4 (`sesudahDariPembuka`) = sisi "sebelum" berita acara; (b) buku beras per merek & (c) kemasan jadi per produk SAAT TAHUN BARU DIBUKA = **pembanding
+     yang berdiri sendiri** (`pembukaRingkas.sebelum`, lihat bawah); (d) tanda buku dibaca lagi (25 kg, wadah, karung wadah, adukan, karung belakang,
+     digabung) vs baris yang DITULIS (`pembukaRingkas.beras`) & `susunRak` (identitas) menampilkan buku 25 kg atas nama induknya, buku khusus bukan karung
+     di rak, merek berharga tidak hilang (tanpa harga / diarsipkan disebut). "Saat dibuka" = `toko.js denganCacheSaring` (BARU): koleksi gerak (daftar
+     `tbDaftarKoleksi`) disaring SEMENTARA tinggal saldo pembuka tahun itu, tanpa memberi tahu pendengar, dikembalikan persis sesudahnya (pola
+     `denganCacheSementara`; `_versiCache` naik 2×; parameter `ganti` = dokumen pengganti sementara). Isian `#jualKarungBerat` dikembalikan.
   4. pajak dari potret (4): 12 bulan lengkap · omzet Laporan › Pajak = `potret.pajak.totalSistem` · setoran per masa = potret (yang dicatat pada/sesudah
-     hari tutup buku boleh menambah) · 12 masa bertanda tutup buku & tahun itu bisa dipilih. Potret dibaca LANGSUNG dari berita acara (bukan `potretTahun`,
-     yang ikut era).
+     hari tutup buku boleh menambah) DAN tiap NTPN yang dipotret masih ada (setoran lain berjumlah sama tidak menutupi bukti setor yang hilang) · 12 masa
+     bertanda tutup buku & tahun itu bisa dipilih. Potret dibaca LANGSUNG dari berita acara (bukan `potretTahun`, yang ikut era).
   5. tidak ada stok minus di saldo pembuka (merek, wadah, kemasan, kantong — `minusBuku`, gerbang g6). Minus HARI INI karena catatan sesudahnya hanya disebut.
-  6. utang pemasok, utang toko ke owner, piutang pelanggan — baris yang SAMA dengan kelompok 1 (dipindah, tidak dihitung dua kali).
-- **Ringkasan**: "Semua 24 pemeriksaan sama — tutup buku 2026 beres" · "K pemeriksaan beda — jangan jualan/menagih dulu, lihat barisnya" · "M dari N
+  6. utang pemasok, utang toko ke owner, piutang pelanggan — 3 baris kelompok 1 (dipindah, tidak dihitung dua kali) + **per pelanggan / per orang kasbon /
+     per pemasok** saat dibuka vs catatan 31 Des (total sama tapi pindah orang tetap berbunyi).
+- **Ringkasan**: "Semua 27 pemeriksaan sama — tutup buku 2026 beres" · "K pemeriksaan beda — jangan jualan/menagih dulu, lihat barisnya" · "M dari N
   pemeriksaan belum bisa diperiksa — …". Petunjuk per jenis beda tanpa orang luar: belum selesai = batalkan di pita lalu ulangi; sudah selesai = catatan
-  HARI INI (Cocokkan, bon) atau jalan pulang darurat ("Prosedur pulih darurat"). Tombol **unduh hasil pemeriksaan (JSON)**
+  HARI INI (Cocokkan, bon) atau jalan pulang darurat ("Prosedur pulih darurat"). Tombol **unduh hasil pemeriksaan (berkas)**
   (`pemeriksaan-tutup-buku-<tahun>-miqbal.json`) — disimpan bersama cadangan SESUDAH; **lihat semua N baris** (bawaan: yang sama disembunyikan).
-- **Berita acara** membawa `pembukaRingkas` (`tutup-buku-logika.js ringkasPembuka`: baris saldo pembuka per buku — merek, satuan, berat, kg, tanda — &
-  kemasan per produk; larik objek, beberapa KB), supaya dokumen pembuka yang kelak hilang / berubah tetap ketahuan. Rules tidak membatasi kolom berita acara.
+- **Berita acara** membawa `pembukaRingkas` (`tutup-buku-logika.js ringkasPembuka(dokumen, tahun)`, versi 2; ±11 KB di cadangan 6 Okt — berita acara
+  'berjalan' ±168 KB, 'terkunci' ±111 KB): `beras` / `kemasan` = baris saldo pembuka yang DITULIS (merek, satuan, berat, kg, tanda); `sebelum` = **pembanding
+  yang berdiri sendiri**, dihitung dari CATATAN HIDUP 31 Des sebelum apa pun ditulis (`hitungStokKarungPerMerk`, `hitungStokKemasan`, `hitungPiutang`,
+  `hitungKasbon`, `hitungUtangPemasok` per `cutoff`) — bukan dari dokumen pembuka, jadi ritual yang memindah isi antar-merek / antar-orang dengan total
+  rupiah sama ketahuan. Berita acara tanpa `sebelum` (atau tanpa ringkasan) → baris itu "?", tidak dibandingkan dengan dirinya sendiri. Rules tidak
+  membatasi kolom berita acara.
+- **Catatan yang masuk SESUDAH kunci tidak ikut periksa ulang** (`tutup-buku-logika.js bkSesudahKunci`, dipakai `periksaUlangBuku` — jadi juga hasil beku,
+  pita & "selesai"): (1) catatan susulan bertanggal ≤ 31 Des yang masih di buku hidup sesudah arsip (karcis HP penjaga yang tertahan; pita susulan yang
+  mengurusnya — prosedur §2 "bukan alasan membatalkan"); (2) catatan bertanggal 1 Jan … hari patokan yang BELUM ada saat patokan diambil (`hariIni.ada`,
+  kunci `koleksi|id`, disimpan saat kunci & Lanjutkan) dan jamnya SEBELUM jam patokan (`hariIni.jam`). Dulu keduanya membuat "Stok beras TIDAK SAMA" beku
+  dan kartu menyuruh membatalkan ritual yang benar. Jumlahnya dibawa hasil beku (`susulan`, `sesudahKunci`) dan disebut kartu. Nota yang ditulis SESUDAH jam
+  kunci di hari ritual tetap terhitung (berjualan selama arsip berjalan = dilarang daftar periksa).
+- **Pembetulan sah sesudah kunci**: bon lama pemasok pembuka yang dibetulkan owner (Harga & Pemasok › Betulkan bon lama — alasan + riwayat `bonLama`)
+  dibandingkan dengan nilai SAAT KUNCI (`pstSaatKunci`, riwayat pertama) dan disebut di keterangan baris saldo pembuka — bukan ✗.
 - **Kalimat layar tanpa orang luar**: potret gagal disusun (latihan & kunci) tidak lagi "kirim tangkapan layar / sampai dibetulkan" → `bkKalimatTanpaPotret`
   (buka lagi aplikasinya & ulangi; kalau tetap gagal jangan dipaksakan — toko tetap berjualan dengan buku tahun itu terbuka, cadangan + PDF Rekap pajak &
   Laporan Tahunan; kunci bulan tahun baru menunggu).
 - **MM7 (sisa audit 39b)**: kalimat daftar Retur untuk nota ber-bonus sudah menunjuk "Tidak ada notanya? Retur ketik tangan" di `/baru/` sejak 2 Okt
   (9686b61; ketik tangan menerima kemasan per unit). Komentar kepala `retur-logika.js` yang masih menyebut sistem lama dibetulkan. Tidak ada kalimat layar
   `/baru/` lain yang menyuruh membuka sistem lama / `kasir.html`.
-- Dijaga `alat-uji/uji_periksa_sesudah.py` (kotak pasir potret + buku khusus; ritual = simulator `uji_potret_tahun.py` + hasil beku + selesai): semua sama
-  (dan tetap sama 20 Jan sesudah penjualan Januari), kapan tampil, kontrol kotak per baris (modal pembuka diubah, merek pembuka dihapus, tanda 25 kg lepas,
-  chip hilang, potret bulan hilang / omzetnya berubah, stok minus disuntik, piutang pembuka diubah sesudah & sebelum dibekukan, penanda hilang, setoran
-  dipotret hilang), belum bisa diperiksa (belum dimuat, ditolak, sebagian, menunggu server, titik kas sudah maju, tanpa patokan / potret / ringkasan),
-  `uang.js` ASLI digambar di jsc (Mac/tablet/HP, ✓/✗/?) + statis; `--kontrol`; `--cadangan=<lokal>` (dilewati di CI): semua sama pada 5 Jan & 20 Feb 2027.
-  `uji_kinerja_gerak`: jumlah `_versiCache += 1` di toko.js 5 → 7 (jalan baru `denganCacheSaring`).
+- **Belum**: keadaan "dimuat sebagian" (hemat baca, #111 belum merge) belum dibaca kartu. Kalau hemat baca masuk, koleksi yang dimuat sebagian WAJIB
+  diteruskan `app.js lokalPerangkat` → `uang.js muatData` → `pstKurang` sebagai "belum bisa diperiksa".
+- Dijaga `alat-uji/uji_periksa_sesudah.py` (kotak pasir potret + buku khusus + kasbon dua orang; ritual = simulator `uji_potret_tahun.py` + hasil beku +
+  selesai): semua sama (cache kembali utuh; tetap sama 20 Jan sesudah kegiatan Januari sungguhan), kapan tampil, kontrol kotak per baris (modal pembuka,
+  merek pembuka dihapus, tanda 25 kg lepas, karung hilang dari rak, potret bulan hilang / omzetnya berubah, stok minus, piutang pembuka sesudah & sebelum
+  dibekukan, penanda hilang, setoran dipotret hilang; SANGGAHAN: merek tertukar saat ritual, bon / kasbon / utang pindah orang, bon pemasok diubah tanpa
+  jejak, NTPN diganti), BUKAN kerusakan (setoran Desember sesudahnya, catatan susulan nota & modal, karcis hari ritual yang telat, bon lama dibetulkan
+  owner; batasnya: nota sesudah jam kunci = beda), belum bisa diperiksa (belum dimuat, ditolak — juga bon pelanggan / bon pemasok → saldo pembuka "?" bukan
+  "hilang", tanpa internet, salinan perangkat, menunggu server, hasil beku menunggu server, titik kas sudah maju, tanpa patokan / potret / ringkasan /
+  pembanding 31 Des), `uang.js` ASLI digambar di jsc (Mac/tablet/HP, ✓/✗/?, baris teks tanpa panah, tanpa internet, galat tanpa pesan mentah, kalimat tanpa
+  bahasa mesin) + statis; `--kontrol` (logika, tutup-buku-logika, toko.js, uang.js); `--cadangan=<lokal>` (dilewati di CI): 27 dari 27 sama pada 5 Jan &
+  20 Feb 2027. `uji_kinerja_gerak`: jumlah `_versiCache += 1` di toko.js 5 → 7 (jalan baru `denganCacheSaring`). `uji_tutup_buku_bertahap`: jangkar kontrol
+  ikut bentuk patokan baru; N5 memakai jam mulai yang sebenarnya (07.00).
