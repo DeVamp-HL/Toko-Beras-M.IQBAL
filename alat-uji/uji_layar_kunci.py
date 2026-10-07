@@ -42,6 +42,7 @@ export function setPersistence() { return Promise.resolve(); }
 export function onAuthStateChanged(a, f) { dengar = f; setTimeout(() => f(pengguna), 0); return () => { dengar = null; }; }
 export function signInWithEmailAndPassword() { return Promise.reject({ code: 'auth/uji-palsu' }); }
 export function signOut() { pengguna = null; if (dengar) dengar(null); return Promise.resolve(); }
+export function connectAuthEmulator() {}   // server tiruan (gladi): tidak dipakai di sini, tapi firebase.js mengimpornya
 window.__ujiAuth = { masuk(email, uid) { pengguna = { email, uid }; if (dengar) dengar(pengguna); }, keluarDariTabLain() { pengguna = null; if (dengar) dengar(null); } };
 """,
     'firebase-firestore.js': r"""
@@ -67,6 +68,7 @@ export function onSnapshot(ref, a, b, c) {
 export function writeBatch() { return { set(r) { catatTulis('set', r); }, update(r) { catatTulis('ubah', r); }, delete(r) { catatTulis('hapus', r); }, commit: () => Promise.resolve() }; }
 export const setDoc = (r) => { catatTulis('set', r); return Promise.resolve(); }, waitForPendingWrites = () => Promise.resolve();
 export const getDocs = () => Promise.resolve({ docs: [], size: 0, empty: true, forEach() {} });
+export function connectFirestoreEmulator() {}   // server tiruan (gladi): tidak dipakai di sini, tapi firebase.js mengimpornya
 """,
 }
 

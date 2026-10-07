@@ -4,9 +4,9 @@
 // Proyek, koleksi, akun, dan atribusi (oleh/perangkat/diubah*) sama dengan index.html; jalan tanpa internet
 // diserahkan ke cache tetap Firestore (tulisan mengantre sendiri, terkirim begitu tersambung).
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, writeBatch, doc, setDoc, query, orderBy, limit, where, getDocs, waitForPendingWrites }
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, writeBatch, doc, setDoc, query, orderBy, limit, where, getDocs, waitForPendingWrites, connectFirestoreEmulator }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut }
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut, connectAuthEmulator }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
 import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda, setelDariCache, setelHapusTertunda } from './toko.js';
@@ -14,6 +14,7 @@ import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, 
 import { buatAntre, cekDariCache, susunTulisUlang, jejakTulisUlang } from './antre-lokal.js';
 import { KP_BATAS_GET } from './kunci-periode.js';
 import { KK_KOLEKSI, KK_ID, KK_JEDA_MS, kkSetelServer, kkLupakanServer, kkIsi, kkDokumen, kkTertinggal, kkBolehTerbit, kkMentah, kkCatatTerbit, kkPasangGerbang } from './katalog-kasir.js';
+import { serverTiruan, configTiruan } from './server-tiruan.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA',
@@ -39,6 +40,19 @@ export function aturProyekUjiDariAlamat(q) {
   } catch (e) { return 'Config proyek uji tidak terbaca: ' + String(e.message || e); }
 }
 export function proyekUji() { try { const c = JSON.parse(localStorage.getItem(KUNCI_PROYEK_UJI) || 'null'); return c && c.projectId && c.projectId !== PROYEK_TOKO ? c : null; } catch (e) { return null; } }
+// ---- SERVER TIRUAN (gladi tutup buku di runner GitHub, 7 Okt 2026): server-tiruan.js. Aktif HANYA di halaman localhost / 127.0.0.1 dengan
+// ?emulator=host:port — Firestore & Auth ke Firebase Emulator Suite, proyek demo. Di situs sungguhan parameter ini diabaikan (dan CSP situs memblokirnya).
+// Diminta di halaman lokal tapi alamatnya ditolak = GAGAL-TERTUTUP: mulai() tidak menyambung ke server mana pun (tinjauan 7 Okt: dulu jatuh ke proyek toko).
+let _tiruan;
+function bacaTiruan() {
+  if (_tiruan !== undefined) return _tiruan;
+  try { _tiruan = serverTiruan(new URLSearchParams(location.search), location.hostname); } catch (e) { _tiruan = null; }
+  return _tiruan;
+}
+/** Setelan server tiruan yang berlaku ({ firestore, auth, proyek }) atau null. app.js memasang bilah "SERVER TIRUAN" selama aktif. */
+export function serverTiruanAktif() { const t = bacaTiruan(); return t && !t.tolak ? t : null; }
+/** Kalimat penolakan kalau ?emulator= diminta di halaman lokal tapi alamatnya salah ('' = tidak ada). */
+export function tolakServerTiruan() { const t = bacaTiruan(); return t && t.tolak ? t.tolak : ''; }
 
 // Putaran 23 (24 Sep 2026): masuk PER ORANG. Owner dikenali lewat email (akses.js); akun lain lewat dokumen aksesAkun/{uid} yang ditulis owner.
 // Sandi TIDAK ada di kode dan tidak pernah disimpan di sini; diketik sekali per sesi, sesinya disimpan peramban (browserLocalPersistence).
@@ -67,9 +81,16 @@ let _lepasAkses = null;   // pendengar dokumen aksesAkun milik akun bukan-owner 
 /** saatAkun(akun) dipanggil tiap keadaan akun berubah (keluar · belum terdaftar · nonaktif · kasir@ · owner · aktif) — app.js menggambar layar masuknya. */
 export function mulai(saatAkun) {
   if (app) return;
-  app = initializeApp(proyekUji() || firebaseConfig);   // proyek uji (kalau disetel di perangkat ini) — cache & sesi Firebase terpisah per proyek
+  // server tiruan diminta tapi ditolak: tidak tersambung ke mana pun — gerbang masuk tetap tertutup tanpa formulir, bilah merah menyebut sebabnya (app.js)
+  const tolakT = tolakServerTiruan(); if (tolakT) { status.galat = tolakT; beriTahu(); return; }
+  const T = serverTiruanAktif();
+  // server tiruan (gladi) > proyek uji (kalau disetel di perangkat ini) > proyek toko — cache & sesi Firebase terpisah per proyek
+  app = initializeApp(T ? configTiruan(T) : (proyekUji() || firebaseConfig));
   db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  // emulator wajib disambung SEBELUM db / auth dipakai apa pun
+  if (T) connectFirestoreEmulator(db, T.firestore.host, T.firestore.port);
   auth = getAuth(app);
+  if (T) connectAuthEmulator(auth, T.auth, { disableWarnings: true });
   setPersistence(auth, browserLocalPersistence).catch(() => {});
   segarkanLokal();
   const terapkan = (akun) => {
