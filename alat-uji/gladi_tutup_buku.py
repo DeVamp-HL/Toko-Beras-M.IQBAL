@@ -292,10 +292,13 @@ KOLEKSI_2026 = ['penjualan', 'batchMasuk', 'produksiKemasan', 'retur', 'karantin
 
 
 def banding_isi(awal, kini=None):
+    """Isi 21 koleksi sebelum ↔ sesudah. capServer TIDAK dibandingkan: hemat baca (PR #111) mengecap tiap tulisan koleksi hemat dengan jam server — catatan
+    yang dikembalikan dari arsip bercap jam server BARU, isinya tetap isi lama (run 7 Okt: tanpa ini semua catatan yang dikembalikan terhitung "berubah")."""
     kini = kini if kini is not None else potret_isi(KOLEKSI_2026); arsip = len(jalankan_query('arsipTahun'))
     lebih = {k: len(set(kini.get(k, {})) - set(awal.get(k, {}))) for k in KOLEKSI_2026}; kurang = {k: len(set(awal.get(k, {})) - set(kini.get(k, {}))) for k in KOLEKSI_2026}
-    ubah = {k: sum(1 for i in awal.get(k, {}) if i in kini.get(k, {}) and awal[k][i] != kini[k][i]) for k in KOLEKSI_2026}
-    contoh = next(([k, i] for k in KOLEKSI_2026 for i in awal.get(k, {}) if i in kini.get(k, {}) and awal[k][i] != kini[k][i]), None)
+    beda = lambda k, i: tanpa_cap(awal[k][i]) != tanpa_cap(kini[k][i])
+    ubah = {k: sum(1 for i in awal.get(k, {}) if i in kini.get(k, {}) and beda(k, i)) for k in KOLEKSI_2026}
+    contoh = next(([k, i] for k in KOLEKSI_2026 for i in awal.get(k, {}) if i in kini.get(k, {}) and beda(k, i)), None)
     saring = lambda d: {k: v for k, v in d.items() if v}
     return {'sama': not saring(lebih) and not saring(kurang) and not saring(ubah), 'lebih': saring(lebih), 'kurang': saring(kurang), 'ubah': saring(ubah), 'contohUbah': contoh,
             'arsip': arsip, 'dokumen': sum(len(v) for v in kini.values())}
@@ -1009,8 +1012,10 @@ def cek_pintu(S, data, c):
     minta = S.get('langkahDiminta') or []
     cek_putusan(S, data, c)
     k1 = L_(S, '6 kunci → saldo pembuka + arsip penuh')
-    c.append(('KUNCI lewat pintu (halaman): berita acara "terkunci", tidak ada yang tertunda, tanpa kabar awas', bool(k1) and (info(k1, 'acara') or {}).get('status') == 'terkunci' and not info(k1, 'km')
-              and not info(k1, 'kabarAwas'), {k: info(k1, k) for k in ('acara', 'km', 'kabar', 'kabarAwas')} if k1 else TAK_TERCAPAI))
+    km1 = info(k1, 'km') or {}
+    c.append(('KUNCI lewat pintu (halaman): berita acara "terkunci", arsip habis (pita tinggal "selesaikan"), tanpa kabar awas', bool(k1) and (info(k1, 'acara') or {}).get('status') == 'terkunci'
+              and (not km1 or (km1.get('fase') == 'selesaikan' and km1.get('sudah') == km1.get('total'))) and not info(k1, 'kabarAwas'),
+              {k: info(k1, k) for k in ('acara', 'km', 'kabar', 'kabarAwas')} if k1 else TAK_TERCAPAI))
     kait_cek(c, 'KUNCI di SERVER: pintu 2026 TERBUKA (≤ 72 jam dari jam server), arsipTahun = ISI semua catatan 2026 asli (= nArsip), saldo pembuka = nPembuka, pindahan uang '
              'bulan terkunci utuh, titik kas 31 Des', k1)
     if 'batalkanSesudahPenanda' in minta:

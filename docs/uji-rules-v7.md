@@ -3,8 +3,9 @@
 `alat-uji/periksa_rules.py` memeriksa **bentuk** rules di CI: v7 = `firestore.rules.v6` + PERSIS lima ubahan di bawah (dibandingkan tanpa komentar &
 spasi, blok demi blok), dan sejak v7 juga **menilai teks rules** dengan penafsir mini (`alat-uji/rules_mini.py`) pada SEMUA kasus ★ di berkas ini, dengan
 dokumen uji yang sama — kolom "Wajib" di tabel sudah lulus model di CI. `alat-uji/uji_tutup_buku_2027.py` menjalankan ritual tutup buku 2027 sungguhan
-di kotak pasir dan menilai TIAP batch-nya dengan teks rules yang sama. Model bukan server: berkas ini untuk **perilaku server** — kasus yang dijalankan
-owner di **Rules Playground** (Console › Firestore › Rules) dengan v7 di EDITOR, **sebelum** Publish. Claude Code tidak memegang sandi dan tidak mengetik
+di kotak pasir dan menilai TIAP batch-nya dengan teks rules yang sama. Model bukan server: sejak 7 Okt **semua** kasus di berkas ini juga dijalankan di
+**Firebase Emulator** — penilai rules yang sama dengan server produksi — dan lulus (bagian "Bukti emulator" di bawah). Berkas ini tetap untuk **perilaku
+server produksi** — kasus yang dijalankan owner di **Rules Playground** (Console › Firestore › Rules) dengan v7 di EDITOR, **sebelum** Publish. Claude Code tidak memegang sandi dan tidak mengetik
 apa pun di Console; Claude hanya MEMBACA Console lewat Chrome owner pada langkah yang disebut. Rules = TUGAS OWNER. Kasus v6 tetap di `docs/uji-rules-v6.md`.
 
 ## Yang berubah v6 → v7 (lima)
@@ -70,8 +71,9 @@ dibalik (git revert) dan HP kasir kembali ke kasir-v32.
    Periksa di editor: baris 2 berbunyi `ATURAN FIRESTORE v7 FINAL`, ada fungsi `pintuSah`, `arsipSah`, `acaraBaru`, `stafMintaNego`, dan blok `match
    /fotoBon/{id}`. Editor yang menolak menyimpan (garis merah) = berhenti, kirim tangkapan layar ke Claude.
 3. Jalankan **18 kasus "Wajib owner"** di Playground, berurutan (nomor 18 PALING AKHIR — ia mengubah dokumen uji U5). Semua hasil harus sama dengan
-   kolom "Wajib". Ada yang beda → **jangan Publish**, kirim tangkapan layar ke Claude. Bagian "Opsional" boleh dilewati — semuanya sudah dinilai model di
-   CI (`alat-uji/periksa_rules.py`); jalankan kalau sempat.
+   kolom "Wajib". Ada yang beda → **jangan Publish**, kirim tangkapan layar ke Claude. Ke-18 kasus itu (dan semua opsional) **sudah lulus di emulator**
+   (bagian "Bukti emulator"); Playground membuktikan hal yang sama di server produksi, jadi langkah ini TETAP dikerjakan. Bagian "Opsional" boleh
+   dilewati — semuanya sudah dinilai model di CI (`alat-uji/periksa_rules.py`) dan dijalankan di emulator; jalankan kalau sempat.
 4. **Owner menghapus dokumen uji** U1–U10 (dan U11 bila dibuat) di tab Data (Claude tidak boleh menghapus data). **`aturanToko/kunciPeriode` WAJIB
    hilang**: kalau tertinggal, bulan sampai Desember 2021 terkunci dan kunci bulan pertama Januari 2027 DITOLAK — dan di bawah rules dokumen itu tidak
    bisa dihapus dari aplikasi, hanya dari Console. `tutupBukuAcara/2021` & `tutupBukuAcara/2025` juga wajib hilang (berita acara yang tidak dibatalkan
@@ -259,6 +261,61 @@ pintu tutup / tanpa pintu (M-P20, M-P21), catatan sesudah tahun pintu (M-P22, M-
 sesudah pintu (M-P24d), ubah catatan terkunci jadi sama dengan salinannya (M-P26), pintu tahun berjalan walau berita acaranya ada (M-P27), selesai
 bersama pintu tertutup & hapus berita acara dibatalkan (M-T6, M-T7, wajib LOLOS), berita acara baru langsung selesai / id ≠ tahun (M-T8, M-T9), foto bon
 kebesaran (M-F9). Ritual tutup buku 2027 seutuhnya (tiap kiriman, arsip, Batalkan, kiriman yang dikarang) dinilai `alat-uji/uji_tutup_buku_2027.py`.
+
+## Bukti emulator
+
+Workflow **Uji rules di emulator** (`.github/workflows/uji-rules-emulator.yml`, hanya di runner GitHub; alatnya `alat-uji/uji_rules_emulator.py`)
+memasang teks `firestore.rules` cabang ini ke **Firebase Emulator Firestore** — penilai rules yang sama dengan server produksi, jadi salah tulis
+yang tidak dimodelkan penafsir mini ikut ketahuan — lalu menjalankan **semua** kasus berkas ini lewat REST:
+
+- dokumen uji **U1–U11 yang sama** (tabel "Dokumen uji"), diisi lewat jalur admin emulator; tiap kasus mulai dari emulator kosong;
+- **token akun palsu** dengan uid & email persis "Isian Playground" (JWT tanpa tanda tangan — hanya emulator yang menerimanya, tidak pernah
+  server toko);
+- tanggal "hari ini", besok, 5 hari lagi, cap 1 jam lalu digeser ke jam runner; cap "jam server" dikirim sebagai transform `REQUEST_TIME`
+  (yang tidak bisa diketik di Playground). Tahun dokumen uji (2025 = tahun lalu) disusun untuk Okt–Des 2026: di tahun lain alat itu
+  melaporkan semua kasus TIDAK TERUKUR dan gagal, bukan melewatinya diam-diam.
+
+Selain 69 kasus ★ (18 Wajib owner + 51 opsional), dijalankan juga 23 kasus model M-\* (yang tidak bisa di Playground, mis. membuang kolom) dan 5
+kasus server S-\*: kirim ulang kasir@ bercap jam server (nota baru, kirim ulang identik, atas nota yang sudah bercap), batu nisan bercap jam server,
+batu nisan tanpa cap. Kasus yang sama dijalankan atas `firestore.rules.v6`: yang berbeda wajib PERSIS 38 kasus akibat lima ubahan di atas (bukti
+ubahan itulah yang membuat beda), selebihnya sama. **Kontrol**: rules v7 dirusak satu suku (pintuSah selalu benar, ulangKasirBercap tanpa syarat
+capServer, salinan arsip tanpa pembanding isi, pintu tanpa batas `sampai`, berita acara tanpa pemeriksa jam mulai, selesai walau pintu terbuka,
+kasir@ boleh lagi piutangMutasi, foto bon jenis apa saja, nego atas nama orang lain, batu nisan tanpa cap jam server, saldo pembuka di koleksi mana
+pun, salinan arsip tidak diikat ke aslinya, staf membaca batu nisan) → kasus sasarannya wajib berbalik.
+
+**Kasir darurat — kode ASLI** (skrip halaman `kasir-darurat-nominal.html` dijalankan di node dengan DOM tiruan, `alat-uji/kasir_emulator.js`;
+alamat Firestore ditulis ulang ke emulator): kasir-v33 (cabang ini) mencatat nota lalu `:commit` bercap `REQUEST_TIME` → masuk; kirim ulang identik
+(jawaban hilang) → `:commit` DITERIMA dengan cap jam server baru; kirim ulang yang mengubah isi → `:commit` & cara lama ditolak, karcis ke daftar
+"ditolak", dokumen server tidak berubah. kasir-v32 (main 6 Okt) kirim ulang identik atas nota bercap → PATCH utuh diterima (capServer terbuang);
+yang mengubah isi → ditolak; nota baru → masuk. Di v6: kirim ulang v33 jatuh ke cara lama dan tetap masuk tanpa dobel, v32 atas nota bercap ditolak
+(sebab v7 perlu `ulangKasirBercap`). Kontrol: suku `(kasir() && ulangKasirBercap())` dicabut → berbunyi.
+
+**Hasil** — workflow Uji rules di emulator, run **37567891588** (7 Okt 2026, commit df71093; `firestore.rules` sama persis dengan berkas ini):
+
+- v7: **97/97 sesuai kolom Wajib** — Wajib owner **18/18**, opsional ★ **51/51**, model M **23/23**, server S **5/5**; 0 tidak terukur;
+- v6: 97/97 sesuai harapan — **38 kasus berbeda, tepat BEDA_V6** (lima ubahan), 59 sama;
+- kontrol: **14/14 berbunyi**;
+- kasir darurat (kode asli): rules v7 **6/6**, rules v6 **4/4** (perilaku v6 yang diharapkan), kontrol suku `ulangKasirBercap` dicabut berbunyi
+  (kirim ulang v33 & v32 atas nota bercap jatuh).
+
+**Gladi tutup buku lewat pintu** (workflow Gladi tutup buku, skenario `pintu`, `docs/gladi-tutup-buku.md`): /baru/ asli di Chrome headless menutup
+buku tahun yang SEMUA bulannya terkunci, di emulator dengan rules v7 ini. Penyesuaian jam yang jujur: data contoh bertahun 2026 dengan kunci periode
+sampai Desember 2026, dan jam JVM emulator **digeser ke 5 Jan 2027 15.30 WIB** (`alat-uji/jam_geser.c`, hanya jam dinding JVM emulator; jam server diukur lewat transform
+`REQUEST_TIME` di tiap skenario) — mekanismenya sama dengan tutup buku 2027 pada Januari 2028. Run **37568246193** (7 Okt): **semua cek SERVER
+skenario pintu lulus** — sesudah kunci pintu 2026 terbuka ≤ 72 jam dari jam server, `arsipTahun` = ISI 1.344 catatan asli, saldo pembuka = berita
+acara, pindahan uang bulan terkunci (tidak diarsip) utuh, titik kas 31 Des; kunci kedua sesudah mulai lagi sama; selesai menutup pintu; sesudah
+selesai, dengan token owner: pintu KEDALUWARSA menolak pengembalian dari arsip & penghapusan catatan bulan terkunci yang salinannya ada (403), pintu
+yang sama dengan `sampai` besok menerimanya. Dua cek ALAT gladi (bukan rules) dibetulkan sesudah run itu: pembanding isi sesudah BATALKAN menghitung
+`capServer` baru (hemat baca mengecap catatan yang dikembalikan) sebagai "berubah", dan pita "selesaikan" sesudah kunci dianggap tertunda. Hasil run
+sesudah pembetulan: deskripsi PR #111.
+
+**Temuan kuota (bukan rules)**: tutup buku tahun yang SEMUA bulannya terkunci memindah catatan 3 per kiriman (5 pemeriksaan per catatan) + satu baris
+jejak per kiriman. Diproyeksikan ke skala toko (±17 rb catatan setahun) ritual bersih menulis **±23,5 rb dokumen = 117% batas Spark sehari** (ritual
+2026 tanpa bulan terkunci ±18,9 rb = 94%). Kartu "Perkiraan kuota Firestore" di halaman memperkirakan angka yang sama (1.844 vs terukur 1.854 di skala
+gladi). Tutup buku 2027 (Januari 2028) karena itu akan berhenti di kuota dan dilanjutkan dengan "Lanjutkan" sesudah reset 15.00 WIB.
+
+Tidak ada kasus yang perilaku server-nya beda dari kolom Wajib → `firestore.rules` **tidak diubah** oleh bukti ini. Langkah owner di Playground
+TETAP (Playground = server produksi).
 
 ## Hasil Playground
 

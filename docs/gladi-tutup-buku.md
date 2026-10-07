@@ -120,6 +120,12 @@ di skala toko (±90% dan ±85%). Pembatalan sesudah arsip penuh menambah kira-ki
 sesudah penanda, pembatalannya baru bisa tuntas sesudah kuota reset berikutnya (15.00 WIB), dan toko jangan berjualan sampai tuntas. Kartu
 **Perkiraan kuota Firestore** di halaman menyebut hal yang sama.
 
+**Tahun yang SEMUA bulannya terkunci (skenario `pintu`, rules v7) tidak muat satu hari meski tanpa pembatalan.** Catatan bulan terkunci dipindah 3 per
+kiriman (5 pemeriksaan server per catatan), ditambah satu baris jejak per kiriman. Run 7 Okt (37568246193) diproyeksikan ke skala toko: ritual bersih
+±23,5 rb tulis (117%), ±17 rb hapus (85%); kartu perkiraan kuota di halaman menghitung angka yang sama (1.844 tulis di skala gladi, terukur 1.854).
+Ritual 2026 (tanpa bulan terkunci) ±18,9 rb tulis (94%). Tutup buku 2027 di Januari 2028 karena itu akan berhenti di kuota hari itu dan diteruskan
+dengan **Lanjutkan** sesudah reset 15.00 WIB — jangan berjualan sampai tuntas.
+
 **Jam server = jam halaman** (sejak rules v7). Rules v7 menilai berita acara baru (jam mulai = tanggal server ± 1 hari, tahun lampau), pintu
 tutup buku (hanya tahun lalu, ≤ 72 jam dari jam server), dan kunci periode dengan **jam server**. Halaman gladi berjam palsu (31 Des 2026 / 1 Jan /
 5 Jan 2027), sedangkan runner berjam Okt 2026: tanpa penyesuaian, rules v7 menolak ritual karena jamnya, bukan karena ritualnya. Karena itu
