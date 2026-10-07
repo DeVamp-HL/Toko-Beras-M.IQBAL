@@ -227,7 +227,7 @@ if __name__ == '__main__':
             # (retur di cadangan 11 Sep kosong → kontrol retur akan DIAM; dipakai opname yang ada 10 dokumen)
             'opname stok diabaikan': js.replace("if (o.merk && stok[o.merk]) stok[o.merk].terpakai -= (o.selisihKg || 0);", "if (o.merk && stok[o.merk]) stok[o.merk].terpakai -= 0;"),
             'pembayaran piutang diabaikan': js.replace("if (m.tipe === 'bayar') {\n        s.bayar += n;", "if (m.tipe === 'bayar') {\n        s.bayar += 0;"),
-            'penjualan batal ikut dihitung (ambilPenjualan tanpa saringan)': js.replace("function ambilPenjualan() { return ambilPenjualanSemua().filter(penjualanMasihBerlaku); }", "function ambilPenjualan() { return ambilPenjualanSemua(); }"),
+            'penjualan batal ikut dihitung (ambilPenjualan tanpa saringan)': js.replace("ingatPerVersi('ambilPenjualan', () => ambilPenjualanSemua().filter(penjualanMasihBerlaku));", "ingatPerVersi('ambilPenjualan', () => ambilPenjualanSemua());"),
             'urutan cache dibalik (harga terakhir jadi salah batch)': js.replace("_cache[k.cache] = urutkanTerbaru(dokumen || [], k.urut);", "_cache[k.cache] = urutkanTerbaru(dokumen || [], k.urut).reverse();"),
         }
         kode = 0

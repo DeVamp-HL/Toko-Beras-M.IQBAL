@@ -7,7 +7,7 @@
 // Tiap koreksi menulis perubahan nilai rak (Δ modal rata-rata × sisa kg) ke koleksi baru koreksiHpp. Massal = semua-atau-tidak-sama-sekali (satu writeBatch).
 import { hitungStokKarungPerMerk, hitungHppMerkDalamBatch } from '../mesin/beku.js';
 import { cariHargaKarungPerKg } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja, petaUkuran } from '../data/toko.js';
+import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja, petaUkuran, ingatStokKarung } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 import { drafDariKedatangan, susunSimpanMasuk, ckBayarBonId } from './stok-catat-logika.js';
 
@@ -53,7 +53,7 @@ const teksMargin = (m) => (m === null ? 'harga jual per kg belum ada di katalog'
 const kelasMargin = (m) => (m === null ? 'tanpa' : m < 0 ? 'rugi' : m === 0 ? 'nol' : 'untung');
 /** Kartu modal tiap nama beras yang bersisa (atau punya kedatangan): modal rata-rata (buku), harga beli terbaru (aturan owner, pembanding), harga jual, margin, nilai rak. */
 export function kartuHpp() {
-  const stok = hitungStokKarungPerMerk(); const atur = aturHpp(); const uk = petaUkuran();
+  const stok = ingatStokKarung(); const atur = aturHpp(); const uk = petaUkuran();
   // 39b no. 10: buku per ukuran ('Merek 25 kg') yang lahir dari PISAH stok tidak punya kedatangan sendiri — harga beli terbarunya = kedatangan terakhir
   // induknya (merek yang sama); tanpa pembanding sama sekali → dibanding modalnya sendiri (bukan 0: dulu kartu memajang penurunan modal palsu)
   const induk = (merk) => { const i = uk[merk] ? uk[merk].induk : ''; return i ? riwayatModal(i).filter((r) => r.jenis === 'kedatangan').slice(-1)[0] || null : null; };
@@ -70,7 +70,7 @@ export function kartuHpp() {
 }
 /** Garis waktu HPP semua nama (bar relatif ke tertinggi), lonjakan > batas ditandai, koreksi diwarnai. */
 export function garisWaktu() {
-  const atur = aturHpp(); const stok = hitungStokKarungPerMerk();
+  const atur = aturHpp(); const stok = ingatStokKarung();
   return Object.keys(stokMerekSaja(stok)).sort().map((merk) => { const r = riwayatModal(merk); if (!r.length) return null; const maks = Math.max(...r.map((x) => x.hppPerKg), 1);
     return { merk, ket: r.length + ' catatan · modal rata-rata sekarang ' + RP(Math.round(stok[merk].hppTerakhirPerKg || 0)) + '/kg · terbaru ' + RP(Math.round(r[r.length - 1].hppPerKg)) + '/kg',
       baris: r.map((x, i) => { const lalu = i > 0 ? r[i - 1].hppPerKg : 0; const p = lalu > 0 ? Math.round((x.hppPerKg - lalu) / lalu * 100) : 0;

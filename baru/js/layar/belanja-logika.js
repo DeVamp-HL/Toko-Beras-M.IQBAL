@@ -10,9 +10,9 @@
 // Tinjauan E1 (7 Okt): PERLU & SARAN dihitung per baris harga dari stok & laju GABUNGAN merek seharga (pemasok × harga × berat × jenis), lalu karungnya dibagi ke
 // merek di dalamnya (yang paling cepat habis dulu) — "Kapan habis" tetap menggambar stok per merek. Nama yang diarsipkan tidak ikut belanja. Merek berkelas mutu
 // yang harganya lebih lama dari kiriman terbaru kelas yang sama dari pemasok itu ikut harga kelas itu (baris hampir kembar dirapikan, hanya bila harga kelasnya satu).
-import { hitungStokKarungPerMerk, hitungLajuPakai, kasPada } from '../mesin/beku.js';
+import { hitungLajuPakai } from '../mesin/beku.js';
 import { merkPunyaKarungBerat, JENDELA_LAJU_HARI, jenisUntukMerk } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilPesananPemasok, cacheMentah, stokMerekSaja, lajuLintas, petaUkuran } from '../data/toko.js';
+import { ambilSemuaBatch, ambilPesananPemasok, cacheMentah, stokMerekSaja, lajuLintas, petaUkuran, ingatStokKarung, ingatKasPada } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { daftarPemasok, tempoPemasok, nomorWa, bpTambahHari, pemasokSungguhan } from './bon-pemasok-logika.js';
 import { arPeta, arBeras } from './arsip-logika.js';
@@ -125,7 +125,7 @@ function blBagiSaran(rows, atur, uk) {
 
 /** Tiap merek yang bisa dibeli: sisa & laju dari mesin, harga terakhir per pemasok, saran karung per kelompok harga (blBagiSaran). Nama diarsipkan tidak ikut. */
 export function daftarBelanja(kini) {
-  const atur = aturBelanja(); const stok = hitungStokKarungPerMerk(); const laju = lajuLintas(hitungLajuPakai()).kgMerk || {}; const pem = daftarPemasok(); const menunggu = pesananMenunggu(); const arsip = arPeta();
+  const atur = aturBelanja(); const stok = ingatStokKarung(); const laju = lajuLintas(hitungLajuPakai()).kgMerk || {}; const pem = daftarPemasok(); const menunggu = pesananMenunggu(); const arsip = arPeta();
   // putaran 28: stok wadah diisi dari karung, tidak dibeli
   const merks = new Set(Object.keys(stokMerekSaja(stok))); pem.forEach((p) => Object.keys(p.hargaPerMerk).forEach((m) => merks.add(m)));
   // owner 7 Okt (pesanan per harga): buku per ukuran 'Merek 25 kg' dipesan dalam karung 25 kg — pisah buku (pindah jadi-karung-utuh) membuatnya tampak "punya karung 50 kg"
@@ -142,7 +142,7 @@ export function daftarBelanja(kini) {
 }
 /** Daftar belanja yang sedang disusun: pesan = { merk: { p: pemasok, k: karung } }. Per pemasok: muatan, karung, perkiraan uang; truk; kertas; kalimat uang (bon vs tunai). */
 export function hitungBelanja(pesan, kini) {
-  const D = daftarBelanja(kini); const atur = D.atur; const P = pesan || {}; const kas = kasPada(); const uk = petaUkuran();
+  const D = daftarBelanja(kini); const atur = D.atur; const P = pesan || {}; const kas = ingatKasPada(); const uk = petaUkuran();
   const baris = D.merk.map((x) => { const o = P[x.merk] || null; const k = o && o.k > 0 ? Math.round(o.k) : 0; const sumber = (o && x.sumber.find((s) => s.pemasok === o.p)) || x.termurah || null;
     const pakai = sumber === x.termurah ? x.pakai : blPakaiHarga(x.merk, sumber, uk, D.ref, D.kelasDari);
     const kg = k * x.berat; const rp = pakai ? kg * pakai.harga : 0;

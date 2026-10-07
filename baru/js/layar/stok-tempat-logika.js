@@ -4,10 +4,10 @@
 // Pindah = cuma catatan tempat — stok & HPP tidak berubah; tiap pindahan dicatat di koleksi baru pindahTempat.
 // Daftar tempat + kotaknya di denah + batas "menumpuk" = setelan owner (aturanToko/tempat); tempat yang masih berisi tidak bisa dihapus.
 // Menumpuk: tempat yang memegang nilai rak di atas batas % (memori rak-menumpuk-satu-merek: 42 % nilai di satu merek).
-import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
-import { tumpukanGudang } from './jual-logika.js';
-import { cacheMentah, stokMerekSaja } from '../data/toko.js';
+import { tumpukanGudang, pindahNama, semuaKarungTerbuka } from './jual-logika.js';
+import { wbBagianMerk } from './wadah-bernama-logika.js';
+import { cacheMentah, stokMerekSaja, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { RP, ANGKA } from '../inti/format.js';
 
 export const ATUR_TEMPAT_BAWAAN = { batasTumpuk: 50 };
@@ -44,7 +44,7 @@ export function aturTempat() {
 }
 /** Barang yang punya tempat: tiap nama beras (karung) & kemasan jadi yang bersisa, atau yang sudah punya tempat di peta. */
 export function barangTempat() {
-  const peta = petaTempat(); const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const out = [];
+  const peta = petaTempat(); const stokK = ingatStokKarung(); const stokM = ingatStokKemasan(); const out = [];
   // putaran 28: stok wadah tempatnya di wadah itu
   Object.keys(stokMerekSaja(stokK)).sort().forEach((m) => { const k = kunciTempat('K', m); const sisa = stokK[m].sisaKg || 0; if (sisa <= 0.05 && !peta[k]) return;
     out.push({ kunci: k, jenis: 'karung', nama: m, sisa, satuan: 'kg', teksSisa: tpKG(sisa), nilai: Math.max(0, sisa) * (stokK[m].hppTerakhirPerKg || 0), tempat: String(peta[k] || '') }); });
@@ -106,8 +106,11 @@ export function riwayatPindah(iso, n) { return cacheMentah('pindahTempat').filte
 const TP_DALAM = 100 * 4 / 3;   // denah portrait 3 : 4 → dunia 100 × 133,3
 export const TP_LAPIS_MAKS = 12;
 export function susunTumpukan() {
-  const T = susunTempat(); const urut = T.atur.susunan || {}; const stok = hitungStokKarungPerMerk();
-  const tumpuk = (b) => { if (b.jenis !== 'karung') return Math.max(b.sisa > 0 ? 1 : 0, Math.ceil(b.sisa / 5)); const g = tumpukanGudang(b.nama); if (g.adaBuku) return Math.max(0, g.karung); const st = stok[b.nama]; return Math.max(0, Math.floor((b.sisa + 0.0001) / 50)); };
+  const T = susunTempat(); const urut = T.atur.susunan || {}; const stok = ingatStokKarung();
+  // owner 3 Okt (patah-patah): bahan rantai stok disusun SEKALI per gambar (pola stok-logika susunLokasi / jual-logika calonKarung) — dulu tiap tumpukan
+  // menghitung ulang buku, pindahan nama, kolam karung terbuka, dan isi wadah (±930 hitungan buku per ketukan, ±0,3 dtk di data toko)
+  const siap = { stok, pindah: pindahNama(), kolam: semuaKarungTerbuka(), bagian: wbBagianMerk() };
+  const tumpuk = (b) => { if (b.jenis !== 'karung') return Math.max(b.sisa > 0 ? 1 : 0, Math.ceil(b.sisa / 5)); const g = tumpukanGudang(b.nama, siap); if (g.adaBuku) return Math.max(0, g.karung); const st = stok[b.nama]; return Math.max(0, Math.floor((b.sisa + 0.0001) / 50)); };
   let totalKarung = 0;
   const jadikan = (b, i, x, y) => { const n = tumpuk(b); if (b.jenis === 'karung') totalKarung += n; return { kunci: b.kunci, nama: b.nama, jenis: b.jenis, sisa: b.sisa, teksSisa: b.teksSisa, nilai: b.nilai, karung: n, lapis: Math.min(TP_LAPIS_MAKS, n), lebih: Math.max(0, n - TP_LAPIS_MAKS), kosong: n === 0, x, y, urut: i,
     teks: b.jenis === 'karung' ? (n ? n + ' karung' : 'kurang dari 1 karung') + ' · ' + b.teksSisa : b.teksSisa }; };

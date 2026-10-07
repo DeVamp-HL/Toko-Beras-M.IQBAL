@@ -7,8 +7,12 @@
 //    internet diserahkan ke cache tetap Firestore (IndexedDB) di js/data/firebase.js;
 //  - keranjang aktif & yang diparkir disetel oleh layar lewat setelKeranjang(), bukan variabel global.
 import { KOLEKSI } from './koleksi.js';
-import { penjualanMasihBerlaku, produksiMasihBerlaku, wzJumlahDiDaftar, uangKembaliRetur, kunciPelanggan, kunciKemasan, tanggalLokalIso, JENDELA_LAJU_HARI } from '../mesin/pembantu.js';
+import { penjualanMasihBerlaku, produksiMasihBerlaku, wzJumlahDiDaftar, uangKembaliRetur, kunciPelanggan, kunciKemasan, tanggalLokalIso, JENDELA_LAJU_HARI, daftarGerakanKas, semuaMerkDikenal } from '../mesin/pembantu.js';
 import { kpSampai, kpTenggang, kpNilaiKiriman, kpKalimat, kpPotong, kpBulanDok, kpIdx, kpBulanStr, KP_BATAS_GET } from './kunci-periode.js';
+// hari & hari tutup aktif (JAM_BATAS_TUTUP) untuk kunciLuarCache — satu aturan jam dengan Tutup hari & cek wadah
+import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
+// mesin beku, daftarGerakanKas & semuaMerkDikenal dipakai HANYA oleh ingatan di bawah (ingatStokKarung dkk.: hasil mesin diingat per versi cache)
+import { hitungStokKarungPerMerk, hitungStokKemasan, kasPada, hitungNeraca } from '../mesin/beku.js';
 
 const _cache = {};
 KOLEKSI.forEach((k) => { _cache[k.cache] = []; });
@@ -32,6 +36,25 @@ export function pasok(namaKoleksi, dokumen) {
 // Dipakai jual-logika untuk tidak menyusun ulang seluruh rak tiap +1/−1 keranjang selama datanya sama.
 let _versiCache = 0;
 export const versiCache = () => _versiCache;
+// owner 3 Okt "masih ada lag atau patah-patah" (layar selain Jual; diukur 7 Okt atas cadangan toko): satu angka yang sama dihitung ratusan kali per gambar —
+// ambilPenjualan sampai 936×, petaBukuWadah sampai 3.366× (tiap baris / tiap wadah memanggilnya lagi). INGATAN PER VERSI: hasil fungsi yang HANYA membaca
+// cache (bukan jam, localStorage, keranjang, atau isian layar) diingat sampai _versiCache naik — versi naik di SEMUA penulis cache (pasok, tulisan simulasi,
+// cache sementara, ganti sumber), jadi ingatan tidak pernah lebih tua dari datanya. Hitungan yang mengubah cache di tengah jalan (denganCacheSementara)
+// tidak disimpan. Hasil ingatan DIPAKAI BERSAMA: pemanggil tidak boleh mengubahnya di tempat (sort / push / Object.assign ke hasilnya) —
+// alat-uji/uji_layar_mulus.py membekukan semua hasil ingatan lalu menjalankan seluruh layar, dan membandingkan tiap gambar dengan / tanpa ingatan.
+const _ingatan = { versi: -1, isi: new Map(), mati: false, beku: null };
+export function ingatPerVersi(kunci, f) {
+  const I = _ingatan; if (I.mati) return f();
+  if (I.versi !== _versiCache) { I.isi = new Map(); I.versi = _versiCache; }
+  if (I.isi.has(kunci)) return I.isi.get(kunci);
+  const v = _versiCache; const h = I.beku ? I.beku(f()) : f();
+  if (v === _versiCache && I.versi === v) I.isi.set(kunci, h);
+  return h;
+}
+/** Khusus alat uji: { mati: true } = hitung ulang tiap panggilan (pembanding); { beku: fn } = tiap hasil ingatan dilewatkan fn (pembeku). */
+export function setelIngatan(o) { _ingatan.mati = !!(o && o.mati); _ingatan.beku = (o && o.beku) || null; _ingatan.isi = new Map(); _ingatan.versi = -1; }
+/** Khusus alat uji: f dihitung TANPA ingatan (pembanding hitung ulang penuh); ingatan yang sudah ada tidak disentuh. */
+export function tanpaIngatan(f) { const m = _ingatan.mati; _ingatan.mati = true; try { return f(); } finally { _ingatan.mati = m; } }
 export function setelSumber(jenis, keterangan) { _versiCache += 1; _sumber.jenis = jenis; _sumber.keterangan = keterangan || ''; _pendengar.forEach((f) => f('__sumber__')); }
 export function sumberData() { return Object.assign({}, _sumber); }
 export function dengarkan(f) { _pendengar.add(f); return () => _pendengar.delete(f); }
@@ -83,10 +106,10 @@ export function eraBuku(kecuali) {
   return t;
 }
 function bacaCadanganLokal() { return []; }   // cadangan lokal buatan sendiri tidak ada di sistem baru
-export function ambilSemuaBatch() { return bkSaring(_cache.batch); }
+export function ambilSemuaBatch() { return ingatPerVersi('ambilSemuaBatch', () => bkSaring(_cache.batch)); }
 export function ambilBiayaBulanan() { return _cache.bulanan; }
 export function ambilPenjualanSemua() { return _cache.penjualan; }
-export function ambilPenjualan() { return ambilPenjualanSemua().filter(penjualanMasihBerlaku); }
+export function ambilPenjualan() { return ingatPerVersi('ambilPenjualan', () => ambilPenjualanSemua().filter(penjualanMasihBerlaku)); }
 /** Nama yang dipakai SISTEM di kolom pemasok batch (stok awal, saldo pembuka tutup buku, lahir buku) — bukan pemasok: tidak punya kartu, bon, atau utang. */
 export const namaSistemPemasok = (nama) => { const n = String(nama || '').trim().toUpperCase(); return n === 'STOK AWAL' || n.startsWith('TUTUP BUKU') || n === 'LAHIR BUKU'; };
 /** Satu NOTA = satu grupNota / trxId (satu nota bisa berisi banyak baris penjualan). 39b no. 20: laporan dulu menyebut jumlah BARIS sebagai "nota". */
@@ -104,7 +127,7 @@ export function returUangPerHari() {
   return out;
 }
 export function ambilProduksi() { return bkSaring(_cache.produksi); }
-export function ambilProduksiBerlaku() { return ambilProduksi().filter(produksiMasihBerlaku); }
+export function ambilProduksiBerlaku() { return ingatPerVersi('ambilProduksiBerlaku', () => ambilProduksi().filter(produksiMasihBerlaku)); }
 
 // ---- STOK WADAH (putaran 28, owner 28 Sep 2026: "semua wadah kotak literan itu punya stok tersendiri") ----
 // Tiap wadah literan punya buku sendiri berkunci 'Wadah <nama>' — bukan nama merek, supaya tidak bertabrakan dengan merek karung yang senama.
@@ -129,7 +152,8 @@ export const kunciBukuAdukan = (nama, ukuran) => 'Adukan ' + String(nama) + ' ' 
 export const kunciKarungBelakang = (W, merk) => 'Karung belakang ' + String(W) + ' · ' + String(merk);
 /** { kunci: { jenis: 'wadah' | 'karung' | 'adukan' | 'belakang', wadah, merk? } } — buku KHUSUS yang bukan merek pemasok: isi kotak wadah (stokWadah), karung
  *  sisihan/bongkarannya (karungWadah), kemasan hasil adukan yang dibuka (bukuAdukan; `wadah` = nama produknya), karung di belakang wadah (karungBelakang + merkAsal). */
-export function petaBukuWadah() {
+export function petaBukuWadah() { return ingatPerVersi('petaBukuWadah', petaBukuWadahHitung); }
+function petaBukuWadahHitung() {
   const out = {}; ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { if (!m || !m.merk) return;
     if (m.stokWadah) out[String(m.merk)] = { jenis: 'wadah', wadah: String(m.stokWadah) }; else if (m.karungWadah) out[String(m.merk)] = { jenis: 'karung', wadah: String(m.karungWadah) };
     else if (m.bukuAdukan) out[String(m.merk)] = { jenis: 'adukan', wadah: String(m.bukuAdukan).split('|')[0] };
@@ -157,6 +181,20 @@ export function indukTerpisah() { const u = petaUkuran(); const g = ukuranDigabu
 export function stokMerekSaja(stok) {
   const w = petaBukuWadah(); const out = {}; Object.keys(stok || {}).forEach((m) => { if (!w[m]) out[m] = stok[m]; }); return out;
 }
+// ---- BUKU STOK MESIN, DIINGAT (owner 3 Okt "masih patah-patah"): hitungStokKarungPerMerk / hitungStokKemasan (mesin beku — tidak disunting) dibaca layar
+// sampai ±2.000× per gambar (tiap wadah, tiap baris katalog, tiap anggota kelas; diukur 7 Okt atas cadangan toko). Keduanya HANYA membaca cache lewat ambil*()
+// di atas, jadi hasilnya sama selama versi cache sama; `sampai` ikut kunci (kosong = semua). Mesin tetap membaca data lewat ambil*(); layar membaca buku
+// stok lewat sini. Rak Jual (susunRak, stokMaksJalur, ongkos yang dijaga uji Jual) dan jalur tulis tetap memanggil mesin langsung.
+export function ingatStokKarung(sampai) { return ingatPerVersi('stokKarung|' + (sampai || ''), () => hitungStokKarungPerMerk(sampai)); }
+export function ingatStokKemasan(sampai) { return ingatPerVersi('stokKemasan|' + (sampai || ''), () => hitungStokKemasan(sampai)); }
+/** semuaMerkDikenal (pembantu: nama di buku karung, kemasan, katalog karung — hanya cache) diingat; Harga & jenis beras membacanya tiap gambar. */
+export function ingatMerkDikenal() { return ingatPerVersi('merkDikenal', semuaMerkDikenal); }
+// KAS & NERACA MESIN, DIINGAT: daftarGerakanKas (seluruh riwayat gerakan kas; Uang dulu menyusunnya ±6× + kasPada ±4× per gambar) hanya membaca cache.
+// kasPada & hitungNeraca juga membaca TITIK KAS (ambilTitikKas: salinan localStorage perangkat atau dokumen pengaturan/titikKas) — salinan perangkat bisa berubah
+// TANPA versi cache naik (tab lain, tutup hari), jadi titik kas yang sedang terbaca ikut KUNCI ingatan: titik berubah → dihitung ulang.
+export function ingatGerakanKas() { return ingatPerVersi('gerakanKas', daftarGerakanKas); }
+export function ingatKasPada(sampai) { return ingatPerVersi('kasPada|' + (sampai || '') + '|' + JSON.stringify(ambilTitikKas()), () => kasPada(sampai)); }
+export function ingatNeraca(sampai) { return ingatPerVersi('neraca|' + (sampai || '') + '|' + JSON.stringify(ambilTitikKas()), () => hitungNeraca(sampai)); }
 export function ambilRetur() { return _cache.retur; }
 export function ambilKarantina() { return _cache.karantina; }
 export function ambilPengeluaranHarian() { return _cache.harian; }
@@ -203,6 +241,13 @@ export function ambilTitikKas() {
   if (dok && dok.tanggal && (!lokal || String(dok.diubahPada || '') > String(lokal.diubahPada || ''))) return dok;
   return lokal;
 }
+/**
+ * KUNCI KEADAAN DI LUAR CACHE (sanggahan layar mulus, 7 Okt): yang ikut digambar layar tetapi TIDAK menaikkan versi cache — HARI, HARI TUTUP AKTIF (jam 12 siang
+ * memindah "cek tutup" wadah & Tutup hari ke hari dagang berikutnya, tanggalTutupAktif) dan TITIK KAS yang terbaca (salinan perangkat bisa berubah dari tab lain
+ * tanpa data baru). Layar yang tidak menggambar ulang karena "tidak ada data baru" (dasbor, Menu & layar lain yang dibuka lagi) memakai hasil lamanya hanya
+ * bila kunci ini sama. Yang lebih halus dari hari (pita jam Menu, jam di Pelanggan) ditambahkan layarnya sendiri di belakang kunci ini.
+ */
+export function kunciLuarCache(kini) { const k = kini || new Date(); return hariIniIso(k) + '|' + tanggalTutupAktif(k) + '|' + JSON.stringify(ambilTitikKas()); }
 // Putaran 25c: jenis beras diatur di /baru/ — dokumen pengaturan/jenisBeras (bentuk sama dengan index.html) MENANG; salinan localStorage (ditulis
 // pendengar index.html / cadangan lama) hanya dipakai kalau dokumennya belum ada di cache. Dulu /baru/ HANYA membaca salinan itu, jadi sesudah sistem
 // lama tidak dibuka lagi cadangan dari /baru/ membawa peta basi (docs/peta-pindahan-terakhir.md §3).

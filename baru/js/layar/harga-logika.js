@@ -8,9 +8,8 @@
 // RUGI hanya bila modal > harga (tegas `>`); harga = modal = "untung nol", keadaan yang boleh dipilih sadar (memori harga-karung-ir64-elevate-ditunda).
 // Target untung bawaan = rata-rata untung yang SEDANG berlaku, bukan angka karangan — layar yang menyalakan alarm di semua baris akan diabaikan.
 // Modal per kg = modal rata-rata di buku (mesin yang sama dengan laba & neraca; sama dengan layar HPP), harga beli terbaru dibawa sebagai pembanding.
-import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
 import { RASIO_DEFAULT, RASIO_KONVERSI, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilSemuaBatch, ambilPenjualan, ambilHargaPasar, ambilHargaTerbit, cacheMentah, stokMerekSaja, petaUkuran } from '../data/toko.js';
+import { ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilSemuaBatch, ambilPenjualan, ambilHargaPasar, ambilHargaTerbit, cacheMentah, stokMerekSaja, petaUkuran, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { RP, hariIniIso } from '../inti/format.js';
 import { arPeta, arSembunyiHarga, arBeras } from './arsip-logika.js';
 import { aturWadah } from './jual-logika.js';
@@ -45,7 +44,7 @@ export function bongkarTerukur() {
 }
 /** Target untung bawaan = rata-rata untung per kg katalog KARUNG yang sedang berlaku (dibulatkan ke Rp50). Tanpa katalog bermodal → 0. */
 export function targetTerukur() {
-  const stokK = hitungStokKarungPerMerk(); const u = [];
+  const stokK = ingatStokKarung(); const u = [];
   ambilHargaKarung().forEach((h) => { const m = (stokK[h.merk] || {}).hppTerakhirPerKg || 0; if (m > 0 && Number(h.hargaPerKg) > 0) u.push(Number(h.hargaPerKg) - m); });
   if (!u.length) return 0; const rata = u.reduce((a, x) => a + x, 0) / u.length; return Math.max(0, Math.round(rata / 50) * 50);
 }
@@ -100,7 +99,7 @@ export function nilaiHarga(n, modalUnit, kg, target, naik) {
 }
 /** Semua baris harga SEKALI: tiap merek × satuan yang ada di katalog atau di buku stok. */
 export function hgSemua(kini) {
-  const atur = aturHarga(); const target = atur.targetPerKg; const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan();
+  const atur = aturHarga(); const target = atur.targetPerKg; const stokK = ingatStokKarung(); const stokM = ingatStokKemasan();
   const draf = drafHarga(); const sengaja = petaSengaja(); const pasar = petaPasar(); const laku = lakuHarga(kini); const labelBasi = daftarLabel();
   const kK = ambilHargaKarung(), kM = ambilHargaKemasan(), kL = ambilHargaLiteran();
   const modalKg = (m) => (stokK[m] || {}).hppTerakhirPerKg || 0; const beliTerbaru = (m) => (stokK[m] || {}).hargaTerakhirPerKg || 0;
@@ -164,7 +163,7 @@ export function susunHapusLiter(merk, w, yakin) {
  * yang masih tersimpan tapi tidak dipakai rak (bukan wadah, bukan literan langsung). Harga per liter = baris 'L' katalog yang sama (draf/terbit biasa).
  */
 export function hgLiteran(S) {
-  const stokK = hitungStokKarungPerMerk(); const L = wbLiteranLangsung(); const wadahD = aturWadah().daftar; const arsip = arPeta();
+  const stokK = ingatStokKarung(); const L = wbLiteranLangsung(); const wadahD = aturWadah().daftar; const arsip = arPeta();
   const barisL = (m) => cariBaris(S, kunciHarga(m, 'L'));
   const wadah = wadahD.map((W) => { const b = barisL(W); const K = wbKomposisi(W); const rasio = wbRasio(W); const modalL = b ? b.modalUnit : 0; const harga = b ? b.n : 0;
     return { nama: W, k: kunciHarga(W, 'L'), b, harga, rasio, modalLiter: modalL, modalKg: b ? b.modalKg : 0, untungLiter: harga > 0 && modalL > 0 ? harga - modalL : null, status: b ? b.status : 'lubang',

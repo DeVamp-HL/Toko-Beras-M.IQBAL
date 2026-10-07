@@ -14,9 +14,9 @@
 // Nilai rupiah DIKUNCI saat menulis (selisih × modal saat itu) — sejak 1 Sep 2026 selisih KURANG memotong laba lewat baris "Susut & selisih stok",
 // selisih LEBIH menaikkan stok tanpa mengubah modal (memori opname-tanpa-rupiah, susut-laba).
 // Koleksi BARU milik sistem baru: aturanToko (angka kebijakan owner, id tetap) dan bukuHapus (jejak kedatangan yang dihapus, beralasan).
-import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungHppMerkDalamBatch, hitungUtangPemasok } from '../mesin/beku.js';
+import { hitungStokKarungPerMerk, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungHppMerkDalamBatch, hitungUtangPemasok } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, kunciKemasan, merkPunyaKarungBerat, batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah, petaBukuWadah, ambilProduksiBerlaku, kunciUkuran, petaUkuran, indukTerpisah , ukuranDigabung, namaSistemPemasok } from '../data/toko.js';
+import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah, petaBukuWadah, ambilProduksiBerlaku, kunciUkuran, petaUkuran, indukTerpisah, ukuranDigabung, namaSistemPemasok, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { hitunganFisik, tumpukanGudang, aturWadah, pindahNama, semuaKarungTerbuka, karungUntukWadah, karungBelakang, beratKarungBuka, ckCocokTerakhir, ckKalimatMundur, kolamDitutup } from './jual-logika.js';
 import { wbKomposisi, wbBagianMerk, wbKomposisiBaru, wbKomposisiTurunanKg, wbModalPerKg, wbRasio, wbNamaKelas, wbDokLahir, wbDokPindah, wbLiteranLangsung, wbKarungTertinggal, wbSertakanKarungBekas } from './wadah-bernama-logika.js';
@@ -86,7 +86,7 @@ export function calonMerkMasuk() {
 export function ckSaranVarian(merkKetik) {
   const t = String(merkKetik || '').trim(); if (!t) return []; const berVarian = t.indexOf('\u00b7') >= 0;
   const kunci = (x) => String(x).trim().replace(/\s+/g, ' ').toLowerCase(); const k = kunci(t);
-  const st = hitungStokKarungPerMerk(); const nama = {}; Object.keys(st).forEach((m) => { nama[m] = true; }); ambilHargaKarung().forEach((h) => { if (h && h.merk) nama[String(h.merk)] = true; });
+  const st = ingatStokKarung(); const nama = {}; Object.keys(st).forEach((m) => { nama[m] = true; }); ambilHargaKarung().forEach((h) => { if (h && h.merk) nama[String(h.merk)] = true; });
   const arsip = arPeta(); const bw = petaBukuWadah(); const uk = petaUkuran();
   const sama = (m) => m !== t && kunci(m) === k;                                                     // nama yang sama, beda huruf/spasi
   const variannya = (m) => !berVarian && m.indexOf(' \u00b7 ') > 0 && kunci(m.split(' \u00b7 ')[0]) === k;   // varian berinduk nama itu
@@ -95,7 +95,7 @@ export function ckSaranVarian(merkKetik) {
     .map((x) => ({ nama: x.nama, bukuKg: x.bukuKg }));
 }
 /** Harga beli per kg terakhir nama itu (dari buku) — pembanding saat mengetik harga. */
-export function hargaSebelumnya(merk) { const s = hitungStokKarungPerMerk()[merk]; return s ? (s.hargaTerakhirPerKg || 0) : 0; }
+export function hargaSebelumnya(merk) { const s = ingatStokKarung()[merk]; return s ? (s.hargaTerakhirPerKg || 0) : 0; }
 // audit 39b no. 30: baris BAL (beli jadi, sistem lama) kedatangan yang dikoreksi TIDAK diubah dari sini — ikut tertulis APA ADANYA (hanya nomor barisnya).
 // Nilainya bagian bon / belanja kedatangan itu, dan bongkar tetap dibagi ke SEMUA baris termasuk bal (porsinya sudah di modal per bag pasangan beli-jadi) — sama dengan mesin.
 const ckBarisBal = (batch) => ((batch && batch.merkList) || []).filter((m) => m && m.bentuk === 'bal');
@@ -325,7 +325,7 @@ export function ckTanpaBukuUkuran() { const out = {}; wbLiteranLangsung().daftar
  * (satu pindah buku, modal ikut, laba & neraca tidak berubah — bukan cocokkan). Sesudahnya induk kembali satu buku untuk semua ukuran.
  */
 export function ckCalonGabungUkuran() {
-  const st = hitungStokKarungPerMerk(); const u = petaUkuran(); const g = ukuranDigabung(); const tanpa = ckTanpaBukuUkuran();
+  const st = ingatStokKarung(); const u = petaUkuran(); const g = ukuranDigabung(); const tanpa = ckTanpaBukuUkuran();
   return Object.keys(u).filter((k) => tanpa[u[k].induk] && !g[k] && st[k] && (st[k].sisaKg || 0) > 0.004).sort()
     .map((k) => ({ kunci: k, induk: u[k].induk, berat: u[k].berat, kg: ckB2(st[k].sisaKg || 0), indukKg: ckB2((st[u[k].induk] || {}).sisaKg || 0) }));
 }
@@ -339,7 +339,7 @@ export function ckSusunGabungUkuran(kunci, w, yakin) {
 }
 /** Merek yang datang DUA ukuran (karung 50 & 25 kg tercatat atas namanya) dan stok lamanya belum dipisah. Merek per liter / kelas sendiri tidak ditawarkan (39b no. 35). */
 export function ckCalonPisahUkuran() {
-  const st = hitungStokKarungPerMerk(); const u = petaUkuran(); const bw = petaBukuWadah(); const sudah = {}; const tanpa = ckTanpaBukuUkuran();
+  const st = ingatStokKarung(); const u = petaUkuran(); const bw = petaBukuWadah(); const sudah = {}; const tanpa = ckTanpaBukuUkuran();
   ambilProduksiBerlaku().forEach((p) => { if (p.pisahUkuran && p.pisahUkuran.induk) sudah[p.pisahUkuran.induk] = true; });
   return Object.keys(st).filter((m) => !u[m] && !bw[m] && !sudah[m] && !tanpa[m] && merkPunyaKarungBerat(m, 50) && merkPunyaKarungBerat(m, 25)).sort()
     .map((m) => ({ merk: m, bukuKg: ckB2(st[m].sisaKg || 0), baru: kunciUkuran(m, 25) }));
@@ -444,7 +444,7 @@ function ckKarungKhusus(atur, bw, stok, kolam, slot, bagianW) {
 /** Semua barang yang bisa dicocokkan, per tab: {kunci, nama, satuan, sistem, modal, …}. */
 export function barangCocok(tab) {
   const out = [];
-  if (tab === 'tumpukan') { const st = hitungStokKarungPerMerk(); const siap = { stok: st, pindah: pindahNama(), kolam: semuaKarungTerbuka(), bagian: wbBagianMerk() };
+  if (tab === 'tumpukan') { const st = ingatStokKarung(); const siap = { stok: st, pindah: pindahNama(), kolam: semuaKarungTerbuka(), bagian: wbBagianMerk() };
     // TUMPUKAN GUDANG: yang dihitung cuma karung utuh (50 / 25 kg) per nama. Tercatat = buku − karung terbuka − bagian nama ini di wadah (rantai stok).
     Object.keys(stokMerekSaja(st)).sort().forEach((m) => { const t = tumpukanGudang(m, siap);   // putaran 28: buku stok wadah bukan tumpukan gudang
       const rincian = 'buku ' + ckKG(st[m].sisaKg || 0) + (Math.abs(t.diBelakangKg) > 0.004 ? ' − karung terbuka ' + ckKG(t.diBelakangKg) : '') + (Math.abs(t.diWadahKg) > 0.004 ? ' − di wadah ' + ckKG(t.diWadahKg) : '')
@@ -452,7 +452,7 @@ export function barangCocok(tab) {
         + (t.lengkap ? '' : ' · perkiraan: ada wadah / karung terbuka yang belum ditandai');
       out.push({ kunci: 'tumpukan|' + m, tab, nama: m, satuan: 'kg', sistem: ckB2(t.kg), buku: ckB2(st[m].sisaKg || 0), modal: st[m].hppTerakhirPerKg || 0, rincian, lengkap: t.lengkap,
         beratKarung: t.beratKarung, karungSistem: t.karung }); }); }
-  else if (tab === 'wadah') { const atur = aturWadah(); const bw = petaBukuWadah(); const stok = hitungStokKarungPerMerk(); const kolam = semuaKarungTerbuka(); const bagianW = wbBagianMerk(); const slot = {};
+  else if (tab === 'wadah') { const atur = aturWadah(); const bw = petaBukuWadah(); const stok = ingatStokKarung(); const kolam = semuaKarungTerbuka(); const bagianW = wbBagianMerk(); const slot = {};
     // WADAH LITERAN: per petak W1–W8 — isi kotak + karung terbuka di belakangnya. Tercatat isi = Σ komposisi (merek asal); belum pernah disamakan = null (tidak ditebak).
     // audit 39b no. 5 (G1): karung yang punya BUKU SENDIRI (karung belakang, kemasan adukan) — tercatat = BUKUNYA di tempat itu, bukan catatan kolam
     // (dulu dibanding catatan: buku yang sudah selisih tetap selisih sesudah dicocokkan). Catatannya tetap disebut bila berbeda.
@@ -465,7 +465,7 @@ export function barangCocok(tab) {
         takarKg: atur.takarKg, rasio: wbRasio(W), puncakKg: atur.puncakKg, susutWajarKg: atur.susutWajarKg }); });
     // audit 39b no. 5 (G3 G4): karung berbuku sendiri yang BUKAN karung slot wadah — karung belakang kedua dst., karung sisihan wadah, kemasan adukan lepas
     ckKarungKhusus(atur, bw, stok, kolam, slot, bagianW).forEach((x) => out.push(x)); }
-  else if (tab === 'kemasan') { const st = hitungStokKemasan(); Object.keys(st).sort().forEach((k) => { const s = st[k]; out.push({ kunci: 'kemasan|' + k, tab, nama: s.namaProduk + ' ' + String(s.ukuranKemasan).replace('.', ',') + ' kg', satuan: 'unit', sistem: s.sisaUnit || 0, modal: s.hppRataRataPerUnit || 0, namaProduk: s.namaProduk, ukuranKemasan: s.ukuranKemasan }); }); }
+  else if (tab === 'kemasan') { const st = ingatStokKemasan(); Object.keys(st).sort().forEach((k) => { const s = st[k]; out.push({ kunci: 'kemasan|' + k, tab, nama: s.namaProduk + ' ' + String(s.ukuranKemasan).replace('.', ',') + ' kg', satuan: 'unit', sistem: s.sisaUnit || 0, modal: s.hppRataRataPerUnit || 0, namaProduk: s.namaProduk, ukuranKemasan: s.ukuranKemasan }); }); }
   else { const k = hitungStokBahanKemasan(); const l = hitungStokBahanLiteran();
     Object.keys(k).sort().forEach((j) => out.push({ kunci: 'kantong|' + j, tab, nama: ccLabelBahan(j), satuan: 'lembar', sistem: k[j].sisaPcs || 0, modal: k[j].hppPerPcs || 0, jenis: j, koleksi: 'stokBahanKemasan' }));
     Object.keys(l).sort().forEach((j) => out.push({ kunci: 'kantong|' + j, tab, nama: ccLabelBahan(j), satuan: 'lembar', sistem: l[j].sisaPcs || 0, modal: l[j].hargaPerPcs || l[j].hppPerPcs || 0, jenis: j, koleksi: 'stokBahanLiteran' })); }
@@ -508,7 +508,7 @@ const ccHariAntara = (dari, ke) => (dari && ke ? Math.round((new Date(ke + 'T00:
  * Yang belum pernah ditandai (tercatat null) = hitungan pertama: tanpa selisih, cuma jadi titik awal.
  */
 function ccSusunWadah(hitung, alasan, yakin) {
-  const atur = aturCatat(); const peta = cocokAkhirPeta(); const H = hitung || {}; const A = alasan || {}; const Y = yakin || {}; const stok = hitungStokKarungPerMerk(); const hari = hariIniIso(new Date(Date.now()));
+  const atur = aturCatat(); const peta = cocokAkhirPeta(); const H = hitung || {}; const A = alasan || {}; const Y = yakin || {}; const stok = ingatStokKarung(); const hari = hariIniIso(new Date(Date.now()));
   const modal = (m) => (stok[m] || {}).hppTerakhirPerKg || 0;
   // tinjauan H2: satu buku karung yang terbuka di beberapa tempat — tercatat tiap tempat = catatannya + selisih buku−catatan (e). Bila dua tempat dihitung
   // dalam satu simpan, e dipotong SEKALI (tempat pertama); tempat berikutnya dibanding catatannya sendiri.

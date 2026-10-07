@@ -853,7 +853,7 @@ RUSAK = {
     'Papan Kapur tidak menulis cek wadah': ("else if (w.tipe === 'cek') out.push(", "else if (false) out.push("),
     # selisih
     'selisih karung belakang (kolam vs buku) tidak disebut': ("wbKarungBelakangWadah(W).forEach((KB) => { if (!KB.diketahui || Math.abs(KB.selisihKg) <= 0.05) return;", "wbKarungBelakangWadah(W).forEach((KB) => { if (true) return;"),
-    'selisih wadah belum aktif tidak disebut': ("if (Math.abs(sel) > 0.05) { const stok = hitungStokKarungPerMerk();", "if (false) { const stok = hitungStokKarungPerMerk();"),
+    'selisih wadah belum aktif tidak disebut': ("if (Math.abs(sel) > 0.05) { const stok = ingatStokKarung();", "if (false) { const stok = ingatStokKarung();"),
     # jual-logika.js
     'panel takar tidak menormalkan merek ke kunci karung belakang': ("return Object.assign({}, x, { merk: wbKunciKB(di, x.merk), merkAsal: x.merk, dari: di }); });", "return x; });"),
     'buka karung di belakang wadah aktif memakai jalur lama (buku tidak pindah)': ("if (di && wbAktif(di) && !wbBukuKhusus(merk)) {", "if (false) {"),

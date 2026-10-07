@@ -11,7 +11,7 @@
 // Tanpa DOM; nama berawalan vr (bundel uji satu lingkup). Dijaga alat-uji/uji_varian_merek.py.
 import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { jenisUntukMerk, cariHargaKarungPerKg, hargaKarungUtuh } from '../mesin/pembantu.js';
-import { ambilHargaKarung, ambilPetaJenisBeras, cacheMentah, ambilSemuaBatch, ambilPenjualan, ambilProduksiBerlaku, ambilRetur, ambilPenyesuaianStok, tolakKunci, denganCacheSementara } from '../data/toko.js';
+import { ambilHargaKarung, ambilPetaJenisBeras, cacheMentah, ambilSemuaBatch, ambilPenjualan, ambilProduksiBerlaku, ambilRetur, ambilPenyesuaianStok, tolakKunci, denganCacheSementara, ingatStokKarung } from '../data/toko.js';
 import { RP, tanggalPendek } from '../inti/format.js';
 // owner 7 Okt: varian yang lahir dari stok induk — buku lahir & pindah buku (modal ikut) memakai pintu yang sama dengan wadah / buku per ukuran
 import { wbNamaKelas, wbDokLahir, wbDokPindah } from './wadah-bernama-logika.js';
@@ -41,7 +41,7 @@ export function vrBatas() {
  * beda = |harga beli − modal berjalan| ÷ modal × 100, ditanya kalau LEBIH dari batas.
  */
 export function vrPerluTanya(merk, hargaPerKg) {
-  const st = hitungStokKarungPerMerk()[String(merk || '')]; const h = Number(hargaPerKg) || 0; const batas = vrBatas();
+  const st = ingatStokKarung()[String(merk || '')]; const h = Number(hargaPerKg) || 0; const batas = vrBatas();
   if (!st || !(st.hppTerakhirPerKg > 0) || !(h > 0)) return { perlu: false, modal: st ? st.hppTerakhirPerKg || 0 : 0, beda: 0, batas, adaBuku: !!st };
   const beda = Math.abs(h - st.hppTerakhirPerKg) / st.hppTerakhirPerKg * 100;
   return { perlu: beda > batas + 1e-9, modal: st.hppTerakhirPerKg, beda: Math.round(beda * 10) / 10, naik: h > st.hppTerakhirPerKg, batas, adaBuku: true };
@@ -59,7 +59,7 @@ export function vrDokJenis(pasangan, w) {
   return ubah ? { koleksi: 'pengaturan', data: { id: 'jenisBeras', peta, diubahPada: w.kini } } : null;
 }
 /** Apakah nama ini sudah dikenal (buku stok atau katalog per kg)? */
-export const vrAda = (nama) => !!hitungStokKarungPerMerk()[nama] || ambilHargaKarung().some((h) => h.merk === nama);
+export const vrAda = (nama) => !!ingatStokKarung()[nama] || ambilHargaKarung().some((h) => h.merk === nama);
 
 /**
  * TERBITKAN harga jual per kg SATU varian (tawaran sesudah barang masuk, atau varian baru dari Harga): dokumen katalogHargaKarung bentuk
@@ -93,7 +93,7 @@ export function vrSusunTerbitHarga(varian, hargaKetik, w, yakin, modalDari) {
  * '' = tidak perlu diperingatkan.
  */
 export function vrPeringatanInduk(induk) {
-  const ind = vrBersih(induk); if (!ind) return ''; const st = hitungStokKarungPerMerk()[ind]; const sisa = st ? Number(st.sisaKg) || 0 : 0; if (!(sisa > 0.05)) return '';
+  const ind = vrBersih(induk); if (!ind) return ''; const st = ingatStokKarung()[ind]; const sisa = st ? Number(st.sisaKg) || 0 : 0; if (!(sisa > 0.05)) return '';
   const perKg = cariHargaKarungPerKg(ind); const utuh = hargaKarungUtuh(ind, 50) || hargaKarungUtuh(ind, 25); if ((perKg !== null && perKg > 0) || (utuh && utuh.perUnit > 0)) return '';
   return ind + ' punya stok ' + String(Math.round(sisa * 10) / 10).replace('.', ',') + ' kg tapi BELUM ada harga jual — stok itu tetap atas nama ' + ind + ' dan tidak tampil di Jual. Kalau barangnya SAMA, setel harga ' + ind + ' di katalog (bukan varian). Varian = nama BARU yang stoknya 0 sampai ada barang masuk atas nama varian itu.';
 }

@@ -646,7 +646,7 @@ if __name__ == '__main__':
             'salinan nota selalu ke-1 (cetak ulang tidak berjejak)': js.replace("function salinanKe(trxId) { return ambilDokumenCetak().filter((d) => d.jenis === 'nota' && String(d.trxId) === String(trxId)).length + 1; }", "function salinanKe(trxId) { return 1; }"),
             'dokumen dicetak dengan kop belum lengkap': js.replace("if (!tolak && !I.lengkap) tolak = 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)';\n  return { jenis: J[0], namaJenis: J[1]", "\n  return { jenis: J[0], namaJenis: J[1]"),
             # ---- laporan berkop / dokumen kecil
-            'kas akhir arus kas dihitung dari kas awal + bersih (bukan mesin kas)': js.replace("const kasAkhir = KA ? KA.kas : kasPada(sampai > iso ? null : sampai);", "const kasAkhir = (kasPada(ugTambahHari(dari, -1)) || 0) + K.bersih;"),
+            'kas akhir arus kas dihitung dari kas awal + bersih (bukan mesin kas)': js.replace("const kasAkhir = KA ? KA.kas : ingatKasPada(sampai > iso ? null : sampai);", "const kasAkhir = (ingatKasPada(ugTambahHari(dari, -1)) || 0) + K.bersih;"),
             # ---- 39b no. 36 (owner 30 Sep): kas akhir bulan final = hitungan fisik tutup hari akhir bulan
             '39b-36: neraca bulan final memakai kasPada (titik kas sekarang) lagi': js.replace("neracaPada(sampai > iso ? iso : sampai, kini, final ? lpKasAkhirBulan(keKey) : null)", "neracaPada(sampai > iso ? iso : sampai, kini, null)"),
             '39b-36: arus kas bulan final memakai kasPada lagi': js.replace("const KA = final ? lpKasAkhirBulan(keKey) : null, KW = final ? lpKasAkhirBulan(lpGeserBulan(bulan[0], -1)) : null;", "const KA = null, KW = null;"),

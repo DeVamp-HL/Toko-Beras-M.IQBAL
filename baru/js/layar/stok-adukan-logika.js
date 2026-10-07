@@ -11,7 +11,7 @@
 // hasilnya sudah terjual/terpakai sehingga stok kemasan jadi minus; jejaknya ke bukuHapus. Adukan "menunggu owner" dari tablet menyusul bersama layar tablet.
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, bagiBiayaAdukan } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, JENIS_BAHAN_KEMASAN, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet, stokMerekSaja, petaStokWadah } from '../data/toko.js';
+import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet, stokMerekSaja, petaStokWadah, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, waktuSetempat } from '../inti/format.js';
 import { arPeta, arKunciKemasan, arDokPulihBanyak } from './arsip-logika.js';
@@ -37,12 +37,12 @@ export function drafAdukanKosong(w) { return { tanggal: w.tanggal, bahan: [baris
 /** Nama karung yang bersisa di gudang (buku), sisa terbanyak dulu — bahan adukan. */
 export function calonBahan() {
   // putaran 28: isi KOTAK wadah bukan bahan adukan; karung sisihan / bongkaran wadah boleh (owner 28 Sep: isi wadah yang dikosongkan jadi karung terpisah)
-  const pw = petaStokWadah(); const semua = hitungStokKarungPerMerk(); const st = {}; Object.keys(semua).forEach((m) => { if (!pw[m]) st[m] = semua[m]; });
+  const pw = petaStokWadah(); const semua = ingatStokKarung(); const st = {}; Object.keys(semua).forEach((m) => { if (!pw[m]) st[m] = semua[m]; });
   return Object.keys(st).filter((m) => (st[m].sisaKg || 0) > 0).sort((a, b) => st[b].sisaKg - st[a].sisaKg).map((m) => ({ merk: m, sisaKg: Math.round(st[m].sisaKg * 100) / 100, hpp: st[m].hppTerakhirPerKg || 0 }));
 }
 /** Kemasan jadi 50/25 kg yang bersisa — boleh dibongkar jadi bahan. */
 export function calonKemasanBahan() {
-  const st = hitungStokKemasan();
+  const st = ingatStokKemasan();
   return Object.keys(st).filter((k) => UKURAN_BAHAN_KEMASAN.indexOf(Number(st[k].ukuranKemasan)) >= 0 && (st[k].sisaUnit || 0) > 0)
     .map((k) => ({ kunci: k, namaProduk: st[k].namaProduk, ukuranKemasan: Number(st[k].ukuranKemasan), sisaUnit: st[k].sisaUnit, hpp: st[k].hppRataRataPerUnit || 0 }))
     .sort((a, b) => a.namaProduk.localeCompare(b.namaProduk) || b.ukuranKemasan - a.ukuranKemasan);
@@ -62,7 +62,7 @@ const adJenisProduksi = (p) => (p.beliJadi || p.stokAwal || p.dariBatch ? 'beliJ
 
 /** Hitung draf: tiap baris + masalahnya, kg masuk/jadi, nilai bahan, kantong, upah, total, modal per unit tiap hasil (rumus sistem berjalan), susut. */
 export function hitungAdukan(draf) {
-  const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const stokB = hitungStokBahanKemasan();
+  const stokK = ingatStokKarung(); const stokM = ingatStokKemasan(); const stokB = hitungStokBahanKemasan();
   const bahan = (draf.bahan || []).map((b, i) => { const merk = String(b.merk || '').trim(); const kg = adB3(adAngka(b.kg)); const terisi = !!merk || kg > 0; const st = stokK[merk];
     const masalah = !terisi ? '' : !merk ? 'nama karungnya belum dipilih' : !(kg > 0) ? 'berapa kg yang dipakai belum diisi' : !st ? merk + ' tidak ada di buku gudang' : '';
     return { ke: i + 1, merk, kg, terisi, masalah, sah: terisi && !masalah, sisaKg: st ? Math.round((st.sisaKg || 0) * 100) / 100 : null, hpp: st ? (st.hppTerakhirPerKg || 0) : 0, nilai: st ? (st.hppTerakhirPerKg || 0) * kg : 0 }; });
@@ -155,7 +155,7 @@ export function daftarAdukan(n) {
 /** Rincian satu adukan: biaya (bahan / kantong / upah / total tercatat), pembagian per hasil, timbangan kg, bisa dihapus atau tidak, riwayat koreksi. */
 export function rincianAdukan(batch) {
   const semua = adKelompok()[String(batch)] || []; const baris = adBerlaku(semua); if (!baris.length) return null;
-  const p1 = adPertama(baris); const jenis = adJenisProduksi(p1); const stokM = hitungStokKemasan();
+  const p1 = adPertama(baris); const jenis = adJenisProduksi(p1); const stokM = ingatStokKemasan();
   const kgMasuk = adB3((p1.kgDipakai || 0) + (p1.kgKemasanDipakai || 0)); const kgJadi = adB3(baris.reduce((a, x) => a + (x.ukuranKemasan || 0) * (x.jumlahUnit || 0), 0));
   const bahanRp = (p1.hppSumberPerKgDipakai || 0) * kgMasuk; const kantongRp = baris.reduce((a, x) => a + (x.biayaKemasan || 0), 0); const upahRp = baris.reduce((a, x) => a + (x.upahRepacking || 0), 0); const total = adTotal(baris);
   const hasil = baris.map((x) => { const st = stokM[kunciKemasan(x.namaProduk, x.ukuranKemasan)] || {}; const sisa = st.sisaUnit || 0; const kurang = Math.max(0, (x.jumlahUnit || 0) - sisa);

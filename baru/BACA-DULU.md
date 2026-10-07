@@ -1918,3 +1918,40 @@ tahun lama ke `arsipTahun` (tidak dimuat). Dulu sesudahnya Pajak & Laporan tahun
   - Aturan pajak PER TAHUN (`aturanToko/rekapOmzet.aturanTahun { 'YYYY': … }`, `PJ_KOLOM_TAHUN`): kolom lama = aturan terbaru (tahun berjalan & DK3);
     begitu aturan terbaru berubah, tahun lalu yang belum punya entri dibekukan dulu dengan aturan lamanya (`pjGabungRekap`). Profil diubah dari layar tahun
     lalu = hanya tahun itu. Tahun ber-potret yang aturannya beda dengan saat dikunci disebut di layar & rekap konsultan ("[DIUBAH SESUDAH TUTUP BUKU]").
+
+## Layar lain mulus (owner 3 Okt 2026: "masih ada lag atau patah-patah"; cabang `perbaikan/layar-lain-mulus`)
+
+Diukur 7 Okt atas cadangan toko (jsc, Apple M2; Jual sudah dipercepat #100/#102): satu angka yang sama dihitung ratusan kali per gambar — `ambilPenjualan`
+sampai 936×, buku stok mesin sampai 927×, `petaBukuWadah` 3.366×. Mesin beku TIDAK disentuh; angka tidak berubah (dijaga `alat-uji/uji_layar_mulus.py`).
+- **Ingatan per versi cache** (`data/toko.js` `ingatPerVersi(kunci, f)`, pola `rakUntukChip` Jual): hasil fungsi yang HANYA membaca cache diingat sampai
+  `_versiCache` naik — versi naik di SEMUA penulis cache (pasok, tulisan simulasi, cache sementara, ganti sumber). Hitungan yang mengubah versi di tengah jalan
+  tidak disimpan. Yang diingat: `ambilPenjualan`, `ambilSemuaBatch`, `ambilProduksiBerlaku`, `petaBukuWadah` (dipakai mesin juga); pembungkus mesin
+  `ingatStokKarung(sampai)`, `ingatStokKemasan(sampai)`, `ingatMerkDikenal()`, `ingatGerakanKas()`, `ingatKasPada(sampai)`, `ingatNeraca(sampai)` — kasPada &
+  neraca juga membaca TITIK KAS (salinan localStorage perangkat bisa berubah tanpa versi naik), jadi titik kas yang terbaca ikut kunci; `karungUntukWadah(W)`
+  (jual-logika); `pjOmzetSistem(bulan)`, `pjPotonganBulan(bulan)`, `pjTahun(tahun, kini)` (kunci memuat HARI: lewat tempo, bulan berjalan, proyeksi).
+- **Aturan pakai**: hasil ingatan DIPAKAI BERSAMA — jangan diubah di tempat (sort / push / assign ke hasilnya; salin dulu). Fungsi yang membaca jam,
+  localStorage, keranjang, atau isian layar TIDAK boleh lewat `ingatPerVersi` kecuali bacaan itu ikut kunci. Jalur Jual yang ongkosnya dijaga uji Jual
+  (`susunRak`, `stokMaksJalur`, tulisan nota) dan jalur tulis (susun*) tetap memanggil mesin langsung, kecuali pembacaan yang sama dengan layar.
+- **Hitung sekali per gambar**: Stok › Tempat simpan menyusun `siap` (buku, pindahan nama, kolam karung, isi wadah) sekali (dulu tiap tumpukan, ±0,3 dtk).
+- **Yang tidak tampil tidak dihitung**: Dasbor ganti rentang = tren saja (`susunDasbor(kini, rentang, lama)`); denyut HP (`perangkatStatus`) & jejak
+  (`logAktivitas`) tidak membasikan dasbor/cincin (`BUKAN_DASBOR`, pola `BUKAN_RAK`) — Perlu perhatian tetap dihitung ulang; Menu menyetel ukuran simpanan
+  hanya bila berubah (buka lagi tanpa data baru = tanpa gambar ulang).
+- Uji: `uji_layar_mulus.py` — tujuh layar asli di jsc lewat `alat-uji/modul_es.py` (lingkup modul ES utuh, 'use strict'): kesetaraan tiap gambar dengan /
+  tanpa ingatan, hasil ingatan dibekukan (pemanggil yang mengubah → melempar), fungsi yang diingat = hitung ulang penuh (nota baru, cache sementara, titik kas
+  perangkat, ganti hari & bulan), dasbor = Ringkasan segar, ongkos per ketukan; `--cadangan <berkas>` = asap atas data toko (lokal saja). Uji jsc lama
+  (bundel_baru, satu lingkup) memuat toko.js juga, jadi ingatannya ikut teruji di sana.
+- **Sanggahan (7 Okt) — kunci luar cache**: yang DIGAMBAR layar tetapi tidak menaikkan versi data (hari, jam 12 siang = hari tutup aktif, titik kas
+  salinan perangkat) dulu bisa tertinggal: dasbor yang dibuka 11.58 tetap menulis "cek tutup" kemarin sesudah 12.00 (denyut HP, jejak, ganti rentang, detak
+  menit), kas per tempat tetap angka lama sesudah titik kas perangkat berubah; Menu yang dibuka lagi esok pagi tetap memajang tanggal & pita jam kemarin.
+  - `toko.js kunciLuarCache(kini)` = hari · `tanggalTutupAktif` · JSON titik kas yang terbaca — SATU tempat. Dasbor: `dbKunci` = kunci ini (di `gambarDasbor`
+    DAN detak menit); hasil lama (denyut HP, jejak, ganti rentang) dipakai hanya bila kuncinya sama. Ini juga menutup basi lama di detak menit (sudah ada
+    sebelum cabang ini: lewat jam 12 / titik kas berubah tanpa data baru).
+  - Menu: kunci gambar terakhir = kunci luar + pita jam (+ menit selagi Sistem › Perangkat terbuka: "denyut N menit lalu"); `tampilkan(true)` menggambar
+    ulang bila kuncinya berubah. Dibuka lagi dengan kunci sama tetap tanpa gambar ulang.
+  - Pola yang sama (sudah ada sejak 29 Sep, `_kotor`): Stok (Wadah literan "cek tutup", Gudang), Harga (Bon pemasok, Belanja), Laporan (Harian, Neraca),
+    Uang (Tutup hari, Pindah uang, Tutup buku) dan Pelanggan (kunci + JAM: Kenali membaca jam sekarang) yang dibuka lagi tanpa data baru kini digambar
+    ulang bila kuncinya berubah. Indeks cincin (`bangunIndeks`, membaca potret tahun < tahun jam sekarang) dibangun ulang saat tahun berganti.
+  - Dijaga `uji_layar_mulus.py` › KUNCI LUAR: 21 kejadian tanpa data baru (dasbor 7, Menu 4, Stok 2, Uang 3, Harga 2, Laporan 2, Pelanggan 1) = gambar segar
+    saat itu juga, tiap kasus wajib TAJAM (gambar segar memang berubah); indeks cincin 1× saat tahun berganti, 0× di detak biasa; +13 kontrol yang wajib
+    berbunyi KARENA sebabnya (elemen ke-4 RUSAK). Kode sebelum sanggahan: 21/21 basi; main sebelum cabang ini: 12/21 basi (dasbor di detak menit, semua
+    kasus layar lain — Menu dulu selalu digambar ulang, dasbor dulu disegarkan denyut HP).

@@ -12,7 +12,7 @@ import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini, jamSetempat, waktuSetemp
 import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman, kunciLuarCache } from '../data/toko.js';
 import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';
 // owner 7 Okt (sisa pensiun #103): tab "Kasir & PIN" (25c) DICABUT dari layar — setelan operator kasir (pengaturan/aksesKasir) tidak dibaca aplikasi
 // yang tayang sejak kasir.html & sistem lama pensiun 3 Okt (kasir darurat tidak pernah membacanya). PIN owner (pengaturan/keamanan) juga tidak dibaca
@@ -55,6 +55,11 @@ export function pasangLayarMenu(akar, opsi) {
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
+  // owner 3 Okt (patah-patah): Menu yang dibuka lagi TANPA data baru tidak digambar ulang. Sanggahan 7 Okt: isinya juga membaca tanggal (kepala, jatuh tempo
+  // bon, pengingat pajak), pita jam (Pagi / Malam …) dan titik kas perangkat — semuanya tidak menaikkan versi data. Kunci gambar terakhir = kunciLuarCache
+  // + pita jam (+ menit selagi Sistem › Perangkat terbuka: "denyut N menit lalu", antrean lama); dibuka lagi dengan kunci lain = digambar ulang.
+  let _kunciGambar = '';
+  const kunciGambar = () => { const d = kini(); return kunciLuarCache(d) + '|' + M.mnBagianDari(d.getHours()) + (st().sistem === 'perangkat' ? '|' + Math.floor(d.getTime() / 60000) : ''); };
   const lamaAda = () => { const I = st().lamaInfo; return I && I.ada ? I : null; };   // null = belum dihitung / tidak terbaca
   const lokal = () => Object.assign({}, opsi.lokal ? opsi.lokal() : {}, { lsKb: st().lsKb, usageKb: st().usageKb, quotaKb: st().quotaKb, autoTanggal: st().autoTanggal,
     lamaKb: lamaAda() ? lamaAda().kb : null, lamaN: lamaAda() ? lamaAda().ada.length : null });
@@ -75,8 +80,10 @@ export function pasangLayarMenu(akar, opsi) {
   function ukurSimpanan() {
     let ls = null; try { let b = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); b += (k.length + String(localStorage.getItem(k) || '').length) * 2; } ls = Math.round(b / 1024); } catch (e) { ls = null; }
     let auto = null; try { auto = localStorage.getItem('miqbal_backup_auto_tanggal') || null; } catch (e) { auto = null; }
-    set({ lsKb: ls, autoTanggal: auto, lamaInfo: hitungLama() });
-    try { if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then((e) => set({ usageKb: Math.round((e.usage || 0) / 1024), quotaKb: Math.round((e.quota || 0) / 1024) })).catch(() => {}); } catch (e) { /* abaikan */ }
+    // owner 3 Okt (Menu patah-patah): keadaan hanya disetel bila angkanya BERUBAH — tiap setel menggambar ulang Menu, dan buka Menu dulu menggambar 2–3 kali
+    const beda = (p) => { const s = st(); const u = {}; Object.keys(p).forEach((k) => { if (JSON.stringify(s[k]) !== JSON.stringify(p[k])) u[k] = p[k]; }); if (Object.keys(u).length) set(u); };
+    beda({ lsKb: ls, autoTanggal: auto, lamaInfo: hitungLama() });
+    try { if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then((e) => beda({ usageKb: Math.round((e.usage || 0) / 1024), quotaKb: Math.round((e.quota || 0) / 1024) })).catch(() => {}); } catch (e) { /* abaikan */ }
   }
   // ---- tujuan tiap baris: layar sistem baru atau lembar Sistem di dalam Menu. Tujuan 'lama' (tautan ke sistem lama) dibuang 3 Okt 2026: sistem
   // lama pensiun (owner) dan menu-logika.js sudah tidak punya baris yang menunjuknya ----
@@ -185,6 +192,7 @@ export function pasangLayarMenu(akar, opsi) {
   // ---------- GAMBAR ----------
   function gambar() {
     if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false;
+    _kunciGambar = kunciGambar();
     const s = st(); const sumber = sumberData(); const d = kini();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
@@ -416,5 +424,5 @@ export function pasangLayarMenu(akar, opsi) {
   K.dengar(gambar);
   dengarkan(() => nanti(gambar));
   return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka: (sistem, tab) => { set({ sistem: sistem || null, tabS: Object.assign({}, st().tabS, sistem && tab ? { [sistem]: tab } : {}), kabar: '' }); if (sistem) ukurSimpanan(); },
-    tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); ukurSimpanan(); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
+    tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); ukurSimpanan(); } if (tampil && (_kotor || !akar.firstElementChild || _kunciGambar !== kunciGambar())) segera(gambar); } };
 }

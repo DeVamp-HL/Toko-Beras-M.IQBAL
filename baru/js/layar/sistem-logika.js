@@ -6,10 +6,10 @@
 // Kejujuran: antrean = catatan yang sungguh belum diakui server (hasPendingWrites), bukan hitungan sendiri; yang tidak bisa dihitung DISEBUT.
 // Tidak ada kolom PIN/sandi di mana pun — kunci perangkat diatur di perangkatnya (aturan tetap).
 // Nama pembantu diprefiks `ss` karena bundel uji jsc satu lingkup.
-import { hitungUtangPemasok, hitungStokBahanKemasan, hitungStokKarungPerMerk } from '../mesin/beku.js';
+import { hitungUtangPemasok, hitungStokBahanKemasan } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, kunciPelanggan, uangKembaliRetur } from '../mesin/pembantu.js';
 import { KOLEKSI } from '../data/koleksi.js';
-import { ambilPenjualan, ambilRetur, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilPetaJenisBeras, cacheMentah, eraBuku } from '../data/toko.js';
+import { ambilPenjualan, ambilRetur, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilPetaJenisBeras, cacheMentah, eraBuku, ingatStokKarung } from '../data/toko.js';
 import { tempoPemasok } from './bon-pemasok-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
 import { semuaBon, pesanTagih } from './bon-logika.js';
@@ -293,13 +293,13 @@ export function ssSimpananLama(isi, sudahUnduh) {
 export function ssLokasi() { const A = ssAtur('lokasi'); const utama = A.daftar.find((l) => l.utama) || A.daftar[0]; return { daftar: A.daftar, utama, pengantar: A.pengantar }; }
 /** Stok per merek per lokasi (kg): buku mesin lama = seluruhnya di lokasi utama; pindah stok menggesernya (keluar −, masuk +). Jumlah semua lokasi = buku. */
 export function ssStokLokasi() {
-  const { utama } = ssLokasi(); const stokK = hitungStokKarungPerMerk(); const out = {};
+  const { utama } = ssLokasi(); const stokK = ingatStokKarung(); const out = {};
   Object.keys(stokK).forEach((m) => { out[m] = {}; out[m][utama.id] = Math.round((stokK[m].sisaKg || 0) * 100) / 100; });
   cacheMentah('pindahStok').forEach((p) => { if (!p.merk || !p.lokasi) return; if (!out[p.merk]) out[p.merk] = {}; const kg = Number(p.kg) || 0; out[p.merk][p.lokasi] = Math.round(((out[p.merk][p.lokasi] || 0) + (p.tipe === 'masuk' ? kg : -kg)) * 100) / 100; });
   return out;
 }
 export function ssLaporLokasi(kini) {
-  const { daftar, utama } = ssLokasi(); const iso = hariIniIso(kini); const bulan = iso.slice(0, 7); const stok = ssStokLokasi(); const stokK = hitungStokKarungPerMerk(); const perangkat = cacheMentah('perangkat');
+  const { daftar, utama } = ssLokasi(); const iso = hariIniIso(kini); const bulan = iso.slice(0, 7); const stok = ssStokLokasi(); const stokK = ingatStokKarung(); const perangkat = cacheMentah('perangkat');
   const lapor = daftar.map((l) => { const merek = Object.keys(stok).filter((m) => Math.abs(stok[m][l.id] || 0) > 0.05).map((m) => ({ nama: m, kg: stok[m][l.id] })).sort((a, b) => b.kg - a.kg);
     const kg = merek.reduce((a, m) => a + m.kg, 0); const nilai = merek.reduce((a, m) => a + m.kg * ((stokK[m.nama] || {}).hppTerakhirPerKg || 0), 0);
     const nota = ambilPenjualan().filter((p) => (p.lokasi || utama.id) === l.id); const hariIni = nota.filter((p) => p.tanggal === iso); const bulanIni = nota.filter((p) => (p.tanggal || '').slice(0, 7) === bulan);

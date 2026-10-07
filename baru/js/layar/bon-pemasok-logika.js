@@ -9,7 +9,7 @@
 // Uang toko: sistem lama tidak punya saldo per kantong, yang bisa dijaga TOTAL kas (kasPada; null bila titik kas belum disetel) — "dari mana uangnya" dicatat sebagai kolom.
 import { hitungUtangPemasok, kasPada } from '../mesin/beku.js';
 import { batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, ambilTutupHari, cacheMentah, kunciSampai, namaSistemPemasok, tolakKunci, denganCacheSementara } from '../data/toko.js';
+import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, ambilTutupHari, cacheMentah, kunciSampai, namaSistemPemasok, tolakKunci, denganCacheSementara, ingatKasPada } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
 export const ATUR_BON_BAWAAN = { dekatHari: 7, admin: [{ nama: 'BI-FAST', n: 2500 }, { nama: 'Transfer antarbank', n: 6500 }] };
@@ -69,7 +69,7 @@ export const nomorWa = (kontak) => { const d = String(kontak || '').replace(/\D/
 
 /** Semua bon terbuka (mesin beku) + tempo, status, urutan tusukan & garis jatuh tempo. */
 export function susunBon(kini) {
-  const iso = hariIniIso(kini || new Date()); const atur = aturBon(); const kas = kasPada(); const up = hitungUtangPemasok();
+  const iso = hariIniIso(kini || new Date()); const atur = aturBon(); const kas = ingatKasPada(); const up = hitungUtangPemasok();
   const bon = []; up.forEach((px) => { const T = tempoPemasok(px.pemasok); (px.bon || []).forEach((b) => { const jatuh = T.hari > 0 && b.tanggal ? bpTambahHari(b.tanggal, T.hari) : ''; const sisaHari = jatuh ? bpHariKe(jatuh) - bpHariKe(iso) : null;
     bon.push({ id: String(b.id), pemasok: px.pemasok, tanggal: b.tanggal || '', nilai: Math.round(b.nilai || 0), dibayar: Math.round(b.dibayar || 0), sisa: Math.round(b.sisa || 0), umur: b.umurHari, jenis: b.jenis, catatan: b.catatan || '', jatuh, sisaHari, tempo: T,
       status: !jatuh ? 'tanpaTempo' : sisaHari < 0 ? 'lewat' : sisaHari <= atur.dekatHari ? 'dekat' : 'jauh' }); }); });

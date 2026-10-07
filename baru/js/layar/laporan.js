@@ -13,7 +13,7 @@ import * as PJ from './pajak-logika.js';
 import * as KB from './kendali-biaya-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, kabarKiriman } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, kabarKiriman, kunciLuarCache } from '../data/toko.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -39,6 +39,9 @@ export function pasangLayarLaporan(akar, opsi) {
   const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB'], []);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
+  // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
+  // berubah sejak gambar terakhir (kunciLuarCache) — semuanya tidak menaikkan versi data
+  let _kunciLuar = ''; const kunciLuar = () => kunciLuarCache(kini());
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
   const bulanKini = () => iso().slice(0, 7);
   // Paket B (H1): tahun pajak yang dibuka — pilihan owner bila masih ada di daftar, selain itu bawaan (Jan–Mar = tahun lalu selama masih ada masa terutang)
@@ -160,7 +163,7 @@ export function pasangLayarLaporan(akar, opsi) {
   const grid = (L, semua) => { const kolom = semua.filter((k) => k && (k.__mentah ? k.html.trim() : String(k).trim())); return L === 'hp' || kolom.length < 2 ? h`<div class="lp-grid">${kolom.map((k) => h`<div class="lp-kolom">${k}</div>`)}</div>` : L === 'tablet' ? h`<div class="lp-grid tablet">${kolom.slice(0, 2).map((k, i) => h`<div class="lp-kolom">${k}${i === 1 ? kolom.slice(2) : ''}</div>`)}</div>` : h`<div class="lp-grid mac ${kolom.length === 2 ? 'dua' : ''}">${kolom.map((k) => h`<div class="lp-kolom">${k}</div>`)}</div>`; };
 
   function gambar() {
-    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; const s = st(); const sumber = sumberData(); const L = lebar();
+    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; _kunciLuar = kunciLuar(); const s = st(); const sumber = sumberData(); const L = lebar();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">
@@ -481,5 +484,5 @@ export function pasangLayarLaporan(akar, opsi) {
   K.dengar(gambar); dengarkan(() => nanti(gambar));
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
   const buka = (keluarga, t) => { AKSI.keluarga({ nama: LP.KELUARGA_LAPORAN.some((k) => k[0] === keluarga) ? keluarga : 'laba' }); if (t && t.awal && keluarga === 'mingguan') set({ mingguM: t.awal }); if (t && t.tahun && keluarga === 'tahunan') set({ tahunT: Number(t.tahun) }); if (t && t.tab && keluarga === 'dokumen') set({ tabD: t.tab }); if (t && t.jenis && keluarga === 'dokumen') set({ tabD: 'kecil', jenisK: t.jenis }); if (t && t.jenis && t.pilih && keluarga === 'dokumen') set({ pilihK: Object.assign({}, st().pilihK, { [t.jenis]: t.pilih }), kabar: '' }); if (t && t.bulan && keluarga === 'laba') set({ bulanL: t.bulan }); if (t && t.bulan && keluarga === 'biaya') set({ bulanK: t.bulan }); if (t && t.hari && keluarga === 'harian') set({ hariH: t.hari }); if (t && t.bulan && keluarga === 'bulanan') set({ bulanB: t.bulan }); };   // putaran 40: dasbor owner menunjuk hari / bulan batang yang diketuk
-  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } };
 }

@@ -173,7 +173,11 @@ def periksa(t, teks):
     ok('gerak: gulirkan mulai dari angka LAMA & bertahan saat dimorf ulang di tengah gulir', 'if (el.__gulir && dari === ke) { el.textContent = format(el.__tampil); return; }' in t['baru/js/inti/gerak.js'] and 'el.__gulir = true; el.__tampil = awal; el.textContent = format(awal);' in t['baru/js/inti/gerak.js'])
     for n in ['stok', 'pelanggan', 'menu', 'harga', 'uang', 'laporan']:
         sx = t['baru/js/layar/%s.js' % n]
-        ok('%s: dibuka lagi → digambar HANYA kalau kotor atau DOM-nya kosong (dikosongkan tirai), lewat segera' % n, 'if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false;' in sx and 'if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } }' in sx)
+        # sanggahan layar mulus 7 Okt: juga digambar ulang bila kunci luar cache berubah (hari, jam 12 siang, titik kas perangkat; Menu + pita jam) — dijaga
+        # perilakunya oleh uji_layar_mulus.py › KUNCI LUAR; di sini bentuknya
+        kunci = '_kunciGambar !== kunciGambar()' if n == 'menu' else '_kunciLuar !== kunciLuar()'
+        ok('%s: dibuka lagi → digambar HANYA kalau kotor, DOM-nya kosong (dikosongkan tirai), atau kunci luar cache berubah, lewat segera' % n, 'if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false;' in sx
+           and 'if (tampil && (_kotor || !akar.firstElementChild || ' + kunci + ')) segera(gambar); } }' in sx)
     ok('ringkasan: dibuka lewat segera (dulu ±80 ms menahan ketukan)', 'segera(perbaruiTampil); } },' in t['baru/js/layar/ringkasan.js'])
     ok('app: layar dimatikan HANYA saat mengunci (akses karyawan berubah saat bekerja tidak membekukan layar)', "if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); SEMUA_LAYAR().forEach((l) => l.tampilkan(false));" in app and app.count('SEMUA_LAYAR().forEach((l) => l.tampilkan(false));') == 1)
     ok('tirai: lapisan uang di luar <main> dicabut saat mengunci & disembunyikan CSS', "['omzetPil', 'omzetToast', 'omzetNaik', 'koinOmzet', 'cincinOmzet', 'kilauOmzet', 'panggung'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); });" in app
@@ -231,7 +235,7 @@ KONTROL = [
     ('gulirkan mulai dari angka akhir lagi', {'baru/js/inti/gerak.js': [("el.__gulir = true; el.__tampil = awal; el.textContent = format(awal);", "el.__gulir = true; el.__tampil = awal;")]}),
     ('getar menempel', {'baru/js/inti/gerbang.js': [("|| (t !== 'salah' && /^goyang[12]$/.test(c))", "")]}),
     ('formulir sekilas di jalur cepat', {'baru/css/gerbang.css': [('.gerbang-masuk.t-membuka.cepat .gm-pelat { visibility: hidden; animation: none; }\n', '')]}),
-    ('harga digambar ulang tiap dibuka', {'baru/js/layar/harga.js': [('if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } }', 'if (tampil) segera(gambar); } }')]}),
+    ('harga digambar ulang tiap dibuka', {'baru/js/layar/harga.js': [('if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } }', 'if (tampil) segera(gambar); } }')]}),
     ('39b-19: tanpa adegan merayakan Σ hargaTotal (tukar dirayakan penuh)', {'baru/js/layar/jual.js': [('setTimeout(() => rayakanOmzet(L.hariIni(S()).omzet - hariTadi.omzet), 80);', 'setTimeout(() => rayakanOmzet(tambahOmzet), 80);')]}),
     ('gambar ganda status', {'baru/js/app.js': [('const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar,', 'const GAMBAR_STATUS = [() => layar.gambar(), ringkasan.gambar,')]}),
     ('tumpukan: sisa terakhir tak tergambar (lantai, bukan paling sedikit satu lapis)', {'baru/js/layar/gambar.js': [('const k = Math.max(1, Math.round(Math.sqrt(bulat2(isi)) * TUMPUK_N));', 'const k = Math.max(0, Math.floor(Math.sqrt(bulat2(isi)) * TUMPUK_N));')]}),
