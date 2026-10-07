@@ -33,9 +33,9 @@ import { RP, ANGKA, KG, hariIniIso, jamKini, tanggalPendek, lebihBayarDari, kali
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
 import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
 import { ringkasPelangganTahun } from './pelanggan-logika.js';
+import { ringkasPemasokTahun, ringkasPesananTahun } from './bon-pemasok-logika.js';
 import { susunPotret, ringkasPotret } from './potret-logika.js';
 import { lpBonTerbuka } from './laporan-logika.js';
-import { ringkasPemasokTahun, ringkasPesananTahun } from './bon-pemasok-logika.js';
 import { hbKalimatBelum } from '../data/hemat-baca.js';
 
 export const LANGKAH_BUKU = [['periksa', 'Periksa dulu'], ['cadangan1', 'Cadangan sebelum mulai'], ['arsip', 'Simpan arsip'], ['saldo', 'Susun saldo pembuka'], ['paraf', 'Paraf dua orang'], ['kunci', 'Kunci tahun'], ['cadangan2', 'Cadangan sesudahnya & selesai']];
@@ -317,6 +317,47 @@ function bkPembandingSebelum(c) {
  * daftarPemasok / pesananSemua). Ringkasan versi 1 tanpa keduanya tetap terbaca (catatan hidup saja).
  */
 export function ringkasTahun(tahun) { const c = tbCutoff(tahun); return Object.assign({ versi: 2, tahun, cutoff: c }, ringkasKreditLaju(c), { pelanggan: ringkasPelangganTahun(c), pemasok: ringkasPemasokTahun(c), pesananDatang: ringkasPesananTahun(c) }); }
+// ---- Sanggahan P4 (audit 8 Okt): ringkasan tahun diperiksa SEBELUM ritual. Dulu hanya kunci sungguhan yang menyusunnya — penyusun yang jatuh atau isian yang
+// ditolak server pada data Desember baru ketahuan 1 Jan, dan susunKunci yang jatuh tidak berkalimat apa pun di layar Uang.
+/**
+ * Satu dokumen Firestore paling besar 1 MiB. Berita acara 'berjalan' (kiriman pertama) membawa saldo pembuka — termasuk batch penanda + ringkasan tahun — DAN
+ * potret (cadangan 6 Okt: berita acara ±181 KB, potret ±91 KB, ringkasan ±36 KB). Ringkasan + potret di atas angka ini = latihan memperingatkan.
+ */
+export const BK_BATAS_ISI = 900 * 1000;
+const bkKB = (n) => ANGKA(Math.max(1, Math.round((Number(n) || 0) / 1000))) + ' KB';
+/** Isian yang ditolak Firestore (tanpa isi / undefined, bukan angka, daftar di dalam daftar, nama isian kosong atau __x__) → jalurnya; [] = diterima. */
+export function bkIsiDitolak(o, jalur, out) {
+  const J = jalur || 'ringkasan'; const hasil = out || [];
+  if (o === undefined) hasil.push(J + ' tanpa isi');
+  else if (typeof o === 'function' || typeof o === 'symbol' || typeof o === 'bigint') hasil.push(J + ' bukan angka atau teks');
+  else if (typeof o === 'number' && !isFinite(o)) hasil.push(J + ' bukan angka');
+  else if (Array.isArray(o)) o.forEach((x, i) => { if (Array.isArray(x)) hasil.push(J + ' › ' + (i + 1) + ' daftar di dalam daftar'); else bkIsiDitolak(x, J + ' › ' + (i + 1), hasil); });
+  else if (o && typeof o === 'object') Object.keys(o).forEach((k) => { if (!k || /^__.*__$/.test(k)) hasil.push(J + ' › "' + k + '" nama isian tidak boleh'); else bkIsiDitolak(o[k], J + ' › ' + k, hasil); });
+  return hasil;
+}
+// bagian ringkasan dengan nama toko (kalimat layar) — bagian lain ditulis apa adanya
+const BK_BAGIAN_RINGKAS = { kredit: 'bon langganan', laju: 'laju pakai', pelanggan: 'pelanggan', pemasok: 'pemasok', pesananDatang: 'pesanan yang sudah datang' };
+/** Ringkasan yang sudah disusun bisa disimpan server? → { ok, ukuran (huruf JSON), sebab }. Dipakai latihan (ringkasLatihan) DAN kunci sungguhan (susunKunci). */
+export function bkRingkasSiap(tahun, RT) {
+  const salah = bkIsiDitolak(RT, 'ringkasan').map((x) => x.replace(/^ringkasan › ([A-Za-z]+)/, (m, k) => 'ringkasan › ' + (BK_BAGIAN_RINGKAS[k] || k))); let ukuran = 0; try { ukuran = JSON.stringify(RT === undefined ? null : RT).length; } catch (e) { salah.push('ringkasan tidak bisa disalin (' + String((e && e.message) || e).slice(0, 80) + ')'); }
+  return { ok: !salah.length, ukuran, sebab: salah.length ? 'Ringkasan tahun ' + tahun + ' (bon langganan, pelanggan, pemasok & harga beli) tidak bisa disimpan server: ' + salah.slice(0, 2).join('; ') + (salah.length > 2 ? ' (dan ' + (salah.length - 2) + ' lagi)' : '') : '' };
+}
+/** Kalimat bila susunKunci JATUH (bukan menolak) — dipasang layar Uang di sekeliling susunKunci. Belum ada yang dikirim: susunKunci hanya menyusun. */
+export function bkKalimatKunciJatuh(tahun, e) {
+  return 'Kunci tahun ' + tahun + ' gagal disusun (' + String((e && e.message) || e).slice(0, 160) + ') — tahun ' + tahun + ' TIDAK dikunci, tidak ada yang ditulis. ' + bkKalimatTanpaPotret(tahun);
+}
+/**
+ * Langkah Kunci LATIHAN: ringkasan tahun disusun TANPA menulis apa pun (fungsi yang sama dengan kunci sungguhan) lalu diperiksa — jatuh / isian ditolak server =
+ * kunci sungguhan DITOLAK; ringkasan + potret (ukuranPotret = potretLatihan().ukuran) di atas BK_BATAS_ISI = berita acara bisa melewati batas satu dokumen.
+ */
+export function ringkasLatihan(tahun, ukuranPotret) {
+  let RT; try { RT = ringkasTahun(tahun); } catch (e) { return { ok: false, teks: 'Ringkasan tahun ' + tahun + ' GAGAL disusun: ' + String((e && e.message) || e).slice(0, 160) + ' — kunci sungguhan akan DITOLAK. ' + bkKalimatTanpaPotret(tahun) }; }
+  const S = bkRingkasSiap(tahun, RT); if (!S.ok) return { ok: false, ukuran: S.ukuran, teks: S.sebab + ' — kunci sungguhan akan DITOLAK. ' + bkKalimatTanpaPotret(tahun) };
+  const pot = Number(ukuranPotret) || 0;
+  if (S.ukuran + pot > BK_BATAS_ISI) return { ok: false, ukuran: S.ukuran, teks: 'Ringkasan tahun ' + tahun + ' ' + bkKB(S.ukuran) + ' + potret ' + bkKB(pot) + ': berita acara tutup buku bisa melewati batas satu dokumen server (±1 MB) — kunci sungguhan bisa GAGAL di kiriman pertama (tidak ada yang tertulis). ' + bkKalimatTanpaPotret(tahun) };
+  const n = (o) => (o && typeof o === 'object' ? Object.keys(o).length : 0);
+  return { ok: true, ukuran: S.ukuran, teks: 'Ringkasan ' + tahun + ': ' + n(RT.pelanggan) + ' pelanggan · ' + n(RT.pemasok) + ' pemasok · ' + n(RT.pesananDatang) + ' pesanan sudah datang · ' + bkKB(S.ukuran) + '.' };
+}
 /** Paket B · potret tahun dari catatan hidup TANPA menulis apa pun — langkah Kunci di LATIHAN menyusunnya juga, supaya kalau gagal ketahuan sebelum ritual. */
 export function potretLatihan(tahun, kini) { try { const Pt = susunPotret(tahun, kini); return { ok: true, teks: ringkasPotret(Pt), ukuran: JSON.stringify(Pt).length }; } catch (e) { return { ok: false, teks: 'Potret ' + tahun + ' GAGAL disusun: ' + String((e && e.message) || e).slice(0, 160) + ' — kunci sungguhan akan DITOLAK. ' + bkKalimatTanpaPotret(tahun) }; } }
 /** Paket C (8 Okt): yang bisa dikerjakan owner sendiri bila potret gagal disusun (sesudah 13 Okt tidak ada orang luar yang membetulkan kodenya). */
@@ -493,6 +534,9 @@ export function susunKunci(tahun, D, w, L) {
   // PAKET B (siap 2027): POTRET tahun ini (pajak & omzet, laba-rugi, biaya per jenis, arus kas, neraca akhir bulan per bulan; omzet per hari) di berita acara —
   // Laporan, Pajak & Dasbor membacanya sesudah arsip (toko.js potretBulan). Gagal disusun = kunci DITOLAK: tanpa potret, layar tahun ini jadi Rp0 bertanda FINAL.
   try { acara.potret = susunPotret(tahun, ugKiniDari(w)); } catch (e) { return { tolak: 'Potret ' + tahun + ' gagal disusun (' + String((e && e.message) || e).slice(0, 160) + ') — tahun TIDAK dikunci, supaya Laporan & Pajak ' + tahun + ' tidak jadi Rp0 sesudah arsip. Tidak ada yang ditulis. ' + bkKalimatTanpaPotret(tahun) }; }
+  // sanggahan P4: ringkasan tahun yang isiannya tidak bisa disimpan server = kunci DITOLAK di sini, berkalimat (dulu kiriman pertama yang jatuh). Latihan memeriksa
+  // dengan fungsi yang sama (ringkasLatihan → bkRingkasSiap).
+  const RS = bkRingkasSiap(tahun, tanda.data.ringkasTahun); if (!RS.ok) return { tolak: RS.sebab + '. Tahun ' + tahun + ' TIDAK dikunci, tidak ada yang ditulis. ' + bkKalimatTanpaPotret(tahun) };
   // (a) tiap dokumen pembuka satu kelompok (urutan pembukaBuku); batch penanda + penanda + berita acara terkunci = kelompok TERAKHIR, jadi selalu di kiriman terakhir
   // v7 (K8): ada bulan terkunci → PINTU dibuka di kiriman PERTAMA (rules menilai pintu sesudah batch, bersama berita acaranya); biaya pintu ikut dihitung
   const pintu = T.perluPintu ? bkPintuDok(tahun, w) : null;

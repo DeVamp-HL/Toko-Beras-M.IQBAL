@@ -960,10 +960,11 @@ def cek_latihan(S, data, c):
     c.append(('LATIHAN jalan sampai akhir: tujuh langkah beres, "Latihan selesai"', bool(akhir) and info(akhir, 'selesaiLatihan') and all(info(akhir, 'langkahB').get(k) for k in urut)
               and (info(akhir, 'kabar') or '').startswith('Latihan selesai'), {'langkahB': info(akhir, 'langkahB'), 'kabar': info(akhir, 'kabar')} if akhir else TAK_TERCAPAI))
     s6 = L_(S, '6b kunci (ketukan 2)')
-    # Paket B (#114): kunci LATIHAN juga menyusun potret tahun (tanpa menulis) — kabarnya "Latihan: tidak ada yang dikunci. Potret 2026: …"; gagal = kabar awas
-    c.append(('LATIHAN: 12 baris sebelum = sesudah (kunci latihan tidak ditolak "ada baris yang tidak sama") dan potret 2026 tersusun (Paket B)', bool(s6)
-              and (info(s6, 'kabar') or '').startswith('Latihan: tidak ada yang dikunci. Potret 2026: ') and not info(s6, 'kabarAwas'),
-              {'kabar': (info(s6, 'kabar') or '')[:300], 'kabarAwas': info(s6, 'kabarAwas')} if s6 else TAK_TERCAPAI))
+    # Paket B (#114): kunci LATIHAN juga menyusun potret tahun (tanpa menulis) — kabarnya "Latihan: tidak ada yang dikunci. Potret 2026: …"; gagal = kabar awas.
+    # Sanggahan P4: juga RINGKASAN tahun ("… Ringkasan 2026: N pelanggan · N pemasok · N pesanan sudah datang · N KB.") — BK.ringkasLatihan di modul ES asli
+    c.append(('LATIHAN: 12 baris sebelum = sesudah (kunci latihan tidak ditolak "ada baris yang tidak sama"), potret 2026 (Paket B) & ringkasan 2026 (P4) tersusun', bool(s6)
+              and (info(s6, 'kabar') or '').startswith('Latihan: tidak ada yang dikunci. Potret 2026: ') and ' Ringkasan 2026: ' in (info(s6, 'kabar') or '') and not info(s6, 'kabarAwas'),
+              {'kabar': (info(s6, 'kabar') or '')[:700], 'kabarAwas': info(s6, 'kabarAwas')} if s6 else TAK_TERCAPAI))
     t = tulisan_bukan_latar(sesudah); diam = any(x['nama'].startswith('diam') for x in sesudah)
     c.append(('LATIHAN TANPA MENULIS: 0 tulis & 0 hapus ke server selama tujuh langkah DAN 5 dtk diam sesudahnya (selain denyut perangkat & katalog kasir)',
               bool(sesudah) and diam and not t, t if sesudah and diam else TAK_TERCAPAI))
