@@ -1,4 +1,4 @@
-# Uji rules v7 FINAL di server — terbit SEKALI (DRAF 7 Okt 2026, belum terbit)
+# Uji rules v7 FINAL di server — terbit SEKALI (TERBIT 7 Okt 2026 18.25 WIB)
 
 `alat-uji/periksa_rules.py` memeriksa **bentuk** rules di CI: v7 = `firestore.rules.v6` + PERSIS lima ubahan di bawah (dibandingkan tanpa komentar &
 spasi, blok demi blok), dan sejak v7 juga **menilai teks rules** dengan penafsir mini (`alat-uji/rules_mini.py`) pada SEMUA kasus ★ di berkas ini, dengan
@@ -356,5 +356,31 @@ kasus yang hasilnya tidak terpengaruh sifat itu.
 
 ## Hasil Playground
 
-(diisi saat owner menjalankannya: tanggal · 17 kasus "Wajib owner" sesuai kolom Wajib · opsional yang dijalankan · dokumen uji U1–U10 (+ U11) dihapus,
-`aturanToko/kunciPeriode` & `tutupBukuAcara/2021` / `2025` tidak ada · Publish jam berapa · kepala versi aktif dibaca)
+**7 Okt 2026 — v7 TERBIT 18.25 WIB.** Dokumen uji U1–U10 dibuat Claude lewat Console (Chrome owner; sebelum itu dicek `aturanToko/kunciPeriode` BELUM
+ada — tidak ada kunci sungguhan), `firestore.rules` cabang ini ditempel ke editor dan sidik isi editor (SHA-256 `e0ed6a975dd5…`, 49.960 byte) = berkas repo;
+Playground dijalankan Claude; owner menghapus kesepuluh dokumen uji (diperiksa Claude: semua tidak ada, `pengaturan/titikKas` utuh) lalu menekan Publish.
+Sesudah muat ulang, versi aktif = sidik yang sama. Langkah 6: nota kasir darurat (HP penjaga, versi lama) Rp15.000 tercatat 18.27 — masuk.
+
+| # | Kasus | Wajib | Playground |
+|---|---|---|---|
+| 1 | ★A1 | LOLOS | LOLOS ✓ |
+| 2 | ★B2 | DITOLAK | DITOLAK ✓ (lihat batas b) |
+| 3 | ★K3 | DITOLAK | DITOLAK ✓ ("Null value error") |
+| 4 | ★F1 | LOLOS | LOLOS ✓ |
+| 5 | ★R1 | LOLOS | LOLOS ✓ |
+| 8 | ★P21 | LOLOS | LOLOS ✓ |
+| 9 | ★P22 | DITOLAK | DITOLAK ✓ |
+| 6, 7, 10–13, 16, 17 | ★P1 ★P20 ★P4 ★P2 ★P23 ★P5 ★T3 ★P19 | — | **tidak bisa dinilai** (batas a) |
+| 14, 15 | ★P6 ★P16 | — | **tidak bisa dinilai** (batas b) |
+
+**Batas Rules Playground (terbukti 7 Okt, Console Firebase versi Okt 2026)** — bukan cacat rules; semua kasus di atas lulus di emulator (bagian "Bukti
+emulator", mesin rules yang sama):
+
+- (a) **`getAfter()` tidak didukung**: banner "Error running simulation — The simulator currently does not support the "getAfter" function" (kadang hanya
+  "An unknown error occurred"). Semua jalur pintu memanggil `pintuTahun()` → `getAfter(pengaturan/pintuBuku)`, dan `acaraTutupPintu` juga.
+- (b) **Timestamp dari "Build document" bukan Timestamp**: dikirim sebagai map `{type: "firestore/timestamp/1.0", seconds, nanoseconds}`, sehingga
+  `… is timestamp` = false (rincian evaluasi ★P6: `is timestamp` false) → DITOLAK palsu. ★B2 tetap DITOLAK, tapi Playground tidak bisa membedakan
+  sebabnya.
+- Untuk rules berikutnya: daftar "Wajib owner" Playground hanya kasus tanpa `getAfter` dan tanpa timestamp ketikan; sisanya diwajibkan lulus di emulator
+  (`alat-uji/uji_rules_emulator.py`, workflow "Uji rules di emulator"). Isi dialog Build document lewat rujukan elemen, bukan koordinat — klik yang jatuh
+  saat dialog beranimasi bisa nyasar; periksa sidik isi editor sebelum Publish.
