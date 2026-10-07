@@ -60,6 +60,7 @@ RASIO_LITER = 0.82
 EMAIL_OWNER = 'owner@tokoberasmiqbal.web.app'
 # alasan putusan per tanggal yang diketik owner contoh di gladi (gerbang & ritual) dan di --periksa — kalimat karangan, ≥ 5 huruf
 ALASAN_PUTUS = 'Lupa tutup hari, uang laci tidak dihitung (contoh gladi)'
+ACARA_KB_MAKS = 900   # berita acara 'berjalan' = SATU dokumen Firestore (batas 1 MiB) — memuat rencana, saldo pembuka, putusan, potret tahun (Paket B)
 
 
 def iso(d): return d.isoformat()
@@ -408,6 +409,9 @@ function gladiKunci() {
   return R.tolak ? { tolak: R.tolak } : { kiriman: R.kiriman.length, get: R.kiriman.map(function (k) { return k.get; }), dokumen: R.dokumen.length, arsip: R.arsip.length,
     berjalanPertama: R.kiriman.length > 1 && R.kiriman[0].dokumen[0].koleksi === 'tutupBukuAcara' && R.kiriman[0].dokumen[0].data.status === 'berjalan',
     putusanDiAcara: (R.acara.putusanHari || []).filter(function (h) { return h.alasan; }).length,
+    // dokumen berita acara 'berjalan' (rencana + saldo pembuka + putusan + potret Paket B) — satu dokumen Firestore, batas 1 MiB
+    acaraKb: Math.round(JSON.stringify(R.kiriman[0].dokumen.filter(function (x) { return x.koleksi === 'tutupBukuAcara'; })[0].data).length / 1024),
+    potret: R.acara.potret ? { bulan: Object.keys(R.acara.potret.bulan || {}).length, hari: Object.keys(R.acara.potret.hari || {}).length } : null,
     koleksiPerKiriman: R.kiriman.map(function (k) { var o = {}; k.dokumen.forEach(function (x) { o[x.koleksi] = (o[x.koleksi] || 0) + 1; }); return o; }) };
 }
 out.kunci = gladiKunci();
@@ -513,15 +517,17 @@ def cek_kunci(K, L, awal, n_putus):
         c.append(awal + 'saldo pembuka bon pemasok harus di kiriman ke-2 atau sesudahnya (titik potong gladi): %s' % K['koleksiPerKiriman'])
     if K['arsip'] != L['nArsip']: c.append(awal + 'arsip susunKunci %d ≠ arsip langkah 3 %d' % (K['arsip'], L['nArsip']))
     if K.get('putusanDiAcara', 0) != n_putus: c.append(awal + 'berita acara memuat %s putusan hari, harusnya %d' % (K.get('putusanDiAcara'), n_putus))
+    if not K.get('potret') or K['potret']['bulan'] != 12 or not K['potret']['hari']: c.append(awal + 'potret 2026 (Paket B) tidak utuh di berita acara: %s' % K.get('potret'))
+    if (K.get('acaraKb') or 0) > ACARA_KB_MAKS: c.append(awal + 'berita acara "berjalan" %s KB — mendekati batas 1 MiB satu dokumen Firestore (maks gladi %d KB)' % (K.get('acaraKb'), ACARA_KB_MAKS))
     return c
 
 
 def ringkas(h, data):
     meta = data.get('gladi', {}); K = h.get('kunciPutus') or h['kunci']; P = h.get('putusan') or {}
-    return ('%s · %d dokumen · %d hari tanpa tutup%s · arsip 2026 %d dokumen · saldo pembuka %d dokumen dalam %s kiriman (pemeriksaan %s) · 12 baris %s'
+    return ('%s · %d dokumen · %d hari tanpa tutup%s · arsip 2026 %d dokumen · saldo pembuka %d dokumen dalam %s kiriman (pemeriksaan %s) · berita acara %s KB · 12 baris %s'
             % (meta.get('varian'), sum(h['koleksi'].values()), len(meta.get('hariTanpaTutup', [])),
                (' (kunci ditolak g1; sesudah %d putusan per tanggal jadi)' % P['n']) if P.get('n') else '', h['latihan']['nArsip'], h['latihan']['nPembuka'],
-               K.get('kiriman', '?'), K.get('get', '?'), 'sama persis' if h['latihan']['semuaSama'] else 'BEDA'))
+               K.get('kiriman', '?'), K.get('get', '?'), K.get('acaraKb', '?'), 'sama persis' if h['latihan']['semuaSama'] else 'BEDA'))
 
 
 JATUH = 'logika /baru/ jatuh'

@@ -44,7 +44,7 @@ Semua skenario memakai data `macet`.
 
 | skenario | jam halaman | yang dibuktikan |
 |---|---|---|
-| `latihan` | 31 Des 2026 21.45 | Muat penuh. LATIHAN tujuh langkah sampai "Latihan selesai", lalu diam 5 detik, tanpa satu pun tulisan ke server. Denyut perangkat dan katalog kasir tidak dihitung, karena keduanya tulisan latar. |
+| `latihan` | 31 Des 2026 21.45 | Muat penuh. LATIHAN tujuh langkah sampai "Latihan selesai", lalu diam 5 detik, tanpa satu pun tulisan ke server. Kunci latihan juga menyusun potret 2026 (Paket B) tanpa menulis. Denyut perangkat dan katalog kasir tidak dihitung, karena keduanya tulisan latar. |
 | `gerbang` | 1 Jan 2027 15.30 | SUNGGUHAN boleh dipilih. Gerbang g1 "23 hari belum ditutup & belum diputus" tampil memblokir. Tombolnya berbunyi "1 hal belum beres — bereskan dulu", dan mengetuknya tidak memajukan langkah dan tidak menulis apa pun. Lalu alasan diketik untuk tiap tanggal dan **Simpan putusan** diketuk: tepat satu dokumen `aturanToko/putusanHari` (isinya dicek di server), g1 beres, periksa lolos, lalu diam tanpa tulisan. |
 | `ritual` | 1 Jan 2027 15.30 | SUNGGUHAN, putusan per tanggal, sampai paraf, lalu kunci. Server menolak kiriman saldo pembuka ke-2, lalu kartu **lanjutkan / batalkan** muncul. BATALKAN sebelum penanda. Mulai lagi, lalu arsip ditolak server dan kartu **lanjutkan / batalkan** muncul lagi. LANJUTKAN sampai arsip habis. BATALKAN sesudah penanda. Mulai lagi sampai **selesai**, lalu diam. |
 
@@ -56,7 +56,8 @@ acara 2026 di server berstatus yang diharapkan, lalu menilai:
   koleksi 2026 sama persis dengan sebelum ritual;
 - **arsip ditolak**: berita acara "terkunci", saldo pembuka lengkap, arsip kosong, dokumen 2026 masih di koleksi asal;
 - **sesudah LANJUTKAN** dan **sesudah SELESAI**: `arsipTahun` = semua dokumen 2026 yang asli (= `nArsip` berita acara), 0 tersisa di koleksi
-  asal, saldo pembuka = `nPembuka`, penanda `tutupBuku` 2026, dan pada SELESAI berita acara "selesai";
+  asal, saldo pembuka = `nPembuka`, penanda `tutupBuku` 2026, potret 2026 di berita acara (12 bulan + omzet per hari, Paket B #114), dan pada
+  SELESAI berita acara "selesai";
 - **sesudah BATALKAN sesudah penanda**: isi 21 koleksi 2026 sama dengan sebelum ritual, `arsipTahun` kosong, saldo pembuka habis, uang di titik
   kas kembali seperti sebelum ritual, penanda `tutupBuku` dinetralkan (tahun 0, dibatalkan 2026). Di halaman, era kembali kosong.
 
@@ -124,7 +125,8 @@ Keterbatasan:
 ## Paket A dan sesudahnya
 
 Gladi sudah disesuaikan dengan Paket A (#110): gerbang g1 dibuka lewat putusan per tanggal, `susunKunci` menolak tanpa putusan (dicek di
-`--periksa`), dan ketiga skenario memakai data `macet`.
+`--periksa`), dan ketiga skenario memakai data `macet`. Paket B (#114) juga sudah: kunci latihan menyusun potret, potret 2026 dicek di berita acara
+server, dan `--periksa` mengukur besar dokumen berita acara "berjalan" (satu dokumen Firestore, batas 1 MiB; data contoh ±134 KB).
 
 Belum digladikan: **tutup buku 2027 dengan bulan terkunci** dan **rules v7**. Keduanya ditambahkan sesudah PR rules v7 masuk.
 

@@ -291,6 +291,9 @@ def keadaan_server(jenis, awal, batas=120):
         if lain: g.append('%d dokumen asing di koleksi 2026' % lain)
         if pembuka != nP: g.append('saldo pembuka di server %d ≠ nPembuka berita acara %s' % (pembuka, nP))
         if not tb or tb.get('tahunDitutup') != 2026: g.append('penanda pengaturan/tutupBuku %s — harusnya tahunDitutup 2026' % r['tutupBuku'])
+        # Paket B (#114): potret 2026 di berita acara — Laporan, Pajak & Dasbor membacanya sesudah arsip (12 bulan, omzet per hari)
+        pt = acara.get('potret') or {}; r['potret'] = {'tahun': pt.get('tahun'), 'bulan': len(pt.get('bulan') or {}), 'hari': len(pt.get('hari') or {})}
+        if pt.get('tahun') != 2026 or len(pt.get('bulan') or {}) != 12 or not pt.get('hari'): g.append('potret 2026 di berita acara server tidak utuh: %s' % r['potret'])
     if jenis in ('batalSebelum', 'batalSesudah'):
         bi = banding_isi(awal['isi'], isi); r['banding'] = bi
         if not bi['sama']: g.append('isi 21 koleksi 2026 ≠ sebelum ritual: lebih %s, kurang %s, berubah %s' % (bi['lebih'], bi['kurang'], bi['ubah']))
@@ -761,7 +764,10 @@ def cek_latihan(S, data, c):
     c.append(('LATIHAN jalan sampai akhir: tujuh langkah beres, "Latihan selesai"', bool(akhir) and info(akhir, 'selesaiLatihan') and all(info(akhir, 'langkahB').get(k) for k in urut)
               and (info(akhir, 'kabar') or '').startswith('Latihan selesai'), {'langkahB': info(akhir, 'langkahB'), 'kabar': info(akhir, 'kabar')} if akhir else TAK_TERCAPAI))
     s6 = L_(S, '6b kunci (ketukan 2)')
-    c.append(('LATIHAN: 12 baris sebelum = sesudah (kunci latihan tidak ditolak "ada baris yang tidak sama")', bool(s6) and info(s6, 'kabar') == 'Latihan: tidak ada yang dikunci', info(s6, 'kabar') if s6 else TAK_TERCAPAI))
+    # Paket B (#114): kunci LATIHAN juga menyusun potret tahun (tanpa menulis) — kabarnya "Latihan: tidak ada yang dikunci. Potret 2026: …"; gagal = kabar awas
+    c.append(('LATIHAN: 12 baris sebelum = sesudah (kunci latihan tidak ditolak "ada baris yang tidak sama") dan potret 2026 tersusun (Paket B)', bool(s6)
+              and (info(s6, 'kabar') or '').startswith('Latihan: tidak ada yang dikunci. Potret 2026: ') and not info(s6, 'kabarAwas'),
+              {'kabar': (info(s6, 'kabar') or '')[:300], 'kabarAwas': info(s6, 'kabarAwas')} if s6 else TAK_TERCAPAI))
     t = tulisan_bukan_latar(sesudah); diam = any(x['nama'].startswith('diam') for x in sesudah)
     c.append(('LATIHAN TANPA MENULIS: 0 tulis & 0 hapus ke server selama tujuh langkah DAN 5 dtk diam sesudahnya (selain denyut perangkat & katalog kasir)',
               bool(sesudah) and diam and not t, t if sesudah and diam else TAK_TERCAPAI))
@@ -825,7 +831,7 @@ def cek_ritual(S, data, c):
     if 'lanjutkan' in minta:
         l = L_(S, 'LANJUTKAN arsip')
         c.append(('LANJUTKAN (halaman): pita tinggal "selesaikan"', bool(l) and (info(l, 'km') or {}).get('fase') in (None, 'selesaikan'), {'km': info(l, 'km'), 'kabar': info(l, 'kabar')} if l else TAK_TERCAPAI))
-        kait_cek(c, 'LANJUTKAN di SERVER: arsipTahun = semua dokumen 2026 asli (= nArsip berita acara), 0 tersisa di koleksi asal, saldo pembuka = nPembuka, penanda tutupBuku 2026', l)
+        kait_cek(c, 'LANJUTKAN di SERVER: arsipTahun = semua dokumen 2026 asli (= nArsip berita acara), 0 tersisa di koleksi asal, saldo pembuka = nPembuka, penanda tutupBuku 2026, potret 2026 di berita acara', l)
     if 'batalkanSesudahPenanda' in minta:
         b2 = L_(S, 'BATALKAN sesudah penanda')
         c.append(('BATALKAN SESUDAH PENANDA (halaman): berita acara "dibatalkan", era kembali kosong, tidak ada yang tertunda', bool(b2) and (info(b2, 'acara') or {}).get('status') == 'dibatalkan'
@@ -835,7 +841,7 @@ def cek_ritual(S, data, c):
         s = L_(S, '7 cadangan sesudah · SELESAI')
         c.append(('ritual penuh SELESAI (halaman): berita acara "selesai", era 2026, tidak ada yang tertunda', bool(s) and (info(s, 'acara') or {}).get('status') == 'selesai' and info(s, 'era') == 2026 and not info(s, 'km'),
                   {k: info(s, k) for k in ('acara', 'era', 'km', 'kabar')} if s else TAK_TERCAPAI))
-        kait_cek(c, 'SELESAI di SERVER: berita acara "selesai", arsipTahun = semua dokumen 2026 asli (= nArsip), 0 tersisa, saldo pembuka = nPembuka, penanda tutupBuku 2026', s)
+        kait_cek(c, 'SELESAI di SERVER: berita acara "selesai", arsipTahun = semua dokumen 2026 asli (= nArsip), 0 tersisa, saldo pembuka = nPembuka, penanda tutupBuku 2026, potret 2026 di berita acara', s)
 
 
 def cek_muat(S, data, c):
