@@ -4,9 +4,11 @@
 spasi, blok demi blok), dan sejak v7 juga **menilai teks rules** dengan penafsir mini (`alat-uji/rules_mini.py`) pada SEMUA kasus ★ di berkas ini, dengan
 dokumen uji yang sama — kolom "Wajib" di tabel sudah lulus model di CI. `alat-uji/uji_tutup_buku_2027.py` menjalankan ritual tutup buku 2027 sungguhan
 di kotak pasir dan menilai TIAP batch-nya dengan teks rules yang sama. Model bukan server: sejak 7 Okt **semua** kasus di berkas ini juga dijalankan di
-**Firebase Emulator** — penilai rules yang sama dengan server produksi — dan lulus (bagian "Bukti emulator" di bawah). Berkas ini tetap untuk **perilaku
-server produksi** — kasus yang dijalankan owner di **Rules Playground** (Console › Firestore › Rules) dengan v7 di EDITOR, **sebelum** Publish. Claude Code tidak memegang sandi dan tidak mengetik
-apa pun di Console; Claude hanya MEMBACA Console lewat Chrome owner pada langkah yang disebut. Rules = TUGAS OWNER. Kasus v6 tetap di `docs/uji-rules-v6.md`.
+**Firebase Emulator** — mesin rules yang sama dengan server produksi — dan lulus (bagian "Bukti emulator" di bawah). Kasus yang dijalankan owner di **Rules
+Playground** (Console › Firestore › Rules, v7 di EDITOR, **sebelum** Publish) menilai teks itu atas data proyek toko, tetapi Playground punya sifat sendiri
+yang BUKAN sifat server (isian *update* digabung ke dokumen lama; teks jam ISO `…Z` diubah jadi *timestamp*, di isian maupun di dokumen yang dibaca) — kasus
+yang tidak bisa dinilai jujur di sana tidak masuk "Wajib owner" (lihat bagian T). Claude Code tidak memegang sandi dan tidak mengetik apa pun di Console;
+Claude hanya MEMBACA Console lewat Chrome owner pada langkah yang disebut. Rules = TUGAS OWNER. Kasus v6 tetap di `docs/uji-rules-v6.md`.
 
 ## Yang berubah v6 → v7 (lima)
 
@@ -60,9 +62,13 @@ dibalik (git revert) dan HP kasir kembali ke kasir-v32.
 ## Urutan (satu kali duduk ± 35 menit, saat toko tutup; jangan klik **Publish** sebelum langkah 5)
 
 1. **Persiapan** — v6 masih yang terbit. Cek Console › Firestore › **Usage** dulu (Playground ikut kuota baca Spark; kerjakan sesudah 14.00 WIB bila kuota
-   hari itu menipis). Console › Firestore › **Data** (Console menulis sebagai admin, rules tidak menilai): buat **sepuluh dokumen uji U1–U10** di tabel
-   "Dokumen uji" (U11 hanya kalau mau menjalankan kasus staf yang opsional). Selama dokumen uji ada, aplikasi bisa menampilkan hal aneh (kunci "sampai
-   Desember 2021", pita "Tutup buku 2025", nota contoh bertanggal 2021) — **jangan ketuk apa pun di aplikasi**, selesaikan langkah 1–4 dalam satu duduk.
+   hari itu menipis). **Sebelum membuat apa pun, buka Console › Firestore › Data › `aturanToko` dan lihat apakah dokumen `kunciPeriode` SUDAH ADA.**
+   Sudah ada (berarti kunci bulan sungguhan) → **BERHENTI**: jangan buat U2, jangan hapus dokumen itu, kirim tangkapan layarnya ke Claude (dokumen kunci
+   tidak pernah dihapus lewat Console — `docs/prosedur-pulih-darurat.md`; kunci sungguhan juga sudah mengunci tahun 2021, jadi dokumen uji perlu disusun
+   ulang). Sampai rules v7 terbit aplikasi belum mengunci bulan apa pun (kunci pertama Januari 2027), jadi biasanya dokumen itu belum ada. Belum ada →
+   Console › Firestore › **Data** (Console menulis sebagai admin, rules tidak menilai): buat **sepuluh dokumen uji U1–U10** di tabel "Dokumen uji" (U11
+   hanya kalau mau menjalankan kasus staf yang opsional). Selama dokumen uji ada, aplikasi bisa menampilkan hal aneh (kunci "sampai Desember 2021", pita
+   "Tutup buku 2025", nota contoh bertanggal 2021) — **jangan ketuk apa pun di aplikasi**, selesaikan langkah 1–4 dalam satu duduk.
 2. **Tempel `firestore.rules`** dari cabang ke editor Rules — **belum Publish**. Salin-tempel berkasnya utuh, salah satu cara:
    - Mac (Terminal): `git fetch origin && git show origin/perbaikan/hemat-baca:firestore.rules | LANG=en_US.UTF-8 pbcopy` (sesudah merge: `origin/main`),
      lalu di editor: pilih semua (⌘A) → tempel (⌘V);
@@ -70,13 +76,15 @@ dibalik (git revert) dan HP kasir kembali ke kasir-v32.
 
    Periksa di editor: baris 2 berbunyi `ATURAN FIRESTORE v7 FINAL`, ada fungsi `pintuSah`, `arsipSah`, `acaraBaru`, `stafMintaNego`, dan blok `match
    /fotoBon/{id}`. Editor yang menolak menyimpan (garis merah) = berhenti, kirim tangkapan layar ke Claude.
-3. Jalankan **18 kasus "Wajib owner"** di Playground, berurutan (nomor 18 PALING AKHIR — ia mengubah dokumen uji U5). Semua hasil harus sama dengan
-   kolom "Wajib". Ada yang beda → **jangan Publish**, kirim tangkapan layar ke Claude. Ke-18 kasus itu (dan semua opsional) **sudah lulus di emulator**
-   (bagian "Bukti emulator"); Playground membuktikan hal yang sama di server produksi, jadi langkah ini TETAP dikerjakan. Bagian "Opsional" boleh
-   dilewati — semuanya sudah dinilai model di CI (`alat-uji/periksa_rules.py`) dan dijalankan di emulator; jalankan kalau sempat.
-4. **Owner menghapus dokumen uji** U1–U10 (dan U11 bila dibuat) di tab Data (Claude tidak boleh menghapus data). **`aturanToko/kunciPeriode` WAJIB
-   hilang**: kalau tertinggal, bulan sampai Desember 2021 terkunci dan kunci bulan pertama Januari 2027 DITOLAK — dan di bawah rules dokumen itu tidak
-   bisa dihapus dari aplikasi, hanya dari Console. `tutupBukuAcara/2021` & `tutupBukuAcara/2025` juga wajib hilang (berita acara yang tidak dibatalkan
+3. Jalankan **17 kasus "Wajib owner"** di Playground, berurutan (nomor 17 PALING AKHIR — ia mengubah dokumen uji U5). Semua hasil harus sama dengan
+   kolom "Wajib". Ada yang beda → **jangan Publish**, kirim tangkapan layar ke Claude. Ke-17 kasus itu (dan semua opsional) **sudah lulus di emulator**
+   (bagian "Bukti emulator") dan dipilih yang hasilnya di Playground tidak terpengaruh sifat Playground; Playground menilainya atas data proyek toko dengan
+   teks yang akan diterbitkan, jadi langkah ini TETAP dikerjakan. Bagian "Opsional" boleh dilewati — semuanya sudah dinilai model di CI
+   (`alat-uji/periksa_rules.py`) dan dijalankan di emulator; jalankan kalau sempat.
+4. **Owner menghapus dokumen uji** U1–U10 (dan U11 bila dibuat) di tab Data (Claude tidak boleh menghapus data). **`aturanToko/kunciPeriode` (U2 yang
+   dibuat di langkah 1 — bukan kunci sungguhan; langkah 1 berhenti kalau kunci sungguhan sudah ada) WAJIB hilang**: kalau tertinggal, bulan sampai
+   Desember 2021 terkunci dan kunci bulan pertama Januari 2027 DITOLAK — dan di bawah rules dokumen itu tidak bisa dihapus dari aplikasi, hanya dari
+   Console. `tutupBukuAcara/2021` & `tutupBukuAcara/2025` juga wajib hilang (berita acara yang tidak dibatalkan
    tidak bisa dihapus dari aplikasi). Bilang ke Claude "dokumen uji sudah dihapus" → Claude membuka Console › Firestore › Data lewat Chrome owner (hanya
    membaca) dan memastikan semuanya **tidak ada** (tanpa Claude: owner memeriksa sendiri daftar yang sama).
 5. **Publish** (owner). Isi editor harus persis `firestore.rules` di repo. Lalu Console › Rules menampilkan versi aktif — baris 2 `ATURAN FIRESTORE v7
@@ -110,14 +118,17 @@ jenis **map** dengan kolom di dalamnya.
 ### Dokumen uji (tab Data; HAPUS lagi di langkah 4)
 
 Tahun **2021** sengaja: tidak ada catatan toko bertanggal ≤ 2021, jadi kunci uji `2021-12` tidak mengunci catatan sungguhan. **2025** = "tahun lalu"
-(pintu hanya untuk tahun lalu) — kalau Playground dijalankan sesudah 1 Januari 2027, ganti 2025 dengan 2026 di U4 dan ★P6.
+(pintu hanya untuk tahun lalu) — kalau Playground dijalankan sesudah 1 Januari 2027, ganti 2025 dengan 2026 di U4 dan ★P6 (`paraf.pada` U4 = hari ini,
+tetap berlaku). `paraf.pada` U3/U4 sengaja teks jam **bukan** ISO (`2026-10-01 00:00`, bukan `…T00:00:00.000Z`): Playground mengubah teks ISO menjadi
+*timestamp* juga di dokumen yang dibaca `get()`, lalu perbandingan `timestamp ≥ teks` di `pintuSah` galat = DITOLAK palsu. Rules membandingkan teks, dan
+urutan teks ini tetap sesudah `<tahun>-12-31T17:00:00.000Z`; bentuk ISO yang ditulis aplikasi dinilai M-P6b (model & emulator) dan gladi pintu.
 
 | No | Jalur | Isi (jenis kolom) |
 |---|---|---|
 | U1 | `penjualan/uji-v7-nota` | `id` "uji-v7-nota" · `tanggal` "<hari ini YYYY-MM-DD>" · `hargaTotal` 1000 (number) · `namaProduk` "Contoh" |
 | U2 | `aturanToko/kunciPeriode` | `sampaiBulan` "2021-12" · `riwayat` (array) kosong — **WAJIB dihapus lagi** |
-| U3 | `tutupBukuAcara/2021` | `tahun` 2021 (number) · `status` "terkunci" · `paraf` (map) { `pada` "2026-10-01T00:00:00.000Z" } · `titikSebelum` (map) { `tanggal` "2021-06-30", `laci` 7, `brankas` 0 } |
-| U4 | `tutupBukuAcara/2025` | `tahun` 2025 (number) · `mode` "sungguhan" · `status` "berjalan" · `paraf` (map) { `pada` "2026-10-01T00:00:00.000Z" } |
+| U3 | `tutupBukuAcara/2021` | `tahun` 2021 (number) · `status` "terkunci" · `paraf` (map) { `pada` "2026-10-01 00:00" } · `titikSebelum` (map) { `tanggal` "2021-06-30", `laci` 7, `brankas` 0 } |
+| U4 | `tutupBukuAcara/2025` | `tahun` 2025 (number) · `mode` "sungguhan" · `status` "berjalan" · `paraf` (map) { `pada` "<hari ini YYYY-MM-DD> 00:00" } (mis. "2026-10-10 00:00") |
 | U5 | `pengaturan/pintuBuku` | `id` "pintuBuku" · `tahun` 2021 (number) · `status` "berjalan" · `sampai` (timestamp) 1 Jan 2100 00:00 |
 | U6 | `penjualan/uji-v7-lama` | `id` "uji-v7-lama" · `tanggal` "2021-06-15" · `hargaTotal` 1000 |
 | U7 | `arsipTahun/2021\|penjualan\|uji-v7-lama` | `id` "2021\|penjualan\|uji-v7-lama" · `tahun` 2021 · `koleksi` "penjualan" · `idAsli` "uji-v7-lama" · `dok` (map) = isi U6 persis |
@@ -129,7 +140,7 @@ Tahun **2021** sengaja: tidak ada catatan toko bertanggal ≤ 2021, jadi kunci u
 Garis tegak di jalur arsip memang bagian id dokumen (`2021|penjualan|uji-v7-lama`); di tabel ditulis `\|` hanya karena format tabel. ★P5 memakai
 dokumen NYATA `pengaturan/titikKas` tanpa mengubahnya (Playground tidak menulis) — dokumen itu BUKAN dokumen uji, JANGAN dihapus.
 
-## Wajib owner (18 kasus — berurutan, nomor 18 paling akhir)
+## Wajib owner (17 kasus — berurutan, nomor 17 paling akhir)
 
 Isi "PINTU": `{ id: "pintuBuku", tahun: 2025, status: "berjalan", sampai: <timestamp BESOK jam yang sama> }` (pilih tanggal besok di pemilih tanggal
 *timestamp*). Isi "PEMBUKA": `{ id: "uji-v7-pb-baru", tipe: "saldoAwal", tutupBuku: true, tahunDari: 2021, tanggal: "2021-03-01", nominal: 1000 }`.
@@ -151,11 +162,10 @@ Isi "PINTU": `{ id: "pintuBuku", tahun: 2025, status: "berjalan", sampai: <times
 | 13 | ★P5 | owner@ | update `pengaturan/titikKas` (dokumen nyata) | `tanggal: "2021-12-31"` | LOLOS | titik kas 31 Des tahun pintu |
 | 14 | ★P6 | owner@ | create `pengaturan/pintuBuku` | PINTU | LOLOS | buka pintu tahun lalu: berita acara 2025 (U4) sudah ada & berjalan |
 | 15 | ★P16 | owner@ | create `pengaturan/pintuBuku` | PINTU dengan `sampai` = 5 hari lagi | DITOLAK | lebih dari 72 jam |
-| 16 | ★T1 | owner@ | create `tutupBukuAcara/2024` | `{ id: "2024", tahun: 2024, mode: "sungguhan", status: "berjalan", paraf: { pada: "<hari ini YYYY-MM-DD>T03:00:00.000Z" } }` (`paraf` = map, `pada` = string; mis. "2026-10-10T03:00:00.000Z" bila hari ini 10 Okt) | LOLOS | berita acara baru berbentuk benar, jam mulai hari ini |
-| 17 | ★T3 | owner@ | update `tutupBukuAcara/2021` | `status: "selesai"` | DITOLAK | pintu 2021 (U5) masih terbuka — selesai wajib menutup pintunya |
-| 18 | ★P19 | owner@ | **TERAKHIR**: di tab Data ubah U5 `sampai` → 1 Jan 2020, lalu ulang #6 (delete `penjualan/uji-v7-lama`) | — | DITOLAK | pintu kedaluwarsa |
+| 16 | ★T3 | owner@ | update `tutupBukuAcara/2021` | `status: "selesai"` | DITOLAK | pintu 2021 (U5) masih terbuka — selesai wajib menutup pintunya |
+| 17 | ★P19 | owner@ | **TERAKHIR**: di tab Data ubah U5 `sampai` → 1 Jan 2020, lalu ulang #6 (delete `penjualan/uji-v7-lama`) | — | DITOLAK | pintu kedaluwarsa |
 
-## Opsional — sudah dinilai model CI (jalankan kalau sempat; hasilnya harus sama juga)
+## Opsional — sudah dinilai model CI & emulator (jalankan kalau sempat; hasilnya harus sama juga, kecuali ★T1 & ★T2 — bagian T)
 
 Kasus berlabel "staf aktif" butuh U11 (lihat "Isian Playground").
 
@@ -248,15 +258,23 @@ Isi dasar ("FOTO"): `{ id: "uji-v7-foto", idBon: "b-uji", jenis: "image/jpeg", b
 
 ### T · berita acara tutup buku
 
+**★T1 & ★T2 tidak bisa dinilai jujur di Playground.** `acaraBaru` mewajibkan `paraf.pada` berupa TEKS jam ISO `…T…Z` (bentuk `toISOString()` yang ditulis
+aplikasi). Playground mengubah teks seperti itu menjadi *timestamp* sebelum rules menilainya (`docs/uji-rules-v6.md` "Sifat Playground"), jadi di
+Playground ★T1 keluar **DITOLAK** dan ★T2 DITOLAK karena sebab yang sama, bukan karena jam mulainya — keduanya tidak dihitung di Playground. Kolom "Wajib"
+di bawah = perilaku SERVER; buktinya emulator (bagian "Bukti emulator": ★T1 LOLOS, ★T2 DITOLAK, dan kontrol "berita acara baru tanpa pemeriksa jam mulai"
+membalik ★T2) dan gladi pintu (aplikasi asli membuat berita acara baru di server dengan jam server). ★T3–★T5 tidak memakai teks ISO di isiannya.
+
 | No | Akun | Operasi · jalur | Isi | Wajib | Kenapa |
 |---|---|---|---|---|---|
-| ★T2 | owner@ | create `tutupBukuAcara/2024` | seperti #16 dengan `paraf: { pada: "2026-01-01T00:00:00.000Z" }` | DITOLAK | jam mulai jauh mundur |
+| ★T1 | owner@ | create `tutupBukuAcara/2024` | `{ id: "2024", tahun: 2024, mode: "sungguhan", status: "berjalan", paraf: { pada: "<hari ini YYYY-MM-DD>T03:00:00.000Z" } }` (`paraf` = map, `pada` = string; mis. "2026-10-10T03:00:00.000Z" bila hari ini 10 Okt) | LOLOS | berita acara baru berbentuk benar, jam mulai hari ini (Playground: keluar ditolak — teks ISO) |
+| ★T2 | owner@ | create `tutupBukuAcara/2024` | seperti ★T1 dengan `paraf: { pada: "2025-06-01T00:00:00.000Z" }` | DITOLAK | jam mulai jauh mundur (Juni tahun lalu) |
 | ★T4 | owner@ | delete `tutupBukuAcara/2025` | — | DITOLAK | berita acara yang belum dibatalkan tidak dihapus |
-| ★T5 | owner@ | create `tutupBukuAcara/<tahun ini>` | seperti #16 dengan `id` & `tahun` tahun ini | DITOLAK | tahun berjalan tidak ditutup |
+| ★T5 | owner@ | create `tutupBukuAcara/<tahun ini>` | seperti ★T1 dengan `id` & `tahun` tahun ini | DITOLAK | tahun berjalan tidak ditutup |
 
 Model CI juga menilai (tidak perlu di Playground): kirim ulang kasir-v32 tanpa `capServer` & buang cap + ubah isi (M-A5, M-B8 — Playground tidak bisa
 membuang kolom), hapus tanpa salinan arsip (M-P8), salinan arsip berisi lain / koleksi tak diarsip / id tak cocok / bulan terbuka (M-P26b–e), tarik
-saldo pembuka (M-P3), pintu di atas berita acara selesai / dimulai sebelum tahunnya berakhir (M-P24b, M-P24c),
+saldo pembuka (M-P3), pintu di atas berita acara selesai / dimulai sebelum tahunnya berakhir (M-P24b, M-P24c), pintu di atas berita acara yang jam
+mulainya berbentuk `toISOString()` seperti tulisan aplikasi (M-P6b, wajib LOLOS — Playground mengubah bentuk itu),
 pintu tutup / tanpa pintu (M-P20, M-P21), catatan sesudah tahun pintu (M-P22, M-P25), `pindahUang` tidak berpintu (M-P23), titik kas mundur ke tahun
 sesudah pintu (M-P24d), ubah catatan terkunci jadi sama dengan salinannya (M-P26), pintu tahun berjalan walau berita acaranya ada (M-P27), selesai
 bersama pintu tertutup & hapus berita acara dibatalkan (M-T6, M-T7, wajib LOLOS), berita acara baru langsung selesai / id ≠ tahun (M-T8, M-T9), foto bon
@@ -272,16 +290,28 @@ yang tidak dimodelkan penafsir mini ikut ketahuan — lalu menjalankan **semua**
 - **token akun palsu** dengan uid & email persis "Isian Playground" (JWT tanpa tanda tangan — hanya emulator yang menerimanya, tidak pernah
   server toko);
 - tanggal "hari ini", besok, 5 hari lagi, cap 1 jam lalu digeser ke jam runner; cap "jam server" dikirim sebagai transform `REQUEST_TIME`
-  (yang tidak bisa diketik di Playground). Tahun dokumen uji (2025 = tahun lalu) disusun untuk Okt–Des 2026: di tahun lain alat itu
-  melaporkan semua kasus TIDAK TERUKUR dan gagal, bukan melewatinya diam-diam.
+  (yang tidak bisa diketik di Playground). **Tahun** dokumen uji digeser sebesar selisih tahun runner (WIB) − 2026: tahun lalu = tahun runner − 1,
+  tahun berjalan = tahun runner, 2021 → 2021 + selisih, dst. Jadi bukti ini tetap mengukur sesudah 1 Januari 2027 — saat tutup buku 2026 berjalan
+  dengan rules v7 dan perbaikan rules paling mungkin dibutuhkan (sebelum sanggahan 7 Okt alat ini melaporkan TIDAK TERUKUR di tahun lain dan
+  gagal). `--periksa` (Mac & job uji) membuktikan model atas dokumen uji yang digeser = kolom Wajib di 1 Jan 2027 00.30 WIB, 2 Jan 2027, Juni 2027,
+  dan Januari 2028; tanpa geser tahun model menyimpang di Juni 2027 (★P6, M-P6b, M-P27, ★T5), dan `--kontrol` membuktikan alat yang lupa menggeser
+  tahun ketahuan.
 
-Selain 69 kasus ★ (18 Wajib owner + 51 opsional), dijalankan juga 23 kasus model M-\* (yang tidak bisa di Playground, mis. membuang kolom) dan 5
-kasus server S-\*: kirim ulang kasir@ bercap jam server (nota baru, kirim ulang identik, atas nota yang sudah bercap), batu nisan bercap jam server,
-batu nisan tanpa cap. Kasus yang sama dijalankan atas `firestore.rules.v6`: yang berbeda wajib PERSIS 38 kasus akibat lima ubahan di atas (bukti
-ubahan itulah yang membuat beda), selebihnya sama. **Kontrol**: rules v7 dirusak satu suku (pintuSah selalu benar, ulangKasirBercap tanpa syarat
-capServer, salinan arsip tanpa pembanding isi, pintu tanpa batas `sampai`, berita acara tanpa pemeriksa jam mulai, selesai walau pintu terbuka,
-kasir@ boleh lagi piutangMutasi, foto bon jenis apa saja, nego atas nama orang lain, batu nisan tanpa cap jam server, saldo pembuka di koleksi mana
-pun, salinan arsip tidak diikat ke aslinya, staf membaca batu nisan) → kasus sasarannya wajib berbalik.
+Selain 69 kasus ★ (17 Wajib owner + 52 opsional), dijalankan juga 24 kasus model M-\* (yang tidak bisa di Playground, mis. membuang kolom, atau jam
+mulai berbentuk ISO), 5 kasus server S-\* (kirim ulang kasir@ bercap jam server: nota baru, kirim ulang identik, atas nota yang sudah bercap; batu
+nisan bercap jam server; batu nisan tanpa cap), dan **45 kasus H** = berita acara tutup buku **hanya maju** v6 (`docs/uji-rules-v6.md` A/B, model
+`periksa_rules.KASUS_BUKU`: 19 boleh, 26 ditolak) atas teks v7, dengan dokumen ujinya sendiri (`tutupBukuAcara/1990` = isi lama, tanpa pintu) — v7
+mengubah blok `tutupBukuAcara` (create `acaraBaru`, update + `acaraTutupPintu`, delete hanya dibatalkan), jadi "hanya maju" dibuktikan tetap di
+server, bukan hanya di model. Kasus yang sama dijalankan atas `firestore.rules.v6`: yang berbeda wajib PERSIS 38 kasus akibat lima ubahan di atas
+(bukti ubahan itulah yang membuat beda), selebihnya (termasuk ke-45 kasus H) sama. **Kontrol** (26 + 1 kasir): rules v7 dirusak satu suku → kasus
+sasarannya wajib berbalik (LOLOS ↔ DITOLAK, bukan galat) — pintuSah selalu benar, ulangKasirBercap tanpa syarat capServer, salinan arsip tanpa
+pembanding isi, pintu tanpa batas `sampai`, berita acara tanpa pemeriksa jam mulai, selesai walau pintu terbuka, kasir@ boleh lagi piutangMutasi,
+foto bon jenis apa saja, nego atas nama orang lain, batu nisan tanpa cap jam server, saldo pembuka di koleksi mana pun, salinan arsip tidak diikat
+ke aslinya, staf membaca batu nisan; sejak sanggahan 7 Okt juga suku yang dulu hanya diperiksa kasusnya: `pintuTitik` selalu benar (★P25 & M-P24d —
+★P25 DITOLAK juga di v6, jadi kepekaannya pada suku v7 hanya terbukti lewat kontrol ini), `titikSebelum` tanpa pembanding kantong (★P25), tanpa
+cabang `titikSebelum` (★P26), tanpa cabang 31 Des (★P5), `ulangKasirBercap` tanpa pembanding isi (★B1, M-B8), `acaraBaru` tanpa syarat mode &
+status (M-T8) / tahun lampau (★T5) / id = tahun (M-T9), hapus berita acara tanpa syarat "dibatalkan" (★T4), permintaan nego staf tanpa syarat
+status (★N5) / tindakan (★N7) / larangan kolom keputusan (★N6), dan berita acara boleh mundur selesai → terkunci (kasus H ★B16).
 
 **Kasir darurat — kode ASLI** (skrip halaman `kasir-darurat-nominal.html` dijalankan di node dengan DOM tiruan, `alat-uji/kasir_emulator.js`;
 alamat Firestore ditulis ulang ke emulator): kasir-v33 (cabang ini) mencatat nota lalu `:commit` bercap `REQUEST_TIME` → masuk; kirim ulang identik
@@ -290,13 +320,18 @@ alamat Firestore ditulis ulang ke emulator): kasir-v33 (cabang ini) mencatat not
 yang mengubah isi → ditolak; nota baru → masuk. Di v6: kirim ulang v33 jatuh ke cara lama dan tetap masuk tanpa dobel, v32 atas nota bercap ditolak
 (sebab v7 perlu `ulangKasirBercap`). Kontrol: suku `(kasir() && ulangKasirBercap())` dicabut → berbunyi.
 
-**Hasil** — workflow Uji rules di emulator, run **37567891588** (7 Okt 2026, commit df71093; `firestore.rules` sama persis dengan berkas ini):
+**Hasil** — workflow Uji rules di emulator, run **37567891588** (df71093) dan **37572040013** (3439466), keduanya sebelum sanggahan bukti emulator
+7 Okt (`firestore.rules` sama persis dengan berkas ini; sesudah sanggahan pun rules tidak diubah):
 
-- v7: **97/97 sesuai kolom Wajib** — Wajib owner **18/18**, opsional ★ **51/51**, model M **23/23**, server S **5/5**; 0 tidak terukur;
+- v7: **97/97 sesuai kolom Wajib** — Wajib owner (waktu itu 18, ★T1 ikut) **18/18**, opsional ★ **51/51**, model M **23/23**, server S **5/5**;
+  0 tidak terukur;
 - v6: 97/97 sesuai harapan — **38 kasus berbeda, tepat BEDA_V6** (lima ubahan), 59 sama;
 - kontrol: **14/14 berbunyi**;
 - kasir darurat (kode asli): rules v7 **6/6**, rules v6 **4/4** (perilaku v6 yang diharapkan), kontrol suku `ulangKasirBercap` dicabut berbunyi
   (kirim ulang v33 & v32 atas nota bercap jatuh).
+
+Sesudah sanggahan (paraf U3/U4 bukan ISO, ★T1 keluar dari Wajib owner, ★T2 Juni tahun lalu, M-P6b, tahun digeser, 45 kasus H, 27 kontrol): hasil
+run-nya di deskripsi PR #111 bagian "Bukti server: emulator".
 
 **Gladi tutup buku lewat pintu** (workflow Gladi tutup buku, skenario `pintu`, `docs/gladi-tutup-buku.md`): /baru/ asli di Chrome headless menutup
 buku tahun yang SEMUA bulannya terkunci, di emulator dengan rules v7 ini. Penyesuaian jam yang jujur: data contoh bertahun 2026 dengan kunci periode
@@ -315,9 +350,11 @@ jejak per kiriman. Diproyeksikan ke skala toko (±17 rb catatan setahun) ritual 
 gladi). Tutup buku 2027 (Januari 2028) karena itu akan berhenti di kuota dan dilanjutkan dengan "Lanjutkan" sesudah reset 15.00 WIB.
 
 Tidak ada kasus yang perilaku server-nya beda dari kolom Wajib → `firestore.rules` **tidak diubah** oleh bukti ini. Langkah owner di Playground
-TETAP (Playground = server produksi).
+TETAP: emulator memakai mesin rules yang sama tetapi bukan proyek toko, sedangkan Playground menilai teks yang akan diterbitkan atas data proyek
+toko. Playground sendiri BUKAN tiruan sempurna server (isian *update* digabung, teks jam ISO jadi *timestamp*), karena itu "Wajib owner" hanya memuat
+kasus yang hasilnya tidak terpengaruh sifat itu.
 
 ## Hasil Playground
 
-(diisi saat owner menjalankannya: tanggal · 18 kasus "Wajib owner" sesuai kolom Wajib · opsional yang dijalankan · dokumen uji U1–U10 (+ U11) dihapus,
+(diisi saat owner menjalankannya: tanggal · 17 kasus "Wajib owner" sesuai kolom Wajib · opsional yang dijalankan · dokumen uji U1–U10 (+ U11) dihapus,
 `aturanToko/kunciPeriode` & `tutupBukuAcara/2021` / `2025` tidak ada · Publish jam berapa · kepala versi aktif dibaca)

@@ -2071,7 +2071,7 @@ tulisan (selain cap jam server yang disengaja), simpanan, pendengar staf SAMA.
 
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 
-1. **Rules v7 FINAL terbit DULU — JANGAN merge sebelum itu** (owner lewat Console, Playground `docs/uji-rules-v7.md` 18 kasus "Wajib owner" sesuai kolom
+1. **Rules v7 FINAL terbit DULU — JANGAN merge sebelum itu** (owner lewat Console, Playground `docs/uji-rules-v7.md` 17 kasus "Wajib owner" sesuai kolom
    "Wajib", bagian lain opsional; dokumen uji dihapus lagi; Claude membaca lewat Chrome owner). Satu nota dari HP kasir yang masih v32 masuk. Tanpa v7: batu nisan tidak pernah ditulis (hemat baca tidak bisa
    dinyalakan) dan kirim ulang karcis kasir-v33 hanya selamat lewat cara lama (jaring pengaman, bukan jalan utama).
 2. **Gabung cabang** (saklar MATI — baca belum berubah). CI hijau, termasuk job peramban (antrean kasir dengan `:commit`).

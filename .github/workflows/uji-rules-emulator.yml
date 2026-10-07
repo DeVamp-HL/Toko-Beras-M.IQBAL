@@ -1,8 +1,9 @@
 # BUKTI SERVER RULES — HANYA di runner (CLAUDE.md, keputusan owner 27 Sep 2026: emulator & peramban tidak di Mac owner). Tidak menerbitkan apa pun.
 # Firebase Emulator Firestore (mesin rules yang sama dengan server produksi) diberi teks firestore.rules repo lewat REST; semua kasus docs/uji-rules-v7.md
-# (+ kasus model M-* & kasus server S-*) dikirim dengan token akun palsu (JWT tanpa tanda tangan — hanya emulator yang menerimanya); kasus yang sama atas
-# firestore.rules.v6 (beda wajib = lima ubahan); rules dirusak satu suku wajib berbunyi; kode ASLI kasir darurat kasir-v33 & kasir-v32 (node) mengirim
-# ulang karcis ke emulator. Proyek emulator "demo-uji-rules": tanpa kredensial, tanpa data toko. alat-uji/uji_rules_emulator.py.
+# (+ kasus model M-*, kasus server S-*, kasus H "berita acara hanya maju" v6) dikirim dengan token akun palsu (JWT tanpa tanda tangan — hanya emulator
+# yang menerimanya); tahun dokumen uji digeser ke jam runner (tetap mengukur sesudah 1 Jan 2027); kasus yang sama atas firestore.rules.v6 (beda wajib =
+# lima ubahan); rules dirusak satu suku wajib berbunyi; kode ASLI kasir darurat kasir-v33 & kasir-v32 (node) mengirim ulang karcis ke emulator. Proyek
+# emulator "demo-uji-rules": tanpa kredensial, tanpa data toko. alat-uji/uji_rules_emulator.py.
 # Manual: Actions › Uji rules di emulator › Run workflow. Otomatis di PR yang menyentuh rules, kasir darurat, kasus Playground, atau alatnya.
 name: Uji rules di emulator
 
@@ -87,7 +88,7 @@ jobs:
           JSON
           cat "$P/firebase.json"
 
-      - name: "BUKTI SERVER — semua kasus Playground v7 (+ M, S) · v6 · kontrol rules dirusak · kasir darurat kasir-v33 & kasir-v32 kirim ulang"
+      - name: "BUKTI SERVER — semua kasus Playground v7 (+ M, S, H hanya maju) · v6 · kontrol rules dirusak · kasir darurat kasir-v33 & kasir-v32 kirim ulang"
         working-directory: ${{ runner.temp }}/proyek-rules
         run: |
           firebase emulators:exec --only firestore --project "$PROYEK_RULES" \

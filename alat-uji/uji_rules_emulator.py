@@ -13,9 +13,12 @@ A · KASUS RULES — semua kasus docs/uji-rules-v7.md (18 "Wajib owner" + semua 
     dokumen uji U1–U11 yang SAMA, tabel "Dokumen uji") + kasus S-* yang hanya bisa di server (cap = jam server lewat transform REQUEST_TIME, yang tidak
     bisa diketik di Playground). Tiap kasus: emulator dikosongkan, dokumen uji diisi lewat jalur admin (Bearer owner — emulator melewati rules), lalu
     SATU operasi dengan token akun "Isian Playground" (owner@ uid-uji, kasir@ uid-kasir-uji, staf uid-uji-b, akun tanpa aksesAkun baru1). LOLOS/DITOLAK
-    wajib = kolom "Wajib" (★: dibaca dari tabel docs; M/S: kolom model). Tanggal "hari ini" & jam relatif (besok, 5 hari lagi, cap 1 jam lalu) digeser ke
-    jam runner; cap = jam server (JAM_UJI_V7) dikirim sebagai transform REQUEST_TIME. Tahun di dokumen uji (2025 = tahun lalu) disusun untuk Okt–Des
-    2026: di tahun lain semua kasus dilaporkan TIDAK TERUKUR (bukan dilewati diam) dan alat ini gagal.
+    wajib = kolom "Wajib" (★: dibaca dari tabel docs; M/S/H: kolom model). Tanggal "hari ini" & jam relatif (besok, 5 hari lagi, cap 1 jam lalu) digeser ke
+    jam runner; cap = jam server (JAM_UJI_V7) dikirim sebagai transform REQUEST_TIME. TAHUN dokumen uji digeser sebesar selisih tahun runner (WIB) − 2026
+    (tahun lalu = tahun runner − 1, tahun berjalan = tahun runner; 2021 → 2021 + selisih, dst.), jadi bukti ini tetap mengukur sesudah 1 Jan 2027 — saat
+    tutup buku 2026 berjalan dengan rules v7. --periksa membuktikan model tetap = kolom Wajib di jam-jam lain (1 Jan 2027, Juni 2027, Jan 2028) + kontrol.
+    H · berita acara HANYA MAJU (v6, docs/uji-rules-v6.md A/B — periksa_rules.KASUS_BUKU) atas teks v7 dengan dokumen ujinya sendiri (v7 mengubah blok
+    tutupBukuAcara: create acaraBaru, update + acaraTutupPintu, delete hanya dibatalkan).
     v6: kasus yang sama dijalankan atas firestore.rules.v6 — yang berbeda WAJIB persis BEDA_V6 (lima ubahan v6 → v7 di docs; bukti ubahan itulah yang
     membuat beda), selebihnya sama dengan v7.
     KONTROL: rules v7 dirusak satu suku (pintuSah selalu benar, ulangKasirBercap tanpa syarat capServer, salinan arsip tanpa pembanding isi, …) → kasus
@@ -26,7 +29,8 @@ C · KASIR DARURAT — KODE ASLI kasir-darurat-nominal.html (kasir_emulator.js: 
     atas nota bercap → PATCH utuh diterima (capServer terbuang), yang mengubah isi → ditolak. Di v6: kirim ulang v33 jatuh ke cara lama (PATCH updateMask)
     dan tetap masuk tanpa dobel; v32 atas nota bercap DITOLAK (sebab v7 perlu). Kontrol: suku (kasir() && ulangKasirBercap()) dicabut → berbunyi.
 
-    python3 alat-uji/uji_rules_emulator.py --periksa    → statis + model (+ jsc / node: kode kasir dengan server palsu) — boleh di Mac
+    python3 alat-uji/uji_rules_emulator.py --periksa    → statis + model (+ jsc / node: kode kasir dengan server palsu) — boleh di Mac. Yang tidak bisa
+                                                          diukur di mesin ini (jsc/node tidak ada, commit kasir-v32 tidak terbaca) = ⚠ DILEWATI, bukan ✓
     python3 alat-uji/uji_rules_emulator.py --kontrol    → kerusakan pada pemeriksa statis wajib ketahuan (keluar 3 kalau ada yang diam)
     python3 alat-uji/uji_rules_emulator.py --emulator --keluar hasil.json --ringkasan ringkasan.md   → di runner, di dalam `firebase emulators:exec`
 """
@@ -58,7 +62,12 @@ KASUS_SERVER = [
     ('S-B1', 'owner batu nisan bercap jam server', 'owner', 'create', 'batuNisan', 'uji-v7', {'id': 'penjualan|x', 'koleksi': 'penjualan', 'idDok': 'x', 'capServer': JAM}, None, True, 0),
     ('S-B2', 'owner batu nisan TANPA capServer', 'owner', 'create', 'batuNisan', 'uji-v7', {'id': 'penjualan|x', 'koleksi': 'penjualan', 'idDok': 'x'}, None, False, None),
 ]
-KASUS = P.KASUS_V7 + KASUS_SERVER
+# ---- H · berita acara HANYA MAJU (v6; docs/uji-rules-v6.md A/B, model periksa_rules.KASUS_BUKU — 19 boleh, 26 ditolak) atas teks v7. Dokumen ujinya sendiri:
+# tutupBukuAcara/1990 = isi lama, TANPA dokumen uji v7 (tanpa pintu → selesai / dibatalkan tidak terhalang pintu). Wajib = kolom model; v6 wajib sama.
+KASUS_BUKU = [('H' + no, nama, 'owner', 'update', 'tutupBukuAcara', '1990', baru, {'tutupBukuAcara/1990': P.DOK_BUKU[lama] if isinstance(lama, str) else lama}, boleh, None)
+              for no, nama, lama, baru, boleh in P.KASUS_BUKU]
+BUKU = {K[0] for K in KASUS_BUKU}
+KASUS = P.KASUS_V7 + KASUS_SERVER + KASUS_BUKU
 
 # ---- v6 → v7: kasus yang WAJIB berbeda (nomor ubahan di docs/uji-rules-v7.md "Yang berubah v6 → v7"); semua kasus lain WAJIB sama di v6
 BEDA_V6 = dict([(k, 1) for k in ('★A3', '★A4', 'M-A5', 'S-A2', 'S-A3', 'S-B1')] + [(k, 2) for k in ('★N1', '★N2')] + [(k, 3) for k in ('★F1', '★F2', '★F3')]
@@ -85,6 +94,24 @@ KONTROL = [
     ('saldo pembuka di koleksi mana pun', [("      return kol in ['batchMasuk', 'piutangMutasi',", "      return true || kol in ['batchMasuk', 'piutangMutasi',")], ['★P23']),
     ('salinan arsip tidak diikat ke catatan aslinya', [(" || salinanAsli(d))));", " || true)));")], ['★P22']),
     ('staf membaca batu nisan', [("    match /batuNisan/{id} {\n      allow read: if owner();", "    match /batuNisan/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);")], ['★B4']),
+    # sanggahan bukti emulator 7 Okt: suku baru yang dulu hanya diperiksa kasusnya (★P25 juga DITOLAK di v6 — kepekaannya pada suku v7 dibuktikan di sini)
+    ('pintuTitik selalu benar (titik kas bulan terkunci tanpa syarat)', [("      return y > 0 && bulanDok(d, 'tanggal') <= y * 12 + 12 && (d.get('tanggal', '') == string(y) + '-12-31' || titikSebelum(y, d));",
+                                                                         "      return true || y > 0 && bulanDok(d, 'tanggal') <= y * 12 + 12 && (d.get('tanggal', '') == string(y) + '-12-31' || titikSebelum(y, d));")],
+     ['★P25', 'M-P24d']),
+    ('titik kas kembali = titikSebelum tanpa pembanding kantong (tanggal saja)', [("      return s is map && d.get('tanggal', '') == s.get('tanggal', null) && d.get('laci', null) == s.get('laci', null)", "      return s is map && d.get('tanggal', '') == s.get('tanggal', null) && (true || d.get('laci', null) == s.get('laci', null)"),
+                                                                                   ("\n        && d.get('rekening', null) == s.get('rekening', null) && d.get('amplop', null) == s.get('amplop', null);", "\n        && d.get('rekening', null) == s.get('rekening', null) && d.get('amplop', null) == s.get('amplop', null));")], ['★P25']),
+    ('titik kas tanpa cabang titikSebelum (Batalkan tidak bisa mengembalikan titik kas)', [("(d.get('tanggal', '') == string(y) + '-12-31' || titikSebelum(y, d));", "(d.get('tanggal', '') == string(y) + '-12-31');")], ['★P26']),
+    ('titik kas tanpa cabang 31 Des (kunci tidak bisa menulis titik tutup buku)', [("(d.get('tanggal', '') == string(y) + '-12-31' || titikSebelum(y, d));", "(titikSebelum(y, d));")], ['★P5']),
+    ('ulangKasirBercap tanpa pembanding isi (kirim ulang kasir@ boleh mengubah nota)', [("      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer'])\n        && (!request.resource.data",
+                                                                                       "      return (!request.resource.data")], ['★B1', 'M-B8']),
+    ('berita acara baru tanpa syarat mode & status', [(" && d.get('mode', '') == 'sungguhan' && d.get('status', '') in ['berjalan', 'terkunci']\n        && p is string", "\n        && p is string")], ['M-T8']),
+    ('berita acara baru tanpa syarat tahun lampau', [(" && d.tahun < wib().year() && d.get('mode', '')", " && d.get('mode', '')")], ['★T5']),
+    ('berita acara baru tanpa syarat id = tahun', [(" && id == string(d.tahun) && d.tahun < wib().year()", " && d.tahun < wib().year()")], ['M-T9']),
+    ('hapus berita acara tanpa syarat "dibatalkan"', [("      allow delete: if owner() && resource.data.get('status', '') == 'dibatalkan';", "      allow delete: if owner();")], ['★T4']),
+    ('permintaan nego staf tanpa syarat status "menunggu"', [(" && d.get('status', '') == 'menunggu' && d.get('negoUid', '')", " && d.get('negoUid', '')")], ['★N5']),
+    ('permintaan nego staf tanpa syarat tindakan "nego"', [("return stafBuat(peranBoleh) && d.get('tindakan', '') == 'nego' && ", "return stafBuat(peranBoleh) && ")], ['★N7']),
+    ('permintaan nego staf boleh menulis kolom keputusan', [("\n        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);", ";")], ['★N6']),
+    ('berita acara boleh mundur (selesai → terkunci)', [("'terkunci>membatalkan', 'terkunci>selesai', ", "'terkunci>membatalkan', 'terkunci>selesai', 'selesai>terkunci', ")], ['H★B16']),
 ]
 # kontrol bagian C: suku kirim ulang bercap dicabut dari update penjualan → kirim ulang kasir-v33 & kasir-v32 atas nota bercap wajib berbunyi
 KONTROL_KASIR = ('suku (kasir() && ulangKasirBercap()) dicabut dari update penjualan', [(" || (kasir() && ulangKasirBercap());", ";")], ['c2', 'c4'])
@@ -114,28 +141,47 @@ def wajib_dok(teks=None):
 
 
 # ============================== geser waktu ke jam runner ==============================
+TAHUN_MODEL = int(P.HARI_INI[:4])   # 2026 — tahun "hari ini" dokumen uji model (JAM_UJI_V7): 2025 = tahun lalu, 2026 = tahun berjalan
+GESER_TAHUN = True                  # kontrol: False = tahun dokumen uji TIDAK digeser (cek "dokumen uji digeser ke jam lain" wajib berbunyi)
+_TAHUN = re.compile(r'^(20\d\d)(?=$|[-| ])')
+
+
 class Jam:
-    """Jam runner (= jam emulator, mesin yang sama): hari ini & kemarin WIB, tahun WIB."""
+    """Jam runner (= jam emulator, mesin yang sama): hari ini & kemarin WIB, tahun WIB, selisih tahun terhadap dokumen uji model."""
     def __init__(self, ms=None):
         self.ms = int(ms if ms is not None else time.time() * 1000)
         d = datetime.datetime.fromtimestamp(self.ms / 1000.0, WIB)
         self.hari_ini = d.date().isoformat(); self.kemarin = (d.date() - datetime.timedelta(days=1)).isoformat(); self.tahun = d.year
+        self.selisih = (self.tahun - TAHUN_MODEL) if GESER_TAHUN else 0
         self.iso = datetime.datetime.fromtimestamp(self.ms / 1000.0, datetime.timezone.utc).isoformat()
 
 
-def geser(v, J):
+def geser_teks(s, J):
+    """teks berawalan tahun (tanggal '2021-06-15', bulan '2021-12', id '2024', id arsip '2021|penjualan|x', jam '2026-10-01 00:00') → tahun + selisih."""
+    m = _TAHUN.match(s)
+    return str(int(m.group(1)) + J.selisih) + s[4:] if m and J.selisih else s
+
+
+def geser_jalur(jalur, J): return '/'.join(geser_teks(x, J) for x in jalur.split('/'))
+
+
+def geser(v, J, kunci=None):
     """Nilai kasus model (jam uji 9 Okt 2026 03.00Z) → nilai di jam runner. Cap = jam uji persis → SERVER (transform REQUEST_TIME); jam relatif (besok,
-    5 hari lagi, 1 jam lalu, 1 menit lalu) → relatif ke jam runner; jam mutlak (2020, 2100) tetap; "hari ini" & titik kas kemarin → tanggal WIB runner."""
+    5 hari lagi, 1 jam lalu, 1 menit lalu) → relatif ke jam runner; jam mutlak (2020, 2100) tetap; "hari ini" (juga awalan jam "hari ini T…" / "hari ini
+    00:00") & titik kas kemarin → tanggal WIB runner; TAHUN (kolom tahun / tahunDari, teks berawalan tahun) → + selisih tahun runner − 2026."""
     if isinstance(v, TS):
         if v.ms == JAM.ms: return SERVER
         d = v.ms - JAM.ms
         return TS(J.ms + d) if abs(d) <= 10 * 86400000 else v
-    if isinstance(v, dict): return {k: geser(x, J) for k, x in v.items()}
+    if isinstance(v, dict): return {k: geser(x, J, k) for k, x in v.items()}
     if isinstance(v, list): return [geser(x, J) for x in v]
+    if isinstance(v, bool): return v
+    if isinstance(v, int): return v + J.selisih if kunci in ('tahun', 'tahunDari') else v
     if isinstance(v, str):
         if v == P.HARI_INI: return J.hari_ini
-        if v.startswith(P.HARI_INI + 'T'): return J.hari_ini + v[len(P.HARI_INI):]
+        if v.startswith(P.HARI_INI + 'T') or v.startswith(P.HARI_INI + ' '): return J.hari_ini + v[len(P.HARI_INI):]
         if v == P.DB_UJI_V7['pengaturan/titikKas']['tanggal']: return J.kemarin
+        return geser_teks(v, J)
     return v
 
 
@@ -264,27 +310,46 @@ def operasi(op, kol, id_, data, akun):
 
 
 # ============================== bagian A: kasus ==============================
-def db_kasus(K, J):
+def isi_kasus(K, J):
+    """→ (id dokumen, isi operasi, dokumen uji) di jam J. Kasus H (hanya maju): dokumen ujinya sendiri, tanpa jam — tidak digeser."""
     no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks = K
+    if no in BUKU: return id_, data, dict(ubah_db)
     db = dict(P.DB_UJI_V7); db.update(ubah_db or {})
-    db = {k: geser(v, J) for k, v in db.items() if v is not None}
-    if op == 'create': db.pop(kol + '/' + id_, None)   # create = dokumen belum ada (Playground: isian apa adanya)
-    return db
+    db = {geser_jalur(k, J): geser(v, J) for k, v in db.items() if v is not None}
+    if op == 'create': db.pop(geser_jalur(kol + '/' + id_, J), None)   # create = dokumen belum ada (Playground: isian apa adanya)
+    return geser_teks(id_, J), (geser(data, J) if data is not None else None), db
 
 
 def jalankan_kasus(K, J, wajib):
     no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks = K
     harap = wajib.get(no, boleh)
     r = {'no': no, 'nama': nama, 'akun': aud, 'op': op, 'jalur': kol + '/' + id_, 'wajib': 'LOLOS' if harap else 'DITOLAK'}
-    if J.tahun != 2026:
-        r.update(hasil='TIDAK TERUKUR', ket='dokumen uji docs/uji-rules-v7.md disusun untuk Okt–Des 2026 (2025 = tahun lalu); jam runner tahun %d' % J.tahun, ok=False)
-        return r
     try:
-        kosongkan(); isi_admin(db_kasus(K, J))
-        h, ket = operasi(op, kol, id_, geser(data, J) if data is not None else None, P.AKUN_UJI[aud])
+        idg, isi, db = isi_kasus(K, J)
+        if idg != id_: r['jalurDigeser'] = kol + '/' + idg
+        kosongkan(); isi_admin(db)
+        h, ket = operasi(op, kol, idg, isi, P.AKUN_UJI[aud])
     except Exception as e: h, ket = 'GALAT', 'alat uji: ' + str(e)[:300]
     r.update(hasil=h, ket=ket, ok=(h == r['wajib']))
     return r
+
+
+def ke_model(v, jam):
+    """isi emulator (SERVER = transform REQUEST_TIME) → isi penafsir mini (cap = jam permintaan)."""
+    if isinstance(v, str) and v == SERVER: return jam
+    if isinstance(v, dict): return {k: ke_model(x, jam) for k, x in v.items()}
+    if isinstance(v, list): return [ke_model(x, jam) for x in v]
+    return v
+
+
+def nilai_model(M, K, J=None):
+    """penafsir mini atas kasus K: J None = dokumen uji model apa adanya (jam JAM_UJI_V7); J = digeser ke jam J persis seperti di emulator."""
+    no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks = K
+    if J is None:
+        db = dict(ubah_db) if no in BUKU else dict(P.DB_UJI_V7, **(ubah_db or {}))
+        return M.nilai(op, kol, id_, auth=P.AKUN_UJI[aud], data=data, sebelum={k: v for k, v in db.items() if v is not None}, jam=JAM)
+    jam = TS(J.ms); idg, isi, db = isi_kasus(K, J)
+    return M.nilai(op, kol, idg, auth=P.AKUN_UJI[aud], data=ke_model(isi, jam), sebelum=ke_model(db, jam), jam=jam)
 
 
 def jalankan_semua(J, teks_rules, kasus=None):
@@ -301,10 +366,21 @@ def skrip_halaman(html):
 
 
 def html_v32():
-    """kasir-darurat-nominal.html di KASIR_V32_COMMIT (riwayat git penuh) → teks, atau None bila commit tidak terbaca (riwayat dangkal)."""
-    try: t = subprocess.run(['git', 'show', KASIR_V32_COMMIT + ':kasir-darurat-nominal.html'], cwd=AKAR, capture_output=True, text=True, timeout=60)
-    except Exception: return None
-    return t.stdout if t.returncode == 0 and t.stdout else None
+    """kasir-darurat-nominal.html di KASIR_V32_COMMIT → teks, atau None bila commit tidak terbaca. Checkout CI dangkal (job uji Pages): di GitHub Actions
+    commit itu diambil SENDIRI (git fetch --depth=1 commit itu — hanya bila repo dangkal; repo penuh di Mac tidak disentuh), supaya cek kasir-v32 diukur
+    juga di sana, bukan lulus kosong (sanggahan 7 Okt)."""
+    def tunjuk():
+        try: t = subprocess.run(['git', 'show', KASIR_V32_COMMIT + ':kasir-darurat-nominal.html'], cwd=AKAR, capture_output=True, text=True, timeout=60)
+        except Exception: return None
+        return t.stdout if t.returncode == 0 and t.stdout else None
+    h = tunjuk()
+    if h is None and os.environ.get('GITHUB_ACTIONS') == 'true':
+        try:
+            if subprocess.run(['git', 'rev-parse', '--is-shallow-repository'], cwd=AKAR, capture_output=True, text=True, timeout=30).stdout.strip() == 'true':
+                subprocess.run(['git', 'fetch', '--no-tags', '--depth=1', 'origin', KASIR_V32_COMMIT], cwd=AKAR, capture_output=True, text=True, timeout=180)
+        except Exception: pass
+        h = tunjuk()
+    return h
 
 
 def node_kasir(skrip, simpanan, aksi=None):
@@ -434,8 +510,9 @@ def ringkas(daftar):
 def jalankan_emulator():
     tunggu_emulator()
     J = Jam(); v7, v6 = baca('firestore.rules'), baca('firestore.rules.v6')
-    lap = {'mulai': J.iso, 'hariIni': J.hari_ini, 'proyek': PROYEK, 'firebaseTools': os.environ.get('FIREBASE_TOOLS_VERSI', '?'), 'run': os.environ.get('GITHUB_RUN_ID', '')}
-    print('— A · v7 (firestore.rules cabang ini): %d kasus' % len(KASUS), flush=True)
+    lap = {'mulai': J.iso, 'hariIni': J.hari_ini, 'selisihTahun': J.selisih, 'proyek': PROYEK, 'firebaseTools': os.environ.get('FIREBASE_TOOLS_VERSI', '?'), 'run': os.environ.get('GITHUB_RUN_ID', '')}
+    print('— A · v7 (firestore.rules cabang ini): %d kasus (%d kasus Playground/model/server + %d kasus H "hanya maju") · tahun dokumen uji digeser %+d (jam runner WIB %s)'
+          % (len(KASUS), len(KASUS) - len(KASUS_BUKU), len(KASUS_BUKU), J.selisih, J.hari_ini), flush=True)
     A = jalankan_semua(J, v7); lap['v7'] = A
     for x in A: print('  %s %-7s %-26s %-6s %-48s → %-13s wajib %-7s %s' % ('✓' if x['ok'] else '✗', x['no'], x['akun'] + ' ' + x['op'], '', x['jalur'][:48], x['hasil'], x['wajib'], x['ket'][:90]), flush=True)
     print('— A · v6 (firestore.rules.v6): kasus yang sama', flush=True)
@@ -475,7 +552,7 @@ def jalankan_emulator():
     print('  %s %s → gagal: %s' % ('BERBUNYI' if lap['kontrolKasir']['berbunyi'] else 'DIAM!!  ', nama, ', '.join(sorted(gagal)) or '-'), flush=True)
     pasang_aturan(v7)
     lap['ringkas'] = {'v7': ringkas(A), 'wajibOwner': ringkas([x for x in A if x['no'] in P.WAJIB_V7]), 'opsional': ringkas([x for x in A if x['no'].startswith('★') and x['no'] not in P.WAJIB_V7]),
-                      'model': ringkas([x for x in A if x['no'].startswith('M-')]), 'server': ringkas([x for x in A if x['no'].startswith('S-')]),
+                      'model': ringkas([x for x in A if x['no'].startswith('M-')]), 'server': ringkas([x for x in A if x['no'].startswith('S-')]), 'buku': ringkas([x for x in A if x['no'] in BUKU]),
                       'v6': {'kasus': len(lap['v6']), 'sesuai': sum(1 for x in lap['v6'] if x['ok']), 'beda': sum(1 for x in lap['v6'] if x['hasilV6'] != x['hasilV7'])},
                       'kontrol': {'jumlah': len(lap['kontrol']) + 1, 'berbunyi': sum(1 for x in lap['kontrol'] if x['berbunyi']) + (1 if lap['kontrolKasir']['berbunyi'] else 0)},
                       'kasir': {k: {'cek': len(v['cek']), 'lulus': sum(1 for x in v['cek'] if x['ok'])} for k, v in lap['kasir'].items()}}
@@ -487,8 +564,9 @@ def jalankan_emulator():
 def ringkasan_md(lap):
     R = lap['ringkas']; f = lambda r: '%d/%d lulus%s' % (r['lulus'], r['kasus'], (' · %d TIDAK TERUKUR' % r['tidakTerukur']) if r['tidakTerukur'] else '')
     out = ['## Bukti server rules v7 — Firebase Emulator Firestore (mesin rules = server produksi)', '',
-           'Proyek emulator `%s` · firebase-tools %s · jam runner %s (hari ini WIB %s) · token akun palsu (JWT tanpa tanda tangan, hanya emulator)' % (lap['proyek'], lap['firebaseTools'], lap['mulai'][:19], lap['hariIni']), '',
-           '- **A · v7**: %s — Wajib owner %s · opsional ★ %s · model M %s · server S %s' % (f(R['v7']), f(R['wajibOwner']), f(R['opsional']), f(R['model']), f(R['server'])),
+           'Proyek emulator `%s` · firebase-tools %s · jam runner %s (hari ini WIB %s; tahun dokumen uji digeser %+d) · token akun palsu (JWT tanpa tanda tangan, hanya emulator)'
+           % (lap['proyek'], lap['firebaseTools'], lap['mulai'][:19], lap['hariIni'], lap.get('selisihTahun', 0)), '',
+           '- **A · v7**: %s — Wajib owner %s · opsional ★ %s · model M %s · server S %s · H "hanya maju" (v6) %s' % (f(R['v7']), f(R['wajibOwner']), f(R['opsional']), f(R['model']), f(R['server']), f(R['buku'])),
            '- **A · v6**: %d/%d sesuai harapan — %d kasus berbeda v6 → v7, semuanya di BEDA_V6 (lima ubahan); selebihnya sama' % (R['v6']['sesuai'], R['v6']['kasus'], R['v6']['beda']),
            '- **Kontrol**: %d/%d berbunyi (rules dirusak satu suku → kasus sasarannya berbalik)' % (R['kontrol']['berbunyi'], R['kontrol']['jumlah']),
            '- **C · kasir darurat (kode asli)**: ' + ' · '.join('%s %d/%d' % (k, v['lulus'], v['cek']) for k, v in R['kasir'].items()), '']
@@ -542,33 +620,44 @@ def jalan_kasir_palsu(skrip, tolak):
     finally: shutil.rmtree(d, ignore_errors=True)
 
 
+# jam lain tempat model menilai dokumen uji yang DIGESER (seperti emulator): Okt 2026, 1 Jan 2027 00.30 WIB, 2 Jan 2027, Juni 2027, Januari 2028 (tutup buku 2027)
+JAM_GESER = ('2026-10-07T05:00:00Z', '2026-12-31T17:30:00Z', '2027-01-02T01:00:00Z', '2027-06-15T03:00:00Z', '2028-01-05T08:30:00Z')
+JAM_PEMBANDING = '2027-06-15T03:00:00Z'
+
+
 def periksa(rules=None, dok=None, html=None):
-    """→ [(nama, ok, ket)]. Tanpa emulator: tabel docs = model, model v7/v6, kontrol model, kode kasir di server palsu."""
+    """→ [(nama, ok, ket)] — ok True / False / None (DILEWATI: tidak bisa diukur di mesin ini, bukan lulus). Tanpa emulator: tabel docs = model, model
+    v7/v6, model di jam lain (tahun digeser), kontrol model, kode kasir di server palsu."""
     c = []; R = rules if rules is not None else baca('firestore.rules'); R6 = baca('firestore.rules.v6'); W = wajib_dok(dok)
     bintang = [K[0] for K in KASUS if K[0].startswith('★')]
     salah_dok = sorted(k for k in bintang if W.get(k) is None or W.get(k) != dict((K[0], K[8]) for K in KASUS)[k])
     c.append(('kolom "Wajib" %s = kolom model untuk %d kasus ★ (tabel dibaca sel demi sel)' % (DOK, len(bintang)), not salah_dok and set(W) == set(bintang),
               {'beda': salah_dok, 'hanya di berkas': sorted(set(W) - set(bintang))}))
-    c.append(('id kasus unik (★ docs + M model + S server)', len({K[0] for K in KASUS}) == len(KASUS), len(KASUS)))
+    c.append(('id kasus unik (★ docs + M model + S server + H hanya maju)', len({K[0] for K in KASUS}) == len(KASUS), len(KASUS)))
     try: M7, M6 = RM.Rules(R), RM.Rules(R6)
     except Exception as e: return c + [('rules terurai penafsir mini', False, str(e)[:300])]
     salah7, beda6 = [], set()
     for K in KASUS:
-        no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks = K
-        db = dict(P.DB_UJI_V7); db.update(ubah_db or {}); db = {k: v for k, v in db.items() if v is not None}
-        h7 = M7.nilai(op, kol, id_, auth=P.AKUN_UJI[aud], data=data, sebelum=db, jam=JAM); h6 = M6.nilai(op, kol, id_, auth=P.AKUN_UJI[aud], data=data, sebelum=db, jam=JAM)
-        if h7.boleh != boleh: salah7.append(no)
-        if h6.boleh != h7.boleh: beda6.add(no)
-    c.append(('model v7 = kolom Wajib di %d kasus (termasuk S-* cap jam server)' % len(KASUS), not salah7, salah7))
+        h7 = nilai_model(M7, K); h6 = nilai_model(M6, K)
+        if h7.boleh != K[8]: salah7.append(K[0])
+        if h6.boleh != h7.boleh: beda6.add(K[0])
+    c.append(('model v7 = kolom Wajib di %d kasus (termasuk S-* cap jam server & %d kasus H "hanya maju" v6)' % (len(KASUS), len(KASUS_BUKU)), not salah7, salah7))
     c.append(('model: kasus yang berbeda v6 → v7 = BEDA_V6 persis (%d kasus, lima ubahan)' % len(BEDA_V6), beda6 == set(BEDA_V6), {'model saja': sorted(beda6 - set(BEDA_V6)), 'BEDA_V6 saja': sorted(set(BEDA_V6) - beda6)}))
+    # emulator menggeser TAHUN dokumen uji ke jam runner (sanggahan 7 Okt: dulu semua kasus TIDAK TERUKUR mulai 1 Jan 2027, tepat saat tutup buku 2026 berjalan
+    # dengan rules v7). Model atas dokumen uji yang digeser PERSIS seperti emulator (isi_kasus) di jam-jam lain = kolom Wajib. Pembanding: tanpa geser tahun,
+    # di Juni 2027 model WAJIB menyimpang dari kolom Wajib (jam memang menentukan — cek ini tidak lulus kosong).
+    salah_g = {}
+    for x in JAM_GESER:
+        J = Jam(TS.dari_iso(x).ms); s = [K[0] for K in KASUS if K[0] not in BUKU and nilai_model(M7, K, J).boleh != K[8]]
+        if s: salah_g['%s (tahun %+d)' % (x, J.selisih)] = s
+    Jp = Jam(TS.dari_iso(JAM_PEMBANDING).ms); Jp.selisih = 0
+    simpang = sorted(K[0] for K in KASUS if K[0] not in BUKU and nilai_model(M7, K, Jp).boleh != K[8])
+    c.append(('model: dokumen uji digeser ke jam lain (%s) = kolom Wajib; tanpa geser tahun %s menyimpang %d kasus' % (', '.join(x[:10] for x in JAM_GESER), JAM_PEMBANDING[:10], len(simpang)),
+              not salah_g and bool(simpang), {'salah': salah_g, 'pembanding tanpa geser (wajib menyimpang)': simpang}))
     per = {K[0]: K for K in KASUS}
     for nama, ganti, sasaran in KONTROL + [(KONTROL_KASIR[0], KONTROL_KASIR[1], ['S-A2', 'S-A3', 'M-A5'])]:
         try:
-            Mx = RM.Rules(rusak(R, ganti)); diam = []
-            for s in sasaran:
-                no, _, aud, op, kol, id_, data, ubah_db, boleh, _ = per[s]
-                db = dict(P.DB_UJI_V7); db.update(ubah_db or {}); db = {k: v for k, v in db.items() if v is not None}
-                if Mx.nilai(op, kol, id_, auth=P.AKUN_UJI[aud], data=data, sebelum=db, jam=JAM).boleh == boleh: diam.append(s)
+            Mx = RM.Rules(rusak(R, ganti)); diam = [s for s in sasaran if nilai_model(Mx, per[s]).boleh == per[s][8]]
             c.append(('kontrol "%s": jangkar tepat 1× & model membalik %s' % (nama, ', '.join(sasaran)), not diam, {'diam': diam}))
         except Exception as e: c.append(('kontrol "%s"' % nama, False, str(e)[:200]))
     H = html if html is not None else baca('kasir-darurat-nominal.html')
@@ -576,10 +665,10 @@ def periksa(rules=None, dok=None, html=None):
     except Exception as e: return c + [('skrip kasir darurat terbaca', False, str(e))]
     c.append(('kasir darurat cabang ini = kasir-v33', "var VERSI_APLIKASI = 'kasir-v33';" in s33, re.findall(r"var VERSI_APLIKASI = '([^']+)'", s33)))
     h32 = html_v32()
-    if h32 is None: c.append(('kasir-v32 di %s terbaca dari git (job emulator: riwayat penuh)' % KASIR_V32_COMMIT[:10], True, 'riwayat dangkal di mesin ini — dinilai di job emulator'))
+    if h32 is None: c.append(('kasir-v32 di %s terbaca dari git' % KASIR_V32_COMMIT[:10], None, 'commit tidak terbaca di mesin ini (riwayat dangkal, fetch gagal) — diukur di job emulator (riwayat penuh)'))
     else: c.append(('kasir-v32 di %s terbaca dari git dan ber-VERSI kasir-v32' % KASIR_V32_COMMIT[:10], "var VERSI_APLIKASI = 'kasir-v32';" in skrip_halaman(h32), ''))
     h = jalan_kasir_palsu(s33, False)
-    if h is None: c.append(('kode kasir darurat di server palsu (jsc / node)', True, 'tanpa jsc & node di mesin ini — dinilai di job emulator')); return c
+    if h is None: c.append(('kode kasir darurat di server palsu (jsc / node)', None, 'tanpa jsc & node di mesin ini — diukur di job emulator')); return c
     t = tulisan_nota(h)
     c.append(('server palsu: kasir-v33 mencatat nota (simpanNominal) lalu mengirim SATU :commit bercap (capServer REQUEST_TIME, tanpa updateMask, berkunci)',
               not h.get('galat') and h.get('versi') == 'kasir-v33' and len(h.get('antreanSesudahCatat') or []) == 1 and t == [{'cara': 'commit', 'status': 200, 'cap': ['capServer=REQUEST_TIME'], 'mask': False, 'kunci': True}]
@@ -591,11 +680,13 @@ def periksa(rules=None, dok=None, html=None):
         h = jalan_kasir_palsu(skrip_halaman(h32), False); t = tulisan_nota(h)
         c.append(('server palsu: kasir-v32 mengirim nota lewat PATCH utuh (tanpa updateMask, tanpa cap)', not h.get('galat') and h.get('versi') == 'kasir-v32'
                   and [x['cara'] + ':' + str(x['status']) for x in t] == ['patch:200'], {'galat': (h.get('galat') or '')[:300], 'tulisan': t}))
+    else: c.append(('server palsu: kasir-v32 mengirim nota lewat PATCH utuh (tanpa updateMask, tanpa cap)', None, 'kasir-v32 tidak terbaca di mesin ini — diukur di job emulator'))
     return c
 
 
 def kontrol():
     """kerusakan pada bahan pemeriksa statis wajib ketahuan karena SEBABNYA."""
+    global GESER_TAHUN
     R = baca('firestore.rules'); D = baca(DOK); Hh = baca('kasir-darurat-nominal.html'); kode = 0
     assert '| 7 | ★P20 |' in D and "updateTransforms: [{ fieldPath: 'capServer', setToServerValue: 'REQUEST_TIME' }]" in Hh
     kasus = [
@@ -603,11 +694,15 @@ def kontrol():
         ('rules v7: suku pintu tanpa batas waktu (model ikut berubah)', {'rules': R.replace("\n        && request.time < p.data.sampai ? int(p.data.tahun) : 0;", " ? int(p.data.tahun) : 0;")}, 'model v7 = kolom Wajib'),
         ('kasir darurat tanpa cap jam server (:commit tanpa updateTransforms)', {'html': Hh.replace(",\n        updateTransforms: [{ fieldPath: 'capServer', setToServerValue: 'REQUEST_TIME' }] }] })", " }] })")}, 'server palsu: kasir-v33'),
         ('kasir darurat tanpa cara lama (ditolak langsung ke "ditolak")', {'html': Hh.replace("          if (bercap) { kirimItem(item, false, true); return; }", "")}, 'server palsu menolak'),
+        # sanggahan bukti emulator 7 Okt: alat emulator yang TIDAK menggeser tahun dokumen uji (kedaluwarsa 1 Jan 2027) wajib ketahuan di Mac, sebelum Januari
+        ('alat emulator tidak menggeser tahun dokumen uji (bukti server kedaluwarsa 1 Jan 2027)', {'geser': False}, 'model: dokumen uji digeser ke jam lain'),
     ]
     for nama, rusak_, sebab in kasus:
-        if any(v in (R, D, Hh) for v in rusak_.values()): print('KONTROL BASI  ' + nama); kode = 3; continue
-        c = periksa(rusak_.get('rules'), rusak_.get('dok'), rusak_.get('html'))
-        g = [x for x in c if not x[1]]; tepat = [x for x in g if x[0].startswith(sebab)]
+        if any(v in (R, D, Hh) for v in rusak_.values() if isinstance(v, str)): print('KONTROL BASI  ' + nama); kode = 3; continue
+        GESER_TAHUN = rusak_.get('geser', True)
+        try: c = periksa(rusak_.get('rules'), rusak_.get('dok'), rusak_.get('html'))
+        finally: GESER_TAHUN = True
+        g = [x for x in c if x[1] is False]; tepat = [x for x in g if x[0].startswith(sebab)]
         print(('BERBUNYI ' if tepat else 'DIAM!!   ') + nama + ' → ' + (tepat[0][0][:100] + ' · ' + json.dumps(tepat[0][2], ensure_ascii=False)[:160] if tepat else ('lain: ' + g[0][0][:100] if g else '-')))
         if not tepat: kode = 3
     return kode
@@ -618,9 +713,10 @@ if __name__ == '__main__':
     opsi = lambda n: arg[arg.index(n) + 1] if n in arg and arg.index(n) + 1 < len(arg) else ''
     if '--kontrol' in arg: sys.exit(kontrol())
     if '--emulator' not in arg:
-        c = periksa(); g = [x for x in c if not x[1]]
-        for n, ok, k in c: print(('✓ ' if ok else '✗ ') + n + ('' if ok else ' → ' + json.dumps(k, ensure_ascii=False)[:400]))
-        print('BUKTI SERVER RULES v7 (statis + model + kode kasir di server palsu): %d lulus · %d gagal — emulator: workflow "Uji rules di emulator"' % (len(c) - len(g), len(g)))
+        c = periksa(); g = [x for x in c if x[1] is False]; lewat = [x for x in c if x[1] is None]
+        for n, ok, k in c: print(('✓ ' if ok else ('⚠ DILEWATI ' if ok is None else '✗ ')) + n + ('' if ok else ' → ' + (k if isinstance(k, str) else json.dumps(k, ensure_ascii=False))[:400]))
+        print('BUKTI SERVER RULES v7 (statis + model + kode kasir di server palsu): %d lulus · %d dilewati · %d gagal — emulator: workflow "Uji rules di emulator"'
+              % (len(c) - len(g) - len(lewat), len(lewat), len(g)))
         sys.exit(2 if g else 0)
     if os.environ.get('GITHUB_ACTIONS') != 'true':
         print('DITOLAK: --emulator menyalakan Firebase Emulator & node — HANYA di runner GitHub Actions (CLAUDE.md, keputusan owner 27 Sep 2026).\n'

@@ -35,7 +35,10 @@ Di Mac hanya boleh menjalankan pemeriksaan yang tidak menyalakan peramban:
     angka kuota tetap diproyeksikan ke skala toko. Pindahan uang **tidak
     diarsip** tutup buku dan tidak berpintu, jadi wajib tetap utuh selama pintu terbuka. `--periksa` menilainya di jam 5 Jan 2027 15.30: tahun
     2026 boleh ditutup sungguhan **lewat pintu**; sesudah putusan, `susunKunci` = kiriman 1 berita acara "berjalan" sendirian, kiriman 2 membuka
-    pintu (tahun 2026, 48 jam), titik kas 31 Des ikut lewat pintu, tiap kiriman ≤ 18 pemeriksaan. Dipakai skenario `pintu`.
+    pintu (tahun 2026, 48 jam), titik kas 31 Des ikut lewat pintu, tiap kiriman ≤ 18 pemeriksaan. Dipakai skenario `pintu`. Titik kas SEBELUM
+    ritual di varian ini = hitungan tutup hari terakhir sebelum 31 Des (30 Des, bulan terkunci), bukan 31 Des: BATALKAN mengembalikannya lewat
+    cabang `titikSebelum` rules v7 (`pintuTitik`), bukan cabang "31 Des" (sanggahan 7 Okt — dulu titik kas contoh kebetulan 31 Des, cabang itu
+    tidak pernah tertempuh; `--kontrol` data contoh membuktikan titik kas 31 Des ketahuan).
 - **Akun**: owner contoh (`owner@…`, dikenali aturan lewat email) dan satu karyawan contoh beserta dokumen `aksesAkun`-nya. Sandi dibuat ulang tiap
   run dan tidak pernah dicetak.
 - **Jalan masuk /baru/ ke emulator**: `?emulator=127.0.0.1:8080`, diatur di `baru/js/data/server-tiruan.js`. Jalan ini hanya berlaku kalau
@@ -71,7 +74,8 @@ acara 2026 di server berstatus yang diharapkan, lalu menilai:
   kas kembali seperti sebelum ritual, penanda `tutupBuku` dinetralkan (tahun 0, dibatalkan 2026). Di halaman, era kembali kosong.
 - **skenario `pintu`**, tambahan di tiap titik: dokumen `pengaturan/pintuBuku` di server **terbuka** untuk 2026 dan `sampai`-nya ≤ 72 jam dari jam
   server (sesudah kunci) atau **tertutup** (sesudah BATALKAN dan SELESAI); `arsipTahun` = **isi** tiap catatan 2026 yang asli, bukan hanya id-nya
-  (sesudah kunci & selesai); pindahan uang bulan terkunci (tidak diarsip) sama persis dengan sebelum ritual; titik kas di server bertanggal 31 Des 2026.
+  (sesudah kunci & selesai); pindahan uang bulan terkunci (tidak diarsip) sama persis dengan sebelum ritual; titik kas di server bertanggal 31 Des 2026
+  sesudah kunci & selesai, dan sesudah BATALKAN kembali ke titik kas sebelum ritual (30 Des — lewat cabang `titikSebelum`, bukan "31 Des").
 
 Untuk memotong ritual di tengah, aturan emulator diganti sementara dengan salinan `firestore.rules` yang izin create/update satu bloknya dicabut.
 Setelah itu teks repo dipasang lagi. Berkas `firestore.rules` sendiri tidak diubah.
@@ -80,7 +84,9 @@ Setelah itu teks repo dipasang lagi. Berkas `firestore.rules` sendiri tidak diub
 kalau skenarionya jalan sampai akhir, cek sasaran gagal bukan karena langkahnya tidak tercapai, cek lain tidak ikut gagal (kecuali yang memang
 terkena), dan bukti kerusakannya terlihat di langkah yang benar. Kontrol yang skenarionya jatuh dihitung DIAM, bukan berbunyi. Run 7 Okt
 membuktikan perlunya aturan ini: kontrol "satu koleksi tidak dimuat" yang lama ternyata membuat layar Uang tidak tampil, tetapi dulu tetap
-dihitung berbunyi. Ada enam kontrol:
+dihitung berbunyi. Cek "tidak ada galat izin / penolakan server di halaman" membaca konsol, kabar halaman, galat status Firebase, dan daftar
+"ditolak" antrean lokal per langkah (sanggahan 7 Okt: penolakan tulis yang ditangani aplikasi tidak sampai ke konsol, jadi dulu ✓ walau server
+menolak); di skenario ritual langkah "… ditolak server" (penolakan sengaja) dikecualikan. Ada enam kontrol:
 
 - latihan yang menulis di langkah 4;
 - latihan yang menulis 5,5 detik sesudah langkah terakhir (hanya langkah diam yang melihatnya);
@@ -90,7 +96,8 @@ dihitung berbunyi. Ada enam kontrol:
 - pemulihan arsip yang melewatkan satu dokumen (skenario `ritualPendek`: kunci penuh lalu BATALKAN sesudah penanda). Ini wajib ketahuan dari isi
   server.
 - selesai yang **tidak menutup pintu** tutup buku (skenario `pintuPendek`, data terkunci: kunci penuh lalu selesai). Rules v7 (`acaraTutupPintu`)
-  wajib menolak berita acara "selesai" di SERVER: berita acara tetap "terkunci" dan pintu tetap "berjalan".
+  wajib menolak berita acara "selesai" di SERVER: berita acara tetap "terkunci" dan pintu tetap "berjalan". Kontrol ini juga pembukti cek izin
+  halaman: cek itu WAJIB ikut gagal, dengan sebab di langkah SELESAI.
 
 ## Laporan
 
@@ -146,8 +153,10 @@ Keterbatasan:
   workflow). Ringkasan menambahkan baris *perkiraan skala toko*: hasil gladi × (17.000 ÷ dokumen arsip gladi).
 - **Muat penuh kadang macet di emulator.** Pada run 7 Okt ini terjadi 2 kali dari ±32 skenario: sebagian besar pendengar tidak pernah menerima
   data (misalnya 22 dari 56 koleksi siap dan 33 dokumen sampai), padahal antrean emulator tidak penuh dan tidak ada galat izin. Sebabnya belum
-  diketahui. Skenario yang berhenti **di muat penuh**, sebelum langkah tutup buku mana pun, dicoba ulang **satu kali** dengan emulator yang diisi
-  ulang dan Chrome baru. Percobaan ulang itu **selalu tercatat**: ada baris `DICOBA ULANG` dan peringatan di halaman ringkasan run (lewat
+  diketahui. Skenario (atau kontrol) yang berhenti **di muat penuh**, sebelum langkah tutup buku mana pun, dicoba ulang **satu kali** di
+  **emulator BARU** dengan Chrome baru: alatnya menyimpan catatan percobaan 1 dan keluar 75, workflow menjalankan `firebase emulators:exec` lagi
+  dengan `--ulang-dari` (sanggahan 7 Okt: dulu percobaan kedua memakai emulator yang sama, sesi WebChannel percobaan pertama masih membanjirinya —
+  "antrean penuh 7×" sebelum masuk — dan cek "tidak kewalahan saat muat" gagal karena caranya sendiri). Percobaan ulang itu **selalu tercatat**: ada baris `DICOBA ULANG` dan peringatan di halaman ringkasan run (lewat
   `alat-uji/coba_ulang.py`, keputusan owner 26 Sep), dan tanda ⚠ di ringkasan gladi. Galat di langkah lain tidak pernah dicoba ulang. Kalau
   peringatan ini sering muncul, itu masalah sungguhan yang perlu diselidiki: bahannya ada di log emulator per skenario dan per kontrol (artefak)
   dan di ekor catatan Chrome. Pelanggaran CSP salinan juga dicatat sejak awal halaman; sambungan yang ditolak `connect-src` menggagalkan cek.

@@ -139,6 +139,9 @@ jobs:
 
       # Tiap skenario di EMULATOR SENDIRI: emulator tetap mengirimi sesi WebChannel halaman yang sudah ditutup sampai kanalnya kedaluwarsa (run 7 Okt:
       # 2,2 juta baris "antrean penuh" ketika ritual berjalan sesudah dua skenario lain). Laporan per skenario digabung sesudahnya.
+      # Percobaan ulang (SATU kali, hanya skenario yang macet di MUAT PENUH) juga di EMULATOR BARU: alat menyimpan catatan percobaan 1 ke $U dan keluar 75;
+      # di sini emulators:exec dijalankan lagi dengan --ulang-dari $U (sanggahan 7 Okt: percobaan kedua di emulator yang sama sudah "antrean penuh 7×"
+      # sebelum masuk karena sesi percobaan pertama). Baris DICOBA ULANG & peringatan dicetak alatnya (alat-uji/coba_ulang.py).
       - name: "GLADI — emulator Firestore + Auth, /baru/ di Chrome headless: latihan · gerbang · ritual · pintu (rules v7, data terkunci)"
         working-directory: ${{ runner.temp }}/proyek-gladi
         run: |
@@ -149,8 +152,16 @@ jobs:
             echo "::group::skenario $s"
             rm -f firestore-debug.log
             export GLADI_GESER_JAM=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --geser-jam "$s"); echo "jam JVM emulator digeser $GLADI_GESER_JAM dtk"
+            U="$RUNNER_TEMP/ulang-skenario-$s.json"; rm -f "$U"; kode=0
             firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" \
-              "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --skenario $s --keluar '$GITHUB_WORKSPACE/gladi-hasil/skenario-$s.json'" || gagal=1
+              "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --skenario $s --simpan-ulang '$U' --keluar '$GITHUB_WORKSPACE/gladi-hasil/skenario-$s.json'" || kode=$?
+            if [ -f "$U" ]; then
+              echo "DICOBA ULANG: skenario $s — percobaan 2 di emulator BARU"
+              tail -c 20000000 firestore-debug.log > "$GITHUB_WORKSPACE/gladi-hasil/firestore-debug-$s-percobaan1.log" 2>/dev/null || true
+              rm -f firestore-debug.log
+              firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" \
+                "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --skenario $s --ulang-dari '$U' --keluar '$GITHUB_WORKSPACE/gladi-hasil/skenario-$s.json'" || gagal=1
+            elif [ "$kode" != 0 ]; then gagal=1; fi
             tail -c 20000000 firestore-debug.log > "$GITHUB_WORKSPACE/gladi-hasil/firestore-debug-$s.log" 2>/dev/null || true
             echo "::endgroup::"
           done
@@ -175,7 +186,13 @@ jobs:
             echo "::group::kontrol $i dari $N"
             rm -f firestore-debug.log
             export GLADI_GESER_JAM=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --geser-jam-kontrol "$i"); echo "jam JVM emulator digeser $GLADI_GESER_JAM dtk"
-            firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --kontrol $i" || gagal=1
+            U="$RUNNER_TEMP/ulang-kontrol-$i.json"; rm -f "$U"; kode=0
+            firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --kontrol $i --simpan-ulang '$U'" || kode=$?
+            if [ -f "$U" ]; then
+              echo "DICOBA ULANG: kontrol $i — percobaan 2 di emulator BARU"
+              rm -f firestore-debug.log
+              firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --kontrol $i --ulang-dari '$U'" || gagal=1
+            elif [ "$kode" != 0 ]; then gagal=1; fi
             tail -c 20000000 firestore-debug.log > "$GITHUB_WORKSPACE/gladi-hasil/firestore-debug-kontrol-$i.log" 2>/dev/null || true
             echo "::endgroup::"
           done

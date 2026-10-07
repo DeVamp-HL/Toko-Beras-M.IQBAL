@@ -615,8 +615,11 @@ DOK_LAMA = {'id': 'uji-v7-lama', 'tanggal': '2021-06-15', 'hargaTotal': 1000}
 DOK_BEDA = {'id': 'uji-v7-beda', 'tanggal': '2021-06-16', 'hargaTotal': 1000}
 DOK_PULIH = {'id': 'uji-v7-pulih', 'tanggal': '2021-03-01', 'hargaTotal': 500}
 PEMBUKA = {'id': 'uji-v7-pembuka', 'tipe': 'saldoAwal', 'tutupBuku': True, 'tahunDari': 2021, 'tanggal': '2021-03-01', 'nominal': 1000}
-ACARA_2021 = {'tahun': 2021, 'status': 'terkunci', 'paraf': {'pada': '2026-10-01T00:00:00.000Z'}, 'titikSebelum': {'tanggal': '2021-06-30', 'laci': 7, 'brankas': 0}}
-ACARA_2025 = {'tahun': 2025, 'mode': 'sungguhan', 'status': 'berjalan', 'paraf': {'pada': '2026-10-01T00:00:00.000Z'}}
+# paraf.pada U3/U4 = teks jam BUKAN ISO (sanggahan bukti emulator 7 Okt): Playground mengubah teks ISO 'Z' jadi timestamp, juga di dokumen yang dibaca get()
+# (docs/uji-rules-v6.md "Sifat Playground") — pintuSah membandingkan teks; urutan teks ini tetap sesudah 'Y-12-31T17:00:00.000Z'. U4 = "<hari ini> 00:00" (berlaku di
+# tahun mana pun: tahun lalu = tahun hari ini − 1). Bentuk ISO yang ditulis aplikasi (toISOString) dinilai M-P6b (model & emulator) dan gladi pintu.
+ACARA_2021 = {'tahun': 2021, 'status': 'terkunci', 'paraf': {'pada': '2026-10-01 00:00'}, 'titikSebelum': {'tanggal': '2021-06-30', 'laci': 7, 'brankas': 0}}
+ACARA_2025 = {'tahun': 2025, 'mode': 'sungguhan', 'status': 'berjalan', 'paraf': {'pada': HARI_INI + ' 00:00'}}
 def _arsip(idAsli, dok): return {'id': '2021|penjualan|' + idAsli, 'tahun': 2021, 'koleksi': 'penjualan', 'idAsli': idAsli, 'dok': dok}
 DB_UJI_V7 = {
     'penjualan/uji-v7-nota': NOTA,                                                                   # U1
@@ -639,7 +642,9 @@ PINTU_BARU = {'id': 'pintuBuku', 'tahun': 2025, 'status': 'berjalan', 'sampai': 
 ACARA_BARU = {'id': '2024', 'tahun': 2024, 'mode': 'sungguhan', 'status': 'berjalan', 'paraf': {'pada': HARI_INI + 'T03:00:00.000Z'}}
 BERCAP = {'penjualan/uji-v7-bercap': dict(NOTA, id='uji-v7-bercap', capServer=TS(JAM_UJI_V7.ms - 3600000))}
 # kasus WAJIB yang dijalankan owner di Playground sebelum Publish (bagian "Wajib owner" di docs/uji-rules-v7.md — sama persis); sisanya opsional (model CI)
-WAJIB_V7 = ['★A1', '★B2', '★K3', '★F1', '★R1', '★P1', '★P20', '★P21', '★P22', '★P4', '★P2', '★P23', '★P5', '★P6', '★P16', '★T1', '★T3', '★P19']
+# ★T1 TIDAK wajib (sanggahan bukti emulator 7 Okt): acaraBaru mewajibkan paraf.pada TEKS ISO 'Z', yang diubah Playground jadi timestamp → di Playground
+# keluar DITOLAK bukan karena rules. Buktinya emulator (★T1 LOLOS) + gladi pintu (aplikasi asli membuat berita acara baru di server).
+WAJIB_V7 = ['★A1', '★B2', '★K3', '★F1', '★R1', '★P1', '★P20', '★P21', '★P22', '★P4', '★P2', '★P23', '★P5', '★P6', '★P16', '★T3', '★P19']
 # (no, nama, akun, operasi, koleksi, id, isi, ubah_db, wajib lolos?, batas access call)
 KASUS_V7 = [
     # A/B · hemat baca (sejak draf v7 pertama)
@@ -708,11 +713,13 @@ KASUS_V7 = [
     ('★P25', 'owner titik kas 30 Jun tahun pintu, isi kantong BEDA dari titikSebelum berita acara (bukan 31 Des, bukan titikSebelum persis)', 'owner', 'update', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2021-06-30', 'laci': 1}, None, False, None),
     ('★P26', 'owner titik kas kembali = titikSebelum berita acara 2021 PERSIS (Batalkan)', 'owner', 'create', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2021-06-30', 'laci': 7, 'brankas': 0}, None, True, 3),
     ('★P6', 'owner BUKA pintu tahun lalu (berita acara 2025 berjalan SEBELUM kiriman, sampai besok)', 'owner', 'create', 'pengaturan', 'pintuBuku', PINTU_BARU, None, True, 1),
+    ('M-P6b', 'owner BUKA pintu tahun lalu — paraf.pada berita acara berbentuk toISOString (yang ditulis aplikasi; Playground tidak bisa)', 'owner', 'create', 'pengaturan', 'pintuBuku', PINTU_BARU,
+     {'tutupBukuAcara/2025': dict(ACARA_2025, paraf={'pada': '2026-01-04T03:00:00.000Z'})}, True, 1),
     ('★P7', 'owner TUTUP pintu', 'owner', 'update', 'pengaturan', 'pintuBuku', {'id': 'pintuBuku', 'tahun': 2021, 'status': 'tutup'}, None, True, 0),
     ('★P9', 'owner UBAH catatan bulan terkunci (pintu tidak membuka ubah)', 'owner', 'update', 'penjualan', 'uji-v7-lama', dict(DOK_LAMA, hargaTotal=2000), None, False, None),
     ('★P10', 'owner BUAT catatan biasa di bulan terkunci (bukan pembuka, tidak di arsip)', 'owner', 'create', 'penjualan', 'uji-v7-baru2', {'id': 'uji-v7-baru2', 'tanggal': '2021-06-20', 'hargaTotal': 1000}, None, False, None),
     ('★P11', 'owner saldo pembuka tahun LAIN (tahunDari 2020)', 'owner', 'create', 'piutangMutasi', 'uji-v7-pb-lain', dict(PEMBUKA, id='uji-v7-pb-lain', tahunDari=2020), None, False, None),
-    ('★P12', 'owner "saldo pembuka" tanpa tanda tutupBuku (tahunDari ada)', 'owner', 'create', 'piutangMutasi', 'uji-v7-pb-tanpa', dict((k, v) for k, v in PEMBUKA.items() if k != 'tutupBuku'), None, False, None),
+    ('★P12', 'owner "saldo pembuka" tanpa tanda tutupBuku (tahunDari ada)', 'owner', 'create', 'piutangMutasi', 'uji-v7-pb-tanpa', dict((k, v) for k, v in dict(PB_BARU, id='uji-v7-pb-tanpa').items() if k != 'tutupBuku'), None, False, None),
     ('★P13', 'owner kembalikan dari arsip dengan isi BEDA', 'owner', 'create', 'penjualan', 'uji-v7-pulih', dict(DOK_PULIH, hargaTotal=600), None, False, None),
     ('★P14', 'kasir@ saldo pembuka lewat pintu', 'kasir', 'create', 'piutangMutasi', 'uji-v7-pb-baru', PB_BARU, None, False, None),
     ('★P15', 'staf aktif menghapus catatan bulan terkunci yang diarsip', 'staf', 'delete', 'penjualan', 'uji-v7-lama', None, None, False, None),
@@ -737,7 +744,7 @@ KASUS_V7 = [
     ('M-P24d', 'titik kas MUNDUR ke tahun sesudah pintu (2022, terkunci) ditolak', 'owner', 'update', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2022-06-30'}, {'aturanToko/kunciPeriode': {'sampaiBulan': '2022-12', 'riwayat': []}}, False, None),
     # T · berita acara tutup buku mengikat pintu (sanggahan rules 7 Okt)
     ('★T1', 'owner BUAT berita acara baru: tahun lampau, sungguhan, berjalan, jam mulai hari ini', 'owner', 'create', 'tutupBukuAcara', '2024', ACARA_BARU, None, True, 0),
-    ('★T2', 'owner buat berita acara baru dengan jam mulai jauh mundur (1 Jan 2026)', 'owner', 'create', 'tutupBukuAcara', '2024', dict(ACARA_BARU, paraf={'pada': '2026-01-01T00:00:00.000Z'}), None, False, None),
+    ('★T2', 'owner buat berita acara baru dengan jam mulai jauh mundur (1 Jun tahun lalu)', 'owner', 'create', 'tutupBukuAcara', '2024', dict(ACARA_BARU, paraf={'pada': '2025-06-01T00:00:00.000Z'}), None, False, None),
     ('★T3', 'owner tulis berita acara 2021 SELESAI selagi pintu 2021 masih terbuka', 'owner', 'update', 'tutupBukuAcara', '2021', dict(ACARA_2021, status='selesai'), None, False, None),
     ('★T4', 'owner hapus berita acara yang belum dibatalkan (U4, berjalan)', 'owner', 'delete', 'tutupBukuAcara', '2025', None, None, False, None),
     ('★T5', 'owner buat berita acara tahun BERJALAN (2026)', 'owner', 'create', 'tutupBukuAcara', '2026', dict(ACARA_BARU, id='2026', tahun=2026), None, False, None),
