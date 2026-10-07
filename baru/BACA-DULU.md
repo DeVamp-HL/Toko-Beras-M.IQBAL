@@ -2077,10 +2077,10 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
   `firestore.rules*` tidak disentuh.
 - **Modal awal 8 Agu (keputusan owner 8 Okt, K9 — dibiarkan, tidak dicatat)**: berita acara tutup buku (tepat sesudah "Laba tinggal") dan Neraca berkop (bila
   catatannya menyebut beda "belum terjelaskan buku"; juga kertas Neraca tanggal pilihan) memuat SATU kalimat tetap `laporan-logika.js LP_KALIMAT_MODAL_AWAL`;
-  angka pastinya urusan konsultan. Objek `neracaPada` tidak berubah (layar Neraca & ASAP GLOBAL). SENGAJA berdampingan (sanggahan #121): di kertas Neraca
-  berkop catatan mesin `neracaPada` menyebut dua kemungkinan asal beda (titik kas yang pernah disetel ulang, stok awal sebelum sistem), lalu kalimat K9 menyebut
-  satu asal — bunyi K9 = keputusan owner, catatan mesin tidak diubah (ASAP GLOBAL). Di berita acara kalimat K9 berdiri sendiri (berita acara tidak memuat
-  baris beda "belum terjelaskan buku"). Apakah bunyinya boleh dilunakkan ("terutama berasal dari …") ditanyakan ke owner; sampai dijawab, bunyi tetap.
+  angka pastinya urusan konsultan. Objek `neracaPada` tidak berubah (layar Neraca & ASAP GLOBAL). Bunyinya SEJALAN dengan catatan mesin
+  `neracaPada` (titik kas yang pernah disetel ulang, stok awal sebelum sistem): posisi awal disebut bersama titik kas & catatan tidak lengkap, bukan
+  satu-satunya asal (8 Okt: bunyi "itulah asal" dilunakkan — asal per sumber belum dihitung, jadi kalimat tidak boleh mengaku tahu). Di berita acara
+  kalimat K9 berdiri sendiri (berita acara tidak memuat baris beda "belum terjelaskan buku").
 - Label tanggal di kode & uji (termasuk `laporan.js` dan komentar `uji_safari_webkit.py`): pekerjaan Paket C & sanggahan #111 = 7 Okt (bukan keputusan owner
   8 Okt). Label di bab Paket C & Hemat baca BACA-DULU ini, juga nama langkah Paket C di `pages.yml`, dibetulkan PR #118 (P6) — tidak disentuh di sini supaya
   tidak bentrok.

@@ -330,7 +330,7 @@ export function neracaPada(sampai, kini, kasBulan) {
  * berkop (catatanNeracaBerkop) dan berita acara tutup buku (tutup-buku-logika.js teksAcara) — menyebut asal beda "belum terjelaskan buku"; angka pastinya
  * urusan konsultan. Objek neracaPada TIDAK diubah (layar Neraca & ASAP GLOBAL membandingkannya byte-sama dengan main).
  */
-export const LP_KALIMAT_MODAL_AWAL = 'Modal awal toko saat sistem mulai mencatat 8 Agu 2026 tidak pernah dicatat: laba ditahan (laba yang tinggal di toko) ikut memuat posisi toko sebelum tanggal itu — itulah asal beda "belum terjelaskan buku". Angka pastinya diserahkan ke konsultan.';
+export const LP_KALIMAT_MODAL_AWAL = 'Modal awal toko saat sistem mulai mencatat 8 Agu 2026 tidak pernah dicatat: posisi toko sebelum tanggal itu — bersama titik kas yang pernah disetel ulang dan catatan yang tidak lengkap, bila ada — ikut terbaca sebagai beda "belum terjelaskan buku". Angka pastinya diserahkan ke konsultan.';
 /** Catatan kertas Neraca berkop: catatan neraca + kalimat K9 bila catatannya menulis beda "belum terjelaskan buku" (cocok = tanpa kalimat itu). */
 export function catatanNeracaBerkop(NP) {
   const beda = NP && NP.selisihBuku !== null && NP.selisihBuku !== undefined && Math.abs(Number(NP.selisihBuku)) > 0.5;
