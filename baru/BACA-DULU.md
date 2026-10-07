@@ -2048,7 +2048,7 @@ lapisan dengar baru di balik saklar per perangkat yang bawaannya MATI.
   (jam server) di tulisan 48 koleksi hemat lewat `tulisBerkas` / `perbaruiBerkas` / `pulihkanBerkas`; capServer DIKUPAS dari tiap snapshot sebelum memori
   (mesin beku, cadangan, katalog tidak melihatnya); batu nisan `batuNisan/<koleksi>|<id>` di batch hapus koleksi hemat — HANYA sesudah perangkat itu
   terbukti bisa membaca `batuNisan` (aturan v7; 1 baca sekali, `miqbal_hemat_nisan_sah_v1`); denyut `versi: 'baru-c1'` + `capServer` di denyut owner.
-- **Saklar NYALA** (owner; Menu › Sistem › Perangkat › Hemat baca, dua ketukan, aplikasi dimuat ulang; mati darurat `/baru/?hemat=mati`): koleksi hemat
+- **Saklar NYALA** (owner; Menu › Toko ini › Perangkat & antrean › Hemat baca, dua ketukan, aplikasi dimuat ulang; mati darurat `/baru/?hemat=mati`): koleksi hemat
   lewat `hbSesi` (`baru/js/data/hemat-baca.js`, murni) — simpanan perangkat (V) + delta `capServer > B` (S) + batu nisan (N) + baca penuh kueri sendiri (F);
   baca penuh harian per toko (dokumen `aturanToko/hematHarian`); pendeteksi tanpa cap di tiap baca penuh; penulis tanpa cap dari denyut; hitungan server;
   rem kuota; satu tab per peramban (kunci tab di app.js sebelum Firestore dimulai); pendengar simpanan hidup; uang-kritis & katalog kasir dijaga.
@@ -2184,10 +2184,15 @@ antrean) → hemat baca dinyalakan menurut daftar siap-nyala (≤ 20 Nov). Tutup
 ## Keputusan owner 8 Okt 2026 — K9–K12 (siap 2027)
 
 - **K9** modal awal 8 Agu DIBIARKAN, tidak dicatat: berita acara tutup buku & Neraca berkop memuat SATU kalimat tetap bahwa selisih "belum terjelaskan"
-  berasal dari posisi toko sebelum sistem mulai mencatat 8 Agu 2026 (modal awal tidak pernah dicatat), angka pastinya urusan konsultan (memasang kalimat
-  itu di aplikasi = pekerjaan kode tersendiri) · **K10** karcis kasir darurat yang isinya ≠ nominal DITERIMA APA ADANYA per kelompok (Agustus kurang;
-  September lebih karena dirinci dua kali oleh sistem lama), alasannya tertulis, angkanya diserahkan ke konsultan — JANGAN dirinci ulang (stok terpotong
-  dua kali) · **K11** kartu kuota 1 Jan berbunyi TIDAK MUAT → ritual tetap dimulai 1 Jan sesudah reset; toko TUTUP Sabtu 2 Jan 2027 (tidak jualan, tidak
-  menagih) sampai sesudah 15.00 WIB, Lanjutkan dari Mac yang sama, tunggu arsip habis; sama untuk Sabtu 1 Jan 2028 · **K12** tugas "isi cara bayar dua
-  kedatangan Agustus lewat Console" DITUTUP: tidak dikerjakan — angka sama (`docs/peta-kunci-periode.md` §10).
-
+  berasal dari posisi toko sebelum sistem mulai mencatat 8 Agu 2026 (modal awal tidak pernah dicatat), angka pastinya urusan konsultan. Kalimat itu
+  dipasang di aplikasi oleh PR #121 (paket P2: `laporan-logika.js LP_KALIMAT_MODAL_AWAL`, dipakai berita acara tutup buku & Neraca berkop). Kalau kalimat
+  itu TIDAK tercetak di kertas Neraca berkop / berita acara (PR itu belum digabung), owner menyampaikannya sendiri ke konsultan bersama PDF Neraca 31 Des
+  (`docs/prosedur-pulih-darurat.md`, daftar periksa ritual tutup buku).
+- **K10** karcis kasir darurat yang isinya ≠ nominal DITERIMA APA ADANYA per kelompok (Agustus kurang; September lebih karena dirinci dua kali oleh sistem
+  lama), alasannya tertulis, angkanya diserahkan ke konsultan — JANGAN dirinci ulang (stok terpotong dua kali).
+- **K11** kartu kuota 1 Jan berbunyi TIDAK MUAT → ritual tetap dimulai 1 Jan sesudah reset; toko TUTUP Sabtu 2 Jan 2027 (tidak jualan, tidak menagih)
+  sampai sesudah 15.00 WIB, Lanjutkan dari Mac yang sama, tunggu arsip habis. Tutup buku 2027: ritual Sabtu 1 Jan 2028 sesudah reset, toko tutup
+  sesudahnya sampai Lanjutkan & arsip habis — setahun penuh bisa BEBERAPA hari kuota berturut-turut (`docs/uji-rules-v7.md` paragraf "Setahun penuh 2027").
+  K11 untuk 2028 diputuskan atas proyeksi lama (±117%, satu hari kuota); bagian 2028-nya ditanyakan ulang ke owner.
+- **K12** tugas "isi cara bayar dua kedatangan Agustus lewat Console" DITUTUP: tidak dikerjakan — angka sama (`docs/peta-kunci-periode.md` §10).
+- Dijaga `alat-uji/uji_dokumen_owner.py` (+ kontrol): proyeksi kuota 2028 dihitung ulang dari rumus kartu, bunyi K11 2028, jalan sementara K9.

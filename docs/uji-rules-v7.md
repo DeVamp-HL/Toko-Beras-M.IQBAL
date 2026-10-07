@@ -49,13 +49,29 @@ Claude hanya MEMBACA Console lewat Chrome owner pada langkah yang disebut. Rules
    saja. Access call (cache tidak diandalkan): saldo pembuka & titik 31 Des 2, titik kembali 3, hapus arsip & kembalikan 3, salinan arsip 1–2, buka pintu
    1, berita acara selesai / dibatalkan 1 — aplikasi memecah kiriman ≤ 18.
 
-**Aman diterbitkan SEBELUM cabang digabung**: kode yang tayang (main) tidak memakai kelima hal itu — kasir darurat tetap jalan (nota, denyut, katalog),
-permintaan nego staf belum dikirim (tombolnya masih mati), foto bon & pintu belum ditulis siapa pun. Urutannya tetap: **v7 terbit dulu, baru PR #111
-digabung** (owner bilang "merge").
+**Sejarah 7 Okt — urutan ini sudah dijalankan** (v7 terbit 18.25 WIB, PR #111 digabung 21.25 WIB). **Aman diterbitkan SEBELUM cabang digabung**: kode
+yang tayang (main) waktu itu tidak memakai kelima hal itu — kasir darurat tetap jalan (nota, denyut, katalog), permintaan nego staf belum dikirim (tombolnya
+masih mati), foto bon & pintu belum ditulis siapa pun. Urutannya tetap: **v7 terbit dulu, baru PR #111 digabung** (owner bilang "merge").
 
 **Mundur**: JANGAN tempel `firestore.rules.v6` selama kode cabang ini berjalan (hapus /baru/ ber-batu nisan, permintaan nego staf, foto bon, dan tutup buku
-2027 ditolak). Mundur hemat baca = saklar (Menu › Sistem › Perangkat › Hemat baca, atau `/baru/?hemat=mati`). v6 baru boleh ditempel balik SESUDAH cabang
-dibalik (git revert) dan HP kasir kembali ke kasir-v32.
+2027 ditolak). Mundur hemat baca = saklar (Menu › Toko ini › Perangkat & antrean › Hemat baca, atau `/baru/?hemat=mati`). v6 baru boleh ditempel balik
+SESUDAH cabang dibalik (git revert) dan HP kasir kembali ke kasir-v32 — **sesudah 13 Okt itu bukan jalan owner** (tidak ada yang membalik cabang);
+mundur yang tersedia untuk owner = saklar hemat baca di atas.
+
+## Kalau kiriman tutup buku DITOLAK server (berlaku sejak v7 terbit)
+
+Kabar layar Uang › Tutup buku menyebut kiriman ke-n "tulis ditolak: permission-denied", dan salinannya ada di Menu › Toko ini › Perangkat & antrean ›
+Antrean kirim (ditolak server). **Jangan tulis ulang kiriman tutup buku yang ditolak**, jangan ketuk berulang-ulang, dan **jangan tempel rules lain**
+(bagian "Mundur" di atas). Sejak 13 Okt 2026 owner mengerjakannya sendiri:
+1. Catat kalimat kabarnya (foto layar untuk arsip sendiri). Penyebab yang diharapkan = kiriman yang memang telat (perangkat lain / percobaan lama — penjaga
+   "hanya maju" berita acara, `docs/uji-rules-v6.md` bagian A/B, ikut di v7): pita tutup buku tetap benar, ikuti pitanya (Lanjutkan / Batalkan dari
+   perangkat pemegang).
+2. Penyebab lain yang bisa dibereskan sendiri: **jam perangkat**. v7 menilai jam mulai berita acara baru (tanggal server ± 1 hari) dan pintu tutup buku
+   (≤ 72 jam dari jam server) dengan jam SERVER. Setel jam otomatis (Setelan › Umum › Tanggal & Waktu → "Setel otomatis" di iPhone/iPad; Pengaturan
+   Sistem › Umum › Tanggal & Waktu di Mac), lalu ketuk Lanjutkan sekali (Lanjutkan membuka pintu lagi bila sudah kedaluwarsa). Tetap ditolak →
+   **Batalkan** dari perangkat pemegang, tunggu tuntas, coba lagi besok sesudah reset kuota.
+
+Langkah ini dulu hanya tertulis di `docs/uji-rules-v6.md` (berkas sejarah); langkah 3 di sana (tempel `firestore.rules.v5`) DICABUT.
 
 ---
 
@@ -354,12 +370,22 @@ yang sama dengan `sampai` besok menerimanya. Dua cek ALAT gladi (bukan rules) di
 sesudah pembetulan: deskripsi PR #111.
 
 **Temuan kuota (bukan rules)**: tutup buku tahun yang SEMUA bulannya terkunci memindah catatan 3 per kiriman (5 pemeriksaan per catatan) + satu baris
-jejak per kiriman. Diproyeksikan ke skala toko (±17 rb catatan setahun) ritual bersih menulis **±23,5 rb dokumen = 117% batas Spark sehari** (ritual
-2026 tanpa bulan terkunci: proyeksi dari laju cadangan toko 6 Okt sekarang **±98–104%** batas tulis — bisa MEPET atau TIDAK MUAT; dulu ditulis
-±18,9 rb = 94%). Kartu "Perkiraan kuota Firestore" di halaman memperkirakan angka yang sama (1.844 vs terukur 1.854 di skala
-gladi). Tutup buku 2027 (Januari 2028) karena itu akan berhenti di kuota dan dilanjutkan dengan "Lanjutkan" sesudah reset 15.00 WIB.
+jejak per kiriman. Diproyeksikan ke skala ±17 rb catatan — itu catatan 2026 SAJA (8 Agu–31 Des), bukan setahun penuh — ritual bersih menulis **±23,5 rb
+dokumen = 117% batas Spark sehari** (ritual 2026 tanpa bulan terkunci: proyeksi dari laju cadangan toko 6 Okt sekarang **±98–104%** batas tulis — bisa
+MEPET atau TIDAK MUAT; dulu ditulis ±18,9 rb = 94%). Kartu "Perkiraan kuota Firestore" di halaman memperkirakan angka yang sama (1.844 vs terukur 1.854
+di skala gladi).
+
+**Setahun penuh 2027 (tutup buku Januari 2028) jauh lebih besar.** Dengan laju cadangan toko 6 Okt (±117–141 catatan sehari) arsipnya ±43–51 rb catatan,
+±2,5–3× skala di atas. Rumus kartu, rata-rata per catatan setahun dengan Januari–November terkunci: tulis ±1,3 · hapus 1 · baca ±5,9 (5 pemeriksaan
+server tiap catatan bulan terkunci, dihitung tanpa potongan cache, + sekali muat) — dihitung ulang dari kode oleh `alat-uji/uji_dokumen_owner.py`. Hasilnya
+tulis **±280–335%**, hapus **±215–255%**, baca **±505–600%** batas Spark sehari: **BEBERAPA hari kuota, bukan satu** — tulis & hapus saja ±3–4 hari, baca
+menurut kartu (perkiraan atas) ±6–7 hari. Tiap kali kuota habis arsip berhenti dan diteruskan dengan "Lanjutkan" sesudah reset 15.00 WIB. Angka
+sebenarnya = kartu "Perkiraan kuota Firestore" di langkah 1 pada hari itu.
+
 Keputusan owner K11 (8 Okt 2026): kalau kartu kuota 1 Jan berbunyi TIDAK MUAT, ritual tetap dimulai 1 Jan sesudah reset; toko TUTUP Sabtu 2 Jan 2027
-(tidak jualan, tidak menagih) sampai sesudah 15.00 WIB, Lanjutkan dari Mac yang sama, tunggu arsip habis — sama untuk Sabtu 1 Jan 2028.
+(tidak jualan, tidak menagih) sampai sesudah 15.00 WIB, Lanjutkan dari Mac yang sama, tunggu arsip habis. Tutup buku 2027: ritual Sabtu 1 Jan 2028
+sesudah reset, toko tutup sesudahnya sampai Lanjutkan & arsip habis — menurut proyeksi setahun penuh di atas bisa BEBERAPA hari berturut-turut. K11
+untuk 2028 diputuskan atas proyeksi lama (±117%, satu hari kuota); bagian 2028-nya ditanyakan ulang ke owner.
 
 Tidak ada kasus yang perilaku server-nya beda dari kolom Wajib → `firestore.rules` **tidak diubah** oleh bukti ini. Langkah owner di Playground
 TETAP: emulator memakai mesin rules yang sama tetapi bukan proyek toko, sedangkan Playground menilai teks yang akan diterbitkan atas data proyek
@@ -371,7 +397,7 @@ kasus yang hasilnya tidak terpengaruh sifat itu.
 **7 Okt 2026 — v7 TERBIT 18.25 WIB.** Dokumen uji U1–U10 dibuat Claude lewat Console (Chrome owner; sebelum itu dicek `aturanToko/kunciPeriode` BELUM
 ada — tidak ada kunci sungguhan), `firestore.rules` cabang ini ditempel ke editor dan sidik isi editor (SHA-256 `e0ed6a975dd5…`, 49.960 byte) = berkas repo;
 Playground dijalankan Claude; owner menghapus kesepuluh dokumen uji (diperiksa Claude: semua tidak ada, `pengaturan/titikKas` utuh) lalu menekan Publish.
-Sesudah muat ulang, versi aktif = sidik yang sama. Langkah 6: nota kasir darurat (HP penjaga, versi lama) Rp15.000 tercatat 18.27 — masuk.
+Sesudah muat ulang, versi aktif = sidik yang sama. Langkah 6: nota kasir darurat (HP penjaga, versi lama) tercatat 18.27 — masuk.
 
 | # | Kasus | Wajib | Playground |
 |---|---|---|---|

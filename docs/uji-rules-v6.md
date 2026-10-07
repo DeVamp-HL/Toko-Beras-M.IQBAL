@@ -193,10 +193,11 @@ Satu saja ★ yang meleset = **jangan Publish**; kirim nomornya ke Claude Code. 
 
 > **Sejak v7 terbit (7 Okt 2026) langkah 3 di bawah ("tempel `firestore.rules.v5`") DICABUT.** v5 tidak punya penjaga berita acara v6 maupun lima
 > ubahan v7; menempelnya menolak yang juga ditolak bila v6 ditempel — lihat `docs/uji-rules-v7.md` bagian "Mundur" (hapus ber-batu nisan, permintaan nego
-> staf, foto bon, tutup buku 2027). Langkah 1–2 tetap berlaku. Jalan darurat rules: `docs/prosedur-pulih-darurat.md`.
+> staf, foto bon, tutup buku 2027). Langkah 1–2 di bawah juga sejarah: yang berlaku sejak v7 (isinya sama, sebab jam ditambah pintu tutup buku) ada di
+> `docs/uji-rules-v7.md` bagian "Kalau kiriman tutup buku DITOLAK server". Jalan darurat rules: `docs/prosedur-pulih-darurat.md`.
 
-Kabar layar K6 menyebut kiriman ke-n "tulis ditolak: permission-denied" dan salinannya ada di Menu › Sistem › Perangkat (ditolak server). **Jangan
-tulis ulang kiriman tutup buku yang ditolak** dan jangan ketuk berulang-ulang. Sejak 13 Okt 2026 owner mengerjakannya sendiri:
+Kabar layar K6 menyebut kiriman ke-n "tulis ditolak: permission-denied" dan salinannya ada di Menu › Toko ini › Perangkat & antrean › Antrean kirim
+(ditolak server). **Jangan tulis ulang kiriman tutup buku yang ditolak** dan jangan ketuk berulang-ulang. Sejak 13 Okt 2026 owner mengerjakannya sendiri:
 1. Catat kalimat kabarnya (foto layar untuk arsip sendiri). Penyebab yang diharapkan = kiriman yang memang telat (perangkat lain / percobaan lama) — itu
    yang dijaga v6, dan pita tutup buku tetap benar: ikuti pitanya (Lanjutkan / Batalkan dari perangkat pemegang).
 2. Penyebab lain yang bisa dibereskan sendiri: **jam perangkat** (Setelan › Umum › Tanggal & Waktu → "Setel otomatis" di iPhone/iPad; Pengaturan Sistem ›

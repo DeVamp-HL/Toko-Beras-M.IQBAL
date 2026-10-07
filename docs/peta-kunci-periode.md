@@ -355,7 +355,10 @@ tidak menyentuh bulan lalu (dan tidak memakai access call).
 ## 10. Cara bayar kedatangan 13 & 22 Agu diisi `tunai` (putaran 25b, C.2) — lewat Console, oleh owner
 
 > **DITUTUP 8 Okt 2026 — keputusan owner K12: tidak dikerjakan, angka sama** (cara bayar kosong dibaca tunai; Agustus tidak pernah dikunci). Tabel di
-> bawah = rencana lama, baris "Diubah oleh" & "Pemeriksaan sesudahnya" diisi sesuai keputusan itu.
+> bawah = rencana lama, baris "Diubah oleh" & "Pemeriksaan sesudahnya" diisi sesuai keputusan itu. Sandaran "Agustus tidak pernah dikunci": kunci
+> berbentuk awalan (rules `terkunci(b)` = `b <= sampaiBulan`), jadi mengunci Januari 2027 ikut menutup Agustus 2026 — tetapi kunci pertama = Januari 2027
+> (`KP_KUNCI_MULAI`), dan baru bisa sesudah tutup buku 2026 mengarsip catatan Agustus (daftar periksa kunci bulan: "Tutup buku 2026 sudah selesai").
+> Kedua kedatangan itu sudah di arsip sebelum bulannya tertutup.
 
 Pemeriksaan owner (26 Sep 2026): data kedatangan dan utang pemasok di sistem sudah sesuai kenyataan. U.D. Sejati Jaya selalu dibayar tunai; dua
 kedatangannya di Agustus tidak punya field `caraBayar`. Diisi **sebelum** Agustus dikunci — sesudah dikunci kedatangan bulan itu tidak bisa diubah.
@@ -367,7 +370,7 @@ kedatangannya di Agustus tidak punya field `caraBayar`. Diisi **sebelum** Agustu
 | Cara | Console › Firestore › Data (owner menulis; keputusan owner C.2 pilihan b). Tidak ada jalur aplikasi yang bisa mengisinya tanpa field baru: sistem lama tidak punya ubah kedatangan, koreksi kedatangan `/baru/` menambah `jam`, `alasanKoreksi`, `riwayat` dan menomori ulang baris merek |
 | Diubah oleh | **tidak diubah** — tugas ditutup owner 8 Okt 2026 (K12). Kedua dokumen tetap tanpa `caraBayar` (rencana lama: owner mengisinya lewat Console) |
 | Akibat yang diperkirakan | tidak ada angka yang berubah: semua mesin sudah menganggap cara bayar kosong = tunai (`batchDiutang` = `caraBayar === 'utang'`), jadi uang laci sudah berkurang di hari kedatangan dan kedua kedatangan tidak pernah masuk utang pemasok. Dihitung di kotak pasir dengan cadangan 26 Sep 00.12 WIB: uang Agustus (masuk, keluar, 1.689 gerakan), utang pemasok, laba Agustus, neraca 31 Agu, stok & modal per merek — sebelum = sesudah |
-| Pemeriksaan sesudahnya | tidak ada yang diubah, jadi tidak ada yang diperiksa sesudahnya (rencana lama: Claude membaca kedua dokumen di Console lalu menghitung ulang uang Agustus di kotak pasir). Dicek ulang atas cadangan toko 6 Okt (lokal, hanya dibaca): kedua dokumen tanpa `caraBayar`; cara bayar kosong dibaca tunai (`baru/js/mesin/pembantu.js` `batchDiutang`, `beku.js`), jadi angka sama dengan seandainya diisi `tunai`; Agustus tidak pernah dikunci (`baru/js/data/kunci-periode.js` `KP_KUNCI_MULAI = '2027-01'`) |
+| Pemeriksaan sesudahnya | tidak ada yang diubah, jadi tidak ada yang diperiksa sesudahnya (rencana lama: Claude membaca kedua dokumen di Console lalu menghitung ulang uang Agustus di kotak pasir). Dicek ulang atas cadangan toko 6 Okt (lokal, hanya dibaca): kedua dokumen tanpa `caraBayar`; cara bayar kosong dibaca tunai (`baru/js/mesin/pembantu.js` `batchDiutang`, `beku.js`), jadi angka sama dengan seandainya diisi `tunai`; Agustus tidak pernah dikunci selagi catatannya hidup: kunci pertama = Januari 2027 (`baru/js/data/kunci-periode.js` `KP_KUNCI_MULAI = '2027-01'`), dan baru bisa sesudah tutup buku 2026 mengarsip catatan Agustus (`kunci-periode-logika.js` butir `tutupBukuLalu`) |
 
 ## Keputusan owner 1 Okt 2026 — kunci bulan 2026 ditunda (K1)
 
