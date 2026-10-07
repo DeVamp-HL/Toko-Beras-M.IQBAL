@@ -22,7 +22,14 @@ SKENARIO (urutannya = urutan ritual owner; langkah tiap skenario = daftar nama d
            (arsip dikembalikan, pembuka ditarik); mulai lagi → selesai (cadangan sesudah) → DIAM. Klaim tiap titik DIPERIKSA DI SERVER (REST emulator, bukan
            cache halaman): berita acara, arsipTahun = dokumen 2026 yang asli, dokumen 2026 tersisa di koleksi asal, saldo pembuka = nPembuka, penanda
            tutupBuku, titik kas & isi 21 koleksi 2026 sesudah batal = sebelum ritual.
-  ritualPendek (kontrol saja) kunci penuh lalu BATALKAN SESUDAH PENANDA — pemulihan arsip yang dirusak di salinan wajib ketahuan dari isi server.
+  pintu    (rules v7, pintu tutup buku) 5 Jan 2027 15.30 WIB, data TERKUNCI (gladi_data_contoh varian terkunci: kunci periode sampai Desember 2026 — semua bulan
+           tahun yang ditutup terkunci — + dua pindahan uang bertanggal bulan terkunci yang tidak diarsip). Jam server emulator = jam halaman (jam_geser.c,
+           --geser-jam; diukur). SUNGGUHAN → putusan → paraf → kunci penuh LEWAT PINTU (kiriman 1 berita acara sendirian, kiriman 2 membuka pintu, saldo pembuka,
+           titik kas 31 Des, arsip) → BATALKAN sesudah penanda → mulai lagi → kunci penuh → selesai menutup pintu. Tiap titik di SERVER: pintu terbuka (2026,
+           ≤ 72 jam dari jam server) / tertutup, arsipTahun = ISI catatan asli (bukan hanya id), pindahan uang bulan terkunci utuh, titik kas 31 Des. Sesudah
+           halaman selesai (REST, token owner contoh dari emulator Auth): pintu yang dibuat KEDALUWARSA → mengembalikan catatan dari arsip & menghapus catatan
+           bulan terkunci yang salinannya ada DITOLAK server; pintu yang sama dengan `sampai` besok → diterima (bukti sebabnya jam pintu).
+  pintuPendek (kontrol saja) data terkunci: kunci penuh lalu selesai — selesai yang TIDAK menutup pintu (salinan dirusak) wajib ditolak server.
 Tiap langkah: baca (dokumen yang diterima pendengar halaman — penghitung di salinan SDK uji — DITAMBAH tulisan halaman sendiri ke koleksi yang didengarnya,
 yang ditagih Firestore tetapi tidak memicu docChange baru; get() di aturan tidak terukur), tulis & hapus (beda isi emulator lewat REST sebelum ↔ sesudah
 langkah). Ringkasan: per langkah, lalu per JALUR (ritual bersih percobaan terakhir · kunci berhenti + batal sebelum penanda · batal sesudah penanda) di
@@ -35,6 +42,10 @@ KELUARAN: laporan JSON (--keluar) + ringkasan Markdown (--ringkasan; workflow me
                                                                satu koleksi tidak lengkap, pemulihan arsip kurang satu) wajib membuat CEK SASARANNYA gagal, karena
                                                                kerusakan itu (bukti), dengan skenario yang jalan sampai akhir (keluar 3 kalau ada yang diam).
                                                                N = satu kontrol saja (workflow: tiap kontrol di emulator sendiri)
+    --simpan-ulang BERKAS / --ulang-dari BERKAS  (workflow) skenario / kontrol yang macet di MUAT PENUH tidak dicoba ulang di emulator yang sama
+                                                               (sesi WebChannel percobaan 1 masih membanjiri emulator — sanggahan 7 Okt): catatannya
+                                                               disimpan, alat keluar 75, workflow menyalakan emulator BARU untuk percobaan 2 (--ulang-dari).
+                                                               Satu kali saja, TERCATAT (DICOBA ULANG).
     python3 alat-uji/gladi_tutup_buku.py --jumlah-kontrol     → (boleh di Mac) jumlah kontrol
     python3 alat-uji/gladi_tutup_buku.py --periksa-salinan    → (boleh di Mac) salinan uji disusun & diperiksa statis: connect-src salinan = connect-src
                                                                situs − host Firebase sungguhan + alamat emulator, jam palsu sebelum meta CSP, SDK
@@ -60,10 +71,11 @@ LATAR = {'perangkatStatus', 'ringkasanKasir'}
 # masuk/berubah di hasil pendengar), tetapi SDK tidak memunculkan docChange baru saat server mengakuinya (perubahan metadata saja) → ditambahkan dari REST
 DIDENGAR = set(re.findall(r"\{ nama: '(\w+)'", open(os.path.join(AKAR, 'baru/js/data/koleksi.js'), encoding='utf-8').read())) | {
     re.search(r"export const KK_KOLEKSI = '([^']+)';", open(os.path.join(AKAR, 'baru/js/data/katalog-kasir.js'), encoding='utf-8').read()).group(1)}
+KODE_ULANG = 75   # keluar: skenario macet di muat penuh, catatannya di --simpan-ulang — workflow menjalankan percobaan 2 di emulator BARU
 TAK_TERCAPAI = 'langkah tidak tercapai'   # ket cek yang langkahnya tidak dijalankan — kontrol yang hanya "gagal" karena ini dihitung DIAM
 CHROME = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser',
                            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'] if os.path.exists(p)), None)
-TUNGGU_SKENARIO = {'latihan': 900, 'gerbang': 900, 'ritual': 6000, 'ritualPendek': 3600, 'muatSaja': 900}
+TUNGGU_SKENARIO = {'latihan': 900, 'gerbang': 900, 'ritual': 6000, 'ritualPendek': 3600, 'muatSaja': 900, 'pintu': 6000, 'pintuPendek': 3600}
 
 
 def alamat_emulator():
@@ -199,6 +211,57 @@ def beda(a, b):
 ATURAN_REPO = open(os.path.join(AKAR, 'firestore.rules'), encoding='utf-8').read()
 
 
+# ---- JAM SERVER EMULATOR = JAM HALAMAN (rules v7): berita acara baru wajib berjam mulai = tanggal server ± 1 hari, pintu tutup buku hanya untuk tahun lalu
+# menurut jam server, kunci periode menilai bulan dengan jam server. Halaman gladi berjam palsu (31 Des 2026 / 1 Jan 2027) sedangkan jam runner Okt 2026 →
+# tanpa penyesuaian, rules v7 menolak ritual karena JAMNYA, bukan karena ritualnya. Workflow memalsukan jam dinding JVM emulator SAJA (alat-uji/jam_geser.c lewat pembungkus
+# `java`, GLADI_GESER_JAM = geser detik ke jam halaman skenario — --geser-jam); Chrome, node & alat ini tetap jam runner. Diukur di sini, bukan dipercaya:
+# satu dokumen sementara ditulis dengan transform REQUEST_TIME (jam server permintaan itu), dibaca, lalu dihapus SEBELUM potret langkah pertama.
+BATAS_JAM = 900   # selisih jam server − jam halaman yang diterima (dtk): emulator menyala ± 1 menit sebelum halaman dimuat
+
+
+def waktu(teks):
+    """timestampValue REST ('…Z', pecahan detik sampai 9 angka) / ISO berzona → datetime berzona."""
+    t = str(teks).replace('Z', '+00:00')
+    m = re.match(r'^(.*T\d\d:\d\d:\d\d)(\.\d+)?(.*)$', t)
+    if m and m.group(2): t = m.group(1) + m.group(2)[:7].ljust(7, '0') + m.group(3)
+    return datetime.datetime.fromisoformat(t)
+
+
+def geser_jam(jam_iso):
+    """GLADI_GESER_JAM ('+N' / '-N' detik, dibaca alat-uji/jam_geser.c) supaya jam dinding JVM emulator = jam_iso SEKARANG."""
+    n = int(round(datetime.datetime.fromisoformat(jam_iso).timestamp() - time.time()))
+    return ('+%d' if n >= 0 else '%d') % n
+
+
+def jam_server():
+    """jam server emulator SEKARANG (ISO UTC) — dokumen _gladiJam/ukur bercap REQUEST_TIME, dibaca lalu dihapus (Bearer owner)."""
+    nama = DB + '/documents/_gladiJam/ukur'
+    rest('POST', FS + '/v1/' + DB + '/documents:commit', {'writes': [{'update': {'name': nama, 'fields': {'id': {'stringValue': 'ukur'}}},
+                                                                      'updateTransforms': [{'fieldPath': 'pada', 'setToServerValue': 'REQUEST_TIME'}]}]}, OWNER)
+    d = rest('GET', FS + '/v1/' + nama, kepala=OWNER)
+    rest('POST', FS + '/v1/' + DB + '/documents:commit', {'writes': [{'delete': nama}]}, OWNER)
+    return d['fields']['pada']['timestampValue']
+
+
+def laju_emulator(n=150):
+    """Kecepatan emulator: n commit satu dokumen (Bearer owner) + satu runQuery → detik. Pemalsu jam JVM tidak boleh memperlambat emulator (run 7 Okt
+    dengan libfaketime: emulator ±9,5× lebih lambat, LANJUTKAN arsip tidak selesai dalam 47 menit — kini alat-uji/jam_geser.c)."""
+    t0 = time.time()
+    for i in range(n):
+        rest('POST', FS + '/v1/' + DB + '/documents:commit', {'writes': [{'update': {'name': DB + '/documents/_gladiLaju/d%03d' % i, 'fields': {'i': {'integerValue': str(i)}}}}]}, OWNER)
+    jalankan_query('_gladiLaju', pilih=False)
+    dt = round(time.time() - t0, 2)
+    rest('DELETE', FS + '/emulator/v1/projects/%s/databases/(default)/documents' % PROYEK, waktu=120)
+    return dt
+
+
+def banding_jam(jam_halaman):
+    """→ {'server', 'halaman', 'selisihDetik', 'ok', 'geser'}: jam server diukur, dibanding jam halaman skenario."""
+    sv = jam_server(); t = waktu(sv).timestamp()
+    sel = round(t - datetime.datetime.fromisoformat(jam_halaman).timestamp(), 1)
+    return {'server': sv, 'halaman': jam_halaman, 'selisihDetik': sel, 'ok': abs(sel) <= BATAS_JAM, 'geser': os.environ.get('GLADI_GESER_JAM', '')}
+
+
 def pasang_aturan(teks):
     r = rest('PUT', FS + '/emulator/v1/projects/%s:securityRules' % PROYEK, {'rules': {'files': [{'name': 'firestore.rules', 'content': teks}]}})
     galat = [x for x in (r.get('issues') or []) if isinstance(r, dict) and str(x.get('severity', '')).upper() == 'ERROR'] if isinstance(r, dict) else []
@@ -234,10 +297,13 @@ KOLEKSI_2026 = ['penjualan', 'batchMasuk', 'produksiKemasan', 'retur', 'karantin
 
 
 def banding_isi(awal, kini=None):
+    """Isi 21 koleksi sebelum ↔ sesudah. capServer TIDAK dibandingkan: hemat baca (PR #111) mengecap tiap tulisan koleksi hemat dengan jam server — catatan
+    yang dikembalikan dari arsip bercap jam server BARU, isinya tetap isi lama (run 7 Okt: tanpa ini semua catatan yang dikembalikan terhitung "berubah")."""
     kini = kini if kini is not None else potret_isi(KOLEKSI_2026); arsip = len(jalankan_query('arsipTahun'))
     lebih = {k: len(set(kini.get(k, {})) - set(awal.get(k, {}))) for k in KOLEKSI_2026}; kurang = {k: len(set(awal.get(k, {})) - set(kini.get(k, {}))) for k in KOLEKSI_2026}
-    ubah = {k: sum(1 for i in awal.get(k, {}) if i in kini.get(k, {}) and awal[k][i] != kini[k][i]) for k in KOLEKSI_2026}
-    contoh = next(([k, i] for k in KOLEKSI_2026 for i in awal.get(k, {}) if i in kini.get(k, {}) and awal[k][i] != kini[k][i]), None)
+    beda = lambda k, i: tanpa_cap(awal[k][i]) != tanpa_cap(kini[k][i])
+    ubah = {k: sum(1 for i in awal.get(k, {}) if i in kini.get(k, {}) and beda(k, i)) for k in KOLEKSI_2026}
+    contoh = next(([k, i] for k in KOLEKSI_2026 for i in awal.get(k, {}) if i in kini.get(k, {}) and beda(k, i)), None)
     saring = lambda d: {k: v for k, v in d.items() if v}
     return {'sama': not saring(lebih) and not saring(kurang) and not saring(ubah), 'lebih': saring(lebih), 'kurang': saring(kurang), 'ubah': saring(ubah), 'contohUbah': contoh,
             'arsip': arsip, 'dokumen': sum(len(v) for v in kini.values())}
@@ -306,6 +372,91 @@ def keadaan_server(jenis, awal, batas=120):
             g.append('penanda pengaturan/tutupBuku %s — harusnya dinetralkan (tahunDitutup 0, dibatalkan 2026)' % r['tutupBuku'])
     r['gagal'] = g; r['ok'] = not g
     return r
+
+
+def awal_pintu():
+    """awal_ritual + pindahan uang (catatan bulan terkunci yang TIDAK diarsip — wajib utuh selama pintu terbuka)."""
+    a = awal_ritual(); a['pindahUang'] = potret_isi(['pindahUang']).get('pindahUang', {}); return a
+
+
+def tanpa_cap(d): return {k: v for k, v in (d or {}).items() if k != 'capServer'}
+
+
+def keadaan_pintu(jenis, awal, batas=120):
+    """keadaan_server + PINTU (rules v7): pintu tahun 2026 terbuka ≤ 72 jam dari jam server (arsip habis) / tertutup (batal, selesai); arsipTahun = ISI catatan
+    asli; pindahan uang bulan terkunci utuh; titik kas 31 Des 2026."""
+    r = keadaan_server(jenis, awal, batas); g = r['gagal']
+    p = ambil_dok('pengaturan', 'pintuBuku') or {}; sv = waktu(jam_server())
+    try: sampai = waktu(p.get('sampai'))
+    except ValueError: sampai = None
+    jam = round((sampai - sv).total_seconds() / 3600.0, 1) if sampai else None
+    r['pintu'] = {'tahun': p.get('tahun'), 'status': p.get('status'), 'jamTersisa': jam}
+    if jenis == 'arsipHabis':
+        if not (p.get('status') == 'berjalan' and p.get('tahun') == 2026 and jam is not None and 0 < jam <= 72): g.append('pintu tutup buku di server tidak terbuka untuk 2026 (≤ 72 jam dari jam server): %s' % r['pintu'])
+    elif p and p.get('status') != 'tutup': g.append('pintu tutup buku di server masih %s sesudah %s' % (r['pintu'], jenis))
+    pu = potret_isi(['pindahUang']).get('pindahUang', {})
+    if pu != awal.get('pindahUang'): g.append('pindahan uang bulan terkunci (tidak diarsip) BERUBAH di server: %d → %d dokumen' % (len(awal.get('pindahUang') or {}), len(pu)))
+    if jenis in ('arsipHabis', 'selesai'):
+        A = potret_isi(['arsipTahun']).get('arsipTahun', {}); beda = []
+        for i, a in A.items():
+            if not i.startswith('2026|'): continue
+            _, k, j = i.split('|', 2); asli = (awal['isi'].get(k) or {}).get(j)
+            if asli is None or tanpa_cap(a.get('dok')) != tanpa_cap(asli) or a.get('tahun') != 2026 or a.get('koleksi') != k or a.get('idAsli') != j: beda.append(i)
+        r['arsipIsiBeda'] = len(beda)
+        if beda: g.append('%d salinan arsipTahun ≠ isi catatan aslinya (contoh %s)' % (len(beda), beda[0]))
+    # titik kas: kunci (arsip habis) & selesai menulis titik 31 Des lewat pintu (cabang "31 Des" pintuTitik). BATALKAN mengembalikan titik kas sebelum ritual =
+    # titikSebelum berita acara (keadaan_server: titikKasSama) — data terkunci bertitik kas BUKAN 31 Des, jadi pengembalian itu menempuh cabang titikSebelum
+    # (sanggahan 7 Okt: dulu kebetulan 31 Des, cabang titikSebelum tidak pernah tertempuh di gladi)
+    tk = ambil_dok('pengaturan', 'titikKas') or {}; tk0 = (awal.get('pengaturan') or {}).get('titikKas') or {}
+    r['titikKas'] = {'kini': tk.get('tanggal'), 'sebelumRitual': tk0.get('tanggal')}
+    if jenis in ('arsipHabis', 'selesai') and tk.get('tanggal') != '2026-12-31': g.append('titik kas di server bertanggal %s, harusnya 31 Des 2026' % tk.get('tanggal'))
+    if jenis == 'batalSesudah':
+        if tk0.get('tanggal') in (None, '2026-12-31'): g.append('data contoh: titik kas sebelum ritual %s — BATALKAN tidak menempuh cabang titikSebelum (harus bulan terkunci, bukan 31 Des)' % tk0.get('tanggal'))
+        if tk.get('tanggal') != tk0.get('tanggal'): g.append('titik kas di server bertanggal %s sesudah BATALKAN, harusnya kembali ke %s (titikSebelum berita acara, lewat pintu)' % (tk.get('tanggal'), tk0.get('tanggal')))
+    r['ok'] = not g
+    return r
+
+
+def token_owner(sandi):
+    """id token owner contoh dari emulator Auth (masuk dengan sandi gladi — hanya emulator)."""
+    return rest('POST', AUTH + '/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo-kunci-gladi',
+                {'email': EMAIL_OWNER, 'password': sandi, 'returnSecureToken': True})['idToken']
+
+
+def kode_rest(metode, url, data, kepala):
+    """→ kode HTTP (403 = ditolak rules) tanpa melempar."""
+    try: rest(metode, url, data, kepala, waktu=60); return 200
+    except RuntimeError as e:
+        m = re.search(r'HTTP (\d+)', str(e)); return int(m.group(1)) if m else -1
+
+
+def uji_pintu_kedaluwarsa(sandi):
+    """Sesudah skenario pintu (halaman sudah ditutup): pintu tutup buku 2026 dibuat KEDALUWARSA (Bearer owner = admin emulator), lalu dengan TOKEN OWNER
+    (rules menilai) catatan bulan terkunci dikembalikan dari arsip / dihapus — wajib DITOLAK; pintu yang sama dengan `sampai` besok → DITERIMA (kontrol:
+    sebab penolakannya jam pintu). Pengembalian = bentuk pulihkanBerkas firebase.js (isi salinan + capServer jam server)."""
+    A = potret_isi(['arsipTahun']).get('arsipTahun', {}); pilih = sorted(i for i in A if i.startswith('2026|penjualan|'))
+    if not pilih: return [{'langkah': 'arsip 2026 penjualan', 'ok': False, 'ket': 'tidak ada salinan arsip penjualan 2026 di server'}]
+    aid = pilih[0]; _, kol, id_ = aid.split('|', 2); dok = A[aid]['dok']
+    K = {'Authorization': 'Bearer ' + token_owner(sandi)}; komit = FS + '/v1/' + DB + '/documents:commit'; nama = DB + '/documents/' + kol + '/' + id_
+    sv = waktu(jam_server())
+    def pintu(jam):
+        t = (sv + datetime.timedelta(hours=jam)).astimezone(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+        f = {'id': ke_nilai('pintuBuku'), 'tahun': ke_nilai(2026), 'status': ke_nilai('berjalan'), 'gladi': ke_nilai('uji pintu kedaluwarsa'), 'sampai': {'timestampValue': t}}
+        rest('POST', komit, {'writes': [{'update': {'name': DB + '/documents/pengaturan/pintuBuku', 'fields': f}}]}, OWNER)
+        return t
+    kembali = {'writes': [{'update': {'name': nama, 'fields': {a: ke_nilai(b) for a, b in tanpa_cap(dok).items()}}, 'currentDocument': {'exists': False},
+                           'updateTransforms': [{'fieldPath': 'capServer', 'setToServerValue': 'REQUEST_TIME'}]}]}
+    hapus = {'writes': [{'delete': nama}]}
+    out = []
+    for langkah, jam, badan, harap in (('pintu KEDALUWARSA (sampai 1 jam lalu): owner mengembalikan %s dari arsip' % aid, -1, kembali, 403),
+                                       ('pintu yang sama, sampai BESOK: owner mengembalikan %s dari arsip' % aid, 24, kembali, 200),
+                                       ('pintu KEDALUWARSA: owner menghapus catatan bulan terkunci yang salinan arsipnya ada', -1, hapus, 403),
+                                       ('pintu yang sama, sampai BESOK: owner menghapus catatan itu (arsip = pindah)', 24, hapus, 200)):
+        t = pintu(jam); k = kode_rest('POST', komit, badan, K)
+        out.append({'langkah': langkah, 'sampai': t, 'kode': k, 'harap': harap, 'ok': k == harap})
+    tulis_rest([('pengaturan', 'pintuBuku', {'id': 'pintuBuku', 'tahun': 2026, 'status': 'tutup', 'gladi': 'uji pintu kedaluwarsa selesai'})])
+    out.append({'langkah': 'sesudah uji: salinan arsip %s masih ada, catatan aslinya tidak ada (seperti sesudah selesai)' % aid, 'ok': ambil_dok('arsipTahun', aid) is not None and ambil_dok(kol, id_) is None})
+    return out
 
 
 def putusan_server(hari, alasan, batas=60):
@@ -444,7 +595,8 @@ function potret() {
   return { modeB: s.modeB, langkahB: Object.assign({}, s.langkahB), kabar: s.kabar, kabarAwas: !!s.kabarAwas, selesaiLatihan: !!s.selesaiLatihan, sibuk: !!s.sibuk, bukaB: s.bukaB,
     gerbang: g, tombolPeriksa: tp ? { teks: tp.textContent.trim(), kelas: tp.className } : null, km: ringkasKM(), acara: acara(), era: BK.bkEra(),
     kartuLanjut: kartu ? { k: kartu.dataset.k, teks: kartu.textContent.trim().slice(0, 300), tombol: [...kartu.querySelectorAll('[data-aksi]')].map((e) => ({ aksi: e.dataset.aksi, teks: e.textContent.trim(), mati: e.classList.contains('mati') })) } : null,
-    tombolBatal: !!A.querySelector('.kaca-btn[data-aksi="bkBatal"]'), antre: (ST.antre || []).length, menunggu: ST.menunggu || 0, lokal: ST.lokal || null, galatFb: ST.galat || '' };
+    tombolBatal: !!A.querySelector('.kaca-btn[data-aksi="bkBatal"]'), antre: (ST.antre || []).length, menunggu: ST.menunggu || 0, lokal: ST.lokal || null, galatFb: ST.galat || '',
+    ditolakTulis: (() => { try { return (fb.antreLokal().ditolak || []).length; } catch (e) { return -1; } })() };
 }
 const salinBaca = () => JSON.parse(JSON.stringify(window.__gladiBaca || { dokumen: 0, perKoleksi: {} }));
 async function lapor(nama, info, minta) {
@@ -585,10 +737,15 @@ SKENARIO = {
                                            'mulaiLagi', 'kunciTerputusArsip', 'lanjutkan', 'batalkanSesudahPenanda', 'mulaiLagi', 'kunciPenuh', 'selesai', 'diam']),
     # kontrol saja (bukan bawaan workflow): muat penuh saja — kerusakan yang membuat data kurang tidak boleh ikut menjatuhkan langkah tutup buku sesudahnya
     'muatSaja': ('macet', DC.JAM_LATIHAN, ['masuk', 'muatPenuh', 'diam']),
+    # rules v7: data TERKUNCI (semua bulan 2026), jam server = jam halaman 5 Jan 2027 — ritual lewat pintu, batal, mulai lagi, selesai menutup pintu
+    'pintu': ('terkunci', DC.JAM_PINTU, ['masuk', 'muatPenuh', 'bukaTutupBuku', 'sungguhan', 'putusanG1', 'sampaiParaf', 'kunciPenuh', 'batalkanSesudahPenanda', 'mulaiLagi',
+                                          'kunciPenuh', 'selesai', 'diam']),
+    # kontrol saja: data terkunci, kunci penuh lalu selesai — separuh waktu skenario pintu
+    'pintuPendek': ('terkunci', DC.JAM_PINTU, ['masuk', 'muatPenuh', 'bukaTutupBuku', 'sungguhan', 'putusanG1', 'sampaiParaf', 'kunciPenuh', 'selesai', 'diam']),
     # kontrol saja: kunci penuh lalu batalkan sesudah penanda — cukup untuk kontrol pemulihan arsip, separuh waktu ritual
     'ritualPendek': ('macet', DC.JAM_SUNGGUHAN, ['masuk', 'muatPenuh', 'bukaTutupBuku', 'sungguhan', 'putusanG1', 'sampaiParaf', 'kunciPenuh', 'batalkanSesudahPenanda', 'diam']),
 }
-SKENARIO_BAWAAN = ['latihan', 'gerbang', 'ritual']
+SKENARIO_BAWAAN = ['latihan', 'gerbang', 'ritual', 'pintu']
 
 
 # ============================== server uji ==============================
@@ -657,6 +814,9 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
     harap = sum(len(v) for k, v in data.items() if isinstance(v, list) and k != 'logAktivitas') + min(150, len(data.get('logAktivitas', [])))
     K = {'konfig': {'email': EMAIL_OWNER, 'sandi': sandi, 'langkah': langkah, 'saksi': meta['saksi'][0], 'harapBaca': harap, 'proyek': PROYEK, 'alasan': DC.ALASAN_PUTUS},
          'selesai': threading.Event(), 'hasil': None, 'langkah': [], 'kunci': threading.Lock()}
+    try: jam_sv = banding_jam(jam)
+    except Exception as e: jam_sv = {'ok': False, 'galat': str(e)[:300], 'halaman': jam}
+    cetak('  jam server emulator %s · jam halaman %s · selisih %s dtk (GLADI_GESER_JAM %s)' % (jam_sv.get('server'), jam, jam_sv.get('selisihDetik'), jam_sv.get('geser') or '-'))
     K['potret'] = potret(); K['baca'] = 0; K['t'] = time.time(); log_emulator_baru()
     def ukur(isi):
         with K['kunci']:
@@ -665,7 +825,7 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
             if (kait or {}).get(nama):
                 try: hasil_kait = kait[nama]()
                 except Exception as e: hasil_kait = {'ok': False, 'gagal': ['pemeriksa server jatuh: ' + str(e)[:300]]}
-            p = potret(); tulis, hapus = beda(K['potret'], p); K['potret'] = p
+            tp = time.time(); p = potret(); tulis, hapus = beda(K['potret'], p); K['potret'] = p; tp = round(time.time() - tp, 1)
             baca = int((isi.get('baca') or {}).get('dokumen') or 0); db = baca - K['baca']; K['baca'] = baca
             sendiri = {k: n for k, n in tulis.items() if k in DIDENGAR}
             r = {'nama': nama, 'detik': round(time.time() - K['t'], 1), 'baca': db + sum(sendiri.values()), 'bacaServer': db, 'bacaSendiri': sum(sendiri.values()),
@@ -674,7 +834,8 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
             r['emulator'] = log_emulator_baru()
             if r['emulator']['penuh']: cetak('    !! emulator: antrean WebChannel penuh %d kali, kanal diputus %d kali' % (r['emulator']['penuh'], r['emulator']['putus']))
             K['t'] = time.time(); K['langkah'].append(r)
-            cetak('  · %-52s %6.1f dtk · baca %6d · tulis %6d · hapus %6d%s' % (r['nama'][:52], r['detik'], r['baca'], r['tulis'], r['hapus'],
+            r['ukurDetik'] = tp   # waktu potret isi server (REST) di langkah ini — bagian dari dtk langkah, bukan halaman
+            cetak('  · %-52s %6.1f dtk · baca %6d · tulis %6d · hapus %6d · ukur %4.1f dtk%s' % (r['nama'][:52], r['detik'], r['baca'], r['tulis'], r['hapus'], tp,
                                                                              ('  [' + ', '.join('%s +%d' % x for x in sorted(tulis.items())) + ']') if tulis and r['tulis'] < 60 else ''))
             m = isi.get('minta') or ''
             if m.startswith('tolak:'): pasang_aturan(aturan_tolak(m.split(':', 1)[1])); r['aturan'] = 'firestore.rules repo + ' + m.split(':', 1)[1] + ' ditolak'; cetak('    (aturan emulator: %s DITOLAK sementara)' % m.split(':', 1)[1])
@@ -689,7 +850,7 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
         log = os.path.join(d, 'profil-chrome.log'); ekor = open(log, 'rb').read().decode('utf-8', 'replace').splitlines()[-30:] if os.path.exists(log) else []
         shutil.rmtree(d, ignore_errors=True)
     H = K['hasil'] or {}
-    return {'nama': nama, 'varian': varian, 'jamHalaman': jam, 'langkahDiminta': langkah, 'selesai': ok, 'detik': detik, 'kodeChrome': kode, 'langkah': K['langkah'],
+    return {'nama': nama, 'varian': varian, 'jamHalaman': jam, 'jamServer': jam_sv, 'langkahDiminta': langkah, 'selesai': ok, 'detik': detik, 'kodeChrome': kode, 'langkah': K['langkah'],
             'galat': H.get('galat') if ok else 'halaman tidak mengirim hasil dalam %d dtk (Chrome %s)' % (TUNGGU_SKENARIO[nama], kode),
             'konsol': H.get('konsol') or [], 'csp': H.get('csp') or [], 'akhir': H.get('akhir'), 'ekorChrome': [] if ok and not H.get('galat') else ekor}
 
@@ -712,7 +873,33 @@ def kait_cek(c, nama, x):
     c.append((nama, bool(K) and K.get('ok'), K if K else TAK_TERCAPAI))
 
 
+TANDA_TOLAK = re.compile(r'permission-denied|insufficient permissions|tulis ditolak|bersihkan ditolak', re.I)
+
+
+def tolak_di_halaman(S, sengaja=False):
+    """Penolakan server yang TERLIHAT di halaman, per langkah (sanggahan 7 Okt: penolakan tulis yang ditangani aplikasi tidak sampai ke konsol — kontrol 6
+    "DITOLAK: tulis ditolak: permission-denied" di kabar, cek konsol tetap ✓): tulisan yang BARU pindah ke daftar "ditolak" antrean lokal
+    (fb.antreLokal().ditolak) dan kabar / galat status Firebase yang BARU muncul di langkah itu dan menyebut penolakan. sengaja: langkah bernama
+    '… ditolak server' (ritual: aturan emulator SENGAJA menolak satu koleksi) dikecualikan. → [kalimat]."""
+    out = []; n0 = 0; lalu = {'kabar': '', 'galatFb': ''}
+    for x in S.get('langkah') or []:
+        I = x.get('info') or {}; boleh = sengaja and 'ditolak server' in x['nama']
+        n = I.get('ditolakTulis')
+        if isinstance(n, int) and n >= 0:
+            if n > n0 and not boleh: out.append('%s: %d tulisan ditolak server (daftar "ditolak" antrean)' % (x['nama'], n - n0))
+            n0 = max(n0, n)
+        for k in ('kabar', 'galatFb'):
+            v = I.get(k)
+            if not isinstance(v, str): continue
+            if v and v != lalu[k] and TANDA_TOLAK.search(v) and not boleh: out.append('%s: %s "%s"' % (x['nama'], k, v[:160]))
+            lalu[k] = v
+    return out
+
+
 def cek_umum(S, data, c, tolak_sengaja=()):
+    js = S.get('jamServer') or {}
+    c.append(('jam server emulator = jam halaman skenario (selisih ≤ %d dtk; rules v7 menilai berita acara, pintu & kunci periode dengan jam server)' % BATAS_JAM, bool(js.get('ok')),
+              {k: js.get(k) for k in ('server', 'halaman', 'selisihDetik', 'geser', 'galat') if js.get(k) is not None}))
     c.append(('skenario berjalan sampai akhir tanpa galat', S['selesai'] and not S['galat'], (S['galat'] or '')[:600]))
     m = L_(S, 'masuk'); bilah = info(m, 'bilah') or ''
     c.append(('masuk sebagai owner contoh di SERVER TIRUAN %s (bilah tampil SEBELUM formulir diisi, bukan "DITOLAK")' % PROYEK, bool(m) and info(m, 'akun') == 'owner'
@@ -736,7 +923,9 @@ def cek_umum(S, data, c, tolak_sengaja=()):
     S['antreanPenuhSesudahMuat'] = sum((x.get('emulator') or {}).get('penuh', 0) for x in S['langkah'] if x not in muat)
     c.append(('emulator tidak kewalahan saat muat: antrean WebChannel tidak penuh sampai muat penuh selesai (batas emulator 10.000 pesan per kanal)', bool(muat) and penuh == 0, {'penuh': penuh}))
     bocor = [x for x in S['konsol'] if ('permission' in x.lower() or 'FirebaseError' in x) and not any(k in x for k in tolak_sengaja)]
-    c.append(('tidak ada galat izin / FirebaseError di konsol halaman' + (' (selain penolakan sengaja: ' + ', '.join(tolak_sengaja) + ')' if tolak_sengaja else ''), not bocor, bocor[:3]))
+    bocor += tolak_di_halaman(S, sengaja=bool(tolak_sengaja))
+    c.append(('tidak ada galat izin / penolakan server di halaman: konsol, kabar, galat Firebase, daftar "ditolak" antrean'
+              + (' (selain penolakan sengaja: langkah "… ditolak server", konsol ' + ', '.join(tolak_sengaja) + ')' if tolak_sengaja else ''), not bocor, bocor[:4]))
     # connect-src salinan = situs − host Firebase sungguhan + emulator: sambungan yang ditolak = halaman mencoba server SELAIN server tiruan
     tolakCsp = [x for x in S.get('csp') or [] if x.startswith('connect-src')]
     c.append(('halaman hanya bicara ke server tiruan & situs sendiri (0 sambungan ditolak connect-src salinan)', not tolakCsp, tolakCsp[:5]))
@@ -855,7 +1044,39 @@ def cek_muat(S, data, c):
     cek_umum(S, data, c)
 
 
-CEK = {'latihan': cek_latihan, 'gerbang': cek_gerbang, 'ritual': cek_ritual, 'ritualPendek': cek_ritual, 'muatSaja': cek_muat}
+def cek_pintu(S, data, c):
+    """rules v7, data terkunci: ritual lewat pintu — halaman (berita acara di cache) DAN server (REST): pintu, arsip = isi asli, catatan terkunci lain utuh."""
+    cek_umum(S, data, c)
+    minta = S.get('langkahDiminta') or []
+    cek_putusan(S, data, c)
+    k1 = L_(S, '6 kunci → saldo pembuka + arsip penuh')
+    km1 = info(k1, 'km') or {}
+    c.append(('KUNCI lewat pintu (halaman): berita acara "terkunci", arsip habis (pita tinggal "selesaikan"), tanpa kabar awas', bool(k1) and (info(k1, 'acara') or {}).get('status') == 'terkunci'
+              and (not km1 or (km1.get('fase') == 'selesaikan' and km1.get('sudah') == km1.get('total'))) and not info(k1, 'kabarAwas'),
+              {k: info(k1, k) for k in ('acara', 'km', 'kabar', 'kabarAwas')} if k1 else TAK_TERCAPAI))
+    kait_cek(c, 'KUNCI di SERVER: pintu 2026 TERBUKA (≤ 72 jam dari jam server), arsipTahun = ISI semua catatan 2026 asli (= nArsip), saldo pembuka = nPembuka, pindahan uang '
+             'bulan terkunci utuh, titik kas 31 Des', k1)
+    if 'batalkanSesudahPenanda' in minta:
+        b2 = L_(S, 'BATALKAN sesudah penanda')
+        c.append(('BATALKAN lewat pintu (halaman): berita acara "dibatalkan", era kembali kosong, tidak ada yang tertunda', bool(b2) and (info(b2, 'acara') or {}).get('status') == 'dibatalkan'
+                  and info(b2, 'era') is None and not info(b2, 'km') and b2['hapus'] > 0, {k: info(b2, k) for k in ('acara', 'era', 'km', 'kabar')} if b2 else TAK_TERCAPAI))
+        kait_cek(c, 'BATALKAN di SERVER: isi %d koleksi 2026 = sebelum ritual, arsipTahun kosong, saldo pembuka ditarik, titik kas kembali, pintu TERTUTUP, pindahan uang utuh' % len(KOLEKSI_2026), b2)
+        k2 = L_(S, '6 kunci → saldo pembuka + arsip penuh', -1)
+        c.append(('KUNCI kedua sesudah mulai lagi (halaman): berita acara "terkunci"', bool(k2) and k2 is not k1 and (info(k2, 'acara') or {}).get('status') == 'terkunci' and not info(k2, 'kabarAwas'),
+                  {k: info(k2, k) for k in ('acara', 'km', 'kabar')} if k2 and k2 is not k1 else TAK_TERCAPAI))
+        kait_cek(c, 'KUNCI kedua di SERVER: pintu dibuka lagi, arsip = isi asli, pindahan uang utuh', k2 if k2 is not k1 else None)
+    s = L_(S, '7 cadangan sesudah · SELESAI')
+    c.append(('SELESAI (halaman): berita acara "selesai", era 2026, tidak ada yang tertunda', bool(s) and (info(s, 'acara') or {}).get('status') == 'selesai' and info(s, 'era') == 2026 and not info(s, 'km'),
+              {k: info(s, k) for k in ('acara', 'era', 'km', 'kabar')} if s else TAK_TERCAPAI))
+    kait_cek(c, 'SELESAI di SERVER: berita acara "selesai" & pintu TERTUTUP, arsipTahun = isi asli, saldo pembuka = nPembuka, pindahan uang utuh', s)
+    if 'pintuKedaluwarsa' in S:
+        for x in S['pintuKedaluwarsa']:
+            c.append(('sesudah selesai (REST, token owner): ' + x['langkah'] + (' → wajib %s' % ('DITOLAK (403)' if x.get('harap') == 403 else 'DITERIMA') if x.get('harap') else ''), x['ok'],
+                      {k: x.get(k) for k in ('kode', 'harap', 'sampai', 'ket') if x.get(k) is not None}))
+
+
+CEK = {'latihan': cek_latihan, 'gerbang': cek_gerbang, 'ritual': cek_ritual, 'ritualPendek': cek_ritual, 'muatSaja': cek_muat, 'pintu': cek_pintu, 'pintuPendek': cek_pintu}
+PASCA = {'pintu': uji_pintu_kedaluwarsa}   # uji server sesudah halaman ditutup (sandi owner contoh)
 
 
 # jalur biaya kuota (skenario ritual): langkah mana yang dijumlah. Ritual BERSIH = yang dikerjakan owner tanpa penolakan/pembatalan: masuk, muat, putusan,
@@ -919,7 +1140,7 @@ def ringkas_md(lap):
     out.append('')
     for S in lap['skenario']:
         ok = all(x['ok'] for x in S['cek'])
-        out += ['### %s %s — data %s, jam halaman %s (%s dtk)' % ('✅' if ok else '❌', S['nama'], S['varian'], S['jamHalaman'], S['detik']), '',
+        out += ['### %s %s — data %s, jam halaman %s, jam server %s (%s dtk)' % ('✅' if ok else '❌', S['nama'], S['varian'], S['jamHalaman'], (S.get('jamServer') or {}).get('server', '?'), S['detik']), '',
                 'Per langkah (angka langkah itu saja; bukan jumlah berjalan):', '',
                 '| langkah | dtk | baca | └ tulisan sendiri | tulis | hapus |', '|---|---:|---:|---:|---:|---:|']
         for x in S['langkah']:
@@ -941,7 +1162,7 @@ def ringkas_md(lap):
         out += ['', 'Cek:']
         for x in S['cek']: out.append('- %s %s%s' % ('✓' if x['ok'] else '✗', x['nama'], '' if x['ok'] else ' — `' + json.dumps(x['ket'], ensure_ascii=False)[:500].replace('`', "'") + '`'))
         if S.get('dicobaUlang'):
-            out.append('- ⚠ **DICOBA ULANG** (1×): %s — percobaan pertama berhenti di muat penuh sebelum langkah tutup buku mana pun; angka & cek di atas dari percobaan kedua' % S['dicobaUlang']['sebab'])
+            out.append('- ⚠ **DICOBA ULANG** (1×, emulator BARU): %s — percobaan pertama berhenti di muat penuh sebelum langkah tutup buku mana pun; angka & cek di atas dari percobaan kedua' % S['dicobaUlang']['sebab'])
         if S.get('antreanPenuhSesudahMuat'):
             out.append('- ℹ antrean WebChannel emulator penuh %s kali SESUDAH muat penuh — sesi kanal yang sudah ditinggal halaman (batas emulator, bukan server sungguhan); '
                        'isi halaman & server dinilai cek di atas' % rb(S['antreanPenuhSesudahMuat']))
@@ -950,14 +1171,15 @@ def ringkas_md(lap):
         out.append('')
     out += ['Baca = dokumen yang DITERIMA pendengar halaman dari server (penghitung di salinan SDK uji) + tulisan halaman sendiri ke koleksi yang didengarnya (dari REST; '
             'Firestore menagihnya, SDK tidak memunculkan perubahan baru). get() di aturan tidak termasuk. Tulis/hapus = beda isi emulator sebelum ↔ sesudah langkah (REST).', '',
-            'Keterbatasan: jam server emulator = jam runner (Okt 2026), bukan jam halaman — get() kunci periode di aturan dinilai dengan bulan runner. Data contoh tanpa '
-            'bulan terkunci (aturanToko/kunciPeriode): tutup buku 2027 dengan bulan terkunci & rules v7 belum digladikan.']
+            'Jam server emulator = jam halaman skenario: jam dinding JVM emulator SAJA digeser (alat-uji/jam_geser.c, GLADI_GESER_JAM) — rules v7 menilai berita acara, pintu '
+            'tutup buku & kunci periode dengan jam server; selisih yang terukur tercantum di cek pertama tiap skenario.']
     return '\n'.join(out)
 
 
 def muat_macet(S):
     """Skenario berhenti DI MUAT PENUH — sebelum langkah tutup buku mana pun (run 7 Okt: 2 dari ±32 skenario, emulator tidak menyerahkan data ke sebagian
-    besar pendengar tanpa antrean penuh, tanpa galat izin). Hanya ini yang dicoba ulang sekali; galat di langkah lain tidak pernah dicoba ulang."""
+    besar pendengar tanpa antrean penuh, tanpa galat izin). Hanya ini yang dicoba ulang sekali — di emulator BARU (workflow, --simpan-ulang / --ulang-dari);
+    galat di langkah lain tidak pernah dicoba ulang."""
     if not S.get('galat'): return ''
     nama = [x['nama'] for x in S.get('langkah') or []]
     if any(n not in ('masuk', 'muat penuh') for n in nama): return ''
@@ -967,7 +1189,11 @@ def muat_macet(S):
     return 'muat penuh tidak selesai: ' + S['galat'].split('\n')[0][:220]
 
 
-def jalankan(daftar, sandi, rusak=None, cetak=print):
+def jalankan(daftar, sandi, rusak=None, cetak=print, ulang_luar=None):
+    """ulang_luar (workflow; SATU skenario per proses): {'simpan': berkas} — percobaan 1; skenario yang macet di muat penuh TIDAK dicoba ulang di emulator
+    yang sama (run 7 Okt: sesi WebChannel percobaan pertama masih membanjiri emulator, percobaan kedua "antrean penuh 7×" sebelum masuk). Catatannya
+    disimpan ke berkas, DICOBA ULANG dicetak, dan jalankan() → None (pemanggil keluar KODE_ULANG); workflow menyalakan emulator BARU lalu memanggil lagi
+    dengan {'dari': berkas} = percobaan 2. Tanpa ulang_luar: satu percobaan, tanpa coba ulang."""
     lap = {'mulai': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'proyek': PROYEK, 'firebaseTools': os.environ.get('FIREBASE_TOOLS_VERSI', '?'),
            'spark': SPARK, 'data': {}, 'skenario': []}
     data_per = {}
@@ -981,8 +1207,11 @@ def jalankan(daftar, sandi, rusak=None, cetak=print):
                                        nArsip=(h or {}).get('latihan', {}).get('nArsip'))
         data = data_per[varian]
         ulang = None
-        for ke in (1, 2):
-            # tiap skenario (dan percobaan ulangnya) mulai dari isi yang SAMA (gerbang menulis putusan, ritual memindah arsip): emulator dikosongkan & diisi ulang
+        if (ulang_luar or {}).get('dari'):
+            ulang = json.load(open(ulang_luar['dari'], encoding='utf-8'))
+            if ulang.get('skenario') != nama: raise ValueError('catatan percobaan 1 untuk skenario %s, bukan %s' % (ulang.get('skenario'), nama))
+        for ke in ((2,) if ulang else (1,)):
+            # percobaan 2 = proses & emulator BARU (workflow); isi emulator diisi dari awal seperti percobaan 1
             cetak('— data %s: kosongkan emulator, isi %d dokumen, akun owner & karyawan contoh' % (varian, data['gladi']['dokumen']))
             kosongkan(); t0 = time.time(); n = isi_data(data)
             buat_akun(EMAIL_OWNER, sandi); uid_k = buat_akun(EMAIL_KARYAWAN, secrets.token_urlsafe(18))
@@ -991,27 +1220,36 @@ def jalankan(daftar, sandi, rusak=None, cetak=print):
             # pemeriksa SERVER per langkah (dijalankan di dalam langkah itu, halaman menunggu): putusan, lalu tiap titik ritual dibanding isi sebelum ritual
             hari = data['gladi']['hariTanpaTutup']
             kait = {'putusan per tanggal disimpan': (lambda hari=hari: putusan_server(hari, DC.ALASAN_PUTUS))}
+            if CEK[nama] is cek_pintu:
+                awal = awal_pintu()
+                for langkah, jenis in (('6 kunci → saldo pembuka + arsip penuh', 'arsipHabis'), ('BATALKAN sesudah penanda', 'batalSesudah'), ('7 cadangan sesudah · SELESAI', 'selesai')):
+                    kait[langkah] = (lambda jenis=jenis, awal=awal: keadaan_pintu(jenis, awal))
             if CEK[nama] is cek_ritual:
                 awal = awal_ritual()
                 for langkah, jenis in (('6 kunci → kiriman saldo pembuka ditolak server', 'berjalan'), ('BATALKAN sebelum penanda', 'batalSebelum'),
                                        ('6 kunci → saldo pembuka masuk, arsip ditolak server', 'arsipDitolak'), ('LANJUTKAN arsip', 'arsipHabis'),
                                        ('BATALKAN sesudah penanda', 'batalSesudah'), ('7 cadangan sesudah · SELESAI', 'selesai')):
                     kait[langkah] = (lambda jenis=jenis, awal=awal: keadaan_server(jenis, awal))
-            cetak('— skenario %s (jam halaman %s)%s' % (nama, SKENARIO[nama][1], ' · percobaan 2' if ke == 2 else ''))
+            cetak('— skenario %s (jam halaman %s)%s' % (nama, SKENARIO[nama][1], ' · percobaan 2 (emulator BARU)' if ke == 2 else ''))
             S = jalankan_skenario(nama, data, sandi, rusak, cetak, kait)
             sebab = muat_macet(S)
-            if ke == 2 or not sebab: break
-            # SATU percobaan ulang, hanya bila skenario berhenti di muat penuh (belum ada langkah tutup buku) — TERCATAT: baris DICOBA ULANG + peringatan
-            # di halaman ringkasan run, dan di laporan/ringkasan gladi. Sering muncul = masalah sungguhan (keputusan owner 26 Sep 2026).
-            ulang = {'sebab': sebab, 'percobaan1': {'detik': S.get('detik'), 'galat': (S.get('galat') or '')[:600], 'langkah': S.get('langkah'), 'konsol': (S.get('konsol') or [])[-15:],
-                                                     'ekorChrome': (S.get('ekorChrome') or [])[-30:]}}
-            for b in (S.get('konsol') or [])[-10:]: cetak('    konsol: ' + b[:300])
-            coba_ulang.catat('skenario ' + nama, sebab, 2, 2, log=S.get('ekorChrome') or [])
+            if ke == 1 and sebab and (ulang_luar or {}).get('simpan'):
+                # SATU percobaan ulang, hanya bila skenario berhenti di muat penuh (belum ada langkah tutup buku), di emulator BARU — TERCATAT: baris DICOBA
+                # ULANG + peringatan di halaman ringkasan run, dan di laporan/ringkasan gladi. Sering muncul = masalah sungguhan (keputusan owner 26 Sep 2026).
+                catatan = {'skenario': nama, 'sebab': sebab, 'percobaan1': {'detik': S.get('detik'), 'galat': (S.get('galat') or '')[:600], 'langkah': S.get('langkah'),
+                                                                              'konsol': (S.get('konsol') or [])[-15:], 'ekorChrome': (S.get('ekorChrome') or [])[-30:]}}
+                for b in (S.get('konsol') or [])[-10:]: cetak('    konsol: ' + b[:300])
+                coba_ulang.catat('skenario ' + nama, sebab + ' — percobaan 2 di emulator BARU', 2, 2, log=S.get('ekorChrome') or [])
+                json.dump(catatan, open(ulang_luar['simpan'], 'w', encoding='utf-8'), ensure_ascii=False)
+                return None
         if ulang: S['dicobaUlang'] = ulang
+        if nama in PASCA and S.get('selesai') and not S.get('galat'):
+            try: S['pintuKedaluwarsa'] = PASCA[nama](sandi)
+            except Exception as e: S['pintuKedaluwarsa'] = [{'langkah': 'uji pintu kedaluwarsa jatuh', 'ok': False, 'ket': str(e)[:300]}]
         c = []
         CEK[nama](S, data, c)
         S['cek'] = [{'nama': a, 'ok': bool(b), 'ket': k} for a, b, k in c]
-        if CEK[nama] is cek_ritual: S['kuota'] = kuota_ritual(S, lap)
+        if CEK[nama] in (cek_ritual, cek_pintu): S['kuota'] = kuota_ritual(S, lap)
         for x in S['cek']: cetak('  %s %s%s' % ('✓' if x['ok'] else '✗', x['nama'], '' if x['ok'] else ' → ' + json.dumps(x['ket'], ensure_ascii=False)[:400]))
         for x in (S.get('kuota') or {}).get('peringatan', []): cetak('  ' + x)
         if S['galat']: cetak('  GALAT: ' + S['galat'][:800])
@@ -1048,22 +1286,38 @@ KONTROL = [
      'sasaran': 'muat penuh: semua koleksi siap', 'boleh': [],
      'bukti': ('cek muat penuh menyebut pengeluaranHarian hanya 10 dokumen di halaman', lambda S: (((next((x['ket'] for x in S['cek'] if x['nama'].startswith('muat penuh')), None) or {}).get('beda') or {}).get('pengeluaranHarian') or [None])[0] == 10)},
     {'nama': 'pemulihan arsip melewatkan satu dokumen (BATALKAN sesudah penanda)', 'skenario': 'ritualPendek',
-     'rusak': [('js/data/firebase.js', "    potong.forEach((x) => { b.set(doc(db, x.koleksi, String(x.idAsli)), x.dok); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });",
-                "    potong.forEach((x, j) => { if (i + j === 0) return; b.set(doc(db, x.koleksi, String(x.idAsli)), x.dok); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });")],
+     'rusak': [('js/data/firebase.js', "    potong.forEach((x) => { b.set(doc(db, x.koleksi, String(x.idAsli)), pasangCap(x.koleksi, x.dok)); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });",
+                "    potong.forEach((x, j) => { if (i + j === 0) return; b.set(doc(db, x.koleksi, String(x.idAsli)), pasangCap(x.koleksi, x.dok)); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });")],
      'sasaran': 'BATALKAN SESUDAH PENANDA di SERVER', 'boleh': [],
      'bukti': ('server: 1 dokumen tertinggal di arsipTahun & kurang 1 di koleksi asal', lambda S: ((L_(S, 'BATALKAN sesudah penanda') or {}).get('kait') or {}).get('arsip') == 1
                and sum((((L_(S, 'BATALKAN sesudah penanda') or {}).get('kait') or {}).get('banding') or {}).get('kurang', {}).values()) == 1)},
 ]
 
 
+KONTROL.append(
+    # rules v7 (acaraTutupPintu): berita acara 'selesai' hanya bila pintu tahun itu TERTUTUP sesudah kiriman itu — salinan yang lupa menutup pintu wajib ditolak
+    # SERVER saat selesai (bukan cuma model): berita acara tetap "terkunci", pintu tetap "berjalan"
+    {'nama': 'selesai TIDAK menutup pintu tutup buku (data terkunci)', 'skenario': 'pintuPendek',
+     'rusak': [('js/layar/tutup-buku-logika.js', "}) }].concat(bkTutupPintu(tahun, w)), patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup.", "}) }], patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup.")],
+     # penolakan SELESAI oleh server WAJIB terlihat juga di cek izin halaman (kabar "DITOLAK: tulis ditolak: permission-denied", daftar "ditolak" antrean) —
+     # kontrol ini pembukti cek itu (sanggahan 7 Okt: dulu cek konsol tetap ✓ dan ada di 'boleh')
+     'sasaran': 'SELESAI di SERVER', 'boleh': ['SELESAI (halaman)'], 'wajibGagal': [('tidak ada galat izin', '7 cadangan sesudah · SELESAI')],
+     'bukti': ('server saat selesai: berita acara tetap "terkunci", pintu tetap "berjalan"', lambda S: ((L_(S, '7 cadangan sesudah · SELESAI') or {}).get('kait') or {}).get('acara') == 'terkunci'
+               and (((L_(S, '7 cadangan sesudah · SELESAI') or {}).get('kait') or {}).get('pintu') or {}).get('status') == 'berjalan')})
+
+
 def nilai_kontrol(k, lap):
     """→ (berbunyi, [alasan DIAM], cek sasaran yang gagal). Lihat aturan di atas KONTROL."""
     S = (lap.get('skenario') or [{}])[0]; cek = S.get('cek') or []; gagal = [x for x in cek if not x['ok']]
     sasaran = [x for x in gagal if x['nama'].startswith(k['sasaran'])]
-    lain = [x['nama'] for x in gagal if not any(x['nama'].startswith(b) for b in [k['sasaran']] + k['boleh'])]
+    wajib = k.get('wajibGagal') or []   # [(awalan nama cek, teks yang wajib ada di ket-nya — sebabnya kerusakan ini)]
+    lain = [x['nama'] for x in gagal if not any(x['nama'].startswith(b) for b in [k['sasaran']] + k['boleh'] + [w for w, _ in wajib])]
     alasan = []
     if not sasaran: alasan.append('cek "%s" tetap lulus' % k['sasaran'])
     elif all(x['ket'] == TAK_TERCAPAI for x in sasaran): alasan.append('cek sasaran gagal hanya karena langkahnya tidak tercapai')
+    for w, sebab in wajib:
+        if not any(x['nama'].startswith(w) and sebab in json.dumps(x['ket'], ensure_ascii=False) for x in gagal):
+            alasan.append('cek "%s" tidak gagal karena "%s" (wajib ikut gagal karena kerusakan ini)' % (w, sebab))
     if not S.get('selesai') or S.get('galat'): alasan.append('skenario tidak jalan sampai akhir: ' + str(S.get('galat') or 'tanpa hasil')[:200])
     if lain: alasan.append('cek lain ikut gagal: ' + ' · '.join(lain)[:300])
     try: bukti = bool(k['bukti'][1](S))
@@ -1132,6 +1386,10 @@ if __name__ == '__main__':
     def opsi(n, b):
         return arg[arg.index(n) + 1] if n in arg and arg.index(n) + 1 < len(arg) else b
     if '--jumlah-kontrol' in arg: print(len(KONTROL)); sys.exit(0)
+    if '--geser-jam' in arg:   # workflow: GLADI_GESER_JAM untuk pembungkus java (jam JVM emulator = jam halaman skenario)
+        print(geser_jam(SKENARIO[opsi('--geser-jam', '')][1])); sys.exit(0)
+    if '--geser-jam-kontrol' in arg:
+        print(geser_jam(SKENARIO[KONTROL[int(opsi('--geser-jam-kontrol', '0')) - 1]['skenario']][1])); sys.exit(0)
     if '--periksa-salinan' in arg:
         c = periksa_salinan(); g = [x for x in c if not x[1]]
         for n, ok, k in c: print(('✓ ' if ok else '✗ ') + n + ('' if ok else ' → ' + str(k)[:300]))
@@ -1165,7 +1423,25 @@ if __name__ == '__main__':
         print('DITOLAK: gladi tutup buku menyalakan Chrome & emulator — HANYA di runner GitHub Actions (CLAUDE.md, keputusan owner 27 Sep 2026).\n'
               'Jalankan workflow "Gladi tutup buku" (Actions › Gladi tutup buku › Run workflow). Di Mac boleh: --periksa-salinan.')
         sys.exit(2)
+    if '--cek-jam' in arg:   # uji cepat sebelum skenario panjang (emulator Firestore saja): pemalsu jam JVM emulator benar-benar bekerja
+        t0 = time.time()
+        while True:
+            try: rest('GET', FS + '/', waktu=5); break
+            except Exception as e:
+                if time.time() - t0 > 180: print('emulator Firestore tidak menjawab: %s' % e); sys.exit(2)
+                time.sleep(1)
+        lj = laju_emulator()
+        if '--laju' in arg:   # emulator TANPA pemalsu jam: patokan kecepatan
+            open(opsi('--laju', ''), 'w').write(str(lj)); print('laju emulator biasa: 150 commit + 1 query = %.2f dtk' % lj); sys.exit(0)
+        j = banding_jam(SKENARIO[opsi('--cek-jam', '')][1]); ok = j['ok']
+        print('jam server emulator %s · jam halaman %s · selisih %s dtk · GLADI_GESER_JAM %s → %s' % (j['server'], j['halaman'], j['selisihDetik'], j['geser'] or '-', 'SESUAI' if j['ok'] else 'TIDAK SESUAI'))
+        if opsi('--laju-banding', ''):
+            dasar = float(open(opsi('--laju-banding', '')).read()); r = lj / max(dasar, 0.01)
+            print('laju emulator berjam palsu: %.2f dtk (biasa %.2f dtk) → %.1f× %s' % (lj, dasar, r, 'SESUAI' if r <= 3 else 'TERLALU LAMBAT (> 3×) — pemalsu jam memperlambat emulator'))
+            ok = ok and r <= 3
+        sys.exit(0 if ok else 2)
     if not CHROME: print('Chrome tidak ditemukan di runner — GAGAL'); sys.exit(2)
+    ulang_luar = {'simpan': opsi('--simpan-ulang', ''), 'dari': opsi('--ulang-dari', '')}
     tunggu_emulator()
     sandi = secrets.token_urlsafe(24)   # sandi akun owner contoh: dibuat tiap run, hanya di emulator, tidak dicetak
     if '--kontrol' in arg:
@@ -1177,7 +1453,8 @@ if __name__ == '__main__':
         kode = 0
         for k in daftar_k:
             print('KONTROL · ' + k['nama'] + ' (skenario ' + k['skenario'] + ')', flush=True)
-            lap = jalankan([k['skenario']], sandi, k['rusak'], cetak=lambda *a: print('   ', *a, flush=True))
+            lap = jalankan([k['skenario']], sandi, k['rusak'], cetak=lambda *a: print('   ', *a, flush=True), ulang_luar=ulang_luar if len(daftar_k) == 1 else None)
+            if lap is None: sys.exit(KODE_ULANG)
             b, alasan, sasaran = nilai_kontrol(k, lap)
             if b: print('BERBUNYI ' + k['nama'] + ' → ' + sasaran[0]['nama'] + ' · ' + json.dumps(sasaran[0]['ket'], ensure_ascii=False)[:240] + ' · bukti: ' + k['bukti'][0], flush=True)
             else:
@@ -1191,7 +1468,8 @@ if __name__ == '__main__':
     daftar = [x.strip() for x in opsi('--skenario', os.environ.get('GLADI_SKENARIO') or ','.join(SKENARIO_BAWAAN)).split(',') if x.strip()]
     salah = [x for x in daftar if x not in SKENARIO]
     if salah: print('skenario tidak dikenal: %s (ada: %s)' % (', '.join(salah), ', '.join(SKENARIO))); sys.exit(2)
-    lap = jalankan(daftar, sandi)
+    lap = jalankan(daftar, sandi, ulang_luar=ulang_luar if len(daftar) == 1 else None)
+    if lap is None: sys.exit(KODE_ULANG)
     keluar = opsi('--keluar', ''); ring = opsi('--ringkasan', '')
     if keluar:
         os.makedirs(os.path.dirname(os.path.abspath(keluar)), exist_ok=True); json.dump(lap, open(keluar, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)

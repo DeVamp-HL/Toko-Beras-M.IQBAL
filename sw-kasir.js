@@ -117,7 +117,11 @@
 // 'unsafe-inline'; koneksi hanya Firestore & Auth Firebase REST; worker-src 'self' untuk SW ini). Semua handler sebaris (24 di HTML + 3 di
 // innerHTML) pindah ke data-aksi + satu pendengar di document — perilaku tiap tombol sama. LABEL 'versi 3 Okt b'. FILES tidak berubah.
 // WAJIB naik: tanpa itu HP penjaga terus menyajikan berkas v31 dari cache (tanpa CSP) sampai cache-nya kebetulan diperbarui.
-const VERSI = 'kasir-v32';
+// v33 (7 Oktober 2026, owner: hemat baca siap 2027): nota kasir darurat dikirim lewat REST :commit dengan capServer = REQUEST_TIME (jam server) —
+// perangkat owner yang hemat baca mendengar ubahan bercap jam server. Isi karcis, antrean, golongan jawaban, denyut (tetap PATCH) tidak berubah.
+// Kirim ulang karcis yang sama (beda capServer saja) diterima rules v7 (ulangKasirBercap); kalau :commit DITOLAK (rules v6 / aturan darurat v3) nota dikirim
+// sekali lagi dengan cara lama — PATCH tanpa cap, updateMask = kolom karcis — sebelum dinyatakan ditolak (tinjauan 7 Okt). LABEL 'versi 7 Okt'. FILES tidak berubah.
+const VERSI = 'kasir-v33';
 const FILES = ['kasir-darurat-nominal.html', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir-darurat-nominal.html'];
 

@@ -515,7 +515,7 @@ if __name__ == '__main__':
             # ---- K6
             'sesudah (dari susunan pembuka) lupa utang pemasok': js.replace("else if (koleksi === 'utangPemasokMutasi') j.utangP += Number(data.nominal) || 0;", ""),
             'gerbang hari belum ditutup diabaikan (putusan per tanggal tidak dinilai)': js.replace("ok: belumPutus.length === 0,", "ok: true,"),
-            'kunci diizinkan sebelum tahunnya lewat': js.replace("if (!T.bolehSungguhan) return { tolak: T.adaKunci ? T.teks : 'Tahun ' + tahun + ' belum lewat 31 Desember — hanya bisa latihan' };", ""),
+            'kunci diizinkan sebelum tahunnya lewat': js.replace("if (!T.bolehSungguhan) return { tolak: 'Tahun ' + tahun + ' belum lewat 31 Desember — hanya bisa latihan' };", ""),
             'batal tutup buku tidak mencabut saldo pembuka': js.replace("if (bkTutupBuku(x) && Number(x.tahunDari) === tahun) out.push(", "if (false) out.push("),
             'kasbon owner di saldo pembuka kehilangan tanda owner': js.replace("kunciPelanggan(x.nama) === kunciPelanggan(NAMA_KASBON_OWNER) ? { owner: true } : {}, tb)", "{}, tb)"),
             'titik kas 31 Des tidak ditulis saat kunci (kas tahun lama menguap)': js.replace("const titik = K.ada && T0 && T0.dari === 'titikKas' ? { id: 'titikKas', tanggal: T.cutoff,", "const titik = false ? { id: 'titikKas', tanggal: T.cutoff,"),

@@ -1010,7 +1010,7 @@ export function pasangLayarJual(akar, opsi) {
       ${pitaTolak(s, 'bukuNego')}
       <div class="kartu daftar-nota" data-k="ng-buku" style="max-height: none;">${B.baris.map((x) => h`<div class="baris-nota" data-k="ng-${x.jenis}-${x.id}" style="cursor: default;">
         <div class="atas"><span><b>${x.barang}</b> · ${x.oleh || '—'}${x.pembeli ? ' · ' + x.pembeli : ''}</span><span class="n">${RP(x.harga)}</span></div>
-        <div class="ket">${x.tanggal && x.tanggal !== hariIniIso(s.sekarang) ? tanggalPendek(x.tanggal) + ' ' : ''}${x.jam} · katalog ${RP(x.hargaAsli)} → ${RP(x.harga)} · ${selisih(x)}${x.jatah !== undefined && x.jatah !== null ? ' · jatah ' + x.jatah + ' %' : ''}${x.alasan ? ' · alasan: ' + x.alasan : ''}${x.alasanTolak ? ' · ditolak: ' + x.alasanTolak : ''}</div>
+        <div class="ket">${x.tanggal && x.tanggal !== hariIniIso(s.sekarang) ? tanggalPendek(x.tanggal) + ' ' : ''}${x.jam} · katalog ${RP(x.hargaAsli)} → ${RP(x.harga)} · ${selisih(x)}${x.jatah !== undefined && x.jatah !== null ? ' · jatah ' + x.jatah + ' %' : ''}${x.alasan ? ' · alasan: ' + x.alasan : ''}${x.alasanTolak ? ' · ditolak: ' + x.alasanTolak : ''}${x.periksa ? ' · ' + x.periksa : ''}</div>
         <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding-top: 4px;"><span class="${tanda(x.status)}">${NG.NG_LABEL[x.status] || x.status}</span>
           ${owner && x.jenis === 'minta' && x.status === 'menunggu' ? h`<span class="kaca-btn kecil aktif emas" data-aksi="ngSetujui" data-id="${x.id}">setujui</span><span class="kaca-btn kecil awas" data-aksi="ngTolak" data-id="${x.id}">tolak</span>` : ''}</div>
       </div>`)}${B.baris.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Belum ada nego hari ini.</div>`}</div>

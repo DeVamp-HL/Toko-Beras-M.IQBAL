@@ -23,11 +23,22 @@ Di Mac hanya boleh menjalankan pemeriksaan yang tidak menyalakan peramban:
   bisa menyentuh data toko.
 - **Data contoh**: dibuat `alat-uji/gladi_data_contoh.py` dengan benih tetap. Isinya ±9 rb dokumen (skala bawaan 0,65, lihat keterbatasan),
   8 Agu–31 Des 2026, dengan bentuk dokumen yang sama dengan cadangan. Semua nama dan angka rupiahnya karangan. Cadangan asli tidak pernah dibaca dan
-  tidak pernah dikirim ke runner. Ada dua varian:
+  tidak pernah dikirim ke runner. Ada tiga varian:
   - `macet`: ada 23 hari berjualan tanpa tutup hari, polanya sama dengan keadaan toko 6 Okt. Tanpa putusan, gerbang g1 memblokir dan `susunKunci`
     menolak. Sesudah putusan per tanggal (Paket A), semua gerbang beres. **Ketiga skenario memakai varian ini**, seperti keadaan toko yang akan
     dihadapi owner pada 1 Jan.
   - `bersih`: semua hari ditutup. Hanya dinilai `--periksa`; tidak dipakai skenario.
+  - `terkunci` (rules v7): data `macet` (benih & 23 hari macet yang sama, skala 0,05 ≈ 1,7 rb dokumen — `GLADI_SKALA_PINTU`), ditambah **kunci
+    periode sampai Desember 2026** (`aturanToko/kunciPeriode`, dikunci 4 Jan 2027 — semua bulan tahun yang ditutup terkunci) dan dua pindahan uang
+    laci ↔ brankas bertanggal Okt & Nov. Skalanya kecil karena tiap catatan bulan terkunci butuh 5 pemeriksaan server (arsip 3 catatan per kiriman,
+    bukan 9): di skala toko satu arsip ±3 rb kiriman, dan skenario `pintu` mengarsip dua kali plus membatalkan sekali. Yang diuji mekanisme pintu;
+    angka kuota tetap diproyeksikan ke skala toko. Pindahan uang **tidak
+    diarsip** tutup buku dan tidak berpintu, jadi wajib tetap utuh selama pintu terbuka. `--periksa` menilainya di jam 5 Jan 2027 15.30: tahun
+    2026 boleh ditutup sungguhan **lewat pintu**; sesudah putusan, `susunKunci` = kiriman 1 berita acara "berjalan" sendirian, kiriman 2 membuka
+    pintu (tahun 2026, 48 jam), titik kas 31 Des ikut lewat pintu, tiap kiriman ≤ 18 pemeriksaan. Dipakai skenario `pintu`. Titik kas SEBELUM
+    ritual di varian ini = hitungan tutup hari terakhir sebelum 31 Des (30 Des, bulan terkunci), bukan 31 Des: BATALKAN mengembalikannya lewat
+    cabang `titikSebelum` rules v7 (`pintuTitik`), bukan cabang "31 Des" (sanggahan 7 Okt — dulu titik kas contoh kebetulan 31 Des, cabang itu
+    tidak pernah tertempuh; `--kontrol` data contoh membuktikan titik kas 31 Des ketahuan).
 - **Akun**: owner contoh (`owner@…`, dikenali aturan lewat email) dan satu karyawan contoh beserta dokumen `aksesAkun`-nya. Sandi dibuat ulang tiap
   run dan tidak pernah dicetak.
 - **Jalan masuk /baru/ ke emulator**: `?emulator=127.0.0.1:8080`, diatur di `baru/js/data/server-tiruan.js`. Jalan ini hanya berlaku kalau
@@ -40,13 +51,14 @@ Di Mac hanya boleh menjalankan pemeriksaan yang tidak menyalakan peramban:
 
 ## Skenario
 
-Semua skenario memakai data `macet`.
+`latihan`, `gerbang`, dan `ritual` memakai data `macet`; `pintu` memakai data `terkunci`.
 
 | skenario | jam halaman | yang dibuktikan |
 |---|---|---|
 | `latihan` | 31 Des 2026 21.45 | Muat penuh. LATIHAN tujuh langkah sampai "Latihan selesai", lalu diam 5 detik, tanpa satu pun tulisan ke server. Kunci latihan juga menyusun potret 2026 (Paket B) tanpa menulis. Denyut perangkat dan katalog kasir tidak dihitung, karena keduanya tulisan latar. |
 | `gerbang` | 1 Jan 2027 15.30 | SUNGGUHAN boleh dipilih. Gerbang g1 "23 hari belum ditutup & belum diputus" tampil memblokir. Tombolnya berbunyi "1 hal belum beres — bereskan dulu", dan mengetuknya tidak memajukan langkah dan tidak menulis apa pun. Lalu alasan diketik untuk tiap tanggal dan **Simpan putusan** diketuk: tepat satu dokumen `aturanToko/putusanHari` (isinya dicek di server), g1 beres, periksa lolos, lalu diam tanpa tulisan. |
 | `ritual` | 1 Jan 2027 15.30 | SUNGGUHAN, putusan per tanggal, sampai paraf, lalu kunci. Server menolak kiriman saldo pembuka ke-2, lalu kartu **lanjutkan / batalkan** muncul. BATALKAN sebelum penanda. Mulai lagi, lalu arsip ditolak server dan kartu **lanjutkan / batalkan** muncul lagi. LANJUTKAN sampai arsip habis. BATALKAN sesudah penanda. Mulai lagi sampai **selesai**, lalu diam. |
+| `pintu` | 5 Jan 2027 15.30 | **Rules v7, semua bulan 2026 terkunci.** SUNGGUHAN, putusan per tanggal, sampai paraf, lalu kunci penuh **lewat pintu tutup buku**: berita acara "berjalan" sendirian dulu, kiriman berikutnya membuka pintu, saldo pembuka & titik kas 31 Des lewat pintu, arsip memindah catatan bulan terkunci. BATALKAN sesudah penanda (pengembalian arsip & penarikan saldo pembuka lewat pintu, pintu ditutup). Mulai lagi, kunci penuh lagi, lalu **selesai menutup pintu**, lalu diam. Sesudah halaman ditutup, lewat REST dengan token owner contoh: pintu yang dibuat **kedaluwarsa** → mengembalikan catatan dari arsip dan menghapus catatan bulan terkunci yang salinannya ada **ditolak server**; pintu yang sama dengan `sampai` besok → diterima (kontrol: sebabnya memang jam pintu). |
 
 Klaim ritual diperiksa **di server** lewat REST emulator, bukan dari cache halaman yang bisa berisi tulisan tertunda. Pemeriksanya menunggu berita
 acara 2026 di server berstatus yang diharapkan, lalu menilai:
@@ -60,6 +72,10 @@ acara 2026 di server berstatus yang diharapkan, lalu menilai:
   SELESAI berita acara "selesai";
 - **sesudah BATALKAN sesudah penanda**: isi 21 koleksi 2026 sama dengan sebelum ritual, `arsipTahun` kosong, saldo pembuka habis, uang di titik
   kas kembali seperti sebelum ritual, penanda `tutupBuku` dinetralkan (tahun 0, dibatalkan 2026). Di halaman, era kembali kosong.
+- **skenario `pintu`**, tambahan di tiap titik: dokumen `pengaturan/pintuBuku` di server **terbuka** untuk 2026 dan `sampai`-nya ≤ 72 jam dari jam
+  server (sesudah kunci) atau **tertutup** (sesudah BATALKAN dan SELESAI); `arsipTahun` = **isi** tiap catatan 2026 yang asli, bukan hanya id-nya
+  (sesudah kunci & selesai); pindahan uang bulan terkunci (tidak diarsip) sama persis dengan sebelum ritual; titik kas di server bertanggal 31 Des 2026
+  sesudah kunci & selesai, dan sesudah BATALKAN kembali ke titik kas sebelum ritual (30 Des — lewat cabang `titikSebelum`, bukan "31 Des").
 
 Untuk memotong ritual di tengah, aturan emulator diganti sementara dengan salinan `firestore.rules` yang izin create/update satu bloknya dicabut.
 Setelah itu teks repo dipasang lagi. Berkas `firestore.rules` sendiri tidak diubah.
@@ -68,7 +84,9 @@ Setelah itu teks repo dipasang lagi. Berkas `firestore.rules` sendiri tidak diub
 kalau skenarionya jalan sampai akhir, cek sasaran gagal bukan karena langkahnya tidak tercapai, cek lain tidak ikut gagal (kecuali yang memang
 terkena), dan bukti kerusakannya terlihat di langkah yang benar. Kontrol yang skenarionya jatuh dihitung DIAM, bukan berbunyi. Run 7 Okt
 membuktikan perlunya aturan ini: kontrol "satu koleksi tidak dimuat" yang lama ternyata membuat layar Uang tidak tampil, tetapi dulu tetap
-dihitung berbunyi. Ada lima kontrol:
+dihitung berbunyi. Cek "tidak ada galat izin / penolakan server di halaman" membaca konsol, kabar halaman, galat status Firebase, dan daftar
+"ditolak" antrean lokal per langkah (sanggahan 7 Okt: penolakan tulis yang ditangani aplikasi tidak sampai ke konsol, jadi dulu ✓ walau server
+menolak); di skenario ritual langkah "… ditolak server" (penolakan sengaja) dikecualikan. Ada enam kontrol:
 
 - latihan yang menulis di langkah 4;
 - latihan yang menulis 5,5 detik sesudah langkah terakhir (hanya langkah diam yang melihatnya);
@@ -77,6 +95,9 @@ dihitung berbunyi. Ada lima kontrol:
   LATIHAN menolak "12 baris tidak sama");
 - pemulihan arsip yang melewatkan satu dokumen (skenario `ritualPendek`: kunci penuh lalu BATALKAN sesudah penanda). Ini wajib ketahuan dari isi
   server.
+- selesai yang **tidak menutup pintu** tutup buku (skenario `pintuPendek`, data terkunci: kunci penuh lalu selesai). Rules v7 (`acaraTutupPintu`)
+  wajib menolak berita acara "selesai" di SERVER: berita acara tetap "terkunci" dan pintu tetap "berjalan". Kontrol ini juga pembukti cek izin
+  halaman: cek itu WAJIB ikut gagal, dengan sebab di langkah SELESAI.
 
 ## Laporan
 
@@ -106,20 +127,36 @@ di skala toko (±90% dan ±85%). Pembatalan sesudah arsip penuh menambah kira-ki
 sesudah penanda, pembatalannya baru bisa tuntas sesudah kuota reset berikutnya (15.00 WIB), dan toko jangan berjualan sampai tuntas. Kartu
 **Perkiraan kuota Firestore** di halaman menyebut hal yang sama.
 
-Keterbatasan:
+**Tahun yang SEMUA bulannya terkunci (skenario `pintu`, rules v7) tidak muat satu hari meski tanpa pembatalan.** Catatan bulan terkunci dipindah 3 per
+kiriman (5 pemeriksaan server per catatan), ditambah satu baris jejak per kiriman. Run 7 Okt (37568246193) diproyeksikan ke skala toko: ritual bersih
+±23,5 rb tulis (117%), ±17 rb hapus (85%); kartu perkiraan kuota di halaman menghitung angka yang sama (1.844 tulis di skala gladi, terukur 1.854).
+Ritual 2026 (tanpa bulan terkunci) ±18,9 rb tulis (94%). Tutup buku 2027 di Januari 2028 karena itu akan berhenti di kuota hari itu dan diteruskan
+dengan **Lanjutkan** sesudah reset 15.00 WIB — jangan berjualan sampai tuntas.
 
-- **Jam server emulator adalah jam runner, bukan jam halaman.** Pemeriksaan kunci periode di aturan (`get()` bulan lampau) karena itu dinilai
-  dengan bulan runner. Pada gladi hanya dokumen Agu–Sep yang memicu `get()` itu; pada 1 Jan yang memicunya Agu–Nov.
-- **Data contoh tanpa bulan terkunci** (`aturanToko/kunciPeriode`). Gerbang "tahun punya bulan terkunci" dan jalur aturan bulan terkunci belum
-  digladikan.
+**Jam server = jam halaman** (sejak rules v7). Rules v7 menilai berita acara baru (jam mulai = tanggal server ± 1 hari, tahun lampau), pintu
+tutup buku (hanya tahun lalu, ≤ 72 jam dari jam server), dan kunci periode dengan **jam server**. Halaman gladi berjam palsu (31 Des 2026 / 1 Jan /
+5 Jan 2027), sedangkan runner berjam Okt 2026: tanpa penyesuaian, rules v7 menolak ritual karena jamnya, bukan karena ritualnya. Karena itu
+workflow menggeser **jam dinding JVM emulator saja** lewat `alat-uji/jam_geser.c` (pustaka kecil yang dikompilasi di runner): pembungkus `java`
+di depan `PATH` memasang `LD_PRELOAD` bila `GLADI_GESER_JAM` diisi (detik, dari `gladi_tutup_buku.py --geser-jam <skenario>`). Hanya
+`CLOCK_REALTIME`, `gettimeofday`, dan `time` yang digeser; jam monoton dan jam CPU diteruskan apa adanya. Chrome, node, dan alat gladi tetap
+berjam runner. Jamnya
+**diukur, bukan dipercaya**: sebelum skenario panjang ada uji cepat (`--cek-jam`), dan cek pertama tiap skenario menulis satu dokumen sementara
+bercap `REQUEST_TIME`, membacanya, lalu menghapusnya sebelum langkah pertama diukur — selisih jam server dengan jam halaman wajib ≤ 15 menit
+(biasanya ± 1 menit: emulator menyala sebelum halaman dimuat). Uji cepat juga membandingkan **kecepatan** emulator berjam palsu dengan emulator
+biasa (150 commit + 1 query, wajib ≤ 3×): run 7 Okt dengan libfaketime (`libfaketimeMT` maupun `libfaketime.so.1`) membuat emulator ±9,5× lebih
+lambat (150 commit: 2,05 → 19,4 detik) dan LANJUTKAN arsip tidak selesai dalam 47 menit — karena itu pemalsu jamnya dibuat sendiri. Tiap langkah kini juga mencatat waktu potret isi server (`ukur … dtk`).
+
+Keterbatasan:
 - **Antrean WebChannel emulator dibatasi 10.000 pesan per kanal.** Run 7 Okt memakai data 17 rb dokumen. Hasilnya: "too many pending messagings in
   the back channel (10001)", kanal Listen diputus berulang, dan halaman tidak pernah menerima data. `--help` emulator tidak punya setelan untuk
   batas ini, dan server sungguhan tidak punya batas itu. Karena itu data gladi dibuat ±9 rb dokumen (`GLADI_SKALA` 0,65, bisa diubah dari input
   workflow). Ringkasan menambahkan baris *perkiraan skala toko*: hasil gladi × (17.000 ÷ dokumen arsip gladi).
 - **Muat penuh kadang macet di emulator.** Pada run 7 Okt ini terjadi 2 kali dari ±32 skenario: sebagian besar pendengar tidak pernah menerima
   data (misalnya 22 dari 56 koleksi siap dan 33 dokumen sampai), padahal antrean emulator tidak penuh dan tidak ada galat izin. Sebabnya belum
-  diketahui. Skenario yang berhenti **di muat penuh**, sebelum langkah tutup buku mana pun, dicoba ulang **satu kali** dengan emulator yang diisi
-  ulang dan Chrome baru. Percobaan ulang itu **selalu tercatat**: ada baris `DICOBA ULANG` dan peringatan di halaman ringkasan run (lewat
+  diketahui. Skenario (atau kontrol) yang berhenti **di muat penuh**, sebelum langkah tutup buku mana pun, dicoba ulang **satu kali** di
+  **emulator BARU** dengan Chrome baru: alatnya menyimpan catatan percobaan 1 dan keluar 75, workflow menjalankan `firebase emulators:exec` lagi
+  dengan `--ulang-dari` (sanggahan 7 Okt: dulu percobaan kedua memakai emulator yang sama, sesi WebChannel percobaan pertama masih membanjirinya —
+  "antrean penuh 7×" sebelum masuk — dan cek "tidak kewalahan saat muat" gagal karena caranya sendiri). Percobaan ulang itu **selalu tercatat**: ada baris `DICOBA ULANG` dan peringatan di halaman ringkasan run (lewat
   `alat-uji/coba_ulang.py`, keputusan owner 26 Sep), dan tanda ⚠ di ringkasan gladi. Galat di langkah lain tidak pernah dicoba ulang. Kalau
   peringatan ini sering muncul, itu masalah sungguhan yang perlu diselidiki: bahannya ada di log emulator per skenario dan per kontrol (artefak)
   dan di ekor catatan Chrome. Pelanggaran CSP salinan juga dicatat sejak awal halaman; sambungan yang ditolak `connect-src` menggagalkan cek.
@@ -135,7 +172,9 @@ Gladi sudah disesuaikan dengan Paket A (#110): gerbang g1 dibuka lewat putusan p
 `--periksa`), dan ketiga skenario memakai data `macet`. Paket B (#114) juga sudah: kunci latihan menyusun potret, potret 2026 dicek di berita acara
 server, dan `--periksa` mengukur besar dokumen berita acara "berjalan" (satu dokumen Firestore, batas 1 MiB; data contoh ±134 KB).
 
-Belum digladikan: **tutup buku 2027 dengan bulan terkunci** dan **rules v7**. Keduanya ditambahkan sesudah PR rules v7 masuk.
+Rules v7 dan tahun yang bulannya terkunci digladikan di PR #111 (skenario `pintu`, data `terkunci`). Tahun yang ditutup di gladi adalah **2026
+pada 5 Jan 2027** (data contoh 2026, kunci sampai Desember 2026, jam server digeser ke 5 Jan 2027) — mekanismenya sama dengan tutup buku 2027 pada
+Januari 2028; skenario 2028 dengan data 2027 di kotak pasir ada di `alat-uji/uji_tutup_buku_2027.py`.
 
 Kalau gerbang atau langkah tutup buku berubah lagi, yang perlu disesuaikan ada di `alat-uji/gladi_tutup_buku.py`:
 

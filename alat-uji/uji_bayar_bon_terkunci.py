@@ -35,12 +35,16 @@ TEKS_WAJIB = {
     'upBaru': "function upBaru() { return bolehBulan(bulanUP(request.resource.data)); }",
     'upUbah': "function upUbah() { return tulisUlangSama() || bolehBulan(lebihTua(bulanUP(request.resource.data), bulanUP(resource.data))); }",
 }
+# v7 (owner 7 Okt): suku PINTU TUTUP BUKU di tiap create — hanya owner, hanya catatan bulan terkunci tahun pintu (saldo pembuka / pengembalian arsip);
+# pembayaran bertanggal HARI INI lolos lewat suku pertamanya seperti dulu. Pintu dimodelkan periksa_rules.py (penafsir) & uji_tutup_buku_2027.py.
+# v7: kasir@ tidak lagi menulis piutangMutasi (kasir.html pensiun) — sukunya tinggal owner.
+PINTU = "(owner() && pintuTulis('%s', id, bulanDok(request.resource.data, 'tanggal')))"
 BLOK_WAJIB = {  # koleksi → baris create (dan update bila dinilai) yang dimodelkan
-    'utangPemasokMutasi': ["allow create: if owner() && upBaru();", "allow update: if owner() && upUbah();"],
-    'piutangMutasi': ["allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (stafBuatTipe(['ben', 'karyawan'], 'bayar') && tglStaf('tanggal'));"],
-    'kasbonMutasi': ["allow create: if owner() && tglBaru('tanggal');"],
-    'utangOwnerMutasi': ["allow create: if owner() && tglBaru('tanggal');"],
-    'pengeluaranHarian': ["allow create: if owner() && tglBaru('tanggal');"],
+    'utangPemasokMutasi': ["allow create: if (owner() && upBaru()) || (owner() && pintuTulis('utangPemasokMutasi', id, bulanUP(request.resource.data)));", "allow update: if owner() && upUbah();"],
+    'piutangMutasi': ["allow create: if (owner() && tglBaru('tanggal')) || " + PINTU % 'piutangMutasi' + " || (stafBuatTipe(['ben', 'karyawan'], 'bayar') && tglStaf('tanggal'));"],
+    'kasbonMutasi': ["allow create: if (owner() && tglBaru('tanggal')) || " + PINTU % 'kasbonMutasi' + ";"],
+    'utangOwnerMutasi': ["allow create: if (owner() && tglBaru('tanggal')) || " + PINTU % 'utangOwnerMutasi' + ";"],
+    'pengeluaranHarian': ["allow create: if (owner() && tglBaru('tanggal')) || " + PINTU % 'pengeluaranHarian' + ";"],
 }
 
 
@@ -170,8 +174,8 @@ if __name__ == '__main__':
         rusak = [
             ('rules: bon pemasok selalu dinilai dari bonTanggal (bayar bon lama ikut ditolak)', 'r', "function bulanUP(d) { return d.get('tipe', '') == 'saldoAwal' ? bulanNilai(d.get('bonTanggal', null)) : bulanDok(d, 'tanggal'); }",
              "function bulanUP(d) { return bulanNilai(d.get('bonTanggal', d.get('tanggal', null))); }"),
-            ('rules: create bon pemasok dinilai seperti update (bulan tertua)', 'r', "allow create: if owner() && upBaru();", "allow create: if owner() && upUbah();"),
-            ('rules: pembayaran pelanggan kasir@ lepas dari kunci', 'r', "allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (stafBuatTipe(['ben', 'karyawan'], 'bayar')", "allow create: if (owner() && tglBaru('tanggal')) || kasir() || (stafBuatTipe(['ben', 'karyawan'], 'bayar')"),
+            ('rules: create bon pemasok dinilai seperti update (bulan tertua)', 'r', "allow create: if (owner() && upBaru()) ||", "allow create: if (owner() && upUbah()) ||"),
+            ('rules: pembayaran pelanggan kasir@ lepas dari kunci', 'r', "allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('piutangMutasi',", "allow create: if (owner() && tglBaru('tanggal')) || kasir() || (owner() && pintuTulis('piutangMutasi',"),
             ('sistem baru: bayar bon ditulis bertanggal bon', 'j', "const bayar = { id, tanggal: w.tanggal, jam: w.jam, tipe: 'bayar',", "const bayar = { id, tanggal: H.bon.tanggal || w.tanggal, jam: w.jam, tipe: 'bayar',"),
             ('sistem baru: penjaga menilai bonTanggal untuk semua tipe', 'j', "if (koleksi === 'utangPemasokMutasi' && d.tipe === 'saldoAwal') return kpIdx(d.bonTanggal || null);", "if (koleksi === 'utangPemasokMutasi' && d.bonTanggal) return kpIdx(d.bonTanggal || null);"),
             ('sistem baru: pembayaran pelanggan bertanggal nota lama', 'j', "const data = { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: w.tanggal,", "const data = { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: '2026-08-12',"),

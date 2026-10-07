@@ -14,10 +14,16 @@ VARIAN
           gerbang g1 tutup buku SUNGGUHAN wajib memblokir dan susunKunci wajib MENOLAK; sesudah putusan per tanggal "tidak ditutup — diterima apa
           adanya" (Paket A, susunPutusanHari logika /baru/) semua gerbang beres dan ritual SUNGGUHAN bisa jalan sampai kunci. Gladi ritual memakai varian ini.
   bersih  semua hari berjualan ditutup: semua gerbang beres tanpa putusan, ritual SUNGGUHAN bisa jalan sampai kunci.
+  terkunci (rules v7, pintu tutup buku) = macet + SEMUA bulan 2026 DIKUNCI (aturanToko/kunciPeriode sampai 2026-12, kunci Desember sah sejak 4 Jan) + dua
+          pindahan uang bertanggal bulan terkunci (koleksi yang TIDAK diarsip — wajib tetap utuh selama pintu terbuka). Dinilai di JAM_PINTU (5 Jan 2027
+          15.30 WIB): tahun 2026 boleh ditutup sungguhan LEWAT PINTU; sesudah putusan, susunKunci = kiriman 1 berita acara 'berjalan' SENDIRIAN, kiriman 2
+          membuka pintu (tahun 2026, ≤ 72 jam), titik kas 31 Des lewat pintu, tiap kiriman ≤ 18 pemeriksaan. Titik kas SEBELUM ritual = hitungan tutup hari
+          TERAKHIR sebelum 31 Des (bulan terkunci, BUKAN 31 Des): BATALKAN mengembalikannya lewat cabang titikSebelum rules v7 (pintuTitik), bukan cabang
+          "31 Des" (sanggahan 7 Okt: dulu titik kas contoh kebetulan 31 Des, cabang titikSebelum tidak pernah tertempuh di gladi).
 Dua-duanya: tidak ada stok / kemasan / kantong minus, tidak ada kelebihan bayar, tidak ada karcis yang belum dirinci, ±9 rb dokumen (--skala / GLADI_SKALA,
 bawaan 0,65 — batas antrean pesan emulator, lihat SKALA_BAWAAN).
 
-    python3 alat-uji/gladi_data_contoh.py --keluar data.json [--varian macet|bersih] [--benih N] [--skala 1.0]
+    python3 alat-uji/gladi_data_contoh.py --keluar data.json [--varian macet|bersih|terkunci] [--benih N] [--skala 1.0]
     python3 alat-uji/gladi_data_contoh.py --periksa   → kedua varian dinilai LOGIKA /baru/ ASLI (jsc, atau node di runner Linux):
           31 Des LATIHAN: 12 baris sebelum = sesudah ("sama persis"), gerbang sesuai varian; 1 Jan SUNGGUHAN boleh; macet: susunKunci DITOLAK
           karena g1, lalu putusan per tanggal → susunKunci jadi beberapa kiriman ≤ 18 pemeriksaan; bersih: langsung jadi; stok/kemasan/kantong ≥ 0;
@@ -34,6 +40,9 @@ MULAI, AKHIR = datetime.date(2026, 8, 8), datetime.date(2026, 12, 31)
 WIB = datetime.timezone(datetime.timedelta(hours=7))
 # jam halaman untuk LATIHAN (31 Des sesudah tutup hari terakhir) & SUNGGUHAN (1 Jan sesudah reset kuota 15.00 WIB) — sama dengan pelari gladi
 JAM_LATIHAN, JAM_SUNGGUHAN = '2026-12-31T21:45:00+07:00', '2027-01-01T15:30:00+07:00'
+# varian terkunci (rules v7): semua bulan 2026 dikunci — Desember paling cepat dikunci 4 Jan (tenggang minimal 3 hari, rules tenggangMin), jadi gladi pintu
+# berjalan 5 Jan 2027 sesudah reset kuota. Jam server emulator digeser ke jam yang sama (gladi_tutup_buku.py --geser-jam, alat-uji/jam_geser.c).
+JAM_PINTU, KUNCI_PINTU = '2027-01-05T15:30:00+07:00', '2026-12'
 PERANGKAT_GLADI = 'p-gladi-runner'
 # rentang "skala toko" (proyeksi akhir Des ±16,5–18 rb dokumen arsip; tugas gladi: ±8–20 rb)
 RENTANG_DOK = (8000, 20000)
@@ -41,6 +50,11 @@ RENTANG_DOK = (8000, 20000)
 # "too many pending messagings in the back channel (10001)", pendengar tidak pernah menerima data, kanal diputus berulang). Server sungguhan tidak punya
 # batas itu. Angka baca/tulis/hapus hari ritual skala toko (±16,5–18 rb) = hasil gladi × (dokumen toko ÷ dokumen gladi) — laporan gladi menghitungnya.
 SKALA_BAWAAN = float(os.environ.get('GLADI_SKALA') or 0.65)
+# varian terkunci (skenario pintu): yang diuji MEKANISME pintu, bukan skala — tiap catatan bulan terkunci butuh 5 pemeriksaan (arsip 3 catatan per kiriman,
+# bukan 9), jadi skala toko berarti ±3 rb kiriman per arsip, ×3 (arsip, batal, arsip lagi). Skala 0,05 (±1,7 rb dokumen, arsip ±1,3 rb, 23 hari macet tetap)
+# = ±450 kiriman per jalan; angka kuota skala toko tetap diproyeksikan (× dokumen toko ÷ dokumen gladi). GLADI_SKALA_PINTU mengubahnya.
+SKALA_TERKUNCI = float(os.environ.get('GLADI_SKALA_PINTU') or 0.05)
+RENTANG_DOK_TERKUNCI = (1000, 20000)
 # hari tanpa tutup hari varian macet: (bulan, jumlah) — pola keadaan toko 6 Okt 2026 (Agu 5 · Sep 15 · Okt 3)
 POLA_MACET = [(8, 5), (9, 15), (10, 3)]
 
@@ -68,7 +82,8 @@ def iso(d): return d.isoformat()
 
 class Pembangkit:
     def __init__(self, benih=BENIH, varian='macet', skala=None):
-        self.r = random.Random(benih); self.varian = varian; self.skala = float(SKALA_BAWAAN if skala is None else skala)
+        self.r = random.Random(benih); self.varian = varian
+        self.skala = float((SKALA_TERKUNCI if varian == 'terkunci' else SKALA_BAWAAN) if skala is None else skala)
         self.ids = set(); self.D = {}
         self.stok = {m: 0.0 for m, _, _ in MEREK}; self.nilai = {m: 0.0 for m, _, _ in MEREK}   # kg & nilai (rata-rata tertimbang, seperti mesin)
         self.hpp_dasar = {m: h for m, h, _ in MEREK}
@@ -309,7 +324,7 @@ class Pembangkit:
         return titik
 
     def pilih_hari_macet(self, hari_jual):
-        if self.varian != 'macet': return set()
+        if self.varian not in ('macet', 'terkunci'): return set()   # terkunci = data macet yang sama (benih & urutan acak sama)
         out = set()
         for bln, n in POLA_MACET:
             calon = [d for d in hari_jual if d.month == bln and d != AKHIR]
@@ -321,7 +336,7 @@ class Pembangkit:
         # bon pemasok sebelum sistem (saldoAwal, bonTanggal = tanggal bonnya) + sebagian dibayar
         self.tambah('utangPemasokMutasi', {'id': self.id(MULAI, '08:00'), 'tanggal': iso(MULAI), 'jam': '08:00', 'tipe': 'saldoAwal', 'pemasok': PEMASOK[0], 'nominal': 6400000,
                                            'bonTanggal': '2026-07-31', 'catatan': 'Bon sebelum sistem (contoh)'})
-        macet = self.pilih_hari_macet(hari); titik_akhir = None
+        macet = self.pilih_hari_macet(hari); titik_akhir = None; titik_sebelum = None
         for tgl in hari:
             jual = self.hari(tgl)
             if tgl == datetime.date(2026, 9, 3):
@@ -329,13 +344,28 @@ class Pembangkit:
                                                                   'bonId': str(self.D['utangPemasokMutasi'][0]['id']), 'bonTanggal': '2026-07-31', 'dari': 'laci', 'catatan': 'Cicil bon lama (contoh)'})
             if jual and tgl in macet: self.hari_tanpa_tutup.append(iso(tgl)); continue
             titik_akhir = self.tutup_hari(tgl, jual)
-        self.lain_lain(titik_akhir)
+            if tgl < AKHIR: titik_sebelum = (tgl, titik_akhir)
+        # varian terkunci: titik kas = tutup hari TERAKHIR sebelum 31 Des (bulan terkunci) → BATALKAN lewat pintu memakai cabang titikSebelum rules v7.
+        # Acak yang terpakai sama (hanya titik mana yang dicatat) → isi lain tetap sama persis dengan varian macet.
+        if self.varian == 'terkunci': self.lain_lain(titik_sebelum[1], titik_sebelum[0])
+        else: self.lain_lain(titik_akhir)
+        if self.varian == 'terkunci': self.kunci_semua()
         return self.cadangan()
 
-    def lain_lain(self, titik):
+    def kunci_semua(self):
+        """varian terkunci: kunci periode sampai Desember 2026 (dikunci owner contoh 4 Jan 2027, sah: lewat tenggang) + dua pindahan uang laci ↔ brankas
+        bertanggal bulan terkunci (saling meniadakan; pindahUang TIDAK diarsip tutup buku dan TIDAK berpintu — wajib utuh selama ritual). Dibuat PALING AKHIR:
+        isi lain sama persis dengan varian macet."""
+        self.tambah('aturanToko', {'id': 'kunciPeriode', 'sampaiBulan': KUNCI_PINTU, 'riwayat': [{'aksi': 'kunci', 'bulan': KUNCI_PINTU, 'pada': '2027-01-04T03:00:00.000Z',
+                                                                                                    'olehUid': 'uid-owner-contoh', 'oleh': 'Owner'}]})
+        for tgl, dari, ke in ((datetime.date(2026, 10, 15), 'laci', 'brankas'), (datetime.date(2026, 11, 20), 'brankas', 'laci')):
+            self.tambah('pindahUang', {'id': self.id(tgl, '21:30'), 'tanggal': iso(tgl), 'jam': '21:30', 'dari': dari, 'ke': ke, 'nominal': 100000,
+                                       'alasan': 'pindahan contoh (tidak diarsip)', 'biayaAdmin': 0, 'adminNama': ''})
+
+    def lain_lain(self, titik, tgl_titik=AKHIR):
         D = self.D; r = self.r
-        # titik kas = hitungan tutup hari 31 Des (patokan uang per tempat untuk 31 Des)
-        D.setdefault('pengaturan', []).append(dict({'id': 'titikKas', 'tanggal': iso(AKHIR), 'diubahPada': '2026-12-31T14:40:00.000Z'}, **titik))
+        # titik kas = hitungan tutup hari 31 Des (patokan uang per tempat untuk 31 Des); varian terkunci: tutup hari terakhir sebelum 31 Des
+        D.setdefault('pengaturan', []).append(dict({'id': 'titikKas', 'tanggal': iso(tgl_titik), 'diubahPada': iso(tgl_titik) + 'T14:40:00.000Z'}, **titik))
         D.setdefault('aturanToko', []).extend([
             {'id': 'tutupBuku', 'tanggal': '2026-12-01', 'jam': '10:00', 'saksi': SAKSI},
             {'id': 'upah', 'tanggal': '2026-08-08', 'jam': '08:00', 'tarif': 60000, 'orang': [{'nama': k, 'status': 'aktif', 'masuk': '2026-08-08'} for k in KARYAWAN]}])
@@ -370,6 +400,7 @@ class Pembangkit:
         n = sum(len(v) for v in self.D.values())
         out['gladi'] = {'varian': self.varian, 'benih': BENIH, 'skala': self.skala, 'dokumen': n, 'hariTanpaTutup': sorted(self.hari_tanpa_tutup),
                         'perKoleksi': {k: len(v) for k, v in sorted(self.D.items())}, 'saksi': SAKSI, 'jamLatihan': JAM_LATIHAN, 'jamSungguhan': JAM_SUNGGUHAN}
+        if self.varian == 'terkunci': out['gladi'].update(jamPintu=JAM_PINTU, kunci=KUNCI_PINTU)
         return out
 
 
@@ -431,6 +462,84 @@ print(JSON.stringify(out));
 """
 
 
+SKENARIO_PERIKSA_PINTU = r"""
+var out = { koleksi: {} };
+KOLEKSI.forEach(function (k) { pasok(k.nama, DATA[k.nama] || []); });
+Object.keys(DATA).forEach(function (n) { if (Array.isArray(DATA[n])) out.koleksi[n] = DATA[n].length; });
+var L = { antre: [], menunggu: 0, offline: false, idPerangkat: PERANGKAT };
+(function () {   // lingkup sendiri: nama pendek di bawah tidak bertabrakan dengan nama di bundel
+__KINI = new Date(JAM_PINTU).getTime(); var kini = new Date(__KINI);
+var T = tahunBuku(kini);
+out.tahunBuku = { tahun: T.tahun, bolehSungguhan: T.bolehSungguhan, perluPintu: !!T.perluPintu, adaKunci: !!T.adaKunci, teks: T.teks };
+var G = gerbangBuku(2026, kini, L, {});
+out.gerbang = G.daftar.filter(function (g) { return !g.ok; }).map(function (g) { return g.id + ' ' + g.ket; }); out.belumPutus = G.belumPutus.length;
+var n0 = 60000; var W = { tanggal: kpWib(kini).iso, jam: '15:30', kini: kini.toISOString(), idUnik: function () { n0 += 1; return n0; } };
+var isiP = {}; G.belumPutus.forEach(function (t) { isiP[t] = ALASAN_PUTUS; });
+var RP = susunPutusanHari(isiP, W);
+if (RP.tolak) out.putusan = { tolak: RP.tolak };
+else { pasok('aturanToko', (DATA.aturanToko || []).concat(RP.dokumen.map(function (x) { return x.data; }))); out.putusan = { n: Object.keys(RP.dokumen[0].data.hari).length }; }
+var G2 = gerbangBuku(2026, kini, L, {}); out.gerbang2 = G2.daftar.filter(function (g) { return !g.ok; }).map(function (g) { return g.id + ' ' + g.ket; });
+var SB = barisTahun(2026); var P = pembukaBuku(2026, { idUnik: function () { return 0; } }); var B = bandingBuku(SB, sesudahDariPembuka(P, SB));
+out.semuaSama = B.semuaSama; out.ringkas = B.ringkas; out.nArsip = arsipBuku(2026).n; out.nPembuka = P.dokumen.length;
+var R = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: SAKSI[0], langkah: {} }, W, { idPerangkat: PERANGKAT, namaPerangkat: 'Runner gladi' });
+if (R.tolak) out.kunci = { tolak: R.tolak };
+else {
+  var K = R.kiriman; var iP = -1, pintu = null, titik = null;
+  K.forEach(function (k, i) { k.dokumen.forEach(function (x) { if (x.koleksi === 'pengaturan' && x.data.id === 'pintuBuku' && iP < 0) { iP = i; pintu = x.data; }
+    if (x.koleksi === 'pengaturan' && x.data.id === 'titikKas') titik = x.data.tanggal; }); });
+  out.kunci = { kiriman: K.length, get: K.map(function (k) { return k.get; }), arsip: R.arsip.length,
+    pertamaAcaraSaja: K[0].dokumen.length === 1 && K[0].dokumen[0].koleksi === 'tutupBukuAcara' && K[0].dokumen[0].data.status === 'berjalan',
+    acaraTitikSebelum: ((K[0].dokumen[0].data || {}).titikSebelum || {}).tanggal || null, acaraTitikDitulis: !!(K[0].dokumen[0].data || {}).titikDitulis,
+    pintuKe: iP, pintu: pintu ? { tahun: pintu.tahun, status: pintu.status, jam: Math.round((new Date(pintu.sampai).getTime() - __KINI) / 3600000) } : null, titik31: titik };
+}
+})();
+out.minus = minus();
+print(JSON.stringify(out));
+"""
+
+
+def nilai_pintu(data, bun=None):
+    """varian terkunci di JAM_PINTU — logika /baru/ asli (jsc / node)."""
+    i = SKENARIO_PERIKSA.index('function minus()'); j = SKENARIO_PERIKSA.index('function nilai(')
+    js = ("var __KINI = new Date('" + JAM_PINTU + "').getTime(); Date.now = function () { return __KINI; };\n" + (bun or bundel_periksa())
+          + '\nvar DATA = ' + json.dumps({k: v for k, v in data.items() if isinstance(v, list)}) + ';\nvar JAM_PINTU = ' + json.dumps(JAM_PINTU)
+          + ', PERANGKAT = ' + json.dumps(PERANGKAT_GLADI) + ', SAKSI = ' + json.dumps(SAKSI) + ', ALASAN_PUTUS = ' + json.dumps(ALASAN_PUTUS) + ';\n'
+          + SKENARIO_PERIKSA[i:j] + SKENARIO_PERIKSA_PINTU)
+    return jalan_js(js)
+
+
+def periksa_terkunci(data, bun=None):
+    """varian terkunci → (hasil, [cacat]): tahun 2026 ditutup sungguhan LEWAT PINTU di JAM_PINTU — kiriman 1 berita acara sendirian, kiriman 2 pintu."""
+    h, e = nilai_pintu(data, bun)
+    if h is None: return None, [JATUH + ' saat menilai data contoh terkunci: ' + e]
+    c = []; meta = data.get('gladi', {}); T = h['tahunBuku']; K = h.get('kunci') or {}
+    n = sum(v for v in h['koleksi'].values()); n_macet = len(meta.get('hariTanpaTutup', []))
+    if not (RENTANG_DOK_TERKUNCI[0] <= n <= RENTANG_DOK_TERKUNCI[1]): c.append('jumlah dokumen %d di luar rentang data terkunci %s' % (n, RENTANG_DOK_TERKUNCI))
+    if h['minus']: c.append('stok minus: ' + ', '.join(h['minus'][:4]))
+    if not (T['tahun'] == 2026 and T['bolehSungguhan'] and T['perluPintu'] and T['adaKunci']): c.append('5 Jan: tahun 2026 harus boleh ditutup sungguhan LEWAT PINTU (ada bulan terkunci): %s' % T)
+    if [g.split(' ')[0] for g in h['gerbang']] != ['g1']: c.append('5 Jan sebelum putusan: gerbang yang belum beres harus hanya g1: %s' % h['gerbang'])
+    if (h.get('putusan') or {}).get('n') != n_macet: c.append('putusan per tanggal untuk %d hari tidak jadi: %s' % (n_macet, h.get('putusan')))
+    if h['gerbang2']: c.append('5 Jan sesudah putusan: masih ada gerbang yang belum beres: %s' % h['gerbang2'])
+    if not h['semuaSama']: c.append('12 baris sebelum ≠ sesudah — ' + str(h['ringkas']))
+    if K.get('tolak'): c.append('susunKunci 5 Jan ditolak: ' + K['tolak'])
+    else:
+        if not K.get('pertamaAcaraSaja'): c.append('kiriman 1 harus berita acara "berjalan" SENDIRIAN (server membaca berita acara SEBELUM kiriman yang membuka pintu): %s' % K)
+        if K.get('pintuKe') != 1 or not K.get('pintu') or K['pintu']['tahun'] != 2026 or K['pintu']['status'] != 'berjalan' or not 0 < K['pintu']['jam'] <= 72:
+            c.append('kiriman 2 harus membuka pintu tahun 2026 (berjalan, ≤ 72 jam): %s' % K)
+        if any(g > 18 for g in K.get('get') or []): c.append('kiriman > 18 pemeriksaan: %s' % K.get('get'))
+        if K.get('titik31') != '2026-12-31': c.append('titik kas 31 Des 2026 harus ikut kiriman (lewat pintu): %s' % K.get('titik31'))
+        # BATALKAN mengembalikan titikSebelum berita acara (tutup-buku-logika.js) — harus BUKAN 31 Des supaya gladi menempuh cabang titikSebelum rules v7
+        tk = next((x for x in data.get('pengaturan', []) if x['id'] == 'titikKas'), {})
+        if not (tk.get('tanggal', '')[:7] <= meta.get('kunci', '') and tk.get('tanggal') != '2026-12-31' and K.get('acaraTitikSebelum') == tk.get('tanggal') and K.get('acaraTitikDitulis')):
+            c.append('titik kas sebelum ritual harus bertanggal bulan terkunci BUKAN 31 Des, tercatat sebagai titikSebelum berita acara (titik 31 Des ditulis) — BATALKAN '
+                     'lewat cabang titikSebelum: titik kas %s · berita acara titikSebelum %s · titikDitulis %s' % (tk.get('tanggal'), K.get('acaraTitikSebelum'), K.get('acaraTitikDitulis')))
+        if K.get('arsip') != h['nArsip']: c.append('arsip susunKunci %s ≠ arsip langkah 3 %s' % (K.get('arsip'), h['nArsip']))
+    pu = [x for x in data.get('pindahUang', []) if x['tanggal'][:7] <= meta.get('kunci', '')]
+    if len(pu) != 2: c.append('varian terkunci harus memuat 2 pindahan uang bertanggal bulan terkunci (tidak diarsip): %d' % len(pu))
+    h['latihan'] = {'nArsip': h['nArsip'], 'nPembuka': h['nPembuka']}   # bentuk ringkas()/laporan gladi (nArsip per varian)
+    return h, c
+
+
 def _modul():
     import uji_tutup_buku_bertahap
     return uji_tutup_buku_bertahap.MODUL
@@ -469,6 +578,7 @@ def nilai_data(data, bun=None):
 
 def periksa(data, varian, bun=None):
     """→ (hasil nilai_data, [cacat]). Tiap cacat = kalimat yang menyebut barisnya."""
+    if varian == 'terkunci': return periksa_terkunci(data, bun)
     h, e = nilai_data(data, bun)
     if h is None: return None, [JATUH + ' saat menilai data contoh: ' + e]
     c = []; meta = data.get('gladi', {}); L, S, K = h['latihan'], h['sungguhan'], h['kunci']
@@ -524,6 +634,10 @@ def cek_kunci(K, L, awal, n_putus):
 
 def ringkas(h, data):
     meta = data.get('gladi', {}); K = h.get('kunciPutus') or h['kunci']; P = h.get('putusan') or {}
+    if meta.get('varian') == 'terkunci':
+        return ('terkunci · %d dokumen · kunci sampai %s · %d hari tanpa tutup (diputus) · 5 Jan: pintu dibuka di kiriman %s (%s jam) · arsip 2026 %d dokumen · saldo pembuka %d dalam %s kiriman (pemeriksaan %s) · titik kas %s (sebelum ritual %s)'
+                % (sum(h['koleksi'].values()), meta.get('kunci'), len(meta.get('hariTanpaTutup', [])), (K.get('pintuKe') or 0) + 1, (K.get('pintu') or {}).get('jam'), h['nArsip'],
+                   h['nPembuka'], K.get('kiriman', '?'), K.get('get', '?'), K.get('titik31'), K.get('acaraTitikSebelum')))
     return ('%s · %d dokumen · %d hari tanpa tutup%s · arsip 2026 %d dokumen · saldo pembuka %d dokumen dalam %s kiriman (pemeriksaan %s) · berita acara %s KB · 12 baris %s'
             % (meta.get('varian'), sum(h['koleksi'].values()), len(meta.get('hariTanpaTutup', [])),
                (' (kunci ditolak g1; sesudah %d putusan per tanggal jadi)' % P['n']) if P.get('n') else '', h['latihan']['nArsip'], h['latihan']['nPembuka'],
@@ -568,7 +682,7 @@ if __name__ == '__main__':
         return arg[arg.index(nama) + 1] if nama in arg else bawaan
     if '--periksa' in arg or '--kontrol' in arg:
         bun = bundel_periksa(); kode = 0
-        D = {v: bangun(v) for v in ('macet', 'bersih')}
+        D = {v: bangun(v) for v in ('macet', 'bersih', 'terkunci')}
         if '--kontrol' in arg:
             for jenis in ['stok minus', 'karcis belum dirinci', 'satu tutup hari hilang', 'kelebihan bayar', 'titik kas hilang', 'perangkat lain berdenyut']:
                 _, c = periksa(rusak_data(D['bersih'], jenis), 'bersih', bun)
@@ -577,16 +691,25 @@ if __name__ == '__main__':
             _, c = periksa(rusak_data(D['macet'], 'semua hari ditutup (meta macet basi)'), 'macet', bun)
             b = bunyi(c); print(('BERBUNYI ' if b else 'DIAM!!   ') + 'kontrol · varian macet tanpa hari macet → ' + (c[0][:150] if c else '-'))
             if not b: kode = 3
+            T0 = json.loads(json.dumps(D['terkunci'])); T0['aturanToko'] = [x for x in T0['aturanToko'] if x['id'] != 'kunciPeriode']
+            _, c = periksa(T0, 'terkunci', bun)
+            b = bunyi(c) and any('LEWAT PINTU' in x for x in c); print(('BERBUNYI ' if b else 'DIAM!!   ') + 'kontrol · varian terkunci tanpa dokumen kunci periode → ' + (c[0][:150] if c else '-'))
+            if not b: kode = 3
+            # titik kas contoh kembali ke 31 Des (seperti sebelum sanggahan 7 Okt) → cabang titikSebelum tidak tertempuh: wajib ketahuan
+            T1 = json.loads(json.dumps(D['terkunci'])); [x.update(tanggal='2026-12-31') for x in T1['pengaturan'] if x['id'] == 'titikKas']
+            _, c = periksa(T1, 'terkunci', bun)
+            b = bunyi(c) and any('cabang titikSebelum' in x for x in c); print(('BERBUNYI ' if b else 'DIAM!!   ') + 'kontrol · varian terkunci dengan titik kas 31 Des → ' + (next((x for x in c if 'cabang titikSebelum' in x), c[0] if c else '-')[:150]))
+            if not b: kode = 3
             a, b = json.dumps(bangun('macet')), json.dumps(D['macet'])
             print(('BERBUNYI ' if a == b else 'DIAM!!   ') + 'kontrol · benih tetap: dua kali dibangun = byte sama' + ('' if a == b else ' (BEDA)'))
             if a != b: kode = 3
             sys.exit(kode)
-        for v in ('macet', 'bersih'):
+        for v in ('macet', 'bersih', 'terkunci'):
             h, c = periksa(D[v], v, bun)
             if c: print('DATA CONTOH %s GAGAL:' % v); [print('   ✗ ' + x) for x in c]; kode = 2
             else: print('DATA CONTOH %s LULUS: %s' % (v, ringkas(h, D[v])))
         sys.exit(kode)
-    data = bangun(opsi('--varian', 'macet'), int(opsi('--benih', BENIH)), float(opsi('--skala', SKALA_BAWAAN)))
+    data = bangun(opsi('--varian', 'macet'), int(opsi('--benih', BENIH)), float(opsi('--skala', 0)) or None)
     keluar = opsi('--keluar', '')
     teks = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
     if keluar: open(keluar, 'w', encoding='utf-8').write(teks); print('data contoh %s: %d dokumen → %s' % (data['gladi']['varian'], data['gladi']['dokumen'], keluar))

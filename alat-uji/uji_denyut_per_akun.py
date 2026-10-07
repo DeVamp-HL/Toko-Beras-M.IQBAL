@@ -22,7 +22,7 @@ import uji_kunci_periode  # noqa: E402
 import periksa_rules  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 _M = uji_kunci_periode.MODUL + ['baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/data/akses.js',
-                                'baru/js/layar/sistem-logika.js', 'baru/js/data/antre-lokal.js', 'baru/js/data/katalog-kasir.js', 'baru/js/data/firebase.js']
+                                'baru/js/layar/sistem-logika.js', 'baru/js/data/antre-lokal.js', 'baru/js/data/katalog-kasir.js', 'baru/js/data/hemat-baca.js', 'baru/js/data/firebase.js']   # hemat-baca SEBELUM firebase (owner 7 Okt: konstanta dipakai saat modul firebase dimuat)
 MODUL = [m for i, m in enumerate(_M) if m not in _M[:i]]
 
 JAM = ("var __RealDate = Date; var __KINI = new __RealDate('2026-10-01T08:00:00+07:00').getTime();\n"
@@ -36,6 +36,9 @@ function __diam() { throw new Error('SDK palsu: tidak dipakai di uji ini'); }
 var initializeApp = __diam, initializeFirestore = __diam, persistentLocalCache = __diam, persistentMultipleTabManager = __diam, collection = __diam, onSnapshot = __diam,
   writeBatch = __diam, query = __diam, orderBy = __diam, limit = __diam, where = __diam, getDocs = __diam, waitForPendingWrites = __diam, getAuth = __diam,
   signInWithEmailAndPassword = __diam, onAuthStateChanged = __diam, setPersistence = __diam, browserLocalPersistence = {}, signOut = __diam;
+// hemat baca (owner 7 Okt 2026): permukaan SDK baru yang diimpor firebase.js — serverTimestamp dipakai denyut OWNER (capServer = jam server), sisanya tidak di uji ini
+var getDocsFromServer = __diam, getCountFromServer = __diam, terminate = __diam, CACHE_SIZE_UNLIMITED = -1, Timestamp = { fromMillis: __diam };
+function serverTimestamp() { return { __capServerPalsu: true }; }
 function doc(db, kol, id) { return { kol: kol, id: String(id) }; }
 function setDoc(ref, data) {
   var ada = !!(__gudang[ref.kol] || {})[ref.id];
@@ -197,13 +200,13 @@ if __name__ == '__main__':
     js = uji_kunci_periode.satu_lingkup(bundel_baru.bundel(MODUL))
     rules = open(os.path.join(AKAR, 'firestore.rules'), encoding='utf-8').read()
     if '--kontrol' in sys.argv:
-        BARIS = "try { const id = idDenyut(); setDoc(doc(db, KOLEKSI_PERANGKAT, id), { id, nama,"
+        BARIS = "try { const id = idDenyut(); const isi = { id, nama,"   # owner 7 Okt (hemat baca): isi denyut disusun dulu (owner menambah capServer)
         rusak = {
             'denyut kembali satu dokumen per perangkat untuk semua akun (keadaan main 7de3e7a)': (js.replace(
                 "const idDenyut = () => (status.akun && status.akun.jenis !== 'owner' ? idPerangkat() + '~' + status.akun.uid : idPerangkat());",
                 "const idDenyut = () => idPerangkat();"), rules),
             'id dokumen per akun tapi kolom id tetap id perangkat ("sudah tidak dipakai" menghapus dokumen yang salah)': (js.replace(
-                BARIS, "try { const id = idDenyut(); setDoc(doc(db, KOLEKSI_PERANGKAT, id), { id: idPerangkat(), nama,"), rules),
+                BARIS, "try { const id = idDenyut(); const isi = { id: idPerangkat(), nama,"), rules),
             'owner ikut per akun (SS1 & gerbang tutup buku tidak lagi mengenali perangkat ini)': (js.replace(
                 "status.akun && status.akun.jenis !== 'owner' ? idPerangkat() + '~' + status.akun.uid : idPerangkat()",
                 "status.akun ? idPerangkat() + '~' + status.akun.uid : idPerangkat()"), rules),

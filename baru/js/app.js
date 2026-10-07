@@ -66,7 +66,8 @@ const labelAkun = () => { const a = akunKini(); return !a || !bisaBekerja(a) ? '
 function statusRingkas() {
   const belum = (statusFb.lokal || {}).belum || 0; const tolak = (statusFb.lokal || {}).ditolak || 0;   // 39b no. 28: kiriman yang ditolak server tampil di pil SETIAP layar
   const kirim = statusFb.offline ? ' · tanpa internet' : statusFb.menunggu > 0 ? ' · menunggu server' : belum ? ' · ' + belum + ' belum terkirim' : '';
-  const tambah = statusFb.koleksiSiap < statusFb.koleksiTotal && !statusFb.offline ? ' · memuat…' : (tolak ? ' · ' + tolak + ' DITOLAK server' : '') + kirim;
+  // hemat baca nyala (owner 7 Okt): statusFb.hematPil menyebut data yang belum terperiksa dengan server / tab yang harus dimuat ulang; mati = tidak ada (pil sama)
+  const tambah = statusFb.koleksiSiap < statusFb.koleksiTotal && !statusFb.offline ? ' · memuat…' : (tolak ? ' · ' + tolak + ' DITOLAK server' : '') + kirim + (statusFb.hematPil || '');
   return labelAkun() + tambah;
 }
 
@@ -90,7 +91,10 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
     pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })() }),   // putaran 24: pengingat pajak, owner saja
   periksaSambungan: () => fb.periksaSambungan(4000), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n),
-  akun: akunKini, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah) });
+  akun: akunKini, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah),
+  // hemat baca (owner 7 Okt 2026): Menu › Sistem › Perangkat › Hemat baca — keadaan, daftar siap-nyala, saklar perangkat ini, tombol baca penuh
+  hemat: () => fb.hematKeadaan(), hematSiap: () => fb.hematSiapNyala(), setelSaklarHemat: (v) => fb.setelSaklarHemat(v), hematBacaPenuh: (sebab) => fb.hematBacaPenuh(sebab),
+  hematMintaSemua: () => fb.hematMintaSemua(), muatUlang: () => location.reload() });
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
 const harga = pasangLayarHarga(document.getElementById('layarHarga'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 27: Isi barang habis dari katalog
@@ -103,13 +107,18 @@ const parkirJual = () => { try { const k = layar.keadaan.baca(); return (k.antre
 const lokalPerangkat = () => ({ antre: statusFb.antre || [], menunggu: statusFb.menunggu || 0, idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), offline: statusFb.offline,
   // Paket C (8 Okt): kartu "Pemeriksaan sesudah tutup buku" — koleksi yang belum dimuat / ditolak server = "belum bisa diperiksa", bukan lulus
   koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, ditolak: statusFb.ditolak || [],
-  antreLokal: (() => { try { return fb.antreLokal(); } catch (e) { return { belum: [], ditolak: [] }; } })(), parkir: parkirJual() });
+  antreLokal: (() => { try { return fb.antreLokal(); } catch (e) { return { belum: [], ditolak: [] }; } })(), parkir: parkirJual(),
+  // owner 7 Okt: tutup buku butuh baca penuh sesi ini saat hemat baca nyala. #111 × Paket C: `hemat.belumLengkap` (SATU sumber hemat-baca.js hbBelumLengkap) →
+  // uang.js muatData → pstKurang (kartu pemeriksaan sesudah tutup buku "?"), daftar periksa kunci bulan, perkiraan kuota, Lanjutkan/Batalkan tutup buku
+  hemat: (() => { try { return fb.hematKeadaan(); } catch (e) { return { nyala: false }; } })() });
 const uang = pasangLayarUang(document.getElementById('layarUang'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), lokal: lokalPerangkat,
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); } });   // putaran 39: kartu Cek wadah K5 → Stok › Wadah literan
 // Laporan & Dokumen (putaran 19): layar kedelapan — Laba · Harian · Bulanan · Neraca · Dokumen (berkop, paket bank, dokumen kecil) · Setelan (kop & identitas). Dibuka dari Menu; di Mac ada di menu samping.
 // keTujuan = satu pintu ke layar lain dengan bentuk tujuan yang sama dengan baris Menu ({ ke, keluarga, tab, lembar, sistem }).
 const keTujuan = (t) => { if (!t) return; if (t.ke === 'stok') { pindah('stok'); stok.buka(t.lembar || null, t.tab || null); } else if (t.ke === 'pelanggan') { pindah('pelanggan'); pelanggan.buka(t.keluarga || 'kenali', t.orang || null); } else if (t.ke === 'harga') { pindah('harga'); harga.buka(t.keluarga || 'katalog', t); } else if (t.ke === 'uang') { pindah('uang'); uang.buka(t.keluarga || 'keluar', t); } else if (t.ke === 'laporan') { pindah('laporan'); laporan.buka(t.keluarga || 'laba', t); } else if (t.ke === 'sistem') { pindah('menu'); menu.buka && menu.buka(t.sistem || 'perangkat', t.tab || null); } else if (t.ke === 'jual' && t.lembar) { pindah('jual'); layar.keadaan.setel({ lembar: t.lembar, kabar: '' }); } else pindah(t.ke); };
-const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan });
+// hemat baca nyala (#111): Laporan › Pajak menahan rekap konsultan & catat setoran selama data pajak di perangkat ini belum lengkap (SATU sumber firebase.js hematKeadaan)
+const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan,
+  hemat: () => { try { return fb.hematKeadaan(); } catch (e) { return { nyala: false }; } } });
 const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok'), pelanggan: document.getElementById('layarPelanggan'), menu: document.getElementById('layarMenu'), harga: document.getElementById('layarHarga'), uang: document.getElementById('layarUang'), laporan: document.getElementById('layarLaporan') };
 // GERAK PINDAH LAYAR (owner 29 Sep: "lebih hidup, lebih intuitif — dari segi motion terutama"): layar baru datang dari ARAH tab yang dituju
 // (kanan = tab sesudahnya, kiri = sebelumnya) dan penanda menu meluncur ke tab aktif — orang merasa di mana ia berada.
@@ -332,6 +341,10 @@ function gambarChipDanNav() {
   kembali.addEventListener('click', () => { try { localStorage.removeItem(fb.KUNCI_PROYEK_UJI); } catch (e) { /* abaikan */ } location.replace(location.pathname); });
   bilah.appendChild(kembali); document.body.appendChild(bilah); document.body.classList.add('proyek-uji');
 })();
+// ---- HEMAT BACA: /baru/?hemat=mati = saklar perangkat ini MATI tanpa membuka layar (jalan darurat owner 7 Okt; docs/prosedur-pulih-darurat.md) ----
+const hematMatiDariAlamat = q.get('hemat') === 'mati';
+if (hematMatiDariAlamat) { fb.setelSaklarHemat(false); location.replace(location.pathname); }
+let _tiraiTab = null;   // tirai kunci tab / tab berhenti menerima data (hemat baca nyala) — dideklarasikan sebelum Firebase dimulai
 // ---- SERVER TIRUAN (gladi tutup buku, 7 Okt 2026): hanya halaman localhost / 127.0.0.1 dengan ?emulator=… — bilah merah di setiap layar seperti proyek uji.
 // Diminta tapi alamatnya ditolak: bilah "SERVER TIRUAN DITOLAK" yang menetap (firebase.js tidak tersambung ke mana pun — gagal-tertutup) ----
 (function () {
@@ -356,9 +369,48 @@ if (q.get('cadangan')) {
   // → layar yang terlihat digambar dua kali per bingkai). nanti() SEBELUM setelMuat: selesai muat = antrean digambar sekali, tanpa bingkai tambahan.
   const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar, stok.gambar, pelanggan.gambar, menu.gambar, harga.gambar, uang.gambar, laporan.gambar];
   fb.dengarkanStatus((st) => { statusFb = st; gambarChipDanNav(); GAMBAR_STATUS.forEach(nanti); setelMuat(!!st.masuk && st.koleksiTotal > 0 && st.koleksiSiap < st.koleksiTotal); });
+  // hemat baca nyala (owner 7 Okt): pendengar simpanan tab ini mati → tirai muat ulang (mati: hematMati tidak pernah ada)
+  fb.dengarkanStatus((st) => { if (st.hematMati && !_tiraiTab) tiraiTab('Tab ini berhenti menerima data', 'Hemat baca: simpanan perangkat di tab ini tidak lagi diperbarui (biasanya karena tab lain peramban ini). Angka di layar bisa basi — muat ulang. Catatan yang belum terkirim tetap aman di perangkat.', 'Muat ulang', () => location.reload()); });
   gerbang.mulai();   // sebelum Firebase menjawab: gerbang tertutup tanpa formulir (dulu layar kosong); sudah masuk → pintu terbuka cepat
-  fb.mulai(gambarAkun);
+  if (!hematMatiDariAlamat) mulaiFirebase();
 }
+
+// ---- HEMAT BACA (owner 7 Okt 2026, siap 2027): saklar per perangkat, bawaan MATI. Mati = Firebase dimulai persis seperti sebelumnya.
+// Nyala = SATU klien Firestore per peramban (temuan SDK: tab yang turun dari primer kehilangan pendengar simpanannya tanpa kabar) — kunci tab di
+// localStorage; tab kedua bertanya "Pakai di sini"; tab yang kalah menghentikan Firestore-nya dan menyuruh muat ulang.
+function mulaiFirebase() {
+  if (!fb.hematNyala()) { fb.mulai(gambarAkun); return; }
+  const kt = fb.kunciTabHemat();
+  const pakai = () => { kt.ambil(); jagaKunciTab(kt); fb.mulai(gambarAkun); };
+  if (kt.keadaan() !== 'lain') return pakai();
+  tiraiTab('Aplikasi sudah terbuka di tab lain', 'Hemat baca menyala di perangkat ini: satu peramban hanya memakai aplikasi di SATU tab, supaya angka tidak basi diam-diam. Tutup tab yang lain, atau pakai di sini — tab yang lain berhenti dan catatan yang belum terkirim tetap aman.',
+    'Pakai di sini', () => { tutupTiraiTab(); pakai(); });
+}
+function jagaKunciTab(kt) {
+  let kalah = false, dilepas = false;
+  const cek = () => {
+    if (kalah || kt.milik()) return;
+    if (dilepas && kt.keadaan() !== 'lain') { dilepas = false; kt.ambil(); return; }   // kembali dari halaman sebelumnya (bfcache), tidak ada tab lain yang mengambil
+    kalah = true;
+    fb.berhenti('Aplikasi dipakai di tab lain peramban ini — tab ini berhenti supaya angka tidak basi. Muat ulang untuk memakainya di sini.');
+    tiraiTab('Dipakai di tab lain', 'Tab lain peramban ini mengambil alih aplikasi (hemat baca: satu tab per peramban). Catatan yang belum terkirim dari tab ini tetap aman di perangkat.', 'Pakai di sini (muat ulang)', () => location.reload());
+  };
+  setInterval(() => { if (!kalah && !dilepas && !kt.detak()) cek(); }, 4000);
+  window.addEventListener('storage', (e) => { if (!e || e.key === null || e.key === 'miqbal_baru_kunci_tab_v1') cek(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) cek(); });
+  window.addEventListener('pageshow', cek);
+  window.addEventListener('pagehide', () => { if (!kalah) { dilepas = true; kt.lepas(); } });
+}
+function tiraiTab(judul, ket, tombol, aksi) {
+  tutupTiraiTab();
+  const bg = document.createElement('div'); bg.className = 'modal-bg tampil'; bg.style.zIndex = '40'; bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
+  const k = document.createElement('div'); k.className = 'modal kartu';
+  const j = document.createElement('div'); j.className = 'serif'; j.style.fontSize = '20px'; j.textContent = judul;
+  const t = document.createElement('div'); t.className = 'ket'; t.textContent = ket;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'utama'; b.textContent = tombol; b.addEventListener('click', aksi);
+  k.appendChild(j); k.appendChild(t); k.appendChild(b); bg.appendChild(k); document.body.appendChild(bg); _tiraiTab = bg;
+}
+function tutupTiraiTab() { if (_tiraiTab) { _tiraiTab.remove(); _tiraiTab = null; } }
 
 // nav bawah / samping: kelima petak hidup sejak putaran 14; petak yang layarnya belum ada (tidak ada lagi) mengaku
 document.querySelectorAll('[data-tujuan]').forEach((el) => el.addEventListener('click', () => {

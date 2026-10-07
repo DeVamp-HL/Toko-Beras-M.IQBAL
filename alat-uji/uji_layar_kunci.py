@@ -69,6 +69,12 @@ export function writeBatch() { return { set(r) { catatTulis('set', r); }, update
 export const setDoc = (r) => { catatTulis('set', r); return Promise.resolve(); }, waitForPendingWrites = () => Promise.resolve();
 export const getDocs = () => Promise.resolve({ docs: [], size: 0, empty: true, forEach() {} });
 export function connectFirestoreEmulator() {}   // server tiruan (gladi): tidak dipakai di sini, tapi firebase.js mengimpornya
+// hemat baca (owner 7 Okt 2026): permukaan SDK yang diimpor firebase.js sejak cap jam server, batu nisan, hitungan server, kunci tab. Tanpa ini impor modul
+// gagal dan seluruh aplikasi mati di uji ini. Saklar hemat baca MATI di uji ini (bawaan) — pendengar simpanan / delta tidak dipasang.
+export const getDocsFromServer = () => Promise.resolve({ docs: [], size: 0, empty: true, forEach() {}, metadata: { fromCache: false } });
+export const getCountFromServer = (q) => Promise.resolve({ data: () => ({ count: (DATA()[q.nama] || []).length }) });
+export const serverTimestamp = () => ({ __capServerPalsu: true }), CACHE_SIZE_UNLIMITED = -1, terminate = () => Promise.resolve();
+export const Timestamp = { fromMillis: (ms) => ({ toMillis: () => ms }) };
 """,
 }
 

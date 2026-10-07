@@ -13,6 +13,7 @@ import { semuaOrang, pasanganKembar } from './pelanggan-logika.js';
 import { aturUpah, hitungUpah } from './upah-logika.js';
 import { pjTahun } from './pajak-logika.js';
 import { kemajuanBuku, bkTahunSelesai } from './tutup-buku-logika.js';
+import { hbKalimatBelum } from '../data/hemat-baca.js';
 
 export const KP_DENYUT_MS = 24 * 3600000;   // ⛔ perangkat yang tidak berdenyut 24 jam terakhir (owner 25 Sep)
 const KP_VERSI_MS = KP_VERSI_HARI * 24 * 3600000;
@@ -60,7 +61,7 @@ export function kpHariTanpaTutup(bulan, kini, putusan) {
 }
 /**
  * Daftar periksa bulan M. K = { lokal: { antreLokal: { belum, ditolak }, antre: [{ koleksi, id }] }, parkir: [{ pada, pelanggan, n }], putusanHari: { iso: { jenis, alasan } },
- * centang: { id: true }, siap25b? (uji saja) }. Kembali { bulan, butir, hari, boleh, belum }.
+ * centang: { id: true }, siap25b? (uji saja), hemat? (hemat baca nyala: { koleksi: { jenis, sebab } } yang belum lengkap) }. Kembali { bulan, butir, hari, boleh, belum }.
  */
 export function kpDaftarPeriksa(bulan, kini, K) {
   K = K || {}; const L = K.lokal || {}; const R = kpRentang(bulan); const W = kpWib(kini); const nama = kpNamaBulan(bulan); const tenggang = kunciTenggang(); const C = K.centang || {};
@@ -102,6 +103,10 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   tambah({ id: 'versiKasir', blokir: true, ok: !lamaV.length, teks: 'Semua perangkat kasir yang berdenyut dalam ' + KP_VERSI_HARI + ' hari terakhir sudah memakai versi 25b',
     ket: lamaV.length ? lamaV.length + ' perangkat masih versi lama — satu karcis ' + nama + ' yang tiba sesudah dikunci akan menahan semua karcis sesudahnya di HP itu. Buka kasir di HP itu (tersambung internet) sampai tulisan "versi 25b" tampil di bilah atas' : 'semua sudah ' + KP_VERSI_KASIR_25B,
     rincian: lamaV.map((p) => kpNamaPerangkat(p) + ' · ' + (p.versi ? p.versi : 'versi tidak dilaporkan') + ' · denyut ' + kpTgl(kpWib(new Date(p.pada)).iso)) });
+  // ⛔ hemat baca NYALA (#111): kunci bulan membekukan potret angka bulan itu (omzet, laba, kas, stok, piutang, utang) di riwayatnya — dihitung dari SELURUH buku di
+  // perangkat ini, jadi data yang belum lengkap (belum terperiksa / belum dibaca penuh sejak kuota baca direset — SATU sumber hemat-baca.js) menahan kunci. Mati: butir ini tidak ada
+  if (K.hemat) { const hb = hbKalimatBelum(K.hemat, null);
+    tambah({ id: 'hemat', blokir: true, ok: !hb, teks: 'Data di perangkat ini lengkap & cocok dengan server (hemat baca)', ket: hb || 'semua catatan sudah dibaca penuh sesudah kuota baca terakhir direset & cocok dengan server' }); }
   // ---- centang / keputusan
   const hari = kpHariTanpaTutup(bulan, kini, K.putusanHari);
   tambah({ id: 'hari', ok: hari.every((h) => !!h.putusan), teks: hari.length ? hari.length + ' hari tanpa tutup hari' : 'Tiap hari buka punya tutup hari',

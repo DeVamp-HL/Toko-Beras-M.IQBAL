@@ -1,10 +1,49 @@
 // ============================================================================
-// ATURAN FIRESTORE v6 — Toko Beras M.IQBAL (2 Okt 2026, Playground lulus; terbit lewat Console oleh owner): v5 + berita acara tutup buku hanya maju
+// ATURAN FIRESTORE v7 FINAL — Toko Beras M.IQBAL (DRAF 7 Okt 2026 — owner menerbitkan SEKALI lewat Console SEBELUM cabang perbaikan/hemat-baca
+// digabung; langkahnya: docs/uji-rules-v7.md "Urutan"). v6 + lima perubahan:
 // Berkas KANONIK ber-versi. DEPLOY: salin-tempel ke Console > Firestore > Rules (owner; pola putaran 25).
-// Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep) + docs/peta-wadah-satu-buku.md §8 (v5)
-// + docs/rancangan-tutup-buku-bertahap.md §11 (v6).
-// Diperiksa statis oleh alat-uji/periksa_rules.py (CI). Uji server: docs/uji-rules-v6.md (Playground ★; v5: docs/uji-rules-v5.md).
-// Jalan mundur: firestore.rules.v5 (disimpan utuh) — tempel v5 = berita acara tutup buku kembali owner-saja tanpa urutan (kiriman telat bisa menimpanya);
+// Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep; pintu tutup buku K8 7 Okt)
+// + docs/peta-wadah-satu-buku.md §8 (v5) + docs/rancangan-tutup-buku-bertahap.md §11 (v6) + docs/rancangan-hemat-baca.md (v7).
+// Diperiksa statis oleh alat-uji/periksa_rules.py (CI: v7 = firestore.rules.v6 + PERSIS daftar ubahan di bawah, dinilai juga dengan penafsir rules mini
+// alat-uji/rules_mini.py). Uji server: docs/uji-rules-v7.md (Playground ★; v6: docs/uji-rules-v6.md).
+// v7 yang berubah dari v6 (owner 7 Okt 2026):
+//   (1) HEMAT BACA — fungsi ulangKasirBercap() + satu suku di update penjualan: kasir darurat kasir-v33 mengirim nota lewat REST :commit dengan
+//       capServer = REQUEST_TIME — kirim ulang karcis yang sama hanya berbeda di capServer, dan capServer itu jam server permintaan ini, ATAU capServer
+//       tidak ada sama sekali (HP yang masih kasir-v32 mengirim ulang nota yang sudah disentuh perangkat owner yang hemat baca). Blok batuNisan (owner saja):
+//       satu dokumen per catatan koleksi hemat yang dihapus owner, di writeBatch yang sama dengan hapusnya; capServer wajib jam server. Tanpa get().
+//   (2) PERSETUJUAN NEGO (JS2-C, PR #109): ben/karyawan membuat permintaan nego ke owner — persetujuan create HANYA tindakan 'nego', status 'menunggu',
+//       negoUid = olehUid = uid penulis, tanpa kolom keputusan (stafMintaNego); ben/karyawan membaca koleksi persetujuan (keputusan owner). Ubah & hapus
+//       tetap owner. 1 get() aksesAkun seperti tulisan staf lain.
+//   (3) FOTO BON (paket E-2): blok fotoBon — owner baca / buat / hapus, tanpa ubah; bentuk dibatasi (id = id dokumen, idBon teks, jenis gambar, base64
+//       ≤ 960.000 huruf ≈ 700 KB foto). Koleksi ini SENGAJA tidak di baru/js/data/koleksi.js (dibaca sekali saat bon dibuka).
+//   (4) PANGKAS kasir@ (kasir.html pensiun 3 Okt; kasir darurat hanya: nota penjualan, denyut perangkatStatus, baca ringkasanKasir): DICABUT create &
+//       tulis-ulang piutangMutasi / stokBahanLiteran, create logAktivitas, baca pengaturan/aksesKasir. (pengaturan/keamanan memang owner saja sejak v3.)
+//   (5) PINTU TUTUP BUKU (keputusan owner 7 Okt, K8 "pengecualian sempit"; dipersempit sesudah sanggahan rules 7 Okt) — tutup buku tahun Y yang bulannya
+//       sudah dikunci: dokumen pengaturan/pintuBuku = { tahun: Y, status: 'berjalan', sampai: <timestamp> } dibuat OWNER hanya bila Y = TAHUN LALU (WIB),
+//       sampai ≤ jam server + 72 jam, dan berita acara tutupBukuAcara/Y SUDAH ADA SEBELUM kiriman itu (get, bukan getAfter — ikatan ke ritual tidak bisa
+//       dikarang dalam satu kiriman) berstatus berjalan / terkunci / membatalkan, dimulai (paraf.pada) sesudah 31 Des Y. Berita acara BARU wajib berbentuk
+//       tutup buku sungguhan (id = tahun, tahun lampau, mode sungguhan, berjalan / terkunci) dengan jam mulai = tanggal server ± 1 hari; berita acara hanya
+//       boleh dihapus bila 'dibatalkan' (yang 'selesai' tidak bisa dihapus lalu dibuat lagi). Berita acara jadi 'selesai' / 'dibatalkan' hanya bila pintu
+//       tahun itu TERTUTUP sesudah kiriman itu — jadi pintu tidak pernah terbuka untuk berita acara yang selesai / dibatalkan. Selama pintu terbuka & belum
+//       lewat `sampai`, OWNER boleh (hanya catatan bertanggal ≤ Desember Y di bulan terkunci):
+//         (a) MENGHAPUS catatan yang SALINANNYA di arsipTahun/'Y|koleksi|id' sesudah batch itu = isi catatan yang dihapus (hanya capServer boleh beda;
+//             arsip = pindah, bukan buang), atau saldo pembuka tahun Y (tutupBuku + tahunDari Y) di 10 koleksi yang memang punya saldo pembuka
+//             (kolPembuka = toko.js CACHE_PEMBUKA) — tarik saldo pembuka saat Batalkan;
+//         (b) MEMBUAT saldo pembuka tahun Y di 10 koleksi itu, atau MENGEMBALIKAN catatan dari arsipTahun/'Y|koleksi|id' yang isinya SAMA dengan salinannya
+//             (Batalkan); titik kas pengaturan/titikKas bertanggal 31 Des Y, atau PERSIS titikSebelum di berita acara Y (pengembaliannya saat Batalkan).
+//       SALINAN ARSIP terikat ke aslinya: arsipTahun ditulis hanya berbentuk 'Y|koleksi|id' untuk 18 koleksi yang diarsip, dan salinan catatan bulan
+//       terkunci WAJIB = catatan aslinya sebelum batch (arsip karangan tidak bisa dipakai untuk "mengembalikan" catatan baru).
+//       TIDAK ada pintu untuk UPDATE, untuk catatan lain di bulan terkunci (nota / uang keluar bertanda tutupBuku tetap ditolak), untuk pindahUang /
+//       slipUpah (tidak diarsip), untuk kasir@ / staf. pengaturan/pintuBuku status 'tutup' boleh kapan saja oleh owner. Access call (cache tidak
+//       diandalkan): saldo pembuka & titik 31 Des 2 (kunci + pintu), titik kembali 3 (+ berita acara), hapus arsip & kembalikan 3 (kunci + pintu +
+//       salinan), tulis salinan arsip 1 (kunci; bulan terkunci + 1 catatan asli), buka pintu 1 (berita acara), berita acara selesai / dibatalkan 1
+//       (pintu) — layar memecah kiriman ≤ 18 (baru/js/data/kunci-periode.js kpNilaiKiriman).
+// SENGAJA tidak berubah: create penjualan kasir@ (capServer boleh ada atau tidak), denyut & pesanan staf, urutan berita acara v6 (majuBuku dkk.), semua update
+//   catatan bertanggal.
+// Jalan mundur v7: JANGAN tempel firestore.rules.v6 selama kode bercap berjalan — hapus /baru/ (ber-batu nisan) akan DITOLAK, permintaan nego staf
+//   ditolak (masuk daftar "ditolak" di perangkatnya), foto bon ditolak. Mundur hemat baca = saklar (Menu › Sistem › Perangkat › Hemat baca, atau
+//   /baru/?hemat=mati), bukan rules. v6 baru boleh ditempel balik SESUDAH cabang hemat baca dibalik (git revert) dan HP kasir kembali ke kasir-v32.
+// Jalan mundur v6: firestore.rules.v5 (disimpan utuh) — tempel v5 = berita acara tutup buku kembali owner-saja tanpa urutan (kiriman telat bisa menimpanya);
 // firestore.rules.v4 = karyawan tidak bisa menuang/mengecek wadah dari akunnya; firestore.rules.v3 = kunci periode MATI, semua bulan bisa ditulis lagi.
 // v6 yang berubah dari v5: HANYA update tutupBukuAcara (+ 6 fungsi kecil di atas bloknya, tanpa get()). Dalam satu percobaan (paraf.pada) status hanya
 //   maju; percobaan baru hanya di atas 'dibatalkan' dan jam mulainya lebih baru; pemegang hanya berganti lewat ambil alih. Baca, create, delete = owner, sama.
@@ -27,7 +66,7 @@
 // ACCESS CALL (batas Firebase 10 per operasi, 20 per batch/transaksi; cache TIDAK diandalkan — keputusan owner 24 & 25 Sep):
 //   owner  : 0 untuk bulan berjalan & masa tenggang; 1 get() dokumen kunci per operasi yang menyentuh bulan lampau (update: bulan TERTUA dari lama/baru).
 //            Kiriman owner > 18 pemeriksaan tidak dikirim layar; jalur besar dipecah (toko.js tulisBertahap). logAktivitas tidak dikunci (0).
-//   kasir@ : create penjualan/piutangMutasi/stokBahanLiteran dinilai kunci PERSIS seperti owner (tglBaru): bulan berjalan / tanggal 1–3 tanpa get(),
+//   kasir@ : create penjualan dinilai kunci PERSIS seperti owner (tglBaru): bulan berjalan / tanggal 1–3 tanpa get(),
 //            selain itu 1 get() dan DITOLAK bila terkunci. Update hanya tulis-ulang identik; hapus TIDAK PERNAH. kasir*.html mengirim 1 dokumen per
 //            permintaan REST → ≤ 1 get() per permintaan (batas 10). Bukan aturan staf: nota offline > 3 hari lewat awal bulan akan ditolak walau
 //            belum ada kunci, dan antrean kasir*.html macet (25b).
@@ -47,8 +86,8 @@
 //
 // AKUN & PERAN (v3, tidak berubah):
 //   owner@tokoberasmiqbal.web.app  -> OWNER, dikenali lewat EMAIL. Tidak pernah lewat dokumen apa pun.
-//   kasir@tokoberasmiqbal.web.app  -> KASIR DARURAT: create penjualan / piutangMutasi / stokBahanLiteran / logAktivitas, tulis-ulang-sama, denyut
-//                                     perangkatStatus, baca ringkasanKasir & pengaturan/aksesKasir.
+//   kasir@tokoberasmiqbal.web.app  -> KASIR DARURAT (v7): create penjualan + kirim ulang nota (tulis-ulang-sama / bercap), denyut perangkatStatus,
+//                                     baca ringkasanKasir. Tidak ada yang lain (v7 mencabut jalur kasir.html yang pensiun).
 //   akun lain                      -> peran dari aksesAkun/{uid} yang ditulis OWNER: { uid, nama, email, peran: 'ben'|'karyawan', aktif: bool }.
 //                                     Tanpa aksesAkun aktif = NOL akses (kecuali create permintaanAkses miliknya). Tiap tulisan wajib olehUid = uid penulis.
 //   UTANG: id peran 'ben' memakai nama orang — peran harus bernama jabatan (dicatat owner 24 Sep).
@@ -68,6 +107,12 @@ service cloud.firestore {
     // KIRIM-ULANG ANTREAN KASIR WAJIB IDEMPOTEN (v2, dipertahankan untuk kasir@): update hanya kalau isinya SAMA PERSIS.
     function tulisUlangSama() {
       return request.resource.data == resource.data;
+    }
+    // v7 (hemat baca): kirim-ulang kasir@ — isinya sama persis KECUALI capServer, dan capServer = jam server permintaan ini (REST :commit + transform
+    // REQUEST_TIME, kasir-v33) ATAU tidak ada sama sekali (HP kasir-v32: PATCH utuh tanpa cap atas nota yang sudah disentuh perangkat owner)
+    function ulangKasirBercap() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer'])
+        && (!request.resource.data.keys().hasAny(['capServer']) || request.resource.data.capServer == request.time);
     }
 
     // ---- akun bukan-owner (aksesAkun/{uid}) — SATU get() per evaluasi ----
@@ -106,6 +151,12 @@ service cloud.firestore {
       return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.akunUid == request.auth.uid
         && (resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)
         && request.resource.data.keys().hasOnly(['id', 'nama', 'akun', 'akunUid', 'aplikasi', 'pada', 'antrean', 'gagal', 'versi', 'pemegang', 'lokasi']);
+    }
+    // v7 (owner 7 Okt, JS2-C): permintaan nego ke owner — bentuk "menunggu" bertindakan nego saja, atas nama penulisnya sendiri, tanpa kolom keputusan
+    function stafMintaNego(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'nego' && d.get('status', '') == 'menunggu' && d.get('negoUid', '') == request.auth.uid
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
     }
 
     // ---- KUNCI PERIODE (putaran 25) — inti klien yang sama: baru/js/data/kunci-periode.js ----
@@ -155,40 +206,140 @@ service cloud.firestore {
               && d.riwayat[lama.size()].alasan is string && d.riwayat[lama.size()].alasan.size() >= 10));
     }
 
-    // ---- satu blok per koleksi di baru/js/data/koleksi.js (+ arsipTahun, ringkasanKasir, aksesAkun, permintaanAkses). Tanpa payung: yang tidak disebut = ditolak. ----
+    // ---- v7 PINTU TUTUP BUKU (owner 7 Okt 2026, K8 "pengecualian sempit"; sanggahan rules 7 Okt) — hanya OWNER, hanya selama pintu tahun Y terbuka; dipanggil
+    // hanya SESUDAH tglBaru / tglLama / upBaru / upLama menolak (bulan terkunci), jadi tulisan biasa tidak pernah membaca dokumen pintu. Inti klien yang sama:
+    // baru/js/data/kunci-periode.js (kpPintu, kpLewatPintu). Dokumen PINTU dibaca getAfter (saldo pembuka boleh satu kiriman dengan pintunya); BERITA ACARA
+    // dibaca get = SEBELUM batch (pintu hanya mengikuti tutup buku yang sudah tercatat — tidak bisa dikarang dalam satu kiriman).
+    // tahun Y yang pintunya terbuka & belum lewat `sampai`; 0 = tertutup
+    function pintuTahun() {
+      let p = getAfter(/databases/$(database)/documents/pengaturan/pintuBuku);
+      return p != null && p.data.get('status', '') == 'berjalan' && p.data.get('tahun', '') is number && p.data.get('sampai', null) is timestamp
+        && request.time < p.data.sampai ? int(p.data.tahun) : 0;
+    }
+    // koleksi yang memang punya SALDO PEMBUKA tutup buku (= toko.js CACHE_PEMBUKA = kunci-periode.js KP_KOLEKSI_PEMBUKA); nota, retur, uang keluar dll. TIDAK
+    function kolPembuka(kol) {
+      return kol in ['batchMasuk', 'piutangMutasi', 'kasbonMutasi', 'produksiKemasan', 'stokBahanKemasan', 'stokBahanLiteran', 'utangPemasokMutasi', 'utangOwnerMutasi',
+        'amplopLaba', 'modalOwner'];
+    }
+    // koleksi yang DIARSIP tutup buku (= tbDaftarKoleksi mesin ∩ KP_KOLEKSI = kunci-periode.js KP_KOLEKSI_PINTU; periksa_rules.py membandingkan)
+    function kolArsip(kol) {
+      return kol in ['penjualan', 'batchMasuk', 'produksiKemasan', 'retur', 'pengeluaranHarian', 'setoranKas', 'penyesuaianKemasan', 'amplopLaba', 'modalOwner',
+        'utangPemasokMutasi', 'utangOwnerMutasi', 'stokBahanKemasan', 'stokBahanLiteran', 'piutangMutasi', 'kasbonMutasi', 'penyesuaianStok', 'tutupHari', 'biayaBulanan'];
+    }
+    // salinan arsip a (arsipTahun/'Y|koleksi|id', sama dengan firebase.js arsipkanBerkas) = catatan `isi` — hanya capServer boleh beda (cache perangkat mengupasnya)
+    function salinanArsip(a, y, kol, id, isi) {
+      return a != null && a.data.get('tahun', 0) == y && a.data.get('koleksi', '') == kol && a.data.get('idAsli', '') == id
+        && isi.diff(a.data.get('dok', {})).affectedKeys().hasOnly(['capServer']);
+    }
+    // KEMBALI dari arsip (Batalkan): catatan yang ditulis = salinan arsipnya sebelum batch
+    function pulihArsip(kol, id, y) {
+      return salinanArsip(get(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)), y, kol, id, request.resource.data);
+    }
+    // CREATE bulan terkunci: saldo pembuka tahun Y (tutupBuku + tahunDari Y, koleksi pembuka saja), atau catatan yang dikembalikan dari arsip Y. b = bulan catatan
+    function pintuTulis(kol, id, b) {
+      let y = pintuTahun();
+      let d = request.resource.data;
+      return y > 0 && b <= y * 12 + 12
+        && ((kolPembuka(kol) && d.get('tutupBuku', false) == true && d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y));
+    }
+    // DELETE bulan terkunci: catatan yang SALINANNYA di arsip Y sesudah batch ini = isinya (arsip = pindah), atau saldo pembuka tahun Y (tarik saat Batalkan)
+    function pintuHapus(kol, id, b) {
+      let y = pintuTahun();
+      return y > 0 && b <= y * 12 + 12
+        && ((kolPembuka(kol) && resource.data.get('tutupBuku', false) == true && resource.data.get('tahunDari', 0) == y)
+          || salinanArsip(getAfter(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)), y, kol, id, resource.data));
+    }
+    // titik kas yang dikembalikan saat Batalkan = PERSIS titikSebelum di berita acara tahun Y (sebelum batch): tanggal & keempat kantong
+    function titikSebelum(y, d) {
+      let s = get(/databases/$(database)/documents/tutupBukuAcara/$(string(y))).data.get('titikSebelum', null);
+      return s is map && d.get('tanggal', '') == s.get('tanggal', null) && d.get('laci', null) == s.get('laci', null) && d.get('brankas', null) == s.get('brankas', null)
+        && d.get('rekening', null) == s.get('rekening', null) && d.get('amplop', null) == s.get('amplop', null);
+    }
+    // titik kas pengaturan/titikKas di bulan terkunci: hanya 31 Des Y (titik tutup buku) atau titikSebelum berita acara Y (pengembaliannya saat Batalkan)
+    function pintuTitik() {
+      let y = pintuTahun();
+      let d = request.resource.data;
+      return y > 0 && bulanDok(d, 'tanggal') <= y * 12 + 12 && (d.get('tanggal', '') == string(y) + '-12-31' || titikSebelum(y, d));
+    }
+    // membuka pintu: TAHUN LALU saja, sampai ≤ jam server + 72 jam, berita acara tahun itu SUDAH ADA sebelum batch (get), berjalan / terkunci / membatalkan, dan
+    // percobaannya dimulai sesudah 31 Des tahun itu (paraf.pada UTC ≥ 31 Des 17.00 = 1 Jan 00.00 WIB)
+    function pintuSah() {
+      let d = request.resource.data;
+      let y = d.get('tahun', 0);
+      let a = get(/databases/$(database)/documents/tutupBukuAcara/$(string(y)));
+      return d.get('status', '') == 'berjalan' && y is int && y == wib().year() - 1
+        && d.get('sampai', null) is timestamp && d.sampai > request.time && d.sampai <= request.time + duration.value(72, 'h')
+        && a != null && a.data.get('tahun', 0) == y && a.data.get('status', '') in ['berjalan', 'terkunci', 'membatalkan']
+        && a.data.get('paraf', {}).get('pada', '') >= string(y) + '-12-31T17:00:00.000Z';
+    }
+    // pintu tahun y tidak terbuka (tidak ada / tutup / tahun lain / lewat `sampai`) — p = dokumen pintu sesudah batch
+    function pintuMati(p, y) {
+      return p == null || p.data.get('status', '') != 'berjalan' || p.data.get('tahun', 0) != y || !(p.data.get('sampai', null) is timestamp) || !(request.time < p.data.sampai);
+    }
+    // berita acara jadi 'selesai' / 'dibatalkan' hanya bila pintu tahunnya tertutup sesudah kiriman itu (aplikasi menutupnya di kiriman yang sama) — 1 access call
+    // hanya untuk dua status akhir itu
+    function acaraTutupPintu(b) {
+      return !(b.get('status', '') in ['selesai', 'dibatalkan']) || pintuMati(getAfter(/databases/$(database)/documents/pengaturan/pintuBuku), b.get('tahun', 0));
+    }
+    function duaDigit(n) { return n < 10 ? '0' + string(n) : string(n); }
+    function hariUtc(t) { return string(t.year()) + '-' + duaDigit(t.month()) + '-' + duaDigit(t.day()); }
+    // berita acara BARU = tutup buku sungguhan tahun lampau (id = tahun), mulai berjalan / terkunci, jam mulai (paraf.pada, toISOString) = tanggal server ± 1 hari
+    function acaraBaru(id) {
+      let d = request.resource.data;
+      let p = d.get('paraf', {}).get('pada', '');
+      return d.get('tahun', '') is int && id == string(d.tahun) && d.tahun < wib().year() && d.get('mode', '') == 'sungguhan' && d.get('status', '') in ['berjalan', 'terkunci']
+        && p is string && p.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z')
+        && p[0:10] in [hariUtc(request.time - duration.value(1, 'd')), hariUtc(request.time), hariUtc(request.time + duration.value(1, 'd'))];
+    }
+    // salinan arsip: bulan catatan aslinya (field tanggal per koleksi = rules di atas)
+    function bulanArsip(kol, dok) { return kol == 'utangPemasokMutasi' ? bulanUP(dok) : bulanDok(dok, kol == 'biayaBulanan' ? 'bulan' : 'tanggal'); }
+    // salinan = catatan aslinya SEBELUM batch (hanya capServer boleh beda)
+    function salinanAsli(d) {
+      let asli = get(/databases/$(database)/documents/$(d.koleksi)/$(d.idAsli));
+      return asli != null && asli.data.diff(d.dok).affectedKeys().hasOnly(['capServer']);
+    }
+    // arsipTahun/'Y|koleksi|id': bentuk firebase.js arsipkanBerkas, koleksi = yang diarsip tutup buku (tbDaftarKoleksi mesin). Catatan bulan TERKUNCI wajib salinan
+    // persis aslinya (bulan terbuka: kunci saja, 1 access call). karantina / pesanan / tembusanStok tidak kena kunci periode (owner menulisnya bebas) — 0 access call
+    function arsipSah(id) {
+      let d = request.resource.data;
+      return d.get('tahun', '') is int && d.get('idAsli', '') is string && d.get('dok', null) is map && id == string(d.tahun) + '|' + d.get('koleksi', '') + '|' + d.idAsli
+        && (d.koleksi in ['karantina', 'pesanan', 'tembusanStok'] || (kolArsip(d.koleksi) && (bolehBulan(bulanArsip(d.koleksi, d.dok)) || salinanAsli(d))));
+    }
+
+    // ---- satu blok per koleksi di baru/js/data/koleksi.js (+ arsipTahun, ringkasanKasir, aksesAkun, permintaanAkses, fotoBon). Tanpa payung: yang tidak disebut = ditolak. ----
     match /batchMasuk/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if (owner() && tglBaru('tanggal')) || (stafBuatLahir(['ben', 'karyawan']) && tglStaf('tanggal'));   // v5: batch LAHIR BUKU 0 kg saja
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('batchMasuk', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatLahir(['ben', 'karyawan']) && tglStaf('tanggal'));   // v5: batch LAHIR BUKU 0 kg saja
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('batchMasuk', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /biayaBulanan/{id} {
       allow read: if owner();
-      allow create: if owner() && tglBaru('bulan');
+      allow create: if (owner() && tglBaru('bulan')) || (owner() && pintuTulis('biayaBulanan', id, bulanDok(request.resource.data, 'bulan')));
       allow update: if owner() && tglUbah('bulan');
-      allow delete: if owner() && tglLama('bulan');
+      allow delete: if owner() && (tglLama('bulan') || pintuHapus('biayaBulanan', id, bulanDok(resource.data, 'bulan')));
     }
 
     match /penjualan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (stafBuatJual(['ben', 'karyawan'], ['ben']) && tglStaf('tanggal'));   // Kredit (jualBon): ben saja
-      allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());
-      allow delete: if owner() && tglLama('tanggal');
+      allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (owner() && pintuTulis('penjualan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatJual(['ben', 'karyawan'], ['ben']) && tglStaf('tanggal'));   // Kredit (jualBon): ben saja
+      allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('penjualan', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /produksiKemasan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if (owner() && tglBaru('tanggal')) || (stafBuat(['ben', 'karyawan']) && tglStaf('tanggal'));   // adukan
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('produksiKemasan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuat(['ben', 'karyawan']) && tglStaf('tanggal'));   // adukan
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('produksiKemasan', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /retur/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('retur', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('retur', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /karantina/{id} {
@@ -198,23 +349,23 @@ service cloud.firestore {
 
     match /pengeluaranHarian/{id} {
       allow read: if owner();
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('pengeluaranHarian', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('pengeluaranHarian', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /stokBahanKemasan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if (owner() && tglBaru('tanggal')) || (stafBuatTipe(['ben', 'karyawan'], 'pakai') && tglStaf('tanggal'));   // bukan beli
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('stokBahanKemasan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatTipe(['ben', 'karyawan'], 'pakai') && tglStaf('tanggal'));   // bukan beli
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('stokBahanKemasan', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /stokBahanLiteran/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (stafBuatTipe(['ben', 'karyawan'], 'pakai') && tglStaf('tanggal'));   // bukan beli
-      allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());
-      allow delete: if owner() && tglLama('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('stokBahanLiteran', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatTipe(['ben', 'karyawan'], 'pakai') && tglStaf('tanggal'));   // bukan beli
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('stokBahanLiteran', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /katalogHargaLiteran/{id} {
@@ -234,30 +385,30 @@ service cloud.firestore {
 
     match /piutangMutasi/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (stafBuatTipe(['ben', 'karyawan'], 'bayar') && tglStaf('tanggal'));   // bukan hapusBuku / saldoAwal
-      allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());
-      allow delete: if owner() && tglLama('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('piutangMutasi', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatTipe(['ben', 'karyawan'], 'bayar') && tglStaf('tanggal'));   // bukan hapusBuku / saldoAwal
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('piutangMutasi', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /kasbonMutasi/{id} {
       allow read: if owner();
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('kasbonMutasi', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('kasbonMutasi', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /penyesuaianStok/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('penyesuaianStok', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('penyesuaianStok', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /tutupHari/{id} {
       allow read: if owner();
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('tutupHari', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('tutupHari', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /pelangganCatatan/{id} {
@@ -279,37 +430,37 @@ service cloud.firestore {
 
     match /setoranKas/{id} {
       allow read: if owner();
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('setoranKas', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('setoranKas', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /penyesuaianKemasan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('penyesuaianKemasan', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('penyesuaianKemasan', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /amplopLaba/{id} {
       allow read: if owner();
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('amplopLaba', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('amplopLaba', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /modalOwner/{id} {
       allow read: if owner();
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('modalOwner', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('modalOwner', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /utangOwnerMutasi/{id} {
       allow read: if owner();
-      allow create: if owner() && tglBaru('tanggal');
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('utangOwnerMutasi', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
-      allow delete: if owner() && tglLama('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('utangOwnerMutasi', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /tembusanStok/{id} {
@@ -318,9 +469,9 @@ service cloud.firestore {
 
     match /utangPemasokMutasi/{id} {
       allow read: if owner();
-      allow create: if owner() && upBaru();
+      allow create: if (owner() && upBaru()) || (owner() && pintuTulis('utangPemasokMutasi', id, bulanUP(request.resource.data)));
       allow update: if owner() && upUbah();
-      allow delete: if owner() && upLama();
+      allow delete: if owner() && (upLama() || pintuHapus('utangPemasokMutasi', id, bulanUP(resource.data)));
     }
 
     match /thrPelanggan/{id} {
@@ -367,8 +518,16 @@ service cloud.firestore {
 
     match /logAktivitas/{id} {
       allow read: if owner();
-      allow create: if owner() || kasir() || stafJejak(['ben', 'karyawan']);   // bukan-owner: SATU baris per kiriman berisi daftar dokumen
+      allow create: if owner() || stafJejak(['ben', 'karyawan']);   // bukan-owner: SATU baris per kiriman berisi daftar dokumen (v7: kasir@ dicabut)
       allow update, delete: if owner();
+    }
+
+    // v7 (hemat baca): batu nisan — satu dokumen per catatan koleksi hemat yang DIHAPUS owner lewat /baru/ ('<koleksi>|<id>'), ditulis di writeBatch YANG SAMA
+    // dengan hapusnya. capServer wajib jam server permintaan itu. Owner saja (staf belum memakai hemat baca). Tanpa get(): 0 access call. Tidak pernah dihapus otomatis.
+    match /batuNisan/{id} {
+      allow read: if owner();
+      allow create, update: if owner() && request.resource.data.capServer == request.time;
+      allow delete: if owner();
     }
 
     match /cadanganCatatan/{id} {
@@ -380,7 +539,9 @@ service cloud.firestore {
     }
 
     match /persetujuan/{id} {
-      allow read, write: if owner();
+      allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta membaca keputusan owner (pendengar koleksi utuh — rules bukan saringan)
+      allow create: if owner() || stafMintaNego(['ben', 'karyawan']);   // v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri
+      allow update, delete: if owner();   // memutus (setuju / tolak) = owner
     }
 
     match /pindahStok/{id} {
@@ -399,8 +560,10 @@ service cloud.firestore {
     }
 
     match /pengaturan/{id} {
-      allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan'])) || (id == 'aksesKasir' && kasir());   // titikKas & keamanan: owner saja
-      allow create, update: if owner() && (id != 'titikKas' || tglBaru('tanggal'));   // titik kas boleh MAJU dari bulan terkunci, tidak boleh mundur ke dalamnya
+      allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan']));   // titikKas, keamanan, aksesKasir, pintuBuku: owner saja (v7: kasir@ dicabut)
+      // titik kas boleh MAJU dari bulan terkunci, tidak boleh mundur ke dalamnya — kecuali lewat pintu tutup buku (≤ 31 Des tahun pintu). v7: pintu tutup buku
+      // (pintuBuku) dibuka hanya dengan syarat pintuSah(); ditutup (status 'tutup') kapan saja
+      allow create, update: if owner() && (id != 'titikKas' || tglBaru('tanggal') || pintuTitik()) && (id != 'pintuBuku' || request.resource.data.get('status', '') == 'tutup' || pintuSah());
       allow delete: if owner() && (id != 'titikKas' || tglLama('tanggal'));
     }
 
@@ -471,10 +634,13 @@ service cloud.firestore {
     }
     match /tutupBukuAcara/{id} {
       allow read: if owner();
-      allow create: if owner();
-      // kirim ulang identik (SDK mengulang mutasi yang jawabannya hilang) tidak mengubah apa pun → boleh juga di atas 'selesai' / 'dibatalkan'
-      allow update: if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data));
-      allow delete: if owner();
+      // v7 (sanggahan rules 7 Okt): berita acara baru berbentuk tutup buku sungguhan, jam mulainya = tanggal server ± 1 hari (pintu tutup buku mengikutinya)
+      allow create: if owner() && acaraBaru(id);
+      // kirim ulang identik (SDK mengulang mutasi yang jawabannya hilang) tidak mengubah apa pun → boleh juga di atas 'selesai' / 'dibatalkan'.
+      // v7: selesai / dibatalkan hanya bila pintu tutup buku tahun itu tertutup sesudah kiriman itu
+      allow update: if owner() && (tulisUlangSama() || (ubahBukuSah(request.resource.data, resource.data) && acaraTutupPintu(request.resource.data)));
+      // v7: hanya berita acara yang 'dibatalkan' — yang selesai tidak bisa dihapus lalu dibuat lagi (pintu tahun itu tidak bisa dibuka lagi)
+      allow delete: if owner() && resource.data.get('status', '') == 'dibatalkan';
     }
 
     match /dokumenCetak/{id} {
@@ -504,7 +670,20 @@ service cloud.firestore {
     }
 
     match /arsipTahun/{id} {
-      allow read, write: if owner();   // arsip tutup buku: owner saja
+      allow read: if owner();   // arsip tutup buku: owner saja
+      // v7 (sanggahan rules 7 Okt): salinan berbentuk 'Y|koleksi|id' dan — bila catatan aslinya di bulan terkunci — persis catatan aslinya
+      allow create, update: if owner() && arsipSah(id);
+      allow delete: if owner();
+    }
+
+    // v7 (paket E-2): foto kertas bon pemasok, satu dokumen per foto (base64 JPEG yang dikecilkan di perangkat; Storage tidak dipakai). Tidak diubah —
+    // foto salah = hapus lalu foto lagi. Koleksi ini SENGAJA tidak ada di baru/js/data/koleksi.js (tidak didengar; dibaca saat bon dibuka).
+    match /fotoBon/{id} {
+      allow read: if owner();
+      allow create: if owner() && request.resource.data.get('id', '') == id && request.resource.data.get('idBon', 0) is string && request.resource.data.idBon.size() > 0
+        && request.resource.data.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp']
+        && request.resource.data.get('base64', 0) is string && request.resource.data.base64.size() > 0 && request.resource.data.base64.size() <= 960000;
+      allow delete: if owner();
     }
 
     match /ringkasanKasir/{id} {

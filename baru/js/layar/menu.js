@@ -41,7 +41,8 @@ const IK = {
 const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:' + (w || 17) + 'px;height:' + (w || 17) + 'px;">' + (IK[n] || IK.tanya) + '</svg>');
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
-const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']] };
+// owner 7 Okt 2026: tab Hemat baca di Sistem › Perangkat (tab Kasir & PIN dicabut paket dokumen & sisa, #108)
+const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']] };
 const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat' };
 
 /** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
@@ -49,7 +50,7 @@ export function pasangLayarMenu(akar, opsi) {
   const tabAwal = bacaLokal(KUNCI_TAB) || {}; const laciAwal = bacaLokal(KUNCI_LACI) || {};
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
-    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false });
+    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null });
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()]], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
@@ -138,7 +139,17 @@ export function pasangLayarMenu(akar, opsi) {
     setujui: async () => { if (await tulis(S.susunPutusPersetujuan(st().mintaKe, true, '', waktu()))) set({ mintaKe: null }); }, tolak: async () => { if (await tulis(S.susunPutusPersetujuan(st().mintaKe, false, st().alasan, waktu()))) set({ mintaKe: null, alasan: '' }); },
     setujuiKecil: async () => { await tulis(S.susunSetujuiKecil(waktu())); },
     hariC: ({ iso }) => set({ hariC: iso }),
-    unduhCadangan: async () => { const b = S.ssBerkasCadangan(kini()); const teks = JSON.stringify(b.isi, null, 2); let bytes = teks.length;
+    // ---- hemat baca (owner 7 Okt 2026, siap 2027): saklar PER PERANGKAT dua ketukan (lalu aplikasi dimuat ulang), baca penuh, Console, semua perangkat
+    hematSaklar: ({ ke }) => {
+      if (st().yakinHemat !== ke) return set({ yakinHemat: ke, kabar: ke === 'nyala' ? 'Ketuk sekali lagi: hemat baca menyala di perangkat ini, aplikasi dimuat ulang (perangkat ini membaca penuh sekali)' : 'Ketuk sekali lagi: hemat baca mati di perangkat ini, aplikasi dimuat ulang (kembali baca semua tiap buka)', kabarAwas: true });
+      if (!opsi.setelSaklarHemat || !opsi.setelSaklarHemat(ke === 'nyala')) return set({ yakinHemat: null, kabar: 'Saklar tidak bisa disimpan di peramban ini (penyimpanan diblokir) — hemat baca tetap mati', kabarAwas: true });
+      set({ yakinHemat: null, kabar: 'Memuat ulang…', kabarAwas: false }); if (opsi.muatUlang) opsi.muatUlang();
+    },
+    hematBaca: () => { const ok = !!(opsi.hematBacaPenuh && opsi.hematBacaPenuh('tombol "Baca penuh sekarang"', false)); set({ kabar: ok ? 'Perangkat ini membaca penuh semua catatan toko sekarang' : 'Hemat baca belum berjalan di perangkat ini', kabarAwas: !ok }); },
+    hematConsole: () => { const ok = !!(opsi.hematBacaPenuh && opsi.hematBacaPenuh('owner mengubah data lewat Console', true)); set({ kabar: ok ? 'Perangkat ini membaca penuh dan menandai catatan yang berubah tanpa cap — perangkat lain menerimanya lewat ubahan' : 'Hemat baca belum berjalan di perangkat ini', kabarAwas: !ok }); },
+    hematSemua: async () => { if (st().yakinHemat !== 'semua') return set({ yakinHemat: 'semua', kabar: 'Ketuk sekali lagi: SEMUA perangkat owner yang hemat baca membaca penuh sekali (±3 × 9 rb baca)', kabarAwas: true });
+      const r = opsi.hematMintaSemua ? await opsi.hematMintaSemua() : { gagal: true, pesan: 'tidak tersedia' }; set({ yakinHemat: null, kabar: r && r.gagal ? 'Gagal: ' + r.pesan : 'Semua perangkat owner diminta membaca penuh', kabarAwas: !!(r && r.gagal) }); },
+    unduhCadangan: async () => { const b = S.ssBerkasCadangan(kini(), opsi.hemat ? opsi.hemat() : null); const teks = JSON.stringify(b.isi, null, 2); let bytes = teks.length;
       try { const blob = new Blob([teks], { type: 'application/json' }); bytes = blob.size; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = b.nama; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 2000); }
       catch (e) { set({ kabar: 'Peramban ini tidak bisa mengunduh berkas: ' + (e && e.message ? e.message : e), kabarAwas: true }); return; }
       await tulis(S.susunCatatCadangan(b, bytes, waktu(), (opsi.lokal ? opsi.lokal() : {}).namaPerangkat || '')); ukurSimpanan(); },
@@ -273,7 +284,25 @@ export function pasangLayarMenu(akar, opsi) {
     </section>`;
   }
   const pintuAtur = (judul, ringkas) => h`<div class="at-pintu" data-k="pintu-atur" data-aksi="bukaAtur"><div><div style="font-weight: 600;">${judul}</div><div class="ket" style="font-size: 10.5px;">${ringkas}</div></div><div class="ket">ubah ›</div></div>`;
+  // hemat baca (owner 7 Okt 2026): keadaan nyala/mati, baca penuh terakhir, per koleksi, daftar siap-nyala, saklar perangkat ini (owner saja)
+  function gambarHemat(s) {
+    const a = opsi.akun ? opsi.akun() : null; if (a && a.jenis !== 'owner') return h`<div class="kartu" data-k="hemat-staf"><div class="ket">Hemat baca hanya untuk perangkat owner — akun ini selalu membaca penuh.</div></div>`;
+    const HB = S.ssHemat(opsi.hemat ? opsi.hemat() : null, opsi.hematSiap ? opsi.hematSiap() : []); const jamMs = (ms) => (ms ? waktuSetempat(new Date(ms).toISOString()) : 'belum pernah');
+    return h`<div class="kartu ${HB.kabar.length ? 'awas' : ''}" data-k="hemat" style="gap: 6px;"><div style="font-weight: 700;">${HB.judul}</div><div class="k2">${HB.ket}</div>
+        ${HB.kabar.map((t, i) => h`<div class="pita-info awas" data-k="hb-kabar-${i}">${t}</div>`)}
+        ${HB.nyala ? h`<div class="k2" data-k="hb-terakhir">Baca penuh terakhir di perangkat ini: ${HB.terbaru ? jamMs(HB.terbaru) : 'belum pernah'}${HB.tertua && HB.tertua !== HB.terbaru ? ' (koleksi paling lama: ' + jamMs(HB.tertua) + ')' : ''} · ${HB.harian}${HB.klaimKabar ? ' · ' + HB.klaimKabar : ''}</div>
+          <div class="k2" data-k="hb-baca">Perkiraan baca hari ini: perangkat ini ±${ANGKA(HB.baca ? HB.baca.perangkat : 0)} · toko ±${ANGKA(HB.baca ? HB.baca.toko : 0)} dari kuota 50.000</div>` : ''}
+        ${HB.saklar ? h`<div class="kaca-btn ${s.yakinHemat === 'mati' ? 'aktif' : ''}" data-k="hb-mati" data-aksi="hematSaklar" data-ke="mati">${s.yakinHemat === 'mati' ? 'ketuk lagi: matikan & muat ulang' : 'matikan hemat baca di perangkat ini'}</div>`
+          : HB.bolehNyala ? h`<div class="kaca-btn ${s.yakinHemat === 'nyala' ? 'aktif' : ''}" data-k="hb-nyala" data-aksi="hematSaklar" data-ke="nyala">${s.yakinHemat === 'nyala' ? 'ketuk lagi: nyalakan & muat ulang' : 'nyalakan hemat baca di perangkat ini'}</div>` : h`<div class="ket" data-k="hb-tidak">${HB.alasanTidak}</div>`}</div>
+      <div class="kartu ${HB.siapOk ? '' : 'awas'}" data-k="hemat-siap" style="gap: 4px;"><div class="label">Daftar siap-nyala — hijau 3 hari berturut-turut sebelum menyalakan</div>
+        ${HB.siap.map((x) => h`<div class="hb-baris" data-k="hb-siap-${x.id}"><span>${x.teks}</span><span class="k2">${x.ket}</span><span class="pr-cap ${x.ok ? 'ok' : 'awas'}">${x.ok ? 'siap' : 'belum'}</span></div>`)}</div>
+      ${HB.nyala ? h`<div class="kartu" data-k="hemat-koleksi" style="gap: 2px;"><div class="label">${HB.nBelum ? HB.nBelum + ' koleksi belum terperiksa dengan server' : 'Semua koleksi cocok dengan server'}</div>
+          ${HB.harianBelum ? h`<div class="pita-info emas" data-k="hb-harian">${HB.harianBelum}</div>` : ''}
+          ${HB.koleksi.map((x) => h`<div class="hb-baris" data-k="hb-k-${x.k}"><span>${x.nama}<div class="k2">${x.mode}</div></span><span class="k2">${x.ket}<div>dibaca penuh ${jamMs(x.totalPada)}</div></span><span class="pr-cap ${x.ok ? 'ok' : 'awas'}">${x.ok ? 'cocok' : 'belum'}</span></div>`)}
+          <div class="hg-pil" data-k="hb-tombol"><div class="seg" data-aksi="hematBaca">baca penuh sekarang</div><div class="seg" data-aksi="hematConsole">saya baru mengubah data lewat Console</div><div class="seg ${s.yakinHemat === 'semua' ? 'aktif' : ''}" data-aksi="hematSemua">${s.yakinHemat === 'semua' ? 'yakin: semua perangkat baca penuh' : 'minta semua perangkat baca penuh'}</div></div></div>` : ''}`;
+  }
   function gambarPerangkat(s, d, tab) {
+    if (tab === 'hemat') return gambarHemat(s);
     const L = lokal(); const P = S.ssPerangkat(d, L.antre, L.idPerangkat); const pilih = P.daftar.find((x) => x.id === s.pilihP) || P.daftar.find((x) => x.ini) || null;
     if (tab === 'antrean') return h`<div class="kartu" data-k="antre" style="gap: 6px;"><div style="font-weight: 700;">${P.nAntre ? P.nAntre + ' catatan perangkat ini menunggu server' : 'Antrean perangkat ini kosong'}</div>
         ${P.antre.map((q) => h`<div class="pr-antre ${q.terlalu ? 'lama' : ''}" data-k="q-${q.koleksi}-${q.id}"><span class="j">${q.jam}</span><span>${q.nama}${q.ringkas ? ' · ' + q.ringkas : ''} <span class="pr-cap ${q.terlalu ? 'awas' : ''}">${q.terlalu ? q.lama + ' menit' : 'menunggu'}</span></span></div>`)}

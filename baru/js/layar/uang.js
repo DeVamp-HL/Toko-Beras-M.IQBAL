@@ -21,6 +21,7 @@ import { waktuSekarang } from './jual-logika.js';
 import { ssBerkasCadangan, susunCatatCadangan } from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip, kabarKiriman, kunciLuarCache } from '../data/toko.js';
+import { hbKalimatBelum } from '../data/hemat-baca.js';   // hemat baca nyala (#111): SATU sumber kelengkapan data perangkat ini
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -61,7 +62,13 @@ export function pasangLayarUang(akar, opsi) {
   const muatData = () => { const S = sumberData(); const L = lokal(); if (S.jenis === 'cadangan') return { siap: true, siapN: 0, total: 0, ditolak: [], offline: false };
     if (S.jenis !== 'firestore') return { siap: false, siapN: 0, total: 0, ditolak: [], offline: !!L.offline };
     const total = Number(L.koleksiTotal) || 0, siapN = Number(L.koleksiSiap) || 0;
-    return { siap: !total || siapN >= total, siapN, total, ditolak: Array.isArray(L.ditolak) ? L.ditolak.slice() : [], offline: !!L.offline }; };
+    // hemat baca NYALA (#111): koleksi yang BELUM LENGKAP di perangkat ini + sebabnya (SATU sumber: hemat-baca.js hbBelumLengkap → firebase.js hematKeadaan →
+    // app.js lokalPerangkat) → pstKurang "belum bisa diperiksa". Saklar mati: kolom `hemat` tidak ada — keadaan muat sama persis dengan sebelumnya
+    const hb = hematNyala(L) ? { hemat: Object.assign({}, L.hemat.belumLengkap || {}) } : {};
+    return Object.assign({ siap: !total || siapN >= total, siapN, total, ditolak: Array.isArray(L.ditolak) ? L.ditolak.slice() : [], offline: !!L.offline }, hb); };
+  const hematNyala = (L) => !!(L && L.hemat && L.hemat.nyala);
+  /** Hemat baca nyala & data perangkat ini belum lengkap untuk keputusan yang membaca seluruh buku → kalimat toko; '' = lengkap / saklar mati. */
+  const hematBelum = (perlu) => { const L = lokal(); return hematNyala(L) ? hbKalimatBelum(L.hemat.belumLengkap, perlu) : ''; };
 
   async function tulis(r, tanpaKabar) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
@@ -288,7 +295,9 @@ export function pasangLayarUang(akar, opsi) {
     kpLupakan: async ({ id }) => { const r = KP.susunLupakanPerangkat(id, st().kpYakinLupa === id); if (r.perluYakin) return set({ kpYakinLupa: id, kabar: r.tolak, kabarAwas: false }); await tulis(r); },
   };
   // konteks daftar periksa kunci bulan: antrean & kiriman ditolak di perangkat ini, nota parkir di Jual, keputusan per hari & centang owner
-  const konteksKunci = () => { const L = lokal(); const s = st(); return { lokal: { antreLokal: L.antreLokal || { belum: [], ditolak: [] }, antre: L.antre || [] }, parkir: L.parkir || [], putusanHari: putusanKunci(s), centang: s.kpCentang }; };
+  // hemat baca nyala (#111): `hemat` = peta koleksi yang belum lengkap (⛔ butir kunci bulan — potret angka bulan itu dibekukan di riwayat); mati: tidak ada
+  const konteksKunci = () => { const L = lokal(); const s = st(); return Object.assign({ lokal: { antreLokal: L.antreLokal || { belum: [], ditolak: [] }, antre: L.antre || [] }, parkir: L.parkir || [], putusanHari: putusanKunci(s), centang: s.kpCentang },
+    hematNyala(L) ? { hemat: Object.assign({}, L.hemat.belumLengkap || {}) } : {}); };
   // siap 2027 (A1): putusan per tanggal yang sudah tersimpan (Tutup buku langkah 1 / kunci bulan sebelumnya) dipakai ulang; pilihan di kartu Kunci bulan menang
   const putusanKunci = (s) => Object.assign({}, BK.putusanHari(), s.kpPutus);
   const bkUrut = (s, k) => { const i = BK.LANGKAH_BUKU.findIndex((l) => l[0] === k); return BK.LANGKAH_BUKU.slice(0, i).every((l) => !!s.langkahB[l[0]]); };
@@ -304,6 +313,9 @@ export function pasangLayarUang(akar, opsi) {
       if (!h || h.gagal || h.antre) { set({ sibuk: false, progres: null, kabar: BK.kabarBerhentiBuku(k.lanjutan ? 'lanjut' : 'kunci', tahun, k.ke, k.total, h, k), kabarAwas: true }); return false; }
     }
     if (titik) setelTitik(titik);
+    // v7 (owner 7 Okt, K8): ada bulan terkunci → PINTU TUTUP BUKU dibuka / diperbarui (tinggal < 12 jam) SEBELUM arsip — server menerima arsip bulan terkunci
+    // hanya selama pintu tahun itu terbuka. Gagal = arsip belum dimulai (tidak ada yang berpindah); Lanjutkan mencoba lagi.
+    if (!(await bukaPintu(tahun, 'Arsip'))) return false;
     const A = BK.arsipBuku(tahun); set({ progres: { sudah: 0, total: A.n, satuan: 'dokumen dipindah ke arsip' } });
     // putaran 3 AAL1: daftar arsip dihitung SEKALI — sebelum tiap potongan berikutnya status berita acara di cache dibaca ulang; dibatalkan (perangkat lain) = berhenti
     // putaran 4 P4-3: juga sesudah potongan TERAKHIR (dulu `sudah < total` — potongan terakhir yang mendarat sesudah pembatalan tertinggal di arsip)
@@ -340,8 +352,17 @@ export function pasangLayarUang(akar, opsi) {
     try { cekEkor(); await kembalikan(r.pulih); cekEkor(); const sisaA = await bacaArsipTahun(tahun); cekEkor(); if (sisaA.length) await kembalikan(sisaA); cekEkor(); } catch (e) {
       const ulang = henti ? BK.pulihBalikBuku(tahun, potongTadi, r.percobaan) : []; if (ulang.length) { try { await arsipkanDokumen(tahun, ulang); } catch (e2) { console.error(e2); } }
       set({ sibuk: false, progres: null, kabar: henti || 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan" untuk meneruskan pembatalan', kabarAwas: true }); return false; }
-    let h2 = null; try { h2 = await tulisDokumen([r.akhir], [], { tunggu: true }); } catch (e) { h2 = { gagal: true }; } if (!h2 || h2.gagal || h2.antre) { set({ sibuk: false, progres: null, kabar: 'Berita acara belum tercatat dibatalkan — ketuk "Lanjutkan"', kabarAwas: true }); return false; }
+    let h2 = null; try { h2 = await tulisDokumen(r.akhirDokumen || [r.akhir], [], { tunggu: true }); } catch (e) { h2 = { gagal: true }; } if (!h2 || h2.gagal || h2.antre) { set({ sibuk: false, progres: null, kabar: 'Berita acara belum tercatat dibatalkan — ketuk "Lanjutkan"', kabarAwas: true }); return false; }
     setelTitik(r.titik); set({ sibuk: false, progres: null, langkahB: LANGKAH_KOSONG(), parafB: { owner: false, saksi: false }, sesudahLive: null, bukaB: 'periksa', kabar: r.patch.kabar, kabarAwas: false }); return true;
+  }
+  // v7 (K8): pintu tutup buku (pengaturan/pintuBuku) sebelum arsip — BK.susunPintu = {} bila tidak perlu (tanpa bulan terkunci) atau masih segar. Pembatalan membuka /
+  // memperbarui pintunya di kiriman PERTAMA pembatalan (BK.susunBatal), tepat sebelum saldo pembuka ditarik & arsip dikembalikan
+  async function bukaPintu(tahun, apa) {
+    const Pn = BK.susunPintu(tahun, waktu()); if (!Pn.dokumen) return true;
+    let hp = null; try { hp = await tulisDokumen(Pn.dokumen, [], { tunggu: true }); } catch (e) { hp = { gagal: true, pesan: e && e.message ? e.message : String(e) }; }
+    if (hp && !hp.gagal && !hp.antre) return true;
+    set({ sibuk: false, progres: null, kabar: apa + ' ' + tahun + ' belum dimulai: pintu tutup buku belum terbuka di server' + (hp && hp.pesan ? ' (' + hp.pesan + ')' : '') + ' — tidak ada catatan yang berpindah. Sambungkan internet, lalu ketuk "Lanjutkan".', kabarAwas: true });
+    return false;
   }
   const bandingB = (s, T) => { const SB = BK.barisTahun(T.tahun); if (!s.langkahB.saldo) return BK.bandingBuku(SB, null); const P = BK.pembukaBuku(T.tahun, { idUnik: () => 0 }); return BK.bandingBuku(SB, BK.sesudahDariPembuka(P, SB)); };
   delegasi(akar, AKSI);
@@ -616,6 +637,9 @@ export function pasangLayarUang(akar, opsi) {
       <div class="kaca-btn kecil aktif" data-aksi="bkPutusSimpan" style="align-self: flex-start;">Simpan putusan</div></div>`;
   }
   function kuotaBuku(T) {
+    // hemat baca nyala (#111): perkiraan dihitung dari jumlah catatan di perangkat ini — data yang belum lengkap = "belum bisa dihitung", bukan angka setengah
+    const hb = hematBelum(null);
+    if (hb) return h`<div class="kartu" data-k="tb-kuota" style="gap: 4px; margin-top: 6px;"><div class="label" style="font-size: 10px;">Perkiraan kuota Firestore</div><div class="tb-cek belum" data-k="tb-kuota-hemat"><span class="t">?</span><div><div>Perkiraan kuota tutup buku ${T.tahun} belum bisa dihitung</div><div class="k">${hb}</div></div><div></div></div></div>`;
     let Q = null; try { Q = BK.perkiraanKuota(T.tahun, kini()); } catch (e) { console.error('perkiraan kuota', e); return ''; }
     const baris = (judul, d) => h`<div class="k"><b>${judul}</b>: ${d.map((x) => ANGKA(x.n) + ' ' + x.k + ' (' + x.persen + '%)').join(' · ')}</div>`;
     return h`<div class="kartu ${Q.lewat ? 'awas' : ''}" data-k="tb-kuota" style="gap: 4px; margin-top: 6px;"><div class="label" style="font-size: 10px;">Perkiraan kuota Firestore (batas Spark sehari: ${ANGKA(BK.BATAS_SPARK.tulis)} tulis · ${ANGKA(BK.BATAS_SPARK.hapus)} hapus · ${ANGKA(BK.BATAS_SPARK.baca)} baca)</div>

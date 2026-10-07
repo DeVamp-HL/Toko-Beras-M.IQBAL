@@ -247,13 +247,44 @@ hari ritual tetap terhitung — jangan berjualan selama arsip berjalan.
 - Kartu menulis "Pemeriksaan tidak bisa dijalankan di perangkat ini": tutup lalu buka lagi aplikasinya sekali; kalau tetap, pegangannya pita tutup buku
   ("… semua baris sama") dan kedua berkas cadangan.
 
-## Buntu Januari 2028 — dicatat, BELUM dibangun (7 Okt 2026)
+## Buntu Januari 2028 — DITUTUP oleh pintu tutup buku (rules v7, owner 7 Okt 2026)
 
-Mulai 2027 kunci bulan berjalan (keputusan owner 1 Okt). Begitu SATU bulan 2027 dikunci, tutup buku 2027 sungguhan ditolak (`tahunBuku`: tahun yang
-punya bulan terkunci — arsipnya memindah catatan bulan terkunci, saldo pembuka piutang bertanggal utang tertua). Di saat yang sama butir ⛔
-"Tutup buku 2027 sudah selesai" (siap 2027 A2) menahan kunci bulan 2028 mana pun dan menyuruh menyelesaikan tutup buku di Uang › Tutup buku — yang
-justru mustahil. Akibatnya Januari 2028: tutup buku 2027 tidak bisa jalan, kunci bulan 2028 tidak bisa jalan.
+Mulai 2027 kunci bulan berjalan (keputusan owner 1 Okt). Dulu, begitu SATU bulan 2027 dikunci, tutup buku 2027 sungguhan ditolak, sementara butir ⛔
+"Tutup buku 2027 sudah selesai" (siap 2027 A2) menahan kunci bulan 2028 → buntu. Sejak rules v7 (K8, pengecualian sempit) ritualnya membuka **pintu tutup
+buku** (`pengaturan/pintuBuku`, owner, ≤ 72 jam, hanya untuk TAHUN LALU dan hanya di atas berita acara tahun itu yang SUDAH tercatat berjalan / terkunci /
+membatalkan): kiriman 1 = berita acara "berjalan" sendirian, pintu dibuka di kiriman 2. Selama terbuka server menerima saldo pembuka tahun itu (10 koleksi
+yang memang punya saldo pembuka), arsip catatan bulan terkunci (salinannya ditulis di batch yang sama dan WAJIB sama persis dengan catatannya),
+pengembalian arsip saat Batalkan (isi sama), dan titik kas 31 Des / titik sebelum tutup buku — catatan bulan terkunci lainnya tetap tidak bisa diubah.
+Berita acara baru bisa "selesai" / "dibatalkan" hanya bersama pintu yang ditutup (aplikasi menutupnya di kiriman yang sama); berita acara yang selesai
+tidak bisa dihapus, jadi pintu tahun itu tidak bisa dibuka lagi.
 
-Penutupnya = **paket tutup buku 2027** (keputusan owner: pengecualian sempit; bentuknya dirancang di paket itu — bandingkan pilihan C/D di
-`docs/peta-kunci-periode.md`), harus siap **sebelum ritual 1 Jan 2028**. Sampai paket itu ada, butir itu di Januari 2028 memang belum punya jalan
-keluar dari layar.
+Yang perlu diingat saat ritual Januari 2028 (dan sesudahnya):
+- **Rules v7 harus yang terbit** (Console › Rules, baris 2 `ATURAN FIRESTORE v7 FINAL`). Rules v6 / v3 (jalan mundur darurat di atas) TIDAK punya pintu:
+  di bawahnya tutup buku tahun berbulan terkunci ditolak di kiriman pertama (tidak ada yang tertulis) — tempel v7 lagi dulu.
+- Arsip bulan terkunci = 5 access call per catatan (hapus 3 + salinan 2; tagihan Firestore menghitungnya sebagai baca) dan 3 catatan per kiriman — lebih
+  lambat dan lebih banyak baca dari ritual 2026 (2 per catatan, 9 per kiriman). Perkiraan kuota di langkah 1 sudah menghitungnya; kalau "TIDAK MUAT", arsip berhenti di tengah dan dilanjutkan sesudah reset kuota
+  (pintu dibuka lagi sendiri bila tinggal < 12 jam).
+- Batalkan juga lewat pintu (dibuka lagi di kiriman pembatalan pertama bila perlu). Pintu yang tertinggal terbuka (aplikasi tertutup di tengah) habis
+  sendiri paling lama 72 jam sesudah dibuka.
+
+## Hemat baca (sejak 7 Okt 2026 — `docs/rancangan-hemat-baca.md`)
+
+Sejak cabang hemat baca, `firestore.rules` di repo = **v7** (v6 + kirim ulang kasir@ bercap + batu nisan). Langkah 3 & 4 di atas memakai berkas itu
+(hitung SHA-256 dari repo saat itu) dan ★ `docs/uji-rules-v7.md` + `docs/uji-rules-v6.md`.
+
+- **Selama aturan darurat (v3) terpasang**, hapus dari `/baru/` yang membawa batu nisan DITOLAK server (v3 tidak mengenal `batuNisan`) — kirimannya
+  pindah ke Menu › Sistem › Perangkat › Antrean "ditolak". Jangan menghapus apa pun di `/baru/` selama jendela darurat; jendelanya tetap sesingkat
+  mungkin. Kirim ulang karcis kasir darurat kasir-v33 yang jawabannya hilang TIDAK ikut ditolak (tinjauan 7 Okt): `:commit` yang ditolak v3 dikirim sekali
+  lagi dengan cara lama (PATCH, `updateMask` = kolom karcis — cap yang sudah ada dibiarkan), dan itu lolos `tulisUlangSama` v3. Kalau HP tetap menyebut
+  karcis "ditolak" (versi lama), cocokkan dulu dengan Jual `/baru/` sebelum dicatat ulang.
+- **Catatan yang dibuat LAGI tanpa cap sesudah dihapus** (Console, HP kasir lama) tidak tersembunyi selamanya oleh batu nisannya: baca penuh perangkat
+  owner melihatnya masih ada di server → tampil lagi & disentuh. Kalau satu catatan tampak hilang hanya di perangkat yang hemat baca, tekan "Baca penuh
+  sekarang" di perangkat itu.
+- **Catatan yang dipulihkan sistem lama TIDAK bercap jam server.** Perangkat yang hemat baca menyala tidak mendengarnya lewat ubahan. Sesudah langkah 3,
+  di `/baru/` perangkat owner: Menu › Sistem › Perangkat › **Hemat baca** → **"Minta semua perangkat baca penuh"** (dua ketukan). Tiap perangkat owner
+  membaca penuh sekali (±9 rb baca per perangkat; rem kuota bisa menundanya ke hari kuota berikutnya — layar menyebutnya).
+- **Mengubah / menghapus data lewat Console** (owner): sesudahnya tekan **"Saya baru mengubah data lewat Console"** di perangkat owner — perangkat itu
+  membaca penuh, menyentuh catatan yang berubah tanpa cap, dan menulis batu nisan untuk yang dihapus; perangkat lain menerimanya lewat ubahan.
+  Lupa menekan = baru sampai di baca penuh harian toko berikutnya (sesudah 14.00 / 15.00 WIB).
+- **Mematikan hemat baca** di satu perangkat tanpa membuka layar: buka `/baru/?hemat=mati`. Perangkat itu kembali membaca semua catatan tiap dibuka.
+- **JANGAN tempel `firestore.rules.v6`** sebagai "mundur" selama kode bercap berjalan (lihat kepala `firestore.rules`). Mundur hemat baca = saklar.

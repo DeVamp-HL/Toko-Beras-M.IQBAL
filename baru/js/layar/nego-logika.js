@@ -10,8 +10,8 @@
 //  - tiap nego tercatat di baris nota: siapa (atribusi oleh/olehUid), barang, harga katalog (hargaAsliSatuan), selisih (negoSelisih) + negoStatus,
 //    negoBatas, negoJatah, negoAlasan, negoSetujuId. Owner melihat / menyetujui / menolak di Buku Nego (layar Jual).
 // Nama diprefiks `ng` karena bundel uji jsc satu lingkup.
-import { cacheMentah, ambilPenjualan } from '../data/toko.js';
-import { NEGO_LANTAI, kunciKemasan } from '../mesin/pembantu.js';
+import { cacheMentah, ambilPenjualan, ambilHargaKemasan, ambilHargaLiteran, petaUkuran } from '../data/toko.js';
+import { NEGO_LANTAI, kunciKemasan, hargaKarungUtuh, cariHargaKarungPerKg } from '../mesin/pembantu.js';
 import { RP } from '../inti/format.js';
 
 // owner 7 Okt: bawaan = angka rancangan JS2 (owner 100 tetap, Ben 50, karyawan giliran 0, owner boleh di bawah modal dengan alasan, langkah Rp500)
@@ -160,6 +160,36 @@ export function ngSusunMinta(t, p, akun, w) {
     nominal: Math.round((asli - p.harga) * jumlah), barang: ngKunciBarang(t), label: t.label, satuan: t.satuan, jumlah, hargaAsli: asli, hargaMinta: p.harga, batas: p.batas, jatah: p.jatah, alasan: p.alasan || '' };
   return { dokumen: [{ koleksi: 'persetujuan', data }], patch: { kabar: 'Permintaan nego ' + t.label + ' ' + RP(p.harga) + ' terkirim ke owner — harga nota tetap ' + RP(t.hargaSatuan) + ' sampai disetujui. Sesudah disetujui, ketik harga yang sama lagi.', kabarAwas: false } };
 }
+// ---- PERIKSA ULANG di perangkat OWNER (sanggahan rules 7 Okt): rules tidak mengikat nominal / teks / batas / label kiriman staf ke harga barang, jadi papan
+// persetujuan & Buku Nego menghitung angkanya sendiri dari kolom yang benar-benar dipakai persetujuan (ngSetujuUntuk: barang, hargaMinta, jumlah) + harga
+// katalog SEKARANG (rumus rak Jual: karung = hargaKarungUtuh buku induknya, kemasan, literan per wadah / merek, repack per kg).
+/** Harga katalog SEKARANG untuk kunci barang ngKunciBarang — null bila tidak dikenali (wadah, katalog kosong). */
+export function ngHargaKatalog(barang) {
+  const k = String(barang || ''); const i = k.indexOf('|'); if (i < 0) return null;
+  const jenis = k.slice(0, i); const sisa = k.slice(i + 1); const ada = (v) => (Number(v) > 0 ? Number(v) : null);
+  if (jenis === 'karung') { const j = sisa.lastIndexOf('|'); const merk = sisa.slice(0, j); const uk = (petaUkuran() || {})[merk]; const hg = j > 0 ? hargaKarungUtuh(uk ? uk.induk : merk, Number(sisa.slice(j + 1)) || 50) : null; return hg ? ada(hg.perUnit) : null; }
+  if (jenis === 'kemasan') { const h = (ambilHargaKemasan() || []).find((x) => kunciKemasan(x.merk, x.ukuran) === sisa); return h ? ada(h.hargaPerUnit) : null; }
+  if (jenis === 'literan') { const h = (ambilHargaLiteran() || []).find((x) => x.merk === sisa); return h ? ada(h.hargaPerLiter) : null; }
+  if (jenis === 'repack') return ada(cariHargaKarungPerKg(sisa));
+  return null;
+}
+/** Nama barang dari kunci ngKunciBarang (bukan label kiriman peminta). */
+export function ngNamaBarang(barang) {
+  const b = String(barang || '').split('|'); const isi = b.slice(1);
+  if (b[0] === 'karung' && isi.length >= 2) return isi.slice(0, -1).join('|') + ' ' + isi[isi.length - 1] + ' kg';
+  if (b[0] === 'kemasan' && isi.length >= 2) return isi.slice(0, -1).join('|') + ' ' + String(isi[isi.length - 1]).replace('.', ',') + ' kg';
+  return b[0] === 'literan' ? isi.join('|') + ' literan' : b[0] === 'repack' ? 'Repack ' + isi.join('|') : b[0] === 'wadah' ? 'Wadah ' + isi.join('|') : 'barang tidak dikenali';
+}
+/** Permintaan nego m menurut periksa ulang owner → { nama, katalog, hargaMinta, jumlah, nominal (null = katalog tidak ditemukan), teks }. */
+export function ngPeriksaMinta(m) {
+  // bentuk lama (sebelum JS2-C, tanpa barang / harga minta): tidak pernah dipakai nota mana pun (ngSetujuUntuk butuh barang, hargaMinta, jumlah) — tanpa angka
+  if (!(m && m.barang && Number(m.hargaMinta) > 0)) return { nama: '', katalog: null, hargaMinta: 0, jumlah: 0, nominal: null, teks: String((m && m.teks) || 'permintaan nego') + ' — bentuk lama tanpa barang & harga: tidak dipakai di nota mana pun' };
+  const hargaMinta = Math.round(Number(m && m.hargaMinta) || 0); const jumlah = Number(m && m.jumlah) || 0; const katalog = ngHargaKatalog(m && m.barang);
+  const nominal = katalog !== null && hargaMinta > 0 && jumlah > 0 ? Math.max(0, Math.round((katalog - hargaMinta) * jumlah)) : null; const nama = ngNamaBarang(m && m.barang);
+  const teks = nama + ': ' + (katalog !== null ? 'katalog ' + RP(katalog) + ' → ' : '') + RP(hargaMinta) + ' × ' + String(jumlah).replace('.', ',')
+    + (nominal !== null ? ' = potongan ' + RP(nominal) : ' — harga katalog barang ini tidak ditemukan, periksa di rak dulu') + (m && m.alasan ? ' · alasan: ' + String(m.alasan).slice(0, 80) : '');
+  return { nama, katalog, hargaMinta, jumlah, nominal, teks };
+}
 /** Permintaan nego yang masih menunggu owner (terbaru dulu). */
 export function ngMenunggu() {
   return cacheMentah('persetujuan').filter((m) => m && m.tindakan === 'nego' && (m.status || 'menunggu') === 'menunggu').sort((a, b) => String(b.pada || b.tanggal || '').localeCompare(String(a.pada || a.tanggal || '')));
@@ -185,10 +215,10 @@ export function ngBuku(tanggal) {
   const nota = Object.keys(grup).map((k) => Object.assign(grup[k], { totalSelisih: Math.round(grup[k].totalSelisih) }));
   const pakai = ngSetujuTerpakai();
   const minta = cacheMentah('persetujuan').filter((m) => m && m.tindakan === 'nego' && (m.tanggal === tanggal || (m.status || 'menunggu') === 'menunggu')).map((m) => {
-    const st = m.status || 'menunggu';
-    return { jenis: 'minta', id: String(m.id), jam: String(m.jam || ''), tanggal: String(m.tanggal || ''), oleh: String(m.dari || ''), barang: String(m.label || ''), hargaAsli: Number(m.hargaAsli) || 0, harga: Number(m.hargaMinta) || 0,
-      selisih: (Number(m.hargaMinta) || 0) - (Number(m.hargaAsli) || 0), jumlah: Number(m.jumlah) || 0, totalSelisih: -(Number(m.nominal) || 0), alasan: String(m.alasan || ''), batas: m.batas, jatah: m.jatah,
-      status: st === 'disetujui' && pakai[String(m.id)] ? 'dipakai' : st, alasanTolak: String(m.alasanTolak || '') };
+    const st = m.status || 'menunggu'; const Q = ngPeriksaMinta(m);   // sanggahan rules 7 Okt: angka dihitung ulang dari barang / hargaMinta / jumlah + katalog sekarang
+    return { jenis: 'minta', id: String(m.id), jam: String(m.jam || ''), tanggal: String(m.tanggal || ''), oleh: String(m.dari || ''), barang: Q.nama, hargaAsli: Q.katalog !== null ? Q.katalog : 0, harga: Q.hargaMinta,
+      selisih: Q.katalog !== null ? Q.hargaMinta - Q.katalog : 0, jumlah: Q.jumlah, totalSelisih: Q.nominal !== null ? -Q.nominal : 0, alasan: String(m.alasan || ''), batas: m.batas, jatah: m.jatah,
+      periksa: Q.katalog === null ? 'harga katalog barang ini tidak ditemukan — periksa di rak dulu' : '', status: st === 'disetujui' && pakai[String(m.id)] ? 'dipakai' : st, alasanTolak: String(m.alasanTolak || '') };
   });
   const baris = nota.concat(minta).sort((a, b) => String(b.jam).localeCompare(String(a.jam)) || (a.jenis === 'minta' ? -1 : 1));
   const turun = nota.filter((x) => x.selisih < 0); const potongan = -turun.reduce((a, x) => a + x.totalSelisih, 0);

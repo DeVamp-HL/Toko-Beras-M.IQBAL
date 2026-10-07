@@ -1684,8 +1684,10 @@ stok ×2, identitas) dibungkus `@media (hover: hover) and (pointer: fine)` di TE
   hargaMinta, batas, jatah, alasan, nominal = selisih total }` — papan yang SAMA dengan Menu › Sistem › Peran › Persetujuan; owner memutus lewat
   `susunPutusPersetujuan` (menolak wajib alasan) dari Buku Nego atau papan itu. Disetujui → yang meminta mengetik harga yang sama (atau ketuk "pakai" di
   pita) → baris `negoStatus: 'disetujui'` + `negoSetujuId`; **sekali pakai** (nota berlaku / keranjang lain yang memegangnya), untuk jumlah ≤ yang diminta.
-  **BELUM HIDUP untuk akun karyawan** (butuh rules v7): `firestore.rules` masih "owner saja" untuk koleksi `persetujuan` (dan bukan-owner tidak membacanya).
-  Selama itu layar JUJUR (tinjauan 7 Okt): kalimat putusan di bawah jatah berkata "minta owner dari perangkat ini belum bisa" + jalan keluar yang sungguh
+  **HIDUP untuk akun karyawan sesudah rules v7 FINAL terbit & cabang `perbaikan/hemat-baca` digabung** (owner 7 Okt): rules v7 `stafMintaNego` membuka
+  create `persetujuan` untuk ben/karyawan (hanya `tindakan 'nego'`, `status 'menunggu'`, `negoUid` = `olehUid` = uid sendiri, tanpa kolom keputusan) dan
+  baca koleksinya; `akses.js` `BUAT_STAF.persetujuan` & `BACA_STAF` memuatnya (periksa_rules menyamakan) → `bolehMintaOwner` hidup. Sebelum itu (main
+  sebelum gabung) layar JUJUR (tinjauan 7 Okt): kalimat putusan di bawah jatah berkata "minta owner dari perangkat ini belum bisa" + jalan keluar yang sungguh
   ada; tombol lembar nego "PERLU OWNER — LIHAT PILIHANNYA ›" (bukan "MINTA OWNER ›"); kartunya: PAKAI BATAS (bila batas jatah di bawah katalog) · PARKIR
   STRUK · MINTA OWNER mati berkata sebabnya, atau owner yang mencatat nota; akun tanpa jatah (0 %) yang kisinya "minta owner" → tombol nego mati dengan jalan
   keluar yang sama (`ngBolehNego(…, bisaMinta)`; `SBN()` membawa `negoBisaMinta`). Penjaga bentuknya sudah ada di `periksaKiriman` (+ `negoUid` = uid
@@ -2018,8 +2020,10 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
 - **MM7 (sisa audit 39b)**: kalimat daftar Retur untuk nota ber-bonus sudah menunjuk "Tidak ada notanya? Retur ketik tangan" di `/baru/` sejak 2 Okt
   (9686b61; ketik tangan menerima kemasan per unit). Komentar kepala `retur-logika.js` yang masih menyebut sistem lama dibetulkan. Tidak ada kalimat layar
   `/baru/` lain yang menyuruh membuka sistem lama / `kasir.html`.
-- **Belum**: keadaan "dimuat sebagian" (hemat baca, #111 belum merge) belum dibaca kartu. Kalau hemat baca masuk, koleksi yang dimuat sebagian WAJIB
-  diteruskan `app.js lokalPerangkat` → `uang.js muatData` → `pstKurang` sebagai "belum bisa diperiksa".
+- **Hemat baca (#111, disambungkan 8 Okt)**: koleksi yang BELUM LENGKAP di perangkat ini (SATU sumber `hemat-baca.js hbBelumLengkap`, lihat bagian
+  "Kelengkapan" di bab Hemat baca) diteruskan `firebase.js hematKeadaan().belumLengkap` → `app.js lokalPerangkat` → `uang.js muatData` (`M.hemat`, hanya saat
+  nyala) → `pstKurang`: baris yang membutuhkannya = "?" dengan sebab toko ("data modal owner belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB — ketuk
+  "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)"), bukan ✓. Saklar mati: `M` tanpa `hemat` — kartu sama persis (`uji_periksa_sesudah.py --banding=<ref>`).
 - Dijaga `alat-uji/uji_periksa_sesudah.py` (kotak pasir potret + buku khusus + kasbon dua orang; ritual = simulator `uji_potret_tahun.py` + hasil beku +
   selesai): semua sama (cache kembali utuh; tetap sama 20 Jan sesudah kegiatan Januari sungguhan), kapan tampil, kontrol kotak per baris (modal pembuka,
   merek pembuka dihapus, tanda 25 kg lepas, karung hilang dari rak, potret bulan hilang / omzetnya berubah, stok minus, piutang pembuka sesudah & sebelum
@@ -2031,3 +2035,137 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
   bahasa mesin) + statis; `--kontrol` (logika, tutup-buku-logika, toko.js, uang.js); `--cadangan=<lokal>` (dilewati di CI): 27 dari 27 sama pada 5 Jan &
   20 Feb 2027. `uji_kinerja_gerak`: jumlah `_versiCache += 1` di toko.js 5 → 7 (jalan baru `denganCacheSaring`). `uji_tutup_buku_bertahap`: jangkar kontrol
   ikut bentuk patokan baru; N5 memakai jam mulai yang sebenarnya (07.00).
+
+## Hemat baca tahap 1–2 (owner 7 Okt 2026, siap 2027; cabang `perbaikan/hemat-baca`) — saklar bawaan MATI
+
+Keputusan owner K1 (7 Okt): tetap Spark + hemat baca, menyala ≤ 20 Nov. Rancangan & batasnya: `docs/rancangan-hemat-baca.md`; uji rules:
+`docs/uji-rules-v7.md`; jalan darurat: `docs/prosedur-pulih-darurat.md` bagian "Hemat baca". Tahap 1–2 = rules v7 + kode yang MENGECAP tulisannya dan
+lapisan dengar baru di balik saklar per perangkat yang bawaannya MATI.
+
+- **Saklar MATI = pendengar persis sebelum 7 Okt** (dicek jsc: satu pendengar server penuh per koleksi + katalog). Yang tetap berubah: `capServer`
+  (jam server) di tulisan 48 koleksi hemat lewat `tulisBerkas` / `perbaruiBerkas` / `pulihkanBerkas`; capServer DIKUPAS dari tiap snapshot sebelum memori
+  (mesin beku, cadangan, katalog tidak melihatnya); batu nisan `batuNisan/<koleksi>|<id>` di batch hapus koleksi hemat — HANYA sesudah perangkat itu
+  terbukti bisa membaca `batuNisan` (aturan v7; 1 baca sekali, `miqbal_hemat_nisan_sah_v1`); denyut `versi: 'baru-c1'` + `capServer` di denyut owner.
+- **Saklar NYALA** (owner; Menu › Sistem › Perangkat › Hemat baca, dua ketukan, aplikasi dimuat ulang; mati darurat `/baru/?hemat=mati`): koleksi hemat
+  lewat `hbSesi` (`baru/js/data/hemat-baca.js`, murni) — simpanan perangkat (V) + delta `capServer > B` (S) + batu nisan (N) + baca penuh kueri sendiri (F);
+  baca penuh harian per toko (dokumen `aturanToko/hematHarian`); pendeteksi tanpa cap di tiap baca penuh; penulis tanpa cap dari denyut; hitungan server;
+  rem kuota; satu tab per peramban (kunci tab di app.js sebelum Firestore dimulai); pendengar simpanan hidup; uang-kritis & katalog kasir dijaga.
+- Kasir darurat **kasir-v33** ("versi 7 Okt"): nota lewat REST `:commit` + `updateTransforms capServer REQUEST_TIME` (tanpa updateMask); denyut tetap PATCH.
+  `:commit` yang DITOLAK → sekali lagi CARA LAMA (PATCH tanpa cap, `updateMask` = kolom karcis; cap yang sudah ada di server dibiarkan) sebelum karcis
+  dinyatakan ditolak — kirim ulang sesudah jawaban hilang lolos `tulisUlangSama` di v6 / v3 juga (tinjauan 7 Okt).
+  Rantai versi: `sw-kasir.js`, `VERSI_APLIKASI`/`LABEL_VERSI`, `KK_VERSI_KASIR_TERBARU`, `HB_VERSI_KASIR_CAP`, literal `uji_antrean_kasir.py` &
+  `uji_katalog_kasir.py`; hash CSP kasir darurat ditulis ulang (`uji_csp.py --pasang`).
+- **Rules v7** = v6 + `ulangKasirBercap()` (update penjualan kasir@: hanya `capServer` yang beda — jam server, atau DIBUANG kiriman ulang HP kasir-v32)
+  + blok `batuNisan`; `firestore.rules.v6` disimpan utuh. `periksa_rules.py` menuntut
+  isi lain SAMA dengan v6 (+ 10 kontrol v7; kontrol lama tetap wajib tertangkap pemeriksa khususnya).
+- Uji: `alat-uji/uji_hemat_baca.py` (+ `--kontrol`, 35 kerusakan) — murni, server mainan (jam perangkat mundur/maju, absen > 14 hari, hapus dalam/luar
+  jendela delta, Console tanpa cap, HP kasir lama, jadwal 14.00/15.00 WIB per toko, tab mati, rem), firebase.js dengan SDK palsu (saklar mati/nyala),
+  statis tiap jalan tulis. `uji_layar_kunci.py` & `uji_denyut_per_akun.py`: SDK palsu ikut mengekspor permukaan baru. `uji_antrean_kasir.py`: server palsu
+  memahami `:commit` + kontrol "nota kembali PATCH".
+
+**Tinjauan 7 Okt (penyanggah, sebelum PR)** — dibetulkan: kirim ulang HP < kasir-v33 saat nyala tidak lagi ditolak (rules + pendeteksi tidak menyentuh
+catatan lahir tanpa cap di koleksi yang dengar penuh karena gerbang); `capServer` masa depan tidak menggeser jam server perangkat (jam hanya dari gema
+denyut); catatan LAHIR ULANG tanpa cap sesudah batu nisannya tampil lagi (bukti baca penuh server di rekam + sentuh lewat isi mentah); temuan pendeteksi
+yang gagal dikirim diulang (rekam, ≤ 5 kali); kasir-v33 jatuh ke cara lama bila `:commit` ditolak; baris "statis" siap-nyala benar saat nyala; Bn = jam
+baca penuh terakhir; catatan arsip tutup buku bukan "hilang tanpa kabar"; umur denyut = jam server saat terlihat berubah; kontrol (c) semantik. Rincian &
+uji: `docs/rancangan-hemat-baca.md` bagian "Tinjauan 7 Okt". Saklar MATI dibuktikan lagi: firebase.js cabang vs `main` di jsc — pendengar, memori,
+tulisan (selain cap jam server yang disengaja), simpanan, pendengar staf SAMA.
+
+**Kelengkapan — SATU sumber (8 Okt, #111 × Paket C)**. `hemat-baca.js hbBelumLengkap` menjawab, per koleksi hemat di perangkat ini, apakah datanya LENGKAP
+untuk keputusan final dan sebabnya (kalimat toko). Dua jenis: **"periksa"** = belum terperiksa dengan server (arti `terperiksa` sejak 7 Okt + tab yang
+berhenti — dibuktikan di 16384 kombinasi keadaan; tab berhenti / kalah kunci tab, simpanan belum terbaca, batu nisan belum dicocokkan, dengar penuh / baca penuh
+masih berjalan, baca penuh wajib tapi ditunda rem kuota / gagal, ubahan bercap belum dicocokkan, hitungan server belum cocok) · **"harian"** = hitungan cocok
+tapi BELUM ADA BACA PENUH sejak kuota baca terakhir direset (hari KUOTA: 14.00 WIB s/d 31 Okt, 15.00 WIB sesudahnya — kalimatnya menyebut jam itu, bukan "hari
+ini") — oleh perangkat ini maupun baca penuh harian toko yang selesai TANPA temuan tertunda untuk jenis catatan itu (ubahan tanpa cap jam server sejak baca
+penuh terakhir bisa belum terlihat; dengar penuh = lengkap). `terperiksaK` (gerbang katalog kasir, uang-kritis, pil kepala, tanda salinan perangkat toko.js)
+kini DITURUNKAN dari sumber ini.
+`hbSesi.belumLengkap()` / `keadaan().belumLengkap` → `firebase.js hematKeadaan()` (mati / staf: tanpa kolom) → `app.js` (lokalPerangkat Uang, opsi `hemat`
+Laporan). Yang memakai: kartu Pemeriksaan sesudah tutup buku (`pstKurang` "?"), daftar periksa **kunci bulan** (⛔ butir `hemat` — potret angka bulan dibekukan
+di riwayat), **Lanjutkan / Batalkan tutup buku** (`bkSambungan`), gerbang **g7** (dibaca penuh sesi ini DAN lengkap — di layar langkah 1 DAN di pintu
+`susunKunci`), **perkiraan kuota** tutup buku ("?" — tidak dihitung dari data setengah), **Laporan › Pajak** (pita "?", rekap konsultan / catat setoran /
+omzet tahun lalu dari sistem DITAHAN, draf tetap), **dokumen Laporan untuk bank / kartu kredit** (Rekap Omzet Bulanan & Bukti Omzet = `pjOmzetSistem`,
+penjualan & retur; Neraca, laporan berkop laba-rugi / arus kas & paket bank = seluruh buku — DITAHAN "<judul> ditahan — angkanya belum bisa dipastikan: …",
+nomor cetakan tidak terpakai), panel Hemat baca (berapa jenis catatan belum lengkap PER SEBAB, tombolnya di sana). **Tutup hari & titik kas** tetap dijaga
+`pastikanSegar` (hitungan server ≤ 2 menit, jenis "periksa" — rancangan K1; "belum dibaca penuh sejak reset" tidak menahan tutup hari: memaksa ±9 rb baca saat
+rem kuota menahan baca penuh harian bisa menghabiskan kuota — HP kasir 429). **Tidak disambungkan** (sengaja, keputusan berikut): Stok › Cocokkan (opname
+menulis selisih dari buku perangkat) — belum dijaga hemat; tanpa internet dulu pun sama (simpanan perangkat). Rekap harian (satu hari, bukan dokumen untuk
+bank) dan dokumen kecil (nota, kuitansi — satu catatan) juga tidak ditahan. Saklar mati: semua di atas sama persis (`uji_periksa_sesudah.py --banding=<ref>` —
+kartu, gerbang, kunci bulan dari LAYAR, pintu susunKunci, Lanjutkan, HTML Uang, Pajak & dokumen Laporan + hasil ketukan keluar). Uji: `uji_hemat_baca.py` bagian K
+(+ kontrol K1–K15), `uji_periksa_sesudah.py` S7/S7b/S7c/S7d (+ kontrol hemat, asap cadangan lokal: nyala & lengkap = mati; nyala & belum dibaca penuh = 13 "?" 0 ✗).
+
+**Sanggahan 8 Okt (adversarial atas adc85b3)** — dibetulkan: (1) baca penuh harian TOKO menulis `selesai` hanya sesudah antrean temuan pendeteksi habis
+(sentuhan / batu nisan terkirim); yang gagal permanen (5×) atau DILEWATI karena bulannya terkunci (`sentuhCap` kini melaporkan `lewat`, dulu dibuang diam-diam)
+dihitung per jenis catatan → `temuanTunda` di `aturanToko/hematHarian` → perangkat lain "harian" untuk jenis itu ("punya ubahan yang ditemukan baca penuh
+harian toko tapi belum sampai ke perangkat ini — ketuk …"); dulu perangkat lain melapor LENGKAP padahal ubahan Console tidak pernah sampai. (2) Tab yang kalah
+kunci tab (`firebase.js berhenti`, `_hemat` tidak di-null-kan) melapor semua jenis catatan "periksa — tidak diperbarui lagi di tab ini, muat ulang aplikasi";
+uang-kritis & katalog menolak. (3) Dokumen Laporan untuk bank ditahan (di atas). (4) Pintu `susunKunci` memeriksa g7 dengan `lokal()` layar. (5) Kalimat: jam
+reset kuota disebut ("sejak kuota baca direset pukul 14.00 WIB"), 429 = "kuota baca hari ini habis — ketuk … sesudah pukul HH.MM WIB", sebab satu jenis catatan
+tidak dipinjamkan ke yang lain ("…; 2 jenis catatan lainnya <sebabnya>"), "(n jenis catatan)" sebelum petunjuk (bukan "(n bagian data)" di belakang kurung menu),
+"di perangkat ini … perangkat ini" tidak berulang. (6) Uji: `cekSatuSumber` membandingkan dengan rumus 7 Okt yang DITULIS ULANG atas keadaan sesi nyata (dulu
+tautologis), kasus K4 (baca penuh sesi ini + putus internet; kontrol K4 kini berbunyi di sana, bukan di B9), K5 (tab berhenti), K6/K6b/K6c (klaim + sentuhan gagal
+sekali / permanen / bulan terkunci), pembanding mati menggambar kartu kunci bulan dari layar & menolak pembanding kosong.
+
+### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
+
+1. **Rules v7 FINAL terbit DULU — JANGAN merge sebelum itu** (owner lewat Console, Playground `docs/uji-rules-v7.md` 17 kasus "Wajib owner" sesuai kolom
+   "Wajib", bagian lain opsional; dokumen uji dihapus lagi; Claude membaca lewat Chrome owner). Satu nota dari HP kasir yang masih v32 masuk. Tanpa v7: batu nisan tidak pernah ditulis (hemat baca tidak bisa
+   dinyalakan) dan kirim ulang karcis kasir-v33 hanya selamat lewat cara lama (jaring pengaman, bukan jalan utama).
+2. **Gabung cabang** (saklar MATI — baca belum berubah). CI hijau, termasuk job peramban (antrean kasir dengan `:commit`).
+3. **HP penjaga** dibuka sekali sampai bilah atas "versi 7 Okt" (kasir-v33). **Semua tab `/baru/`** di tiap perangkat dimuat ulang (denyut `baru-c1`).
+4. **Daftar siap-nyala hijau 3 hari berturut-turut** (Menu › Sistem › Perangkat › Hemat baca): aturan v7 terbukti · tanpa tab `/baru/` lama / sistem
+   lama 7 hari · semua HP kasir ≥ kasir-v33 dalam 14 hari · tiap perangkat owner `baru-c1` antrean 0 · tanpa catatan baru tak bercap.
+5. **Owner menyalakan** di tiap perangkat owner (tiap perangkat membaca penuh sekali, ±9 rb baca; nyalakan berselang, bukan sekaligus).
+6. Esoknya Claude membaca tab Usage Console (baca saja) sehari sebelum & sesudah, dibandingkan dengan "perkiraan baca hari ini" di panel Hemat baca.
+7. Sesudah nyala: ubah data lewat Console → tekan "Saya baru mengubah data lewat Console"; tutup buku 2026 (sesudah 1 Jan 2027 15.00 WIB) dimulai
+   sesudah "Baca penuh sekarang" di perangkat pemegang (butir g7 daftar periksa tutup buku — g6 = stok minus & kelebihan bayar, paket A).
+
+## Rules v7 FINAL & tutup buku tahun berbulan terkunci lewat PINTU (owner 7 Okt 2026; cabang `perbaikan/hemat-baca`, PR #111)
+
+Owner menerbitkan rules **SEKALI** lewat Console, jadi semua yang butuh rules dikumpulkan di cabang ini. `firestore.rules` = v6 + lima ubahan (kepala berkas;
+Playground `docs/uji-rules-v7.md`): (1) hemat baca (kirim ulang kasir@ bercap, batu nisan) · (2) permintaan nego staf (`persetujuan`: create
+`stafMintaNego`, baca ben/karyawan) · (3) `fotoBon` (owner, bentuk & ukuran dibatasi, tanpa ubah — paket E-2) · (4) kasir@ dipangkas jadi kasir darurat
+saja (nota `penjualan` + kirim ulangnya, denyut `perangkatStatus`, katalog `ringkasanKasir`; dicabut: `piutangMutasi`, `stokBahanLiteran`, `logAktivitas`,
+`pengaturan/aksesKasir` — diperiksa dari kode `kasir-darurat-nominal.html`) · (5) **pintu tutup buku**.
+
+**Kenapa pintu (K8 "pengecualian sempit")**: kunci bulan berbentuk awalan; mulai 2027 tahun yang ditutup SELALU punya bulan terkunci, dan arsip memindah
+SEMUA catatan ≤ 31 Des (juga saldo pembuka tahun lalu yang bertanggal Januari / utang tertua). Tanpa pintu: tutup buku 2027 mustahil, dan butir A2 menahan
+kunci 2028 → buntu Januari 2028.
+
+**Bentuknya** — server (`firestore.rules`: `pintuTahun`, `pintuTulis`, `pulihArsip`, `pintuHapus`, `pintuTitik`, `pintuSah`, `salinanArsip`, `kolPembuka`,
+`titikSebelum`, `arsipSah`, `acaraBaru`, `acaraTutupPintu`) dan perangkat (`baru/js/data/kunci-periode.js`: `KP_ID_PINTU`, `KP_KOLEKSI_PEMBUKA`, `kpPintu`,
+`kpLewatPintu`, `kpTitikSebelum`, `kpNilaiKiriman(…, pintu)`, `kpPecahBiaya`; `toko.js` `pintuDari`) memakai aturan yang SAMA:
+- dokumen `pengaturan/pintuBuku = { tahun: Y, status: 'berjalan' | 'tutup', sampai }`; dibuka OWNER hanya untuk **tahun lalu**, `sampai` ≤ jam server +
+  72 jam (aplikasi menulis 48 jam menurut jam perangkat), dan hanya di atas berita acara `tutupBukuAcara/Y` yang **sudah ada SEBELUM kirimannya** (rules
+  `get`, sanggahan rules 7 Okt) berjalan / terkunci / membatalkan, dimulai sesudah 31 Des Y. Karena itu ritual berbulan terkunci mengirim berita acara
+  'berjalan' SENDIRIAN dulu (`rencana.acaraDulu`; pintu di kiriman 2), dan pembatalan lanjutan dari 'dibatalkan' menulis 'membatalkan' sendirian dulu.
+  Pintu tinggal < 12 jam dibuka lagi: sebelum arsip (`uang.js` `bukaPintu`), di kiriman lanjutan pertama (`lanjutBuku`), di kiriman pembatalan pertama
+  (`susunBatal`). Ditutup (status `tutup`) bersama berita acara `selesai` / `dibatalkan` — rules MENOLAK selesai / dibatalkan selagi pintu tahun itu
+  terbuka (`acaraTutupPintu`), berita acara baru wajib berbentuk tutup buku sungguhan berjam mulai = tanggal server ± 1 hari (`acaraBaru`), dan hanya
+  berita acara 'dibatalkan' yang bisa dihapus — pintu tidak pernah terbuka untuk tahun yang sudah selesai.
+- selama terbuka, untuk catatan bertanggal ≤ Des Y di bulan terkunci, hanya: buat / hapus saldo pembuka Y (`tutupBuku` + `tahunDari: Y`) di 10 koleksi
+  pembuka (`kolPembuka` = `KP_KOLEKSI_PEMBUKA` = `CACHE_PEMBUKA`) · hapus catatan yang salinannya di `arsipTahun/'Y|koleksi|id'` sesudah batch SAMA PERSIS
+  dengan catatannya (`salinanArsip`; hanya `capServer` boleh beda) · kembalikan dari arsip dengan isi sama · titik kas 31 Des Y atau persis `titikSebelum`
+  berita acara Y. Salinan arsip sendiri terikat (`arsipSah`): bentuk `'Y|koleksi|id'` untuk koleksi yang diarsip, dan salinan catatan bulan terkunci =
+  catatan aslinya sebelum batch. **Tidak ada pintu untuk ubah**, untuk catatan bulan terkunci lainnya (nota / uang keluar bertanda `tutupBuku` tetap
+  ditolak), untuk `pindahUang` / `slipUpah` (tidak diarsip), untuk kasir@ / staf.
+- access call: saldo pembuka / titik 31 Des 2, titik kembali 3, arsip 3 + salinan 1–2, pengembalian 3, buka pintu 1, berita acara selesai / dibatalkan 1;
+  arsip & pengembalian di `firebase.js` dipecah `kpPecahBiaya` (≤ 18 catatan DAN ≤ 18 access call; arsip bulan terkunci = 3 catatan per potongan, bulan
+  lampau terbuka 9). `perkiraanKuota` & pita "n kiriman lagi" ikut menghitungnya (tiap access call = 1 baca di tagihan Firestore).
+- `tahunBuku`: tahun berbulan terkunci kini `bolehSungguhan` (dulu ditolak) dengan `perluPintu`; tanpa bulan terkunci (tutup buku 2026) = tanpa pintu, jalur
+  dan kirimannya sama dengan sebelum v7.
+
+**Uji**: `alat-uji/rules_mini.py` = penafsir mini bahasa rules (bagian yang dipakai berkas ini; sepakat dengan model v6 di semua kasus berita acara).
+`periksa_rules.py`: v7 = v6 + PERSIS ubahan di atas, bentuk pintu persis, dan SEMUA kasus Playground ★ dinilai penafsir (id kasus = `docs/uji-rules-v7.md`).
+`uji_tutup_buku_2027.py`: kotak pasir — tutup buku 2026 (tanpa pintu) lalu 2027 dengan Jan–Nov terkunci lewat `jalankanBuku` / `jalankanBatal` /
+`bukaPintu` uang.js APA ADANYA; server tiruan mencatat tiap batch dan TIAP batch dinilai teks `firestore.rules` (≤ 18, perkiraan layar = hitungan server);
+periksa ulang sama persis; Batalkan mengembalikan SEMUA catatan persis; Desember ikut terkunci (titik kas & modal 31 Des); arsip putus + pintu kedaluwarsa →
+Lanjutkan; 30 nama berutang (kiriman dipecah, lanjutan membuka pintu lagi); percobaan mengubah catatan terkunci lain ditolak rules DAN penjaga klien.
+Sanggahan rules 7 Okt (rules): salinan arsip sampah / berisi lain / karangan, "saldo pembuka" di nota & uang keluar, titik kas mundur, berita acara + pintu
+dalam satu kiriman, pintu tahun lain, berita acara selesai tanpa menutup pintu, hapus berita acara selesai — DITOLAK; pembatalan lanjutan dari 'dibatalkan'
+diterima. Papan persetujuan & Buku Nego owner menghitung ulang angka permintaan nego (`ngPeriksaMinta`: barang, harga minta, jumlah + katalog sekarang);
+permintaan nego tidak ikut "setujui semua yang kecil".
+
+**Langkah owner** (urutan lengkap di isi PR #111 & `docs/uji-rules-v7.md`): Playground + Publish v7 → satu nota kasir darurat masuk → merge PR #111 → HP
+penjaga dibuka sekali (kasir-v33) → hemat baca dinyalakan menurut daftar siap-nyala (≤ 20 Nov). Tutup buku 2027 (Januari 2028) tidak perlu langkah rules
+apa pun lagi.
+

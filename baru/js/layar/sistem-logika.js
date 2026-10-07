@@ -15,7 +15,7 @@ import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js
 import { semuaBon, pesanTagih } from './bon-logika.js';
 import { SERVER_BUKA } from '../data/akses.js';
 // owner 7 Okt (JS2-C): bawaan batas nego satu sumber
-import { NG_BAWAAN } from './nego-logika.js';
+import { NG_BAWAAN, ngPeriksaMinta } from './nego-logika.js';
 
 export const ssHariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const ssTambahHari = (iso, n) => new Date((ssHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
@@ -115,6 +115,38 @@ export function ssJejak(kini, antre, saring) {
     perOrang: Object.keys(orang).sort((a, b) => orang[b] - orang[a]).map((n) => ({ nama: n, n: orang[n], hariIni: hariIni.filter((l) => l.oleh === n).length, belum: hariIni.filter((l) => l.oleh === n && !l.sampai).length })) };
 }
 
+// ---------- SS1 · Hemat baca (owner 7 Okt 2026, siap 2027 — docs/rancangan-hemat-baca.md) ----------
+const SS_MODE_HEMAT = { delta: 'dengar ubahan', total: 'baca penuh', penuh: 'dengar penuh' };
+/**
+ * Panel Menu › Sistem › Perangkat › Hemat baca. K = keadaan hemat perangkat ini (firebase.js hematKeadaan), siap = daftar siap-nyala (hbSiapNyala).
+ * Angka baca = PERKIRAAN (catatan yang datang dari server ke perangkat), bukan tagihan — tagihan dibaca di tab Usage Console. Kalimat toko.
+ */
+export function ssHemat(K, siap) {
+  const H = K || {};
+  const daftar = (H.koleksi || []).map((x) => ({ k: x.k, nama: ssNamaKoleksi(x.k), mode: x.bacaJalan ? 'sedang dibaca penuh' : SS_MODE_HEMAT[x.mode] || 'menunggu', ok: !!x.terperiksa,
+    ket: x.vMati ? 'tab ini berhenti menerima data — muat ulang' : x.galat ? 'galat server: ' + x.galat : x.wajibTotal || (x.terperiksa ? 'cocok dengan server' : x.sebab || 'belum terperiksa'), totalPada: x.totalPada || null }))
+    .sort((a, b) => (a.ok ? 1 : 0) - (b.ok ? 1 : 0) || a.nama.localeCompare(b.nama));
+  const kapan = daftar.map((x) => x.totalPada).filter((x) => x); const S = siap || [];
+  const status = !H.saklar ? 'MATI' : H.nyala ? 'NYALA' : 'NYALA, belum berjalan';
+  const kl = H.klaim || null;
+  // #111 × Paket C: koleksi yang terperiksa tapi belum dibaca penuh sejak kuota baca terakhir direset (SATU sumber hbBelumLengkap) — keputusan final menunggu;
+  // tombolnya ada di panel ini. Sanggahan 8 Okt: dihitung PER SEBAB (jam server belum diterima / kuota habis / ubahan toko belum sampai ≠ "belum dibaca penuh"),
+  // "jenis catatan" (bukan "koleksi"); petunjuk menu dibuang — panelnya ini
+  const BL = H.belumLengkap || {}; const grupH = {};
+  Object.keys(BL).forEach((k) => { if (!BL[k] || BL[k].jenis !== 'harian') return; const s = String(BL[k].sebab || '').replace(' (Menu › Sistem › Perangkat › Hemat baca)', ''); grupH[s] = (grupH[s] || 0) + 1; });
+  const tundaToko = kl && kl.selesai && kl.temuanTunda && typeof kl.temuanTunda === 'object' ? Object.keys(kl.temuanTunda).reduce((a, k) => a + (Number(kl.temuanTunda[k]) || 0), 0) : 0;
+  return { status, nyala: !!H.nyala, saklar: !!H.saklar, owner: !!H.owner,
+    harianBelum: H.nyala && Object.keys(grupH).length ? Object.keys(grupH).map((s) => grupH[s] + ' jenis catatan ' + s).join('; ') + '. Kartu pemeriksaan sesudah tutup buku, kunci bulan, Laporan › Pajak & dokumen Laporan menunggu sampai lengkap.' : '',
+    judul: 'Hemat baca: ' + status + ' di perangkat ini',
+    ket: H.nyala ? 'Perangkat ini memakai simpanannya sendiri dan hanya menarik catatan yang berubah (bercap jam server). Sekali sehari satu perangkat owner membaca penuh untuk toko, sesudah kuota baca Firebase direset (' + (H.jamReset || '14.00/15.00') + ' WIB); tiap perangkat membaca penuh paling lambat 14 hari sekali.'
+      : 'Mati = tiap kali aplikasi dibuka, semua catatan toko dibaca dari server (±7 rb baca; kuota gratis 50 rb sehari). Nyalakan HANYA sesudah daftar siap-nyala hijau 3 hari berturut-turut.',
+    koleksi: daftar, nBelum: daftar.filter((x) => !x.ok).length, tertua: kapan.length ? Math.min.apply(null, kapan) : null, terbaru: kapan.length ? Math.max.apply(null, kapan) : null,
+    harian: !kl ? 'belum ada baca penuh harian toko' : kl.selesai ? 'baca penuh harian ' + kl.hari + ' selesai oleh ' + (kl.nama || kl.perangkat || 'perangkat owner') + (tundaToko ? ' · ' + tundaToko + ' ubahan tanpa cap belum bisa sampai ke perangkat lain (perangkat lain diminta baca penuh sendiri)' : '') : 'baca penuh harian ' + kl.hari + ' sedang dikerjakan ' + (kl.nama || kl.perangkat || 'perangkat owner'),
+    klaimKabar: H.klaimKabar || '', baca: H.baca || null, siap: S, siapOk: S.length > 0 && S.every((x) => x.ok),
+    bolehNyala: !H.saklar && !!H.owner && !!H.nisanSah, alasanTidak: !H.owner ? 'hanya owner yang bisa menyalakan' : !H.nisanSah ? 'aturan server v7 belum terbukti di perangkat ini (owner menerbitkan rules v7 lewat Console dulu)' : '',
+    kabar: [H.kabarMati, H.kabar, H.nisanKabar, H.ayunan, H.jalurPenuh, H.berhenti].filter((x) => !!x) };
+}
+
 // ---------- SS2 · Peran & persetujuan ----------
 // Putaran 23c (owner 24 Sep): kisi menampilkan KEBENARAN SERVER. Kisi `sendiri` yang tidak dibuka firestore.rules v3 (akses.js SERVER_BUKA)
 // tampil "tertutup server" beserta sebabnya (peta §6) — bukan "boleh sendiri". Nilai kisi tersimpan tetap; yang berubah cuma yang digambar.
@@ -182,11 +214,12 @@ export function susunUbahAkun(uid, ubah, w, yakin) {
 /** Permintaan "minta owner" (ditulis tablet/Mac ke koleksi persetujuan): yang menunggu + riwayat keputusan. */
 export function ssPersetujuan(kini) {
   const semua = cacheMentah('persetujuan').slice().sort(ssUrutTerbaru); const P = ssPeran();
-  const baris = (m) => ({ id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,
-    // tinjauan 7 Okt: permintaan NEGO di bawah modal (beralasan) atau tanpa batas jatah (modal belum tercatat) tidak ikut "setujui semua yang kecil" — dilihat satu per satu
-    sekaligus: !(m.tindakan === 'nego' && (String(m.alasan || '').trim() || !(Number(m.batas) > 0))),
-    teks: m.teks || '', n: Number(m.nominal) || 0, tanggal: m.tanggal || '', jam: m.jam || '', status: m.status || 'menunggu', alasanTolak: m.alasanTolak || '', diputusTanggal: m.diputusTanggal || '',
-    saran: m.tindakan && P.hak(m.peran || 'karyawan', m.tindakan) === 'tidak' ? 'Peran ' + (m.dari || 'ini') + ' sebenarnya TIDAK BOLEH untuk ini — kalau sering, ubah haknya' : 'Menurut kisi hak, ini memang minta owner' });
+  const baris = (m) => { const Q = m.tindakan === 'nego' ? ngPeriksaMinta(m) : null; return { id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,
+    // sanggahan rules 7 Okt: permintaan NEGO tidak pernah ikut "setujui semua yang kecil" — rules tidak mengikat nominal / batas / alasan kiriman staf ke harga
+    // barang, jadi owner melihatnya satu per satu; teks & angkanya dihitung ulang di sini (ngPeriksaMinta: barang, hargaMinta, jumlah + harga katalog sekarang)
+    sekaligus: m.tindakan !== 'nego',
+    teks: Q ? Q.teks : m.teks || '', n: Q ? Q.nominal || 0 : Number(m.nominal) || 0, tanggal: m.tanggal || '', jam: m.jam || '', status: m.status || 'menunggu', alasanTolak: m.alasanTolak || '', diputusTanggal: m.diputusTanggal || '',
+    saran: m.tindakan && P.hak(m.peran || 'karyawan', m.tindakan) === 'tidak' ? 'Peran ' + (m.dari || 'ini') + ' sebenarnya TIDAK BOLEH untuk ini — kalau sering, ubah haknya' : 'Menurut kisi hak, ini memang minta owner' }; };
   const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(baris); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(baris).slice(0, 20);
   return { menunggu, riwayat, kecil: menunggu.filter((m) => m.sekaligus && m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
 }
@@ -197,10 +230,10 @@ export function susunPutusPersetujuan(id, setuju, alasan, w) {
     patch: { kabar: setuju ? 'Disetujui — ' + (m.dari || 'peminta') + ' bisa melanjutkan di perangkatnya' : 'Ditolak (' + String(alasan).trim() + ') — ' + (m.dari || 'peminta') + ' dapat kabarnya', kabarAwas: false } };
 }
 export function susunSetujuiKecil(w) {
-  const P = ssPersetujuan(new Date(w.kini)); const kecil = P.menunggu.filter((m) => m.sekaligus && m.n <= P.batas); const nSatu = P.menunggu.filter((m) => !m.sekaligus && m.n <= P.batas).length;
-  if (!kecil.length) return { tolak: P.menunggu.length ? 'Semua permintaan di atas batas "sekaligus" (' + RP(P.batas) + ')' + (nSatu ? ' atau nego di bawah modal / tanpa modal' : '') + ' — setujui satu per satu' : 'Tidak ada yang menunggu' };
+  const P = ssPersetujuan(new Date(w.kini)); const kecil = P.menunggu.filter((m) => m.sekaligus && m.n <= P.batas); const nSatu = P.menunggu.filter((m) => !m.sekaligus).length;
+  if (!kecil.length) return { tolak: P.menunggu.length ? 'Semua permintaan di atas batas "sekaligus" (' + RP(P.batas) + ')' + (nSatu ? ' atau permintaan nego' : '') + ' — setujui satu per satu' : 'Tidak ada yang menunggu' };
   const dokumen = []; kecil.forEach((m) => { const r = susunPutusPersetujuan(m.id, true, '', w); if (r.dokumen) dokumen.push(r.dokumen[0]); });
-  return { dokumen, patch: { kabar: kecil.length + ' permintaan kecil (≤ ' + RP(P.batas) + ') disetujui sekaligus' + (P.menunggu.length - kecil.length - nSatu ? '; ' + (P.menunggu.length - kecil.length - nSatu) + ' yang besar masih menunggu' : '') + (nSatu ? '; ' + nSatu + ' nego di bawah modal / tanpa modal dilihat satu per satu' : ''), kabarAwas: false } };
+  return { dokumen, patch: { kabar: kecil.length + ' permintaan kecil (≤ ' + RP(P.batas) + ') disetujui sekaligus' + (P.menunggu.length - kecil.length - nSatu ? '; ' + (P.menunggu.length - kecil.length - nSatu) + ' yang besar masih menunggu' : '') + (nSatu ? '; ' + nSatu + ' permintaan nego dilihat satu per satu (angkanya dihitung ulang dari harga katalog)' : ''), kabarAwas: false } };
 }
 
 // ---------- SS3 · Cadangan & kuota ----------
@@ -209,11 +242,14 @@ const SS_TAK_DICADANGKAN = { logAktivitas: 1, perangkatStatus: 1 };   // jejak t
  *  pembuka CACHE_PEMBUKA — termasuk modal owner sejak siap 2027; dulu daftar sendiri di sini tanpa modal). */
 export function ssEraTutupBuku() { return eraBuku(); }
 /** Isi berkas cadangan = bentuk unduhBackup() sistem lama (versi 5): semua koleksi + peta jenis beras + cap era; koleksi baru ikut. */
-export function ssBerkasCadangan(kini) {
+export function ssBerkasCadangan(kini, hemat) {
   const isi = { versi: 5, diunduhPada: kini.toISOString(), sumber: 'sistem baru', eraTutupBuku: ssEraTutupBuku() }; let dokumen = 0, koleksi = 0;
   KOLEKSI.forEach((k) => { if (SS_TAK_DICADANGKAN[k.nama]) return; isi[k.nama] = cacheMentah(k.cache).slice(); dokumen += isi[k.nama].length; koleksi += 1; });
   isi.petaJenisBeras = ambilPetaJenisBeras();
-  return { isi, dokumen, koleksi, nama: 'backup-batch-miqbal-' + hariIniIso(kini) + '.json' };
+  // owner 7 Okt (hemat baca nyala): koleksi yang belum terperiksa dengan server DISEBUT di nama berkas & isinya (kalau ragu, berkas mengaku). Mati = sama persis.
+  const belum = hemat && hemat.nyala ? (hemat.belum || []) : [];
+  if (belum.length) isi.keadaanData = { belum: belum.slice(), kalimat: belum.length + ' koleksi belum terperiksa dengan server saat diunduh (hemat baca)' };
+  return { isi, dokumen, koleksi, nama: 'backup-batch-miqbal-' + hariIniIso(kini) + (belum.length ? '-BELUM-TERPERIKSA' : '') + '.json' };
 }
 export function susunCatatCadangan(b, ukuranBytes, w, perangkat) {
   return { dokumen: [{ koleksi: 'cadanganCatatan', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, perangkat: perangkat || '', nama: b.nama, ukuranKb: Math.round((ukuranBytes || 0) / 1024), dokumen: b.dokumen, koleksi: b.koleksi, jenis: 'manual', ok: true, versi: 5, era: b.isi.eraTutupBuku } }],
