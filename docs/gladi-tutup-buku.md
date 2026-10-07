@@ -116,6 +116,13 @@ Keterbatasan:
   the back channel (10001)", kanal Listen diputus berulang, dan halaman tidak pernah menerima data. `--help` emulator tidak punya setelan untuk
   batas ini, dan server sungguhan tidak punya batas itu. Karena itu data gladi dibuat ±9 rb dokumen (`GLADI_SKALA` 0,65, bisa diubah dari input
   workflow). Ringkasan menambahkan baris *perkiraan skala toko*: hasil gladi × (17.000 ÷ dokumen arsip gladi).
+- **Muat penuh kadang macet di emulator.** Pada run 7 Okt ini terjadi 2 kali dari ±32 skenario: sebagian besar pendengar tidak pernah menerima
+  data (misalnya 22 dari 56 koleksi siap dan 33 dokumen sampai), padahal antrean emulator tidak penuh dan tidak ada galat izin. Sebabnya belum
+  diketahui. Skenario yang berhenti **di muat penuh**, sebelum langkah tutup buku mana pun, dicoba ulang **satu kali** dengan emulator yang diisi
+  ulang dan Chrome baru. Percobaan ulang itu **selalu tercatat**: ada baris `DICOBA ULANG` dan peringatan di halaman ringkasan run (lewat
+  `alat-uji/coba_ulang.py`, keputusan owner 26 Sep), dan tanda ⚠ di ringkasan gladi. Galat di langkah lain tidak pernah dicoba ulang. Kalau
+  peringatan ini sering muncul, itu masalah sungguhan yang perlu diselidiki: bahannya ada di log emulator per skenario dan per kontrol (artefak)
+  dan di ekor catatan Chrome. Pelanggaran CSP salinan juga dicatat sejak awal halaman; sambungan yang ditolak `connect-src` menggagalkan cek.
 - **Tiap skenario jalan di emulator sendiri.** Emulator tetap mengirimi sesi halaman yang sudah ditutup sampai kanalnya kedaluwarsa, sehingga
   skenario berikutnya bisa terganggu. Laporan per skenario digabung di akhir (`--gabung`). Tiap langkah mencatat berapa kali antrean emulator
   penuh. Nilai itu **wajib 0 sampai muat penuh selesai**, karena kalau penuh saat muat, halaman tidak pernah menerima data. Sesudah muat penuh
