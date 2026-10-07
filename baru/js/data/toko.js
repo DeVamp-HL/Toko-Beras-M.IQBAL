@@ -469,6 +469,8 @@ export async function pulihkanArsip(tahun, daftar, progres) {
 // dibaca semua perangkat dan terlihat bersamaan dengan saldo pembuka (pembukaBerlaku); dibatalkan = ikut hilang. Pembaca memakai ringkasan untuk rentang
 // ≤ 31 Des dan catatan hidup untuk sesudahnya. Selama catatan hidup ≤ 31 Des masih sama dengan ringkasannya (sebelum arsip), hasilnya PERSIS angka mesin.
 // Rumus per hari di bawah = SALINAN saringan mesin beku (infoKreditPelanggan, hitungLajuPakai); uji_tutup_buku_bertahap.py menjaga keduanya tetap sama.
+// Siap 2027 · P4: Belanja (pemasok, harga beli terakhir per merek, muatan truk, pesanan yang sudah datang) membaca ringkasan yang sama lewat bon-pemasok-logika
+// (bpKumpul = penyusun ringkasan & pembacanya); uji_belanja_tutup_buku.py menjaga Belanja sebelum = sesudah ritual.
 export const RINGKAS_KREDIT_HARI = 90;   // KR1: tanggal ≥ hari ini − 89 (infoKreditPelanggan)
 const ltGeser = (iso, n) => { const d = new Date(String(iso) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 /** Ringkasan tahun era yang sedang terlihat (batch penanda tahun itu), atau null. */

@@ -462,7 +462,7 @@ if __name__ == '__main__':
             'bon lama nama kembar dibuat pemasok baru': js.replace("const kembar = namaBaru ? daftarPemasok().find((p) => p.kunci === kunciPelanggan(namaBaru)) : null;", "const kembar = null;"),
             'kartu pemasok memakai id nama mentah (bukan kunci)': js.replace("const data = { id: kunciPelanggan(nm), nama: p ? p.nama : nm,", "const data = { id: nm, nama: p ? p.nama : nm,"),
             'garis jatuh tempo tanpa penanda uang habis': js.replace("if (kas !== null && !habisSudah && jalan + b.sisa > kas) {", "if (false) {"),
-            'kebiasaan bayar pemasok dari SATU kedatangan terakhir': js.replace("const tiga = s.cara.slice(0, 3);", "const tiga = s.cara.slice(0, 1);"),
+            'kebiasaan bayar pemasok dari SATU kedatangan terakhir': js.replace("const tiga = s.batch.slice(0, 3);", "const tiga = s.batch.slice(0, 1);"),
             # ---- H3 belanja
             'saran belanja tidak dibulatkan ke karung penuh': js.replace("const saranK = Math.ceil(butuh / G.berat);", "const saranK = Math.floor(butuh / G.berat);"),
             'merek tanpa laju ditebak habis 0 hari': js.replace("const hariHabis = (sisa, laju) => (!(laju > 0) ? null : !(sisa > 0) ? 0 :", "const hariHabis = (sisa, laju) => (!(laju > 0) ? 0 : !(sisa > 0) ? 0 :"),
@@ -470,7 +470,7 @@ if __name__ == '__main__':
             'yang sudah dipesan tetap disarankan': js.replace("const dipesan = menunggu.find((p) => (p.baris || []).some((b) => b.merk === m)) || null;", "const dipesan = null;"),
             'muatan truk angka mati 3.000 (bukan terukur)': js.replace("muatanKg: muat === null ? muatanTerukur() : muat, muatanTerukur: muat === null,", "muatanKg: muat === null ? 3000 : muat, muatanTerukur: muat === null,"),
             'penuhi truk menambah ke merek tanpa laju': js.replace("const calon = anggota.filter((c) => c.b.laju > 0);", "const calon = anggota;"),
-            'pesanan datang tidak dibaca dari kedatangan': js.replace("const status = p.status === 'batal' ? 'batal' : p.status === 'datang' ? 'datang' : sesudah.length ? 'datang' : 'menunggu';", "const status = p.status === 'batal' ? 'batal' : p.status === 'datang' ? 'datang' : 'menunggu';"),
+            'pesanan datang tidak dibaca dari kedatangan': js.replace("const status = p.status === 'batal' ? 'batal' : p.status === 'datang' ? 'datang' : D.datang ? 'datang' : 'menunggu';", "const status = p.status === 'batal' ? 'batal' : p.status === 'datang' ? 'datang' : 'menunggu';"),
             'harga termurah tanpa tanggal': js.replace("tanggal: p.hargaPerMerk[m].terakhir.tanggal, kode: p.hargaPerMerk[m].terakhir.merkPemasok || '' }))", "tanggal: '', kode: p.hargaPerMerk[m].terakhir.merkPemasok || '' }))"),
             'uang belanja tunai tidak dibandingkan dengan kas': js.replace("(kas === null ? 'Uang toko belum bisa dihitung (titik kas belum disetel).' : 'Uang toko sekarang ' + RP(kas) + (rp > kas ? ' — KURANG ' + RP(rp - kas) + '.' : ' — cukup.'))", "''"),
             'nomor WhatsApp pemasok tidak dipakai': js.replace("const nomor = nomorWa(R.kontak);", "const nomor = '';"),

@@ -198,7 +198,10 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       angka konsultan menang. Aturan pajak bertanda "diisi untuk tahun 2026" sampai owner/konsultan memastikan aturan 2027 lalu menekan "Pakai aturan"
       dari layar 2027.
 - [ ] Bon pelanggan langganan, saran belanja (laju 14 hari), dan daftar pelanggan memakai ringkasan tahun 2026 yang dibawa batch penanda — tidak
-      perlu membuka kredit per nota sampai April.
+      perlu membuka kredit per nota sampai April. Harga & Pemasok › Belanja juga dari ringkasan itu: pemasok di truk, harga beli terakhir per merek
+      (tanggalnya tetap tanggal kiriman 2026), muatan truk, saran, dan pesanan Desember yang barangnya sudah datang — sama dengan sebelum ritual; kiriman
+      Januari menggantikan harga merek yang dikirimnya. Kalau Belanja kosong pemasok & harga, ringkasannya tidak terbaca: harga terakhir ada di bon kertas
+      atau cadangan SEBELUM.
 - [ ] Kunci bulan Januari 2027 paling cepat 4 Feb, HANYA sesudah tutup buku 2026 "selesai" (daftar periksa kunci bulan menolak sendiri, Beranda
       tidak menyuruh mengunci selama itu). Sebelum mengetuk kunci: buka Uang › Tutup buku sekali lagi — kartu **Pemeriksaan sesudah tutup buku 2026**
       (tampil sampai akhir Februari) harus tetap "Semua … sama". Kuncinya sendiri di kartu **Kunci bulan** di layar yang sama: centang butir yang diminta,

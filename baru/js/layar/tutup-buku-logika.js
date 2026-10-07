@@ -35,6 +35,7 @@ import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
 import { ringkasPelangganTahun } from './pelanggan-logika.js';
 import { susunPotret, ringkasPotret } from './potret-logika.js';
 import { lpBonTerbuka } from './laporan-logika.js';
+import { ringkasPemasokTahun, ringkasPesananTahun } from './bon-pemasok-logika.js';
 import { hbKalimatBelum } from '../data/hemat-baca.js';
 
 export const LANGKAH_BUKU = [['periksa', 'Periksa dulu'], ['cadangan1', 'Cadangan sebelum mulai'], ['arsip', 'Simpan arsip'], ['saldo', 'Susun saldo pembuka'], ['paraf', 'Paraf dua orang'], ['kunci', 'Kunci tahun'], ['cadangan2', 'Cadangan sesudahnya & selesai']];
@@ -309,8 +310,13 @@ function bkPembandingSebelum(c) {
   const utangP = hitungUtangPemasok(c).map((px) => ({ pemasok: String(px.pemasok || ''), sisa: Math.round((Number(px.totalUtang) || 0) - (Number(px.tekor) || 0)) })).filter((x) => Math.abs(x.sisa) >= 0.5);
   return { merek, kemasan, piutang: orang(hitungPiutang(c)), kasbon: orang(hitungKasbon(c)), utangP };
 }
-/** A7 · ringkasan tahun yang akan diarsip, disusun dari catatan hidup SEBELUM kunci: KR1 per pelanggan per hari (90 hari terakhir), laju pakai per hari (14), riwayat pelanggan. */
-export function ringkasTahun(tahun) { const c = tbCutoff(tahun); return Object.assign({ versi: 1, tahun, cutoff: c }, ringkasKreditLaju(c), { pelanggan: ringkasPelangganTahun(c) }); }
+/**
+ * A7 · ringkasan tahun yang akan diarsip, disusun dari catatan hidup SEBELUM kunci: KR1 per pelanggan per hari (90 hari terakhir), laju pakai per hari (14),
+ * riwayat pelanggan. Versi 2 (siap 2027 · P4, audit 8 Okt): + `pemasok` (jumlah kedatangan, 12 kedatangan terakhir, harga beli terakhir per merek — Belanja,
+ * kartu & daftar pemasok) dan `pesananDatang` (pesanan belanja yang barangnya sudah datang ≤ 31 Des), keduanya dari bon-pemasok-logika (fungsi yang sama dengan
+ * daftarPemasok / pesananSemua). Ringkasan versi 1 tanpa keduanya tetap terbaca (catatan hidup saja).
+ */
+export function ringkasTahun(tahun) { const c = tbCutoff(tahun); return Object.assign({ versi: 2, tahun, cutoff: c }, ringkasKreditLaju(c), { pelanggan: ringkasPelangganTahun(c), pemasok: ringkasPemasokTahun(c), pesananDatang: ringkasPesananTahun(c) }); }
 /** Paket B · potret tahun dari catatan hidup TANPA menulis apa pun — langkah Kunci di LATIHAN menyusunnya juga, supaya kalau gagal ketahuan sebelum ritual. */
 export function potretLatihan(tahun, kini) { try { const Pt = susunPotret(tahun, kini); return { ok: true, teks: ringkasPotret(Pt), ukuran: JSON.stringify(Pt).length }; } catch (e) { return { ok: false, teks: 'Potret ' + tahun + ' GAGAL disusun: ' + String((e && e.message) || e).slice(0, 160) + ' — kunci sungguhan akan DITOLAK. ' + bkKalimatTanpaPotret(tahun) }; } }
 /** Paket C (8 Okt): yang bisa dikerjakan owner sendiri bila potret gagal disusun (sesudah 13 Okt tidak ada orang luar yang membetulkan kodenya). */
@@ -479,8 +485,8 @@ export function susunKunci(tahun, D, w, L) {
   let tanda = P.dokumen.find((x) => x.koleksi === 'batchMasuk');
   if (!tanda) { tanda = { koleksi: 'batchMasuk', data: { id: w.idUnik(), tanggal: P.tglBuka, pemasok: 'TUTUP BUKU ' + tahun, biayaBongkar: 0, stokAwal: true, merkList: [], tutupBuku: true, tahunDari: tahun, bertahap: true } }; P.dokumen.push(tanda); acara.nPembuka = P.dokumen.length; }
   tanda.data.penandaBuku = true;
-  // A7 (siap 2027): ringkasan tahun ini (KR1 90 hari, laju pakai 14 hari, riwayat per pelanggan) menumpang batch penanda — terlihat bersamaan dengan saldo
-  // pembuka di semua perangkat (toko.js ringkasArsip), hilang bersama penanda bila dibatalkan
+  // A7 (siap 2027): ringkasan tahun ini (KR1 90 hari, laju pakai 14 hari, riwayat per pelanggan; P4: pemasok & pesanan belanja) menumpang batch penanda —
+  // terlihat bersamaan dengan saldo pembuka di semua perangkat (toko.js ringkasArsip), hilang bersama penanda bila dibatalkan
   tanda.data.ringkasTahun = ringkasTahun(tahun);
   // PAKET C (8 Okt): ringkasan saldo pembuka per buku & kemasan di berita acara — pembanding kartu "Pemeriksaan sesudah tutup buku"
   acara.pembukaRingkas = ringkasPembuka(P.dokumen, tahun);
