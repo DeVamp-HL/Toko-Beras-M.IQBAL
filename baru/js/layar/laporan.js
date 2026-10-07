@@ -26,7 +26,7 @@ const bacaLokal = (k) => { try { return localStorage.getItem(k); } catch (e) { r
 const PAKET_AWAL = () => ({ labarugi: true, neraca: true, aruskas: true, omzet: true });
 // hemat baca nyala (#111): yang dibaca angka pajak — omzet sistem (penjualan & retur = mesin laba), setoran, omzet di luar sistem. Profil = aturanToko (selalu penuh)
 const PJ_PERLU_HEMAT = ['penjualan', 'retur', 'pajakSetoran', 'pajakOmzetLuar'];
-// sanggahan 8 Okt: Rekap Omzet Bulanan & Bukti Omzet = pjOmzetSistem (mesin yang SAMA dengan Pajak: penjualan & retur); laporan berkop laba / neraca / arus kas
+// sanggahan 7 Okt: Rekap Omzet Bulanan & Bukti Omzet = pjOmzetSistem (mesin yang SAMA dengan Pajak: penjualan & retur); laporan berkop laba / neraca / arus kas
 // & paket bank membaca SELURUH buku ('*'). Tarif, tanda dilaporkan, kop & potret bulan = aturanToko / pengaturan (selalu didengar penuh)
 const LP_PERLU_OMZET = ['penjualan', 'retur'];
 
@@ -58,7 +58,7 @@ export function pasangLayarLaporan(akar, opsi) {
   const hematBelum = (perlu) => { let H = null; try { H = opsi.hemat ? opsi.hemat() : null; } catch (e) { H = null; } return H && H.nyala ? hbKalimatBelum(H.belumLengkap, perlu) : ''; };
   const hematPajak = () => hematBelum(PJ_PERLU_HEMAT);
   const tahanPajak = (apa) => { const hb = hematPajak(); if (!hb) return false; set({ kabar: apa + ' ditahan — angka pajak belum bisa dipastikan: ' + hb + '. Draf tetap di layar.', kabarAwas: true }); return true; };
-  // sanggahan 8 Okt: dokumen untuk bank / kartu kredit dari mesin yang sama DITAHAN juga (D.tolak — kertas tidak keluar, nomor tidak dipakai), sebabnya disebut.
+  // sanggahan 7 Okt: dokumen untuk bank / kartu kredit dari mesin yang sama DITAHAN juga (D.tolak — kertas tidak keluar, nomor tidak dipakai), sebabnya disebut.
   // Saklar mati / lengkap: D tidak disentuh (sama persis dengan sebelumnya)
   const tahanDok = (D, perlu) => { const hb = hematBelum(perlu); if (hb) D.tolak = D.judul + ' ditahan — angkanya belum bisa dipastikan: ' + hb; return D; };
 
@@ -173,7 +173,7 @@ export function pasangLayarLaporan(akar, opsi) {
   const barisNeraca = (NP) => [{ nama: 'Harta', kelas: 'kel' }].concat(NP.harta.map((r) => ({ nama: r.nama, teks: r.n === null ? '—' : RP(r.n) }))).concat([{ nama: 'Jumlah harta', teks: NP.aset === null ? '—' : RP(NP.aset), kelas: 'jumlah' }, { nama: 'Kewajiban & modal', kelas: 'kel' }]).concat(NP.pasiva.map((r) => ({ nama: r.nama, teks: r.n === null ? '—' : RP(r.n) }))).concat([{ nama: 'Jumlah kewajiban & modal', teks: NP.aset === null ? '—' : RP(NP.kewajiban + NP.modal + NP.labaDitahan), kelas: 'jumlah' }]);
   const dokRekap = () => { const R = LP.rekapOmzet(kini()); const I = LP.identitasUsaha(); return { jenis: 'omzet', kop: LP.kopUntuk(LP.pakaiKop().pakai.omzet, I), judul: 'Rekap Omzet Bulanan', sub: R.daftar[0].pendek + ' – ' + LP.lpBulanPendek(R.daftar[11].key, true) + ' · dari mesin laba (satu sumber)', periode: '12 bulan', adaSaldo: true,
     baris: R.daftar.map((b) => ({ nama: b.pendek + (b.tanpaPotret ? ' · diarsip tanpa potret' : b.absen ? ' · sebelum ada catatan' : b.lapor ? ' ✓ dilaporkan ' + tanggalPendek(b.lapor.tgl) : b.final ? ' · final' : b.berjalan ? ' · berjalan' : ' · belum tutup buku') + (R.adaTarif && !b.absen ? ' · perkiraan ' + RP(b.perkiraan) : ''), teks: b.absen || b.tanpaPotret ? '—' : RP(b.omzet), teksSaldo: b.kum === null || b.absen || b.tanpaPotret ? '—' : RP(b.kum) })).concat([{ nama: 'Tahun ' + R.tahunIni, teks: RP(R.totalTahun), kelas: 'jumlah', teksSaldo: '' }]), catatan: R.totalTeks + '. ' + R.tarifTeks + '. Kolom kanan = kumulatif tahun berjalan.', tolak: I.lengkap ? '' : 'Kop belum lengkap: nama & alamat wajib' }; };
-  // sanggahan 8 Okt: rekap omzet (layar Bulanan, tombol keluar, paket bank) — omzet & perkiraan pajak dari pjOmzetSistem; hemat belum lengkap = ditahan
+  // sanggahan 7 Okt: rekap omzet (layar Bulanan, tombol keluar, paket bank) — omzet & perkiraan pajak dari pjOmzetSistem; hemat belum lengkap = ditahan
   const dokRekapJaga = () => tahanDok(dokRekap(), LP_PERLU_OMZET);
   const bulanCip = (aksi, aktif, daftar) => h`<div class="lp-bulan" data-k="bulan-${aksi}">${daftar.map((b) => h`<div class="seg ${b.key === aktif ? 'aktif' : ''}" data-aksi="${aksi}" data-b="${b.key}" data-k="b-${b.key}">${b.pendek}${b.final ? '' : ' ✎'}</div>`)}</div>`;
   // kolom kosong (mis. belum ada cetakan) tidak diberi tempat: Mac turun ke dua kolom, tablet ke satu — kertas tidak terjepit oleh kolom hampa

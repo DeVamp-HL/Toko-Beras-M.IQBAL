@@ -768,12 +768,6 @@ export function susunSimpanKeranjang(s, uid, tanggal, opsi) {
   return JSON.stringify(v).length > BATAS_SIMPAN_KERANJANG ? null : v;
 }
 /**
- * Tanda tab saat layar Jual dipasang. v = tanda tersimpan di penyimpanan sesi { id, ditinggal }: ditinggal = halaman tab ini ditutup / dimuat ulang dengan wajar
- * (pagehide) → tab yang SAMA, id dipertahankan. Tanda yang masih "dipakai" = penyimpanan sesi disalin dari tab yang masih terbuka (Duplikat tab), atau halaman tadi
- * mati tidak wajar → id BARU (simpanan tab asal tidak dipulihkan di sini). Tanpa tanda = tab baru. mandiri = web app layar penuh (Tambahkan ke Layar Utama):
- * tidak punya tab untuk digandakan, jadi tanda "dipakai" = halaman yang dimatikan sistem di latar (iOS) → tetap tab yang sama.
- */
-/**
  * Web app layar penuh (iOS "Tambahkan ke Layar Utama": navigator.standalone, atau display-mode standalone) — tanpa tab peramban. SATU pemeriksa (audit P2): Jual
  * (tanda tab keranjang, lihat bacaTandaTab) dan Uang › Tutup buku (unduhan cadangan & arsip SUNGGUHAN ditolak — tutup-buku-logika.js bkTolakMandiri).
  * nav / win = navigator & window peramban (disuntikkan: logika ini tanpa DOM).
@@ -781,6 +775,12 @@ export function susunSimpanKeranjang(s, uid, tanggal, opsi) {
 export function webAppMandiri(nav, win) {
   try { return (!!nav && nav.standalone === true) || (!!win && typeof win.matchMedia === 'function' && !!win.matchMedia('(display-mode: standalone)').matches); } catch (e) { return false; }
 }
+/**
+ * Tanda tab saat layar Jual dipasang. v = tanda tersimpan di penyimpanan sesi { id, ditinggal }: ditinggal = halaman tab ini ditutup / dimuat ulang dengan wajar
+ * (pagehide) → tab yang SAMA, id dipertahankan. Tanda yang masih "dipakai" = penyimpanan sesi disalin dari tab yang masih terbuka (Duplikat tab), atau halaman tadi
+ * mati tidak wajar → id BARU (simpanan tab asal tidak dipulihkan di sini). Tanpa tanda = tab baru. mandiri = web app layar penuh (Tambahkan ke Layar Utama):
+ * tidak punya tab untuk digandakan, jadi tanda "dipakai" = halaman yang dimatikan sistem di latar (iOS) → tetap tab yang sama.
+ */
 export function bacaTandaTab(v, idBaru, mandiri) {
   const t = v && typeof v === 'object' && v.id ? v : null;
   const asal = !t ? 'baru' : t.ditinggal === true || mandiri === true ? 'muatUlang' : 'salinan';

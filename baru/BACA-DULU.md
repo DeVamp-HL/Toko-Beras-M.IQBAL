@@ -2042,13 +2042,24 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
 - **Jalur Menu (K5)**: kalimat layar menunjuk "Menu › Toko ini › Perangkat & antrean [› Antrean kirim / Hemat baca]", "› Peran & persetujuan [› Atur]",
   "› Cadangan & simpanan" — jalur "Menu › Sistem …" tidak ada di layar (laci itu bernama Toko ini; N1 dikunci, namanya tidak diganti). Tempat panel Hemat baca
   = SATU konstanta `hemat-baca.js HB_TEMPAT` (juga dibuang `sistem-logika.js ssHemat` dari sebab yang digambar di panel itu sendiri). Kata "sistem" ada di
-  keterangan laci Toko ini & cari Menu. Daftar siap-nyala menyebut tempat tombol "sudah tidak dipakai" (Uang › Tutup buku › kartu Kunci bulan › butir denyut
-  24 jam, muncul sesudah diam > 24 jam); perangkat berantrean yang hilang menunjuk butir "perangkat hilang" di prosedur pulih darurat. Dijaga
-  `uji_menu_baru.py jalur_menu`: tiap "Menu › …" di kode = laci / baris / tab yang ada (menu-logika.js, menu.js `JUDUL_SISTEM` & `TAB_SISTEM`).
+  keterangan laci Toko ini & cari Menu. Dijaga `uji_menu_baru.py jalur_menu`: tiap "Menu › …" di kode = laci / baris / tab yang ada (menu-logika.js, menu.js
+  `JUDUL_SISTEM` & `TAB_SISTEM`).
+- **Perangkat hilang atau rusak (sanggahan #121)**: tombol "<nama> sudah tidak dipakai" (butir ⛔ "Semua perangkat berdenyut dalam 24 jam terakhir", kartu
+  Kunci bulan) HANYA untuk perangkat yang diam > 24 jam DAN laporan terakhirnya antrean 0 & ditolak 0. Perangkat diam yang masih melaporkan antrean / ditolak
+  kini disebut namanya di ket butir itu ("tidak bisa dinyatakan tidak dipakai dari sini"; tawaran "nyatakan sudah tidak dipakai" hilang bila tidak ada
+  perangkat yang bisa), dan ket butir itu + butir "Tidak ada perangkat yang masih menyimpan antrean" menunjuk catatan "Prosedur pulih darurat", butir
+  **"Perangkat hilang atau rusak"** (`kunci-periode-logika.js KP_BUTIR_HILANG` / `KP_KALIMAT_HILANG`; tolakan `susunLupakanPerangkat` memakai kalimat yang
+  sama). Dulu rujukannya hanya di tolakan `susunLupakanPerangkat`, yang tidak tercapai dari layar. Butir prosedur itu lahir di PR #119 — gabungkan #119
+  dulu; `uji_kunci_periode.py` mencocokkan nama butirnya dengan `docs/prosedur-pulih-darurat.md` begitu butirnya ada (sebelum itu dicetak MENUNGGU). Petunjuk
+  daftar siap-nyala Hemat baca (`hemat-baca.js HB_TANDAI_TIDAK_DIPAKAI`): butir itu SELALU ada di daftar periksa kunci bulan (selama ada bulan yang bisa
+  dikunci); yang bersyarat TOMBOLNYA — teks butir, label tombol & nama butir prosedur dicocokkan dengan daftar periksa oleh `uji_denyut_per_akun.py`.
 - **Perkiraan kuota (C1)**: kalimat pertama menyuruh MENUTUP aplikasi di iPhone/iPad/HP lain sampai pita "Tahun … terkunci dan arsipnya habis" (tiap perangkat
   yang terbuka membaca ±sekali muat lagi) dan menyebut sisa baca hari itu (`sisaBaca` = batas Spark − baca ritual). MEPET menyebut perangkat lain, muat ulang,
   dan tulisan toko. TIDAK MUAT (keputusan owner 8 Okt, K11): tetap mulai hari itu; besoknya toko TUTUP sampai sesudah reset kuota, "Lanjutkan" dari perangkat
-  yang sama, tunggu arsip habis.
+  yang sama, tunggu arsip habis. Sanggahan #121: jumlah hari kuota = batas terberat (tulis / hapus / baca) dibulatkan ke atas (`perkiraanKuota().hariKuota`).
+  Lebih dari satu hari tambahan (setahun penuh — tutup buku 2027, proyeksi `docs/uji-rules-v7.md`: BEBERAPA hari) → "butuh ±N hari kuota berturut-turut
+  (sampai ±tanggal): toko TUTUP tiap hari mulai besok sampai pita "Tahun … terkunci dan arsipnya habis" muncul — tiap hari sesudah reset ketuk Lanjutkan dari
+  perangkat yang sama" (bunyi K11 2028 "toko tutup sesudahnya sampai Lanjutkan & arsip habis"; bagian 2028-nya masih ditanyakan ulang ke owner, PR #118).
 - **PDF pegangan SPT (K2)**: `tutup-buku-logika.js bkPdfSpt` — dipakai kalimat potret gagal & jalan baris pajak kartu pemeriksaan.
 - **Tutup buku tahun lalu selesai? (C3)**: `bkTahunSelesai` — berita acara yang ADA dan belum selesai (berjalan / terkunci / membatalkan) = belum, SEBELUM
   cabang yang membaca catatan hidup (dulu terkunci + arsip habis lolos sebagai "tanpa catatan" → Beranda menyuruh mengunci Januari). `bkPerhatian` selalu
@@ -2057,14 +2068,22 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
   "buka Unduhan/Files, pastikan berkasnya ada dan ukurannya sama, lalu salin ke luar perangkat ini" — `a.click()` tidak memberi tahu apa pun. Unduhan
   SUNGGUHAN dari web app layar penuh ditolak ("buka lewat tab peramban di Mac"); latihan tidak. Pemeriksa layar penuh SATU fungsi `jual-logika.js webAppMandiri`
   (Jual & Uang).
-- **Minta didaftarkan (T6)**: permission-denied (permintaan kedua; rules tanpa allow update) = "permintaannya sudah sampai — tunggu owner menyetujui (Menu ›
-  Toko ini › Peran & persetujuan)" (`akses.js kalimatPermintaanGagal`, tanpa nomor versi rules); kode lain = "gagal terkirim (kode) — cek internet, coba lagi".
-  Sesudah terkirim, tombol & kolom nama tidak ditawarkan lagi. `firestore.rules*` tidak disentuh.
+- **Minta didaftarkan (T6)**: permission-denied (permintaan kedua; rules tanpa allow update) = "Kalau sudah pernah menekan Minta didaftarkan, permintaannya
+  sudah sampai — tunggu owner menyetujui (Menu › Toko ini › Peran & persetujuan). Kalau belum pernah, hubungi owner." (`akses.js kalimatPermintaanGagal`, tanpa
+  nomor versi rules); kode lain = "gagal terkirim (kode) — cek internet, coba lagi". Sesudah terkirim, tombol & kolom nama tidak ditawarkan lagi (ingatan per
+  sesi: akun bukan-owner tidak bisa membaca permintaanAkses, jadi permintaan yang DITOLAK owner tidak terlihat — kalimatnya menyuruh muat ulang lalu minta lagi).
+  `firestore.rules*` tidak disentuh.
 - **Modal awal 8 Agu (keputusan owner 8 Okt, K9 — dibiarkan, tidak dicatat)**: berita acara tutup buku (tepat sesudah "Laba tinggal") dan Neraca berkop (bila
   catatannya menyebut beda "belum terjelaskan buku"; juga kertas Neraca tanggal pilihan) memuat SATU kalimat tetap `laporan-logika.js LP_KALIMAT_MODAL_AWAL`;
-  angka pastinya urusan konsultan. Objek `neracaPada` tidak berubah (layar Neraca & ASAP GLOBAL).
-- Label tanggal di kode & uji yang disentuh cabang ini: pekerjaan Paket C & sanggahan #111 = 7 Okt (bukan keputusan owner 8 Okt).
-- Dijaga (semua dengan kontrol): `uji_tutup_buku_bertahap.py` (S-A8, K9, S-P2), `uji_kunci_periode.py` (A2 arsip habis & fase DOBEL), `uji_periksa_sesudah.py`
+  angka pastinya urusan konsultan. Objek `neracaPada` tidak berubah (layar Neraca & ASAP GLOBAL). SENGAJA berdampingan (sanggahan #121): di kertas Neraca
+  berkop catatan mesin `neracaPada` menyebut dua kemungkinan asal beda (titik kas yang pernah disetel ulang, stok awal sebelum sistem), lalu kalimat K9 menyebut
+  satu asal — bunyi K9 = keputusan owner, catatan mesin tidak diubah (ASAP GLOBAL). Di berita acara kalimat K9 berdiri sendiri (berita acara tidak memuat
+  baris beda "belum terjelaskan buku"). Apakah bunyinya boleh dilunakkan ("terutama berasal dari …") ditanyakan ke owner; sampai dijawab, bunyi tetap.
+- Label tanggal di kode & uji (termasuk `laporan.js` dan komentar `uji_safari_webkit.py`): pekerjaan Paket C & sanggahan #111 = 7 Okt (bukan keputusan owner
+  8 Okt). Label di bab Paket C & Hemat baca BACA-DULU ini, juga nama langkah Paket C di `pages.yml`, dibetulkan PR #118 (P6) — tidak disentuh di sini supaya
+  tidak bentrok.
+- Dijaga (semua dengan kontrol): `uji_tutup_buku_bertahap.py` (S-A8 termasuk beberapa hari kuota, K9, S-P2), `uji_kunci_periode.py` (A2 arsip habis & fase
+  DOBEL; perangkat hilang berantrean & nama butir prosedur), `uji_denyut_per_akun.py` (baris diam berantrean, petunjuk siap-nyala = daftar periksa), `uji_periksa_sesudah.py`
   (S8: layar Uang asli — unduhan, layar penuh; S3 jalan pajak), `uji_laporan_baru.py` (K9 Neraca berkop), `uji_menu_baru.py` (jalur Menu, cari "sistem"),
   `uji_akses_baru.py` (minta didaftarkan), `uji_keranjang_tahan.py` (pemeriksa layar penuh). Tidak ada `kasir*.html` yang berubah (`sw-kasir.js` tetap).
 

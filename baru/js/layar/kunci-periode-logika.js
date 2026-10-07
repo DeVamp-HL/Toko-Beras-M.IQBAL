@@ -27,6 +27,14 @@ const kpNamaPerangkat = (p) => (p.nama || p.id) + ' · ' + kpNamaAplikasiKasir(p
 const kpNamaDenyut = (p) => (p.nama || p.id) + (p.pemegang ? ' (' + p.pemegang + ')' : '');
 const kpKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 const kpTgl = (iso) => (iso && iso.length >= 10 ? tanggalPendek(iso) : iso || '—');
+// audit P2 (T6) · sanggahan #121: perangkat yang HILANG / rusak dengan laporan terakhir antrean / ditolak > 0 tidak pernah bisa "nyalakan & kirim", dan tombol
+// "sudah tidak dipakai" tidak ditawarkan untuknya — butir ⛔ perangkatAntre / perangkatDenyut menahan kunci bulan selamanya. Jalannya (owner, Console) ada di
+// catatan "Prosedur pulih darurat" (docs/prosedur-pulih-darurat.md, daftar periksa ritual › Sampai 31 Des), butir yang namanya PERSIS KP_BUTIR_HILANG (PR #119).
+// Rujukannya di ket butir yang DILIHAT owner (dulu hanya di tolakan susunLupakanPerangkat, yang tidak tercapai dari layar: tombolnya tidak ditawarkan).
+export const KP_BUTIR_HILANG = 'Perangkat hilang atau rusak';
+export const KP_KALIMAT_HILANG = 'kalau perangkatnya hilang atau rusak: ikuti catatan "Prosedur pulih darurat", butir "' + KP_BUTIR_HILANG + '" (foto barisnya di Menu › Toko ini › Perangkat & antrean, lalu hapus lewat Console)';
+/** Laporan terakhir perangkat itu masih menyebut antrean / ditolak — tidak bisa dinyatakan "sudah tidak dipakai" dari layar. */
+const kpMasihAntre = (p) => Number(p.antrean) > 0 || Number(p.gagal) > 0;
 
 /** Keadaan kunci sekarang: bulan terkunci terakhir, riwayat (terbaru dulu), tenggang. */
 export function kpKeadaan() {
@@ -92,12 +100,16 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   tambah({ id: 'parkir', blokir: true, ok: !parkir.length, teks: 'Tidak ada nota parkir dari ' + nama, ket: parkir.length ? parkir.length + ' nota diparkir — catat atau buang di Jual dulu' : 'bersih', rincian: parkir.map((p) => (p.pelanggan || 'tanpa nama') + ' · ' + (p.n || 0) + ' baris · ' + (p.pada ? 'diparkir ' + kpTgl(kpWib(new Date(p.pada)).iso) : 'tanggal parkirnya tidak tercatat (diparkir sebelum pembaruan ini)')) });
   const perangkat = cacheMentah('perangkat'); const t = kini.getTime();
   const antreLain = perangkat.filter((p) => (Number(p.antrean) || 0) > 0);
-  tambah({ id: 'perangkatAntre', blokir: true, ok: !antreLain.length, teks: 'Tidak ada perangkat yang masih menyimpan antrean', ket: antreLain.length ? 'tulisan offline dari perangkat ini untuk ' + nama + ' akan ditolak sesudah dikunci' : 'semua perangkat melaporkan antrean kosong',
+  tambah({ id: 'perangkatAntre', blokir: true, ok: !antreLain.length, teks: 'Tidak ada perangkat yang masih menyimpan antrean', ket: antreLain.length ? 'tulisan offline dari perangkat ini untuk ' + nama + ' akan ditolak sesudah dikunci — nyalakan & sambungkan perangkat itu sampai antreannya terkirim; ' + KP_KALIMAT_HILANG : 'semua perangkat melaporkan antrean kosong',
     rincian: antreLain.map((p) => kpNamaDenyut(p) + ' · ' + p.antrean + ' antre' + (p.aplikasi ? ' · ' + p.aplikasi : '') + (p.pada ? ' · denyut ' + kpTgl(kpWib(new Date(p.pada)).iso) : '')) });
   const diam = perangkat.filter((p) => { const x = p.pada ? new Date(p.pada).getTime() : NaN; return !isFinite(x) || t - x > KP_DENYUT_MS; });
-  tambah({ id: 'perangkatDenyut', blokir: true, ok: !diam.length, teks: 'Semua perangkat berdenyut dalam 24 jam terakhir', ket: diam.length ? 'tulisan offline dari perangkat ini untuk ' + nama + ' akan ditolak sesudah dikunci — nyalakan & sambungkan, atau nyatakan sudah tidak dipakai' : 'semua berdenyut',
+  // tombol "sudah tidak dipakai" hanya untuk perangkat diam yang laporan terakhirnya antrean 0 & ditolak 0; sisanya disebut namanya + jalan perangkat hilang
+  const diamBisa = diam.filter((p) => !kpMasihAntre(p)), diamAntre = diam.filter(kpMasihAntre);
+  tambah({ id: 'perangkatDenyut', blokir: true, ok: !diam.length, teks: 'Semua perangkat berdenyut dalam 24 jam terakhir',
+    ket: diam.length ? 'tulisan offline dari perangkat ini untuk ' + nama + ' akan ditolak sesudah dikunci — nyalakan & sambungkan' + (diamBisa.length ? ', atau nyatakan sudah tidak dipakai' : '')
+      + (diamAntre.length ? '. ' + diamAntre.map(kpNamaDenyut).join(', ') + ' masih melaporkan antrean / ditolak, jadi tidak bisa dinyatakan tidak dipakai dari sini — ' + KP_KALIMAT_HILANG : '') : 'semua berdenyut',
     rincian: diam.map((p) => kpNamaDenyut(p) + ' · ' + (p.pada ? 'terakhir ' + kpTgl(kpWib(new Date(p.pada)).iso) : 'tanpa denyut') + (p.aplikasi ? ' · ' + p.aplikasi : '')),
-    aksi: diam.filter((p) => !(Number(p.antrean) > 0) && !(Number(p.gagal) > 0)).map((p) => ({ id: String(p.id), label: kpNamaDenyut(p) + ' sudah tidak dipakai' })) });
+    aksi: diamBisa.map((p) => ({ id: String(p.id), label: kpNamaDenyut(p) + ' sudah tidak dipakai' })) });
   // ⛔ putaran 25b: berkas kasir SEBELUM 25b menganggap karcis yang ditolak server (bulan terkunci) sebagai "belum masuk" — antrean HP itu macet
   const lamaV = kpKasirVersiLama(kini);
   tambah({ id: 'versiKasir', blokir: true, ok: !lamaV.length, teks: 'Semua perangkat kasir yang berdenyut dalam ' + KP_VERSI_HARI + ' hari terakhir sudah memakai versi 25b',
@@ -163,8 +175,8 @@ export function susunAturKunci(tenggang, w) {
 /** Perangkat lama yang sudah tidak dipakai: catatan denyutnya dihapus (kalau perangkatnya hidup lagi, denyutnya tercatat ulang sendiri). */
 export function susunLupakanPerangkat(id, yakin) {
   const p = cacheMentah('perangkat').find((x) => String(x.id) === String(id)); if (!p) return { tolak: 'Perangkat itu sudah tidak ada di daftar' };
-  // audit P2 (T6): perangkat yang HILANG / rusak dengan antrean tidak pernah bisa "nyalakan & kirim" — jalan keluarnya di prosedur pulih darurat (Console)
-  if (Number(p.antrean) > 0 || Number(p.gagal) > 0) return { tolak: kpNamaDenyut(p) + ' terakhir melaporkan ' + (Number(p.antrean) || 0) + ' antrean / ' + (Number(p.gagal) || 0) + ' ditolak — nyalakan & kirim dulu, tidak bisa dilupakan dari sini. Kalau perangkatnya hilang atau rusak: ikuti butir "perangkat hilang" di prosedur pulih darurat (foto barisnya, lalu hapus lewat Console).' };
+  // pintu masuk (tombolnya tidak ditawarkan untuk perangkat ini, tapi laporan denyutnya bisa berubah sesudah daftar periksa digambar): jalan perangkat hilang sama
+  if (kpMasihAntre(p)) return { tolak: kpNamaDenyut(p) + ' terakhir melaporkan ' + (Number(p.antrean) || 0) + ' antrean / ' + (Number(p.gagal) || 0) + ' ditolak — nyalakan & kirim dulu, tidak bisa dilupakan dari sini; ' + KP_KALIMAT_HILANG + '.' };
   if (!yakin) return { tolak: 'Nyatakan ' + kpNamaDenyut(p) + ' sudah tidak dipakai? Kalau ternyata masih dipakai dan menyimpan nota offline, nota bulan terkunci darinya akan ditolak. Ketuk sekali lagi', perluYakin: true };
   return { hapus: [{ koleksi: 'perangkatStatus', id: p.id }], patch: { kabar: kpNamaDenyut(p) + ' dikeluarkan dari daftar denyut', kabarAwas: false, kpYakinLupa: null } };
 }

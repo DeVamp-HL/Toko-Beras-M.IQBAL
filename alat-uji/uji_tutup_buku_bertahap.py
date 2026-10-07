@@ -839,17 +839,26 @@ coba('S-A8', function () { kotak(40); W = jam('2026-12-20T10:00:00+07:00'); var 
   ok('A8 (audit P2) kalimat pertama: TUTUP aplikasi di iPhone/iPad/HP lain sampai pita "Tahun 2026 terkunci dan arsipnya habis"; tiap perangkat yang terbuka membaca ±sekali muat lagi; sisa baca hari itu = batas − baca ritual',
     Q.sisaBaca === sisa && sisa > Q.muat && /Sebelum mulai, TUTUP aplikasi di iPhone\/iPad\/HP lain \(bukan sekadar layar mati\) dan jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis" muncul/.test(Q.kalimat[0])
     && Q.kalimat[0].indexOf('tiap perangkat yang terbuka membaca ±' + ANGKA(Q.muat) + ' lagi; sisa baca hari itu sesudah ritual ±' + ANGKA(sisa) + '.') >= 0, J([Q.kalimat[0], Q.sisaBaca, sisa, Q.muat]));
-  var bacaAsli = BATAS_SPARK.baca;
+  var bacaAsli = BATAS_SPARK.baca, tulisAsli = BATAS_SPARK.tulis;
   try {
     BATAS_SPARK.baca = Q.ritual.baca + Math.max(1, Math.floor(Q.muat / 2)); _kuotaMemo = null; var Q4 = perkiraanKuota(2026, new Date(Date.parse('2026-12-20T10:00:00+07:00')));
     BATAS_SPARK.baca = Q.ritual.baca - 1; _kuotaMemo = null; var Q5 = perkiraanKuota(2026, new Date(Date.parse('2026-12-20T10:00:00+07:00')));
-  } finally { BATAS_SPARK.baca = bacaAsli; _kuotaMemo = null; }
+    // sanggahan #121: setahun penuh (tutup buku 2027) bisa BEBERAPA hari kuota — 3× batas tulis; baca 4× batas (hari kuota = batas TERBERAT, bukan tulis saja)
+    BATAS_SPARK.baca = bacaAsli; BATAS_SPARK.tulis = Math.ceil(Q.ritual.tulis / 3); _kuotaMemo = null; var Q6 = perkiraanKuota(2026, new Date(Date.parse('2026-12-20T10:00:00+07:00')));
+    BATAS_SPARK.tulis = tulisAsli; BATAS_SPARK.baca = Math.ceil(Q.ritual.baca / 4); _kuotaMemo = null; var Q7 = perkiraanKuota(2026, new Date(Date.parse('2026-12-20T10:00:00+07:00')));
+  } finally { BATAS_SPARK.baca = bacaAsli; BATAS_SPARK.tulis = tulisAsli; _kuotaMemo = null; }
   ok('A8 (audit P2) sisa baca kurang dari sekali muat → "tidak cukup untuk satu perangkat lagi"; MEPET menyebut perangkat lain yang dibuka, muat ulang, DAN tulisan toko (bukan cuma tulisan toko)',
     Q4.sisaBaca > 0 && Q4.sisaBaca < Q4.muat && Q4.kalimat[0].indexOf('sisa baca hari itu sesudah ritual ±' + ANGKA(Q4.sisaBaca) + ', tidak cukup untuk satu perangkat lagi.') >= 0
     && Q4.mepet && !Q4.lewat && /^MEPET: .*Yang ikut menghabiskan kuota hari itu: tiap perangkat lain yang dibuka \(±[\d.]+ baca sekali buka\), tiap muat ulang aplikasi, dan tulisan toko — tutup semua perangkat lain, jangan muat ulang, kerjakan saat toko tutup\.$/.test(Q4.kalimat[1]), J([Q4.sisaBaca, Q4.muat, Q4.kalimat]));
   ok('A8 (keputusan owner 8 Okt, K11) TIDAK MUAT: tetap mulai 1 Jan 2027; 2 Jan 2027 toko TUTUP sampai sesudah reset (15.00 WIB), Lanjutkan dari perangkat yang sama, tunggu arsip habis; sisa baca "habis oleh ritualnya sendiri"',
     Q5.lewat && Q5.sisaBaca < 0 && /kuota baca hari itu habis oleh ritualnya sendiri\.$/.test(Q5.kalimat[0])
-    && Q5.kalimat[1].indexOf('Tetap mulai 1 Jan 2027 (hari lain tidak lebih ringan); 2 Jan 2027 toko TUTUP sampai sesudah pukul 15.00 WIB, lalu ketuk "Lanjutkan" dari perangkat yang sama dan tunggu sampai arsipnya habis.') >= 0, J(Q5.kalimat)); });
+    && Q5.kalimat[1].indexOf('Tetap mulai 1 Jan 2027 (hari lain tidak lebih ringan); 2 Jan 2027 toko TUTUP sampai sesudah pukul 15.00 WIB, lalu ketuk "Lanjutkan" dari perangkat yang sama dan tunggu sampai arsipnya habis.') >= 0
+    && Q5.hariKuota === 2 && Q.hariKuota === 1, J(Q5.kalimat));
+  var K11N = function (X, n, akhir) { return X.lewat && X.hariKuota === n && X.kalimat[1].indexOf('Tetap mulai 1 Jan 2027 (hari lain tidak lebih ringan); butuh ±' + n + ' hari kuota berturut-turut (sampai ±' + akhir + '): toko TUTUP tiap hari mulai 2 Jan 2027 sampai pita "Tahun 2026 terkunci dan arsipnya habis" muncul — tiap hari sesudah pukul 15.00 WIB ketuk "Lanjutkan" dari perangkat yang sama dan tunggu sampai arsipnya berhenti lagi atau habis.') >= 0
+    && X.kalimat[1].indexOf('2 Jan 2027 toko TUTUP sampai sesudah pukul') < 0 && /DOBEL/.test(X.kalimat[1]); };
+  ok('A8 (K11 · sanggahan #121) BEBERAPA hari kuota (setahun penuh, tutup buku 2027): 3× batas tulis → ±3 hari (sampai ±3 Jan 2027), toko TUTUP TIAP hari sampai pita arsip habis, Lanjutkan tiap sesudah reset dari perangkat yang sama — bukan "2 Jan toko tutup sampai 15.00" saja',
+    K11N(Q6, 3, '3 Jan 2027'), J([Q6.hariKuota, Q6.R, Q6.kalimat[1]]));
+  ok('A8 (K11 · sanggahan #121) jumlah hari kuota = batas TERBERAT (baca 4× batas, tulis muat) → ±4 hari (sampai ±4 Jan 2027)', K11N(Q7, 4, '4 Jan 2027'), J([Q7.hariKuota, Q7.R, Q7.kalimat[1]])); });
 
 // ---- A9 · catatan bertanggal 2026 yang mendarat sesudah penanda (karcis HP penjaga yang tertahan offline)
 coba('S-A9', function () { kotak(5); W = jam('2027-01-02T16:00:00+07:00'); var R = susunKunci(2026, D, W, HPA); R.kiriman.forEach(kirim); var daftar = arsipBuku(2026).daftar;
@@ -1153,6 +1162,9 @@ RUSAK = [
     ('audit P2 · sisa kurang dari sekali muat tidak disebut', 'baru/js/layar/tutup-buku-logika.js', "(sisaBaca < muat ? ', tidak cukup untuk satu perangkat lagi.' : '.')", "'.'"),
     ('audit P2 · MEPET kembali hanya menyalahkan tulisan toko', 'baru/js/layar/tutup-buku-logika.js', "'. Yang ikut menghabiskan kuota hari itu: tiap perangkat lain yang dibuka (±' + ANGKA(muat) + ' baca sekali buka), tiap muat ulang aplikasi, dan tulisan toko — tutup semua perangkat lain, jangan muat ulang, kerjakan saat toko tutup.'", "'. Tulisan toko hari itu ikut menghabiskan kuota — kerjakan saat toko tutup.'"),
     ('K11 · TIDAK MUAT: hari tutup toko = hari ritual (bukan besoknya)', 'baru/js/layar/tutup-buku-logika.js', "const besok = bkTambahHari(W.iso, 1);", "const besok = W.iso;"),
+    ('K11 · TIDAK MUAT selalu dianggap satu hari tambahan (jumlah hari kuota diabaikan)', 'baru/js/layar/tutup-buku-logika.js', "const hariKuota = Math.max(1, ...R.map((x) => Math.ceil(x.n / x.batas)));", "const hariKuota = 2;"),
+    ('K11 · jumlah hari kuota dari tulis saja (baca terberat diabaikan)', 'baru/js/layar/tutup-buku-logika.js', "const hariKuota = Math.max(1, ...R.map((x) => Math.ceil(x.n / x.batas)));", "const hariKuota = Math.max(1, Math.ceil(R[0].n / R[0].batas));"),
+    ('K11 · beberapa hari kuota: toko tutup hanya besoknya', 'baru/js/layar/tutup-buku-logika.js', "toko TUTUP tiap hari mulai ' + tanggalPendek(besok) + ' sampai pita", "toko TUTUP ' + tanggalPendek(besok) + ' sampai pita"),
     ('K9 · berita acara tanpa kalimat modal awal', 'baru/js/layar/tutup-buku-logika.js', "  L.push(LP_KALIMAT_MODAL_AWAL, '');\n", ""),
     ('K9 · kalimat modal awal bergeser dari baris "Laba tinggal"', 'baru/js/layar/tutup-buku-logika.js', "'Laba tinggal   ' + rpA(sebelum.labaTinggal));", "'Laba tinggal   ' + rpA(sebelum.labaTinggal), '');"),
     ('audit P2 · ukuran berkas memakai 1 KB = 1.024 byte (beda dengan Finder/Files)', 'baru/js/layar/tutup-buku-logika.js', "const sat = b >= 1e6 ? String(Math.round(b / 1e5) / 10).replace('.', ',') + ' MB' : b >= 1000 ? ANGKA(Math.round(b / 1000)) + ' KB'", "const sat = b >= 1048576 ? String(Math.round(b / 104857.6) / 10).replace('.', ',') + ' MB' : b >= 1024 ? ANGKA(Math.round(b / 1024)) + ' KB'"),

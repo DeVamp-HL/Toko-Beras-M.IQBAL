@@ -929,17 +929,22 @@ export function perkiraanKuota(tahun, kini) {
   const kata = (x) => ANGKA(x.n) + ' ' + x.k + ' (' + x.persen + '% dari ' + ANGKA(x.batas) + ')';
   // audit P2 (C1): sisa baca hari itu sesudah ritual — perangkat lain yang terbuka selama ritual membaca sekali muat lagi (kuota satu hari cukup untuk satu perangkat)
   const sisaBaca = BATAS_SPARK.baca - ritual.baca;
-  // keputusan owner 8 Okt 2026 (K11): TIDAK MUAT = ritual tetap dimulai hari itu; besoknya toko tutup sampai kuota direset, Lanjutkan dari perangkat yang sama
-  const besok = bkTambahHari(W.iso, 1); const jamBesok = jamResetKuota(besok);
+  // keputusan owner 8 Okt 2026 (K11): TIDAK MUAT = ritual tetap dimulai hari itu; toko tutup sesudahnya sampai Lanjutkan & arsip habis, Lanjutkan dari perangkat
+  // yang sama sesudah reset. Sanggahan #121: setahun penuh bisa BEBERAPA hari kuota (tutup buku 2027: proyeksi docs/uji-rules-v7.md) — jumlah hari kuota = batas
+  // terberat dibulatkan ke atas; lebih dari satu hari tambahan → kalimat menyebut jumlah harinya, toko tutup TIAP hari sampai pita arsip habis
+  const hariKuota = Math.max(1, ...R.map((x) => Math.ceil(x.n / x.batas)));
+  const besok = bkTambahHari(W.iso, 1); const jamBesok = jamResetKuota(besok); const hariAkhir = bkTambahHari(W.iso, hariKuota - 1);
   const kalimat = ['Mulai ' + tanggalPendek(W.iso) + ' sesudah pukul ' + jam + '.00 WIB (kuota harian Spark baru penuh lagi). Satu perangkat, jangan muat ulang aplikasi — sekali muat ±' + ANGKA(muat) + ' baca.'
       + ' Sebelum mulai, TUTUP aplikasi di iPhone/iPad/HP lain (bukan sekadar layar mati) dan jangan dibuka sampai pita "Tahun ' + tahun + ' terkunci dan arsipnya habis" muncul — tiap perangkat yang terbuka membaca ±' + ANGKA(muat) + ' lagi; '
       + (sisaBaca > 0 ? 'sisa baca hari itu sesudah ritual ±' + ANGKA(sisaBaca) + (sisaBaca < muat ? ', tidak cukup untuk satu perangkat lagi.' : '.') : 'kuota baca hari itu habis oleh ritualnya sendiri.'),
     lewat.length ? 'TIDAK MUAT dalam kuota satu hari: ' + lewat.map(kata).join(' · ') + '. Arsip akan berhenti di tengah; sampai dilanjutkan sesudah reset berikutnya, stok, piutang & utang terhitung DOBEL — jangan berjualan/menagih selama itu.'
-        + ' Tetap mulai ' + tanggalPendek(W.iso) + ' (hari lain tidak lebih ringan); ' + tanggalPendek(besok) + ' toko TUTUP sampai sesudah pukul ' + jamBesok + '.00 WIB, lalu ketuk "Lanjutkan" dari perangkat yang sama dan tunggu sampai arsipnya habis.'
+        + ' Tetap mulai ' + tanggalPendek(W.iso) + ' (hari lain tidak lebih ringan); '
+        + (hariKuota <= 2 ? tanggalPendek(besok) + ' toko TUTUP sampai sesudah pukul ' + jamBesok + '.00 WIB, lalu ketuk "Lanjutkan" dari perangkat yang sama dan tunggu sampai arsipnya habis.'
+          : 'butuh ±' + hariKuota + ' hari kuota berturut-turut (sampai ±' + tanggalPendek(hariAkhir) + '): toko TUTUP tiap hari mulai ' + tanggalPendek(besok) + ' sampai pita "Tahun ' + tahun + ' terkunci dan arsipnya habis" muncul — tiap hari sesudah pukul ' + jamBesok + '.00 WIB ketuk "Lanjutkan" dari perangkat yang sama dan tunggu sampai arsipnya berhenti lagi atau habis.')
       : mepet.length ? 'MEPET: ' + mepet.map(kata).join(' · ') + '. Yang ikut menghabiskan kuota hari itu: tiap perangkat lain yang dibuka (±' + ANGKA(muat) + ' baca sekali buka), tiap muat ulang aplikasi, dan tulisan toko — tutup semua perangkat lain, jangan muat ulang, kerjakan saat toko tutup.' : 'Muat dalam kuota satu hari.',
     'Batalkan sesudah arsip berjalan penuh butuh ±' + B.map(kata).join(' · ') + (B.some((x) => x.n > x.batas) || R.some((x) => x.n > 0.5 * x.batas) ? ' — tidak muat di hari yang sama dengan ritualnya: toko jangan berjualan sampai pembatalan tuntas sesudah reset berikutnya.' : '.'),
     'Kuota yang sudah terpakai hari itu tidak terlihat dari aplikasi — lihat Console › Firestore › Usage sebelum mulai.'];
-  const h = { tahun, rencana: W.iso, jamReset: jam, muat, sisaBaca, nPembuka: nP, nArsip: A.n, kiriman: nKirim, ritual, batal, R, B, lewat: lewat.length > 0, mepet: mepet.length > 0, kalimat };
+  const h = { tahun, rencana: W.iso, jamReset: jam, muat, sisaBaca, hariKuota, nPembuka: nP, nArsip: A.n, kiriman: nKirim, ritual, batal, R, B, lewat: lewat.length > 0, mepet: mepet.length > 0, kalimat };
   _kuotaMemo = { k: kunciMemo, h }; return h;
 }
 export { RP as bkRP };

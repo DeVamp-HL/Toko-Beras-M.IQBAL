@@ -281,9 +281,11 @@ export function hbNilaiHitung(h) {
 // Tempat panel Hemat baca di layar = nama laci & baris Menu (menu-logika.js laci "Toko ini" · menu.js JUDUL_SISTEM & TAB_SISTEM). SATU konstanta: sistem-logika.js
 // ssHemat membuang petunjuk ini dari sebab yang digambar DI panel itu sendiri (audit P2 · K5: dulu "Menu › Sistem › Perangkat", jalur yang tidak ada di layar).
 export const HB_TEMPAT = 'Menu › Toko ini › Perangkat & antrean › Hemat baca';
-// Tombol "<nama> sudah tidak dipakai" HANYA ada di butir perangkatDenyut daftar periksa kunci bulan (kunci-periode-logika.js), dan butirnya baru muncul sesudah
-// perangkat itu diam > 24 jam — daftar siap-nyala dulu menyuruh "tandai" tanpa menyebut tempatnya (audit P2).
-export const HB_TANDAI_TIDAK_DIPAKAI = 'tandai "sudah tidak dipakai" di Uang › Tutup buku › kartu Kunci bulan › butir "Semua perangkat berdenyut dalam 24 jam terakhir" (butir itu muncul sesudah perangkatnya diam lebih dari 24 jam)';
+// Tombol "<nama> sudah tidak dipakai" HANYA ada di butir perangkatDenyut daftar periksa kunci bulan (kunci-periode-logika.js). Butirnya selalu ada di daftar
+// periksa itu; TOMBOLNYA baru muncul sesudah perangkat itu diam > 24 jam, dan hanya bila laporan terakhirnya antrean 0 & ditolak 0 — selain itu jalannya butir
+// "Perangkat hilang atau rusak" di catatan "Prosedur pulih darurat" (= KP_BUTIR_HILANG). Daftar periksanya tampil selama ada bulan yang bisa dikunci (kpCalon).
+// Teks butir & nama butir prosedur dicocokkan dengan kunci-periode-logika.js oleh alat-uji/uji_kunci_periode.py (audit P2 · sanggahan #121).
+export const HB_TANDAI_TIDAK_DIPAKAI = 'ketuk "<nama> sudah tidak dipakai" di Uang › Tutup buku › kartu Kunci bulan › butir "Semua perangkat berdenyut dalam 24 jam terakhir" (tombol itu muncul sesudah perangkatnya diam lebih dari 24 jam DAN laporan terakhirnya antrean 0 & ditolak 0; selain itu: catatan "Prosedur pulih darurat", butir "Perangkat hilang atau rusak")';
 const HB_KE_MENU = 'ketuk "baca penuh sekarang" (' + HB_TEMPAT + ')';
 /** Sebab "harian": belum ada baca penuh sejak reset kuota yang memulai hari kuota `hari` ('' = jam resetnya tidak disebut). */
 export function hbSebabHarian(hari) { const j = hbJamResetHariWib(hari); return 'belum dibaca penuh sejak kuota baca direset' + (j ? ' pukul ' + j + ' WIB' : '') + ' — ' + HB_KE_MENU; }

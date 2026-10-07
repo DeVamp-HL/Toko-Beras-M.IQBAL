@@ -238,7 +238,8 @@ function jagaIsian(akun) {
   uidKeranjang = akun.uid;
 }
 // audit P2 (T6): uid yang permintaannya sudah SAMPAI di server sesi ini. Server (rules v7) tidak menerima permintaan kedua dari akun yang sama, jadi sesudah
-// terkirim tombol "Minta didaftarkan" tidak ditawarkan lagi — juga bila keadaan akun dibunyikan ulang (gambarAkun dipanggil lagi tanpa berubah)
+// terkirim tombol "Minta didaftarkan" tidak ditawarkan lagi — juga bila keadaan akun dibunyikan ulang (gambarAkun dipanggil lagi tanpa berubah). Ingatan ini per
+// sesi: akun bukan-owner tidak bisa membaca permintaanAkses, jadi permintaan yang DITOLAK owner (dihapus) tidak terlihat dari sini — kalimatnya menyuruh muat ulang
 let _mintaTerkirim = ''; let _akunGerbang = null;
 function gambarAkun(akun) {
   jagaIsian(akun);
@@ -258,7 +259,7 @@ function gambarAkun(akun) {
   }
   document.getElementById('judulAkun').textContent = akun.kalimat || 'Akun ini belum bisa dipakai';
   const terkirim = akun.jenis === 'belum' && !!_mintaTerkirim && _mintaTerkirim === String(akun.uid || '');
-  document.getElementById('pesanAkun').textContent = akun.jenis === 'belum' ? 'Masuk sebagai ' + akun.email + '. ' + (terkirim ? 'Permintaan sudah terkirim — tunggu owner menyetujuinya di Menu › Toko ini › Peran & persetujuan; layar ini terbuka sendiri begitu akun lu didaftarkan.'
+  document.getElementById('pesanAkun').textContent = akun.jenis === 'belum' ? 'Masuk sebagai ' + akun.email + '. ' + (terkirim ? 'Permintaan sudah terkirim — tunggu owner menyetujuinya di Menu › Toko ini › Peran & persetujuan; layar ini terbuka sendiri begitu akun lu didaftarkan. Kalau owner menolaknya, muat ulang aplikasi lalu minta lagi.'
     : 'Owner perlu mendaftarkan akun ini dulu — tulis nama lu lalu minta didaftarkan; owner menyetujuinya di Menu › Toko ini › Peran & persetujuan.')
     : akun.jenis === 'nonaktif' ? 'Masuk sebagai ' + akun.email + '. Tidak ada data toko yang dibuka di perangkat ini selama akun ini nonaktif.' : '';
   document.getElementById('mintaAkun').hidden = akun.jenis !== 'belum' || terkirim;
