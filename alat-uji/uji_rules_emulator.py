@@ -352,6 +352,14 @@ def tanpa_cap(d): return {k: v for k, v in (d or {}).items() if k != 'capServer'
 def cap(d): return ((d or {}).get('capServer') or {}).get('__ts') if isinstance((d or {}).get('capServer'), dict) else None
 
 
+def detik(ts):
+    """timestampValue REST ('…Z', pecahan detik sampai 9 angka) → detik epoch (None bila kosong)."""
+    if not ts: return None
+    m = re.match(r'^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?Z$', ts)
+    if not m: return None
+    return datetime.datetime.fromisoformat(m.group(1) + '+00:00').timestamp() + (float('0' + m.group(2)) if m.group(2) else 0.0)
+
+
 def isi_sama(dok, item):
     """isi dokumen server (tanpa capServer) = isi karcis (kolom & nilai; angka pecahan id dibandingkan sebagai angka)."""
     return json.dumps(tanpa_cap(dok), sort_keys=True) == json.dumps(item['data'], sort_keys=True)
@@ -370,7 +378,7 @@ def jalur_kasir(v33, v32, aturan):
     jalur = 'penjualan/' + item['docId']; d1 = ambil_admin(jalur); t1 = tulisan_nota(h1)
     c.append(('c1', 'kasir-v33 nota baru: SATU :commit bercap (transform capServer = REQUEST_TIME, tanpa updateMask) DITERIMA; isi server = karcis + capServer jam server',
               h1.get('versi') == 'kasir-v33' and t1 == [{'cara': 'commit', 'status': 200, 'cap': ['capServer=REQUEST_TIME'], 'mask': False, 'kunci': True}] and not h1['antrean'] and not h1['ditolak']
-              and bool(d1) and isi_sama(d1, item) and bool(cap(d1)) and abs(datetime.datetime.fromisoformat(cap(d1).replace('Z', '+00:00')).timestamp() - kini0) < 600,
+              and bool(d1) and isi_sama(d1, item) and detik(cap(d1)) is not None and abs(detik(cap(d1)) - kini0) < 600,
               {'versi': h1.get('versi'), 'tulisan': t1, 'antrean': len(h1['antrean']), 'ditolak': len(h1['ditolak']), 'cap': cap(d1)}))
     # c2 · kirim ulang IDENTIK (jawaban kiriman pertama hilang di jalan): karcis yang sama kembali ke antrean, halaman dibuka lagi
     h2 = node_kasir(v33, dengan_antrean(h1['simpanan'], item)); L['c2'] = h2; d2 = ambil_admin(jalur); t2 = tulisan_nota(h2)
@@ -381,7 +389,7 @@ def jalur_kasir(v33, v32, aturan):
     else:
         c.append(('c2', 'kirim ulang IDENTIK kasir-v33: :commit DITERIMA (ulangKasirBercap), tanpa jatuh ke cara lama; capServer = jam server yang BARU; isi sama',
                   [x['cara'] + ':' + str(x['status']) for x in t2] == ['commit:200'] and not h2['antrean'] and not h2['ditolak'] and bool(d2) and isi_sama(d2, item)
-                  and bool(cap(d2)) and bool(cap(d1)) and cap(d2) > cap(d1), {'tulisan': t2, 'ditolak': len(h2['ditolak']), 'cap1': cap(d1), 'cap2': cap(d2)}))
+                  and detik(cap(d2)) is not None and detik(cap(d1)) is not None and detik(cap(d2)) > detik(cap(d1)), {'tulisan': t2, 'ditolak': len(h2['ditolak']), 'cap1': cap(d1), 'cap2': cap(d2)}))
     # c3 · kirim ulang yang MENGUBAH isi (hargaTotal + 5.000): :commit ditolak, cara lama ditolak → daftar "ditolak"; server tidak berubah
     ubah = json.loads(json.dumps(item)); ubah['data']['hargaTotal'] = item['data']['hargaTotal'] + 5000
     h3 = node_kasir(v33, dengan_antrean(h2['simpanan'], ubah)); L['c3'] = h3; d3 = ambil_admin(jalur); t3 = tulisan_nota(h3)
@@ -391,21 +399,24 @@ def jalur_kasir(v33, v32, aturan):
     if v32 is None:
         c.append(('c4', 'kasir-v32 (HP penjaga sebelum cabang ini)', False, 'kasir-darurat-nominal.html di %s tidak terbaca (riwayat git dangkal?) — TIDAK TERUKUR' % KASIR_V32_COMMIT))
         return L, c
-    # c4 · kasir-v32 kirim ulang IDENTIK atas nota yang sudah bercap (PATCH utuh tanpa cap — capServer terbuang)
-    h4 = node_kasir(v32, dengan_antrean(h3['simpanan'], item)); L['c4'] = h4; d4 = ambil_admin(jalur); t4 = tulisan_nota(h4)
+    # c4 · kasir-v32 kirim ulang IDENTIK atas nota yang sudah bercap (PATCH utuh tanpa cap — capServer terbuang). HP kasir-v32 = HP LAIN (penyimpanan sendiri,
+    # daftar "ditolak" kosong): kalau memakai penyimpanan HP v33 di atas, karcis yang sama sudah ada di daftar "ditolak" (c3) dan pindahKeDitolak tidak
+    # menambahkannya lagi (run 7 Okt: hitungan "ditolak" tidak bertambah di c5)
+    h4 = node_kasir(v32, dengan_antrean(simpanan_awal(), item)); L['c4'] = h4; d4 = ambil_admin(jalur); t4 = tulisan_nota(h4)
     if aturan == 'v6':
         c.append(('c4', 'v6: kasir-v32 kirim ulang identik atas nota BERCAP (PATCH utuh membuang capServer) DITOLAK → pindah ke "ditolak" (sebab v7 perlu ulangKasirBercap)',
-                  h4.get('versi') == 'kasir-v32' and [x['cara'] + ':' + str(x['status']) for x in t4] == ['patch:403'] and len(h4['ditolak']) == len(h3['ditolak']) + 1 and d4 == d3,
+                  h4.get('versi') == 'kasir-v32' and [x['cara'] + ':' + str(x['status']) for x in t4] == ['patch:403'] and len(h4['ditolak']) == 1 and d4 == d3,
                   {'versi': h4.get('versi'), 'tulisan': t4, 'ditolak': len(h4['ditolak'])}))
         return L, c
     c.append(('c4', 'kasir-v32 kirim ulang IDENTIK atas nota bercap: PATCH utuh (tanpa updateMask) DITERIMA — capServer terbuang, isi sama; tidak pindah ke "ditolak"',
-              h4.get('versi') == 'kasir-v32' and [x['cara'] + ':' + str(x['status']) for x in t4] == ['patch:200'] and not h4['antrean'] and len(h4['ditolak']) == len(h3['ditolak'])
+              h4.get('versi') == 'kasir-v32' and [x['cara'] + ':' + str(x['status']) for x in t4] == ['patch:200'] and not h4['antrean'] and not h4['ditolak']
               and bool(d4) and isi_sama(d4, item) and 'capServer' not in d4, {'versi': h4.get('versi'), 'tulisan': t4, 'ditolak': len(h4['ditolak']), 'cap4': cap(d4)}))
     # c5 · kasir-v32 kirim ulang yang MENGUBAH isi → ditolak, server tidak berubah
     ubah2 = json.loads(json.dumps(item)); ubah2['data']['hargaTotal'] = item['data']['hargaTotal'] + 7000
-    h5 = node_kasir(v32, dengan_antrean(h4['simpanan'], ubah2)); L['c5'] = h5; d5 = ambil_admin(jalur); t5 = tulisan_nota(h5)
+    # (HP kasir-v32 dengan penyimpanan baru lagi: hasil c5 tidak bergantung pada c4 — di kontrol c4 sengaja ditolak)
+    h5 = node_kasir(v32, dengan_antrean(simpanan_awal(), ubah2)); L['c5'] = h5; d5 = ambil_admin(jalur); t5 = tulisan_nota(h5)
     c.append(('c5', 'kasir-v32 kirim ulang yang MENGUBAH isi: PATCH DITOLAK → daftar "ditolak"; dokumen server tidak berubah',
-              [x['cara'] + ':' + str(x['status']) for x in t5] == ['patch:403'] and len(h5['ditolak']) == len(h4['ditolak']) + 1 and d5 == d4, {'tulisan': t5, 'ditolak': len(h5['ditolak'])}))
+              [x['cara'] + ':' + str(x['status']) for x in t5] == ['patch:403'] and len(h5['ditolak']) == 1 and d5 == d4, {'tulisan': t5, 'ditolak': len(h5['ditolak'])}))
     # c6 · kasir-v32 nota baru (PATCH, dokumen belum ada = create kasir@) tetap masuk di v7
     h6 = node_kasir(v32, h5['simpanan'], {'nota': 20000}); L['c6'] = h6; it6 = (h6.get('antreanSesudahCatat') or [None])[0]
     d6 = ambil_admin('penjualan/' + it6['docId']) if it6 else None; t6 = tulisan_nota(h6)

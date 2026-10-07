@@ -238,6 +238,18 @@ def jam_server():
     return d['fields']['pada']['timestampValue']
 
 
+def laju_emulator(n=150):
+    """Kecepatan emulator: n commit satu dokumen (Bearer owner) + satu runQuery → detik. Pemalsu jam JVM tidak boleh memperlambat emulator (run 7 Okt
+    dengan libfaketimeMT: tiap langkah ±10× lebih lambat, LANJUTKAN arsip tidak selesai dalam 47 menit)."""
+    t0 = time.time()
+    for i in range(n):
+        rest('POST', FS + '/v1/' + DB + '/documents:commit', {'writes': [{'update': {'name': DB + '/documents/_gladiLaju/d%03d' % i, 'fields': {'i': {'integerValue': str(i)}}}}]}, OWNER)
+    jalankan_query('_gladiLaju', pilih=False)
+    dt = round(time.time() - t0, 2)
+    rest('DELETE', FS + '/emulator/v1/projects/%s/databases/(default)/documents' % PROYEK, waktu=120)
+    return dt
+
+
 def banding_jam(jam_halaman):
     """→ {'server', 'halaman', 'selisihDetik', 'ok', 'geser'}: jam server diukur, dibanding jam halaman skenario."""
     sv = jam_server(); t = waktu(sv).timestamp()
@@ -797,7 +809,7 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
             if (kait or {}).get(nama):
                 try: hasil_kait = kait[nama]()
                 except Exception as e: hasil_kait = {'ok': False, 'gagal': ['pemeriksa server jatuh: ' + str(e)[:300]]}
-            p = potret(); tulis, hapus = beda(K['potret'], p); K['potret'] = p
+            tp = time.time(); p = potret(); tulis, hapus = beda(K['potret'], p); K['potret'] = p; tp = round(time.time() - tp, 1)
             baca = int((isi.get('baca') or {}).get('dokumen') or 0); db = baca - K['baca']; K['baca'] = baca
             sendiri = {k: n for k, n in tulis.items() if k in DIDENGAR}
             r = {'nama': nama, 'detik': round(time.time() - K['t'], 1), 'baca': db + sum(sendiri.values()), 'bacaServer': db, 'bacaSendiri': sum(sendiri.values()),
@@ -806,7 +818,8 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
             r['emulator'] = log_emulator_baru()
             if r['emulator']['penuh']: cetak('    !! emulator: antrean WebChannel penuh %d kali, kanal diputus %d kali' % (r['emulator']['penuh'], r['emulator']['putus']))
             K['t'] = time.time(); K['langkah'].append(r)
-            cetak('  · %-52s %6.1f dtk · baca %6d · tulis %6d · hapus %6d%s' % (r['nama'][:52], r['detik'], r['baca'], r['tulis'], r['hapus'],
+            r['ukurDetik'] = tp   # waktu potret isi server (REST) di langkah ini — bagian dari dtk langkah, bukan halaman
+            cetak('  · %-52s %6.1f dtk · baca %6d · tulis %6d · hapus %6d · ukur %4.1f dtk%s' % (r['nama'][:52], r['detik'], r['baca'], r['tulis'], r['hapus'], tp,
                                                                              ('  [' + ', '.join('%s +%d' % x for x in sorted(tulis.items())) + ']') if tulis and r['tulis'] < 60 else ''))
             m = isi.get('minta') or ''
             if m.startswith('tolak:'): pasang_aturan(aturan_tolak(m.split(':', 1)[1])); r['aturan'] = 'firestore.rules repo + ' + m.split(':', 1)[1] + ' ditolak'; cetak('    (aturan emulator: %s DITOLAK sementara)' % m.split(':', 1)[1])
@@ -1358,9 +1371,16 @@ if __name__ == '__main__':
             except Exception as e:
                 if time.time() - t0 > 180: print('emulator Firestore tidak menjawab: %s' % e); sys.exit(2)
                 time.sleep(1)
-        j = banding_jam(SKENARIO[opsi('--cek-jam', '')][1])
+        lj = laju_emulator()
+        if '--laju' in arg:   # emulator TANPA pemalsu jam: patokan kecepatan
+            open(opsi('--laju', ''), 'w').write(str(lj)); print('laju emulator biasa: 150 commit + 1 query = %.2f dtk' % lj); sys.exit(0)
+        j = banding_jam(SKENARIO[opsi('--cek-jam', '')][1]); ok = j['ok']
         print('jam server emulator %s · jam halaman %s · selisih %s dtk · GLADI_GESER_JAM %s → %s' % (j['server'], j['halaman'], j['selisihDetik'], j['geser'] or '-', 'SESUAI' if j['ok'] else 'TIDAK SESUAI'))
-        sys.exit(0 if j['ok'] else 2)
+        if opsi('--laju-banding', ''):
+            dasar = float(open(opsi('--laju-banding', '')).read()); r = lj / max(dasar, 0.01)
+            print('laju emulator berjam palsu: %.2f dtk (biasa %.2f dtk) → %.1f× %s' % (lj, dasar, r, 'SESUAI' if r <= 3 else 'TERLALU LAMBAT (> 3×) — pemalsu jam memperlambat emulator'))
+            ok = ok and r <= 3
+        sys.exit(0 if ok else 2)
     if not CHROME: print('Chrome tidak ditemukan di runner — GAGAL'); sys.exit(2)
     tunggu_emulator()
     sandi = secrets.token_urlsafe(24)   # sandi akun owner contoh: dibuat tiap run, hanya di emulator, tidak dicetak

@@ -48,6 +48,11 @@ RENTANG_DOK = (8000, 20000)
 # "too many pending messagings in the back channel (10001)", pendengar tidak pernah menerima data, kanal diputus berulang). Server sungguhan tidak punya
 # batas itu. Angka baca/tulis/hapus hari ritual skala toko (±16,5–18 rb) = hasil gladi × (dokumen toko ÷ dokumen gladi) — laporan gladi menghitungnya.
 SKALA_BAWAAN = float(os.environ.get('GLADI_SKALA') or 0.65)
+# varian terkunci (skenario pintu): yang diuji MEKANISME pintu, bukan skala — tiap catatan bulan terkunci butuh 5 pemeriksaan (arsip 3 catatan per kiriman,
+# bukan 9), jadi skala toko berarti ±3 rb kiriman per arsip, ×3 (arsip, batal, arsip lagi). Skala 0,05 (±1,7 rb dokumen, arsip ±1,3 rb, 23 hari macet tetap)
+# = ±450 kiriman per jalan; angka kuota skala toko tetap diproyeksikan (× dokumen toko ÷ dokumen gladi). GLADI_SKALA_PINTU mengubahnya.
+SKALA_TERKUNCI = float(os.environ.get('GLADI_SKALA_PINTU') or 0.05)
+RENTANG_DOK_TERKUNCI = (1000, 20000)
 # hari tanpa tutup hari varian macet: (bulan, jumlah) — pola keadaan toko 6 Okt 2026 (Agu 5 · Sep 15 · Okt 3)
 POLA_MACET = [(8, 5), (9, 15), (10, 3)]
 
@@ -75,7 +80,8 @@ def iso(d): return d.isoformat()
 
 class Pembangkit:
     def __init__(self, benih=BENIH, varian='macet', skala=None):
-        self.r = random.Random(benih); self.varian = varian; self.skala = float(SKALA_BAWAAN if skala is None else skala)
+        self.r = random.Random(benih); self.varian = varian
+        self.skala = float((SKALA_TERKUNCI if varian == 'terkunci' else SKALA_BAWAAN) if skala is None else skala)
         self.ids = set(); self.D = {}
         self.stok = {m: 0.0 for m, _, _ in MEREK}; self.nilai = {m: 0.0 for m, _, _ in MEREK}   # kg & nilai (rata-rata tertimbang, seperti mesin)
         self.hpp_dasar = {m: h for m, h, _ in MEREK}
@@ -501,7 +507,7 @@ def periksa_terkunci(data, bun=None):
     if h is None: return None, [JATUH + ' saat menilai data contoh terkunci: ' + e]
     c = []; meta = data.get('gladi', {}); T = h['tahunBuku']; K = h.get('kunci') or {}
     n = sum(v for v in h['koleksi'].values()); n_macet = len(meta.get('hariTanpaTutup', []))
-    if not (RENTANG_DOK[0] <= n <= RENTANG_DOK[1]): c.append('jumlah dokumen %d di luar skala toko %s' % (n, RENTANG_DOK))
+    if not (RENTANG_DOK_TERKUNCI[0] <= n <= RENTANG_DOK_TERKUNCI[1]): c.append('jumlah dokumen %d di luar rentang data terkunci %s' % (n, RENTANG_DOK_TERKUNCI))
     if h['minus']: c.append('stok minus: ' + ', '.join(h['minus'][:4]))
     if not (T['tahun'] == 2026 and T['bolehSungguhan'] and T['perluPintu'] and T['adaKunci']): c.append('5 Jan: tahun 2026 harus boleh ditutup sungguhan LEWAT PINTU (ada bulan terkunci): %s' % T)
     if [g.split(' ')[0] for g in h['gerbang']] != ['g1']: c.append('5 Jan sebelum putusan: gerbang yang belum beres harus hanya g1: %s' % h['gerbang'])
@@ -686,7 +692,7 @@ if __name__ == '__main__':
             if c: print('DATA CONTOH %s GAGAL:' % v); [print('   ✗ ' + x) for x in c]; kode = 2
             else: print('DATA CONTOH %s LULUS: %s' % (v, ringkas(h, D[v])))
         sys.exit(kode)
-    data = bangun(opsi('--varian', 'macet'), int(opsi('--benih', BENIH)), float(opsi('--skala', SKALA_BAWAAN)))
+    data = bangun(opsi('--varian', 'macet'), int(opsi('--benih', BENIH)), float(opsi('--skala', 0)) or None)
     keluar = opsi('--keluar', '')
     teks = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
     if keluar: open(keluar, 'w', encoding='utf-8').write(teks); print('data contoh %s: %d dokumen → %s' % (data['gladi']['varian'], data['gladi']['dokumen'], keluar))

@@ -28,8 +28,11 @@ Di Mac hanya boleh menjalankan pemeriksaan yang tidak menyalakan peramban:
     menolak. Sesudah putusan per tanggal (Paket A), semua gerbang beres. **Ketiga skenario memakai varian ini**, seperti keadaan toko yang akan
     dihadapi owner pada 1 Jan.
   - `bersih`: semua hari ditutup. Hanya dinilai `--periksa`; tidak dipakai skenario.
-  - `terkunci` (rules v7): data `macet` yang sama persis, ditambah **kunci periode sampai Desember 2026** (`aturanToko/kunciPeriode`, dikunci
-    4 Jan 2027 — semua bulan tahun yang ditutup terkunci) dan dua pindahan uang laci ↔ brankas bertanggal Okt & Nov. Pindahan uang **tidak
+  - `terkunci` (rules v7): data `macet` (benih & 23 hari macet yang sama, skala 0,05 ≈ 1,7 rb dokumen — `GLADI_SKALA_PINTU`), ditambah **kunci
+    periode sampai Desember 2026** (`aturanToko/kunciPeriode`, dikunci 4 Jan 2027 — semua bulan tahun yang ditutup terkunci) dan dua pindahan uang
+    laci ↔ brankas bertanggal Okt & Nov. Skalanya kecil karena tiap catatan bulan terkunci butuh 5 pemeriksaan server (arsip 3 catatan per kiriman,
+    bukan 9): di skala toko satu arsip ±3 rb kiriman, dan skenario `pintu` mengarsip dua kali plus membatalkan sekali. Yang diuji mekanisme pintu;
+    angka kuota tetap diproyeksikan ke skala toko. Pindahan uang **tidak
     diarsip** tutup buku dan tidak berpintu, jadi wajib tetap utuh selama pintu terbuka. `--periksa` menilainya di jam 5 Jan 2027 15.30: tahun
     2026 boleh ditutup sungguhan **lewat pintu**; sesudah putusan, `susunKunci` = kiriman 1 berita acara "berjalan" sendirian, kiriman 2 membuka
     pintu (tahun 2026, 48 jam), titik kas 31 Des ikut lewat pintu, tiap kiriman ≤ 18 pemeriksaan. Dipakai skenario `pintu`.
@@ -120,11 +123,13 @@ sesudah penanda, pembatalannya baru bisa tuntas sesudah kuota reset berikutnya (
 **Jam server = jam halaman** (sejak rules v7). Rules v7 menilai berita acara baru (jam mulai = tanggal server ± 1 hari, tahun lampau), pintu
 tutup buku (hanya tahun lalu, ≤ 72 jam dari jam server), dan kunci periode dengan **jam server**. Halaman gladi berjam palsu (31 Des 2026 / 1 Jan /
 5 Jan 2027), sedangkan runner berjam Okt 2026: tanpa penyesuaian, rules v7 menolak ritual karena jamnya, bukan karena ritualnya. Karena itu
-workflow menggeser jam **JVM emulator saja** lewat libfaketime: pembungkus `java` di depan `PATH` memasang `LD_PRELOAD` bila `GLADI_GESER_JAM`
-diisi (detik, dari `gladi_tutup_buku.py --geser-jam <skenario>`). Chrome, node, dan alat gladi tetap berjam runner. Jamnya **diukur, bukan
-dipercaya**: sebelum skenario panjang ada uji cepat (`--cek-jam`), dan cek pertama tiap skenario menulis satu dokumen sementara bercap
-`REQUEST_TIME`, membacanya, lalu menghapusnya sebelum langkah pertama diukur — selisih jam server dengan jam halaman wajib ≤ 15 menit (biasanya
-± 1 menit: emulator menyala sebelum halaman dimuat).
+workflow menggeser jam **JVM emulator saja** lewat libfaketime (`libfaketime.so.1`): pembungkus `java` di depan `PATH` memasang `LD_PRELOAD`
+bila `GLADI_GESER_JAM` diisi (detik, dari `gladi_tutup_buku.py --geser-jam <skenario>`). Chrome, node, dan alat gladi tetap berjam runner. Jamnya
+**diukur, bukan dipercaya**: sebelum skenario panjang ada uji cepat (`--cek-jam`), dan cek pertama tiap skenario menulis satu dokumen sementara
+bercap `REQUEST_TIME`, membacanya, lalu menghapusnya sebelum langkah pertama diukur — selisih jam server dengan jam halaman wajib ≤ 15 menit
+(biasanya ± 1 menit: emulator menyala sebelum halaman dimuat). Uji cepat juga membandingkan **kecepatan** emulator berjam palsu dengan emulator
+biasa (150 commit + 1 query, wajib ≤ 3×): run 7 Okt dengan `libfaketimeMT` (mengunci tiap panggilan jam) membuat tiap langkah ±10× lebih lambat dan
+LANJUTKAN arsip tidak selesai dalam 47 menit. Tiap langkah kini juga mencatat waktu potret isi server (`ukur … dtk`).
 
 Keterbatasan:
 - **Antrean WebChannel emulator dibatasi 10.000 pesan per kanal.** Run 7 Okt memakai data 17 rb dokumen. Hasilnya: "too many pending messagings in

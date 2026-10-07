@@ -89,7 +89,9 @@ jobs:
       - name: Pemalsu jam JVM emulator (libfaketime, hanya java)
         run: |
           sudo apt-get install -y -qq faketime >/dev/null
-          LIB=$(dpkg -L libfaketime | grep -E '/libfaketimeMT\.so\.1$' | head -1); test -n "$LIB"; echo "libfaketime: $LIB"
+          # libfaketime.so.1 (bukan MT): geser relatif "+N" detik tanpa keadaan bersama; libfaketimeMT mengunci tiap panggilan jam dan memperlambat JVM
+          # emulator ±10× (run 7 Okt) — uji cepat di bawah membandingkan kecepatannya dengan emulator tanpa pemalsu jam
+          LIB=$(dpkg -L libfaketime | grep -E '/libfaketime\.so\.1$' | head -1); test -n "$LIB"; echo "libfaketime: $LIB"
           JAVA_ASLI="$JAVA_HOME/bin/java"; test -x "$JAVA_ASLI"
           D="$RUNNER_TEMP/jam-emulator"; mkdir -p "$D"
           printf '%s\n' '#!/bin/sh' \
@@ -105,13 +107,14 @@ jobs:
       - name: Data contoh dinilai logika /baru/ asli (31 Des LATIHAN 12 baris sama, gerbang per varian, 1 Jan macet ditolak tanpa putusan lalu kiriman bertahap ≤ 18) + kontrol
         run: python3 alat-uji/gladi_data_contoh.py --periksa && python3 alat-uji/gladi_data_contoh.py --kontrol
 
-      - name: Jam emulator dipalsukan sungguh — uji cepat (emulator Firestore saja, jam halaman skenario ritual)
+      - name: Jam emulator dipalsukan sungguh & tidak memperlambat — uji cepat (emulator Firestore saja, jam halaman skenario ritual; kecepatan ≤ 3× emulator biasa)
         run: |
           P="$RUNNER_TEMP/jam-cek"; mkdir -p "$P"; cp firestore.rules "$P/"
           printf '%s' '{"firestore":{"rules":"firestore.rules"},"emulators":{"firestore":{"host":"127.0.0.1","port":8080},"ui":{"enabled":false},"singleProjectMode":true}}' > "$P/firebase.json"
           cd "$P"; command -v java
+          firebase emulators:exec --only firestore --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --cek-jam ritual --laju '$RUNNER_TEMP/laju-biasa.txt'"
           export GLADI_GESER_JAM=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --geser-jam ritual); echo "GLADI_GESER_JAM=$GLADI_GESER_JAM"
-          firebase emulators:exec --only firestore --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --cek-jam ritual"
+          firebase emulators:exec --only firestore --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --cek-jam ritual --laju-banding '$RUNNER_TEMP/laju-biasa.txt'"
 
       - name: Salinan uji gladi (statis) — connect-src salinan tanpa host Firebase sungguhan + alamat emulator, jam palsu, SDK penghitung, nama langkah & jangkar kontrol
         run: python3 alat-uji/gladi_tutup_buku.py --periksa-salinan
