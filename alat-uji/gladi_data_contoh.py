@@ -39,7 +39,7 @@ WIB = datetime.timezone(datetime.timedelta(hours=7))
 # jam halaman untuk LATIHAN (31 Des sesudah tutup hari terakhir) & SUNGGUHAN (1 Jan sesudah reset kuota 15.00 WIB) — sama dengan pelari gladi
 JAM_LATIHAN, JAM_SUNGGUHAN = '2026-12-31T21:45:00+07:00', '2027-01-01T15:30:00+07:00'
 # varian terkunci (rules v7): semua bulan 2026 dikunci — Desember paling cepat dikunci 4 Jan (tenggang minimal 3 hari, rules tenggangMin), jadi gladi pintu
-# berjalan 5 Jan 2027 sesudah reset kuota. Jam server emulator digeser ke jam yang sama (gladi_tutup_buku.py --geser-jam, libfaketime).
+# berjalan 5 Jan 2027 sesudah reset kuota. Jam server emulator digeser ke jam yang sama (gladi_tutup_buku.py --geser-jam, alat-uji/jam_geser.c).
 JAM_PINTU, KUNCI_PINTU = '2027-01-05T15:30:00+07:00', '2026-12'
 PERANGKAT_GLADI = 'p-gladi-runner'
 # rentang "skala toko" (proyeksi akhir Des ±16,5–18 rb dokumen arsip; tugas gladi: ±8–20 rb)

@@ -4,7 +4,7 @@
 # LATIHAN (tanpa menulis), SUNGGUHAN yang diblokir gerbang lalu dibuka lewat putusan per tanggal (Paket A), dan ritual penuh di data yang sama — putusan,
 # server yang menolak di tengah (lanjutkan / batalkan sebelum & sesudah penanda) sampai selesai, tiap titik diperiksa di SERVER. Tiap langkah dan tiap jalur
 # (ritual bersih · batal) : baca / tulis / hapus vs batas Spark. Rules v7: skenario PINTU di data TERKUNCI (semua bulan 2026 dikunci) — tutup buku lewat pintu,
-# batal, selesai menutup pintu, pintu kedaluwarsa ditolak; jam JVM emulator = jam halaman (libfaketime, diukur). Proyek emulator "demo-gladi-toko": tanpa
+# batal, selesai menutup pintu, pintu kedaluwarsa ditolak; jam JVM emulator = jam halaman (alat-uji/jam_geser.c, diukur). Proyek emulator "demo-gladi-toko": tanpa
 # kredensial, tanpa data toko.
 # Manual: Actions › Gladi tutup buku › Run workflow. Otomatis di PR yang menyentuh tutup buku, kunci periode, uang, aturan server, sambungan Firebase.
 name: Gladi tutup buku
@@ -35,6 +35,7 @@ on:
       - 'firestore.rules'
       - 'alat-uji/gladi_data_contoh.py'
       - 'alat-uji/gladi_tutup_buku.py'
+      - 'alat-uji/jam_geser.c'
       - '.github/workflows/gladi-tutup-buku.yml'
 
 permissions:
@@ -84,20 +85,18 @@ jobs:
           firebase setup:emulators:firestore
 
       # JAM SERVER = JAM HALAMAN (rules v7 menilai berita acara tutup buku, pintu & kunci periode dengan jam server): halaman gladi berjam palsu (31 Des 2026 /
-      # 1 Jan 2027), runner berjam Okt 2026. Jam JVM emulator SAJA digeser lewat libfaketime — pembungkus `java` di depan PATH memasang LD_PRELOAD bila
-      # GLADI_GESER_JAM diisi (detik, dari gladi_tutup_buku.py --geser-jam); Chrome, node, python tetap jam runner. Diukur di tiap skenario (cek pertama).
-      - name: Pemalsu jam JVM emulator (libfaketime, hanya java)
+      # 1 Jan / 5 Jan 2027), runner berjam Okt 2026. Jam DINDING JVM emulator SAJA digeser lewat alat-uji/jam_geser.c (LD_PRELOAD dari pembungkus `java` di
+      # depan PATH, bila GLADI_GESER_JAM diisi — detik, dari gladi_tutup_buku.py --geser-jam); jam monoton & CPU tidak disentuh; Chrome, node, python tetap
+      # jam runner. Bukan libfaketime: run 7 Okt membuat emulator ±9,5× lebih lambat (MT maupun bukan). Diukur di uji cepat & cek pertama tiap skenario.
+      - name: Pemalsu jam JVM emulator (alat-uji/jam_geser.c, hanya java)
         run: |
-          sudo apt-get install -y -qq faketime >/dev/null
-          # libfaketime.so.1 (bukan MT): geser relatif "+N" detik tanpa keadaan bersama; libfaketimeMT mengunci tiap panggilan jam dan memperlambat JVM
-          # emulator ±10× (run 7 Okt) — uji cepat di bawah membandingkan kecepatannya dengan emulator tanpa pemalsu jam
-          LIB=$(dpkg -L libfaketime | grep -E '/libfaketime\.so\.1$' | head -1); test -n "$LIB"; echo "libfaketime: $LIB"
-          JAVA_ASLI="$JAVA_HOME/bin/java"; test -x "$JAVA_ASLI"
           D="$RUNNER_TEMP/jam-emulator"; mkdir -p "$D"
+          gcc -O2 -Wall -shared -fPIC -o "$D/libjamgeser.so" alat-uji/jam_geser.c -ldl
+          LIB="$D/libjamgeser.so"; JAVA_ASLI="$JAVA_HOME/bin/java"; test -x "$JAVA_ASLI"
           printf '%s\n' '#!/bin/sh' \
-            '# gladi: jam JVM emulator = jam halaman skenario (GLADI_GESER_JAM detik); tanpa variabel itu = java biasa' \
+            '# gladi: jam dinding JVM emulator = jam halaman skenario (GLADI_GESER_JAM detik, alat-uji/jam_geser.c); tanpa variabel itu = java biasa' \
             'if [ -n "$GLADI_GESER_JAM" ]; then' \
-            "  export LD_PRELOAD=\"$LIB\" FAKETIME=\"\$GLADI_GESER_JAM\" FAKETIME_DONT_FAKE_MONOTONIC=1" \
+            "  export LD_PRELOAD=\"$LIB\"" \
             'fi' \
             "exec \"$JAVA_ASLI\" \"\$@\"" > "$D/java"
           chmod +x "$D/java"; cat "$D/java"

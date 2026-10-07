@@ -123,13 +123,15 @@ sesudah penanda, pembatalannya baru bisa tuntas sesudah kuota reset berikutnya (
 **Jam server = jam halaman** (sejak rules v7). Rules v7 menilai berita acara baru (jam mulai = tanggal server ± 1 hari, tahun lampau), pintu
 tutup buku (hanya tahun lalu, ≤ 72 jam dari jam server), dan kunci periode dengan **jam server**. Halaman gladi berjam palsu (31 Des 2026 / 1 Jan /
 5 Jan 2027), sedangkan runner berjam Okt 2026: tanpa penyesuaian, rules v7 menolak ritual karena jamnya, bukan karena ritualnya. Karena itu
-workflow menggeser jam **JVM emulator saja** lewat libfaketime (`libfaketime.so.1`): pembungkus `java` di depan `PATH` memasang `LD_PRELOAD`
-bila `GLADI_GESER_JAM` diisi (detik, dari `gladi_tutup_buku.py --geser-jam <skenario>`). Chrome, node, dan alat gladi tetap berjam runner. Jamnya
+workflow menggeser **jam dinding JVM emulator saja** lewat `alat-uji/jam_geser.c` (pustaka kecil yang dikompilasi di runner): pembungkus `java`
+di depan `PATH` memasang `LD_PRELOAD` bila `GLADI_GESER_JAM` diisi (detik, dari `gladi_tutup_buku.py --geser-jam <skenario>`). Hanya
+`CLOCK_REALTIME`, `gettimeofday`, dan `time` yang digeser; jam monoton dan jam CPU diteruskan apa adanya. Chrome, node, dan alat gladi tetap
+berjam runner. Jamnya
 **diukur, bukan dipercaya**: sebelum skenario panjang ada uji cepat (`--cek-jam`), dan cek pertama tiap skenario menulis satu dokumen sementara
 bercap `REQUEST_TIME`, membacanya, lalu menghapusnya sebelum langkah pertama diukur — selisih jam server dengan jam halaman wajib ≤ 15 menit
 (biasanya ± 1 menit: emulator menyala sebelum halaman dimuat). Uji cepat juga membandingkan **kecepatan** emulator berjam palsu dengan emulator
-biasa (150 commit + 1 query, wajib ≤ 3×): run 7 Okt dengan `libfaketimeMT` (mengunci tiap panggilan jam) membuat tiap langkah ±10× lebih lambat dan
-LANJUTKAN arsip tidak selesai dalam 47 menit. Tiap langkah kini juga mencatat waktu potret isi server (`ukur … dtk`).
+biasa (150 commit + 1 query, wajib ≤ 3×): run 7 Okt dengan libfaketime (`libfaketimeMT` maupun `libfaketime.so.1`) membuat emulator ±9,5× lebih
+lambat (150 commit: 2,05 → 19,4 detik) dan LANJUTKAN arsip tidak selesai dalam 47 menit — karena itu pemalsu jamnya dibuat sendiri. Tiap langkah kini juga mencatat waktu potret isi server (`ukur … dtk`).
 
 Keterbatasan:
 - **Antrean WebChannel emulator dibatasi 10.000 pesan per kanal.** Run 7 Okt memakai data 17 rb dokumen. Hasilnya: "too many pending messagings in

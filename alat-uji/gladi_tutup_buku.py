@@ -23,7 +23,7 @@ SKENARIO (urutannya = urutan ritual owner; langkah tiap skenario = daftar nama d
            cache halaman): berita acara, arsipTahun = dokumen 2026 yang asli, dokumen 2026 tersisa di koleksi asal, saldo pembuka = nPembuka, penanda
            tutupBuku, titik kas & isi 21 koleksi 2026 sesudah batal = sebelum ritual.
   pintu    (rules v7, pintu tutup buku) 5 Jan 2027 15.30 WIB, data TERKUNCI (gladi_data_contoh varian terkunci: kunci periode sampai Desember 2026 — semua bulan
-           tahun yang ditutup terkunci — + dua pindahan uang bertanggal bulan terkunci yang tidak diarsip). Jam server emulator = jam halaman (libfaketime,
+           tahun yang ditutup terkunci — + dua pindahan uang bertanggal bulan terkunci yang tidak diarsip). Jam server emulator = jam halaman (jam_geser.c,
            --geser-jam; diukur). SUNGGUHAN → putusan → paraf → kunci penuh LEWAT PINTU (kiriman 1 berita acara sendirian, kiriman 2 membuka pintu, saldo pembuka,
            titik kas 31 Des, arsip) → BATALKAN sesudah penanda → mulai lagi → kunci penuh → selesai menutup pintu. Tiap titik di SERVER: pintu terbuka (2026,
            ≤ 72 jam dari jam server) / tertutup, arsipTahun = ISI catatan asli (bukan hanya id), pindahan uang bulan terkunci utuh, titik kas 31 Des. Sesudah
@@ -208,7 +208,7 @@ ATURAN_REPO = open(os.path.join(AKAR, 'firestore.rules'), encoding='utf-8').read
 
 # ---- JAM SERVER EMULATOR = JAM HALAMAN (rules v7): berita acara baru wajib berjam mulai = tanggal server ± 1 hari, pintu tutup buku hanya untuk tahun lalu
 # menurut jam server, kunci periode menilai bulan dengan jam server. Halaman gladi berjam palsu (31 Des 2026 / 1 Jan 2027) sedangkan jam runner Okt 2026 →
-# tanpa penyesuaian, rules v7 menolak ritual karena JAMNYA, bukan karena ritualnya. Workflow memalsukan jam JVM emulator SAJA (libfaketime lewat pembungkus
+# tanpa penyesuaian, rules v7 menolak ritual karena JAMNYA, bukan karena ritualnya. Workflow memalsukan jam dinding JVM emulator SAJA (alat-uji/jam_geser.c lewat pembungkus
 # `java`, GLADI_GESER_JAM = geser detik ke jam halaman skenario — --geser-jam); Chrome, node & alat ini tetap jam runner. Diukur di sini, bukan dipercaya:
 # satu dokumen sementara ditulis dengan transform REQUEST_TIME (jam server permintaan itu), dibaca, lalu dihapus SEBELUM potret langkah pertama.
 BATAS_JAM = 900   # selisih jam server − jam halaman yang diterima (dtk): emulator menyala ± 1 menit sebelum halaman dimuat
@@ -223,7 +223,7 @@ def waktu(teks):
 
 
 def geser_jam(jam_iso):
-    """FAKETIME libfaketime ('+N' / '-N' detik) supaya jam JVM emulator = jam_iso SEKARANG."""
+    """GLADI_GESER_JAM ('+N' / '-N' detik, dibaca alat-uji/jam_geser.c) supaya jam dinding JVM emulator = jam_iso SEKARANG."""
     n = int(round(datetime.datetime.fromisoformat(jam_iso).timestamp() - time.time()))
     return ('+%d' if n >= 0 else '%d') % n
 
@@ -240,7 +240,7 @@ def jam_server():
 
 def laju_emulator(n=150):
     """Kecepatan emulator: n commit satu dokumen (Bearer owner) + satu runQuery → detik. Pemalsu jam JVM tidak boleh memperlambat emulator (run 7 Okt
-    dengan libfaketimeMT: tiap langkah ±10× lebih lambat, LANJUTKAN arsip tidak selesai dalam 47 menit)."""
+    dengan libfaketime: emulator ±9,5× lebih lambat, LANJUTKAN arsip tidak selesai dalam 47 menit — kini alat-uji/jam_geser.c)."""
     t0 = time.time()
     for i in range(n):
         rest('POST', FS + '/v1/' + DB + '/documents:commit', {'writes': [{'update': {'name': DB + '/documents/_gladiLaju/d%03d' % i, 'fields': {'i': {'integerValue': str(i)}}}}]}, OWNER)
@@ -1128,7 +1128,7 @@ def ringkas_md(lap):
         out.append('')
     out += ['Baca = dokumen yang DITERIMA pendengar halaman dari server (penghitung di salinan SDK uji) + tulisan halaman sendiri ke koleksi yang didengarnya (dari REST; '
             'Firestore menagihnya, SDK tidak memunculkan perubahan baru). get() di aturan tidak termasuk. Tulis/hapus = beda isi emulator sebelum ↔ sesudah langkah (REST).', '',
-            'Jam server emulator = jam halaman skenario: jam JVM emulator SAJA dipalsukan (libfaketime, GLADI_GESER_JAM) — rules v7 menilai berita acara, pintu '
+            'Jam server emulator = jam halaman skenario: jam dinding JVM emulator SAJA digeser (alat-uji/jam_geser.c, GLADI_GESER_JAM) — rules v7 menilai berita acara, pintu '
             'tutup buku & kunci periode dengan jam server; selisih yang terukur tercantum di cek pertama tiap skenario.']
     return '\n'.join(out)
 
