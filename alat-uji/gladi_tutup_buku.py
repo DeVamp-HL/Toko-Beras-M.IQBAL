@@ -199,6 +199,37 @@ def beda(a, b):
 ATURAN_REPO = open(os.path.join(AKAR, 'firestore.rules'), encoding='utf-8').read()
 
 
+# ---- JAM SERVER EMULATOR = JAM HALAMAN (rules v7): berita acara baru wajib berjam mulai = tanggal server ± 1 hari, pintu tutup buku hanya untuk tahun lalu
+# menurut jam server, kunci periode menilai bulan dengan jam server. Halaman gladi berjam palsu (31 Des 2026 / 1 Jan 2027) sedangkan jam runner Okt 2026 →
+# tanpa penyesuaian, rules v7 menolak ritual karena JAMNYA, bukan karena ritualnya. Workflow memalsukan jam JVM emulator SAJA (libfaketime lewat pembungkus
+# `java`, GLADI_GESER_JAM = geser detik ke jam halaman skenario — --geser-jam); Chrome, node & alat ini tetap jam runner. Diukur di sini, bukan dipercaya:
+# satu dokumen sementara ditulis dengan transform REQUEST_TIME (jam server permintaan itu), dibaca, lalu dihapus SEBELUM potret langkah pertama.
+BATAS_JAM = 900   # selisih jam server − jam halaman yang diterima (dtk): emulator menyala ± 1 menit sebelum halaman dimuat
+
+
+def geser_jam(jam_iso):
+    """FAKETIME libfaketime ('+N' / '-N' detik) supaya jam JVM emulator = jam_iso SEKARANG."""
+    n = int(round(datetime.datetime.fromisoformat(jam_iso).timestamp() - time.time()))
+    return ('+%d' if n >= 0 else '%d') % n
+
+
+def jam_server():
+    """jam server emulator SEKARANG (ISO UTC) — dokumen _gladiJam/ukur bercap REQUEST_TIME, dibaca lalu dihapus (Bearer owner)."""
+    nama = DB + '/documents/_gladiJam/ukur'
+    rest('POST', FS + '/v1/' + DB + '/documents:commit', {'writes': [{'update': {'name': nama, 'fields': {'id': {'stringValue': 'ukur'}}},
+                                                                      'updateTransforms': [{'fieldPath': 'pada', 'setToServerValue': 'REQUEST_TIME'}]}]}, OWNER)
+    d = rest('GET', FS + '/v1/' + nama, kepala=OWNER)
+    rest('POST', FS + '/v1/' + DB + '/documents:commit', {'writes': [{'delete': nama}]}, OWNER)
+    return d['fields']['pada']['timestampValue']
+
+
+def banding_jam(jam_halaman):
+    """→ {'server', 'halaman', 'selisihDetik', 'ok', 'geser'}: jam server diukur, dibanding jam halaman skenario."""
+    sv = jam_server(); t = datetime.datetime.fromisoformat(sv.replace('Z', '+00:00')).timestamp()
+    sel = round(t - datetime.datetime.fromisoformat(jam_halaman).timestamp(), 1)
+    return {'server': sv, 'halaman': jam_halaman, 'selisihDetik': sel, 'ok': abs(sel) <= BATAS_JAM, 'geser': os.environ.get('GLADI_GESER_JAM', '')}
+
+
 def pasang_aturan(teks):
     r = rest('PUT', FS + '/emulator/v1/projects/%s:securityRules' % PROYEK, {'rules': {'files': [{'name': 'firestore.rules', 'content': teks}]}})
     galat = [x for x in (r.get('issues') or []) if isinstance(r, dict) and str(x.get('severity', '')).upper() == 'ERROR'] if isinstance(r, dict) else []
@@ -657,6 +688,9 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
     harap = sum(len(v) for k, v in data.items() if isinstance(v, list) and k != 'logAktivitas') + min(150, len(data.get('logAktivitas', [])))
     K = {'konfig': {'email': EMAIL_OWNER, 'sandi': sandi, 'langkah': langkah, 'saksi': meta['saksi'][0], 'harapBaca': harap, 'proyek': PROYEK, 'alasan': DC.ALASAN_PUTUS},
          'selesai': threading.Event(), 'hasil': None, 'langkah': [], 'kunci': threading.Lock()}
+    try: jam_sv = banding_jam(jam)
+    except Exception as e: jam_sv = {'ok': False, 'galat': str(e)[:300], 'halaman': jam}
+    cetak('  jam server emulator %s · jam halaman %s · selisih %s dtk (GLADI_GESER_JAM %s)' % (jam_sv.get('server'), jam, jam_sv.get('selisihDetik'), jam_sv.get('geser') or '-'))
     K['potret'] = potret(); K['baca'] = 0; K['t'] = time.time(); log_emulator_baru()
     def ukur(isi):
         with K['kunci']:
@@ -689,7 +723,7 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
         log = os.path.join(d, 'profil-chrome.log'); ekor = open(log, 'rb').read().decode('utf-8', 'replace').splitlines()[-30:] if os.path.exists(log) else []
         shutil.rmtree(d, ignore_errors=True)
     H = K['hasil'] or {}
-    return {'nama': nama, 'varian': varian, 'jamHalaman': jam, 'langkahDiminta': langkah, 'selesai': ok, 'detik': detik, 'kodeChrome': kode, 'langkah': K['langkah'],
+    return {'nama': nama, 'varian': varian, 'jamHalaman': jam, 'jamServer': jam_sv, 'langkahDiminta': langkah, 'selesai': ok, 'detik': detik, 'kodeChrome': kode, 'langkah': K['langkah'],
             'galat': H.get('galat') if ok else 'halaman tidak mengirim hasil dalam %d dtk (Chrome %s)' % (TUNGGU_SKENARIO[nama], kode),
             'konsol': H.get('konsol') or [], 'csp': H.get('csp') or [], 'akhir': H.get('akhir'), 'ekorChrome': [] if ok and not H.get('galat') else ekor}
 
@@ -713,6 +747,9 @@ def kait_cek(c, nama, x):
 
 
 def cek_umum(S, data, c, tolak_sengaja=()):
+    js = S.get('jamServer') or {}
+    c.append(('jam server emulator = jam halaman skenario (selisih ≤ %d dtk; rules v7 menilai berita acara, pintu & kunci periode dengan jam server)' % BATAS_JAM, bool(js.get('ok')),
+              {k: js.get(k) for k in ('server', 'halaman', 'selisihDetik', 'geser', 'galat') if js.get(k) is not None}))
     c.append(('skenario berjalan sampai akhir tanpa galat', S['selesai'] and not S['galat'], (S['galat'] or '')[:600]))
     m = L_(S, 'masuk'); bilah = info(m, 'bilah') or ''
     c.append(('masuk sebagai owner contoh di SERVER TIRUAN %s (bilah tampil SEBELUM formulir diisi, bukan "DITOLAK")' % PROYEK, bool(m) and info(m, 'akun') == 'owner'
@@ -919,7 +956,7 @@ def ringkas_md(lap):
     out.append('')
     for S in lap['skenario']:
         ok = all(x['ok'] for x in S['cek'])
-        out += ['### %s %s — data %s, jam halaman %s (%s dtk)' % ('✅' if ok else '❌', S['nama'], S['varian'], S['jamHalaman'], S['detik']), '',
+        out += ['### %s %s — data %s, jam halaman %s, jam server %s (%s dtk)' % ('✅' if ok else '❌', S['nama'], S['varian'], S['jamHalaman'], (S.get('jamServer') or {}).get('server', '?'), S['detik']), '',
                 'Per langkah (angka langkah itu saja; bukan jumlah berjalan):', '',
                 '| langkah | dtk | baca | └ tulisan sendiri | tulis | hapus |', '|---|---:|---:|---:|---:|---:|']
         for x in S['langkah']:
@@ -950,8 +987,8 @@ def ringkas_md(lap):
         out.append('')
     out += ['Baca = dokumen yang DITERIMA pendengar halaman dari server (penghitung di salinan SDK uji) + tulisan halaman sendiri ke koleksi yang didengarnya (dari REST; '
             'Firestore menagihnya, SDK tidak memunculkan perubahan baru). get() di aturan tidak termasuk. Tulis/hapus = beda isi emulator sebelum ↔ sesudah langkah (REST).', '',
-            'Keterbatasan: jam server emulator = jam runner (Okt 2026), bukan jam halaman — get() kunci periode di aturan dinilai dengan bulan runner. Data contoh tanpa '
-            'bulan terkunci (aturanToko/kunciPeriode): tutup buku 2027 dengan bulan terkunci & rules v7 belum digladikan.']
+            'Jam server emulator = jam halaman skenario: jam JVM emulator SAJA dipalsukan (libfaketime, GLADI_GESER_JAM) — rules v7 menilai berita acara, pintu '
+            'tutup buku & kunci periode dengan jam server; selisih yang terukur tercantum di cek pertama tiap skenario.']
     return '\n'.join(out)
 
 
@@ -1132,6 +1169,10 @@ if __name__ == '__main__':
     def opsi(n, b):
         return arg[arg.index(n) + 1] if n in arg and arg.index(n) + 1 < len(arg) else b
     if '--jumlah-kontrol' in arg: print(len(KONTROL)); sys.exit(0)
+    if '--geser-jam' in arg:   # workflow: GLADI_GESER_JAM untuk pembungkus java (jam JVM emulator = jam halaman skenario)
+        print(geser_jam(SKENARIO[opsi('--geser-jam', '')][1])); sys.exit(0)
+    if '--geser-jam-kontrol' in arg:
+        print(geser_jam(SKENARIO[KONTROL[int(opsi('--geser-jam-kontrol', '0')) - 1]['skenario']][1])); sys.exit(0)
     if '--periksa-salinan' in arg:
         c = periksa_salinan(); g = [x for x in c if not x[1]]
         for n, ok, k in c: print(('✓ ' if ok else '✗ ') + n + ('' if ok else ' → ' + str(k)[:300]))
@@ -1165,6 +1206,16 @@ if __name__ == '__main__':
         print('DITOLAK: gladi tutup buku menyalakan Chrome & emulator — HANYA di runner GitHub Actions (CLAUDE.md, keputusan owner 27 Sep 2026).\n'
               'Jalankan workflow "Gladi tutup buku" (Actions › Gladi tutup buku › Run workflow). Di Mac boleh: --periksa-salinan.')
         sys.exit(2)
+    if '--cek-jam' in arg:   # uji cepat sebelum skenario panjang (emulator Firestore saja): pemalsu jam JVM emulator benar-benar bekerja
+        t0 = time.time()
+        while True:
+            try: rest('GET', FS + '/', waktu=5); break
+            except Exception as e:
+                if time.time() - t0 > 180: print('emulator Firestore tidak menjawab: %s' % e); sys.exit(2)
+                time.sleep(1)
+        j = banding_jam(SKENARIO[opsi('--cek-jam', '')][1])
+        print('jam server emulator %s · jam halaman %s · selisih %s dtk · GLADI_GESER_JAM %s → %s' % (j['server'], j['halaman'], j['selisihDetik'], j['geser'] or '-', 'SESUAI' if j['ok'] else 'TIDAK SESUAI'))
+        sys.exit(0 if j['ok'] else 2)
     if not CHROME: print('Chrome tidak ditemukan di runner — GAGAL'); sys.exit(2)
     tunggu_emulator()
     sandi = secrets.token_urlsafe(24)   # sandi akun owner contoh: dibuat tiap run, hanya di emulator, tidak dicetak

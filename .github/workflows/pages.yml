@@ -102,6 +102,8 @@ jobs:
         run: python3 alat-uji/uji_kisi_ss2.py && python3 alat-uji/uji_kisi_ss2.py --kontrol
       - name: "firestore.rules v7 FINAL (draf) — pemeriksa statis (tanpa payung, kunci periode di tiap koleksi bertanggal, blok per koleksi, owner via email, jalur kasir@ dipangkas jadi kasir darurat saja, uid penulis termasuk stafBuatWadah/stafBuatLahir (39) & stafMintaNego, peran = akses.js, berita acara tutup buku hanya maju — model; v7 = v6 + kirim ulang kasir@ bercap + batu nisan + permintaan nego staf + foto bon + pintu tutup buku 2027, PERSIS daftar ubahan; penafsir rules mini menilai kasus Playground ★) + kontrol"
         run: python3 alat-uji/periksa_rules.py && python3 alat-uji/periksa_rules.py --kontrol
+      - name: "Bukti server rules v7 — bagian statis (emulator & node HANYA di workflow Uji rules di emulator): kolom Wajib docs/uji-rules-v7.md = model, kasus v6 → v7 yang berbeda = lima ubahan (BEDA_V6), jangkar 14 kontrol rules dirusak tepat 1× & model membaliknya, kode ASLI kasir darurat kasir-v33/v32 di server palsu jsc (:commit bercap REQUEST_TIME, cara lama PATCH updateMask, v32 PATCH utuh) + kontrol"
+        run: python3 alat-uji/uji_rules_emulator.py --periksa && python3 alat-uji/uji_rules_emulator.py --kontrol
       - name: "Isian lokal (23d): tiap kolom ketik & kunci localStorage layar dijaga penjaga isian — statis + kontrol"
         run: python3 alat-uji/uji_isian_lokal.py && python3 alat-uji/uji_isian_lokal.py --kontrol
       - name: "Kiriman bukan-owner & owner (bulan lampau, tanpa / dengan bulan terkunci) — access call per kiriman ≤ 18 (batas Firebase 20, sisa 2) + kontrol"

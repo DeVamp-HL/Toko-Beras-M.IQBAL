@@ -81,8 +81,35 @@ jobs:
           firebase --version; java -version; google-chrome --version
           firebase setup:emulators:firestore
 
+      # JAM SERVER = JAM HALAMAN (rules v7 menilai berita acara tutup buku, pintu & kunci periode dengan jam server): halaman gladi berjam palsu (31 Des 2026 /
+      # 1 Jan 2027), runner berjam Okt 2026. Jam JVM emulator SAJA digeser lewat libfaketime — pembungkus `java` di depan PATH memasang LD_PRELOAD bila
+      # GLADI_GESER_JAM diisi (detik, dari gladi_tutup_buku.py --geser-jam); Chrome, node, python tetap jam runner. Diukur di tiap skenario (cek pertama).
+      - name: Pemalsu jam JVM emulator (libfaketime, hanya java)
+        run: |
+          sudo apt-get install -y -qq faketime >/dev/null
+          LIB=$(dpkg -L libfaketime | grep -E '/libfaketimeMT\.so\.1$' | head -1); test -n "$LIB"; echo "libfaketime: $LIB"
+          JAVA_ASLI="$JAVA_HOME/bin/java"; test -x "$JAVA_ASLI"
+          D="$RUNNER_TEMP/jam-emulator"; mkdir -p "$D"
+          printf '%s\n' '#!/bin/sh' \
+            '# gladi: jam JVM emulator = jam halaman skenario (GLADI_GESER_JAM detik); tanpa variabel itu = java biasa' \
+            'if [ -n "$GLADI_GESER_JAM" ]; then' \
+            "  export LD_PRELOAD=\"$LIB\" FAKETIME=\"\$GLADI_GESER_JAM\" FAKETIME_DONT_FAKE_MONOTONIC=1" \
+            'fi' \
+            "exec \"$JAVA_ASLI\" \"\$@\"" > "$D/java"
+          chmod +x "$D/java"; cat "$D/java"
+          echo "$D" >> "$GITHUB_PATH"
+          GLADI_GESER_JAM=+31536000 "$D/java" -version 2>&1 | head -1
+
       - name: Data contoh dinilai logika /baru/ asli (31 Des LATIHAN 12 baris sama, gerbang per varian, 1 Jan macet ditolak tanpa putusan lalu kiriman bertahap ≤ 18) + kontrol
         run: python3 alat-uji/gladi_data_contoh.py --periksa && python3 alat-uji/gladi_data_contoh.py --kontrol
+
+      - name: Jam emulator dipalsukan sungguh — uji cepat (emulator Firestore saja, jam halaman skenario ritual)
+        run: |
+          P="$RUNNER_TEMP/jam-cek"; mkdir -p "$P"; cp firestore.rules "$P/"
+          printf '%s' '{"firestore":{"rules":"firestore.rules"},"emulators":{"firestore":{"host":"127.0.0.1","port":8080},"ui":{"enabled":false},"singleProjectMode":true}}' > "$P/firebase.json"
+          cd "$P"; command -v java
+          export GLADI_GESER_JAM=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --geser-jam ritual); echo "GLADI_GESER_JAM=$GLADI_GESER_JAM"
+          firebase emulators:exec --only firestore --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --cek-jam ritual"
 
       - name: Salinan uji gladi (statis) — connect-src salinan tanpa host Firebase sungguhan + alamat emulator, jam palsu, SDK penghitung, nama langkah & jangkar kontrol
         run: python3 alat-uji/gladi_tutup_buku.py --periksa-salinan
@@ -117,6 +144,7 @@ jobs:
             case "$s" in latihan|gerbang|ritual) ;; *) echo "skenario tidak dikenal: $s"; exit 2;; esac
             echo "::group::skenario $s"
             rm -f firestore-debug.log
+            export GLADI_GESER_JAM=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --geser-jam "$s"); echo "jam JVM emulator digeser $GLADI_GESER_JAM dtk"
             firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" \
               "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --skenario $s --keluar '$GITHUB_WORKSPACE/gladi-hasil/skenario-$s.json'" || gagal=1
             tail -c 20000000 firestore-debug.log > "$GITHUB_WORKSPACE/gladi-hasil/firestore-debug-$s.log" 2>/dev/null || true
@@ -142,6 +170,7 @@ jobs:
           for i in $(seq 1 "$N"); do
             echo "::group::kontrol $i dari $N"
             rm -f firestore-debug.log
+            export GLADI_GESER_JAM=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --geser-jam-kontrol "$i"); echo "jam JVM emulator digeser $GLADI_GESER_JAM dtk"
             firebase emulators:exec --only firestore,auth --project "$PROYEK_GLADI" "python3 -u '$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py' --kontrol $i" || gagal=1
             tail -c 20000000 firestore-debug.log > "$GITHUB_WORKSPACE/gladi-hasil/firestore-debug-kontrol-$i.log" 2>/dev/null || true
             echo "::endgroup::"
