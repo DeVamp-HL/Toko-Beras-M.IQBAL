@@ -15,6 +15,11 @@ uji_hemat_baca.py — HEMAT BACA tahap 1–2 (owner 7 Okt 2026, siap 2027; spesi
       T (tinjauan 7 Okt): gerbang HP kasir lama tidak menyentuh nota baru tanpa cap; cap 2099 tidak menggeser jam server perangkat; catatan LAHIR ULANG tanpa
       cap sesudah nisannya tampil lagi (juga bulan terkunci, tahan muat ulang, dihapus lagi → sembunyi); temuan gagal dikirim diulang; Bn = jam baca penuh
       terakhir; arsip tutup buku bukan "hilang"; umur denyut = jam server saat terlihat berubah.
+  K · KELENGKAPAN (#111 × Paket C, owner 8 Okt) — SATU sumber hbBelumLengkap: murni (tiap sebab "periksa" + "harian" belum dibaca penuh hari ini, baca penuh
+      harian toko selesai / belum, dengar penuh = lengkap, jam server belum diterima; "terperiksa" = rumus 7 Okt di 8192 kombinasi; pemilih & kalimat), server mainan
+      (perangkat baru, hari kuota berganti selagi baca penuh harian toko dipegang perangkat lain, selesai, tombol baca penuh, HP kasir lama = dengar penuh, batu
+      nisan belum dicocokkan, rem kuota, tanpa internet; terperiksa di keadaan() SELALU sama dengan kelengkapan) + firebase.js hematKeadaan (mati: tanpa
+      belumLengkap; nyala: semua koleksi hemat, koleksi tetap tidak).
   C · firebase.js DIJALANKAN di jsc dengan SDK palsu: saklar MATI = pendengar persis sebelum 7 Okt (satu pendengar penuh per koleksi + katalog, tanpa
       source 'cache' / where capServer / limit 1.000.000), capServer dikupas sebelum memori; saklar NYALA = koleksi hemat lewat pendengar simpanan, koleksi
       tetap penuh; tulisBerkas: cap HANYA koleksi hemat (bukan berita acara tutup buku, pesanan, setelan, katalog, jejak), salinan antre tanpa sentinel,
@@ -287,6 +292,9 @@ function semua(p, f) { return NAMA_K.every(function (k) { return f(k); }); }
 function samaServer(p) { return NAMA_K.every(function (k) { return J(memId(p, k)) === J(S.ids(k)); }); }
 function beda(p) { var o = {}; NAMA_K.forEach(function (k) { if (J(memId(p, k)) !== J(S.ids(k))) o[k] = { mem: memId(p, k), server: S.ids(k) }; }); return o; }
 function keadaanK(p, k) { return p.sesi.keadaan().koleksi.find(function (x) { return x.k === k; }); }
+// #111 × Paket C: terperiksa (keadaan().koleksi) WAJIB sama dengan SATU sumber kelengkapan (belum lengkap jenis "periksa" = belum terperiksa) → [k yang menyimpang]
+function cekSatuSumber(p) { var K = p.sesi.keadaan(); var B = K.belumLengkap || {}; var bl = p.sesi.belumLengkap();
+  return NAMA_K.filter(function (k) { var x = K.koleksi.find(function (y) { return y.k === k; }); return x.terperiksa !== !(bl[k] && bl[k].jenis === 'periksa') || J(B[k] || null) !== J(bl[k] || null); }); }
 
 // ---- data awal toko (contoh): sebagian catatan lama TANPA cap (sebelum 7 Okt), sebagian bercap
 S = new Server(Z('2026-10-07T03:00:00Z'));   // 10.00 WIB
@@ -405,6 +413,8 @@ var F0 = new Perangkat('mac-rem'); F0.ls = salin(E.ls); var RR = JSON.parse(F0.l
 RR.isi['proyek-uji|uid-owner'].hari = { H: hbHariKuota(S.jam), otomatis: { penjualan: 2 }, mulai: { penjualan: 2 }, baca: 0 }; F0.ls.miqbal_hemat_v2 = J(RR);
 F0.buka(); var kr = keadaanK(F0, 'penjualan');
 ok('B10 rem: baca penuh OTOMATIS ke-3 untuk koleksi yang sama hari ini ditunda → koleksi belum terperiksa, sebabnya disebut ("menunggu kuota besok")', !kr.terperiksa && /kuota besok/.test(kr.wajibTotal) && !F0.L.some(function (L) { return L.aktif && L.jenis === 'penuh'; }), J(kr));
+var blR = F0.sesi.belumLengkap().penjualan;
+ok('K (B10) rem: kelengkapan penjualan = "periksa" dengan sebab toko (ditunda supaya kuota tidak habis → ketuk baca penuh sekarang); sama dengan terperiksa', blR && blR.jenis === 'periksa' && /^perlu dibaca penuh, tapi ditunda supaya kuota baca hari ini tidak habis — ketuk "baca penuh sekarang"/.test(blR.sebab) && !cekSatuSumber(F0).length, J([blR, cekSatuSumber(F0)]));
 F0.sesi.bacaPenuh(['penjualan'], 'tombol'); tuntas();
 ok('B10 rem: tombol "Baca penuh sekarang" menembus rem → terperiksa', keadaanK(F0, 'penjualan').terperiksa === true, J(keadaanK(F0, 'penjualan')));
 
@@ -413,6 +423,9 @@ var US = null; F0.sesi.pastikanSegar().then(function (r) { US = r; }); tuntas();
 ok('B11 uang-kritis: tersambung & cocok → boleh (hitungan server segar)', US && US.ok === true, J(US));
 F0.putus(); tuntas(); maju(3 * MNT); var US2 = null; F0.sesi.pastikanSegar().then(function (r) { US2 = r; }); tuntas();
 ok('B11 uang-kritis: tanpa internet → DITOLAK "sambungkan internet" (draf tetap di layar)', US2 && !US2.ok && /internet/.test(US2.pesan), J(US2));
+var blL = F0.sesi.belumLengkap();
+ok('K (B11) tanpa internet: SEMUA koleksi belum lengkap jenis "periksa" dengan sebab "perangkat ini tanpa internet"; terperiksa sama dengan kelengkapan (juga koleksi yang tadi dibaca penuh)',
+  NAMA_K.every(function (k) { return blL[k] && blL[k].jenis === 'periksa' && /tanpa internet/.test(blL[k].sebab); }) && !cekSatuSumber(F0).length, J([blL, cekSatuSumber(F0)]));
 ok('B11 katalog: tanpa internet / belum terperiksa → gerbang katalog TERTUTUP', F0.sesi.bolehKatalog().boleh === false, J(F0.sesi.bolehKatalog()));
 F0.sambung(); tuntas();
 ok('B11 katalog: tersambung & semua terperiksa & hitungan koleksi HP kasir ≤ 35 menit → gerbang terbuka', F0.sesi.bolehKatalog().boleh === true, J(F0.sesi.bolehKatalog()));
@@ -535,6 +548,73 @@ ok('T7: tab lama terakhir terlihat 3 jam lalu → biasa (delta); tab itu MENULIS
   m7 === 'delta' && NAMA_K.every(function (k) { return keadaanK(A7, k).mode === 'penuh'; }), J([m7, NAMA_K.map(function (k) { return keadaanK(A7, k).mode; })]));
 A7.tutup();
 
+// ===================== K · KELENGKAPAN — SATU sumber hbBelumLengkap (#111 × Paket C, owner 8 Okt) =====================
+var KH = hbHariKuota(Z('2026-11-10T03:00:00Z')); var kemarinK = Z('2026-11-08T03:00:00Z');
+var BLd = { vAda: true, nTerkini: true, online: true, mode: 'delta', sTerkini: true, cocok: true, fSelesai: false, totalPada: Z('2026-11-10T02:00:00Z'), hari: KH, klaim: null };
+var bl = function (p) { return hbBelumLengkap(Object.assign({}, BLd, p || {})); };
+// kerusakan bisa membuat hasilnya null — dibaca lewat jn / sb supaya ujinya BERBUNYI di baris yang benar, bukan jsc jatuh
+var jn = function (b) { return b ? b.jenis : null; }, sb = function (b) { return b ? String(b.sebab) : ''; };
+ok('K murni: terperiksa & dibaca penuh perangkat ini pada hari kuota ini → lengkap (null)', bl() === null, J(bl()));
+ok('K murni: terperiksa (hitungan cocok) tapi baca penuh terakhir hari kuota LALU & baca penuh harian toko belum ada → "harian": "belum dibaca penuh hari ini — ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)"',
+  (function () { var b = bl({ totalPada: kemarinK }); return !!b && b.jenis === 'harian' && b.sebab === HB_SEBAB_HARIAN && b.sebab === 'belum dibaca penuh hari ini — ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)'; })(), J(bl({ totalPada: kemarinK })));
+ok('K murni: baca penuh harian TOKO selesai hari kuota ini (perangkat lain) → lengkap; klaim hari ini BELUM selesai / klaim kemarin → "harian"',
+  bl({ totalPada: kemarinK, klaim: { hari: KH, selesai: 1 } }) === null && jn(bl({ totalPada: kemarinK, klaim: { hari: KH, selesai: null, perangkat: 'lain' } })) === 'harian'
+  && jn(bl({ totalPada: kemarinK, klaim: { hari: '2026-11-08', selesai: 1 } })) === 'harian');
+ok('K murni: dengar penuh terkini → lengkap walau tanpa baca penuh hari ini; belum terkini → "periksa" sedang dibaca penuh; galat → "gagal dibaca penuh"',
+  bl({ mode: 'penuh', fTerkini: true, fMode: 'penuh', totalPada: kemarinK }) === null && jn(bl({ mode: 'penuh', fTerkini: false, fMode: 'penuh' })) === 'periksa'
+  && /^sedang dibaca penuh/.test(sb(bl({ mode: 'penuh', fTerkini: false }))) && /^gagal dibaca penuh/.test(sb(bl({ mode: 'penuh', fTerkini: false, fGalat: 'unavailable' }))));
+ok('K murni: jam server belum diterima (hari kuota tidak diketahui) → "harian" belum bisa dipastikan', jn(bl({ hari: '' })) === 'harian' && /jam server belum diterima/.test(sb(bl({ hari: '' }))));
+var pkK = [[{ vMati: true }, /muat ulang aplikasi/], [{ vAda: false }, /simpanan perangkat/], [{ nTerkini: false }, /catatan yang dihapus/],
+  [{ wajibTotal: 'perkiraan baca hari ini melewati 80% kuota — menunggu kuota besok (baca penuh harian toko)' }, /ditunda supaya kuota baca hari ini tidak habis/],
+  [{ wajibTotal: 'baca penuh gagal (unavailable) — dicoba lagi sebentar' }, /^gagal dibaca penuh/], [{ sTerkini: false }, /ubahan terbaru/], [{ fJalan: true }, /sedang dibaca penuh/], [{ cocok: false }, /belum dicocokkan dengan server/]];
+ok('K murni: tiap keadaan BELUM TERPERIKSA = jenis "periksa" dengan sebab kalimat toko (tanpa nama koleksi / bahasa mesin)',
+  pkK.every(function (x) { var b = bl(x[0]); return !!b && b.jenis === 'periksa' && x[1].test(b.sebab) && !/koleksi|cache|snapshot|delta|nisan|capServer|server F/.test(b.sebab); }), J(pkK.map(function (x) { return bl(x[0]); })));
+ok('K murni: tanpa internet → sebab "perangkat ini tanpa internet" (tab yang berhenti tetap "muat ulang")', /tanpa internet/.test(sb(bl({ online: false, sTerkini: false }))) && /muat ulang/.test(sb(bl({ online: false, vMati: true }))));
+// arti "terperiksa" sejak 7 Okt (rumus lama ditulis ulang di sini) = bukan jenis "periksa" — di SEMUA kombinasi keadaan
+var lamaT = function (x) { if (x.vMati || !x.vAda || !x.nTerkini) return false; if (x.mode === 'penuh') return !!x.fTerkini && (x.fSelesai || x.fMode === 'penuh'); if (x.wajibTotal || !x.sTerkini) return false; if (x.fJalan) return false; return !!x.fSelesai || !!x.cocok; };
+var nBandingK = 0, bedaK = [];
+[false, true].forEach(function (vMati) { [false, true].forEach(function (vAda) { [false, true].forEach(function (nT) { ['delta', 'total', 'penuh', null].forEach(function (mode) { [false, true].forEach(function (fT) { [false, true].forEach(function (fS) {
+  ['penuh', 'total'].forEach(function (fM) { ['', 'x'].forEach(function (wt) { [false, true].forEach(function (sT) { [false, true].forEach(function (fJ) { [false, true].forEach(function (cc) { [true, false].forEach(function (on) {
+    var x = { vMati: vMati, vAda: vAda, nTerkini: nT, online: on, mode: mode, fTerkini: fT, fSelesai: fS, fMode: fM, wajibTotal: wt, sTerkini: sT, fJalan: fJ, cocok: cc, totalPada: kemarinK, hari: KH };
+    var b = hbBelumLengkap(x); nBandingK++; if ((!b || b.jenis !== 'periksa') !== lamaT(x)) bedaK.push(x); }); }); }); }); }); }); }); }); }); }); }); });
+ok('K: "terperiksa" = bukan jenis "periksa" — SAMA dengan rumus terperiksa sejak 7 Okt di ' + nBandingK + ' kombinasi (gerbang katalog, uang-kritis & pil kepala tidak bergeser)', !bedaK.length && nBandingK === 8192, J(bedaK.slice(0, 2)));
+var PBk = { penjualan: { jenis: 'harian', sebab: HB_SEBAB_HARIAN }, retur: { jenis: 'periksa', sebab: 'sedang dibaca penuh — tunggu sampai selesai' } };
+ok('K hbBelumUntuk: hanya koleksi yang diminta; "periksa" lebih berat dari "harian"; tanpa / "*" = semua; kosong / koleksi lain lengkap → null',
+  J(hbBelumUntuk(PBk, ['penjualan', 'modalOwner'])) === J({ koleksi: ['penjualan'], jenis: 'harian', sebab: HB_SEBAB_HARIAN }) && (hbBelumUntuk(PBk, null) || {}).jenis === 'periksa' && ((hbBelumUntuk(PBk, ['*']) || {}).koleksi || []).length === 2
+  && /sedang dibaca penuh/.test((hbBelumUntuk(PBk, null) || {}).sebab) && hbBelumUntuk({}, null) === null && hbBelumUntuk(PBk, ['modalOwner']) === null, J([hbBelumUntuk(PBk, ['penjualan']), hbBelumUntuk(PBk, null)]));
+ok('K hbKalimatBelum: "data perangkat ini <sebab> (n bagian data)"; lengkap / saklar mati (peta kosong) = ""',
+  hbKalimatBelum(PBk, null) === 'data perangkat ini sedang dibaca penuh — tunggu sampai selesai (2 bagian data)' && hbKalimatBelum(PBk, ['penjualan']) === 'data perangkat ini ' + HB_SEBAB_HARIAN && hbKalimatBelum({}, null) === '' && hbKalimatBelum(null, null) === '',
+  J([hbKalimatBelum(PBk, null), hbKalimatBelum(PBk, ['penjualan'])]));
+
+// ---- K1 · sesi hbSesi ASLI di server mainan: perangkat baru (belum terbaca) → baca penuh hari ini = lengkap → hari kuota berganti, baca penuh harian toko
+//      dipegang perangkat lain & BELUM selesai = "harian" (hitungan tetap cocok, gerbang lain tidak berubah) → selesai = lengkap; tombol baca penuh = lengkap sendiri
+tokoBaru('2026-11-10T03:00:00Z'); S.tulis('penjualan', 'p1', notaN('p1', 1000), true); S.tulis('pengeluaranHarian', 'h1', { id: 'h1', tanggal: '2026-11-10', nominal: 500 }, true);
+var K1 = new Perangkat('mac-k1'); K1.buka({ tetap: false }); var blK0 = K1.sesi.belumLengkap();
+ok('K1 sebelum simpanan perangkat terbaca: SEMUA koleksi belum lengkap ("periksa", belum terbaca dari simpanan perangkat)', NAMA_K.every(function (k) { return blK0[k] && blK0[k].jenis === 'periksa' && /simpanan perangkat/.test(blK0[k].sebab); }), J(blK0));
+tuntas(); K1.gema(); K1.tetap(); tuntas();
+ok('K1 perangkat baru sesudah baca penuh semua koleksi (hari kuota ini) → kelengkapan KOSONG (semua lengkap), keadaan() membawanya, terperiksa sama', J(K1.sesi.belumLengkap()) === '{}' && J(K1.sesi.keadaan().belumLengkap) === '{}' && !cekSatuSumber(K1).length, J(K1.sesi.belumLengkap()));
+S.klaim = { id: 'hematHarian', hari: '2026-11-10', perangkat: 'ipad-lain', nama: 'iPad contoh', mulai: Z('2026-11-10T08:05:00Z'), selesai: null };
+maju(Z('2026-11-10T08:10:00Z') - S.jam); K1.tetap(); K1.gema(); tuntas();
+var blK1 = K1.sesi.belumLengkap();
+ok('K1 hari kuota baru (15.10 WIB), baca penuh harian toko masih dipegang perangkat lain: SEMUA koleksi "harian" — belum dibaca penuh hari ini, ketuk baca penuh sekarang; tetap terperiksa (katalog & uang-kritis tidak berubah)',
+  S.klaim.perangkat === 'ipad-lain' && !K1.klaimTulis && NAMA_K.every(function (k) { return blK1[k] && blK1[k].jenis === 'harian' && blK1[k].sebab === HB_SEBAB_HARIAN && keadaanK(K1, k).terperiksa === true && K1.periksa[k] === true; }) && !cekSatuSumber(K1).length,
+  J([blK1, K1.klaimTulis, cekSatuSumber(K1)]));
+S.klaim = Object.assign({}, S.klaim, { selesai: S.jam }); K1.tetap(); tuntas();
+ok('K1 baca penuh harian toko SELESAI (perangkat lain) → perangkat ini lengkap tanpa membaca penuh sendiri', J(K1.sesi.belumLengkap()) === '{}' && !K1.L.some(function (L) { return L.aktif && L.jenis === 'penuh'; }), J(K1.sesi.belumLengkap()));
+S.klaim = { id: 'hematHarian', hari: '2026-11-11', perangkat: 'ipad-lain', nama: 'iPad contoh', mulai: Z('2026-11-11T08:05:00Z'), selesai: null };
+maju(Z('2026-11-11T08:10:00Z') - S.jam); K1.tetap(); K1.gema(); tuntas(); var blK2 = K1.sesi.belumLengkap();
+K1.sesi.bacaPenuh(null, 'tombol "Baca penuh sekarang"', true); tuntas(); maju(20000);
+ok('K1 hari berikutnya "harian" lagi; tombol "baca penuh sekarang" → dibaca penuh hari ini → lengkap walau baca penuh harian toko belum selesai', NAMA_K.every(function (k) { return blK2[k] && blK2[k].jenis === 'harian'; }) && J(K1.sesi.belumLengkap()) === '{}' && !S.klaim.selesai,
+  J([blK2, K1.sesi.belumLengkap()]));
+// ---- K2 · dengar penuh karena penulis tanpa cap (HP kasir < kasir-v33) = lengkap tanpa baca penuh harian; koleksi lain tetap "harian"
+S.klaim = { id: 'hematHarian', hari: '2026-11-12', perangkat: 'ipad-lain', nama: 'iPad contoh', mulai: Z('2026-11-12T08:05:00Z'), selesai: null };
+maju(Z('2026-11-12T08:10:00Z') - S.jam); S.perangkat = [hpKasir('kasir-v32')]; K1.tetap(); K1.gema(); tuntas(); maju(2000); var blK3 = K1.sesi.belumLengkap();
+ok('K2 HP kasir lama → penjualan DENGAR PENUH = lengkap; koleksi lain "harian"', keadaanK(K1, 'penjualan').mode === 'penuh' && !blK3.penjualan && blK3.pengeluaranHarian && blK3.pengeluaranHarian.jenis === 'harian' && !cekSatuSumber(K1).length, J(blK3));
+// ---- K3 · batu nisan belum dicocokkan (pendengar nisan galat) → "periksa"
+K1.sesi._G.nTerkini = false; var blK4 = K1.sesi.belumLengkap(); K1.sesi._G.nTerkini = true;
+ok('K3 batu nisan belum dicocokkan → semua koleksi "periksa" (catatan yang dihapus di server)', NAMA_K.every(function (k) { return blK4[k] && blK4[k].jenis === 'periksa' && /catatan yang dihapus/.test(blK4[k].sebab); }), J(blK4));
+K1.tutup(); S.perangkat = [];
+
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
@@ -606,6 +686,8 @@ if (__MODE === 'mati') {
   // ---- C4 · denyut
   __rek.tulis = []; kirimDenyut(true); var dn = (__rek.tulis[0] || [])[0];
   ok('C4 denyut owner: versi baru-c1 (kode bercap) + capServer (gema jam server)', dn && dn[3].versi === 'baru-c1' && CAP(dn[3]) && !('hemat' in dn[3]), J(dn));
+  var HKm = hematKeadaan();
+  ok('C11 saklar MATI: hematKeadaan() = { nyala: false } TANPA belumLengkap — layar (kartu pemeriksaan, kunci bulan, pajak, tutup buku) menghitung persis seperti dulu', HKm.nyala === false && !('belumLengkap' in HKm), J(HKm));
 } else {
   // ---- C5 · saklar NYALA (owner, aturan v7 terbukti, memegang kunci tab): koleksi hemat lewat simpanan perangkat, koleksi tetap penuh
   ok('C5 saklar nyala terbaca dari penyimpanan perangkat', hematNyala() === true);
@@ -617,6 +699,10 @@ if (__MODE === 'mati') {
     vV.length === hbKoleksiHemat().length && penuh.map(function (L) { return L.ref.nama; }).sort().join(',') === KOLEKSI.filter(function (k) { return k.kelas; }).map(function (k) { return k.nama; }).sort().join(','),
     J({ v: vV.length, penuh: penuh.map(function (L) { return L.ref.nama; }) }));
   ok('C5 nyala: simpanan Firestore TANPA GC (cacheSizeBytes = CACHE_SIZE_UNLIMITED) — tidak bisa diuji sesudah mulai(); diperiksa statis', true);
+  var HKn = hematKeadaan(); var blN = HKn.belumLengkap || {};
+  ok('C11 saklar NYALA: hematKeadaan().belumLengkap = SATU sumber (sesi hemat) — sebelum simpanan terbaca SEMUA koleksi hemat belum lengkap ("periksa"), koleksi tetap tidak disebut',
+    HKn.nyala === true && Object.keys(blN).sort().join(',') === hbKoleksiHemat().slice().sort().join(',') && Object.keys(blN).every(function (k) { return blN[k].jenis === 'periksa' && /simpanan perangkat/.test(blN[k].sebab); }) && !blN.tutupBukuAcara && !blN.aturanToko,
+    J([HKn.nyala, Object.keys(blN).length]));
   // gema jam server: denyut LAMA (dari sesi sebelumnya) TIDAK dipakai; denyut yang dikirim sesi ini dan diakui server → selisih jam server − jam perangkat
   var Lps = D5.find(function (L) { return L.ref.nama === 'perangkatStatus'; }); var idP = idPerangkat();
   var snapP = function (pada, ms) { return { metadata: { fromCache: false }, forEach: function (f) { f({ id: idP, data: function () { return { id: idP, pada: pada, aplikasi: 'baru', versi: 'baru-c1', capServer: { toMillis: function () { return ms; } } }; }, metadata: { hasPendingWrites: false } }); } }; };
@@ -958,6 +1044,14 @@ KONTROL = [
     ('(kasir) nota yang :commit-nya ditolak langsung dinyatakan ditolak (tanpa cara lama — kirim ulang di rules v6 / v3 jadi "ditolak", omzet dobel)', {KD: [("          if (bercap) { kirimItem(item, false, true); return; }   // :commit ditolak → cara lama sekali (lihat kirimItem), baru dinyatakan ditolak\n", "")]}),
     ('(kasir) cara lama tanpa updateMask (PATCH utuh membuang capServer kiriman pertama → v6 menolak)', {KD: [("+ (caraLama ? kolomLama(fields) : '')", "+ ''")]}),
     ('(z) baca penuh harian per PERANGKAT diam-diam berhenti (klaim tidak pernah ditulis)', {HB: [("if (k.hari !== hari) return { klaim: true, hari, sebab:", "if (false) return { klaim: true, hari, sebab:")]}),
+    # ---- #111 × Paket C (owner 8 Okt): SATU sumber kelengkapan — tiap kerusakan wajib berbunyi karena sebab yang benar ----
+    ('(K1) kelengkapan mengabaikan "belum dibaca penuh hari ini" (hitungan cocok dianggap lengkap)', {HB: [("  if (hbAngka(x.totalPada) > 0 && hbHariKuota(x.totalPada) === x.hari) return null;\n", "  return null;\n")]}),
+    ('(K2) baca penuh harian toko yang BELUM selesai dianggap selesai', {HB: [("const k = x.klaim || {}; if (k.hari === x.hari && k.selesai) return null;", "const k = x.klaim || {}; if (k.hari === x.hari) return null;")]}),
+    ('(K3) baca penuh perangkat ini dari hari kuota mana pun dianggap "hari ini"', {HB: [("if (hbAngka(x.totalPada) > 0 && hbHariKuota(x.totalPada) === x.hari) return null;", "if (hbAngka(x.totalPada) > 0) return null;")]}),
+    ('(K4) terperiksa menyimpang dari sumber kelengkapan (baca penuh sesi ini = terperiksa walau tanpa internet)', {HB: [("function terperiksaK(k) { const b = belumK(k); return !b || b.jenis !== 'periksa'; }", "function terperiksaK(k) { const b = belumK(k); return !b || b.jenis !== 'periksa' || !!K[k].fSelesai; }")]}),
+    ('(K5) dengar penuh tidak dianggap lengkap (koleksi yang didengar penuh ikut "belum dibaca penuh hari ini")', {HB: [("if (x.mode === 'penuh') return x.fTerkini && (x.fSelesai || x.fMode === 'penuh') ? null : P(", "if (x.mode === 'penuh' && !(x.fTerkini && (x.fSelesai || x.fMode === 'penuh'))) return P(")]}),
+    ('(K6) keadaan() tidak membawa kelengkapan (layar tidak pernah melihatnya)', {HB: [(", belumLengkap: sesi.belumLengkap() };", " };")]}),
+    ('(K7) sebab rem kuota disamaratakan jadi "tunggu sebentar" (owner menunggu selamanya)', {HB: [("'perlu dibaca penuh, tapi ditunda supaya kuota baca hari ini tidak habis — ' + HB_KE_MENU", "'belum dicocokkan dengan server — tunggu sebentar'")]}),
 ]
 
 

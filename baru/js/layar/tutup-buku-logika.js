@@ -35,6 +35,7 @@ import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
 import { ringkasPelangganTahun } from './pelanggan-logika.js';
 import { susunPotret, ringkasPotret } from './potret-logika.js';
 import { lpBonTerbuka } from './laporan-logika.js';
+import { hbKalimatBelum } from '../data/hemat-baca.js';
 
 export const LANGKAH_BUKU = [['periksa', 'Periksa dulu'], ['cadangan1', 'Cadangan sebelum mulai'], ['arsip', 'Simpan arsip'], ['saldo', 'Susun saldo pembuka'], ['paraf', 'Paraf dua orang'], ['kunci', 'Kunci tahun'], ['cadangan2', 'Cadangan sesudahnya & selesai']];
 const bkTutupBuku = (x) => !!(x && x.tutupBuku);
@@ -149,8 +150,10 @@ export function gerbangBuku(tahun, kini, lokal, lewati) {
   ];
   // owner 7 Okt (hemat baca nyala): tutup buku (setahun sekali) dimulai hanya sesudah perangkat ini membaca penuh SEMUA koleksi di sesi ini — angka 31 Des tidak
   // boleh dari simpanan yang belum terperiksa. Hemat baca mati: butir ini tidak ada (daftar sama dengan sebelumnya).
-  if (L.hemat && L.hemat.nyala) g.push({ id: 'g7', teks: 'Perangkat ini sudah membaca penuh semua catatan sesi ini (hemat baca)', ok: !!L.hemat.totalSesiIni,
-    ket: L.hemat.totalSesiIni ? 'semua koleksi dibaca penuh & cocok dengan server' : 'hemat baca nyala — angka dari simpanan perangkat belum dibaca penuh sesi ini', aksi: L.hemat.totalSesiIni ? '' : 'Baca penuh dulu: Menu › Sistem › Perangkat › Hemat baca', bisaLewati: false });
+  // #111 × Paket C: juga SATU sumber kelengkapan (hemat-baca.js hbBelumLengkap) — dibaca penuh sesi ini tapi batu nisan / ubahan belum dicocokkan lagi = belum
+  if (L.hemat && L.hemat.nyala) { const hb = hbKalimatBelum(L.hemat.belumLengkap, null); const ok7 = !!L.hemat.totalSesiIni && !hb;
+    g.push({ id: 'g7', teks: 'Perangkat ini sudah membaca penuh semua catatan sesi ini (hemat baca)', ok: ok7,
+      ket: ok7 ? 'semua koleksi dibaca penuh & cocok dengan server' : !L.hemat.totalSesiIni ? 'hemat baca nyala — angka dari simpanan perangkat belum dibaca penuh sesi ini' : hb, aksi: ok7 ? '' : 'Baca penuh dulu: Menu › Sistem › Perangkat › Hemat baca', bisaLewati: false }); }
   return { daftar: g, semuaOk: g.every((x) => x.ok), belum: g.filter((x) => !x.ok).length, belumTutup, belumPutus, hari: hariG1 };
 }
 /**
@@ -529,7 +532,12 @@ function bkTunda(tahun) {
  * kiriman disusun dari keadaan basi lalu mendarat belakangan (dulu: 'selesai' mundur jadi 'terkunci', titik kas Januari ditimpa di semua HP). L = lokal() layar. '' = boleh.
  */
 export function bkSambungan(L) {
-  const basi = ['tutupBukuAcara', 'pengaturan'].some((k) => koleksiDariCache(k)); if (!(L && L.offline) && !basi) return '';
+  const basi = ['tutupBukuAcara', 'pengaturan'].some((k) => koleksiDariCache(k));
+  // #111 hemat baca nyala: sisa arsip, saldo pembuka & pengembalian disusun dari SELURUH buku — selama tutup buku berjalan semua koleksi didengar penuh, dan
+  // sampai pendengar penuh itu terkini (mis. aplikasi baru dibuka di tengah ritual) bukunya masih simpanan perangkat. SATU sumber: hemat-baca.js. Mati: tidak ada
+  const hb = !(L && L.offline) && !basi && L && L.hemat && L.hemat.nyala ? hbKalimatBelum(L.hemat.belumLengkap, null) : '';
+  if (hb) return 'Tutup buku: ' + hb + ' — Lanjutkan atau Batalkan sesudah datanya lengkap.';
+  if (!(L && L.offline) && !basi) return '';
   return 'Tutup buku: ' + (L && L.offline ? 'perangkat ini tanpa internet' : 'data tutup buku di perangkat ini belum dijawab server (bisa basi)') + ' — sambungkan internet dulu, tunggu data terbaru, baru Lanjutkan atau Batalkan.';
 }
 /**

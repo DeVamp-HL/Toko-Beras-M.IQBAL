@@ -14,6 +14,7 @@ import * as KB from './kendali-biaya-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, kabarKiriman, kunciLuarCache } from '../data/toko.js';
+import { hbKalimatBelum } from '../data/hemat-baca.js';   // hemat baca nyala (#111): SATU sumber kelengkapan data perangkat ini
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -23,6 +24,8 @@ const KUNCI_KELUARGA = 'miqbal_baru_laporan_keluarga';
 const simpanLokal = (k, v) => { try { if (v !== null && v !== undefined) localStorage.setItem(k, String(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 const bacaLokal = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const PAKET_AWAL = () => ({ labarugi: true, neraca: true, aruskas: true, omzet: true });
+// hemat baca nyala (#111): yang dibaca angka pajak — omzet sistem (penjualan & retur = mesin laba), setoran, omzet di luar sistem. Profil = aturanToko (selalu penuh)
+const PJ_PERLU_HEMAT = ['penjualan', 'retur', 'pajakSetoran', 'pajakOmzetLuar'];
 
 export function pasangLayarLaporan(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
@@ -47,6 +50,10 @@ export function pasangLayarLaporan(akar, opsi) {
   // Paket B (H1): tahun pajak yang dibuka — pilihan owner bila masih ada di daftar, selain itu bawaan (Jan–Mar = tahun lalu selama masih ada masa terutang)
   const tahunPajak = () => { const s = st(); return s.tahunPj && PJ.pjDaftarTahun(kini()).some((x) => x.tahun === s.tahunPj) ? s.tahunPj : PJ.pjTahunBawaan(kini()); };
   const keTujuan = (t) => { if (opsi.keTujuan) opsi.keTujuan(t); else if (opsi.pindah) opsi.pindah(t.ke); };
+  // hemat baca NYALA (#111): data pajak di perangkat ini belum lengkap (belum terperiksa / belum dibaca penuh hari ini — SATU sumber hemat-baca.js lewat app.js) →
+  // kalimat toko; '' = lengkap. Rekap untuk konsultan, catat setoran (memotret omzet & PPh saat disetor) dan omzet tahun lalu dari sistem DITAHAN. Mati: selalu ''
+  const hematPajak = () => { let H = null; try { H = opsi.hemat ? opsi.hemat() : null; } catch (e) { H = null; } return H && H.nyala ? hbKalimatBelum(H.belumLengkap, PJ_PERLU_HEMAT) : ''; };
+  const tahanPajak = (apa) => { const hb = hematPajak(); if (!hb) return false; set({ kabar: apa + ' ditahan — angka pajak di perangkat ini belum bisa dipastikan: ' + hb + '. Draf tetap di layar.', kabarAwas: true }); return true; };
 
   async function tulis(r, tanpaKabar) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
@@ -113,7 +120,7 @@ export function pasangLayarLaporan(akar, opsi) {
     pjProfilTutup: () => set({ drafPj: null }), pjProfilKetik: (v, el) => { const d = Object.assign({}, st().drafPj); d[el.dataset.kunci] = String(v).slice(0, 80); set({ drafPj: d }); },
     pjProfilPilih: ({ kunci, nilai }) => { const d = Object.assign({}, st().drafPj); d[kunci] = nilai; set({ drafPj: d }); }, pjProfilSimpan: () => tulis(PJ.susunProfilPajak(Object.assign({}, st().drafPj || {}, { tahunPajak: tahunPajak() }), waktu())),
     pjPakaiAturan: () => tulis(PJ.susunPakaiAturan(waktu(), tahunPajak())),
-    pjTahun: ({ t }) => set({ tahunPj: Number(t), drafSetor: null, drafLuar: null, yakinPj: null, kabar: '' }), pjTawarPakai: () => tulis(PJ.susunOmzetTahunLaluDariSistem(tahunPajak(), waktu(), kini())),
+    pjTahun: ({ t }) => set({ tahunPj: Number(t), drafSetor: null, drafLuar: null, yakinPj: null, kabar: '' }), pjTawarPakai: () => { if (tahanPajak('Omzet tahun lalu dari sistem')) return; return tulis(PJ.susunOmzetTahunLaluDariSistem(tahunPajak(), waktu(), kini())); },
     pjLuarBuka: ({ b, sumber }) => { const th = tahunPajak(); const bl = b || (String(th) === iso().slice(0, 4) ? bulanKini() : th + '-12'); set({ drafLuar: { bulan: bl, sumber: sumber || 'catatanLama', jumlah: (() => { const n = PJ.pjOmzetLuar(bl, sumber || 'catatanLama'); return n === null ? '' : String(n); })(), keterangan: '' }, yakinPj: null }); },
     pjLuarTutup: () => set({ drafLuar: null }), pjLuarKetik: (v, el) => { const d = Object.assign({}, st().drafLuar); d[el.dataset.kunci] = String(v).slice(0, 120); set({ drafLuar: d }); },
     pjLuarPilih: ({ kunci, nilai }) => { const d = Object.assign({}, st().drafLuar); d[kunci] = nilai; set({ drafLuar: d }); }, pjLuarSimpan: () => tulis(PJ.susunOmzetLuar(st().drafLuar || {}, waktu())),
@@ -121,9 +128,9 @@ export function pasangLayarLaporan(akar, opsi) {
     pjSetorBuka: ({ b }) => { const T = PJ.pjTahun(tahunPajak(), kini()); const bl = T.daftar.find((x) => x.key === b) || null; set({ drafSetor: { masaPajak: b || '', tanggalSetor: iso(), jumlah: bl && bl.pph > 0 ? String(Math.max(0, bl.pph - bl.jumlahSetor)) : '', ntpn: '', atasNama: PJ.pjProfil().wpAtasNama, catatan: '' }, yakinPj: null }); },
     pjSetorTutup: () => set({ drafSetor: null }), pjSetorKetik: (v, el) => { const d = Object.assign({}, st().drafSetor); d[el.dataset.kunci] = String(v).slice(0, 160); set({ drafSetor: d }); },
     pjSetorKetikMasa: ({ b }) => { const d = Object.assign({}, st().drafSetor); d.masaPajak = b; set({ drafSetor: d }); },
-    pjSetorSimpan: () => tulis(PJ.susunSetoran(st().drafSetor || {}, waktu(), kini())),
+    pjSetorSimpan: () => { if (tahanPajak('Setoran')) return; return tulis(PJ.susunSetoran(st().drafSetor || {}, waktu(), kini())); },
     pjSetorHapus: async ({ id }) => { const r = PJ.susunHapusSetoran(id, st().yakinPj === 's:' + id); if (r.perluYakin) return set({ yakinPj: 's:' + id, kabar: r.tolak, kabarAwas: false }); await tulis(r); },
-    pjKeluar: async ({ cara }) => { const T = PJ.pjTahun(tahunPajak(), kini()); const D = PJ.dokRekapPajak(T, LP.kopUntuk(LP.pakaiKop().pakai.omzet, LP.identitasUsaha())); const I = LP.identitasUsaha(); if (!I.lengkap) D.tolak = 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)'; await keluarkan(D, { jenis: 'pajak', judul: 'Rekap pajak untuk konsultan', periode: String(T.tahun), draf: !T.lengkap }, cara); },
+    pjKeluar: async ({ cara }) => { const T = PJ.pjTahun(tahunPajak(), kini()); const D = PJ.dokRekapPajak(T, LP.kopUntuk(LP.pakaiKop().pakai.omzet, LP.identitasUsaha())); const I = LP.identitasUsaha(); if (!I.lengkap) D.tolak = 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)'; const hbK = hematPajak(); if (hbK) D.tolak = 'Rekap pajak ditahan — angka pajak di perangkat ini belum bisa dipastikan: ' + hbK; await keluarkan(D, { jenis: 'pajak', judul: 'Rekap pajak untuk konsultan', periode: String(T.tahun), draf: !T.lengkap }, cara); },
     // ---- NERACA
     nrSampai: (v) => set({ sampaiN: /^\d{4}-\d{2}-\d{2}$/.test(v) && v <= iso() ? v : '', kabar: '' }), nrHariIni: () => set({ sampaiN: '' }),
     nrAturBuka: () => { const A = LP.aturLaporan(); set({ aturN: { asetTetap: A.asetTetap ? String(A.asetTetap) : '', asetKet: A.asetKet } }); }, nrAturTutup: () => set({ aturN: null }), nrAturKetik: (v, el) => { const a = Object.assign({}, st().aturN); a[el.dataset.kunci] = v; set({ aturN: a }); }, nrAturSimpan: () => tulis(LP.susunAturLaporan(st().aturN || {}, waktu())),
@@ -404,10 +411,13 @@ export function pasangLayarLaporan(akar, opsi) {
       ${luar.map((x) => h`<div class="lp-baris dua" data-k="pl-${x.id}"><div><div>${LP.lpNamaBulan(x.bulan)} · ${diketik(x.jumlah, (PJ.PJ_SUMBER_LUAR.find((y) => y.id === x.sumber) || {}).nama || x.sumber)}</div>${x.keterangan ? h`<div class="k2">${x.keterangan}</div>` : ''}</div>
         <div class="tautan ${s.yakinPj === 'l:' + x.id ? 'awas-teks' : ''}" data-aksi="pjLuarHapus" data-id="${x.id}">${s.yakinPj === 'l:' + x.id ? 'yakin hapus' : 'hapus'}</div></div>`)}</div>`;
     const Dk = PJ.dokRekapPajak(T, LP.kopUntuk(LP.pakaiKop().pakai.omzet, LP.identitasUsaha())); if (!LP.identitasUsaha().lengkap) Dk.tolak = 'Kop belum lengkap';
+    // hemat baca nyala (#111): angka dari data yang belum lengkap = tanda ? di atas layar, rekap ditahan (tiga keadaan: bukan angka pasti, bukan nol)
+    const HB = hematPajak(); if (HB) Dk.tolak = 'Angka pajak belum bisa dipastikan';
+    const pitaHemat = HB ? h`<div class="pita-info awas" data-k="pj-hemat"><b>?</b> Angka pajak di perangkat ini belum bisa dipastikan — ${HB}. Rekap untuk konsultan & catat setoran ditahan sampai lengkap.</div>` : '';
     const cetak = h`${kertas(Dk, null, 'kertas-pajak')}${tigaTombol('pjKeluar', Dk.tolak)}`;
     const sumber = h`<div class="kartu platina" data-k="pj-sumber" style="gap: 2px;"><div class="label">Sumber aturan · dilihat 24 Sep 2026 · diperiksa untuk tahun pajak ${PJ.PJ_SUMBER_TAHUN}</div>${T.aturanTahun.belum ? h`<div class="pita-info awas" data-k="pj-aturan-tahun">${T.aturanTahun.teks}</div>` : ''}${PJ.PJ_SUMBER.map((x, i) => h`<div class="k2" data-k="sa-${i}">${x.terverifikasi ? '' : h`<b class="awas-teks">[BELUM TERVERIFIKASI]</b> `}${x.klaim}</div>`)}</div>`;
-    if (L === 'hp') return h`<section data-k="pajak">${label}${pilihTahun}${bulan}${profil}${tawar}${setoran}${kartuLuar}${cetak}${sumber}</section>`;
-    return h`<section data-k="pajak">${label}${grid(L, [h`${pilihTahun}${bulan}`, h`${profil}${tawar}${kartuLuar}`, h`${setoran}${cetak}${sumber}`])}</section>`;
+    if (L === 'hp') return h`<section data-k="pajak">${pitaHemat}${label}${pilihTahun}${bulan}${profil}${tawar}${setoran}${kartuLuar}${cetak}${sumber}</section>`;
+    return h`<section data-k="pajak">${pitaHemat}${label}${grid(L, [h`${pilihTahun}${bulan}`, h`${profil}${tawar}${kartuLuar}`, h`${setoran}${cetak}${sumber}`])}</section>`;
   }
 
   // ---------- NERACA

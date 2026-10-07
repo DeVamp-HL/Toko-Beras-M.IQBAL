@@ -297,6 +297,7 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="kartu ${HB.siapOk ? '' : 'awas'}" data-k="hemat-siap" style="gap: 4px;"><div class="label">Daftar siap-nyala — hijau 3 hari berturut-turut sebelum menyalakan</div>
         ${HB.siap.map((x) => h`<div class="hb-baris" data-k="hb-siap-${x.id}"><span>${x.teks}</span><span class="k2">${x.ket}</span><span class="pr-cap ${x.ok ? 'ok' : 'awas'}">${x.ok ? 'siap' : 'belum'}</span></div>`)}</div>
       ${HB.nyala ? h`<div class="kartu" data-k="hemat-koleksi" style="gap: 2px;"><div class="label">${HB.nBelum ? HB.nBelum + ' koleksi belum terperiksa dengan server' : 'Semua koleksi cocok dengan server'}</div>
+          ${HB.harianBelum ? h`<div class="pita-info emas" data-k="hb-harian">${HB.harianBelum}</div>` : ''}
           ${HB.koleksi.map((x) => h`<div class="hb-baris" data-k="hb-k-${x.k}"><span>${x.nama}<div class="k2">${x.mode}</div></span><span class="k2">${x.ket}<div>dibaca penuh ${jamMs(x.totalPada)}</div></span><span class="pr-cap ${x.ok ? 'ok' : 'awas'}">${x.ok ? 'cocok' : 'belum'}</span></div>`)}
           <div class="hg-pil" data-k="hb-tombol"><div class="seg" data-aksi="hematBaca">baca penuh sekarang</div><div class="seg" data-aksi="hematConsole">saya baru mengubah data lewat Console</div><div class="seg ${s.yakinHemat === 'semua' ? 'aktif' : ''}" data-aksi="hematSemua">${s.yakinHemat === 'semua' ? 'yakin: semua perangkat baca penuh' : 'minta semua perangkat baca penuh'}</div></div></div>` : ''}`;
   }

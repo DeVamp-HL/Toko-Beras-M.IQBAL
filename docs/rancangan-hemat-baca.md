@@ -108,6 +108,27 @@ perangkat sudah kebal cap masa depan, catatannya tetap tampil dan tidak menggese
   sebelum perangkat pendeteksi melihatnya (temuan uji server mainan B6).
 - `capServer` denyut owner dipakai sebagai gema jam server (spesifikasi: `padaServer`); `padaServer` tetap ikut dikupas.
 
+## Kelengkapan — SATU sumber (8 Okt, #111 × Paket C)
+
+`hbBelumLengkap(c)` (murni) → `null` (lengkap) atau `{ jenis, sebab }`; `hbSesi.belumLengkap()` → `{ koleksi: { jenis, sebab } }`, ikut `keadaan()` dan
+`firebase.js hematKeadaan()`. `terperiksaK` = bukan jenis "periksa" (rumus 7 Okt tidak bergeser — uji K: 8192 kombinasi).
+
+| Jenis | Kapan | Sebab di layar (contoh) |
+|---|---|---|
+| periksa | tab berhenti menerima data | tidak diperbarui lagi di tab ini — muat ulang aplikasi |
+| periksa | simpanan perangkat belum terbaca (V) | belum terbaca dari simpanan perangkat — tunggu sebentar |
+| periksa | batu nisan (N) belum terkini | belum dicocokkan dengan catatan yang dihapus di server — tunggu sebentar |
+| periksa | dengar penuh (F menempel) belum terkini / galat | sedang dibaca penuh — tunggu sampai selesai · gagal dibaca penuh — … |
+| periksa | baca penuh WAJIB tapi ditunda rem kuota / gagal (`wajibTotal`) | perlu dibaca penuh, tapi ditunda supaya kuota baca hari ini tidak habis — ketuk "baca penuh sekarang" (…) |
+| periksa | ubahan bercap (S) belum terkini | belum dicocokkan dengan ubahan terbaru di server — tunggu sebentar |
+| periksa | baca penuh sekali sedang berjalan · hitungan server belum cocok sesi ini | sedang dibaca penuh … · belum dicocokkan dengan server — tunggu sebentar |
+| periksa | tanpa internet (keadaan apa pun di atas) | belum dicocokkan dengan server — perangkat ini tanpa internet |
+| harian | terperiksa, tapi baca penuh terakhir perangkat ini BUKAN hari kuota ini dan baca penuh harian toko hari ini belum selesai | belum dibaca penuh hari ini — ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca) |
+| harian | jam server belum diterima (hari kuota tidak diketahui) | belum bisa dipastikan sudah dibaca penuh hari ini (jam server belum diterima) — tunggu sebentar |
+
+Lengkap: dengar penuh terkini; atau terperiksa DAN (dibaca penuh perangkat ini pada hari kuota ini ATAU baca penuh harian toko hari ini selesai). Keputusan yang
+memakainya dan yang sengaja tidak: lihat `baru/BACA-DULU.md` bab Hemat baca, bagian "Kelengkapan".
+
 ## Belum dibangun (tahap berikut / bila perlu)
 
 - Jejak (logAktivitas) atas permintaan saja saat nyala (±150 baca per buka masih dibayar).

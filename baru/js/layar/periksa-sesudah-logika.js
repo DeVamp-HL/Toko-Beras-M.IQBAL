@@ -30,6 +30,7 @@ import { modalTertanam } from './uang-logika.js';
 import { pjTahun, pjDaftarTahun } from './pajak-logika.js';
 import { keadaanAwal, susunRak } from './jual-logika.js';
 import { arPeta, arBeras } from './arsip-logika.js';
+import { hbBelumUntuk } from '../data/hemat-baca.js';
 
 export const PST_VERSI = 2;
 const PST_UTANG = ['piutang', 'utangP', 'utangO'];
@@ -69,6 +70,8 @@ const PST_KATA = { batchMasuk: 'barang masuk', penjualan: 'penjualan', produksiK
   pajakSetoran: 'setoran pajak', pajakOmzetLuar: 'omzet di luar sistem', pindahUang: 'pindah uang', slipUpah: 'slip upah', absenKaryawan: 'hari kerja karyawan' };
 const pstKata = (n) => PST_KATA[n] || 'catatan toko lain';
 const pstDaftarKata = (d) => d.map(pstKata).filter((x, i, arr) => arr.indexOf(x) === i).join(', ');
+// hemat baca: bisa semua koleksi sekaligus (belum dibaca penuh hari ini) — tiga jenis pertama disebut, sisanya dihitung
+const pstKataRingkas = (d) => { const w = d.map(pstKata).filter((x, i, arr) => arr.indexOf(x) === i); return w.length > 4 ? w.slice(0, 3).join(', ') + ' dan ' + (w.length - 3) + ' jenis catatan lain' : w.join(', '); };
 
 /**
  * Tahun yang diperiksa kartu ini, atau null (kartu tidak tampil). Tahun = tahun TERAKHIR yang berita acaranya di sistem ini terkunci / selesai — dibaca dari berita
@@ -85,9 +88,12 @@ export function pstTahun(kini) {
 }
 
 /**
- * Data di perangkat ini cukup? M = { siap, siapN, total, ditolak: [nama koleksi], offline } dari layar. perlu = nama koleksi Firestore ('*' = semua). '' = cukup.
+ * Data di perangkat ini cukup? M = { siap, siapN, total, ditolak: [nama koleksi], offline, hemat? } dari layar. perlu = nama koleksi Firestore ('*' = semua). '' = cukup.
  * Salinan perangkat (koleksiDariCache — belum dijawab server) & tanpa internet = belum bisa diperiksa: pita tutup buku juga menolak melanjutkan dari salinan
  * perangkat (bkSambungan), jadi "beres" tidak boleh diumumkan dari data basi.
+ * Hemat baca NYALA (#111): M.hemat = { koleksi: { jenis, sebab } } yang BELUM LENGKAP di perangkat ini — SATU sumber hemat-baca.js hbBelumLengkap lewat app.js
+ * lokalPerangkat → uang.js muatData. Koleksi yang dibutuhkan baris itu dan belum lengkap (belum terperiksa, atau belum dibaca penuh hari ini) = "?" dengan
+ * sebabnya, bukan ✓. Saklar mati: M tanpa `hemat` — hasil sama persis dengan sebelumnya.
  */
 function pstKurang(M, perlu, tunggu) {
   if (tunggu) return 'catatan tutup buku di perangkat ini masih menunggu server — tunggu sampai antrean kosong (Menu › Sistem › Perangkat)';
@@ -95,6 +101,7 @@ function pstKurang(M, perlu, tunggu) {
   const semua = perlu.indexOf('*') >= 0; const kena = (daftar) => (daftar || []).map((x) => String(x).split('/')[0]).filter((x, i, arr) => arr.indexOf(x) === i && (semua || perlu.indexOf(x) >= 0));
   const tolak = kena(m.ditolak); if (tolak.length) return 'data ' + pstDaftarKata(tolak) + ' ditolak server di perangkat ini — angkanya tidak ada';
   if (m.offline) return 'perangkat ini tanpa internet — angkanya dari simpanan perangkat, belum dijawab server';
+  const hb = m.hemat ? hbBelumUntuk(m.hemat, semua ? null : perlu) : null; if (hb) return 'data ' + pstKataRingkas(hb.koleksi) + ' ' + hb.sebab;
   const basi = (semua ? KOLEKSI.map((k) => k.nama) : perlu).filter((n) => koleksiDariCache(n)); if (basi.length) return 'data ' + pstDaftarKata(basi) + ' masih dari simpanan perangkat, belum dijawab server — tunggu sampai tersambung';
   return '';
 }

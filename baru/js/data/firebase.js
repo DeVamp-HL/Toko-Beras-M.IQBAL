@@ -562,6 +562,9 @@ function hitungStatis() {
   hbKoleksiHemat().forEach((nama) => { const k = KOLEKSI.find((x) => x.nama === nama); const c = (_hemat ? _hemat.capPeta(nama) : _cap[nama]) || {}; if (!k) return; cacheMentah(k.cache).forEach((d) => { if (hbTanpaCapStatis(d, c[String(d.id)], batas)) n += 1; }); });
   return n;
 }
+/** Keadaan hemat baca perangkat ini untuk layar. Saklar nyala: `belumLengkap` = { koleksi: { jenis, sebab } } dari SATU sumber (hemat-baca.js hbBelumLengkap) —
+ *  app.js lokalPerangkat meneruskannya ke Uang (kartu pemeriksaan sesudah tutup buku, kunci bulan, tutup buku) dan Laporan › Pajak. Mati / staf: { nyala: false }
+ *  tanpa `belumLengkap` (pendengar penuh seperti sebelum 7 Okt — layar menghitung persis seperti dulu). */
 export function hematKeadaan() {
   const owner = !!status.akun && status.akun.jenis === 'owner';
   const dasar = { saklar: _hematNyala, nisanSah: _nisanSah, nisanKabar: _nisanKabar, owner, berhenti: _berhenti, tabMilik: _kunciTab.milik(), ayunan: _ayunan.berhenti || '' };

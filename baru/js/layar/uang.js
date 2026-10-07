@@ -21,6 +21,7 @@ import { waktuSekarang } from './jual-logika.js';
 import { ssBerkasCadangan, susunCatatCadangan } from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip, kabarKiriman, kunciLuarCache } from '../data/toko.js';
+import { hbKalimatBelum } from '../data/hemat-baca.js';   // hemat baca nyala (#111): SATU sumber kelengkapan data perangkat ini
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -61,7 +62,13 @@ export function pasangLayarUang(akar, opsi) {
   const muatData = () => { const S = sumberData(); const L = lokal(); if (S.jenis === 'cadangan') return { siap: true, siapN: 0, total: 0, ditolak: [], offline: false };
     if (S.jenis !== 'firestore') return { siap: false, siapN: 0, total: 0, ditolak: [], offline: !!L.offline };
     const total = Number(L.koleksiTotal) || 0, siapN = Number(L.koleksiSiap) || 0;
-    return { siap: !total || siapN >= total, siapN, total, ditolak: Array.isArray(L.ditolak) ? L.ditolak.slice() : [], offline: !!L.offline }; };
+    // hemat baca NYALA (#111): koleksi yang BELUM LENGKAP di perangkat ini + sebabnya (SATU sumber: hemat-baca.js hbBelumLengkap → firebase.js hematKeadaan →
+    // app.js lokalPerangkat) → pstKurang "belum bisa diperiksa". Saklar mati: kolom `hemat` tidak ada — keadaan muat sama persis dengan sebelumnya
+    const hb = hematNyala(L) ? { hemat: Object.assign({}, L.hemat.belumLengkap || {}) } : {};
+    return Object.assign({ siap: !total || siapN >= total, siapN, total, ditolak: Array.isArray(L.ditolak) ? L.ditolak.slice() : [], offline: !!L.offline }, hb); };
+  const hematNyala = (L) => !!(L && L.hemat && L.hemat.nyala);
+  /** Hemat baca nyala & data perangkat ini belum lengkap untuk keputusan yang membaca seluruh buku → kalimat toko; '' = lengkap / saklar mati. */
+  const hematBelum = (perlu) => { const L = lokal(); return hematNyala(L) ? hbKalimatBelum(L.hemat.belumLengkap, perlu) : ''; };
 
   async function tulis(r, tanpaKabar) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
@@ -288,7 +295,9 @@ export function pasangLayarUang(akar, opsi) {
     kpLupakan: async ({ id }) => { const r = KP.susunLupakanPerangkat(id, st().kpYakinLupa === id); if (r.perluYakin) return set({ kpYakinLupa: id, kabar: r.tolak, kabarAwas: false }); await tulis(r); },
   };
   // konteks daftar periksa kunci bulan: antrean & kiriman ditolak di perangkat ini, nota parkir di Jual, keputusan per hari & centang owner
-  const konteksKunci = () => { const L = lokal(); const s = st(); return { lokal: { antreLokal: L.antreLokal || { belum: [], ditolak: [] }, antre: L.antre || [] }, parkir: L.parkir || [], putusanHari: putusanKunci(s), centang: s.kpCentang }; };
+  // hemat baca nyala (#111): `hemat` = peta koleksi yang belum lengkap (⛔ butir kunci bulan — potret angka bulan itu dibekukan di riwayat); mati: tidak ada
+  const konteksKunci = () => { const L = lokal(); const s = st(); return Object.assign({ lokal: { antreLokal: L.antreLokal || { belum: [], ditolak: [] }, antre: L.antre || [] }, parkir: L.parkir || [], putusanHari: putusanKunci(s), centang: s.kpCentang },
+    hematNyala(L) ? { hemat: Object.assign({}, L.hemat.belumLengkap || {}) } : {}); };
   // siap 2027 (A1): putusan per tanggal yang sudah tersimpan (Tutup buku langkah 1 / kunci bulan sebelumnya) dipakai ulang; pilihan di kartu Kunci bulan menang
   const putusanKunci = (s) => Object.assign({}, BK.putusanHari(), s.kpPutus);
   const bkUrut = (s, k) => { const i = BK.LANGKAH_BUKU.findIndex((l) => l[0] === k); return BK.LANGKAH_BUKU.slice(0, i).every((l) => !!s.langkahB[l[0]]); };
@@ -628,6 +637,9 @@ export function pasangLayarUang(akar, opsi) {
       <div class="kaca-btn kecil aktif" data-aksi="bkPutusSimpan" style="align-self: flex-start;">Simpan putusan</div></div>`;
   }
   function kuotaBuku(T) {
+    // hemat baca nyala (#111): perkiraan dihitung dari jumlah catatan di perangkat ini — data yang belum lengkap = "belum bisa dihitung", bukan angka setengah
+    const hb = hematBelum(null);
+    if (hb) return h`<div class="kartu" data-k="tb-kuota" style="gap: 4px; margin-top: 6px;"><div class="label" style="font-size: 10px;">Perkiraan kuota Firestore</div><div class="tb-cek belum" data-k="tb-kuota-hemat"><span class="t">?</span><div><div>Perkiraan kuota tutup buku ${T.tahun} belum bisa dihitung</div><div class="k">${hb}</div></div><div></div></div></div>`;
     let Q = null; try { Q = BK.perkiraanKuota(T.tahun, kini()); } catch (e) { console.error('perkiraan kuota', e); return ''; }
     const baris = (judul, d) => h`<div class="k"><b>${judul}</b>: ${d.map((x) => ANGKA(x.n) + ' ' + x.k + ' (' + x.persen + '%)').join(' · ')}</div>`;
     return h`<div class="kartu ${Q.lewat ? 'awas' : ''}" data-k="tb-kuota" style="gap: 4px; margin-top: 6px;"><div class="label" style="font-size: 10px;">Perkiraan kuota Firestore (batas Spark sehari: ${ANGKA(BK.BATAS_SPARK.tulis)} tulis · ${ANGKA(BK.BATAS_SPARK.hapus)} hapus · ${ANGKA(BK.BATAS_SPARK.baca)} baca)</div>

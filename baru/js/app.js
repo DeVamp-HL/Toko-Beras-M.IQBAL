@@ -108,13 +108,17 @@ const lokalPerangkat = () => ({ antre: statusFb.antre || [], menunggu: statusFb.
   // Paket C (8 Okt): kartu "Pemeriksaan sesudah tutup buku" — koleksi yang belum dimuat / ditolak server = "belum bisa diperiksa", bukan lulus
   koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, ditolak: statusFb.ditolak || [],
   antreLokal: (() => { try { return fb.antreLokal(); } catch (e) { return { belum: [], ditolak: [] }; } })(), parkir: parkirJual(),
-  hemat: (() => { try { return fb.hematKeadaan(); } catch (e) { return { nyala: false }; } })() });   // owner 7 Okt: tutup buku butuh baca penuh sesi ini saat hemat baca nyala
+  // owner 7 Okt: tutup buku butuh baca penuh sesi ini saat hemat baca nyala. #111 × Paket C: `hemat.belumLengkap` (SATU sumber hemat-baca.js hbBelumLengkap) →
+  // uang.js muatData → pstKurang (kartu pemeriksaan sesudah tutup buku "?"), daftar periksa kunci bulan, perkiraan kuota, Lanjutkan/Batalkan tutup buku
+  hemat: (() => { try { return fb.hematKeadaan(); } catch (e) { return { nyala: false }; } })() });
 const uang = pasangLayarUang(document.getElementById('layarUang'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), lokal: lokalPerangkat,
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); } });   // putaran 39: kartu Cek wadah K5 → Stok › Wadah literan
 // Laporan & Dokumen (putaran 19): layar kedelapan — Laba · Harian · Bulanan · Neraca · Dokumen (berkop, paket bank, dokumen kecil) · Setelan (kop & identitas). Dibuka dari Menu; di Mac ada di menu samping.
 // keTujuan = satu pintu ke layar lain dengan bentuk tujuan yang sama dengan baris Menu ({ ke, keluarga, tab, lembar, sistem }).
 const keTujuan = (t) => { if (!t) return; if (t.ke === 'stok') { pindah('stok'); stok.buka(t.lembar || null, t.tab || null); } else if (t.ke === 'pelanggan') { pindah('pelanggan'); pelanggan.buka(t.keluarga || 'kenali', t.orang || null); } else if (t.ke === 'harga') { pindah('harga'); harga.buka(t.keluarga || 'katalog', t); } else if (t.ke === 'uang') { pindah('uang'); uang.buka(t.keluarga || 'keluar', t); } else if (t.ke === 'laporan') { pindah('laporan'); laporan.buka(t.keluarga || 'laba', t); } else if (t.ke === 'sistem') { pindah('menu'); menu.buka && menu.buka(t.sistem || 'perangkat', t.tab || null); } else if (t.ke === 'jual' && t.lembar) { pindah('jual'); layar.keadaan.setel({ lembar: t.lembar, kabar: '' }); } else pindah(t.ke); };
-const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan });
+// hemat baca nyala (#111): Laporan › Pajak menahan rekap konsultan & catat setoran selama data pajak di perangkat ini belum lengkap (SATU sumber firebase.js hematKeadaan)
+const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan,
+  hemat: () => { try { return fb.hematKeadaan(); } catch (e) { return { nyala: false }; } } });
 const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok'), pelanggan: document.getElementById('layarPelanggan'), menu: document.getElementById('layarMenu'), harga: document.getElementById('layarHarga'), uang: document.getElementById('layarUang'), laporan: document.getElementById('layarLaporan') };
 // GERAK PINDAH LAYAR (owner 29 Sep: "lebih hidup, lebih intuitif — dari segi motion terutama"): layar baru datang dari ARAH tab yang dituju
 // (kanan = tab sesudahnya, kiri = sebelumnya) dan penanda menu meluncur ke tab aktif — orang merasa di mana ia berada.

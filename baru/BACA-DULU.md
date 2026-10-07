@@ -2020,8 +2020,10 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
 - **MM7 (sisa audit 39b)**: kalimat daftar Retur untuk nota ber-bonus sudah menunjuk "Tidak ada notanya? Retur ketik tangan" di `/baru/` sejak 2 Okt
   (9686b61; ketik tangan menerima kemasan per unit). Komentar kepala `retur-logika.js` yang masih menyebut sistem lama dibetulkan. Tidak ada kalimat layar
   `/baru/` lain yang menyuruh membuka sistem lama / `kasir.html`.
-- **Belum**: keadaan "dimuat sebagian" (hemat baca, #111 belum merge) belum dibaca kartu. Kalau hemat baca masuk, koleksi yang dimuat sebagian WAJIB
-  diteruskan `app.js lokalPerangkat` → `uang.js muatData` → `pstKurang` sebagai "belum bisa diperiksa".
+- **Hemat baca (#111, disambungkan 8 Okt)**: koleksi yang BELUM LENGKAP di perangkat ini (SATU sumber `hemat-baca.js hbBelumLengkap`, lihat bagian
+  "Kelengkapan" di bab Hemat baca) diteruskan `firebase.js hematKeadaan().belumLengkap` → `app.js lokalPerangkat` → `uang.js muatData` (`M.hemat`, hanya saat
+  nyala) → `pstKurang`: baris yang membutuhkannya = "?" dengan sebab toko ("data modal owner belum dibaca penuh hari ini — ketuk "baca penuh sekarang" (Menu ›
+  Sistem › Perangkat › Hemat baca)"), bukan ✓. Saklar mati: `M` tanpa `hemat` — kartu sama persis (`uji_periksa_sesudah.py --banding=<ref>`).
 - Dijaga `alat-uji/uji_periksa_sesudah.py` (kotak pasir potret + buku khusus + kasbon dua orang; ritual = simulator `uji_potret_tahun.py` + hasil beku +
   selesai): semua sama (cache kembali utuh; tetap sama 20 Jan sesudah kegiatan Januari sungguhan), kapan tampil, kontrol kotak per baris (modal pembuka,
   merek pembuka dihapus, tanda 25 kg lepas, karung hilang dari rak, potret bulan hilang / omzetnya berubah, stok minus, piutang pembuka sesudah & sebelum
@@ -2068,6 +2070,23 @@ yang gagal dikirim diulang (rekam, ≤ 5 kali); kasir-v33 jatuh ke cara lama bil
 baca penuh terakhir; catatan arsip tutup buku bukan "hilang tanpa kabar"; umur denyut = jam server saat terlihat berubah; kontrol (c) semantik. Rincian &
 uji: `docs/rancangan-hemat-baca.md` bagian "Tinjauan 7 Okt". Saklar MATI dibuktikan lagi: firebase.js cabang vs `main` di jsc — pendengar, memori,
 tulisan (selain cap jam server yang disengaja), simpanan, pendengar staf SAMA.
+
+**Kelengkapan — SATU sumber (8 Okt, #111 × Paket C)**. `hemat-baca.js hbBelumLengkap` menjawab, per koleksi hemat di perangkat ini, apakah datanya LENGKAP
+untuk keputusan final dan sebabnya (kalimat toko). Dua jenis: **"periksa"** = belum terperiksa dengan server (persis arti `terperiksa` sejak 7 Okt — dibuktikan
+di 8192 kombinasi keadaan; tab berhenti, simpanan belum terbaca, batu nisan belum dicocokkan, dengar penuh / baca penuh masih berjalan, baca penuh wajib tapi
+ditunda rem kuota / gagal, ubahan bercap belum dicocokkan, hitungan server belum cocok) · **"harian"** = hitungan cocok tapi BELUM ADA BACA PENUH hari kuota
+ini — oleh perangkat ini maupun baca penuh harian toko yang selesai (ubahan tanpa cap jam server sejak baca penuh terakhir bisa belum terlihat; dengar penuh
+= lengkap). `terperiksaK` (gerbang katalog kasir, uang-kritis, pil kepala, tanda salinan perangkat toko.js) kini DITURUNKAN dari sumber ini.
+`hbSesi.belumLengkap()` / `keadaan().belumLengkap` → `firebase.js hematKeadaan()` (mati / staf: tanpa kolom) → `app.js` (lokalPerangkat Uang, opsi `hemat`
+Laporan). Yang memakai: kartu Pemeriksaan sesudah tutup buku (`pstKurang` "?"), daftar periksa **kunci bulan** (⛔ butir `hemat` — potret angka bulan dibekukan
+di riwayat), **Lanjutkan / Batalkan tutup buku** (`bkSambungan`), gerbang **g7** (dibaca penuh sesi ini DAN lengkap), **perkiraan kuota** tutup buku ("?" —
+tidak dihitung dari data setengah), **Laporan › Pajak** (pita "?", rekap konsultan / catat setoran / omzet tahun lalu dari sistem DITAHAN, draf tetap), panel
+Hemat baca (berapa koleksi belum dibaca penuh hari ini, tombolnya di sana). **Tutup hari & titik kas** tetap dijaga `pastikanSegar` (hitungan server ≤ 2
+menit, jenis "periksa" — rancangan K1; "belum dibaca penuh hari ini" tidak menahan tutup hari: memaksa ±9 rb baca saat rem kuota menahan baca penuh harian
+bisa menghabiskan kuota — HP kasir 429). **Tidak disambungkan** (sengaja, keputusan berikut): Stok › Cocokkan (opname menulis selisih dari buku perangkat) —
+belum dijaga hemat; tanpa internet dulu pun sama (simpanan perangkat). Saklar mati: semua di atas sama persis (`uji_periksa_sesudah.py --banding=<ref>` — kartu, gerbang, kunci bulan, Lanjutkan,
+HTML Uang & Pajak). Uji: `uji_hemat_baca.py` bagian K (+ kontrol K1–K7), `uji_periksa_sesudah.py` S7 (+ kontrol hemat, asap cadangan lokal: nyala & lengkap
+= mati; nyala & belum dibaca penuh = 13 "?" 0 ✗).
 
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 

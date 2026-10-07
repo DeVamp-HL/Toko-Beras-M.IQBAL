@@ -269,6 +269,57 @@ export function hbNilaiHitung(h) {
   return h.server === lokal ? 'cocok' : h.server > lokal ? 'kurang' : 'lebih';
 }
 
+// ---------- KELENGKAPAN per koleksi — SATU sumber (owner 8 Okt, Paket C × hemat baca) ----------
+// Dipakai: terperiksa (gerbang katalog kasir, uang-kritis, pil kepala, tanda "salinan perangkat" toko.js) DAN keputusan final yang membaca seluruh buku: kartu
+// "Pemeriksaan sesudah tutup buku" (pstKurang), daftar periksa kunci bulan, Laporan › Pajak, perkiraan kuota & Lanjutkan/Batalkan tutup buku, gerbang g7.
+// Kalimatnya kalimat toko: dibaca "data <apa> <sebab>".
+const HB_KE_MENU = 'ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)';
+export const HB_SEBAB_HARIAN = 'belum dibaca penuh hari ini — ' + HB_KE_MENU;
+/**
+ * Koleksi hemat di perangkat ini BELUM LENGKAP? c = { vMati, vAda, nTerkini, online, mode, fTerkini, fSelesai, fMode, fJalan (baca penuh sekali sedang berjalan),
+ * fGalat, wajibTotal, sTerkini, cocok (hitungan server cocok sesi ini), totalPada (baca penuh terakhir perangkat ini — jam server), hari (hari kuota sekarang
+ * menurut jam server; '' = belum diketahui), klaim (aturanToko/hematHarian) }. → null (lengkap) | { jenis, sebab }.
+ *   jenis 'periksa' = BELUM TERPERIKSA dengan server (persis arti `terperiksa` sejak 7 Okt): tab berhenti menerima data · simpanan perangkat belum terbaca ·
+ *     batu nisan belum dicocokkan · dengar penuh belum terkini · baca penuh wajib tapi ditunda rem kuota / gagal · ubahan bercap belum dicocokkan · baca penuh
+ *     masih berjalan · hitungan server belum cocok sesi ini.
+ *   jenis 'harian' = terperiksa (hitungan cocok), tapi BELUM ADA BACA PENUH pada hari kuota ini — oleh perangkat ini (totalPada) maupun baca penuh harian TOKO
+ *     yang selesai (klaim). Ubahan tanpa cap jam server (Console, penulis lama tanpa denyut) sejak baca penuh terakhir bisa belum terlihat: hitungan yang cocok
+ *     tidak membuktikan isinya sama. Dengar penuh (F menempel & terkini) = lengkap. Jam server belum diketahui = belum bisa dipastikan.
+ */
+export function hbBelumLengkap(c) {
+  const x = c || {};
+  // tanpa internet = sebab yang terbaca owner untuk keadaan belum terperiksa apa pun (kecuali tab yang berhenti — muat ulang yang menolong)
+  const P = (sebab) => ({ jenis: 'periksa', sebab: x.online === false && !x.vMati ? 'belum dicocokkan dengan server — perangkat ini tanpa internet' : sebab });
+  const gagal = 'gagal dibaca penuh — dicoba lagi sebentar, atau ' + HB_KE_MENU;
+  if (x.vMati) return P('tidak diperbarui lagi di tab ini — muat ulang aplikasi');
+  if (!x.vAda) return P('belum terbaca dari simpanan perangkat — tunggu sebentar');
+  if (!x.nTerkini) return P('belum dicocokkan dengan catatan yang dihapus di server — tunggu sebentar');
+  if (x.mode === 'penuh') return x.fTerkini && (x.fSelesai || x.fMode === 'penuh') ? null : P(x.fGalat ? gagal : 'sedang dibaca penuh — tunggu sampai selesai');
+  if (x.wajibTotal) return P(/^baca penuh gagal/.test(String(x.wajibTotal)) ? gagal : 'perlu dibaca penuh, tapi ditunda supaya kuota baca hari ini tidak habis — ' + HB_KE_MENU);
+  if (!x.sTerkini) return P('belum dicocokkan dengan ubahan terbaru di server — tunggu sebentar');
+  if (x.fJalan) return P('sedang dibaca penuh — tunggu sampai selesai');
+  if (!x.fSelesai && !x.cocok) return P(x.fGalat ? gagal : 'belum dicocokkan dengan server — tunggu sebentar');
+  if (!x.hari) return { jenis: 'harian', sebab: 'belum bisa dipastikan sudah dibaca penuh hari ini (jam server belum diterima) — tunggu sebentar' };
+  if (hbAngka(x.totalPada) > 0 && hbHariKuota(x.totalPada) === x.hari) return null;
+  const k = x.klaim || {}; if (k.hari === x.hari && k.selesai) return null;
+  return { jenis: 'harian', sebab: HB_SEBAB_HARIAN };
+}
+/**
+ * Dari peta kelengkapan { koleksi: { jenis, sebab } } (hbSesi.belumLengkap; kosong = semua lengkap) untuk koleksi `perlu` (tanpa / '*' = semua): null atau
+ * { koleksi: [nama], jenis, sebab } — sebab koleksi pertama yang belum terperiksa (lebih berat), selain itu "belum dibaca penuh hari ini".
+ */
+export function hbBelumUntuk(peta, perlu) {
+  const P = peta || {}; const semua = !perlu || perlu.indexOf('*') >= 0;
+  const ks = Object.keys(P).filter((k) => P[k] && (semua || perlu.indexOf(k) >= 0)); if (!ks.length) return null;
+  const berat = ks.find((k) => P[k].jenis === 'periksa');
+  return { koleksi: ks, jenis: berat ? 'periksa' : 'harian', sebab: String(P[berat || ks[0]].sebab || HB_SEBAB_HARIAN) };
+}
+/** Kalimat layar untuk keputusan yang membaca seluruh buku (kunci bulan, pajak, perkiraan kuota): '' = lengkap. "data perangkat ini <sebab> (n bagian)". */
+export function hbKalimatBelum(peta, perlu) {
+  const B = hbBelumUntuk(peta, perlu); if (!B) return '';
+  return 'data perangkat ini ' + B.sebab + (B.koleksi.length > 1 ? ' (' + B.koleksi.length + ' bagian data)' : '');
+}
+
 // ---------- pendeteksi tanpa cap (perangkat yang baca penuh harian) ----------
 /**
  * awal = { id: { cap, sidik } } (snapshot SIMPANAN pertama F), akhir = { id: { cap, sidik, tunda } } (snapshot server F). → { ubah, baru, hilang } (id).
@@ -691,15 +742,14 @@ export function hbSesi(o) {
     G.klaimKabar = 'baca penuh harian selesai'; o.sdk.klaim(dok).catch(() => {});
   }
 
-  // ---- terperiksa ----
-  function terperiksaK(k) {
-    const st = K[k];
-    if (st.vMati || !st.vAda || !G.nTerkini) return false;
-    if (st.mode === 'penuh') return !!st.fTerkini && (st.fSelesai || st.fMode === 'penuh');
-    if (st.wajibTotal || !st.sTerkini) return false;
-    if (st.fLepas && st.fMode === 'total' && !st.fSelesai) return false;
-    return !!st.fSelesai || st.cocokPada > 0;
+  // ---- kelengkapan & terperiksa: SATU sumber (hbBelumLengkap). Terperiksa = bukan "belum terperiksa" ('harian' tetap terperiksa: hitungannya cocok) ----
+  function belumK(k) {
+    const st = K[k]; const r = rk(k);
+    return hbBelumLengkap({ vMati: st.vMati, vAda: st.vAda, nTerkini: G.nTerkini, online: G.online, mode: st.mode, fTerkini: st.fTerkini, fSelesai: st.fSelesai, fMode: st.fMode,
+      fJalan: !!(st.fLepas && st.fMode === 'total' && !st.fSelesai), fGalat: st.fGalat, wajibTotal: st.wajibTotal, sTerkini: st.sTerkini, cocok: st.cocokPada > 0,
+      totalPada: r.totalPada, hari: hariKini(), klaim: G.tetap.klaim });
   }
+  function terperiksaK(k) { const b = belumK(k); return !b || b.jenis !== 'periksa'; }
   function nilaiPeriksa(k) { const st = K[k]; const t = terperiksaK(k); if (t !== st.terperiksa) { st.terperiksa = t; o.keluar.periksa(k, t); } o.keluar.berubah(); }
 
   // ---- pendengar simpanan hidup ----
@@ -805,8 +855,10 @@ export function hbSesi(o) {
         belum: daftar.filter((x) => !x.terperiksa).map((x) => x.k), vMati: daftar.some((x) => x.vMati), nisanTerkini: G.nTerkini, nisanGalat: G.nGalat,
         totalSesiIni: daftar.every((x) => x.selesaiSesi), klaim: G.tetap.klaim, klaimSaya: G.klaimSaya, klaimKabar: G.klaimKabar, temuan: G.temuan, jalurPenuh: G.jalurPenuh,
         kabar: [G.kabar, G.temuanGagal ? G.temuanGagal + ' catatan berubah tanpa cap gagal ditandai untuk perangkat lain — tekan "Saya baru mengubah data lewat Console"' : ''].filter((x) => !!x).join(' · '),
-        baca: { perangkat: R.hari.baca || 0, toko: hbPerkiraanToko(G.tetap.perangkat, R.hari.H, o.idPerangkat, R.hari.baca) } };
+        baca: { perangkat: R.hari.baca || 0, toko: hbPerkiraanToko(G.tetap.perangkat, R.hari.H, o.idPerangkat, R.hari.baca) }, belumLengkap: sesi.belumLengkap() };
     },
+    /** SATU sumber kelengkapan (hbBelumLengkap) untuk layar: { koleksi: { jenis, sebab } } — hanya koleksi yang BELUM lengkap; {} = semua lengkap. */
+    belumLengkap() { const out = {}; o.koleksi.forEach((k) => { if (!K[k]) return; const b = belumK(k); if (b) out[k] = b; }); return out; },
     ringkasDenyut() { const H = hariR(); return { hari: H.H || '', baca: Math.round(H.baca || 0) }; },
     /** cap per id di simpanan perangkat (V) koleksi k — daftar siap-nyala "statis" saat nyala (peta samping _cap hanya diisi pendengar penuh). */
     capPeta(k) { const v = K[k] ? K[k].v : {}; const o2 = {}; Object.keys(v).forEach((id) => { o2[id] = v[id].cap; }); return o2; },

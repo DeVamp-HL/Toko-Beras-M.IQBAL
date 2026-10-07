@@ -129,7 +129,10 @@ export function ssHemat(K, siap) {
   const kapan = daftar.map((x) => x.totalPada).filter((x) => x); const S = siap || [];
   const status = !H.saklar ? 'MATI' : H.nyala ? 'NYALA' : 'NYALA, belum berjalan';
   const kl = H.klaim || null;
+  // #111 × Paket C: koleksi yang terperiksa tapi BELUM DIBACA PENUH HARI INI (SATU sumber hbBelumLengkap) — keputusan final menunggu; tombolnya ada di panel ini
+  const BL = H.belumLengkap || {}; const nHarian = Object.keys(BL).filter((k) => BL[k] && BL[k].jenis === 'harian').length;
   return { status, nyala: !!H.nyala, saklar: !!H.saklar, owner: !!H.owner,
+    harianBelum: H.nyala && nHarian ? nHarian + ' koleksi belum dibaca penuh hari ini — kartu pemeriksaan sesudah tutup buku, kunci bulan & Laporan › Pajak menunggu sampai dibaca penuh: ketuk "baca penuh sekarang" di bawah' : '',
     judul: 'Hemat baca: ' + status + ' di perangkat ini',
     ket: H.nyala ? 'Perangkat ini memakai simpanannya sendiri dan hanya menarik catatan yang berubah (bercap jam server). Sekali sehari satu perangkat owner membaca penuh untuk toko, sesudah kuota baca Firebase direset (' + (H.jamReset || '14.00/15.00') + ' WIB); tiap perangkat membaca penuh paling lambat 14 hari sekali.'
       : 'Mati = tiap kali aplikasi dibuka, semua catatan toko dibaca dari server (±7 rb baca; kuota gratis 50 rb sehari). Nyalakan HANYA sesudah daftar siap-nyala hijau 3 hari berturut-turut.',
