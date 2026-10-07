@@ -158,7 +158,8 @@ def periksa(t, teks):
        and "tahanRak(2500);" in jl and "lepasRak(lamaAdegan ? Math.min(4000, lamaAdegan + 120) : 0);" in jl and "if (_rak && Date.now() < _rakTahanSampai) return _rak;" in jl)
     jlg = t['baru/js/layar/jual-logika.js']; tk = t['baru/js/data/toko.js']
     ok('jual: +1/−1 keranjang tidak menyusun seluruh rak — rak chip diingat per versi cache; versi naik di SEMUA jalan pengubah cache', "const rak = rakUntukChip();" in jlg
-       and "if (!_rakChip || _rakChipVersi !== v)" in jlg and tk.count('_versiCache += 1') == 5)
+       and "if (!_rakChip || _rakChipVersi !== v)" in jlg and tk.count('_versiCache += 1') == 7   # Paket C: denganCacheSaring (saring sementara + kembalikan) = 2
+       and "  _versiCache += 1;\n  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); _versiCache += 1; }" in tk)
     ok('jual: isi keranjang berubah → digambar dulu dengan rak lama, rak menyusul di bingkai berikut; aksi tetap rak segar', "const rak = rakKini(true);" in jl
        and "if (bolehTunda && !_rakPaksa && _rak && !_rakBasi && _rakUntuk !== tanda && typeof requestAnimationFrame === 'function' && !document.hidden) {" in jl and "_rakPaksa = true; nanti(gambarGulir);" in jl and jl.count('rakKini(true)') == 1)
     ok('jual: ketukan pemakai tetap seketika (K.dengar menggambar langsung)', "K.dengar(() => { gambar(); gulirkan(akar, RP); });" in jl)

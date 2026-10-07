@@ -268,7 +268,9 @@ coba('N4', function () { kotak(40); W = jam('2027-01-05T08:00:00+07:00'); R = su
 lepasTunda();
 
 // ---- §8 no. 5 · mulai 2 Jan 07.00, putus sesudah kiriman 1, toko berjualan 09.00, Lanjutkan 21.00 hari yang sama → periksa ulang TIDAK berbunyi palsu
-coba('N5', function () { kotak(40); W = jam('2027-01-02T07:00:00+07:00'); R = susunKunci(2026, D, W); kirim(R.kiriman[0]);
+// (sanggahan Paket C: patokan menyimpan JAM-nya — catatan hari itu yang belum ada saat patokan & jamnya SEBELUM patokan = karcis yang telat masuk, tidak dihitung;
+//  jam() kotak ini selalu '10:00', jadi jam mulai ditulis apa adanya: 07.00)
+coba('N5', function () { kotak(40); W = Object.assign(jam('2027-01-02T07:00:00+07:00'), { jam: '07:00' }); R = susunKunci(2026, D, W); kirim(R.kiriman[0]);
   terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'jan2', tanggal: '2027-01-02', jam: '09:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }]);
   jam('2027-01-02T21:00:00+07:00'); L = lanjutBuku(2026); (L.kiriman || []).forEach(kirim); arsipkanDokumen(2026, arsipBuku(2026).daftar);
   var PU = periksaUlangBuku(2026);
@@ -1114,7 +1116,7 @@ RUSAK = [
     ('A9 · susulan tidak terdeteksi', 'baru/js/layar/tutup-buku-logika.js', "  if (!a || !(a.status === 'selesai' || (a.status === 'terkunci' && bkArsipHabis(t)))) return null;", "  return null;"),
     ('A9 · "sudah dicatat" tidak menyembunyikan apa pun', 'baru/js/layar/tutup-buku-logika.js', SUSULAN_SARING, "const daftar = A.daftar.filter((x) => !tinggal[x.koleksi + '|' + x.id]);"),
     ('A9 · pesanan yang sengaja tertinggal (belum tuntas) disebut susulan begitu dibayar Januari', 'baru/js/layar/tutup-buku-logika.js', SUSULAN_SARING, "const daftar = A.daftar.filter((x) => !sudah[x.koleksi + '|' + x.id]);"),
-    ('A9 · hasil periksa saat arsip habis tidak mencatat pesanan yang tertinggal', 'baru/js/layar/tutup-buku-logika.js', "    tertinggal: bkTertinggalKini(tahun) };", "    tertinggal: [] };"),
+    ('A9 · hasil periksa saat arsip habis tidak mencatat pesanan yang tertinggal', 'baru/js/layar/tutup-buku-logika.js', "    tertinggal: bkTertinggalKini(tahun), sesudahKunci:", "    tertinggal: [], sesudahKunci:"),
     ('A9 · berita acara selesai tidak mencatat pesanan yang tertinggal', 'baru/js/layar/tutup-buku-logika.js', "periksaUlang, susulan, tertinggal, langkah:", "periksaUlang, susulan, langkah:"),
     ('A9 · pengeluaran telat memakai kalimat nota (tanpa kalimat pengeluaran)', 'baru/js/layar/tutup-buku-logika.js', "const keluar = daftar.filter((x) => x.koleksi === 'pengeluaranHarian');", "const keluar = [];"),
     ('A4 · pembuka modal (31 Des) terbaca tarik modal = ambil pribadi Desember', 'baru/js/layar/uang-logika.js', "&& !m.pinjaman && !m.tutupBuku && dlm(m.tanggal)", "&& !m.pinjaman && dlm(m.tanggal)"),
@@ -1149,7 +1151,7 @@ RUSAK = [
     ('kemajuan menyebut tahun berjalan, bukan tahun yang terkunci', 'baru/js/layar/tutup-buku-logika.js', "  if (!a) return null; const tahun = Number(a.tahun);", "  if (!a) return null; const tahun = Number(a.tahun) + (a.status === 'terkunci' ? 1 : 0);"),
     ('§8 no. 4 · Lanjutkan & Batalkan tidak memeriksa antrean perangkat', 'baru/js/layar/tutup-buku-logika.js', "  const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };\n  const ub = bkBerubah(a);", "  const ub = bkBerubah(a);"),
     ('§8 no. 4 · pita tidak memeriksa antrean perangkat', 'baru/js/layar/tutup-buku-logika.js', "  const nT = bkTunda(tahun); if (nT) return { tahun, fase: 'tunggu', tunda: nT, teks: bkKalimatTunda(tahun, nT) };", "  const nT = 0;"),
-    ('§8 no. 5 · Lanjutkan memakai patokan periksa ulang dari saat MULAI', 'baru/js/layar/tutup-buku-logika.js', "const kunci = Object.assign({}, a, { status: 'terkunci', hariIni: { tanggal: hari, baris:", "const kunci = Object.assign({}, a, { status: 'terkunci', hariIniBaru: { tanggal: hari, baris:"),
+    ('§8 no. 5 · Lanjutkan memakai patokan periksa ulang dari saat MULAI', 'baru/js/layar/tutup-buku-logika.js', "const kunci = Object.assign({}, a, { status: 'terkunci', hariIni: HI });", "const kunci = Object.assign({}, a, { status: 'terkunci', hariIniBaru: HI });"),
     ('§8 no. 6 · selesai tanpa memeriksa arsip & periksa ulang', 'baru/js/layar/tutup-buku-logika.js', "  const sisa = bkArsipHabis(tahun) ? 0 : arsipBuku(tahun).n; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '", "  const sisa = 0; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '"),
     ('§8 no. 6 · selesai menerima periksa ulang yang beda tanpa ketukan kedua', 'baru/js/layar/tutup-buku-logika.js', "  if (kal && !yakin) return {", "  if (kal && !yakin && false) return {"),
     ('§8 no. 7 · pembatalan yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Kiriman ini tidak masuk", "return awal + (false ? ' Kiriman ini tidak masuk"),
@@ -1187,7 +1189,7 @@ RUSAK = [
     ('putaran 4 P4-2 · ambil alih sekali ketuk (tanpa kalimat peringatan)', 'baru/js/layar/tutup-buku-logika.js', "  if (!yakin) return { perluYakin: true,", "  if (false) return { perluYakin: true,"),
     ('putaran 4 P4-2 · percobaan berikut membawa jejak ambil alih lama', 'baru/js/layar/tutup-buku-logika.js', "  delete acara.pemegangLama; delete acara.diambilAlihPada;", "  delete acara.diambilAlihPada;"),
     ('putaran 4 P4-5 · sisi mesin yang tidak bisa dihitung ditandai "≠"', 'baru/js/layar/tutup-buku-logika.js', "tanda: !ada ? '' : !tahu || s === null ? '?' :", "tanda: !ada ? '' : !tahu ? '?' :"),
-    ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
+    ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return Object.assign(bandingBuku({ harta: H.baris, utang: [] }, o), { susulan: S.susulan, sesudahKunci: S.sesudahKunci });",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
     # ---- TRV6-EKOR-1: ekor pembatalan (jalankanBatal uang.js dijalankan apa adanya — berkas yang dirusak ikut dibaca)
     ('TRV6-EKOR-1 · uang.js bentuk lama (ekor tanpa penjaga, sebelum tambalan)', 'baru/js/layar/uang.js', EKOR_BARU, EKOR_LAMA),

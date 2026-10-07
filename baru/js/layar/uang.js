@@ -14,6 +14,7 @@ import * as OT from './owner-toko-logika.js';
 import * as TD from './tutup-hari-logika.js';
 import * as BK from './tutup-buku-logika.js';
 import * as KP from './kunci-periode-logika.js';
+import * as PST from './periksa-sesudah-logika.js';   // Paket C (8 Okt): pemeriksaan sesudah tutup buku — aplikasi memeriksa sendiri
 import * as WB from './wadah-bernama-logika.js';   // putaran 39 (owner 29 Sep e): kartu Cek wadah di lembar tutup
 import { tombolAkun } from './akses-layar.js';
 import { waktuSekarang } from './jual-logika.js';
@@ -45,7 +46,7 @@ export function pasangLayarUang(akar, opsi) {
     pindah: null, urungP: null, aturP: null, rekIsi: null,
     draf: null, koreksi: false, yakinUlang: false, aturT: null, rekapTeks: '', bukaRumus: false, cekYakin: null,
     modeB: 'latihan', langkahB: LANGKAH_KOSONG(), bukaB: 'periksa', parafB: { owner: false, saksi: false }, saksiB: '', siapKunci: false, lewatiG3: false, progres: null, aturB2: null, cad1: '', arsipNama: '', selesaiLatihan: false, sesudahLive: null, sibuk: false, yakinSelesai: null,
-    kpCentang: {}, kpPutus: {}, kpSiap: false, kpBuka: null, kpAtur: null, kpYakinLupa: null, bkPutus: {} });
+    kpCentang: {}, kpPutus: {}, kpSiap: false, kpBuka: null, kpAtur: null, kpYakinLupa: null, bkPutus: {}, pstRinci: false });
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['catat', 'bayarT', 'tolakT', 'aturK', 'kasbonK', 'bonusU', 'aturU', 'karyawanDraf', 'aksiO', 'bukti', 'pindah', 'aturP', 'rekIsi', 'draf', 'aturT', 'langkahB', 'parafB', 'saksiB', 'cad1', 'arsipNama', 'kpCentang', 'kpPutus', 'kpBuka', 'kpAtur', 'bkPutus'], [[KUNCI_DRAF_TUTUP, (t) => { try { return JSON.parse(t).iso === iso(); } catch (e) { return false; } }]]);
   const set = (p) => K.setel(p); const st = () => K.baca();
@@ -55,6 +56,12 @@ export function pasangLayarUang(akar, opsi) {
   let _kunciLuar = ''; const kunciLuar = () => kunciLuarCache(kini());
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
   const lokal = () => (opsi.lokal ? opsi.lokal() : {});
+  // Paket C: keadaan muat data di perangkat ini untuk kartu "Pemeriksaan sesudah tutup buku" — koleksi yang belum dimuat / ditolak server, atau perangkat tanpa
+  // internet (angka dari simpanan perangkat) = "belum bisa diperiksa". Salinan perangkat per koleksi dibaca logikanya sendiri (toko.js koleksiDariCache).
+  const muatData = () => { const S = sumberData(); const L = lokal(); if (S.jenis === 'cadangan') return { siap: true, siapN: 0, total: 0, ditolak: [], offline: false };
+    if (S.jenis !== 'firestore') return { siap: false, siapN: 0, total: 0, ditolak: [], offline: !!L.offline };
+    const total = Number(L.koleksiTotal) || 0, siapN = Number(L.koleksiSiap) || 0;
+    return { siap: !total || siapN >= total, siapN, total, ditolak: Array.isArray(L.ditolak) ? L.ditolak.slice() : [], offline: !!L.offline }; };
 
   async function tulis(r, tanpaKabar) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
@@ -252,6 +259,12 @@ export function pasangLayarUang(akar, opsi) {
     bkPutusKetik: (v, el) => { const p = Object.assign({}, st().bkPutus); p[el.dataset.tgl] = String(v).slice(0, 120); set({ bkPutus: p }); },
     bkPutusSimpan: async () => { await tulis(BK.susunPutusanHari(st().bkPutus, waktu())); },
     bkPutusCabut: async ({ iso: t }) => { const p = {}; p[t] = ''; await tulis(BK.susunPutusanHari(p, waktu())); },
+    // Paket C: kartu pemeriksaan sesudah tutup buku — tampilkan semua baris / unduh hasilnya (berkas, disimpan bersama cadangan SESUDAH)
+    pstRinci: () => set({ pstRinci: !st().pstRinci }),
+    pstUnduh: () => { let H = null; try { H = PST.pstPeriksa(kini(), muatData()); } catch (e) { console.error('pemeriksaan sesudah tutup buku', e); }
+      if (!H) return set({ kabar: 'Tidak ada pemeriksaan tutup buku yang bisa diunduh sekarang', kabarAwas: true });
+      const B = PST.pstBerkas(H, kini()); const bytes = unduh(B.isi, B.nama);
+      set(bytes < 0 ? { kabar: 'Peramban ini tidak bisa mengunduh berkas', kabarAwas: true } : { kabar: 'Hasil pemeriksaan ' + B.nama + ' diunduh (' + H.ringkas + ') — simpan bersama cadangan SESUDAH, di ≥ 2 tempat di luar HP', kabarAwas: !H.beres }); },
     // A9: catatan susulan (bertanggal tahun yang sudah ditutup, masuk sesudah penanda) — "sudah dicatat" = jumlahnya disimpan, catatannya TIDAK dihapus
     bkSusulanCatat: async () => { const S = BK.susulanBuku(); if (!S) return set({ kabar: 'Tidak ada catatan susulan', kabarAwas: false }); await tulis(BK.susunCatatSusulan(S.tahun, waktu())); },
     // ---- KUNCI BULAN (putaran 25)
@@ -610,6 +623,35 @@ export function pasangLayarUang(akar, opsi) {
       ${Q.kalimat.map((k, i) => h`<div class="${i === 1 && (Q.lewat || Q.mepet) ? 'ket awas-teks' : 'ket'}" style="font-size: 11px;">${k}</div>`)}</div>`;
   }
 
+  // ---------- K6 · PEMERIKSAAN SESUDAH TUTUP BUKU (Paket C, 8 Okt 2026) — tampil sesudah tahun dikunci & arsipnya habis, lalu sepanjang Januari–Februari.
+  // Logika di periksa-sesudah-logika.js (hanya membaca cache; data yang tidak ada = "belum bisa diperiksa", bukan lulus). Tiga keadaan digambar beda: ✓ · ✗ · ?
+  const PST_TANDA = { sama: '✓', beda: '✗', belum: '?' };
+  function kartuPeriksa(s) {
+    let H = null;
+    // galat: kalimat toko di layar, rinciannya (pesan mentah) hanya di console
+    try { H = PST.pstPeriksa(kini(), muatData()); } catch (e) {
+      console.error('pemeriksaan sesudah tutup buku', e);
+      return h`<div class="kartu awas" data-k="tb-periksa" style="gap: 6px;"><div class="label">Pemeriksaan sesudah tutup buku</div><div class="ket awas-teks">Pemeriksaan tidak bisa dijalankan di perangkat ini — tutup buku belum bisa dinyatakan beres. Tutup lalu buka lagi aplikasinya sekali; kalau tetap begini, pegangannya pita tutup buku ("… semua baris sama" = baris perbandingan), dan simpan cadangan SEBELUM & SESUDAH berdua.</div></div>`;
+    }
+    if (!H) return '';
+    const ada = (n) => n !== null && n !== undefined;
+    // baris bersatuan teks (rak Jual, stok minus) = SATU keadaan sekarang tanpa panah; angka = sebelum → sesudah; belum bisa diperiksa = '—'
+    const angka = (x) => (x.satuan === 'teks' ? (x.status === 'belum' || !ada(x.a) ? '—' : PST.pstTeks(x.a, 'teks'))
+      : x.status === 'belum' ? (ada(x.a) ? 'sebelum ' + PST.pstTeks(x.a, x.satuan) + ' · sesudah —' : '—') : x.status === 'beda' ? PST.pstTeks(x.a, x.satuan) + ' → ' + PST.pstTeks(x.b, x.satuan) : PST.pstTeks(ada(x.b) ? x.b : x.a, x.satuan));
+    const baris = (x) => h`<div class="tb-cek ${x.status === 'sama' ? 'ok' : x.status === 'beda' ? 'tidak' : 'belum'}" data-k="pst-${x.id}"><span class="t">${PST_TANDA[x.status]}</span><div><div>${x.judul}</div>${x.status === 'belum' ? h`<div class="k">belum bisa diperiksa — ${x.sebab}</div>` : x.ket ? h`<div class="k">${x.ket}</div>` : ''}${x.status === 'beda' && x.rincian.length ? h`<div class="k">${x.rincian.join(' · ')}</div>` : ''}</div><div class="pst-n">${angka(x)}</div></div>`;
+    const kel = H.kelompok.map((g) => {
+      const nb = g.baris.filter((x) => x.status === 'beda').length, nq = g.baris.filter((x) => x.status === 'belum').length; const tampil = g.baris.filter((x) => s.pstRinci || x.status !== 'sama');
+      return h`<div data-k="pstk-${g.id}"><div class="label" style="font-size: 9.5px; margin-top: 4px;">${g.judul} · ${nb ? nb + ' beda' : nq ? nq + ' belum bisa diperiksa' : 'semua ' + g.baris.length + ' sama'}</div>${s.pstRinci && g.ket ? h`<div class="ket" style="font-size: 10.5px;">${g.ket}</div>` : ''}${tampil.map(baris)}</div>`;
+    });
+    return h`<div class="kartu ${H.nBeda ? 'awas' : ''}" data-k="tb-periksa" style="gap: 6px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;"><span class="label">Pemeriksaan sesudah tutup buku ${H.tahun}</span><span class="th-cap ${H.beres ? 'beres' : H.nBeda ? 'wajib' : 'dilewati'}">${H.beres ? 'beres' : H.nBeda ? H.nBeda + ' beda' : 'belum bisa'}</span></div>
+      <div style="font-weight: 700;" data-k="pst-ringkas">${H.ringkas}</div>
+      <div class="ket" style="font-size: 11px;">Diperiksa aplikasi sendiri dari data di perangkat ini (tidak membaca server lagi, tidak menulis apa pun) · ${tanggalPendek(H.diperiksa)} · berita acara ${H.status === 'selesai' ? 'selesai ' + tanggalPendek(H.selesai) : 'terkunci, belum selesai'}.</div>
+      ${H.petunjuk.map((p, i) => h`<div class="pita-info ${H.nBeda ? 'awas' : 'emas'}" data-k="pst-petunjuk-${i}">${p}</div>`)}
+      ${kel}
+      <div class="hg-pil"><div class="seg" data-aksi="pstRinci">${s.pstRinci ? 'sembunyikan baris yang sama' : 'lihat semua ' + H.n + ' baris'}</div><div class="seg aktif" data-aksi="pstUnduh">unduh hasil pemeriksaan (berkas)</div></div></div>`;
+  }
+
   // ---------- K6 · TUTUP BUKU (Berita Acara)
   function gambarBuku(s, L) {
     const T = BK.tahunBuku(kini()); const latihan = s.modeB === 'latihan'; const acara = T.acara; const terkunci = acara && acara.status === 'terkunci'; const selesai = acara && acara.status === 'selesai';
@@ -645,15 +687,15 @@ export function pasangLayarUang(akar, opsi) {
     const S1 = sobek('1', 'Periksa dulu', 'periksa', periksa), S2 = sobek('2', 'Cadangan sebelum mulai', 'cadangan1', cad1), S3 = sobek('3', 'Arsip', 'arsip', arsip), S4 = sobek('4', 'Saldo pembuka', 'saldo', saldo), SJ = h`<div class="th-sobek"></div>${jembatan}`, S5 = sobek('5', 'Paraf', 'paraf', paraf), S6 = sobek('6', 'Kunci tahun', 'kunci', kunci), S7 = sobek('7', 'Cadangan sesudahnya', 'cadangan2', cad2);
     const atur = s.aturB2 ? h`<div class="kartu" data-k="atur-b" style="gap: 8px;">${daftarAtur('Saksi (minimal satu)', s.aturB2.saksi, 'bkAturKetik', 'bkAturTambah', 'bkAturLepas', 'saksi', '', 'Nama orang yang ikut memaraf')}<div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAturB2">batal</div><div class="kaca-btn aktif emas" data-aksi="simpanAturB2">SIMPAN</div></div></div>` : h`<div class="kaca-btn kecil" data-aksi="bukaAturB2" style="align-self: flex-start;">Atur siapa saja saksinya · ${A.dariOwner ? 'diatur owner' : 'bawaan: karyawan'} ›</div>`;
     const kaki = h`<div class="ug-kaki">Ritual setahun sekali, dari SATU perangkat, dengan internet. Beda dengan sistem lama: catatan tahun lama dipindah ke arsip (bisa dikembalikan lewat "Batalkan"), bukan dihapus; saldo pembuka = dokumen yang sama persis; titik kas ditulis ulang di 31 Des dari saldo per tempat uang.</div>`;
-    const KM = BK.kemajuanBuku(); const SU = BK.susulanBuku();
+    const KM = BK.kemajuanBuku(); const SU = BK.susulanBuku(); const PS = kartuPeriksa(s);
     const pitaSusulan = SU ? h`<div class="kartu awas" data-k="tb-susulan" style="gap: 6px;"><div style="font-weight: 700;">${SU.teks}</div><div class="ket" style="font-size: 11.5px;">${SU.jalan}</div><div class="hg-pil"><div class="seg aktif" data-aksi="bkSusulanCatat">sudah dicatat</div></div></div>` : '';
     // putaran 4 P4-1: di perangkat yang BUKAN pemegang, pita hanya menampilkan keadaan + kalimat pemegangnya — tanpa tombol lanjutkan / batalkan / selesai;
     // satu-satunya tombol = ambil alih (P4-2, syaratnya dijaga logika)
     const bukanP = KM ? BK.bkBukanPemegang(KM.tahun, lokal()) : ''; const pitaBukan = h`<div class="ket" data-k="tb-pemegang">${bukanP}</div><div class="hg-pil"><div class="seg ${s.sibuk ? 'mati' : ''}" data-aksi="bkAmbilAlih">${KM && s.yakinAmbilB === KM.tahun ? 'ketuk sekali lagi · ambil alih' : 'ambil alih'}</div></div>`;
     const KB = h`${KM && KM.fase !== 'selesaikan' ? h`<div class="kartu awas" data-k="tb-lanjut" style="gap: 6px;"><div style="font-weight: 700;">${KM.teks}</div>${KM.total ? h`<div class="tb-progres"><i style="width: ${Math.round((KM.sudah || 0) / KM.total * 100)}%;"></i></div><div class="ket">${ANGKA(KM.sudah || 0)} / ${ANGKA(KM.total)} ${KM.fase === 'arsip' ? 'dokumen dipindah ke arsip' : 'saldo pembuka sudah masuk'}</div>` : ''}${bukanP ? pitaBukan : h`<div class="hg-pil"><div class="seg aktif ${s.sibuk ? 'mati' : ''}" data-aksi="bkLanjut">lanjutkan</div>${KM.fase !== 'batal' ? h`<div class="seg ${s.sibuk ? 'mati' : ''}" data-aksi="bkBatal">batalkan</div>` : ''}</div>`}</div>` : KM ? h`<div class="kartu" data-k="tb-selesaikan" style="gap: 6px;"><div style="font-weight: 700;">${KM.teks}</div>${bukanP ? pitaBukan : h`<div class="hg-pil"><div class="seg aktif ${s.sibuk ? 'mati' : ''}" data-aksi="bkCadangan" data-k-cad="cadangan2">unduh cadangan sesudah · selesai</div><div class="seg ${s.sibuk ? 'mati' : ''}" data-aksi="bkBatal">batalkan</div></div>`}</div>` : ''}${gambarKunci(s)}`;
-    if (L === 'hp') return h`<section data-k="k6">${pitaSusulan}${KB}${mode}${kertas(h`${S1}${S2}${S3}${S4}${SJ}${S5}${S6}${S7}`, true)}${atur}${kaki}</section>`;
-    if (L === 'tablet') return h`<section data-k="k6">${pitaSusulan}${KB}${mode}<div class="ug-grid tablet" style="grid-template-columns: 1fr 1fr;">${kertas(h`${S1}${S2}${S3}${S4}`, true)}${kertas(h`${jembatan}${S5}${S6}${S7}`)}</div>${atur}${kaki}</section>`;
-    return h`<section data-k="k6">${pitaSusulan}${KB}${mode}<div class="ug-grid mac tiga">${kertas(h`${S1}${S2}${S3}`, true)}${kertas(h`${S4}${SJ}`)}${kertas(h`${S5}${S6}${S7}`)}</div><div class="ug-grid tablet"><div class="ug-kolom">${kaki}</div><div class="ug-kolom">${atur}</div></div></section>`;
+    if (L === 'hp') return h`<section data-k="k6">${pitaSusulan}${PS}${KB}${mode}${kertas(h`${S1}${S2}${S3}${S4}${SJ}${S5}${S6}${S7}`, true)}${atur}${kaki}</section>`;
+    if (L === 'tablet') return h`<section data-k="k6">${pitaSusulan}${PS}${KB}${mode}<div class="ug-grid tablet" style="grid-template-columns: 1fr 1fr;">${kertas(h`${S1}${S2}${S3}${S4}`, true)}${kertas(h`${jembatan}${S5}${S6}${S7}`)}</div>${atur}${kaki}</section>`;
+    return h`<section data-k="k6">${pitaSusulan}${PS}${KB}${mode}<div class="ug-grid mac tiga">${kertas(h`${S1}${S2}${S3}`, true)}${kertas(h`${S4}${SJ}`)}${kertas(h`${S5}${S6}${S7}`)}</div><div class="ug-grid tablet"><div class="ug-kolom">${kaki}</div><div class="ug-kolom">${atur}</div></div></section>`;
   }
 
   K.dengar(gambar); dengarkan(() => nanti(gambar));

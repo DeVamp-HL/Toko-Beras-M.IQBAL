@@ -3,8 +3,8 @@
 // Aturan yang dipegang (semua sudah live di index.html; di sini diikuti, bukan diciptakan ulang):
 //  - nilai retur dihitung dari NOTA-nya lewat rtDasarNota() yang DIPINDAH VERBATIM (pembantu.js): hargaTotal − pembulatan,
 //    potongan nota diprorata, dibagi banyaknya; sisa yang boleh kembali = nota − yang sudah diretur di seluruh rantai koreksi;
-//  - hanya karung & kemasan; nota ber-bonus, nota perlu-koreksi DITOLAK di sini (di sistem lama ada jalan
-//    ketik-tangan; di sistem baru belum — layar menyuruh ke sistem lama, tidak menebak nilainya);
+//  - hanya karung & kemasan; nota ber-bonus, nota perlu-koreksi DITOLAK di sini (nilainya tidak ditebak) — jalannya "Tidak ada notanya? Retur ketik
+//    tangan" di /baru/ (putaran 20, susunReturTanpaNota; tinjauan MM7 2 Okt: dulu kalimatnya menunjuk layar Retur sistem lama yang sudah pensiun);
 //  - nota BON (audit 39b no. 37, keputusan owner 2 Okt 2026 "37 buka"): barang yang kembali MEMOTONG BON pembelinya — dokumen retur
 //    (nominalRefund 0 + potongBon) dan mutasi piutang tipe 'retur' lahir dalam SATU kiriman; tidak ada uang keluar laci, tidak bisa tukar,
 //    tidak boleh melebihi sisa bon orang itu (aturan yang sama dengan bayar & hapus buku; kelebihan bayar hanya untuk uang pelanggan sungguhan);
