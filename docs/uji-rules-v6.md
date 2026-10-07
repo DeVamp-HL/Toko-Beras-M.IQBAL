@@ -185,9 +185,16 @@ Satu saja ★ yang meleset = **jangan Publish**; kirim nomornya ke Claude Code. 
 ## Kalau sesudah v6 terbit tutup buku DITOLAK
 
 Kabar layar K6 menyebut kiriman ke-n "tulis ditolak: permission-denied" dan salinannya ada di Menu › Sistem › Perangkat (ditolak server). **Jangan
-tulis ulang kiriman tutup buku yang ditolak** dan jangan ketuk berulang-ulang: kirim kalimat kabar itu ke Claude Code. Penyebab yang diharapkan =
-kiriman yang memang telat (perangkat lain / percobaan lama) — itu yang dijaga v6. Penyebab lain (mis. jam perangkat) dibereskan dulu; bila perlu tempel
-`firestore.rules.v5`.
+tulis ulang kiriman tutup buku yang ditolak** dan jangan ketuk berulang-ulang. Sejak 13 Okt 2026 owner mengerjakannya sendiri:
+1. Catat kalimat kabarnya (foto layar untuk arsip sendiri). Penyebab yang diharapkan = kiriman yang memang telat (perangkat lain / percobaan lama) — itu
+   yang dijaga v6, dan pita tutup buku tetap benar: ikuti pitanya (Lanjutkan / Batalkan dari perangkat pemegang).
+2. Penyebab lain yang bisa dibereskan sendiri: **jam perangkat** (Setelan › Umum › Tanggal & Waktu → "Setel otomatis" di iPhone/iPad; Pengaturan Sistem ›
+   Umum › Tanggal & Waktu di Mac), lalu ketuk Lanjutkan sekali. Tetap ditolak → **Batalkan** dari perangkat pemegang, tunggu tuntas, coba lagi besok sesudah
+   reset kuota.
+3. Jalan terakhir (rules lama tanpa penjaga berita acara — hanya selama ritual): Console › Firestore › Rules → tempel isi `firestore.rules.v5` dari repo
+   (`git show origin/main:firestore.rules.v5 | LANG=en_US.UTF-8 pbcopy`) → **Publish** → catat jam → ulangi langkah ritual yang ditolak → sesudah ritual
+   tuntas tempel lagi `firestore.rules` dari repo (`git show origin/main:firestore.rules | LANG=en_US.UTF-8 pbcopy`) → **Publish** → cocokkan isi editor
+   dengan `shasum -a 256 firestore.rules` → catat jam. Tulis kejadiannya di `docs/peta-kunci-periode.md`.
 
 ## Hasil Playground
 

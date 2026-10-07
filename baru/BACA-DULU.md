@@ -879,6 +879,7 @@ Rapi di sini TIDAK mengubah hitungan apa pun — hanya tampilan:
   atas tetap.
 - `stok.js` rincian wadah: panel isi ulang paling atas; ganti nama, karung di belakang, buku per merek, karung sisihan terlipat di satu tombol
   (diingat per perangkat, `miqbal_rincian_wadah_lain_v1`); selisih catatan karung belakang tetap disebut satu baris di luar lipatan.
+
 ## Audit 39b no. 3 — uang QRIS selain penjualan ikut tutup hari; bayar bon di HP kasir memilih caranya sendiri (30 Sep 2026, cabang `audit/39b-bon-qris-tutup-hari`)
 
 Temuan PP-2: mesin (pembantu `daftarGerakanKas`, `kantongBayar`) memasukkan pembayaran bon dan kasbon kembali lewat QRIS ke REKENING, tetapi tutup
@@ -1221,6 +1222,7 @@ cadangan 1 Okt (semua wadah aktif): buku khusus wadah tidak dijual dari HP kasir
 Beranda dan Bon pemasok masih menulis "titik kas belum disetel di perangkat ini — setel di sistem lama". Sistem lama hanya-baca, dan titik yang disetel
 di sana cuma tersimpan di satu perangkat. Kini: "titik kas belum ada — Tutup hari malam ini (Uang › Tutup hari) menyetelnya" (dokumen titikKas satu
 untuk semua perangkat). Uji `uji_ringkasan_baru.py` +1 (pemeriksa kata di dua berkas), kontrol +1.
+
 ## Audit 39b no. 20 — Laporan menghitung NOTA, bukan baris (1 Okt 2026, cabang `audit/39b-nota-bukan-baris`)
 
 Temuan: Harian, teks WA, 14 hari, per jam, minggu, enam bulan, tahun, dan rekap omzet Pajak menyebut `jumlahTrx` mesin (jumlah BARIS penjualan)
@@ -1290,6 +1292,7 @@ Dua peninjau independen (uang; layar & uji). Yang ditambal:
 - Uji: nota HP kasir (grupNota saja) & nota bon; sisi MASUK kertas laci; asap Laporan kini mencari cadangan di `_privat/` (audit 39b no. 46 untuk
   uji ini); syarat SENGAJA asap global diperketat (selisih potongan QRIS = catatan yang diketik, dihitung ulang dari cadangan; hitungan nota > 0 dan ≤
   baris) — sabotase "semua catatan = potongan QRIS" dan "jumlah nota 0" kini GAGAL.
+
 ## Pindah balik buku karung yang tertinggal (keputusan owner 1 Okt 2026, cabang `perbaikan/karung-tertinggal`)
 
 Temuan di cadangan 1 Okt: 30 Sep beberapa karung di belakang wadah aktif "dikembalikan ke tumpukan" dengan kode LAMA (sebelum no. 5) yang tidak memindah
@@ -1661,6 +1664,7 @@ stok ×2, identitas) dibungkus `@media (hover: hover) and (pointer: fine)` di TE
   Jual) atau kalimat jujur (hapus uang keluar / batalkan bayar bon sesudah 90 detik, memberi tanggal bayar gaji baris lama: belum ada tombolnya).
   "Minta Claude" untuk memulihkan cadangan → catatan "Prosedur pulih darurat" (`docs/prosedur-pulih-darurat.md`; di layar disebut dengan nama, bukan
   jalur berkas).
+
 ## Paket Jual (owner 7 Okt 2026): batas nego per orang · keranjang bertahan saat dimuat ulang · simpan nota lebih cepat (cabang `perbaikan/jual-nego-keranjang`)
 
 **J1 · BATAS NEGO PER ORANG (JS2-C "Buku Nego", dikunci owner 18 Sep)** — `js/layar/nego-logika.js` (tanpa DOM), dipakai `jual-logika.js` (`terapkanNego`,
@@ -1955,3 +1959,49 @@ sampai 936×, buku stok mesin sampai 927×, `petaBukuWadah` 3.366×. Mesin beku 
     saat itu juga, tiap kasus wajib TAJAM (gambar segar memang berubah); indeks cincin 1× saat tahun berganti, 0× di detak biasa; +13 kontrol yang wajib
     berbunyi KARENA sebabnya (elemen ke-4 RUSAK). Kode sebelum sanggahan: 21/21 basi; main sebelum cabang ini: 12/21 basi (dasbor di detak menit, semua
     kasus layar lain — Menu dulu selalu digambar ulang, dasbor dulu disegarkan denyut HP).
+
+## Paket C — pemeriksaan sesudah tutup buku di aplikasi (8 Okt 2026, cabang `perbaikan/periksa-sesudah-tutup-buku`)
+
+Rencana tutup buku 2026 dulu memuat butir "cadangan SESUDAH diperiksa (hanya baca): baris perbandingan + modal, buku 25 kg di rak Jual, pajak 2026 dari
+potret, tidak ada minus" yang dikerjakan di luar aplikasi. Sesudah 13 Okt 2026 tidak ada lagi yang mengerjakannya → aplikasi memeriksa sendiri, owner
+cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `firestore.rules` tidak disentuh.
+- **Kartu "Pemeriksaan sesudah tutup buku <tahun>"** di Uang › Tutup buku (paling atas, sesudah pita catatan susulan; `uang.js kartuPeriksa`). Tampil
+  sesudah tahun dikunci & arsipnya habis (fase selesaikan), lalu sepanjang Januari–Februari tahun berikutnya — atau 30 hari sesudah tanggal selesai bila
+  ritualnya telat. Tahun = tahun TERAKHIR yang berita acaranya terkunci / selesai (dibaca dari berita acara, bukan era: penanda yang hilang tetap berbunyi).
+  Juga untuk tutup buku tahun-tahun berikutnya.
+- **Logika** `layar/periksa-sesudah-logika.js` (tanpa DOM, awalan `pst`): `pstTahun`, `pstPeriksa(kini, muat)`, `pstBerkas`. HANYA MEMBACA cache — tanpa baca
+  server tambahan, tidak menulis apa pun. Tiga keadaan per baris: **sama ✓** · **beda ✗** (dua angkanya) · **belum bisa diperiksa ?** (sebabnya; BUKAN
+  lulus). Keadaan muat dari `app.js lokalPerangkat` (`koleksiSiap / koleksiTotal / ditolak`) dan antrean tutup buku (`kemajuanBuku` fase tunggu).
+- **24 baris dalam 6 kelompok** (kotak pasir & cadangan 6 Okt):
+  1. baris perbandingan sebelum = sesudah ritual (11) — `bkPeriksaDipakai` (hasil yang DIBEKUKAN saat arsip habis, `pengaturan/periksaArsip<tahun>`; tidak
+     ada → `periksaUlangBuku`, uang per tempat yang tidak bisa dihitung mundur = "?"). Sekarang diekspor dan membawa `beku` (tanggal dibekukan).
+  2. modal owner: `modalTertanam(31 Des)` sesudah ritual (= saldo pembuka modal) vs modal di neraca 31 Des POTRET (tanpa potret: `acara.modal`).
+  3. saldo pembuka, buku 25 kg & rak Jual (4): (a) dokumen pembuka di rencana kiriman berita acara ada & terlihat mesin, dijumlah lagi dengan rumus langkah
+     4 (`sesudahDariPembuka`) = sisi "sebelum" berita acara; (b) buku beras per merek & (c) kemasan jadi per produk SAAT TAHUN BARU DIBUKA = ringkasan
+     saldo pembuka yang dibekukan di berita acara; (d) tanda buku dibaca lagi (25 kg, wadah, karung wadah, adukan, karung belakang, digabung) & `susunRak`
+     (identitas) menampilkan buku 25 kg atas nama induknya, buku khusus bukan chip karung, merek berharga tidak hilang (tanpa harga / diarsipkan disebut).
+     "Saat dibuka" = `toko.js denganCacheSaring` (BARU): koleksi gerak (daftar `tbDaftarKoleksi`) disaring SEMENTARA tinggal saldo pembuka tahun itu,
+     tanpa memberi tahu pendengar, dikembalikan persis sesudahnya (pola `denganCacheSementara`; `_versiCache` naik 2×). Isian `#jualKarungBerat` dikembalikan.
+  4. pajak dari potret (4): 12 bulan lengkap · omzet Laporan › Pajak = `potret.pajak.totalSistem` · setoran per masa = potret (yang dicatat pada/sesudah
+     hari tutup buku boleh menambah) · 12 masa bertanda tutup buku & tahun itu bisa dipilih. Potret dibaca LANGSUNG dari berita acara (bukan `potretTahun`,
+     yang ikut era).
+  5. tidak ada stok minus di saldo pembuka (merek, wadah, kemasan, kantong — `minusBuku`, gerbang g6). Minus HARI INI karena catatan sesudahnya hanya disebut.
+  6. utang pemasok, utang toko ke owner, piutang pelanggan — baris yang SAMA dengan kelompok 1 (dipindah, tidak dihitung dua kali).
+- **Ringkasan**: "Semua 24 pemeriksaan sama — tutup buku 2026 beres" · "K pemeriksaan beda — jangan jualan/menagih dulu, lihat barisnya" · "M dari N
+  pemeriksaan belum bisa diperiksa — …". Petunjuk per jenis beda tanpa orang luar: belum selesai = batalkan di pita lalu ulangi; sudah selesai = catatan
+  HARI INI (Cocokkan, bon) atau jalan pulang darurat ("Prosedur pulih darurat"). Tombol **unduh hasil pemeriksaan (JSON)**
+  (`pemeriksaan-tutup-buku-<tahun>-miqbal.json`) — disimpan bersama cadangan SESUDAH; **lihat semua N baris** (bawaan: yang sama disembunyikan).
+- **Berita acara** membawa `pembukaRingkas` (`tutup-buku-logika.js ringkasPembuka`: baris saldo pembuka per buku — merek, satuan, berat, kg, tanda — &
+  kemasan per produk; larik objek, beberapa KB), supaya dokumen pembuka yang kelak hilang / berubah tetap ketahuan. Rules tidak membatasi kolom berita acara.
+- **Kalimat layar tanpa orang luar**: potret gagal disusun (latihan & kunci) tidak lagi "kirim tangkapan layar / sampai dibetulkan" → `bkKalimatTanpaPotret`
+  (buka lagi aplikasinya & ulangi; kalau tetap gagal jangan dipaksakan — toko tetap berjualan dengan buku tahun itu terbuka, cadangan + PDF Rekap pajak &
+  Laporan Tahunan; kunci bulan tahun baru menunggu).
+- **MM7 (sisa audit 39b)**: kalimat daftar Retur untuk nota ber-bonus sudah menunjuk "Tidak ada notanya? Retur ketik tangan" di `/baru/` sejak 2 Okt
+  (9686b61; ketik tangan menerima kemasan per unit). Komentar kepala `retur-logika.js` yang masih menyebut sistem lama dibetulkan. Tidak ada kalimat layar
+  `/baru/` lain yang menyuruh membuka sistem lama / `kasir.html`.
+- Dijaga `alat-uji/uji_periksa_sesudah.py` (kotak pasir potret + buku khusus; ritual = simulator `uji_potret_tahun.py` + hasil beku + selesai): semua sama
+  (dan tetap sama 20 Jan sesudah penjualan Januari), kapan tampil, kontrol kotak per baris (modal pembuka diubah, merek pembuka dihapus, tanda 25 kg lepas,
+  chip hilang, potret bulan hilang / omzetnya berubah, stok minus disuntik, piutang pembuka diubah sesudah & sebelum dibekukan, penanda hilang, setoran
+  dipotret hilang), belum bisa diperiksa (belum dimuat, ditolak, sebagian, menunggu server, titik kas sudah maju, tanpa patokan / potret / ringkasan),
+  `uang.js` ASLI digambar di jsc (Mac/tablet/HP, ✓/✗/?) + statis; `--kontrol`; `--cadangan=<lokal>` (dilewati di CI): semua sama pada 5 Jan & 20 Feb 2027.
+  `uji_kinerja_gerak`: jumlah `_versiCache += 1` di toko.js 5 → 7 (jalan baru `denganCacheSaring`).

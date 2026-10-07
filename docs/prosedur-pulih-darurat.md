@@ -31,7 +31,7 @@
 - [BELUM TERVERIFIKASI] Apakah kunci API web Firebase dibatasi referrer/domain. Kalau ya, masuk dari `localhost` ditolak — periksa dulu di Console
   (Authentication › Settings › Authorized domains; Google Cloud › Credentials) sebelum jendela darurat dibuka.
 
-## Langkah (owner yang menempel aturan; Claude hanya membaca dan memeriksa)
+## Langkah (semua dikerjakan owner sendiri — sejak 13 Okt 2026 tidak ada pemeriksa dari luar; yang bisa diperiksa aplikasi disebut di langkahnya)
 
 0. **Sebelum mulai**
    - Unduh cadangan keadaan sekarang (Menu › Sistem › Cadangan di `/baru/`), walaupun datanya sedang kacau — **dua kali cadangan**: sebelum dan sesudah.
@@ -73,6 +73,8 @@
 5. **Periksa & catat.**
    - Unduh cadangan kedua (sesudah).
    - Di `/baru/`: daftar periksa kunci bulan, dan angka bulan terkunci (laba, neraca) — bandingkan dengan sebelum kejadian.
+   - Kalau kejadiannya sesudah tutup buku (Januari–Februari, atau sebelum berita acara "selesai"): Uang › Tutup buku › kartu **Pemeriksaan sesudah tutup
+     buku** harus kembali "Semua … pemeriksaan sama". Unduh hasilnya (tombol "unduh hasil pemeriksaan (JSON)") dan simpan bersama cadangan kedua.
    - Tulis kejadiannya di `docs/peta-kunci-periode.md`: tanggal, jam buka dan tutup jendela darurat, alasan, berkas cadangan yang dipakai, dan siapa
      yang menempel aturan.
 
@@ -125,7 +127,8 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 
 - Tidak ada tombol, dan aturan server (v6) menolak berita acara `selesai` diubah dari aplikasi. **Anggap tahun itu final:** kesalahan yang ketahuan
   belakangan dibetulkan dengan catatan HARI INI (Stok › Cocokkan, bayar bon, catat bon yang terlupa) — bukan dengan membuka tahun lama.
-- Jalan pulang darurat (keputusan owner; belum pernah diuji di server; Claude hanya membaca & memeriksa):
+- Jalan pulang darurat (keputusan owner; belum pernah diuji di server; dikerjakan owner sendiri lewat Console — tidak ada pemeriksa dari luar sesudah
+  13 Okt 2026; yang dicocokkan sesudahnya ada di langkah 5):
   1. Unduh cadangan keadaan sekarang — dua kali (sebelum & sesudah).
   2. Lewat Console, hapus saldo pembuka tahun itu: dokumen ber-`tutupBuku: true` dan `tahunDari: <tahun>` di `batchMasuk` (batch `penandaBuku`
      PERTAMA), `piutangMutasi`, `kasbonMutasi`, `produksiKemasan`, `stokBahanKemasan`, `stokBahanLiteran`, `utangPemasokMutasi`, `utangOwnerMutasi`,
@@ -135,7 +138,8 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
      langkah 2, dan hanya 27 koleksi lama yang pulih.
   4. Lewat Console: `pengaturan/tutupBuku` (`tahunDitutup` = tahun sebelumnya) dan berita acara (`status: 'dibatalkan'`). Titik kas: tulis ulang dari
      hitungan laci terakhir.
-  5. Cocokkan 14 baris (Uang › Tutup buku, latihan) dengan berita acara lama, lalu catat kejadiannya di `docs/peta-kunci-periode.md`.
+  5. Cocokkan 14 baris (Uang › Tutup buku, latihan) dengan berita acara lama, lalu catat kejadiannya di `docs/peta-kunci-periode.md`. Kalau sesudahnya
+     tutup buku tahun itu diulang sampai selesai, kartu **Pemeriksaan sesudah tutup buku** harus "Semua … pemeriksaan sama" (lihat bab di bawah).
 - Bulan yang sudah dikunci tidak bisa ditulis siapa pun. Kunci Januari tahun baru baru boleh **sesudah** tutup buku selesai (daftar periksa kunci bulan
   menolak sendiri) — jadi kalau jalan pulang ini dipakai, jalankan SEBELUM ada bulan tahun baru yang dikunci.
 
@@ -155,7 +159,9 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       kelak tidak terbaca.
 - [ ] LATIHAN sekali (16–30 Des). Layar selalu membuka di LATIHAN. Langkah 6 (Kunci) latihan menyusun **potret 2026** tanpa menulis apa pun dan
       menyebut hasilnya ("Potret 2026: 12 bulan & … hari berjualan · omzet sistem … · laba bersih … · neraca 31 Des …"). "Potret 2026 GAGAL" = kunci
-      sungguhan akan DITOLAK sampai dibetulkan — kirim tangkapan layarnya.
+      sungguhan akan DITOLAK. Yang bisa dikerjakan sendiri: tutup lalu buka lagi aplikasinya, ulangi latihan sekali. Kalau tetap GAGAL: tutup buku 2026
+      jangan dipaksakan — toko tetap boleh berjualan dengan buku 2026 terbuka (Laporan & Pajak 2026 tetap membaca catatannya), simpan PDF Rekap pajak &
+      Laporan Tahunan 2026 dan cadangan; kunci bulan Januari 2027 menunggu sampai tutup buku 2026 selesai (daftar periksa kunci bulan menolak sendiri).
 - [ ] 31 Des malam: Menu › Sistem › Perangkat — tiap perangkat antrean 0 dan ditolak 0; HP penjaga lalu dimatikan.
 
 **1 Jan 2027 (Jumat, toko tutup), sesudah 15.00 WIB:**
@@ -171,7 +177,15 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] Langkah 5: paraf owner + saksi. Langkah 6: kunci (dua ketukan) → tunggu kiriman & arsip habis. Terhenti → Lanjutkan dari perangkat yang sama.
 - [ ] Pita "terkunci dan arsipnya habis … semua baris sama" → cocokkan utang pemasok & utang toko ke owner dengan catatan kertas.
 - [ ] Pita catatan susulan ("… masuk SESUDAH tutup buku …") → ikuti jalannya, ketuk "sudah dicatat".
-- [ ] Langkah 7: cadangan SESUDAH & selesai. Salin cadangan SEBELUM, berkas arsip, dan cadangan SESUDAH ke ≥ 2 tempat di luar Mac (simpan 10 tahun).
+- [ ] **Kartu "Pemeriksaan sesudah tutup buku 2026"** (paling atas di Uang › Tutup buku, muncul sendiri begitu arsip habis) — ini pengganti pemeriksaan
+      cadangan SESUDAH yang dulu dikerjakan di luar aplikasi. Harus berbunyi **"Semua 24 pemeriksaan sama — tutup buku 2026 beres"** (jumlahnya bisa beda
+      kalau barisnya bertambah; yang penting "Semua … sama"). Lihat bab "Pemeriksaan sesudah tutup buku" di bawah untuk arti tiap baris dan jalannya.
+      - "… pemeriksaan beda — jangan jualan/menagih dulu" → JANGAN ketuk "selesai". Ikuti petunjuk di kartu: batalkan (pita, dua ketukan, dari perangkat
+        yang memulai), tunggu tuntas, ulangi ritual dari langkah 1.
+      - "… belum bisa diperiksa" → BUKAN lulus. Tunggu sampai data selesai dimuat & antrean kosong (Menu › Sistem › Perangkat), lalu buka Tutup buku lagi.
+- [ ] Langkah 7: cadangan SESUDAH & selesai. Lalu di kartu pemeriksaan ketuk **"unduh hasil pemeriksaan (JSON)"**
+      (`pemeriksaan-tutup-buku-2026-miqbal.json`). Salin cadangan SEBELUM, berkas arsip, cadangan SESUDAH, dan hasil pemeriksaan ke ≥ 2 tempat di luar Mac
+      (simpan 10 tahun).
 
 **Sesudahnya:**
 - [ ] Laporan › Pajak membuka **2026** dengan sendirinya selama Januari–Maret masih ada masa terutang (pilihan tahun di atas kartu). Angka sistem 2026 =
@@ -186,12 +200,45 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] Bon pelanggan langganan, saran belanja (laju 14 hari), dan daftar pelanggan memakai ringkasan tahun 2026 yang dibawa batch penanda — tidak
       perlu membuka kredit per nota sampai April.
 - [ ] Kunci bulan Januari 2027 paling cepat 4 Feb, HANYA sesudah tutup buku 2026 "selesai" (daftar periksa kunci bulan menolak sendiri, Beranda
-      tidak menyuruh mengunci selama itu).
+      tidak menyuruh mengunci selama itu). Sebelum mengetuk kunci: buka Uang › Tutup buku sekali lagi — kartu **Pemeriksaan sesudah tutup buku 2026**
+      (tampil sampai akhir Februari) harus tetap "Semua … sama". Kuncinya sendiri di kartu **Kunci bulan** di layar yang sama: centang butir yang diminta,
+      putuskan tiap hari tanpa tutup hari, lalu "KUNCI JANUARI 2027" dua ketukan. Tidak butuh Console.
 - Saldo pembuka **modal owner** bertanggal 31 Des 00.00 (`modalOwner`, `tutupBuku: true`) membawa JUMLAH modal yang tertanam — bukan setoran atau
   penarikan. Ambil pribadi Desember, buku Owner & toko ("Modal owner dibawa dari tahun lalu"), bukti setoran, dan buku kas harian 31 Des tidak
   menghitungnya sebagai gerakan uang. Laporan arus kas mesin (Desember / 31 Des tahun yang sudah ditutup) masih menyebutnya "Modal owner disetor/
   ditarik — Saldo pembuka…": itu **bukan** uang yang bergerak; angka tahun yang ditutup dibaca dari berita acara sampai layar Laporan & Pajak bisa
   membaca tahun yang ditutup (paket B).
+
+## Pemeriksaan sesudah tutup buku — kartu di Uang › Tutup buku (Paket C, 8 Okt 2026)
+
+Pengganti butir "cadangan SESUDAH diperiksa (hanya baca)" di rencana tutup buku: aplikasi memeriksa sendiri, owner membaca hasilnya. Kartu
+**"Pemeriksaan sesudah tutup buku <tahun>"** muncul begitu tahun dikunci & arsipnya habis, dan tetap ada sepanjang Januari–Februari tahun berikutnya
+(ritual telat: 30 hari sesudah selesai). Tahun berikutnya pun sama (tahun = yang terakhir ditutup). Kartu HANYA MEMBACA data yang sudah ada di perangkat:
+tidak membaca server lagi, tidak menulis apa pun.
+
+**Tiga keadaan tiap baris** — ✓ **sama** · ✗ **beda** (dua angkanya: sebelum → sesudah) · ? **belum bisa diperiksa** (sebabnya ditulis). "?" BUKAN lulus.
+Ringkasan di atas: "Semua N pemeriksaan sama — tutup buku 2026 beres", "K pemeriksaan beda — jangan jualan/menagih dulu, lihat barisnya", atau "M dari N
+pemeriksaan belum bisa diperiksa …". Tombol "lihat semua N baris" menampilkan baris yang sama; "unduh hasil pemeriksaan (JSON)" menyimpan hasilnya
+(`pemeriksaan-tutup-buku-<tahun>-miqbal.json`) — simpan bersama cadangan SESUDAH.
+
+| Kelompok | Yang diperiksa | Kalau ✗ beda |
+|---|---|---|
+| 1 · Baris perbandingan | stok beras, kemasan, kantong, kasbon, uang per tempat, modal, upah belum dibayar: angka mesin sebelum = sesudah ritual pada hari tutup buku (hasil yang dibekukan saat arsip habis) | belum selesai → batalkan di pita, ulangi; sudah selesai → lihat "Jalan keluar" |
+| 2 · Modal owner | saldo pembuka modal (dibaca mesin) = modal di neraca 31 Des yang tersimpan di potret | sama |
+| 3 · Saldo pembuka & rak Jual | semua saldo pembuka yang direncanakan berita acara ada di buku, dijumlah lagi = berita acara 31 Des; buku beras per merek & kemasan per produk saat tahun baru dibuka = ringkasan saldo pembuka di berita acara; tanda buku 25 kg / wadah / adukan / karung belakang terbaca; buku 25 kg tampil di rak Jual atas nama induknya, merek berharga tidak hilang dari rak | jangan jual merek yang disebut; jalan seperti kelompok 1 |
+| 4 · Pajak dari potret | 12 bulan potret lengkap; omzet Laporan › Pajak = potret; setoran yang tercatat saat dikunci masih ada (setoran sesudahnya boleh menambah); 12 masa bertanda "tutup buku" | SPT & setoran Desember pakai PDF Rekap pajak + Laporan Tahunan yang disimpan sebelum ritual; setoran yang hilang dicatat lagi dari bukti setornya (NTPN) di Laporan › Pajak |
+| 5 · Stok minus | saldo pembuka tidak membawa stok minus (merek, wadah, kemasan, kantong). Minus HARI INI karena catatan sesudahnya disebut di keterangan, bukan ✗ | hitung isinya di Stok › Cocokkan / Stok › Kantong |
+| 6 · Utang & piutang | utang pemasok, utang toko ke owner, piutang pelanggan sebelum = sesudah ritual (baris yang sama dengan kelompok 1, tidak dihitung dua kali) | cocokkan dengan catatan kertas; jalan seperti kelompok 1 |
+
+**Jalan keluar (tanpa orang luar):**
+- Berita acara **belum selesai** (pita "terkunci dan arsipnya habis"): JANGAN ketuk "selesai". Ketuk **batalkan** di pita (dua ketukan, dari perangkat yang
+  memulai), tunggu sampai tuntas, ulangi ritual dari langkah 1 — kuotanya lihat "Kalau dibatalkan sesudah arsip" di langkah 1.
+- Berita acara **sudah selesai**: beda kecil yang jelas sebabnya dibetulkan dengan catatan HARI INI (Stok › Cocokkan, catat bon / bayar bon yang terlupa).
+  Beda besar → bab "Jalan mundur tutup buku" no. 3 (lewat Console).
+- **"? belum bisa diperiksa"**: tunggu data selesai dimuat & antrean kosong (Menu › Sistem › Perangkat), buka Tutup buku lagi. Kalau sebabnya "titik kas
+  sudah maju": angka "sebelum" di baris uang dicocokkan sendiri dengan hitungan tutup hari tanggal itu (Uang › Tutup hari › riwayat).
+- Kartu menulis "Pemeriksaan tidak bisa dijalankan di perangkat ini": tutup lalu buka lagi aplikasinya sekali; kalau tetap, pegangannya pita tutup buku
+  ("… semua baris sama") dan kedua berkas cadangan.
 
 ## Buntu Januari 2028 — dicatat, BELUM dibangun (7 Okt 2026)
 

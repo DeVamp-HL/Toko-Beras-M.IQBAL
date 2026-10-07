@@ -234,6 +234,9 @@ wadah satu buku 134, kinerja gerak 74, tata letak 37/17/9, periksa impor/komenta
 5. **Latihan:** mode LATIHAN K6 (tidak menulis) + uji kotak pasir CI sudah mencakup logikanya. Proyek Firebase uji untuk gladi sungguhan = belum ada jalurnya
    (aplikasi satu konfigurasi); tidak wajib. Sesudah terbit: owner menjalankan LATIHAN sekali di Desember (daftar periksa & 12 baris).
 6. **Tugas data:** tidak ada sekarang. Sesudah terbit, cadangan sesudah tiap tutup hari Desember tetap wajib (dua cadangan K6).
+7. **Sesudah ritual (Paket C, 8 Okt 2026):** pemeriksaan cadangan SESUDAH tidak lagi dikerjakan di luar aplikasi. Owner membaca kartu **Pemeriksaan sesudah
+   tutup buku** di Uang › Tutup buku (§12) sebelum mengetuk "selesai", mengunduh hasilnya (JSON) bersama cadangan SESUDAH, dan membukanya lagi sebelum
+   mengunci Januari (≥ 4 Feb). Langkah lengkap: `docs/prosedur-pulih-darurat.md` (daftar periksa ritual & bab "Pemeriksaan sesudah tutup buku").
 
 ---
 
@@ -452,3 +455,20 @@ Yang tetap diakui:
 - Potongan yang diarsipkan lagi memakai isi yang dibaca HP lama saat pembatalannya dimulai; koreksi atas catatan yang sama di antara pembatalan dan
   percobaan baru tidak ikut (potongan yang mendarat sudah menimpanya).
 - Arsip ulang yang gagal (sinyal putus, bulan terkunci K1) hanya dicatat di konsol; kalimat berhenti tetap tampil.
+
+## 12. Paket C (8 Okt 2026): pemeriksaan sesudah tutup buku DI APLIKASI
+
+Langganan pembantu kode owner berakhir 13 Okt 2026. Rencana tutup buku 2026 (audit kesiapan, bagian 1–10 Jan 2027) masih memuat butir "cadangan SESUDAH
+diperiksa (hanya baca): semua baris perbandingan + modal, buku 25 kg di rak Jual, pajak 2026 dari potret, tidak ada minus" yang dikerjakan di luar aplikasi.
+Butir itu sekarang dikerjakan aplikasi; owner membaca kartunya. Cabang `perbaikan/periksa-sesudah-tutup-buku` (di atas Paket B #114). Mesin beku & rules
+tidak disentuh.
+
+- **Kartu** "Pemeriksaan sesudah tutup buku <tahun>" di Uang › Tutup buku: tampil di fase selesaikan (terkunci, arsip habis) dan sepanjang Januari–Februari
+  tahun berikutnya (ritual telat: 30 hari sesudah selesai). Tahun = berita acara terkunci/selesai TERAKHIR (bukan era — penanda yang hilang tetap berbunyi).
+- **Hanya membaca cache**; koleksi yang belum dimuat / ditolak server / masih menunggu server = "belum bisa diperiksa" (bukan lulus). 24 baris, 6 kelompok:
+  baris perbandingan (`bkPeriksaDipakai`, hasil beku §10 UTBU-1) · modal pembuka = neraca 31 Des potret · saldo pembuka & rak Jual & buku 25 kg saat tahun
+  baru DIBUKA (koleksi gerak disaring sementara tinggal saldo pembuka — `toko.js denganCacheSaring`) · pajak dari potret · stok minus di saldo pembuka ·
+  utang & piutang (baris kelompok pertama yang sama).
+- **Berita acara** kini membawa `pembukaRingkas` (`ringkasPembuka`: baris saldo pembuka per buku & kemasan per produk) — pembanding beku untuk kartu.
+- Rinci: `baru/BACA-DULU.md` (Paket C) · langkah owner: `docs/prosedur-pulih-darurat.md` · uji: `alat-uji/uji_periksa_sesudah.py` (+ `--kontrol`,
+  `--cadangan=` lokal).
