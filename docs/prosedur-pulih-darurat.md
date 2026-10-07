@@ -32,7 +32,8 @@
 - **Kunci API web Firebase DIBATASI referrer.** Terbukti 1 Okt 2026: masuk dari pratinjau `localhost` (port lain) dijawab 403 "Requests from referer …
   are blocked". `localhost:8731` belum pernah dicoba — anggap ditolak sampai terbukti bisa masuk. Tempat memeriksa & mengubahnya: Google Cloud Console ›
   APIs & Services › Credentials › kunci browser ("Browser key …") › Website restrictions. "Authorized domains" (Authentication › Settings) TIDAK berlaku
-  untuk masuk email + sandi. Jalannya: langkah 0, butir terakhir.
+  untuk masuk email + sandi. Jalannya: langkah 0, butir terakhir. Daftarnya dilihat (hanya dilihat) paling lambat 15 Des — butir di daftar periksa ritual
+  tutup buku.
 
 ## Langkah (semua dikerjakan owner sendiri — sejak 13 Okt 2026 tidak ada pemeriksa dari luar; yang bisa diperiksa aplikasi disebut di langkahnya)
 
@@ -61,13 +62,16 @@
    - **Izinkan `localhost:8731` di kunci API (bersyarat — lihat "Keterbatasan").** Kalau kunci browser memakai Website restrictions dan daftarnya
      belum memuat `http://localhost:8731/*`: TAMBAHKAN satu baris itu (baris lain jangan diubah) → Save, catat jamnya; perubahannya bisa butuh beberapa
      menit sampai berlaku. (Kuncinya tidak dibatasi sama sekali → lewati butir ini: menambah satu baris justru membatasi kunci itu ke `localhost` saja.)
-     Lalu coba masuk SEBELUM langkah 1: jalankan server sistem lama (langkah 2, baris pertama) dan masuk dengan akun owner — masuk tidak butuh aturan
-     darurat. Ditolak (pesannya menyebut referer / 403) → tunggu beberapa menit, coba sekali lagi; tetap ditolak → jendela darurat (langkah 1) jangan
-     dibuka. Baris itu (hanya baris itu) DICABUT lagi di langkah 3.
+     Lalu coba masuk SEBELUM langkah 1: jalankan server sistem lama (perintah `python3 -m http.server …` di langkah 2) dan masuk dengan akun owner —
+     masuk tidak butuh aturan darurat. Ditolak (pesannya menyebut referer / 403) → tunggu beberapa menit, coba sekali lagi; tetap ditolak → jendela
+     darurat (langkah 1) jangan dibuka, prosedur BERHENTI di sini: cabut baris `localhost:8731/*` itu sekarang (Save), catat jamnya, matikan server.
+     Masuk berhasil → tab itu sudah memuat seluruh data sistem lama sekali (≈ 7,4 rb baca): biarkan TETAP TERBUKA, jangan dimuat ulang, dan pakai tab
+     itu juga untuk langkah 2. Baris itu (hanya baris itu) DICABUT lagi di langkah 3.
 1. **Pasang aturan darurat.** Console › Firestore › Rules → tempel isi `firestore.rules.v3` → **Publish**. Catat jam. Sidik v3 yang benar:
    SHA-256 berawalan `32c55d58`.
 2. **Pulihkan.**
-   - Di folder sistem lama: `python3 -m http.server 8731 --bind 127.0.0.1` → buka `http://localhost:8731/index.html`, masuk dengan akun owner.
+   - Tab sistem lama yang sudah masuk di langkah 0 masih terbuka → pakai tab itu (jangan dimuat ulang). Kalau belum ada: di folder sistem lama
+     `python3 -m http.server 8731 --bind 127.0.0.1` → buka `http://localhost:8731/index.html`, masuk dengan akun owner.
      Simpanan lokal peramban untuk alamat `localhost` kosong — itu wajar.
    - Gerbang "Sistem utama khusus owner" → tombol **Owner** → ketik PIN owner (lihat langkah 0). Seluruh sistem lama, termasuk Setelan › Muat
      cadangan, ada di balik gerbang ini.
@@ -91,14 +95,23 @@
      Playground (`getAfter`, *timestamp* ketikan), sebagian butuh dokumen uji U1–U11 — dan dokumen uji tidak boleh dibuat (lihat "Yang tidak boleh").
    - (d) Satu nota dari kasir darurat (HP penjaga) → masuk di Jual `/baru/`.
 
-   Ada yang tidak sesuai → tempel lagi `firestore.rules` dari repo → Publish, ulangi (a)–(d) **sekali**. Masih tidak sesuai → berhenti menempel (jangan v3
-   lagi, jangan v6): biarkan yang terpasang, tulis hal yang tidak sesuai + tangkapan layarnya di catatan langkah 5. Kalau yang gagal (d): penjaga mencatat
-   di kertas, owner memindahkannya ke `/baru/`.
+   Ada yang tidak sesuai → tempel lagi `firestore.rules` dari repo → Publish, ulangi (a)–(d) **sekali**. Masih tidak sesuai:
+   - **(b) baris 2 BUKAN `ATURAN FIRESTORE v7 FINAL`** (aturan darurat atau aturan lain masih terpasang) → JANGAN berhenti. Salin ulang dengan
+     `git show origin/main:firestore.rules | LANG=en_US.UTF-8 pbcopy`, tempel, Publish, baca pesan galat Publish kalau ada, ulangi sampai baris 2 =
+     v7 FINAL. Selama itu penjaga tetap berhenti mencatat dan aplikasi di perangkat lain jangan dibuka: aturan darurat tidak boleh tertinggal (lihat
+     "Yang tidak boleh").
+   - **Baris 2 = `ATURAN FIRESTORE v7 FINAL`**, bedanya hanya di sidik / komentar (a) atau di (c) / (d) → berhenti menempel (jangan v3 lagi, jangan v6):
+     biarkan yang terpasang, tulis hal yang tidak sesuai + tangkapan layarnya di catatan langkah 5. Kalau yang gagal (d): penjaga mencatat di kertas,
+     owner memindahkannya ke `/baru/`.
 5. **Periksa & catat.**
    - Unduh cadangan kedua (sesudah).
    - Di `/baru/`: daftar periksa kunci bulan, dan angka bulan terkunci (laba, neraca) — bandingkan dengan sebelum kejadian.
    - Kalau kejadiannya sesudah tutup buku (Januari–Februari, atau sebelum berita acara "selesai"): Uang › Tutup buku › kartu **Pemeriksaan sesudah tutup
      buku** harus kembali "Semua … pemeriksaan sama". Unduh hasilnya (tombol "unduh hasil pemeriksaan (berkas)") dan simpan bersama cadangan kedua.
+   - Masuk ke sistem lama ikut menulis denyut perangkat (sistem lama di `localhost`, tanpa nama). Sesudah 24 jam: Uang › Tutup buku › kartu **Kunci
+     bulan**, butir "Semua perangkat berdenyut dalam 24 jam terakhir" → ketuk "<…> sudah tidak dipakai" untuk perangkat itu (dua ketukan). Tanpa itu
+     butir ⛔ itu menahan kunci bulan, dan daftar siap-nyala hemat baca menyebut "sistem lama berdenyut" selama 7 hari. Tombolnya tidak muncul → jalannya
+     di butir "Perangkat hilang atau rusak" (daftar periksa ritual, Sampai 31 Des).
    - Tulis kejadiannya di `docs/peta-kunci-periode.md`: tanggal, jam buka dan tutup jendela darurat, alasan, berkas cadangan yang dipakai, siapa
      yang menempel aturan, jam `localhost:8731` ditambah & dicabut di kunci API (kalau langkah 0 memakainya), dan hasil langkah 4.
 
@@ -186,17 +199,25 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
         kecilkan `nominal` (atau hapus) dokumen pembayaran orang itu (`tipe` "bayar", bertanggal ≤ 31 Des) sebesar kelebihannya. Hapus buku yang
         ternyata dibayar: kecilkan / hapus dokumen `tipe` "hapusBuku" orang itu sebesar yang dibayar. Sesudahnya tekan **"saya baru mengubah data lewat
         Console"** (Menu › Toko ini › Perangkat & antrean › Hemat baca) dan periksa g6 di LATIHAN.
-- [ ] Semua karcis kasir darurat dirinci; nama kembar disatukan; piutang lama diputuskan.
+        Console hanya membereskan sisi bon, bukan sisi laci. Uang yang dikembalikan tunai tidak punya catatan di sistem baru, jadi tutup hari pada hari
+        uangnya diserahkan KURANG sebesar itu: pilih alasan yang paling dekat (bawaan: "Ada pengeluaran belum dicatat") dan tulis di kertas untuk
+        konsultan (tanggal, nama, berapa). Laba bersih bulan itu ikut turun sebesar itu di baris "Lebih/kurang kas", padahal bukan rugi toko. Bayar
+        ganda (tercatat dua kali, uangnya sekali): tutup hari tanggal aslinya sudah menyimpan selisih kurang itu, dan selisihnya tidak hilang walau
+        bayarnya dikecilkan — sebut juga ke konsultan.
+      - **Pencegahan:** jangan mencatat bayar bon atau hapus buku untuk SATU nama dari dua perangkat sekaligus, atau dari perangkat yang tanpa internet.
+- [ ] Semua karcis kasir darurat dirinci; nama kembar disatukan; piutang lama (piutang mati) diputuskan jauh sebelum latihan 16 Des.
 - [ ] **Karcis kasir darurat yang isinya tidak sama dengan nominalnya — DIPUTUSKAN owner 8 Okt 2026: diterima apa adanya, per kelompok.** Kelompok
       Agustus: isinya lebih kecil dari nominal (karcis hari-hari pertama sistem). Kelompok September: isinya lebih besar, karena karcisnya dirinci dua
-      kali oleh sistem lama yang sudah pensiun. Alasan tertulisnya = butir ini; angkanya diserahkan ke konsultan. **JANGAN dirinci ulang** — merinci ulang
+      kali oleh sistem lama yang sudah pensiun. Alasan tertulisnya = butir ini; angkanya diserahkan ke konsultan **paling lambat 31 Jan 2027**. Daftar
+      per karcis (tanggal, nominal, isi yang berlaku) ada di berkas privat owner di Mac (`_privat/kesiapan-2027/karcis-isi-beda.json`, tidak masuk repo),
+      bukan di dokumen ini. **JANGAN dirinci ulang** — merinci ulang
       memotong stok dua kali. Koreksi lewat aplikasi memang tidak tersedia, dan sistem baru menolak merinci karcis yang sudah dirinci, jadi kelompok ini
       tidak bertambah. g4 hanya menghitung karcis yang BELUM dirinci, jadi kelompok ini tidak menahan ritual.
 - [ ] **Modal awal 8 Agu 2026 — DIPUTUSKAN owner 8 Okt 2026: dibiarkan, tidak dicatat.** Tidak ada catatan modal yang dibuat untuk posisi toko
       sebelum sistem mulai mencatat, jadi neraca tetap menulis selisih "belum terjelaskan buku" dan selisih itu ikut terbawa di potret 2026. Kalimat
-      tetapnya untuk berita acara tutup buku & Neraca berkop: selisih "belum terjelaskan" berasal dari posisi toko sebelum sistem mulai mencatat 8 Agu
-      2026 (modal awal tidak pernah dicatat); angka pastinya urusan konsultan. Selama kalimat itu belum tercetak di berkasnya, sampaikan sendiri ke
-      konsultan bersama PDF Neraca 31 Des.
+      tetapnya SATU bunyi dan dipasang di aplikasi oleh PR #121 (`LP_KALIMAT_MODAL_AWAL` di `baru/js/layar/laporan-logika.js`): tercetak di Neraca
+      berkop dan berita acara tutup buku. Dokumen ini sengaja tidak menyalin bunyinya, supaya tidak ada dua bunyi. Selama PR #121 belum digabung, kalimat
+      itu belum tercetak: sampaikan sendiri ke konsultan bersama PDF Neraca 31 Des.
 - [ ] Upah karyawan dibayar & dicatat sampai 31 Des bila bisa. Yang belum dibayar tercatat di berita acara (baris "Upah karyawan yang belum dibayar");
       kalau dibayar Januari, biayanya masuk Januari (bukan 2026).
 - [ ] (Cadangan kertas, disarankan) simpan PDF, dari tombol **simpan PDF** di bawah kertasnya:
@@ -217,8 +238,9 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       lagi di daftar Retur (lihat "Sesudahnya").
 - [ ] **Perangkat hilang atau rusak** (tidak bisa dinyalakan lagi). Perangkat yang diam lebih dari 24 jam ditawari tombol "<nama> sudah tidak dipakai"
       di kartu **Kunci bulan** (Uang › Tutup buku, butir "Semua perangkat berdenyut dalam 24 jam terakhir") — TAPI hanya kalau laporan terakhirnya
-      menyebut antrean 0 dan ditolak 0. Kalau laporan terakhirnya menyebut antrean / ditolak lebih dari 0, tombol itu menolak dan butir ⛔ itu menahan
-      kunci bulan selamanya. Jalannya (owner, Console):
+      menyebut antrean 0 dan ditolak 0. Kalau laporan terakhirnya menyebut antrean / ditolak lebih dari 0, tombol itu TIDAK MUNCUL untuk perangkat itu
+      (jangan dicari), dan butir ⛔ itu (juga butir "Tidak ada perangkat yang masih menyimpan antrean" kalau antreannya > 0) menahan kunci bulan
+      selamanya. Jalannya (owner, Console):
       1. Foto baris perangkat itu di Menu › Toko ini › Perangkat & antrean (nama, denyut terakhir, antrean, ditolak). Foto itu satu-satunya bukti berapa
          catatan ikut hilang bersama perangkatnya: `perangkatStatus` TIDAK ikut berkas cadangan.
       2. Console › Firestore › Data › `perangkatStatus` › dokumen perangkat itu (kolom `nama`, `pada` = denyut terakhir, `antrean`, `gagal` = ditolak;
@@ -226,6 +248,10 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
          ulang sendiri.
 
       Kerjakan di Desember, paling lambat sebelum kunci Januari 2027 (4 Feb).
+- [ ] **Paling lambat 15 Des: LIHAT (jangan ubah) daftar referrer kunci API** — Google Cloud Console › APIs & Services › Credentials › kunci browser ›
+      Website restrictions: apakah `http://localhost:8731/*` ada di daftar, atau kuncinya tidak dibatasi. Catat hasilnya bersama cadangan. Ini menentukan
+      apakah jalan pulih darurat dari berkas (bab paling atas) bisa masuk; kalau barisnya tidak ada, langkah 0 butir terakhir yang menambahkannya saat
+      darurat.
 - [ ] 31 Des malam: Menu › Toko ini › Perangkat & antrean › tab Perangkat — tiap perangkat "semua sampai" dan tanpa "ditolak server"; HP penjaga lalu
       dimatikan.
 
@@ -235,9 +261,9 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       Usage: kuota hari itu belum terpakai.
 - [ ] Mac, tab peramban (bukan web app iPhone/iPad), SATU perangkat, jangan muat ulang aplikasi.
 - [ ] Sebelum langkah 1: **TUTUP aplikasi di iPhone / iPad / HP lain** (geser keluar dari daftar aplikasi, tab peramban ditutup — layar mati saja tidak
-      cukup) dan jangan dibuka sampai pita "arsip habis". Tiap perangkat yang terbuka membaca sekali muat lagi (selama tutup buku berjalan, perangkat
-      owner yang hemat baca juga membaca penuh), padahal sisa kuota baca hari ritual tipis — satu perangkat lain yang terbuka cukup untuk menghentikan
-      arsip, lalu angkanya DOBEL sampai dilanjutkan sesudah reset berikutnya.
+      cukup) dan jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis". Tiap perangkat yang terbuka membaca sekali muat lagi (selama tutup
+      buku berjalan, perangkat owner yang hemat baca juga membaca penuh), padahal sisa kuota baca hari ritual tipis — satu perangkat lain yang terbuka
+      cukup untuk menghentikan arsip, lalu angkanya DOBEL sampai dilanjutkan sesudah reset berikutnya.
 - [ ] Uang › Tutup buku › **SUNGGUHAN** → langkah 1: g1–g6 semua ✓ — dan **g7** kalau hemat baca menyala di Mac ini (g7 tidak bisa dilewati). g7 ✗
       atau kartu kuota "?" ("belum bisa dihitung") → ketuk **baca penuh sekarang** (Menu › Toko ini › Perangkat & antrean › Hemat baca), tunggu sampai
       selesai, jangan muat ulang, lalu buka Uang › Tutup buku lagi. Sesudah itu baca kartu **Perkiraan kuota Firestore**:
@@ -246,8 +272,9 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       - "TIDAK MUAT" → **tetap mulai 1 Jan sesudah reset** (keputusan owner 8 Okt 2026). Hari lain tidak lebih ringan, dan sesudah 3 Jan malah lebih
         berat (catatan Desember sudah lewat masa tenggang kunci, server memeriksa kuncinya per catatan). Arsip berhenti sendiri saat kuota habis; sampai
         arsipnya habis stok, piutang & utang terhitung DOBEL. Toko **TUTUP Sabtu 2 Jan 2027** — tidak berjualan, tidak menagih — sampai sesudah 15.00 WIB:
-        **Lanjutkan** dari Mac yang sama, tunggu pita "arsip habis", baru toko buka. Sama untuk tutup buku 2027 yang ritualnya Sabtu 1 Jan 2028: mulai
-        sesudah reset, toko tutup keesokan harinya sampai Lanjutkan sesudah 15.00 WIB dan arsipnya habis.
+        **Lanjutkan** dari Mac yang sama, tunggu pita "Tahun 2026 terkunci dan arsipnya habis", baru toko buka. Sama untuk tutup buku 2027 yang ritualnya
+        Sabtu 1 Jan 2028: mulai sesudah reset, toko tutup keesokan harinya sampai Lanjutkan sesudah 15.00 WIB dan sampai pita
+        "Tahun 2027 terkunci dan arsipnya habis".
 - [ ] Langkah 2: cadangan SEBELUM → cek berkasnya ada di Unduhan, salin ke luar Mac.
 - [ ] Langkah 3: arsip → cek berkasnya ada.
 - [ ] Langkah 4: saldo pembuka → semua 14 baris ✓ (12 baris harta & utang + modal owner + upah belum dibayar).
@@ -267,9 +294,14 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       (simpan 10 tahun).
 - [ ] **Perangkat lain sesudah ritual** (iPhone, iPad, HP lain yang membuka `/baru/` dan tertutup selama ritual): buka satu per satu, sekali, dan
       biarkan membaca penuh sendiri.
-      Perangkat itu membuka dengan catatan 2026 di simpanannya SEKALIGUS saldo pembuka, jadi angkanya DOBEL sampai bacanya selesai. Tunggu sampai pil
-      status di bilah atas tidak lagi menulis "memuat…" atau "memeriksa data (…)" SEBELUM dipakai untuk Jual, bayar bon, bayar bon pemasok, atau membaca
-      stok. Kuota baca hari itu habis → berjualan dari Mac sampai reset berikutnya. JANGAN pakai `/baru/?hemat=mati` untuk ini: itu menghapus pil tanpa
+      Perangkat itu membuka dengan catatan 2026 di simpanannya SEKALIGUS saldo pembuka, jadi angkanya DOBEL sampai bacanya selesai. SEBELUM dipakai untuk
+      Jual, bayar bon, bayar bon pemasok, atau membaca stok:
+      - Perangkat owner yang hemat bacanya NYALA: tunggu sampai pil status di bilah atas tidak lagi menulis "memuat…" atau "memeriksa data (…)".
+      - Perangkat yang hemat bacanya MATI (semua perangkat staf, dan perangkat owner yang belum dinyalakan): pil itu TIDAK bisa dipegang — "memuat…"
+        sudah hilang begitu simpanan perangkat terbaca, sebelum server selesai mengirim arsip & saldo pembuka. Buka dengan internet, tunggu ±1 menit
+        sesudah "memuat…" hilang, lalu cocokkan satu angka dengan Mac (mis. bon satu pelanggan di Pelanggan). Sama → boleh dipakai.
+
+      Kuota baca hari itu habis → berjualan dari Mac sampai reset berikutnya. JANGAN pakai `/baru/?hemat=mati` untuk ini: itu menghapus pil tanpa
       menutup jendela dobelnya.
 
 **Sesudahnya:**
@@ -290,9 +322,17 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       putuskan tiap hari tanpa tutup hari, lalu "KUNCI JANUARI 2027" dua ketukan. Tidak butuh Console — kecuali butir ⛔ perangkat yang tidak
       berdenyut menyebut perangkat hilang yang laporan terakhirnya masih antrean / ditolak: jalannya di butir "Perangkat hilang atau rusak" (Sampai 31 Des).
 - [ ] **Retur barang 2026** yang baru datang sesudah ritual: notanya sudah diarsip, jadi tidak ada di daftar Jual › Retur. Pakai Jual › Retur ›
-      **"Tidak ada notanya? Retur ketik tangan"**. Kalau notanya nota BON: catat retur ketik tangan dengan **Uang kembali** sebesar nilai barangnya, lalu
-      catat pembayaran **Tunai** sebesar yang sama di bon orang itu (Pelanggan › Bon › Catat pembayaran) — dua catatan itu saling menutup di laci, jadi
-      tidak ada uang yang benar-benar diserahkan, dan bonnya berkurang. JANGAN pakai hapus buku untuk retur.
+      **"Tidak ada notanya? Retur ketik tangan"**. Retur ketik tangan hanya menerima karung (utuh atau setengah) dan kemasan per unit; retur literan /
+      eceran tidak punya jalan di layar Retur — kalau terjadi, uang yang diserahkan membuat tutup hari malam itu KURANG: pilih alasan yang paling dekat
+      dan catat di kertas untuk konsultan. Kalau notanya nota BON, urutannya:
+      1. Pastikan dulu barangnya bisa dicatat lewat retur ketik tangan (karung utuh / setengah, atau kemasan per unit). Tidak bisa → jangan catat apa pun.
+      2. Catat pembayaran **Tunai** di bon orang itu (Pelanggan › Bon › Catat pembayaran) sebesar nilai barangnya, tapi **paling banyak sebesar sisa
+         bonnya** — aplikasi menolak pembayaran yang melebihi sisa, dan bon yang sudah lunas tidak punya tombol Catat pembayaran (lewati langkah ini).
+      3. Catat retur ketik tangan dengan **Uang kembali** sebesar nilai barangnya.
+      4. Uang yang benar-benar diserahkan ke pembeli = nilai barang − yang dicatat sebagai bayar di langkah 2 (nol kalau sisa bonnya cukup). Dua catatan
+         itu saling menutup di laci sebesar bayarnya, dan bonnya berkurang sebesar itu.
+
+      JANGAN pakai hapus buku untuk retur.
 - Saldo pembuka **modal owner** bertanggal 31 Des 00.00 (`modalOwner`, `tutupBuku: true`) membawa JUMLAH modal yang tertanam — bukan setoran atau
   penarikan. Ambil pribadi Desember, buku Owner & toko ("Modal owner dibawa dari tahun lalu"), bukti setoran, dan buku kas harian 31 Des tidak
   menghitungnya sebagai gerakan uang. Laporan arus kas mesin (Desember / 31 Des tahun yang sudah ditutup) masih menyebutnya "Modal owner disetor/

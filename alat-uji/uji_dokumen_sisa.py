@@ -22,13 +22,17 @@ D3 SISA PENSIUN SISTEM LAMA (#103):
     bersihkan hanya kalau ada sisa lama (ada/tidak dari JUMLAH simpanan, bukan KB yang dibulatkan); kalimat layar tanpa jalur berkas repo.
   · kalimat layar yang menyuruh "lewat sistem lama" (uang, harga, pelanggan, menu, akses-kasir-logika, sistem-logika) sudah diganti jalan di /baru/ atau
     kalimat jujur.
+PROSEDUR PULIH DARURAT (audit akhir P1, sanggahan 8 Okt 2026) — docs/prosedur-pulih-darurat.md dikerjakan owner sendiri sejak 13 Okt, dan dulu tidak ada
+uji yang membacanya: sidik firestore.rules (awalan & byte) dan firestore.rules.v3 = shasum berkas repo; baris 2 yang dikutip = baris 2 firestore.rules;
+tidak ada jalur "Menu › Sistem …" selain kalimat penjelas; langkah 4 tanpa uji-rules-v6 / "17 kasus"; aturan berhenti langkah 4 TIDAK berlaku selama
+baris 2 bukan v7 (aturan darurat tidak boleh tertinggal); kutipan pita arsip = teks pita di layar; nama laci / tombol / butir yang disebut ada di layar.
 (D2 Safari = uji_safari_webkit.py; tab Kasir & PIN = uji_operator_pin.py; 404.html = uji_csp.py & uji_pensiun_sistem_lama.py.)
 
     python3 alat-uji/uji_dokumen_sisa.py            → N lulus · 0 gagal
     python3 alat-uji/uji_dokumen_sisa.py --kontrol  → kerusakan wajib ketahuan (keluar 3 kalau ada yang diam)
     --wajib-tag (CI)                                 → tag sistem-lama-terakhir WAJIB ada: tanpa tag pencocokan daftar beku GAGAL, bukan dilewati
 """
-import os, re, sys, json, glob, subprocess, tempfile, copy
+import os, re, sys, json, glob, subprocess, tempfile, copy, hashlib
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
@@ -40,6 +44,14 @@ AKL = 'baru/js/layar/akses-layar.js'
 LL = 'baru/js/layar/laporan-logika.js'; LAP = 'baru/js/layar/laporan.js'; SL = 'baru/js/layar/sistem-logika.js'; MENU = 'baru/js/layar/menu.js'
 HARGA = 'baru/js/layar/harga.js'; PEL = 'baru/js/layar/pelanggan.js'; APP = 'baru/js/app.js'; UANG = 'baru/js/layar/uang.js'; AKP = 'baru/js/layar/akses-kasir-logika.js'
 DARURAT = 'kasir-darurat-nominal.html'
+PROS = 'docs/prosedur-pulih-darurat.md'; RULES = 'firestore.rules'; RULES3 = 'firestore.rules.v3'; TBL = 'baru/js/layar/tutup-buku-logika.js'
+KPL = 'baru/js/layar/kunci-periode-logika.js'
+# nama laci / tab / tombol / butir / pil yang disebut prosedur dan harus ada di kalimat layar /baru/ (huruf besar-kecil diabaikan, komentar // tidak dihitung)
+LABEL_PROSEDUR = ['Toko ini', 'Perangkat & antrean', 'Cadangan & simpanan', 'Hemat baca', 'Antrean kirim', 'baca penuh sekarang', 'saya baru mengubah data lewat Console',
+                  'minta semua perangkat baca penuh', 'matikan hemat baca di perangkat ini', 'Perkiraan kuota Firestore', 'Muat dalam kuota satu hari', 'MEPET',
+                  'TIDAK MUAT', 'unduh hasil pemeriksaan (berkas)', 'Simpan putusan', 'Tidak ada notanya? Retur ketik tangan', 'Uang kembali', 'Catat pembayaran',
+                  'Semua perangkat berdenyut dalam 24 jam terakhir', 'Tidak ada perangkat yang masih menyimpan antrean', 'sudah tidak dipakai',
+                  'Ada pengeluaran belum dicatat', 'memuat…', 'memeriksa data', 'semua sampai', 'ditolak server', 'terkunci dan arsipnya habis']
 
 # ---- KOTAK PASIR tambahan (ANGKA CONTOH): katalog terbit + riwayat terbit + satu draf + kop lengkap. Jam dikunci 19 Sep 2026 (uji_laporan_baru).
 #   t1 25 Agu: Angsa/kg 14.000 → 14.200 · IR64 Apex/kg baru diberi harga 15.000
@@ -145,6 +157,8 @@ def baca(ganti=None):
     t = {}
     for p in sorted(glob.glob(os.path.join(AKAR, 'baru/js/**/*.js'), recursive=True)) + [os.path.join(AKAR, 'baru/index.html'), os.path.join(AKAR, DARURAT)]:
         t[os.path.relpath(p, AKAR)] = open(p, encoding='utf-8').read()
+    for b in (PROS, RULES, RULES3):   # newline='' → isi persis berkasnya (sidik dihitung dari sini)
+        with open(os.path.join(AKAR, b), encoding='utf-8', newline='') as f: t[b] = f.read()
     for b, pasangan in (ganti or {}).items():
         for lama, baru in pasangan:
             assert t[b].count(lama) == 1, 'kontrol basi: ' + b + ' · ' + lama[:80] + ' (' + str(t[b].count(lama)) + '×)'
@@ -257,9 +271,44 @@ def periksa_statis(t):
     return out
 
 
-def semua(ganti=None, bagian=('statis', 'jsc')):
+def periksa_prosedur(t):
+    """docs/prosedur-pulih-darurat.md — yang bisa basi tanpa ada yang berbunyi (sanggahan audit akhir P1, 8 Okt 2026)."""
+    out = []; ok = lambda n, c, k='': out.append(('prosedur · ' + n, bool(c), k))
+    p = t[PROS]; r7 = t[RULES].encode('utf-8'); r3 = t[RULES3].encode('utf-8')
+    s7 = hashlib.sha256(r7).hexdigest(); s3 = hashlib.sha256(r3).hexdigest()
+    m7 = re.findall(r'berawalan `([0-9a-f]{8})`, ([\d.]+) byte', p)
+    ok('langkah 3: sidik firestore.rules yang ditulis (awalan SHA-256 & ukuran byte) = berkas repo — rules berubah → prosedur ikut diperbarui',
+       len(m7) == 1 and m7[0][0] == s7[:8] and int(m7[0][1].replace('.', '')) == len(r7), {'prosedur': m7, 'berkas': [s7[:8], len(r7)]})
+    m3 = re.findall(r'SHA-256 berawalan `([0-9a-f]{8})`', p)
+    ok('langkah 1: sidik firestore.rules.v3 (aturan darurat) = berkas repo', len(m3) == 1 and m3[0] == s3[:8], {'prosedur': m3, 'berkas': s3[:8]})
+    b2 = (t[RULES].split('\n') + ['', ''])[1]; v = re.search(r'ATURAN FIRESTORE v\d+ FINAL', b2); sebut = re.findall(r'ATURAN FIRESTORE v\d+ FINAL', p)
+    ok('baris 2 yang dikutip prosedur (langkah 3, 4 & Buntu Januari 2028) = baris 2 firestore.rules', v and len(sebut) >= 4 and set(sebut) == {v.group(0)},
+       {'baris2': b2[:80], 'prosedur': sorted(set(sebut)), 'n': len(sebut)})
+    sisa = p.replace('yang masih menulis "Menu › Sistem › Perangkat …" menunjuk tempat yang sama', '')
+    ok('tidak ada jalur "Menu › Sistem …" selain kalimat penjelasnya (laci sekarang Menu › Toko ini)', 'Menu › Sistem' not in sisa,
+       [x.strip()[:140] for x in sisa.split('\n') if 'Menu › Sistem' in x])
+    l4 = potong(p, r'^4\. \*\*Periksa aturan yang berlaku.*?(?=^5\. \*\*)')
+    ok('langkah 4: kasus Playground dari docs/uji-rules-v7.md — tanpa uji-rules-v6 / "17 kasus"', bool(l4) and 'uji-rules-v7.md' in l4 and 'uji-rules-v6' not in l4 and '17 kasus' not in l4,
+       re.findall(r'uji-rules-v\d[^\s`]*|17 kasus', l4))
+    i_x = l4.find('baris 2 BUKAN `ATURAN FIRESTORE'); i_v7 = l4.find('Baris 2 = `ATURAN FIRESTORE'); i_stop = l4.find('berhenti menempel')
+    ok('langkah 4 (sanggahan 8 Okt, sedang): baris 2 BUKAN v7 → JANGAN berhenti, salin ulang firestore.rules (bukan .v3) sampai v7 terbit; "berhenti menempel" hanya sesudah baris 2 = v7',
+       0 <= i_x < i_v7 < i_stop and l4.count('berhenti menempel') == 1
+       and re.search(r'baris 2 BUKAN `ATURAN FIRESTORE v\d+ FINAL`.*?JANGAN berhenti.*?`git show origin/main:firestore\.rules \| LANG=en_US\.UTF-8 pbcopy`.*?ulangi sampai baris 2', l4[i_x:i_v7], re.S),
+       {'BUKAN v7': i_x, 'baris 2 = v7': i_v7, 'berhenti menempel': i_stop})
+    lama = re.findall(r'"arsip habis"', p); pita = re.findall(r'"Tahun \d{4} terkunci dan arsipnya habis"', p)
+    ok('kutipan pita arsip = teks pita di layar ("Tahun <tahun> terkunci dan arsipnya habis"), bukan "arsip habis"',
+       not lama and len(pita) >= 2 and "'Tahun ' + tahun + ' terkunci dan arsipnya habis. '" in t[TBL], {'lama': lama, 'pita': pita})
+    js = '\n'.join(re.sub(r'^\s*//.*$', '', isi, flags=re.M) for b, isi in t.items() if b.startswith('baru/js/')).lower()
+    tdk_dok = [x for x in LABEL_PROSEDUR if x.lower() not in p.lower()]; tdk_layar = [x for x in LABEL_PROSEDUR if x.lower() not in js]
+    ok('nama laci / tab / tombol / butir / pil yang disebut prosedur ada di layar /baru/ (' + str(len(LABEL_PROSEDUR)) + ')', not tdk_dok and not tdk_layar,
+       {'tidak di prosedur': tdk_dok, 'tidak di layar': tdk_layar})
+    return out
+
+
+def semua(ganti=None, bagian=('statis', 'jsc', 'prosedur')):
     t = baca(ganti); out = []
     if 'statis' in bagian: out += periksa_statis(t)
+    if 'prosedur' in bagian: out += periksa_prosedur(t)
     if 'jsc' in bagian:
         l, g = jalan_jsc(t); out += [('jsc · ' + x, False, '') for x in g] + [('__jsc', not g, l)]
     return out
@@ -306,6 +355,18 @@ KONTROL = [
     ('menu: "bayar bon pemasok tetap di sistem lama" kembali', {MENU: [("bayar bon pemasok di Harga & Pemasok → Bon pemasok, bayar pelanggan", "bayar bon pemasok tetap di sistem lama, bayar pelanggan")]}, ('statis',)),
     ('sistem: "bersihkan dari Setelan sistem lama" kembali', {SL: [("bersihkan sisa sistem lama dengan tombol di bawah' :", "bersihkan cadangan lokalnya dari Setelan sistem lama' :")]}, ('statis', 'jsc')),
     ('pelanggan: "kasir sistem lama" kembali', {PEL: [("jadi tetap dikenali di Jual.'", "jadi tetap dikenal di kasir sistem lama.'")]}, ('statis',)),
+    # ---- prosedur pulih darurat (sanggahan audit akhir P1, 8 Okt 2026)
+    ('prosedur: firestore.rules berubah (ukuran sama), sidik di langkah 3 tidak diperbarui', {RULES: [('DRAF 7 Okt 2026 — owner menerbitkan SEKALI', 'DRAF 8 Okt 2026 — owner menerbitkan SEKALI')]}, ('prosedur',)),
+    ('prosedur: sidik aturan darurat v3 salah ketik', {PROS: [('SHA-256 berawalan `32c55d58`', 'SHA-256 berawalan `32c55d59`')]}, ('prosedur',)),
+    ('prosedur: satu kutipan baris 2 masih menyebut v6', {PROS: [('(b) Baris 2 editor berbunyi `ATURAN FIRESTORE v7 FINAL`', '(b) Baris 2 editor berbunyi `ATURAN FIRESTORE v6 FINAL`')]}, ('prosedur',)),
+    ('prosedur: jalur "Menu › Sistem › Perangkat" kembali', {PROS: [('(Menu › Toko ini › Perangkat & antrean › Hemat baca) dan periksa g6 di LATIHAN', '(Menu › Sistem › Perangkat › Hemat baca) dan periksa g6 di LATIHAN')]}, ('prosedur',)),
+    ('prosedur: langkah 4 kembali menunjuk kasus uji-rules-v6.md', {PROS: [('Isian & akunnya di `docs/uji-rules-v7.md`', 'Isian & akunnya di `docs/uji-rules-v6.md`')]}, ('prosedur',)),
+    ('prosedur: langkah 4 berhenti walau baris 2 bukan v7 (aturan darurat tertinggal — sanggahan 8 Okt, sedang)',
+     {PROS: [('**(b) baris 2 BUKAN `ATURAN FIRESTORE v7 FINAL`** (aturan darurat atau aturan lain masih terpasang) → JANGAN berhenti.', '(b) baris 2 berbeda → sama seperti di bawah.')]}, ('prosedur',)),
+    ('prosedur: langkah 4 menyalin ulang firestore.rules.v3 (aturan darurat) saat baris 2 bukan v7',
+     {PROS: [('`git show origin/main:firestore.rules | LANG=en_US.UTF-8 pbcopy`, tempel, Publish', '`git show origin/main:firestore.rules.v3 | LANG=en_US.UTF-8 pbcopy`, tempel, Publish')]}, ('prosedur',)),
+    ('prosedur: kutipan pita "arsip habis" kembali (teks layar: "Tahun 2026 terkunci dan arsipnya habis")', {PROS: [('jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis"', 'jangan dibuka sampai pita "arsip habis"')]}, ('prosedur',)),
+    ('prosedur: butir kunci bulan yang disebut prosedur berganti nama di layar', {KPL: [("teks: 'Tidak ada perangkat yang masih menyimpan antrean'", "teks: 'Tidak ada perangkat dengan antrean'")]}, ('prosedur',)),
 ]
 
 
