@@ -312,11 +312,18 @@ if (CADANGAN) {
       var kgB = (bt.merkList || []).filter(function (m) { return m.bentuk !== 'bal'; }).reduce(function (a, m) { return a + (Number(m.totalKg) || 0); }, 0);
       var semua = ambilSemuaBatch(); pasok('batchMasuk', semua.filter(function (x) { return String(x.id) !== String(bt.id); })); var k2 = kgS(); pasok('batchMasuk', semua);
       if (Math.abs(k2 - (kg0 - kgB)) > 0.01) gk.salah.push('hapus lolos tapi total kg tidak turun tepat ' + kgB + ' kg (selisih ' + Math.round((k2 - (kg0 - kgB)) * 100) / 100 + ')'); });
-    // kejadian nyata (sanggahan E1): kedatangan FJN 30 Sep sudah habis diaduk 6 Okt → koreksi FJN → "FJN · Imperial" WAJIB ditolak (dulu lahir ±250 kg hantu)
+    // kejadian nyata (sanggahan E1): kedatangan FJN 30 Sep sudah habis diaduk 6 Okt → koreksi FJN → "FJN · Imperial" WAJIB ditolak (dulu lahir ±250 kg hantu).
+    // Harapannya ikut KEADAAN cadangan (7 Okt: asap cadangan 1 Okt — FJN masih utuh — dulu merah palsu): buku FJN sudah terpakai (sisa < kg kedatangan) = WAJIB
+    // ditolak; masih utuh = boleh lolos, asal tanpa stok hantu (total kg sama, FJN · Imperial = kg kedatangan, buku FJN 0 kg).
     var bf = ambilSemuaBatch().filter(function (b) { return !b.stokAwal && !b.lahirBuku && (b.merkList || []).some(function (m) { return m.merk === 'FJN'; }); })[0];
     if (bf) { var df = drafDariKedatangan(bf.id); df.baris.forEach(function (x) { if (x.merk === 'FJN') x.merk = 'FJN · Imperial'; }); df.alasan = 'asap'; var rf = susunSimpanMasuk(df, WK, true);
-      gk.fjn = rf.tolak ? 'ditolak (' + (rf.pembalik === 'pindahNama' ? rf.pindahTeks : 'sisa buku FJN 0 kg — tanpa pindah buku, jalan lain Cocokkan') + ')' : 'LOLOS';
-      if (!rf.tolak) gk.salah.push('koreksi FJN → FJN · Imperial lolos'); } })();
+      var kgF = (bf.merkList || []).filter(function (m) { return m.merk === 'FJN' && m.bentuk !== 'bal'; }).reduce(function (a, m) { return a + (Number(m.totalKg) || 0); }, 0);
+      var stF = hitungStokKarungPerMerk(); var sisaF = stF['FJN'] ? Number(stF['FJN'].sisaKg) || 0 : 0; var utuhF = Math.abs(sisaF - kgF) <= 0.01;
+      gk.fjn = (rf.tolak ? 'ditolak (' + (rf.pembalik === 'pindahNama' ? rf.pindahTeks : 'sisa buku FJN ' + sisaF + ' kg — tanpa pindah buku, jalan lain Cocokkan') + ')' : 'LOLOS') + ' · buku FJN ' + sisaF + ' dari ' + kgF + ' kg (' + (utuhF ? 'utuh' : 'sudah terpakai') + ')';
+      if (!rf.tolak && !utuhF) gk.salah.push('koreksi FJN → FJN · Imperial lolos padahal buku FJN sudah terpakai (' + sisaF + ' dari ' + kgF + ' kg)');
+      if (!rf.tolak && utuhF) denganCacheSementara(rf.dokumen.filter(function (d) { return d.koleksi === 'batchMasuk'; }), function () { var s2 = hitungStokKarungPerMerk();
+        if (Math.abs(kgS() - kg0) > 0.01) gk.salah.push('koreksi FJN utuh lolos tapi total kg bergeser ' + (kgS() - kg0) + ' kg');
+        if (!s2['FJN · Imperial'] || Math.abs(s2['FJN · Imperial'].sisaKg - kgF) > 0.01 || (s2['FJN'] && Math.abs(s2['FJN'].sisaKg) > 0.01)) gk.salah.push('koreksi FJN utuh: buku FJN · Imperial ' + J(s2['FJN · Imperial'] || null) + ' · FJN ' + J(s2['FJN'] || null)); }); } })();
   // putaran 27 (Bagian 5): nama wadah / kelas mutu (IR64 Apex dkk.) tidak boleh lagi datang lewat barang masuk — dipisah: merek → varian, kelas → wajib ditolak
   var kelas = wbNamaKelas(); var st0 = hitungStokKarungPerMerk(); var semuaNama = Object.keys(st0).filter(function (m) { return st0[m].hppTerakhirPerKg > 0; });
   // putaran 28: buku per ukuran ('Merek 25 kg') & buku khusus wadah bukan nama barang masuk — ditolak dengan benar, jadi tidak ikut asap varian
@@ -342,6 +349,8 @@ PEMBANTU = "function HG_baris(k) { return hgSemua(new Date(Date.now())).baris.fi
 
 
 def cadangan_toko():
+    # UJI_CADANGAN=<berkas> (lokal saja): asap atas cadangan tertentu — mis. cadangan 6 Okt (FJN sudah diaduk) vs 1 Okt (FJN utuh)
+    if os.environ.get('UJI_CADANGAN'): return os.environ['UJI_CADANGAN'] if os.path.isfile(os.environ['UJI_CADANGAN']) else None
     c = sorted(glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')), key=os.path.basename)
     return c[-1] if c else None
 

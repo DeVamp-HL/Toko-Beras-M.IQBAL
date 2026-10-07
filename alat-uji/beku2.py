@@ -17,9 +17,10 @@ yang dikunci di sini = aturan sistem lama. index.html di akar kini hanya halaman
 Kunci pembantu.sha256 menggantikan pembanding "HURUF DEMI HURUF = index.html" di uji_katalog_kasir, uji_operator_pin, uji_setelan_jenis_beras, dan
 uji_arsip_produk (fungsi terkunci() di bawah). Tanpa kunci ini pembanding mereka menjadi tautologi: fungsi yang diuji dibandingkan dengan dirinya.
 
-Kepala komentar beku.js & pembantu.js masih menyebut "DIBUAT OLEH alat-uji/pindah_mesin.py" dan gerbang `pindah_mesin.py --periksa`. Itu
-SENGAJA dibiarkan (owner 3 Okt): baru/js/mesin/* hanya dibuka atas izin owner, termasuk komentarnya. Yang berlaku sekarang: berkas itulah sumber
-kebenarannya, gerbangnya `beku2.py --sidik`, dan membuka mesin = sunting di sana atas perintah owner → `beku2.py --catat` → sebut di pesan commit.
+Kepala komentar beku.js & pembantu.js dulu masih menyebut "DIBUAT OLEH alat-uji/pindah_mesin.py"; dibetulkan 7 Okt 2026 atas izin owner ("boleh
+mesin") — komentar di luar tubuh fungsi, sidik tidak berubah. baru/js/mesin/* tetap hanya dibuka atas izin owner, termasuk komentarnya. Yang berlaku:
+berkas itulah sumber kebenarannya, gerbangnya `beku2.py --sidik`, dan membuka mesin = sunting di sana atas perintah owner → `beku2.py --catat` →
+sebut di pesan commit.
 
 Dua mesin dari daftar 28 lama PENSIUN bersama index.html: tulisSaldoPembuka (ritual Tutup Buku sistem lama, alert/confirm + layar lama) dan
 thPagar (pagar Tutup Hari sistem lama, membaca document). Keduanya tidak pernah dipindah ke beku.js; /baru/ punya padanannya sendiri
