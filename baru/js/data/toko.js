@@ -271,7 +271,7 @@ export function denganCacheSementara(daftar, fn) {
   try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); _versiCache += 1; }
 }
 /**
- * Paket C (siap 2027, 8 Okt 2026): jalankan fn di atas cache yang DISARING sementara — koleksi `nama` (nama Firestore) hanya menyisakan dokumen yang lolos
+ * Paket C (siap 2027, 7 Okt 2026): jalankan fn di atas cache yang DISARING sementara — koleksi `nama` (nama Firestore) hanya menyisakan dokumen yang lolos
  * `lolos(dok, namaKoleksi)`; koleksi lain apa adanya. `ganti(dok, namaKoleksi)` (boleh tidak ada) = dokumen yang dipakai sebagai gantinya (salinan, mis. saldo
  * pembuka seperti saat kunci). Tanpa memberi tahu pendengar, dan cache dikembalikan persis sesudahnya (juga kalau fn melempar) — pola denganCacheSementara.
  * Dipakai kartu "Pemeriksaan sesudah tutup buku" (buku & rak Jual saat buku tahun baru DIBUKA) dan periksa ulang tutup buku (tanpa catatan sesudah kunci).
@@ -390,7 +390,7 @@ async function jalankanBertahap(r, progres) {
   while (r.sudah < r.potongan.length) {
     const p = r.potongan[r.sudah];
     const h = await tulisDokumen(p.dokumen, p.hapus, { jejakHapus: r.judul + ' (' + (r.sudah + 1) + '/' + r.potongan.length + ')' });
-    if (h && h.gagal) { simpanBertahap(r); return { gagal: true, sudah: r.sudah, total: r.potongan.length, pesan: h.pesan + ' — berhenti di kiriman ' + (r.sudah + 1) + ' dari ' + r.potongan.length + '; yang sebelumnya sudah masuk. Lanjutkan nanti dari Menu › Sistem › Perangkat.' }; }
+    if (h && h.gagal) { simpanBertahap(r); return { gagal: true, sudah: r.sudah, total: r.potongan.length, pesan: h.pesan + ' — berhenti di kiriman ' + (r.sudah + 1) + ' dari ' + r.potongan.length + '; yang sebelumnya sudah masuk. Lanjutkan nanti dari Menu › Toko ini › Perangkat & antrean › Antrean kirim.' }; }
     if (h && h.antre) antre += 1;
     if (h && h.simulasi) simulasi = true;
     r.sudah += 1; simpanBertahap(r); if (progres) progres(r.sudah, r.potongan.length);
@@ -399,7 +399,7 @@ async function jalankanBertahap(r, progres) {
   simpanBertahap(null); return { ok: true, total: r.potongan.length, antre, simulasi: simulasi || undefined };
 }
 export async function tulisBertahap(judul, kelompok, progres) {
-  if (bertahapTertunda()) return { gagal: true, pesan: 'Masih ada kiriman bertahap yang belum selesai (' + bacaBertahap().judul + ') — lanjutkan atau buang dulu di Menu › Sistem › Perangkat' };
+  if (bertahapTertunda()) return { gagal: true, pesan: 'Masih ada kiriman bertahap yang belum selesai (' + bacaBertahap().judul + ') — lanjutkan atau buang dulu di Menu › Toko ini › Perangkat & antrean › Antrean kirim' };
   const P = kpPotong(kelompok, dokDiCache, new Date(Date.now())); if (P.tolak) return { gagal: true, pesan: P.tolak };
   const r = { id: 'bt-' + Date.now(), judul: String(judul || 'kiriman bertahap').slice(0, 80), pada: new Date(Date.now()).toISOString(), potongan: P.potongan.map((x) => ({ dokumen: x.dokumen, hapus: x.hapus })), sudah: 0 };
   if (r.potongan.length > 1 && !simpanBertahap(r)) return { gagal: true, pesan: 'Rencana kiriman bertahap tidak bisa disimpan di perangkat ini (penyimpanan penuh) — tidak ada yang dikirim' };

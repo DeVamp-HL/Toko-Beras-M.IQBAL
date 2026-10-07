@@ -385,7 +385,7 @@ export function rincianBersihkanCiri(kini) {
 export function susunBersihkanCiri(kini, yakin) {
   const r = rincianBersihkanCiri(kini);
   if (!r.ada) return { tolak: 'Tidak ada lagi ciri yang dicabut di kartu maupun setelan — tidak ada yang perlu dibersihkan' };
-  if (!r.cadangan) return { tolak: 'Unduh cadangan dulu dari Sistem › Cadangan.' };
+  if (!r.cadangan) return { tolak: 'Unduh cadangan dulu dari Menu › Toko ini › Cadangan & simpanan.' };
   if (!yakin) return { tolak: 'Ketuk sekali lagi untuk membersihkan ' + r.kartu.length + ' kartu (' + r.cip + ' cip dibuang' + (r.atur ? ', setelan cip ikut dibersihkan' : '') + '). Tidak bisa diurungkan — cadangan hari ini yang jadi pegangan.', perluYakin: true };
   const ubah = r.kartu.map((k) => ({ koleksi: 'pelangganCatatan', id: k.id, kolom: k.kolom })); if (r.atur) ubah.push({ koleksi: 'aturanToko', id: 'pelanggan', kolom: { ciriDaftar: r.aturBaru } });
   const ubahKolom = []; for (let i = 0; i < ubah.length; i += BATAS_BERSIHKAN) ubahKolom.push(ubah.slice(i, i + BATAS_BERSIHKAN));

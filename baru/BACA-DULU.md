@@ -247,7 +247,7 @@ Keputusan owner, menggantikan "serinci mungkin" putaran 21: **toko tidak mencata
 Tiap orang punya akun sendiri; hak ditegakkan di SERVER (`firestore.rules` v3), bukan di layar. Dasar semua baris: `docs/peta-hak-akses.md` (Tahap 0, dari kode). Jawaban owner 24 Sep menang atas teks prompt.
 - **Masuk** (`data/akses.js` = logika tanpa DOM, `firebase.js` = sambungan): email + sandi (sandi readonly sampai diketuk, email terakhir bisa dilupakan); owner lewat EMAIL; akun lain lewat `aksesAkun/{uid}` yang didengarkan terus (nonaktif = cabut semua pendengar & kosongkan angka); tanpa `aksesAkun` = nol pendengar + "Minta didaftarkan" (`permintaanAkses/{uid}`); kasir@ tidak bisa masuk sebagai orang. Akun yang masuk tampil di **pil kepala setiap layar** ("OWNER" / nama orang, + "tanpa internet" / "N belum terkirim"); ketuk pil = lembar "Masuk sebagai" + Keluar (owner 24 Sep: bilah di atas layar dicabut, dulu menutupi logo; Keluar lewat satu ketukan di pil DITERIMA owner, putaran tablet boleh meninjau ulang). Nama yang masuk SELALU di depan pil — juga saat memuat. Tirai menutup lembar akun (app.js + CSS) dan pil ikut kosong bersama `<main>`. Keluar menanyakan keranjang lalu catatan yang belum terkirim.
 - **Atribusi**: penulis pusat menulis `olehUid`/`diubahOlehUid` (owner tetap `oleh:'Owner'`); bukan-owner diperiksa SEBELUM dikirim (`periksaKiriman` = peta), tanpa hapus/bersihkan/arsip, pencipta tak pernah ditambah pada update; SATU baris jejak per kiriman bukan-owner berisi daftar dokumennya; kiriman > 18 access call ditolak di perangkat (batas Firebase 20, sisa 2).
-- **Salinan antre** (`data/antre-lokal.js`): tiap kiriman disalin di perangkat sampai server mengaku; ditolak → Menu › Sistem › Perangkat › Antrean "ditolak server" (owner: tulis ulang atas namanya / buang).
+- **Salinan antre** (`data/antre-lokal.js`): tiap kiriman disalin di perangkat sampai server mengaku; ditolak → Menu › Toko ini › Perangkat & antrean › Antrean kirim "ditolak server" (owner: tulis ulang atas namanya / buang).
 - **Layar** (tipis): pendengar per peran (koleksi utuh + `aturanToko`/`pengaturan` per dokumen); bukan-owner cuma Jual · Pelanggan · Stok · Menu kecil; tombol kedatangan/cocokkan/kantong/tempat/HPP/Bon(karyawan) mati berkalimat; SS2 kartu Permintaan akses & Akun terdaftar + kalimat "Server menegakkan …".
 - **Rules v3**: blok per koleksi; `owner()` email; `kasir()` email (v2 membuka jalur kasir untuk siapa pun yang login — dipersempit); bukan-owner create dengan `jujur()` + 2 update terbatas kolom; `firestore.rules.v2` untuk mundur. Uji server: `docs/uji-rules-v3.md` (Playground + proyek Firebase kedua lewat `?pasangProyekUji=` — bilah merah PROYEK UJI).
 - Tertutup walau kisi bilang `sendiri`: hitung laci (menimpa angka uang tercatat) & kedatangan (wajib harga beli). Utang: id peran `ben` = nama orang.
@@ -347,7 +347,7 @@ Peta & keputusan owner K1–K6: `docs/peta-kunci-periode.md`. Uji server: `docs/
   "diterima apa adanya" wajib alasan — tutup hari TIDAK dibuat mundur), karcis belum dirinci, omzet luar, periksa ulang pembelian (K2), nama mirip berbon (K3),
   upah (K5). **`KP_SIAP_25B`**: kunci PERTAMA menunggu putaran 25b — sejak 25b `true` (kasir memisahkan catatan ditolak, sistem lama hanya-baca).
 - **Penjaga pusat** (`toko.js jagaKunci`): SEMUA tulisan layar — bulan terkunci atau > 18 pemeriksaan kunci = tidak dikirim, dengan kalimat. Jalur besar
-  bertahap (`tulisBertahap`, rencana tersimpan di perangkat, dilanjutkan dari Menu › Sistem › Perangkat): SATUKAN, hapus nama, tarik balik rincian, koreksi/hapus adukan.
+  bertahap (`tulisBertahap`, rencana tersimpan di perangkat, dilanjutkan dari Menu › Toko ini › Perangkat & antrean › Antrean kirim): SATUKAN, hapus nama, tarik balik rincian, koreksi/hapus adukan.
 - **Pembalik**: tombol koreksi/hapus untuk catatan bulan terkunci berganti "Bulan X terkunci — cocokkan / buat retur hari ini" dan membuka alur lama dengan
   barang asalnya. Hapus + dokumen kini SATU kiriman di semua layar (dulu dua kiriman, hasil kedua tidak diperiksa). Hapus di Laporan › Pajak dulu diabaikan — ditambal.
 - **Final bulanan**: `lpFinal` = era ATAU bulan ≤ sampaiBulan; `lpTahunFinal` = era ATAU 12 bulan terkunci. Pajak: keadaan terkunci per bulan, peringatan
@@ -1134,7 +1134,7 @@ Jangkar warisan: `stokMaksJalur()` membaca `#jualKarungBerat` dari DOM — layar
 ```
 python3 -m http.server 8760 --directory .
 ```
-lalu buka `http://localhost:8760/baru/index.html?cadangan=/backup-batch-miqbal-YYYY-MM-DD.json` (berkas cadangan diunduh dari Menu › Sistem › Cadangan; tidak pernah masuk repo).
+lalu buka `http://localhost:8760/baru/index.html?cadangan=/backup-batch-miqbal-YYYY-MM-DD.json` (berkas cadangan diunduh dari Menu › Toko ini › Cadangan & simpanan; tidak pernah masuk repo).
 Menjalankan **sistem lama** (hanya untuk pulih darurat, dari tag git, bukan dari situs): `docs/prosedur-pulih-darurat.md`.
 Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (diteruskan ke Firebase Auth, tidak disimpan).
 
@@ -1671,7 +1671,7 @@ stok ×2, identitas) dibungkus `@media (hover: hover) and (pointer: fine)` di TE
 `putusNego`, `susunMintaNego`, `setujuSiap`, baris bernego yang dibangun ulang) dan `jual.js` (lembar nego, Buku Nego).
 - **Jatah** = persen MARGIN barang (katalog − modal per satuan BAYAR = modal baris ÷ satuan yang dibayar; tinjauan 7 Okt: kemasan berbonus — modal unit
   bonus ditanggung unit yang dibayar, jadi nego + bonus tidak bisa membuat uang baris di bawah modal tanpa izin; tanpa bonus = modal per unit seperti dulu). Bawaan rancangan: owner 100 % (tetap — owner tidak meminta ke dirinya sendiri), peran Ben 50 % (`jatahBen` yang sudah ada), karyawan giliran
-  0 % (tidak boleh nego). **Setelan owner** di Menu › Sistem › Peran › Atur (dokumen `aturanToko/peran`, dibaca juga oleh akun karyawan): `jatahBen`,
+  0 % (tidak boleh nego). **Setelan owner** di Menu › Toko ini › Peran & persetujuan › Atur (dokumen `aturanToko/peran`, dibaca juga oleh akun karyawan): `jatahBen`,
   `jatahKaryawan`, `jatahAkun` (per akun terdaftar, kosong = ikut peran), `bawahModal` (siapa boleh menjual di bawah modal: `owner` / peran / `uid:…`,
   bawaan owner saja), `langkahNego` (bawaan Rp500). Bawaan satu sumber: `NG_BAWAAN` (nego-logika) dipakai `SS_ATUR_BAWAAN.peran` (sistem-logika).
 - **Batas** = katalog − margin × jatah, dibulatkan ke kelipatan langkah KE ATAS (tidak pernah melewati jatah, tidak pernah di atas katalog); jatah 100 % =
@@ -1681,7 +1681,7 @@ stok ×2, identitas) dibungkus `@media (hover: hover) and (pointer: fine)` di TE
   langsung; bukan-owner tetap minta owner); kisi SS2 `nego` = "tidak boleh" → di bawah jatah ditolak; modal belum tercatat → owner boleh (diberi tahu),
   bukan-owner minta owner. Lantai Rp500 tetap. Modal hanya disebut ke owner.
 - **Minta owner**: dokumen `persetujuan` `{ tindakan: 'nego', status: 'menunggu', negoUid, barang (kunci baris), label, satuan, jumlah, hargaAsli,
-  hargaMinta, batas, jatah, alasan, nominal = selisih total }` — papan yang SAMA dengan Menu › Sistem › Peran › Persetujuan; owner memutus lewat
+  hargaMinta, batas, jatah, alasan, nominal = selisih total }` — papan yang SAMA dengan Menu › Toko ini › Peran & persetujuan › Persetujuan; owner memutus lewat
   `susunPutusPersetujuan` (menolak wajib alasan) dari Buku Nego atau papan itu. Disetujui → yang meminta mengetik harga yang sama (atau ketuk "pakai" di
   pita) → baris `negoStatus: 'disetujui'` + `negoSetujuId`; **sekali pakai** (nota berlaku / keranjang lain yang memegangnya), untuk jumlah ≤ yang diminta.
   **HIDUP untuk akun karyawan sesudah rules v7 FINAL terbit & cabang `perbaikan/hemat-baca` digabung** (owner 7 Okt): rules v7 `stafMintaNego` membuka
@@ -2015,15 +2015,16 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
 - **Pembetulan sah sesudah kunci**: bon lama pemasok pembuka yang dibetulkan owner (Harga & Pemasok › Betulkan bon lama — alasan + riwayat `bonLama`)
   dibandingkan dengan nilai SAAT KUNCI (`pstSaatKunci`, riwayat pertama) dan disebut di keterangan baris saldo pembuka — bukan ✗.
 - **Kalimat layar tanpa orang luar**: potret gagal disusun (latihan & kunci) tidak lagi "kirim tangkapan layar / sampai dibetulkan" → `bkKalimatTanpaPotret`
-  (buka lagi aplikasinya & ulangi; kalau tetap gagal jangan dipaksakan — toko tetap berjualan dengan buku tahun itu terbuka, cadangan + PDF Rekap pajak &
-  Laporan Tahunan; kunci bulan tahun baru menunggu).
+  (buka lagi aplikasinya & ulangi; kalau tetap gagal jangan dipaksakan — toko tetap berjualan dengan buku tahun itu terbuka, cadangan + PDF pegangan SPT
+  `bkPdfSpt`: Laporan › Pajak › Rekap pajak untuk konsultan · Laporan › Dokumen › Laporan berkop › Laba-Rugi › bulan akhir Desember › 12 bulan · Laporan ›
+  Neraca (31 Des), masing-masing "simpan PDF" — layar Laporan › Tahunan TIDAK punya tombol simpan PDF; kunci bulan tahun baru menunggu).
 - **MM7 (sisa audit 39b)**: kalimat daftar Retur untuk nota ber-bonus sudah menunjuk "Tidak ada notanya? Retur ketik tangan" di `/baru/` sejak 2 Okt
   (9686b61; ketik tangan menerima kemasan per unit). Komentar kepala `retur-logika.js` yang masih menyebut sistem lama dibetulkan. Tidak ada kalimat layar
   `/baru/` lain yang menyuruh membuka sistem lama / `kasir.html`.
 - **Hemat baca (#111, disambungkan 8 Okt)**: koleksi yang BELUM LENGKAP di perangkat ini (SATU sumber `hemat-baca.js hbBelumLengkap`, lihat bagian
   "Kelengkapan" di bab Hemat baca) diteruskan `firebase.js hematKeadaan().belumLengkap` → `app.js lokalPerangkat` → `uang.js muatData` (`M.hemat`, hanya saat
   nyala) → `pstKurang`: baris yang membutuhkannya = "?" dengan sebab toko ("data modal owner belum dibaca penuh sejak kuota baca direset pukul 15.00 WIB — ketuk
-  "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)"), bukan ✓. Saklar mati: `M` tanpa `hemat` — kartu sama persis (`uji_periksa_sesudah.py --banding=<ref>`).
+  "baca penuh sekarang" (Menu › Toko ini › Perangkat & antrean › Hemat baca)"), bukan ✓. Saklar mati: `M` tanpa `hemat` — kartu sama persis (`uji_periksa_sesudah.py --banding=<ref>`).
 - Dijaga `alat-uji/uji_periksa_sesudah.py` (kotak pasir potret + buku khusus + kasbon dua orang; ritual = simulator `uji_potret_tahun.py` + hasil beku +
   selesai): semua sama (cache kembali utuh; tetap sama 20 Jan sesudah kegiatan Januari sungguhan), kapan tampil, kontrol kotak per baris (modal pembuka,
   merek pembuka dihapus, tanda 25 kg lepas, karung hilang dari rak, potret bulan hilang / omzetnya berubah, stok minus, piutang pembuka sesudah & sebelum
@@ -2036,6 +2037,37 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
   20 Feb 2027. `uji_kinerja_gerak`: jumlah `_versiCache += 1` di toko.js 5 → 7 (jalan baru `denganCacheSaring`). `uji_tutup_buku_bertahap`: jangkar kontrol
   ikut bentuk patokan baru; N5 memakai jam mulai yang sebenarnya (07.00).
 
+## Audit kesiapan 2027 · P2 — kalimat layar & penjaga kecil (8 Okt 2026, cabang `perbaikan/kalimat-layar-audit`)
+
+- **Jalur Menu (K5)**: kalimat layar menunjuk "Menu › Toko ini › Perangkat & antrean [› Antrean kirim / Hemat baca]", "› Peran & persetujuan [› Atur]",
+  "› Cadangan & simpanan" — jalur "Menu › Sistem …" tidak ada di layar (laci itu bernama Toko ini; N1 dikunci, namanya tidak diganti). Tempat panel Hemat baca
+  = SATU konstanta `hemat-baca.js HB_TEMPAT` (juga dibuang `sistem-logika.js ssHemat` dari sebab yang digambar di panel itu sendiri). Kata "sistem" ada di
+  keterangan laci Toko ini & cari Menu. Daftar siap-nyala menyebut tempat tombol "sudah tidak dipakai" (Uang › Tutup buku › kartu Kunci bulan › butir denyut
+  24 jam, muncul sesudah diam > 24 jam); perangkat berantrean yang hilang menunjuk butir "perangkat hilang" di prosedur pulih darurat. Dijaga
+  `uji_menu_baru.py jalur_menu`: tiap "Menu › …" di kode = laci / baris / tab yang ada (menu-logika.js, menu.js `JUDUL_SISTEM` & `TAB_SISTEM`).
+- **Perkiraan kuota (C1)**: kalimat pertama menyuruh MENUTUP aplikasi di iPhone/iPad/HP lain sampai pita "Tahun … terkunci dan arsipnya habis" (tiap perangkat
+  yang terbuka membaca ±sekali muat lagi) dan menyebut sisa baca hari itu (`sisaBaca` = batas Spark − baca ritual). MEPET menyebut perangkat lain, muat ulang,
+  dan tulisan toko. TIDAK MUAT (keputusan owner 8 Okt, K11): tetap mulai hari itu; besoknya toko TUTUP sampai sesudah reset kuota, "Lanjutkan" dari perangkat
+  yang sama, tunggu arsip habis.
+- **PDF pegangan SPT (K2)**: `tutup-buku-logika.js bkPdfSpt` — dipakai kalimat potret gagal & jalan baris pajak kartu pemeriksaan.
+- **Tutup buku tahun lalu selesai? (C3)**: `bkTahunSelesai` — berita acara yang ADA dan belum selesai (berjalan / terkunci / membatalkan) = belum, SEBELUM
+  cabang yang membaca catatan hidup (dulu terkunci + arsip habis lolos sebagai "tanpa catatan" → Beranda menyuruh mengunci Januari). `bkPerhatian` selalu
+  menyebut tutup buku / pembatalan yang belum tuntas (dulu diam sepanjang fase terkunci, juga selama angka DOBEL). Data tidak berubah; kunci tetap ditolak.
+- **Unduhan tutup buku (C2)**: kabar cadangan SEBELUM / SESUDAH & arsip menyebut ukuran persis berkas (1 KB = 1.000 byte seperti Finder/Files, + byte) dan
+  "buka Unduhan/Files, pastikan berkasnya ada dan ukurannya sama, lalu salin ke luar perangkat ini" — `a.click()` tidak memberi tahu apa pun. Unduhan
+  SUNGGUHAN dari web app layar penuh ditolak ("buka lewat tab peramban di Mac"); latihan tidak. Pemeriksa layar penuh SATU fungsi `jual-logika.js webAppMandiri`
+  (Jual & Uang).
+- **Minta didaftarkan (T6)**: permission-denied (permintaan kedua; rules tanpa allow update) = "permintaannya sudah sampai — tunggu owner menyetujui (Menu ›
+  Toko ini › Peran & persetujuan)" (`akses.js kalimatPermintaanGagal`, tanpa nomor versi rules); kode lain = "gagal terkirim (kode) — cek internet, coba lagi".
+  Sesudah terkirim, tombol & kolom nama tidak ditawarkan lagi. `firestore.rules*` tidak disentuh.
+- **Modal awal 8 Agu (keputusan owner 8 Okt, K9 — dibiarkan, tidak dicatat)**: berita acara tutup buku (tepat sesudah "Laba tinggal") dan Neraca berkop (bila
+  catatannya menyebut beda "belum terjelaskan buku"; juga kertas Neraca tanggal pilihan) memuat SATU kalimat tetap `laporan-logika.js LP_KALIMAT_MODAL_AWAL`;
+  angka pastinya urusan konsultan. Objek `neracaPada` tidak berubah (layar Neraca & ASAP GLOBAL).
+- Label tanggal di kode & uji yang disentuh cabang ini: pekerjaan Paket C & sanggahan #111 = 7 Okt (bukan keputusan owner 8 Okt).
+- Dijaga (semua dengan kontrol): `uji_tutup_buku_bertahap.py` (S-A8, K9, S-P2), `uji_kunci_periode.py` (A2 arsip habis & fase DOBEL), `uji_periksa_sesudah.py`
+  (S8: layar Uang asli — unduhan, layar penuh; S3 jalan pajak), `uji_laporan_baru.py` (K9 Neraca berkop), `uji_menu_baru.py` (jalur Menu, cari "sistem"),
+  `uji_akses_baru.py` (minta didaftarkan), `uji_keranjang_tahan.py` (pemeriksa layar penuh). Tidak ada `kasir*.html` yang berubah (`sw-kasir.js` tetap).
+
 ## Hemat baca tahap 1–2 (owner 7 Okt 2026, siap 2027; cabang `perbaikan/hemat-baca`) — saklar bawaan MATI
 
 Keputusan owner K1 (7 Okt): tetap Spark + hemat baca, menyala ≤ 20 Nov. Rancangan & batasnya: `docs/rancangan-hemat-baca.md`; uji rules:
@@ -2046,7 +2078,7 @@ lapisan dengar baru di balik saklar per perangkat yang bawaannya MATI.
   (jam server) di tulisan 48 koleksi hemat lewat `tulisBerkas` / `perbaruiBerkas` / `pulihkanBerkas`; capServer DIKUPAS dari tiap snapshot sebelum memori
   (mesin beku, cadangan, katalog tidak melihatnya); batu nisan `batuNisan/<koleksi>|<id>` di batch hapus koleksi hemat — HANYA sesudah perangkat itu
   terbukti bisa membaca `batuNisan` (aturan v7; 1 baca sekali, `miqbal_hemat_nisan_sah_v1`); denyut `versi: 'baru-c1'` + `capServer` di denyut owner.
-- **Saklar NYALA** (owner; Menu › Sistem › Perangkat › Hemat baca, dua ketukan, aplikasi dimuat ulang; mati darurat `/baru/?hemat=mati`): koleksi hemat
+- **Saklar NYALA** (owner; Menu › Toko ini › Perangkat & antrean › Hemat baca, dua ketukan, aplikasi dimuat ulang; mati darurat `/baru/?hemat=mati`): koleksi hemat
   lewat `hbSesi` (`baru/js/data/hemat-baca.js`, murni) — simpanan perangkat (V) + delta `capServer > B` (S) + batu nisan (N) + baca penuh kueri sendiri (F);
   baca penuh harian per toko (dokumen `aturanToko/hematHarian`); pendeteksi tanpa cap di tiap baca penuh; penulis tanpa cap dari denyut; hitungan server;
   rem kuota; satu tab per peramban (kunci tab di app.js sebelum Firestore dimulai); pendengar simpanan hidup; uang-kritis & katalog kasir dijaga.

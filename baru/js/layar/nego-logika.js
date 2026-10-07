@@ -76,7 +76,7 @@ export function ngBolehNego(akun, hakNego, A, bisaMinta) {
   if (ngOwner(akun)) return { boleh: true, kalimat: '' };
   if (ngJatah(akun, A) > 0) return { boleh: true, kalimat: '' };
   if (hakNego && hakNego !== 'tidak' && bisaMinta !== false) return { boleh: true, kalimat: '' };
-  return { boleh: false, kalimat: ngNama(akun) + ' tidak punya jatah nego (0 % margin)' + (hakNego && hakNego !== 'tidak' ? ' dan minta owner dari perangkat ini belum bisa — jual di harga katalog, parkir struk ini sampai owner datang, atau owner yang mencatat nota ini' : ' — owner yang mengatur di Menu › Sistem › Peran › Atur') };
+  return { boleh: false, kalimat: ngNama(akun) + ' tidak punya jatah nego (0 % margin)' + (hakNego && hakNego !== 'tidak' ? ' dan minta owner dari perangkat ini belum bisa — jual di harga katalog, parkir struk ini sampai owner datang, atau owner yang mencatat nota ini' : ' — owner yang mengatur di Menu › Toko ini › Peran & persetujuan › Atur') };
 }
 /** Persetujuan owner yang SUDAH dipakai nota yang berlaku (sekali pakai) + yang sedang dipegang keranjang / struk parkir perangkat ini. */
 function ngSetujuTerpakai(dipakai) {

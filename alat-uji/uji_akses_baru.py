@@ -230,6 +230,14 @@ ok('kisi SS2: TIDAK ADA sel "boleh sendiri" yang ditutup server (semua ' + SS_TI
 
 // ---- 10 · sambungan di firebase.js (sumber diperiksa — tidak bisa dijalankan di jsc)
 var F = SUMBER.firebase, A = SUMBER.app;
+// audit P2 (T6): rules (v7) membuat permintaanAkses sekali saja (tanpa allow update) — menekan "Minta didaftarkan" kedua kali = permission-denied, padahal permintaan
+// pertama sudah sampai. Kalimatnya tidak lagi menunjuk "rules v3"; sesudah terkirim tombolnya tidak ditawarkan lagi (juga saat keadaan akun dibunyikan ulang)
+var KP1 = kalimatPermintaanGagal('permission-denied'), KP2 = kalimatPermintaanGagal('unavailable'), KP3 = kalimatPermintaanGagal('');
+ok('audit P2 · minta didaftarkan gagal: permission-denied → "permintaannya sudah sampai — tunggu owner menyetujui (Menu › Toko ini › Peran & persetujuan)"; kode lain → "gagal terkirim (<kode>) — cek internet, coba lagi"; tanpa nomor versi rules; firebase.js memakainya; tombol & kolom nama disembunyikan sesudah terkirim',
+  /^Permintaan tidak diterima server\. Kalau sudah pernah menekan Minta didaftarkan, permintaannya sudah sampai — tunggu owner menyetujui \(Menu › Toko ini › Peran & persetujuan\)\.$/.test(KP1) && KP2 === 'Permintaan gagal terkirim (unavailable) — cek internet, coba lagi.' && /\(tanpa kode\)/.test(KP3) && !/rules v\d/.test(KP1 + KP2)
+  && F.indexOf("catch (e) { return { gagal: true, pesan: kalimatPermintaanGagal((e && e.code) || e) }; }") > 0 && F.indexOf('rules v3 belum dipasang') < 0
+  && A.indexOf("if (!r.gagal) { gerbang.terkirim(); _mintaTerkirim = String((_akunGerbang && _akunGerbang.uid) || ''); document.getElementById('mintaAkun').hidden = true; }") > 0
+  && A.indexOf("document.getElementById('mintaAkun').hidden = akun.jenis !== 'belum' || terkirim;") > 0, JSON.stringify([KP1, KP2, KP3]));
 var iPeriksa = F.indexOf('periksaKiriman(akun, isi, H'), iBatch = F.indexOf('const b = writeBatch(db); const ditulis = [];'), iAntre = F.indexOf('antre.tambah({ id: idKiriman'), iCommit = F.indexOf('const janji = b.commit().then(() => { antre.konfirmasi(idKiriman)');
 ok('firebase.js: penjaga bukan-owner jalan SEBELUM batch dibangun; salinan antre dibuat SEBELUM commit; salinan dihapus HANYA di .then (server mengaku); ditolak → tandaiDitolak',
   iPeriksa > 0 && iBatch > iPeriksa && iAntre > iBatch && iCommit > iAntre && F.indexOf("antre.tandaiDitolak(idKiriman, kode") > iCommit && F.indexOf('antre.konfirmasi(') === iCommit + 'const janji = b.commit().then(() => { '.length);
@@ -316,6 +324,9 @@ if __name__ == '__main__':
     if '--kontrol' in sys.argv:
         ganti = lambda kunci, a, b: dict(S, **{kunci: S[kunci].replace(a, b)})
         rusak = {
+            'audit P2: permintaan kedua (permission-denied) disebut gagal biasa / rules lama': (js.replace("  if (/permission-denied/.test(k)) return 'Permintaan tidak diterima server.", "  if (false) return 'Permintaan tidak diterima server."), S),
+            'audit P2: firebase.js kembali ke kalimat "rules v3 belum dipasang"': (js, ganti('firebase', "catch (e) { return { gagal: true, pesan: kalimatPermintaanGagal((e && e.code) || e) }; }", "catch (e) { return { gagal: true, pesan: 'Permintaan ditolak server (' + String((e && e.code) || e) + '). Mungkin rules v3 belum dipasang — hubungi owner.' }; }")),
+            'audit P2: tombol Minta didaftarkan muncul lagi sesudah terkirim': (js, ganti('app', "document.getElementById('mintaAkun').hidden = akun.jenis !== 'belum' || terkirim;", "document.getElementById('mintaAkun').hidden = akun.jenis !== 'belum';")),
             'peran dari dokumen bisa menjadi owner': (js.replace("if (PERAN_BUKAN_OWNER.indexOf(peran) < 0) return { jenis: 'nonaktif'", "if (peran === 'owner') return { jenis: 'owner', peran: 'owner', nama: 'Owner', uid, email: e }; if (PERAN_BUKAN_OWNER.indexOf(peran) < 0) return { jenis: 'nonaktif'"), S),
             'akun tanpa aksesAkun tetap mendengarkan koleksi': (js.replace("if (!bisaBekerja(akun)) return [];\n  if (akun.jenis === 'owner') return KOLEKSI.map", "if (akun.jenis === 'owner') return KOLEKSI.map"), S),
             'karyawan melihat layar uang': (js.replace("const LAYAR_STAF = ['jual', 'pelanggan', 'stok', 'menu'];", "const LAYAR_STAF = ['jual', 'pelanggan', 'stok', 'menu', 'uang'];"), S),

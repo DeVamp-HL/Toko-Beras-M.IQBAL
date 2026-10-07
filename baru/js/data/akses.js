@@ -68,6 +68,16 @@ export function susunPermintaan(akun, namaKetik, kiniIso) {
   const nama = String(namaKetik || '').trim().slice(0, 40); if (nama.length < 2) return { tolak: 'Ketik nama lu (minimal dua huruf) supaya owner tahu ini siapa' };
   return { data: { uid: akun.uid, email: akun.email, nama, pada: kiniIso } };
 }
+/**
+ * Audit P2 (T6): kalimat bila menulis permintaanAkses gagal. Rules (v7) membuat permintaan sekali saja — tanpa allow update — jadi akun yang menekan "Minta
+ * didaftarkan" untuk kedua kalinya (mis. sesudah membuka ulang aplikasi) ditolak permission-denied padahal permintaan pertamanya sudah sampai. Tanpa nomor versi
+ * rules: dulu "Mungkin rules v3 belum dipasang" — menunjuk aturan darurat tanpa kunci bulan.
+ */
+export function kalimatPermintaanGagal(kode) {
+  const k = String(kode || '').trim();
+  if (/permission-denied/.test(k)) return 'Permintaan tidak diterima server. Kalau sudah pernah menekan Minta didaftarkan, permintaannya sudah sampai — tunggu owner menyetujui (Menu › Toko ini › Peran & persetujuan).';
+  return 'Permintaan gagal terkirim (' + (k || 'tanpa kode') + ') — cek internet, coba lagi.';
+}
 
 /** Pendengar per peran (Tahap 3): owner = semua koleksi.js; bukan-owner = §3 (koleksi utuh + dokumen setelan satu per satu) + aksesAkun dirinya. */
 export function pendengarPeran(akun) {

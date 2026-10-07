@@ -11,7 +11,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
 import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda, setelDariCache, setelHapusTertunda, hapusTertunda, cacheMentah, tolakKunci } from './toko.js';
-import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
+import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan, kalimatPermintaanGagal } from './akses.js';
 import { buatAntre, cekDariCache, susunTulisUlang, jejakTulisUlang } from './antre-lokal.js';
 import { KP_BATAS_GET, kpPecahBiaya } from './kunci-periode.js';
 import { KK_KOLEKSI, KK_ID, KK_JEDA_MS, kkSetelServer, kkLupakanServer, kkIsi, kkDokumen, kkTertinggal, kkBolehTerbit, kkMentah, kkCatatTerbit, kkPasangGerbang, kkKanon } from './katalog-kasir.js';
@@ -169,7 +169,7 @@ export function keluar() { return auth ? signOut(auth) : Promise.resolve(); }
 export async function mintaDidaftarkan(nama) {
   const r = susunPermintaan(status.akun, nama, new Date().toISOString()); if (r.tolak) return { gagal: true, pesan: r.tolak };
   try { await setDoc(doc(db, 'permintaanAkses', r.data.uid), r.data); return { ok: true }; }
-  catch (e) { return { gagal: true, pesan: 'Permintaan ditolak server (' + String((e && e.code) || e) + '). Mungkin rules v3 belum dipasang — hubungi owner.' }; }
+  catch (e) { return { gagal: true, pesan: kalimatPermintaanGagal((e && e.code) || e) }; }
 }
 
 /** Pendengar PER PERAN (akses.js pendengarPeran; peta §3). Satu pendengar yang ditolak rules tidak mematikan aplikasi: disebut di SS1, sisanya jalan. */
@@ -477,7 +477,7 @@ export async function tulisBerkas(daftar, hapus, opsi) {
   // putaran 3 AAL5: hapus di kiriman ini dicatat menunggu server sampai commit selesai (dokumennya sudah hilang dari cache — tutup buku menghitungnya 'tunggu')
   setelHapusTertunda(idKiriman, H); segarkanLokal(); status.menunggu += 1; beriTahu();
   const janji = b.commit().then(() => { antre.konfirmasi(idKiriman); return { ok: true }; })
-    .catch((e) => { const kode = String((e && e.code) || e); antre.tandaiDitolak(idKiriman, kode, new Date().toISOString()); status.galat = 'tulis ditolak: ' + kode; beriTahu(); return { gagal: true, pesan: status.galat + ' — salinannya ada di Sistem › Perangkat (ditolak server)' }; })
+    .catch((e) => { const kode = String((e && e.code) || e); antre.tandaiDitolak(idKiriman, kode, new Date().toISOString()); status.galat = 'tulis ditolak: ' + kode; beriTahu(); return { gagal: true, pesan: status.galat + ' — salinannya ada di Menu › Toko ini › Perangkat & antrean › Antrean kirim (ditolak server)' }; })
     .finally(() => { setelHapusTertunda(idKiriman, null); segarkanLokal(); status.menunggu = Math.max(0, status.menunggu - 1); beriTahu(); });
   // tutup buku bertahap (opsi.tunggu): kiriman berikutnya hanya sesudah server MENGAKU yang ini — 30 detik tanpa jawaban = berhenti (kirimannya tetap di antrean
   // perangkat; kalau belakangan masuk, "Lanjutkan" melihatnya dari id-nya dan tidak mengirim ulang)
@@ -516,7 +516,7 @@ function jagaTulisHemat() {
  *  lihat(id) = isi MENTAH (snapshot server F / simpanan perangkat, SEBELUM saringan batu nisan): catatan lahir ulang yang tersembunyi nisan TIDAK ada di memori
  *  (dokDiCache), dan dulu tidak pernah disentuh (tinjauan 7 Okt). → { n, tunda, lewat }: tunda = id yang belum terkirim (tab tidak boleh menulis / potongan
  *  ditolak) — sesi hemat menyimpan & mengulangnya; lewat = id di bulan TERKUNCI (tidak bisa disentuh — perangkat lain tidak menerimanya lewat delta): dulu
- *  dibuang diam-diam, kini dilaporkan supaya sesi hemat menghitungnya (baca penuh harian toko `temuanTunda`, sanggahan 8 Okt). */
+ *  dibuang diam-diam, kini dilaporkan supaya sesi hemat menghitungnya (baca penuh harian toko `temuanTunda`, sanggahan 7 Okt). */
 async function sentuhCap(koleksi, ids, lihat) {
   if (!db || !status.akun || status.akun.jenis !== 'owner' || !hbHemat(koleksi)) return { n: 0, tunda: [] };
   if (jagaTulisHemat()) return { n: 0, tunda: (ids || []).slice() };
@@ -551,7 +551,7 @@ async function tulisNisanSaja(koleksi, ids) {
 export async function berhenti(sebab) {
   _berhenti = String(sebab || 'Aplikasi dipakai di tab lain — tab ini berhenti. Muat ulang untuk memakainya di sini.');
   // _hemat sengaja TIDAK di-null-kan (layar tetap membaca keadaannya): sesi yang berhenti melapor SEMUA koleksi hemat "periksa — tidak diperbarui lagi di tab
-  // ini" (hemat-baca.js belumK, sanggahan 8 Okt) — kartu pemeriksaan, kunci bulan, pajak & dokumen Laporan tidak lagi "lengkap" dari data yang membeku
+  // ini" (hemat-baca.js belumK, sanggahan 7 Okt) — kartu pemeriksaan, kunci bulan, pajak & dokumen Laporan tidak lagi "lengkap" dari data yang membeku
   if (_hemat) { _hemat.berhenti(); }
   try { if (db) await terminate(db); } catch (e) { /* abaikan */ }
   status.galat = _berhenti; beriTahu();

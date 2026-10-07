@@ -92,7 +92,7 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
     pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })() }),   // putaran 24: pengingat pajak, owner saja
   periksaSambungan: () => fb.periksaSambungan(4000), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n),
   akun: akunKini, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah),
-  // hemat baca (owner 7 Okt 2026): Menu › Sistem › Perangkat › Hemat baca — keadaan, daftar siap-nyala, saklar perangkat ini, tombol baca penuh
+  // hemat baca (owner 7 Okt 2026): Menu › Toko ini › Perangkat & antrean › Hemat baca — keadaan, daftar siap-nyala, saklar perangkat ini, tombol baca penuh
   hemat: () => fb.hematKeadaan(), hematSiap: () => fb.hematSiapNyala(), setelSaklarHemat: (v) => fb.setelSaklarHemat(v), hematBacaPenuh: (sebab) => fb.hematBacaPenuh(sebab),
   hematMintaSemua: () => fb.hematMintaSemua(), muatUlang: () => location.reload() });
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
@@ -105,7 +105,7 @@ const harga = pasangLayarHarga(document.getElementById('layarHarga'), { akun: ()
 // putaran 25: daftar periksa Kunci bulan membaca kiriman tertahan/ditolak di perangkat ini + nota yang diparkir di Jual (keadaan lokal, bukan server)
 const parkirJual = () => { try { const k = layar.keadaan.baca(); return (k.antrean || []).filter((a) => a.id !== k.aktifId).map((a) => ({ pada: (a.beku || {}).pada || null, pelanggan: (a.beku || {}).pelanggan || '', n: (((a.beku || {}).items) || []).length })); } catch (e) { return []; } };
 const lokalPerangkat = () => ({ antre: statusFb.antre || [], menunggu: statusFb.menunggu || 0, idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), offline: statusFb.offline,
-  // Paket C (8 Okt): kartu "Pemeriksaan sesudah tutup buku" — koleksi yang belum dimuat / ditolak server = "belum bisa diperiksa", bukan lulus
+  // Paket C (7 Okt): kartu "Pemeriksaan sesudah tutup buku" — koleksi yang belum dimuat / ditolak server = "belum bisa diperiksa", bukan lulus
   koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, ditolak: statusFb.ditolak || [],
   antreLokal: (() => { try { return fb.antreLokal(); } catch (e) { return { belum: [], ditolak: [] }; } })(), parkir: parkirJual(),
   // owner 7 Okt: tutup buku butuh baca penuh sesi ini saat hemat baca nyala. #111 × Paket C: `hemat.belumLengkap` (SATU sumber hemat-baca.js hbBelumLengkap) →
@@ -237,9 +237,13 @@ function jagaIsian(akun) {
   if (uidKeranjang && uidKeranjang !== akun.uid) lupakanSemua();
   uidKeranjang = akun.uid;
 }
+// audit P2 (T6): uid yang permintaannya sudah SAMPAI di server sesi ini. Server (rules v7) tidak menerima permintaan kedua dari akun yang sama, jadi sesudah
+// terkirim tombol "Minta didaftarkan" tidak ditawarkan lagi — juga bila keadaan akun dibunyikan ulang (gambarAkun dipanggil lagi tanpa berubah)
+let _mintaTerkirim = ''; let _akunGerbang = null;
 function gambarAkun(akun) {
   jagaIsian(akun);
   terapkanKunci(akun);
+  _akunGerbang = akun || null;
   // owner 7 Okt (J2): keranjang & struk parkir akun ini yang tersimpan di tab ini (hari ini) dipulihkan sesudah halaman dimuat ulang — sesudah tirai dibuka
   if (!q.get('cadangan') && akun && bisaBekerja(akun)) layar.pulihkanKeranjang(akun);
   const bisa = bisaBekerja(akun);
@@ -253,9 +257,11 @@ function gambarAkun(akun) {
     setTimeout(() => (e ? isianSandi : isianEmail).focus(), tundaFokus + 50); return;   // sesudah pintu merapat: kolom baru terlihat & bisa difokus
   }
   document.getElementById('judulAkun').textContent = akun.kalimat || 'Akun ini belum bisa dipakai';
-  document.getElementById('pesanAkun').textContent = akun.jenis === 'belum' ? 'Masuk sebagai ' + akun.email + '. Owner perlu mendaftarkan akun ini dulu — tulis nama lu lalu minta didaftarkan; owner menyetujuinya di Menu › Sistem › Peran.'
+  const terkirim = akun.jenis === 'belum' && !!_mintaTerkirim && _mintaTerkirim === String(akun.uid || '');
+  document.getElementById('pesanAkun').textContent = akun.jenis === 'belum' ? 'Masuk sebagai ' + akun.email + '. ' + (terkirim ? 'Permintaan sudah terkirim — tunggu owner menyetujuinya di Menu › Toko ini › Peran & persetujuan; layar ini terbuka sendiri begitu akun lu didaftarkan.'
+    : 'Owner perlu mendaftarkan akun ini dulu — tulis nama lu lalu minta didaftarkan; owner menyetujuinya di Menu › Toko ini › Peran & persetujuan.')
     : akun.jenis === 'nonaktif' ? 'Masuk sebagai ' + akun.email + '. Tidak ada data toko yang dibuka di perangkat ini selama akun ini nonaktif.' : '';
-  document.getElementById('mintaAkun').hidden = akun.jenis !== 'belum';
+  document.getElementById('mintaAkun').hidden = akun.jenis !== 'belum' || terkirim;
   document.getElementById('hasilAkun').hidden = true;
 }
 formMasuk.addEventListener('submit', async (ev) => {
@@ -272,7 +278,8 @@ document.getElementById('tombolMinta').addEventListener('click', async () => {
   const hasil = document.getElementById('hasilAkun'); const r = await fb.mintaDidaftarkan(document.getElementById('isianNamaAkun').value);
   hasil.hidden = false; hasil.classList.toggle('awas', !!r.gagal);
   hasil.textContent = r.gagal ? r.pesan : 'Permintaan terkirim. Tunggu owner menyetujui — layar ini terbuka sendiri begitu akun lu didaftarkan.';
-  if (!r.gagal) gerbang.terkirim();
+  // tombol & kolom nama disembunyikan (#mintaAkun — .utama ber-display sendiri, atribut hidden pada tombolnya tidak menyembunyikan)
+  if (!r.gagal) { gerbang.terkirim(); _mintaTerkirim = String((_akunGerbang && _akunGerbang.uid) || ''); document.getElementById('mintaAkun').hidden = true; }
 });
 /** Keluar = ganti orang. Masih ada catatan belum terkirim → ditanya dulu; salinannya TIDAK dihapus (terkirim saat akun ini masuk lagi). */
 /** Keranjang Jual berisi → ditanya "simpan atau kosongkan?" (putaran 23c). Simpan = batal keluar, kembali ke keranjang. Kosongkan = dilupakan SESUDAH semua pertanyaan lolos. */

@@ -722,6 +722,10 @@ coba('S-A1', function () { kotak(5); W = jam('2027-01-05T10:00:00+07:00'); var k
   var R = susunKunci(2026, D, W);
   ok('A1 berita acara membawa putusan tiap tanggal (alasan & jumlah nota); teks berita acara menyebutnya', !R.tolak && R.acara.putusanHari.length === H.length && R.acara.putusanHari.every(function (h) { return h.alasan.length >= 5 && h.nNota >= 1; })
     && /tidak ditutup, diterima apa adanya/.test(teksAcara(2026, { paraf: { owner: true, saksi: true } }, R.banding, R.sebelum, 'Saksi Contoh', W)), J(R.tolak || R.acara.putusanHari));
+  // keputusan owner 8 Okt 2026 (K9): modal awal 8 Agu DIBIARKAN tidak dicatat — berita acara memuat SATU kalimat tetap (sama persis dengan Neraca berkop) tepat sesudah "Laba tinggal"
+  var TA = teksAcara(2026, { paraf: { owner: true, saksi: true } }, R.banding, R.sebelum, 'Saksi Contoh', W); var BA = TA.split('\n'); var iLT = -1; BA.forEach(function (x, i) { if (iLT < 0 && /^Laba tinggal/.test(x)) iLT = i; });
+  ok('K9 berita acara: kalimat tetap modal awal ("Modal awal toko saat sistem mulai mencatat 8 Agu 2026 tidak pernah dicatat … belum terjelaskan buku … diserahkan ke konsultan") SATU kali, tepat sesudah baris "Laba tinggal"; teksnya = Neraca berkop (LP_KALIMAT_MODAL_AWAL)',
+    iLT > 0 && BA[iLT + 1] === LP_KALIMAT_MODAL_AWAL && TA.split(LP_KALIMAT_MODAL_AWAL).length === 2 && /^Modal awal toko saat sistem mulai mencatat 8 Agu 2026 tidak pernah dicatat: .*"belum terjelaskan buku"\. Angka pastinya diserahkan ke konsultan\.$/.test(LP_KALIMAT_MODAL_AWAL), TA);
   var C = {}; C[H[1]] = ''; var P2 = susunPutusanHari(C, W); if (!P2.tolak) terapkanKeCache(P2.dokumen);
   ok('A1 putusan dicabut → g1 memblokir lagi (tanggal itu saja)', !P2.tolak && !gerbangBuku(2026, kini, {}, {}).daftar[0].ok && gerbangBuku(2026, kini, {}, {}).belumPutus.join() === H[1], J(P2.tolak)); });
 
@@ -828,7 +832,24 @@ coba('S-A8', function () { kotak(40); W = jam('2026-12-20T10:00:00+07:00'); var 
   ok('A8 jam reset kuota di peramban tanpa data zona (aturan tanggal): sama persis, juga di hari pergantian', JR.every(function (x, i) { return jr0[i] === x[1]; }), J(JR.map(function (x, i) { return x[0] + ' ' + jr0[i] + '/' + x[1]; })));
   var tadi = BATAS_SPARK.tulis; BATAS_SPARK.tulis = Math.max(1, Math.floor(Q.ritual.tulis / 2)); var Q2 = perkiraanKuota(2026, new Date(Date.parse('2027-01-02T16:00:00+07:00')));
   BATAS_SPARK.tulis = Math.ceil(Q.ritual.tulis / 0.9); var Q3 = perkiraanKuota(2026, new Date(Date.parse('2027-01-03T16:00:00+07:00'))); BATAS_SPARK.tulis = tadi;
-  ok('A8 peringatan: lewat batas → "TIDAK MUAT … DOBEL"; > 80 % → "MEPET"', Q2.lewat && /TIDAK MUAT/.test(Q2.kalimat[1]) && /DOBEL/.test(Q2.kalimat[1]) && Q3.mepet && !Q3.lewat && /MEPET/.test(Q3.kalimat[1]), J([Q2.kalimat, Q3.kalimat])); });
+  ok('A8 peringatan: lewat batas → "TIDAK MUAT … DOBEL"; > 80 % → "MEPET"', Q2.lewat && /TIDAK MUAT/.test(Q2.kalimat[1]) && /DOBEL/.test(Q2.kalimat[1]) && Q3.mepet && !Q3.lewat && /MEPET/.test(Q3.kalimat[1]), J([Q2.kalimat, Q3.kalimat]));
+  // audit P2 (C1): sebelum mulai, perangkat lain DITUTUP (bukan sekadar layar mati) sampai pita arsip habis — tiap perangkat yang terbuka membaca sekali muat lagi;
+  // sisa baca hari itu = batas Spark − baca ritual (perkiraan); MEPET tidak hanya menyalahkan tulisan toko (1 Jan toko tutup)
+  var sisa = BATAS_SPARK.baca - Q.ritual.baca;
+  ok('A8 (audit P2) kalimat pertama: TUTUP aplikasi di iPhone/iPad/HP lain sampai pita "Tahun 2026 terkunci dan arsipnya habis"; tiap perangkat yang terbuka membaca ±sekali muat lagi; sisa baca hari itu = batas − baca ritual',
+    Q.sisaBaca === sisa && sisa > Q.muat && /Sebelum mulai, TUTUP aplikasi di iPhone\/iPad\/HP lain \(bukan sekadar layar mati\) dan jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis" muncul/.test(Q.kalimat[0])
+    && Q.kalimat[0].indexOf('tiap perangkat yang terbuka membaca ±' + ANGKA(Q.muat) + ' lagi; sisa baca hari itu sesudah ritual ±' + ANGKA(sisa) + '.') >= 0, J([Q.kalimat[0], Q.sisaBaca, sisa, Q.muat]));
+  var bacaAsli = BATAS_SPARK.baca;
+  try {
+    BATAS_SPARK.baca = Q.ritual.baca + Math.max(1, Math.floor(Q.muat / 2)); _kuotaMemo = null; var Q4 = perkiraanKuota(2026, new Date(Date.parse('2026-12-20T10:00:00+07:00')));
+    BATAS_SPARK.baca = Q.ritual.baca - 1; _kuotaMemo = null; var Q5 = perkiraanKuota(2026, new Date(Date.parse('2026-12-20T10:00:00+07:00')));
+  } finally { BATAS_SPARK.baca = bacaAsli; _kuotaMemo = null; }
+  ok('A8 (audit P2) sisa baca kurang dari sekali muat → "tidak cukup untuk satu perangkat lagi"; MEPET menyebut perangkat lain yang dibuka, muat ulang, DAN tulisan toko (bukan cuma tulisan toko)',
+    Q4.sisaBaca > 0 && Q4.sisaBaca < Q4.muat && Q4.kalimat[0].indexOf('sisa baca hari itu sesudah ritual ±' + ANGKA(Q4.sisaBaca) + ', tidak cukup untuk satu perangkat lagi.') >= 0
+    && Q4.mepet && !Q4.lewat && /^MEPET: .*Yang ikut menghabiskan kuota hari itu: tiap perangkat lain yang dibuka \(±[\d.]+ baca sekali buka\), tiap muat ulang aplikasi, dan tulisan toko — tutup semua perangkat lain, jangan muat ulang, kerjakan saat toko tutup\.$/.test(Q4.kalimat[1]), J([Q4.sisaBaca, Q4.muat, Q4.kalimat]));
+  ok('A8 (keputusan owner 8 Okt, K11) TIDAK MUAT: tetap mulai 1 Jan 2027; 2 Jan 2027 toko TUTUP sampai sesudah reset (15.00 WIB), Lanjutkan dari perangkat yang sama, tunggu arsip habis; sisa baca "habis oleh ritualnya sendiri"',
+    Q5.lewat && Q5.sisaBaca < 0 && /kuota baca hari itu habis oleh ritualnya sendiri\.$/.test(Q5.kalimat[0])
+    && Q5.kalimat[1].indexOf('Tetap mulai 1 Jan 2027 (hari lain tidak lebih ringan); 2 Jan 2027 toko TUTUP sampai sesudah pukul 15.00 WIB, lalu ketuk "Lanjutkan" dari perangkat yang sama dan tunggu sampai arsipnya habis.') >= 0, J(Q5.kalimat)); });
 
 // ---- A9 · catatan bertanggal 2026 yang mendarat sesudah penanda (karcis HP penjaga yang tertahan offline)
 coba('S-A9', function () { kotak(5); W = jam('2027-01-02T16:00:00+07:00'); var R = susunKunci(2026, D, W, HPA); R.kiriman.forEach(kirim); var daftar = arsipBuku(2026).daftar;
@@ -890,6 +911,23 @@ coba('S-ERA', function () { kotak(3);
 // ---- A2 · Beranda: tutup buku tahun lalu yang belum selesai (owner) — kunci bulan menunggu
 coba('S-A2', function () { kotak(3); jam('2027-01-03T10:00:00+07:00');
   ok('A2 Beranda 3 Jan 2027 tanpa tutup buku: satu baris "Tutup buku 2026 belum dikerjakan — kunci bulan 2027 menunggu"', bkPerhatian(new Date(__KINI)).some(function (x) { return /Tutup buku 2026 belum dikerjakan/.test(x.teks) && /kunci bulan 2027 menunggu/.test(x.teks); }), J(bkPerhatian(new Date(__KINI)))); });
+
+// ---- audit P2 (C2 · K2): unduhan tutup buku menyebut ukuran & jalan mencocokkannya; web app layar penuh ditolak (sungguhan saja); PDF pegangan SPT = tombol yang ada
+coba('S-P2', function () { kotak(3); jam('2027-01-01T15:10:00+07:00');
+  ok('P2 ukuran berkas seperti Finder/Files (1 KB = 1.000 byte) + byte persisnya: 3.145.728 → "3,1 MB · 3.145.728 byte"; 845.123 → "845 KB · 845.123 byte"; 512 → "512 byte"',
+    bkUkuranBerkas(3145728) === '3,1 MB · 3.145.728 byte' && bkUkuranBerkas(845123) === '845 KB · 845.123 byte' && bkUkuranBerkas(512) === '512 byte' && bkUkuranBerkas(2000000) === '2 MB · 2.000.000 byte', J([bkUkuranBerkas(3145728), bkUkuranBerkas(845123), bkUkuranBerkas(512), bkUkuranBerkas(2000000)]));
+  ok('P2 kabar unduhan: "<Berkas|Arsip> <nama> (<ukuran>) dikirim ke Unduhan [· ket] — buka Unduhan/Files, pastikan berkasnya ada dan ukurannya sama, lalu salin ke luar perangkat ini." (bukan "diunduh", bukan "di luar HP")',
+    bkKabarUnduh('Berkas', 'b.json', 1500) === 'Berkas b.json (2 KB · 1.500 byte) dikirim ke Unduhan — buka Unduhan/Files, pastikan berkasnya ada dan ukurannya sama, lalu salin ke luar perangkat ini.'
+    && bkKabarUnduh('Arsip', 'a.json', 1500, '7 dokumen tahun 2026') === 'Arsip a.json (2 KB · 1.500 byte) dikirim ke Unduhan · 7 dokumen tahun 2026 — buka Unduhan/Files, pastikan berkasnya ada dan ukurannya sama, lalu salin ke luar perangkat ini.', bkKabarUnduh('Arsip', 'a.json', 1500, '7 dokumen tahun 2026'));
+  ok('P2 web app layar penuh: unduhan SUNGGUHAN ditolak ("buka lewat tab peramban di Mac"), latihan & tab peramban tidak',
+    /buka lewat tab peramban di Mac/.test(bkTolakMandiri(true, false)) && bkTolakMandiri(true, true) === '' && bkTolakMandiri(false, false) === '', bkTolakMandiri(true, false));
+  var nav = function (s) { return { standalone: s }; }, win = function (m) { return { matchMedia: function (q) { return { matches: m && q === '(display-mode: standalone)' }; } }; };
+  ok('P2 pemeriksa layar penuh SATU fungsi (jual-logika webAppMandiri, juga dipakai Jual): navigator.standalone ATAU display-mode standalone; tanpa keduanya / tanpa window / matchMedia melempar = tab peramban',
+    webAppMandiri(nav(true), win(false)) && webAppMandiri(nav(undefined), win(true)) && !webAppMandiri(nav(false), win(false)) && !webAppMandiri(null, null) && !webAppMandiri({}, { matchMedia: function () { throw new Error('x'); } }));
+  var KT = bkKalimatTanpaPotret(2026); var PDF = bkPdfSpt(2026);
+  ok('P2 (K2) PDF pegangan SPT menunjuk tombol yang ada: Laporan › Pajak › Rekap pajak untuk konsultan 2026 · Laporan › Dokumen › Laporan berkop › Laba-Rugi › bulan akhir Desember 2026 › 12 bulan · Laporan › Neraca (31 Des 2026) — tanpa "Laporan Tahunan" (layar Tahunan tidak punya tombol simpan PDF); cadangan di Menu › Toko ini › Cadangan & simpanan',
+    PDF === 'Laporan › Pajak › Rekap pajak untuk konsultan 2026 › simpan PDF; Laporan › Dokumen › Laporan berkop › Laba-Rugi › bulan akhir Desember 2026 › 12 bulan › simpan PDF; Laporan › Neraca (31 Des 2026) › simpan PDF'
+    && KT.indexOf(PDF) >= 0 && !/Laporan Tahunan/.test(KT) && KT.indexOf('Menu › Toko ini › Cadangan & simpanan') >= 0, KT); });
 """
 
 ASAP = r"""
@@ -1110,6 +1148,19 @@ RUSAK = [
     ('A8 · jam reset kuota selalu 14.00 (zona Pasifik diabaikan)', 'baru/js/layar/tutup-buku-logika.js', "if (j === 0) return 14; if (j === 23) return 15; } catch", "return 14; } catch"),
     ('A8 · jam reset kembali ke aturan tanggal LAMA (meleset satu jam di Minggu pergantian Maret & November)', 'baru/js/layar/tutup-buku-logika.js', JAM_RESET_BARU, JAM_RESET_LAMA),
     ('A8 · tanpa data zona: aturan tanggal lama (meleset di hari pergantian)', 'baru/js/layar/tutup-buku-logika.js', "return d > minggu(2, 2) && d <= minggu(10, 1) ? 14 : 15;", "return d >= minggu(2, 2) && d < minggu(10, 1) ? 14 : 15;"),
+    ('audit P2 · sisa baca hari itu tanpa baca ritual', 'baru/js/layar/tutup-buku-logika.js', "const sisaBaca = BATAS_SPARK.baca - ritual.baca;", "const sisaBaca = BATAS_SPARK.baca;"),
+    ('audit P2 · kalimat pertama tidak menyuruh MENUTUP perangkat lain', 'baru/js/layar/tutup-buku-logika.js', "TUTUP aplikasi di iPhone/iPad/HP lain (bukan sekadar layar mati)", "matikan layar iPhone/iPad/HP lain"),
+    ('audit P2 · sisa kurang dari sekali muat tidak disebut', 'baru/js/layar/tutup-buku-logika.js', "(sisaBaca < muat ? ', tidak cukup untuk satu perangkat lagi.' : '.')", "'.'"),
+    ('audit P2 · MEPET kembali hanya menyalahkan tulisan toko', 'baru/js/layar/tutup-buku-logika.js', "'. Yang ikut menghabiskan kuota hari itu: tiap perangkat lain yang dibuka (±' + ANGKA(muat) + ' baca sekali buka), tiap muat ulang aplikasi, dan tulisan toko — tutup semua perangkat lain, jangan muat ulang, kerjakan saat toko tutup.'", "'. Tulisan toko hari itu ikut menghabiskan kuota — kerjakan saat toko tutup.'"),
+    ('K11 · TIDAK MUAT: hari tutup toko = hari ritual (bukan besoknya)', 'baru/js/layar/tutup-buku-logika.js', "const besok = bkTambahHari(W.iso, 1);", "const besok = W.iso;"),
+    ('K9 · berita acara tanpa kalimat modal awal', 'baru/js/layar/tutup-buku-logika.js', "  L.push(LP_KALIMAT_MODAL_AWAL, '');\n", ""),
+    ('K9 · kalimat modal awal bergeser dari baris "Laba tinggal"', 'baru/js/layar/tutup-buku-logika.js', "'Laba tinggal   ' + rpA(sebelum.labaTinggal));", "'Laba tinggal   ' + rpA(sebelum.labaTinggal), '');"),
+    ('audit P2 · ukuran berkas memakai 1 KB = 1.024 byte (beda dengan Finder/Files)', 'baru/js/layar/tutup-buku-logika.js', "const sat = b >= 1e6 ? String(Math.round(b / 1e5) / 10).replace('.', ',') + ' MB' : b >= 1000 ? ANGKA(Math.round(b / 1000)) + ' KB'", "const sat = b >= 1048576 ? String(Math.round(b / 104857.6) / 10).replace('.', ',') + ' MB' : b >= 1024 ? ANGKA(Math.round(b / 1024)) + ' KB'"),
+    ('audit P2 · kabar unduhan tanpa jalan mencocokkan di Unduhan/Files', 'baru/js/layar/tutup-buku-logika.js', " — buka Unduhan/Files, pastikan berkasnya ada dan ukurannya sama, lalu salin ke luar perangkat ini.';", " — simpan juga satu salinan di luar HP';"),
+    ('audit P2 · web app layar penuh tidak ditolak', 'baru/js/layar/tutup-buku-logika.js', "  return mandiri && !latihan ? 'Unduhan tutup buku", "  return false ? 'Unduhan tutup buku"),
+    ('audit P2 · latihan ikut ditolak di web app layar penuh', 'baru/js/layar/tutup-buku-logika.js', "  return mandiri && !latihan ? 'Unduhan tutup buku", "  return mandiri ? 'Unduhan tutup buku"),
+    ('audit P2 · pemeriksa layar penuh mengabaikan display-mode standalone', 'baru/js/layar/jual-logika.js', "|| (!!win && typeof win.matchMedia === 'function' && !!win.matchMedia('(display-mode: standalone)').matches)", ""),
+    ('audit P2 (K2) · tanpa potret kembali menyuruh simpan PDF "Laporan Tahunan"', 'baru/js/layar/tutup-buku-logika.js', "dan simpan PDF untuk SPT: ' + bkPdfSpt(tahun) + '.", "dan simpan PDF Rekap pajak & Laporan Tahunan ' + tahun + ' untuk SPT."),
     ('A8 · peringatan MEPET tidak pernah muncul', 'baru/js/layar/tutup-buku-logika.js', "mepet = R.filter((x) => x.n <= x.batas && x.n > 0.8 * x.batas);", "mepet = R.filter((x) => false);"),
     ('A9 · susulan disapu sebagai sisa arsip (lanjutkan arsip)', 'baru/js/layar/tutup-buku-logika.js', "if (a.status === 'terkunci') { const A0 = bkArsipHabis(tahun) ? null : arsipBuku(tahun);", "if (a.status === 'terkunci') { const A0 = arsipBuku(tahun);"),
     ('A9 · hasil periksa tidak dibekukan bila ada catatan susulan', 'baru/js/layar/tutup-buku-logika.js', "(sisa && !habis)", "sisa"),

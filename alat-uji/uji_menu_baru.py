@@ -144,6 +144,11 @@ ok('tertutup: tutup buku T (era kosong) · bulan penuh T (catatan mulai 3 Agu, A
   tt('tutupBuku').tertutup && tt('bulanPenuh').tertutup && !tt('opnameRupiah').tertutup && tt('kartuPemasok').tertutup && !tt('hapusBuku').tertutup && tt('telusur').tertutup && /^4 dari 6 pintu/.test(TT.ket), J(TT.isi.map(function (p) { return p.id + '=' + p.tertutup; })) + ' ' + TT.ket);
 // ---- CARI
 ok('cari: "angsa" → merek beras & kemasan; "bon" → layar; "darto" → orang (tujuan kartunya); satu huruf → tidak mencari', susunCari(KINI, 'angsa').hasil.some(function (r) { return r.jenis === 'merek' && r.judul === 'Angsa'; }) && susunCari(KINI, 'bon').hasil.some(function (r) { return r.jenis === 'layar'; }) && susunCari(KINI, 'darto').hasil.some(function (r) { return r.jenis === 'orang' && r.tujuan.orang === 'pak darto'; }) && susunCari(KINI, 'a').hasil.length === 0 && susunCari(KINI, 'zzzz').kosong, J(susunCari(KINI, 'angsa').hasil.map(function (r) { return r.jenis + ':' + r.judul; })));
+// audit P2 (K5): laci itu bernama "Toko ini" (N1 dikunci, nama tidak diganti) — kata "sistem" (nama lamanya) tetap menemukannya di Menu
+var CRs = susunCari(KINI, 'sistem'); var lacT = LC.filter(function (g) { return g.id === 'toko'; })[0];
+ok('audit P2 · cari "sistem" → Perangkat & antrean, Peran & persetujuan, Cadangan & simpanan (laci Toko ini, tujuan layar Sistem); keterangan laci Toko ini menyebut sistem',
+  ['Perangkat & antrean', 'Peran & persetujuan', 'Cadangan & simpanan'].every(function (n) { return CRs.hasil.some(function (r) { return r.jenis === 'layar' && r.judul === n && r.tujuan.ke === 'sistem'; }); })
+  && !!lacT && lacT.nama === 'Toko ini' && /sistem/.test(lacT.ket), J([CRs.hasil.map(function (r) { return r.judul; }), lacT && lacT.ket]));
 // ---- SS1 PERANGKAT & JEJAK
 var PR = ssPerangkat(KINI, ANTRE, 'p-a1');
 ok('perangkat: HP owner (denyut 5 menit lalu) HIDUP & perangkat ini; perangkat tanpa nama denyut kemarin tidak hidup, 2 antrean di sana; antrean perangkat ini 1, umur 10 menit (belum lama, batas 30)', PR.daftar[0].ini && PR.daftar[0].hidup && PR.daftar[0].menitLalu === 5 && PR.daftar[1].nama === '(belum dinamai)' && !PR.daftar[1].hidup && PR.lainAntre === 2 && PR.nAntre === 1 && PR.antre[0].lama === 10 && PR.antre[0].terlalu === false && PR.antre[0].nama === 'Buku bon', J(PR.daftar.map(function (d) { return d.nama + ':' + d.menitLalu + ':' + d.hidup; })) + ' ' + J(PR.antre));
@@ -237,6 +242,39 @@ def utama(js):
     return h['lulus'], h['gagal']
 
 
+def jalur_menu(ganti=None):
+    """Audit P2 (K5): tiap jalur "Menu › …" di kode /baru/ (bukan komentar) menunjuk laci, baris & tab yang SUNGGUH ada — laci dari menu-logika.js, baris dari
+    menu.js JUDUL_SISTEM, tab dari menu.js TAB_SISTEM (+ tombol "Atur"); "Sistem ›" (jalur lama yang tidak ada di layar) tidak boleh ada di kalimat layar.
+    ganti = {berkas: teks} untuk kontrol. → daftar temuan."""
+    import re
+    baca = lambda f: (ganti or {}).get(f) if (ganti or {}).get(f) is not None else open(os.path.join(AKAR, f), encoding='utf-8').read()
+    menu = baca('baru/js/layar/menu.js'); logika = baca('baru/js/layar/menu-logika.js'); out = []
+    mj = re.search(r'const JUDUL_SISTEM = \{([^}]*)\}', menu); mt = re.search(r'const TAB_SISTEM = \{(.*?)\};', menu)
+    if not mj or not mt: return ['menu.js: JUDUL_SISTEM / TAB_SISTEM tidak terbaca']
+    judul = dict(re.findall(r"(\w+): '([^']+)'", mj.group(1)))
+    tab = {k: [l for _, l in re.findall(r"\['(\w+)', '([^']+)'\]", v)] for k, v in re.findall(r"(\w+): \[((?:\['\w+', '[^']+'\](?:, )?)*)\]", mt.group(1))}
+    laci = re.findall(r"\{ id: '\w+', nama: '([^']+)', ket:", logika)
+    if 'Toko ini' not in laci or len(judul) < 5: return ['menu-logika.js / menu.js: laci "Toko ini" atau JUDUL_SISTEM tidak terbaca']
+    n = 0
+    for f in sorted(glob.glob(os.path.join(AKAR, 'baru', 'js', '**', '*.js'), recursive=True)):
+        rel = os.path.relpath(f, AKAR); teks = baca(rel)
+        for i, baris in enumerate(teks.split('\n'), 1):
+            s = baris.strip()
+            if s.startswith('//') or s.startswith('*') or s.startswith('/*'): continue
+            kode = re.sub(r'\s//\s.*$', '', baris)
+            if re.search(r'(^|[^›] )Sistem ›|Menu › Sistem', kode): out.append(rel + ':' + str(i) + ': jalur lama "Sistem ›" (laci itu bernama Toko ini)')
+            for m in re.finditer(r'Menu › ([^\'"`()<.,;:\\]+)', kode):
+                # nama laci / baris / tab harus PERSIS (satu-satunya kata sambung yang boleh menempel di ujung kalimat: "dulu")
+                seg = [x.strip() for x in m.group(1).split(' › ')]; seg[-1] = re.sub(r' dulu$', '', seg[-1].split(' — ')[0].strip()); n += 1
+                if seg[0] not in laci: out.append(rel + ':' + str(i) + ': laci "' + seg[0] + '" tidak ada di Menu'); continue
+                if seg[0] != 'Toko ini' or len(seg) < 2: continue
+                k = next((k for k, v in judul.items() if seg[1] == v), None)
+                if k is None: out.append(rel + ':' + str(i) + ': baris "' + seg[1] + '" tidak ada di laci Toko ini'); continue
+                if len(seg) > 2 and seg[2] not in tab.get(k, []) + ['Atur']: out.append(rel + ':' + str(i) + ': tab "' + seg[2] + '" tidak ada di ' + judul[k])
+    if n < 10: out.append('jalur "Menu › …" yang terbaca cuma ' + str(n) + ' — pemeriksa tidak melihat kalimat layar (lulus kosong)')
+    return out
+
+
 def lokasi_belum_ada(teks=None):
     """39b-19 tinjauan v2: Menu › Lokasi — omzet Rp0 / minus karena retur tidak boleh ditulis "belum ada" kalau notanya ada (tiga keadaan kosong)."""
     t = teks if teks is not None else open(os.path.join(AKAR, 'baru/js/layar/menu.js'), encoding='utf-8').read(); g = []
@@ -249,6 +287,7 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            'audit P2: cari "sistem" tidak menemukan Perangkat & antrean': js.replace("sub: 'sistem · siapa memegang alat mana,", "sub: 'siapa memegang alat mana,"),
             '39b-19: omzet lokasi tidak mengurangi retur': js.replace("omzetHari: hariIni.reduce((a, p) => a + (p.hargaTotal || 0), 0) - uangR((t) => t === iso),", "omzetHari: hariIni.reduce((a, p) => a + (p.hargaTotal || 0), 0),").replace("omzetBulan: bulanIni.reduce((a, p) => a + (p.hargaTotal || 0), 0) - uangR((t) => t.slice(0, 7) === bulan),", "omzetBulan: bulanIni.reduce((a, p) => a + (p.hargaTotal || 0), 0),"),
             'no.4: laci Pelanggan diam soal kelebihan bayar': js.replace("(macet ? ' · ' + macet + ' macet' : '') + (LB.n ? ' · ' + ringkasLebih({ uang: LB.uang.jumlah, hapus: LB.hapus.jumlah }) : '')", "(macet ? ' · ' + macet + ' macet' : '')"),
             'no.4: jawaban piutang diam soal kelebihan bayar': js.replace("const kataLB = (LB.uang.n ?", "const kataLB = (false ?"),
@@ -297,6 +336,15 @@ if __name__ == '__main__':
             '39b-38: laci Laporan memakai laba mesin': js.replace("+ 1 : 0; const laba = ugLabaBersih(mnAwalBulan(iso), iso);", "+ 1 : 0; const laba = { labaBersih: ugLabaBersih(mnAwalBulan(iso), iso).labaMesin };"),
         }
         kode = 0
+        # audit P2 (K5): pemeriksa jalur Menu berbunyi untuk jalur lama, baris yang diganti nama, dan tab yang tidak ada
+        tb = open(os.path.join(AKAR, 'baru/js/layar/tutup-buku-logika.js'), encoding='utf-8').read(); mn = open(os.path.join(AKAR, 'baru/js/layar/menu.js'), encoding='utf-8').read()
+        for nmK, gK in [('jalur lama "Menu › Sistem › Perangkat" kembali di kalimat tutup buku', {'baru/js/layar/tutup-buku-logika.js': tb.replace('(Menu › Toko ini › Perangkat & antrean › Antrean kirim)', '(Menu › Sistem › Perangkat)', 1)}),
+                        ('baris "Perangkat & antrean" diganti nama di Menu tanpa kalimat layar ikut', {'baru/js/layar/menu.js': mn.replace("perangkat: 'Perangkat & antrean',", "perangkat: 'Perangkat',", 1)}),
+                        ('tab "Antrean kirim" tidak ada lagi tapi kalimat layar menunjuknya', {'baru/js/layar/menu.js': mn.replace("['antrean', 'Antrean kirim']", "['antrean', 'Antrean']", 1)})]:
+            basi = list(gK.values())[0] == open(os.path.join(AKAR, list(gK)[0]), encoding='utf-8').read()
+            gJ = [] if basi else jalur_menu(gK)
+            print(('KONTROL BASI  ' if basi else 'BERBUNYI ' if gJ else 'DIAM!!   ') + 'audit P2: ' + nmK + ' → ' + (gJ[0] if gJ else '-'))
+            if basi or not gJ: kode = 3
         T = open(os.path.join(AKAR, 'baru/js/layar/menu.js'), encoding='utf-8').read(); Tr = T.replace("${l.notaHari || l.omzetHari ? RP(l.omzetHari) : 'belum ada'}", "${l.omzetHari ? RP(l.omzetHari) : 'belum ada'}", 1)
         gL = lokasi_belum_ada(Tr) if Tr != T else ['BASI']
         print(('BERBUNYI ' if gL and gL != ['BASI'] else 'DIAM!!   ') + '39b-19: Lokasi menulis "belum ada" untuk omzet Rp0 bernota → ' + (gL[0] if gL else '-'))
@@ -309,6 +357,7 @@ if __name__ == '__main__':
         sys.exit(kode)
     l, g = utama(js)
     tL = lokasi_belum_ada(); g = g + ['39b-19: ' + x for x in tL]; l = l + (0 if tL else 1)
+    tJ = jalur_menu(); g = g + ['audit P2 jalur Menu: ' + x for x in tJ]; l = l + (0 if tJ else 1)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')), key=os.path.basename)
     if cad:

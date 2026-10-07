@@ -280,6 +280,24 @@ var A2era = function (tahunDari, cek) { var b0 = cacheMentah('batch').slice(); p
 var A2d = A2era(2027, 2026), A2e = A2era(2026, 2026);
 ok('A2 tahun yang sudah dilewati tutup buku berikutnya (era 2027, tanpa berita acara 2026) tidak menahan', A2d.ok && /sudah lewat tutup buku/.test(A2d.teks), J(A2d));
 ok('A2 tahun yang ditutup sistem lama (saldo pembuka 2026 tanpa berita acara) tidak menahan', A2e.ok && /ditutup sistem lama/.test(A2e.teks), J(A2e));
+// audit P2 (C3): berita acara 2026 TERKUNCI dengan penanda masuk (era 2026). habis = arsipnya sudah habis (hasil periksa dibekukan) & catatan nota / kedatangan 2026
+// sudah pindah ke arsip (buku hidup tanpa catatan 2026); tidak habis = fase DOBEL (catatan 2026 masih di buku hidup bersama saldo pembuka 2027)
+var A2arsip = function (habis) { var lama = __KINI; bukaSemua(); var j0 = cacheMentah('penjualan').slice(), b0 = cacheMentah('batch').slice(), p0 = cacheMentah('pengaturan').slice();
+  var ac = { id: '2026', tahun: 2026, status: 'terkunci', nPembuka: 1, nArsip: 50, paraf: { owner: true, saksi: true, pada: '2027-01-01T08:00:00.000Z' } };
+  pasok('penjualan', habis ? j0.filter(function (x) { return String(x.tanggal || '') > '2026-12-31'; }) : j0);
+  pasok('batchMasuk', (habis ? b0.filter(function (x) { return x.stokAwal || x.tutupBuku || String(x.tanggal || '') > '2026-12-31'; }) : b0).concat([{ id: 'a2-pembuka', tanggal: '2027-01-01', pemasok: 'TUTUP BUKU 2026', biayaBongkar: 0, stokAwal: true, merkList: [], tutupBuku: true, tahunDari: 2026 }]));
+  if (habis) pasok('pengaturan', p0.concat([{ id: 'periksaArsip2026', tahun: 2026, percobaan: ac.paraf.pada, baris: [] }]));
+  pasok('tutupBukuAcara', [ac]); pada('2027-02-10T10:00:00+07:00');
+  var D = kpDaftarPeriksa('2027-01', kini(), K({ kunciMulai: undefined, putusanHari: putusSemua, centang: C_SEMUA })); kunciKe('2026-12');
+  var hasil = { t: butir(D, 'tutupBukuLalu'), D: D, TS: bkTahunSelesai(2026), P: kpPerhatian(kini(), { siap25b: true }), B: bkPerhatian(kini()), KM: kemajuanBuku(), era: eraBuku() };
+  pasok('tutupBukuAcara', []); pasok('penjualan', j0); pasok('batchMasuk', b0); pasok('pengaturan', p0); __KINI = lama; bukaSemua(); return hasil; };
+var A2h = A2arsip(true);
+ok('A2 (audit P2 · C3) tutup buku 2026 TERKUNCI & arsipnya HABIS (buku hidup tanpa catatan 2026): BELUM selesai — butir ⛔ tidak beres dengan teks "terkunci, belum selesai" (bukan "tanpa catatan"), kunci Januari ditolak; Beranda TIDAK menyuruh mengunci Januari 2027, tapi menyebut "Tutup buku 2026" (Uang › Tutup buku)',
+  A2h.era === 2026 && !!A2h.KM && A2h.KM.fase === 'selesaikan' && !A2h.TS.ok && /terkunci, belum selesai/.test(A2h.TS.teks) && !/tanpa catatan/.test(A2h.TS.teks + ' ' + A2h.t.ket) && !A2h.t.ok && /terkunci, belum selesai/.test(A2h.t.ket) && !A2h.D.boleh
+  && A2h.P.length === 0 && A2h.B.some(function (x) { return /^Tutup buku 2026 /.test(x.teks) && /arsipnya habis/.test(x.teks) && x.nilai === 'Uang › Tutup buku' && x.awas; }), J([A2h.TS, A2h.P, A2h.B, A2h.KM && A2h.KM.fase]));
+var A2x = A2arsip(false);
+ok('A2 (audit P2 · C3) fase DOBEL (terkunci, catatan 2026 belum pindah ke arsip): Beranda menyebut "Tutup buku 2026" & DOBEL (dulu diam sepanjang fase terkunci); kunci Januari tetap ditolak, Beranda tidak menyuruh mengunci',
+  A2x.era === 2026 && !!A2x.KM && A2x.KM.fase === 'arsip' && !A2x.TS.ok && !A2x.t.ok && A2x.P.length === 0 && A2x.B.some(function (x) { return /^Tutup buku 2026 /.test(x.teks) && /DOBEL/.test(x.teks) && x.awas; }), J([A2x.B, A2x.KM && A2x.KM.fase]));
 
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
@@ -421,6 +439,9 @@ if __name__ == '__main__':
             # arah sebaliknya (sanggahan paket A): butir A2 tidak boleh menahan yang tidak perlu
             'A2: tahun tanpa catatan ikut menahan kunci bulan': js.replace("return { ok: true, teks: 'tahun ' + tahun + ' tanpa catatan' };", "return { ok: false, teks: 'tahun ' + tahun + ' tanpa catatan' };"),
             'A2: tahun yang sudah dilewati tutup buku berikutnya ikut menahan': js.replace("if (era !== null && era > tahun) return { ok: true,", "if (era !== null && era > tahun) return { ok: false,"),
+            # audit P2 (C3)
+            'A2 (audit P2): berita acara terkunci yang arsipnya habis lolos sebagai "tanpa catatan"': js.replace("  if (a && a.status !== 'dibatalkan') return { ok: false, teks: bkKataBelum(tahun, a) };\n", ""),
+            'A2 (audit P2): Beranda hanya membaca tahunBuku (diam sepanjang fase terkunci / DOBEL)': js.replace("  if (KM) out.push({ teks:", "  if (false) out.push({ teks:"),
             'A2: tahun yang ditutup sistem lama ikut menahan': js.replace("if (!a && era !== null && era >= tahun) return { ok: true,", "if (!a && era !== null && era >= tahun) return { ok: false,"),
             '39b-38: potret kunci memakai laba mesin (tanpa lebih/kurang kas)': js.replace("const L = ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan));", "const L = { omzetPenuh: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).omzetPenuh, margin: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).margin, labaBersih: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).labaMesin };"),
         }

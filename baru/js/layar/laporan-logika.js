@@ -325,6 +325,17 @@ export function neracaPada(sampai, kini, kasBulan) {
   return { sampai: s || iso, N, modal, asetTetap: AT.asetTetap, aset, kewajiban, labaDitahan, labaKum, prive, menurutMesin, selisihBuku, harta, pasiva, total: N.total, tolak: KB && !kasAda ? KB.tolak : tolak, seimbang: aset !== null && Math.round(aset) === Math.round(kewajiban + modal + (labaDitahan || 0)),
     catatan: catatanInti + (kataLebih ? ' ' + kataLebih : '') };
 }
+/**
+ * Keputusan owner 8 Okt 2026 (K9): modal awal saat sistem mulai mencatat (8 Agu 2026) DIBIARKAN tidak dicatat. SATU kalimat tetap — sama persis di Neraca
+ * berkop (catatanNeracaBerkop) dan berita acara tutup buku (tutup-buku-logika.js teksAcara) — menyebut asal beda "belum terjelaskan buku"; angka pastinya
+ * urusan konsultan. Objek neracaPada TIDAK diubah (layar Neraca & ASAP GLOBAL membandingkannya byte-sama dengan main).
+ */
+export const LP_KALIMAT_MODAL_AWAL = 'Modal awal toko saat sistem mulai mencatat 8 Agu 2026 tidak pernah dicatat: laba ditahan (laba yang tinggal di toko) ikut memuat posisi toko sebelum tanggal itu — itulah asal beda "belum terjelaskan buku". Angka pastinya diserahkan ke konsultan.';
+/** Catatan kertas Neraca berkop: catatan neraca + kalimat K9 bila catatannya menulis beda "belum terjelaskan buku" (cocok = tanpa kalimat itu). */
+export function catatanNeracaBerkop(NP) {
+  const beda = NP && NP.selisihBuku !== null && NP.selisihBuku !== undefined && Math.abs(Number(NP.selisihBuku)) > 0.5;
+  return String((NP && NP.catatan) || '') + (beda ? ' ' + LP_KALIMAT_MODAL_AWAL : '');
+}
 /** Paket B (sintesis d): laba bersih kumulatif mesin & ambil pribadi dari catatan pertama s.d. `s` (null = semua; laba s.d. hari ini) — pembanding laba ditahan.
  *  Sesudah tutup buku, bagian s.d. 31 Des tahun yang ditutup = angka neraca 31 Des di potretnya (dihitung fungsi ini juga, saat kunci) + catatan hidup sesudahnya.
  *  Tanpa ini bagian itu hilang bersama arsip dan neraca Januari menulis seluruh laba ditahan tahun lalu sebagai "belum terjelaskan buku". */
@@ -452,7 +463,7 @@ export function laporanBerkop(jenis, keKey, rentang, kini, bayaran) {
   } else if (J[0] === 'neraca') {
     const NP = neracaPada(sampai > iso ? iso : sampai, kini, final ? lpKasAkhirBulan(keKey) : null); sub = 'per ' + tanggalPendek(NP.sampai) + (bulan.length > 1 ? ' (akhir ' + periode + ')' : '');
     baris = [{ nama: 'Harta', kelas: 'kel' }].concat(NP.harta.map((r) => ({ nama: r.nama, n: r.n }))).concat([{ nama: 'Jumlah harta', n: NP.aset, kelas: 'jumlah' }, { nama: 'Kewajiban & modal', kelas: 'kel' }]).concat(NP.pasiva.map((r) => ({ nama: r.nama, n: r.n }))).concat([{ nama: 'Jumlah kewajiban & modal', n: NP.aset === null ? null : NP.kewajiban + NP.modal + NP.labaDitahan, kelas: 'jumlah' }]);
-    catatan = NP.catatan; tolak = NP.tolak;
+    catatan = catatanNeracaBerkop(NP); tolak = NP.tolak;
   } else {
     // 39b no. 36: bulan FINAL — kas awal & akhir dari hitungan fisik tutup hari akhir bulan (lpKasAkhirBulan), sama dengan kas neraca bulan itu
     const KA = final ? lpKasAkhirBulan(keKey) : null, KW = final ? lpKasAkhirBulan(lpGeserBulan(bulan[0], -1)) : null;

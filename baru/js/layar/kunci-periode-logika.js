@@ -87,7 +87,7 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   const AL = L.antreLokal || { belum: [], ditolak: [] }; const tertahan = [];
   (AL.belum || []).concat(AL.ditolak || []).forEach((e) => { const kena = (e.dokumen || []).filter((d) => dokDalam(d.koleksi, d.data)); if (kena.length) tertahan.push((e.keadaan === 'ditolak' ? 'ditolak server' : 'belum terkirim') + ' · ' + (e.akunNama || '?') + ' · ' + kena.length + ' catatan ' + kpNamaBulan(kpBulanStr(kpBulanDok(kena[0].koleksi, kena[0].data)))); });
   (L.antre || []).forEach((q) => { const dok = dokDiCache(q.koleksi, q.id); if (dok && dokDalam(q.koleksi, dok)) tertahan.push('menunggu server · ' + q.koleksi + ' ' + (dok.tanggal || dok.bulan || '')); });   // tulisan Firestore yang belum diakui server (hasPendingWrites)
-  tambah({ id: 'antreIni', blokir: true, ok: !tertahan.length, teks: 'Tidak ada catatan ' + nama + ' yang tertahan / ditolak server di perangkat ini', ket: tertahan.length ? tertahan.length + ' kiriman — kirim dulu (sambungkan internet) atau putuskan di Menu › Sistem › Perangkat' : 'bersih', rincian: tertahan.slice(0, 6) });
+  tambah({ id: 'antreIni', blokir: true, ok: !tertahan.length, teks: 'Tidak ada catatan ' + nama + ' yang tertahan / ditolak server di perangkat ini', ket: tertahan.length ? tertahan.length + ' kiriman — kirim dulu (sambungkan internet) atau putuskan di Menu › Toko ini › Perangkat & antrean › Antrean kirim' : 'bersih', rincian: tertahan.slice(0, 6) });
   const parkir = (K.parkir || []).filter((p) => !p.pada || kpWib(new Date(p.pada)).idx <= kpIdx(bulan));
   tambah({ id: 'parkir', blokir: true, ok: !parkir.length, teks: 'Tidak ada nota parkir dari ' + nama, ket: parkir.length ? parkir.length + ' nota diparkir — catat atau buang di Jual dulu' : 'bersih', rincian: parkir.map((p) => (p.pelanggan || 'tanpa nama') + ' · ' + (p.n || 0) + ' baris · ' + (p.pada ? 'diparkir ' + kpTgl(kpWib(new Date(p.pada)).iso) : 'tanggal parkirnya tidak tercatat (diparkir sebelum pembaruan ini)')) });
   const perangkat = cacheMentah('perangkat'); const t = kini.getTime();
@@ -163,7 +163,8 @@ export function susunAturKunci(tenggang, w) {
 /** Perangkat lama yang sudah tidak dipakai: catatan denyutnya dihapus (kalau perangkatnya hidup lagi, denyutnya tercatat ulang sendiri). */
 export function susunLupakanPerangkat(id, yakin) {
   const p = cacheMentah('perangkat').find((x) => String(x.id) === String(id)); if (!p) return { tolak: 'Perangkat itu sudah tidak ada di daftar' };
-  if (Number(p.antrean) > 0 || Number(p.gagal) > 0) return { tolak: kpNamaDenyut(p) + ' terakhir melaporkan ' + (Number(p.antrean) || 0) + ' antrean / ' + (Number(p.gagal) || 0) + ' ditolak — nyalakan & kirim dulu, tidak bisa dilupakan' };
+  // audit P2 (T6): perangkat yang HILANG / rusak dengan antrean tidak pernah bisa "nyalakan & kirim" — jalan keluarnya di prosedur pulih darurat (Console)
+  if (Number(p.antrean) > 0 || Number(p.gagal) > 0) return { tolak: kpNamaDenyut(p) + ' terakhir melaporkan ' + (Number(p.antrean) || 0) + ' antrean / ' + (Number(p.gagal) || 0) + ' ditolak — nyalakan & kirim dulu, tidak bisa dilupakan dari sini. Kalau perangkatnya hilang atau rusak: ikuti butir "perangkat hilang" di prosedur pulih darurat (foto barisnya, lalu hapus lewat Console).' };
   if (!yakin) return { tolak: 'Nyatakan ' + kpNamaDenyut(p) + ' sudah tidak dipakai? Kalau ternyata masih dipakai dan menyimpan nota offline, nota bulan terkunci darinya akan ditolak. Ketuk sekali lagi', perluYakin: true };
   return { hapus: [{ koleksi: 'perangkatStatus', id: p.id }], patch: { kabar: kpNamaDenyut(p) + ' dikeluarkan dari daftar denyut', kabarAwas: false, kpYakinLupa: null } };
 }
@@ -196,7 +197,7 @@ export function kpPerhatianPerangkat(kini) {
 /** Status satu bulan untuk layar lain (laporan, pajak). */
 export const kpStatusBulan = (bulan) => { const s = kunciSampai(); return s && kpIdx(bulan) <= kpIdx(s) ? 'terkunci' : 'terbuka'; };
 
-// ---- catatan antre yang DITOLAK server (Menu › Sistem › Perangkat): alasan "bulan terkunci" + tawaran mencatat ulang bertanggal hari ini ----
+// ---- catatan antre yang DITOLAK server (Menu › Toko ini › Perangkat & antrean › Antrean kirim): alasan "bulan terkunci" + tawaran mencatat ulang bertanggal hari ini ----
 // Dicatat ulang hari ini HANYA untuk kiriman yang semuanya dokumen BARU di koleksi yang tanggalnya memang boleh bergeser ke hari ini (nota, bayar bon, kantong,
 // kasbon, belanja harian, cocokkan, amplop, setoran, modal, utang owner, pindah uang, retur, adukan). Tutup hari, biaya bulanan, kedatangan, slip, titik kas,
 // dan bon pemasok TIDAK — tanggalnya bagian dari artinya. Tanggal aslinya ditulis di field teks yang SUDAH ADA di koleksi itu.

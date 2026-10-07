@@ -20,7 +20,7 @@ export function buatAntre(penyimpan, sesi) {
     /** entri = { id, pada, akunUid, akunNama, peran, dokumen: [{ koleksi, data }] }. Kembali { ok } atau { tolak } (penuh / tidak bisa disimpan). */
     tambah(entri) {
       const a = baca();
-      if (a.length >= BATAS_ENTRI) return { tolak: 'Salinan antre di perangkat ini penuh (' + a.length + ' kiriman belum terkirim / ditolak). Sambungkan internet atau selesaikan yang ditolak di Sistem › Perangkat dulu.' };
+      if (a.length >= BATAS_ENTRI) return { tolak: 'Salinan antre di perangkat ini penuh (' + a.length + ' kiriman belum terkirim / ditolak). Sambungkan internet atau selesaikan yang ditolak di Menu › Toko ini › Perangkat & antrean › Antrean kirim dulu.' };
       a.push(Object.assign({}, entri, { keadaan: 'antre', sesi: sesi || '' }));
       return simpan(a) ? { ok: true } : { tolak: 'Salinan antre di perangkat ini sudah terlalu besar (' + BATAS_KB + ' KB). Sambungkan internet dulu supaya yang lama terkirim.' };
     },
