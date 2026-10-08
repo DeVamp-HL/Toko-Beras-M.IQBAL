@@ -21,7 +21,8 @@ export const HET_BAWAAN = { zona: 'Zona I', medium: 13500, premium: 14900, sumbe
 export const HET_KATEGORI = [['premium', 'premium'], ['medium', 'medium'], ['bukan', 'bukan beras HET']];
 export const HET_JENIS_UNIT = { wadah: 'kelas berwadah', sendiri: 'kelas tanpa wadah', kelas: 'kelas', merek: 'merek tanpa kelas' };
 const HET_NAMA = { premium: 'premium', medium: 'medium', bukan: 'bukan beras HET' };
-const HET_KOLOM = ['zona', 'medium', 'premium', 'sumber'];
+// tinjauan 9 Okt no. 18: angkaTanggal = hari ANGKA disimpan (hanya susunAturHet yang menulisnya); pemetaan menyalinnya utuh — `tanggal` dokumen = hari terakhir ditulis apa pun
+const HET_KOLOM = ['zona', 'medium', 'premium', 'sumber', 'angkaTanggal'];
 const hetBersih = (v) => String(v === undefined || v === null ? '' : v).replace(/\s+/g, ' ').trim();
 const hetKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 const hetAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim().replace(/^rp\s*/i, ''); if (!t) return NaN;
@@ -30,7 +31,8 @@ const hetAngka = (v) => { const t = String(v === undefined || v === null ? '' : 
 const hetRp = (x) => (Math.round(x) >= 1 ? RP(x) : 'Rp' + DESIMAL(x));
 const hetDok = () => cacheMentah('aturan').find((d) => String(d.id) === HET_ID) || null;
 
-/** Setelan HET yang berlaku: angka owner bila ada, selain itu angka bawaan (dokumen owner). angkaOwner = owner pernah menyimpan angka/zona/sumber. */
+/** Setelan HET yang berlaku: angka owner bila ada, selain itu angka bawaan (dokumen owner). angkaOwner = owner pernah menyimpan angka/zona/sumber.
+ *  tanggal = hari ANGKA disimpan (angkaTanggal), bukan hari pemetaan terakhir; tanpa angkaTanggal tanggalnya tidak disebut (tidak tahu ≠ hari pemetaan). */
 export function hetAtur() {
   const d = hetDok(); const angka = (k) => (d && isFinite(Number(d[k])) && Number(d[k]) > 0 ? Math.round(Number(d[k])) : null);
   const teks = (k) => (d && hetBersih(d[k]) ? hetBersih(d[k]) : null);
@@ -39,7 +41,7 @@ export function hetAtur() {
   const medium = angka('medium'), premium = angka('premium'), zona = teks('zona'), sumber = teks('sumber');
   const angkaOwner = medium !== null || premium !== null || zona !== null || sumber !== null;
   const A = { zona: zona === null ? HET_BAWAAN.zona : zona, medium: medium === null ? HET_BAWAAN.medium : medium, premium: premium === null ? HET_BAWAAN.premium : premium,
-    sumber: sumber === null ? HET_BAWAAN.sumber : sumber, peta, angkaOwner, ada: !!d, tanggal: d ? String(d.tanggal || '') : '' };
+    sumber: sumber === null ? HET_BAWAAN.sumber : sumber, peta, angkaOwner, ada: !!d, tanggal: d ? String(d.angkaTanggal || '') : '' };
   A.sumberTeks = angkaOwner ? 'angka owner' + (A.tanggal ? ' (disimpan ' + A.tanggal + ')' : '') + ' · sumber: ' + A.sumber + ' · ' + A.zona
     : 'angka bawaan dari dokumen owner: ' + HET_BAWAAN.sumber + ', ' + HET_BAWAAN.zona + ' — bisa diubah di Atur';
   return A;
@@ -120,7 +122,7 @@ export function susunAturHet(isi, w) {
   const M = baca('medium', 'medium'); if (M.tolak) return { tolak: M.tolak }; const P = baca('premium', 'premium'); if (P.tolak) return { tolak: P.tolak };
   if (P.n < M.n) return { tolak: 'HET premium ' + RP(P.n) + ' lebih rendah dari medium ' + RP(M.n) + ' — tertukar?' };
   const zona = hetBersih(o.zona).slice(0, 24) || kini.zona; const sumber = hetBersih(o.sumber).slice(0, 80) || kini.sumber;
-  const data = { id: HET_ID, tanggal: w.tanggal, jam: w.jam, diubahPada: w.kini, zona, medium: M.n, premium: P.n, sumber, peta: Object.assign({}, kini.peta) };
+  const data = { id: HET_ID, tanggal: w.tanggal, jam: w.jam, diubahPada: w.kini, angkaTanggal: w.tanggal, zona, medium: M.n, premium: P.n, sumber, peta: Object.assign({}, kini.peta) };
   return { dokumen: [{ koleksi: 'aturanToko', data }], patch: { hetBuka: false, aturHet: null, kabar: 'HET disimpan — ' + zona + ': medium ' + RP(M.n) + '/kg · premium ' + RP(P.n) + '/kg (sumber: ' + sumber + '). Tanda HET di katalog ikut berganti.', kabarAwas: false } };
 }
 /** Owner memetakan satu kelas/merek katalog → premium · medium · bukan; '' = lepas (kembali belum dipetakan). Angka setelan tidak ikut ditulis bila belum pernah diatur. */

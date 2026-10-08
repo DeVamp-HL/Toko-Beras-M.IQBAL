@@ -621,6 +621,48 @@ denganCacheSementara(MR, function () {
   var asliTD = tahunDiarsip; var Md = null; tahunDiarsip = function (k) { return String(k).slice(0, 4) === '2026'; };
   try { Md = merekBulan('2026-09', KINI); } finally { tahunDiarsip = asliTD; }
   ok('MR tahun ditutup buku tanpa potret: diarsip, tanpa baris merek, kalimat menyebut arsip; teratas kosong (bukan Rp0)', Md.diarsip && Md.tanpaPotret && Md.merek.length === 0 && /ikut arsip tutup buku 2026 tanpa potret/.test(Md.kalimat) && merekTeratas(Md, 'kg').baris.length === 0 && merekTeratas(Md, 'kg').tergambar === null, Md.kalimat);
+  // tinjauan 9 Okt no. 7 & 8 — penyebut susut % per merek. ANGKA CONTOH di atas MR, harapan dihitung TANGAN:
+  // · IR64 LL (bahan, 0 kg di nota): adukan 2 Sep 100 kg → kemasan Angsa · takar 3 Sep 60 kg → "Wadah Angsa" (= Angsa) · versi lama adukan yang dikoreksi 500 kg (tidak
+  //   berlaku) · adukan 28 Agu 40 kg (bukan September) · hilang 16 kg −192.000 → 16 ÷ (0 + 160 + 16) = 9,09% (dulu 100%)
+  // · Angsa: 50 kg Angsa → kemasan Angsa = pindah di dalam merek sendiri, tidak dihitung → tetap 6,5 ÷ 165,34
+  // · Kembang: 2 kemasan 5 kg dibongkar jadi bahan Buah Persik (10 kg) → 5 ÷ (5 + 10 + 5) = 25% (dulu 50%)
+  // · Kumala: "Kumala" bukan buku karung di kotak (mesin tidak memotong apa pun) → 30 kg ke Buah Persik TIDAK dihitung keluar
+  // · IR64 Ascent: hilang 2 kg, tidak ada yang terjual / diaduk / ditakar → "tanpaJual" (tidak bisa dihitung), bukan 100%
+  // · IR42 Select: 10 kg di nota, retur UTUH 50 kg (nota bulan lalu), hilang 45 kg → kg bersih −40: "returLebih", terjual dihitung 0 (dulu 45 ÷ 5 = 900%)
+  var pr7 = function (id, tgl, o) { return { koleksi: 'produksiKemasan', data: Object.assign({ id: id, tanggal: tgl, jam: '08:00', biayaKemasan: 0, upahRepacking: 0, kantongJenis: null, kantongJumlah: 0, hppSumberPerKgDipakai: 12000, hppPerUnit: 300000, jadiKarungUtuh: false, merkTujuan: null }, o) }; };
+  var MR7 = [{ koleksi: 'batchMasuk', data: { id: 'b3', tanggal: '2026-08-01', jam: '08:00', pemasok: 'RODA CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [
+      { id: 'b30', merk: 'IR64 LL', satuan: 'karung', beratKarung: 50, jumlahKarung: 10, totalKg: 500, hargaPerKg: 12000, subtotalHarga: 6000000 },
+      { id: 'b31', merk: 'IR64 Ascent', satuan: 'karung', beratKarung: 50, jumlahKarung: 2, totalKg: 100, hargaPerKg: 14000, subtotalHarga: 1400000 },
+      { id: 'b32', merk: 'IR42 Select', satuan: 'karung', beratKarung: 50, jumlahKarung: 4, totalKg: 200, hargaPerKg: 13000, subtotalHarga: 2600000 }] } },
+    pr7('p1', '2026-09-02', { namaProduk: 'Angsa', merkSumber: 'CAMPURAN: IR64 LL + Angsa', ukuranKemasan: 25, jumlahUnit: 6, kgDipakai: 150, sumberList: [{ merk: 'IR64 LL', kg: 100 }, { merk: 'Angsa', kg: 50 }] }),
+    pr7('p2', '2026-09-03', { namaProduk: 'Wadah Angsa', merkSumber: 'IR64 LL', ukuranKemasan: 60, jumlahUnit: 1, kgDipakai: 60, sumberList: [{ merk: 'IR64 LL', kg: 60 }], jadiKarungUtuh: true, merkTujuan: 'Wadah Angsa', dariTakar: true }),
+    pr7('p3', '2026-09-04', { namaProduk: 'Angsa', merkSumber: 'IR64 LL', ukuranKemasan: 25, jumlahUnit: 20, kgDipakai: 500, sumberList: [{ merk: 'IR64 LL', kg: 500 }], dikoreksiOleh: 'p1' }),
+    pr7('p4', '2026-08-28', { namaProduk: 'Perahu Layar', merkSumber: 'IR64 LL', ukuranKemasan: 20, jumlahUnit: 2, kgDipakai: 40, sumberList: [{ merk: 'IR64 LL', kg: 40 }] }),
+    pr7('p5', '2026-09-05', { namaProduk: 'Buah Persik', merkSumber: 'Kumala', ukuranKemasan: 10, jumlahUnit: 3, kgDipakai: 30, sumberList: [{ merk: 'Kumala', kg: 30 }] }),
+    pr7('p6', '2026-09-06', { namaProduk: 'Buah Persik', merkSumber: '', ukuranKemasan: 10, jumlahUnit: 1, kgDipakai: 0, sumberList: [], sumberKemasanList: [{ namaProduk: 'Kembang', ukuranKemasan: 5, unit: 2 }], kgKemasanDipakai: 10 }),
+    mrJl('m20', { jenis: 'literan', merkSumber: 'IR42 Select', namaProduk: 'IR42 Select', jumlahLiter: 12, rasioPakai: 0.833, totalKg: 10, hargaTotal: 150000, hppTotalSaatJual: 130000 }),
+    { koleksi: 'retur', data: { id: 'r3', tanggal: '2026-09-18', jam: '12:20', jenisAsal: 'karung', merkSumber: 'IR42 Select', kondisi: 'utuh', totalKg: 50, jumlahKarung: 1, beratKarungAcuan: 50, nominalRefund: 700000, selisihHargaTukar: 0 } },
+    { koleksi: 'penyesuaianStok', data: { id: 's7', tanggal: '2026-09-12', jam: '20:00', merk: 'IR64 LL', selisihKg: -16, nilaiRp: -192000, alasan: 'keliling gudang' } },
+    { koleksi: 'penyesuaianStok', data: { id: 's8', tanggal: '2026-09-13', jam: '20:00', merk: 'IR64 Ascent', selisihKg: -2, nilaiRp: -28000, alasan: 'cocokkan' } },
+    { koleksi: 'penyesuaianStok', data: { id: 's9', tanggal: '2026-09-15', jam: '20:00', merk: 'IR42 Select', selisihKg: -45, nilaiRp: -585000, alasan: 'cocokkan' } }];
+  denganCacheSementara(MR7, function () {
+    var M7 = merekBulan('2026-09', KINI); var LL = g('IR64 LL', M7), As = g('IR64 Ascent', M7), Sl = g('IR42 Select', M7), A7 = g('Angsa', M7), Ke7 = g('Kembang', M7), Ku7 = g('Kumala', M7); var S7 = M7.susut;
+    ok('MR7 no.7 IR64 LL (bahan, 0 kg di nota): keluar lewat adukan 100 + takar ke "Wadah Angsa" 60 = 160 kg (koreksi lama & Agustus tidak ikut); susut 16 ÷ (0 + 160 + 16) = 9,1%, bukan 100%',
+      LL && LL.kgNota === 0 && LL.kgKeluar === 160 && LL.kgKeluarDicocok === 160 && LL.susutKg === 16 && Math.abs(LL.susutPct - 16 / 176 * 100) < 1e-9 && lpPersenTeks(LL.susutPct) === '9,1%' && LL.keadaanSusut === 'ada' && LL.tinggi, J(LL));
+    ok('MR7 no.7 Angsa: 50 kg Angsa → kemasan Angsa = pindah di dalam merek sendiri (tidak keluar); susut tetap 6,5 ÷ 165,34 = 3,9%',
+      A7 && A7.kgKeluar === 0 && Math.abs(A7.susutPct - 6.5 / 165.34 * 100) < 1e-9, J([A7.kgKeluar, A7.susutPct]));
+    ok('MR7 no.7 Kembang: 2 kemasan × 5 kg dibongkar jadi bahan Buah Persik = 10 kg keluar → 5 ÷ (5 + 10 + 5) = 25% (bukan 50%); Kumala bukan buku karung → 30 kg tidak dihitung; Buah Persik tidak jadi baris baru',
+      Ke7 && Ke7.kgKeluar === 10 && Ke7.susutPct === 25 && Ke7.tinggi && Ku7 && Ku7.kgKeluar === 0 && Ku7.keadaanSusut === 'tanpaSelisih' && !g('Buah Persik', M7) && M7.merek.length === 8, J([Ke7.kgKeluar, Ke7.susutPct, Ku7.kgKeluar, M7.merek.length]));
+    ok('MR7 no.7 IR64 Ascent: hilang 2 kg tanpa beras yang terjual / diaduk / ditakar → "tanpaJual" (tidak bisa dihitung), BUKAN 100% & tidak ditandai susut tinggi',
+      As && As.susutKg === 2 && As.susutPct === null && As.keadaanSusut === 'tanpaJual' && !As.tinggi, J(As));
+    ok('MR7 no.8 IR42 Select: 10 kg di nota − 50 kg kembali (retur nota bulan lalu) = −40 → "returLebih": terjual untuk susut 0 (bukan −40), susut % tidak bisa dihitung (dulu 900%), tidak ditandai tinggi',
+      Sl && Sl.kg === -40 && Sl.kgDicocok === 0 && Sl.kgKeluarDicocok === 0 && Sl.susutKg === 45 && Sl.susutPct === null && Sl.keadaanSusut === 'returLebih' && !Sl.tinggi, J(Sl));
+    ok('MR7 se-toko: terjual 158,84 + 125 + 5 = 288,84 kg (kg di nota saja: keluar lewat adukan/takar TIDAK dihitung dua kali, retur lebih TIDAK −40); hilang 11,5 + 16 + 2 + 45 = 74,5 kg; 6 merek bercatat, 1 retur lebih; tinggi Angsa · Kembang · IR64 LL; menutup',
+      dekat(S7.kgJual * 100, 28884) && dekat(S7.kg * 10, 745) && Math.abs(S7.pct - 74.5 / (288.84 + 74.5) * 100) < 1e-9 && S7.nDicocok === 6 && S7.nReturLebih === 1 && S7.tinggi.map(function (x) { return x.merek; }).join() === 'Angsa,Kembang,IR64 LL' && M7.menutup, J([S7, M7.kalimat]));
+    var T7 = merekTeratas(M7, 'kg', 3);
+    ok('MR7 sisa gabungan (Kembang · Pandan Wangi · IR64 Ascent · IR64 LL · IR42 Select): terjual 5 + keluar (10 + 160) + hilang (5 + 2 + 16 + 45) → 68 ÷ 243 = 27,98%',
+      T7.sisa && T7.sisa.gabungan === 5 && T7.sisa.kgDicocok === 5 && T7.sisa.kgKeluarDicocok === 170 && T7.sisa.susutKg === 68 && Math.abs(T7.sisa.susutPct - 68 / 243 * 100) < 1e-9 && T7.menutup, J(T7.sisa));
+  });
 });
 ok('MR sesudah cache sementara: Sep kembali ke KOTAK (margin 146.300, 2 merek, menutup)', merekBulan('2026-09', KINI).L.margin === 146300 && merekBulan('2026-09', KINI).merek.length === 2 && merekBulan('2026-09', KINI).menutup);
 
@@ -696,6 +738,11 @@ def merek_layar(t):
     if "g.keadaanMargin === 'ada' ? h`<b class=\"${arah(g.margin)}\" data-gulir=" not in t or "'belum bisa dihitung' : 'tidak ada jualan'" not in t: out.append('margin yang belum bisa dihitung / tanpa jualan tidak dibedakan dari rupiah')
     if "'susut — (tidak ada selisih stok tercatat)'" not in t: out.append('susut tanpa selisih tercatat tidak disebut (terbaca 0%)')
     if 'Stok naik (lebih dari buku)' not in t: out.append('stok naik tidak ditulis terpisah dari susut')
+    # tinjauan 9 Okt no. 7 & 8: susut % yang tidak bisa dihitung DISEBUT sebabnya; penyebut yang ikut beras diaduk/ditakar disebut
+    if "g.keadaanSusut === 'returLebih' ? 'susut ' + KG(g.susutKg)" not in t: out.append('susut merek yang kg kembalinya ≥ kg di nota tidak disebut (retur lebih)')
+    if '${S.nReturLebih ?' not in t: out.append('se-toko diam soal merek yang terjualnya dihitung 0 karena retur')
+    if 'tidak ada beras merek ini yang terjual, diaduk, maupun ditakar bulan ini' not in t: out.append('susut tanpa beras keluar tidak menyebut sebabnya')
+    if "(g.kgKeluarDicocok ? ' (ikut dihitung '" not in t: out.append('susut % merek diam soal beras yang diaduk/ditakar ikut dihitung')
     return out
 
 
@@ -725,7 +772,12 @@ if __name__ == '__main__':
                           ('paket brief laporan.js: kartu Per merek tidak dipasang di Laba tablet/Mac', lap.replace('h`${panel}${keMana}${merek}`', 'h`${panel}${keMana}`', 1)),
                           ('paket brief laporan.js: penjaga Per merek yang meleset digambar sebagai teks biasa (diam)', lap.replace('h`<div class="pita-info awas" data-k="mr-jaga">', 'h`<div class="k2" data-k="mr-jaga">', 1)),
                           ('paket brief laporan.js: margin yang belum bisa dihitung digambar sebagai rupiah', lap.replace("g.keadaanMargin === 'ada' ? h`<b class=\"${arah(g.margin)}\"", "true ? h`<b class=\"${arah(g.margin)}\"", 1)),
-                          ('paket brief laporan.js: susut tanpa selisih tercatat tidak disebut', lap.replace("'susut — (tidak ada selisih stok tercatat)'", "''", 1))]:
+                          ('paket brief laporan.js: susut tanpa selisih tercatat tidak disebut', lap.replace("'susut — (tidak ada selisih stok tercatat)'", "''", 1)),
+                          # tinjauan 9 Okt no. 7 & 8
+                          ('no.8 laporan.js: retur lebih (kg kembali ≥ kg di nota) tidak disebut', lap.replace("g.keadaanSusut === 'returLebih' ? 'susut ' + KG(g.susutKg)", "g.keadaanSusut === 'xx' ? 'susut ' + KG(g.susutKg)", 1)),
+                          ('no.8 laporan.js: se-toko diam soal merek yang terjualnya dihitung 0 karena retur', lap.replace("${S.nReturLebih ?", "${false ?", 1)),
+                          ('no.7 laporan.js: susut tanpa beras keluar tidak menyebut sebabnya', lap.replace("tidak ada beras merek ini yang terjual, diaduk, maupun ditakar bulan ini", "tanpa beras terjual", 1)),
+                          ('no.7 laporan.js: susut % merek diam soal beras yang diaduk/ditakar ikut dihitung', lap.replace("(g.kgKeluarDicocok ? ' (ikut dihitung '", "(false ? ' (ikut dihitung '", 1))]:
             g = (tunai_layar(isi) + neraca_layar(isi) + rekap_layar(isi) + merek_layar(isi)) if isi != lap else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
@@ -872,12 +924,19 @@ if __name__ == '__main__':
             'per merek: nota tanpa modal dihitung modal 0 (margin 100%)': js.replace("if (hppTercatat(p)) { g.adaHitung = true;", "if (true) { g.adaHitung = true;"),
             'per merek: wadah dijual dibuang diam-diam (tidak masuk di luar merek)': js.replace("  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal)) return; const g = ke(lpMerekBaris(p, P));", "  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal) || p.jenis === 'wadah') return; const g = ke(lpMerekBaris(p, P));"),
             'per merek: penjaga identitas diam (selalu menutup)': js.replace("const menutup = identitas.every((x) => x.cocok);", "const menutup = true;"),
-            'per merek: tanpa selisih tercatat digambar susut 0%': js.replace("const ukur = !g.luar && dihitung && g.nSusut > 0;", "const ukur = !g.luar && dihitung;").replace("const kgDicocok = g.gabungan ? g.kgDicocok : g.nSusut > 0 ? kg : 0;", "const kgDicocok = g.gabungan ? g.kgDicocok : kg;"),
+            'per merek: tanpa selisih tercatat digambar susut 0%': js.replace("const ukur = !g.luar && dihitung && g.nSusut > 0 && !returLebih;", "const ukur = !g.luar && dihitung && !returLebih;").replace("const kgDicocok = g.gabungan ? g.kgDicocok : g.nSusut > 0 && !returLebih ? kg : 0;", "const kgDicocok = g.gabungan ? g.kgDicocok : !returLebih ? kg : 0;"),
             'per merek: Atur diabaikan (ambang tetap 1%)': js.replace("tinggi: susutPct !== null && susutPct > ambang });", "tinggi: susutPct !== null && susutPct > 1 });"),
             'per merek: sisa di luar N teratas dibuang': js.replace("const sisa = lain.length ? lpGabungMerek(", "const sisa = false ? lpGabungMerek("),
             'per merek: buku per ukuran & stok wadah tidak dipetakan ke mereknya': js.replace("p.ukuran[k] ? p.ukuran[k] : /^Wadah ./.test(k) ? k.slice(6) : k;", "k;"),
             'per merek: karung belakang tidak ke merek pemasoknya': js.replace("const ke = asal !== k ? asal : b && b.jenis !== 'belakang' && b.wadah", "const ke = b && b.jenis !== 'belakang' && b.wadah"),
             'per merek: yang belum bisa dihitung diurut sebagai margin 0': js.replace("const lpUrutMargin = (a, b) => (a.margin === null ? (b.margin === null ? 0 : 1) : b.margin === null ? -1 : b.margin - a.margin);", "const lpUrutMargin = (a, b) => (b.margin || 0) - (a.margin || 0);"),
+            # ---- tinjauan 9 Okt no. 7 & 8: penyebut susut % per merek
+            'no.7: beras yang diaduk/ditakar jadi nama lain tidak masuk penyebut merek (bahan selalu 100%)': js.replace("if (m && m !== tuju && per[m]) per[m].kgKeluar += kg;", "if (false) per[m].kgKeluar += kg;"),
+            'no.7: pindah di dalam merek sendiri (Angsa → kemasan Angsa) ikut dihitung keluar': js.replace("if (m && m !== tuju && per[m]) per[m].kgKeluar += kg;", "if (m && per[m]) per[m].kgKeluar += kg;"),
+            'no.7: sumber yang bukan buku karung ikut dihitung (mesin tidak memotongnya)': js.replace("if (x && x.merk && stokK[x.merk]) keluar(", "if (x && x.merk) keluar("),
+            'no.7: susut tanpa beras keluar sama sekali digambar 100% (bukan tanpaJual)': js.replace("const susutPct = ukur && alir > 0 ?", "const susutPct = ukur && alir + g.susutKg > 0 ?"),
+            'no.7: se-toko ikut menjumlah beras yang diaduk/ditakar (dihitung dua kali)': js.replace("const kgJual = merek.reduce((a, g) => a + g.kgDicocok, 0);", "const kgJual = merek.reduce((a, g) => a + g.kgDicocok + g.kgKeluarDicocok, 0);"),
+            'no.8: kg bersih negatif (kg kembali > kg di nota) dipakai apa adanya': js.replace("const returLebih = !g.gabungan && g.kgKembali > 0 && kg <= 0;", "const returLebih = false;"),
         }
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue

@@ -400,6 +400,13 @@ ok('atur belanja owner: ambang 2 · target 21 · muatan 3.000 (tidak lagi teruku
     hb(HT, 'Angsa|L').status === 'dalam' && HD.nAtas === 0 && hb(HT, 'Kembang|K5').teks === 'di atas HET Rp13.600/kg (+Rp1.400)' && HT.nAtas === 1 && /angka owner .*sumber: Keputusan contoh · Zona II/.test(hetAtur().sumberTeks), J([hb(HT, 'Angsa|L'), hb(HT, 'Kembang|K5'), hetAtur().sumberTeks]));
   var RP2 = susunPetaHet('Kembang', 'premium', W);
   ok('peta sesudah angka owner: angka owner ikut tertulis apa adanya (13.600 / 15.300 / Zona II), bukan bawaan', RP2.dokumen[0].data.medium === 13600 && RP2.dokumen[0].data.premium === 15300 && RP2.dokumen[0].data.zona === 'Zona II' && RP2.dokumen[0].data.peta.Kembang === 'premium', J(RP2));
+  // tinjauan 9 Okt no. 18: angka disimpan 19 Sep (W); 15 Okt owner HANYA memetakan Kembang → premium. Tanggal dokumen = 15 Okt, tanggal ANGKA tetap 19 Sep (disalin utuh)
+  var W15 = Object.assign({}, W, { tanggal: '2026-10-15', jam: '09:00', kini: '2026-10-15T02:00:00.000Z' }); var RP3 = susunPetaHet('Kembang', 'premium', W15);
+  var het18 = denganCacheSementara(RP3.dokumen, function () { return hetAtur().sumberTeks; });
+  ok('no.18 peta 15 Okt sesudah angka 19 Sep: kepala kartu tetap "angka owner (disimpan 2026-09-19) · sumber: Keputusan contoh · Zona II" (bukan 15 Okt); dokumen tanggal 15 Okt, angkaTanggal 19 Sep disalin utuh',
+    AT.dokumen[0].data.angkaTanggal === '2026-09-19' && hetAtur().sumberTeks === 'angka owner (disimpan 2026-09-19) · sumber: Keputusan contoh · Zona II' && het18 === hetAtur().sumberTeks
+    && RP3.dokumen[0].data.tanggal === '2026-10-15' && RP3.dokumen[0].data.angkaTanggal === '2026-09-19' && RP3.dokumen[0].data.medium === 13600, J([het18, RP3.dokumen[0].data]));
+  ok('no.18 peta TANPA angka owner tidak melahirkan tanggal angka (yang belum diatur tetap bawaan, tanpa "disimpan …")', !('angkaTanggal' in R.dokumen[0].data), J(R.dokumen[0].data));
   ok('atur HET ditolak: premium < medium ("tertukar?"), medium 0, huruf; kolom kosong = nilai berlaku', /tertukar/.test(susunAturHet({ medium: '15.000', premium: '14.000' }, W).tolak || '') && /1–100\.000/.test(susunAturHet({ medium: '0' }, W).tolak || '') && /1–100\.000/.test(susunAturHet({ premium: 'abc' }, W).tolak || '')
     && susunAturHet({}, W).dokumen[0].data.medium === 13600, J(susunAturHet({ medium: '15.000', premium: '14.000' }, W)));
   ok('peta ditolak: nama di luar katalog, pilihan yang sama lagi, pilihan tak dikenal; lepas ("") = kembali belum dipetakan', /tidak ada di katalog/.test(susunPetaHet('Merek Asing', 'premium', W).tolak || '') && /sudah premium/.test(susunPetaHet('Angsa', 'premium', W).tolak || '') && /tidak dikenal/.test(susunPetaHet('Angsa', 'mahal', W).tolak || '')
@@ -636,6 +643,9 @@ if __name__ == '__main__':
             'HET: simpan setelan menghapus pemetaan': js.replace("sumber, peta: Object.assign({}, kini.peta) };", "sumber, peta: {} };"),
             'HET: selisih di bawah Rp1 tampil "Rp0"': js.replace("const hetRp = (x) => (Math.round(x) >= 1 ? RP(x) : 'Rp' + DESIMAL(x));", "const hetRp = (x) => RP(x);"),
             'HET: lembar ubah menilai harga lama, bukan ketikan': js.replace("const perKg = hetPerKg(Math.round(Number(n) || 0), b.st);", "const perKg = hetPerKg(b.n, b.st);"),
+            # tinjauan 9 Okt no. 18: tanggal simpan ANGKA HET tidak ikut pindah ke hari pemetaan
+            'HET no.18: pemetaan tidak menyalin tanggal angka (kepala kartu kehilangan / salah tanggal)': js.replace("const HET_KOLOM = ['zona', 'medium', 'premium', 'sumber', 'angkaTanggal'];", "const HET_KOLOM = ['zona', 'medium', 'premium', 'sumber'];"),
+            'HET no.18: kepala kartu membaca tanggal dokumen (= hari pemetaan terakhir)': js.replace("tanggal: d ? String(d.angkaTanggal || '') : '' };", "tanggal: d ? String(d.tanggal || '') : '' };"),
         }
         kode = 0
         for nama, isi in rusak.items():
