@@ -79,6 +79,10 @@ jobs:
         run: python3 alat-uji/uji_ringkasan_baru.py && python3 alat-uji/uji_ringkasan_baru.py --kontrol
       - name: "Sistem baru — logika layar Stok + kontrol positif"
         run: python3 alat-uji/uji_stok_baru.py && python3 alat-uji/uji_stok_baru.py --kontrol
+      - name: "Barang masuk — timbang & mutu saat terima (paket brief 9 Okt, butir 6 & 7): isian opsional (kosong = belum ditimbang / tidak dicek, bukan selisih 0), stok/modal/bon tidak berubah, ambang mutu owner → tanda AWAS ikut, koreksi membawa isian, rekap per pemasok menutup (kotak pasir + statis + kontrol)"
+        run: python3 alat-uji/uji_barang_masuk_baru.py && python3 alat-uji/uji_barang_masuk_baru.py --kontrol
+      - name: "Modal FIFO dengan saklar owner (9 Okt): saklar mati = rumus rata-rata persis, lapisan & irisan, nota/adukan/takar/cocokkan berurutan, wadah campuran rata-rata, saklar terjadwal baru berlaku di harinya, catatStok disalin utuh (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_modal_fifo_baru.py && python3 alat-uji/uji_modal_fifo_baru.py --kontrol
       - name: "Sistem baru — logika layar Pelanggan + kontrol positif"
         run: python3 alat-uji/uji_pelanggan_baru.py && python3 alat-uji/uji_pelanggan_baru.py --kontrol
       - name: "Sistem baru — logika layar Menu & Sistem + kontrol positif"
