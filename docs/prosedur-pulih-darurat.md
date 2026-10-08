@@ -279,6 +279,9 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] Langkah 3: arsip → cek berkasnya ada.
 - [ ] Langkah 4: saldo pembuka → semua 14 baris ✓ (12 baris harta & utang + modal owner + upah belum dibayar).
 - [ ] Langkah 5: paraf owner + saksi. Langkah 6: kunci (dua ketukan) → tunggu kiriman & arsip habis. Terhenti → Lanjutkan dari perangkat yang sama.
+      - Truk datang sebelum pita "Tahun 2026 terkunci dan arsipnya habis" (ritual tertunda)? Kedatangannya dicatat SESUDAH pita itu — barangnya boleh
+        diturunkan, bon kertasnya disimpan dulu; jangan dicatat sebelum langkah 6, jangan juga selama arsip berjalan. Sudah terlanjur dicatat sebelum
+        langkah 6: bab "Pemeriksaan sesudah tutup buku", butir **"Stok beras" beda karena kedatangan Januari yang dicatat SEBELUM kunci**.
 - [ ] Pita "terkunci dan arsipnya habis … semua baris sama" → cocokkan utang pemasok & utang toko ke owner dengan catatan kertas.
 - [ ] Pita catatan susulan ("… masuk SESUDAH tutup buku …") → ikuti jalannya, ketuk "sudah dicatat".
 - [ ] **Kartu "Pemeriksaan sesudah tutup buku 2026"** (paling atas di Uang › Tutup buku, muncul sendiri begitu arsip habis) — ini pengganti pemeriksaan
@@ -315,7 +318,10 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       angka konsultan menang. Aturan pajak bertanda "diisi untuk tahun 2026" sampai owner/konsultan memastikan aturan 2027 lalu menekan "Pakai aturan"
       dari layar 2027.
 - [ ] Bon pelanggan langganan, saran belanja (laju 14 hari), dan daftar pelanggan memakai ringkasan tahun 2026 yang dibawa batch penanda — tidak
-      perlu membuka kredit per nota sampai April.
+      perlu membuka kredit per nota sampai April. Harga & Pemasok › Belanja juga dari ringkasan itu: pemasok di truk, harga beli terakhir per merek
+      (tanggalnya tetap tanggal kiriman 2026), muatan truk, saran, dan pesanan Desember yang barangnya sudah datang — sama dengan sebelum ritual; kiriman
+      Januari menggantikan harga merek yang dikirimnya. Kalau Belanja kosong pemasok & harga, ringkasannya tidak terbaca: harga terakhir ada di bon kertas
+      atau cadangan SEBELUM.
 - [ ] Kunci bulan Januari 2027 paling cepat 4 Feb, HANYA sesudah tutup buku 2026 "selesai" (daftar periksa kunci bulan menolak sendiri, Beranda
       tidak menyuruh mengunci selama itu). Sebelum mengetuk kunci: buka Uang › Tutup buku sekali lagi — kartu **Pemeriksaan sesudah tutup buku 2026**
       (tampil sampai akhir Februari) harus tetap "Semua … sama". Kuncinya sendiri di kartu **Kunci bulan** di layar yang sama: centang butir yang diminta,
@@ -366,6 +372,16 @@ pemeriksaan belum bisa diperiksa …". Tombol "lihat semua N baris" menampilkan 
 TIDAK ikut dibandingkan — bukan bagian ritual. Kartu menyebut jumlahnya ("… catatan masuk SESUDAH tutup buku 2026 dikunci … Itu bukan alasan
 membatalkan") dan tetap boleh "Semua … sama"; yang bertanggal 2026 diurus pita catatan susulan ("sudah dicatat"). Nota yang ditulis SESUDAH jam kunci di
 hari ritual tetap terhitung — jangan berjualan selama arsip berjalan.
+
+**"Stok beras" beda karena kedatangan Januari yang dicatat SEBELUM kunci** (ritual tertunda: langkah 6 baru jalan sesudah toko menerima truk Januari).
+Nilai stok dihitung dari rata-rata harga beli. Sebelum ritual rata-rata itu memakai seluruh pembelian tahun lalu, sesudahnya mulai dari saldo pembuka
+31 Des — kedatangan Januari dirata-rata dengan dasar lain, jadi rupiah baris Stok beras beda walau kg beras dan uangnya tidak berubah. Kedatangan itu tetap
+ada, jadi membatalkan lalu mengulang ritual akan beda LAGI. Kalau yang ✗ HANYA baris **Stok beras** (kartu: "1 pemeriksaan beda — jangan jualan/menagih
+dulu"; pita: "1 baris TIDAK SAMA (Stok beras)") dan semua baris lain ✓ — termasuk kelompok 3 (buku beras per merek = catatan 31 Des) — itu BUKAN alasan
+membatalkan: ketuk "selesai" dua kali (ketukan kedua menerima beda itu dan mencatatnya di berita acara) dan tulis tanggal kedatangannya di catatan kertas
+tutup buku. Kartu tetap menyebut "1 pemeriksaan beda" sampai akhir Februari; untuk kasus ini itu bukan penghalang berjualan, menagih, atau kunci bulan Januari.
+Ada baris lain yang ikut ✗ → jalan keluar biasa di bawah. Supaya tidak terjadi: kedatangan Januari dicatat SESUDAH pita "Tahun … terkunci dan arsipnya
+habis" (barang boleh diturunkan, bon kertasnya disimpan dulu) — jangan sebelum kunci, jangan selama arsip berjalan.
 
 **Jalan keluar (tanpa orang luar):**
 - Berita acara **belum selesai** (pita "terkunci dan arsipnya habis"): JANGAN ketuk "selesai". Ketuk **batalkan** di pita (dua ketukan, dari perangkat yang

@@ -9,7 +9,7 @@
 // Uang toko: sistem lama tidak punya saldo per kantong, yang bisa dijaga TOTAL kas (kasPada; null bila titik kas belum disetel) — "dari mana uangnya" dicatat sebagai kolom.
 import { hitungUtangPemasok, kasPada } from '../mesin/beku.js';
 import { batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, ambilTutupHari, cacheMentah, kunciSampai, namaSistemPemasok, tolakKunci, denganCacheSementara, ingatKasPada } from '../data/toko.js';
+import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, ambilTutupHari, ambilPesananPemasok, cacheMentah, kunciSampai, namaSistemPemasok, tolakKunci, denganCacheSementara, ingatKasPada, ringkasArsip } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
 export const ATUR_BON_BAWAAN = { dekatHari: 7, admin: [{ nama: 'BI-FAST', n: 2500 }, { nama: 'Transfer antarbank', n: 6500 }] };
@@ -42,21 +42,87 @@ export function susunAturBon(isi, w) {
 export const TEMPO_UMUM_BAWAAN = 21;
 export function tempoUmum() { const d = cacheMentah('aturan').find((x) => String(x.id) === 'catatStok'); const n = d ? Number(d.tempoHari) : NaN; return { hari: isFinite(n) && n > 0 ? n : TEMPO_UMUM_BAWAAN, dariOwner: isFinite(n) && n > 0 }; }
 
-/** Semua pemasok yang pernah ada: kedatangan nyata + bon lama + kartu. Kartu = pemasokCatatan {id = kunci, nama, kontak, catatan} + kolom baru orang, tempo. */
+// SIAP 2027 · P4 (audit 8 Okt): sesudah tutup buku, kedatangan ≤ 31 Des pindah ke arsip — dulu Belanja kehilangan SEMUA pemasok & harga beli terakhir (truk
+// kosong, muatan 0, "Pakai saran" 0 karung) sampai tiap pemasok mengirim lagi. Saat tahun dikunci, ringkasan tahun di batch penanda (toko.js ringkasArsip)
+// membawa `pemasok` (ringkasPemasokTahun) yang disusun bpKumpul — fungsi yang SAMA dengan daftarPemasok. Pembaca menggabungkan ringkasan dengan catatan hidup:
+//   · jumlah (kedatangan, belanja, kg) = ringkasan + kedatangan hidup yang tidak dihitungnya (`ids`) → sebelum ritual, selama arsip, dan sesudahnya sama;
+//   · 12 kedatangan terakhir (kg, bon/tunai) & harga beli terakhir per merek = yang paling baru dari keduanya (kedatangan 2027 menang per merek).
+// Ringkasan lama tanpa `pemasok` = catatan hidup saja (seperti sebelum P4). Dibatalkan = penandanya ikut hilang = catatan hidup lagi.
+export const BP_AKHIR = 12;   // kedatangan terakhir yang dibawa ringkasan per pemasok: muatan truk (median 12 terakhir) & kebiasaan bayar (3 terakhir)
+const bpUrutBaru = (a, b) => String(b.tanggal).localeCompare(String(a.tanggal)) || (Number(b.id) || 0) - (Number(a.id) || 0);
+/**
+ * SATU tempat yang membaca kedatangan nyata per pemasok (daftarPemasok & ringkasPemasokTahun). sampai = tanggal terakhir yang dibaca ('' = semua);
+ * R = ringkasan tahun yang diarsip (toko.js ringkasArsip) atau null. → { peta: { kunci: pemasok }, pastikan }.
+ */
+function bpKumpul(sampai, R) {
+  const peta = {};
+  const pastikan = (nama) => { const nm = String(nama || '').trim(); if (!pemasokSungguhan(nm)) return null; const k = kunciPelanggan(nm); if (!peta[k]) peta[k] = { kunci: k, nama: nm, urutNama: 0, kedatangan: 0, belanja: 0, totalKg: 0, terakhir: '', hargaPerMerk: {}, batch: [], ids: [] }; return peta[k]; };
+  const RP0 = R && R.pemasok && typeof R.pemasok === 'object' ? R.pemasok : null; const dihitung = {};
+  if (RP0) Object.keys(RP0).forEach((k) => ((RP0[k] || {}).ids || []).forEach((id) => { dihitung[String(id)] = true; }));
+  ambilSemuaBatch().forEach((b) => { if (sampai && (b.tanggal || '') > sampai) return; const s = pastikan(b.pemasok); if (!s || b.stokAwal) return; if ((Number(b.id) || 0) >= s.urutNama) { s.nama = String(b.pemasok).trim(); s.urutNama = Number(b.id) || 0; }
+    // kedatangan yang sudah dihitung ringkasan (arsip belum selesai / sebelum arsip) tidak dihitung dua kali; daftar & harga tetap membacanya (yang terbaru menang)
+    const hitung = !dihitung[String(b.id)];
+    const nilai = (b.merkList || []).reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0) + (Number(b.biayaBongkar) || 0); if (hitung) { s.kedatangan += 1; s.belanja += nilai; s.ids.push(b.id); } if ((b.tanggal || '') > s.terakhir) s.terakhir = b.tanggal || '';
+    s.batch.push({ id: b.id, tanggal: b.tanggal || '', jam: b.jam || '', nMerk: (b.merkList || []).length, nilai, utang: batchDiutang(b), kg: (b.merkList || []).reduce((a, m) => a + (Number(m.totalKg) || 0), 0) });
+    (b.merkList || []).forEach((m) => { if (!m.merk || !(Number(m.hargaPerKg) > 0)) return; if (hitung) s.totalKg += Number(m.totalKg) || 0; const h = s.hargaPerMerk[m.merk] = s.hargaPerMerk[m.merk] || { riwayat: [] }; h.riwayat.push({ tanggal: b.tanggal || '', id: Number(b.id) || 0, hargaPerKg: Number(m.hargaPerKg), kg: Number(m.totalKg) || 0, merkPemasok: String(m.merkPemasok || '').trim() }); }); });   // tinjauan E1: merek pemasok (baris kelas tanpa wadah) untuk "merek lalu" di pesanan belanja
+  if (RP0) Object.keys(RP0).forEach((k) => { const r = RP0[k] || {}; const s = pastikan(r.nama); if (!s) return;
+    if ((Number(r.urut) || 0) >= s.urutNama) { s.nama = String(r.nama).trim(); s.urutNama = Number(r.urut) || 0; }
+    s.kedatangan += Number(r.kedatangan) || 0; s.belanja += Number(r.belanja) || 0; s.totalKg += Number(r.totalKg) || 0; if (String(r.terakhir || '') > s.terakhir) s.terakhir = String(r.terakhir);
+    const ada = {}; s.batch.forEach((x) => { ada[String(x.id)] = true; });
+    (Array.isArray(r.akhir) ? r.akhir : []).forEach((x) => { if (!x || ada[String(x.id)]) return; ada[String(x.id)] = true; s.batch.push({ id: x.id, tanggal: String(x.tanggal || ''), jam: '', nMerk: 0, nilai: 0, utang: !!x.utang, kg: Number(x.kg) || 0, arsip: true }); });
+    Object.keys(r.hargaPerMerk || {}).forEach((m) => { const t = r.hargaPerMerk[m] || {}; if (!m || !(Number(t.hargaPerKg) > 0)) return; const h = s.hargaPerMerk[m] = s.hargaPerMerk[m] || { riwayat: [] };
+      h.riwayat.push({ tanggal: String(t.tanggal || ''), id: Number(t.id) || 0, hargaPerKg: Number(t.hargaPerKg), kg: Number(t.kg) || 0, merkPemasok: String(t.merkPemasok || '').trim(), arsip: true }); }); });
+  return { peta, pastikan };
+}
+/** Urutan & yang terakhir: riwayat harga per merek (terbaru dulu → terakhir), kedatangan (terbaru dulu), kebiasaan bayar dari 3 kedatangan terakhir. */
+function bpRapikan(s) {
+  Object.keys(s.hargaPerMerk).forEach((m) => { const h = s.hargaPerMerk[m]; h.riwayat.sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)) || b.id - a.id); h.terakhir = h.riwayat[0]; });
+  s.batch.sort(bpUrutBaru);
+  const tiga = s.batch.slice(0, 3); const nBon = tiga.filter((x) => x.utang).length; s.caraBiasa = !tiga.length ? '' : nBon * 2 > tiga.length ? 'bon' : 'tunai'; s.caraTeks = !tiga.length ? 'belum pernah ada kedatangan' : (s.caraBiasa === 'bon' ? 'biasanya BON' : 'biasanya TUNAI') + ' (' + nBon + ' dari ' + tiga.length + ' kedatangan terakhir bon)';
+  return s;
+}
+/**
+ * Semua pemasok yang pernah ada: kedatangan nyata (+ ringkasan tahun yang diarsip) + bon lama + kartu. Kartu = pemasokCatatan {id = kunci, nama, kontak, catatan}
+ * + kolom baru orang, tempo. batch = kedatangan terbaru dulu (yang dari ringkasan ber-`arsip`, tanpa jam & nilai).
+ */
 export function daftarPemasok() {
-  const peta = {}; const kartu = {}; ambilPemasokCatatan().forEach((c) => { kartu[String(c.id)] = c; });
-  const pastikan = (nama) => { const nm = String(nama || '').trim(); if (!pemasokSungguhan(nm)) return null; const k = kunciPelanggan(nm); if (!peta[k]) peta[k] = { kunci: k, nama: nm, urutNama: 0, kedatangan: 0, belanja: 0, totalKg: 0, terakhir: '', hargaPerMerk: {}, batch: [], cara: [] }; return peta[k]; };
-  ambilSemuaBatch().forEach((b) => { const s = pastikan(b.pemasok); if (!s || b.stokAwal) return; if ((Number(b.id) || 0) >= s.urutNama) { s.nama = String(b.pemasok).trim(); s.urutNama = Number(b.id) || 0; }
-    const nilai = (b.merkList || []).reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0) + (Number(b.biayaBongkar) || 0); s.kedatangan += 1; s.belanja += nilai; if ((b.tanggal || '') > s.terakhir) s.terakhir = b.tanggal || '';
-    s.batch.push({ id: b.id, tanggal: b.tanggal || '', jam: b.jam || '', nMerk: (b.merkList || []).length, nilai, utang: batchDiutang(b), kg: (b.merkList || []).reduce((a, m) => a + (Number(m.totalKg) || 0), 0) }); s.cara.push({ tanggal: b.tanggal || '', id: Number(b.id) || 0, utang: batchDiutang(b) });
-    (b.merkList || []).forEach((m) => { if (!m.merk || !(Number(m.hargaPerKg) > 0)) return; s.totalKg += Number(m.totalKg) || 0; const h = s.hargaPerMerk[m.merk] = s.hargaPerMerk[m.merk] || { riwayat: [] }; h.riwayat.push({ tanggal: b.tanggal || '', id: Number(b.id) || 0, hargaPerKg: Number(m.hargaPerKg), kg: Number(m.totalKg) || 0, merkPemasok: String(m.merkPemasok || '').trim() }); }); });   // tinjauan E1: merek pemasok (baris kelas tanpa wadah) untuk "merek lalu" di pesanan belanja
+  const kartu = {}; ambilPemasokCatatan().forEach((c) => { kartu[String(c.id)] = c; });
+  const { peta, pastikan } = bpKumpul('', ringkasArsip());
   ambilUtangPemasokMutasi().forEach((m) => { const s = pastikan(m.pemasok); if (s && !s.urutNama) s.nama = String(m.pemasok).trim(); });
   Object.values(kartu).forEach((c) => { const s = pastikan(c.nama || c.id); if (s && !s.urutNama && c.nama) s.nama = String(c.nama).trim(); });
-  return Object.keys(peta).map((k) => { const s = peta[k]; Object.keys(s.hargaPerMerk).forEach((m) => { const h = s.hargaPerMerk[m]; h.riwayat.sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)) || b.id - a.id); h.terakhir = h.riwayat[0]; });
-    s.batch.sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)) || (Number(b.id) || 0) - (Number(a.id) || 0)); s.cara.sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)) || b.id - a.id);
-    const tiga = s.cara.slice(0, 3); const nBon = tiga.filter((x) => x.utang).length; s.caraBiasa = !tiga.length ? '' : nBon * 2 > tiga.length ? 'bon' : 'tunai'; s.caraTeks = !tiga.length ? 'belum pernah ada kedatangan' : (s.caraBiasa === 'bon' ? 'biasanya BON' : 'biasanya TUNAI') + ' (' + nBon + ' dari ' + tiga.length + ' kedatangan terakhir bon)';
+  return Object.keys(peta).map((k) => { const s = bpRapikan(peta[k]); delete s.ids;
     const c = kartu[k] || {}; s.kontak = String(c.kontak || '').trim(); s.catatan = String(c.catatan || '').trim(); s.orang = String(c.orang || '').trim(); s.tempo = isFinite(Number(c.tempo)) && Number(c.tempo) > 0 ? Math.round(Number(c.tempo)) : 0; s.adaKartu = !!kartu[k];
-    delete s.cara; return s; }).sort((a, b) => String(b.terakhir).localeCompare(String(a.terakhir)) || a.nama.localeCompare(b.nama));
+    return s; }).sort((a, b) => String(b.terakhir).localeCompare(String(a.terakhir)) || a.nama.localeCompare(b.nama));
+}
+/**
+ * SIAP 2027 · P4: ringkasan pemasok per `cutoff` (31 Des tahun yang dikunci) untuk batch penanda — bpKumpul yang sama dengan daftarPemasok, atas catatan hidup
+ * ≤ cutoff + ringkasan era sebelumnya (tahun berikutnya tetap membawa pemasok yang hanya mengirim di tahun-tahun lalu). Per kunci pemasok: nama (ejaan terbaru,
+ * urut), jumlah kedatangan / belanja / kg, terakhir, 12 kedatangan terakhir { id, tanggal, kg, utang }, harga beli terakhir per merek { tanggal, id, hargaPerKg,
+ * kg, merkPemasok }, ids = kedatangan hidup yang dihitung (pembaca tidak menghitungnya dua kali). Bentuk yang diterima Firestore (peta & larik objek).
+ */
+export function ringkasPemasokTahun(cutoff) {
+  const R = ringkasArsip(); const { peta } = bpKumpul(cutoff, R && String(R.cutoff || '') < String(cutoff) ? R : null); const out = {};
+  Object.keys(peta).forEach((k) => { const s = bpRapikan(peta[k]); const harga = {};
+    Object.keys(s.hargaPerMerk).forEach((m) => { const t = s.hargaPerMerk[m].terakhir; harga[m] = { tanggal: t.tanggal, id: t.id, hargaPerKg: t.hargaPerKg, kg: t.kg, merkPemasok: t.merkPemasok }; });
+    out[k] = { nama: s.nama, urut: s.urutNama, kedatangan: s.kedatangan, belanja: s.belanja, totalKg: s.totalKg, terakhir: s.terakhir, akhir: s.batch.slice(0, BP_AKHIR).map((x) => ({ id: x.id, tanggal: x.tanggal, kg: x.kg, utang: !!x.utang })), hargaPerMerk: harga, ids: s.ids }; });
+  return out;
+}
+/**
+ * "Sudah datang"-nya SATU pesanan dari kedatangan (batch = kedatangan nyata yang dibaca) + ringkasan tahun yang diarsip (R.pesananDatang) — satu aturan untuk
+ * Belanja (pesananSemua) & ringkasan tahun: datang = ada kedatangan pemasok itu SESUDAH pesanannya (tanggal lebih besar, atau sama & jam lebih besar).
+ * → { datang, tanggal } (tanggal = kedatangan pertama sesudahnya). Status tersimpan (batal / datang) dibaca pemanggil.
+ */
+export function bpPesananDatang(p, batch, R) {
+  const sesudah = batch.filter((b) => String(b.pemasok || '').trim() === p.pemasok && ((b.tanggal || '') > (p.tanggal || '') || ((b.tanggal || '') === (p.tanggal || '') && (b.jam || '') > (p.jam || '')))).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || String(a.jam || '').localeCompare(String(b.jam || '')));
+  const hidup = sesudah[0] ? sesudah[0].tanggal : ''; const D = R && R.pesananDatang && typeof R.pesananDatang === 'object' ? R.pesananDatang : {}; const r = Object.prototype.hasOwnProperty.call(D, String(p.id)) ? String(D[String(p.id)] || '') : null;
+  return { datang: sesudah.length > 0 || r !== null, tanggal: r !== null && (!sesudah.length || r < String(hidup || '')) ? r : hidup };
+}
+/** SIAP 2027 · P4: pesanan ≤ cutoff yang statusnya belum tersimpan dan sudah ada kedatangan sesudahnya (≤ cutoff, + ringkasan era sebelumnya) → { id: tanggal datang }. */
+export function ringkasPesananTahun(cutoff) {
+  const R = ringkasArsip(); const R0 = R && String(R.cutoff || '') < String(cutoff) ? R : null; const out = {};
+  const batch = ambilSemuaBatch().filter((b) => !b.stokAwal && pemasokSungguhan(b.pemasok) && (b.tanggal || '') <= cutoff);
+  ambilPesananPemasok().forEach((p) => { if ((p.tanggal || '') > cutoff || p.status === 'batal' || p.status === 'datang') return; const D = bpPesananDatang(p, batch, R0); if (D.datang) out[String(p.id)] = String(D.tanggal || ''); });
+  return out;
 }
 export const cariPemasok = (nama) => daftarPemasok().find((p) => p.kunci === kunciPelanggan(nama)) || null;
 /** Tempo yang dipakai untuk meramal jatuh tempo bon pemasok ini, berikut SUMBERNYA. hari 0 = tidak diramal. */

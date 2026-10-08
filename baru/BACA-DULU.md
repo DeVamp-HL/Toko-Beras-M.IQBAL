@@ -1189,6 +1189,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_jual_nego.py` (+ `--kontrol`) | owner 7 Okt (JS2-C): batas nego per orang — bawaan & setelan (ngAtur = ssAtur/ssPeran), batas naik ke langkah & tidak di atas katalog, putusan owner / peran Ben / karyawan (dalam jatah, minta owner, di bawah modal + alasan, kisi "tidak", modal belum tercatat), alur minta → owner memutus (papan persetujuan) → dipakai sekali, baris bernego dibangun ulang, kolom nego di nota, penjaga kiriman, Buku Nego, layar asli (lembar nego & Buku Nego); tinjauan 7 Okt: nego + bonus memakai modal per satuan bayar, kalimat & tombol jujur saat minta owner belum dibuka server (pakai batas / parkir / owner mencatat), setujui sekaligus melewatkan nego di bawah modal, permintaan atas nama akun lain ditolak, harga pas karcis + 30 kontrol |
 | `alat-uji/uji_keranjang_tahan.py` (+ `--kontrol`) | owner 7 Okt: keranjang & struk parkir bertahan saat dimuat ulang — layar Jual asli di jsc + penyimpanan sesi tiruan: per akun + hari ini, tanpa tukar / karcis / nota terakhir / uang, cermin stok ikut pulih, akun & hari lain dibuang, layar berisi tidak ditimpa, dibersihkan sesudah nota & ganti orang, tidak menulis sebelum pemulihan, mode privat tidak jatuh; tinjauan 7 Okt: muat ulang SELAGI nota menunggu server tidak memulihkan keranjangnya (tetap satu nota), ditolak / gagal / tercatat (asinkron), tab salinan, baris pulihan dibangun ulang dari katalog sekarang (modal diam-diam, harga ditahan, nego dilepas), web app layar penuh tetap tab yang sama + 27 kontrol |
 | `alat-uji/uji_catat_nota_cepat.py` (+ `--kontrol`) | owner 7 Okt: simpan nota lebih cepat — rak identitas = rak penuh tanpa kolom sisa; PEMBANDING dokumen nota cara baru vs lama byte-sama (15 hasil: nota, periksa ulang, tembus, ubah jumlah, bonus, nego); panggilan buku stok mesin ≤ ⅓; cadangan toko lokal: ms simpanNota lama vs baru + dokumen sama + 5 kontrol |
+| `alat-uji/uji_belanja_tutup_buku.py` (+ `--kontrol`) | siap 2027 · P4: Harga & Pemasok › Belanja sebelum = sesudah tutup buku (pemasok di truk, harga & tanggal per merek, muatan, saran, Pakai saran & WA, status pesanan, kartu pemasok) — juga sesudah kunci & arsip setengah jalan (bagian pemasok), kedatangan 2027 menang, susulan 2026 dihitung sekali, ringkasan lama tanpa pemasok tetap terbaca, Batalkan, tutup buku 2027 membawa ringkasan 2026, bentuk Firestore; sanggahan: id kedatangan & pesanan berupa angka seperti di toko (ejaan pemasok yang berganti, susulan di antara pesanan & kedatangan), kedatangan Januari dicatat sebelum kunci = HANYA Stok beras beda + kalimat prosedur (statis), langkah Kunci latihan memeriksa ringkasan tahun & kunci sungguhan menolak isian yang ditolak server + layar Uang (statis); 22 kontrol (satu mematikan penggabungan); `--cadangan=<cadangan lokal>` (atau `UJI_CADANGAN`) + nota & pesanan tiruan + latihan Kunci, dilewati di CI |
 
 Membuka mesin (HANYA atas perintah owner): sunting `js/mesin/beku.js` / `pembantu.js` langsung → `python3 alat-uji/beku2.py --catat` → sebut di pesan
 commit mesin/pembantu mana & kenapa. (Sampai 2 Okt mesin disalin ulang dari `index.html` oleh `pindah_mesin.py` — pensiun 3 Okt.)
@@ -1879,6 +1880,45 @@ Dua butir owner 7 Okt. Tanpa koleksi baru, rules tidak berubah, mesin beku tidak
     adukan, hapus baris / kedatangan) + asap data toko (kedatangan nyata terbaru: tiap ganti nama & hapus yang lolos tanpa stok hantu; koreksi kedatangan
     FJN yang sudah diaduk ditolak; jalur koreksi varian: total kg sama, penjualan terlambat terpotong) + 11 kontrol logika + 5 kontrol statis. `peta_akses.py`:
     `ckSusunPindahKoreksi` dicatat. Rules v7 tidak perlu: semua tulisan owner ke koleksi yang sudah ada (batch lahir & produksiKemasan create hari ini).
+
+## Siap 2027 · P4 — Belanja ke pemasok tidak kosong sesudah tutup buku (audit 8 Okt 2026, cabang `perbaikan/belanja-sesudah-tutup-buku`)
+
+Dulu, sesudah ritual Januari, Harga & Pemasok › Belanja kehilangan SEMUA pemasok & harga beli terakhir: `daftarPemasok` hanya membaca kedatangan hidup,
+arsip memindah semua kedatangan ≤ 31 Des, batch pembuka bernama "TUTUP BUKU <tahun>" bukan pemasok, dan ringkasan tahun hanya membawa KR1, laju & pelanggan.
+Akibatnya truk kosong, muatan 0, "Pakai saran" 0 karung (padahal ada merek yang perlu), dan pesanan Desember yang sudah datang tanpa diketuk kembali "menunggu".
+- **Ringkasan tahun versi 2** (`tutup-buku-logika.js ringkasTahun`, batch penanda): + `pemasok` & `pesananDatang`, disusun `bon-pemasok-logika.js`
+  `ringkasPemasokTahun` / `ringkasPesananTahun`. Per kunci pemasok: nama (ejaan terbaru), jumlah kedatangan / belanja / kg, terakhir, 12 kedatangan terakhir
+  `{ id, tanggal, kg, utang }`, harga beli terakhir per merek `{ tanggal, id, hargaPerKg, kg, merkPemasok }`, `ids` = kedatangan yang dihitungnya.
+  `pesananDatang` = `{ id pesanan: tanggal datang }` untuk pesanan ≤ 31 Des yang statusnya belum tersimpan dan sudah ada kedatangan sesudahnya.
+  Rules tidak berubah (kolom batch penanda tidak dibatasi; cadangan 6 Okt: ±6 KB). Tahun berikutnya membawa ringkasan era sebelumnya (pemasok yang hanya
+  mengirim di tahun-tahun lalu tetap ada).
+- **Satu sumber**: `bpKumpul(sampai, R)` membaca kedatangan nyata per pemasok untuk `daftarPemasok` (layar) DAN ringkasan; `bpPesananDatang` = aturan
+  "sudah datang" untuk `pesananSemua` DAN ringkasan; `muatanTerukur` membaca kedatangan dari `daftarPemasok` (dulu salinan sendiri dari `ambilSemuaBatch`).
+- **Penggabungan** (`toko.js ringkasArsip`, pola `kreditLintas` / `lajuLintas`): jumlah = ringkasan + kedatangan hidup yang tidak ada di `ids` (sebelum arsip,
+  selama arsip, dan susulan bertanggal 2026 tidak dihitung dua kali / tidak hilang); 12 kedatangan terakhir & harga per merek = yang paling baru dari keduanya
+  (kiriman 2027 menang per merek); kebiasaan bayar (3 terakhir) & muatan (median 12 terakhir) dari daftar gabungan. Pesanan: tanggal datang = yang pertama
+  dari ringkasan & catatan hidup. Ringkasan versi 1 (tanpa kedua kolom) = catatan hidup saja; Batalkan = penandanya hilang = catatan hidup lagi.
+- Selama arsip berjalan stok toko memang DOBEL (saldo pembuka + catatan 2026 yang belum pindah); bagian pemasok sudah sama sejak kunci, saran belanja baru
+  sama lagi sesudah arsip habis.
+- Dijaga `alat-uji/uji_belanja_tutup_buku.py` (+ `--kontrol`, CI) — lihat tabel uji; asap cadangan 6 Okt + nota & pesanan tiruan (lokal): sebelum = sesudah
+  kunci / setengah arsip / arsip habis; pembanding tanpa ringkasan pemasok = truk kosong, 0 merek berharga, muatan 0 (celah yang ditutup).
+  Jangkar kontrol `uji_harga_baru.py` (kebiasaan bayar, pesanan datang) mengikuti bentuk baru. Mesin beku & rules tidak disentuh.
+- **Sanggahan (audit 8 Okt)**:
+  - *Latihan memeriksa ringkasan tahun* (`ringkasLatihan`, `bkRingkasSiap`, `bkIsiDitolak`): langkah Kunci LATIHAN kini juga menyusun ringkasan tahun (fungsi yang sama
+    dengan kunci sungguhan, tanpa menulis) — penyusun yang jatuh, isian yang ditolak server (tanpa isi, bukan angka, daftar di dalam daftar, nama isian kosong /
+    `__x__`), atau ringkasan + potret di atas `BK_BATAS_ISI` (900 KB; satu dokumen ≤ 1 MiB, berita acara 'berjalan' membawa keduanya) ketahuan di Desember.
+    Kunci sungguhan memeriksa isian yang sama dan DITOLAK berkalimat (dulu kiriman pertama yang jatuh); `susunKunci` yang jatuh kini berkalimat di layar Uang
+    (`bkKalimatKunciJatuh` — belum ada yang dikirim). Gladi (runner) memeriksa kalimat "Ringkasan 2026: …" di latihan.
+  - *Kotak pasir seperti toko*: id kedatangan & pesanan = angka dari jam tulis (dulu 'b01'… → urutan tulis tidak teruji); pemasok yang berganti ejaan &
+    susulan di antara pesanan dan kedatangan ringkasan — dua mutasi yang dulu diam kini berbunyi.
+  - *Import* `bon-pemasok-logika.js` di `tutup-buku-logika.js` dipindah ke sebelah import ringkasan pelanggan, jauh dari dua baris import yang diubah PR #121
+    (P2) — keduanya bisa digabung tanpa konflik.
+  - **Temuan di luar P4 (dicatat; kode tidak diubah)**: kedatangan Januari yang dicatat SEBELUM tahun dikunci (ritual tertunda) membuat baris "Stok beras" beda
+    di pita & kartu "Pemeriksaan sesudah tutup buku" — nilai stok memakai rata-rata harga beli mesin (sebelum ritual dari seluruh pembelian, sesudahnya dari
+    saldo pembuka), kg & uang sama. Kartu menyuruh membatalkan, padahal ulangan ritual beda lagi (kedatangannya tetap ada) → putaran batal-ulang. Pegangan
+    owner kini di `docs/prosedur-pulih-darurat.md` (daftar periksa 1 Jan: catat kedatangan SESUDAH pita "arsipnya habis"; bab Pemeriksaan: hanya Stok beras ✗ +
+    kelompok 3 ✓ = bukan alasan membatalkan, "selesai" dua kali) — dijaga B8 (perilaku) + statis (kalimatnya). Sisa (tugas terpisah): kartu & pita mengenali
+    sebab itu sendiri (periksa-sesudah-logika.js), supaya tidak hanya prosedur yang membedakannya.
 
 ## Paket B — Laporan & Pajak membaca tahun yang sudah ditutup (owner 7 Okt 2026, cabang `perbaikan/laporan-pajak-tahun-ditutup`)
 

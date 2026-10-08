@@ -12,9 +12,9 @@
 // yang harganya lebih lama dari kiriman terbaru kelas yang sama dari pemasok itu ikut harga kelas itu (baris hampir kembar dirapikan, hanya bila harga kelasnya satu).
 import { hitungLajuPakai } from '../mesin/beku.js';
 import { merkPunyaKarungBerat, JENDELA_LAJU_HARI, jenisUntukMerk } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilPesananPemasok, cacheMentah, stokMerekSaja, lajuLintas, petaUkuran, ingatStokKarung, ingatKasPada } from '../data/toko.js';
+import { ambilSemuaBatch, ambilPesananPemasok, cacheMentah, stokMerekSaja, lajuLintas, petaUkuran, ingatStokKarung, ingatKasPada, ringkasArsip } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { daftarPemasok, tempoPemasok, nomorWa, bpTambahHari, pemasokSungguhan } from './bon-pemasok-logika.js';
+import { daftarPemasok, tempoPemasok, nomorWa, bpTambahHari, pemasokSungguhan, bpPesananDatang, BP_AKHIR } from './bon-pemasok-logika.js';
 import { arPeta, arBeras } from './arsip-logika.js';
 import { wbNamaKelas } from './wadah-bernama-logika.js';
 import { kmKelasMerk, kmKelasSendiri, kmTerisi } from './kelas-merek-logika.js';
@@ -27,10 +27,13 @@ const blAngka = (v) => { const t = String(v === undefined || v === null ? '' : v
 const blKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 export const blKG = (n) => ANGKA(n) + ' kg';
 
-/** Muatan truk yang TERUKUR: median kg dari 12 kedatangan nyata terakhir, dibulatkan ke 25 kg. 0 = belum ada kedatangan. */
+/**
+ * Muatan truk yang TERUKUR: median kg dari 12 kedatangan nyata terakhir, dibulatkan ke 25 kg. 0 = belum ada kedatangan. Kedatangan = daftarPemasok (satu sumber):
+ * catatan hidup + 12 kedatangan terakhir tiap pemasok dari ringkasan tahun yang diarsip (siap 2027 · P4 — dulu muatan jadi 0 sesudah tutup buku).
+ */
 export function muatanTerukur() {
-  const kg = ambilSemuaBatch().filter((b) => !b.stokAwal && pemasokSungguhan(b.pemasok)).sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || (Number(b.id) || 0) - (Number(a.id) || 0)).slice(0, 12)
-    .map((b) => (b.merkList || []).reduce((a, m) => a + (Number(m.totalKg) || 0), 0)).filter((x) => x > 0).sort((a, b) => a - b);
+  const kg = [].concat.apply([], daftarPemasok().map((p) => p.batch)).sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || (Number(b.id) || 0) - (Number(a.id) || 0)).slice(0, BP_AKHIR)
+    .map((b) => Number(b.kg) || 0).filter((x) => x > 0).sort((a, b) => a - b);
   if (!kg.length) return 0; const m = kg.length % 2 ? kg[(kg.length - 1) / 2] : (kg[kg.length / 2 - 1] + kg[kg.length / 2]) / 2; return Math.round(m / 25) * 25;
 }
 export function aturBelanja() {
@@ -50,12 +53,16 @@ export function susunAturBelanja(isi, w) {
 export const hariHabis = (sisa, laju) => (!(laju > 0) ? null : !(sisa > 0) ? 0 : Math.floor(sisa / laju + 1e-9));
 export const kataHabis = (h) => (h === null ? 'belum ada gerak ' + JENDELA_LAJU_HARI + ' hari — tidak ditebak' : h <= 0 ? 'habis hari ini' : '±' + h + ' hari lagi');
 
-/** Pesanan yang masih menunggu datang: status 'batal'/'datang' tersimpan menang; kalau tidak, DATANG bila ada kedatangan pemasok itu sesudah pesanan. */
+/**
+ * Pesanan yang masih menunggu datang: status 'batal'/'datang' tersimpan menang; kalau tidak, DATANG bila ada kedatangan pemasok itu sesudah pesanan
+ * (bpPesananDatang). Siap 2027 · P4: kedatangan yang sudah diarsip tutup buku dibaca dari ringkasan tahunnya (pesananDatang) — dulu pesanan Desember yang
+ * barangnya sudah datang kembali "menunggu" sesudah arsip, mereknya tidak disarankan sampai pemasoknya mengirim lagi.
+ */
 export function pesananSemua() {
-  const batch = ambilSemuaBatch().filter((b) => !b.stokAwal && pemasokSungguhan(b.pemasok));
-  return ambilPesananPemasok().map((p) => { const sesudah = batch.filter((b) => String(b.pemasok || '').trim() === p.pemasok && ((b.tanggal || '') > (p.tanggal || '') || ((b.tanggal || '') === (p.tanggal || '') && (b.jam || '') > (p.jam || '')))).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || String(a.jam || '').localeCompare(String(b.jam || '')));
-    const status = p.status === 'batal' ? 'batal' : p.status === 'datang' ? 'datang' : sesudah.length ? 'datang' : 'menunggu';
-    return Object.assign({}, p, { status, datangTanggal: status === 'datang' ? (p.datangTanggal || (sesudah[0] ? sesudah[0].tanggal : '')) : '' }); }).sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || (Number(b.id) || 0) - (Number(a.id) || 0));
+  const batch = ambilSemuaBatch().filter((b) => !b.stokAwal && pemasokSungguhan(b.pemasok)); const RA = ringkasArsip();
+  return ambilPesananPemasok().map((p) => { const D = bpPesananDatang(p, batch, p.status === 'batal' || p.status === 'datang' ? null : RA);
+    const status = p.status === 'batal' ? 'batal' : p.status === 'datang' ? 'datang' : D.datang ? 'datang' : 'menunggu';
+    return Object.assign({}, p, { status, datangTanggal: status === 'datang' ? (p.datangTanggal || D.tanggal) : '' }); }).sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || (Number(b.id) || 0) - (Number(a.id) || 0));
 }
 export const pesananMenunggu = () => pesananSemua().filter((p) => p.status === 'menunggu');
 
