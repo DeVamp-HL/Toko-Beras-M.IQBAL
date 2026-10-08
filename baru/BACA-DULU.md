@@ -2231,6 +2231,12 @@ F dipasang. (4) Kabar dihitung dari keadaan (tidak basi); server diam + simpanan
 uang-kritis menolak selama memori beku apa pun. Uji T6k–T6v + C14 (M31), kontrol P5g–P5l, M14, M20, M31; rincian: `docs/rancangan-hemat-baca.md` bagian
 "Hemat baca × arsip tutup buku".
 
+**Lensa hari biasa (audit PR #122, 8 Okt).** Putus = memori beku juga di hari biasa; catatan yang dihapus perangkat ini lalu ditulis lagi dengan id sama
+(katalog harga id = merek, kartu pelanggan id = nama, MDR tutup hari diulang) dan hapus yang ditolak server dulu hilang dari memori selama beku. Kini catatan
+yang disentuh perangkat ini (tulis ATAU hapus) mengikuti simpanan perangkat (`hemat-baca.js pasokK`); hapus tetap hilang seketika. Uji T6w, T6x + kontrol
+P5m; sisa temuan sedang/rendah (memori beku macet bila kabar `online` peramban hilang, pendengar berita acara mati, kalimat "sejak aplikasi dibuka"):
+`docs/rancangan-hemat-baca.md` bagian "Sisa yang diakui — lensa hari biasa".
+
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 
 Status sesudah PR #111 digabung: langkah 1–2 SELESAI; langkah 3–7 = tugas owner (sesudah 13 Okt tidak ada lagi yang mengerjakannya untuk owner).

@@ -29,6 +29,8 @@ uji_hemat_baca.py — HEMAT BACA tahap 1–2 (owner 7 Okt 2026, siap 2027; spesi
       "terkunci" (kosong, bukan dobel — hanya pemegang ritual memakai simpanan), server diam + simpanan tidak dipercaya (M14), tanda server diam dari masa tanpa
       internet, pemegang yang ritualnya diambil alih, semua koleksi dengar penuh (lepas sebelum hitungan), uang-kritis selagi berita acara belum dijawab lagi.
       Server mainan: putus = kabar peramban + SDK menandai berita acara "dari simpanan"; tidur/bangun = tanpa kabar apa pun; jawab = tanpa kabar peramban.
+      T6w–T6x (lensa hari biasa, audit PR #122): putus di hari biasa — catatan yang dihapus lalu ditulis lagi dengan id sama & hapus yang ditolak server tetap
+      tampil di memori beku (catatan yang disentuh perangkat ini mengikuti simpanan).
   K · KELENGKAPAN (#111 × Paket C, 7 Okt) — SATU sumber hbBelumLengkap: murni (tiap sebab "periksa" + "harian" belum dibaca penuh sejak kuota baca
       direset — jam resetnya disebut, baca penuh harian toko selesai / belum / selesai dengan temuanTunda, dengar penuh = lengkap, 429 kuota habis, jam server
       belum diterima, tab berhenti; "terperiksa" = rumus 7 Okt + tab berhenti di 16384 kombinasi; pemilih & kalimat — sebab tidak dipinjamkan, jumlah sebelum
@@ -1035,6 +1037,38 @@ var v6a = { sTerkini: !!V6.sesi._K.piutangMutasi.sTerkini, cocok: V6.sesi._K.piu
 V6.tetap(); maju(20000); var US6v2 = null; V6.sesi.pastikanSegar().then(function (r) { US6v2 = r; }); tuntas(); V6.tutup();
 ok('T6v (sanggahan kedua P5) tersambung lagi, berita acara belum dijawab server lagi (S & hitungan sudah cocok): belum terperiksa, kelengkapan "baru tersambung", uang-kritis MENOLAK; server menjawab → uang-kritis boleh',
   v6a.sTerkini && v6a.cocok && v6a.periksa === false && !!v6a.bl && v6a.bl.sebab === HB_SEBAB_TUNGGU_ACARA && v6a.uang && !v6a.uang.ok && US6v2 && US6v2.ok === true, J([v6a, US6v2]));
+// ---- T6w–T6x · lensa HARI BIASA (audit PR #122, 8 Okt): sejak sanggahan kedua putus = memori beku juga di hari biasa (tanpa tutup buku). Catatan yang DISENTUH
+//      perangkat ini (tulis ATAU hapus) mengikuti simpanan perangkat. Dulu: catatan yang dihapus lalu DITULIS LAGI dengan id sama di sesi yang sama (MDR tutup hari
+//      'mdr-<tgl>', katalog harga id = merek, kartu pelanggan id = nama) dan hapus yang DITOLAK server hilang dari memori selama beku — berjam-jam saat putus.
+//      Angka KOTAK PASIR.
+var MDR6 = 'mdr-2026-10-20';
+tokoBaru('2026-10-20T03:00:00Z'); S.jam -= JM; S.tulis('penjualan', 'p1', notaN('p1', 10000), true); S.tulis('penjualan', 'p2', notaN('p2', 20000), true);
+S.tulis('pengeluaranHarian', 'h1', { id: 'h1', nominal: 7000 }, true); S.jam += JM;
+var W6 = new Perangkat('mac-t6w'); W6.buka(); maju(20000);
+W6.tulis('pengeluaranHarian', MDR6, { id: MDR6, nominal: 3500, mdr: true }); tuntas(); maju(MNT);
+W6.hapusDok('pengeluaranHarian', MDR6); tuntas(); maju(MNT); var w6h = memId(W6, 'pengeluaranHarian');
+W6.tulis('pengeluaranHarian', MDR6, { id: MDR6, nominal: 4200, mdr: true }); tuntas(); maju(MNT);
+var w6a = { mem: memId(W6, 'pengeluaranHarian'), server: S.ids('pengeluaranHarian') };
+W6.putus(); tuntas(); maju(MNT); var w6b = { mem: memId(W6, 'pengeluaranHarian'), ditahan: W6.sesi.keadaan().ditahan, sembunyi: W6.sesi.keadaan().disembunyikan };
+W6.tulis('pengeluaranHarian', MDR6, { id: MDR6, nominal: 4300, mdr: true }); tuntas(); maju(3 * JM);
+var w6c = { mem: memId(W6, 'pengeluaranHarian'), nominal: (memDok(W6, 'pengeluaranHarian', MDR6) || {}).nominal };
+W6.hapusDok('pengeluaranHarian', 'h1'); tuntas(); var w6d = memId(W6, 'pengeluaranHarian');   // hapus selagi beku: tetap hilang seketika
+W6.sambung(); tuntas(); maju(1000); var w6e = { mem: memId(W6, 'pengeluaranHarian'), sama: samaServer(W6) }; W6.tutup(); S.dev = [];
+ok('T6w (lensa hari biasa, PR #122) catatan yang DIHAPUS lalu DITULIS LAGI dengan id sama (MDR tutup hari diulang), lalu putus: tetap tampil di memori beku — juga ditulis lagi selagi putus & 3 jam kemudian (dulu hilang sampai tersambung); hapus tetap hilang seketika (sebelum & selagi beku); tersambung → memori = server',
+  J(w6h) === '["h1"]' && J(w6a.mem) === J(['h1', MDR6]) && J(w6a.server) === J(['h1', MDR6]) && w6b.ditahan === true && w6b.sembunyi === false && J(w6b.mem) === J(['h1', MDR6])
+  && J(w6c.mem) === J(['h1', MDR6]) && w6c.nominal === 4300 && J(w6d) === J([MDR6]) && J(w6e.mem) === J([MDR6]) && w6e.sama, J([w6h, w6a, w6b, w6c, w6d, w6e]));
+// T6x · hapus perangkat ini DITOLAK server (SDK mengembalikan dokumennya ke simpanan), lalu putus 2 jam: nota yang masih ada di server tetap tampil (dulu hilang)
+tokoBaru('2026-10-20T03:00:00Z'); S.jam -= JM; S.tulis('penjualan', 'p1', notaN('p1', 10000), true); S.tulis('penjualan', 'p2', notaN('p2', 20000), true); S.jam += JM;
+var X6 = new Perangkat('mac-t6x'); X6.buka(); maju(20000);
+var asliX6 = salin(X6.c('penjualan').p2); X6.online = false;                          // kiriman tertunda (belum terkirim)
+X6.hapusDok('penjualan', 'p2'); tuntas(); var x6h = memId(X6, 'penjualan'); X6.antre = [];   // server menolak hapus → antrean dibuang
+X6.c('penjualan').p2 = asliX6; X6.online = true; X6.emit('penjualan'); tuntas(); maju(MNT);
+var x6a = { mem: memId(X6, 'penjualan'), server: S.ids('penjualan') };
+X6.putus(); tuntas(); maju(2 * JM); var x6b = { mem: memId(X6, 'penjualan'), simpanan: Object.keys(X6.c('penjualan')).sort(), ditahan: X6.sesi.keadaan().ditahan };
+X6.sambung(); tuntas(); maju(1000); var x6c = { mem: memId(X6, 'penjualan'), sama: samaServer(X6) }; X6.tutup(); S.dev = [];
+ok('T6x (lensa hari biasa, PR #122) hapus DITOLAK server, lalu putus 2 jam: nota yang masih ada di server & simpanan tetap tampil di memori beku (dulu hilang selama putus); tersambung → memori = server',
+  J(x6h) === '["p1"]' && J(x6a.mem) === '["p1","p2"]' && J(x6a.server) === '["p1","p2"]' && x6b.ditahan === true && J(x6b.simpanan) === '["p1","p2"]' && J(x6b.mem) === '["p1","p2"]'
+  && J(x6c.mem) === '["p1","p2"]' && x6c.sama, J([x6h, x6a, x6b, x6c]));
 
 // ---- T7 · umur denyut tab /baru/ lama dinilai dengan jam SERVER saat perubahannya terlihat (jam tab terlambat 20 menit)
 tokoBaru('2026-11-10T03:00:00Z'); S.tulis('penjualan', 'p1', notaN('p1', 1000), true);
@@ -1671,7 +1705,16 @@ KONTROL = [
     # server diam (kuota baca habis) — tiap baris wajib berbunyi
     ('(P5b) selesaiF tidak melepas memori beku (uang-kritis lolos di atas angka sebelum ritual)', {HB: [("    simpan(); nilaiTahanSemua(false);\n    if (G.klaimSaya) cekKlaimSelesai();", "    simpan();\n    if (G.klaimSaya) cekKlaimSelesai();")]}),
     ('(P5b) pelepas serentak tidak memasok ulang memori (berita acara terjawab / berganti, semua selesai)', {HB: [("if (h ? (!st.beku || st.bekuKosong !== sembunyi()) : !!st.beku) pasokK(k);", "if (h && !st.beku) pasokK(k);")]}),
-    ('(P5b) catatan yang dihapus perangkat ini sendiri tetap tampil di memori beku', {HB: [("      Object.keys(hapus).forEach((id) => { delete isi[id]; });\n", "")]}),
+    ('(P5b) catatan yang dihapus perangkat ini sendiri tetap tampil di memori beku', {HB: [("Object.keys(Object.assign({}, st.milik || {}, hapus)).forEach((id) => {", "Object.keys(st.milik || {}).forEach((id) => {")]}),
+    # lensa hari biasa (audit PR #122, 8 Okt): catatan yang disentuh perangkat ini (tulis ATAU hapus) mengikuti simpanan selama memori beku — tiap baris wajib berbunyi
+    ('(P5m) dua putaran lama: catatan yang dihapus lalu DITULIS LAGI dengan id sama & hapus yang DITOLAK server hilang dari memori beku (putus di hari biasa)', {HB: [(
+        "      Object.keys(Object.assign({}, st.milik || {}, hapus)).forEach((id) => { if (st.v[id]) isi[id] = st.v[id]; else delete isi[id]; });\n",
+        "      Object.keys(st.milik || {}).forEach((id) => { if (st.v[id]) isi[id] = st.v[id]; else delete isi[id]; });\n      Object.keys(hapus).forEach((id) => { delete isi[id]; });\n")]}),
+    ('(P5m) obat hanya di tulis ulang (catatTulis membuang tanda hapus): hapus yang DITOLAK server tetap hilang dari memori beku', {HB: [
+        ("      Object.keys(Object.assign({}, st.milik || {}, hapus)).forEach((id) => { if (st.v[id]) isi[id] = st.v[id]; else delete isi[id]; });\n",
+         "      Object.keys(st.milik || {}).forEach((id) => { if (st.v[id]) isi[id] = st.v[id]; else delete isi[id]; });\n      Object.keys(hapus).forEach((id) => { delete isi[id]; });\n"),
+        ("catatTulis(k, id) { if (!K[k]) return; (K[k].milik = K[k].milik || {})[String(id)] = true; },",
+         "catatTulis(k, id) { if (!K[k]) return; (K[k].milik = K[k].milik || {})[String(id)] = true; delete (G.hapusSesi[k] || {})[String(id)]; },")]}),
     ('(P5d) simpanan bercampur selalu kosong walau berita acara menyebut tutup buku berjalan (Mac ritual dibuka ulang: sisa arsip terbaca habis)', {HB: [("const sembunyi = () => !!G.sembunyiEp && !ikutRitual();", "const sembunyi = () => !!G.sembunyiEp;")]}),
     ('(P5d) memori beku tidak ditentukan ulang saat berita acara berganti (server: ritual sudah selesai → catatan 2026 + saldo pembuka tetap tampil)', {HB: [("if (!st.beku || st.bekuKosong !== kosong) {", "if (!st.beku) {")]}),
     ('(P5e) dengar penuh karena penulis tanpa cap dikecualikan dari tahan (perangkat tertutup selama ritual DOBEL selama limbo)', {HB: [("!fBeres(st) && (st.mode !== 'penuh' || !G.bkAktif) && tbBeda(k);", "!fBeres(st) && st.mode !== 'penuh' && tbBeda(k);")]}),

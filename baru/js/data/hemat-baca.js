@@ -551,7 +551,8 @@ export function hbSesi(o) {
   // baca penuh (F), sedangkan saldo pembuka bercap baru (datang lewat S). /baru/ TIDAK punya tirai yang menutup layar: "siap" hanya pil kepala "memuat…" & gambar
   // yang dijarangkan (inti/jadwal.js setelMuat) — layar tetap menggambar memori. Jadi MEMORI adalah satu-satunya pelindung: tidak pernah campuran (catatan arsip +
   // saldo pembuka, atau jenis catatan beda zaman); kosong hanya bila tidak ada keadaan utuh di perangkat, dan itu disebut (kabar & kelengkapan "disembunyikan").
-  // DITAHAN (memori BEKU = isi simpanan saat mulai ditahan + tulisan perangkat ini sendiri − catatan yang dihapusnya; tanpa S; belum terperiksa):
+  // DITAHAN (memori BEKU = isi simpanan saat mulai ditahan, dengan catatan yang disentuh perangkat ini sendiri — tulis atau hapus — mengikuti simpanan; tanpa S;
+  // belum terperiksa):
   //   · berita acara tutup buku belum dijawab SERVER — saat dibuka, DAN sejak server berhenti menjawab di tengah sesi (putus internet / SDK menandai berita acara
   //     "dari simpanan"): memori dibekukan SAAT ITU, selagi masih = keadaan terakhir yang dijawab server (sanggahan kedua: dulu "sekali dijawab tetap dijawab" —
   //     sesi hidup yang putus selama ritual lalu tersambung membekukan malas simpanan yang sudah dibawa S → DOBEL);
@@ -614,8 +615,9 @@ export function hbSesi(o) {
       const kosong = sembunyi();
       if (!st.beku || st.bekuKosong !== kosong) { if (!st.beku) { st.vAwal = petaCap(st.v); st.ubahTahan = false; } st.beku = kosong ? {} : Object.assign({}, st.v); st.bekuKosong = kosong; }
       const isi = Object.assign({}, st.beku); const hapus = G.hapusSesi[k] || {};
-      Object.keys(st.milik || {}).forEach((id) => { if (st.v[id]) isi[id] = st.v[id]; else delete isi[id]; });
-      Object.keys(hapus).forEach((id) => { delete isi[id]; });
+      // catatan yang DISENTUH perangkat ini (tulis ATAU hapus) mengikuti simpanan perangkat: hapus lokal hilang seketika (SDK membuangnya dari simpanan); ditulis
+      // lagi dengan id sama / hapus yang DITOLAK server tetap tampil (lensa hari biasa PR #122: dulu hilang selama beku — putus berjam-jam)
+      Object.keys(Object.assign({}, st.milik || {}, hapus)).forEach((id) => { if (st.v[id]) isi[id] = st.v[id]; else delete isi[id]; });
       tampil = hbSaringNisan(Object.keys(isi).map((id) => Object.assign({ id }, isi[id])), G.nisan[k], lahirK(k)).tampil;
     } else { st.beku = null; st.bekuKosong = false; st.vAwal = null; st.ubahTahan = false; st.lepasPernah = true; }
     o.keluar.pasok(k, tampil.map((d) => d.data)); o.keluar.tunda(k, daftar.filter((d) => d.tunda).map((d) => ({ id: d.id, data: d.data })));
