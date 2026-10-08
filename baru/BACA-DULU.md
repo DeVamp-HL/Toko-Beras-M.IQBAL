@@ -2401,3 +2401,30 @@ awal (`hitungStokKarungPerMerk.hppTerakhirPerKg`); keputusan 13 Sep "harga beli 
   (`uji_tutup_buku_bertahap.py --asap` atas salinan cadangan bersaklar 15 Sep): LULUS, 14 baris sama persis.
 - Belum: retur karung utuh di laba (`hppTaksiranRetur`, mesin) tetap memakai nilai per kg sisa saat laporan dihitung — sifat lama yang sama dengan
   rata-rata (angkanya ikut bergeser bila stok berubah), tidak diubah.
+
+## Paket brief awal — 8 butir dashboard & cost control (owner 9 Okt 2026, cabang `paket/brief-awal`)
+
+Owner: *"Gua mau dibangun semuanya."* Asal: dua dokumen riset owner (Dashboard Owner ERP/KPI UMKM, Cost Controlling Toko Beras). Keputusan owner 9 Okt:
+isian timbang & mutu OPSIONAL; HET Zona I; angka ambang = bawaan dokumen bertanda perkiraan, bisa diubah di Atur; dasbor tidak dibuat rumus sendiri
+(fungsi sumber di layar sumber). Dibangun paralel oleh 5 agen (tanpa Chrome), digabung satu cabang, commit per butir.
+
+| Butir | Layar | Fungsi sumber (untuk dasbor kelak) | Setelan owner | Uji |
+|---|---|---|---|---|
+| 1 umur piutang + rata-rata hari bon tertagih | Pelanggan › Bon › Garis umur; lembar orang | `bon-logika.js` `tertagihBon`, `sebaranUmurBon`, `kelompokUmur`, `jalanTutupBon` | `aturanToko/pelanggan.umurBatas` [7,30,90], `tertagihHari` 90 | `uji_pelanggan_baru.py` |
+| 2 umur stok FIFO, lambat laku, hari stok, perputaran | Stok › Umur & putaran (tab ke-5) | `stok-logika.js` `umBarang`, `umRingkas`, `umFifo`, `umRataCampuran` | `aturanToko/stokUmur` (umur 30, hari stok 30, periode 30) | `uji_stok_baru.py` |
+| 3 barang teratas · 4 margin kotor terwujud per merek · 5 susut % per merek | Laporan › Laba › kartu Per merek | `laporan-logika.js` `merekBulan`, `merekTeratas`, `aturMerek` | `aturanToko/merekLaporan` (susut tinggi 1 %, teratas 10) | `uji_laporan_baru.py` |
+| 6 selisih timbang · 7 cek mutu saat terima | Stok › Barang masuk (+ kartu Timbang & mutu per pemasok) | `stok-catat-logika.js` `rekapTimbangMutu` | `aturanToko/catatStok.kadarAirMaks` 14, `patahMaks` 25 | `uji_barang_masuk_baru.py` |
+| 8 HET per kelas & zona | Harga & Pemasok › Katalog (kartu HET, tanda per sel, periksa sebelum terbit) | `het-logika.js` `hetKatalog`, `hetHargaKasir` | `aturanToko/het` (zona, medium 13.500, premium 14.900, peta kelas) | `uji_harga_baru.py` |
+
+Prinsip yang dijaga semua butir: hitungan yang tergambar menutup (per merek + di luar merek = laba kotor Laporan sampai rupiah; bagian umur = sisa;
+tertagih + bagian terpisah = semua bon lunas; kartu HET lima bagian = semua baris katalog); tiga keadaan kosong (belum ditimbang / tidak dicek / belum
+dipetakan / belum ada laju / belum bisa dihitung ≠ 0); isian timbang & mutu tidak mengubah totalKg, stok, modal, HPP, bon. Laporan uang membaca modal
+TERSIMPAN di nota (`hppTotalSaatJual`) — mengikuti saklar FIFO (Paket G) tanpa rumus sendiri.
+
+Angka toko (cadangan 9 Okt): rata-rata hari bon tertagih 5 hari (55 bon Rp22.270.000; terpisah: dibayar di meja saat beli Rp2.981.500, saldo awal
+Rp5.133.000, hapus buku Rp4.231.000); laba kotor Sep Rp12.972.180 menutup per merek, susut & selisih stok −Rp8.164.894 (Ascent −996,79 kg keliling gudang
+12 Sep); umur stok tertua Ketan Hitam Sosoh 48 hari, 11 barang lambat laku; 15 kedatangan belum ditimbang; HET belum dipetakan (23 kelas/merek).
+
+Pilihan agen yang menunggu owner (default terpasang): uang dibayar di meja saat beli tidak dihitung tertagih; perputaran memakai kg KELUAR (terjual +
+diaduk + ditakar ke wadah), terjual dirinci; umur wadah sejak dituang; susut % se-toko hanya atas merek yang punya selisih tercatat; penjaga HET premium ≥
+medium. `stokUmur` belum dibaca staf (perlu DOK_STAF + rules bila mau). Sesudah tutup buku 2026, stok yang dibawa saldo pembuka tampil "tanpa tanggal masuk" di Umur & putaran (modal FIFO tetap memperlakukannya sebagai lapisan bertanggal 31 Des).
