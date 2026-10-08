@@ -9,7 +9,7 @@ import { hitungStokKarungPerMerk, hitungHppMerkDalamBatch } from '../mesin/beku.
 import { cariHargaKarungPerKg } from '../mesin/pembantu.js';
 import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja, petaUkuran, ingatStokKarung, denganCacheSementara } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { MF_DOK, MF_KOLOM, mfMulaiDari, hppKeluarPerKg } from '../mesin/modal-fifo.js';
+import { MF_DOK, MF_KOLOM, MF_MASA, mfMulaiDari, hppKeluarPerKg } from '../mesin/modal-fifo.js';
 import { drafDariKedatangan, susunSimpanMasuk, ckBayarBonId } from './stok-catat-logika.js';
 
 export const ATUR_HPP_BAWAAN = { batasLonjak: 10, lantaiHpp: 5000, kaliMaks: 3 };
@@ -58,10 +58,13 @@ export function susunSaklarFifo(aksi, tanggal, w, yakin) {
     if (S.keadaan === 'nyala') return { tolak: 'FIFO sudah berjalan sejak ' + tanggalPendek(S.mulai) };
     mulai = tanggal; }
   else if (aksi !== 'mati' || S.keadaan === 'mati') return { tolak: 'Saklar FIFO memang sudah mati' };
-  if (!yakin) return { tolak: aksi === 'nyala' ? 'Ketuk sekali lagi: mulai ' + tanggalPendek(mulai) + ' modal tiap nota = harga kedatangan TERLAMA yang masih ada; nota sebelumnya tidak berubah' : 'Ketuk sekali lagi: modal kembali ke RATA-RATA semua kedatangan; nota yang sudah tercatat dengan modal FIFO tidak berubah', perluYakin: aksi };
+  if (!yakin) return { tolak: aksi === 'nyala' ? 'Ketuk sekali lagi: mulai ' + tanggalPendek(mulai) + ' modal tiap nota = harga kedatangan TERLAMA yang masih ada; nota sebelumnya tidak berubah' : S.keadaan === 'rencana' ? 'Ketuk sekali lagi: rencana FIFO ' + tanggalPendek(S.mulai) + ' dibatalkan, modal tetap rata-rata' : 'Ketuk sekali lagi: mulai besok modal kembali ke RATA-RATA semua kedatangan; sampai hari ini (' + tanggalPendek(S.hari) + ') buku tetap FIFO — nota, laba & neraca bulan lalu tidak berubah', perluYakin: aksi };
   const riw = (dok && Array.isArray(dok.riwayatModalFifo) ? dok.riwayatModalFifo : []).concat([{ aksi: aksi === 'nyala' ? (S.keadaan === 'rencana' ? 'ganti' : 'nyala') : 'mati', mulai, sebelumnya: S.mulai || '', tanggal: w.tanggal, jam: w.jam }]);
-  const data = Object.assign({ id: MF_DOK, tanggal: w.tanggal, jam: w.jam }, dok || {}, { [MF_KOLOM]: mulai, riwayatModalFifo: riw });
-  return { dokumen: [{ koleksi: 'aturanToko', data }], patch: { kabar: aksi === 'nyala' ? 'Modal FIFO dijadwalkan mulai ' + tanggalPendek(mulai) + ' — semua perangkat ikut sesudah tersambung' : 'Saklar FIFO dimatikan — modal kembali rata-rata', kabarAwas: false } };
+  // tinjauan 9 Okt: mematikan saklar yang SUDAH berjalan menutup masanya (mulai … hari ini) — buku sampai hari di dalam masa itu tetap FIFO (mesin
+  // mfMasaBerlaku), jadi neraca bulan lalu / bulan terkunci tidak dihitung ulang dengan rata-rata. Rencana yang belum berjalan cukup dibatalkan.
+  const masa = (dok && Array.isArray(dok[MF_MASA]) ? dok[MF_MASA] : []).concat(aksi === 'mati' && S.keadaan === 'nyala' ? [{ mulai: S.mulai, selesai: S.hari }] : []);
+  const data = Object.assign({ id: MF_DOK, tanggal: w.tanggal, jam: w.jam }, dok || {}, { [MF_KOLOM]: mulai, [MF_MASA]: masa, riwayatModalFifo: riw });
+  return { dokumen: [{ koleksi: 'aturanToko', data }], patch: { kabar: aksi === 'nyala' ? 'Modal FIFO dijadwalkan mulai ' + tanggalPendek(mulai) + ' — semua perangkat ikut sesudah tersambung' : (S.keadaan === 'rencana' ? 'Rencana FIFO dibatalkan — modal tetap rata-rata' : 'Saklar FIFO dimatikan — mulai besok modal kembali rata-rata; buku sampai hari ini tetap FIFO'), kabarAwas: false } };
 }
 
 /** Riwayat modal satu nama, lama → baru: tiap kedatangan (baris karung) dengan harga/kg & HPP/kg (harga + bongkar), pindah buku dari takar. */

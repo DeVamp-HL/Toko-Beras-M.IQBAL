@@ -26,7 +26,7 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
   wzDiKeranjangParkir, sumberData, cacheMentah, versiCache, ingatPerVersi, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, returUangPerHari, kreditLintas, ingatStokKarung, ingatStokKemasan, denganCacheSementara } from '../data/toko.js';
 import { hariIniIso, RP, tanggalPendek, pecahLebih } from '../inti/format.js';
-import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan, tolakBatalReturBon } from './retur-logika.js';
+import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan, tolakBatalReturBon, capModalKembali } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
 import { hppKeluar, hppKeluarPerKg, modalRataPerKg, nilaiSelisihKg } from '../mesin/modal-fifo.js';
 import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisWadah, bebasWadah } from './wadah-jual-logika.js';
@@ -319,6 +319,12 @@ function geser(iso, n) { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getD
  *   jumlah   = yang DIBAYAR (unit/karung/liter/kg); kemasan: jumlahUnit = jumlah + bonus (stok & HPP ikut bonus, uang tidak — wzTambahItem 17633).
  *   penggantiRetur: nilai barang disimpan sebagai jejak (nilaiBarangPengganti), uangnya Rp0 (bangunTrxJualDariForm 19383).
  */
+/** Modal baris keranjang dari merek karung: saklar FIFO → irisan kg baris ini dari karung terlama (bisa menyeberang lapisan; pagar nego memakai angka
+ *  ini — tinjauan 9 Okt); saklar mati / wadah = kg × modal chip (rumus lama persis). Modal pasti nota tetap ditulis pecahItemsWadah. */
+function modalBarisKarung(chip, kg) {
+  const st = chip && !chip.wadahLiteran ? ingatStokKarung()[chip.kunci] : null;
+  return st && st.metode === 'fifo' ? Math.round(hppKeluar(st, kg)) : Math.round((chip.hppPerKg || 0) * kg);
+}
 export function bangunBaris(chip, jumlah, s, ekstra) {
   const j = Number(jumlah) || 0; const e = ekstra || {};
   if (j <= 0) return null;
@@ -326,7 +332,7 @@ export function bangunBaris(chip, jumlah, s, ekstra) {
   if (chip.jalur === 'karung') {
     const totalKg = j * chip.berat;
     t = { jenis: 'karung', merkSumber: chip.kunci, jumlahKarung: j, beratKarungAcuan: chip.berat, totalKg, namaProduk: chip.kunci + ' (karung utuh)',
-      hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * totalKg), label: chip.nama + ' ' + chip.berat + ' kg', satuan: 'karung' };
+      hppTotalSaatJual: modalBarisKarung(chip, totalKg), label: chip.nama + ' ' + chip.berat + ' kg', satuan: 'karung' };
   } else if (chip.jalur === 'kemasan') {
     const bonus = e.bonusUnit ? 1 : 0; const unit = j + bonus;
     t = { jenis: 'kemasan', namaProduk: chip.nama, ukuranKemasan: chip.ukuranKg, jumlahUnit: unit, totalKg: chip.ukuranKg * unit,
@@ -340,7 +346,7 @@ export function bangunBaris(chip, jumlah, s, ekstra) {
     const jenisK = tentukanKemasanLiteran(j); const nK = jenisK ? jumlahKemasanLiteran(j) : 0;
     const biayaK = jenisK ? hargaBahanLiteranEfektif(jenisK, hitungStokBahanLiteran()) * nK : 0;
     t = { jenis: 'literan', merkSumber: chip.kunci, namaProduk: chip.kunci, jumlahLiter: j, rasioPakai: rasio, totalKg,
-      hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * totalKg) + biayaK, kemasanLiteran: jenisK, biayaKemasanLiteran: biayaK,
+      hppTotalSaatJual: modalBarisKarung(chip, totalKg) + biayaK, kemasanLiteran: jenisK, biayaKemasanLiteran: biayaK,
       jumlahKemasanLiteranDipakai: nK, label: chip.nama + ' literan', satuan: 'L' };
     // putaran 27 (Bagian 5): literan dari WADAH — nama tampil = wadah, buku dipotong dari merek asal sebanding komposisi SAAT INI (pecahan = perkiraan untuk
     // langit-langit stok; pemecahan pastinya dihitung ulang saat nota dicatat), modal = Σ kg tiap merek asal × modalnya
@@ -349,7 +355,7 @@ export function bangunBaris(chip, jumlah, s, ekstra) {
       t.hppTotalSaatJual = Math.round(pc.bagian.reduce((a, x) => a + x.kg * modalRataPerKg(stok[x.merk]), 0)) + biayaK; }   // wadah campuran = rata-rata (owner 9 Okt)
   } else if (chip.jalur === 'repack') {
     const nama = String(e.namaProduk !== undefined ? e.namaProduk : (s && s.namaRepack) || '').trim() || chip.nama;
-    t = { jenis: 'repacking', merkSumber: chip.kunci, namaProduk: nama, totalKg: j, hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * j),
+    t = { jenis: 'repacking', merkSumber: chip.kunci, namaProduk: nama, totalKg: j, hppTotalSaatJual: modalBarisKarung(chip, j),
       label: 'Repack ' + nama, satuan: 'kg' };
     // wadah DITANGGUNG toko: biayanya masuk HPP baris ini (pola biayaKemasanLiteran), bukunya dipotong saat nota dicatat (dokumen pakai id+1)
     if (e.kemasanRepack && e.jumlahKemasanRepack > 0 && jenisWadah(e.kemasanRepack)) {
@@ -1086,7 +1092,7 @@ export function susunNotaDokumen(s, w) {
   if (tk && !tk.susulanReturId) {
     const rd = Object.assign({}, tk.returDraf, { tanggal: w.tanggal, jam: w.jam, penjualanPenggantiTrxId: String(trxId),
       hitunganTukarSistem: { pengganti: totalSetelahPot, kredit: kreditTukar, bersih: totalSetelahPot - kreditTukar, pembulatan: bulatNota, caraBayar: cara, dibayarPembeli: tagihan, dikembalikanToko: 0 } });
-    dokumen.push({ koleksi: 'retur', data: rd });
+    dokumen.push({ koleksi: 'retur', data: capModalKembali(rd) });
     if (rd.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(rd));
     retur = { id: rd.id, karantina: rd.kondisi === 'tidak_utuh' };
   }

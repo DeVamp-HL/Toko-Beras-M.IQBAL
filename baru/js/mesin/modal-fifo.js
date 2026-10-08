@@ -13,6 +13,9 @@
 
 export const MF_DOK = 'catatStok';
 export const MF_KOLOM = 'modalFifoMulai';
+// Masa FIFO yang SUDAH ditutup (saklar dimatikan): [{ mulai, selesai }] — buku yang dihitung sampai hari di dalam masa itu tetap FIFO, supaya
+// mematikan saklar tidak menghitung ulang neraca bulan lalu / bulan terkunci (tinjauan 9 Okt). selesai = hari terakhir FIFO (inklusif).
+export const MF_MASA = 'modalFifoMasa';
 
 const mfTglSah = (t) => /^\d{4}-\d{2}-\d{2}$/.test(String(t || ''));
 
@@ -31,6 +34,19 @@ export function mfHariIni() { const d = new Date(Date.now()); const n = (x) => S
 
 /** FIFO berlaku untuk buku yang dihitung sampai `sampai` (kosong = sampai hari ini)? Saklar yang dijadwalkan ke depan belum berlaku hari ini. */
 export const mfBerlaku = (mulai, sampai) => !!mulai && (sampai ? sampai >= mulai : mfHariIni() >= mulai);
+
+/** Semua masa FIFO dari dokumen aturanToko: yang sudah ditutup + yang berjalan/terjadwal ({ mulai, selesai: '' }). */
+export function mfMasaDari(aturan) {
+  const a = (aturan || []).find((d) => d && String(d.id) === MF_DOK);
+  const tutup = a && Array.isArray(a[MF_MASA]) ? a[MF_MASA].filter((m) => m && mfTglSah(m.mulai) && mfTglSah(m.selesai) && m.selesai >= m.mulai).map((m) => ({ mulai: m.mulai, selesai: m.selesai })) : [];
+  const mulai = mfMulaiDari(aturan);
+  return tutup.concat(mulai ? [{ mulai, selesai: '' }] : []);
+}
+/** Masa FIFO yang memuat hari buku dihitung (sampai, kosong = hari ini) — null = rata-rata. */
+export function mfMasaBerlaku(aturan, sampai) {
+  const d = sampai || mfHariIni();
+  return mfMasaDari(aturan).find((m) => d >= m.mulai && (!m.selesai || d <= m.selesai)) || null;
+}
 
 /** 'YYYY-MM-DD' sehari sebelumnya (kalender, tanpa zona waktu). */
 export function mfHariSebelum(t) {

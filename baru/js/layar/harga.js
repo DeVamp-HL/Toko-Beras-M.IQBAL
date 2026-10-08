@@ -14,7 +14,8 @@ import * as FB from './foto-bon-logika.js';
 import * as BL from './belanja-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, kabarKiriman, ingatStokKemasan, kunciLuarCache } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, kabarKiriman, ingatStokKemasan, kunciLuarCache, cacheMentah } from '../data/toko.js';
+import { mfMasaBerlaku } from '../mesin/modal-fifo.js';
 import { kkSertakanKiriman } from '../data/katalog-kasir.js';
 import * as JB from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
@@ -300,7 +301,7 @@ export function pasangLayarHarga(akar, opsi) {
       ${gambarHet(s, HT)}
       ${S.nDraf ? h`<div class="hg-bilah" data-k="bilah"><div><div style="font-weight: 600;">${S.nDraf} harga berubah — kasir belum tahu</div><div class="ket">draf tidak sampai ke kasir sebelum diterbitkan</div></div><div class="kaca-btn aktif" data-aksi="hgBukaTerbit">Periksa & terbitkan</div></div>` : ''}
       ${gambarRiwayat()}${gambarAturH(s, S)}${gambarJenisDaftar(s)}${gambarKelasDaftar(s)}${gambarVarianBaru(s, S)}${gambarProdukArsip(s)}
-      <div class="ket" style="font-size: 11px;">Katalog ini = katalog yang dibaca kasir (harga karung per kg, kemasan per kantong, literan per liter — koleksi yang sama dengan sistem lama). Perubahan jadi DRAF dulu; terbit = semuanya berganti sekaligus. Modal = modal rata-rata di buku (sama dengan laba, neraca & layar HPP); harga beli terbaru dibawa sebagai pembanding. ${S.atur.targetDariRata ? 'Target untung ' + RP(S.target) + '/kg = rata-rata untung katalog karung yang sedang berlaku (belum diatur owner).' : 'Target untung ' + RP(S.target) + '/kg diatur owner.'}${S.tanpaModal ? ' ' + S.tanpaModal + ' harga belum bisa dinilai karena modalnya belum tercatat.' : ''}</div>
+      <div class="ket" style="font-size: 11px;">Katalog ini = katalog yang dibaca kasir (harga karung per kg, kemasan per kantong, literan per liter — koleksi yang sama dengan sistem lama). Perubahan jadi DRAF dulu; terbit = semuanya berganti sekaligus. ${mfMasaBerlaku(cacheMentah('aturan')) ? 'Modal = modal nota berikutnya (FIFO: karung terlama yang masih ada; nilai rak di HPP)' : 'Modal = modal rata-rata di buku (sama dengan laba, neraca & layar HPP)'}; harga beli terbaru dibawa sebagai pembanding. ${S.atur.targetDariRata ? 'Target untung ' + RP(S.target) + '/kg = rata-rata untung katalog karung yang sedang berlaku (belum diatur owner).' : 'Target untung ' + RP(S.target) + '/kg diatur owner.'}${S.tanpaModal ? ' ' + S.tanpaModal + ' harga belum bisa dinilai karena modalnya belum tercatat.' : ''}</div>
     </section>`;
   }
   function gambarPapan(s, S, HT) {

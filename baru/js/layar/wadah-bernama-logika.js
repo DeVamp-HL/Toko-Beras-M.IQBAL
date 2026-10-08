@@ -162,12 +162,13 @@ export function wbDokLahir(baris, w) {
  * produksiKemasan jadi-karung-utuh (bentuk simpanProduksi index.html, sama dengan pindah buku takar 22 Sep; mesin beku membacanya apa adanya).
  * Nilai yang keluar = nilai yang masuk: laba dan neraca tidak berubah.
  */
-export function wbDokPindah(sumber, tujuan, w, ekstra) {
+export function wbDokPindah(sumber, tujuan, w, ekstra, ambil) {
   const stok = hitungStokKarungPerMerk();
   const list = (sumber || []).filter((x) => x && x.merk && Math.abs(Number(x.kg) || 0) >= 0.005).map((x) => ({ merk: String(x.merk), kg: wbB2(Number(x.kg)) }));
   // modal FIFO (owner 9 Okt 2026): kg yang ditakar dari karung = karung TERLAMA (mesin/modal-fifo.js), urut sumber; kg minus = kembali ke depan antrean.
   // Isi wadah sesudahnya tetap rata-rata (wadah campuran, owner 9 Okt). Saklar mati = kg × modal rata-rata persis seperti dulu.
-  const fifoAmbil = {};
+  // ambil = kg per merek yang sudah keluar di kiriman yang sama (beberapa pindah buku dari merek yang sama — tinjauan 9 Okt); dibagi antar-panggilan
+  const fifoAmbil = ambil || {};
   const nilaiSumber = (x) => { const st = stok[x.merk]; if (x.kg < 0) return -nilaiSelisihKg(st, -x.kg); const v = hppKeluar(st, x.kg, fifoAmbil[x.merk]); fifoAmbil[x.merk] = (fifoAmbil[x.merk] || 0) + x.kg; return v; };
   const kg = wbB2(list.reduce((a, x) => a + x.kg, 0)); const nilai = list.reduce((a, x) => a + nilaiSumber(x), 0); const id = w.idUnik();
   return { koleksi: 'produksiKemasan', data: Object.assign({ id, tanggal: w.tanggal, jam: w.jam, merkSumber: list.map((x) => x.merk).join(' + '), namaProduk: tujuan, ukuranKemasan: kg, jumlahUnit: 1,
@@ -195,9 +196,9 @@ export function wbSusunPindahAwal(w, hanya) {
     jadi.push({ W, sumber, kg }); });
   if (!jadi.length) return { tolak: 'Belum ada wadah yang bisa dipindah: ' + lewati.join('; ') };
   const dokumen = []; const lahir = wbDokLahir(jadi.map((x) => ({ merk: wbKunci(x.W), stokWadah: x.W })), w); if (lahir) dokumen.push(lahir);
-  const turun = {}; let rp = 0;
+  const turun = {}; let rp = 0; const ambilP = {};
   jadi.forEach((x) => { const k = wbKunci(x.W);
-    if (x.kg > 0.004) { const p = wbDokPindah(x.sumber, k, w, { pindahAwalWadah: x.W, keterangan: 'Pindahan awal stok wadah ' + x.W + ': ' + x.sumber.map((y) => y.merk + ' ' + wbKG(y.kg)).join(' + ') + ' → ' + k });
+    if (x.kg > 0.004) { const p = wbDokPindah(x.sumber, k, w, { pindahAwalWadah: x.W, keterangan: 'Pindahan awal stok wadah ' + x.W + ': ' + x.sumber.map((y) => y.merk + ' ' + wbKG(y.kg)).join(' + ') + ' → ' + k }, ambilP);
       dokumen.push(p); rp += p.data.hppPerUnit; x.sumber.forEach((y) => { turun[y.merk] = wbB2((turun[y.merk] || 0) + y.kg); }); }
     dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: x.W, tipe: 'isi', isiKg: x.kg, stokWadah: k, pindahAwal: true } }); });
   return { dokumen, jadi, lewati, rp: Math.round(rp), turun,
@@ -529,12 +530,13 @@ export function wbSusunAktifkan(W, w, opsi) {
   const sisaKurang = {}; d.sumber.forEach((x) => { sisaKurang[x.merk] = x.kurang; });
   const tanda = (list) => { const per = {}; let tot = 0; list.forEach((x) => { const n = Math.min(x.kg, sisaKurang[x.merk] || 0); if (n > 0.004) { per[x.merk] = wbB2(n); tot += n; sisaKurang[x.merk] = wbB2(sisaKurang[x.merk] - n); } }); return tot > 0.004 ? { perluCocokkan: true, selisihKg: wbB2(tot), selisihPerMerk: per } : {}; };
   const sumberW = Object.keys(K.bagian).filter((m) => K.bagian[m] > 0.004).sort().map((m) => ({ merk: m, kg: wbB2(K.bagian[m]) })); const komposisi = {}; sumberW.forEach((x) => { komposisi[x.merk] = x.kg; });
-  if (sumberW.length) dokumen.push(wbDokPindah(sumberW, kunci, w, Object.assign({ pindahAwalWadah: W, keterangan: 'Aktivasi buku wadah ' + W + ': ' + sumberW.map((y) => y.merk + ' ' + wbKG(y.kg)).join(' + ') + ' → ' + kunci }, tanda(sumberW))));
+  const ambilA = {};
+  if (sumberW.length) dokumen.push(wbDokPindah(sumberW, kunci, w, Object.assign({ pindahAwalWadah: W, keterangan: 'Aktivasi buku wadah ' + W + ': ' + sumberW.map((y) => y.merk + ' ' + wbKG(y.kg)).join(' + ') + ' → ' + kunci }, tanda(sumberW)), ambilA));
   dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: W, tipe: 'isi', isiKg: d.isiKg, stokWadah: kunci, pindahAwal: true, komposisi } });
   // 39b no. 5 tinjauan S8: karung yang TADINYA terdepan di belakang W ditulis TERAKHIR supaya tetap terdepan (dulu urut abjad: terdepan berganti diam-diam)
   const depan0 = karungUntukWadah(W).merk;
   d.kolam.slice().sort((a, b) => (a.merk === depan0 ? 1 : 0) - (b.merk === depan0 ? 1 : 0)).forEach((k) => { const kb = wbKunciKB(W, k.merk);
-    dokumen.push(wbDokPindah([{ merk: k.merk, kg: k.kg }], kb, w, Object.assign({ bukaKarung: W, merkAsal: k.merk, pindahAwalWadah: W, keterangan: 'Aktivasi buku wadah ' + W + ': karung terbuka ' + k.merk + ' ' + wbKG(k.kg) + ' di belakangnya → ' + kb }, tanda([k]))));
+    dokumen.push(wbDokPindah([{ merk: k.merk, kg: k.kg }], kb, w, Object.assign({ bukaKarung: W, merkAsal: k.merk, pindahAwalWadah: W, keterangan: 'Aktivasi buku wadah ' + W + ': karung terbuka ' + k.merk + ' ' + wbKG(k.kg) + ' di belakangnya → ' + kb }, tanda([k])), ambilA));
     dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: k.merk, isiKg: 0, wadah: W, pindahAwal: true } });
     dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: kb, merkAsal: k.merk, isiKg: k.kg, wadah: W, bukuBelakang: true, pindahAwal: true } }); });
   const rp = dokumen.filter((x) => x.koleksi === 'produksiKemasan').reduce((a, x) => a + (x.data.hppPerUnit || 0), 0); const turun = d.sumber.map((x) => x.merk + ' −' + wbKG(x.kg)).join(', ');

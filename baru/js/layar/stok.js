@@ -918,7 +918,7 @@ export function pasangLayarStok(akar, opsi) {
           : h`<div class="menolak" style="padding: 12px 0;">${U.kosong}</div>`}
         <div class="rumus">${U.rumus}</div>
         <div class="ket" style="font-size: 11.5px;" data-k="um-tutup">${U.tutup}</div>
-        <div class="ket" style="font-size: 11px;">Ketuk satu baris untuk rincian lapisan & perputarannya. Umur & putaran = BERAT (kg); nilai rupiah stok tetap modal rata-rata di Gudang & HPP.</div>
+        <div class="ket" style="font-size: 11px;">Ketuk satu baris untuk rincian lapisan & perputarannya. Umur & putaran = BERAT (kg); nilai rupiah stok ada di Gudang & HPP (cara hitung modalnya — rata-rata atau FIFO — di kartu HPP).</div>
       </div>
       ${au ? h`<div class="kartu" data-k="atur-um" style="gap: 8px;"><div class="label">Ambang umur & putaran · angka owner</div><div class="ps-form dua">
         ${isian('umAmbangUmur', 'ambangUmurHari', 'Lambat laku bila umur stok lebih dari (hari)')}${isian('umAmbangHari', 'ambangHariStok', 'Lambat laku bila hari stok lebih dari (hari)')}${isian('umPeriode', 'periodeHari', 'Periode perputaran (hari, 7–120)')}</div>

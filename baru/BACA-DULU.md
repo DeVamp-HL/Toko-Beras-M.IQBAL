@@ -2399,8 +2399,15 @@ awal (`hitungStokKarungPerMerk.hppTerakhirPerKg`); keputusan 13 Sep "harga beli 
 - Uji: `alat-uji/uji_modal_fifo_baru.py` (+ `--kontrol`). Asap cadangan 9 Okt: saklar dijadwalkan besok → 56 merek karung, nilai rak Rp81.701.784 →
   Rp81.701.784 (tidak bergeser); pembanding seandainya FIFO sejak 15 Sep: Rp81.684.858. Ritual tutup buku dengan FIFO menyala
   (`uji_tutup_buku_bertahap.py --asap` atas salinan cadangan bersaklar 15 Sep): LULUS, 14 baris sama persis.
-- Belum: retur karung utuh di laba (`hppTaksiranRetur`, mesin) tetap memakai nilai per kg sisa saat laporan dihitung — sifat lama yang sama dengan
-  rata-rata (angkanya ikut bergeser bila stok berubah), tidak diubah.
+- **Tinjauan adversarial 9 Okt (workflow, 24 temuan lolos sanggah) — FIFO yang ditambal:** (1) retur karung utuh saat FIFO menyimpan `hppKembali`
+  (irisan depan antrean SAAT retur, `capModalKembali` di retur-logika) dan `hppTaksiranRetur` (pembantu, MEMBEKUKAN ULANG) membacanya — laba bulan retur
+  tidak bergeser oleh penjualan sesudahnya; retur tanpa kolom itu = modal rata-rata (`hppRataPerKg`), saklar mati = rumus lama persis. (2) mematikan
+  saklar yang sudah berjalan MENUTUP masanya (`catatStok.modalFifoMasa [{mulai, selesai}]`, selesai = hari mematikan) — mesin (`mfMasaBerlaku`) tetap
+  FIFO untuk buku sampai hari di dalam masa itu, jadi neraca bulan lalu / terkunci tidak dihitung ulang; mulai besok rata-rata. (3) katalog HP kasir
+  darurat, timbang cepat tutup hari, beberapa pindah buku merek sama dalam satu kiriman (aktivasi / pindahan awal wadah, pindah nama), modal baris
+  keranjang (pagar nego) & untung karung utuh di katalog kini memakai irisan FIFO. (4) teks layar modal mengikuti saklar.
+- Tutup buku dengan saklar menyala: saldo pembuka per merek = SATU baris bernilai sisa FIFO 31 Des (lapisan dilebur jadi satu harga per merek) —
+  1 Jan = titik mulai ulang antrean; nilai neraca sama persis, hanya urutan harga di dalam sisa 31 Des yang hilang (beras berputar dalam hitungan minggu).
 
 ## Paket brief awal — 8 butir dashboard & cost control (owner 9 Okt 2026, cabang `paket/brief-awal`)
 

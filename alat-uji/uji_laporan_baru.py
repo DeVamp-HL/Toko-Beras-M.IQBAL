@@ -835,7 +835,7 @@ if __name__ == '__main__':
             '39b-37: mesin piutang: retur tidak memadamkan bon tertua (umur bon salah)': js.replace("        sisaBayar += m.nominal - x;\n", ""),   # jangkar disesuaikan tinjauan MM1: bagian retur tanpa nota asal
             '39b-37: laba tidak membaca potongBon (penjualan tidak turun)': js.replace(" + Math.max(0, r.selisihHargaTukar || 0) + (r.potongBon || 0);", " + Math.max(0, r.selisihHargaTukar || 0);"),
             '39b-37: retur nota bon jadi uang keluar laci': js.replace("penyelesaian: 'potongBon', nominalRefund: 0, potongBon: nilai,", "penyelesaian: 'potongBon', nominalRefund: nilai, potongBon: nilai,"),
-            '39b-37: retur nota bon tanpa mutasi piutang': js.replace("const dokumen = [{ koleksi: 'retur', data: draf }, { koleksi: 'piutangMutasi', data: mutasi }];", "const dokumen = [{ koleksi: 'retur', data: draf }];"),
+            '39b-37: retur nota bon tanpa mutasi piutang': js.replace("const dokumen = [{ koleksi: 'retur', data: capModalKembali(draf) }, { koleksi: 'piutangMutasi', data: mutasi }];", "const dokumen = [{ koleksi: 'retur', data: capModalKembali(draf) }];"),
             '39b-37: retur melebihi sisa bon lolos (jadi kelebihan bayar tanpa uang)': js.replace("if (nilai - B.sisa > 0.5) {", "if (false) {"),
             '39b-37: pembulatan bon tidak ikut dipotong (bon nota tersisa Rp500)': js.replace("(d.bon && Math.abs(jml - d.sisa) < 0.0005 ?", "(false ?"),
             '39b-37: diterima tunai menahan margin bon yang ditutup retur': js.replace("+ marginDihapus + marginDiretur;", "+ marginDihapus;"),

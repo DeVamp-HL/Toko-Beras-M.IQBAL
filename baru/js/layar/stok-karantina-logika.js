@@ -17,6 +17,7 @@ import { ambilKarantina, ambilRetur, ambilProduksi, ambilPenyesuaianStok, ambilP
 import { RP } from '../inti/format.js';
 // modal FIFO (owner 9 Okt): karung kembali ke depan antrean = modal karung terlama
 import { hppKeluarPerKg } from '../mesin/modal-fifo.js';
+import { capModalKembali } from './retur-logika.js';
 
 export const TINDAKAN_KARANTINA = [['layak_jual', 'Ternyata layak jual → kembali ke stok'], ['dirework', 'Rework → masuk stok lagi'], ['dikembalikan_pemasok', 'Balik ke pemasok'], ['dibuang', 'Buang']];
 export const LABEL_TINDAKAN = { layak_jual: 'ternyata layak jual → stok', dirework: 'rework ke stok', dikembalikan_pemasok: 'balik ke pemasok', dibuang: 'dibuang', belum_diputuskan: 'menunggu' };
@@ -95,7 +96,7 @@ export function susunPutusKarantina(id, tindakan, alasan, w, yakin) {
     if (kqKosong(alasan)) return { tolak: 'Koreksi layak jual butuh alasan (wajib) — supaya jejaknya bisa dibaca nanti' };
     const opname = k.jenisAsal !== 'kemasan' ? ambilPenyesuaianStok().filter((x) => x.merk === k.merkSumber && !x.dariRework && kqSesudah(r)(x)) : ambilPenyesuaianKemasan().filter((x) => kunciKemasan(x.namaProduk, x.ukuranKemasan) === kunciKemasan(k.namaProduk, k.ukuranKemasan) && kqSesudah(r)(x));
     if (opname.length && yakin !== 'layak_jual') return { tolak: 'Sesudah retur ini ada COCOKKAN ' + nama + ' (' + opname.map((x) => (x.tanggal || '') + (x.jam ? ' ' + x.jam : '')).join(', ') + '). Kalau hitungan itu MENIMBANG barang retur ini, stok & labanya sudah naik lewat cocokkan — koreksi ini menaikkannya dua kali. Ketuk sekali lagi hanya kalau barang ini disimpan terpisah dan tidak ikut dihitung', perluYakin: 'layak_jual' };
-    const dokR = { koleksi: 'retur', data: Object.assign({}, r, { kondisi: 'utuh', koreksiKondisi: { dari: r.kondisi || null, pada: w.kini, alasan: String(alasan).trim(), oleh: 'Owner' } }) };
+    const dokR = { koleksi: 'retur', data: capModalKembali(Object.assign({}, r, { kondisi: 'utuh', koreksiKondisi: { dari: r.kondisi || null, pada: w.kini, alasan: String(alasan).trim(), oleh: 'Owner' } })) };
     status.data.catatanKeputusan = String(alasan).trim();
     return { dokumen: [dokR, status], patch: { kabar: 'Dikoreksi layak jual: ' + kqAkibat(k, 'layak_jual') + ' (' + String(alasan).trim() + ')', kabarAwas: false } };
   }

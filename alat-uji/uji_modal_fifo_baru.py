@@ -97,6 +97,17 @@ pasok('penjualan', KOTAK.penjualan.concat([{ id: 'j2', tanggal: '2026-10-03', ja
 var S2 = hitungStokKarungPerMerk();
 ok('sesudah 160 kg keluar: sisa 90 kg bernilai 90 × 13.000 = 1.170.000, depan antrean di 160, modal berikutnya 13.000', S2.A.sisaKg === 90 && dekat(S2.A.posKeluar, 160) && dekat(S2.A.sisaKg * S2.A.hppTerakhirPerKg, 1170000) && S2.A.hppKeluarPerKg === 13000, JSON.stringify({ s: S2.A.sisaKg, p: S2.A.posKeluar, v: S2.A.hppTerakhirPerKg }));
 ok('identitas: modal yang keluar (1.780.000) + nilai sisa (1.170.000) = semua lapisan (150 × 11.000 + 1.300.000)', dekat(1780000 + S2.A.sisaKg * S2.A.hppTerakhirPerKg, 150 * 11000 + 1300000));
+// ---- 8a. retur karung utuh saat FIFO: modal kembali dicatat SAAT retur (irisan 110–160 = 40 × 11.000 + 10 × 13.000 = 570.000) dan laba Oktober tidak
+// bergeser oleh penjualan November (tinjauan 9 Okt)
+var RD = capModalKembali({ id: 'r1', tanggal: '2026-10-04', jam: '10:00', jenisAsal: 'karung', merkSumber: 'A', totalKg: 50, jumlahKarung: 1, kondisi: 'utuh', penyelesaian: 'refund', nominalRefund: 650000 });
+ok('retur utuh FIFO menyimpan modal kembali 570.000 (karung kembali ke depan antrean)', RD.hppKembali === 570000, RD.hppKembali);
+pasok('retur', [RD]);
+var okt = function (t) { return t >= '2026-10-01' && t <= '2026-10-31'; };
+var L1 = hitungLabaRentang(okt).returHpp;
+pasok('penjualan', cacheMentah('penjualan').concat([{ id: 'j3', tanggal: '2026-11-05', jam: '09:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'A', totalKg: 40, jumlahKarung: 0.8, beratKarungAcuan: 50, hargaTotal: 520000, hppTotalSaatJual: 1 }]));
+var L2 = hitungLabaRentang(okt).returHpp;
+ok('laba Oktober membatalkan modal retur 570.000 dan TIDAK bergeser sesudah penjualan 5 Nov', L1 === 570000 && L2 === 570000, L1 + ' → ' + L2);
+pasok('retur', []); pasok('penjualan', cacheMentah('penjualan').filter(function (p) { return p.id !== 'j3'; }));
 var NR = hitungNeraca();
 ok('neraca memakai nilai FIFO (A 1.170.000 + B 420.000 + C 1.850.000 + wadah W1 280.000)', dekat(NR.nilaiSack, 1170000 + 420000 + 1850000 + 280000), NR.nilaiSack);
 
@@ -110,8 +121,16 @@ ok('saklar: sudah berjalan → tidak bisa dinyalakan ulang; tanggal lampau ditol
 var M1 = susunSaklarFifo('mati', '', W, false), M2 = susunSaklarFifo('mati', '', W, true);
 ok('saklar mati: ketukan pertama minta yakin; kedua menulis catatStok UTUH (kolom Aturan Barang masuk tetap) + riwayat', M1.perluYakin === 'mati' && M2.dokumen[0].data.modalFifoMulai === '' && M2.dokumen[0].data.minKarung === 40 && M2.dokumen[0].data.tanggal === '2026-09-30' && M2.dokumen[0].data.riwayatModalFifo.length === 1 && M2.dokumen[0].data.riwayatModalFifo[0].aksi === 'mati', JSON.stringify(M2.dokumen && M2.dokumen[0].data));
 pasok('aturanToko', [M2.dokumen[0].data]);
+ok('saklar dimatikan sesudah berjalan: masa 1–5 Okt DITUTUP — buku sampai 3 Okt & hari ini tetap FIFO (bulan lalu tidak dihitung ulang), mulai besok rata-rata',
+  JSON.stringify(M2.dokumen[0].data.modalFifoMasa) === JSON.stringify([{ mulai: '2026-10-01', selesai: '2026-10-05' }]) && hitungStokKarungPerMerk('2026-10-03').A.metode === 'fifo'
+  && hitungStokKarungPerMerk().A.metode === 'fifo' && hitungStokKarungPerMerk('2026-10-06').A.metode === undefined && dekat(hitungStokKarungPerMerk('2026-10-02').A.hppKeluarPerKg, 11000),
+  JSON.stringify(M2.dokumen[0].data.modalFifoMasa));
 var N2 = susunSaklarFifo('nyala', '2027-01-01', W, true);
-ok('saklar nyala 1 Jan 2027 (rencana): hari ini tetap rata-rata', N2.dokumen[0].data.modalFifoMulai === '2027-01-01' && (pasok('aturanToko', [N2.dokumen[0].data]), saklarFifo(new Date('2026-10-05T10:00:00+07:00')).keadaan === 'rencana') && hitungStokKarungPerMerk().A.metode === undefined);
+ok('saklar nyala lagi 1 Jan 2027 (rencana): masa lama tetap tersimpan; 6 Okt–31 Des rata-rata; 1 Jan FIFO lagi', N2.dokumen[0].data.modalFifoMulai === '2027-01-01' && N2.dokumen[0].data.modalFifoMasa.length === 1
+  && (pasok('aturanToko', [N2.dokumen[0].data]), saklarFifo(new Date('2026-10-05T10:00:00+07:00')).keadaan === 'rencana') && hitungStokKarungPerMerk('2026-12-31').A.metode === undefined
+  && hitungStokKarungPerMerk('2026-10-02').A.metode === 'fifo' && hitungStokKarungPerMerk('2027-01-01').A.metode === 'fifo');
+var MR = susunSaklarFifo('mati', '', W, true);
+ok('rencana yang belum berjalan dibatalkan tanpa menambah masa', MR.dokumen[0].data.modalFifoMulai === '' && MR.dokumen[0].data.modalFifoMasa.length === 1);
 pasok('aturanToko', SAKLAR);
 var AC = susunAturCatat({ minKarung: '50' }, W);
 ok('simpan Atur Barang masuk tidak menghapus saklar FIFO (dokumen catatStok disalin utuh)', AC.dokumen && AC.dokumen[0].data.modalFifoMulai === '2026-10-01' && AC.dokumen[0].data.minKarung === 50, JSON.stringify(AC.dokumen && AC.dokumen[0].data));
@@ -166,8 +185,8 @@ if __name__ == '__main__':
         rusak = {
             'lapisan diurut terbaru dulu (bukan yang lama keluar dulu)': js.replace("String(x.tanggal).localeCompare(String(y.tanggal)) || (Number(x.id) || 0) - (Number(y.id) || 0)", "String(y.tanggal).localeCompare(String(x.tanggal)) || (Number(y.id) || 0) - (Number(x.id) || 0)"),
             'lapisan buka dinilai harga terbaru, bukan rata-rata saat saklar (nilai rak melompat)': js.replace("kg: b.sisaKg, harga: b.hppTerakhirPerKg || 0, asal: 'buka'", "kg: b.sisaKg, harga: b.hargaTerakhirPerKg || 0, asal: 'buka'"),
-            'buku sebelum hari saklar ikut FIFO (bulan lalu berubah)': js.replace("(sampai ? sampai >= mulai : mfHariIni() >= mulai)", "true"),
-            'saklar yang dijadwalkan ke depan sudah berlaku hari ini': js.replace("(sampai ? sampai >= mulai : mfHariIni() >= mulai)", "(sampai ? sampai >= mulai : true)"),
+            'buku sebelum hari saklar ikut FIFO (bulan lalu berubah)': js.replace("find((m) => d >= m.mulai && (!m.selesai || d <= m.selesai))", "find((m) => (!m.selesai || d <= m.selesai))"),
+            'saklar yang dijadwalkan ke depan sudah berlaku hari ini': js.replace("const d = sampai || mfHariIni();", "const d = sampai || '9999-12-31';"),
             'nota tidak memakai modal FIFO (angka keranjang apa adanya)': js.replace("const st = stok[r.merkSumber]; if (!st || st.metode !== 'fifo' || r.dariWadah", "const st = null; if (!st || st.metode !== 'fifo' || r.dariWadah"),
             'nota: dua baris merek sama mengambil dari depan yang sama': js.replace("fifoAmbil[r.merkSumber] = (fifoAmbil[r.merkSumber] || 0) + kg;\n  });\n  return out;", "\n  });\n  return out;"),
             'nota: kantong / wadah repack hilang dari modal': js.replace("+ (r.biayaKemasanLiteran || 0) + (r.biayaKemasanRepack || 0);", ";"),
@@ -177,6 +196,10 @@ if __name__ == '__main__':
             'selisih lebih dinilai dari belakang antrean': js.replace("return s < 0 ? -mfIrisan(st.lapisan, p, p - s) : mfIrisan(st.lapisan, p - s, p);", "return s < 0 ? -mfIrisan(st.lapisan, p, p - s) : s * (st.hppTerakhirPerKg || 0);"),
             'irisan melewatkan bagian di luar jejeran (stok minus bernilai 0)': js.replace("if (sampai > T && dari < sampai) rp += (sampai - Math.max(dari, T)) * L[L.length - 1].harga;", ""),
             'Atur Barang masuk menulis catatStok tanpa kolom lama (saklar FIFO hilang)': js.replace("data: Object.assign({}, lama, { id: 'catatStok',", "data: Object.assign({}, {}, { id: 'catatStok',"),
+            'mematikan saklar tidak menutup masa (neraca bulan lalu dihitung ulang rata-rata)': js.replace("concat(aksi === 'mati' && S.keadaan === 'nyala' ? [{ mulai: S.mulai, selesai: S.hari }] : [])", "concat([])"),
+            'masa FIFO yang sudah ditutup diabaikan mesin': js.replace("return tutup.concat(mulai ? [{ mulai, selesai: '' }] : []);", "return mulai ? [{ mulai, selesai: '' }] : [];"),
+            'retur FIFO tidak menyimpan modal kembali (laba bergeser tiap penjualan baru)': js.replace("return Object.assign(d, { hppKembali: Math.round(nilaiSelisihKg(st, Number(d.totalKg) || 0)) });", "return d;"),
+            'laba mengabaikan modal kembali retur yang tersimpan': js.replace("if (typeof r.hppKembali === 'number' && isFinite(r.hppKembali)) return Math.round(r.hppKembali);", ""),
             'saklar membaca tanggal yang salah bentuk': js.replace("return mfTglSah(t) ? t : '';", "return t;"),
         }
         kode = 0

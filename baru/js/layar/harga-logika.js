@@ -14,7 +14,7 @@ import { RP, hariIniIso } from '../inti/format.js';
 import { arPeta, arSembunyiHarga, arBeras } from './arsip-logika.js';
 import { aturWadah } from './jual-logika.js';
 import { wbLiteranLangsung, wbModalPerKg, wbBeliPerKg, wbKomposisi, wbRasio } from './wadah-bernama-logika.js';
-import { hppKeluarPerKg } from '../mesin/modal-fifo.js';
+import { hppKeluar, hppKeluarPerKg } from '../mesin/modal-fifo.js';
 
 export const ATUR_HARGA_BAWAAN = { targetPerKg: 0, bulatLiter: 500, bulatKemasan: 1000, bulatKarung: 100, langkahRp: 50, ambangDampak: 50000, bongkarKg: 0, mdrPersen: 30, mdrBatas: 500000 };
 export const TAB_HARGA = [['papan', 'Papan'], ['literan', 'Literan'], ['kalimat', 'Kalimat'], ['dampak', 'Dampak'], ['pasar', 'Pasar'], ['belah', 'Belah'], ['label', 'Label']];
@@ -129,7 +129,7 @@ export function hgSemua(kini) {
     // putaran 27: liter WADAH → modal = rata-rata tertimbang isi wadah (kg × modal merek asal), beli terbaru = rata-rata tertimbang harga beli terakhirnya
     const wd = sid === 'L' ? wadahInfo[m] || null : null; const mKg = wd ? wd.modal : modalKg(m); const bT = wd ? wd.beli : beliTerbaru(m);
     if (sid === 'L' || sid === 'S') { modalUnit = mKg * st.kg; modalDari = modalUnit > 0 ? 'beras' : ''; }
-    else { const x = stokM[kunciKemasan(m, st.kg)]; if (x && x.hppRataRataPerUnit > 0) { modalUnit = x.hppRataRataPerUnit; modalDari = 'adukan'; } else if (modalKg(m) > 0) { modalUnit = modalKg(m) * st.kg; modalDari = 'beras'; } }
+    else { const x = stokM[kunciKemasan(m, st.kg)]; if (x && x.hppRataRataPerUnit > 0) { modalUnit = x.hppRataRataPerUnit; modalDari = 'adukan'; } else if (modalKg(m) > 0) { modalUnit = stokK[m] && stokK[m].metode === 'fifo' ? hppKeluar(stokK[m], st.kg) : modalKg(m) * st.kg; modalDari = 'beras'; } }   // FIFO (tinjauan 9 Okt): karung utuh bisa menyeberang lapisan
     const setel = hgModalSetel(dok, m); const naik = setel > 0 && bT > setel + 0.5; const naikRp = naik ? bT - setel : 0;
     const n = draf[k] !== undefined ? draf[k] : lamaN; const N = nilaiHarga(n, modalUnit, st.kg, target, naik);
     const usul = modalUnit > 0 ? hgBulatAtas(modalUnit + target * st.kg, atur[st.bulat]) : 0;

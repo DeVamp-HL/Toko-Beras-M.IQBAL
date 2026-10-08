@@ -17,6 +17,19 @@ import { rtDasarNota, rtKalimatLebih, rtKunciNota, kunciPelanggan, bakuCaraBayar
 import { hitungPiutang } from '../mesin/beku.js';
 import { ambilPenjualan, ambilRetur, tolakKunci, stokMerekSaja, petaUkuran, indukTerpisah, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { hariIniIso, RP, DESIMAL, LEBIH_AMBANG } from '../inti/format.js';
+import { nilaiSelisihKg } from '../mesin/modal-fifo.js';
+
+/**
+ * Modal FIFO (tinjauan 9 Okt): karung UTUH yang diretur kembali ke DEPAN antrean — rupiah yang dibatalkan dari modal laba = irisan itu SAAT retur
+ * dicatat, disimpan di dokumen (`hppKembali`) supaya laba bulan retur tidak bergeser setiap ada penjualan sesudahnya (mesin pembantu hppTaksiranRetur
+ * membacanya). Hanya merek karung yang sedang FIFO; saklar mati / kemasan / tidak utuh = dokumen tidak berubah (rumus lama).
+ */
+export function capModalKembali(d) {
+  if (!d || d.jenisAsal !== 'karung' || d.kondisi !== 'utuh' || !d.merkSumber) return d;
+  const st = ingatStokKarung()[d.merkSumber];
+  if (!st || st.metode !== 'fifo') return d;
+  return Object.assign(d, { hppKembali: Math.round(nilaiSelisihKg(st, Number(d.totalKg) || 0)) });
+}
 
 export const ALASAN_RETUR = ['salah beli', 'kualitas kurang', 'kelebihan', 'kemasan rusak'];
 export const returAwal = () => ({ rtCari: '', rtNotaId: null, rtKondisi: null, rtPenyelesaian: 'refund', rtAlasan: '', rtTimpa: false, rtNominal: '', rtAlasanTimpa: '',
@@ -173,7 +186,7 @@ function susunReturBon(s, w, r) {
   const idMutasi = w.idUnik();
   Object.assign(draf, { penyelesaian: 'potongBon', nominalRefund: 0, potongBon: nilai, namaPelanggan: B.nama, piutangMutasiId: idMutasi });
   const mutasi = { id: idMutasi, tipe: 'retur', namaPelanggan: B.nama, nominal: nilai, tanggal: w.tanggal, jam: w.jam, returId: draf.id, notaAsalId: draf.notaAsalId, catatan: ringkasDraf(draf), dicatatDi: 'sistem' };
-  const dokumen = [{ koleksi: 'retur', data: draf }, { koleksi: 'piutangMutasi', data: mutasi }];
+  const dokumen = [{ koleksi: 'retur', data: capModalKembali(draf) }, { koleksi: 'piutangMutasi', data: mutasi }];
   if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));
   return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',
     kabar: 'Retur nota BON dicatat — ' + ringkasDraf(draf) + ' · bon ' + B.nama + ' dipotong ' + RP(nilai) + ' (sisa ' + RP(B.sisa - nilai) + ') · tidak ada uang keluar laci' + (draf.kondisi === 'utuh' ? ' · barang kembali ke stok jual' : ' · barang masuk Gudang Karantina'), kabarAwas: false }) };
@@ -214,7 +227,7 @@ export function susunRetur(s, w) {
     if (nominal !== nilai) { draf.nominalSistem = nilai; draf.alasanTimpaNominal = alasanTimpa; }
   }
   draf.nominalRefund = nominal;
-  const dokumen = [{ koleksi: 'retur', data: draf }];
+  const dokumen = [{ koleksi: 'retur', data: capModalKembali(draf) }];
   if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));
   return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',
     kabar: 'Retur dicatat — ' + ringkasDraf(draf) + ' · uang keluar ' + RP(nominal) + (draf.kondisi === 'utuh' ? ' · barang kembali ke stok jual' : ' · barang masuk Gudang Karantina'), kabarAwas: false }) };
@@ -266,7 +279,7 @@ export function susunReturTanpaNota(s, w) {
   let uang = 0;
   if (draf.penyelesaian === 'refund') { const n = rupiah(s.rtNominal); if (!(n > 0)) return { tolak: 'Isi nominal uang yang dikembalikan — tanpa nota tidak ada yang bisa menghitungnya untukmu' }; draf.nominalRefund = n; uang = n; }
   else { const t = String(s.rtSelisih || '').trim(); if (t === '') return { tolak: 'Isi selisih tukarnya — ketik 0 kalau memang tidak ada selisih' }; const n = Math.round(Number(t.replace(/\./g, '').replace(',', '.'))); if (!isFinite(n)) return { tolak: 'Selisih tukar bukan angka' }; draf.selisihHargaTukar = n; uang = Math.max(0, n); }
-  const dokumen = [{ koleksi: 'retur', data: draf }]; if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));
+  const dokumen = [{ koleksi: 'retur', data: capModalKembali(draf) }]; if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));
   const ringkas = B.nama + ' × ' + String(jml).replace('.', ',') + ' ' + B.satuan;
   return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '', kabar: 'Retur TANPA NOTA dicatat — ' + ringkas + (draf.penyelesaian === 'refund' ? ' · uang keluar ' + RP(uang) : ' · tukar, selisih ' + (draf.selisihHargaTukar >= 0 ? 'toko mengembalikan ' : 'pembeli menambah ') + RP(Math.abs(draf.selisihHargaTukar)) + ' — jual penggantinya dengan pil "pengganti retur" supaya tidak dihitung omzet dua kali') + (draf.kondisi === 'utuh' ? ' · barang kembali ke stok jual' : ' · barang masuk Gudang Karantina'), kabarAwas: false }) };
 }

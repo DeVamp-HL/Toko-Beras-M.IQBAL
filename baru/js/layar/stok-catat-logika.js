@@ -440,8 +440,9 @@ export function ckSusunPindahKoreksi(draf, w, yakin) {
   const alasan = String(draf.alasan || '').trim(); const tgl = tanggalPendek(lama.tanggal);
   if (!yakin) return { tolak: G.pindahTeks + ' — modal ikut, nilai stok & laba tetap; kedatangan ' + tgl + ' tidak diubah. Ketuk sekali lagi', perluYakin: true };
   const dokumen = []; const lahir = wbDokLahir(G.pindah.map((x) => ({ merk: x.ke })), w); if (lahir) dokumen.push(lahir);
+  const ambilG = {};
   G.pindah.forEach((x) => dokumen.push(wbDokPindah([{ merk: x.dari, kg: x.kg }], x.ke, w, { pindahNama: { dari: x.dari, ke: x.ke, kedatangan: String(lama.id) },
-    keterangan: 'Pindah buku ' + ckKG(x.kg) + ' ' + x.dari + ' → ' + x.ke + ' (nama di kedatangan ' + tgl + ' salah' + (alasan ? ': ' + alasan : '') + ')' })));
+    keterangan: 'Pindah buku ' + ckKG(x.kg) + ' ' + x.dari + ' → ' + x.ke + ' (nama di kedatangan ' + tgl + ' salah' + (alasan ? ': ' + alasan : '') + ')' }, ambilG)));
   return { dokumen, patch: { kabar: G.pindahTeks + ' — tersimpan. Kedatangan ' + tgl + ' tetap atas nama lamanya; modal ikut, nilai stok & laba tidak berubah.', kabarAwas: false } };
 }
 // ---------- BUKU PER UKURAN (owner 28 Sep: karung 50 kg & 25 kg merek yang sama = buku masing-masing) ----------
