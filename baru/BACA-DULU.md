@@ -2131,6 +2131,9 @@ cukup membaca kartunya. Dibangun di atas Paket B (potret tahun). Mesin beku & `f
 
 ## Hemat baca tahap 1–2 (owner 7 Okt 2026, siap 2027; cabang `perbaikan/hemat-baca`) — saklar bawaan MATI
 
+> **9 Okt 2026: hemat baca MATI SELAMANYA** (owner, sesudah Blaze aktif — bab "Blaze aktif" di akhir berkas). Kode & rules v7 tetap di tempatnya; saklar
+> tidak pernah dinyalakan. Langkah "nyalakan ≤ 20 Nov", daftar siap-nyala, dan perbandingan Usage harian di bawah GUGUR.
+
 Keputusan owner K1 (7 Okt): tetap Spark + hemat baca, menyala ≤ 20 Nov. Rancangan & batasnya: `docs/rancangan-hemat-baca.md`; uji rules:
 `docs/uji-rules-v7.md`; jalan darurat: `docs/prosedur-pulih-darurat.md` bagian "Hemat baca". Tahap 1–2 = rules v7 + kode yang MENGECAP tulisannya dan
 lapisan dengar baru di balik saklar per perangkat yang bawaannya MATI.
@@ -2312,7 +2315,8 @@ permintaan nego tidak ikut "setujui semua yang kecil".
 
 **Langkah owner** (urutan lengkap di isi PR #111 & `docs/uji-rules-v7.md`): Playground + Publish v7 ✓ (7 Okt 18.25 WIB) → satu nota kasir darurat masuk ✓
 (18.27) → merge PR #111 ✓ (7 Okt 21.25 WIB, `9491bf7`) → HP penjaga dibuka sekali (kasir-v33; ditandai sesudah owner melihat denyutnya di Perangkat &
-antrean) → hemat baca dinyalakan menurut daftar siap-nyala (≤ 20 Nov). Tutup buku 2027 (Januari 2028) tidak perlu langkah rules apa pun lagi.
+antrean) → ~~hemat baca dinyalakan menurut daftar siap-nyala (≤ 20 Nov)~~ GUGUR 9 Okt (Blaze, hemat baca mati selamanya). Tutup buku 2027 (Januari 2028)
+tidak perlu langkah rules apa pun lagi.
 
 ## Keputusan owner 8 Okt 2026 — K9–K12 (siap 2027)
 
@@ -2323,10 +2327,10 @@ antrean) → hemat baca dinyalakan menurut daftar siap-nyala (≤ 20 Nov). Tutup
   (`docs/prosedur-pulih-darurat.md`, daftar periksa ritual tutup buku).
 - **K10** karcis kasir darurat yang isinya ≠ nominal DITERIMA APA ADANYA per kelompok (Agustus kurang; September lebih karena dirinci dua kali oleh sistem
   lama), alasannya tertulis, angkanya diserahkan ke konsultan — JANGAN dirinci ulang (stok terpotong dua kali).
-- **K11** kartu kuota 1 Jan berbunyi TIDAK MUAT → ritual tetap dimulai 1 Jan sesudah reset; toko TUTUP Sabtu 2 Jan 2027 (tidak jualan, tidak menagih)
-  sampai sesudah 15.00 WIB, Lanjutkan dari Mac yang sama, tunggu arsip habis. Tutup buku 2027: ritual Sabtu 1 Jan 2028 sesudah reset, toko tutup
-  sesudahnya sampai Lanjutkan & arsip habis — setahun penuh bisa BEBERAPA hari kuota berturut-turut (`docs/uji-rules-v7.md` paragraf "Setahun penuh 2027").
-  K11 untuk 2028 diputuskan atas proyeksi lama (±117%, satu hari kuota); bagian 2028-nya ditanyakan ulang ke owner.
+- **K11** — **DICABUT 9 Okt 2026 (Blaze).** Dulu: kartu kuota 1 Jan berbunyi TIDAK MUAT → ritual tetap dimulai sesudah reset, toko TUTUP Sabtu 2 Jan 2027
+  (dan beberapa hari sesudah ritual 1 Jan 2028) sampai Lanjutkan & arsip habis. Sejak proyek di paket Blaze kuota bukan batas (kelebihannya ditagih):
+  arsip tidak berhenti karena kuota, toko tidak perlu tutup sesudah hari ritual, ritual jam bebas; MEPET / TIDAK MUAT di kartu boleh diabaikan
+  (bab "Blaze aktif" di bawah).
 - **K12** tugas "isi cara bayar dua kedatangan Agustus lewat Console" DITUTUP: tidak dikerjakan — angka sama (`docs/peta-kunci-periode.md` §10).
 - Dijaga `alat-uji/uji_dokumen_owner.py` (+ kontrol): proyeksi kuota 2028 dihitung ulang dari rumus kartu, bunyi K11 2028, jalan sementara K9.
 
@@ -2347,3 +2351,27 @@ yang salah jumlah pembayaran (owner membetulkannya sendiri di Bon pemasok › Be
 - Dijaga: `uji_harga_baru` (+F1, asap: bon lama tiap pemasok seandainya bergulir), `uji_menu_baru` (+F1 Menu & Pengingat), `uji_ringkasan_baru` (+F1 Beranda,
   +F3), `uji_pelanggan_baru` (+F2, asap: hapus buku lalu dibayar kembali satu nama nyata), `uji_laporan_baru` (+F2 margin bon), `peta_akses` (penulis baru) —
   semua dengan kontrol yang wajib berbunyi.
+
+## Blaze aktif — 9 Okt 2026 (keputusan owner; dokumen saja, cabang `dokumen/blaze-aktif`)
+
+Owner berhasil memindah proyek Firebase ke paket **Blaze** (bayar sesuai pakai), dicek 9 Okt di Console › Usage and billing: "Blaze · Pay as you go",
+akun penagihan "Firebase Payment" (IDR), **anggaran peringatan Rp50.000/bulan** (email 50 / 90 / 100%) — anggaran = alarm, bukan rem; Firestore tidak punya
+batas belanja. Jatah gratis harian tetap (50 rb baca, 20 rb tulis, 20 rb hapus); lewat itu ditagih, tidak ditolak (perkiraan: hari terboros tercatat
+78–103 rb baca ≈ Rp16.000/bulan bila tiap hari begitu; hari biasa Rp0; ritual tutup buku < Rp1.000 untuk 2026, < Rp5.000 untuk setahun penuh 2027 —
+tarif termahal resmi, kurs ±Rp16.500).
+
+Keputusan owner 9 Okt (menggantikan K1 7 Okt "tetap Spark + hemat baca" dan K11 8 Okt):
+- **Hemat baca MATI SELAMANYA** — saklar tidak pernah dinyalakan; tugas "nyala ≤ 20 Nov", daftar siap-nyala hijau 3 hari, patokan & perbandingan Usage
+  GUGUR. Dengan saklar mati semua perangkat mendengarkan semua catatan langsung (ubahan Console sampai sendiri; tombol "saya baru mengubah data lewat
+  Console" & "minta semua perangkat baca penuh" tidak dipakai). Batu nisan tetap ditulis selama rules v7 (catatan aturan darurat v3 di prosedur berlaku).
+- **K11 DICABUT** — tidak ada hari toko tutup sesudah ritual karena kuota; ritual 1 Jan jam bebas (alasan "sesudah 15.00 WIB" dulu = reset kuota Spark).
+- **Kartu "Perkiraan kuota Firestore" TIDAK diubah kodenya** (owner: dokumen saja): ia masih menghitung batas Spark dan kalimat TIDAK MUAT-nya masih
+  menyuruh toko tutup besoknya (`tutup-buku-logika.js perkiraanKuota`, lihat bab Paket A "Perkiraan kuota (C1)") — **MEPET / TIDAK MUAT boleh diabaikan**;
+  angkanya tetap berguna sebagai ukuran ritual.
+- Yang TIDAK berubah: jangan berjualan / menagih selama arsip berjalan (angka DOBEL); perangkat lain tetap DITUTUP selama ritual (alasannya kini angka
+  DOBEL, bukan kuota); satu perangkat (Mac) pemegang ritual; Lanjutkan dari perangkat yang sama kalau terhenti karena sebab lain.
+
+Dokumen yang diperbarui: `docs/prosedur-pulih-darurat.md` (kotak Blaze di kepala, daftar periksa ritual 1 Jan, perangkat sesudah ritual, Jalan mundur,
+Buntu 2028, bab Hemat baca), `docs/uji-rules-v7.md` & `docs/gladi-tutup-buku.md` (paragraf K11 & proyeksi setahun penuh), `docs/rancangan-hemat-baca.md`
+(kepala: tidak dipakai). `alat-uji/uji_dokumen_owner.py` kini menjaga bunyi K11 yang DICABUT (Blaze, jam bebas, TIDAK MUAT boleh diabaikan) — bukan lagi
+"toko tutup sesudahnya".

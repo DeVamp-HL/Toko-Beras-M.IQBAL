@@ -1,5 +1,10 @@
 # Hemat baca — rancangan & tahap 1–2 (owner 7 Okt 2026, siap 2027)
 
+> **TIDAK DIPAKAI — keputusan owner 9 Okt 2026.** Proyek pindah ke paket **Blaze** (baca lewat jatah gratis ditagih, tidak ditolak), dan owner memutuskan
+> hemat baca **MATI SELAMANYA**: saklar di tiap perangkat tidak pernah dinyalakan, urutan nyala & daftar siap-nyala di bawah GUGUR. Kode & rules v7 tetap
+> ada (saklar bawaan MATI = aplikasi mendengarkan semua catatan seperti sebelum 7 Okt). Berkas ini tinggal rancangan & sejarah; yang berlaku untuk owner:
+> `docs/prosedur-pulih-darurat.md` bab "Hemat baca — MATI SELAMANYA".
+
 **Kenapa.** Proyek Firebase toko memakai paket Spark: 50 rb baca/hari, reset "around midnight Pacific" (14.00 WIB sampai 31 Okt, 15.00 WIB
 mulai hari kuota 2 Nov). Tiap buka `/baru/` membaca SEMUA catatan toko (±7,4 rb baca, tumbuh ±140 catatan/hari); kuota terlewati 25 Sep, 27 Sep,
 1 Okt. Upgrade Blaze gagal (kartu). Keputusan owner (3 Okt, dikukuhkan 7 Okt — K1: tetap Spark + hemat baca, menyala ≤ 20 Nov):

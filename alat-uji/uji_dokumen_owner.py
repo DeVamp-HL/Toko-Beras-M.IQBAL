@@ -10,8 +10,8 @@ Sesudah 13 Okt owner bekerja sendiri dari dokumen. Yang dijaga: angka & keputusa
        (480 & 960 catatan contoh) ÷ 480;
      · per catatan, persen batas Spark, dan hari kuota yang ditulis untuk "±A–B rb catatan" = hasil rumus itu (selisih ≤ 4% / 6 poin); A–B = laju
        catatan sehari × 365; "±2,5–3×" = A–B ÷ skala 117% (±17 rb), dan skala itu disebut catatan 2026 SAJA (8 Agu–31 Des);
-     · bunyi K11 2028 = "ritual Sabtu 1 Jan 2028 … toko tutup sesudahnya sampai Lanjutkan & arsip habis" + "BEBERAPA hari" — bukan "toko TUTUP Sabtu 1 Jan
-       2028" (hari ritualnya sendiri) / "sama untuk Sabtu 1 Jan 2028" (dibaca: cukup tutup satu hari); juga di baru/BACA-DULU.md bagian K9–K12.
+     · bunyi K11 = DICABUT 9 Okt 2026 (owner, Blaze aktif): ritual jam bebas, MEPET / TIDAK MUAT di kartu boleh diabaikan, sebabnya = kelebihan kuota
+       DITAGIH (bukan ditolak) — tanpa perintah lama "toko tutup sesudahnya sampai Lanjutkan & arsip habis"; juga di baru/BACA-DULU.md bagian K9–K12.
   D2 K9 (modal awal 8 Agu, baru/BACA-DULU.md): menyebut tempat kodenya (PR #121, LP_KALIMAT_MODAL_AWAL) DAN jalan sementara owner bila kalimatnya TIDAK
      tercetak (sampaikan sendiri ke konsultan bersama PDF Neraca 31 Des). Bila konstanta itu SUDAH ada di kode: isinya memuat "8 Agu 2026" & "konsultan" dan
      dipakai berita acara (tutup-buku-logika.js teksAcara) & laporan-logika.js — kalau belum ada: dicatat "belum di kode", jalan sementaranya wajib tertulis.
@@ -98,10 +98,12 @@ def butir(teks, awal, akhir):
 
 
 def periksa_k11(ok, nama, s):
-    ok(nama + ': bunyi K11 2028 = ritual Sabtu 1 Jan 2028, toko tutup SESUDAHNYA sampai Lanjutkan & arsip habis (bukan "toko TUTUP Sabtu 1 Jan 2028" / "sama untuk Sabtu 1 Jan 2028")',
-       'ritual Sabtu 1 Jan 2028' in s and 'toko tutup sesudahnya sampai Lanjutkan & arsip habis' in s and not re.search(r'TUTUP Sabtu 1 Jan 2028|sama untuk Sabtu 1 Jan 2028', s), s[:300])
-    ok(nama + ': K11 2028 menyebut BEBERAPA hari & bahwa keputusannya diambil atas proyeksi lama ±117% (ditanyakan ulang ke owner)',
-       'BEBERAPA hari' in s and 'proyeksi lama (±117%' in s and 'ditanyakan ulang ke owner' in s, s[:300])
+    # owner 9 Okt 2026: Blaze aktif → K11 (toko tutup sesudah ritual karena kuota) DICABUT; kartu kuota tidak diubah kodenya (TIDAK MUAT boleh diabaikan)
+    ok(nama + ': bunyi K11 = DICABUT 9 Okt 2026 (Blaze) — ritual jam bebas, MEPET / TIDAK MUAT boleh diabaikan, tanpa perintah "toko tutup sesudahnya"',
+       'DICABUT 9 Okt 2026' in s and 'Blaze' in s and 'jam bebas' in s and bool(re.search(r'TIDAK MUAT[^.;]{0,25}boleh diabaikan', s))
+       and not re.search(r'toko tutup sesudahnya sampai Lanjutkan', s), s[:300])
+    ok(nama + ': K11 menyebut sebabnya — kelebihan kuota DITAGIH (bukan ditolak), jadi arsip tidak berhenti karena kuota',
+       'kelebihannya ditagih' in s and 'tidak berhenti' in s and 'karena kuota' in s, s[:300])
 
 
 def periksa(t):
@@ -199,16 +201,16 @@ def periksa(t):
     return out
 
 
-K11_V7 = ('Tutup buku 2027: ritual Sabtu 1 Jan 2028\nsesudah reset, toko tutup sesudahnya sampai Lanjutkan & arsip habis — menurut proyeksi setahun penuh di atas bisa BEBERAPA hari berturut-turut.',
-          'Sama untuk Sabtu 1 Jan 2028.')
+K11_V7 = ('Ritual Jumat 1 Jan 2027 dan ritual Sabtu 1 Jan 2028 jam bebas;', 'Tutup buku 2027: toko tutup sesudahnya sampai Lanjutkan & arsip habis;')
 KONTROL = [
     # (nama, ganti, awalan pemeriksaan yang WAJIB gagal — berbunyi karena sebabnya)
     ('D1 persen tulis 2028 kembali ke skala 2026 (117%)', {V7: [('tulis **±280–335%**', 'tulis **±117–140%**')]}, 'D1 ' + V7 + ': persen'),
     ('D1 hari kuota baca ditulis satu hari', {GLADI: [('kartu (perkiraan atas) ±6–7 hari', 'kartu (perkiraan atas) ±1–2 hari')]}, 'D1 ' + GLADI + ': hari kuota'),
     ('D1 117% tanpa keterangan skala 2026 saja', {GLADI: [('catatan 2026 SAJA (8 Agu–31 Des), bukan setahun penuh: ritual', 'setahun: ritual')]}, 'D1 ' + GLADI + ': 117%'),
     ('D1 proyeksi setahun penuh dihapus', {V7: [('**BEBERAPA hari kuota, bukan satu**', '**cukup satu hari**')]}, 'D1 ' + V7 + ': ada proyeksi'),
-    ('D1 bunyi lama K11 2028 ("sama untuk Sabtu 1 Jan 2028")', {V7: [K11_V7]}, 'D1 ' + V7 + ': bunyi K11'),
-    ('D1 BACA-DULU K11: toko TUTUP di hari ritual 2028', {BACA: [('Tutup buku 2027: ritual Sabtu 1 Jan 2028 sesudah reset, toko tutup\n  sesudahnya sampai', 'Toko TUTUP Sabtu 1 Jan 2028, toko tutup\n  sesudahnya sampai')]}, 'D1 ' + BACA),
+    ('D1 K11 di uji-rules-v7 kembali menyuruh toko tutup sesudah ritual', {V7: [K11_V7]}, 'D1 ' + V7 + ': bunyi K11'),
+    ('D1 BACA-DULU K11 tanpa "DICABUT"', {BACA: [('- **K11** — **DICABUT 9 Okt 2026 (Blaze).**', '- **K11** —')]}, 'D1 ' + BACA),
+    ('D1 gladi K11 tanpa sebab Blaze (kuota dianggap masih batas)', {GLADI: [('kuota harian bukan lagi batas (kelebihannya ditagih),\njadi arsip tidak berhenti', 'kuota harian masih batas,\njadi arsip berhenti')]}, 'D1 ' + GLADI + ': K11'),
     ('D1 kode: kartu berhenti menghitung baca pemeriksaan server (dokumen tak lagi sama dengan rumus)',
      {TB: [('baca: muat + getP + getA + nP + aturan + potong }', 'baca: muat + getP + nP + aturan + potong }')]}, 'D1 '),
     ('D2 K9 kembali "pekerjaan kode tersendiri"', {BACA: [('Kalimat itu\n  dipasang di aplikasi oleh PR #121 (paket P2: `laporan-logika.js LP_KALIMAT_MODAL_AWAL`, dipakai berita acara tutup buku & Neraca berkop).',
