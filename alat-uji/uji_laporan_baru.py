@@ -130,6 +130,22 @@ ok('39b-39 tidak ada margin yang hilang atau terhitung dua kali: Σ (Agu + Sep) 
     var mg = {}; ambilPenjualan().forEach(function (p) { mg[p.id] = p.hargaTotal - p.hppTotalSaatJual; }); var buka = 0; semuaBon(KINI).forEach(function (b) { b.buka.forEach(function (u) { if (u.idTrx && u.nominal > 0) buka += (mg[u.idTrx] || 0) * u.sisa / u.nominal; }); });
     return Math.abs(tahan - buka) < 1 && Math.abs(buka - (5000 + 21800 * 2 / 3)) < 0.01 && A.tunai + S.tunai === A.labaBersih + S.labaBersih - tahan; }),
   J(denganCacheSementara(BON39, function () { var A = labaBulan('2026-08', KINI), S = labaBulan('2026-09', KINI); return [A.tunai + S.tunai, A.labaBersih + S.labaBersih, A.marginKredit - A.marginDibayar - A.marginDihapus + S.marginKredit - S.marginDibayar - S.marginDihapus]; })));
+// ---- Paket F2 (owner 8 Okt 2026): hapus buku 200.000 (18 Sep) DIBALIK 19 Sep karena orangnya membayar 200.000 — catatan hapus buku bernilai minus + bayar.
+// Margin yang dulu dilepas hapus buku (10.000) DITARIK lagi lalu dilepas pembayaran: dihapus 10.000 → 0, dibayar +10.000; laba bersih +200.000; diterima tunai +200.000
+// (uangnya benar-benar masuk). Urutan pencatatan (balik dulu / bayar dulu — mis. HP kasir) tidak mengubah angka.
+var BALIK39 = function (jamBalik, jamBayar) { return BON39.concat([{ koleksi: 'piutangMutasi', data: { id: 3905, tipe: 'hapusBuku', namaPelanggan: 'Uji Lintas', nominal: -200000, tanggal: '2026-09-19', jam: jamBalik, alasan: 'hapus buku dibalik — dibayar sesudah dihapus', balikHapus: true } },
+  { koleksi: 'piutangMutasi', data: { id: 3906, tipe: 'bayar', namaPelanggan: 'Uji Lintas', nominal: 200000, tanggal: '2026-09-19', jam: jamBayar, caraBayar: 'Tunai', catatan: 'dibayar sesudah dihapus buku' } }]); };
+var S39h = denganCacheSementara(BON39, function () { return labaBulan('2026-09', KINI); });
+[['11:00', '11:00', 'balik & bayar satu kiriman'], ['11:30', '11:00', 'bayar (HP kasir) dulu, dibalik sesudahnya']].forEach(function (u) {
+  ok('F2 Laporan (' + u[2] + '): margin dihapus 10.000 → 0, margin dibayar +10.000, laba bersih +200.000, diterima tunai +200.000; Uji Lintas sisa 0; tidak ada margin tertahan yang hilang/dobel',
+    denganCacheSementara(BALIK39(u[0], u[1]), function () { var S = labaBulan('2026-09', KINI), A = labaBulan('2026-08', KINI); var L = hitungPiutang().find(function (d) { return d.kunci === kunciPelanggan('Uji Lintas'); });
+      var tahan = (A.marginKredit - A.marginDibayar - A.marginDihapus) + (S.marginKredit - S.marginDibayar - S.marginDihapus); var mg = {}; ambilPenjualan().forEach(function (p) { mg[p.id] = p.hargaTotal - p.hppTotalSaatJual; }); var buka = 0; semuaBon(KINI).forEach(function (b) { b.buka.forEach(function (x) { if (x.idTrx && x.nominal > 0) buka += (mg[x.idTrx] || 0) * x.sisa / x.nominal; }); });
+      return S.marginDihapus === 0 && S.marginDibayar === S39h.marginDibayar + 10000 && S.labaBersih === S39h.labaBersih + 200000 && S.tunai === S39h.tunai + 200000 && L && Math.abs(L.sisa) < 0.5 && Math.abs(tahan - buka) < 1; }),
+    J(denganCacheSementara(BALIK39(u[0], u[1]), function () { var S = labaBulan('2026-09', KINI); return [S.marginDihapus, S.marginDibayar - S39h.marginDibayar, S.labaBersih - S39h.labaBersih, S.tunai - S39h.tunai]; }))); });
+ok('F2 Laporan dibalik SEBAGIAN (80.000 dari 200.000, dibayar 80.000): margin dihapus 10.000 − 4.000 = 6.000, dibayar +4.000, laba bersih +80.000, tunai +80.000',
+  denganCacheSementara(BON39.concat([{ koleksi: 'piutangMutasi', data: { id: 3907, tipe: 'hapusBuku', namaPelanggan: 'Uji Lintas', nominal: -80000, tanggal: '2026-09-19', jam: '11:00', alasan: 'dibalik', balikHapus: true } }, { koleksi: 'piutangMutasi', data: { id: 3908, tipe: 'bayar', namaPelanggan: 'Uji Lintas', nominal: 80000, tanggal: '2026-09-19', jam: '11:00', caraBayar: 'Tunai' } }]),
+    function () { var S = labaBulan('2026-09', KINI); return S.marginDihapus === 6000 && S.marginDibayar === S39h.marginDibayar + 4000 && S.labaBersih === S39h.labaBersih + 80000 && S.tunai === S39h.tunai + 80000; }),
+  J(denganCacheSementara(BON39.concat([{ koleksi: 'piutangMutasi', data: { id: 3907, tipe: 'hapusBuku', namaPelanggan: 'Uji Lintas', nominal: -80000, tanggal: '2026-09-19', jam: '11:00', alasan: 'dibalik', balikHapus: true } }, { koleksi: 'piutangMutasi', data: { id: 3908, tipe: 'bayar', namaPelanggan: 'Uji Lintas', nominal: 80000, tanggal: '2026-09-19', jam: '11:00', caraBayar: 'Tunai' } }]), function () { var S = labaBulan('2026-09', KINI); return [S.marginDihapus, S.marginDibayar - S39h.marginDibayar, S.labaBersih - S39h.labaBersih, S.tunai - S39h.tunai]; })));
 
 // ---- 39b no. 37 (owner 2 Okt 2026 "37 buka"): retur nota BON memotong bon — mesin hitungPiutang membaca mutasi piutang tipe 'retur' (bon tertua dulu; bukan uang,
 // bukan rugi); dokumen retur nota bon = nominalRefund 0 + potongBon (laba: pengurang penjualan lewat uangKembaliRetur; kas tidak membacanya). ANGKA CONTOH:
@@ -597,6 +613,10 @@ if __name__ == '__main__':
             if not g: kode = 3
         # (pensiun 3 Okt 2026) kontrol pembaca piutang sistem lama (U37-U6 & MM2, teks index.html dirusak) dihapus bersama objeknya
         rusak = {
+            # ---- Paket F2: hapus buku dibalik di jalan margin bon
+            'F2 hapus buku minus diabaikan jalan margin bon (pembayaran jadi uang lebih)': js.replace("if (c.jenis === 'hapusBuku' && n < 0) { balik(-n, t); return; }", ""),
+            'F2 margin yang dilepas hapus buku tidak ditarik saat dibalik (dobel)': js.replace("out.dihapus -= mg(b.u) * x / b.u.nominal;", "out.dihapus -= 0;"),
+            'F2 uang yang menunggu bon tidak menutup bon yang terbuka lagi': js.replace("for (let k = 0; k < buka.length && lebih.length;) {", "for (let k = 0; false && k < buka.length && lebih.length;) {"),
             'tinjauan T2: nota bon dihitung per baris (kartu Laba)': js.replace("notaKredit.add(kunciNota(p));", "notaKredit.add(String(p.id));"),
             'tinjauan T2: nota bon dihitung per baris (rekap WA)': js.replace("nKredit: jumlahNota((t) => t === iso, (p) => caraBayarKunci(p) === 'kredit'),", "nKredit: K.jumlahKredit,"),
             'tinjauan T3: kunci nota mengabaikan grupNota (nota HP kasir)': js.replace("const kunciNota = (p) => String(p.grupNota || p.trxId || p.id);", "const kunciNota = (p) => String(p.trxId || p.id);"),

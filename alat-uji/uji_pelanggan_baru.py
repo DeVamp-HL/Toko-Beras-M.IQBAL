@@ -326,6 +326,42 @@ ok('lembar orang: rincian 2 bon terbuka (yang pertama "dari Rp780.000"), riwayat
   ok('39b-4 ambang: sisa −0,3 (pembulatan) = LUNAS, bukan kelebihan bayar; daftar kelebihan kosong', b2 && b2.status === 'lunas' && lebihBayarDari(hitungPiutang()).n === 0 && susunBon(KINI, null, '').lebih.length === 0, b2 && [b2.sisa, b2.status]);
   pulih(s0);
 })();
+// ---- PAKET F2 (owner 8 Okt 2026: "catatannya jangan dihapus — sewaktu-waktu ada yang mau bayar"): dibayar sesudah dihapus buku = hapus buku DIBALIK
+// (catatan hapus buku bernilai minus) + pembayaran biasa, SATU kiriman; hapus buku lama tetap ada
+(function () {
+  var s0 = simpan(); var B0 = susunBon(KINI, null, '');
+  terapkan(susunHapusBon(KINI, 'pak hartawan', '250.000', 'pindah', W, true));
+  var BH = susunBon(KINI, null, ''); var dh = BH.dihapus.find(function (x) { return x.kunci === 'pak hartawan'; });
+  ok('F2 daftar "dihapus dari buku": Hartawan 250.000 bertanggal hapus 19 Sep (bonnya nol, tidak di daftar berutang); jumlahDihapus 250.000; sebelum dihapus daftar kosong', dh && dh.dihapus === 250000 && dh.tanggal === W.tanggal && BH.jumlahDihapus === 250000 && !BH.papan.some(function (p) { return p.kunci === 'pak hartawan'; }) && B0.dihapus.length === 0 && B0.jumlahDihapus === 0, JSON.stringify([BH.dihapus, B0.dihapus]));
+  var P0 = susunBayarSesudahHapus(KINI, 'pak hartawan', '250.000', 'Tunai', 'datang sendiri', W, false); var P1 = susunBayarSesudahHapus(KINI, 'pak hartawan', '250.000', 'Tunai', 'datang sendiri', W, true);
+  var Plb = susunBayarSesudahHapus(KINI, 'pak hartawan', '250.001', 'Tunai', '', W, true); var Pdt = susunBayarSesudahHapus(KINI, 'pak darto', '100.000', 'Tunai', '', W, true); var Pnol = susunBayarSesudahHapus(KINI, 'pak hartawan', '', 'Tunai', '', W, true);
+  ok('F2 ketukan pertama DITANYA ("TETAP ada", "laba bulan ini naik Rp250.000"); kedua → 2 dokumen piutangMutasi: hapusBuku −250.000 (balikHapus) + bayar 250.000 Tunai; melebihi yang dihapus, jumlah kosong, & nama tanpa hapus buku ditolak',
+    P0.perluYakin === true && /TETAP ada/.test(P0.tolak) && /laba bulan ini naik Rp250\.000/.test(P0.tolak) && !P0.dokumen && !P1.tolak && P1.dokumen.length === 2 && P1.dokumen[0].data.tipe === 'hapusBuku' && P1.dokumen[0].data.nominal === -250000 && P1.dokumen[0].data.balikHapus === true && /datang sendiri/.test(P1.dokumen[0].data.alasan)
+    && P1.dokumen[1].data.tipe === 'bayar' && P1.dokumen[1].data.nominal === 250000 && P1.dokumen[1].data.caraBayar === 'Tunai' && P1.dokumen.every(function (d) { return d.koleksi === 'piutangMutasi' && d.data.namaPelanggan === 'Pak Hartawan' && d.data.tanggal === W.tanggal; }) && P1.dokumen[0].data.id !== P1.dokumen[1].data.id
+    && /paling banyak/.test(Plb.tolak) && /Belum ada bon Pak Darto yang dihapus/.test(Pdt.tolak) && /Ketik jumlah/.test(Pnol.tolak) && /laci bertambah/.test(P1.patch.kabar) && /catatan hapus buku lama tetap ada/.test(P1.patch.kabar), JSON.stringify([P0.tolak, P1.dokumen, Plb.tolak, Pdt.tolak]));
+  terapkan(P1); var m = hitungPiutang().find(function (x) { return x.kunci === 'pak hartawan'; }); var bb = semuaBon(KINI).find(function (x) { return x.kunci === 'pak hartawan'; }); var LB = lembarBon(KINI, 'pak hartawan'); var B2 = susunBon(KINI, null, '');
+  ok('F2 sesudahnya: mesin sisa 0, dihapus bersih 0, bayar 250.000; status LUNAS (bukan "lebih"); daftar dihapus kosong lagi; riwayat memuat DIHAPUS −250.000, "hapus buku dibalik" +250.000, dan pembayaran — kedua catatan hapus buku TETAP ada',
+    m.sisa === 0 && m.dihapus === 0 && m.bayar === 250000 && bb.status === 'lunas' && B2.dihapus.length === 0 && B2.lebih.length === 0 && LB.riwayat.some(function (r) { return /^DIHAPUS dari buku/.test(r.teks) && r.n === -250000; }) && LB.riwayat.some(function (r) { return /^hapus buku dibalik/.test(r.teks) && r.n === 250000; }) && LB.riwayat.some(function (r) { return /^membayar/.test(r.teks) && r.n === -250000; })
+    && cacheMentah('piutang').filter(function (x) { return x.namaPelanggan === 'Pak Hartawan' && x.tipe === 'hapusBuku'; }).length === 2, JSON.stringify([m.sisa, m.dihapus, m.bayar, bb.status, LB.riwayat]));
+  pulih(s0);
+  terapkan(susunHapusBon(KINI, 'pak hartawan', '250.000', 'pindah', W, true)); terapkan(susunBayarSesudahHapus(KINI, 'pak hartawan', '100.000', 'QRIS', '', W, true));
+  var m2 = hitungPiutang().find(function (x) { return x.kunci === 'pak hartawan'; }); var B3 = susunBon(KINI, null, ''); var d3 = B3.dihapus.find(function (x) { return x.kunci === 'pak hartawan'; });
+  ok('F2 sebagian (QRIS 100.000 dari 250.000 yang dihapus): sisa tetap 0, dihapus bersih 150.000, daftar dihapus 150.000, pembayaran QRIS 100.000; sisa 150.000 boleh dibalik lagi, 150.001 tidak',
+    m2.sisa === 0 && m2.dihapus === 150000 && d3 && d3.dihapus === 150000 && cacheMentah('piutang').some(function (x) { return x.tipe === 'bayar' && x.namaPelanggan === 'Pak Hartawan' && x.caraBayar === 'QRIS' && x.nominal === 100000; })
+    && !susunBayarSesudahHapus(KINI, 'pak hartawan', '150.000', 'Tunai', '', W, true).tolak && /paling banyak/.test(susunBayarSesudahHapus(KINI, 'pak hartawan', '150.001', 'Tunai', '', W, true).tolak), JSON.stringify([m2.sisa, m2.dihapus, B3.dihapus]));
+  pulih(s0);
+  // hapus buku TERBAYAR (pembayaran sudah tercatat, mis. dari HP kasir) → cukup dibalik, TANPA pembayaran kedua
+  pasok('piutangMutasi', cacheMentah('piutang').concat([{ id: 9963, tipe: 'hapusBuku', namaPelanggan: 'Pak Hartawan', nominal: 250000, alasan: 'pindah', tanggal: '2026-09-18', jam: '10:00', dicatatDi: 'sistem' }, { id: 9964, tipe: 'bayar', namaPelanggan: 'Pak Hartawan', nominal: 250000, tanggal: '2026-09-19', jam: '09:40', caraBayar: 'Tunai', catatan: '', dicatatDi: 'kasir' }]));
+  var R0 = susunBayarSesudahHapus(KINI, 'pak hartawan', '250.000', 'Tunai', '', W, true); var Rl = susunBayarSesudahHapus(KINI, 'pak hartawan', '260.000', 'Tunai', '', W, true);
+  ok('F2 hapus buku TERBAYAR (status lebih): SATU dokumen hapusBuku −250.000 (tanpa bayar kedua), kabar "uangnya sudah tercatat"; melebihi yang terbayar ditolak; sesudahnya LUNAS, daftar lebih & dihapus kosong',
+    !R0.tolak && R0.dokumen.length === 1 && R0.dokumen[0].data.nominal === -250000 && /sudah tercatat/.test(R0.patch.kabar) && /paling banyak/.test(Rl.tolak)
+    && (function () { terapkan(R0); var x = semuaBon(KINI).find(function (y) { return y.kunci === 'pak hartawan'; }); var S = susunBon(KINI, null, ''); return x.status === 'lunas' && S.lebih.length === 0 && S.dihapus.length === 0; })(), JSON.stringify([R0, Rl.tolak]));
+  pulih(s0);
+  // kelebihan bayar UANG (bukan hapus buku) tidak boleh lewat pintu ini
+  pasok('piutangMutasi', cacheMentah('piutang').concat([{ id: 9965, tipe: 'bayar', namaPelanggan: 'Pak Hartawan', nominal: 280000, tanggal: '2026-09-19', jam: '09:30', caraBayar: 'Tunai', catatan: '', dicatatDi: 'kasir' }]));
+  ok('F2 kelebihan bayar uang (tanpa hapus buku) ditolak: "Belum ada bon … yang dihapus"', /Belum ada bon Pak Hartawan yang dihapus/.test(susunBayarSesudahHapus(KINI, 'pak hartawan', '30.000', 'Tunai', '', W, true).tolak || ''));
+  pulih(s0);
+})();
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 
@@ -339,7 +375,15 @@ var belanjaLayar = O.reduce(function (a, b) { return a + b.total; }, 0); var bel
 var SB = semuaBon(KINI); var sisaLayar = SB.reduce(function (a, b) { return a + b.sisa; }, 0); var sisaMesin = hitungPiutang().reduce(function (a, b) { return a + b.sisa; }, 0);
 var kenalB = {}; (CAD.piutangMutasi || []).forEach(function (m) { if (m.tipe === 'bayar') Object.keys(m).forEach(function (k) { kenalB[k] = 1; }); }); kenalB.dibawaOleh = 1;
 var berutang = SB.filter(function (b) { return b.sisa > 0; })[0]; if (berutang) { var by = susunBayarBon(KINI, berutang.kunci, '1', 'Tunai', 'uji', '', WX); if (by.dokumen) Object.keys(by.dokumen[0].data).forEach(function (k) { if (!kenalB[k]) asing.push('bayar.' + k); }); else asing.push('bayar ditolak: ' + by.tolak);
-  var hb = susunHapusBon(KINI, berutang.kunci, '1', 'uji', WX, true); if (hb.dokumen) Object.keys(hb.dokumen[0].data).forEach(function (k) { if (!kenalB[k] && k !== 'alasan') asing.push('hapusBuku.' + k); }); else asing.push('hapus ditolak: ' + hb.tolak); }
+  var hb = susunHapusBon(KINI, berutang.kunci, '1', 'uji', WX, true); if (hb.dokumen) Object.keys(hb.dokumen[0].data).forEach(function (k) { if (!kenalB[k] && k !== 'alasan') asing.push('hapusBuku.' + k); }); else asing.push('hapus ditolak: ' + hb.tolak);
+    // Paket F2 asap: hapus buku sisa satu nama nyata lalu dibayar kembali penuh (cache sementara) — kolom dokumen dikenal cadangan (+ balikHapus); mesin: sisa 0,
+    // hapus buku bersih kembali seperti semula, pembayaran bertambah sebesar sisa itu
+    var sF2 = berutang.sisa; var cadF2 = cacheMentah('piutang').slice(); var hbF2 = susunHapusBon(KINI, berutang.kunci, String(Math.round(sF2)), 'asap', WX, true);
+    if (hbF2.dokumen) { pasok('piutangMutasi', cadF2.concat(hbF2.dokumen.map(function (d) { return d.data; }))); var pF2 = susunBayarSesudahHapus(KINI, berutang.kunci, String(Math.round(sF2)), 'Tunai', 'asap', WX, true);
+      if (pF2.dokumen) { pF2.dokumen.forEach(function (d) { Object.keys(d.data).forEach(function (k) { if (!kenalB[k] && ['alasan', 'balikHapus'].indexOf(k) < 0) asing.push('F2.' + d.data.tipe + '.' + k); }); });
+        pasok('piutangMutasi', cacheMentah('piutang').concat(pF2.dokumen.map(function (d) { return d.data; }))); var mF2 = hitungPiutang().find(function (x) { return x.kunci === berutang.kunci; });
+        if (!mF2 || Math.abs(mF2.sisa) > 0.5 || Math.abs(mF2.dihapus - berutang.dihapus) > 0.5 || Math.abs(mF2.bayar - berutang.bayar - sF2) > 0.5) asing.push('F2 ' + berutang.nama + ': sisa ' + (mF2 && mF2.sisa) + ' (harus 0) · dihapus ' + (mF2 && mF2.dihapus) + ' · bayar ' + (mF2 && mF2.bayar)); } else asing.push('F2 ditolak: ' + pF2.tolak); }
+    pasok('piutangMutasi', cadF2); }
 var kenalK = {}; (CAD.pelangganCatatan || []).forEach(function (c) { Object.keys(c).forEach(function (k) { kenalK[k] = 1; }); }); ['cip', 'arah', 'asli', 'kontak', 'biasa', 'diubahPada'].forEach(function (k) { kenalK[k] = 1; });
 var kartuAda = O.find(function (b) { return b.kartu; }); if (kartuAda) { var sk = susunSimpanKartu(KINI, kartuAda.kunci, { nama: kartuAda.nama, cip: kartuAda.cip, catatan: kartuAda.catatan, arah: kartuAda.arah }, WX); if (sk.dokumen) Object.keys(sk.dokumen[0].data).forEach(function (k) { if (!kenalK[k]) asing.push('kartu.' + k); }); else asing.push('kartu ditolak: ' + sk.tolak); }
 var pt = berutang ? pesanTagih(KINI, berutang.kunci) : null;
@@ -387,6 +431,13 @@ if __name__ == '__main__':
     inti = bundel_baru.bundel(MODUL); js = dengan_layar(inti)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- Paket F2: dibayar sesudah dihapus buku
+            'F2 hapus buku dibalik ditulis positif (kerugian dobel)': js.replace("nominal: -n, alasan: 'hapus buku dibalik", "nominal: n, alasan: 'hapus buku dibalik"),
+            'F2 hapus buku terbayar tetap menulis pembayaran kedua': js.replace("if (!(sudah > 0)) dokumen.push(", "if (true) dokumen.push("),
+            'F2 daftar dihapus selalu kosong': js.replace("const dihapus = semua.filter((b) => b.dihapus > 0.5 && b.sisa <= 0 && b.status !== 'lebih')", "const dihapus = semua.filter((b) => false)"),
+            'F2 batas = tak terbatas (bukan yang dihapus)': js.replace("const maks = sudah > 0 ? Math.min(sudah, dihapus) : dihapus;", "const maks = 1e12;"),
+            'F2 tanpa ketukan kedua': js.replace("if (!yakin) return { tolak: (sudah > 0 ? 'Balik hapus buku '", "if (false) return { tolak: (sudah > 0 ? 'Balik hapus buku '"),
+            'F2 riwayat menyebut pembalikan sebagai DIHAPUS': js.replace("bnBalik(m) ? m.ket.replace(/^Hapus buku · /, '').replace(/^Hapus buku/, 'hapus buku dibalik') : m.ket.replace(/^Hapus buku/, 'DIHAPUS dari buku')", "m.ket.replace(/^Hapus buku/, 'DIHAPUS dari buku')"),
             # ---- putaran 25: nota sistem baru (trxId, tanpa grupNota)
             'perbaikan dicabut: nota trxId dipecah per baris (Belanja & ini dia)': js.replace("const plKunciNota = (p) => String(p.grupNota || p.trxId || p.id);", "const plKunciNota = (p) => String(p.grupNota || p.id);"),
             'Belanja saja memecah nota trxId per baris': js.replace("return; const g = plKunciNota(p); if (!grup[g])", "return; const g = String(p.grupNota || p.id); if (!grup[g])"),
