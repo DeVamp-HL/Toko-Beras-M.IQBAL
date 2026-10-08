@@ -9,6 +9,16 @@
 > Sebelum 3 Okt prosedur ini membuka sistem lama dari situs dan memakai rules v4; sekarang rules yang terpasang = `firestore.rules` (v7, terbit 7 Okt
 > 2026 18.25 WIB).
 
+> **9 Okt 2026 — Firebase pindah ke paket Blaze (bayar sesuai pakai).** Keputusan owner 9 Okt, berlaku untuk semua bab di bawah:
+> - **Kuota harian bukan lagi batas.** Jatah gratis harian tetap sama (50 rb baca, 20 rb tulis, 20 rb hapus); lewat dari itu **ditagih**, tidak
+>   ditolak. Perkiraan: hari terboros yang pernah tercatat (78–103 rb baca) ± Rp16.000 kalau terjadi tiap hari sebulan; hari biasa Rp0; ritual tutup buku
+>   di bawah Rp1.000 (tarif termahal resmi US$0,06 per 100 rb baca, kurs ±Rp16.500 — perkiraan, bukan tagihan). **Anggaran peringatan Rp50.000/bulan**
+>   (email di 50 / 90 / 100%) terpasang di Console › Usage and billing — itu ALARM, bukan rem: Firestore tidak punya batas belanja.
+> - **Hemat baca MATI SELAMANYA** — jangan dinyalakan di perangkat mana pun (bab "Hemat baca" di bawah tinggal catatan teknis).
+> - **K11 DICABUT:** toko tidak perlu tutup sesudah hari ritual. Arsip tutup buku tidak lagi berhenti di tengah karena kuota.
+> - Kartu **"Perkiraan kuota Firestore"** di Uang › Tutup buku masih menghitung batas Spark: **"MEPET" / "TIDAK MUAT" di kartu itu boleh diabaikan.**
+>   Angkanya tetap berguna sebagai ukuran besar-kecilnya ritual (persen dari jatah gratis sehari).
+
 ## Kenapa perlu prosedur
 
 - Sistem lama hanya-baca sejak 25b; satu-satunya jalan tulis catatan yang tetap terbuka di sana adalah **Setelan › Muat cadangan**, dan itu pun harus
@@ -28,7 +38,7 @@
   `wadahLiteran`, `hargaTerbit`, `pindahUang`, `slipUpah`, `absenKaryawan`, `tutupBukuAcara`, `aturanToko`, `hargaWadah`, `bukuHapus` — **TIDAK ikut
   pulih** lewat jalan ini. Kalau yang hilang termasuk koleksi itu, jalan ini tidak cukup: berhenti dan putuskan dulu (owner) sebelum menyentuh rules.
 - Katalog kasir (`ringkasanKasir`) tidak ikut dipulihkan dari berkas; `/baru/` menerbitkannya ulang sendiri begitu data termuat.
-- Sekali membuka sistem lama ≈ **7,4 rb baca** dokumen (kuota Spark 50 rb baca/hari, reset 15.00 WIB November–Maret, 14.00 WIB selebihnya). Jangan dimuat ulang berkali-kali.
+- Sekali membuka sistem lama ≈ **7,4 rb baca** dokumen (jatah gratis 50 rb baca/hari; sejak Blaze lewat dari itu ditagih, tidak ditolak). Jangan dimuat ulang berkali-kali.
 - **Kunci API web Firebase DIBATASI referrer.** Terbukti 1 Okt 2026: masuk dari pratinjau `localhost` (port lain) dijawab 403 "Requests from referer …
   are blocked". `localhost:8731` belum pernah dicoba — anggap ditolak sampai terbukti bisa masuk. Tempat memeriksa & mengubahnya: Google Cloud Console ›
   APIs & Services › Credentials › kunci browser ("Browser key …") › Website restrictions. "Authorized domains" (Authentication › Settings) TIDAK berlaku
@@ -110,7 +120,7 @@
      buku** harus kembali "Semua … pemeriksaan sama". Unduh hasilnya (tombol "unduh hasil pemeriksaan (berkas)") dan simpan bersama cadangan kedua.
    - Masuk ke sistem lama ikut menulis denyut perangkat (sistem lama di `localhost`, tanpa nama). Sesudah 24 jam: Uang › Tutup buku › kartu **Kunci
      bulan**, butir "Semua perangkat berdenyut dalam 24 jam terakhir" → ketuk "<…> sudah tidak dipakai" untuk perangkat itu (dua ketukan). Tanpa itu
-     butir ⛔ itu menahan kunci bulan, dan daftar siap-nyala hemat baca menyebut "sistem lama berdenyut" selama 7 hari. Tombolnya tidak muncul → jalannya
+     butir ⛔ itu menahan kunci bulan. Tombolnya tidak muncul → jalannya
      di butir "Perangkat hilang atau rusak" (daftar periksa ritual, Sampai 31 Des).
    - Tulis kejadiannya di `docs/peta-kunci-periode.md`: tanggal, jam buka dan tutup jendela darurat, alasan, berkas cadangan yang dipakai, siapa
      yang menempel aturan, jam `localhost:8731` ditambah & dicabut di kunci API (kalau langkah 0 memakainya), dan hasil langkah 4.
@@ -153,8 +163,8 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - **Batalkan** (dua ketukan): berita acara `membatalkan` + era mundur + titik kas 31 Des dikembalikan (kalau titiknya belum maju) → saldo pembuka
   ditarik → SELURUH arsip tahun itu dibaca dan dikembalikan → berita acara `dibatalkan`. Terhenti di tengah → **Lanjutkan** dari perangkat yang sama;
   yang sudah ditarik / dikembalikan tidak diulang.
-- **Kuota:** pembatalan sesudah arsip penuh butuh ± sebesar ritualnya lagi — angkanya tampil di langkah 1 ("Kalau dibatalkan sesudah arsip"). Di Spark
-  itu tidak muat di hari yang sama dengan ritualnya: toko tidak buka sampai pembatalan tuntas sesudah reset kuota berikutnya.
+- **Kuota:** pembatalan sesudah arsip penuh butuh ± sebesar ritualnya lagi — angkanya tampil di langkah 1 ("Kalau dibatalkan sesudah arsip"). Sejak
+  Blaze (9 Okt 2026) itu tidak lagi tertahan kuota — kelebihannya ditagih (kecil). Toko tetap tidak buka sampai pembatalan tuntas (angka KURANG).
 - Catatan bertanggal tahun lama yang mendarat SESUDAH penanda (karcis HP penjaga yang tertahan tanpa sinyal) tidak ikut diarsip; pita menyebutnya dan
   jalannya ("sudah dicatat" — catatannya tidak dihapus). Itu bukan alasan membatalkan. Kalimatnya per jenis: nota (uang di laci LEBIH, omzet tahun itu
   kurang), pengeluaran (uang KURANG, biaya tahun itu kurang → labanya terlihat lebih besar), catatan lain (selisih uang muncul di tutup hari berikutnya).
@@ -197,8 +207,9 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
         Jalannya: kalau orang itu belanja Kredit lagi sebelum 31 Des, kelebihannya terpakai sendiri (nota Kredit berikutnya memakainya lebih dulu).
         Kalau uangnya sudah dikembalikan tunai, atau ternyata bayar ganda: unduh cadangan dulu, lalu di Console › Firestore › Data › `piutangMutasi`
         kecilkan `nominal` (atau hapus) dokumen pembayaran orang itu (`tipe` "bayar", bertanggal ≤ 31 Des) sebesar kelebihannya. Hapus buku yang
-        ternyata dibayar: kecilkan / hapus dokumen `tipe` "hapusBuku" orang itu sebesar yang dibayar. Sesudahnya tekan **"saya baru mengubah data lewat
-        Console"** (Menu › Toko ini › Perangkat & antrean › Hemat baca) dan periksa g6 di LATIHAN.
+        ternyata dibayar: kecilkan / hapus dokumen `tipe` "hapusBuku" orang itu sebesar yang dibayar — atau, untuk hapus buku yang ternyata
+        dibayar, pakai tombol **"Balik hapus buku"** di lembar orang itu (Paket F2, tanpa Console). Ubahan lewat Console sampai sendiri ke semua perangkat
+        (hemat baca mati — aplikasi mendengarkan semua catatan), lalu periksa g6 di LATIHAN.
         Console hanya membereskan sisi bon, bukan sisi laci. Uang yang dikembalikan tunai tidak punya catatan di sistem baru, jadi tutup hari pada hari
         uangnya diserahkan KURANG sebesar itu: pilih alasan yang paling dekat (bawaan: "Ada pengeluaran belum dicatat") dan tulis di kertas untuk
         konsultan (tanggal, nama, berapa). Laba bersih bulan itu ikut turun sebesar itu di baris "Lebih/kurang kas", padahal bukan rugi toko. Bayar
@@ -266,26 +277,18 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] 31 Des malam: Menu › Toko ini › Perangkat & antrean › tab Perangkat — tiap perangkat "semua sampai" dan tanpa "ditolak server"; HP penjaga lalu
       dimatikan.
 
-**1 Jan 2027 (Jumat, toko tutup), sesudah 15.00 WIB:**
-- [ ] Kuota Spark harian kembali penuh pukul **15.00 WIB** (tengah malam waktu Pasifik; 15.00 WIB dari Senin sesudah Minggu pertama November sampai
-      Minggu kedua Maret, selain itu 14.00 WIB — layar menghitungnya dari zona America/Los_Angeles, juga di hari pergantian). Console › Firestore ›
-      Usage: kuota hari itu belum terpakai.
+**1 Jan 2027 (Jumat, toko tutup):**
+- [ ] Jam mulai bebas. (Dulu "sesudah 15.00 WIB" karena kuota Spark baru penuh lagi jam itu — sejak Blaze 9 Okt 2026 kuota bukan batas.) Mulai sedini
+      mungkin di hari itu supaya arsip pasti habis sebelum toko buka 2 Jan.
 - [ ] Mac, tab peramban (bukan web app iPhone/iPad), SATU perangkat, jangan muat ulang aplikasi.
 - [ ] Sebelum langkah 1: **TUTUP aplikasi di iPhone / iPad / HP lain** (geser keluar dari daftar aplikasi, tab peramban ditutup — layar mati saja tidak
-      cukup) dan jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis". Tiap perangkat yang terbuka membaca sekali muat lagi (selama tutup
-      buku berjalan, perangkat owner yang hemat baca juga membaca penuh), padahal sisa kuota baca hari ritual tipis — satu perangkat lain yang terbuka
-      cukup untuk menghentikan arsip, lalu angkanya DOBEL sampai dilanjutkan sesudah reset berikutnya.
-- [ ] Uang › Tutup buku › **SUNGGUHAN** → langkah 1: g1–g6 semua ✓ — dan **g7** kalau hemat baca menyala di Mac ini (g7 tidak bisa dilewati). g7 ✗
-      atau kartu kuota "?" ("belum bisa dihitung") → ketuk **baca penuh sekarang** (Menu › Toko ini › Perangkat & antrean › Hemat baca), tunggu sampai
-      selesai, jangan muat ulang, lalu buka Uang › Tutup buku lagi. Sesudah itu baca kartu **Perkiraan kuota Firestore**:
-      - "Muat dalam kuota satu hari" → mulai.
-      - "MEPET" → mulai hanya kalau toko tutup (1 Jan memang tutup).
-      - "TIDAK MUAT" → **tetap mulai 1 Jan sesudah reset** (keputusan owner 8 Okt 2026). Hari lain tidak lebih ringan, dan sesudah 3 Jan malah lebih
-        berat (catatan Desember sudah lewat masa tenggang kunci, server memeriksa kuncinya per catatan). Arsip berhenti sendiri saat kuota habis; sampai
-        arsipnya habis stok, piutang & utang terhitung DOBEL. Toko **TUTUP Sabtu 2 Jan 2027** — tidak berjualan, tidak menagih — sampai sesudah 15.00 WIB:
-        **Lanjutkan** dari Mac yang sama, tunggu pita "Tahun 2026 terkunci dan arsipnya habis", baru toko buka. Sama untuk tutup buku 2027 yang ritualnya
-        Sabtu 1 Jan 2028: mulai sesudah reset, toko tutup keesokan harinya sampai Lanjutkan sesudah 15.00 WIB dan sampai pita
-        "Tahun 2027 terkunci dan arsipnya habis".
+      cukup) dan jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis". Bukan lagi soal kuota: selama arsip berjalan stok, piutang & utang
+      terhitung DOBEL di perangkat mana pun, dan perangkat lain yang terbuka bisa dipakai berjualan atau menagih dengan angka DOBEL itu.
+- [ ] Uang › Tutup buku › **SUNGGUHAN** → langkah 1: g1–g6 semua ✓ (g7 tidak muncul — hemat baca mati). Kartu **Perkiraan kuota Firestore**:
+      "Muat dalam kuota satu hari", "MEPET", atau "TIDAK MUAT" — **ketiganya: mulai** (kartu masih menghitung batas Spark; sejak Blaze kelebihannya
+      ditagih, tidak menghentikan arsip). K11 (toko tutup 2 Jan) DICABUT 9 Okt 2026. Arsip terhenti karena sebab lain (internet putus, Mac tertidur, aplikasi
+      tertutup) → **Lanjutkan** dari Mac yang sama; sampai pita "Tahun 2026 terkunci dan arsipnya habis" toko jangan berjualan atau menagih. Tutup buku
+      2027 (ritual Sabtu 1 Jan 2028) sama: mulai hari itu, tunggu arsip habis — arsip setahun penuh lebih lama, tapi tidak menunggu reset kuota.
 - [ ] Langkah 2: cadangan SEBELUM → cek berkasnya ada di Unduhan, salin ke luar Mac.
 - [ ] Langkah 3: arsip → cek berkasnya ada.
 - [ ] Langkah 4: saldo pembuka → semua 14 baris ✓ (12 baris harta & utang + modal owner + upah belum dibayar).
@@ -301,23 +304,16 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       - "… pemeriksaan beda — jangan jualan/menagih dulu" → JANGAN ketuk "selesai". Ikuti petunjuk di kartu: batalkan (pita, dua ketukan, dari perangkat
         yang memulai), tunggu tuntas, ulangi ritual dari langkah 1.
       - "… belum bisa diperiksa" → BUKAN lulus. Tunggu sampai data selesai dimuat & antrean kosong (Menu › Toko ini › Perangkat & antrean › Antrean
-        kirim) — atau, kalau sebab di barisnya menyebut "baca penuh sekarang", ketuk itu (Menu › Toko ini › Perangkat & antrean › Hemat baca) — lalu
-        buka Tutup buku lagi.
+        kirim), lalu buka Tutup buku lagi.
 - [ ] Langkah 7: cadangan SESUDAH & selesai. Lalu di kartu pemeriksaan ketuk **"unduh hasil pemeriksaan (berkas)"**
       (`pemeriksaan-tutup-buku-2026-miqbal.json`). Salin cadangan SEBELUM, berkas arsip, cadangan SESUDAH, dan hasil pemeriksaan ke ≥ 2 tempat di luar Mac
       (simpan 10 tahun).
 - [ ] **Perangkat lain sesudah ritual** (iPhone, iPad, HP lain yang membuka `/baru/` dan tertutup selama ritual — termasuk yang aplikasinya tetap
       terbuka tapi tidur / tanpa internet selama ritual): buka satu per satu, sekali, dan biarkan membaca penuh sendiri.
-      Perangkat yang hemat bacanya MATI membuka dengan catatan 2026 di simpanannya SEKALIGUS saldo pembuka, jadi angkanya DOBEL sementara sampai bacanya
-      selesai. Perangkat owner yang hemat bacanya NYALA tidak dobel, tapi angkanya lama (isi simpanannya saat terakhir dibuka) atau kosong sampai pil
-      tidak lagi menulis "memuat…" atau "memeriksa data (…)". SEBELUM dipakai untuk Jual, bayar bon, bayar bon pemasok, atau membaca stok:
-      - Perangkat owner yang hemat bacanya NYALA: tunggu sampai pil status di bilah atas tidak lagi menulis "memuat…" atau "memeriksa data (…)".
-      - Perangkat yang hemat bacanya MATI (semua perangkat staf, dan perangkat owner yang belum dinyalakan): pil itu TIDAK bisa dipegang — "memuat…"
-        sudah hilang begitu simpanan perangkat terbaca, sebelum server selesai mengirim arsip & saldo pembuka. Buka dengan internet, tunggu ±1 menit
-        sesudah "memuat…" hilang, lalu cocokkan satu angka dengan Mac (mis. bon satu pelanggan di Pelanggan). Sama → boleh dipakai.
-
-      Kuota baca hari itu habis → berjualan dari Mac sampai reset berikutnya. JANGAN pakai `/baru/?hemat=mati` untuk ini: itu menghapus pil tanpa
-      menutup jendela dobelnya.
+      Perangkat itu membuka dengan catatan 2026 di simpanannya SEKALIGUS saldo pembuka, jadi angkanya DOBEL sementara sampai bacanya selesai. Pil
+      "memuat…" TIDAK bisa dipegang — ia sudah hilang begitu simpanan perangkat terbaca, sebelum server selesai mengirim arsip & saldo pembuka. SEBELUM
+      dipakai untuk Jual, bayar bon, bayar bon pemasok, atau membaca stok: buka dengan internet, tunggu ±1 menit sesudah "memuat…" hilang, lalu
+      cocokkan satu angka dengan Mac (mis. bon satu pelanggan di Pelanggan). Sama → boleh dipakai.
 
 **Sesudahnya:**
 - [ ] Laporan › Pajak membuka **2026** dengan sendirinya selama Januari–Maret masih ada masa terutang (pilihan tahun di atas kartu). Angka sistem 2026 =
@@ -401,8 +397,7 @@ habis" (barang boleh diturunkan, bon kertasnya disimpan dulu) — jangan sebelum
 - Berita acara **sudah selesai**: beda kecil yang jelas sebabnya dibetulkan dengan catatan HARI INI (Stok › Cocokkan, catat bon / bayar bon yang terlupa).
   Beda besar → bab "Jalan mundur tutup buku" no. 3 (lewat Console).
 - **"? belum bisa diperiksa"**: sambungkan internet, tunggu data selesai dimuat & antrean kosong (Menu › Toko ini › Perangkat & antrean › Antrean
-  kirim) — atau, kalau sebab di barisnya menyebut "baca penuh sekarang", ketuk itu (Menu › Toko ini › Perangkat & antrean › Hemat baca) — lalu buka
-  Tutup buku lagi. Kalau sebabnya "titik kas sudah maju": angka "sebelum" di baris uang dicocokkan sendiri dengan hitungan tutup hari tanggal itu (Uang › Tutup hari › riwayat).
+  kirim), lalu buka Tutup buku lagi. Kalau sebabnya "titik kas sudah maju": angka "sebelum" di baris uang dicocokkan sendiri dengan hitungan tutup hari tanggal itu (Uang › Tutup hari › riwayat).
 - Kartu menulis "Pemeriksaan tidak bisa dijalankan di perangkat ini": tutup lalu buka lagi aplikasinya sekali; kalau tetap, pegangannya pita tutup buku
   ("… semua baris sama") dan kedua berkas cadangan.
 
@@ -421,39 +416,30 @@ Yang perlu diingat saat ritual Januari 2028 (dan sesudahnya):
 - **Rules v7 harus yang terbit** (Console › Rules, baris 2 `ATURAN FIRESTORE v7 FINAL`). Rules v3 (aturan darurat) dan v6 lama TIDAK punya pintu:
   di bawahnya tutup buku tahun berbulan terkunci ditolak di kiriman pertama (tidak ada yang tertulis) — tempel v7 lagi dulu.
 - Arsip bulan terkunci = 5 access call per catatan (hapus 3 + salinan 2; tagihan Firestore menghitungnya sebagai baca) dan 3 catatan per kiriman — lebih
-  lambat dan lebih banyak baca dari ritual 2026 (2 per catatan, 9 per kiriman). Perkiraan kuota di langkah 1 sudah menghitungnya; kalau "TIDAK MUAT",
-  arsip berhenti di tengah dan dilanjutkan sesudah reset kuota (pintu dibuka lagi sendiri bila tinggal < 12 jam). Toko tutup sampai arsipnya habis
-  (keputusan owner 8 Okt 2026 — daftar periksa ritual, butir kartu kuota).
+  lambat dan lebih banyak baca dari ritual 2026 (2 per catatan, 9 per kiriman). Perkiraan kuota di langkah 1 sudah menghitungnya; sejak Blaze (9 Okt
+  2026) "TIDAK MUAT" boleh diabaikan — kelebihannya ditagih, arsip tidak berhenti karena kuota. Terhenti karena sebab lain → Lanjutkan (pintu dibuka lagi
+  sendiri bila tinggal < 12 jam). Jangan berjualan sampai pita "… terkunci dan arsipnya habis".
 - Batalkan juga lewat pintu (dibuka lagi di kiriman pembatalan pertama bila perlu). Pintu yang tertinggal terbuka (aplikasi tertutup di tengah) habis
   sendiri paling lama 72 jam sesudah dibuka.
 
-## Hemat baca (sejak 7 Okt 2026 — `docs/rancangan-hemat-baca.md`)
+## Hemat baca — MATI SELAMANYA (keputusan owner 9 Okt 2026, sesudah Blaze aktif)
 
-Sejak cabang hemat baca, `firestore.rules` di repo = **v7**, terbit 7 Okt 2026 18.25 WIB (v6 + lima ubahan: kirim ulang kasir@ bercap & batu nisan,
-permintaan nego staf, foto bon, kasir@ dipangkas, pintu tutup buku — `docs/uji-rules-v7.md`). Langkah 3 & 4 di atas memakai berkas itu (sidik dihitung
-dari repo saat itu) dan hanya empat kasus ★ Playground di langkah 4 (c).
+Hemat baca dibangun 7 Okt (`docs/rancangan-hemat-baca.md`) karena paket Spark menolak baca lewat 50 rb sehari. Sejak 9 Okt 2026 proyek memakai **Blaze**
+(baca lewat jatah gratis ditagih, tidak ditolak), dan owner memutuskan hemat baca **tidak pernah dinyalakan** — tugas lama "nyalakan ≤ 20 Nov", daftar
+siap-nyala, dan perbandingan Usage harian GUGUR. Saklarnya bawaan MATI di tiap perangkat; dengan saklar mati aplikasi mendengarkan SEMUA catatan langsung
+dari server (seperti sebelum 7 Okt), jadi ubahan lewat Console atau pemulihan dari berkas sampai sendiri ke semua perangkat — tidak ada tombol yang perlu
+ditekan.
 
-- **Selama aturan darurat (v3) terpasang**, hapus dari `/baru/` yang membawa batu nisan DITOLAK server (v3 tidak mengenal `batuNisan`) — kirimannya
-  pindah ke Menu › Toko ini › Perangkat & antrean › Antrean kirim, kartu "kiriman DITOLAK SERVER". Jangan menghapus apa pun di `/baru/` selama
-  jendela darurat; jendelanya tetap sesingkat mungkin. Kirim ulang karcis kasir darurat kasir-v33 yang jawabannya hilang TIDAK ikut ditolak (tinjauan 7 Okt): `:commit` yang ditolak v3 dikirim sekali
-  lagi dengan cara lama (PATCH, `updateMask` = kolom karcis — cap yang sudah ada dibiarkan), dan itu lolos `tulisUlangSama` v3. Kalau HP tetap menyebut
-  karcis "ditolak" (versi lama), cocokkan dulu dengan Jual `/baru/` sebelum dicatat ulang.
-- **Catatan yang dibuat LAGI tanpa cap sesudah dihapus** (Console, HP kasir lama) tidak tersembunyi selamanya oleh batu nisannya: baca penuh perangkat
-  owner melihatnya masih ada di server → tampil lagi & disentuh. Kalau satu catatan tampak hilang hanya di perangkat yang hemat baca, tekan "Baca penuh
-  sekarang" di perangkat itu.
-- **Catatan yang dipulihkan sistem lama TIDAK bercap jam server.** Perangkat yang hemat baca menyala tidak mendengarnya lewat ubahan. Sesudah langkah 3,
-  di `/baru/` perangkat owner: Menu › Toko ini › Perangkat & antrean › **Hemat baca** → **"minta semua perangkat baca penuh"** (dua ketukan). Tiap
-  perangkat owner membaca penuh sekali (±9 rb baca per perangkat; rem kuota bisa menundanya ke hari kuota berikutnya — layar menyebutnya).
-- **Mengubah / menghapus data lewat Console** (owner): sesudahnya tekan **"Saya baru mengubah data lewat Console"** di perangkat owner — perangkat itu
-  membaca penuh, menyentuh catatan yang berubah tanpa cap, dan menulis batu nisan untuk yang dihapus; perangkat lain menerimanya lewat ubahan.
-  Lupa menekan = baru sampai di baca penuh harian toko berikutnya (sesudah 14.00 / 15.00 WIB).
-- **Mematikan hemat baca** di satu perangkat tanpa membuka layar: buka `/baru/?hemat=mati`. Perangkat itu kembali membaca semua catatan tiap dibuka.
-- **JANGAN tempel `firestore.rules.v6`** sebagai "mundur" selama kode bercap berjalan (lihat kepala `firestore.rules`). Mundur hemat baca = saklar.
+`firestore.rules` di repo tetap **v7** (terbit 7 Okt 2026 18.25 WIB: v6 + kirim ulang kasir@ bercap & batu nisan, permintaan nego staf, foto bon, kasir@
+dipangkas, pintu tutup buku — `docs/uji-rules-v7.md`). Langkah 3 & 4 di atas memakai berkas itu (sidik dihitung dari repo saat itu) dan hanya empat kasus ★
+Playground di langkah 4 (c). Yang tetap berlaku walau hemat baca mati:
 
-**Apakah hemat baca benar-benar menghemat — owner membandingkan sendiri di Console › Firestore › Usage** (angka baca per hari):
-1. Sehari SEBELUM menyalakan: catat angka baca hari itu di Usage — itu patokannya.
-2. Hari menyalakan JANGAN dipakai sebagai pembanding: tiap perangkat membaca penuh sekali saat dinyalakan (±9 rb baca per perangkat).
-3. Hari-hari sesudahnya, sesaat sebelum reset: tulis angka "Perkiraan baca hari ini: … toko ±N" dari Menu › Toko ini › Perangkat & antrean › Hemat
-   baca, lalu cocokkan dengan angka baca di Usage untuk hari yang sama.
-4. Matikan per perangkat ("matikan hemat baca di perangkat ini" di panel yang sama, atau `/baru/?hemat=mati`) kalau: Usage tidak turun dari patokan,
-   Usage jauh di atas perkiraan, Usage mendekati batas 50 rb, atau muncul kuota habis (429). Batas "jauh di atas" dan "mendekati" = angka owner sendiri.
+- **Selama aturan darurat (v3) terpasang**, hapus dari `/baru/` yang membawa batu nisan DITOLAK server (v3 tidak mengenal `batuNisan`; batu nisan tetap
+  ditulis selama v7 terpasang, saklar hemat baca tidak berpengaruh) — kirimannya pindah ke Menu › Toko ini › Perangkat & antrean › Antrean kirim, kartu
+  "kiriman DITOLAK SERVER". Jangan menghapus apa pun di `/baru/` selama jendela darurat; jendelanya tetap sesingkat mungkin. Kirim ulang karcis kasir
+  darurat kasir-v33 yang jawabannya hilang TIDAK ikut ditolak (tinjauan 7 Okt): `:commit` yang ditolak v3 dikirim sekali lagi dengan cara lama (PATCH,
+  `updateMask` = kolom karcis — cap yang sudah ada dibiarkan), dan itu lolos `tulisUlangSama` v3. Kalau HP tetap menyebut karcis "ditolak" (versi lama),
+  cocokkan dulu dengan Jual `/baru/` sebelum dicatat ulang.
+- **JANGAN tempel `firestore.rules.v6`** sebagai "mundur" (lihat kepala `firestore.rules`): kode yang berjalan tetap mengecap tulisannya untuk v7.
+- **Kalau satu perangkat ternyata menyala hemat bacanya** (panel Menu › Toko ini › Perangkat & antrean › Hemat baca menyebut "nyala"): ketuk
+  "matikan hemat baca di perangkat ini", atau buka `/baru/?hemat=mati` di perangkat itu. Perangkat itu kembali membaca semua catatan tiap dibuka.

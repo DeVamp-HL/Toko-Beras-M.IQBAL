@@ -47,11 +47,13 @@ DARURAT = 'kasir-darurat-nominal.html'
 PROS = 'docs/prosedur-pulih-darurat.md'; RULES = 'firestore.rules'; RULES3 = 'firestore.rules.v3'; TBL = 'baru/js/layar/tutup-buku-logika.js'
 KPL = 'baru/js/layar/kunci-periode-logika.js'
 # nama laci / tab / tombol / butir / pil yang disebut prosedur dan harus ada di kalimat layar /baru/ (huruf besar-kecil diabaikan, komentar // tidak dihitung)
-LABEL_PROSEDUR = ['Toko ini', 'Perangkat & antrean', 'Cadangan & simpanan', 'Hemat baca', 'Antrean kirim', 'baca penuh sekarang', 'saya baru mengubah data lewat Console',
-                  'minta semua perangkat baca penuh', 'matikan hemat baca di perangkat ini', 'Perkiraan kuota Firestore', 'Muat dalam kuota satu hari', 'MEPET',
+# owner 9 Okt 2026 (Blaze, hemat baca MATI SELAMANYA): tombol hemat baca yang hanya berguna saat menyala ("baca penuh sekarang", "saya baru mengubah data
+# lewat Console", "minta semua perangkat baca penuh", pil "memeriksa data") tidak lagi disebut prosedur — yang tersisa: tab Hemat baca & tombol mematikannya
+LABEL_PROSEDUR = ['Toko ini', 'Perangkat & antrean', 'Cadangan & simpanan', 'Hemat baca', 'Antrean kirim',
+                  'matikan hemat baca di perangkat ini', 'Perkiraan kuota Firestore', 'Muat dalam kuota satu hari', 'MEPET',
                   'TIDAK MUAT', 'unduh hasil pemeriksaan (berkas)', 'Simpan putusan', 'Tidak ada notanya? Retur ketik tangan', 'Uang kembali', 'Catat pembayaran',
                   'Semua perangkat berdenyut dalam 24 jam terakhir', 'Tidak ada perangkat yang masih menyimpan antrean', 'sudah tidak dipakai',
-                  'Ada pengeluaran belum dicatat', 'memuat…', 'memeriksa data', 'semua sampai', 'ditolak server', 'terkunci dan arsipnya habis']
+                  'Ada pengeluaran belum dicatat', 'memuat…', 'semua sampai', 'ditolak server', 'terkunci dan arsipnya habis']
 
 # ---- KOTAK PASIR tambahan (ANGKA CONTOH): katalog terbit + riwayat terbit + satu draf + kop lengkap. Jam dikunci 19 Sep 2026 (uji_laporan_baru).
 #   t1 25 Agu: Angsa/kg 14.000 → 14.200 · IR64 Apex/kg baru diberi harga 15.000
@@ -359,7 +361,7 @@ KONTROL = [
     ('prosedur: firestore.rules berubah (ukuran sama), sidik di langkah 3 tidak diperbarui', {RULES: [('DRAF 7 Okt 2026 — owner menerbitkan SEKALI', 'DRAF 8 Okt 2026 — owner menerbitkan SEKALI')]}, ('prosedur',)),
     ('prosedur: sidik aturan darurat v3 salah ketik', {PROS: [('SHA-256 berawalan `32c55d58`', 'SHA-256 berawalan `32c55d59`')]}, ('prosedur',)),
     ('prosedur: satu kutipan baris 2 masih menyebut v6', {PROS: [('(b) Baris 2 editor berbunyi `ATURAN FIRESTORE v7 FINAL`', '(b) Baris 2 editor berbunyi `ATURAN FIRESTORE v6 FINAL`')]}, ('prosedur',)),
-    ('prosedur: jalur "Menu › Sistem › Perangkat" kembali', {PROS: [('(Menu › Toko ini › Perangkat & antrean › Hemat baca) dan periksa g6 di LATIHAN', '(Menu › Sistem › Perangkat › Hemat baca) dan periksa g6 di LATIHAN')]}, ('prosedur',)),
+    ('prosedur: jalur "Menu › Sistem › Perangkat" kembali', {PROS: [('31 Des malam: Menu › Toko ini › Perangkat & antrean', '31 Des malam: Menu › Sistem › Perangkat')]}, ('prosedur',)),
     ('prosedur: langkah 4 kembali menunjuk kasus uji-rules-v6.md', {PROS: [('Isian & akunnya di `docs/uji-rules-v7.md`', 'Isian & akunnya di `docs/uji-rules-v6.md`')]}, ('prosedur',)),
     ('prosedur: langkah 4 berhenti walau baris 2 bukan v7 (aturan darurat tertinggal — sanggahan 8 Okt, sedang)',
      {PROS: [('**(b) baris 2 BUKAN `ATURAN FIRESTORE v7 FINAL`** (aturan darurat atau aturan lain masih terpasang) → JANGAN berhenti.', '(b) baris 2 berbeda → sama seperti di bawah.')]}, ('prosedur',)),
