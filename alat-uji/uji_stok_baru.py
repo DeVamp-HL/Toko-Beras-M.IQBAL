@@ -792,7 +792,7 @@ if __name__ == '__main__':
             'batch fondasi boleh dihapus': js.replace("if (ccFondasi(b)) return { tolak: 'Batch fondasi ('", "if (false) return { tolak: 'Batch fondasi ('"),
             'hapus kedatangan tidak mencabut pasangan beli-jadi': js.replace(".concat(pasangan.map((p) => ({ koleksi: 'produksiKemasan', id: p.id })))", ""),
             'aturan owner diabaikan (minimal karung tetap 60)': js.replace("return { minKarung: ambil('minKarung', (n) => n >= 0),", "return { minKarung: 60,"),
-            'selisih cocokkan tanpa rupiah (nilaiRp 0)': js.replace("const selisih = ada ? ckB2(dihitung - b.sistem) : 0; const rp = ada ? Math.round(selisih * b.modal) : 0;", "const selisih = ada ? ckB2(dihitung - b.sistem) : 0; const rp = 0;"),
+            'selisih cocokkan tanpa rupiah (nilaiRp 0)': js.replace("const selisih = ada ? ckB2(dihitung - b.sistem) : 0; const rp = ada ? (b.tab === 'tumpukan' ? ckRpKarung(b.nama, selisih, b.modal) : Math.round(selisih * b.modal)) : 0;", "const selisih = ada ? ckB2(dihitung - b.sistem) : 0; const rp = 0;"),
             'selisih besar tidak minta alasan': js.replace("perluAlasan: besar && !String(A[b.kunci] || '').trim(),", "perluAlasan: false,"),
             'opname ganda dalam jendela menit tidak ditanya': js.replace("if (ganda.length && !(yakin || {}).ganda) return", "if (false) return"),
             'angka aneh (lebih dari dua kali tercatat) tidak ditanya': js.replace("else if (anehDaftar.length && !Y.aneh) {", "else if (false) {"),
@@ -873,7 +873,7 @@ if __name__ == '__main__':
             'kartu Jumlah: total tanpa nilai bal': js.replace("total: nilaiBeras + nilaiBal + bongkar,", "total: nilaiBeras + bongkar,"),
             'riwayat modal: bongkar tidak dibagi ke baris bal (beda dengan mesin)': js.replace("hitungHppMerkDalamBatch(k.merkList || [], Number(k.biayaBongkar) || 0).forEach((m) => { if (m.bentuk === 'bal' ||", "hitungHppMerkDalamBatch((k.merkList || []).filter((m) => m.bentuk !== 'bal'), Number(k.biayaBongkar) || 0).forEach((m) => { if (m.bentuk === 'bal' ||"),
             'riwayat modal: baris bal ikut jadi kedatangan karung': js.replace("forEach((m) => { if (m.bentuk === 'bal' || m.merk !== merk || !(m.totalKg > 0)) return;", "forEach((m) => { if (m.merk !== merk || !(m.totalKg > 0)) return;"),
-            'hpp: batas lonjakan setelan diabaikan': js.replace("lonjak: Math.abs(pct) > atur.batasLonjak ? 'modal rata-rata '", "lonjak: Math.abs(pct) > 10 ? 'modal rata-rata '"),
+            'hpp: batas lonjakan setelan diabaikan': js.replace("lonjak: Math.abs(pct) > atur.batasLonjak ? (K.fifo ? 'nilai rak per kg ' : 'modal rata-rata ')", "lonjak: Math.abs(pct) > 10 ? (K.fifo ? 'nilai rak per kg ' : 'modal rata-rata ')"),
         }
         kode = 0
         for nama, pot in POT30:
