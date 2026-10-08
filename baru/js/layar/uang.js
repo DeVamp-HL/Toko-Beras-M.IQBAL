@@ -14,10 +14,10 @@ import * as OT from './owner-toko-logika.js';
 import * as TD from './tutup-hari-logika.js';
 import * as BK from './tutup-buku-logika.js';
 import * as KP from './kunci-periode-logika.js';
-import * as PST from './periksa-sesudah-logika.js';   // Paket C (8 Okt): pemeriksaan sesudah tutup buku — aplikasi memeriksa sendiri
+import * as PST from './periksa-sesudah-logika.js';   // Paket C (7 Okt): pemeriksaan sesudah tutup buku — aplikasi memeriksa sendiri
 import * as WB from './wadah-bernama-logika.js';   // putaran 39 (owner 29 Sep e): kartu Cek wadah di lembar tutup
 import { tombolAkun } from './akses-layar.js';
-import { waktuSekarang } from './jual-logika.js';
+import { waktuSekarang, webAppMandiri } from './jual-logika.js';
 import { ssBerkasCadangan, susunCatatCadangan } from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip, kabarKiriman, kunciLuarCache } from '../data/toko.js';
@@ -83,6 +83,8 @@ export function pasangLayarUang(akar, opsi) {
   // owner 7 Okt (Safari, sisa #104): tanpa 'noopener' — window.open(…, 'noopener') SELALU mengembalikan null walau jendelanya terbuka, jadi kabar
   // "peramban menahan jendela WhatsApp" dulu muncul tiap kali. Pemutusan opener dilakukan sendiri sesudah jendela terbuka (pola laporan.js).
   const bukaWa = (teks) => { try { const w = window.open('https://wa.me/?text=' + encodeURIComponent(teks), '_blank'); if (w) { try { w.opener = null; } catch (e) { /* jendela sudah pindah asal */ } } return w; } catch (e) { return null; } };
+  // audit P2 (C2): web app layar penuh (ikon di layar utama) — pemeriksa yang SAMA dengan Jual (jual-logika webAppMandiri)
+  const mandiri = () => webAppMandiri(typeof navigator !== 'undefined' ? navigator : null, typeof window !== 'undefined' ? window : null);
   const cetak = (teks) => { const pre = document.getElementById('cetakStruk'); if (pre) pre.textContent = teks; try { window.print(); } catch (e) { /* abaikan */ } };
   const unduh = (isi, nama) => { const teks = JSON.stringify(isi, null, 2); let bytes = teks.length; try { const blob = new Blob([teks], { type: 'application/json' }); bytes = blob.size; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = nama; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000); return bytes; } catch (e) { return -1; } };
   const setelUrung = (kunci, daftar) => { const p = {}; p[kunci] = daftar && daftar.length ? { daftar, sampai: Date.now() + 90000 } : null; set(p); };
@@ -221,14 +223,17 @@ export function pasangLayarUang(akar, opsi) {
     bkLewatiG3: () => set({ lewatiG3: true }),
     bkPeriksa: () => { const s = st(); const T = BK.tahunBuku(kini()); const G = BK.gerbangBuku(T.tahun, kini(), lokal(), { g3: s.lewatiG3 }); if (s.modeB === 'sungguhan' && !G.semuaOk) return set({ kabar: G.belum + ' hal belum beres — bereskan dulu', kabarAwas: true }); set({ langkahB: Object.assign({}, s.langkahB, { periksa: waktu().kini }), bukaB: 'cadangan1', kabar: '' }); },
     bkCadangan: async ({ kCad: k }) => { const s = st(); const KM7 = BK.kemajuanBuku(); if (!bkUrut(s, k) && !(k === 'cadangan2' && KM7 && KM7.fase === 'selesaikan')) return set({ kabar: 'Kerjakan langkah sebelumnya dulu', kabarAwas: true }); if (s.modeB === 'latihan' && !(k === 'cadangan2' && KM7 && KM7.fase === 'selesaikan')) { set({ langkahB: Object.assign({}, s.langkahB, { [k]: waktu().kini }), bukaB: k === 'cadangan1' ? 'arsip' : 'cadangan2', kabar: 'Latihan: tidak ada berkas yang diunduh' }); return; }
+      const tm = BK.bkTolakMandiri(mandiri(), false); if (tm) return set({ kabar: tm, kabarAwas: true });
       const T = BK.tahunBuku(kini()); const tahun = KM7 && KM7.fase === 'selesaikan' ? KM7.tahun : T.acara && T.acara.status === 'terkunci' ? T.acara.tahun : T.tahun;
       // §8 no. 6: selesai = tidak bisa dibatalkan lagi → arsip habis & periksa ulang dari mesin DULU (sebelum berkas diunduh); beda = ketukan kedua menyebut barisnya
       if (k === 'cadangan2') { const r0 = BK.susunSelesai(tahun, '', waktu(), s.yakinSelesai === tahun, lokal()); if (r0.tolak) return set({ yakinSelesai: r0.perluYakin ? tahun : null, kabar: r0.tolak, kabarAwas: true }); }
       const b = ssBerkasCadangan(kini()); const nama = b.nama.replace('.json', k === 'cadangan1' ? '-SEBELUM-tutup-buku.json' : '-SESUDAH-tutup-buku.json'); const bytes = unduh(b.isi, nama); if (bytes < 0) return set({ kabar: 'Peramban ini tidak bisa mengunduh berkas', kabarAwas: true });
       await tulis(susunCatatCadangan(Object.assign({}, b, { nama }), bytes, waktu(), lokal().namaPerangkat), true);
-      if (k === 'cadangan1') set({ langkahB: Object.assign({}, s.langkahB, { cadangan1: waktu().kini }), cad1: nama, bukaB: 'arsip', kabar: 'Berkas ' + nama + ' diunduh — simpan juga satu salinan di luar HP', kabarAwas: false });
-      else { const r = BK.susunSelesai(tahun, nama, waktu(), s.yakinSelesai === tahun, lokal()); set({ yakinSelesai: null }); if (await tulis(r)) set({ langkahB: Object.assign({}, s.langkahB, { cadangan2: waktu().kini }), bukaB: '' }); } },
-    bkArsip: () => { const s = st(); if (!bkUrut(s, 'arsip')) return set({ kabar: 'Kerjakan langkah sebelumnya dulu', kabarAwas: true }); const T = BK.tahunBuku(kini()); const b = BK.berkasArsip(T.tahun, kini()); if (s.modeB === 'sungguhan') { const bytes = unduh(b.isi, b.nama); if (bytes < 0) return set({ kabar: 'Peramban ini tidak bisa mengunduh berkas', kabarAwas: true }); } set({ langkahB: Object.assign({}, s.langkahB, { arsip: waktu().kini }), arsipNama: b.nama, bukaB: 'saldo', kabar: (s.modeB === 'latihan' ? 'Latihan: arsip tidak diunduh · ' : 'Arsip ' + b.nama + ' diunduh · ') + ANGKA(b.n) + ' dokumen tahun ' + T.tahun, kabarAwas: false }); },
+      if (k === 'cadangan1') set({ langkahB: Object.assign({}, s.langkahB, { cadangan1: waktu().kini }), cad1: nama, cad1Bytes: bytes, bukaB: 'arsip', kabar: BK.bkKabarUnduh('Berkas', nama, bytes), kabarAwas: false });
+      else { const r = BK.susunSelesai(tahun, nama, waktu(), s.yakinSelesai === tahun, lokal()); if (r.patch && !r.tolak) r.patch.kabar = BK.bkKabarUnduh('Berkas', nama, bytes) + ' ' + r.patch.kabar; set({ yakinSelesai: null }); if (await tulis(r)) set({ langkahB: Object.assign({}, s.langkahB, { cadangan2: waktu().kini }), bukaB: '' }); } },
+    bkArsip: () => { const s = st(); if (!bkUrut(s, 'arsip')) return set({ kabar: 'Kerjakan langkah sebelumnya dulu', kabarAwas: true }); const T = BK.tahunBuku(kini()); const tm = BK.bkTolakMandiri(mandiri(), s.modeB === 'latihan'); if (tm) return set({ kabar: tm, kabarAwas: true });
+      const b = BK.berkasArsip(T.tahun, kini()); let bytes = 0; if (s.modeB === 'sungguhan') { bytes = unduh(b.isi, b.nama); if (bytes < 0) return set({ kabar: 'Peramban ini tidak bisa mengunduh berkas', kabarAwas: true }); }
+      set({ langkahB: Object.assign({}, s.langkahB, { arsip: waktu().kini }), arsipNama: b.nama, bukaB: 'saldo', kabar: s.modeB === 'latihan' ? 'Latihan: arsip tidak diunduh · ' + ANGKA(b.n) + ' dokumen tahun ' + T.tahun : BK.bkKabarUnduh('Arsip', b.nama, bytes, ANGKA(b.n) + ' dokumen tahun ' + T.tahun), kabarAwas: false }); },
     bkSaldo: () => { const s = st(); if (!bkUrut(s, 'saldo')) return set({ kabar: 'Kerjakan langkah sebelumnya dulu', kabarAwas: true }); set({ langkahB: Object.assign({}, s.langkahB, { saldo: waktu().kini }), bukaB: 'paraf', kabar: '' }); },
     bkSaksi: ({ nama }) => set({ saksiB: nama, parafB: Object.assign({}, st().parafB, { saksi: false }) }),
     bkParaf: ({ siapa }) => { const s = st(); if (!bkUrut(s, 'paraf')) return set({ kabar: 'Kerjakan langkah sebelumnya dulu', kabarAwas: true }); if (siapa === 'saksi' && !s.saksiB) return set({ kabar: 'Pilih dulu siapa saksinya', kabarAwas: true }); const p = Object.assign({}, s.parafB, { [siapa]: !s.parafB[siapa] }); set({ parafB: p, langkahB: Object.assign({}, s.langkahB, { paraf: p.owner && p.saksi ? waktu().kini : '' }), bukaB: p.owner && p.saksi ? 'kunci' : s.bukaB }); },
@@ -271,7 +276,7 @@ export function pasangLayarUang(akar, opsi) {
     pstUnduh: () => { let H = null; try { H = PST.pstPeriksa(kini(), muatData()); } catch (e) { console.error('pemeriksaan sesudah tutup buku', e); }
       if (!H) return set({ kabar: 'Tidak ada pemeriksaan tutup buku yang bisa diunduh sekarang', kabarAwas: true });
       const B = PST.pstBerkas(H, kini()); const bytes = unduh(B.isi, B.nama);
-      set(bytes < 0 ? { kabar: 'Peramban ini tidak bisa mengunduh berkas', kabarAwas: true } : { kabar: 'Hasil pemeriksaan ' + B.nama + ' diunduh (' + H.ringkas + ') — simpan bersama cadangan SESUDAH, di ≥ 2 tempat di luar HP', kabarAwas: !H.beres }); },
+      set(bytes < 0 ? { kabar: 'Peramban ini tidak bisa mengunduh berkas', kabarAwas: true } : { kabar: 'Hasil pemeriksaan ' + B.nama + ' (' + BK.bkUkuranBerkas(bytes) + ') dikirim ke Unduhan (' + H.ringkas + ') — pastikan ada di Unduhan/Files dengan ukuran yang sama, lalu simpan bersama cadangan SESUDAH, di ≥ 2 tempat di luar perangkat ini', kabarAwas: !H.beres }); },
     // A9: catatan susulan (bertanggal tahun yang sudah ditutup, masuk sesudah penanda) — "sudah dicatat" = jumlahnya disimpan, catatannya TIDAK dihapus
     bkSusulanCatat: async () => { const S = BK.susulanBuku(); if (!S) return set({ kabar: 'Tidak ada catatan susulan', kabarAwas: false }); await tulis(BK.susunCatatSusulan(S.tahun, waktu())); },
     // ---- KUNCI BULAN (putaran 25)
@@ -647,7 +652,7 @@ export function pasangLayarUang(akar, opsi) {
       ${Q.kalimat.map((k, i) => h`<div class="${i === 1 && (Q.lewat || Q.mepet) ? 'ket awas-teks' : 'ket'}" style="font-size: 11px;">${k}</div>`)}</div>`;
   }
 
-  // ---------- K6 · PEMERIKSAAN SESUDAH TUTUP BUKU (Paket C, 8 Okt 2026) — tampil sesudah tahun dikunci & arsipnya habis, lalu sepanjang Januari–Februari.
+  // ---------- K6 · PEMERIKSAAN SESUDAH TUTUP BUKU (Paket C, 7 Okt 2026) — tampil sesudah tahun dikunci & arsipnya habis, lalu sepanjang Januari–Februari.
   // Logika di periksa-sesudah-logika.js (hanya membaca cache; data yang tidak ada = "belum bisa diperiksa", bukan lulus). Tiga keadaan digambar beda: ✓ · ✗ · ?
   const PST_TANDA = { sama: '✓', beda: '✗', belum: '?' };
   function kartuPeriksa(s) {
@@ -688,7 +693,7 @@ export function pasangLayarUang(akar, opsi) {
     const periksa = h`<div>${G.daftar.map((g) => h`<div class="tb-cek ${g.ok ? 'ok' : 'tidak'}" data-k="g-${g.id}"><span class="t">${g.ok ? '✓' : '!'}</span><div><div>${g.teks}</div><div class="k">${g.ket}</div>${g.id === 'g1' && g.hari && g.hari.length ? putusanG1(s, g) : ''}${g.id === 'g6' && g.rincian && g.rincian.length ? h`<div data-k="g6-rinci" style="display: flex; flex-direction: column; gap: 3px; margin-top: 4px;">${g.rincian.slice(0, 20).map((x) => h`<div class="k"><b>${x.teks}</b> — ${x.jalan}</div>`)}${g.rincian.length > 20 ? h`<div class="k">… dan ${g.rincian.length - 20} lagi</div>` : ''}</div>` : ''}</div><div>${!g.ok && g.aksi ? (g.bisaLewati ? h`<div class="kaca-btn kecil" data-aksi="bkLewatiG3">${g.aksi}</div>` : h`<span class="ket" style="font-size: 10.5px;">${g.aksi}</span>`) : ''}</div></div>`)}</div>
       ${kuotaBuku(T)}
       <div class="utama ${!latihan && !G.semuaOk ? 'redup' : ''}" data-aksi="bkPeriksa">${!latihan && !G.semuaOk ? G.belum + ' hal belum beres — bereskan dulu' : latihan && !G.semuaOk ? 'LANJUT (latihan — yang belum beres diabaikan)' : 'SEMUA BERES · LANJUT'}</div>`;
-    const cad1 = h`<div class="ket" style="font-size: 11.5px;">Sebelum apa pun disentuh, seluruh isi toko disalin ke satu berkas. Inilah jalan pulangnya kalau ada yang salah.</div><div class="ket" style="font-size: 11px;">${latihan ? 'Latihan: tidak ada berkas yang diunduh.' : s.cad1 ? 'Berkas ' + s.cad1 + ' tersimpan. Simpan juga satu salinan di luar HP.' : 'Berkas cadangan-SEBELUM disimpan ke perangkat ini.'}</div><div class="utama" data-aksi="bkCadangan" data-k-cad="cadangan1">UNDUH CADANGAN SEBELUM</div>`;
+    const cad1 = h`<div class="ket" style="font-size: 11.5px;">Sebelum apa pun disentuh, seluruh isi toko disalin ke satu berkas. Inilah jalan pulangnya kalau ada yang salah.</div><div class="ket" style="font-size: 11px;">${latihan ? 'Latihan: tidak ada berkas yang diunduh.' : s.cad1 ? 'Berkas ' + s.cad1 + (s.cad1Bytes ? ' (' + BK.bkUkuranBerkas(s.cad1Bytes) + ')' : '') + ' dikirim ke Unduhan — pastikan ada di Unduhan/Files dengan ukuran yang sama, lalu simpan satu salinan di luar perangkat ini.' : 'Berkas cadangan-SEBELUM disimpan ke perangkat ini.'}</div><div class="utama" data-aksi="bkCadangan" data-k-cad="cadangan1">UNDUH CADANGAN SEBELUM</div>`;
     const AR = BK.arsipBuku(T.tahun); const arsip = h`<div class="ket" style="font-size: 11.5px;">Seluruh catatan ${T.tahun} — ${ANGKA(AR.n)} dokumen (${AR.perKoleksi.slice(0, 5).map((k) => k.label + ' ' + ANGKA(k.n)).join(' · ')}${AR.perKoleksi.length > 5 ? ' · …' : ''}) — disimpan sebagai berkas arsip yang bisa dibuka kapan saja. Saat dikunci, dokumen ini PINDAH ke koleksi arsip di server (tidak dihapus).</div><div class="utama" data-aksi="bkArsip">SIMPAN ARSIP ${T.tahun}</div>`;
     const saldo = h`<div class="ket" style="font-size: 11.5px;">Yang dibawa ke ${T.tahun + 1} bukan cuma harta. Utang ke pemasok, utang toko ke owner, kasbon (termasuk owner), dan amplop laba ikut menyeberang — satu per satu, dan tiap baris dicocokkan. Saldo pembukanya DITULIS saat tahun dikunci (langkah 6), supaya tidak ada jendela di mana stok terhitung dua kali.</div><div class="utama" data-aksi="bkSaldo">SUSUN SALDO PEMBUKA ${T.tahun + 1}</div>`;
     const jembatan = h`<div class="tb-tepi"><div><div class="label" style="font-size: 9px;">ditutup</div><div class="th">${T.tahun}</div></div><div class="jb"></div><div><div class="label" style="font-size: 9px;">dibuka</div><div class="th">${T.tahun + 1}</div></div></div>

@@ -2,7 +2,7 @@
 // tanpa setTimeout sendiri — jam, jadwal, penyimpan, dan "SDK" disuntikkan. firebase.js memasang adaptor SDK sungguhan; alat-uji/uji_hemat_baca.py
 // memasang server mainan di jsc. Spesifikasi lengkap: docs/rancangan-hemat-baca.md (ringkasan rancangan 6 agen + keputusan owner 3 Okt).
 //
-// SAKLAR bawaan MATI, disimpan PER PERANGKAT (HB_KUNCI_SAKLAR, owner menekannya di Menu › Sistem › Perangkat › Hemat baca). Saklar MATI = pendengar penuh
+// SAKLAR bawaan MATI, disimpan PER PERANGKAT (HB_KUNCI_SAKLAR, owner menekannya di Menu › Toko ini › Perangkat & antrean › Hemat baca). Saklar MATI = pendengar penuh
 // seperti sebelum 7 Okt; dari berkas ini hanya ini yang ikut jalan: kupas (capServer dibuang dari isi dokumen SEBELUM masuk memori — mesin, cadangan,
 // katalog tidak pernah melihatnya), cap (tulisan koleksi hemat membawa capServer = jam SERVER), batu nisan (hapus koleksi hemat — hanya sesudah aturan v7
 // terbukti terpasang di perangkat ini), versi denyut 'baru-c1'.
@@ -274,15 +274,23 @@ export function hbNilaiHitung(h) {
   return h.server === lokal ? 'cocok' : h.server > lokal ? 'kurang' : 'lebih';
 }
 
-// ---------- KELENGKAPAN per koleksi — SATU sumber (owner 8 Okt, Paket C × hemat baca) ----------
+// ---------- KELENGKAPAN per koleksi — SATU sumber (7 Okt, Paket C × hemat baca) ----------
 // Dipakai: terperiksa (gerbang katalog kasir, uang-kritis, pil kepala, tanda "salinan perangkat" toko.js) DAN keputusan final yang membaca seluruh buku: kartu
 // "Pemeriksaan sesudah tutup buku" (pstKurang), daftar periksa kunci bulan, Laporan › Pajak, perkiraan kuota & Lanjutkan/Batalkan tutup buku, gerbang g7.
 // Kalimatnya kalimat toko: dibaca "data <apa> <sebab>". "Hari ini" = hari KUOTA (reset 14.00/15.00 WIB), bukan hari toko — kalimatnya menyebut jam resetnya.
-const HB_KE_MENU = 'ketuk "baca penuh sekarang" (Menu › Sistem › Perangkat › Hemat baca)';
+// Tempat panel Hemat baca di layar = nama laci & baris Menu (menu-logika.js laci "Toko ini" · menu.js JUDUL_SISTEM & TAB_SISTEM). SATU konstanta: sistem-logika.js
+// ssHemat membuang petunjuk ini dari sebab yang digambar DI panel itu sendiri (audit P2 · K5: dulu "Menu › Sistem › Perangkat", jalur yang tidak ada di layar).
+export const HB_TEMPAT = 'Menu › Toko ini › Perangkat & antrean › Hemat baca';
+// Tombol "<nama> sudah tidak dipakai" HANYA ada di butir perangkatDenyut daftar periksa kunci bulan (kunci-periode-logika.js). Butirnya selalu ada di daftar
+// periksa itu; TOMBOLNYA baru muncul sesudah perangkat itu diam > 24 jam, dan hanya bila laporan terakhirnya antrean 0 & ditolak 0 — selain itu jalannya butir
+// "Perangkat hilang atau rusak" di catatan "Prosedur pulih darurat" (= KP_BUTIR_HILANG). Daftar periksanya tampil selama ada bulan yang bisa dikunci (kpCalon).
+// Teks butir & nama butir prosedur dicocokkan dengan kunci-periode-logika.js oleh alat-uji/uji_kunci_periode.py (audit P2 · sanggahan #121).
+export const HB_TANDAI_TIDAK_DIPAKAI = 'ketuk "<nama> sudah tidak dipakai" di Uang › Tutup buku › kartu Kunci bulan › butir "Semua perangkat berdenyut dalam 24 jam terakhir" (tombol itu muncul sesudah perangkatnya diam lebih dari 24 jam DAN laporan terakhirnya antrean 0 & ditolak 0; selain itu: catatan "Prosedur pulih darurat", butir "Perangkat hilang atau rusak")';
+const HB_KE_MENU = 'ketuk "baca penuh sekarang" (' + HB_TEMPAT + ')';
 /** Sebab "harian": belum ada baca penuh sejak reset kuota yang memulai hari kuota `hari` ('' = jam resetnya tidak disebut). */
 export function hbSebabHarian(hari) { const j = hbJamResetHariWib(hari); return 'belum dibaca penuh sejak kuota baca direset' + (j ? ' pukul ' + j + ' WIB' : '') + ' — ' + HB_KE_MENU; }
 /** Baca penuh ditolak server karena kuota baca habis (429 resource-exhausted): mengetuk baru menolong sesudah reset BERIKUTNYA. */
-export function hbSebabHabis(hari) { const j = hbJamResetHariWib(hbHariBerikut(hari)); return 'belum bisa dibaca penuh karena kuota baca hari ini habis — ketuk "baca penuh sekarang" sesudah pukul ' + (j || '14.00/15.00') + ' WIB (Menu › Sistem › Perangkat › Hemat baca)'; }
+export function hbSebabHabis(hari) { const j = hbJamResetHariWib(hbHariBerikut(hari)); return 'belum bisa dibaca penuh karena kuota baca hari ini habis — ketuk "baca penuh sekarang" sesudah pukul ' + (j || '14.00/15.00') + ' WIB (' + HB_TEMPAT + ')'; }
 export const HB_SEBAB_TOKO_TUNDA = 'punya ubahan yang ditemukan baca penuh harian toko tapi belum sampai ke perangkat ini — ' + HB_KE_MENU;
 export const HB_SEBAB_TAB_BERHENTI = 'tidak diperbarui lagi di tab ini — muat ulang aplikasi';
 /**
@@ -290,7 +298,7 @@ export const HB_SEBAB_TAB_BERHENTI = 'tidak diperbarui lagi di tab ini — muat 
  * fTerkini, fSelesai, fMode, fJalan (baca penuh sekali sedang berjalan), fGalat, wajibTotal, sTerkini, cocok (hitungan server cocok sesi ini), totalPada (baca
  * penuh terakhir perangkat ini — jam server), hari (hari kuota sekarang menurut jam server; '' = belum diketahui), klaim (aturanToko/hematHarian) }.
  * → null (lengkap) | { jenis, sebab }.
- *   jenis 'periksa' = BELUM TERPERIKSA dengan server (arti `terperiksa` sejak 7 Okt, + tab yang berhenti 8 Okt): tab berhenti menerima data · simpanan
+ *   jenis 'periksa' = BELUM TERPERIKSA dengan server (arti `terperiksa` sejak 7 Okt, + tab yang berhenti — sanggahan 7 Okt): tab berhenti menerima data · simpanan
  *     perangkat belum terbaca · batu nisan belum dicocokkan · dengar penuh belum terkini · baca penuh wajib tapi ditunda rem kuota / gagal · ubahan bercap belum
  *     dicocokkan · baca penuh masih berjalan · hitungan server belum cocok sesi ini.
  *   jenis 'harian' = terperiksa (hitungan cocok), tapi BELUM ADA BACA PENUH pada hari kuota ini — oleh perangkat ini (totalPada) maupun baca penuh harian TOKO
@@ -324,7 +332,7 @@ export function hbBelumLengkap(c) {
 /**
  * Dari peta kelengkapan { koleksi: { jenis, sebab } } (hbSesi.belumLengkap; kosong = semua lengkap) untuk koleksi `perlu` (tanpa / '*' = semua): null atau
  * { koleksi: [semua yang belum lengkap], jenis, sebab, utama: [koleksi yang sebabnya PERSIS sebab itu], lain: [sisanya], sebabLain }. Sebab = koleksi pertama
- * yang belum terperiksa (lebih berat), selain itu koleksi pertama. Sebab SATU koleksi tidak dipinjamkan ke koleksi lain (sanggahan 8 Okt): kalimat menyebut
+ * yang belum terperiksa (lebih berat), selain itu koleksi pertama. Sebab SATU koleksi tidak dipinjamkan ke koleksi lain (sanggahan 7 Okt): kalimat menyebut
  * `utama` dengan sebabnya, `lain` dihitung dengan sebabnya sendiri (hbEkorLain).
  */
 export function hbBelumUntuk(peta, perlu) {
@@ -338,7 +346,7 @@ export function hbBelumUntuk(peta, perlu) {
 /** Ekor kalimat untuk jenis catatan yang sebabnya LAIN: '' atau "; n jenis catatan lainnya <sebabnya>" (sebab campur → tunjuk panel Hemat baca). */
 export function hbEkorLain(B) {
   if (!B || !B.lain || !B.lain.length) return '';
-  return '; ' + B.lain.length + ' jenis catatan lainnya ' + (B.sebabLain || 'juga belum lengkap — lihat Menu › Sistem › Perangkat › Hemat baca');
+  return '; ' + B.lain.length + ' jenis catatan lainnya ' + (B.sebabLain || 'juga belum lengkap — lihat ' + HB_TEMPAT);
 }
 /** Jumlah jenis catatan disisipkan SEBELUM petunjuknya ("<keadaan> (n jenis catatan) — <petunjuk>") — tidak menempel di belakang kurung menu. */
 const hbSisipJumlah = (sebab, n) => { const i = sebab.indexOf(' — '); const j = ' (' + n + ' jenis catatan)'; return i < 0 ? sebab + j : sebab.slice(0, i) + j + sebab.slice(i); };
@@ -460,7 +468,7 @@ export function hbSiapNyala(c) {
   const nm = (L) => L.map((p) => p.nama || p.id).slice(0, 4).join(', ') + (L.length > 4 ? ' …' : '');
   return [
     { id: 'aturan', teks: 'Aturan server v7 terpasang (batu nisan terbaca)', ok: !!x.nisanSah, ket: x.nisanSah ? 'terbukti di perangkat ini' : 'owner menerbitkan rules v7 lewat Console dulu' },
-    { id: 'lama', teks: 'Tidak ada tab /baru/ versi lama atau sistem lama berdenyut 7 hari terakhir', ok: !lama.length, ket: lama.length ? nm(lama) + ' — muat ulang tab itu / tandai sudah tidak dipakai' : 'bersih' },
+    { id: 'lama', teks: 'Tidak ada tab /baru/ versi lama atau sistem lama berdenyut 7 hari terakhir', ok: !lama.length, ket: lama.length ? nm(lama) + ' — muat ulang tab itu di perangkatnya. Perangkat yang sudah tidak dipakai: ' + HB_TANDAI_TIDAK_DIPAKAI : 'bersih' },
     { id: 'kasir', teks: 'Semua HP kasir sudah ' + HB_VERSI_KASIR_CAP + ' (nota bercap) dalam 14 hari terakhir', ok: !kasir.length, ket: kasir.length ? nm(kasir) + ' — buka kasir darurat sekali sampai versi baru terpasang' : 'bersih' },
     { id: 'owner', teks: 'Tiap perangkat owner sudah ' + HB_VERSI + ' dengan antrean kosong', ok: owner.length > 0 && !ownerBelum.length, ket: !owner.length ? 'belum ada denyut owner 7 hari terakhir' : ownerBelum.length ? nm(ownerBelum) + ' belum' : owner.length + ' perangkat siap' },
     { id: 'statis', teks: 'Tidak ada catatan baru tanpa cap jam server (7 hari terakhir, perangkat ini)', ok: !(x.statis > 0), ket: x.statis > 0 ? x.statis + ' catatan — ada penulis lama yang masih jalan' : 'bersih' },
@@ -723,7 +731,7 @@ export function hbSesi(o) {
   function cekLahirF(k) { const st = K[k]; if (G.berhenti || !st.fLepas || !st.fTerkini || !st.fPrev) return; const ids = catatLahir(k, st.fPrev); if (ids.length && !G.bkAktif) kirimTemuan(k, 's', ids); }
   // TEMUAN dikirim lewat antrean di rekam: yang GAGAL (ditolak server, tab ini tidak boleh menulis) dicoba lagi tiap menit ≤ HB_ULANG_MAKS kali, juga sesudah
   // muat ulang — dulu dibuang diam-diam, padahal snapshot F berikutnya sudah tidak melihat bedanya lagi (tinjauan 7 Okt). jenis 's' = sentuh, 'n' = nisan.
-  // Sanggahan 8 Okt: yang gagal permanen (≤ 5 kali) DAN yang dilewati penyentuh karena bulannya terkunci (`lewat` — tidak bisa disentuh, perangkat lain tidak
+  // Sanggahan 7 Okt: yang gagal permanen (≤ 5 kali) DAN yang dilewati penyentuh karena bulannya terkunci (`lewat` — tidak bisa disentuh, perangkat lain tidak
   // menerimanya lewat delta) dihitung per koleksi untuk baca penuh harian toko yang sedang dipegang (`temuanTunda` di dokumen klaim).
   function kirimTemuan(k, jenis, ids, lihat) {
     if (!ids || !ids.length) return;
@@ -778,7 +786,7 @@ export function hbSesi(o) {
   function cekKlaimSelesai() {
     // koleksi yang sedang dengar penuh (F menempel & terkini) sudah terbaca penuh — tidak perlu baca penuh kedua
     if (!G.klaimSaya || !o.koleksi.every((k) => (K[k].fSelesai && K[k].fSelesaiPada >= G.klaimMulai) || (K[k].mode === 'penuh' && K[k].fTerkini))) return;
-    // sanggahan 8 Okt: "selesai" = bukti LENGKAP bagi perangkat owner lain (hbBelumLengkap). Selama sentuhan / batu nisan temuan pendeteksi belum terkirim,
+    // sanggahan 7 Okt: "selesai" = bukti LENGKAP bagi perangkat owner lain (hbBelumLengkap). Selama sentuhan / batu nisan temuan pendeteksi belum terkirim,
     // perangkat lain belum menerima ubahan itu lewat delta — "selesai" ditunda sampai antreannya habis (dinilai lagi tiap kiriman antrean selesai, kirimUlang).
     if (antreTemuan()) { G.klaimKabar = 'baca penuh harian sudah membaca semua — menunggu ubahan tanpa cap terkirim ke perangkat lain'; return; }
     const s = kiniS(); G.klaimSaya = false; const lama = G.tetap.klaim || {};
@@ -793,7 +801,7 @@ export function hbSesi(o) {
   // ---- kelengkapan & terperiksa: SATU sumber (hbBelumLengkap). Terperiksa = bukan "belum terperiksa" ('harian' tetap terperiksa: hitungannya cocok) ----
   function belumK(k) {
     const st = K[k]; const r = rk(k);
-    // berhenti: tab kalah kunci tab (firebase.js berhenti → terminate) — tidak menerima data lagi; tanpa ini tab itu tetap melapor lengkap (sanggahan 8 Okt)
+    // berhenti: tab kalah kunci tab (firebase.js berhenti → terminate) — tidak menerima data lagi; tanpa ini tab itu tetap melapor lengkap (sanggahan 7 Okt)
     return hbBelumLengkap({ koleksi: k, vMati: st.vMati, berhenti: G.berhenti, vAda: st.vAda, nTerkini: G.nTerkini, online: G.online, mode: st.mode, fTerkini: st.fTerkini, fSelesai: st.fSelesai, fMode: st.fMode,
       fJalan: !!(st.fLepas && st.fMode === 'total' && !st.fSelesai), fGalat: st.fGalat, wajibTotal: st.wajibTotal, sTerkini: st.sTerkini, cocok: st.cocokPada > 0,
       totalPada: r.totalPada, hari: hariKini(), klaim: G.tetap.klaim });

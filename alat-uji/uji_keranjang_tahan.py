@@ -251,7 +251,9 @@ RUSAK = [
     ('TAB SALINAN: simpanan tidak memeriksa id tab', 'logika', "  if (String(v.tab || '') !== String(tab || '')) return {", "  if (false) return {"),
     ('TAB SALINAN: halaman ditutup / dimuat ulang tidak menandai "ditinggal"', 'layar', "    window.addEventListener('pagehide', () => tandaiTab(true));\n", ""),
     ('TAB SALINAN: web app layar penuh diperlakukan seperti tab (keranjang hilang saat iOS mematikannya)', 'logika', "t.ditinggal === true || mandiri === true ? 'muatUlang'", "t.ditinggal === true ? 'muatUlang'"),
-    ('TAB SALINAN: layar tidak membaca mode layar penuh', 'layar', "!!window.matchMedia('(display-mode: standalone)').matches);", "false);"),
+    # audit P2: pemeriksa layar penuh SATU fungsi (jual-logika webAppMandiri, dipakai juga Uang › Tutup buku) — layar meneruskan window, logika membacanya
+    ('TAB SALINAN: pemeriksa tidak membaca mode layar penuh', 'logika', "!!win.matchMedia('(display-mode: standalone)').matches); } catch", "false); } catch"),
+    ('TAB SALINAN: layar tidak meneruskan window ke pemeriksa layar penuh', 'layar', "typeof window !== 'undefined' ? window : null);\n  const _tab", "null);\n  const _tab"),
     ('TAB SALINAN: kembali dari tembolok mundur tidak menandai "dipakai" lagi', 'layar', "    window.addEventListener('pageshow', (e) => { if (e && e.persisted) tandaiTab(false); });\n", ""),
     # tinjauan 7 Okt — HARGA & MODAL baris pulihan
     ('PULIHAN: baris pulihan tidak dibangun ulang (cuma stok diperiksa)', 'logika', "const pp = periksaPulih(s0);", "const pp = null;"),

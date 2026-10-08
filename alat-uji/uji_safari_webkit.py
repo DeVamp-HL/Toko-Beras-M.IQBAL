@@ -180,7 +180,7 @@ var DOKS = [{ jenis: 'labarugi', judul: 'Laporan Laba-Rugi', periode: 'Jul – S
 var LP = { paketBank: function () { return tolakPaket ? { tolak: 'Belum ada bulan yang tutup buku' } : { daftar: DOKS }; },
   susunPaketCetakan: function (daftar) { return { nomor: 7, nomorAkhir: 7 + daftar.length - 1, dokumen: daftar.map(function (d, i) { return { koleksi: 'dokumenCetak', data: { nomor: 7 + i, jenis: d.jenis, judul: d.judul } }; }) }; } };
 function dokRekap() { return { jenis: 'omzet', judul: 'Rekap Omzet Bulanan', periode: '12 bulan' }; }
-// hemat baca (#111, sanggahan 8 Okt): penjaga kelengkapan paket bank SINKRON sebelum dialog cetak — di uji gestur ini saklar mati ('' = lengkap); dijaga uji_periksa_sesudah.py S7d
+// hemat baca (#111, sanggahan 7 Okt): penjaga kelengkapan paket bank SINKRON sebelum dialog cetak — di uji gestur ini saklar mati ('' = lengkap); dijaga uji_periksa_sesudah.py S7d
 function hematBelum() { return ''; }
 function kertas(D, nomor) { return { html: '<div class="dk-kertas" data-no="' + nomor + '">' + D.judul + '</div>' }; }
 function set(p) { for (var k in p) keadaan[k] = p[k]; }

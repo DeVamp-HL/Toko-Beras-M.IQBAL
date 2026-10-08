@@ -357,6 +357,13 @@ var NP = neracaPada(null, KINI); var NM = hitungNeraca();
 ok('neraca hari ini: kas, stok, piutang, kasbon = hitungNeraca; modal tertanam 25.000.000; aset = Σ harta; laba ditahan = aset − kewajiban − modal; seimbang; kekayaan = N.total', NP.N.kas === NM.kas && NP.modal === 25000000 && dekat(NP.aset, NP.harta.reduce(function (a, r) { return a + (r.n || 0); }, 0)) && dekat(NP.labaDitahan, NP.aset - NP.kewajiban - 25000000) && NP.seimbang && NP.total === NM.total && !NP.tolak, J([NP.aset, NP.kewajiban, NP.labaDitahan, NP.tolak]));
 ok('pembanding: laba kumulatif mesin − prive 100.000 = menurutMesin; selisih buku DISEBUT di catatan (bukan disembunyikan)', NP.menurutMesin === NP.labaKum - 100000 && /Laba bersih kumulatif mesin/.test(NP.catatan) && (Math.abs(NP.selisihBuku) > 0.5 ? /belum terjelaskan buku/.test(NP.catatan) : /cocok/.test(NP.catatan)), NP.catatan);
 ok('piutang 200.000 (bon 300.000 − bayar 100.000) · kasbon 200.000 · utang pemasok 15.000.000 (bon 20 jt − bayar 5 jt)', NP.N.piutang === 200000 && NP.N.kasbon === 200000 && NP.N.utangPemasok === 15000000, J(NP.N));
+// keputusan owner 8 Okt 2026 (K9): modal awal 8 Agu DIBIARKAN tidak dicatat — Neraca berkop memuat SATU kalimat tetap (sama persis dengan berita acara tutup buku)
+// bila catatannya menulis beda "belum terjelaskan buku"; cocok = tanpa kalimat itu. Objek neracaPada (layar & ASAP GLOBAL) tidak berubah.
+var NK9 = neracaPada(hariIniIso(KINI), KINI); var DK9 = laporanBerkop('neraca', '2026-09', 1, KINI);
+ok('K9 Neraca berkop: kalimat tetap ("Modal awal toko saat sistem mulai mencatat 8 Agu 2026 tidak pernah dicatat … asal beda \"belum terjelaskan buku\". Angka pastinya diserahkan ke konsultan.") tepat sekali sesudah catatan neraca yang menyebut beda; neracaPada tanpa kalimat itu; beda ≤ Rp0,5 / tidak terhitung = tanpa kalimat',
+  Math.abs(NK9.selisihBuku) > 0.5 && /belum terjelaskan buku/.test(NK9.catatan) && NK9.catatan.indexOf(LP_KALIMAT_MODAL_AWAL) < 0 && DK9.catatan === NK9.catatan + ' ' + LP_KALIMAT_MODAL_AWAL && DK9.catatan.split(LP_KALIMAT_MODAL_AWAL).length === 2
+  && /^Modal awal toko saat sistem mulai mencatat 8 Agu 2026 tidak pernah dicatat: .*"belum terjelaskan buku"\. Angka pastinya diserahkan ke konsultan\.$/.test(LP_KALIMAT_MODAL_AWAL)
+  && catatanNeracaBerkop({ catatan: 'X', selisihBuku: 0.4 }) === 'X' && catatanNeracaBerkop({ catatan: 'X', selisihBuku: null }) === 'X' && catatanNeracaBerkop({ catatan: 'X', selisihBuku: -1 }) === 'X ' + LP_KALIMAT_MODAL_AWAL, J([NK9.selisihBuku, DK9.catatan]));
 tulis(susunAturLaporan({ asetTetap: '5.000.000', asetKet: 'timbangan' }, W)); var NP2 = neracaPada(null, KINI);
 ok('aset tetap 5.000.000 (isian owner): aset & laba ditahan naik 5.000.000, baris harta bertambah menyebut "isian owner"', NP2.aset === NP.aset + 5000000 && NP2.labaDitahan === NP.labaDitahan + 5000000 && NP2.harta.some(function (r) { return /isian owner: timbangan/.test(r.nama) && r.n === 5000000; }));
 ok('neraca per 17 Sep: kas = kasPada("2026-09-17"); per 14 Sep (mundur dari titik) → kas null, DITOLAK dicetak', neracaPada('2026-09-17', KINI).N.kas === kasPada('2026-09-17') && neracaPada('2026-09-14', KINI).N.kas === null && /titik kas/.test(neracaPada('2026-09-14', KINI).tolak));
@@ -552,6 +559,8 @@ def neraca_layar(t):
     out = []
     if t.count('LP.neracaTanggal(') != 2 or 'LP.neracaPada(' in t: out.append('layar Neraca masih memakai neracaPada tanpa kas bulan final (gambar / keluarkan)')
     if "(sampai && D.final ? NP.tolak + '.' :" not in t: out.append('hero Neraca bulan final masih menyebut "titik kas belum disetel"')
+    # keputusan owner 8 Okt (K9): kertas Neraca untuk tanggal yang dipilih (gambar & keluarkan) memuat kalimat modal awal yang sama dengan Neraca berkop
+    if t.count('D.catatan = LP.catatanNeracaBerkop(NP);') != 2 or 'D.catatan = NP.catatan' in t: out.append('kertas Neraca tanggal pilihan tanpa kalimat modal awal (K9)')
     return out
 
 
@@ -581,6 +590,7 @@ if __name__ == '__main__':
                           ('39b-37 laporan.js: panel diterima tunai tanpa margin bon yang dipotong retur barang', lap.replace("${B.marginDiretur ? ' + margin bon yang dipotong retur barang ' + RP(B.marginDiretur) : ''}", '', 1)),
                           ('39b-37 U37-U4 laporan.js: kartu rekap harian tanpa baris retur nota bon', lap.replace("{ nama: 'Retur nota bon (bon dipotong)', teks: RP(LP.lpReturBonHari(R)) }, ", '', 1)),
                           ('UU36-2 laporan.js: kertas Neraca yang dikeluarkan memakai neracaPada lagi', lap.replace('const NP = LP.neracaTanggal(st().sampaiN, kini(), D.final);', 'const NP = LP.neracaPada(st().sampaiN, kini());', 1)),
+                          ('K9 laporan.js: kertas Neraca tanggal pilihan memakai catatan neraca saja (tanpa kalimat modal awal)', lap.replace('D.catatan = LP.catatanNeracaBerkop(NP);', 'D.catatan = NP.catatan;', 1)),
                           ('UU36-2 laporan.js: hero Neraca bulan final kembali "titik kas belum disetel"', lap.replace("(sampai && D.final ? NP.tolak + '.' :", "(false ? NP.tolak + '.' :", 1))]:
             g = (tunai_layar(isi) + neraca_layar(isi) + rekap_layar(isi)) if isi != lap else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
@@ -629,6 +639,8 @@ if __name__ == '__main__':
             '39b-40: Tahunan tanpa keterangan bulan sebelum awal buku': js.replace("kosong: n === 0 && !tanpaPotret, sebelumBuku,", "kosong: n === 0 && !tanpaPotret, sebelumBuku: '',"),
             'tahunan: bulan berjalan dianggap final': js.replace("berjalan: key === kiniKey, final: lpFinal(key), omzet: Lr.omzetPenuh", "berjalan: key === kiniKey, final: true, omzet: Lr.omzetPenuh"),
             # ---- neraca
+            'K9: Neraca berkop tanpa kalimat modal awal': js.replace("    catatan = catatanNeracaBerkop(NP); tolak = NP.tolak;", "    catatan = NP.catatan; tolak = NP.tolak;"),
+            'K9: kalimat modal awal ikut walau neraca cocok (tanpa beda)': js.replace("const beda = NP && NP.selisihBuku !== null && NP.selisihBuku !== undefined && Math.abs(Number(NP.selisihBuku)) > 0.5;", "const beda = !!NP;"),
             'modal owner tidak dipisah dari laba ditahan': js.replace("const labaDitahan = aset === null ? null : aset - kewajiban - modal;", "const labaDitahan = aset === null ? null : aset - kewajiban;"),
             'neraca tanpa titik kas tetap dicetak': js.replace("const tolak = !kasAda ? 'Kas belum bisa dihitung — titik kas belum disetel; Tutup hari malam ini menyetelnya' :", "const tolak = false ? '' :"),
             'aset tetap isian owner tidak ikut aset': js.replace("const aset = kasAda ? N.kas + N.stok + N.piutang + N.kasbon + AT.asetTetap : null;", "const aset = kasAda ? N.kas + N.stok + N.piutang + N.kasbon : null;"),

@@ -1,4 +1,4 @@
-// PEMERIKSAAN SESUDAH TUTUP BUKU (Paket C siap 2027, 8 Okt 2026) — tanpa DOM; pembantu berawalan `pst` (bundel uji jsc satu lingkup).
+// PEMERIKSAAN SESUDAH TUTUP BUKU (Paket C siap 2027, 7 Okt 2026) — tanpa DOM; pembantu berawalan `pst` (bundel uji jsc satu lingkup).
 // Dulu rencana tutup buku 2026 memuat butir "cadangan SESUDAH diperiksa (hanya baca): semua baris perbandingan + modal, buku 25 kg di rak Jual, pajak 2026
 // dari potret, tidak ada minus" yang dikerjakan di luar aplikasi. Sesudah 13 Okt 2026 tidak ada lagi yang mengerjakannya, jadi aplikasi memeriksanya sendiri
 // dan owner cukup membaca kartunya (Uang › Tutup buku). HANYA MEMBACA cache yang sudah dimuat — tidak ada baca server tambahan dan tidak ada yang ditulis.
@@ -25,7 +25,7 @@ import { ambilTutupBukuAcara, cacheMentah, dokDiCache, pembukaBerlaku, petaUkura
   CACHE_PEMBUKA, denganCacheSaring, versiCache, dokTertunda, koleksiDariCache } from '../data/toko.js';
 import { KOLEKSI } from '../data/koleksi.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { bkPeriksaDipakai, bkArsipHabis, arsipBuku, minusBuku, kemajuanBuku, sesudahDariPembuka, susulanBuku } from './tutup-buku-logika.js';
+import { bkPeriksaDipakai, bkArsipHabis, arsipBuku, minusBuku, kemajuanBuku, sesudahDariPembuka, susulanBuku, bkPdfSpt } from './tutup-buku-logika.js';
 import { modalTertanam } from './uang-logika.js';
 import { pjTahun, pjDaftarTahun } from './pajak-logika.js';
 import { keadaanAwal, susunRak } from './jual-logika.js';
@@ -93,11 +93,11 @@ export function pstTahun(kini) {
  * perangkat (bkSambungan), jadi "beres" tidak boleh diumumkan dari data basi.
  * Hemat baca NYALA (#111): M.hemat = { koleksi: { jenis, sebab } } yang BELUM LENGKAP di perangkat ini — SATU sumber hemat-baca.js hbBelumLengkap lewat app.js
  * lokalPerangkat → uang.js muatData. Koleksi yang dibutuhkan baris itu dan belum lengkap (belum terperiksa, atau belum dibaca penuh sejak kuota baca direset)
- * = "?" dengan sebabnya, bukan ✓. Sebab satu jenis catatan tidak dipinjamkan ke yang lain (sanggahan 8 Okt): yang disebut namanya = yang sebabnya itu, sisanya
+ * = "?" dengan sebabnya, bukan ✓. Sebab satu jenis catatan tidak dipinjamkan ke yang lain (sanggahan 7 Okt): yang disebut namanya = yang sebabnya itu, sisanya
  * dihitung dengan sebabnya sendiri (hbEkorLain). Saklar mati: M tanpa `hemat` — hasil sama persis dengan sebelumnya.
  */
 function pstKurang(M, perlu, tunggu) {
-  if (tunggu) return 'catatan tutup buku di perangkat ini masih menunggu server — tunggu sampai antrean kosong (Menu › Sistem › Perangkat)';
+  if (tunggu) return 'catatan tutup buku di perangkat ini masih menunggu server — tunggu sampai antrean kosong (Menu › Toko ini › Perangkat & antrean › Antrean kirim)';
   const m = M || {}; if (m.siap === false) return 'data toko belum selesai dimuat di perangkat ini' + (m.total ? ' (' + ANGKA(m.siapN || 0) + ' dari ' + ANGKA(m.total) + ' bagian)' : '');
   const semua = perlu.indexOf('*') >= 0; const kena = (daftar) => (daftar || []).map((x) => String(x).split('/')[0]).filter((x, i, arr) => arr.indexOf(x) === i && (semua || perlu.indexOf(x) >= 0));
   const tolak = kena(m.ditolak); if (tolak.length) return 'data ' + pstDaftarKata(tolak) + ' ditolak server di perangkat ini — angkanya tidak ada';
@@ -298,7 +298,7 @@ function pstPajak(T, M, tunggu, kini) {
   const tahun = T.tahun, a = T.acara; const kurang = pstKurang(M, ['tutupBukuAcara', 'pajakSetoran', 'pajakOmzetLuar', 'aturanToko'], tunggu);
   const Pt = pstPotret(a, tahun); const PJ = Pt && Pt.pajak ? Pt.pajak : null; const bulan = Pt && Pt.bulan ? Pt.bulan : {};
   const kunciBulan = []; for (let m = 1; m <= 12; m++) kunciBulan.push(tahun + '-' + String(m).padStart(2, '0'));
-  const jalan = 'Laporan › Pajak ' + tahun + ' tidak membaca potret tutup buku. Untuk setoran Desember & SPT Tahunan pakai PDF Rekap pajak & Laporan Tahunan ' + tahun + ' yang disimpan sebelum ritual (atau berkas cadangan SEBELUM). ' + pstJalan(T.fase);
+  const jalan = 'Laporan › Pajak ' + tahun + ' tidak membaca potret tutup buku. Untuk setoran Desember & SPT Tahunan pakai PDF yang disimpan sebelum ritual (' + bkPdfSpt(tahun) + ') atau berkas cadangan SEBELUM. ' + pstJalan(T.fase);
   const b = (o) => pstBaris(Object.assign(kurang ? { status: 'belum', sebab: kurang } : {}, o, kurang ? { status: 'belum', sebab: kurang } : {}));
   if (!Pt) {
     const sebab = 'berita acara ' + tahun + ' tidak menyimpan potret — tidak ada angka pembanding';
@@ -365,8 +365,8 @@ export function pstPeriksa(kini, M) {
     + [L.susulan ? L.susulan + ' bertanggal ' + T.tahun + ' — catatan susulan' : '', L.sesudahKunci ? L.sesudahKunci + ' bertanggal hari tutup buku, ditulis sebelum kunci tapi baru masuk sesudahnya' : ''].filter(Boolean).join('; ')
     + ') — tidak ikut dibandingkan karena bukan bagian ritual. Itu bukan alasan membatalkan.' : '', SU ? 'Pita catatan susulan di atas belum dicatat: ikuti jalannya, lalu ketuk "sudah dicatat".' : ''].filter(Boolean).join(' '));
   if (nBelum && !nBeda) petunjuk.push('Baris "belum bisa diperiksa" bukan lulus: buka kartu ini lagi sesudah sebabnya hilang (data selesai dimuat, tersambung internet, antrean kosong). Kalau sebabnya tetap: angka "sebelum" di baris itu dicocokkan sendiri dengan hitungan tutup hari tanggal itu (Uang › Tutup hari), dan cadangan SEBELUM & SESUDAH disimpan berdua.');
-  if (beres) petunjuk.push(T.fase === 'selesaikan' ? 'Langkah berikutnya: ketuk "unduh cadangan sesudah · selesai", lalu "unduh hasil pemeriksaan" — simpan kedua berkas bersama (≥ 2 tempat di luar HP).'
-    : 'Unduh hasil pemeriksaan dan simpan bersama cadangan SESUDAH (≥ 2 tempat di luar HP). Kunci bulan Januari ' + (T.tahun + 1) + ' boleh mulai 4 Feb.');
+  if (beres) petunjuk.push(T.fase === 'selesaikan' ? 'Langkah berikutnya: ketuk "unduh cadangan sesudah · selesai", lalu "unduh hasil pemeriksaan" — simpan kedua berkas bersama (≥ 2 tempat di luar perangkat ini).'
+    : 'Unduh hasil pemeriksaan dan simpan bersama cadangan SESUDAH (≥ 2 tempat di luar perangkat ini). Kunci bulan Januari ' + (T.tahun + 1) + ' boleh mulai 4 Feb.');
   const h = { versi: PST_VERSI, tahun: T.tahun, fase: T.fase, status: T.acara.status, kelompok, n, nSama, nBeda, nBelum, beres, ringkas, petunjuk, sumber: PB.sumber,
     diperiksa: hariIniIso(kini), selesai: T.acara.selesaiTanggal || '', dikunci: T.acara.tanggal || '', susulan: L.susulan, sesudahKunci: L.sesudahKunci, dibetulkan: S.betul };
   // kunci diambil SESUDAH menghitung: saringan sementara (denganCacheSaring) menaikkan versi cache, isi cache-nya kembali sama

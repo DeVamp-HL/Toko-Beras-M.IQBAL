@@ -147,6 +147,18 @@ ok('kunci bulan: catatan Ben yang tertahan di tablet tetap memblokir (memang bel
 var benId = benT.length ? benT[0].id : 'p-tablet-uji';
 var tolakBen = lupakan(benId).tolak || '';
 ok('"sudah tidak dipakai" untuk baris Ben ditolak selama 2 catatannya tertahan; kalimatnya menyebut SIAPA yang harus masuk & mengirim', /^Tablet uji \(Ben Contoh\) terakhir melaporkan 2 antrean .*kirim dulu/.test(tolakBen), tolakBen);
+// audit P2 · sanggahan #121: baris Ben DIAM dengan 2 antrean = tidak ditawari tombol; butir yang dilihat owner menyebutnya & jalan perangkat hilang (KP_KALIMAT_HILANG).
+// Petunjuk siap-nyala hemat baca (hemat-baca.js HB_TANDAI_TIDAK_DIPAKAI) menyebut butir & tombol yang SAMA dengan daftar periksa ini — teks butir, bentuk label tombol,
+// syaratnya, dan nama butir prosedur (KP_BUTIR_HILANG); dulu "butir itu muncul sesudah diam 24 jam" (butirnya selalu ada; yang muncul tombolnya, bersyarat)
+var sny = hbSiapNyala({ perangkat: [{ id: 'p-lama-uji', nama: 'Tab lama', pada: new Date(__KINI - 3600000).toISOString(), aplikasi: 'baru', versi: 'baru' }], kiniMs: __KINI, nisanSah: true, statis: 0, ownerEmail: 'x' });
+var snyLama = sny.filter(function (x) { return x.id === 'lama'; })[0] || {};
+ok('kunci bulan (sanggahan #121): baris Ben diam & berantrean — tanpa tombol, ket menyebutnya "tidak bisa dinyatakan tidak dipakai dari sini" + jalan perangkat hilang; tanpa tawaran "nyatakan sudah tidak dipakai"',
+  diam.aksi.length === 0 && diam.ket.indexOf('nyalakan & sambungkan. Tablet uji (Ben Contoh) masih melaporkan antrean / ditolak, jadi tidak bisa dinyatakan tidak dipakai dari sini — ' + KP_KALIMAT_HILANG) >= 0 && antreB.ket.indexOf(KP_KALIMAT_HILANG) >= 0, J([diam, antreB.ket]));
+ok('hemat baca siap-nyala (sanggahan #121): petunjuk "sudah tidak dipakai" = butir daftar periksa kunci bulan yang SAMA (teks butir), label tombol "<nama> sudah tidak dipakai", syarat diam > 24 jam DAN antrean 0 & ditolak 0, selain itu butir prosedur yang SAMA dengan kalimat kunci bulan',
+  HB_TANDAI_TIDAK_DIPAKAI.indexOf('kartu Kunci bulan › butir "' + diam.teks + '"') >= 0 && diam.teks === 'Semua perangkat berdenyut dalam 24 jam terakhir'
+  && HB_TANDAI_TIDAK_DIPAKAI.indexOf('ketuk "<nama> sudah tidak dipakai"') >= 0 && /diam lebih dari 24 jam DAN laporan terakhirnya antrean 0 & ditolak 0/.test(HB_TANDAI_TIDAK_DIPAKAI) && KP_DENYUT_MS === 24 * 3600000
+  && HB_TANDAI_TIDAK_DIPAKAI.indexOf('catatan "Prosedur pulih darurat", butir "' + KP_BUTIR_HILANG + '"') >= 0 && KP_KALIMAT_HILANG.indexOf('catatan "Prosedur pulih darurat", butir "' + KP_BUTIR_HILANG + '"') >= 0
+  && !/butir itu muncul/.test(HB_TANDAI_TIDAK_DIPAKAI) && !snyLama.ok && (snyLama.ket || '').indexOf(HB_TANDAI_TIDAK_DIPAKAI) >= 0, J([HB_TANDAI_TIDAK_DIPAKAI, snyLama]));
 
 // ---- 5 · Ben masuk lagi → catatannya terkirim, denyutnya tercatat; karyawan tetap berdenyut sesudahnya (tidak ada akun yang terkunci)
 pada('2026-10-02T13:00:00+07:00'); masukDi('tablet', 'uid-ben', 0); var dB3 = denyut();
@@ -160,7 +172,8 @@ pada('2026-10-04T09:00:00+07:00'); masukDi('tablet', 'uid-kry', 0); denyut(); ma
 var D3 = kpDaftarPeriksa('2026-09', kini(), JSON.parse(J(BERSIH))); var aksiBen = butir(D3, 'perangkatDenyut').aksi.filter(function (a) { return a.id === benId; });
 var rL = aksiBen.length ? lupakan(benId) : { tolak: 'tidak ditawarkan' }; var P3 = ssPerangkat(kini(), [], 'p-mac-uji');
 ok('kunci bulan: baris Ben yang diam (antrean 0) ditawarkan "sudah tidak dipakai"; dilupakan → baris Ben hilang, baris karyawan & Mac tetap',
-  aksiBen.length === 1 && aksiBen[0].label === 'Tablet uji (Ben Contoh) sudah tidak dipakai' && !rL.tolak && !baris(P3, 'Ben Contoh').length && baris(P3, 'Karyawan Contoh', 'Tablet uji').length === 1 && P3.daftar.some(function (d) { return d.ini; }) && butir(kpDaftarPeriksa('2026-09', kini(), JSON.parse(J(BERSIH))), 'perangkatDenyut').ok,
+  aksiBen.length === 1 && aksiBen[0].label === 'Tablet uji (Ben Contoh) sudah tidak dipakai' && HB_TANDAI_TIDAK_DIPAKAI.indexOf('"<nama> sudah tidak dipakai"') >= 0
+  && /nyalakan & sambungkan, atau nyatakan sudah tidak dipakai$/.test(butir(D3, 'perangkatDenyut').ket) && !rL.tolak && !baris(P3, 'Ben Contoh').length && baris(P3, 'Karyawan Contoh', 'Tablet uji').length === 1 && P3.daftar.some(function (d) { return d.ini; }) && butir(kpDaftarPeriksa('2026-09', kini(), JSON.parse(J(BERSIH))), 'perangkatDenyut').ok,
   J(butir(D3, 'perangkatDenyut')) + ' ' + J(rL) + ' ' + J(P3.daftar));
 pada('2026-10-04T10:00:00+07:00'); masukDi('tablet', 'uid-ben', 0); var dB4 = denyut(); pada('2026-10-04T10:30:00+07:00'); masukDi('tablet', 'uid-kry', 0); var dK5 = denyut();
 ok('sesudah dilupakan: Ben DAN karyawan sama-sama tetap berdenyut di tablet itu (melupakan tidak memindah kunci ke akun lain)', dB4.izin && dK5.izin, J([dB4, dK5]));
@@ -216,6 +229,13 @@ if __name__ == '__main__':
                 rules.replace("        && (resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)\n", "")),
             'nama baris denyut tanpa pemegang (dua baris tablet tak bisa dibedakan di daftar kunci bulan)': (js.replace(
                 "const kpNamaDenyut = (p) => (p.nama || p.id) + (p.pemegang ? ' (' + p.pemegang + ')' : '');", "const kpNamaDenyut = (p) => (p.nama || p.id);"), rules),
+            # audit P2 · sanggahan #121
+            'siap-nyala hemat baca kembali "butir itu muncul sesudah diam 24 jam" (syarat tombol tidak disebut)': (js.replace(
+                "(tombol itu muncul sesudah perangkatnya diam lebih dari 24 jam DAN laporan terakhirnya antrean 0 & ditolak 0; selain itu: catatan \"Prosedur pulih darurat\", butir \"Perangkat hilang atau rusak\")",
+                "(butir itu muncul sesudah perangkatnya diam lebih dari 24 jam)"), rules),
+            'teks butir denyut di daftar periksa berubah tanpa petunjuk siap-nyala ikut': (js.replace("teks: 'Semua perangkat berdenyut dalam 24 jam terakhir',", "teks: 'Semua perangkat berdenyut sehari terakhir',"), rules),
+            'petunjuk siap-nyala tidak dipakai daftar siap-nyala': (js.replace("' — muat ulang tab itu di perangkatnya. Perangkat yang sudah tidak dipakai: ' + HB_TANDAI_TIDAK_DIPAKAI", "' — muat ulang tab itu / tandai sudah tidak dipakai'"), rules),
+            'kunci bulan: perangkat diam berantrean tanpa jalan perangkat hilang': (js.replace("+ (diamAntre.length ? '. ' + diamAntre.map(kpNamaDenyut).join(', ') + ' masih melaporkan antrean / ditolak, jadi tidak bisa dinyatakan tidak dipakai dari sini — ' + KP_KALIMAT_HILANG : '')", ""), rules),
             'rules: penjaga pemilik dokumen dicabut (akun lain bisa menimpa denyut Ben)': (js,
                 rules.replace("        && (resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)\n", "")),
         }

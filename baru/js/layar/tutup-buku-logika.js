@@ -34,8 +34,8 @@ import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam }
 import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
 import { ringkasPelangganTahun } from './pelanggan-logika.js';
 import { susunPotret, ringkasPotret } from './potret-logika.js';
-import { lpBonTerbuka } from './laporan-logika.js';
-import { hbKalimatBelum } from '../data/hemat-baca.js';
+import { lpBonTerbuka, LP_KALIMAT_MODAL_AWAL } from './laporan-logika.js';
+import { hbKalimatBelum, HB_TEMPAT } from '../data/hemat-baca.js';
 
 export const LANGKAH_BUKU = [['periksa', 'Periksa dulu'], ['cadangan1', 'Cadangan sebelum mulai'], ['arsip', 'Simpan arsip'], ['saldo', 'Susun saldo pembuka'], ['paraf', 'Paraf dua orang'], ['kunci', 'Kunci tahun'], ['cadangan2', 'Cadangan sesudahnya & selesai']];
 const bkTutupBuku = (x) => !!(x && x.tutupBuku);
@@ -153,7 +153,7 @@ export function gerbangBuku(tahun, kini, lokal, lewati) {
   // #111 × Paket C: juga SATU sumber kelengkapan (hemat-baca.js hbBelumLengkap) — dibaca penuh sesi ini tapi batu nisan / ubahan belum dicocokkan lagi = belum
   if (L.hemat && L.hemat.nyala) { const hb = hbKalimatBelum(L.hemat.belumLengkap, null); const ok7 = !!L.hemat.totalSesiIni && !hb;
     g.push({ id: 'g7', teks: 'Perangkat ini sudah membaca penuh semua catatan sesi ini (hemat baca)', ok: ok7,
-      ket: ok7 ? 'semua jenis catatan dibaca penuh & cocok dengan server' : !L.hemat.totalSesiIni ? 'hemat baca nyala — angka dari simpanan perangkat belum dibaca penuh sesi ini' : hb, aksi: ok7 ? '' : 'Baca penuh dulu: Menu › Sistem › Perangkat › Hemat baca', bisaLewati: false }); }
+      ket: ok7 ? 'semua jenis catatan dibaca penuh & cocok dengan server' : !L.hemat.totalSesiIni ? 'hemat baca nyala — angka dari simpanan perangkat belum dibaca penuh sesi ini' : hb, aksi: ok7 ? '' : 'Baca penuh dulu: ketuk "baca penuh sekarang" di ' + HB_TEMPAT + ', tunggu sampai selesai tanpa memuat ulang', bisaLewati: false }); }
   return { daftar: g, semuaOk: g.every((x) => x.ok), belum: g.filter((x) => !x.ok).length, belumTutup, belumPutus, hari: hariG1 };
 }
 /**
@@ -281,7 +281,7 @@ export function pembukaBuku(tahun, w) {
   return { dokumen: d, saldo, tglBuka, upah: upahPada(c) };
 }
 /**
- * Paket C (8 Okt 2026): RINGKASAN saldo pembuka di berita acara saat kunci — pembanding kartu "Pemeriksaan sesudah tutup buku" (periksa-sesudah-logika.js):
+ * Paket C (7 Okt 2026): RINGKASAN saldo pembuka di berita acara saat kunci — pembanding kartu "Pemeriksaan sesudah tutup buku" (periksa-sesudah-logika.js):
  *  - `beras` / `kemasan`: baris yang DITULIS (dokumen pembuka pembukaBuku: merek, satuan, berat, kg, tanda buku; kemasan per produk) — tanda buku & rak Jual
  *    tetap punya pembanding walau dokumennya kelak berubah / tandanya terlepas;
  *  - `sebelum` (sanggahan Paket C, "penjaga yang mewarisi kekuatannya"): dihitung dari CATATAN HIDUP 31 Des sebelum apa pun ditulis — bukan dari dokumen pembuka —
@@ -313,10 +313,30 @@ function bkPembandingSebelum(c) {
 export function ringkasTahun(tahun) { const c = tbCutoff(tahun); return Object.assign({ versi: 1, tahun, cutoff: c }, ringkasKreditLaju(c), { pelanggan: ringkasPelangganTahun(c) }); }
 /** Paket B · potret tahun dari catatan hidup TANPA menulis apa pun — langkah Kunci di LATIHAN menyusunnya juga, supaya kalau gagal ketahuan sebelum ritual. */
 export function potretLatihan(tahun, kini) { try { const Pt = susunPotret(tahun, kini); return { ok: true, teks: ringkasPotret(Pt), ukuran: JSON.stringify(Pt).length }; } catch (e) { return { ok: false, teks: 'Potret ' + tahun + ' GAGAL disusun: ' + String((e && e.message) || e).slice(0, 160) + ' — kunci sungguhan akan DITOLAK. ' + bkKalimatTanpaPotret(tahun) }; } }
-/** Paket C (8 Okt): yang bisa dikerjakan owner sendiri bila potret gagal disusun (sesudah 13 Okt tidak ada orang luar yang membetulkan kodenya). */
+// ---- audit P2 (C2): unduhan tutup buku (cadangan SEBELUM / SESUDAH, arsip) — a.click() tidak memberi tahu apa pun (Safari / iOS bisa menahan atau membatalkan
+// lembar unduhan), jadi kabarnya menyebut UKURAN berkas supaya owner mencocokkannya sendiri di Unduhan/Files, dan web app layar penuh ditolak (unduhannya tidak bisa
+// dipastikan tersimpan). Latihan tidak mengunduh apa pun → tidak ditolak.
+/** Ukuran berkas seperti yang ditulis Finder / Files (1 KB = 1.000 byte) + byte persisnya. */
+export function bkUkuranBerkas(bytes) {
+  const b = Math.max(0, Math.round(Number(bytes) || 0)); const sat = b >= 1e6 ? String(Math.round(b / 1e5) / 10).replace('.', ',') + ' MB' : b >= 1000 ? ANGKA(Math.round(b / 1000)) + ' KB' : ANGKA(b) + ' byte';
+  return b >= 1000 ? sat + ' · ' + ANGKA(b) + ' byte' : sat;
+}
+/** Kabar sesudah berkas dikirim ke Unduhan. jenis = 'Berkas' | 'Arsip'; ket = sisipan sesudah ukuran (mis. jumlah dokumen arsip). */
+export function bkKabarUnduh(jenis, nama, bytes, ket) {
+  return jenis + ' ' + nama + ' (' + bkUkuranBerkas(bytes) + ') dikirim ke Unduhan' + (ket ? ' · ' + ket : '') + ' — buka Unduhan/Files, pastikan berkasnya ada dan ukurannya sama, lalu salin ke luar perangkat ini.';
+}
+/** Unduhan SUNGGUHAN dari web app layar penuh (ikon di layar utama) ditolak dengan kabar AWAS; '' = boleh. */
+export function bkTolakMandiri(mandiri, latihan) {
+  return mandiri && !latihan ? 'Unduhan tutup buku tidak bisa dipastikan tersimpan dari aplikasi layar penuh (ikon di layar utama) — buka lewat tab peramban di Mac, lalu ulangi langkah ini.' : '';
+}
+/** Paket C (7 Okt): yang bisa dikerjakan owner sendiri bila potret gagal disusun (sesudah 13 Okt tidak ada orang luar yang membetulkan kodenya). */
 function bkKalimatTanpaPotret(tahun) {
   return 'Tutup lalu buka lagi aplikasinya dan ulangi sekali. Kalau tetap gagal: jangan dipaksakan — toko tetap boleh berjualan dengan buku ' + tahun + ' terbuka (Laporan & Pajak ' + tahun
-    + ' tetap membaca catatannya); unduh cadangan (Menu › Sistem) dan simpan PDF Rekap pajak & Laporan Tahunan ' + tahun + ' untuk SPT. Kunci bulan ' + (tahun + 1) + ' menunggu sampai tutup buku ' + tahun + ' selesai.';
+    + ' tetap membaca catatannya); unduh cadangan (Menu › Toko ini › Cadangan & simpanan) dan simpan PDF untuk SPT: ' + bkPdfSpt(tahun) + '. Kunci bulan ' + (tahun + 1) + ' menunggu sampai tutup buku ' + tahun + ' selesai.';
+}
+/** Audit P2 (K2): tiga PDF pegangan SPT dan tombolnya yang SUNGGUH ada — layar Laporan › Tahunan tidak punya tombol simpan PDF (dulu disebut "PDF Laporan Tahunan"). */
+export function bkPdfSpt(tahun) {
+  return 'Laporan › Pajak › Rekap pajak untuk konsultan ' + tahun + ' › simpan PDF; Laporan › Dokumen › Laporan berkop › Laba-Rugi › bulan akhir Desember ' + tahun + ' › 12 bulan › simpan PDF; Laporan › Neraca (31 Des ' + tahun + ') › simpan PDF';
 }
 /** "Sesudah" dari susunan pembuka (belum ditulis): tiap baris dijumlah dari dokumennya; kas per tempat = titik yang akan ditulis. */
 export function sesudahDariPembuka(P, sebelum) {
@@ -420,7 +440,7 @@ function bkTertinggal(tahun) {
  * Hasil periksa ulang yang dipakai "selesai" & pita: yang dibekukan saat arsip habis PADA PERCOBAAN INI (tanda percobaan sama); belum ada / milik percobaan lain
  * (dibatalkan lalu dimulai lagi — LP3-Z1) = dihitung ulang sekarang.
  */
-// Paket C (8 Okt): diekspor untuk kartu "Pemeriksaan sesudah tutup buku" (periksa-sesudah-logika.js) — hasil yang dibekukan membawa `beku` (tanggal & jam dibekukan)
+// Paket C (7 Okt): diekspor untuk kartu "Pemeriksaan sesudah tutup buku" (periksa-sesudah-logika.js) — hasil yang dibekukan membawa `beku` (tanggal & jam dibekukan)
 export function bkPeriksaDipakai(tahun) {
   const a = bkAcara(tahun); const P = dokDiCache('pengaturan', 'periksaArsip' + tahun);
   if (!P || !Array.isArray(P.baris) || !bkPercobaan(a) || String(P.percobaan || '') !== bkPercobaan(a)) return periksaUlangBuku(tahun);
@@ -450,7 +470,7 @@ export function susunKunci(tahun, D, w, L) {
   if (!D.paraf || !D.paraf.owner || !D.paraf.saksi) return { tolak: 'Paraf owner dan saksi dulu' };
   const tg = bkTertunda(tahun); if (tg) return { tolak: tg };
   // siap 2027 (pintu masuk, bukan hanya layar): hari tanpa tutup hari yang belum diputus (g1) dan stok minus / kelebihan bayar (g6) menolak kunci SUNGGUHAN.
-  // Sanggahan 8 Okt (#111): kelengkapan hemat baca (g7) juga di PINTU — sesudah unduh cadangan, arsip, saldo & paraf berdua, potret & saldo pembuka disusun
+  // Sanggahan 7 Okt (#111): kelengkapan hemat baca (g7) juga di PINTU — sesudah unduh cadangan, arsip, saldo & paraf berdua, potret & saldo pembuka disusun
   // dari seluruh buku perangkat ini; layar langkah 1 saja tidak cukup. L = lokal() layar (membawa `hemat` saat nyala); mati / tanpa L: g7 tidak ada (sama dulu)
   const G = gerbangBuku(tahun, ugKiniDari(w), L || {}, {}); const gTolak = G.daftar.filter((g) => (g.id === 'g1' || g.id === 'g6' || g.id === 'g7') && !g.ok);
   if (gTolak.length) return { tolak: 'Periksa dulu belum beres — ' + gTolak.map((g) => g.teks + ': ' + g.ket).join(' · ') };
@@ -482,7 +502,7 @@ export function susunKunci(tahun, D, w, L) {
   // A7 (siap 2027): ringkasan tahun ini (KR1 90 hari, laju pakai 14 hari, riwayat per pelanggan) menumpang batch penanda — terlihat bersamaan dengan saldo
   // pembuka di semua perangkat (toko.js ringkasArsip), hilang bersama penanda bila dibatalkan
   tanda.data.ringkasTahun = ringkasTahun(tahun);
-  // PAKET C (8 Okt): ringkasan saldo pembuka per buku & kemasan di berita acara — pembanding kartu "Pemeriksaan sesudah tutup buku"
+  // PAKET C (7 Okt): ringkasan saldo pembuka per buku & kemasan di berita acara — pembanding kartu "Pemeriksaan sesudah tutup buku"
   acara.pembukaRingkas = ringkasPembuka(P.dokumen, tahun);
   // PAKET B (siap 2027): POTRET tahun ini (pajak & omzet, laba-rugi, biaya per jenis, arus kas, neraca akhir bulan per bulan; omzet per hari) di berita acara —
   // Laporan, Pajak & Dasbor membacanya sesudah arsip (toko.js potretBulan). Gagal disusun = kunci DITOLAK: tanpa potret, layar tahun ini jadi Rp0 bertanda FINAL.
@@ -567,7 +587,7 @@ export function susunAmbilAlih(tahun, L, w, yakin) {
   const sb = bkSambungan(L); if (sb) return { tolak: sb };
   if (koleksiDariCache('perangkatStatus')) return { tolak: 'Ambil alih: denyut perangkat di perangkat ini belum dijawab server (bisa basi) — tunggu data terbaru dulu.' };
   const nA = ((L && L.antre) || []).length + (Number(L && L.menunggu) || 0);
-  if (nA) return { tolak: 'Ambil alih ditolak: ' + nA + ' catatan perangkat ini belum diakui server — tunggu antrean kosong dulu (Menu › Sistem › Perangkat).' };
+  if (nA) return { tolak: 'Ambil alih ditolak: ' + nA + ' catatan perangkat ini belum diakui server — tunggu antrean kosong dulu (Menu › Toko ini › Perangkat & antrean › Antrean kirim).' };
   const t = Date.parse(w.kini); const ubah = Date.parse(a.diubahPada || ''); const menit = isFinite(ubah) ? Math.floor((t - ubah) / 60000) : null;
   if (menit === null || menit < 60) return { tolak: 'Ambil alih ditolak: berita acara tutup buku ' + tahun + (menit === null ? ' tidak mencatat kapan terakhir berubah' : ' baru berubah ' + Math.max(0, menit) + ' menit lalu') + ' — ' + nm + ' mungkin masih bekerja. Tunggu sampai 60 menit tanpa perubahan.' };
   const dy = cacheMentah('perangkat').filter((d) => d && (String(d.id) === String(p.id) || String(d.id).indexOf(String(p.id) + '~') === 0)).map((d) => Date.parse(d.pada || '')).filter((x) => isFinite(x));
@@ -577,7 +597,7 @@ export function susunAmbilAlih(tahun, L, w, yakin) {
   const baru = Object.assign({}, a, { pemegang: ini, pemegangLama: { id: String(p.id), nama: nm }, diambilAlihPada: w.kini, diambilAlihTanggal: w.tanggal, diambilAlihJam: w.jam });
   return { dokumen: [{ koleksi: 'tutupBukuAcara', data: baru }], patch: { kabar: 'Tutup buku ' + tahun + ' sekarang dipegang perangkat ini (' + ini.nama + '). ' + nm + ' tidak bisa melanjutkan atau membatalkan lagi.', kabarAwas: false } };
 }
-const bkKalimatTunda = (tahun, n) => 'Tutup buku ' + tahun + ': ' + n + ' catatan di perangkat ini masih menunggu server (belum diakui, belum dihitung masuk). Jangan tutup aplikasi; tunggu sinyal sampai antrean kosong (Menu › Sistem › Perangkat), baru Lanjutkan atau Batalkan.';
+const bkKalimatTunda = (tahun, n) => 'Tutup buku ' + tahun + ': ' + n + ' catatan di perangkat ini masih menunggu server (belum diakui, belum dihitung masuk). Jangan tutup aplikasi; tunggu sinyal sampai antrean kosong (Menu › Toko ini › Perangkat & antrean › Antrean kirim), baru Lanjutkan atau Batalkan.';
 /** Tahun lama berubah sejak rencana dibuat? (pembuka yang sudah masuk tidak terlihat mesin → 31 Des dihitung ulang dari catatan asli dengan patokan kas yang sama) */
 function bkBerubah(a) {
   const c = tbCutoff(Number(a.tahun)); const S = barisBuku(c, c, a.titikTahun || null); const lama = {}; (a.sebelum || []).forEach((b) => { lama[b.id] = b.n; });
@@ -756,7 +776,7 @@ export function susunSelesai(tahun, namaCadangan2, w, yakin, L) {
   // pesanan yang sengaja tertinggal (belum tuntas) dicatat juga di berita acara — juga bila hasil periksa saat arsip habis tidak sempat tersimpan
   const tertinggal = Array.from(new Set(Object.keys(bkTertinggal(tahun)).concat(bkTertinggalKini(tahun))));
   // v7: pintu tutup buku DITUTUP bersama berita acara 'selesai'
-  return { dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, acara, { status: 'selesai', cadangan2: namaCadangan2 || '', selesaiPada: w.kini, selesaiTanggal: w.tanggal, periksaUlang, susulan, tertinggal, langkah: Object.assign({}, acara.langkah || {}, { cadangan2: w.kini }) }) }].concat(bkTutupPintu(tahun, w)), patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup. Simpan kedua berkas cadangan di luar HP.' + (S ? ' ' + S.n + ' catatan susulan ' + tahun + ' tercatat di berita acara — ikuti pitanya.' : ''), kabarAwas: !!S } };
+  return { dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, acara, { status: 'selesai', cadangan2: namaCadangan2 || '', selesaiPada: w.kini, selesaiTanggal: w.tanggal, periksaUlang, susulan, tertinggal, langkah: Object.assign({}, acara.langkah || {}, { cadangan2: w.kini }) }) }].concat(bkTutupPintu(tahun, w)), patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup. Simpan kedua berkas cadangan di luar perangkat ini.' + (S ? ' ' + S.n + ' catatan susulan ' + tahun + ' tercatat di berita acara — ikuti pitanya.' : ''), kabarAwas: !!S } };
 }
 /**
  * §8 no. 7: kalimat bila tutup buku / pembatalan BERHENTI di kiriman ke-`ke` — tombol yang disebut harus tombol yang benar-benar meneruskan hal itu.
@@ -787,7 +807,10 @@ export function teksAcara(tahun, D, B, sebelum, saksi, w) {
   const L = ['TOKO BERAS M.IQBAL', 'BERITA ACARA TUTUP BUKU ' + tahun, tanggalPendek(w.tanggal) + ' · ' + w.jam + (D.latihan ? ' · LATIHAN' : ''), '', 'Harta toko akhir ' + tahun + ':'];
   B.baris.forEach((b) => L.push('  ' + (b.nama + '                                    ').slice(0, 38) + (b.a === null ? 'tidak bisa dihitung' : RP(b.a)) + (b.ada ? (b.a === null ? '  ?' : b.sama ? '  ✓' : '  ≠ ' + RP(b.b)) : '')));
   const rpA = (n) => (n === null ? 'tidak bisa dihitung' : RP(n));   // 39b no. 12: bukan Rp0
-  L.push('', 'Jumlah harta   ' + rpA(sebelum.hartaJml), 'Jumlah utang   ' + RP(sebelum.utangJml), 'Modal owner    ' + RP(sebelum.modal), 'Laba tinggal   ' + rpA(sebelum.labaTinggal), '');
+  L.push('', 'Jumlah harta   ' + rpA(sebelum.hartaJml), 'Jumlah utang   ' + RP(sebelum.utangJml), 'Modal owner    ' + RP(sebelum.modal), 'Laba tinggal   ' + rpA(sebelum.labaTinggal));
+  // keputusan owner 8 Okt 2026 (K9): modal awal saat sistem mulai mencatat DIBIARKAN tidak dicatat — berita acara menyebut asalnya dengan SATU kalimat tetap
+  // (sama persis dengan Neraca berkop, laporan-logika.js LP_KALIMAT_MODAL_AWAL); angkanya urusan konsultan
+  L.push(LP_KALIMAT_MODAL_AWAL, '');
   if (sebelum.kataLebih) L.push(sebelum.kataLebih, '');   // no. 4 B6
   // siap 2027: putusan hari tanpa tutup hari (A1), upah yang belum dibayar per orang (A6), catatan susulan (A9) ikut berita acara
   // sesudah kunci, nota tahun itu sudah di arsip → daftar hari diambil dari berita acara (putusanHari), bukan dihitung ulang dari buku hidup
@@ -843,16 +866,24 @@ export function susunCatatSusulan(tahun, w) {
 export function bkTahunSelesai(tahun) {
   const a = bkAcara(tahun); const era = eraBuku();
   if (a && a.status === 'selesai') return { ok: true, teks: 'tutup buku ' + tahun + ' selesai ' + tanggalPendek(a.selesaiTanggal || a.tanggal || '') };
+  // audit P2 (C3): berita acara tahun itu ADA dan belum selesai (berjalan / terkunci / membatalkan) = belum — SEBELUM cabang yang membaca catatan hidup. Sesudah
+  // arsipnya habis, catatan tahun itu tinggal di arsip: dulu cabang "tanpa catatan" meloloskan berita acara yang masih terkunci (Beranda menyuruh mengunci Januari)
+  if (a && a.status !== 'dibatalkan') return { ok: false, teks: bkKataBelum(tahun, a) };
   if (era !== null && era > tahun) return { ok: true, teks: 'tahun ' + tahun + ' sudah lewat tutup buku' };
   if (!a && era !== null && era >= tahun) return { ok: true, teks: 'tahun ' + tahun + ' ditutup sistem lama' };
   let pertama = ''; ambilPenjualanSemua().concat(ambilSemuaBatch().filter((b) => !b.stokAwal && !b.tutupBuku)).forEach((d) => { if (d.tanggal && (!pertama || d.tanggal < pertama)) pertama = d.tanggal; });
   if (!pertama || Number(pertama.slice(0, 4)) > tahun) return { ok: true, teks: 'tahun ' + tahun + ' tanpa catatan' };
-  return { ok: false, teks: 'Tutup buku ' + tahun + (a ? ' masih ' + ({ berjalan: 'berjalan', terkunci: 'terkunci, belum selesai', membatalkan: 'sedang dibatalkan', dibatalkan: 'dibatalkan' }[a.status] || a.status) : ' belum dikerjakan') };
+  return { ok: false, teks: bkKataBelum(tahun, a) };
 }
+const bkKataBelum = (tahun, a) => 'Tutup buku ' + tahun + (a ? ' masih ' + ({ berjalan: 'berjalan', terkunci: 'terkunci, belum selesai', membatalkan: 'sedang dibatalkan', dibatalkan: 'dibatalkan' }[a.status] || a.status) : ' belum dikerjakan');
 /** Beranda › Perlu perhatian (owner): tutup buku tahun lalu yang belum selesai sesudah 1 Jan, dan catatan susulan yang belum dicatat. */
 export function bkPerhatian(kini) {
   const out = []; const S = susulanBuku(); if (S) out.push({ teks: 'Tutup buku ' + S.tahun + ': ' + S.teks, nilai: 'Uang › Tutup buku', awas: true });
-  const T = tahunBuku(kini); if (T.bolehSungguhan && !bkTahunSelesai(T.tahun).ok) { const KM = kemajuanBuku(); out.push({ teks: KM ? KM.teks : 'Tutup buku ' + T.tahun + ' belum dikerjakan — kunci bulan ' + (T.tahun + 1) + ' menunggu sampai selesai', nilai: 'Uang › Tutup buku', awas: !!KM }); }
+  // audit P2 (C3): tutup buku / pembatalan yang belum tuntas SELALU disebut, apa pun tahunBuku — begitu penanda masuk, tahunBuku sudah tahun berikutnya (belum
+  // boleh sungguhan), jadi dulu Beranda diam sepanjang fase terkunci, juga selama stok, piutang & utang terhitung DOBEL
+  const KM = kemajuanBuku();
+  if (KM) out.push({ teks: /^(Pembatalan t|T)utup buku /.test(KM.teks) ? KM.teks : 'Tutup buku ' + KM.tahun + ' belum selesai: ' + KM.teks, nilai: 'Uang › Tutup buku', awas: true });
+  else { const T = tahunBuku(kini); if (T.bolehSungguhan && !bkTahunSelesai(T.tahun).ok) { out.push({ teks: 'Tutup buku ' + T.tahun + ' belum dikerjakan — kunci bulan ' + (T.tahun + 1) + ' menunggu sampai selesai', nilai: 'Uang › Tutup buku', awas: false }); } }
   return out;
 }
 
@@ -896,12 +927,24 @@ export function perkiraanKuota(tahun, kini) {
   const nilai = (x) => ['tulis', 'hapus', 'baca'].map((k) => ({ k, n: x[k], batas: BATAS_SPARK[k], persen: Math.round((x[k] / BATAS_SPARK[k]) * 100) }));
   const R = nilai(ritual), B = nilai(batal); const lewat = R.filter((x) => x.n > x.batas), mepet = R.filter((x) => x.n <= x.batas && x.n > 0.8 * x.batas);
   const kata = (x) => ANGKA(x.n) + ' ' + x.k + ' (' + x.persen + '% dari ' + ANGKA(x.batas) + ')';
-  const kalimat = ['Mulai ' + tanggalPendek(W.iso) + ' sesudah pukul ' + jam + '.00 WIB (kuota harian Spark baru penuh lagi). Satu perangkat, jangan muat ulang aplikasi — sekali muat ±' + ANGKA(muat) + ' baca.',
+  // audit P2 (C1): sisa baca hari itu sesudah ritual — perangkat lain yang terbuka selama ritual membaca sekali muat lagi (kuota satu hari cukup untuk satu perangkat)
+  const sisaBaca = BATAS_SPARK.baca - ritual.baca;
+  // keputusan owner 8 Okt 2026 (K11): TIDAK MUAT = ritual tetap dimulai hari itu; toko tutup sesudahnya sampai Lanjutkan & arsip habis, Lanjutkan dari perangkat
+  // yang sama sesudah reset. Sanggahan #121: setahun penuh bisa BEBERAPA hari kuota (tutup buku 2027: proyeksi docs/uji-rules-v7.md) — jumlah hari kuota = batas
+  // terberat dibulatkan ke atas; lebih dari satu hari tambahan → kalimat menyebut jumlah harinya, toko tutup TIAP hari sampai pita arsip habis
+  const hariKuota = Math.max(1, ...R.map((x) => Math.ceil(x.n / x.batas)));
+  const besok = bkTambahHari(W.iso, 1); const jamBesok = jamResetKuota(besok); const hariAkhir = bkTambahHari(W.iso, hariKuota - 1);
+  const kalimat = ['Mulai ' + tanggalPendek(W.iso) + ' sesudah pukul ' + jam + '.00 WIB (kuota harian Spark baru penuh lagi). Satu perangkat, jangan muat ulang aplikasi — sekali muat ±' + ANGKA(muat) + ' baca.'
+      + ' Sebelum mulai, TUTUP aplikasi di iPhone/iPad/HP lain (bukan sekadar layar mati) dan jangan dibuka sampai pita "Tahun ' + tahun + ' terkunci dan arsipnya habis" muncul — tiap perangkat yang terbuka membaca ±' + ANGKA(muat) + ' lagi; '
+      + (sisaBaca > 0 ? 'sisa baca hari itu sesudah ritual ±' + ANGKA(sisaBaca) + (sisaBaca < muat ? ', tidak cukup untuk satu perangkat lagi.' : '.') : 'kuota baca hari itu habis oleh ritualnya sendiri.'),
     lewat.length ? 'TIDAK MUAT dalam kuota satu hari: ' + lewat.map(kata).join(' · ') + '. Arsip akan berhenti di tengah; sampai dilanjutkan sesudah reset berikutnya, stok, piutang & utang terhitung DOBEL — jangan berjualan/menagih selama itu.'
-      : mepet.length ? 'MEPET: ' + mepet.map(kata).join(' · ') + '. Tulisan toko hari itu ikut menghabiskan kuota — kerjakan saat toko tutup.' : 'Muat dalam kuota satu hari.',
+        + ' Tetap mulai ' + tanggalPendek(W.iso) + ' (hari lain tidak lebih ringan); '
+        + (hariKuota <= 2 ? tanggalPendek(besok) + ' toko TUTUP sampai sesudah pukul ' + jamBesok + '.00 WIB, lalu ketuk "Lanjutkan" dari perangkat yang sama dan tunggu sampai arsipnya habis.'
+          : 'butuh ±' + hariKuota + ' hari kuota berturut-turut (sampai ±' + tanggalPendek(hariAkhir) + '): toko TUTUP tiap hari mulai ' + tanggalPendek(besok) + ' sampai pita "Tahun ' + tahun + ' terkunci dan arsipnya habis" muncul — tiap hari sesudah pukul ' + jamBesok + '.00 WIB ketuk "Lanjutkan" dari perangkat yang sama dan tunggu sampai arsipnya berhenti lagi atau habis.')
+      : mepet.length ? 'MEPET: ' + mepet.map(kata).join(' · ') + '. Yang ikut menghabiskan kuota hari itu: tiap perangkat lain yang dibuka (±' + ANGKA(muat) + ' baca sekali buka), tiap muat ulang aplikasi, dan tulisan toko — tutup semua perangkat lain, jangan muat ulang, kerjakan saat toko tutup.' : 'Muat dalam kuota satu hari.',
     'Batalkan sesudah arsip berjalan penuh butuh ±' + B.map(kata).join(' · ') + (B.some((x) => x.n > x.batas) || R.some((x) => x.n > 0.5 * x.batas) ? ' — tidak muat di hari yang sama dengan ritualnya: toko jangan berjualan sampai pembatalan tuntas sesudah reset berikutnya.' : '.'),
     'Kuota yang sudah terpakai hari itu tidak terlihat dari aplikasi — lihat Console › Firestore › Usage sebelum mulai.'];
-  const h = { tahun, rencana: W.iso, jamReset: jam, muat, nPembuka: nP, nArsip: A.n, kiriman: nKirim, ritual, batal, R, B, lewat: lewat.length > 0, mepet: mepet.length > 0, kalimat };
+  const h = { tahun, rencana: W.iso, jamReset: jam, muat, sisaBaca, hariKuota, nPembuka: nP, nArsip: A.n, kiriman: nKirim, ritual, batal, R, B, lewat: lewat.length > 0, mepet: mepet.length > 0, kalimat };
   _kuotaMemo = { k: kunciMemo, h }; return h;
 }
 export { RP as bkRP };

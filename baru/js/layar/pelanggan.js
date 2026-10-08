@@ -380,7 +380,7 @@ export function pasangLayarPelanggan(akar, opsi) {
       <div class="pita-info ${b.hasil.gagal ? 'awas' : ''}">${b.hasil.kartu} kartu · ${b.hasil.cip} cip dibuang${b.hasil.atur ? ' · setelan cip ikut dibersihkan' : ''}. Langkah berikutnya: unduh cadangan BARU, lalu hapus berkas cadangan lama yang masih memuat ciri itu.</div>
       ${b.hasil.baris.map((t, i) => h`<div class="ket" data-k="bs-hasil-${i}">${t}</div>`)}${bebas}${log}</div>`;
     if (!R.ada) return R.bebas.length || R.logKena ? h`<div class="kartu bs-lembar tenang" data-k="bersihkan" style="gap: 6px;"><div class="label">Ciri yang dicabut · periksa sendiri</div><div class="ket">Kartu & setelan sudah bersih dari cip warna kulit dan suku/logat.</div>${bebas}${log}</div>` : '';
-    const tombol = !R.cadangan ? h`<div class="kaca-btn mati" data-k="bs-tombol">Unduh cadangan dulu dari Sistem › Cadangan.</div>`
+    const tombol = !R.cadangan ? h`<div class="kaca-btn mati" data-k="bs-tombol">Unduh cadangan dulu dari Menu › Toko ini › Cadangan & simpanan.</div>`
       : h`<div class="kaca-btn ${b.yakin ? 'awas' : 'aktif emas'}" data-aksi="bsBersihkan" data-k="bs-tombol">${b.menulis ? 'membersihkan…' : b.yakin ? 'KETUK SEKALI LAGI — BERSIHKAN (tidak bisa diurungkan)' : 'BERSIHKAN'}</div>`;
     return h`<div class="kartu bs-lembar" data-k="bersihkan" style="gap: 6px;"><div class="label">Bersihkan ciri yang dicabut</div>
       <div class="ket">Toko tidak lagi mencatat suku, ras, atau warna kulit pelanggan. Cip itu masih tersimpan di kartu lama — di bawah ini pratinjaunya; belum ada yang ditulis.</div>

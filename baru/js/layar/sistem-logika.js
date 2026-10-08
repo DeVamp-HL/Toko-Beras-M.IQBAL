@@ -14,6 +14,7 @@ import { tempoPemasok } from './bon-pemasok-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
 import { semuaBon, pesanTagih } from './bon-logika.js';
 import { SERVER_BUKA } from '../data/akses.js';
+import { HB_TEMPAT } from '../data/hemat-baca.js';
 // owner 7 Okt (JS2-C): bawaan batas nego satu sumber
 import { NG_BAWAAN, ngPeriksaMinta } from './nego-logika.js';
 
@@ -118,7 +119,7 @@ export function ssJejak(kini, antre, saring) {
 // ---------- SS1 · Hemat baca (owner 7 Okt 2026, siap 2027 — docs/rancangan-hemat-baca.md) ----------
 const SS_MODE_HEMAT = { delta: 'dengar ubahan', total: 'baca penuh', penuh: 'dengar penuh' };
 /**
- * Panel Menu › Sistem › Perangkat › Hemat baca. K = keadaan hemat perangkat ini (firebase.js hematKeadaan), siap = daftar siap-nyala (hbSiapNyala).
+ * Panel Menu › Toko ini › Perangkat & antrean › Hemat baca (HB_TEMPAT). K = keadaan hemat perangkat ini (firebase.js hematKeadaan), siap = daftar siap-nyala (hbSiapNyala).
  * Angka baca = PERKIRAAN (catatan yang datang dari server ke perangkat), bukan tagihan — tagihan dibaca di tab Usage Console. Kalimat toko.
  */
 export function ssHemat(K, siap) {
@@ -130,10 +131,10 @@ export function ssHemat(K, siap) {
   const status = !H.saklar ? 'MATI' : H.nyala ? 'NYALA' : 'NYALA, belum berjalan';
   const kl = H.klaim || null;
   // #111 × Paket C: koleksi yang terperiksa tapi belum dibaca penuh sejak kuota baca terakhir direset (SATU sumber hbBelumLengkap) — keputusan final menunggu;
-  // tombolnya ada di panel ini. Sanggahan 8 Okt: dihitung PER SEBAB (jam server belum diterima / kuota habis / ubahan toko belum sampai ≠ "belum dibaca penuh"),
+  // tombolnya ada di panel ini. Sanggahan 7 Okt: dihitung PER SEBAB (jam server belum diterima / kuota habis / ubahan toko belum sampai ≠ "belum dibaca penuh"),
   // "jenis catatan" (bukan "koleksi"); petunjuk menu dibuang — panelnya ini
   const BL = H.belumLengkap || {}; const grupH = {};
-  Object.keys(BL).forEach((k) => { if (!BL[k] || BL[k].jenis !== 'harian') return; const s = String(BL[k].sebab || '').replace(' (Menu › Sistem › Perangkat › Hemat baca)', ''); grupH[s] = (grupH[s] || 0) + 1; });
+  Object.keys(BL).forEach((k) => { if (!BL[k] || BL[k].jenis !== 'harian') return; const s = String(BL[k].sebab || '').replace(' (' + HB_TEMPAT + ')', ''); grupH[s] = (grupH[s] || 0) + 1; });
   const tundaToko = kl && kl.selesai && kl.temuanTunda && typeof kl.temuanTunda === 'object' ? Object.keys(kl.temuanTunda).reduce((a, k) => a + (Number(kl.temuanTunda[k]) || 0), 0) : 0;
   return { status, nyala: !!H.nyala, saklar: !!H.saklar, owner: !!H.owner,
     harianBelum: H.nyala && Object.keys(grupH).length ? Object.keys(grupH).map((s) => grupH[s] + ' jenis catatan ' + s).join('; ') + '. Kartu pemeriksaan sesudah tutup buku, kunci bulan, Laporan › Pajak & dokumen Laporan menunggu sampai lengkap.' : '',

@@ -12,7 +12,7 @@ penjaga pusat (bulan terkunci / > 18 pemeriksaan tidak dikirim), kirim bertahap 
     python3 alat-uji/uji_kunci_periode.py            → N lulus · 0 gagal (+ uji asap cadangan toko lokal bila ada)
     python3 alat-uji/uji_kunci_periode.py --kontrol  → logika yang dirusak wajib ketahuan
 """
-import os, sys, json, glob, subprocess, tempfile
+import os, re, sys, json, glob, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
@@ -124,6 +124,23 @@ ok('⛔ perangkat yang melaporkan antre > 0 memblokir, namanya disebut, dengan k
 ok('⛔ perangkat tanpa denyut 24 jam memblokir; "sudah tidak dipakai" hanya ditawarkan untuk perangkat yang antre & ditolaknya 0',
   !butir(D1, 'perangkatDenyut').ok && /Tablet lama/.test(butir(D1, 'perangkatDenyut').rincian.join()) && butir(D1, 'perangkatDenyut').aksi.length === 1 && butir(D1, 'perangkatDenyut').aksi[0].id === 'tab-lama'
   && /antrean/.test(susunLupakanPerangkat('tab-kasir', true).tolak || '') && !!susunLupakanPerangkat('tab-lama', false).perluYakin && susunLupakanPerangkat('tab-lama', true).hapus[0].id === 'tab-lama');
+// audit P2 · sanggahan #121: perangkat yang diam DAN laporan terakhirnya masih antrean / ditolak (hilang / rusak) tidak ditawari tombol — ket butir yang DILIHAT owner
+// (perangkatDenyut, perangkatAntre) menunjuk butir "Perangkat hilang atau rusak" di catatan "Prosedur pulih darurat"; dulu hanya tolakan susunLupakanPerangkat (tak tercapai)
+var hpHilang = { id: 'hp-hilang', nama: 'HP hilang', pada: '2026-09-19T02:00:00.000Z', antrean: 3, gagal: 1, aplikasi: 'darurat' };
+pasok('perangkatStatus', semula.perangkat.concat([hpHilang])); var DH = kpDaftarPeriksa('2026-08', kini(), K());
+pasok('perangkatStatus', semula.perangkat.filter(function (p) { return p.id !== 'tab-lama'; }).concat([hpHilang])); var DH2 = kpDaftarPeriksa('2026-08', kini(), K()); var tolakH = susunLupakanPerangkat('hp-hilang', true).tolak || '';
+pasok('perangkatStatus', semula.perangkat);
+var dnH = butir(DH, 'perangkatDenyut'), dnH2 = butir(DH2, 'perangkatDenyut'), dn1 = butir(D1, 'perangkatDenyut');
+ok('⛔ (sanggahan #121) perangkat diam yang masih melaporkan antrean / ditolak: TANPA tombol, namanya disebut "tidak bisa dinyatakan tidak dipakai dari sini" + jalan catatan "Prosedur pulih darurat", butir "Perangkat hilang atau rusak" (nama butir persis); perangkat diam lain tetap ditawari tombol',
+  KP_BUTIR_HILANG === 'Perangkat hilang atau rusak' && KP_KALIMAT_HILANG.indexOf('catatan "Prosedur pulih darurat", butir "Perangkat hilang atau rusak"') >= 0 && /lalu hapus lewat Console/.test(KP_KALIMAT_HILANG)
+  && !dnH.ok && J(dnH.aksi.map(function (a) { return a.id; })) === '["tab-lama"]' && dnH.ket.indexOf('nyalakan & sambungkan, atau nyatakan sudah tidak dipakai. HP hilang masih melaporkan antrean / ditolak, jadi tidak bisa dinyatakan tidak dipakai dari sini — ' + KP_KALIMAT_HILANG) >= 0,
+  J(dnH));
+ok('⛔ (sanggahan #121) satu-satunya perangkat diam masih berantrean: ket TIDAK menawarkan "nyatakan sudah tidak dipakai" (tombolnya tidak ada) dan menunjuk jalan perangkat hilang; tidak ada perangkat diam berantrean = tanpa kalimat itu',
+  dnH2.aksi.length === 0 && dnH2.ket.indexOf('atau nyatakan sudah tidak dipakai') < 0 && dnH2.ket.indexOf('nyalakan & sambungkan. HP hilang masih melaporkan antrean / ditolak') >= 0 && dnH2.ket.indexOf(KP_KALIMAT_HILANG) >= 0
+  && dn1.ket.indexOf('Prosedur pulih darurat') < 0 && /nyalakan & sambungkan, atau nyatakan sudah tidak dipakai$/.test(dn1.ket), J([dnH2.ket, dn1.ket]));
+ok('⛔ (sanggahan #121) butir perangkat yang masih menyimpan antrean juga menunjuk jalan perangkat hilang; tolakan "sudah tidak dipakai" (pintu masuk) memakai kalimat yang sama',
+  butir(D1, 'perangkatAntre').ket.indexOf('nyalakan & sambungkan perangkat itu sampai antreannya terkirim; ' + KP_KALIMAT_HILANG) >= 0 && /akan ditolak sesudah dikunci/.test(butir(D1, 'perangkatAntre').ket)
+  && /^HP hilang terakhir melaporkan 3 antrean \/ 1 ditolak — nyalakan & kirim dulu, tidak bisa dilupakan dari sini; /.test(tolakH) && tolakH.indexOf(KP_KALIMAT_HILANG) >= 0, J([butir(D1, 'perangkatAntre').ket, tolakH]));
 ok('hari tanpa tutup: hari BERNOTA hanya bisa "diterima apa adanya" (bukan libur); hari tanpa nota boleh libur; tutup hari tidak dibuat mundur',
   D1.hari.some(function (h) { return h.iso === '2026-08-12' && h.adaJual && J(h.pilihan) === '["diterima"]'; }) && D1.hari.some(function (h) { return h.iso === '2026-08-14' && !h.adaJual && h.pilihan.indexOf('libur') >= 0; })
   && /TIDAK dibuat mundur/.test(butir(D1, 'hari').ket) && !butir(D1, 'hari').ok, J(D1.hari.slice(0, 6)));
@@ -280,6 +297,24 @@ var A2era = function (tahunDari, cek) { var b0 = cacheMentah('batch').slice(); p
 var A2d = A2era(2027, 2026), A2e = A2era(2026, 2026);
 ok('A2 tahun yang sudah dilewati tutup buku berikutnya (era 2027, tanpa berita acara 2026) tidak menahan', A2d.ok && /sudah lewat tutup buku/.test(A2d.teks), J(A2d));
 ok('A2 tahun yang ditutup sistem lama (saldo pembuka 2026 tanpa berita acara) tidak menahan', A2e.ok && /ditutup sistem lama/.test(A2e.teks), J(A2e));
+// audit P2 (C3): berita acara 2026 TERKUNCI dengan penanda masuk (era 2026). habis = arsipnya sudah habis (hasil periksa dibekukan) & catatan nota / kedatangan 2026
+// sudah pindah ke arsip (buku hidup tanpa catatan 2026); tidak habis = fase DOBEL (catatan 2026 masih di buku hidup bersama saldo pembuka 2027)
+var A2arsip = function (habis) { var lama = __KINI; bukaSemua(); var j0 = cacheMentah('penjualan').slice(), b0 = cacheMentah('batch').slice(), p0 = cacheMentah('pengaturan').slice();
+  var ac = { id: '2026', tahun: 2026, status: 'terkunci', nPembuka: 1, nArsip: 50, paraf: { owner: true, saksi: true, pada: '2027-01-01T08:00:00.000Z' } };
+  pasok('penjualan', habis ? j0.filter(function (x) { return String(x.tanggal || '') > '2026-12-31'; }) : j0);
+  pasok('batchMasuk', (habis ? b0.filter(function (x) { return x.stokAwal || x.tutupBuku || String(x.tanggal || '') > '2026-12-31'; }) : b0).concat([{ id: 'a2-pembuka', tanggal: '2027-01-01', pemasok: 'TUTUP BUKU 2026', biayaBongkar: 0, stokAwal: true, merkList: [], tutupBuku: true, tahunDari: 2026 }]));
+  if (habis) pasok('pengaturan', p0.concat([{ id: 'periksaArsip2026', tahun: 2026, percobaan: ac.paraf.pada, baris: [] }]));
+  pasok('tutupBukuAcara', [ac]); pada('2027-02-10T10:00:00+07:00');
+  var D = kpDaftarPeriksa('2027-01', kini(), K({ kunciMulai: undefined, putusanHari: putusSemua, centang: C_SEMUA })); kunciKe('2026-12');
+  var hasil = { t: butir(D, 'tutupBukuLalu'), D: D, TS: bkTahunSelesai(2026), P: kpPerhatian(kini(), { siap25b: true }), B: bkPerhatian(kini()), KM: kemajuanBuku(), era: eraBuku() };
+  pasok('tutupBukuAcara', []); pasok('penjualan', j0); pasok('batchMasuk', b0); pasok('pengaturan', p0); __KINI = lama; bukaSemua(); return hasil; };
+var A2h = A2arsip(true);
+ok('A2 (audit P2 · C3) tutup buku 2026 TERKUNCI & arsipnya HABIS (buku hidup tanpa catatan 2026): BELUM selesai — butir ⛔ tidak beres dengan teks "terkunci, belum selesai" (bukan "tanpa catatan"), kunci Januari ditolak; Beranda TIDAK menyuruh mengunci Januari 2027, tapi menyebut "Tutup buku 2026" (Uang › Tutup buku)',
+  A2h.era === 2026 && !!A2h.KM && A2h.KM.fase === 'selesaikan' && !A2h.TS.ok && /terkunci, belum selesai/.test(A2h.TS.teks) && !/tanpa catatan/.test(A2h.TS.teks + ' ' + A2h.t.ket) && !A2h.t.ok && /terkunci, belum selesai/.test(A2h.t.ket) && !A2h.D.boleh
+  && A2h.P.length === 0 && A2h.B.some(function (x) { return /^Tutup buku 2026 /.test(x.teks) && /arsipnya habis/.test(x.teks) && x.nilai === 'Uang › Tutup buku' && x.awas; }), J([A2h.TS, A2h.P, A2h.B, A2h.KM && A2h.KM.fase]));
+var A2x = A2arsip(false);
+ok('A2 (audit P2 · C3) fase DOBEL (terkunci, catatan 2026 belum pindah ke arsip): Beranda menyebut "Tutup buku 2026" & DOBEL (dulu diam sepanjang fase terkunci); kunci Januari tetap ditolak, Beranda tidak menyuruh mengunci',
+  A2x.era === 2026 && !!A2x.KM && A2x.KM.fase === 'arsip' && !A2x.TS.ok && !A2x.t.ok && A2x.P.length === 0 && A2x.B.some(function (x) { return /^Tutup buku 2026 /.test(x.teks) && /DOBEL/.test(x.teks) && x.awas; }), J([A2x.B, A2x.KM && A2x.KM.fase]));
 
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
@@ -355,6 +390,24 @@ def satu_lingkup(js):
     return js.replace("const teksMargin = (m) =>", "const hpTeksMargin = (m) =>").replace("teksMargin: teksMargin(margin)", "teksMargin: hpTeksMargin(margin)")
 
 
+# audit P2 · sanggahan #121: nama butir prosedur yang dirujuk kalimat layar (KP_BUTIR_HILANG) = judul butir tebal di catatan "Prosedur pulih darurat". Butir itu
+# lahir di PR #119 (docs/prosedur-pulih-darurat.md, daftar periksa ritual › Sampai 31 Des). Selama berkasnya belum punya butir "Perangkat hilang …" sama sekali,
+# pemeriksaan ini MENUNGGU (dicetak, tidak dihitung lulus); begitu ada, namanya wajib PERSIS sama.
+PROSEDUR = os.path.join(AKAR, 'docs', 'prosedur-pulih-darurat.md')
+
+
+def butir_prosedur(js_logika, doc):
+    """→ (True | False | None, keterangan). None = berkas prosedur belum punya butir perangkat hilang."""
+    m = re.search(r"export const KP_BUTIR_HILANG = '([^']+)';", js_logika)
+    if not m: return False, 'KP_BUTIR_HILANG tidak ada di kunci-periode-logika.js'
+    ada = re.findall(r'\*\*(Perangkat hilang[^*]*)\*\*', doc)
+    if not ada: return None, 'butir "Perangkat hilang …" belum ada di docs/prosedur-pulih-darurat.md (PR #119)'
+    return (m.group(1) in ada), 'kode: "%s" · prosedur: %s' % (m.group(1), ' | '.join('"%s"' % x for x in ada))
+
+
+CONTOH_119 = '- [ ] **Perangkat hilang atau rusak** (tidak bisa dinyalakan lagi). Perangkat yang diam lebih dari 24 jam ditawari tombol …'
+
+
 def utama(js):
     # sanggahan paket A: skenario yang jatuh di tengah (mis. kunci bulan ditolak lalu tulis() melempar) tetap melaporkan pemeriksaan yang sudah gagal —
     # kontrol berbunyi dengan sebabnya, bukan hanya "JSC JATUH"
@@ -384,7 +437,14 @@ if __name__ == '__main__':
             'catatan ditolak di perangkat tidak memblokir': js.replace("(AL.belum || []).concat(AL.ditolak || []).forEach(", "(AL.belum || []).forEach("),
             'parkir tanpa cap waktu dianggap aman': js.replace("const parkir = (K.parkir || []).filter((p) => !p.pada || ", "const parkir = (K.parkir || []).filter((p) => !!p.pada && "),
             'perangkat antre tidak memblokir': js.replace("tambah({ id: 'perangkatAntre', blokir: true, ok: !antreLain.length,", "tambah({ id: 'perangkatAntre', blokir: true, ok: true,"),
-            'perangkat diam boleh dilupakan walau masih antre': js.replace("if (Number(p.antrean) > 0 || Number(p.gagal) > 0) return { tolak:", "if (false) return { tolak:"),
+            'perangkat diam boleh dilupakan walau masih antre': js.replace("  if (kpMasihAntre(p)) return { tolak:", "  if (false) return { tolak:"),
+            # audit P2 · sanggahan #121: jalan perangkat hilang di butir yang DILIHAT owner
+            'perangkat diam berantrean: ket tanpa jalan perangkat hilang (seperti main)': js.replace("+ (diamAntre.length ? '. ' + diamAntre.map(kpNamaDenyut).join(', ') + ' masih melaporkan antrean / ditolak, jadi tidak bisa dinyatakan tidak dipakai dari sini — ' + KP_KALIMAT_HILANG : '')", ""),
+            'perangkat diam berantrean: ket tetap menawarkan "nyatakan sudah tidak dipakai" (tombolnya tidak ada)': js.replace("+ (diamBisa.length ? ', atau nyatakan sudah tidak dipakai' : '')", "+ ', atau nyatakan sudah tidak dipakai'"),
+            'perangkat diam berantrean ditawari tombol "sudah tidak dipakai"': js.replace("aksi: diamBisa.map((p) =>", "aksi: diam.map((p) =>"),
+            'perangkat berantrean: ket tanpa jalan perangkat hilang': js.replace("sampai antreannya terkirim; ' + KP_KALIMAT_HILANG : 'semua perangkat melaporkan antrean kosong',", "sampai antreannya terkirim' : 'semua perangkat melaporkan antrean kosong',"),
+            'nama butir prosedur meleset dari catatan prosedur ("perangkat hilang")': js.replace("const KP_BUTIR_HILANG = 'Perangkat hilang atau rusak';", "const KP_BUTIR_HILANG = 'perangkat hilang';"),
+            'tolakan "sudah tidak dipakai" tanpa jalan perangkat hilang': js.replace("tidak bisa dilupakan dari sini; ' + KP_KALIMAT_HILANG + '.' };", "tidak bisa dilupakan dari sini.' };"),
             'libur boleh di hari bernota': js.replace(": x.jenis === 'libur' && !jual[t]) ? x : null", ": x.jenis === 'libur') ? x : null"),
             '"diterima apa adanya" tanpa alasan': js.replace("x.jenis === 'diterima' ? !kpKosong(x.alasan) && String(x.alasan).trim().length >= 5", "x.jenis === 'diterima' ? true"),
             'kunci boleh bulan mana saja': js.replace("const c = kpCalon(kini); if (bulan !== c) return { tolak:", "const c = kpCalon(kini); if (false) return { tolak:"),
@@ -421,10 +481,21 @@ if __name__ == '__main__':
             # arah sebaliknya (sanggahan paket A): butir A2 tidak boleh menahan yang tidak perlu
             'A2: tahun tanpa catatan ikut menahan kunci bulan': js.replace("return { ok: true, teks: 'tahun ' + tahun + ' tanpa catatan' };", "return { ok: false, teks: 'tahun ' + tahun + ' tanpa catatan' };"),
             'A2: tahun yang sudah dilewati tutup buku berikutnya ikut menahan': js.replace("if (era !== null && era > tahun) return { ok: true,", "if (era !== null && era > tahun) return { ok: false,"),
+            # audit P2 (C3)
+            'A2 (audit P2): berita acara terkunci yang arsipnya habis lolos sebagai "tanpa catatan"': js.replace("  if (a && a.status !== 'dibatalkan') return { ok: false, teks: bkKataBelum(tahun, a) };\n", ""),
+            'A2 (audit P2): Beranda hanya membaca tahunBuku (diam sepanjang fase terkunci / DOBEL)': js.replace("  if (KM) out.push({ teks:", "  if (false) out.push({ teks:"),
             'A2: tahun yang ditutup sistem lama ikut menahan': js.replace("if (!a && era !== null && era >= tahun) return { ok: true,", "if (!a && era !== null && era >= tahun) return { ok: false,"),
             '39b-38: potret kunci memakai laba mesin (tanpa lebih/kurang kas)': js.replace("const L = ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan));", "const L = { omzetPenuh: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).omzetPenuh, margin: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).margin, labaBersih: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).labaMesin };"),
         }
         kode = 0
+        # sanggahan #121: pemeriksa nama butir prosedur berbunyi bila judul butirnya meleset (catatan prosedur bentuk PR #119, judulnya diganti)
+        LG = open(os.path.join(AKAR, 'baru/js/layar/kunci-periode-logika.js'), encoding='utf-8').read()
+        for nama, (lg, doc) in {'nama butir di catatan prosedur bergeser ("Perangkat hilang")': (LG, CONTOH_119.replace('**Perangkat hilang atau rusak**', '**Perangkat hilang**')),
+                                'nama butir di kode bergeser ("Perangkat hilang / rusak")': (LG.replace("export const KP_BUTIR_HILANG = 'Perangkat hilang atau rusak';", "export const KP_BUTIR_HILANG = 'Perangkat hilang / rusak';"), CONTOH_119)}.items():
+            if lg == LG and doc == CONTOH_119: print('KONTROL BASI  ' + nama); kode = 3; continue
+            r, ket = butir_prosedur(lg, doc)
+            print(('BERBUNYI ' if r is False else 'DIAM!!   ') + nama + ' → ' + ket)
+            if r is not False: kode = 3
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
             l, g = utama(isi)
@@ -432,6 +503,15 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
+    # sanggahan #121: nama butir prosedur (statis) — pemeriksanya sendiri dicoba dulu atas contoh bentuk PR #119
+    LG = open(os.path.join(AKAR, 'baru/js/layar/kunci-periode-logika.js'), encoding='utf-8').read()
+    r0, k0 = butir_prosedur(LG, CONTOH_119)
+    if r0 is True: l += 1
+    else: g.append('pemeriksa nama butir prosedur tidak mengenali bentuk PR #119 → ' + k0)
+    r1, k1 = butir_prosedur(LG, open(PROSEDUR, encoding='utf-8').read())
+    if r1 is True: l += 1
+    elif r1 is None: print('MENUNGGU  ' + k1 + ' — dicocokkan begitu butirnya ada')
+    else: g.append('kalimat layar merujuk butir prosedur yang namanya tidak ada di docs/prosedur-pulih-darurat.md → ' + k1)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')), key=os.path.basename)
     if cad and not g:

@@ -1015,7 +1015,7 @@ export function pasangLayarJual(akar, opsi) {
           ${owner && x.jenis === 'minta' && x.status === 'menunggu' ? h`<span class="kaca-btn kecil aktif emas" data-aksi="ngSetujui" data-id="${x.id}">setujui</span><span class="kaca-btn kecil awas" data-aksi="ngTolak" data-id="${x.id}">tolak</span>` : ''}</div>
       </div>`)}${B.baris.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Belum ada nego hari ini.</div>`}</div>
       ${owner && B.menunggu ? h`<input class="ketik-nama" id="ngAlasanTolak" type="text" value="${s.ngAlasanTolak}" data-ketik="ngAlasanTolak" placeholder="Alasan kalau menolak (wajib) — yang meminta melihatnya">` : ''}
-      <div class="ket" style="font-size: 11px;">Tiap nego tercatat: siapa, barang apa, dari harga katalog jadi berapa, dan selisihnya. Jatah = bagian dari MARGIN barang (setelan di Menu › Sistem › Peran › Atur), jadi ikut berubah waktu modal naik. Yang "menunggu owner" belum mengubah harga notanya sampai disetujui.</div>
+      <div class="ket" style="font-size: 11px;">Tiap nego tercatat: siapa, barang apa, dari harga katalog jadi berapa, dan selisihnya. Jatah = bagian dari MARGIN barang (setelan di Menu › Toko ini › Peran & persetujuan › Atur), jadi ikut berubah waktu modal naik. Yang "menunggu owner" belum mengubah harga notanya sampai disetujui.</div>
     </div>`;
   }
 
@@ -1098,7 +1098,7 @@ export function pasangLayarJual(akar, opsi) {
   const tulisSimpanan = (v) => tulisSesi(L.KUNCI_SIMPAN_KERANJANG, v);
   // tanda tab: ditulis "dipakai" begitu layar dipasang, "ditinggal" saat halaman ditutup / dimuat ulang dengan wajar (pagehide); kembali dari tembolok mundur → dipakai lagi
   // web app layar penuh (iOS navigator.standalone / display-mode standalone) tidak punya tab untuk digandakan — dimatikan iOS di latar tanpa pagehide = tab yang sama
-  const mandiri = (typeof navigator !== 'undefined' && navigator.standalone === true) || (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !!window.matchMedia('(display-mode: standalone)').matches);
+  const mandiri = L.webAppMandiri(typeof navigator !== 'undefined' ? navigator : null, typeof window !== 'undefined' ? window : null);
   const _tab = L.bacaTandaTab(bacaSesi(L.KUNCI_TAB_KERANJANG), Date.now().toString(36) + Math.random().toString(36).slice(2, 10), mandiri);
   const tandaiTab = (ditinggal) => tulisSesi(L.KUNCI_TAB_KERANJANG, { id: _tab.id, ditinggal: !!ditinggal });
   tandaiTab(false);
