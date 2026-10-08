@@ -93,6 +93,13 @@ pasok('piutangMutasi', piu0.concat([{ id: 'm11', tanggal: '2026-09-10', namaPela
 var P5 = susunPerhatian(); var h5 = P5.find(function (x) { return /Hapus buku yang ternyata dibayar/.test(x.teks); });
 ok('perhatian 39b-4 B1: bon 100.000 dihapus buku lalu dibayar 100.000 (katalog kasir basi) → "Hapus buku yang ternyata dibayar · 1 nama (Yoga)" Rp100.000, AWAS — BUKAN "Kelebihan bayar pelanggan"', h5 && h5.teks === 'Hapus buku yang ternyata dibayar · 1 nama (Yoga) — hapus bukunya perlu dibalik, bukan uang pelanggan' && h5.nilai === 'Rp100.000' && h5.awas && !P5.some(function (x) { return /Kelebihan bayar pelanggan/.test(x.teks); }), JSON.stringify(P5));
 pasok('piutangMutasi', piu0);
+// Paket F1 (owner 8 Okt 2026): bon lama pemasok yang BERGULIR (kartu "bon lama ikut kedatangan terakhir") tidak punya umur tetap → tidak ikut "bon tertua"
+var up0 = cacheMentah('utangPemasok').slice(), pc0 = cacheMentah('pemasokCat').slice();
+pasok('utangPemasokMutasi', up0.concat([{ id: 9801, tipe: 'saldoAwal', pemasok: 'PEMASOK LAMA', nominal: 5000000, tanggal: '2026-08-25', jam: '23:02', bonTanggal: '2026-07-01', catatan: 'contoh' }]));
+var PF0 = susunPerhatian().find(function (x) { return /Utang ke pemasok/.test(x.teks); });
+pasok('pemasokCatatan', pc0.concat([{ id: 'pemasok lama', nama: 'PEMASOK LAMA', bonLamaBergulir: true }])); var PF1 = susunPerhatian().find(function (x) { return /Utang ke pemasok/.test(x.teks); });
+pasok('utangPemasokMutasi', up0); pasok('pemasokCatatan', pc0);
+ok('perhatian F1: bon lama 1 Jul → "bon tertua N hari"; kartu pemasoknya bergulir → baris utang tetap Rp5.000.000 tanpa "bon tertua"', PF0 && /bon tertua \d+ hari/.test(PF0.teks) && PF0.nilai === 'Rp5.000.000' && PF1 && !/bon tertua/.test(PF1.teks) && PF1.nilai === 'Rp5.000.000', JSON.stringify([PF0, PF1]));
 var K = susunKas(KINI);
 ok('kas: tanpa titik kas di perangkat → MENOLAK menyebut saldo; arus hari ini tetap dari buku kas: laci 1.274.000 · rekening 200.000', K.adaTitik === false && K.total === null && K.masukLaci === 1274000 && K.masukRek === 200000 && K.keluar === 0, JSON.stringify(K));
 localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-18', laci: 1000000, rekening: 500000, amplop: 0, brankas: 0 }));
@@ -250,6 +257,9 @@ var ang = {}; ang[jenisAda.id] = 1000;
 var LM = denganCacheSementara([{ koleksi: 'aturanToko', data: { id: 'kendaliBiaya', anggaran: ang, ambang: 10, ambangPemicu: 1, kata: {} } }], function () { var b = dbBulanIni(KINI); var k2 = kendaliBulan('2026-09', KINI); var p2 = pemicuBiaya(k2);
   return { b: b.biaya.find(function (r) { return r.id === jenisAda.id; }), merah: b.merah, kMerah: k2.merah, kLampu: k2.baris.find(function (r) { return r.id === jenisAda.id; }).lampu, pemicu: b.pemicu, naik: p2.naik.map(function (r) { return r.id; }) }; });
 ok('lampu anggaran = Kendali biaya: anggaran Rp1.000 untuk "' + jenisAda.nama + '" → MERAH di dasbor & di Kendali biaya', LM.b && LM.b.lampu === 'merah' && LM.kLampu === 'merah' && LM.merah === LM.kMerah && LM.merah >= 1, J(LM));
+// 8 Okt 2026 (asap cadangan toko: susut bulan berjalan MINUS → total kartu Biaya minus padahal barisnya positif semua): baris NEGATIF ikut kartu Biaya → baris menutup ke total
+var SN = denganCacheSementara([{ koleksi: 'penyesuaianStok', data: { id: 'snF3', tanggal: '2026-09-15', jam: '10:00', merk: 'Angsa', selisihKg: 100, nilaiRp: 50000000, alasan: 'uji stok bertambah' } }], function () { var b = dbBulanIni(KINI); return { susut: b.biaya.find(function (r) { return r.id === 'susut'; }), jumlah: b.biaya.reduce(function (a, r) { return a + r.n - r.menggantung; }, 0), semua: b.semuaBiaya }; });
+ok('kartu Biaya: susut & selisih stok MINUS (stok bertambah) tetap jadi baris (angka bertanda minus) dan baris-baris menjumlah ke "Semua biaya"', SN.susut && SN.susut.n < 0 && Math.abs(SN.jumlah - SN.semua) < 0.5, J(SN));
 ok('pemicu (ambang owner 1%): yang naik = pemicuBiaya().naik, tiap baris punya tujuan layar (dari peringatan Kendali biaya)', LM.pemicu.length > 0 && J(LM.pemicu.map(function (r) { return r.id; })) === J(LM.naik) && LM.pemicu.every(function (r) { return r.tujuan && r.tujuan.ke; }), J([LM.pemicu, LM.naik]));
 // ---- STOK & WADAH
 var DBr = daftarBarang(); var harap = DBr.filter(function (b) { return b.jenis === 'karung' && !b.wadahStok && Math.abs(b.sisa) > 0.004; });
@@ -331,6 +341,7 @@ print(JSON.stringify(hasil));
 
 
 RUSAK_DASBOR = [
+    ('8 Okt: kartu Biaya membuang baris negatif lagi', "const biaya = K.baris.filter((r) => Math.abs(r.pakai) > 0.5 || r.anggaran > 0).map(", "const biaya = K.baris.filter((r) => r.pakai > 0 || r.anggaran > 0).map("),
     ('dasbor: omzet hari ini bruto (retur tidak dikurangi)', "omzet: R.omzet, nota: R.n,", "omzet: R.omzet + R.retur, nota: R.n,"),
     ('dasbor: amplop laba tidak ikut kas per tempat', "const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];", "const DB_TEMPAT = ['laci', 'brankas', 'rekening'];"),
     ('dasbor: kas per tempat ditebak walau titik kas belum ada', "kas: S.ada ? { ada: true,", "kas: true ? { ada: true,"),
@@ -360,6 +371,7 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            'F1 Beranda: bon lama bergulir ikut "bon tertua"': js.replace("const gulir = {}; ambilPemasokCatatan().forEach((c) => { if (c && c.bonLamaBergulir === true) gulir[String(c.id)] = true; });", "const gulir = {};"),
             '39b-19: sel per jam tidak mengurangi retur': js.replace("rkReturMenit(ix, hari).forEach((x) => { if (x.m === null) return; const j = Math.floor(x.m / 60); isi[j] = (isi[j] || 0) - x.uang; });", ""),
             '39b-19: angka minus tanpa titik ribuan': js.replace("if (n < 0) g[0] = '−' + g[0]; return g; };", "return RP(n).replace(/^Rp\\s?/, 'Rp ').split(/[ .]/).map((t, i) => (i >= 2 ? '.' + t : t)); };"),
             '39b-19: sel minus lebar NaN': js.replace("const v = typeof c.v === 'number' ? Math.max(0, c.v) : 0;", "const v = typeof c.v === 'number' ? c.v : 0;"),
