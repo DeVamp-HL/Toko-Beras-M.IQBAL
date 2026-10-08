@@ -44,7 +44,9 @@ export function dbHariIni(kini) {
 export function dbBulanIni(kini) {
   const key = hariIniIso(kini).slice(0, 7); const K = kendaliBulan(key, kini); const T = titikImpas(K, kini); const P = pemicuBiaya(K); const W = peringatanBiaya(K, P, T);
   const tujuanW = (id) => { const w = W.find((x) => x.id === id); return w && w.tujuan ? w.tujuan : null; };
-  const biaya = K.baris.filter((r) => r.pakai > 0 || r.anggaran > 0).map((r) => ({ id: r.id, nama: r.nama, n: r.pakai, menggantung: r.menggantung, anggaran: r.anggaran, dasar: r.dasar, lampu: r.lampu, lampuTeks: r.lampuTeks, proyeksi: r.proyeksi, nLalu: r.nLalu }));
+  // 8 Okt 2026: baris yang NEGATIF ikut (susut & selisih stok minus = stok bertambah, mis. nilai karung bekas diterapkan) — dulu disaring `pakai > 0`, jadi
+  // baris-baris kartu Biaya tidak menjumlah ke "Semua biaya" (total minus padahal barisnya positif semua). Batang negatif = 0 lebar (dbPersen), angkanya bertanda minus.
+  const biaya = K.baris.filter((r) => Math.abs(r.pakai) > 0.5 || r.anggaran > 0).map((r) => ({ id: r.id, nama: r.nama, n: r.pakai, menggantung: r.menggantung, anggaran: r.anggaran, dasar: r.dasar, lampu: r.lampu, lampuTeks: r.lampuTeks, proyeksi: r.proyeksi, nLalu: r.nLalu }));
   return {
     key, nama: K.nama, berjalan: K.berjalan, final: K.final, hariJalan: K.hariJalan, nHari: K.nHari, tanpaCatatan: K.tanpaCatatan, menutup: K.menutup,
     periode: K.nama + (K.berjalan ? ' · berjalan, hari ke-' + K.hariJalan + ' dari ' + K.nHari : K.final ? ' · final' : ''), sumber: 'Laporan › Biaya',

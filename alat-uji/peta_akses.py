@@ -401,6 +401,7 @@ OWNER_JALUR = {
     'susunCatatSusulan': 'siap 2027 (A9): 1 dokumen pengaturan/susulan<tahun> (jumlah & id catatan susulan) — bukan titikKas, tidak dikunci (0 pemeriksaan)',
     'susunTitikRekening': 'catat isi rekening (putaran 29): 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (nilai baru dinilai; tenggang 3 hari melindungi tanggal 1–3)',
     'susunBayarBon': 'terima bon: 1 piutangMutasi bertanggal hari ini', 'susunHapusBon': 'hapus buku piutang: 1 piutangMutasi bertanggal hari ini',
+    'susunBayarSesudahHapus': 'dibayar sesudah dihapus buku (Paket F2): paling banyak 2 piutangMutasi (hapus buku minus + bayar) bertanggal hari ini',
     'susunBayarTagihan': '1 dokumen: biayaBulanan bulan INI atau pengeluaranHarian hari ini', 'susunBonus': '2 dokumen: biayaBulanan bulan INI + slipUpah hari ini',
     'susunKasbonKaryawan': '1 kasbonMutasi bertanggal hari ini', 'susunKeluar': 'uang keluar: paling banyak 2 dokumen (pengeluaranHarian + kasbon) bertanggal hari ini',
     'susunPindah': 'pindah uang: pindahUang + paling banyak 1 biaya admin hari ini · pindah tempat stok: pengaturan tempatSimpan & pindahTempat (tidak dikunci)',

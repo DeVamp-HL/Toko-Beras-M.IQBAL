@@ -103,6 +103,13 @@ ok('laci peran: 2 permintaan menunggu owner → AWAS; cadangan terakhir 9 Sep (1
 var TQ = susunTanya(KINI); var tq = function (id) { return TQ.find(function (t) { return t.id === id; }); };
 ok('tanya: sepuluh pertanyaan, semuanya punya angka & jawaban', TQ.length === 10 && TQ.every(function (t) { return t.angka && t.sub && t.tujuan && t.tujuan.teks; }), J(TQ.map(function (t) { return t.id + '=' + t.angka; })));
 ok('tanya utang: angka = mesin, jawaban menyebut pemasok & bon lewat tempo; bon berikutnya = bon 20 Agu jatuh 10 Sep (sudah lewat 9 hari) — bukan bon yang jatuh 26 Sep', tq('utang').angka === 'Rp47.000.000' && /CV Padi Jaya Rp47.000.000/.test(tq('utang').sub) && /1 bon lewat tempo/.test(tq('utang').sub) && tq('jatuh').angka === '10 Sep 2026' && /sudah lewat 9 hari/.test(tq('jatuh').sub) && tq('jatuh').awas, J([tq('utang'), tq('jatuh')]));
+// Paket F1 (owner 8 Okt 2026): bon lama BERGULIR (kartu pemasok "bon lama ikut kedatangan terakhir") — Menu & Pengingat memakai aturan yang sama dengan Bon pemasok
+var LAMA_F1 = { koleksi: 'utangPemasokMutasi', data: { id: 9701, tipe: 'saldoAwal', pemasok: 'UD Beras Makmur', nominal: 5000000, tanggal: '2026-08-25', jam: '23:02', bonTanggal: '2026-07-01', catatan: 'bon lama bergulir (contoh)' } };
+var KARTU_F1 = { koleksi: 'pemasokCatatan', data: { id: 'ud beras makmur', nama: 'UD Beras Makmur', kontak: '', catatan: '', orang: '', tempo: 0, bonLamaBergulir: true } };
+var F1A = denganCacheSementara([LAMA_F1], function () { var T = susunTanya(KINI).find(function (t) { return t.id === 'utang'; }); var P = ssSumberPengingat(KINI, LOKAL).find(function (x) { return x.id === 'bon|9701'; }); return { utang: T.sub, p: P }; });
+var F1B = denganCacheSementara([LAMA_F1, KARTU_F1], function () { var T = susunTanya(KINI).find(function (t) { return t.id === 'utang'; }); var P = ssSumberPengingat(KINI, LOKAL).find(function (x) { return x.id === 'bon|9701'; }); return { utang: T.sub, p: P }; });
+ok('F1 Menu & Pengingat: bon lama 1 Jul (tempo umum 21) LEWAT → 2 bon lewat tempo, pengingat jatuh 22 Jul; kartu dicentang "ikut kedatangan terakhir" (UD Beras Makmur datang 1 Sep) → jatuh 22 Sep, tidak lewat, 1 bon lewat tempo, ket "bon lama bergulir"',
+  /2 bon lewat tempo/.test(F1A.utang) && F1A.p && F1A.p.jatuh === '2026-07-22' && /1 bon lewat tempo/.test(F1B.utang) && F1B.p && F1B.p.jatuh === '2026-09-22' && /bon lama bergulir · ikut kedatangan 1 Sep/.test(F1B.p.ket), J([F1A, F1B]));
 ok('tanya kas & kekayaan: titik kas belum disetel → "belum bisa dihitung" (tidak ditebak), dua-duanya', tq('kas').angka === 'belum bisa dihitung' && /Titik kas belum disetel/.test(tq('kas').sub) && tq('kaya').angka === 'belum bisa dihitung', J([tq('kas'), tq('kaya')]));
 var LB = hitungLabaBersihRentang('2026-09-01', '2026-09-19');
 ok('tanya laba: angka = laba bersih bulan ini dari mesin; jawaban menyebut margin kotor & biaya toko', tq('laba').angka === RP(LB.labaBersih) && /margin kotor/.test(tq('laba').sub) && /biaya toko/.test(tq('laba').sub), J(tq('laba')) + ' ' + LB.labaBersih);
@@ -297,7 +304,9 @@ if __name__ == '__main__':
             'no.4 B4: kaya diam soal kelebihan bayar saat kas belum terhitung': js.replace("jadi kekayaannya pun belum.' + (LB.uang.n ?", "jadi kekayaannya pun belum.' + (false ?"),
             'pengingat pajak dari modul pajak diabaikan': js.replace("(lokal && Array.isArray(lokal.pajak) ? lokal.pajak : []).forEach(", "([]).forEach("),
             'pengingat pajak tanpa tenggang H-3 (bawaan 0)': js.replace("hariCadangan: 0, hariPajak: 3,", "hariCadangan: 0, hariPajak: 0,"),
-            'tempo bon pemasok tidak dipakai (jatuh = tanggal bon)': js.replace("jatuh: b.tanggal && T.hari > 0 ? ssTambahHari(b.tanggal, T.hari) : ''", "jatuh: b.tanggal ? b.tanggal : ''"),
+            'F1 Menu: bon lama bergulir diramal dari tanggal bon asli': js.replace("const d = gulirBon(G, px.pemasok, b) || b.tanggal; bon.push(", "const d = b.tanggal; bon.push("),
+            'F1 Pengingat: bon lama bergulir diramal dari tanggal bon asli': js.replace("const g = gulirBon(G, px.pemasok, b); const d = g || b.tanggal; if (!d", "const g = ''; const d = g || b.tanggal; if (!d"),
+            'tempo bon pemasok tidak dipakai (jatuh = tanggal bon)': js.replace("jatuh: d && T.hari > 0 ? ssTambahHari(d, T.hari) : ''", "jatuh: d ? d : ''"),
             'baris pita berpindah tempat (diurut menurut jumlah)': js.replace("awas: false, tujuan: k.tujuan, n: k.sel[b] }));", "awas: false, tujuan: k.tujuan, n: k.sel[b] })).sort((p, q) => q.n - p.n);"),
             'nota karcis dihitung sebagai nota meja': js.replace("jual: (d) => (d.dirinciPada ? null : mnJam(d.jam))", "jual: (d) => mnJam(d.jam)"),
             'laci pemasok tidak menyala saat bon lewat tempo': js.replace("U.lewat.length > 0 || U.tekor > 0, { ke: 'harga', keluarga: 'bon'", "false, { ke: 'harga', keluarga: 'bon'"),

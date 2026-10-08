@@ -2329,3 +2329,21 @@ antrean) → hemat baca dinyalakan menurut daftar siap-nyala (≤ 20 Nov). Tutup
   K11 untuk 2028 diputuskan atas proyeksi lama (±117%, satu hari kuota); bagian 2028-nya ditanyakan ulang ke owner.
 - **K12** tugas "isi cara bayar dua kedatangan Agustus lewat Console" DITUTUP: tidak dikerjakan — angka sama (`docs/peta-kunci-periode.md` §10).
 - Dijaga `alat-uji/uji_dokumen_owner.py` (+ kontrol): proyeksi kuota 2028 dihitung ulang dari rumus kartu, bunyi K11 2028, jalan sementara K9.
+
+## Paket F — bon lama bergulir, dibayar sesudah hapus buku, kartu Biaya (owner 8 Okt 2026, cabang `perbaikan/bon-bergulir-bayar-sesudah-hapus`)
+
+Keputusan owner 8 Okt (sesudah cadangan 8 Okt diperiksa — asap tutup buku LULUS): utang lama ke satu pemasok **dikonfirmasi pemasok** dan BERGULIR (tanggalnya
+selalu tanggal pembelian terakhir); piutang yang tidak pernah dibayar/dicicil DIHAPUS BUKU tapi catatannya tidak boleh hilang; bon pemasok kertas sudah cocok,
+yang salah jumlah pembayaran (owner membetulkannya sendiri di Bon pemasok › Betulkan).
+- **F1 bon lama bergulir** — kartu pemasok `pemasokCatatan.bonLamaBergulir` (pilihan "bon lama ikut kedatangan terakhir"). SATU aturan di
+  `bon-pemasok-logika.js` `petaGulir()` / `gulirBon()`: bon lama (saldoAwal) pemasok itu memakai tanggal kedatangan terakhir untuk umur, jatuh tempo &
+  status — dipakai Bon pemasok (`susunBon`, juga dasbor), Menu (`mnUtang`), Pengingat (`ssSumberPengingat`); Beranda (`susunPerhatian`) tidak menghitung bon
+  bergulir sebagai "bon tertua". Tanggal bon di dokumen, nilai, sisa, total TIDAK berubah (pembayaran tetap menulis `bonTanggal` asli). Tanpa rules baru.
+- **F2 dibayar sesudah hapus buku** — `bon-logika.js susunBayarSesudahHapus`: catatan `hapusBuku` BERNILAI MINUS (`balikHapus: true`) + `bayar`, satu kiriman;
+  bila bayarnya sudah tercatat (status `lebih`) cukup hapus buku minus. Mesin beku tidak disentuh (menjumlah nominal apa adanya). Laporan `lpJalanBon`
+  membuka lagi bon yang ditutup hapus buku (margin ditarik dari `dihapus`, lalu dilepas pembayaran) — diterima tunai naik sebesar uangnya, tanpa dobel.
+  Layar Pelanggan › Bon: daftar "Dihapus dari buku" (jejak + pintu ke lembar), tombol hanya untuk owner. Batas: hapus buku tahun yang sudah ditutup buku.
+- **F3 kartu Biaya dasbor** — baris negatif (susut & selisih stok minus) ikut kartu, jadi baris menjumlah ke "Semua biaya" (asap cadangan 8 Okt menemukannya).
+- Dijaga: `uji_harga_baru` (+F1, asap: bon lama tiap pemasok seandainya bergulir), `uji_menu_baru` (+F1 Menu & Pengingat), `uji_ringkasan_baru` (+F1 Beranda,
+  +F3), `uji_pelanggan_baru` (+F2, asap: hapus buku lalu dibayar kembali satu nama nyata), `uji_laporan_baru` (+F2 margin bon), `peta_akses` (penulis baru) —
+  semua dengan kontrol yang wajib berbunyi.

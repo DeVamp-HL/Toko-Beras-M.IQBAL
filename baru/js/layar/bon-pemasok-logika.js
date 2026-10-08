@@ -91,7 +91,7 @@ export function daftarPemasok() {
   ambilUtangPemasokMutasi().forEach((m) => { const s = pastikan(m.pemasok); if (s && !s.urutNama) s.nama = String(m.pemasok).trim(); });
   Object.values(kartu).forEach((c) => { const s = pastikan(c.nama || c.id); if (s && !s.urutNama && c.nama) s.nama = String(c.nama).trim(); });
   return Object.keys(peta).map((k) => { const s = bpRapikan(peta[k]); delete s.ids;
-    const c = kartu[k] || {}; s.kontak = String(c.kontak || '').trim(); s.catatan = String(c.catatan || '').trim(); s.orang = String(c.orang || '').trim(); s.tempo = isFinite(Number(c.tempo)) && Number(c.tempo) > 0 ? Math.round(Number(c.tempo)) : 0; s.adaKartu = !!kartu[k];
+    const c = kartu[k] || {}; s.kontak = String(c.kontak || '').trim(); s.catatan = String(c.catatan || '').trim(); s.orang = String(c.orang || '').trim(); s.tempo = isFinite(Number(c.tempo)) && Number(c.tempo) > 0 ? Math.round(Number(c.tempo)) : 0; s.adaKartu = !!kartu[k]; s.bonLamaBergulir = c.bonLamaBergulir === true;
     return s; }).sort((a, b) => String(b.terakhir).localeCompare(String(a.terakhir)) || a.nama.localeCompare(b.nama));
 }
 /**
@@ -125,6 +125,14 @@ export function ringkasPesananTahun(cutoff) {
   return out;
 }
 export const cariPemasok = (nama) => daftarPemasok().find((p) => p.kunci === kunciPelanggan(nama)) || null;
+/**
+ * Paket F1 (owner 8 Okt 2026, dikonfirmasi pemasok): utang lama ke pemasok yang BERGULIR — tanggalnya selalu tanggal pembelian terakhir. Kartu pemasok
+ * `bonLamaBergulir` (pilihan "bon lama ikut kedatangan terakhir"). petaGulir() = { kunci pemasok: tanggal kedatangan terakhir } untuk pemasok berkartu begitu
+ * (kedatangan terakhir dari daftarPemasok — ikut ringkasan tahun yang diarsip sejak P4, jadi tetap benar sesudah tutup buku). gulirBon(G, pemasok, b) = tanggal
+ * yang menggantikan tanggal bon lama (saldoAwal) untuk umur & jatuh tempo, '' = tidak bergulir. SATU aturan untuk Bon pemasok, Menu, dan Pengingat.
+ */
+export function petaGulir() { const out = {}; daftarPemasok().forEach((p) => { if (p.bonLamaBergulir && p.terakhir) out[p.kunci] = p.terakhir; }); return out; }
+export const gulirBon = (G, pemasok, b) => { const g = (G && G[kunciPelanggan(pemasok)]) || ''; return b && b.jenis === 'saldoAwal' && g && g > String(b.tanggal || '') ? g : ''; };
 /** Tempo yang dipakai untuk meramal jatuh tempo bon pemasok ini, berikut SUMBERNYA. hari 0 = tidak diramal. */
 export function tempoPemasok(nama) {
   const p = cariPemasok(nama); if (p && p.tempo > 0) return { hari: p.tempo, sumber: 'kartu', teks: 'tempo ' + p.tempo + ' hari (kartu pemasok)' };
@@ -136,12 +144,18 @@ export const nomorWa = (kontak) => { const d = String(kontak || '').replace(/\D/
 /** Semua bon terbuka (mesin beku) + tempo, status, urutan tusukan & garis jatuh tempo. */
 export function susunBon(kini) {
   const iso = hariIniIso(kini || new Date()); const atur = aturBon(); const kas = ingatKasPada(); const up = hitungUtangPemasok();
-  const bon = []; up.forEach((px) => { const T = tempoPemasok(px.pemasok); (px.bon || []).forEach((b) => { const jatuh = T.hari > 0 && b.tanggal ? bpTambahHari(b.tanggal, T.hari) : ''; const sisaHari = jatuh ? bpHariKe(jatuh) - bpHariKe(iso) : null;
-    bon.push({ id: String(b.id), pemasok: px.pemasok, tanggal: b.tanggal || '', nilai: Math.round(b.nilai || 0), dibayar: Math.round(b.dibayar || 0), sisa: Math.round(b.sisa || 0), umur: b.umurHari, jenis: b.jenis, catatan: b.catatan || '', jatuh, sisaHari, tempo: T,
+  // Paket F1: bon lama yang BERGULIR memakai tanggal kedatangan terakhir pemasoknya untuk umur, jatuh tempo & status (petaGulir / gulirBon di bawah). Tanggal bon di
+  // dokumen, nilai, sisa, dan total TIDAK berubah (b.tanggal tetap tanggal bonnya — dipakai pembayaran sebagai bonTanggal). gulir = '' bila tidak bergulir.
+  const G = petaGulir();
+  const bon = []; up.forEach((px) => { const T = tempoPemasok(px.pemasok);
+    (px.bon || []).forEach((b) => { const gulir = gulirBon(G, px.pemasok, b); const dasar = gulir || b.tanggal;
+    const jatuh = T.hari > 0 && dasar ? bpTambahHari(dasar, T.hari) : ''; const sisaHari = jatuh ? bpHariKe(jatuh) - bpHariKe(iso) : null;
+    bon.push({ id: String(b.id), pemasok: px.pemasok, tanggal: b.tanggal || '', gulir, nilai: Math.round(b.nilai || 0), dibayar: Math.round(b.dibayar || 0), sisa: Math.round(b.sisa || 0), umur: gulir ? Math.max(0, bpHariKe(iso) - bpHariKe(gulir)) : b.umurHari, jenis: b.jenis, catatan: b.catatan || '', jatuh, sisaHari, tempo: T,
       status: !jatuh ? 'tanpaTempo' : sisaHari < 0 ? 'lewat' : sisaHari <= atur.dekatHari ? 'dekat' : 'jauh' }); }); });
   bon.forEach((b) => { b.tempoTeks = b.status === 'tanpaTempo' ? 'tempo belum disepakati' : b.status === 'lewat' ? 'LEWAT ' + (-b.sisaHari) + ' hari (jatuh tempo ' + tanggalPendek(b.jatuh) + ')' : b.sisaHari === 0 ? 'jatuh tempo HARI INI' : 'jatuh tempo ' + tanggalPendek(b.jatuh) + ' · ' + b.sisaHari + ' hari lagi';
-    b.ket = (b.umur === null || b.umur === undefined ? 'umur tidak diketahui' : 'umur ' + b.umur + ' hari') + (b.dibayar > 0 ? ' · sudah dibayar ' + RP(b.dibayar) + ' dari ' + RP(b.nilai) : '') + (b.jenis === 'saldoAwal' ? ' · bon lama (sebelum sistem)' : '');
-    b.cap = b.jenis === 'saldoAwal' ? 'bon lama' : b.dibayar > 0 ? 'sebagian' : ''; b.isi = b.jenis === 'saldoAwal' ? (b.catatan || 'bon lama sebelum sistem') : bpIsiBatch(b.id); b.noBon = bpNoBon(b.id); });
+    b.ket = (b.umur === null || b.umur === undefined ? 'umur tidak diketahui' : 'umur ' + b.umur + ' hari') + (b.dibayar > 0 ? ' · sudah dibayar ' + RP(b.dibayar) + ' dari ' + RP(b.nilai) : '')
+      + (b.gulir ? ' · bon bergulir — ikut kedatangan terakhir ' + tanggalPendek(b.gulir) + ' (bon asli ' + (b.tanggal ? tanggalPendek(b.tanggal) : 'tanpa tanggal') + ')' : b.jenis === 'saldoAwal' ? ' · bon lama (sebelum sistem)' : '');
+    b.cap = b.gulir ? 'bon bergulir' : b.jenis === 'saldoAwal' ? 'bon lama' : b.dibayar > 0 ? 'sebagian' : ''; b.isi = b.jenis === 'saldoAwal' ? (b.catatan || 'bon lama sebelum sistem') : bpIsiBatch(b.id); b.noBon = bpNoBon(b.id); });
   const urutTua = (a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || (Number(a.id) || 0) - (Number(b.id) || 0);
   const total = bon.reduce((a, b) => a + b.sisa, 0); const tekor = up.reduce((a, x) => a + (x.tekor || 0), 0);
   const tusukan = up.map((px) => { const d = bon.filter((b) => b.pemasok === px.pemasok).sort(urutTua); const T = tempoPemasok(px.pemasok); return { pemasok: px.pemasok, tempo: T, tekor: px.tekor || 0, total: d.reduce((a, b) => a + b.sisa, 0), bon: d.map((b, i) => Object.assign({}, b, { saran: i === 0 && d.length > 1 })) }; }).filter((t) => t.bon.length || t.tekor > 0);
@@ -230,8 +244,8 @@ export function susunBonLama(d, w) {
 export function susunKartu(nama, isi, w) {
   const nm = String(nama || '').trim(); if (!pemasokSungguhan(nm)) return { tolak: nm ? '"' + nm + '" nama yang dipakai sistem (saldo awal / tutup buku / buku khusus), bukan pemasok' : 'Nama pemasok kosong' }; const p = cariPemasok(nm);
   const tempo = bpKosong(isi.tempo) ? 0 : Math.round(bpAngka(isi.tempo)); if (!(tempo >= 0 && tempo <= 120)) return { tolak: 'Tempo bon: 0–120 hari (0 = belum disepakati)' };
-  const data = { id: kunciPelanggan(nm), nama: p ? p.nama : nm, kontak: String(isi.kontak || '').trim().slice(0, 30), catatan: String(isi.catatan || '').trim().slice(0, 160), orang: String(isi.orang || '').trim().slice(0, 40), tempo, diubahPada: w.kini };
-  return { dokumen: [{ koleksi: 'pemasokCatatan', data }], patch: { kartu: null, kabar: 'Kartu ' + data.nama + ' tersimpan — ' + (tempo > 0 ? 'tiap bonnya diramal jatuh tempo ' + tempo + ' hari sesudah barang datang' : 'tempo kartu kosong, dipakai tempo umum ' + tempoUmum().hari + ' hari'), kabarAwas: false } };
+  const data = { id: kunciPelanggan(nm), nama: p ? p.nama : nm, kontak: String(isi.kontak || '').trim().slice(0, 30), catatan: String(isi.catatan || '').trim().slice(0, 160), orang: String(isi.orang || '').trim().slice(0, 40), tempo, bonLamaBergulir: isi.bonLamaBergulir === true, diubahPada: w.kini };
+  return { dokumen: [{ koleksi: 'pemasokCatatan', data }], patch: { kartu: null, kabar: 'Kartu ' + data.nama + ' tersimpan — ' + (tempo > 0 ? 'tiap bonnya diramal jatuh tempo ' + tempo + ' hari sesudah barang datang' : 'tempo kartu kosong, dipakai tempo umum ' + tempoUmum().hari + ' hari') + (data.bonLamaBergulir ? ' · bon lama ikut tanggal kedatangan terakhir' : ''), kabarAwas: false } };
 }
 
 // ---- PEMBETULAN BON (owner 7 Okt 2026) ----

@@ -206,6 +206,17 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
         bayarnya dikecilkan — sebut juga ke konsultan.
       - **Pencegahan:** jangan mencatat bayar bon atau hapus buku untuk SATU nama dari dua perangkat sekaligus, atau dari perangkat yang tanpa internet.
 - [ ] Semua karcis kasir darurat dirinci; nama kembar disatukan; piutang lama (piutang mati) diputuskan jauh sebelum latihan 16 Des.
+      - **DIPUTUSKAN owner 8 Okt 2026:** hapus buku SEMUA nama yang tidak pernah membayar / mencicil selama berutang; yang masih mencicil tetap ditagih.
+        Catatannya JANGAN hilang: sebelum menghapus, buka Pelanggan › Bon › nama › **Kartu piutang berkop** › simpan PDF (jejak tetap — sesudah tutup buku
+        2026 catatan tahun 2026 ikut diarsip). Hapus buku sendiri tidak menghapus apa pun: ia menambah satu catatan, riwayatnya tetap di lembar orang itu,
+        dan namanya tampil di daftar **"Dihapus dari buku"** di atas tab Bon.
+      - **Kalau orang yang sudah dihapus buku datang membayar** (Paket F2): Pelanggan › Bon › daftar "Dihapus dari buku" › nama › **"Dibayar sesudah dihapus
+        buku"** → jumlah (paling banyak sebesar yang dulu dihapus), Tunai / QRIS → ketuk dua kali. Hapus buku lama TETAP ada; dibalik dengan catatan baru,
+        jadi laba bulan itu NAIK sebesar uang yang kembali, laci / rekening bertambah. Kalau pembayarannya terlanjur dicatat dari HP kasir (pita "hapus buku
+        yang ternyata dibayar"), tombol yang sama berbunyi **"Balik hapus buku"** — cukup dibalik, uangnya tidak dicatat dua kali.
+        **Batas:** sesudah tutup buku 2026, hapus buku tahun 2026 ikut diarsip — pembayaran tahun 2027 untuk nama yang dihapus 2026 belum punya tombol;
+        jejaknya ada di PDF kartu piutang. Jangan dicatat sebagai pembayaran bon (jadi kelebihan bayar) atau penjualan; catat di buku kertas dan sebut ke
+        konsultan.
 - [ ] **Karcis kasir darurat yang isinya tidak sama dengan nominalnya — DIPUTUSKAN owner 8 Okt 2026: diterima apa adanya, per kelompok.** Kelompok
       Agustus: isinya lebih kecil dari nominal (karcis hari-hari pertama sistem). Kelompok September: isinya lebih besar, karena karcisnya dirinci dua
       kali oleh sistem lama yang sudah pensiun. Alasan tertulisnya = butir ini; angkanya diserahkan ke konsultan **paling lambat 31 Jan 2027**. Daftar

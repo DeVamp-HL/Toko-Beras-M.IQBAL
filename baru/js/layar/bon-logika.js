@@ -31,6 +31,8 @@ export const KATA_STATUS = { macet: 'macet — usul hapus', janjiLewat: 'janjiny
 export const JANJI_PILIHAN = [[0, 'tanpa janji'], [3, '3 hari lagi'], [7, 'seminggu lagi'], [14, 'dua minggu lagi']];
 const capLebih = (p) => (p.uang > 0.5 && p.hapus > 0.5 ? 'kelebihan bayar & hapus buku terbayar' : p.uang > 0.5 ? KATA_STATUS.lebih : 'hapus buku terbayar');
 const tambahHari = (iso, n) => new Date((hariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
+/** Paket F2: catatan hapus buku BERNILAI MINUS = hapus buku yang dibalik (dibayar sesudah dihapus) — susunBayarSesudahHapus. */
+const bnBalik = (m) => m.jenis === 'hapusBuku' && (Number(m.nominal) || 0) < 0;
 /** Semua orang di buku bon (mesin beku) + status menurut aturan owner + tagihan terakhir. */
 export function semuaBon(kini) {
   const iso = hariIniIso(kini); const atur = aturPelanggan(); const tagihSemua = cacheMentah('tagih');
@@ -53,17 +55,21 @@ export function susunBon(kini, bukuKunci, ember) {
   const Pa = berutang.find((b) => b.kunci === bukuKunci) || berutang.slice().sort((a, b) => b.sisa - a.sisa)[0] || null;
   const halaman = []; if (Pa) { const utang = Pa.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || ''))); let tertutup = Pa.bayar + Pa.dihapus + (Pa.retur || 0) - bnDiretur(utang);
     utang.forEach((u) => { const nom = u.nominal - (u.diretur || 0); const lunas = tertutup >= nom; tertutup = Math.max(0, tertutup - nom); halaman.push({ t: u.tanggal || '', u: 0, tgl: formatTanggal(u.tanggal), teks: u.ket || 'Belanja', n: u.nominal, jenis: lunas ? 'coret' : 'bon' }); });
-    Pa.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur').forEach((m) => halaman.push({ t: m.tanggal || '', u: 1, tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'bayar') : m.jenis === 'retur' ? m.ket.replace(/^Retur barang/, 'barang kembali (retur)') : m.ket.replace(/^Hapus buku/, 'DIHAPUS'), n: -m.nominal, jenis: m.jenis })); halaman.sort((a, b) => a.t.localeCompare(b.t) || a.u - b.u); }
+    Pa.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur').forEach((m) => halaman.push({ t: m.tanggal || '', u: 1, tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'bayar') : m.jenis === 'retur' ? m.ket.replace(/^Retur barang/, 'barang kembali (retur)') : bnBalik(m) ? m.ket.replace(/^Hapus buku · /, '').replace(/^Hapus buku/, 'hapus buku dibalik') : m.ket.replace(/^Hapus buku/, 'DIHAPUS'), n: -m.nominal, jenis: m.jenis })); halaman.sort((a, b) => a.t.localeCompare(b.t) || a.u - b.u); }
   const papan = []; const lajur = (judul, awas, d) => { papan.push({ lajur: true, judul, awas, jumlah: d.reduce((a, b) => a + b.sisa, 0), n: d.length }); d.slice().sort((a, b) => b.sisa - a.sisa).forEach((b) => papan.push(gambar(b))); };
   lajur('Tagih hari ini', true, berutang.filter((b) => b.status === 'janjiLewat' || b.status === 'perluTagih')); lajur('Tunggu dulu', false, berutang.filter((b) => b.status === 'menunggu' || b.status === 'baru')); lajur('Macet — usul hapus bon', false, berutang.filter((b) => b.status === 'macet'));
   const diEmber = (e) => berutang.filter((b) => b.umur !== null && b.umur >= e[2] && b.umur <= e[3]); const eP = EMBER.find((e) => e[0] === ember) || null;
-  return { total, berutang: berutang.length, lebih, jumlahLebih: lebih.reduce((a, x) => a + x.lebih, 0), jumlahLebihUang: lebih.reduce((a, x) => a + x.uang, 0), jumlahLebihHapus: lebih.reduce((a, x) => a + x.hapus, 0), buku: Pa ? { kunci: Pa.kunci, nama: Pa.nama, sisa: Pa.sisa, ket: Pa.ket, status: Pa.status, halaman } : null, namaBuku: berutang.slice().sort((a, b) => b.sisa - a.sisa).map((b) => ({ kunci: b.kunci, nama: b.nama, aktif: !!Pa && Pa.kunci === b.kunci })), papan,
+  // Paket F2 (owner 8 Okt 2026: "catatannya jangan dihapus — sewaktu-waktu ada yang mau bayar"): nama yang bonnya habis karena dihapus dari buku tidak ada di
+  // daftar berutang — di sini jejaknya, dan pintu ke lembarnya (Dibayar sesudah dihapus buku). Nama yang masih punya sisa ada di daftar biasa.
+  const dihapus = semua.filter((b) => b.dihapus > 0.5 && b.sisa <= 0 && b.status !== 'lebih').map((b) => ({ kunci: b.kunci, nama: b.nama, dihapus: Math.round(b.dihapus),
+    tanggal: b.mutasi.filter((m) => m.jenis === 'hapusBuku' && !bnBalik(m)).map((m) => String(m.tanggal || '')).sort().pop() || '' })).sort((a, b) => b.dihapus - a.dihapus || a.nama.localeCompare(b.nama));
+  return { total, berutang: berutang.length, dihapus, jumlahDihapus: dihapus.reduce((a, x) => a + x.dihapus, 0), lebih, jumlahLebih: lebih.reduce((a, x) => a + x.lebih, 0), jumlahLebihUang: lebih.reduce((a, x) => a + x.uang, 0), jumlahLebihHapus: lebih.reduce((a, x) => a + x.hapus, 0), buku: Pa ? { kunci: Pa.kunci, nama: Pa.nama, sisa: Pa.sisa, ket: Pa.ket, status: Pa.status, halaman } : null, namaBuku: berutang.slice().sort((a, b) => b.sisa - a.sisa).map((b) => ({ kunci: b.kunci, nama: b.nama, aktif: !!Pa && Pa.kunci === b.kunci })), papan,
     ember: EMBER.map((e) => ({ id: e[0], label: e[1], n: diEmber(e).length, jumlah: diEmber(e).reduce((a, b) => a + b.sisa, 0), aktif: !!eP && eP[0] === e[0], tua: e[0] === 'e4' })), perUmur: (eP ? diEmber(eP) : berutang.slice()).sort((a, b) => (b.umur || 0) - (a.umur || 0)).map(gambar), umurTeks: eP ? 'Hanya bon yang tertuanya ' + eP[1] + ' — ketuk lagi kotaknya untuk melihat semua' : 'Yang paling lama tidur ada di atas', atur: aturPelanggan() };
 }
 /** Lembar satu orang: rincian bon terbuka + riwayat (pembayaran, hapus buku, tagihan). */
 export function lembarBon(kini, kunci) {
   const b = semuaBon(kini).find((x) => x.kunci === kunci); if (!b) return null;
-  const riwayat = b.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur').map((m) => ({ t: (m.tanggal || '') + ' ' + (m.jam || ''), tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'membayar') : m.jenis === 'retur' ? m.ket.replace(/^Retur barang/, 'barang kembali (retur), bon dipotong') : m.ket.replace(/^Hapus buku/, 'DIHAPUS dari buku'), n: -m.nominal }))
+  const riwayat = b.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur').map((m) => ({ t: (m.tanggal || '') + ' ' + (m.jam || ''), tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'membayar') : m.jenis === 'retur' ? m.ket.replace(/^Retur barang/, 'barang kembali (retur), bon dipotong') : bnBalik(m) ? m.ket.replace(/^Hapus buku · /, '').replace(/^Hapus buku/, 'hapus buku dibalik') : m.ket.replace(/^Hapus buku/, 'DIHAPUS dari buku'), n: -m.nominal }))
     .concat(cacheMentah('tagih').filter((t) => t.kunci === kunci).map((t) => ({ t: (t.tanggal || '') + ' ' + (t.jam || ''), tgl: formatTanggal(t.tanggal), teks: 'ditagih' + (t.janji ? ' · janji ' + formatTanggal(t.janji) : ' · tanpa janji'), n: null }))).sort((a, b) => b.t.localeCompare(a.t));
   return Object.assign({}, b, { rinci: b.buka.map((r) => ({ tgl: formatTanggal(r.tanggal), teks: (r.ket || 'Belanja') + (r.sisa < r.nominal ? ' (dari ' + RP(r.nominal) + ')' : ''), n: r.sisa })), riwayat, alasanPilihan: aturPelanggan().alasanHapus });
 }
@@ -96,6 +102,29 @@ export function susunBayarBon(kini, kunci, nominal, cara, catatan, pengantar, w)
   const c = cara === 'QRIS' ? 'QRIS' : 'Tunai'; const data = { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: w.tanggal, jam: w.jam, caraBayar: c, catatan: String(catatan || '').trim(), dicatatDi: 'sistem' };
   if (!bnKosong(pengantar) && kunciPelanggan(pengantar) !== kunci) data.dibawaOleh = String(pengantar).trim();
   const sisaBaru = b.sisa - n; return { dokumen: [{ koleksi: 'piutangMutasi', data }], sisaBaru, patch: { kabar: (sisaBaru <= 0 ? b.nama + ' LUNAS. Pembayaran ' + RP(n) + ' dicatat' : 'Pembayaran ' + RP(n) + ' dicatat — sisa bon ' + b.nama + ' sekarang ' + RP(sisaBaru) + ', belum lunas') + ' · ' + (c === 'QRIS' ? 'rekening' : 'laci') + ' bertambah, laba tidak berubah (sudah dihitung waktu berasnya dijual)' + (kalimatBayarTutup(c, data.tanggal) ? '; ' + kalimatBayarTutup(c, data.tanggal) : '') + (data.dibawaOleh ? ' · dibawa ' + data.dibawaOleh : '') + '.', kabarAwas: false } };
+}
+/**
+ * Paket F2 (owner 8 Okt 2026): piutang yang sudah DIHAPUS dari buku ternyata dibayar. Hapus buku lama tidak disentuh (jejaknya permanen) — dibalik dengan catatan
+ * hapus buku BERNILAI MINUS (mesin menjumlah nominal apa adanya: beku.js hitungPiutang `dihapus` & hitungLabaBersihRentang `hapusBuku`; Laporan lpJalanBon membuka
+ * lagi bon yang ditutupnya) + pembayaran biasa, SATU kiriman: sisa bon tetap, kas bertambah, laba bulan ini naik sebesar itu (pemulihan piutang). Kalau
+ * pembayarannya SUDAH tercatat (status 'lebih' — "dibayar padahal sudah dihapus", mis. dari HP kasir) cukup hapus bukunya yang dibalik, tanpa pembayaran kedua.
+ */
+export function susunBayarSesudahHapus(kini, kunci, nominal, cara, catatan, w, yakin) {
+  const b = semuaBon(kini).find((x) => x.kunci === kunci); if (!b) return { tolak: 'Nama itu tidak ada di buku bon' };
+  const dihapus = Math.round(b.dihapus || 0); if (!(dihapus > 0)) return { tolak: 'Belum ada bon ' + b.nama + ' yang dihapus dari buku — catat pembayarannya seperti biasa' };
+  const sudah = b.status === 'lebih' ? Math.round(b.lebihHapus || 0) : 0;
+  if (b.status === 'lebih' && !(sudah > 0)) return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada hapus buku yang terbayar.' };
+  const n = Math.round(bnAngka(nominal)); if (!(n > 0)) return { tolak: sudah > 0 ? 'Ketik jumlah hapus buku yang dibalik' : 'Ketik jumlah yang dibayar' };
+  const maks = sudah > 0 ? Math.min(sudah, dihapus) : dihapus;
+  if (n > maks) return { tolak: sudah > 0 ? 'Yang dibayar padahal sudah dihapus ' + RP(maks) + ' — paling banyak sebesar itu' : 'Yang pernah dihapus dari buku a.n. ' + b.nama + ' ' + RP(maks) + ' — paling banyak sebesar itu' + (b.sisa > 0 ? '; sisanya catat sebagai pembayaran bon biasa' : '') };
+  const c = cara === 'QRIS' ? 'QRIS' : 'Tunai'; const ket = String(catatan || '').trim().slice(0, 60);
+  if (!yakin) return { tolak: (sudah > 0 ? 'Balik hapus buku ' + RP(n) + ' a.n. ' + b.nama + ' (uangnya sudah tercatat)?' : RP(n) + ' dari bon ' + b.nama + ' yang dulu dihapus dibayar ' + (c === 'QRIS' ? 'lewat QRIS' : 'tunai') + '?')
+    + ' Hapus buku lama TETAP ada; dibalik dengan catatan baru — laba bulan ini naik ' + RP(n) + '. Ketuk sekali lagi', perluYakin: true };
+  const dokumen = [{ koleksi: 'piutangMutasi', data: { id: w.idUnik(), tipe: 'hapusBuku', namaPelanggan: b.nama, nominal: -n, alasan: 'hapus buku dibalik — dibayar sesudah dihapus' + (ket ? ' · ' + ket : ''), balikHapus: true, tanggal: w.tanggal, jam: w.jam, dicatatDi: 'sistem' } }];
+  if (!(sudah > 0)) dokumen.push({ koleksi: 'piutangMutasi', data: { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: w.tanggal, jam: w.jam, caraBayar: c, catatan: 'dibayar sesudah dihapus buku' + (ket ? ' · ' + ket : ''), dicatatDi: 'sistem' } });
+  const tutup = sudah > 0 ? '' : kalimatBayarTutup(c, w.tanggal);
+  return { dokumen, patch: { kabar: (sudah > 0 ? 'Hapus buku ' + RP(n) + ' a.n. ' + b.nama + ' dibalik — uangnya sudah tercatat sebelumnya. ' : RP(n) + ' dari bon ' + b.nama + ' yang dulu dihapus diterima · ' + (c === 'QRIS' ? 'rekening' : 'laci') + ' bertambah. ')
+    + 'Laba bulan ini naik ' + RP(n) + ' (hapus buku dibalik); catatan hapus buku lama tetap ada' + (tutup ? '; ' + tutup : '') + '.', kabarAwas: false } };
 }
 /** Hapus buku — bukan uang masuk, kerugian bulan ini, permanen: alasan wajib + dua ketukan. */
 export function susunHapusBon(kini, kunci, nominal, alasan, w, yakin) {
