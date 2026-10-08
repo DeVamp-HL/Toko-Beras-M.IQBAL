@@ -84,6 +84,15 @@ main.layar-pelanggan { display: flex; flex-direction: column; gap: 10px; padding
 .layar-pelanggan .th-amplop .k2 { color: #6b6555; } .layar-pelanggan .th-amplop .besar { position: relative; font-family: 'Bodoni Moda', Georgia, serif; font-size: 28px; }
 .layar-pelanggan .step { display: inline-flex; align-items: center; gap: 4px; } .layar-pelanggan .step .kaca-btn { min-height: 32px; min-width: 32px; padding: 0; }
 @media (prefers-reduced-motion: reduce) { .layar-pelanggan .tp, .layar-pelanggan .jd-orang.harap, .layar-pelanggan .polaroid { animation: none; } }
+/* paket brief 9 Okt (butir 1): rata-rata hari bon tertagih (Garis umur, lembar orang) + batas kelompok umur di Atur */
+.layar-pelanggan .ps-form.tiga { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.layar-pelanggan .tg-angka { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; } .layar-pelanggan .tg-angka .besar { font-family: 'Bodoni Moda', Georgia, serif; font-size: 28px; line-height: 1.1; }
+.layar-pelanggan .tg-kartu.kosong .tg-angka .besar { color: var(--redup); } .layar-pelanggan .tg-kartu.belum .tg-angka .besar { font-size: 18px; font-style: italic; color: var(--redup); }
+.layar-pelanggan .tg-rel { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--seg); border: 1px solid var(--kaca-tepi); } .layar-pelanggan .tg-rel i { display: block; height: 100%; transition: width 700ms cubic-bezier(.2,.8,.2,1); }
+.layar-pelanggan .tg-warna.tertagih { background: linear-gradient(90deg, #d2a640, #f1d684); } .layar-pelanggan .tg-warna.saldoAwal, .layar-pelanggan .tg-warna.tanpaTanggal { background: rgba(232,201,108,0.35); } .layar-pelanggan .tg-warna.saatBeli { background: #2f5d3a; opacity: 0.6; } .layar-pelanggan .tg-warna.hapusBuku { background: repeating-linear-gradient(45deg, var(--awas) 0 3px, rgba(0,0,0,0) 3px 6px); } .layar-pelanggan .tg-warna.retur, .layar-pelanggan .tg-warna.lain { background: var(--redup); opacity: 0.55; }
+.layar-pelanggan .tg-rinci { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: 12px; align-items: baseline; } .layar-pelanggan .tg-rinci .n { font-family: 'Bodoni Moda', Georgia, serif; white-space: nowrap; text-align: right; } .layar-pelanggan .tg-rinci .jumlah { border-top: 1px solid var(--kaca-tepi); padding-top: 3px; }
+.layar-pelanggan .tg-titik { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; } .layar-pelanggan .tg-orang.kosong b, .layar-pelanggan .tg-orang.belum b { color: var(--redup); font-weight: 500; font-style: italic; }
+@media (prefers-reduced-motion: reduce) { .layar-pelanggan .tg-rel i { transition: none; } }
 /* putaran 23b: lembar Bersihkan ciri yang dicabut + keterangan tetap di bawah catatan kartu */
 .layar-pelanggan .catatan-larang { font-size: 11px; margin-top: -4px; }
 .layar-pelanggan .bs-lembar { border-color: var(--awas); } .layar-pelanggan .bs-lembar.tenang { border-style: dashed; border-color: var(--rel); }
