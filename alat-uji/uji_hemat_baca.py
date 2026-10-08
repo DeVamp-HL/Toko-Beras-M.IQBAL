@@ -732,6 +732,19 @@ ok('T6e (audit P5) perangkat yang MENJALANKAN ritual (dengar penuh, baca penuhny
   e6a.mode === 'penuh' && e6a.siap && e6a.campur && !e6b.dobel && J(e6b.mem) === '["pb2027"]' && e6c.mode === 'delta' && !e6c.campur && !e6c.F && e6c.bk === hbSidikBk(S.acara) && samaServer(E6), J([e6a, e6b, e6c]));
 E6.tutup();
 
+// T6ab · (PR #122, pemeriksa akhir) PEMEGANG ritual yang pendengar berita acaranya MATI di tengah langkah: memori ditahan (beku), tetapi hapus arsip
+//        (firebase.js arsipkanBerkas → catatHapus) & saldo pembuka (tulisBerkas → catatTulis) tetap diikuti memori beku — catatan 2026 + saldo pembuka TIDAK tampil bersama
+bonLama6(); var EA = new Perangkat('mac-ritual-t6ab'); EA.buka(); maju(20000);
+S.acara = [{ tahun: 2026, status: 'berjalan', pemegang: { id: EA.nama, nama: 'Mac contoh' }, paraf: { pada: '2027-01-02T09:30:00Z' } }]; EA.tetap(); maju(1000); tuntas();
+EA.sesi.acaraTerputus('permission-denied', function () {}); tuntas();
+var eaA = { ditahan: EA.sesi.keadaan().ditahan, mem: memId(EA, 'piutangMutasi') };
+EA.tulis('piutangMutasi', 'pb2027', pm6('pb2027', 300003, '2026-12-31', { tutupBuku: true, tahunDari: 2026 })); tuntas();
+LAMA6.forEach(function (id) { EA.sesi.catatHapus('piutangMutasi', id); delete EA.c('piutangMutasi')[id]; S.hapus('piutangMutasi', id, false); }); EA.emit('piutangMutasi'); tuntas();
+var eaB = { mem: memId(EA, 'piutangMutasi'), dobel: dobel6(EA) };
+ok('T6ab (PR #122, pemeriksa akhir) pemegang ritual, pendengar berita acara mati di tengah langkah: memori ditahan, hapus arsip & saldo pembuka perangkat ini tetap diikuti — tidak dobel',
+  eaA.ditahan === true && J(eaA.mem) === J(LAMA6) && !eaB.dobel && J(eaB.mem) === '["pb2027"]', J([eaA, eaB]));
+EA.tutup();
+
 // T6f · baca penuh wajib karena tutup buku GAGAL (server menolak): pil lepas dengan kabar, memori tetap beku (tidak dobel); diulang sesudah 10 menit seperti baca
 //       penuh otomatis — bukan di tiap kabar koleksi tetap (tiap ulang = seluruh koleksi dibaca lagi)
 var G6 = ritual6(); G6.fGalat = 'unavailable'; G6.buka(); maju(3000);
@@ -1452,6 +1465,11 @@ if (__MODE === 'mati') {
   _hemat.online(false); Lps.cb(snapTetap(false)); var c16d = _hemat._G.online; Lacara.cb(snapTetap(false)); var c16e = _hemat._G.online;
   ok('C16 (lensa hari biasa & jalan keluar, PR #122) firebase.js: sesudah kabar offline, denyut / setelan dari server TIDAK dianggap tersambung (asal berita acara lama); berita acara dari simpanan juga tidak; jawaban SERVER baru pendengar berita acara → sesi hemat tersambung & berita acara dijawab; tanda itu dipakai SEKALI (kabar offline berikutnya + denyut → tetap tanpa internet)',
     c16a === false && c16b === false && c16c.online === true && c16c.server === true && c16d === false && c16e === true, J([c16a, c16b, c16c, c16d, c16e]));
+  // C16b (pemeriksa akhir): jawaban server berita acara yang TERTAHAN (koleksi tetap belum lengkap) tidak dipakai kabar koleksi tetap LAIN sesudahnya (bisa basi)
+  _tetapAda = {}; _hemat.online(false); Lacara.cb(snapTetap(false)); Lps.cb(snapTetap(true)); Latur.cb(snapTetap(true)); var c16f = _hemat._G.online;
+  Lacara.cb(snapTetap(false)); var c16g = _hemat._G.online;
+  ok('C16b (PR #122, pemeriksa akhir) jawaban server berita acara yang tertahan (koleksi tetap belum lengkap) TIDAK dianggap tersambung lewat denyut / setelan dari simpanan sesudahnya; jawaban berita acara berikutnya → tersambung',
+    c16f === false && c16g === true, J([c16f, c16g]));
   // ---- C17 · (lensa jalan keluar, PR #122) pendengar berita acara MATI (galat): sesi hemat dikabari & memasangnya ULANG lewat jadwalnya (1 menit) — pendengar baru
   //      atas tutupBukuAcara (includeMetadataChanges); jawaban dari simpanan belum memulihkan; jawaban server pendengar baru → pulih, tidak lagi disebut ditolak
   var nAcara = function () { return __rek.dengar.filter(function (L) { return L.aktif && L.ref.nama === 'tutupBukuAcara'; }).length; };
@@ -1465,7 +1483,7 @@ if (__MODE === 'mati') {
     c17a.putus && c17a.ditolak && c17a.ditahan === true && c17a.timer.indexOf(60000) >= 0 && c17b.baru === 1 && !!c17b.opsi && c17b.opsi.includeMetadataChanges === true && c17c === true
     && !c17d.putus && !c17d.ditolak && c17d.server === true && !/tutupBukuAcara/.test(c17d.galat), J([c17a, c17b, c17c, c17d]));
   // uang-kritis & kunci tab di penulis pusat
-  var asli = _hemat, dicatat = []; _hemat = { pastikanSegar: function () { return Promise.resolve({ ok: false, pesan: 'data penjualan belum cocok dengan server — uji' }); }, adaMati: function () { return false; }, catatHapus: function () {},
+  var asli = _hemat, dicatat = []; _hemat = { pastikanSegar: function () { return Promise.resolve({ ok: false, pesan: 'data penjualan belum cocok dengan server — uji' }); }, adaMati: function () { return false; }, catatHapus: function (k, id) { dicatat.push('hapus:' + k + '|' + id); },
     catatTulis: function (k, id) { dicatat.push(k + '|' + id); }, keadaan: asli.keadaan, ringkasDenyut: asli.ringkasDenyut };
   var u1 = null, u2 = null; __rek.tulis = [];
   tulisBerkas([{ koleksi: 'tutupHari', data: { id: '2026-10-07', tanggal: '2026-10-07' } }], []).then(function (r) { u1 = r; }); drainMicrotasks();
@@ -1476,6 +1494,11 @@ if (__MODE === 'mati') {
   perbaruiBerkas([[{ koleksi: 'pelangganCatatan', id: 'pc9', kolom: { ciri: [] } }]], 'uji'); drainMicrotasks();
   ok('C15 (audit P5 · sanggahan kedua) tulisBerkas & perbaruiBerkas mencatat tulisan perangkat ini ke sesi hemat (tetap tampil di memori yang dibekukan selama ditahan); kiriman UANG-KRITIS yang ditolak sebelum dikirim tidak dicatat',
     dicatat.indexOf('penjualan|n5') >= 0 && dicatat.indexOf('pelangganCatatan|pc9') >= 0 && !dicatat.some(function (x) { return /^tutupHari/.test(x); }), J(dicatat));
+  // ---- C18 · (PR #122, pemeriksa akhir) arsip & pulihkan tutup buku dicatat ke sesi hemat seperti tulis/hapus biasa (memori beku pemegang ritual mengikutinya)
+  dicatat.length = 0; arsipkanBerkas('2026', [{ koleksi: 'piutangMutasi', id: 'a7', data: { id: 'a7' } }]); drainMicrotasks();
+  pulihkanBerkas('2026', [{ koleksi: 'piutangMutasi', idAsli: 'a8', dok: { id: 'a8' } }]); drainMicrotasks();
+  ok('C18 (PR #122, pemeriksa akhir) arsipkanBerkas → catatHapus tiap catatan yang diarsip; pulihkanBerkas (batal tutup buku) → catatTulis tiap catatan yang dikembalikan',
+    dicatat.indexOf('hapus:piutangMutasi|a7') >= 0 && dicatat.indexOf('piutangMutasi|a8') >= 0, J(dicatat));
   __ls[HB_KUNCI_TAB] = J({ sesi: 'tab-lain', detak: Date.now() }); var u3 = null;
   tulisBerkas([{ koleksi: 'penjualan', data: { id: 'n6', tanggal: '2026-10-07', hargaTotal: 6000 } }], []).then(function (r) { u3 = r; }); drainMicrotasks();
   ok('C6 kunci tab: tab yang KALAH (tab lain menekan "Pakai di sini") tidak menulis apa pun', u3 && u3.gagal && /tab lain/.test(u3.pesan), J(u3));
@@ -1831,13 +1854,19 @@ KONTROL = [
          "catatTulis(k, id) { if (!K[k]) return; (K[k].milik = K[k].milik || {})[String(id)] = true; delete (G.hapusSesi[k] || {})[String(id)]; },")]}),
     # lensa hari biasa & jalan keluar (audit PR #122, 8 Okt — temuan sedang/rendah): kabar 'online' hilang (P5n), pendengar berita acara mati (P5o), patokan waktu
     # server diam (P5p) — tiap baris wajib berbunyi di kasusnya sendiri (T6y, T6z, T6z2, T6aa, C16, C17)
+    # pemeriksa akhir PR #122 (P5q): arsip/pulihkan tutup buku tidak dicatat ke sesi hemat; tanda jawaban server basi dipakai koleksi tetap lain
+    ('(P5q) arsipkanBerkas tidak mencatat hapus arsip ke sesi hemat (pemegang ritual dobel bila memori beku)', {FB: [("      if (_hemat) _hemat.catatHapus(x.koleksi, x.id);\n    });\n    const log", "    });\n    const log")]}),
+    ('(P5q) pulihkanBerkas tidak mencatat catatan yang dikembalikan ke sesi hemat', {FB: [("    if (_hemat) potong.forEach((x) => _hemat.catatTulis(x.koleksi, x.idAsli));\n", "")]}),
+    ('(P5q) tanda jawaban server berita acara yang tertahan dipakai kabar koleksi tetap lain (basi)', {FB: [("const baru = nama === 'tutupBukuAcara' && _acaraBaru;", "const baru = _acaraBaru;")]}),
+    ('(P5q) hemat-baca.js: hapus perangkat ini tidak diikuti memori beku (pemegang ritual)', {HB: [("catatHapus(k, id) {", "catatHapus(k, id) { return;")]}),
     ('(P5n) jawaban server baru berita acara tidak dianggap tersambung (memori beku MACET sampai muat ulang bila kabar "online" peramban hilang)', {HB: [("      if (baru && !G.online) sesi.online(true);\n", "")]}),
     ('(P5n) asal berita acara lama / kabar koleksi tetap lain dianggap bukti tersambung (sesi hemat)', {HB: [("const baru = x.acaraBaru === true && x.acaraServer === true;", "const baru = x.acaraServer === true;")]}),
     ('(P5n) firebase.js: jawaban server koleksi tetap MANA PUN dianggap jawaban baru berita acara (denyut sesudah kabar offline melepas memori beku)', {FB: [
         ("    _acaraBaru = !(snap.metadata && snap.metadata.fromCache);\n", ""),
-        ("  if (!TETAP_HEMAT[nama]) return;\n  _tetapAda[nama] = true;\n", "  if (!TETAP_HEMAT[nama]) return;\n  _tetapAda[nama] = true; _acaraBaru = !(snap.metadata && snap.metadata.fromCache);\n")]}),
+        ("  if (!TETAP_HEMAT[nama]) return;\n  _tetapAda[nama] = true;\n", "  if (!TETAP_HEMAT[nama]) return;\n  _tetapAda[nama] = true; _acaraBaru = !(snap.metadata && snap.metadata.fromCache);\n"),
+        ("const baru = nama === 'tutupBukuAcara' && _acaraBaru;", "const baru = _acaraBaru;")]}),
     ('(P5n) firebase.js: asal berita acara LAMA (_dariCache) diteruskan sebagai jawaban baru', {FB: [("acaraBaru: baru });", "acaraBaru: _dariCache.tutupBukuAcara === false });")]}),
-    ('(P5n) firebase.js: jawaban baru berita acara diteruskan berulang (tidak dibuang sesudah dipakai)', {FB: [("const baru = _acaraBaru; _acaraBaru = false;", "const baru = _acaraBaru;")]}),
+    ('(P5n) firebase.js: jawaban baru berita acara diteruskan berulang (tidak dibuang sesudah dipakai)', {FB: [("const baru = nama === 'tutupBukuAcara' && _acaraBaru; _acaraBaru = false;", "const baru = _acaraBaru;")]}),
     ('(P5o) pendengar berita acara yang mati tidak pernah dipasang ulang (semua koleksi hemat beku selamanya)', {HB: [("if (!G.berhenti && G.acaraPutus && pasangUlang) pasangUlang(); }", "}")]}),
     ('(P5o) pasang ulang tanpa jeda bertingkat (tiap menit selamanya — baca terbuang)', {HB: [("HB_ACARA_ULANG_MS[Math.min(n, HB_ACARA_ULANG_MS.length - 1)]);", "HB_ACARA_ULANG_MS[0]);")]}),
     ('(P5o) kabar pendengar berita acara terputus berbunyi "server belum menjawab … tidak perlu muat ulang"', {HB: [("    if (G.acaraPutus && h) return hbKabarAcaraPutus(hariKini(), kurang);\n", "")]}),

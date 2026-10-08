@@ -252,6 +252,16 @@ acara mati, kalimat "sejak aplikasi dibuka") sudah dibetulkan — lihat paragraf
   batu nisan → catatan yang dihapus perangkat lain di luar jendela S sejak baca penuh terakhir (≤ 14 hari) bisa tampil lagi sampai server menjawab (sesudah
   reset). Prosedur bab Hemat baca butir 4 justru menganjurkan mematikan bila kuota habis (429). Bukan dari P5 (sudah ada sejak 7 Okt); hari ritual prosedur
   sudah melarang `?hemat=mati`.
+- (rendah) Pendengar berita acara terputus SELAGI tanpa internet: kabar berbunyi "pemeriksaan tutup buku terputus … muat ulang", sedangkan kelengkapan &
+  uang-kritis berbunyi "tanpa internet". Saran muat ulang tidak menolong selagi tanpa internet; angkanya tetap aman (ditahan).
+- (rendah) Jeda pasang ulang pendengar berita acara (1, 2, 5 menit lalu tiap 5 menit) mulai dari 1 menit lagi tiap kali server sempat menjawab. Pendengar yang
+  jatuh-bangun dipasang ulang ±1 menit sekali (±1 baca tiap pasang, < ±2,7 rb baca sehari pada keadaan terburuk yang diukur).
+
+**Pemeriksa akhir PR #122 (8 Okt) — dibetulkan.** (1) `arsipkanBerkas` mencatat tiap catatan yang diarsip ke sesi hemat (`catatHapus`) dan `pulihkanBerkas`
+(batal tutup buku) mencatat tiap catatan yang dikembalikan (`catatTulis`). Dulu PEMEGANG ritual yang memorinya ditahan di tengah langkah (pendengar berita
+acara mati, atau putus internet) menggambar catatan 2026 BERSAMA saldo pembuka (dobel) sampai berita acara dijawab server lagi. Uji T6ab & C18, kontrol (P5q).
+(2) Jawaban server berita acara yang tertahan karena koleksi tetap belum lengkap tidak lagi dipakai oleh kabar koleksi tetap LAIN sesudahnya (bisa basi: sudah
+putus lagi) — hanya kabar pendengar berita acara sendiri yang membawanya. Uji C16b, kontrol (P5q).
 
 ## Belum dibangun (tahap berikut / bila perlu)
 
