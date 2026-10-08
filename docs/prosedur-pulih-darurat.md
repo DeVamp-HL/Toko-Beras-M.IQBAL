@@ -199,6 +199,12 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 
 **Sampai 31 Des (owner):**
 - [ ] Tutup hari setiap malam sampai 31 Des. Tutup hari 31 Des = tulisan TERAKHIR bertanggal 2026.
+- [ ] **Cara hitung modal (FIFO, keputusan owner 9 Okt):** Stok › HPP / modal › kartu "Cara hitung modal". Pilih hari mulai (besok, atau
+      **1 Jan 2027** = tahun buku baru) → PAKAI FIFO → ketuk sekali lagi. Mau mulai 1 Jan: tekan paling lambat 31 Des, dari satu perangkat online —
+      HP karyawan menerima setelannya sebelum hari itu. Nota yang sudah tercatat tidak berubah; pajak omzet tidak berubah. Kembali ke rata-rata = tombol
+      yang sama (dua ketukan).
+- [ ] **HET (Harga & Pemasok › Katalog › Atur HET):** petakan tiap kelas/merek ke premium / medium / bukan beras HET. Sebelum dipetakan, peringatan
+      HET tidak menyala ("belum dipetakan", bukan "aman").
 - [ ] Hari berjualan tanpa tutup hari: Uang › Tutup buku › langkah 1 → tiap tanggal "tidak ditutup — diterima apa adanya" + alasan (min. 5 huruf),
       **Simpan putusan** (tersimpan sungguhan, juga dari latihan; ikut berita acara). Tutup hari tidak dibuat mundur.
 - [ ] Tidak ada buku beras / kemasan / kantong yang minus, tidak ada kelebihan bayar pelanggan, bayar lebih ke pemasok / owner, atau kasbon dibayar
