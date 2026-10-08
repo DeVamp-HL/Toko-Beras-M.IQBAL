@@ -53,7 +53,7 @@ export function pasangLayarStok(akar, opsi) {
     // putaran 16: Kantong (ST4), Tempat simpan (ST5), HPP (ST6)
     kt: { jenis: '', jumlah: '', harga: '', toko: '' }, ktTab: 'rak', ktYakin: {}, ktHapus: null, ktAlasan: '', ktYakinHapus: false, aturKt: null,
     tp: { pilih: null, tempat: null }, aturTp: null,
-    hp: { merk: null, ketik: '', alasan: '', yakin: false, massal: {}, tab: 'kartu' }, aturHp: null,
+    hp: { merk: null, ketik: '', alasan: '', yakin: false, massal: {}, tab: 'kartu' }, aturHp: null, fifo: { pilih: '', yakin: '' },
     // putaran 27: tawaran harga jual varian sesudah barang masuk (Bagian 2)
     varianTawar: null, vrKetik: {}, vrYakin: false });
   const K = buatKeadaan(awal());
@@ -316,6 +316,11 @@ export function pasangLayarStok(akar, opsi) {
     bukaAturHp: () => { const a = HP.aturHpp(); set({ aturHp: st().aturHp ? null : { batasLonjak: String(a.batasLonjak), lantaiHpp: String(a.lantaiHpp) } }); },
     hpKetikAtur: (v, el) => { const a = Object.assign({}, st().aturHp || {}); a[el.dataset.kolom] = String(v).slice(0, 10); set({ aturHp: a }); },
     simpanAturHp: async () => { const a = st().aturHp; if (a) await tulis(HP.susunAturHpp(a, waktu())); },
+    // modal FIFO (owner 9 Okt 2026, "saklar di lu"): pilih hari mulai (besok / 1 Jan), dua ketukan; sudah berjalan → hanya bisa dimatikan
+    fifoPilih: ({ tanggal }) => set({ fifo: { pilih: (st().fifo || {}).pilih === tanggal ? '' : tanggal, yakin: '' }, kabar: '' }),
+    fifoSimpan: async ({ mode }) => { const f = st().fifo || {}; const r = HP.susunSaklarFifo(mode, f.pilih || '', waktu(), f.yakin === mode);
+      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: !r.perluYakin, fifo: Object.assign({}, f, { yakin: r.perluYakin || '' }) });
+      if (await tulis(r)) set({ fifo: { pilih: '', yakin: '' } }); },
     // ---- UMUR & PUTARAN (paket brief 9 Okt, butir 2): kartu pertanyaan, rincian buku yang diketuk, Atur ambang (aturanToko/stokUmur)
     umTanya: ({ id }) => set({ umTanya: id, umPilih: null }),
     umPilih: ({ kunci }) => set({ umPilih: st().umPilih === kunci ? null : kunci }),
@@ -484,11 +489,25 @@ export function pasangLayarStok(akar, opsi) {
       ${K.tanpaKelas.length ? h`<div class="ket" data-k="hp-kelas-tanpa">${K.tanpaKelas.length} merek tanpa kelas: ${K.tanpaKelas.join(', ')} — petakan di Harga › Katalog › Kelas mutu.</div>` : ''}
       ${K.belumKonfirmasi.length ? h`<div class="ket" data-k="hp-kelas-tebakan">${K.belumKonfirmasi.length} merek kelasnya belum dikonfirmasi owner (tebakan / kosong).</div>` : ''}</div>`;
   }
+  /** Kartu saklar modal FIFO (Stok › HPP, owner saja — lembar ini memang owner saja). */
+  function gambarFifo(s) {
+    const SF = HP.saklarFifo(kini()); const f = s.fifo || {};
+    const riw = SF.riwayat.slice(0, 3).map((r) => (r.aksi === 'mati' ? 'dimatikan' : (r.aksi === 'ganti' ? 'diganti ke ' : 'dijadwalkan ') + tanggalPendek(r.mulai)) + ' (' + tanggalPendek(r.tanggal) + ' ' + (r.jam || '') + ')').join(' · ');
+    return h`<div class="kartu" data-k="hp-fifo" style="gap: 8px;">
+      <div class="label">Cara hitung modal</div>
+      <div style="font-weight: 700;">${SF.keadaan === 'mati' ? 'RATA-RATA semua kedatangan' : SF.keadaan === 'rencana' ? 'FIFO mulai ' + tanggalPendek(SF.mulai) : 'FIFO sejak ' + tanggalPendek(SF.mulai)}</div>
+      <div class="ket">${SF.teks}</div>
+      <div class="ket">FIFO: karung yang paling lama keluar duluan — modal tiap nota = harga kedatangan TERLAMA yang masih ada; nilai rak = kedatangan terbaru. Wadah literan campuran tetap rata-rata. Nota yang sudah tercatat tidak berubah; pajak omzet tidak berubah.</div>
+      ${SF.keadaan !== 'nyala' ? h`<div class="jalur rapat" data-k="hp-fifo-pilih">${SF.pilihan.map((p) => h`<div class="seg ${f.pilih === p.tanggal ? 'aktif' : ''}" data-aksi="fifoPilih" data-tanggal="${p.tanggal}">${p.label}</div>`)}</div>` : ''}
+      <div class="tombol-baris">${SF.keadaan !== 'nyala' ? h`<div class="utama ${f.pilih ? '' : 'redup'}" data-aksi="fifoSimpan" data-mode="nyala">${f.yakin === 'nyala' ? 'YAKIN, PAKAI FIFO MULAI ' + tanggalPendek(f.pilih) : SF.keadaan === 'rencana' ? 'GANTI HARI MULAI' : 'PAKAI FIFO'}</div>` : ''}${SF.keadaan !== 'mati' ? h`<div class="kaca-btn" data-aksi="fifoSimpan" data-mode="mati">${f.yakin === 'mati' ? 'YAKIN, KEMBALI KE RATA-RATA' : SF.keadaan === 'rencana' ? 'batalkan rencana FIFO' : 'kembali ke rata-rata'}</div>` : ''}</div>
+      ${riw ? h`<div class="ket" style="font-size: 11px;">riwayat saklar: ${riw}</div>` : ''}</div>`;
+  }
   function gambarHpp(s) {
     const K = HP.kartuHpp(); const hp = s.hp; const M = hp.merk ? K.kartu.find((k) => k.merk === hp.merk) : null; const N = M && String(hp.ketik).trim() ? HP.nilaiKoreksi(M.merk, hp.ketik) : null; const log = HP.logKoreksi(8);
     const PM = HP.pratinjauMassal(hp.massal);
     const koreksi = M ? h`<div class="kartu" data-k="hp-koreksi" style="gap: 8px;"><div style="font-weight: 700;">Koreksi ${M.merk}</div>
-      <div class="ket">modal rata-rata ${RP(Math.round(M.modal))}/kg (buku, = laba & neraca) · harga beli terbaru ${M.hargaTerbaru === null ? 'belum ada' : RP(M.hargaTerbaru) + '/kg'} · ${M.jual ? 'jual ' + RP(M.jual) + '/kg · ' : ''}${M.teksMargin} · sisa ${DESIMAL(Math.round(M.sisa * 10) / 10)} kg</div>
+      <div class="ket">${M.fifo ? 'modal nota berikutnya ' + RP(Math.round(M.modalKeluar)) + '/kg (FIFO) · nilai rak ' + RP(Math.round(M.modal)) + '/kg (= neraca)' : 'modal rata-rata ' + RP(Math.round(M.modal)) + '/kg (buku, = laba & neraca)'} · harga beli terbaru ${M.hargaTerbaru === null ? 'belum ada' : RP(M.hargaTerbaru) + '/kg'} · ${M.jual ? 'jual ' + RP(M.jual) + '/kg · ' : ''}${M.teksMargin} · sisa ${DESIMAL(Math.round(M.sisa * 10) / 10)} kg</div>
+      ${M.fifo ? h`<div class="ket" data-k="hp-lapisan">${M.teksFifo}</div>` : ''}
       ${(() => { const u = S.umKalimat(M.merk, kini()); return u ? h`<div class="ket" data-k="hp-umur">${u} (Stok › Umur & putaran)</div>` : ''; })()}
       ${M.bisaKoreksi ? h`<div class="ket">HPP adalah TURUNAN kedatangan — yang dikoreksi = harga beli per kg pada kedatangan TERAKHIR nama ini (${N && !N.tolak ? N.teksTarget : 'kedatangan terakhir yang bukan fondasi'}).</div>
         <div class="ps-form dua"><div><div class="ket">Harga beli per kg yang benar (Rp)</div><input class="ketik-nama" id="hpKetik" type="text" inputmode="numeric" value="${hp.ketik}" data-ketik="hpKetik" data-kolom="ketik" placeholder="0"></div><div><div class="ket">Alasan (wajib)</div><input class="ketik-nama" id="hpAlasan" type="text" value="${hp.alasan}" data-ketik="hpKetik" data-kolom="alasan" placeholder="mis. bongkar belum masuk"></div></div>
@@ -497,7 +516,8 @@ export function pasangLayarStok(akar, opsi) {
         <div class="tombol-baris"><div class="utama ${!N || N.tolak || !String(hp.alasan).trim() ? 'redup' : ''}" data-aksi="hpSimpan">${hp.yakin ? 'YAKIN, SIMPAN' : 'SIMPAN KOREKSI'}</div><div class="kaca-btn" data-aksi="hpSiapkan">siapkan untuk massal</div></div>`
       : h`<div class="pita-info">Modal ${M.merk} datang dari stok awal / saldo pembuka (fondasi) — tidak dikoreksi dari sini; catat kedatangan barunya di Barang masuk.</div>`}</div>` : '';
     return h`<section class="stok-hpp" data-k="hpp">
-      ${kepalaLembar('HPP / modal', 'modal rata-rata (buku) · harga beli terbaru (aturan owner, pembanding) · margin ke katalog · koreksi beralasan')}
+      ${kepalaLembar('HPP / modal', 'cara hitung modal (rata-rata / FIFO) · harga beli terbaru (pembanding) · margin ke katalog · koreksi beralasan')}
+      ${gambarFifo(s)}
       <div class="jalur rapat" data-k="hp-tab">${HP.TAB_HPP.map(([id, nm]) => h`<div class="seg ${hp.tab === id ? 'aktif' : ''}" data-aksi="hpTab" data-t="${id}">${nm}</div>`)}</div>
       <div class="ket">${K.ringkasTeks}</div>
       ${hp.tab === 'garis' ? h`<div class="kartu" data-k="hp-garis" style="gap: 4px;">${HP.garisWaktu().map((g) => h`<div data-k="hg-${g.merk}" style="padding-top: 6px;"><div style="font-weight: 700; font-size: 12.5px;">${g.merk}</div><div class="ket">${g.ket}</div>
@@ -506,7 +526,7 @@ export function pasangLayarStok(akar, opsi) {
       : hp.tab === 'massal' ? h`<div class="ket">${PM.teks}</div><div class="kartu" data-k="hp-massal" style="gap: 2px;">${K.kartu.map((k) => { const m = PM.baris.find((b) => b.merk === k.merk); return h`<div class="jawab hp-massal ${hp.merk === k.merk ? 'dipilih' : ''}" data-k="hm-${k.merk}" data-aksi="hpPilih" data-merk="${k.merk}"><span class="kiri"><span class="nm">${k.merk}</span><span class="w">${m ? m.ket : DESIMAL(Math.round(k.sisa * 10) / 10) + ' kg · ' + k.teksMargin}</span></span><span class="kanan"><span class="ket">${RP(Math.round(k.modal))}</span><span class="n ${m && m.tolak ? 'awas' : ''}">${m ? RP(m.harga) : '—'}</span>${m ? h`<span class="ket tautan" data-aksi="hpBuang" data-merk="${k.merk}">buang</span>` : ''}</span></div>`; })}</div>
         ${koreksi}
         <div class="kartu" data-k="hp-massal-simpan" style="gap: 6px;"><input class="ketik-nama sempit" id="hpAlasanMassal" type="text" value="${hp.alasan}" data-ketik="hpKetik" data-kolom="alasan" placeholder="Satu alasan untuk semua (wajib)"><div class="utama ${PM.siap && String(hp.alasan).trim() ? '' : 'redup'}" data-aksi="hpMassal">${PM.siap ? 'TERAPKAN ' + PM.n + ' HPP SEKALIGUS · nilai rak ' + (PM.delta >= 0 ? '+' : '−') + RP(Math.round(Math.abs(PM.delta))) : PM.teks}</div><div class="ket">Semua-atau-tidak-sama-sekali: satu angka ditolak = tidak ada yang tersimpan.</div></div>`
-      : h`<div class="hp-kartu-daftar" data-k="hp-kartu">${K.kartu.map((k) => h`<div class="kartu hp-kartu ${hp.merk === k.merk ? 'aktif' : ''}" data-k="hk-${k.merk}" data-aksi="hpPilih" data-merk="${k.merk}"><div><div style="font-weight: 700;">${k.merk}</div><div class="ket">${DESIMAL(Math.round(k.sisa * 10) / 10)} kg · nilai rak ${RP(Math.round(k.nilaiRak))} · ${k.sumber}</div><div class="ket">harga beli terbaru ${k.hargaTerbaru === null ? 'belum ada' : RP(k.hargaTerbaru) + '/kg'}${Math.abs(k.bedaTerbaru) >= 1 ? ' (' + (k.bedaTerbaru > 0 ? '+' : '−') + RP(Math.round(Math.abs(k.bedaTerbaru))) + ' dari rata-rata)' : ''}${k.lonjakTerakhir ? ' · kedatangan terakhir ' + (k.lonjakTerakhir > 0 ? '▲' : '▼') + Math.abs(k.lonjakTerakhir) + ' %' : ''}</div></div><div style="text-align: right;"><div class="n">${RP(Math.round(k.modal))}<span class="ket">/kg</span></div><div class="m ${k.kelasMargin}">${k.teksMargin}</div></div></div>`)}</div>
+      : h`<div class="hp-kartu-daftar" data-k="hp-kartu">${K.kartu.map((k) => h`<div class="kartu hp-kartu ${hp.merk === k.merk ? 'aktif' : ''}" data-k="hk-${k.merk}" data-aksi="hpPilih" data-merk="${k.merk}"><div><div style="font-weight: 700;">${k.merk}</div><div class="ket">${DESIMAL(Math.round(k.sisa * 10) / 10)} kg · nilai rak ${RP(Math.round(k.nilaiRak))} · ${k.sumber}</div>${k.fifo ? h`<div class="ket">${k.teksFifo}</div>` : ''}<div class="ket">harga beli terbaru ${k.hargaTerbaru === null ? 'belum ada' : RP(k.hargaTerbaru) + '/kg'}${Math.abs(k.bedaTerbaru) >= 1 ? ' (' + (k.bedaTerbaru > 0 ? '+' : '−') + RP(Math.round(Math.abs(k.bedaTerbaru))) + ' dari rata-rata)' : ''}${k.lonjakTerakhir ? ' · kedatangan terakhir ' + (k.lonjakTerakhir > 0 ? '▲' : '▼') + Math.abs(k.lonjakTerakhir) + ' %' : ''}</div></div><div style="text-align: right;"><div class="n">${RP(Math.round(k.modal))}<span class="ket">/kg</span></div><div class="m ${k.kelasMargin}">${k.teksMargin}</div></div></div>`)}</div>
         ${koreksi}`}
       ${log.length ? h`<div class="kartu" data-k="hp-log" style="gap: 2px;"><div class="label">Koreksi terakhir · perubahan nilai rak</div>${log.map((l) => h`<div class="hp-garis" data-k="hl-${l.id}" style="grid-template-columns: minmax(0, 1fr) auto;"><span class="ket">${tanggalPendek(l.tanggal)} ${l.jam} · ${l.merk} ${RP(l.hargaDari)} → ${RP(l.hargaKe)}/kg${l.massal ? ' (massal ' + l.massal + ')' : ''} · ${l.alasan}</span><span class="n ${l.deltaNilai < 0 ? 'awas' : ''}">${l.deltaNilai >= 0 ? '+' : '−'}${RP(Math.abs(l.deltaNilai))}</span></div>`)}</div>` : ''}
       ${s.aturHp ? h`<div class="kartu" data-k="atur-hp" style="gap: 8px;"><div class="label">Aturan HPP · angka owner</div><div class="ps-form dua">
@@ -514,7 +534,7 @@ export function pasangLayarStok(akar, opsi) {
         <div><div class="ket">Lantai HPP per kg (Rp)</div><input class="ketik-nama" id="ahLantai" type="text" inputmode="numeric" value="${s.aturHp.lantaiHpp}" data-ketik="hpKetikAtur" data-kolom="lantaiHpp"></div></div>
         <div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAturHp">batal</div><div class="kaca-btn aktif emas" data-aksi="simpanAturHp">SIMPAN ATURAN</div></div></div>`
       : h`<div class="kaca-btn kecil" data-aksi="bukaAturHp" style="align-self: flex-start;">Atur batas lonjakan & lantai HPP ${K.atur.dariOwner ? '· diatur owner' : '· bawaan'} ›</div>`}
-      <div class="ket" style="font-size: 11px;">Buku masih menilai modal RATA-RATA tertimbang (sama dengan Neraca & laba sistem lama); aturan owner 13 Sep "harga beli terbaru" dipajang sebagai pembanding, belum mengganti mesin (keputusan owner). Angka aneh ditolak dengan kalimat, bukan dipotong diam-diam; margin Rp0 boleh (disengaja?).</div>
+      <div class="ket" style="font-size: 11px;">${HP.saklarFifo(kini()).keadaan === 'nyala' ? 'Buku menilai modal FIFO (karung terlama keluar duluan; wadah campuran rata-rata); harga beli terbaru dipajang sebagai pembanding.' : 'Buku menilai modal RATA-RATA tertimbang semua kedatangan sampai saklar FIFO berlaku; harga beli terbaru dipajang sebagai pembanding.'} Angka aneh ditolak dengan kalimat, bukan dipotong diam-diam; margin Rp0 boleh (disengaja?).</div>
     </section>`;
   }
 
