@@ -131,6 +131,32 @@ TERTAGIH = {
                       _m(4091, 'bayar', 'Pak Hadi', 150000, '2026-09-05', catatan='Dibayar langsung saat beli — sisa Rp100.000 jadi piutang'), _m(4092, 'bayar', 'Pak Hadi', 200000, '2026-09-14')],
 }
 
+# TINJAUAN 9 Okt (no. 9, 10, 11 — temuan yang lolos sanggah). Dipasang HANYA di kasusnya lalu dipulihkan. NAMA & ANGKA CONTOH. Hitungan tangan (ribu rupiah):
+#   no. 9  Pak Contoh Retur: bon 100 (1 Agu) dibayar 100 (5 Agu = 4 hari); bon 100 (10 Agu) terbuka; 15 Sep retur 100 dari nota 1 Agu. Nota 1 Agu SUDAH lunas saat
+#          retur → returnya menutup bon 10 Agu PADA 15 Sep (36 hari, kelompok retur — bukan tertagih). Rata-rata 100×4 / 100 = 4 hari, 2 bon lunas (200).
+#          Sebelum perbaikan: bon 10 Agu "dibayar 10 Agu, 0 hari" (pembayaran 5 Agu pindah mundur) → rata-rata 0 hari "dibayar di hari bon lahir".
+#   no. 10 Bu Contoh Tahun sesudah TUTUP BUKU 2026, dilihat 20 Jan 2027 (90 hari: 23 Okt 2026 – 20 Jan 2027, menyeberang 31 Des → TERPOTONG, mulai 1 Jan 2027):
+#          saldo pembuka 200 bertanggal 20 Nov 2026 (= bon tertuanya) + bon 100 (5 Jan); bayar 100 (8 Jan) + 200 (10 Jan). FIFO: pembuka 100 × 49 hari (8 Jan) +
+#          100 × 51 hari (10 Jan); bon 5 Jan 100 × 5 hari (10 Jan).
+#          (a) marginBon SATU bon nota 200 → tanggalnya pasti: (4.900 + 5.100 + 500) / 300 = 35 hari (sama dengan sebelum ritual); bawaan tutup buku 0.
+#          (b) marginBon dua bon (tertua 120 + lebih muda 80) → 120 pasti: 100×49 + 20×51 + 100×5 = 6.420 / 220 = 29,18 → "29,2 hari"; 80 = 1 saldo bawaan
+#              tutup buku (belum bisa dihitung); lunas 2 bon 300 = 220 + 80.
+#          (c) tanpa marginBon → 200 seluruhnya bawaan tutup buku; tertagih bon 5 Jan 100 × 5 = 5 hari. Sebabnya "saldo bawaan tutup buku", BUKAN "saldo awal
+#              (tanggal lahirnya perkiraan)". Sebelum perbaikan (a) = 5 hari & "1 bon saldo awal (tanggal lahirnya perkiraan)".
+#   no. 11 Bu Contoh Nol: satu nota Kredit Rp0 (1 Sep) → tidak ada bon yang lunas → kosong "—" (sebelum: "Belum bisa dihitung: ." tanpa sebab).
+#          Bu Contoh Campur: bon 100 (1 Agu) dibayar 11 Agu (10 hari) + nota Kredit Rp0 (5 Sep) → 10 hari, 1 bon lunas (bukan 2).
+TINJAUAN = {
+    'retur': {'penjualan': [_bon(3101, '2026-08-01', 'Pak Contoh Retur', 100000), _bon(3102, '2026-08-10', 'Pak Contoh Retur', 100000)],
+              'piutangMutasi': [_m(4101, 'bayar', 'Pak Contoh Retur', 100000, '2026-08-05'), _m(4102, 'retur', 'Pak Contoh Retur', 100000, '2026-09-15', notaAsalId=3101, catatan='barang kembali')]},
+    'tahun': {'penjualan': [_bon(3202, '2027-01-05', 'Bu Contoh Tahun', 100000)],
+              'piutangMutasi': [_m(4201, 'saldoAwal', 'Bu Contoh Tahun', 200000, '2026-11-20', jam='00:00', catatan='Saldo pembuka tutup buku 2026 — tanggal mengikuti utang tertuanya supaya umurnya jujur',
+                                   tutupBuku=True, tahunDari=2026, bertahap=True, marginBon=[{'sisa': 200000, 'nilai': 200000, 'margin': 20000, 'nota': 3201}]),
+                                _m(4202, 'bayar', 'Bu Contoh Tahun', 100000, '2027-01-08'), _m(4203, 'bayar', 'Bu Contoh Tahun', 200000, '2027-01-10')],
+              'batchMasuk': [{'id': 'tb2026', 'tanggal': '2027-01-01', 'pemasok': 'TUTUP BUKU 2026', 'biayaBongkar': 0, 'stokAwal': True, 'merkList': [], 'tutupBuku': True, 'tahunDari': 2026, 'bertahap': True, 'penandaBuku': True}]},
+    'nol': {'penjualan': [_bon(3301, '2026-09-01', 'Bu Contoh Nol', 0), _bon(3311, '2026-08-01', 'Bu Contoh Campur', 100000), _bon(3312, '2026-09-05', 'Bu Contoh Campur', 0)],
+            'piutangMutasi': [_m(4311, 'bayar', 'Bu Contoh Campur', 100000, '2026-08-11')]},
+}
+
 SKENARIO = r"""
 var gagal = [], lulus = 0;
 function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + ket : '')); }
@@ -460,6 +486,50 @@ ok('lembar orang: rincian 2 bon terbuka (yang pertama "dari Rp780.000"), riwayat
     JSON.stringify([T120.awal, T120.rataTeks, T120.tertagih, ani, T10.awal, T10.rataTeks, T10.tertagih, T5.keadaan]));
   pulih(s0);
 })();
+// ---- TINJAUAN 9 Okt (no. 9, 10, 11, 12) — hitungan tangan: komentar TINJAUAN di atas
+(function () {
+  var s0 = simpan(); var b0 = cacheMentah('batch').slice(); var R = TINJAUAN;
+  var tambah = function (x) { pasok('penjualan', cacheMentah('penjualan').concat(x.penjualan || [])); pasok('piutangMutasi', cacheMentah('piutang').concat(x.piutangMutasi || [])); if (x.batchMasuk) pasok('batchMasuk', b0.concat(x.batchMasuk)); };
+  var buku = function (k) { return hitungPiutang().find(function (d) { return d.kunci === k; }); };
+  var ringkas = function (b) { return [b.tanggal, b.lunasTanggal, b.potong.map(function (p) { return p.jenis + ':' + p.n + '@' + p.tanggal + '/' + p.hari; })]; };
+  // no. 9
+  tambah(R.retur); var dR = buku('pak contoh retur'); var JR = dR ? jalanTutupBon(dR).map(ringkas) : []; var TR = tertagihBon(KINI, 'pak contoh retur');
+  var cocokR = !!dR && JSON.stringify(jalanTutupBon(dR).filter(function (b) { return b.sisa > 1e-6; }).map(function (b) { return [b.tanggal, b.sisa]; })) === JSON.stringify(rincianBelumLunas(dR).map(function (r) { return [r.tanggal, r.sisa]; }));
+  ok('tinjauan no. 9: retur nota yang SUDAH dibayar menutup bon terbuka tertua PADA TANGGAL RETUR — bon 1 Agu dibayar 5 Agu (4 hari), bon 10 Agu ditutup retur 15 Sep (36 hari); rata-rata 4 hari dari 1 bon, retur 1 bon Rp100.000 terpisah, 2 bon lunas (bukan "0 hari, dibayar di hari bon lahir"); sisa per bon tetap = mesin',
+    JSON.stringify(JR) === JSON.stringify([['2026-08-01', '2026-08-05', ['bayar:100000@2026-08-05/4']], ['2026-08-10', '2026-09-15', ['retur:100000@2026-09-15/36']]])
+    && TR.keadaan === 'ada' && TR.rataHari === 4 && TR.rataTeks === '4 hari' && TR.tertagih.n === 1 && TR.tertagih.rp === 100000 && TR.retur.n === 1 && TR.retur.rp === 100000 && TR.lunas.n === 2 && TR.lunas.rp === 200000 && !/hari bon lahir/.test(TR.teks) && cocokR,
+    JSON.stringify([JR, TR.rataHari, TR.teks]));
+  pulih(s0);
+  // no. 10 — dilihat 20 Jan 2027 sesudah tutup buku 2026 (batch penanda bertahap → era 2026)
+  var K27 = new Date('2027-01-20T10:00:00+07:00'); var mb = function (x) { var y = JSON.parse(JSON.stringify(R.tahun)); if (x === null) delete y.piutangMutasi[0].marginBon; else y.piutangMutasi[0].marginBon = x; return y; };
+  tambah(R.tahun); var Ta = tertagihBon(K27, 'bu contoh tahun'); pulih(s0); pasok('batchMasuk', b0);
+  tambah(mb([{ sisa: 120000, nilai: 150000, margin: 15000, nota: 3201 }, { sisa: 80000, nilai: 80000, margin: 8000, nota: 3203 }])); var Tb = tertagihBon(K27, 'bu contoh tahun'); pulih(s0); pasok('batchMasuk', b0);
+  tambah(mb(null)); var Tc = tertagihBon(K27, 'bu contoh tahun'); var Tl = lembarBon(K27, 'bu contoh tahun'); pulih(s0); pasok('batchMasuk', b0);
+  ok('tinjauan no. 10 (a): pembuka tutup buku berisi SATU bon nota → tanggalnya pasti, ikut rata-rata: (100×49 + 100×51 + 100×5) / 300 = 35 hari (= sebelum ritual), bawaan tutup buku 0, bukan "saldo awal (perkiraan)"',
+    Ta.keadaan === 'ada' && Ta.rataHari === 35 && Ta.tertagih.n === 2 && Ta.tertagih.rp === 300000 && Ta.pembuka.n === 0 && Ta.saldoAwal.n === 0 && Ta.lunas.n === 2 && Ta.lunas.rp === 300000 && !/perkiraan/.test(Ta.teks), JSON.stringify(Ta));
+  ok('tinjauan no. 10 (b): pembuka dua bon (tertua 120 bertanggal pasti + 80 lebih muda) → 6.420 / 220 = "29,2 hari"; 80 rb = 1 saldo bawaan tutup buku (kelompok sendiri); bagian menutup: 220 + 80 = 300 lunas',
+    Tb.keadaan === 'ada' && Tb.rataTeks === '29,2 hari' && Tb.tertagih.rp === 220000 && Tb.tertagih.rh === 6420000 && Tb.pembuka.n === 1 && Tb.pembuka.rp === 80000 && Tb.lunas.rp === Tb.tertagih.rp + Tb.pembuka.rp && Tb.lunas.n === 2
+    && /1 saldo bawaan tutup buku/.test(Tb.teks) && !/saldo awal/.test(Tb.teks), JSON.stringify(Tb));
+  ok('tinjauan no. 10 (c): pembuka tanpa marginBon → seluruhnya bawaan tutup buku (200 rb), tertagih bon 5 Jan 5 hari; sebabnya "saldo bawaan tutup buku" bukan "tanggal lahirnya perkiraan"',
+    Tc.rataHari === 5 && Tc.pembuka.n === 1 && Tc.pembuka.rp === 200000 && Tc.saldoAwal.n === 0 && /saldo bawaan tutup buku/.test(Tc.teks) && !/perkiraan/.test(Tc.teks), JSON.stringify(Tc));
+  ok('tinjauan no. 10: periode 90 hari yang menyeberang 31 Des 2026 disebut TERPOTONG tutup buku 2026 (mulai 1 Jan 2027) — di teks, label kartu (periodeTeks) & lembar orang; tanpa tutup buku tidak ada catatan potong',
+    !!Ta.terpotong && Ta.terpotong.tahun === 2026 && Ta.terpotong.mulai === '2027-01-01' && /tutup buku 2026 memotong periode 90 hari/.test(Ta.teks) && /terpotong tutup buku 2026/.test(Ta.periodeTeks) && !!Tl && /terpotong tutup buku 2026/.test(Tl.tertagih.periodeTeks)
+    && tertagihBon(KINI).terpotong === null && tertagihBon(KINI).periodeTeks === '90 hari terakhir', JSON.stringify([Ta.terpotong, Ta.periodeTeks, Ta.teks]));
+  // no. 11
+  tambah(R.nol); var Tn = tertagihBon(KINI, 'bu contoh nol'); var Tm = tertagihBon(KINI, 'bu contoh campur'); var Ln = lembarBon(KINI, 'bu contoh nol');
+  ok('tinjauan no. 11: nota Kredit Rp0 bukan "bon yang lunas" — Bu Contoh Nol kosong "—" (bukan "Belum bisa dihitung: ." tanpa sebab); Bu Contoh Campur 10 hari dari 1 bon, lunas 1 bon (bon Rp0 tidak dihitung)',
+    Tn.keadaan === 'kosong' && Tn.rataTeks === '—' && Tn.lunas.n === 0 && !/Belum bisa dihitung/.test(Tn.teks) && !!Ln && Ln.tertagih.keadaan === 'kosong' && Tm.keadaan === 'ada' && Tm.rataHari === 10 && Tm.tertagih.n === 1 && Tm.lunas.n === 1, JSON.stringify([Tn, Tm.lunas]));
+  pulih(s0); pasok('batchMasuk', b0);
+  // no. 12 — pratinjau Atur & SIMPAN memakai pengurai yang sama
+  var contoh = [['7', '30', '1.095'], ['7', '30,0', '90'], ['7', '30', '100.000'], ['7', '30', '90,5'], ['30', '14', '90'], ['14', '60', '365']];
+  var beda = contoh.filter(function (x) { return umurBatasSah(bacaUmurBatas(x)) !== !susunAturPelanggan({ umurBatas: x }, W).tolak; });
+  var A12 = susunAturPelanggan({ umurBatas: ['7', '30', '1.095'] }, W);
+  ok('tinjauan no. 12: batas umur "1.095" = 1095 & "30,0" = 30 diterima pratinjau DAN simpan (tersimpan [7,30,1095]); "100.000" ditolak keduanya; tiap contoh: pratinjau sah ⇔ simpan diterima; layar memakai P.bacaUmurBatas',
+    beda.length === 0 && JSON.stringify(bacaUmurBatas(['7', '30', '1.095'])) === '[7,30,1095]' && JSON.stringify(bacaUmurBatas(['7', '30,0', '90'])) === '[7,30,90]' && !A12.tolak && JSON.stringify(A12.dokumen[0].data.umurBatas) === '[7,30,1095]'
+    && !umurBatasSah(bacaUmurBatas(['7', '30', '100.000'])) && LAYAR_PL.js.indexOf('const ub = P.bacaUmurBatas(a.umurBatas);') >= 0, JSON.stringify([beda, A12.tolak]));
+})();
+ok('tinjauan no. 10 (layar): kartu & lembar orang memakai periodeTeks; bawaan tutup buku punya baris rincian & warna sendiri (bagian tetap menutup ke total)',
+  LAYAR_PL.js.indexOf('Rata-rata hari bon tertagih · ${Tg.periodeTeks}') >= 0 && LAYAR_PL.js.indexOf('Rata-rata hari bayar (${O.tertagih.periodeTeks})') >= 0 && LAYAR_PL.js.indexOf("['pembuka', 'Bawaan tutup buku") >= 0 && LAYAR_PL.css.indexOf('.tg-warna.pembuka') >= 0);
 ok('layar: tab Garis umur menggambar kartu tertagih; lembar orang menulis rata-rata hari bayar; Atur punya 3 batas umur + periode (pratinjau label) dan membawanya dari setelan; batang tertagih hormati prefers-reduced-motion',
   LAYAR_PL.js.indexOf('${gambarTertagih(Bn.tertagih)}') >= 0 && LAYAR_PL.js.indexOf('data-k="tertagih-orang"') >= 0 && LAYAR_PL.js.indexOf('O.tertagih.rataTeks') >= 0 && LAYAR_PL.js.indexOf('data-kolom="umurBatas"') >= 0 && LAYAR_PL.js.indexOf('data-kolom="tertagihHari"') >= 0
   && LAYAR_PL.js.indexOf('umurBatas: a.umurBatas.map(String), tertagihHari: String(a.tertagihHari)') >= 0 && LAYAR_PL.js.indexOf('${gambarAturUmur(a)}') >= 0 && /prefers-reduced-motion[^}]*tg-rel i/.test(LAYAR_PL.css));
@@ -481,7 +551,7 @@ var TGX = (function () { var T = tertagihBon(KINI); var SU = sebaranUmurBon(KINI
     if (tertagihBon(KINI, d.kunci).keadaan === 'ada') orangAda += 1; });
   var sisaPos = semuaBon(KINI).filter(function (b) { return b.sisa > 0; }).reduce(function (a, b) { return a + b.sisa; }, 0);
   return { keadaan: T.keadaan, rataTeks: T.rataTeks, rataHari: T.rataHari, awal: T.awal, akhir: T.akhir, hari: T.hari, tertagih: T.tertagih, saldoAwal: T.saldoAwal, hapusBuku: T.hapusBuku, retur: T.retur, lain: T.lain, tanpaTanggal: T.tanpaTanggal, lunas: T.lunas,
-    saatBeli: T.saatBeli, tutup: Math.abs(T.lunas.rp - (T.tertagih.rp + T.saatBeli.rp + T.saldoAwal.rp + T.hapusBuku.rp + T.retur.rp + T.lain.rp + T.tanpaTanggal.rp)) < 0.5, tidakCocok: tidak, nBuku: nBuku, orangAda: orangAda,
+    saatBeli: T.saatBeli, pembuka: T.pembuka, tutup: Math.abs(T.lunas.rp - (T.tertagih.rp + T.saatBeli.rp + T.saldoAwal.rp + T.pembuka.rp + T.hapusBuku.rp + T.retur.rp + T.lain.rp + T.tanpaTanggal.rp)) < 0.5, tidakCocok: tidak, nBuku: nBuku, orangAda: orangAda,
     umur: SU.map(function (e) { return { label: e.label, n: e.n, jumlah: e.jumlah }; }), umurCocok: Math.abs(SU.reduce(function (a, e) { return a + e.jumlah; }, 0) - sisaPos) < 0.5, sisa: sisaPos, bonKel: bonKel }; })();
 var SB = semuaBon(KINI); var sisaLayar = SB.reduce(function (a, b) { return a + b.sisa; }, 0); var sisaMesin = hitungPiutang().reduce(function (a, b) { return a + b.sisa; }, 0);
 var kenalB = {}; (CAD.piutangMutasi || []).forEach(function (m) { if (m.tipe === 'bayar') Object.keys(m).forEach(function (k) { kenalB[k] = 1; }); }); kenalB.dibawaOleh = 1;
@@ -528,7 +598,7 @@ def jalan(js):
 
 
 def utama(js):
-    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar NOTA_TRX = ' + json.dumps(NOTA_TRX) + ';\nvar TRX_BARU = ' + json.dumps(TRX_BARU) + ';\nvar TERTAGIH = ' + json.dumps(TERTAGIH) + ';\n' + SKENARIO)
+    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar NOTA_TRX = ' + json.dumps(NOTA_TRX) + ';\nvar TRX_BARU = ' + json.dumps(TRX_BARU) + ';\nvar TERTAGIH = ' + json.dumps(TERTAGIH) + ';\nvar TINJAUAN = ' + json.dumps(TINJAUAN) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e]
     return h['lulus'], h['gagal']
 
@@ -545,13 +615,21 @@ if __name__ == '__main__':
             # ---- paket brief 9 Okt (butir 1): kelompok umur diatur owner + rata-rata hari bon tertagih
             'tertagih: FIFO dirusak — bon TERMUDA ditutup dulu': js.replace("bon.forEach((b) => { const nom = b.u.nominal - b.retur; if (pool >= nom)", "bon.slice().reverse().forEach((b) => { const nom = b.u.nominal - b.retur; if (pool >= nom)"),
             'tertagih: pembayaran TERAKHIR dipasangkan ke rupiah bon tertua': js.replace("ev.sort((a, b) => a.tanggal.localeCompare(b.tanggal) || a.jam.localeCompare(b.jam) || a.urut - b.urut);", "ev.sort((a, b) => b.tanggal.localeCompare(a.tanggal) || b.jam.localeCompare(a.jam) || b.urut - a.urut);"),
-            'tertagih: hapus buku ikut dihitung tertagih': js.replace("const k = p.jenis !== 'bayar' ? p.jenis : b.saldoAwal", "const k = p.jenis !== 'bayar' && p.jenis !== 'hapusBuku' ? p.jenis : b.saldoAwal"),
-            'tertagih: retur ikut dihitung tertagih': js.replace("const k = p.jenis !== 'bayar' ? p.jenis : b.saldoAwal", "const k = p.jenis !== 'bayar' && p.jenis !== 'retur' ? p.jenis : b.saldoAwal"),
-            'tertagih: saldo awal ikut rata-rata': js.replace(": b.saldoAwal ? 'saldoAwal' : p.hari === null", ": false ? 'saldoAwal' : p.hari === null"),
+            'tertagih: hapus buku ikut dihitung tertagih': js.replace("const k = p.jenis !== 'bayar' ? p.jenis : bsa ? sa", "const k = p.jenis !== 'bayar' && p.jenis !== 'hapusBuku' ? p.jenis : bsa ? sa"),   # jangkar disesuaikan tinjauan no. 10
+            'tertagih: retur ikut dihitung tertagih': js.replace("const k = p.jenis !== 'bayar' ? p.jenis : bsa ? sa", "const k = p.jenis !== 'bayar' && p.jenis !== 'retur' ? p.jenis : bsa ? sa"),
+            'tertagih: saldo awal ikut rata-rata': js.replace(": bsa ? sa : p.hari === null", ": false ? sa : p.hari === null"),
+            # ---- tinjauan 9 Okt (temuan yang lolos sanggah)
+            'tinjauan no. 9: retur nota asal didahulukan dari pembayaran yang lebih awal (bayar lama pindah mundur ke bon lain, 0 hari)': js.replace("ev.sort((a, b) => a.tanggal.localeCompare(b.tanggal) || a.jam.localeCompare(b.jam) || a.urut - b.urut);", "ev.sort((a, b) => (b.asal ? 1 : 0) - (a.asal ? 1 : 0) || a.tanggal.localeCompare(b.tanggal) || a.jam.localeCompare(b.jam) || a.urut - b.urut);"),
+            'tinjauan no. 10: pembuka tutup buku disamakan dengan saldo awal catatan lama ("tanggal lahirnya perkiraan")': js.replace("if (!m || m.tipe !== 'saldoAwal' || !m.tutupBuku) return;", "if (true) return;"),
+            'tinjauan no. 10: periode yang terpotong tutup buku tidak disebut': js.replace("const era = eraBuku(); const potongBuku", "const era = null; const potongBuku"),
+            'tinjauan no. 10: label kartu tertagih kembali "N hari terakhir" (potong tutup buku tidak tampil)': dengan_layar(inti, lj=LAYAR_JS.replace('Rata-rata hari bon tertagih · ${Tg.periodeTeks}', 'Rata-rata hari bon tertagih · ${Tg.hari} hari terakhir')),
+            'tinjauan no. 11: nota Kredit Rp0 dihitung bon yang lunas': js.replace("if (!b.lunas || !(b.nominal > 1e-6) || !b.lunasTanggal", "if (!b.lunas || !b.lunasTanggal"),
+            'tinjauan no. 12: pengurai batas umur tidak paham titik ribuan / koma desimal': js.replace("const bacaUmurBatas = (isi) => isi.map(plAngka);", "const bacaUmurBatas = (isi) => isi.map((x) => Number(String(x).trim()));"),
+            'tinjauan no. 12: pratinjau Atur memakai Number() lagi': dengan_layar(inti, lj=LAYAR_JS.replace('const ub = P.bacaUmurBatas(a.umurBatas);', 'const ub = a.umurBatas.map((x) => Number(String(x).trim()));')),
             'tertagih: belum ada yang tertagih → 0 hari (bukan "belum bisa dihitung")': js.replace("const rataHari = T.tertagih.rp > 1e-6 ? T.tertagih.rh / T.tertagih.rp : null;", "const rataHari = T.tertagih.rp > 1e-6 ? T.tertagih.rh / T.tertagih.rp : 0;"),
             'tertagih: periode setelan diabaikan (tetap 90 hari)': js.replace("const N = aturPelanggan().tertagihHari;", "const N = 90;"),
             'tertagih: bon yang lunas SEBELUM periode ikut': js.replace("b.lunasTanggal < awal || b.lunasTanggal > akhir", "b.lunasTanggal > akhir"),
-            'tertagih: tidak ditimbang rupiah (tiap potongan sama berat)': js.replace("if (k === 'tertagih') T.tertagih.rh += p.n * p.hari;", "if (k === 'tertagih') T.tertagih.rh += 100000 * p.hari;"),
+            'tertagih: tidak ditimbang rupiah (tiap potongan sama berat)': js.replace("if (k === 'tertagih') T.tertagih.rh += n * p.hari;", "if (k === 'tertagih') T.tertagih.rh += 100000 * p.hari;"),   # jangkar disesuaikan tinjauan no. 10
             'tertagih: uang yang datang sebelum bon lahir dihitung minus': js.replace("const tg = !tglSahBon(t) ? '' : t > tb ? t : tb;", "const tg = !tglSahBon(t) ? '' : t;"),
             'tertagih: hapus buku dibalik tidak menetralkan hapus bukunya': js.replace("if (e.n >= 0) return; let r = -e.n; e.n = 0;", "if (e.n >= 0 || true) return; let r = -e.n; e.n = 0;"),
             'tertagih: retur memadamkan bon tertua, bukan nota asalnya': js.replace("const b = m.notaAsalId == null ? null : bon.find((x) => x.u.jenis === 'jual' && String(x.u.idTrx) === String(m.notaAsalId));", "const b = null;"),
@@ -682,8 +760,8 @@ if __name__ == '__main__':
                   % (b['suntik'], b['suntikLama'], b['ditulis'], b['harus'], b['identik'], b['pulih'], (' · DITOLAK: ' + b['tolak']) if b['tolak'] else ''))
             if not (b['pratinjauDiam'] and b['identik'] and b['pulih'] and b['ditulis'] == b['harus']): g.append('asap 23b: pembersihan di data toko tidak identik')
             t = h['tg']; R_ = lambda x: 'Rp' + '{:,.0f}'.format(x).replace(',', '.')
-            print('ASAP DATA TOKO (angka toko, cadangan %s) · rata-rata hari bon tertagih %d hari terakhir (%s s.d. %s): %s [%s] · dibayar %d bon %s · dibayar di meja saat beli %d bon %s · saldo awal %d bon %s (belum bisa dihitung) · hapus buku %d bon %s · retur %d bon %s · lain %d · tanpa tanggal %d · lunas %d bon %s · bagian = total: %s · %d orang punya rata-rata sendiri'
-                  % (tgl, t['hari'], t['awal'], t['akhir'], t['rataTeks'], t['keadaan'], t['tertagih']['n'], R_(t['tertagih']['rp']), t['saatBeli']['n'], R_(t['saatBeli']['rp']), t['saldoAwal']['n'], R_(t['saldoAwal']['rp']), t['hapusBuku']['n'], R_(t['hapusBuku']['rp']), t['retur']['n'], R_(t['retur']['rp']), t['lain']['n'], t['tanpaTanggal']['n'], t['lunas']['n'], R_(t['lunas']['rp']), t['tutup'], t['orangAda']))
+            print('ASAP DATA TOKO (angka toko, cadangan %s) · rata-rata hari bon tertagih %d hari terakhir (%s s.d. %s): %s [%s] · dibayar %d bon %s · dibayar di meja saat beli %d bon %s · saldo awal %d bon %s (belum bisa dihitung) · bawaan tutup buku %d · hapus buku %d bon %s · retur %d bon %s · lain %d · tanpa tanggal %d · lunas %d bon %s · bagian = total: %s · %d orang punya rata-rata sendiri'
+                  % (tgl, t['hari'], t['awal'], t['akhir'], t['rataTeks'], t['keadaan'], t['tertagih']['n'], R_(t['tertagih']['rp']), t['saatBeli']['n'], R_(t['saatBeli']['rp']), t['saldoAwal']['n'], R_(t['saldoAwal']['rp']), t['pembuka']['n'], t['hapusBuku']['n'], R_(t['hapusBuku']['rp']), t['retur']['n'], R_(t['retur']['rp']), t['lain']['n'], t['tanpaTanggal']['n'], t['lunas']['n'], R_(t['lunas']['rp']), t['tutup'], t['orangAda']))
             print('ASAP DATA TOKO · kelompok umur (orang menurut bon tertuanya · sisa): %s · Σ = sisa semuanya %s: %s · bon terbuka per kelompok (umur bon itu sendiri): %s · jalan tutup = mesin: %d dari %d buku bon tidak cocok'
                   % (' | '.join('%s: %d · %s' % (e['label'], e['n'], R_(e['jumlah'])) for e in t['umur']), R_(t['sisa']), t['umurCocok'], ', '.join('%s %d' % (k, v) for k, v in t['bonKel'].items()) or '-', t['tidakCocok'], t['nBuku']))
             if not t['tutup'] or t['tidakCocok'] or not t['umurCocok']: g.append('asap tertagih: bagian tidak menutup / jalan tutup tidak sama dengan mesin / kelompok umur tidak menutup')

@@ -30,8 +30,10 @@ import { kmKelasMerk, kmKelasSendiri, kmCalonKelas, kmHargaLaluKelas, kmHargaLal
 export const ATUR_CATAT_BAWAAN = { minKarung: 60, tempoHari: 21, batasSelisih: 3, ambangSusutPositif: 250000, jendelaGandaMenit: 10, batasVarian: VR_BATAS_BAWAAN, kadarAirMaks: 14, patahMaks: 25 };
 // angka ketikan toko: "13.200" = tiga belas ribu dua ratus (titik ribuan), "76,6" = koma desimal; "76.6" (papan tombol HP) = desimal juga — titik dianggap
 // ribuan hanya bila polanya persis kelompok tiga digit
+// tinjauan no. 13 (9 Okt): aturan baca dipisah (ckUbah) supaya isian timbang & mutu bisa MENOLAK ketikan rusak ("15,,5", "14..5") — ckAngka tetap 0 untuk NaN
+const ckUbah = (t) => Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t);
 const ckAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0;
-  const n = Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return isFinite(n) ? n : 0; };
+  const n = ckUbah(t); return isFinite(n) ? n : 0; };
 const ckB2 = (n) => Math.round(n * 100) / 100;
 const ckKG = (n) => String(Math.round(n * 10) / 10).replace('.', ',') + ' kg';
 const ckKosong = (v) => v === undefined || v === null || String(v).trim() === '';
@@ -60,12 +62,18 @@ export function susunAturCatat(isi, w) {
   const s = baca('ambangSusutPositif', (n) => n >= 0, 'Ambang stok bertambah tanpa pembelian harus 0 atau lebih'); if (s.tolak) return { tolak: s.tolak };
   const v = baca('batasVarian', (n) => n >= 0 && n <= 100, 'Batas beda harga beli (varian) harus 0–100 %'); if (v.tolak) return { tolak: v.tolak };
   // paket brief 9 Okt (butir 7): ambang mutu saat terima — ketikan bukan angka ditolak (bukan dianggap 0)
-  const bacaMutu = (k, teks) => { if (ckKosong(isi[k])) return { nilai: kini[k] }; const n = tmAngka(isi[k]); return n !== null && TM_SYARAT[k](n) ? { nilai: ckB2(n) } : { tolak: teks }; };
+  // tinjauan no. 22 (9 Okt): `tetap` = kolom masih angka bawaan dan tidak diubah (kosong, atau sama dengan bawaan yang diisikan lembar Atur) → TIDAK ditulis, supaya
+  // menyimpan Atur untuk angka lain (tempo, batas selisih — juga dari Cocokkan) tidak diam-diam menjadikan perkiraan "setelan owner"
+  const bacaMutu = (k, teks) => { if (ckKosong(isi[k])) return { nilai: kini[k], tetap: true }; const n = tmAngka(isi[k]); return n !== null && TM_SYARAT[k](n) ? { nilai: ckB2(n), tetap: kini.mutuBawaan[k] && ckB2(n) === kini[k] } : { tolak: teks }; };
   const ka = bacaMutu('kadarAirMaks', 'Kadar air maksimal saat terima harus lebih dari 0 sampai 100 %'); if (ka.tolak) return { tolak: ka.tolak };
   const bp = bacaMutu('patahMaks', 'Butir patah maksimal saat terima harus 0–100 %'); if (bp.tolak) return { tolak: bp.tolak };
   // dokumen catatStok juga memegang saklar modal FIFO (modalFifoMulai + riwayatModalFifo, Stok › HPP): kolom lain DISALIN utuh, yang diatur di sini ditimpa
   const lama = cacheMentah('aturan').find((d) => String(d.id) === 'catatStok') || {};
-  return { dokumen: [{ koleksi: 'aturanToko', data: Object.assign({}, lama, { id: 'catatStok', tanggal: w.tanggal, jam: w.jam, minKarung: m.nilai, tempoHari: t.nilai, batasSelisih: b.nilai, ambangSusutPositif: s.nilai, batasVarian: v.nilai, kadarAirMaks: ka.nilai, patahMaks: bp.nilai }) }],
+  const data = Object.assign({}, lama, { id: 'catatStok', tanggal: w.tanggal, jam: w.jam, minKarung: m.nilai, tempoHari: t.nilai, batasSelisih: b.nilai, ambangSusutPositif: s.nilai, batasVarian: v.nilai });
+  // ambang mutu: ditulis hanya kalau owner mengubahnya atau kolomnya sudah milik owner; selain itu dokumen lama disalin apa adanya (tetap "angka bawaan (perkiraan)")
+  if (!ka.tetap) data.kadarAirMaks = ka.nilai;
+  if (!bp.tetap) data.patahMaks = bp.nilai;
+  return { dokumen: [{ koleksi: 'aturanToko', data }],
     patch: { kabar: 'Aturan pencatatan disimpan — satu mobil minimal ' + m.nilai + ' karung · tempo bon ' + t.nilai + ' hari · selisih wajar ' + b.nilai + ' % · stok bertambah > ' + RP(s.nilai) + ' ditanya · harga beli beda > ' + v.nilai + ' % ditanya "sama barangnya / beda mutu"'
       + ' · mutu saat terima: kadar air > ' + tmD(ka.nilai) + ' % atau butir patah > ' + tmD(bp.nilai) + ' % ditandai AWAS', kabarAwas: false } };
 }
@@ -123,8 +131,11 @@ export function hargaSebelumnya(merk) { const s = ingatStokKarung()[merk]; retur
 export const TM_KUTU = [['tidak', 'tidak ada'], ['ada', 'ada kutu']];
 export const TM_BAU = [['normal', 'normal'], ['apek', 'apek'], ['lain', 'bau lain']];
 export const TM_KOLOM = ['timbangKg', 'kadarAir', 'kutu', 'bau', 'butirPatah'];
-// angka isian: kosong → null; angka tersimpan apa adanya; ketikan pakai aturan ckAngka (titik ribuan, koma desimal); selain angka → NaN (ditolak, bukan dianggap 0)
-const tmAngka = (v) => { if (typeof v === 'number') return isFinite(v) ? v : NaN; if (ckKosong(v)) return null; const t = String(v).trim(); return /^[\d.,]*\d[\d.,]*$/.test(t) ? ckAngka(t) : NaN; };
+// angka isian: kosong → null; angka tersimpan apa adanya; ketikan pakai aturan ckAngka (titik ribuan, koma desimal); selain angka → NaN (ditolak, bukan dianggap 0).
+// Tinjauan no. 13 (9 Okt): pemisah ganda / di ujung ("15,,5", "14..5", "14,5,", "1.4.5") lolos saringan huruf tetapi tidak terbaca → NaN (DITOLAK), bukan 0 %
+// (dulu lewat ckAngka jadi 0: kadar air 15,5 % tersimpan 0 %, tanda AWAS hilang; ambang patah "2..5" tersimpan 0 %)
+const tmAngka = (v) => { if (typeof v === 'number') return isFinite(v) ? v : NaN; if (ckKosong(v)) return null; const t = String(v).trim(); if (!/^[\d.,]*\d[\d.,]*$/.test(t)) return NaN;
+  const n = ckUbah(t); return isFinite(n) ? n : NaN; };
 const tmD = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
 const tmTeks = (v) => (typeof v === 'number' && isFinite(v) ? String(v).replace('.', ',') : ckKosong(v) ? '' : String(v));
 /**

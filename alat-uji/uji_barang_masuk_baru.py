@@ -80,6 +80,13 @@ ok('ditolak: kadar air 150 / "abc", butir patah −3, berat timbang 0 / "abc", p
   /Baris 1 \(Angsa\): kadar air harus angka 0–100 %/.test(tolak(0, { kadarAir: '150' })) && /kadar air harus angka/.test(tolak(0, { kadarAir: 'abc' })) && /butir patah harus angka/.test(tolak(1, { butirPatah: '-3' }))
   && /Baris 3 \(Merpati\): berat timbang harus angka lebih dari 0/.test(tolak(2, { timbangKg: '0' })) && /berat timbang harus/.test(tolak(2, { timbangKg: 'abc' })) && /kutu "mungkin" tidak dikenal/.test(tolak(0, { kutu: 'mungkin' })) && /bau "wangi" tidak dikenal/.test(tolak(0, { bau: 'wangi' })),
   J([tolak(0, { kadarAir: '150' }), tolak(0, { kadarAir: 'abc' }), tolak(1, { butirPatah: '-3' }), tolak(2, { timbangKg: '0' })]));
+// tinjauan no. 13 (9 Okt): pemisah ganda / di ujung (salah ketuk koma/titik di HP) DITOLAK — dulu tersimpan 0 % (kadar air 15,5 % jadi 0 %, AWAS hilang)
+var RUSAK13 = ['15,,5', '14..5', '14,5,', '1.4.5']; var A13 = { kadarAirMaks: 14, patahMaks: 25 };
+var tb13 = RUSAK13.map(function (x) { var c = tmBaris({ kadarAir: x, butirPatah: x }, 1000, 13000, A13); return [x, c.masalah, c.kadarAir, J(c.kolom)]; });
+ok('tinjauan no. 13: kadar air / butir patah "15,,5" · "14..5" · "14,5," · "1.4.5" DITOLAK dengan kalimat (bukan tersimpan 0 %); berat timbang "1000..5" ditolak; ambang Atur "2..5" / "14..5" ditolak; "15,5" tetap 15,5 % → AWAS',
+  RUSAK13.every(function (x) { return /kadar air harus angka/.test(tolak(0, { kadarAir: x })) && /butir patah harus angka/.test(tolak(1, { butirPatah: x })) && !!susunAturCatat({ patahMaks: x }, W).tolak && !!susunAturCatat({ kadarAirMaks: x }, W).tolak; })
+  && tb13.every(function (r) { return !!r[1] && r[3] !== J({ kadarAir: 0, butirPatah: 0 }); }) && /berat timbang harus angka/.test(tolak(2, { timbangKg: '1000..5' })) && /Butir patah maksimal/.test(susunAturCatat({ patahMaks: '2..5' }, W).tolak || '')
+  && tmBaris({ kadarAir: '15,5' }, 1000, 13000, A13).kadarAir === 15.5 && J(tmBaris({ kadarAir: '15,5' }, 1000, 13000, A13).awas) === J(['kadar air 15,5 % > maks 14 %']), J(tb13));
 var dCek = draf([{}, {}, {}]); dCek.baris.push({ merk: '', jumlahKarung: '', beratKarung: 50, hargaPerKg: '', timbangKg: '480' });
 var hCek = hitungMasuk(dCek);
 ok('baris yang cuma berisi berat timbang (nama kosong) = terisi & ditanya namanya — simpan ditolak, bukan dibuang diam-diam', hCek.baris[3].terisi === true && /nama berasnya belum dipilih/.test(hCek.baris[3].masalah) && /Baris 4/.test(susunSimpanMasuk(dCek, W, true).tolak || ''), J([hCek.baris[3].terisi, hCek.baris[3].masalah]));
@@ -105,6 +112,20 @@ ok('buku kedatangan: kedatangan baru bertanda "ditimbang 2/3 baris −7,5 kg · 
 
 // ---- ambang diubah owner → tanda ikut (kedatangan yang SUDAH tersimpan juga)
 ok('atur: kadar air maks 0 / 101 / "abc" dan butir patah −1 / "abc" DITOLAK dengan kalimat', !!susunAturCatat({ kadarAirMaks: '0' }, W).tolak && !!susunAturCatat({ kadarAirMaks: '101' }, W).tolak && !!susunAturCatat({ kadarAirMaks: 'abc' }, W).tolak && !!susunAturCatat({ patahMaks: '-1' }, W).tolak && /Butir patah maksimal/.test(susunAturCatat({ patahMaks: 'abc' }, W).tolak || ''));
+// tinjauan no. 22 (9 Okt): dokumen catatStok toko (cadangan 9 Okt: TANPA kolom mutu) — owner membuka Atur (draf diisi angka bawaan 14 / 25, bentuk bukaAturC)
+// hanya untuk mengubah tempo 31 → 30 hari lalu SIMPAN → ambang mutu TIDAK ditulis, tetap "angka bawaan (perkiraan)"; kolom mutu dikosongkan pun tidak ditulis;
+// yang benar-benar diubah (patah 20) ditulis sendiri.
+pasok('aturanToko', [{ id: 'catatStok', batasSelisih: 3, minKarung: 60, tempoHari: 31, ambangSusutPositif: 250000 }]);
+var A22 = aturCatat(); var t22 = function (n) { return String(n).replace('.', ','); };
+var draf22 = { minKarung: t22(A22.minKarung), tempoHari: '30', batasSelisih: t22(A22.batasSelisih), ambangSusutPositif: t22(A22.ambangSusutPositif), batasVarian: t22(A22.batasVarian), kadarAirMaks: t22(A22.kadarAirMaks), patahMaks: t22(A22.patahMaks) };
+var S22 = susunAturCatat(draf22, W); var d22 = S22.dokumen ? S22.dokumen[0].data : {}; var B22 = S22.dokumen ? denganCacheSementara(S22.dokumen, function () { return aturCatat(); }) : null;
+var K22 = susunAturCatat({ tempoHari: '30', kadarAirMaks: '', patahMaks: '' }, W); var k22 = K22.dokumen ? K22.dokumen[0].data : {};
+var P22 = susunAturCatat(Object.assign({}, draf22, { patahMaks: '20' }), W); var p22 = P22.dokumen ? P22.dokumen[0].data : {}; var Q22 = P22.dokumen ? denganCacheSementara(P22.dokumen, function () { return aturCatat(); }) : null;
+ok('tinjauan no. 22: simpan Atur (tempo 31 → 30) dari draf berisi angka bawaan TIDAK menulis kadarAirMaks/patahMaks → tetap "angka bawaan (perkiraan)" (14 / 25); kolom mutu kosong juga tidak ditulis; patah diubah ke 20 → hanya patahMaks yang jadi setelan owner',
+  !S22.tolak && d22.tempoHari === 30 && d22.minKarung === 60 && !('kadarAirMaks' in d22) && !('patahMaks' in d22) && !!B22 && B22.tempoHari === 30 && B22.kadarAirMaks === 14 && B22.patahMaks === 25 && B22.mutuBawaan.kadarAirMaks === true && B22.mutuBawaan.patahMaks === true
+  && !K22.tolak && !('kadarAirMaks' in k22) && !('patahMaks' in k22) && !P22.tolak && p22.patahMaks === 20 && !('kadarAirMaks' in p22) && !!Q22 && Q22.mutuBawaan.patahMaks === false && Q22.mutuBawaan.kadarAirMaks === true && Q22.patahMaks === 20,
+  J([d22, B22 && B22.mutuBawaan, k22, p22]));
+pasok('aturanToko', []);
 var AC = susunAturCatat({ kadarAirMaks: '16', patahMaks: '15' }, W);
 ok('atur: dokumen catatStok membawa kadarAirMaks 16 & patahMaks 15 (kolom lama tetap: minimal 60 karung, tempo 21 hari); kabar menyebut ambang mutu', !AC.tolak && AC.dokumen[0].data.id === 'catatStok' && AC.dokumen[0].data.kadarAirMaks === 16 && AC.dokumen[0].data.patahMaks === 15 && AC.dokumen[0].data.minKarung === 60 && AC.dokumen[0].data.tempoHari === 21 && /kadar air > 16 % atau butir patah > 15 %/.test(AC.patch.kabar), J(AC));
 terapkanKeCache(AC.dokumen); var R2 = rekapTimbangMutu(); var pA2 = R2.pemasok.find(function (p) { return p.pemasok === 'PEMASOK A'; }); var hT2 = hitungMasuk(dT);
@@ -227,7 +248,10 @@ RUSAK = {
     'bau apek tidak ditandai': ("if (bau === 'apek') hasil.awas.push('bau apek');", ""),
     'butir patah di atas ambang tidak ditandai': ("if (hasil.butirPatah !== null && hasil.butirPatah > A.patahMaks) hasil.awas.push(", "if (false) hasil.awas.push("),
     'kadar air mustahil diterima': (": air !== null && !(air >= 0 && air <= 100) ?", ": false ?"),
-    'ketikan bukan angka dianggap 0': (r"return /^[\d.,]*\d[\d.,]*$/.test(t) ? ckAngka(t) : NaN;", "return ckAngka(t);"),
+    'ketikan bukan angka dianggap 0': (r"if (!/^[\d.,]*\d[\d.,]*$/.test(t)) return NaN;", "return ckAngka(t);"),   # jangkar disesuaikan tinjauan no. 13
+    'tinjauan no. 13: pemisah ganda / di ujung ("15,,5") dianggap 0 %': ("const n = ckUbah(t); return isFinite(n) ? n : NaN; };", "const n = ckUbah(t); return isFinite(n) ? n : 0; };"),
+    'tinjauan no. 22: simpan Atur menulis ambang bawaan jadi "setelan owner"': ("tetap: kini.mutuBawaan[k] && ckB2(n) === kini[k] }", "tetap: false }"),
+    'tinjauan no. 22: kolom mutu kosong ditulis angka sekarang': ("if (ckKosong(isi[k])) return { nilai: kini[k], tetap: true };", "if (ckKosong(isi[k])) return { nilai: kini[k], tetap: false };"),
     'masalah isian tidak menghalangi simpan': ("'harga beli per kg belum diisi' : cek.masalah;", "'harga beli per kg belum diisi' : '';"),
     'baris cek tanpa nama dibuang diam-diam': ("const terisi = !!merk || jumlah > 0 || harga > 0 || cek.ada;", "const terisi = !!merk || jumlah > 0 || harga > 0;"),
     'rekap: kedatangan sebagian dihitung ditimbang': ("if (K.ditimbang === K.nBaris) p.ditimbang += 1; else if (K.ditimbang > 0) p.sebagian += 1;", "if (K.ditimbang > 0) p.ditimbang += 1; else if (false) p.sebagian += 1;"),
@@ -235,7 +259,7 @@ RUSAK = {
     'rekap: belum ditimbang digambar 0 %': ("p.persenRata = p.kgNota > 0 ? Math.round(p.selisihKg / p.kgNota * 1000) / 10 : null;", "p.persenRata = p.kgNota > 0 ? Math.round(p.selisihKg / p.kgNota * 1000) / 10 : 0;"),
     'rekap: kedatangan tanpa nama pemasok dibuang': ("const pem = String(b.pemasok || '').trim() || '(tanpa nama pemasok)';", "const pem = String(b.pemasok || '').trim(); if (!pem) return;"),
     'rekap: kelompok tanpa nama pemasok tidak di bawah': ("tanpaNama(x) - tanpaNama(y) || ", ""),
-    'atur: ambang mutu tidak disimpan': ("batasVarian: v.nilai, kadarAirMaks: ka.nilai, patahMaks: bp.nilai }) }]", "batasVarian: v.nilai }) }]"),
+    'atur: ambang mutu tidak disimpan': ("if (!ka.tetap) data.kadarAirMaks = ka.nilai;", ""),   # jangkar disesuaikan tinjauan no. 22 (penulisan kolom mutu kini bersyarat)
 }
 
 if __name__ == '__main__':

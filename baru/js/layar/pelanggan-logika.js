@@ -54,6 +54,9 @@ const plAngka = (v) => { const t = String(v === undefined || v === null ? '' : v
 const plKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 /** Batas kelompok umur bon yang sah: tiga bilangan bulat 1–3650 hari yang NAIK (batas 1 < batas 2 < batas 3). */
 export const umurBatasSah = (x) => Array.isArray(x) && x.length === 3 && x.every((n) => Number.isInteger(n) && n >= 1 && n <= 3650) && x[0] < x[1] && x[1] < x[2];
+/** Tinjauan no. 12 (9 Okt): baca tiga batas umur dari ketikan — SATU pengurai untuk pratinjau Atur (pelanggan.js) dan SIMPAN (susunAturPelanggan): titik ribuan,
+ *  koma desimal ("1.095" = 1095, "30,0" = 30). Dulu pratinjau memakai Number() dan menolak isian yang justru diterima saat simpan. */
+export const bacaUmurBatas = (isi) => isi.map(plAngka);
 export const plPolos = (t) => String(t || '').toLowerCase().replace(/\b(bu|ibu|pak|bapak|mas|mbak|bang|uda|koh|teh|nek|haji|h)\b/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
 export const hariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const hariMingguKe = (iso) => (new Date(String(iso) + 'T00:00:00Z').getUTCDay() + 6) % 7;   // Senin = 0
@@ -87,7 +90,7 @@ export function susunAturPelanggan(isi, w) {
   const tg = baca('tertagihHari', (n) => Number.isInteger(n) && n >= 1 && n <= 3650, 'Rata-rata hari bon tertagih: periode 1–3650 hari (bilangan bulat)'); if (tg.tolak) return { tolak: tg.tolak };
   let umur = kini.umurBatas;
   if (Array.isArray(isi.umurBatas)) { if (isi.umurBatas.length !== 3 || isi.umurBatas.some(plKosong)) return { tolak: 'Kelompok umur bon butuh tiga batas hari, mis. 7 · 30 · 90' };
-    umur = isi.umurBatas.map(plAngka); if (!umurBatasSah(umur)) return { tolak: 'Batas kelompok umur bon harus bilangan bulat 1–3650 hari yang naik (batas 1 < batas 2 < batas 3), mis. 7 · 30 · 90' }; }
+    umur = bacaUmurBatas(isi.umurBatas); if (!umurBatasSah(umur)) return { tolak: 'Batas kelompok umur bon harus bilangan bulat 1–3650 hari yang naik (batas 1 < batas 2 < batas 3), mis. 7 · 30 · 90' }; }
   const rapi = (d, ambil) => (Array.isArray(d) ? d.map(ambil).filter(Boolean) : null);
   // putaran 23b: pintu Atur tertutup untuk kelompok & cip yang dicabut
   if (Array.isArray(isi.ciriDaftar) && isi.ciriDaftar.some((x) => x && !plKosong(x.nama) && ciriDicabut(x.nama, x.grup))) return { tolak: TOLAK_CIRI_DICABUT };

@@ -333,12 +333,13 @@ export function pasangLayarPelanggan(akar, opsi) {
     </section>`;
   }
   /** Paket brief 9 Okt (butir 1): rata-rata hari bon tertagih (B.tertagihBon). Tiga keadaan digambar beda: kosong "—" · belum bisa dihitung · angka (boleh 0).
-   *  Batang = komposisi rupiah bon yang lunas di periode (dibayar · saldo awal · hapus buku · retur · lain) — bagian-bagiannya menjumlah ke totalnya. */
+   *  Batang = komposisi rupiah bon yang lunas di periode (dibayar · saldo awal · bawaan tutup buku · hapus buku · retur · lain) — bagian-bagiannya menjumlah ke totalnya.
+   *  Tinjauan no. 10: label periode = Tg.periodeTeks (menyebut bila periode terpotong tutup buku). */
   function gambarTertagih(Tg) {
-    const bagian = [['tertagih', 'Dibayar — dihitung', Tg.tertagih], ['saatBeli', 'Dibayar di meja saat beli — bukan bon yang ditagih', Tg.saatBeli], ['saldoAwal', 'Saldo awal — belum bisa dihitung (tanggalnya perkiraan)', Tg.saldoAwal], ['hapusBuku', 'Ditutup hapus buku — bukan tertagih', Tg.hapusBuku],
+    const bagian = [['tertagih', 'Dibayar — dihitung', Tg.tertagih], ['saatBeli', 'Dibayar di meja saat beli — bukan bon yang ditagih', Tg.saatBeli], ['saldoAwal', 'Saldo awal — belum bisa dihitung (tanggalnya perkiraan)', Tg.saldoAwal], ['pembuka', 'Bawaan tutup buku — belum bisa dihitung (tanggal bon mudanya tidak dibawa)', Tg.pembuka], ['hapusBuku', 'Ditutup hapus buku — bukan tertagih', Tg.hapusBuku],
       ['retur', 'Ditutup retur barang — bukan tertagih', Tg.retur], ['tanpaTanggal', 'Dibayar, bon tanpa tanggal — belum bisa dihitung', Tg.tanpaTanggal], ['lain', 'Ditutup catatan lain', Tg.lain]].filter((x) => x[2].n > 0);
     const rp = (n) => h`<span class="n" ${mentah('data-gulir="' + Math.round(n) + '"')}>${RP(n)}</span>`;
-    return h`<div class="kartu tg-kartu ${Tg.keadaan}" data-k="tertagih" style="gap: 6px;"><div class="label">Rata-rata hari bon tertagih · ${Tg.hari} hari terakhir</div>
+    return h`<div class="kartu tg-kartu ${Tg.keadaan}" data-k="tertagih" style="gap: 6px;"><div class="label">Rata-rata hari bon tertagih · ${Tg.periodeTeks}</div>
       <div class="tg-angka"><span class="besar">${Tg.rataTeks}</span><span class="ket">${Tg.keadaan === 'ada' ? 'dari bon lahir sampai dibayar lunas, ditimbang rupiah' : Tg.keadaan === 'belum' ? 'tidak ada rupiah dibayar yang tanggalnya pasti' : 'belum ada yang bisa diukur'}</span></div>
       ${Tg.lunas.rp > 0 ? h`<div class="tg-rel" data-k="tg-rel">${bagian.map(([k]) => h`<i class="tg-warna ${k}" data-k="tg-rel-${k}" style="width: ${Math.round(Tg[k].rp / Tg.lunas.rp * 1000) / 10}%;"></i>`)}</div>` : ''}
       <div class="ket">${Tg.teks}</div>
@@ -350,7 +351,7 @@ export function pasangLayarPelanggan(akar, opsi) {
     return h`<div class="kartu rincian-wadah" data-k="lembar-bon-${O.kunci}" style="gap: 8px;"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">${O.nama}</div><div class="ket">${O.sisa > 0 ? RP(O.sisa) + ' · ' + O.ket : O.status === 'lebih' ? h`<span class="awas-teks">${O.ket}</span>` : 'tidak ada bon yang terbuka'}${O.dikenali ? '' : ' · belum dikenali (kasir menolak bon baru)'}</div></div><div class="kaca-btn" data-aksi="bonTutup">tutup</div></div>
       ${O.status === 'lebih' ? h`<div class="pita-info awas" data-k="lebih-lembar">${O.lebihUang > 0.5 ? 'Uang yang masuk ' + RP(O.lebihUang) + ' lebih banyak dari semua bonnya. ' : ''}${O.lebihHapus > 0.5 ? RP(O.lebihHapus) + ' dibayar padahal sudah dihapus dari buku — hapus bukunya yang perlu dibalik (bukan uang pelanggan, jangan dikembalikan) — ketuk "Balik hapus buku" di bawah. ' : ''}Bukunya tidak bisa dibayar atau dihapus lagi; nota Kredit berikutnya atas nama ini memakai sisa di bawah nol ini lebih dulu.${O.lebihUang > 0.5 ? ' Uang yang dikembalikan tunai belum punya catatan di sistem baru.' : ''}</div>` : ''}
       ${O.rinci.map((r, i) => h`<div class="jawab" data-k="rb-${i}" style="cursor: default;"><span class="kiri"><div><span class="nm">${r.teks}</span><span class="w">${r.tgl}</span></div></span><span class="n">${RP(r.n)}</span></div>`)}
-      <div class="ket tg-orang ${O.tertagih.keadaan}" data-k="tertagih-orang">Rata-rata hari bayar (${O.tertagih.hari} hari terakhir): <b>${O.tertagih.rataTeks}</b> · ${O.tertagih.teks}</div>
+      <div class="ket tg-orang ${O.tertagih.keadaan}" data-k="tertagih-orang">Rata-rata hari bayar (${O.tertagih.periodeTeks}): <b>${O.tertagih.rataTeks}</b> · ${O.tertagih.teks}</div>
       ${opsi.keTujuan && bolehBukaLayar(opsi.akun ? opsi.akun() : null, 'laporan') ? h`<div class="tombol-baris" data-k="kartu-piutang"><div class="kaca-btn" data-aksi="kartuPiutang" data-kunci="${O.kunci}">Kartu piutang berkop · cetak / PDF / WA</div></div>` : ''}
       ${O.sisa > 0 ? h`<div class="tombol-baris"><div class="kaca-btn ${s.lembarBon === 'tagih' ? 'aktif' : ''}" data-aksi="lembarBon" data-l="tagih">Tagih lewat WhatsApp</div><div class="kaca-btn ${s.lembarBon === 'bayar' ? 'aktif emas' : 'aktif'}" data-aksi="lembarBon" data-l="bayar">Catat pembayaran</div><div class="kaca-btn ${s.lembarBon === 'hapus' ? 'awas' : 'putus'}" data-aksi="lembarBon" data-l="hapus">Hapus dari buku</div></div>` : ''}
       ${O.dihapus > 0.5 && !bukanOwner(opsi.akun ? opsi.akun() : null) && (O.status !== 'lebih' || O.lebihHapus > 0.5) ? h`<div class="tombol-baris" data-k="pulih-tombol"><div class="kaca-btn ${s.lembarBon === 'pulih' ? 'aktif emas' : ''}" data-aksi="lembarBon" data-l="pulih">${O.status === 'lebih' ? 'Balik hapus buku · ' + RP(Math.min(O.lebihHapus, O.dihapus)) : 'Dibayar sesudah dihapus buku · pernah dihapus ' + RP(O.dihapus)}</div></div>` : ''}
@@ -417,7 +418,8 @@ export function pasangLayarPelanggan(akar, opsi) {
   }
   /** Paket brief 9 Okt (butir 1): batas kelompok umur bon (bawaan 7 · 30 · 90 = garis umur yang dikunci) + periode rata-rata hari tertagih (bawaan 90). */
   function gambarAturUmur(a) {
-    const ub = a.umurBatas.map((x) => Number(String(x).trim())); const sah = P.umurBatasSah(ub);
+    // tinjauan no. 12 (9 Okt): pratinjau membaca batas dengan pengurai yang SAMA dengan SIMPAN ("1.095" = 1095, "30,0" = 30) — dulu Number() menolak yang diterima
+    const ub = P.bacaUmurBatas(a.umurBatas); const sah = P.umurBatasSah(ub);
     return h`<div class="kartu" data-k="atur-umur" style="gap: 6px;"><div class="label">Bon · kelompok umur & hari tertagih</div>
       <div class="ket">Garis umur membagi sisa bon menurut umur bon tertua yang belum tertutup. Tiga batas hari, harus naik — bawaan 7 · 30 · 90.</div>
       <div class="ps-form tiga">${[0, 1, 2].map((i) => h`<div><div class="ket">Batas ${i + 1} (hari)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.umurBatas[i]}" data-ketik="aturKetik" data-kolom="umurBatas" data-i="${i}"></div>`)}</div>

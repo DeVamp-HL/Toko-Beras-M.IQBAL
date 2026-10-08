@@ -625,6 +625,8 @@ KOTAK_UMUR = {
   # cocokkan wadah 17 Sep +2 kg (kenaikan tanpa catatan tuang → bagian tanpa tanggal)
   'penyesuaianStok': [{'id': 'uo1', 'tanggal': '2026-09-17', 'jam': '19:00', 'merk': 'Wadah W1', 'kgSistem': 36, 'kgFisik': 38, 'selisihKg': 2}],
 }
+# tinjauan no. 14 (9 Okt): masuk & keluar di hari yang sama — dipasang di kasusnya saja lalu dipulihkan
+SEKEJAP = {'batch': batch_um('u9', '2026-09-12', 'Contoh Sekejap', 50), 'jual': jual('us1', '2026-09-12', 'Contoh Sekejap', 50)}
 
 SKENARIO_UMUR = r"""
 var gagal = [], lulus = 0;
@@ -667,6 +669,17 @@ var PP = umPapan(KINI, 'tanpa', 'Contoh Lebih'); var bl = PP.kelompok[0].baris.f
 ok('papan "tanpa tanggal": kartu 461,68 kg; rincian Contoh Lebih menyebut asalnya (stok awal 500 kg) & "Belum bisa dihitung"', PP.kartu[3].a === '461,68 kg' && bl && bl.rinci && bl.rinci.some(function (x) { return /450 kg TANPA TANGGAL MASUK/.test(x.teks) && /stok awal 500 kg/.test(x.teks) && /Belum bisa dihitung/.test(x.teks); }), JSON.stringify(bl && bl.rinci));
 var PL = umPapan(KINI, 'lambat', null); var PU = umPapan(KINI, 'umur', null);
 ok('papan: kartu lambat "4 barang", umur tertua "40 hari"; tab umur dikelompokkan merek · belakang · wadah; kalimat penutup menyebut bertanggal + tanpa tanggal', PL.kartu[0].a === '4 barang' && PL.kartu[1].a === '40 hari' && PU.kelompok.map(function (g) { return g.id; }).join() === 'merek,belakang,wadah' && /= bertanggal 1010,32 kg \+ tanpa tanggal masuk 461,68 kg/.test(PU.tutup) && !PU.kelompok[0].baris.some(function (b) { return b.kunci === 'Contoh Habis'; }), JSON.stringify([PL.kartu, PU.tutup]));
+// tinjauan no. 14 (9 Okt): Contoh Sekejap masuk 50 kg & terjual 50 kg di hari yang SAMA (12 Sep) → keluar 50 kg, sisa akhir hari 0 tiap hari (rata 0) → putaran null.
+// Angka besar di tab putaran = "belum bisa dihitung" (+ "sisa rata-rata tidak positif"), BUKAN "belum ada laju"; Contoh Diam (tidak keluar) tetap "belum ada laju".
+pasok('batchMasuk', KOTAK_UMUR.batchMasuk.concat([SEKEJAP.batch])); pasok('penjualan', KOTAK_UMUR.penjualan.concat([SEKEJAP.jual]));
+var Sk = r('Contoh Sekejap'); var PTn = umPapan(KINI, 'putaran', null); var cariB = function (P, k) { var x = null; P.kelompok.forEach(function (g) { g.baris.forEach(function (b) { if (b.kunci === k) x = b; }); }); return x; };
+var bSk = cariB(PTn, 'Contoh Sekejap'), bDm = cariB(PTn, 'Contoh Diam');
+pasok('batchMasuk', [SEKEJAP.batch]); pasok('penjualan', [SEKEJAP.jual]); pasok('produksiKemasan', []); pasok('penyesuaianStok', []);
+var GSk = umRingkas(KINI); var KSk = umPapan(KINI, 'putaran', null).kartu[2];
+Object.keys(KOTAK_UMUR).forEach(function (n) { pasok(n, KOTAK_UMUR[n]); });
+ok('tinjauan no. 14: buku yang KELUAR 50 kg tetapi sisa akhir harinya selalu 0 → putaran null ditulis "belum bisa dihitung · sisa rata-rata tidak positif" (bukan "belum ada laju"); buku tanpa gerak tetap "belum ada laju · tak ada gerak"; kartu ringkasan juga (hanya buku itu: keluar 50, putaran tumpukan merek "belum bisa dihitung")',
+  !!Sk && Sk.keluarKg === 50 && Sk.rataSisa === 0 && Sk.putaran === null && !!bSk && bSk.n === 'belum bisa dihitung' && bSk.nKet === 'sisa rata-rata tidak positif' && !!bDm && bDm.n === 'belum ada laju' && bDm.nKet === 'tak ada gerak'
+  && GSk.putaranMerek === null && GSk.keluarMerek === 50 && KSk.a === 'belum bisa dihitung', JSON.stringify([Sk && [Sk.keluarKg, Sk.rataSisa, Sk.putaran], bSk && [bSk.n, bSk.nKet], bDm && [bDm.n, bDm.nKet], KSk]));
 // FIFO murni
 var F = umFifo([{ tanggal: '2026-09-01', jam: '08:00', id: 1, kg: 50 }, { tanggal: '2026-09-01', jam: '15:00', id: 2, kg: 50 }, { tanggal: '2026-08-01', id: 3, kg: 100 }], 60, '2026-09-19');
 ok('FIFO murni: tanggal sama → jam lebih sore = lebih baru (50 utuh) + 10 dari kedatangan pagi; sisa 0 / minus → tidak ada lapisan, tanpa tanggal 0', F.lapisan.length === 2 && F.lapisan[0].id === 2 && F.lapisan[1].kg === 10 && F.umurTertua === 18 && umFifo([{ tanggal: '2026-09-01', kg: 5 }], 0, '2026-09-19').lapisan.length === 0 && umFifo([{ tanggal: '2026-09-01', kg: 5 }], -3, '2026-09-19').tanpaTanggalKg === 0, JSON.stringify(F));
@@ -695,15 +708,18 @@ R.forEach(function (r) {
   if (r.ada && r.kelompok === 'wadah' && r.cara !== 'rata') salah.push('wadah bukan rata-rata: ' + r.kunci);
 });
 if (Math.round((G.bertanggalKg + G.tanpaTanggalKg) * 100) !== Math.round(G.sisaKg * 100)) salah.push('ringkas tidak menutup');
+// tinjauan no. 14: tab putaran — buku yang keluar > 0 tidak boleh berangka besar "belum ada laju"
+var belumHitung = []; umPapan(KINI, 'putaran', null).kelompok.forEach(function (g) { g.baris.forEach(function (b) { var x = R.find(function (y) { return y.kunci === b.kunci; });
+  if (x && x.putaran === null && x.keluarKg > 0) { belumHitung.push(b.nama + ' (keluar ' + x.keluarKg + ' kg: ' + b.n + ')'); if (b.n === 'belum ada laju') salah.push('putaran "belum ada laju" padahal keluar: ' + b.nama); } }); });
 var a = function (x) { return x.nama + ' ' + (x.umurAcuan === null ? '?' : Math.round(x.umurAcuan * 10) / 10) + ' hari'; };
 print(JSON.stringify({ salah: salah, tertua: G.tertua.map(function (x) { return a(x) + ' (' + (x.umur.lapisan.length ? 'tersisa dari kedatangan ' + x.umur.tanggalTertua + ' · ' + x.umur.lapisan[x.umur.lapisan.length - 1].kg + ' kg' : '') + ')'; }),
   lambat: G.lambat.map(function (x) { return x.nama + ' [' + x.alasan.join('+') + '] umur ' + (x.umurAcuan === null ? '?' : Math.round(x.umurAcuan * 10) / 10) + ' · hari stok ' + (x.hariStok === null ? 'belum ada laju' : Math.round(x.hariStok)) + ' · sisa ' + x.sisa + ' kg'; }),
-  sisa: G.sisaKg, bertanggal: G.bertanggalKg, tanpa: G.tanpaTanggalKg, minus: G.minus.map(function (x) { return x.nama + ' ' + x.sisa; }), putaran: G.putaranMerek === null ? null : Math.round(G.putaranMerek * 100) / 100, periode: G.periode, n: R.length }));
+  sisa: G.sisaKg, bertanggal: G.bertanggalKg, tanpa: G.tanpaTanggalKg, minus: G.minus.map(function (x) { return x.nama + ' ' + x.sisa; }), putaran: G.putaranMerek === null ? null : Math.round(G.putaranMerek * 100) / 100, periode: G.periode, n: R.length, belumHitung: belumHitung }));
 """
 
 
 def utama_umur(js):
-    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK_UMUR = ' + json.dumps(KOTAK_UMUR) + ';\n' + SKENARIO_UMUR)
+    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK_UMUR = ' + json.dumps(KOTAK_UMUR) + ';\nvar SEKEJAP = ' + json.dumps(SEKEJAP) + ';\n' + SKENARIO_UMUR)
     if h is None: return 0, ['UMUR JSC JATUH: ' + e]
     return h['lulus'], h['gagal']
 
@@ -723,6 +739,8 @@ def rusak_umur(js):
         'ambang pecahan dibulatkan diam-diam': js.replace("if (!isFinite(n) || Math.round(n) !== n || n < b[0] || n > b[1])", "if (!isFinite(n) || n < b[0] || n > b[1])"),
         'perputaran memakai sisa hari ini, bukan rata-rata periode': js.replace("const rataSisa = P.n > 0 ? hariP.reduce(", "const rataSisa = P.n > 0 ? b.sisa + 0 * hariP.reduce("),
         'periode tidak dipendekkan ke catatan pertama': js.replace("if (pertama && pertama > dari) {", "if (false) {"),
+        'tinjauan no. 14: buku yang bergerak (sisa rata-rata ≤ 0) ditulis "belum ada laju" lagi': js.replace("r.putaran !== null ? umKali(r.putaran) + '×' : r.keluarKg > 0 ? 'belum bisa dihitung' : 'belum ada laju'", "r.putaran !== null ? umKali(r.putaran) + '×' : 'belum ada laju'"),
+        'tinjauan no. 14: kartu putaran menulis "belum ada laju" walau tumpukan merek keluar': js.replace("G.keluarMerek > 0 ? 'belum bisa dihitung' : 'belum ada laju'", "'belum ada laju'"),
     }
 
 
@@ -921,5 +939,6 @@ if __name__ == '__main__':
                   % (os.path.basename(cad[-1]), hu['n'], hu['sisa'], hu['bertanggal'], hu['tanpa'], hu['minus'] or 'tidak ada', hu['putaran'], hu['periode']['n'], (' (' + hu['periode']['catat'] + ')') if hu['periode']['catat'] else ''))
             print('   5 merek tertua umur stoknya: ' + ' · '.join(hu['tertua']))
             print('   lambat laku (%d): %s' % (len(hu['lambat']), ' · '.join(hu['lambat']) or 'tidak ada'))
+            print('   putaran belum bisa dihitung (keluar > 0, sisa rata-rata tidak positif — tinjauan no. 14): %s' % (' · '.join(hu['belumHitung']) or 'tidak ada'))
             if hu['salah']: g.append('asap umur: ' + '; '.join(hu['salah'])[:400])
     sys.exit(2 if g else 0)

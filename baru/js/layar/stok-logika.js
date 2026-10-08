@@ -430,13 +430,15 @@ export function umPapan(kini, tanya, pilih) {
   } else {
     const lambatDulu = (a, b) => (b.tinggal === null ? (b.ada ? 1e9 : -1) : b.tinggal) - (a.tinggal === null ? (a.ada ? 1e9 : -1) : a.tinggal) || a.nama.localeCompare(b.nama);
     kelompok = ['merek', 'belakang', 'wadah'].map((g) => ({ id: g, label: UM_LABEL_KELOMPOK[g].split(' · ')[0], baris: R.filter((r) => r.kelompok === g).sort(lambatDulu)
-      .map((r) => baris(r, r.putaran !== null ? umKali(r.putaran) + '×' : 'belum ada laju', r.putaran !== null ? 'tinggal ±' + umKali(r.tinggal) + ' hari' : r.keluarKg > 0 ? 'belum bisa dihitung' : 'tak ada gerak', ketUmum(r), r.putaran === null && r.ada, r.tinggal === null ? 1 : r.tinggal / (P.n * 2))) })).filter((g) => g.baris.length);
+      // tinjauan no. 14 (9 Okt): putaran null karena sisa rata-rata akhir hari ≤ 0 padahal barangnya KELUAR (masuk & keluar di hari yang sama, buku sempat minus)
+      // = "belum bisa dihitung", bukan "belum ada laju" — "belum ada laju" hanya bila tidak ada yang keluar di periode (sama dengan umTeksPutaran & umRinci)
+      .map((r) => baris(r, r.putaran !== null ? umKali(r.putaran) + '×' : r.keluarKg > 0 ? 'belum bisa dihitung' : 'belum ada laju', r.putaran !== null ? 'tinggal ±' + umKali(r.tinggal) + ' hari' : r.keluarKg > 0 ? 'sisa rata-rata tidak positif' : 'tak ada gerak', ketUmum(r), r.putaran === null && r.ada, r.tinggal === null ? 1 : r.tinggal / (P.n * 2))) })).filter((g) => g.baris.length);
   }
   const tua = G.tertua[0] || null; const nTanpa = berisi.filter((r) => r.umur.tanpaTanggalKg > 0).length;
   const kartu = [
     { id: 'lambat', q: TAB_UMUR[0][1], a: G.lambat.length ? G.lambat.length + ' barang' : 'tidak ada', awas: G.lambat.length > 0 },
     { id: 'umur', q: TAB_UMUR[1][1], a: tua ? tua.umurAcuan + ' hari' : 'belum bisa dihitung', awas: !!tua && tua.umurAcuan > A.ambangUmurHari },
-    { id: 'putaran', q: TAB_UMUR[2][1], a: G.putaranMerek !== null ? umKali(G.putaranMerek) + '× / ' + P.n + ' hari' : 'belum ada laju', awas: false },
+    { id: 'putaran', q: TAB_UMUR[2][1], a: G.putaranMerek !== null ? umKali(G.putaranMerek) + '× / ' + P.n + ' hari' : G.keluarMerek > 0 ? 'belum bisa dihitung' : 'belum ada laju', awas: false },
     { id: 'tanpa', q: TAB_UMUR[3][1], a: G.tanpaTanggalKg > 0 ? KG(G.tanpaTanggalKg) : 'tidak ada', awas: G.tanpaTanggalKg > 0 },
   ];
   const tutup = 'Sisa di buku yang positif ' + KG(G.sisaKg) + ' = bertanggal ' + KG(G.bertanggalKg) + ' + tanpa tanggal masuk ' + KG(G.tanpaTanggalKg)
