@@ -2234,8 +2234,11 @@ uang-kritis menolak selama memori beku apa pun. Uji T6k–T6v + C14 (M31), kontr
 **Lensa hari biasa (audit PR #122, 8 Okt).** Putus = memori beku juga di hari biasa; catatan yang dihapus perangkat ini lalu ditulis lagi dengan id sama
 (katalog harga id = merek, kartu pelanggan id = nama, MDR tutup hari diulang) dan hapus yang ditolak server dulu hilang dari memori selama beku. Kini catatan
 yang disentuh perangkat ini (tulis ATAU hapus) mengikuti simpanan perangkat (`hemat-baca.js pasokK`); hapus tetap hilang seketika. Uji T6w, T6x + kontrol
-P5m; sisa temuan sedang/rendah (memori beku macet bila kabar `online` peramban hilang, pendengar berita acara mati, kalimat "sejak aplikasi dibuka"):
-`docs/rancangan-hemat-baca.md` bagian "Sisa yang diakui — lensa hari biasa".
+P5m. Temuan sedang/rendah lensa yang sama, kini dibetulkan juga: (1) jawaban SERVER baru dari pendengar berita acara sendiri = bukti tersambung (kabar `online`
+peramban yang hilang tidak lagi membuat memori beku macet sampai muat ulang); (2) pendengar berita acara yang MATI dipasang ulang otomatis (1, 2, 5 menit, lalu
+tiap 5 menit) dan selama itu kabar, kelengkapan & uang-kritis berbunyi "pemeriksaan tutup buku terputus — dicoba lagi otomatis; bila tetap begini, muat ulang
+aplikasi …" (bukan "tidak perlu muat ulang"); (3) server diam di tengah sesi disebut "sejak tersambung lagi" / "sejak pukul HH.MM WIB". Uji T6y–T6aa, C16, C17
++ kontrol P5n–P5p; sisa yang masih diakui: `docs/rancangan-hemat-baca.md` bagian "Sisa yang diakui — lensa hari biasa".
 
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 

@@ -178,7 +178,12 @@ function pasangPendengar(akun) {
   const daftarP = pendengarPeran(akun); const siap = {}; const perDok = {};
   status.koleksiSiap = 0; status.koleksiTotal = daftarP.length; status.ditolak = []; status.galat = '';
   const tandaiSiap = (nama) => { if (!siap[nama]) { siap[nama] = true; status.koleksiSiap += 1; } };
-  const tolak = (nama, err) => { const kode = String((err && err.code) || err); if (status.ditolak.indexOf(nama) < 0) status.ditolak.push(nama); status.galat = nama + ': ' + kode; tandaiSiap(nama); beriTahu(); };
+  let ulangAcara = null;   // pasang ulang pendengar berita acara tutup buku (dipakai sesi hemat saja — lensa jalan keluar, audit PR #122)
+  const tolak = (nama, err) => { const kode = String((err && err.code) || err); if (status.ditolak.indexOf(nama) < 0) status.ditolak.push(nama); status.galat = nama + ': ' + kode; tandaiSiap(nama);
+    // lensa jalan keluar (audit PR #122): pendengar berita acara tutup buku MATI saat hemat baca nyala → sesi hemat menyebutnya & memasangnya ulang (jeda 1/2/5 menit).
+    // Saklar MATI: seperti dulu (ditolak, tidak dipasang ulang)
+    if (_hemat && nama === 'tutupBukuAcara' && ulangAcara) _hemat.acaraTerputus(kode, ulangAcara);
+    beriTahu(); };
   // hemat baca (owner 7 Okt): saklar nyala + owner + aturan v7 terbukti → koleksi hemat didengar sesi hemat (V/S/F/N); sisanya (tetap & jejak) persis di bawah
   const hemat = _hematNyala && akun.jenis === 'owner' && _nisanSah && !_berhenti && _kunciTab.milik();
   const kHemat = hemat ? hbKoleksiHemat().filter((n) => daftarP.some((p) => p.nama === n && !p.dok)) : [];
@@ -198,7 +203,7 @@ function pasangPendengar(akun) {
     }
     // koleksi berbatas (jejak logAktivitas): hanya `batas` baris terbaru yang dibaca — bukan seluruh riwayat tulisan
     const sumber = k.batas ? query(collection(db, k.nama), orderBy(k.urut, 'desc'), limit(k.batas)) : collection(db, k.nama);
-    const lepas = onSnapshot(sumber, { includeMetadataChanges: true }, (snap) => {
+    const dengarK = () => onSnapshot(sumber, { includeMetadataChanges: true }, (snap) => {
       const daftar = [], tunda = []; const capK = {};
       // owner 7 Okt (hemat baca): KUPAS — capServer/padaServer dibuang dari isi sebelum memori (mesin beku, cadangan, katalog, penjaga kiriman tidak melihatnya);
       // nilainya disimpan di peta samping _cap (pendeteksi catatan tanpa cap & gema jam server). Saklar mati: isi memori sama dengan sebelum 7 Okt.
@@ -217,7 +222,8 @@ function pasangPendengar(akun) {
       if (status.koleksiSiap >= status.koleksiTotal && !status.offline && !status.antre.length && (!_hemat || !adaDariCache())) cocokkanAntre();
       beriTahu();
     }, (err) => tolak(k.nama, err));
-    _pendengarKoleksi.push(lepas);
+    if (k.nama === 'tutupBukuAcara') ulangAcara = () => _pendengarKoleksi.push(dengarK());
+    _pendengarKoleksi.push(dengarK());
   });
   if (kHemat.length) pasangHemat(kHemat, tandaiSiap);
   if (akun.jenis === 'owner') pasangPendengarKatalog();
@@ -225,10 +231,17 @@ function pasangPendengar(akun) {
 const adaDariCache = () => Object.keys(_dariCache).some((n) => _dariCache[n]);
 // ---- sesi hemat: adaptor SDK (hemat-baca.js tidak mengimpor Firebase) ----
 const TETAP_HEMAT = { perangkatStatus: 1, tutupBukuAcara: 1, aturanToko: 1 };   // masukan sesi hemat dari koleksi tetap: denyut, berita acara, klaim harian
-let _tetapAda = {}, _gemaTerakhir = null, _denyutKirim = { pada: '', ms: 0 };
+let _tetapAda = {}, _gemaTerakhir = null, _denyutKirim = { pada: '', ms: 0 }, _acaraBaru = false;
 function kabariTetap(nama, snap, tunda) {
   if (!TETAP_HEMAT[nama]) return;
   _tetapAda[nama] = true;
+  // lensa hari biasa & jalan keluar (audit PR #122): snapshot pendengar berita acara SENDIRI dari server = jawaban BARU (bukti tersambung walau kabar 'online'
+  // peramban hilang; pendengar yang dipasang ulang hidup lagi) — diteruskan SEKALI ke setelTetap berikutnya. Denyut / setelan dari server bukan jawaban berita acara
+  if (nama === 'tutupBukuAcara') {
+    _acaraBaru = !(snap.metadata && snap.metadata.fromCache);
+    const i = status.ditolak.indexOf(nama);
+    if (_acaraBaru && i >= 0) { status.ditolak.splice(i, 1); if (status.galat.indexOf(nama + ':') === 0) status.galat = ''; }
+  }
   // gema jam server: capServer denyut yang DIKIRIM SESI INI (kolom `pada` = yang terakhir dikirim), sudah diakui server — selisih jam server & jam perangkat
   // dihitung dari jam perangkat SAAT dikirim. Denyut lama dari sesi sebelumnya (cap berjam-jam lalu) tidak pernah dipakai.
   if (nama === KOLEKSI_PERANGKAT && !(snap.metadata && snap.metadata.fromCache) && _denyutKirim.pada) {
@@ -239,7 +252,8 @@ function kabariTetap(nama, snap, tunda) {
   // audit P5: acaraServer = jawaban terakhir pendengar berita acara tutup buku dari SERVER — berita acara dari simpanan perangkat bisa basi (tutup buku tampak
   // tidak berubah), jadi sesi hemat menahan koleksinya (memori beku, tanpa S, pil memuat) sampai ini benar — dan menahan lagi bila berita acara kembali "dari
   // simpanan" (server berhenti menjawab; sanggahan kedua P5). HANYA fromCache pendengar tutupBukuAcara — bukan snapshot koleksi tetap lain yang sedang dikabarkan
-  _hemat.setelTetap({ perangkat: cacheMentah('perangkat'), acara: cacheMentah('tutupBukuAcara'), klaim: dokDiCache('aturanToko', HB_ID_KLAIM), acaraServer: _dariCache.tutupBukuAcara === false });
+  const baru = _acaraBaru; _acaraBaru = false;
+  _hemat.setelTetap({ perangkat: cacheMentah('perangkat'), acara: cacheMentah('tutupBukuAcara'), klaim: dokDiCache('aturanToko', HB_ID_KLAIM), acaraServer: _dariCache.tutupBukuAcara === false, acaraBaru: baru });
 }
 const snapPolos = (snap) => ({ dariCache: !!(snap.metadata && snap.metadata.fromCache),
   dok: snap.docs.map((d) => ({ id: d.id, tunda: !!(d.metadata && d.metadata.hasPendingWrites), capMentah: d.get('capServer'), isi: () => d.data() })) });
@@ -247,7 +261,7 @@ function pasangHemat(koleksi, tandaiSiap) {
   const R = hbBacaRekam(_penyimpanHemat, _proyek, status.akun.uid);
   const dengar = (sumber, opsi, cb, galat) => { const lepas = onSnapshot(sumber, opsi, (s) => cb(snapPolos(s)), galat); return lepas; };
   const lewat = (B) => where('capServer', '>', Timestamp.fromMillis(B));
-  _tetapAda = {}; _gemaTerakhir = null;
+  _tetapAda = {}; _gemaTerakhir = null; _acaraBaru = false;
   _hemat = hbSesi({
     koleksi, R, simpan: () => hbSimpanRekam(_penyimpanHemat, R, Date.now()), jam: () => Date.now(), jadwal: (f, ms) => setTimeout(f, ms), batal: (h) => clearTimeout(h),
     idPerangkat: idPerangkat(), namaPerangkat: perangkatRingkas(), online: !(typeof navigator !== 'undefined' && navigator.onLine === false),
