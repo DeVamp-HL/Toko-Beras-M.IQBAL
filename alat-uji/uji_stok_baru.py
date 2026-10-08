@@ -581,6 +581,148 @@ ambilSemuaBatch().forEach(function (b) { if (b.stokAwal || b.lahirBuku || !b.pem
 print(JSON.stringify({ bon2: bon2, kunciAsingCatat: asingC, adukan: banyakAdukan, karantinaAntre: daftarKarantina(WX).antre.length, nilaiLayar: Math.round(G.jawab.total), nilaiPositif: Math.round(positif), neraca: N.nilaiSack + N.nilaiBags, minus: N.adaStokMinus, barang: G.banyakBarang, beli: susunGudang('beli', KINI).jawab.baris.length, mandek: susunGudang('mandek', KINI).jawab.baris.length, cocok: susunGudang('cocok', KINI).jawab.baris.length, kapur: susunKapur(KINI).banyak, wadah: susunWadah(keadaanAwal()).daftar.length }));
 """
 
+# ---- UMUR & PUTARAN (paket brief 9 Okt, butir 2) — KOTAK PASIR SENDIRI (ANGKA CONTOH), jam 19 Sep 2026 10:00 WIB; harapan dihitung tangan di komentar ----
+KB_UM = 'Karung belakang W1 · Contoh Sumber'
+
+
+def batch_um(id, tgl, merk, kg, **k):
+    d = {'id': id, 'tanggal': tgl, 'jam': '08:00', 'pemasok': 'PEMASOK CONTOH', 'caraBayar': 'tunai', 'biayaBongkar': 0,
+         'merkList': [{'merk': merk, 'satuan': 'karung', 'beratKarung': 50, 'jumlahKarung': kg / 50, 'totalKg': kg, 'subtotalHarga': kg * 13000, 'hargaPerKg': 13000}]}
+    d.update(k); return d
+
+
+def pindah_um(id, tgl, sumber, tujuan, kg, **k):
+    d = {'id': id, 'tanggal': tgl, 'jam': '09:00', 'namaProduk': tujuan, 'merkTujuan': tujuan, 'jadiKarungUtuh': True, 'dariTakar': True, 'ukuranKemasan': kg, 'jumlahUnit': 1, 'kgDipakai': kg,
+         'sumberList': [{'merk': sumber, 'kg': kg}], 'merkSumber': sumber, 'hppSumberPerKgDipakai': 13000, 'hppPerUnit': 13000 * kg, 'upahRepacking': 0, 'biayaKemasan': 0, 'kgKemasanDipakai': 0}
+    d.update(k); return d
+
+
+KOTAK_UMUR = {
+  'batchMasuk': [
+    # fondasi (stok awal 1 Jul): TIDAK bertanggal masuk — Contoh Lama 100, Contoh Lebih 500, Contoh Awal 80
+    {'id': 'u0', 'tanggal': '2026-07-01', 'jam': '07:00', 'pemasok': 'STOK AWAL', 'caraBayar': 'tunai', 'biayaBongkar': 0, 'stokAwal': True, 'merkList': [
+        {'merk': 'Contoh Lama', 'satuan': 'karung', 'beratKarung': 50, 'jumlahKarung': 2, 'totalKg': 100, 'subtotalHarga': 1300000, 'hargaPerKg': 13000},
+        {'merk': 'Contoh Lebih', 'satuan': 'karung', 'beratKarung': 50, 'jumlahKarung': 10, 'totalKg': 500, 'subtotalHarga': 6500000, 'hargaPerKg': 13000},
+        {'merk': 'Contoh Awal', 'satuan': 'karung', 'beratKarung': 50, 'jumlahKarung': 1.6, 'totalKg': 80, 'subtotalHarga': 1040000, 'hargaPerKg': 13000}]},
+    batch_um('u1', '2026-08-10', 'Contoh Lama', 200), batch_um('u2', '2026-09-09', 'Contoh Lama', 300),
+    batch_um('u3', '2026-09-01', 'Contoh Lebih', 100), batch_um('u4', '2026-09-15', 'Contoh Diam', 50), batch_um('u5', '2026-09-01', 'Contoh Habis', 100),
+    batch_um('u6', '2026-09-01', 'Contoh Sumber', 500),
+    # buku wadah W1 & karung di belakangnya lahir 1 Sep (0 kg)
+    {'id': 'lw', 'tanggal': '2026-09-01', 'jam': '07:00', 'pemasok': 'LAHIR BUKU', 'caraBayar': 'tunai', 'biayaBongkar': 0, 'stokAwal': True, 'lahirBuku': True, 'merkList': [
+        {'merk': 'Wadah W1', 'stokWadah': 'W1', 'satuan': 'kg', 'totalKg': 0, 'subtotalHarga': 0, 'hargaPerKg': 0},
+        {'merk': KB_UM, 'karungBelakang': 'W1', 'merkAsal': 'Contoh Sumber', 'satuan': 'karung', 'totalKg': 0, 'subtotalHarga': 0, 'hargaPerKg': 0}]}],
+  'produksiKemasan': [
+    pindah_um('pu1', '2026-09-08', 'Contoh Sumber', KB_UM, 50, bukaKarung='W1', merkAsal='Contoh Sumber'),
+    pindah_um('pu2', '2026-09-10', KB_UM, 'Wadah W1', 20), pindah_um('pu3', '2026-09-15', KB_UM, 'Wadah W1', 30),
+    pindah_um('pu4', '2026-09-16', 'Contoh Sumber', KB_UM, 50, bukaKarung='W1', merkAsal='Contoh Sumber')],
+  'penjualan': [
+    jual('ul1', '2026-08-15', 'Contoh Lama', 150), jual('ul2', '2026-09-12', 'Contoh Lama', 70), jual('ub1', '2026-09-10', 'Contoh Lebih', 50),
+    jual('ua1', '2026-09-15', 'Contoh Awal', 70), jual('uh1', '2026-09-10', 'Contoh Habis', 100),
+    jual('uw1', '2026-09-12', 'Wadah W1', 10, jenis='literan', dariWadah='W1'), jual('uw2', '2026-09-15', 'Wadah W1', 4, jenis='literan', dariWadah='W1', jam='18:00'),
+    jual('uw3', '2026-09-18', 'Wadah W1', 6, jenis='literan', dariWadah='W1')],
+  # cocokkan wadah 17 Sep +2 kg (kenaikan tanpa catatan tuang → bagian tanpa tanggal)
+  'penyesuaianStok': [{'id': 'uo1', 'tanggal': '2026-09-17', 'jam': '19:00', 'merk': 'Wadah W1', 'kgSistem': 36, 'kgFisik': 38, 'selisihKg': 2}],
+}
+
+SKENARIO_UMUR = r"""
+var gagal = [], lulus = 0;
+function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push('UMUR ' + nama + (ket ? ' → ' + ket : '')); }
+function dekat(a, b) { return a !== null && b !== null && Math.abs(a - b) < 1e-6; }
+Object.keys(KOTAK_UMUR).forEach(function (n) { pasok(n, KOTAK_UMUR[n]); });
+var KINI = new Date(Date.now()); var KB = 'Karung belakang W1 · Contoh Sumber';
+function r(nama) { return umBarang(KINI).find(function (x) { return x.kunci === nama; }); }
+var L = r('Contoh Lama');
+// Contoh Lama: masuk 100 (stok awal) + 200 (10 Agu) + 300 (9 Sep); terjual 150 (15 Agu) + 70 (12 Sep) → sisa 380 = SUMBER GUDANG.
+// FIFO: 300 kg kedatangan 9 Sep utuh (umur 10) + 80 dari 200 kg kedatangan 10 Agu (umur 40) → umur stok 40; rata-rata (300×10 + 80×40) / 380 = 16,3158
+ok('sisa = sumber yang sama dengan Gudang (daftarBarang 380 kg)', L.sisa === 380 && L.sisa === daftarBarang().find(function (b) { return b.kunci === 'Contoh Lama'; }).sisa, JSON.stringify(L && L.sisa));
+ok('FIFO menyentuh lapisan lama: 9 Sep 300 kg utuh + 80 dari 200 kg kedatangan 10 Agu; umur stok 40 hari; rata-rata ditimbang 16,3158; tanpa tanggal 0', L.umur.lapisan.length === 2 && L.umur.lapisan[0].tanggal === '2026-09-09' && L.umur.lapisan[0].kg === 300 && L.umur.lapisan[0].utuh && L.umur.lapisan[1].tanggal === '2026-08-10' && L.umur.lapisan[1].kg === 80 && L.umur.lapisan[1].kgMasuk === 200 && !L.umur.lapisan[1].utuh && L.umurAcuan === 40 && dekat(L.umur.umurRata, 6200 / 380) && L.umur.tanpaTanggalKg === 0, JSON.stringify(L.umur));
+ok('kalimat lapisan menyebut "tersisa dari kedatangan 10 Agu · 80 kg dari 200 kg"', /tersisa dari kedatangan 10 Agu · 80 kg dari 200 kg \+ 1 kedatangan lebih baru/.test(umKalimat('Contoh Lama', KINI)), umKalimat('Contoh Lama', KINI));
+// laju 14 hari (≥ 5 Sep): 70 kg → 5 kg/hari → hari stok 380 / 5 = 76
+ok('hari stok = sisa ÷ laju Gudang = 380 ÷ 5 = 76; lambat laku karena umur 40 > 30 DAN hari stok 76 > 30', dekat(L.hariStok, 76) && L.lambat && L.alasan.join() === 'umur,hari', JSON.stringify([L.hariStok, L.alasan]));
+// perputaran 30 hari (21 Agu–19 Sep): keluar 70; sisa akhir hari 150 ×19 (21 Agu–8 Sep) + 450 ×3 (9–11 Sep) + 380 ×8 (12–19 Sep) = 7.240 → rata 241,333; putaran 0,29006; tinggal 7.240 / 70 = 103,43
+ok('perputaran 30 hari: keluar 70 kg ÷ rata-rata sisa 241,33 = 0,290×; rata-rata tinggal di rak 103,43 hari', L.keluarKg === 70 && L.terjualKg === 70 && dekat(L.rataSisa, 7240 / 30) && dekat(L.putaran, 70 / (7240 / 30)) && dekat(L.tinggal, 7240 / 70), JSON.stringify([L.keluarKg, L.rataSisa, L.putaran, L.tinggal]));
+var B = r('Contoh Lebih');
+// Contoh Lebih: stok awal 500 + kedatangan 1 Sep 100 − terjual 50 = 550 → 100 bertanggal (umur 18) + 450 TANPA TANGGAL (bukan umur 0)
+ok('sisa melebihi kedatangan tercatat: 100 kg bertanggal (1 Sep, umur 18) + 450 kg tanpa tanggal masuk; menutup ke 550; umur acuan 18 (bukan 0)', B.sisa === 550 && B.umur.bertanggalKg === 100 && B.umur.tanpaTanggalKg === 450 && B.umurAcuan === 18 && B.umur.lapisan.length === 1, JSON.stringify(B.umur));
+ok('lambat laku Contoh Lebih karena hari stok 550 ÷ (50/14) = 154 > 30 (umur 18 tidak)', dekat(B.hariStok, 550 / (50 / 14)) && B.alasan.join() === 'hari', JSON.stringify([B.hariStok, B.alasan]));
+var Aw = r('Contoh Awal');
+ok('stok awal saja: 10 kg semuanya tanpa tanggal → umur BELUM BISA DIHITUNG (null, bukan 0); tidak dicap lambat (hari stok 10 ÷ 5 = 2)', Aw.sisa === 10 && Aw.umurAcuan === null && Aw.umur.tanpaTanggalKg === 10 && Aw.umur.bertanggalKg === 0 && !Aw.lambat && dekat(Aw.hariStok, 2), JSON.stringify(Aw));
+var Dm = r('Contoh Diam');
+ok('merek tanpa gerak: hari stok "belum ada laju" (null, bukan 0), putaran null, lambat karena diam; umur 4 hari', Dm.hariStok === null && Dm.putaran === null && Dm.tinggal === null && Dm.alasan.join() === 'diam' && Dm.umurAcuan === 4 && /belum ada laju/.test(umKalimat('Contoh Diam', KINI)), JSON.stringify(Dm));
+var H = r('Contoh Habis');
+ok('merek habis tapi bergerak: tidak berumur (sisa 0) tetapi putarannya dihitung: keluar 100 ÷ (100 × 9 hari / 30) = 3,333×', H && !H.ada && H.umur === null && dekat(H.putaran, 100 / 30) && dekat(H.tinggal, 9), JSON.stringify(H));
+var S = r('Contoh Sumber'), K = r(KB), W = r('Wadah W1');
+ok('merek sumber: 500 − 2 karung dibuka ke belakang wadah = 400 kg, FIFO dari kedatangan 1 Sep (400 dari 500 kg, umur 18); keluar 100 kg semuanya DIPINDAH (terjual 0)', S.sisa === 400 && S.umurAcuan === 18 && S.umur.lapisan[0].kg === 400 && S.umur.lapisan[0].kgMasuk === 500 && S.keluarKg === 100 && S.terjualKg === 0 && S.kelompok === 'merek', JSON.stringify([S.sisa, S.umur, S.keluarKg]));
+ok('karung di belakang wadah: FIFO per karung yang dibuka — sisa 50 = karung dibuka 16 Sep (umur 3), karung 8 Sep sudah habis dituang', K.kelompok === 'belakang' && K.cara === 'fifo' && K.sisa === 50 && K.umur.lapisan.length === 1 && K.umur.lapisan[0].tanggal === '2026-09-16' && K.umurAcuan === 3, JSON.stringify(K.umur));
+// wadah campuran (owner: average): tuang 20 (10 Sep) → 20; jual 10 (12 Sep) → 10; tuang 30 (15 Sep) → umur rata (10×9 + 30×4)/40 = 5,25; jual 4 → 36;
+// cocokkan +2 (17 Sep) → 36 bertanggal + 2 tanpa tanggal; jual 6 (18 Sep) → keluar merata ×32/38 → bertanggal 30,32 + tanpa tanggal 1,68 = 32
+ok('wadah campuran = RATA-RATA (bukan FIFO): umur rata-rata 5,25 hari sejak dituang; bertanggal 30,32 + tanpa tanggal 1,68 = 32 kg', W.kelompok === 'wadah' && W.cara === 'rata' && W.sisa === 32 && dekat(W.umurAcuan, 5.25) && W.umur.bertanggalKg === 30.32 && W.umur.tanpaTanggalKg === 1.68 && /wadah campuran, rata-rata/.test(umKalimat('Wadah W1', KINI)), JSON.stringify(W.umur));
+// ringkas: Σ sisa positif 380 + 550 + 10 + 50 + 400 + 50 + 32 = 1.472 = bertanggal 1.010,32 + tanpa tanggal 461,68
+var G = umRingkas(KINI);
+ok('hitungan menutup: Σ sisa positif 1.472 kg = bertanggal 1.010,32 + tanpa tanggal 461,68 (tidak ada yang dibuang)', G.sisaKg === 1472 && G.bertanggalKg === 1010.32 && G.tanpaTanggalKg === 461.68 && Math.round((G.bertanggalKg + G.tanpaTanggalKg) * 100) === Math.round(G.sisaKg * 100), JSON.stringify([G.sisaKg, G.bertanggalKg, G.tanpaTanggalKg]));
+ok('lambat laku: Contoh Lama, Contoh Lebih, Contoh Diam, Contoh Sumber (hari stok 400 ÷ (100/14) = 56); merek tertua: Lama 40 · Lebih 18 · Sumber 18 · Diam 4 (Awal tanpa tanggal tidak ikut)', G.lambat.map(function (x) { return x.kunci; }).sort().join() === 'Contoh Diam,Contoh Lama,Contoh Lebih,Contoh Sumber' && G.tertua.map(function (x) { return x.kunci + ':' + x.umurAcuan; }).join() === 'Contoh Lama:40,Contoh Lebih:18,Contoh Sumber:18,Contoh Diam:4', JSON.stringify([G.lambat.map(function (x) { return x.kunci; }), G.tertua.map(function (x) { return x.kunci + ':' + x.umurAcuan; })]));
+var PP = umPapan(KINI, 'tanpa', 'Contoh Lebih'); var bl = PP.kelompok[0].baris.find(function (b) { return b.kunci === 'Contoh Lebih'; });
+ok('papan "tanpa tanggal": kartu 461,68 kg; rincian Contoh Lebih menyebut asalnya (stok awal 500 kg) & "Belum bisa dihitung"', PP.kartu[3].a === '461,68 kg' && bl && bl.rinci && bl.rinci.some(function (x) { return /450 kg TANPA TANGGAL MASUK/.test(x.teks) && /stok awal 500 kg/.test(x.teks) && /Belum bisa dihitung/.test(x.teks); }), JSON.stringify(bl && bl.rinci));
+var PL = umPapan(KINI, 'lambat', null); var PU = umPapan(KINI, 'umur', null);
+ok('papan: kartu lambat "4 barang", umur tertua "40 hari"; tab umur dikelompokkan merek · belakang · wadah; kalimat penutup menyebut bertanggal + tanpa tanggal', PL.kartu[0].a === '4 barang' && PL.kartu[1].a === '40 hari' && PU.kelompok.map(function (g) { return g.id; }).join() === 'merek,belakang,wadah' && /= bertanggal 1010,32 kg \+ tanpa tanggal masuk 461,68 kg/.test(PU.tutup) && !PU.kelompok[0].baris.some(function (b) { return b.kunci === 'Contoh Habis'; }), JSON.stringify([PL.kartu, PU.tutup]));
+// FIFO murni
+var F = umFifo([{ tanggal: '2026-09-01', jam: '08:00', id: 1, kg: 50 }, { tanggal: '2026-09-01', jam: '15:00', id: 2, kg: 50 }, { tanggal: '2026-08-01', id: 3, kg: 100 }], 60, '2026-09-19');
+ok('FIFO murni: tanggal sama → jam lebih sore = lebih baru (50 utuh) + 10 dari kedatangan pagi; sisa 0 / minus → tidak ada lapisan, tanpa tanggal 0', F.lapisan.length === 2 && F.lapisan[0].id === 2 && F.lapisan[1].kg === 10 && F.umurTertua === 18 && umFifo([{ tanggal: '2026-09-01', kg: 5 }], 0, '2026-09-19').lapisan.length === 0 && umFifo([{ tanggal: '2026-09-01', kg: 5 }], -3, '2026-09-19').tanpaTanggalKg === 0, JSON.stringify(F));
+// SETELAN OWNER → hasil ikut
+var WS = { tanggal: '2026-09-19', jam: '10:00' };
+ok('atur: pecahan 30,5 / 0 / periode 200 DITOLAK dengan kalimat (tidak dibulatkan diam-diam); kosong = angka sekarang', /bilangan bulat 1–365/.test(susunAturUmur({ ambangUmurHari: '30,5' }, WS).tolak || '') && !!susunAturUmur({ ambangHariStok: '0' }, WS).tolak && /7–120/.test(susunAturUmur({ periodeHari: '200' }, WS).tolak || '') && susunAturUmur({}, WS).dokumen[0].data.ambangUmurHari === 30);
+var AT = susunAturUmur({ ambangUmurHari: '45', ambangHariStok: '80', periodeHari: '10' }, WS); terapkanKeCache(AT.dokumen);
+L = r('Contoh Lama');
+// periode 10 hari (10–19 Sep): sisa 450 ×2 + 380 ×8 = 3.940 → rata 394; putaran 70/394; tinggal 3.940/70 = 56,29
+ok('setelan owner ikut: ambang umur 45 & hari stok 80 → Contoh Lama (umur 40, hari stok 76) & Contoh Sumber (56) TIDAK lagi lambat, tinggal Lebih (154) & Diam; periode 10 hari → rata-rata sisa 394, tinggal 56,29 hari', AT.dokumen[0].koleksi === 'aturanToko' && AT.dokumen[0].data.id === 'stokUmur' && umAtur().dariOwner && !L.lambat && dekat(L.rataSisa, 394) && dekat(L.tinggal, 3940 / 70) && umRingkas(KINI).lambat.map(function (x) { return x.kunci; }).sort().join() === 'Contoh Diam,Contoh Lebih', JSON.stringify([L.alasan, L.rataSisa, umRingkas(KINI).lambat.map(function (x) { return x.kunci; })]));
+terapkanKeCache(susunAturUmur({ periodeHari: '60' }, WS).dokumen);
+ok('periode 60 hari dipendekkan ke catatan pertama toko (10 Agu) → 41 hari, disebut', umRingkas(KINI).periode.n === 41 && umRingkas(KINI).periode.dari === '2026-08-10' && /catatan toko baru mulai 10 Agu/.test(umRingkas(KINI).periode.catat), JSON.stringify(umRingkas(KINI).periode));
+terapkanKeCache([{ koleksi: 'aturanToko', hapus: 'stokUmur' }]);
+ok('setelan dihapus → kembali angka bawaan 30 / 30 / 30', umAtur().ambangUmurHari === 30 && !umAtur().dariOwner && r('Contoh Lama').lambat);
+print(JSON.stringify({ lulus: lulus, gagal: gagal }));
+"""
+
+ASAP_UMUR = r"""
+Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[n]); });
+var KINI = new Date(Date.now()); var G = umRingkas(KINI); var R = umBarang(KINI); var salah = [];
+var buku = ingatStokKarung();
+R.forEach(function (r) {
+  if (!buku[r.kunci] || buku[r.kunci].sisaKg !== r.sisa) salah.push('sisa ' + r.kunci + ' bukan sumber Gudang');
+  if (r.ada && Math.round(r.umur.bertanggalKg * 100) + Math.round(r.umur.tanpaTanggalKg * 100) !== Math.round(r.sisa * 100)) salah.push('tidak menutup: ' + r.kunci);
+  if (r.ada && r.umurAcuan === null && r.umur.bertanggalKg > 0) salah.push('umur hilang: ' + r.kunci);
+  if (r.ada && r.kelompok === 'wadah' && r.cara !== 'rata') salah.push('wadah bukan rata-rata: ' + r.kunci);
+});
+if (Math.round((G.bertanggalKg + G.tanpaTanggalKg) * 100) !== Math.round(G.sisaKg * 100)) salah.push('ringkas tidak menutup');
+var a = function (x) { return x.nama + ' ' + (x.umurAcuan === null ? '?' : Math.round(x.umurAcuan * 10) / 10) + ' hari'; };
+print(JSON.stringify({ salah: salah, tertua: G.tertua.map(function (x) { return a(x) + ' (' + (x.umur.lapisan.length ? 'tersisa dari kedatangan ' + x.umur.tanggalTertua + ' · ' + x.umur.lapisan[x.umur.lapisan.length - 1].kg + ' kg' : '') + ')'; }),
+  lambat: G.lambat.map(function (x) { return x.nama + ' [' + x.alasan.join('+') + '] umur ' + (x.umurAcuan === null ? '?' : Math.round(x.umurAcuan * 10) / 10) + ' · hari stok ' + (x.hariStok === null ? 'belum ada laju' : Math.round(x.hariStok)) + ' · sisa ' + x.sisa + ' kg'; }),
+  sisa: G.sisaKg, bertanggal: G.bertanggalKg, tanpa: G.tanpaTanggalKg, minus: G.minus.map(function (x) { return x.nama + ' ' + x.sisa; }), putaran: G.putaranMerek === null ? null : Math.round(G.putaranMerek * 100) / 100, periode: G.periode, n: R.length }));
+"""
+
+
+def utama_umur(js):
+    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK_UMUR = ' + json.dumps(KOTAK_UMUR) + ';\n' + SKENARIO_UMUR)
+    if h is None: return 0, ['UMUR JSC JATUH: ' + e]
+    return h['lulus'], h['gagal']
+
+
+def rusak_umur(js):
+    """--kontrol paket brief 9 Okt: urutan / cara / setelan dirusak → kotak pasir umur WAJIB berbunyi."""
+    cara = "const cara = jb === 'wadah' || jb === 'karung' ? 'rata' : 'fifo';"
+    return {
+        'umur FIFO dibalik jadi TERLAMA-DULU (sisa diisi dari kedatangan lama)': js.replace(".sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)) || String(b.jam || '').localeCompare(String(a.jam || ''))", ".sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || String(a.jam || '').localeCompare(String(b.jam || ''))"),
+        'umur karung jadi RATA-RATA (semua buku memakai cara wadah)': js.replace(cara, "const cara = 'rata';"),
+        'umur stok = rata-rata ditimbang, bukan lapisan tertua': js.replace("umurTertua: tua ? tua.umur : null,", "umurTertua: bertanggal > 0 ? tersisa.reduce((a, x) => a + umSen(x.kg) * x.umur, 0) / bertanggal : null,"),
+        'wadah campuran dipaksa FIFO': js.replace(cara, "const cara = 'fifo';"),
+        'tanpa tanggal masuk dibuang diam-diam (tidak menutup)': js.replace("tanpaTanggalKg: total > 0 ? (total - bertanggal) / 100 : 0, umurTertua", "tanpaTanggalKg: 0, umurTertua"),
+        'tanpa tanggal digambar umur 0': js.replace("const umurAcuan = !U ? null : cara === 'rata' ? U.umurRata : U.umurTertua;", "const umurAcuan = !U ? null : cara === 'rata' ? U.umurRata : (U.umurTertua === null ? 0 : U.umurTertua);"),
+        'tanpa gerak digambar hari stok 0': js.replace("const hariStok = ada && b.laju > 0 ? b.sisa / b.laju : null;", "const hariStok = ada ? (b.laju > 0 ? b.sisa / b.laju : 0) : null;"),
+        'setelan owner tidak dibaca (ambang selalu bawaan)': js.replace("const a = cacheMentah('aturan').find((d) => String(d.id) === 'stokUmur') || null; const o = {};", "const a = null; const o = {};"),
+        'ambang pecahan dibulatkan diam-diam': js.replace("if (!isFinite(n) || Math.round(n) !== n || n < b[0] || n > b[1])", "if (!isFinite(n) || n < b[0] || n > b[1])"),
+        'perputaran memakai sisa hari ini, bukan rata-rata periode': js.replace("const rataSisa = P.n > 0 ? hariP.reduce(", "const rataSisa = P.n > 0 ? b.sisa + 0 * hariP.reduce("),
+        'periode tidak dipendekkan ke catatan pertama': js.replace("if (pertama && pertama > dari) {", "if (false) {"),
+    }
+
 
 def jalan(js):
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f: f.write(js); p = f.name
@@ -742,8 +884,15 @@ if __name__ == '__main__':
             l, g = utama(isi)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
+        # paket brief 9 Okt: umur & putaran — kotak pasirnya sendiri
+        for nama, isi in rusak_umur(js).items():
+            if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
+            l, g = utama_umur(isi)
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
+            if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
+    lu, gu = utama_umur(js); l += lu; g += gu   # paket brief 9 Okt: umur & putaran
     g += ['statis 39b no. 30: ' + n for n in statis30(sk30)]
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')), key=os.path.basename)   # cadangan toko boleh di akar, _privat/ atau _arsip-mockup/ (semua di-gitignore); yang terbaru menurut tanggal di namanya
@@ -762,4 +911,13 @@ if __name__ == '__main__':
             print('   39b no. 2 — kedatangan bon di data toko: %d bon · %d sudah dibayar bertunjuk (Rp%s) · terkunci %d · di bulan terkunci %d · lolos %s · bon belum dibayar yang salah dikunci %s · Σ sisa vs mesin selisih %s · bertunjuk ≠ mesin %s · ejaan pemasok yang digeser %s'
                   % (b2.get('bon', 0), b2.get('dibayar', 0), format(b2.get('rpDibayar', 0), ',').replace(',', '.'), b2.get('kunci', 0), b2.get('kunciPeriode', 0), b2.get('lolos') or 'nihil', b2.get('bebasSalah') or 'nihil', b2.get('selisihMesin'), b2.get('bedaMesin') or 'nihil', b2.get('ejaanGeser') or 'nihil'))
             if not b2.get('bon') or b2.get('kunci') + b2.get('kunciPeriode', 0) < b2.get('dibayar') or b2.get('lolos') or b2.get('bebasSalah') or b2.get('selisihMesin') or b2.get('ejaanGeser'): g.append('asap 39b no. 2: ' + json.dumps(b2, ensure_ascii=False)[:400])
+        # paket brief 9 Okt: umur & putaran atas data toko — sisa = sumber Gudang, tiap buku menutup (bertanggal + tanpa tanggal = sisa), wadah = rata-rata
+        hu, eu = jalan("var __KINI = new Date('%sT20:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n" % tgl + js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP_UMUR)
+        if hu is None: print('ASAP UMUR: JSC JATUH ' + eu); g.append('asap umur')
+        else:
+            print('ASAP UMUR & PUTARAN (%s): %d buku · sisa positif %s kg = bertanggal %s + tanpa tanggal %s · minus %s · putaran tumpukan merek %s× / %d hari%s'
+                  % (os.path.basename(cad[-1]), hu['n'], hu['sisa'], hu['bertanggal'], hu['tanpa'], hu['minus'] or 'tidak ada', hu['putaran'], hu['periode']['n'], (' (' + hu['periode']['catat'] + ')') if hu['periode']['catat'] else ''))
+            print('   5 merek tertua umur stoknya: ' + ' · '.join(hu['tertua']))
+            print('   lambat laku (%d): %s' % (len(hu['lambat']), ' · '.join(hu['lambat']) or 'tidak ada'))
+            if hu['salah']: g.append('asap umur: ' + '; '.join(hu['salah'])[:400])
     sys.exit(2 if g else 0)

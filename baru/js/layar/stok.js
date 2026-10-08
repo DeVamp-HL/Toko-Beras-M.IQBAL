@@ -316,6 +316,12 @@ export function pasangLayarStok(akar, opsi) {
     bukaAturHp: () => { const a = HP.aturHpp(); set({ aturHp: st().aturHp ? null : { batasLonjak: String(a.batasLonjak), lantaiHpp: String(a.lantaiHpp) } }); },
     hpKetikAtur: (v, el) => { const a = Object.assign({}, st().aturHp || {}); a[el.dataset.kolom] = String(v).slice(0, 10); set({ aturHp: a }); },
     simpanAturHp: async () => { const a = st().aturHp; if (a) await tulis(HP.susunAturHpp(a, waktu())); },
+    // ---- UMUR & PUTARAN (paket brief 9 Okt, butir 2): kartu pertanyaan, rincian buku yang diketuk, Atur ambang (aturanToko/stokUmur)
+    umTanya: ({ id }) => set({ umTanya: id, umPilih: null }),
+    umPilih: ({ kunci }) => set({ umPilih: st().umPilih === kunci ? null : kunci }),
+    bukaAturUm: () => { const a = S.umAtur(); set({ aturUm: st().aturUm ? null : { ambangUmurHari: String(a.ambangUmurHari), ambangHariStok: String(a.ambangHariStok), periodeHari: String(a.periodeHari) } }); },
+    umKetikAtur: (v, el) => { const a = Object.assign({}, st().aturUm || {}); a[el.dataset.kolom] = String(v).slice(0, 4); set({ aturUm: a }); },
+    simpanAturUm: async () => { const a = st().aturUm; if (a) await tulis(S.susunAturUmur(a, waktu())); },
   }, aksiPanelWadah({ set, st, tulis, keranjang: keranjangJual, waktu,
     sesudahCatat: (wadah, r) => { const hsl = r.hitung; adeganIsiUlang({ nama: wadah, keterangan: hsl.takar + ' takar · ' + DESIMAL(hsl.kg) + ' kg' + (hsl.banding ? ' · campur ' + hsl.banding : ''), serokan: Math.ceil(hsl.takar / 8), dari: hsl.wadah, ke: L.tinggiWadah(wadah, keranjangJual()) || hsl.wadah }); } }));
   delegasi(akar, AKSI);
@@ -345,7 +351,7 @@ export function pasangLayarStok(akar, opsi) {
       ${s.kabar && s.kpPembalik === 'cocok' ? h`<div class="kaca-btn putus" data-k="kabar-pembalik" data-aksi="kpCocok" data-kunci="" style="align-self: flex-start;">Buat Cocokkan hari ini</div>` : ''}
       ${s.kabar && s.kpPembalik === 'pindahNama' ? h`<div class="kaca-btn ${s.kpYakin ? 'awas' : 'aktif emas'}" data-k="kabar-pindah" data-aksi="kpPindahNama" style="align-self: flex-start;">${s.kpYakin ? 'YAKIN — ' : ''}${s.kpTeks || 'Pindah buku sisanya'}</div>` : ''}
       ${s.lembar === 'masuk' ? gambarMasuk(s) : s.lembar === 'cocok' ? gambarCocok(s) : s.lembar === 'adukan' ? gambarAdukan(s) : s.lembar === 'kantong' ? gambarKantong(s) : s.lembar === 'tempat' ? gambarTempat(s) : s.lembar === 'hpp' ? gambarHpp(s) : h`<div class="jalur" data-k="tab">${S.TAB_STOK.map(([id, nm]) => h`<div class="seg ${s.tab === id ? 'aktif' : ''}" data-aksi="tab" data-t="${id}">${nm}</div>`)}</div>
-      ${s.tab === 'gudang' ? gambarGudang(s, k) : s.tab === 'wadah' ? gambarTabWadah(s) : s.tab === 'kapur' ? gambarKapur(k) : gambarKarantina(s)}`}
+      ${s.tab === 'gudang' ? gambarGudang(s, k) : s.tab === 'wadah' ? gambarTabWadah(s) : s.tab === 'kapur' ? gambarKapur(k) : s.tab === 'umur' ? gambarUmur(s, k) : gambarKarantina(s)}`}
     `);
     gulirkan(akar, RP);
   }
@@ -483,6 +489,7 @@ export function pasangLayarStok(akar, opsi) {
     const PM = HP.pratinjauMassal(hp.massal);
     const koreksi = M ? h`<div class="kartu" data-k="hp-koreksi" style="gap: 8px;"><div style="font-weight: 700;">Koreksi ${M.merk}</div>
       <div class="ket">modal rata-rata ${RP(Math.round(M.modal))}/kg (buku, = laba & neraca) · harga beli terbaru ${M.hargaTerbaru === null ? 'belum ada' : RP(M.hargaTerbaru) + '/kg'} · ${M.jual ? 'jual ' + RP(M.jual) + '/kg · ' : ''}${M.teksMargin} · sisa ${DESIMAL(Math.round(M.sisa * 10) / 10)} kg</div>
+      ${(() => { const u = S.umKalimat(M.merk, kini()); return u ? h`<div class="ket" data-k="hp-umur">${u} (Stok › Umur & putaran)</div>` : ''; })()}
       ${M.bisaKoreksi ? h`<div class="ket">HPP adalah TURUNAN kedatangan — yang dikoreksi = harga beli per kg pada kedatangan TERAKHIR nama ini (${N && !N.tolak ? N.teksTarget : 'kedatangan terakhir yang bukan fondasi'}).</div>
         <div class="ps-form dua"><div><div class="ket">Harga beli per kg yang benar (Rp)</div><input class="ketik-nama" id="hpKetik" type="text" inputmode="numeric" value="${hp.ketik}" data-ketik="hpKetik" data-kolom="ketik" placeholder="0"></div><div><div class="ket">Alasan (wajib)</div><input class="ketik-nama" id="hpAlasan" type="text" value="${hp.alasan}" data-ketik="hpKetik" data-kolom="alasan" placeholder="mis. bongkar belum masuk"></div></div>
         ${N && N.tolak ? h`<div class="pita-info awas">${N.tolak}</div>` : ''}${N && !N.tolak && N.lonjak ? h`<div class="pita-info awas">HPP: ${N.lonjak}</div>` : ''}${N && !N.tolak && N.rugi ? h`<div class="pita-info awas">${N.rugi}</div>` : ''}
@@ -832,6 +839,33 @@ export function pasangLayarStok(akar, opsi) {
       <div style="display: flex; justify-content: space-between; align-items: center;"><div class="label">Papan Kapur · perubahan stok hari ini</div><div class="ket" style="font-size: 11px;">${p.banyak} catatan</div></div>
       ${p.baris.length ? p.baris.map((x, i) => h`<div class="kapur ${x.jenis}" data-k="kp-${x.k}" style="--urut: ${Math.min(i, 16)};"><span class="w">${x.jam}</span><span class="isi-kapur">${x.isi}</span><span class="n">${x.n}</span></div>`) : h`<div class="menolak" style="padding: 12px 0;">Belum ada perubahan stok hari ini.</div>`}
     </div></section>`;
+  }
+  // ---------- UMUR & PUTARAN (paket brief 9 Okt, butir 2): tab sendiri — papan S9 Gudang tidak disentuh. Kartu pertanyaan → daftar per kelompok buku (karung FIFO ·
+  // karung di belakang wadah FIFO sejak dibuka · wadah campuran rata-rata) → ketuk buku = rincian lapisan & perputarannya. Ambang di Atur (owner). Berat, bukan rupiah.
+  function gambarUmur(s, k) {
+    const U = S.umPapan(k, s.umTanya, s.umPilih); const A = U.atur; const ak = opsi.akun ? opsi.akun() : null; const au = s.aturUm; let urut = 0;
+    const isian = (id, kolom, nama) => h`<div><div class="ket">${nama}</div><input class="ketik-nama" id="${id}" type="text" inputmode="numeric" value="${au[kolom]}" data-ketik="umKetikAtur" data-kolom="${kolom}"></div>`;
+    return h`<section class="stok-umur" data-k="umur">
+      <div class="tanya">${U.kartu.map((c) => h`<div class="kartu-t ${c.id === U.aktif ? 'aktif' : ''}" data-aksi="umTanya" data-id="${c.id}" data-k="um-k-${c.id}"><div class="q">${c.q}</div><div class="a ${c.awas ? 'awas' : ''}">${c.a}</div></div>`)}</div>
+      <div class="kartu jawaban" data-k="um-jawab-${U.aktif}">
+        <div class="label">${U.judul}</div>
+        ${U.kelompok.length ? U.kelompok.map((g) => h`<div data-k="um-g-${g.id}" style="display: flex; flex-direction: column; gap: 2px;">${g.label ? h`<div class="ket" style="font-weight: 600; padding-top: 6px;">${g.label}</div>` : ''}
+          <div class="daftar-jawab">${g.baris.map((b) => h`<div class="jawab ${b.rinci ? 'dipilih' : ''}" data-k="um-${g.id}-${b.kunci}" data-aksi="umPilih" data-kunci="${b.kunci}" style="--urut: ${Math.min(urut++, 16)}; cursor: pointer;">
+            <span class="kiri"><span class="nm">${b.nama}</span><span class="w">${b.ket}</span><span class="batang"><span class="isi-batang ${b.awas ? 'awas' : ''}" style="transform: scaleX(${Math.round(b.isi * 1000) / 1000});"></span></span>
+              ${b.rinci ? b.rinci.map((x, i) => h`<span class="w ${x.awas ? 'awas-teks' : ''}" data-k="um-r-${b.kunci}-${i}" style="display: block; padding-top: 3px;">${x.teks}</span>`) : ''}</span>
+            <span class="kanan"><span class="n ${b.awas ? 'awas' : ''}">${b.n}</span><span class="w">${b.nKet}</span></span></div>`)}</div></div>`)
+          : h`<div class="menolak" style="padding: 12px 0;">${U.kosong}</div>`}
+        <div class="rumus">${U.rumus}</div>
+        <div class="ket" style="font-size: 11.5px;" data-k="um-tutup">${U.tutup}</div>
+        <div class="ket" style="font-size: 11px;">Ketuk satu baris untuk rincian lapisan & perputarannya. Umur & putaran = BERAT (kg); nilai rupiah stok tetap modal rata-rata di Gudang & HPP.</div>
+      </div>
+      ${au ? h`<div class="kartu" data-k="atur-um" style="gap: 8px;"><div class="label">Ambang umur & putaran · angka owner</div><div class="ps-form dua">
+        ${isian('umAmbangUmur', 'ambangUmurHari', 'Lambat laku bila umur stok lebih dari (hari)')}${isian('umAmbangHari', 'ambangHariStok', 'Lambat laku bila hari stok lebih dari (hari)')}${isian('umPeriode', 'periodeHari', 'Periode perputaran (hari, 7–120)')}</div>
+        <div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAturUm">batal</div><div class="kaca-btn aktif emas" data-aksi="simpanAturUm">SIMPAN AMBANG</div></div></div>`
+      : bukanOwner(ak) ? h`<div class="kaca-btn kecil mati" data-aksi="tombolMati" data-kal="Ambang umur & putaran diatur owner" style="align-self: flex-start;">Atur ambang · owner saja</div>`
+      : h`<div class="kaca-btn kecil" data-aksi="bukaAturUm" style="align-self: flex-start;">Atur ambang umur, hari stok & periode putaran ›</div>`}
+      <div class="ket" style="font-size: 11px;" data-k="um-ambang">Ambang sekarang: umur stok > ${A.ambangUmurHari} hari · hari stok > ${A.ambangHariStok} hari · perputaran ${A.periodeHari} hari — ${A.dariOwner ? 'diatur owner' + (A.sejak ? ' ' + tanggalPendek(A.sejak) : '') : 'angka bawaan (perkiraan) — bisa diubah di Atur'}${bukanOwner(ak) && !A.dariOwner ? ' · akun ini tidak membaca setelan owner, jadi memakai angka bawaan' : ''}.</div>
+    </section>`;
   }
 
   // ---------- ADUKAN (ST2-C "Timbangan Adukan"): bahan masuk ⇄ hasil jadi di atas; bahan (karung dari gudang / kemasan jadi dibongkar) → hasil (nama · ukuran · unit · kantong) → biaya → buku ----------
