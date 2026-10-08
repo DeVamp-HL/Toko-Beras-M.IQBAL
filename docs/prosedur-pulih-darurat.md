@@ -295,8 +295,8 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] Langkah 7: cadangan SESUDAH & selesai. Lalu di kartu pemeriksaan ketuk **"unduh hasil pemeriksaan (berkas)"**
       (`pemeriksaan-tutup-buku-2026-miqbal.json`). Salin cadangan SEBELUM, berkas arsip, cadangan SESUDAH, dan hasil pemeriksaan ke ≥ 2 tempat di luar Mac
       (simpan 10 tahun).
-- [ ] **Perangkat lain sesudah ritual** (iPhone, iPad, HP lain yang membuka `/baru/` dan tertutup selama ritual): buka satu per satu, sekali, dan
-      biarkan membaca penuh sendiri.
+- [ ] **Perangkat lain sesudah ritual** (iPhone, iPad, HP lain yang membuka `/baru/` dan tertutup selama ritual — termasuk yang aplikasinya tetap
+      terbuka tapi tidur / tanpa internet selama ritual): buka satu per satu, sekali, dan biarkan membaca penuh sendiri.
       Perangkat yang hemat bacanya MATI membuka dengan catatan 2026 di simpanannya SEKALIGUS saldo pembuka, jadi angkanya DOBEL sementara sampai bacanya
       selesai. Perangkat owner yang hemat bacanya NYALA tidak dobel, tapi angkanya lama (isi simpanannya saat terakhir dibuka) atau kosong sampai pil
       tidak lagi menulis "memuat…" atau "memeriksa data (…)". SEBELUM dipakai untuk Jual, bayar bon, bayar bon pemasok, atau membaca stok:

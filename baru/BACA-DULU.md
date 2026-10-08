@@ -2219,6 +2219,18 @@ cap (bukan karena tutup buku berjalan) juga ditahan; tahan berakhir saat dengar 
 segar). (4) Server mainan: pendengar simpanan berbunyi hanya bila isinya berubah — baris pelepas memori beku kini dijaga. Uji T6e2, T6e3, T6h, T6i, T6j
 (+ 14 kontrol); kalimat prosedur "Perangkat lain sesudah ritual" kini membedakan hemat baca NYALA (tidak dobel, angka lama/kosong) dan MATI (dobel sementara).
 
+**Sanggahan kedua P5 (8 Okt).** "Tirai memuat" di dua paragraf di atas = pil kepala "memuat…" saja: `/baru/` tidak punya tirai yang menutup layar (siap hanya
+melepas penjarangan gambar), jadi MEMORI satu-satunya pelindung. (1) PENGHALANG BERSAMA: selama ada jenis catatan yang menunggu baca penuh karena tutup buku,
+SEMUA koleksi hemat beku dan dilepas serentak (dulu per koleksi → batchMasuk sesudah ritual + penjualan 2026 = stok terpotong dua kali). (2) Berita acara tidak
+lagi "sekali dijawab server, tetap dijawab": putus / SDK menandai "dari simpanan" → memori dibekukan saat itu; tersambung → ditahan sampai dijawab lagi. Tahan
+yang mulai di tengah sesi dibekukan seketika; bila berita acara berganti selagi S menempel (tidur tanpa kabar) → disembunyikan. (3) Memori kosong hanya bila
+tidak ada keadaan utuh (bercampur, beda zaman, tengah sesi tidak aman) dan DISEBUT: kabar "Angka disembunyikan (tampil kosong — bukan nol) …" & kelengkapan
+"disembunyikan sampai dibaca penuh …", didahulukan dari server diam / F gagal. Simpanan setengah ritual dipakai hanya oleh PEMEGANG ritual atau bila server
+menjawab ritual berjalan (dulu semua perangkat → iPad dobel saat server diam). Bercampur ditandai bila simpanan benar-benar berubah selama ditahan, bukan saat
+F dipasang. (4) Kabar dihitung dari keadaan (tidak basi); server diam + simpanan tidak dipercaya tetap memuat; tanda server diam dihitung dari saat tersambung;
+uang-kritis menolak selama memori beku apa pun. Uji T6k–T6v + C14 (M31), kontrol P5g–P5l, M14, M20, M31; rincian: `docs/rancangan-hemat-baca.md` bagian
+"Hemat baca × arsip tutup buku".
+
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 
 Status sesudah PR #111 digabung: langkah 1–2 SELESAI; langkah 3–7 = tugas owner (sesudah 13 Okt tidak ada lagi yang mengerjakannya untuk owner).

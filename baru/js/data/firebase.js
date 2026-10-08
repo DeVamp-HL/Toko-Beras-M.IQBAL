@@ -237,7 +237,8 @@ function kabariTetap(nama, snap, tunda) {
   }
   if (!Object.keys(TETAP_HEMAT).every((n) => _tetapAda[n])) return;
   // audit P5: acaraServer = jawaban terakhir pendengar berita acara tutup buku dari SERVER — berita acara dari simpanan perangkat bisa basi (tutup buku tampak
-  // tidak berubah), jadi sesi hemat menahan koleksinya (tirai memuat, tanpa S, memori beku) sampai ini benar
+  // tidak berubah), jadi sesi hemat menahan koleksinya (memori beku, tanpa S, pil memuat) sampai ini benar — dan menahan lagi bila berita acara kembali "dari
+  // simpanan" (server berhenti menjawab; sanggahan kedua P5). HANYA fromCache pendengar tutupBukuAcara — bukan snapshot koleksi tetap lain yang sedang dikabarkan
   _hemat.setelTetap({ perangkat: cacheMentah('perangkat'), acara: cacheMentah('tutupBukuAcara'), klaim: dokDiCache('aturanToko', HB_ID_KLAIM), acaraServer: _dariCache.tutupBukuAcara === false });
 }
 const snapPolos = (snap) => ({ dariCache: !!(snap.metadata && snap.metadata.fromCache),
@@ -597,7 +598,9 @@ export async function perbaruiBerkas(potongan, ringkas) {
   const hasil = [];
   for (let i = 0; i < potongan.length; i++) {
     const p = potongan[i]; const b = writeBatch(db);
-    p.forEach((x) => b.update(doc(db, x.koleksi, String(x.id)), pasangCap(x.koleksi, x.kolom)));   // owner 7 Okt: ubah kolom koleksi hemat ikut bercap
+    // owner 7 Okt: ubah kolom koleksi hemat ikut bercap. Sanggahan kedua P5: dicatat ke sesi hemat seperti tulisBerkas — memori beku (putus internet / tutup buku)
+    // tetap menampilkan ubahan perangkat ini sendiri
+    p.forEach((x) => { b.update(doc(db, x.koleksi, String(x.id)), pasangCap(x.koleksi, x.kolom)); if (_hemat) _hemat.catatTulis(x.koleksi, x.id); });
     if (i === potongan.length - 1) { const log = { id: idUnik(), pada: new Date().toISOString(), aksi: 'bersihkan', koleksi: 'pelangganCatatan', idDok: 'ciri-dicabut', oleh: pemegangPerangkat(), olehUid: status.akun.uid, perangkat: perangkatRingkas(), ringkas: String(ringkas || '') }; b.set(doc(db, KOLEKSI_LOG, String(log.id)), log); }
     status.menunggu += 1; beriTahu();
     const janji = b.commit().then(() => ({ n: p.length, keadaan: 'ok' }))
