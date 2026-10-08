@@ -10,7 +10,7 @@ import { hitungUtangPemasok, hitungStokBahanKemasan } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, kunciPelanggan, uangKembaliRetur } from '../mesin/pembantu.js';
 import { KOLEKSI } from '../data/koleksi.js';
 import { ambilPenjualan, ambilRetur, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilPetaJenisBeras, cacheMentah, eraBuku, ingatStokKarung } from '../data/toko.js';
-import { tempoPemasok } from './bon-pemasok-logika.js';
+import { tempoPemasok, petaGulir, gulirBon } from './bon-pemasok-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
 import { semuaBon, pesanTagih } from './bon-logika.js';
 import { SERVER_BUKA } from '../data/akses.js';
@@ -366,7 +366,9 @@ export function susunJadikanUtama(id, w) {
 /** Sumber pengingat dari data: bon pemasok, janji bayar, kantong menipis (laju pakai 14 hari), opname rutin, cadangan berkas. */
 export function ssSumberPengingat(kini, lokal) {
   const iso = hariIniIso(kini); const A = ssAtur('pengingat'); const out = []; let bonTanpaTanggal = 0;
-  hitungUtangPemasok().forEach((px) => { const T = tempoPemasok(px.pemasok); (px.bon || []).forEach((b) => { if (!b.tanggal || !(T.hari > 0)) { bonTanpaTanggal += 1; return; } out.push({ id: 'bon|' + b.id, jenis: 'bon', kunci: b.id, teks: 'Bon ' + px.pemasok + ' jatuh tempo', siapa: px.pemasok, jatuh: ssTambahHari(b.tanggal, T.hari), n: b.sisa, ket: 'bon ' + tanggalPendek(b.tanggal) + ' · ' + T.teks }); }); });
+  // Paket F1: bon lama yang bergulir diramal dari kedatangan terakhir pemasoknya (gulirBon — aturan yang sama dengan layar Bon pemasok)
+  const G = petaGulir();
+  hitungUtangPemasok().forEach((px) => { const T = tempoPemasok(px.pemasok); (px.bon || []).forEach((b) => { const g = gulirBon(G, px.pemasok, b); const d = g || b.tanggal; if (!d || !(T.hari > 0)) { bonTanpaTanggal += 1; return; } out.push({ id: 'bon|' + b.id, jenis: 'bon', kunci: b.id, teks: 'Bon ' + px.pemasok + ' jatuh tempo', siapa: px.pemasok, jatuh: ssTambahHari(d, T.hari), n: b.sisa, ket: (g ? 'bon lama bergulir · ikut kedatangan ' + tanggalPendek(g) : 'bon ' + tanggalPendek(b.tanggal)) + ' · ' + T.teks }); }); });
   semuaBon(kini).forEach((b) => { if (b.sisa <= 0 || !b.tagih || !b.tagih.janji || (b.status !== 'menunggu' && b.status !== 'janjiLewat')) return; out.push({ id: 'janji|' + b.kunci + '|' + b.tagih.janji, jenis: 'janji', kunci: b.kunci, teks: b.nama + ' janji bayar', siapa: b.nama, jatuh: b.tagih.janji, n: b.sisa, ket: 'ditagih ' + tanggalPendek(b.tagih.tanggal) + ' · sisa bon ' + RP(b.sisa) }); });
   const bahan = hitungStokBahanKemasan(); const mulai = ssTambahHari(iso, -14); const pakai = {}; ambilBahanKemasan().forEach((x) => { if (x.tipe === 'pakai' && (x.tanggal || '') >= mulai) pakai[x.jenis] = (pakai[x.jenis] || 0) + (Number(x.jumlah) || 0); });
   Object.keys(bahan).forEach((j) => { const laju = (pakai[j] || 0) / 14; if (!(laju > 0)) return; const sisa = Math.max(0, bahan[j].sisaPcs || 0); const hari = Math.floor(sisa / laju); const jatuh = ssTambahHari(iso, hari);

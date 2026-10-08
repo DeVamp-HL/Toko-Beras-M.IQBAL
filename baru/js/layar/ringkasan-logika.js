@@ -9,8 +9,8 @@
 //  - periode berjalan digambar bertepi putus (kelas 'berjalan'), yang belum terjadi tipis ('rel'), yang sebelum ada catatan 'absen';
 //  - BACA SAJA: layar ini tidak menulis apa pun.
 import { hitungLabaRentang, hitungPiutang, hitungUtangPemasok, hitungLajuPakai, kasPada } from '../mesin/beku.js';
-import { bakuCaraBayar, pesananBelumTuntas, namaBulanPanjang, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja, kunciNota, returUangPerHari, lajuLintas, potretTahun, potretHari, tahunDiarsip, awalPotret, ingatStokKarung, ingatStokKemasan, ingatGerakanKas, ingatKasPada } from '../data/toko.js';
+import { bakuCaraBayar, pesananBelumTuntas, namaBulanPanjang, AMBANG_HARI_KRITIS, kunciPelanggan } from '../mesin/pembantu.js';
+import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja, kunciNota, returUangPerHari, lajuLintas, potretTahun, potretHari, tahunDiarsip, awalPotret, ingatStokKarung, ingatStokKemasan, ingatGerakanKas, ingatKasPada, ambilPemasokCatatan } from '../data/toko.js';
 import { hariIniIso, RP, lebihBayarDari } from '../inti/format.js';
 
 export const SKALA = [['langsung', 'Langsung'], ['menit', 'Menit'], ['jam', 'Jam'], ['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan'], ['tahun', 'Tahun']];
@@ -264,7 +264,9 @@ export function susunPerhatian() {
   if (lebih.uang.n) out.push({ teks: 'Kelebihan bayar pelanggan · ' + lebih.uang.n + ' nama (' + lebih.uang.nama.join(', ') + ') — uang pelanggan dipegang toko', nilai: RP(lebih.uang.jumlah), awas: true });
   if (lebih.hapus.n) out.push({ teks: 'Hapus buku yang ternyata dibayar · ' + lebih.hapus.n + ' nama (' + lebih.hapus.nama.join(', ') + ') — hapus bukunya perlu dibalik, bukan uang pelanggan', nilai: RP(lebih.hapus.jumlah), awas: true });
   const up = hitungUtangPemasok(); const totalUp = up.reduce((a, x) => a + (x.totalUtang || 0), 0);
-  const bonTertua = Math.max(0, ...up.map((x) => Math.max(0, ...(x.bon || []).map((b) => b.umurHari || 0))));
+  // Paket F1: bon lama pemasok yang kartunya "bon lama ikut kedatangan terakhir" (utang bergulir, bonLamaBergulir) tidak punya umur tetap — tidak ikut "bon tertua"
+  const gulir = {}; ambilPemasokCatatan().forEach((c) => { if (c && c.bonLamaBergulir === true) gulir[String(c.id)] = true; });
+  const bonTertua = Math.max(0, ...up.map((x) => Math.max(0, ...(x.bon || []).filter((b) => !(b.jenis === 'saldoAwal' && gulir[kunciPelanggan(x.pemasok)])).map((b) => b.umurHari || 0))));
   if (totalUp > 0) out.push({ teks: 'Utang ke pemasok · ' + up.filter((x) => x.totalUtang > 0).length + ' pemasok' + (bonTertua ? ' · bon tertua ' + bonTertua + ' hari' : ''), nilai: RP(totalUp), awas: false });
   const laju = lajuLintas(hitungLajuPakai()); const stokK = ingatStokKarung(); const stokM = ingatStokKemasan(); const tipis = [];
   Object.keys(stokMerekSaja(stokK)).forEach((m) => { const l = (laju.kgMerk || {})[m] || 0; const sisa = stokK[m].sisaKg || 0; if (l > 0 && sisa / l <= AMBANG_HARI_KRITIS) tipis.push({ nama: m, hari: Math.max(0, sisa / l) }); });

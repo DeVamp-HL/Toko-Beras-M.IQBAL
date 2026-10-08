@@ -8,7 +8,7 @@
 import { hitungPiutang, hitungUtangPemasok, hitungKasbon } from '../mesin/beku.js';
 import { cariHargaKarungPerKg, kunciPelanggan } from '../mesin/pembantu.js';
 // putaran 17: tempo per pemasok (kartu > tempo umum > tidak diramal) — satu kebenaran dengan layar Bon pemasok
-import { tempoPemasok } from './bon-pemasok-logika.js';
+import { tempoPemasok, petaGulir, gulirBon } from './bon-pemasok-logika.js';
 // putaran 18: saldo per tempat uang (laci · brankas · rekening · amplop) — satu kebenaran dengan layar Uang
 import { saldoKantong, ugLabaBersih } from './uang-logika.js';
 import { ambilPenjualan, ambilTutupHari, ambilPengeluaranHarian, ambilPiutangMutasi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilProduksiBerlaku, ambilPemasokCatatan, ambilTitikKas, cacheMentah, stokMerekSaja, catatanPertama, ingatStokKarung, ingatStokKemasan, ingatKasPada, ingatNeraca } from '../data/toko.js';
@@ -59,7 +59,8 @@ const mnAwalBulan = (iso) => iso.slice(0, 7) + '-01';
 // catatan pertama toko (umur buku, pintu "satu bulan penuh") = toko.js catatanPertama — SATU sumber dengan Laporan (lpPertama); dulu salinan sendiri dari
 // catatan hidup, jadi sesudah tutup buku pintunya tertutup lagi sementara Laporan tetap membaca tahun yang diarsip dari potretnya (sanggahan Paket B)
 const mnTempo = () => { const d = cacheMentah('aturan').find((x) => String(x.id) === 'catatStok'); const n = d ? Number(d.tempoHari) : NaN; return isFinite(n) && n > 0 ? n : 21; };
-function mnUtang(iso) { const up = hitungUtangPemasok(); const tempo = mnTempo(); const bon = []; up.forEach((px) => { const T = tempoPemasok(px.pemasok); (px.bon || []).forEach((b) => bon.push(Object.assign({ pemasok: px.pemasok, tempoHari: T.hari, jatuh: b.tanggal && T.hari > 0 ? ssTambahHari(b.tanggal, T.hari) : '', lewat: b.tanggal && T.hari > 0 ? ssHariKe(iso) - ssHariKe(ssTambahHari(b.tanggal, T.hari)) : null }, b))); });
+// Paket F1: bon lama yang bergulir (kartu pemasok) diramal dari kedatangan terakhir pemasoknya — gulirBon, aturan yang sama dengan layar Bon pemasok
+function mnUtang(iso) { const up = hitungUtangPemasok(); const tempo = mnTempo(); const G = petaGulir(); const bon = []; up.forEach((px) => { const T = tempoPemasok(px.pemasok); (px.bon || []).forEach((b) => { const d = gulirBon(G, px.pemasok, b) || b.tanggal; bon.push(Object.assign({ pemasok: px.pemasok, tempoHari: T.hari, jatuh: d && T.hari > 0 ? ssTambahHari(d, T.hari) : '', lewat: d && T.hari > 0 ? ssHariKe(iso) - ssHariKe(ssTambahHari(d, T.hari)) : null }, b)); }); });
   return { up, total: up.reduce((a, x) => a + (x.totalUtang || 0), 0), n: up.filter((x) => x.totalUtang > 0).length, bon, lewat: bon.filter((b) => b.lewat !== null && b.lewat > 0), tempo, tekor: up.reduce((a, x) => a + (x.tekor || 0), 0), berikut: bon.filter((b) => b.jatuh).sort((a, b) => a.jatuh.localeCompare(b.jatuh))[0] || null }; }
 function mnOpname() { const semua = ambilPenyesuaianStok().concat(ambilPenyesuaianKemasan()).filter((x) => !x.dariRework).concat(ambilBahanKemasan().filter((x) => x.tipe === 'opname'), ambilBahanLiteran().filter((x) => x.tipe === 'opname' && !x.lahirKarungBekas && !x.nilaiKarungBekas));
   let akhir = ''; semua.forEach((x) => { if ((x.tanggal || '') > akhir) akhir = x.tanggal; }); return { n: semua.length, akhir, tanpaRupiah: semua.filter((x) => typeof x.nilaiRp !== 'number').length }; }
@@ -160,7 +161,7 @@ export function susunMenurutOrang(kini) {
 
 // ---------- N8 · MENU YANG MENOLAK: pintu yang tertutup karena bukunya belum bisa menjawab ----------
 export function susunTertutup(kini) {
-  const iso = hariIniIso(kini); const era = ssEraTutupBuku(); const pertama = catatanPertama(); const O = mnOpname(); const kartuPemasok = ambilPemasokCatatan().length; const hapus = ambilPiutangMutasi().filter((m) => m.tipe === 'hapusBuku').length;
+  const iso = hariIniIso(kini); const era = ssEraTutupBuku(); const pertama = catatanPertama(); const O = mnOpname(); const kartuPemasok = ambilPemasokCatatan().length; const hapus = ambilPiutangMutasi().filter((m) => m.tipe === 'hapusBuku' && (Number(m.nominal) || 0) > 0).length;   // Paket F2: hapus buku yang dibalik (minus) tidak dihitung
   let bulanPenuh = 0; if (pertama) { let b = pertama.slice(0, 7); for (let i = 0; i < 240; i++) { const y = Number(b.slice(0, 4)), m = Number(b.slice(5, 7)); const awal = b + '-01'; const akhir = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); if (akhir >= iso) break; if (awal >= pertama) bulanPenuh += 1; b = (m === 12 ? (y + 1) + '-01' : y + '-' + String(m + 1).padStart(2, '0')); } }
   const telusur = ambilPenjualan().filter((p) => p.batchId || p.dariBatch || p.kedatanganId).length;
   const pintu = (id, ikon, judul, tertutup, sub, angka, cap, jawab, tujuan) => ({ id, ikon, judul, tertutup, sub, angka, cap, awas: tertutup, jawab, tujuan });
