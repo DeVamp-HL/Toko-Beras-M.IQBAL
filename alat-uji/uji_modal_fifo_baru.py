@@ -113,6 +113,8 @@ pasok('aturanToko', [M2.dokumen[0].data]);
 var N2 = susunSaklarFifo('nyala', '2027-01-01', W, true);
 ok('saklar nyala 1 Jan 2027 (rencana): hari ini tetap rata-rata', N2.dokumen[0].data.modalFifoMulai === '2027-01-01' && (pasok('aturanToko', [N2.dokumen[0].data]), saklarFifo(new Date('2026-10-05T10:00:00+07:00')).keadaan === 'rencana') && hitungStokKarungPerMerk().A.metode === undefined);
 pasok('aturanToko', SAKLAR);
+var AC = susunAturCatat({ minKarung: '50' }, W);
+ok('simpan Atur Barang masuk tidak menghapus saklar FIFO (dokumen catatStok disalin utuh)', AC.dokumen && AC.dokumen[0].data.modalFifoMulai === '2026-10-01' && AC.dokumen[0].data.minKarung === 50, JSON.stringify(AC.dokumen && AC.dokumen[0].data));
 
 // ---- 9. saklar dimatikan lagi = kembali rata-rata
 pasok('aturanToko', [{ id: 'catatStok', tanggal: '2026-10-05', jam: '11:00', modalFifoMulai: '' }]);
@@ -174,6 +176,7 @@ if __name__ == '__main__':
             'takar ke wadah: modal rata-rata': js.replace("const v = hppKeluar(st, x.kg, fifoAmbil[x.merk]);", "const v = x.kg * ((st || {}).hppRataPerKg || 0);"),
             'selisih lebih dinilai dari belakang antrean': js.replace("return s < 0 ? -mfIrisan(st.lapisan, p, p - s) : mfIrisan(st.lapisan, p - s, p);", "return s < 0 ? -mfIrisan(st.lapisan, p, p - s) : s * (st.hppTerakhirPerKg || 0);"),
             'irisan melewatkan bagian di luar jejeran (stok minus bernilai 0)': js.replace("if (sampai > T && dari < sampai) rp += (sampai - Math.max(dari, T)) * L[L.length - 1].harga;", ""),
+            'Atur Barang masuk menulis catatStok tanpa kolom lama (saklar FIFO hilang)': js.replace("data: Object.assign({}, lama, { id: 'catatStok',", "data: Object.assign({}, {}, { id: 'catatStok',"),
             'saklar membaca tanggal yang salah bentuk': js.replace("return mfTglSah(t) ? t : '';", "return t;"),
         }
         kode = 0

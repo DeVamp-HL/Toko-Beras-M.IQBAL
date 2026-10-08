@@ -235,7 +235,7 @@ RUSAK = {
     'rekap: belum ditimbang digambar 0 %': ("p.persenRata = p.kgNota > 0 ? Math.round(p.selisihKg / p.kgNota * 1000) / 10 : null;", "p.persenRata = p.kgNota > 0 ? Math.round(p.selisihKg / p.kgNota * 1000) / 10 : 0;"),
     'rekap: kedatangan tanpa nama pemasok dibuang': ("const pem = String(b.pemasok || '').trim() || '(tanpa nama pemasok)';", "const pem = String(b.pemasok || '').trim(); if (!pem) return;"),
     'rekap: kelompok tanpa nama pemasok tidak di bawah': ("tanpaNama(x) - tanpaNama(y) || ", ""),
-    'atur: ambang mutu tidak disimpan': ("batasVarian: v.nilai, kadarAirMaks: ka.nilai, patahMaks: bp.nilai } }]", "batasVarian: v.nilai } }]"),
+    'atur: ambang mutu tidak disimpan': ("batasVarian: v.nilai, kadarAirMaks: ka.nilai, patahMaks: bp.nilai }) }]", "batasVarian: v.nilai }) }]"),
 }
 
 if __name__ == '__main__':

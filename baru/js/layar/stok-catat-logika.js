@@ -63,7 +63,9 @@ export function susunAturCatat(isi, w) {
   const bacaMutu = (k, teks) => { if (ckKosong(isi[k])) return { nilai: kini[k] }; const n = tmAngka(isi[k]); return n !== null && TM_SYARAT[k](n) ? { nilai: ckB2(n) } : { tolak: teks }; };
   const ka = bacaMutu('kadarAirMaks', 'Kadar air maksimal saat terima harus lebih dari 0 sampai 100 %'); if (ka.tolak) return { tolak: ka.tolak };
   const bp = bacaMutu('patahMaks', 'Butir patah maksimal saat terima harus 0–100 %'); if (bp.tolak) return { tolak: bp.tolak };
-  return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'catatStok', tanggal: w.tanggal, jam: w.jam, minKarung: m.nilai, tempoHari: t.nilai, batasSelisih: b.nilai, ambangSusutPositif: s.nilai, batasVarian: v.nilai, kadarAirMaks: ka.nilai, patahMaks: bp.nilai } }],
+  // dokumen catatStok juga memegang saklar modal FIFO (modalFifoMulai + riwayatModalFifo, Stok › HPP): kolom lain DISALIN utuh, yang diatur di sini ditimpa
+  const lama = cacheMentah('aturan').find((d) => String(d.id) === 'catatStok') || {};
+  return { dokumen: [{ koleksi: 'aturanToko', data: Object.assign({}, lama, { id: 'catatStok', tanggal: w.tanggal, jam: w.jam, minKarung: m.nilai, tempoHari: t.nilai, batasSelisih: b.nilai, ambangSusutPositif: s.nilai, batasVarian: v.nilai, kadarAirMaks: ka.nilai, patahMaks: bp.nilai }) }],
     patch: { kabar: 'Aturan pencatatan disimpan — satu mobil minimal ' + m.nilai + ' karung · tempo bon ' + t.nilai + ' hari · selisih wajar ' + b.nilai + ' % · stok bertambah > ' + RP(s.nilai) + ' ditanya · harga beli beda > ' + v.nilai + ' % ditanya "sama barangnya / beda mutu"'
       + ' · mutu saat terima: kadar air > ' + tmD(ka.nilai) + ' % atau butir patah > ' + tmD(bp.nilai) + ' % ditandai AWAS', kabarAwas: false } };
 }
