@@ -533,6 +533,97 @@ ok('tahunan: hanya 2026 (catatan pertama 20 Agu 2026), berjalan, belum final; 12
   ok('39b-4 B1 neraca: hapus buku 200.000 lalu dibayar 200.000 → "Rp200.000 (1 nama) dibayar padahal sudah dihapus dari buku …" dan TIDAK menyebut kekayaan terlalu besar', NLh.kata === 'Rp200.000 (1 nama) dibayar padahal sudah dihapus dari buku — kerugian hapus bukunya sebenarnya sudah dibayar; hapus bukunya perlu dibalik, bukan uang pelanggan.' && !/kekayaan/.test(NLh.kata) && NLh.lebihBayar.uang.n === 0, NLh.kata);
   pasok('piutangMutasi', piu0);
 })();
+// ==================== PER MEREK (paket brief 9 Okt 2026, butir 3·4·5) — ANGKA CONTOH, harapan dihitung TANGAN ====================
+// September KOTAK: Angsa j1 j2 j4 j5 ber-HPP (margin 126.300) + j8 tanpa modal 80.000 · IR64 Apex j3 +40.000, j7 −20.000 · j6 batal · susut s1 Angsa −2 kg −26.000.
+// Ditambah (cache sementara, satu jenis tiap baris): nota batal & versi lama nota yang dikoreksi (tidak ikut) · literan wadah CAMPURAN dua bagian (Angsa / Kumala) ·
+// stok wadah sendiri "Wadah Angsa" · buku per ukuran "Angsa 25 kg" · literan berpembulatan Rp500 · repacking · nota berpotongan · kemasan Kembang · karung belakang
+// (merek pemasok Kumala) · wadah dijual · nota darurat · modal tidak tersimpan (Pandan Wangi) · retur UTUH Angsa 10 kg (modal 13.000/kg kembali) · retur RUSAK
+// Kembang · susut: "Angsa 25 kg" −3 kg, "Wadah Angsa" −1,5 kg, kemasan Kembang −1 × 5 kg, stok NAIK IR64 Apex +5 kg, Kumala −4 kg 30 Agu (sebelum susut masuk
+// laba), rework Pandan Wangi nilaiRp 0, opname kantong −3.950.
+var mrJl = function (id, o) { return { koleksi: 'penjualan', data: Object.assign({ id: id, tanggal: '2026-09-18', jam: '11:00', caraBayar: 'Tunai', trxId: 'T' + id }, o) }; };
+var MR = [{ koleksi: 'batchMasuk', data: { id: 'b2', tanggal: '2026-09-01', jam: '08:00', pemasok: 'RODA CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [
+    { id: 'b20', merk: 'Angsa 25 kg', indukUkuran: 'Angsa', satuan: 'karung', beratKarung: 25, jumlahKarung: 4, totalKg: 100, hargaPerKg: 13200, subtotalHarga: 1320000 },
+    { id: 'b21', merk: 'Karung belakang IR64 Apex · Kumala', karungBelakang: 'IR64 Apex', merkAsal: 'Kumala', satuan: 'karung', beratKarung: 0, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0 }] } },
+  mrJl('m1', { jenis: 'karung', merkSumber: 'Angsa', namaProduk: 'Angsa (karung utuh)', totalKg: 50, hargaTotal: 1000000, hppTotalSaatJual: 100, dibatalkan: true }),
+  mrJl('m2', { jenis: 'karung', merkSumber: 'IR64 Apex', namaProduk: 'IR64 Apex (karung utuh)', totalKg: 50, hargaTotal: 900000, hppTotalSaatJual: 100, dikoreksiOleh: 'm9' }),
+  mrJl('m3', { jenis: 'literan', merkSumber: 'Angsa', namaProduk: 'Angsa', jumlahLiter: 5, rasioPakai: 0.82, totalKg: 4.1, hargaTotal: 60000, hppTotalSaatJual: 52000, trxId: 'Tcampur' }),
+  mrJl('m4', { jenis: 'literan', merkSumber: 'Kumala', namaProduk: 'Angsa', jumlahLiter: 5, rasioPakai: 0.82, totalKg: 4.1, hargaTotal: 60000, hppTotalSaatJual: 55000, trxId: 'Tcampur' }),
+  mrJl('m5', { jenis: 'literan', merkSumber: 'Wadah Angsa', namaProduk: 'Angsa', jumlahLiter: 10, rasioPakai: 0.82, totalKg: 8.2, hargaTotal: 123000, hppTotalSaatJual: 110000 }),
+  mrJl('m6', { jenis: 'karung', merkSumber: 'Angsa 25 kg', namaProduk: 'Angsa 25 kg (karung utuh)', beratKarungAcuan: 25, jumlahKarung: 1, totalKg: 25, hargaTotal: 345000, hppTotalSaatJual: 330000 }),
+  mrJl('m7', { jenis: 'literan', merkSumber: 'Angsa', namaProduk: 'Angsa', jumlahLiter: 2, rasioPakai: 0.82, totalKg: 1.64, hargaTotal: 20500, pembulatan: 250, hppTotalSaatJual: 18000 }),
+  mrJl('m8', { jenis: 'repacking', merkSumber: 'IR64 Apex', namaProduk: 'IR64 Apex', totalKg: 25, hargaTotal: 435000, hppTotalSaatJual: 417000 }),
+  mrJl('m9', { jenis: 'karung', merkSumber: 'IR64 Apex', namaProduk: 'IR64 Apex (karung utuh)', totalKg: 50, hargaTotal: 715000, potonganTransaksi: 5000, hppTotalSaatJual: 690000 }),
+  mrJl('m10', { jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 2, totalKg: 10, hargaTotal: 150000, hppTotalSaatJual: 130000 }),
+  mrJl('m11', { jenis: 'literan', merkSumber: 'Karung belakang IR64 Apex · Kumala', namaProduk: 'IR64 Apex', jumlahLiter: 10, rasioPakai: 0.82, totalKg: 8.2, hargaTotal: 120000, hppTotalSaatJual: 110000 }),
+  mrJl('m12', { jenis: 'wadah', jenisWadah: 'karungbekas', namaProduk: 'Karung bekas', jumlahUnit: 6, totalKg: 0, hargaTotal: 9000, hppTotalSaatJual: 600 }),
+  mrJl('m13', { jenis: 'kasir_darurat_nominal', namaProduk: '(tidak tercatat — kasir darurat)', hargaTotal: 15000 }),
+  mrJl('m14', { jenis: 'literan', merkSumber: 'Pandan Wangi', namaProduk: 'Pandan Wangi', jumlahLiter: 6, rasioPakai: 0.833, totalKg: 5, hargaTotal: 80000, hppTotalSaatJual: 0 }),
+  { koleksi: 'retur', data: { id: 'r1', tanggal: '2026-09-18', jam: '12:00', jenisAsal: 'karung', merkSumber: 'Angsa', kondisi: 'utuh', totalKg: 10, jumlahKarung: 0.2, beratKarungAcuan: 50, nominalRefund: 140000, selisihHargaTukar: 0 } },
+  { koleksi: 'retur', data: { id: 'r2', tanggal: '2026-09-18', jam: '12:10', jenisAsal: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, kondisi: 'tidak_utuh', totalKg: 5, nominalRefund: 75000 } },
+  { koleksi: 'penyesuaianStok', data: { id: 's2', tanggal: '2026-09-14', jam: '20:00', merk: 'Angsa 25 kg', selisihKg: -3, nilaiRp: -39600, alasan: 'cocokkan' } },
+  { koleksi: 'penyesuaianStok', data: { id: 's3', tanggal: '2026-09-14', jam: '20:00', merk: 'IR64 Apex', selisihKg: 5, nilaiRp: 70000, alasan: 'salah catat' } },
+  { koleksi: 'penyesuaianStok', data: { id: 's4', tanggal: '2026-09-15', jam: '21:00', merk: 'Wadah Angsa', selisihKg: -1.5, nilaiRp: -19500, alasan: 'cocokkan wadah', bagian: 'wadah' } },
+  { koleksi: 'penyesuaianStok', data: { id: 's5', tanggal: '2026-08-30', jam: '20:00', merk: 'Kumala', selisihKg: -4, nilaiRp: -56000, alasan: 'sebelum susut masuk laba' } },
+  { koleksi: 'penyesuaianStok', data: { id: 's6', tanggal: '2026-09-16', jam: '10:00', merk: 'Pandan Wangi', selisihKg: 3, nilaiRp: 0, alasan: 'Rework dari karantina', dariRework: true } },
+  { koleksi: 'penyesuaianKemasan', data: { id: 'pk1', tanggal: '2026-09-16', jam: '20:00', namaProduk: 'Kembang', ukuranKemasan: 5, selisihUnit: -1, nilaiRp: -65000, alasan: 'cocokkan' } },
+  { koleksi: 'stokBahanLiteran', data: { id: 'bl1', tanggal: '2026-09-16', jam: '20:00', tipe: 'opname', jenis: 'paperbag10l', jumlah: -10, nilaiRp: -3950, catatan: 'cocokkan kantong' } }];
+var mrNama = function (X) { return X.daftar.map(function (m) { return m.merek; }).join(','); };
+denganCacheSementara(MR, function () {
+  var M = merekBulan('2026-09', KINI); var g = function (m, MM) { return (MM || M).merek.filter(function (x) { return x.merek === m; })[0] || null; };
+  var A = g('Angsa'), X = g('IR64 Apex'), Ku = g('Kumala'), Ke = g('Kembang'), Pw = g('Pandan Wangi'), L0 = M.luar; var rinci = function (id) { return (L0.rincian.filter(function (x) { return x.id === id; })[0]) || {}; };
+  var hppAngsa = hitungStokKarungPerMerk()['Angsa'].hppTerakhirPerKg;
+  ok('MR prasyarat: modal per kg Angsa di buku stok = 13.000 (retur utuh 10 kg membatalkan modal 130.000 lewat hppTaksiranRetur mesin)', hppAngsa === 13000, hppAngsa);
+  ok('MR laba kotor Laporan Sep (mesin, kartu Laba) = 186.200 hitung tangan: Angsa 154.800 + IR64 Apex 63.000 + Kumala 15.000 + Kembang −55.000 + wadah dijual 8.400; 5 merek', M.L.margin === 186200 && labaBulan('2026-09', KINI).margin === 186200 && M.merek.length === 5, J([M.L.margin, M.merek.map(function (x) { return x.merek; })]));
+  ok('MR Angsa: 126.300 (KOTAK) + bagian Angsa literan campuran 8.000 + stok "Wadah Angsa" 13.000 + karung 25 kg (buku "Angsa 25 kg") 15.000 + literan berpembulatan 2.500 − retur utuh (140.000 − 130.000) = 154.800; omzet bersih 2.158.500; nota batal tidak ikut',
+    A && A.margin === 154800 && A.omzet === 2158500 && A.hpp === 2003700 && Math.abs(A.pct - 154800 / 2158500 * 100) < 1e-9 && A.keadaanMargin === 'ada' && A.nTanpaHpp === 1 && A.omzetTanpaHpp === 80000 && A.nRetur === 1, J(A));
+  ok('MR Angsa kg: di nota 168,84 − kembali 10 = 158,84; susut 6,5 kg −85.100 (KOTAK −2 · "Angsa 25 kg" −3 · "Wadah Angsa" −1,5); susut % = 6,5 ÷ (158,84 + 6,5) = 3,93%',
+    dekat(A.kgNota * 100, 16884) && dekat(A.kg * 100, 15884) && dekat(A.susutKg * 10, 65) && A.susutRp === -85100 && A.naikKg === 0 && Math.abs(A.susutPct - 6.5 / 165.34 * 100) < 1e-9 && A.keadaanSusut === 'ada' && lpPersenTeks(A.susutPct) === '3,9%', J([A.kgNota, A.kg, A.susutKg, A.susutRp, A.susutPct]));
+  ok('MR IR64 Apex: 20.000 (KOTAK) + repacking 18.000 + nota berpotongan 25.000 = 63.000 (versi lama yang dikoreksi tidak ikut); 125 kg; stok NAIK +5 kg +70.000 terpisah → susut 0% (tercatat), susut tidak berkurang',
+    X && X.margin === 63000 && X.kg === 125 && X.susutKg === 0 && X.susutRp === 0 && X.naikKg === 5 && X.naikRp === 70000 && X.susutPct === 0 && X.keadaanSusut === 'ada' && !X.tinggi, J(X));
+  ok('MR Kumala = bagian Kumala literan wadah campuran 5.000 + karung belakang ("Karung belakang IR64 Apex · Kumala" → merek pemasoknya) 10.000 = 15.000; 12,3 kg; susut 30 Agu bukan September → tanpa selisih tercatat ("—", bukan 0%)',
+    Ku && Ku.margin === 15000 && dekat(Ku.kg * 10, 123) && Ku.susutPct === null && Ku.keadaanSusut === 'tanpaSelisih' && Ku.nSusut === 0, J(Ku));
+  ok('MR Kembang (kemasan): 20.000 − retur RUSAK 75.000 (modal tidak kembali) = −55.000; kg 10 − 5 kembali = 5 (rusak 5); susut kemasan −1 × 5 kg = 5 kg −65.000 → 50%, tinggi',
+    Ke && Ke.margin === -55000 && Ke.kg === 5 && Ke.kgRusak === 5 && Ke.susutKg === 5 && Ke.susutRp === -65000 && Ke.susutPct === 50 && Ke.tinggi, J(Ke));
+  ok('MR Pandan Wangi: modal tidak tersimpan (0) → margin BELUM BISA DIHITUNG (null, bukan 100%), omzet tanpa modal 80.000; rework nilaiRp 0 bukan susut → tanpa selisih',
+    Pw && Pw.margin === null && Pw.keadaanMargin === 'belum' && Pw.pct === null && Pw.omzetTanpaHpp === 80000 && Pw.keadaanSusut === 'tanpaSelisih', J(Pw));
+  ok('MR di luar merek TAMPIL: wadah dijual 8.400 · nota darurat 15.000 belum bisa dihitung (kg belum tercatat) · kantong & bahan −3.950; tanpa susut % (bukan beras)',
+    L0 && L0.margin === 8400 && rinci('wadah').margin === 8400 && rinci('darurat').keadaanMargin === 'belum' && rinci('darurat').omzetTanpaHpp === 15000 && rinci('darurat').nKgTakTahu === 1 && rinci('bahan').susutRp === -3950 && L0.susutPct === null && L0.keadaanSusut === 'bukanBeras', J(L0));
+  ok('MR PENJAGA: Σ merek + di luar merek = laba kotor 186.200, susut & selisih stok −84.050, omzet tanpa modal 175.000, 19 baris — semua = Laporan → menutup, kalimat "menutup persis"',
+    M.menutup && M.L.susutStok === -84050 && labaBulan('2026-09', KINI).L.susutStok === -84050 && M.identitas.every(function (x) { return x.cocok; }) && M.L.omzetTanpaHpp === 175000 && M.L.jumlahTrx === 19 && /menutup persis sampai rupiah/.test(M.kalimat), J(M.identitas));
+  var S = M.susut;
+  ok('MR susut se-toko: hilang 11,5 kg −150.100 · stok naik +5 kg +70.000 · kantong & bahan −3.950 → Σ −84.050 = Laporan; % atas 3 merek yang punya selisih (288,84 kg terjual): 11,5 ÷ 300,34; 2 merek (17,3 kg) tanpa selisih disebut',
+    dekat(S.kg * 10, 115) && S.rp === -150100 && S.naikKg === 5 && S.naikRp === 70000 && S.bahanRp === -3950 && S.rp + S.naikRp + S.bahanRp === S.laporan && S.nDicocok === 3 && dekat(S.kgJual * 100, 28884) && Math.abs(S.pct - 11.5 / 300.34 * 100) < 1e-9
+    && S.nTanpaSelisih === 2 && dekat(S.kgTanpaSelisih * 10, 173) && S.tinggi.map(function (x) { return x.merek; }).join() === 'Angsa,Kembang' && S.kgRusak === 5, J(S));
+  var T2 = merekTeratas(M, 'kg', 2), Tm = merekTeratas(M, 'margin', 4), T10 = merekTeratas(M, 'kg');
+  ok('MR teratas per kg (2): Angsa, IR64 Apex; sisa 3 merek digabung −40.000 (1 belum bisa dihitung); + di luar merek 8.400; Σ yang tergambar = 186.200 = laba kotor; pita Angsa 100%, di luar merek tanpa pita',
+    mrNama(T2) === 'Angsa,IR64 Apex' && !!T2.sisa && T2.sisa.gabungan === 3 && T2.sisa.margin === -40000 && T2.sisa.nBelum === 1 && T2.tergambar === 186200 && T2.menutup && T2.lebar[0] === 100 && T2.lebar[T2.lebar.length - 1] === null && T2.baris.length === 4, J([mrNama(T2), T2.sisa, T2.lebar]));
+  ok('MR teratas per margin (4): Angsa, Apex, Kumala, Kembang — yang belum bisa dihitung paling bawah (Pandan Wangi jadi sisa, margin null "belum"); tetap menutup; bawaan 10 = semua dirinci tanpa sisa',
+    mrNama(Tm) === 'Angsa,IR64 Apex,Kumala,Kembang' && !!Tm.sisa && Tm.sisa.gabungan === 1 && Tm.sisa.margin === null && Tm.sisa.keadaanMargin === 'belum' && Tm.tergambar === 186200 && Tm.menutup && T10.sisa === null && T10.daftar.length === 5 && T10.n === 10, J([mrNama(Tm), Tm.sisa]));
+  // Atur (aturanToko/merekLaporan): bawaan 1% & 10 teratas; setelan owner DIBACA semua yang bergantung
+  ok('MR atur bawaan: susut tinggi di atas 1% (Angsa 3,9% & Kembang 50% tinggi, Apex 0% tidak), 10 teratas, belum diatur owner', aturMerek().ambangSusutPersen === 1 && aturMerek().teratas === 10 && !aturMerek().dariOwner && A.tinggi && Ke.tinggi && !X.tinggi, J(aturMerek()));
+  ok('MR atur menolak 0% · 150% · 2 teratas · 4,5 teratas', [{ ambangSusutPersen: '0' }, { ambangSusutPersen: '150' }, { teratas: '2' }, { teratas: '4,5' }].every(function (x) { return !!susunAturMerek(x, W).tolak; }));
+  var r5 = susunAturMerek({ ambangSusutPersen: '5', teratas: '3' }, W);
+  ok('MR atur ditulis: aturanToko/merekLaporan { ambangSusutPersen 5, teratas 3 }; "0,5" dibaca 0,5%', !r5.tolak && r5.dokumen.length === 1 && r5.dokumen[0].koleksi === 'aturanToko' && r5.dokumen[0].data.id === 'merekLaporan' && r5.dokumen[0].data.ambangSusutPersen === 5 && r5.dokumen[0].data.teratas === 3
+    && susunAturMerek({ ambangSusutPersen: '0,5', teratas: '10' }, W).dokumen[0].data.ambangSusutPersen === 0.5, J(r5));
+  denganCacheSementara(r5.dokumen, function () { var M5 = merekBulan('2026-09', KINI); var T5 = merekTeratas(M5, 'kg');
+    ok('MR atur DIBACA: ambang 5% → Angsa (3,9%) tidak lagi tinggi, Kembang (50%) tetap; 3 teratas dirinci + 2 digabung; angka uang tidak bergeser', aturMerek().dariOwner && !g('Angsa', M5).tinggi && g('Kembang', M5).tinggi && M5.susut.tinggi.length === 1
+      && T5.daftar.length === 3 && !!T5.sisa && T5.sisa.gabungan === 2 && T5.tergambar === 186200 && M5.L.margin === 186200 && M5.menutup, J([M5.atur, T5.daftar.length])); });
+  // PENJAGA YANG BERBUNYI: laba kotor Laporan digeser 1.000 (mesin dibungkus sementara) → per merek TIDAK MENUTUP, kalimatnya menyebut bedanya
+  var asliLR = hitungLabaRentang; var Mx = null; hitungLabaRentang = function (c) { var R = asliLR(c); R.margin += 1000; return R; };
+  try { Mx = merekBulan('2026-09', KINI); } finally { hitungLabaRentang = asliLR; }
+  ok('MR penjaga BERBUNYI: laba kotor Laporan bergeser 1.000 dari Σ merek → menutup false, kalimat "TIDAK MENUTUP … Rp186.200 ≠ Laporan Rp187.200 (beda −Rp1.000)", teratas ikut tidak menutup',
+    Mx.menutup === false && /^TIDAK MENUTUP ke Laporan: laba kotor per merek Rp186\.200 ≠ Laporan Rp187\.200 \(beda −Rp1\.000\)/.test(Mx.kalimat) && merekTeratas(Mx, 'kg').menutup === false && merekBulan('2026-09', KINI).menutup, Mx.kalimat);
+  var Ma = merekBulan('2026-08', KINI);
+  ok('MR Agustus: susut belum dicatat masuk laba (sebelum 1 Sep 2026) → susut % null "belumDicatat", bukan 0%; baris Kumala −4 kg 30 Agu tidak dipakai; margin Angsa 50.000 = Laporan; menutup',
+    Ma.dihitung === false && Ma.merek.every(function (x) { return x.susutPct === null && x.keadaanSusut === 'belumDicatat'; }) && Ma.susut.pct === null && Ma.susut.kg === 0 && Ma.L.margin === 50000 && Ma.menutup && g('Angsa', Ma).margin === 50000, J([Ma.merek, Ma.susut]));
+  var Mj = merekBulan('2026-07', KINI); ok('MR Juli tanpa catatan: tanpaCatatan (beda dari bulan yang nol), tetap menutup ke Laporan 0', Mj.tanpaCatatan && Mj.merek.length === 0 && Mj.luar === null && Mj.menutup && Mj.L.margin === 0, J(Mj.identitas));
+  // Paket B: bulan di tahun yang sudah ditutup buku → rincian per merek ikut arsip (disebut), tidak digambar Rp0
+  var asliTD = tahunDiarsip; var Md = null; tahunDiarsip = function (k) { return String(k).slice(0, 4) === '2026'; };
+  try { Md = merekBulan('2026-09', KINI); } finally { tahunDiarsip = asliTD; }
+  ok('MR tahun ditutup buku tanpa potret: diarsip, tanpa baris merek, kalimat menyebut arsip; teratas kosong (bukan Rp0)', Md.diarsip && Md.tanpaPotret && Md.merek.length === 0 && /ikut arsip tutup buku 2026 tanpa potret/.test(Md.kalimat) && merekTeratas(Md, 'kg').baris.length === 0 && merekTeratas(Md, 'kg').tergambar === null, Md.kalimat);
+});
+ok('MR sesudah cache sementara: Sep kembali ke KOTAK (margin 146.300, 2 merek, menutup)', merekBulan('2026-09', KINI).L.margin === 146300 && merekBulan('2026-09', KINI).merek.length === 2 && merekBulan('2026-09', KINI).menutup);
+
 // kop belum lengkap → semua dokumen ditolak dicetak
 pasok('aturanToko', cacheMentah('aturan').filter(function (d) { return d.id !== 'identitas' && d.id !== 'struk'; }));
 ok('kop belum lengkap (identitas dicabut): laporan berkop, dokumen kecil, bukti omzet, paket bank semua DITOLAK menyebut Setelan/kop', /Kop belum lengkap/.test(laporanBerkop('labarugi', '2026-09', 1, KINI).tolak) && /Kop belum lengkap/.test(dokumenKecil('setor', null, '', KINI).tolak) && /Kop belum lengkap/.test(paketBank({ omzet: true }, KINI).tolak));
@@ -549,10 +640,20 @@ var kas38 = 0; ambilTutupHari().forEach(function (t) { if (!t || String(t.tangga
 var LB = labaBulan(bl, KINI); var LM = hitungLabaBersihRentang(bl + '-01', akhirBulanIso(bl)); if (LB.labaBersih !== LM.labaBersih + kas38) salah.push('laba bulan ≠ mesin + lebih/kurang kas');
 var LR = laporanBerkop('labarugi', bl, 1, KINI); var lb = LR.baris.find(function (r) { return r.nama === 'Laba bersih'; }); if (lb.n !== LM.labaBersih + kas38) salah.push('laba-rugi berkop ≠ mesin + lebih/kurang kas');
 var NP = neracaPada(null, KINI); if (NP.aset !== null && !NP.seimbang) salah.push('neraca tidak seimbang');
+// paket brief 9 Okt (butir 3·4·5): Per merek — SEMUA bulan bercatatan di cadangan (awal buku s.d. nota terakhir): penjaga identitas menutup persis (laba kotor, susut &
+// selisih stok, omzet tanpa modal, baris, kg) dan yang tergambar per kg & per margin = laba kotor Laporan
+var akhirData = ''; ambilPenjualan().forEach(function (p) { if (p.tanggal > akhirData) akhirData = p.tanggal; }); var mrBulan = []; var mrK = lpAwalBuku();
+while (mrK && mrK <= akhirData.slice(0, 7) && mrBulan.length < 60) { mrBulan.push(mrK); var mrY = Number(mrK.slice(0, 4)), mrM = Number(mrK.slice(5, 7)) + 1; if (mrM > 12) { mrY += 1; mrM = 1; } mrK = mrY + '-' + String(mrM).padStart(2, '0'); }
+var mrRingkas = mrBulan.map(function (k) { var M = merekBulan(k, KINI); var a = merekTeratas(M, 'kg'), b = merekTeratas(M, 'margin'); if (!M.menutup || !a.menutup || !b.menutup) salah.push('per merek ' + k + ' tidak menutup: ' + M.kalimat);
+  return { bulan: k, merek: M.merek.length, margin: M.L.margin, susut: M.L.susutStok, menutup: M.menutup && a.menutup && b.menutup }; });
+if (!mrBulan.length) salah.push('per merek: tidak ada bulan bercatatan di cadangan');
+var MS = merekBulan('2026-09', KINI); var TS = merekTeratas(MS, 'kg', 5);
 var RO = rekapOmzet(KINI); var RH = rekapHari(hariIniIso(KINI)); var DN = daftarNota('', KINI, 40); var DP = dokumenKecil('piutang', null, '', KINI); var DB = dokumenKecil('bon', null, '', KINI);
 print(JSON.stringify({ salah: salah, bulan: bl, margin: LB.margin, labaBersih: LB.labaBersih, lebihKurangKas: LB.L.lebihKurangKas, tunai: LB.tunai, cakupan: LB.cakupan, mdr: LB.mdr, rugi: LB.rugi.length, tanpaHpp: LB.tanpaHpp.length, susut: LB.susut.length, hariIni: { n: RH.n, omzet: RH.omzet, bersih: RH.bersih, buku: RH.buku.length },
   omzet12: RO.daftar.map(function (b) { return b.omzet; }), totalTahun: RO.totalTahun, final: RO.adaFinal, neraca: NP.aset === null ? 'kas tidak ada di cadangan' : { aset: NP.aset, kewajiban: NP.kewajiban, modal: NP.modal, labaDitahan: NP.labaDitahan, selisihBuku: NP.selisihBuku, tolak: NP.tolak },
-  nota60hari: DN.cocok, piutang: { n: DP.pilihan.length, tolak: DP.tolak, baris: DP.baris.length }, bon: { n: DB.pilihan.length, tolak: DB.tolak }, kop: identitasUsaha().lengkap }));
+  nota60hari: DN.cocok, piutang: { n: DP.pilihan.length, tolak: DP.tolak, baris: DP.baris.length }, bon: { n: DB.pilihan.length, tolak: DB.tolak }, kop: identitasUsaha().lengkap,
+  perMerek: mrRingkas, sep5kg: TS.daftar.map(function (g) { return { merek: g.merek, kg: Math.round(g.kg * 100) / 100, margin: g.margin, marginPct: lpPersenTeks(g.pct), susutPct: g.keadaanSusut === 'ada' ? lpPersenTeks(g.susutPct) : g.keadaanSusut }; }),
+  sepSusut: { kg: Math.round(MS.susut.kg * 100) / 100, rp: MS.susut.rp, naikKg: Math.round(MS.susut.naikKg * 100) / 100, naikRp: MS.susut.naikRp, pct: lpPersenTeks(MS.susut.pct), tinggi: MS.susut.tinggi.length } }));
 """
 
 
@@ -586,6 +687,18 @@ def rekap_layar(t):
     return [] if "{ nama: 'Retur nota bon (bon dipotong)', teks: RP(LP.lpReturBonHari(R)) }" in t else ['kartu rekap harian tidak menyebut retur nota bon (bon dipotong) — omzet tidak menutup']
 
 
+def merek_layar(t):
+    """paket brief 9 Okt 2026 (butir 3·4·5) — kartu Per merek di Laba: dipasang di ketiga lebar; penjaga identitas yang meleset = PITA AWAS (bukan diam);
+    margin "belum bisa dihitung" / "tidak ada jualan" dan susut tanpa selisih tercatat tidak digambar sebagai rupiah / 0%; stok naik ditulis terpisah."""
+    out = []
+    if 'const merek = kartuMerek(LP.merekBulan(key, kini()), s);' not in t or t.count('${keMana}${merek}') != 2: out.append('kartu Per merek tidak dipasang di Laba (HP / tablet / Mac)')
+    if 'h`<div class="pita-info awas" data-k="mr-jaga">' not in t: out.append('penjaga identitas Per merek yang meleset tidak jadi pita awas')
+    if "g.keadaanMargin === 'ada' ? h`<b class=\"${arah(g.margin)}\" data-gulir=" not in t or "'belum bisa dihitung' : 'tidak ada jualan'" not in t: out.append('margin yang belum bisa dihitung / tanpa jualan tidak dibedakan dari rupiah')
+    if "'susut — (tidak ada selisih stok tercatat)'" not in t: out.append('susut tanpa selisih tercatat tidak disebut (terbaca 0%)')
+    if 'Stok naik (lebih dari buku)' not in t: out.append('stok naik tidak ditulis terpisah dari susut')
+    return out
+
+
 def tunai_layar(t):
     """39b no. 39 — layar Laba: panel "Syarat diterima tunai" menyebut SEMUA komponennya (laba bersih − margin nota bon bulan ini + margin bon yang dibayar
     bulan ini [+ margin bon yang dihapus bukunya]) supaya hitungan yang tergambar menutup. Kembalikan daftar masalah."""
@@ -607,8 +720,13 @@ if __name__ == '__main__':
                           ('39b-37 U37-U4 laporan.js: kartu rekap harian tanpa baris retur nota bon', lap.replace("{ nama: 'Retur nota bon (bon dipotong)', teks: RP(LP.lpReturBonHari(R)) }, ", '', 1)),
                           ('UU36-2 laporan.js: kertas Neraca yang dikeluarkan memakai neracaPada lagi', lap.replace('const NP = LP.neracaTanggal(st().sampaiN, kini(), D.final);', 'const NP = LP.neracaPada(st().sampaiN, kini());', 1)),
                           ('K9 laporan.js: kertas Neraca tanggal pilihan memakai catatan neraca saja (tanpa kalimat modal awal)', lap.replace('D.catatan = LP.catatanNeracaBerkop(NP);', 'D.catatan = NP.catatan;', 1)),
-                          ('UU36-2 laporan.js: hero Neraca bulan final kembali "titik kas belum disetel"', lap.replace("(sampai && D.final ? NP.tolak + '.' :", "(false ? NP.tolak + '.' :", 1))]:
-            g = (tunai_layar(isi) + neraca_layar(isi) + rekap_layar(isi)) if isi != lap else []
+                          ('UU36-2 laporan.js: hero Neraca bulan final kembali "titik kas belum disetel"', lap.replace("(sampai && D.final ? NP.tolak + '.' :", "(false ? NP.tolak + '.' :", 1)),
+                          # ---- paket brief 9 Okt (butir 3·4·5): kartu Per merek
+                          ('paket brief laporan.js: kartu Per merek tidak dipasang di Laba tablet/Mac', lap.replace('h`${panel}${keMana}${merek}`', 'h`${panel}${keMana}`', 1)),
+                          ('paket brief laporan.js: penjaga Per merek yang meleset digambar sebagai teks biasa (diam)', lap.replace('h`<div class="pita-info awas" data-k="mr-jaga">', 'h`<div class="k2" data-k="mr-jaga">', 1)),
+                          ('paket brief laporan.js: margin yang belum bisa dihitung digambar sebagai rupiah', lap.replace("g.keadaanMargin === 'ada' ? h`<b class=\"${arah(g.margin)}\"", "true ? h`<b class=\"${arah(g.margin)}\"", 1)),
+                          ('paket brief laporan.js: susut tanpa selisih tercatat tidak disebut', lap.replace("'susut — (tidak ada selisih stok tercatat)'", "''", 1))]:
+            g = (tunai_layar(isi) + neraca_layar(isi) + rekap_layar(isi) + merek_layar(isi)) if isi != lap else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
         # (pensiun 3 Okt 2026) kontrol pembaca piutang sistem lama (U37-U6 & MM2, teks index.html dirusak) dihapus bersama objeknya
@@ -744,6 +862,22 @@ if __name__ == '__main__':
             '39b-37 U37-U5: margin yang dilepas retur diambil dari bon tertua (bukan nota asalnya)': js.replace("if (c.jenis === 'retur' && c.notaAsalId != null) {", "if (false) {"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),
             '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
+            # ---- paket brief 9 Okt (butir 3·4·5): Per merek — margin terwujud, barang teratas, susut
+            'per merek: lupa menyaring baris batal / versi lama koreksi': js.replace("  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal)) return; const g = ke(lpMerekBaris(p, P));", "  ambilPenjualanSemua().forEach((p) => { if (!cocok(p.tanggal)) return; const g = ke(lpMerekBaris(p, P));"),
+            'per merek: lupa retur (uang kembali tidak memotong merek)': js.replace("retur.forEach((r) => { const g = ke(", "[].forEach((r) => { const g = ke("),
+            'per merek: modal retur utuh tidak kembali': js.replace("if (r.kondisi === 'utuh') g.returHpp += hppTaksiranRetur(r, stokKrg, stokKem); else g.kgRusak += kg;", "if (r.kondisi !== 'utuh') g.kgRusak += kg;"),
+            'per merek: susut dihitung dari selisih positif': js.replace("if (kg < 0 || (kg === 0 && rp < 0)) { g.susutKg -= kg; g.susutRp += rp; } else { g.naikKg += kg; g.naikRp += rp; }", "{ g.susutKg += Math.abs(kg); g.susutRp += rp; }"),
+            'per merek: stok naik mengurangi susut diam-diam (selisih bersih)': js.replace("if (kg < 0 || (kg === 0 && rp < 0)) { g.susutKg -= kg; g.susutRp += rp; } else { g.naikKg += kg; g.naikRp += rp; }", "{ g.susutKg -= kg; g.susutRp += rp; }"),
+            'per merek: susut sebelum 1 Sep 2026 ikut': js.replace("x.nilaiRp !== 0 && !!x.tanggal && x.tanggal >= MULAI_SUSUT_LABA && cocok(x.tanggal);", "x.nilaiRp !== 0 && !!x.tanggal && cocok(x.tanggal);"),
+            'per merek: nota tanpa modal dihitung modal 0 (margin 100%)': js.replace("if (hppTercatat(p)) { g.adaHitung = true;", "if (true) { g.adaHitung = true;"),
+            'per merek: wadah dijual dibuang diam-diam (tidak masuk di luar merek)': js.replace("  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal)) return; const g = ke(lpMerekBaris(p, P));", "  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal) || p.jenis === 'wadah') return; const g = ke(lpMerekBaris(p, P));"),
+            'per merek: penjaga identitas diam (selalu menutup)': js.replace("const menutup = identitas.every((x) => x.cocok);", "const menutup = true;"),
+            'per merek: tanpa selisih tercatat digambar susut 0%': js.replace("const ukur = !g.luar && dihitung && g.nSusut > 0;", "const ukur = !g.luar && dihitung;").replace("const kgDicocok = g.gabungan ? g.kgDicocok : g.nSusut > 0 ? kg : 0;", "const kgDicocok = g.gabungan ? g.kgDicocok : kg;"),
+            'per merek: Atur diabaikan (ambang tetap 1%)': js.replace("tinggi: susutPct !== null && susutPct > ambang });", "tinggi: susutPct !== null && susutPct > 1 });"),
+            'per merek: sisa di luar N teratas dibuang': js.replace("const sisa = lain.length ? lpGabungMerek(", "const sisa = false ? lpGabungMerek("),
+            'per merek: buku per ukuran & stok wadah tidak dipetakan ke mereknya': js.replace("p.ukuran[k] ? p.ukuran[k] : /^Wadah ./.test(k) ? k.slice(6) : k;", "k;"),
+            'per merek: karung belakang tidak ke merek pemasoknya': js.replace("const ke = asal !== k ? asal : b && b.jenis !== 'belakang' && b.wadah", "const ke = b && b.jenis !== 'belakang' && b.wadah"),
+            'per merek: yang belum bisa dihitung diurut sebagai margin 0': js.replace("const lpUrutMargin = (a, b) => (a.margin === null ? (b.margin === null ? 0 : 1) : b.margin === null ? -1 : b.margin - a.margin);", "const lpUrutMargin = (a, b) => (b.margin || 0) - (a.margin || 0);"),
         }
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
@@ -752,7 +886,7 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
-    g = g + tunai_layar(lap) + neraca_layar(lap) + rekap_layar(lap)
+    g = g + tunai_layar(lap) + neraca_layar(lap) + rekap_layar(lap) + merek_layar(lap)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')), key=os.path.basename)   # audit 39b no. 46 / tinjauan T6: cadangan toko ada di _privat/
     if cad and not g:
