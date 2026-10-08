@@ -2375,3 +2375,29 @@ Dokumen yang diperbarui: `docs/prosedur-pulih-darurat.md` (kotak Blaze di kepala
 Buntu 2028, bab Hemat baca), `docs/uji-rules-v7.md` & `docs/gladi-tutup-buku.md` (paragraf K11 & proyeksi setahun penuh), `docs/rancangan-hemat-baca.md`
 (kepala: tidak dipakai). `alat-uji/uji_dokumen_owner.py` kini menjaga bunyi K11 yang DICABUT (Blaze, ritual dini hari, TIDAK MUAT boleh diabaikan) — bukan lagi
 "toko tutup sesudahnya".
+
+## Paket G — modal FIFO dengan saklar owner (owner 9 Okt 2026, cabang `paket/brief-awal`)
+
+Owner 9 Okt: *"Jangan lupa pakai metode FIFO bukan average. Karena disini barang yang di jual duluan itu barang yang lama dulu."* lalu
+*"Terkecuali wadah kotak literan yang di campur memakai average."* Sebelumnya modal per nota & nilai stok = rata-rata SELURUH kedatangan sejak
+awal (`hitungStokKarungPerMerk.hppTerakhirPerKg`); keputusan 13 Sep "harga beli terbaru" tidak pernah dipasang. Owner memilih **"Bangun, saklar di lu"**.
+
+- **Saklar** = `aturanToko/catatStok.modalFifoMulai` ('YYYY-MM-DD'). Dokumen catatStok dipilih karena HP karyawan sudah boleh membacanya (rules v7,
+  aturanToko read per dokumen) — kasir di HP karyawan menghitung modal nota dengan cara yang sama. Ditulis lewat Stok › HPP (`susunSaklarFifo`):
+  hari mulai hanya **besok** atau **1 Jan tahun depan** (bulan lalu tidak berubah, perangkat lain sempat menerima setelan), dua ketukan, dokumen ditulis
+  UTUH + `riwayatModalFifo`. Sudah berjalan → hanya bisa dimatikan; nota yang sudah tercatat tidak berubah.
+- **Mesin** (`baru/js/mesin/modal-fifo.js`, dipanggil di ujung `hitungStokKarungPerMerk`, MEMBEKUKAN ULANG atas izin owner): berlaku untuk buku yang
+  dihitung sampai hari ≥ hari mulai (`mfBerlaku`). Merek karung dijejer jadi lapisan: sisa sehari sebelum mulai bernilai rata-rata saat itu (nilai rak
+  TIDAK melompat) + kedatangan & adukan sesudahnya, urut tanggal lalu id. Sisa = lapisan terbaru → `hppTerakhirPerKg` = NILAI sisa per kg (neraca,
+  nilai rak, tutup buku tetap `sisa × hppTerakhirPerKg`); `hppKeluarPerKg` / `hppKeluar(st, kg, sudah)` = modal barang yang keluar berikutnya.
+  `hppRataPerKg` = angka lama (pembanding). Kunci `Wadah …` tetap rata-rata.
+- **Titik keluar** yang memakai `hppKeluar` / `nilaiSelisihKg`: nota Jual & rinci karcis (`pecahItemsWadah`, dua baris merek sama berurutan, kantong
+  literan & wadah repack tetap ditambah), adukan, takar ke wadah (`wbDokPindah`), cocokkan tumpukan & wadah, karung habis di deretan, karantina kembali,
+  untung tipis di Menu, kartu modal (margin = harga jual − modal keluar berikutnya; koreksi harga dihitung ulang lewat mesin di cache sementara).
+  Pecahan wadah model lama (`dariWadah` ke merek asal) = `modalRataPerKg` (wadah campuran = rata-rata).
+- **Saklar mati = angka lama persis** (semua uji lama lulus; asap data toko: mesin sama persis dengan tanpa setelan).
+- Uji: `alat-uji/uji_modal_fifo_baru.py` (+ `--kontrol`). Asap cadangan 9 Okt: saklar dijadwalkan besok → 56 merek karung, nilai rak Rp81.701.784 →
+  Rp81.701.784 (tidak bergeser); pembanding seandainya FIFO sejak 15 Sep: Rp81.684.858. Ritual tutup buku dengan FIFO menyala
+  (`uji_tutup_buku_bertahap.py --asap` atas salinan cadangan bersaklar 15 Sep): LULUS, 14 baris sama persis.
+- Belum: retur karung utuh di laba (`hppTaksiranRetur`, mesin) tetap memakai nilai per kg sisa saat laporan dihitung — sifat lama yang sama dengan
+  rata-rata (angkanya ikut bergeser bila stok berubah), tidak diubah.
