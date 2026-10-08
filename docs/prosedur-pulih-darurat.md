@@ -278,8 +278,8 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       dimatikan.
 
 **1 Jan 2027 (Jumat, toko tutup):**
-- [ ] Jam mulai bebas. (Dulu "sesudah 15.00 WIB" karena kuota Spark baru penuh lagi jam itu — sejak Blaze 9 Okt 2026 kuota bukan batas.) Mulai sedini
-      mungkin di hari itu supaya arsip pasti habis sebelum toko buka 2 Jan.
+- [ ] **Mulai dini hari 1 Jan, langsung sesudah tutup hari 31 Des** (keputusan owner K3, 9 Okt 2026). (Dulu "sesudah 15.00 WIB" karena kuota Spark
+      baru penuh lagi jam itu — sejak Blaze 9 Okt 2026 kuota bukan batas.) Mulai dini hari supaya arsip pasti habis jauh sebelum toko buka 2 Jan.
 - [ ] Mac, tab peramban (bukan web app iPhone/iPad), SATU perangkat, jangan muat ulang aplikasi.
 - [ ] Sebelum langkah 1: **TUTUP aplikasi di iPhone / iPad / HP lain** (geser keluar dari daftar aplikasi, tab peramban ditutup — layar mati saja tidak
       cukup) dan jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis". Bukan lagi soal kuota: selama arsip berjalan stok, piutang & utang

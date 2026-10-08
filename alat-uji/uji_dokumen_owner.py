@@ -10,7 +10,7 @@ Sesudah 13 Okt owner bekerja sendiri dari dokumen. Yang dijaga: angka & keputusa
        (480 & 960 catatan contoh) ÷ 480;
      · per catatan, persen batas Spark, dan hari kuota yang ditulis untuk "±A–B rb catatan" = hasil rumus itu (selisih ≤ 4% / 6 poin); A–B = laju
        catatan sehari × 365; "±2,5–3×" = A–B ÷ skala 117% (±17 rb), dan skala itu disebut catatan 2026 SAJA (8 Agu–31 Des);
-     · bunyi K11 = DICABUT 9 Okt 2026 (owner, Blaze aktif): ritual jam bebas, MEPET / TIDAK MUAT di kartu boleh diabaikan, sebabnya = kelebihan kuota
+     · bunyi K11 = DICABUT 9 Okt 2026 (owner, Blaze aktif): ritual 1 Jan DINI HARI sesudah tutup hari 31 Des (K3, owner 9 Okt), MEPET / TIDAK MUAT di kartu boleh diabaikan, sebabnya = kelebihan kuota
        DITAGIH (bukan ditolak) — tanpa perintah lama "toko tutup sesudahnya sampai Lanjutkan & arsip habis"; juga di baru/BACA-DULU.md bagian K9–K12.
   D2 K9 (modal awal 8 Agu, baru/BACA-DULU.md): menyebut tempat kodenya (PR #121, LP_KALIMAT_MODAL_AWAL) DAN jalan sementara owner bila kalimatnya TIDAK
      tercetak (sampaikan sendiri ke konsultan bersama PDF Neraca 31 Des). Bila konstanta itu SUDAH ada di kode: isinya memuat "8 Agu 2026" & "konsultan" dan
@@ -99,8 +99,8 @@ def butir(teks, awal, akhir):
 
 def periksa_k11(ok, nama, s):
     # owner 9 Okt 2026: Blaze aktif → K11 (toko tutup sesudah ritual karena kuota) DICABUT; kartu kuota tidak diubah kodenya (TIDAK MUAT boleh diabaikan)
-    ok(nama + ': bunyi K11 = DICABUT 9 Okt 2026 (Blaze) — ritual jam bebas, MEPET / TIDAK MUAT boleh diabaikan, tanpa perintah "toko tutup sesudahnya"',
-       'DICABUT 9 Okt 2026' in s and 'Blaze' in s and 'jam bebas' in s and bool(re.search(r'TIDAK MUAT[^.;]{0,25}boleh diabaikan', s))
+    ok(nama + ': bunyi K11 = DICABUT 9 Okt 2026 (Blaze) — ritual dini hari sesudah tutup hari 31 Des (K3), MEPET / TIDAK MUAT boleh diabaikan, tanpa perintah "toko tutup sesudahnya"',
+       'DICABUT 9 Okt 2026' in s and 'Blaze' in s and 'dini hari' in s and 'jam bebas' not in s and bool(re.search(r'TIDAK MUAT[^.;]{0,25}boleh diabaikan', s))
        and not re.search(r'toko tutup sesudahnya sampai Lanjutkan', s), s[:300])
     ok(nama + ': K11 menyebut sebabnya — kelebihan kuota DITAGIH (bukan ditolak), jadi arsip tidak berhenti karena kuota',
        'kelebihannya ditagih' in s and 'tidak berhenti' in s and 'karena kuota' in s, s[:300])
@@ -201,7 +201,7 @@ def periksa(t):
     return out
 
 
-K11_V7 = ('Ritual Jumat 1 Jan 2027 dan ritual Sabtu 1 Jan 2028 jam bebas;', 'Tutup buku 2027: toko tutup sesudahnya sampai Lanjutkan & arsip habis;')
+K11_V7 = ('Ritual Jumat 1 Jan 2027 dan ritual Sabtu 1 Jan 2028 dini hari, langsung sesudah tutup hari 31 Des (keputusan owner K3, 9 Okt 2026);', 'Tutup buku 2027: toko tutup sesudahnya sampai Lanjutkan & arsip habis;')
 KONTROL = [
     # (nama, ganti, awalan pemeriksaan yang WAJIB gagal — berbunyi karena sebabnya)
     ('D1 persen tulis 2028 kembali ke skala 2026 (117%)', {V7: [('tulis **±280–335%**', 'tulis **±117–140%**')]}, 'D1 ' + V7 + ': persen'),

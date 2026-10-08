@@ -2329,7 +2329,7 @@ tidak perlu langkah rules apa pun lagi.
   lama), alasannya tertulis, angkanya diserahkan ke konsultan — JANGAN dirinci ulang (stok terpotong dua kali).
 - **K11** — **DICABUT 9 Okt 2026 (Blaze).** Dulu: kartu kuota 1 Jan berbunyi TIDAK MUAT → ritual tetap dimulai sesudah reset, toko TUTUP Sabtu 2 Jan 2027
   (dan beberapa hari sesudah ritual 1 Jan 2028) sampai Lanjutkan & arsip habis. Sejak proyek di paket Blaze kuota bukan batas (kelebihannya ditagih):
-  arsip tidak berhenti karena kuota, toko tidak perlu tutup sesudah hari ritual, ritual jam bebas; MEPET / TIDAK MUAT di kartu boleh diabaikan
+  arsip tidak berhenti karena kuota, toko tidak perlu tutup sesudah hari ritual, ritual 1 Jan dini hari (K3: langsung sesudah tutup hari 31 Des, owner 9 Okt); MEPET / TIDAK MUAT di kartu boleh diabaikan
   (bab "Blaze aktif" di bawah).
 - **K12** tugas "isi cara bayar dua kedatangan Agustus lewat Console" DITUTUP: tidak dikerjakan — angka sama (`docs/peta-kunci-periode.md` §10).
 - Dijaga `alat-uji/uji_dokumen_owner.py` (+ kontrol): proyeksi kuota 2028 dihitung ulang dari rumus kartu, bunyi K11 2028, jalan sementara K9.
@@ -2364,7 +2364,7 @@ Keputusan owner 9 Okt (menggantikan K1 7 Okt "tetap Spark + hemat baca" dan K11 
 - **Hemat baca MATI SELAMANYA** — saklar tidak pernah dinyalakan; tugas "nyala ≤ 20 Nov", daftar siap-nyala hijau 3 hari, patokan & perbandingan Usage
   GUGUR. Dengan saklar mati semua perangkat mendengarkan semua catatan langsung (ubahan Console sampai sendiri; tombol "saya baru mengubah data lewat
   Console" & "minta semua perangkat baca penuh" tidak dipakai). Batu nisan tetap ditulis selama rules v7 (catatan aturan darurat v3 di prosedur berlaku).
-- **K11 DICABUT** — tidak ada hari toko tutup sesudah ritual karena kuota; ritual 1 Jan jam bebas (alasan "sesudah 15.00 WIB" dulu = reset kuota Spark).
+- **K11 DICABUT** — tidak ada hari toko tutup sesudah ritual karena kuota; ritual 1 Jan dini hari, langsung sesudah tutup hari 31 Des (K3, owner 9 Okt 2026; alasan "sesudah 15.00 WIB" dulu = reset kuota Spark).
 - **Kartu "Perkiraan kuota Firestore" TIDAK diubah kodenya** (owner: dokumen saja): ia masih menghitung batas Spark dan kalimat TIDAK MUAT-nya masih
   menyuruh toko tutup besoknya (`tutup-buku-logika.js perkiraanKuota`, lihat bab Paket A "Perkiraan kuota (C1)") — **MEPET / TIDAK MUAT boleh diabaikan**;
   angkanya tetap berguna sebagai ukuran ritual.
@@ -2373,5 +2373,5 @@ Keputusan owner 9 Okt (menggantikan K1 7 Okt "tetap Spark + hemat baca" dan K11 
 
 Dokumen yang diperbarui: `docs/prosedur-pulih-darurat.md` (kotak Blaze di kepala, daftar periksa ritual 1 Jan, perangkat sesudah ritual, Jalan mundur,
 Buntu 2028, bab Hemat baca), `docs/uji-rules-v7.md` & `docs/gladi-tutup-buku.md` (paragraf K11 & proyeksi setahun penuh), `docs/rancangan-hemat-baca.md`
-(kepala: tidak dipakai). `alat-uji/uji_dokumen_owner.py` kini menjaga bunyi K11 yang DICABUT (Blaze, jam bebas, TIDAK MUAT boleh diabaikan) — bukan lagi
+(kepala: tidak dipakai). `alat-uji/uji_dokumen_owner.py` kini menjaga bunyi K11 yang DICABUT (Blaze, ritual dini hari, TIDAK MUAT boleh diabaikan) — bukan lagi
 "toko tutup sesudahnya".
