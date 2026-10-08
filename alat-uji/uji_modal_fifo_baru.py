@@ -119,9 +119,12 @@ var NYALA = hitungStokKarungPerMerk(); var beda = [], n = 0, nilaiMati = 0, nila
 Object.keys(MATI).forEach(function (m) { var a = MATI[m], b = NYALA[m]; if (/^Wadah /.test(m)) { wadah++; if (b.metode) beda.push(m + ' wadah ikut FIFO'); return; }
   n++; var va = a.sisaKg * a.hppTerakhirPerKg, vb = b.sisaKg * b.hppTerakhirPerKg; nilaiMati += va; nilaiNyala += vb;
   if (Math.abs(va - vb) > 1 || a.sisaKg !== b.sisaKg) beda.push(m + ' ' + Math.round(va) + ' → ' + Math.round(vb)); });
+// pembanding (bukan keputusan): seandainya saklar menyala sejak 15 Sep — nilai rak sekarang FIFO vs rata-rata
+pasok('aturanToko', aturan.concat([Object.assign({}, catat, { modalFifoMulai: '2026-09-15' })]));
+var F15 = hitungStokKarungPerMerk(); var nilaiF15 = 0; Object.keys(F15).forEach(function (m) { if (!/^Wadah /.test(m)) nilaiF15 += F15[m].sisaKg * F15[m].hppTerakhirPerKg; });
 pasok('aturanToko', CAD.aturanToko || []);
 var ASLI = hitungStokKarungPerMerk(); var bedaAsli = Object.keys(ASLI).filter(function (m) { return JSON.stringify(ASLI[m]) !== JSON.stringify(MATI[m]); });
-print(JSON.stringify({ n: n, wadah: wadah, beda: beda, nilaiMati: Math.round(nilaiMati), nilaiNyala: Math.round(nilaiNyala), bedaAsli: bedaAsli, saklarToko: mfMulaiDari(CAD.aturanToko || []) }));
+print(JSON.stringify({ n: n, wadah: wadah, beda: beda, nilaiMati: Math.round(nilaiMati), nilaiNyala: Math.round(nilaiNyala), bedaAsli: bedaAsli, nilaiF15: Math.round(nilaiF15), saklarToko: mfMulaiDari(CAD.aturanToko || []) }));
 """
 
 
@@ -176,6 +179,7 @@ if __name__ == '__main__':
             print('ASAP DATA TOKO (%s): saklar toko %s · saklar dinyalakan %s: %d merek karung, nilai rak Rp%s → Rp%s, beda per merek: %s · %d wadah tetap rata-rata · saklar mati = mesin tanpa setelan: %s'
                   % (os.path.basename(cad[-1]), h['saklarToko'] or 'MATI', besok, h['n'], format(h['nilaiMati'], ',').replace(',', '.'), format(h['nilaiNyala'], ',').replace(',', '.'),
                      ', '.join(h['beda']) or 'nihil', h['wadah'], 'sama persis' if not h['bedaAsli'] else 'BEDA ' + ', '.join(h['bedaAsli'][:5])))
+            print('   pembanding (bukan keputusan): seandainya FIFO sejak 15 Sep, nilai rak karung sekarang Rp%s (rata-rata Rp%s)' % (format(h['nilaiF15'], ',').replace(',', '.'), format(h['nilaiMati'], ',').replace(',', '.')))
             if h['beda'] or abs(h['nilaiMati'] - h['nilaiNyala']) > 1: g.append('asap: nilai rak melompat saat saklar dinyalakan')
             if h['bedaAsli'] and not h['saklarToko']: g.append('asap: saklar mati tetapi mesin berbeda')
     sys.exit(2 if g else 0)
