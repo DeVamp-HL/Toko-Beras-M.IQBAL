@@ -31,6 +31,7 @@ export const HB_SEGAR_MS = 120000;                 // uang-kritis (tutup hari, k
 export const HB_BERKALA_MS = 1800000;              // hitungan berkala koleksi tulisan HP kasir: 30 menit
 export const HB_KATALOG_SEGAR_MS = 2100000;        // katalog kasir terbit hanya kalau hitungan koleksi HP kasir ≤ 35 menit
 export const HB_HIDUP_MS = 5000;                   // ubahan yang dibawa S/F wajib terlihat di V dalam 5 detik (pendengar simpanan hidup)
+export const HB_TUNGGU_SERVER_MS = 30000;          // tersambung tapi berita acara tutup buku belum dijawab server 30 detik sejak dibuka / tersambung lagi → pil "memuat…" lepas (sanggahan P5)
 export const HB_LIMIT_F = 1000000;
 export const HB_KUOTA = 50000;                     // Spark: 50 rb baca / hari
 export const HB_REM = 0.8;                         // baca penuh OTOMATIS ditunda kalau perkiraan baca hari ini > 80% kuota
@@ -146,7 +147,7 @@ export function hbBatasDelta(rk, kiniS, hari) {
 }
 
 // ---------- dasar dipercaya ----------
-/** Simpanan perangkat ini (V pertama, c dokumen) boleh dipakai sebagai dasar? Tidak → baca penuh dulu (tirai "memuat" sampai selesai). */
+/** Simpanan perangkat ini (V pertama, c dokumen) boleh dipakai sebagai dasar? Tidak → baca penuh dulu (pil "memuat…" sampai selesai). */
 export function hbDasarDipercaya(rk, c) {
   const r = rk || {};
   if (!(hbAngka(r.totalPada) > 0)) return { ya: false, sebab: 'belum pernah dibaca penuh di perangkat ini' };
@@ -209,20 +210,26 @@ export const hbBkAktif = (acara) => (acara || []).some((a) => a && HB_BK_AKTIF[a
 export function hbSidikBk(acara) { return (acara || []).filter((a) => a && a.tahun !== undefined).map((a) => String(a.tahun) + ':' + String(a.status || '') + ':' + String((a.paraf || {}).pada || '')).sort().join(','); }
 
 // ---------- rencana per koleksi ----------
+export const HB_SEBAB_BK = 'tutup buku berubah sejak baca penuh terakhir';
+export const HB_SEBAB_BK_CAMPUR = 'baca penuh sesudah tutup buku belum selesai di perangkat ini';
 /**
- * c = { rk, dipercaya, sebabDasar, gerbang (hbGerbangPenulis), bkAktif, bkBeda, gen, kiniS, harian, minta, jalurPenuh } → { mode: 'delta'|'total'|'penuh', sebab, otomatis }.
+ * c = { rk, dipercaya, sebabDasar, gerbang (hbGerbangPenulis), bkAktif, bkBeda, bkCampur, gen, kiniS, harian, minta, jalurPenuh } → { mode: 'delta'|'total'|'penuh', sebab, otomatis, wajib }.
  * 'penuh' = F menempel (tutup buku berjalan, penulis tanpa cap aktif, perangkat tanpa simpanan); 'total' = baca penuh sekali lalu delta.
+ * wajib (audit P5, 8 Okt): tutup buku berubah sejak baca penuh terakhir perangkat ini (bkBeda), atau baca penuh sesudah tutup buku terputus di sesi lalu
+ * (bkCampur) — simpanan perangkat masih memuat catatan yang sudah DIARSIPKAN (arsip tanpa batu nisan; hanya baca penuh yang membuangnya) sedangkan saldo
+ * pembukanya bercap baru. Diperlakukan seperti tombol: tidak ditahan rem kuota, tidak turun ke delta, tidak dihitung "otomatis" (dulu ikut rem → angka
+ * DOBEL bertahan sampai reset kuota). Gagal = dicoba lagi sesudah 10 menit seperti baca penuh otomatis.
  */
 export function hbRencana(k, c) {
   const x = c || {}; const rk = x.rk || {};
   if (x.jalurPenuh) return { mode: 'penuh', sebab: x.jalurPenuh };
   if (x.bkAktif) return { mode: 'penuh', sebab: 'tutup buku sedang berjalan' };
   const g = x.gerbang && x.gerbang.penuh ? x.gerbang.penuh[k] : ''; if (g) return { mode: 'penuh', sebab: g };
+  if (x.bkBeda || x.bkCampur) return { mode: 'total', sebab: x.bkBeda ? HB_SEBAB_BK : HB_SEBAB_BK_CAMPUR, otomatis: false, wajib: true };
   if (x.minta && x.minta[k]) return { mode: 'total', sebab: x.minta[k].sebab, otomatis: !x.minta[k].manual };
   let s = '';
   if (!x.dipercaya) s = x.sebabDasar || 'simpanan perangkat belum dipercaya';
   else if ((rk.gen || '') !== (x.gen || '')) s = 'diminta baca penuh (semua perangkat)';
-  else if (x.bkBeda) s = 'tutup buku berubah sejak baca penuh terakhir';
   else if (hbAngka(x.kiniS) !== null && hbAngka(rk.totalPada) !== null && x.kiniS - rk.totalPada > HB_TOTAL_HARI * hbHari) s = 'baca penuh terakhir lebih dari 14 hari lalu';
   else if (x.gerbang && hbTotalDariPeristiwa(rk, x.gerbang.peristiwa)) s = hbTotalDariPeristiwa(rk, x.gerbang.peristiwa);
   else if (x.harian) s = 'baca penuh harian toko';
@@ -293,10 +300,55 @@ export function hbSebabHarian(hari) { const j = hbJamResetHariWib(hari); return 
 export function hbSebabHabis(hari) { const j = hbJamResetHariWib(hbHariBerikut(hari)); return 'belum bisa dibaca penuh karena kuota baca hari ini habis — ketuk "baca penuh sekarang" sesudah pukul ' + (j || '14.00/15.00') + ' WIB (' + HB_TEMPAT + ')'; }
 export const HB_SEBAB_TOKO_TUNDA = 'punya ubahan yang ditemukan baca penuh harian toko tapi belum sampai ke perangkat ini — ' + HB_KE_MENU;
 export const HB_SEBAB_TAB_BERHENTI = 'tidak diperbarui lagi di tab ini — muat ulang aplikasi';
+// sanggahan P5: tersambung, tapi server belum menjawab (kuota baca habis sampai reset 14.00/15.00 WIB, atau sinyal lemah) — bukan "sebentar".
+// Lensa hari biasa (audit PR #122): `sejak` = patokan waktunya — 'sejak aplikasi dibuka' (bawaan: server belum pernah menjawab sesi ini) | 'sejak tersambung lagi' |
+// 'sejak pukul HH.MM WIB' (server berhenti menjawab di tengah sesi). Dulu selalu "sejak aplikasi dibuka", juga untuk diam yang mulai berjam-jam sesudah dibuka
+const HB_SEJAK_DIBUKA = 'sejak aplikasi dibuka';
+export const hbSebabServerDiam = (sejak) => 'server belum menjawab ' + (sejak || HB_SEJAK_DIBUKA) + ' (kuota baca habis atau sinyal lemah) — angka dari simpanan perangkat ini; tidak perlu muat ulang';
+export const hbKabarServerDiam = (sejak) => 'Server belum menjawab ' + (sejak || HB_SEJAK_DIBUKA) + ' (kuota baca habis atau sinyal lemah) — angka dari simpanan perangkat ini, belum terperiksa; tidak perlu muat ulang';
+export const HB_SEBAB_SERVER_DIAM = hbSebabServerDiam();
+export const HB_KABAR_SERVER_DIAM = hbKabarServerDiam();
+// sanggahan kedua P5: server diam DAN simpanan perangkat tidak dipercaya (kosong / tinggal sedikit) — tidak ada angka dari simpanan yang bisa diakui
+export const hbSebabDiamKosong = (dasar, sejak) => 'belum bisa dihitung (' + String(dasar || 'simpanan perangkat belum dipercaya') + ') — server belum menjawab ' + (sejak || HB_SEJAK_DIBUKA) + ' (kuota baca habis atau sinyal lemah); tunggu sampai server menjawab';
+export const hbKabarDiamKosong = (sejak) => 'Server belum menjawab ' + (sejak || HB_SEJAK_DIBUKA) + ' (kuota baca habis atau sinyal lemah) dan simpanan perangkat ini belum bisa dipercaya — angka belum bisa dihitung sampai server menjawab';
+export const HB_KABAR_DIAM_KOSONG = hbKabarDiamKosong();
+// lensa jalan keluar (audit PR #122): pendengar berita acara tutup buku MATI (galat SDK) — sesi hemat memasangnya ulang sesudah 1, 2, 5 menit, lalu tiap 5 menit
+// (tiap pasang ±1 baca). Selama belum dijawab server lagi kalimatnya TIDAK berbunyi "tidak perlu muat ulang": bila tetap begini, muat ulang memang jalan keluarnya
+export const HB_ACARA_ULANG_MS = [60000, 120000, 300000];
+const hbEkorAcaraPutus = (hari) => 'dicoba lagi otomatis; bila tetap begini, muat ulang aplikasi (sesudah pukul ' + (hbJamResetHariWib(hbHariBerikut(hari)) || '14.00/15.00') + ' WIB bila kuota habis)';
+export const hbSebabAcaraPutus = (hari) => 'pemeriksaan tutup buku terputus — ' + hbEkorAcaraPutus(hari);
+export const hbKabarAcaraPutus = (hari, kurang) => 'Pemeriksaan tutup buku terputus (' + (kurang ? 'angka belum bisa dihitung' : 'angka dari simpanan perangkat ini, belum terperiksa') + ') — ' + hbEkorAcaraPutus(hari);
+const hbJamMenitWib = (ms) => { const d = new Date(ms + 7 * hbJam); return ('0' + d.getUTCHours()).slice(-2) + '.' + ('0' + d.getUTCMinutes()).slice(-2); };
+// sanggahan kedua P5 · memori DITAHAN tanpa sebab koleksi itu sendiri: berita acara tutup buku belum dijawab server (baru dibuka / baru tersambung), atau koleksi
+// itu sudah dibaca penuh tapi menunggu jenis catatan lain (PENGHALANG BERSAMA — stok, bon & utang dihitung lintas koleksi)
+export const HB_SEBAB_TUNGGU_ACARA = 'belum dicocokkan dengan server (baru dibuka atau baru tersambung) — tunggu sebentar';
+export const HB_SEBAB_TUNGGU_LAIN = 'sudah dibaca penuh, menunggu jenis catatan lain selesai dibaca penuh sesudah tutup buku — tunggu sampai selesai';
+// sanggahan kedua P5 · memori DISEMBUNYIKAN: simpanan perangkat ini tertinggal di tengah tutup buku (catatan tahun lalu yang sudah diarsipkan + saldo pembuka, atau
+// jenis catatan yang berbeda zaman) — tidak ada keadaan utuh di perangkat, jadi layar memakai memori kosong (+ tulisan perangkat ini sendiri) sampai baca penuh selesai
+export const HB_SEBAB_SEMBUNYI = 'disembunyikan sampai dibaca penuh — simpanan perangkat ini tertinggal di tengah tutup buku (catatan tahun lalu bisa terhitung dua kali dengan saldo pembuka)';
+export const HB_KABAR_SEMBUNYI = 'Angka disembunyikan (tampil kosong — bukan nol): simpanan perangkat ini tertinggal di tengah tutup buku, catatan tahun lalu bisa terhitung dua kali dengan saldo pembuka. Tampil lagi sesudah semua jenis catatan dibaca penuh';
+/**
+ * Petunjuk ekor kabar / kelengkapan "disembunyikan": apa yang ditunggu. c = { online, acaraPutus (kalimat pendengar berita acara terputus; '' = tidak), serverDiam,
+ * diamSejak (patokan waktu server diam), habis (kuota baca habis), gagal (baca penuh gagal), hari }.
+ */
+export function hbPetunjukSembunyi(c) {
+  const x = c || {};
+  if (x.online === false) return 'perangkat ini tanpa internet, sambungkan dulu';
+  if (x.acaraPutus) return String(x.acaraPutus);
+  if (x.serverDiam) return 'server belum menjawab ' + (x.diamSejak || HB_SEJAK_DIBUKA) + ' (kuota baca habis atau sinyal lemah), tidak perlu muat ulang';
+  if (x.habis) return 'kuota baca hari ini habis, dibaca lagi sesudah pukul ' + (hbJamResetHariWib(hbHariBerikut(x.hari)) || '14.00/15.00') + ' WIB';
+  if (x.gagal) return 'baca penuh gagal, dicoba lagi sebentar';
+  return 'tunggu sampai selesai';
+}
 /**
  * Koleksi hemat di perangkat ini BELUM LENGKAP? c = { koleksi, vMati, berhenti (tab kalah kunci tab — klien Firestore dihentikan), vAda, nTerkini, online, mode,
  * fTerkini, fSelesai, fMode, fJalan (baca penuh sekali sedang berjalan), fGalat, wajibTotal, sTerkini, cocok (hitungan server cocok sesi ini), totalPada (baca
- * penuh terakhir perangkat ini — jam server), hari (hari kuota sekarang menurut jam server; '' = belum diketahui), klaim (aturanToko/hematHarian) }.
+ * penuh terakhir perangkat ini — jam server), hari (hari kuota sekarang menurut jam server; '' = belum diketahui), klaim (aturanToko/hematHarian), serverDiam (koleksi
+ * ditahan tutup buku dan server belum menjawab HB_TUNGGU_SERVER_MS sejak dibuka padahal tersambung — sanggahan P5), diamSejak (patokan waktu server diam: '' =
+ * sejak aplikasi dibuka, 'sejak tersambung lagi', 'sejak pukul HH.MM WIB' — lensa hari biasa PR #122), acaraPutus (kalimat pendengar berita acara terputus,
+ * didahulukan dari server diam — lensa jalan keluar PR #122; '' = tidak), tidakDipercaya (sebab simpanan perangkat
+ * tidak dipercaya; '' = dipercaya), sembunyi (kalimat lengkap bila memori DISEMBUNYIKAN — didahulukan, juga tanpa internet), tertahan (sebab memori beku yang bukan
+ * sebab koleksi itu sendiri — dengar penuh terkini / terperiksa pun tidak lengkap selama memorinya beku; sanggahan kedua P5) }.
  * → null (lengkap) | { jenis, sebab }.
  *   jenis 'periksa' = BELUM TERPERIKSA dengan server (arti `terperiksa` sejak 7 Okt, + tab yang berhenti — sanggahan 7 Okt): tab berhenti menerima data · simpanan
  *     perangkat belum terbaca · batu nisan belum dicocokkan · dengar penuh belum terkini · baca penuh wajib tapi ditunda rem kuota / gagal · ubahan bercap belum
@@ -315,11 +367,20 @@ export function hbBelumLengkap(c) {
   const gagal = habis ? hbSebabHabis(x.hari) : 'gagal dibaca penuh — dicoba lagi sebentar, atau ' + HB_KE_MENU;
   if (mati) return P(HB_SEBAB_TAB_BERHENTI);
   if (!x.vAda) return P('belum terbaca dari simpanan perangkat — tunggu sebentar');
+  // sanggahan kedua P5: memori DISEMBUNYIKAN — sebabnya didahulukan dari server diam / baca penuh gagal / tanpa internet (kalimatnya sudah menyebut yang ditunggu)
+  if (x.sembunyi) return { jenis: 'periksa', sebab: String(x.sembunyi) };
+  // lensa jalan keluar (PR #122): pendengar berita acara terputus — didahulukan dari server diam ("tidak perlu muat ulang" tidak berlaku) & "tunggu sebentar"
+  if (x.acaraPutus) return P(String(x.acaraPutus));
+  if (x.serverDiam) return P(x.tidakDipercaya ? hbSebabDiamKosong(x.tidakDipercaya, x.diamSejak) : hbSebabServerDiam(x.diamSejak));
   if (!x.nTerkini) return P('belum dicocokkan dengan catatan yang dihapus di server — tunggu sebentar');
-  if (x.mode === 'penuh') return x.fTerkini && (x.fSelesai || x.fMode === 'penuh') ? null : P(x.fGalat ? gagal : 'sedang dibaca penuh — tunggu sampai selesai');
+  if (x.mode === 'penuh') return x.fTerkini && (x.fSelesai || x.fMode === 'penuh') ? (x.tertahan ? P(x.tertahan) : null) : P(x.fGalat ? gagal : 'sedang dibaca penuh — tunggu sampai selesai');
+  // memori beku karena sebab di LUAR koleksi ini (berita acara belum dijawab server / penghalang bersama) = belum lengkap walau koleksi ini sendiri sudah terbaca
+  // (sanggahan kedua P5). Koleksi yang ditahan karena baca penuhnya sendiri tidak membawa `tertahan` — sebabnya sendiri (sedang dibaca / gagal / ditunda) di bawah
+  if (x.tertahan) return P(x.tertahan);
   if (x.wajibTotal) return P(/^baca penuh gagal/.test(String(x.wajibTotal)) ? gagal : 'perlu dibaca penuh, tapi ditunda supaya kuota baca hari ini tidak habis — ' + HB_KE_MENU);
-  if (!x.sTerkini) return P('belum dicocokkan dengan ubahan terbaru di server — tunggu sebentar');
+  // baca penuh yang sedang berjalan disebut lebih dulu: koleksi yang ditahan tutup buku (audit P5) baru memasang S sesudah baca penuhnya selesai
   if (x.fJalan) return P('sedang dibaca penuh — tunggu sampai selesai');
+  if (!x.sTerkini) return P('belum dicocokkan dengan ubahan terbaru di server — tunggu sebentar');
   if (!x.fSelesai && !x.cocok) return P(x.fGalat ? gagal : 'belum dicocokkan dengan server — tunggu sebentar');
   if (!x.hari) return { jenis: 'harian', sebab: 'belum bisa dipastikan sudah dibaca penuh sejak kuota baca terakhir direset (jam server belum diterima) — tunggu sebentar' };
   if (hbAngka(x.totalPada) > 0 && hbHariKuota(x.totalPada) === x.hari) return null;
@@ -487,8 +548,8 @@ export function hbSiapNyala(c) {
 export function hbSesi(o) {
   const R = o.R; const K = {}; const jam = o.jam;
   const G = { skew: null, gemaS: null, online: o.online !== false, tersembunyiSejak: 0, tetap: { perangkat: [], acara: [], klaim: null, ada: false }, gerbang: { penuh: {}, peristiwa: [] },
-    bkAktif: false, sidikBk: '', nisan: {}, nLepas: null, nB: null, nTerkini: false, nGalat: '', hapusSesi: {}, minta: {}, temuan: {}, lihatSesi: {}, ulangJalan: {}, temuanGagal: 0, temuanLewat: 0, klaimTunda: {},
-    hidup: hbPenjagaHidup(), hidupH: null, klaimJalan: false, klaimSaya: false, klaimMulai: 0, klaimKabar: '', genMinta: {}, jalurPenuh: '', berhenti: false, kabar: '' };
+    bkAktif: false, sidikBk: '', bkServer: false, acaraSrv: false, srvPernah: false, acaraPutus: null, acaraH: null, tahanEp: false, sembunyiEp: false, serverDiam: false, diamSejak: '', tungguH: null, nisan: {}, nLepas: null, nB: null, nTerkini: false, nGalat: '', hapusSesi: {}, minta: {}, temuan: {}, lihatSesi: {}, ulangJalan: {}, temuanGagal: 0, temuanLewat: 0, klaimTunda: {},
+    hidup: hbPenjagaHidup(), hidupH: null, klaimJalan: false, klaimSaya: false, klaimMulai: 0, klaimKabar: '', genMinta: {}, jalurPenuh: '', berhenti: false };
   const kiniS = () => (G.skew === null ? null : jam() + G.skew);
   // jam "baca penuh terakhir" (totalPada → batas nisan Bn, umur 14 hari): kiniS, tapi paling jauh 10 menit sesudah jam server gema denyut TERAKHIR — jam
   // perangkat yang melompat maju sesudah gema tidak menaruh totalPada (lalu Bn) di masa depan; tab yang lama tanpa gema mencatat jam lebih tua (aman)
@@ -506,26 +567,109 @@ export function hbSesi(o) {
   const lihatV = (k) => (id) => { const v = K[k] && K[k].v[id]; return v ? v.data : null; };
   const lihatDenyut = () => hbLihatDenyut(R.lihat || (R.lihat = {}), G.lihatSesi, G.tetap.perangkat, kiniS());
 
+  // ---- TAHAN TUTUP BUKU (audit P5, 8 Okt; sanggahan kedua 8 Okt) ----
+  // Arsip tutup buku menghapus TANPA batu nisan (firebase.js arsipkanBerkas), jadi catatan 2026 di simpanan perangkat yang tidak mengikuti ritual hanya dibuang
+  // baca penuh (F), sedangkan saldo pembuka bercap baru (datang lewat S). /baru/ TIDAK punya tirai yang menutup layar: "siap" hanya pil kepala "memuat…" & gambar
+  // yang dijarangkan (inti/jadwal.js setelMuat) — layar tetap menggambar memori. Jadi MEMORI adalah satu-satunya pelindung: tidak pernah campuran (catatan arsip +
+  // saldo pembuka, atau jenis catatan beda zaman); kosong hanya bila tidak ada keadaan utuh di perangkat, dan itu disebut (kabar & kelengkapan "disembunyikan").
+  // DITAHAN (memori BEKU = isi simpanan saat mulai ditahan, dengan catatan yang disentuh perangkat ini sendiri — tulis atau hapus — mengikuti simpanan; tanpa S;
+  // belum terperiksa):
+  //   · berita acara tutup buku belum dijawab SERVER — saat dibuka, DAN sejak server berhenti menjawab di tengah sesi (putus internet / SDK menandai berita acara
+  //     "dari simpanan"): memori dibekukan SAAT ITU, selagi masih = keadaan terakhir yang dijawab server (sanggahan kedua: dulu "sekali dijawab tetap dijawab" —
+  //     sesi hidup yang putus selama ritual lalu tersambung membekukan malas simpanan yang sudah dibawa S → DOBEL);
+  //   · PENGHALANG BERSAMA: selama ada koleksi yang menunggu baca penuh karena tutup buku (tahanTb), SEMUA koleksi hemat ditahan dan dilepas serentak saat yang
+  //     terakhir selesai — stok, bon & utang dihitung lintas koleksi (saldo pembuka di batchMasuk/piutangMutasi dkk., catatan 2026 juga di penjualan yang tidak punya
+  //     saldo pembuka). Dulu dilepas per koleksi → stok terpotong DUA KALI tanpa kabar. Putus / baca penuh gagal di tengah = semua tetap beku (keadaan sebelum ritual).
+  // Tahan koleksi k sendiri karena tutup buku (tahanTb): baca penuh sesi ini belum menjawab koleksi itu (sekali selesai, atau dengar penuh TERKINI) DAN (tutup buku
+  // berubah sejak baca penuh terakhirnya · simpanan bisa bercampur) — kecuali koleksi yang dengar penuh KARENA tutup buku berjalan (mengikuti ritual seperti dulu).
+  // DISEMBUNYIKAN (memori kosong + tulisan sendiri) bila, saat penahanan mulai: simpanan sebuah koleksi bisa bercampur (rekam bkCampur), atau jenis catatan berbeda
+  // zaman (rekam bk beda — aplikasi ditutup di tengah penghalang); atau penahanan mulai DI TENGAH sesi karena berita acara berganti selagi S/F menempel (sambungan
+  // mati tanpa kabar — simpanan bisa sudah membawa saldo pembuka), atau selagi tutup buku berjalan. Pengecualian: berita acara menyebut tutup buku BERJALAN dan
+  // (dijawab server, atau perangkat ini PEMEGANG ritualnya — Mac yang ditutup di tengah ritual, K11 TIDAK MUAT): memori = simpanan, keadaan ritual yang diikutinya.
+  // Sanggahan kedua: dulu pengecualian ini berlaku untuk SEMUA perangkat → iPad yang ditutup di tengah ritual, dibuka tanpa internet / server diam = DOBEL berjam-jam.
+  const campurK = (k) => !!K[k].campurAwal && !K[k].fSelesai;
+  const tbBeda = (k) => bkBeda(k) || campurK(k);
+  const fBeres = (st) => !!st.fSelesai || (st.mode === 'penuh' && !!st.fTerkini);
+  const tahanTb = (k) => { const st = K[k]; return !!st && !fBeres(st) && (st.mode !== 'penuh' || !G.bkAktif) && tbBeda(k); };
+  const ditahan = () => !G.bkServer || o.koleksi.some(tahanTb);
+  // koleksi k ditahan karena dirinya sendiri (bukan hanya penghalang bersama) — pil "memuat" (siap) mengikuti ini
+  const tahanSendiri = (k) => !G.bkServer || tahanTb(k);
+  const pemegangIni = () => (G.tetap.acara || []).some((a) => a && HB_BK_AKTIF[a.status] && a.pemegang && String(a.pemegang.id) === String(o.idPerangkat));
+  const ikutRitual = () => G.bkAktif && (G.bkServer || pemegangIni());
+  const sembunyi = () => !!G.sembunyiEp && !ikutRitual();
+  // jenis catatan berbeda zaman: tutup buku yang tercatat di baca penuh terakhir tiap koleksi tidak sama (koleksi yang belum pernah dibaca penuh tidak dihitung)
+  const eraBeda = () => { const s = {}; o.koleksi.forEach((k) => { const r = rk(k); if (hbAngka(r.totalPada) !== null) s[String(r.bk || '')] = 1; }); return Object.keys(s).length > 1; };
+  // satu "episode" penahanan: dari mulai ditahan sampai dilepas serentak. Disembunyikan DITETAPKAN saat episode mulai (dan bisa menyala di tengah — tandaiCampur),
+  // tidak padam sebelum dilepas: koleksi yang selesai dibaca penuh di tengah episode tidak membuat memori campuran
+  function cekEpisode() {
+    if (ditahan()) { if (!G.tahanEp) { G.tahanEp = true; G.sembunyiEp = eraBeda() || o.koleksi.some((k) => !!K[k] && !!K[k].campurAwal); } }
+    else { G.tahanEp = false; G.sembunyiEp = false; }
+  }
+  function tandaiCampur(k) { const st = K[k]; st.campurAwal = true; G.sembunyiEp = true; if (!rk(k).bkCampur) { rk(k).bkCampur = 1; simpan(); } }
+  // penahanan mulai DI TENGAH sesi (memori tadinya hidup dari simpanan). aman = mulai karena server berhenti menjawab (putus): sejak itu tidak ada data server baru,
+  // memori = keadaan terakhir yang dijawab server. Selain itu (berita acara berganti selagi S/F menempel), atau selagi tutup buku berjalan: simpanan bisa campuran
+  function mulaiTahanTengah(k, aman) { K[k].lepasPernah = false; if (!aman || G.bkAktif) tandaiCampur(k); }
+  // isi simpanan yang BERUBAH selama ditahan, selain tulisan / hapus perangkat ini sendiri (data server lewat S/F/limbo) → bila tutup buku ikut berubah, rekam
+  // menandai bercampur (sesi berikut tidak memakai simpanan itu). Sanggahan kedua: dulu ditandai saat F dipasang → F yang macet sebelum membawa apa pun membuat
+  // muat ulang berikutnya kosong padahal simpanannya masih bersih
+  const petaCap = (v) => { const o2 = {}; Object.keys(v).forEach((id) => { o2[id] = { cap: v[id].cap, tunda: !!v[id].tunda }; }); return o2; };
+  function cekUbahTahan(k) {
+    const st = K[k]; if (!st.vAwal) return; const A = st.vAwal, milik = st.milik || {}, hapus = G.hapusSesi[k] || {};
+    if (!st.ubahTahan) st.ubahTahan = Object.keys(st.v).some((id) => { const v = st.v[id], a = A[id]; return !v.tunda && !milik[id] && (!a || (!a.tunda && a.cap !== v.cap)); })
+      || Object.keys(A).some((id) => !st.v[id] && !A[id].tunda && !milik[id] && !hapus[id]);
+    if (st.ubahTahan && (tbBeda(k) || G.bkAktif) && !rk(k).bkCampur) { rk(k).bkCampur = 1; simpan(); }
+  }
+  // tersambung, tapi berita acara tutup buku belum dijawab server HB_TUNGGU_SERVER_MS sejak dibuka / tersambung lagi (kuota baca habis / sinyal lemah)
+  const serverDiam = () => G.serverDiam && !G.bkServer && G.online;
+  // sejak = patokan waktu kalimat server diam (lensa hari biasa PR #122): '' = sejak aplikasi dibuka, 'sejak tersambung lagi', 'sejak pukul HH.MM WIB'
+  function mulaiTunggu(sejak) {
+    G.diamSejak = sejak || '';
+    if (G.tungguH) o.batal(G.tungguH);
+    G.tungguH = o.jadwal(() => { G.tungguH = null; if (G.berhenti || G.bkServer || !G.online) return; G.serverDiam = true; o.koleksi.forEach(nilaiSiap); o.koleksi.forEach(nilaiPeriksa); }, HB_TUNGGU_SERVER_MS);
+  }
   // ---- V: simpanan perangkat → memori (disaring nisan) ----
   function pasokK(k) {
     const st = K[k]; const daftar = Object.keys(st.v).map((id) => Object.assign({ id }, st.v[id]));
     const S = hbSaringNisan(daftar, G.nisan[k], lahirK(k)); st.tersembunyi = S.tersembunyi;
-    o.keluar.pasok(k, S.tampil.map((d) => d.data)); o.keluar.tunda(k, daftar.filter((d) => d.tunda).map((d) => ({ id: d.id, data: d.data })));
+    let tampil = S.tampil;
+    cekEpisode();
+    if (ditahan()) {
+      if (!st.beku && st.lepasPernah) mulaiTahanTengah(k, false);   // jalan cadangan — jalan biasa: nilaiTahanSemua
+      const kosong = sembunyi();
+      if (!st.beku || st.bekuKosong !== kosong) { if (!st.beku) { st.vAwal = petaCap(st.v); st.ubahTahan = false; } st.beku = kosong ? {} : Object.assign({}, st.v); st.bekuKosong = kosong; }
+      const isi = Object.assign({}, st.beku); const hapus = G.hapusSesi[k] || {};
+      // catatan yang DISENTUH perangkat ini (tulis ATAU hapus) mengikuti simpanan perangkat: hapus lokal hilang seketika (SDK membuangnya dari simpanan); ditulis
+      // lagi dengan id sama / hapus yang DITOLAK server tetap tampil (lensa hari biasa PR #122: dulu hilang selama beku — putus berjam-jam)
+      Object.keys(Object.assign({}, st.milik || {}, hapus)).forEach((id) => { if (st.v[id]) isi[id] = st.v[id]; else delete isi[id]; });
+      tampil = hbSaringNisan(Object.keys(isi).map((id) => Object.assign({ id }, isi[id])), G.nisan[k], lahirK(k)).tampil;
+    } else { st.beku = null; st.bekuKosong = false; st.vAwal = null; st.ubahTahan = false; st.lepasPernah = true; }
+    o.keluar.pasok(k, tampil.map((d) => d.data)); o.keluar.tunda(k, daftar.filter((d) => d.tunda).map((d) => ({ id: d.id, data: d.data })));
+  }
+  // Tahan dinilai ulang untuk SEMUA koleksi (penghalang bersama): mulai ditahan → beku sekarang (bukan malas di kabar simpanan berikutnya — kabar itu bisa sudah membawa
+  // saldo pembuka); disembunyikan berganti → beku ditentukan ulang; dilepas → serentak: memori dari simpanan (= server), S dipasang. Lalu pil & kelengkapan.
+  function nilaiTahanSemua(aman) {
+    if (G.berhenti) return;
+    cekEpisode(); const h = ditahan();
+    if (h) o.koleksi.forEach((k) => { const st = K[k]; if (st && st.vAda && !st.beku && st.lepasPernah) mulaiTahanTengah(k, aman); });
+    o.koleksi.forEach((k) => { const st = K[k]; if (!st || !st.vAda) return;
+      if (h ? (!st.beku || st.bekuKosong !== sembunyi()) : !!st.beku) pasokK(k);
+      if (h) cekUbahTahan(k); else pastikanS(k); });
+    o.koleksi.forEach(nilaiSiap); o.koleksi.forEach((k) => nilaiPeriksa(k, true)); o.keluar.berubah();
   }
   function vMasuk(k, snap) {
     const st = K[k]; if (G.berhenti) return; const v = {};
     (snap.dok || []).forEach((d) => { const x = d.isi(); const cap = hbKupas(x); v[d.id] = { data: x, cap, tunda: !!d.tunda }; });
     st.v = v; st.vGalat = '';
-    pasokK(k);
+    pasokK(k); if (ditahan()) cekUbahTahan(k);
     G.hidup.cocokkan(k, vLihat(k), kecuali(k));
-    if (!st.vAda) { st.vAda = true; nilaiDasar(k); putuskanSemua(); }
+    if (!st.vAda) { st.vAda = true; nilaiDasar(k); putuskanSemua(); nilaiTahanSemua(false); }
     cekHitung(k); if (st.fMode === 'total' && st.fTerkini && !st.fSelesai) cekSelesaiF(k);
     nilaiPeriksa(k);
   }
   function nilaiDasar(k) {
     const st = K[k]; const c = Object.keys(st.v).length; const d = hbDasarDipercaya(rk(k), c);
     st.dipercaya = d.ya; st.sebabDasar = d.sebab;
-    if (d.ya) siapK(k); else if (!G.online) { siapK(k); G.kabar = 'Tanpa internet: simpanan perangkat ini belum bisa dipercaya — angka belum bisa dihitung sampai tersambung'; }
+    nilaiSiap(k);
     if (o.koleksi.every((x) => K[x].vAda)) {
       const kosong = o.koleksi.every((x) => !Object.keys(K[x].v).length) && o.koleksi.some((x) => (Number(rk(x).n) || 0) >= 1);
       R.tanpaIdb = kosong ? (Number(R.tanpaIdb) || 0) + 1 : 0; if (R.tanpaIdb >= 2) G.jalurPenuh = 'perangkat ini tidak menyimpan data (simpanan peramban hilang dua kali berturut-turut) — dengar penuh';
@@ -533,13 +677,43 @@ export function hbSesi(o) {
     }
   }
   function siapK(k) { const st = K[k]; if (st.siap) return; st.siap = true; o.keluar.siap(k); }
+  // siap (pil "memuat…" lepas — BUKAN pelindung angka: layar tetap menggambar memori) = simpanan dipercaya DAN koleksi itu sendiri tidak ditahan (yang hanya
+  // menunggu penghalang bersama sudah siap; memorinya tetap beku, belum terperiksa). Tanpa internet tetap siap. Sanggahan P5: tersambung tapi server diam (kuota
+  // baca habis sampai reset, sinyal lemah) juga tidak menggantung — siap sesudah HB_TUNGGU_SERVER_MS dengan memori tetap beku, belum terperiksa (uang-kritis &
+  // katalog tetap tertutup). Kabar dihitung dari keadaan (kabarTahan), bukan dicatat di sini — tidak tertinggal basi
+  function nilaiSiap(k) {
+    const st = K[k]; if (st.siap || !st.vAda) return;
+    if (st.dipercaya && !tahanSendiri(k)) { siapK(k); return; }
+    const diam = serverDiam() && st.dipercaya;
+    if (G.online && !diam) return;
+    siapK(k);
+  }
+  // kabar sesi hemat yang menyangkut angka yang tergambar — DIHITUNG dari keadaan sekarang (sanggahan kedua P5: dulu dicatat saat tirai lepas lalu tertinggal basi,
+  // mis. "Tanpa internet: tutup buku berubah …" berjam-jam sesudah baca penuh selesai). Disembunyikan didahulukan dari server diam / tanpa internet / F gagal
+  function petunjukTahan() {
+    const habis = o.koleksi.some((k) => /resource-exhausted/.test(String(K[k].fGalat || '') + ' ' + String(K[k].wajibTotal || '')));
+    return hbPetunjukSembunyi({ online: G.online, acaraPutus: G.acaraPutus ? hbSebabAcaraPutus(hariKini()) : '', serverDiam: serverDiam(), diamSejak: G.diamSejak, habis,
+      gagal: o.koleksi.some((k) => !!K[k].fGalat && !K[k].fSelesai), hari: hariKini() });
+  }
+  function kabarTahan() {
+    const ada = o.koleksi.filter((k) => K[k] && K[k].vAda); if (!ada.length || G.berhenti) return '';
+    const h = ditahan(); const kurang = ada.some((k) => K[k].dipercaya === false);
+    if (h && sembunyi()) return HB_KABAR_SEMBUNYI + ' — ' + petunjukTahan();
+    // lensa jalan keluar (PR #122): pendengar berita acara terputus — bukan "tidak perlu muat ulang"
+    if (G.acaraPutus && h) return hbKabarAcaraPutus(hariKini(), kurang);
+    if (serverDiam() && h) return kurang ? hbKabarDiamKosong(G.diamSejak) : hbKabarServerDiam(G.diamSejak);
+    if (!G.online && kurang) return 'Tanpa internet: simpanan perangkat ini belum bisa dipercaya — angka belum bisa dihitung sampai tersambung';
+    if (!G.online && h && ada.some(tbBeda)) return 'Tanpa internet: tutup buku berubah sejak perangkat ini terakhir membaca penuh — angka belum bisa dipastikan sampai tersambung';
+    const g = ada.find((k) => !!K[k].fGalat && !K[k].fSelesai && (h || K[k].dipercaya === false));
+    return g ? 'Baca penuh ' + g + ' gagal (' + K[g].fGalat + ') — angka dari simpanan perangkat, belum terperiksa' : '';
+  }
 
   // ---- rencana ----
   // tutup buku berubah sejak baca penuh terakhir koleksi k di perangkat ini (ritual berjalan selagi perangkat ini tertutup)
   const bkBeda = (k) => hbAngka(rk(k).totalPada) !== null && (rk(k).bk || '') !== G.sidikBk;
   function konteks(k) {
     const st = K[k]; const r = rk(k);
-    return { rk: r, dipercaya: st.dipercaya, sebabDasar: st.sebabDasar, gerbang: G.gerbang, bkAktif: G.bkAktif, bkBeda: bkBeda(k),
+    return { rk: r, dipercaya: st.dipercaya, sebabDasar: st.sebabDasar, gerbang: G.gerbang, bkAktif: G.bkAktif, bkBeda: bkBeda(k), bkCampur: campurK(k),
       gen: hbGen(G.tetap.klaim, k), kiniS: kiniS(), harian: G.klaimSaya && !(st.fSelesai && st.fSelesaiPada >= G.klaimMulai), minta: G.minta, jalurPenuh: G.jalurPenuh };
   }
   function putuskanSemua() { if (G.berhenti || !G.tetap.ada || !o.koleksi.every((k) => K[k].vAda)) return; o.koleksi.forEach(putuskan); pastikanN(); }
@@ -549,8 +723,9 @@ export function hbSesi(o) {
     if (p.mode === 'penuh') { st.mode = 'penuh'; st.sebab = p.sebab; st.wajibTotal = ''; pastikanS(k); mulaiF(k, 'penuh'); }
     else if (p.mode === 'total') {
       if (st.fLepas && !st.fSelesai) { if (st.fMode === 'penuh') { st.fMode = 'total'; st.mode = 'total'; st.sebab = p.sebab; if (st.fTerkini) cekSelesaiF(k); } nilaiPeriksa(k); return; }
-      // baca penuh otomatis yang baru gagal (galat server / hitungan beda) tidak diulang sebelum 10 menit — tiap ulang = seluruh koleksi dibaca lagi
-      if (p.otomatis && st.fGagalPada && jam() - st.fGagalPada < 10 * hbMenit) { if (st.mode !== 'penuh') { st.mode = 'delta'; st.wajibTotal = 'baca penuh gagal (' + (st.fGalat || 'galat') + ') — dicoba lagi sebentar'; } pastikanS(k); nilaiPeriksa(k); return; }
+      // baca penuh otomatis / wajib (tutup buku) yang baru gagal (galat server / hitungan beda) tidak diulang sebelum 10 menit — tiap ulang = seluruh koleksi
+      // dibaca lagi. Wajib menembus rem kuota (manual), tapi tetap menunggu jeda ini.
+      if ((p.otomatis || p.wajib) && st.fGagalPada && jam() - st.fGagalPada < 10 * hbMenit) { if (st.mode !== 'penuh') { st.mode = 'delta'; st.wajibTotal = 'baca penuh gagal (' + (st.fGalat || 'galat') + ') — dicoba lagi sebentar'; } pastikanS(k); nilaiPeriksa(k); return; }
       const H = hariR(); const rem = hbRem({ manual: !p.otomatis, otomatisK: H.otomatis[k] || 0, mulaiK: (H.mulai[k] || 0) - (H.otomatis[k] || 0),
         perkiraan: hbPerkiraanToko(G.tetap.perangkat, H.H, o.idPerangkat, H.baca), ukuran: Number(rk(k).n) || Object.keys(st.v).length });
       if (!rem.boleh) { if (st.mode === 'penuh') lepasF(k); st.mode = 'delta'; st.sebab = ''; st.wajibTotal = rem.sebab + ' (' + p.sebab + ')'; pastikanS(k); }
@@ -565,7 +740,8 @@ export function hbSesi(o) {
 
   // ---- S: ubahan bercap ----
   function pastikanS(k) {
-    const st = K[k]; if (st.sLepas || G.berhenti) return;
+    // ditahan: S tidak dipasang (saldo pembuka bercap baru tidak masuk simpanan lewat S) — dipasang saat semua dilepas serentak (nilaiTahanSemua)
+    const st = K[k]; if (st.sLepas || G.berhenti || ditahan()) return;
     const r = hbBatasDelta(rk(k), kiniS(), hariKini()); if (r.B === null) return;
     if (r.baru) { Object.assign(rk(k), { B: r.B, hariB: r.hariB, nB: r.nB }); simpan(); }
     st.sB = r.B; st.sTerkini = false; st.sPrev = {}; tambahBaca(1);
@@ -593,6 +769,10 @@ export function hbSesi(o) {
     const st = K[k]; if (G.berhenti) return;
     if (st.fLepas) { if (st.fMode !== mode) st.fMode = mode; return; }
     Object.assign(st, { fMode: mode, fAwal: null, fAwalKosong: false, fPrev: null, fTerkini: false, fSelesai: false, fGalat: '', fUlang: 0, fDiperiksa: false, fMulai: jam() });
+    // baca penuh selama tutup buku BERJALAN mengubah simpanan setengah jalan (saldo pembuka masuk, catatan arsip dibuang belakangan) — sampai selesai tanpa tutup
+    // buku berjalan, rekam menandai simpanan ini BISA BERCAMPUR: sesi berikut memulai memorinya kosong. Sesudah tutup buku berubah (koleksi ditahan), tandanya baru
+    // dipasang bila simpanan BENAR-BENAR berubah selama ditahan (cekUbahTahan) — F yang macet sebelum membawa apa pun tidak membuat muat ulang berikutnya kosong
+    if (G.bkAktif && !rk(k).bkCampur) { rk(k).bkCampur = 1; simpan(); }
     if (mode === 'total') { const H = hariR(); H.mulai[k] = (H.mulai[k] || 0) + 1; simpan(); }
     st.fLepas = o.sdk.penuh(k, (s) => fMasuk(k, s), (e) => fGalat(k, e));
   }
@@ -603,7 +783,8 @@ export function hbSesi(o) {
     // sidik isi untuk SEMUA dokumen F: pendeteksi tanpa cap membandingkan isi (Console bisa mengubah isi tanpa menyentuh cap)
     (snap.dok || []).forEach((d) => { if (d.tunda) { peta[d.id] = { tunda: true }; return; } n += 1; const c = hbCapMs(d.capMentah);
       peta[d.id] = { cap: c, sidik: hbSidik(d.isi()) }; if (typeof c === 'number' && (maks === null || c > maks)) maks = c; });
-    if (snap.dariCache) { if (!st.fAwal) st.fAwal = peta; st.fTerkini = false; nilaiPeriksa(k); return; }
+    // dari simpanan (baru dipasang, atau server berhenti menjawab): dengar penuh yang tadinya terkini bisa mulai ditahan lagi — sejak itu tanpa data server (aman)
+    if (snap.dariCache) { if (!st.fAwal) st.fAwal = peta; const tadi = st.fTerkini; st.fTerkini = false; if (tadi) nilaiTahanSemua(true); else nilaiPeriksa(k); return; }
     if (!st.fAwal) { st.fAwal = {}; st.fAwalKosong = true; }
     // isi MENTAH snapshot server ini untuk penyentuh (kunci bulan) — catatan lahir ulang yang tersembunyi nisan tidak ada di memori
     const dokF = {}; (snap.dok || []).forEach((d) => { if (!d.tunda) dokF[d.id] = d; });
@@ -621,13 +802,19 @@ export function hbSesi(o) {
     // kosong / belum terbaca penuh tidak membanjiri sentuhan). Tanpa ini, baca penuh perangkat mana pun "menelan" ubahan Console diam-diam.
     if (st.dipercaya && !(st.fAwalKosong && !st.fPrev)) deteksi(k, prev, peta, lahir, lihatF);
     else if (lahir.length && !G.bkAktif) kirimTemuan(k, 's', lahir, lihatF);
-    st.fPrev = peta; st.fN = n; st.fMaks = maks; st.fTerkini = true;
+    const tadi = st.fTerkini; st.fPrev = peta; st.fN = n; st.fMaks = maks; st.fTerkini = true;
+    // dengar penuh yang ditahan tutup buku kini terkini (simpanan koleksi ini = server): bila koleksi lain tidak menahan lagi, semua dilepas serentak (sanggahan P5)
+    if (!tadi) nilaiTahanSemua(false);
     G.hidup.cocokkan(k, vLihat(k), kecuali(k)); jadwalHidup();
     if (!st.fSelesai) cekSelesaiF(k); else if (G.klaimSaya) cekKlaimSelesai();
     nilaiPeriksa(k);
   }
-  // F gagal: koleksi tetap belum terperiksa (gerbang katalog & uang-kritis tertutup), memori tetap dari simpanan; tirai "memuat" tidak menggantung selamanya
-  function fGagal(k, sebab) { const st = K[k]; lepasF(k); st.fGalat = sebab; st.fGagalPada = jam(); if (!st.siap) { siapK(k); G.kabar = 'Baca penuh ' + k + ' gagal (' + sebab + ') — angka dari simpanan perangkat, belum terperiksa'; } nilaiPeriksa(k); }
+  // F gagal: koleksi tetap belum terperiksa (gerbang katalog & uang-kritis tertutup), memori tetap dari simpanan; pil "memuat" tidak menggantung selamanya (kabarnya
+  // dihitung kabarTahan)
+  function fGagal(k, sebab) { const st = K[k]; lepasF(k); st.fGalat = sebab; st.fGagalPada = jam();
+    // baca penuh WAJIB (tutup buku) gagal: SEMUA koleksi tetap ditahan (penghalang bersama — memori beku, tanpa S); sebabnya disebut sampai dicoba lagi sesudah 10 menit
+    if (st.rencana && st.rencana.wajib && st.mode !== 'penuh') { st.mode = 'delta'; st.wajibTotal = 'baca penuh gagal (' + sebab + ') — dicoba lagi sebentar'; }
+    if (!st.siap) siapK(k); nilaiPeriksa(k); }
   function fGalat(k, e) { K[k].fLepas = null; fGagal(k, kodeGalat(e)); }
   function cekSelesaiF(k) {
     const st = K[k]; if (st.fHitungJalan || st.fSelesai || !st.fTerkini || G.berhenti) return;
@@ -644,13 +831,16 @@ export function hbSesi(o) {
     const st = K[k]; const s = kiniS(); if (s === null) { st.fTungguJam = true; return; }
     st.fTungguJam = false; const r = rk(k);
     Object.assign(r, { Wt: hbJepit(st.fMaks, s), n: st.fN, totalPada: kiniSTercatat(), gen: hbGen(G.tetap.klaim, k), bk: G.sidikBk, cocokPada: s });
+    // simpanan = server, tanpa tutup buku berjalan: tidak bercampur lagi (juga di sesi ini — baca penuh berikutnya tidak memulai memori kosong lagi)
+    if (!G.bkAktif) { delete r.bkCampur; st.campurAwal = false; }
     const beres = Object.assign({}, r.gerbangBeres || {}); G.gerbang.peristiwa.forEach((p) => { beres[p.kunci] = s; });
     Object.keys(beres).forEach((x) => { if (!(s - beres[x] <= (HB_KASIR_HARI + 1) * hbHari)) delete beres[x]; }); r.gerbangBeres = beres;
     const H = hariR(); if (st.otomatis && st.fMode === 'total') H.otomatis[k] = (H.otomatis[k] || 0) + 1;
     if (G.minta[k]) delete G.minta[k];
     Object.assign(st, { fSelesai: true, fSelesaiPada: s, dipercaya: true, sebabDasar: '', cocokPada: jam(), fGagalPada: 0, fGalat: '' });
     if (st.fMode === 'total') { lepasF(k); st.mode = 'delta'; st.sebab = ''; }
-    simpan(); siapK(k); pastikanS(k); nilaiPeriksa(k);
+    // tahan tutup buku berakhir untuk koleksi ini; memori tetap beku sampai koleksi TERAKHIR selesai (penghalang bersama), lalu semua dilepas serentak
+    simpan(); nilaiTahanSemua(false);
     if (G.klaimSaya) cekKlaimSelesai();
   }
 
@@ -800,14 +990,19 @@ export function hbSesi(o) {
 
   // ---- kelengkapan & terperiksa: SATU sumber (hbBelumLengkap). Terperiksa = bukan "belum terperiksa" ('harian' tetap terperiksa: hitungannya cocok) ----
   function belumK(k) {
-    const st = K[k]; const r = rk(k);
+    const st = K[k]; const r = rk(k); const h = ditahan();
     // berhenti: tab kalah kunci tab (firebase.js berhenti → terminate) — tidak menerima data lagi; tanpa ini tab itu tetap melapor lengkap (sanggahan 7 Okt)
     return hbBelumLengkap({ koleksi: k, vMati: st.vMati, berhenti: G.berhenti, vAda: st.vAda, nTerkini: G.nTerkini, online: G.online, mode: st.mode, fTerkini: st.fTerkini, fSelesai: st.fSelesai, fMode: st.fMode,
       fJalan: !!(st.fLepas && st.fMode === 'total' && !st.fSelesai), fGalat: st.fGalat, wajibTotal: st.wajibTotal, sTerkini: st.sTerkini, cocok: st.cocokPada > 0,
-      totalPada: r.totalPada, hari: hariKini(), klaim: G.tetap.klaim });
+      totalPada: r.totalPada, hari: hariKini(), klaim: G.tetap.klaim, serverDiam: serverDiam() && h, tidakDipercaya: st.dipercaya === false ? st.sebabDasar || 'simpanan perangkat belum dipercaya' : '',
+      diamSejak: G.diamSejak, acaraPutus: h && G.acaraPutus ? hbSebabAcaraPutus(hariKini()) : '',
+      // sanggahan kedua P5: memori beku / disembunyikan = belum lengkap, apa pun keadaan koleksi itu sendiri (dengar penuh terkini, hitungan cocok)
+      sembunyi: h && sembunyi() ? HB_SEBAB_SEMBUNYI + ' — ' + petunjukTahan() : '',
+      tertahan: !h ? '' : !G.bkServer ? HB_SEBAB_TUNGGU_ACARA : tahanTb(k) ? '' : HB_SEBAB_TUNGGU_LAIN });
   }
   function terperiksaK(k) { const b = belumK(k); return !b || b.jenis !== 'periksa'; }
-  function nilaiPeriksa(k) { const st = K[k]; const t = terperiksaK(k); if (t !== st.terperiksa) { st.terperiksa = t; o.keluar.periksa(k, t); } o.keluar.berubah(); }
+  // diam = tanpa o.keluar.berubah (nilaiTahanSemua mengabari layar SEKALI sesudah semua koleksi dinilai)
+  function nilaiPeriksa(k, diam) { const st = K[k]; const t = terperiksaK(k); if (t !== st.terperiksa) { st.terperiksa = t; o.keluar.periksa(k, t); } if (!diam) o.keluar.berubah(); }
 
   // ---- pendengar simpanan hidup ----
   function jadwalHidup() { if (G.hidupH || !G.hidup.ada()) return; G.hidupH = o.jadwal(() => { G.hidupH = null; cekHidup(); }, HB_HIDUP_MS + 500); }
@@ -820,26 +1015,66 @@ export function hbSesi(o) {
   // ---- minta baca penuh ----
   function minta(daftar, sebab, manual) {
     (daftar || o.koleksi).forEach((k) => { if (!K[k]) return; G.minta[k] = { sebab, manual: !!manual }; if (K[k].fSelesai) K[k].fSelesai = false; K[k].fUlang = 0; });
-    putuskanSemua();
+    putuskanSemua(); nilaiTahanSemua(false);
   }
 
   const kodeGalat = (e) => String((e && (e.code || e.message)) || e || 'galat');
   const sesi = {
     mulai() {
-      o.koleksi.forEach((k) => { K[k] = { k, v: {}, vAda: false, siap: false, dipercaya: null, mode: null, terperiksa: null, tersembunyi: 0 }; });
+      // campurAwal (audit P5): rekam menandai simpanan koleksi ini bisa bercampur (baca penuh sesudah / selama tutup buku belum selesai di sesi lalu)
+      o.koleksi.forEach((k) => { K[k] = { k, v: {}, vAda: false, siap: false, dipercaya: null, mode: null, terperiksa: null, tersembunyi: 0, campurAwal: !!(R.k[k] && R.k[k].bkCampur) }; });
       o.koleksi.forEach((k) => { K[k].vLepas = o.sdk.cache(k, (s) => vMasuk(k, s), (e) => { K[k].vGalat = kodeGalat(e); nilaiPeriksa(k);
         if (!K[k].vUlang && !G.berhenti) { K[k].vUlang = 1; K[k].vLepas = o.sdk.cache(k, (s) => vMasuk(k, s), (e2) => { K[k].vGalat = kodeGalat(e2); K[k].vMati = true; o.keluar.mati(k); nilaiPeriksa(k); }); } }); });
       if (hbAngka(R.skew) !== null) G.skewRekam = R.skew;
+      // berita acara tutup buku belum dijawab server HB_TUNGGU_SERVER_MS sejak dibuka padahal tersambung → pil "memuat" lepas, kelengkapan menyebut server diam
+      mulaiTunggu();
       return sesi;
     },
-    /** Masukan dari pendengar koleksi TETAP: { perangkat: denyut[], acara: tutupBukuAcara[], klaim: aturanToko/hematHarian | null }. */
+    /**
+     * Masukan dari pendengar koleksi TETAP: { perangkat: denyut[], acara: tutupBukuAcara[], klaim: aturanToko/hematHarian | null, acaraServer }.
+     * acaraServer (audit P5) = jawaban TERAKHIR pendengar berita acara tutup buku dari SERVER (bukan simpanan perangkat). Sanggahan kedua P5: tidak lagi "sekali benar,
+     * tetap benar" — SDK menandai berita acara "dari simpanan" saat server berhenti menjawab (putus), dan sesudah tersambung sesi ini menunggu jawaban server lagi
+     * (selama itu S bisa sudah membawa saldo pembuka ke simpanan). Tanpa internet (kabar peramban) = tidak dijawab server.
+     * acaraBaru (lensa hari biasa & jalan keluar, audit PR #122) = kabar ini membawa jawaban SERVER BARU dari pendengar berita acara SENDIRI (firebase.js kabariTetap
+     * — bukan asal berita acara lama yang ikut kabar koleksi tetap lain): pendengar yang terputus hidup lagi, dan bukti tersambung walau kabar 'online' peramban
+     * hilang (tab ditangguhkan / bfcache) — dulu memori beku MACET sampai muat ulang.
+     */
     setelTetap(t) {
-      const lamaBk = G.sidikBk; Object.assign(G.tetap, t || {}); G.tetap.ada = true;
+      const x = t || {}; const lamaBk = G.sidikBk; ['perangkat', 'acara', 'klaim'].forEach((n) => { if (n in x) G.tetap[n] = x[n]; }); G.tetap.ada = true;
+      const srvLama = G.bkServer; const baru = x.acaraBaru === true && x.acaraServer === true;
+      if (baru) G.acaraPutus = null;
+      // pendengar berita acara terputus: asal berita acara lama (kabar koleksi tetap lain) bukan jawaban server sampai pendengar barunya dijawab server
+      if ('acaraServer' in x) G.acaraSrv = x.acaraServer === true && !G.acaraPutus;
+      if (G.acaraSrv) G.srvPernah = true;
+      G.bkServer = G.acaraSrv && G.online;
+      // server berhenti menjawab di tengah sesi (tersambung menurut peramban): tanda "server diam" dihitung lagi dari sekarang — kalimatnya "sejak pukul HH.MM WIB"
+      if (srvLama && !G.bkServer && G.online) { G.serverDiam = false; mulaiTunggu('sejak pukul ' + hbJamMenitWib(kiniS() !== null ? kiniS() : jam()) + ' WIB'); }
       const lihatLama = JSON.stringify(R.lihat || {}); const lihat = lihatDenyut(); if (JSON.stringify(R.lihat) !== lihatLama) simpan();
       G.gerbang = hbGerbangPenulis(G.tetap.perangkat, kiniS() !== null ? kiniS() : jam(), o.koleksi, lihat);
       G.bkAktif = hbBkAktif(G.tetap.acara); G.sidikBk = hbSidikBk(G.tetap.acara);
-      if (lamaBk && G.sidikBk !== lamaBk) o.koleksi.forEach((k) => { const st = K[k]; if (st.mode === 'penuh' && st.fTerkini && hbAngka(rk(k).totalPada) !== null) rk(k).bk = G.sidikBk; });
-      putuskanSemua(); nilaiKlaim(); o.keluar.berubah();
+      // dengar penuh & terkini saat berita acara berubah = simpanan ikut ritual; ritual tidak berjalan lagi = simpanan tidak bercampur
+      if (lamaBk && G.sidikBk !== lamaBk) {
+        o.koleksi.forEach((k) => { const st = K[k]; if (st.mode === 'penuh' && st.fTerkini && hbAngka(rk(k).totalPada) !== null) { rk(k).bk = G.sidikBk; if (!G.bkAktif) { delete rk(k).bkCampur; st.campurAwal = false; } } });
+        simpan();
+      }
+      // server berhenti menjawab = mulai ditahan SEKARANG (aman: sejak itu tanpa data server baru); berita acara berganti selagi tersambung = tidak aman (S/F menempel)
+      putuskanSemua(); nilaiTahanSemua(srvLama && !G.bkServer); nilaiKlaim(); o.keluar.berubah();
+      // lensa hari biasa (PR #122): jawaban server baru berita acara selagi sesi mengira tanpa internet = tersambung (efek kabar 'online')
+      if (baru && !G.online) sesi.online(true);
+    },
+    /**
+     * Pendengar berita acara tutup buku MATI (galat SDK — lensa jalan keluar, audit PR #122). Dulu tidak pernah dipasang ulang: semua koleksi hemat beku SELAMANYA
+     * dengan kalimat "tidak perlu muat ulang". Kini: berita acara tidak dijawab server (memori ditahan SAAT ITU — aman: sejak itu tanpa berita acara baru), kabar,
+     * kelengkapan & uang-kritis "pemeriksaan tutup buku terputus — dicoba lagi otomatis; bila tetap begini, muat ulang …", dan pasangUlang() sesudah 1, 2, 5 menit,
+     * lalu tiap 5 menit selama masih mati (HB_ACARA_ULANG_MS). Pulih = jawaban SERVER baru pendengar itu (setelTetap acaraBaru).
+     */
+    acaraTerputus(kode, pasangUlang) {
+      if (G.berhenti) return;
+      const n = G.acaraPutus ? G.acaraPutus.n : 0; G.acaraPutus = { kode: String(kode || 'galat'), n: n + 1 };
+      const srvLama = G.bkServer; G.acaraSrv = false; G.bkServer = false;
+      if (G.acaraH) o.batal(G.acaraH);
+      G.acaraH = o.jadwal(() => { G.acaraH = null; if (!G.berhenti && G.acaraPutus && pasangUlang) pasangUlang(); }, HB_ACARA_ULANG_MS[Math.min(n, HB_ACARA_ULANG_MS.length - 1)]);
+      nilaiTahanSemua(srvLama && !G.bkServer);
     },
     /** Gema jam server: capServer denyut perangkat ini yang baru diakui server, tiba saat jam perangkat = perangkatMs. */
     gemaServer(serverMs, perangkatMs) {
@@ -848,12 +1083,17 @@ export function hbSesi(o) {
       R.skew = G.skew; simpan();
       o.koleksi.forEach((k) => { if (K[k].fTungguJam) selesaiF(k); });
       G.gerbang = hbGerbangPenulis(G.tetap.perangkat, kiniS(), o.koleksi, lihatDenyut());
-      putuskanSemua(); nilaiKlaim();
+      putuskanSemua(); nilaiTahanSemua(false); nilaiKlaim();
     },
+    /**
+     * Kabar sambungan peramban. Putus (sanggahan kedua P5) = server tidak menjawab: memori DIBEKUKAN SEKARANG (keadaan terakhir yang dijawab server), pil tidak
+     * menggantung. Tersambung: kalau SDK tidak sempat menandai berita acara "dari simpanan" (putus sebentar), jawaban terakhirnya masih berlaku; kalau sempat, ditahan
+     * sampai server menjawab lagi. Tanda "server diam" dihitung lagi dari saat tersambung (dulu menempel dari masa tanpa internet → sebab yang menyesatkan).
+     */
     online(ya) {
-      G.online = !!ya;
-      if (ya) { o.koleksi.forEach((k) => { K[k].cocokPada = 0; K[k].hitungUlang = 0; }); putuskanSemua(); o.koleksi.forEach((k) => cekHitung(k)); nilaiKlaim(); }
-      o.koleksi.forEach(nilaiPeriksa);
+      G.online = !!ya; const srvLama = G.bkServer; G.bkServer = G.acaraSrv && G.online;
+      if (ya) { G.serverDiam = false; mulaiTunggu(G.srvPernah ? 'sejak tersambung lagi' : ''); o.koleksi.forEach((k) => { K[k].cocokPada = 0; K[k].hitungUlang = 0; }); putuskanSemua(); o.koleksi.forEach((k) => cekHitung(k)); nilaiKlaim(); }
+      nilaiTahanSemua(srvLama && !G.bkServer);
     },
     terlihat(ya) {
       if (!ya) { G.tersembunyiSejak = jam(); return; }
@@ -875,12 +1115,22 @@ export function hbSesi(o) {
     mintaSemua() { const s = kiniS() !== null ? kiniS() : jam(); const lama = G.tetap.klaim || {}; const gen = Object.assign({}, lama.gen || {}, { '*': 'g' + s });
       return o.sdk.klaim(Object.assign({}, lama, { id: HB_ID_KLAIM, gen })); },
     catatHapus(k, id) { if (!K[k]) return; (G.hapusSesi[k] = G.hapusSesi[k] || {})[String(id)] = true; },
+    /** Tulisan perangkat ini sendiri (firebase.js tulisBerkas): tetap tampil di memori yang beku selama ditahan tutup buku (audit P5). */
+    catatTulis(k, id) { if (!K[k]) return; (K[k].milik = K[k].milik || {})[String(id)] = true; },
     /** Uang-kritis: tiap koleksi hemat terperiksa dengan hitungan server ≤ 2 menit (atau dengar penuh terkini). → Promise<{ ok, pesan }> */
     pastikanSegar() {
+      // sanggahan kedua P5: memori BEKU (berita acara belum dijawab server / penghalang bersama) tidak pernah segar — juga koleksi yang dengar penuh terkini
+      if (ditahan() && !G.berhenti && !o.koleksi.some((k) => K[k].vMati)) {
+        if (!G.online) return Promise.resolve({ ok: false, pesan: 'belum bisa dipastikan — sambungkan internet dulu (draf tetap tersimpan)' });
+        if (G.acaraPutus) return Promise.resolve({ ok: false, pesan: 'belum bisa dipastikan — ' + hbSebabAcaraPutus(hariKini()) + ' (draf tetap tersimpan)' });
+        if (serverDiam()) return Promise.resolve({ ok: false, pesan: 'belum bisa dipastikan — server belum menjawab ' + (G.diamSejak || HB_SEJAK_DIBUKA) + ' (kuota baca habis atau sinyal lemah); coba lagi sesudah server menjawab (draf tetap tersimpan)' });
+        return Promise.resolve({ ok: false, pesan: 'belum bisa dipastikan — ' + (G.bkServer ? 'data perangkat ini sedang dibaca penuh sesudah tutup buku; tunggu sampai selesai' : 'data perangkat ini belum dicocokkan dengan server (baru dibuka atau baru tersambung); tunggu sebentar') + ' lalu coba lagi (draf tetap tersimpan)' });
+      }
       const perlu = o.koleksi.filter((k) => { const st = K[k]; if (st.vMati) return true; if (st.mode === 'penuh' && st.fTerkini) return false; return !(terperiksaK(k) && jam() - st.cocokPada <= HB_SEGAR_MS); });
       if (!perlu.length) return Promise.resolve({ ok: true, pesan: '' });
       if (G.berhenti || o.koleksi.some((k) => K[k].vMati)) return Promise.resolve({ ok: false, pesan: 'tab ini berhenti menerima data — muat ulang aplikasi dulu' });
       if (!G.online) return Promise.resolve({ ok: false, pesan: 'belum bisa dipastikan — sambungkan internet dulu (draf tetap tersimpan)' });
+      if (serverDiam()) return Promise.resolve({ ok: false, pesan: 'belum bisa dipastikan — server belum menjawab ' + (G.diamSejak || HB_SEJAK_DIBUKA) + ' (kuota baca habis atau sinyal lemah); coba lagi sesudah server menjawab (draf tetap tersimpan)' });
       const belum = perlu.filter((k) => !K[k].sTerkini || !G.nTerkini || K[k].wajibTotal || (K[k].fLepas && K[k].fMode === 'total' && !K[k].fSelesai));
       if (belum.length) return Promise.resolve({ ok: false, pesan: 'data ' + belum.slice(0, 3).join(', ') + (belum.length > 3 ? ' …' : '') + ' belum terperiksa dengan server — tunggu sebentar lalu coba lagi' });
       const tunda = perlu.filter((k) => tundaN(k) > 0 || o.hapusTunda(k) > 0);
@@ -911,7 +1161,8 @@ export function hbSesi(o) {
       return { nyala: true, jamServer: s !== null, kiniS: s, hari: s !== null ? hbHariKuota(s) : '', jamReset: s !== null ? hbJamResetWib(s) : '', koleksi: daftar,
         belum: daftar.filter((x) => !x.terperiksa).map((x) => x.k), vMati: daftar.some((x) => x.vMati), nisanTerkini: G.nTerkini, nisanGalat: G.nGalat,
         totalSesiIni: daftar.every((x) => x.selesaiSesi), klaim: G.tetap.klaim, klaimSaya: G.klaimSaya, klaimKabar: G.klaimKabar, temuan: G.temuan, jalurPenuh: G.jalurPenuh,
-        kabar: [G.kabar, G.temuanGagal ? G.temuanGagal + ' catatan berubah tanpa cap gagal ditandai untuk perangkat lain — tekan "Saya baru mengubah data lewat Console"' : '',
+        ditahan: ditahan(), disembunyikan: ditahan() && sembunyi(),
+        kabar: [kabarTahan(), G.temuanGagal ? G.temuanGagal + ' catatan berubah tanpa cap gagal ditandai untuk perangkat lain — tekan "Saya baru mengubah data lewat Console"' : '',
           G.temuanLewat ? G.temuanLewat + ' catatan di bulan terkunci berubah tanpa cap — perangkat lain baru melihatnya sesudah membaca penuh sendiri' : ''].filter((x) => !!x).join(' · '),
         baca: { perangkat: R.hari.baca || 0, toko: hbPerkiraanToko(G.tetap.perangkat, R.hari.H, o.idPerangkat, R.hari.baca) }, belumLengkap: sesi.belumLengkap() };
     },
@@ -925,7 +1176,7 @@ export function hbSesi(o) {
     berhenti() {
       G.berhenti = true;
       o.koleksi.forEach((k) => { const st = K[k]; if (!st) return; [st.vLepas, st.sLepas, st.fLepas].forEach((f) => { if (f) { try { f(); } catch (e) { /* abaikan */ } } }); st.vLepas = st.sLepas = st.fLepas = null; });
-      if (G.nLepas) { try { G.nLepas(); } catch (e) { /* abaikan */ } } G.nLepas = null; if (G.hidupH) o.batal(G.hidupH);
+      if (G.nLepas) { try { G.nLepas(); } catch (e) { /* abaikan */ } } G.nLepas = null; if (G.hidupH) o.batal(G.hidupH); if (G.tungguH) o.batal(G.tungguH); if (G.acaraH) o.batal(G.acaraH);
     },
     adaMati: () => o.koleksi.some((k) => K[k] && K[k].vMati),
     _K: K, _G: G,

@@ -51,7 +51,7 @@ Penjaga yang berbunyi (semuanya di `hbSesi`, diuji `alat-uji/uji_hemat_baca.py`)
 - **Pendengar simpanan hidup**: ubahan yang dibawa S/F wajib terlihat di V dalam 5 detik; tidak → tirai "muat ulang", penulis menolak.
 - **Satu klien Firestore per peramban** (kunci tab localStorage): tab kedua bertanya "Pakai di sini"; tab yang kalah `terminate()`.
 - **Rem kuota**: baca penuh OTOMATIS ditunda bila perkiraan baca toko hari ini > 80% kuota; ≤ 2 otomatis/koleksi/hari; 3× mulai tanpa selesai → berhenti.
-  Tombol manual menembus.
+  Tombol manual menembus; baca penuh WAJIB karena tutup buku berubah juga (audit P5, bagian di bawah).
 - **Uang-kritis** (tutup hari, titik kas, kunci bulan, tutup buku): hitungan server ≤ 2 menit untuk semua koleksi hemat, kalau tidak DITOLAK dengan kalimat.
 - **Katalog kasir**: terbit hanya bila semua koleksi hemat terperiksa, hitungan koleksi HP kasir ≤ 35 menit, kunci tab dipegang, tanpa ayunan antarperangkat
   (dua perangkat berbeda hitungan → berhenti + baca penuh), ≤ 6 terbit otomatis per jam.
@@ -134,6 +134,134 @@ Lengkap: dengar penuh terkini; atau terperiksa DAN (dibaca penuh perangkat ini p
 atau dilewati karena bulannya terkunci (`sentuhCap` → `lewat`) dihitung per jenis catatan di `temuanTunda`. Kalimat untuk banyak jenis catatan
 (`hbKalimatBelum`): "data perangkat ini <keadaan> (n jenis catatan) — <petunjuk>; m jenis catatan lainnya <sebabnya>" — sebab satu jenis tidak dipinjamkan ke
 yang lain. Keputusan yang memakainya dan yang sengaja tidak: lihat `baru/BACA-DULU.md` bab Hemat baca, bagian "Kelengkapan".
+
+## Hemat baca × arsip tutup buku (audit P5, 8 Okt) — perangkat yang tertutup selama ritual
+
+**Celah.** Arsip tutup buku menghapus TANPA batu nisan (`firebase.js arsipkanBerkas`), jadi catatan tahun lalu di simpanan perangkat owner yang tertutup
+selama ritual hanya dibuang baca penuh (F); catatan yang lebih tua dari jendela S tidak dibuang S maupun N. Saldo pembukanya bercap baru → datang lewat S.
+Dulu: V pertama → simpanan "dipercaya" (hanya jumlah yang dibandingkan) → siap, pil "memuat…" lepas SEBELUM berita acara terbaca; S membawa saldo pembuka →
+memori = catatan tahun lalu + saldo pembuka = stok, bon & utang **DOBEL** di Jual, Gudang, Pelanggan, bon (uang-kritis, katalog & kartu Paket C sudah
+tertahan). Baca penuh karena tutup buku berubah tergolong otomatis → bisa ditahan rem kuota (denyut perangkat ritual ±45 rb baca hari itu) → dobel bertahan
+sampai reset kuota. Berita acara dari SIMPANAN dulu (basi) → tutup buku tampak tidak berubah → F tidak jalan sama sekali sampai jawaban server tiba.
+
+**Obat (`hemat-baca.js`, `firebase.js`).**
+
+| Bagian | Sekarang |
+|---|---|
+| (a) rencana | tutup buku berubah sejak baca penuh terakhir (`bkBeda`), atau baca penuh sesudah tutup buku terputus di sesi lalu (`bkCampur`) → baca penuh **WAJIB**: seperti tombol (menembus rem, tidak turun ke delta, tidak dihitung otomatis), didahulukan dari permintaan otomatis (hitungan beda). Gagal → sebabnya disebut, dicoba lagi sesudah 10 menit seperti baca penuh otomatis (bukan tiap kabar koleksi tetap — tiap ulang = seluruh koleksi dibaca) |
+| pelindung | **Tidak ada tirai yang menutup layar** (sanggahan kedua P5): "siap" hanya menurunkan pil kepala "memuat…" & melepas penjarangan gambar (`inti/jadwal.js setelMuat`); layar SELALU menggambar memori. Tirai sungguhan hanya `tiraiTab` (tab ganda / pendengar simpanan mati). Jadi MEMORI satu-satunya pelindung: tidak pernah campuran (catatan arsip + saldo pembuka, atau jenis catatan beda zaman); kosong hanya bila tidak ada keadaan utuh di perangkat, dan itu DISEBUT (kabar & kelengkapan "disembunyikan") |
+| (b) TAHAN | memori BEKU = isi simpanan saat mulai ditahan, dengan catatan yang DISENTUH perangkat ini sendiri mengikuti simpanan perangkat — tulisan (`catatTulis` dari `tulisBerkas` & `perbaruiBerkas`; `pulihkanBerkas` tidak — berjalan saat tutup buku dibatalkan, yang didengar penuh) dan hapus (`catatHapus`): hapus hilang seketika (SDK membuangnya dari simpanan), catatan yang ditulis lagi dengan id sama / hapus yang DITOLAK server tampil (lensa hari biasa PR #122); tanpa S; belum terperiksa (uang-kritis, katalog, kunci bulan & pajak tertahan). DITAHAN selama: (1) berita acara tutup buku belum dijawab SERVER — saat dibuka, DAN sejak server berhenti menjawab di tengah sesi (lihat "berita acara"); (2) **PENGHALANG BERSAMA**: ada koleksi yang menunggu baca penuh karena tutup buku (`tahanTb`: baca penuh sesi ini belum menjawab koleksi itu DAN tutup buku berubah sejak baca penuh terakhirnya / simpanannya bisa bercampur — kecuali dengar penuh KARENA tutup buku berjalan) → SEMUA koleksi hemat ditahan, dilepas SERENTAK saat yang terakhir selesai. Stok, bon & utang dihitung lintas koleksi: saldo pembuka di `batchMasuk`/`piutangMutasi` dkk., catatan 2026 juga di `penjualan` yang tidak punya saldo pembuka — dulu dilepas per koleksi → stok terpotong DUA KALI tanpa kabar (sanggahan kedua). "Menjawab" = baca penuh sekali selesai, atau dengar penuh TERKINI (simpanan koleksi itu = server). Koleksi yang sudah menjawab tapi menunggu yang lain: pil lepas, kelengkapan "sudah dibaca penuh, menunggu jenis catatan lain …". Putus / baca penuh gagal di tengah = semua tetap beku (keadaan sebelum ritual), tidak dilepas sebagian. Koleksi yang dengar penuh karena penulis tanpa cap (HP kasir lama, kasir.html, tab lama) juga ditahan (sanggahan P5) |
+| (b) berita acara | `firebase.js kabariTetap` meneruskan `acaraServer` = `fromCache` pendengar `tutupBukuAcara` SAJA (snapshot server koleksi tetap lain — denyut, setelan — bukan jawaban berita acara; mutasi M31 dulu lolos, kini C14 + kontrol). Sanggahan kedua: **tidak lagi "sekali benar, tetap benar"** — SDK menandai berita acara "dari simpanan" saat server berhenti menjawab, atau peramban mengabarkan offline → sesi menahan SAAT ITU (memori = keadaan terakhir yang dijawab server, aman: sejak itu tanpa data server baru); tersambung → ditahan sampai berita acara dijawab server lagi (bila SDK tidak sempat menandai "dari simpanan" — putus sebentar — jawaban terakhirnya masih berlaku). S tetap menempel selama ditahan: ubahannya hanya mengisi simpanan. Buka biasa: memori seketika dari simpanan (beku), pil memuat menunggu satu jawaban server berita acara. Lensa hari biasa & jalan keluar (PR #122): snapshot SERVER baru dari pendengar berita acara SENDIRI diteruskan SEKALI sebagai `acaraBaru` = bukti tersambung (efek kabar `online`, juga bila kabar itu hilang — tab ditangguhkan / bfcache; denyut, setelan & `_dariCache` lama bukan bukti). Pendengar berita acara yang MATI (galat SDK) → `acaraTerputus`: tidak dijawab server (ditahan saat itu, aman), dipasang ulang sesudah 1, 2, 5 menit lalu tiap 5 menit (`HB_ACARA_ULANG_MS`, tiap pasang ±1 baca), asal berita acara lama dari kabar koleksi tetap lain tidak melepasnya; pulih = jawaban server pendengar baru (tidak lagi disebut "ditolak"). Saklar MATI: seperti dulu (ditolak, tidak dipasang ulang) |
+| (b) di tengah sesi | penahanan yang mulai DI TENGAH sesi (memori tadinya hidup) dibekukan SEKETIKA untuk semua koleksi (dulu malas di kabar simpanan berikutnya — yang bisa sudah membawa saldo pembuka). Mulai karena berita acara berganti selagi S/F menempel (sambungan mati TANPA kabar: Mac tidur, tab ditangguhkan) atau selagi tutup buku berjalan → simpanan bisa campuran → **disembunyikan** + rekam `bkCampur` (muat ulang juga kosong) |
+| (b) bercampur | rekam `bkCampur` dipasang: F selama tutup buku BERJALAN; simpanan yang benar-benar BERUBAH selama ditahan (data server lewat S/F/limbo — bukan tulisan/hapus sendiri) saat tutup buku berubah (sanggahan kedua: dulu dipasang saat F wajib dipasang → F yang macet sebelum membawa apa pun membuat muat ulang berikutnya kosong padahal simpanannya bersih); penahanan tengah sesi yang tidak aman. Dibuang saat F selesai tanpa tutup buku berjalan, atau dengar penuh terkini ketika ritual berakhir |
+| disembunyikan | memori KOSONG (+ tulisan sendiri) untuk SEMUA koleksi hemat bila, saat penahanan mulai: ada koleksi bertanda `bkCampur`, atau jenis catatan BEDA ZAMAN (rekam `bk` tidak sama — aplikasi ditutup di tengah penghalang: sebagian sudah sesudah ritual, sebagian belum; sanggahan kedua), atau penahanan tengah sesi yang tidak aman. Ditetapkan sekali per penahanan (koleksi yang selesai lebih dulu tidak membuat campuran), padam saat dilepas. Kabar "Angka disembunyikan (tampil kosong — bukan nol) … — <yang ditunggu: tanpa internet / server belum menjawab / kuota baca habis, dibaca lagi sesudah pukul HH.00 WIB / tunggu>" dan kelengkapan "disembunyikan sampai dibaca penuh — …" DIDAHULUKAN dari kalimat server diam / F gagal / tanpa internet (dulu memori kosong mengaku "angka dari simpanan perangkat ini"). Pengecualian: berita acara menyebut tutup buku BERJALAN dan (dijawab server, atau perangkat ini PEMEGANG ritual — `acara.pemegang.id` = `idPerangkat`): memori = simpanan, keadaan ritual yang diikutinya (Mac pemegang yang ditutup di tengah ritual — K11 TIDAK MUAT: sisa arsip terbaca). Sanggahan kedua: dulu pengecualian ini untuk SEMUA perangkat → iPad yang ikut dengar penuh, ditutup di tengah ritual, dibuka tanpa internet / server diam = DOBEL berjam-jam. Berita acara berganti → ditentukan ulang |
+| tidak ditahan | perangkat yang MENJALANKAN / terbuka selama ritual (dengar penuh KARENA tutup buku berjalan, berita acara terjawab server): memori mengikuti ritual seperti dulu — saldo pembuka masuk; catatan arsip keluar seketika di perangkat yang mengarsip, sedangkan perangkat yang dibuka di tengah ritual memegang catatan yang sudah diarsipkan sampai limbo baca penuhnya selesai |
+| tanpa internet | pil tidak menggantung: siap (memori tetap beku), pil kepala & kabar mengaku. Juga saat putus di tengah baca penuh wajib. Hari biasa juga: putus = memori beku sampai berita acara dijawab server lagi (tulisan perangkat ini tetap tampil) |
+| server diam | tersambung tapi berita acara belum dijawab server 30 detik sejak dibuka / tersambung lagi (kuota baca habis sampai reset 14.00/15.00 WIB, sinyal lemah — sanggahan P5): siap (memori tetap beku), belum terperiksa; kabar, kelengkapan & penolakan uang-kritis menyebut "server belum menjawab <sejak …> (kuota baca habis atau sinyal lemah)" — patokan waktunya (lensa hari biasa PR #122): "sejak aplikasi dibuka" bila server belum pernah menjawab sesi ini, "sejak tersambung lagi" sesudah kabar `online`, "sejak pukul HH.MM WIB" bila berhenti menjawab di tengah sesi (dulu selalu "sejak aplikasi dibuka"). Simpanan TIDAK dipercaya (kosong padahal rekam ≥ 1) → tetap memuat, kelengkapan "belum bisa dihitung (<sebabnya>) — server belum menjawab …" (M14). Tanda server diam dihitung lagi dari saat tersambung (dulu menempel dari masa tanpa internet → sebab menyesatkan) |
+| kabar | DIHITUNG dari keadaan sekarang (dulu dicatat saat pil lepas lalu tertinggal basi — "Tanpa internet: tutup buku berubah …" berjam-jam sesudah baca penuh selesai): disembunyikan › pemeriksaan tutup buku terputus › server diam › tanpa internet › baca penuh gagal. Terputus (PR #122): "Pemeriksaan tutup buku terputus (angka dari simpanan perangkat ini, belum terperiksa) — dicoba lagi otomatis; bila tetap begini, muat ulang aplikasi (sesudah pukul HH.00 WIB bila kuota habis)" — juga di kelengkapan, uang-kritis & ekor "disembunyikan", didahulukan dari server diam ("tidak perlu muat ulang" tidak berlaku) |
+| kelengkapan | baca penuh yang sedang berjalan disebut lebih dulu dari "ubahan terbaru"; memori beku karena sebab di luar koleksi itu (berita acara belum dijawab server lagi, penghalang bersama) = belum lengkap walau dengar penuh terkini / hitungan cocok; uang-kritis menolak selama ditahan apa pun (juga dengar penuh terkini) |
+
+**Uji** (`alat-uji/uji_hemat_baca.py`, jsc, server mainan dengan baca penuh LAMBAT: dipasang → jawaban server masuk simpanan → limbo membuang catatan arsip):
+murni rencana wajib; B1 (perangkat baru: pil memuat tetap selama F berjalan walau berita acara terjawab), B2 (buka biasa: memori seketika, siap sesudah berita
+acara dari server, tanpa baca penuh); **T6b** (tertutup selama ritual, F lambat: tidak pernah dobel di tiap tahap, pil memuat, tanpa S, tulisan sendiri
+tampil; + rem kuota aktif dari denyut perangkat ritual: F tetap jalan & selesai tanpa ketukan); **T6c** (berita acara dari simpanan dulu); T6d (F terputus di
+tengah limbo → sesi berikut memori kosong, bukan dobel); T6e (perangkat ritual sendiri tidak dibekukan); T6f (F wajib gagal: pil lepas, memori beku, jeda 10
+menit); T6g (simpanan bercampur tanpa internet: pil lepas, memori kosong, kabar mengaku); C14 (`acaraServer` dari `fromCache`), C15 (`tulisBerkas` →
+`catatTulis`; kiriman uang-kritis yang ditolak sebelum dikirim tidak dicatat). T6b & T6c MERAH di kode sebelum obat; 17 kontrol baru (P5a–P5f), kontrol (i)
+disesuaikan. Limbo SDK sungguhan belum diuji di peramban (lihat "Belum dibangun"; uji peramban hanya di runner CI).
+
+**Sanggahan P5 (8 Okt).** Server mainan: pendengar simpanan kini berbunyi HANYA bila isi simpanannya berubah (seperti SDK) — dulu dikabari ulang tiap S/F
+dipasang, jadi baris pelepas memori beku (`selesaiF`, `lepasTahan`) tidak dijaga uji apa pun; mode "server diam" (tersambung, server tidak menjawab) dan
+hitungan server yang dijawab belakangan. Uji baru: **T6e2** (Mac yang menjalankan ritual ditutup di tengah ritual, dibuka lagi saat server diam: memori =
+simpanannya, bukan kosong; pil lepas sesudah 30 detik, kabar & kelengkapan "server belum menjawab", uang-kritis menolak), **T6e3** (perangkat lain ditutup di
+tengah ritual, ritual selesai selagi tertutup: berita acara simpanan "terkunci" → simpanan; server "selesai" → kosong sampai baca penuh selesai), **T6h**
+(putus internet di tengah baca penuh wajib: pil lepas, memori beku; hapus sendiri hilang dari memori beku), **T6i** (dengar penuh karena kasir.html di
+perangkat tertutup selama ritual: ditahan, tidak dobel; terkini → memori = server sebelum hitungan menjawab), **T6j** (server diam tanpa tutup buku: 29 detik
+memuat, 30 detik siap dengan sebabnya); T6d ditambah catatan baru perangkat lain selama tombol baca penuh. T6e2, T6e3, T6i & T6j MERAH di kode sebelum
+sanggahan; 14 kontrol baru (P5b, P5d, P5e, P5f), 4 kontrol P5 disesuaikan — seluruh `--kontrol` berbunyi.
+
+**Sanggahan kedua P5 (8 Okt).** Temuan: tidak ada tirai yang menutup layar (siap = pil saja), jadi semua keadaan yang dianggap "di balik tirai" tergambar;
+tahan per koleksi padahal stok/bon/utang lintas koleksi (DOBEL di jalur utama: batchMasuk selesai lebih dulu dari penjualan); sesi HIDUP yang putus / tidur
+selama ritual membekukan malas simpanan yang sudah dibawa S; pengecualian "berita acara menyebut tutup buku berjalan" untuk semua perangkat (iPad dibuka tanpa
+internet / server diam = DOBEL); memori kosong mengaku "angka dari simpanan perangkat ini"; mutasi M31 (acaraServer dari koleksi tetap lain), M14 (server
+diam + simpanan tidak dipercaya), M20 (layar tidak dikabari saat pil lepas) lolos uji. Obat: tabel di atas (pelindung, TAHAN penghalang bersama, berita acara
+tidak lengket, di tengah sesi, bercampur bila berubah, disembunyikan + beda zaman + pemegang, kabar dihitung). Server mainan: `putus` = kabar peramban + SDK
+menandai berita acara "dari simpanan"; `sambung` = server menjawab berita acara lagi; `tidur`/`bangun` = sambungan mati tanpa kabar apa pun; `jawab` (server
+diam berakhir) tanpa kabar peramban; `keluar.berubah` dihitung. Uji baru **T6k** (lintas koleksi batchMasuk − penjualan, putus di tengah), **T6l** (ditutup di
+tengah penghalang → beda zaman → disembunyikan), **T6m** (sesi hidup putus selama ritual: dua urutan + kuota habis), **T6n** (tidur tanpa kabar → disembunyikan),
+**T6o** (F wajib macet sebelum membawa apa pun → muat ulang = simpanan), **T6p** (bercampur + kuota habis → kabar disembunyikan), **T6q** (perangkat lain,
+berita acara simpanan "terkunci", server diam / tanpa internet → kosong), **T6r** (M14), **T6s** (tanda server diam dari masa tanpa internet), **T6t** (pemegang
+yang ritualnya diambil alih → ditentukan ulang), **T6u** (semua koleksi dengar penuh → lepas sebelum hitungan), **T6v** (uang-kritis selagi berita acara belum
+dijawab lagi); T6e2 (berita acara pemegang), T6e3, T6g, T6h (kabar tidak basi), T6i (penghalang bersama), T6j (layar dikabari — M20), C14 (tidak lengket + M31)
+disesuaikan. T6k–T6t & T6v (+ T6e3, T6g, T6h, T6i, C14 yang disesuaikan) MERAH di kode sebelum obat — 19 merah; T6u & T6j (M20) penjaga baris;
+kontrol baru P5g–P5l, M14, M20, M31 (+ 14 kontrol P5 disesuaikan ke baris barunya) — seluruh `--kontrol` (122) berbunyi.
+
+**Lensa hari biasa (audit PR #122, 8 Okt).** Sejak sanggahan kedua, putus = memori beku juga di hari biasa (hemat baca NYALA, tanpa tutup buku).
+Temuan berat: catatan yang DIHAPUS perangkat ini lalu DITULIS LAGI dengan id sama di sesi yang sama hilang dari memori selama beku (putus bisa berjam-jam, juga
+jendela sesudah tersambung sebelum berita acara dijawab), begitu juga hapus yang DITOLAK server — `pasokK` membuang semua id `hapusSesi` SESUDAH memasukkan
+tulisan sendiri. Jalur nyata dengan id tetap: katalog harga literan/karung (id = merek) & kemasan (merek_ukuran) — "Hapus" lalu harganya disetel lagi → tuts
+Jual "harga?"; kartu pelanggan (id = kunci nama) — Satukan lalu nama lama ditambah lagi; MDR tutup hari diulang (`mdr-<tgl>`); harga pasar & pajak omzet luar.
+Obat (satu putaran di `pasokK`): catatan yang disentuh perangkat ini (tulis ATAU hapus) mengikuti simpanan perangkat — hapus tetap hilang seketika, ditulis lagi /
+hapus yang ditolak tampil. Tidak membuka jalan dobel: yang disentuh hanya catatan perangkat ini (saldo pembuka ditulis perangkat ritual, yang tidak ditahan).
+Uji **T6w** (MDR dihapus lalu ditulis lagi, putus, ditulis lagi selagi putus, 3 jam; hapus selagi beku tetap hilang) & **T6x** (hapus ditolak server, putus 2
+jam) MERAH sebelum obat; kontrol (P5b) "dihapus perangkat ini sendiri" disesuaikan ke baris baru, 2 kontrol baru P5m (putaran lama; obat hanya di tulis ulang —
+hapus yang ditolak tetap hilang) — seluruh `--kontrol` (124) berbunyi.
+
+**Lensa hari biasa & jalan keluar — temuan sedang/rendah (audit PR #122, 8 Okt).** Tadinya hanya dicatat di "Sisa yang diakui"; kini dibetulkan, obat sekecil
+mungkin (saklar MATI tidak berubah):
+(1) *Memori beku MACET bila kabar `online` peramban hilang* (`bkServer = acaraSrv && G.online`, `G.online` hanya dari kabar `online`/`offline` window).
+`firebase.js kabariTetap` meneruskan `acaraBaru` = snapshot SERVER baru dari pendengar `tutupBukuAcara` sendiri, SEKALI; `setelTetap` dengan `acaraBaru`
+selagi sesi mengira tanpa internet menjalankan efek `online(true)`. Bukan dari `_dariCache` lama, bukan dari snapshot koleksi tetap lain (denyut / setelan bisa
+tiba dari server di jendela antara kabar offline dan SDK menandai berita acara "dari simpanan" — melepas memori di jendela itu membuka jalan dobel saat ritual).
+Kabar `offline` tanpa susulan pulih dengan cara yang sama begitu berita acara dijawab server.
+(2) *Pendengar berita acara MATI* (galat SDK, sesudah hanya jawaban dari simpanan / tanpa jawaban sama sekali) → dulu semua koleksi hemat beku selamanya dengan
+kalimat "tidak perlu muat ulang". Kini `tolak()` (nyala saja) mengabari `hbSesi.acaraTerputus`: ditahan, dipasang ulang sesudah 1, 2, 5 menit lalu tiap 5 menit,
+kabar / kelengkapan / uang-kritis "pemeriksaan tutup buku terputus — dicoba lagi otomatis; bila tetap begini, muat ulang aplikasi (sesudah pukul HH.00 WIB bila
+kuota habis)". Mati sesudah dijawab server juga ditahan (berita acara tidak lagi diketahui). Pulih = jawaban server pendengar baru.
+(3) *Kalimat "sejak aplikasi dibuka"* untuk server yang diam di tengah sesi → "sejak tersambung lagi" (kabar `online`, sesi yang pernah dijawab server) /
+"sejak pukul HH.MM WIB" (berhenti menjawab selagi tersambung; jam server perangkat bila diketahui). Sesi yang belum pernah dijawab tetap "sejak aplikasi dibuka".
+Uji **T6y** (putus → SDK tersambung tanpa kabar `online`; kabar `offline` tanpa susulan), **T6z** (mati sesudah jawaban simpanan: kalimat, jeda 1/2/5/5 menit,
+pulih), **T6z2** (mati sebelum menjawab apa pun; mati sesudah dijawab server), **T6aa** (+ murni: patokan waktu; ekor "disembunyikan"), **C16** (`acaraBaru`
+hanya dari pendengar berita acara, sekali), **C17** (galat → pasang ulang lewat jadwal sesi, pulih tidak lagi "ditolak"; saklar MATI tidak memasang ulang) —
+semuanya MERAH sebelum obat (7 merah) kecuali C17 mati (penjaga); kontrol baru P5n (5), P5o (11), P5p (7), dan P5c, P5f, P5l, M14, M31 diarahkan ke baris
+barunya — seluruh `--kontrol` (147) berbunyi.
+
+**Sisa yang diakui.** Selama baca penuh wajib berjalan (detik sampai ± semenit untuk ±18 rb catatan; berjam-jam bila kuota habis di tengahnya), layar menggambar
+isi simpanan perangkat itu saat terakhir dibuka / saat server berhenti menjawab, untuk SEMUA jenis catatan (tanpa catatan perangkat lain sesudahnya — saldo
+stok, piutang & utang bisa beda dengan server, jangan dipakai) atau kosong (disembunyikan, dengan kabar), dengan "memuat…" / "memeriksa data (n)" di kepala.
+Selama berita acara (dari server, atau milik perangkat ini sebagai pemegang) menyebut tutup buku berjalan, perangkat itu menggambar keadaan ritual yang terakhir
+diikutinya (catatan tahun lalu yang belum diarsip + saldo pembuka — seperti perangkat yang terbuka selama ritual). Sambungan yang mati TANPA kabar (tidak ada
+offline dari peramban, SDK tidak menandai "dari simpanan") lalu hidup lagi dengan kabar simpanan berisi saldo pembuka SEBELUM jawaban berita acara: campuran
+bisa tergambar sesaat (antara dua kabar SDK; urutan SDK biasanya berita acara dulu karena pendengarnya didaftarkan lebih awal) — begitu berita acara tiba,
+disembunyikan. Server diam: sesudah 30 detik angka simpanan tampil, dengan kabar & pil "memeriksa data"; baca penuh wajib yang macet karena kuota habis SESUDAH
+berita acara terjawab tetap "memuat…" (dan tanpa kabar server diam) sampai reset — memorinya tetap utuh (beku). Hari biasa (hemat baca NYALA, tanpa tutup buku):
+tiap buka & tiap tersambung lagi, memori beku ±1 jawaban server (berita acara); S baru dipasang SESUDAH jawaban itu, jadi nota perangkat lain tampil sesudah ±2
+jawaban server (saklar MATI: 1). Server diam di hari biasa: kiriman sesi lalu yang tertunda lalu DITOLAK server tetap tampil di memori beku sampai server
+menjawab (saklar MATI: hilang seketika) — kecil kemungkinannya. Butir "Perangkat lain sesudah ritual" di daftar periksa 1 Jan (`docs/prosedur-pulih-darurat.md`, PR #119) tetap berlaku sebagai
+penjaga kedua: buka, tunggu "memuat" & pil hilang, baru berjualan.
+
+**Sisa yang diakui — lensa hari biasa (audit PR #122, 8 Okt).** Tiga temuan sedang/rendah (memori beku macet bila kabar `online` hilang, pendengar berita
+acara mati, kalimat "sejak aplikasi dibuka") sudah dibetulkan — lihat paragraf "Lensa hari biasa & jalan keluar" di atas. Yang tersisa:
+
+- (rendah, belum terbukti di peramban) Kabar `offline` palsu (peramban mengira putus, SDK tidak pernah putus) yang tidak disusul `online`: SDK tidak memberi
+  snapshot baru berita acara bila isinya tidak berubah, jadi memori tetap beku sampai kabar `online` berikutnya, berita acara berubah, atau muat ulang;
+  kelengkapan menyebut "perangkat ini tanpa internet". Snapshot koleksi tetap lain sengaja tidak dipakai sebagai bukti (lihat butir (1) di atas).
+- (rendah) Pendengar berita acara yang dipasang ulang hidup tapi hanya dijawab simpanan (server diam): tidak dipasang ulang lagi (SDK sendiri yang mencoba);
+  kabar tetap "pemeriksaan tutup buku terputus …" sampai server menjawab.
+- (rendah, belum terbukti) Mematikan hemat baca saat server belum menjawab (kuota habis): pendengar penuh saklar MATI menggambar seluruh simpanan tanpa saringan
+  batu nisan → catatan yang dihapus perangkat lain di luar jendela S sejak baca penuh terakhir (≤ 14 hari) bisa tampil lagi sampai server menjawab (sesudah
+  reset). Prosedur bab Hemat baca butir 4 justru menganjurkan mematikan bila kuota habis (429). Bukan dari P5 (sudah ada sejak 7 Okt); hari ritual prosedur
+  sudah melarang `?hemat=mati`.
+- (rendah) Pendengar berita acara terputus SELAGI tanpa internet: kabar berbunyi "pemeriksaan tutup buku terputus … muat ulang", sedangkan kelengkapan &
+  uang-kritis berbunyi "tanpa internet". Saran muat ulang tidak menolong selagi tanpa internet; angkanya tetap aman (ditahan).
+- (rendah) Jeda pasang ulang pendengar berita acara (1, 2, 5 menit lalu tiap 5 menit) mulai dari 1 menit lagi tiap kali server sempat menjawab. Pendengar yang
+  jatuh-bangun dipasang ulang ±1 menit sekali (±1 baca tiap pasang, < ±2,7 rb baca sehari pada keadaan terburuk yang diukur).
+
+**Pemeriksa akhir PR #122 (8 Okt) — dibetulkan.** (1) `arsipkanBerkas` mencatat tiap catatan yang diarsip ke sesi hemat (`catatHapus`) dan `pulihkanBerkas`
+(batal tutup buku) mencatat tiap catatan yang dikembalikan (`catatTulis`). Dulu PEMEGANG ritual yang memorinya ditahan di tengah langkah (pendengar berita
+acara mati, atau putus internet) menggambar catatan 2026 BERSAMA saldo pembuka (dobel) sampai berita acara dijawab server lagi. Uji T6ab & C18, kontrol (P5q).
+(2) Jawaban server berita acara yang tertahan karena koleksi tetap belum lengkap tidak lagi dipakai oleh kabar koleksi tetap LAIN sesudahnya (bisa basi: sudah
+putus lagi) — hanya kabar pendengar berita acara sendiri yang membawanya. Uji C16b, kontrol (P5q).
 
 ## Belum dibangun (tahap berikut / bila perlu)
 

@@ -2198,6 +2198,48 @@ tidak dipinjamkan ke yang lain ("…; 2 jenis catatan lainnya <sebabnya>"), "(n 
 tautologis), kasus K4 (baca penuh sesi ini + putus internet; kontrol K4 kini berbunyi di sana, bukan di B9), K5 (tab berhenti), K6/K6b/K6c (klaim + sentuhan gagal
 sekali / permanen / bulan terkunci), pembanding mati menggambar kartu kunci bulan dari layar & menolak pembanding kosong.
 
+**Audit P5 (8 Okt) — hemat baca × arsip tutup buku.** Arsip tutup buku menghapus tanpa batu nisan; perangkat owner yang hemat bacanya NYALA dan tertutup
+selama ritual dulu membuka dengan catatan tahun lalu dari simpanannya SEKALIGUS saldo pembuka yang dibawa S (stok, bon, utang DOBEL di Jual, Gudang,
+Pelanggan, bon), tirai "memuat" sudah lepas, dan baca penuhnya bisa ditahan rem kuota sampai reset. Kini (`hemat-baca.js` + `firebase.js`): baca penuh karena
+tutup buku berubah = **WAJIB** (seperti tombol: menembus rem, tidak turun ke delta; gagal → jeda 10 menit); koleksi **DITAHAN** selama baca penuh sesi itu
+belum selesai DAN berita acara belum dijawab SERVER (`acaraServer` dari `fromCache` pendengar `tutupBukuAcara` — berita acara dari simpanan bisa basi) /
+tutup buku berubah / simpanan bisa bercampur (rekam `bkCampur`, baca penuh sesudah tutup buku terputus di sesi lalu → memori mulai kosong). Ditahan =
+tirai memuat, tanpa S, memori BEKU (isi simpanan saat ditahan + tulisan perangkat ini sendiri lewat `catatTulis`) — tidak pernah catatan arsip + saldo
+pembuka sekaligus, juga selama limbo baca penuh. Perangkat yang menjalankan / terbuka selama ritual (dengar penuh) tidak ditahan. Buka biasa: memori tetap
+seketika dari simpanan, tirai menunggu satu jawaban server berita acara. Tanpa internet: tirai tidak menggantung. Uji `uji_hemat_baca.py` B1, B2, T6b–T6g,
+C14, C15 (+ 17 kontrol P5a–P5f); rincian: `docs/rancangan-hemat-baca.md` bagian "Hemat baca × arsip tutup buku". Butir "Perangkat lain sesudah ritual" di
+prosedur tetap: tunggu "memuat…" / "memeriksa data" hilang sebelum berjualan (perangkat hemat baca MATI tetap bisa dobel sementara).
+
+**Sanggahan P5 (8 Okt).** (1) Mac yang menjalankan ritual, ditutup di tengah ritual (K11 TIDAK MUAT) lalu dibuka lagi: dulu memori KOSONG sampai server
+menjawab berita acara (sisa arsip di Uang › Tutup buku terbaca habis) — kini memori kosong hanya bila simpanan bisa bercampur DAN berita acara yang terbaca
+(simpanan atau server) tidak menyebut tutup buku berjalan; berganti → ditentukan ulang. (2) Tersambung tapi server diam (kuota baca habis sampai reset, sinyal
+lemah): dulu tirai "memuat" menunggu tanpa batas — kini siap sesudah 30 detik dari simpanan (memori tetap beku, belum terperiksa), kabar, kelengkapan &
+penolakan uang-kritis menyebut "server belum menjawab sejak aplikasi dibuka", bukan "tunggu sebentar". (3) Koleksi yang dengar penuh karena penulis tanpa
+cap (bukan karena tutup buku berjalan) juga ditahan; tahan berakhir saat dengar penuh TERKINI (memori tidak tertinggal beku selagi uang-kritis menganggapnya
+segar). (4) Server mainan: pendengar simpanan berbunyi hanya bila isinya berubah — baris pelepas memori beku kini dijaga. Uji T6e2, T6e3, T6h, T6i, T6j
+(+ 14 kontrol); kalimat prosedur "Perangkat lain sesudah ritual" kini membedakan hemat baca NYALA (tidak dobel, angka lama/kosong) dan MATI (dobel sementara).
+
+**Sanggahan kedua P5 (8 Okt).** "Tirai memuat" di dua paragraf di atas = pil kepala "memuat…" saja: `/baru/` tidak punya tirai yang menutup layar (siap hanya
+melepas penjarangan gambar), jadi MEMORI satu-satunya pelindung. (1) PENGHALANG BERSAMA: selama ada jenis catatan yang menunggu baca penuh karena tutup buku,
+SEMUA koleksi hemat beku dan dilepas serentak (dulu per koleksi → batchMasuk sesudah ritual + penjualan 2026 = stok terpotong dua kali). (2) Berita acara tidak
+lagi "sekali dijawab server, tetap dijawab": putus / SDK menandai "dari simpanan" → memori dibekukan saat itu; tersambung → ditahan sampai dijawab lagi. Tahan
+yang mulai di tengah sesi dibekukan seketika; bila berita acara berganti selagi S menempel (tidur tanpa kabar) → disembunyikan. (3) Memori kosong hanya bila
+tidak ada keadaan utuh (bercampur, beda zaman, tengah sesi tidak aman) dan DISEBUT: kabar "Angka disembunyikan (tampil kosong — bukan nol) …" & kelengkapan
+"disembunyikan sampai dibaca penuh …", didahulukan dari server diam / F gagal. Simpanan setengah ritual dipakai hanya oleh PEMEGANG ritual atau bila server
+menjawab ritual berjalan (dulu semua perangkat → iPad dobel saat server diam). Bercampur ditandai bila simpanan benar-benar berubah selama ditahan, bukan saat
+F dipasang. (4) Kabar dihitung dari keadaan (tidak basi); server diam + simpanan tidak dipercaya tetap memuat; tanda server diam dihitung dari saat tersambung;
+uang-kritis menolak selama memori beku apa pun. Uji T6k–T6v + C14 (M31), kontrol P5g–P5l, M14, M20, M31; rincian: `docs/rancangan-hemat-baca.md` bagian
+"Hemat baca × arsip tutup buku".
+
+**Lensa hari biasa (audit PR #122, 8 Okt).** Putus = memori beku juga di hari biasa; catatan yang dihapus perangkat ini lalu ditulis lagi dengan id sama
+(katalog harga id = merek, kartu pelanggan id = nama, MDR tutup hari diulang) dan hapus yang ditolak server dulu hilang dari memori selama beku. Kini catatan
+yang disentuh perangkat ini (tulis ATAU hapus) mengikuti simpanan perangkat (`hemat-baca.js pasokK`); hapus tetap hilang seketika. Uji T6w, T6x + kontrol
+P5m. Temuan sedang/rendah lensa yang sama, kini dibetulkan juga: (1) jawaban SERVER baru dari pendengar berita acara sendiri = bukti tersambung (kabar `online`
+peramban yang hilang tidak lagi membuat memori beku macet sampai muat ulang); (2) pendengar berita acara yang MATI dipasang ulang otomatis (1, 2, 5 menit, lalu
+tiap 5 menit) dan selama itu kabar, kelengkapan & uang-kritis berbunyi "pemeriksaan tutup buku terputus — dicoba lagi otomatis; bila tetap begini, muat ulang
+aplikasi …" (bukan "tidak perlu muat ulang"); (3) server diam di tengah sesi disebut "sejak tersambung lagi" / "sejak pukul HH.MM WIB". Uji T6y–T6aa, C16, C17
++ kontrol P5n–P5p; sisa yang masih diakui: `docs/rancangan-hemat-baca.md` bagian "Sisa yang diakui — lensa hari biasa".
+
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 
 Status sesudah PR #111 digabung: langkah 1–2 SELESAI; langkah 3–7 = tugas owner (sesudah 13 Okt tidak ada lagi yang mengerjakannya untuk owner).
