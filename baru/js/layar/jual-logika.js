@@ -28,6 +28,7 @@ import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSem
 import { hariIniIso, RP, tanggalPendek, pecahLebih } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan, tolakBatalReturBon } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
+import { hppKeluar, hppKeluarPerKg, modalRataPerKg, nilaiSelisihKg } from '../mesin/modal-fifo.js';
 import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisWadah, bebasWadah } from './wadah-jual-logika.js';
 // putaran 27: wadah bernama, isi per merek asal
 import { wbDariWadah, wbPecahanBaris, wbBagianMerk, wbKomposisi, wbPecah, wbModalPerKg, wbRasio, wbMerkCadangan, wbLiteranLangsung, MEREK_KARUNG_BAWAAN } from './wadah-bernama-logika.js';
@@ -131,7 +132,7 @@ export function susunRak(s, opsi) {
       // identitas: isian berat karung tetap diisi berurutan seperti susun penuh (geraKarung) — jejaknya sama
       const g = identitas ? (setelBeratDom(berat), {}) : geraKarung(merk, berat); beratAkhir = berat;
       rak.karung.push({ jalur: 'karung', kunci: merk, nama: hgNama, ukuran: berat + ' kg', harga: hg.perUnit, satuan: 'karung', indukUkuran: uk ? uk.induk : '',
-        berat, sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
+        berat, sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: hppKeluarPerKg(stokKarung[merk]),
         dipegang: g.dipegang });
     });
     // putaran 27 (Bagian 5): literan per MEREK hanya untuk merek yang dijual literan LANGSUNG dari karungnya; literan wadah = chip per wadah (di bawah)
@@ -139,7 +140,7 @@ export function susunRak(s, opsi) {
     if (hl && hl.hargaPerLiter > 0) {
       const g = identitas ? {} : geraLiteranLangsung(merk);
       rak.literan.push({ jalur: 'literan', kunci: merk, nama: merk, ukuran: 'per liter', harga: hl.hargaPerLiter, satuan: 'L',
-        rasio: rasioMerk(merk), sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
+        rasio: rasioMerk(merk), sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: hppKeluarPerKg(stokKarung[merk]),
         dipegang: g.dipegang });
     }
     // REPACKING DADAKAN: kg bebas dari kolam karung merek ini, harga per kg katalog (hitungTotalJual index.html 18926)
@@ -147,7 +148,7 @@ export function susunRak(s, opsi) {
     if (perKg !== null && perKg > 0) {
       const g = identitas ? {} : geraRepack(merk);
       rak.repack.push({ jalur: 'repack', kunci: merk, nama: merk, ukuran: 'kg bebas · buka sack', harga: perKg, satuan: 'kg',
-        sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
+        sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: hppKeluarPerKg(stokKarung[merk]),
         dipegang: g.dipegang });
     }
   });
@@ -345,7 +346,7 @@ export function bangunBaris(chip, jumlah, s, ekstra) {
     // langit-langit stok; pemecahan pastinya dihitung ulang saat nota dicatat), modal = Σ kg tiap merek asal × modalnya
     if (chip.wadahLiteran) { const pc = wbPecah(chip.kunci, totalKg, s && s.keranjang ? s : null); const stok = hitungStokKarungPerMerk();
       t.dariWadah = chip.kunci; t.pecahan = pc.bagian; t.merkSumber = pc.bagian.length ? pc.bagian[0].merk : wbMerkCadangan(chip.kunci);
-      t.hppTotalSaatJual = Math.round(pc.bagian.reduce((a, x) => a + x.kg * ((stok[x.merk] || {}).hppTerakhirPerKg || 0), 0)) + biayaK; }
+      t.hppTotalSaatJual = Math.round(pc.bagian.reduce((a, x) => a + x.kg * modalRataPerKg(stok[x.merk]), 0)) + biayaK; }   // wadah campuran = rata-rata (owner 9 Okt)
   } else if (chip.jalur === 'repack') {
     const nama = String(e.namaProduk !== undefined ? e.namaProduk : (s && s.namaRepack) || '').trim() || chip.nama;
     t = { jenis: 'repacking', merkSumber: chip.kunci, namaProduk: nama, totalKg: j, hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * j),
@@ -1139,13 +1140,23 @@ export function pecahItemsWadah(items, s) {
       r.hargaTotal = akhir ? t.hargaTotal - rp : Math.round(t.hargaTotal * x.kg / kgTot); rp += r.hargaTotal;
       r.jumlahLiter = akhir ? Math.round((t.jumlahLiter - lt) * 1000) / 1000 : Math.round(t.jumlahLiter * x.kg / kgTot * 1000) / 1000; lt += r.jumlahLiter;
       if (t.nilaiBarangPengganti !== undefined) { r.nilaiBarangPengganti = akhir ? t.nilaiBarangPengganti - nb : Math.round(t.nilaiBarangPengganti * x.kg / kgTot); nb += r.nilaiBarangPengganti; }
-      r.hppTotalSaatJual = Math.round(x.kg * ((stok[x.merk] || {}).hppTerakhirPerKg || 0)) + (k === 0 ? (t.biayaKemasanLiteran || 0) : 0);
+      r.hppTotalSaatJual = Math.round(x.kg * modalRataPerKg(stok[x.merk])) + (k === 0 ? (t.biayaKemasanLiteran || 0) : 0);   // wadah campuran = rata-rata (owner 9 Okt)
       if (k > 0) { delete r.kemasanLiteran; delete r.biayaKemasanLiteran; delete r.jumlahKemasanLiteranDipakai; }
       r._takaran = 't' + i;
       if (t.perluCocokkan && n > 1) { if (kurangM[x.merk] > 0.004) r.selisihKg = kurangM[x.merk]; else { delete r.perluCocokkan; delete r.selisihKg; } }
       pakai[x.merk] = (pakai[x.merk] || 0) + x.kg;
       out.push(r); });
     sudah.push({ trx: { jenis: 'literan', dariWadah: t.dariWadah, pecahan: bag } });
+  });
+  // modal FIFO (owner 9 Okt 2026, saklar aturanToko/catatStok.modalFifoMulai): baris karung / literan langsung / repack dari merek KARUNG = modal kedatangan
+  // TERLAMA yang masih ada (mesin/modal-fifo.js); dua baris merek sama di satu nota mengambil berurutan. Wadah (kunci 'Wadah …' & pecahan wadah model lama)
+  // tetap rata-rata. Saklar mati → angka bangunBaris apa adanya. Kantong literan & wadah repack tetap ditambahkan seperti di bangunBaris.
+  const fifoAmbil = {};
+  out.forEach((r) => {
+    const st = stok[r.merkSumber]; if (!st || st.metode !== 'fifo' || r.dariWadah || ['karung', 'literan', 'repacking'].indexOf(r.jenis) < 0) return;
+    const kg = Number(r.totalKg) || 0;
+    r.hppTotalSaatJual = Math.round(hppKeluar(st, kg, fifoAmbil[r.merkSumber])) + (r.biayaKemasanLiteran || 0) + (r.biayaKemasanRepack || 0);
+    fifoAmbil[r.merkSumber] = (fifoAmbil[r.merkSumber] || 0) + kg;
   });
   return out;
 }
@@ -1309,8 +1320,9 @@ export function susunHapusKarungHabis(merk, lokasi, w, yakin, opsi) {
   // audit 39b no. 5: karung sudah tidak ada → bukunya WAJIB 0. Sisa kecil (≤ 0,5 kg) ikut dicatat tanpa ketukan kedua; buku MINUS (takar melebihi buku) dicatat LEBIH — dulu tertinggal selamanya
   if (Math.abs(buku) > 0.004) {
     if (Math.abs(buku) > 0.5 && !yakin) return { tolak: 'Karung ' + nama + ' ' + letak + ' habis, tapi bukunya masih ' + (buku < 0 ? 'MINUS ' + wdKG(-buku) + ' — ketuk sekali lagi untuk menghapus sekaligus mencatat LEBIH ' + wdKG(-buku) + ' (buku karung belakang jadi 0; stok naik tanpa pembelian, modal per kg tetap)' : '±' + wdKG(buku) + ' — ketuk sekali lagi untuk menghapus sekaligus mencatat susut ' + wdKG(buku) + ' (buku karung belakang jadi 0; masuk laba sebagai susut)'), perluYakin: true };
-    const hpp = Math.round(st.hppTerakhirPerKg || 0);
-    dokumen.push({ koleksi: 'penyesuaianStok', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk, kgSistem: buku, kgFisik: 0, selisihKg: wdB2(-buku), alasan: 'karung habis — dihapus dari deretan', nilaiRp: Math.round(-buku * hpp), hppPerKgSaatOpname: hpp, bagian: 'karung', wadah: L } });
+    // modal FIFO (owner 9 Okt): susut keluar dari karung terlama (mesin/modal-fifo.js); saklar mati = rumus lama persis
+    const fifo = st.metode === 'fifo'; const hpp = fifo ? Math.round(Math.abs(nilaiSelisihKg(st, -buku) / buku)) : Math.round(st.hppTerakhirPerKg || 0);
+    dokumen.push({ koleksi: 'penyesuaianStok', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk, kgSistem: buku, kgFisik: 0, selisihKg: wdB2(-buku), alasan: 'karung habis — dihapus dari deretan', nilaiRp: fifo ? Math.round(nilaiSelisihKg(st, wdB2(-buku))) : Math.round(-buku * hpp), hppPerKgSaatOpname: hpp, bagian: 'karung', wadah: L } });
   }
   const dicatat = Math.abs(buku) > 0.004 ? (buku > 0 ? ', susut ' + wdKG(buku) + ' dicatat (buku karung belakang 0)' : ', lebih ' + wdKG(-buku) + ' dicatat (buku karung belakang minus → 0)') : '';
   // owner 7 Okt: karung di belakang wadah yang habis = karung bekas +1 (sekali saja per karung — wadah-bernama-logika.js wbKarungBekasKiriman)

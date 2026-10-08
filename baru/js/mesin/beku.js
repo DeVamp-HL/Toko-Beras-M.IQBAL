@@ -1,7 +1,9 @@
 // SUMBER KEBENARAN MESIN UANG BEKU sejak 3 Okt 2026 (dulu disalin byte demi byte dari index.html oleh pindah_mesin.py, kini pensiun) — JANGAN DISUNTING tanpa izin owner.
 // Gerbang: `python3 alat-uji/beku2.py --sidik` (sidik tiap fungsi di alat-uji/beku.sha256 & pembantu.sha256); membuka mesin = izin owner → `beku2.py --catat`.
 // MESIN UANG BEKU (26 dari 28). Belum dipindah: tulisSaldoPembuka (ritual Tutup Buku, memakai alert/confirm dan 700+ fungsi layar); thPagar (pagar Tutup Hari, membaca document).
-import { ambilAmplopLaba, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilKarantina, ambilKasbonMutasi, ambilModalOwner, ambilPelangganCatatan, ambilPengeluaranHarian, ambilPenjualan, ambilPenjualanSemua, ambilPenyesuaianKemasan, ambilPenyesuaianStok, ambilPesanan, ambilPetaJenisBeras, ambilPiutangMutasi, ambilProduksi, ambilProduksiBerlaku, ambilRetur, ambilSemuaBatch, ambilSetoranKas, ambilTembusanStok, ambilTitikKas, ambilTutupHari, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, wzDiKeranjangAktif, wzDiKeranjangParkir } from '../data/toko.js';
+import { ambilAmplopLaba, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilKarantina, ambilKasbonMutasi, ambilModalOwner, ambilPelangganCatatan, ambilPengeluaranHarian, ambilPenjualan, ambilPenjualanSemua, ambilPenyesuaianKemasan, ambilPenyesuaianStok, ambilPesanan, ambilPetaJenisBeras, ambilPiutangMutasi, ambilProduksi, ambilProduksiBerlaku, ambilRetur, ambilSemuaBatch, ambilSetoranKas, ambilTembusanStok, ambilTitikKas, ambilTutupHari, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, wzDiKeranjangAktif, wzDiKeranjangParkir, cacheMentah, ingatStokKarung } from '../data/toko.js';
+// modal FIFO (owner 9 Okt 2026), saklar aturanToko/catatStok
+import { mfMulaiDari, mfHariSebelum, mfPasang } from './modal-fifo.js';
 import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_BAHAN_KEMASAN, JENIS_LITERAN_KHUSUS, KAPASITAS_KARUNG_BEKAS_LITER, KOLEKSI_AMPLOP, KOLEKSI_BAHAN_KEMASAN, KOLEKSI_BAHAN_LITERAN, KOLEKSI_BATCH, KOLEKSI_BULANAN, KOLEKSI_HARIAN, KOLEKSI_KARANTINA, KOLEKSI_KASBON, KOLEKSI_MODAL, KOLEKSI_PENJUALAN, KOLEKSI_PENYESUAIAN, KOLEKSI_PENY_KEMASAN, KOLEKSI_PESANAN, KOLEKSI_PIUTANG, KOLEKSI_PRODUKSI, KOLEKSI_RETUR, KOLEKSI_SETORAN, KOLEKSI_TEMBUSAN, KOLEKSI_TUTUP, KOLEKSI_UTANG_OWNER, KOLEKSI_UTANG_PEMASOK, LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, NEGO_LANTAI, PILIHAN_JENIS_BERAS, POS_BIAYA_BULANAN, RASIO_DEFAULT, RASIO_KONVERSI, TANGGAL_STOK_AWAL, batchDiutang, caraBayarKunci, cocok, daftarModalOwner, kasbonPotongGaji, kunciKemasan, hppTaksiranRetur, hppTercatat, jumlahTrx, uangKembaliRetur, labelBahan, formatRupiah, potonganGajiPerPegawai, tanggalLokalIso, geserHari, akhirBulanIso, bulanDari, isoKeTanggal, kunciPelanggan, namaSingkatTrx, formatTanggal, namaBulanPanjang, penjualanMasihBerlaku, tkPenjualanHidup, tkTargetPengganti, tkApakahYatim, tkSetTertaut, daftarGerakanKas, totalUtangPemasokSemua, bakuCaraBayar, bulatKeAtas500, pesananBelumTuntas, tbCutoff, tbPunyaBerat, produksiMasihBerlaku, wzJumlahDiDaftar, merkPunyaKarungBerat, cariHargaKarungPerKg, hargaKarungUtuh, tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan, rtKunciNota, rtRantaiNota, twBanyak, twSatuanDibayar, rtDasarNota, rtKalimatLebih, susunIsiKatalogKasir, tebakJenisBeras, jenisUntukMerk, semuaMerkDikenal, acakPin } from './pembantu.js';
 // ---- mesin beku (verbatim; lihat catatan di pembantu.js soal baris kosong) ----
   function hitungArusKasInti(cocok, bayaranBln) {
@@ -402,6 +404,29 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
         hppTerakhirPerKg: stok[merk].totalMasuk > 0 ? stok[merk].totalNilaiMasuk / stok[merk].totalMasuk : 0
       };
     });
+    // MODAL FIFO (owner 9 Okt 2026, saklar di tangan owner): mulai hari `mulai`, karung per merek keluar yang PALING LAMA dulu
+    // (baru/js/mesin/modal-fifo.js). Saklar mati, atau buku yang dihitung sampai sebelum `mulai` = rata-rata di atas, tidak berubah.
+    // Wadah literan campuran tetap rata-rata. Lapisan pertama = sisa sehari sebelum mulai bernilai rata-rata saat itu (nilai rak tidak melompat).
+    const mulai = mfMulaiDari(cacheMentah('aturan'));
+    if (mulai && (!sampai || sampai >= mulai)) {
+      const buka = ingatStokKarung(mfHariSebelum(mulai));
+      const baru = {};
+      batch.forEach(k => {
+        if ((k.tanggal || '') < mulai) return;
+        hitungHppMerkDalamBatch(k.merkList, k.biayaBongkar).forEach(m => {
+          if (m.bentuk === 'bal' || !(m.totalKg > 0)) return;
+          (baru[m.merk] = baru[m.merk] || []).push({ tanggal: k.tanggal, id: k.id, kg: m.totalKg, harga: m.hppPerKg, asal: 'datang' });
+        });
+      });
+      batasi(ambilProduksiBerlaku()).forEach(pr => {
+        if (!pr.jadiKarungUtuh || !pr.merkTujuan || (pr.tanggal || '') < mulai) return;
+        const kgJadi = (pr.ukuranKemasan || 0) * (pr.jumlahUnit || 0);
+        if (kgJadi <= 0) return;
+        (baru[pr.merkTujuan] = baru[pr.merkTujuan] || []).push({ tanggal: pr.tanggal, id: pr.id, kg: kgJadi,
+          harga: (pr.hppSumberPerKgDipakai || 0) * (pr.kgDipakai || 0) / kgJadi, asal: 'adukan' });
+      });
+      mfPasang(hasil, buka, baru, mulai);
+    }
     return hasil;
   }
   function hitungStokKemasan(sampai) {

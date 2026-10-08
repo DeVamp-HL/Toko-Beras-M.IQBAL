@@ -67,7 +67,7 @@ sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MURNI = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/data/hemat-baca.js']
-_M = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js',
+_M = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js',
       'baru/js/layar/arsip-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/data/akses.js', 'baru/js/data/antre-lokal.js', 'baru/js/data/katalog-kasir.js',
       'baru/js/data/hemat-baca.js', 'baru/js/data/firebase.js']
 BERKAS = sorted(set(_M + MURNI + ['kasir-darurat-nominal.html', 'sw-kasir.js']))

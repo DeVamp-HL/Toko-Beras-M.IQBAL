@@ -15,6 +15,8 @@ import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
 import { ambilKarantina, ambilRetur, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, tolakKunci, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { RP } from '../inti/format.js';
+// modal FIFO (owner 9 Okt): karung kembali ke depan antrean = modal karung terlama
+import { hppKeluarPerKg } from '../mesin/modal-fifo.js';
 
 export const TINDAKAN_KARANTINA = [['layak_jual', 'Ternyata layak jual → kembali ke stok'], ['dirework', 'Rework → masuk stok lagi'], ['dikembalikan_pemasok', 'Balik ke pemasok'], ['dibuang', 'Buang']];
 export const LABEL_TINDAKAN = { layak_jual: 'ternyata layak jual → stok', dirework: 'rework ke stok', dikembalikan_pemasok: 'balik ke pemasok', dibuang: 'dibuang', belum_diputuskan: 'menunggu' };
@@ -29,7 +31,7 @@ const kqSesudah = (r) => { const jamR = r.jam || '00:00'; return (x) => (x.tangg
 function kqStok(k) {
   const karung = k.jenisAsal !== 'kemasan'; const kunci = karung ? k.merkSumber : kunciKemasan(k.namaProduk, k.ukuranKemasan);
   const st = kunci ? (karung ? ingatStokKarung() : ingatStokKemasan())[kunci] : null; if (!st) return null;
-  return { karung, kunci, sisa: karung ? st.sisaKg : st.sisaUnit, hpp: karung ? (st.hppTerakhirPerKg || 0) : (st.hppRataRataPerUnit || 0), satuan: karung ? 'kg' : 'unit' };
+  return { karung, kunci, sisa: karung ? st.sisaKg : st.sisaUnit, hpp: karung ? hppKeluarPerKg(st) : (st.hppRataRataPerUnit || 0), satuan: karung ? 'kg' : 'unit' };
 }
 /** Jumlah yang kembali dalam satuan mesin: karung = kg, kemasan = unit (dari retur, atau dibulatkan dari kg karantina). */
 function kqJumlah(k, r) { if (k.jenisAsal !== 'kemasan') return k.totalKg || 0; if (r && r.jumlahUnit) return r.jumlahUnit; const u = Number(k.ukuranKemasan) || 0; return u > 0 ? Math.round((k.totalKg || 0) / u) : 0; }

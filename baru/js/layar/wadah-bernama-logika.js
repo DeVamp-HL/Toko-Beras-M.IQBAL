@@ -17,6 +17,7 @@ import { RASIO_KONVERSI, RASIO_DEFAULT, hargaKarungUtuh, cariHargaKarungPerKg } 
 import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, ambilSemuaBatch, ambilProduksiBerlaku, ambilPenyesuaianStok, ambilBahanLiteran, cacheMentah, tolakKunci, denganCacheSementara, kunciStokWadah, petaStokWadah, kunciKarungWadah, kunciKarungBelakang, merkAsalKunci, petaBukuWadah, petaUkuran, indukTerpisah, ingatStokKarung } from '../data/toko.js';
 import { aturWadah, karungUntukWadah, karungBelakang, semuaKarungTerbuka, wdSesudah, wdTerbaru, tinggiWadah, beratKarungBuka, DAFTAR_WADAH, kolamDitutup, wdLokasiDoc, wdLokasiSumber } from './jual-logika.js';
 import { RP, tanggalPendek } from '../inti/format.js';
+import { hppKeluar, modalRataPerKg, nilaiSelisihKg } from '../mesin/modal-fifo.js';
 
 const wbB3 = (n) => Math.round(n * 1000) / 1000;
 const wbB2 = (n) => Math.round(n * 100) / 100;
@@ -108,7 +109,7 @@ export function wbPecah(W, kg, s) {
 }
 /** Modal per kg isi wadah SEKARANG = rata-rata tertimbang bagian positif (kg × modal buku tiap merek asal). Kosong → modal karung di belakangnya. */
 export function wbModalPerKg(W, s) {
-  const stok = ingatStokKarung(); const K = wbKomposisi(W, s); const hpp = (m) => (stok[m] || {}).hppTerakhirPerKg || 0;
+  const stok = ingatStokKarung(); const K = wbKomposisi(W, s); const hpp = (m) => modalRataPerKg(stok[m]);   // wadah campuran = rata-rata (owner 9 Okt)
   const kg = K.positif.reduce((a, x) => a + x.kg, 0);
   if (kg > 0) return K.positif.reduce((a, x) => a + x.kg * hpp(x.merk), 0) / kg;
   return hpp(wbMerkCadangan(W)) || hpp(W);
@@ -164,7 +165,11 @@ export function wbDokLahir(baris, w) {
 export function wbDokPindah(sumber, tujuan, w, ekstra) {
   const stok = hitungStokKarungPerMerk();
   const list = (sumber || []).filter((x) => x && x.merk && Math.abs(Number(x.kg) || 0) >= 0.005).map((x) => ({ merk: String(x.merk), kg: wbB2(Number(x.kg)) }));
-  const kg = wbB2(list.reduce((a, x) => a + x.kg, 0)); const nilai = list.reduce((a, x) => a + x.kg * ((stok[x.merk] || {}).hppTerakhirPerKg || 0), 0); const id = w.idUnik();
+  // modal FIFO (owner 9 Okt 2026): kg yang ditakar dari karung = karung TERLAMA (mesin/modal-fifo.js), urut sumber; kg minus = kembali ke depan antrean.
+  // Isi wadah sesudahnya tetap rata-rata (wadah campuran, owner 9 Okt). Saklar mati = kg × modal rata-rata persis seperti dulu.
+  const fifoAmbil = {};
+  const nilaiSumber = (x) => { const st = stok[x.merk]; if (x.kg < 0) return -nilaiSelisihKg(st, -x.kg); const v = hppKeluar(st, x.kg, fifoAmbil[x.merk]); fifoAmbil[x.merk] = (fifoAmbil[x.merk] || 0) + x.kg; return v; };
+  const kg = wbB2(list.reduce((a, x) => a + x.kg, 0)); const nilai = list.reduce((a, x) => a + nilaiSumber(x), 0); const id = w.idUnik();
   return { koleksi: 'produksiKemasan', data: Object.assign({ id, tanggal: w.tanggal, jam: w.jam, merkSumber: list.map((x) => x.merk).join(' + '), namaProduk: tujuan, ukuranKemasan: kg, jumlahUnit: 1,
     biayaKemasan: 0, upahRepacking: 0, kantongJenis: null, kantongJumlah: 0, hppSumberPerKgDipakai: kg > 0 ? nilai / kg : 0, hppPerUnit: nilai, sumberList: list, kgDipakai: kg, sumberKemasanList: [], kgKemasanDipakai: 0,
     batchProduksi: id, barisKe: 1, jumlahBaris: 1, jadiKarungUtuh: true, merkTujuan: tujuan, dariTakar: true }, ekstra || {}) };
