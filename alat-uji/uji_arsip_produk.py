@@ -178,7 +178,7 @@ RUSAK = {
     'rak Jual tidak menyaring nama arsip': ("    if (arBeras(merk, arsip)) return;\n", "\n"),
     'kemasan arsip tetap di rak Jual': ("const st = stokKemasan[kunci]; if (arKemasan(st.namaProduk, st.ukuranKemasan, arsip)) return;", "const st = stokKemasan[kunci];"),
     'katalog harga tidak menyaring arsip': ("  const arsip = arPeta(); if (Object.keys(arsip).length) Object.keys(daftar).forEach((m) => { daftar[m] = daftar[m].filter((sid) => (sid === 'L' && !!wadahInfo[m]) || !arSembunyiHarga(m, sid, arsip)); if (!daftar[m].length) delete daftar[m]; });", ""),   # putaran 27 Bagian 5: baris liter WADAH tidak ikut arsip
-    'katalog HP kasir tidak menyaring arsip': ("const isi = wbSaringKatalogKasir(arSaringKatalogKasir(susunIsiKatalogKasir()));", "const isi = wbSaringKatalogKasir(susunIsiKatalogKasir());"),
+    'katalog HP kasir tidak menyaring arsip': ("const isi = kkSaringFifo(wbSaringKatalogKasir(arSaringKatalogKasir(susunIsiKatalogKasir())));", "const isi = kkSaringFifo(wbSaringKatalogKasir(susunIsiKatalogKasir()));"),
     'hapus boleh walau pernah bertransaksi': ("  if (K.pernah) return { tolak: K.judul + ' pernah punya transaksi", "  if (false) return { tolak: K.judul + ' pernah punya transaksi"),
     'hapus tanpa ketukan kedua': ("  if (!yakin) return { tolak: 'Ketuk sekali lagi untuk MENGHAPUS '", "  if (false) return { tolak: 'Ketuk sekali lagi untuk MENGHAPUS '"),
     'barang masuk nama arsip tidak bertanya': ("const diArsip = !draf.id && terisi && !masalah && arBeras(merk);", "const diArsip = false;"),

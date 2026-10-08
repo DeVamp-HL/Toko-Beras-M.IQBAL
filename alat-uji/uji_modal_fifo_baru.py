@@ -195,7 +195,7 @@ if __name__ == '__main__':
             'takar ke wadah: modal rata-rata': js.replace("const v = hppKeluar(st, x.kg, fifoAmbil[x.merk]);", "const v = x.kg * ((st || {}).hppRataPerKg || 0);"),
             'selisih lebih dinilai dari belakang antrean': js.replace("return s < 0 ? -mfIrisan(st.lapisan, p, p - s) : mfIrisan(st.lapisan, p - s, p);", "return s < 0 ? -mfIrisan(st.lapisan, p, p - s) : s * (st.hppTerakhirPerKg || 0);"),
             'irisan melewatkan bagian di luar jejeran (stok minus bernilai 0)': js.replace("if (sampai > T && dari < sampai) rp += (sampai - Math.max(dari, T)) * L[L.length - 1].harga;", ""),
-            'Atur Barang masuk menulis catatStok tanpa kolom lama (saklar FIFO hilang)': js.replace("data: Object.assign({}, lama, { id: 'catatStok',", "data: Object.assign({}, {}, { id: 'catatStok',"),
+            'Atur Barang masuk menulis catatStok tanpa kolom lama (saklar FIFO hilang)': js.replace("const data = Object.assign({}, lama, { id: 'catatStok',", "const data = Object.assign({}, {}, { id: 'catatStok',"),
             'mematikan saklar tidak menutup masa (neraca bulan lalu dihitung ulang rata-rata)': js.replace("concat(aksi === 'mati' && S.keadaan === 'nyala' ? [{ mulai: S.mulai, selesai: S.hari }] : [])", "concat([])"),
             'masa FIFO yang sudah ditutup diabaikan mesin': js.replace("return tutup.concat(mulai ? [{ mulai, selesai: '' }] : []);", "return mulai ? [{ mulai, selesai: '' }] : [];"),
             'retur FIFO tidak menyimpan modal kembali (laba bergeser tiap penjualan baru)': js.replace("return Object.assign(d, { hppKembali: Math.round(nilaiSelisihKg(st, Number(d.totalKg) || 0)) });", "return d;"),
