@@ -33,7 +33,7 @@ KOTAK = {
                        'sumberList': [{'merk': 'B', 'kg': 20}], 'jadiKarungUtuh': True, 'merkTujuan': 'Wadah W1', 'dariTakar': True, 'biayaKemasan': 0, 'upahRepacking': 0}],
   'penjualan': [{'id': 'j1', 'tanggal': '2026-09-10', 'jam': '09:00', 'caraBayar': 'Tunai', 'jenis': 'karung', 'merkSumber': 'A', 'totalKg': 50, 'jumlahKarung': 1, 'beratKarungAcuan': 50, 'hargaTotal': 600000, 'hppTotalSaatJual': 500000}],
 }
-SAKLAR = [{'id': 'catatStok', 'tanggal': '2026-09-30', 'jam': '21:00', 'modalFifoMulai': '2026-10-01'}]
+SAKLAR = [{'id': 'catatStok', 'tanggal': '2026-09-30', 'jam': '21:00', 'minKarung': 40, 'tempoHari': 31, 'modalFifoMulai': '2026-10-01'}]
 
 SKENARIO = r"""
 var gagal = [], lulus = 0;
@@ -100,6 +100,20 @@ ok('identitas: modal yang keluar (1.780.000) + nilai sisa (1.170.000) = semua la
 var NR = hitungNeraca();
 ok('neraca memakai nilai FIFO (A 1.170.000 + B 420.000 + C 1.850.000 + wadah W1 280.000)', dekat(NR.nilaiSack, 1170000 + 420000 + 1850000 + 280000), NR.nilaiSack);
 
+// ---- 8b. kartu modal & saklar (Stok › HPP)
+var KH = kartuHpp().kartu.find(function (k) { return k.merk === 'A'; });
+ok('kartu modal FIFO: nilai rak = 1.170.000, modal keluar 13.000, teks menyebut kedatangan 2 Okt', KH.fifo && dekat(KH.nilaiRak, 1170000) && KH.modalKeluar === 13000 && /kedatangan 2 Okt( 2026)? · 90 kg @Rp13\.000\/kg/.test(KH.teksFifo), KH.teksFifo);
+var W = { tanggal: '2026-10-05', jam: '10:00', idUnik: function () { return 88; } };
+var SF = saklarFifo(new Date('2026-10-05T10:00:00+07:00'));
+ok('saklar: keadaan nyala sejak 1 Okt; pilihan = besok 6 Okt & 1 Jan 2027', SF.keadaan === 'nyala' && SF.mulai === '2026-10-01' && SF.pilihan.map(function (p) { return p.tanggal; }).join() === '2026-10-06,2027-01-01', JSON.stringify(SF.pilihan));
+ok('saklar: sudah berjalan → tidak bisa dinyalakan ulang; tanggal lampau ditolak', !!susunSaklarFifo('nyala', '2026-10-06', W, true).tolak && /sudah lewat/.test(susunSaklarFifo('nyala', '2026-10-01', W, true).tolak));
+var M1 = susunSaklarFifo('mati', '', W, false), M2 = susunSaklarFifo('mati', '', W, true);
+ok('saklar mati: ketukan pertama minta yakin; kedua menulis catatStok UTUH (kolom Aturan Barang masuk tetap) + riwayat', M1.perluYakin === 'mati' && M2.dokumen[0].data.modalFifoMulai === '' && M2.dokumen[0].data.minKarung === 40 && M2.dokumen[0].data.tanggal === '2026-09-30' && M2.dokumen[0].data.riwayatModalFifo.length === 1 && M2.dokumen[0].data.riwayatModalFifo[0].aksi === 'mati', JSON.stringify(M2.dokumen && M2.dokumen[0].data));
+pasok('aturanToko', [M2.dokumen[0].data]);
+var N2 = susunSaklarFifo('nyala', '2027-01-01', W, true);
+ok('saklar nyala 1 Jan 2027 (rencana): hari ini tetap rata-rata', N2.dokumen[0].data.modalFifoMulai === '2027-01-01' && (pasok('aturanToko', [N2.dokumen[0].data]), saklarFifo(new Date('2026-10-05T10:00:00+07:00')).keadaan === 'rencana') && hitungStokKarungPerMerk().A.metode === undefined);
+pasok('aturanToko', SAKLAR);
+
 // ---- 9. saklar dimatikan lagi = kembali rata-rata
 pasok('aturanToko', [{ id: 'catatStok', tanggal: '2026-10-05', jam: '11:00', modalFifoMulai: '' }]);
 var S3 = hitungStokKarungPerMerk();
@@ -114,9 +128,12 @@ var aturan = (CAD.aturanToko || []).filter(function (d) { return String(d.id) !=
 var catat = (CAD.aturanToko || []).find(function (d) { return String(d.id) === 'catatStok'; }) || { id: 'catatStok' };
 pasok('aturanToko', aturan.concat([Object.assign({}, catat, { modalFifoMulai: '' })]));
 var MATI = JSON.parse(JSON.stringify(hitungStokKarungPerMerk()));
+var MATI_B = JSON.parse(JSON.stringify(hitungStokKarungPerMerk(BESOK)));
 pasok('aturanToko', aturan.concat([Object.assign({}, catat, { modalFifoMulai: BESOK })]));
-var NYALA = hitungStokKarungPerMerk(); var beda = [], n = 0, nilaiMati = 0, nilaiNyala = 0, wadah = 0;
-Object.keys(MATI).forEach(function (m) { var a = MATI[m], b = NYALA[m]; if (/^Wadah /.test(m)) { wadah++; if (b.metode) beda.push(m + ' wadah ikut FIFO'); return; }
+// buku dihitung SAMPAI hari saklar (besok) — hari ini saklar yang dijadwalkan belum berlaku
+var NYALA = hitungStokKarungPerMerk(BESOK); var HARI_INI = hitungStokKarungPerMerk(); var beda = [], n = 0, nilaiMati = 0, nilaiNyala = 0, wadah = 0, fifo = 0, hariIniFifo = 0, tanpaLapisBerisi = [];
+Object.keys(HARI_INI).forEach(function (m) { if (HARI_INI[m].metode) hariIniFifo++; });
+Object.keys(MATI_B).forEach(function (m) { var a = MATI_B[m], b = NYALA[m]; if (b.metode === 'fifo') fifo++; else if (!/^Wadah /.test(m) && a.sisaKg > 0.005) tanpaLapisBerisi.push(m); if (/^Wadah /.test(m)) { wadah++; if (b.metode) beda.push(m + ' wadah ikut FIFO'); return; }
   n++; var va = a.sisaKg * a.hppTerakhirPerKg, vb = b.sisaKg * b.hppTerakhirPerKg; nilaiMati += va; nilaiNyala += vb;
   if (Math.abs(va - vb) > 1 || a.sisaKg !== b.sisaKg) beda.push(m + ' ' + Math.round(va) + ' → ' + Math.round(vb)); });
 // pembanding (bukan keputusan): seandainya saklar menyala sejak 15 Sep — nilai rak sekarang FIFO vs rata-rata
@@ -124,7 +141,7 @@ pasok('aturanToko', aturan.concat([Object.assign({}, catat, { modalFifoMulai: '2
 var F15 = hitungStokKarungPerMerk(); var nilaiF15 = 0; Object.keys(F15).forEach(function (m) { if (!/^Wadah /.test(m)) nilaiF15 += F15[m].sisaKg * F15[m].hppTerakhirPerKg; });
 pasok('aturanToko', CAD.aturanToko || []);
 var ASLI = hitungStokKarungPerMerk(); var bedaAsli = Object.keys(ASLI).filter(function (m) { return JSON.stringify(ASLI[m]) !== JSON.stringify(MATI[m]); });
-print(JSON.stringify({ n: n, wadah: wadah, beda: beda, nilaiMati: Math.round(nilaiMati), nilaiNyala: Math.round(nilaiNyala), bedaAsli: bedaAsli, nilaiF15: Math.round(nilaiF15), saklarToko: mfMulaiDari(CAD.aturanToko || []) }));
+print(JSON.stringify({ n: n, fifo: fifo, tanpaLapisBerisi: tanpaLapisBerisi, hariIniFifo: hariIniFifo, wadah: wadah, beda: beda, nilaiMati: Math.round(nilaiMati), nilaiNyala: Math.round(nilaiNyala), bedaAsli: bedaAsli, nilaiF15: Math.round(nilaiF15), saklarToko: mfMulaiDari(CAD.aturanToko || []) }));
 """
 
 
@@ -147,7 +164,8 @@ if __name__ == '__main__':
         rusak = {
             'lapisan diurut terbaru dulu (bukan yang lama keluar dulu)': js.replace("String(x.tanggal).localeCompare(String(y.tanggal)) || (Number(x.id) || 0) - (Number(y.id) || 0)", "String(y.tanggal).localeCompare(String(x.tanggal)) || (Number(y.id) || 0) - (Number(x.id) || 0)"),
             'lapisan buka dinilai harga terbaru, bukan rata-rata saat saklar (nilai rak melompat)': js.replace("kg: b.sisaKg, harga: b.hppTerakhirPerKg || 0, asal: 'buka'", "kg: b.sisaKg, harga: b.hargaTerakhirPerKg || 0, asal: 'buka'"),
-            'buku sebelum hari saklar ikut FIFO (bulan lalu berubah)': js.replace("if (mulai && (!sampai || sampai >= mulai)) {", "if (mulai) {"),
+            'buku sebelum hari saklar ikut FIFO (bulan lalu berubah)': js.replace("(sampai ? sampai >= mulai : mfHariIni() >= mulai)", "true"),
+            'saklar yang dijadwalkan ke depan sudah berlaku hari ini': js.replace("(sampai ? sampai >= mulai : mfHariIni() >= mulai)", "(sampai ? sampai >= mulai : true)"),
             'nota tidak memakai modal FIFO (angka keranjang apa adanya)': js.replace("const st = stok[r.merkSumber]; if (!st || st.metode !== 'fifo' || r.dariWadah", "const st = null; if (!st || st.metode !== 'fifo' || r.dariWadah"),
             'nota: dua baris merek sama mengambil dari depan yang sama': js.replace("fifoAmbil[r.merkSumber] = (fifoAmbil[r.merkSumber] || 0) + kg;\n  });\n  return out;", "\n  });\n  return out;"),
             'nota: kantong / wadah repack hilang dari modal': js.replace("+ (r.biayaKemasanLiteran || 0) + (r.biayaKemasanRepack || 0);", ";"),
@@ -176,10 +194,11 @@ if __name__ == '__main__':
         h, e = jalan("var __KINI = new Date('%sT20:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\nvar BESOK = '%s';\n" % (tgl, besok) + js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP)
         if h is None: print('ASAP DATA TOKO: JSC JATUH ' + e); g.append('asap')
         else:
-            print('ASAP DATA TOKO (%s): saklar toko %s · saklar dinyalakan %s: %d merek karung, nilai rak Rp%s → Rp%s, beda per merek: %s · %d wadah tetap rata-rata · saklar mati = mesin tanpa setelan: %s'
-                  % (os.path.basename(cad[-1]), h['saklarToko'] or 'MATI', besok, h['n'], format(h['nilaiMati'], ',').replace(',', '.'), format(h['nilaiNyala'], ',').replace(',', '.'),
+            print('ASAP DATA TOKO (%s): saklar toko %s · saklar dijadwalkan %s (hari ini masih rata-rata: %s): %d merek karung (%d berlapis FIFO, sisanya stok 0/minus tanpa kedatangan baru), nilai rak Rp%s → Rp%s, beda per merek: %s · %d wadah tetap rata-rata · saklar mati = mesin tanpa setelan: %s'
+                  % (os.path.basename(cad[-1]), h['saklarToko'] or 'MATI', besok, 'ya' if not h['hariIniFifo'] else 'TIDAK', h['n'], h['fifo'], format(h['nilaiMati'], ',').replace(',', '.'), format(h['nilaiNyala'], ',').replace(',', '.'),
                      ', '.join(h['beda']) or 'nihil', h['wadah'], 'sama persis' if not h['bedaAsli'] else 'BEDA ' + ', '.join(h['bedaAsli'][:5])))
             print('   pembanding (bukan keputusan): seandainya FIFO sejak 15 Sep, nilai rak karung sekarang Rp%s (rata-rata Rp%s)' % (format(h['nilaiF15'], ',').replace(',', '.'), format(h['nilaiMati'], ',').replace(',', '.')))
             if h['beda'] or abs(h['nilaiMati'] - h['nilaiNyala']) > 1: g.append('asap: nilai rak melompat saat saklar dinyalakan')
+            if h['hariIniFifo'] or h['tanpaLapisBerisi']: g.append('asap: saklar terjadwal sudah berlaku hari ini / merek berisi tanpa lapisan: ' + ', '.join(h['tanpaLapisBerisi']))
             if h['bedaAsli'] and not h['saklarToko']: g.append('asap: saklar mati tetapi mesin berbeda')
     sys.exit(2 if g else 0)

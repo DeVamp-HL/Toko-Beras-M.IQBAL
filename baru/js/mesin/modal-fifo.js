@@ -26,6 +26,12 @@ export function mfMulaiDari(aturan) {
 /** Wadah kotak literan (kunci buku 'Wadah <nama>', data/toko.js kunciStokWadah) = isi campuran → tetap rata-rata (owner 9 Okt). */
 export const mfWadah = (merk) => /^Wadah /.test(String(merk || ''));
 
+/** Hari ini menurut jam perangkat (zona setempat), 'YYYY-MM-DD'. */
+export function mfHariIni() { const d = new Date(Date.now()); const n = (x) => String(x).padStart(2, '0'); return d.getFullYear() + '-' + n(d.getMonth() + 1) + '-' + n(d.getDate()); }
+
+/** FIFO berlaku untuk buku yang dihitung sampai `sampai` (kosong = sampai hari ini)? Saklar yang dijadwalkan ke depan belum berlaku hari ini. */
+export const mfBerlaku = (mulai, sampai) => !!mulai && (sampai ? sampai >= mulai : mfHariIni() >= mulai);
+
 /** 'YYYY-MM-DD' sehari sebelumnya (kalender, tanpa zona waktu). */
 export function mfHariSebelum(t) {
   const d = new Date(String(t) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
