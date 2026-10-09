@@ -199,6 +199,12 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 
 **Sampai 31 Des (owner):**
 - [ ] Tutup hari setiap malam sampai 31 Des. Tutup hari 31 Des = tulisan TERAKHIR bertanggal 2026.
+- [ ] **Cara hitung modal (FIFO, keputusan owner 9 Okt):** Stok › HPP / modal › kartu "Cara hitung modal". Pilih hari mulai (besok, atau
+      **1 Jan 2027** = tahun buku baru) → PAKAI FIFO → ketuk sekali lagi. Mau mulai 1 Jan: tekan paling lambat 31 Des, dari satu perangkat online —
+      HP karyawan menerima setelannya sebelum hari itu. Nota yang sudah tercatat tidak berubah; pajak omzet tidak berubah. Kembali ke rata-rata = tombol
+      yang sama (dua ketukan).
+- [ ] **HET (Harga & Pemasok › Katalog › Atur HET):** petakan tiap kelas/merek ke premium / medium / bukan beras HET. Sebelum dipetakan, peringatan
+      HET tidak menyala ("belum dipetakan", bukan "aman").
 - [ ] Hari berjualan tanpa tutup hari: Uang › Tutup buku › langkah 1 → tiap tanggal "tidak ditutup — diterima apa adanya" + alasan (min. 5 huruf),
       **Simpan putusan** (tersimpan sungguhan, juga dari latihan; ikut berita acara). Tutup hari tidak dibuat mundur.
 - [ ] Tidak ada buku beras / kemasan / kantong yang minus, tidak ada kelebihan bayar pelanggan, bayar lebih ke pemasok / owner, atau kasbon dibayar
@@ -278,8 +284,8 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       dimatikan.
 
 **1 Jan 2027 (Jumat, toko tutup):**
-- [ ] Jam mulai bebas. (Dulu "sesudah 15.00 WIB" karena kuota Spark baru penuh lagi jam itu — sejak Blaze 9 Okt 2026 kuota bukan batas.) Mulai sedini
-      mungkin di hari itu supaya arsip pasti habis sebelum toko buka 2 Jan.
+- [ ] **Mulai dini hari 1 Jan, langsung sesudah tutup hari 31 Des** (keputusan owner K3, 9 Okt 2026). (Dulu "sesudah 15.00 WIB" karena kuota Spark
+      baru penuh lagi jam itu — sejak Blaze 9 Okt 2026 kuota bukan batas.) Mulai dini hari supaya arsip pasti habis jauh sebelum toko buka 2 Jan.
 - [ ] Mac, tab peramban (bukan web app iPhone/iPad), SATU perangkat, jangan muat ulang aplikasi.
 - [ ] Sebelum langkah 1: **TUTUP aplikasi di iPhone / iPad / HP lain** (geser keluar dari daftar aplikasi, tab peramban ditutup — layar mati saja tidak
       cukup) dan jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis". Bukan lagi soal kuota: selama arsip berjalan stok, piutang & utang

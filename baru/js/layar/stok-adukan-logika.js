@@ -14,6 +14,7 @@ import { LABEL_BAHAN_KEMASAN, JENIS_BAHAN_KEMASAN, kunciKemasan } from '../mesin
 import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet, stokMerekSaja, petaStokWadah, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, waktuSetempat } from '../inti/format.js';
+import { hppKeluar, hppKeluarPerKg } from '../mesin/modal-fifo.js';
 import { arPeta, arKunciKemasan, arDokPulihBanyak } from './arsip-logika.js';
 import { ckCocokTerakhir, ckCocokTerakhirKemasan, ckKalimatMundur } from './jual-logika.js';
 
@@ -38,7 +39,7 @@ export function drafAdukanKosong(w) { return { tanggal: w.tanggal, bahan: [baris
 export function calonBahan() {
   // putaran 28: isi KOTAK wadah bukan bahan adukan; karung sisihan / bongkaran wadah boleh (owner 28 Sep: isi wadah yang dikosongkan jadi karung terpisah)
   const pw = petaStokWadah(); const semua = ingatStokKarung(); const st = {}; Object.keys(semua).forEach((m) => { if (!pw[m]) st[m] = semua[m]; });
-  return Object.keys(st).filter((m) => (st[m].sisaKg || 0) > 0).sort((a, b) => st[b].sisaKg - st[a].sisaKg).map((m) => ({ merk: m, sisaKg: Math.round(st[m].sisaKg * 100) / 100, hpp: st[m].hppTerakhirPerKg || 0 }));
+  return Object.keys(st).filter((m) => (st[m].sisaKg || 0) > 0).sort((a, b) => st[b].sisaKg - st[a].sisaKg).map((m) => ({ merk: m, sisaKg: Math.round(st[m].sisaKg * 100) / 100, hpp: hppKeluarPerKg(st[m]) }));
 }
 /** Kemasan jadi 50/25 kg yang bersisa — boleh dibongkar jadi bahan. */
 export function calonKemasanBahan() {
@@ -63,9 +64,12 @@ const adJenisProduksi = (p) => (p.beliJadi || p.stokAwal || p.dariBatch ? 'beliJ
 /** Hitung draf: tiap baris + masalahnya, kg masuk/jadi, nilai bahan, kantong, upah, total, modal per unit tiap hasil (rumus sistem berjalan), susut. */
 export function hitungAdukan(draf) {
   const stokK = ingatStokKarung(); const stokM = ingatStokKemasan(); const stokB = hitungStokBahanKemasan();
+  // modal FIFO (owner 9 Okt 2026): bahan = karung TERLAMA yang masih ada (mesin/modal-fifo.js); dua baris merek sama mengambil berurutan. Saklar mati = rata-rata.
+  const diambil = {};
   const bahan = (draf.bahan || []).map((b, i) => { const merk = String(b.merk || '').trim(); const kg = adB3(adAngka(b.kg)); const terisi = !!merk || kg > 0; const st = stokK[merk];
     const masalah = !terisi ? '' : !merk ? 'nama karungnya belum dipilih' : !(kg > 0) ? 'berapa kg yang dipakai belum diisi' : !st ? merk + ' tidak ada di buku gudang' : '';
-    return { ke: i + 1, merk, kg, terisi, masalah, sah: terisi && !masalah, sisaKg: st ? Math.round((st.sisaKg || 0) * 100) / 100 : null, hpp: st ? (st.hppTerakhirPerKg || 0) : 0, nilai: st ? (st.hppTerakhirPerKg || 0) * kg : 0 }; });
+    const sudah = diambil[merk] || 0; if (st && kg > 0) diambil[merk] = sudah + kg;
+    return { ke: i + 1, merk, kg, terisi, masalah, sah: terisi && !masalah, sisaKg: st ? Math.round((st.sisaKg || 0) * 100) / 100 : null, hpp: st ? hppKeluarPerKg(st, kg, sudah) : 0, nilai: st ? hppKeluar(st, kg, sudah) : 0 }; });
   const bahanKemasan = (draf.bahanKemasan || []).map((b, i) => { const kunci = String(b.kunci || ''); const unit = adAngka(b.unit); const terisi = !!kunci || unit > 0; const st = stokM[kunci];
     const masalah = !terisi ? '' : !kunci ? 'kemasan yang dibongkar belum dipilih' : !(unit > 0) ? 'berapa unit yang dibongkar belum diisi' : !st ? 'kemasan itu tidak dikenal' : UKURAN_BAHAN_KEMASAN.indexOf(Number(st.ukuranKemasan)) < 0 ? 'hanya kemasan 50 / 25 kg yang boleh dibongkar' : '';
     return { ke: i + 1, kunci, unit, terisi, masalah, sah: terisi && !masalah, namaProduk: st ? st.namaProduk : '', ukuranKemasan: st ? Number(st.ukuranKemasan) : 0, sisaUnit: st ? (st.sisaUnit || 0) : null, hpp: st ? (st.hppRataRataPerUnit || 0) : 0,

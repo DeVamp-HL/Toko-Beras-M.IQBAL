@@ -124,3 +124,15 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
   .layar-laporan .lp-status[data-k="tiga-impas"] > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .layar-laporan .lp-status[data-k="tiga-impas"] b { display: inline; text-align: right; }
 }
+/* paket brief 9 Okt 2026 (butir 3·4·5): kartu Per merek di Laba — urutan (kg | margin), baris merek + pita urutan, sisa & di luar merek, susut beras, atur */
+.layar-laporan .lp-mr-urut { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; } .layar-laporan .lp-mr-urut .seg { justify-content: center; text-align: center; min-height: 34px; display: flex; align-items: center; font-size: 11.5px; }
+.layar-laporan .lp-mr-baris { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: start; min-height: 44px; border-bottom: 1px dashed var(--garis); padding: 5px 0; font-size: 12.5px; animation: lpMrMasuk 360ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-laporan .lp-mr-baris .no { font-size: 10.5px; color: var(--redup); font-variant-numeric: tabular-nums; padding-top: 2px; } .layar-laporan .lp-mr-baris .isi { min-width: 0; } .layar-laporan .lp-mr-baris .k2 { overflow-wrap: anywhere; }
+.layar-laporan .lp-mr-baris .n { text-align: right; white-space: nowrap; padding-top: 1px; } .layar-laporan .lp-mr-baris .n b { font-family: 'Bodoni Moda', Georgia, serif; font-weight: 500; font-size: 14px; font-variant-numeric: tabular-nums; } .layar-laporan .lp-mr-baris .n b.rugi { color: var(--awas); }
+.layar-laporan .lp-mr-baris.sisa, .layar-laporan .lp-mr-baris.luar { background: linear-gradient(90deg, transparent, var(--seg), transparent); } .layar-laporan .lp-mr-baris.luar .no { color: var(--aktif); }
+.layar-laporan .lp-mr-belum { font-size: 10.5px; font-style: italic; color: var(--redup); border-bottom: 1px dashed var(--redup); }   /* belum bisa dihitung ≠ Rp0 */
+.layar-laporan .lp-mr-pita { height: 5px; border-radius: 4px; background: var(--seg); border: 1px solid var(--kaca-tepi); overflow: hidden; margin-top: 4px; } .layar-laporan .lp-mr-pita span { display: block; height: 100%; background: linear-gradient(90deg, var(--emas-garis), var(--aktif)); transition: width 640ms cubic-bezier(.2,.8,.2,1); }
+.layar-laporan .lp-mr-susut { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; } .layar-laporan .lp-mr-atur { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--garis); }
+.layar-laporan .lp-cip.awas { border-color: var(--awas); color: var(--awas); }
+@keyframes lpMrMasuk { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .layar-laporan .lp-mr-baris { animation: none; } .layar-laporan .lp-mr-pita span { transition: none; } }

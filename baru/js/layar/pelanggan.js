@@ -138,7 +138,7 @@ export function pasangLayarPelanggan(akar, opsi) {
     thrSerah: async ({ id }) => { if (await tulis(P.susunSerahThr(id, waktu()))) set({ thrOrang: null }); }, thrHapus: async ({ id }) => { if (await tulis(P.susunHapusThr(id))) set({ thrOrang: null }); },
     usulBentuk: ({ nama }) => set({ usulBentuk: nama }), usulPakai: async () => { await tulis(P.susunUsulThr(kini(), st().tahun, st().usulBentuk, waktu())); },
     // ---- atur (angka & daftar kebijakan owner)
-    bukaAtur: () => { if (st().atur) return set({ atur: null }); const a = P.aturPelanggan(); set({ atur: { kosongKali: String(a.kosongKali / 10).replace('.', ','), notaBesar: String(a.notaBesar), tagihHari: String(a.tagihHari), macetHari: String(a.macetHari), anggaranThr: String(a.anggaranThr), salamTagih: a.salamTagih, ciriDaftar: a.ciriDaftar.map((c) => Object.assign({}, c)), arahDaftar: a.arahDaftar.slice(), titipDaftar: a.titipDaftar.slice(), alasanHapus: a.alasanHapus.slice(), bentukThr: a.bentukThr.map((b) => Object.assign({}, b)) }, bersih: null, kabar: '' }); },
+    bukaAtur: () => { if (st().atur) return set({ atur: null }); const a = P.aturPelanggan(); set({ atur: { kosongKali: String(a.kosongKali / 10).replace('.', ','), notaBesar: String(a.notaBesar), tagihHari: String(a.tagihHari), macetHari: String(a.macetHari), anggaranThr: String(a.anggaranThr), umurBatas: a.umurBatas.map(String), tertagihHari: String(a.tertagihHari), salamTagih: a.salamTagih, ciriDaftar: a.ciriDaftar.map((c) => Object.assign({}, c)), arahDaftar: a.arahDaftar.slice(), titipDaftar: a.titipDaftar.slice(), alasanHapus: a.alasanHapus.slice(), bentukThr: a.bentukThr.map((b) => Object.assign({}, b)) }, bersih: null, kabar: '' }); },
     aturKetik: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); const k = el.dataset.kolom; const i = el.dataset.i; const sub = el.dataset.sub; if (i === undefined) a[k] = String(v).slice(0, k === 'salamTagih' ? 200 : 14); else if (sub) a[k][Number(i)][sub] = String(v).slice(0, 40); else a[k][Number(i)] = String(v).slice(0, 40); set({ atur: a }); },
     aturGrup: ({ i, grup }) => { const a = JSON.parse(JSON.stringify(st().atur)); a.ciriDaftar[Number(i)].grup = grup; set({ atur: a }); },
     aturTambah: ({ daftar: k }) => { const a = JSON.parse(JSON.stringify(st().atur)); a[k].push(k === 'ciriDaftar' ? { nama: '', grup: 'lain' } : k === 'bentukThr' ? { nama: '', n: 0 } : ''); set({ atur: a }); },
@@ -328,15 +328,30 @@ export function pasangLayarPelanggan(akar, opsi) {
           ${Bn.buku.halaman.map((r, i) => h`<div class="bar ${r.jenis}" data-k="hb-${i}"><span>${r.tgl}</span><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.teks}</span><span>${r.n < 0 ? '−' : ''}${RP(Math.abs(r.n)).replace('Rp', '')}</span></div>`)}
           <div class="tombol-baris" style="margin-top: 8px;"><div class="kaca-btn aktif" data-aksi="bukaOrangBon" data-kunci="${Bn.buku.kunci}">tagih · bayar · hapus</div></div></div>` : h`<div class="menolak">Tidak ada bon yang terbuka.</div>`}</div>` : ''}
       ${s.tabB === 'papan' ? h`<div data-k="papan" style="display: flex; flex-direction: column; gap: 8px;">${Bn.papan.map((p, i) => (p.lajur ? h`<div class="bp-lajur ${p.awas ? 'awas' : ''}" data-k="lj-${i}"><span class="judul">${p.judul} · ${p.n}</span><span class="n">${RP(p.jumlah)}</span></div>` : kartuBon(p)))}</div>` : ''}
-      ${s.tabB === 'umur' ? h`<div data-k="umur" style="display: flex; flex-direction: column; gap: 10px;"><div class="ember" data-k="ember">${Bn.ember.map((e) => h`<div class="${e.aktif ? 'aktif' : ''} ${e.tua ? 'tua' : ''}" data-aksi="emberPilih" data-id="${e.id}"><b>${RP(e.jumlah).replace('Rp', '')}</b><span>${e.label} · ${e.n}</span></div>`)}</div><div class="ket">${Bn.umurTeks}</div>${Bn.perUmur.map(kartuBon)}</div>` : ''}
-      ${bukanOwner(opsi.akun ? opsi.akun() : null) ? '' : h`<div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAtur">Atur: waktunya ditagih, macet, alasan hapus, salam tagihan</div></div>`}
+      ${s.tabB === 'umur' ? h`<div data-k="umur" style="display: flex; flex-direction: column; gap: 10px;"><div class="ember" data-k="ember">${Bn.ember.map((e) => h`<div class="${e.aktif ? 'aktif' : ''} ${e.tua ? 'tua' : ''}" data-aksi="emberPilih" data-id="${e.id}"><b>${RP(e.jumlah).replace('Rp', '')}</b><span>${e.label} · ${e.n}</span></div>`)}</div>${gambarTertagih(Bn.tertagih)}<div class="ket">${Bn.umurTeks}</div>${Bn.perUmur.map(kartuBon)}</div>` : ''}
+      ${bukanOwner(opsi.akun ? opsi.akun() : null) ? '' : h`<div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAtur">Atur: waktunya ditagih, macet, kelompok umur, periode tertagih, alasan hapus, salam tagihan</div></div>`}
     </section>`;
+  }
+  /** Paket brief 9 Okt (butir 1): rata-rata hari bon tertagih (B.tertagihBon). Tiga keadaan digambar beda: kosong "—" · belum bisa dihitung · angka (boleh 0).
+   *  Batang = komposisi rupiah bon yang lunas di periode (dibayar · saldo awal · bawaan tutup buku · hapus buku · retur · lain) — bagian-bagiannya menjumlah ke totalnya.
+   *  Tinjauan no. 10: label periode = Tg.periodeTeks (menyebut bila periode terpotong tutup buku). */
+  function gambarTertagih(Tg) {
+    const bagian = [['tertagih', 'Dibayar — dihitung', Tg.tertagih], ['saatBeli', 'Dibayar di meja saat beli — bukan bon yang ditagih', Tg.saatBeli], ['saldoAwal', 'Saldo awal — belum bisa dihitung (tanggalnya perkiraan)', Tg.saldoAwal], ['pembuka', 'Bawaan tutup buku — belum bisa dihitung (tanggal bon mudanya tidak dibawa)', Tg.pembuka], ['hapusBuku', 'Ditutup hapus buku — bukan tertagih', Tg.hapusBuku],
+      ['retur', 'Ditutup retur barang — bukan tertagih', Tg.retur], ['tanpaTanggal', 'Dibayar, bon tanpa tanggal — belum bisa dihitung', Tg.tanpaTanggal], ['lain', 'Ditutup catatan lain', Tg.lain]].filter((x) => x[2].n > 0);
+    const rp = (n) => h`<span class="n" ${mentah('data-gulir="' + Math.round(n) + '"')}>${RP(n)}</span>`;
+    return h`<div class="kartu tg-kartu ${Tg.keadaan}" data-k="tertagih" style="gap: 6px;"><div class="label">Rata-rata hari bon tertagih · ${Tg.periodeTeks}</div>
+      <div class="tg-angka"><span class="besar">${Tg.rataTeks}</span><span class="ket">${Tg.keadaan === 'ada' ? 'dari bon lahir sampai dibayar lunas, ditimbang rupiah' : Tg.keadaan === 'belum' ? 'tidak ada rupiah dibayar yang tanggalnya pasti' : 'belum ada yang bisa diukur'}</span></div>
+      ${Tg.lunas.rp > 0 ? h`<div class="tg-rel" data-k="tg-rel">${bagian.map(([k]) => h`<i class="tg-warna ${k}" data-k="tg-rel-${k}" style="width: ${Math.round(Tg[k].rp / Tg.lunas.rp * 1000) / 10}%;"></i>`)}</div>` : ''}
+      <div class="ket">${Tg.teks}</div>
+      ${Tg.lunas.n ? h`<div class="tg-rinci" data-k="tg-rinci">${bagian.map(([k, judul, x]) => h`<span data-k="tg-${k}"><i class="tg-titik tg-warna ${k}"></i>${judul} · ${x.n} bon</span>${rp(x.rp)}`)}<span class="jumlah">Semua bon yang lunas · ${Tg.lunas.n} bon</span><span class="jumlah">${rp(Tg.lunas.rp)}</span></div>` : ''}
+      <div class="ket">Periode ${Tg.hari} hari & batas kelompok umur bisa diubah di Atur.</div></div>`;
   }
   function gambarLembarBon(s, d, O) {
     const p = s.lembarBon === 'tagih' ? B.pesanTagih(d, O.kunci) : null; const by = s.bayar; const hp = s.hapusIsi;
     return h`<div class="kartu rincian-wadah" data-k="lembar-bon-${O.kunci}" style="gap: 8px;"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">${O.nama}</div><div class="ket">${O.sisa > 0 ? RP(O.sisa) + ' · ' + O.ket : O.status === 'lebih' ? h`<span class="awas-teks">${O.ket}</span>` : 'tidak ada bon yang terbuka'}${O.dikenali ? '' : ' · belum dikenali (kasir menolak bon baru)'}</div></div><div class="kaca-btn" data-aksi="bonTutup">tutup</div></div>
       ${O.status === 'lebih' ? h`<div class="pita-info awas" data-k="lebih-lembar">${O.lebihUang > 0.5 ? 'Uang yang masuk ' + RP(O.lebihUang) + ' lebih banyak dari semua bonnya. ' : ''}${O.lebihHapus > 0.5 ? RP(O.lebihHapus) + ' dibayar padahal sudah dihapus dari buku — hapus bukunya yang perlu dibalik (bukan uang pelanggan, jangan dikembalikan) — ketuk "Balik hapus buku" di bawah. ' : ''}Bukunya tidak bisa dibayar atau dihapus lagi; nota Kredit berikutnya atas nama ini memakai sisa di bawah nol ini lebih dulu.${O.lebihUang > 0.5 ? ' Uang yang dikembalikan tunai belum punya catatan di sistem baru.' : ''}</div>` : ''}
       ${O.rinci.map((r, i) => h`<div class="jawab" data-k="rb-${i}" style="cursor: default;"><span class="kiri"><div><span class="nm">${r.teks}</span><span class="w">${r.tgl}</span></div></span><span class="n">${RP(r.n)}</span></div>`)}
+      <div class="ket tg-orang ${O.tertagih.keadaan}" data-k="tertagih-orang">Rata-rata hari bayar (${O.tertagih.periodeTeks}): <b>${O.tertagih.rataTeks}</b> · ${O.tertagih.teks}</div>
       ${opsi.keTujuan && bolehBukaLayar(opsi.akun ? opsi.akun() : null, 'laporan') ? h`<div class="tombol-baris" data-k="kartu-piutang"><div class="kaca-btn" data-aksi="kartuPiutang" data-kunci="${O.kunci}">Kartu piutang berkop · cetak / PDF / WA</div></div>` : ''}
       ${O.sisa > 0 ? h`<div class="tombol-baris"><div class="kaca-btn ${s.lembarBon === 'tagih' ? 'aktif' : ''}" data-aksi="lembarBon" data-l="tagih">Tagih lewat WhatsApp</div><div class="kaca-btn ${s.lembarBon === 'bayar' ? 'aktif emas' : 'aktif'}" data-aksi="lembarBon" data-l="bayar">Catat pembayaran</div><div class="kaca-btn ${s.lembarBon === 'hapus' ? 'awas' : 'putus'}" data-aksi="lembarBon" data-l="hapus">Hapus dari buku</div></div>` : ''}
       ${O.dihapus > 0.5 && !bukanOwner(opsi.akun ? opsi.akun() : null) && (O.status !== 'lebih' || O.lebihHapus > 0.5) ? h`<div class="tombol-baris" data-k="pulih-tombol"><div class="kaca-btn ${s.lembarBon === 'pulih' ? 'aktif emas' : ''}" data-aksi="lembarBon" data-l="pulih">${O.status === 'lebih' ? 'Balik hapus buku · ' + RP(Math.min(O.lebihHapus, O.dihapus)) : 'Dibayar sesudah dihapus buku · pernah dihapus ' + RP(O.dihapus)}</div></div>` : ''}
@@ -401,6 +416,16 @@ export function pasangLayarPelanggan(akar, opsi) {
       <div class="ket">Setelan cip owner: ${R.atur ? 'ikut dibersihkan (' + R.aturBuang + ' cip)' : 'tidak berubah'}. ${R.batch > 1 ? 'Ditulis dalam ' + R.batch + ' batch.' : ''} Kolom lain di kartu tidak disentuh.</div>
       <div class="tombol-baris">${tombol}</div>${bebas}${log}</div>`;
   }
+  /** Paket brief 9 Okt (butir 1): batas kelompok umur bon (bawaan 7 · 30 · 90 = garis umur yang dikunci) + periode rata-rata hari tertagih (bawaan 90). */
+  function gambarAturUmur(a) {
+    // tinjauan no. 12 (9 Okt): pratinjau membaca batas dengan pengurai yang SAMA dengan SIMPAN ("1.095" = 1095, "30,0" = 30) — dulu Number() menolak yang diterima
+    const ub = P.bacaUmurBatas(a.umurBatas); const sah = P.umurBatasSah(ub);
+    return h`<div class="kartu" data-k="atur-umur" style="gap: 6px;"><div class="label">Bon · kelompok umur & hari tertagih</div>
+      <div class="ket">Garis umur membagi sisa bon menurut umur bon tertua yang belum tertutup. Tiga batas hari, harus naik — bawaan 7 · 30 · 90.</div>
+      <div class="ps-form tiga">${[0, 1, 2].map((i) => h`<div><div class="ket">Batas ${i + 1} (hari)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.umurBatas[i]}" data-ketik="aturKetik" data-kolom="umurBatas" data-i="${i}"></div>`)}</div>
+      <div class="ket ${sah ? '' : 'awas-teks'}" data-k="atur-umur-label">${sah ? 'Kelompoknya: ' + B.kelompokUmur(ub).map((e) => e.label).join(' · ') : 'Batasnya harus bilangan bulat 1–3650 yang naik, mis. 7 · 30 · 90'}</div>
+      <div><div class="ket">Rata-rata hari bon tertagih dihitung dari bon yang lunas dalam … hari terakhir (bawaan 90)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.tertagihHari}" data-ketik="aturKetik" data-kolom="tertagihHari"></div></div>`;
+  }
   function gambarAtur(s) {
     const a = s.atur; const daftar = (k, judul, ket, tambah) => h`<div class="kartu" data-k="atur-${k}" style="gap: 6px;"><div class="label">${judul}</div><div class="ket">${ket}</div>
       ${a[k].map((x, i) => h`<div style="display: grid; grid-template-columns: minmax(0, 1fr) ${k === 'ciriDaftar' || k === 'bentukThr' ? 'auto' : ''} auto; gap: 6px; align-items: center;" data-k="${k}-${i}">
@@ -417,6 +442,7 @@ export function pasangLayarPelanggan(akar, opsi) {
         <div><div class="ket">Disebut macet sesudah (hari, tanpa pembayaran)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.macetHari}" data-ketik="aturKetik" data-kolom="macetHari"></div>
         <div><div class="ket">Anggaran THR setahun (Rp)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.anggaranThr}" data-ketik="aturKetik" data-kolom="anggaranThr"></div>
         <div><div class="ket">Salam penutup tagihan WhatsApp</div><input class="ketik-nama" type="text" value="${a.salamTagih}" data-ketik="aturKetik" data-kolom="salamTagih"></div></div></div>
+      ${gambarAturUmur(a)}
       ${daftar('ciriDaftar', 'Cip ciri yang bisa diketuk', 'Di kartu dan di tebakan. Yang masih dipakai kartu orang tidak bisa dihapus atau diganti namanya.', '+ ciri')}
       ${daftar('arahDaftar', 'Arah datangnya', 'Pakai sebutan yang memang dipakai di toko, mis. gang masjid.', '+ arah')}
       ${daftar('titipDaftar', 'Urusan titipan', 'Pilihan "untuk apa" waktu yang datang bukan orangnya.', '+ urusan')}

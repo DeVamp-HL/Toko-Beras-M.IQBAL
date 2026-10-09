@@ -16,6 +16,8 @@ import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek, lebihBayarDari, kalimatL
 import { semuaBon } from './bon-logika.js';
 import { semuaOrang } from './pelanggan-logika.js';
 import { ssHariKe, ssTambahHari, ssPerangkat, ssPersetujuan, ssCadangan, ssLokasi, ssPengingat, ssEraTutupBuku } from './sistem-logika.js';
+// modal FIFO (owner 9 Okt): untung katalog = harga − modal nota berikutnya (karung terlama); saklar mati = modal rata-rata
+import { hppKeluarPerKg } from '../mesin/modal-fifo.js';
 
 // ---------- bagian hari (N5/N9): lima blok, batasnya dari desain terkunci ----------
 export const MN_BAGIAN = [{ id: 0, nama: 'Dini hari', jam: '00–05', dari: 0, sampai: 5 }, { id: 1, nama: 'Pagi', jam: '06–10', dari: 6, sampai: 10 }, { id: 2, nama: 'Tengah hari', jam: '11–14', dari: 11, sampai: 14 }, { id: 3, nama: 'Sore', jam: '15–17', dari: 15, sampai: 17 }, { id: 4, nama: 'Malam', jam: '18–23', dari: 18, sampai: 23 }];
@@ -65,7 +67,7 @@ function mnUtang(iso) { const up = hitungUtangPemasok(); const tempo = mnTempo()
 function mnOpname() { const semua = ambilPenyesuaianStok().concat(ambilPenyesuaianKemasan()).filter((x) => !x.dariRework).concat(ambilBahanKemasan().filter((x) => x.tipe === 'opname'), ambilBahanLiteran().filter((x) => x.tipe === 'opname' && !x.lahirKarungBekas && !x.nilaiKarungBekas));
   let akhir = ''; semua.forEach((x) => { if ((x.tanggal || '') > akhir) akhir = x.tanggal; }); return { n: semua.length, akhir, tanpaRupiah: semua.filter((x) => typeof x.nilaiRp !== 'number').length }; }
 function mnKatalog() { const k = ambilHargaKarung(), m = ambilHargaKemasan(), l = ambilHargaLiteran(); const stokK = ingatStokKarung();
-  const tipis = k.map((h) => ({ merk: h.merk, untung: (Number(h.hargaPerKg) || 0) - ((stokK[h.merk] || {}).hppTerakhirPerKg || 0), adaModal: !!(stokK[h.merk] && stokK[h.merk].hppTerakhirPerKg) })).filter((x) => x.adaModal).sort((a, b) => a.untung - b.untung);
+  const tipis = k.map((h) => ({ merk: h.merk, untung: (Number(h.hargaPerKg) || 0) - hppKeluarPerKg(stokK[h.merk]), adaModal: !!(stokK[h.merk] && stokK[h.merk].hppTerakhirPerKg) })).filter((x) => x.adaModal).sort((a, b) => a.untung - b.untung);
   return { karung: k.length, kemasan: m.length, literan: l.length, total: k.length + m.length + l.length, tipis, rugi: tipis.filter((x) => x.untung < 0).length }; }
 
 // ---------- N1 · LACI BERKELOMPOK (patokan) + dua baris Sistem (Lokasi, Pengingat) di laci "Toko ini" ----------

@@ -81,8 +81,12 @@ import { bayaranBiayaBulanan, hitungPiutang, hitungStokBahanLiteran, hitungStokK
   }
   function hppTaksiranRetur(r, stokKrg, stokKem) {
     if (r.jenisAsal === 'karung') {
+      // Modal FIFO (owner 9 Okt 2026, tinjauan): retur yang dicatat saat merek FIFO menyimpan modal kembalinya sendiri (hppKembali = irisan depan
+      // antrean saat retur) — laba bulan retur tidak bergeser oleh penjualan sesudahnya. Tanpa kolom itu: modal rata-rata (hppRataPerKg bila buku
+      // sedang FIFO, karena hppTerakhirPerKg di sana = nilai sisa per kg). Saklar mati = rumus lama persis.
+      if (typeof r.hppKembali === 'number' && isFinite(r.hppKembali)) return Math.round(r.hppKembali);
       const st = stokKrg[r.merkSumber];
-      return Math.round((r.totalKg || 0) * ((st && st.hppTerakhirPerKg) || 0));
+      return Math.round((r.totalKg || 0) * ((st && (st.hppRataPerKg !== undefined ? st.hppRataPerKg : st.hppTerakhirPerKg)) || 0));
     }
     const st = stokKem[kunciKemasan(r.namaProduk, r.ukuranKemasan)];
     return Math.round((r.jumlahUnit || 0) * ((st && st.hppRataRataPerUnit) || 0));

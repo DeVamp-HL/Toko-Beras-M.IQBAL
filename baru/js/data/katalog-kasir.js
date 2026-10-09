@@ -19,9 +19,10 @@
 import { susunIsiKatalogKasir, kunciPelanggan } from '../mesin/pembantu.js';
 import { arSaringKatalogKasir } from '../layar/arsip-logika.js';
 import { wbSaringKatalogKasir } from '../layar/wadah-bernama-logika.js';
-import { cacheMentah, denganCacheSementara, ambilPiutangMutasi } from './toko.js';
+import { cacheMentah, denganCacheSementara, ambilPiutangMutasi, ingatStokKarung } from './toko.js';
 import { kpPerangkatKasir, kpNomorVersiKasir, kpVersiKasirCukup, kpNamaAplikasiKasir, KP_VERSI_HARI } from './kunci-periode.js';
 import { waktuSetempat } from '../inti/format.js';
+import { hppKeluarPerKg } from '../mesin/modal-fifo.js';
 
 export const KK_KOLEKSI = 'ringkasanKasir';
 export const KK_ID = 'aktif';
@@ -45,7 +46,15 @@ export function kkCatatTerbit(pada, galat) { _kkTerbit = { pada: pada || _kkTerb
  *  Putaran 27: baris nama yang DIARSIPKAN owner dibuang dari HASILNYA (arsip-logika.js arSaringKatalogKasir); tanpa arsip = byte-sama index.html.
  *  Putaran 28: buku STOK WADAH memakai harga liter wadahnya & nama wadah berstok sendiri tidak menjual literan atas nama mereknya (wbSaringKatalogKasir);
  *  tanpa wadah berstok sendiri = byte-sama index.html. */
-export function kkIsi() { const isi = wbSaringKatalogKasir(arSaringKatalogKasir(susunIsiKatalogKasir())); return isi ? Object.assign(isi, { bayarBonTerhitung: kkBayarTerhitung(), bayarBonSejak: kkBayarSejak() }) : isi; }
+/** Modal FIFO (owner 9 Okt, tinjauan): penyusun beku membawa hppTerakhirPerKg (di buku FIFO = nilai sisa per kg); untuk merek karung yang sedang FIFO
+ *  modal yang dikirim = modal nota berikutnya (karung terlama). Saklar mati = isi tidak disentuh (tetap byte-sama index.html). */
+function kkSaringFifo(isi) {
+  if (!isi || !Array.isArray(isi.merkKarung)) return isi;
+  const stok = ingatStokKarung();
+  isi.merkKarung.forEach((m) => { const st = stok[m.merk]; if (st && st.metode === 'fifo') m.hppPerKg = hppKeluarPerKg(st); });
+  return isi;
+}
+export function kkIsi() { const isi = kkSaringFifo(wbSaringKatalogKasir(arSaringKatalogKasir(susunIsiKatalogKasir()))); return isi ? Object.assign(isi, { bayarBonTerhitung: kkBayarTerhitung(), bayarBonSejak: kkBayarSejak() }) : isi; }
 /** Cara persis (owner 30 Sep): id SEMUA pembayaran bon yang dihitung hitungPiutang() — penyusun `piutang` di atas — persis saringannya (tipe bayar,
  *  nama yang punya kunci pelanggan), TANPA jendela hari (tinjauan P2: jendela memakai tanggal dari jam HP & jam penerbit). Tutup buku mengarsipkan
  *  pembayaran tahun lama (tahunnya selesai, daftarnya mulai lagi dari kecil); diurutkan supaya pembanding isi tidak bergantung urutan cache. */

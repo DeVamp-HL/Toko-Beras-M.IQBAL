@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/kelas-merek-logika.js', 'baru/js/layar/varian-logika.js']   # tinjauan E1: belanja membaca kelas mutu (merek lalu, harga kelas)
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/kelas-merek-logika.js', 'baru/js/layar/varian-logika.js', 'baru/js/layar/het-logika.js']   # tinjauan E1 · paket brief 9 Okt butir 8: HET: belanja membaca kelas mutu (merek lalu, harga kelas)
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -351,6 +351,74 @@ ok('atur belanja owner: ambang 2 · target 21 · muatan 3.000 (tidak lagi teruku
     WK.baris.indexOf('• IR64 Rp15.300/kg — 1 karung × 50 kg (merek lalu: Asc Satu)') >= 0 && WK.baris.indexOf('• Ketan Putih Rp20.000/kg (harga 8 Sep) — 1 karung × 50 kg (merek lalu: KK)') >= 0 && WK.baris.indexOf('• IR64 Rp13.000/kg (harga 8 Sep) — 1 karung × 50 kg') >= 0, J(WK.baris));
   pasok('batchMasuk', bAsli); pasok('penjualan', jAsli); pasok('pengaturan', pgAsli); pasok('aturanToko', atAsli);
 })();
+
+// ==================== HET BERAS (paket brief 9 Okt, butir 8) — ANGKA CONTOH ====================
+// Katalog kembali ke KOTAK: 8 baris; satuan pemetaan = 3 WADAH (IR64 Apex, Angsa, Pandan Wangi — kotak pasir memakai nama wadah ini) + Kembang (merek tanpa kelas).
+// Per kg menurut katalog: Angsa L 12.500 ÷ 0,82 = 15.243,9 · Angsa K50 700.000 ÷ 50 = 14.000 · Angsa S 13.800 · Apex S 14.100 · Apex L belum ada harga
+// · Kembang K5 75.000 ÷ 5 = 15.000 · Pandan L 13.000 ÷ 0,82 = 15.853,7 · Pandan S belum ada harga. HET bawaan Zona I: medium 13.500, premium 14.900.
+(function () {
+  Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); });
+  var S = hgSemua(KINI); var A = hetAtur(); var HT = hetKatalog(S); var hb = function (H, k) { return H.per[k]; };
+  var tutup = function (H) { return H.hit.atas + H.hit.dalam + H.hit.belum + H.hit.bukan + H.hit.kosong === H.total && H.total === S.baris.length; };
+  ok('HET bawaan tanpa dokumen: Zona I · medium 13.500 · premium 14.900 · sumber Kepbadan 299/2025, disebut angka bawaan yang bisa diubah di Atur',
+    A.zona === 'Zona I' && A.medium === 13500 && A.premium === 14900 && A.sumber === 'Kepbadan 299/2025' && !A.angkaOwner && /dokumen owner: Kepbadan 299\/2025, Zona I — bisa diubah di Atur/.test(A.sumberTeks), J(A));
+  ok('HET BELUM DIPETAKAN: tidak ada peringatan sama sekali; 8 harga "belum dipetakan" (bukan aman); judul "belum dipetakan: 4 kelas/merek"; satuan = 3 wadah (urutan wadah) + Kembang (merek tanpa kelas)',
+    HT.keadaan === 'belum' && HT.nAtas === 0 && HT.hit.belum === 8 && !HT.baris.some(function (x) { return x.status === 'atas' || x.status === 'dalam'; }) && /^belum dipetakan: 4 kelas\/merek/.test(HT.judul) && !/aman|tidak ada harga di atas/.test(HT.judul)
+    && HT.units.map(function (u) { return u.unit + ':' + u.jenis; }).join() === 'IR64 Apex:wadah,Angsa:wadah,Pandan Wangi:wadah,Kembang:merek' && tutup(HT), J([HT.judul, HT.hit, HT.units]));
+  var R = susunPetaHet('Angsa', 'premium', W);
+  ok('peta: Angsa → premium = dokumen aturanToko/het {peta: {Angsa: premium}} TANPA angka (yang belum diatur owner tetap bawaan)', !R.tolak && R.dokumen.length === 1 && R.dokumen[0].koleksi === 'aturanToko' && R.dokumen[0].data.id === 'het' && J(R.dokumen[0].data.peta) === '{"Angsa":"premium"}' && !('medium' in R.dokumen[0].data) && !('premium' in R.dokumen[0].data), J(R));
+  terapkanKeCache(R.dokumen); HT = hetKatalog(S);
+  ok('Angsa premium: LITERAN 12.500/L ÷ 0,82 = 15.243,9/kg > 14.900 → "di atas HET Rp14.900/kg (+Rp344)"; karung 50 kg 700.000 ÷ 50 = 14.000 sama/di bawah; per kg 13.800 di bawah; hetAtur tetap bawaan',
+    hb(HT, 'Angsa|L').status === 'atas' && Math.abs(hb(HT, 'Angsa|L').perKg - 12500 / 0.82) < 1e-9 && hb(HT, 'Angsa|L').teks === 'di atas HET Rp14.900/kg (+Rp344)' && hb(HT, 'Angsa|K50').status === 'dalam' && hb(HT, 'Angsa|K50').perKg === 14000 && /di bawah HET premium Rp14\.900\/kg \(−Rp900\)/.test(hb(HT, 'Angsa|K50').teks)
+    && hb(HT, 'Angsa|S').status === 'dalam' && /Rp12\.500\/L = Rp15\.244\/kg/.test(hb(HT, 'Angsa|L').hargaTeks) && !hetAtur().angkaOwner, J([hb(HT, 'Angsa|L'), hb(HT, 'Angsa|K50')]));
+  ok('sebagian dipetakan: "1 harga di atas HET · belum dipetakan: 3 kelas/merek" (tidak pernah "aman"); 1 atas + 2 sama/di bawah + 5 belum = 8 (menutup)',
+    HT.keadaan === 'sebagian' && HT.nAtas === 1 && HT.judul === '1 harga di atas HET · belum dipetakan: 3 kelas/merek' && HT.hit.dalam === 2 && HT.hit.belum === 5 && tutup(HT) && /^Dari 8 harga: 1 di atas HET · 2 sama\/di bawah HET · 5 belum dipetakan\.$/.test(HT.rincian), J([HT.judul, HT.hit, HT.rincian]));
+  terapkanKeCache(susunPetaHet('Kembang', 'medium', W).dokumen); terapkanKeCache(susunPetaHet('IR64 Apex', 'premium', W).dokumen); terapkanKeCache(susunPetaHet('Pandan Wangi', 'bukan', W).dokumen); HT = hetKatalog(S);
+  ok('KEMASAN Kembang 5 kg 75.000 ÷ 5 = 15.000/kg > medium 13.500 → +Rp1.500; Apex per kg 14.100 di bawah premium, Apex literan BELUM ADA HARGA (bukan aman, bukan atas); Pandan "bukan beras HET" → tidak dibandingkan walau 15.854/kg',
+    hb(HT, 'Kembang|K5').status === 'atas' && hb(HT, 'Kembang|K5').perKg === 15000 && hb(HT, 'Kembang|K5').teks === 'di atas HET Rp13.500/kg (+Rp1.500)' && hb(HT, 'IR64 Apex|S').status === 'dalam' && hb(HT, 'IR64 Apex|L').status === 'kosong'
+    && hb(HT, 'Pandan Wangi|L').status === 'bukan' && hb(HT, 'Pandan Wangi|S').status === 'bukan', J([hb(HT, 'Kembang|K5'), hb(HT, 'IR64 Apex|L'), hb(HT, 'Pandan Wangi|L')]));
+  ok('semua dipetakan: "2 harga di atas HET", urut selisih terbesar (Kembang lalu Angsa literan); 2 atas + 3 sama/di bawah + 2 bukan + 1 belum ada harga = 8; tidak ada sisa "belum dipetakan"',
+    HT.keadaan === 'lengkap' && HT.judul === '2 harga di atas HET' && HT.atas.map(function (x) { return x.k; }).join() === 'Kembang|K5,Angsa|L' && HT.hit.dalam === 3 && HT.hit.bukan === 2 && HT.hit.kosong === 1 && HT.hit.belum === 0 && HT.unitBelum.length === 0 && tutup(HT), J([HT.judul, HT.hit]));
+  // harga TEPAT = HET tidak awas; satu rupiah lebih = awas; pecahan di bawah Rp1 tetap disebut
+  terapkanKeCache(susunUbah('Angsa|S', '14.900', 'jual', W).dokumen); S = hgSemua(KINI); HT = hetKatalog(S);
+  ok('harga TEPAT HET (draf Angsa per kg 14.900): sama/di bawah, "tepat HET premium Rp14.900/kg" — tidak awas; literan 12.218/L ÷ 0,82 = 14.900 juga tepat', hb(HT, 'Angsa|S').status === 'dalam' && hb(HT, 'Angsa|S').teks === 'tepat HET premium Rp14.900/kg' && hetNilai(12218 / 0.82, 'premium', hetAtur()).status === 'dalam' && hetNilai(12219 / 0.82, 'premium', hetAtur()).status === 'atas', J(hb(HT, 'Angsa|S')));
+  ok('satu rupiah di atas HET = awas (+Rp1); kemasan 5 kg 74.502 = 14.900,4/kg → di atas, selisih disebut "+Rp0,4" (tidak dibulatkan jadi Rp0)', hetNilai(14901, 'premium', hetAtur()).teks === 'di atas HET Rp14.900/kg (+Rp1)' && hetNilai(74502 / 5, 'premium', hetAtur()).status === 'atas' && hetNilai(74502 / 5, 'premium', hetAtur()).lebihTeks === 'Rp0,4', J(hetNilai(74502 / 5, 'premium', hetAtur())));
+  // sebelum terbit: draf dinilai dengan harga BARUNYA; peringatan tidak memblokir; harga kasir (terbit) dinilai terpisah untuk dasbor
+  terapkanKeCache(susunUbah('Angsa|S', '15.000', 'jual', W).dokumen); S = hgSemua(KINI); var HD = hetDraf(S);
+  ok('sebelum terbit: draf Angsa per kg 15.000 → "di atas HET Rp14.900/kg (+Rp100)"; teks "1 harga draf di atas HET Zona I — boleh terbit; owner yang memutuskan"; terbit TIDAK ditahan (ketukan pertama langsung jadi)',
+    HD.daftar.length === 1 && HD.nAtas === 1 && HD.per['Angsa|S'].teks === 'di atas HET Rp14.900/kg (+Rp100)' && /^1 harga draf di atas HET Zona I — boleh terbit; owner yang memutuskan\.$/.test(HD.teks) && !susunTerbit(W, false).tolak, J(HD));
+  var HK = hetKatalog(S, 'terbit');
+  ok('harga KASIR (terbit, untuk dasbor) tetap 13.800 → sama/di bawah; harga tampil (draf) 15.000 → di atas; hetHargaKasir(kini) = hetKatalog(hgSemua(kini), "terbit")', HK.per['Angsa|S'].status === 'dalam' && HK.per['Angsa|S'].n === 13800 && hetKatalog(S).per['Angsa|S'].status === 'atas' && J(hetHargaKasir(KINI).hit) === J(HK.hit) && HK.pakai === 'terbit' && /yang dipakai kasir/.test(HK.rincian), J([HK.per['Angsa|S'], HK.hit]));
+  var b = cariBaris(S, 'Angsa|S');
+  ok('lembar ubah: harga yang DIKETIK dinilai terhadap HET kelasnya (15.500 → +Rp600; 14.000 → di bawah); kelas/merek belum dipetakan → "belum"', hetSatuHarga(b, 15500).teks === 'di atas HET Rp14.900/kg (+Rp600)' && hetSatuHarga(b, 14000).status === 'dalam'
+    && (function () { var d = cacheMentah('aturan').find(function (x) { return x.id === 'het'; }); var p = Object.assign({}, d.peta); delete p.Angsa; terapkanKeCache([{ koleksi: 'aturanToko', data: Object.assign({}, d, { peta: p }) }]); var r = hetSatuHarga(b, 15500).status; terapkanKeCache([{ koleksi: 'aturanToko', data: d }]); return r === 'belum'; })(), J(hetSatuHarga(b, 15500)));
+  // UBAH SETELAN HET → hasil ikut berubah
+  var AT = susunAturHet({ zona: 'Zona II', medium: '13.600', premium: '15.300', sumber: 'Keputusan contoh' }, W);
+  ok('atur HET: dokumen aturanToko/het {zona Zona II, medium 13.600, premium 15.300, sumber} + peta yang ada IKUT utuh', !AT.tolak && AT.dokumen[0].data.id === 'het' && AT.dokumen[0].data.medium === 13600 && AT.dokumen[0].data.premium === 15300 && AT.dokumen[0].data.zona === 'Zona II' && AT.dokumen[0].data.sumber === 'Keputusan contoh' && J(AT.dokumen[0].data.peta) === J({ Angsa: 'premium', Kembang: 'medium', 'IR64 Apex': 'premium', 'Pandan Wangi': 'bukan' }), J(AT));
+  terapkanKeCache(AT.dokumen); HT = hetKatalog(S); HD = hetDraf(S);
+  ok('sesudah setelan berubah HASIL IKUT: Angsa literan 15.243,9 kini di BAWAH premium 15.300; draf Angsa 15.000 tidak lagi di atas; Kembang 15.000 vs medium 13.600 → +Rp1.400; layar menyebut "angka owner … Keputusan contoh · Zona II"',
+    hb(HT, 'Angsa|L').status === 'dalam' && HD.nAtas === 0 && hb(HT, 'Kembang|K5').teks === 'di atas HET Rp13.600/kg (+Rp1.400)' && HT.nAtas === 1 && /angka owner .*sumber: Keputusan contoh · Zona II/.test(hetAtur().sumberTeks), J([hb(HT, 'Angsa|L'), hb(HT, 'Kembang|K5'), hetAtur().sumberTeks]));
+  var RP2 = susunPetaHet('Kembang', 'premium', W);
+  ok('peta sesudah angka owner: angka owner ikut tertulis apa adanya (13.600 / 15.300 / Zona II), bukan bawaan', RP2.dokumen[0].data.medium === 13600 && RP2.dokumen[0].data.premium === 15300 && RP2.dokumen[0].data.zona === 'Zona II' && RP2.dokumen[0].data.peta.Kembang === 'premium', J(RP2));
+  // tinjauan 9 Okt no. 18: angka disimpan 19 Sep (W); 15 Okt owner HANYA memetakan Kembang → premium. Tanggal dokumen = 15 Okt, tanggal ANGKA tetap 19 Sep (disalin utuh)
+  var W15 = Object.assign({}, W, { tanggal: '2026-10-15', jam: '09:00', kini: '2026-10-15T02:00:00.000Z' }); var RP3 = susunPetaHet('Kembang', 'premium', W15);
+  var het18 = denganCacheSementara(RP3.dokumen, function () { return hetAtur().sumberTeks; });
+  ok('no.18 peta 15 Okt sesudah angka 19 Sep: kepala kartu tetap "angka owner (disimpan 2026-09-19) · sumber: Keputusan contoh · Zona II" (bukan 15 Okt); dokumen tanggal 15 Okt, angkaTanggal 19 Sep disalin utuh',
+    AT.dokumen[0].data.angkaTanggal === '2026-09-19' && hetAtur().sumberTeks === 'angka owner (disimpan 2026-09-19) · sumber: Keputusan contoh · Zona II' && het18 === hetAtur().sumberTeks
+    && RP3.dokumen[0].data.tanggal === '2026-10-15' && RP3.dokumen[0].data.angkaTanggal === '2026-09-19' && RP3.dokumen[0].data.medium === 13600, J([het18, RP3.dokumen[0].data]));
+  ok('no.18 peta TANPA angka owner tidak melahirkan tanggal angka (yang belum diatur tetap bawaan, tanpa "disimpan …")', !('angkaTanggal' in R.dokumen[0].data), J(R.dokumen[0].data));
+  ok('atur HET ditolak: premium < medium ("tertukar?"), medium 0, huruf; kolom kosong = nilai berlaku', /tertukar/.test(susunAturHet({ medium: '15.000', premium: '14.000' }, W).tolak || '') && /1–100\.000/.test(susunAturHet({ medium: '0' }, W).tolak || '') && /1–100\.000/.test(susunAturHet({ premium: 'abc' }, W).tolak || '')
+    && susunAturHet({}, W).dokumen[0].data.medium === 13600, J(susunAturHet({ medium: '15.000', premium: '14.000' }, W)));
+  ok('peta ditolak: nama di luar katalog, pilihan yang sama lagi, pilihan tak dikenal; lepas ("") = kembali belum dipetakan', /tidak ada di katalog/.test(susunPetaHet('Merek Asing', 'premium', W).tolak || '') && /sudah premium/.test(susunPetaHet('Angsa', 'premium', W).tolak || '') && /tidak dikenal/.test(susunPetaHet('Angsa', 'mahal', W).tolak || '')
+    && (function () { var r = susunPetaHet('Angsa', '', W); return !r.tolak && !('Angsa' in r.dokumen[0].data.peta) && /kembali belum dipetakan/.test(r.patch.kabar); })(), J(susunPetaHet('Angsa', '', W)));
+  // KELAS: merek berkelas (dikonfirmasi owner) dinilai dengan pemetaan kelasnya; kelas TEBAKAN tidak dipakai
+  terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'kelasMerek', peta: { Kembang: 'IR64 Apex' }, asal: { Kembang: 'tebakan' }, kelasSendiri: [] } }]); HT = hetKatalog(S);
+  ok('kelas TEBAKAN (Kembang → IR64 Apex, belum dikonfirmasi) tidak dipakai: Kembang tetap satuan sendiri (merek), tebakannya disebut', hetUnit('Kembang').unit === 'Kembang' && hetUnit('Kembang').tebakan === 'IR64 Apex' && HT.units.some(function (u) { return u.unit === 'Kembang' && u.jenis === 'merek' && u.tebakan === 'IR64 Apex'; }), J(hetUnit('Kembang')));
+  terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'kelasMerek', peta: { Kembang: 'IR64 Apex' }, asal: { Kembang: 'owner' }, kelasSendiri: [] } }]); HT = hetKatalog(S);
+  ok('kelas DIKONFIRMASI owner (Kembang → IR64 Apex): Kembang 15.000/kg dinilai dengan IR64 Apex (premium 15.300) → di bawah; anggota kelas Apex memuat Kembang; pemetaan lama "Kembang" kini tidak dipakai katalog dan boleh dilepas',
+    hetUnit('Kembang').unit === 'IR64 Apex' && hetUnit('Kembang').jenis === 'wadah' && hb(HT, 'Kembang|K5').unit === 'IR64 Apex' && hb(HT, 'Kembang|K5').kategori === 'premium' && hb(HT, 'Kembang|K5').status === 'dalam'
+    && HT.units.find(function (u) { return u.unit === 'IR64 Apex'; }).anggota.indexOf('Kembang') >= 0 && J(HT.tidakDipakai) === '["Kembang"]' && !susunPetaHet('Kembang', '', W).tolak && !!susunPetaHet('Kembang', 'medium', W).tolak, J([hb(HT, 'Kembang|K5'), HT.tidakDipakai]));
+})();
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 BATCH_BARU = r"""
@@ -418,8 +486,22 @@ B.tusukan.forEach(function (t) { var lama = t.bon.filter(function (b) { return b
 var kC = kenal('pemasokCatatan'); var kr = susunKartu(px ? px.pemasok : 'X', { kontak: '0', tempo: '7' }, WX); if (kr.dokumen) Object.keys(kr.dokumen[0].data).forEach(function (k) { if (!kC[k] && ['orang', 'tempo', 'bonLamaBergulir'].indexOf(k) < 0) salah.push('kartu.' + k); });
 var kH = kenal('pengeluaranHarian'); if (px && (B.adaKas === false || tanpaTitik)) { var by2 = susunBayar({ pemasok: px.pemasok, bonId: px.id, ketik: '1', dari: 'rekening', adminI: 0 }, WX); if (by2.dokumen && by2.dokumen[1]) Object.keys(by2.dokumen[1].data).forEach(function (k) { if (!kH[k] && ['dariBayarBon', 'untuk'].indexOf(k) < 0) salah.push('harian.' + k); }); }
 if (tanpaTitik) pasok('pengaturan', pgAsli);
+// paket brief 9 Okt (butir 8): HET — keadaan NYATA cadangan (ada dokumen aturanToko/het?) lalu pemetaan CONTOH di cache sementara (BUKAN keputusan owner):
+// wadah IR64 … → premium, wadah IR42 … → medium, kelas tanpa wadah (ketan, beras merah) → bukan beras HET; sisanya dibiarkan belum dipetakan
+var HT0 = hetKatalog(S); var hetAdaDok = cacheMentah('aturan').some(function (d) { return String(d.id) === 'het'; });
+var hetTutup = function (H) { return H.hit.atas + H.hit.dalam + H.hit.belum + H.hit.bukan + H.hit.kosong === H.total && H.total === S.baris.length; };
+if (!hetTutup(HT0)) salah.push('HET tidak menutup');
+if (!hetAdaDok && (HT0.nAtas !== 0 || HT0.keadaan !== 'belum')) salah.push('HET menyala sebelum dipetakan');
+var petaContoh = {}; HT0.units.forEach(function (u) { if (u.jenis === 'wadah' && /^IR64 /.test(u.unit)) petaContoh[u.unit] = 'premium'; else if (u.jenis === 'wadah' && /^IR42 /.test(u.unit)) petaContoh[u.unit] = 'medium'; else if (u.jenis === 'sendiri') petaContoh[u.unit] = 'bukan'; });
+var hetC = denganCacheSementara([{ koleksi: 'aturanToko', data: { id: 'het', peta: petaContoh } }], function () { var T = hetKatalog(S), K = hetKatalog(S, 'terbit');
+  if (!hetTutup(T) || !hetTutup(K)) salah.push('HET contoh tidak menutup');
+  return { hit: T.hit, judul: T.judul, unitBelum: T.unitBelum.length, kasirAtas: K.nAtas, atas: T.atas.map(function (x) { return x.judul + ' ' + x.hargaTeks + ' (' + x.unit + ' ' + x.kategori + ') ' + x.teks; }) }; });
+// CONTOH B (juga bukan keputusan owner): SEMUA kelas berwadah premium, kelas tanpa wadah bukan beras HET — untuk melihat seberapa peka hasilnya pada pilihan IR42
+var petaB = {}; HT0.units.forEach(function (u) { if (u.jenis === 'wadah') petaB[u.unit] = 'premium'; else if (u.jenis === 'sendiri') petaB[u.unit] = 'bukan'; });
+var hetB = denganCacheSementara([{ koleksi: 'aturanToko', data: { id: 'het', peta: petaB } }], function () { var T = hetKatalog(S); return { atas: T.nAtas, kasirAtas: hetKatalog(S, 'terbit').nAtas, unitBelum: T.unitBelum.length }; });
+var hetAsap = { dok: hetAdaDok, keadaan: HT0.keadaan, nAtas0: HT0.nAtas, unit: HT0.units.length, unitBelum0: HT0.unitBelum.length, judul0: HT0.judul, petaContoh: petaContoh, contoh: hetC, contohB: hetB, belumNama: HT0.units.filter(function (u) { return !petaContoh[u.unit]; }).map(function (u) { return u.unit + ' (' + u.jenisTeks + ')'; }) };
 var b0 = S.baris.find(function (b) { return b.st.id === 'S' && b.modalUnit > 0 && b.lamaN > 0; }); if (b0) { terapkanKeCache(susunUbah(b0.k, String(b0.lamaN + 100), 'jual', WX).dokumen); var T = susunTerbit(WX, true); var kK = kenal('katalogHargaKarung'); if (T.dokumen) Object.keys(T.dokumen[0].data).forEach(function (k) { if (!kK[k] && k !== 'modalSaatSetel') salah.push('katalogKarung.' + k); }); else salah.push('terbit ditolak: ' + T.tolak); }
-print(JSON.stringify({ salah: salah, catatan: catatan, baris: S.baris.length, nDok: nDok, perlu: S.perlu.length, ringkas: S.ringkas.map(function (r) { return r.l + ' ' + r.a; }).join(' · '), target: S.target, targetDariRata: S.atur.targetDariRata, bongkar: S.atur.bongkarKg, bon: B.nBon, total: B.total, lewat: B.lewat.length, merk: D.merk.length, perluBeli: D.merk.filter(function (m) { return m.perlu; }).length, gab: gab, muatan: D.atur.muatanKg, pemasok: D.pemasok.map(function (p) { return p.nama.split(' ')[0] + ':' + p.cara; }).join(' · '), kelompok: kel }));
+print(JSON.stringify({ het: hetAsap, salah: salah, catatan: catatan, baris: S.baris.length, nDok: nDok, perlu: S.perlu.length, ringkas: S.ringkas.map(function (r) { return r.l + ' ' + r.a; }).join(' · '), target: S.target, targetDariRata: S.atur.targetDariRata, bongkar: S.atur.bongkarKg, bon: B.nBon, total: B.total, lewat: B.lewat.length, merk: D.merk.length, perluBeli: D.merk.filter(function (m) { return m.perlu; }).length, gab: gab, muatan: D.atur.muatanKg, pemasok: D.pemasok.map(function (p) { return p.nama.split(' ')[0] + ':' + p.cara; }).join(' · '), kelompok: kel }));
 """
 
 
@@ -434,6 +516,24 @@ def utama(js):
     h, e = jalan(JAM_TETAP + js + BATCH_BARU + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e]
     return h['lulus'], h['gagal']
+
+
+def baca(jalur): return open(os.path.join(AKAR, jalur), encoding='utf-8').read()
+
+
+# paket brief 9 Okt (butir 8): layar Harga (statis) — HET tergambar di papan, kartu HET (ringkasan + Atur), lembar ubah & sebelum terbit; isian setelan dijaga
+def periksa_layar(hg, idx):
+    c = []
+    if "import * as HET from './het-logika.js';" not in hg: c.append('harga.js tidak memuat het-logika.js')
+    if '<link rel="modulepreload" href="js/layar/het-logika.js">' not in idx: c.append('modulepreload het-logika.js belum ada di baru/index.html')
+    if 'const HT = HET.hetKatalog(S);' not in hg or '${gambarHet(s, HT)}' not in hg: c.append('katalog tidak menggambar kartu HET')
+    if "HT.per[k].status === 'atas'" not in hg or 'het-atas' not in hg: c.append('papan tidak menandai harga di atas HET')
+    if 'const HD = HET.hetDraf(S);' not in hg or "${HD.teks ? h`<div class=\"pita-info" not in hg or 'hetX(d.k).teks' not in hg: c.append('periksa sebelum terbit tidak memperingatkan HET')
+    if 'HET.hetSatuHarga(b, ' not in hg: c.append('lembar ubah tidak menilai harga ketikan terhadap HET')
+    if "pasangIsian(K, awal, ['ketik', 'aturH', 'aturHet'," not in hg: c.append('isian setelan HET (aturHet) tidak dijaga penjaga isian')
+    if 'HET.susunPetaHet(unit, ' not in hg or 'HET.susunAturHet(' not in hg: c.append('Atur HET tidak menulis lewat susunAturHet / susunPetaHet')
+    if '${HT.judul}' not in hg or '${HT.hit[id]}' not in hg: c.append('kartu HET tanpa judul keadaan / lima bagian yang menutup')
+    return c
 
 
 if __name__ == '__main__':
@@ -524,6 +624,28 @@ if __name__ == '__main__':
             'E1: harga kelas dipakai walau kiriman terbarunya dua harga': js.replace("const dekat = r && r.harga.length === 1 && s.harga > 0", "const dekat = r && s.harga > 0"),
             'E1: harga kelas dari kelas tebakan': js.replace("o[m] = K.kelas && kmTerisi(K.asal) ? K.kelas : '';", "o[m] = K.kelas || '';"),
             'E1: tanggal & merek lalu hanya dari merek yang dipesan': js.replace("g.kenal = g.merk.concat(lain);", "g.kenal = g.merk;"),
+            # ---- paket brief 9 Okt (butir 8): HET beras
+            'HET: belum dipetakan dinilai premium (peringatan menyala sebelum owner memetakan)': js.replace("const kategori = A.peta[U.unit] || '';", "const kategori = A.peta[U.unit] || 'premium';"),
+            'HET: belum dipetakan disebut lengkap/aman': js.replace("const keadaan = !total ? 'kosong' : unitBelum.length === daftarUnit.length ? 'belum' : unitBelum.length ? 'sebagian' : 'lengkap';", "const keadaan = !total ? 'kosong' : 'lengkap';"),
+            'HET: harga TEPAT HET dianggap di atas': js.replace("if (lebih > 1e-6) return { status: 'atas'", "if (lebih >= -1e-6) return { status: 'atas'"),
+            'HET: literan tidak dibagi kg per liter': js.replace("const hetPerKg = (n, st) => (n > 0 ? nilaiHarga(n, 0, st.kg, 0, false).perKg : 0);", "const hetPerKg = (n, st) => (n > 0 ? nilaiHarga(n, 0, st.id === 'L' ? 1 : st.kg, 0, false).perKg : 0);"),
+            'HET: kemasan tidak dibagi ukurannya': js.replace("const hetPerKg = (n, st) => (n > 0 ? nilaiHarga(n, 0, st.kg, 0, false).perKg : 0);", "const hetPerKg = (n, st) => (n > 0 ? nilaiHarga(n, 0, st.id.charAt(0) === 'K' ? 1 : st.kg, 0, false).perKg : 0);"),
+            'HET: setelan owner diabaikan (angka bawaan mati)': js.replace("medium: medium === null ? HET_BAWAAN.medium : medium, premium: premium === null ? HET_BAWAAN.premium : premium,", "medium: HET_BAWAAN.medium, premium: HET_BAWAAN.premium,"),
+            'HET: premium dan medium tertukar': js.replace("const het = A[kategori]; if (!(perKg > 0))", "const het = A[kategori === 'premium' ? 'medium' : 'premium']; if (!(perKg > 0))"),
+            'HET: bukan beras HET tetap dibandingkan': js.replace("if (kategori === 'bukan') return {", "if (false) return {"),
+            'HET: kelas TEBAKAN dipakai': js.replace("if (K.kelas && kmTerisi(K.asal)) {", "if (K.kelas) {"),
+            'HET: kelas merek diabaikan (merek selalu dinilai sendiri)': js.replace("if (K.kelas && kmTerisi(K.asal)) {", "if (false) {"),
+            'HET: hitungan tidak menutup (belum ada harga dibuang)': js.replace("baris.forEach((x) => { hit[x.status] += 1; });", "baris.forEach((x) => { if (x.status !== 'kosong') hit[x.status] += 1; });"),
+            'HET: sebelum terbit menilai harga LAMA (draf tidak diperiksa)': js.replace("const H = hetKatalog(S, 'tampil'); const daftar = H.baris.filter((x) => x.adaDraf);", "const H = hetKatalog(S, 'terbit'); const daftar = H.baris.filter((x) => x.adaDraf);"),
+            'HET: harga kasir (dasbor) ikut membaca draf': js.replace("const n = terbit ? b.lamaN : b.n;", "const n = b.n;"),
+            'HET: pemetaan menulis angka bawaan sebagai angka owner': js.replace("HET_KOLOM.forEach((x) => { if (d && d[x] !== undefined && d[x] !== null) data[x] = d[x]; });", "HET_KOLOM.forEach((x) => { data[x] = A[x]; });"),
+            'HET: premium lebih rendah dari medium diterima': js.replace("if (P.n < M.n) return { tolak:", "if (false) return { tolak:"),
+            'HET: simpan setelan menghapus pemetaan': js.replace("sumber, peta: Object.assign({}, kini.peta) };", "sumber, peta: {} };"),
+            'HET: selisih di bawah Rp1 tampil "Rp0"': js.replace("const hetRp = (x) => (Math.round(x) >= 1 ? RP(x) : 'Rp' + DESIMAL(x));", "const hetRp = (x) => RP(x);"),
+            'HET: lembar ubah menilai harga lama, bukan ketikan': js.replace("const perKg = hetPerKg(Math.round(Number(n) || 0), b.st);", "const perKg = hetPerKg(b.n, b.st);"),
+            # tinjauan 9 Okt no. 18: tanggal simpan ANGKA HET tidak ikut pindah ke hari pemetaan
+            'HET no.18: pemetaan tidak menyalin tanggal angka (kepala kartu kehilangan / salah tanggal)': js.replace("const HET_KOLOM = ['zona', 'medium', 'premium', 'sumber', 'angkaTanggal'];", "const HET_KOLOM = ['zona', 'medium', 'premium', 'sumber'];"),
+            'HET no.18: kepala kartu membaca tanggal dokumen (= hari pemetaan terakhir)': js.replace("tanggal: d ? String(d.angkaTanggal || '') : '' };", "tanggal: d ? String(d.tanggal || '') : '' };"),
         }
         kode = 0
         for nama, isi in rusak.items():
@@ -531,8 +653,23 @@ if __name__ == '__main__':
             l, g = utama(isi)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
+        # layar (statis): HET wajib tergambar di papan, kartu HET, lembar ubah & sebelum terbit
+        HG0, IX0 = baca('baru/js/layar/harga.js'), baca('baru/index.html')
+        layar = {
+            'layar: kartu HET tidak digambar': (HG0.replace('${gambarHet(s, HT)}', ''), IX0),
+            'layar: papan tanpa tanda di atas HET': (HG0.replace("HT.per[k].status === 'atas'", "HT.per[k].status === 'xx'"), IX0),
+            'layar: sebelum terbit tanpa peringatan HET': (HG0.replace('${HD.teks ? h`<div class="pita-info', '${false ? h`<div class="pita-info'), IX0),
+            'layar: isian setelan HET tidak dijaga': (HG0.replace("pasangIsian(K, awal, ['ketik', 'aturH', 'aturHet',", "pasangIsian(K, awal, ['ketik', 'aturH',"), IX0),
+            'layar: modulepreload het-logika.js hilang': (HG0, IX0.replace('<link rel="modulepreload" href="js/layar/het-logika.js">\n', '')),
+        }
+        for nama, (a, b) in layar.items():
+            if a == HG0 and b == IX0: print('KONTROL BASI  ' + nama); kode = 3; continue
+            c = periksa_layar(a, b)
+            print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:120] if c else '-'))
+            if not c: kode = 3
         sys.exit(kode)
     l, g = utama(js)
+    g += ['layar: ' + x for x in periksa_layar(baca('baru/js/layar/harga.js'), baca('baru/index.html'))]
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')), key=os.path.basename)
     if cad:
@@ -545,4 +682,12 @@ if __name__ == '__main__':
                   % (os.path.basename(cad[-1]), h['baris'], h['nDok'], h['perlu'], h['ringkas'], h['target'], ' (rata-rata)' if h['targetDariRata'] else '', h['bongkar'], h['bon'], h['total'], h['lewat'], h['merk'], h['perluBeli'], h['gab']['baris'], h['gab']['perlu'], len(h['gab']['tutup']), h['muatan'], h['pemasok'], h['kelompok']['merek'], h['kelompok']['baris'], h['kelompok']['pemasok'], ', '.join(h['salah']) or 'tidak ada', (' · catatan (angka cadangan toko): ' + '; '.join(h['catatan'])) if h.get('catatan') else ''))
             if not h['kelompok']['pemasok']: g.append('asap: pesanan per harga tidak teruji (tidak ada pemasok berkarung)')
             if h['salah']: g.append('asap: ' + ', '.join(h['salah']))
+            t = h['het']; c = t['contoh']; hc = c['hit']
+            print('ASAP HET (paket brief butir 8, angka toko %s): dokumen aturanToko/het %s · keadaan %s — %s · %d kelas/merek di katalog, %d harga di atas HET tanpa pemetaan'
+                  % (tgl, 'ADA' if t['dok'] else 'belum ada', t['keadaan'], t['judul0'], t['unit'], t['nAtas0']))
+            print('   PEMETAAN CONTOH (bukan keputusan owner: %s): %s · dari %d harga: %d di atas HET · %d sama/di bawah · %d belum dipetakan (%d kelas/merek) · %d bukan beras HET · %d belum ada harga · harga kasir (terbit) di atas HET: %d'
+                  % (', '.join('%s → %s' % kv for kv in sorted(t['petaContoh'].items())) or '-', c['judul'], sum(hc.values()), hc['atas'], hc['dalam'], hc['belum'], c['unitBelum'], hc['bukan'], hc['kosong'], c['kasirAtas']))
+            for x in c['atas']: print('     · ' + x)
+            print('   kelas/merek yang dibiarkan belum dipetakan di contoh: ' + (', '.join(t['belumNama']) or '-'))
+            print('   CONTOH B (semua kelas berwadah premium, kelas tanpa wadah bukan): %d harga di atas HET (kasir %d), belum dipetakan %d kelas/merek' % (t['contohB']['atas'], t['contohB']['kasirAtas'], t['contohB']['unitBelum']))
     sys.exit(2 if g else 0)

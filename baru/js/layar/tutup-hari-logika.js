@@ -17,6 +17,9 @@ import { thDorongRiwayat } from '../mesin/beku.js';
 import { caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah, kunciNota, returUangPerHari, ingatStokKarung, ingatGerakanKas } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
+import { nilaiSelisihKg } from '../mesin/modal-fifo.js';
+// modal FIFO (owner 9 Okt, tinjauan): rupiah selisih timbang cepat merek karung FIFO = irisan karung terlama (sama dengan Cocokkan); saklar mati = beda × modal
+const tdRpSelisih = (merk, beda, hpp, iso) => { const st = ingatStokKarung(iso)[merk]; return st && st.metode === 'fifo' ? Math.round(nilaiSelisihKg(st, beda)) : Math.round(beda * hpp); };
 import { aturHarga, hgPct } from './harga-logika.js';
 import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan, ugLabaBersih, ugSesudahTitik } from './uang-logika.js';
 
@@ -114,7 +117,7 @@ export function hitungTutup(D, kini) {
   const sisihLama = R.sudah ? Number((ambilAmplopLaba().find((a) => String(a.id) === 'am-' + iso) || {}).nominal) || 0 : 0; const amankanLama = R.sudah ? Number((ambilPindahUang().find((p) => String(p.id) === 'pd-' + iso) || {}).nominal) || 0 : 0; const mdrLama = R.mdrTercatat;
   const sisihBaru = beres('sisih') ? sisihN : 0; const amankanN = Math.max(0, hitung - sisihBaru - A.kembalian); const amankanBaru = beres('amankan') ? amankanN : 0; const laciAkhir = hitung - sisihBaru - amankanBaru;
   const sisihJadi = sisihLama + sisihBaru, amankanJadi = amankanLama + amankanBaru;
-  const timbang = barangTimbang(iso).map((m) => { const x = (D.timbang || {})[m.merk]; const nyata = x === undefined || x === null || x === '' ? null : tdB1(ugAngka(x)); const beda = nyata === null ? 0 : tdB1(nyata - m.sistem); return Object.assign({}, m, { nyata, beda, rp: Math.round(beda * m.hpp), teks: nyata === null ? 'belum' : beda === 0 ? 'cocok' : (beda > 0 ? 'lebih ' : 'kurang ') + KG(Math.abs(beda)) }); });
+  const timbang = barangTimbang(iso).map((m) => { const x = (D.timbang || {})[m.merk]; const nyata = x === undefined || x === null || x === '' ? null : tdB1(ugAngka(x)); const beda = nyata === null ? 0 : tdB1(nyata - m.sistem); return Object.assign({}, m, { nyata, beda, rp: tdRpSelisih(m.merk, beda, m.hpp, iso), teks: nyata === null ? 'belum' : beda === 0 ? 'cocok' : (beda > 0 ? 'lebih ' : 'kurang ') + KG(Math.abs(beda)) }); });
   const belumTimbang = timbang.filter((m) => m.nyata === null).length; const bedaTimbang = tdB1(timbang.reduce((a, m) => a + m.beda, 0));
   const tolakLaci = !(hitung > 0) ? 'Hitung dulu uangnya' : seharusnya === null ? '' : (!dimaafkan && !D.alasan ? 'Selisihnya di luar yang dimaafkan — pilih alasannya' : '');
   const tolakRek = D.rekPilih === 'beda' ? (!(rekNyata > 0) ? 'Ketik jumlah yang benar-benar masuk' : rekNyata > R.qris ? (R.qrisBon || R.qrisKasbon ? 'Lebih besar dari uang QRIS hari ini (' + RP(R.qris) + ' = penjualan ' + RP(R.qrisJual) + (R.qrisBon ? ' + bayar bon ' + RP(R.qrisBon) : '') + (R.qrisKasbon ? ' + kasbon kembali ' + RP(R.qrisKasbon) : '') + ')' : 'Lebih besar dari penjualan QRIS hari ini (' + RP(R.qris) + ')') + ' — uang lain yang ikut masuk dicatat di Pindah uang atau Owner & toko' : '') : '';

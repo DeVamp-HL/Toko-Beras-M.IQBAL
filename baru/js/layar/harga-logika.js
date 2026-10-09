@@ -14,6 +14,7 @@ import { RP, hariIniIso } from '../inti/format.js';
 import { arPeta, arSembunyiHarga, arBeras } from './arsip-logika.js';
 import { aturWadah } from './jual-logika.js';
 import { wbLiteranLangsung, wbModalPerKg, wbBeliPerKg, wbKomposisi, wbRasio } from './wadah-bernama-logika.js';
+import { hppKeluar, hppKeluarPerKg } from '../mesin/modal-fifo.js';
 
 export const ATUR_HARGA_BAWAAN = { targetPerKg: 0, bulatLiter: 500, bulatKemasan: 1000, bulatKarung: 100, langkahRp: 50, ambangDampak: 50000, bongkarKg: 0, mdrPersen: 30, mdrBatas: 500000 };
 export const TAB_HARGA = [['papan', 'Papan'], ['literan', 'Literan'], ['kalimat', 'Kalimat'], ['dampak', 'Dampak'], ['pasar', 'Pasar'], ['belah', 'Belah'], ['label', 'Label']];
@@ -45,7 +46,7 @@ export function bongkarTerukur() {
 /** Target untung bawaan = rata-rata untung per kg katalog KARUNG yang sedang berlaku (dibulatkan ke Rp50). Tanpa katalog bermodal → 0. */
 export function targetTerukur() {
   const stokK = ingatStokKarung(); const u = [];
-  ambilHargaKarung().forEach((h) => { const m = (stokK[h.merk] || {}).hppTerakhirPerKg || 0; if (m > 0 && Number(h.hargaPerKg) > 0) u.push(Number(h.hargaPerKg) - m); });
+  ambilHargaKarung().forEach((h) => { const m = hppKeluarPerKg(stokK[h.merk]); if (m > 0 && Number(h.hargaPerKg) > 0) u.push(Number(h.hargaPerKg) - m); });
   if (!u.length) return 0; const rata = u.reduce((a, x) => a + x, 0) / u.length; return Math.max(0, Math.round(rata / 50) * 50);
 }
 export function aturHarga() {
@@ -102,7 +103,8 @@ export function hgSemua(kini) {
   const atur = aturHarga(); const target = atur.targetPerKg; const stokK = ingatStokKarung(); const stokM = ingatStokKemasan();
   const draf = drafHarga(); const sengaja = petaSengaja(); const pasar = petaPasar(); const laku = lakuHarga(kini); const labelBasi = daftarLabel();
   const kK = ambilHargaKarung(), kM = ambilHargaKemasan(), kL = ambilHargaLiteran();
-  const modalKg = (m) => (stokK[m] || {}).hppTerakhirPerKg || 0; const beliTerbaru = (m) => (stokK[m] || {}).hargaTerakhirPerKg || 0;
+  // modal FIFO (owner 9 Okt): untung katalog dihitung dari modal nota BERIKUTNYA (karung terlama); saklar mati = modal rata-rata (sama dengan dulu)
+  const modalKg = (m) => hppKeluarPerKg(stokK[m]); const beliTerbaru = (m) => (stokK[m] || {}).hargaTerakhirPerKg || 0;
   const daftar = {};   // merk -> [satuan]
   const tambah = (m, s) => { if (!m) return; (daftar[m] = daftar[m] || []).indexOf(s) < 0 && daftar[m].push(s); };
   // putaran 27 (Bagian 5): harga LITER melekat pada WADAH (8 wadah) + merek yang dijual literan LANGSUNG dari karungnya. Merek yang cuma lewat wadah tidak
@@ -127,7 +129,7 @@ export function hgSemua(kini) {
     // putaran 27: liter WADAH → modal = rata-rata tertimbang isi wadah (kg × modal merek asal), beli terbaru = rata-rata tertimbang harga beli terakhirnya
     const wd = sid === 'L' ? wadahInfo[m] || null : null; const mKg = wd ? wd.modal : modalKg(m); const bT = wd ? wd.beli : beliTerbaru(m);
     if (sid === 'L' || sid === 'S') { modalUnit = mKg * st.kg; modalDari = modalUnit > 0 ? 'beras' : ''; }
-    else { const x = stokM[kunciKemasan(m, st.kg)]; if (x && x.hppRataRataPerUnit > 0) { modalUnit = x.hppRataRataPerUnit; modalDari = 'adukan'; } else if (modalKg(m) > 0) { modalUnit = modalKg(m) * st.kg; modalDari = 'beras'; } }
+    else { const x = stokM[kunciKemasan(m, st.kg)]; if (x && x.hppRataRataPerUnit > 0) { modalUnit = x.hppRataRataPerUnit; modalDari = 'adukan'; } else if (modalKg(m) > 0) { modalUnit = stokK[m] && stokK[m].metode === 'fifo' ? hppKeluar(stokK[m], st.kg) : modalKg(m) * st.kg; modalDari = 'beras'; } }   // FIFO (tinjauan 9 Okt): karung utuh bisa menyeberang lapisan
     const setel = hgModalSetel(dok, m); const naik = setel > 0 && bT > setel + 0.5; const naikRp = naik ? bT - setel : 0;
     const n = draf[k] !== undefined ? draf[k] : lamaN; const N = nilaiHarga(n, modalUnit, st.kg, target, naik);
     const usul = modalUnit > 0 ? hgBulatAtas(modalUnit + target * st.kg, atur[st.bulat]) : 0;

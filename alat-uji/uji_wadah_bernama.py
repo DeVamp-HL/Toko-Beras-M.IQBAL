@@ -493,7 +493,7 @@ RUSAK = {
     'langit-langit literan wadah mengabaikan buku merek asal': ("const kg = tot > 0 ? Math.min.apply(null, K.positif.map((x) => bebasBuku(x.merk) / (x.kg / tot))) : bebasBuku(wbMerkCadangan(W));", "const kg = 999999;"),
     'kelebihan dari isi wadah hilang (tidak dipotong dari karung di belakang)': ("if (lewat > 0) { const m = wbMerkCadangan(W);", "if (false) { const m = wbMerkCadangan(W);"),
     'baris internal tanpa pengikat takaranId': ("    if (t._takaran) d.takaranId = takaranPertama[t._takaran] || (takaranPertama[t._takaran] = String(d.id));   // pengikat baris internal satu takaran (struk menggabung)", ""),
-    'modal baris internal dibagi rata dari modal wadah (bukan merek asal)': ("r.hppTotalSaatJual = Math.round(x.kg * ((stok[x.merk] || {}).hppTerakhirPerKg || 0))", "r.hppTotalSaatJual = Math.round(t.hppTotalSaatJual * x.kg / kgTot)"),
+    'modal baris internal dibagi rata dari modal wadah (bukan merek asal)': ("r.hppTotalSaatJual = Math.round(x.kg * modalRataPerKg(stok[x.merk]))", "r.hppTotalSaatJual = Math.round(t.hppTotalSaatJual * x.kg / kgTot)"),
     'ganti nama wadah meninggalkan kolam karung lama (terhitung dua kali)': ("  sesudah.forEach((k) => { if (k.lokasi === B) return;", "  [].forEach((k) => { if (k.lokasi === B) return;"),
     'hapus harga liter tanpa ketukan kedua': ("if (!yakin) return { tolak: 'Hapus harga liter '", "if (false) return { tolak: 'Hapus harga liter '"),
     'harga liter wadah yang masih dipakai rak ikut bisa dihapus': ("const x = hgLiteran(S).tidakDipakai.find((t) => t.merk === m);", "const x = { merk: m, harga: 0 };"),

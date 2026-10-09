@@ -9,7 +9,7 @@
 // `tagihPelanggan` supaya besok layar tahu janji siapa yang lewat. Macet = bon tertua lebih tua dari N hari DAN tidak ada pembayaran selama itu (usul saja).
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
-import { cacheMentah, ambilTutupHari } from '../data/toko.js';
+import { cacheMentah, ambilTutupHari, ambilPiutangMutasi, eraBuku } from '../data/toko.js';
 import { RP, hariIniIso, LEBIH_AMBANG, kalimatLebih, pecahLebih } from '../inti/format.js';
 import { aturPelanggan, kartuTersimpan, hariKe } from './pelanggan-logika.js';
 
@@ -46,7 +46,140 @@ export function semuaBon(kini) {
       : status === 'perluTagih' ? 'bon tertua ' + umurKata(umur) + (tagih ? ' · terakhir ditagih ' + formatTanggal(tagih.tanggal) : ' · belum pernah ditagih') : status === 'lebih' ? kalimatLebih(pecahLebih(d)) : status === 'lunas' ? 'tidak ada bon yang terbuka' :'bon tertua ' + umurKata(umur);
     return { kunci: d.kunci, nama: d.nama, no, sisa, umur, buka, bayar: d.bayar, dihapus: d.dihapus, retur: d.retur || 0, total: d.total, mutasi: d.mutasi, bayarAkhir, tagih, diamSejak, status, ket, cap: status === 'lebih' ? capLebih(pecahLebih(d)) : KATA_STATUS[status], lebihUang: pecahLebih(d).uang, lebihHapus: pecahLebih(d).hapus, kontak: kartu ? kartu.kontak : '', dikenali: !!(kartu && kartu.dikenali), tanggalJanggal: !!d.tanggalJanggal }; });
 }
-const EMBER = [['e1', '≤ 7 hari', 0, 7], ['e2', '8–30 hari', 8, 30], ['e3', '1–3 bulan', 31, 90], ['e4', '> 3 bulan', 91, 99999]];
+// ==================== PAKET BRIEF 9 OKT (butir 1): KELOMPOK UMUR DIATUR OWNER + RATA-RATA HARI BON TERTAGIH ====================
+/** Kata untuk satu batas hari: kelipatan 365 = tahun, kelipatan 30 = bulan, selain itu hari. */
+const kataHariBon = (n) => (n % 365 === 0 ? n / 365 + ' tahun' : n % 30 === 0 ? n / 30 + ' bulan' : n + ' hari');
+/** Rentang (lo, hi] dalam kata — "8–30 hari", "1–3 bulan" (dua ujungnya kelipatan 30), "1–2 tahun". */
+const rentangHariBon = (lo, hi) => (lo % 365 === 0 && hi % 365 === 0 ? lo / 365 + '–' + hi / 365 + ' tahun' : lo % 30 === 0 && hi % 30 === 0 ? lo / 30 + '–' + hi / 30 + ' bulan' : lo + 1 === hi ? hi + ' hari' : (lo + 1) + '–' + hi + ' hari');
+/** Empat kelompok umur dari tiga batas hari (setelan owner aturPelanggan().umurBatas). Bawaan [7, 30, 90] = PERSIS label garis umur yang dikunci owner 18 Sep:
+ *  ≤ 7 hari · 8–30 hari · 1–3 bulan · > 3 bulan. Label ikut angka setelan. */
+export function kelompokUmur(batas) {
+  const [a, b, c] = batas;
+  return [{ id: 'e1', label: '≤ ' + kataHariBon(a), dari: 0, sampai: a }, { id: 'e2', label: rentangHariBon(a, b), dari: a + 1, sampai: b },
+    { id: 'e3', label: rentangHariBon(b, c), dari: b + 1, sampai: c }, { id: 'e4', label: '> ' + kataHariBon(c), dari: c + 1, sampai: Infinity }];
+}
+/** Sebaran sisa bon per kelompok umur (umur = bon tertua yang belum tertutup, mesin beku). Bon yang umurnya tidak bisa dihitung (bon tanpa tanggal) jadi
+ *  kelompok sendiri "tanpa tanggal" — tidak dibuang diam-diam; Σ jumlah semua kelompok = sisa semuanya. Fungsi sumber tab Garis umur (dan dasbor kelak). */
+export function sebaranUmurBon(kini, semua) {
+  const berutang = (semua || semuaBon(kini)).filter((b) => b.sisa > 0);
+  const kel = kelompokUmur(aturPelanggan().umurBatas).map((e) => Object.assign(e, { cocok: (b) => b.umur !== null && b.umur >= e.dari && b.umur <= e.sampai }));
+  if (berutang.some((b) => b.umur === null)) kel.push({ id: 'e0', label: 'tanpa tanggal', dari: null, sampai: null, cocok: (b) => b.umur === null });
+  return kel.map((e) => { const isi = berutang.filter(e.cocok); return { id: e.id, label: e.label, dari: e.dari, sampai: e.sampai, n: isi.length, jumlah: isi.reduce((x, b) => x + b.sisa, 0), isi, tua: e.id === 'e4' }; });
+}
+const tglSahBon = (t) => /^\d{4}-\d{2}-\d{2}$/.test(String(t || ''));
+/** Uang yang dibayar DI MEJA saat beli (uang kurang: semua baris nota jadi Kredit + satu pembayaran sebesar uang yang diterima — jual-logika susunNotaDokumen,
+ *  index.html sama). Dikenali seperti struk-logika bayarSaatBeli: notaTrxId (sejak 30 Sep) atau catatan ST_CATATAN_BAYAR_BELI (teks yang SAMA, dijaga uji). */
+const BN_BAYAR_SAAT_BELI = 'Dibayar langsung saat beli';
+const bnSaatBeli = () => new Set(ambilPiutangMutasi().filter((m) => m && m.tipe === 'bayar' && ((m.notaTrxId !== undefined && m.notaTrxId !== null && String(m.notaTrxId) !== '')
+  || String(m.catatan || '').indexOf(BN_BAYAR_SAAT_BELI) === 0)).map((m) => String(m.id)));
+/**
+ * JALAN TUTUP satu buku bon (baris hitungPiutang): bon mana ditutup catatan apa, dan kapan. Bagian yang tertutup per bon = PERSIS mesin hitungPiutang /
+ * rincianBelumLunas (retur memadamkan NOTA ASALNYA dulu; pembayaran, hapus buku & sisa retur memadamkan bon TERTUA dulu). Lalu tiap rupiah penutup dipasangkan
+ * ke rupiah bon menurut waktu (dua antrean FIFO: rupiah pembayaran paling awal menutup rupiah bon paling tua; retur nota bon ke nota asalnya selama nota itu
+ * masih terbuka saat retur, kalau tidak ke bon terbuka tertua — tinjauan no. 9). Hapus buku bernilai minus (Paket F2, dibalik)
+ * menetralkan hapus buku SEBELUMNYA, yang terbaru dulu (sama dengan Laporan lpJalanBon). Uang yang datang sebelum bonnya lahir (kelebihan menunggu bon
+ * berikutnya) menutup bon itu pada hari bon lahir — 0 hari, tidak pernah minus. `beli` (pilihan) = Set id pembayaran saat beli → potongannya bertanda `beli`.
+ * → [{ jenis, tanggal, ket, nominal, saldoAwal, idTrx, idMutasi, sisa, lunas, lunasTanggal, potong: [{ jenis: bayar|hapusBuku|retur|lain, n, tanggal, hari, beli }] }] urut bon mesin
+ */
+export function jalanTutupBon(d, beli) {
+  const utang = d.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
+  const bon = utang.map((u) => ({ u, retur: 0, potong: [] })); const ev = []; let urut = 0;
+  const potong = (b, jenis, n, t, diMeja) => { const tb = String(b.u.tanggal || ''); const tg = !tglSahBon(t) ? '' : t > tb ? t : tb;
+    b.potong.push({ jenis, n, tanggal: tg, hari: tglSahBon(tb) && tg ? hariKe(tg) - hariKe(tb) : null, beli: !!diMeja }); };
+  d.mutasi.forEach((m) => {
+    const n = Number(m.nominal) || 0; const t = String(m.tanggal || ''); const j = String(m.jam || '');
+    if (m.jenis === 'bayar' || m.jenis === 'hapusBuku') ev.push({ jenis: m.jenis, n, tanggal: t, jam: j, urut: urut++, beli: !!(beli && m.jenis === 'bayar' && beli.has(String(m.idMutasi))) });
+    else if (m.jenis === 'retur') {
+      // retur nota bon: nota asalnya dulu (beku.js hitungPiutang, audit 39b no. 37 MM1) — bagian itu memotong nilai nota sejak lahir (bagian tertutup per bon
+      // = mesin); sisanya ikut antrean. Tinjauan no. 9 (9 Okt): bagian nota asal juga ikut antrean WAKTU (`asal`) — lihat pasangan di bawah
+      const b = m.notaAsalId == null ? null : bon.find((x) => x.u.jenis === 'jual' && String(x.u.idTrx) === String(m.notaAsalId));
+      const x = b ? Math.max(0, Math.min(n, b.u.nominal - b.retur)) : 0;
+      if (b && x > 0) { b.retur += x; ev.push({ jenis: 'retur', n: x, tanggal: t, jam: j, urut: urut++, asal: b }); }
+      if (n - x !== 0) ev.push({ jenis: 'retur', n: n - x, tanggal: t, jam: j, urut: urut++ });
+    }
+  });
+  // bagian tertutup per bon — loop rincianBelumLunas apa adanya (pool = pembayaran + hapus buku + sisa retur; bagian nota asal sudah memotong nilai notanya)
+  let pool = ev.reduce((a, e) => a + (e.asal ? 0 : e.n), 0);
+  bon.forEach((b) => { const nom = b.u.nominal - b.retur; if (pool >= nom) { b.tutup = nom; pool -= nom; } else { b.tutup = pool; pool = 0; } b.sisa = nom - b.tutup; });
+  ev.sort((a, b) => a.tanggal.localeCompare(b.tanggal) || a.jam.localeCompare(b.jam) || a.urut - b.urut);
+  // hapus buku dibalik (minus) menetralkan hapus buku sebelumnya (terbaru dulu); kalau tidak ada, catatan penutup sebelumnya lalu sesudahnya — jumlah antrean = pool mesin
+  // (bagian retur nota asal tidak ikut dinetralkan: rupiahnya milik nota itu, bukan pool)
+  ev.forEach((e, i) => {
+    if (e.n >= 0) return; let r = -e.n; e.n = 0; const kurangi = (k) => { const x = Math.min(r, ev[k].n); ev[k].n -= x; r -= x; };
+    for (let k = i - 1; k >= 0 && r > 0; k--) if (ev[k].jenis === 'hapusBuku' && ev[k].n > 0) kurangi(k);
+    for (let k = i - 1; k >= 0 && r > 0; k--) if (ev[k].n > 0 && !ev[k].asal) kurangi(k);
+    for (let k = i + 1; k < ev.length && r > 0; k++) if (ev[k].n > 0 && !ev[k].asal) kurangi(k);
+  });
+  // pasangkan MENURUT WAKTU: tiap catatan penutup (urut waktu) menutup rupiah bon tertua yang bagian tertutupnya (mesin: tutup + retur nota asal) belum habis —
+  // dua antrean FIFO; rupiah tertutup tanpa pasangan (bon bernilai minus di data) = 'lain'. Tinjauan no. 9 (9 Okt): retur nota bon menutup NOTA ASALNYA kalau
+  // nota itu masih terbuka saat retur; kalau sudah ditutup pembayaran sebelumnya, returnya menutup bon terbuka tertua PADA TANGGAL RETUR (sama dengan Laporan
+  // lpJalanBon). Dulu bagian nota asal dipotong lebih dulu, jadi pembayaran lama "pindah" mundur ke bon lain: bon 10 Agu tercatat dibayar 10 Agu (0 hari),
+  // padahal terbuka sampai retur 15 Sep.
+  bon.forEach((b) => { b.perlu = Math.max(0, b.tutup) + b.retur; });
+  const isi = (b, e, x) => { potong(b, e.jenis, x, e.tanggal, e.beli); e.n -= x; b.perlu -= x; };
+  let k = 0;
+  ev.forEach((e) => {
+    if (e.asal && e.asal.perlu > 1e-6 && e.n > 1e-6) isi(e.asal, e, Math.min(e.n, e.asal.perlu));
+    while (e.n > 1e-6 && k < bon.length) { const b = bon[k]; if (!(b.perlu > 1e-6)) { k += 1; continue; } isi(b, e, Math.min(e.n, b.perlu)); }
+  });
+  bon.forEach((b) => { if (b.perlu > 1e-6) potong(b, 'lain', b.perlu, String(b.u.tanggal || '')); });
+  return bon.map((b) => {
+    const lunas = b.sisa <= 1e-6; const tgl = b.potong.map((p) => p.tanggal);
+    const lunasTanggal = !lunas ? null : !b.potong.length ? (tglSahBon(b.u.tanggal) ? String(b.u.tanggal) : null) : tgl.some((t) => !t) ? null : tgl.sort().pop();
+    return { jenis: b.u.jenis, tanggal: b.u.tanggal || '', ket: b.u.ket, nominal: b.u.nominal, saldoAwal: b.u.jenis === 'saldoAwal', idTrx: b.u.idTrx || null, idMutasi: b.u.idMutasi || null, sisa: b.sisa, lunas, lunasTanggal, potong: b.potong };
+  });
+}
+/** Tinjauan no. 10 (9 Okt): saldo pembuka tutup buku dikenali dari dokumen mentahnya (tutupBuku · marginBon — sama dengan Laporan lpPecahSaldoAwal). Tanggalnya
+ *  = tanggal bon tertua yang dibawanya (tutup-buku-logika pembukaBuku), jadi rupiah bon TERTUA itu (marginBon[0]: bon nota sungguhan, sisa saat dibuka) bertanggal
+ *  pasti dan ikut rata-rata (FIFO: rupiah itulah yang dibayar duluan); tanggal bon-bon yang lebih muda tidak ikut dibawa ('pembuka', belum bisa dihitung).
+ *  marginBon tidak ada / tidak cocok dengan nominalnya = seluruhnya 'pembuka'. → { id dokumen: rupiah bertanggal pasti } */
+const bnPembuka = () => { const o = {}; ambilPiutangMutasi().forEach((m) => { if (!m || m.tipe !== 'saldoAwal' || !m.tutupBuku) return; const mb = Array.isArray(m.marginBon) ? m.marginBon : [];
+  const t = mb.length && Math.abs(mb.reduce((a, b) => a + (Number(b && b.sisa) || 0), 0) - (Number(m.nominal) || 0)) < 1 ? mb[0] : null;
+  o[String(m.id)] = t && t.nota !== undefined && t.nota !== null && String(t.nota) !== '' ? Math.max(0, Number(t.sisa) || 0) : 0; }); return o; };
+const satuKoma = (x) => String(Math.round(x * 10) / 10).replace('.', ',');
+/**
+ * RATA-RATA HARI BON TERTAGIH (versi toko dari DSO) — fungsi sumber; dasbor cukup memanggil. Bon yang LUNAS dalam periode (bawaan 90 hari terakhir, setelan
+ * owner aturPelanggan().tertagihHari, hari ini ikut dihitung), ditimbang rupiah: tiap rupiah yang DIBAYAR membawa hari dari bon lahir sampai pembayaran yang
+ * menutupnya (jalanTutupBon). Rupiah yang ditutup HAPUS BUKU atau RETUR bukan tertagih — jumlahnya terpisah. Bon dari saldoAwal (catatan pra-sistem, tanggalnya
+ * perkiraan) dikeluarkan dari rata-rata: "belum bisa dihitung: N bon saldo awal". Uang yang dibayar DI MEJA saat beli (uang kurang) yang menutup bon hari itu juga
+ * bukan bon yang ditagih ("sisa RpX jadi piutang" — yang jadi bon cuma sisanya): dipajang terpisah (saatBeli); kalau FIFO memakainya untuk bon LAMA, itu tertagih
+ * biasa. Σ rupiah semua kelompok = Σ nilai bon yang lunas dalam periode (lunas.rp).
+ * Tiga keadaan: 'kosong' (tidak ada bon yang lunas di periode) · 'belum' (ada yang lunas, tapi tidak ada rupiah tertagih yang bisa dihitung) · 'ada' (rataHari,
+ * boleh 0 = dibayar di hari bon lahir). `kunci` = satu pelanggan saja (rata-rata hari bayar orang itu).
+ * Tinjauan no. 10 (9 Okt): saldo pembuka TUTUP BUKU bukan saldo awal catatan lama — kelompoknya sendiri ('pembuka', lihat bnPembuka), dan periode yang
+ * menyeberang tanggal tutup buku disebut terpotong (`terpotong`, `periodeTeks`). Tinjauan no. 11: bon bernilai Rp0 / minus tidak dihitung "lunas".
+ */
+export function tertagihBon(kini, kunci) {
+  const N = aturPelanggan().tertagihHari; const akhir = hariIniIso(kini); const awal = tambahHari(akhir, -(N - 1));
+  const kosong = () => ({ n: 0, rp: 0 }); const T = { tertagih: { n: 0, rp: 0, rh: 0 }, saatBeli: kosong(), saldoAwal: kosong(), pembuka: kosong(), hapusBuku: kosong(), retur: kosong(), lain: kosong(), tanpaTanggal: kosong(), lunas: kosong() };
+  const beli = bnSaatBeli(); const pembuka = bnPembuka();
+  // tinjauan no. 10: sesudah tutup buku, catatan s.d. 31 Des tahun itu diarsip — bon yang lunas sebelum tanggal itu tidak ada lagi; periode yang menyeberanginya
+  // TERPOTONG (disebut di kartu & lembar orang, bukan diam-diam)
+  const era = eraBuku(); const potongBuku = era !== null && era + '-12-31' >= awal ? era : null; const mulai = potongBuku !== null ? (potongBuku + 1) + '-01-01' : awal;
+  hitungPiutang().filter((d) => !kunci || d.kunci === kunci).forEach((d) => jalanTutupBon(d, beli).forEach((b) => {
+    // tinjauan no. 11: bon bernilai Rp0 / minus tidak punya rupiah untuk ditagih — bukan "bon yang lunas" (dulu: "Belum bisa dihitung: ." tanpa sebab)
+    if (!b.lunas || !(b.nominal > 1e-6) || !b.lunasTanggal || b.lunasTanggal < awal || b.lunasTanggal > akhir) return; const kena = {};
+    const sa = b.saldoAwal && pembuka[String(b.idMutasi)] !== undefined ? 'pembuka' : 'saldoAwal'; let pasti = sa === 'pembuka' ? pembuka[String(b.idMutasi)] : 0;
+    b.potong.forEach((p) => {
+      // pembuka tutup buku: rupiah bon tertua yang dibawanya (bertanggal pasti) dihitung seperti bon biasa, sisanya kelompok 'pembuka'
+      const tepat = Math.max(0, Math.min(p.n, pasti)); pasti -= p.n;
+      [[tepat, false], [p.n - tepat, b.saldoAwal]].forEach(([n, bsa]) => { if (!(n > 1e-6)) return;
+        const k = p.jenis !== 'bayar' ? p.jenis : bsa ? sa : p.hari === null ? 'tanpaTanggal' : p.beli && p.hari === 0 ? 'saatBeli' : 'tertagih';
+        T[k].rp += n; if (k === 'tertagih') T.tertagih.rh += n * p.hari; kena[k] = true; T.lunas.rp += n; });
+    });
+    Object.keys(kena).forEach((k) => { T[k].n += 1; }); T.lunas.n += 1;
+  }));
+  const rataHari = T.tertagih.rp > 1e-6 ? T.tertagih.rh / T.tertagih.rp : null; const keadaan = T.lunas.n === 0 ? 'kosong' : rataHari === null ? 'belum' : 'ada';
+  const sebab = [T.saldoAwal.n ? T.saldoAwal.n + ' bon saldo awal (tanggal lahirnya perkiraan)' : '', T.pembuka.n ? T.pembuka.n + ' saldo bawaan tutup buku (tanggal bon-bon mudanya tidak ikut dibawa)' : '',
+    T.saatBeli.n ? RP(T.saatBeli.rp) + ' dibayar di meja saat beli (' + T.saatBeli.n + ' bon, bukan bon yang ditagih)' : '', T.hapusBuku.n ? T.hapusBuku.n + ' bon ditutup hapus buku ' + RP(T.hapusBuku.rp) : '',
+    T.retur.n ? T.retur.n + ' bon ditutup retur ' + RP(T.retur.rp) : '', T.tanpaTanggal.n ? T.tanpaTanggal.n + ' bon tanpa tanggal' : '', T.lain.n ? T.lain.n + ' bon ditutup catatan lain ' + RP(T.lain.rp) : ''].filter(Boolean);
+  const periodeKata = potongBuku !== null ? 'sejak ' + formatTanggal(mulai) + ' (tutup buku ' + potongBuku + ' memotong periode ' + N + ' hari — bon yang lunas sebelumnya ikut diarsip)' : 'dalam ' + N + ' hari terakhir';
+  return Object.assign(T, { hari: N, awal, akhir, rataHari, keadaan, sebab, terpotong: potongBuku !== null ? { tahun: potongBuku, mulai } : null,
+    periodeTeks: N + ' hari terakhir' + (potongBuku !== null ? ' · terpotong tutup buku ' + potongBuku + ', sejak ' + formatTanggal(mulai) : ''),
+    rataTeks: keadaan === 'ada' ? satuKoma(rataHari) + ' hari' : keadaan === 'belum' ? 'belum bisa dihitung' : '—',
+    teks: keadaan === 'kosong' ? 'Tidak ada bon yang lunas ' + periodeKata + '.' : keadaan === 'belum' ? 'Belum bisa dihitung: ' + sebab.join(' · ') + '.'
+      : 'Dari ' + T.tertagih.n + ' bon (' + RP(T.tertagih.rp) + ' dibayar) yang lunas ' + periodeKata + (rataHari < 0.05 ? ' — dibayar di hari bon lahir' : '') + (sebab.length ? '. Tidak ikut dihitung: ' + sebab.join(' · ') : '') + '.' });
+}
 /** Susun ketiga tab: buku (satu orang satu halaman), papan (tiga lajur menurut yang harus dilakukan), umur (ember). */
 export function susunBon(kini, bukuKunci, ember) {
   const semua = semuaBon(kini); const berutang = semua.filter((b) => b.sisa > 0); const total = berutang.reduce((a, b) => a + b.sisa, 0);
@@ -58,20 +191,21 @@ export function susunBon(kini, bukuKunci, ember) {
     Pa.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur').forEach((m) => halaman.push({ t: m.tanggal || '', u: 1, tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'bayar') : m.jenis === 'retur' ? m.ket.replace(/^Retur barang/, 'barang kembali (retur)') : bnBalik(m) ? m.ket.replace(/^Hapus buku · /, '').replace(/^Hapus buku/, 'hapus buku dibalik') : m.ket.replace(/^Hapus buku/, 'DIHAPUS'), n: -m.nominal, jenis: m.jenis })); halaman.sort((a, b) => a.t.localeCompare(b.t) || a.u - b.u); }
   const papan = []; const lajur = (judul, awas, d) => { papan.push({ lajur: true, judul, awas, jumlah: d.reduce((a, b) => a + b.sisa, 0), n: d.length }); d.slice().sort((a, b) => b.sisa - a.sisa).forEach((b) => papan.push(gambar(b))); };
   lajur('Tagih hari ini', true, berutang.filter((b) => b.status === 'janjiLewat' || b.status === 'perluTagih')); lajur('Tunggu dulu', false, berutang.filter((b) => b.status === 'menunggu' || b.status === 'baru')); lajur('Macet — usul hapus bon', false, berutang.filter((b) => b.status === 'macet'));
-  const diEmber = (e) => berutang.filter((b) => b.umur !== null && b.umur >= e[2] && b.umur <= e[3]); const eP = EMBER.find((e) => e[0] === ember) || null;
+  // paket brief 9 Okt: batas kelompok umur = setelan owner (bawaan 7 / 30 / 90 hari = garis umur yang dikunci); bon tanpa tanggal = kelompok sendiri
+  const SU = sebaranUmurBon(kini, semua); const eP = SU.find((e) => e.id === ember) || null;
   // Paket F2 (owner 8 Okt 2026: "catatannya jangan dihapus — sewaktu-waktu ada yang mau bayar"): nama yang bonnya habis karena dihapus dari buku tidak ada di
   // daftar berutang — di sini jejaknya, dan pintu ke lembarnya (Dibayar sesudah dihapus buku). Nama yang masih punya sisa ada di daftar biasa.
   const dihapus = semua.filter((b) => b.dihapus > 0.5 && b.sisa <= 0 && b.status !== 'lebih').map((b) => ({ kunci: b.kunci, nama: b.nama, dihapus: Math.round(b.dihapus),
     tanggal: b.mutasi.filter((m) => m.jenis === 'hapusBuku' && !bnBalik(m)).map((m) => String(m.tanggal || '')).sort().pop() || '' })).sort((a, b) => b.dihapus - a.dihapus || a.nama.localeCompare(b.nama));
   return { total, berutang: berutang.length, dihapus, jumlahDihapus: dihapus.reduce((a, x) => a + x.dihapus, 0), lebih, jumlahLebih: lebih.reduce((a, x) => a + x.lebih, 0), jumlahLebihUang: lebih.reduce((a, x) => a + x.uang, 0), jumlahLebihHapus: lebih.reduce((a, x) => a + x.hapus, 0), buku: Pa ? { kunci: Pa.kunci, nama: Pa.nama, sisa: Pa.sisa, ket: Pa.ket, status: Pa.status, halaman } : null, namaBuku: berutang.slice().sort((a, b) => b.sisa - a.sisa).map((b) => ({ kunci: b.kunci, nama: b.nama, aktif: !!Pa && Pa.kunci === b.kunci })), papan,
-    ember: EMBER.map((e) => ({ id: e[0], label: e[1], n: diEmber(e).length, jumlah: diEmber(e).reduce((a, b) => a + b.sisa, 0), aktif: !!eP && eP[0] === e[0], tua: e[0] === 'e4' })), perUmur: (eP ? diEmber(eP) : berutang.slice()).sort((a, b) => (b.umur || 0) - (a.umur || 0)).map(gambar), umurTeks: eP ? 'Hanya bon yang tertuanya ' + eP[1] + ' — ketuk lagi kotaknya untuk melihat semua' : 'Yang paling lama tidur ada di atas', atur: aturPelanggan() };
+    ember: SU.map((e) => ({ id: e.id, label: e.label, n: e.n, jumlah: e.jumlah, aktif: !!eP && eP.id === e.id, tua: e.tua })), perUmur: (eP ? eP.isi.slice() : berutang.slice()).sort((a, b) => (b.umur || 0) - (a.umur || 0)).map(gambar), umurTeks: eP ? (eP.id === 'e0' ? 'Hanya bon tanpa tanggal (umurnya tidak bisa dihitung)' : 'Hanya bon yang tertuanya ' + eP.label) + ' — ketuk lagi kotaknya untuk melihat semua' : 'Yang paling lama tidur ada di atas', atur: aturPelanggan(), tertagih: tertagihBon(kini) };
 }
 /** Lembar satu orang: rincian bon terbuka + riwayat (pembayaran, hapus buku, tagihan). */
 export function lembarBon(kini, kunci) {
   const b = semuaBon(kini).find((x) => x.kunci === kunci); if (!b) return null;
   const riwayat = b.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur').map((m) => ({ t: (m.tanggal || '') + ' ' + (m.jam || ''), tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'membayar') : m.jenis === 'retur' ? m.ket.replace(/^Retur barang/, 'barang kembali (retur), bon dipotong') : bnBalik(m) ? m.ket.replace(/^Hapus buku · /, '').replace(/^Hapus buku/, 'hapus buku dibalik') : m.ket.replace(/^Hapus buku/, 'DIHAPUS dari buku'), n: -m.nominal }))
     .concat(cacheMentah('tagih').filter((t) => t.kunci === kunci).map((t) => ({ t: (t.tanggal || '') + ' ' + (t.jam || ''), tgl: formatTanggal(t.tanggal), teks: 'ditagih' + (t.janji ? ' · janji ' + formatTanggal(t.janji) : ' · tanpa janji'), n: null }))).sort((a, b) => b.t.localeCompare(a.t));
-  return Object.assign({}, b, { rinci: b.buka.map((r) => ({ tgl: formatTanggal(r.tanggal), teks: (r.ket || 'Belanja') + (r.sisa < r.nominal ? ' (dari ' + RP(r.nominal) + ')' : ''), n: r.sisa })), riwayat, alasanPilihan: aturPelanggan().alasanHapus });
+  return Object.assign({}, b, { rinci: b.buka.map((r) => ({ tgl: formatTanggal(r.tanggal), teks: (r.ket || 'Belanja') + (r.sisa < r.nominal ? ' (dari ' + RP(r.nominal) + ')' : ''), n: r.sisa })), riwayat, alasanPilihan: aturPelanggan().alasanHapus, tertagih: tertagihBon(kini, kunci) });
 }
 /** Pesan tagihan WhatsApp — kalimat kirimTagihanPiutang index.html (salam = setelan owner); nomor dari kartu kalau ada. */
 export function pesanTagih(kini, kunci) {

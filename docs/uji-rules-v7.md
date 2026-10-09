@@ -386,7 +386,7 @@ Firestore" di langkah 1 pada hari itu.
 
 Keputusan owner K11 (8 Okt 2026) **DICABUT 9 Okt 2026**: proyek pindah ke paket **Blaze** — kuota harian bukan lagi batas (kelebihannya ditagih),
 jadi arsip tidak berhenti di tengah karena kuota dan toko tidak perlu tutup sesudah hari ritual (dulu: toko TUTUP Sabtu 2 Jan 2027; tutup buku 2027 toko
-tutup BEBERAPA hari). Ritual Jumat 1 Jan 2027 dan ritual Sabtu 1 Jan 2028 jam bebas; kartu "Perkiraan kuota Firestore" masih menghitung batas Spark —
+tutup BEBERAPA hari). Ritual Jumat 1 Jan 2027 dan ritual Sabtu 1 Jan 2028 dini hari, langsung sesudah tutup hari 31 Des (keputusan owner K3, 9 Okt 2026); kartu "Perkiraan kuota Firestore" masih menghitung batas Spark —
 MEPET / TIDAK MUAT boleh diabaikan, angkanya = ukuran ritual (persen jatah gratis sehari). Jangan berjualan sampai pita "… terkunci dan arsipnya habis"
 (`docs/prosedur-pulih-darurat.md`, daftar periksa ritual).
 

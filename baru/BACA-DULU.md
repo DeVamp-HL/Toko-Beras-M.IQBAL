@@ -2329,7 +2329,7 @@ tidak perlu langkah rules apa pun lagi.
   lama), alasannya tertulis, angkanya diserahkan ke konsultan — JANGAN dirinci ulang (stok terpotong dua kali).
 - **K11** — **DICABUT 9 Okt 2026 (Blaze).** Dulu: kartu kuota 1 Jan berbunyi TIDAK MUAT → ritual tetap dimulai sesudah reset, toko TUTUP Sabtu 2 Jan 2027
   (dan beberapa hari sesudah ritual 1 Jan 2028) sampai Lanjutkan & arsip habis. Sejak proyek di paket Blaze kuota bukan batas (kelebihannya ditagih):
-  arsip tidak berhenti karena kuota, toko tidak perlu tutup sesudah hari ritual, ritual jam bebas; MEPET / TIDAK MUAT di kartu boleh diabaikan
+  arsip tidak berhenti karena kuota, toko tidak perlu tutup sesudah hari ritual, ritual 1 Jan dini hari (K3: langsung sesudah tutup hari 31 Des, owner 9 Okt); MEPET / TIDAK MUAT di kartu boleh diabaikan
   (bab "Blaze aktif" di bawah).
 - **K12** tugas "isi cara bayar dua kedatangan Agustus lewat Console" DITUTUP: tidak dikerjakan — angka sama (`docs/peta-kunci-periode.md` §10).
 - Dijaga `alat-uji/uji_dokumen_owner.py` (+ kontrol): proyeksi kuota 2028 dihitung ulang dari rumus kartu, bunyi K11 2028, jalan sementara K9.
@@ -2364,7 +2364,7 @@ Keputusan owner 9 Okt (menggantikan K1 7 Okt "tetap Spark + hemat baca" dan K11 
 - **Hemat baca MATI SELAMANYA** — saklar tidak pernah dinyalakan; tugas "nyala ≤ 20 Nov", daftar siap-nyala hijau 3 hari, patokan & perbandingan Usage
   GUGUR. Dengan saklar mati semua perangkat mendengarkan semua catatan langsung (ubahan Console sampai sendiri; tombol "saya baru mengubah data lewat
   Console" & "minta semua perangkat baca penuh" tidak dipakai). Batu nisan tetap ditulis selama rules v7 (catatan aturan darurat v3 di prosedur berlaku).
-- **K11 DICABUT** — tidak ada hari toko tutup sesudah ritual karena kuota; ritual 1 Jan jam bebas (alasan "sesudah 15.00 WIB" dulu = reset kuota Spark).
+- **K11 DICABUT** — tidak ada hari toko tutup sesudah ritual karena kuota; ritual 1 Jan dini hari, langsung sesudah tutup hari 31 Des (K3, owner 9 Okt 2026; alasan "sesudah 15.00 WIB" dulu = reset kuota Spark).
 - **Kartu "Perkiraan kuota Firestore" TIDAK diubah kodenya** (owner: dokumen saja): ia masih menghitung batas Spark dan kalimat TIDAK MUAT-nya masih
   menyuruh toko tutup besoknya (`tutup-buku-logika.js perkiraanKuota`, lihat bab Paket A "Perkiraan kuota (C1)") — **MEPET / TIDAK MUAT boleh diabaikan**;
   angkanya tetap berguna sebagai ukuran ritual.
@@ -2373,5 +2373,65 @@ Keputusan owner 9 Okt (menggantikan K1 7 Okt "tetap Spark + hemat baca" dan K11 
 
 Dokumen yang diperbarui: `docs/prosedur-pulih-darurat.md` (kotak Blaze di kepala, daftar periksa ritual 1 Jan, perangkat sesudah ritual, Jalan mundur,
 Buntu 2028, bab Hemat baca), `docs/uji-rules-v7.md` & `docs/gladi-tutup-buku.md` (paragraf K11 & proyeksi setahun penuh), `docs/rancangan-hemat-baca.md`
-(kepala: tidak dipakai). `alat-uji/uji_dokumen_owner.py` kini menjaga bunyi K11 yang DICABUT (Blaze, jam bebas, TIDAK MUAT boleh diabaikan) — bukan lagi
+(kepala: tidak dipakai). `alat-uji/uji_dokumen_owner.py` kini menjaga bunyi K11 yang DICABUT (Blaze, ritual dini hari, TIDAK MUAT boleh diabaikan) — bukan lagi
 "toko tutup sesudahnya".
+
+## Paket G — modal FIFO dengan saklar owner (owner 9 Okt 2026, cabang `paket/brief-awal`)
+
+Owner 9 Okt: *"Jangan lupa pakai metode FIFO bukan average. Karena disini barang yang di jual duluan itu barang yang lama dulu."* lalu
+*"Terkecuali wadah kotak literan yang di campur memakai average."* Sebelumnya modal per nota & nilai stok = rata-rata SELURUH kedatangan sejak
+awal (`hitungStokKarungPerMerk.hppTerakhirPerKg`); keputusan 13 Sep "harga beli terbaru" tidak pernah dipasang. Owner memilih **"Bangun, saklar di lu"**.
+
+- **Saklar** = `aturanToko/catatStok.modalFifoMulai` ('YYYY-MM-DD'). Dokumen catatStok dipilih karena HP karyawan sudah boleh membacanya (rules v7,
+  aturanToko read per dokumen) — kasir di HP karyawan menghitung modal nota dengan cara yang sama. Ditulis lewat Stok › HPP (`susunSaklarFifo`):
+  hari mulai hanya **besok** atau **1 Jan tahun depan** (bulan lalu tidak berubah, perangkat lain sempat menerima setelan), dua ketukan, dokumen ditulis
+  UTUH + `riwayatModalFifo`. Sudah berjalan → hanya bisa dimatikan; nota yang sudah tercatat tidak berubah.
+- **Mesin** (`baru/js/mesin/modal-fifo.js`, dipanggil di ujung `hitungStokKarungPerMerk`, MEMBEKUKAN ULANG atas izin owner): berlaku untuk buku yang
+  dihitung sampai hari ≥ hari mulai (`mfBerlaku`). Merek karung dijejer jadi lapisan: sisa sehari sebelum mulai bernilai rata-rata saat itu (nilai rak
+  TIDAK melompat) + kedatangan & adukan sesudahnya, urut tanggal lalu id. Sisa = lapisan terbaru → `hppTerakhirPerKg` = NILAI sisa per kg (neraca,
+  nilai rak, tutup buku tetap `sisa × hppTerakhirPerKg`); `hppKeluarPerKg` / `hppKeluar(st, kg, sudah)` = modal barang yang keluar berikutnya.
+  `hppRataPerKg` = angka lama (pembanding). Kunci `Wadah …` tetap rata-rata.
+- **Titik keluar** yang memakai `hppKeluar` / `nilaiSelisihKg`: nota Jual & rinci karcis (`pecahItemsWadah`, dua baris merek sama berurutan, kantong
+  literan & wadah repack tetap ditambah), adukan, takar ke wadah (`wbDokPindah`), cocokkan tumpukan & wadah, karung habis di deretan, karantina kembali,
+  untung tipis di Menu, kartu modal (margin = harga jual − modal keluar berikutnya; koreksi harga dihitung ulang lewat mesin di cache sementara).
+  Pecahan wadah model lama (`dariWadah` ke merek asal) = `modalRataPerKg` (wadah campuran = rata-rata).
+- **Saklar mati = angka lama persis** (semua uji lama lulus; asap data toko: mesin sama persis dengan tanpa setelan).
+- Uji: `alat-uji/uji_modal_fifo_baru.py` (+ `--kontrol`). Asap cadangan 9 Okt: saklar dijadwalkan besok → 56 merek karung, nilai rak Rp81.701.784 →
+  Rp81.701.784 (tidak bergeser); pembanding seandainya FIFO sejak 15 Sep: Rp81.684.858. Ritual tutup buku dengan FIFO menyala
+  (`uji_tutup_buku_bertahap.py --asap` atas salinan cadangan bersaklar 15 Sep): LULUS, 14 baris sama persis.
+- **Tinjauan adversarial 9 Okt (workflow, 24 temuan lolos sanggah) — FIFO yang ditambal:** (1) retur karung utuh saat FIFO menyimpan `hppKembali`
+  (irisan depan antrean SAAT retur, `capModalKembali` di retur-logika) dan `hppTaksiranRetur` (pembantu, MEMBEKUKAN ULANG) membacanya — laba bulan retur
+  tidak bergeser oleh penjualan sesudahnya; retur tanpa kolom itu = modal rata-rata (`hppRataPerKg`), saklar mati = rumus lama persis. (2) mematikan
+  saklar yang sudah berjalan MENUTUP masanya (`catatStok.modalFifoMasa [{mulai, selesai}]`, selesai = hari mematikan) — mesin (`mfMasaBerlaku`) tetap
+  FIFO untuk buku sampai hari di dalam masa itu, jadi neraca bulan lalu / terkunci tidak dihitung ulang; mulai besok rata-rata. (3) katalog HP kasir
+  darurat, timbang cepat tutup hari, beberapa pindah buku merek sama dalam satu kiriman (aktivasi / pindahan awal wadah, pindah nama), modal baris
+  keranjang (pagar nego) & untung karung utuh di katalog kini memakai irisan FIFO. (4) teks layar modal mengikuti saklar.
+- Tutup buku dengan saklar menyala: saldo pembuka per merek = SATU baris bernilai sisa FIFO 31 Des (lapisan dilebur jadi satu harga per merek) —
+  1 Jan = titik mulai ulang antrean; nilai neraca sama persis, hanya urutan harga di dalam sisa 31 Des yang hilang (beras berputar dalam hitungan minggu).
+
+## Paket brief awal — 8 butir dashboard & cost control (owner 9 Okt 2026, cabang `paket/brief-awal`)
+
+Owner: *"Gua mau dibangun semuanya."* Asal: dua dokumen riset owner (Dashboard Owner ERP/KPI UMKM, Cost Controlling Toko Beras). Keputusan owner 9 Okt:
+isian timbang & mutu OPSIONAL; HET Zona I; angka ambang = bawaan dokumen bertanda perkiraan, bisa diubah di Atur; dasbor tidak dibuat rumus sendiri
+(fungsi sumber di layar sumber). Dibangun paralel oleh 5 agen (tanpa Chrome), digabung satu cabang, commit per butir.
+
+| Butir | Layar | Fungsi sumber (untuk dasbor kelak) | Setelan owner | Uji |
+|---|---|---|---|---|
+| 1 umur piutang + rata-rata hari bon tertagih | Pelanggan › Bon › Garis umur; lembar orang | `bon-logika.js` `tertagihBon`, `sebaranUmurBon`, `kelompokUmur`, `jalanTutupBon` | `aturanToko/pelanggan.umurBatas` [7,30,90], `tertagihHari` 90 | `uji_pelanggan_baru.py` |
+| 2 umur stok FIFO, lambat laku, hari stok, perputaran | Stok › Umur & putaran (tab ke-5) | `stok-logika.js` `umBarang`, `umRingkas`, `umFifo`, `umRataCampuran` | `aturanToko/stokUmur` (umur 30, hari stok 30, periode 30) | `uji_stok_baru.py` |
+| 3 barang teratas · 4 margin kotor terwujud per merek · 5 susut % per merek | Laporan › Laba › kartu Per merek | `laporan-logika.js` `merekBulan`, `merekTeratas`, `aturMerek` | `aturanToko/merekLaporan` (susut tinggi 1 %, teratas 10) | `uji_laporan_baru.py` |
+| 6 selisih timbang · 7 cek mutu saat terima | Stok › Barang masuk (+ kartu Timbang & mutu per pemasok) | `stok-catat-logika.js` `rekapTimbangMutu` | `aturanToko/catatStok.kadarAirMaks` 14, `patahMaks` 25 | `uji_barang_masuk_baru.py` |
+| 8 HET per kelas & zona | Harga & Pemasok › Katalog (kartu HET, tanda per sel, periksa sebelum terbit) | `het-logika.js` `hetKatalog`, `hetHargaKasir` | `aturanToko/het` (zona, medium 13.500, premium 14.900, peta kelas) | `uji_harga_baru.py` |
+
+Prinsip yang dijaga semua butir: hitungan yang tergambar menutup (per merek + di luar merek = laba kotor Laporan sampai rupiah; bagian umur = sisa;
+tertagih + bagian terpisah = semua bon lunas; kartu HET lima bagian = semua baris katalog); tiga keadaan kosong (belum ditimbang / tidak dicek / belum
+dipetakan / belum ada laju / belum bisa dihitung ≠ 0); isian timbang & mutu tidak mengubah totalKg, stok, modal, HPP, bon. Laporan uang membaca modal
+TERSIMPAN di nota (`hppTotalSaatJual`) — mengikuti saklar FIFO (Paket G) tanpa rumus sendiri.
+
+Angka toko (cadangan 9 Okt): rata-rata hari bon tertagih 5 hari (55 bon Rp22.270.000; terpisah: dibayar di meja saat beli Rp2.981.500, saldo awal
+Rp5.133.000, hapus buku Rp4.231.000); laba kotor Sep Rp12.972.180 menutup per merek, susut & selisih stok −Rp8.164.894 (Ascent −996,79 kg keliling gudang
+12 Sep); umur stok tertua Ketan Hitam Sosoh 48 hari, 11 barang lambat laku; 15 kedatangan belum ditimbang; HET belum dipetakan (23 kelas/merek).
+
+Pilihan agen yang menunggu owner (default terpasang): uang dibayar di meja saat beli tidak dihitung tertagih; perputaran memakai kg KELUAR (terjual +
+diaduk + ditakar ke wadah), terjual dirinci; umur wadah sejak dituang; susut % se-toko hanya atas merek yang punya selisih tercatat; penjaga HET premium ≥
+medium. `stokUmur` belum dibaca staf (perlu DOK_STAF + rules bila mau). Sesudah tutup buku 2026, stok yang dibawa saldo pembuka tampil "tanpa tanggal masuk" di Umur & putaran (modal FIFO tetap memperlakukannya sebagai lapisan bertanggal 31 Des).

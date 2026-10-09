@@ -7,8 +7,9 @@
 // Tiap koreksi menulis perubahan nilai rak (Δ modal rata-rata × sisa kg) ke koleksi baru koreksiHpp. Massal = semua-atau-tidak-sama-sekali (satu writeBatch).
 import { hitungStokKarungPerMerk, hitungHppMerkDalamBatch } from '../mesin/beku.js';
 import { cariHargaKarungPerKg } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja, petaUkuran, ingatStokKarung } from '../data/toko.js';
-import { RP } from '../inti/format.js';
+import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja, petaUkuran, ingatStokKarung, denganCacheSementara } from '../data/toko.js';
+import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
+import { MF_DOK, MF_KOLOM, MF_MASA, mfMulaiDari, hppKeluarPerKg } from '../mesin/modal-fifo.js';
 import { drafDariKedatangan, susunSimpanMasuk, ckBayarBonId } from './stok-catat-logika.js';
 
 export const ATUR_HPP_BAWAAN = { batasLonjak: 10, lantaiHpp: 5000, kaliMaks: 3 };
@@ -31,6 +32,39 @@ export function susunAturHpp(isi, w) {
   const t = baca('lantaiHpp', (n) => n >= 0 && n <= 1000000, 'Lantai HPP per kg harus 0–1.000.000'); if (t.tolak) return { tolak: t.tolak };
   return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'hpp', tanggal: w.tanggal, jam: w.jam, batasLonjak: l.nilai, lantaiHpp: t.nilai } }],
     patch: { aturHp: null, kabar: 'Aturan HPP disimpan — koreksi yang mengubah modal > ' + l.nilai + ' % ditanya · HPP di bawah ' + RP(t.nilai) + '/kg ditolak', kabarAwas: false } };
+}
+
+// ---------- SAKLAR MODAL FIFO (owner 9 Okt 2026: "Bangun, saklar di lu") ----------
+// aturanToko/catatStok.modalFifoMulai = hari pertama FIFO (mesin/modal-fifo.js). Hari mulai SELALU sesudah hari ini (besok atau 1 Jan): bulan yang sudah
+// lewat tidak berubah, dan HP karyawan sempat menerima setelannya sebelum hari itu. Sudah berjalan → hanya bisa dimatikan (nota yang sudah tercatat tetap).
+// Menulis dokumen catatStok UTUH (kolom Aturan Barang masuk ikut disalin) + riwayat saklar.
+const teksLapisan = (st) => { const L = st.lapisan || []; const P = st.posKeluar || 0; let awal = 0; for (let i = 0; i < L.length; i++) { const akhir = awal + L[i].kg; if (P < akhir) {
+  const sisaLap = Math.min(akhir - Math.max(P, awal), L[i].kg); return 'keluar berikutnya: ' + (L[i].asal === 'buka' ? 'sisa sebelum FIFO (modal rata-rata saat itu)' : (L[i].asal === 'adukan' ? 'adukan ' : 'kedatangan ') + tanggalPendek(L[i].tanggal)) + ' · ' + hpKG(sisaLap) + ' @' + RP(Math.round(L[i].harga)) + '/kg'; } awal = akhir; }
+  return 'keluar berikutnya: belum ada kedatangan yang tersisa (stok habis/minus) — dinilai kedatangan terakhir ' + RP(Math.round(st.hppKeluarPerKg || 0)) + '/kg'; };
+const hpBesok = (hari) => { const d = new Date(hari + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); };
+export function saklarFifo(kini) {
+  const hari = hariIniIso(kini || new Date(Date.now())); const dok = cacheMentah('aturan').find((d) => String(d.id) === MF_DOK) || null; const mulai = mfMulaiDari(dok ? [dok] : []);
+  const besok = hpBesok(hari); const tahunBaru = String(Number(hari.slice(0, 4)) + 1) + '-01-01';
+  const pilihan = [{ tanggal: besok, label: 'mulai besok (' + tanggalPendek(besok) + ')' }].concat(tahunBaru !== besok ? [{ tanggal: tahunBaru, label: 'mulai 1 Jan ' + tahunBaru.slice(0, 4) + ' (tahun buku baru)' }] : []);
+  const keadaan = !mulai ? 'mati' : mulai > hari ? 'rencana' : 'nyala';
+  return { hari, mulai, keadaan, pilihan, riwayat: (dok && Array.isArray(dok.riwayatModalFifo) ? dok.riwayatModalFifo : []).slice().reverse(),
+    teks: keadaan === 'mati' ? 'Modal sekarang: RATA-RATA semua kedatangan. Saklar FIFO mati.' : keadaan === 'rencana' ? 'FIFO dijadwalkan mulai ' + tanggalPendek(mulai) + ' — sampai hari itu modal masih rata-rata.' : 'Modal FIFO sejak ' + tanggalPendek(mulai) + ': karung yang paling lama keluar duluan; wadah literan campuran tetap rata-rata.' };
+}
+/** aksi 'nyala' (tanggal = salah satu pilihan saklarFifo) | 'mati'. Dua ketukan (yakin). */
+export function susunSaklarFifo(aksi, tanggal, w, yakin) {
+  const S = saklarFifo(new Date(w.tanggal + 'T12:00:00')); const dok = cacheMentah('aturan').find((d) => String(d.id) === MF_DOK) || null;
+  let mulai = '';
+  if (aksi === 'nyala') { if (!S.pilihan.some((p) => p.tanggal === tanggal)) return { tolak: 'Pilih hari mulai: besok atau 1 Januari — tanggal yang sudah lewat tidak bisa (laba bulan lalu akan berubah)' };
+    if (S.keadaan === 'nyala') return { tolak: 'FIFO sudah berjalan sejak ' + tanggalPendek(S.mulai) };
+    mulai = tanggal; }
+  else if (aksi !== 'mati' || S.keadaan === 'mati') return { tolak: 'Saklar FIFO memang sudah mati' };
+  if (!yakin) return { tolak: aksi === 'nyala' ? 'Ketuk sekali lagi: mulai ' + tanggalPendek(mulai) + ' modal tiap nota = harga kedatangan TERLAMA yang masih ada; nota sebelumnya tidak berubah' : S.keadaan === 'rencana' ? 'Ketuk sekali lagi: rencana FIFO ' + tanggalPendek(S.mulai) + ' dibatalkan, modal tetap rata-rata' : 'Ketuk sekali lagi: mulai besok modal kembali ke RATA-RATA semua kedatangan; sampai hari ini (' + tanggalPendek(S.hari) + ') buku tetap FIFO — nota, laba & neraca bulan lalu tidak berubah', perluYakin: aksi };
+  const riw = (dok && Array.isArray(dok.riwayatModalFifo) ? dok.riwayatModalFifo : []).concat([{ aksi: aksi === 'nyala' ? (S.keadaan === 'rencana' ? 'ganti' : 'nyala') : 'mati', mulai, sebelumnya: S.mulai || '', tanggal: w.tanggal, jam: w.jam }]);
+  // tinjauan 9 Okt: mematikan saklar yang SUDAH berjalan menutup masanya (mulai … hari ini) — buku sampai hari di dalam masa itu tetap FIFO (mesin
+  // mfMasaBerlaku), jadi neraca bulan lalu / bulan terkunci tidak dihitung ulang dengan rata-rata. Rencana yang belum berjalan cukup dibatalkan.
+  const masa = (dok && Array.isArray(dok[MF_MASA]) ? dok[MF_MASA] : []).concat(aksi === 'mati' && S.keadaan === 'nyala' ? [{ mulai: S.mulai, selesai: S.hari }] : []);
+  const data = Object.assign({ id: MF_DOK, tanggal: w.tanggal, jam: w.jam }, dok || {}, { [MF_KOLOM]: mulai, [MF_MASA]: masa, riwayatModalFifo: riw });
+  return { dokumen: [{ koleksi: 'aturanToko', data }], patch: { kabar: aksi === 'nyala' ? 'Modal FIFO dijadwalkan mulai ' + tanggalPendek(mulai) + ' — semua perangkat ikut sesudah tersambung' : (S.keadaan === 'rencana' ? 'Rencana FIFO dibatalkan — modal tetap rata-rata' : 'Saklar FIFO dimatikan — mulai besok modal kembali rata-rata; buku sampai hari ini tetap FIFO'), kabarAwas: false } };
 }
 
 /** Riwayat modal satu nama, lama → baru: tiap kedatangan (baris karung) dengan harga/kg & HPP/kg (harga + bongkar), pindah buku dari takar. */
@@ -59,14 +93,14 @@ export function kartuHpp() {
   const induk = (merk) => { const i = uk[merk] ? uk[merk].induk : ''; return i ? riwayatModal(i).filter((r) => r.jenis === 'kedatangan').slice(-1)[0] || null : null; };
   // putaran 28: buku stok wadah tidak punya kedatangan — modalnya ikut takar
   const kartu = Object.keys(stokMerekSaja(stok)).sort().map((merk) => { const st = stok[merk]; const riw = riwayatModal(merk); const akhir = riw.filter((r) => r.jenis === 'kedatangan').slice(-1)[0] || null; const bisa = riw.filter((r) => r.jenis === 'kedatangan' && !r.fondasi).slice(-1)[0] || null;
-    const sisa = st.sisaKg || 0; const modal = st.hppTerakhirPerKg || 0; const jual = cariHargaKarungPerKg(merk); const margin = jual !== null && jual > 0 ? Math.round(jual - modal) : null; const ai = akhir ? null : induk(merk); const hppTerbaru = akhir ? akhir.hppPerKg : ai ? ai.hppPerKg : modal;
+    const sisa = st.sisaKg || 0; const modal = st.hppTerakhirPerKg || 0; const modalKeluar = hppKeluarPerKg(st); const fifo = st.metode === 'fifo'; const jual = cariHargaKarungPerKg(merk); const margin = jual !== null && jual > 0 ? Math.round(jual - modalKeluar) : null; const ai = akhir ? null : induk(merk); const hppTerbaru = akhir ? akhir.hppPerKg : ai ? ai.hppPerKg : modal;
     const lonjak = riw.length > 1 && riw[riw.length - 2].hppPerKg > 0 ? Math.round((riw[riw.length - 1].hppPerKg - riw[riw.length - 2].hppPerKg) / riw[riw.length - 2].hppPerKg * 100) : 0;
-    return { merk, sisa, modal, hargaTerbaru: akhir ? st.hargaTerakhirPerKg || 0 : ai ? ai.hargaPerKg : null, hppTerbaru, jual, margin, teksMargin: teksMargin(margin), kelasMargin: kelasMargin(margin), nilaiRak: Math.max(0, sisa) * modal, nilaiTerbaru: Math.max(0, sisa) * hppTerbaru,
+    return { merk, sisa, modal, modalKeluar, fifo, teksFifo: fifo ? teksLapisan(st) : '', hargaTerbaru: akhir ? st.hargaTerakhirPerKg || 0 : ai ? ai.hargaPerKg : null, hppTerbaru, jual, margin, teksMargin: teksMargin(margin), kelasMargin: kelasMargin(margin), nilaiRak: Math.max(0, sisa) * modal, nilaiTerbaru: Math.max(0, sisa) * hppTerbaru,
       sumber: akhir ? akhir.sumber + ' · ' + akhir.tanggal : ai ? 'dipisah dari ' + uk[merk].induk + ' · harga beli terbaru induknya (' + ai.tanggal + ')' : 'belum ada kedatangan', nRiwayat: riw.length, bisaKoreksi: !!bisa, targetId: bisa ? bisa.batchId : null, bedaTerbaru: hppTerbaru - modal, lonjakTerakhir: Math.abs(lonjak) > atur.batasLonjak ? lonjak : 0, adaStok: sisa > 0.05 }; })
     .filter((k) => k.adaStok || k.nRiwayat);
   const berisi = kartu.filter((k) => k.adaStok);
   return { kartu, atur, ringkas: { nilai: berisi.reduce((a, k) => a + k.nilaiRak, 0), nilaiTerbaru: berisi.reduce((a, k) => a + k.nilaiTerbaru, 0), rugi: berisi.filter((k) => k.margin !== null && k.margin < 0).length, nol: berisi.filter((k) => k.margin === 0).length, tanpaJual: berisi.filter((k) => k.margin === null).length, n: berisi.length },
-    ringkasTeks: 'Nilai rak (modal rata-rata, = Neraca) ' + RP(Math.round(berisi.reduce((a, k) => a + k.nilaiRak, 0))) + ' · bila dinilai harga beli terbaru ' + RP(Math.round(berisi.reduce((a, k) => a + k.nilaiTerbaru, 0))) + ' · ' + (berisi.filter((k) => k.margin !== null && k.margin < 0).length ? berisi.filter((k) => k.margin !== null && k.margin < 0).length + ' nama RUGI' : 'tidak ada yang rugi') + (berisi.filter((k) => k.margin === 0).length ? ' · ' + berisi.filter((k) => k.margin === 0).length + ' margin nol' : '') };
+    ringkasTeks: 'Nilai rak (' + (berisi.some((k) => k.fifo) ? 'FIFO: sisa = kedatangan terbaru' : 'modal rata-rata') + ', = Neraca) ' + RP(Math.round(berisi.reduce((a, k) => a + k.nilaiRak, 0))) + ' · bila dinilai harga beli terbaru ' + RP(Math.round(berisi.reduce((a, k) => a + k.nilaiTerbaru, 0))) + ' · ' + (berisi.filter((k) => k.margin !== null && k.margin < 0).length ? berisi.filter((k) => k.margin !== null && k.margin < 0).length + ' nama RUGI' : 'tidak ada yang rugi') + (berisi.filter((k) => k.margin === 0).length ? ' · ' + berisi.filter((k) => k.margin === 0).length + ' margin nol' : '') };
 }
 /** Garis waktu HPP semua nama (bar relatif ke tertinggi), lonjakan > batas ditandai, koreksi diwarnai. */
 export function garisWaktu() {
@@ -91,10 +125,14 @@ export function nilaiKoreksi(merk, hargaBaru) {
   if (bb && bb.dibayar > 0) { const nilaiBon = (bt.merkList || []).reduce((a, m) => a + (m.bentuk === 'bal' ? (Number(m.subtotalHarga) || 0) : m.merk === merk ? (Number(m.totalKg) || 0) * n : (Number(m.subtotalHarga) || 0)), 0);   // baris bal ikut tertulis apa adanya, harganya tidak dikoreksi (audit 39b no. 30)
     if (nilaiBon + 0.5 < bb.dibayar) return { tolak: merk + ': kedatangan terakhirnya (' + target.pemasok + ' ' + target.tanggal + ') bon yang sudah dibayar ' + RP(bb.dibayar) + ' — harga ' + RP(n) + '/kg membuat nilai bonnya ' + RP(nilaiBon) + ', di bawah yang dibayar; kelebihannya akan pindah ke bon lain tanpa uang' }; }
   const bongkarPerKg = target.hppPerKg - target.hargaPerKg; const hppBaru = n + bongkarPerKg;
-  const T = totalMasuk(merk); const nilaiBaru = T.nilai - target.hppPerKg * target.totalKg + hppBaru * target.totalKg; const modalBaru = T.kg > 0 ? nilaiBaru / T.kg : 0;
+  const T = totalMasuk(merk); const nilaiBaru = T.nilai - target.hppPerKg * target.totalKg + hppBaru * target.totalKg; let modalBaru = T.kg > 0 ? nilaiBaru / T.kg : 0;
+  // modal FIFO (owner 9 Okt): nilai rak sesudah koreksi dihitung MESIN atas kedatangan yang sudah dibetulkan (cache sementara) — lapisan yang sudah keluar
+  // tidak ikut naik/turun. Saklar mati = rumus rata-rata di atas.
+  if (K.fifo && bt) { const bt2 = Object.assign({}, bt, { merkList: (bt.merkList || []).map((m) => (m.bentuk !== 'bal' && m.merk === merk ? Object.assign({}, m, { hargaPerKg: n, subtotalHarga: Math.round((Number(m.totalKg) || 0) * n) }) : m)) });
+    const st1 = denganCacheSementara([{ koleksi: 'batchMasuk', data: bt2 }], () => hitungStokKarungPerMerk()[merk]); modalBaru = st1 ? st1.hppTerakhirPerKg || 0 : modalBaru; }
   const pct = K.modal > 0 ? Math.round((modalBaru - K.modal) / K.modal * 100) : 0; const delta = (modalBaru - K.modal) * Math.max(0, K.sisa);
   return { tolak: '', merk, n, target, hppBaru, modalLama: K.modal, modalBaru, delta, sisa: K.sisa, sama: n === target.hargaPerKg,
-    lonjak: Math.abs(pct) > atur.batasLonjak ? 'modal rata-rata ' + (pct > 0 ? 'naik ' : 'turun ') + Math.abs(pct) + ' % (' + RP(Math.round(K.modal)) + ' → ' + RP(Math.round(modalBaru)) + ')' : '',
+    lonjak: Math.abs(pct) > atur.batasLonjak ? (K.fifo ? 'nilai rak per kg ' : 'modal rata-rata ') + (pct > 0 ? 'naik ' : 'turun ') + Math.abs(pct) + ' % (' + RP(Math.round(K.modal)) + ' → ' + RP(Math.round(modalBaru)) + ')' : '',
     rugi: K.jual !== null && K.jual > 0 ? (hppBaru > K.jual ? 'HPP kedatangan ini ' + RP(Math.round(hppBaru)) + ' di atas harga jual ' + RP(K.jual) + '/kg — tiap kg dijual RUGI ' + RP(Math.round(hppBaru - K.jual)) : Math.round(hppBaru) === K.jual ? 'sama dengan harga jual — margin Rp0 (disengaja?)' : '') : '',
     teksTarget: 'kedatangan ' + target.pemasok + ' ' + target.tanggal + ' · ' + hpKG(target.totalKg) + ' · harga ' + RP(target.hargaPerKg) + '/kg' + (bongkarPerKg ? ' + bongkar ' + RP(Math.round(bongkarPerKg)) + '/kg' : ''),
     teksDelta: 'Nilai rak ' + merk + ' ' + (delta >= 0 ? 'naik ' : 'turun ') + RP(Math.round(Math.abs(delta))) + ' (' + RP(Math.round(modalBaru - K.modal)) + '/kg × ' + hpKG(Math.max(0, K.sisa)) + ') — kekayaan toko ikut ' + (delta >= 0 ? 'naik' : 'turun') };
