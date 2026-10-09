@@ -13,14 +13,16 @@
 // ({ ke, keluarga, tab, lembar, … }) untuk keTujuan() di app.js. Satu kelompok yang galat tidak mematikan kelompok lain. BACA SAJA.
 import { AMBANG_HARI_KRITIS, JENDELA_LAJU_HARI, akhirBulanIso } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
-import { rekapHari, hariTerakhir, daftarMinggu, daftarBulan, lpPertama, lpHariRentang } from './laporan-logika.js';
+import { rekapHari, hariTerakhir, daftarMinggu, daftarBulan, lpPertama, lpHariRentang, merekBulan, merekTeratas } from './laporan-logika.js';
 import { kendaliBulan, titikImpas, pemicuBiaya, peringatanBiaya } from './kendali-biaya-logika.js';
 import { saldoKantong, ugNamaTempat } from './uang-logika.js';
 import { daftarKarcis } from './karcis-logika.js';
-import { daftarBarang, susunWadah } from './stok-logika.js';
+import { daftarBarang, susunWadah, umRingkas } from './stok-logika.js';
 import { wbCekHari } from './wadah-bernama-logika.js';
-import { semuaBon, KATA_STATUS } from './bon-logika.js';
+import { semuaBon, KATA_STATUS, tertagihBon } from './bon-logika.js';
 import { susunBon as bpSusunBon } from './bon-pemasok-logika.js';
+import { hetHargaKasir } from './het-logika.js';
+import { rekapTimbangMutu } from './stok-catat-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
@@ -109,11 +111,32 @@ export function dbTren(rentang, kini) {
     sumber: 'Laporan › ' + (rentang === 'hari' ? 'Harian' : rentang === 'minggu' ? 'Mingguan' : 'Bulanan'), nama, hariIni: iso };
 }
 
+/** MUTU USAHA (paket brief awal 9 Okt, owner "sesuaikan saja dulu"): lima KPI yang tayang 9 Okt, tiap baris = fungsi sumber layarnya APA ADANYA —
+ *  rata-rata hari bon tertagih (Pelanggan › Bon), lambat laku & stok tertua & perputaran (Stok › Umur & putaran), merek teratas & susut % bulan ini
+ *  (Laporan › Laba › Per merek), harga di atas HET (Harga › Katalog), kedatangan bermutu AWAS / kurang timbang (Stok › Barang masuk). Satu baris galat
+ *  tidak mematikan baris lain. Tidak ada rumus uang di sini. */
+export function dbMutu(kini) {
+  const key = hariIniIso(kini).slice(0, 7);
+  const aman = (f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor mutu', e); return { galat: String((e && e.message) || e) }; } };
+  const T = aman(() => tertagihBon(kini)); const U = aman(() => umRingkas(kini)); const M = aman(() => merekBulan(key, kini)); const H = aman(() => hetHargaKasir(kini));
+  const R = aman(() => rekapTimbangMutu({})); const TT = M.galat ? null : aman(() => merekTeratas(M, 'margin', 3));
+  return {
+    periode: 'Sekarang · merek & susut ' + (M.galat ? key : M.nama), sumber: 'Laporan › Laba › Per merek', tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key },
+    tertagih: T.galat ? T : { keadaan: T.keadaan, rataTeks: T.rataTeks, hari: T.hari, teks: T.teks, periodeTeks: T.periodeTeks, tujuan: { ke: 'pelanggan', keluarga: 'bon' } },
+    umur: U.galat ? U : { lambat: U.lambat.length, namaLambat: U.lambat.slice(0, 3).map((r) => r.nama), tertua: U.tertua.length ? { nama: U.tertua[0].nama, hari: U.tertua[0].umurAcuan } : null,
+      putaran: U.putaranMerek, periodeHari: U.atur.periodeHari, tujuan: { ke: 'stok', tab: 'umur' } },
+    merek: M.galat ? M : TT.galat ? TT : { nama: M.nama, arsip: !!M.diarsip, menutup: M.menutup, teratas: TT.daftar.map((g) => ({ merek: g.merek, margin: g.margin, pct: g.pct, keadaanMargin: g.keadaanMargin })),
+      susutPct: M.susut ? M.susut.pct : null, susutTinggi: M.susut ? (Array.isArray(M.susut.tinggi) ? M.susut.tinggi.length : Number(M.susut.tinggi) || 0) : 0, tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key } },
+    het: H.galat ? H : { keadaan: H.keadaan, judul: H.judul, nAtas: H.nAtas, tujuan: { ke: 'harga', keluarga: 'katalog' } },
+    mutu: R.galat ? R : { kedatangan: R.total.kedatangan, ditimbang: R.total.ditimbang, awas: R.total.kedatanganAwas, kgKurang: R.total.kgKurang, tujuan: { ke: 'stok', lembar: 'masuk' } },
+  };
+}
+
 /** Seluruh dasbor untuk satu saat. Tiap kelompok dibungkus: galat di satu kelompok tampil sebagai kalimat di kelompok itu, kelompok lain tetap jalan.
  *  lama (owner 3 Okt, ganti rentang patah-patah): hasil dasbor saat & data yang SAMA — hanya tren yang memakai rentang, jadi hari ini · bulan ini · stok ·
  *  tagihan diambil dari situ dan cuma tren yang dihitung (dulu seluruh dasbor dihitung ulang tiap ganti Hari / Minggu / Bulan). */
 export function susunDasbor(kini, rentang, lama) {
   const aman = (nama, f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor ' + nama, e); return { galat: String((e && e.message) || e) }; } };
-  if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, tren: aman('tren', () => dbTren(rentang, kini)) };
-  return { hari: aman('hari ini', () => dbHariIni(kini)), bulan: aman('bulan ini', () => dbBulanIni(kini)), stok: aman('stok', () => dbStok(kini)), tagihan: aman('tagihan', () => dbTagihan(kini)), tren: aman('tren', () => dbTren(rentang, kini)) };
+  if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, tren: aman('tren', () => dbTren(rentang, kini)) };
+  return { hari: aman('hari ini', () => dbHariIni(kini)), bulan: aman('bulan ini', () => dbBulanIni(kini)), stok: aman('stok', () => dbStok(kini)), tagihan: aman('tagihan', () => dbTagihan(kini)), mutu: aman('mutu usaha', () => dbMutu(kini)), tren: aman('tren', () => dbTren(rentang, kini)) };
 }
