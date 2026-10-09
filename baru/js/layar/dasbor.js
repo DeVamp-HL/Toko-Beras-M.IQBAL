@@ -179,6 +179,28 @@ export function pasangDasbor(akar, opsi) {
 
   // ---------- tooltip ----------
   const tip = () => akar.querySelector('.db-tip');
+  // ---------- MUTU USAHA (paket brief awal 9 Okt) — lima KPI, tiap baris diketuk = rincian, ketuk lagi = layar sumbernya ----------
+  function kartuMutu(Q) {
+    if (!Q) return '';
+    if (Q.galat) return '<div class="kartu db-kartu db-mutu">' + galat(Q) + '</div>';
+    const pc = (x) => (x === null || x === undefined ? '—' : DESIMAL(Math.round(x * 10) / 10) + '%');
+    const baris = (id, nama, nilai, awas, isi) => '<div class="db-baris db-ketuk' + (awas ? ' awas-teks' : '') + '"' + daftar('mutu:' + id, isi) + '><span class="db-nama">' + esc(nama) + '</span><span class="db-nilai">' + esc(nilai) + '</span></div>';
+    const salah = (id, nama, x) => baris(id, nama, 'gagal dihitung', true, { judul: nama, baris: [['Galat', x.galat]], tujuan: null, ke: '' });
+    const T = Q.tertagih, U = Q.umur, M = Q.merek, H = Q.het, R = Q.mutu; const out = [];
+    out.push(T.galat ? salah('tertagih', 'Bon tertagih', T) : baris('tertagih', 'Rata-rata bon tertagih', T.rataTeks, false, { judul: 'Rata-rata hari bon tertagih', baris: [['Periode', T.periodeTeks || T.hari + ' hari terakhir'], ['Rata-rata', T.rataTeks], ['Keterangan', T.teks]], tujuan: T.tujuan, ke: 'Pelanggan › Bon' }));
+    out.push(U.galat ? salah('umur', 'Umur stok', U) : baris('umur', 'Lambat laku', U.lambat ? U.lambat + ' barang' : 'tidak ada', U.lambat > 0, { judul: 'Umur & putaran stok', baris: [['Lambat laku', U.lambat ? U.lambat + ' barang' + (U.namaLambat.length ? ' (' + U.namaLambat.join(', ') + (U.lambat > 3 ? ', …' : '') + ')' : '') : 'tidak ada'], ['Stok tertua', U.tertua ? U.tertua.nama + ' · ' + U.tertua.hari + ' hari' : 'belum bisa dihitung'], ['Perputaran merek', U.putaran === null ? 'belum bisa dihitung' : DESIMAL(Math.round(U.putaran * 10) / 10) + '× / ' + U.periodeHari + ' hari']], tujuan: U.tujuan, ke: 'Stok › Umur & putaran' }));
+    if (M.galat) out.push(salah('merek', 'Per merek', M));
+    else if (M.arsip) out.push(baris('merek', 'Merek teratas ' + M.nama, 'rincian ikut arsip', false, { judul: 'Per merek ' + M.nama, baris: [['Keadaan', 'bulan sudah ditutup buku']], tujuan: M.tujuan, ke: 'Laporan › Laba' }));
+    else {
+      const top = M.teratas[0];
+      out.push(baris('merek', 'Margin teratas ' + M.nama, top ? top.merek + ' ' + dbRpPendek(top.margin) : 'belum ada jualan', M.menutup === false, { judul: 'Merek teratas menurut margin · ' + M.nama, baris: M.teratas.map((x, i) => [(i + 1) + '. ' + x.merek, RP(Math.round(x.margin)) + ' · ' + pc(x.pct)]).concat(M.menutup === false ? [['Peringatan', 'per merek TIDAK menutup ke laba kotor Laporan — buka Laporan']] : []), tujuan: M.tujuan, ke: 'Laporan › Laba › Per merek' }));
+      out.push(baris('susut', 'Susut beras ' + M.nama, pc(M.susutPct) + (M.susutTinggi ? ' · ' + M.susutTinggi + ' merek tinggi' : ''), M.susutTinggi > 0, { judul: 'Susut % se-toko · ' + M.nama, baris: [['Susut', pc(M.susutPct)], ['Merek di atas ambang', String(M.susutTinggi || 0)]], tujuan: M.tujuan, ke: 'Laporan › Laba › Per merek' }));
+    }
+    out.push(H.galat ? salah('het', 'HET', H) : baris('het', 'Harga di atas HET', H.keadaan === 'belum' || H.keadaan === 'kosong' ? 'belum dipetakan' : String(H.nAtas || 0), (H.nAtas || 0) > 0, { judul: 'HET beras', baris: [['Keadaan', H.judul]], tujuan: H.tujuan, ke: 'Harga › Katalog' }));
+    out.push(R.galat ? salah('mutu', 'Mutu kedatangan', R) : baris('mutu', 'Kedatangan mutu AWAS', R.awas ? R.awas + ' kedatangan' : R.ditimbang || R.awas ? '0' : 'belum dicek', R.awas > 0, { judul: 'Timbang & mutu kedatangan', baris: [['Ditimbang', R.ditimbang + ' dari ' + R.kedatangan + ' kedatangan'], ['Kurang timbang', dbKg(R.kgKurang)], ['Mutu AWAS', String(R.awas)]], tujuan: R.tujuan, ke: 'Stok › Barang masuk' }));
+    return '<div class="kartu db-kartu db-mutu">' + kepala('Mutu usaha', Q.periode, 'sumber:mutu', Q.sumber, Q.tujuan) + out.join('') + '</div>';
+  }
+
   function tutupTip() { pilih = null; const t = tip(); if (t) t.hidden = true; akar.querySelectorAll('.db-dipilih').forEach((el) => el.classList.remove('db-dipilih')); }
   function tampilTip(id, el) {
     const isi = reg[id]; const t = tip(); if (!isi || !t) return;
@@ -206,7 +228,7 @@ export function pasangDasbor(akar, opsi) {
     // owner 3 Okt: dua lajur DISUSUN DI SINI, bukan CSS columns — Safari/WebKit tidak menggambar kartu beranimasi di dalam columns (kartu Bulan ini kosong
     // sampai ada yang diketuk, sisa kartu nyangkut di atas Hari ini). Lajur kiri Bulan ini · pemicu · stok, kanan wadah · piutang (= pembagian columns dulu).
     akar.innerHTML = kartuHari(D.hari) + kartuTren(D.tren) + '<div class="db-lajur">' + kartuBulan(D.bulan) + kartuPemicu(D.bulan) + kartuStok(D.stok) + '</div>'
-      + '<div class="db-lajur">' + kartuWadah(D.stok) + kartuTagihan(D.tagihan) + '</div>' + '<div class="db-tip kartu" hidden></div>';
+      + '<div class="db-lajur">' + kartuWadah(D.stok) + kartuTagihan(D.tagihan) + kartuMutu(D.mutu) + '</div>' + '<div class="db-tip kartu" hidden></div>';
     pilih = null; if (tadi && reg[tadi]) { const el = akar.querySelector('[data-db="' + (window.CSS && CSS.escape ? CSS.escape(tadi) : tadi) + '"]'); if (el) tampilTip(tadi, el); }
     if (masuk) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1400); }
   }

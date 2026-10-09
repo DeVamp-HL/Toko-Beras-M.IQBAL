@@ -190,9 +190,9 @@ def berkas_titik():
 # Kotak pasir = kotak Kendali Biaya (ANGKA CONTOH, jam 19 Sep 2026 10:00) + bon pelanggan tiga keadaan. Yang diuji: tiap angka dasbor MENUTUP ke fungsi
 # sumbernya (satu sumber, tidak ada rumus uang baru), pengelompokan menutup ke total, kelompok galat tidak mematikan yang lain, dan dasbor hanya untuk owner.
 def modul_dasbor():
-    import uji_laporan_baru
+    import uji_laporan_baru, uji_stok_baru   # paket brief 9 Okt: kartu Mutu usaha memanggil umur stok, timbang & mutu (stok-catat), HET (harga-logika)
     out = []
-    for m in uji_laporan_baru.MODUL + ['baru/js/layar/stok-logika.js', 'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/ringkasan-logika.js', 'baru/js/layar/dasbor-logika.js']:
+    for m in uji_stok_baru.MODUL + uji_laporan_baru.MODUL + ['baru/js/layar/harga-logika.js', 'baru/js/layar/het-logika.js'] + ['baru/js/layar/stok-logika.js', 'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/ringkasan-logika.js', 'baru/js/layar/dasbor-logika.js']:
         if m not in out: out.append(m)
     return out
 
@@ -202,7 +202,8 @@ BON_PEMASOK_LAMA = "function susunBon(kini) {\n  const iso = hariIniIso(kini || 
 
 def bundel_dasbor():
     """bon-logika & bon-pemasok-logika sama-sama punya susunBon; di peramban dasbor mengimpor yang pemasok sebagai bpSusunBon — di bundel jsc namanya dipisah."""
-    js = bundel_baru.bundel(modul_dasbor())
+    import uji_kunci_periode
+    js = uji_kunci_periode.satu_lingkup(bundel_baru.bundel(modul_dasbor()))   # teksMargin stok-hpp vs harga-logika (satu lingkup)
     assert js.count(BON_PEMASOK_LAMA) == 1, 'jangkar susunBon pemasok basi'
     return js.replace(BON_PEMASOK_LAMA, BON_PEMASOK_LAMA.replace('susunBon(', 'bpSusunBon('))
 
@@ -293,6 +294,12 @@ ok('tren hari sebelum catatan pertama (25 Jun): 7 batang ABSEN (bukan nol), sisa
 // ---- galat satu kelompok tidak mematikan yang lain
 var asliDB = daftarBarang; daftarBarang = function () { throw new Error('rusak uji'); };
 var DG; try { DG = susunDasbor(KINI, 'hari'); } catch (e) { DG = { lempar: String(e) }; } daftarBarang = asliDB;
+// ---- paket brief 9 Okt: MUTU USAHA = fungsi sumber layarnya apa adanya
+var Q = D.mutu, Tq = tertagihBon(KINI), Uq = umRingkas(KINI), Hq = hetHargaKasir(KINI), Rq = rekapTimbangMutu({}), Mq = merekBulan(hariIniIso(KINI).slice(0, 7), KINI), TTq = merekTeratas(Mq, 'margin', 3);
+ok('mutu usaha: tertagih · lambat laku · merek teratas · susut % · HET · timbang & mutu = fungsi sumber layarnya (satu sumber)', !!Q && !Q.galat && !Q.tertagih.galat && Q.tertagih.rataTeks === Tq.rataTeks
+  && Q.umur.lambat === Uq.lambat.length && Q.het.nAtas === Hq.nAtas && Q.het.keadaan === Hq.keadaan && Q.mutu.kedatangan === Rq.total.kedatangan && Q.mutu.awas === Rq.total.kedatanganAwas
+  && Q.merek.teratas.length === TTq.daftar.length && (!TTq.daftar.length || (Q.merek.teratas[0].merek === TTq.daftar[0].merek && Q.merek.teratas[0].margin === TTq.daftar[0].margin)) && Q.merek.susutPct === (Mq.susut ? Mq.susut.pct : null) && typeof Q.merek.susutTinggi === 'number' && Q.merek.susutTinggi === (Mq.susut && Array.isArray(Mq.susut.tinggi) ? Mq.susut.tinggi.length : 0),
+  JSON.stringify(Q).slice(0, 400));
 ok('galat di Stok → kelompok stok membawa pesan galat; hari ini, bulan ini, tagihan, tren tetap tergambar', !DG.lempar && DG.stok && /rusak uji/.test(DG.stok.galat) && !DG.hari.galat && !DG.bulan.galat && !DG.tagihan.galat && !DG.tren.galat, J(DG.lempar || DG.stok));
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
@@ -330,7 +337,7 @@ console.error = function () {};
 Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[n]); });
 var hidup = (CAD.penjualan || []).filter(function (p) { return !p.dikoreksiOleh && !p.dibatalkan; }); var tgl = hidup.map(function (p) { return p.tanggal || ''; }).sort();
 var KINI = new Date(tgl[tgl.length - 1] + 'T20:00:00'); var D = susunDasbor(KINI, 'hari'); var ix = bangunIndeks();
-var galat = ['hari', 'bulan', 'stok', 'tagihan', 'tren'].filter(function (k) { return D[k].galat; });
+var galat = ['hari', 'bulan', 'stok', 'tagihan', 'tren', 'mutu'].filter(function (k) { return D[k].galat; }).concat(D.mutu && !D.mutu.galat ? ['tertagih', 'umur', 'merek', 'het', 'mutu'].filter(function (k) { return D.mutu[k].galat; }).map(function (k) { return 'mutu.' + k; }) : []);
 var kas = D.hari.kas.ada ? Math.abs(D.hari.kas.tempat.reduce(function (a, t) { return a + t.n; }, 0) - D.hari.kas.total) < 0.5 && D.hari.kas.cocok : 'tanpa titik';
 var P = D.tagihan.piutang, U = D.tagihan.pemasok;
 var hasil = { galat: galat, omzet: D.hari.omzet === susunRingkasan('jam', ix, KINI).angka, kas: kas, piutang: P.perStatus.reduce(function (a, s) { return a + s.rp; }, 0) === P.total && P.total === hitungPiutang().filter(function (x) { return x.sisa > 0; }).reduce(function (a, x) { return a + x.sisa; }, 0),
@@ -342,6 +349,8 @@ print(JSON.stringify(hasil));
 
 RUSAK_DASBOR = [
     ('8 Okt: kartu Biaya membuang baris negatif lagi', "const biaya = K.baris.filter((r) => Math.abs(r.pakai) > 0.5 || r.anggaran > 0).map(", "const biaya = K.baris.filter((r) => r.pakai > 0 || r.anggaran > 0).map("),
+    ('mutu usaha: jumlah lambat laku tidak sama dengan daftar Umur & putaran', "umur: U.galat ? U : { lambat: U.lambat.length,", "umur: U.galat ? U : { lambat: U.lambat.length + 1,"),
+    ('mutu usaha: HET membaca harga yang tampil (draf), bukan harga kasir', "const H = aman(() => hetHargaKasir(kini));", "const H = aman(() => ({ keadaan: 'lengkap', judul: '', nAtas: 99 }));"),
     ('dasbor: omzet hari ini bruto (retur tidak dikurangi)', "omzet: R.omzet, nota: R.n,", "omzet: R.omzet + R.retur, nota: R.n,"),
     ('dasbor: amplop laba tidak ikut kas per tempat', "const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];", "const DB_TEMPAT = ['laci', 'brankas', 'rekening'];"),
     ('dasbor: kas per tempat ditebak walau titik kas belum ada', "kas: S.ada ? { ada: true,", "kas: true ? { ada: true,"),
@@ -355,7 +364,7 @@ RUSAK_DASBOR = [
     ('dasbor: tren minggu lebih panjang dari pemilih Laporan (12)', "daftarMinggu(kini, 8)", "daftarMinggu(kini, 12)"),
     ('dasbor: hari sebelum catatan pertama digambar nol (bukan absen)', "const absen = !pertama || d.iso < pertama || !!d.tanpaPotret;", "const absen = false;"),
     ('dasbor: stok memakai urutan abjad (bukan kg terbesar)', ".sort((a, b) => b.kg - a.kg || a.nama.localeCompare(b.nama));", ".sort((a, b) => a.nama.localeCompare(b.nama));"),
-    ('dasbor: galat satu kelompok mematikan seluruh dasbor', "return { galat: String((e && e.message) || e) }; } };", "throw e; } };"),
+    ('dasbor: galat satu kelompok mematikan seluruh dasbor', "console.error('dasbor ' + nama, e); return { galat: String((e && e.message) || e) }; } };", "console.error('dasbor ' + nama, e); throw e; } };"),
     ('dasbor: pemicu tanpa tujuan layar', "tujuan: tujuanW('pemicu-' + r.id) || { ke: 'laporan', keluarga: 'biaya', bulan: key } }))", "tujuan: null }))"),
 ]
 RUSAK_DASBOR_STATIS = [
