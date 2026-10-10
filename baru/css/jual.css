@@ -79,6 +79,10 @@
 
 /* retur menunjuk nota (putaran 4) */
 .daftar-nota { padding: 4px 12px; gap: 0; max-height: 62vh; overflow-y: auto; }
+/* 10 Okt: isi lembar & daftar nota TIDAK boleh mengkerut. .kartu ber-overflow hidden (tinggi minimumnya jadi 0) di kolom flex
+   yang tingginya dibatasi digencet sampai isinya terpotong — form "batalkan karcis" kehilangan kolom alasan & tombolnya.
+   Sekarang yang panjang menggulir, bukan terpotong. */
+.lembar:not(.tirai) > *, .daftar-nota > * { flex-shrink: 0; }
 .baris-nota { display: flex; flex-direction: column; gap: 2px; padding: 10px 2px; border-bottom: 1px solid var(--garis); cursor: pointer; }
 .baris-nota:last-child { border-bottom: 0; }
 .baris-nota .atas { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; font-size: 14px; }
