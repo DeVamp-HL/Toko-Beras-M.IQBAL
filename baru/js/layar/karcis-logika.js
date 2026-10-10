@@ -10,7 +10,7 @@ import { penjualanMasihBerlaku, bakuCaraBayar, hargaKarungUtuh, namaSingkatTrx, 
 import { ambilPenjualan, ambilPenjualanSemua, ambilHargaLiteran, ambilHargaKemasan, tolakKunci, butuhGet, ingatStokKarung } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, hariIniIso, tanggalPendek, jamSetempat } from '../inti/format.js';
-import { susunRak, masukkan, terapkanNego, periksaStokKeranjang, pecahItemsWadah, aturWadah } from './jual-logika.js';
+import { susunRak, masukkan, terapkanNego, periksaStokKeranjang, pecahItemsWadah, aturWadah, angkaRupiah } from './jual-logika.js';
 import { wbLiteranLangsung } from './wadah-bernama-logika.js';
 import { koleksiWadah } from './wadah-jual-logika.js';
 import { skPecah, skHapusPemecah } from './setengah-logika.js';
@@ -97,10 +97,45 @@ export function pakaiTebakan(s, t) {
     kabar: 'Tebakan dipakai: ' + t.label + (gagalPas.length ? ' — harga pas BELUM terpasang (' + gagalPas.join('; ') + ')' : '') + ' — periksa lalu SIMPAN RINCIAN', kabarAwas: gagalPas.length > 0 };
 }
 
-/** Uang vs barang di keranjang saat merinci. Potongan nota TIDAK dipakai (harga barangnya yang dinego). */
+// owner 11 Okt 2026: nominal karcis kasir darurat BOLEH dibetulkan saat merinci (naik atau turun, alasan wajib) — uang yang sungguh masuk bisa beda
+// dari yang terketik di tablet (130.000 → 135.000). Draf menempel di karcis yang diikat (k.nominalBaru teks rupiah, k.alasanNominal): lepas / simpan = hilang.
+// Hanya karcis nominal; nota yang dirapikan tetap menutup jumlahnya persis (uang nota tidak berubah).
+/** Nominal yang berlaku untuk karcis yang sedang dirinci: { nominal, asli, diubah, selisih, alasan, sedangDiubah, salah }. */
+export function nominalKarcis(k) {
+  const asli = Math.round((k && k.nominal) || 0); const sedang = !!k && k.jenisAsal === 'karcis' && k.nominalBaru !== undefined && k.nominalBaru !== null;
+  if (!sedang) return { nominal: asli, asli, diubah: false, selisih: 0, alasan: '', sedangDiubah: false, salah: false };
+  const n = angkaRupiah(k.nominalBaru); const diubah = n > 0 && n !== asli;
+  return { nominal: n > 0 ? n : asli, asli, diubah, selisih: diubah ? n - asli : 0, alasan: String(k.alasanNominal || '').trim(), sedangDiubah: true, salah: !(n > 0) };
+}
+/** Kalimat dampak uang dari nominal yang dibetulkan — dipakai di lembar Simpan rincian dan kabar sesudah simpan. */
+export function teksDampakNominal(k, cara, nama) {
+  const N = nominalKarcis(k); if (!N.diubah) return '';
+  const naik = N.selisih > 0; const tgl = tanggalPendek(k.tanggal);
+  return 'Nominal karcis ' + RP(N.asli) + ' → ' + RP(N.nominal) + ' (' + (naik ? '+' : '−') + RP(Math.abs(N.selisih)) + '): omzet ' + tgl + ' ' + (naik ? 'naik' : 'turun') + ' ' + RP(Math.abs(N.selisih))
+    + (cara === 'Kredit' ? ', bon ' + (nama || 'pembeli') + ' ' + (naik ? 'bertambah' : 'berkurang') : cara === 'QRIS' ? ', uang QRIS hari itu ikut ' + (naik ? 'naik' : 'turun') : ', uang laci hari itu ' + (naik ? 'naik' : 'turun')) + ' ' + RP(Math.abs(N.selisih));
+}
+/** Buka / ketik / tutup draf nominal. nilai = teks rupiah atau angka (pil "ubah jadi Rp…"). */
+export function bukaNominalKarcis(s, nilai) {
+  const k = s.karcis; if (!k) return {}; if (k.jenisAsal !== 'karcis') return { kabar: 'Nota yang dirapikan tidak bisa diubah nominalnya — uang nota itu sudah pasti, barangnya yang menutup persis', kabarAwas: true };
+  return { karcis: Object.assign({}, k, { nominalBaru: nilai !== undefined && nilai !== null && String(nilai) !== '' ? String(nilai) : String(k.nominal), alasanNominal: k.alasanNominal || '' }) };
+}
+export function ketikNominalKarcis(s, kolom, v) {
+  const k = s.karcis; if (!k || k.nominalBaru === undefined) return {};
+  return { karcis: Object.assign({}, k, kolom === 'alasan' ? { alasanNominal: String(v || '').slice(0, 120) } : { nominalBaru: String(v || '').slice(0, 15) }) };
+}
+export function tutupNominalKarcis(s) { const k = s.karcis; if (!k) return {}; const b = Object.assign({}, k); delete b.nominalBaru; delete b.alasanNominal; return { karcis: b }; }
+/** Penjaga draf nominal yang dipakai SIMPAN RINCIAN & perbaikan karcis: '' = sah (atau tidak diubah). */
+function tolakNominal(k) {
+  const N = nominalKarcis(k); if (!N.sedangDiubah) return '';
+  if (N.salah) return 'Nominal baru belum terbaca — ketik uang yang sebenarnya masuk (mis. 135000), atau tutup "ubah nominal"';
+  if (N.diubah && N.alasan.length < 3) return 'Tulis alasan nominal diubah (mis. "salah ketik, harusnya 135.000") — jejaknya ikut tersimpan di karcis';
+  return '';
+}
+
+/** Uang vs barang di keranjang saat merinci. Potongan nota TIDAK dipakai (harga barangnya yang dinego). Nominal = yang berlaku (bisa dibetulkan owner). */
 export function hitungKarcis(s) {
-  const k = s.karcis; if (!k) return null; const total = s.keranjang.reduce((a, b) => a + (b.trx.hargaTotal || 0), 0); const sisa = k.nominal - total;
-  return { k, total, sisa, lebih: sisa < 0, pas: sisa === 0 && total > 0, teks: !s.keranjang.length ? 'belum ada barang' : sisa === 0 ? 'PAS ' + RP(total) + ' — siap disimpan' : sisa > 0 ? 'Sisa ' + RP(sisa) + ' belum terurai — ' + (k.jenisAsal === 'karcis' ? 'boleh disimpan, sisanya tetap tercatat sebagai karcis' : 'rapikan harus menutup persis') : 'KELEBIHAN ' + RP(-sisa) + ' — hapus atau betulkan harga barang' };
+  const k = s.karcis; if (!k) return null; const N = nominalKarcis(k); const total = s.keranjang.reduce((a, b) => a + (b.trx.hargaTotal || 0), 0); const sisa = N.nominal - total;
+  return { k, N, nominal: N.nominal, total, sisa, lebih: sisa < 0, pas: sisa === 0 && total > 0, teks: !s.keranjang.length ? 'belum ada barang' : sisa === 0 ? 'PAS ' + RP(total) + ' — siap disimpan' : sisa > 0 ? 'Sisa ' + RP(sisa) + ' belum terurai — ' + (k.jenisAsal === 'karcis' ? 'boleh disimpan, sisanya tetap tercatat sebagai karcis' : 'rapikan harus menutup persis') : 'KELEBIHAN ' + RP(-sisa) + ' — hapus atau betulkan harga barang' + (k.jenisAsal === 'karcis' ? ', atau ubah nominal karcis kalau uang yang masuk memang ' + RP(total) : '') };
 }
 
 const kcBersih = (t) => { const d = Object.assign({}, t); ['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'pecahan', '_takaran', 'setengahDari', 'setengahHargaBaru'].forEach((k) => { delete d[k]; }); return d; };
@@ -121,7 +156,9 @@ export function susunRinciDokumen(s, w) {
   if (Math.round(s.potongan || 0) > 0) return { tolak: 'Potongan nota tidak dipakai saat merinci — nego harga barangnya saja' };
   const cara = bakuCaraBayar(s.cara); const nama = String(s.pelanggan || '').trim();
   if (cara === 'Kredit' && !nama) return { tolak: 'Bon harus punya nama pembeli — tanpa nama, utangnya tidak bisa ditagih' };
-  const H = hitungKarcis(s); if (H.lebih) return { tolak: 'Jumlah barang ' + RP(H.total) + ' KELEBIHAN ' + RP(-H.sisa) + ' dari nominal ' + RP(k.nominal) + ' — tidak boleh melebihi uang yang masuk' };
+  const tn = tolakNominal(k); if (tn) return { tolak: tn };   // owner 11 Okt: nominal dibetulkan → alasan wajib
+  const H = hitungKarcis(s); if (H.lebih) return { tolak: 'Jumlah barang ' + RP(H.total) + ' KELEBIHAN ' + RP(-H.sisa) + ' dari nominal ' + RP(H.nominal) + ' — tidak boleh melebihi uang yang masuk' + (k.jenisAsal === 'karcis' ? '; kalau uangnya memang ' + RP(H.total) + ', ubah nominal karcisnya dulu (alasan wajib)' : '') };
+  const N = H.N; const teksNominal = N.diubah ? 'nominal dibetulkan ' + RP(N.asli) + ' → ' + RP(N.nominal) + ': ' + N.alasan : '';
   if (k.jenisAsal === 'rapikan' && H.sisa !== 0) return { tolak: 'Merapikan harus menutup ' + RP(k.nominal) + ' persis (uang nota tetap) — sekarang ' + RP(H.total) };
   const stok = periksaStokKeranjang(s); if (stok) return { tolak: stok };
   const karcis = k.jenisAsal === 'karcis'; const idGrup = w.idUnik(); const kini = w.kini || new Date().toISOString(); const dokumen = []; const ids = []; const label = [];
@@ -136,17 +173,18 @@ export function susunRinciDokumen(s, w) {
     d.id = w.idUnik(); d.tanggal = p.tanggal; d.jam = p.jam || ''; d.caraBayar = cara; d.namaPelanggan = nama; d.hargaAsliSatuan = t.hargaAsli; if (t.nego) d.negoSelisih = t.hargaSatuan - t.hargaAsli;
     d.grupNota = idGrup; d.koreksiDari = p.id; d.dirinciPada = kini;
     if (t._takaran) d.takaranId = takaranPertama[t._takaran] || (takaranPertama[t._takaran] = String(d.id));   // putaran 27: pengikat baris internal satu takaran
-    if (karcis) { d.asalDarurat = true; d.rinciDari = p.id; d.alasanKoreksi = 'Rincian dari kasir darurat ' + kcEkor(p.id); } else d.alasanKoreksi = 'Dirapikan dari kasir ' + kcEkor(p.id);
+    if (karcis) { d.asalDarurat = true; d.rinciDari = p.id; d.alasanKoreksi = 'Rincian dari kasir darurat ' + kcEkor(p.id) + (teksNominal ? ' (' + teksNominal + ')' : ''); } else d.alasanKoreksi = 'Dirapikan dari kasir ' + kcEkor(p.id);
     if (p.operator) d.operator = p.operator;
     dokumen.push({ koleksi: 'penjualan', data: d }); ids.push(d.id); kcPasangan(d, w, dokumen);
   });
   if (tolakPecah) return { tolak: tolakPecah };
-  if (karcis && H.sisa > 0) { const sisaDoc = { id: w.idUnik(), tanggal: p.tanggal, jam: p.jam || '', caraBayar: cara, namaPelanggan: nama, jenis: 'kasir_darurat_nominal', hargaTotal: H.sisa, grupNota: idGrup, asalDarurat: true, rinciDari: p.id, koreksiDari: p.id, alasanKoreksi: 'Sisa belum diurai dari kasir darurat ' + kcEkor(p.id), dirinciPada: kini }; if (p.operator) sisaDoc.operator = p.operator; dokumen.push({ koleksi: 'penjualan', data: sisaDoc }); ids.push(sisaDoc.id); }
-  const asli = Object.assign({}, p, { dikoreksiOleh: ids[0], alasanKoreksi: (karcis ? 'Dirinci jadi ' : 'Dirapikan jadi ') + s.keranjang.length + ' barang: ' + label.join(' + ') + (karcis && H.sisa > 0 ? ' + sisa ' + RP(H.sisa) + ' belum diurai' : '') });
+  if (karcis && H.sisa > 0) { const sisaDoc = { id: w.idUnik(), tanggal: p.tanggal, jam: p.jam || '', caraBayar: cara, namaPelanggan: nama, jenis: 'kasir_darurat_nominal', hargaTotal: H.sisa, grupNota: idGrup, asalDarurat: true, rinciDari: p.id, koreksiDari: p.id, alasanKoreksi: 'Sisa belum diurai dari kasir darurat ' + kcEkor(p.id) + (teksNominal ? ' (' + teksNominal + ')' : ''), dirinciPada: kini }; if (p.operator) sisaDoc.operator = p.operator; dokumen.push({ koleksi: 'penjualan', data: sisaDoc }); ids.push(sisaDoc.id); }
+  const asli = Object.assign({}, p, { dikoreksiOleh: ids[0], alasanKoreksi: (karcis ? 'Dirinci jadi ' : 'Dirapikan jadi ') + s.keranjang.length + ' barang: ' + label.join(' + ') + (karcis && H.sisa > 0 ? ' + sisa ' + RP(H.sisa) + ' belum diurai' : '') + (teksNominal ? '; ' + teksNominal : '') });
+  if (N.diubah) { asli.nominalDibetulkan = N.nominal; asli.alasanNominal = N.alasan.slice(0, 120); }   // dicabut lagi bila rinciannya ditarik balik (susunUrungRinci)
   dokumen.push({ koleksi: 'penjualan', data: asli });
   // putaran 25: karcis bulan lalu (di luar masa tenggang) — tiap catatan diperiksa kunci di server; satu rincian tidak boleh butuh lebih dari 18 pemeriksaan
   const g = butuhGet(dokumen); if (g > KP_BATAS_GET) return { tolak: 'Karcis bulan lalu: rincian ini menyentuh ' + g + ' catatan (batas ' + KP_BATAS_GET + ' sekali kirim) — rinci sebagian barangnya dulu (sisanya tetap jadi karcis), lalu rinci lagi' };
-  const ringkas = (karcis ? 'Karcis ' : 'Nota ') + kcEkor(p.id) + ' ' + RP(k.nominal) + ' → ' + s.keranjang.length + ' barang ' + RP(H.total) + (H.sisa > 0 ? ' + sisa ' + RP(H.sisa) + ' tetap jadi karcis' : '') + ' · ' + cara + (nama ? ' · ' + nama : '') + ' · tanggal & jam mengikuti karcisnya';
+  const ringkas = (karcis ? 'Karcis ' : 'Nota ') + kcEkor(p.id) + ' ' + (N.diubah ? RP(N.asli) + ' dibetulkan jadi ' + RP(N.nominal) : RP(k.nominal)) + ' → ' + s.keranjang.length + ' barang ' + RP(H.total) + (H.sisa > 0 ? ' + sisa ' + RP(H.sisa) + ' tetap jadi karcis' : '') + ' · ' + cara + (nama ? ' · ' + nama : '') + ' · tanggal & jam mengikuti karcisnya' + (N.diubah ? ' · ' + teksDampakNominal(k, cara, nama) : '');
   return { dokumen, ringkas, rinci: { grupNota: idGrup, asliId: p.id, ids }, patch: { keranjang: [], karcis: null, pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, lembar: null, ketik: '', penggantiTanya: null, kreditDibuka: false,
     notaTerakhir: { trxId: idGrup, idPenjualan: ids, piutangId: null, pesanan: null, retur: null, rinci: { grupNota: idGrup, asliId: p.id }, pada: Date.now(), ringkas, nama }, kabar: 'Tersimpan — ' + ringkas, kabarAwas: false } };
 }
@@ -158,11 +196,16 @@ export function susunPerbaikanKarcis(s, w) {
   const kunci = tolakKunci('penjualan', p, 'cara bayar karcis ini tidak bisa diubah lagi; bon yang dibayar belakangan dicatat lewat Pelanggan › Terima bon hari ini'); if (kunci) return { tolak: kunci };   // putaran 25
   const cara = bakuCaraBayar(s.cara); const nama = String(s.pelanggan || '').trim(); const lama = bakuCaraBayar(p.caraBayar || 'Tunai');
   if (cara === 'Kredit' && !nama) return { tolak: 'Bon harus punya nama pembeli' };
-  if (cara === lama && nama === String(p.namaPelanggan || '').trim()) return { tolak: 'Tidak ada yang berubah — cara bayar dan nama pembelinya masih sama' };
+  // owner 11 Okt: nominal ikut bisa dibetulkan tanpa merinci barangnya (alasan wajib); karcis pengganti membawa nominal baru, yang lama ditandai
+  const tn = tolakNominal(k); if (tn) return { tolak: tn }; const N = nominalKarcis(k);
+  if (cara === lama && nama === String(p.namaPelanggan || '').trim() && !N.diubah) return { tolak: 'Tidak ada yang berubah — cara bayar, nama pembeli, dan nominalnya masih sama' };
   const idBaru = w.idUnik(); const kini = w.kini || new Date().toISOString();
-  const pengganti = Object.assign({}, p, { id: idBaru, caraBayar: cara, namaPelanggan: nama, koreksiDari: p.id, alasanKoreksi: 'Perbaikan cara bayar / nama pembeli', dikoreksiPada: kini }); delete pengganti.dikoreksiOleh; delete pengganti.dibatalkan;
-  const asli = Object.assign({}, p, { dikoreksiOleh: idBaru, alasanKoreksi: 'Diperbaiki: ' + lama + ' → ' + cara + (nama ? ', pembeli ' + nama : '') });
-  return { dokumen: [{ koleksi: 'penjualan', data: pengganti }, { koleksi: 'penjualan', data: asli }], patch: { karcis: null, keranjang: s.keranjang, pelanggan: '', cara: 'Tunai', lembar: null, kreditDibuka: false, kabar: 'Karcis ' + kcEkor(p.id) + ' diperbaiki: ' + lama + ' → ' + cara + (nama ? ', pembeli ' + nama : '') + ' — barangnya masih menunggu dirinci (karcis pengganti ' + kcEkor(idBaru) + ')', kabarAwas: false } };
+  const teksNominal = N.diubah ? 'nominal dibetulkan ' + RP(N.asli) + ' → ' + RP(N.nominal) + ': ' + N.alasan : '';
+  const berubah = (cara !== lama ? lama + ' → ' + cara : '') + (nama !== String(p.namaPelanggan || '').trim() ? (cara !== lama ? ', ' : '') + 'pembeli ' + (nama || '(tanpa nama)') : '');
+  const pengganti = Object.assign({}, p, { id: idBaru, caraBayar: cara, namaPelanggan: nama, koreksiDari: p.id, alasanKoreksi: 'Perbaikan ' + [berubah ? 'cara bayar / nama pembeli' : '', teksNominal].filter(Boolean).join('; '), dikoreksiPada: kini }); delete pengganti.dikoreksiOleh; delete pengganti.dibatalkan;
+  if (N.diubah) { pengganti.hargaTotal = N.nominal; pengganti.nominalSebelum = N.asli; pengganti.alasanNominal = N.alasan.slice(0, 120); }
+  const asli = Object.assign({}, p, { dikoreksiOleh: idBaru, alasanKoreksi: 'Diperbaiki: ' + [berubah, teksNominal].filter(Boolean).join('; ') });
+  return { dokumen: [{ koleksi: 'penjualan', data: pengganti }, { koleksi: 'penjualan', data: asli }], patch: { karcis: null, keranjang: s.keranjang, pelanggan: '', cara: 'Tunai', lembar: null, kreditDibuka: false, kabar: 'Karcis ' + kcEkor(p.id) + ' diperbaiki: ' + [berubah, N.diubah ? teksDampakNominal(k, cara, nama) : ''].filter(Boolean).join(' · ') + ' — barangnya masih menunggu dirinci (karcis pengganti ' + kcEkor(idBaru) + ')', kabarAwas: false } };
 }
 
 /** Tarik balik satu rincian (urungkanRinciTrx 32665): grup harus UTUH; semua baris dibatalkan, kantong id+1 dihapus, karcis asli dipulihkan ke antrean. */
@@ -180,11 +223,11 @@ export function susunUrungRinci(rinci, w) {
   grup.forEach((g) => { dokumen.push({ koleksi: 'penjualan', data: Object.assign({}, g, { dibatalkan: true, alasanKoreksi: 'Rincian diurungkan', dikoreksiPada: kini, dibatalkanPada: kini }) });
     if (g.jenis === 'literan' && g.kemasanLiteran) hapus.push({ koleksi: 'stokBahanLiteran', id: g.id + 1 }); if (g.jenis === 'wadah' && g.jenisWadah) hapus.push({ koleksi: koleksiWadah(g.jenisWadah), id: g.id + 1 }); if (g.kemasanRepack && g.jumlahKemasanRepackDipakai > 0) hapus.push({ koleksi: koleksiWadah(g.kemasanRepack), id: g.id + 1 }); });
   const asli = ambilPenjualanSemua().find((x) => String(x.id) === String(rinci.asliId));
-  if (asli) { const pulih = Object.assign({}, asli); delete pulih.dikoreksiOleh; delete pulih.alasanKoreksi; dokumen.push({ koleksi: 'penjualan', data: pulih }); }
+  if (asli) { const pulih = Object.assign({}, asli); delete pulih.dikoreksiOleh; delete pulih.alasanKoreksi; delete pulih.nominalDibetulkan; delete pulih.alasanNominal; dokumen.push({ koleksi: 'penjualan', data: pulih }); }   // owner 11 Okt: karcis kembali ke nominal aslinya
   // putaran 25: rincian besar dari bulan lalu (> 18 pemeriksaan kunci) dikirim BERTAHAP — satu kelompok per baris (baris + kantongnya), karcis asli dipulihkan PALING AKHIR
   const kelompok = butuhGet(dokumen, hapus) > KP_BATAS_GET ? dokumen.filter((d) => String(d.data.id) !== String(rinci.asliId)).map((d) => ({ dokumen: [d], hapus: hapus.filter((h) => String(h.id) === String(Number(d.data.id) + 1)) }))
     .concat([{ dokumen: dokumen.filter((d) => String(d.data.id) === String(rinci.asliId)), hapus: hapusPecah }]) : null;
-  return { dokumen, hapus, kelompok, jumlah: grup.length, patch: { notaTerakhir: null, kabar: 'Rincian ditarik balik — ' + grup.length + ' catatan dibatalkan, karcis ' + kcEkor(rinci.asliId) + ' kembali ke antrean', kabarAwas: false } };
+  return { dokumen, hapus, kelompok, jumlah: grup.length, patch: { notaTerakhir: null, kabar: 'Rincian ditarik balik — ' + grup.length + ' catatan dibatalkan, karcis ' + kcEkor(rinci.asliId) + ' kembali ke antrean' + (asli && asli.nominalDibetulkan ? ' dengan nominal aslinya ' + RP(asli.hargaTotal || 0) + ' (nominal yang dibetulkan ikut ditarik)' : ''), kabarAwas: false } };
 }
 
 // ---- PUTARAN 25b: BATALKAN karcis kasir darurat yang salah ketik (satu-satunya pekerjaan yang masih dilakukan owner di sistem lama, 25 Sep) ----
