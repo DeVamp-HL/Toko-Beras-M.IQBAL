@@ -7,7 +7,7 @@ import { bayaranBiayaBulanan, hitungPiutang, hitungStokBahanLiteran, hitungStokK
   const AMBANG_HARI_KRITIS = 4;
   const HARGA_AWAL_BAHAN_LITERAN = { 'paperbag5l': 305, 'paperbag10l': 395, 'karungbekas': 1500 };
   const JENDELA_LAJU_HARI = 14;
-  const JENIS_BAHAN_KEMASAN = ['5kg_kembangbmw', '5kg_putriagri', '10kg_kembangbmw', '10kg_putriagri_lele', '20kg_kembangbmw', '20kg_putriagri_lele_persik', '25kg_kembang'];
+  const JENIS_BAHAN_KEMASAN = ['5kg_kembang', '5kg_bmw', '5kg_putriagri', '10kg_kembang', '10kg_bmw', '10kg_putriagri', '10kg_lele', '20kg_kembang', '20kg_bmw', '20kg_putriagri', '20kg_lele', '20kg_persik', '25kg_kembang'];
   const JENIS_LITERAN_KHUSUS = ['Ketan Putih','Ketan Putih Paris','Ketan Hitam PK','Ketan Hitam Sosoh','Beras Merah'];
   const KAPASITAS_KARUNG_BEKAS_LITER = 65;
   const KOLEKSI_AMPLOP = 'amplopLaba';
@@ -32,10 +32,12 @@ import { bayaranBiayaBulanan, hitungPiutang, hitungStokBahanLiteran, hitungStokK
   const KOLEKSI_UTANG_OWNER = 'utangOwnerMutasi';
   const KOLEKSI_UTANG_PEMASOK = 'utangPemasokMutasi';
   const LABEL_BAHAN_KEMASAN = {
-    '5kg_kembangbmw': '5 kg — Kembang/BMW', '5kg_putriagri': '5 kg — Putri Agri',
-    '10kg_kembangbmw': '10 kg — Kembang/BMW', '10kg_putriagri_lele': '10 kg — Putri Agri/Lele',
-    '20kg_kembangbmw': '20 kg — Kembang/BMW', '20kg_putriagri_lele_persik': '20 kg — Putri Agri/Lele/Persik',
-    '25kg_kembang': '25 kg — Kembang'
+    '5kg_kembang': '5 kg — Kembang', '5kg_bmw': '5 kg — BMW', '5kg_putriagri': '5 kg — Putri Agri',
+    '10kg_kembang': '10 kg — Kembang', '10kg_bmw': '10 kg — BMW', '10kg_putriagri': '10 kg — Putri Agri', '10kg_lele': '10 kg — Lele',
+    '20kg_kembang': '20 kg — Kembang', '20kg_bmw': '20 kg — BMW', '20kg_putriagri': '20 kg — Putri Agri', '20kg_lele': '20 kg — Lele', '20kg_persik': '20 kg — Persik',
+    '25kg_kembang': '25 kg — Kembang',
+    '5kg_kembangbmw': '5 kg — Kembang/BMW (gabungan lama)', '10kg_kembangbmw': '10 kg — Kembang/BMW (gabungan lama)', '10kg_putriagri_lele': '10 kg — Putri Agri/Lele (gabungan lama)',
+    '20kg_kembangbmw': '20 kg — Kembang/BMW (gabungan lama)', '20kg_putriagri_lele_persik': '20 kg — Putri Agri/Lele/Persik (gabungan lama)'
   };
   const LABEL_BAHAN_LITERAN = { 'paperbag5l': 'Paper bag 5 liter', 'paperbag10l': 'Paper bag 10 liter', 'karungbekas': 'Karung bekas' };
   const MULAI_SUSUT_LABA = '2026-09-01';

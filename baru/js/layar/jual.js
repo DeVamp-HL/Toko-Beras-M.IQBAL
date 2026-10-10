@@ -162,11 +162,16 @@ export function pasangLayarJual(akar, opsi) {
     // ---- PUTARAN 20: rinci karcis kasir darurat (karcis-logika.js) ----
     bukaKarcis: () => set({ lembar: 'karcis', kabar: '' }),
     karcisPilih: ({ id }) => set(KC.ikatKarcis(S(), id, S().sekarang || new Date())),
-    karcisTebak: ({ i, j }) => { const s = SBN(); if (!s.karcis) return; let T = KC.tebakanKarcis(s.karcis.nominal)[Number(i)]; if (!T) return; if (j !== undefined && T.seharga) T = T.pilihan[Number(j)]; if (!T) return; set(KC.pakaiTebakan(s, T)); },   // putaran 31.1: j = nama yang dipilih dari tebakan seharga
+    karcisTebak: ({ i, j }) => { const s = SBN(); if (!s.karcis) return; let T = KC.tebakanKarcis(KC.nominalKarcis(s.karcis).nominal)[Number(i)]; if (!T) return; if (j !== undefined && T.seharga) T = T.pilihan[Number(j)]; if (!T) return; set(KC.pakaiTebakan(s, T)); },   // putaran 31.1: j = nama yang dipilih dari tebakan seharga
     karcisLepas: () => set(KC.lepasKarcis(S())),
     // putaran 25: pembalik untuk karcis / rincian bulan terkunci — stok dibetulkan lewat Stok › Cocokkan hari ini; barang kembali = retur hari ini
     kpKeCocok: () => { if (opsi.bukaStok) opsi.bukaStok('cocok'); else set({ kabar: 'Buka Stok › Cocokkan untuk membetulkan stok hari ini', kabarAwas: false }); },
     karcisPerbaiki: () => tulisUmum(KC.susunPerbaikanKarcis(S(), L.waktuSekarang(S().sekarang || undefined))),
+    // owner 11 Okt: nominal karcis dibetulkan saat merinci (naik / turun, alasan wajib) — drafnya menempel di karcis yang diikat
+    kcNominalBuka: ({ n }) => set(KC.bukaNominalKarcis(S(), n)),
+    kcNominal: (v) => set({ karcis: KC.ketikNominalKarcis(S(), 'nominal', v) }),
+    kcNominalAlasan: (v) => set({ karcis: KC.ketikNominalKarcis(S(), 'alasan', v) }),
+    kcNominalTutup: () => set(KC.tutupNominalKarcis(S())),
     // putaran 25b: BATALKAN karcis kasir darurat yang salah ketik (padanan mulaiBatalkanTrx sistem lama) — dari daftar karcis, alasan wajib
     kcBatalBuka: ({ id }) => set({ kcBatal: { id: String(id), alasan: '' }, kabar: '' }),
     kcBatalTutup: () => set({ kcBatal: null }),
@@ -601,7 +606,7 @@ export function pasangLayarJual(akar, opsi) {
         ${NGM && s.lembar !== 'bukuNego' ? h`<div class="pita-info awas" data-k="pita-nego-menunggu" data-aksi="bukaBukuNego" style="cursor: pointer;">${NGM} permintaan nego menunggu owner — ketuk untuk menyetujui / menolak (Buku nego)</div>` : ''}
         ${NGS.map((x) => h`<div class="pita-info emas" data-k="pita-nego-siap-${x.id}" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Owner menyetujui nego ${x.label} ${RP(x.harga)}</span><span class="kaca-btn" data-aksi="pakaiSetuju" data-id="${x.id}" data-harga="${x.harga}">pakai</span></div>`)}
         ${TB.n && s.lembar !== 'karcis' ? h`<div class="pita-info awas" data-k="pita-tembus-belum">${TB.n} nota tembus stok belum dicocokkan: ${TB.ringkas} — cocokkan di Stok › Cocokkan (tanda tuntas sendiri)</div>` : ''}
-        ${s.karcis ? h`<div class="pita-info emas" data-k="pita-karcis" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>${s.karcis.jenisAsal === 'karcis' ? 'RINCI KARCIS' : 'RAPIKAN NOTA'} ${KC.kcEkor(s.karcis.id)} · ${RP(s.karcis.nominal)} · ${KH ? KH.teks : ''}</span><span style="display: flex; gap: 6px;"><span class="kaca-btn" data-aksi="bukaKarcis">tebakan ›</span><span class="kaca-btn putus" data-aksi="karcisLepas">lepas</span></span></div>` : ''}
+        ${s.karcis ? h`<div class="pita-info emas" data-k="pita-karcis" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>${s.karcis.jenisAsal === 'karcis' ? 'RINCI KARCIS' : 'RAPIKAN NOTA'} ${KC.kcEkor(s.karcis.id)} · ${KH && KH.N.diubah ? RP(KH.N.asli) + ' → ' + RP(KH.nominal) : RP(s.karcis.nominal)} · ${KH ? KH.teks : ''}</span><span style="display: flex; gap: 6px;"><span class="kaca-btn" data-aksi="bukaKarcis">tebakan ›</span><span class="kaca-btn putus" data-aksi="karcisLepas">lepas</span></span></div>` : ''}
         ${!s.karcis && KCn.daftar.length && s.lembar !== 'karcis' ? h`<div class="pita-info awas" data-k="pita-antrean-karcis" data-aksi="bukaKarcis" style="cursor: pointer;">${KCn.nKarcis ? KCn.nKarcis + ' karcis kasir belum dirinci (' + RP(KCn.total) + ')' : ''}${KCn.nKarcis && KCn.nRapikan ? ' · ' : ''}${KCn.nRapikan ? KCn.nRapikan + ' nota kasir perlu dirapikan' : ''} — ketuk untuk merinci atau membatalkan yang salah ketik</div>` : ''}
         ${!s.karcis && !KCn.daftar.length && KDH.length && s.lembar !== 'karcis' ? h`<div class="pita-info" data-k="pita-karcis-hari-ini" data-aksi="bukaKarcis" style="cursor: pointer;">${KDH.length} catatan kasir darurat hari ini — ketuk untuk melihat / membatalkan yang salah ketik</div>` : ''}
         ${adaUrung ? h`<div class="pita-info urung"><span>${s.notaTerakhir.rinci ? 'Rincian barusan' : 'Nota barusan'}: ${s.notaTerakhir.ringkas}</span><span style="display: flex; gap: 6px;">${s.notaTerakhir.rinci ? '' : h`<span class="kaca-btn" data-aksi="bukaStruk" data-trx="${s.notaTerakhir.trxId}">Struk ›</span>`}<span class="kaca-btn putus" data-aksi="batalkanNota">${s.notaTerakhir.rinci ? 'Tarik balik rincian' : 'Batalkan nota barusan'}</span></span></div>` : ''}
@@ -889,7 +894,7 @@ export function pasangLayarJual(akar, opsi) {
       </div>`;
     }
     if (s.lembar === 'karcis') {
-      const KCn = KC.daftarKarcis(s.sekarang || new Date()); const KH = KC.hitungKarcis(s); const T = s.karcis ? KC.tebakanKarcis(s.karcis.nominal) : []; const R = KC.riwayatRinci(hariIniIso(s.sekarang || new Date()));
+      const KCn = KC.daftarKarcis(s.sekarang || new Date()); const KH = KC.hitungKarcis(s); const T = s.karcis ? KC.tebakanKarcis(KC.nominalKarcis(s.karcis).nominal) : []; const R = KC.riwayatRinci(hariIniIso(s.sekarang || new Date()));
       // putaran 25b: batalkan karcis kasir darurat yang salah ketik — tombol di tiap karcis antrean + daftar tuts bernama kasir darurat hari ini; alasan wajib
       const KDH = KC.karcisDaruratHari(s.sekarang || new Date()).filter((x) => !KCn.daftar.some((k) => k.id === x.id));
       const pilBatal = (id) => h`<span class="pil awas" data-aksi="kcBatalBuka" data-id="${id}" data-k="kcbb-${id}" style="margin-left: 6px;">batalkan</span>`;
@@ -899,10 +904,10 @@ export function pasangLayarJual(akar, opsi) {
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Karcis kasir', KCn.daftar.length ? KCn.nKarcis + ' karcis · ' + KCn.nRapikan + ' perlu dirapikan' : 'antrean kosong')}
         ${s.kcBatal ? '' : pitaTolak(s, 'karcis')}
-        ${s.karcis ? h`<div class="pita-info emas">${s.karcis.jenisAsal === 'karcis' ? 'Merinci karcis' : 'Merapikan nota'} ${KC.kcEkor(s.karcis.id)} · ${RP(s.karcis.nominal)} · ${tanggalPendek(s.karcis.tanggal)} ${s.karcis.jam}${s.karcis.oleh ? ' · oleh ' + s.karcis.oleh : ''} — ${KH.teks}</div>
+        ${s.karcis ? h`<div class="pita-info emas">${s.karcis.jenisAsal === 'karcis' ? 'Merinci karcis' : 'Merapikan nota'} ${KC.kcEkor(s.karcis.id)} · ${KH && KH.N.diubah ? RP(KH.N.asli) + ' → ' + RP(KH.nominal) : RP(s.karcis.nominal)} · ${tanggalPendek(s.karcis.tanggal)} ${s.karcis.jam}${s.karcis.oleh ? ' · oleh ' + s.karcis.oleh : ''} — ${KH.teks}</div>
           <div class="label">Tebakan dari katalog · sekali ketuk mengisi keranjang</div>
           ${T.length ? h`<div class="bendera">${T.map((t, i) => h`<span class="pil ${t.tepat ? '' : 'awas'}" data-aksi="karcisTebak" data-i="${i}">${t.label}</span>`)}</div>
-          ${s.kcPilih ? h`<div class="pita-info emas" data-k="kc-pilih">Harga sama — yang mana? <div class="bendera">${(KC.tebakanKarcis(s.karcis.nominal).find((t) => t.label === s.kcPilih.label) || s.kcPilih).pilihan.map((p, j) => h`<span class="pil" data-aksi="karcisTebak" data-i="${KC.tebakanKarcis(s.karcis.nominal).findIndex((t) => t.label === s.kcPilih.label)}" data-j="${j}">${p.label}</span>`)}</div></div>` : ''}` : h`<div class="ket">Tidak ada tebakan pas dari katalog — kemungkinan ada harga nego di dalamnya. Pilih barangnya dari rak satu per satu; barang nego ketuk harganya.</div>`}
+          ${s.kcPilih ? h`<div class="pita-info emas" data-k="kc-pilih">Harga sama — yang mana? <div class="bendera">${(KC.tebakanKarcis(KC.nominalKarcis(s.karcis).nominal).find((t) => t.label === s.kcPilih.label) || s.kcPilih).pilihan.map((p, j) => h`<span class="pil" data-aksi="karcisTebak" data-i="${KC.tebakanKarcis(KC.nominalKarcis(s.karcis).nominal).findIndex((t) => t.label === s.kcPilih.label)}" data-j="${j}">${p.label}</span>`)}</div></div>` : ''}` : h`<div class="ket">Tidak ada tebakan pas dari katalog — kemungkinan ada harga nego di dalamnya. Pilih barangnya dari rak satu per satu; barang nego ketuk harganya.</div>`}
           <div class="tombol-baris"><div class="kaca-btn" data-aksi="tutup">ke rak ›</div><div class="kaca-btn putus" data-aksi="karcisLepas">lepas karcis</div></div>` : ''}
         <div class="label">Antrean · ketuk untuk merinci</div>
         <div class="kartu daftar-nota">${KCn.daftar.map((k) => tolakKunciTanggal(k.tanggal, '') ? h`<div class="baris-nota tak-bisa" data-aksi="kpKeCocok" data-k="kc-${k.id}"><div class="atas"><span><b>${k.teks}</b>${k.nama ? ' · ' + k.nama : ''}</span><span class="n">${RP(k.nominal)}</span></div><div class="ket">${tanggalPendek(k.tanggal)} ${k.jam} · ${tolakKunciTanggal(k.tanggal, '').split(' — ')[0]} — tidak bisa dirinci lagi; ketuk untuk Cocokkan stok hari ini</div></div>` : h`<div class="baris-nota ${s.karcis && s.karcis.id === k.id ? 'dipilih' : ''}" data-aksi="karcisPilih" data-id="${k.id}" data-k="kc-${k.id}"><div class="atas"><span><b>${k.teks}</b>${k.nama ? ' · ' + k.nama : ''}</span><span class="n">${RP(k.nominal)}</span></div><div class="ket">${k.hariIni ? 'hari ini' : tanggalPendek(k.tanggal)} ${k.jam} · ${k.cara}${k.oleh ? ' · ' + k.oleh : ''}${k.jenisAsal === 'karcis' ? pilBatal(k.id) : ''}</div></div>${k.jenisAsal === 'karcis' ? formBatal(k) : ''}`)}${KCn.daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Semua karcis sudah dirinci.</div>`}</div>
@@ -912,18 +917,24 @@ export function pasangLayarJual(akar, opsi) {
       </div>`;
     }
     if (s.lembar === 'bayar' && s.karcis) {
-      const k = s.karcis; const KH = KC.hitungKarcis(s);
+      const k = s.karcis; const KH = KC.hitungKarcis(s); const N = KH.N; const dampak = KC.teksDampakNominal(k, s.cara, s.pelanggan);
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-bayar-karcis">
         ${kepala(k.jenisAsal === 'karcis' ? 'Simpan rincian' : 'Simpan rapikan', 'karcis ' + KC.kcEkor(k.id) + ' · ' + tanggalPendek(k.tanggal) + ' ' + k.jam)}
-        <div class="total"><span class="label">Uang yang masuk (karcis)</span><span class="n">${RP(k.nominal)}</span></div>
+        <div class="total"><span class="label">Uang yang masuk (karcis)${N.diubah ? h` <span class="ket">tadinya ${RP(N.asli)}</span>` : ''}</span><span class="n">${RP(KH.nominal)}</span></div>
+        ${k.jenisAsal !== 'karcis' ? '' : N.sedangDiubah ? h`<div class="kartu" data-k="kc-nominal" style="gap: 6px;"><div class="label">Ubah nominal karcis · uang yang sebenarnya masuk</div>
+          <input class="ketik-nama" id="kcNominal" type="text" inputmode="numeric" value="${k.nominalBaru}" data-ketik="kcNominal" placeholder="mis. 135000">
+          <input class="ketik-nama" id="kcNominalAlasan" type="text" value="${k.alasanNominal || ''}" data-ketik="kcNominalAlasan" placeholder="Alasan (wajib) — mis. salah ketik, harusnya 135.000">
+          <div class="ket ${N.diubah ? 'awas-teks' : ''}">${N.salah ? 'Ketik angkanya — nominal lama ' + RP(N.asli) + ' tetap dipakai sampai angkanya terbaca' : N.diubah ? dampak + '. Karcis lamanya ditandai, tidak dihapus.' : 'Masih sama dengan karcisnya (' + RP(N.asli) + ')'}</div>
+          <div class="kaca-btn" data-aksi="kcNominalTutup" style="min-height: 34px; font-size: 12px;">tidak jadi ubah nominal</div></div>`
+          : h`<div class="kaca-btn putus" data-aksi="kcNominalBuka" data-k="kc-nominal-buka" style="min-height: 34px; font-size: 12px;">ubah nominal karcis (uang yang masuk beda dari ketikan)</div>`}
         <div class="total"><span class="label">Barang di keranjang</span><span class="n" style="font-size: 20px;" data-gulir="${KH.total}">${RP(KH.total)}</span></div>
-        <div class="pita-info ${KH.lebih ? 'awas' : KH.pas ? 'emas' : ''}">${KH.teks}</div>
+        <div class="pita-info ${KH.lebih ? 'awas' : KH.pas ? 'emas' : ''}">${KH.teks}${KH.lebih && k.jenisAsal === 'karcis' ? h` <span class="pil" data-aksi="kcNominalBuka" data-n="${KH.total}" data-k="kc-nominal-pas">ubah nominal jadi ${RP(KH.total)}</span>` : ''}</div>
         <div class="label">Cara bayar waktu itu</div>
         <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''} ${c === 'Kredit' && !tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon').boleh ? 'mati' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
         <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli' + (s.cara === 'Kredit' ? ' (wajib untuk bon)' : ' (boleh kosong)')}</div>
         ${pitaTolak(s, 'bayar-karcis')}
         <div class="utama ${KH.lebih || !s.keranjang.length ? 'redup' : ''}" data-aksi="simpanRinci">${!s.keranjang.length ? 'Tambahkan barangnya dulu' : KH.lebih ? 'Kelebihan — betulkan dulu' : 'SIMPAN RINCIAN · ' + s.keranjang.length + ' barang'}</div>
-        ${k.jenisAsal === 'karcis' ? h`<div class="kaca-btn putus" data-aksi="karcisPerbaiki" style="min-height: 36px; font-size: 12px;">hanya perbaiki cara bayar / nama (barangnya belum diingat)</div>` : ''}
+        ${k.jenisAsal === 'karcis' ? h`<div class="kaca-btn putus" data-aksi="karcisPerbaiki" style="min-height: 36px; font-size: 12px;">hanya perbaiki cara bayar / nama${N.diubah ? ' / nominal' : ''} (barangnya belum diingat)</div>` : ''}
         <div class="ket" style="text-align: center;">${sumber.jenis === 'cadangan' ? 'SIMULASI — tidak ke Firestore' : 'bentuk dokumen sama dengan Rinci Darurat sistem lama; bisa ditarik balik ' + L.BATAS_URUNGKAN_DETIK + ' detik sesudahnya (atau dari daftar karcis)'}</div>
       </div>`;
     }

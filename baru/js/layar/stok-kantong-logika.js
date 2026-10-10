@@ -9,7 +9,7 @@ import { hitungStokBahanKemasan, hitungStokBahanLiteran, hitungLajuPakai } from 
 import { JENDELA_LAJU_HARI } from '../mesin/pembantu.js';
 import { ambilBahanKemasan, ambilBahanLiteran, cacheMentah, tolakKunci, lajuLintas } from '../data/toko.js';
 import { RP, ANGKA } from '../inti/format.js';
-import { daftarJenisWadah, jenisWadah, koleksiWadah, WJ_LANTAI_LEMBAR } from './wadah-jual-logika.js';
+import { daftarJenisWadah, jenisWadah, koleksiWadah, WJ_LANTAI_LEMBAR, KANTONG_GABUNGAN_LAMA, hargaJualWadah } from './wadah-jual-logika.js';
 
 export const ATUR_KANTONG_BAWAAN = { lonjakan: 15, hariAman: 7, lantaiHarga: WJ_LANTAI_LEMBAR };
 export const TAB_KANTONG = [['rak', 'Rak & beli'], ['riwayat', 'Riwayat harga']];
@@ -32,8 +32,8 @@ export function susunAturKantong(isi, w) {
     patch: { aturKt: null, kabar: 'Aturan kantong disimpan — lonjakan > ' + l.nilai + ' % ditanya · stok aman ' + h.nilai + ' hari · harga per lembar < ' + RP(t.nilai) + ' ditanya', kabarAwas: false } };
 }
 
-/** Jenis kantong yang bisa dibeli: semua jenis buku kecuali hasil samping (karung bekas). */
-export function jenisKantong() { return daftarJenisWadah().filter((d) => !d.hasilSamping); }
+/** Jenis kantong yang bisa dibeli: semua jenis buku kecuali hasil samping (karung bekas) dan kantong gabungan lama (owner 11 Okt: dibeli per merek). */
+export function jenisKantong() { return daftarJenisWadah().filter((d) => !d.hasilSamping && !d.lama); }
 const ktSemuaDoc = () => ambilBahanKemasan().map((b) => Object.assign({ koleksi: 'stokBahanKemasan' }, b)).concat(ambilBahanLiteran().map((b) => Object.assign({ koleksi: 'stokBahanLiteran' }, b)));
 /** Harga per lembar satu dokumen beli: yang DIKETIK bila ada (sistem baru), kalau tidak total ÷ jumlah (dokumen sistem lama). */
 export const hargaDokBeli = (b) => (Number(b.hargaPerPcs) > 0 ? Math.round(Number(b.hargaPerPcs)) : (Number(b.jumlah) > 0 ? Math.round((Number(b.hargaTotal) || 0) / Number(b.jumlah)) : 0));
@@ -48,7 +48,9 @@ export function hargaAkhirKantong(jenis) {
 /** Rak kantong: sisa dari mesin, laju pemakaian 14 hari (pcs/hari), cukup berapa hari; awas bila < hari aman (setelan owner). */
 export function rakKantong() {
   const atur = aturKantong(); const laju = lajuLintas(hitungLajuPakai()).pcsBahan || {}; const bK = hitungStokBahanKemasan(); const bL = hitungStokBahanLiteran();
-  const daftar = jenisKantong().map((d) => {
+  // gabungan lama tetap tampil di rak selama sisanya belum dipecah per merek (tidak bisa dibeli — susunSimpanBeli menolaknya)
+  const lamaBersisa = daftarJenisWadah().filter((d) => d.lama && Math.abs((bK[d.jenis] || {}).sisaPcs || 0) > 0.0005);
+  const daftar = jenisKantong().concat(lamaBersisa).map((d) => {
     const st = (d.koleksi === 'stokBahanLiteran' ? bL : bK)[d.jenis] || {}; const sisa = st.sisaPcs || 0; const l = laju[d.jenis] || 0; const hariCukup = l > 0 ? sisa / l : null;
     const hk = hargaAkhirKantong(d.jenis);
     return Object.assign({}, d, { sisa, laju: l, hariCukup, awas: hariCukup !== null && hariCukup < atur.hariAman, hargaAkhir: hk.harga, hargaSejak: hk.sejak, dariRata: hk.dariRata, nBeli: hk.nBeli,
@@ -74,6 +76,7 @@ export function hitungBeli(draf) {
 export function susunSimpanBeli(draf, w, yakin) {
   const h = hitungBeli(draf); const Y = yakin || {};
   if (!h.d) return { tolak: 'Pilih jenis kantongnya dulu' };
+  if (h.d.lama) return { tolak: h.d.label + ' sudah pensiun — kantong dibeli per merek sekarang. Pilih mereknya di rak; sisa gabungan dipecah lewat "Pecah per merek"' };
   if (!(h.jumlah > 0)) return { tolak: 'Ketik jumlah lembarnya' };
   if (!(h.harga > 0)) return { tolak: 'Ketik harga SATU lembar (bukan per ikat)' };
   if (h.murah && !Y.murah) return { tolak: h.murahTeks + '. Ketuk sekali lagi kalau memang per lembar', perluYakin: 'murah' };
@@ -105,8 +108,51 @@ export function susunHapusBeli(id, alasan, w, yakin) {
 /** Riwayat harga per lembar tiap jenis (beli saja, lama → baru), lonjakan di atas batas ditandai ▲▼. */
 export function riwayatHarga() {
   const atur = aturKantong();
-  return jenisKantong().map((d) => { const r = ktBeliJenis(d.jenis).slice().reverse();
+  return jenisKantong().concat(daftarJenisWadah().filter((d) => d.lama && ktBeliJenis(d.jenis).length)).map((d) => { const r = ktBeliJenis(d.jenis).slice().reverse();   // gabungan lama: riwayat belinya tetap terbaca
     const baris = r.map((b, i) => { const harga = hargaDokBeli(b); const lalu = i > 0 ? hargaDokBeli(r[i - 1]) : 0; const p = lalu > 0 ? Math.round((harga - lalu) / lalu * 100) : 0;
       return { id: b.id, tanggal: b.tanggal || '', harga, jumlah: Number(b.jumlah) || 0, lonjak: i > 0 && Math.abs(p) > atur.lonjakan ? (p > 0 ? '▲ ' : '▼ ') + Math.abs(p) + ' %' : '', murah: harga > 0 && harga < atur.lantaiHarga }; });
     return { jenis: d.jenis, label: d.label, baris, ket: baris.length > 1 ? 'dari ' + RP(baris[0].harga) + ' jadi ' + RP(baris[baris.length - 1].harga) + ' (' + baris.length + ' kali beli)' : baris.length === 1 ? 'baru sekali beli' : 'belum pernah dibeli' }; });
+}
+
+// ---- owner 11 Okt 2026: PECAH kantong gabungan lama jadi buku PER MEREK lewat HITUNG FISIK ----
+// Keputusan owner: (1) sisa gabungan dibagi menurut hitungan fisik per merek di toko; (2) modal per lembar tiap merek = modal gabungannya (salin).
+// Dokumen (satu kiriman per gabungan, bertanggal hari ini, tanpa uang):
+//   · selisih hitungan vs buku → 'opname' di jenis gabungan, bentuk SAMA dengan Stok › Cocokkan (laba turun/naik lewat "Susut & selisih stok")
+//   · seluruh hitungan keluar dari gabungan → 'pakai' (pindahMerek) — sisa gabungan jadi 0 dan ia hilang dari rak/pilihan
+//   · tiap merek → 'saldoAwal' (pindahMerek, dariJenis): lembar + nilai = lembar × modal gabungan, BUKAN uang keluar (pembaca uang hanya membaca tipe 'beli')
+//   · harga jual kantong kosong gabungan (hargaWadah) disalin ke merek yang belum punya harga, supaya kantongnya tetap bisa dijual dari jalur Wadah
+const pkAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); return t === '' ? null : ktAngka(t); };
+/** Gabungan lama yang sisanya belum dipecah (sisa ≠ 0) + merek-mereknya. */
+export function daftarPecahKantong() {
+  const st = hitungStokBahanKemasan(); const harga = hargaJualWadah();
+  return Object.keys(KANTONG_GABUNGAN_LAMA).map((L) => { const s0 = st[L] || {}; const sisa = s0.sisaPcs || 0; if (Math.abs(sisa) < 0.0005) return null; const d = jenisWadah(L);
+    return { jenis: L, label: d ? d.label : L, sisa, modal: s0.hppPerPcs || 0, hargaJual: harga[L] ? harga[L].harga : 0,
+      merek: KANTONG_GABUNGAN_LAMA[L].map((j) => { const dj = jenisWadah(j); return { jenis: j, label: dj ? dj.label : j, nama: dj ? dj.nama.replace(/^Kantong /, '') : j, sisaSekarang: (st[j] || {}).sisaPcs || 0, hargaJual: harga[j] ? harga[j].harga : 0 }; }) }; })
+    .filter(Boolean);
+}
+/** Hitung isian satu gabungan: isi = { jenisMerek: teks lembar }. Kosong = BELUM dihitung (0 harus diketik). */
+export function hitungPecah(L, isi) {
+  const G = daftarPecahKantong().find((g) => g.jenis === L) || null; if (!G) return { G: null };
+  const baris = G.merek.map((m) => { const n = pkAngka((isi || {})[m.jenis]); return Object.assign({}, m, { n, kosong: n === null, salah: n !== null && (!(n >= 0) || Math.round(n) !== n) }); });
+  const semuaTerisi = baris.every((b) => !b.kosong); const salah = baris.filter((b) => b.salah);
+  const total = baris.reduce((a, b) => a + (b.n > 0 ? b.n : 0), 0); const selisih = Math.round((total - G.sisa) * 1000) / 1000; const nilaiSelisih = Math.round(selisih * G.modal);
+  return { G, baris, semuaTerisi, salah, total, selisih, nilaiSelisih,
+    teks: !semuaTerisi ? 'isi hitungan tiap merek (0 kalau tidak ada) — ' + baris.filter((b) => b.kosong).map((b) => b.nama).join(', ') + ' belum' : salah.length ? 'jumlah lembar harus bilangan bulat ≥ 0' :
+      'dihitung ' + ANGKA(total) + ' lembar, buku ' + ANGKA(G.sisa) + (selisih === 0 ? ' — cocok' : ' — selisih ' + (selisih > 0 ? '+' : '−') + ANGKA(Math.abs(selisih)) + ' lembar (' + (nilaiSelisih < 0 ? '−' : '+') + RP(Math.abs(nilaiSelisih)) + ')') };
+}
+/** {tolak, perluYakin} atau {dokumen, patch}. yakin = ketukan kedua bila hitungan beda dari buku. */
+export function susunPecahKantong(L, isi, w, yakin) {
+  const H = hitungPecah(L, isi); const G = H.G; if (!G) return { tolak: 'Kantong gabungan itu sudah dipecah (sisanya 0) atau tidak dikenal' };
+  if (!H.semuaTerisi) return { tolak: 'Hitung semua merek dulu — ' + H.teks };
+  if (H.salah.length) return { tolak: H.salah.map((b) => b.nama).join(', ') + ': jumlah lembar harus bilangan bulat ≥ 0' };
+  if (H.selisih !== 0 && !yakin) return { tolak: G.label + ': buku ' + ANGKA(G.sisa) + ' lembar, dihitung ' + ANGKA(H.total) + ' — selisih ' + (H.selisih > 0 ? '+' : '−') + ANGKA(Math.abs(H.selisih)) + ' lembar dicatat seperti Cocokkan (' + (H.nilaiSelisih < 0 ? 'laba bulan ini turun ' : 'stok naik ') + RP(Math.abs(H.nilaiSelisih)) + '). Ketuk sekali lagi kalau hitungannya benar', perluYakin: true };
+  const dokumen = []; const rinci = H.baris.filter((b) => b.n > 0).map((b) => b.nama + ' ' + ANGKA(b.n)).join(' · ') || 'tidak ada lembar';
+  if (H.selisih !== 0) dokumen.push({ koleksi: 'stokBahanKemasan', data: { id: w.idUnik(), tipe: 'opname', jenis: L, jumlah: H.selisih, hargaTotal: 0, tanggal: w.tanggal, jam: w.jam, pcsSistem: G.sisa, pcsFisik: H.total, catatan: 'Hitung fisik saat dipecah per merek', nilaiRp: H.nilaiSelisih, hargaPerPcsSaatOpname: Math.round(G.modal) } });
+  if (H.total > 0) dokumen.push({ koleksi: 'stokBahanKemasan', data: { id: w.idUnik(), tipe: 'pakai', jenis: L, jumlah: H.total, hargaTotal: 0, tanggal: w.tanggal, jam: w.jam, catatan: 'Dipindah ke buku per merek: ' + rinci, pindahMerek: true } });
+  H.baris.filter((b) => b.n > 0).forEach((b) => dokumen.push({ koleksi: 'stokBahanKemasan', data: { id: w.idUnik(), tipe: 'saldoAwal', jenis: b.jenis, jumlah: b.n, hargaTotal: Math.round(b.n * G.modal), hargaPerPcs: Math.round(G.modal), tanggal: w.tanggal, jam: w.jam,
+    catatan: 'Saldo awal per merek — pindahan dari ' + G.label + ' (hitung fisik)', pindahMerek: true, dariJenis: L } }));
+  const salinHarga = G.hargaJual > 0 ? H.baris.filter((b) => !(b.hargaJual > 0)) : [];
+  salinHarga.forEach((b) => dokumen.push({ koleksi: 'hargaWadah', data: { id: b.jenis, jenis: b.jenis, harga: G.hargaJual, hargaSebelum: 0, tanggal: w.tanggal, jam: w.jam, dariJenis: L } }));
+  return { dokumen, patch: { pkYakin: null, kabar: G.label + ' dipecah per merek: ' + rinci + ' — modal ' + RP(G.modal) + '/lembar disalin ke tiap merek' + (salinHarga.length ? ', harga jual ' + RP(G.hargaJual) + '/lembar ikut disalin' : '')
+    + (H.selisih !== 0 ? '. Selisih ' + (H.selisih > 0 ? '+' : '−') + ANGKA(Math.abs(H.selisih)) + ' lembar dicatat seperti Cocokkan (' + (H.nilaiSelisih < 0 ? '−' : '+') + RP(Math.abs(H.nilaiSelisih)) + ')' : '') + '. Uang tidak bergerak; gabungan lama hilang dari rak.', kabarAwas: false } };
 }

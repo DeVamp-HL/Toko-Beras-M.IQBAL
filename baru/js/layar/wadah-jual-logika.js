@@ -21,17 +21,25 @@ export const WJ_LANTAI_LEMBAR = 100;                 // harga per LEMBAR di bawa
 export const WJ_HASIL_SAMPING = ['karungbekas'];     // tidak pernah dibeli — tidak dibatasi buku
 const MUAT_LITERAN = { paperbag5l: 4, paperbag10l: 8, karungbekas: 25 };   // kg beras yang muat, untuk saran lembar repack (25 kg karung bekas = aturan owner 15 Sep)
 
-/** Semua jenis wadah yang dikenal buku sistem lama, berurutan menurut muatannya. */
+// owner 11 Okt 2026: buku kantong kemasan PER MEREK (JENIS_BAHAN_KEMASAN, mesin dibekukan ulang). Lima jenis gabungan lama (satu tumpukan untuk dua–tiga
+// merek) pensiun: tidak dibeli lagi, tetap dikenal untuk catatan lamanya, dan sisanya dipecah lewat hitung fisik per merek (stok-kantong-logika daftarPecahKantong).
+// Selama sisanya belum dipecah, tumpukan gabungan masih boleh dipakai adukan / repack / dijual — toko tidak berhenti menunggu hitungan.
+export const KANTONG_GABUNGAN_LAMA = {
+  '5kg_kembangbmw': ['5kg_kembang', '5kg_bmw'], '10kg_kembangbmw': ['10kg_kembang', '10kg_bmw'], '10kg_putriagri_lele': ['10kg_putriagri', '10kg_lele'],
+  '20kg_kembangbmw': ['20kg_kembang', '20kg_bmw'], '20kg_putriagri_lele_persik': ['20kg_putriagri', '20kg_lele', '20kg_persik']
+};
+export const kantongLama = (jenis) => Object.prototype.hasOwnProperty.call(KANTONG_GABUNGAN_LAMA, jenis);
+/** Semua jenis wadah yang dikenal buku, berurutan menurut muatannya. lama = kantong gabungan yang sudah pensiun (lihat KANTONG_GABUNGAN_LAMA). */
 export function daftarJenisWadah() {
   const out = [];
-  JENIS_BAHAN_KEMASAN.forEach((j) => {
-    const m = /^(\d+)kg_/.exec(j); const uk = m ? Number(m[1]) : 0;
-    const merk = String(LABEL_BAHAN_KEMASAN[j] || j).replace(/^\d+\s*kg\s*—\s*/, '');
-    out.push({ jenis: j, koleksi: 'stokBahanKemasan', ukuranKg: uk, nama: 'Kantong ' + merk, ukuran: uk + ' kg', label: 'Kantong ' + merk + ' ' + uk + ' kg', hasilSamping: false });
+  JENIS_BAHAN_KEMASAN.concat(Object.keys(KANTONG_GABUNGAN_LAMA)).forEach((j) => {
+    const m = /^(\d+)kg_/.exec(j); const uk = m ? Number(m[1]) : 0; const lama = kantongLama(j);
+    const merk = String(LABEL_BAHAN_KEMASAN[j] || j).replace(/^\d+\s*kg\s*—\s*/, '').replace(/\s*\(gabungan lama\)$/, '');
+    out.push({ jenis: j, koleksi: 'stokBahanKemasan', ukuranKg: uk, nama: 'Kantong ' + merk, ukuran: uk + ' kg', label: 'Kantong ' + merk + ' ' + uk + ' kg' + (lama ? ' (gabungan lama)' : ''), hasilSamping: false, lama });
   });
   Object.keys(HARGA_AWAL_BAHAN_LITERAN).forEach((j) => {
     const nama = LABEL_BAHAN_LITERAN[j] || j; const uk = MUAT_LITERAN[j] || 0;
-    out.push({ jenis: j, koleksi: 'stokBahanLiteran', ukuranKg: uk, nama, ukuran: j === 'karungbekas' ? '25–50 kg' : '±' + uk + ' kg', label: nama, hasilSamping: WJ_HASIL_SAMPING.indexOf(j) >= 0 });
+    out.push({ jenis: j, koleksi: 'stokBahanLiteran', ukuranKg: uk, nama, ukuran: j === 'karungbekas' ? '25–50 kg' : '±' + uk + ' kg', label: nama, hasilSamping: WJ_HASIL_SAMPING.indexOf(j) >= 0, lama: false });
   });
   return out.sort((a, b) => a.ukuranKg - b.ukuranKg || a.nama.localeCompare(b.nama));
 }
@@ -70,7 +78,7 @@ export function teksModalWadah(st, harga) {
 /** Rak jalur Wadah: hanya jenis yang punya harga jual. dipegang(jenis) = lembar di keranjang aktif + struk parkir (dari jual-logika). */
 export function susunRakWadah(dipegang, dipegangParkir) {
   const harga = hargaJualWadah();
-  return daftarJenisWadah().filter((d) => harga[d.jenis]).map((d) => {
+  return daftarJenisWadah().filter((d) => harga[d.jenis] && (!d.lama || stokWadah(d.jenis).sisaBuku > 0)).map((d) => {   // gabungan lama: selama sisanya belum dipecah
     const st = stokWadah(d.jenis); const dp = dipegang ? dipegang(d.jenis) : 0; const parkir = dipegangParkir ? dipegangParkir(d.jenis) : 0;
     const sisa = Math.max(0, st.sisaBuku - dp);
     return { jalur: 'wadah', kunci: d.jenis, nama: d.nama, ukuran: d.ukuran, ukuranKg: d.ukuranKg, label: d.label, harga: harga[d.jenis].harga, satuan: 'lembar',
@@ -108,10 +116,10 @@ export function saranLembar(kg, jenis) {
   return Math.max(1, Math.ceil(Math.round(k / d.ukuranKg * 1000) / 1000));
 }
 
-/** Daftar untuk lembar Atur harga jual wadah: semua jenis, dengan stok, modal, harga jual sekarang. */
+/** Daftar untuk lembar Atur harga jual wadah & pilihan wadah repack: semua jenis (gabungan lama hanya selama sisanya ada), dengan stok, modal, harga jual sekarang. */
 export function daftarAturWadah() {
   const harga = hargaJualWadah();
-  return daftarJenisWadah().map((d) => { const st = stokWadah(d.jenis); return Object.assign({}, d, { sisaBuku: st.sisaBuku, modal: st.modal, adaModal: st.adaModal, modalAneh: st.modalAneh, harga: harga[d.jenis] ? harga[d.jenis].harga : 0, sejak: harga[d.jenis] ? harga[d.jenis].tanggal : '', teksModal: teksModalWadah(st, harga[d.jenis] ? harga[d.jenis].harga : 0) }); });
+  return daftarJenisWadah().filter((d) => !d.lama || stokWadah(d.jenis).sisaBuku > 0).map((d) => { const st = stokWadah(d.jenis); return Object.assign({}, d, { sisaBuku: st.sisaBuku, modal: st.modal, adaModal: st.adaModal, modalAneh: st.modalAneh, harga: harga[d.jenis] ? harga[d.jenis].harga : 0, sejak: harga[d.jenis] ? harga[d.jenis].tanggal : '', teksModal: teksModalWadah(st, harga[d.jenis] ? harga[d.jenis].harga : 0) }); });
 }
 /**
  * Simpan harga jual wadah: isi = { jenis: teks rupiah }. Kosong / 0 = tidak dijual (dokumen harga 0, jejaknya tetap).

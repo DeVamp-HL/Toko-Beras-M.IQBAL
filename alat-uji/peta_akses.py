@@ -409,6 +409,7 @@ OWNER_JALUR = {
     'susunPutusTitipan': 'titipan disetujui: 1 pengeluaranHarian hari ini (+ persetujuan, tidak dikunci)',
     'susunCocok': 'penghitung daftar cocokkan — tidak menulis; yang menulis susunSimpanCocok (diukur)',
     'susunSimpanBeli': 'beli kantong: 1 dokumen bertanggal hari ini',
+    'susunPecahKantong': 'pecah kantong gabungan per merek (owner 11 Okt): paling banyak 1 opname + 1 pakai di gabungan + 1 saldoAwal per merek (≤ 3), semuanya hari ini, + paling banyak 3 hargaWadah (katalog, tidak dikunci) — jumlah tetap ≤ 8',
     'susunTakarWadah': 'wadahLiteran (tidak dikunci) + produksiKemasan pindah buku (28: karung → stok wadah; 39: + 1 pindah merek → karung belakang per karung otomatis yang dibuka) + paling banyak 1 batch lahir 0 kg per buku baru, hari ini — kiriman karyawan diukur di --kiriman (isi ulang wadah) + karung bekas (owner 7 Okt): per karung yang habis 1 stokBahanLiteran opname +1 hari ini; dicabut = hapus kelahiran HARI INI atau 1 catatan pembalik opname −1 hari ini (catatan bulan lampau tidak pernah disentuh → 0 pemeriksaan kunci)',
     # putaran 39 (owner 29 Sep): karung belakang = buku sendiri; isi ulang tiga ketukan; aktivasi per wadah; cek wadah — semua bertanggal hari ini, dokumen tetap per tindakan (tanpa perulangan yang membesar)
     'wbDokBukaKB': 'buka karung berbuku: paling banyak 1 batch lahir 0 kg + 1 produksiKemasan pindah buku (merek → karung belakang) + n catatan karung (wadahLiteran, tidak dikunci), hari ini',

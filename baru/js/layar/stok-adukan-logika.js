@@ -17,6 +17,7 @@ import { RP, waktuSetempat } from '../inti/format.js';
 import { hppKeluar, hppKeluarPerKg } from '../mesin/modal-fifo.js';
 import { arPeta, arKunciKemasan, arDokPulihBanyak } from './arsip-logika.js';
 import { ckCocokTerakhir, ckCocokTerakhirKemasan, ckKalimatMundur } from './jual-logika.js';
+import { KANTONG_GABUNGAN_LAMA, kantongLama } from './wadah-jual-logika.js';
 
 export const UKURAN_BAHAN_KEMASAN = [50, 25];          // kemasan jadi yang boleh dibongkar lagi (UKURAN_KEMASAN_BOLEH_JADI_BAHAN index.html)
 export const UKURAN_HASIL_PILIHAN = [5, 10, 20, 25, 50];
@@ -54,10 +55,12 @@ export function calonNamaHasil() {
   ambilHargaKemasan().forEach((k) => { if (k.merk && hitung[k.merk] === undefined) hitung[k.merk] = 0; });
   return Object.keys(hitung).sort((a, b) => hitung[b] - hitung[a] || a.localeCompare(b));
 }
-/** Jenis kantong untuk ukuran hasil itu (5/10/20/25 kg) + sisa & modal per lembar; 50 kg = tanpa kantong. */
+/** Jenis kantong untuk ukuran hasil itu (5/10/20/25 kg) + sisa & modal per lembar; 50 kg = tanpa kantong.
+ *  owner 11 Okt: per merek; gabungan lama ikut ditawarkan hanya selama sisanya belum dipecah (wadah-jual-logika KANTONG_GABUNGAN_LAMA). */
 export function kantongUntuk(ukuran) {
   const st = hitungStokBahanKemasan(); const awalan = String(Number(ukuran)) + 'kg_';
-  return JENIS_BAHAN_KEMASAN.filter((j) => j.indexOf(awalan) === 0).map((j) => ({ jenis: j, label: adLabelKantong(j), sisaPcs: (st[j] || {}).sisaPcs || 0, hppPerPcs: (st[j] || {}).hppPerPcs || 0 }));
+  return JENIS_BAHAN_KEMASAN.concat(Object.keys(KANTONG_GABUNGAN_LAMA).filter((j) => ((st[j] || {}).sisaPcs || 0) > 0)).filter((j) => j.indexOf(awalan) === 0)
+    .map((j) => ({ jenis: j, label: adLabelKantong(j), sisaPcs: (st[j] || {}).sisaPcs || 0, hppPerPcs: (st[j] || {}).hppPerPcs || 0, lama: kantongLama(j) }));
 }
 const adJenisProduksi = (p) => (p.beliJadi || p.stokAwal || p.dariBatch ? 'beliJadi' : p.dariTakar || p.bukaKemasan ? 'pindahBuku' : p.jadiKarungUtuh ? 'gabungKarung' : /rework dari karantina/i.test(String(p.catatan || '')) ? 'rework' : 'adukan');
 
@@ -75,7 +78,7 @@ export function hitungAdukan(draf) {
     return { ke: i + 1, kunci, unit, terisi, masalah, sah: terisi && !masalah, namaProduk: st ? st.namaProduk : '', ukuranKemasan: st ? Number(st.ukuranKemasan) : 0, sisaUnit: st ? (st.sisaUnit || 0) : null, hpp: st ? (st.hppRataRataPerUnit || 0) : 0,
       kg: st ? adB3(Number(st.ukuranKemasan) * unit) : 0, nilai: st ? (st.hppRataRataPerUnit || 0) * unit : 0 }; });
   const hasil = (draf.hasil || []).map((h, i) => { const nama = String(h.nama || '').trim(); const ukuran = adB3(adAngka(h.ukuran)); const unit = adAngka(h.unit); const kantongJenis = String(h.kantongJenis || ''); const kantongJumlah = adAngka(h.kantongJumlah);
-    const terisi = !!nama || ukuran > 0 || unit > 0; const masalah = !terisi ? '' : !nama ? 'nama hasilnya belum diisi' : !(ukuran > 0) ? 'ukurannya belum dipilih' : !(unit > 0) ? 'jumlah unitnya belum diisi' : kantongJenis && !JENIS_BAHAN_KEMASAN.some((j) => j === kantongJenis) ? 'jenis kantongnya tidak dikenal' : '';
+    const terisi = !!nama || ukuran > 0 || unit > 0; const masalah = !terisi ? '' : !nama ? 'nama hasilnya belum diisi' : !(ukuran > 0) ? 'ukurannya belum dipilih' : !(unit > 0) ? 'jumlah unitnya belum diisi' : kantongJenis && !JENIS_BAHAN_KEMASAN.some((j) => j === kantongJenis) && !kantongLama(kantongJenis) ? 'jenis kantongnya tidak dikenal' : '';
     const pakaiKantong = !!kantongJenis && kantongJumlah > 0; const biayaKantong = pakaiKantong ? Math.round(((stokB[kantongJenis] || {}).hppPerPcs || 0) * kantongJumlah) : 0;
     return { ke: i + 1, nama, ukuran, unit, kantongJenis, kantongJumlah, terisi, masalah, sah: terisi && !masalah, kg: adB3(ukuran * unit), biayaKantong, kantongTanpaCacah: !!kantongJenis && !(kantongJumlah > 0),
       kantongLabel: kantongJenis ? adLabelKantong(kantongJenis) : 'tanpa kantong', kantongSisa: kantongJenis ? ((stokB[kantongJenis] || {}).sisaPcs || 0) : null, kunci: kunciKemasan(nama, ukuran) }; });

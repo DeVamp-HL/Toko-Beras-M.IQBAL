@@ -2435,3 +2435,35 @@ Rp5.133.000, hapus buku Rp4.231.000); laba kotor Sep Rp12.972.180 menutup per me
 Pilihan agen yang menunggu owner (default terpasang): uang dibayar di meja saat beli tidak dihitung tertagih; perputaran memakai kg KELUAR (terjual +
 diaduk + ditakar ke wadah), terjual dirinci; umur wadah sejak dituang; susut % se-toko hanya atas merek yang punya selisih tercatat; penjaga HET premium ≥
 medium. `stokUmur` belum dibaca staf (perlu DOK_STAF + rules bila mau). Sesudah tutup buku 2026, stok yang dibawa saldo pembuka tampil "tanpa tanggal masuk" di Umur & putaran (modal FIFO tetap memperlakukannya sebagai lapisan bertanggal 31 Des).
+
+## Paket 11 Okt 2026 — nominal karcis bisa dibetulkan · buku kantong kemasan per merek (cabang `paket/karcis-nominal-kantong-merek`)
+
+Owner 11 Okt: *"Pencatatan rinci kasir darurat bisa merubah nominal jumlah. Contoh Rp130.000 bisa diganti Rp135.000. Stok buku kantong kemasan jadi
+masing-masing per merek. Jadi terpisah tidak ada kembang/BMW dkk."* Keputusan owner (ditanya di depan): nominal boleh **naik dan turun**, **alasan
+wajib**; stok gabungan dipecah lewat **hitung fisik per merek**; modal per lembar tiap merek = **salin modal gabungan**.
+
+**1. Nominal karcis (Jual › Karcis kasir › Simpan rincian).** Tombol "ubah nominal karcis" (dan pil "ubah nominal jadi RpX" saat KELEBIHAN) membuka
+kolom nominal + alasan. Drafnya menempel di karcis yang diikat (`karcis.nominalBaru`, `karcis.alasanNominal`) — lepas/simpan = hilang. Hanya karcis
+nominal; nota yang dirapikan tetap menutup jumlahnya persis. `karcis-logika.js`: `nominalKarcis`, `teksDampakNominal`, `bukaNominalKarcis`,
+`ketikNominalKarcis`, `tutupNominalKarcis`; `hitungKarcis` & `susunRinciDokumen` memakai nominal yang berlaku. Dokumen: baris rincian (+ karcis sisa)
+menjumlah nominal BARU; karcis asli TIDAK diubah angkanya — ditandai `dikoreksiOleh` + `nominalDibetulkan` + `alasanNominal` (+ kalimat di
+`alasanKoreksi`). Tarik balik rincian mencabut kedua kolom itu, karcis kembali ke nominal aslinya. "Hanya perbaiki cara bayar / nama / nominal"
+(barangnya belum diingat) menulis karcis pengganti bernominal baru (`nominalSebelum`, `alasanNominal`). Dampak uang disebut sebelum & sesudah simpan:
+omzet hari karcis naik/turun, uang laci (Tunai) / QRIS / bon pembeli ikut. KELEBIHAN tanpa mengubah nominal tetap ditolak (aturan 9 Agu).
+
+**2. Buku kantong per merek.** MESIN DIBUKA (izin owner 11 Okt, `beku2.py --catat`): `JENIS_BAHAN_KEMASAN` = 13 jenis per merek (5 kg Kembang · BMW ·
+Putri Agri; 10 kg Kembang · BMW · Putri Agri · Lele; 20 kg Kembang · BMW · Putri Agri · Lele · Persik; 25 kg Kembang), `LABEL_BAHAN_KEMASAN` + lima
+label gabungan lama bertanda "(gabungan lama)". Tubuh `hitungStokBahanKemasan` tidak berubah. Lima gabungan lama (`wadah-jual-logika.js`
+`KANTONG_GABUNGAN_LAMA`, `kantongLama`) tidak bisa dibeli lagi; selama sisanya belum dipecah ia tetap tampil di rak Kantong, pilihan kantong adukan,
+wadah repack, dan rak Wadah Jual (toko tidak berhenti menunggu hitungan). Stok › Kantong punya kartu **Pecah per merek**: owner mengisi hitungan fisik
+tiap merek (kosong ≠ 0), lalu `stok-kantong-logika.js` `susunPecahKantong` menulis satu kiriman tanpa uang: selisih vs buku → `opname` di gabungan
+(bentuk Cocokkan, laba lewat "Susut & selisih stok", ketukan kedua); seluruh hitungan keluar dari gabungan → `pakai` {pindahMerek}; tiap merek →
+`saldoAwal` {pindahMerek, dariJenis} bernilai lembar × modal gabungan; harga jual kantong gabungan (hargaWadah) disalin ke merek yang belum punya harga.
+Pengingat "kantong cukup N hari" melewati pindahan (`pindahMerek`) dan gabungan yang sudah 0.
+
+Angka toko (cadangan 9 Okt, hitungan buku per jenis — yang dihitung fisik owner): 5 kg Kembang/BMW ±114 lembar (modal ±Rp1.122), 10 kg Kembang/BMW ±85
+(±Rp2.124), 10 kg Putri Agri/Lele ±80 (±Rp3.000), 20 kg Kembang/BMW ±74 (±Rp2.200), 20 kg Putri Agri/Lele/Persik ±92 (±Rp3.791). Tak satu pun
+gabungan punya harga jual kantong kosong (yang dijual: 25 kg Kembang Rp3.000, karung bekas Rp1.500).
+
+Uji: `uji_jual_baru.py` (+18 "NK:", 7 kontrol nominal), `uji_stok_baru.py` (+16 "PK:", 11 kontrol pecah), contoh kantong di uji Jual/Stok/gladi
+memakai jenis per merek.
