@@ -856,9 +856,9 @@ Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
   terap(bukaNominalKarcis(s, 135000)); var H1 = hitungKarcis(s);
   ok('NK: pil "ubah nominal jadi Rp135.000" → nominal berlaku 135.000 (asli 130.000, selisih +5.000), PAS', H1.nominal === 135000 && H1.N.asli === 130000 && H1.N.diubah && H1.N.selisih === 5000 && H1.pas, JSON.stringify(H1.N));
   ok('NK: tanpa alasan DITOLAK', /Tulis alasan nominal diubah/.test(susunRinciDokumen(s, W).tolak), susunRinciDokumen(s, W).tolak);
-  terap(ketikNominalKarcis(s, 'alasan', 'ok')); ok('NK: alasan < 3 huruf DITOLAK', /Tulis alasan nominal diubah/.test(susunRinciDokumen(s, W).tolak));
-  terap(ketikNominalKarcis(s, 'nominal', '')); ok('NK: nominal baru kosong → DITOLAK "belum terbaca"; hitungan memakai nominal asli', /belum terbaca/.test(susunRinciDokumen(s, W).tolak) && hitungKarcis(s).nominal === 130000, susunRinciDokumen(s, W).tolak);
-  terap(ketikNominalKarcis(s, 'nominal', '135.000')); terap(ketikNominalKarcis(s, 'alasan', 'salah ketik, harusnya 135.000'));
+  terap({ karcis: ketikNominalKarcis(s, 'alasan', 'ok') }); ok('NK: alasan < 3 huruf DITOLAK', /Tulis alasan nominal diubah/.test(susunRinciDokumen(s, W).tolak));
+  terap({ karcis: ketikNominalKarcis(s, 'nominal', '') }); ok('NK: nominal baru kosong → DITOLAK "belum terbaca"; hitungan memakai nominal asli', /belum terbaca/.test(susunRinciDokumen(s, W).tolak) && hitungKarcis(s).nominal === 130000, susunRinciDokumen(s, W).tolak);
+  terap({ karcis: ketikNominalKarcis(s, 'nominal', '135.000') }); terap({ karcis: ketikNominalKarcis(s, 'alasan', 'salah ketik, harusnya 135.000') });
   var RN = susunRinciDokumen(s, W); var brs = (RN.dokumen || []).filter(function (d) { return d.koleksi === 'penjualan' && d.data.rinciDari === 'kn1'; }); var asli = ((RN.dokumen || []).find(function (d) { return d.koleksi === 'penjualan' && d.data.id === 'kn1'; }) || {}).data || {};
   ok('NK: dokumen: 1 baris Angsa 135.000 bertanggal & berjam KARCIS (16 Sep 15:51), alasan menyebut nominal dibetulkan; tanpa karcis sisa', !RN.tolak && brs.length === 1 && brs[0].data.hargaTotal === 135000 && brs[0].data.tanggal === '2026-09-16' && brs[0].data.jam === '15:51' && /nominal dibetulkan Rp130\.000 → Rp135\.000: salah ketik/.test(brs[0].data.alasanKoreksi), JSON.stringify(RN.tolak || brs));
   ok('NK: karcis asli TIDAK dihapus/diubah angkanya: hargaTotal tetap 130.000, dikoreksiOleh, nominalDibetulkan 135.000, alasanNominal, alasanKoreksi menyebutnya', asli.hargaTotal === 130000 && asli.dikoreksiOleh === brs[0].data.id && asli.nominalDibetulkan === 135000 && asli.alasanNominal === 'salah ketik, harusnya 135.000' && /nominal dibetulkan Rp130\.000 → Rp135\.000/.test(asli.alasanKoreksi), JSON.stringify(asli));
@@ -871,13 +871,13 @@ Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
   // hanya perbaiki nominal (barangnya belum diingat)
   terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') })); terap(ikatKarcis(s, 'kn1', s.sekarang)); terap(bukaNominalKarcis(s, '135000'));
   ok('NK: perbaikan nominal tanpa alasan DITOLAK', /Tulis alasan nominal diubah/.test(susunPerbaikanKarcis(s, W).tolak), susunPerbaikanKarcis(s, W).tolak);
-  terap(ketikNominalKarcis(s, 'alasan', 'uang di laci lebih 5 rb'));
+  terap({ karcis: ketikNominalKarcis(s, 'alasan', 'uang di laci lebih 5 rb') });
   var PN = susunPerbaikanKarcis(s, W); var pg = PN.dokumen ? PN.dokumen[0].data : {};
   ok('NK: perbaikan NOMINAL saja (cara & nama sama) diterima: pengganti tetap karcis 135.000 (nominalSebelum 130.000, alasanNominal), asli ditandai; kabar menyebut dampaknya', !PN.tolak && pg.jenis === 'kasir_darurat_nominal' && pg.hargaTotal === 135000 && pg.nominalSebelum === 130000 && pg.alasanNominal === 'uang di laci lebih 5 rb' && PN.dokumen[1].data.dikoreksiOleh === pg.id && PN.dokumen[1].data.hargaTotal === 130000 && /omzet .* naik Rp5\.000/.test(PN.patch.kabar), JSON.stringify(PN.tolak || pg));
   terap(tutupNominalKarcis(s)); ok('NK: "tidak jadi ubah nominal" → kembali 130.000; perbaikan tanpa perubahan apa pun tetap DITOLAK', hitungKarcis(s).nominal === 130000 && !('nominalBaru' in s.karcis) && /Tidak ada yang berubah/.test(susunPerbaikanKarcis(s, W).tolak));
   // turun: 67.500 → 60.000, barang 54.000, sisa 6.000 tetap jadi karcis
   terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') })); terap(ikatKarcis(s, 'kn2', s.sekarang)); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '4' }); terap(masukkan(s));
-  terap(bukaNominalKarcis(s)); terap(ketikNominalKarcis(s, 'nominal', '60000')); terap(ketikNominalKarcis(s, 'alasan', 'kebanyakan ketik'));
+  terap(bukaNominalKarcis(s)); terap({ karcis: ketikNominalKarcis(s, 'nominal', '60000') }); terap({ karcis: ketikNominalKarcis(s, 'alasan', 'kebanyakan ketik') });
   var RT = susunRinciDokumen(s, W); var sisaT = (RT.dokumen || []).find(function (d) { return d.koleksi === 'penjualan' && d.data.jenis === 'kasir_darurat_nominal' && d.data.rinciDari === 'kn2'; });
   ok('NK: TURUN 67.500 → 60.000 dengan barang 54.000: sisa 6.000 tetap jadi karcis; omzet hari itu turun 7.500 (disebut)', !RT.tolak && sisaT && sisaT.data.hargaTotal === 6000 && /turun Rp7\.500/.test(RT.ringkas), JSON.stringify(RT.tolak || RT.ringkas));
   terapkanKeCache(RT.dokumen); ok('NK: sesudah tersimpan omzet 16 Sep = 130.000 + 60.000', omzet16() === 190000, omzet16());

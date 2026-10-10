@@ -119,9 +119,10 @@ export function bukaNominalKarcis(s, nilai) {
   const k = s.karcis; if (!k) return {}; if (k.jenisAsal !== 'karcis') return { kabar: 'Nota yang dirapikan tidak bisa diubah nominalnya — uang nota itu sudah pasti, barangnya yang menutup persis', kabarAwas: true };
   return { karcis: Object.assign({}, k, { nominalBaru: nilai !== undefined && nilai !== null && String(nilai) !== '' ? String(nilai) : String(k.nominal), alasanNominal: k.alasanNominal || '' }) };
 }
+/** → karcis baru (atau karcis yang sama bila draf nominal tidak terbuka) — layar menulisnya sebagai set({ karcis }), kunci yang dijaga penjaga isian. */
 export function ketikNominalKarcis(s, kolom, v) {
-  const k = s.karcis; if (!k || k.nominalBaru === undefined) return {};
-  return { karcis: Object.assign({}, k, kolom === 'alasan' ? { alasanNominal: String(v || '').slice(0, 120) } : { nominalBaru: String(v || '').slice(0, 15) }) };
+  const k = s.karcis; if (!k || k.nominalBaru === undefined) return k || null;
+  return Object.assign({}, k, kolom === 'alasan' ? { alasanNominal: String(v || '').slice(0, 120) } : { nominalBaru: String(v || '').slice(0, 15) });
 }
 export function tutupNominalKarcis(s) { const k = s.karcis; if (!k) return {}; const b = Object.assign({}, k); delete b.nominalBaru; delete b.alasanNominal; return { karcis: b }; }
 /** Penjaga draf nominal yang dipakai SIMPAN RINCIAN & perbaikan karcis: '' = sah (atau tidak diubah). */

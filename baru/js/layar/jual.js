@@ -169,8 +169,8 @@ export function pasangLayarJual(akar, opsi) {
     karcisPerbaiki: () => tulisUmum(KC.susunPerbaikanKarcis(S(), L.waktuSekarang(S().sekarang || undefined))),
     // owner 11 Okt: nominal karcis dibetulkan saat merinci (naik / turun, alasan wajib) — drafnya menempel di karcis yang diikat
     kcNominalBuka: ({ n }) => set(KC.bukaNominalKarcis(S(), n)),
-    kcNominal: (v) => set(KC.ketikNominalKarcis(S(), 'nominal', v)),
-    kcNominalAlasan: (v) => set(KC.ketikNominalKarcis(S(), 'alasan', v)),
+    kcNominal: (v) => set({ karcis: KC.ketikNominalKarcis(S(), 'nominal', v) }),
+    kcNominalAlasan: (v) => set({ karcis: KC.ketikNominalKarcis(S(), 'alasan', v) }),
     kcNominalTutup: () => set(KC.tutupNominalKarcis(S())),
     // putaran 25b: BATALKAN karcis kasir darurat yang salah ketik (padanan mulaiBatalkanTrx sistem lama) — dari daftar karcis, alasan wajib
     kcBatalBuka: ({ id }) => set({ kcBatal: { id: String(id), alasan: '' }, kabar: '' }),
