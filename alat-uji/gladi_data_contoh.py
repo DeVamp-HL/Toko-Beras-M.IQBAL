@@ -63,9 +63,9 @@ POLA_MACET = [(8, 5), (9, 15), (10, 3)]
 MEREK = [('Contoh Alfa', 12400, True), ('Contoh Bravo', 13100, True), ('Contoh Ceri', 13800, True), ('Contoh Dahlia', 14600, True),
          ('Contoh Elang', 15300, False), ('Contoh Fajar', 16200, False), ('Ketan Contoh', 19500, False)]
 # kemasan jadi: (nama produk, ukuran kg, merek sumber, jenis kantong)
-KEMASAN = [('Kemasan Contoh', 5, 'Contoh Bravo', '5kg_kembangbmw'), ('Kemasan Contoh', 10, 'Contoh Ceri', '10kg_kembangbmw'),
-           ('Kemasan Contoh Wangi', 20, 'Contoh Elang', '20kg_kembangbmw'), ('Kemasan Contoh', 25, 'Contoh Dahlia', '25kg_kembang')]
-HARGA_KANTONG = {'5kg_kembangbmw': 900, '10kg_kembangbmw': 1300, '20kg_kembangbmw': 2100, '25kg_kembang': 2400}
+KEMASAN = [('Kemasan Contoh', 5, 'Contoh Bravo', '5kg_kembang'), ('Kemasan Contoh', 10, 'Contoh Ceri', '10kg_kembang'),
+           ('Kemasan Contoh Wangi', 20, 'Contoh Elang', '20kg_kembang'), ('Kemasan Contoh', 25, 'Contoh Dahlia', '25kg_kembang')]
+HARGA_KANTONG = {'5kg_kembang': 900, '10kg_kembang': 1300, '20kg_kembang': 2100, '25kg_kembang': 2400}
 HARGA_PAPERBAG = {'paperbag5l': 305, 'paperbag10l': 395}
 PEMASOK = ['PEMASOK CONTOH SATU', 'PEMASOK CONTOH DUA']
 KARYAWAN = ['Karyawan Contoh Satu', 'Karyawan Contoh Dua']

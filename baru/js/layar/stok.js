@@ -52,12 +52,13 @@ export function pasangLayarStok(akar, opsi) {
     adukan: null, yakinA: {}, yakinHapusA: false, bukaA: null, koreksiA: { total: '', alasan: '' }, qBuka: null, qAlasan: '', qYakin: '',
     // putaran 16: Kantong (ST4), Tempat simpan (ST5), HPP (ST6)
     kt: { jenis: '', jumlah: '', harga: '', toko: '' }, ktTab: 'rak', ktYakin: {}, ktHapus: null, ktAlasan: '', ktYakinHapus: false, aturKt: null,
+    pkIsi: {}, pkYakin: null,   // owner 11 Okt: pecah kantong gabungan lama per merek — pkIsi[gabungan][merek] = teks lembar hasil hitung fisik; pkYakin = gabungan yang sudah diketuk sekali
     tp: { pilih: null, tempat: null }, aturTp: null,
     hp: { merk: null, ketik: '', alasan: '', yakin: false, massal: {}, tab: 'kartu' }, aturHp: null, fifo: { pilih: '', yakin: '' },
     // putaran 27: tawaran harga jual varian sesudah barang masuk (Bagian 2)
     varianTawar: null, vrKetik: {}, vrYakin: false });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['isiW', 'krKetik', 'kbNilai', 'krNama', 'gnKetik', 'shKetik', 'bgKetik', 'bgAlasan', ['puKetik', (v) => !!(v && Object.keys(v).length)], 'atur', 'koreksiA', 'qAlasan', 'kt', 'ktAlasan', 'aturKt', 'aturC', ['tp', (v) => !!(v && v.pilih)], 'aturTp', ['hp', (v) => !!(v && (v.ketik || v.alasan || Object.keys(v.massal || {}).length))], 'aturHp', 'aturUm', ['vrKetik', (v) => !!(v && Object.keys(v).some((k) => v[k]))]], [KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);
+  const ISIAN = pasangIsian(K, awal, ['isiW', 'krKetik', 'kbNilai', 'krNama', 'gnKetik', 'shKetik', 'bgKetik', 'bgAlasan', ['puKetik', (v) => !!(v && Object.keys(v).length)], 'atur', 'koreksiA', 'qAlasan', 'kt', 'ktAlasan', 'aturKt', 'aturC', ['tp', (v) => !!(v && v.pilih)], 'aturTp', ['hp', (v) => !!(v && (v.ketik || v.alasan || Object.keys(v.massal || {}).length))], 'aturHp', 'aturUm', ['pkIsi', (v) => !!(v && Object.keys(v).length)], ['vrKetik', (v) => !!(v && Object.keys(v).some((k) => v[k]))]], [KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date();
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -291,6 +292,10 @@ export function pasangLayarStok(akar, opsi) {
     bukaAturKt: () => { const a = KT.aturKantong(); set({ aturKt: st().aturKt ? null : { lonjakan: String(a.lonjakan), hariAman: String(a.hariAman), lantaiHarga: String(a.lantaiHarga) } }); },
     ktKetikAtur: (v, el) => { const a = Object.assign({}, st().aturKt || {}); a[el.dataset.kolom] = String(v).slice(0, 8); set({ aturKt: a }); },
     simpanAturKt: async () => { const a = st().aturKt; if (a) await tulis(KT.susunAturKantong(a, waktu())); },
+    // owner 11 Okt: pecah kantong gabungan lama jadi buku per merek lewat hitung fisik (stok-kantong-logika susunPecahKantong)
+    pkKetik: (v, el) => { const L = el.dataset.l; const isi = Object.assign({}, st().pkIsi); isi[L] = Object.assign({}, isi[L] || {}); isi[L][el.dataset.j] = String(v).slice(0, 7); set({ pkIsi: isi, pkYakin: st().pkYakin === L ? null : st().pkYakin }); },
+    pkSimpan: async ({ l }) => { const r = KT.susunPecahKantong(l, (st().pkIsi || {})[l] || {}, waktu(), st().pkYakin === l); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, pkYakin: r.perluYakin ? l : null });
+      if (await tulis(r)) { const isi = Object.assign({}, st().pkIsi); delete isi[l]; set({ pkIsi: isi }); } },
     // ---- TEMPAT SIMPAN (ST5-A "Denah Toko"): ketuk barang, lalu ketuk tempat tujuannya; peta = dokumen yang sama dengan sistem lama
     bukaTempat: () => set({ lembar: 'tempat', kabar: '', tp: { pilih: null, tempat: null }, aturTp: null }),
     tpPilih: ({ kunci }) => { const sama = st().tp.pilih === kunci; const brg = TP.barangTempat().find((b) => b.kunci === kunci); set({ tp: Object.assign({}, st().tp, { pilih: sama ? null : kunci }), kabar: sama || !brg ? '' : 'Sekarang ketuk tempat tujuan ' + brg.nama + ' — atau "tanpa tempat"', kabarAwas: false }); },
@@ -391,11 +396,18 @@ export function pasangLayarStok(akar, opsi) {
   const kepalaLembar = (judul, ket) => h`<div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">${judul}</div><div class="ket">${ket}</div></div><div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>`;
   // ---------- KANTONG (ST4-B+C) ----------
   function gambarKantong(s) {
-    const R = KT.rakKantong(); const kt = s.kt; const J = R.daftar.find((x) => x.jenis === kt.jenis) || null; const hb = KT.hitungBeli(kt); const buku = KT.bukuBeli(20); const H = s.ktHapus ? buku.find((b) => String(b.id) === String(s.ktHapus)) : null;
+    const R = KT.rakKantong(); const PK = KT.daftarPecahKantong(); const kt = s.kt; const J = R.daftar.find((x) => x.jenis === kt.jenis) || null; const hb = KT.hitungBeli(kt); const buku = KT.bukuBeli(20); const H = s.ktHapus ? buku.find((b) => String(b.id) === String(s.ktHapus)) : null;
     const tolak = !J ? 'Pilih jenis kantongnya' : !(hb.jumlah > 0) ? 'Ketik jumlah lembarnya' : !(hb.harga > 0) ? 'Ketik harga SATU lembar' : '';
     return h`<section class="stok-kantong" data-k="kantong">
       ${kepalaLembar('Kantong', 'kantong kosong & paper bag: beli per batch (harga per LEMBAR), rak, buku beli, riwayat harga')}
       <div class="jalur rapat" data-k="kt-tab">${KT.TAB_KANTONG.map(([id, nm]) => h`<div class="seg ${s.ktTab === id ? 'aktif' : ''}" data-aksi="ktTab" data-t="${id}">${nm}</div>`)}</div>
+      ${PK.length ? h`<div class="kartu" data-k="kt-pecah" style="gap: 8px; border-color: var(--awas);"><div class="label">Pecah per merek · kantong gabungan lama</div>
+        <div class="ket">Buku kantong sekarang per merek. Hitung fisik tiap merek di toko (0 kalau tidak ada), lalu simpan: modal per lembar gabungan disalin ke tiap merek, selisih hitungan dicatat seperti Cocokkan. Sampai dipecah, tumpukan gabungan masih bisa dipakai.</div>
+        ${PK.map((g) => { const isi = (s.pkIsi || {})[g.jenis] || {}; const HP = KT.hitungPecah(g.jenis, isi); return h`<div data-k="pk-${g.jenis}" style="display: flex; flex-direction: column; gap: 6px; padding-top: 6px;">
+          <div style="font-weight: 600;">${g.label}</div><div class="ket">buku ${DESIMAL(g.sisa)} lembar · modal ${RP(g.modal)}/lembar${g.hargaJual ? ' · dijual ' + RP(g.hargaJual) + '/lembar' : ''}</div>
+          <div class="ps-form tiga">${g.merek.map((m) => h`<div><div class="ket">${m.nama} (lembar)</div><input class="ketik-nama" id="pk-${g.jenis}-${m.jenis}" type="text" inputmode="numeric" value="${isi[m.jenis] || ''}" data-ketik="pkKetik" data-l="${g.jenis}" data-j="${m.jenis}" placeholder="hitung"></div>`)}</div>
+          <div class="ket ${HP.selisih ? 'awas-teks' : ''}">${HP.teks}</div>
+          <div class="utama ${HP.semuaTerisi && !HP.salah.length ? '' : 'redup'}" data-aksi="pkSimpan" data-l="${g.jenis}">${s.pkYakin === g.jenis ? 'YAKIN — simpan hitungan & pecah' : 'SIMPAN HITUNG · pecah jadi per merek'}</div></div>`; })}</div>` : ''}
       ${s.ktTab === 'riwayat' ? h`<div class="kartu" data-k="kt-riwayat" style="gap: 4px;"><div class="label">Riwayat harga per lembar · lonjakan > ${R.atur.lonjakan} % ditandai</div>
         ${KT.riwayatHarga().map((j) => h`<div data-k="rh-${j.jenis}" style="padding-top: 6px;"><div style="font-weight: 600; font-size: 12.5px;">${j.label}</div><div class="ket">${j.ket}</div>
           ${j.baris.map((b) => h`<div class="kt-riw" data-k="rh-${j.jenis}-${b.id}"><span class="ket">${tanggalPendek(b.tanggal)}</span><span class="lonjak">${b.lonjak}${b.murah ? ' · di bawah lantai' : ''}</span><span class="ket">${DESIMAL(b.jumlah)} lbr</span><span class="n ${b.murah ? 'awas' : ''}">${RP(b.harga)}</span></div>`)}</div>`)}

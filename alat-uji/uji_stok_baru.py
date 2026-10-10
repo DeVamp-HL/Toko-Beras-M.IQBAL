@@ -47,13 +47,13 @@ KOTAK = {
 }
 # ---- putaran 16 (ST4–ST6), ANGKA CONTOH — dipasok di blok ST4–ST6 saja supaya skenario lama tidak bergeser ----
 KOTAK16 = {
-  # kantong: 5 kg Kembang/BMW dibeli 2 batch (1.050 lalu 1.125 per lembar), 12 terpakai dalam 14 hari (laju 12/14 → sisa 488 = 569 hari);
-  # 10 kg Putri Agri/Lele sisa 20, terpakai 60 dalam 14 hari (laju 4,29/hari → cukup 4,7 hari < 7 = AWAS); paper bag 10 L beli 900 lembar Rp355.500 (Rp395)
-  'stokBahanKemasan': [{'id': 1001, 'tanggal': '2026-07-02', 'jenis': '5kg_kembangbmw', 'tipe': 'beli', 'jumlah': 300, 'hargaTotal': 315000},
-                       {'id': 1002, 'tanggal': '2026-08-11', 'jenis': '5kg_kembangbmw', 'tipe': 'beli', 'jumlah': 200, 'hargaTotal': 225000},
-                       {'id': 1003, 'tanggal': '2026-09-12', 'jenis': '5kg_kembangbmw', 'tipe': 'pakai', 'jumlah': 12, 'hargaTotal': 0},
-                       {'id': 1004, 'tanggal': '2026-08-11', 'jenis': '10kg_putriagri_lele', 'tipe': 'beli', 'jumlah': 80, 'hargaTotal': 240000},
-                       {'id': 1005, 'tanggal': '2026-09-10', 'jenis': '10kg_putriagri_lele', 'tipe': 'pakai', 'jumlah': 60, 'hargaTotal': 0}],
+  # kantong: 5 kg Kembang dibeli 2 batch (1.050 lalu 1.125 per lembar), 12 terpakai dalam 14 hari (laju 12/14 → sisa 488 = 569 hari);
+  # 10 kg Putri Agri sisa 20, terpakai 60 dalam 14 hari (laju 4,29/hari → cukup 4,7 hari < 7 = AWAS); paper bag 10 L beli 900 lembar Rp355.500 (Rp395)
+  'stokBahanKemasan': [{'id': 1001, 'tanggal': '2026-07-02', 'jenis': '5kg_kembang', 'tipe': 'beli', 'jumlah': 300, 'hargaTotal': 315000},
+                       {'id': 1002, 'tanggal': '2026-08-11', 'jenis': '5kg_kembang', 'tipe': 'beli', 'jumlah': 200, 'hargaTotal': 225000},
+                       {'id': 1003, 'tanggal': '2026-09-12', 'jenis': '5kg_kembang', 'tipe': 'pakai', 'jumlah': 12, 'hargaTotal': 0},
+                       {'id': 1004, 'tanggal': '2026-08-11', 'jenis': '10kg_putriagri', 'tipe': 'beli', 'jumlah': 80, 'hargaTotal': 240000},
+                       {'id': 1005, 'tanggal': '2026-09-10', 'jenis': '10kg_putriagri', 'tipe': 'pakai', 'jumlah': 60, 'hargaTotal': 0}],
   'stokBahanLiteran': [{'id': 1101, 'tanggal': '2026-08-11', 'jenis': 'paperbag10l', 'tipe': 'beli', 'jumlah': 900, 'hargaTotal': 355500}],
   # harga jual per kg katalog karung: Angsa 13.400 (di atas modal 13.045 → untung), IR64 Apex 14.000 (= modal → margin Rp0 disengaja?), Pandan Wangi tidak ada
   'katalogHargaKarung': [{'id': 'Angsa', 'merk': 'Angsa', 'hargaPerKg': 13400}, {'id': 'IR64 Apex', 'merk': 'IR64 Apex', 'hargaPerKg': 14000}],
@@ -292,10 +292,10 @@ ok('cocok: dihitung lebih dari dua kali tercatat = ANEH, ditanya dulu; stok bert
 var ck = barangCocok('kemasan'); var kK = ck.find(function (b) { return /Kembang 5 kg/.test(b.nama); }); var HK2 = {}; HK2[kK.kunci] = String(kK.sistem + 1);
 var SK = susunSimpanCocok('kemasan', HK2, {}, WC, { sebagian: true }); if (!SK.dokumen) SK.dokumen = [{ koleksi: '?', data: {} }];
 ok('cocok: kemasan jadi per unit → dokumen penyesuaianKemasan {namaProduk, ukuranKemasan (angka), unitSistem, unitFisik, selisihUnit +1, alasan bawaan, nilaiRp = modal per unit, hppPerUnitSaatOpname}; sesudahnya sisa unit = hitungan', kK.satuan === 'unit' && SK.dokumen.length === 1 && SK.dokumen[0].koleksi === 'penyesuaianKemasan' && SK.dokumen[0].data.namaProduk === 'Kembang' && SK.dokumen[0].data.ukuranKemasan === 5 && SK.dokumen[0].data.selisihUnit === 1 && SK.dokumen[0].data.nilaiRp === Math.round(kK.modal) && SK.dokumen[0].data.alasan === 'Cocokkan stok' && (function () { terapkanKeCache(SK.dokumen); return hitungStokKemasan()[kunciKemasan('Kembang', 5)].sisaUnit === kK.sistem + 1; })(), JSON.stringify(SK.dokumen));
-terapkanKeCache([{ koleksi: 'stokBahanKemasan', data: { id: 'bk1', tanggal: '2026-09-01', jenis: '5kg_kembangbmw', tipe: 'beli', jumlah: 200, hargaTotal: 225000 } }]);
-var ckt = barangCocok('kantong'); var kT = ckt.find(function (b) { return b.jenis === '5kg_kembangbmw'; }); var HT = {}; HT[kT.kunci] = '190';
+terapkanKeCache([{ koleksi: 'stokBahanKemasan', data: { id: 'bk1', tanggal: '2026-09-01', jenis: '5kg_kembang', tipe: 'beli', jumlah: 200, hargaTotal: 225000 } }]);
+var ckt = barangCocok('kantong'); var kT = ckt.find(function (b) { return b.jenis === '5kg_kembang'; }); var HT = {}; HT[kT.kunci] = '190';
 var ALT = {}; ALT[kT.kunci] = 'robek'; var ST = susunSimpanCocok('kantong', HT, ALT, WC, { sebagian: true, susutPositif: true }); if (!ST.dokumen) ST.dokumen = [{ koleksi: '?', data: {} }];
-ok('cocok: kantong per lembar → dokumen stokBahanKemasan {tipe opname, jenis, jumlah −10, hargaTotal 0, pcsSistem, pcsFisik, catatan, nilaiRp = −10 × 1.125, hargaPerPcsSaatOpname}; sesudahnya sisa = 190, harga per lembar tetap', kT && kT.sistem === 200 && kT.modal === 1125 && ST.dokumen.length === 1 && ST.dokumen[0].koleksi === 'stokBahanKemasan' && ST.dokumen[0].data.tipe === 'opname' && ST.dokumen[0].data.jumlah === -10 && ST.dokumen[0].data.hargaTotal === 0 && ST.dokumen[0].data.nilaiRp === -11250 && ST.dokumen[0].data.pcsFisik === 190 && (function () { terapkanKeCache(ST.dokumen); var k = hitungStokBahanKemasan()['5kg_kembangbmw']; return k.sisaPcs === 190 && k.hppPerPcs === 1125; })(), JSON.stringify([kT, ST.dokumen]));
+ok('cocok: kantong per lembar → dokumen stokBahanKemasan {tipe opname, jenis, jumlah −10, hargaTotal 0, pcsSistem, pcsFisik, catatan, nilaiRp = −10 × 1.125, hargaPerPcsSaatOpname}; sesudahnya sisa = 190, harga per lembar tetap', kT && kT.sistem === 200 && kT.modal === 1125 && ST.dokumen.length === 1 && ST.dokumen[0].koleksi === 'stokBahanKemasan' && ST.dokumen[0].data.tipe === 'opname' && ST.dokumen[0].data.jumlah === -10 && ST.dokumen[0].data.hargaTotal === 0 && ST.dokumen[0].data.nilaiRp === -11250 && ST.dokumen[0].data.pcsFisik === 190 && (function () { terapkanKeCache(ST.dokumen); var k = hitungStokBahanKemasan()['5kg_kembang']; return k.sisaPcs === 190 && k.hppPerPcs === 1125; })(), JSON.stringify([kT, ST.dokumen]));
 ok('cocok: rework karantina (dariRework, kgFisik null) tidak masuk riwayat hitungan fisik dan tidak mengunci penjaga ganda', (function () { terapkanKeCache([{ koleksi: 'penyesuaianStok', data: { id: 7002, tanggal: '2026-09-19', jam: '16:01', merk: 'IR64 Apex', kgSistem: null, kgFisik: null, selisihKg: 41.5, alasan: 'Rework', dariRework: true } }]);
   var bX = barangCocok('tumpukan').find(function (b) { return b.nama === 'IR64 Apex'; }); var Hx = {}; Hx[bX.kunci] = String(bX.sistem - 1); var r = susunSimpanCocok('tumpukan', Hx, {}, { tanggal: '2026-09-19', jam: '16:03', idUnik: WW.idUnik }, { sebagian: true });
   var adaRework = riwayatCocok(20).some(function (g) { return g.baris.some(function (x) { return x.alasan === 'Rework'; }); }); terapkanKeCache([{ koleksi: 'penyesuaianStok', hapus: 7002 }]); return !r.tolak && !adaRework; })());
@@ -303,16 +303,16 @@ ok('cocok: rework karantina (dariRework, kgFisik null) tidak masuk riwayat hitun
 // ====================== ADUKAN (ST2) & KARANTINA — 23 Sep ======================
 // bahan baru dipasok DI AKHIR supaya skenario di atas tidak bergeser: Perahu Layar 500 kg @12.000, kantong 5 kg @1.125 & 25 kg @2.500, katalog nama
 pasok('batchMasuk', cacheMentah('batch').concat([{ id: 'b3', tanggal: '2026-08-22', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [{ merk: 'Perahu Layar', satuan: 'karung', beratKarung: 50, jumlahKarung: 10, totalKg: 500, subtotalHarga: 6000000, hargaPerKg: 12000 }] }]));
-pasok('stokBahanKemasan', [{ id: 'kb1', tipe: 'beli', jenis: '5kg_kembangbmw', jumlah: 100, hargaTotal: 112500, tanggal: '2026-08-20' }, { id: 'kb2', tipe: 'beli', jenis: '25kg_kembang', jumlah: 10, hargaTotal: 25000, tanggal: '2026-08-20' }]);
+pasok('stokBahanKemasan', [{ id: 'kb1', tipe: 'beli', jenis: '5kg_kembang', jumlah: 100, hargaTotal: 112500, tanggal: '2026-08-20' }, { id: 'kb2', tipe: 'beli', jenis: '25kg_kembang', jumlah: 10, hargaTotal: 25000, tanggal: '2026-08-20' }]);
 pasok('katalogHargaKemasan', [{ id: 'ascent_25kg', merk: 'Ascent', ukuran: 25, hargaPerUnit: 390000 }, { id: 'kembang_5kg', merk: 'Kembang', ukuran: 5, hargaPerUnit: 78000 }]);
 var WA = { tanggal: '2026-09-19', jam: '11:00', kini: '2026-09-19T04:00:00.000Z', idUnik: (function () { var n = 7000; return function () { n += 1; return n; }; })() };
 var adSalinProduksi = function () { return cacheMentah('produksi').slice(); };
 var adTerapkan = function (r) { var per = {}; r.dokumen.forEach(function (d) { var kol = d.koleksi; if (!per[kol]) per[kol] = cacheMentah(({ produksiKemasan: 'produksi', stokBahanKemasan: 'bahanKemasan', penyesuaianStok: 'penyesuaian', karantina: 'karantina', retur: 'retur', bukuHapus: 'bukuHapus' })[kol]).slice();
   per[kol] = per[kol].filter(function (x) { return String(x.id) !== String(d.data.id); }).concat([d.data]); }); Object.keys(per).forEach(function (kol) { pasok(kol, per[kol]); }); };
-ok('adukan: calon bahan = nama bersisa, terbanyak dulu (Perahu Layar 500 kg); kantong untuk 5 kg = dua jenis Kembang/BMW & Putri Agri dengan sisa & modal per lembar; 50 kg tanpa kantong; calon nama hasil = pernah diaduk (Kembang) lalu katalog (Ascent)',
-  calonBahan()[0].merk === 'Perahu Layar' && calonBahan()[0].sisaKg === 500 && calonBahan()[0].hpp === 12000 && kantongUntuk(5).length === 2 && kantongUntuk(5)[0].jenis === '5kg_kembangbmw' && kantongUntuk(5)[0].sisaPcs === 100 && kantongUntuk(5)[0].hppPerPcs === 1125 && kantongUntuk(50).length === 0 && calonNamaHasil()[0] === 'Kembang' && calonNamaHasil().indexOf('Ascent') > 0,
+ok('adukan: calon bahan = nama bersisa, terbanyak dulu (Perahu Layar 500 kg); kantong untuk 5 kg = tiga jenis per merek Kembang · BMW · Putri Agri (owner 11 Okt) dengan sisa & modal per lembar; 50 kg tanpa kantong; calon nama hasil = pernah diaduk (Kembang) lalu katalog (Ascent)',
+  calonBahan()[0].merk === 'Perahu Layar' && calonBahan()[0].sisaKg === 500 && calonBahan()[0].hpp === 12000 && kantongUntuk(5).length === 3 && kantongUntuk(5).map(function (k) { return k.jenis; }).join() === '5kg_kembang,5kg_bmw,5kg_putriagri' && kantongUntuk(5)[0].jenis === '5kg_kembang' && kantongUntuk(5)[0].sisaPcs === 100 && kantongUntuk(5)[0].hppPerPcs === 1125 && kantongUntuk(50).length === 0 && calonNamaHasil()[0] === 'Kembang' && calonNamaHasil().indexOf('Ascent') > 0,
   JSON.stringify([calonBahan().slice(0, 2), kantongUntuk(5), calonNamaHasil()]));
-var dA = drafAdukanKosong(WA); dA.bahan = [{ merk: 'Perahu Layar', kg: '100' }]; dA.hasil = [{ nama: 'Ascent', ukuran: '25', unit: '2', kantongJenis: '25kg_kembang', kantongJumlah: '2' }, { nama: 'Ascent', ukuran: '5', unit: '10', kantongJenis: '5kg_kembangbmw', kantongJumlah: '10' }]; dA.upah = '20.000';
+var dA = drafAdukanKosong(WA); dA.bahan = [{ merk: 'Perahu Layar', kg: '100' }]; dA.hasil = [{ nama: 'Ascent', ukuran: '25', unit: '2', kantongJenis: '25kg_kembang', kantongJumlah: '2' }, { nama: 'Ascent', ukuran: '5', unit: '10', kantongJenis: '5kg_kembang', kantongJumlah: '10' }]; dA.upah = '20.000';
 var HA = hitungAdukan(dA);
 ok('adukan: biaya = bahan 100 kg × 12.000 + kantong (2 × 2.500 + 10 × 1.125) + upah 20.000 = 1.236.250; dibagi MENURUT KG (50 kg : 50 kg): 25 kg → 309.063/unit (dibulatkan), 5 kg → sisa/10 = 61.812,4 berpecahan; Σ (modal × unit) = total PERSIS',
   HA.nilaiBahan === 1200000 && HA.biayaKantong === 16250 && HA.upah === 20000 && HA.total === 1236250 && HA.kgMasuk === 100 && HA.kgJadi === 100 && HA.sahH[0].hppPerUnit === 309063 && Math.abs(HA.sahH[1].hppPerUnit - 61812.4) < 1e-9 && HA.sahH.reduce(function (a, h) { return a + h.hppPerUnit * h.unit; }, 0) === 1236250 && HA.susutKg === 0,
@@ -327,18 +327,18 @@ ok('adukan: SIMPAN → 2 dokumen produksi + 2 pemakaian kantong; kolom PERSIS si
   JSON.stringify([SA.tolak, dokA, dokK]));
 var adSebelum = adSalinProduksi(); adTerapkan(SA); var stokKA = hitungStokKarungPerMerk(), stokMA = hitungStokKemasan(), stokBA = hitungStokBahanKemasan();
 ok('adukan: sesudah tersimpan, MESIN LAMA membaca: Perahu Layar 500 → 400 kg (dipotong SEKALI), Ascent 25 kg 2 unit @309.063, Ascent 5 kg 10 unit @61.812, kantong 25 kg 10 → 8 lembar, 5 kg 100 → 90; nilai kemasan jadi = total biaya persis',
-  stokKA['Perahu Layar'].sisaKg === 400 && stokMA['Ascent|25'].sisaUnit === 2 && stokMA['Ascent|25'].hppRataRataPerUnit === 309063 && stokMA['Ascent|5'].sisaUnit === 10 && stokMA['Ascent|5'].hppRataRataPerUnit === 61812 && stokBA['25kg_kembang'].sisaPcs === 8 && stokBA['5kg_kembangbmw'].sisaPcs === 90
-  && Math.abs(stokMA['Ascent|25'].nilaiProduksiTotal + stokMA['Ascent|5'].nilaiProduksiTotal - 1236250) < 1e-6, JSON.stringify([stokKA['Perahu Layar'], stokMA['Ascent|25'], stokMA['Ascent|5'], stokBA['25kg_kembang'].sisaPcs, stokBA['5kg_kembangbmw'].sisaPcs]));
+  stokKA['Perahu Layar'].sisaKg === 400 && stokMA['Ascent|25'].sisaUnit === 2 && stokMA['Ascent|25'].hppRataRataPerUnit === 309063 && stokMA['Ascent|5'].sisaUnit === 10 && stokMA['Ascent|5'].hppRataRataPerUnit === 61812 && stokBA['25kg_kembang'].sisaPcs === 8 && stokBA['5kg_kembang'].sisaPcs === 90
+  && Math.abs(stokMA['Ascent|25'].nilaiProduksiTotal + stokMA['Ascent|5'].nilaiProduksiTotal - 1236250) < 1e-6, JSON.stringify([stokKA['Perahu Layar'], stokMA['Ascent|25'], stokMA['Ascent|5'], stokBA['25kg_kembang'].sisaPcs, stokBA['5kg_kembang'].sisaPcs]));
 ok('adukan: kabar menyebut bahan → hasil, biaya & modal per unit, dan bahwa KAS tidak bergerak', /100 kg Perahu Layar → 2 × Ascent 25 kg \+ 10 × Ascent 5 kg/.test(SA.patch.kabar) && /Rp1\.236\.250/.test(SA.patch.kabar) && /Kas tidak bergerak/.test(SA.patch.kabar), SA.patch.kabar);
 // penjaga — urutan sama dengan simpanProduksi
 var dKosong = drafAdukanKosong(WA); dKosong.hasil = [{ nama: 'Ascent', ukuran: '5', unit: '1', kantongJenis: '', kantongJumlah: '' }];
 var dTanpaUnit = drafAdukanKosong(WA); dTanpaUnit.bahan = [{ merk: 'Perahu Layar', kg: '50' }]; dTanpaUnit.hasil = [{ nama: 'Ascent', ukuran: '5', unit: '', kantongJenis: '', kantongJumlah: '' }];
 var dLingkar = drafAdukanKosong(WA); dLingkar.bahan = []; dLingkar.bahanKemasan = [{ kunci: 'Ascent|25', unit: '1' }]; dLingkar.hasil = [{ nama: 'Ascent', ukuran: '25', unit: '1', kantongJenis: '', kantongJumlah: '' }];
 var dKurang = drafAdukanKosong(WA); dKurang.bahan = [{ merk: 'Perahu Layar', kg: '450' }]; dKurang.hasil = [{ nama: 'Ascent', ukuran: '25', unit: '18', kantongJenis: '', kantongJumlah: '' }];
-var dKantongKosong = drafAdukanKosong(WA); dKantongKosong.bahan = [{ merk: 'Perahu Layar', kg: '50' }]; dKantongKosong.hasil = [{ nama: 'Ascent', ukuran: '5', unit: '10', kantongJenis: '5kg_kembangbmw', kantongJumlah: '' }];
-var dKantongKurang = drafAdukanKosong(WA); dKantongKurang.bahan = [{ merk: 'Perahu Layar', kg: '400' }]; dKantongKurang.hasil = [{ nama: 'Ascent', ukuran: '5', unit: '80', kantongJenis: '5kg_kembangbmw', kantongJumlah: '95' }];
+var dKantongKosong = drafAdukanKosong(WA); dKantongKosong.bahan = [{ merk: 'Perahu Layar', kg: '50' }]; dKantongKosong.hasil = [{ nama: 'Ascent', ukuran: '5', unit: '10', kantongJenis: '5kg_kembang', kantongJumlah: '' }];
+var dKantongKurang = drafAdukanKosong(WA); dKantongKurang.bahan = [{ merk: 'Perahu Layar', kg: '400' }]; dKantongKurang.hasil = [{ nama: 'Ascent', ukuran: '5', unit: '80', kantongJenis: '5kg_kembang', kantongJumlah: '95' }];
 var dSusut = drafAdukanKosong(WA); dSusut.bahan = [{ merk: 'Perahu Layar', kg: '100' }]; dSusut.hasil = [{ nama: 'Ascent', ukuran: '5', unit: '16', kantongJenis: '', kantongJumlah: '' }];
-var dBongkar = drafAdukanKosong(WA); dBongkar.bahan = []; dBongkar.bahanKemasan = [{ kunci: 'Ascent|25', unit: '1' }]; dBongkar.hasil = [{ nama: 'Ascent', ukuran: '5', unit: '5', kantongJenis: '5kg_kembangbmw', kantongJumlah: '5' }];
+var dBongkar = drafAdukanKosong(WA); dBongkar.bahan = []; dBongkar.bahanKemasan = [{ kunci: 'Ascent|25', unit: '1' }]; dBongkar.hasil = [{ nama: 'Ascent', ukuran: '5', unit: '5', kantongJenis: '5kg_kembang', kantongJumlah: '5' }];
 ok('adukan: tanpa bahan DITOLAK; baris hasil tanpa unit DITOLAK menyebut barisnya; bahan = hasil (Ascent 25 kg dibongkar jadi Ascent 25 kg) DITOLAK sebagai lingkaran',
   /minimal satu bahan/.test(susunSimpanAdukan(dKosong, WA, {}).tolak || '') && /Baris 1 \(Ascent\): jumlah unitnya belum diisi/.test(susunSimpanAdukan(dTanpaUnit, WA, {}).tolak || '') && /BAHAN sekaligus jadi HASIL/.test(susunSimpanAdukan(dLingkar, WA, {}).tolak || '') && !susunSimpanAdukan(dLingkar, WA, { bahan: true, kemasan: true }).dokumen,
   JSON.stringify([susunSimpanAdukan(dKosong, WA, {}).tolak, susunSimpanAdukan(dTanpaUnit, WA, {}).tolak, susunSimpanAdukan(dLingkar, WA, {}).tolak]));
@@ -429,21 +429,21 @@ pulih();
 Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); }); Object.keys(KOTAK16).forEach(function (n) { pasok(n, KOTAK16[n]); }); ['aturanToko', 'koreksiHpp', 'pindahTempat', 'bukuHapus', 'retur'].forEach(function (n) { pasok(n, []); });
 var WK = { tanggal: '2026-09-19', jam: '10:30', kini: '2026-09-19T03:30:00.000Z', idUnik: function () { return 2000 + Math.floor(Math.random() * 1e6); } };
 var RK = rakKantong(); function rk(j) { return RK.daftar.find(function (x) { return x.jenis === j; }); }
-ok('ST4 rak: karung bekas TIDAK ada (hasil samping); 5 kg Kembang/BMW sisa 488 (300+200−12), harga terakhir 1.125 (batch 11 Agu, bukan rata-rata 1.080), cukup 569 hari', !rk('karungbekas') && rk('5kg_kembangbmw').sisa === 488 && rk('5kg_kembangbmw').hargaAkhir === 1125 && rk('5kg_kembangbmw').dariRata === false && Math.floor(rk('5kg_kembangbmw').hariCukup) === 569 && !rk('5kg_kembangbmw').awas, JSON.stringify(rk('5kg_kembangbmw')));
-ok('ST4 rak: 10 kg Putri Agri/Lele sisa 20, laju 60/14 → cukup 4 hari < 7 → AWAS, rakKet menyebutnya & setelan owner', rk('10kg_putriagri_lele').awas === true && Math.floor(rk('10kg_putriagri_lele').hariCukup) === 4 && RK.awas.length === 1 && /Putri Agri\/Lele 10 kg cukup 4 hari/.test(RK.rakKet) && /di bawah 7 hari/.test(RK.rakKet), RK.rakKet);
-ok('ST4 rak: jenis tanpa pemakaian 14 hari → "lajunya belum bisa dihitung" (bukan cukup 0 hari); tinggi tumpukan relatif ke terbanyak (paper bag 900 = 1)', /belum bisa dihitung/.test(rk('paperbag10l').teksHari) && rk('paperbag10l').hariCukup === null && rk('paperbag10l').tinggi === 1 && rk('10kg_putriagri_lele').tinggi < 0.1, JSON.stringify([rk('paperbag10l').teksHari, rk('10kg_putriagri_lele').tinggi]));
+ok('ST4 rak: karung bekas TIDAK ada (hasil samping); 5 kg Kembang sisa 488 (300+200−12), harga terakhir 1.125 (batch 11 Agu, bukan rata-rata 1.080), cukup 569 hari', !rk('karungbekas') && rk('5kg_kembang').sisa === 488 && rk('5kg_kembang').hargaAkhir === 1125 && rk('5kg_kembang').dariRata === false && Math.floor(rk('5kg_kembang').hariCukup) === 569 && !rk('5kg_kembang').awas, JSON.stringify(rk('5kg_kembang')));
+ok('ST4 rak: 10 kg Putri Agri sisa 20, laju 60/14 → cukup 4 hari < 7 → AWAS, rakKet menyebutnya & setelan owner', rk('10kg_putriagri').awas === true && Math.floor(rk('10kg_putriagri').hariCukup) === 4 && RK.awas.length === 1 && /Putri Agri 10 kg cukup 4 hari/.test(RK.rakKet) && /di bawah 7 hari/.test(RK.rakKet), RK.rakKet);
+ok('ST4 rak: jenis tanpa pemakaian 14 hari → "lajunya belum bisa dihitung" (bukan cukup 0 hari); tinggi tumpukan relatif ke terbanyak (paper bag 900 = 1)', /belum bisa dihitung/.test(rk('paperbag10l').teksHari) && rk('paperbag10l').hariCukup === null && rk('paperbag10l').tinggi === 1 && rk('10kg_putriagri').tinggi < 0.1, JSON.stringify([rk('paperbag10l').teksHari, rk('10kg_putriagri').tinggi]));
 ok('ST4 rak: harga dokumen lama = total ÷ jumlah (paper bag 355.500/900 = 395); jenis yang belum pernah dibeli & tanpa buku → belum ada harga', rk('paperbag10l').hargaAkhir === 395 && rk('5kg_putriagri').hargaAkhir === 0 && /belum ada harga/.test(rk('5kg_putriagri').teksHarga), JSON.stringify(rk('5kg_putriagri')));
-var HB = hitungBeli({ jenis: '5kg_kembangbmw', jumlah: '1000', harga: '1', toko: '' });
-ok('ST4 beli Rp1/lembar: pita "per LEMBAR?" (kejadian sistem lama); simpan ketukan pertama cuma bertanya (perluYakin murah)', HB.murah && /per LEMBAR\?/.test(HB.murahTeks) && susunSimpanBeli({ jenis: '5kg_kembangbmw', jumlah: '1000', harga: '1' }, WK, {}).perluYakin === 'murah', JSON.stringify(HB));
-HB = hitungBeli({ jenis: '5kg_kembangbmw', jumlah: '1.000', harga: '1.300' });
+var HB = hitungBeli({ jenis: '5kg_kembang', jumlah: '1000', harga: '1', toko: '' });
+ok('ST4 beli Rp1/lembar: pita "per LEMBAR?" (kejadian sistem lama); simpan ketukan pertama cuma bertanya (perluYakin murah)', HB.murah && /per LEMBAR\?/.test(HB.murahTeks) && susunSimpanBeli({ jenis: '5kg_kembang', jumlah: '1000', harga: '1' }, WK, {}).perluYakin === 'murah', JSON.stringify(HB));
+HB = hitungBeli({ jenis: '5kg_kembang', jumlah: '1.000', harga: '1.300' });
 ok('ST4 beli 1.300: murah gugur, lonjakan 1.125 → 1.300 = 16 % > 15 % ditandai; total 1.300.000', !HB.murah && HB.lonjak && HB.lonjakPct === 16 && HB.total === 1300000 && /naik 16 %/.test(HB.lonjakTeks), JSON.stringify(HB));
-var SB = susunSimpanBeli({ jenis: '5kg_kembangbmw', jumlah: '1.000', harga: '1.300', toko: 'Toko Kemasan Contoh' }, WK, {});
+var SB = susunSimpanBeli({ jenis: '5kg_kembang', jumlah: '1.000', harga: '1.300', toko: 'Toko Kemasan Contoh' }, WK, {});
 ok('ST4 lonjakan: ketukan pertama bertanya', SB.perluYakin === 'lonjak' && /[Kk]etuk sekali lagi/.test(SB.tolak), SB.tolak);
-SB = susunSimpanBeli({ jenis: '5kg_kembangbmw', jumlah: '1.000', harga: '1.300', toko: 'Toko Kemasan Contoh' }, WK, { lonjak: true });
+SB = susunSimpanBeli({ jenis: '5kg_kembang', jumlah: '1.000', harga: '1.300', toko: 'Toko Kemasan Contoh' }, WK, { lonjak: true });
 ok('ST4 tersimpan: dokumen stokBahanKemasan {tipe beli, jenis, jumlah 1000, hargaTotal 1.300.000, hargaPerPcs 1.300 (yang DIKETIK), tanggal, jam, toko} — bentuk simpanBeliBahanKemasan + kolom baru', SB.dokumen && SB.dokumen[0].koleksi === 'stokBahanKemasan' && SB.dokumen[0].data.tipe === 'beli' && SB.dokumen[0].data.jumlah === 1000 && SB.dokumen[0].data.hargaTotal === 1300000 && SB.dokumen[0].data.hargaPerPcs === 1300 && SB.dokumen[0].data.toko === 'Toko Kemasan Contoh' && /keluar dari laci/.test(SB.patch.kabar), JSON.stringify(SB));
 terapkanKeCache(SB.dokumen);
-ok('ST4 sesudah tersimpan: mesin membaca sisa 1.488; harga terakhir 1.300', hitungStokBahanKemasan()['5kg_kembangbmw'].sisaPcs === 1488 && rakKantong().daftar.find(function (x) { return x.jenis === '5kg_kembangbmw'; }).hargaAkhir === 1300, JSON.stringify(hitungStokBahanKemasan()['5kg_kembangbmw']));
-var RH = riwayatHarga().find(function (r) { return r.jenis === '5kg_kembangbmw'; });
+ok('ST4 sesudah tersimpan: mesin membaca sisa 1.488; harga terakhir 1.300', hitungStokBahanKemasan()['5kg_kembang'].sisaPcs === 1488 && rakKantong().daftar.find(function (x) { return x.jenis === '5kg_kembang'; }).hargaAkhir === 1300, JSON.stringify(hitungStokBahanKemasan()['5kg_kembang']));
+var RH = riwayatHarga().find(function (r) { return r.jenis === '5kg_kembang'; });
 ok('ST4 riwayat harga 5 kg: 3 kali beli 1.050 → 1.125 → 1.300; lonjakan ▲ 16 % di beli ketiga saja (1.050→1.125 = 7 %)', RH.baris.length === 3 && RH.baris.map(function (b) { return b.harga; }).join() === '1050,1125,1300' && RH.baris[2].lonjak === '▲ 16 %' && RH.baris[1].lonjak === '' && /3 kali beli/.test(RH.ket), JSON.stringify(RH));
 var idBaru = SB.dokumen[0].data.id; var BB = bukuBeli(10);
 ok('ST4 buku beli: batch baru paling atas dengan toko & harga; dokumen lama ditandai lama (harga = total ÷ jumlah)', BB[0].id === idBaru && BB[0].toko === 'Toko Kemasan Contoh' && BB[0].harga === 1300 && !BB[0].lama && BB.find(function (b) { return b.id === 1001; }).lama === true && BB.find(function (b) { return b.id === 1001; }).harga === 1050, JSON.stringify(BB.slice(0, 2)));
@@ -451,11 +451,11 @@ var HP1 = susunHapusBeli(1004, 'coba', WK, true);
 ok('ST4 hapus batch 10 kg (80 lembar) DITOLAK: sisa 20 − 80 < 0 → lembarnya sudah terpakai; arahannya Cocokkan', /sudah terpakai/.test(HP1.tolak) && /Cocokkan/.test(HP1.tolak), HP1.tolak);
 ok('ST4 hapus tanpa alasan ditolak; ketukan pertama bertanya (menyebut uang kembali ke laci); pemakaian tidak bisa dihapus dari sini', /butuh alasan/.test(susunHapusBeli(idBaru, '', WK, false).tolak) && susunHapusBeli(idBaru, 'salah jenis', WK, false).perluYakin === true && /kembali ke laci/.test(susunHapusBeli(idBaru, 'salah jenis', WK, false).tolak) && /hanya catatan BELI/.test(susunHapusBeli(1003, 'x', WK, true).tolak));
 var HP2 = susunHapusBeli(idBaru, 'salah jenis', WK, true);
-ok('ST4 hapus sah: hapus dokumen beli + jejak bukuHapus (koleksi stokBahanKemasan, ringkas, alasan)', HP2.hapus.length === 1 && HP2.hapus[0].id === idBaru && HP2.dokumen[0].koleksi === 'bukuHapus' && HP2.dokumen[0].data.koleksi === 'stokBahanKemasan' && /1\.000 lembar Kantong Kembang\/BMW 5 kg/.test(HP2.dokumen[0].data.ringkas) && HP2.dokumen[0].data.alasan === 'salah jenis', JSON.stringify(HP2));
+ok('ST4 hapus sah: hapus dokumen beli + jejak bukuHapus (koleksi stokBahanKemasan, ringkas, alasan)', HP2.hapus.length === 1 && HP2.hapus[0].id === idBaru && HP2.dokumen[0].koleksi === 'bukuHapus' && HP2.dokumen[0].data.koleksi === 'stokBahanKemasan' && /1\.000 lembar Kantong Kembang 5 kg/.test(HP2.dokumen[0].data.ringkas) && HP2.dokumen[0].data.alasan === 'salah jenis', JSON.stringify(HP2));
 terapkanKeCache([{ koleksi: 'stokBahanKemasan', hapus: idBaru }]);
-ok('ST4 sesudah dihapus: sisa kembali 488, harga terakhir kembali 1.125 (turunan dokumen, bukan disimpan)', hitungStokBahanKemasan()['5kg_kembangbmw'].sisaPcs === 488 && rakKantong().daftar.find(function (x) { return x.jenis === '5kg_kembangbmw'; }).hargaAkhir === 1125);
+ok('ST4 sesudah dihapus: sisa kembali 488, harga terakhir kembali 1.125 (turunan dokumen, bukan disimpan)', hitungStokBahanKemasan()['5kg_kembang'].sisaPcs === 488 && rakKantong().daftar.find(function (x) { return x.jenis === '5kg_kembang'; }).hargaAkhir === 1125);
 ok('ST4 atur: lonjakan 30 % → 16 % tidak ditanya; stok aman 3 hari → 10 kg (4,7 hari) tidak lagi awas; lantai 2.000 → 1.300 ditanya murah; nilai di luar batas ditolak', (function () { var A = susunAturKantong({ lonjakan: '30', hariAman: '3', lantaiHarga: '2000' }, WK); if (A.tolak) return false; terapkanKeCache(A.dokumen);
-  var r = !hitungBeli({ jenis: '5kg_kembangbmw', jumlah: '10', harga: '1300' }).lonjak && rakKantong().daftar.find(function (x) { return x.jenis === '10kg_putriagri_lele'; }).awas === false && hitungBeli({ jenis: '5kg_kembangbmw', jumlah: '10', harga: '1300' }).murah === true && /0–100/.test(susunAturKantong({ lonjakan: '150' }, WK).tolak) && /0–365/.test(susunAturKantong({ hariAman: '700' }, WK).tolak);
+  var r = !hitungBeli({ jenis: '5kg_kembang', jumlah: '10', harga: '1300' }).lonjak && rakKantong().daftar.find(function (x) { return x.jenis === '10kg_putriagri'; }).awas === false && hitungBeli({ jenis: '5kg_kembang', jumlah: '10', harga: '1300' }).murah === true && /0–100/.test(susunAturKantong({ lonjakan: '150' }, WK).tolak) && /0–365/.test(susunAturKantong({ hariAman: '700' }, WK).tolak);
   terapkanKeCache([{ koleksi: 'aturanToko', hapus: 'kantong' }]); return r; })());
 
 // ================= PUTARAN 16: TEMPAT SIMPAN (ST5) =================
@@ -525,6 +525,44 @@ ok('ST6 sesudah massal: mesin membaca IR64 Apex 14.500 (kini RUGI 500/kg → rin
 ok('ST6 atur: batas lonjakan 60 % → 30.000 tidak ditanya; lantai 20.000 → 14.000 ditolak', (function () { var A = susunAturHpp({ batasLonjak: '60', lantaiHpp: '' }, WK); terapkanKeCache(A.dokumen); var r1 = nilaiKoreksi('Angsa', '30000').lonjak === ''; var B = susunAturHpp({ lantaiHpp: '20000' }, WK); terapkanKeCache(B.dokumen); var r2 = /di bawah lantai Rp20\.000/.test(nilaiKoreksi('Angsa', '14000').tolak); terapkanKeCache([{ koleksi: 'aturanToko', hapus: 'hpp' }]); return r1 && r2; })());
 pasok('batchMasuk', KOTAK.batchMasuk); cacheMentah('koreksiHpp').slice().forEach(function (x) { terapkanKeCache([{ koleksi: 'koreksiHpp', hapus: x.id }]); });
 
+// ================= owner 11 Okt 2026: buku kantong PER MEREK — gabungan lama dipecah lewat HITUNG FISIK =================
+(function () {
+  var bk0 = cacheMentah('stokBahanKemasan').slice(); var hw0 = cacheMentah('hargaWadah').slice();
+  pasok('stokBahanKemasan', [
+    { id: 'g1', tipe: 'beli', jenis: '5kg_kembangbmw', jumlah: 200, hargaTotal: 225000, tanggal: '2026-08-20' },
+    { id: 'g2', tipe: 'pakai', jenis: '5kg_kembangbmw', jumlah: 56, hargaTotal: 0, tanggal: '2026-09-15' },
+    { id: 'g3', tipe: 'beli', jenis: '20kg_putriagri_lele_persik', jumlah: 50, hargaTotal: 190000, tanggal: '2026-08-20' },
+    { id: 'g4', tipe: 'beli', jenis: '10kg_kembangbmw', jumlah: 20, hargaTotal: 48000, tanggal: '2026-08-20' }, { id: 'g5', tipe: 'pakai', jenis: '10kg_kembangbmw', jumlah: 20, hargaTotal: 0, tanggal: '2026-09-01' },
+    { id: 'g6', tipe: 'beli', jenis: '5kg_bmw', jumlah: 10, hargaTotal: 15000, tanggal: '2026-10-01' }]);
+  pasok('hargaWadah', [{ id: '5kg_kembangbmw', jenis: '5kg_kembangbmw', harga: 2000, tanggal: '2026-09-10' }]);
+  var WP = { tanggal: '2026-10-11', jam: '09:00', kini: '2026-10-11T02:00:00.000Z', idUnik: (function () { var n = 9000; return function () { n += 1; return n; }; })() };
+  var PKd = daftarPecahKantong(); var g5 = PKd.find(function (g) { return g.jenis === '5kg_kembangbmw'; });
+  ok('PK: daftar pecah = gabungan yang masih bersisa (5 kg Kembang/BMW 144 @1.125, dijual 2.000; 20 kg Putri Agri/Lele/Persik 50); 10 kg Kembang/BMW yang sudah 0 tidak ikut', PKd.length === 2 && g5 && g5.sisa === 144 && g5.modal === 1125 && g5.hargaJual === 2000 && g5.merek.map(function (m) { return m.jenis; }).join() === '5kg_kembang,5kg_bmw' && !PKd.some(function (g) { return g.jenis === '10kg_kembangbmw'; }), JSON.stringify(PKd));
+  var RKp = rakKantong();
+  ok('PK: rak = 13 kantong per merek + gabungan yang masih bersisa (2); gabungan bersisa 0 tidak tampil; daftar beli (jenisKantong) tanpa gabungan', RKp.daftar.filter(function (d) { return d.koleksi === 'stokBahanKemasan' && !d.lama; }).length === 13 && RKp.daftar.filter(function (d) { return d.lama; }).map(function (d) { return d.jenis; }).sort().join() === '20kg_putriagri_lele_persik,5kg_kembangbmw' && !jenisKantong().some(function (d) { return d.lama; }), JSON.stringify(RKp.daftar.map(function (d) { return d.jenis; })));
+  ok('PK: beli kantong gabungan lama DITOLAK (dibeli per merek)', /sudah pensiun/.test(susunSimpanBeli({ jenis: '5kg_kembangbmw', jumlah: '10', harga: '1.125' }, WP, { murah: true, lonjak: true }).tolak));
+  ok('PK: adukan 5 kg menawarkan Kembang · BMW · Putri Agri + gabungan yang masih bersisa (ditandai lama); 10 kg tanpa gabungan (sisanya 0)', kantongUntuk(5).map(function (k) { return k.jenis + (k.lama ? '*' : ''); }).join() === '5kg_kembang,5kg_bmw,5kg_putriagri,5kg_kembangbmw*' && !kantongUntuk(10).some(function (k) { return k.lama; }), JSON.stringify(kantongUntuk(5)));
+  ok('PK: adukan memakai gabungan bersisa tidak dianggap "jenis kantong tidak dikenal"', hitungAdukan({ tanggal: WP.tanggal, bahan: [], bahanKemasan: [], hasil: [{ nama: 'Kembang', ukuran: '5', unit: '2', kantongJenis: '5kg_kembangbmw', kantongJumlah: '2' }], upah: '' }).hasil[0].masalah === '');
+  ok('PK: hitungan belum lengkap (BMW kosong) DITOLAK — kosong bukan 0', /Hitung semua merek dulu/.test(susunPecahKantong('5kg_kembangbmw', { '5kg_kembang': '80' }, WP).tolak), susunPecahKantong('5kg_kembangbmw', { '5kg_kembang': '80' }, WP).tolak);
+  ok('PK: pecahan lembar (1,5) DITOLAK', /bilangan bulat/.test(susunPecahKantong('5kg_kembangbmw', { '5kg_kembang': '80', '5kg_bmw': '1,5' }, WP).tolak));
+  var isi = { '5kg_kembang': '80', '5kg_bmw': '60' }; var P1 = susunPecahKantong('5kg_kembangbmw', isi, WP);
+  ok('PK: dihitung 140 dari buku 144 → ketukan pertama cuma bertanya (selisih −4 lembar, laba turun Rp4.500)', P1.perluYakin === true && !P1.dokumen && /selisih −4 lembar/.test(P1.tolak) && /laba bulan ini turun Rp4\.500/.test(P1.tolak), P1.tolak);
+  var P2 = susunPecahKantong('5kg_kembangbmw', isi, WP, true); var D = P2.dokumen || [];
+  var op = D.find(function (d) { return d.data.tipe === 'opname'; }); var pk = D.find(function (d) { return d.data.tipe === 'pakai'; }); var sa = D.filter(function (d) { return d.data.tipe === 'saldoAwal'; }); var hw = D.filter(function (d) { return d.koleksi === 'hargaWadah'; });
+  ok('PK: selisih dicatat seperti Cocokkan: opname di gabungan {jumlah −4, pcsSistem 144, pcsFisik 140, nilaiRp −4.500, hargaPerPcsSaatOpname 1.125}', op && op.koleksi === 'stokBahanKemasan' && op.data.jenis === '5kg_kembangbmw' && op.data.jumlah === -4 && op.data.pcsSistem === 144 && op.data.pcsFisik === 140 && op.data.nilaiRp === -4500 && op.data.hargaPerPcsSaatOpname === 1125 && op.data.hargaTotal === 0, JSON.stringify(op));
+  ok('PK: 140 lembar keluar dari gabungan sebagai pakai {pindahMerek, catatan menyebut tiap merek}, hargaTotal 0', pk && pk.data.jenis === '5kg_kembangbmw' && pk.data.jumlah === 140 && pk.data.pindahMerek === true && pk.data.hargaTotal === 0 && /Kembang 80/.test(pk.data.catatan) && /BMW 60/.test(pk.data.catatan), JSON.stringify(pk));
+  ok('PK: tiap merek dapat saldo awal bernilai modal gabungan: Kembang 80 × 1.125 = 90.000, BMW 60 × 1.125 = 67.500 {pindahMerek, dariJenis}', sa.length === 2 && sa[0].data.jenis === '5kg_kembang' && sa[0].data.jumlah === 80 && sa[0].data.hargaTotal === 90000 && sa[1].data.jenis === '5kg_bmw' && sa[1].data.hargaTotal === 67500 && sa.every(function (d) { return d.data.pindahMerek === true && d.data.dariJenis === '5kg_kembangbmw' && d.data.hargaPerPcs === 1125; }), JSON.stringify(sa));
+  ok('PK: TIDAK ada dokumen tipe beli (uang tidak bergerak); harga jual 2.000 disalin ke Kembang & BMW yang belum punya harga', !D.some(function (d) { return d.data.tipe === 'beli'; }) && hw.length === 2 && hw.every(function (d) { return d.data.harga === 2000 && d.data.dariJenis === '5kg_kembangbmw'; }), JSON.stringify(hw));
+  var arus0 = JSON.stringify(ambilBahanKemasan().filter(function (b) { return b.tipe === 'beli'; }).map(function (b) { return b.id; }));
+  terapkanKeCache(D); var st = hitungStokBahanKemasan();
+  ok('PK: MESIN BEKU membaca: gabungan 0; Kembang 80 @1.125; BMW 10 (beli 1.500) + 60 = 70 @ rata-rata 1.179', st['5kg_kembangbmw'].sisaPcs === 0 && st['5kg_kembang'].sisaPcs === 80 && st['5kg_kembang'].hppPerPcs === 1125 && st['5kg_bmw'].sisaPcs === 70 && st['5kg_bmw'].hppPerPcs === 1179, JSON.stringify([st['5kg_kembangbmw'], st['5kg_kembang'], st['5kg_bmw']]));
+  ok('PK: catatan beli (pembaca uang) tidak bertambah', JSON.stringify(ambilBahanKemasan().filter(function (b) { return b.tipe === 'beli'; }).map(function (b) { return b.id; })) === arus0);
+  ok('PK: sesudahnya gabungan 5 kg hilang dari daftar pecah, rak, dan pilihan adukan; harga jual Kembang & BMW 5 kg = 2.000', !daftarPecahKantong().some(function (g) { return g.jenis === '5kg_kembangbmw'; }) && !rakKantong().daftar.some(function (d) { return d.jenis === '5kg_kembangbmw'; }) && !kantongUntuk(5).some(function (k) { return k.lama; }) && hargaJualWadah()['5kg_kembang'].harga === 2000 && hargaJualWadah()['5kg_bmw'].harga === 2000);
+  var P3 = susunPecahKantong('20kg_putriagri_lele_persik', { '20kg_putriagri': '20', '20kg_lele': '20', '20kg_persik': '10' }, WP);
+  ok('PK: hitungan COCOK (50 = buku 50) → langsung tersimpan tanpa ketukan kedua, tanpa opname; harga jual tidak disalin (gabungannya tidak dijual)', !P3.tolak && !P3.dokumen.some(function (d) { return d.data.tipe === 'opname'; }) && P3.dokumen.filter(function (d) { return d.data.tipe === 'saldoAwal'; }).length === 3 && !P3.dokumen.some(function (d) { return d.koleksi === 'hargaWadah'; }), JSON.stringify(P3.tolak || P3.dokumen));
+  pasok('stokBahanKemasan', bk0); pasok('hargaWadah', hw0);
+})();
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 
@@ -549,7 +587,7 @@ var bY = barangCocok('tumpukan').filter(function (b) { return b.sistem > 0; })[0
 var kenalPr = {}; (CAD.produksiKemasan || []).forEach(function (p) { Object.keys(p).forEach(function (k) { kenalPr[k] = 1; }); }); kenalPr.jam = 1; kenalPr.catatan = 1;
 var kenalKt = {}; (CAD.stokBahanKemasan || []).forEach(function (b) { Object.keys(b).forEach(function (k) { kenalKt[k] = 1; }); });
 // ST4: dokumen beli kantong sistem baru = bentuk lama + kolom baru yang disebut (hargaPerPcs, jam, toko)
-var SK4 = susunSimpanBeli({ jenis: '5kg_kembangbmw', jumlah: '10', harga: '1.125', toko: 'X' }, WX, { murah: true, lonjak: true });
+var SK4 = susunSimpanBeli({ jenis: '5kg_kembang', jumlah: '10', harga: '1.125', toko: 'X' }, WX, { murah: true, lonjak: true });
 if (SK4.dokumen) Object.keys(SK4.dokumen[0].data).forEach(function (k) { if (!kenalKt[k] && ['hargaPerPcs', 'jam', 'toko'].indexOf(k) < 0) asingC.push('stokBahanKemasan.beli.' + k); }); else asingC.push('beli kantong ditolak: ' + SK4.tolak);
 // ST6: rumus replika Σnilai/Σkg = mesin untuk SEMUA nama di data toko
 var replikaBeda = Object.keys(hitungStokKarungPerMerk()).filter(function (m) { return Math.abs(totalMasuk(m).rata - hitungStokKarungPerMerk()[m].hppTerakhirPerKg) > 1e-6; });
@@ -766,6 +804,18 @@ if __name__ == '__main__':
     sk30 = open(os.path.join(AKAR, 'baru/js/layar/stok.js'), encoding='utf-8').read()
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- owner 11 Okt 2026: buku kantong per merek, pecah gabungan lewat hitung fisik ----
+            'pecah: hitungan kosong dianggap 0': js.replace("return t === '' ? null : ktAngka(t); };", "return ktAngka(t); };"),
+            'pecah: selisih hitungan tanpa ketukan kedua': js.replace("if (H.selisih !== 0 && !yakin) return", "if (false) return"),
+            'pecah: selisih hitungan tidak dicatat': js.replace("if (H.selisih !== 0) dokumen.push(", "if (false) dokumen.push("),
+            'pecah: modal gabungan tidak disalin ke merek': js.replace("hargaTotal: Math.round(b.n * G.modal), hargaPerPcs", "hargaTotal: 0, hargaPerPcs"),
+            'pecah: pindahan ditulis sebagai beli (uang keluar dua kali)': js.replace("tipe: 'saldoAwal', jenis: b.jenis", "tipe: 'beli', jenis: b.jenis"),
+            'pecah: gabungan tidak dikosongkan': js.replace("if (H.total > 0) dokumen.push({ koleksi: 'stokBahanKemasan', data: { id: w.idUnik(), tipe: 'pakai', jenis: L,", "if (false) dokumen.push({ koleksi: 'stokBahanKemasan', data: { id: w.idUnik(), tipe: 'pakai', jenis: L,"),
+            'pecah: harga jual gabungan tidak disalin': js.replace("const salinHarga = G.hargaJual > 0 ?", "const salinHarga = false ?"),
+            'beli kantong gabungan lama lolos': js.replace("if (h.d.lama) return { tolak:", "if (false) return { tolak:"),
+            'rak menyembunyikan gabungan yang masih bersisa': js.replace("const daftar = jenisKantong().concat(lamaBersisa).map(", "const daftar = jenisKantong().map("),
+            'adukan tidak menawarkan gabungan yang masih bersisa': js.replace("JENIS_BAHAN_KEMASAN.concat(Object.keys(KANTONG_GABUNGAN_LAMA).filter((j) => ((st[j] || {}).sisaPcs || 0) > 0))", "JENIS_BAHAN_KEMASAN.concat([])"),
+            'adukan menolak gabungan bersisa sebagai tidak dikenal': js.replace("&& !kantongLama(kantongJenis) ? 'jenis kantongnya tidak dikenal'", "? 'jenis kantongnya tidak dikenal'"),
             'tinjauan (no. 11): nama sistem diterima sebagai pemasok di Barang masuk': js.replace("if (namaSistemPemasok(pemasok)) return { tolak:", "if (false) return { tolak:"),
             # ---- putaran 21
             'kembalikan karung tanpa ketukan kedua': js.replace("if (!yakin) return { tolak: 'Ketuk sekali lagi untuk mengembalikan karung '", "if (false) return { tolak: 'Ketuk sekali lagi untuk mengembalikan karung '"),
@@ -850,7 +900,7 @@ if __name__ == '__main__':
             'kantong: harga per lembar diambil dari total ÷ jumlah (bukan yang diketik)': js.replace("const hargaDokBeli = (b) => (Number(b.hargaPerPcs) > 0 ? Math.round(Number(b.hargaPerPcs)) :", "const hargaDokBeli = (b) => (false ?"),
             'kantong: harga terakhir memakai rata-rata buku (bukan beli terbaru)': js.replace("const beli = ktBeliJenis(jenis); if (beli.length) return { harga: hargaDokBeli(beli[0]), sejak: beli[0].tanggal || '', dariRata: false, nBeli: beli.length };", "const beli = ktBeliJenis(jenis);"),
             'kantong: batch yang lembarnya sudah terpakai bisa dihapus (buku minus)': js.replace("if (sisaSesudah < 0) return { tolak:", "if (false) return { tolak:"),
-            'kantong: karung bekas (hasil samping) ikut dibeli': js.replace("function jenisKantong() { return daftarJenisWadah().filter((d) => !d.hasilSamping); }", "function jenisKantong() { return daftarJenisWadah(); }"),
+            'kantong: karung bekas (hasil samping) ikut dibeli': js.replace("function jenisKantong() { return daftarJenisWadah().filter((d) => !d.hasilSamping && !d.lama); }", "function jenisKantong() { return daftarJenisWadah().filter((d) => !d.lama); }"),
             'kantong: stok aman setelan diabaikan': js.replace("awas: hariCukup !== null && hariCukup < atur.hariAman,", "awas: hariCukup !== null && hariCukup < 7,"),
             'kantong: jenis tanpa pemakaian dianggap cukup 0 hari': js.replace("const hariCukup = l > 0 ? sisa / l : null;", "const hariCukup = l > 0 ? sisa / l : 0;"),
             'tempat: pindah ke tempat yang sama tetap dicatat': js.replace("if ((brg.tempat || '') === ke) return { tolak: brg.nama + ' memang sudah di '", "if (false) return { tolak: brg.nama + ' memang sudah di '"),
