@@ -2612,3 +2612,32 @@ harga tingkat = **eceran − potongan Rp per kg** (satu angka per tingkat, ikut 
 - Uji: `alat-uji/uji_harga_tingkat.py` 66 + statis 8 (+ kontrol 23); `periksa_rules.py` (v8 = v7 + tiga ubahan persis, model 15 kasus ★H, beda v7 tepat
   ★H1–★H3; kontrol 128); `uji_rules_emulator.py` bagian V8 (kasus ★H di emulator atas v8 & v7 + 6 kontrol — workflow *Uji rules di emulator*).
 - **Belum**: laporan per pelanggan / per tipe (B5), faktur bertempo & batas kredit (B2), saran grosir per jumlah (ditunda owner).
+
+## Paket perbaikan owner 17 Nov 2026 — 7 butir (cabang `paket/perbaikan-owner-17-nov`)
+Catatan owner "Sistem yang perlu diperbaiki" (butir susut-vs-laba dicabut owner). Keputusan ditanya di depan: berat **1 liter** yang diatur (takar 1,8 kg
+sudah bisa diatur), logo **dibuatkan contoh lalu dipilih owner**, batal **semua nota dari Riwayat**, Dilayani **dipilih saat jual + bisa diubah**.
+Mesin beku tidak disentuh (`beku2.py --sidik` 91/91), rules tidak berubah, kasir darurat HP staf tidak disentuh.
+- **1 & 6 · Dilayani** — kolom baru `dilayaniOleh` di tiap baris nota (`oleh` tetap = yang mencatat, jejak). Mode owner: pilihan "Dilayani" di lembar Bayar
+  (karyawan aktif Uang › Orang & upah + orang di tablet; pilihan terakhir diingat per perangkat `miqbal_baru_dilayani_v1`); ubah sesudahnya dari lembar Struk
+  (`susunUbahDilayani`: semua baris nota, bulan terkunci ditolak). Struk & Riwayat memakai `dilayaniOleh || oleh` (`stPelayan`).
+- **2 · Batal nota dari Riwayat** (`layar/batal-nota-logika.js`, owner): tautan disusun ulang DARI DATA (pelunasan saat beli, pesanan, retur tukar yang lahir
+  bersama) lalu `susunPembatalan` yang sama dengan "batalkan nota barusan". Karcis darurat → `susunBatalKarcis`; rincian → tarik balik. Ditolak: bulan terkunci,
+  barang sudah diretur, bon yang sudah dibayar (sisa akan minus), retur bon. **Hari yang sudah ditutup**: selisih laci penutupan PERTAMA yang jamnya ≥ jam nota
+  (riwayat tutup ulang ikut dicari) naik sebesar uang tunai nota, laci seharusnya turun (`koreksiBatalNota` = jejak) — tanpa ini laba kena dua kali. Titik kas
+  tidak berubah. QRIS: rekening hitungan sistem disebut, tidak dihitung ulang.
+- **3 · Struk** — kepala: kop · `Nota No.` (6 angka terakhir kunci nota, bisa dicari di Riwayat) · hari-tanggal-jam · `Pembeli:` · `Dilayani:`; `Subtotal` sebelum
+  potongan. Setelan struk `sertakan.logo` (bawaan nyala): printer tablet memakai `baru/logo-struk.svg` (ikut salinan aplikasi, `cap_sw_baru.py` kini memuat
+  `baru/*.svg`) bila perangkat tidak punya logo sendiri. Lembar Struk menampilkan pratinjau GAMBAR persis hasil printer tablet (teks sampai gambarnya siap). WA &
+  dialog cetak tetap teks yang sama isinya. Berkas logo menyusul pilihan owner — tanpa berkas = tanpa logo.
+- **4 · Amplop laba** — Pindah uang: amplop tempat keempat (dari & ke), ditulis `amplopLaba` `ambil {ke}` / `setor {dari}` (mesin `saldoAmplop` & blok Amplop
+  Laba tetap benar), tanpa biaya admin, bisa diurungkan. Uang keluar (termasuk ambil pribadi), kasbon owner, kasbon karyawan bisa bersumber amplop: catatan
+  aslinya dari laci + `amplopLaba` ambil amplop → laci (`untuk` = id catatannya) satu kiriman (`lewatAmplop`). Kertas laci tutup hari hanya memuat gerakan amplop
+  yang lawannya laci (`ugAmplopLawan`).
+- **5 · Berat 1 liter** — modul daun `layar/kg-liter-logika.js` (`kgPerLiter`): angka owner per merek → angka bawaan mesin per merek → bawaan owner → 0,82.
+  Setelan `kgPerLiter {bawaan, merek}` di dokumen atur wadah (Stok › Wadah literan › Atur › Berat 1 liter). Batas 0,5–1,2 kg; ≥ 1,5 ditolak "itu satu takar".
+  Hanya jualan sesudah diubah. `bundel_baru.lengkapi` menambah modul ini otomatis untuk alat uji.
+- **7 · Rinci karcis: kekurangan jadi bon** — karcis Tunai/QRIS dengan barang > nominal: pil "sisa RpX jadi bon" (nama wajib) → baris Kredit + satu
+  `piutangMutasi bayar` sebesar nominal karcis (cara, tanggal & jam karcis, `notaTrxId` = grupNota). Laci/QRIS hari itu tetap; omzet = total barang; bon naik
+  selisihnya. Tarik balik mencabut pelunasannya; struk menemukannya lewat grupNota.
+- Uji: `uji_jual_baru.py` 432 (+ KB/DL/BN/KL/ST, kontrol 226), `uji_uang_baru.py` 177 (+ AM, kontrol 76), `peta_akses.py --kiriman`, `uji_akses_baru.py`,
+  `uji_isian_lokal.py`; laporan semua bulan data toko BYTE-SAMA dengan `origin/main` (`asap_global`). Dilihat di Browser pane `?cadangan=` (simulasi).
