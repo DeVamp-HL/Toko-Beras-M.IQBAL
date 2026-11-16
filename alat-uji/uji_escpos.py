@@ -11,6 +11,7 @@ Membuktikan:
   · QR: panjang data di perintah simpan (pL pH) = panjang data + 3
   · struk contoh: baris TOTAL berakhiran rupiahnya
   · gaya gambar: hitam-putih (ambang & dither, transparan = putih), raster GS v 0 per pita, bit kiri = MSB, base64 untuk aplikasi
+  · emoji dibuang (ZWJ, varian, warna kulit, bendera ikut) tanpa menyentuh spasi, ©®™ panah & aksen; pita TOTAL dijarangkan 3/4 titik
 
     python3 alat-uji/uji_escpos.py            → 0 = lulus, 1 = gagal
     python3 alat-uji/uji_escpos.py --kontrol  → tiap salinan rusak WAJIB gagal; 0 = semua tertangkap, 3 = ada yang lolos
@@ -32,6 +33,27 @@ cek('ascii: kali jadi x', epAscii('2 × 3') === '2 x 3', epAscii('2 × 3'));
 cek('ascii: minus rupiah jadi -', epAscii('−Rp500') === '-Rp500', epAscii('−Rp500'));
 cek('ascii: aksen dilepas', epAscii('café') === 'cafe', epAscii('café'));
 cek('ascii: emoji dibuang', epAscii('Terima kasih 🙏') === 'Terima kasih', JSON.stringify(epAscii('Terima kasih 🙏')));
+cek('ascii: huruf di luar BMP (bukan emoji) tetap dibuang', epAscii('𝐀bc') === 'bc', JSON.stringify(epAscii('𝐀bc')));
+cek('ascii: spasi baris rata tidak diubah', epAscii('Beras       Rp10.000') === 'Beras       Rp10.000');
+
+// ---- buang emoji (gaya gambar & teks; poles sesudah uji cetak 16 Nov) ----
+const te = (s, harap) => cek('tanpa emoji: ' + JSON.stringify(s), epTanpaEmoji(s) === harap, JSON.stringify(epTanpaEmoji(s)));
+te('Terima kasih 🙏', 'Terima kasih ');
+te('Bu Ani 👩‍🌾 langganan', 'Bu Ani  langganan');
+te('  2 kemasan ☕️ × 3', '  2 kemasan  × 3');
+te('Bendera 🇮🇩 ok 👍🏽', 'Bendera  ok ');
+te('jam ⏰ ⭐ ✅', 'jam   ');
+te('© ® ™ → ← é ñ · × − Rp1.000', '© ® ™ → ← é ñ · × − Rp1.000');
+te(null, '');
+
+// ---- pita TOTAL dijarangkan 3/4 titik ----
+const blok = new Uint8Array(4 * 6).fill(1); epRenggang(blok, 4, 1, 5);
+const jml = (u, a, b) => { let n = 0; for (let i = a; i < b; i++) n += u[i]; return n; };
+cek('jarang: 3 dari 4 titik hitam di dalam pita', jml(blok, 4, 20) === 12, jml(blok, 4, 20));
+cek('jarang: baris di luar pita tidak disentuh', jml(blok, 0, 4) === 4 && jml(blok, 20, 24) === 4, [jml(blok, 0, 4), jml(blok, 20, 24)]);
+cek('jarang: pola 2×2 (baris pertama pita utuh, berikutnya selang-seling)', Array.prototype.slice.call(blok, 4, 12).join('') === '11111010', Array.prototype.slice.call(blok, 4, 12).join(''));
+const putih = new Uint8Array(4 * 4); epRenggang(putih, 4, 0, 4); cek('jarang: titik putih tetap putih', jml(putih, 0, 16) === 0);
+const lewatBawah = new Uint8Array(4 * 2).fill(1); epRenggang(lewatBawah, 4, 0, 99); cek('jarang: batas bawah di luar gambar aman', jml(lewatBawah, 0, 8) === 6, jml(lewatBawah, 0, 8));
 
 [80, 58].forEach((k) => {
   const L = EP_KOLOM[k];
@@ -129,6 +151,12 @@ MUTASI = [
     ('raster: tanpa pita (satu perintah raksasa)', "const PITA = 240;", "const PITA = 100000;"),
     ('dither dimatikan diam-diam', "if (!o.dither) {", "if (true) {"),
     ('transparan dianggap hitam', "abu[i] = 255 - a * (255 - l);", "abu[i] = a * l;"),
+    ('emoji tidak dibuang di gaya gambar', ".replace(EMOJI, '')", ""),
+    ('penyambung ZWJ tertinggal', "\\u{200D}", ""),
+    ('pemilih varian tertinggal', "\\u{FE00}-\\u{FE0F}", ""),
+    ('pita tidak dijarangkan', "for (let x = 1; x < lebar; x += 2) bit[y * lebar + x] = 0;", ""),
+    ('pita dijarangkan di semua baris', "if ((y - ya) % 2 === 0) continue;", ""),
+    ('jarangkan meluber ke luar pita', "for (let y = ya; y < yb; y++)", "for (let y = 0; y < bit.length / lebar; y++)"),
 ]
 
 

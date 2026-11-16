@@ -2501,3 +2501,17 @@ keluar rapi. Owner: *"maunya tanpa pihak ketiga … jauh lebih bagus, jauh lebih
 - **Jual › Struk › Cetak**: printer USB bila ada; gagal → kabar + dialog cetak lama (RawBT tetap bisa jadi cadangan). `strukKeluar.ket` menyebut
   jalur & gaya. Tombol "Printer tablet ini" di lembar Struk.
 - Uji: `uji_escpos.py` 33 (+ kontrol 11). Belum: mode tablet & PIN, offline saat aplikasi dibuka tanpa internet (belum ada service worker /baru/).
+
+## Putaran T1 · langkah 2b — poles struk gaya gambar (16 Nov 2026)
+
+Uji owner di CPad: APK 1.4 mencetak lewat plugin sendiri (tanpa RawBT) — kop, bungkus nama panjang, pita TOTAL, QR, potong: keluar rapi.
+Tiga cacat kecil di foto struk, dirapikan atas persetujuan owner:
+
+- **Emoji jadi bintik acak** (🙏 di baris contoh): `epTanpaEmoji()` (escpos.js) membuang emoji beserta ZWJ, pemilih varian, warna kulit, bendera —
+  dipakai gaya gambar (struk-kanvas.js) dan gaya teks (`epAscii`). Spasi tidak diubah (baris teks rata & data QR utuh); ©®™, panah, aksen tetap.
+- **Pita TOTAL bergaris putih tipis** (blok hitam penuh memberatkan kepala printer panas): pita 56 → 48 titik dan `epRenggang()` menjarangkan
+  titik hitam pita jadi 3/4 (pola 2×2). Tulisan putih di pita tidak disentuh. Perlu dibuktikan di cetak berikutnya.
+- **Huruf rincian tipis**: isi 400 → 500, angka kanan 500 → 600, tebal 600 → 700, ambang hitam-putih 150 → 160.
+- **Logo tidak bisa dipasang** (ditemukan saat poles): di `siapkanLogo()` deklarasi `lebar/tinggi` tertelan komentar → ReferenceError.
+- Tampilan struk ikut terbit lewat GitHub Pages — **tidak perlu pasang ulang APK**.
+- Uji: `uji_escpos.py` 47 (+ kontrol 17).

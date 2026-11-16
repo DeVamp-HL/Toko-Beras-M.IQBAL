@@ -12,9 +12,16 @@ const ESC = 0x1b, GS = 0x1d, LF = 0x0a;
 // tanda yang sering muncul di struk toko → padanan ASCII; sisanya: huruf beraksen dilepas aksennya, yang tidak dikenal dibuang
 const PADANAN = { '·': '-', '•': '-', '×': 'x', '−': '-', '–': '-', '—': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '…': '...', '→': '->',
   '←': '<-', '±': '+/-', '½': '1/2', '¼': '1/4', '¾': '3/4', '\u00a0': ' ', '\u202f': ' ', '°': ' derajat' };
+// Emoji & simbol bergambar (termasuk penyambung ZWJ, pemilih varian, warna kulit, bendera). Gaya gambar: emoji berwarna jadi bintik acak
+// sesudah dijadikan hitam-putih (uji cetak owner 16 Nov); gaya teks: printer tidak punya hurufnya. Panah, ©, ®, ™, huruf beraksen TIDAK kena.
+const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu;
+/** Buang emoji saja — spasi tidak diubah (baris teks yang sudah diratakan & data QR tetap utuh; pembungkus kata merapatkan spasi sendiri). */
+export function epTanpaEmoji(s) {
+  return String(s === undefined || s === null ? '' : s).replace(EMOJI, '');
+}
 /** Teks → hanya ASCII cetak (0x20–0x7E). */
 export function epAscii(s) {
-  const t = String(s === undefined || s === null ? '' : s);
+  const t = epTanpaEmoji(s);
   let out = '';
   for (let i = 0; i < t.length; i++) {
     const c = t.charAt(i); const k = c.charCodeAt(0);
@@ -132,6 +139,20 @@ export function epHitamPutih(rgba, lebar, tinggi, opsi) {
   return bit;
 }
 
+/**
+ * Jarangkan blok hitam lebar (pita TOTAL): di baris y0..y1−1 hanya 3 dari 4 titik hitam dipertahankan (pola 2×2 — titik ganjil-ganjil dimatikan).
+ * Di kertas tetap terlihat hitam pekat (titik panas melebar), tapi beban panas per baris turun ±25%: blok hitam penuh membuat printer mencetak
+ * garis putih tipis melintang (uji cetak owner 16 Nov). Titik putih (tulisan di dalam pita) tidak disentuh. Mengubah `bit` di tempat.
+ */
+export function epRenggang(bit, lebar, y0, y1) {
+  const ya = Math.max(0, Math.floor(y0)), yb = Math.min(Math.floor(bit.length / lebar), Math.ceil(y1));
+  for (let y = ya; y < yb; y++) {
+    if ((y - ya) % 2 === 0) continue;
+    for (let x = 1; x < lebar; x += 2) bit[y * lebar + x] = 0;
+  }
+  return bit;
+}
+
 /** Bit (lebar × tinggi, 1 = hitam) → perintah GS v 0 per pita PITA baris. Bit pertama tiap byte = titik paling kiri. */
 export function epRaster(bit, lebar, tinggi) {
   const bpr = Math.ceil(lebar / 8); const w = Penulis();
@@ -183,7 +204,7 @@ export function epContohGaris() {
     { kiri: 'Tunai', kanan: 'Rp200.000' },
     { kiri: 'Kembali', kanan: 'Rp47.000' },
     { garis: true },
-    { kiri: 'Huruf khusus: · × − – é ñ 🙏 (diganti ASCII)', kanan: '' },
+    { kiri: 'Huruf khusus: · × − – é ñ 🙏 (emoji tidak dicetak)', kanan: '' },
     { kiri: 'Terima kasih', kanan: '', tengah: true },
   ];
 }
