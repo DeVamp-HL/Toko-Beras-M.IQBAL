@@ -2,7 +2,7 @@
 // peramban; kalau keduanya tidak ada, pemanggil memakai dialog cetak seperti dulu. Setelan (gaya, potong, logo) disimpan PER PERANGKAT di
 // localStorage — printernya menempel di tablet, bukan di toko — dan diatur di /baru/uji-cetak.html. Tidak membaca/menulis data toko.
 import { epSusun, epSusunGambar, epBase64 } from './escpos.js';
-import { gambarStruk, siapkanHuruf, teksKeLogo } from './struk-kanvas.js';
+import { gambarStruk, siapkanHuruf, teksKeLogo, logoToko } from './struk-kanvas.js';
 import { usbAda, usbDiingat, usbKirim } from './usb-cetak.js';
 
 export const PR_KUNCI = 'printerPerangkat';
@@ -53,7 +53,9 @@ export async function susunCetak(garis, timpa, ekstra) {
   const a = Object.assign(prAtur(), timpa || {}); const o = Object.assign({ kertas: a.kertas, potong: a.potong, umpan: a.umpan }, ekstra || {});
   if (a.gaya === 'teks') { const t = epSusun(garis, o); return { byte: t.byte, teks: t.teks, gaya: 'teks', kertas: a.kertas }; }
   await siapkanHuruf();
-  const g = gambarStruk(garis, { kertas: a.kertas, logo: teksKeLogo(a.logo) });
+  // owner 17 Nov (butir 3): logo perangkat sendiri menang; tanpa itu logo toko bersama bila setelan struk menyertakannya (ekstra.logoToko)
+  const logo = teksKeLogo(a.logo) || (o.logoToko ? await logoToko(a.kertas) : null);
+  const g = gambarStruk(garis, { kertas: a.kertas, logo });
   return { byte: epSusunGambar(g, o).byte, gaya: 'gambar', kertas: a.kertas, gambar: g };
 }
 

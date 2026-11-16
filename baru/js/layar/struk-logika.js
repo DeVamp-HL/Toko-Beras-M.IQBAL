@@ -14,10 +14,10 @@ export const ST_KOLOM = { 58: 30, 80: 42 };
 export const ST_OTO_CETAK = [['tidak', 'tidak'], ['tunai', 'tunai saja'], ['semua', 'semua nota']];
 export const ST_OTO_WA = [['tidak', 'tidak'], ['bon', 'bon saja'], ['semua', 'semua nota']];
 export const ST_PILIHAN_ORANG = [['ikut', 'ikut aturan'], ['wa', 'selalu WA'], ['cetak', 'selalu cetak'], ['tidak', 'tidak perlu']];
-export const ST_SERTAKAN = [['rincian', 'rincian barang'], ['bon', 'sisa bon'], ['kaki', 'kalimat kaki'], ['pelayan', 'siapa yang melayani']];
+export const ST_SERTAKAN = [['logo', 'logo toko'], ['rincian', 'rincian barang'], ['bon', 'sisa bon'], ['kaki', 'kalimat kaki'], ['pelayan', 'siapa yang melayani']];   // owner 17 Nov (butir 3): + logo
 // bawaan: aturan otomatis MATI dua-duanya (printer tertanam belum ada; WA yang dibuka sendiri sering ditahan peramban HP)
 export const ST_ATUR_BAWAAN = { kop: { nama: 'Toko Beras M.IQBAL', alamat: '', telp: '' }, kaki: 'Terima kasih 🙏', kertas: 58,
-  sertakan: { rincian: true, bon: true, kaki: true, pelayan: true }, oto: { cetak: 'tidak', wa: 'tidak' }, perOrang: {} };
+  sertakan: { logo: true, rincian: true, bon: true, kaki: true, pelayan: true }, oto: { cetak: 'tidak', wa: 'tidak' }, perOrang: {} };
 
 const salin = (o) => JSON.parse(JSON.stringify(o));
 /** Setelan struk: bawaan ditimpa yang tersimpan (aturanToko/struk). */
@@ -86,6 +86,8 @@ export function notaDariBaris(baris) {
     uangDiterima: uang ? (uang.uangDiterima || uang.kembalianUangDiterima || 0) : 0, kembalian: uang ? (uang.kembalian || uang.kembalianNominal || 0) : 0,
     tukarReturId: rows.map((x) => x.tukarReturId).filter(Boolean)[0] || null, kreditDibukaOwner: rows.some((x) => x.kreditDibukaOwner) };
 }
+/** Nomor nota pendek di struk (owner 17 Nov): 6 angka terakhir kunci notanya (trxId → grupNota → id) — cukup untuk mencari di Riwayat (cari "…"). */
+export function stNoNota(nota) { return String((nota && (nota.trxId || nota.grupNota || nota.id)) || '').replace(/\D/g, '').slice(-6); }
 /** Nama yang melayani nota: dilayaniOleh (dipilih owner) → oleh (yang mencatat). '' bila oleh berbentuk "(darurat tanpa nama)" — bukan nama orang. */
 export function stPelayan(nota) { const n = String((nota && (nota.dilayani || nota.oleh)) || '').trim(); return /^\(/.test(n) ? '' : n; }
 // ---------- yang melayani (owner 17 Nov 2026, butir 1 & 6) ----------
@@ -163,15 +165,18 @@ export function susunStruk(nota, atur, pilih) {
   const lebar = ST_KOLOM[kertas]; const g = [];
   const baris = (kiri, kanan, o) => g.push(Object.assign({ kiri: String(kiri || ''), kanan: kanan === undefined || kanan === null ? '' : String(kanan) }, o || {}));
   const garis = () => g.push({ garis: true });
+  // owner 17 Nov 2026 (butir 3, struk profesional): kepala = kop · nomor nota · hari-tanggal-jam · Pembeli · Dilayani — label tertulis, semuanya baris TANPA
+  // angka kanan (Pusat Dokumen hanya mengambil baris berangka dari struk ini, jadi kepala tidak ikut ke sana). Logo digambar printer/pratinjau (S.logo).
   baris(A.kop.nama.toUpperCase(), '', { tebal: true, tengah: true });
   if (A.kop.alamat) baris(A.kop.alamat, '', { tengah: true });
   if (A.kop.telp) baris('Telp ' + A.kop.telp, '', { tengah: true });
   garis();
+  const no = stNoNota(nota); if (no) baris('Nota No. ' + no, '');
   const d = nota.tanggal ? isoKeTanggal(nota.tanggal) : null;
   baris((d ? ST_HARI[d.getDay()] + ', ' : '') + formatTanggal(nota.tanggal) + (nota.jam ? ' · ' + nota.jam : ''), '');
-  baris(nota.nama || 'Tanpa nama', '');
+  baris('Pembeli: ' + (nota.nama || 'tanpa nama'), '');
   const pelayan = stPelayan(nota);   // owner 17 Nov: yang melayani (dilayaniOleh) menang atas yang mencatat (oleh)
-  if (S.pelayan && pelayan) baris('Dilayani ' + pelayan, '');
+  if (S.pelayan && pelayan) baris('Dilayani: ' + pelayan, '');
   garis();
   let pot = 0, bulat = 0, upah = 0;
   nota.baris.forEach((p) => { pot += p.potonganTransaksi || 0; bulat += p.pembulatan || 0; upah += p.upahRepack || 0; });
@@ -187,7 +192,7 @@ export function susunStruk(nota, atur, pilih) {
       if (p.upahRepack) baris('  upah repack', RP(p.upahRepack));
       if (p.bonusUnit) baris('  +' + p.bonusUnit + ' bonus (gratis)', '');
     });
-    if (pot > 0) baris('Potongan', '−' + RP(pot));
+    if (pot > 0) { baris('Subtotal', RP(nota.total + pot - bulat)); baris('Potongan', '−' + RP(pot)); }   // owner 17 Nov: subtotal sebelum potongan (barang + upah)
     if (bulat > 0) baris('Pembulatan Rp500', '+' + RP(bulat));
     garis();
   }
@@ -233,7 +238,7 @@ export function susunStruk(nota, atur, pilih) {
     if (sisa > 0) kertasBaris.push(x.kiri + ' '.repeat(sisa) + x.kanan); else { kertasBaris.push(x.kiri); kertasBaris.push(kanan(x.kanan)); }
   });
   const waBaris = g.map((x) => (x.garis ? '------------------------------' : x.kanan ? (x.tebal ? '*' + x.kiri + '   ' + x.kanan + '*' : x.kiri + '   ' + x.kanan) : x.tebal && x.kiri ? '*' + x.kiri + '*' : x.kiri));
-  return { garis: g, kertas: kertasBaris, teks: kertasBaris.join('\n'), wa: waBaris.join('\n'), total: nota.total, lebar, kertasMm: kertas, sisaBon, sisaBonPer, lebihBayar, dibayarBeli, sisaNota, pot, bulat, upah };
+  return { garis: g, kertas: kertasBaris, teks: kertasBaris.join('\n'), wa: waBaris.join('\n'), total: nota.total, lebar, kertasMm: kertas, logo: S.logo !== false, sisaBon, sisaBonPer, lebihBayar, dibayarBeli, sisaNota, pot, bulat, upah };
 }
 export const tautanWa = (teks) => 'https://wa.me/?text=' + encodeURIComponent(String(teks || ''));
 

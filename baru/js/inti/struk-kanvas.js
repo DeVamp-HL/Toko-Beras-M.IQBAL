@@ -14,6 +14,20 @@ export async function siapkanHuruf() {
   try { await Promise.all(['400 24px Jost', '500 24px Jost', '600 40px Jost', '700 34px Jost'].map((f) => document.fonts.load(f))); } catch (e) { /* huruf cadangan */ }
 }
 
+// owner 17 Nov 2026 (butir 3): LOGO TOKO bersama — berkas baru/logo-struk.svg (hitam-putih, pilihan owner) ikut terbit & ikut salinan aplikasi tablet.
+// Dipakai bila setelan struk "logo toko" menyala (aturanToko/struk sertakan.logo) dan perangkat tidak punya logo sendiri (Printer tablet ini).
+// Berkas tidak ada / gagal dimuat = tanpa logo (struk tetap keluar). Hasil disimpan per lebar kertas.
+export const LOGO_TOKO = new URL('../../logo-struk.svg', import.meta.url).href;
+const _logoToko = {};
+export function logoToko(kertas) {
+  const k = kertas === 58 ? 58 : 80; if (_logoToko[k]) return _logoToko[k];
+  _logoToko[k] = new Promise((jadi) => {
+    try { const img = new Image(); img.onload = () => { try { jadi(siapkanLogo(img, { kertas: k, persen: 0.42, tinggiMaks: Math.round(150 * (EP_TITIK[k] || 576) / 576), dither: false })); } catch (e) { jadi(null); } };
+      img.onerror = () => { delete _logoToko[k]; jadi(null); }; img.src = LOGO_TOKO; } catch (e) { delete _logoToko[k]; jadi(null); }
+  });
+  return _logoToko[k];
+}
+
 /** Ukuran huruf & jarak untuk 80 mm; 58 mm diperkecil sebanding. */
 function ukuran(titik) {
   const k = titik / 576;

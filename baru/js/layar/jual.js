@@ -10,6 +10,8 @@ import * as RT from './retur-logika.js';
 import * as WJ from './wadah-jual-logika.js';
 import * as ST from './struk-logika.js';
 import * as PR from '../inti/printer.js';   // T1 (16 Nov 2026): printer USB tablet kasir — aplikasi CPad / WebUSB; tanpa printer = dialog cetak
+// owner 17 Nov (butir 3): pratinjau struk gambar + logo toko bersama
+import { gambarStruk as gambarStrukKanvas, siapkanHuruf, logoToko } from '../inti/struk-kanvas.js';
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
@@ -345,7 +347,7 @@ export function pasangLayarJual(akar, opsi) {
     const st = ST.susunStruk(nota, atur, pilih); if (!st) return;
     PR.jalurCetak().then((j) => {
       if (j === 'dialog') { cetakDialog(st, nota, ket); return; }
-      return PR.cetakGaris(st.garis).then((r) => {
+      return PR.cetakGaris(st.garis, { logoToko: st.logo }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
         catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + 'printer USB ' + (r.jalur === 'aplikasi' ? 'aplikasi tablet' : 'peramban') + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
       }).catch((e) => {
         set({ kabar: 'Printer USB gagal (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true });
@@ -1113,6 +1115,22 @@ export function pasangLayarJual(akar, opsi) {
       <input class="ketik-nama sempit" id="rpUpah" type="text" inputmode="numeric" value="${s.rpUpah}" data-ketik="rpUpah" placeholder="Upah repack Rp (boleh kosong) — melekat ke baris repack">`;
   }
   // ---------- putaran 15: struk (JS3-A: kertas 58/80 & WhatsApp dari satu penyusun; JS3-C: aturan otomatis) ----------
+  // owner 17 Nov 2026 (butir 3): pratinjau struk = GAMBAR yang sama dengan yang keluar dari printer tablet (huruf toko, logo, TOTAL di antara garis tebal).
+  // Digambar di belakang layar sekali per isi struk; selama belum siap (atau kanvas gagal) yang tampil teks struknya. WA & dialog cetak tetap teks yang sama isinya.
+  let _pratinjau = { kunci: '', url: '' }; let _pratinjauJalan = '';
+  function pratinjauStruk(st, kertas) {
+    const kunci = kertas + '|' + (st.logo ? 'L' : '') + '|' + st.teks;
+    if (_pratinjau.kunci === kunci) return _pratinjau.url;
+    if (_pratinjauJalan !== kunci) {
+      _pratinjauJalan = kunci;
+      (async () => {
+        let url = '';
+        try { await siapkanHuruf(); const logo = st.logo ? await logoToko(kertas) : null; url = gambarStrukKanvas(st.garis, { kertas, logo }).kanvas.toDataURL('image/png'); } catch (e) { url = ''; }
+        if (_pratinjauJalan !== kunci) return; _pratinjau = { kunci, url }; _pratinjauJalan = ''; gambar();
+      })();
+    }
+    return '';
+  }
   function gambarStruk(s, L1, muncul, kepala) {
     const n = notaStruk();
     if (!n) return h`${L1}<div class="lembar ${muncul}" data-k="lembar-struk">${kepala('Struk', 'nota tidak ditemukan')}<div class="pita-info awas">Nota ini tidak ada di data yang dimuat perangkat ini.</div></div>`;
@@ -1122,7 +1140,7 @@ export function pasangLayarJual(akar, opsi) {
       <div class="bendera"><span class="ket" style="align-self: center;">kertas</span>${[58, 80].map((k) => h`<span class="pil ${n.pilih.kertas === k ? 'nyala' : ''}" data-aksi="strukKertas" data-mm="${k}">${k} mm</span>`)}<span class="ket tautan" style="margin-left: auto; align-self: center;" data-aksi="bukaAturStruk">atur kop & aturan ›</span></div>
       <div class="bendera">${ST.ST_SERTAKAN.map(([k, nm]) => h`<span class="pil ${n.pilih.sertakan[k] ? 'nyala' : ''}" data-aksi="strukSertakan" data-nama="${k}">${nm}</span>`)}</div>
       ${akunOwner() ? h`<div class="label">Dilayani · ketuk untuk mengubah</div><div class="bendera" data-k="ubah-dilayani">${[namaOwner()].concat(daftarPelayan()).map((nm) => h`<span class="pil ${ST.stPelayan(n.nota) === nm ? 'nyala' : ''}" data-aksi="ubahDilayani" data-n="${nm}" data-k="udl-${nm}">${nm}</span>`)}</div>` : ''}
-      <pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>
+      ${(() => { const url = pratinjauStruk(st, n.pilih.kertas); return url ? h`<div class="st-gambar-bingkai" data-k="gambar-struk"><img class="st-gambar k${n.pilih.kertas}" src="${url}" alt="Pratinjau struk seperti keluar dari printer tablet"></div>` : h`<pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>`; })()}
       <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="kirimWa">Kirim WhatsApp</div><div class="kaca-btn" data-aksi="cetakStruk">Cetak</div><a class="kaca-btn" href="uji-cetak.html" style="text-decoration: none; color: inherit;">Printer tablet ini</a></div>
       ${pitaTolak(s, 'struk')}
       <div class="ket">Struk yang sama untuk kertas dan WhatsApp — cuma menyusun nota yang sudah tersimpan, tidak ada angka baru. WhatsApp dibuka tanpa nomor tujuan (WhatsApp yang bertanya ke siapa; nomor pembeli tidak disimpan). Cetak = printer USB tablet ini bila sudah diatur ("Printer tablet ini": gaya, logo), selain itu dialog cetak perangkat ini.</div>

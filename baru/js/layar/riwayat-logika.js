@@ -67,7 +67,8 @@ export function rwRentang(periode, kini) {
   if (periode === 'bulan') return { dari: hari.slice(0, 8) + '01', sampai: hari };
   return { dari: '', sampai: hari };
 }
-const rwCocokCari = (o, kata) => { const hay = (o.nama + ' ' + o.baris.map((b) => b.teks).join(' ') + ' ' + o.cara + ' ' + o.kunci.slice(-6)).toLowerCase(); const digit = String(o.total);
+// owner 17 Nov 2026 (butir 3): "Nota No." di struk (6 angka terakhir kunci nota) ikut bisa dicari
+const rwCocokCari = (o, kata) => { const hay = (o.nama + ' ' + o.baris.map((b) => b.teks).join(' ') + ' ' + o.cara + ' ' + o.kunci.slice(-6) + ' ' + String(o.trxId || o.grupNota || o.id || '').replace(/\D/g, '').slice(-6)).toLowerCase(); const digit = String(o.total);
   return kata.every((w) => { const d = w.replace(/[^\d]/g, ''); return hay.indexOf(w) >= 0 || (d.length >= 3 && d === w.replace(/[.,]/g, '') && digit.indexOf(d) >= 0); }); };
 
 /**

@@ -7,7 +7,7 @@ Di repo, sw-baru.js TIDAK dicap (VERSI 'belum-dicap', daftar kosong) — salinan
 alat ini tepat sebelum folder dibungkus, jadi yang tayang di GitHub Pages selalu membawa:
   VERSI  = 12 huruf pertama commit yang diterbitkan        (versi baru = commit baru; tidak ada VERSI yang lupa dinaikkan)
   TERBIT = waktu commit itu (UTC)                          (commit yang sama diterbitkan ulang = salinan yang sama, tidak dipasang ulang)
-  BERKAS = [jalur relatif dari baru/, sidik SHA-256]       untuk SEMUA berkas halaman: baru/*.html, baru/css/**.css, baru/js/**.js, dan gambar ../ yang dirujuk HTML
+  BERKAS = [jalur relatif dari baru/, sidik SHA-256]       untuk SEMUA berkas halaman: baru/*.html, baru/*.svg, baru/css/**.css, baru/js/**.js, dan gambar ../ yang dirujuk HTML
   LUAR   = modul Firebase dari CDN (modulepreload index.html + impor di baru/js) — alamat berversi
   HURUF  = stylesheet Google Fonts index.html
 
@@ -29,7 +29,8 @@ def sidik(jalur):
 def daftar_berkas(akar):
     """→ [(jalur relatif dari baru/, jalur penuh)] berurutan; gambar ../ hanya yang dirujuk HTML & ada."""
     akar = os.path.abspath(akar); baru = os.path.join(akar, 'baru'); out = []
-    pola = [os.path.join(baru, '*.html'), os.path.join(baru, 'css', '**', '*.css'), os.path.join(baru, 'js', '**', '*.js')]
+    # owner 17 Nov 2026 (butir 3): + baru/*.svg (logo toko di struk) — tablet yang dibuka tanpa internet tetap mencetak logonya
+    pola = [os.path.join(baru, '*.html'), os.path.join(baru, '*.svg'), os.path.join(baru, 'css', '**', '*.css'), os.path.join(baru, 'js', '**', '*.js')]
     for p in pola:
         for f in sorted(glob.glob(p, recursive=True)):
             out.append((os.path.relpath(f, baru).replace(os.sep, '/'), f))

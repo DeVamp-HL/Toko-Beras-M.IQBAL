@@ -200,7 +200,7 @@ ok('antre (39b no. 18): kiriman terbit harga dari tab mati yang DITERIMA server 
   var log = jejakTulisUlang({ id: 9900, pada: W.kini, aksi: 'tulis', koleksi: 'penjualan', idDok: '9031', oleh: n.diubahOleh, olehUid: 'uid-owner', perangkat: kO.perangkat, ringkas: ringkasDok(n) }, T.asli);
   pasok('logAktivitas', [log]); var J = ssJejak(new Date(), [], '').tampil[0] || {};
   ok('tulis ulang (39b no. 45): riwayat penjualan & struk menyebut pencatat asli; jejak Sistem menulis "ditulis ulang owner, pencatat asli …" dengan owner sebagai penulisnya, uid asli di kolom pencatatAsli',
-    R.oleh === 'Karyawan Contoh' && teksSt.indexOf('Dilayani Karyawan Contoh') >= 0 && J.oleh === 'Owner' && /ditulis ulang owner, pencatat asli Karyawan Contoh \(karyawan\)/.test(J.teks)
+    R.oleh === 'Karyawan Contoh' && teksSt.indexOf('Dilayani: Karyawan Contoh') >= 0 && J.oleh === 'Owner' && /ditulis ulang owner, pencatat asli Karyawan Contoh \(karyawan\)/.test(J.teks)
     && log.pencatatAsli.uid === 'uid-kry' && log.olehUid === 'uid-owner', JSON.stringify([R.oleh, J, teksSt.slice(0, 200)]));
   pasok('penjualan', []); pasok('logAktivitas', []);
 })();
