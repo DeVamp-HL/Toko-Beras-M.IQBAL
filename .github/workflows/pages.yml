@@ -28,7 +28,9 @@ jobs:
     # langkah terakhir — Chrome palsu percobaan ulang + kontrolnya — sendiri ±4 menit). PR #113 (run 37529470063) dihentikan di 10 menit 23 detik
     # di tengah langkah terakhir itu, sesudah SEMUA langkah lain lulus (0 gagal): bukan uji yang gagal, batasnya yang habis. 20 menit = ruang
     # untuk paket berikutnya, dan uji yang macet tetap dihentikan jauh sebelum batas bawaan GitHub (6 jam).
-    timeout-minutes: 20
+    # 16 Nov 2026: 20 → 30. Lima run terakhir 14–19 menit; run 43832952189 (merge PR #132) dihentikan di 20 menit 11 detik tanpa satu langkah
+    # pun gagal → terbitan Pages ikut batal dan perubahan yang sudah di-merge tidak tayang. 30 menit = ruang ±50% di atas run terlama.
+    timeout-minutes: 30
     steps:
       - name: Ambil isi repo
         uses: actions/checkout@v4
