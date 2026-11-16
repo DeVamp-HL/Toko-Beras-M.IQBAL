@@ -11,6 +11,7 @@ Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko
 - **`baru/` = sistem utama owner**, kelak dibungkus menjadi aplikasi native. Catatan native 13 Sep (`_privat/rapikan-2026-09-13/peta_native.md`, `skeptis_native.md` — di mesin owner) masih menyebut `index.html`: **bahan, bukan keputusan**.
 - **Tablet kasir = offline-first**, satu perangkat dipakai bergantian, semua akun seizin owner. Pilihan identitasnya (login per orang vs satu akun tablet + PIN per orang) diputuskan di putaran tablet — jangan ditutup.
   **Diputuskan 16 Nov 2026: satu akun tablet + PIN per orang** — bagian "Putaran T1 · langkah 3" di bawah.
+  Owner mencoba di CPad 16 Nov: lancar. Tablet **bisa dibuka tanpa internet** sejak langkah 4 (salinan aplikasi `sw-baru.js`).
 - **`index.html` pensiun** setelah `baru/` lengkap. Sampai saat itu keduanya membaca & menulis data yang sama; `index.html` tidak diperbaiki lagi (19 Sep).
   **Sudah: 3 Okt 2026** (bersama `kasir.html`).
 
@@ -2550,3 +2551,38 @@ jualan saja pakai PIN** (urusan owner — uang, harga, laporan — tetap di HP/M
 - Uji: `alat-uji/uji_tablet_pin.py` 44 (+ kontrol 16) di CI; `uji_operator_pin.py` kini membolehkan kolom PIN HANYA di tab Orang di tablet.
   Belum diuji di peramban sungguhan (Chrome tidak bisa jalan di kotak pasir sesi ini) — uji peramban CI (`uji_layar_kunci.py`) menjaga alur akun
   staf tanpa daftar orang.
+
+## Putaran T1 · langkah 4 — tablet dibuka tanpa internet (16 Nov 2026)
+
+Owner 16 Nov sesudah langkah 3 lancar di CPad: lanjut ke buka tanpa internet. Sebelumnya aplikasi tablet selalu mengambil `/baru/` dari GitHub Pages —
+internet mati saat aplikasi dibuka = layar "belum tersambung" (`apk/www/galat.html`). Catatan yang dibuat SAAT internet mati sudah aman sejak lama
+(cache tetap Firestore + antrean kirim); yang belum bisa: MEMBUKA aplikasinya.
+
+- **Salinan aplikasi** `baru/sw-baru.js` (service worker, cakupan `/baru/`): semua berkas halaman (`*.html`, `css/**`, `js/**`, ikon `../`) + tiga modul
+  Firebase CDN + huruf latin Google Fonts disimpan di perangkat. Selama salinan dipakai, halaman & modul SELALU dari salinan (satu versi utuh), ada
+  internet maupun tidak. Data toko (Firestore, Auth) tidak lewat salinan.
+- **Siapa yang memasang** (`js/inti/salinan.js`): hanya aplikasi tablet (`asliAda()` = jembatan Capacitor ada). HP & Mac owner TIDAK berubah. Perangkat
+  yang sudah memakai salinan terus memperbaruinya. `?salinan=pasang` (uji peramban) · `?salinan=lepas` (hapus salinan, muat ulang dari internet).
+- **Versi = terbitan.** `sw-baru.js` di repo TIDAK dicap; job `terbitkan` (pages.yml) menjalankan `alat-uji/cap_sw_baru.py --tulis` tepat sebelum membungkus:
+  VERSI = commit, TERBIT = waktu commit, daftar berkas + sidik SHA-256. Tidak ada VERSI yang harus dinaikkan tangan (pelajaran `sw-kasir.js`).
+- **Tidak pernah campur versi.** Pasang = semua berkas versi itu diunduh (`cache: 'reload'`) lalu dicocokkan sidiknya; satu saja beda (mis. CDN Pages masih
+  menyajikan berkas lama sesaat sesudah terbit) = versi itu DITOLAK, yang lama tetap dipakai, dicoba lagi nanti. Berkas yang sidiknya sama disalin dari
+  salinan lama (tidak diunduh ulang), kecuali HTML.
+- **Jembatan Capacitor (cetak USB).** Capacitor menyuntikkan script jembatan ke HTML yang diambilnya — juga yang diambil service worker
+  (`resolveServiceWorkerRequests`, bawaan aktif). Salinan menyimpan HTML BERSUNTIKAN itu (cetak tetap jalan saat dibuka tanpa internet); sidiknya dicocokkan
+  sesudah suntikan dibuang (`slBuangSuntikan`). HTML selalu diunduh ulang tiap versi: jembatannya milik APK yang sedang terpasang. Script itu muncul sebelum
+  `<meta>` CSP, jadi tidak terkena CSP (sama seperti sekarang); `charset=utf-8` ditulis tegas di salinan HTML.
+- **Kapan versi baru dipakai.** Diunduh di belakang layar (tiap aplikasi dibuka, tiap 15 menit, saat internet kembali) lalu MENUNGGU. Dipasang (muat ulang)
+  hanya saat AMAN: layar tertutup gerbang (belum masuk / "Siapa yang jaga?" / belum disetujui) + tanpa isian belum disimpan + tanpa ketikan di gerbang. Orang
+  yang sedang jualan tidak pernah dimuat ulang; 5 menit tak disentuh → "Siapa yang jaga?" → versi baru dipasang di situ (lalu PIN seperti biasa). Atau
+  pil kepala › **Pasang versi baru sekarang** (ditolak kalau ada isian). Sesudah merge, versi baru sampai ke tablet dalam hitungan menit — tidak perlu
+  pasang ulang APK.
+- **Kalimat status (jujur)** di panel "Siapa yang jaga?" dan lembar akun: "Bisa dibuka tanpa internet · versi 16 Nov 18.35" HANYA bila salinan LENGKAP
+  sedang dipakai; selain itu "Menyimpan aplikasi…", "Belum bisa dibuka tanpa internet…", atau sebab gagalnya.
+- **Darurat**: terbitkan `sw-baru.js` dengan VERSI `'lepas'` → salinan menghapus semua simpanannya & mencabut dirinya; tablet kembali memuat dari internet.
+- Uji: `alat-uji/uji_salinan_aplikasi.py` (jsc: cache/jaringan/crypto tiruan; statis: cap mencakup semua modul, pages.yml, app.js) 59 + kontrol 17;
+  `alat-uji/uji_salinan_peramban.py` (Chrome sungguhan lewat DevTools di runner, Firebase palsu di asal lain, tanpa internet): pasang → kedua server mati →
+  aplikasi tetap terbuka → versi baru dipasang sendiri di layar masuk → berkas basi ditolak; + kontrol 3.
+- **Belum terbukti di CPad**: suntikan jembatan pada HTML yang diambil service worker (perilaku Capacitor 7 `resolveServiceWorkerRequests`) hanya bisa dibuktikan di
+  tablet: buka sekali saat ada internet → tunggu kalimat "Bisa dibuka tanpa internet" → mode pesawat → tutup penuh & buka lagi → masuk PIN, jual, cetak.
+

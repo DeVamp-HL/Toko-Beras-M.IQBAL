@@ -32,6 +32,7 @@ Catatan bisnis (omzet, piutang, utang, harga beli) **tidak pernah** masuk repo โ
 - **Tablet kasir = offline-first**, satu perangkat dipakai bergantian, semua akun seizin owner. Pilihan identitasnya (login per orang, atau satu
   akun tablet + PIN per orang) diputuskan di putaran tablet; putaran 23 (akun per orang) sengaja tidak menutup salah satunya.
   **Diputuskan owner 16 Nov 2026: satu akun tablet + PIN per orang** (putaran T1 langkah 3, `baru/js/layar/tablet-logika.js`, `baru/BACA-DULU.md`).
+  Tablet bisa **dibuka tanpa internet** sejak putaran T1 langkah 4 (salinan aplikasi `baru/sw-baru.js`, dicap saat terbit oleh `alat-uji/cap_sw_baru.py`).
 - **`index.html` & `kasir.html` pensiun 3 Okt 2026** (owner: "bumi hanguskan"; prasyarat owner beres hari itu: HP kasir melapor 0 antrean / 0 ditolak,
   perangkat lama ditandai tidak dipakai). Rincian & yang ikut hilang: `docs/peta-pensiun-sistem-lama.md` ยง8.
 
