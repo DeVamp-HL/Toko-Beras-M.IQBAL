@@ -1,0 +1,14 @@
+{
+  "appId": "id.miqbal.tokoberas",
+  "appName": "Toko Beras M.IQBAL",
+  "webDir": "www",
+  "server": {
+    "url": "https://devamp-hl.github.io/Toko-Beras-M.IQBAL/baru/",
+    "errorPath": "galat.html",
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  }
+}

@@ -1,0 +1,5 @@
+# dibuat ulang di GitHub Actions tiap bangun (apk.yml)
+android/
+node_modules/
+package-lock.json
+keluaran/

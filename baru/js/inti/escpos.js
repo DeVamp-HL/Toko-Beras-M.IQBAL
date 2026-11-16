@@ -79,8 +79,6 @@ function tulisQr(w, data, ukuran) {
  */
 export function epSusun(garis, opsi) {
   const o = opsi || {}; const lebar = EP_KOLOM[o.kertas] || EP_KOLOM[80];
-  const potong = EP_POTONG.some((x) => x[0] === o.potong) ? o.potong : 'sebagian';
-  const umpan = Math.max(0, Math.min(10, o.umpan === undefined ? 4 : Number(o.umpan) || 0));
   const w = Penulis(); const teks = [];
   w.byte(ESC, 0x40).byte(ESC, 0x74, 0x00);   // mulai ulang printer · halaman kode PC437
   (garis || []).forEach((g) => {
@@ -92,11 +90,80 @@ export function epSusun(garis, opsi) {
     if (g.tebal) w.byte(ESC, 0x45, 0);
   });
   w.byte(ESC, 0x61, 0);
-  if (o.qr) { w.byte(ESC, 0x61, 1); tulisQr(w, o.qr, o.qrUkuran); w.byte(LF).byte(ESC, 0x61, 0); teks.push('[QR ' + epAscii(o.qr) + ']'); }
+  tutup(w, o, teks);
+  return { byte: w.hasil(), teks, lebar };
+}
+
+/** Ekor bersama struk teks & gambar: QR (opsional) · umpan · potong · pulsa laci (opsional). */
+function tutup(w, o, teks) {
+  const potong = EP_POTONG.some((x) => x[0] === o.potong) ? o.potong : 'sebagian';
+  const umpan = Math.max(0, Math.min(10, o.umpan === undefined ? 4 : Number(o.umpan) || 0));
+  if (o.qr) { w.byte(ESC, 0x61, 1); tulisQr(w, o.qr, o.qrUkuran); w.byte(LF).byte(ESC, 0x61, 0); if (teks) teks.push('[QR ' + epAscii(o.qr) + ']'); }
   w.byte(ESC, 0x64, umpan);
   if (potong === 'penuh') w.byte(GS, 0x56, 0x41, 0x00); else if (potong === 'sebagian') w.byte(GS, 0x56, 0x42, 0x00);
   if (o.laci) w.byte(ESC, 0x70, 0x00, 0x19, 0xfa);
-  return { byte: w.hasil(), teks, lebar };
+}
+
+// ---------- gaya GAMBAR (T1 langkah 2): struk digambar di kanvas (huruf toko, ukuran bebas, logo) lalu dicetak sebagai raster ----------
+// 80 mm = 576 titik selebar kertas cetak (203 dpi); 58 mm = 384. Bagian DOM (menggambar kanvas) ada di struk-kanvas.js; di sini hanya
+// hitungan murni supaya bisa diuji di jsc.
+export const EP_TITIK = { 58: 384, 80: 576 };
+const PITA = 240;   // baris raster per perintah GS v 0 (buffer printer kecil aman)
+
+/**
+ * RGBA (ImageData.data) → bit 1 = hitam, 0 = putih, baris demi baris. Piksel transparan dianggap putih.
+ * opsi.dither = true → Floyd–Steinberg (logo/foto: gradasi jadi titik); selain itu ambang tunggal (teks tajam), opsi.ambang bawaan 160.
+ */
+export function epHitamPutih(rgba, lebar, tinggi, opsi) {
+  const o = opsi || {}; const ambang = o.ambang === undefined ? 160 : Number(o.ambang);
+  const n = lebar * tinggi; const abu = new Float32Array(n); const bit = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = rgba[i * 4 + 3] / 255; const l = 0.299 * rgba[i * 4] + 0.587 * rgba[i * 4 + 1] + 0.114 * rgba[i * 4 + 2];
+    abu[i] = 255 - a * (255 - l);
+  }
+  if (!o.dither) { for (let i = 0; i < n; i++) bit[i] = abu[i] < ambang ? 1 : 0; return bit; }
+  for (let y = 0; y < tinggi; y++) {
+    for (let x = 0; x < lebar; x++) {
+      const i = y * lebar + x; const lama = abu[i]; const baru = lama < 128 ? 0 : 255; bit[i] = baru === 0 ? 1 : 0; const e = lama - baru;
+      if (x + 1 < lebar) abu[i + 1] += e * 7 / 16;
+      if (y + 1 < tinggi) { if (x > 0) abu[i + lebar - 1] += e * 3 / 16; abu[i + lebar] += e * 5 / 16; if (x + 1 < lebar) abu[i + lebar + 1] += e / 16; }
+    }
+  }
+  return bit;
+}
+
+/** Bit (lebar × tinggi, 1 = hitam) → perintah GS v 0 per pita PITA baris. Bit pertama tiap byte = titik paling kiri. */
+export function epRaster(bit, lebar, tinggi) {
+  const bpr = Math.ceil(lebar / 8); const w = Penulis();
+  for (let y0 = 0; y0 < tinggi; y0 += PITA) {
+    const t = Math.min(PITA, tinggi - y0);
+    w.byte(GS, 0x76, 0x30, 0x00, bpr & 0xff, (bpr >> 8) & 0xff, t & 0xff, (t >> 8) & 0xff);
+    for (let y = y0; y < y0 + t; y++) {
+      for (let b = 0; b < bpr; b++) {
+        let v = 0;
+        for (let k = 0; k < 8; k++) { const x = b * 8 + k; if (x < lebar && bit[y * lebar + x]) v |= 0x80 >> k; }
+        w.byte(v);
+      }
+    }
+  }
+  return w.hasil();
+}
+
+/** Struk gaya gambar: gambar = { bit, lebar, tinggi } (dari struk-kanvas.js). opsi sama dengan epSusun (qr, potong, umpan, laci). */
+export function epSusunGambar(gambar, opsi) {
+  const o = opsi || {}; const w = Penulis();
+  w.byte(ESC, 0x40).byte(ESC, 0x61, 1);
+  const r = epRaster(gambar.bit, gambar.lebar, gambar.tinggi); for (let i = 0; i < r.length; i++) w.byte(r[i]);
+  w.byte(ESC, 0x61, 0);
+  tutup(w, o, null);
+  return { byte: w.hasil(), lebar: gambar.lebar, tinggi: gambar.tinggi };
+}
+
+/** Byte → base64 (untuk jembatan aplikasi Android). Dipotong per 32 KB supaya String.fromCharCode tidak kehabisan tumpukan. */
+export function epBase64(byte) {
+  let s = '';
+  for (let i = 0; i < byte.length; i += 32768) s += String.fromCharCode.apply(null, Array.prototype.slice.call(byte.subarray(i, i + 32768)));
+  return btoa(s);
 }
 
 /** Struk contoh untuk halaman uji cetak — angka CONTOH HITUNG, bukan angka toko. */

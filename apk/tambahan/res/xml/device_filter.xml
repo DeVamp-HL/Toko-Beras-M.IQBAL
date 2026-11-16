@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Printer yang membuka aplikasi saat dicolok (Android menawarkan "selalu buka" = izin USB tersimpan):
+     Sunmi (VID 0x324f = 12879) dan semua perangkat berkelas printer USB (7). -->
+<resources>
+    <usb-device vendor-id="12879" />
+    <usb-device class="7" />
+</resources>
