@@ -120,7 +120,8 @@ export const plBarangNama = (k) => { const b = String(k).split('|'); return b[0]
 export function kartuTersimpan(kunci) {
   const c = ambilPelangganCatatan().find((x) => kunciPelanggan(x.nama || x.id) === kunci) || null; if (!c) return null;
   const cip = Array.isArray(c.cip) ? c.cip.map(String) : String(c.ciri || '').split(/\s*[·,;]\s*/).map((x) => x.trim()).filter(Boolean);
-  return { dok: c, nama: String(c.nama || c.id), cip: cip.filter((x) => !cipTerlarang(x)), catatan: String(c.catatan || ''), arah: String(c.arah || c.rute || ''), asli: String(c.asli || ''), kontak: String(c.kontak || ''), biasa: String(c.biasa || ''), dikenali: catatanPelangganBerisi(c) };
+  return { dok: c, nama: String(c.nama || c.id), cip: cip.filter((x) => !cipTerlarang(x)), catatan: String(c.catatan || ''), arah: String(c.arah || c.rute || ''), asli: String(c.asli || ''), kontak: String(c.kontak || ''), biasa: String(c.biasa || ''),
+    alamat: String(c.alamat || ''), npwp: String(c.npwp || ''), dikenali: catatanPelangganBerisi(c) };   // B1 (owner 16 Nov 2026): alamat antar & NPWP pelanggan usaha
 }
 /**
  * Semua orang yang pernah tercatat (nota bernama, buku bon, kartu): kunjungan (hari datang), jam biasa, selang, hari langganan, belanja per tahun,
@@ -153,7 +154,7 @@ export function semuaOrang(kini) {
     const sejak = terakhir ? hariKe(iso) - hariKe(terakhir) : null; const adaSelang = selang !== null && selang > 0; const hariIni = sejak === 0; const jatuh = adaSelang ? Math.round((selang - sejak) * 10) / 10 : null;
     const kosong = adaSelang && sejak * 10 >= selang * atur.kosongKali; const belumJadi = plPolos(o.nama).length < 2 && o.nama.trim().length < 3;
     const pola = Object.keys(o.barang).sort((a, b) => o.barang[b] - o.barang[a]).slice(0, 4);
-    return { kunci: k, nama: o.nama, kunjungan, terakhir, selang, jam, hari, total: o.total, tahun: o.tahun, nota: o.nota, pola, utang, lebih, lebihUang: PL.uang, lebihHapus: PL.hapus, umurBon: r ? r.umurHari : null, kartu, cip: kartu ? kartu.cip : [], catatan: kartu ? kartu.catatan : '', arah: kartu ? kartu.arah : '', asli: kartu ? kartu.asli : '', kontak: kartu ? kartu.kontak : '', biasa: kartu ? kartu.biasa : '',
+    return { kunci: k, nama: o.nama, kunjungan, terakhir, selang, jam, hari, total: o.total, tahun: o.tahun, nota: o.nota, pola, utang, lebih, lebihUang: PL.uang, lebihHapus: PL.hapus, umurBon: r ? r.umurHari : null, kartu, cip: kartu ? kartu.cip : [], catatan: kartu ? kartu.catatan : '', arah: kartu ? kartu.arah : '', asli: kartu ? kartu.asli : '', kontak: kartu ? kartu.kontak : '', biasa: kartu ? kartu.biasa : '', alamat: kartu ? kartu.alamat : '', npwp: kartu ? kartu.npwp : '',
       dikenali: !!(kartu && kartu.dikenali), sejak, adaSelang, hariIni, jatuh, kosong, belumJadi, waktu: jam === null ? '' : waktuKata(jam), diharap: adaSelang && !kosong && jatuh !== null && jatuh <= 0 && !hariIni, sekarang: jam !== null && waktuKata(jam) === waktuKata(jamKini) }; });
   daftar.sort((a, b) => b.kunjungan - a.kunjungan || a.nama.localeCompare(b.nama)); daftar.forEach((o, i) => { o.no = i; o.warna = i % 6; });
   daftar.__bukan = bukan; return daftar;
@@ -300,13 +301,16 @@ export function kartuOrang(kini, kunci) {
   return Object.assign({}, b, { sk: sketsa(b), ringkas: b.kunjungan + ' kali datang · belanja ' + RP(b.total) + (b.utang > 0 ? ' · bon ' + RP(b.utang) : b.lebih > 0 ? ' · ' + ringkasLebih({ uang: b.lebihUang, hapus: b.lebihHapus }) : ''), datang: datangTeks(b) + (b.jam !== null ? ' · ' + b.waktu : ''), polaTeks: b.pola.slice(0, 3).map(plBarangNama).join(', '),
     bonTeks: b.dikenali ? 'Dikenali → kasir BOLEH mencatat bon baru atas namanya.' : 'Belum dikenali → kasir MENOLAK bon baru (aturan KR1). Isi salah satu: ciri, catatan, atau arah datangnya.', ciriDaftar: aturPelanggan().ciriDaftar, arahDaftar: aturPelanggan().arahDaftar, benang: benangOrang(kini, kunci) });
 }
-/** Simpan kartu: isi = {nama, cip[], catatan, arah, asli, kontak, biasa}. Dokumen persis simpanCatatanPelanggan (+ kolom baru); ejaan nama boleh dirapikan selama kuncinya sama. */
+/** Simpan kartu: isi = {nama, cip[], catatan, arah, asli, kontak, biasa, alamat, npwp}. Dokumen persis simpanCatatanPelanggan (+ kolom baru); ejaan nama boleh dirapikan selama kuncinya sama. */
 export function susunSimpanKartu(kini, kunci, isi, w) {
   const nama = String(isi.nama || '').trim(); if (nama.length < 2) return { tolak: 'Namanya terlalu pendek — minimal dua huruf' };
   if (kunciPelanggan(nama) !== kunci) return { tolak: 'Mengganti nama = memindahkan semua nota & bon ke nama lain — pakai SATUKAN dari daftar nama kembar, atau tambah sebagai orang baru' };
   const cip = (Array.isArray(isi.cip) ? isi.cip : []).map((x) => String(x).trim()).filter((x, i, a) => x && a.indexOf(x) === i).filter((x) => !cipTerlarang(x)); const lama = kartuTersimpan(kunci); const kontak = String(isi.kontak || '').trim();
   if (kontak && kontak.replace(/\D/g, '').length < 9) return { tolak: 'Nomor WhatsApp-nya kurang panjang' };
-  const data = Object.assign({}, lama ? lama.dok : {}, { id: kunci, nama, catatan: String(isi.catatan || '').trim(), ciri: cip.join(' · '), rute: String(isi.arah || '').trim(), cip, arah: String(isi.arah || '').trim(), asli: String(isi.asli || '').trim(), kontak, biasa: String(isi.biasa || '').trim(), diubahPada: w.kini });
+  // B1 (owner 16 Nov 2026): alamat antar & NPWP (opsional) — NPWP 15 atau 16 angka (NIK berlaku sebagai NPWP); titik & strip boleh diketik
+  const npwp = String(isi.npwp || '').trim(); const npwpAngka = npwp.replace(/\D/g, ''); if (npwp && [15, 16].indexOf(npwpAngka.length) < 0) return { tolak: 'NPWP harus 15 atau 16 angka' };
+  const data = Object.assign({}, lama ? lama.dok : {}, { id: kunci, nama, catatan: String(isi.catatan || '').trim(), ciri: cip.join(' · '), rute: String(isi.arah || '').trim(), cip, arah: String(isi.arah || '').trim(), asli: String(isi.asli || '').trim(), kontak, biasa: String(isi.biasa || '').trim(),
+    alamat: String(isi.alamat || '').trim().slice(0, 160), npwp, diubahPada: w.kini });
   return { dokumen: [{ koleksi: 'pelangganCatatan', data }], dikenali: catatanPelangganBerisi(data), patch: { kabar: 'Kartu ' + nama + ' tersimpan' + (catatanPelangganBerisi(data) ? ' — dikenali, kasir boleh mencatat bon atas namanya.' : ' TANPA ciri, catatan, maupun arah — selama kosong, kasir menolak bon baru untuk ' + nama + '.'), kabarAwas: !catatanPelangganBerisi(data) } };
 }
 export function orangMirip(kini, nama) { const nb = String(nama || '').trim(); if (nb.length < 3) return []; const c = plPolos(nb); return semuaOrang(kini).filter((b) => { const a = plPolos(b.nama); return a && c && (a === c || (' ' + a + ' ').indexOf(' ' + c + ' ') >= 0 || (' ' + c + ' ').indexOf(' ' + a + ' ') >= 0); }).map((b) => ({ kunci: b.kunci, nama: b.nama, sub: julukan(b) })); }

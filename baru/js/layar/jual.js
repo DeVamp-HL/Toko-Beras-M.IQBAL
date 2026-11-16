@@ -62,7 +62,7 @@ export function pasangLayarJual(akar, opsi) {
     chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(Object.assign({ isiW: null }, L.ketukChip(S(), c))); },
     sering: ({ id }) => { const c = rakKini().sering.find((x) => x.id === id); if (c) set(L.ketukChip(S(), c)); },
     ulangiTerakhir: ({ g }) => { const r = L.ulangiPembelian(SB(), rakKini(), g); set(r); if (r.keranjang) setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 60); },
-    pakaiBenang: ({ nama }) => set({ pelanggan: nama, kabar: 'Nama diganti ke yang punya urusan: ' + nama + ' — nota, bon, dan pembayarannya atas nama itu', kabarAwas: false }),
+    pakaiBenang: ({ nama }) => { const g = L.gantiPelanggan(SBN(), nama); set(Object.assign(g, { kabar: 'Nama diganti ke yang punya urusan: ' + nama + ' — nota, bon, dan pembayarannya atas nama itu' + (g.kabar ? '. ' + g.kabar : ''), kabarAwas: false })); },   // B1: harga ikut pembeli
     tuts: ({ t }) => set(L.tekanTuts(S(), t)),
     preset: ({ n }, el) => masukDenganGerak(L.masukkan(SB(), Number(n)), el),
     // putaran 27 (Bagian 4): jual ½ (25 kg) dari kemasan 50 kg — dipecah saat nota dicatat
@@ -219,10 +219,10 @@ export function pasangLayarJual(akar, opsi) {
       } catch (e) { set({ kabar: 'GAGAL membatalkan: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
     },
     bukaPelanggan: () => set({ lembar: 'pelanggan', cariPelanggan: '' }),
-    pilihPelanggan: ({ nama }) => set({ pelanggan: nama, lembar: null, cariPelanggan: '', kabar: '' }),
-    lepasPelanggan: () => set({ pelanggan: '', kabar: '' }),
+    pilihPelanggan: ({ nama }) => set(Object.assign({ lembar: null, cariPelanggan: '', kabar: '' }, L.gantiPelanggan(SBN(), nama))),   // B1: harga ikut tingkat pembeli
+    lepasPelanggan: () => set(Object.assign({ kabar: '' }, L.gantiPelanggan(SBN(), ''))),
     cariPelanggan: (v) => set({ cariPelanggan: String(v || '').slice(0, 40) },),
-    enterPelanggan: (v) => { const n = String(v || '').trim(); if (n) set({ pelanggan: n, lembar: null, cariPelanggan: '' }); },
+    enterPelanggan: (v) => { const n = String(v || '').trim(); if (n) set(Object.assign({ lembar: null, cariPelanggan: '' }, L.gantiPelanggan(SBN(), n))); },
     tutupKabar: () => set({ kabar: '' }),
     // ---- putaran 3 ----
     namaRepack: (v) => set({ namaRepack: String(v || '').slice(0, 60) }),
@@ -238,7 +238,7 @@ export function pasangLayarJual(akar, opsi) {
     simpanPesanan: () => tulisPesanan(L.susunPesananBaru(S(), L.waktuSekarang(S().sekarang || undefined))),
     antarPesanan: ({ id }) => tulisPesanan(L.susunPesananAntar(id, L.waktuSekarang(S().sekarang || undefined))),
     batalPesanan: ({ id }) => tulisPesanan(L.susunPesananBatal(id, L.waktuSekarang(S().sekarang || undefined))),
-    ikatPesanan: ({ id }) => set(L.ikatPesanan(S(), id)),
+    ikatPesanan: ({ id }) => set(L.ikatPesanan(SBN(), id)),   // B1: nego dihitung ulang dengan akun yang masuk
     lepasPesanan: () => set(L.lepasPesanan(S())),
     // ---- putaran 4: retur menunjuk nota ----
     rtCari: (v) => set({ rtCari: String(v || '').slice(0, 40) }),
@@ -664,6 +664,7 @@ export function pasangLayarJual(akar, opsi) {
             <div class="kaca-btn ${nPesanan ? 'aktif' : ''}" data-aksi="bukaPesanan" data-saring="">Pesanan${nPesanan ? ' · ' + nPesanan : ''}</div>
             <div class="kaca-btn" data-aksi="pembeliLain">Pembeli lain</div>
           </div>
+          ${(() => { const TP = s.pelanggan ? L.tingkatPembeli(s.pelanggan, s.sekarang) : null; return TP ? h`<div class="pita-info emas tingkat-pita" data-k="tg-${kunciPelanggan(s.pelanggan)}">Harga ${TP.nama} untuk ${s.pelanggan} · ${TP.teks}</div>` : ''; })()}
           ${info && info.sisa > 0 ? h`<div class="ket">Bon ${s.pelanggan} sekarang ${RP(info.sisa)} · biasa belanja ${RP(info.rataBulanan)}/bulan</div>` : info && info.lebih > 0 ? h`<div class="ket awas-teks" data-k="jl-lebih">${s.pelanggan}: ${kalimatLebih({ uang: info.lebihUang, hapus: info.lebihHapus })}. ${info.lebihHapus > 0.5 ? 'Nota Kredit atas nama ini ikut dipotong dari sisa di bawah nol itu — balik dulu hapus bukunya.' : 'Nota Kredit atas nama ini memakai kelebihan itu lebih dulu.'}</div>` : ''}
           ${info && info.pesanan && info.pesanan.length && !s.pesananId ? h`<div class="pita-info" data-aksi="bukaPesanan" data-saring="${s.pelanggan}" style="cursor: pointer;">${info.pesanan.length} pesanan ${s.pelanggan} belum tuntas — ketuk untuk melihat / mencatat jualnya</div>` : ''}
           <div class="bulat"></div>
@@ -754,7 +755,8 @@ export function pasangLayarJual(akar, opsi) {
       <div class="teks-chip">
         <div class="nama">${c.nama}</div>
         <div class="rinci">${c.ukuran}${c.keterangan ? ' · ' + c.keterangan : ''}</div>
-        <div class="harga">${RP(c.harga)}<span class="satuan">/${c.satuan}</span></div>
+        <div class="harga">${RP(c.hargaTingkat || c.harga)}<span class="satuan">/${c.satuan}</span></div>
+        ${c.tingkatNama ? h`<div class="stok tingkat-ket">${c.tingkatNama}${c.hargaTingkat !== c.harga ? ' · eceran ' + RP(c.harga) : ''}</div>` : ''}
         <div class="stok">${c.sisa <= 0 && !c.tanpaBatas ? 'habis' : c.sisaTeks}${c.dipegang > 0 ? ' · ' + (c.jalur === 'kemasan' ? c.dipegang + ' unit' : c.jalur === 'wadah' ? c.dipegang + ' lembar' : DESIMAL(c.dipegang) + ' kg') + ' dipegang struk lain' : ''}</div>
         ${c.wadah ? h`<div class="stok wadah-ket">${!c.wadah.diketahui ? 'wadah belum ditandai isi ulang' : c.wadah.perluIsi ? 'WADAH ±' + DESIMAL(c.wadah.sisaKg) + ' kg — ISI ULANG' : 'wadah ±' + DESIMAL(c.wadah.sisaKg) + ' kg'}</div>` : ''}
         ${c.wadah ? (() => { const { KT, SL } = ingatRak('w|' + c.kunci + '|' + c.sisa, () => ({ KT: WB.wbKomposisiTurunan(c.kunci, s), SL: WB.wbSelisihWadah(c.kunci, s, c.sisa) }));   // putaran 39 (owner c & f): komposisi turunan isi ulang + selisih dua angka disebut · 39b no. 29: sekali per rak
@@ -786,7 +788,7 @@ export function pasangLayarJual(akar, opsi) {
       // jadi ketukannya terasa mati. Kalimat tolaknya digambar juga di dalam lembar, di bawah tombol takaran; kabar panel isi ulang (kabarW) sudah punya tempat sendiri.
       const kabarDiLembar = s.kabar && s.kabarAwas && !(s.kabarW && s.kabarW.teks === s.kabar) ? s.kabar : '';
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
-        ${kepala(c.nama + ' ' + c.ukuran, RP(c.harga) + '/' + c.satuan + ' · bebas dijual ' + (c.jalur === 'literan' && c.wadah && !WB.wbAktif(c.kunci) ? '(buku merek asal) ' : '') + (maks === null ? (c.tanpaBatas ? 'tidak dibatasi buku (hasil samping)' : '—') : DESIMAL(maks) + ' ' + c.satuan))}
+        ${kepala(c.nama + ' ' + c.ukuran, RP(c.hargaTingkat || c.harga) + '/' + c.satuan + (c.tingkatNama ? ' (' + c.tingkatNama + ')' : '') + ' · bebas dijual ' + (c.jalur === 'literan' && c.wadah && !WB.wbAktif(c.kunci) ? '(buku merek asal) ' : '') + (maks === null ? (c.tanpaBatas ? 'tidak dibatasi buku (hasil samping)' : '—') : DESIMAL(maks) + ' ' + c.satuan))}
         ${c.jalur === 'literan' && c.wadah ? panelIsiUlang(c.kunci, s, s, { lipat: true, akun: opsi.akun ? opsi.akun() : null }) : ''}
         ${c.jalur === 'wadah' ? h`<div class="ket ${c.modalAneh ? 'awas-teks' : ''}">${c.teksModal}</div>` : ''}
         ${c.sisa <= 0 && !c.tanpaBatas && ['karung', 'kemasan', 'repack', 'literan'].indexOf(c.jalur) >= 0 && !c.wadah ? (() => { const kunci = c.jalur === 'kemasan' ? 'M:' + c.kunci : 'K:' + c.kunci; const K = AR.arKeadaan(kunci);
@@ -801,7 +803,7 @@ export function pasangLayarJual(akar, opsi) {
         ${c.jalur === 'repack' ? h`<div class="ket">Jadi produk apa (nama jual di nota) — kosong = nama mereknya</div><input class="ketik-nama" id="namaRepack" type="text" value="${s.namaRepack}" data-ketik="namaRepack" placeholder="${c.nama}">` : ''}
         <div class="tombol-baris">${preset.map((n) => h`<div class="kaca-btn" data-aksi="preset" data-n="${n}">${n} ${c.satuan}</div>`)}</div>
         ${kabarDiLembar ? h`<div class="pita-info awas" data-k="kabar-jumlah">${kabarDiLembar}</div>` : ''}
-        <div class="label">Jumlah</div><div class="angka">${s.ketik || '0'} <span class="ket">${c.satuan}</span>${s.ketik ? h` <span class="ket">= ${RP(c.harga * L.angkaKetik(s.ketik))}</span>` : ''}</div>
+        <div class="label">Jumlah</div><div class="angka">${s.ketik || '0'} <span class="ket">${c.satuan}</span>${s.ketik ? h` <span class="ket">= ${RP((c.hargaTingkat || c.harga) * L.angkaKetik(s.ketik))}</span>` : ''}</div>
         ${c.jalur === 'repack' ? gambarRepackWadah(s) : ''}
         ${tuts('masukkan', 'MASUKKAN KE KERANJANG')}
       </div>`;
@@ -848,7 +850,7 @@ export function pasangLayarJual(akar, opsi) {
         <input class="ketik-nama" id="cariPelanggan" type="text" value="${s.cariPelanggan}" data-ketik="cariPelanggan" data-enter="enterPelanggan" placeholder="Ketik namanya — Enter untuk memakai nama baru">
         ${s.pelanggan ? h`<div class="kaca-btn putus" data-aksi="lepasPelanggan">Tanpa nama</div>` : ''}
         <div class="daftar-nama">${daftar.map((o) => h`<div class="baris-nama ${o.sisaBon > 0 ? 'berutang' : ''}" data-aksi="pilihPelanggan" data-nama="${o.nama}">
-          <span>${o.nama}${o.terdaftar ? ' ✓' : ''}</span><span class="ket">${o.sisaBon > 0 ? 'bon ' + RP(o.sisaBon) + (o.umurHari ? ' · ' + o.umurHari + ' hari' : '') : o.lebih > 0 ? ringkasLebih({ uang: o.lebihUang, hapus: o.lebihHapus }) : o.kali + '× belanja'}</span></div>`)}
+          <span>${o.nama}${o.terdaftar ? ' ✓' : ''}${o.tingkat ? h` <span class="pil tingkat-pil">${o.tingkat}</span>` : ''}</span><span class="ket">${o.sisaBon > 0 ? 'bon ' + RP(o.sisaBon) + (o.umurHari ? ' · ' + o.umurHari + ' hari' : '') : o.lebih > 0 ? ringkasLebih({ uang: o.lebihUang, hapus: o.lebihHapus }) : o.kali + '× belanja'}</span></div>`)}
         ${daftar.length ? '' : h`<div class="ket">Belum ada nama itu — tekan Enter untuk memakai nama baru.</div>`}
       </div>`;
     }

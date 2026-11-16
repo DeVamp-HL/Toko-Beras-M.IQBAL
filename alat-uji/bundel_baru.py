@@ -35,9 +35,22 @@ def polos(teks):
     return teks
 
 
+# B1 (owner 16 Nov 2026): jual-logika, nego-logika & sistem-logika memakai harga-tingkat-logika (harga pelanggan usaha). Alat uji lama menyusun daftar
+# modulnya sendiri — modul itu ikut OTOMATIS (sekali, di belakang) bila pemakainya ada, supaya tiap alat uji tidak perlu diubah satu per satu.
+HT_MODUL = 'baru/js/layar/harga-tingkat-logika.js'
+HT_PEMAKAI = ('jual-logika.js', 'nego-logika.js', 'sistem-logika.js')
+
+
+def lengkapi(daftar):
+    d = list(daftar)
+    if any(os.path.basename(x) in HT_PEMAKAI for x in d) and not any(x.endswith('harga-tingkat-logika.js') for x in d):
+        d.append(HT_MODUL)
+    return d
+
+
 def bundel(daftar, prelude=True):
     bagian = [PRELUDE] if prelude else []
-    for p in daftar:
+    for p in lengkapi(daftar):
         jalur = p if os.path.isabs(p) else os.path.join(AKAR, p)
         bagian.append('\n// ===== ' + p + ' =====\n' + polos(open(jalur, encoding='utf-8').read()))
     return '\n'.join(bagian)

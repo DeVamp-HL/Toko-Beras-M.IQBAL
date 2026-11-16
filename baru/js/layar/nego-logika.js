@@ -13,6 +13,8 @@
 import { cacheMentah, ambilPenjualan, ambilHargaKemasan, ambilHargaLiteran, petaUkuran } from '../data/toko.js';
 import { NEGO_LANTAI, kunciKemasan, hargaKarungUtuh, cariHargaKarungPerKg } from '../mesin/pembantu.js';
 import { RP } from '../inti/format.js';
+// B1: nego di atas harga pelanggan bertingkat
+import { htHarga, htKgBarang } from './harga-tingkat-logika.js';
 
 // owner 7 Okt: bawaan = angka rancangan JS2 (owner 100 tetap, Ben 50, karyawan giliran 0, owner boleh di bawah modal dengan alasan, langkah Rp500)
 export const NG_BAWAAN = { ben: 50, karyawan: 0, langkah: 500, bawahModal: ['owner'] };
@@ -184,9 +186,11 @@ export function ngNamaBarang(barang) {
 export function ngPeriksaMinta(m) {
   // bentuk lama (sebelum JS2-C, tanpa barang / harga minta): tidak pernah dipakai nota mana pun (ngSetujuUntuk butuh barang, hargaMinta, jumlah) — tanpa angka
   if (!(m && m.barang && Number(m.hargaMinta) > 0)) return { nama: '', katalog: null, hargaMinta: 0, jumlah: 0, nominal: null, teks: String((m && m.teks) || 'permintaan nego') + ' — bentuk lama tanpa barang & harga: tidak dipakai di nota mana pun' };
-  const hargaMinta = Math.round(Number(m && m.hargaMinta) || 0); const jumlah = Number(m && m.jumlah) || 0; const katalog = ngHargaKatalog(m && m.barang);
+  const hargaMinta = Math.round(Number(m && m.hargaMinta) || 0); const jumlah = Number(m && m.jumlah) || 0; const eceran = ngHargaKatalog(m && m.barang);
+  // B1 (owner 16 Nov 2026): nego di atas harga pelanggan bertingkat — dasar hitungnya harga pelanggan itu SEKARANG (bukan eceran), supaya potongannya tidak membesar
+  const H = m && m.pelanggan && eceran !== null ? htHarga({ orang: m.pelanggan, barang: m.barang, eceran, kg: htKgBarang(m.barang) }) : null; const katalog = H ? H.harga : eceran;
   const nominal = katalog !== null && hargaMinta > 0 && jumlah > 0 ? Math.max(0, Math.round((katalog - hargaMinta) * jumlah)) : null; const nama = ngNamaBarang(m && m.barang);
-  const teks = nama + ': ' + (katalog !== null ? 'katalog ' + RP(katalog) + ' → ' : '') + RP(hargaMinta) + ' × ' + String(jumlah).replace('.', ',')
+  const teks = nama + ': ' + (katalog !== null ? (H ? 'harga ' + H.nama + ' ' : 'katalog ') + RP(katalog) + ' → ' : '') + RP(hargaMinta) + ' × ' + String(jumlah).replace('.', ',')
     + (nominal !== null ? ' = potongan ' + RP(nominal) : ' — harga katalog barang ini tidak ditemukan, periksa di rak dulu') + (m && m.alasan ? ' · alasan: ' + String(m.alasan).slice(0, 80) : '');
   return { nama, katalog, hargaMinta, jumlah, nominal, teks };
 }

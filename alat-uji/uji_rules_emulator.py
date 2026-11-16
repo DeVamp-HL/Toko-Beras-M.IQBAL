@@ -110,8 +110,19 @@ KONTROL = [
     ('hapus berita acara tanpa syarat "dibatalkan"', [("      allow delete: if owner() && resource.data.get('status', '') == 'dibatalkan';", "      allow delete: if owner();")], ['★T4']),
     ('permintaan nego staf tanpa syarat status "menunggu"', [(" && d.get('status', '') == 'menunggu' && d.get('negoUid', '')", " && d.get('negoUid', '')")], ['★N5']),
     ('permintaan nego staf tanpa syarat tindakan "nego"', [("return stafBuat(peranBoleh) && d.get('tindakan', '') == 'nego' && ", "return stafBuat(peranBoleh) && ")], ['★N7']),
-    ('permintaan nego staf boleh menulis kolom keputusan', [("\n        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);", ";")], ['★N6']),
+    ('permintaan nego staf boleh menulis kolom keputusan', [("d.get('negoUid', '') == request.auth.uid\n        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);", "d.get('negoUid', '') == request.auth.uid;")], ['★N6']),   # v8: jangkar dipersempit (stafUsulHarga punya ekor yang sama)
     ('berita acara boleh mundur (selesai → terkunci)', [("'terkunci>membatalkan', 'terkunci>selesai', ", "'terkunci>membatalkan', 'terkunci>selesai', 'selesai>terkunci', ")], ['H★B16']),
+]
+# ---- V8 (B1, owner 16 Nov 2026): kasus ★H docs/uji-rules-v8.md (periksa_rules.KASUS_V8) atas firestore.rules (v8) dan atas firestore.rules.v7 — yang berbeda
+# WAJIB persis periksa_rules.BEDA_V7 (yang dibuka v8). Kontrol: satu suku v8 dirusak → kasus sasarannya wajib berbalik.
+KONTROL_V8 = [
+    ('usul harga atas nama orang lain (tanpa usulUid)', [(" && d.get('usulUid', '') == request.auth.uid", "")], ['★H7']),
+    ('usul harga tanpa syarat status "menunggu"', [("d.get('tindakan', '') == 'hargaPelanggan' && d.get('status', '') == 'menunggu' && ", "d.get('tindakan', '') == 'hargaPelanggan' && ")], ['★H8']),
+    ('usul harga dicabut dari create persetujuan', [(" || stafUsulHarga(['ben', 'karyawan']);", ";")], ['★H3']),
+    ('setelan harga tingkat tidak terbaca staf', [("'perangkat', 'hargaTingkat', 'produkArsip']", "'perangkat', 'produkArsip']")], ['★H1']),
+    ('setelan HET ikut terbaca staf', [("'hargaTingkat', 'produkArsip'] && staf(", "'hargaTingkat', 'produkArsip', 'het'] && staf(")], ['★H12']),
+    ('staf boleh menulis setelan harga tingkat', [("      allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());",
+                                                   "      allow update: if (owner() && (id != 'kunciPeriode' || kunciGeser())) || (id == 'hargaTingkat' && staf(['ben', 'karyawan']));")], ['★H11']),
 ]
 # kontrol bagian C: suku kirim ulang bercap dicabut dari update penjualan → kirim ulang kasir-v33 & kasir-v32 atas nota bercap wajib berbunyi
 KONTROL_KASIR = ('suku (kasir() && ulangKasirBercap()) dicabut dari update penjualan', [(" || (kasir() && ulangKasirBercap());", ";")], ['c2', 'c4'])
@@ -534,6 +545,29 @@ def jalankan_emulator():
         lap['kontrol'].append(k)
         print('  %s %s → %s' % ('BERBUNYI' if k['berbunyi'] else 'DIAM!!  ', nama, k.get('galat') or ', '.join('%s %s (wajib %s)' % x for x in k['hasil'])), flush=True)
     pasang_aturan(v7)
+    # ---- V8 (B1): kasus ★H atas firestore.rules cabang ini (v8) dan atas firestore.rules.v7; kontrol satu suku v8
+    v7lama = baca('firestore.rules.v7')
+    print('— V8 · %d kasus ★H atas firestore.rules (v8)' % len(P.KASUS_V8), flush=True)
+    H8 = jalankan_semua(J, v7, P.KASUS_V8); lap['v8'] = H8
+    for x in H8: print('  %s %-6s %-26s %-48s → %-13s wajib %-7s %s' % ('✓' if x['ok'] else '✗', x['no'], x['akun'] + ' ' + x['op'], x['jalur'][:48], x['hasil'], x['wajib'], x['ket'][:90]), flush=True)
+    print('— V8 · kasus yang sama atas firestore.rules.v7 (yang berbeda wajib persis BEDA_V7 = %s)' % ', '.join(sorted(P.BEDA_V7)), flush=True)
+    H7 = jalankan_semua(J, v7lama, P.KASUS_V8); lap['v8lama'] = []
+    for a, b in zip(H8, H7):
+        harap = ('DITOLAK' if a['wajib'] == 'LOLOS' else 'LOLOS') if a['no'] in P.BEDA_V7 else a['wajib']
+        r8 = {'no': b['no'], 'jalur': b['jalur'], 'hasilV7': b['hasil'], 'hasilV8': a['hasil'], 'harapV7': harap, 'ok': b['hasil'] == harap and b['hasil'] != 'TIDAK TERUKUR'}
+        lap['v8lama'].append(r8)
+        if not r8['ok'] or a['no'] in P.BEDA_V7: print('  %s %-6s v7 %-13s v8 %-13s harap v7 %s' % ('✓' if r8['ok'] else '✗', r8['no'], r8['hasilV7'], r8['hasilV8'], harap), flush=True)
+    print('— V8 · KONTROL: satu suku v8 dirusak → kasus sasaran wajib berbalik', flush=True)
+    lap['kontrolV8'] = []; per8 = {K[0]: K for K in P.KASUS_V8}; utuh8 = {x['no']: x for x in H8}
+    for nama, ganti, sasaran in KONTROL_V8:
+        try:
+            R = rusak(v7, ganti); hs = jalankan_semua(J, R, [per8[s] for s in sasaran])
+            balik = [h for h in hs if h['hasil'] in ('LOLOS', 'DITOLAK') and h['hasil'] != h['wajib'] and utuh8.get(h['no'], {}).get('ok')]
+            k = {'nama': nama, 'sasaran': sasaran, 'hasil': [(h['no'], h['hasil'], h['wajib']) for h in hs], 'berbunyi': len(balik) == len(sasaran)}
+        except Exception as e: k = {'nama': nama, 'sasaran': sasaran, 'hasil': [], 'berbunyi': False, 'galat': str(e)[:300]}
+        lap['kontrolV8'].append(k)
+        print('  %s %s → %s' % ('BERBUNYI' if k['berbunyi'] else 'DIAM!!  ', nama, k.get('galat') or ', '.join('%s %s (wajib %s)' % x for x in k['hasil'])), flush=True)
+    pasang_aturan(v7)
     # ---- C · kasir darurat
     v33 = skrip_halaman(baca('kasir-darurat-nominal.html')); h32 = html_v32(); v32 = skrip_halaman(h32) if h32 else None
     lap['kasir'] = {}
@@ -555,9 +589,12 @@ def jalankan_emulator():
                       'model': ringkas([x for x in A if x['no'].startswith('M-')]), 'server': ringkas([x for x in A if x['no'].startswith('S-')]), 'buku': ringkas([x for x in A if x['no'] in BUKU]),
                       'v6': {'kasus': len(lap['v6']), 'sesuai': sum(1 for x in lap['v6'] if x['ok']), 'beda': sum(1 for x in lap['v6'] if x['hasilV6'] != x['hasilV7'])},
                       'kontrol': {'jumlah': len(lap['kontrol']) + 1, 'berbunyi': sum(1 for x in lap['kontrol'] if x['berbunyi']) + (1 if lap['kontrolKasir']['berbunyi'] else 0)},
-                      'kasir': {k: {'cek': len(v['cek']), 'lulus': sum(1 for x in v['cek'] if x['ok'])} for k, v in lap['kasir'].items()}}
+                      'kasir': {k: {'cek': len(v['cek']), 'lulus': sum(1 for x in v['cek'] if x['ok'])} for k, v in lap['kasir'].items()},
+                      'v8': ringkas(lap['v8']), 'v8lama': {'kasus': len(lap['v8lama']), 'sesuai': sum(1 for x in lap['v8lama'] if x['ok'])},
+                      'kontrolV8': {'jumlah': len(lap['kontrolV8']), 'berbunyi': sum(1 for x in lap['kontrolV8'] if x['berbunyi'])}}
     lap['lulus'] = (all(x['ok'] for x in A) and all(x['ok'] for x in lap['v6']) and all(x['berbunyi'] for x in lap['kontrol']) and lap['kontrolKasir']['berbunyi']
-                    and all(x['ok'] for v in lap['kasir'].values() for x in v['cek']))
+                    and all(x['ok'] for v in lap['kasir'].values() for x in v['cek'])
+                    and all(x['ok'] for x in lap['v8']) and all(x['ok'] for x in lap['v8lama']) and all(x['berbunyi'] for x in lap['kontrolV8']))
     return lap
 
 
@@ -569,7 +606,9 @@ def ringkasan_md(lap):
            '- **A · v7**: %s — Wajib owner %s · opsional ★ %s · model M %s · server S %s · H "hanya maju" (v6) %s' % (f(R['v7']), f(R['wajibOwner']), f(R['opsional']), f(R['model']), f(R['server']), f(R['buku'])),
            '- **A · v6**: %d/%d sesuai harapan — %d kasus berbeda v6 → v7, semuanya di BEDA_V6 (lima ubahan); selebihnya sama' % (R['v6']['sesuai'], R['v6']['kasus'], R['v6']['beda']),
            '- **Kontrol**: %d/%d berbunyi (rules dirusak satu suku → kasus sasarannya berbalik)' % (R['kontrol']['berbunyi'], R['kontrol']['jumlah']),
-           '- **C · kasir darurat (kode asli)**: ' + ' · '.join('%s %d/%d' % (k, v['lulus'], v['cek']) for k, v in R['kasir'].items()), '']
+           '- **C · kasir darurat (kode asli)**: ' + ' · '.join('%s %d/%d' % (k, v['lulus'], v['cek']) for k, v in R['kasir'].items()),
+           '- **V8 (B1 harga pelanggan usaha)**: %s atas v8 · atas v7 %d/%d sesuai (berbeda tepat %s) · kontrol v8 %d/%d berbunyi'
+           % (f(R['v8']), R['v8lama']['sesuai'], R['v8lama']['kasus'], ', '.join(sorted(P.BEDA_V7)), R['kontrolV8']['berbunyi'], R['kontrolV8']['jumlah']), '']
     out += ['### A · kasus (v7)', '', '| no | akun · operasi · jalur | wajib | emulator v7 | v6 |', '|---|---|---|---|---|']
     v6 = {x['no']: x for x in lap['v6']}
     for x in lap['v7']:
@@ -660,6 +699,16 @@ def periksa(rules=None, dok=None, html=None):
             Mx = RM.Rules(rusak(R, ganti)); diam = [s for s in sasaran if nilai_model(Mx, per[s]).boleh == per[s][8]]
             c.append(('kontrol "%s": jangkar tepat 1× & model membalik %s' % (nama, ', '.join(sasaran)), not diam, {'diam': diam}))
         except Exception as e: c.append(('kontrol "%s"' % nama, False, str(e)[:200]))
+    # V8 (B1): model atas v8 = kolom wajib KASUS_V8; atas firestore.rules.v7 berbeda tepat BEDA_V7; kontrol V8 membalik sasarannya
+    try:
+        M8, M7lama = RM.Rules(R), RM.Rules(baca('firestore.rules.v7'))
+        salah8 = [K[0] for K in P.KASUS_V8 if nilai_model(M8, K).boleh != K[8]]; beda7 = {K[0] for K in P.KASUS_V8 if nilai_model(M7lama, K).boleh != nilai_model(M8, K).boleh}
+        c.append(('model v8 = kolom Wajib di %d kasus ★H; berbeda dari firestore.rules.v7 tepat %s' % (len(P.KASUS_V8), ', '.join(sorted(P.BEDA_V7))), not salah8 and beda7 == set(P.BEDA_V7), {'salah v8': salah8, 'beda v7': sorted(beda7)}))
+        per8 = {K[0]: K for K in P.KASUS_V8}
+        for nama, ganti, sasaran in KONTROL_V8:
+            Mx = RM.Rules(rusak(R, ganti)); diam = [s for s in sasaran if nilai_model(Mx, per8[s]).boleh == per8[s][8]]
+            c.append(('kontrol v8 "%s": jangkar tepat 1× & model membalik %s' % (nama, ', '.join(sasaran)), not diam, {'diam': diam}))
+    except Exception as e: c.append(('model v8 (KASUS_V8)', False, str(e)[:300]))
     H = html if html is not None else baca('kasir-darurat-nominal.html')
     try: s33 = skrip_halaman(H)
     except Exception as e: return c + [('skrip kasir darurat terbaca', False, str(e))]
@@ -691,6 +740,7 @@ def kontrol():
     assert '| 7 | ★P20 |' in D and "updateTransforms: [{ fieldPath: 'capServer', setToServerValue: 'REQUEST_TIME' }]" in Hh
     kasus = [
         ('kolom Wajib ★P20 di docs dibalik (DITOLAK → LOLOS)', {'dok': re.sub(r'(\n\| 7 \| ★P20 \|[^\n]*?\| )DITOLAK( \|)', r'\1LOLOS\2', D)}, 'kolom "Wajib"'),
+        ('rules v8: usul harga atas nama orang lain (model v8 ikut berubah)', {'rules': R.replace(" && d.get('usulUid', '') == request.auth.uid", "")}, 'model v8 = kolom Wajib'),
         ('rules v7: suku pintu tanpa batas waktu (model ikut berubah)', {'rules': R.replace("\n        && request.time < p.data.sampai ? int(p.data.tahun) : 0;", " ? int(p.data.tahun) : 0;")}, 'model v7 = kolom Wajib'),
         ('kasir darurat tanpa cap jam server (:commit tanpa updateTransforms)', {'html': Hh.replace(",\n        updateTransforms: [{ fieldPath: 'capServer', setToServerValue: 'REQUEST_TIME' }] }] })", " }] })")}, 'server palsu: kasir-v33'),
         ('kasir darurat tanpa cara lama (ditolak langsung ke "ditolak")', {'html': Hh.replace("          if (bercap) { kirimItem(item, false, true); return; }", "")}, 'server palsu menolak'),

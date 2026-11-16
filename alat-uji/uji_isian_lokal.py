@@ -19,7 +19,8 @@ LOKAL_KE_KUNCI = {'KUNCI_DRAF_MASUK': 'masuk', 'KUNCI_DRAF_COCOK': 'cocok', 'KUN
 # sengaja BUKAN isian — tetap ikut dikosongkan (seluruh keadaan layar kembali ke awal), tapi tidak ditanyakan saat Keluar
 BUKAN_ISIAN = {
     'harga': {'kal': 'alat hitung naik/turun massal — hasilnya baru jadi isian lewat draf katalog di server'},
-    'pelanggan': {'cari': 'pencarian', 'titipCari': 'pencarian'},
+    'pelanggan': {'cari': 'pencarian', 'titipCari': 'pencarian', 'uCariO': 'pencarian nama (Usaha › + pelanggan)', 'uCariB': 'pencarian barang (Usaha › Harga barang)',
+                  'uCariK': 'pencarian nama (Usaha › harga khusus)', 'uCariKB': 'pencarian barang (Usaha › harga khusus)'},
     'menu': {'cari': 'pencarian'},
     'laporan': {'cariK': 'pencarian dokumen kecil', 'sampaiN': 'tanggal lihat neraca (saringan tampilan)'},
     'jual': {'cariPelanggan': 'pencarian nama', 'psSaring': 'saringan daftar pesanan', 'rtCari': 'pencarian nota retur', 'rwCari': 'pencarian riwayat penjualan'},

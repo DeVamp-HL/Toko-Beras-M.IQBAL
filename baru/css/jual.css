@@ -240,3 +240,9 @@ main.layar-jual .kaca-btn.kecil { min-height: 30px; font-size: 11.5px; padding: 
 .isi-tiga, .pita-tandai, .baris-cek, .baris-cek-wadah { animation: masuk 420ms cubic-bezier(.2,.8,.2,1); }
 @media (min-width: 720px) { .isi-tiga .rak-merek { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .isi-tiga, .pita-tandai, .baris-cek, .baris-cek-wadah { animation: none; } }
+/* ---------- B1 (owner 16 Nov 2026): harga pelanggan usaha di Jual — chip menyebut tingkatnya, pita tingkat masuk sekali saat pembeli dipilih ---------- */
+.chip .tingkat-ket { color: var(--aktif); font-weight: 600; }
+.pil.tingkat-pil { font-size: 10.5px; padding: 1px 7px; margin-left: 4px; vertical-align: 1px; }
+.pita-info.tingkat-pita { animation: tingkatMasuk 480ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes tingkatMasuk { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pita-info.tingkat-pita { animation: none; } }
