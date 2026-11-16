@@ -2509,9 +2509,11 @@ Tiga cacat kecil di foto struk, dirapikan atas persetujuan owner:
 
 - **Emoji jadi bintik acak** (🙏 di baris contoh): `epTanpaEmoji()` (escpos.js) membuang emoji beserta ZWJ, pemilih varian, warna kulit, bendera —
   dipakai gaya gambar (struk-kanvas.js) dan gaya teks (`epAscii`). Spasi tidak diubah (baris teks rata & data QR utuh); ©®™, panah, aksen tetap.
-- **Pita TOTAL bergaris putih tipis** (blok hitam penuh memberatkan kepala printer panas): pita 56 → 48 titik dan `epRenggang()` menjarangkan
-  titik hitam pita jadi 3/4 (pola 2×2). Tulisan putih di pita tidak disentuh. Perlu dibuktikan di cetak berikutnya.
+- **Pita TOTAL bergaris putih tipis**: percobaan pertama (pita 48 titik, titik hitam dijarangkan 3/4) dicetak owner sesudah merge #131 —
+  pita jadi abu-abu, tulisan putih kurang kontras, garis putih TETAP ada (bukan soal panas; printer Sunmi tidak bisa mencetak blok hitam lebar
+  dengan rata). Owner memilih **tanpa pita**: TOTAL huruf besar tebal (label 34, angka 40 titik) di antara dua garis tebal 4 titik; garis
+  titik-titik tepat sebelum TOTAL dilewati. Penjarang (`epRenggang`) dibuang lagi.
 - **Huruf rincian tipis**: isi 400 → 500, angka kanan 500 → 600, tebal 600 → 700, ambang hitam-putih 150 → 160.
 - **Logo tidak bisa dipasang** (ditemukan saat poles): di `siapkanLogo()` deklarasi `lebar/tinggi` tertelan komentar → ReferenceError.
 - Tampilan struk ikut terbit lewat GitHub Pages — **tidak perlu pasang ulang APK**.
-- Uji: `uji_escpos.py` 47 (+ kontrol 17).
+- Uji: `uji_escpos.py` 42 (+ kontrol 14).

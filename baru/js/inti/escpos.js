@@ -139,20 +139,6 @@ export function epHitamPutih(rgba, lebar, tinggi, opsi) {
   return bit;
 }
 
-/**
- * Jarangkan blok hitam lebar (pita TOTAL): di baris y0..y1−1 hanya 3 dari 4 titik hitam dipertahankan (pola 2×2 — titik ganjil-ganjil dimatikan).
- * Di kertas tetap terlihat hitam pekat (titik panas melebar), tapi beban panas per baris turun ±25%: blok hitam penuh membuat printer mencetak
- * garis putih tipis melintang (uji cetak owner 16 Nov). Titik putih (tulisan di dalam pita) tidak disentuh. Mengubah `bit` di tempat.
- */
-export function epRenggang(bit, lebar, y0, y1) {
-  const ya = Math.max(0, Math.floor(y0)), yb = Math.min(Math.floor(bit.length / lebar), Math.ceil(y1));
-  for (let y = ya; y < yb; y++) {
-    if ((y - ya) % 2 === 0) continue;
-    for (let x = 1; x < lebar; x += 2) bit[y * lebar + x] = 0;
-  }
-  return bit;
-}
-
 /** Bit (lebar × tinggi, 1 = hitam) → perintah GS v 0 per pita PITA baris. Bit pertama tiap byte = titik paling kiri. */
 export function epRaster(bit, lebar, tinggi) {
   const bpr = Math.ceil(lebar / 8); const w = Penulis();

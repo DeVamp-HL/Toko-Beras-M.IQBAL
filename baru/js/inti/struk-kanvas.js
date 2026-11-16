@@ -1,10 +1,10 @@
 // STRUK GAYA GAMBAR (putaran T1 langkah 2) — menggambar `garis` susunStruk() di kanvas selebar kertas cetak, lalu menjadikannya bit hitam/putih
 // untuk raster ESC/POS (escpos.js epSusunGambar). Isi struk TIDAK berubah: baris, urutan, dan angkanya sama persis dengan struk teks — yang
-// berubah hanya rupa: huruf toko (Jost), kop besar, rincian barang menjorok, TOTAL di pita hitam, garis titik-titik, logo (bila ada).
-// Bagian DOM (kanvas); hitungan murninya (hitam-putih, raster, buang emoji, jarangkan pita) di escpos.js supaya teruji di jsc.
-// Poles sesudah uji cetak owner 16 Nov: emoji dibuang (tadinya jadi bintik acak), pita TOTAL lebih ramping & dijarangkan 3/4 titik (tadinya
-// bergaris putih), huruf isi lebih tebal (500, ambang 160) supaya tetap terbaca saat kertas panas mulai pudar.
-import { EP_TITIK, epHitamPutih, epTanpaEmoji, epRenggang } from './escpos.js';
+// berubah hanya rupa: huruf toko (Jost), kop besar, rincian barang menjorok, TOTAL besar di antara dua garis tebal, garis titik-titik, logo.
+// Bagian DOM (kanvas); hitungan murninya (hitam-putih, raster, buang emoji) di escpos.js supaya teruji di jsc.
+// Poles sesudah uji cetak owner 16 Nov: emoji dibuang (tadinya jadi bintik acak), huruf isi lebih tebal (500, ambang 160). TOTAL tidak lagi
+// di pita hitam: blok hitam lebar selalu bergaris putih tipis di printer Sunmi (pekat maupun dijarangkan) — owner memilih "tanpa pita, garis tebal".
+import { EP_TITIK, epHitamPutih, epTanpaEmoji } from './escpos.js';
 
 const HURUF = 'Jost, "Helvetica Neue", Arial, sans-serif';
 
@@ -18,7 +18,7 @@ export async function siapkanHuruf() {
 function ukuran(titik) {
   const k = titik / 576;
   const u = (n) => Math.round(n * k);
-  return { k, tepi: u(6), kop: u(42), kecil: u(21), isi: u(25), rinci: u(22), total: u(34), jarak: u(8), pita: u(48), garis: Math.max(2, u(2)) };
+  return { k, tepi: u(6), kop: u(42), kecil: u(21), isi: u(25), rinci: u(22), total: u(34), totalAngka: u(40), jarak: u(8), tebal: Math.max(3, u(4)), garis: Math.max(2, u(2)) };
 }
 
 /** Pecah teks ke baris yang muat dalam `lebar` piksel (kata terlalu panjang dipotong per huruf). */
@@ -59,10 +59,11 @@ export function gambarStruk(garis, opsi) {
     ctx.putImageData(img, Math.round((titik - o.logo.lebar) / 2), y); y += o.logo.tinggi + U.jarak * 2;
   }
 
-  let pertama = true; const pita = [];   // [y awal, y akhir] tiap pita hitam — dijarangkan sesudah hitam-putih
+  let pertama = true;
   (garis || []).forEach((g, i) => {
     if (!g) return;
-    if (g.garis) {   // pemisah: garis titik-titik
+    if (g.garis) {   // pemisah: garis titik-titik — dilewati tepat sebelum TOTAL (garis tebal TOTAL sudah memisahkan)
+      const berikut = garis[i + 1]; if (berikut && berikut.tebal && berikut.kanan && !berikut.tengah) return;
       y += U.jarak; ctx.save(); ctx.lineWidth = U.garis; ctx.setLineDash([Math.max(3, Math.round(6 * U.k)), Math.max(3, Math.round(5 * U.k))]);
       ctx.beginPath(); ctx.moveTo(kiriX, y); ctx.lineTo(kananX, y); ctx.stroke(); ctx.restore(); y += U.jarak + U.garis; return;
     }
@@ -72,12 +73,12 @@ export function gambarStruk(garis, opsi) {
       bungkus(ctx, kiri, lebarIsi).forEach((s) => { tulis(s, titik / 2, 'center', U.kop); y += Math.round(U.kop * 1.15); }); y += Math.round(U.jarak / 2); return;
     }
     pertama = false;
-    if (g.tebal && kanan) {   // TOTAL: pita hitam, tulisan putih
-      y += U.jarak; huruf(700, U.total); const tinggiPita = U.pita;
-      ctx.fillRect(kiriX, y, lebarIsi, tinggiPita); pita.push([y, y + tinggiPita]); ctx.fillStyle = '#fff';
-      const yTeks = y + Math.round((tinggiPita - U.total) / 2) + Math.round(U.total * 0.8);
-      ctx.textAlign = 'left'; ctx.fillText(kiri, kiriX + U.jarak * 2, yTeks); ctx.textAlign = 'right'; ctx.fillText(kanan, kananX - U.jarak * 2, yTeks);
-      ctx.fillStyle = '#000'; y += tinggiPita + U.jarak * 2; return;
+    if (g.tebal && kanan) {   // TOTAL: huruf besar tebal di antara dua garis tebal (tanpa blok hitam)
+      y += U.jarak; ctx.fillRect(kiriX, y, lebarIsi, U.tebal); y += U.tebal + U.jarak;
+      const dasar = y + Math.round(U.totalAngka * 0.8);   // satu garis dasar untuk label & angka
+      huruf(700, U.total); ctx.textAlign = 'left'; ctx.fillText(kiri, kiriX, dasar);
+      huruf(700, U.totalAngka); ctx.textAlign = 'right'; ctx.fillText(kanan, kananX, dasar);
+      y += Math.round(U.totalAngka * 1.05) + U.jarak; ctx.fillRect(kiriX, y, lebarIsi, U.tebal); y += U.tebal + U.jarak * 2; return;
     }
     if (g.tengah && !kanan) {
       const px = i < 4 ? U.kecil : U.isi; huruf(g.tebal ? 700 : 500, px);
@@ -98,7 +99,6 @@ export function gambarStruk(garis, opsi) {
   const tinggi = Math.min(kanvas.height, Math.ceil(y));
   const data = ctx.getImageData(0, 0, titik, tinggi).data;
   const bit = epHitamPutih(data, titik, tinggi, { ambang: 160 });
-  pita.forEach((p) => epRenggang(bit, titik, p[0], p[1]));
   // pratinjau = persis yang tercetak (sesudah dijadikan hitam/putih)
   const pr = document.createElement('canvas'); pr.width = titik; pr.height = tinggi; const pc = pr.getContext('2d'); const im = pc.createImageData(titik, tinggi);
   for (let i = 0; i < bit.length; i++) { const v = bit[i] ? 0 : 255; im.data[i * 4] = v; im.data[i * 4 + 1] = v; im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; }
