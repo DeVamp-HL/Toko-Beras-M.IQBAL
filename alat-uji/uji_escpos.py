@@ -10,6 +10,7 @@ Membuktikan:
   · byte: mulai dengan ESC @, potong sebagian = GS V 66 0, penuh = GS V 65 0, "tanpa potong" = tidak ada GS V
   · QR: panjang data di perintah simpan (pL pH) = panjang data + 3
   · struk contoh: baris TOTAL berakhiran rupiahnya
+  · gaya gambar: hitam-putih (ambang & dither, transparan = putih), raster GS v 0 per pita, bit kiri = MSB, base64 untuk aplikasi
 
     python3 alat-uji/uji_escpos.py            → 0 = lulus, 1 = gagal
     python3 alat-uji/uji_escpos.py --kontrol  → tiap salinan rusak WAJIB gagal; 0 = semua tertangkap, 3 = ada yang lolos
@@ -21,6 +22,7 @@ BERKAS = os.path.join(AKAR, 'baru', 'js', 'inti', 'escpos.js')
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 
 PEMERIKSA = r"""
+if (typeof btoa !== 'function') { globalThis.btoa = (s) => { const T = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'; let o = ''; for (let i = 0; i < s.length; i += 3) { const a = s.charCodeAt(i), b = s.charCodeAt(i + 1), c = s.charCodeAt(i + 2); const n = (a << 16) | ((b || 0) << 8) | (c || 0); o += T[n >> 18 & 63] + T[n >> 12 & 63] + (i + 1 < s.length ? T[n >> 6 & 63] : '=') + (i + 2 < s.length ? T[n & 63] : '='); } return o; }; }
 const hasil = [];
 const cek = (nama, ok, ket) => hasil.push({ nama, ok: !!ok, ket: ket === undefined ? '' : String(ket) });
 const ascii = (s) => /^[\x20-\x7e]*$/.test(s);
@@ -65,6 +67,23 @@ cek('QR: perintah ada', iq >= 0);
 cek('QR: pL pH = data + 3', simpan >= 0 && q[simpan + 3] === 9 && q[simpan + 4] === 0, simpan >= 0 ? [q[simpan + 3], q[simpan + 4]] : 'tidak ada');
 const laci = epSusun(g, { laci: true }).byte;
 cek('laci: pulsa ESC p hanya kalau diminta', cari(laci, [0x1b, 0x70, 0x00]) >= 0 && cari(sebagian, [0x1b, 0x70]) < 0);
+
+// ---- gaya gambar (T1 langkah 2) ----
+const rgba = (w, h, f) => { const d = new Uint8Array(w * h * 4); for (let i = 0; i < w * h; i++) { const v = f(i % w, Math.floor(i / w)); d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255; } return d; };
+const hp = epHitamPutih(rgba(4, 1, (x) => [0, 100, 200, 255][x]), 4, 1, { ambang: 150 });
+cek('hitam-putih: ambang (gelap = 1)', arr(hp).join('') === '1100', arr(hp).join(''));
+const tr = new Uint8Array([0, 0, 0, 0]); cek('hitam-putih: transparan = putih', epHitamPutih(tr, 1, 1)[0] === 0);
+const abu = epHitamPutih(rgba(64, 64, () => 128), 64, 64, { dither: true }); let hitam = 0; for (let i = 0; i < abu.length; i++) hitam += abu[i];
+cek('dither: abu-abu 50% jadi ±separuh titik hitam', hitam > 64 * 64 * 0.4 && hitam < 64 * 64 * 0.6, hitam);
+const bit = new Uint8Array(10 * 2); bit[0] = 1; bit[9] = 1; bit[10] = 1;
+const rs = epRaster(bit, 10, 2);
+cek('raster: kepala GS v 0, 2 byte/baris, 2 baris', arr(rs).slice(0, 8).join(',') === [0x1d, 0x76, 0x30, 0, 2, 0, 2, 0].join(','), arr(rs).slice(0, 8));
+cek('raster: bit kiri = MSB', arr(rs).slice(8).join(',') === [0x80, 0x40, 0x80, 0x00].join(','), arr(rs).slice(8));
+const tinggi = 500; const rb = epRaster(new Uint8Array(576 * tinggi), 576, tinggi); let pita = 0; for (let i = 0; i < rb.length; i++) if (rb[i] === 0x1d && rb[i + 1] === 0x76 && rb[i + 2] === 0x30) pita++;
+cek('raster: dipecah per pita (500 baris → 3 perintah)', pita === 3 && rb.length === 3 * 8 + 72 * tinggi, pita + ' / ' + rb.length);
+const sg = epSusunGambar({ bit, lebar: 10, tinggi: 2 }, { potong: 'penuh', qr: 'X1' });
+cek('struk gambar: ESC @ · raster · QR · potong penuh', sg.byte[0] === 0x1b && sg.byte[1] === 0x40 && cari(sg.byte, [0x1d, 0x76, 0x30]) > 0 && cari(sg.byte, [0x1d, 0x28, 0x6b]) > 0 && cari(sg.byte, [0x1d, 0x56, 0x41, 0x00]) > 0);
+if (typeof btoa === 'function') cek('base64: byte → teks', epBase64(new Uint8Array([0x1b, 0x40, 0x41])) === 'G0BB', epBase64(new Uint8Array([0x1b, 0x40, 0x41])));
 print(JSON.stringify(hasil));
 """
 
@@ -106,6 +125,10 @@ MUTASI = [
     ('kode potong sebagian salah', "w.byte(GS, 0x56, 0x42, 0x00)", "w.byte(GS, 0x56, 0x41, 0x00)"),
     ('panjang QR tanpa +3', "const n = d.length + 3;", "const n = d.length;"),
     ('bungkus tidak memotong kata panjang', "while (k.length > lebar)", "while (false)"),
+    ('raster: bit kanan dulu (LSB)', "v |= 0x80 >> k", "v |= 1 << k"),
+    ('raster: tanpa pita (satu perintah raksasa)', "const PITA = 240;", "const PITA = 100000;"),
+    ('dither dimatikan diam-diam', "if (!o.dither) {", "if (true) {"),
+    ('transparan dianggap hitam', "abu[i] = 255 - a * (255 - l);", "abu[i] = a * l;"),
 ]
 
 

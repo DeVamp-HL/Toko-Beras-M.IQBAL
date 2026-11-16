@@ -9,6 +9,7 @@ import * as L from './jual-logika.js';
 import * as RT from './retur-logika.js';
 import * as WJ from './wadah-jual-logika.js';
 import * as ST from './struk-logika.js';
+import * as PR from '../inti/printer.js';   // T1 (16 Nov 2026): printer USB tablet kasir — aplikasi CPad / WebUSB; tanpa printer = dialog cetak
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
@@ -304,9 +305,22 @@ export function pasangLayarJual(akar, opsi) {
   // window.open(…, 'noopener') SELALU mengembalikan null menurut aturan peramban (walau jendelanya terbuka) → dulu tiap kirim tercatat "ditahan peramban".
   // Dibuka tanpa fitur itu supaya null = sungguh ditahan; opener diputus sesudahnya (jendela baru tidak bisa menyentuh halaman toko).
   function bukaWa(teks) { try { const w = window.open(ST.tautanWa(teks), '_blank'); if (w) { try { w.opener = null; } catch (e) { /* jendela sudah pindah asal */ } } return w; } catch (e) { return null; } }
-  /** Cetak = teks struk yang sama lewat dialog cetak perangkat ini (#cetakStruk, satu-satunya yang tampil saat print). */
+  /** Cetak: printer USB perangkat ini bila ada (aplikasi tablet kasir / WebUSB — inti/printer.js, setelan di uji-cetak.html), selain itu atau kalau
+   *  printer gagal = teks struk yang sama lewat dialog cetak perangkat ini. Isi struk sama persis di kedua jalur (garis susunStruk). */
   function cetak(nota, atur, pilih, ket) {
-    const st = ST.susunStruk(nota, atur, pilih); const el = document.getElementById('cetakStruk'); if (!st || !el) return;
+    const st = ST.susunStruk(nota, atur, pilih); if (!st) return;
+    PR.jalurCetak().then((j) => {
+      if (j === 'dialog') { cetakDialog(st, nota, ket); return; }
+      return PR.cetakGaris(st.garis).then((r) => {
+        catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + 'printer USB ' + (r.jalur === 'aplikasi' ? 'aplikasi tablet' : 'peramban') + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
+      }).catch((e) => {
+        set({ kabar: 'Printer USB gagal (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true });
+        cetakDialog(st, nota, ket);
+      });
+    }).catch(() => cetakDialog(st, nota, ket));
+  }
+  function cetakDialog(st, nota, ket) {
+    const el = document.getElementById('cetakStruk'); if (!el) return;
     el.textContent = st.teks; el.className = 'cetak-struk k' + st.kertasMm;
     try { window.print(); } catch (e) { set({ kabar: 'Dialog cetak tidak bisa dibuka: ' + (e && e.message ? e.message : e), kabarAwas: true }); return; }
     catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + 'dialog cetak perangkat ini · ' + st.kertasMm + ' mm');
@@ -1056,9 +1070,9 @@ export function pasangLayarJual(akar, opsi) {
       <div class="bendera"><span class="ket" style="align-self: center;">kertas</span>${[58, 80].map((k) => h`<span class="pil ${n.pilih.kertas === k ? 'nyala' : ''}" data-aksi="strukKertas" data-mm="${k}">${k} mm</span>`)}<span class="ket tautan" style="margin-left: auto; align-self: center;" data-aksi="bukaAturStruk">atur kop & aturan ›</span></div>
       <div class="bendera">${ST.ST_SERTAKAN.map(([k, nm]) => h`<span class="pil ${n.pilih.sertakan[k] ? 'nyala' : ''}" data-aksi="strukSertakan" data-nama="${k}">${nm}</span>`)}</div>
       <pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>
-      <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="kirimWa">Kirim WhatsApp</div><div class="kaca-btn" data-aksi="cetakStruk">Cetak</div></div>
+      <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="kirimWa">Kirim WhatsApp</div><div class="kaca-btn" data-aksi="cetakStruk">Cetak</div><a class="kaca-btn" href="uji-cetak.html" style="text-decoration: none; color: inherit;">Printer tablet ini</a></div>
       ${pitaTolak(s, 'struk')}
-      <div class="ket">Struk yang sama untuk kertas dan WhatsApp — cuma menyusun nota yang sudah tersimpan, tidak ada angka baru. WhatsApp dibuka tanpa nomor tujuan (WhatsApp yang bertanya ke siapa; nomor pembeli tidak disimpan). Cetak = dialog cetak perangkat ini; printer struk tertanam baru ada di tablet karyawan.</div>
+      <div class="ket">Struk yang sama untuk kertas dan WhatsApp — cuma menyusun nota yang sudah tersimpan, tidak ada angka baru. WhatsApp dibuka tanpa nomor tujuan (WhatsApp yang bertanya ke siapa; nomor pembeli tidak disimpan). Cetak = printer USB tablet ini bila sudah diatur ("Printer tablet ini": gaya, logo), selain itu dialog cetak perangkat ini.</div>
       ${n.nota.cara === 'QRIS' ? h`<div class="pita-info">QRIS: yang masuk rekening sudah dipotong MDR — catatan toko, tidak dicetak di struk pembeli.</div>` : ''}
       <div class="ket">Aturan otomatis untuk nota seperti ini: <b>${o.teks}</b> (diatur di "atur kop & aturan").</div>
       <div class="bulat"></div>

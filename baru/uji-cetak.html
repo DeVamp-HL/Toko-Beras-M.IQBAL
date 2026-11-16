@@ -2,64 +2,88 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<!-- Putaran T1 (spike): uji cetak USB di Sunmi CPad. Tanpa Firebase, tanpa script sebaris; hanya modul sendiri. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<!-- Putaran T1: printer tablet ini (uji cetak + setelan per perangkat). Tanpa Firebase, tanpa script sebaris; hanya modul sendiri + huruf toko. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Uji cetak printer · Toko Beras M.IQBAL</title>
+<title>Printer tablet ini · Toko Beras M.IQBAL</title>
 <link rel="icon" href="../icon-sistem-32.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap">
 <style>
   :root { --latar: #f4f2ec; --kartu: #ffffff; --teks: #1d2430; --redup: #5b6472; --baik: #1f7a4d; --awas: #b3261e; --garis: #d8d4c8; }
   @media (prefers-color-scheme: dark) { :root { --latar: #15181d; --kartu: #1f242b; --teks: #e9e6de; --redup: #a3a9b3; --baik: #5cc38f; --awas: #ff8a80; --garis: #343a43; } }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 16px; background: var(--latar); color: var(--teks); font: 16px/1.45 system-ui, sans-serif; }
-  main { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; grid-template-columns: 1fr; }
-  @media (min-width: 820px) { main { grid-template-columns: 1fr 1fr; } }
-  h1 { font-size: 22px; margin: 0 0 4px; grid-column: 1 / -1; }
-  section { background: var(--kartu); border: 1px solid var(--garis); border-radius: 12px; padding: 16px; }
-  h2 { font-size: 16px; margin: 0 0 10px; }
+  body { margin: 0; padding: 16px; background: var(--latar); color: var(--teks); font: 16px/1.45 Jost, system-ui, sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; display: grid; gap: 16px; grid-template-columns: 1fr; align-items: start; }
+  @media (min-width: 820px) { main { grid-template-columns: minmax(0, 1fr) 420px; } .kiri { display: grid; gap: 16px; } .kanan { position: sticky; top: 16px; } }
+  .kiri, .kanan { display: grid; gap: 16px; min-width: 0; }
+  header { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 24px; font-weight: 600; margin: 0; }
+  header a { color: var(--redup); }
+  section { background: var(--kartu); border: 1px solid var(--garis); border-radius: 14px; padding: 16px; min-width: 0; }
+  h2 { font-size: 16px; font-weight: 600; margin: 0 0 10px; }
   p { margin: 0 0 10px; color: var(--redup); }
   .baik { color: var(--baik); font-weight: 600; } .awas { color: var(--awas); font-weight: 600; }
-  button { font: inherit; font-weight: 600; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--garis); background: var(--latar); color: var(--teks); margin: 0 8px 8px 0; min-height: 48px; }
+  button { font: inherit; font-weight: 600; padding: 12px 18px; border-radius: 10px; border: 1px solid var(--garis); background: var(--latar); color: var(--teks); margin: 0 8px 8px 0; min-height: 48px; }
   button.utama { background: var(--teks); color: var(--kartu); border-color: var(--teks); }
   button:disabled { opacity: .45; }
-  label { display: block; margin: 0 0 10px; }
-  select, input[type=number] { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--garis); background: var(--latar); color: var(--teks); margin-left: 6px; }
+  label { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
+  label > span { min-width: 150px; color: var(--redup); }
+  select, input[type=number] { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--garis); background: var(--latar); color: var(--teks); }
+  input[type=range] { flex: 1; min-width: 140px; }
   pre { margin: 0; padding: 12px; border-radius: 8px; background: var(--latar); overflow-x: auto; font: 13px/1.35 ui-monospace, Menlo, monospace; white-space: pre; }
   ol { margin: 0; padding-left: 20px; font-size: 14px; }
+  .kertas-wadah { background: #8a8f96; border-radius: 10px; padding: 14px; display: flex; justify-content: center; max-height: 78vh; overflow: auto; }
+  canvas.kertas { width: 100%; max-width: 360px; height: auto; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); image-rendering: pixelated; }
+  [hidden] { display: none !important; }
 </style>
 <script type="module" src="js/layar/uji-cetak.js"></script>
 </head>
 <body>
 <main>
-  <h1>Uji cetak printer USB</h1>
-  <section>
-    <h2>1 · Peramban</h2>
-    <p id="ucDukung">Memeriksa…</p>
-    <p>Langkah: colok printer ke USB di stand → ketuk <b>Pilih printer</b>. Kalau daftarnya kosong, ketuk <b>Tampilkan semua USB</b> (printer Sunmi bisa mengaku kelas vendor, bukan kelas printer).</p>
-    <button id="ucPilih" class="utama" type="button">Pilih printer</button>
-    <button id="ucPilihSemua" type="button">Tampilkan semua USB</button>
-  </section>
-  <section>
-    <h2>2 · Cetak contoh</h2>
-    <label>Kertas <select id="ucKertas"></select></label>
-    <label>Potong <select id="ucPotong"></select></label>
-    <label>Baris kosong sebelum potong <input id="ucUmpan" type="number" min="0" max="10" value="4"></label>
-    <label><input id="ucQr" type="checkbox" checked> sertakan kode QR</label>
-    <button id="ucCetak" class="utama" type="button" disabled>Cetak contoh</button>
-  </section>
-  <section>
-    <h2>Printer terpilih (salin ini kalau gagal)</h2>
-    <pre id="ucPrinter"></pre>
-  </section>
-  <section>
-    <h2>Catatan</h2>
-    <ol id="ucLog"></ol>
-  </section>
-  <section style="grid-column: 1 / -1">
-    <h2>Pratinjau teks yang dikirim</h2>
-    <pre id="ucPratinjau"></pre>
-  </section>
+  <header><h1>Printer tablet ini</h1><a href="./">← kembali ke sistem toko</a></header>
+  <div class="kiri">
+    <section>
+      <h2>Jalur cetak</h2>
+      <p id="ucDukung">Memeriksa…</p>
+      <div id="ucPilihBaris">
+        <p>Peramban biasa: colok printer → <b>Pilih printer</b>; daftar kosong → <b>Tampilkan semua USB</b>.</p>
+        <button id="ucPilih" type="button">Pilih printer</button>
+        <button id="ucPilihSemua" type="button">Tampilkan semua USB</button>
+      </div>
+      <label><input id="ucAktif" type="checkbox" checked> tombol Cetak di layar Jual memakai printer USB ini (mati = dialog cetak seperti dulu)</label>
+    </section>
+    <section>
+      <h2>Rupa struk</h2>
+      <label><span>Gaya</span><select id="ucGaya"></select></label>
+      <label><span>Kertas</span><select id="ucKertas"></select></label>
+      <div id="ucLogoBaris">
+        <label><span>Logo usaha</span><input id="ucLogoBerkas" type="file" accept="image/*"></label>
+        <label><span>Lebar logo</span><input id="ucLogoUkuran" type="range" min="25" max="100" step="5" value="60"><button id="ucLogoHapus" type="button">Lepas logo</button></label>
+        <p>Logo diubah jadi titik hitam-putih (printer panas tidak berwarna). PNG berlatar transparan atau putih paling rapi.</p>
+      </div>
+      <label><span>Potong</span><select id="ucPotong"></select></label>
+      <label><span>Baris kosong sebelum potong</span><input id="ucUmpan" type="number" min="0" max="10" value="4"></label>
+      <label><input id="ucQr" type="checkbox"> sertakan kode QR di bawah struk</label>
+      <button id="ucCetak" class="utama" type="button" disabled>Cetak contoh</button>
+      <button id="ucSimpan" type="button">Simpan untuk tablet ini</button>
+    </section>
+    <section>
+      <h2>Catatan</h2>
+      <ol id="ucLog"></ol>
+    </section>
+    <section>
+      <h2>Printer (salin ini kalau gagal)</h2>
+      <pre id="ucPrinter"></pre>
+    </section>
+  </div>
+  <div class="kanan">
+    <section>
+      <h2>Pratinjau — persis yang keluar dari printer</h2>
+      <div id="ucGambar" class="kertas-wadah"></div>
+      <pre id="ucPratinjau" hidden></pre>
+    </section>
+  </div>
 </main>
 </body>
 </html>

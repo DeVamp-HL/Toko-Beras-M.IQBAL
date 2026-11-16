@@ -2482,3 +2482,22 @@ kasir darurat pensiun **sesudah tablet terbukti**. Rencana lengkap (T1, T2, B1�
   CSP sendiri (`connect-src 'none'`). Cetak struk CONTOH (angka contoh hitung), menampilkan VID/PID & antarmuka printer untuk disalin.
 - Belum: struk asli dari layar Jual ke printer USB, mode tablet & PIN — menunggu hasil uji fisik owner (PWA atau APK).
 - Uji: `alat-uji/uji_escpos.py` (+ `--kontrol`, 7 mutasi) di CI.
+
+## Putaran T1 · langkah 2 — aplikasi tablet kasir (APK) + struk gaya gambar (16 Nov 2026)
+
+Hasil uji owner langkah 1 di CPad: WebUSB **gagal mengklaim antarmuka 0** printer Sunmi NT320 (VID 0x324f, PID 0x5501); struk lewat RawBT
+keluar rapi. Owner: *"maunya tanpa pihak ketiga … jauh lebih bagus, jauh lebih rapi dan jauh lebih profesional"*, logo usaha belum ada.
+
+- **APK** (`apk/`, dibangun `.github/workflows/apk.yml` di runner — Mac owner tetap tanpa Node): Capacitor 7 memuat `server.url` =
+  `/baru/` di GitHub Pages (pembaruan sistem tetap lewat terbit biasa; kunci API ber-referrer tetap cocok), `www/galat.html` bila tablet belum
+  tersambung saat dibuka. Plugin Java **CetakUsb** (`apk/tambahan/CetakUsbPlugin.java`): `daftar()` & `cetak({data base64})`, klaim antarmuka
+  dengan force (yang tidak bisa dilakukan Chrome), antre satu per satu, izin USB lewat dialog Android + penyaring perangkat (printer dicolok →
+  "selalu buka" = izin tersimpan). Layar tidak padam selama aplikasi terbuka. Ikon & layar pembuka dari `icon-sistem-512.png`.
+  Kunci tanda tangan: rahasia repo `APK_KEYSTORE_B64/PASSWORD`, `APK_KEY_ALIAS/PASSWORD`; tanpa itu APK DEBUG (versi baru = hapus aplikasi lama dulu).
+- **Struk gaya gambar** (`js/inti/struk-kanvas.js` + raster di `escpos.js`): garis `susunStruk()` digambar di kanvas 576 titik — kop besar,
+  rincian menjorok, TOTAL di pita hitam, garis titik-titik, logo (dithering) — lalu GS v 0 per pita 240 baris. Isi & angka = struk teks.
+- **Satu pintu cetak** `js/inti/printer.js`: jalur aplikasi → WebUSB (printer pernah diizinkan) → dialog. Setelan PER PERANGKAT di localStorage
+  `printerPerangkat` (gaya, kertas, potong, QR, logo, aktif) — diatur di `uji-cetak.html` (kini "Printer tablet ini", pratinjau persis hasil cetak).
+- **Jual › Struk › Cetak**: printer USB bila ada; gagal → kabar + dialog cetak lama (RawBT tetap bisa jadi cadangan). `strukKeluar.ket` menyebut
+  jalur & gaya. Tombol "Printer tablet ini" di lembar Struk.
+- Uji: `uji_escpos.py` 33 (+ kontrol 11). Belum: mode tablet & PIN, offline saat aplikasi dibuka tanpa internet (belum ada service worker /baru/).
