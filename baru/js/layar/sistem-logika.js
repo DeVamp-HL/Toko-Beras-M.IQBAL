@@ -4,7 +4,8 @@
 // Sumber angka = data toko yang sama dengan sistem lama (perangkatStatus & logAktivitas = koleksi sistem lama); yang BARU:
 // aturanToko/{perangkat,peran,cadangan,lokasi,pengingat} (angka & daftar kebijakan owner), cadanganCatatan, pengingat, persetujuan, pindahStok.
 // Kejujuran: antrean = catatan yang sungguh belum diakui server (hasPendingWrites), bukan hitungan sendiri; yang tidak bisa dihitung DISEBUT.
-// Tidak ada kolom PIN/sandi di mana pun — kunci perangkat diatur di perangkatnya (aturan tetap).
+// Tidak ada kolom PIN/sandi di mana pun — kunci perangkat diatur di perangkatnya (aturan tetap). KECUALI (putaran T1 langkah 3, owner 16 Nov 2026):
+// aturanToko/peran.operator = orang di tablet, PIN-nya tersimpan sebagai PBKDF2 bergaram (tablet-logika.js) — bukan PIN-nya sendiri.
 // Nama pembantu diprefiks `ss` karena bundel uji jsc satu lingkup.
 import { hitungUtangPemasok, hitungStokBahanKemasan } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, kunciPelanggan, uangKembaliRetur } from '../mesin/pembantu.js';
@@ -14,7 +15,7 @@ import { tempoPemasok, petaGulir, gulirBon } from './bon-pemasok-logika.js';
 import { kantongLama } from './wadah-jual-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
 import { semuaBon, pesanTagih } from './bon-logika.js';
-import { SERVER_BUKA } from '../data/akses.js';
+import { SERVER_BUKA, PERAN_BUKAN_OWNER } from '../data/akses.js';
 import { HB_TEMPAT } from '../data/hemat-baca.js';
 // owner 7 Okt (JS2-C): bawaan batas nego satu sumber
 import { NG_BAWAAN, ngPeriksaMinta } from './nego-logika.js';
@@ -43,13 +44,33 @@ export const SS_PENERIMA = ['Owner', 'Ben'];
 export const SS_ATUR_BAWAAN = {
   perangkat: { batasAntre: 30, batasDenyut: 15, pemegang: ['Owner', 'Ben'] },
   // owner 7 Okt (JS2-C): jatah nego per peran (% margin) + per akun (uid → %, kosong = ikut peran), siapa boleh di bawah modal ('owner' | peran | 'uid:…'), langkah batas
-  peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: NG_BAWAAN.ben, jatahKaryawan: NG_BAWAAN.karyawan, jatahAkun: {}, bawahModal: NG_BAWAAN.bawahModal.slice(), langkahNego: NG_BAWAAN.langkah, jejak: [] },
+  peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: NG_BAWAAN.ben, jatahKaryawan: NG_BAWAAN.karyawan, jatahAkun: {}, bawahModal: NG_BAWAAN.bawahModal.slice(), langkahNego: NG_BAWAAN.langkah, jejak: [],
+    operator: {} },   // putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
   pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'] },
     hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, tundaHari: 2, maksTunda: 2, opnameTiap: 14 },
 };
 const ssSalin = (x) => JSON.parse(JSON.stringify(x));
+// ---------- orang di tablet (putaran T1 langkah 3, owner 16 Nov 2026) — bentuk yang boleh ditulis; diatur lewat tablet-logika.js ----------
+export const SS_MAKS_ORANG_TABLET = 12;
+/** Peta orang di tablet → bentuk bersih, atau { tolak } bila ada yang tidak sah (tidak dibuang diam-diam). Dokumen peran ditimpa UTUH tiap disimpan:
+ *  susunAturSistem('peran') selalu membawa peta ini, jadi memutar hak / mengubah jatah nego tidak menghapus orang di tablet. */
+export function ssBersihkanOrangTablet(peta) {
+  const out = {}; const ids = Object.keys(peta || {}); const nama = {}; const t = (v) => String(v === undefined || v === null ? '' : v).trim();
+  if (ids.length > SS_MAKS_ORANG_TABLET) return { tolak: 'Paling banyak ' + SS_MAKS_ORANG_TABLET + ' orang di tablet' };
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i]; const o = peta[id] || {}; const n = t(o.nama);
+    if (!/^o[a-z0-9]{3,24}$/.test(id)) return { tolak: 'Kode orang di tablet tidak sah (' + id + ')' };
+    if (n.length < 2 || n.length > 30) return { tolak: 'Nama orang di tablet harus 2–30 huruf' };
+    if (nama[n.toLowerCase()]) return { tolak: 'Nama "' + n + '" dua kali di daftar tablet' }; nama[n.toLowerCase()] = 1;
+    if (PERAN_BUKAN_OWNER.indexOf(o.peran) < 0) return { tolak: 'Peran ' + n + ' tidak dikenal' };
+    if (!/^g[0-9a-f]{32}$/.test(t(o.garam)) || !/^[0-9a-f]{64}$/.test(t(o.acak))) return { tolak: 'PIN ' + n + ' tidak berbentuk sah — atur ulang PIN-nya' };
+    const it = Number(o.iterasi); if (!(it >= 10000 && it <= 1000000 && Math.floor(it) === it)) return { tolak: 'Hitungan PIN ' + n + ' tidak sah' };
+    out[id] = { nama: n, peran: o.peran, aktif: o.aktif !== false, garam: t(o.garam), acak: t(o.acak), iterasi: it, dibuat: t(o.dibuat), diubah: t(o.diubah) };
+  }
+  return { peta: out };
+}
 /** Setelan layar `id` (perangkat | peran | cadangan | lokasi | pengingat): dokumen owner ditimpakan ke bawaan, kolom demi kolom (bawaan mengisi yang belum diatur). */
 export function ssAtur(id) {
   const B = ssSalin(SS_ATUR_BAWAAN[id]); const d = cacheMentah('aturan').find((x) => String(x.id) === id) || null; if (!d) return B;
@@ -72,6 +93,7 @@ export function susunAturSistem(id, isi, w) {
     Object.keys(ja || {}).forEach((u) => { if (ssKosong(ja[u])) return; const n = ssAngka(ja[u], 0, 100); if (n === null) tolak = tolak || 'jatah nego per akun harus 0–100 %'; else o.jatahAkun[u] = Math.round(n); });
     const kenal = ['owner'].concat(SS_PERAN_AKUN.map((p) => p.id), cacheMentah('aksesAkun').map((a) => 'uid:' + String(a.uid || a.id)));
     o.bawahModal = (Array.isArray(isi.bawahModal) ? isi.bawahModal : A.bawahModal).map(String).filter((k, i, L) => kenal.indexOf(k) >= 0 && L.indexOf(k) === i);
+    const ot = ssBersihkanOrangTablet(isi.operator !== undefined ? isi.operator : A.operator); if (ot.tolak) tolak = tolak || ot.tolak; else o.operator = ot.peta;   // T1-3: dibawa utuh
     const h = isi.hak || {}; Object.keys(h).forEach((p) => { if (p === 'owner' || !SS_HAK_BAWAAN[p]) { tolak = tolak || 'Hak owner tidak diubah — owner selalu boleh semuanya'; return; } Object.keys(h[p]).forEach((t) => { if (SS_NILAI_HAK.indexOf(h[p][t]) < 0 || !SS_TINDAKAN.some((x) => x.id === t)) { tolak = tolak || 'Nilai hak tidak dikenal'; return; } o.hak[p][t] = h[p][t]; }); }); }
   else if (id === 'cadangan') tolak = angka('simpanHari', 1, 365, 'hari') || angka('ambangKuota', 10, 100, '%') || angka('cadanganTiap', 1, 30, 'hari');
   else if (id === 'lokasi') { const daftar = (Array.isArray(isi.daftar) ? isi.daftar : A.daftar).map((l, i) => ({ id: String(l.id || ('lk' + (i + 1))).trim(), nama: String(l.nama || '').trim(), alamat: String(l.alamat || '').trim().slice(0, 80), utama: !!l.utama }));

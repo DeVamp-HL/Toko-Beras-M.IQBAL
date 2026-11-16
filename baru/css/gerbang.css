@@ -245,6 +245,27 @@ body.gelap .gm-kawanan { filter: drop-shadow(0 0 1.5px rgba(201,179,122,0.6)); }
 @keyframes gmGetarKanan2 { 0%, 100% { transform: none; } 25% { transform: translateX(5px); } 50% { transform: translateX(-3px); } 75% { transform: translateX(2px); } }
 /* "kurangi gerakan": semuanya diam — termasuk yang berulang terus (burung, kunang, padi) yang dulu akan berkedip 1 ms tanpa henti */
 @media (prefers-reduced-motion: reduce) { .gerbang-masuk *, .gerbang-masuk *::before, .gerbang-masuk *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; transition-delay: 0ms !important; } }
+/* ================= TABLET: SIAPA YANG JAGA? (putaran T1 langkah 3, owner 16 Nov 2026) =================
+   Satu akun tablet + PIN per orang. Nama besar untuk jari; papan angka 3 × 4, tombol ≥ 56 px (Sunmi CPad di stand). */
+.tb-daftar { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+.tb-daftar[hidden], .tb-pin[hidden], .tb-tanya[hidden] { display: none; }
+.tb-orang { min-height: 64px; border-radius: 16px; border: 1px solid var(--kaca-tepi); background: var(--seg); color: var(--teks); font: inherit; font-size: 16px; font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 10px; cursor: pointer; }
+.tb-orang small { font-size: 11px; font-weight: 500; opacity: 0.7; }
+.tb-orang.libur, .tb-orang.kunci { opacity: 0.55; border-style: dashed; }
+.tb-orang:focus-visible, .tb-tombol:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--logam-glow); }
+.tb-pin { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+.tb-titik { display: flex; justify-content: center; gap: 12px; min-height: 22px; }
+.tb-titik span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--aktif); }
+.tb-titik span.isi { background: var(--aktif); }
+.tb-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tb-tombol { min-height: 58px; border-radius: 16px; border: 1px solid var(--kaca-tepi); background: var(--seg); color: var(--teks); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer; }
+.tb-tombol.kecil { font-size: 14px; letter-spacing: 0.02em; }
+.tb-tombol.ok { background: linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3)); color: var(--logam-teks); border-color: rgba(255,255,255,0.6); }
+.tb-tombol:disabled { opacity: 0.45; }
+.tb-tanya { display: flex; flex-direction: column; gap: 10px; }
+.gerbang-masuk .tb-panel { --gm-pelat-w: min(560px, 100%); }
+
 /* HP MENDATAR / jendela pendek — DI AKHIR berkas supaya menang atas .gm-isi dasar & aturan berdampingan ≥900 px (tinjauan 29 Sep: kotak Masuk seluruhnya di bawah layar 390 px): logo kecil, cincin kecil di samping kotak Masuk */
 @media (orientation: landscape) and (max-height: 560px) { .gerbang-masuk { --gm-papan-y: 10px; --gm-nama: 24px; --gm-mono: 38px; --gm-cincin: min(150px, 34vh); --gm-sawah-h: 90px; --gm-pelat-w: min(380px, 52vw); }
   .gm-isi { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; column-gap: 0; padding-top: calc(var(--gm-papan-y) + var(--gm-mono) + 24px + 10px + 32px + 8px); }

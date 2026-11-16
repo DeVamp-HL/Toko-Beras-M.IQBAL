@@ -20,7 +20,10 @@ import { kalimatKeranjangKeluar } from './layar/jual-logika.js';
 import { kalimatIsianKeluar } from './inti/isian.js';
 import { pjSumberPengingat } from './layar/pajak-logika.js';
 import { nanti, setelMuat } from './inti/jadwal.js';
-import { pasangGerbang } from './inti/gerbang.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
+import { pasangGerbang } from './inti/gerbang.js';
+// putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang
+import * as TB from './layar/tablet-logika.js';
+import { asliAda } from './inti/printer.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
 
 const q = new URLSearchParams(location.search);
 const KUNCI_MODE = 'miqbal_baru_mode';
@@ -28,8 +31,34 @@ let mode = (() => { try { return localStorage.getItem(KUNCI_MODE) || 'terang'; }
 let versi = 0;
 let statusFb = { masuk: false, akun: null, koleksiSiap: 0, koleksiTotal: 0, offline: false, galat: '', ditolak: [], lokal: { belum: 0, ditolak: 0 } };
 // akun yang masuk (putaran 23). Mode cadangan tidak masuk ke Firebase: dianggap owner (tulisan cuma simulasi di memori).
-const akunKini = () => (sumberData().jenis === 'cadangan' ? { jenis: 'owner', peran: 'owner', nama: 'Owner', uid: '' } : statusFb.akun);
-fb.setelSumberHak(() => { const a = statusFb.akun; if (!a || !a.peran || a.peran === 'owner') return {}; try { return Object.assign({}, (ssAtur('peran').hak || {})[a.peran] || {}, { jatahNego: ngJatah(a) }); } catch (e) { return {}; } });
+const akunAsli = () => (sumberData().jenis === 'cadangan' ? { jenis: 'owner', peran: 'owner', nama: 'Owner', uid: '' } : fb.akunSekarang() || statusFb.akun);
+// ---- TABLET: SATU AKUN + PIN PER ORANG (putaran T1 langkah 3, owner 16 Nov 2026) ----
+// Akun staf yang punya daftar orang (Menu › Toko ini › Peran & persetujuan › Orang di tablet) = akun tablet: layar tertutup "Siapa yang jaga?" sampai seseorang
+// memasukkan PIN-nya. Orang itu menggantikan NAMA & PERAN LAYAR akun tablet (catatan, struk, denyut, kisi SS2); uid tetap akun tablet. Orang yang jaga
+// hanya di memori — muat ulang = PIN lagi. Tidak disentuh 5 menit = kembali ke "Siapa yang jaga?" (isian TIDAK dibuang; orang lain yang masuk ditanya).
+let _jaga = null;          // { id, uid } orang yang sedang jaga di akun tablet uid itu (akun lain yang masuk di perangkat ini TIDAK mewarisinya)
+let _jagaTerakhir = null;  // { id, nama } orang terakhir yang jaga (pemilik isian di layar)
+let _pilihOrang = '';      // id nama yang diketuk di panel (menunggu PIN)
+let _pinKetik = '';
+let _sentuh = Date.now();
+let _periksaPin = false;
+let _tanyaGanti = null;    // { op, daftar } orang lain masuk sementara isian orang sebelumnya belum disimpan
+let _tbVersi = -1, _tbDaftar = [];
+function daftarTablet() { if (_tbVersi !== versi) { _tbVersi = versi; try { _tbDaftar = TB.tbDaftar(); } catch (e) { _tbDaftar = []; } } return _tbDaftar; }
+function keadaanTablet(a) {
+  if (q.get('cadangan')) return 'bukan';
+  const siap = !!statusFb.offline || (statusFb.koleksiTotal > 0 && statusFb.koleksiSiap >= statusFb.koleksiTotal);
+  return TB.tbKeadaan(a, daftarTablet(), siap);
+}
+/** Akun yang dipakai layar dari akun yang masuk `a`: orang yang jaga (tablet), akun tablet yang menunggu orang (tirai), atau `a` apa adanya. */
+function efektifDari(a) {
+  const k = keadaanTablet(a); if (k === 'bukan') return a;
+  if (_jaga && a && _jaga.uid === a.uid) { const op = daftarTablet().find((o) => o.id === _jaga.id); if (op && op.aktif) return TB.tbEfektif(a, op); }   // diliburkan / dihapus owner = langsung tertutup
+  return TB.tbMenunggu(a, k);
+}
+const akunKini = () => efektifDari(akunAsli());
+fb.setelAkunEfektif((a) => { const e = akunKini(); return e && e.uid === a.uid && e.operatorId ? e : null; });
+fb.setelSumberHak(() => { const a = akunKini(); if (!a || !a.peran || a.peran === 'owner') return {}; try { return Object.assign({}, (ssAtur('peran').hak || {})[a.peran] || {}, { jatahNego: ngJatah(a) }); } catch (e) { return {}; } });
 
 // Kelas gelap juga di <html>: Safari iOS 26/27 mewarnai daerah poni/jam dari warna dasar & color-scheme elemen akar,
 // bukan dari theme-color — tanpa ini poninya putih di mode gelap. theme-color ikut diganti untuk peramban lain.
@@ -75,7 +104,7 @@ terapkanMode();
 const akar = document.getElementById('layar');
 const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusAwas, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat(),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); } });   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan · 27: Isi barang habis
-dengarkan(() => { versi += 1; });
+dengarkan(() => { versi += 1; setTimeout(periksaTablet, 0); });   // T1-3: daftar orang / libur berubah → gerbang ikut
 
 // ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----
 const KUNCI_TAB = 'miqbal_baru_tab';
@@ -205,7 +234,8 @@ document.getElementById('lupakanEmail').addEventListener('click', () => { try { 
 //      Setiap <main> dikosongkan dan tidak digambar (layar memeriksa terkunci()); nav & menu samping disembunyikan. Tidak ada angka, nama, atau kartu
 //      yang digambar dari cache — termasuk penyimpanan lokal peramban (titik kas, keranjang). Terbuka hanya untuk owner / akun aktif, atau mode cadangan.
 const SEMUA_LAYAR = () => [ringkasan, stok, pelanggan, menu, harga, uang, laporan];
-function terapkanKunci(akun) {
+function terapkanKunci(akunMasuk) {
+  const akun = efektifDari(akunMasuk);   // T1-3: akun tablet yang menunggu orang = tertutup seperti belum masuk (isian tidak dibuang — jagaIsian memakai akun yang masuk)
   const kunci = !q.get('cadangan') && !bisaBekerja(akun); const tadi = terkunci();
   setelKunci(kunci); document.body.classList.toggle('terkunci', kunci);
   // tinjauan 29 Sep: tampilkan(false) dulu dipanggil di SETIAP perubahan akun — akun karyawan yang aksesnya diubah owner saat bekerja (masih boleh
@@ -241,15 +271,29 @@ function jagaIsian(akun) {
 // terkirim tombol "Minta didaftarkan" tidak ditawarkan lagi — juga bila keadaan akun dibunyikan ulang (gambarAkun dipanggil lagi tanpa berubah). Ingatan ini per
 // sesi: akun bukan-owner tidak bisa membaca permintaanAkses, jadi permintaan yang DITOLAK owner (dihapus) tidak terlihat dari sini — kalimatnya menyuruh muat ulang
 let _mintaTerkirim = ''; let _akunGerbang = null;
+let _tandaAkun = '';
+const tandaAkun = () => { const a = akunKini(); return a ? [a.jenis, a.uid || '', a.operatorId || '', a.peran || '', a.kalimat || ''].join('|') : '-'; };
+/** Keadaan gerbang orang berubah (daftar datang, orang diliburkan, koleksi selesai dimuat)? → gambar ulang akun. */
+function periksaTablet() { if (q.get('cadangan')) return; if (tandaAkun() !== _tandaAkun) gambarAkun(akunAsli()); }
+let _peringatanOwnerTablet = false;
+// T1-3: isian milik AKUN yang masuk (tablet), bukan milik orang yang jaga — orang lain yang masuk ditanya di panel "Siapa yang jaga?"
 function gambarAkun(akun) {
   jagaIsian(akun);
   terapkanKunci(akun);
-  _akunGerbang = akun || null;
+  const asli = akun;
+  if (!asli || !bisaBekerja(asli)) { _jaga = null; _jagaTerakhir = null; _pilihOrang = ''; _pinKetik = ''; _tanyaGanti = null; }   // keluar / nonaktif: orang yang jaga ikut lepas
+  akun = efektifDari(asli); _tandaAkun = tandaAkun();
+  _akunGerbang = asli || null;
+  // owner 16 Nov: owner jualan di tablet lewat PIN, urusan owner di HP/Mac owner — owner yang masuk dengan akun owner di aplikasi tablet diingatkan sekali
+  if (asli && asli.jenis === 'owner' && asliAda() && !_peringatanOwnerTablet) { _peringatanOwnerTablet = true; kabarSebentar('Ini aplikasi tablet toko. Jualan di sini lewat akun tablet + PIN; urusan owner di HP/Mac owner (data owner tersimpan di tablet selama masuk sebagai owner).'); }
   // owner 7 Okt (J2): keranjang & struk parkir akun ini yang tersimpan di tab ini (hari ini) dipulihkan sesudah halaman dimuat ulang — sesudah tirai dibuka
   if (!q.get('cadangan') && akun && bisaBekerja(akun)) layar.pulihkanKeranjang(akun);
   const bisa = bisaBekerja(akun);
   const tundaFokus = gerbang.akun(akun, bisa) || 0;   // 'tampil' = gerbang menghalangi layar (arti lama); membuka/menutup = gerak di js/inti/gerbang.js
+  const tungguOrang = !!akun && akun.jenis === 'pilihOrang';
+  panelOrang.hidden = !tungguOrang;
   if (bisa) { isianSandi.value = ''; return; }
+  if (tungguOrang) { formMasuk.hidden = true; panelAkun.hidden = true; gambarPanelOrang(); return; }
   const keluarSaja = !akun || akun.jenis === 'keluar';
   formMasuk.hidden = !keluarSaja; panelAkun.hidden = keluarSaja;
   if (keluarSaja) {
@@ -306,10 +350,15 @@ async function keluarAkun() {
   if (daftar.length && (await tanyaIsian(daftar, B, hanyaKeranjang)) !== 'kosongkan') { const t = daftar[0].tujuan; pindah(t); if (t === 'jual' && B.aktif) layar.keadaan.setel({ lembar: 'keranjang', kabar: '' }); return; }
   const L = statusFb.lokal || { belum: 0 };
   if (L.belum > 0 && !window.confirm('Ada ' + L.belum + ' catatan belum terkirim dari akun ini. Kalau keluar sekarang, catatannya tetap tersimpan di perangkat dan terkirim saat akun ini masuk lagi. Keluar tetap?')) return;
+  _jaga = null; _jagaTerakhir = null;   // T1-3: orang yang jaga ikut lepas
   lupakanSemua(); uidKeranjang = '';
   await fb.keluar();
 }
-document.getElementById('tombolKeluar').addEventListener('click', () => { tutupLembarAkun(); keluarAkun(); });
+document.getElementById('tombolKeluar').addEventListener('click', () => { tutupLembarAkun();
+  // T1-3: keluar dari AKUN tablet butuh sandi akun tablet untuk masuk lagi — ditanya dulu (ganti orang cukup lewat tombol Ganti orang)
+  const a = akunKini(); if (a && a.operatorId && !window.confirm('Keluar dari akun tablet? Untuk masuk lagi perlu email & sandi akun tablet (biasanya owner). Kalau cuma ganti orang, pakai tombol Ganti orang.')) return;
+  keluarAkun(); });
+document.getElementById('tombolGantiOrang').addEventListener('click', () => { tutupLembarAkun(); kunciOrang(); });
 document.getElementById('tombolKeluarAkun').addEventListener('click', keluarAkun);
 // ---- lembar akun: dibuka dari pil di kepala layar mana pun (delegasi di dokumen, karena tiap layar menggambar ulang kepalanya sendiri) ----
 const lembarAkun = document.getElementById('lembarAkun');
@@ -317,9 +366,12 @@ function isiLembarAkun() {
   const a = akunKini(); const cad = sumberData().jenis === 'cadangan'; const kerja = !!a && bisaBekerja(a) && !cad;
   document.getElementById('lembarAkunNama').textContent = cad ? 'Membaca cadangan' : kerja ? teksMasukSebagai(a) : 'Belum masuk';
   const n = (statusFb.lokal || {}).belum || 0;
+  const diTablet = kerja && !!a.operatorId;   // T1-3: orang yang jaga di akun tablet
   document.getElementById('lembarAkunKet').textContent = cad ? 'Angka dari berkas cadangan, bukan data toko hari ini. Tidak ada akun yang masuk, tulisan cuma simulasi.'
-    : (a && a.email ? a.email + ' · ' : '') + statusTeks() + (n ? ' · ' + n + ' catatan belum terkirim dari akun ini' : '');
+    : (diTablet ? 'Jaga di akun tablet ' + (a.akunNama || '') + ' · ' : '') + (a && a.email ? a.email + ' · ' : '') + statusTeks() + (n ? ' · ' + n + ' catatan belum terkirim dari akun ini' : '');
+  document.getElementById('tombolGantiOrang').hidden = !diTablet;
   document.getElementById('tombolKeluar').hidden = !kerja;
+  document.getElementById('tombolKeluar').textContent = diTablet ? 'Keluar dari akun tablet' : 'Keluar';
 }
 function tutupLembarAkun() { lembarAkun.classList.remove('buka'); }
 document.addEventListener('click', (ev) => {
@@ -336,6 +388,95 @@ function gambarChipDanNav() {
   const tab = (() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })();
   if (a && bisaBekerja(a) && !bolehLayar(a, tab)) pindah('jual');
 }
+
+// ---- PANEL "SIAPA YANG JAGA?" (T1-3) — di dalam gerbang masuk; tombol digambar di sini, klik lewat delegasi (CSP: tanpa handler sebaris) ----
+const panelOrang = document.getElementById('panelOrang');
+const bacaSalah = () => { try { return JSON.parse(localStorage.getItem(TB.TB_KUNCI_SALAH) || '{}') || {}; } catch (e) { return {}; } };
+const tulisSalah = (p) => { try { localStorage.setItem(TB.TB_KUNCI_SALAH, JSON.stringify(p || {})); } catch (e) { /* perangkat menolak — hitungan salah hanya di memori */ } };
+let _salahMemori = null;
+const petaSalah = () => _salahMemori || bacaSalah();
+function tombolEl(teks, kelas, data) { const b = document.createElement('button'); b.type = 'button'; b.className = kelas; b.textContent = teks; Object.keys(data || {}).forEach((k) => { b.dataset[k] = data[k]; }); return b; }
+function gambarPanelOrang() {
+  const a = akunAsli(); const k = keadaanTablet(a); const daftar = daftarTablet(); const kini = Date.now(); const P = petaSalah();
+  document.getElementById('orangAkun').textContent = a ? 'Akun tablet · ' + (a.nama || a.email || '') : '';
+  const wadah = document.getElementById('orangDaftar'); wadah.textContent = '';
+  const pin = document.getElementById('orangPin'), tanya = document.getElementById('orangTanya');
+  if (_tanyaGanti) {
+    wadah.hidden = true; pin.hidden = true; tanya.hidden = false;
+    document.getElementById('orangTanyaTeks').textContent = 'Ada isian ' + ((_jagaTerakhir && _jagaTerakhir.nama) || 'orang sebelumnya') + ' yang belum disimpan: ' + _tanyaGanti.daftar.map((x) => x.nama).join(', ') + '. Lanjutkan = isian itu diteruskan dan dicatat atas nama ' + _tanyaGanti.op.nama + '.';
+    document.getElementById('orangLanjut').textContent = 'Lanjutkan sebagai ' + _tanyaGanti.op.nama;
+    document.getElementById('orangKosongkan').textContent = 'Kosongkan, mulai dari awal';
+    return;
+  }
+  tanya.hidden = true; wadah.hidden = false;
+  if (k === 'muat') { const m = document.createElement('div'); m.className = 'ket'; m.textContent = 'Memuat daftar orang…'; wadah.appendChild(m); pin.hidden = true; return; }
+  daftar.forEach((o) => {
+    const s = TB.tbStatusSalah(P, o.id, kini);
+    const b = tombolEl(o.nama, 'tb-orang' + (!o.aktif ? ' libur' : s.terkunci ? ' kunci' : '') + (_pilihOrang === o.id ? ' aktif' : ''), { orang: o.id });
+    const ket = document.createElement('small'); ket.textContent = !o.aktif ? 'libur' : s.terkunci ? 'terkunci ' + Math.max(1, Math.ceil(s.sisaMs / 60000)) + ' menit' : o.namaPeran; b.appendChild(ket);
+    wadah.appendChild(b);
+  });
+  const op = daftar.find((o) => o.id === _pilihOrang) || null;
+  pin.hidden = !op; if (!op) return;
+  document.getElementById('orangNama').textContent = op.nama;
+  const titik = document.getElementById('orangTitik'); titik.textContent = '';
+  for (let i = 0; i < Math.max(4, _pinKetik.length); i++) { const t = document.createElement('span'); if (i < _pinKetik.length) t.className = 'isi'; titik.appendChild(t); }
+  const pad = document.getElementById('orangPad'); pad.textContent = '';
+  ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'hapus', '0', 'OK'].forEach((x) => {
+    const b = tombolEl(x === 'hapus' ? '⌫' : x === 'OK' ? (_periksaPin ? '…' : 'MASUK') : x, 'tb-tombol' + (x === 'OK' ? ' ok kecil' : x === 'hapus' ? ' kecil' : ''), { pin: x });
+    if (x === 'hapus') b.setAttribute('aria-label', 'Hapus satu angka');
+    b.disabled = _periksaPin || (x === 'OK' && _pinKetik.length < 4); pad.appendChild(b);
+  });
+}
+function pesanOrang(t) { const el = document.getElementById('orangPesan'); el.textContent = t || ''; el.hidden = !t; }
+function tekanPin(x) {
+  if (_periksaPin || !_pilihOrang) return;
+  if (x === 'hapus') _pinKetik = _pinKetik.slice(0, -1);
+  else if (x === 'OK') return masukkanPin();
+  else if (/^[0-9]$/.test(x) && _pinKetik.length < 6) _pinKetik += x;
+  pesanOrang(''); gambarPanelOrang();
+  if (_pinKetik.length === 6) masukkanPin();
+}
+async function masukkanPin() {
+  const op = daftarTablet().find((o) => o.id === _pilihOrang); if (!op || _pinKetik.length < 4) return;
+  _periksaPin = true; gambarPanelOrang(); gerbang.memeriksa();
+  let r; try { r = await TB.tbPeriksa(op, _pinKetik, petaSalah(), Date.now()); } catch (e) { r = { ok: false, peta: petaSalah(), kalimat: String((e && e.message) || e) }; }
+  _periksaPin = false; _pinKetik = ''; _salahMemori = r.peta; tulisSalah(r.peta);
+  if (!r.ok) { gerbang.ditolak(); pesanOrang(r.kalimat); gambarPanelOrang(); return; }
+  pesanOrang('');
+  const daftarIsian = _jagaTerakhir && _jagaTerakhir.id !== op.id ? isianBelum() : [];
+  if (daftarIsian.length) { _tanyaGanti = { op, daftar: daftarIsian }; gerbang.kembaliMasuk(); gambarPanelOrang(); return; }
+  mulaiJaga(op);
+}
+function mulaiJaga(op) {
+  _tanyaGanti = null; _pilihOrang = ''; _pinKetik = ''; _jaga = { id: op.id, uid: (akunAsli() || {}).uid || '' }; _jagaTerakhir = { id: op.id, nama: op.nama }; _sentuh = Date.now();
+  gambarAkun(akunAsli()); gambarChipDanNav(); kabarSebentar(op.nama + ' jaga — catatan berikutnya atas nama ' + op.nama);
+}
+/** Kembali ke "Siapa yang jaga?" (tombol Ganti orang, atau tidak disentuh 5 menit). Isian TIDAK dibuang. */
+function kunciOrang() {
+  if (!_jaga) return; _jaga = null; _pilihOrang = ''; _pinKetik = ''; _tanyaGanti = null; pesanOrang('');
+  gambarAkun(akunAsli());
+}
+panelOrang.addEventListener('click', (ev) => {
+  const o = ev.target.closest && ev.target.closest('[data-orang]');
+  if (o) { const op = daftarTablet().find((x) => x.id === o.dataset.orang); if (!op || _periksaPin) return; _pilihOrang = op.id; _pinKetik = ''; pesanOrang(!op.aktif ? op.nama + ' sedang libur — minta owner mengaktifkan' : ''); gambarPanelOrang(); return; }
+  const p = ev.target.closest && ev.target.closest('[data-pin]'); if (p) tekanPin(p.dataset.pin);
+});
+document.getElementById('orangLanjut').addEventListener('click', () => { if (_tanyaGanti) mulaiJaga(_tanyaGanti.op); });
+document.getElementById('orangKosongkan').addEventListener('click', () => { if (!_tanyaGanti) return; const op = _tanyaGanti.op; lupakanSemua(); mulaiJaga(op); });
+document.getElementById('tombolKeluarTablet').addEventListener('click', () => {
+  if (!window.confirm('Keluar dari akun tablet? Untuk masuk lagi perlu email & sandi akun tablet (biasanya owner).')) return;
+  keluarAkun();
+});
+// papan ketik fisik (Mac / keyboard di stand): angka, hapus, Enter — hanya selagi panel PIN terbuka
+document.addEventListener('keydown', (ev) => {
+  if (panelOrang.hidden || !_pilihOrang || _tanyaGanti) return;
+  if (/^[0-9]$/.test(ev.key)) { tekanPin(ev.key); ev.preventDefault(); } else if (ev.key === 'Backspace') { tekanPin('hapus'); ev.preventDefault(); } else if (ev.key === 'Enter') { tekanPin('OK'); ev.preventDefault(); }
+});
+// kunci diam (owner 16 Nov: 5 menit). Sentuhan apa pun = masih ada orang; tablet ditinggal / layar mati lama = kembali ke "Siapa yang jaga?"
+['pointerdown', 'keydown', 'touchstart'].forEach((n) => document.addEventListener(n, () => { _sentuh = Date.now(); }, { passive: true, capture: true }));
+setInterval(() => { if (_jaga && TB.tbHarusKunci(_sentuh, Date.now())) kunciOrang(); }, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && _jaga && TB.tbHarusKunci(_sentuh, Date.now())) kunciOrang(); });
 
 // ---- PROYEK UJI (gerbang rules v3): setelan per perangkat, bilah merah di setiap layar selama aktif ----
 (function () {
@@ -377,6 +518,7 @@ if (q.get('cadangan')) {
   // → layar yang terlihat digambar dua kali per bingkai). nanti() SEBELUM setelMuat: selesai muat = antrean digambar sekali, tanpa bingkai tambahan.
   const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar, stok.gambar, pelanggan.gambar, menu.gambar, harga.gambar, uang.gambar, laporan.gambar];
   fb.dengarkanStatus((st) => { statusFb = st; gambarChipDanNav(); GAMBAR_STATUS.forEach(nanti); setelMuat(!!st.masuk && st.koleksiTotal > 0 && st.koleksiSiap < st.koleksiTotal); });
+  fb.dengarkanStatus(() => periksaTablet());   // T1-3: koleksi selesai dimuat / tanpa internet → gerbang orang ikut
   // hemat baca nyala (owner 7 Okt): pendengar simpanan tab ini mati → tirai muat ulang (mati: hematMati tidak pernah ada)
   fb.dengarkanStatus((st) => { if (st.hematMati && !_tiraiTab) tiraiTab('Tab ini berhenti menerima data', 'Hemat baca: simpanan perangkat di tab ini tidak lagi diperbarui (biasanya karena tab lain peramban ini). Angka di layar bisa basi — muat ulang. Catatan yang belum terkirim tetap aman di perangkat.', 'Muat ulang', () => location.reload()); });
   gerbang.mulai();   // sebelum Firebase menjawab: gerbang tertutup tanpa formulir (dulu layar kosong); sudah masuk → pintu terbuka cepat

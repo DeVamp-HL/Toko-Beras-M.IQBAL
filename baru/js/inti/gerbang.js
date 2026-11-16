@@ -104,8 +104,9 @@ export function pasangGerbang(opsi) {
     akun(akun, bisa) {
       const jenis = akun ? akun.jenis : 'keluar';
       if (bisa) { if (g.classList.contains('tampil')) buka(tahap === 'menunggu'); return 0; }
-      const t = jenis === 'belum' || jenis === 'nonaktif' || jenis === 'kasir' ? jenis : 'masuk';
-      if (t !== 'masuk') ikonAkun(t);
+      // T1-3 (owner 16 Nov): akun tablet menunggu orang → panel "Siapa yang jaga?" (app.js), tanpa ikon status
+      const t = jenis === 'pilihOrang' ? 'orang' : jenis === 'belum' || jenis === 'nonaktif' || jenis === 'kasir' ? jenis : 'masuk';
+      if (t !== 'masuk' && t !== 'orang') ikonAkun(t);
       if (tahap === 'terkirim' && t === 'belum') return 0;   // permintaan sudah terkirim, akun masih menunggu owner
       if (tahap === t && g.classList.contains('tampil')) return 0;   // keadaan akun dibunyikan ulang tanpa berubah — jangan mengulang geraknya
       return tutupKe(t);

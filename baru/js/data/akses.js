@@ -129,7 +129,8 @@ export function beriAtribusiAkun(data, akun, konteks, ada) {
   const d = Object.assign({}, data); const k = konteks || {};
   const isiPencipta = akun.jenis === 'owner' || !ada;
   if (isiPencipta) {
-    if (!d.oleh) { d.oleh = akun.nama; d.olehUid = akun.uid; }
+    // T1-3 (owner 16 Nov): di tablet, akun = orang yang jaga (nama orang, uid akun tablet) — kodenya ikut di catatan BARU (rules: create tanpa daftar kolom)
+    if (!d.oleh) { d.oleh = akun.nama; d.olehUid = akun.uid; if (akun.operatorId) d.operatorId = akun.operatorId; }
     if (!d.perangkat) d.perangkat = k.perangkat;
     if (k.lokasi && !d.lokasi) d.lokasi = k.lokasi;
   }

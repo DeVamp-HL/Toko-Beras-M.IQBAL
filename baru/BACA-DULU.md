@@ -10,6 +10,7 @@ Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko
 ## Arah (keputusan owner 24 Sep 2026)
 - **`baru/` = sistem utama owner**, kelak dibungkus menjadi aplikasi native. Catatan native 13 Sep (`_privat/rapikan-2026-09-13/peta_native.md`, `skeptis_native.md` — di mesin owner) masih menyebut `index.html`: **bahan, bukan keputusan**.
 - **Tablet kasir = offline-first**, satu perangkat dipakai bergantian, semua akun seizin owner. Pilihan identitasnya (login per orang vs satu akun tablet + PIN per orang) diputuskan di putaran tablet — jangan ditutup.
+  **Diputuskan 16 Nov 2026: satu akun tablet + PIN per orang** — bagian "Putaran T1 · langkah 3" di bawah.
 - **`index.html` pensiun** setelah `baru/` lengkap. Sampai saat itu keduanya membaca & menulis data yang sama; `index.html` tidak diperbaiki lagi (19 Sep).
   **Sudah: 3 Okt 2026** (bersama `kasir.html`).
 
@@ -2517,3 +2518,35 @@ Tiga cacat kecil di foto struk, dirapikan atas persetujuan owner:
 - **Logo tidak bisa dipasang** (ditemukan saat poles): di `siapkanLogo()` deklarasi `lebar/tinggi` tertelan komentar → ReferenceError.
 - Tampilan struk ikut terbit lewat GitHub Pages — **tidak perlu pasang ulang APK**.
 - Uji: `uji_escpos.py` 42 (+ kontrol 14).
+
+## Putaran T1 · langkah 3 — satu akun tablet + PIN per orang (16 Nov 2026)
+
+Keputusan owner 16 Nov (ditanya di awal langkah ini): **salah PIN 5 kali → nama itu terkunci 5 menit** (orang lain tetap bisa masuk) ·
+**tidak disentuh 5 menit → kembali ke "Siapa yang jaga?"** · **modal boleh tersimpan di tablet asal tidak tampil di layar staf** · **owner di tablet
+jualan saja pakai PIN** (urusan owner — uang, harga, laporan — tetap di HP/Mac owner).
+
+- **Bentuk**: SATU akun staf (Firebase, `aksesAkun` peran **Ben** supaya hak kisi Ben bisa dipakai) masuk di tablet. Begitu daftar orang di
+  `aturanToko/peran.operator` berisi, akun itu tertutup panel **"Siapa yang jaga?"** di gerbang masuk sampai seseorang mengetuk namanya dan
+  memasukkan PIN. Dokumen itu SUDAH dibaca akun staf & hanya ditulis owner (rules v7) — **tanpa ubahan rules**. `susunAturSistem('peran')` kini
+  membawa peta orang utuh tiap setelan peran disimpan (memutar hak / jatah nego tidak menghapusnya); bentuknya dijaga `ssBersihkanOrangTablet`.
+- **PIN**: 4–6 angka, bukan kembar semua / urutan; disimpan sebagai **PBKDF2-SHA256 100.000 putaran, garam acak per orang** — PIN-nya sendiri tidak
+  pernah ditulis. PIN = siapa yang mencatat, bukan pengaman data (sandi akun tablet yang menjaga data). Hitungan salah per orang di localStorage
+  tablet (`miqbal_tablet_pin_salah_v1`, tahan muat ulang).
+- **Orang yang jaga** (`js/layar/tablet-logika.js` tbEfektif, `app.js` efektifDari): NAMA orang menggantikan nama akun tablet di setiap catatan baru
+  (`oleh`, `diubahOleh`, + `operatorId`), di baris jejak, di pemegang denyut, dan di pil kepala; PERAN LAYAR = kisi peran orang itu, **tidak pernah
+  melebihi peran akun tablet**; uid tetap uid akun tablet (rules `jujur()`). Penulis pusat (`firebase.js akunPenulis`) memakai orang itu hanya bila
+  uid-nya sama dengan akun yang masuk. Hanya di memori: muat ulang = PIN lagi.
+- **Ganti orang**: pil kepala › **Ganti orang**, atau tidak disentuh 5 menit (juga saat kembali dari layar mati). Isian yang belum disimpan TIDAK
+  dibuang; orang LAIN yang masuk ditanya "Lanjutkan sebagai <nama>" (isian diteruskan atas namanya) atau "Kosongkan". "Keluar dari akun tablet"
+  ditanya dulu (masuk lagi butuh email & sandi akun tablet).
+- **Owner**: Menu › Toko ini › Peran & persetujuan › **Orang di tablet** — tambah (nama, peran Ben/Karyawan, PIN dua kali), ganti PIN, liburkan,
+  ubah peran, hapus (dua ketukan). Semua orang diliburkan TETAP wajib PIN (tablet tidak terbuka tanpa PIN); daftar kosong = akun staf biasa.
+  Owner yang masuk dengan akun owner di aplikasi tablet diingatkan sekali.
+- **Gerbang tablet (`docs/peta-hak-akses.md` §8)** — keadaan sesudah keputusan 16 Nov: modal di tablet DIPUTUSKAN boleh (tersembunyi); cache owner
+  di tablet tidak muncul selama owner tidak masuk sebagai owner di tablet (keputusan "jualan saja pakai PIN"); **masih terbuka**: `produkArsip`
+  belum terbaca staf (barang yang diarsipkan tampil sebagai chip habis di rak Jual tablet — perlu rules v8), denyut kasir@ belum dipersempit
+  (rules v8, urusan kasir darurat), kiriman terbesar belum diuji di server (proyek Firebase kedua). Kiriman yang ditolak server tetap tersimpan di
+  Menu › Toko ini › Perangkat & antrean › Antrean kirim, tidak hilang.
+- Uji: `alat-uji/uji_tablet_pin.py` 44 (+ kontrol 16) di CI; `uji_operator_pin.py` kini membolehkan kolom PIN HANYA di tab Orang di tablet.
+  Belum diuji di peramban sungguhan (Chrome tidak bisa jalan di kotak pasir sesi ini) — uji peramban CI (`uji_layar_kunci.py`) menjaga alur akun
+  staf tanpa daftar orang.
