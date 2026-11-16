@@ -144,6 +144,8 @@ jobs:
 
       - name: "Tablet: satu akun + PIN per orang (putaran T1 langkah 3, owner 16 Nov): PBKDF2 = hashlib, salah 5× terkunci 5 menit, diam 5 menit, nama orang di catatan, daftar tidak hilang saat hak diputar (jsc + kontrol)"
         run: python3 alat-uji/uji_tablet_pin.py && python3 alat-uji/uji_tablet_pin.py --kontrol
+      - name: "Tablet dibuka tanpa internet (T1 langkah 4, owner 16 Nov 2026): salinan aplikasi sw-baru.js — pasang = semua berkas dicocokkan sidiknya (berkas basi = versi DITOLAK, tidak pernah campur), HTML bersuntikan jembatan Capacitor lolos & tersimpan, sajian dari salinan ada/tanpa internet, data toko tidak disentuh, berkas sama disalin dari versi lama, versi lama dihapus saat aktif, lepas; salinan.js: hanya tablet, pasang versi baru hanya di gerbang tanpa isian, kalimat jujur; cap saat terbit mencakup semua modul (jsc + statis + kontrol)"
+        run: python3 alat-uji/uji_salinan_aplikasi.py && python3 alat-uji/uji_salinan_aplikasi.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"
@@ -270,6 +272,8 @@ jobs:
       # halaman pengalih tanpa script (tidak ada jalan tulis lagi di situs).
       - name: "Katalog kasir dari /baru/ (25c): penyusun = sistem lama (terkunci sidik), kunci dokumen beku, ikut kiriman terbit harga, gerbang terbit, Beranda (kasir.html pensiun diam); HP penjaga mengambil katalog baru tanpa dibuka ulang — statis + jsc + Chrome headless + kontrol"
         run: python3 -u alat-uji/uji_katalog_kasir.py && python3 -u alat-uji/uji_katalog_kasir.py --kontrol
+      - name: "Tablet dibuka tanpa internet (T1 langkah 4): Chrome sungguhan lewat DevTools — pasang salinan, KEDUA server mati lalu aplikasi tetap terbuka, versi baru dipasang sendiri di layar masuk, berkas basi ditolak (versi lama tetap) — Firebase palsu di asal lain, tanpa internet + kontrol"
+        run: python3 -u alat-uji/uji_salinan_peramban.py && python3 -u alat-uji/uji_salinan_peramban.py --kontrol
 
   terbitkan:
     needs: [uji, uji-peramban]
@@ -292,6 +296,11 @@ jobs:
 
       - name: Siapkan Pages
         uses: actions/configure-pages@v5
+
+      # T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi tablet. sw-baru.js di repo TIDAK dicap; di sini (hanya di runner, tidak di-commit) diisi
+      # VERSI = commit ini, daftar SEMUA berkas halaman /baru/ + sidik SHA-256-nya. Tablet memasang versi ini hanya bila tiap berkas cocok sidiknya.
+      - name: "Cap salinan aplikasi /baru/ (T1 langkah 4): daftar berkas + sidik SHA-256 versi ini ke baru/sw-baru.js"
+        run: python3 alat-uji/cap_sw_baru.py --tulis
 
       - name: Bungkus seluruh folder apa adanya
         uses: actions/upload-pages-artifact@v3

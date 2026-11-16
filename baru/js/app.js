@@ -24,6 +24,8 @@ import { pasangGerbang } from './inti/gerbang.js';
 // putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang
 import * as TB from './layar/tablet-logika.js';
 import { asliAda } from './inti/printer.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
+// putaran T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi di tablet — bisa DIBUKA tanpa internet (pekerjanya sw-baru.js, dicap saat terbit)
+import * as SL from './inti/salinan.js';
 
 const q = new URLSearchParams(location.search);
 const KUNCI_MODE = 'miqbal_baru_mode';
@@ -456,6 +458,7 @@ function mulaiJaga(op) {
 function kunciOrang() {
   if (!_jaga) return; _jaga = null; _pilihOrang = ''; _pinKetik = ''; _tanyaGanti = null; pesanOrang('');
   gambarAkun(akunAsli());
+  setTimeout(cobaSalinan, 0);   // T1-4: layar "Siapa yang jaga?" tanpa isian = saat versi baru boleh dipasang
 }
 panelOrang.addEventListener('click', (ev) => {
   const o = ev.target.closest && ev.target.closest('[data-orang]');
@@ -477,6 +480,29 @@ document.addEventListener('keydown', (ev) => {
 ['pointerdown', 'keydown', 'touchstart'].forEach((n) => document.addEventListener(n, () => { _sentuh = Date.now(); }, { passive: true, capture: true }));
 setInterval(() => { if (_jaga && TB.tbHarusKunci(_sentuh, Date.now())) kunciOrang(); }, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && _jaga && TB.tbHarusKunci(_sentuh, Date.now())) kunciOrang(); });
+// ---- SALINAN APLIKASI (putaran T1 langkah 4, owner 16 Nov 2026): tablet bisa DIBUKA tanpa internet ----
+// Hanya aplikasi tablet yang memasang (HP & Mac owner tidak berubah). Versi baru diunduh di belakang layar lalu MENUNGGU; dipasang (muat ulang) hanya saat
+// layar tertutup gerbang (belum masuk / "Siapa yang jaga?" / belum disetujui), tanpa isian belum disimpan, tanpa orang yang sedang mengetik.
+// mengetik = ada ketikan di gerbang (PIN, sandi, email selain yang diingat, nama permintaan) — kolom email yang sekadar difokus gerbang bukan ketikan
+const sedangMengetik = () => !!_pilihOrang || !!_pinKetik || !!_tanyaGanti || !!isianSandi.value || isianEmail.value.trim() !== bacaEmail() || !!document.getElementById('isianNamaAkun').value.trim();
+const salinan = SL.pasangSalinan({
+  perlu: SL.slPerluPasang({ asli: asliAda(), dikendalikan: !!(navigator.serviceWorker && navigator.serviceWorker.controller), minta: q.get('salinan') }),
+  lepas: q.get('salinan') === 'lepas',
+  aman: () => SL.slAman({ gerbang: !bisaBekerja(akunKini()), isian: isianBelum().length, mengetik: sedangMengetik() }),
+  sebelumMuatUlang: () => kabarSebentar('Memasang versi baru aplikasi…'),
+  berubah: () => gambarSalinan(),
+});
+function cobaSalinan() { if (salinan) salinan.cobaPakai(); }
+function gambarSalinan() {
+  const st = salinan.status(); const t = SL.slKalimat(st);
+  ['salinanGerbang', 'salinanKet'].forEach((id) => { const el = document.getElementById(id); el.textContent = t; el.hidden = !t; });
+  document.getElementById('tombolSalinan').hidden = !st.menunggu;
+}
+document.getElementById('tombolSalinan').addEventListener('click', () => {
+  const isi = isianBelum(); if (isi.length) { kabarSebentar('Simpan atau kosongkan dulu: ' + isi.map((x) => x.nama).join(', ') + ' — lalu pasang versi baru.'); return; }
+  if (!window.confirm('Pasang versi baru sekarang? Aplikasi dimuat ulang' + (akunKini() && akunKini().operatorId ? ' dan perlu PIN lagi.' : '.'))) return;
+  tutupLembarAkun(); salinan.pakaiSekarang();
+});
 
 // ---- PROYEK UJI (gerbang rules v3): setelan per perangkat, bilah merah di setiap layar selama aktif ----
 (function () {
