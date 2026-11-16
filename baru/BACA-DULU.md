@@ -2467,3 +2467,18 @@ gabungan punya harga jual kantong kosong (yang dijual: 25 kg Kembang Rp3.000, ka
 
 Uji: `uji_jual_baru.py` (+18 "NK:", 7 kontrol nominal), `uji_stok_baru.py` (+16 "PK:", 11 kontrol pecah), contoh kantong di uji Jual/Stok/gladi
 memakai jenis per merek.
+
+## Putaran T1 · langkah 1 — uji cetak USB di Sunmi CPad (16 Nov 2026)
+
+Owner 16 Nov: tablet kasir = **Sunmi CPad 11** + printer **80 mm linerless** di USB **Multi-Function Stand/Base**; **satu akun tablet + PIN per orang**;
+kasir darurat pensiun **sesudah tablet terbukti**. Rencana lengkap (T1, T2, B1–B5 B2B) ada di catatan rencana sesi; langkah ini hanya spike cetak.
+
+- `js/inti/escpos.js` — penyusun byte ESC/POS tanpa DOM & tanpa impor. Masukan = `garis` dari `susunStruk()` (struk-logika.js), jadi struk tetap
+  hanya menyusun nota tersimpan. 80 mm = 48 kolom, 58 mm = 32; teks dijadikan ASCII (PC437); potong sebagian (bawaan, linerless) / penuh / tanpa potong;
+  QR opsional; pulsa laci opsional.
+- `js/inti/usb-cetak.js` — kirim byte lewat **WebUSB** (Chrome Android): antarmuka kelas printer didahulukan, lalu kelas vendor; galat menyebut
+  langkah yang gagal (gagal klaim antarmuka = layanan printer bawaan Sunmi memegangnya → jalan APK).
+- `uji-cetak.html` + `js/layar/uji-cetak.js` — halaman uji yang dibuka owner di CPad (`/baru/uji-cetak.html`): tanpa akun, tanpa Firestore,
+  CSP sendiri (`connect-src 'none'`). Cetak struk CONTOH (angka contoh hitung), menampilkan VID/PID & antarmuka printer untuk disalin.
+- Belum: struk asli dari layar Jual ke printer USB, mode tablet & PIN — menunggu hasil uji fisik owner (PWA atau APK).
+- Uji: `alat-uji/uji_escpos.py` (+ `--kontrol`, 7 mutasi) di CI.
