@@ -58,6 +58,12 @@ main.layar-uang.masuk > header, main.layar-uang.masuk > .jalur { animation: rkNa
 .layar-uang .ow-aksi { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; } .layar-uang .ow-aksi .kaca-btn { min-height: 46px; font-size: 11px; line-height: 1.2; text-align: center; padding: 0 3px; flex-direction: column; }
 /* K4 · tiga tempat uang bergambar (owner 17 Sep: gambar sesuai namanya) */
 .layar-uang .pd-benda3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+/* owner 17 Nov 2026 (butir 4): amplop laba jadi tempat keempat di Pindah uang — 2 × 2 di HP, satu baris di layar lebar; sumber uang keluar jadi lima */
+.layar-uang .pd-benda3.empat { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 700px) { .layar-uang .pd-benda3.empat { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.layar-uang .ug-lima { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 700px) { .layar-uang .ug-lima { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.layar-uang .ug-lima .kaca-btn { flex-direction: column; gap: 0; min-height: 44px; font-size: 12px; padding: 0 4px; }
 .layar-uang .pd-benda { border-radius: 18px; border: 1px solid var(--kaca-tepi); background: var(--kaca); padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; cursor: pointer; min-width: 0; transition: border-color 320ms ease, background 320ms ease; } .layar-uang .pd-benda:active { transform: scale(0.98); }
 .layar-uang .pd-benda svg { width: 78px; height: 60px; color: var(--teks); } .layar-uang .pd-benda svg .emas { stroke: var(--aktif); } .layar-uang .pd-benda svg .isi-emas { fill: var(--emas-garis); stroke: none; opacity: 0.55; transition: opacity 480ms ease; }
 .layar-uang .pd-benda .cap { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--aktif); min-height: 12px; } .layar-uang .pd-benda .nm { font-size: 13px; font-weight: 600; } .layar-uang .pd-benda .a { font-family: 'Bodoni Moda', Georgia, serif; font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
