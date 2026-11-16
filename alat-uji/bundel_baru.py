@@ -41,10 +41,18 @@ HT_MODUL = 'baru/js/layar/harga-tingkat-logika.js'
 HT_PEMAKAI = ('jual-logika.js', 'nego-logika.js', 'sistem-logika.js')
 
 
+# owner 17 Nov 2026 (butir 5): berat 1 liter diatur owner — penentunya modul daun kg-liter-logika.js, dipakai Jual, wadah, harga, harga tingkat, nego.
+# Ikut OTOMATIS (sekali, di belakang) bila salah satu pemakainya ada; fungsi terangkat, jadi urutan tidak menentukan.
+KG_MODUL = 'baru/js/layar/kg-liter-logika.js'
+KG_PEMAKAI = ('jual-logika.js', 'wadah-bernama-logika.js', 'harga-logika.js', 'harga-tingkat-logika.js', 'nego-logika.js', 'sistem-logika.js')
+
+
 def lengkapi(daftar):
     d = list(daftar)
     if any(os.path.basename(x) in HT_PEMAKAI for x in d) and not any(x.endswith('harga-tingkat-logika.js') for x in d):
         d.append(HT_MODUL)
+    if any(os.path.basename(x) in KG_PEMAKAI for x in d) and not any(x.endswith('kg-liter-logika.js') for x in d):
+        d.append(KG_MODUL)
     return d
 
 

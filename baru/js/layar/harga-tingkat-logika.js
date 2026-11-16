@@ -17,6 +17,7 @@
 import { cacheMentah } from '../data/toko.js';
 import { kunciPelanggan, kunciKemasan, RASIO_KONVERSI, RASIO_DEFAULT } from '../mesin/pembantu.js';
 import { ngNamaBarang } from './nego-logika.js';
+import { kgPerLiter } from './kg-liter-logika.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
 export const HT_ID = 'hargaTingkat';
@@ -109,19 +110,21 @@ export function htKunciChip(c) {
   if (c.jalur === 'repack') return 'repack|' + c.kunci;
   return null;
 }
+// owner 17 Nov 2026 (butir 5): berat 1 liter diatur owner — penentu yang sama dengan Jual (kg-liter-logika.js kgPerLiter)
+const _kgLiter = (m) => kgPerLiter(m);
 /** kg satu satuan chip: karung = beratnya, kemasan = ukurannya, literan = kg per liter, repack = 1 (harga per kg). */
 export function htKgChip(c) {
   if (!c) return 0;
   if (c.jalur === 'karung') return Number(c.berat) || 0;
   if (c.jalur === 'kemasan') return Number(c.ukuranKg) || 0;
-  if (c.jalur === 'literan') return Number(c.rasio) || RASIO_KONVERSI[c.kunci] || RASIO_DEFAULT;
+  if (c.jalur === 'literan') return Number(c.rasio) || _kgLiter(c.kunci);
   if (c.jalur === 'repack') return 1;
   return 0;
 }
 /** kg satu satuan dari KUNCI barang (papan persetujuan nego): karung/kemasan = angka terakhir, literan = kg per liter mereknya, repack = 1. */
 export function htKgBarang(barang) {
   const b = String(barang || '').split('|'); const akhir = Number(b[b.length - 1]) || 0;
-  if (b[0] === 'karung' || b[0] === 'kemasan') return akhir; if (b[0] === 'literan') return RASIO_KONVERSI[b.slice(1).join('|')] || RASIO_DEFAULT; if (b[0] === 'repack') return 1; return 0;
+  if (b[0] === 'karung' || b[0] === 'kemasan') return akhir; if (b[0] === 'literan') return _kgLiter(b.slice(1).join('|')); if (b[0] === 'repack') return 1; return 0;
 }
 /** Harga chip untuk pelanggan ini (null = eceran). Chip ½ karung: kg 25, kuncinya kemasan 50 kg yang dipecah. */
 export function htHargaChip(c, orang, tanggal, A0) {
@@ -283,7 +286,7 @@ export function htPapanTingkat(A0, namaOrang) {
   const A = A0 || htAtur(); const nm = namaOrang || ((k) => k);
   return A.tingkat.map((t) => { const orang = Object.keys(A.orang).filter((k) => A.orang[k] === t.id).map((k) => ({ kunci: k, nama: nm(k) || k })).sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
     return { id: t.id, nama: t.nama, potKg: t.potKg, orang, nOrang: orang.length, nSendiri: Object.keys(A.barang[t.id] || {}).length,
-      contoh: t.potKg > 0 ? 'karung 50 kg −' + RP(htPotSatuan(t.potKg, 50)) + ' · kemasan 5 kg −' + RP(htPotSatuan(t.potKg, 5)) + ' · literan −' + RP(htPotSatuan(t.potKg, RASIO_DEFAULT)) + '/L' : 'potongan 0 — harganya sama dengan eceran' }; });
+      contoh: t.potKg > 0 ? 'karung 50 kg −' + RP(htPotSatuan(t.potKg, 50)) + ' · kemasan 5 kg −' + RP(htPotSatuan(t.potKg, 5)) + ' · literan −' + RP(htPotSatuan(t.potKg, _kgLiter(''))) + '/L' : 'potongan 0 — harganya sama dengan eceran' }; });
 }
 /**
  * Barang rak untuk satu tingkat: eceran, harga tingkat, harga sendiri, modal & tanda (OWNER saja — staf tidak melihat modal).

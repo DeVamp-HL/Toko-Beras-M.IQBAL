@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/batal-nota-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/batal-nota-logika.js', 'baru/js/layar/kg-liter-logika.js']
 
 # KOTAK PASIR — angka contoh, bukan angka toko
 KOTAK = {
@@ -1013,6 +1013,26 @@ Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
   var P9 = bnPeriksa({ grupNota: 50081 }); var R9 = bnSusun({ grupNota: 50081 }, 'salah ketik', W);
   ok('BN: karcis kasir darurat → jalur karcis (susunBatalKarcis): baris ditandai dibatalkan', !P9.tolak && P9.jalur === 'karcis' && !R9.tolak && R9.jalur === 'karcis' && R9.dokumen[0].data.dibatalkan === true, JSON.stringify(R9.tolak || P9.jalur));
 })();
+
+// ================= owner 17 Nov 2026 (butir 5): BERAT 1 LITER diatur owner dari layar =================
+(function () {
+  terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
+  var A0 = aturWadah(); var dasar = { penuhKg: String(A0.penuhKg), puncakKg: String(A0.puncakKg), isiUlangKg: String(A0.isiUlangKg), takarKg: String(A0.takarKg), daftar: A0.daftar, resep: A0.resep };
+  ok('KL: tanpa setelan = angka lama: bawaan 0,82, Ketan Putih 0,815', kgPerLiter('Angsa') === 0.82 && kgPerLiter('Ketan Putih') === 0.815 && kgPerLiterBawaan() === 0.82, JSON.stringify([kgPerLiter('Angsa'), kgPerLiter('Ketan Putih')]));
+  ok('KL: 1,8 DITOLAK dengan kalimat "satu TAKAR (serok), bukan satu liter"', /satu TAKAR \(serok\), bukan satu liter/.test(susunAturWadah(Object.assign({}, dasar, { kgPerLiter: { bawaan: '1,8', merek: {} } }), W).tolak || ''));
+  ok('KL: 0,3 DITOLAK (di luar 0,5–1,2 kg)', /harus 0,5–1,2 kg/.test(susunAturWadah(Object.assign({}, dasar, { kgPerLiter: { bawaan: '', merek: { Angsa: '0,3' } } }), W).tolak || ''));
+  ok('KL: ketikan 0,815 terbaca 0,815 (tiga angka di belakang koma, tidak dibulatkan ke 0,82)', kglBaca('0,815', 'x').n === 0.815 && kglBaca('', 'x').kosong === true);
+  var R = susunAturWadah(Object.assign({}, dasar, { kgPerLiter: { bawaan: '0,8', merek: { Angsa: '0,85', 'IR64 Apex': '' } } }), W); var d = R.dokumen ? R.dokumen[0].data : {};
+  ok('KL: simpan → dokumen atur wadah membawa kgPerLiter { bawaan 0,8, merek { Angsa 0,85 } } (kosong tidak disimpan); kabar menyebutnya', !R.tolak && d.kgPerLiter && d.kgPerLiter.bawaan === 0.8 && d.kgPerLiter.merek.Angsa === 0.85 && !('IR64 Apex' in d.kgPerLiter.merek) && /1 liter 0,8 kg \(Angsa 0,85\)/.test(R.patch.kabar), JSON.stringify(R.tolak || [d.kgPerLiter, R.patch && R.patch.kabar]));
+  terapkanKeCache(R.dokumen);
+  ok('KL: sesudahnya Angsa 0,85 · merek lain 0,8 · Ketan Putih TETAP 0,815 (angka khusus mesin) · harga tingkat ikut (htKgBarang)', kgPerLiter('Angsa') === 0.85 && kgPerLiter('IR64 Apex') === 0.8 && kgPerLiter('Ketan Putih') === 0.815 && htKgBarang('literan|Angsa') === 0.85 && wbRasio('Angsa') === 0.85, JSON.stringify([kgPerLiter('Angsa'), kgPerLiter('IR64 Apex'), htKgBarang('literan|Angsa')]));
+  var c = chip('literan', 'Angsa'); terap(ketukChip(s, c)); terap({ ketik: '10' }); terap(masukkan(s)); var b = s.keranjang[s.keranjang.length - 1];
+  ok('KL: jualan SESUDAHNYA memakai berat baru: chip Angsa rasio 0,85, 10 L = 8,5 kg di baris nota', c && c.rasio === 0.85 && b && b.trx && Math.abs(b.trx.totalKg - 8.5) < 0.001, JSON.stringify([c && c.rasio, b && b.trx && b.trx.totalKg]));
+  var R2 = susunAturWadah(dasar, W); terapkanKeCache(R2.dokumen);
+  ok('KL: simpan aturan wadah TANPA isian berat liter membawa setelan sekarang utuh (tidak hilang diam-diam)', R2.dokumen[0].data.kgPerLiter && R2.dokumen[0].data.kgPerLiter.merek.Angsa === 0.85 && kgPerLiter('Angsa') === 0.85, JSON.stringify(R2.dokumen[0].data.kgPerLiter));
+  var R3 = susunAturWadah(Object.assign({}, dasar, { kgPerLiter: { bawaan: '', merek: {} } }), W); terapkanKeCache(R3.dokumen);
+  ok('KL: semua dikosongkan → kembali ke angka lama 0,82', kgPerLiter('Angsa') === 0.82 && kgPerLiterBawaan() === 0.82);
+})();
 print(JSON.stringify({ lulus: lulus, gagal: gagal, kunci: { retur: Object.keys(KUNCI.retur), karantina: Object.keys(KUNCI.karantina) } }));
 """
 
@@ -1075,6 +1095,8 @@ def utama(js):
     h, e = jalan(js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e]
     gagal = h['gagal']
+    # owner 17 Nov (butir 5): literan LANGSUNG dari karung (bukan wadah) memakai penentu berat liter yang sama — kotak pasir tidak punya chip langsung, jadi statis
+    if 'const rasioMerk = (merk) => kgPerLiter(merk);' not in js: gagal.append('statis · Jual: literan langsung tidak memakai kgPerLiter (berat 1 liter setelan owner)')
     # bentuk dokumen retur & karantina: tiap kunci yang ditulis sistem baru harus kunci yang juga ditulis sistem lama (KUNCI_DOK_LAMA)
     for kol, daftar in (h.get('kunci') or {}).items():
         asing = [k for k in daftar if k not in KUNCI_DOK_LAMA.get(kol, [])]
@@ -1119,6 +1141,12 @@ if __name__ == '__main__':
             'nominal: perbaikan tanpa barang tidak memakai nominal baru': js.replace("if (N.diubah) { pengganti.hargaTotal = N.nominal;", "if (false) { pengganti.hargaTotal = N.nominal;"),
             'nominal: nota yang dirapikan ikut bisa diubah nominalnya': js.replace("const sedang = !!k && k.jenisAsal === 'karcis' && k.nominalBaru", "const sedang = !!k && k.nominalBaru"),
             'nominal: dampak uang tidak disebut di ringkasan': js.replace("+ (N.diubah ? ' · ' + teksDampakNominal(k, cara, nama) : '');", ";"),
+            # ---- owner 17 Nov 2026 (butir 5): berat 1 liter ----
+            'kg liter: setelan owner diabaikan (selalu angka mesin)': js.replace("  if (k.merek[m]) return k.merek[m];\n", "\n"),
+            'kg liter: 1,8 lolos sebagai berat satu liter': js.replace("if (n >= 1.5) return { tolak:", "if (false) return { tolak:"),
+            'kg liter: simpan tanpa isian membuang setelan': js.replace("let kgl = kini.kgPerLiter;", "let kgl = { bawaan: null, merek: {} };"),
+            'kg liter: Jual tetap memakai angka mesin': js.replace("const rasioMerk = (merk) => kgPerLiter(merk);", "const rasioMerk = (merk) => RASIO_KONVERSI[merk] || RASIO_DEFAULT;"),
+            'kg liter: ketikan dibulatkan dua angka (0,815 jadi 0,82)': js.replace("const n = Math.round(Number(t.replace(',', '.')) * 1000) / 1000;", "const n = Math.round(Number(t.replace(',', '.')) * 100) / 100;"),
             # ---- owner 17 Nov 2026 (butir 2): batal nota dari Riwayat ----
             'batal: penutupan hari itu tidak dibetulkan (laba kena dua kali)': js.replace("if (P.tutup) dokumen.push(bnDokTutup(", "if (false) dokumen.push(bnDokTutup("),
             'batal: selalu penutupan teratas yang dibetulkan (tutup ulang salah malam)': js.replace("const kena = urut.find((x) => bnJam(x.dok.jam) >= bnJam(nota.jam)) || null;", "const kena = urut[urut.length - 1];"),

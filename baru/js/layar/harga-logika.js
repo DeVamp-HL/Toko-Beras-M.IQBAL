@@ -25,7 +25,7 @@ const HG_HARI_LAKU = 30;
 const hgAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0;
   const n = Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return isFinite(n) ? n : 0; };
 const hgKosong = (v) => v === undefined || v === null || String(v).trim() === '';
-const hgRasio = (merk) => RASIO_KONVERSI[merk] || RASIO_DEFAULT;
+const hgRasio = (merk) => wbRasio(merk);   // owner 17 Nov (butir 5): berat 1 liter diatur owner — satu penentu (kg-liter-logika kgPerLiter)
 const hgBulatAtas = (x, k) => (k > 0 ? Math.ceil(x / k - 1e-9) * k : Math.round(x));
 const hgBulatBawah = (x, k) => (k > 0 ? Math.floor(x / k + 1e-9) * k : Math.round(x));
 const hgAturDok = (id) => cacheMentah('aturan').find((d) => String(d.id) === id) || null;
