@@ -1,5 +1,12 @@
 // ============================================================================
-// ATURAN FIRESTORE v7 FINAL — Toko Beras M.IQBAL (DRAF 7 Okt 2026 — owner menerbitkan SEKALI lewat Console SEBELUM cabang perbaikan/hemat-baca
+// ATURAN FIRESTORE v8 FINAL — Toko Beras M.IQBAL (DRAF 16 Nov 2026, B1 harga pelanggan usaha) = v7 FINAL + PERSIS tiga ubahan (alat-uji/periksa_rules.py
+// membandingkannya dengan firestore.rules.v7; uji server: docs/uji-rules-v8.md). Owner menerbitkan v8 SEKALI lewat Console SEBELUM cabang B1 digabung:
+//   (v8-1) aturanToko/hargaTingkat dibaca ben/karyawan (harga pelanggan usaha dipakai kasir di Jual) — tulis tetap owner saja;
+//   (v8-2) aturanToko/produkArsip dibaca ben/karyawan (barang yang diarsipkan owner tidak tampil sebagai chip habis di rak Jual tablet);
+//   (v8-3) persetujuan create: + stafUsulHarga — ben/karyawan mengirim USUL harga pelanggan (tindakan 'hargaPelanggan', status 'menunggu', usulUid = uid
+//          penulis, tanpa kolom keputusan). Memutus tetap owner; saat menyetujui, perangkat owner menulis aturanToko/hargaTingkat (owner saja).
+// Sisanya = v7 FINAL di bawah ini, apa adanya:
+// (v7) ATURAN FIRESTORE v7 FINAL — Toko Beras M.IQBAL (DRAF 7 Okt 2026 — owner menerbitkan SEKALI lewat Console SEBELUM cabang perbaikan/hemat-baca
 // digabung; langkahnya: docs/uji-rules-v7.md "Urutan"). v6 + lima perubahan:
 // Berkas KANONIK ber-versi. DEPLOY: salin-tempel ke Console > Firestore > Rules (owner; pola putaran 25).
 // Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep; pintu tutup buku K8 7 Okt)
@@ -156,6 +163,13 @@ service cloud.firestore {
     function stafMintaNego(peranBoleh) {
       let d = request.resource.data;
       return stafBuat(peranBoleh) && d.get('tindakan', '') == 'nego' && d.get('status', '') == 'menunggu' && d.get('negoUid', '') == request.auth.uid
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
+    }
+    // v8 (B1, owner 16 Nov 2026): usul harga pelanggan usaha ke owner — bentuk "menunggu" bertindakan hargaPelanggan, atas nama penulisnya sendiri (usulUid),
+    // tanpa kolom keputusan. Isi ubahannya tidak diikat rules: papan persetujuan owner menghitung ulang kalimatnya dari setelan sekarang sebelum memutus.
+    function stafUsulHarga(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'hargaPelanggan' && d.get('status', '') == 'menunggu' && d.get('usulUid', '') == request.auth.uid
         && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
     }
 
@@ -490,7 +504,7 @@ service cloud.firestore {
     }
 
     match /aturanToko/{id} {
-      allow read: if owner() || (id in ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat'] && staf(['ben', 'karyawan']));   // per dokumen (peta §3)
+      allow read: if owner() || (id in ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip'] && staf(['ben', 'karyawan']));   // per dokumen (peta §3) · v8: + hargaTingkat, produkArsip
       allow create: if owner() && (id != 'kunciPeriode' || kunciPertama());
       allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());
       allow delete: if owner() && id != 'kunciPeriode';   // dokumen kunci tidak pernah dihapus (menghapusnya = membuka semua bulan)
@@ -540,7 +554,7 @@ service cloud.firestore {
 
     match /persetujuan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta membaca keputusan owner (pendengar koleksi utuh — rules bukan saringan)
-      allow create: if owner() || stafMintaNego(['ben', 'karyawan']);   // v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri
+      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']);   // v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan
       allow update, delete: if owner();   // memutus (setuju / tolak) = owner
     }
 

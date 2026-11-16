@@ -28,6 +28,8 @@ import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSem
 import { hariIniIso, RP, tanggalPendek, pecahLebih } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan, tolakBatalReturBon, capModalKembali } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
+// B1 (owner 16 Nov 2026): harga pelanggan usaha
+import { htKolomBaris, htTandaiRak, htTingkatOrang, htPapanKhusus, HT_KOLOM_BARIS } from './harga-tingkat-logika.js';
 import { hppKeluar, hppKeluarPerKg, modalRataPerKg, nilaiSelisihKg } from '../mesin/modal-fifo.js';
 import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisWadah, bebasWadah } from './wadah-jual-logika.js';
 // putaran 27: wadah bernama, isi per merek asal
@@ -170,6 +172,7 @@ export function susunRak(s, opsi) {
   rak.wadah = susunRakWadah((j) => wadahDipegang(j), (j) => wadahDipegangParkir(j));
   if (identitas) return rak;
   rak.literan.forEach((c) => { c.wadah = tinggiWadah(c.kunci, s); });
+  htTandaiRak(rak, s.pelanggan, hariIniIso(s.sekarang));   // B1: harga pelanggan bertingkat untuk TAMPILAN chip (sebelum Sering menyalin chip)
   rak.kelompok = kelompokRak(rak);
   // SERING: barang yang biasa dibeli orang ini (90 hari); tanpa nama → yang paling laku 28 hari terakhir
   const sr = susunSering(s, rak); rak.sering = sr.daftar;
@@ -369,7 +372,10 @@ export function bangunBaris(chip, jumlah, s, ekstra) {
     t = bangunBarisWadah(chip, j);
   }
   if (!t) return null;
-  t.jumlah = j; t.hargaAsli = chip.harga; t.hargaSatuan = e.nego ? e.hargaSatuan : chip.harga;
+  // B1 (owner 16 Nov 2026): pembeli bertingkat / berharga khusus → harga dasar baris = harga pelanggan itu (nego tetap di atasnya); eceran ikut tercatat
+  const TG = htKolomBaris(chip, t, s && s.pelanggan, hariIniIso(s && s.sekarang));
+  HT_KOLOM_BARIS.forEach((k) => { delete t[k]; }); if (TG.kolom) Object.assign(t, TG.kolom);
+  t.jumlah = j; t.hargaAsli = TG.hargaAsli; t.hargaSatuan = e.nego ? e.hargaSatuan : TG.hargaAsli;
   if (e.nego) { t.nego = true; NG_KOLOM.forEach((k) => { if (e[k] !== undefined) t[k] = e[k]; }); }   // owner 7 Okt: status nego ikut baris yang dibangun ulang
   return selesaikanHarga(t, !!e.penggantiRetur);
 }
@@ -479,7 +485,8 @@ export function daftarPelanggan(cari) {
   });
   return Object.values(peta).map((o) => {
     const r = piutang.find((x) => x.kunci === o.kunci);
-    return Object.assign(o, { sisaBon: r ? Math.max(0, r.sisa) : 0, lebih: pecahLebih(r).lebih, lebihUang: pecahLebih(r).uang, lebihHapus: pecahLebih(r).hapus, umurHari: r ? r.umurHari : null, terdaftar: !!o.terdaftar });
+    const T = htTingkatOrang(o.kunci);   // B1: tingkat harga pembeli tampil di daftar nama
+    return Object.assign(o, { tingkat: T ? T.nama : '', sisaBon: r ? Math.max(0, r.sisa) : 0, lebih: pecahLebih(r).lebih, lebihUang: pecahLebih(r).uang, lebihHapus: pecahLebih(r).hapus, umurHari: r ? r.umurHari : null, terdaftar: !!o.terdaftar });
   }).filter((o) => !c || o.kunci.indexOf(c) >= 0)
     .sort((a, b) => (b.terakhir > a.terakhir ? 1 : b.terakhir < a.terakhir ? -1 : a.nama.localeCompare(b.nama))).slice(0, 40);
 }
@@ -662,10 +669,12 @@ export function ubahJumlahBaris(s, id, selisih) {
 // "Mencatat…". Kini disusun sebagai rak IDENTITAS (tanpa sisa / Sering) — chipnya sama; dibuktikan alat-uji/uji_catat_nota_cepat.py (pembanding dokumen nota).
 let _rakChip = null, _rakChipVersi = -1;
 function rakUntukChip() { const v = versiCache(); if (!_rakChip || _rakChipVersi !== v) { _rakChip = susunRak({ pelanggan: '', sekarang: null }, { identitas: true }); _rakChipVersi = v; } return _rakChip; }
+/** B1: rak IDENTITAS (nama, harga eceran, modal tiap barang — tanpa sisa) untuk layar Pelanggan › Usaha. Diingat per versi data. */
+export function rakBarang() { return rakUntukChip(); }
 function chipDariBaris(t) {
   const rak = rakUntukChip();
   if (t.jenis === 'karung') return rak.karung.find((c) => c.kunci === t.merkSumber && c.berat === (t.beratKarungAcuan || 50)) || null;
-  if (t.jenis === 'kemasan' && t.setengahDari) { const c50 = rak.kemasan.find((c) => c.kunci === t.setengahDari); return c50 ? skChip(c50, t.setengahHargaBaru || t.hargaAsli) : null; }
+  if (t.jenis === 'kemasan' && t.setengahDari) { const c50 = rak.kemasan.find((c) => c.kunci === t.setengahDari); return c50 ? skChip(c50, t.setengahHargaBaru || t.hargaEceranSatuan || t.hargaAsli) : null; }   // B1: hargaAsli bisa harga tingkat — chip memakai eceran
   if (t.jenis === 'kemasan') return rak.kemasan.find((c) => c.kunci === kunciKemasan(t.namaProduk, t.ukuranKemasan)) || null;
   if (t.jenis === 'literan') return rak.literan.find((c) => c.kunci === (t.dariWadah || t.merkSumber)) || null;
   if (t.jenis === 'repacking') return rak.repack.find((c) => c.kunci === t.merkSumber) || null;
@@ -705,6 +714,7 @@ export function susunMintaNego(s, w) {
   const m = s.negoMinta; const b = m && (s.keranjang || []).find((x) => x.id === m.id); if (!b) return { tolak: 'Baris yang ditawar sudah tidak ada di keranjang' };
   const p = putusNego(s, m.id, m.harga); if (p.status !== 'minta') return { tolak: p.teks };
   const r = ngSusunMinta(b.trx, p, s.negoAkun || null, w); if (r.tolak) return r;
+  if (b.trx.tingkatHarga && r.dokumen && r.dokumen[0]) Object.assign(r.dokumen[0].data, { pelanggan: kunciPelanggan(s.pelanggan), tingkatHarga: b.trx.tingkatHarga });   // B1: owner menghitung dari harga pelanggan itu
   return { dokumen: r.dokumen, patch: Object.assign({}, r.patch, { negoMinta: null, negoAlasan: '', negoId: null, lembar: null, ketik: '' }) };
 }
 /** Baris keranjang yang permintaan negonya SUDAH disetujui owner tapi belum dipakai (bukan-owner): [{ id, label, harga }] — layar menawarkan memakainya. */
@@ -851,6 +861,33 @@ export function periksaPulih(s) {
   return { tolak: 'Harga berubah sejak keranjang disimpan: ' + ubah.join('; ') + ' — keranjang sudah memakai katalog sekarang; periksa totalnya lalu terima uangnya lagi', perbarui: { keranjang, uang: 0, pulihPeriksa: sisa } };
 }
 
+/** B1: keterangan harga pembeli ini untuk layar Jual → null (eceran) atau { nama, teks }. */
+export function tingkatPembeli(nama, kini) {
+  const T = htTingkatOrang(nama); const nK = htPapanKhusus(nama, hariIniIso(kini)).filter((x) => x.keadaan === 'berlaku').length; if (!T && !nK) return null;
+  return { nama: T ? T.nama : 'khusus', teks: (T ? (T.potKg > 0 ? 'eceran − ' + RP(T.potKg) + '/kg' : 'potongan tingkat masih Rp0 — sama dengan eceran') : 'tanpa tingkat') + (nK ? ' · ' + nK + ' harga khusus berlaku' : '') };
+}
+/**
+ * B1 (owner 16 Nov 2026): PEMBELI diganti (pilih nama, tanpa nama, benang, pesanan) → patch keadaan. Baris yang sudah di keranjang dibangun ulang dengan
+ * harga pelanggan yang baru (tingkat / harga khusus / eceran); nego dihitung ulang di atas harga barunya — yang tidak sah lagi dilepas dan disebut.
+ * Uang yang sudah diterima dikosongkan kalau ada harga yang berubah (totalnya berubah).
+ */
+export function gantiPelanggan(s, nama) {
+  const nm = String(nama || '').trim(); const patch = { pelanggan: nm };
+  if (!(s.keranjang || []).length) return patch;
+  const s2 = Object.assign({}, s, { pelanggan: nm }); const ubah = [];
+  const keranjang = s.keranjang.map((b) => {
+    const chip = chipDariBaris(b.trx); const dasar = chip ? bangunUlang(b, chip, b.trx.jumlah, s2) : null; if (!dasar) return b;
+    let nu = negoUlang(s2, dasar); let lepas = false;
+    if (nu.tolak) { lepas = true; nu = { trx: bangunUlang({ id: b.id, trx: Object.assign({}, b.trx, { nego: false }) }, chip, b.trx.jumlah, s2) }; }
+    const t = nu.trx; if (!t) return b;
+    if (t.hargaSatuan !== b.trx.hargaSatuan || t.hargaTotal !== b.trx.hargaTotal) ubah.push(b.trx.label + ' ' + RP(b.trx.hargaSatuan) + ' → ' + RP(t.hargaSatuan) + '/' + t.satuan + (lepas ? ' (nego dilepas)' : ''));
+    return { id: b.id, trx: t };
+  });
+  if (!ubah.length) return Object.assign(patch, { keranjang });
+  const T = htTingkatOrang(nm);
+  return Object.assign(patch, { keranjang, uang: 0, kabar: 'Harga ikut pembeli ' + (nm ? nm + (T ? ' (harga ' + T.nama + ')' : '') : 'tanpa nama (eceran)') + ': ' + ubah.join('; '), kabarAwas: false });
+}
+
 // ---------- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang TIDAK boleh terbawa ke akun berikutnya ----------
 /** Baris yang belum disimpan = keranjang yang sedang jalan + keranjang yang diparkir. */
 export function barisBelumDisimpan(s) {
@@ -910,7 +947,8 @@ export function susunPesananBatal(id, w) {
 export function ikatPesanan(s, id) {
   const ps = ambilPesananDoc(id); if (!ps || !pesananBelumTuntas(ps)) return { kabar: 'Pesanan itu sudah tuntas atau tidak ada', kabarAwas: true };
   if (s.tukar) return { kabar: 'Keranjang sedang terikat TUKAR (' + s.tukar.ringkas + '). Catat notanya atau batal tukar dulu, baru catat jual pesanan.', kabarAwas: true };
-  return { pesananId: String(ps.id), pelanggan: String(ps.namaPelanggan || '').trim(), lembar: null, kabar: 'Susun keranjang untuk pesanan ' + ps.namaPelanggan + ' (' + (ps.isi || '') + ') — begitu dicatat, pesanan otomatis DIBAYAR', kabarAwas: false };
+  const g = gantiPelanggan(s, String(ps.namaPelanggan || '').trim());   // B1: harga ikut tingkat pemesan
+  return Object.assign(g, { pesananId: String(ps.id), lembar: null, kabar: 'Susun keranjang untuk pesanan ' + ps.namaPelanggan + ' (' + (ps.isi || '') + ') — begitu dicatat, pesanan otomatis DIBAYAR' + (g.kabar ? '. ' + g.kabar : ''), kabarAwas: false });
 }
 export function lepasPesanan(s) { return { pesananId: null, kabar: 'Ikatan pesanan dilepas — barang di keranjang tetap, pesanan tetap belum dibayar' }; }
 

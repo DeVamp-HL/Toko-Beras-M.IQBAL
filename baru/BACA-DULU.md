@@ -2586,3 +2586,29 @@ internet mati saat aplikasi dibuka = layar "belum tersambung" (`apk/www/galat.ht
 - **Belum terbukti di CPad**: suntikan jembatan pada HTML yang diambil service worker (perilaku Capacitor 7 `resolveServiceWorkerRequests`) hanya bisa dibuktikan di
   tablet: buka sekali saat ada internet → tunggu kalimat "Bisa dibuka tanpa internet" → mode pesawat → tutup penuh & buka lagi → masuk PIN, jual, cetak.
 
+## Putaran B1 — harga pelanggan usaha (16 Nov 2026, cabang `paket/karcis-nominal-kantong-merek`)
+Keputusan owner 16 Nov 2026 (memori `b1-harga-tingkat-keputusan`): tingkat bawaan **Warung · Catering · Instansi** (daftarnya diatur owner dari layar);
+harga tingkat = **eceran − potongan Rp per kg** (satu angka per tingkat, ikut otomatis kalau eceran berubah) + **harga sendiri** per barang per tingkat;
+**harga khusus** per pelanggan per barang bertanggal; **Ben mengusulkan, owner menyetujui**; saran harga grosir per JUMLAH (keputusan 9 Okt) **ditunda**.
+- **Logika**: `baru/js/layar/harga-tingkat-logika.js` (tanpa DOM, awalan `ht`). Urutan harga: khusus yang berlaku hari itu → harga sendiri barang di
+  tingkatnya → eceran − potongan × kg satuannya (karung = beratnya, kemasan = ukurannya, literan = kg per liter, repack = 1; dibulatkan ke Rp50
+  terdekat) → eceran. Wadah & kantong tidak pernah ikut. Potongan yang menghabiskan harga tidak dipakai (papan menandainya).
+- **Tempat**: SATU dokumen `aturanToko/hargaTingkat` { tingkat, barang, orang, khusus } — ditulis owner saja, dibaca staf (rules v8). Alamat antar &
+  NPWP (15/16 angka, opsional) di kartu pelanggan (`pelangganCatatan.alamat`, `.npwp`).
+- **Jual**: pembeli bertingkat → chip menyebut harga tingkat & namanya (harga eceran chip TETAP — baris dibangun ulang dari chip), baris nota memakai
+  harga pelanggan sebagai harga dasar (`hargaAsli` → dokumen `hargaAsliSatuan`), eceran ikut tercatat (`hargaEceranSatuan`, `tingkatHarga`, `tingkatId`,
+  `hargaSumber`, `hargaKhususId`). Ganti / lepas pembeli (juga lewat benang & pesanan) menghitung ulang keranjang dan menyebut perubahannya; uang yang
+  sudah diterima dikosongkan bila total berubah. Nego tetap di atas harga tingkat (jatah dihitung dari harga pelanggan; papan owner menghitung permintaan
+  nego dari harga pelanggan itu, bukan eceran). **Mesin uang tidak disentuh** — laba & HPP dari nota seperti biasa (`beku2.py --sidik` 91/91).
+- **Layar Pelanggan › Usaha** (owner & Ben; karyawan melihat saja): Tingkat (potongan, contoh per satuan, siapa di tingkat itu, + pelanggan), Harga
+  barang (per tingkat: eceran → harga tingkat, harga sendiri; modal/untung & tanda rugi/HET HANYA owner), Harga khusus (berlaku / belum / lewat). Kartu
+  pelanggan: tingkat (ketuk = pasang; Ben = usul) + harga khususnya + alamat & NPWP.
+- **Usul Ben**: `persetujuan` tindakan `hargaPelanggan` (menunggu, `usulUid`, tanpa kolom keputusan) — kisi SS2 `hargaPelanggan` (bawaan Ben "minta
+  owner", karyawan "tidak boleh"). Papan Persetujuan owner menghitung ULANG kalimat usul dari setelan sekarang (bukan teks kiriman), usul tidak ikut
+  "setujui sekaligus"; menyetujui = status + setelan dipasang di kiriman yang sama; usul yang sudah tidak sah lagi tidak bisa dipasang (owner menolaknya).
+- **Rules v8** (`firestore.rules`, pembanding `firestore.rules.v7`, uji `docs/uji-rules-v8.md`): (1) `aturanToko/hargaTingkat` & (2) `produkArsip`
+  terbaca staf, (3) `stafUsulHarga`. **Owner menerbitkan v8 di Console SEBELUM merge** — kalau terbalik, tablet menyebut "ditolak" untuk dua dokumen itu
+  sampai v8 terbit (data lain jalan).
+- Uji: `alat-uji/uji_harga_tingkat.py` 66 + statis 8 (+ kontrol 23); `periksa_rules.py` (v8 = v7 + tiga ubahan persis, model 15 kasus ★H, beda v7 tepat
+  ★H1–★H3; kontrol 128); `uji_rules_emulator.py` bagian V8 (kasus ★H di emulator atas v8 & v7 + 6 kontrol — workflow *Uji rules di emulator*).
+- **Belum**: laporan per pelanggan / per tipe (B5), faktur bertempo & batas kredit (B2), saran grosir per jumlah (ditunda owner).

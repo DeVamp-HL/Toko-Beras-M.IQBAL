@@ -19,6 +19,8 @@ import { SERVER_BUKA, PERAN_BUKAN_OWNER } from '../data/akses.js';
 import { HB_TEMPAT } from '../data/hemat-baca.js';
 // owner 7 Okt (JS2-C): bawaan batas nego satu sumber
 import { NG_BAWAAN, ngPeriksaMinta } from './nego-logika.js';
+// B1 (owner 16 Nov 2026): usul harga pelanggan usaha
+import { htTeksUbah, htPasangUsul, HT_TINDAKAN } from './harga-tingkat-logika.js';
 
 export const ssHariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const ssTambahHari = (iso, n) => new Date((ssHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
@@ -30,13 +32,13 @@ const ssHariNama = (iso) => ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][ne
 // ---------- tindakan berpintu izin & peran (SS2) — dari kanvas-kanvas yang sudah dikunci ----------
 export const SS_TINDAKAN = [['jualTunai', 'Jual tunai & kembalian', 'Jual'], ['jualBon', 'Jual dengan bon (pelanggan lama)', 'Jual'], ['nego', 'Nego di bawah jatah margin', 'Jual'], ['terimaBon', 'Terima pembayaran bon', 'Uang'],
   ['hitungLaci', 'Hitung & rapikan laci', 'Uang'], ['uangKeluar', 'Catat uang keluar dari laci', 'Uang'], ['adukan', 'Catat adukan (bongkar kemasan)', 'Stok'], ['kedatangan', 'Hitung truk & draf kedatangan', 'Stok'],
-  ['hargaBeli', 'Isi harga beli / modal', 'Stok'], ['koreksi', 'Koreksi nota yang sudah tersimpan', 'Jual'], ['hapus', 'Hapus catatan', 'Semua'], ['pelangganBaru', 'Daftarkan pelanggan baru', 'Pelanggan'], ['atur', 'Ubah setelan (Atur)', 'Sistem'],
+  ['hargaBeli', 'Isi harga beli / modal', 'Stok'], ['koreksi', 'Koreksi nota yang sudah tersimpan', 'Jual'], ['hapus', 'Hapus catatan', 'Semua'], ['pelangganBaru', 'Daftarkan pelanggan baru', 'Pelanggan'], ['hargaPelanggan', 'Atur harga pelanggan usaha (tingkat & harga khusus)', 'Pelanggan'], ['atur', 'Ubah setelan (Atur)', 'Sistem'],
   ['isiUlang', 'Isi ulang & cek wadah literan', 'Stok']].map((t) => ({ id: t[0], nama: t[1], modul: t[2] }));   // putaran 39 (owner 29 Sep): karyawan menuang & mengecek wadah — rules v5
 export const SS_PERAN = [['owner', 'Owner'], ['ben', 'Ben (penjaga laci)'], ['karyawan', 'Karyawan (giliran)']].map((p) => ({ id: p[0], nama: p[1] }));
 export const SS_NILAI_HAK = ['sendiri', 'owner', 'tidak'];
 export const SS_LABEL_HAK = { sendiri: 'boleh sendiri', owner: 'minta owner', tidak: 'tidak boleh' };
-const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: 'owner', terimaBon: 'sendiri', hitungLaci: 'sendiri', uangKeluar: 'owner', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'owner', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' },
-  karyawan: { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' } };
+const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: 'owner', terimaBon: 'sendiri', hitungLaci: 'sendiri', uangKeluar: 'owner', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'owner', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri', hargaPelanggan: 'owner' },
+  karyawan: { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri', hargaPelanggan: 'tidak' } };
 export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon'], ['janji', 'Janji bayar pelanggan', 'hariJanji'], ['kantong', 'Kantong menipis', 'hariKantong'], ['opname', 'Opname rutin', 'hariOpname'], ['cadangan', 'Cadangan berkas', 'hariCadangan'], ['pajak', 'Setoran PPh final bulan lalu', 'hariPajak']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));
 export const SS_PENERIMA = ['Owner', 'Ben'];
 
@@ -174,12 +176,13 @@ export function ssHemat(K, siap) {
 // ---------- SS2 · Peran & persetujuan ----------
 // Putaran 23c (owner 24 Sep): kisi menampilkan KEBENARAN SERVER. Kisi `sendiri` yang tidak dibuka firestore.rules v3 (akses.js SERVER_BUKA)
 // tampil "tertutup server" beserta sebabnya (peta §6) — bukan "boleh sendiri". Nilai kisi tersimpan tetap; yang berubah cuma yang digambar.
-export const SS_TERTUTUP_SERVER = { hitungLaci: 'menutup hari menimpa titik kas (angka uang yang sudah tercatat) — owner saja sampai ada alur persetujuan',
+export const SS_TERTUTUP_SERVER = { hargaPelanggan: 'setelan harga hanya ditulis owner — "boleh sendiri" tetap jadi usul ke owner', hitungLaci: 'menutup hari menimpa titik kas (angka uang yang sudah tercatat) — owner saja sampai ada alur persetujuan',
   kedatangan: 'kedatangan wajib harga beli, padahal harga beli tidak boleh untuk peran ini — owner saja sampai ada draf kedatangan tanpa harga' };
 export const SS_LABEL_TAMPIL = { sendiri: 'boleh sendiri', server: 'tertutup server', owner: 'minta owner', tidak: 'tidak boleh' };
 export function ssHakServer(peran, tindakan, nilai) {
   if (peran === 'owner') return { nilai, label: SS_LABEL_TAMPIL[nilai], ket: '' };
   if (nilai === 'sendiri' && (SERVER_BUKA[tindakan] || []).indexOf(peran) < 0) return { nilai: 'server', label: SS_LABEL_TAMPIL.server, ket: SS_TERTUTUP_SERVER[tindakan] || 'server belum membuka tindakan ini untuk peran ini' };
+  if (nilai === 'owner' && tindakan === HT_TINDAKAN) return { nilai, label: SS_LABEL_TAMPIL.owner, ket: 'usul ke owner lewat papan Persetujuan — berlaku sesudah owner setujui' };   // B1 (owner 16 Nov 2026), rules v8
   if (nilai === 'owner') return { nilai, label: SS_LABEL_TAMPIL.owner, ket: 'alur persetujuannya belum ada — sampai itu dibangun, server menutupnya' };
   return { nilai, label: SS_LABEL_TAMPIL[nilai] || nilai, ket: '' };
 }
@@ -238,11 +241,11 @@ export function susunUbahAkun(uid, ubah, w, yakin) {
 /** Permintaan "minta owner" (ditulis tablet/Mac ke koleksi persetujuan): yang menunggu + riwayat keputusan. */
 export function ssPersetujuan(kini) {
   const semua = cacheMentah('persetujuan').slice().sort(ssUrutTerbaru); const P = ssPeran();
-  const baris = (m) => { const Q = m.tindakan === 'nego' ? ngPeriksaMinta(m) : null; return { id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,
+  const baris = (m) => { const Q = m.tindakan === 'nego' ? ngPeriksaMinta(m) : null; const HU = m.tindakan === HT_TINDAKAN ? htTeksUbah(m.ubah) : null; return { id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,
     // sanggahan rules 7 Okt: permintaan NEGO tidak pernah ikut "setujui semua yang kecil" — rules tidak mengikat nominal / batas / alasan kiriman staf ke harga
     // barang, jadi owner melihatnya satu per satu; teks & angkanya dihitung ulang di sini (ngPeriksaMinta: barang, hargaMinta, jumlah + harga katalog sekarang)
-    sekaligus: m.tindakan !== 'nego',
-    teks: Q ? Q.teks : m.teks || '', n: Q ? Q.nominal || 0 : Number(m.nominal) || 0, tanggal: m.tanggal || '', jam: m.jam || '', status: m.status || 'menunggu', alasanTolak: m.alasanTolak || '', diputusTanggal: m.diputusTanggal || '',
+    sekaligus: m.tindakan !== 'nego' && m.tindakan !== HT_TINDAKAN,   // B1: usul harga pelanggan juga dilihat satu per satu (kalimatnya dihitung ulang dari setelan sekarang)
+    teks: Q ? Q.teks : HU !== null ? HU : m.teks || '', n: Q ? Q.nominal || 0 : HU !== null ? 0 : Number(m.nominal) || 0, tanggal: m.tanggal || '', jam: m.jam || '', status: m.status || 'menunggu', alasanTolak: m.alasanTolak || '', diputusTanggal: m.diputusTanggal || '',
     saran: m.tindakan && P.hak(m.peran || 'karyawan', m.tindakan) === 'tidak' ? 'Peran ' + (m.dari || 'ini') + ' sebenarnya TIDAK BOLEH untuk ini — kalau sering, ubah haknya' : 'Menurut kisi hak, ini memang minta owner' }; };
   const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(baris); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(baris).slice(0, 20);
   return { menunggu, riwayat, kecil: menunggu.filter((m) => m.sekaligus && m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
@@ -250,8 +253,10 @@ export function ssPersetujuan(kini) {
 export function susunPutusPersetujuan(id, setuju, alasan, w) {
   const m = cacheMentah('persetujuan').find((x) => String(x.id) === String(id)); if (!m) return { tolak: 'Permintaannya tidak ditemukan' }; if (m.status && m.status !== 'menunggu') return { tolak: 'Sudah diputus ' + (m.diputusTanggal ? tanggalPendek(m.diputusTanggal) : '') };
   if (!setuju && ssKosong(alasan)) return { tolak: 'Menolak butuh alasan — supaya ' + (m.dari || 'peminta') + ' tahu sebabnya' };
-  return { dokumen: [{ koleksi: 'persetujuan', data: Object.assign({}, m, { status: setuju ? 'disetujui' : 'ditolak', alasanTolak: setuju ? '' : String(alasan).trim().slice(0, 80), diputusTanggal: w.tanggal, diputusJam: w.jam, diputusPada: w.kini }) }],
-    patch: { kabar: setuju ? 'Disetujui — ' + (m.dari || 'peminta') + ' bisa melanjutkan di perangkatnya' : 'Ditolak (' + String(alasan).trim() + ') — ' + (m.dari || 'peminta') + ' dapat kabarnya', kabarAwas: false } };
+  // B1 (owner 16 Nov 2026): menyetujui usul harga pelanggan = memasang ubahannya ke setelan SEKARANG di kiriman yang sama (dihitung ulang, bukan teks kiriman)
+  const HP = setuju && m.tindakan === HT_TINDAKAN ? htPasangUsul(m, w) : null; if (HP && HP.tolak) return { tolak: HP.tolak };
+  return { dokumen: [{ koleksi: 'persetujuan', data: Object.assign({}, m, { status: setuju ? 'disetujui' : 'ditolak', alasanTolak: setuju ? '' : String(alasan).trim().slice(0, 80), diputusTanggal: w.tanggal, diputusJam: w.jam, diputusPada: w.kini }) }].concat(HP ? HP.dokumen : []),
+    patch: { kabar: HP ? 'Disetujui & dipasang — ' + HP.kabar : setuju ? 'Disetujui — ' + (m.dari || 'peminta') + ' bisa melanjutkan di perangkatnya' : 'Ditolak (' + String(alasan).trim() + ') — ' + (m.dari || 'peminta') + ' dapat kabarnya', kabarAwas: false } };
 }
 export function susunSetujuiKecil(w) {
   const P = ssPersetujuan(new Date(w.kini)); const kecil = P.menunggu.filter((m) => m.sekaligus && m.n <= P.batas); const nSatu = P.menunggu.filter((m) => !m.sekaligus).length;

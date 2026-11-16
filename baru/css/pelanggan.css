@@ -103,3 +103,17 @@ main.layar-pelanggan { display: flex; flex-direction: column; gap: 10px; padding
 /* ---------- RAPI-RAPI 29 Sep (kelompok 3): di Mac selebar layar kerja lain (1720 px, lebar TERMASUK padding seperti layar lain —
    dulu 1480 + padding = 1536, pinggir kirinya tidak sejajar layar lain) ---------- */
 @media (min-width: 1100px) { main.layar-pelanggan { max-width: 1720px; box-sizing: border-box; } }
+/* ---------- B1 (owner 16 Nov 2026): USAHA — harga pelanggan usaha. Tempo identitas: SENTUH 160 · DATA 480 ms, kurva cubic-bezier(.2,.8,.2,1);
+   kartu tingkat & lembar ubah masuk bergeser, angka harga yang berubah bertransisi warna. ---------- */
+.layar-pelanggan .ht-atas { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.layar-pelanggan .ht-pot { font-family: 'Bodoni Moda', Georgia, serif; font-size: 16px; color: var(--aktif); white-space: nowrap; }
+.layar-pelanggan .ht-tingkat { animation: htMasuk 480ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-pelanggan .ht-tingkat:nth-of-type(2) { animation-delay: 60ms; } .layar-pelanggan .ht-tingkat:nth-of-type(3) { animation-delay: 120ms; } .layar-pelanggan .ht-tingkat:nth-of-type(n+4) { animation-delay: 180ms; }
+.layar-pelanggan .ht-ubah, .layar-pelanggan .ht-pilih, .layar-pelanggan .ht-usul { animation: htMasuk 480ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-pelanggan .ht-pilih { display: flex; flex-direction: column; gap: 4px; }
+.layar-pelanggan .ht-barang .n { transition: color 480ms cubic-bezier(.2,.8,.2,1); }
+.layar-pelanggan .ht-barang.sendiri .n { color: var(--aktif); }
+.layar-pelanggan .ht-kartu .seg { transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.layar-pelanggan .jawab.redup { opacity: 0.6; }
+@keyframes htMasuk { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .layar-pelanggan .ht-tingkat, .layar-pelanggan .ht-ubah, .layar-pelanggan .ht-pilih, .layar-pelanggan .ht-usul { animation: none; } .layar-pelanggan .ht-barang .n { transition: none; } }

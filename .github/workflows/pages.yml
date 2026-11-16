@@ -146,6 +146,8 @@ jobs:
         run: python3 alat-uji/uji_tablet_pin.py && python3 alat-uji/uji_tablet_pin.py --kontrol
       - name: "Tablet dibuka tanpa internet (T1 langkah 4, owner 16 Nov 2026): salinan aplikasi sw-baru.js — pasang = semua berkas dicocokkan sidiknya (berkas basi = versi DITOLAK, tidak pernah campur), HTML bersuntikan jembatan Capacitor lolos & tersimpan, sajian dari salinan ada/tanpa internet, data toko tidak disentuh, berkas sama disalin dari versi lama, versi lama dihapus saat aktif, lepas; salinan.js: hanya tablet, pasang versi baru hanya di gerbang tanpa isian, kalimat jujur; cap saat terbit mencakup semua modul (jsc + statis + kontrol)"
         run: python3 alat-uji/uji_salinan_aplikasi.py && python3 alat-uji/uji_salinan_aplikasi.py --kontrol
+      - name: "Harga pelanggan usaha (B1, owner 16 Nov 2026): tingkat Warung/Catering/Instansi = eceran − potongan per kg, harga sendiri per barang, harga khusus bertanggal; Jual ikut tingkat pembeli; Ben mengusulkan, owner menyetujui (rules v8)"
+        run: python3 alat-uji/uji_harga_tingkat.py && python3 alat-uji/uji_harga_tingkat.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

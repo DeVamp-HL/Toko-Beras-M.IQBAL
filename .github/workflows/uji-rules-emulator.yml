@@ -13,8 +13,10 @@ on:
     paths:
       - 'firestore.rules'
       - 'firestore.rules.v6'
+      - 'firestore.rules.v7'
       - 'kasir-darurat-nominal.html'
       - 'docs/uji-rules-v7.md'
+      - 'docs/uji-rules-v8.md'
       - 'alat-uji/uji_rules_emulator.py'
       - 'alat-uji/kasir_emulator.js'
       - 'alat-uji/periksa_rules.py'
@@ -88,7 +90,7 @@ jobs:
           JSON
           cat "$P/firebase.json"
 
-      - name: "BUKTI SERVER — semua kasus Playground v7 (+ M, S, H hanya maju) · v6 · kontrol rules dirusak · kasir darurat kasir-v33 & kasir-v32 kirim ulang"
+      - name: "BUKTI SERVER — semua kasus Playground v7 (+ M, S, H hanya maju) · v6 · kontrol rules dirusak · kasir darurat kasir-v33 & kasir-v32 kirim ulang · V8 (B1) kasus ★H atas v8 & v7"
         working-directory: ${{ runner.temp }}/proyek-rules
         run: |
           firebase emulators:exec --only firestore --project "$PROYEK_RULES" \

@@ -11,7 +11,11 @@ import * as P from './pelanggan-logika.js';
 import * as B from './bon-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, tulisBertahap, perbaruiKolom, kabarKiriman, kunciLuarCache } from '../data/toko.js';
-import { bukanOwner, bolehBukaLayar } from './akses-layar.js';
+import { bukanOwner, bolehBukaLayar, hakAkun, bolehMintaOwner } from './akses-layar.js';
+// B1 (owner 16 Nov 2026): harga pelanggan usaha — keluarga Usaha & bagian harga di kartu
+import * as HT from './harga-tingkat-logika.js';
+import { rakBarang } from './jual-logika.js';
+import { hetAtur, hetUnit, hetNilai } from './het-logika.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -38,7 +42,8 @@ function svgSketsa(sk, kelas) {
 }
 const KUNCI_TAB = 'miqbal_baru_pelanggan_tab'; const KUNCI_HAFAL = 'miqbal_baru_hafal';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
-const KELUARGA = [['kenali', 'Kenali'], ['bon', 'Bon'], ['thr', 'THR']];
+const KELUARGA = [['kenali', 'Kenali'], ['bon', 'Bon'], ['usaha', 'Usaha'], ['thr', 'THR']];   // B1: Usaha = harga pelanggan usaha (tingkat · harga barang · harga khusus)
+const TAB_U = [['tingkat', 'Tingkat'], ['barang', 'Harga barang'], ['khusus', 'Harga khusus']];
 const TAB_K = [['wajah', 'Wajah'], ['tampah', 'Tampah'], ['belanja', 'Belanja'], ['jam', 'Jam'], ['minggu', 'Minggu'], ['benang', 'Benang'], ['hafal', 'Hafalan']];
 const TAB_B = [['buku', 'Buku bon'], ['papan', 'Papan tagih'], ['umur', 'Garis umur']]; const TAB_T = [['daftar', 'Daftar setia'], ['meja', 'Meja bingkisan'], ['amplop', 'Amplop']];
 const kuisKosong = (hanya, putaran) => ({ putaran: putaran || 1, no: 0, jawab: null, benar: 0, salah: [], hanya: hanya || null });
@@ -49,9 +54,10 @@ export function pasangLayarPelanggan(akar, opsi) {
   const awal = () => ({ keluarga: KELUARGA.some((k) => k[0] === tabAwal.keluarga) ? tabAwal.keluarga : 'kenali', tabK: TAB_K.some((t) => t[0] === tabAwal.tabK) ? tabAwal.tabK : 'wajah', tabB: 'buku', tabT: 'daftar', kabar: '', kabarAwas: false,
     cari: '', tampi: [], notaKunci: null, keranjang: [], benangSiapa: null, titip: null, titipCari: '', kuis: kuisKosong(), hafal: bacaLokal(KUNCI_HAFAL) || null,
     kartu: null, yakinHapusNama: false, baru: null, gabung: null, bukuKunci: null, ember: '', orangBon: null, lembarBon: null, bayar: { nominal: '', cara: 'Tunai', catatan: '', pengantar: '' }, hapusIsi: { nominal: '', alasan: '' }, yakinHapus: false, pulih: { nominal: '', cara: 'Tunai', catatan: '' }, yakinPulih: false, janji: 7,
-    tahun: (opsi.sekarang() || new Date()).getFullYear(), thrOrang: null, beri: { bentuk: '', lain: '', nilai: '' }, usulBentuk: null, atur: null, bersih: null });
+    tahun: (opsi.sekarang() || new Date()).getFullYear(), thrOrang: null, beri: { bentuk: '', lain: '', nilai: '' }, usulBentuk: null, atur: null, bersih: null,
+    tabU: 'tingkat', uEdit: null, uT: null, uCariB: '', uBarang: null, uPasang: null, uCariO: '', uKhusus: null, uCariK: '', uCariKB: '' });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['kartu', 'baru', 'gabung', 'atur', 'bayar', 'hapusIsi', 'pulih', 'beri', 'titip'], []);
+  const ISIAN = pasangIsian(K, awal, ['kartu', 'baru', 'gabung', 'atur', 'bayar', 'hapusIsi', 'pulih', 'beri', 'titip', 'uEdit', 'uBarang', 'uKhusus'], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif, titik kas perangkat (kunciLuarCache) atau JAM
@@ -70,16 +76,22 @@ export function pasangLayarPelanggan(akar, opsi) {
     catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
 
+  // B1: harga pelanggan usaha — siapa yang masuk, kisinya, dan penyusun ubahan (owner langsung · Ben usul)
+  const akunKini = () => (opsi.akun ? opsi.akun() : null);
+  const hakHT = () => hakAkun(akunKini(), HT.HT_TINDAKAN);
+  const susunHT = (ubah) => HT.htSusun(akunKini(), ubah, waktu(), { hak: hakHT(), bisaMinta: !bukanOwner(akunKini()) || !!(bolehMintaOwner(akunKini()) || {}).boleh });
+  const tingkatPilih = () => { const A = HT.htAtur(); return A.tingkat.some((x) => x.id === st().uT) ? st().uT : ((A.tingkat[0] || {}).id || ''); };
+  const hetUntukOwner = () => { if (bukanOwner(akunKini())) return null; const A = hetAtur(); return (merk, perKg) => { const N = hetNilai(perKg, A.peta[hetUnit(merk).unit] || '', A); return N.status === 'atas' ? N.teks : ''; }; };
   const ubahKartu = (f) => { const d = JSON.parse(JSON.stringify(st().kartu)); if (!d) return; f(d); set({ kartu: d }); };
-  const bukaKartu = (kunci) => { const o = P.kartuOrang(kini(), kunci); if (!o) return set({ kabar: 'Orangnya tidak ditemukan', kabarAwas: true }); set({ kartu: { kunci, nama: o.nama, cip: o.cip.slice(), catatan: o.catatan, arah: o.arah, asli: o.asli, kontak: o.kontak, biasa: o.biasa }, baru: null, gabung: null, kabar: '' }); };
+  const bukaKartu = (kunci) => { const o = P.kartuOrang(kini(), kunci); if (!o) return set({ kabar: 'Orangnya tidak ditemukan', kabarAwas: true }); set({ kartu: { kunci, nama: o.nama, cip: o.cip.slice(), catatan: o.catatan, arah: o.arah, asli: o.asli, kontak: o.kontak, biasa: o.biasa, alamat: o.alamat || '', npwp: o.npwp || '' }, baru: null, gabung: null, kabar: '' }); };
   const AKSI = {
-    keluarga: ({ ke }) => { const k = ke; set({ keluarga: k, kabar: '', kartu: null, baru: null, gabung: null, orangBon: null, lembarBon: null, thrOrang: null, atur: null }); ingatTab(); },
+    keluarga: ({ ke }) => { const k = ke; set({ keluarga: k, kabar: '', kartu: null, baru: null, gabung: null, orangBon: null, lembarBon: null, thrOrang: null, atur: null, uEdit: null, uBarang: null, uPasang: null, uKhusus: null }); ingatTab(); },
     tabK: ({ t }) => { set({ tabK: t, kabar: '' }); ingatTab(); }, tabB: ({ t }) => set({ tabB: t, kabar: '' }), tabT: ({ t }) => set({ tabT: t, kabar: '' }),
     mode: () => opsi.gantiMode(), tutupKabar: () => set({ kabar: '' }),
     cari: (v) => set({ cari: String(v).slice(0, 30) }),
     // ---- kartu orang
     bukaKartu: ({ kunci }) => bukaKartu(kunci),
-    kKetik: (v, el) => ubahKartu((d) => { d[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'catatan' ? 140 : 40); }),
+    kKetik: (v, el) => ubahKartu((d) => { d[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'catatan' || el.dataset.kolom === 'alamat' ? 160 : 40); }),
     kCip: ({ nama }) => ubahKartu((d) => { d.cip = d.cip.indexOf(nama) >= 0 ? d.cip.filter((x) => x !== nama) : d.cip.concat([nama]); }),
     kArah: ({ nama }) => ubahKartu((d) => { d.arah = d.arah === nama ? '' : nama; }),
     kSimpan: async () => { const d = st().kartu; if (!d) return; if (await tulis(P.susunSimpanKartu(kini(), d.kunci, d, waktu()))) set({ kartu: null }); },
@@ -137,6 +149,33 @@ export function pasangLayarPelanggan(akar, opsi) {
     beriSimpan: async () => { const b = st().beri; if (await tulis(P.susunBeriThr(kini(), st().thrOrang, st().tahun, b.bentuk || b.lain, b.nilai, waktu()))) set({ thrOrang: null }); },
     thrSerah: async ({ id }) => { if (await tulis(P.susunSerahThr(id, waktu()))) set({ thrOrang: null }); }, thrHapus: async ({ id }) => { if (await tulis(P.susunHapusThr(id))) set({ thrOrang: null }); },
     usulBentuk: ({ nama }) => set({ usulBentuk: nama }), usulPakai: async () => { await tulis(P.susunUsulThr(kini(), st().tahun, st().usulBentuk, waktu())); },
+    // ---- USAHA (B1, owner 16 Nov 2026): owner menulis setelan langsung; Ben mengirim USUL ke owner (papan Persetujuan); karyawan melihat saja
+    tabU: ({ t }) => set({ tabU: t, kabar: '', uBarang: null, uPasang: null }),
+    uUbahTingkat: () => set({ uEdit: HT.htAtur().tingkat.map((x) => ({ id: x.id, nama: x.nama, potKg: String(x.potKg) })), uPasang: null, kabar: '' }),
+    uKetikT: (v, el) => { const e = JSON.parse(JSON.stringify(st().uEdit || [])); const i = Number(el.dataset.i); if (!e[i]) return; e[i][el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'nama' ? 24 : 9); set({ uEdit: e }); },
+    uTambahT: () => set({ uEdit: (st().uEdit || []).concat([{ id: '', nama: '', potKg: '0' }]) }),
+    uLepasT: ({ i }) => set({ uEdit: (st().uEdit || []).filter((x, k) => k !== Number(i)) }),
+    uBatalT: () => set({ uEdit: null, kabar: '' }),
+    uSimpanT: async () => { if (await tulis(susunHT({ jenis: 'tingkat', tingkat: st().uEdit || [] }))) set({ uEdit: null }); },
+    uPasangBuka: ({ t }) => set({ uPasang: st().uPasang === t ? null : t, uCariO: '', kabar: '' }),
+    uCariO: (v) => set({ uCariO: String(v || '').slice(0, 30) }),
+    uPasangOrang: async ({ kunci, nama }) => { await tulis(susunHT({ jenis: 'orang', orang: kunci, nama, tingkatId: st().uPasang })); },
+    kTingkat: async ({ t }) => { const d = st().kartu; if (d) await tulis(susunHT({ jenis: 'orang', orang: d.kunci, nama: d.nama, tingkatId: t || '' })); },
+    uPilihT: ({ t }) => set({ uT: t, uBarang: null, kabar: '' }),
+    uCariB: (v) => set({ uCariB: String(v || '').slice(0, 30) }),
+    uBukaBarang: ({ barang }) => { const b = st().uBarang; if (b && b.barang === barang) return set({ uBarang: null }); const n = (HT.htAtur().barang[tingkatPilih()] || {})[barang]; set({ uBarang: { barang, harga: n ? String(n) : '' }, kabar: '' }); },
+    uKetikB: (v) => set({ uBarang: Object.assign({}, st().uBarang || {}, { harga: String(v || '').slice(0, 14) }) }),
+    uSimpanB: async () => { const b = st().uBarang; if (b && await tulis(susunHT({ jenis: 'barang', tingkatId: tingkatPilih(), barang: b.barang, harga: b.harga }))) set({ uBarang: null }); },
+    uHapusB: async () => { const b = st().uBarang; if (b && await tulis(susunHT({ jenis: 'barang', tingkatId: tingkatPilih(), barang: b.barang, harga: '' }))) set({ uBarang: null }); },
+    uKhususBaru: ({ kunci, nama }) => { set({ keluarga: 'usaha', tabU: 'khusus', kartu: null, uKhusus: { id: '', orang: kunci || '', nama: nama || '', barang: '', harga: '', mulai: waktu().tanggal, sampai: '', catatan: '' }, uCariK: '', uCariKB: '', kabar: '' }); ingatTab(); },
+    uKhususBuka: ({ id }) => { const x = HT.htAtur().khusus.find((y) => y.id === id); if (x) set({ keluarga: 'usaha', tabU: 'khusus', kartu: null, uKhusus: { id: x.id, orang: x.orang, nama: x.nama, barang: x.barang, harga: String(x.harga), mulai: x.mulai, sampai: x.sampai, catatan: x.catatan }, kabar: '' }); },
+    uKetikK: (v, el) => { const k = el.dataset.kolom; const x = Object.assign({}, st().uKhusus || {}); x[k] = String(v || '').slice(0, k === 'catatan' ? 80 : k === 'harga' ? 14 : 10); set({ uKhusus: x }); },
+    uCariK: (v) => set({ uCariK: String(v || '').slice(0, 30) }), uCariKB: (v) => set({ uCariKB: String(v || '').slice(0, 30) }),
+    uPilihKOrang: ({ kunci, nama }) => set({ uKhusus: Object.assign({}, st().uKhusus || {}, { orang: kunci || '', nama: nama || '' }), uCariK: '' }),
+    uPilihKBarang: ({ barang }) => set({ uKhusus: Object.assign({}, st().uKhusus || {}, { barang: barang || '' }), uCariKB: '' }),
+    uSimpanK: async () => { const x = st().uKhusus; if (x && await tulis(susunHT(Object.assign({ jenis: 'khusus' }, x)))) set({ uKhusus: null }); },
+    uHapusK: async () => { const x = st().uKhusus; if (x && x.id && await tulis(susunHT({ jenis: 'hapusKhusus', id: x.id }))) set({ uKhusus: null }); },
+    uTutupK: () => set({ uKhusus: null, kabar: '' }),
     // ---- atur (angka & daftar kebijakan owner)
     bukaAtur: () => { if (st().atur) return set({ atur: null }); const a = P.aturPelanggan(); set({ atur: { kosongKali: String(a.kosongKali / 10).replace('.', ','), notaBesar: String(a.notaBesar), tagihHari: String(a.tagihHari), macetHari: String(a.macetHari), anggaranThr: String(a.anggaranThr), umurBatas: a.umurBatas.map(String), tertagihHari: String(a.tertagihHari), salamTagih: a.salamTagih, ciriDaftar: a.ciriDaftar.map((c) => Object.assign({}, c)), arahDaftar: a.arahDaftar.slice(), titipDaftar: a.titipDaftar.slice(), alasanHapus: a.alasanHapus.slice(), bentukThr: a.bentukThr.map((b) => Object.assign({}, b)) }, bersih: null, kabar: '' }); },
     aturKetik: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); const k = el.dataset.kolom; const i = el.dataset.i; const sub = el.dataset.sub; if (i === undefined) a[k] = String(v).slice(0, k === 'salamTagih' ? 200 : 14); else if (sub) a[k][Number(i)][sub] = String(v).slice(0, 40); else a[k][Number(i)] = String(v).slice(0, 40); set({ atur: a }); },
@@ -168,7 +207,7 @@ export function pasangLayarPelanggan(akar, opsi) {
       </header>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
       <div class="jalur" data-k="keluarga">${KELUARGA.filter(([id]) => id !== 'thr' || !bukanOwner(opsi.akun ? opsi.akun() : null)).map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-ke="${id}">${nm}</div>`)}</div>
-      ${s.atur ? gambarAtur(s) : s.kartu ? gambarKartu(s) : s.baru ? gambarBaru(s) : s.gabung ? gambarGabung(s) : s.keluarga === 'bon' ? gambarBon(s, d) : s.keluarga === 'thr' && !bukanOwner(opsi.akun ? opsi.akun() : null) ? gambarThr(s, d) : gambarKenali(s, d)}
+      ${s.atur ? gambarAtur(s) : s.kartu ? gambarKartu(s) : s.baru ? gambarBaru(s) : s.gabung ? gambarGabung(s) : s.keluarga === 'bon' ? gambarBon(s, d) : s.keluarga === 'usaha' ? gambarUsaha(s, d) : s.keluarga === 'thr' && !bukanOwner(opsi.akun ? opsi.akun() : null) ? gambarThr(s, d) : gambarKenali(s, d)}
     `);
     gulirkan(akar, RP);
   }
@@ -290,6 +329,8 @@ export function pasangLayarPelanggan(akar, opsi) {
         <input class="ketik-nama" id="kCatatan" type="text" placeholder="Catatan bebas, mis. ojek, suka nitip uang" value="${d.catatan}" data-ketik="kKetik" data-kolom="catatan">
         <div class="ket catatan-larang" data-k="catatan-larang">Jangan tulis suku, agama, warna kulit, atau kesehatan.</div>
         <div class="ps-form dua"><input class="ketik-nama" id="kAsli" type="text" placeholder="Nama asli" value="${d.asli}" data-ketik="kKetik" data-kolom="asli"><input class="ketik-nama" id="kKontak" type="text" inputmode="tel" placeholder="Nomor WhatsApp" value="${d.kontak}" data-ketik="kKetik" data-kolom="kontak"></div>
+        <div class="ps-form dua"><input class="ketik-nama" id="kAlamat" type="text" placeholder="Alamat antar (pelanggan usaha)" value="${d.alamat || ''}" data-ketik="kKetik" data-kolom="alamat"><input class="ketik-nama" id="kNpwp" type="text" inputmode="numeric" placeholder="NPWP (boleh kosong)" value="${d.npwp || ''}" data-ketik="kKetik" data-kolom="npwp"></div>
+        ${gambarHargaKartu(d)}
         <div class="pita-info ${dikenali ? '' : 'awas'}">${dikenali ? 'Dikenali → kasir BOLEH mencatat bon baru atas namanya.' : 'Belum dikenali → kasir MENOLAK bon baru (aturan KR1). Isi salah satu: ciri, catatan, atau arah datangnya.'}</div>
         <div class="tombol-baris"><div class="kaca-btn" data-aksi="keBon" data-kunci="${d.kunci}">${o.utang > 0 ? 'buku bonnya · ' + RP(o.utang) : o.lebih > 0 ? 'buku bonnya · ' + ringkasLebih({ uang: o.lebihUang, hapus: o.lebihHapus }) : 'buku bon'}</div><div class="kaca-btn aktif emas" data-aksi="kSimpan">SIMPAN KARTU</div></div>
         ${(() => { const RH = P.rincianHapusNama(kini(), d.kunci); return h`<div class="ket tautan ${s.yakinHapusNama ? 'awas-teks' : ''}" data-aksi="kHapusNama" data-k="hapus-nama" style="align-self: flex-start;">${s.yakinHapusNama ? 'YAKIN — hapus nama "' + o.nama + '" (' + RH.arti + ')' : RH.tolak ? 'nama ini tidak bisa dihapus: ' + RH.tolak : 'nama salah ketik? hapus nama ini (' + o.nota + ' nota jadi tanpa nama, rupiah tetap)'}</div>`; })()}</div>
@@ -398,6 +439,104 @@ export function pasangLayarPelanggan(akar, opsi) {
   // ---------- ATUR ----------
   /** Putaran 23b: lembar "Bersihkan ciri yang dicabut" — tampil hanya selama masih ada yang perlu dibersihkan (atau hasilnya baru saja keluar).
    *  Teks bebas yang memuat kata terlarang cuma DIDAFTAR (owner memutuskan per kartu); jejak log cuma dihitung. */
+  // ---------- USAHA (B1, owner 16 Nov 2026): harga pelanggan usaha ----------
+  // Tingkat (potongan Rp/kg dari eceran + siapa di tingkat itu) · Harga barang (harga tiap barang di satu tingkat, boleh harga sendiri) · Harga khusus
+  // (per pelanggan per barang, bertanggal). Owner: tersimpan langsung. Ben: jadi usul ke owner. Karyawan: melihat saja. Modal & untung hanya untuk owner.
+  function gambarUsaha(s, d) {
+    const A = HT.htAtur(); const owner = !bukanOwner(akunKini()); const hak = owner ? 'sendiri' : hakHT(); const bisa = owner || hak !== 'tidak';
+    const semua = P.semuaOrang(d); const peta = {}; semua.forEach((o) => { peta[o.kunci] = o; }); const nama = (k) => (peta[k] ? peta[k].nama : k);
+    const usul = owner ? [] : HT.htUsulSaya(akunKini());
+    const ket = owner ? 'Ubahan di sini langsung dipakai semua kasir begitu tersimpan.' : bisa ? 'Ubahan di sini jadi USUL ke owner — harga di kasir baru berubah sesudah owner menyetujui.' : 'Hanya bisa dilihat — peran ini tidak boleh mengatur harga pelanggan usaha.';
+    const STATUS = { menunggu: 'menunggu owner', disetujui: 'disetujui & dipasang', ditolak: 'ditolak' };
+    return h`<section data-k="usaha">
+      <div class="jalur kisi" data-k="tabU">${TAB_U.map(([id, nm]) => h`<div class="seg ${s.tabU === id ? 'aktif' : ''}" data-aksi="tabU" data-t="${id}">${nm}</div>`)}</div>
+      <div class="ket" data-k="u-ket">${ket}</div>
+      ${usul.length ? h`<div class="kartu ht-usul" data-k="u-usul" style="gap: 4px;"><div class="label">Usul kamu</div>${usul.map((u) => h`<div class="ket ${u.status === 'ditolak' ? 'awas-teks' : ''}" data-k="uu-${u.id}">${u.teks} · <b>${STATUS[u.status] || u.status}</b>${u.alasanTolak ? ' (' + u.alasanTolak + ')' : ''}</div>`)}</div>` : ''}
+      ${s.tabU === 'barang' ? gambarUBarang(s, A, owner, bisa) : s.tabU === 'khusus' ? gambarUKhusus(s, A, d, semua, nama, bisa, owner) : gambarUTingkat(s, A, semua, nama, bisa, owner)}
+    </section>`;
+  }
+  function gambarUTingkat(s, A, semua, nama, bisa, owner) {
+    if (s.uEdit) return h`<div class="kartu ht-ubah" data-k="u-edit" style="gap: 8px;">
+      <div class="label">Tingkat harga · potongan Rp per kg dari harga eceran</div>
+      ${s.uEdit.map((x, i) => h`<div class="ps-form dua" data-k="ue-${i}"><input class="ketik-nama" type="text" placeholder="Nama tingkat, mis. Warung" value="${x.nama}" data-ketik="uKetikT" data-i="${i}" data-kolom="nama">
+        <div style="display: flex; gap: 6px; align-items: center;"><input class="ketik-nama" type="text" inputmode="numeric" placeholder="Potongan Rp/kg" value="${x.potKg}" data-ketik="uKetikT" data-i="${i}" data-kolom="potKg"><div class="kaca-btn kecil" data-aksi="uLepasT" data-i="${i}">lepas</div></div></div>`)}
+      <div class="ket">Potongan berlaku ke semua barang dan ikut berubah kalau harga eceran diubah. Contoh Rp300/kg: karung 50 kg −Rp15.000 · kemasan 5 kg −Rp1.500 · literan −Rp250/L (dibulatkan ke Rp50). Potongan 0 = sama dengan eceran.</div>
+      <div class="tombol-baris"><div class="kaca-btn" data-aksi="uTambahT">+ tingkat</div><div class="kaca-btn" data-aksi="uBatalT">batal</div><div class="kaca-btn aktif emas" data-aksi="uSimpanT">${owner ? 'SIMPAN' : 'KIRIM USUL'}</div></div>
+    </div>`;
+    const T = HT.htPapanTingkat(A, nama);
+    return h`${T.map((x) => h`<div class="kartu ht-tingkat" data-k="ut-${x.id}" style="gap: 6px;">
+        <div class="ht-atas"><span class="serif" style="font-size: 18px;">${x.nama}</span><span class="ht-pot">${x.potKg > 0 ? '−' + RP(x.potKg) + '/kg' : 'sama dengan eceran'}</span></div>
+        <div class="ket">${x.contoh}${x.nSendiri ? ' · ' + x.nSendiri + ' barang berharga sendiri' : ''}</div>
+        <div class="jalur bungkus">${x.orang.map((o) => h`<div class="seg" data-k="uto-${x.id}-${o.kunci}" data-aksi="bukaKartu" data-kunci="${o.kunci}">${o.nama}</div>`)}${bisa ? h`<div class="seg ${s.uPasang === x.id ? 'aktif' : ''}" data-aksi="uPasangBuka" data-t="${x.id}">+ pelanggan</div>` : ''}${!x.nOrang && !bisa ? h`<span class="ket">belum ada pelanggan</span>` : ''}</div>
+        ${s.uPasang === x.id ? gambarPasangOrang(s, A, semua, x) : ''}
+      </div>`)}
+      ${bisa ? h`<div class="tombol-baris"><div class="kaca-btn" data-aksi="uUbahTingkat">Ubah tingkat & potongan</div></div>` : ''}
+      <div class="ket">Pelanggan tanpa tingkat membayar harga eceran. Ketuk nama untuk membuka kartunya (tingkat bisa diganti di sana).</div>`;
+  }
+  function gambarPasangOrang(s, A, semua, x) {
+    const c = s.uCariO.trim().toLowerCase(); const calon = semua.filter((o) => A.orang[o.kunci] !== x.id && (!c || o.nama.toLowerCase().indexOf(c) >= 0)).slice(0, 12);
+    return h`<div class="ht-pilih" data-k="up-${x.id}">
+      <input class="ketik-nama" id="uCariO" type="text" placeholder="Cari nama pelanggan" value="${s.uCariO}" data-ketik="uCariO">
+      ${calon.map((o) => { const lama = A.orang[o.kunci] ? HT.htTingkat(A, A.orang[o.kunci]) : null; return h`<div class="jawab" data-k="upo-${o.kunci}" data-aksi="uPasangOrang" data-kunci="${o.kunci}" data-nama="${o.nama}"><span class="kiri"><div><span class="nm">${o.nama}</span><span class="w">${lama ? 'sekarang ' + lama.nama : 'sekarang eceran'} · ${o.kunjungan} kali datang</span></div></span><span class="kanan"><span class="pil">pasang ke ${x.nama}</span></span></div>`; })}
+      ${calon.length ? '' : h`<div class="ket">Nama itu belum ada. Pelanggan baru didaftarkan dulu di Kenali (atau tercatat sendiri begitu pertama belanja).</div>`}
+    </div>`;
+  }
+  function gambarUBarang(s, A, owner, bisa) {
+    const tid = tingkatPilih(); const T = HT.htTingkat(A, tid); if (!T) return h`<div class="menolak">Belum ada tingkat harga.</div>`;
+    const c = s.uCariB.trim().toLowerCase(); const semuaB = HT.htPapanBarang(tid, rakBarang(), { owner, het: hetUntukOwner(), atur: A });
+    const rows = semuaB.filter((x) => !c || x.nama.toLowerCase().indexOf(c) >= 0);
+    const hit = {}; semuaB.forEach((x) => { if (x.tanda) hit[x.tanda] = (hit[x.tanda] || 0) + 1; }); const nHet = semuaB.filter((x) => x.het).length;
+    const peringatan = Object.keys(hit).filter((k) => k !== 'tanpaModal').map((k) => hit[k] + ' ' + HT.HT_TANDA[k]).concat(nHet ? [nHet + ' di atas HET'] : []).concat(hit.tanpaModal ? [hit.tanpaModal + ' ' + HT.HT_TANDA.tanpaModal] : []);
+    return h`<div class="jalur bungkus" data-k="ub-tingkat">${A.tingkat.map((x) => h`<div class="seg ${x.id === tid ? 'aktif' : ''}" data-aksi="uPilihT" data-t="${x.id}">${x.nama}</div>`)}</div>
+      <div class="pita-info ${peringatan.length && (hit.rugi || hit.habis || nHet) ? 'awas' : 'emas'}" data-k="ub-ringkas">${T.nama}: ${T.potKg > 0 ? 'eceran −' + RP(T.potKg) + '/kg' : 'potongan 0 (sama dengan eceran)'} · ${semuaB.length} barang${semuaB.filter((x) => x.sendiri).length ? ', ' + semuaB.filter((x) => x.sendiri).length + ' berharga sendiri' : ''}${peringatan.length ? ' · ' + peringatan.join(' · ') : ''}</div>
+      <input class="ketik-nama" id="uCariB" type="text" placeholder="Cari barang" value="${s.uCariB}" data-ketik="uCariB">
+      <div class="kartu" data-k="ub-daftar" style="gap: 0;">${rows.map((x) => h`<div class="jawab ht-barang ${x.sendiri ? 'sendiri' : ''} ${s.uBarang && s.uBarang.barang === x.barang ? 'dipilih' : ''}" data-k="ub-${x.barang}" data-aksi="${bisa ? 'uBukaBarang' : ''}" data-barang="${x.barang}">
+          <span class="kiri"><div><span class="nm">${x.nama}</span><span class="w">eceran ${RP(x.eceran)}/${x.satuan} · ${x.sendiri ? 'harga sendiri' : x.pot ? 'potongan ' + RP(x.pot) : 'tanpa potongan'}${owner && x.modal !== null ? ' · modal ' + RP(x.modal) + (x.untung !== null ? ' · untung ' + RP(x.untung) : '') : ''}</span>${x.tanda && (owner || x.tanda === 'naik' || x.tanda === 'habis') ? h`<span class="w ${x.tanda === 'tanpaModal' || x.tanda === 'nol' ? '' : 'awas-teks'}">${HT.HT_TANDA[x.tanda]}</span>` : ''}${x.het ? h`<span class="w awas-teks">${x.het}</span>` : ''}</div></span>
+          <span class="kanan"><span class="n">${x.harga > 0 ? RP(x.harga) : '—'}</span></span></div>
+        ${s.uBarang && s.uBarang.barang === x.barang ? h`<div class="ht-ubah" data-k="ube-${x.barang}" style="display: flex; flex-direction: column; gap: 6px; padding: 8px 0;">
+          <input class="ketik-nama" id="uHargaB" type="text" inputmode="numeric" placeholder="${'Harga ' + T.nama + ' per ' + x.satuan + ' (kosong = ikut potongan)'}" value="${s.uBarang.harga}" data-ketik="uKetikB">
+          <div class="tombol-baris">${x.sendiri ? h`<div class="kaca-btn" data-aksi="uHapusB">ikut potongan lagi</div>` : ''}<div class="kaca-btn" data-aksi="uBukaBarang" data-barang="${x.barang}">tutup</div><div class="kaca-btn aktif emas" data-aksi="uSimpanB">${owner ? 'SIMPAN' : 'KIRIM USUL'}</div></div>
+        </div>` : ''}`)}${rows.length ? '' : h`<div class="ket">${semuaB.length ? 'Tidak ada barang dengan nama itu.' : 'Katalog belum punya barang berharga.'}</div>`}</div>`;
+  }
+  function daftarBarangKhusus() {
+    const rak = rakBarang(); const out = [];
+    ['karung', 'kemasan', 'literan', 'repack'].forEach((jl) => (rak[jl] || []).forEach((c) => { const barang = HT.htKunciChip(c); if (barang && c.harga > 0) out.push({ barang, nama: HT.htNamaBarang(barang), eceran: c.harga, satuan: c.satuan === 'L' ? 'L' : c.satuan }); }));
+    return out;
+  }
+  function gambarUKhusus(s, A, d, semua, nama, bisa, owner) {
+    const x = s.uKhusus; const iso = hariIniIso(d);
+    if (x) {
+      const cO = s.uCariK.trim().toLowerCase(); const cB = s.uCariKB.trim().toLowerCase(); const B = daftarBarangKhusus(); const b = B.find((y) => y.barang === x.barang) || null;
+      const T = x.orang ? HT.htTingkatOrang(x.orang, A) : null;
+      return h`<div class="kartu ht-ubah" data-k="uk-${x.id || 'baru'}" style="gap: 8px;">
+        <div class="kepala-lembar"><div class="serif" style="font-size: 18px;">${x.id ? 'Harga khusus' : 'Harga khusus baru'}</div><div class="kaca-btn" data-aksi="uTutupK">tutup</div></div>
+        ${x.orang ? h`<div class="jawab" data-k="uk-orang"><span class="kiri"><div><span class="nm">${x.nama || nama(x.orang)}</span><span class="w">${T ? 'tingkat ' + T.nama : 'tanpa tingkat (eceran)'}</span></div></span><span class="kanan">${x.id ? '' : h`<span class="pil" data-aksi="uPilihKOrang" data-kunci="" data-nama="">ganti</span>`}</span></div>`
+          : h`<input class="ketik-nama" id="uCariK" type="text" placeholder="Pelanggan siapa? Cari namanya" value="${s.uCariK}" data-ketik="uCariK">
+            ${semua.filter((o) => !cO || o.nama.toLowerCase().indexOf(cO) >= 0).slice(0, 8).map((o) => h`<div class="jawab" data-k="ukp-${o.kunci}" data-aksi="uPilihKOrang" data-kunci="${o.kunci}" data-nama="${o.nama}"><span class="kiri"><div><span class="nm">${o.nama}</span><span class="w">${o.kunjungan} kali datang</span></div></span></div>`)}`}
+        ${x.barang ? h`<div class="jawab" data-k="uk-barang"><span class="kiri"><div><span class="nm">${HT.htNamaBarang(x.barang)}</span><span class="w">${b ? 'eceran ' + RP(b.eceran) + '/' + b.satuan : 'barang ini tidak ada lagi di rak'}</span></div></span><span class="kanan">${x.id ? '' : h`<span class="pil" data-aksi="uPilihKBarang" data-barang="">ganti</span>`}</span></div>`
+          : h`<input class="ketik-nama" id="uCariKB" type="text" placeholder="Barang apa? Cari namanya" value="${s.uCariKB}" data-ketik="uCariKB">
+            ${B.filter((y) => !cB || y.nama.toLowerCase().indexOf(cB) >= 0).slice(0, 10).map((y) => h`<div class="jawab" data-k="ukb-${y.barang}" data-aksi="uPilihKBarang" data-barang="${y.barang}"><span class="kiri"><div><span class="nm">${y.nama}</span><span class="w">eceran ${RP(y.eceran)}/${y.satuan}</span></div></span></div>`)}`}
+        <input class="ketik-nama" id="uHargaK" type="text" inputmode="numeric" placeholder="${'Harga khusus' + (b ? ' per ' + b.satuan : '')}" value="${x.harga}" data-ketik="uKetikK" data-kolom="harga">
+        <div class="ps-form dua"><label class="ket">Mulai<input class="ketik-nama" type="date" value="${x.mulai}" data-ketik="uKetikK" data-kolom="mulai"></label><label class="ket">Sampai (boleh kosong)<input class="ketik-nama" type="date" value="${x.sampai}" data-ketik="uKetikK" data-kolom="sampai"></label></div>
+        <input class="ketik-nama" id="uCatatanK" type="text" placeholder="Catatan, mis. kontrak catering Desember" value="${x.catatan}" data-ketik="uKetikK" data-kolom="catatan">
+        ${bisa ? h`<div class="tombol-baris">${x.id ? h`<div class="kaca-btn" data-aksi="uHapusK">${owner ? 'hapus' : 'usul hapus'}</div>` : ''}<div class="kaca-btn aktif emas" data-aksi="uSimpanK">${owner ? 'SIMPAN' : 'KIRIM USUL'}</div></div>` : ''}
+      </div>`;
+    }
+    const L = HT.htPapanKhusus('', iso, A); const KATA = { berlaku: 'berlaku', belum: 'belum mulai', lewat: 'sudah lewat' };
+    return h`${bisa ? h`<div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="uKhususBaru" data-kunci="" data-nama="">+ harga khusus</div></div>` : ''}
+      <div class="kartu" data-k="uk-daftar" style="gap: 0;">${L.map((y) => h`<div class="jawab ${y.keadaan === 'lewat' ? 'redup' : ''}" data-k="ukd-${y.id}" data-aksi="uKhususBuka" data-id="${y.id}"><span class="kiri"><div><span class="nm">${y.nama} · ${y.namaBarang}</span><span class="w">${y.masa} · ${KATA[y.keadaan]}${y.catatan ? ' · ' + y.catatan : ''}</span></div></span><span class="kanan"><span class="n">${RP(y.harga)}</span></span></div>`)}
+      ${L.length ? '' : h`<div class="ket">Belum ada harga khusus. Harga khusus mengalahkan harga tingkat untuk pelanggan & barang itu selama tanggalnya berlaku.</div>`}</div>`;
+  }
+  /** Bagian harga di kartu pelanggan: tingkat (ketuk = pasang / usul) + harga khususnya. */
+  function gambarHargaKartu(d) {
+    const A = HT.htAtur(); const owner = !bukanOwner(akunKini()); const bisa = owner || hakHT() !== 'tidak'; const kini0 = A.orang[d.kunci] || ''; const K = HT.htPapanKhusus(d.kunci, hariIniIso(kini()), A);
+    return h`<div class="kartu ht-kartu" data-k="kartu-harga-${d.kunci}" style="gap: 6px;">
+      <div class="label">Harga pelanggan ${bisa && !owner ? '· ketuk = usul ke owner' : ''}</div>
+      <div class="jalur bungkus">${[{ id: '', nama: 'Eceran' }].concat(A.tingkat).map((x) => h`<div class="seg ${kini0 === x.id ? 'aktif' : ''}" data-aksi="${bisa && kini0 !== x.id ? 'kTingkat' : ''}" data-t="${x.id}">${x.nama}${x.potKg > 0 ? ' −' + RP(x.potKg) + '/kg' : ''}</div>`)}</div>
+      ${K.map((y) => h`<div class="ket tautan" data-k="kk-${y.id}" data-aksi="uKhususBuka" data-id="${y.id}">harga khusus ${y.namaBarang} ${RP(y.harga)} · ${y.masa}${y.keadaan === 'berlaku' ? '' : ' (' + (y.keadaan === 'belum' ? 'belum mulai' : 'sudah lewat') + ')'}</div>`)}
+      ${bisa ? h`<div class="ket tautan" data-aksi="uKhususBaru" data-kunci="${d.kunci}" data-nama="${d.nama}">+ harga khusus untuk ${d.nama}</div>` : ''}
+    </div>`;
+  }
   function gambarBersihkan(s) {
     const b = s.bersih || {}; const R = P.rincianBersihkanCiri(kini()); const daftarNama = (xs) => xs.map((k) => k.nama).join(', ');
     const bebas = R.bebas.length ? h`<div class="bs-bebas" data-k="bs-bebas"><div class="ket">Teks bebas yang memuat kata terlarang — TIDAK diubah otomatis (kata "kulit" bisa berarti lain). Ketuk nama untuk membuka kartunya, putuskan sendiri:</div>
