@@ -11,6 +11,7 @@ import { pasangIsian } from '../inti/isian.js';
 import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini, jamSetempat, waktuSetempat } from '../inti/format.js';
 import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
+import * as TB from './tablet-logika.js';   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman, kunciLuarCache } from '../data/toko.js';
 import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';
@@ -42,7 +43,7 @@ const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 // owner 7 Okt 2026: tab Hemat baca di Sistem › Perangkat (tab Kasir & PIN dicabut paket dokumen & sisa, #108)
-const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']] };
+const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']] };
 const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat' };
 
 /** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
@@ -50,9 +51,10 @@ export function pasangLayarMenu(akar, opsi) {
   const tabAwal = bacaLokal(KUNCI_TAB) || {}; const laciAwal = bacaLokal(KUNCI_LACI) || {};
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
-    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null });
+    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()]], []);
+  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru'], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -194,6 +196,21 @@ export function pasangLayarMenu(akar, opsi) {
     aturLepas: ({ daftar: k, i }) => { const a = JSON.parse(JSON.stringify(st().atur)); a[k].splice(Number(i), 1); set({ atur: a }); },
     aturUtama: ({ i }) => { const a = JSON.parse(JSON.stringify(st().atur)); a.daftar.forEach((l, j) => { l.utama = j === Number(i); }); set({ atur: a }); },
     // owner 7 Okt (JS2-C): jatah nego per akun (kosong = ikut perannya) & saklar "boleh di bawah modal" per orang / peran
+    // ---- T1-3 (owner 16 Nov): orang di tablet — PIN diketik di sini, yang ditulis hanya hasil PBKDF2 bergaram (tablet-logika.js) ----
+    tbIsi: (v, el) => { const t = Object.assign({}, st().tb); const k = el.dataset.kolom; t[k] = k === 'nama' ? String(v).slice(0, 30) : String(v).replace(/[^\d]/g, '').slice(0, 6); set({ tb: t }); },
+    tbPeran: ({ peran }) => set({ tb: Object.assign({}, st().tb, { peran }) }),
+    tbTambah: async () => { if (st().tbSibuk) return; set({ tbSibuk: true, kabar: 'Menyimpan…', kabarAwas: false }); let r;
+      try { r = await TB.tbSusunTambah(st().tb, waktu()); } catch (e) { r = { tolak: String((e && e.message) || e) }; }
+      set({ tbSibuk: false }); if (await tulis(r)) set({ tb: { nama: '', peran: st().tb.peran, pin: '', pin2: '' } }); },
+    tbGanti: ({ id }) => set({ tbGanti: st().tbGanti === id ? null : id, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, kabar: '' }),
+    tbPinIsi: (v, el) => { const t = Object.assign({}, st().tbPinBaru); t[el.dataset.kolom] = String(v).replace(/[^\d]/g, '').slice(0, 6); set({ tbPinBaru: t }); },
+    tbGantiSimpan: async () => { const id = st().tbGanti; if (!id || st().tbSibuk) return; set({ tbSibuk: true }); let r;
+      try { r = await TB.tbSusunGantiPin(id, st().tbPinBaru.pin, st().tbPinBaru.pin2, waktu()); } catch (e) { r = { tolak: String((e && e.message) || e) }; }
+      set({ tbSibuk: false }); if (await tulis(r)) set({ tbGanti: null, tbPinBaru: { pin: '', pin2: '' } }); },
+    tbAktif: async ({ id, aktif }) => { await tulis(TB.tbSusunAktif(id, aktif === '1', waktu())); },
+    tbPeranUbah: async ({ id, peran }) => { await tulis(TB.tbSusunPeran(id, peran, waktu())); },
+    tbHapus: async ({ id }) => { if (st().yakinTb !== id) { const o = TB.tbDaftar().find((x) => x.id === id); return set({ yakinTb: id, kabar: 'Ketuk HAPUS sekali lagi: ' + (o ? o.nama : 'orang ini') + ' tidak bisa masuk di tablet lagi. Catatan lamanya tetap atas namanya.', kabarAwas: true }); }
+      set({ yakinTb: null }); await tulis(TB.tbSusunHapus(id, waktu())); },
     aturJatahAkun: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); a.jatahAkun = a.jatahAkun || {}; a.jatahAkun[el.dataset.uid] = String(v).replace(/[^\d]/g, '').slice(0, 3); set({ atur: a }); },
     aturBawahModal: ({ kunci }) => { const a = JSON.parse(JSON.stringify(st().atur)); const L = a.bawahModal || []; const i = L.indexOf(kunci); if (i >= 0) L.splice(i, 1); else L.push(kunci); a.bawahModal = L; set({ atur: a }); },
     simpanAtur: async () => { const a = st().atur; if (!a) return; const isi = Object.assign({}, a); delete isi.id; if (await tulis(S.susunAturSistem(a.id, isi, waktu()))) set({ atur: null }); },
@@ -341,6 +358,7 @@ export function pasangLayarMenu(akar, opsi) {
   }
   function gambarPeran(s, d, tab) {
     const P = S.ssPeran();
+    if (tab === 'tablet') return gambarTablet(s);
     if (tab === 'minta') { const Q = S.ssPersetujuan(d); const m = Q.menunggu.find((x) => x.id === s.mintaKe) || null; return h`<div class="ket" data-k="judul-minta" style="font-size: 11.5px;">${Q.judul}</div>
       <div style="display: flex; flex-direction: column; gap: 6px;" data-k="minta">${Q.menunggu.map((x) => h`<div class="pn-minta ${m && m.id === x.id ? 'aktif' : ''}" data-k="m-${x.id}" data-aksi="mintaKe" data-id="${x.id}"><div style="display: flex; justify-content: space-between; gap: 8px;"><b style="font-size: 12.5px;">${x.dari} · ${x.jam}</b><span class="n">${x.n ? RP(x.n) : ''}</span></div><div style="font-size: 12px;">${x.teks}</div><div class="k2">${x.modul} · ${x.namaTindakan}</div></div>`)}</div>
       ${m ? h`<div class="kartu" data-k="putus" style="gap: 6px;"><div class="k2">${m.saran}</div><input class="ketik-nama" type="text" placeholder="Alasan kalau menolak (wajib)" value="${s.alasan}" data-ketik="alasan"><div class="pn-dua"><div class="kaca-btn aktif emas" data-aksi="setujui">SETUJUI</div><div class="kaca-btn awas" data-aksi="tolak">tolak</div></div></div>` : ''}
@@ -365,6 +383,27 @@ export function pasangLayarMenu(akar, opsi) {
       ${P.jejak.length ? h`<div class="kartu" data-k="jejak-hak" style="gap: 2px;"><div class="label">Perubahan hak terakhir</div>${P.jejak.map((j, i) => h`<div class="k2" data-k="jh-${i}">${tanggalPendek(j.tanggal)} ${j.jam} · ${j.teks}</div>`)}</div>` : ''}
       <div class="ket" data-k="ket-peran" style="font-size: 11px;">Tiga peran: owner (semua), Ben (penjaga laci), karyawan. "Tidak boleh" = tombolnya mati di tablet; "minta owner" = masuk papan persetujuan (alurnya belum ada, jadi sekarang tertutup); menolak wajib alasan. "Tertutup server" = di kisi lu bilang boleh, tapi aturan server (firestore.rules) belum membukanya untuk peran itu — sebabnya tertulis di bawah nama tindakan.</div>
       ${pintuAtur('Atur batas setujui sekaligus & jatah nego', 'sekaligus ≤ ' + RP(P.batasSekaligus) + ' · jatah nego Ben ' + P.jatahBen + '% · karyawan ' + P.jatahKaryawan + '% margin')}`;
+  }
+  // T1-3 (owner 16 Nov 2026): satu akun tablet + PIN per orang. Owner saja yang mengatur; akun tablet = akun staf yang didaftarkan di tab Peran & hak.
+  function gambarTablet(s) {
+    const a = opsi.akun ? opsi.akun() : null; if (a && a.jenis !== 'owner') return h`<div class="kartu" data-k="tb-staf"><div class="ket">Hanya owner yang mengatur orang di tablet.</div></div>`;
+    const D = TB.tbDaftar(); const t = s.tb; const pinIn = (kolom, nilai, ketik, ph) => h`<input class="ketik-nama" type="password" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="${ph}" value="${nilai}" data-ketik="${ketik}" data-kolom="${kolom}">`;
+    return h`<div class="pita-info" data-k="tb-cara">Tablet kasir masuk dengan SATU akun staf (didaftarkan di tab Peran & hak, peran Ben). Begitu daftar di bawah berisi, akun itu menampilkan "Siapa yang jaga?" — tiap orang mengetuk namanya lalu memasukkan PIN. Nota & catatan tersimpan atas nama orang yang jaga. Salah PIN ${TB.TB_BATAS_SALAH} kali = nama itu terkunci ${TB.TB_LAMA_KUNCI_MS / 60000} menit; tidak disentuh ${TB.TB_LAMA_DIAM_MS / 60000} menit = kembali ke "Siapa yang jaga?".</div>
+      <div class="kartu" data-k="tb-daftar" style="gap: 6px;"><div class="label">Orang di tablet · ${D.length}</div>
+        ${D.length ? D.map((o) => h`<div class="pn-orang ${o.aktif ? '' : 'diam'}" data-k="tb-${o.id}"><b>${o.nama}</b> <span class="k2">${o.namaPeran} · ${o.aktif ? 'aktif' : 'LIBUR'}${o.diubah ? ' · diubah ' + waktuSetempat(o.diubah) : ''}</span>
+          <div class="hg-pil">${TB.TB_PERAN.map((p) => h`<div class="seg ${o.peran === p.id ? 'aktif' : ''}" data-aksi="tbPeranUbah" data-id="${o.id}" data-peran="${p.id}">${p.nama}</div>`)}
+            <div class="seg ${s.tbGanti === o.id ? 'aktif' : ''}" data-aksi="tbGanti" data-id="${o.id}">ganti PIN</div>
+            <div class="seg" data-aksi="tbAktif" data-id="${o.id}" data-aktif="${o.aktif ? '0' : '1'}">${o.aktif ? 'liburkan' : 'aktifkan'}</div>
+            <div class="seg ${s.yakinTb === o.id ? 'aktif' : ''}" data-aksi="tbHapus" data-id="${o.id}">${s.yakinTb === o.id ? 'YAKIN — HAPUS' : 'hapus'}</div></div>
+          ${s.tbGanti === o.id ? h`<div class="kartu" data-k="tb-ganti-${o.id}" style="gap: 6px;"><div class="k2">PIN baru ${o.nama} (4–6 angka)</div>${pinIn('pin', s.tbPinBaru.pin, 'tbPinIsi', 'PIN baru')}${pinIn('pin2', s.tbPinBaru.pin2, 'tbPinIsi', 'ulangi PIN baru')}
+            <div class="kaca-btn aktif" data-aksi="tbGantiSimpan">${s.tbSibuk ? 'menyimpan…' : 'SIMPAN PIN BARU'}</div></div>` : ''}</div>`)
+        : h`<div class="k2">Belum ada. Selama kosong, akun tablet bekerja seperti akun staf biasa (tanpa PIN).</div>`}</div>
+      <div class="kartu" data-k="tb-tambah" style="gap: 6px;"><div class="label">Tambah orang</div>
+        <input class="ketik-nama" type="text" placeholder="Nama (tampil di tablet & di nota)" value="${t.nama}" data-ketik="tbIsi" data-kolom="nama" maxlength="30" autocomplete="off">
+        <div class="hg-pil">${TB.TB_PERAN.map((p) => h`<div class="seg ${t.peran === p.id ? 'aktif' : ''}" data-aksi="tbPeran" data-peran="${p.id}">${p.nama}</div>`)}</div>
+        ${pinIn('pin', t.pin, 'tbIsi', 'PIN 4–6 angka')}${pinIn('pin2', t.pin2, 'tbIsi', 'ulangi PIN')}
+        <div class="kaca-btn aktif emas" data-aksi="tbTambah">${s.tbSibuk ? 'menyimpan…' : 'TAMBAH'}</div>
+        <div class="k2">PIN tidak disimpan apa adanya — yang tersimpan hanya sidik acaknya. Owner juga bisa dimasukkan sebagai orang di tablet untuk jualan (urusan owner tetap di HP/Mac owner). Hak tiap orang = kisi perannya di tab Peran & hak, tidak pernah melebihi peran akun tablet.</div></div>`;
   }
   function gambarCadangan(s, d) {
     const C = S.ssCadangan(d, lokal(), s.hariC);

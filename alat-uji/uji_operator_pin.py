@@ -166,7 +166,11 @@ def periksa_statis(t):
     # Yang dijaga sekarang kebalikannya: tidak ada layar yang menulis dokumen itu lagi (datanya tidak dihapus; logika di atas tetap diuji).
     ok('menu.js: tab "Kasir & PIN" DICABUT — tanpa tab kasir, tanpa impor akses-kasir-logika, tanpa aksi operator/PIN, tanpa kolom PIN',
        "'Kasir & PIN'" not in mn and not re.search(r'''from\s+['"]\./akses-kasir-logika\.js['"]''', mn) and 'OP.' not in mn
-       and not re.search(r'\b(opAktif|opHapus|opCabutPin|pinKetik|pinSimpan|opTambah)\s*:', mn) and 'type="password"' not in mn and 'pinIsi' not in mn)
+       and not re.search(r'\b(opAktif|opHapus|opCabutPin|pinKetik|pinSimpan|opTambah)\s*:', mn)
+       # putaran T1 langkah 3 (owner 16 Nov 2026): PIN orang di TABLET (tab Orang di tablet, tablet-logika.js — dijaga uji_tablet_pin.py) boleh; kolom PIN
+       # lain tidak: satu-satunya type="password" ada di gambarTablet, dan aksi PIN di menu hanya tbIsi/tbPinIsi
+       and mn.count('type="password"') == len(re.findall(r'function gambarTablet\(s\)[\s\S]*?type="password"', mn)) == 1
+       and not re.search(r'(?<!tb)(?<!tbP)[pP]inIsi\b', mn.replace('tbPinIsi', '')))
     penulis = sorted(p for p in t if p.startswith('baru/js/') and p != 'baru/js/layar/akses-kasir-logika.js' and re.search(r"id:\s*'(aksesKasir|keamanan)'", t[p] or ''))
     ok('tidak ada modul /baru/ lain yang menulis pengaturan/aksesKasir atau pengaturan/keamanan (tidak ada layar yang mengubah dokumen yang tidak dibaca aplikasi yang tayang)', not penulis, penulis)
     return out
@@ -186,7 +190,7 @@ KONTROL = [
     ('dokumen operator berbentuk lain', {'baru/js/layar/akses-kasir-logika.js': [("data: { id: 'aksesKasir', operator: o, diubahPada: w.kini } }]", "data: { id: 'aksesKasir', daftar: o, diubahPada: w.kini } }]")]}, ('jsc',)),
     ('hapus operator tanpa ketukan kedua', {'baru/js/layar/akses-kasir-logika.js': [("if (!yakin) return { perluYakin: true };", "")]}, ('jsc',)),
     # owner 7 Okt: tab Kasir & PIN dicabut — kontrol yang dulu menjaga isi tab diganti kontrol "tab/penulis kembali"
-    ('tab Kasir & PIN kembali di Menu › Peran & persetujuan', {'baru/js/layar/menu.js': [("peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan']]", "peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['kasir', 'Kasir & PIN']]")]}, ('statis',)),
+    ('tab Kasir & PIN kembali di Menu › Peran & persetujuan', {'baru/js/layar/menu.js': [("peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']]", "peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet'], ['kasir', 'Kasir & PIN']]")]}, ('statis',)),
     ('menu kembali mengimpor akses-kasir-logika', {'baru/js/layar/menu.js': [("import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';", "import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';\nimport * as OP from './akses-kasir-logika.js';")]}, ('statis',)),
     ('layar lain menulis pengaturan/keamanan', {'baru/js/layar/sistem-logika.js': [("export const SS_KUNCI_LAMA_ANTREAN", "export const ssPinUji = () => ({ koleksi: 'pengaturan', data: { id: 'keamanan' } });\nexport const SS_KUNCI_LAMA_ANTREAN")]}, ('statis',)),
     ('PIN owner tersimpan terbuka', {'baru/js/layar/akses-kasir-logika.js': [("data: { id: 'keamanan', garam, acak, diubahPada: w.kini } }]", "data: { id: 'keamanan', garam, acak, pin: baru, diubahPada: w.kini } }]")]}, ('jsc',)),

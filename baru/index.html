@@ -59,6 +59,7 @@
 <link rel="modulepreload" href="js/data/akses.js">
 <link rel="modulepreload" href="js/layar/sistem-logika.js">
 <link rel="modulepreload" href="js/inti/printer.js">
+<link rel="modulepreload" href="js/layar/tablet-logika.js">
 <link rel="modulepreload" href="js/inti/escpos.js">
 <link rel="modulepreload" href="js/inti/struk-kanvas.js">
 <link rel="modulepreload" href="js/inti/usb-cetak.js">
@@ -231,6 +232,24 @@
       <div id="hasilAkun" class="pita-info" hidden></div>
       <button id="tombolKeluarAkun" type="button" class="kaca-btn">Keluar</button>
     </div>
+    <!-- putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang. Tombol digambar app.js (delegasi klik, tanpa handler sebaris). -->
+    <div id="panelOrang" class="modal kartu gm-pelat tb-panel" hidden>
+      <div class="gm-kepala"><div class="serif gm-judul">Siapa yang jaga?</div><div id="orangAkun" class="label"></div></div>
+      <div id="orangDaftar" class="tb-daftar"></div>
+      <div id="orangPin" class="tb-pin" hidden>
+        <div id="orangNama" class="serif gm-judul kecil"></div>
+        <div id="orangTitik" class="tb-titik" aria-live="polite"></div>
+        <div id="orangPesan" class="pita-info awas" role="alert" hidden></div>
+        <div id="orangPad" class="tb-pad"></div>
+      </div>
+      <div id="orangTanya" class="tb-tanya" hidden>
+        <div id="orangTanyaTeks" class="ket"></div>
+        <button id="orangLanjut" type="button" class="utama"></button>
+        <button id="orangKosongkan" type="button" class="kaca-btn"></button>
+      </div>
+      <div class="ket gm-catatan" id="orangCatatan">PIN menandai siapa yang mencatat — tiap nota tersimpan atas nama orang yang jaga.</div>
+      <button id="tombolKeluarTablet" type="button" class="kaca-btn">Keluar dari akun tablet</button>
+    </div>
   </div>
 </div>
 <!-- putaran 23c: Keluar dengan keranjang Jual berisi — keranjang TIDAK boleh terbawa ke akun berikutnya -->
@@ -247,6 +266,7 @@
   <div class="label">Masuk sebagai</div>
   <div id="lembarAkunNama" class="serif" style="font-size: 20px;"></div>
   <div id="lembarAkunKet" class="ket"></div>
+  <button id="tombolGantiOrang" type="button" class="utama" hidden>Ganti orang</button>
   <button id="tombolKeluar" type="button" class="kaca-btn">Keluar</button>
 </div>
 

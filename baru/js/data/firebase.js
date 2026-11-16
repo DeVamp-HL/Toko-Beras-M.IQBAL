@@ -73,6 +73,15 @@ const antre = buatAntre(_penyimpan, SESI);
 const segarkanLokal = () => { status.lokal = { belum: antre.belumTerkirim().length, ditolak: antre.ditolak().length }; };
 let _sumberHak = () => ({});   // kisi SS2 peran yang masuk ({ tindakan: 'sendiri'|'owner'|'tidak' }) — disetel app.js dari sistem-logika
 export function setelSumberHak(f) { _sumberHak = typeof f === 'function' ? f : () => ({}); }
+// Putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang. app.js menyetel siapa yang sedang jaga; penulis pusat & denyut memakai
+// NAMA & PERAN orang itu, uid tetap uid akun tablet (rules jujur()). Owner / akun tanpa orang jaga = akun apa adanya. Hasil yang uid-nya lain = diabaikan.
+let _akunEfektif = null;
+export function setelAkunEfektif(f) { _akunEfektif = typeof f === 'function' ? f : null; }
+function akunPenulis() {
+  const a = status.akun; if (!a || a.jenis === 'owner' || !_akunEfektif) return a;
+  let e = null; try { e = _akunEfektif(a); } catch (x) { e = null; }
+  return e && e.uid === a.uid && bisaBekerja(e) ? e : a;
+}
 const KOLEKSI_LOG = 'logAktivitas';
 const pendengarStatus = new Set();
 const beriTahu = () => pendengarStatus.forEach((f) => f(Object.assign({}, status)));
@@ -392,7 +401,7 @@ export function namaiPerangkat(nama) { try { if (String(nama || '').trim()) loca
 // ---- siapa yang mencatat di perangkat ini (SS1, sensus 61) & lokasi perangkat ini (SS4, sensus 65) — keduanya setelan PER PERANGKAT ----
 const KUNCI_PEMEGANG = 'miqbal_baru_pemegang', KUNCI_LOKASI = 'miqbal_baru_lokasi';
 // Putaran 23: yang mencatat = AKUN yang masuk (bukti), bukan pilihan nama di perangkat (pengakuan). Kunci lama KUNCI_PEMEGANG dibiarkan, tidak dibaca lagi.
-export function pemegangPerangkat() { return status.akun && bisaBekerja(status.akun) ? status.akun.nama : OLEH_TETAP; }
+export function pemegangPerangkat() { const a = akunPenulis(); return a && bisaBekerja(a) ? a.nama : OLEH_TETAP; }   // T1-3: orang yang jaga tablet
 export function akunSekarang() { return status.akun; }
 void KUNCI_PEMEGANG;
 export function lokasiPerangkat() { try { return localStorage.getItem(KUNCI_LOKASI) || ''; } catch (e) { return ''; } }
@@ -456,7 +465,7 @@ export async function tulisBerkas(daftar, hapus, opsi) {
   // owner 7 Okt (hemat baca nyala): tutup hari, titik kas, kunci bulan, tutup buku = UANG-KRITIS → semua koleksi hemat dipastikan cocok dengan server dulu
   // (hitungan ≤ 2 menit); belum bisa / beda = tidak dikirim (draf layar tetap ada). Saklar mati: _hemat null, baris ini tidak berbuat apa-apa.
   if (_hemat && status.akun.jenis === 'owner' && kirimanUangKritis(daftar)) { const g = await _hemat.pastikanSegar(); if (!g.ok) return { gagal: true, pesan: 'Belum disimpan — ' + g.pesan }; }
-  const akun = status.akun; const owner = akun.jenis === 'owner'; const k = konteksTulis();
+  const akun = akunPenulis(); const owner = akun.jenis === 'owner'; const k = konteksTulis();   // T1-3: orang yang jaga tablet
   // create atau update ditentukan dari cache (dokumen sudah ada?) — sama dengan cara server menilai set()
   const isi = daftar.map(({ koleksi, data }) => { const lama = dokDiCache(koleksi, data.id); return { koleksi, data, ada: !!lama, lama }; });
   const H = hapus || [];

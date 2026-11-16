@@ -148,6 +148,12 @@ Kiriman terbesar (17) **belum diuji di server** — gerbang tablet, proyek Fireb
 
 ## 8 · Gerbang tablet (owner 24 Sep, putaran 23c — syarat, BELUM dikerjakan)
 
+> **16 Nov 2026 (putaran T1 langkah 3, keputusan owner):** identitas tablet = satu akun tablet + PIN per orang (`baru/BACA-DULU.md`).
+> Butir di bawah yang diputuskan ulang: **harga beli / modal BOLEH tersimpan di tablet asal tidak tampil di layar staf** (owner 16 Nov — jadi baca
+> koleksi bermodal & siapa mengisi HPP nota staf TIDAK diubah: tablet menghitung HPP notanya sendiri seperti HP kasir); **owner tidak masuk sebagai
+> owner di tablet** ("jualan saja pakai PIN") — cache owner tidak ada di tablet selama itu dipegang. Masih terbuka: `produkArsip` terbaca staf,
+> denyut kasir@ dipersempit (keduanya rules v8), kiriman terbesar diuji di proyek Firebase kedua, email akun huruf kecil saat dibuat.
+
 Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `firestore.rules`, `docs/uji-rules-v3.md` bagian D).
 
 - **Harga beli / modal tidak terkirim ke staf.** Kisi SS2 bilang `hargaBeli` = tidak, jadi server juga tidak boleh mengirimnya. Sensus nama

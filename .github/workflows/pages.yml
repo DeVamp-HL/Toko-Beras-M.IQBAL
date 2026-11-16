@@ -142,6 +142,9 @@ jobs:
       - name: "Cetak ESC/POS (putaran T1, Sunmi CPad 80 mm): teks ASCII, baris ≤ lebar kertas, angka rata kanan, kode potong/QR/laci (jsc + kontrol)"
         run: python3 alat-uji/uji_escpos.py && python3 alat-uji/uji_escpos.py --kontrol
 
+      - name: "Tablet: satu akun + PIN per orang (putaran T1 langkah 3, owner 16 Nov): PBKDF2 = hashlib, salah 5× terkunci 5 menit, diam 5 menit, nama orang di catatan, daftar tidak hilang saat hak diputar (jsc + kontrol)"
+        run: python3 alat-uji/uji_tablet_pin.py && python3 alat-uji/uji_tablet_pin.py --kontrol
+
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_setelan_jenis_beras.py && python3 alat-uji/uji_setelan_jenis_beras.py --kontrol
