@@ -173,6 +173,7 @@ export function pasangLayarJual(akar, opsi) {
     kcNominal: (v) => set({ karcis: KC.ketikNominalKarcis(S(), 'nominal', v) }),
     kcNominalAlasan: (v) => set({ karcis: KC.ketikNominalKarcis(S(), 'alasan', v) }),
     kcNominalTutup: () => set(KC.tutupNominalKarcis(S())),
+    kcSisaBon: ({ v }) => { if (v === '1') { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); } set(KC.pilihSisaBon(S(), v === '1')); },   // owner 17 Nov: kekurangan bayar karcis jadi bon atas nama pembeli
     // putaran 25b: BATALKAN karcis kasir darurat yang salah ketik (padanan mulaiBatalkanTrx sistem lama) — dari daftar karcis, alasan wajib
     kcBatalBuka: ({ id }) => set({ kcBatal: { id: String(id), alasan: '' }, kabar: '' }),
     kcBatalTutup: () => set({ kcBatal: null }),
@@ -934,6 +935,7 @@ export function pasangLayarJual(akar, opsi) {
     }
     if (s.lembar === 'bayar' && s.karcis) {
       const k = s.karcis; const KH = KC.hitungKarcis(s); const N = KH.N; const dampak = KC.teksDampakNominal(k, s.cara, s.pelanggan);
+      const bolehBon = tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon').boleh;
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-bayar-karcis">
         ${kepala(k.jenisAsal === 'karcis' ? 'Simpan rincian' : 'Simpan rapikan', 'karcis ' + KC.kcEkor(k.id) + ' · ' + tanggalPendek(k.tanggal) + ' ' + k.jam)}
         <div class="total"><span class="label">Uang yang masuk (karcis)${N.diubah ? h` <span class="ket">tadinya ${RP(N.asli)}</span>` : ''}</span><span class="n">${RP(KH.nominal)}</span></div>
@@ -944,12 +946,13 @@ export function pasangLayarJual(akar, opsi) {
           <div class="kaca-btn" data-aksi="kcNominalTutup" style="min-height: 34px; font-size: 12px;">tidak jadi ubah nominal</div></div>`
           : h`<div class="kaca-btn putus" data-aksi="kcNominalBuka" data-k="kc-nominal-buka" style="min-height: 34px; font-size: 12px;">ubah nominal karcis (uang yang masuk beda dari ketikan)</div>`}
         <div class="total"><span class="label">Barang di keranjang</span><span class="n" style="font-size: 20px;" data-gulir="${KH.total}">${RP(KH.total)}</span></div>
-        <div class="pita-info ${KH.lebih ? 'awas' : KH.pas ? 'emas' : ''}">${KH.teks}${KH.lebih && k.jenisAsal === 'karcis' ? h` <span class="pil" data-aksi="kcNominalBuka" data-n="${KH.total}" data-k="kc-nominal-pas">ubah nominal jadi ${RP(KH.total)}</span>` : ''}</div>
+        <div class="pita-info ${KH.lebih ? 'awas' : KH.pas || KH.bon ? 'emas' : ''}" data-k="kc-pita">${KH.teks}${KH.bisaBon && !KH.bon && bolehBon ? h` <span class="pil" data-aksi="kcSisaBon" data-v="1" data-k="kc-sisa-bon">sisa ${RP(-KH.sisa)} jadi bon</span>` : ''}${KH.bon ? h` <span class="pil" data-aksi="kcSisaBon" data-v="0" data-k="kc-sisa-bon-lepas">bukan bon</span>` : ''}${KH.lebih && k.jenisAsal === 'karcis' ? h` <span class="pil" data-aksi="kcNominalBuka" data-n="${KH.total}" data-k="kc-nominal-pas">ubah nominal jadi ${RP(KH.total)}</span>` : ''}</div>
+        ${KH.bon ? h`<div class="ket" data-k="kc-bon-arti">Laci${s.cara === 'QRIS' ? ' / QRIS' : ''} hari itu tetap ${RP(KH.nominal)} · omzet jadi ${RP(KH.total)} · bon ${s.pelanggan || 'pembeli'} bertambah ${RP(KH.bon)}. Struknya menyebut "BON — sebagian dibayar".</div>` : ''}
         <div class="label">Cara bayar waktu itu</div>
         <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''} ${c === 'Kredit' && !tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon').boleh ? 'mati' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
-        <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli' + (s.cara === 'Kredit' ? ' (wajib untuk bon)' : ' (boleh kosong)')}</div>
+        <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli' + (s.cara === 'Kredit' || KH.bon ? ' (wajib untuk bon)' : ' (boleh kosong)')}</div>
         ${pitaTolak(s, 'bayar-karcis')}
-        <div class="utama ${KH.lebih || !s.keranjang.length ? 'redup' : ''}" data-aksi="simpanRinci">${!s.keranjang.length ? 'Tambahkan barangnya dulu' : KH.lebih ? 'Kelebihan — betulkan dulu' : 'SIMPAN RINCIAN · ' + s.keranjang.length + ' barang'}</div>
+        <div class="utama ${KH.lebih || !s.keranjang.length || (KH.bon && !s.pelanggan) ? 'redup' : ''}" data-aksi="simpanRinci">${!s.keranjang.length ? 'Tambahkan barangnya dulu' : KH.lebih ? 'Kelebihan — betulkan dulu' : KH.bon && !s.pelanggan ? 'Isi nama pembeli untuk bonnya' : 'SIMPAN RINCIAN · ' + s.keranjang.length + ' barang' + (KH.bon ? ' · sisa ' + RP(KH.bon) + ' bon' : '')}</div>
         ${k.jenisAsal === 'karcis' ? h`<div class="kaca-btn putus" data-aksi="karcisPerbaiki" style="min-height: 36px; font-size: 12px;">hanya perbaiki cara bayar / nama${N.diubah ? ' / nominal' : ''} (barangnya belum diingat)</div>` : ''}
         <div class="ket" style="text-align: center;">${sumber.jenis === 'cadangan' ? 'SIMULASI — tidak ke Firestore' : 'bentuk dokumen sama dengan Rinci Darurat sistem lama; bisa ditarik balik ' + L.BATAS_URUNGKAN_DETIK + ' detik sesudahnya (atau dari daftar karcis)'}</div>
       </div>`;

@@ -885,6 +885,53 @@ Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
   var KR = { karcis: { id: 'x', jenisAsal: 'rapikan', nominal: 50000, nominalBaru: '60000' }, keranjang: [] };
   ok('NK: nota DIRAPIKAN tidak bisa diubah nominalnya (buka ditolak; draf yang terselip diabaikan hitungan)', bukaNominalKarcis(Object.assign({}, KR, { karcis: { id: 'x', jenisAsal: 'rapikan', nominal: 50000 } })).kabarAwas === true && hitungKarcis(KR).nominal === 50000, JSON.stringify(hitungKarcis(KR)));
 })();
+
+// ================= owner 17 Nov 2026: RINCI KARCIS — kekurangan bayar jadi BON (belanja 720.000 dibayar 700.000 → sisa jadi bon) =================
+(function () {
+  terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
+  terapkanKeCache([
+    { koleksi: 'penjualan', data: { id: 'kb1', tanggal: '2026-09-16', jam: '15:51', caraBayar: 'Tunai', jenis: 'kasir_darurat_nominal', hargaTotal: 130000 } },
+    { koleksi: 'penjualan', data: { id: 'kb2', tanggal: '2026-09-16', jam: '16:20', caraBayar: 'QRIS', jenis: 'kasir_darurat_nominal', hargaTotal: 130000 } },
+    { koleksi: 'penjualan', data: { id: 'kb3', tanggal: '2026-09-16', jam: '16:40', caraBayar: 'Kredit', namaPelanggan: 'Deka Uji', jenis: 'kasir_darurat_nominal', hargaTotal: 130000 } }]);
+  var omzet16 = function () { return ambilPenjualan().filter(function (p) { return p.tanggal === '2026-09-16'; }).reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0); };
+  var bon = function () { var r = hitungPiutang().find(function (x) { return x.kunci === kunciPelanggan('Deka Uji'); }); return r ? r.sisa : 0; };
+  // uang yang MASUK pada 16 Sep per cara bayar: penjualan berlaku bukan Kredit + pelunasan bon bertanggal itu
+  var masuk16 = function (cara) { return ambilPenjualan().filter(function (p) { return p.tanggal === '2026-09-16' && bakuCaraBayar(p.caraBayar) === cara; }).reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0)
+    + cacheMentah('piutang').filter(function (m) { return m.tanggal === '2026-09-16' && m.tipe === 'bayar' && bakuCaraBayar(m.caraBayar) === cara; }).reduce(function (a, m) { return a + (m.nominal || 0); }, 0); };
+  var o0 = omzet16(), b0 = bon(), t0 = masuk16('Tunai'), q0 = masuk16('QRIS');
+  terap(ikatKarcis(s, 'kb1', s.sekarang)); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '10' }); terap(masukkan(s));
+  var H0 = hitungKarcis(s);
+  ok('KB: karcis Tunai 130.000, barang 135.000 → bisa jadi bon; belum dipilih tetap KELEBIHAN dan teksnya menawarkan bon', H0.lebih && H0.bisaBon && !H0.bon && /jadikan sisanya bon/.test(H0.teks), H0.teks);
+  terap(pilihSisaBon(s, true)); var H1 = hitungKarcis(s);
+  ok('KB: sisa jadi bon dipilih → tidak lagi kelebihan, bon 5.000; tanpa nama simpan DITOLAK', !H1.lebih && H1.bon === 5000 && /isi nama pembelinya dulu/.test(susunRinciDokumen(s, W).tolak || ''), JSON.stringify([H1.lebih, H1.bon, susunRinciDokumen(s, W).tolak]));
+  terap({ pelanggan: 'Deka Uji' });
+  var R = susunRinciDokumen(s, W); var brs = (R.dokumen || []).filter(function (d) { return d.koleksi === 'penjualan' && d.data.rinciDari === 'kb1'; });
+  var bay = (R.dokumen || []).filter(function (d) { return d.koleksi === 'piutangMutasi'; }); var asli = ((R.dokumen || []).find(function (d) { return d.koleksi === 'penjualan' && d.data.id === 'kb1'; }) || {}).data || {};
+  ok('KB: baris rincian Kredit a.n. Deka Uji 135.000, tanggal & jam karcis; tanpa karcis sisa', !R.tolak && brs.length === 1 && brs[0].data.caraBayar === 'Kredit' && brs[0].data.namaPelanggan === 'Deka Uji' && brs[0].data.hargaTotal === 135000 && brs[0].data.tanggal === '2026-09-16' && brs[0].data.jam === '15:51', JSON.stringify(R.tolak || brs));
+  ok('KB: SATU pelunasan saat beli: bayar Tunai 130.000 a.n. Deka Uji, tanggal & jam karcis, notaTrxId = grupNota, catatan "Dibayar langsung saat beli — sisa Rp5.000"', bay.length === 1 && bay[0].data.tipe === 'bayar' && bay[0].data.nominal === 130000 && bay[0].data.caraBayar === 'Tunai' && bay[0].data.namaPelanggan === 'Deka Uji' && bay[0].data.tanggal === '2026-09-16' && bay[0].data.jam === '15:51' && bay[0].data.notaTrxId === String(R.rinci.grupNota) && /^Dibayar langsung saat beli — sisa Rp5\.000/.test(bay[0].data.catatan), JSON.stringify(bay));
+  ok('KB: karcis asli ditandai (tidak dihapus, angka tetap 130.000), alasannya menyebut kurang jadi bon; ringkasan menyebut sisa jadi BON', asli.hargaTotal === 130000 && asli.dikoreksiOleh === brs[0].data.id && /kurang Rp5\.000 jadi bon Deka Uji/.test(asli.alasanKoreksi) && /sisa Rp5\.000 jadi BON atas nama Deka Uji/.test(R.ringkas) && R.patch.notaTerakhir.piutangId === bay[0].data.id, JSON.stringify([asli.alasanKoreksi, R.ringkas]));
+  terapkanKeCache(R.dokumen); terap(R.patch);
+  ok('KB: sesudah tersimpan — omzet 16 Sep naik 5.000, bon Deka Uji naik tepat 5.000, uang Tunai yang masuk 16 Sep TETAP', omzet16() === o0 + 5000 && bon() === b0 + 5000 && masuk16('Tunai') === t0, JSON.stringify([omzet16() - o0, bon() - b0, masuk16('Tunai') - t0]));
+  var st = susunStruk(notaDari({ grupNota: R.rinci.grupNota }), stAtur(), null); var kt = st.kertas.map(function (t) { return t.replace(/ +/g, ' '); });
+  ok('KB: struk rincian: "BON — sebagian dibayar", dibayar saat beli 130.000, sisa nota ini 5.000', kt.indexOf('BON — sebagian dibayar') >= 0 && st.dibayarBeli === 130000 && st.sisaNota === 5000, JSON.stringify(kt));
+  var RU = susunUrungRinci(R.rinci, W);
+  ok('KB: tarik balik ikut mencabut pelunasannya (kabar menyebutnya)', !RU.tolak && RU.hapus.some(function (x) { return x.koleksi === 'piutangMutasi' && x.id === bay[0].data.id; }) && /bon sisanya ikut dicabut/.test(RU.patch.kabar), JSON.stringify(RU.tolak || RU.hapus));
+  terapkanKeCache(RU.dokumen); RU.hapus.forEach(function (x) { terapkanKeCache([{ koleksi: x.koleksi, hapus: x.id }]); });
+  ok('KB: sesudah tarik balik — omzet, bon, dan uang Tunai 16 Sep kembali persis', omzet16() === o0 && bon() === b0 && masuk16('Tunai') === t0, JSON.stringify([omzet16() - o0, bon() - b0, masuk16('Tunai') - t0]));
+  // QRIS: pelunasan bercara QRIS, uang QRIS hari itu tetap
+  terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') })); terap(ikatKarcis(s, 'kb2', s.sekarang)); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '10' }); terap(masukkan(s));
+  terap(pilihSisaBon(s, true)); terap({ pelanggan: 'Deka Uji' }); var RQ = susunRinciDokumen(s, W); var bq = (RQ.dokumen || []).find(function (d) { return d.koleksi === 'piutangMutasi'; });
+  ok('KB: karcis QRIS → pelunasan bercara QRIS 130.000', !RQ.tolak && bq && bq.data.caraBayar === 'QRIS' && bq.data.nominal === 130000, JSON.stringify(RQ.tolak || bq));
+  terapkanKeCache(RQ.dokumen); ok('KB: sesudah tersimpan uang QRIS 16 Sep TETAP, bon naik 5.000', masuk16('QRIS') === q0 && bon() === b0 + 5000, JSON.stringify([masuk16('QRIS') - q0, bon() - b0]));
+  // karcis BON: tidak ada uang yang masuk → tidak ada "sisa jadi bon"; kelebihan tetap ditolak (jalan keluarnya ubah nominal)
+  terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') })); terap(ikatKarcis(s, 'kb3', s.sekarang)); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '10' }); terap(masukkan(s));
+  terap(pilihSisaBon(s, true)); var HK = hitungKarcis(s);
+  ok('KB: karcis Kredit tidak bisa "sisa jadi bon" (tanda terselip diabaikan) — tetap KELEBIHAN, simpan ditolak', !HK.bisaBon && !HK.bon && HK.lebih && /KELEBIHAN/.test(susunRinciDokumen(s, W).tolak || ''), JSON.stringify([HK.bisaBon, HK.bon, HK.lebih]));
+  // sisa ke ATAS (barang kurang dari uang) tidak berubah: sisa tetap jadi karcis, tanpa pelunasan
+  terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') })); terap(ikatKarcis(s, 'kb1', s.sekarang)); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '4' }); terap(masukkan(s)); terap(pilihSisaBon(s, true));
+  var RS = susunRinciDokumen(s, W);
+  ok('KB: barang 54.000 < karcis 130.000 → bukan bon: tanpa pelunasan, sisa 76.000 tetap karcis, baris bercara Tunai', !RS.tolak && !(RS.dokumen || []).some(function (d) { return d.koleksi === 'piutangMutasi'; }) && (RS.dokumen || []).some(function (d) { return d.data.jenis === 'kasir_darurat_nominal' && d.data.hargaTotal === 76000; }) && (RS.dokumen || []).filter(function (d) { return d.data.rinciDari === 'kb1' && d.data.jenis === 'literan'; }).every(function (d) { return d.data.caraBayar === 'Tunai'; }), JSON.stringify(RS.tolak || ''));
+})();
 print(JSON.stringify({ lulus: lulus, gagal: gagal, kunci: { retur: Object.keys(KUNCI.retur), karantina: Object.keys(KUNCI.karantina) } }));
 """
 
@@ -991,6 +1038,13 @@ if __name__ == '__main__':
             'nominal: perbaikan tanpa barang tidak memakai nominal baru': js.replace("if (N.diubah) { pengganti.hargaTotal = N.nominal;", "if (false) { pengganti.hargaTotal = N.nominal;"),
             'nominal: nota yang dirapikan ikut bisa diubah nominalnya': js.replace("const sedang = !!k && k.jenisAsal === 'karcis' && k.nominalBaru", "const sedang = !!k && k.nominalBaru"),
             'nominal: dampak uang tidak disebut di ringkasan': js.replace("+ (N.diubah ? ' · ' + teksDampakNominal(k, cara, nama) : '');", ";"),
+            # ---- owner 17 Nov 2026: rinci karcis — kekurangan bayar jadi bon ----
+            'karcis bon: sisa jadi bon tanpa pelunasan saat beli (uang yang masuk hilang)': js.replace("if (H.bon) { piutangId = w.idUnik(); dokumen.push(", "if (false) { piutangId = w.idUnik(); dokumen.push("),
+            'karcis bon: baris tetap bercara karcis, bukan Kredit (bon tidak bertambah, uang masuk dua kali)': js.replace("const caraBaris = H.bon ? 'Kredit' : cara;", "const caraBaris = cara;"),
+            'karcis bon: tarik balik tidak mencabut pelunasannya': js.replace("  hapusBayar.forEach((x) => hapus.push(x));\n", "\n"),
+            'karcis bon: struk tidak menemukan pelunasan lewat grupNota': js.replace("const tautan = ada(nota.trxId) ? nota.trxId : nota.grupNota;", "const tautan = nota.trxId;"),
+            'karcis bon: karcis Kredit ikut bisa jadi bon': js.replace("sisa < 0 && bakuCaraBayar(s.cara) !== 'Kredit' && N.nominal > 0;", "sisa < 0 && N.nominal > 0;"),
+            'karcis bon: tanpa nama pembeli lolos': js.replace("if (H.bon && !nama) return", "if (false) return"),
             # ---- PUTARAN 20: rinci karcis · retur tanpa nota · tukar yatim
             'rinci: kelebihan barang atas uang yang masuk lolos': js.replace("const H = hitungKarcis(s); if (H.lebih) return { tolak: 'Jumlah barang '", "const H = hitungKarcis(s); if (false) return { tolak: 'Jumlah barang '"),
             'rinci: baris tanpa tanda asalDarurat/rinciDari (tarik balik & penjaga karcis buta)': js.replace("if (karcis) { d.asalDarurat = true; d.rinciDari = p.id; d.alasanKoreksi = 'Rincian dari kasir darurat ' + kcEkor(p.id) + (teksNominal ? ' (' + teksNominal + ')' : ''); }", "if (false) { d.asalDarurat = true; d.rinciDari = p.id; }"),
@@ -998,7 +1052,7 @@ if __name__ == '__main__':
             'rinci: karcis sisa membawa jam MERINCI, bukan jam karcis': js.replace("const sisaDoc = { id: w.idUnik(), tanggal: p.tanggal, jam: p.jam || '',", "const sisaDoc = { id: w.idUnik(), tanggal: p.tanggal, jam: w.jam,"),
             'rinci: sisa yang belum terurai hilang (uang masuk berkurang)': js.replace("if (karcis && H.sisa > 0) { const sisaDoc =", "if (false) { const sisaDoc ="),
             'rinci: karcis asli tidak ditandai (uang dua kali)': js.replace("  dokumen.push({ koleksi: 'penjualan', data: asli });\n  // putaran 25: karcis bulan lalu", "\n  // putaran 25: karcis bulan lalu"),
-            'rinci: tanggal baris = hari ini, bukan tanggal karcis (omzet pindah hari)': js.replace("d.id = w.idUnik(); d.tanggal = p.tanggal; d.jam = p.jam || ''; d.caraBayar = cara;", "d.id = w.idUnik(); d.tanggal = w.tanggal; d.jam = w.jam; d.caraBayar = cara;"),
+            'rinci: tanggal baris = hari ini, bukan tanggal karcis (omzet pindah hari)': js.replace("d.id = w.idUnik(); d.tanggal = p.tanggal; d.jam = p.jam || ''; d.caraBayar = caraBaris;", "d.id = w.idUnik(); d.tanggal = w.tanggal; d.jam = w.jam; d.caraBayar = caraBaris;"),
             'rapikan boleh bersisa (uang nota bergeser)': js.replace("if (k.jenisAsal === 'rapikan' && H.sisa !== 0) return { tolak:", "if (false) return { tolak:"),
             'tarik balik grup yang sudah tersentuh (uang dobel)': js.replace("if (tersentuh) return { tolak: 'Tidak bisa ditarik balik:", "if (false) return { tolak: 'Tidak bisa ditarik balik:"),
             'retur tanpa nota: melebihi yang pernah terjual lolos tanpa ketukan kedua': js.replace("if (jml > bebas && !s.rtYakin) return { tolak:", "if (false) return { tolak:"),
@@ -1030,7 +1084,7 @@ if __name__ == '__main__':
             # ---- audit 39b no. 8: struk nota bayar sebagian ----
             'struk bayar sebagian tidak mencari uang yang diterima': js.replace("const bb = bayarSaatBeli(nota);", "const bb = null;"),
             'pelunasan saat beli tanpa tautan nota': js.replace("notaTrxId: String(trxId), ", ""),
-            'tautan pelunasan dicocokkan ke nota lain': js.replace("String(m.notaTrxId) === String(nota.trxId)", "true"),
+            'tautan pelunasan dicocokkan ke nota lain': js.replace("String(m.notaTrxId) === String(tautan)", "true"),
             'pencocokan pelunasan lama mengabaikan nama': js.replace("&& kunciPelanggan(m.namaPelanggan) === k\n", "\n"),
             'pencocokan pelunasan lama tanpa syarat tanggal': js.replace(" && m.tanggal === nota.tanggal && String(m.jam", " && String(m.jam"),
             'pencocokan pelunasan lama tanpa syarat jam': js.replace(" && String(m.jam || '') === String(nota.jam || '') && kunciPelanggan(m.namaPelanggan) === k", " && kunciPelanggan(m.namaPelanggan) === k"),

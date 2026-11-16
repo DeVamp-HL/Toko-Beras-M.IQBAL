@@ -118,8 +118,9 @@ export function bayarSaatBeli(nota) {
   if (!nota || nota.cara !== 'Kredit') return null;
   const semua = (ambilPiutangMutasi() || []).filter((m) => m && m.tipe === 'bayar');
   const ada = (v) => v !== undefined && v !== null && String(v) !== '';
-  if (ada(nota.trxId)) {
-    const t = semua.filter((m) => ada(m.notaTrxId) && String(m.notaTrxId) === String(nota.trxId));
+  const tautan = ada(nota.trxId) ? nota.trxId : nota.grupNota;   // owner 17 Nov: rinci karcis yang sisanya jadi bon menautkan pelunasannya ke grupNota (baris rincian tak ber-trxId)
+  if (ada(tautan)) {
+    const t = semua.filter((m) => ada(m.notaTrxId) && String(m.notaTrxId) === String(tautan));
     if (t.length) return { nominal: t.reduce((a, m) => a + (Number(m.nominal) || 0), 0), cara: bakuCaraBayar(t[0].caraBayar), lewat: 'tautan', id: t.map((m) => m.id) };
   }
   const k = kunciPelanggan(nota.nama); if (!k) return null;
