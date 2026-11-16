@@ -167,40 +167,41 @@ export function susunStruk(nota, atur, pilih) {
   const garis = () => g.push({ garis: true });
   // owner 17 Nov 2026 (butir 3, struk profesional): kepala = kop · nomor nota · hari-tanggal-jam · Pembeli · Dilayani — label tertulis, semuanya baris TANPA
   // angka kanan (Pusat Dokumen hanya mengambil baris berangka dari struk ini, jadi kepala tidak ikut ke sana). Logo digambar printer/pratinjau (S.logo).
-  baris(A.kop.nama.toUpperCase(), '', { tebal: true, tengah: true });
-  if (A.kop.alamat) baris(A.kop.alamat, '', { tengah: true });
-  if (A.kop.telp) baris('Telp ' + A.kop.telp, '', { tengah: true });
+  baris(A.kop.nama.toUpperCase(), '', { tebal: true, tengah: true, jenis: 'kop' });
+  if (A.kop.alamat) baris(A.kop.alamat, '', { tengah: true, jenis: 'alamat' });
+  if (A.kop.telp) baris('Telp ' + A.kop.telp, '', { tengah: true, jenis: 'telp', nilai: A.kop.telp });
   garis();
-  const no = stNoNota(nota); if (no) baris('Nota No. ' + no, '');
+  const no = stNoNota(nota); if (no) baris('Nota No. ' + no, '', { jenis: 'nota', nilai: no });
   const d = nota.tanggal ? isoKeTanggal(nota.tanggal) : null;
-  baris((d ? ST_HARI[d.getDay()] + ', ' : '') + formatTanggal(nota.tanggal) + (nota.jam ? ' · ' + nota.jam : ''), '');
-  baris('Pembeli: ' + (nota.nama || 'tanpa nama'), '');
+  const tglTeks = (d ? ST_HARI[d.getDay()] + ', ' : '') + formatTanggal(nota.tanggal) + (nota.jam ? ' · ' + nota.jam : '');
+  baris(tglTeks, '', { jenis: 'tanggal', nilai: tglTeks });
+  baris('Pembeli: ' + (nota.nama || 'tanpa nama'), '', { jenis: 'pembeli', nilai: nota.nama || 'tanpa nama' });
   const pelayan = stPelayan(nota);   // owner 17 Nov: yang melayani (dilayaniOleh) menang atas yang mencatat (oleh)
-  if (S.pelayan && pelayan) baris('Dilayani: ' + pelayan, '');
+  if (S.pelayan && pelayan) baris('Dilayani: ' + pelayan, '', { jenis: 'pelayan', nilai: pelayan });
   garis();
   let pot = 0, bulat = 0, upah = 0;
   nota.baris.forEach((p) => { pot += p.potonganTransaksi || 0; bulat += p.pembulatan || 0; upah += p.upahRepack || 0; });
   if (S.rincian) {
     gabungTakaran(nota.baris).forEach((p) => {   // putaran 27: satu takaran wadah (baris internal per merek asal) = satu baris struk
       const j = jumlahBaris(p); const kotor = kotorBaris(p);
-      if (p.penggantiRetur) { baris(namaBaris(p), ''); baris('  ' + (j ? String(j.nilai).replace('.', ',') + ' ' + j.satuan + ' · ' : '') + 'pengganti retur', RP(0)); return; }
+      if (p.penggantiRetur) { baris(namaBaris(p), '', { jenis: 'barang' }); baris('  ' + (j ? String(j.nilai).replace('.', ',') + ' ' + j.satuan + ' · ' : '') + 'pengganti retur', RP(0), { jenis: 'rinci' }); return; }
       const satuan = j && j.nilai > 0 ? kotor / j.nilai : null; const bulatSatuan = satuan !== null && Math.abs(satuan - Math.round(satuan)) < 0.001;
-      baris(namaBaris(p), j && bulatSatuan ? '' : RP(kotor));
-      if (j && bulatSatuan) baris('  ' + String(j.nilai).replace('.', ',') + ' ' + j.satuan + ' × ' + RP(Math.round(satuan)).replace(/^Rp/, ''), RP(kotor));
-      else if (j) baris('  ' + String(j.nilai).replace('.', ',') + ' ' + j.satuan, '');
-      if (p.negoSelisih) baris('  harga tawar ' + (p.negoSelisih < 0 ? '−' : '+') + RP(Math.abs(p.negoSelisih)) + '/' + (j ? j.satuan : 'satuan'), '');
-      if (p.upahRepack) baris('  upah repack', RP(p.upahRepack));
-      if (p.bonusUnit) baris('  +' + p.bonusUnit + ' bonus (gratis)', '');
+      baris(namaBaris(p), j && bulatSatuan ? '' : RP(kotor), { jenis: 'barang' });
+      if (j && bulatSatuan) baris('  ' + String(j.nilai).replace('.', ',') + ' ' + j.satuan + ' × ' + RP(Math.round(satuan)).replace(/^Rp/, ''), RP(kotor), { jenis: 'rinci', jumlah: true });
+      else if (j) baris('  ' + String(j.nilai).replace('.', ',') + ' ' + j.satuan, '', { jenis: 'rinci' });
+      if (p.negoSelisih) baris('  harga tawar ' + (p.negoSelisih < 0 ? '−' : '+') + RP(Math.abs(p.negoSelisih)) + '/' + (j ? j.satuan : 'satuan'), '', { jenis: 'rinci' });
+      if (p.upahRepack) baris('  upah repack', RP(p.upahRepack), { jenis: 'rinci' });
+      if (p.bonusUnit) baris('  +' + p.bonusUnit + ' bonus (gratis)', '', { jenis: 'rinci' });
     });
-    if (pot > 0) { baris('Subtotal', RP(nota.total + pot - bulat)); baris('Potongan', '−' + RP(pot)); }   // owner 17 Nov: subtotal sebelum potongan (barang + upah)
-    if (bulat > 0) baris('Pembulatan Rp500', '+' + RP(bulat));
+    if (pot > 0) { baris('Subtotal', RP(nota.total + pot - bulat), { jenis: 'ringkas' }); baris('Potongan', '−' + RP(pot), { jenis: 'ringkas' }); }   // owner 17 Nov: subtotal sebelum potongan (barang + upah)
+    if (bulat > 0) baris('Pembulatan Rp500', '+' + RP(bulat), { jenis: 'ringkas' });
     garis();
   }
-  baris('TOTAL', RP(nota.total), { tebal: true });
+  baris('TOTAL', RP(nota.total), { tebal: true, jenis: 'total' });
   // TUKAR: tanpa baris ini struk menyatakan pembeli membayar harga penuh (susunStrukTrx sistem lama)
   const rT = nota.tukarReturId ? ambilRetur().find((x) => String(x.id) === String(nota.tukarReturId)) : null;
-  if (rT && rT.tukarModel === 'kreditBarangGabung') { const hT = rT.hitunganTukarSistem || {}; baris('Tukar: barang kembali', '−' + RP(rT.nominalRefund || 0)); if (hT.dibayarPembeli !== undefined && hT.dibayarPembeli !== null) baris('DIBAYAR PEMBELI', RP(hT.dibayarPembeli), { tebal: true }); }
-  else if (rT) baris('Susulan pengganti tukar ' + formatTanggal(rT.tanggal) + ' ' + (rT.jam || ''), '');
+  if (rT && rT.tukarModel === 'kreditBarangGabung') { const hT = rT.hitunganTukarSistem || {}; baris('Tukar: barang kembali', '−' + RP(rT.nominalRefund || 0), { jenis: 'bayar' }); if (hT.dibayarPembeli !== undefined && hT.dibayarPembeli !== null) baris('DIBAYAR PEMBELI', RP(hT.dibayarPembeli), { tebal: true, jenis: 'bayar' }); }
+  else if (rT) baris('Susulan pengganti tukar ' + formatTanggal(rT.tanggal) + ' ' + (rT.jam || ''), '', { jenis: 'catatan' });
   let sisaBon = null, sisaBonPer = null, dibayarBeli = null, sisaNota = null, lebihBayar = 0;
   if (nota.cara === 'Kredit') {
     // audit 39b no. 8: uang yang diterima di meja ikut tercetak; TOTAL = dibayar saat beli + sisa nota ini (menutup)
@@ -210,10 +211,10 @@ export function susunStruk(nota, atur, pilih) {
     const rB = nota.nama ? hitungPiutang().find((x) => x.kunci === kunciPelanggan(nota.nama)) : null; const pakaiLebih = rB ? stPakaiLebih(rB, nota, bb) : 0;
     const asalLebih = rB && pecahLebih(rB).hapus > 0.5 ? 'sisa di bawah nol' : 'kelebihan bayar';   // pendek: 58 mm = 30 kolom
     if (pakaiLebih) sisaNota = nota.total - (dibayarBeli || 0) - pakaiLebih;
-    baris(pakaiLebih && sisaNota <= 0.5 ? 'BON — dibayar dari ' + asalLebih : dibayarBeli || pakaiLebih ? 'BON — sebagian dibayar' : 'BON — belum dibayar', '', { tebal: true }); if (nota.nama) baris('a.n. ' + nota.nama, '');
-    if (dibayarBeli) baris('Dibayar saat beli' + (bb.cara && bb.cara !== 'Tunai' ? ' · ' + bb.cara : ''), RP(dibayarBeli));
-    if (pakaiLebih) baris('Dari ' + asalLebih, RP(pakaiLebih));
-    if (dibayarBeli || pakaiLebih) baris('Sisa nota ini', RP(sisaNota));
+    baris(pakaiLebih && sisaNota <= 0.5 ? 'BON — dibayar dari ' + asalLebih : dibayarBeli || pakaiLebih ? 'BON — sebagian dibayar' : 'BON — belum dibayar', '', { tebal: true, jenis: 'bon' }); if (nota.nama) baris('a.n. ' + nota.nama, '', { jenis: 'bon' });
+    if (dibayarBeli) baris('Dibayar saat beli' + (bb.cara && bb.cara !== 'Tunai' ? ' · ' + bb.cara : ''), RP(dibayarBeli), { jenis: 'bayar' });
+    if (pakaiLebih) baris('Dari ' + asalLebih, RP(pakaiLebih), { jenis: 'bayar' });
+    if (dibayarBeli || pakaiLebih) baris('Sisa nota ini', RP(sisaNota), { jenis: 'bayar' });
     // "Sisa bon" = saldo SEMUA bon orang ini saat struk DISUSUN (bukan saat nota ditulis) — tanggalnya ikut tercetak supaya struk yang dicetak
     // ulang kemudian tidak berbunyi "belum dibayar" + "Sisa bon Rp0" tanpa keterangan
     // sisaBonPer menempel di baris angkanya: Pusat Dokumen (laporan-logika dokumenKecil 'nota') hanya memakai baris yang berangka, jadi tanggal
@@ -221,13 +222,13 @@ export function susunStruk(nota, atur, pilih) {
     if (S.bon && nota.nama) { const r = hitungPiutang().find((x) => x.kunci === kunciPelanggan(nota.nama)); sisaBon = r ? Math.max(0, r.sisa) : 0; sisaBonPer = (pilih && pilih.kini) || hariIniIso();
       // no. 4: saldo NEGATIF (pembayaran melebihi bon) dulu tercetak "Sisa bon Rp0" — kini disebut kelebihan bayar; sisaBon tetap 0 (tidak ada bon).
       // B1: yang dicetak untuk pembeli hanya bagian UANG (bayar melebihi semua bon); hapus buku yang ternyata dibayar bukan uangnya → "Sisa bon Rp0".
-      lebihBayar = pecahLebih(r).uang > 0.5 ? pecahLebih(r).uang : 0; baris((lebihBayar ? 'Kelebihan bayar ' : 'Sisa bon ') + nota.nama, RP(lebihBayar || sisaBon), { sisaBonPer }); baris('  per ' + formatTanggal(sisaBonPer), ''); }
+      lebihBayar = pecahLebih(r).uang > 0.5 ? pecahLebih(r).uang : 0; baris((lebihBayar ? 'Kelebihan bayar ' : 'Sisa bon ') + nota.nama, RP(lebihBayar || sisaBon), { sisaBonPer, jenis: 'bayar' }); baris('  per ' + formatTanggal(sisaBonPer), '', { jenis: 'catatan' }); }
   } else {
-    baris('Bayar: ' + nota.cara, '');
-    if (nota.uangDiterima > 0) { baris('Uang diterima', RP(nota.uangDiterima)); if (nota.kembalian > 0) baris('Kembali', RP(nota.kembalian)); }
+    baris('Bayar: ' + nota.cara, '', { jenis: 'bayar' });
+    if (nota.uangDiterima > 0) { baris('Uang diterima', RP(nota.uangDiterima), { jenis: 'bayar' }); if (nota.kembalian > 0) baris('Kembali', RP(nota.kembalian), { jenis: 'bayar' }); }
   }
-  if (!nota.berlaku) baris('(catatan ini sudah ' + (nota.dibatalkan ? 'dibatalkan' : 'dikoreksi') + ')', '');
-  if (S.kaki && A.kaki) { baris('', ''); baris(A.kaki, '', { tengah: true }); }
+  if (!nota.berlaku) baris('(catatan ini sudah ' + (nota.dibatalkan ? 'dibatalkan' : 'dikoreksi') + ')', '', { jenis: 'catatan', tebal: true });
+  if (S.kaki && A.kaki) { baris('', '', { jenis: 'jeda' }); baris(A.kaki, '', { tengah: true, jenis: 'kaki' }); }
   // dua wujud satu isi. Kertas: angka rata kanan; yang tidak muat DIBUNGKUS ke baris berikutnya — tidak pernah dipotong (angka tidak boleh terpenggal).
   const kanan = (t) => ' '.repeat(Math.max(0, lebar - t.length)) + t;
   const kertasBaris = [];
@@ -240,6 +241,7 @@ export function susunStruk(nota, atur, pilih) {
   const waBaris = g.map((x) => (x.garis ? '------------------------------' : x.kanan ? (x.tebal ? '*' + x.kiri + '   ' + x.kanan + '*' : x.kiri + '   ' + x.kanan) : x.tebal && x.kiri ? '*' + x.kiri + '*' : x.kiri));
   return { garis: g, kertas: kertasBaris, teks: kertasBaris.join('\n'), wa: waBaris.join('\n'), total: nota.total, lebar, kertasMm: kertas, logo: S.logo !== false, sisaBon, sisaBonPer, lebihBayar, dibayarBeli, sisaNota, pot, bulat, upah };
 }
+// gaya struk SERTIFIKAT (owner 17 Nov 2026, butir 3): model gambarnya di inti/struk-model.js (stModelSertifikat) — murni, tanpa data toko
 export const tautanWa = (teks) => 'https://wa.me/?text=' + encodeURIComponent(String(teks || ''));
 
 // ---------- aturan otomatis (JS3-C) ----------

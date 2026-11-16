@@ -174,25 +174,25 @@ export function epBase64(byte) {
 }
 
 /** Struk contoh untuk halaman uji cetak — angka CONTOH HITUNG, bukan angka toko. */
-export function epContohGaris() {
+export function epContohGaris() {   // owner 17 Nov: baris bertanda `jenis` → contoh tercetak bergaya Sertifikat seperti nota sungguhan
   return [
-    { kiri: 'TOKO BERAS M.IQBAL', kanan: '', tebal: true, tengah: true },
-    { kiri: 'Uji cetak printer · bukan nota', kanan: '', tengah: true },
+    { kiri: 'TOKO BERAS M.IQBAL', kanan: '', tebal: true, tengah: true, jenis: 'kop' },
+    { kiri: 'Uji cetak printer · bukan nota', kanan: '', tengah: true, jenis: 'alamat' },
     { garis: true },
-    { kiri: 'Nota No. 123456', kanan: '' },
-    { kiri: 'Senin, 16 Nov 2026 · 09.30', kanan: '' },
-    { kiri: 'Pembeli: Contoh pembeli', kanan: '' },
-    { kiri: 'Dilayani: Karyawan contoh', kanan: '' },
+    { kiri: 'Nota No. 123456', kanan: '', jenis: 'nota', nilai: '123456' },
+    { kiri: 'Senin, 16 Nov 2026 · 09.30', kanan: '', jenis: 'tanggal', nilai: 'Senin, 16 Nov 2026 · 09.30' },
+    { kiri: 'Pembeli: Contoh pembeli', kanan: '', jenis: 'pembeli', nilai: 'Contoh pembeli' },
+    { kiri: 'Dilayani: Karyawan contoh', kanan: '', jenis: 'pelayan', nilai: 'Karyawan contoh' },
     { garis: true },
-    { kiri: 'Beras contoh kemasan 5 kg', kanan: '' },
-    { kiri: '  2 kemasan × 70.000', kanan: 'Rp140.000' },
-    { kiri: 'Literan contoh dengan nama barang yang sangat panjang sekali untuk uji bungkus', kanan: 'Rp13.000' },
+    { kiri: 'Beras contoh kemasan 5 kg', kanan: '', jenis: 'barang' },
+    { kiri: '  2 kemasan × 70.000', kanan: 'Rp140.000', jenis: 'rinci', jumlah: true },
+    { kiri: 'Literan contoh dengan nama barang yang sangat panjang sekali untuk uji bungkus', kanan: 'Rp13.000', jenis: 'barang' },
     { garis: true },
-    { kiri: 'TOTAL', kanan: 'Rp153.000', tebal: true },
-    { kiri: 'Tunai', kanan: 'Rp200.000' },
-    { kiri: 'Kembali', kanan: 'Rp47.000' },
+    { kiri: 'TOTAL', kanan: 'Rp153.000', tebal: true, jenis: 'total' },
+    { kiri: 'Tunai', kanan: 'Rp200.000', jenis: 'bayar' },
+    { kiri: 'Kembali', kanan: 'Rp47.000', jenis: 'bayar' },
     { garis: true },
-    { kiri: 'Huruf khusus: · × − – é ñ 🙏 (emoji tidak dicetak)', kanan: '' },
-    { kiri: 'Terima kasih', kanan: '', tengah: true },
+    { kiri: 'Huruf khusus: · × − – é ñ 🙏 (emoji tidak dicetak)', kanan: '', jenis: 'catatan' },
+    { kiri: 'Terima kasih', kanan: '', tengah: true, jenis: 'kaki' },
   ];
 }

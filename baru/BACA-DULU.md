@@ -2626,9 +2626,14 @@ Mesin beku tidak disentuh (`beku2.py --sidik` 91/91), rules tidak berubah, kasir
   (riwayat tutup ulang ikut dicari) naik sebesar uang tunai nota, laci seharusnya turun (`koreksiBatalNota` = jejak) — tanpa ini laba kena dua kali. Titik kas
   tidak berubah. QRIS: rekening hitungan sistem disebut, tidak dihitung ulang.
 - **3 · Struk** — kepala: kop · `Nota No.` (6 angka terakhir kunci nota, bisa dicari di Riwayat) · hari-tanggal-jam · `Pembeli:` · `Dilayani:`; `Subtotal` sebelum
-  potongan. Setelan struk `sertakan.logo` (bawaan nyala): printer tablet memakai `baru/logo-struk.svg` (ikut salinan aplikasi, `cap_sw_baru.py` kini memuat
-  `baru/*.svg`) bila perangkat tidak punya logo sendiri. Lembar Struk menampilkan pratinjau GAMBAR persis hasil printer tablet (teks sampai gambarnya siap). WA &
-  dialog cetak tetap teks yang sama isinya. Berkas logo menyusul pilihan owner — tanpa berkas = tanpa logo.
+  potongan. Lembar Struk menampilkan pratinjau GAMBAR persis hasil printer tablet (teks sampai gambarnya siap). WA & dialog cetak tetap teks yang sama isinya.
+  **Gaya Sertifikat + logo F mahkota padi (huruf M)** — pilihan owner dari halaman contoh. `susunStruk` menandai tiap baris dengan `jenis` (kop, nota, tanggal,
+  pembeli, pelayan, barang, rinci, ringkas, total, bayar, bon, catatan, kaki); `inti/struk-model.js` (murni, teruji jsc) mengelompokkannya TANPA mengubah isi
+  (`stModelSertifikat`: semua angka di garis = angka di model); `inti/struk-kanvas.js` `gambarSertifikat` menggambar: pita guilloché atas-bawah, logo (lingkar
+  dua tangkai padi + berlian + M Bodoni, digambar kode — `gambarLogoToko`), nama toko Cinzel, "NOTA PEMBELIAN · Nº", isian bertitik, tabel URAIAN/JUMLAH,
+  TOTAL bergaris ganda, bayar/bon/catatan, tanda tangan yang melayani (Cormorant miring) + cap padi kecil. Huruf Bodoni Moda, Cinzel, Cormorant Garamond
+  miring, Jost — tautan huruf `index.html` = `uji-cetak.html` (ikut salinan luring). Logo gambar milik perangkat (`printer.js`) tetap menang atas logo F;
+  saklar `sertakan.logo` mati = tanpa logo. Garis tanpa `jenis` (contoh lama) tetap gaya polos. Tidak ada berkas logo terpisah.
 - **4 · Amplop laba** — Pindah uang: amplop tempat keempat (dari & ke), ditulis `amplopLaba` `ambil {ke}` / `setor {dari}` (mesin `saldoAmplop` & blok Amplop
   Laba tetap benar), tanpa biaya admin, bisa diurungkan. Uang keluar (termasuk ambil pribadi), kasbon owner, kasbon karyawan bisa bersumber amplop: catatan
   aslinya dari laci + `amplopLaba` ambil amplop → laci (`untuk` = id catatannya) satu kiriman (`lewatAmplop`). Kertas laci tutup hari hanya memuat gerakan amplop
@@ -2639,5 +2644,5 @@ Mesin beku tidak disentuh (`beku2.py --sidik` 91/91), rules tidak berubah, kasir
 - **7 · Rinci karcis: kekurangan jadi bon** — karcis Tunai/QRIS dengan barang > nominal: pil "sisa RpX jadi bon" (nama wajib) → baris Kredit + satu
   `piutangMutasi bayar` sebesar nominal karcis (cara, tanggal & jam karcis, `notaTrxId` = grupNota). Laci/QRIS hari itu tetap; omzet = total barang; bon naik
   selisihnya. Tarik balik mencabut pelunasannya; struk menemukannya lewat grupNota.
-- Uji: `uji_jual_baru.py` 432 (+ KB/DL/BN/KL/ST, kontrol 226), `uji_uang_baru.py` 177 (+ AM, kontrol 76), `peta_akses.py --kiriman`, `uji_akses_baru.py`,
+- Uji: `uji_jual_baru.py` 440 (+ KB/DL/BN/KL/ST/SF, kontrol 231), `uji_escpos.py` 42, `uji_uang_baru.py` 177 (+ AM, kontrol 76), `peta_akses.py --kiriman`, `uji_akses_baru.py`,
   `uji_isian_lokal.py`; laporan semua bulan data toko BYTE-SAMA dengan `origin/main` (`asap_global`). Dilihat di Browser pane `?cadangan=` (simulasi).

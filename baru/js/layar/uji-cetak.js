@@ -31,11 +31,11 @@ async function pratinjau() {
   $('ucLogoBaris').hidden = a.gaya !== 'gambar';
   if (a.gaya === 'gambar') {
     await siapkanHuruf();
-    const g = gambarStruk(epContohGaris(), { kertas: a.kertas, logo: teksKeLogo(logo) });
+    const g = gambarStruk(epContohGaris(), { kertas: a.kertas, logo: teksKeLogo(logo), logoToko: true });   // owner 17 Nov: contoh memakai logo toko (F mahkota padi) bila perangkat tidak punya logo sendiri
     const wadah = $('ucGambar'); wadah.textContent = ''; g.kanvas.className = 'kertas'; wadah.appendChild(g.kanvas);
     $('ucPratinjau').hidden = true; wadah.hidden = false;
   } else {
-    const s = await susunCetak(epContohGaris(), a, { qr: a.qr ? 'UJI-CETAK' : '' });
+    const s = await susunCetak(epContohGaris(), a, { qr: a.qr ? 'UJI-CETAK' : '', logoToko: true });
     $('ucPratinjau').textContent = s.teks.join('\n'); $('ucPratinjau').hidden = false; $('ucGambar').hidden = true;
   }
 }
@@ -74,7 +74,7 @@ async function pilih(semua) {
 async function cetak() {
   const a = isian(); $('ucCetak').disabled = true;
   try {
-    const s = await susunCetak(epContohGaris(), a, { qr: a.qr ? 'UJI-CETAK' : '' });
+    const s = await susunCetak(epContohGaris(), a, { qr: a.qr ? 'UJI-CETAK' : '', logoToko: true });
     if (asliAda()) { const r = await kirimCetak(s.byte, 'aplikasi'); tulisLog('TERCETAK lewat aplikasi · gaya ' + s.gaya + ' · ' + r.byte + ' byte · ' + (r.perangkat || 'printer')); }
     else { const r = await usbKirim(printer, s.byte); tulisLog('TERCETAK lewat peramban · gaya ' + s.gaya + ' · ' + r.byte + ' byte'); }
   } catch (e) { tulisLog(pesan(e), true); }

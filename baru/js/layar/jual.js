@@ -11,7 +11,7 @@ import * as WJ from './wadah-jual-logika.js';
 import * as ST from './struk-logika.js';
 import * as PR from '../inti/printer.js';   // T1 (16 Nov 2026): printer USB tablet kasir — aplikasi CPad / WebUSB; tanpa printer = dialog cetak
 // owner 17 Nov (butir 3): pratinjau struk gambar + logo toko bersama
-import { gambarStruk as gambarStrukKanvas, siapkanHuruf, logoToko } from '../inti/struk-kanvas.js';
+import { gambarStruk as gambarStrukKanvas, siapkanHuruf } from '../inti/struk-kanvas.js';
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
@@ -1125,7 +1125,7 @@ export function pasangLayarJual(akar, opsi) {
       _pratinjauJalan = kunci;
       (async () => {
         let url = '';
-        try { await siapkanHuruf(); const logo = st.logo ? await logoToko(kertas) : null; url = gambarStrukKanvas(st.garis, { kertas, logo }).kanvas.toDataURL('image/png'); } catch (e) { url = ''; }
+        try { await siapkanHuruf(); url = gambarStrukKanvas(st.garis, { kertas, logoToko: st.logo }).kanvas.toDataURL('image/png'); } catch (e) { url = ''; }
         if (_pratinjauJalan !== kunci) return; _pratinjau = { kunci, url }; _pratinjauJalan = ''; gambar();
       })();
     }
