@@ -932,6 +932,34 @@ Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
   var RS = susunRinciDokumen(s, W);
   ok('KB: barang 54.000 < karcis 130.000 → bukan bon: tanpa pelunasan, sisa 76.000 tetap karcis, baris bercara Tunai', !RS.tolak && !(RS.dokumen || []).some(function (d) { return d.koleksi === 'piutangMutasi'; }) && (RS.dokumen || []).some(function (d) { return d.data.jenis === 'kasir_darurat_nominal' && d.data.hargaTotal === 76000; }) && (RS.dokumen || []).filter(function (d) { return d.data.rinciDari === 'kb1' && d.data.jenis === 'literan'; }).every(function (d) { return d.data.caraBayar === 'Tunai'; }), JSON.stringify(RS.tolak || ''));
 })();
+
+// ================= owner 17 Nov 2026 (butir 1 & 6): YANG MELAYANI — dilayaniOleh di nota, struk, ubah sesudahnya =================
+(function () {
+  terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
+  terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '2' }); terap(masukkan(s)); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '3' }); terap(masukkan(s));
+  var pj = function (N) { return (N.dokumen || []).filter(function (d) { return d.koleksi === 'penjualan'; }); };
+  var N0 = susunNotaDokumen(s, W);
+  ok('DL: tanpa pilihan → baris nota TANPA dilayaniOleh (struk tetap memakai yang mencatat)', pj(N0).length >= 2 && pj(N0).every(function (d) { return !('dilayaniOleh' in d.data); }), JSON.stringify(pj(N0).map(function (d) { return d.data.dilayaniOleh; })));
+  var N1 = susunNotaDokumen(Object.assign({}, s, { dilayani: '  Karyawan Uji  ' }), W);
+  ok('DL: dipilih → SEMUA baris penjualan membawa dilayaniOleh (dirapikan); dokumen lain (kantong) tidak', pj(N1).every(function (d) { return d.data.dilayaniOleh === 'Karyawan Uji'; }) && (N1.dokumen || []).filter(function (d) { return d.koleksi !== 'penjualan'; }).every(function (d) { return !('dilayaniOleh' in d.data); }), JSON.stringify(pj(N1).map(function (d) { return d.data.dilayaniOleh; })));
+  terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'dl1', trxId: 'tdl1', tanggal: '2026-09-19', jam: '10:00', caraBayar: 'Tunai', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, hargaTotal: 65000, oleh: 'Owner' } },
+    { koleksi: 'penjualan', data: { id: 'dl2', trxId: 'tdl1', tanggal: '2026-09-19', jam: '10:00', caraBayar: 'Tunai', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, hargaTotal: 65000, oleh: 'Owner' } },
+    { koleksi: 'penjualan', data: { id: 'dl3', trxId: 'tdl3', tanggal: '2026-09-19', jam: '10:05', caraBayar: 'Tunai', jenis: 'kasir_darurat_nominal', hargaTotal: 10000, oleh: '(darurat tanpa nama)' } },
+    { koleksi: 'penjualan', data: { id: 'dl4', trxId: 'tdl4', tanggal: '2026-08-20', jam: '09:00', caraBayar: 'Tunai', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, hargaTotal: 65000, oleh: 'Owner' } }]);
+  var teks = function (k) { return susunStruk(notaDari(k), stAtur(), null).kertas.map(function (t) { return t.trim(); }); };
+  ok('DL: struk nota tanpa dilayaniOleh = "Dilayani Owner" (yang mencatat)', teks({ trxId: 'tdl1' }).indexOf('Dilayani Owner') >= 0, JSON.stringify(teks({ trxId: 'tdl1' })));
+  var U = susunUbahDilayani(notaDari({ trxId: 'tdl1' }), 'Karyawan Uji', W);
+  ok('DL: ubah sesudahnya → KEDUA baris ditulis ulang dengan dilayaniOleh + dilayaniDiubahPada; oleh (yang mencatat) TIDAK berubah', !U.tolak && U.dokumen.length === 2 && U.dokumen.every(function (d) { return d.koleksi === 'penjualan' && d.data.dilayaniOleh === 'Karyawan Uji' && d.data.dilayaniDiubahPada && d.data.oleh === 'Owner'; }), JSON.stringify(U.tolak || U.dokumen));
+  terapkanKeCache(U.dokumen);
+  ok('DL: sesudahnya struk "Dilayani Karyawan Uji", tidak lagi "Dilayani Owner"; kabar menyebut catatan pencatat tidak berubah', teks({ trxId: 'tdl1' }).indexOf('Dilayani Karyawan Uji') >= 0 && teks({ trxId: 'tdl1' }).indexOf('Dilayani Owner') < 0 && /tidak berubah/.test(U.patch.kabar), JSON.stringify(teks({ trxId: 'tdl1' })));
+  ok('DL: memilih nama yang sama lagi DITOLAK (tidak menulis apa-apa)', /Tidak ada yang berubah/.test(susunUbahDilayani(notaDari({ trxId: 'tdl1' }), 'Karyawan Uji', W).tolak || ''));
+  var U0 = susunUbahDilayani(notaDari({ trxId: 'tdl1' }), '', W);
+  ok('DL: kembali ke yang mencatat → kolom dilayaniOleh DIHAPUS dari baris', !U0.tolak && U0.dokumen.every(function (d) { return !('dilayaniOleh' in d.data); }), JSON.stringify(U0.tolak || U0.dokumen));
+  ok('DL: karcis "(darurat tanpa nama)" tanpa baris Dilayani', !teks({ trxId: 'tdl3' }).some(function (t) { return /^Dilayani/.test(t); }), JSON.stringify(teks({ trxId: 'tdl3' })));
+  terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'kunciPeriode', sampaiBulan: '2026-08', riwayat: [] } }]);
+  ok('DL: nota di bulan TERKUNCI (Agustus) ditolak diubah, kalimatnya menyebut bulan terkunci', /terkunci/i.test(susunUbahDilayani(notaDari({ trxId: 'tdl4' }), 'Karyawan Uji', W).tolak || ''), susunUbahDilayani(notaDari({ trxId: 'tdl4' }), 'Karyawan Uji', W).tolak);
+  terapkanKeCache([{ koleksi: 'aturanToko', hapus: 'kunciPeriode' }]);
+})();
 print(JSON.stringify({ lulus: lulus, gagal: gagal, kunci: { retur: Object.keys(KUNCI.retur), karantina: Object.keys(KUNCI.karantina) } }));
 """
 
@@ -1038,6 +1066,12 @@ if __name__ == '__main__':
             'nominal: perbaikan tanpa barang tidak memakai nominal baru': js.replace("if (N.diubah) { pengganti.hargaTotal = N.nominal;", "if (false) { pengganti.hargaTotal = N.nominal;"),
             'nominal: nota yang dirapikan ikut bisa diubah nominalnya': js.replace("const sedang = !!k && k.jenisAsal === 'karcis' && k.nominalBaru", "const sedang = !!k && k.nominalBaru"),
             'nominal: dampak uang tidak disebut di ringkasan': js.replace("+ (N.diubah ? ' · ' + teksDampakNominal(k, cara, nama) : '');", ";"),
+            # ---- owner 17 Nov 2026 (butir 1 & 6): yang melayani ----
+            'dilayani: pilihan saat jual tidak ikut ke baris nota': js.replace("    if (dilayani) d.dilayaniOleh = dilayani;\n", "\n"),
+            'dilayani: struk tetap mencetak yang mencatat': js.replace("const n = String((nota && (nota.dilayani || nota.oleh)) || '').trim();", "const n = String((nota && nota.oleh) || '').trim();"),
+            'dilayani: ubah sesudahnya menimpa yang mencatat (oleh)': js.replace("const d = Object.assign({}, p, { dilayaniDiubahPada: kini }); if (n) d.dilayaniOleh = n;", "const d = Object.assign({}, p, { dilayaniDiubahPada: kini, oleh: n }); if (n) d.dilayaniOleh = n;"),
+            'dilayani: bulan terkunci lolos diubah': js.replace("const kunci = nota.baris.map((p) => tolakKunci('penjualan', p, 'nama yang melayani di bulan itu tidak bisa diubah lagi')).find(Boolean); if (kunci) return { tolak: kunci };", ""),
+            'dilayani: ubah hanya baris pertama nota': js.replace("const dokumen = nota.baris.map((p) => { const d = Object.assign({}, p, { dilayaniDiubahPada: kini });", "const dokumen = nota.baris.slice(0, 1).map((p) => { const d = Object.assign({}, p, { dilayaniDiubahPada: kini });"),
             # ---- owner 17 Nov 2026: rinci karcis — kekurangan bayar jadi bon ----
             'karcis bon: sisa jadi bon tanpa pelunasan saat beli (uang yang masuk hilang)': js.replace("if (H.bon) { piutangId = w.idUnik(); dokumen.push(", "if (false) { piutangId = w.idUnik(); dokumen.push("),
             'karcis bon: baris tetap bercara karcis, bukan Kredit (bon tidak bertambah, uang masuk dua kali)': js.replace("const caraBaris = H.bon ? 'Kredit' : cara;", "const caraBaris = cara;"),
@@ -1216,7 +1250,7 @@ if __name__ == '__main__':
             'saran lembar dibulatkan ke bawah': js.replace("return Math.max(1, Math.ceil(Math.round(k / d.ukuranKg * 1000) / 1000));", "return Math.max(1, Math.floor(Math.round(k / d.ukuranKg * 1000) / 1000));"),
             'struk parkir tidak memegang lembar wadah': js.replace("function wadahDipegangParkir(jenis) { return _antreanKini.reduce(", "function wadahDipegangParkir(jenis) { return [].reduce("),
             # ---- putaran 15: struk ----
-            'TOTAL struk bukan jumlah hargaTotal': js.replace("cara: bakuCaraBayar(p.caraBayar), oleh: p.oleh || '', total: rows.reduce((a, x) => a + (x.hargaTotal || 0), 0),", "cara: bakuCaraBayar(p.caraBayar), oleh: p.oleh || '', total: rows.reduce((a, x) => a + kotorBaris(x), 0),"),
+            'TOTAL struk bukan jumlah hargaTotal': js.replace("total: rows.reduce((a, x) => a + (x.hargaTotal || 0), 0), berlaku: berlaku.length === rows.length,", "total: rows.reduce((a, x) => a + kotorBaris(x), 0), berlaku: berlaku.length === rows.length,"),
             'potongan tidak tertulis di struk': js.replace("if (pot > 0) baris('Potongan', '−' + RP(pot));", ""),
             'sisa bon selalu ikut walau dimatikan': js.replace("if (S.bon && nota.nama) { const r = hitungPiutang()", "if (nota.nama) { const r = hitungPiutang()"),
             'kolom 80 mm sama dengan 58 mm': js.replace("const ST_KOLOM = { 58: 30, 80: 42 };", "const ST_KOLOM = { 58: 30, 80: 30 };"),

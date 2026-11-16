@@ -4,7 +4,7 @@
 // aturanToko/struk. Kirim WA = wa.me TANPA nomor (WhatsApp yang bertanya ke siapa) — nomor pembeli tidak disimpan, sama dengan
 // sistem lama (kirimStrukTrx). Tiap struk yang keluar dicatat di koleksi baru `strukKeluar`.
 // Yang dicetak = teks yang sama lewat dialog cetak perangkat (printer struk tertanam baru ada di tablet karyawan, belum dibangun).
-import { ambilPenjualanSemua, ambilRetur, ambilStrukKeluar, ambilPiutangMutasi, cacheMentah } from '../data/toko.js';
+import { ambilPenjualanSemua, ambilRetur, ambilStrukKeluar, ambilPiutangMutasi, cacheMentah, tolakKunci } from '../data/toko.js';
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, bakuCaraBayar, formatTanggal, isoKeTanggal, penjualanMasihBerlaku } from '../mesin/pembantu.js';
 import { RP, hariIniIso, LEBIH_AMBANG, pecahLebih } from '../inti/format.js';
@@ -81,10 +81,27 @@ export function notaDariBaris(baris) {
   const p = rows[0]; const berlaku = rows.filter(penjualanMasihBerlaku);
   const uang = rows.find((x) => (x.uangDiterima || x.kembalianUangDiterima) > 0) || null;
   return { baris: rows, trxId: p.trxId || null, grupNota: p.grupNota || null, id: p.id, tanggal: p.tanggal || '', jam: p.jam || '', nama: String(p.namaPelanggan || '').trim(),
-    cara: bakuCaraBayar(p.caraBayar), oleh: p.oleh || '', total: rows.reduce((a, x) => a + (x.hargaTotal || 0), 0), berlaku: berlaku.length === rows.length,
+    cara: bakuCaraBayar(p.caraBayar), oleh: p.oleh || '', dilayani: String((rows.find((x) => String(x.dilayaniOleh || '').trim()) || {}).dilayaniOleh || '').trim(), total: rows.reduce((a, x) => a + (x.hargaTotal || 0), 0), berlaku: berlaku.length === rows.length,
     dibatalkan: rows.some((x) => x.dibatalkan), dikoreksi: rows.some((x) => x.dikoreksiOleh && !x.dibatalkan),
     uangDiterima: uang ? (uang.uangDiterima || uang.kembalianUangDiterima || 0) : 0, kembalian: uang ? (uang.kembalian || uang.kembalianNominal || 0) : 0,
     tukarReturId: rows.map((x) => x.tukarReturId).filter(Boolean)[0] || null, kreditDibukaOwner: rows.some((x) => x.kreditDibukaOwner) };
+}
+/** Nama yang melayani nota: dilayaniOleh (dipilih owner) → oleh (yang mencatat). '' bila oleh berbentuk "(darurat tanpa nama)" — bukan nama orang. */
+export function stPelayan(nota) { const n = String((nota && (nota.dilayani || nota.oleh)) || '').trim(); return /^\(/.test(n) ? '' : n; }
+// ---------- yang melayani (owner 17 Nov 2026, butir 1 & 6) ----------
+// Mode owner: nota yang dicatat owner sering DILAYANI karyawan (owner mencatat, karyawan menimbang & menyerahkan). Struk dulu selalu menulis
+// "Dilayani <yang mencatat>". Kini tiap baris nota boleh membawa dilayaniOleh (nama orang) — dipilih saat jual atau diubah sesudahnya dari lembar Struk.
+// oleh / diubahOleh (jejak siapa yang MENCATAT) tidak pernah diubah. Daftar nama datang dari pemanggil (karyawan aktif + orang di tablet) — tanpa nama di kode.
+/** Ubah yang melayani satu nota: semua barisnya ditulis ulang dengan dilayaniOleh. nama '' = kembali ke yang mencatat. Bulan terkunci ditolak. */
+export function susunUbahDilayani(nota, nama, w) {
+  if (!nota || !nota.baris || !nota.baris.length) return { tolak: 'Nota ini tidak ditemukan di data perangkat ini' };
+  const n = String(nama || '').trim().slice(0, 40); const lama = String(nota.dilayani || '').trim();
+  if (n === lama) return { tolak: 'Tidak ada yang berubah — ' + (n ? n : 'yang mencatat') + ' memang yang tertulis melayani' };
+  const kunci = nota.baris.map((p) => tolakKunci('penjualan', p, 'nama yang melayani di bulan itu tidak bisa diubah lagi')).find(Boolean); if (kunci) return { tolak: kunci };
+  const kini = (w && w.kini) || new Date().toISOString();
+  const dokumen = nota.baris.map((p) => { const d = Object.assign({}, p, { dilayaniDiubahPada: kini }); if (n) d.dilayaniOleh = n; else delete d.dilayaniOleh; return { koleksi: 'penjualan', data: d }; });
+  const jadi = n || String(nota.oleh || '').trim() || 'yang mencatat';
+  return { dokumen, patch: { kabar: 'Struk ' + (nota.nama || 'tanpa nama') + ' ' + RP(nota.total) + ' kini "Dilayani ' + jadi + '"' + (lama ? ' (tadinya ' + lama + ')' : '') + ' — catatan siapa yang mencatat tidak berubah', kabarAwas: false } };
 }
 /** Cari nota: kunci = { trxId } | { grupNota } | { id }. */
 export function notaDari(kunci) {
@@ -153,7 +170,8 @@ export function susunStruk(nota, atur, pilih) {
   const d = nota.tanggal ? isoKeTanggal(nota.tanggal) : null;
   baris((d ? ST_HARI[d.getDay()] + ', ' : '') + formatTanggal(nota.tanggal) + (nota.jam ? ' · ' + nota.jam : ''), '');
   baris(nota.nama || 'Tanpa nama', '');
-  if (S.pelayan && nota.oleh && !/^\(/.test(nota.oleh)) baris('Dilayani ' + nota.oleh, '');   // kolom oleh berbentuk "(darurat tanpa nama)" bukan nama orang
+  const pelayan = stPelayan(nota);   // owner 17 Nov: yang melayani (dilayaniOleh) menang atas yang mencatat (oleh)
+  if (S.pelayan && pelayan) baris('Dilayani ' + pelayan, '');
   garis();
   let pot = 0, bulat = 0, upah = 0;
   nota.baris.forEach((p) => { pot += p.potonganTransaksi || 0; bulat += p.pembulatan || 0; upah += p.upahRepack || 0; });

@@ -52,7 +52,7 @@ export function rwSemuaNota() {
     const jenis = {}; tampil.forEach((p) => { jenis[rwJenisBaris(p)] = true; });
     const total = hidup.reduce((a, p) => a + (p.hargaTotal || 0), 0);
     return { kunci: k, trxId: p0.trxId || null, grupNota: p0.grupNota || null, id: String(p0.id), tanggal: String(p0.tanggal || ''), jam: String(p0.jam || ''), nama: String(p0.namaPelanggan || '').trim(),
-      cara: bakuCaraBayar(p0.caraBayar), oleh: String(p0.oleh || p0.operator || '').trim(), total: Math.round(total), totalAsli: Math.round(rows.reduce((a, p) => a + (p.hargaTotal || 0), 0)),
+      cara: bakuCaraBayar(p0.caraBayar), oleh: String(p0.oleh || p0.operator || '').trim(), dilayani: String((rows.find((x) => String(x.dilayaniOleh || '').trim()) || {}).dilayaniOleh || '').trim(), total: Math.round(total), totalAsli: Math.round(rows.reduce((a, p) => a + (p.hargaTotal || 0), 0)),
       kg: Math.round(hidup.reduce((a, p) => a + (Number(p.totalKg) || 0), 0) * 100) / 100, status, baris, jenis, karcis: !!jenis.karcis, tandai: baris.some((b) => b.tandai),
       bisaRetur: baris.some((b) => b.bisaRetur), nBaris: baris.length };
   }).sort((a, b) => (b.tanggal + ' ' + b.jam).localeCompare(a.tanggal + ' ' + a.jam) || (Number(b.id) || 0) - (Number(a.id) || 0));

@@ -73,6 +73,7 @@ export function keadaanAwal() {
     antrean: [], aktifId: 1, idBerikut: 2, urutBaris: 0,
     pulihPeriksa: [],   // tinjauan 7 Okt: id baris yang DIPULIHKAN sesudah halaman dimuat ulang — dibangun ulang dari katalog sekarang saat nota dicatat (periksaPulih)
     kreditDibuka: false, notaTerakhir: null,
+    dilayani: '',   // owner 17 Nov 2026 (butir 1 & 6): nama yang MELAYANI pembeli (mode owner) — jual.js mengisinya dari pilihan terakhir perangkat; '' = yang mencatat
     pesananId: null, psNama: '', psIsi: '', psAlamat: '', psNilai: '', psSaring: '',
     tukar: null,   // PUTARAN 4: { returDraf, kredit, ringkas } — retur tukar yang diikat ke keranjang ini (_tukarKeJual index.html 16838); PUTARAN 20: { susulanReturId, kredit 0, … } = pengganti tukar yatim
     karcis: null,  // PUTARAN 20: karcis kasir darurat / nota perlu-dirapikan yang sedang dirinci lewat keranjang ini (karcis-logika.js)
@@ -1069,6 +1070,7 @@ export function alasanTolak(s) {
 export function susunNotaDokumen(s, w) {
   const items = pecahItemsWadah(s.keranjang.map((b) => Object.assign({}, b.trx)), s);   // putaran 27: satu takaran wadah → baris internal per merek asal
   const nama = String(s.pelanggan || '').trim();
+  const dilayani = String(s.dilayani || '').trim().slice(0, 40);   // owner 17 Nov: dilayaniOleh = yang melayani (struk); oleh tetap = yang mencatat (jejak)
   const subtotal = items.reduce((a, t) => a + t.hargaTotal, 0);
   const pot = Math.max(0, Math.round(s.potongan || 0));
   const potDipakai = Math.min(pot, subtotal);
@@ -1096,6 +1098,7 @@ export function susunNotaDokumen(s, w) {
     // putaran 27 (Bagian 4): ½ karung — 1 × 50 kg dipecah jadi 2 × 25 kg (penyusun Adukan) di kiriman yang sama; modal baris = modal 25 kg hasil pecahan
     if (t.setengahDari) { const pc = skPecah(t, w); if (pc.tolak) tolakPecah = tolakPecah || pc.tolak; else { d.dariSetengah = pc.idProduksi; d.hppTotalSaatJual = Math.round(pc.hppPerUnit); pc.dokumen.forEach((x) => dokumen.push(x)); } }
     d.id = w.idUnik(); d.trxId = trxId; d.tanggal = w.tanggal; d.jam = w.jam; d.caraBayar = cara; d.namaPelanggan = nama;
+    if (dilayani) d.dilayaniOleh = dilayani;
     if (t._takaran) d.takaranId = takaranPertama[t._takaran] || (takaranPertama[t._takaran] = String(d.id));   // pengikat baris internal satu takaran (struk menggabung)
     d.hargaAsliSatuan = t.hargaAsli;                                   // harga daftar sebelum tawar (kebal riwayat)
     if (t.nego) d.negoSelisih = t.hargaSatuan - t.hargaAsli;          // jejak tawar (NG1)
