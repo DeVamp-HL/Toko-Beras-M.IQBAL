@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/batal-nota-logika.js']
 
 # KOTAK PASIR — angka contoh, bukan angka toko
 KOTAK = {
@@ -960,6 +960,59 @@ Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
   ok('DL: nota di bulan TERKUNCI (Agustus) ditolak diubah, kalimatnya menyebut bulan terkunci', /terkunci/i.test(susunUbahDilayani(notaDari({ trxId: 'tdl4' }), 'Karyawan Uji', W).tolak || ''), susunUbahDilayani(notaDari({ trxId: 'tdl4' }), 'Karyawan Uji', W).tolak);
   terapkanKeCache([{ koleksi: 'aturanToko', hapus: 'kunciPeriode' }]);
 })();
+
+// ================= owner 17 Nov 2026 (butir 2): BATAL NOTA APA PUN DARI RIWAYAT (owner) =================
+(function () {
+  terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
+  var jl = function (id, trx, tgl, jam, cara, harga, lain) { return { koleksi: 'penjualan', data: Object.assign({ id: id, trxId: trx, tanggal: tgl, jam: jam, caraBayar: cara, jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, hargaTotal: harga, hppTotalSaatJual: Math.round(harga * 0.9) }, lain || {}) }; };
+  terapkanKeCache([
+    jl(50001, 'tbn1', '2026-09-18', '10:00', 'Tunai', 65000), jl(50003, 'tbn1', '2026-09-18', '10:00', 'Tunai', 27000, { jenis: 'literan', merkSumber: 'Angsa', jumlahLiter: 2, totalKg: 1.64, kemasanLiteran: 'paperbag5l', jumlahKemasanLiteranDipakai: 1 }),
+    { koleksi: 'stokBahanLiteran', data: { id: 50004, tipe: 'pakai', jenis: 'paperbag5l', jumlah: 1, hargaTotal: 0, tanggal: '2026-09-18' } },
+    { koleksi: 'tutupHari', data: { id: '2026-09-18', tanggal: '2026-09-18', jam: '21:00', selisih: -92000, kasSeharusnya: 500000, kasFisikLaci: 408000 } },
+    jl(50011, 'tbn2', '2026-09-17', '19:00', 'Tunai', 30000),
+    { koleksi: 'tutupHari', data: { id: '2026-09-17', tanggal: '2026-09-17', jam: '22:00', selisih: 0, kasSeharusnya: 400000, riwayat: [{ id: '2026-09-17', tanggal: '2026-09-17', jam: '20:00', selisih: -30000, kasSeharusnya: 430000 }] } },
+    jl(50021, 'tbn3', '2026-09-16', '19:30', 'Tunai', 40000),
+    { koleksi: 'tutupHari', data: { id: '2026-09-16', tanggal: '2026-09-16', jam: '18:00', selisih: -5000, kasSeharusnya: 300000 } },
+    jl(50031, 'tbn4', '2026-09-19', '09:00', 'Kredit', 100000, { namaPelanggan: 'Bonbon Uji' }),
+    { koleksi: 'piutangMutasi', data: { id: 50032, tipe: 'bayar', namaPelanggan: 'Bonbon Uji', nominal: 60000, tanggal: '2026-09-19', jam: '09:00', caraBayar: 'Tunai', notaTrxId: 'tbn4', catatan: 'Dibayar langsung saat beli — sisa Rp40.000 jadi piutang' } },
+    jl(50041, 'tbn5', '2026-09-15', '09:00', 'Kredit', 50000, { namaPelanggan: 'Lunas Uji' }),
+    { koleksi: 'piutangMutasi', data: { id: 50042, tipe: 'bayar', namaPelanggan: 'Lunas Uji', nominal: 50000, tanggal: '2026-09-18', jam: '12:00', caraBayar: 'Tunai' } },
+    jl(50051, 'tbn6', '2026-09-15', '11:00', 'Tunai', 65000),
+    { koleksi: 'retur', data: { id: 50052, tanggal: '2026-09-16', jam: '10:00', notaAsalId: 50051, nominalRefund: 65000, jenisAsal: 'kemasan' } },
+    jl(50061, 'tbn7', '2026-09-19', '09:30', 'QRIS', 65000, { namaPelanggan: 'Pesan Uji' }),
+    { koleksi: 'pesanan', data: { id: 'ps9', namaPelanggan: 'Pesan Uji', status: 'dibayar', trxIdJual: 'tbn7', riwayatStatus: [{ status: 'dipesan' }, { status: 'diantar' }, { status: 'dibayar' }] } },
+    jl(50071, 'tbn8', '2026-08-20', '09:00', 'Tunai', 65000),
+    { koleksi: 'penjualan', data: { id: 50081, tanggal: '2026-09-19', jam: '08:00', caraBayar: 'Tunai', jenis: 'kasir_darurat_nominal', hargaTotal: 12000, grupNota: 50081, oleh: '(darurat tanpa nama)', perangkat: 'd-contoh' } }]);
+  var P = bnPeriksa({ trxId: 'tbn1' });
+  ok('BN: nota Tunai di hari yang SUDAH DITUTUP → jalur nota, akibat menyebut omzet, laci seharusnya, dan selisih malam itu kurang 92.000 → pas', !P.tolak && P.jalur === 'nota' && P.akibat.some(function (t) { return /Omzet 18 Sep 2026 turun Rp92\.000/.test(t); }) && P.akibat.some(function (t) { return /dibetulkan kurang Rp92\.000 → pas/.test(t); }), JSON.stringify(P.tolak || P.akibat));
+  ok('BN: alasan WAJIB', /alasannya/.test(bnSusun({ trxId: 'tbn1' }, ' x ', W).tolak || ''));
+  var R = bnSusun({ trxId: 'tbn1' }, 'uji coba', W); var pj = (R.dokumen || []).filter(function (d) { return d.koleksi === 'penjualan'; }); var td = ((R.dokumen || []).find(function (d) { return d.koleksi === 'tutupHari'; }) || {}).data || {};
+  ok('BN: kedua baris DITANDAI dibatalkan (tidak dihapus), alasan menyebut Riwayat; kantong literan id+1 dicabut', !R.tolak && pj.length === 2 && pj.every(function (d) { return d.data.dibatalkan === true && /Dibatalkan owner dari Riwayat: uji coba/.test(d.data.alasanKoreksi); }) && R.hapus.some(function (x) { return x.koleksi === 'stokBahanLiteran' && x.id === 50004; }) && !R.hapus.some(function (x) { return x.koleksi === 'penjualan'; }), JSON.stringify(R.tolak || R.hapus));
+  ok('BN: penutupan 18 Sep dibetulkan: selisih −92.000 → 0, laci seharusnya 500.000 → 408.000, hitungan fisik TETAP, jejak koreksiBatalNota', td.selisih === 0 && td.kasSeharusnya === 408000 && td.kasFisikLaci === 408000 && td.koreksiBatalNota && td.koreksiBatalNota[0].tunai === 92000 && td.koreksiBatalNota[0].trxId === 'tbn1', JSON.stringify(td));
+  terapkanKeCache(R.dokumen); R.hapus.forEach(function (x) { terapkanKeCache([{ koleksi: x.koleksi, hapus: x.id }]); });
+  ok('BN: sesudahnya nota tidak bisa dibatalkan lagi', /sudah dibatalkan/.test(bnPeriksa({ trxId: 'tbn1' }).tolak || ''));
+  // tutup ulang: penutupan PERTAMA sesudah jam nota (di riwayat) yang dibetulkan, bukan yang teratas
+  var R2 = bnSusun({ trxId: 'tbn2' }, 'salah catat', W); var t2 = ((R2.dokumen || []).find(function (d) { return d.koleksi === 'tutupHari'; }) || {}).data || {};
+  ok('BN: tutup ulang — penutupan jam 20:00 (riwayat) dibetulkan −30.000 → 0; penutupan 22:00 tidak disentuh', !R2.tolak && t2.riwayat && t2.riwayat[0].selisih === 0 && t2.riwayat[0].kasSeharusnya === 400000 && t2.selisih === 0 && t2.kasSeharusnya === 400000, JSON.stringify(R2.tolak || t2));
+  // nota dicatat sesudah penutupan terakhir hari itu: penutupan tidak tersentuh
+  var P3 = bnPeriksa({ trxId: 'tbn3' }); var R3 = bnSusun({ trxId: 'tbn3' }, 'salah catat', W);
+  ok('BN: nota jam 19:30 sesudah tutup jam 18:00 → penutupan TIDAK diubah, disebut', !R3.tolak && !(R3.dokumen || []).some(function (d) { return d.koleksi === 'tutupHari'; }) && P3.akibat.some(function (t) { return /ditutup sebelum nota ini dicatat/.test(t); }), JSON.stringify(R3.tolak || P3.akibat));
+  // bayar sebagian: pelunasan saat beli ikut dicabut, bon berkurang 40.000
+  var P4 = bnPeriksa({ trxId: 'tbn4' }); var R4 = bnSusun({ trxId: 'tbn4' }, 'salah catat', W);
+  ok('BN: nota bon dibayar sebagian → pelunasan saat beli (60.000) ikut dicabut; akibat: bon berkurang 40.000', !R4.tolak && R4.hapus.some(function (x) { return x.koleksi === 'piutangMutasi' && x.id === 50032; }) && P4.akibat.some(function (t) { return /Bon Bonbon Uji berkurang Rp40\.000/.test(t); }), JSON.stringify(R4.tolak || R4.hapus));
+  var b4 = function () { var r = hitungPiutang().find(function (x) { return x.kunci === kunciPelanggan('Bonbon Uji'); }); return r ? r.sisa : 0; }; var b40 = b4();
+  terapkanKeCache(R4.dokumen); R4.hapus.forEach(function (x) { terapkanKeCache([{ koleksi: x.koleksi, hapus: x.id }]); });
+  ok('BN: sesudahnya bon Bonbon Uji turun tepat 40.000 (jadi 0)', b40 === 40000 && b4() === 0, JSON.stringify([b40, b4()]));
+  ok('BN: nota bon yang sudah DIBAYAR (sisa bon 0) ditolak — bon akan minus', /sudah ikut dibayar/.test(bnPeriksa({ trxId: 'tbn5' }).tolak || ''), bnPeriksa({ trxId: 'tbn5' }).tolak);
+  ok('BN: nota yang barangnya sudah DIRETUR ditolak', /sudah diretur/.test(bnPeriksa({ trxId: 'tbn6' }).tolak || ''), bnPeriksa({ trxId: 'tbn6' }).tolak);
+  var R7 = bnSusun({ trxId: 'tbn7' }, 'uji coba', W); var ps7 = ((R7.dokumen || []).find(function (d) { return d.koleksi === 'pesanan'; }) || {}).data || {};
+  ok('BN: nota pesanan → pesanan kembali ke "diantar" (status sebelum dibayar); QRIS disebut, tanpa penutupan', !R7.tolak && ps7.status === 'diantar' && !(R7.dokumen || []).some(function (d) { return d.koleksi === 'tutupHari'; }) && /QRIS 19 Sep 2026 turun Rp65\.000/.test(R7.patch.kabar), JSON.stringify(R7.tolak || [ps7, R7.patch && R7.patch.kabar]));
+  terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'kunciPeriode', sampaiBulan: '2026-08', riwayat: [] } }]);
+  ok('BN: nota bulan TERKUNCI ditolak', /terkunci/i.test(bnPeriksa({ trxId: 'tbn8' }).tolak || ''), bnPeriksa({ trxId: 'tbn8' }).tolak);
+  terapkanKeCache([{ koleksi: 'aturanToko', hapus: 'kunciPeriode' }]);
+  var P9 = bnPeriksa({ grupNota: 50081 }); var R9 = bnSusun({ grupNota: 50081 }, 'salah ketik', W);
+  ok('BN: karcis kasir darurat → jalur karcis (susunBatalKarcis): baris ditandai dibatalkan', !P9.tolak && P9.jalur === 'karcis' && !R9.tolak && R9.jalur === 'karcis' && R9.dokumen[0].data.dibatalkan === true, JSON.stringify(R9.tolak || P9.jalur));
+})();
 print(JSON.stringify({ lulus: lulus, gagal: gagal, kunci: { retur: Object.keys(KUNCI.retur), karantina: Object.keys(KUNCI.karantina) } }));
 """
 
@@ -1066,6 +1119,17 @@ if __name__ == '__main__':
             'nominal: perbaikan tanpa barang tidak memakai nominal baru': js.replace("if (N.diubah) { pengganti.hargaTotal = N.nominal;", "if (false) { pengganti.hargaTotal = N.nominal;"),
             'nominal: nota yang dirapikan ikut bisa diubah nominalnya': js.replace("const sedang = !!k && k.jenisAsal === 'karcis' && k.nominalBaru", "const sedang = !!k && k.nominalBaru"),
             'nominal: dampak uang tidak disebut di ringkasan': js.replace("+ (N.diubah ? ' · ' + teksDampakNominal(k, cara, nama) : '');", ";"),
+            # ---- owner 17 Nov 2026 (butir 2): batal nota dari Riwayat ----
+            'batal: penutupan hari itu tidak dibetulkan (laba kena dua kali)': js.replace("if (P.tutup) dokumen.push(bnDokTutup(", "if (false) dokumen.push(bnDokTutup("),
+            'batal: selalu penutupan teratas yang dibetulkan (tutup ulang salah malam)': js.replace("const kena = urut.find((x) => bnJam(x.dok.jam) >= bnJam(nota.jam)) || null;", "const kena = urut[urut.length - 1];"),
+            'batal: selisih dibetulkan ke arah yang salah': js.replace("d[k] = d[k] + T.tunai;", "d[k] = d[k] - T.tunai;"),
+            'batal: pelunasan saat beli tidak ikut dicabut': js.replace("piutangId: bb ? bb.id : null,", "piutangId: null,"),
+            'batal: pesanan tetap DIBAYAR': js.replace("pesanan: pesanan ? { id: String(pesanan.id), statusSebelum } : null,", "pesanan: null,"),
+            'batal: bon yang sudah dibayar boleh dibatalkan (bon minus)': js.replace("if (sisa - bonBerkurang < LEBIH_AMBANG) return", "if (false) return"),
+            'batal: nota yang sudah diretur boleh dibatalkan': js.replace("if (sudahRetur.length) return", "if (false) return"),
+            'batal: bulan terkunci lolos': js.replace("const kunciBulan = rows.map((p) => tolakKunci('penjualan', p, BN_TERKUNCI)).find(Boolean); if (kunciBulan) return { tolak: kunciBulan };", ""),
+            'batal: alasan tidak wajib': js.replace("if (a.length < 3) return { tolak: 'Tulis alasannya dulu (mis. salah catat, uji coba)' };", ""),
+            'batal: karcis darurat lewat jalur nota biasa': js.replace("if (rows.length === 1 && kcDariDarurat(rows[0])) return", "if (false) return"),
             # ---- owner 17 Nov 2026 (butir 1 & 6): yang melayani ----
             'dilayani: pilihan saat jual tidak ikut ke baris nota': js.replace("    if (dilayani) d.dilayaniOleh = dilayani;\n", "\n"),
             'dilayani: struk tetap mencetak yang mencatat': js.replace("const n = String((nota && (nota.dilayani || nota.oleh)) || '').trim();", "const n = String((nota && nota.oleh) || '').trim();"),
@@ -1127,7 +1191,7 @@ if __name__ == '__main__':
             'pencocokan pelunasan lama tanpa angka yang menutup': js.replace(" && sisaCatatan(m) !== null && Math.abs((Number(m.nominal) || 0) + sisaCatatan(m) - nota.total) < 1);", ");"),
             'sisa nota ini = TOTAL (uang yang diterima tidak dikurangkan)': js.replace("sisaNota = nota.total - bb.nominal;", "sisaNota = nota.total;"),
             'saldo bon tanpa tanggal saat struk disusun': js.replace(" baris('  per ' + formatTanggal(sisaBonPer), '');", ""),
-            'pembatalan tidak melepas pelunasan sebagian': js.replace("if (notaTerakhir.piutangId) hapus.push({ koleksi: 'piutangMutasi', id: notaTerakhir.piutangId });", ""),
+            'pembatalan tidak melepas pelunasan sebagian': js.replace("[].concat(notaTerakhir.piutangId || []).forEach((id) => hapus.push({ koleksi: 'piutangMutasi', id }));", ""),
             'isian layar bocor ke dokumen (label/satuan)': js.replace("['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'setengahDari', 'setengahHargaBaru', 'pecahan', '_takaran'].forEach((k) => { delete d[k]; });", ""),   # putaran 27: + bendera ½ karung
             # ---- putaran 3 ----
             'repacking tidak menimba kolam kg (stok karung tidak turun)': js.replace("(t.jenis === 'karung' || t.jenis === 'literan' || t.jenis === 'repacking')", "(t.jenis === 'karung' || t.jenis === 'literan')"),

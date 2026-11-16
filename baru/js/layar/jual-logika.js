@@ -79,6 +79,7 @@ export function keadaanAwal() {
     karcis: null,  // PUTARAN 20: karcis kasir darurat / nota perlu-dirapikan yang sedang dirinci lewat keranjang ini (karcis-logika.js)
     tembusTanya: null, tembusYakin: false,   // PUTARAN 31b: jual dulu, tandai untuk dicocokkan (owner, ketukan kedua)
     kcPilih: null, // PUTARAN 31.1: tebakan karcis yang namanya seharga dan sedang ditanyakan (karcis-logika kelompokkanTebakan)
+    bnBuka: null,  // owner 17 Nov 2026 (butir 2): { k, trxId, grupNota, id, alasan, yakin } — nota Riwayat yang sedang dibatalkan owner (batal-nota-logika.js)
     kcBatal: null, // PUTARAN 25b: { id, alasan } — karcis kasir darurat yang sedang dibatalkan dari lembar Karcis (karcis-logika susunBatalKarcis)
     // PUTARAN 15: isian repack (wadah dipilih, lembar, dijual/ditanggung, upah) & struk (nota yang dibuka, timpaan kertas/sertakan, draf setelan)
     rpWadah: '', rpLembar: '', rpDijual: true, rpUpah: '', setengahHarga: '', arYakin: '',
@@ -899,7 +900,7 @@ export function barisBelumDisimpan(s) {
 export const kalimatKeranjangKeluar = (n) => 'Keranjang berisi ' + n + ' baris belum disimpan — simpan atau kosongkan?';
 // putaran 23d: isian Jual SELAIN keranjang — pesanan yang sedang diketik, retur (tanpa/dengan nota), repack, setelan struk/wadah yang terbuka, karcis yang dirinci, tukar
 // owner 7 Okt (JS2-C): alasan nego di bawah modal & alasan owner menolak permintaan nego = isian ketik juga
-const ISIAN_JUAL_LAIN = ['psNama', 'psIsi', 'psAlamat', 'psNilai', 'aturStruk', 'aturWadah', 'karcis', 'kcBatal', 'tukar', 'namaRepack', 'rpWadah', 'rpLembar', 'rpUpah', 'setengahHarga',
+const ISIAN_JUAL_LAIN = ['psNama', 'psIsi', 'psAlamat', 'psNilai', 'aturStruk', 'aturWadah', 'karcis', 'kcBatal', 'bnBuka', 'tukar', 'namaRepack', 'rpWadah', 'rpLembar', 'rpUpah', 'setengahHarga',
   'rtNotaId', 'rtAlasan', 'rtNominal', 'rtAlasanTimpa', 'rtBarang', 'rtSelisih', 'rtPengganti', 'negoAlasan', 'ngAlasanTolak'];
 export function adaIsianLain(s) { const a = keadaanAwal(); return ISIAN_JUAL_LAIN.some((k) => JSON.stringify(s[k] === undefined ? null : s[k]) !== JSON.stringify(a[k] === undefined ? null : a[k])); }
 /** Keadaan Jual untuk orang berikutnya: keranjang, parkir, nama pembeli, potongan, retur tukar, karcis, pesanan, isian — dibuang semua; yang tinggal cuma
@@ -1253,7 +1254,7 @@ export function susunPembatalan(notaTerakhir, alasan, w) {
   const hapus = baris.filter((p) => p.jenis === 'literan' && p.kemasanLiteran).map((p) => ({ koleksi: 'stokBahanLiteran', id: p.id + 1 }));
   // wadah yang dijual / ditanggung toko: dokumen pakai id+1 ikut dicabut supaya buku kantongnya pulih
   baris.forEach((p) => { if (p.jenis === 'wadah' && p.jenisWadah) hapus.push({ koleksi: koleksiWadah(p.jenisWadah), id: p.id + 1 }); if (p.kemasanRepack && p.jumlahKemasanRepackDipakai > 0) hapus.push({ koleksi: koleksiWadah(p.kemasanRepack), id: p.id + 1 }); });
-  if (notaTerakhir.piutangId) hapus.push({ koleksi: 'piutangMutasi', id: notaTerakhir.piutangId });
+  [].concat(notaTerakhir.piutangId || []).forEach((id) => hapus.push({ koleksi: 'piutangMutasi', id }));   // owner 17 Nov: Riwayat menyusun ulang tautan dari data — pelunasan saat beli bisa lebih dari satu
   skHapusPemecah(baris).forEach((x) => hapus.push(x));   // putaran 27: ½ karung — pemecah 50 → 2 × 25 ikut dicabut bila sisanya belum terpakai
   // nota TUKAR: retur (+ karantina) lahir bersama nota ini, jadi ikut dicabut — kalau tidak, barang tercatat kembali tanpa penggantinya
   if (notaTerakhir.retur) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id }); if (notaTerakhir.retur.karantina) hapus.push({ koleksi: 'karantina', id: notaTerakhir.retur.id }); }
