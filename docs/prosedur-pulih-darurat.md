@@ -90,7 +90,7 @@
    - Berkas dari era tutup buku yang lain ditolak sendiri (penjaga era).
    - Sesudahnya: tutup tab, **matikan server** (Ctrl-C), hapus folder (`git worktree remove /tmp/sistem-lama` atau `rm -rf /tmp/sistem-lama`).
 3. **Kembalikan `firestore.rules` SEGERA.** Tempel isi `firestore.rules` → **Publish**. Sidiknya dihitung dari repo SAAT ITU
-   (`shasum -a 256 firestore.rules`; per 16 Nov 2026 = v8, berawalan `dde96b73`, 51.680 byte; baris 2 editor `ATURAN FIRESTORE v8 FINAL`). Catat jam.
+   (`shasum -a 256 firestore.rules`; per 17 Nov 2026 = v9, berawalan `b1604043`, 53.081 byte; baris 2 editor `ATURAN FIRESTORE v9 FINAL`). Catat jam.
    Jendela darurat = jam langkah 1 sampai jam langkah 3. Kalau langkah 0 menambahkan `localhost:8731` di kunci API: cabut barisnya sekarang, catat jamnya.
 4. **Periksa aturan yang berlaku — owner sendiri, empat hal:**
    - (a) **Isi editor = berkas repo.** Di Console › Rules klik di editor → ⌘A → ⌘C, lalu di Terminal (folder repo, sesudah `git fetch origin`):
@@ -98,7 +98,7 @@
      `LANG=en_US.UTF-8 pbpaste | diff - <(git show origin/main:firestore.rules)`: kalau yang beda hanya baris terakhir dengan catatan
      `\ No newline at end of file`, itu soal baris baru di akhir, bukan beda isi [BELUM TERVERIFIKASI: belum pernah diamati apakah editor Console
      menambah / membuang baris baru terakhir].
-   - (b) Baris 2 editor berbunyi `ATURAN FIRESTORE v8 FINAL` (= baris 2 berkas repo saat itu).
+   - (b) Baris 2 editor berbunyi `ATURAN FIRESTORE v9 FINAL` (= baris 2 berkas repo saat itu).
    - (c) **Rules Playground — HANYA empat kasus:** ★A1 LOLOS, ★K3 DITOLAK, ★F1 LOLOS, ★R1 LOLOS. Isian & akunnya di `docs/uji-rules-v7.md` (tabel
      "Wajib owner" no. 1, 3, 4, 5; bagian "Isian Playground"); keempatnya lulus di Playground 7 Okt (bagian "Hasil Playground"). Keempatnya kasus *create*
      tanpa dokumen uji, dan Playground tidak menulis apa pun. Kasus lain di berkas itu JANGAN dijalankan saat darurat: sebagian tidak bisa dinilai
@@ -106,11 +106,11 @@
    - (d) Satu nota dari kasir darurat (HP penjaga) → masuk di Jual `/baru/`.
 
    Ada yang tidak sesuai → tempel lagi `firestore.rules` dari repo → Publish, ulangi (a)–(d) **sekali**. Masih tidak sesuai:
-   - **(b) baris 2 BUKAN `ATURAN FIRESTORE v8 FINAL`** (aturan darurat atau aturan lain masih terpasang) → JANGAN berhenti. Salin ulang dengan
+   - **(b) baris 2 BUKAN `ATURAN FIRESTORE v9 FINAL`** (aturan darurat atau aturan lain masih terpasang) → JANGAN berhenti. Salin ulang dengan
      `git show origin/main:firestore.rules | LANG=en_US.UTF-8 pbcopy`, tempel, Publish, baca pesan galat Publish kalau ada, ulangi sampai baris 2 =
      v7 FINAL. Selama itu penjaga tetap berhenti mencatat dan aplikasi di perangkat lain jangan dibuka: aturan darurat tidak boleh tertinggal (lihat
      "Yang tidak boleh").
-   - **Baris 2 = `ATURAN FIRESTORE v8 FINAL`**, bedanya hanya di sidik / komentar (a) atau di (c) / (d) → berhenti menempel (jangan v3 lagi, jangan v6):
+   - **Baris 2 = `ATURAN FIRESTORE v9 FINAL`**, bedanya hanya di sidik / komentar (a) atau di (c) / (d) → berhenti menempel (jangan v3 lagi, jangan v6):
      biarkan yang terpasang, tulis hal yang tidak sesuai + tangkapan layarnya di catatan langkah 5. Kalau yang gagal (d): penjaga mencatat di kertas,
      owner memindahkannya ke `/baru/`.
 5. **Periksa & catat.**
@@ -419,8 +419,8 @@ Berita acara baru bisa "selesai" / "dibatalkan" hanya bersama pintu yang ditutup
 tidak bisa dihapus, jadi pintu tahun itu tidak bisa dibuka lagi.
 
 Yang perlu diingat saat ritual Januari 2028 (dan sesudahnya):
-- **Rules v8 harus yang terbit** (= v7 + harga pelanggan usaha B1; Console › Rules, baris 2 `ATURAN FIRESTORE v8 FINAL`). Rules v3 (aturan darurat) dan v6 lama TIDAK punya pintu:
-  di bawahnya tutup buku tahun berbulan terkunci ditolak di kiriman pertama (tidak ada yang tertulis) — tempel `firestore.rules` (v8) lagi dulu.
+- **Rules v9 harus yang terbit** (= v8 + permintaan persetujuan bon B2; v8 = v7 + harga pelanggan usaha B1; Console › Rules, baris 2 `ATURAN FIRESTORE v9 FINAL`). Rules v3 (aturan darurat) dan v6 lama TIDAK punya pintu:
+  di bawahnya tutup buku tahun berbulan terkunci ditolak di kiriman pertama (tidak ada yang tertulis) — tempel `firestore.rules` (v9) lagi dulu.
 - Arsip bulan terkunci = 5 access call per catatan (hapus 3 + salinan 2; tagihan Firestore menghitungnya sebagai baca) dan 3 catatan per kiriman — lebih
   lambat dan lebih banyak baca dari ritual 2026 (2 per catatan, 9 per kiriman). Perkiraan kuota di langkah 1 sudah menghitungnya; sejak Blaze (9 Okt
   2026) "TIDAK MUAT" boleh diabaikan — kelebihannya ditagih, arsip tidak berhenti karena kuota. Terhenti karena sebab lain → Lanjutkan (pintu dibuka lagi

@@ -1,4 +1,4 @@
-# Uji rules v8 di server — B1 harga pelanggan usaha (DRAF 16 Nov 2026, belum terbit)
+# Uji rules v8 di server — B1 harga pelanggan usaha (TERBIT 17 Nov 2026 ±03.27 WIB; kini v9 = v8 + satu ubahan, lihat `docs/uji-rules-v9.md`)
 
 v8 = v7 FINAL + **tiga ubahan kecil** (berkas kanonik `firestore.rules`; pembanding `firestore.rules.v7`). Tidak ada yang lain berubah —
 `alat-uji/periksa_rules.py` mencabut balik tiga ubahan ini lalu membandingkan sisanya huruf demi huruf dengan v7.

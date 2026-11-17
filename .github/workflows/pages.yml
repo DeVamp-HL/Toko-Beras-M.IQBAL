@@ -148,6 +148,8 @@ jobs:
         run: python3 alat-uji/uji_salinan_aplikasi.py && python3 alat-uji/uji_salinan_aplikasi.py --kontrol
       - name: "Harga pelanggan usaha (B1, owner 16 Nov 2026): tingkat Warung/Catering/Instansi = eceran − potongan per kg, harga sendiri per barang, harga khusus bertanggal; Jual ikut tingkat pembeli; Ben mengusulkan, owner menyetujui (rules v8)"
         run: python3 alat-uji/uji_harga_tingkat.py && python3 alat-uji/uji_harga_tingkat.py --kontrol
+      - name: "Faktur bertempo & batas kredit (B2, owner 17 Nov 2026): nota bon pelanggan usaha = faktur (nomor per perangkat, jatuh tempo), tempo bawaan & per pelanggan, batas angka owner / rumus lama, bayar kurang ikut batas, minta persetujuan owner (rules v9), bayar tertua dulu atau faktur pilihan, struk & Dasbor, rekap faktur pajak (jsc + statis + kontrol)"
+        run: python3 alat-uji/uji_faktur.py && python3 alat-uji/uji_faktur.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

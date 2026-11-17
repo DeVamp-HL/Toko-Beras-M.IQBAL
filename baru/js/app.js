@@ -17,6 +17,9 @@ import { ssAtur } from './layar/sistem-logika.js';
 import { ngJatah } from './layar/nego-logika.js';
 import { terkunci, setelKunci } from './inti/kunci.js';
 import { kalimatKeranjangKeluar } from './layar/jual-logika.js';
+// B2 (owner 17 Nov 2026): nomor faktur per perangkat (aman tanpa internet) — id perangkat dipasang sekali ke logika faktur
+import { fkPasangPerangkat } from './layar/faktur-logika.js';
+fkPasangPerangkat(fb.idPerangkat());
 import { kalimatIsianKeluar } from './inti/isian.js';
 import { pjSumberPengingat } from './layar/pajak-logika.js';
 import { nanti, setelMuat } from './inti/jadwal.js';
@@ -146,7 +149,7 @@ const uang = pasangLayarUang(document.getElementById('layarUang'), { akun: () =>
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); } });   // putaran 39: kartu Cek wadah K5 → Stok › Wadah literan
 // Laporan & Dokumen (putaran 19): layar kedelapan — Laba · Harian · Bulanan · Neraca · Dokumen (berkop, paket bank, dokumen kecil) · Setelan (kop & identitas). Dibuka dari Menu; di Mac ada di menu samping.
 // keTujuan = satu pintu ke layar lain dengan bentuk tujuan yang sama dengan baris Menu ({ ke, keluarga, tab, lembar, sistem }).
-const keTujuan = (t) => { if (!t) return; if (t.ke === 'stok') { pindah('stok'); stok.buka(t.lembar || null, t.tab || null); } else if (t.ke === 'pelanggan') { pindah('pelanggan'); pelanggan.buka(t.keluarga || 'kenali', t.orang || null); } else if (t.ke === 'harga') { pindah('harga'); harga.buka(t.keluarga || 'katalog', t); } else if (t.ke === 'uang') { pindah('uang'); uang.buka(t.keluarga || 'keluar', t); } else if (t.ke === 'laporan') { pindah('laporan'); laporan.buka(t.keluarga || 'laba', t); } else if (t.ke === 'sistem') { pindah('menu'); menu.buka && menu.buka(t.sistem || 'perangkat', t.tab || null); } else if (t.ke === 'jual' && t.lembar) { pindah('jual'); layar.keadaan.setel({ lembar: t.lembar, kabar: '' }); } else pindah(t.ke); };
+const keTujuan = (t) => { if (!t) return; if (t.ke === 'stok') { pindah('stok'); stok.buka(t.lembar || null, t.tab || null); } else if (t.ke === 'pelanggan') { pindah('pelanggan'); pelanggan.buka(t.keluarga || 'kenali', t.orang || null, t.tab || null); } else if (t.ke === 'harga') { pindah('harga'); harga.buka(t.keluarga || 'katalog', t); } else if (t.ke === 'uang') { pindah('uang'); uang.buka(t.keluarga || 'keluar', t); } else if (t.ke === 'laporan') { pindah('laporan'); laporan.buka(t.keluarga || 'laba', t); } else if (t.ke === 'sistem') { pindah('menu'); menu.buka && menu.buka(t.sistem || 'perangkat', t.tab || null); } else if (t.ke === 'jual' && t.lembar) { pindah('jual'); layar.keadaan.setel({ lembar: t.lembar, kabar: '' }); } else pindah(t.ke); };
 // hemat baca nyala (#111): Laporan › Pajak menahan rekap konsultan & catat setoran selama data pajak di perangkat ini belum lengkap (SATU sumber firebase.js hematKeadaan)
 const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan,
   hemat: () => { try { return fb.hematKeadaan(); } catch (e) { return { nyala: false }; } } });

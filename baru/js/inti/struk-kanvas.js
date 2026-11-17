@@ -201,12 +201,15 @@ function gambarSertifikat(garis, opsi) {
     else { if (M.alamat) { tulis(M.alamat, F_SANS(500, P(17)), cx, y + P(16), 'center'); y += P(24); } if (M.telp) { tulis('Telp ' + M.telp, F_SANS(500, P(17)), cx, y + P(16), 'center'); y += P(24); } }
   }
   y += P(14); garisH(L, R, y, Math.max(2, P(3))); garisH(L, R, y + P(7), Math.max(1.5, P(1.5))); y += P(30);
-  tulis('NOTA PEMBELIAN', F_CIN(600, P(20)), L, y + P(18), 'left', P(4)); if (M.no) tulis('Nº ' + M.no, F_BOD(700, P(30)), R, y + P(22), 'right', P(1)); y += P(40);
+  // B2 (owner 17 Nov 2026): nota bon pelanggan usaha = FAKTUR — judul & nomornya nomor faktur (nomor nota tetap di isian, untuk dicari di Riwayat)
+  if (M.faktur) { tulis('FAKTUR', F_CIN(600, P(20)), L, y + P(18), 'left', P(4)); tulis('Nº ' + M.faktur, F_BOD(700, P(26)), R, y + P(22), 'right', P(1)); y += P(40); }
+  else { tulis('NOTA PEMBELIAN', F_CIN(600, P(20)), L, y + P(18), 'left', P(4)); if (M.no) tulis('Nº ' + M.no, F_BOD(700, P(30)), R, y + P(22), 'right', P(1)); y += P(40); }
   const isian = (kunci, nilai, f) => {
     if (!nilai) return; tulis(kunci, F_SANS(400, P(19)), L, y + P(18)); const wk = lebarT(kunci, F_SANS(400, P(19))); const wv = lebarT(nilai, f);
     titik(y + P(16), L + wk + P(10), R - wv - P(10)); tulis(nilai, f, R, y + P(18), 'right'); y += P(32);
   };
-  isian('Tanggal', M.tanggal, F_SANS(500, P(19))); isian('Pembeli', M.pembeli, F_SANS(600, P(21))); y += P(8);
+  if (M.faktur && M.no) isian('Nota', M.no, F_SANS(500, P(19)));
+  isian('Tanggal', M.tanggal, F_SANS(500, P(19))); isian('Pembeli', M.pembeli, F_SANS(600, P(21))); isian('Alamat', M.alamatPembeli, F_SANS(500, P(17))); isian('Jatuh tempo', M.jatuhTempo, F_SANS(600, P(19))); y += P(8);
   if (M.barang.length) {
     const atas = y; garisH(L, R, y, Math.max(2, P(2))); y += P(10);
     tulis('URAIAN', F_SANS(500, P(14)), L + P(10), y + P(14), 'left', P(3)); tulis('JUMLAH', F_SANS(500, P(14)), R - P(10), y + P(14), 'right', P(3)); y += P(26);

@@ -20,6 +20,8 @@ import { daftarKarcis } from './karcis-logika.js';
 import { daftarBarang, susunWadah, umRingkas } from './stok-logika.js';
 import { wbCekHari } from './wadah-bernama-logika.js';
 import { semuaBon, KATA_STATUS, tertagihBon } from './bon-logika.js';
+// B2 (owner 17 Nov 2026): faktur pelanggan usaha yang lewat / segera jatuh tempo
+import { fkPengingat, fkTeksTempo } from './faktur-logika.js';
 import { susunBon as bpSusunBon } from './bon-pemasok-logika.js';
 import { hetHargaKasir } from './het-logika.js';
 import { rekapTimbangMutu } from './stok-catat-logika.js';
@@ -83,7 +85,10 @@ export function dbTagihan(kini) {
   const jatuh = bon.filter((b) => DB_JATUH.indexOf(b.status) >= 0).sort((a, b) => DB_JATUH.indexOf(a.status) - DB_JATUH.indexOf(b.status) || b.sisa - a.sisa)
     .map((b) => ({ kunci: b.kunci, nama: b.nama, sisa: b.sisa, kata: b.cap, ket: b.ket, tujuan: { ke: 'pelanggan', keluarga: 'bon', orang: b.kunci } }));
   const BP = bpSusunBon(kini); const jauh = BP.bon.filter((b) => b.status === 'jauh'); const satuBon = (b) => ({ id: b.id, pemasok: b.pemasok, sisa: b.sisa, tempoTeks: b.tempoTeks, tanggal: b.tanggal, tujuan: { ke: 'harga', keluarga: 'bon', pemasok: b.pemasok } });
+  const FP = fkPengingat(kini); const tujuF = { ke: 'pelanggan', keluarga: 'usaha', tab: 'faktur' };
   return {
+    faktur: { n: FP.daftar.length, rpLewat: FP.lewat, rpSegera: FP.segera, nLewat: FP.daftar.filter((f) => f.status === 'lewat').length, sumber: 'Pelanggan › Usaha › Faktur', tujuan: tujuF,
+      daftar: FP.daftar.slice(0, 4).map((f) => ({ no: f.no, nama: f.nama, sisa: f.sisa, ket: fkTeksTempo(f), awas: f.status === 'lewat', tujuan: tujuF })) },
     periode: 'Sekarang · ' + tanggalPendek(hariIniIso(kini)),
     piutang: { total: bon.reduce((a, b) => a + b.sisa, 0), n: bon.length, perStatus, jatuh, nJatuh: jatuh.length, rpJatuh: jatuh.reduce((a, b) => a + b.sisa, 0), sumber: 'Pelanggan › Bon', tujuan: { ke: 'pelanggan', keluarga: 'bon' } },
     pemasok: { total: BP.total, nBon: BP.nBon, nPemasok: BP.nPemasok, tekor: BP.tekor, lewat: BP.lewat.map(satuBon), dekat: BP.dekat.map(satuBon), nTanpaTempo: BP.tanpaTempo.length, rpTanpaTempo: BP.tanpaTempo.reduce((a, b) => a + b.sisa, 0), nJauh: jauh.length, rpJauh: jauh.reduce((a, b) => a + b.sisa, 0),

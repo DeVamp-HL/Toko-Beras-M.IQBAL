@@ -701,7 +701,8 @@ if __name__ == '__main__':
             'gabung tidak menghapus kartu nama lama (kartu yatim)': js.replace("if (kL) hapus.push({ koleksi: 'pelangganCatatan', id: kL.dok.id });", ""),
             'THR dua kali setahun untuk orang yang sama diterima': js.replace("if (ambilThrPelanggan().some((t) => t.kunci === kunci && Number(t.tahun) === Th)) return { tolak:", "if (false) return { tolak:"),
             'usul THR melampaui amplop': js.replace("const calon = t.belumDapat.filter((b) => b.belanja > 0).slice(0, muat);", "const calon = t.belumDapat.filter((b) => b.belanja > 0);"),
-            'bon: rincian tidak FIFO (pembayaran tidak memadamkan bon tertua)': js.replace("for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (tertutup >= nom) { tertutup -= nom; continue; }", "for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (false) { tertutup -= nom; continue; }"),   # jangkar disesuaikan 39b no. 37 tinjauan MM1
+            # B2 (owner 17 Nov 2026): rincian bon kini dari fkAlokasi (faktur-logika) — loop tertua-dulu yang dirusak adalah loop itu, bukan bnRincianLama (pembanding)
+            'bon: rincian tidak FIFO (pembayaran tidak memadamkan bon tertua)': js.replace("    if (tertutup >= sisaNom) { tertutup -= sisaNom; return { u, sisa: 0, buka: false }; }", "    if (false) { tertutup -= sisaNom; return { u, sisa: 0, buka: false }; }"),   # jangkar disesuaikan 39b no. 37 tinjauan MM1
             'bon: macet tanpa syarat "tidak ada pembayaran selama itu"': js.replace("umur > atur.macetHari && (diamSejak === null || diamSejak > atur.macetHari);", "umur > atur.macetHari;"),
             'bon: janji dianggap lewat walau sudah membayar sesudah ditagih': js.replace("tagih.janji < iso && (!bayarAkhir || bayarAkhir.tanggal < tagih.tanggal);", "tagih.janji < iso;"),
             # ---- 39b no. 4: sisa negatif berbunyi
@@ -723,7 +724,7 @@ if __name__ == '__main__':
             'bon: nomor WhatsApp tidak diubah ke awalan 62': js.replace("const nomor = !digit ? '' : digit.indexOf('0') === 0 ? '62' + digit.slice(1) : digit.indexOf('62') === 0 ? digit : digit.indexOf('8') === 0 ? '62' + digit : digit;", "const nomor = digit;"),
             'bon: tagihan tidak mencatat janji bayar': js.replace("const janji = Number(janjiHari) > 0 ? tambahHari(w.tanggal, Number(janjiHari)) : null;", "const janji = null;"),
             'bon: pengantar yang sama dengan pemilik bon dicatat sebagai pengantar': js.replace("if (!bnKosong(pengantar) && kunciPelanggan(pengantar) !== kunci) data.dibawaOleh", "if (!bnKosong(pengantar)) data.dibawaOleh"),
-            'aturan owner diabaikan (bangku kosong tetap 2,0×)': js.replace("return { kosongKali: angka('kosongKali', (n) => n >= 10 && n <= 100),", "return { kosongKali: 20,"),
+            'aturan owner diabaikan (bangku kosong tetap 2,0×)': js.replace("return { tempoBawaan: fkTempoBawaan(), kosongKali: angka('kosongKali', (n) => n >= 10 && n <= 100),", "return { tempoBawaan: fkTempoBawaan(), kosongKali: 20,"),   # B2: + tempoBawaan di depan
             'status bon tidak memakai aturan owner (tagih tetap 14 hari)': js.replace("umur !== null && umur >= atur.tagihHari ? 'perluTagih' : 'baru'", "umur !== null && umur >= 14 ? 'perluTagih' : 'baru'").replace("tagihHari: angka('tagihHari', (n) => n >= 0 && n <= 365),", "tagihHari: 14,"),
         }
         kode = 0

@@ -170,6 +170,9 @@ export function pasangDasbor(akar, opsi) {
       + tumpuk(bagP, P.total, 'piutangS:') + '<div class="db-legenda">' + P.perStatus.filter((s) => s.n).map((s) => '<span><i class="db-titik db-st-' + esc(s.status) + '"></i>' + esc(s.kata + ' ' + s.n) + '</span>').join('') + '</div>'
       + (jatuhP || '<div class="menolak">Tidak ada bon pelanggan yang lewat janji, waktunya ditagih, atau macet.</div>')
       + (P.nJatuh > 4 ? '<div class="ket db-ketuk" data-db-ke="sumber:piutang">+' + esc(P.nJatuh - 4) + ' nama lain ›</div>' : '')
+      // B2 (owner 17 Nov 2026): faktur pelanggan usaha lewat / segera jatuh tempo (≤ 3 hari)
+      + (G.faktur && G.faktur.n ? '<div class="ket" data-k="db-faktur">Faktur jatuh tempo · ' + esc(G.faktur.nLewat + ' lewat ' + RP(G.faktur.rpLewat) + ' · ' + (G.faktur.n - G.faktur.nLewat) + ' segera ' + RP(G.faktur.rpSegera)) + '</div>'
+        + G.faktur.daftar.map((f) => baris({ nama: f.no + ' · ' + f.nama, ket: f.ket, rp: f.sisa, awas: f.awas, isi: { judul: 'Faktur ' + f.no, baris: [['Pembeli', f.nama], ['Sisa', RP(f.sisa)], ['', f.ket]], tujuan: f.tujuan, ke: G.faktur.sumber } }, 'faktur:' + f.no)).join('') : '')
       + kepala('Utang ke pemasok', U.nBon + ' bon · ' + U.nPemasok + ' pemasok', 'sumber:pemasok', U.sumber, U.tujuan)
       + '<div class="db-angka-baris"><span class="angka db-angka-kecil">' + esc(RP(U.total)) + '</span><span class="ket">' + esc(U.lewat.length + ' lewat tempo · ' + U.dekat.length + ' jatuh ≤ ' + U.dekatHari + ' hari · ' + U.nTanpaTempo + ' tanpa tempo') + '</span></div>'
       + tumpuk(bagU, U.total, 'pemasokS:')

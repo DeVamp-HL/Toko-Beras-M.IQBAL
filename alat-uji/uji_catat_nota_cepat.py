@@ -59,7 +59,8 @@ terap({ pelanggan: 'Pembeli Contoh A', cara: 'Kredit', kreditDibuka: true }); pe
 terap(rB.patch || {}); terapkanKeCache(rB.dokumen || []);
 // C · bayar sebagian (uang kurang → sisa jadi bon)
 masuk(pilih('karung', function (c) { return c.kunci === 'Kumala'; }), 1);
-terap({ pelanggan: 'Pembeli Contoh B', cara: 'Tunai', uang: 100000 }); var rC = catat('C');
+// B2 (owner 17 Nov 2026): sisa yang jadi bon ikut KR1 — pembeli contoh belum terdaftar, owner membuka kredit sekali (seperti B)
+terap({ pelanggan: 'Pembeli Contoh B', cara: 'Tunai', uang: 100000, kreditDibuka: true }); var rC = catat('C');
 terap(rC.patch || {}); terapkanKeCache(rC.dokumen || []);
 // D · tembus stok (owner): minta lebih dari buku → ditanya, lalu ketukan kedua
 var cNG = pilih('karung', function (c) { return c.kunci === 'NG' && c.berat === 50; });

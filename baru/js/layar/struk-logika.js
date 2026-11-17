@@ -8,6 +8,8 @@ import { ambilPenjualanSemua, ambilRetur, ambilStrukKeluar, ambilPiutangMutasi, 
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, bakuCaraBayar, formatTanggal, isoKeTanggal, penjualanMasihBerlaku } from '../mesin/pembantu.js';
 import { RP, hariIniIso, LEBIH_AMBANG, pecahLebih } from '../inti/format.js';
+// B2 (owner 17 Nov 2026): alamat pembeli di faktur dibaca dari kartu pelanggan
+import { fkKartu } from './faktur-logika.js';
 
 export const ST_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 export const ST_KOLOM = { 58: 30, 80: 42 };
@@ -84,7 +86,9 @@ export function notaDariBaris(baris) {
     cara: bakuCaraBayar(p.caraBayar), oleh: p.oleh || '', dilayani: String((rows.find((x) => String(x.dilayaniOleh || '').trim()) || {}).dilayaniOleh || '').trim(), total: rows.reduce((a, x) => a + (x.hargaTotal || 0), 0), berlaku: berlaku.length === rows.length,
     dibatalkan: rows.some((x) => x.dibatalkan), dikoreksi: rows.some((x) => x.dikoreksiOleh && !x.dibatalkan),
     uangDiterima: uang ? (uang.uangDiterima || uang.kembalianUangDiterima || 0) : 0, kembalian: uang ? (uang.kembalian || uang.kembalianNominal || 0) : 0,
-    tukarReturId: rows.map((x) => x.tukarReturId).filter(Boolean)[0] || null, kreditDibukaOwner: rows.some((x) => x.kreditDibukaOwner) };
+    tukarReturId: rows.map((x) => x.tukarReturId).filter(Boolean)[0] || null, kreditDibukaOwner: rows.some((x) => x.kreditDibukaOwner),
+    // B2 (owner 17 Nov 2026): faktur — nomor, jatuh tempo, tempo (kolom yang sama di semua baris nota)
+    noFaktur: String((rows.find((x) => x.noFaktur) || {}).noFaktur || ''), jatuhTempo: String((rows.find((x) => x.jatuhTempo) || {}).jatuhTempo || ''), tempoHari: Number((rows.find((x) => x.noFaktur) || {}).tempoHari) || 0 };
 }
 /** Nomor nota pendek di struk (owner 17 Nov): 6 angka terakhir kunci notanya (trxId → grupNota → id) — cukup untuk mencari di Riwayat (cari "…"). */
 export function stNoNota(nota) { return String((nota && (nota.trxId || nota.grupNota || nota.id)) || '').replace(/\D/g, '').slice(-6); }
@@ -172,10 +176,14 @@ export function susunStruk(nota, atur, pilih) {
   if (A.kop.telp) baris('Telp ' + A.kop.telp, '', { tengah: true, jenis: 'telp', nilai: A.kop.telp });
   garis();
   const no = stNoNota(nota); if (no) baris('Nota No. ' + no, '', { jenis: 'nota', nilai: no });
+  if (nota.noFaktur) baris('Faktur No. ' + nota.noFaktur, '', { jenis: 'faktur', nilai: nota.noFaktur });   // B2 (owner 17 Nov 2026)
   const d = nota.tanggal ? isoKeTanggal(nota.tanggal) : null;
   const tglTeks = (d ? ST_HARI[d.getDay()] + ', ' : '') + formatTanggal(nota.tanggal) + (nota.jam ? ' · ' + nota.jam : '');
   baris(tglTeks, '', { jenis: 'tanggal', nilai: tglTeks });
   baris('Pembeli: ' + (nota.nama || 'tanpa nama'), '', { jenis: 'pembeli', nilai: nota.nama || 'tanpa nama' });
+  // B2: faktur menyebut alamat pembeli (kartu pelanggan) & jatuh temponya (nota bon)
+  const alamatP = nota.noFaktur && nota.nama ? String((fkKartu(nota.nama) || {}).alamat || '').trim() : ''; if (alamatP) baris('Alamat: ' + alamatP, '', { jenis: 'alamatPembeli', nilai: alamatP });
+  if (nota.noFaktur && nota.cara === 'Kredit' && nota.jatuhTempo) { const jtTeks = formatTanggal(nota.jatuhTempo) + ' (' + (nota.tempoHari === 0 ? 'hari itu' : nota.tempoHari + ' hari') + ')'; baris('Jatuh tempo: ' + jtTeks, '', { jenis: 'jatuhTempo', nilai: jtTeks }); }
   const pelayan = stPelayan(nota);   // owner 17 Nov: yang melayani (dilayaniOleh) menang atas yang mencatat (oleh)
   if (S.pelayan && pelayan) baris('Dilayani: ' + pelayan, '', { jenis: 'pelayan', nilai: pelayan });
   garis();

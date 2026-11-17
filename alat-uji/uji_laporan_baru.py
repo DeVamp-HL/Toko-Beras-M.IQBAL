@@ -18,7 +18,9 @@ MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip
                                   'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/pajak-logika.js', 'baru/js/layar/laporan-logika.js',
                                   # Paket B (siap 2027): potret tahun yang ditutup — tutup buku (susunKunci) menyusunnya dari Pajak, Laporan & kendali biaya
                                   'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/potret-logika.js']
-MODUL = MODUL + ['baru/js/layar/kg-liter-logika.js']   # owner 17 Nov 2026 (butir 5): penentu berat 1 liter (modul daun)
+MODUL = MODUL + ['baru/js/layar/kg-liter-logika.js']
+if any(m.endswith(('jual-logika.js', 'bon-logika.js')) for m in MODUL):   # B2 (owner 17 Nov 2026): faktur & batas kredit (memakai harga tingkat)
+    MODUL = MODUL + [m for m in ('baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js') if m not in MODUL]   # owner 17 Nov 2026 (butir 5): penentu berat 1 liter (modul daun)
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -893,7 +895,8 @@ if __name__ == '__main__':
             '39b-37: pembulatan bon tidak ikut dipotong (bon nota tersisa Rp500)': js.replace("(d.bon && Math.abs(jml - d.sisa) < 0.0005 ?", "(false ?"),
             '39b-37: diterima tunai menahan margin bon yang ditutup retur': js.replace("+ marginDihapus + marginDiretur;", "+ marginDihapus;"),
             '39b-37: margin bon yang ditutup retur dihitung sebagai hapus buku': js.replace("jenis === 'retur' ? 'diretur' : 'dihapus'] +=", "'dihapus'] +="),
-            '39b-37: rincian bon (Pelanggan) mengabaikan retur': js.replace("let tertutup = d.bayar + d.dihapus + (d.retur || 0) - bnDiretur(utang); const hasil = [];", "let tertutup = d.bayar + d.dihapus; const hasil = [];"),   # jangkar disesuaikan tinjauan MM1
+            # B2 (owner 17 Nov 2026): rincian bon Pelanggan dihitung fkAlokasi (faktur-logika) — jangkar dipindah ke sana
+            '39b-37: rincian bon (Pelanggan) mengabaikan retur': js.replace("let tertutup = d.bayar + d.dihapus + (d.retur || 0) - utang.reduce((a, u) => a + (u.diretur || 0), 0);", "let tertutup = d.bayar + d.dihapus;"),   # jangkar disesuaikan tinjauan MM1
             '39b-37: riwayat Bon diam soal retur': js.replace("const riwayat = b.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur')", "const riwayat = b.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku')"),
             '39b-37: buku bon tanpa baris retur': js.replace("Pa.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur')", "Pa.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku')"),
             '39b-37: Kartu Piutang menyebut retur sebagai bayar': js.replace("else if (m.jenis === 'retur') retur += n; ", ""),
@@ -910,7 +913,7 @@ if __name__ == '__main__':
             '39b-37 U37-U4: retur nota bon hari itu dihitung dari uang retur saja (refund ikut)': js.replace("const lpReturBonHari = (R) => Math.max(0, Math.round((R.retur || 0) - (R.refund || 0)));", "const lpReturBonHari = (R) => Math.max(0, Math.round(R.retur || 0));"),
             '39b-37 MM5: arus kas menghitung retur potong bon sebagai refund': js.replace("{ label: 'Refund retur', nominal: refund, n: returDipakai.filter(r => !(r.potongBon > 0)).length, satuan: 'retur' },", "{ label: 'Refund retur', nominal: refund, n: returDipakai.length, satuan: 'retur' },"),
             '39b-37 MM1: mesin piutang — retur kembali memotong bon tertua (bukan nota asalnya)': js.replace("const u = m.notaAsalId == null ? null : utang.find(x => x.jenis === 'jual' && String(x.idTrx) === String(m.notaAsalId));", "const u = null;"),
-            '39b-37 MM1: rincian bon (Pelanggan) mengabaikan bagian nota yang diretur': js.replace("for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (tertutup >= nom)", "for (const u of utang) { const nom = u.nominal; if (tertutup >= nom)"),
+            '39b-37 MM1: rincian bon (Pelanggan) mengabaikan bagian nota yang diretur': js.replace("const nom = utang.map((u) => u.nominal - (u.diretur || 0));", "const nom = utang.map((u) => u.nominal);"),   # B2: fkAlokasi
             '39b-37 MM1: Buku bon menyalakan nota yang barangnya sudah kembali': js.replace("utang.forEach((u) => { const nom = u.nominal - (u.diretur || 0); const lunas = tertutup >= nom;", "utang.forEach((u) => { const nom = u.nominal; const lunas = tertutup >= nom;"),
             '39b-37 U37-U5: margin yang dilepas retur diambil dari bon tertua (bukan nota asalnya)': js.replace("if (c.jenis === 'retur' && c.notaAsalId != null) {", "if (false) {"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),

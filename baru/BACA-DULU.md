@@ -2650,3 +2650,31 @@ Mesin beku tidak disentuh (`beku2.py --sidik` 91/91), rules tidak berubah, kasir
   selisihnya. Tarik balik mencabut pelunasannya; struk menemukannya lewat grupNota.
 - Uji: `uji_jual_baru.py` 440 (+ KB/DL/BN/KL/ST/SF, kontrol 231), `uji_escpos.py` 42, `uji_uang_baru.py` 177 (+ AM, kontrol 76), `peta_akses.py --kiriman`, `uji_akses_baru.py`,
   `uji_isian_lokal.py`; laporan semua bulan data toko BYTE-SAMA dengan `origin/main` (`asap_global`). Dilihat di Browser pane `?cadangan=` (simulasi).
+
+## Putaran B2 — faktur bertempo & batas kredit (17 Nov 2026, cabang `paket/b2-faktur`)
+Keputusan owner 17 Nov 2026 (memori `b2-faktur-keputusan`): tempo bawaan **diatur owner sendiri dari layar**; batas kredit terlewati → **minta persetujuan
+owner**; faktur pajak **disiapkan walau belum terpakai**; faktur = **nota BON pelanggan usaha, otomatis** (nota lain dijadikan faktur bila pembeli minta);
+pelunasan **tertua dulu + bisa pilih faktur**; batas kosong = **rumus lama KR1**; **bayar kurang ikut batas**. Mesin beku tidak disentuh (`beku2.py --sidik`).
+- **Logika**: `baru/js/layar/faktur-logika.js` (tanpa DOM, awalan `fk`). Faktur hanyalah KOLOM: baris penjualan `noFaktur`, `jatuhTempo`, `tempoHari`
+  (`fakturDibuatPada` bila dijadikan kemudian), pembayaran `untukFaktur` (daftar nomor). Sisa bon tetap mesin `hitungPiutang`; faktur cuma membagi sisa itu.
+- **Nomor** aman tanpa internet: `F<yy>-<kode perangkat>-<urut 4>` — kode 3 tanda dari id perangkat (`fkPasangPerangkat` di app.js), urut = terbesar yang
+  sudah tertulis di awalan itu (termasuk nota batal) + 1. Dua perangkat tidak berbagi awalan.
+- **Tempo**: kartu pelanggan `tempoHari` → `aturanToko/pelanggan.tempoBawaan` (Pelanggan › Atur; bawaan 14) — jatuh tempo = tanggal nota + tempo.
+- **Batas kredit (KR1)**: kartu `batasKredit` (owner; dianggap terdaftar) → kosong = rumus lama (2× rata belanja bulanan 90 hari, lintas tahun). Berlaku
+  untuk nota Bon DAN bayar kurang (sisa jadi bon — dulu lolos). Pintu: owner "buka kredit sekali" (seperti dulu), atau **persetujuan** — Ben mengirim
+  `persetujuan` tindakan `kredit` (status menunggu, `mintaUid`), owner memutus di papan Persetujuan (kalimat dihitung ULANG dari buku bon, tidak ikut
+  setujui sekaligus). Persetujuan dipakai SEKALI, hanya hari diputus, nominal ≥ bon nota; nota membawa `kreditSetujuId`.
+- **Pelunasan**: pembayaran ber-`untukFaktur` (atau bayar saat beli sebuah faktur, `notaTrxId`) menutup faktur itu dulu; sisanya tertua dulu. Tanpa
+  pembayaran beralamat, rincian bon = loop lama huruf demi huruf (`bnRincianLama` sebagai pembanding uji). Umur bon dari bon terbuka tertua bila ada
+  pembayaran beralamat. **Catatan**: Laporan (margin bon yang ditahan, `lpJalanBon`) tetap memakai urutan tertua-dulu — total sama, pembagian margin ke nota
+  bisa beda bila ada pembayaran beralamat.
+- **Layar**: Jual › Bayar (pita "jadi FAKTUR · jatuh tempo …", "Minta persetujuan owner · bon Rp…", status menunggu / ditolak), Struk (baris Faktur No.,
+  Alamat, Jatuh tempo; Sertifikat bertajuk FAKTUR; owner: "Jadikan faktur"), Pelanggan › Usaha › **Faktur** (terbuka / lewat / semua; rekap faktur pajak
+  per bulan → unduh CSV, owner), kartu pelanggan (tempo & batas — owner), Bon › bayar (pilih faktur), Atur (tempo bawaan), Menu › Pengingat (jenis
+  `faktur`, H-3), Dasbor › Piutang (faktur lewat / segera jatuh tempo).
+- **Faktur pajak**: berlaku bila profil pajak = PKP (`aturanToko/rekapOmzet.statusPkp`). Faktur pajaknya dibuat di Coretax DJP; sistem hanya merekap data
+  (nomor, tanggal, pembeli, NPWP dari kartu, alamat, nilai) — PPN tidak dihitung, berlabel bukan nasihat pajak.
+- **Rules v9** (`firestore.rules`, pembanding `firestore.rules.v8`, uji `docs/uji-rules-v9.md`): SATU ubahan — `stafMintaKredit(['ben'])` di create
+  persetujuan. **Owner menerbitkan v9 di Console SEBELUM merge**; kalau terbalik, hanya tombol minta persetujuan di tablet Ben yang ditolak sampai v9 terbit.
+- Uji: `alat-uji/uji_faktur.py` (jsc + statis + kontrol), `periksa_rules.py` (v9 = v8 + satu ubahan, model 11 kasus ★J), `uji_rules_emulator.py` bagian V9;
+  `uji_jual_baru.py` (bayar kurang kini kena KR1). Laporan semua bulan data toko BYTE-SAMA dengan `origin/main`.

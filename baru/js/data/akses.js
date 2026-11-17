@@ -223,6 +223,9 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       // rules v8 (B1, owner 16 Nov 2026): USUL harga pelanggan usaha — bentuk "menunggu" bertindakan hargaPelanggan atas nama sendiri (usulUid), tanpa kolom keputusan,
       // dari peran yang kisinya bukan "tidak boleh" (stafUsulHarga). Isi ubahannya tidak diikat rules — owner melihat kalimat yang dihitung ulang sebelum menyetujui.
       if (x.koleksi === 'persetujuan' && d.tindakan === 'hargaPelanggan') { if (d.status !== 'menunggu' || Object.keys(d).some((k) => ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].indexOf(k) >= 0) || (hak.hargaPelanggan || 'tidak') === 'tidak' || String(d.usulUid || '') !== String(akun.uid || '')) return { tolak: tolakTindakan('hargaPelanggan') }; continue; }
+      // rules v9 (B2, owner 17 Nov 2026): permintaan persetujuan BON saat batas kredit terlewati — bentuk "menunggu" bertindakan kredit atas nama sendiri
+      // (mintaUid), tanpa kolom keputusan, hanya peran yang boleh bon (KREDIT_STAF = stafMintaKredit(['ben'])) dan kisi jualBon bukan "tidak boleh"
+      if (x.koleksi === 'persetujuan' && d.tindakan === 'kredit') { if (d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].some((k) => k in d) || KREDIT_STAF.indexOf(P) < 0 || (hak.jualBon || 'tidak') === 'tidak' || String(d.mintaUid || '') !== String(akun.uid || '')) return { tolak: tolakTindakan('jualBon') }; continue; }
       if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].some((k) => k in d) || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };
     } else {
       const u = UBAH_STAF[x.koleksi]; if (!u || u.peran.indexOf(P) < 0) return { tolak: tolakTindakan(TINDAKAN_DARI[x.koleksi] || 'koreksi') };
