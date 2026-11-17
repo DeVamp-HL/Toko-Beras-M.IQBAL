@@ -124,13 +124,13 @@ KONTROL_V8 = [
     ('staf boleh menulis setelan harga tingkat', [("      allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());",
                                                    "      allow update: if (owner() && (id != 'kunciPeriode' || kunciGeser())) || (id == 'hargaTingkat' && staf(['ben', 'karyawan']));")], ['★H11']),
 ]
-# ---- V9 (B2, owner 17 Nov 2026): kasus ★K docs/uji-rules-v9.md (periksa_rules.KASUS_V9) atas firestore.rules (v9) dan atas firestore.rules.v8 — yang berbeda
+# ---- V9 (B2, owner 17 Nov 2026): kasus ★J docs/uji-rules-v9.md (periksa_rules.KASUS_V9) atas firestore.rules (v9) dan atas firestore.rules.v8 — yang berbeda
 # WAJIB persis periksa_rules.BEDA_V8 (yang dibuka v9). Kontrol: satu suku v9 dirusak → kasus sasarannya wajib berbalik.
 KONTROL_V9 = [
-    ('minta bon atas nama orang lain (tanpa mintaUid)', [(" && d.get('mintaUid', '') == request.auth.uid", "")], ['★K4']),
-    ('minta bon tanpa syarat status "menunggu"', [("d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu' && ", "d.get('tindakan', '') == 'kredit' && ")], ['★K5']),
-    ('minta bon dicabut dari create persetujuan', [(" || stafMintaKredit(['ben']);", ";")], ['★K1']),
-    ('minta bon dibuka untuk karyawan', [("stafMintaKredit(['ben']);", "stafMintaKredit(['ben', 'karyawan']);")], ['★K8']),
+    ('minta bon atas nama orang lain (tanpa mintaUid)', [(" && d.get('mintaUid', '') == request.auth.uid", "")], ['★J4']),
+    ('minta bon tanpa syarat status "menunggu"', [("d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu' && ", "d.get('tindakan', '') == 'kredit' && ")], ['★J5']),
+    ('minta bon dicabut dari create persetujuan', [(" || stafMintaKredit(['ben']);", ";")], ['★J1']),
+    ('minta bon dibuka untuk karyawan', [("stafMintaKredit(['ben']);", "stafMintaKredit(['ben', 'karyawan']);")], ['★J8']),
 ]
 # kontrol bagian C: suku kirim ulang bercap dicabut dari update penjualan → kirim ulang kasir-v33 & kasir-v32 atas nota bercap wajib berbunyi
 KONTROL_KASIR = ('suku (kasir() && ulangKasirBercap()) dicabut dari update penjualan', [(" || (kasir() && ulangKasirBercap());", ";")], ['c2', 'c4'])
@@ -576,9 +576,9 @@ def jalankan_emulator():
         lap['kontrolV8'].append(k)
         print('  %s %s → %s' % ('BERBUNYI' if k['berbunyi'] else 'DIAM!!  ', nama, k.get('galat') or ', '.join('%s %s (wajib %s)' % x for x in k['hasil'])), flush=True)
     pasang_aturan(v7)
-    # ---- V9 (B2): kasus ★K atas firestore.rules cabang ini (v9) dan atas firestore.rules.v8; kontrol satu suku v9
+    # ---- V9 (B2): kasus ★J atas firestore.rules cabang ini (v9) dan atas firestore.rules.v8; kontrol satu suku v9
     v8lama = baca('firestore.rules.v8')
-    print('— V9 · %d kasus ★K atas firestore.rules (v9)' % len(P.KASUS_V9), flush=True)
+    print('— V9 · %d kasus ★J atas firestore.rules (v9)' % len(P.KASUS_V9), flush=True)
     H9 = jalankan_semua(J, v7, P.KASUS_V9); lap['v9'] = H9
     for x in H9: print('  %s %-6s %-26s %-48s → %-13s wajib %-7s %s' % ('✓' if x['ok'] else '✗', x['no'], x['akun'] + ' ' + x['op'], x['jalur'][:48], x['hasil'], x['wajib'], x['ket'][:90]), flush=True)
     print('— V9 · kasus yang sama atas firestore.rules.v8 (yang berbeda wajib persis BEDA_V8 = %s)' % ', '.join(sorted(P.BEDA_V8)), flush=True)
@@ -749,7 +749,7 @@ def periksa(rules=None, dok=None, html=None):
     try:
         M9, M8lama = RM.Rules(R), RM.Rules(baca('firestore.rules.v8'))
         salah9 = [K[0] for K in P.KASUS_V9 if nilai_model(M9, K).boleh != K[8]]; beda8 = {K[0] for K in P.KASUS_V9 if nilai_model(M8lama, K).boleh != nilai_model(M9, K).boleh}
-        c.append(('model v9 = kolom Wajib di %d kasus ★K; berbeda dari firestore.rules.v8 tepat %s' % (len(P.KASUS_V9), ', '.join(sorted(P.BEDA_V8))), not salah9 and beda8 == set(P.BEDA_V8), {'salah v9': salah9, 'beda v8': sorted(beda8)}))
+        c.append(('model v9 = kolom Wajib di %d kasus ★J; berbeda dari firestore.rules.v8 tepat %s' % (len(P.KASUS_V9), ', '.join(sorted(P.BEDA_V8))), not salah9 and beda8 == set(P.BEDA_V8), {'salah v9': salah9, 'beda v8': sorted(beda8)}))
         per9 = {K[0]: K for K in P.KASUS_V9}
         for nama, ganti, sasaran in KONTROL_V9:
             Mx = RM.Rules(rusak(R, ganti)); diam = [s for s in sasaran if nilai_model(Mx, per9[s]).boleh == per9[s][8]]

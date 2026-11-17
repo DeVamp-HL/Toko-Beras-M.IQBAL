@@ -27,8 +27,8 @@ Isi "MINTA": `{ id: "uji-v9-kredit", tindakan: "kredit", status: "menunggu", min
 
 | # | Kasus | Akun | Operasi · jalur | Isi | Wajib | Kenapa |
 |---|---|---|---|---|---|---|
-| 1 | ★K2 | owner@ | create `persetujuan/uji-v9-kredit` | MINTA | LOLOS | owner selalu boleh menulis persetujuan |
-| 2 | ★K3 | owner@ | update `persetujuan/uji-v9-kredit` | MINTA dengan `status: "disetujui"`, `diputusPada: "x"` | LOLOS | owner memutus |
+| 1 | ★J2 | owner@ | create `persetujuan/uji-v9-kredit` | MINTA | LOLOS | owner selalu boleh menulis persetujuan |
+| 2 | ★J3 | owner@ | update `persetujuan/uji-v9-kredit` | MINTA dengan `status: "disetujui"`, `diputusPada: "x"` | LOLOS | owner memutus |
 
 ## Opsional — sudah dinilai model CI & emulator
 
@@ -37,20 +37,20 @@ Kasus staf butuh akun uji staf aktif (U11 dari `docs/uji-rules-v7.md`: `aksesAku
 
 | Kasus | Akun | Operasi · jalur | Isi | Wajib | Kenapa |
 |---|---|---|---|---|---|
-| ★K1 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA | LOLOS | Ben meminta persetujuan bon (v9-1) |
-| ★K4 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA dengan `mintaUid: "uid-lain"` | DITOLAK | permintaan atas nama orang lain |
-| ★K5 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA dengan `status: "disetujui"` | DITOLAK | staf tidak menyetujui sendiri |
-| ★K6 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA dengan `diputusPada` | DITOLAK | kolom keputusan milik owner |
-| ★K7 | staf aktif (ben) | update `persetujuan/uji-v9-kredit` | MINTA dengan `status: "disetujui"` | DITOLAK | memutus = owner |
-| ★K8 | staf aktif peran **karyawan** | create `persetujuan/uji-v9-kredit` | MINTA | DITOLAK | bon (dan memintanya) = ben saja |
-| ★K9 | akun tanpa aksesAkun (`baru1`) | create `persetujuan/uji-v9-kredit` | MINTA dengan `mintaUid` & `olehUid` "baru1" | DITOLAK | bukan staf aktif |
-| ★K10 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA dengan `olehUid: "uid-lain"` | DITOLAK | penulis bukan yang mengaku |
-| ★K11 | kasir@ | create `persetujuan/uji-v9-kredit` | MINTA dengan `mintaUid` & `olehUid` = uid kasir | DITOLAK | kasir darurat tidak meminta |
+| ★J1 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA | LOLOS | Ben meminta persetujuan bon (v9-1) |
+| ★J4 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA dengan `mintaUid: "uid-lain"` | DITOLAK | permintaan atas nama orang lain |
+| ★J5 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA dengan `status: "disetujui"` | DITOLAK | staf tidak menyetujui sendiri |
+| ★J6 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA dengan `diputusPada` | DITOLAK | kolom keputusan milik owner |
+| ★J7 | staf aktif (ben) | update `persetujuan/uji-v9-kredit` | MINTA dengan `status: "disetujui"` | DITOLAK | memutus = owner |
+| ★J8 | staf aktif peran **karyawan** | create `persetujuan/uji-v9-kredit` | MINTA | DITOLAK | bon (dan memintanya) = ben saja |
+| ★J9 | akun tanpa aksesAkun (`baru1`) | create `persetujuan/uji-v9-kredit` | MINTA dengan `mintaUid` & `olehUid` "baru1" | DITOLAK | bukan staf aktif |
+| ★J10 | staf aktif (ben) | create `persetujuan/uji-v9-kredit` | MINTA dengan `olehUid: "uid-lain"` | DITOLAK | penulis bukan yang mengaku |
+| ★J11 | kasir@ | create `persetujuan/uji-v9-kredit` | MINTA dengan `mintaUid` & `olehUid` = uid kasir | DITOLAK | kasir darurat tidak meminta |
 
-Di **v8**, ★K1 DITOLAK (itulah yang dibuka v9); semua kasus lain hasilnya sama dengan v8.
+Di **v8**, ★J1 DITOLAK (itulah yang dibuka v9); semua kasus lain hasilnya sama dengan v8.
 
 ## Bukti emulator
 
 `alat-uji/uji_rules_emulator.py` bagian **V9** (workflow *Uji rules di emulator*, jalan otomatis di PR yang mengubah `firestore.rules`): kesebelas kasus di
-atas atas `firestore.rules` (v9) dan atas `firestore.rules.v8` — yang berbeda wajib persis ★K1 — plus kontrol (satu suku v9 dirusak → kasus sasarannya
+atas atas `firestore.rules` (v9) dan atas `firestore.rules.v8` — yang berbeda wajib persis ★J1 — plus kontrol (satu suku v9 dirusak → kasus sasarannya
 wajib berbalik). Semua kasus v8 & v7 lama tetap dijalankan atas v9 dan wajib sama hasilnya.

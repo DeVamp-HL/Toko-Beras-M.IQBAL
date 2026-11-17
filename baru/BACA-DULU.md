@@ -2676,5 +2676,5 @@ pelunasan **tertua dulu + bisa pilih faktur**; batas kosong = **rumus lama KR1**
   (nomor, tanggal, pembeli, NPWP dari kartu, alamat, nilai) — PPN tidak dihitung, berlabel bukan nasihat pajak.
 - **Rules v9** (`firestore.rules`, pembanding `firestore.rules.v8`, uji `docs/uji-rules-v9.md`): SATU ubahan — `stafMintaKredit(['ben'])` di create
   persetujuan. **Owner menerbitkan v9 di Console SEBELUM merge**; kalau terbalik, hanya tombol minta persetujuan di tablet Ben yang ditolak sampai v9 terbit.
-- Uji: `alat-uji/uji_faktur.py` (jsc + statis + kontrol), `periksa_rules.py` (v9 = v8 + satu ubahan, model 11 kasus ★K), `uji_rules_emulator.py` bagian V9;
+- Uji: `alat-uji/uji_faktur.py` (jsc + statis + kontrol), `periksa_rules.py` (v9 = v8 + satu ubahan, model 11 kasus ★J), `uji_rules_emulator.py` bagian V9;
   `uji_jual_baru.py` (bayar kurang kini kena KR1). Laporan semua bulan data toko BYTE-SAMA dengan `origin/main`.
