@@ -1,4 +1,4 @@
-# Uji rules v9 di server — B2 faktur bertempo & batas kredit (DRAF 17 Nov 2026, belum terbit)
+# Uji rules v9 di server — B2 faktur bertempo & batas kredit (TERBIT 18 Nov 2026 ±01.37 WIB)
 
 v9 = v8 FINAL + **satu ubahan kecil** (berkas kanonik `firestore.rules`; pembanding `firestore.rules.v8`). Tidak ada yang lain berubah —
 `alat-uji/periksa_rules.py` mencabut balik ubahan ini lalu membandingkan sisanya huruf demi huruf dengan v8.
@@ -54,3 +54,12 @@ Di **v8**, ★J1 DITOLAK (itulah yang dibuka v9); semua kasus lain hasilnya sama
 `alat-uji/uji_rules_emulator.py` bagian **V9** (workflow *Uji rules di emulator*, jalan otomatis di PR yang mengubah `firestore.rules`): kesebelas kasus di
 atas atas `firestore.rules` (v9) dan atas `firestore.rules.v8` — yang berbeda wajib persis ★J1 — plus kontrol (satu suku v9 dirusak → kasus sasarannya
 wajib berbalik). Semua kasus v8 & v7 lama tetap dijalankan atas v9 dan wajib sama hasilnya.
+
+## Hasil Playground & terbit (18 Nov 2026)
+
+- Isi editor Console sebelum uji = `firestore.rules` cabang ini, byte demi byte (SHA-256 berawalan `b1604043`, 53.081 byte); dicek ulang sesudah tiap kasus.
+- Wajib owner, akun owner (`uid-uji`, provider password, email owner di payload), Location `persetujuan/uji-v9-kredit`:
+  ★J2 create isian MINTA → "Simulated write allowed" (LOLOS, sesuai); ★J3 update MINTA dengan `status: "disetujui"` + `diputusPada: "x"` →
+  "Simulated write allowed" (LOLOS, sesuai). `nominal` diisi jenis int64.
+- Owner klik **Publish** 18 Nov 2026 ±01.37 WIB (riwayat Console "Today • 1:37 AM"). Sesudah halaman dimuat ulang, aturan yang berlaku = berkas ini
+  (sidik sama, baris 2 `ATURAN FIRESTORE v9 FINAL`, tanpa draf tertunda).
