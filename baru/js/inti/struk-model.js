@@ -25,3 +25,17 @@ export function stModelSertifikat(garis) {
   M.kopBesar = m ? m[2].trim() : M.kop.trim(); M.kopKecil = m ? 'TOKO BERAS' : '';
   return M;
 }
+
+/**
+ * Tebal goresan tambahan (titik printer) untuk huruf berkontras tinggi. Uji cetak owner 17 Nov di CPad: garis rambut Bodoni hilang di printer panas —
+ * Rp44.000 tercetak seperti "Rp 11.000", Rp40.000 seperti "Rp 10.000", "Rp" seperti "Ilp", huruf M logo seperti "VI". Di Mac garis yang sama masih
+ * terbaca (perender Mac lebih tebal), jadi pratinjau Mac tidak menangkapnya. Obatnya: tepi huruf ikut digores selebar ini supaya garis tertipis
+ * selalu ≥ ±3 titik di perangkat mana pun. Jost (garis rata) tidak perlu. k = lebar kertas / 576 (58 mm lebih kecil, tapi batas bawahnya tetap).
+ */
+export function stTebalHuruf(font, k) {
+  const f = String(font || ''); const kk = k > 0 ? k : 1;
+  if (/Bodoni/.test(f)) return Math.max(2, 2.6 * kk);
+  if (/Cormorant/.test(f)) return Math.max(1.6, 2 * kk);
+  if (/Cinzel/.test(f)) return Math.max(1, 1.2 * kk);
+  return 0;
+}

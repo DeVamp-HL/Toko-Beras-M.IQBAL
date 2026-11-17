@@ -7,7 +7,7 @@
 // huruf pahat (Cinzel), Nota Nº (Bodoni), isian bertitik, tabel uraian, TOTAL bergaris ganda, tanda tangan yang melayani bergaya tulisan (Cormorant miring),
 // cap kecil bertangkai padi. Garis yang tidak bertanda `jenis` (contoh lama) tetap digambar gaya polos di bawah.
 import { EP_TITIK, epHitamPutih, epTanpaEmoji } from './escpos.js';
-import { stModelSertifikat } from './struk-model.js';
+import { stModelSertifikat, stTebalHuruf } from './struk-model.js';
 
 const HURUF = 'Jost, "Helvetica Neue", Arial, sans-serif';
 const F_SANS = (b, px) => b + ' ' + px + 'px Jost, "Helvetica Neue", Arial, sans-serif';
@@ -129,10 +129,11 @@ function bez(p, t) { const u = 1 - t; return [u * u * u * p[0][0] + 3 * u * u * 
 function bezD(p, t) { const u = 1 - t; return [3 * u * u * (p[1][0] - p[0][0]) + 6 * u * t * (p[2][0] - p[1][0]) + 3 * t * t * (p[3][0] - p[2][0]), 3 * u * u * (p[1][1] - p[0][1]) + 6 * u * t * (p[2][1] - p[1][1]) + 3 * t * t * (p[3][1] - p[2][1])]; }
 function bulir(c, x, y, rot, rx, ry) { c.save(); c.translate(x, y); c.rotate(rot); c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); c.fill(); c.restore(); }
 /** Setangkai padi merunduk sepanjang kurva p (4 titik): batang + bulir berpasangan yang mengecil ke ujung. */
-function padi(c, p, mulai, s, tebal) {
+function padi(c, p, mulai, s, tebal, n) {
+  const nb = n || 9;
   c.lineWidth = tebal; c.lineCap = 'round'; c.beginPath(); c.moveTo(p[0][0], p[0][1]); c.bezierCurveTo(p[1][0], p[1][1], p[2][0], p[2][1], p[3][0], p[3][1]); c.stroke();
-  for (let i = 0; i <= 9; i++) {
-    const t = mulai + (1 - mulai) * i / 9; const q = bez(p, t); const d = bezD(p, t); const a = Math.atan2(d[1], d[0]); const kc = 1 - 0.45 * (i / 9);
+  for (let i = 0; i <= nb; i++) {
+    const t = mulai + (1 - mulai) * i / nb; const q = bez(p, t); const d = bezD(p, t); const a = Math.atan2(d[1], d[0]); const kc = 1 - 0.45 * (i / nb);
     [-1, 1].forEach((kk) => bulir(c, q[0] + Math.cos(a + kk * Math.PI / 2) * 5.5 * s * kc, q[1] + Math.sin(a + kk * Math.PI / 2) * 5.5 * s * kc, a + kk * 0.5 + Math.PI / 2, 3.4 * s * kc, 8 * s * kc));
   }
 }
@@ -151,6 +152,8 @@ export function gambarLogoToko(c, cx, y, h) {
   });
   berlian(c, cx, y + 6 * s, 6 * s);
   c.font = F_BOD(600, Math.round(h * 0.6)); c.textAlign = 'center'; c.fillText('M', cx, cy + h * 0.2);
+  // owner 17 Nov (uji cetak CPad): batang tipis M hilang di printer → M terbaca "VI"; tepinya digores supaya garis rambutnya tercetak
+  c.save(); c.lineWidth = Math.max(3, 3.4 * s); c.lineJoin = 'round'; c.strokeText('M', cx, cy + h * 0.2); c.restore();
   return h;
 }
 
@@ -162,10 +165,13 @@ function gambarSertifikat(garis, opsi) {
   const L = P(24), R = W - P(24), cx = W / 2; let y = P(8);
   const huruf = (f) => { c.font = f; };
   const lebarT = (t, f, sp) => { huruf(f); return Array.from(t).reduce((a, ch) => a + c.measureText(ch).width + (sp || 0), -(sp || 0)); };
+  // owner 17 Nov (uji cetak CPad): huruf berkontras tinggi digores tepinya (stTebalHuruf) — tanpa itu garis rambut Bodoni hilang dan 44.000 terbaca 11.000
+  const isiHuruf = (t, x, yb, tb) => { c.fillText(t, x, yb); if (tb) { c.save(); c.lineWidth = tb; c.lineJoin = 'round'; c.strokeText(t, x, yb); c.restore(); } };
   const tulis = (t, f, x, yb, align, sp) => {
-    t = epTanpaEmoji(t); huruf(f); if (!sp) { c.textAlign = align || 'left'; c.fillText(t, x, yb); return; }
+    t = epTanpaEmoji(t); huruf(f); const tb = stTebalHuruf(f, k);
+    if (!sp) { c.textAlign = align || 'left'; isiHuruf(t, x, yb, tb); return; }
     const w = lebarT(t, f, sp); let px = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x; c.textAlign = 'left';
-    for (const ch of t) { c.fillText(ch, px, yb); px += c.measureText(ch).width + sp; }
+    for (const ch of t) { isiHuruf(ch, px, yb, tb); px += c.measureText(ch).width + sp; }
   };
   const garisH = (x0, x1, yy, t) => c.fillRect(Math.round(x0), Math.round(yy), Math.round(x1 - x0), Math.max(1, Math.round(t)));
   const titik = (yy, x0, x1) => { for (let px = x0; px < x1; px += P(9)) c.fillRect(Math.round(px), Math.round(yy), Math.max(2, P(2)), Math.max(2, P(2))); };
@@ -191,8 +197,8 @@ function gambarSertifikat(garis, opsi) {
   if (M.kopKecil) { tulis(M.kopKecil, F_SANS(500, P(16)), cx, y + P(15), 'center', P(11)); y += P(28); }
   const alamat = [M.alamat, M.telp].filter(Boolean).join(' · ');
   if (alamat) {
-    if (lebarT(alamat, F_SANS(400, P(17))) <= R - L) { tulis(alamat, F_SANS(400, P(17)), cx, y + P(16), 'center'); y += P(26); }
-    else { if (M.alamat) { tulis(M.alamat, F_SANS(400, P(17)), cx, y + P(16), 'center'); y += P(24); } if (M.telp) { tulis('Telp ' + M.telp, F_SANS(400, P(17)), cx, y + P(16), 'center'); y += P(24); } }
+    if (lebarT(alamat, F_SANS(500, P(17))) <= R - L) { tulis(alamat, F_SANS(500, P(17)), cx, y + P(16), 'center'); y += P(26); }
+    else { if (M.alamat) { tulis(M.alamat, F_SANS(500, P(17)), cx, y + P(16), 'center'); y += P(24); } if (M.telp) { tulis('Telp ' + M.telp, F_SANS(500, P(17)), cx, y + P(16), 'center'); y += P(24); } }
   }
   y += P(14); garisH(L, R, y, Math.max(2, P(3))); garisH(L, R, y + P(7), Math.max(1.5, P(1.5))); y += P(30);
   tulis('NOTA PEMBELIAN', F_CIN(600, P(20)), L, y + P(18), 'left', P(4)); if (M.no) tulis('Nº ' + M.no, F_BOD(700, P(30)), R, y + P(22), 'right', P(1)); y += P(40);
@@ -234,7 +240,7 @@ function gambarSertifikat(garis, opsi) {
   const capX = R - P(86), capY = y; c.lineWidth = Math.max(1.5, P(2));
   c.beginPath(); c.arc(capX, capY + P(42), P(42), 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(capX, capY + P(42), P(35), 0, Math.PI * 2); c.stroke();
   c.save(); c.beginPath(); c.arc(capX, capY + P(42), P(32), 0, Math.PI * 2); c.clip();
-  padi(c, [[capX - P(4), capY + P(72)], [capX - P(2), capY + P(40)], [capX + P(4), capY + P(20)], [capX + P(20), capY + P(30)]], 0.4, 0.62 * k, Math.max(1.5, P(2))); c.restore();
+  padi(c, [[capX - P(6), capY + P(76)], [capX - P(4), capY + P(48)], [capX + P(2), capY + P(24)], [capX + P(16), capY + P(16)]], 0.3, 0.85 * k, Math.max(2, P(3)), 3); c.restore();   // owner 17 Nov: bulir kecil menggumpal di printer → lebih besar & lebih sedikit
   if (M.pelayan) {
     tulis(M.pelayan, F_ITA(600, P(40)), L + P(36), y + P(40)); y += P(50); garisH(L + P(16), L + P(236), y, Math.max(1.5, P(1.5))); y += P(8);
     tulis('Dilayani oleh', F_SANS(400, P(16)), L + P(16), y + P(16), 'left', P(2)); y += P(30);

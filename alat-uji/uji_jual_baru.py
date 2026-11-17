@@ -1064,6 +1064,12 @@ Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
   var mb = stModelSertifikat(susunStruk(notaDari({ id: 's2' }), stAtur(), null).garis);
   ok('SF: nota BON → baris bon ("BON — …", "a.n. …") + sisa bon di pembayaran + tanggal saldo di catatan', mb.bon.length >= 2 && /^BON — /.test(mb.bon[0].teks) && mb.bon[0].tebal && mb.bayar.some(function (r) { return /^Sisa bon|^Kelebihan bayar/.test(r.label); }) && mb.catatan.some(function (c) { return /^per /.test(c.teks); }), JSON.stringify([mb.bon, mb.bayar, mb.catatan]));
   terapkanKeCache([{ koleksi: 'penjualan', hapus: 'sf1' }, { koleksi: 'penjualan', hapus: 'sf2' }]);
+  // uji cetak owner 17 Nov di CPad: garis rambut Bodoni hilang → Rp44.000 tercetak seperti "Rp 11.000". Huruf berkontras tinggi wajib digores tepinya.
+  ok('SF: huruf berkontras tinggi dipertebal — Bodoni ≥ 2,5 titik (80 mm) & ≥ 2 (58 mm), Cormorant ≥ 1,6, Cinzel ≥ 1; Jost (garis rata) tidak',
+    stTebalHuruf('700 24px "Bodoni Moda", Didot, Georgia, serif', 1) >= 2.5 && stTebalHuruf('700 16px "Bodoni Moda", Didot, Georgia, serif', 384 / 576) >= 2 &&
+    stTebalHuruf('italic 500 20px "Cormorant Garamond", Georgia, serif', 1) >= 1.6 && stTebalHuruf('italic 500 13px "Cormorant Garamond", Georgia, serif', 384 / 576) >= 1.6 &&
+    stTebalHuruf('700 22px Cinzel, "Trajan Pro", Georgia, serif', 1) >= 1 && stTebalHuruf('500 22px Jost, "Helvetica Neue", Arial, sans-serif', 1) === 0,
+    JSON.stringify([stTebalHuruf('700 24px "Bodoni Moda"', 1), stTebalHuruf('700 16px "Bodoni Moda"', 384 / 576), stTebalHuruf('italic 500 20px "Cormorant Garamond"', 1), stTebalHuruf('500 22px Jost', 1)]));
 })();
 print(JSON.stringify({ lulus: lulus, gagal: gagal, kunci: { retur: Object.keys(KUNCI.retur), karantina: Object.keys(KUNCI.karantina) } }));
 """
@@ -1123,11 +1129,30 @@ KUNCI_DOK_LAMA = {
 }
 
 
+# Struk Sertifikat digambar di kanvas (DOM, tidak jalan di jsc) — diperiksa statis. Uji cetak owner 17 Nov di CPad: huruf yang digambar tanpa goresan
+# tepi kehilangan garis rambutnya (Rp44.000 → "Rp 11.000", M logo → "VI"). Semua teks gaya Sertifikat wajib lewat isiHuruf (isi + gores stTebalHuruf).
+KANVAS = open(os.path.join(AKAR, 'baru/js/inti/struk-kanvas.js'), encoding='utf-8').read()
+
+
+def cek_kanvas(src):
+    g = []
+    a = src.find('function gambarSertifikat('); b = src.find('\n}\n', a)
+    badan = src[a:b] if a >= 0 and b > a else ''
+    if not badan: return ['statis · struk-kanvas: gambarSertifikat tidak ditemukan']
+    if badan.count('c.fillText(') != 1 or 'const isiHuruf = (t, x, yb, tb) => { c.fillText(t, x, yb); if (tb) {' not in badan or 'c.strokeText(t, x, yb)' not in badan:
+        g.append('statis · Sertifikat: ada teks yang digambar tanpa goresan tepi (garis rambut hilang di printer: 44.000 terbaca 11.000)')
+    if 'const tb = stTebalHuruf(f, k);' not in badan: g.append('statis · Sertifikat: tebal goresan tidak dari stTebalHuruf')
+    l0 = src.find('export function gambarLogoToko('); l1 = src.find('\n}\n', l0)
+    if l0 < 0 or "c.strokeText('M', cx, cy + h * 0.2)" not in src[l0:l1]: g.append('statis · logo: huruf M tanpa goresan tepi (tercetak "VI")')
+    return g
+
+
 def utama(js):
     h, e = jalan(js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e]
     gagal = h['gagal']
     # owner 17 Nov (butir 5): literan LANGSUNG dari karung (bukan wadah) memakai penentu berat liter yang sama — kotak pasir tidak punya chip langsung, jadi statis
+    gagal += cek_kanvas(KANVAS)
     if 'const rasioMerk = (merk) => kgPerLiter(merk);' not in js: gagal.append('statis · Jual: literan langsung tidak memakai kgPerLiter (berat 1 liter setelan owner)')
     # bentuk dokumen retur & karantina: tiap kunci yang ditulis sistem baru harus kunci yang juga ditulis sistem lama (KUNCI_DOK_LAMA)
     for kol, daftar in (h.get('kunci') or {}).items():
@@ -1178,6 +1203,9 @@ if __name__ == '__main__':
             'sertifikat: jumlah barang tetap di rincian (baris nama tanpa angka)': js.replace("if (g.jumlah && !kini.n) {", "if (false) {"),
             'sertifikat: pembayaran tidak ikut ke gambar': js.replace("else if (g.jenis === 'bayar') M.bayar.push(", "else if (g.jenis === 'bayarX') M.bayar.push("),
             'sertifikat: baris BON tanpa tanda jenis': js.replace("'BON — belum dibayar', '', { tebal: true, jenis: 'bon' });", "'BON — belum dibayar', '', { tebal: true });"),
+            'sertifikat: Bodoni tidak dipertebal (44.000 tercetak 11.000)': js.replace("if (/Bodoni/.test(f)) return Math.max(2, 2.6 * kk);", "if (/Bodoni/.test(f)) return 0;"),
+            'sertifikat: 58 mm Bodoni ikut mengecil di bawah 2 titik': js.replace("if (/Bodoni/.test(f)) return Math.max(2, 2.6 * kk);", "if (/Bodoni/.test(f)) return 2.6 * kk;"),
+            'sertifikat: Cormorant tidak dipertebal': js.replace("if (/Cormorant/.test(f)) return Math.max(1.6, 2 * kk);", ""),
             'sertifikat: kop tidak dipecah': js.replace("const m = /^(TOKO BERAS)\\s+(.+)$/i.exec(M.kop.trim());", "const m = null;"),
             # ---- owner 17 Nov 2026 (butir 3): struk profesional ----
             'struk: nomor nota tidak dicetak': js.replace("const no = stNoNota(nota); if (no) baris('Nota No. ' + no, '', { jenis: 'nota', nilai: no });", ""),
@@ -1396,6 +1424,16 @@ if __name__ == '__main__':
             'setelan kertas 70 mm diterima': js.replace("const kertas = Number(a.kertas); if (!ST_KOLOM[kertas]) return { tolak: 'Lebar kertas hanya 58 atau 80 mm' };", "const kertas = Number(a.kertas);"),
         }
         kode = 0
+        rusak_kanvas = {
+            'kanvas: tulisan Sertifikat tanpa goresan tepi': KANVAS.replace('const tb = stTebalHuruf(f, k);', 'const tb = 0;'),
+            'kanvas: teks digambar langsung tanpa isiHuruf': KANVAS.replace("c.textAlign = align || 'left'; isiHuruf(t, x, yb, tb); return;", "c.textAlign = align || 'left'; c.fillText(t, x, yb); return;"),
+            'kanvas: huruf M logo tanpa goresan': KANVAS.replace("c.strokeText('M', cx, cy + h * 0.2);", ''),
+        }
+        for nama, isi in rusak_kanvas.items():
+            if isi == KANVAS: print('KONTROL BASI  ' + nama); kode = 3; continue
+            g = cek_kanvas(isi)
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:110] if g else '-'))
+            if not g: kode = 3
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
             l, g = utama(isi)
