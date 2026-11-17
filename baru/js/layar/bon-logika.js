@@ -12,6 +12,8 @@ import { kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
 import { cacheMentah, ambilTutupHari, ambilPiutangMutasi, eraBuku } from '../data/toko.js';
 import { RP, hariIniIso, LEBIH_AMBANG, kalimatLebih, pecahLebih } from '../inti/format.js';
 import { aturPelanggan, kartuTersimpan, hariKe } from './pelanggan-logika.js';
+// B2 (owner 17 Nov 2026): pembayaran boleh menunjuk faktur tertentu — pembagian sisa ke baris bon dipusatkan di faktur-logika (fkAlokasi)
+import { fkRincian, fkAdaAlamat, fkTerbukaOrang } from './faktur-logika.js';
 
 const bnAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0;
   const n = Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return isFinite(n) ? n : 0; };
@@ -21,7 +23,10 @@ export function umurKata(hari) { if (hari === null || hari === undefined) return
 /** Rincian bon yang BELUM tertutup (FIFO) — rincianBelumLunas index.html 29599; audit 39b no. 37 (tinjauan MM1): barang yang diretur dari nota bon memadamkan
  *  NOTA ASALNYA dulu (mesin hitungPiutang mencatatnya di utang itu: `diretur`), sisanya ikut bon tertua bersama pembayaran & hapus buku — sama dengan mesin. */
 const bnDiretur = (utang) => utang.reduce((a, u) => a + (u.diretur || 0), 0);
-export function rincianBelumLunas(d) {
+//  B2 (owner 17 Nov 2026): pembayaran yang MENUNJUK faktur (untukFaktur, atau bayar saat beli sebuah faktur) menutup faktur itu dulu — fkRincian. Tanpa
+//  pembayaran beralamat hasilnya persis loop lama (alat-uji/uji_faktur.py membandingkannya dengan salinan loop lama di bnRincianLama).
+export function rincianBelumLunas(d) { return fkRincian(d); }
+export function bnRincianLama(d) {
   const utang = d.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
   let tertutup = d.bayar + d.dihapus + (d.retur || 0) - bnDiretur(utang); const hasil = [];
   for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (tertutup >= nom) { tertutup -= nom; continue; } hasil.push({ tanggal: u.tanggal, ket: u.ket, nominal: u.nominal, sisa: nom - tertutup, idTrx: u.idTrx || null, idMutasi: u.idMutasi || null }); tertutup = 0; }
@@ -36,7 +41,9 @@ const bnBalik = (m) => m.jenis === 'hapusBuku' && (Number(m.nominal) || 0) < 0;
 /** Semua orang di buku bon (mesin beku) + status menurut aturan owner + tagihan terakhir. */
 export function semuaBon(kini) {
   const iso = hariIniIso(kini); const atur = aturPelanggan(); const tagihSemua = cacheMentah('tagih');
-  return hitungPiutang().map((d, no) => { const buka = rincianBelumLunas(d); const sisa = d.sisa || 0; const umur = sisa > 0 ? d.umurHari : null;
+  return hitungPiutang().map((d, no) => { const buka = rincianBelumLunas(d); const sisa = d.sisa || 0;
+    // B2: ada pembayaran yang menunjuk faktur → umur dari bon TERBUKA tertua menurut rincian (mesin menghitung umur dengan urutan tertua-dulu murni)
+    const umur = sisa > 0 ? (buka.length && fkAdaAlamat(d) ? Math.max(0, hariKe(iso) - hariKe(buka[0].tanggal)) : d.umurHari) : null;
     const bayarAkhir = d.mutasi.filter((m) => m.jenis === 'bayar').sort((a, b) => String(b.tanggal + (b.jam || '')).localeCompare(String(a.tanggal + (a.jam || ''))))[0] || null;
     const tagih = tagihSemua.filter((t) => t.kunci === d.kunci).sort((a, b) => String(b.tanggal + (b.jam || '')).localeCompare(String(a.tanggal + (a.jam || ''))))[0] || null;
     const janjiLewat = !!tagih && !!tagih.janji && tagih.janji < iso && (!bayarAkhir || bayarAkhir.tanggal < tagih.tanggal); const menunggu = !!tagih && !!tagih.janji && tagih.janji >= iso && (!bayarAkhir || bayarAkhir.tanggal < tagih.tanggal);
@@ -229,12 +236,21 @@ export function kalimatBayarTutup(cara, tanggal) {
   if (t) return 'hari ini SUDAH ditutup' + (t.jam ? ' jam ' + t.jam : '') + ' — uang ini' + (cara === 'QRIS' ? ' dan potongan QRIS (MDR)-nya' : '') + ' baru ikut hitungan kas kalau tutup hari diulang';
   return cara === 'QRIS' ? 'potongan QRIS (MDR)-nya, kalau ada, dicatat saat tutup hari' : '';
 }
-export function susunBayarBon(kini, kunci, nominal, cara, catatan, pengantar, w) {
+/** untukFaktur (B2, owner 17 Nov): nomor-nomor faktur yang DIPILIH dibayar — kosong = tertua dulu. Hanya faktur orang ini yang masih terbuka; nominal ≤ sisa
+ *  faktur pilihan (kelebihannya tidak diam-diam pindah ke faktur lain: owner/kasir memilih ulang atau mengosongkan pilihan). */
+export function susunBayarBon(kini, kunci, nominal, cara, catatan, pengantar, w, untukFaktur) {
   const b = semuaBon(kini).find((x) => x.kunci === kunci); if (!b) return { tolak: 'Nama itu tidak ada di buku bon' };
   if (b.status === 'lebih') return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada bon untuk dibayar.' }; const n = Math.round(bnAngka(nominal));
   if (!(n > 0)) return { tolak: 'Ketik jumlah yang dibayar' }; if (n > b.sisa) return { tolak: 'Pembayaran ' + RP(n) + ' melebihi sisa bonnya (' + RP(b.sisa) + ') — kalau memang lebih, catat sisanya sebagai penjualan biasa, bukan pembayaran bon' };
   const c = cara === 'QRIS' ? 'QRIS' : 'Tunai'; const data = { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: w.tanggal, jam: w.jam, caraBayar: c, catatan: String(catatan || '').trim(), dicatatDi: 'sistem' };
   if (!bnKosong(pengantar) && kunciPelanggan(pengantar) !== kunci) data.dibawaOleh = String(pengantar).trim();
+  const pilih = (Array.isArray(untukFaktur) ? untukFaktur : []).map(String).filter((x, i, a) => x && a.indexOf(x) === i);
+  if (pilih.length) {
+    const buka = fkTerbukaOrang(kini, kunci); const asing = pilih.filter((no) => !buka.some((f) => f.no === no)); if (asing.length) return { tolak: 'Faktur ' + asing.join(', ') + ' bukan faktur terbuka ' + b.nama + ' — pilih ulang' };
+    const sisaPilih = buka.filter((f) => pilih.indexOf(f.no) >= 0).reduce((a, f) => a + f.sisa, 0);
+    if (n > sisaPilih) return { tolak: 'Pembayaran ' + RP(n) + ' melebihi sisa faktur yang dipilih (' + RP(sisaPilih) + ') — tambah faktur yang dipilih, atau kosongkan pilihan supaya menutup yang tertua dulu' };
+    data.untukFaktur = pilih;
+  }
   const sisaBaru = b.sisa - n; return { dokumen: [{ koleksi: 'piutangMutasi', data }], sisaBaru, patch: { kabar: (sisaBaru <= 0 ? b.nama + ' LUNAS. Pembayaran ' + RP(n) + ' dicatat' : 'Pembayaran ' + RP(n) + ' dicatat — sisa bon ' + b.nama + ' sekarang ' + RP(sisaBaru) + ', belum lunas') + ' · ' + (c === 'QRIS' ? 'rekening' : 'laci') + ' bertambah, laba tidak berubah (sudah dihitung waktu berasnya dijual)' + (kalimatBayarTutup(c, data.tanggal) ? '; ' + kalimatBayarTutup(c, data.tanggal) : '') + (data.dibawaOleh ? ' · dibawa ' + data.dibawaOleh : '') + '.', kabarAwas: false } };
 }
 /**

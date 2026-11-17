@@ -47,6 +47,10 @@ Membuktikan bentuk rules, bukan perilaku server (itu docs/uji-rules-v4.md: Playg
      ben/karyawan (= akses.js DOK_STAF); (v8-3) persetujuan create + stafUsulHarga(ben, karyawan) — tindakan 'hargaPelanggan', status 'menunggu', usulUid =
      uid penulis, tanpa kolom keputusan (bentuk persis). MODEL: penafsir rules mini menilai kasus ★H docs/uji-rules-v8.md (KASUS_V8) atas v8, dan atas
      firestore.rules.v7 yang berbeda WAJIB persis BEDA_V7. Bukti server: alat-uji/uji_rules_emulator.py bagian V8.
+  13. (v9 — B2, owner 17 Nov 2026) v9 = firestore.rules.v8 + PERSIS satu ubahan (dicabut balik oleh ke_v8; sisanya dibandingkan dengan firestore.rules.v8;
+     semua pemeriksa v8 & v7 dijalankan atas hasil cabut-balik): persetujuan create + stafMintaKredit(ben) — tindakan 'kredit', status 'menunggu', mintaUid =
+     uid penulis, tanpa kolom keputusan. MODEL: kasus ★K docs/uji-rules-v9.md (KASUS_V9) atas v9, dan atas firestore.rules.v8 yang berbeda WAJIB persis BEDA_V8.
+     Bukti server: alat-uji/uji_rules_emulator.py bagian V9.
 
     python3 alat-uji/periksa_rules.py            → LULUS / daftar cacat (keluar 2)
     python3 alat-uji/periksa_rules.py --kontrol  → berkas rules cacat buatan WAJIB gagal (keluar 3 kalau ada yang lolos)
@@ -59,7 +63,7 @@ import rules_mini  # noqa: E402
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 EMAIL_OWNER = 'owner@tokoberasmiqbal.web.app'; EMAIL_KASIR = 'kasir@tokoberasmiqbal.web.app'
 PERAN = ['ben', 'karyawan']
-FUNGSI_JUJUR = {'stafBuat', 'stafBuatTipe', 'stafBuatJual', 'stafJejak', 'stafUbahPesanan', 'stafDenyut', 'stafBuatWadah', 'stafBuatLahir', 'stafMintaNego', 'stafUsulHarga'}   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
+FUNGSI_JUJUR = {'stafBuat', 'stafBuatTipe', 'stafBuatJual', 'stafJejak', 'stafUbahPesanan', 'stafDenyut', 'stafBuatWadah', 'stafBuatLahir', 'stafMintaNego', 'stafUsulHarga', 'stafMintaKredit'}   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
 LUAR_KOLEKSI = ['aksesAkun', 'permintaanAkses', 'arsipTahun', 'ringkasanKasir', 'batuNisan', 'fotoBon']   # blok rules di luar baru/js/data/koleksi.js (v7: fotoBon)
 
 
@@ -492,6 +496,60 @@ def periksa_v8(rules, r7, c8):
     return cacat
 
 
+# ---- v9 (B2, owner 17 Nov 2026): v8 + PERSIS satu ubahan ----
+KREDIT_SUKU = " || stafMintaKredit(['ben'])"
+SETUJU_CREATE_V9 = SETUJU_CREATE_V8 + KREDIT_SUKU
+MINTA_KREDIT_WAJIB = ("let d = request.resource.data; return stafBuat(peranBoleh) && d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu' "
+                      "&& d.get('mintaUid', '') == request.auth.uid && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);")
+V8_TEKS = None   # kontrol: pengganti isi firestore.rules.v8
+BANDING_V8 = True
+
+
+def ke_v8(R):
+    """v9 → v8: cabut PERSIS satu ubahan v9 (wajib kena tepat sekali). R = rules tanpa komentar. Kembali (teks, cacat)."""
+    cacat = []
+    lama = "allow create: if owner() || stafMintaNego(['ben', 'karyawan'])" + USUL_SUKU + KREDIT_SUKU + ";"
+    k = R.count(lama)
+    if k != 1: cacat.append('v9 ≠ v8 + ubahan yang tercatat: persetujuan create (v9-1) — %r ditemukan %d× (wajib 1×)' % (lama[:110], k))
+    else: R = R.replace(lama, "allow create: if owner() || stafMintaNego(['ben', 'karyawan'])" + USUL_SUKU + ";")
+    R2 = buang_fungsi(R, 'stafMintaKredit')
+    if R2 == R: cacat.append('fungsi v9 stafMintaKredit() tidak ada')
+    return R2, cacat
+
+
+def periksa_v9(rules, r8, c9):
+    """13 · v9: bentuk persis satu ubahan + sisanya = firestore.rules.v8 + model kasus ★K (v9 & v8, beda wajib = BEDA_V8)."""
+    cacat = list(c9); B = blok_rules(rules); F = fungsi_rules(rules); rata = lambda t: re.sub(r'\s+', ' ', t).strip()
+    if BENTUK_V7 and rata(F.get('stafMintaKredit', '')) != MINTA_KREDIT_WAJIB: cacat.append('stafMintaKredit() bukan "stafBuat + tindakan kredit + status menunggu + mintaUid = uid penulis + tanpa kolom keputusan": ' + rata(F.get('stafMintaKredit', '(tidak ada)')))
+    xs = [rata(x) for x in allow(B.get('persetujuan', ''), 'create')]
+    if BENTUK_V7 and xs != [SETUJU_CREATE_V9]: cacat.append('persetujuan: allow create bukan "%s" (v9: + minta persetujuan bon, ben saja): %s' % (SETUJU_CREATE_V9, xs))
+    for n, b in B.items():
+        if 'stafMintaKredit' in b and n != 'persetujuan': cacat.append(n + ': stafMintaKredit() dipakai di luar persetujuan')
+    for n, badan in F.items():
+        if n != 'stafMintaKredit' and 'stafMintaKredit' in badan: cacat.append('stafMintaKredit() dipanggil dari fungsi ' + n)
+    v8 = V8_TEKS if V8_TEKS is not None else baca('firestore.rules.v8')
+    a, b = rata(r8), rata(tanpa_komentar(v8))
+    if BANDING_V8 and a != b:
+        i = next((j for j in range(min(len(a), len(b))) if a[j] != b[j]), min(len(a), len(b)))
+        cacat.append('v9 mengubah lebih dari ubahan yang tercatat atas firestore.rules.v8 — dekat "…%s…" (v8: "…%s…")' % (a[max(0, i - 60):i + 60], b[max(0, i - 60):i + 60]))
+    dok = DOK_V9_TEKS if DOK_V9_TEKS is not None else (baca('docs/uji-rules-v9.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v9.md')) else '')
+    di_dok = set(re.findall(r'^\|(?: \d+ \|)? (★K\d+) \|', dok, re.M)); di_model = set(k[0] for k in KASUS_V9)
+    if di_dok != di_model: cacat.append('docs/uji-rules-v9.md tidak sama dengan kasus model v9 — hanya di berkas: %s · hanya di model: %s' % (sorted(di_dok - di_model), sorted(di_model - di_dok)))
+    mw = re.search(r'\n## Wajib owner[^\n]*\n(.*?)\n## ', dok, re.S)
+    wajib = re.findall(r'^\| \d+ \| (★K\d+) \|', mw.group(1), re.M) if mw else []
+    if wajib != WAJIB_V9: cacat.append('docs/uji-rules-v9.md bagian "Wajib owner" bukan WAJIB_V9 — berkas: %s · model: %s' % (wajib, WAJIB_V9))
+    try: M9 = rules_mini.Rules(rules); M8 = rules_mini.Rules(tanpa_komentar(v8))
+    except Exception as e: return cacat + ['model v9: rules tidak bisa diurai penafsir mini — %s' % e]
+    for no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks in KASUS_V9:
+        db = dict(DB_UJI_V7); db.update(ubah_db or {}); db = dict((k, v) for k, v in db.items() if v is not None)
+        h = M9.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7)
+        if h.boleh != boleh: cacat.append('model v9 %s %s → %s, wajib %s%s' % (no, nama, 'LOLOS' if h.boleh else 'DITOLAK', 'LOLOS' if boleh else 'DITOLAK', (' (' + h.galat + ')') if h.galat else ''))
+        elif maks is not None and h.akses > maks: cacat.append('model v9 %s %s: %d access call (batas jalur ini %d)' % (no, nama, h.akses, maks))
+        h8 = M8.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7); harap8 = (not boleh) if no in BEDA_V8 else boleh
+        if h8.boleh != harap8: cacat.append('model v9 %s atas firestore.rules.v8 → %s, harap %s (%s)' % (no, 'LOLOS' if h8.boleh else 'DITOLAK', 'LOLOS' if harap8 else 'DITOLAK', 'ubahan v9' if no in BEDA_V8 else 'wajib sama dengan v8'))
+    return cacat
+
+
 def ke_v6(R, KOL, ARSIP):
     """v7 → v6: cabut PERSIS ubahan v7 (tiap ganti wajib kena tepat sekali, blok demi blok). R = rules tanpa komentar. Kembali (teks, cacat)."""
     cacat = []; rata = lambda t: re.sub(r'\s+', ' ', t).strip()
@@ -845,12 +903,34 @@ KASUS_V8 = [
 BEDA_V7 = {'★H1', '★H2', '★H3'}   # yang DIBUKA v8 (ditolak v7); kasus lain wajib sama hasilnya di v7
 DOK_V8_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v8.md
 
+# ---- MODEL v9 (B2, owner 17 Nov 2026): kasus ★K docs/uji-rules-v9.md — dokumen uji = DB_UJI_V7 (U11 = staf ben) + ubah_db per kasus.
+MINTA_KREDIT = {'id': 'uji-v9-kredit', 'tindakan': 'kredit', 'status': 'menunggu', 'mintaUid': 'uid-uji-b', 'olehUid': 'uid-uji-b', 'pelanggan': 'Contoh', 'nominal': 50000, 'teks': 'uji'}
+U11_KARYAWAN = {'aksesAkun/uid-uji-b': {'uid': 'uid-uji-b', 'nama': 'UJI B', 'email': 'uji.b@contoh.com', 'peran': 'karyawan', 'aktif': True}}
+WAJIB_V9 = ['★K2', '★K3']   # owner saja (tanpa dokumen uji staf); kasus staf dibuktikan emulator — boleh juga di Playground dengan U11
+KASUS_V9 = [
+    ('★K1', 'ben meminta persetujuan bon (menunggu, atas nama sendiri)', 'staf', 'create', 'persetujuan', 'uji-v9-kredit', MINTA_KREDIT, None, True, None),
+    ('★K2', 'owner membuat permintaan bon (owner selalu boleh)', 'owner', 'create', 'persetujuan', 'uji-v9-kredit', MINTA_KREDIT, None, True, None),
+    ('★K3', 'owner menyetujui permintaan bon (update)', 'owner', 'update', 'persetujuan', 'uji-v9-kredit', dict(MINTA_KREDIT, status='disetujui', diputusPada='x'), {'persetujuan/uji-v9-kredit': MINTA_KREDIT}, True, 0),
+    ('★K4', 'ben meminta atas nama akun lain (mintaUid lain)', 'staf', 'create', 'persetujuan', 'uji-v9-kredit', dict(MINTA_KREDIT, mintaUid='uid-lain'), None, False, None),
+    ('★K5', 'ben mengirim permintaan yang sudah "disetujui"', 'staf', 'create', 'persetujuan', 'uji-v9-kredit', dict(MINTA_KREDIT, status='disetujui'), None, False, None),
+    ('★K6', 'ben membawa kolom keputusan (diputusPada)', 'staf', 'create', 'persetujuan', 'uji-v9-kredit', dict(MINTA_KREDIT, diputusPada='2026-11-17T03:00:00Z'), None, False, None),
+    ('★K7', 'ben memutus permintaannya sendiri (update)', 'staf', 'update', 'persetujuan', 'uji-v9-kredit', dict(MINTA_KREDIT, status='disetujui'), {'persetujuan/uji-v9-kredit': MINTA_KREDIT}, False, None),
+    ('★K8', 'karyawan meminta persetujuan bon (bon = ben saja)', 'staf', 'create', 'persetujuan', 'uji-v9-kredit', MINTA_KREDIT, U11_KARYAWAN, False, None),
+    ('★K9', 'akun tanpa aksesAkun meminta', 'baru', 'create', 'persetujuan', 'uji-v9-kredit', dict(MINTA_KREDIT, mintaUid='baru1', olehUid='baru1'), None, False, None),
+    ('★K10', 'olehUid bukan uid penulis', 'staf', 'create', 'persetujuan', 'uji-v9-kredit', dict(MINTA_KREDIT, olehUid='uid-lain'), None, False, None),
+    ('★K11', 'kasir@ meminta persetujuan bon', 'kasir', 'create', 'persetujuan', 'uji-v9-kredit', dict(MINTA_KREDIT, mintaUid='uid-kasir-uji', olehUid='uid-kasir-uji'), None, False, None),
+]
+BEDA_V8 = {'★K1'}   # yang DIBUKA v9 (ditolak v8); kasus lain wajib sama hasilnya di v8
+DOK_V9_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v9.md
+
 
 def periksa(rules, koleksi_js, akses_js):
     cacat = []
     rules = tanpa_komentar(rules)
-    r7, c8 = ke_v7(rules)          # 12 · v8 → v7 (cabut balik tiga ubahan v8)
-    cacat += periksa_v8(rules, r7, c8)
+    r8, c9 = ke_v8(rules)          # 13 · v9 → v8 (cabut balik satu ubahan v9)
+    cacat += periksa_v9(rules, r8, c9)
+    r7, c8 = ke_v7(r8)             # 12 · v8 → v7 (cabut balik tiga ubahan v8)
+    cacat += periksa_v8(r8, r7, c8)
     cacat += periksa_v7(r7)        # 10 · semua pemeriksa v7 atas hasil cabut-balik (v8 tidak mengubah apa pun selain tiga ubahannya)
     KOL = re.findall(r"\{ nama: '(\w+)',", koleksi_js); B = blok_rules(rules); F = fungsi_rules(rules)
     BACA = daftar_js(akses_js, 'BACA_STAF') or []; DOK = peta_js(akses_js, 'DOK_STAF') or {}; BUAT = peta_js(akses_js, 'BUAT_STAF') or {}
@@ -1029,11 +1109,17 @@ if __name__ == '__main__':
         # 10/11 · v7 FINAL: persetujuan, foto bon, kasir@, pintu — BENTUK (pemeriksa khusus) dan MODEL saja ('model:' = bentuk & pembanding v6 dimatikan)
         PH = "|| salinanArsip(getAfter(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)), y, kol, id, resource.data));"
         rusak.update({
-            'v7: staf menulis persetujuan apa saja (stafBuat, bukan stafMintaNego)': R.replace("allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']);", "allow create: if owner() || stafBuat(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']);"),
+            'v7: staf menulis persetujuan apa saja (stafBuat, bukan stafMintaNego)': R.replace("allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']);", "allow create: if owner() || stafBuat(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']);"),
             'v8: usul harga atas nama orang lain (tanpa usulUid)': R.replace(" && d.get('usulUid', '') == request.auth.uid", ""),
             'v8: usul harga tindakan apa saja': R.replace("d.get('tindakan', '') == 'hargaPelanggan' && ", ""),
             'v8: usul harga boleh menulis kolom keputusan': R.replace("d.get('usulUid', '') == request.auth.uid\n        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);", "d.get('usulUid', '') == request.auth.uid;"),
-            'v8: usul harga dicabut dari create persetujuan': R.replace(" || stafUsulHarga(['ben', 'karyawan']);", ";"),
+            'v8: usul harga dicabut dari create persetujuan': R.replace(" || stafUsulHarga(['ben', 'karyawan']) ||", " ||"),
+            'v9: minta bon atas nama orang lain (tanpa mintaUid)': R.replace(" && d.get('mintaUid', '') == request.auth.uid", ""),
+            'v9: minta bon tindakan apa saja': R.replace("d.get('tindakan', '') == 'kredit' && ", ""),
+            'v9: minta bon boleh menulis kolom keputusan': R.replace("d.get('mintaUid', '') == request.auth.uid\n        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);", "d.get('mintaUid', '') == request.auth.uid;"),
+            'v9: minta bon dibuka untuk karyawan': R.replace("stafMintaKredit(['ben'])", "stafMintaKredit(['ben', 'karyawan'])"),
+            'v9: minta bon dicabut dari create persetujuan': R.replace(" || stafMintaKredit(['ben']);", ";"),
+            'v9: baris lain berubah dari v8 (tetap wajib ketahuan)': R.replace("'hargaTingkat', 'produkArsip'] && staf(", "'hargaTingkat', 'produkArsip', 'kunciPeriode'] && staf("),
             'v8: setelan HET ikut terbaca staf': R.replace("'hargaTingkat', 'produkArsip'] && staf(", "'hargaTingkat', 'produkArsip', 'het'] && staf("),
             'v8: staf boleh menulis setelan harga tingkat': R.replace("      allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());", "      allow update: if (owner() && (id != 'kunciPeriode' || kunciGeser())) || (id == 'hargaTingkat' && stafBuat(['ben', 'karyawan']));"),
             'v8: baris lain berubah dari v7 (tetap wajib ketahuan)': R.replace("    match /hargaWadah/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);", "    match /hargaWadah/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan', 'tamu']);"),
@@ -1108,12 +1194,12 @@ if __name__ == '__main__':
             if isi == R: print('KONTROL BASI  ' + nama); kode = 3; continue
             # kontrol lama (sebelum v7) WAJIB tertangkap pemeriksa KHUSUSNYA — pembanding "sama dengan v6" (yang menangkap perubahan apa pun) dimatikan untuknya;
             # 'model:' — bentuk v7 (persetujuan, fotoBon, pintu) juga dimatikan: yang wajib berbunyi = penafsir rules mini pada kasus Playground ★/M
-            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:')
+            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:')
             c = periksa(isi, K, A)
-            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
+            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
-        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
+        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
         for nama, isi in rusak_dok.items():
             DOK_V7_TEKS = isi; c = periksa(R, K, A); DOK_V7_TEKS = None
             c = [x for x in c if 'docs/uji-rules-v7.md' in x]   # berbunyi karena SEBABNYA (berkas Playground), bukan kegagalan lain
@@ -1129,7 +1215,8 @@ if __name__ == '__main__':
     if c: print('RULES CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
     KOL, TMIN = kp_js()
     nS = sum(1 for k in KASUS_BUKU if k[4]); nT = len(KASUS_BUKU) - nS
-    print('RULES v8 LULUS: v8 = firestore.rules.v7 + harga tingkat & arsip produk terbaca staf + usul harga staf (bentuk persis; model %d kasus ★H, beda v7 = %s) · ' % (len(KASUS_V8), ', '.join(sorted(BEDA_V7)))
+    print('RULES v9 LULUS: v9 = firestore.rules.v8 + minta persetujuan bon (ben; bentuk persis; model %d kasus ★K, beda v8 = %s) · ' % (len(KASUS_V9), ', '.join(sorted(BEDA_V8)))
+          + 'v8 = firestore.rules.v7 + harga tingkat & arsip produk terbaca staf + usul harga staf (bentuk persis; model %d kasus ★H, beda v7 = %s) · ' % (len(KASUS_V8), ', '.join(sorted(BEDA_V7)))
           + 'v7: %d blok koleksi · TANPA payung (tidak ada match rekursif / wildcard koleksi) · owner via email · jalur kasir@ utuh & dipersempit · '
           'tulis bukan-owner wajib uid · daftar peran = akses.js · kunci periode di %d koleksi bertanggal (= kunci-periode.js), tenggang minimal %d hari, '
           'satu get() dokumen kunci per operasi, bukan-owner tanpa get() kunci, pajak tidak dikunci (K6) · berita acara tutup buku hanya maju (model: %d tulisan '

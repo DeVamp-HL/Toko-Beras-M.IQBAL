@@ -186,7 +186,7 @@ def baca_per_layar():
 # ASLI, dan tiap kiriman dilewatkan periksaKiriman ASLI (yang bukan-owner memang tidak boleh kirim → dilewati, bukan dihitung).
 BATAS_CI = 18   # batas Firebase 20 per batch − sisa 2 (keputusan owner). Sengaja TIDAK dibaca dari akses.js: menaikkan batas di sana tidak melonggarkan CI.
 MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/layar/arsip-logika.js',
-               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
+               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
                'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js']
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
@@ -531,7 +531,8 @@ function masukCache(dok) { terapkanKeCache(dok.map(function (d) { return { kolek
 function ukurBerulang(keadaan) {
   var F = foto(); var kunciB = keadaan === 'B' ? [{ id: 'kunciPeriode', sampaiBulan: '2026-08', riwayat: [] }] : [];
   // nota owner (tanpa batas baris): 40 baris literan berkantong + bayar sebagian — semua bertanggal HARI INI
-  var sN = { keranjang: literan(40), pelanggan: 'Pembeli Contoh', cara: 'Tunai', uang: 1000, potongan: 0, batasBaris: 0 };
+  // B2 (owner 17 Nov 2026): bayar kurang ikut KR1 — Pembeli Contoh belum terdaftar, owner membuka kredit sekali (tanda kreditDibukaOwner) supaya jalurnya tetap terukur
+  var sN = { keranjang: literan(40), pelanggan: 'Pembeli Contoh', cara: 'Tunai', uang: 1000, potongan: 0, batasBaris: 0, kreditDibuka: true };
   var rn = simpanNota(sN, W); ukur(keadaan, 'nota hari ini · 40 baris literan berkantong + bayar sebagian (' + (rn.dokumen ? rn.dokumen.length : 0) + ' catatan)', 'simpanNota', rn); H.diukur.susunNotaDokumen = true;   // simpanNota = alasanTolak + susunNotaDokumen
   if (rn.dokumen) { masukCache(rn.dokumen);
     ukur(keadaan, 'batal nota barusan · 40 baris (+ 40 kantong & bayar sebagian dicabut)', 'susunPembatalan', susunPembatalan(rn.patch.notaTerakhir, 'uji ukur', W)); }

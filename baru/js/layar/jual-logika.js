@@ -30,6 +30,8 @@ import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan, tolakBatalReturB
 import { tkSetTertaut } from '../mesin/pembantu.js';
 // B1 (owner 16 Nov 2026): harga pelanggan usaha
 import { htKolomBaris, htTandaiRak, htTingkatOrang, htPapanKhusus, HT_KOLOM_BARIS } from './harga-tingkat-logika.js';
+// B2 (owner 17 Nov 2026): faktur bertempo & batas kredit — batas angka owner per pelanggan, minta persetujuan owner, bayar kurang ikut batas
+import { fkInfoKredit, fkSumberBatas, fkSetujuUntuk, fkKolomNota } from './faktur-logika.js';
 // owner 17 Nov (butir 5): berat 1 liter — penentu bersama (modul daun), diekspor ulang untuk layar
 import { wdSesudah, kglBaku, kgPerLiter, kgPerLiterBawaan, kglBaca, KG_LITER_MIN, KG_LITER_MAKS } from './kg-liter-logika.js';
 export { wdSesudah, kgPerLiter, kgPerLiterBawaan, kglBaca, KG_LITER_MIN, KG_LITER_MAKS };
@@ -497,7 +499,7 @@ export function daftarPelanggan(cari) {
 }
 export function infoPelanggan(nama) {
   if (!kunciPelanggan(nama)) return null;
-  const i = kreditLintas(infoKreditPelanggan(nama), nama);   // siap 2027: lintas tahun (toko.js) · mesin beku: sisa dijepit 0 — kelebihan bayar dibaca sendiri (audit 39b no. 4)
+  const i = fkInfoKredit(nama);   // B2: batas angka owner di kartu, kosong = rumus · siap 2027: lintas tahun (toko.js) · mesin beku: sisa dijepit 0 — kelebihan bayar dibaca sendiri (audit 39b no. 4)
   const r = hitungPiutang().find((x) => x.kunci === kunciPelanggan(nama)); const PL = pecahLebih(r); i.lebih = PL.lebih; i.lebihUang = PL.uang; i.lebihHapus = PL.hapus;
   const pesanan = ambilPesanan().filter((p) => pesananBelumTuntas(p) && kunciPelanggan(p.namaPelanggan || p.nama) === kunciPelanggan(nama));
   return Object.assign(i, { pesanan });
@@ -963,16 +965,29 @@ export function tambahUang(s, pecahan) { return { uang: (s.uang || 0) + pecahan 
 export function uangPas(s) { return { uang: hitungTagihan(s).total }; }
 export function uangKetik(s) { const n = angkaKetik(s.ketik); return n > 0 ? { uang: n, ketik: '' } : {}; }
 
-/** KR1 — sama dengan wzKreditTerkunci() index.html, tanpa DOM; null = boleh. */
+/** KR1 murni (tanpa pintu owner / persetujuan) — sama dengan wzKreditTerkunci() index.html; B2: batas = angka owner di kartu, kosong = rumus. null = boleh. */
+export function kunciKr1(nama, totalKredit) {
+  const info = fkInfoKredit(nama);   // siap 2027 (owner 7 Okt, A7): 90 hari menyeberang tutup buku lewat ringkasan tahun lalu (kreditLintas di dalamnya)
+  if (!info || !info.ada) return 'Isi nama pelanggan untuk penjualan kredit.';
+  if (!info.terdaftar) return nama + ' belum terdaftar di buku Pelanggan — kredit dimatikan (KR1). Isi ciri, catatan, atau rute di kartunya dulu.';
+  if (info.batas <= 0) return 'Belum ada riwayat belanja — batas kredit belum terbentuk (KR1).';
+  if (info.sisa + totalKredit > info.batas) return 'Melewati batas kredit ' + RP(info.batas) + ' (bon ' + RP(info.sisa) + ' + nota ini ' + RP(totalKredit) + ')' + (info.sumber === 'owner' ? ' — batas ' + fkSumberBatas(info) : '') + '.';
+  return null;
+}
+/** KR1 — null = boleh. Pintu: owner membuka sekali (kreditDibuka), atau persetujuan owner atas permintaan bon (B2: hari ini, nominal ≥ bon nota ini, belum dipakai). */
 export function alasanKunciKredit(s, totalKredit) {
   const nama = String(s.pelanggan || '').trim();
   if (!nama) return 'Isi nama pelanggan untuk penjualan kredit.';
   if (s.kreditDibuka) return null;   // owner membuka kredit sekali untuk nota ini (jejaknya kreditDibukaOwner)
-  const info = kreditLintas(infoKreditPelanggan(nama), nama);   // siap 2027 (owner 7 Okt, A7): 90 hari menyeberang tutup buku lewat ringkasan tahun lalu
-  if (!info.terdaftar) return nama + ' belum terdaftar di buku Pelanggan — kredit dimatikan (KR1). Isi ciri, catatan, atau rute di kartunya dulu.';
-  if (info.batas <= 0) return 'Belum ada riwayat belanja — batas kredit belum terbentuk (KR1).';
-  if (info.sisa + totalKredit > info.batas) return 'Melewati batas kredit ' + RP(info.batas) + ' (bon ' + RP(info.sisa) + ' + nota ini ' + RP(totalKredit) + ').';
-  return null;
+  const k = kunciKr1(nama, totalKredit); if (!k) return null;
+  return fkSetujuUntuk(null, nama, totalKredit, hariIniIso(s.sekarang || new Date())) ? null : k;
+}
+/** Bon yang kena KR1 untuk keranjang ini: nota bon = total, bayar kurang = kekurangannya (B2, owner 17 Nov: ikut batas). 0 = tidak ada bon. */
+export function bonKeranjang(s, t0) { const t = t0 || hitungTagihan(s); return s.cara === 'Kredit' ? t.total : t.sisaJadiBon ? t.kurang : 0; }
+/** Id persetujuan owner yang DIPAKAI nota ini (ditulis ke baris: kreditSetujuId) — hanya kalau KR1 memang menahan dan pintu owner tidak dipakai. */
+export function setujuDipakai(s, nominalBon, tanggal) {
+  const nama = String(s.pelanggan || '').trim(); if (!nama || s.kreditDibuka || !(nominalBon > 0) || !kunciKr1(nama, nominalBon)) return null;
+  const m = fkSetujuUntuk(null, nama, nominalBon, tanggal); return m ? String(m.id) : null;
 }
 /** Stok dicek ULANG saat mencatat (bisa berubah sejak dimasukkan): baris pertama yang melampaui langit-langit. */
 export function periksaStokKeranjang(s) {
@@ -1059,7 +1074,9 @@ export function alasanTolak(s) {
   if (s.cara === 'Kredit' && !nama) return 'Bon harus ada nama pembelinya';
   if (t.sisaJadiBon && !nama) return 'Uangnya kurang ' + RP(t.kurang) + ' — sisanya jadi bon, pilih nama pembelinya dulu';
   if (s.cara === 'Tunai' && t.uang <= 0 && t.total > 0) return 'Ketuk uang yang diterima (atau PAS)';
-  if (s.cara === 'Kredit') { const k = alasanKunciKredit(s, t.total); if (k) return k; }   // bayar sebagian TIDAK kena KR1 (seperti live)
+  if (s.cara === 'Kredit') { const k = alasanKunciKredit(s, t.total); if (k) return k; }
+  // B2 (owner 17 Nov 2026): bayar kurang yang sisanya jadi bon IKUT KR1 / batas kredit — dulu lolos (celah KR1 bayar-kurang-Rp1.000)
+  if (s.cara !== 'Kredit' && t.sisaJadiBon) { const k = alasanKunciKredit(s, t.kurang); if (k) return 'Uangnya kurang ' + RP(t.kurang) + ' (jadi bon): ' + k; }
   if (s.pesananId) { const ps = ambilPesananDoc(s.pesananId); if (!ps || !pesananBelumTuntas(ps)) return 'Pesanan yang diikat sudah tuntas/tidak ada — lepas ikatannya dulu'; }
   return '';
 }
@@ -1095,6 +1112,9 @@ export function susunNotaDokumen(s, w) {
   if (bulatNota > 0) { for (let i = items.length - 1; i >= 0; i--) { if (items[i].hargaTotal > 0) { items[i].pembulatan = bulatNota; items[i].hargaTotal += bulatNota; break; } } }
   const totalBayar = items.reduce((a, t) => a + t.hargaTotal, 0);
   const trxId = w.idUnik();
+  // B2 (owner 17 Nov 2026): faktur & persetujuan bon — dihitung SEKALI per nota, sesudah cara akhirnya diketahui (bayar kurang = Kredit)
+  const faktur = fkKolomNota(nama, cara, w.tanggal, w.kodePerangkat);
+  const setujuId = cara === 'Kredit' && !tk ? setujuDipakai(s, bayarSebagian > 0 ? totalBayar - bayarSebagian : totalBayar, w.tanggal) : null;
   const dokumen = []; let tolakPecah = ''; const takaranPertama = {};
   items.forEach((t) => {
     const d = Object.assign({}, t);
@@ -1108,6 +1128,8 @@ export function susunNotaDokumen(s, w) {
     if (t.nego) d.negoSelisih = t.hargaSatuan - t.hargaAsli;          // jejak tawar (NG1)
     if (tk) d.tukarReturId = String(tk.susulanReturId || tk.returDraf.id);   // tautan ke retur tukarnya (19175); susulan menunjuk retur yatim yang sudah ada
     if (cara === 'Kredit' && s.kreditDibuka) d.kreditDibukaOwner = true;
+    if (setujuId) d.kreditSetujuId = setujuId;   // B2: nota bon yang lewat batas atas persetujuan owner
+    if (faktur) Object.assign(d, faktur);   // B2: nota bon pelanggan usaha = faktur (noFaktur, jatuhTempo, tempoHari)
     if (uang > 0 && cara === 'Tunai') { d.uangDiterima = uang; d.kembalian = Math.max(0, uang - (totalBayar - kreditTukar)); }
     dokumen.push({ koleksi: 'penjualan', data: d });
     if (d.kemasanLiteran && d.jumlahKemasanLiteranDipakai > 0) {

@@ -47,8 +47,18 @@ KG_MODUL = 'baru/js/layar/kg-liter-logika.js'
 KG_PEMAKAI = ('jual-logika.js', 'wadah-bernama-logika.js', 'harga-logika.js', 'harga-tingkat-logika.js', 'nego-logika.js', 'sistem-logika.js')
 
 
+# B2 (owner 17 Nov 2026): faktur bertempo & batas kredit — jual-logika (KR1, nomor faktur), bon-logika (alokasi bayar per faktur) memakai faktur-logika,
+# yang sendiri memakai harga-tingkat-logika. Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada.
+FK_MODUL = 'baru/js/layar/faktur-logika.js'
+FK_PEMAKAI = ('jual-logika.js', 'bon-logika.js', 'sistem-logika.js', 'struk-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js')
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in FK_PEMAKAI for x in d) and not any(x.endswith('faktur-logika.js') for x in d):
+        d.append(FK_MODUL)
+        if not any(x.endswith('harga-tingkat-logika.js') for x in d):
+            d.append(HT_MODUL)
     if any(os.path.basename(x) in HT_PEMAKAI for x in d) and not any(x.endswith('harga-tingkat-logika.js') for x in d):
         d.append(HT_MODUL)
     if any(os.path.basename(x) in KG_PEMAKAI for x in d) and not any(x.endswith('kg-liter-logika.js') for x in d):

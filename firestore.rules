@@ -1,5 +1,11 @@
 // ============================================================================
-// ATURAN FIRESTORE v8 FINAL — Toko Beras M.IQBAL (DRAF 16 Nov 2026, B1 harga pelanggan usaha) = v7 FINAL + PERSIS tiga ubahan (alat-uji/periksa_rules.py
+// ATURAN FIRESTORE v9 FINAL — Toko Beras M.IQBAL (DRAF 17 Nov 2026, B2 faktur bertempo & batas kredit) = v8 FINAL + PERSIS satu ubahan
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v8; uji server: docs/uji-rules-v9.md). Owner menerbitkan v9 SEKALI lewat Console
+// SEBELUM cabang B2 digabung:
+//   (v9-1) persetujuan create: + stafMintaKredit — ben (yang boleh mencatat bon) MEMINTA PERSETUJUAN BON saat batas kredit pelanggan terlewati (tindakan
+//          'kredit', status 'menunggu', mintaUid = uid penulis, tanpa kolom keputusan). Memutus tetap owner; nota bon tetap lewat stafBuatJual (ben).
+// Sisanya = v8 FINAL di bawah ini, apa adanya:
+// (v8) ATURAN FIRESTORE v8 FINAL — Toko Beras M.IQBAL (DRAF 16 Nov 2026, B1 harga pelanggan usaha) = v7 FINAL + PERSIS tiga ubahan (alat-uji/periksa_rules.py
 // membandingkannya dengan firestore.rules.v7; uji server: docs/uji-rules-v8.md). Owner menerbitkan v8 SEKALI lewat Console SEBELUM cabang B1 digabung:
 //   (v8-1) aturanToko/hargaTingkat dibaca ben/karyawan (harga pelanggan usaha dipakai kasir di Jual) — tulis tetap owner saja;
 //   (v8-2) aturanToko/produkArsip dibaca ben/karyawan (barang yang diarsipkan owner tidak tampil sebagai chip habis di rak Jual tablet);
@@ -170,6 +176,13 @@ service cloud.firestore {
     function stafUsulHarga(peranBoleh) {
       let d = request.resource.data;
       return stafBuat(peranBoleh) && d.get('tindakan', '') == 'hargaPelanggan' && d.get('status', '') == 'menunggu' && d.get('usulUid', '') == request.auth.uid
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
+    }
+    // v9 (B2, owner 17 Nov 2026): permintaan bon ke owner saat batas kredit pelanggan terlewati — bentuk "menunggu" bertindakan kredit, atas nama penulisnya
+    // sendiri (mintaUid), tanpa kolom keputusan. Nominal & nama tidak diikat rules: papan persetujuan owner menghitung ulang kalimatnya dari buku bon sekarang.
+    function stafMintaKredit(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
         && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
     }
 
@@ -554,7 +567,7 @@ service cloud.firestore {
 
     match /persetujuan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta membaca keputusan owner (pendengar koleksi utuh — rules bukan saringan)
-      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']);   // v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan
+      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']);   // v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
       allow update, delete: if owner();   // memutus (setuju / tolak) = owner
     }
 

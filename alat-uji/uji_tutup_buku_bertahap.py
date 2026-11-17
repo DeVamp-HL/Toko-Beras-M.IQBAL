@@ -1080,7 +1080,9 @@ STATIS = [
     ('siap 2027 A9 · arsip yang selesai menandai sisanya SUSULAN; pita susulan & "sudah dicatat"', ["const PA = BK.susunPeriksaArsip(tahun, waktu(), lokal(), true);", "const KM = BK.kemajuanBuku(); const SU = BK.susulanBuku();", 'data-aksi="bkSusulanCatat"', "await tulis(BK.susunCatatSusulan(S.tahun, waktu()));"]),
     ('siap 2027 A4/A6 · baris modal & upah (ikut dibandingkan, tidak masuk jumlah) tampil di lembar K6', ["${B.baris.slice(SB.harta.length + SB.utang.length).map((b) =>", "B.baris.slice(SB.harta.length, SB.harta.length + SB.utang.length)"]),
     ('siap 2027 A2/A9 · Beranda membaca tutup buku (owner)', ["perhatianPajak(k), perhatianBuku(k), perhatianKunci(k)", "return bkPerhatian(k);"], 'baru/js/layar/ringkasan.js'),
-    ('siap 2027 A7 · KR1 di Jual (kunci kredit & kartu pelanggan) memakai lintas tahun', ["const info = kreditLintas(infoKreditPelanggan(nama), nama);", "const i = kreditLintas(infoKreditPelanggan(nama), nama);"], 'baru/js/layar/jual-logika.js'),
+    # B2 (owner 17 Nov 2026): KR1 membaca batas lewat fkInfoKredit (faktur-logika) — rumusnya tetap lintas tahun (kreditLintas) di dalamnya
+    ('siap 2027 A7 · KR1 di Jual (kunci kredit & kartu pelanggan) memakai lintas tahun', ["const info = fkInfoKredit(nama);", "const i = fkInfoKredit(nama);"], 'baru/js/layar/jual-logika.js'),
+    ('siap 2027 A7 · batas KR1 (rumus & angka owner) dibaca lintas tahun', ["const info = kreditLintas(infoKreditPelanggan(nama), nama); if (!info || !info.ada) return info;"], 'baru/js/layar/faktur-logika.js'),
     ('siap 2027 A7 · laju pakai lintas tahun di Stok, Beranda, Belanja, Kantong', ["const laju = lajuLintas(hitungLajuPakai());"], 'baru/js/layar/stok-logika.js'),
     ('siap 2027 A7 · laju pakai lintas tahun di Beranda', ["const laju = lajuLintas(hitungLajuPakai());"], 'baru/js/layar/ringkasan-logika.js'),
     ('siap 2027 A7 · laju pakai lintas tahun di Belanja', ["const laju = lajuLintas(hitungLajuPakai()).kgMerk || {};"], 'baru/js/layar/belanja-logika.js'),

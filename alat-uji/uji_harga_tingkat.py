@@ -229,8 +229,8 @@ RUSAK = [
     ('menghapus tingkat yang dipakai pelanggan dibiarkan', HT, "if (n) return { tolak: 'Tingkat ' + t.nama + ' masih dipakai '", "if (false) return { tolak: 'Tingkat ' + t.nama + ' masih dipakai '"),
     ('papan memajang modal ke staf', HT, "const modal = !o.owner ? null : jl === 'kemasan'", "const modal = jl === 'kemasan'"),
     ('menyetujui usul tidak memasang setelan', SL, "  const HP = setuju && m.tindakan === HT_TINDAKAN ? htPasangUsul(m, w) : null;", "  const HP = null;"),
-    ('papan owner memakai teks kiriman usul', SL, "teks: Q ? Q.teks : HU !== null ? HU : m.teks || ''", "teks: Q ? Q.teks : m.teks || ''"),
-    ('usul harga ikut "setujui sekaligus"', SL, "    sekaligus: m.tindakan !== 'nego' && m.tindakan !== HT_TINDAKAN,", "    sekaligus: m.tindakan !== 'nego',"),
+    ('papan owner memakai teks kiriman usul', SL, "teks: Q ? Q.teks : HU !== null ? HU : KR !== null ? KR : m.teks || ''", "teks: Q ? Q.teks : KR !== null ? KR : m.teks || ''"),   # B2: + permintaan bon (KR)
+    ('usul harga ikut "setujui sekaligus"', SL, "    sekaligus: m.tindakan !== 'nego' && m.tindakan !== HT_TINDAKAN && m.tindakan !== FK_TINDAKAN,", "    sekaligus: m.tindakan !== 'nego' && m.tindakan !== FK_TINDAKAN,"),
     ('penjaga menerima usul atas nama orang lain', AK, " || String(d.usulUid || '') !== String(akun.uid || '')) return { tolak: tolakTindakan('hargaPelanggan') };", ") return { tolak: tolakTindakan('hargaPelanggan') };"),
     ('penjaga menerima usul dari kisi "tidak boleh"', AK, " || (hak.hargaPelanggan || 'tidak') === 'tidak'", ""),
     ('nego owner dihitung dari eceran walau pembeli bertingkat', NG, "const katalog = H ? H.harga : eceran;", "const katalog = eceran;"),

@@ -16,6 +16,7 @@ import { bukanOwner, bolehBukaLayar, hakAkun, bolehMintaOwner } from './akses-la
 import * as HT from './harga-tingkat-logika.js';
 import { rakBarang } from './jual-logika.js';
 import { hetAtur, hetUnit, hetNilai } from './het-logika.js';
+import * as FK from './faktur-logika.js';   // B2 (owner 17 Nov 2026): faktur bertempo, batas kredit, rekap faktur
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -43,7 +44,7 @@ function svgSketsa(sk, kelas) {
 const KUNCI_TAB = 'miqbal_baru_pelanggan_tab'; const KUNCI_HAFAL = 'miqbal_baru_hafal';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 const KELUARGA = [['kenali', 'Kenali'], ['bon', 'Bon'], ['usaha', 'Usaha'], ['thr', 'THR']];   // B1: Usaha = harga pelanggan usaha (tingkat · harga barang · harga khusus)
-const TAB_U = [['tingkat', 'Tingkat'], ['barang', 'Harga barang'], ['khusus', 'Harga khusus']];
+const TAB_U = [['tingkat', 'Tingkat'], ['barang', 'Harga barang'], ['khusus', 'Harga khusus'], ['faktur', 'Faktur']];   // B2 (owner 17 Nov 2026): + Faktur
 const TAB_K = [['wajah', 'Wajah'], ['tampah', 'Tampah'], ['belanja', 'Belanja'], ['jam', 'Jam'], ['minggu', 'Minggu'], ['benang', 'Benang'], ['hafal', 'Hafalan']];
 const TAB_B = [['buku', 'Buku bon'], ['papan', 'Papan tagih'], ['umur', 'Garis umur']]; const TAB_T = [['daftar', 'Daftar setia'], ['meja', 'Meja bingkisan'], ['amplop', 'Amplop']];
 const kuisKosong = (hanya, putaran) => ({ putaran: putaran || 1, no: 0, jawab: null, benar: 0, salah: [], hanya: hanya || null });
@@ -83,7 +84,7 @@ export function pasangLayarPelanggan(akar, opsi) {
   const tingkatPilih = () => { const A = HT.htAtur(); return A.tingkat.some((x) => x.id === st().uT) ? st().uT : ((A.tingkat[0] || {}).id || ''); };
   const hetUntukOwner = () => { if (bukanOwner(akunKini())) return null; const A = hetAtur(); return (merk, perKg) => { const N = hetNilai(perKg, A.peta[hetUnit(merk).unit] || '', A); return N.status === 'atas' ? N.teks : ''; }; };
   const ubahKartu = (f) => { const d = JSON.parse(JSON.stringify(st().kartu)); if (!d) return; f(d); set({ kartu: d }); };
-  const bukaKartu = (kunci) => { const o = P.kartuOrang(kini(), kunci); if (!o) return set({ kabar: 'Orangnya tidak ditemukan', kabarAwas: true }); set({ kartu: { kunci, nama: o.nama, cip: o.cip.slice(), catatan: o.catatan, arah: o.arah, asli: o.asli, kontak: o.kontak, biasa: o.biasa, alamat: o.alamat || '', npwp: o.npwp || '' }, baru: null, gabung: null, kabar: '' }); };
+  const bukaKartu = (kunci) => { const o = P.kartuOrang(kini(), kunci); if (!o) return set({ kabar: 'Orangnya tidak ditemukan', kabarAwas: true }); set({ kartu: { kunci, nama: o.nama, cip: o.cip.slice(), catatan: o.catatan, arah: o.arah, asli: o.asli, kontak: o.kontak, biasa: o.biasa, alamat: o.alamat || '', npwp: o.npwp || '', tempoHari: o.tempoHari || '', batasKredit: o.batasKredit || '' }, baru: null, gabung: null, kabar: '' }); };
   const AKSI = {
     keluarga: ({ ke }) => { const k = ke; set({ keluarga: k, kabar: '', kartu: null, baru: null, gabung: null, orangBon: null, lembarBon: null, thrOrang: null, atur: null, uEdit: null, uBarang: null, uPasang: null, uKhusus: null }); ingatTab(); },
     tabK: ({ t }) => { set({ tabK: t, kabar: '' }); ingatTab(); }, tabB: ({ t }) => set({ tabB: t, kabar: '' }), tabT: ({ t }) => set({ tabT: t, kabar: '' }),
@@ -135,7 +136,9 @@ export function pasangLayarPelanggan(akar, opsi) {
     kirimTagih: async () => { const o = st().orangBon; const p = B.pesanTagih(kini(), o); if (!p) return set({ kabar: 'Tidak ada yang perlu ditagih', kabarAwas: true }); try { window.open(p.url, '_blank'); } catch (e) { /* abaikan */ } if (await tulis(B.susunTagih(kini(), o, st().janji, waktu()))) set({ lembarBon: null }); },
     bayarKetik: (v, el) => { const b = Object.assign({}, st().bayar); b[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'nominal' ? 14 : 60); set({ bayar: b }); }, bayarCara: ({ cara }) => set({ bayar: Object.assign({}, st().bayar, { cara }) }),
     bayarSemua: () => { const b = B.lembarBon(kini(), st().orangBon); if (b) set({ bayar: Object.assign({}, st().bayar, { nominal: String(b.sisa) }) }); },
-    bayarSimpan: async () => { const b = st().bayar; if (await tulis(B.susunBayarBon(kini(), st().orangBon, b.nominal, b.cara, b.catatan, b.pengantar, waktu()))) set({ lembarBon: null, bayar: { nominal: '', cara: 'Tunai', catatan: '', pengantar: '' } }); },
+    // B2 (owner 17 Nov 2026): pilih faktur yang dibayar — kosong = tertua dulu (sama dengan buku bon)
+    bayarFaktur: ({ no }) => { const b = Object.assign({}, st().bayar); const f = Array.isArray(b.faktur) ? b.faktur.slice() : []; const i = f.indexOf(no); if (i >= 0) f.splice(i, 1); else f.push(no); b.faktur = f; set({ bayar: b }); },
+    bayarSimpan: async () => { const b = st().bayar; if (await tulis(B.susunBayarBon(kini(), st().orangBon, b.nominal, b.cara, b.catatan, b.pengantar, waktu(), b.faktur || []))) set({ lembarBon: null, bayar: { nominal: '', cara: 'Tunai', catatan: '', pengantar: '' } }); },
     hapusKetik: (v, el) => { const x = Object.assign({}, st().hapusIsi); x[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'nominal' ? 14 : 80); set({ hapusIsi: x, yakinHapus: false }); }, hapusAlasan: ({ nama }) => set({ hapusIsi: Object.assign({}, st().hapusIsi, { alasan: nama }), yakinHapus: false }),
     hapusSimpan: async () => { const x = st().hapusIsi; const r = B.susunHapusBon(kini(), st().orangBon, x.nominal, x.alasan, waktu(), st().yakinHapus); if (r.perluYakin) return set({ yakinHapus: true, kabar: r.tolak, kabarAwas: true }); if (await tulis(r)) set({ lembarBon: null, yakinHapus: false, hapusIsi: { nominal: '', alasan: '' } }); },
     // Paket F2 (owner 8 Okt 2026): bon yang sudah dihapus dari buku ternyata dibayar — hapus bukunya dibalik (B.susunBayarSesudahHapus), catatan lama tetap ada
@@ -151,6 +154,13 @@ export function pasangLayarPelanggan(akar, opsi) {
     usulBentuk: ({ nama }) => set({ usulBentuk: nama }), usulPakai: async () => { await tulis(P.susunUsulThr(kini(), st().tahun, st().usulBentuk, waktu())); },
     // ---- USAHA (B1, owner 16 Nov 2026): owner menulis setelan langsung; Ben mengirim USUL ke owner (papan Persetujuan); karyawan melihat saja
     tabU: ({ t }) => set({ tabU: t, kabar: '', uBarang: null, uPasang: null }),
+    // B2 (owner 17 Nov 2026): daftar faktur (saring) + rekap faktur pajak bulan ini (owner) — unduh CSV untuk Coretax / konsultan
+    uFSaring: ({ t }) => set({ uFSaring: t }),
+    uFBulan: ({ arah }) => { const b = String(st().uFBulan || hariIniIso(kini()).slice(0, 7)); const d = new Date(Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1 + (Number(arah) || 0), 1)); set({ uFBulan: d.toISOString().slice(0, 7) }); },
+    uFUnduh: () => { const R = FK.fkRekapBulan(String(st().uFBulan || hariIniIso(kini()).slice(0, 7)), kini()); if (!R.baris.length) return set({ kabar: 'Bulan ' + R.bulan + ' belum punya faktur', kabarAwas: true });
+      try { const blob = new Blob(['\ufeff' + R.csv], { type: 'text/csv;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'rekap-faktur-' + R.bulan + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+        set({ kabar: 'Rekap faktur ' + R.bulan + ' diunduh — ' + R.baris.length + ' faktur, nilai ' + RP(R.jumlah) + (R.tanpaNpwp ? ' · ' + R.tanpaNpwp + ' tanpa NPWP pembeli' : ''), kabarAwas: false }); }
+      catch (e) { set({ kabar: 'Gagal mengunduh: ' + (e && e.message ? e.message : e), kabarAwas: true }); } },
     uUbahTingkat: () => set({ uEdit: HT.htAtur().tingkat.map((x) => ({ id: x.id, nama: x.nama, potKg: String(x.potKg) })), uPasang: null, kabar: '' }),
     uKetikT: (v, el) => { const e = JSON.parse(JSON.stringify(st().uEdit || [])); const i = Number(el.dataset.i); if (!e[i]) return; e[i][el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'nama' ? 24 : 9); set({ uEdit: e }); },
     uTambahT: () => set({ uEdit: (st().uEdit || []).concat([{ id: '', nama: '', potKg: '0' }]) }),
@@ -177,7 +187,7 @@ export function pasangLayarPelanggan(akar, opsi) {
     uHapusK: async () => { const x = st().uKhusus; if (x && x.id && await tulis(susunHT({ jenis: 'hapusKhusus', id: x.id }))) set({ uKhusus: null }); },
     uTutupK: () => set({ uKhusus: null, kabar: '' }),
     // ---- atur (angka & daftar kebijakan owner)
-    bukaAtur: () => { if (st().atur) return set({ atur: null }); const a = P.aturPelanggan(); set({ atur: { kosongKali: String(a.kosongKali / 10).replace('.', ','), notaBesar: String(a.notaBesar), tagihHari: String(a.tagihHari), macetHari: String(a.macetHari), anggaranThr: String(a.anggaranThr), umurBatas: a.umurBatas.map(String), tertagihHari: String(a.tertagihHari), salamTagih: a.salamTagih, ciriDaftar: a.ciriDaftar.map((c) => Object.assign({}, c)), arahDaftar: a.arahDaftar.slice(), titipDaftar: a.titipDaftar.slice(), alasanHapus: a.alasanHapus.slice(), bentukThr: a.bentukThr.map((b) => Object.assign({}, b)) }, bersih: null, kabar: '' }); },
+    bukaAtur: () => { if (st().atur) return set({ atur: null }); const a = P.aturPelanggan(); set({ atur: { tempoBawaan: String(a.tempoBawaan), kosongKali: String(a.kosongKali / 10).replace('.', ','), notaBesar: String(a.notaBesar), tagihHari: String(a.tagihHari), macetHari: String(a.macetHari), anggaranThr: String(a.anggaranThr), umurBatas: a.umurBatas.map(String), tertagihHari: String(a.tertagihHari), salamTagih: a.salamTagih, ciriDaftar: a.ciriDaftar.map((c) => Object.assign({}, c)), arahDaftar: a.arahDaftar.slice(), titipDaftar: a.titipDaftar.slice(), alasanHapus: a.alasanHapus.slice(), bentukThr: a.bentukThr.map((b) => Object.assign({}, b)) }, bersih: null, kabar: '' }); },
     aturKetik: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); const k = el.dataset.kolom; const i = el.dataset.i; const sub = el.dataset.sub; if (i === undefined) a[k] = String(v).slice(0, k === 'salamTagih' ? 200 : 14); else if (sub) a[k][Number(i)][sub] = String(v).slice(0, 40); else a[k][Number(i)] = String(v).slice(0, 40); set({ atur: a }); },
     aturGrup: ({ i, grup }) => { const a = JSON.parse(JSON.stringify(st().atur)); a.ciriDaftar[Number(i)].grup = grup; set({ atur: a }); },
     aturTambah: ({ daftar: k }) => { const a = JSON.parse(JSON.stringify(st().atur)); a[k].push(k === 'ciriDaftar' ? { nama: '', grup: 'lain' } : k === 'bentukThr' ? { nama: '', n: 0 } : ''); set({ atur: a }); },
@@ -400,6 +410,7 @@ export function pasangLayarPelanggan(akar, opsi) {
         <div class="jalur bungkus">${p.janjiPilihan.map((j) => h`<div class="seg ${s.janji === j.hari ? 'aktif' : ''}" data-aksi="janjiPilih" data-hari="${j.hari}">${j.nama}</div>`)}</div><div class="kaca-btn aktif emas" data-aksi="kirimTagih">BUKA WHATSAPP & CATAT TAGIHAN</div></div>` : ''}
       ${s.lembarBon === 'bayar' ? h`<div data-k="bayar" style="display: flex; flex-direction: column; gap: 8px;"><div class="ps-form dua"><div><div class="ket">Jumlah dibayar (Rp)</div><input class="ketik-nama" id="byNominal" type="text" inputmode="numeric" placeholder="0" value="${by.nominal}" data-ketik="bayarKetik" data-kolom="nominal"></div><div><div class="ket">&nbsp;</div><div class="kaca-btn" data-aksi="bayarSemua">semua · ${RP(O.sisa)}</div></div></div>
         <div class="jalur"><div class="seg ${by.cara !== 'QRIS' ? 'aktif' : ''}" data-aksi="bayarCara" data-cara="Tunai">Tunai → laci</div><div class="seg ${by.cara === 'QRIS' ? 'aktif' : ''}" data-aksi="bayarCara" data-cara="QRIS">QRIS → rekening</div></div>
+        ${(() => { const F = FK.fkTerbukaOrang(kini(), O.kunci); const pil = Array.isArray(by.faktur) ? by.faktur : []; return F.length ? h`<div class="ket" data-k="by-faktur-ket">Untuk faktur (kosong = yang tertua dulu)${pil.length ? ' · sisa yang dipilih ' + RP(F.filter((f) => pil.indexOf(f.no) >= 0).reduce((a, f) => a + f.sisa, 0)) : ''}</div><div class="jalur bungkus" data-k="by-faktur">${F.map((f) => h`<div class="seg ${pil.indexOf(f.no) >= 0 ? 'aktif' : ''} ${f.status === 'lewat' ? 'awas-teks' : ''}" data-aksi="bayarFaktur" data-no="${f.no}">${f.no} · ${RP(f.sisa)} · ${FK.fkTeksTempo(f)}</div>`)}</div>` : ''; })()}
         <div class="ps-form dua"><input class="ketik-nama" id="byCatatan" type="text" placeholder="catatan (boleh kosong)" value="${by.catatan}" data-ketik="bayarKetik" data-kolom="catatan"><input class="ketik-nama" id="byPengantar" type="text" placeholder="dibawa siapa? (kalau bukan dia)" value="${by.pengantar}" data-ketik="bayarKetik" data-kolom="pengantar"></div>
         <div class="ket">${(Number(String(by.nominal).replace(/\./g, '')) || 0) >= O.sisa && O.sisa > 0 ? O.nama + ' akan LUNAS' : 'Sisa bon sesudahnya ' + RP(Math.max(0, O.sisa - (Number(String(by.nominal).replace(/\./g, '')) || 0))) + ' — belum lunas'} · ${by.cara === 'QRIS' ? 'rekening' : 'laci'} bertambah, laba TIDAK berubah (sudah dihitung waktu berasnya dijual)${B.kalimatBayarTutup(by.cara, waktu().tanggal) ? ' — ' + B.kalimatBayarTutup(by.cara, waktu().tanggal).replace('dicatat saat', 'dicatat sebagai biaya toko saat') : ''}.</div>
         <div class="kaca-btn aktif emas" data-aksi="bayarSimpan">CATAT PEMBAYARAN</div></div>` : ''}
@@ -450,10 +461,32 @@ export function pasangLayarPelanggan(akar, opsi) {
     const STATUS = { menunggu: 'menunggu owner', disetujui: 'disetujui & dipasang', ditolak: 'ditolak' };
     return h`<section data-k="usaha">
       <div class="jalur kisi" data-k="tabU">${TAB_U.map(([id, nm]) => h`<div class="seg ${s.tabU === id ? 'aktif' : ''}" data-aksi="tabU" data-t="${id}">${nm}</div>`)}</div>
-      <div class="ket" data-k="u-ket">${ket}</div>
+      ${s.tabU === 'faktur' ? '' : h`<div class="ket" data-k="u-ket">${ket}</div>`}
       ${usul.length ? h`<div class="kartu ht-usul" data-k="u-usul" style="gap: 4px;"><div class="label">Usul kamu</div>${usul.map((u) => h`<div class="ket ${u.status === 'ditolak' ? 'awas-teks' : ''}" data-k="uu-${u.id}">${u.teks} · <b>${STATUS[u.status] || u.status}</b>${u.alasanTolak ? ' (' + u.alasanTolak + ')' : ''}</div>`)}</div>` : ''}
-      ${s.tabU === 'barang' ? gambarUBarang(s, A, owner, bisa) : s.tabU === 'khusus' ? gambarUKhusus(s, A, d, semua, nama, bisa, owner) : gambarUTingkat(s, A, semua, nama, bisa, owner)}
+      ${s.tabU === 'faktur' ? gambarUFaktur(s, owner) : s.tabU === 'barang' ? gambarUBarang(s, A, owner, bisa) : s.tabU === 'khusus' ? gambarUKhusus(s, A, d, semua, nama, bisa, owner) : gambarUTingkat(s, A, semua, nama, bisa, owner)}
     </section>`;
+  }
+  // B2 (owner 17 Nov 2026): FAKTUR — nota bon pelanggan usaha bernomor & bertempo. Terbuka / lewat jatuh tempo / semua; ketuk = kartu orangnya.
+  // Owner: rekap faktur pajak per bulan (disiapkan walau toko belum PKP) — unduh CSV.
+  function gambarUFaktur(s, owner) {
+    const L = FK.fkSemua(kini()); const sar = s.uFSaring || 'buka'; const P = FK.fkPengingat(kini());
+    const pilih = sar === 'lewat' ? L.filter((f) => f.status === 'lewat') : sar === 'buka' ? L.filter((f) => f.sisa > 0.5) : L;
+    const terbuka = L.filter((f) => f.sisa > 0.5).reduce((a, f) => a + f.sisa, 0);
+    const kosong = !L.length ? 'Belum ada faktur. Nota BON pelanggan usaha (yang punya tingkat harga) otomatis jadi faktur; nota lain bisa dijadikan faktur dari lembar Struk.'
+      : sar === 'lewat' ? 'Tidak ada faktur yang lewat jatuh tempo.' : sar === 'buka' ? 'Semua faktur sudah lunas.' : '';
+    const bulan = String(s.uFBulan || hariIniIso(kini()).slice(0, 7)); const R = owner ? FK.fkRekapBulan(bulan, kini()) : null;
+    return h`<div class="kartu" data-k="u-faktur" style="gap: 6px;">
+        <div class="ht-atas"><span class="serif" style="font-size: 18px;">Faktur</span><span class="ket">${L.length} faktur · terbuka ${RP(terbuka)}${P.lewat > 0.5 ? ' · lewat jatuh tempo ' + RP(P.lewat) : ''}</span></div>
+        <div class="jalur" data-k="uf-saring">${[['buka', 'terbuka'], ['lewat', 'lewat jatuh tempo'], ['semua', 'semua']].map(([id, nm]) => h`<div class="seg ${sar === id ? 'aktif' : ''}" data-aksi="uFSaring" data-t="${id}">${nm}</div>`)}</div>
+        ${pilih.length ? pilih.slice(0, 60).map((f) => h`<div class="bs-baris tautan" data-k="uf-${f.no}" data-aksi="bukaKartu" data-kunci="${f.kunci}"><span><b>${f.no}</b> · ${f.nama} · ${tanggalPendek(f.tanggal)}</span><span class="ket ${f.status === 'lewat' ? 'awas-teks' : ''}">${RP(f.total)}${f.sisa > 0.5 && f.sisa < f.total - 0.5 ? ' · sisa ' + RP(f.sisa) : ''} · ${FK.fkTeksTempo(f)}</span></div>`) : h`<div class="ket" data-k="uf-kosong">${kosong}</div>`}
+        ${pilih.length > 60 ? h`<div class="ket">+${pilih.length - 60} faktur lain (yang lebih lama)</div>` : ''}
+      </div>
+      ${R ? h`<div class="kartu" data-k="uf-pajak" style="gap: 6px;">
+        <div class="ht-atas"><span class="label">Rekap faktur pajak</span><span class="jalur"><span class="seg" data-aksi="uFBulan" data-arah="-1">‹</span><span class="seg aktif">${bulan}</span><span class="seg" data-aksi="uFBulan" data-arah="1">›</span></span></div>
+        <div class="ket">${R.kalimat}</div>
+        <div class="ket">${R.baris.length ? R.baris.length + ' faktur · nilai ' + RP(R.jumlah) + (R.tanpaNpwp ? ' · ' + R.tanpaNpwp + ' tanpa NPWP pembeli (isi di kartunya)' : ' · semua ber-NPWP') : 'Bulan ini belum ada faktur.'}</div>
+        ${R.baris.length ? h`<div class="kaca-btn" data-aksi="uFUnduh">Unduh rekap (CSV)</div>` : ''}
+      </div>` : ''}`;
   }
   function gambarUTingkat(s, A, semua, nama, bisa, owner) {
     if (s.uEdit) return h`<div class="kartu ht-ubah" data-k="u-edit" style="gap: 8px;">
@@ -535,7 +568,16 @@ export function pasangLayarPelanggan(akar, opsi) {
       <div class="jalur bungkus">${[{ id: '', nama: 'Eceran' }].concat(A.tingkat).map((x) => h`<div class="seg ${kini0 === x.id ? 'aktif' : ''}" data-aksi="${bisa && kini0 !== x.id ? 'kTingkat' : ''}" data-t="${x.id}">${x.nama}${x.potKg > 0 ? ' −' + RP(x.potKg) + '/kg' : ''}</div>`)}</div>
       ${K.map((y) => h`<div class="ket tautan" data-k="kk-${y.id}" data-aksi="uKhususBuka" data-id="${y.id}">harga khusus ${y.namaBarang} ${RP(y.harga)} · ${y.masa}${y.keadaan === 'berlaku' ? '' : ' (' + (y.keadaan === 'belum' ? 'belum mulai' : 'sudah lewat') + ')'}</div>`)}
       ${bisa ? h`<div class="ket tautan" data-aksi="uKhususBaru" data-kunci="${d.kunci}" data-nama="${d.nama}">+ harga khusus untuk ${d.nama}</div>` : ''}
+      ${gambarFakturKartu(d, owner)}
     </div>`;
+  }
+  // B2 (owner 17 Nov 2026): tempo faktur & batas kredit orang ini — owner mengisi (kosong = tempo bawaan toko / rumus 2× belanja bulanan); staf melihat saja
+  function gambarFakturKartu(d, owner) {
+    const T = FK.fkTempo(d.nama); const I = FK.fkInfoKredit(d.nama) || {}; const buka = FK.fkTerbukaOrang(kini(), d.kunci);
+    const ringkas = 'tempo ' + FK.fkTempoTeks(T) + ' · batas bon ' + (I.batas > 0 ? RP(I.batas) : 'belum terbentuk') + ' (' + FK.fkSumberBatas(I) + ')' + (buka.length ? ' · ' + buka.length + ' faktur terbuka ' + RP(buka.reduce((a, f) => a + f.sisa, 0)) : '');
+    return h`<div class="label" style="margin-top: 4px;">Faktur & bon</div>
+      ${owner ? h`<div class="ps-form dua" data-k="kartu-faktur"><input class="ketik-nama" id="kTempo" type="text" inputmode="numeric" placeholder="Tempo faktur (hari) — kosong = ${FK.fkTempoBawaan()} hari" value="${d.tempoHari || ''}" data-ketik="kKetik" data-kolom="tempoHari"><input class="ketik-nama" id="kBatas" type="text" inputmode="numeric" placeholder="Batas bon (Rp) — kosong = 2× belanja bulanan" value="${d.batasKredit || ''}" data-ketik="kKetik" data-kolom="batasKredit"></div>` : ''}
+      <div class="ket" data-k="kartu-faktur-ket">${ringkas}${FK.fkUsaha(d.nama) ? ' · nota bon orang ini otomatis jadi FAKTUR' : ' · pasang tingkat harga supaya nota bonnya jadi faktur'}</div>`;
   }
   function gambarBersihkan(s) {
     const b = s.bersih || {}; const R = P.rincianBersihkanCiri(kini()); const daftarNama = (xs) => xs.map((k) => k.nama).join(', ');
@@ -578,6 +620,7 @@ export function pasangLayarPelanggan(akar, opsi) {
         <div><div class="ket">Bangku kosong sesudah (× selangnya sendiri)</div><input class="ketik-nama" type="text" inputmode="decimal" value="${a.kosongKali}" data-ketik="aturKetik" data-kolom="kosongKali"></div>
         <div><div class="ket">Nota sebesar ini ke atas perlu nama (Rp)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.notaBesar}" data-ketik="aturKetik" data-kolom="notaBesar"></div>
         <div><div class="ket">Waktunya ditagih sesudah (hari)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.tagihHari}" data-ketik="aturKetik" data-kolom="tagihHari"></div>
+        <div><div class="ket">Tempo faktur bawaan (hari) — kartu pelanggan boleh punya tempo sendiri</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.tempoBawaan}" data-ketik="aturKetik" data-kolom="tempoBawaan" data-k="atur-tempo"></div>
         <div><div class="ket">Disebut macet sesudah (hari, tanpa pembayaran)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.macetHari}" data-ketik="aturKetik" data-kolom="macetHari"></div>
         <div><div class="ket">Anggaran THR setahun (Rp)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.anggaranThr}" data-ketik="aturKetik" data-kolom="anggaranThr"></div>
         <div><div class="ket">Salam penutup tagihan WhatsApp</div><input class="ketik-nama" type="text" value="${a.salamTagih}" data-ketik="aturKetik" data-kolom="salamTagih"></div></div></div>
@@ -594,6 +637,7 @@ export function pasangLayarPelanggan(akar, opsi) {
   K.dengar(gambar);
   dengarkan(() => nanti(gambar));
   // dipanggil layar Menu: buka keluarga (kenali | bon | thr), dan kalau ada, kartu / bon satu orang — lewat penangan yang sama dengan ketukan
-  const buka = (keluarga, orang) => { AKSI.keluarga({ ke: keluarga || 'kenali' }); if (orang && keluarga === 'bon') AKSI.bukaOrangBon({ kunci: orang }); else if (orang) AKSI.bukaKartu({ kunci: orang }); };
+  // B2: tab Usaha (mis. 'faktur' dari kartu Dasbor)
+  const buka = (keluarga, orang, tab) => { AKSI.keluarga({ ke: keluarga || 'kenali' }); if (tab && keluarga === 'usaha') AKSI.tabU({ t: tab }); if (orang && keluarga === 'bon') AKSI.bukaOrangBon({ kunci: orang }); else if (orang) AKSI.bukaKartu({ kunci: orang }); };
   return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } };
 }
