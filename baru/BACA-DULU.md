@@ -2634,6 +2634,10 @@ Mesin beku tidak disentuh (`beku2.py --sidik` 91/91), rules tidak berubah, kasir
   TOTAL bergaris ganda, bayar/bon/catatan, tanda tangan yang melayani (Cormorant miring) + cap padi kecil. Huruf Bodoni Moda, Cinzel, Cormorant Garamond
   miring, Jost — tautan huruf `index.html` = `uji-cetak.html` (ikut salinan luring). Logo gambar milik perangkat (`printer.js`) tetap menang atas logo F;
   saklar `sertakan.logo` mati = tanpa logo. Garis tanpa `jenis` (contoh lama) tetap gaya polos. Tidak ada berkas logo terpisah.
+  **Uji cetak CPad 17 Nov:** garis rambut Bodoni hilang di printer panas (Rp44.000 tercetak seperti "Rp 11.000", M logo seperti "VI", cap padi menggumpal)
+  padahal pratinjau Mac utuh (perender Mac lebih tebal). Obat: semua teks Sertifikat lewat `isiHuruf` = isi + gores tepi selebar `stTebalHuruf` (struk-model,
+  Bodoni ≥ 2 titik, Cormorant ≥ 1,6, Cinzel ≥ 1, Jost 0); M logo digores ≥ 3 titik; cap padi berbulir lebih besar & renggang. Dijaga `uji_jual_baru.py`
+  (uji SF + periksa statis kanvas + kontrol). Simulasi "printer tipis" (ambang 160 lalu kikis 1 titik) meniru foto cetak — dipakai untuk bukti sebelum/sesudah.
 - **4 · Amplop laba** — Pindah uang: amplop tempat keempat (dari & ke), ditulis `amplopLaba` `ambil {ke}` / `setor {dari}` (mesin `saldoAmplop` & blok Amplop
   Laba tetap benar), tanpa biaya admin, bisa diurungkan. Uang keluar (termasuk ambil pribadi), kasbon owner, kasbon karyawan bisa bersumber amplop: catatan
   aslinya dari laci + `amplopLaba` ambil amplop → laci (`untuk` = id catatannya) satu kiriman (`lewatAmplop`). Kertas laci tutup hari hanya memuat gerakan amplop
