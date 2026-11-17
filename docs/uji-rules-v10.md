@@ -1,4 +1,4 @@
-# Uji rules v10 di server — B3 surat jalan & antar (DRAF 18 Nov 2026)
+# Uji rules v10 di server — B3 surat jalan & antar (TERBIT 18 Nov 2026 ±04.43 WIB)
 
 v10 = v9 FINAL + **dua blok baru & tiga fungsinya** (berkas kanonik `firestore.rules`; pembanding `firestore.rules.v9`). Tidak ada yang lain berubah —
 `alat-uji/periksa_rules.py` mencabut balik kedua blok & ketiga fungsi itu lalu membandingkan sisanya huruf demi huruf dengan v9.
@@ -71,3 +71,13 @@ Di **v9** semua kasus yang LOLOS di atas DITOLAK (koleksinya belum punya blok �
 `alat-uji/uji_rules_emulator.py` bagian **V10** (workflow *Uji rules di emulator*, jalan otomatis di PR yang mengubah `firestore.rules`): ke-24 kasus di
 atas atas `firestore.rules` (v10) dan atas `firestore.rules.v9` — yang berbeda wajib persis kasus yang dibuka v10 — plus kontrol (satu suku v10 dirusak →
 kasus sasarannya wajib berbalik). Semua kasus v9, v8 & v7 lama tetap dijalankan atas v10 dan wajib sama hasilnya.
+
+## Hasil Playground & terbit (18 Nov 2026)
+
+- Isi editor Console sebelum uji = `firestore.rules` cabang ini, byte demi byte (SHA-256 berawalan `1665c3b8`, 56.847 byte); dicek ulang sesudah ketiga kasus.
+- Wajib owner, akun owner (`uid-uji`, provider password, email owner di payload):
+  ★L2 create `suratJalan/uji-v10-sj` isian SJ (14 kolom; `nilaiNota`, `ongkir`, `tagihRp` jenis int64, `bayarDiTempat` boolean) → "Simulated write allowed"
+  (LOLOS, sesuai); ★L3 update `suratJalan/uji-v10-sj` SJ dengan `status: "batal"` + `alasanBatal: "uji"` → "Simulated write allowed" (LOLOS, sesuai);
+  ★L4 create `buktiTerima/uji-v10-bukti` isian BUKTI → "Simulated write allowed" (LOLOS, sesuai; rincian Playground menilai `buktiSah`).
+- Owner klik **Publish** 18 Nov 2026 ±04.43 WIB (riwayat Console "Today • 4:43 AM"; sebelumnya v9 "Today • 1:37 AM"). Sesudah halaman dimuat ulang,
+  aturan yang berlaku = berkas ini (sidik sama, baris 2 `ATURAN FIRESTORE v10 FINAL`, tanpa draf tertunda).
