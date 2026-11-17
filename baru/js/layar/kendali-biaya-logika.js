@@ -28,6 +28,8 @@ import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek } from '../inti/format.js
 import { ugAturDok, ugAngka, ugKosong, ugUntukDok, adalahMdr, ugLabaBersih } from './uang-logika.js';
 import { lpFinal, lpNamaBulan, lpBulanPendek, daftarBulan, lpAwalBuku, lpKetSebelumBuku } from './laporan-logika.js';
 import { semuaUpah } from './upah-logika.js';
+// B3 (owner 18 Nov 2026): ongkir antar yang DITAGIH ke pembeli dibaca di samping biaya Bensin & angkut (ongkir = pendapatan nota, bukan pengurang biaya)
+import { ajOngkirRentang } from './antar-logika.js';
 
 // ---------- jenis biaya: urutan = urutan pemilahan (yang di atas menang) & urutan baris di layar ----------
 export const JENIS_BIAYA = [
@@ -149,6 +151,8 @@ export function kendaliBulan(key, kini, bayaran) {
       r.lampuTeks = (K.berjalan && r.sifat === 'variabel' ? 'jatah sampai hari ke-' + K.hariJalan + ' ' + RP(r.dasar) : 'anggaran ' + RP(r.anggaran)) + ' · ' + (r.selisih <= 0 ? 'sisa ' + RP(-r.selisih) : 'LEWAT ' + RP(r.selisih) + ' (' + kbPctTeks(r.selisihPct) + ')'); }
     r.belumTercatat = r.id === 'tetap' && K.berjalan ? K.posSemua.filter((p) => !(p.n > 0)).length : 0; if (r.belumTercatat) r.lampuTeks += ' · ' + r.belumTercatat + ' pos belum dicatat bulan ini';
     const banding = r.proyeksi !== null ? r.proyeksi : r.pakai; r.delta = r.nLalu > 0 ? kbPct(banding - r.nLalu, r.nLalu) : null; r.deltaDari = r.proyeksi !== null ? 'perkiraan' : 'aktual';
+    if (r.id === 'angkut') { const O = ajOngkirRentang(key + '-01', akhirBulanIso(key)); r.ongkirMasuk = O.rp; r.nAntar = O.nNota;
+      if (O.rp) r.lampuTeks += ' · ongkir antar ditagih ' + RP(O.rp) + ' (' + O.nNota + ' nota; masuk omzet nota, bukan pengurang biaya ini)'; }
   });
   const merah = baris.filter((r) => r.lampu === 'merah').length, amber = baris.filter((r) => r.lampu === 'amber').length, hijau = baris.filter((r) => r.lampu === 'hijau').length;
   const terjun = [{ nama: 'Margin kotor', n: K.margin, kelas: 'jumlah', ket: 'omzet ber-HPP − HPP (mesin laba)' }]

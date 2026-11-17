@@ -235,7 +235,7 @@ RUSAK = [
     ('penjaga menerima usul dari kisi "tidak boleh"', AK, " || (hak.hargaPelanggan || 'tidak') === 'tidak'", ""),
     ('nego owner dihitung dari eceran walau pembeli bertingkat', NG, "const katalog = H ? H.harga : eceran;", "const katalog = eceran;"),
     ('NPWP tidak diperiksa', PL, "if (npwp && [15, 16].indexOf(npwpAngka.length) < 0) return { tolak: 'NPWP harus 15 atau 16 angka' };", ""),
-    ('kisi bawaan Ben boleh sendiri', SL, "isiUlang: 'sendiri', hargaPelanggan: 'owner' }", "isiUlang: 'sendiri', hargaPelanggan: 'sendiri' }"),
+    ('kisi bawaan Ben boleh sendiri', SL, "isiUlang: 'sendiri', hargaPelanggan: 'owner', antar:", "isiUlang: 'sendiri', hargaPelanggan: 'sendiri', antar:"),
 ]
 RUSAK_STATIS = [
     ('lembar Usaha tidak ikut penjaga ganti orang', 'pelanggan', "'titip', 'uEdit', 'uBarang', 'uKhusus'", "'titip'"),

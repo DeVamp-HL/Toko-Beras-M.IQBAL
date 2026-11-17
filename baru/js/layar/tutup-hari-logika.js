@@ -17,6 +17,8 @@ import { thDorongRiwayat } from '../mesin/beku.js';
 import { caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah, kunciNota, returUangPerHari, ingatStokKarung, ingatGerakanKas } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
+// B3 (owner 18 Nov 2026): bayar di tempat hari ini yang uangnya belum disetor = peringatan MERAH di tutup hari, atas nama pengantarnya
+import { ajCodBelumSetor, ajKalimatCod } from './antar-logika.js';
 import { nilaiSelisihKg } from '../mesin/modal-fifo.js';
 // modal FIFO (owner 9 Okt, tinjauan): rupiah selisih timbang cepat merek karung FIFO = irisan karung terlama (sama dengan Cocokkan); saklar mati = beda × modal
 const tdRpSelisih = (merk, beda, hpp, iso) => { const st = ingatStokKarung(iso)[merk]; return st && st.metode === 'fifo' ? Math.round(nilaiSelisihKg(st, beda)) : Math.round(beda * hpp); };
@@ -129,6 +131,7 @@ export function hitungTutup(D, kini) {
   return { iso, A, R, RL, S, hitung, seharusnya, selisih, dimaafkan, perluAlasan: hitung > 0 && selisih !== null && !dimaafkan, tolakLaci, rekNyata, mdrJadi, mdrLama, mdrDicatat: D.rekPilih === 'sudah' || (D.rekPilih === 'beda' && rekNyata !== null), labaHari, saranSisih, sisihN, sisihLama, sisihBaru, sisihJadi, amankanN, amankanLama, amankanBaru, amankanJadi, laciAkhir, timbang, belumTimbang, bedaTimbang, tolakRek, tolakSisih, tolakAman, dilewati, tolakTutup, koreksi: !!R.sudah,
     selisihTeks: !(hitung > 0) ? 'belum dihitung' : seharusnya === null ? 'seharusnya tidak bisa dihitung (titik kas belum disetel) — selisih TIDAK BISA DITANYA, bukan berarti cocok' : selisih === 0 ? 'PAS — tidak ada selisih' : (selisih > 0 ? 'LEBIH ' : 'KURANG ') + RP(Math.abs(selisih)) + (dimaafkan ? ' · masih dimaafkan (sampai ' + RP(A.maafSelisih) + ')' : ''),
     rekCatatan: D.rekPilih === 'sudah' ? 'sudah masuk ' + RP(R.qris - R.mdrKira) + ' (potongan perkiraan ' + RP(R.mdrKira) + ')' : D.rekPilih === 'belum' ? 'BELUM masuk semua — dicek lagi besok, potongan belum dicatat' : D.rekPilih === 'beda' && rekNyata !== null ? 'masuk ' + RP(rekNyata) + ' · potongan sebenarnya ' + RP(R.qris - rekNyata) : 'QRIS ' + RP(R.qris) + ' · potongan kira-kira ' + RP(R.mdrKira),
+    cod: ajCodBelumSetor(iso), kalimatCod: ajKalimatCod(ajCodBelumSetor(iso)),
     lewatMalam, kalimatTanggal: lewatMalam ? 'Lewat tengah malam: yang ditutup hari ' + tanggalPendek(iso) + ' (hari dagang kemarin). Tutup sebelum jam ' + '12 siang = menutup hari kemarin.' : '',
     status: LANGKAH_TUTUP.map((l) => ({ id: l[0], judul: l[1], st: l[0] === 'rekap' ? (R.sudah ? 'beres' : 'belum') : beres(l[0]) ? 'beres' : lewat(l[0]) ? 'dilewati' : l[0] === 'laci' ? 'wajib' : 'belum' })) };
 }
@@ -139,7 +142,9 @@ export function rekapTutup(H) {
     ['Laci dihitung', H.hitung > 0 ? RP(H.hitung) : 'belum', H.hitung > 0 ? '' : 'awas'], ['Selisih laci', H.hitung > 0 ? (H.selisih === null ? 'tidak bisa dihitung' : H.selisih === 0 ? 'pas' : RP(H.selisih) + (H.perluAlasan && H.alasanJadi ? ' · ' + H.alasanJadi : '')) : '—', H.hitung > 0 && H.selisih !== 0 ? 'awas' : ''],
     ['Disisihkan ke amplop laba', H.sisihJadi > 0 ? RP(H.sisihJadi) : (H.status.find((s) => s.id === 'sisih').st === 'dilewati' ? 'dilewati' : 'belum'), ''], ['Diamankan ke brankas', H.amankanJadi > 0 ? RP(H.amankanJadi) : (H.status.find((s) => s.id === 'amankan').st === 'dilewati' ? 'dilewati' : 'belum'), ''],
     ['Timbang cepat', H.belumTimbang === 0 && H.timbang.length ? (H.bedaTimbang === 0 ? 'semua cocok' : (H.bedaTimbang < 0 ? 'kurang ' : 'lebih ') + KG(Math.abs(H.bedaTimbang)) + ' (masuk susut)') : (H.status.find((s) => s.id === 'timbang').st === 'dilewati' ? 'dilewati' : H.timbang.length ? 'belum' : 'tidak ada beras karung/literan keluar'), ''],
-    ['Tinggal di laci', H.hitung > 0 ? RP(H.laciAkhir) : '—', 'jumlah']]);
+    ['Tinggal di laci', H.hitung > 0 ? RP(H.laciAkhir) : '—', 'jumlah']],
+    // B3: bayar di tempat hari ini yang uangnya belum pulang — bukan uang laci; disebut supaya tidak dianggap selisih / hilang
+    H.cod && H.cod.length ? [['Bayar di tempat BELUM disetor · ' + H.cod.map((x) => x.pengantar || 'pengantar').filter((p, i, a) => a.indexOf(p) === i).join(', '), RP(H.cod.reduce((a, x) => a + x.sisa, 0)), 'awas']] : []);
   return rows.map((r) => ({ a: r[0], b: r[1], kelas: r[2] }));
 }
 export function teksRekap(H, iso, jam) {

@@ -108,7 +108,9 @@ function statusRingkas() {
 terapkanMode();
 const akar = document.getElementById('layar');
 const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusAwas, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat(),
-  bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); } });   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan · 27: Isi barang habis
+  bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan · 27: Isi barang habis
+  // B3 (owner 18 Nov 2026): bukti terima antar (tanda tangan & foto) — koleksi buktiTerima dibaca sekali saat dibuka (tidak didengar); mode cadangan = simulasi di panel
+  bukti: { ada: () => sumberData().jenis === 'firestore', baca: (idSJ) => fb.bacaBuktiTerima(idSJ), simpan: (d) => fb.simpanBuktiTerima(d) } });
 dengarkan(() => { versi += 1; setTimeout(periksaTablet, 0); });   // T1-3: daftar orang / libur berubah → gerbang ikut
 
 // ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----

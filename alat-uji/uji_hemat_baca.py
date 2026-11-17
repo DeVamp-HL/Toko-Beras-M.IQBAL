@@ -1541,6 +1541,7 @@ TANPA_CAP = [
     (r"b\.set\(doc\(db, KOLEKSI_ARSIP, ", 'arsipTahun: tidak didengar (dibaca sekali saat batal tutup buku)'),
     (r"b\.set\(doc\(db, KOLEKSI_FOTO_BON, String\(d\.id\)\), d\)", 'fotoBon (paket E-2): tidak didengar & bukan koleksi.js (dibaca sekali saat bon dibuka); rules v7 blok fotoBon membatasi bentuk & ukuran, tanpa ubah'),
     (r"klaim: \(dok\) => setDoc\(doc\(db, 'aturanToko', HB_ID_KLAIM\), dok\)", 'aturanToko/hematHarian: kelas tetap (didengar penuh semua perangkat owner)'),
+    (r"b\.set\(doc\(db, KOLEKSI_BUKTI, String\(d\.id\)\), d\)", 'buktiTerima (B3, owner 18 Nov 2026): tidak didengar & bukan koleksi.js (dibaca sekali saat surat jalan dibuka); rules v10 buktiSah membatasi bentuk & ukuran, tanpa ubah'),
 ]
 DENGAN_CAP = ['pasangCap(', 'capServer: serverTimestamp()', 'nisanDok(']
 KOLEKSI_KONSTAN = {'KOLEKSI_LOG': 'logAktivitas', 'KOLEKSI_PERANGKAT': 'perangkatStatus', 'KOLEKSI_ARSIP': 'arsipTahun', 'KK_KOLEKSI': 'ringkasanKasir'}

@@ -210,6 +210,7 @@ export function ambilPenyesuaianKemasan() { return _cache.penyKemasan; }
 export function ambilTutupHari() { return _cache.tutup; }
 export function ambilPelangganCatatan() { return _cache.pelangganCat; }
 export function ambilPesanan() { return _cache.pesanan; }
+export function ambilSuratJalan() { return _cache.suratJalan || []; }   // B3 (owner 18 Nov 2026): surat jalan & antar
 export function ambilWadahLiteran() { return _cache.wadah || []; }
 export function ambilTitipanHarian() { return _cache.titipan; }
 export function ambilSetoranKas() { return _cache.setoran; }

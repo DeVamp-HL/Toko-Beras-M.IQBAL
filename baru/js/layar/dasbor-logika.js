@@ -11,7 +11,7 @@
 // Yang dihitung di sini cuma pengelompokan (jumlah per status dari baris yang sama, urutan, label) — dan uji_ringkasan_baru memeriksa tiap
 // kelompok MENUTUP ke angka sumbernya. Tiap kelompok membawa { periode, sumber, tujuan }; tujuan berbentuk sama dengan baris Menu
 // ({ ke, keluarga, tab, lembar, … }) untuk keTujuan() di app.js. Satu kelompok yang galat tidak mematikan kelompok lain. BACA SAJA.
-import { AMBANG_HARI_KRITIS, JENDELA_LAJU_HARI, akhirBulanIso } from '../mesin/pembantu.js';
+import { AMBANG_HARI_KRITIS, JENDELA_LAJU_HARI, akhirBulanIso, kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { rekapHari, hariTerakhir, daftarMinggu, daftarBulan, lpPertama, lpHariRentang, merekBulan, merekTeratas } from './laporan-logika.js';
 import { kendaliBulan, titikImpas, pemicuBiaya, peringatanBiaya } from './kendali-biaya-logika.js';
@@ -22,6 +22,8 @@ import { wbCekHari } from './wadah-bernama-logika.js';
 import { semuaBon, KATA_STATUS, tertagihBon } from './bon-logika.js';
 // B2 (owner 17 Nov 2026): faktur pelanggan usaha yang lewat / segera jatuh tempo
 import { fkPengingat, fkTeksTempo } from './faktur-logika.js';
+// B3 (owner 18 Nov 2026): bayar di tempat yang uangnya belum disetor (merah, atas nama pengantar) & antar yang masih di jalan
+import { ajCodBelumSetor, ajKalimatCod, ajDaftar } from './antar-logika.js';
 import { susunBon as bpSusunBon } from './bon-pemasok-logika.js';
 import { hetHargaKasir } from './het-logika.js';
 import { rekapTimbangMutu } from './stok-catat-logika.js';
@@ -86,7 +88,10 @@ export function dbTagihan(kini) {
     .map((b) => ({ kunci: b.kunci, nama: b.nama, sisa: b.sisa, kata: b.cap, ket: b.ket, tujuan: { ke: 'pelanggan', keluarga: 'bon', orang: b.kunci } }));
   const BP = bpSusunBon(kini); const jauh = BP.bon.filter((b) => b.status === 'jauh'); const satuBon = (b) => ({ id: b.id, pemasok: b.pemasok, sisa: b.sisa, tempoTeks: b.tempoTeks, tanggal: b.tanggal, tujuan: { ke: 'harga', keluarga: 'bon', pemasok: b.pemasok } });
   const FP = fkPengingat(kini); const tujuF = { ke: 'pelanggan', keluarga: 'usaha', tab: 'faktur' };
+  const COD = ajCodBelumSetor(hariIniIso(kini), true); const AJD = ajDaftar(hariIniIso(kini), '');
   return {
+    antar: { cod: COD.map((x) => ({ noSJ: x.noSJ, nama: x.nama, pengantar: x.pengantar, sisa: x.sisa, tanggal: x.tanggal, lewat: x.lewat, tujuan: { ke: 'pelanggan', keluarga: 'bon', orang: kunciPelanggan(x.nama) } })),
+      rpCod: COD.reduce((a, x) => a + x.sisa, 0), kalimat: ajKalimatCod(COD), nJalan: AJD.jalan.length, nGagal: AJD.gagal.length, sumber: 'Jual › Antar' },
     faktur: { n: FP.daftar.length, rpLewat: FP.lewat, rpSegera: FP.segera, nLewat: FP.daftar.filter((f) => f.status === 'lewat').length, sumber: 'Pelanggan › Usaha › Faktur', tujuan: tujuF,
       daftar: FP.daftar.slice(0, 4).map((f) => ({ no: f.no, nama: f.nama, sisa: f.sisa, ket: fkTeksTempo(f), awas: f.status === 'lewat', tujuan: tujuF })) },
     periode: 'Sekarang · ' + tanggalPendek(hariIniIso(kini)),

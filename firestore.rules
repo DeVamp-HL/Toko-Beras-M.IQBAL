@@ -1,5 +1,16 @@
 // ============================================================================
-// ATURAN FIRESTORE v9 FINAL — Toko Beras M.IQBAL (DRAF 17 Nov 2026, B2 faktur bertempo & batas kredit) = v8 FINAL + PERSIS satu ubahan
+// ATURAN FIRESTORE v10 FINAL — Toko Beras M.IQBAL (DRAF 18 Nov 2026, B3 surat jalan & antar) = v9 FINAL + PERSIS dua blok baru & tiga fungsinya
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v9; uji server: docs/uji-rules-v10.md). Owner menerbitkan v10 SEKALI lewat Console
+// SEBELUM cabang B3 digabung:
+//   (v10-1) blok suratJalan — baca owner/ben/karyawan; create owner || stafBuatSJ(ben): surat jalan BERSAMA notanya, status 'berangkat', tanpa kolom
+//           penerimaan / keputusan; update owner || stafTandaiSJ(ben, karyawan): pengantar menandai surat jalan yang masih di jalan jadi 'diterima' /
+//           'gagal', kolom dibatasi (uang & nota tidak tersentuh — pelunasan bayar di tempat lewat piutangMutasi bayar yang sudah terbuka sejak v3);
+//           hapus owner. Membatalkan surat jalan = owner.
+//   (v10-2) blok buktiTerima — tanda tangan & foto penerima: baca owner/ben/karyawan; create owner || stafBuat(ben, karyawan) dengan bentuk buktiSah
+//           (id = id dokumen, idSJ teks, jenisBukti ttd/foto, jenis gambar, base64 ≤ 960.000 huruf); tanpa ubah; hapus owner. Koleksi ini SENGAJA tidak di
+//           baru/js/data/koleksi.js (dibaca saat surat jalan dibuka).
+// Sisanya = v9 FINAL di bawah ini, apa adanya:
+// (v9) ATURAN FIRESTORE v9 FINAL — Toko Beras M.IQBAL (DRAF 17 Nov 2026, B2 faktur bertempo & batas kredit) = v8 FINAL + PERSIS satu ubahan
 // (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v8; uji server: docs/uji-rules-v9.md). Owner menerbitkan v9 SEKALI lewat Console
 // SEBELUM cabang B2 digabung:
 //   (v9-1) persetujuan create: + stafMintaKredit — ben (yang boleh mencatat bon) MEMINTA PERSETUJUAN BON saat batas kredit pelanggan terlewati (tindakan
@@ -184,6 +195,24 @@ service cloud.firestore {
       let d = request.resource.data;
       return stafBuat(peranBoleh) && d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
         && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
+    }
+    // v10 (B3, owner 18 Nov 2026): SURAT JALAN dibuat ben BERSAMA notanya — status 'berangkat', tanpa kolom penerimaan / keputusan
+    function stafBuatSJ(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('status', '') == 'berangkat'
+        && !d.keys().hasAny(['penerima', 'diterimaPada', 'diterimaTanggal', 'diterimaJam', 'buktiTtd', 'buktiFoto', 'uangDiterima', 'pelunasanId', 'alasanGagal', 'batalPada', 'alasanBatal']);
+    }
+    // v10: pengantar (ben / karyawan) menandai surat jalan yang masih di jalan → diterima / gagal antar; kolom dibatasi (nota & uang tidak tersentuh)
+    function stafTandaiSJ(peranBoleh) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid
+        && resource.data.get('status', '') == 'berangkat' && request.resource.data.get('status', '') in ['diterima', 'gagal']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riwayatStatus', 'penerima', 'diterimaPada', 'diterimaTanggal', 'diterimaJam', 'catatanTerima', 'buktiTtd', 'buktiFoto', 'uangDiterima', 'caraUang', 'pelunasanId', 'alasanGagal', 'ditandaiOleh', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v10: bukti terima antar (tanda tangan / foto penerima) — bentuk dibatasi seperti fotoBon
+    function buktiSah(id) {
+      let d = request.resource.data;
+      return d.get('id', '') == id && d.get('idSJ', 0) is string && d.idSJ.size() > 0 && d.get('jenisBukti', '') in ['ttd', 'foto']
+        && d.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp'] && d.get('base64', 0) is string && d.base64.size() > 0 && d.base64.size() <= 960000;
     }
 
     // ---- KUNCI PERIODE (putaran 25) — inti klien yang sama: baru/js/data/kunci-periode.js ----
@@ -451,6 +480,14 @@ service cloud.firestore {
       allow delete: if owner();
     }
 
+    // v10 (B3, owner 18 Nov 2026): surat jalan & antar — owner & ben membuat (bersama nota), pengantar menandai, membatalkan & menghapus = owner
+    match /suratJalan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuatSJ(['ben']);
+      allow update: if owner() || stafTandaiSJ(['ben', 'karyawan']);
+      allow delete: if owner();
+    }
+
     match /titipanHarian/{id} {
       allow read, write: if owner();
     }
@@ -710,6 +747,13 @@ service cloud.firestore {
       allow create: if owner() && request.resource.data.get('id', '') == id && request.resource.data.get('idBon', 0) is string && request.resource.data.idBon.size() > 0
         && request.resource.data.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp']
         && request.resource.data.get('base64', 0) is string && request.resource.data.base64.size() > 0 && request.resource.data.base64.size() <= 960000;
+      allow delete: if owner();
+    }
+
+    // v10 (B3): bukti terima antar — dibaca saat surat jalan dibuka (tidak didengar); dibuat penulisnya sendiri; tanpa ubah (salah = owner hapus)
+    match /buktiTerima/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() || stafBuat(['ben', 'karyawan'])) && buktiSah(id);
       allow delete: if owner();
     }
 

@@ -725,3 +725,31 @@ export async function hapusFotoBon(id, idBon) {
   try { const h = await tungguServer(b.commit(), 20000); return h.lewat ? { antre: true } : { ok: true }; }
   catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
 }
+
+// ---- BUKTI TERIMA ANTAR (B3, owner 18 Nov 2026): koleksi `buktiTerima` (tanda tangan & foto penerima) TIDAK ada di KOLEKSI → tidak didengar, tidak ikut baca
+// penuh harian, cache TOKO, maupun cadangan berkas. Dibaca SEKALI saat surat jalannya dibuka; ditulis langsung tanpa salinan antre lokal (foto ±300 KB — kuota
+// penyimpanan perangkat). Owner, Ben, karyawan (rules v10: create atas nama penulisnya, id = id dokumen, idSJ teks, jenis gambar, base64 ≤ 960.000 huruf).
+// Bukan-owner: SATU baris jejak kiriman (stafJejak), seperti tulisBerkas.
+const KOLEKSI_BUKTI = 'buktiTerima';
+export async function bacaBuktiTerima(idSJ) {
+  if (!db) throw new Error('belum tersambung');
+  if (!status.akun || !bisaBekerja(status.akun)) throw new Error('belum masuk');
+  const h = await tungguServer(getDocs(query(collection(db, KOLEKSI_BUKTI), where('idSJ', '==', String(idSJ)))), 15000);
+  if (h.lewat) throw new Error('server belum menjawab dalam 15 detik');
+  const out = []; h.x.forEach((d) => out.push(d.data())); return out;
+}
+export async function simpanBuktiTerima(daftar) {
+  if (!db) throw new Error('belum tersambung');
+  if (!status.akun || !bisaBekerja(status.akun)) return { gagal: true, pesan: 'Belum masuk' };
+  const tolakHemat = jagaTulisHemat(); if (tolakHemat) return { gagal: true, pesan: tolakHemat };
+  const akun = akunPenulis(), owner = akun.jenis === 'owner'; const k = konteksTulis();   // T1-3: orang yang jaga tablet (sama dengan tulisBerkas)
+  const b = writeBatch(db); const ditulis = [];
+  (daftar || []).forEach((data) => { const d = beriAtribusiAkun(data, akun, k, false); b.set(doc(db, KOLEKSI_BUKTI, String(d.id)), d); ditulis.push({ koleksi: KOLEKSI_BUKTI, data: d }); });
+  if (!ditulis.length) return { gagal: true, pesan: 'Tidak ada bukti yang dikirim' };
+  if (owner) {
+    ditulis.forEach((x) => { const log = { id: idUnik(), pada: k.kini, aksi: 'tulis', koleksi: KOLEKSI_BUKTI, idDok: String(x.data.id), oleh: akun.nama, olehUid: akun.uid, perangkat: k.perangkat,
+      ringkas: 'bukti ' + String(x.data.jenisBukti || '') + ' surat jalan ' + String(x.data.noSJ || '') + ' · ' + Math.round((Number(x.data.byte) || 0) / 1024) + ' KB' }; b.set(doc(db, KOLEKSI_LOG, String(log.id)), log); });
+  } else { const log = jejakKiriman(akun, ditulis, Object.assign({ idJejak: idUnik() }, k)); b.set(doc(db, KOLEKSI_LOG, String(log.id)), log); }
+  try { const h = await tungguServer(b.commit(), 20000); return h.lewat ? { antre: true } : { ok: true }; }
+  catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
+}

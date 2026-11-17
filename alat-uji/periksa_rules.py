@@ -51,6 +51,11 @@ Membuktikan bentuk rules, bukan perilaku server (itu docs/uji-rules-v4.md: Playg
      semua pemeriksa v8 & v7 dijalankan atas hasil cabut-balik): persetujuan create + stafMintaKredit(ben) — tindakan 'kredit', status 'menunggu', mintaUid =
      uid penulis, tanpa kolom keputusan. MODEL: kasus ★J docs/uji-rules-v9.md (KASUS_V9) atas v9, dan atas firestore.rules.v8 yang berbeda WAJIB persis BEDA_V8.
      Bukti server: alat-uji/uji_rules_emulator.py bagian V9.
+  14. (v10 — B3, owner 18 Nov 2026) v10 = firestore.rules.v9 + PERSIS dua blok baru & tiga fungsinya (dicabut balik oleh ke_v9; sisanya dibandingkan dengan
+     firestore.rules.v9; semua pemeriksa v9, v8 & v7 dijalankan atas hasil cabut-balik): blok suratJalan (create owner || stafBuatSJ(ben) — status 'berangkat',
+     tanpa kolom penerimaan; update owner || stafTandaiSJ(ben, karyawan) — 'berangkat' → 'diterima' / 'gagal', kolom = akses.js KOLOM_TANDAI_SJ + atribusi
+     ubah) dan blok buktiTerima (create (owner || stafBuat(ben, karyawan)) && buktiSah(id), tanpa update). MODEL: kasus ★L docs/uji-rules-v10.md (KASUS_V10)
+     atas v10, dan atas firestore.rules.v9 yang berbeda WAJIB persis BEDA_V9. Bukti server: alat-uji/uji_rules_emulator.py bagian V10.
 
     python3 alat-uji/periksa_rules.py            → LULUS / daftar cacat (keluar 2)
     python3 alat-uji/periksa_rules.py --kontrol  → berkas rules cacat buatan WAJIB gagal (keluar 3 kalau ada yang lolos)
@@ -63,8 +68,8 @@ import rules_mini  # noqa: E402
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 EMAIL_OWNER = 'owner@tokoberasmiqbal.web.app'; EMAIL_KASIR = 'kasir@tokoberasmiqbal.web.app'
 PERAN = ['ben', 'karyawan']
-FUNGSI_JUJUR = {'stafBuat', 'stafBuatTipe', 'stafBuatJual', 'stafJejak', 'stafUbahPesanan', 'stafDenyut', 'stafBuatWadah', 'stafBuatLahir', 'stafMintaNego', 'stafUsulHarga', 'stafMintaKredit'}   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
-LUAR_KOLEKSI = ['aksesAkun', 'permintaanAkses', 'arsipTahun', 'ringkasanKasir', 'batuNisan', 'fotoBon']   # blok rules di luar baru/js/data/koleksi.js (v7: fotoBon)
+FUNGSI_JUJUR = {'stafBuat', 'stafBuatTipe', 'stafBuatJual', 'stafJejak', 'stafUbahPesanan', 'stafDenyut', 'stafBuatWadah', 'stafBuatLahir', 'stafMintaNego', 'stafUsulHarga', 'stafMintaKredit', 'stafBuatSJ', 'stafTandaiSJ'}   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
+LUAR_KOLEKSI = ['aksesAkun', 'permintaanAkses', 'arsipTahun', 'ringkasanKasir', 'batuNisan', 'fotoBon', 'buktiTerima']   # blok rules di luar baru/js/data/koleksi.js (v7: fotoBon)
 
 
 def baca(p): return open(os.path.join(AKAR, p), encoding='utf-8').read()
@@ -554,6 +559,85 @@ def periksa_v9(rules, r8, c9):
     return cacat
 
 
+# ---- v10 (B3, owner 18 Nov 2026): v9 + PERSIS dua blok baru (suratJalan, buktiTerima) & tiga fungsinya ----
+BLOK_V10 = {
+    'suratJalan': {'read': "if owner() || staf(['ben', 'karyawan'])", 'create': "if owner() || stafBuatSJ(['ben'])", 'update': "if owner() || stafTandaiSJ(['ben', 'karyawan'])", 'delete': 'if owner()'},
+    'buktiTerima': {'read': "if owner() || staf(['ben', 'karyawan'])", 'create': "if (owner() || stafBuat(['ben', 'karyawan'])) && buktiSah(id)", 'delete': 'if owner()'},
+}
+FUNGSI_V10 = ['stafBuatSJ', 'stafTandaiSJ', 'buktiSah']
+SJ_BUKAN_BARU = ['penerima', 'diterimaPada', 'diterimaTanggal', 'diterimaJam', 'buktiTtd', 'buktiFoto', 'uangDiterima', 'pelunasanId', 'alasanGagal', 'batalPada', 'alasanBatal']
+SJ_TANDAI = ['status', 'riwayatStatus', 'penerima', 'diterimaPada', 'diterimaTanggal', 'diterimaJam', 'catatanTerima', 'buktiTtd', 'buktiFoto', 'uangDiterima', 'caraUang', 'pelunasanId',
+             'alasanGagal', 'ditandaiOleh', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']
+q = lambda xs: '[' + ', '.join("'%s'" % x for x in xs) + ']'
+BUAT_SJ_WAJIB = ("let d = request.resource.data; return stafBuat(peranBoleh) && d.get('status', '') == 'berangkat' && !d.keys().hasAny(" + q(SJ_BUKAN_BARU) + ");")
+TANDAI_SJ_WAJIB = ("return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid && resource.data.get('status', '') == 'berangkat' "
+                   "&& request.resource.data.get('status', '') in ['diterima', 'gagal'] && request.resource.data.diff(resource.data).affectedKeys().hasOnly(" + q(SJ_TANDAI) + ");")
+BUKTI_WAJIB = ("let d = request.resource.data; return d.get('id', '') == id && d.get('idSJ', 0) is string && d.idSJ.size() > 0 && d.get('jenisBukti', '') in ['ttd', 'foto'] "
+               "&& d.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp'] && d.get('base64', 0) is string && d.base64.size() > 0 && d.base64.size() <= 960000;")
+V9_TEKS = None   # kontrol: pengganti isi firestore.rules.v9
+BANDING_V9 = True
+
+
+def ke_v9(R):
+    """v10 → v9: cabut PERSIS dua blok baru & tiga fungsi v10 (tiap blok / fungsi wajib ada tepat sekali). R = rules tanpa komentar. Kembali (teks, cacat)."""
+    cacat = []
+    for n in BLOK_V10:
+        ms = list(re.finditer(r'\n    match /' + n + r'/\{\w+\} \{\n.*?\n    \}', R, re.S))
+        if len(ms) != 1: cacat.append('blok v10 %s ditemukan %d× (wajib 1×)' % (n, len(ms))); continue
+        R = R[:ms[0].start()] + R[ms[0].end():]
+    for f in FUNGSI_V10:
+        R2 = buang_fungsi(R, f)
+        if R2 == R: cacat.append('fungsi v10 ' + f + '() tidak ada')
+        R = R2
+    return R, cacat
+
+
+def periksa_v10(rules, r9, c10, akses_js):
+    """14 · v10: bentuk persis dua blok & tiga fungsi + sisanya = firestore.rules.v9 + model kasus ★L (v10 & v9, beda wajib = BEDA_V9)."""
+    cacat = list(c10); B = blok_rules(rules); F = fungsi_rules(rules); rata = lambda t: re.sub(r'\s+', ' ', t).strip()
+    for n, ops in BLOK_V10.items():
+        for op in OPERASI:
+            xs = [rata(x) for x in allow(B.get(n, ''), op)]
+            w = ops.get(op) or (ops.get('read') if op in ('get', 'list') else None)
+            if (xs != [w]) if w else xs: cacat.append('%s: allow %s bukan "%s" (v10): %s' % (n, op, w or '(tidak ada)', xs))
+    for f, w in (('stafBuatSJ', BUAT_SJ_WAJIB), ('stafTandaiSJ', TANDAI_SJ_WAJIB), ('buktiSah', BUKTI_WAJIB)):
+        if rata(F.get(f, '')) != w: cacat.append('%s() bukan bentuk v10 yang tercatat: %s' % (f, rata(F.get(f, '(tidak ada)'))))
+    for n, b in B.items():
+        for f, boleh in (('stafBuatSJ', 'suratJalan'), ('stafTandaiSJ', 'suratJalan'), ('buktiSah', 'buktiTerima')):
+            if f in b and n != boleh: cacat.append(n + ': ' + f + '() dipakai di luar ' + boleh)
+    for n, badan in F.items():
+        for f in FUNGSI_V10:
+            if n != f and f + '(' in badan: cacat.append(f + '() dipanggil dari fungsi ' + n)
+    # kolom yang boleh ditandai pengantar = akses.js KOLOM_TANDAI_SJ + atribusi ubah; kolom terlarang di surat jalan baru = akses.js KOLOM_BUKAN_SJ_BARU
+    kt = daftar_js(akses_js, 'KOLOM_TANDAI_SJ') or []; ka = daftar_js(akses_js, 'KOLOM_ATRIBUSI_UBAH') or []; kb = daftar_js(akses_js, 'KOLOM_BUKAN_SJ_BARU') or []
+    if kt + ka != SJ_TANDAI: cacat.append('kolom tandai surat jalan beda: akses.js %s vs rules v10 %s' % (kt + ka, SJ_TANDAI))
+    if kb != SJ_BUKAN_BARU: cacat.append('kolom terlarang surat jalan baru beda: akses.js %s vs rules v10 %s' % (kb, SJ_BUKAN_BARU))
+    v9 = V9_TEKS if V9_TEKS is not None else baca('firestore.rules.v9')
+    a, b = rata(r9), rata(tanpa_komentar(v9))
+    if BANDING_V9 and a != b:
+        i = next((j for j in range(min(len(a), len(b))) if a[j] != b[j]), min(len(a), len(b)))
+        cacat.append('v10 mengubah lebih dari ubahan yang tercatat atas firestore.rules.v9 — dekat "…%s…" (v9: "…%s…")' % (a[max(0, i - 60):i + 60], b[max(0, i - 60):i + 60]))
+    dok = DOK_V10_TEKS if DOK_V10_TEKS is not None else (baca('docs/uji-rules-v10.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v10.md')) else '')
+    v7dok = baca('docs/uji-rules-v7.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v7.md')) else ''
+    bentrok = sorted(set(k[0] for k in KASUS_V10) & (set(re.findall(r'(★[A-Z]\d+)', v7dok)) | set(k[0] for k in KASUS_V9) | set(k[0] for k in KASUS_V8) | set(k[0] for k in KASUS_V7)))
+    if bentrok: cacat.append('nomor kasus v10 bertabrakan dengan v7/v8/v9 (penguji emulator mengambil kolom Wajib v7 per nomor): ' + ', '.join(bentrok))
+    di_dok = set(re.findall(r'^\|(?: \d+ \|)? (★L\d+) \|', dok, re.M)); di_model = set(k[0] for k in KASUS_V10)
+    if di_dok != di_model: cacat.append('docs/uji-rules-v10.md tidak sama dengan kasus model v10 — hanya di berkas: %s · hanya di model: %s' % (sorted(di_dok - di_model), sorted(di_model - di_dok)))
+    mw = re.search(r'\n## Wajib owner[^\n]*\n(.*?)\n## ', dok, re.S)
+    wajib = re.findall(r'^\| \d+ \| (★L\d+) \|', mw.group(1), re.M) if mw else []
+    if wajib != WAJIB_V10: cacat.append('docs/uji-rules-v10.md bagian "Wajib owner" bukan WAJIB_V10 — berkas: %s · model: %s' % (wajib, WAJIB_V10))
+    try: M10 = rules_mini.Rules(rules); M9 = rules_mini.Rules(tanpa_komentar(v9))
+    except Exception as e: return cacat + ['model v10: rules tidak bisa diurai penafsir mini — %s' % e]
+    for no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks in KASUS_V10:
+        db = dict(DB_UJI_V7); db.update(ubah_db or {}); db = dict((k, v) for k, v in db.items() if v is not None)
+        h = M10.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7)
+        if h.boleh != boleh: cacat.append('model v10 %s %s → %s, wajib %s%s' % (no, nama, 'LOLOS' if h.boleh else 'DITOLAK', 'LOLOS' if boleh else 'DITOLAK', (' (' + h.galat + ')') if h.galat else ''))
+        elif maks is not None and h.akses > maks: cacat.append('model v10 %s %s: %d access call (batas jalur ini %d)' % (no, nama, h.akses, maks))
+        h9 = M9.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7); harap9 = (not boleh) if no in BEDA_V9 else boleh
+        if h9.boleh != harap9: cacat.append('model v10 %s atas firestore.rules.v9 → %s, harap %s (%s)' % (no, 'LOLOS' if h9.boleh else 'DITOLAK', 'LOLOS' if harap9 else 'DITOLAK', 'ubahan v10' if no in BEDA_V9 else 'wajib sama dengan v9'))
+    return cacat
+
+
 def ke_v6(R, KOL, ARSIP):
     """v7 → v6: cabut PERSIS ubahan v7 (tiap ganti wajib kena tepat sekali, blok demi blok). R = rules tanpa komentar. Kembali (teks, cacat)."""
     cacat = []; rata = lambda t: re.sub(r'\s+', ' ', t).strip()
@@ -927,12 +1011,49 @@ KASUS_V9 = [
 BEDA_V8 = {'★J1'}   # yang DIBUKA v9 (ditolak v8); kasus lain wajib sama hasilnya di v8
 DOK_V9_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v9.md
 
+# ---- MODEL v10 (B3, owner 18 Nov 2026): kasus ★L docs/uji-rules-v10.md — dokumen uji = DB_UJI_V7 (U11 = staf ben) + ubah_db per kasus.
+SJ_UJI = {'id': 'uji-v10-sj', 'noSJ': 'SJ26-XXX-0001', 'tanggal': '2026-10-09', 'jam': '10:00', 'trxIdJual': '1', 'namaPelanggan': 'Contoh', 'alamat': 'uji', 'pengantar': 'UJI B',
+          'isi': [{'nama': 'uji', 'jumlah': 1, 'satuan': 'karung'}], 'nilaiNota': 50000, 'ongkir': 0, 'bayarDiTempat': False, 'tagihRp': 0, 'status': 'berangkat', 'olehUid': 'uid-uji-b'}
+SJ_TANDA = {'status': 'diterima', 'penerima': 'uji', 'diterimaPada': 'x', 'buktiTtd': ['1'], 'diubahOlehUid': 'uid-uji-b', 'diubahOleh': 'UJI B'}
+BUKTI_UJI = {'id': 'uji-v10-bukti', 'idSJ': 'uji-v10-sj', 'noSJ': 'SJ26-XXX-0001', 'jenisBukti': 'ttd', 'jenis': 'image/png', 'base64': 'iVBORw0KGgo=', 'olehUid': 'uid-uji-b'}
+WAJIB_V10 = ['★L2', '★L3', '★L4']   # owner saja (tanpa dokumen uji staf); kasus staf dibuktikan emulator — boleh juga di Playground dengan U11
+KASUS_V10 = [
+    ('★L1', 'ben membuat surat jalan (berangkat, atas nama sendiri)', 'staf', 'create', 'suratJalan', 'uji-v10-sj', SJ_UJI, None, True, None),
+    ('★L2', 'owner membuat surat jalan', 'owner', 'create', 'suratJalan', 'uji-v10-sj', SJ_UJI, None, True, None),
+    ('★L3', 'owner membatalkan surat jalan (update)', 'owner', 'update', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, status='batal', alasanBatal='uji'), {'suratJalan/uji-v10-sj': SJ_UJI}, True, 0),
+    ('★L4', 'owner menyimpan bukti tanda tangan', 'owner', 'create', 'buktiTerima', 'uji-v10-bukti', BUKTI_UJI, None, True, 0),
+    ('★L5', 'ben menandai surat jalan DITERIMA (kolom tandai)', 'staf', 'update', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, **SJ_TANDA), {'suratJalan/uji-v10-sj': SJ_UJI}, True, None),
+    ('★L6', 'karyawan menandai surat jalan DITERIMA', 'staf', 'update', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, **SJ_TANDA), dict({'suratJalan/uji-v10-sj': SJ_UJI}, **U11_KARYAWAN), True, None),
+    ('★L7', 'karyawan menandai GAGAL ANTAR', 'staf', 'update', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, status='gagal', alasanGagal='toko tutup', diubahOlehUid='uid-uji-b', diubahOleh='UJI B'), dict({'suratJalan/uji-v10-sj': SJ_UJI}, **U11_KARYAWAN), True, None),
+    ('★L8', 'karyawan membuat surat jalan (bikin = owner & ben)', 'staf', 'create', 'suratJalan', 'uji-v10-sj', SJ_UJI, U11_KARYAWAN, False, None),
+    ('★L9', 'ben membuat surat jalan yang sudah "diterima"', 'staf', 'create', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, status='diterima'), None, False, None),
+    ('★L10', 'ben membuat surat jalan berisi kolom penerimaan (penerima)', 'staf', 'create', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, penerima='uji'), None, False, None),
+    ('★L11', 'ben mengubah tagihan saat menandai (tagihRp)', 'staf', 'update', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, tagihRp=1, **SJ_TANDA), {'suratJalan/uji-v10-sj': SJ_UJI}, False, None),
+    ('★L12', 'ben menandai ulang surat jalan yang sudah diterima', 'staf', 'update', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, status='gagal', alasanGagal='x', diubahOlehUid='uid-uji-b'), {'suratJalan/uji-v10-sj': dict(SJ_UJI, status='diterima')}, False, None),
+    ('★L13', 'ben membatalkan surat jalan (batal = owner)', 'staf', 'update', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, status='batal', diubahOlehUid='uid-uji-b'), {'suratJalan/uji-v10-sj': SJ_UJI}, False, None),
+    ('★L14', 'ben menandai atas nama akun lain (diubahOlehUid lain)', 'staf', 'update', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, **dict(SJ_TANDA, diubahOlehUid='uid-lain')), {'suratJalan/uji-v10-sj': SJ_UJI}, False, None),
+    ('★L15', 'ben membuat surat jalan atas nama akun lain (olehUid lain)', 'staf', 'create', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, olehUid='uid-lain'), None, False, None),
+    ('★L16', 'ben menyimpan bukti tanda tangan', 'staf', 'create', 'buktiTerima', 'uji-v10-bukti', BUKTI_UJI, None, True, None),
+    ('★L17', 'karyawan menyimpan bukti foto', 'staf', 'create', 'buktiTerima', 'uji-v10-bukti', dict(BUKTI_UJI, jenisBukti='foto', jenis='image/jpeg'), U11_KARYAWAN, True, None),
+    ('★L18', 'bukti tanpa surat jalan (idSJ kosong)', 'staf', 'create', 'buktiTerima', 'uji-v10-bukti', dict(BUKTI_UJI, idSJ=''), None, False, None),
+    ('★L19', 'bukti berjenis bukan gambar', 'staf', 'create', 'buktiTerima', 'uji-v10-bukti', dict(BUKTI_UJI, jenis='text/html'), None, False, None),
+    ('★L20', 'ben mengubah bukti (tanpa ubah)', 'staf', 'update', 'buktiTerima', 'uji-v10-bukti', dict(BUKTI_UJI, base64='AAAA'), {'buktiTerima/uji-v10-bukti': BUKTI_UJI}, False, None),
+    ('★L21', 'ben menghapus surat jalan', 'staf', 'delete', 'suratJalan', 'uji-v10-sj', None, {'suratJalan/uji-v10-sj': SJ_UJI}, False, None),
+    ('★L22', 'ben membaca surat jalan', 'staf', 'get', 'suratJalan', 'uji-v10-sj', None, {'suratJalan/uji-v10-sj': SJ_UJI}, True, 1),
+    ('★L23', 'kasir@ membaca surat jalan', 'kasir', 'get', 'suratJalan', 'uji-v10-sj', None, {'suratJalan/uji-v10-sj': SJ_UJI}, False, None),
+    ('★L24', 'akun tanpa aksesAkun membuat surat jalan', 'baru', 'create', 'suratJalan', 'uji-v10-sj', dict(SJ_UJI, olehUid='baru1'), None, False, None),
+]
+BEDA_V9 = {'★L1', '★L2', '★L3', '★L4', '★L5', '★L6', '★L7', '★L16', '★L17', '★L22'}   # yang DIBUKA v10 (blok baru; ditolak v9); kasus lain wajib sama hasilnya di v9
+DOK_V10_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v10.md
+
 
 def periksa(rules, koleksi_js, akses_js):
     cacat = []
     rules = tanpa_komentar(rules)
-    r8, c9 = ke_v8(rules)          # 13 · v9 → v8 (cabut balik satu ubahan v9)
-    cacat += periksa_v9(rules, r8, c9)
+    r9, c10 = ke_v9(rules)         # 14 · v10 → v9 (cabut balik dua blok & tiga fungsi v10)
+    cacat += periksa_v10(rules, r9, c10, akses_js)
+    r8, c9 = ke_v8(r9)             # 13 · v9 → v8 (cabut balik satu ubahan v9)
+    cacat += periksa_v9(r9, r8, c9)
     r7, c8 = ke_v7(r8)             # 12 · v8 → v7 (cabut balik tiga ubahan v8)
     cacat += periksa_v8(r8, r7, c8)
     cacat += periksa_v7(r7)        # 10 · semua pemeriksa v7 atas hasil cabut-balik (v8 tidak mengubah apa pun selain tiga ubahannya)
@@ -1000,7 +1121,8 @@ def periksa(rules, koleksi_js, akses_js):
         if n in BACA and not baca_staf: cacat.append('akses.js BACA_STAF memuat ' + n + ' tapi rules tidak membuka bacanya untuk ben/karyawan')
         if n not in BACA and n not in DOK and baca_staf: cacat.append('rules membuka baca ' + n + ' untuk bukan-owner, akses.js BACA_STAF tidak')
         buat = [x for x in allow(b, 'create') if re.search(r'\bstaf\w*\(', x)]
-        if n in BUAT and not any(peran_txt in x for x in buat): cacat.append('akses.js BUAT_STAF memuat ' + n + ' tapi rules tidak membuka create-nya')
+        peran_buat = '[' + ', '.join("'%s'" % x for x in (BUAT.get(n) or [])) + ']'   # v10: surat jalan dibuat ben saja (BUAT_STAF suratJalan ['ben'])
+        if n in BUAT and not any(peran_buat in x for x in buat): cacat.append('akses.js BUAT_STAF memuat ' + n + ' tapi rules tidak membuka create-nya untuk ' + peran_buat)
         if n not in BUAT and buat: cacat.append('rules membuka create ' + n + ' untuk bukan-owner, akses.js BUAT_STAF tidak')
         ubah = [x for x in allow(b, 'update') if re.search(r'\bstaf\w*\(', x)]
         if n in UBAH and not ubah: cacat.append('akses.js UBAH_STAF memuat ' + n + ' tapi rules tidak membuka update-nya')
@@ -1118,6 +1240,16 @@ if __name__ == '__main__':
             'v8: usul harga tindakan apa saja': R.replace("d.get('tindakan', '') == 'hargaPelanggan' && ", ""),
             'v8: usul harga boleh menulis kolom keputusan': R.replace("d.get('usulUid', '') == request.auth.uid\n        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);", "d.get('usulUid', '') == request.auth.uid;"),
             'v8: usul harga dicabut dari create persetujuan': R.replace(" || stafUsulHarga(['ben', 'karyawan']) ||", " ||"),
+            'v10: surat jalan dibuat karyawan': R.replace("stafBuatSJ(['ben']);", "stafBuatSJ(['ben', 'karyawan']);"),
+            'v10: surat jalan baru boleh membawa penerima': R.replace("!d.keys().hasAny(['penerima', 'diterimaPada',", "!d.keys().hasAny(['diterimaPada',"),
+            'v10: pengantar boleh mengubah tagihan': R.replace("affectedKeys().hasOnly(['status', 'riwayatStatus', 'penerima',", "affectedKeys().hasOnly(['status', 'riwayatStatus', 'tagihRp', 'penerima',"),
+            'v10: tandai tanpa syarat masih di jalan': R.replace("        && resource.data.get('status', '') == 'berangkat' && request.resource.data.get('status', '') in ['diterima', 'gagal']", "        && request.resource.data.get('status', '') in ['diterima', 'gagal']"),
+            'v10: pengantar boleh membatalkan': R.replace("request.resource.data.get('status', '') in ['diterima', 'gagal']", "request.resource.data.get('status', '') in ['diterima', 'gagal', 'batal']"),
+            'v10: tandai atas nama orang lain (tanpa uid pengubah)': R.replace("      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid\n        && resource.data.get('status', '') == 'berangkat'", "      return masuk() && aktifDengan(akun(), peranBoleh)\n        && resource.data.get('status', '') == 'berangkat'"),
+            'v10: bukti terima boleh diubah': R.replace("      allow create: if (owner() || stafBuat(['ben', 'karyawan'])) && buktiSah(id);\n      allow delete: if owner();", "      allow create: if (owner() || stafBuat(['ben', 'karyawan'])) && buktiSah(id);\n      allow update: if owner() || staf(['ben', 'karyawan']);\n      allow delete: if owner();"),
+            'v10: bukti terima jenis apa saja': R.replace("\n        && d.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp'] && d.get('base64', 0) is string && d.base64.size() > 0 && d.base64.size() <= 960000;", "\n        && d.get('base64', 0) is string && d.base64.size() > 0 && d.base64.size() <= 960000;"),
+            'v10: blok surat jalan hilang': re.sub(r"\n    match /suratJalan/\{id\} \{.*?\n    \}\n", '\n', R, flags=re.S),
+            'v10: baris lain berubah dari v9 (tetap wajib ketahuan)': R.replace("      allow update: if owner() || stafUbahPesanan(['ben', 'karyawan']);   // peta", "      allow update: if owner() || stafUbahPesanan(['ben', 'karyawan', 'tamu']);   // peta"),
             'v9: minta bon atas nama orang lain (tanpa mintaUid)': R.replace(" && d.get('mintaUid', '') == request.auth.uid", ""),
             'v9: minta bon tindakan apa saja': R.replace("d.get('tindakan', '') == 'kredit' && ", ""),
             'v9: minta bon boleh menulis kolom keputusan': R.replace("d.get('mintaUid', '') == request.auth.uid\n        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);", "d.get('mintaUid', '') == request.auth.uid;"),
@@ -1198,12 +1330,12 @@ if __name__ == '__main__':
             if isi == R: print('KONTROL BASI  ' + nama); kode = 3; continue
             # kontrol lama (sebelum v7) WAJIB tertangkap pemeriksa KHUSUSNYA — pembanding "sama dengan v6" (yang menangkap perubahan apa pun) dimatikan untuknya;
             # 'model:' — bentuk v7 (persetujuan, fotoBon, pintu) juga dimatikan: yang wajib berbunyi = penafsir rules mini pada kasus Playground ★/M
-            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:')
+            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:'); BANDING_V9 = BANDING_V8 or nama.startswith('v10:')
             c = periksa(isi, K, A)
-            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
+            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ', 'model v10 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
-        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
+        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; BANDING_V9 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
         for nama, isi in rusak_dok.items():
             DOK_V7_TEKS = isi; c = periksa(R, K, A); DOK_V7_TEKS = None
             c = [x for x in c if 'docs/uji-rules-v7.md' in x]   # berbunyi karena SEBABNYA (berkas Playground), bukan kegagalan lain
@@ -1219,7 +1351,9 @@ if __name__ == '__main__':
     if c: print('RULES CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
     KOL, TMIN = kp_js()
     nS = sum(1 for k in KASUS_BUKU if k[4]); nT = len(KASUS_BUKU) - nS
-    print('RULES v9 LULUS: v9 = firestore.rules.v8 + minta persetujuan bon (ben; bentuk persis; model %d kasus ★J, beda v8 = %s) · ' % (len(KASUS_V9), ', '.join(sorted(BEDA_V8)))
+    print('RULES v10 LULUS: v10 = firestore.rules.v9 + surat jalan (ben membuat, pengantar ben/karyawan menandai; bentuk persis) + bukti terima (model %d kasus ★L, beda v9 = %d kasus) · '
+          % (len(KASUS_V10), len(BEDA_V9))
+          + 'v9 = firestore.rules.v8 + minta persetujuan bon (ben; bentuk persis; model %d kasus ★J, beda v8 = %s) · ' % (len(KASUS_V9), ', '.join(sorted(BEDA_V8)))
           + 'v8 = firestore.rules.v7 + harga tingkat & arsip produk terbaca staf + usul harga staf (bentuk persis; model %d kasus ★H, beda v7 = %s) · ' % (len(KASUS_V8), ', '.join(sorted(BEDA_V7)))
           + 'v7: %d blok koleksi · TANPA payung (tidak ada match rekursif / wildcard koleksi) · owner via email · jalur kasir@ utuh & dipersempit · '
           'tulis bukan-owner wajib uid · daftar peran = akses.js · kunci periode di %d koleksi bertanggal (= kunci-periode.js), tenggang minimal %d hari, '

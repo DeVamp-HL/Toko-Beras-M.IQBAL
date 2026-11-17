@@ -18,6 +18,8 @@ import { hitungPiutang } from '../mesin/beku.js';
 import { ambilPenjualan, ambilRetur, tolakKunci, stokMerekSaja, petaUkuran, indukTerpisah, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
 import { hariIniIso, RP, DESIMAL, LEBIH_AMBANG } from '../inti/format.js';
 import { nilaiSelisihKg } from '../mesin/modal-fifo.js';
+// B3 (owner 18 Nov 2026): ongkir antar menempel di satu baris nota — nilai retur dihitung tanpa ongkir (antar-logika ajDasarRetur membungkus rtDasarNota beku)
+import { ajDasarRetur } from './antar-logika.js';
 
 /**
  * Modal FIFO (tinjauan 9 Okt): karung UTUH yang diretur kembali ke DEPAN antrean — rupiah yang dibatalkan dari modal laba = irisan itu SAAT retur
@@ -51,10 +53,10 @@ function teksBarang(t) {
  * bisa dihitung (bonus, perlu koreksi) TIDAK diberi jalan ketik tangan (`cadangan`): jalan itu mengeluarkan uang laci padahal bonnya belum tentu dibayar.
  */
 export function rtDasarRetur(t) {
-  if (caraBayarKunci(t) !== 'kredit') return rtDasarNota(t);
+  if (caraBayarKunci(t) !== 'kredit') return ajDasarRetur(t, rtDasarNota);   // B3: ongkir antar yang menempel di nota tidak ikut dikembalikan
   const nama = String(t.namaPelanggan || '').trim();
   if (!kunciPelanggan(nama)) return { ok: false, sebab: 'Nota BON tanpa nama pembeli — tidak ada bon yang bisa dipotong retur. Betulkan nama notanya dulu.' };
-  const d = rtDasarNota(Object.assign({}, t, { caraBayar: 'Tunai' }));
+  const d = ajDasarRetur(Object.assign({}, t, { caraBayar: 'Tunai' }), rtDasarNota);
   if (!d.ok) return { ok: false, sebab: 'Nota BON: ' + d.sebab + (d.cadangan ? ' Retur ketik tangan tidak bisa dipakai untuk nota bon — jalan itu mengeluarkan uang laci, padahal bonnya belum tentu dibayar.' : '') };
   return Object.assign(d, { bon: true, nama });
 }
@@ -237,7 +239,7 @@ export function susunRetur(s, w) {
 export function cekDrafTukar(draf) {
   const t = ambilPenjualan().find((x) => String(x.id) === String(draf.notaAsalId));
   if (!t) return 'Nota yang ditunjuk tukar ini tidak ditemukan lagi (dibatalkan/dikoreksi/dihapus). Batal tukar, lalu ulangi dari Retur.';
-  const d = rtDasarNota(t);
+  const d = ajDasarRetur(t, rtDasarNota);
   if (!d.ok) return d.sebab;
   if ((draf.jumlahDikembalikan || 0) > d.sisa) return rtKalimatLebih(d, draf.jumlahDikembalikan);
   return null;

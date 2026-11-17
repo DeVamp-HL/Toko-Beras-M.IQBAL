@@ -91,4 +91,9 @@ export const KOLEKSI = [
   //  Profil wajib pajak = field tambahan di aturanToko/rekapOmzet. TIDAK ada NIK, NPWP, atau nomor rekening di dokumen mana pun.
   { nama: 'pajakOmzetLuar',      urut: 'id',    cache: 'pajakOmzetLuar' },
   { nama: 'pajakSetoran',        urut: 'id',    cache: 'pajakSetoran' },
+  // B3 (owner 18 Nov 2026) — SURAT JALAN & ANTAR: satu dokumen per surat jalan (nomor, nota, alamat, pengantar, isi tanpa harga, bayar di tempat, status
+  //  berangkat → diterima / gagal / batal). Dibuat owner & Ben bersama notanya; pengantar (Ben / karyawan) menandai diterima dengan kolom terbatas (rules v10
+  //  stafTandaiSJ) — tanpa cap jam server, jadi 'tetap' seperti pesanan. Foto & tanda tangan penerima (buktiTerima) SENGAJA TIDAK di daftar ini: dibaca saat
+  //  surat jalannya dibuka (firebase.js bacaBuktiTerima), tidak ikut baca penuh, cache, maupun cadangan berkas.
+  { nama: 'suratJalan',          urut: 'id',    cache: 'suratJalan', kelas: 'tetap' },
 ];

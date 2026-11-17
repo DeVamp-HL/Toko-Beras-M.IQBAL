@@ -724,7 +724,7 @@ if __name__ == '__main__':
             'bon: nomor WhatsApp tidak diubah ke awalan 62': js.replace("const nomor = !digit ? '' : digit.indexOf('0') === 0 ? '62' + digit.slice(1) : digit.indexOf('62') === 0 ? digit : digit.indexOf('8') === 0 ? '62' + digit : digit;", "const nomor = digit;"),
             'bon: tagihan tidak mencatat janji bayar': js.replace("const janji = Number(janjiHari) > 0 ? tambahHari(w.tanggal, Number(janjiHari)) : null;", "const janji = null;"),
             'bon: pengantar yang sama dengan pemilik bon dicatat sebagai pengantar': js.replace("if (!bnKosong(pengantar) && kunciPelanggan(pengantar) !== kunci) data.dibawaOleh", "if (!bnKosong(pengantar)) data.dibawaOleh"),
-            'aturan owner diabaikan (bangku kosong tetap 2,0×)': js.replace("return { tempoBawaan: fkTempoBawaan(), kosongKali: angka('kosongKali', (n) => n >= 10 && n <= 100),", "return { tempoBawaan: fkTempoBawaan(), kosongKali: 20,"),   # B2: + tempoBawaan di depan
+            'aturan owner diabaikan (bangku kosong tetap 2,0×)': js.replace("tempoBawaan: fkTempoBawaan(), kosongKali: angka('kosongKali', (n) => n >= 10 && n <= 100),", "tempoBawaan: fkTempoBawaan(), kosongKali: 20,"),   # B2: + tempoBawaan di depan
             'status bon tidak memakai aturan owner (tagih tetap 14 hari)': js.replace("umur !== null && umur >= atur.tagihHari ? 'perluTagih' : 'baru'", "umur !== null && umur >= 14 ? 'perluTagih' : 'baru'").replace("tagihHari: angka('tagihHari', (n) => n >= 0 && n <= 365),", "tagihHari: 14,"),
         }
         kode = 0

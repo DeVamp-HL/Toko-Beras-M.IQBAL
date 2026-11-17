@@ -53,8 +53,21 @@ FK_MODUL = 'baru/js/layar/faktur-logika.js'
 FK_PEMAKAI = ('jual-logika.js', 'bon-logika.js', 'sistem-logika.js', 'struk-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js')
 
 
+# B3 (owner 18 Nov 2026): surat jalan & antar — jual-logika (ongkir & surat jalan bersama nota), retur (ongkir tidak ikut dikembalikan), struk, laporan,
+# kendali biaya, Dasbor, Pelanggan › Atur, tutup hari & pembatalan nota memakai antar-logika, yang sendiri memakai faktur-logika. Ikut OTOMATIS di belakang.
+AJ_MODUL = 'baru/js/layar/antar-logika.js'
+AJ_PEMAKAI = ('jual-logika.js', 'retur-logika.js', 'struk-logika.js', 'laporan-logika.js', 'kendali-biaya-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js',
+              'uang-logika.js', 'batal-nota-logika.js')
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in AJ_PEMAKAI for x in d) and not any(x.endswith('antar-logika.js') for x in d):
+        d.append(AJ_MODUL)
+        if not any(x.endswith('faktur-logika.js') for x in d):
+            d.append(FK_MODUL)
+            if not any(x.endswith('harga-tingkat-logika.js') for x in d):
+                d.append(HT_MODUL)
     if any(os.path.basename(x) in FK_PEMAKAI for x in d) and not any(x.endswith('faktur-logika.js') for x in d):
         d.append(FK_MODUL)
         if not any(x.endswith('harga-tingkat-logika.js') for x in d):
