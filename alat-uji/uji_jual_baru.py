@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/batal-nota-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/inti/struk-model.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/batal-nota-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/inti/struk-model.js']
 
 # KOTAK PASIR — angka contoh, bukan angka toko
 KOTAK = {
@@ -1214,7 +1214,7 @@ if __name__ == '__main__':
             'sertifikat: kop tidak dipecah': js.replace("const m = /^(TOKO BERAS)\\s+(.+)$/i.exec(M.kop.trim());", "const m = null;"),
             # ---- owner 17 Nov 2026 (butir 3): struk profesional ----
             'struk: nomor nota tidak dicetak': js.replace("const no = stNoNota(nota); if (no) baris('Nota No. ' + no, '', { jenis: 'nota', nilai: no });", ""),
-            'struk: subtotal tidak muncul sebelum potongan': js.replace("if (pot > 0) { baris('Subtotal', RP(nota.total + pot - bulat), { jenis: 'ringkas' }); baris('Potongan', '−' + RP(pot), { jenis: 'ringkas' }); }", "if (pot > 0) baris('Potongan', '−' + RP(pot), { jenis: 'ringkas' });"),
+            'struk: subtotal tidak muncul sebelum potongan': js.replace("if (pot > 0) { baris('Subtotal', RP(nota.total + pot - bulat - ongkir), { jenis: 'ringkas' }); baris('Potongan', '−' + RP(pot), { jenis: 'ringkas' }); }", "if (pot > 0) baris('Potongan', '−' + RP(pot), { jenis: 'ringkas' });"),
             'struk: logo tidak bisa dimatikan per struk': js.replace("logo: S.logo !== false, sisaBon,", "logo: true, sisaBon,"),
             # ---- owner 17 Nov 2026 (butir 5): berat 1 liter ----
             'kg liter: setelan owner diabaikan (selalu angka mesin)': js.replace("  if (k.merek[m]) return k.merek[m];\n", "\n"),
@@ -1280,7 +1280,7 @@ if __name__ == '__main__':
             'bayar sebagian dicatat Tunai (kekurangan hilang dari buku bon)': js.replace("if (cara !== 'Kredit' && uang > 0 && uang < tagihan) { bayarSebagian = uang; cara = 'Kredit'; }", "if (false) { }"),
             'pelunasan sebagian tidak dicatat': js.replace("if (bayarSebagian > 0) {\n    piutangId = w.idUnik();", "if (false) {\n    piutangId = w.idUnik();"),
             'kantong literan tidak dicatat terpakai': js.replace("if (d.kemasanLiteran && d.jumlahKemasanLiteranDipakai > 0) {\n      dokumen.push", "if (false) {\n      dokumen.push"),
-            'KR1 dilewati untuk bon': js.replace("if (s.cara === 'Kredit') { const k = alasanKunciKredit(s, t.total); if (k) return k; }", ""),
+            'KR1 dilewati untuk bon': js.replace("if (s.cara === 'Kredit' && !(s.antar && s.antar.cod)) { const k = alasanKunciKredit(s, t.total); if (k) return k; }", ""),
             'stok tidak dicek ulang saat mencatat': js.replace("const stok = periksaStokKeranjang(s); let tembus = [];   // pemeriksaan ulang TIDAK berubah (31b)", "const stok = ''; let tembus = [];"),   # putaran 31b: simpanNota memisahkan alasanTolak & periksaStokKeranjang
             # ---- audit 39b no. 8: struk nota bayar sebagian ----
             'struk bayar sebagian tidak mencari uang yang diterima': js.replace("const bb = bayarSaatBeli(nota);", "const bb = null;"),
@@ -1314,7 +1314,7 @@ if __name__ == '__main__':
             'retur melebihi sisa nota lolos': js.replace("if (jml > d.sisa) return { tolak: rtKalimatLebih(d, jml) };", ""),
             'retur yang sudah terjadi tidak mengurangi sisa nota': js.replace(".reduce((a, r) => a + (r.jumlahDikembalikan || 0), 0);\n    const sisa", ".reduce((a, r) => a + 0, 0);\n    const sisa"),
             '39b-37: nota BON di-refund dari laci (bukan potong bon)': js.replace("  if (r.d.bon) return susunReturBon(s, w, r);\n", ""),
-            '39b-37: nota BON kembali ditolak (rtDasarNota apa adanya)': js.replace("if (caraBayarKunci(t) !== 'kredit') return rtDasarNota(t);", "return rtDasarNota(t);"),
+            '39b-37: nota BON kembali ditolak (rtDasarNota apa adanya)': js.replace("if (caraBayarKunci(t) !== 'kredit') return ajDasarRetur(t, rtDasarNota);", "return ajDasarRetur(t, rtDasarNota);"),
             '39b-37: retur nota BON tanpa mutasi piutang (bon tidak turun)': js.replace("const dokumen = [{ koleksi: 'retur', data: capModalKembali(draf) }, { koleksi: 'piutangMutasi', data: mutasi }];", "const dokumen = [{ koleksi: 'retur', data: capModalKembali(draf) }];"),
             '39b-37: tukar nota BON lolos': js.replace("if (s.rtPenyelesaian === 'tukar') return { tolak: 'Nota BON tidak bisa ditukar langsung", "if (false) return { tolak: 'Nota BON tidak bisa ditukar langsung"),
             '39b-37 U37-U1: nota yang sudah diretur memotong bon boleh diurungkan (bon jadi minus)': js.replace("const tolakRb = tolakBatalReturBon(baris.map((p) => p.id)); if (tolakRb) return { tolak: tolakRb };", ""),
@@ -1327,7 +1327,7 @@ if __name__ == '__main__':
             'kemasan boleh diretur pecahan unit': js.replace("if (d.satuan === 'unit' && Math.round(jml) !== jml) return", "if (false) return"),
             'tukar menulis retur SEKARANG (tanpa pengganti → kas kurang)': js.replace("if (draf.penyelesaian === 'tukar') {", "if (false) {"),
             'kredit tukar tidak dipotong dari tagihan': js.replace("const kredit = s.tukar ? Math.round(s.tukar.kredit || 0) : 0;", "const kredit = 0;"),
-            'pembulatan tukar atas keranjang penuh, bukan selisih': js.replace("const bulatNota = bulatKeranjang(Object.assign({}, s, { cara }), totalSetelahPot - kreditTukar);", "const bulatNota = bulatKeranjang(Object.assign({}, s, { cara }), totalSetelahPot);"),
+            'pembulatan tukar atas keranjang penuh, bukan selisih': js.replace("const bulatNota = bulatKeranjang(Object.assign({}, s, { cara }), totalSetelahPot - kreditTukar + ongkir);", "const bulatNota = bulatKeranjang(Object.assign({}, s, { cara }), totalSetelahPot + ongkir);"),
             'tukar boleh dicatat BON': js.replace("if (s.cara === 'Kredit') return 'Tukar tidak bisa dicatat BON", "if (false) return 'Tukar tidak bisa dicatat BON"),
             'tukar boleh dibayar sebagian': js.replace("if (t.uang > 0 && t.uang < t.total) return 'Tukar tidak bisa dibayar sebagian", "if (false) return 'Tukar tidak bisa dibayar sebagian"),
             'pengganti lebih murah dari retur lolos': js.replace("if (t.bersih < 0) return 'Nilai retur '", "if (false) return 'Nilai retur '"),
@@ -1400,9 +1400,9 @@ if __name__ == '__main__':
             'dokumen karantina membawa kunci yang tidak dikenal sistem lama': js.replace("statusTindakan: 'belum_diputuskan' } };", "statusTindakan: 'belum_diputuskan', kunciAsingUji: 1 } };"),
             'dua tukar diikat ke satu keranjang': js.replace("if (s.tukar) return { kabar: 'Keranjang ini MASIH terikat tukar: '", "if (false) return { kabar: 'Keranjang ini MASIH terikat tukar: '"),
             # ---- 39b no. 9: buka kredit sekali milik struk ----
-            '39b-9: parkir tidak menutup buka kredit (bocor ke pembeli berikutnya)': js.replace("penggantiTanya: null, kreditDibuka: false,\n    aktifId: s.idBerikut", "penggantiTanya: null,\n    aktifId: s.idBerikut"),
-            '39b-9: struk parkir tidak membawa buka kredit': js.replace("toISOString(), kreditDibuka: !!s.kreditDibuka };", "toISOString() };"),
-            '39b-9: struk dibuka lagi tanpa buka kreditnya': js.replace("kreditDibuka: !!a.beku.kreditDibuka, aktifId: id,", "aktifId: id,"),
+            '39b-9: parkir tidak menutup buka kredit (bocor ke pembeli berikutnya)': js.replace("penggantiTanya: null, kreditDibuka: false, antar: null,\n    aktifId: s.idBerikut", "penggantiTanya: null, antar: null,\n    aktifId: s.idBerikut"),
+            '39b-9: struk parkir tidak membawa buka kredit': js.replace("toISOString(), kreditDibuka: !!s.kreditDibuka, antar: s.antar || null };", "toISOString(), antar: s.antar || null };"),
+            '39b-9: struk dibuka lagi tanpa buka kreditnya': js.replace("kreditDibuka: !!a.beku.kreditDibuka, antar: a.beku.antar || null, aktifId: id,", "antar: a.beku.antar || null, aktifId: id,"),
             # ---- putaran 15: wadah dijual ----
             'wadah tanpa harga jual ikut tampil di rak': js.replace("return daftarJenisWadah().filter((d) => harga[d.jenis] && (!d.lama || stokWadah(d.jenis).sisaBuku > 0)).map((d) => {", "return daftarJenisWadah().filter((d) => !d.lama).map((d) => { harga[d.jenis] = harga[d.jenis] || { harga: 0 };"),
             'wadah dijual tidak memotong buku kantong (tanpa dokumen pakai)': js.replace("if (d.jenis === 'wadah' && d.jenisWadah && d.jumlahUnit > 0) {", "if (false) {"),

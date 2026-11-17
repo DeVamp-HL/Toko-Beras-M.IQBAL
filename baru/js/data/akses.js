@@ -24,25 +24,32 @@ export const BATAS_HASIL_ADUKAN_STAF = 8;   // adukan: 8 hasil × (produksi + ka
 // rules v7 (owner 7 Okt, JS2-C): persetujuan — yang minta nego membaca keputusan owner (pendengar koleksi utuh; rules bukan saringan)
 export const BACA_STAF = ['penjualan', 'piutangMutasi', 'pelangganCatatan', 'pelangganTitip', 'pesanan', 'tagihPelanggan', 'strukKeluar',
   'batchMasuk', 'produksiKemasan', 'penyesuaianStok', 'penyesuaianKemasan', 'retur', 'karantina', 'stokBahanKemasan', 'stokBahanLiteran', 'wadahLiteran', 'pindahTempat',
-  'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan'];
+  'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan', 'suratJalan'];   // rules v10 (B3): surat jalan & antar
 export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip'], pengaturan: ['tempatSimpan'] };
 // rules v8 (B1, owner 16 Nov 2026): + hargaTingkat (harga pelanggan usaha dipakai kasir) + produkArsip (barang yang diarsipkan tidak tampil sebagai chip habis di tablet)
 // §4 — CREATE bukan-owner: koleksi → peran yang boleh. Menambah peran nanti = menambah satu nama di sini DAN di daftar yang sama di firestore.rules.
 export const BUAT_STAF = { penjualan: ['ben', 'karyawan'], piutangMutasi: ['ben', 'karyawan'], stokBahanLiteran: ['ben', 'karyawan'], stokBahanKemasan: ['ben', 'karyawan'],
   produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'],
-  wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'] };   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
+  wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'] };   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
 // rules v7 (owner 7 Okt, JS2-C): persetujuan hanya PERMINTAAN NEGO "menunggu" atas nama sendiri, tanpa kolom keputusan (stafMintaNego; periksaKiriman di bawah)
 export const TIPE_WADAH_STAF = ['takar', 'karung', 'karungIsi', 'cek'];   // = stafBuatWadah di rules v5
 export const KREDIT_STAF = ['ben'];   // penjualan caraBayar Kredit (jualBon): ben `sendiri`, karyawan `owner`
 // §5 — dua pengecualian UPDATE. Kolom atribusi ubah ikut (penulis pusat menulisnya); kolom pencipta (oleh, perangkat, lokasi) TIDAK pernah ditambah bukan-owner.
 export const KOLOM_ATRIBUSI_UBAH = ['diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'];
+// rules v10 (B3, owner 18 Nov 2026): surat jalan — pengantar menandai diterima / gagal antar (kolom = AJ_KOLOM_TANDAI antar-logika.js = stafTandaiSJ rules v10)
+export const KOLOM_TANDAI_SJ = ['status', 'riwayatStatus', 'penerima', 'diterimaPada', 'diterimaTanggal', 'diterimaJam', 'catatanTerima', 'buktiTtd', 'buktiFoto',
+  'uangDiterima', 'caraUang', 'pelunasanId', 'alasanGagal', 'ditandaiOleh'];
+// rules v10 (B3): surat jalan BARU buatan bukan-owner hanya berstatus 'berangkat', tanpa kolom keputusan (stafBuatSJ)
+export const KOLOM_BUKAN_SJ_BARU = ['penerima', 'diterimaPada', 'diterimaTanggal', 'diterimaJam', 'buktiTtd', 'buktiFoto', 'uangDiterima', 'pelunasanId', 'alasanGagal', 'batalPada', 'alasanBatal'];
 export const UBAH_STAF = {
   pesanan: { peran: ['ben', 'karyawan'], kolom: ['status', 'riwayatStatus', 'trxIdJual'].concat(KOLOM_ATRIBUSI_UBAH) },
+  suratJalan: { peran: ['ben', 'karyawan'], kolom: KOLOM_TANDAI_SJ.concat(KOLOM_ATRIBUSI_UBAH) },
   perangkatStatus: { peran: ['ben', 'karyawan'], kolom: ['id', 'nama', 'akun', 'akunUid', 'aplikasi', 'pada', 'antrean', 'gagal', 'versi', 'pemegang', 'lokasi'] },
 };
 export const LAYAR_STAF = ['jual', 'pelanggan', 'stok', 'menu'];
 // §1 — tindakan SS2 yang DIBUKA server putaran ini, per peran. Selebihnya tertutup (hitung laci & kedatangan: §6).
-export const SERVER_BUKA = { jualTunai: ['ben', 'karyawan'], jualBon: ['ben'], terimaBon: ['ben', 'karyawan'], adukan: ['ben', 'karyawan'], pelangganBaru: ['ben', 'karyawan'], isiUlang: ['ben', 'karyawan'] };   // isiUlang: rules v5 (putaran 39)
+export const SERVER_BUKA = { jualTunai: ['ben', 'karyawan'], jualBon: ['ben'], terimaBon: ['ben', 'karyawan'], adukan: ['ben', 'karyawan'], pelangganBaru: ['ben', 'karyawan'], isiUlang: ['ben', 'karyawan'],
+  antar: ['ben'], terimaAntar: ['ben', 'karyawan'] };   // rules v10 (B3): bikin surat jalan = ben (stafBuatSJ) · tandai diterima / gagal = ben & karyawan (stafTandaiSJ)   // isiUlang: rules v5 (putaran 39)
 export const KALIMAT_MINTA_OWNER = 'Perlu persetujuan owner — alurnya menyusul';
 
 const aKosong = (v) => v === undefined || v === null || String(v).trim() === '';
@@ -142,11 +149,11 @@ export function beriAtribusiAkun(data, akun, konteks, ada) {
 
 // koleksi/operasi → tindakan SS2 yang biasanya menulisnya (hanya untuk kalimat penolakan yang bisa dipahami)
 const TINDAKAN_DARI = { batchMasuk: 'kedatangan', pengeluaranHarian: 'uangKeluar', kasbonMutasi: 'uangKeluar', tutupHari: 'hitungLaci', aturanToko: 'atur', koreksiHpp: 'hargaBeli',
-  katalogHargaKarung: 'hargaBeli', katalogHargaKemasan: 'hargaBeli', katalogHargaLiteran: 'hargaBeli', wadahLiteran: 'isiUlang' };
+  katalogHargaKarung: 'hargaBeli', katalogHargaKemasan: 'hargaBeli', katalogHargaLiteran: 'hargaBeli', wadahLiteran: 'isiUlang', suratJalan: 'antar' };
 const NAMA_TINDAKAN = { kedatangan: 'hitung truk & draf kedatangan', uangKeluar: 'catat uang keluar dari laci', hitungLaci: 'hitung & rapikan laci', atur: 'ubah setelan (Atur)',
   hargaBeli: 'isi harga beli / modal', hapus: 'hapus catatan', koreksi: 'koreksi nota yang sudah tersimpan', jualBon: 'jual dengan bon', isiUlang: 'isi ulang & cek wadah literan',
   jualTunai: 'jual tunai & kembalian', nego: 'nego di bawah jatah margin', terimaBon: 'terima pembayaran bon', adukan: 'catat adukan (bongkar kemasan)', pelangganBaru: 'daftarkan pelanggan baru',
-  hargaPelanggan: 'mengatur harga pelanggan usaha' };
+  hargaPelanggan: 'mengatur harga pelanggan usaha', antar: 'bikin surat jalan & antar', terimaAntar: 'tandai barang antaran diterima' };
 /** rules v5 stafBuatLahir: batch LAHIR BUKU 0 kg (buku baru wadah / karung belakang) — bukan kedatangan. */
 const batchLahir = (d) => !!d && d.lahirBuku === true && d.stokAwal === true && !(Number(d.biayaBongkar) || 0) && String(d.pemasok || '') === 'LAHIR BUKU' && (d.merkList || []).every((r) => !(Number(r.totalKg) || 0) && !(Number(r.subtotalHarga) || 0));
 
@@ -176,6 +183,9 @@ export function tindakanKiriman(D, jatahNego) {
   jual.forEach((x) => { const d = x.data || {}; t[String(d.caraBayar || '').toLowerCase() === 'kredit' ? 'jualBon' : 'jualTunai'] = 1;
     if (!negoDalamJatah(d, jatahNego) || (Number(d.potonganTransaksi) || 0) > 0) t.nego = 1; });
   if (!jual.length && baru.some((x) => x.koleksi === 'piutangMutasi')) t.terimaBon = 1;
+  // B3 (rules v10): surat jalan baru = antar (ikut notanya) · surat jalan yang ditandai (update) = terima antar
+  if (ada('suratJalan')) t.antar = 1;
+  if ((D || []).some((x) => x.ada && x.koleksi === 'suratJalan')) t.terimaAntar = 1;
   if (ada('pelangganCatatan')) t.pelangganBaru = 1;
   const adaWadah = ada('wadahLiteran') || ada('batchMasuk');
   if (!jual.length) { if (adaWadah) t.isiUlang = 1; else if (ada('produksiKemasan') || ada('stokBahanKemasan') || ada('stokBahanLiteran')) t.adukan = 1; }
@@ -217,6 +227,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       // rules v5 (putaran 39): karyawan menulis wadahLiteran hanya takar / karung / karungIsi / cek (aturan wadah & titik samakan isi = owner), batchMasuk hanya batch LAHIR BUKU 0 kg
       if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };
       if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };
+      // rules v10 (B3, owner 18 Nov 2026): surat jalan baru buatan Ben — status 'berangkat', tanpa kolom keputusan (stafBuatSJ)
+      if (x.koleksi === 'suratJalan' && (d.status !== 'berangkat' || KOLOM_BUKAN_SJ_BARU.some((k) => k in d))) return { tolak: tolakTindakan('antar') };
       // owner 7 Okt (JS2-C): permintaan nego ke owner — hanya bentuk "menunggu" bertindakan nego, tanpa keputusan, dari peran yang kisinya bukan "tidak boleh".
       // rules v7 (stafMintaNego) menegakkan bentuk yang SAMA: tindakan 'nego', status 'menunggu', negoUid = olehUid = uid penulis, tanpa diputusPada /
       // diputusTanggal / diputusJam / alasanTolak. tinjauan 7 Okt: persetujuannya dicocokkan ke negoUid (ngSetujuUntuk)
@@ -233,6 +245,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       const berubah = Object.keys(kunci).filter((kk) => JSON.stringify(lama[kk]) !== JSON.stringify(d[kk]));
       const liar = berubah.filter((kk) => u.kolom.indexOf(kk) < 0); if (liar.length) return { tolak: tolakTindakan('koreksi') };
       if (x.koleksi === 'pesanan' && (['dibayar', 'batal'].indexOf(String(lama.status || '')) >= 0 || d.status !== 'dibayar')) return { tolak: tolakTindakan('koreksi') };
+      // rules v10 (B3): surat jalan yang masih di jalan → diterima / gagal antar (stafTandaiSJ); batal = owner
+      if (x.koleksi === 'suratJalan' && (String(lama.status || '') !== 'berangkat' || ['diterima', 'gagal'].indexOf(String(d.status || '')) < 0)) return { tolak: tolakTindakan('terimaAntar') };
     }
   }
   // audit 39b no. 22: kisi SS2 DITEGAKKAN di sini (dulu hak hanya memilih kalimat; yang menahan cuma 4 tombol). Tiap tindakan kiriman ini wajib "boleh sendiri"

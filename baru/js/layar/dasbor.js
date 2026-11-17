@@ -170,6 +170,10 @@ export function pasangDasbor(akar, opsi) {
       + tumpuk(bagP, P.total, 'piutangS:') + '<div class="db-legenda">' + P.perStatus.filter((s) => s.n).map((s) => '<span><i class="db-titik db-st-' + esc(s.status) + '"></i>' + esc(s.kata + ' ' + s.n) + '</span>').join('') + '</div>'
       + (jatuhP || '<div class="menolak">Tidak ada bon pelanggan yang lewat janji, waktunya ditagih, atau macet.</div>')
       + (P.nJatuh > 4 ? '<div class="ket db-ketuk" data-db-ke="sumber:piutang">+' + esc(P.nJatuh - 4) + ' nama lain ›</div>' : '')
+      // B3 (owner 18 Nov 2026): bayar di tempat yang uangnya belum disetor — MERAH, atas nama pengantarnya; lewat hari = kini bon biasa
+      + (G.antar && G.antar.cod && G.antar.cod.length ? '<div class="ket awas-teks" data-k="db-cod">' + esc(G.antar.kalimat) + '</div>'
+        + G.antar.cod.slice(0, 4).map((x) => baris({ nama: x.noSJ + ' · ' + x.nama, ket: (x.pengantar || 'pengantar') + ' · ' + tanggalPendek(x.tanggal) + (x.lewat ? ' · lewat hari, kini bon biasa' : ' · hari ini'), rp: x.sisa, awas: true,
+          isi: { judul: 'Bayar di tempat ' + x.noSJ, baris: [['Pembeli', x.nama], ['Pengantar', x.pengantar || '—'], ['Belum disetor', RP(x.sisa)]], tujuan: x.tujuan, ke: G.antar.sumber } }, 'cod:' + x.noSJ)).join('') : '')
       // B2 (owner 17 Nov 2026): faktur pelanggan usaha lewat / segera jatuh tempo (≤ 3 hari)
       + (G.faktur && G.faktur.n ? '<div class="ket" data-k="db-faktur">Faktur jatuh tempo · ' + esc(G.faktur.nLewat + ' lewat ' + RP(G.faktur.rpLewat) + ' · ' + (G.faktur.n - G.faktur.nLewat) + ' segera ' + RP(G.faktur.rpSegera)) + '</div>'
         + G.faktur.daftar.map((f) => baris({ nama: f.no + ' · ' + f.nama, ket: f.ket, rp: f.sisa, awas: f.awas, isi: { judul: 'Faktur ' + f.no, baris: [['Pembeli', f.nama], ['Sisa', RP(f.sisa)], ['', f.ket]], tujuan: f.tujuan, ke: G.faktur.sumber } }, 'faktur:' + f.no)).join('') : '')

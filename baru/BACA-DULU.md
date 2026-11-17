@@ -2678,3 +2678,33 @@ pelunasan **tertua dulu + bisa pilih faktur**; batas kosong = **rumus lama KR1**
   persetujuan. **Owner menerbitkan v9 di Console SEBELUM merge**; kalau terbalik, hanya tombol minta persetujuan di tablet Ben yang ditolak sampai v9 terbit.
 - Uji: `alat-uji/uji_faktur.py` (jsc + statis + kontrol), `periksa_rules.py` (v9 = v8 + satu ubahan, model 11 kasus ★J), `uji_rules_emulator.py` bagian V9;
   `uji_jual_baru.py` (bayar kurang kini kena KR1). Laporan semua bulan data toko BYTE-SAMA dengan `origin/main`.
+
+## Putaran B3 — surat jalan & antar (18 Nov 2026, cabang `paket/b3-surat-jalan`)
+Keputusan owner 18 Nov 2026 (memori `b3-surat-jalan-keputusan`): ongkir = **baris terpisah** di nota (bukan jualan beras, boleh Rp0), tarif bawaan **diatur
+owner** (Pelanggan › Atur); bayar di tempat = **nota dulu** (stok keluar saat berangkat) sebagai bon sementara, **bebas batas kredit hari itu**, lunas saat
+uang dibawa pulang; **owner + Ben** membuat surat jalan, **pengantar** (Ben / karyawan) menandai diterima; bukti = **tanda tangan di layar** (wajib) + **foto**
+(boleh dilewati). Mesin beku tidak disentuh (`beku2.py --sidik` 26/26, 91/91).
+- **Logika**: `baru/js/layar/antar-logika.js` (tanpa DOM, awalan `aj`); layar: `baru/js/layar/antar-panel.js` (dipasang Jual: Bayar › Antar, daftar Antar,
+  lembar Tanda terima).
+- **Ongkir MENEMPEL di satu baris nota** (kolom `ongkirAntar`, ikut `hargaTotal` — pola `upahRepack`): sesudah potongan, sebelum pembulatan Rp500; baris
+  pembawa = baris bermodal tercatat bernilai terbesar. Baris jenis baru ber-HPP 0 akan masuk "tanpa HPP" di mesin laba beku (`hppTercatat`) dan hilang dari
+  laba — menempel = kas, bon, laba, pajak dibaca mesin apa adanya. Yang memisahkannya (lapisan tak beku): Laporan per merek (baris luar `ongkir`, `nOngkir`
+  bukan baris nota — identitas tetap menutup), nilai retur (`ajDasarRetur` membungkus `rtDasarNota` beku: ongkir tidak ikut dikembalikan), struk (baris
+  "Ongkir antar"; `kotorBaris` mengurangkannya), kendali biaya (Bensin & angkut menyebut ongkir yang ditagih).
+- **Surat jalan** (koleksi `suratJalan`, kelas `tetap`): lahir dalam batch yang SAMA dengan notanya; nomor `SJ<yy>-<kode perangkat>-<urut 4>` (kode = faktur
+  B2), urut membaca surat jalan & baris nota (`noSJ` di semua baris). Isi tanpa harga; `bayarDiTempat`, `tagihRp`, `noFaktur`; status `berangkat` →
+  `diterima` / `gagal` / `batal`. Pembatalan nota (barusan & Riwayat) ikut membatalkan surat jalannya.
+- **Bayar di tempat**: cara Kredit + `bayarDiTempat` di baris; `bonKeranjang` = 0 (KR1 tidak menahan); uang pulang = `piutangMutasi` bayar ber-`untukSJ`
+  (+ `untukFaktur` bila faktur, `dibawaOleh` pengantar), lewat tanda terima atau "uang disetor" menyusul. Belum disetor → pita merah tutup hari
+  (`hitungTutup().cod`, baris rekap) & Dasbor (sampai hari ini, yang lewat hari = bon biasa).
+- **Tanda terima**: tanda tangan (kanvas, ≥ 12 titik) wajib, foto boleh dilewati (pengecil foto bon). Gambar disimpan di koleksi `buktiTerima`
+  (TIDAK di koleksi.js — dibaca `bacaBuktiTerima` saat dibuka, ditulis `simpanBuktiTerima` dengan jejak), tanda terima (`suratJalan` update + pelunasan)
+  dikirim sesudahnya. Mode cadangan = simulasi di memori panel.
+- **Akses**: kisi peran + `antar` (Ben sendiri, karyawan tidak) & `terimaAntar` (Ben & karyawan sendiri); `akses.js` BUAT_STAF `suratJalan: ['ben']`,
+  UBAH_STAF kolom tandai (`KOLOM_TANDAI_SJ` = `AJ_KOLOM_TANDAI` = rules), surat jalan baru tanpa kolom penerimaan (`KOLOM_BUKAN_SJ_BARU`).
+- **Pelanggan › Atur**: `tarifOngkir`, `pengantarAntar` (minimal satu), `kendaraanAntar` di `aturanToko/pelanggan` (dibaca tablet Ben).
+- **Rules v10** (`firestore.rules`, pembanding `firestore.rules.v9`, uji `docs/uji-rules-v10.md`): blok `suratJalan` (stafBuatSJ ben, stafTandaiSJ ben &
+  karyawan) + blok `buktiTerima` (buktiSah). **Owner menerbitkan v10 di Console SEBELUM merge**; kalau terbalik, nota yang diantar & tanda terima ditolak
+  server sampai v10 terbit (nota biasa tetap jalan).
+- Uji: `alat-uji/uji_antar.py` (jsc dua bundel — Jual & Laporan — + statis + 23 kontrol), `periksa_rules.py` (v10 = v9 + dua blok, model 24 kasus ★L),
+  `uji_rules_emulator.py` bagian V10. Koleksi `suratJalan` tidak ikut arsip tutup buku mesin beku (seperti koleksi baru lain sesudah putaran 19).

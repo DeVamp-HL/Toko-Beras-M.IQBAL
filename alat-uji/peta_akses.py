@@ -186,7 +186,7 @@ def baca_per_layar():
 # ASLI, dan tiap kiriman dilewatkan periksaKiriman ASLI (yang bukan-owner memang tidak boleh kirim → dilewati, bukan dihitung).
 BATAS_CI = 18   # batas Firebase 20 per batch − sisa 2 (keputusan owner). Sengaja TIDAK dibaca dari akses.js: menaikkan batas di sana tidak melonggarkan CI.
 MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/layar/arsip-logika.js',
-               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
+               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
                'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js']
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
@@ -317,8 +317,21 @@ pasok('katalogHargaLiteran', [{ id: 'Campur Enam', merk: 'Campur Enam', hargaPer
     if (!/terlalu besar untuk satu kali kirim/.test(PO.tolak || '') || /nota/.test(PO.tolak)) salah('pagar umum menolak kiriman bukan nota dengan kalimat nota / tidak menolak: ' + PO.tolak); }
 });
 
+// ---- 7 · B3 (owner 18 Nov 2026, rules v10): nota DIANTAR = nota + surat jalan dalam SATU kiriman (ben — bikin surat jalan); tanda terima pengantar = surat jalan
+//        diubah (kolom tandai) + pelunasan bayar di tempat (ben & karyawan — terima antar)
+['ben', 'karyawan'].forEach(function (p) { var BD = batasDokumenKirim(AKUN[p]);
+  var sA = Object.assign(keadaanAwal(), { sekarang: KINI, pelanggan: 'Pembeli Contoh', cara: 'Kredit', uang: 0, potongan: 0, batasBaris: NB, batasDok: BD, keranjang: keranjang('kemasan', 1),
+    antar: { alamat: 'contoh', ongkir: '5000', pengantar: 'Ben', kendaraan: '', cod: true, catatan: '' } });
+  var NA = susunNotaDokumen(sA, W); catat('antar', p, 'nota diantar, bayar di tempat: 1 baris + surat jalan', kirim(p, NA.dokumen));
+  var sjA = NA.dokumen.filter(function (x) { return x.koleksi === 'suratJalan'; })[0].data;
+  var TA = ajSusunTerima(sjA, { ttdId: 'T1', uang: String(sjA.tagihRp), caraUang: 'Tunai' }, W); if (TA.tolak) { salah('tanda terima ditolak: ' + TA.tolak); return; }
+  var DA = TA.dokumen.map(function (x) { var ada = x.koleksi === 'suratJalan'; return { koleksi: x.koleksi, data: x.data, ada: ada, lama: ada ? sjA : null }; });
+  var rA = periksaKiriman(AKUN[p], DA, [], HAK_LONGGAR);
+  catat('terima antar', p, 'tanda terima: surat jalan diterima + pelunasan bayar di tempat', rA.tolak ? { dilewati: rA.tolak } : { ac: DA.length + 1, dok: DA.length, ditolakPerangkat: false });
+});
+
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas
-var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru', isiUlang: 'isi ulang wadah' };
+var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru', isiUlang: 'isi ulang wadah', antar: 'antar', terimaAntar: 'terima antar' };
 Object.keys(SERVER_BUKA).forEach(function (t) { if (!DIHITUNG[t] || !hasil.baris.some(function (b) { return b.jenis === DIHITUNG[t]; })) salah('tindakan "' + t + '" dibuka server untuk bukan-owner, tapi kirimannya tidak dihitung di sini'); });
 hasil.batas = { kirim: BATAS_KIRIM_STAF, firebase: BATAS_ACCESS_CALL, baris: NB, hasil: NH };
 print(JSON.stringify(hasil));
@@ -656,7 +669,7 @@ if __name__ == '__main__':
                 'alasanTolak tanpa penjaga baris': rusak(JL, "const lewat = alasanBatasBaris(s, s.keranjang.length) || alasanBatasDokumen(s, s.keranjang);", "const lewat = alasanBatasDokumen(s, s.keranjang);"),
                 'baris literan menulis dokumen ketiga': rusak(JL, "    // PUTARAN 15: wadah yang DIJUAL", "    if (d.kemasanLiteran) dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: d.id + 2, tipe: 'pakai' } });\n    // PUTARAN 15: wadah yang DIJUAL"),
                 'adukan tanpa penjaga hasil': rusak(SA, "if (Number(draf.batasHasil) > 0 && h.sahH.length > Number(draf.batasHasil)) return", "if (false) return"),
-                'tindakan baru dibuka server tanpa hitungan': rusak(AK, "isiUlang: ['ben', 'karyawan'] };", "isiUlang: ['ben', 'karyawan'], cekBaru: ['ben'] };"),
+                'tindakan baru dibuka server tanpa hitungan': rusak(AK, "terimaAntar: ['ben', 'karyawan'] };", "terimaAntar: ['ben', 'karyawan'], cekBaru: ['ben'] };"),
                 'karyawan boleh menulis aturan wadah': rusak(AK, "if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };", ""),
                 'karyawan boleh menulis kedatangan sungguhan sebagai batch lahir': rusak(AK, "if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };", ""),
                 'jual.js mencatat nota tanpa batas baris': rusak('baru/js/layar/jual.js', 'L.simpanNota(Object.assign(SBN(), { tembusYakin: tembusYakin === true, dilayani: dilayaniSah() }))', 'L.simpanNota(Object.assign(S(), { tembusYakin: tembusYakin === true, dilayani: dilayaniSah() }))'),

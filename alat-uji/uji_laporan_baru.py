@@ -20,7 +20,7 @@ MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip
                                   'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/potret-logika.js']
 MODUL = MODUL + ['baru/js/layar/kg-liter-logika.js']
 if any(m.endswith(('jual-logika.js', 'bon-logika.js')) for m in MODUL):   # B2 (owner 17 Nov 2026): faktur & batas kredit (memakai harga tingkat)
-    MODUL = MODUL + [m for m in ('baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js') if m not in MODUL]   # owner 17 Nov 2026 (butir 5): penentu berat 1 liter (modul daun)
+    MODUL = MODUL + [m for m in ('baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js') if m not in MODUL]   # owner 17 Nov 2026 (butir 5): penentu berat 1 liter (modul daun)
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -925,7 +925,7 @@ if __name__ == '__main__':
             'per merek: susut dihitung dari selisih positif': js.replace("if (kg < 0 || (kg === 0 && rp < 0)) { g.susutKg -= kg; g.susutRp += rp; } else { g.naikKg += kg; g.naikRp += rp; }", "{ g.susutKg += Math.abs(kg); g.susutRp += rp; }"),
             'per merek: stok naik mengurangi susut diam-diam (selisih bersih)': js.replace("if (kg < 0 || (kg === 0 && rp < 0)) { g.susutKg -= kg; g.susutRp += rp; } else { g.naikKg += kg; g.naikRp += rp; }", "{ g.susutKg -= kg; g.susutRp += rp; }"),
             'per merek: susut sebelum 1 Sep 2026 ikut': js.replace("x.nilaiRp !== 0 && !!x.tanggal && x.tanggal >= MULAI_SUSUT_LABA && cocok(x.tanggal);", "x.nilaiRp !== 0 && !!x.tanggal && cocok(x.tanggal);"),
-            'per merek: nota tanpa modal dihitung modal 0 (margin 100%)': js.replace("if (hppTercatat(p)) { g.adaHitung = true;", "if (true) { g.adaHitung = true;"),
+            'per merek: nota tanpa modal dihitung modal 0 (margin 100%)': js.replace("if (tercatat) { g.adaHitung = true;", "if (true) { g.adaHitung = true;"),
             'per merek: wadah dijual dibuang diam-diam (tidak masuk di luar merek)': js.replace("  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal)) return; const g = ke(lpMerekBaris(p, P));", "  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal) || p.jenis === 'wadah') return; const g = ke(lpMerekBaris(p, P));"),
             'per merek: penjaga identitas diam (selalu menutup)': js.replace("const menutup = identitas.every((x) => x.cocok);", "const menutup = true;"),
             'per merek: tanpa selisih tercatat digambar susut 0%': js.replace("const ukur = !g.luar && dihitung && g.nSusut > 0 && !returLebih;", "const ukur = !g.luar && dihitung && !returLebih;").replace("const kgDicocok = g.gabungan ? g.kgDicocok : g.nSusut > 0 && !returLebih ? kg : 0;", "const kgDicocok = g.gabungan ? g.kgDicocok : !returLebih ? kg : 0;"),
