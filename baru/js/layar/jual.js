@@ -10,6 +10,8 @@ import * as RT from './retur-logika.js';
 import * as WJ from './wadah-jual-logika.js';
 import * as ST from './struk-logika.js';
 import * as PR from '../inti/printer.js';   // T1 (16 Nov 2026): printer USB tablet kasir — aplikasi CPad / WebUSB; tanpa printer = dialog cetak
+// owner 17 Nov (butir 3): pratinjau struk gambar + logo toko bersama
+import { gambarStruk as gambarStrukKanvas, siapkanHuruf } from '../inti/struk-kanvas.js';
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
@@ -27,6 +29,9 @@ import * as WB from './wadah-bernama-logika.js';   // putaran 39: komposisi turu
 import { jbJenisRak, jbSaringRak } from './jenis-beras-logika.js';
 import * as AR from './arsip-logika.js';
 import * as SK from './setengah-logika.js';
+import { aturUpah } from './upah-logika.js';   // owner 17 Nov: daftar karyawan aktif untuk pilihan "Dilayani"
+import { tbDaftar } from './tablet-logika.js';
+import * as BN from './batal-nota-logika.js';   // owner 17 Nov (butir 2): batal nota apa pun dari Riwayat (owner)
 import * as RW from './riwayat-logika.js';   // riwayat penjualan (owner 28 Sep): Jual › tab Riwayat   // 25c: saring rak per jenis beras (owner 27 Sep)
 
 const IKON = {
@@ -51,7 +56,23 @@ export function pasangLayarJual(akar, opsi) {
   // 25c (owner 27 Sep): jenis beras juga di Jual — BARIS SARING di atas rak, bukan tata letak baru: urutan rak per ukuran, termurah dulu (desain
   // Jual yang dikunci) tetap. Pilihan saring = tampilan saja (bukan isian, bukan data), ikut ke jalur lain selama jenisnya ada di sana.
   let jenisRak = '';
+  // owner 17 Nov 2026 (butir 1 & 6): yang MELAYANI pembeli. Mode owner: pilihan di lembar Bayar (pilihan terakhir diingat per perangkat) dan ubah sesudahnya
+  // dari lembar Struk. Daftar = karyawan aktif (Uang › Orang & upah) + orang di tablet — nama datang dari data toko, tidak tertulis di kode.
+  // Akun bukan-owner (tablet) tidak pernah menulis kolom ini: orang yang jaga tablet memang yang melayani.
+  const KUNCI_DILAYANI = 'miqbal_baru_dilayani_v1';
+  const akunOwner = () => !bukanOwner(opsi.akun ? opsi.akun() : null);
+  const namaOwner = () => String(((opsi.akun ? opsi.akun() : null) || {}).nama || '').trim() || 'Owner';
+  const daftarPelayan = () => {
+    const peta = {}; const isi = (n) => { const t = String(n || '').trim(); const k = kunciPelanggan(t); if (t && k && k !== kunciPelanggan(namaOwner()) && !peta[k]) peta[k] = t; };
+    try { aturUpah().aktif.forEach((o) => isi(o.nama)); } catch (e) { /* data upah belum termuat */ }
+    try { tbDaftar().filter((o) => o.aktif).forEach((o) => isi(o.nama)); } catch (e) { /* daftar orang tablet belum termuat */ }
+    return Object.keys(peta).map((k) => peta[k]).sort((a, b) => a.localeCompare(b, 'id'));
+  };
+  const dilayaniSah = () => { const d = String(S().dilayani || '').trim(); return akunOwner() && d && daftarPelayan().indexOf(d) >= 0 ? d : ''; };
+  try { const v = localStorage.getItem(KUNCI_DILAYANI); if (v) set({ dilayani: String(v).slice(0, 40) }); } catch (e) { /* penyimpanan perangkat tertutup — pilihan tidak diingat */ }
   const aksi = {
+    pilihDilayani: ({ n }) => { const v = String(n || '').slice(0, 40); try { if (v) localStorage.setItem(KUNCI_DILAYANI, v); else localStorage.removeItem(KUNCI_DILAYANI); } catch (e) { /* tidak diingat */ } set({ dilayani: v }); },
+    ubahDilayani: ({ n }) => { if (!akunOwner()) return; const x = notaStruk(); if (!x) return; tulisUmum(ST.susunUbahDilayani(x.nota, n, L.waktuSekarang(S().sekarang || undefined))); },
     jalur: ({ jalur }) => set({ jalur, lembar: null, pilih: null }),
     jenisRak: ({ j }) => { jenisRak = jenisRak === j ? '' : (j || ''); gambar(); },
     mode: () => opsi.gantiMode(),
@@ -128,7 +149,7 @@ export function pasangLayarJual(akar, opsi) {
     },
     catatNotaInti: async (tembusYakin) => {
       // tinjauan 7 Okt: SBN — baris yang dipulihkan sesudah muat ulang diputus ulang (nego) dengan akun yang masuk; harga berubah → keranjang diperbarui, nota ditahan
-      const r = L.simpanNota(Object.assign(SBN(), { tembusYakin: tembusYakin === true }));
+      const r = L.simpanNota(Object.assign(SBN(), { tembusYakin: tembusYakin === true, dilayani: dilayaniSah() }));   // owner 17 Nov: hanya mode owner, hanya nama yang masih aktif
       if (r.tolak) return set(Object.assign({}, r.perbarui || {}, { kabar: r.tolak, kabarAwas: true, tembusTanya: r.perluTembus || null }));
       const keranjangTadi = S().keranjang.slice(); const uangTadi = S().cara === 'Tunai' ? S().uang : 0;
       // penutup omzet (owner 29 Sep): angka Hari ini SEBELUM nota ini ditahan selama adegan berjalan. Dipasang SEBELUM menulis (tinjauan 29 Sep):
@@ -173,8 +194,23 @@ export function pasangLayarJual(akar, opsi) {
     kcNominal: (v) => set({ karcis: KC.ketikNominalKarcis(S(), 'nominal', v) }),
     kcNominalAlasan: (v) => set({ karcis: KC.ketikNominalKarcis(S(), 'alasan', v) }),
     kcNominalTutup: () => set(KC.tutupNominalKarcis(S())),
+    kcSisaBon: ({ v }) => { if (v === '1') { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); } set(KC.pilihSisaBon(S(), v === '1')); },   // owner 17 Nov: kekurangan bayar karcis jadi bon atas nama pembeli
     // putaran 25b: BATALKAN karcis kasir darurat yang salah ketik (padanan mulaiBatalkanTrx sistem lama) — dari daftar karcis, alasan wajib
     kcBatalBuka: ({ id }) => set({ kcBatal: { id: String(id), alasan: '' }, kabar: '' }),
+    // owner 17 Nov 2026 (butir 2): batalkan nota apa pun dari Riwayat — owner saja, alasan wajib, ketukan kedua (batal-nota-logika.js)
+    bnBuka: ({ k, trx, grup, id }) => { if (!akunOwner()) return; set({ bnBuka: { k: String(k || ''), trxId: trx || null, grupNota: grup || null, id: id || null, alasan: '', yakin: false }, kabar: '' }); },
+    bnTutup: () => set({ bnBuka: null }),
+    bnAlasan: (v) => set({ bnBuka: Object.assign({}, S().bnBuka || {}, { alasan: String(v || '').slice(0, 120), yakin: false }) }),
+    bnAlasanPil: ({ v }) => set({ bnBuka: Object.assign({}, S().bnBuka || {}, { alasan: String(v || ''), yakin: false }) }),
+    bnYa: async () => {
+      const b = S().bnBuka; if (!b || !akunOwner()) return;
+      const P = BN.bnPeriksa(b); if (P.tolak) return set({ kabar: P.tolak, kabarAwas: true });
+      if (String(b.alasan || '').trim().length < 3) return set({ kabar: 'Tulis alasannya dulu (mis. salah catat, uji coba)', kabarAwas: true });
+      if (!b.yakin) return set({ bnBuka: Object.assign({}, b, { yakin: true }) });
+      if (P.jalur === 'rinci') { set({ bnBuka: null }); return aksi.urungRinci({ g: P.rinci.grupNota, asli: P.rinci.asliId }); }
+      const r = BN.bnSusun(b, b.alasan, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+      await tulisUmum(Object.assign({}, r, { patch: Object.assign({}, r.patch || {}, { bnBuka: null }) }));
+    },
     kcBatalTutup: () => set({ kcBatal: null }),
     kcBatalAlasan: (v) => set({ kcBatal: Object.assign({}, S().kcBatal || {}, { alasan: String(v || '').slice(0, 120) }) }),
     kcBatalSimpan: () => { const b = S().kcBatal; if (!b) return; tulisUmum(KC.susunBatalKarcis(b.id, b.alasan, L.waktuSekarang(S().sekarang || undefined))); },
@@ -311,7 +347,7 @@ export function pasangLayarJual(akar, opsi) {
     const st = ST.susunStruk(nota, atur, pilih); if (!st) return;
     PR.jalurCetak().then((j) => {
       if (j === 'dialog') { cetakDialog(st, nota, ket); return; }
-      return PR.cetakGaris(st.garis).then((r) => {
+      return PR.cetakGaris(st.garis, { logoToko: st.logo }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
         catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + 'printer USB ' + (r.jalur === 'aplikasi' ? 'aplikasi tablet' : 'peramban') + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
       }).catch((e) => {
         set({ kabar: 'Printer USB gagal (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true });
@@ -712,6 +748,19 @@ export function pasangLayarJual(akar, opsi) {
   }
 
   // ---- RIWAYAT PENJUALAN (owner 28 Sep): semua nota sejak awal, per hari; ketuk nota = rincian + Struk / Retur baris yang boleh kembali
+  // owner 17 Nov 2026 (butir 2): lembar kecil batal nota di dalam baris Riwayat — akibatnya disebut dulu, alasan wajib, ketukan kedua
+  function formBatalNota(s) {
+    const b = s.bnBuka; const P = BN.bnPeriksa(b);
+    if (P.tolak) return h`<div class="kartu" data-k="bn-form" data-aksi="bnDiam" style="gap: 6px; margin-top: 6px;"><div class="pita-info awas" data-k="bn-tolak">${P.tolak}</div><div class="kaca-btn" data-aksi="bnTutup">tutup</div></div>`;
+    return h`<div class="kartu" data-k="bn-form" data-aksi="bnDiam" style="gap: 6px; margin-top: 6px;">
+      <div class="label">Batalkan nota ini${P.jalur === 'rinci' ? ' · tarik balik rincian' : P.jalur === 'karcis' ? ' · karcis kasir darurat' : ''}</div>
+      ${P.akibat.map((t, i) => h`<div class="ket" data-k="bn-ak-${i}">• ${t}</div>`)}
+      <div class="bendera" data-k="bn-alasan-pil">${BN.BN_ALASAN.map(([v, nm]) => h`<span class="pil ${String(b.alasan || '') === nm ? 'nyala' : ''}" data-aksi="bnAlasanPil" data-v="${nm}" data-k="bnp-${v}">${nm}</span>`)}</div>
+      <input class="ketik-nama" id="bnAlasan" type="text" value="${b.alasan || ''}" data-ketik="bnAlasan" placeholder="Alasan (wajib) — mis. salah catat, harusnya 2 karung">
+      ${pitaTolak(s, 'bnbatal')}
+      <div class="tombol-baris"><div class="kaca-btn putus ${b.yakin ? 'awas' : ''}" data-aksi="bnYa" data-k="bn-ya">${b.yakin ? 'KETUK SEKALI LAGI · batalkan' : P.jalur === 'rinci' ? 'Tarik balik rincian' : 'Batalkan nota'}</div><div class="kaca-btn" data-aksi="bnTutup">tidak jadi</div></div>
+    </div>`;
+  }
   function gambarRiwayat(s) {
     const R = RW.rwSusun(s, s.sekarang || new Date()); const seg = (aksi, kunci, nilai, aktif, nama) => h`<div class="seg ${aktif ? 'aktif' : ''}" data-aksi="${aksi}" data-${kunci}="${nilai}">${nama}</div>`;
     const status = { batal: 'DIBATALKAN', dirinci: 'sudah dirinci jadi nota lain', sebagian: 'sebagian baris dibatalkan' };
@@ -724,9 +773,9 @@ export function pasangLayarJual(akar, opsi) {
       ${R.hari.map((g) => h`<div class="label" data-k="rwh-${g.tanggal}" style="padding: 10px 4px 2px;">${g.judul} · ${g.nNota} nota · ${RP(g.omzet)}${g.retur ? ' − retur ' + RP(g.retur) + ' = omzet ' + RP(g.bersih) : ''}</div>
         <div class="kartu daftar-nota" data-k="rwd-${g.tanggal}" style="max-height: none;">${g.nota.map((o) => h`<div class="baris-nota ${o.status === 'batal' || o.status === 'dirinci' ? 'tak-bisa' : ''}" data-aksi="rwBuka" data-k="${o.kunci}">
           <div class="atas"><span><b>${o.baris.length ? o.baris[0].teks : '—'}</b>${o.nBaris > 1 ? ' + ' + (o.nBaris - 1) + ' barang' : ''}${o.nama ? ' · ' + o.nama : ''}</span><span class="n">${RP(o.status === 'batal' || o.status === 'dirinci' ? o.totalAsli : o.total)}</span></div>
-          <div class="ket">${o.jam} · ${o.cara === 'Kredit' ? 'Bon' : o.cara}${o.oleh ? ' · ' + o.oleh : ''}${status[o.status] ? ' · ' + status[o.status] : ''}${o.tandai ? ' · jual dulu, tandai dicocokkan' : ''}</div>
+          <div class="ket">${o.jam} · ${o.cara === 'Kredit' ? 'Bon' : o.cara}${o.dilayani ? ' · dilayani ' + o.dilayani : o.oleh ? ' · ' + o.oleh : ''}${status[o.status] ? ' · ' + status[o.status] : ''}${o.tandai ? ' · jual dulu, tandai dicocokkan' : ''}</div>
           ${s.rwBuka === o.kunci ? h`<div class="rw-rinci" data-k="rwr-${o.kunci}" style="display: flex; flex-direction: column; gap: 4px; padding-top: 6px;">${o.baris.map((b) => h`<div class="atas" data-k="rwb-${b.id}" style="font-size: 13px;"><span>${b.teks}${b.pengganti ? ' · pengganti retur' : ''}${b.tandai ? ' · tembus stok' : ''}</span><span style="display: flex; gap: 6px; align-items: center;"><span class="n">${RP(b.n)}</span>${b.bisaRetur ? h`<span class="kaca-btn kecil" data-aksi="tunjukNota" data-id="${b.id}">retur</span>` : ''}</span></div>${b.sebabRetur ? h`<div class="ket" style="font-size: 11px;">retur: ${b.sebabRetur}</div>` : ''}`)}
-            <div class="tombol-baris rapat"><div class="kaca-btn" data-aksi="bukaStruk" data-trx="${o.trxId || ''}" data-grup="${o.grupNota || ''}" data-id="${o.id}">Struk ›</div>${o.bisaRetur ? '' : h`<span class="ket" style="align-self: center;">${o.status === 'batal' || o.status === 'dirinci' ? 'nota ini tidak berlaku lagi' : 'tidak ada baris karung/kemasan yang bisa diretur dari sini'}</span>`}</div></div>` : ''}
+            <div class="tombol-baris rapat"><div class="kaca-btn" data-aksi="bukaStruk" data-trx="${o.trxId || ''}" data-grup="${o.grupNota || ''}" data-id="${o.id}">Struk ›</div>${akunOwner() && o.status === 'berlaku' && !(s.bnBuka && s.bnBuka.k === o.kunci) ? h`<div class="kaca-btn putus" data-aksi="bnBuka" data-k="${o.kunci}" data-trx="${o.trxId || ''}" data-grup="${o.grupNota ? o.grupNota : ''}" data-id="${o.id}">Batalkan nota</div>` : ''}${o.bisaRetur ? '' : h`<span class="ket" style="align-self: center;">${o.status === 'batal' || o.status === 'dirinci' ? 'nota ini tidak berlaku lagi' : 'tidak ada baris karung/kemasan yang bisa diretur dari sini'}</span>`}</div>${s.bnBuka && s.bnBuka.k === o.kunci ? formBatalNota(s) : ''}</div>` : ''}
         </div>`)}</div>`)}
       ${R.lebih ? h`<div class="kaca-btn putus" data-aksi="rwLagi" data-k="rw-lagi" style="margin-top: 8px;">tampilkan ${RW.RW_LANGKAH} nota lagi · ${R.nTampil} dari ${R.n}</div>` : R.n ? h`<div class="ket" data-k="rw-habis" style="padding: 8px 4px;">${R.n} nota tampil semua</div>` : ''}`;
   }
@@ -934,6 +983,7 @@ export function pasangLayarJual(akar, opsi) {
     }
     if (s.lembar === 'bayar' && s.karcis) {
       const k = s.karcis; const KH = KC.hitungKarcis(s); const N = KH.N; const dampak = KC.teksDampakNominal(k, s.cara, s.pelanggan);
+      const bolehBon = tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon').boleh;
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-bayar-karcis">
         ${kepala(k.jenisAsal === 'karcis' ? 'Simpan rincian' : 'Simpan rapikan', 'karcis ' + KC.kcEkor(k.id) + ' · ' + tanggalPendek(k.tanggal) + ' ' + k.jam)}
         <div class="total"><span class="label">Uang yang masuk (karcis)${N.diubah ? h` <span class="ket">tadinya ${RP(N.asli)}</span>` : ''}</span><span class="n">${RP(KH.nominal)}</span></div>
@@ -944,12 +994,13 @@ export function pasangLayarJual(akar, opsi) {
           <div class="kaca-btn" data-aksi="kcNominalTutup" style="min-height: 34px; font-size: 12px;">tidak jadi ubah nominal</div></div>`
           : h`<div class="kaca-btn putus" data-aksi="kcNominalBuka" data-k="kc-nominal-buka" style="min-height: 34px; font-size: 12px;">ubah nominal karcis (uang yang masuk beda dari ketikan)</div>`}
         <div class="total"><span class="label">Barang di keranjang</span><span class="n" style="font-size: 20px;" data-gulir="${KH.total}">${RP(KH.total)}</span></div>
-        <div class="pita-info ${KH.lebih ? 'awas' : KH.pas ? 'emas' : ''}">${KH.teks}${KH.lebih && k.jenisAsal === 'karcis' ? h` <span class="pil" data-aksi="kcNominalBuka" data-n="${KH.total}" data-k="kc-nominal-pas">ubah nominal jadi ${RP(KH.total)}</span>` : ''}</div>
+        <div class="pita-info ${KH.lebih ? 'awas' : KH.pas || KH.bon ? 'emas' : ''}" data-k="kc-pita">${KH.teks}${KH.bisaBon && !KH.bon && bolehBon ? h` <span class="pil" data-aksi="kcSisaBon" data-v="1" data-k="kc-sisa-bon">sisa ${RP(-KH.sisa)} jadi bon</span>` : ''}${KH.bon ? h` <span class="pil" data-aksi="kcSisaBon" data-v="0" data-k="kc-sisa-bon-lepas">bukan bon</span>` : ''}${KH.lebih && k.jenisAsal === 'karcis' ? h` <span class="pil" data-aksi="kcNominalBuka" data-n="${KH.total}" data-k="kc-nominal-pas">ubah nominal jadi ${RP(KH.total)}</span>` : ''}</div>
+        ${KH.bon ? h`<div class="ket" data-k="kc-bon-arti">Laci${s.cara === 'QRIS' ? ' / QRIS' : ''} hari itu tetap ${RP(KH.nominal)} · omzet jadi ${RP(KH.total)} · bon ${s.pelanggan || 'pembeli'} bertambah ${RP(KH.bon)}. Struknya menyebut "BON — sebagian dibayar".</div>` : ''}
         <div class="label">Cara bayar waktu itu</div>
         <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''} ${c === 'Kredit' && !tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon').boleh ? 'mati' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
-        <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli' + (s.cara === 'Kredit' ? ' (wajib untuk bon)' : ' (boleh kosong)')}</div>
+        <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli' + (s.cara === 'Kredit' || KH.bon ? ' (wajib untuk bon)' : ' (boleh kosong)')}</div>
         ${pitaTolak(s, 'bayar-karcis')}
-        <div class="utama ${KH.lebih || !s.keranjang.length ? 'redup' : ''}" data-aksi="simpanRinci">${!s.keranjang.length ? 'Tambahkan barangnya dulu' : KH.lebih ? 'Kelebihan — betulkan dulu' : 'SIMPAN RINCIAN · ' + s.keranjang.length + ' barang'}</div>
+        <div class="utama ${KH.lebih || !s.keranjang.length || (KH.bon && !s.pelanggan) ? 'redup' : ''}" data-aksi="simpanRinci">${!s.keranjang.length ? 'Tambahkan barangnya dulu' : KH.lebih ? 'Kelebihan — betulkan dulu' : KH.bon && !s.pelanggan ? 'Isi nama pembeli untuk bonnya' : 'SIMPAN RINCIAN · ' + s.keranjang.length + ' barang' + (KH.bon ? ' · sisa ' + RP(KH.bon) + ' bon' : '')}</div>
         ${k.jenisAsal === 'karcis' ? h`<div class="kaca-btn putus" data-aksi="karcisPerbaiki" style="min-height: 36px; font-size: 12px;">hanya perbaiki cara bayar / nama${N.diubah ? ' / nominal' : ''} (barangnya belum diingat)</div>` : ''}
         <div class="ket" style="text-align: center;">${sumber.jenis === 'cadangan' ? 'SIMULASI — tidak ke Firestore' : 'bentuk dokumen sama dengan Rinci Darurat sistem lama; bisa ditarik balik ' + L.BATAS_URUNGKAN_DETIK + ' detik sesudahnya (atau dari daftar karcis)'}</div>
       </div>`;
@@ -1018,6 +1069,7 @@ export function pasangLayarJual(akar, opsi) {
         ${kunciKredit && s.pelanggan ? h`<div class="pita-info awas">${kunciKredit}</div>${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">Buka kredit SEKALI untuk nota ini (keputusan owner, tercatat)</div>` : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="${tombolLuarKisi(opsi.akun ? opsi.akun() : null).kalimat}">Buka kredit SEKALI untuk nota ini</div>`}` : ''}
         ${s.kreditDibuka && s.cara === 'Kredit' ? h`<div class="ket">kredit dibuka sekali oleh owner — nota membawa tanda kreditDibukaOwner</div>` : ''}
         <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli'}</div>
+        ${akunOwner() ? h`<div class="label">Dilayani</div><div class="bendera" data-k="dilayani">${[''].concat(daftarPelayan()).map((nm) => h`<span class="pil ${dilayaniSah() === nm ? 'nyala' : ''}" data-aksi="pilihDilayani" data-n="${nm}" data-k="dl-${nm || 'owner'}">${nm || namaOwner()}</span>`)}</div>${daftarPelayan().length ? '' : h`<div class="ket">Belum ada karyawan aktif — atur di Uang › Orang & upah.</div>`}` : ''}
         ${pitaTolak(s, 'bayar')}${s.tembusTanya && s.tembusTanya.length && s.keranjang.length ? h`<div class="kaca-btn awas" data-aksi="simpanTembus" data-k="tembus-bayar">JUAL DULU, TANDAI</div>` : ''}
         <div class="utama ${tolak ? 'redup' : ''}" data-aksi="simpan">${tolak || 'CATAT NOTA · ' + RP(t.total)}</div>
         <div class="ket" style="text-align: center;">${sumber.jenis === 'cadangan' ? 'SIMULASI — tidak ke Firestore' : 'masuk ke koleksi penjualan yang sama dengan sistem lama; bisa dibatalkan ' + L.BATAS_URUNGKAN_DETIK + ' detik sesudahnya'}</div>
@@ -1063,6 +1115,22 @@ export function pasangLayarJual(akar, opsi) {
       <input class="ketik-nama sempit" id="rpUpah" type="text" inputmode="numeric" value="${s.rpUpah}" data-ketik="rpUpah" placeholder="Upah repack Rp (boleh kosong) — melekat ke baris repack">`;
   }
   // ---------- putaran 15: struk (JS3-A: kertas 58/80 & WhatsApp dari satu penyusun; JS3-C: aturan otomatis) ----------
+  // owner 17 Nov 2026 (butir 3): pratinjau struk = GAMBAR yang sama dengan yang keluar dari printer tablet (huruf toko, logo, TOTAL di antara garis tebal).
+  // Digambar di belakang layar sekali per isi struk; selama belum siap (atau kanvas gagal) yang tampil teks struknya. WA & dialog cetak tetap teks yang sama isinya.
+  let _pratinjau = { kunci: '', url: '' }; let _pratinjauJalan = '';
+  function pratinjauStruk(st, kertas) {
+    const kunci = kertas + '|' + (st.logo ? 'L' : '') + '|' + st.teks;
+    if (_pratinjau.kunci === kunci) return _pratinjau.url;
+    if (_pratinjauJalan !== kunci) {
+      _pratinjauJalan = kunci;
+      (async () => {
+        let url = '';
+        try { await siapkanHuruf(); url = gambarStrukKanvas(st.garis, { kertas, logoToko: st.logo }).kanvas.toDataURL('image/png'); } catch (e) { url = ''; }
+        if (_pratinjauJalan !== kunci) return; _pratinjau = { kunci, url }; _pratinjauJalan = ''; gambar();
+      })();
+    }
+    return '';
+  }
   function gambarStruk(s, L1, muncul, kepala) {
     const n = notaStruk();
     if (!n) return h`${L1}<div class="lembar ${muncul}" data-k="lembar-struk">${kepala('Struk', 'nota tidak ditemukan')}<div class="pita-info awas">Nota ini tidak ada di data yang dimuat perangkat ini.</div></div>`;
@@ -1071,7 +1139,8 @@ export function pasangLayarJual(akar, opsi) {
       ${kepala('Struk · ' + (n.nota.nama || 'tanpa nama'), tanggalPendek(n.nota.tanggal) + (n.nota.jam ? ' ' + n.nota.jam : '') + ' · ' + RP(n.nota.total) + ' · ' + (n.nota.cara === 'Kredit' ? 'Bon' : n.nota.cara) + (n.nota.berlaku ? '' : ' · SUDAH ' + (n.nota.dibatalkan ? 'DIBATALKAN' : 'DIKOREKSI')))}
       <div class="bendera"><span class="ket" style="align-self: center;">kertas</span>${[58, 80].map((k) => h`<span class="pil ${n.pilih.kertas === k ? 'nyala' : ''}" data-aksi="strukKertas" data-mm="${k}">${k} mm</span>`)}<span class="ket tautan" style="margin-left: auto; align-self: center;" data-aksi="bukaAturStruk">atur kop & aturan ›</span></div>
       <div class="bendera">${ST.ST_SERTAKAN.map(([k, nm]) => h`<span class="pil ${n.pilih.sertakan[k] ? 'nyala' : ''}" data-aksi="strukSertakan" data-nama="${k}">${nm}</span>`)}</div>
-      <pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>
+      ${akunOwner() ? h`<div class="label">Dilayani · ketuk untuk mengubah</div><div class="bendera" data-k="ubah-dilayani">${[namaOwner()].concat(daftarPelayan()).map((nm) => h`<span class="pil ${ST.stPelayan(n.nota) === nm ? 'nyala' : ''}" data-aksi="ubahDilayani" data-n="${nm}" data-k="udl-${nm}">${nm}</span>`)}</div>` : ''}
+      ${(() => { const url = pratinjauStruk(st, n.pilih.kertas); return url ? h`<div class="st-gambar-bingkai" data-k="gambar-struk"><img class="st-gambar k${n.pilih.kertas}" src="${url}" alt="Pratinjau struk seperti keluar dari printer tablet"></div>` : h`<pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>`; })()}
       <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="kirimWa">Kirim WhatsApp</div><div class="kaca-btn" data-aksi="cetakStruk">Cetak</div><a class="kaca-btn" href="uji-cetak.html" style="text-decoration: none; color: inherit;">Printer tablet ini</a></div>
       ${pitaTolak(s, 'struk')}
       <div class="ket">Struk yang sama untuk kertas dan WhatsApp — cuma menyusun nota yang sudah tersimpan, tidak ada angka baru. WhatsApp dibuka tanpa nomor tujuan (WhatsApp yang bertanya ke siapa; nomor pembeli tidak disimpan). Cetak = printer USB tablet ini bila sudah diatur ("Printer tablet ini": gaya, logo), selain itu dialog cetak perangkat ini.</div>

@@ -17,7 +17,7 @@ import { hitungKasbon } from '../mesin/beku.js';
 import { kunciPelanggan, akhirBulanIso, POS_BIAYA_BULANAN } from '../mesin/pembantu.js';
 import { ambilBiayaBulanan, ambilKasbonMutasi, ambilAbsenKaryawan, ambilSlipUpah, cacheMentah, tolakKunciTanggal, ambilTutupBukuAcara, eraBuku } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { NAMA_KASBON_OWNER, ugAngka, ugKosong, ugAturDok, ugTambahHari, ugHariKe, ugKiniDari, saldoKantong, ugCukup } from './uang-logika.js';
+import { NAMA_KASBON_OWNER, ugAngka, ugKosong, ugAturDok, ugTambahHari, ugHariKe, ugKiniDari, saldoKantong, ugCukup, ugNamaTempat, lewatAmplop, TEMPAT_AMPLOP } from './uang-logika.js';
 
 export const ATUR_UPAH_BAWAAN = { tarif: 60000, orang: [], alasan: ['Keperluan keluarga', 'Pulang kampung', 'Berobat', 'Lain-lain'] };
 const UP_ORANG_UMUM = [];   // dulu daftar nama pegawai sistem lama; dicabut 28 Sep 2026 (repo publik tanpa nama orang) — tanpa data, daftar karyawan kosong dan layar menyebutnya
@@ -194,16 +194,20 @@ export function susunAbsen(nama, iso, nilai, w) {
   return { dokumen: [{ koleksi: 'absenKaryawan', data: { id, nama: lama.nama || String(nama).trim(), bulan, hari, diubahTanggal: w.tanggal, diubahJam: w.jam } }], patch: { kabar: '', kabarAwas: false } };
 }
 /** Kasbon karyawan dari laci: kasbonMutasi {tipe ambil} sistem lama + jam & dari. */
-export function hitungKasbonKaryawan(nama, ketik, alasan) {
-  const n = Math.round(ugAngka(ketik)); const S = saldoKantong(); let tolak = ''; let c = { boleh: true };
-  if (!nama) tolak = 'Pilih orangnya dulu'; else if (!(n > 0)) tolak = 'Isi nominalnya dulu'; else if (!alasan) tolak = 'Pilih untuk apa'; else { c = ugCukup(S, 'laci', n); if (!c.boleh) tolak = c.teks; }
+// owner 17 Nov 2026 (butir 4): kasbon karyawan boleh LEWAT amplop laba (dari = 'amplop') — catatan kasbon tetap dari laci + amplopLaba ambil amplop → laci
+// di kiriman yang sama (uang-logika lewatAmplop), jadi amplop yang berkurang, laci tetap.
+export const DARI_KASBON = [['laci', 'Laci'], [TEMPAT_AMPLOP, 'Amplop laba']];
+export function hitungKasbonKaryawan(nama, ketik, alasan, dari) {
+  const n = Math.round(ugAngka(ketik)); const S = saldoKantong(); let tolak = ''; let c = { boleh: true }; const asal = dari === TEMPAT_AMPLOP ? TEMPAT_AMPLOP : 'laci';
+  if (!nama) tolak = 'Pilih orangnya dulu'; else if (!(n > 0)) tolak = 'Isi nominalnya dulu'; else if (!alasan) tolak = 'Pilih untuk apa'; else { c = ugCukup(S, asal, n); if (!c.boleh) tolak = c.teks; }
   const kb = hitungKasbon().find((x) => x.kunci === upKunci(nama)); const sisa = kb ? Math.max(0, kb.sisa) : 0;
-  return { n, tolak, sisa, S, takTerperiksa: !!c.takTerperiksa, arti: 'Laci berkurang ' + RP(n) + ' · laba tidak berubah · ' + String(nama || '').split(' ')[0] + ' jadi berutang ' + RP(sisa + n) + ' ke toko' };
+  return { n, tolak, sisa, S, asal, takTerperiksa: !!c.takTerperiksa, arti: ugNamaTempat(asal) + ' berkurang ' + RP(n) + ' · laba tidak berubah · ' + String(nama || '').split(' ')[0] + ' jadi berutang ' + RP(sisa + n) + ' ke toko' };
 }
-export function susunKasbonKaryawan(nama, ketik, alasan, w) {
-  const H = hitungKasbonKaryawan(nama, ketik, alasan); if (H.tolak) return { tolak: H.tolak };
+export function susunKasbonKaryawan(nama, ketik, alasan, w, dari) {
+  const H = hitungKasbonKaryawan(nama, ketik, alasan, dari); if (H.tolak) return { tolak: H.tolak };
   const data = { id: w.idUnik(), tipe: 'ambil', namaPegawai: String(nama).trim(), nominal: H.n, tanggal: w.tanggal, jam: w.jam, catatan: String(alasan).slice(0, 60), dari: 'laci' };
-  return { dokumen: [{ koleksi: 'kasbonMutasi', data }], urung: [{ koleksi: 'kasbonMutasi', id: data.id }], patch: { kabar: 'Kasbon ' + String(nama).split(' ')[0] + ' ' + RP(H.n) + ' tercatat · laci berkurang ' + RP(H.n) + (H.takTerperiksa ? ' · isi laci belum bisa dihitung, tidak diperiksa' : ''), kabarAwas: false, kasbonK: null } };
+  const r = { dokumen: [{ koleksi: 'kasbonMutasi', data }], urung: [{ koleksi: 'kasbonMutasi', id: data.id }], patch: { kabar: 'Kasbon ' + String(nama).split(' ')[0] + ' ' + RP(H.n) + ' tercatat · laci berkurang ' + RP(H.n) + (H.takTerperiksa ? ' · isi ' + ugNamaTempat(H.asal).toLowerCase() + ' belum bisa dihitung, tidak diperiksa' : ''), kabarAwas: false, kasbonK: null } };
+  return H.asal === TEMPAT_AMPLOP ? lewatAmplop(r, H.n, w, data.id, 'Kasbon ' + String(nama).trim() + ' — ' + String(alasan).slice(0, 40)) : r;
 }
 const UP_POTONG = [['semua', 'Potong semua'], ['separuh', 'Potong separuh'], ['tidak', 'Jangan dipotong']];
 export { UP_POTONG as PILIHAN_POTONG };

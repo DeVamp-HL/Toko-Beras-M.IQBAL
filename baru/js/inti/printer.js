@@ -53,7 +53,8 @@ export async function susunCetak(garis, timpa, ekstra) {
   const a = Object.assign(prAtur(), timpa || {}); const o = Object.assign({ kertas: a.kertas, potong: a.potong, umpan: a.umpan }, ekstra || {});
   if (a.gaya === 'teks') { const t = epSusun(garis, o); return { byte: t.byte, teks: t.teks, gaya: 'teks', kertas: a.kertas }; }
   await siapkanHuruf();
-  const g = gambarStruk(garis, { kertas: a.kertas, logo: teksKeLogo(a.logo) });
+  // owner 17 Nov (butir 3): logo perangkat sendiri menang; tanpa itu logo toko (F mahkota padi, digambar kode) bila setelan struk menyertakannya (ekstra.logoToko)
+  const g = gambarStruk(garis, { kertas: a.kertas, logo: teksKeLogo(a.logo), logoToko: !!o.logoToko });
   return { byte: epSusunGambar(g, o).byte, gaya: 'gambar', kertas: a.kertas, gambar: g };
 }
 

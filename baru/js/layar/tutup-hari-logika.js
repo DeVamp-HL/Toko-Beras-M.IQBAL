@@ -21,7 +21,7 @@ import { nilaiSelisihKg } from '../mesin/modal-fifo.js';
 // modal FIFO (owner 9 Okt, tinjauan): rupiah selisih timbang cepat merek karung FIFO = irisan karung terlama (sama dengan Cocokkan); saklar mati = beda × modal
 const tdRpSelisih = (merk, beda, hpp, iso) => { const st = ingatStokKarung(iso)[merk]; return st && st.metode === 'fifo' ? Math.round(nilaiSelisihKg(st, beda)) : Math.round(beda * hpp); };
 import { aturHarga, hgPct } from './harga-logika.js';
-import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan, ugLabaBersih, ugSesudahTitik } from './uang-logika.js';
+import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan, ugLabaBersih, ugSesudahTitik, ugAmplopLawan } from './uang-logika.js';
 
 export const ATUR_TUTUP_BAWAAN = { persenSisih: 10, kembalian: 500000, maafSelisih: 2000, alasan: ['Salah kasih kembalian', 'Ada pengeluaran belum dicatat', 'Ada penjualan belum dicatat', 'Belum tahu — dicari besok'], pecahan: [100000, 50000, 20000, 10000, 5000, 2000, 1000] };
 export const LANGKAH_TUTUP = [['laci', 'Uang di laci'], ['rekening', 'Uang QRIS'], ['sisih', 'Sisihkan laba'], ['timbang', 'Timbang cepat'], ['amankan', 'Amankan laci'], ['rekap', 'Rekap & tutup']];
@@ -93,7 +93,7 @@ export function rumusLaci(iso) {
   const susul = ugSesudahTitik(t); const kataSusul = ' · dicatat sesudah tutup ' + tanggalPendek(t.tanggal); let nSusul = 0;
   ingatGerakanKas().forEach((r) => { if (!susul(r) || tempatnya(r) !== 'laci') return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label));
     if (r.masuk > 0) { dorong((k ? k[1] : 'Jual tunai') + kataSusul, 1, r.masuk); nSusul += r.masuk; } if (r.keluar > 0) { dorong((k ? k[1] : 'Keluar lain') + kataSusul, -1, r.keluar); nSusul -= r.keluar; } });
-  ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || a.tanggal !== iso || !(iso > t.tanggal)) return; dorong(a.tipe === 'ambil' ? 'Diambil dari amplop laba' : 'Disisihkan ke amplop laba', a.tipe === 'ambil' ? 1 : -1, Number(a.nominal) || 0); });
+  ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || a.tanggal !== iso || !(iso > t.tanggal) || ugAmplopLawan(a) !== 'laci') return; dorong(a.tipe === 'ambil' ? 'Diambil dari amplop laba' : 'Disisihkan ke amplop laba', a.tipe === 'ambil' ? 1 : -1, Number(a.nominal) || 0); });
   ambilPindahUang().forEach((p) => { if (p.tanggal !== iso || !(iso > t.tanggal)) return; if (p.dari === 'laci') dorong('Dipindah ke ' + ugNamaTempat(p.ke).toLowerCase(), -1, Number(p.nominal) || 0); if (p.ke === 'laci') dorong('Diisi dari ' + ugNamaTempat(p.dari).toLowerCase(), 1, Number(p.nominal) || 0); });
   const baris = [{ nama: S0 ? 'Laci semalam (' + tanggalPendek(kemarin) + ')' : 'Patokan kas hari ini (' + tanggalPendek(t.tanggal) + ')', arah: 0, n: S0 ? S0.laci : Number(t.laci) || 0 }].concat(Object.keys(grup).map((k) => grup[k]).sort((a, b) => b.arah - a.arah || b.n - a.n));
   // dokumen yang tempatnya disebut bukan laci (mis. bayar bon dari rekening) tidak muncul di sini — persis: hanya yang menyentuh laci

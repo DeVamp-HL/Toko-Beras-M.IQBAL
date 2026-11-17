@@ -23,6 +23,20 @@ export const ugAngka = (v) => { const t = String(v === undefined || v === null ?
 export const ugKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 export const ugAturDok = (id) => cacheMentah('aturan').find((d) => String(d.id) === id) || null;
 export const ugNamaTempat = (id) => (id === 'amplop' ? 'Amplop laba' : id === 'dompet' ? 'Dompet owner' : (TEMPAT_UANG.find((t) => t[0] === id) || [id, id])[1]);
+// owner 17 Nov 2026 (butir 4): amplop laba bisa DIAMBIL & DIPINDAH owner, dan kasbon bisa LEWAT amplop. Semua gerakan amplop tetap dokumen amplopLaba
+// (mesin saldoAmplop & blok Amplop Laba laporan menjumlah setor − ambil, jadi tetap benar): 'ambil' membawa `ke` (tempat tujuan), 'setor' membawa `dari`.
+// Dokumen lama tanpa kolom itu = laci (aturan lama). Uang keluar & kasbon LEWAT amplop = dua dokumen satu kiriman: amplopLaba ambil (amplop → laci, bertanda
+// `untuk` = id catatannya) + catatan aslinya dari laci — gerakan kas mesin hanya mengenal laci/brankas/rekening, laci sendiri tidak berubah.
+export const TEMPAT_AMPLOP = 'amplop';
+/** Tempat lawan satu dokumen amplopLaba (ambil → ke, setor → dari); yang tidak dikenal = laci. */
+export const ugAmplopLawan = (a) => { const t = String((a && (a.tipe === 'ambil' ? a.ke : a.dari)) || 'laci'); return TEMPAT_UANG.some((x) => x[0] === t) ? t : 'laci'; };
+/** Bungkus susunan uang keluar / kasbon yang sumbernya amplop: + amplopLaba ambil (amplop → laci) sebesar n, id 'amk-' + id catatannya; urung ikut. */
+export function lewatAmplop(r, n, w, untukId, ket) {
+  if (!r || r.tolak || !(n > 0)) return r;
+  const a = { id: 'amk-' + untukId, tanggal: w.tanggal, jam: w.jam, tipe: 'ambil', nominal: n, ke: 'laci', untuk: String(untukId), catatan: String(ket || 'diambil dari amplop laba').slice(0, 80) };
+  return Object.assign({}, r, { dokumen: [{ koleksi: 'amplopLaba', data: a }].concat(r.dokumen || []), urung: (r.urung || []).concat([{ koleksi: 'amplopLaba', id: a.id }]),
+    patch: Object.assign({}, r.patch || {}, r.patch && r.patch.kabar ? { kabar: r.patch.kabar.replace(/Laci berkurang|laci berkurang/, 'Amplop laba berkurang') + ' · lewat amplop laba' } : {}) });
+}
 export const ugHariKe = (iso) => Math.round(new Date(iso + 'T00:00:00Z').getTime() / 86400000);
 export const ugTambahHari = (iso, n) => new Date((ugHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
 export const ugAwalBulan = (iso) => String(iso).slice(0, 7) + '-01';
@@ -74,7 +88,7 @@ export function saldoKantong(sampai, titikPakai) {
   const s = { laci: Number(t.laci) || 0, brankas: Number(t.brankas) || 0, rekening: Number(t.rekening) || 0, amplop: Number(t.amplop) || 0 };
   const dalam = (x) => x > t.tanggal && (!sampai || x <= sampai); const peta = ugPetaKantong();
   ingatGerakanKas().forEach((r) => { if (!dalam(r.t)) return; const k = ugKantongBaris(r, peta); if (r.masuk > 0) s[k] += r.masuk; if (r.keluar > 0) s[k] -= r.keluar; });
-  ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || !dalam(a.tanggal || '')) return; const n = Number(a.nominal) || 0; if (a.tipe === 'ambil') { s.amplop -= n; s.laci += n; } else { s.laci -= n; s.amplop += n; } });
+  ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || !dalam(a.tanggal || '')) return; const n = Number(a.nominal) || 0; const lain = ugAmplopLawan(a); if (a.tipe === 'ambil') { s.amplop -= n; s[lain] += n; } else { s[lain] -= n; s.amplop += n; } });
   ambilPindahUang().forEach((p) => { if (!dalam(p.tanggal || '')) return; const n = Number(p.nominal) || 0; if (s[p.dari] !== undefined) s[p.dari] -= n; if (s[p.ke] !== undefined) s[p.ke] += n; });
   const total = s.laci + s.brankas + s.rekening + s.amplop; const mesin = titikPakai ? null : ingatKasPada(sampai || null);
   return { ada: true, titik: t, laci: s.laci, brankas: s.brankas, rekening: s.rekening, amplop: s.amplop, total, mesin, cocok: titikPakai ? null : mesin !== null && Math.abs(total - mesin) < 0.5,
@@ -209,17 +223,21 @@ export function susunKeluar(D, w, pilihan) {
   if (H.lewatAman && !P.jadiKasbon && !P.alasan) return { tolak: H.lewatTeks + ' Catat sebagai kasbon owner, atau pilih alasannya.', perluYakin: 'aman' };
   if (H.arti.sel === 'luar') return { dokumen: [], patch: { kabar: 'Tidak masuk catatan toko — uang pribadi dari dompet sendiri. Tidak ada yang ditulis.', kabarAwas: false, ketik: '', perlu: '' } };
   if (P.jadiKasbon) {
-    const data = { id: w.idUnik(), tipe: 'ambil', namaPegawai: NAMA_KASBON_OWNER, owner: true, nominal: H.n, tanggal: w.tanggal, jam: w.jam, catatan: ket, dari: D.dari };
-    return { dokumen: [{ koleksi: 'kasbonMutasi', data }], urung: [{ koleksi: 'kasbonMutasi', id: data.id }], patch: { kabar: 'Tercatat · Kasbon owner ' + RP(H.n) + ' dari ' + ugNamaTempat(D.dari) + ' — owner berutang ke toko, ambil pribadi tidak bertambah', kabarAwas: false, ketik: '', perlu: '', paksa: null } };
+    const lewatK = D.dari === TEMPAT_AMPLOP;
+    const data = { id: w.idUnik(), tipe: 'ambil', namaPegawai: NAMA_KASBON_OWNER, owner: true, nominal: H.n, tanggal: w.tanggal, jam: w.jam, catatan: ket, dari: lewatK ? 'laci' : D.dari };
+    const rk = { dokumen: [{ koleksi: 'kasbonMutasi', data }], urung: [{ koleksi: 'kasbonMutasi', id: data.id }], patch: { kabar: 'Tercatat · Kasbon owner ' + RP(H.n) + ' dari ' + ugNamaTempat(D.dari) + ' — owner berutang ke toko, ambil pribadi tidak bertambah', kabarAwas: false, ketik: '', perlu: '', paksa: null } };
+    return lewatK ? lewatAmplop(rk, H.n, w, data.id, 'Kasbon owner — ' + ket) : rk;
   }
+  const lewat = D.dari === TEMPAT_AMPLOP; const dariTulis = lewat ? 'laci' : D.dari;   // owner 17 Nov: amplop → catatan dari laci + amplopLaba ambil (lewatAmplop)
   const kategori = H.arti.sel === 'beban' ? 'toko' : H.arti.sel === 'utang' ? 'tokoDompet' : 'owner';
   const data = { id: w.idUnik(), kategori, tanggal: w.tanggal, keterangan: ket, nominal: H.n, jam: w.jam };
   if (kategori !== 'owner') data.untuk = D.untuk === 'karyawan' ? 'karyawan' : 'toko';   // putaran 29: tujuan dipilah; pribadi tetap bentuk lama
-  if (D.dari !== 'dompet') data.dari = D.dari;
+  if (D.dari !== 'dompet') data.dari = dariTulis;
   if (P.alasan) { data.alasanAman = String(P.alasan).trim().slice(0, 80); }
   const A4 = H.arti;
-  return { dokumen: [{ koleksi: 'pengeluaranHarian', data }], urung: [{ koleksi: 'pengeluaranHarian', id: data.id }],
+  const rk = { dokumen: [{ koleksi: 'pengeluaranHarian', data }], urung: [{ koleksi: 'pengeluaranHarian', id: data.id }],
     patch: { kabar: 'Tercatat · ' + A4.judul + ' ' + RP(H.n) + ' — ' + A4.a + ' · ' + A4.b + (A4.c ? ' · ' + A4.c : '') + (H.takTerperiksa ? ' · ' + H.catatanCukup : ''), kabarAwas: false, ketik: '', perlu: '', catatan: '', paksa: null } };
+  return lewat ? lewatAmplop(rk, H.n, w, data.id, A4.judul + ' — ' + ket) : rk;
 }
 export function susunUrungKeluar(urung) {
   if (!urung || !urung.length) return { tolak: 'Tidak ada yang bisa dibatalkan' };
@@ -291,7 +309,8 @@ export function susunAturPindah(isi, w) {
 }
 /** D = { dari, ke, ketik, alasan, adminI }. */
 export function hitungPindah(D) {
-  const S = saldoKantong(); const A = aturPindah(); const n = Math.round(ugAngka(D.ketik)); const pakaiAdmin = D.dari === 'rekening' || D.ke === 'rekening'; const biaya = pakaiAdmin && D.adminI >= 0 ? A.admin[Number(D.adminI)] || null : null; const admin = biaya ? biaya.n : 0;
+  // owner 17 Nov: amplop laba ikut bisa jadi asal / tujuan (dokumen amplopLaba, bukan pindahUang) — tanpa biaya admin (uang amplop tidak lewat bank sendiri)
+  const S = saldoKantong(); const A = aturPindah(); const n = Math.round(ugAngka(D.ketik)); const pakaiAdmin = (D.dari === 'rekening' || D.ke === 'rekening') && D.dari !== TEMPAT_AMPLOP && D.ke !== TEMPAT_AMPLOP; const biaya = pakaiAdmin && D.adminI >= 0 ? A.admin[Number(D.adminI)] || null : null; const admin = biaya ? biaya.n : 0;
   let tolak = ''; let cukup = { boleh: true, teks: '' };
   if (!D.dari || !D.ke) tolak = 'Pilih dari mana dan ke mana'; else if (D.dari === D.ke) tolak = 'Dari dan ke tidak boleh sama'; else if (!(n > 0)) tolak = 'Isi nominalnya dulu'; else if (!D.alasan) tolak = 'Pilih untuk apa';
   else { cukup = ugCukup(S, D.dari, n + admin); if (!cukup.boleh) tolak = cukup.teks + (admin ? ' (termasuk biaya admin ' + RP(admin) + ')' : ''); }
@@ -302,12 +321,19 @@ export function hitungPindah(D) {
 }
 export function susunPindah(D, w) {
   const H = hitungPindah(D); if (H.tolak) return { tolak: H.tolak };
+  if (D.dari === TEMPAT_AMPLOP || D.ke === TEMPAT_AMPLOP) {   // owner 17 Nov (butir 4): amplop diambil / diisi owner — satu dokumen amplopLaba
+    const ambil = D.dari === TEMPAT_AMPLOP; const a = { id: D.id || ('amp-' + w.idUnik()), tanggal: w.tanggal, jam: w.jam, tipe: ambil ? 'ambil' : 'setor', nominal: H.n, catatan: String(D.alasan).slice(0, 60), dipindahOwner: true };
+    if (ambil) a.ke = D.ke; else a.dari = D.dari;
+    return { dokumen: [{ koleksi: 'amplopLaba', data: a }], urung: [{ koleksi: 'amplopLaba', id: a.id }], patch: { kabar: RP(H.n) + ' dipindah · ' + ugNamaTempat(D.dari) + ' → ' + ugNamaTempat(D.ke) + ' · jumlah uang toko tetap, laba tidak berubah' + (H.takTerperiksa ? ' · ' + H.catatanCukup : ''), kabarAwas: false, pindah: null } };
+  }
   const data = { id: D.id || w.idUnik(), tanggal: w.tanggal, jam: w.jam, dari: D.dari, ke: D.ke, nominal: H.n, alasan: String(D.alasan).slice(0, 60), biayaAdmin: H.admin, adminNama: H.biaya ? H.biaya.nama : '' };
   const dokumen = [{ koleksi: 'pindahUang', data }]; const urung = [{ koleksi: 'pindahUang', id: data.id }];
   if (H.admin > 0) { const adm = { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: 'Biaya admin ' + H.biaya.nama + ' — pindah uang ' + ugNamaTempat(D.dari) + ' → ' + ugNamaTempat(D.ke), nominal: H.admin, dari: D.dari, dariPindah: data.id }; dokumen.push({ koleksi: 'pengeluaranHarian', data: adm }); urung.push({ koleksi: 'pengeluaranHarian', id: adm.id }); }
   return { dokumen, urung, patch: { kabar: RP(H.n) + ' dipindah · ' + ugNamaTempat(D.dari) + ' → ' + ugNamaTempat(D.ke) + (H.admin ? ' · biaya admin ' + RP(H.admin) + ' jadi biaya toko' : ' · jumlah uang toko tetap') + (H.takTerperiksa ? ' · ' + H.catatanCukup : ''), kabarAwas: false, pindah: null } };
 }
 export function susunUrungPindah(id) {
+  const am = ambilAmplopLaba().find((x) => String(x.id) === String(id) && x.dipindahOwner);   // owner 17 Nov: pindah ke/dari amplop
+  if (am) return { hapus: [{ koleksi: 'amplopLaba', id: am.id }], patch: { kabar: 'Dibatalkan — ' + RP(Number(am.nominal) || 0) + ' kembali ke ' + (am.tipe === 'ambil' ? 'Amplop laba' : ugNamaTempat(am.dari || 'laci')), kabarAwas: false, urung: null } };
   const p = ambilPindahUang().find((x) => String(x.id) === String(id)); if (!p) return { tolak: 'Catatan pindahnya tidak ditemukan' };
   const hapus = [{ koleksi: 'pindahUang', id: p.id }]; ambilPengeluaranHarian().forEach((h) => { if (String(h.dariPindah || '') === String(p.id)) hapus.push({ koleksi: 'pengeluaranHarian', id: h.id }); });
   return { hapus, patch: { kabar: 'Dibatalkan — ' + RP(Number(p.nominal) || 0) + ' kembali ke ' + ugNamaTempat(p.dari) + (hapus.length > 1 ? ', biaya adminnya ikut dicabut' : ''), kabarAwas: false, urung: null } };
@@ -341,6 +367,6 @@ export function rutinPindah() {
 /** Buku pindah: pindahUang + sisihan amplop tutup hari (amplopLaba), terbaru di atas. */
 export function bukuPindah(n) {
   const rows = ambilPindahUang().map((p) => ({ id: String(p.id), t: (p.tanggal || '') + ' ' + (p.jam || ''), tanggal: p.tanggal || '', jam: p.jam || '', judul: ugNamaTempat(p.dari) + ' → ' + ugNamaTempat(p.ke), ket: (p.alasan || '') + (Number(p.biayaAdmin) > 0 ? ' · biaya admin ' + RP(p.biayaAdmin) + (p.adminNama ? ' (' + p.adminNama + ')' : '') : ''), n: Number(p.nominal) || 0, jenis: 'pindah', oleh: p.oleh || '' }))
-    .concat(ambilAmplopLaba().filter((a) => !a.tutupBuku && Number(a.nominal) > 0).map((a) => ({ id: String(a.id), t: (a.tanggal || '') + ' ' + (a.jam || ''), tanggal: a.tanggal || '', jam: a.jam || '', judul: a.tipe === 'ambil' ? 'Amplop laba → Laci' : 'Laci → Amplop laba', ket: a.catatan || (a.tipe === 'ambil' ? 'diambil dari amplop' : 'disisihkan'), n: Number(a.nominal) || 0, jenis: 'amplop', oleh: a.oleh || '' })));
+    .concat(ambilAmplopLaba().filter((a) => !a.tutupBuku && Number(a.nominal) > 0).map((a) => ({ id: String(a.id), t: (a.tanggal || '') + ' ' + (a.jam || ''), tanggal: a.tanggal || '', jam: a.jam || '', judul: a.tipe === 'ambil' ? 'Amplop laba → ' + ugNamaTempat(ugAmplopLawan(a)) : ugNamaTempat(ugAmplopLawan(a)) + ' → Amplop laba', ket: a.catatan || (a.tipe === 'ambil' ? 'diambil dari amplop' : 'disisihkan'), n: Number(a.nominal) || 0, jenis: 'amplop', oleh: a.oleh || '' })));
   rows.sort((a, b) => b.t.localeCompare(a.t) || b.id.localeCompare(a.id)); return rows.slice(0, n || 30);
 }

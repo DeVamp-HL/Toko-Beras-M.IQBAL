@@ -17,6 +17,8 @@ import { RASIO_KONVERSI, RASIO_DEFAULT, hargaKarungUtuh, cariHargaKarungPerKg } 
 import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, ambilSemuaBatch, ambilProduksiBerlaku, ambilPenyesuaianStok, ambilBahanLiteran, cacheMentah, tolakKunci, denganCacheSementara, kunciStokWadah, petaStokWadah, kunciKarungWadah, kunciKarungBelakang, merkAsalKunci, petaBukuWadah, petaUkuran, indukTerpisah, ingatStokKarung } from '../data/toko.js';
 import { aturWadah, karungUntukWadah, karungBelakang, semuaKarungTerbuka, wdSesudah, wdTerbaru, tinggiWadah, beratKarungBuka, DAFTAR_WADAH, kolamDitutup, wdLokasiDoc, wdLokasiSumber } from './jual-logika.js';
 import { RP, tanggalPendek } from '../inti/format.js';
+// owner 17 Nov (butir 5): berat 1 liter dari penentu bersama
+import { kgPerLiter } from './kg-liter-logika.js';
 import { hppKeluar, modalRataPerKg, nilaiSelisihKg } from '../mesin/modal-fifo.js';
 
 const wbB3 = (n) => Math.round(n * 1000) / 1000;
@@ -89,7 +91,7 @@ export function wbBagianMerk() {
 /** Wadah-wadah yang (menurut komposisinya) memegang beras merek M. */
 export function wbWadahBerisi(M) { return aturWadah().daftar.filter((W) => { const K = wbKomposisi(W); return K.diketahui && Math.abs(K.bagian[M] || 0) > 0.0005; }); }
 /** Rasio liter → kg untuk wadah W (rasio nama wadahnya, sama dengan cara lama; selain itu bawaan 0,82). */
-export function wbRasio(W) { return RASIO_KONVERSI[W] || RASIO_DEFAULT; }
+export function wbRasio(W) { return kgPerLiter(W); }   // owner 17 Nov (butir 5): berat 1 liter diatur owner (kg-liter-logika kgPerLiter)
 /** Merek yang dipotong untuk kg yang MELEBIHI isi tercatat (isi ulang lupa dicatat): karung di belakang wadah (bawaan: nama wadahnya). */
 export function wbMerkCadangan(W) { if (wbAktif(W)) return wbKunci(W); const k = karungUntukWadah(W); return k && k.merk ? String(k.merk) : String(W); }
 

@@ -52,7 +52,7 @@ export function rwSemuaNota() {
     const jenis = {}; tampil.forEach((p) => { jenis[rwJenisBaris(p)] = true; });
     const total = hidup.reduce((a, p) => a + (p.hargaTotal || 0), 0);
     return { kunci: k, trxId: p0.trxId || null, grupNota: p0.grupNota || null, id: String(p0.id), tanggal: String(p0.tanggal || ''), jam: String(p0.jam || ''), nama: String(p0.namaPelanggan || '').trim(),
-      cara: bakuCaraBayar(p0.caraBayar), oleh: String(p0.oleh || p0.operator || '').trim(), total: Math.round(total), totalAsli: Math.round(rows.reduce((a, p) => a + (p.hargaTotal || 0), 0)),
+      cara: bakuCaraBayar(p0.caraBayar), oleh: String(p0.oleh || p0.operator || '').trim(), dilayani: String((rows.find((x) => String(x.dilayaniOleh || '').trim()) || {}).dilayaniOleh || '').trim(), total: Math.round(total), totalAsli: Math.round(rows.reduce((a, p) => a + (p.hargaTotal || 0), 0)),
       kg: Math.round(hidup.reduce((a, p) => a + (Number(p.totalKg) || 0), 0) * 100) / 100, status, baris, jenis, karcis: !!jenis.karcis, tandai: baris.some((b) => b.tandai),
       bisaRetur: baris.some((b) => b.bisaRetur), nBaris: baris.length };
   }).sort((a, b) => (b.tanggal + ' ' + b.jam).localeCompare(a.tanggal + ' ' + a.jam) || (Number(b.id) || 0) - (Number(a.id) || 0));
@@ -67,7 +67,8 @@ export function rwRentang(periode, kini) {
   if (periode === 'bulan') return { dari: hari.slice(0, 8) + '01', sampai: hari };
   return { dari: '', sampai: hari };
 }
-const rwCocokCari = (o, kata) => { const hay = (o.nama + ' ' + o.baris.map((b) => b.teks).join(' ') + ' ' + o.cara + ' ' + o.kunci.slice(-6)).toLowerCase(); const digit = String(o.total);
+// owner 17 Nov 2026 (butir 3): "Nota No." di struk (6 angka terakhir kunci nota) ikut bisa dicari
+const rwCocokCari = (o, kata) => { const hay = (o.nama + ' ' + o.baris.map((b) => b.teks).join(' ') + ' ' + o.cara + ' ' + o.kunci.slice(-6) + ' ' + String(o.trxId || o.grupNota || o.id || '').replace(/\D/g, '').slice(-6)).toLowerCase(); const digit = String(o.total);
   return kata.every((w) => { const d = w.replace(/[^\d]/g, ''); return hay.indexOf(w) >= 0 || (d.length >= 3 && d === w.replace(/[.,]/g, '') && digit.indexOf(d) >= 0); }); };
 
 /**

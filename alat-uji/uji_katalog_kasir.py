@@ -46,6 +46,7 @@ import uji_antrean_kasir as UA  # noqa: E402  (owner 3 Okt, perkuat: PENJAGA_CSP
 
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/data/katalog-kasir.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js']
+MODUL = MODUL + ['baru/js/layar/kg-liter-logika.js']   # owner 17 Nov 2026 (butir 5): penentu berat 1 liter (modul daun)
 BERKAS = ['baru/js/mesin/pembantu.js', 'baru/js/data/firebase.js', 'baru/js/layar/harga.js', 'baru/js/layar/ringkasan.js', 'kasir-darurat-nominal.html',
           'sw-kasir.js', 'baru/js/data/kunci-periode.js'] + MODUL
 JAM = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"

@@ -18,6 +18,7 @@ MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip
                                   'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/pajak-logika.js', 'baru/js/layar/laporan-logika.js',
                                   # Paket B (siap 2027): potret tahun yang ditutup — tutup buku (susunKunci) menyusunnya dari Pajak, Laporan & kendali biaya
                                   'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/potret-logika.js']
+MODUL = MODUL + ['baru/js/layar/kg-liter-logika.js']   # owner 17 Nov 2026 (butir 5): penentu berat 1 liter (modul daun)
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 

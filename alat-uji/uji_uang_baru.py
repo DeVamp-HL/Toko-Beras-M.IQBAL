@@ -217,6 +217,40 @@ identitas('sesudah saling lunas');
 ok('saling lunaskan saat salah satu nol ditolak; bukti menyebut tiga saldo sesudahnya', /cuma Rp0/.test(hitungOwner({ jenis: 'salingLunas', ketik: '1' }, KINI).tolak) && /Modal owner       Rp25\.000\.000/.test(R.bukti) && /Kasbon owner      Rp0/.test(R.bukti));
 var BO = bukuOwner(20); ok('buku owner: terbaru di atas (saling lunaskan), setiap baris menyebut saldo yang IA ubah; ada baris "Belanja toko pakai dompet owner"', BO[0].judul === 'Saling lunaskan' && /toko berutang jadi Rp1\.970\.000/.test(BO[0].s) && BO.some(function (r) { return r.judul === 'Belanja toko pakai dompet owner'; }) && BO.some(function (r) { return r.judul === 'Pinjaman owner ke toko' && /jadi Rp2\.150\.000/.test(r.s); }), J(BO.slice(0, 6)));
 
+// ==================== owner 17 Nov 2026 (butir 4): AMPLOP LABA diambil & dipindah owner · kasbon / uang keluar LEWAT amplop ====================
+(function () {
+  var S0 = saldoKantong(); var amp0 = saldoAmplop(); var kas0 = kasPada();
+  var Rp = tulis(susunPindah({ dari: 'laci', ke: 'amplop', ketik: '100.000', alasan: 'Isi laci', adminI: -1 }, W)); var d = Rp.dokumen[0];
+  ok('AM: laci → amplop = SATU dokumen amplopLaba setor {dari laci} (bukan pindahUang), tanpa biaya admin', Rp.dokumen.length === 1 && d.koleksi === 'amplopLaba' && d.data.tipe === 'setor' && d.data.dari === 'laci' && d.data.nominal === 100000 && d.data.dipindahOwner === true, J(Rp.dokumen));
+  var S1 = saldoKantong();
+  ok('AM: laci −100.000, amplop +100.000, kas toko tetap; mesin saldoAmplop (laporan Amplop Laba) ikut +100.000', S1.laci === S0.laci - 100000 && S1.amplop === S0.amplop + 100000 && kasPada() === kas0 && saldoAmplop() === amp0 + 100000, J([S0, S1, saldoAmplop() - amp0]));
+  identitas('sesudah laci → amplop');
+  var Rb = tulis(susunPindah({ dari: 'amplop', ke: 'brankas', ketik: '60.000', alasan: 'Amankan', adminI: -1 }, W)); var S2 = saldoKantong();
+  ok('AM: amplop → brankas: amplopLaba ambil {ke brankas}; amplop −60.000, brankas +60.000, LACI TIDAK berubah; saldoAmplop −60.000', Rb.dokumen[0].data.tipe === 'ambil' && Rb.dokumen[0].data.ke === 'brankas' && S2.amplop === S1.amplop - 60000 && S2.brankas === S1.brankas + 60000 && S2.laci === S1.laci && saldoAmplop() === amp0 + 40000, J([S1, S2]));
+  identitas('sesudah amplop → brankas');
+  var RL = rumusLaci(W.tanggal);
+  ok('AM: kertas laci hari ini tidak memuat amplop → brankas (tidak menyentuh laci); awal + masuk − keluar = seharusnya', RL.ada && RL.awal + RL.masuk - RL.keluar === RL.seharusnya && !RL.baris.some(function (b) { return /amplop/i.test(b.nama) && b.n === 60000; }), J(RL.baris));
+  ok('AM: buku pindah menyebut "Amplop laba → Brankas" dan "Laci → Amplop laba"', bukuPindah(30).some(function (r) { return r.judul === 'Amplop laba → Brankas' && r.n === 60000; }) && bukuPindah(30).some(function (r) { return r.judul === 'Laci → Amplop laba' && r.n === 100000; }), J(bukuPindah(5)));
+  ok('AM: amplop ↔ rekening tanpa pilihan biaya admin; amplop kurang DITOLAK', hitungPindah({ dari: 'amplop', ke: 'rekening', ketik: '1000', alasan: 'x' }).pakaiAdmin === false && /tidak cukup/.test(hitungPindah({ dari: 'amplop', ke: 'laci', ketik: String(S2.amplop + 1), alasan: 'x' }).tolak || ''));
+  tulis(susunUrungPindah(Rb.dokumen[0].data.id));
+  ok('AM: urungkan pindah amplop → amplop & brankas kembali', saldoKantong().amplop === S1.amplop && saldoKantong().brankas === S1.brankas);
+  var S3 = saldoKantong(); var kbS = function () { var k = hitungKasbon().find(function (x) { return x.kunci === kunciPelanggan('Gama'); }); return k ? k.sisa : 0; }; var kb0 = kbS(); var kas3 = kasPada();
+  var Rk = tulis(susunKasbonKaryawan('Gama', '30.000', 'Berobat', W, 'amplop'));
+  var amk = Rk.dokumen.find(function (x) { return x.koleksi === 'amplopLaba'; }); var ksb = Rk.dokumen.find(function (x) { return x.koleksi === 'kasbonMutasi'; });
+  ok('AM: kasbon Gama lewat amplop = amplopLaba ambil {ke laci, untuk = id kasbon} + kasbonMutasi dari laci, SATU kiriman, urung dua-duanya', amk && ksb && amk.data.tipe === 'ambil' && amk.data.ke === 'laci' && amk.data.untuk === String(ksb.data.id) && ksb.data.dari === 'laci' && Rk.urung.length === 2 && /Amplop laba berkurang/.test(Rk.patch.kabar), J(Rk));
+  var S4 = saldoKantong();
+  ok('AM: sesudahnya amplop −30.000, LACI TETAP, kasbon Gama +30.000, kas toko −30.000', S4.amplop === S3.amplop - 30000 && S4.laci === S3.laci && kbS() === kb0 + 30000 && kasPada() === kas3 - 30000, J([S3, S4, kbS() - kb0]));
+  identitas('sesudah kasbon lewat amplop');
+  ok('AM: kasbon lewat amplop melebihi isi amplop DITOLAK', /tidak cukup/.test(hitungKasbonKaryawan('Gama', String(S4.amplop + 1), 'Berobat', 'amplop').tolak || ''));
+  var Ru = tulis(susunKeluar({ untuk: 'pribadi', dari: 'amplop', perlu: 'Ambil laba', ketik: '20.000' }, W, { alasan: 'ambil laba bulan lalu' }));
+  var ph = Ru.dokumen.find(function (x) { return x.koleksi === 'pengeluaranHarian'; }); var am2 = Ru.dokumen.find(function (x) { return x.koleksi === 'amplopLaba'; }); var S5 = saldoKantong();
+  ok('AM: ambil pribadi DARI AMPLOP = pengeluaranHarian owner dari laci + amplopLaba ambil; amplop −20.000, laci tetap', ph && am2 && ph.data.kategori === 'owner' && ph.data.dari === 'laci' && am2.data.untuk === String(ph.data.id) && S5.amplop === S4.amplop - 20000 && S5.laci === S4.laci, J(Ru.dokumen));
+  identitas('sesudah ambil pribadi dari amplop');
+  tulis(susunUrungKeluar(Ru.urung)); ok('AM: urungkan → amplop kembali', saldoKantong().amplop === S4.amplop && saldoKantong().laci === S4.laci);
+  tulis(susunUrungKeluar(Rk.urung)); tulis(susunUrungPindah(Rp.dokumen[0].data.id));
+  ok('AM: semua diurungkan → kantong kembali ke awal blok', saldoKantong().laci === S0.laci && saldoKantong().amplop === S0.amplop && saldoKantong().brankas === S0.brankas && kasPada() === kas0, J([S0, saldoKantong()]));
+})();
+
 __K5K6__
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
@@ -447,6 +481,13 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- owner 17 Nov 2026 (butir 4): amplop laba ----
+            'amplop: pindah ke/dari amplop ditulis sebagai pindahUang (laporan Amplop Laba buta)': js.replace("if (D.dari === TEMPAT_AMPLOP || D.ke === TEMPAT_AMPLOP) {", "if (false) {"),
+            'amplop: saldo kantong mengabaikan ke/dari (amplop selalu lawan laci)': js.replace("const lain = ugAmplopLawan(a);", "const lain = 'laci';"),
+            'amplop: kasbon lewat amplop tanpa dokumen amplop': js.replace("return H.asal === TEMPAT_AMPLOP ? lewatAmplop(r, H.n, w, data.id,", "return false ? lewatAmplop(r, H.n, w, data.id,"),
+            'amplop: uang keluar dari amplop ditulis "dari amplop" (mesin tidak mengenalnya)': js.replace("const dariTulis = lewat ? 'laci' : D.dari;", "const dariTulis = D.dari;"),
+            'amplop: kertas laci memuat amplop ↔ brankas': js.replace(" || ugAmplopLawan(a) !== 'laci') return; dorong(", ") return; dorong("),
+            'amplop: urung pindah amplop tidak menemukan catatannya': js.replace("const am = ambilAmplopLaba().find((x) => String(x.id) === String(id) && x.dipindahOwner);", "const am = null;"),
             '39b-19: rekap tutup hari tanpa baris retur (omzet kotor)': js.replace(".concat(R.retur ? [['Retur & refund', '−' + RP(R.retur), ''], ['Omzet (sudah dikurangi retur)', RP(R.omzet - R.retur), '']] : [], [['Bon dibayar tunai', RP(R.bonDibayar), '']])", ".concat([['Bon dibayar tunai', RP(R.bonDibayar), '']])"),
             'tinjauan T1: tutup hari menghitung baris sebagai nota': js.replace("nota: new Set(jual.map(kunciNota)).size, baris: jual.length,", "nota: jual.length, baris: jual.length,"),
             'tinjauan T4: kertas laci menghitung uang masuk brankas sebagai masuk laci': js.replace("const k = TD_KELOMPOK.find((x) => x[0].test(r.label)); const kantong = tempatnya(r);", "const k = TD_KELOMPOK.find((x) => x[0].test(r.label)); const kantong = r.keluar > 0 ? tempatnya(r) : (r.kantong || 'laci');"),
@@ -455,7 +496,7 @@ if __name__ == '__main__':
             # ---- bersama · saldo per tempat
             '39b-13: kertas laci menghitung uang keluar brankas/rekening sebagai keluar laci': js.replace("if (r.keluar > 0 && kantong === 'laci') dorong(k ? k[1] : 'Keluar lain', -1, r.keluar); });", "if (r.keluar > 0) dorong(k ? k[1] : 'Keluar lain', -1, r.keluar); });"),
             'tempat uang menurut dokumen (dari/tempat) diabaikan — semua ikut aturan lama': js.replace("if (r.id && peta.id[String(r.id)]) return peta.id[String(r.id)];", "if (false) return '';"),
-            'sisihan amplop tidak menggeser laci → amplop': js.replace("ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || !dalam(a.tanggal || '')) return; const n = Number(a.nominal) || 0; if (a.tipe === 'ambil') { s.amplop -= n; s.laci += n; } else { s.laci -= n; s.amplop += n; } });", ""),
+            'sisihan amplop tidak menggeser laci → amplop': js.replace("ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || !dalam(a.tanggal || '')) return; const n = Number(a.nominal) || 0; const lain = ugAmplopLawan(a); if (a.tipe === 'ambil') { s.amplop -= n; s[lain] += n; } else { s[lain] -= n; s.amplop += n; } });", ""),
             'pindah uang tidak menggeser tempatnya': js.replace("ambilPindahUang().forEach((p) => { if (!dalam(p.tanggal || '')) return; const n = Number(p.nominal) || 0; if (s[p.dari] !== undefined) s[p.dari] -= n; if (s[p.ke] !== undefined) s[p.ke] += n; });", ""),
             'tempat tidak cukup dijepit diam-diam (tidak pernah ditolak)': js.replace("if (n > isi + 0.5) return { boleh: false, teks: ugNamaTempat(tempat) + ' cuma ' + RP(isi) + ' — tidak cukup untuk ' + RP(n) };", "if (false) return {};"),
             'pinjaman owner dihitung sebagai modal tertanam': js.replace("if (m.pinjaman || (sampai && (m.tanggal || '') > sampai)) return a;", "if (sampai && (m.tanggal || '') > sampai) return a;"),
@@ -466,7 +507,7 @@ if __name__ == '__main__':
             'belanja toko pakai dompet dianggap biaya dari laci': js.replace("if ((untuk === 'toko' || ky) && dari !== 'dompet') return { sel: 'beban',", "if (untuk === 'toko' || ky) return { sel: 'beban',"),
             'prive ditulis kategori toko (masuk laba)': js.replace("const kategori = H.arti.sel === 'beban' ? 'toko' : H.arti.sel === 'utang' ? 'tokoDompet' : 'owner';", "const kategori = H.arti.sel === 'utang' ? 'tokoDompet' : 'toko';"),
             'lewat batas aman lolos tanpa kasbon/alasan': js.replace("if (H.lewatAman && !P.jadiKasbon && !P.alasan) return { tolak:", "if (false) return { tolak:"),
-            'kasbon owner tanpa tanda owner': js.replace("tipe: 'ambil', namaPegawai: NAMA_KASBON_OWNER, owner: true, nominal: H.n, tanggal: w.tanggal, jam: w.jam, catatan: ket, dari: D.dari };", "tipe: 'ambil', namaPegawai: NAMA_KASBON_OWNER, owner: false, nominal: H.n, tanggal: w.tanggal, jam: w.jam, catatan: ket, dari: D.dari };"),
+            'kasbon owner tanpa tanda owner': js.replace("tipe: 'ambil', namaPegawai: NAMA_KASBON_OWNER, owner: true, nominal: H.n,", "tipe: 'ambil', namaPegawai: NAMA_KASBON_OWNER, owner: false, nominal: H.n,"),
             'batas aman bawaan angka karangan (bukan laba bulan berjalan)': js.replace("aman: amanOwner || Math.max(0, laba), amanDariLaba: !amanOwner,", "aman: amanOwner || 2000000, amanDariLaba: !amanOwner,"),
             'keperluan bawaan daftar karangan (bukan terukur dari catatan)': js.replace("  if (!urut.length) return UK_PERLU_UMUM[kategori === 'toko' ? 'toko' : kategori === 'karyawan' ? 'karyawan' : 'pribadi'].map((nama) => ({ nama, biasa: 0 }));\n  return urut.map(", "  return UK_PERLU_UMUM[kategori === 'toko' ? 'toko' : kategori === 'karyawan' ? 'karyawan' : 'pribadi'].map((nama) => ({ nama, biasa: 0 }));\n  const _x = urut.map("),
             'tagihan bulan ini boleh dibayar dua kali': js.replace("if (t.lunas) return { tolak: t.nama + ' sudah dibayar '", "if (false) return { tolak: t.nama + ' sudah dibayar '"),
