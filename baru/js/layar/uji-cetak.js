@@ -2,9 +2,9 @@
 // Langkah 1 (spike): membuktikan jalur cetak USB — hasil uji owner 16 Nov: WebUSB di Chrome CPad gagal mengklaim antarmuka printer NT320,
 // jadi jalurnya APK (plugin CetakUsb). Langkah 2: halaman ini juga SETELAN printer perangkat ini (gaya gambar/teks, logo, potong, QR) —
 // disimpan di localStorage perangkat (inti/printer.js), dipakai tombol Cetak di layar Jual.
-import { epContohGaris, EP_POTONG, EP_KOLOM, EP_PEKAT, epSusunUjiPekat } from '../inti/escpos.js';
+import { epContohGaris, EP_POTONG, EP_KOLOM } from '../inti/escpos.js';
 import { usbAda, usbMinta, usbDiingat, usbKirim, usbRingkas } from '../inti/usb-cetak.js';
-import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk, gambarPitaPekat } from '../inti/struk-kanvas.js';
+import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk } from '../inti/struk-kanvas.js';
 import { PR_GAYA, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak } from '../inti/printer.js';
 
 const $ = (id) => document.getElementById(id);
@@ -19,11 +19,11 @@ function tulisLog(teks, awas) {
 const pesan = (e) => (e && e.message ? e.message : String(e));
 
 function isian() {
-  return { gaya: $('ucGaya').value, kertas: Number($('ucKertas').value), potong: $('ucPotong').value, umpan: Number($('ucUmpan').value), qr: $('ucQr').checked, logo, aktif: $('ucAktif').checked, pekat: Number($('ucPekat').value) };
+  return { gaya: $('ucGaya').value, kertas: Number($('ucKertas').value), potong: $('ucPotong').value, umpan: Number($('ucUmpan').value), qr: $('ucQr').checked, logo, aktif: $('ucAktif').checked };
 }
 function isiForm(a) {
   $('ucGaya').value = a.gaya; $('ucKertas').value = String(a.kertas); $('ucPotong').value = a.potong; $('ucUmpan').value = String(a.umpan);
-  $('ucQr').checked = !!a.qr; $('ucAktif').checked = a.aktif !== false; logo = a.logo || ''; $('ucPekat').value = String(a.pekat || 0);
+  $('ucQr').checked = !!a.qr; $('ucAktif').checked = a.aktif !== false; logo = a.logo || '';
 }
 
 async function pratinjau() {
@@ -58,11 +58,11 @@ async function tampilPrinter() {
   if (asliAda()) {
     try { const r = await asliDaftar(); $('ucPrinter').textContent = JSON.stringify(r.perangkat || [], null, 2); }
     catch (e) { $('ucPrinter').textContent = 'Daftar USB tidak terbaca: ' + pesan(e); }
-    $('ucCetak').disabled = false; $('ucUjiPekat').disabled = false; return;
+    $('ucCetak').disabled = false; return;
   }
   const r = usbRingkas(printer);
   $('ucPrinter').textContent = r ? JSON.stringify(r, null, 2) : 'Belum ada printer dipilih.';
-  $('ucCetak').disabled = !printer; $('ucUjiPekat').disabled = !printer;
+  $('ucCetak').disabled = !printer;
 }
 
 async function pilih(semua) {
@@ -81,19 +81,6 @@ async function cetak() {
   tampilPrinter();
 }
 
-// owner 18 Nov: satu lembar empat pita bergambar sama, tiap pita didahului perintah kepekatannya sendiri (escpos.js epSusunUjiPekat)
-async function ujiPekat() {
-  const a = isian(); $('ucUjiPekat').disabled = true;
-  try {
-    await siapkanHuruf();
-    const pita = EP_PEKAT.map((x) => ({ tingkat: x[0], gambar: gambarPitaPekat('Kepekatan ' + x[1], { kertas: a.kertas }) }));
-    const s = epSusunUjiPekat(pita, { kertas: a.kertas, potong: a.potong, umpan: a.umpan });
-    const r = asliAda() ? await kirimCetak(s.byte, 'aplikasi') : await usbKirim(printer, s.byte);
-    tulisLog('UJI KEPEKATAN tercetak · ' + EP_PEKAT.map((x) => x[1]).join(' · ') + ' · ' + r.byte + ' byte — pilih tingkatnya, lalu Simpan');
-  } catch (e) { tulisLog(pesan(e), true); }
-  tampilPrinter();
-}
-
 function simpan() {
   const ok = prSimpan(isian());
   tulisLog(ok ? 'Setelan tersimpan untuk perangkat ini — tombol Cetak di layar Jual memakainya' : 'Setelan TIDAK tersimpan (penyimpanan perangkat ditolak)', !ok);
@@ -102,7 +89,6 @@ function simpan() {
 function mulai() {
   PR_GAYA.forEach((p) => { const o = document.createElement('option'); o.value = p[0]; o.textContent = p[1]; $('ucGaya').appendChild(o); });
   EP_POTONG.forEach((p) => { const o = document.createElement('option'); o.value = p[0]; o.textContent = p[1]; $('ucPotong').appendChild(o); });
-  EP_PEKAT.forEach((p) => { const o = document.createElement('option'); o.value = String(p[0]); o.textContent = p[1]; $('ucPekat').appendChild(o); });
   Object.keys(EP_KOLOM).forEach((k) => { const o = document.createElement('option'); o.value = k; o.textContent = k + ' mm'; $('ucKertas').appendChild(o); });
   isiForm(prAtur());
 
@@ -115,7 +101,6 @@ function mulai() {
   $('ucPilih').addEventListener('click', () => pilih(false));
   $('ucPilihSemua').addEventListener('click', () => pilih(true));
   $('ucCetak').addEventListener('click', cetak);
-  $('ucUjiPekat').addEventListener('click', ujiPekat);
   $('ucSimpan').addEventListener('click', simpan);
   $('ucLogoBerkas').addEventListener('change', pilihLogo);
   $('ucLogoUkuran').addEventListener('change', prosesLogo);

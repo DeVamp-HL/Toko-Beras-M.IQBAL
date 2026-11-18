@@ -157,27 +157,6 @@ export function gambarLogoToko(c, cx, y, h) {
   return h;
 }
 
-/**
- * Satu pita lembar "Uji kepekatan" (owner 18 Nov): judul tingkat, logo toko (daun & M = bidang hitam lebar), angka Bodoni tergores seperti di struk,
- * rincian Jost, dan satu bidang hitam penuh. Semua pita bergambar SAMA — bedanya hanya perintah kepekatan yang dikirim sebelum pita (escpos.js).
- */
-export function gambarPitaPekat(judul, opsi) {
-  const o = opsi || {}; const W = EP_TITIK[o.kertas] || EP_TITIK[80]; const k = W / 576; const P = (n) => Math.round(n * k);
-  const kanvas = document.createElement('canvas'); kanvas.width = W; kanvas.height = P(272);
-  const c = kanvas.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, W, kanvas.height); c.fillStyle = '#000'; c.strokeStyle = '#000'; c.textBaseline = 'alphabetic';
-  const tulis = (t, f, x, yb, al) => {
-    c.font = f; c.textAlign = al || 'left'; c.fillText(t, x, yb); const tb = stTebalHuruf(f, k);
-    if (tb) { c.save(); c.lineWidth = tb; c.lineJoin = 'round'; c.strokeText(t, x, yb); c.restore(); }
-  };
-  tulis(judul, F_SANS(700, P(30)), P(24), P(40));
-  gambarLogoToko(c, P(140), P(56), P(160));
-  tulis('Rp44.000', F_BOD(700, P(40)), W - P(24), P(120), 'right');
-  tulis('2 L × 20.000', F_SANS(500, P(19)), W - P(24), P(160), 'right');
-  c.fillRect(W - P(270), P(184), P(246), P(30));
-  for (let x = P(24); x < W - P(24); x += P(16)) c.fillRect(x, P(258), P(8), Math.max(2, P(2)));
-  return jadiBit(kanvas, c, W, kanvas.height);
-}
-
 /** Struk nota gaya Sertifikat. Isi dari model garis (struk-model.js); opsi: { kertas, logo (bitmap perangkat), logoToko (bool: logo F) }. */
 function gambarSertifikat(garis, opsi) {
   const o = opsi || {}; const W = EP_TITIK[o.kertas] || EP_TITIK[80]; const k = W / 576; const P = (n) => Math.round(n * k); const M = stModelSertifikat(garis);
