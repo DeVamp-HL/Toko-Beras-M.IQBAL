@@ -9,6 +9,10 @@
 //    sesudah hari itu sisanya bon biasa (ikut batas untuk bon berikutnya).
 //  - SIAPA: owner + Ben membuat surat jalan (bersama notanya); pengantar (Ben / karyawan) menandai diterima / gagal antar. Rules v10.
 //  - BUKTI TERIMA: tanda tangan penerima di layar (wajib) + foto (boleh dilewati) — koleksi buktiTerima, TIDAK didengar, dibaca saat surat jalan dibuka.
+//  - SUSULAN owner 18 Nov (perangkat kasir cuma satu, tablet tidak ikut mengantar): cara UTAMA = TANDA TANGAN DI KERTAS. Surat jalan dicetak 2 lembar
+//    (LEMBAR PEMBELI ditinggal, LEMBAR TOKO ditandatangani penerima & dibawa pulang); di toko pengantar menandai diterima + FOTO lembar toko (WAJIB —
+//    satu-satunya bukti di sistem, kertas termal memudar). Kotak tanda tangan di layar tetap ada (kalau tablet / HP ikut). Rules v10 TIDAK berubah:
+//    buktiTtd kosong + buktiFoto berisi, keterangan cara ada di riwayatStatus & dokumen bukti (isiBukti: 'kertas').
 // Nomor surat jalan aman tanpa internet: SJ<yy>-<kode perangkat>-<urut 4> (kode perangkat = nomor faktur B2; dua perangkat tidak berbagi awalan).
 //
 // ONGKIR DISIMPAN SEBAGAI KOLOM `ongkirAntar` YANG MELEKAT DI SATU BARIS NOTA (ikut hargaTotal — pola upahRepack & pembulatan). Baris jenis baru ber-HPP 0
@@ -34,6 +38,8 @@ export const AJ_KOLOM_BUKAN_BARU = ['penerima', 'diterimaPada', 'diterimaTanggal
 // bukti: foto memakai pengecil foto bon (≤ 700 KB); tanda tangan = PNG goresan hitam di kanvas putih (kecil)
 export const AJ_BUKTI_BATAS = 700 * 1024;
 export const AJ_JENIS_BUKTI = ['image/jpeg', 'image/png', 'image/webp'];
+// cara tanda terima: 'kertas' (bawaan layar Terima — tanda tangan di lembar toko, difoto di toko) | 'layar' (kotak tanda tangan di perangkat yang ikut)
+export const AJ_CARA_TERIMA = { kertas: 'tanda tangan di kertas', layar: 'tanda tangan di layar' };
 
 const ajKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 const ajBulat = (n) => Math.round(Number(n) || 0);
@@ -186,7 +192,14 @@ export function ajKalimatCod(daftar) {
 }
 
 // ---------- tandai diterima / gagal / batal ----------
-const ajRiwayat = (sj, status, w) => (Array.isArray(sj.riwayatStatus) ? sj.riwayatStatus : []).concat([{ status, pada: w.kini || new Date().toISOString() }]);
+const ajRiwayat = (sj, status, w, tambah) => (Array.isArray(sj.riwayatStatus) ? sj.riwayatStatus : []).concat([Object.assign({ status, pada: w.kini || new Date().toISOString() }, tambah || {})]);
+/** Cara tanda terima surat jalan yang sudah diterima: 'kertas' | 'layar' | '' (belum diterima). Kertas = tanpa tanda tangan layar, ada foto lembar. */
+export function ajCaraTerima(sj) {
+  if (!sj || sj.status !== 'diterima') return '';
+  const r = (Array.isArray(sj.riwayatStatus) ? sj.riwayatStatus : []).filter((x) => x && x.status === 'diterima').pop();
+  if (r && (r.bukti === 'kertas' || r.bukti === 'layar')) return r.bukti;
+  return (sj.buktiTtd || []).length ? 'layar' : 'kertas';
+}
 /**
  * Tandai DITERIMA. isi = { penerima, catatan, uang (teks rupiah — bayar di tempat), caraUang 'Tunai'|'QRIS', ttdId (id bukti tanda tangan, WAJIB),
  * fotoId (boleh kosong), oleh (nama yang menandai) }. Bayar di tempat & uang > 0 → satu pelunasan piutang (untukSJ, untukFaktur, dibawaOleh pengantar).
@@ -195,8 +208,9 @@ const ajRiwayat = (sj, status, w) => (Array.isArray(sj.riwayatStatus) ? sj.riway
 export function ajSusunTerima(sj, isi, w) {
   if (!sj) return { tolak: 'Surat jalan tidak ditemukan' };
   if (sj.status !== 'berangkat') return { tolak: 'Surat jalan ini sudah ' + (AJ_STATUS[sj.status] || sj.status) };
-  const x = isi || {};
-  if (ajKosong(x.ttdId)) return { tolak: 'Minta tanda tangan penerima dulu (kotak tanda tangan)' };
+  const x = isi || {}; const kertas = x.cara === 'kertas';
+  if (kertas && ajKosong(x.fotoId)) return { tolak: 'Foto dulu LEMBAR TOKO yang sudah ditandatangani penerima (tanda tangan di kertas)' };
+  if (!kertas && ajKosong(x.ttdId)) return { tolak: 'Minta tanda tangan penerima dulu (kotak tanda tangan)' };
   const penerima = String(x.penerima || '').trim().slice(0, 40);
   const K = ajKeadaan(sj, w.tanggal);
   let uang = 0;
@@ -215,12 +229,12 @@ export function ajSusunTerima(sj, isi, w) {
     if (sj.noFaktur) m.untukFaktur = [String(sj.noFaktur)];
     dokumen.push({ koleksi: 'piutangMutasi', data: m });
   }
-  const d = Object.assign({}, sj, { status: 'diterima', riwayatStatus: ajRiwayat(sj, 'diterima', w), penerima, diterimaPada: w.kini || new Date().toISOString(), diterimaTanggal: w.tanggal, diterimaJam: w.jam,
-    catatanTerima: String(x.catatan || '').trim().slice(0, 160), buktiTtd: [String(x.ttdId)], buktiFoto: ajKosong(x.fotoId) ? [] : [String(x.fotoId)], ditandaiOleh: String(x.oleh || '').slice(0, 40) });
+  const d = Object.assign({}, sj, { status: 'diterima', riwayatStatus: ajRiwayat(sj, 'diterima', w, { bukti: kertas ? 'kertas' : 'layar' }), penerima, diterimaPada: w.kini || new Date().toISOString(), diterimaTanggal: w.tanggal, diterimaJam: w.jam,
+    catatanTerima: String(x.catatan || '').trim().slice(0, 160), buktiTtd: kertas ? [] : [String(x.ttdId)], buktiFoto: ajKosong(x.fotoId) ? [] : [String(x.fotoId)], ditandaiOleh: String(x.oleh || '').slice(0, 40) });
   if (sj.bayarDiTempat) { d.uangDiterima = uang; d.caraUang = cara; if (pelunasanId) d.pelunasanId = pelunasanId; }
   dokumen.push({ koleksi: AJ_KOLEKSI, data: d });
   const sisa = K.sisaTagih - uang;
-  const kabar = 'Surat jalan ' + sj.noSJ + ' DITERIMA' + (penerima ? ' oleh ' + penerima : '') + (ajKosong(x.fotoId) ? ' · tanpa foto' : ' · foto tersimpan')
+  const kabar = 'Surat jalan ' + sj.noSJ + ' DITERIMA' + (penerima ? ' oleh ' + penerima : '') + (kertas ? ' · tanda tangan di kertas, foto lembar tersimpan' : ajKosong(x.fotoId) ? ' · tanpa foto' : ' · foto tersimpan')
     + (sj.bayarDiTempat ? (uang > 0 ? ' · uang ' + RP(uang) + ' dibawa ' + (sj.pengantar || 'pengantar') + (sisa > 0 ? ' · masih kurang ' + RP(sisa) + ' (bon)' : ' · LUNAS') : ' · uang BELUM diterima — tetap bon ' + RP(K.sisaTagih)) : '');
   return { dokumen, patch: { kabar, kabarAwas: sj.bayarDiTempat && sisa > 0 } };
 }
@@ -264,14 +278,14 @@ export function ajBatalUntukNota(trxId, w) {
 export function ajPisahDataUrl(url) { const m = /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(url || '')); return m ? { jenis: m[1], base64: m[2] } : null; }
 export function ajByte(b64) { const s = String(b64 || ''); if (!s) return 0; const pad = s.endsWith('==') ? 2 : s.endsWith('=') ? 1 : 0; return Math.floor(s.length * 3 / 4) - pad; }
 /** Dokumen satu bukti: jenisBukti 'ttd' | 'foto'; gambar = { jenis, base64, lebar, tinggi } (foto: hasil pengecil foto bon; ttd: PNG kanvas). */
-export function ajSusunBukti(sj, jenisBukti, gambar, w) {
+export function ajSusunBukti(sj, jenisBukti, gambar, w, isiBukti) {
   if (!sj || !sj.id) return { tolak: 'Surat jalan tidak ditemukan' };
   if (jenisBukti !== 'ttd' && jenisBukti !== 'foto') return { tolak: 'Jenis bukti tidak dikenal' };
   if (!gambar || gambar.tolak) return { tolak: (gambar && gambar.tolak) || 'Belum ada gambar' };
   if (AJ_JENIS_BUKTI.indexOf(String(gambar.jenis || '')) < 0 || !gambar.base64) return { tolak: 'Gambar tidak terbaca' };
   const byte = ajByte(gambar.base64); if (byte > AJ_BUKTI_BATAS) return { tolak: 'Gambar ' + Math.round(byte / 1024) + ' KB lebih dari ' + Math.round(AJ_BUKTI_BATAS / 1024) + ' KB — kecilkan dulu' };
   return { data: { id: String(w.idUnik()), idSJ: String(sj.id), noSJ: String(sj.noSJ || ''), jenisBukti, tanggal: w.tanggal, jam: w.jam, jenis: gambar.jenis, base64: gambar.base64, byte,
-    lebar: ajBulat(gambar.lebar), tinggi: ajBulat(gambar.tinggi) } };
+    lebar: ajBulat(gambar.lebar), tinggi: ajBulat(gambar.tinggi), isiBukti: isiBukti === 'kertas' && jenisBukti === 'foto' ? 'kertas' : jenisBukti === 'ttd' ? 'layar' : 'barang' } };
 }
 /** Goresan tanda tangan cukup? (titik goresan ≥ 12 — ketukan sekali bukan tanda tangan) */
 export const ajTtdCukup = (nTitik) => (Number(nTitik) || 0) >= 12;
@@ -309,11 +323,13 @@ export function ajRingkas(x) {
  * Garis cetak surat jalan TANPA harga barang (bentuk garis susunStruk: { kiri, kanan, tebal, tengah } / { garis: true }) — printer tablet gaya teks
  * (inti/printer.js) & dialog cetak memakai garis yang sama. kop = { nama, alamat, telp } (setelan struk).
  */
-export function ajGarisCetak(sj, kop) {
+export function ajGarisCetak(sj, kop, lembar) {
   const g = []; const b = (kiri, kanan, o) => g.push(Object.assign({ kiri: String(kiri || ''), kanan: kanan === undefined || kanan === null ? '' : String(kanan) }, o || {}));
   const K = kop || {};
   if (K.nama) b(String(K.nama).toUpperCase(), '', { tebal: true, tengah: true }); if (K.alamat) b(K.alamat, '', { tengah: true }); if (K.telp) b('Telp ' + K.telp, '', { tengah: true });
-  g.push({ garis: true }); b('SURAT JALAN', '', { tebal: true, tengah: true }); b('No. ' + sj.noSJ, '', { tengah: true }); g.push({ garis: true });
+  g.push({ garis: true }); b('SURAT JALAN', '', { tebal: true, tengah: true }); b('No. ' + sj.noSJ, '', { tengah: true });
+  if (lembar === 'pembeli') b('LEMBAR PEMBELI', '', { tebal: true, tengah: true }); else if (lembar === 'toko') b('LEMBAR TOKO', '', { tebal: true, tengah: true });
+  g.push({ garis: true });
   b('Tanggal: ' + tanggalPendek(sj.tanggal) + ' ' + (sj.jam || ''));
   b('Kepada : ' + (sj.namaPelanggan || '-'), '', { tebal: true });
   if (sj.alamat) b('Alamat : ' + sj.alamat);
@@ -325,7 +341,14 @@ export function ajGarisCetak(sj, kop) {
   if (sj.bayarDiTempat) b('TAGIH DI TEMPAT', RP(sj.tagihRp), { tebal: true }); else b('Sudah dibayar / bon di toko');
   if (sj.catatan) b('Catatan: ' + sj.catatan);
   g.push({ garis: true }); b('Diterima oleh,'); b(''); b(''); b('(.............................)');
+  if (lembar === 'toko') { b('Nama terang & jam terima:'); b(''); b('(.............................)'); g.push({ garis: true });
+    b('WAJIB ditandatangani penerima.', '', { tebal: true }); b('Bawa pulang ke toko, lalu foto'); b('di tablet: Antar > diterima.'); }
+  else if (lembar === 'pembeli') { g.push({ garis: true }); b('Disimpan pembeli.', '', { tengah: true }); }
   return g;
+}
+/** Dua lembar cetak surat jalan (keputusan owner 18 Nov): [LEMBAR PEMBELI, LEMBAR TOKO]. WhatsApp tetap satu teks tanpa nama lembar. */
+export function ajLembarCetak(sj, kop) {
+  return [ajGarisCetak(sj, kop, 'pembeli'), ajGarisCetak(sj, kop, 'toko')];
 }
 /** Teks satu garis cetak selebar kolom kertas (32 = 58 mm, 48 = 80 mm) — dialog cetak & WhatsApp. Angka rata kanan, tidak pernah terpenggal. */
 export function ajTeksCetak(garis, lebar) {
