@@ -204,15 +204,18 @@ function gambarSertifikat(garis, opsi) {
   // B2 (owner 17 Nov 2026): nota bon pelanggan usaha = FAKTUR — judul & nomornya nomor faktur (nomor nota tetap di isian, untuk dicari di Riwayat)
   if (M.faktur) { tulis('FAKTUR', F_CIN(600, P(20)), L, y + P(18), 'left', P(4)); tulis('Nº ' + M.faktur, F_BOD(700, P(26)), R, y + P(22), 'right', P(1)); y += P(40); }
   else { tulis('NOTA PEMBELIAN', F_CIN(600, P(20)), L, y + P(18), 'left', P(4)); if (M.no) tulis('Nº ' + M.no, F_BOD(700, P(30)), R, y + P(22), 'right', P(1)); y += P(40); }
+  // owner 18 Nov (cetak CPad): label Jost 400 (Tanggal, Pembeli, Uraian/Jumlah, Dilayani oleh) tercetak pudar & tidak berkesan premium →
+  // label jadi huruf pahat Cinzel 700 berhuruf besar renggang, sekeluarga dengan NOTA PEMBELIAN & TOTAL (digores tepi lewat stTebalHuruf)
+  const F_LABEL = F_CIN(700, P(15));
   const isian = (kunci, nilai, f) => {
-    if (!nilai) return; tulis(kunci, F_SANS(400, P(19)), L, y + P(18)); const wk = lebarT(kunci, F_SANS(400, P(19))); const wv = lebarT(nilai, f);
+    if (!nilai) return; const ku = String(kunci).toUpperCase(); tulis(ku, F_LABEL, L, y + P(18), 'left', P(2)); const wk = lebarT(ku, F_LABEL, P(2)); const wv = lebarT(nilai, f);
     titik(y + P(16), L + wk + P(10), R - wv - P(10)); tulis(nilai, f, R, y + P(18), 'right'); y += P(32);
   };
   if (M.faktur && M.no) isian('Nota', M.no, F_SANS(500, P(19)));
   isian('Tanggal', M.tanggal, F_SANS(500, P(19))); isian('Pembeli', M.pembeli, F_SANS(600, P(21))); isian('Alamat', M.alamatPembeli, F_SANS(500, P(17))); isian('Jatuh tempo', M.jatuhTempo, F_SANS(600, P(19))); y += P(8);
   if (M.barang.length) {
     const atas = y; garisH(L, R, y, Math.max(2, P(2))); y += P(10);
-    tulis('URAIAN', F_SANS(500, P(14)), L + P(10), y + P(14), 'left', P(3)); tulis('JUMLAH', F_SANS(500, P(14)), R - P(10), y + P(14), 'right', P(3)); y += P(26);
+    tulis('URAIAN', F_LABEL, L + P(10), y + P(15), 'left', P(3)); tulis('JUMLAH', F_LABEL, R - P(10), y + P(15), 'right', P(3)); y += P(26);
     garisH(L, R, y, Math.max(1.5, P(1.5))); y += P(14);
     M.barang.forEach((b, i) => {
       const wn = b.n ? lebarT(b.n, F_BOD(600, P(24))) + P(16) : 0; huruf(F_SANS(500, P(22)));
@@ -231,14 +234,14 @@ function gambarSertifikat(garis, opsi) {
     if (xl + wl > R - P(10) - wn - P(10)) { huruf(fL); bungkus(c, epTanpaEmoji(label), R - L - P(20)).forEach((t) => { tulis(t, fL, L + P(10), y + P(17)); y += P(26); }); if (n) { tulis(n, fN, R - P(10), y + P(17), 'right'); y += P(28); } return; }
     tulis(label, fL, xl, y + P(17)); if (n) tulis(n, fN, R - P(10), y + P(18), 'right'); y += P(28);
   };
-  M.ringkas.forEach((r) => kolom(r.label, r.n, F_SANS(400, P(20)), F_BOD(500, P(22))));
+  M.ringkas.forEach((r) => kolom(r.label, r.n, F_SANS(500, P(20)), F_BOD(500, P(22))));
   if (M.total) {
     y += P(8); tulis('TOTAL', F_CIN(700, P(22)), L + P(10), y + P(36), 'left', P(5));
     const pxT = muatLebar(M.total, (px) => F_BOD(700, px), P(44), R - L - P(150)); tulis(M.total, F_BOD(700, pxT), R - P(10), y + P(40), 'right');
     y += P(54); const xg = Math.min(P(260), R - P(220)); garisH(xg, R, y, Math.max(2, P(2))); garisH(xg, R, y + P(6), Math.max(2, P(2))); y += P(30);
   }
   M.bon.forEach((b) => { const f = b.tebal ? F_CIN(700, P(19)) : F_SANS(500, P(19)); huruf(f); bungkus(c, epTanpaEmoji(b.teks), R - L - P(20)).forEach((t) => { tulis(t, f, L + P(10), y + P(18), 'left', b.tebal ? P(2) : 0); y += P(28); }); });
-  M.bayar.forEach((b) => kolom(b.label, b.n, F_SANS(b.tebal ? 600 : 400, P(20)), F_SANS(600, P(20))));
+  M.bayar.forEach((b) => kolom(b.label, b.n, F_SANS(b.tebal ? 600 : 500, P(20)), F_SANS(600, P(20))));
   M.catatan.forEach((t) => { const f = F_ITA(t.tebal ? 600 : 500, P(20)); huruf(f); bungkus(c, epTanpaEmoji(t.teks), R - L - P(20)).forEach((s) => { tulis(s, f, L + P(10), y + P(17)); y += P(25); }); });
   y += P(26);
   const capX = R - P(86), capY = y; c.lineWidth = Math.max(1.5, P(2));
@@ -247,7 +250,7 @@ function gambarSertifikat(garis, opsi) {
   padi(c, [[capX - P(6), capY + P(76)], [capX - P(4), capY + P(48)], [capX + P(2), capY + P(24)], [capX + P(16), capY + P(16)]], 0.3, 0.85 * k, Math.max(2, P(3)), 3); c.restore();   // owner 17 Nov: bulir kecil menggumpal di printer → lebih besar & lebih sedikit
   if (M.pelayan) {
     tulis(M.pelayan, F_ITA(600, P(40)), L + P(36), y + P(40)); y += P(50); garisH(L + P(16), L + P(236), y, Math.max(1.5, P(1.5))); y += P(8);
-    tulis('Dilayani oleh', F_SANS(400, P(16)), L + P(16), y + P(16), 'left', P(2)); y += P(30);
+    tulis('DILAYANI OLEH', F_CIN(700, P(14)), L + P(16), y + P(16), 'left', P(2)); y += P(30);
   }
   y = Math.max(y, capY + P(92));
   if (M.kaki) { y += P(10); huruf(F_ITA(500, P(25))); bungkus(c, epTanpaEmoji(M.kaki), R - L).forEach((t) => { tulis(t, F_ITA(500, P(25)), cx, y + P(20), 'center'); y += P(30); }); }

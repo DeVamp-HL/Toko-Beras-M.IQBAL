@@ -8,7 +8,7 @@ ditambah uji asap atas data toko (rak terisi, tidak melempar).
     python3 alat-uji/uji_jual_baru.py            → 0 lulus · 2 gagal
     python3 alat-uji/uji_jual_baru.py --kontrol  → kontrol positif: logika yang dirusak wajib ketahuan
 """
-import os, sys, json, glob, subprocess, tempfile
+import os, re, sys, json, glob, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
@@ -1171,6 +1171,9 @@ def cek_kanvas(src):
     rinci = badan[r0:r1] if r0 >= 0 and r1 > r0 else ''
     if not rinci or 'F_ITA(' in rinci or 'tulis(t, F_SANS(' not in rinci:
         g.append('statis · Sertifikat: baris rincian jumlah × harga tidak memakai Jost (angka gaya lama: 2 terbaca a, 0 terbaca o di printer)')
+    # cetak CPad 18 Nov: label Jost 400 (Tanggal, Pembeli, Bayar, Dilayani oleh) tercetak pudar → tidak boleh ada Jost 400 di struk Sertifikat
+    if re.search(r'F_SANS\([^,]*\b400\s*,', badan) or "const F_LABEL = F_CIN(700" not in badan:
+        g.append('statis · Sertifikat: ada label Jost 400 / label bukan Cinzel 700 (tercetak pudar di printer panas)')
     return g
 
 
@@ -1459,6 +1462,8 @@ if __name__ == '__main__':
             'kanvas: tulisan Sertifikat tanpa goresan tepi': KANVAS.replace('const tb = stTebalHuruf(f, k);', 'const tb = 0;'),
             'kanvas: teks digambar langsung tanpa isiHuruf': KANVAS.replace("c.textAlign = align || 'left'; isiHuruf(t, x, yb, tb); return;", "c.textAlign = align || 'left'; c.fillText(t, x, yb); return;"),
             'kanvas: huruf M logo tanpa goresan': KANVAS.replace("c.strokeText('M', cx, cy + h * 0.2);", ''),
+            'kanvas: label bayar kembali Jost 400': KANVAS.replace('F_SANS(b.tebal ? 600 : 500, P(20))', 'F_SANS(b.tebal ? 600 : 400, P(20))'),
+            'kanvas: label Tanggal/Pembeli bukan Cinzel': KANVAS.replace('const F_LABEL = F_CIN(700, P(15));', 'const F_LABEL = F_SANS(500, P(15));'),
             'kanvas: baris rincian kembali ke Cormorant miring': KANVAS.replace('tulis(t, F_SANS(500, P(19)), L + P(10), y + P(16));', 'tulis(t, F_ITA(500, P(20)), L + P(10), y + P(16));'),
         }
         for nama, isi in rusak_kanvas.items():
