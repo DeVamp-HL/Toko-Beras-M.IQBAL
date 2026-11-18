@@ -18,6 +18,8 @@ import { RP, hariIniIso, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/
 import { fkHariSah, fkRupiahSah, fkTempoBawaan } from './faktur-logika.js';
 // B3 (owner 18 Nov 2026): tarif ongkir bawaan, yang bisa mengantar, kendaraan — diatur owner di Pelanggan › Atur (dokumen yang juga dibaca tablet Ben)
 import { ajAtur, ajBacaAtur } from './antar-logika.js';
+// B4 (owner 18 Nov 2026): berapa hari sebelum tanggal kirim pengingat order rutin muncul — diatur owner di Pelanggan › Atur (dokumen yang dibaca tablet)
+import { poHariIngat, poBacaAtur } from './pesanan-logika.js';
 
 export const TANYA_CIRI = [['siapa', 'Siapa dia'], ['umur', 'Kira-kira umur'], ['badan', 'Perawakan'], ['wajah', 'Wajah & rambut'], ['tampak', 'Yang dipakai'], ['naik', 'Datang naik apa'], ['beli', 'Belinya apa']];   // owner 23 Sep malam: warna kulit & suku/logat DICABUT (putaran 23b)
 // ---- PUTARAN 23b (keputusan owner 23 Sep 2026 malam, menggantikan "serinci mungkin" putaran 21): toko TIDAK mencatat suku, ras, atau warna kulit pelanggan.
@@ -78,7 +80,7 @@ export function aturPelanggan() {
   const angka = (k, syarat) => (a && isFinite(Number(a[k])) && syarat(Number(a[k])) ? Number(a[k]) : B[k]);
   const daftar = (k, bersih) => (a && Array.isArray(a[k]) ? a[k].map(bersih).filter(Boolean) : B[k].slice());
   const AJ = ajAtur();
-  return { tarifOngkir: AJ.tarif, pengantarAntar: AJ.pengantar, kendaraanAntar: AJ.kendaraan, tempoBawaan: fkTempoBawaan(), kosongKali: angka('kosongKali', (n) => n >= 10 && n <= 100), notaBesar: angka('notaBesar', (n) => n >= 0), tagihHari: angka('tagihHari', (n) => n >= 0 && n <= 365), macetHari: angka('macetHari', (n) => n >= 0 && n <= 3650), anggaranThr: angka('anggaranThr', (n) => n >= 0),
+  return { hariIngatRutin: poHariIngat(), tarifOngkir: AJ.tarif, pengantarAntar: AJ.pengantar, kendaraanAntar: AJ.kendaraan, tempoBawaan: fkTempoBawaan(), kosongKali: angka('kosongKali', (n) => n >= 10 && n <= 100), notaBesar: angka('notaBesar', (n) => n >= 0), tagihHari: angka('tagihHari', (n) => n >= 0 && n <= 365), macetHari: angka('macetHari', (n) => n >= 0 && n <= 3650), anggaranThr: angka('anggaranThr', (n) => n >= 0),
     umurBatas: a && umurBatasSah(Array.isArray(a.umurBatas) ? a.umurBatas.map(Number) : null) ? a.umurBatas.map(Number) : B.umurBatas.slice(), tertagihHari: angka('tertagihHari', (n) => Number.isInteger(n) && n >= 1 && n <= 3650),
     ciriDaftar: daftar('ciriDaftar', (x) => (x && x.nama && !ciriDicabut(x.nama, x.grup) ? { nama: String(x.nama).trim(), grup: String(x.grup || 'lain') } : null)), arahDaftar: daftar('arahDaftar', (x) => (plKosong(x) ? null : String(x).trim())), titipDaftar: daftar('titipDaftar', (x) => (plKosong(x) ? null : String(x).trim())),
     alasanHapus: daftar('alasanHapus', (x) => (plKosong(x) ? null : String(x).trim())), salamTagih: a && !plKosong(a.salamTagih) ? String(a.salamTagih) : B.salamTagih, bentukThr: daftar('bentukThr', (x) => (x && x.nama ? { nama: String(x.nama).trim(), n: Math.max(0, Number(x.n) || 0) } : null)), dariOwner: !!a };
@@ -97,6 +99,8 @@ export function susunAturPelanggan(isi, w) {
   const tb = !plKosong(isi.tempoBawaan) && fkHariSah(isi.tempoBawaan) === null ? { tolak: 'Tempo faktur bawaan: 0–365 hari (bilangan bulat)' } : baca('tempoBawaan', (n) => fkHariSah(n) !== null, 'Tempo faktur bawaan: 0–365 hari (bilangan bulat)'); if (tb.tolak) return { tolak: tb.tolak };
   // B3: antar — tarif ongkir bawaan, yang bisa mengantar (minimal satu), kendaraan
   const ab = ajBacaAtur({ tarifOngkir: isi.tarifOngkir, pengantarAntar: isi.pengantarAntar, kendaraanAntar: isi.kendaraanAntar }); if (ab.tolak) return { tolak: ab.tolak };
+  // B4: pengingat order rutin (hari sebelum tanggal kirim)
+  const pi = poBacaAtur(isi.hariIngatRutin); if (pi.tolak) return { tolak: pi.tolak };
   let umur = kini.umurBatas;
   if (Array.isArray(isi.umurBatas)) { if (isi.umurBatas.length !== 3 || isi.umurBatas.some(plKosong)) return { tolak: 'Kelompok umur bon butuh tiga batas hari, mis. 7 · 30 · 90' };
     umur = bacaUmurBatas(isi.umurBatas); if (!umurBatasSah(umur)) return { tolak: 'Batas kelompok umur bon harus bilangan bulat 1–3650 hari yang naik (batas 1 < batas 2 < batas 3), mis. 7 · 30 · 90' }; }
@@ -116,8 +120,8 @@ export function susunAturPelanggan(isi, w) {
   const hilangTitip = kini.titipDaftar.filter((a) => titip.indexOf(a) < 0).filter((a) => cacheMentah('titip').some((t) => t.apa === a)); if (hilangTitip.length) return { tolak: 'Urusan "' + hilangTitip[0] + '" masih dipakai benang — buang dulu benangnya' };
   const salam = plKosong(isi.salamTagih) ? kini.salamTagih : String(isi.salamTagih).trim().slice(0, 200);
   return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'pelanggan', tanggal: w.tanggal, jam: w.jam, tempoBawaan: tb.nilai, kosongKali: kk.nilai, notaBesar: nb.nilai, tagihHari: th.nilai, macetHari: mh.nilai, anggaranThr: ag.nilai, umurBatas: umur, tertagihHari: tg.nilai, ciriDaftar: ciri.concat(bawa), arahDaftar: arah, titipDaftar: titip, alasanHapus: alasan, salamTagih: salam, bentukThr: bentuk,
-      tarifOngkir: ab.tarifOngkir, pengantarAntar: ab.pengantarAntar, kendaraanAntar: ab.kendaraanAntar } }],
-    patch: { kabar: 'Aturan pelanggan disimpan — tempo faktur ' + tb.nilai + ' hari · ongkir bawaan ' + RP(ab.tarifOngkir) + ' · pengantar ' + ab.pengantarAntar.join(', ') + ' · ' + ciri.length + ' cip ciri · bangku kosong ' + (kk.nilai / 10).toFixed(1).replace('.', ',') + '× selang · nota ≥ ' + RP(nb.nilai) + ' perlu nama · tagih sesudah ' + th.nilai + ' hari · macet sesudah ' + mh.nilai + ' hari · anggaran THR ' + RP(ag.nilai) + ' · umur bon dibagi di ' + umur.join(' / ') + ' hari · tertagih dihitung dari ' + tg.nilai + ' hari terakhir', kabarAwas: false } };
+      tarifOngkir: ab.tarifOngkir, pengantarAntar: ab.pengantarAntar, kendaraanAntar: ab.kendaraanAntar, hariIngatRutin: pi.hariIngatRutin } }],
+    patch: { kabar: 'Aturan pelanggan disimpan — tempo faktur ' + tb.nilai + ' hari · ongkir bawaan ' + RP(ab.tarifOngkir) + ' · pengantar ' + ab.pengantarAntar.join(', ') + ' · pengingat order rutin ' + pi.hariIngatRutin + ' hari' + ' · ' + ciri.length + ' cip ciri · bangku kosong ' + (kk.nilai / 10).toFixed(1).replace('.', ',') + '× selang · nota ≥ ' + RP(nb.nilai) + ' perlu nama · tagih sesudah ' + th.nilai + ' hari · macet sesudah ' + mh.nilai + ' hari · anggaran THR ' + RP(ag.nilai) + ' · umur bon dibagi di ' + umur.join(' / ') + ' hari · tertagih dihitung dari ' + tg.nilai + ' hari terakhir', kabarAwas: false } };
 }
 const plBukanKembar = () => { const d = cacheMentah('aturan').find((x) => String(x.id) === 'pelangganKembar'); return d && Array.isArray(d.bukan) ? d.bukan.map(String) : []; };
 

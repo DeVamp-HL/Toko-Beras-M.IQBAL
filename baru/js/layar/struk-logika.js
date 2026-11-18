@@ -92,7 +92,9 @@ export function notaDariBaris(baris) {
     // B2 (owner 17 Nov 2026): faktur — nomor, jatuh tempo, tempo (kolom yang sama di semua baris nota)
     noFaktur: String((rows.find((x) => x.noFaktur) || {}).noFaktur || ''), jatuhTempo: String((rows.find((x) => x.jatuhTempo) || {}).jatuhTempo || ''), tempoHari: Number((rows.find((x) => x.noFaktur) || {}).tempoHari) || 0,
     // B3: nota yang diantar — nomor surat jalan, bayar di tempat, ongkir (jumlah kolom ongkirAntar)
-    noSJ: String((rows.find((x) => x.noSJ) || {}).noSJ || ''), bayarDiTempat: rows.some((x) => x.bayarDiTempat), ongkir: ajOngkirNota(rows) };
+    noSJ: String((rows.find((x) => x.noSJ) || {}).noSJ || ''), bayarDiTempat: rows.some((x) => x.bayarDiTempat), ongkir: ajOngkirNota(rows),
+    // B4 (owner 18 Nov 2026): nota pesanan — uang muka yang dipotong (baris pertama) & nomor PO pelanggan
+    uangMuka: Math.round(Number((rows.find((x) => Number(x.uangMukaPesanan) > 0) || {}).uangMukaPesanan) || 0), noPO: String((rows.find((x) => x.noPO) || {}).noPO || '') };
 }
 /** Nomor nota pendek di struk (owner 17 Nov): 6 angka terakhir kunci notanya (trxId → grupNota → id) — cukup untuk mencari di Riwayat (cari "…"). */
 export function stNoNota(nota) { return String((nota && (nota.trxId || nota.grupNota || nota.id)) || '').replace(/\D/g, '').slice(-6); }
@@ -148,7 +150,8 @@ export function bayarSaatBeli(nota) {
   const tautan = ada(nota.trxId) ? nota.trxId : nota.grupNota;   // owner 17 Nov: rinci karcis yang sisanya jadi bon menautkan pelunasannya ke grupNota (baris rincian tak ber-trxId)
   if (ada(tautan)) {
     const t = semua.filter((m) => ada(m.notaTrxId) && String(m.notaTrxId) === String(tautan));
-    if (t.length) return { nominal: t.reduce((a, m) => a + (Number(m.nominal) || 0), 0), cara: bakuCaraBayar(t[0].caraBayar), lewat: 'tautan', id: t.map((m) => m.id) };
+    if (t.length) return { nominal: t.reduce((a, m) => a + (Number(m.nominal) || 0), 0), cara: bakuCaraBayar(t[0].caraBayar), lewat: 'tautan', id: t.map((m) => m.id),
+      uangDiterima: Number(t[0].uangDiterima) || 0, kembalian: Number(t[0].kembalian) || 0 };   // B4: nota pesanan ber-DP menyimpan uang diterima & kembalian di pelunasannya
   }
   const k = kunciPelanggan(nota.nama); if (!k) return null;
   const sisaCatatan = (m) => { const x = /sisa\s*Rp\s*([\d.]+)/.exec(String(m.catatan || '')); return x ? Number(x[1].replace(/\./g, '')) : null; };
@@ -224,14 +227,25 @@ export function susunStruk(nota, atur, pilih) {
     const dibayarTempat = nota.noSJ ? ajPelunasan(nota.noSJ).reduce((a, m) => a + (Number(m.nominal) || 0), 0) : 0;
     // no. 4 B5: nota Kredit yang lahir saat sisa bon orang ini DI BAWAH NOL dipadamkan mesin (FIFO) lebih dulu dari sisa itu — kepala & baris
     // menyebutnya supaya TOTAL menutup (dibayar saat beli + dipakai dari kelebihan + sisa nota ini). Nota yang lahir SEBELUM kelebihan itu tetap "belum dibayar".
-    const rB = nota.nama ? hitungPiutang().find((x) => x.kunci === kunciPelanggan(nota.nama)) : null; const pakaiLebih = rB ? stPakaiLebih(rB, nota, bb) : 0;
+    const rB = nota.nama ? hitungPiutang().find((x) => x.kunci === kunciPelanggan(nota.nama)) : null; const pakaiLebih = rB && !(Number(nota.uangMuka) > 0) ? stPakaiLebih(rB, nota, bb) : 0;   // B4: uang muka pesanan disebut sendiri, bukan kelebihan bayar
     const asalLebih = rB && pecahLebih(rB).hapus > 0.5 ? 'sisa di bawah nol' : 'kelebihan bayar';   // pendek: 58 mm = 30 kolom
     if (pakaiLebih) sisaNota = nota.total - (dibayarBeli || 0) - pakaiLebih;
+    // B4 (owner 18 Nov 2026): nota pesanan ber-uang muka — DP tercetak sendiri (bukan "kelebihan bayar"); TOTAL = uang muka + dibayar sekarang + sisa nota ini
+    const muka = Math.round(Number(nota.uangMuka) || 0);
+    if (muka > 0) { sisaNota = nota.total - (dibayarBeli || 0) - muka;
+      baris(sisaNota <= 0.5 ? 'LUNAS — uang muka + bayar sekarang' : 'BON — sebagian dibayar', '', { tebal: true, jenis: 'bon' }); if (nota.nama) baris('a.n. ' + nota.nama, '', { jenis: 'bon' });
+      baris('Uang muka pesanan', RP(muka), { jenis: 'bayar' });
+      if (dibayarBeli) baris('Dibayar sekarang' + (bb.cara && bb.cara !== 'Tunai' ? ' · ' + bb.cara : ''), RP(dibayarBeli), { jenis: 'bayar' });
+      if (bb && bb.uangDiterima > 0) { baris('Uang diterima', RP(bb.uangDiterima), { jenis: 'bayar' }); if (bb.kembalian > 0) baris('Kembali', RP(bb.kembalian), { jenis: 'bayar' }); }
+      if (dibayarTempat) baris('Dibayar di tempat', RP(dibayarTempat), { jenis: 'bayar' });
+      baris('Sisa nota ini', RP(Math.max(0, sisaNota - dibayarTempat)), { jenis: 'bayar' });
+    } else {
     baris(pakaiLebih && sisaNota <= 0.5 ? 'BON — dibayar dari ' + asalLebih : dibayarBeli || pakaiLebih ? 'BON — sebagian dibayar' : nota.bayarDiTempat ? (dibayarTempat >= nota.total - 0.5 ? 'BAYAR DI TEMPAT — lunas' : dibayarTempat ? 'BAYAR DI TEMPAT — sebagian' : 'BAYAR DI TEMPAT — belum dibayar') : 'BON — belum dibayar', '', { tebal: true, jenis: 'bon' }); if (nota.nama) baris('a.n. ' + nota.nama, '', { jenis: 'bon' });
     if (dibayarBeli) baris('Dibayar saat beli' + (bb.cara && bb.cara !== 'Tunai' ? ' · ' + bb.cara : ''), RP(dibayarBeli), { jenis: 'bayar' });
     if (dibayarTempat) { baris('Dibayar di tempat', RP(dibayarTempat), { jenis: 'bayar' }); if (!dibayarBeli && !pakaiLebih) baris('Sisa nota ini', RP(Math.max(0, nota.total - dibayarTempat)), { jenis: 'bayar' }); }
     if (pakaiLebih) baris('Dari ' + asalLebih, RP(pakaiLebih), { jenis: 'bayar' });
     if (dibayarBeli || pakaiLebih) baris('Sisa nota ini', RP(sisaNota), { jenis: 'bayar' });
+    }
     // "Sisa bon" = saldo SEMUA bon orang ini saat struk DISUSUN (bukan saat nota ditulis) — tanggalnya ikut tercetak supaya struk yang dicetak
     // ulang kemudian tidak berbunyi "belum dibayar" + "Sisa bon Rp0" tanpa keterangan
     // sisaBonPer menempel di baris angkanya: Pusat Dokumen (laporan-logika dokumenKecil 'nota') hanya memakai baris yang berangka, jadi tanggal
@@ -246,6 +260,8 @@ export function susunStruk(nota, atur, pilih) {
   }
   // B3: nota yang diantar — nomor surat jalan & alamat antarnya (baris catatan, tanpa angka)
   if (nota.noSJ) { const sjN = ajUntukNota(nota.trxId)[0]; baris('Diantar · surat jalan ' + nota.noSJ + (sjN && sjN.alamat ? ' · ' + sjN.alamat : ''), '', { jenis: 'catatan' }); }
+  // B4: nomor PO dari pelanggan (instansi / catering) — baris catatan supaya semua gaya struk (teks & Sertifikat) menampilkannya
+  if (nota.noPO) baris('No. PO pelanggan: ' + nota.noPO, '', { jenis: 'catatan' });
   if (!nota.berlaku) baris('(catatan ini sudah ' + (nota.dibatalkan ? 'dibatalkan' : 'dikoreksi') + ')', '', { jenis: 'catatan', tebal: true });
   if (S.kaki && A.kaki) { baris('', '', { jenis: 'jeda' }); baris(A.kaki, '', { tengah: true, jenis: 'kaki' }); }
   // dua wujud satu isi. Kertas: angka rata kanan; yang tidak muat DIBUNGKUS ke baris berikutnya — tidak pernah dipotong (angka tidak boleh terpenggal).

@@ -152,6 +152,8 @@ jobs:
         run: python3 alat-uji/uji_faktur.py && python3 alat-uji/uji_faktur.py --kontrol
       - name: "Surat jalan & antar (B3, owner 18 Nov 2026): ongkir baris sendiri (menempel di nota, sesudah potongan, sebelum pembulatan; Laporan per merek memisahkannya & tetap menutup; retur tanpa ongkir), surat jalan lahir bersama nota (nomor per perangkat), bayar di tempat = bon sementara bebas batas hari itu + pelunasan ber-untukSJ + merah di Dasbor & tutup hari, tanda terima (tanda tangan wajib, foto boleh dilewati), penjaga = rules v10 (jsc + statis + kontrol)"
         run: python3 alat-uji/uji_antar.py && python3 alat-uji/uji_antar.py --kontrol
+      - name: "Pesanan, PO & order rutin (B4, owner 18 Nov 2026): isi dari katalog (keranjang terisi sendiri), PO di nota / struk / surat jalan, uang muka = pelunasan bon ber-untukPesanan yang memotong nota pesanannya (bukan omzet; KR1 hanya utang baru; bayar di tempat menagih total − DP), batal ber-DP jadi saldo / dikembalikan owner, jadwal rutin = pengingat (hari diatur owner), cek stok + laju jual, penjaga = rules v11 (kotak pasir + statis + kontrol)"
+        run: python3 alat-uji/uji_pesanan.py && python3 alat-uji/uji_pesanan.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

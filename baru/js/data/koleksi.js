@@ -96,4 +96,8 @@ export const KOLEKSI = [
   //  stafTandaiSJ) — tanpa cap jam server, jadi 'tetap' seperti pesanan. Foto & tanda tangan penerima (buktiTerima) SENGAJA TIDAK di daftar ini: dibaca saat
   //  surat jalannya dibuka (firebase.js bacaBuktiTerima), tidak ikut baca penuh, cache, maupun cadangan berkas.
   { nama: 'suratJalan',          urut: 'id',    cache: 'suratJalan', kelas: 'tetap' },
+  // B4 (owner 18 Nov 2026) — ORDER RUTIN: satu dokumen per jadwal pesanan berulang pelanggan (isi dari katalog, tiap minggu / 2 minggu / bulan, hari kirim).
+  //  Bukan uang & bukan stok: jadwal cuma memunculkan PENGINGAT; pesanannya dibuat orang (koleksi pesanan). Owner & Ben membuat dan mengubah (rules v11
+  //  stafUbahRutin, kolom terbatas) — tanpa cap jam server, jadi 'tetap' seperti pesanan.
+  { nama: 'orderRutin',          urut: 'id',    cache: 'orderRutin', kelas: 'tetap' },
 ];

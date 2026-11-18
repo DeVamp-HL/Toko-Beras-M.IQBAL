@@ -186,7 +186,7 @@ def baca_per_layar():
 # ASLI, dan tiap kiriman dilewatkan periksaKiriman ASLI (yang bukan-owner memang tidak boleh kirim → dilewati, bukan dihitung).
 BATAS_CI = 18   # batas Firebase 20 per batch − sisa 2 (keputusan owner). Sengaja TIDAK dibaca dari akses.js: menaikkan batas di sana tidak melonggarkan CI.
 MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/layar/arsip-logika.js',
-               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
+               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/pesanan-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
                'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js']
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
@@ -206,7 +206,7 @@ pasok('batchMasuk', [{ id: 'b1', tanggal: '2026-09-01', merkList: [{ merk: 'Angs
 // yang membatasi = server (SERVER_BUKA) & bentuk dokumen. Kisi kosong {} sekarang berarti "tidak boleh apa pun" → semua kiriman dilewati.
 var HAK_LONGGAR = {}; Object.keys(SERVER_BUKA).forEach(function (t) { HAK_LONGGAR[t] = 'sendiri'; });
 function kirim(peran, dok) {   // → { ac } dihitung, atau { dilewati: alasan } kalau peran ini memang tidak boleh mengirimnya
-  var D = dok.map(function (x) { var ada = x.koleksi === 'pesanan'; return { koleksi: x.koleksi, data: x.data, ada: ada, lama: ada ? ambilPesananDoc(String(x.data.id)) : null }; });
+  var D = dok.map(function (x) { var lama = x.koleksi === 'pesanan' ? ambilPesananDoc(String(x.data.id)) : null; return { koleksi: x.koleksi, data: x.data, ada: !!lama, lama: lama }; });   // B4: pesanan BARU (belum di cache) = create
   var r = periksaKiriman(AKUN[peran], D, [], HAK_LONGGAR);
   if (r.tolak && !/terlalu besar untuk satu kali kirim/.test(r.tolak)) return { dilewati: r.tolak };   // 39b no. 21: pagar umum apa pun kalimat ujungnya = DIHITUNG
   return { ac: D.length + 1, dok: D.length, ditolakPerangkat: !!r.tolak };
@@ -330,8 +330,23 @@ pasok('katalogHargaLiteran', [{ id: 'Campur Enam', merk: 'Campur Enam', hargaPer
   catat('terima antar', p, 'tanda terima: surat jalan diterima + pelunasan bayar di tempat', rA.tolak ? { dilewati: rA.tolak } : { ac: DA.length + 1, dok: DA.length, ditolakPerangkat: false });
 });
 
+// ---- 8 · B4 (owner 18 Nov 2026, rules v11): pesanan dari tablet — pesanan baru + jadwal rutin dalam SATU kiriman (ben), uang muka = 1 pelunasan bon, batal
+//        ber-DP jadi saldo = 1 pesanan diubah (ben — tindakan pesanan; karyawan tidak boleh)
+['ben', 'karyawan'].forEach(function (p) {
+  var BR = [{ jalur: 'kemasan', kunci: 'Contoh|5', ukuranKg: 5, nama: 'Contoh 5 kg', jumlah: 2, satuan: 'kemasan', kg: 10 }];
+  var RP1 = poSusunPesanan(Object.assign(poDrafBaru('Pembeli Contoh'), { baris: BR, tanggalKirim: W.tanggal, jadwal: { nyala: true, ulang: 'mingguan', hari: 1 } }), W, {});
+  if (RP1.tolak) { salah('pesanan contoh ditolak: ' + RP1.tolak); return; }
+  catat('pesanan', p, 'pesanan baru + jadwal rutin (satu kiriman)', kirim(p, RP1.dokumen));
+  var PS1 = RP1.dokumen[0].data; pasok('pesanan', [PS1]);
+  var DP1 = poSusunUangMuka(PS1, '100000', 'Tunai', W); catat('pesanan', p, 'uang muka: 1 pelunasan bon ber-untukPesanan', kirim(p, DP1.dokumen));
+  var BT1 = poSusunBatal(PS1, 'saldo', '', W, { owner: false }); var DB1 = BT1.dokumen.map(function (x) { return { koleksi: x.koleksi, data: x.data, ada: true, lama: PS1 }; });
+  var rB = periksaKiriman(AKUN[p], DB1, [], HAK_LONGGAR);
+  catat('pesanan', p, 'batal pesanan (uang muka jadi saldo): 1 pesanan diubah', rB.tolak ? { dilewati: rB.tolak } : { ac: DB1.length + 1, dok: DB1.length, ditolakPerangkat: false });
+  pasok('pesanan', []);
+});
+
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas
-var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru', isiUlang: 'isi ulang wadah', antar: 'antar', terimaAntar: 'terima antar' };
+var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru', isiUlang: 'isi ulang wadah', antar: 'antar', terimaAntar: 'terima antar', pesanan: 'pesanan' };
 Object.keys(SERVER_BUKA).forEach(function (t) { if (!DIHITUNG[t] || !hasil.baris.some(function (b) { return b.jenis === DIHITUNG[t]; })) salah('tindakan "' + t + '" dibuka server untuk bukan-owner, tapi kirimannya tidak dihitung di sini'); });
 hasil.batas = { kirim: BATAS_KIRIM_STAF, firebase: BATAS_ACCESS_CALL, baris: NB, hasil: NH };
 print(JSON.stringify(hasil));
@@ -413,6 +428,7 @@ OWNER_JALUR = {
     'susunSelesai': 'berita acara selesai (tidak dikunci; rules v7 membaca dokumen pintu = 1 access call) + paling banyak 1 pengaturan/pintuBuku status tutup (bukan titikKas, 0 pemeriksaan) — jumlah tetap',
     'susunCatatSusulan': 'siap 2027 (A9): 1 dokumen pengaturan/susulan<tahun> (jumlah & id catatan susulan) — bukan titikKas, tidak dikunci (0 pemeriksaan)',
     'susunTitikRekening': 'catat isi rekening (putaran 29): 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (nilai baru dinilai; tenggang 3 hari melindungi tanggal 1–3)',
+    'susunPesananBatal': 'B4 batal pesanan: 1 pesanan (tidak dikunci) + paling banyak 1 piutangMutasi pengembalian uang muka bertanggal hari ini (owner) — jumlah tetap',
     'susunBayarBon': 'terima bon: 1 piutangMutasi bertanggal hari ini', 'susunHapusBon': 'hapus buku piutang: 1 piutangMutasi bertanggal hari ini',
     'susunBayarSesudahHapus': 'dibayar sesudah dihapus buku (Paket F2): paling banyak 2 piutangMutasi (hapus buku minus + bayar) bertanggal hari ini',
     'susunBayarTagihan': '1 dokumen: biayaBulanan bulan INI atau pengeluaranHarian hari ini', 'susunBonus': '2 dokumen: biayaBulanan bulan INI + slipUpah hari ini',
@@ -669,7 +685,7 @@ if __name__ == '__main__':
                 'alasanTolak tanpa penjaga baris': rusak(JL, "const lewat = alasanBatasBaris(s, s.keranjang.length) || alasanBatasDokumen(s, s.keranjang);", "const lewat = alasanBatasDokumen(s, s.keranjang);"),
                 'baris literan menulis dokumen ketiga': rusak(JL, "    // PUTARAN 15: wadah yang DIJUAL", "    if (d.kemasanLiteran) dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: d.id + 2, tipe: 'pakai' } });\n    // PUTARAN 15: wadah yang DIJUAL"),
                 'adukan tanpa penjaga hasil': rusak(SA, "if (Number(draf.batasHasil) > 0 && h.sahH.length > Number(draf.batasHasil)) return", "if (false) return"),
-                'tindakan baru dibuka server tanpa hitungan': rusak(AK, "terimaAntar: ['ben', 'karyawan'] };", "terimaAntar: ['ben', 'karyawan'], cekBaru: ['ben'] };"),
+                'tindakan baru dibuka server tanpa hitungan': rusak(AK, "terimaAntar: ['ben', 'karyawan'], pesanan: ['ben'] };", "terimaAntar: ['ben', 'karyawan'], pesanan: ['ben'], cekBaru: ['ben'] };"),
                 'karyawan boleh menulis aturan wadah': rusak(AK, "if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };", ""),
                 'karyawan boleh menulis kedatangan sungguhan sebagai batch lahir': rusak(AK, "if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };", ""),
                 'jual.js mencatat nota tanpa batas baris': rusak('baru/js/layar/jual.js', 'L.simpanNota(Object.assign(SBN(), { tembusYakin: tembusYakin === true, dilayani: dilayaniSah() }))', 'L.simpanNota(Object.assign(S(), { tembusYakin: tembusYakin === true, dilayani: dilayaniSah() }))'),

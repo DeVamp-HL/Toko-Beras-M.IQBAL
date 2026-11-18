@@ -23,7 +23,8 @@ BUKAN_ISIAN = {
                   'uCariK': 'pencarian nama (Usaha › harga khusus)', 'uCariKB': 'pencarian barang (Usaha › harga khusus)'},
     'menu': {'cari': 'pencarian'},
     'laporan': {'cariK': 'pencarian dokumen kecil', 'sampaiN': 'tanggal lihat neraca (saringan tampilan)'},
-    'jual': {'cariPelanggan': 'pencarian nama', 'psSaring': 'saringan daftar pesanan', 'rtCari': 'pencarian nota retur', 'rwCari': 'pencarian riwayat penjualan'},
+    'jual': {'cariPelanggan': 'pencarian nama', 'psSaring': 'saringan daftar pesanan', 'rtCari': 'pencarian nota retur', 'rwCari': 'pencarian riwayat penjualan',
+             'psCari': 'pencarian barang katalog di form pesanan (B4)'},
 }
 
 
@@ -93,7 +94,9 @@ def periksa(sumber):
 
 
 def muat():
-    s = {n: baca(n) for n in LAYAR}; s['_jl'] = baca('jual-logika'); return s
+    s = {n: baca(n) for n in LAYAR}; s['_jl'] = baca('jual-logika')
+    s['jual'] += '\n' + baca('pesanan-panel')   # B4 (owner 18 Nov 2026): lembar Pesanan (form, uang muka, batal) dipasang Jual dari panelnya
+    return s
 
 
 if __name__ == '__main__':
@@ -105,7 +108,7 @@ if __name__ == '__main__':
             ('Laporan lupa menjaga draf setoran pajak', 'laporan', "'drafSetor', ", ''),
             ('Stok lupa draf lokal barang masuk', 'stok', '[KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);', '[KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);'),
             ('Harga lupa draf lokal belanja', 'harga', '[KUNCI_DRAF_BELANJA]);', '[]);'),
-            ('Jual lupa isian pesanan', '_jl', "const ISIAN_JUAL_LAIN = ['psNama', ", "const ISIAN_JUAL_LAIN = ["),
+            ('Jual lupa isian pesanan', '_jl', "'ajSetor', 'psDraf', ", "'ajSetor', "),
             ('Menu tidak meneruskan penjaga', 'menu', 'belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan', 'belumDisimpan: () => false, lupakanOrang: () => {}'),
             ('Jual lupa menghapus simpanan keranjang saat ganti orang (owner 7 Okt)', 'jual', 'lupakanOrang: () => { lupakanSimpanan(); K.setel(', 'lupakanOrang: () => { K.setel('),
             ('Jual: penghapus simpanan tidak menghapus apa pun (owner 7 Okt)', 'jual', 'function lupakanSimpanan() { _simpanUid = null; tulisSimpanan(null); }', 'function lupakanSimpanan() { _simpanUid = null; }'),

@@ -14,7 +14,7 @@
 // Dua perangkat tidak memakai awalan yang sama; satu perangkat membaca tulisannya sendiri (termasuk yang masih antre) jadi urutnya tidak berulang.
 // MESIN UANG TIDAK DISENTUH: faktur hanyalah KOLOM di baris penjualan (noFaktur, jatuhTempo, tempoHari) dan di pembayaran (untukFaktur); sisa bon tetap
 // dari mesin beku hitungPiutang — pembagian ke faktur cuma membagi sisa yang sama.
-import { cacheMentah, ambilPenjualanSemua, ambilPelangganCatatan, ambilPiutangMutasi, kreditLintas, tolakKunci, ingatPerVersi } from '../data/toko.js';
+import { cacheMentah, ambilPenjualanSemua, ambilPelangganCatatan, ambilPiutangMutasi, kreditLintas, tolakKunci, ingatPerVersi, ambilPesanan } from '../data/toko.js';
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, infoKreditPelanggan, penjualanMasihBerlaku } from '../mesin/pembantu.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
@@ -95,15 +95,19 @@ const fkKunciNota = (p) => String(p.trxId || p.grupNota || p.id);
 /** Peta bantu, diingat per versi data (dipakai bersama — jangan diubah di tempat): baris penjualan → noFaktur, nota → noFaktur, pembayaran → dokumennya. */
 function fkPeta() { return ingatPerVersi('fkPeta', fkPetaHitung); }
 function fkPetaHitung() {
-  const baris = {}, nota = {}, bayar = {};
-  (ambilPenjualanSemua() || []).forEach((p) => { if (p.noFaktur) { baris[String(p.id)] = String(p.noFaktur); nota[fkKunciNota(p)] = String(p.noFaktur); } });
+  const baris = {}, nota = {}, bayar = {}, trx = {}, ps = {};
+  // B4 (owner 18 Nov 2026): baris → 'trx:<kunci nota>' (pembayaran ber-untukPesanan menutup baris nota pesanannya, bernomor faktur atau tidak)
+  (ambilPenjualanSemua() || []).forEach((p) => { trx[String(p.id)] = 'trx:' + fkKunciNota(p); if (p.noFaktur) { baris[String(p.id)] = String(p.noFaktur); nota[fkKunciNota(p)] = String(p.noFaktur); } });
   (ambilPiutangMutasi() || []).forEach((m) => { if (m && m.tipe === 'bayar') bayar[String(m.id)] = m; });
-  return { baris, nota, bayar };
+  (ambilPesanan() || []).forEach((x) => { if (x && x.trxIdJual) ps[String(x.id)] = String(x.trxIdJual); });
+  return { baris, nota, bayar, trx, ps };
 }
 /** Faktur yang DITUJU satu pembayaran: untukFaktur (dipilih saat bayar) → atau pembayaran saat beli sebuah faktur (notaTrxId nota bernomor). [] = tertua dulu. */
 export function fkTujuanBayar(m, P) {
   if (!m) return [];
   if (Array.isArray(m.untukFaktur) && m.untukFaktur.length) return m.untukFaktur.map(String).filter(Boolean);
+  // B4: uang muka pesanan (dan pelunasan saat nota pesanan ber-DP) → baris nota pesanan itu begitu notanya ada; sebelum itu tertua dulu (= mesin)
+  if (m.untukPesanan !== undefined && m.untukPesanan !== null && String(m.untukPesanan) !== '') { const Q = P || fkPeta(); const t = Q.ps[String(m.untukPesanan)]; return t ? ['trx:' + t] : []; }
   const t = m.notaTrxId !== undefined && m.notaTrxId !== null ? (P || fkPeta()).nota[String(m.notaTrxId)] : null; return t ? [t] : [];
 }
 /**
@@ -123,7 +127,7 @@ export function fkAlokasi(d, P0) {
     bayarBeralamat.forEach((m) => {
       const tuju = fkTujuanBayar(P.bayar[String(m.idMutasi)], P); if (!tuju.length) return;
       let n = Math.min(Number(m.nominal) || 0, Math.max(0, tertutup));
-      utang.forEach((u, i) => { if (n <= 0 || tuju.indexOf(P.baris[String(u.idTrx)]) < 0) return; const ambil = Math.min(Math.max(0, nom[i] - kurang[i]), n); kurang[i] += ambil; n -= ambil; tertutup -= ambil; });
+      utang.forEach((u, i) => { if (n <= 0 || (tuju.indexOf(P.baris[String(u.idTrx)]) < 0 && tuju.indexOf(P.trx[String(u.idTrx)]) < 0)) return; const ambil = Math.min(Math.max(0, nom[i] - kurang[i]), n); kurang[i] += ambil; n -= ambil; tertutup -= ambil; });
     });
   }
   return utang.map((u, i) => {

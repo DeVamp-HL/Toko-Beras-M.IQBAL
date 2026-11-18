@@ -229,7 +229,7 @@ RUSAK = [
     ('nomor faktur tidak membaca yang sudah ada', FK, "if (Number.isInteger(u) && u > maks) maks = u;", "if (false) maks = u;"),
     ('tempo kartu diabaikan', FK, "const n = c ? fkHariSah(c.tempoHari) : null; return n === null ?", "const n = null; return n === null ?"),
     ('batas angka owner diabaikan', FK, "  const B = fkBatasOwner(nama);\n", "  const B = null;\n"),
-    ('bayar kurang tidak kena KR1 lagi', JL, "  if (s.cara !== 'Kredit' && t.sisaJadiBon) { const k = alasanKunciKredit(s, t.kurang); if (k) return", "  if (false) { const k = alasanKunciKredit(s, t.kurang); if (k) return"),
+    ('bayar kurang tidak kena KR1 lagi', JL, "  if (s.cara !== 'Kredit' && t.sisaJadiBon) { const nb = bonKeranjang(s, t);", "  if (false) { const nb = bonKeranjang(s, t);"),
     ('persetujuan dipakai berulang', FK, "&& fkMilik(m, akun) && !dipakai[String(m.id)])", "&& fkMilik(m, akun))"),
     ('persetujuan kemarin ikut dipakai', FK, "m.status === 'disetujui' && String(m.diputusTanggal || '') === String(tanggal) && ", "m.status === 'disetujui' && "),
     ('persetujuan kecil dipakai untuk bon besar', FK, "&& Math.round(Number(m.nominal) || 0) >= n && fkMilik", "&& fkMilik"),

@@ -177,6 +177,12 @@ export function pasangDasbor(akar, opsi) {
       // B2 (owner 17 Nov 2026): faktur pelanggan usaha lewat / segera jatuh tempo (≤ 3 hari)
       + (G.faktur && G.faktur.n ? '<div class="ket" data-k="db-faktur">Faktur jatuh tempo · ' + esc(G.faktur.nLewat + ' lewat ' + RP(G.faktur.rpLewat) + ' · ' + (G.faktur.n - G.faktur.nLewat) + ' segera ' + RP(G.faktur.rpSegera)) + '</div>'
         + G.faktur.daftar.map((f) => baris({ nama: f.no + ' · ' + f.nama, ket: f.ket, rp: f.sisa, awas: f.awas, isi: { judul: 'Faktur ' + f.no, baris: [['Pembeli', f.nama], ['Sisa', RP(f.sisa)], ['', f.ket]], tujuan: f.tujuan, ke: G.faktur.sumber } }, 'faktur:' + f.no)).join('') : '')
+      // B4 (owner 18 Nov 2026): order rutin yang perlu dibuat & pesanan yang dikirim ≤ 2 hari lagi; stok yang kurang untuk pesanan (merah)
+      + (G.pesanan && (G.pesanan.nIngat || G.pesanan.nDekat || G.pesanan.stok.length) ? '<div class="ket" data-k="db-pesanan">Pesanan · ' + esc((G.pesanan.nIngat ? G.pesanan.nIngat + ' order rutin perlu dibuat · ' : '') + G.pesanan.nDekat + ' dikirim ≤ 2 hari') + '</div>'
+        + G.pesanan.ingat.map((x) => '<div class="db-baris db-ketuk' + (x.awas ? ' awas-teks' : '') + '"' + daftar('psi:' + x.id, { judul: 'Order rutin ' + x.nama, baris: [['Kirim', tanggalPendek(x.tanggal)], ['', x.ket]], tujuan: x.tujuan, ke: G.pesanan.sumber })
+          + '><span class="db-nama">' + esc(x.nama) + '</span><span class="ket">' + esc(x.ket) + '</span><span class="db-nilai">buat ›</span></div>').join('')
+        + G.pesanan.dekat.map((x) => baris({ nama: x.nama, ket: x.ket, rp: x.rp, awas: false, isi: { judul: 'Pesanan ' + x.nama, baris: [['', x.ket], ['Perkiraan', RP(x.rp)]], tujuan: x.tujuan, ke: G.pesanan.sumber } }, 'psd:' + x.id)).join('')
+        + G.pesanan.stok.map((t, i) => '<div class="ket awas-teks" data-k="db-ps-stok-' + i + '">' + esc(t) + '</div>').join('') : '')
       + kepala('Utang ke pemasok', U.nBon + ' bon · ' + U.nPemasok + ' pemasok', 'sumber:pemasok', U.sumber, U.tujuan)
       + '<div class="db-angka-baris"><span class="angka db-angka-kecil">' + esc(RP(U.total)) + '</span><span class="ket">' + esc(U.lewat.length + ' lewat tempo · ' + U.dekat.length + ' jatuh ≤ ' + U.dekatHari + ' hari · ' + U.nTanpaTempo + ' tanpa tempo') + '</span></div>'
       + tumpuk(bagU, U.total, 'pemasokS:')

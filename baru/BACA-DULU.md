@@ -2722,3 +2722,39 @@ uang dibawa pulang; **owner + Ben** membuat surat jalan, **pengantar** (Ben / ka
   server sampai v10 terbit (nota biasa tetap jalan).
 - Uji: `alat-uji/uji_antar.py` (jsc dua bundel — Jual & Laporan — + statis + 23 kontrol), `periksa_rules.py` (v10 = v9 + dua blok, model 24 kasus ★L),
   `uji_rules_emulator.py` bagian V10. Koleksi `suratJalan` tidak ikut arsip tutup buku mesin beku (seperti koleksi baru lain sesudah putaran 19).
+
+## Putaran B4 — pesanan, PO & order rutin (18 Nov 2026, cabang `paket/b4-order-rutin`)
+Keputusan owner 18 Nov 2026 (memori `b4-order-rutin-keputusan`, semua "Recommended"): **owner + Ben** membuat & mengubah pesanan, PO, jadwal rutin —
+juga dari tablet (dulu pesanan create = owner saja, tablet ditolak); **uang muka** = uang pelanggan dipegang toko (bukan omzet) yang memotong nota
+pesanannya, pesanan ber-DP **batal → pilih per kasus** (jadi saldo / dikembalikan tunai); **jadwal rutin = pengingat** (hari diatur owner), diketuk jadi
+pesanan; **isi pesanan dari katalog**. Mesin beku tidak disentuh (`beku2.py --sidik` 26/26, 91/91).
+- **Logika**: `baru/js/layar/pesanan-logika.js` (tanpa DOM, awalan `po`); layar: `baru/js/layar/pesanan-panel.js` (dipasang Jual: lembar Pesanan —
+  pengingat jadwal, cek stok, pesanan aktif, sudah jadi nota, form katalog, daftar jadwal).
+- **Baris pesanan** `{ jalur karung | kemasan | literan, kunci, berat / ukuranKg / rasio, nama, jumlah, satuan, kg }` (`poBarisDariChip`, chip rak Jual);
+  kolom `isi` tetap ditulis (teks, `poIsiTeks`) supaya daftar & dokumen lama terbaca. Pesanan lama tanpa `baris` = teks bebas apa adanya. "Catat jualnya"
+  mengisi keranjang KOSONG sendiri (`ikatPesanan` → `masukkan` per baris, harga pembeli itu, stok diperiksa; yang gagal disebut).
+- **Nomor PO** pelanggan (`noPO`, ≤ 30) → semua baris nota (`noPO`), struk ("No. PO pelanggan", baris catatan — semua gaya struk), surat jalan.
+- **Uang muka**: `piutangMutasi` bayar ber-`untukPesanan`, TANPA `notaTrxId`, sebelum notanya (`poSusunUangMuka`; Tunai / QRIS). Mesin beku: kas naik, sisa
+  bon orang itu turun / jadi kelebihan bayar. Nota pesanan ber-DP (`uangMukaKeranjang`, `hitungTagihan` → `muka`, `perlu` = total − DP, `dpSisa`): nota
+  dicatat **Kredit** sebesar total + satu pelunasan saat beli sebesar yang dibayar sekarang (ber-`notaTrxId` + `untukPesanan`, `uangDiterima`, `kembalian`);
+  baris pertama `uangMukaPesanan`. DP > nota → sisanya tetap saldo. Faktur & "jadi nota": `fkTujuanBayar` membaca `untukPesanan` → baris nota pesanan
+  itu ('trx:' + kunci nota, `fkPeta().trx/ps`); sebelum notanya ada = tertua dulu (= mesin). KR1: bagian yang tertutup DP bukan utang baru (`bonKeranjang`
+  = kenaikan utang akhir sesungguhnya). Bayar di tempat: `tagihRp` = total − DP (`ajDokumenSJ` c.uangMuka), surat jalan mencetak "Uang muka sudah masuk".
+  Nama pembeli wajib = pemesan ber-DP; tukar tidak bisa memakai DP.
+- **Batal** (`poSusunBatal`): ada DP → pilihan wajib: `saldo` (Ben boleh — tanpa catatan uang baru) atau `kembali` (owner: pembayaran −DP ber-`untukPesanan`
+  + `kembaliUangMuka`, Tunai; mesin menjumlah nominal apa adanya — kas turun, kelebihan hilang, laba tidak tersentuh). Penjaga kiriman menolak pembayaran
+  ≤ 0 dari bukan-owner. Tanpa DP seperti dulu.
+- **Jadwal rutin** (koleksi `orderRutin`, kelas `tetap`): `{ namaPelanggan, baris, isi, alamat, noPO, catatan, ulang mingguan | duaMinggu | bulanan, hari 0–6 /
+  tanggalBulan 1–28, mulai, aktif, lewati[] }`. `poKejadian` → `poPengingat(hari, N)`: kejadian aktif (hari − 7) … (hari + N) yang belum punya pesanan
+  (`jadwalId` + `jadwalTanggal`, status apa pun) & tidak dilewati. N = `aturanToko/pelanggan.hariIngatRutin` (Pelanggan › Atur, bawaan 2, 0–14). Form
+  pesanan baru bisa sekaligus membuat jadwal (pesanan mengikat kejadian pertamanya). "Lewati sekali" & hentikan / jalankan lagi; tidak ada pesanan yang
+  lahir sendiri. Dasbor (kartu tagihan): order rutin perlu dibuat, pesanan dikirim ≤ 2 hari, stok kurang.
+- **Cek stok** (`poCekStok(hari, daftarBarang())`): pesanan aktif ber-katalog + kejadian jadwal 14 hari; per barang per tanggal kirim: sisa − laju × hari −
+  pesanan s/d hari itu → kurang terendah. Literan wadah tidak dicek (diisi dari karung).
+- **Akses**: kisi peran + `pesanan` (Ben sendiri, karyawan tidak); `akses.js` BUAT_STAF `pesanan` & `orderRutin` ['ben'], UBAH_STAF pesanan = kolom jadi nota
+  (ben & karyawan) ∪ `KOLOM_ATUR_PESANAN` (ben: status dipesan / diantar / batal), `orderRutin` = `KOLOM_UBAH_RUTIN`; pesanan baru tanpa kolom batal
+  (`KOLOM_BUKAN_PESANAN_BARU`). Kolom = `PO_KOLOM_ATUR` / `PO_KOLOM_RUTIN` = rules (dijaga `uji_pesanan.py` & `periksa_rules.py`).
+- **Rules v11** (`firestore.rules`, pembanding `firestore.rules.v10`, uji `docs/uji-rules-v11.md`): pesanan create + `stafBuatPesanan(ben)`, update +
+  `stafAturPesanan(ben)`, blok `orderRutin` (`stafBuat(ben)`, `stafUbahRutin(ben)`). **Owner menerbitkan v11 di Console SEBELUM merge**; kalau terbalik,
+  pesanan / jadwal dari tablet ditolak server sampai v11 terbit (jual, antar, uang muka tetap jalan).
+- Uji: `alat-uji/uji_pesanan.py` (jsc + statis + kontrol), `periksa_rules.py` (v11 = v10 + tiga ubahan, model 25 kasus ★M), `uji_rules_emulator.py` bagian V11.

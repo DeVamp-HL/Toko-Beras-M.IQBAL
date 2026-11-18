@@ -146,16 +146,20 @@ export function ajIsiKeranjang(keranjang) {
   return (keranjang || []).map((b) => { const t = b.trx || b; return { nama: String(t.label || t.namaProduk || '').slice(0, 60), jumlah: Number(t.jumlah) || 0, satuan: String(t.satuan || '') }; }).filter((x) => x.nama);
 }
 /**
- * Dokumen surat jalan untuk nota yang dicatat bersamaan. c = { trxId, nama, total, ongkir, noFaktur, keranjang, noSJ }.
- * tagihRp = yang ditagih di tempat (bayar di tempat = total nota; selain itu 0).
+ * Dokumen surat jalan untuk nota yang dicatat bersamaan. c = { trxId, nama, total, ongkir, noFaktur, keranjang, noSJ, uangMuka, noPO }.
+ * tagihRp = yang ditagih di tempat (bayar di tempat = total nota − uang muka pesanan (B4); selain itu 0).
  */
 export function ajDokumenSJ(s, w, c) {
   const a = s.antar; const cod = !!a.cod;
-  return { id: w.idUnik(), noSJ: c.noSJ, tanggal: w.tanggal, jam: w.jam, trxIdJual: String(c.trxId), namaPelanggan: String(c.nama || '').trim(),
+  const d = { id: w.idUnik(), noSJ: c.noSJ, tanggal: w.tanggal, jam: w.jam, trxIdJual: String(c.trxId), namaPelanggan: String(c.nama || '').trim(),
     alamat: String(a.alamat || '').trim().slice(0, 160), pengantar: String(a.pengantar || '').trim().slice(0, 30), kendaraan: String(a.kendaraan || '').trim().slice(0, 30),
     catatan: String(a.catatan || '').trim().slice(0, 160), isi: ajIsiKeranjang(c.keranjang), nilaiNota: ajBulat(c.total), ongkir: ajBulat(c.ongkir),
-    bayarDiTempat: cod, tagihRp: cod ? ajBulat(c.total) : 0, noFaktur: String(c.noFaktur || ''),
+    bayarDiTempat: cod, tagihRp: cod ? Math.max(0, ajBulat(c.total) - ajBulat(c.uangMuka)) : 0, noFaktur: String(c.noFaktur || ''),
     status: 'berangkat', riwayatStatus: [{ status: 'berangkat', pada: w.kini || new Date().toISOString() }] };
+  // B4 (owner 18 Nov 2026): nomor PO pelanggan & uang muka yang sudah masuk ikut dicetak (kolom tambahan saat dibuat — rules v10 stafBuatSJ tidak membatasinya)
+  if (String(c.noPO || '').trim()) d.noPO = String(c.noPO).trim().slice(0, 30);
+  if (ajBulat(c.uangMuka) > 0) d.uangMuka = ajBulat(c.uangMuka);
+  return d;
 }
 
 // ---------- daftar & keadaan surat jalan ----------
@@ -352,9 +356,11 @@ export function ajGarisCetak(sj, kop, lembar) {
   if (sj.alamat) b('Alamat : ' + sj.alamat);
   if (sj.pengantar) b('Antar  : ' + sj.pengantar + (sj.kendaraan ? ' · ' + sj.kendaraan : ''));
   if (sj.noFaktur) b('Faktur : ' + sj.noFaktur);
+  if (sj.noPO) b('No. PO : ' + sj.noPO);
   g.push({ garis: true });
   (sj.isi || []).forEach((x) => b(x.nama, String(x.jumlah).replace('.', ',') + ' ' + x.satuan));
   g.push({ garis: true });
+  if (sj.uangMuka > 0) b('Uang muka sudah masuk', RP(sj.uangMuka));
   if (sj.bayarDiTempat) b('TAGIH DI TEMPAT', RP(sj.tagihRp), { tebal: true }); else b('Sudah dibayar / bon di toko');
   if (sj.catatan) b('Catatan: ' + sj.catatan);
   g.push({ garis: true }); b('Diterima oleh,'); b(''); b(''); b('(.............................)');

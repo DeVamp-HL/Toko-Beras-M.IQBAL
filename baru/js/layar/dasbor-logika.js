@@ -24,6 +24,8 @@ import { semuaBon, KATA_STATUS, tertagihBon } from './bon-logika.js';
 import { fkPengingat, fkTeksTempo } from './faktur-logika.js';
 // B3 (owner 18 Nov 2026): bayar di tempat yang uangnya belum disetor (merah, atas nama pengantar) & antar yang masih di jalan
 import { ajCodBelumSetor, ajKalimatCod, ajDaftar } from './antar-logika.js';
+// B4 (owner 18 Nov 2026): order rutin yang perlu dibuat (pengingat), pesanan yang dikirim ≤ 2 hari lagi, stok yang kurang untuk pesanan
+import { poPengingat, poDaftarAktif, poHariKe, poCekStok, poKataStok } from './pesanan-logika.js';
 import { susunBon as bpSusunBon } from './bon-pemasok-logika.js';
 import { hetHargaKasir } from './het-logika.js';
 import { rekapTimbangMutu } from './stok-catat-logika.js';
@@ -89,7 +91,13 @@ export function dbTagihan(kini) {
   const BP = bpSusunBon(kini); const jauh = BP.bon.filter((b) => b.status === 'jauh'); const satuBon = (b) => ({ id: b.id, pemasok: b.pemasok, sisa: b.sisa, tempoTeks: b.tempoTeks, tanggal: b.tanggal, tujuan: { ke: 'harga', keluarga: 'bon', pemasok: b.pemasok } });
   const FP = fkPengingat(kini); const tujuF = { ke: 'pelanggan', keluarga: 'usaha', tab: 'faktur' };
   const COD = ajCodBelumSetor(hariIniIso(kini), true); const AJD = ajDaftar(hariIniIso(kini), '');
+  const isoP = hariIniIso(kini); const ING = poPengingat(isoP); const hP = poHariKe(isoP); const tujuP = { ke: 'jual', lembar: 'pesanan' };
+  const DEKAT = poDaftarAktif('').filter((o) => o.tanggalKirim && poHariKe(o.tanggalKirim) - hP <= 2);
+  let STP = []; try { STP = poCekStok(isoP, daftarBarang()).filter((x) => x.awas); } catch (e) { STP = []; }
   return {
+    pesanan: { nIngat: ING.length, ingat: ING.slice(0, 4).map((x) => ({ id: x.jadwal.id + ':' + x.tanggal, nama: x.jadwal.nama, ket: x.kata + ' · ' + x.jadwal.isi, tanggal: x.tanggal, awas: x.hariLagi <= 0, tujuan: tujuP })),
+      nDekat: DEKAT.length, dekat: DEKAT.slice(0, 4).map((o) => ({ id: o.id, nama: o.nama, ket: 'kirim ' + tanggalPendek(o.tanggalKirim) + ' · ' + o.isi + (o.dp > 0 ? ' · DP' : ''), rp: o.nilai, tujuan: tujuP })),
+      stok: STP.slice(0, 3).map(poKataStok), sumber: 'Jual › Pesanan', tujuan: tujuP },
     antar: { cod: COD.map((x) => ({ noSJ: x.noSJ, nama: x.nama, pengantar: x.pengantar, sisa: x.sisa, tanggal: x.tanggal, lewat: x.lewat, tujuan: { ke: 'pelanggan', keluarga: 'bon', orang: kunciPelanggan(x.nama) } })),
       rpCod: COD.reduce((a, x) => a + x.sisa, 0), kalimat: ajKalimatCod(COD), nJalan: AJD.jalan.length, nGagal: AJD.gagal.length, sumber: 'Jual › Antar' },
     faktur: { n: FP.daftar.length, rpLewat: FP.lewat, rpSegera: FP.segera, nLewat: FP.daftar.filter((f) => f.status === 'lewat').length, sumber: 'Pelanggan › Usaha › Faktur', tujuan: tujuF,

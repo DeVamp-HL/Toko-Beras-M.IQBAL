@@ -21,7 +21,7 @@ MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip
                                   'baru/js/layar/stok-logika.js', 'baru/js/layar/varian-logika.js', 'baru/js/layar/stok-hpp-logika.js', 'baru/js/layar/kelas-merek-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/jenis-beras-logika.js', 'baru/js/layar/struk-logika.js']   # putaran 30: + stok-hpp & kelas-merek
 MODUL = MODUL + ['baru/js/layar/kg-liter-logika.js']
 if any(m.endswith(('jual-logika.js', 'bon-logika.js')) for m in MODUL):   # B2 (owner 17 Nov 2026): faktur & batas kredit (memakai harga tingkat)
-    MODUL = MODUL + [m for m in ('baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js') if m not in MODUL]   # owner 17 Nov 2026 (butir 5): penentu berat 1 liter (modul daun)
+    MODUL = MODUL + [m for m in ('baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/pesanan-logika.js') if m not in MODUL]   # owner 17 Nov 2026 (butir 5): penentu berat 1 liter (modul daun)
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
