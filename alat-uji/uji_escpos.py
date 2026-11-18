@@ -97,6 +97,10 @@ const tinggi = 500; const rb = epRaster(new Uint8Array(576 * tinggi), 576, tingg
 cek('raster: dipecah per pita (500 baris → 3 perintah)', pita === 3 && rb.length === 3 * 8 + 72 * tinggi, pita + ' / ' + rb.length);
 const sg = epSusunGambar({ bit, lebar: 10, tinggi: 2 }, { potong: 'penuh', qr: 'X1' });
 cek('struk gambar: ESC @ · raster · QR · potong penuh', sg.byte[0] === 0x1b && sg.byte[1] === 0x40 && cari(sg.byte, [0x1d, 0x76, 0x30]) > 0 && cari(sg.byte, [0x1d, 0x28, 0x6b]) > 0 && cari(sg.byte, [0x1d, 0x56, 0x41, 0x00]) > 0);
+// owner 18 Nov: printer NT320 TIDAK memahami GS ( K fn 49 (kepekatan) — byte 0x31 tercetak jadi "1" di atas struk, pita uji sama semua → perintah DICABUT.
+// Setelan `pekat` yang telanjur tersimpan di tablet wajib diabaikan.
+const gp = epSusunGambar({ bit, lebar: 10, tinggi: 2 }, { pekat: 6 }), tp = epSusun([{ kiri: 'A', kanan: '' }], { pekat: 6 });
+cek('struk tanpa perintah kepekatan GS ( K (NT320 mencetaknya jadi "1")', cari(gp.byte, [0x1d, 0x28, 0x4b]) < 0 && cari(tp.byte, [0x1d, 0x28, 0x4b]) < 0 && arr(gp.byte).slice(0, 5).join(',') === [0x1b, 0x40, 0x1b, 0x61, 1].join(','), arr(gp.byte).slice(0, 9));
 if (typeof btoa === 'function') cek('base64: byte → teks', epBase64(new Uint8Array([0x1b, 0x40, 0x41])) === 'G0BB', epBase64(new Uint8Array([0x1b, 0x40, 0x41])));
 print(JSON.stringify(hasil));
 """
@@ -146,6 +150,8 @@ MUTASI = [
     ('emoji tidak dibuang di gaya gambar', ".replace(EMOJI, '')", ""),
     ('penyambung ZWJ tertinggal', "\\u{200D}", ""),
     ('pemilih varian tertinggal', "\\u{FE00}-\\u{FE0F}", ""),
+    ('struk gambar mengirim kepekatan lagi', "w.byte(ESC, 0x40).byte(ESC, 0x61, 1);", "w.byte(ESC, 0x40).byte(GS, 0x28, 0x4b, 0x02, 0x00, 0x31, o.pekat || 0).byte(ESC, 0x61, 1);"),
+    ('struk teks mengirim kepekatan lagi', "w.byte(ESC, 0x40).byte(ESC, 0x74, 0x00);", "w.byte(ESC, 0x40).byte(GS, 0x28, 0x4b, 0x02, 0x00, 0x31, o.pekat || 0).byte(ESC, 0x74, 0x00);"),
 ]
 
 
