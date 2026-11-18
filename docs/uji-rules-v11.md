@@ -1,4 +1,4 @@
-# Uji rules v11 di server — B4 pesanan, PO & order rutin (DRAF 18 Nov 2026)
+# Uji rules v11 di server — B4 pesanan, PO & order rutin (TERBIT 18 Nov 2026 ±12.38 WIB)
 
 v11 = v10 FINAL + **tiga ubahan & tiga fungsinya** (berkas kanonik `firestore.rules`; pembanding `firestore.rules.v10`). Tidak ada yang lain berubah —
 `alat-uji/periksa_rules.py` mencabut balik ketiga ubahan & ketiga fungsi itu lalu membandingkan sisanya huruf demi huruf dengan v10.
@@ -74,6 +74,14 @@ Di **v10** kasus ★M1 ★M3 ★M5 ★M6 ★M7 ★M18 ★M19 ★M23 DITOLAK (v11
 atas atas `firestore.rules` (v11) dan atas `firestore.rules.v10` — yang berbeda wajib persis kasus yang dibuka v11 — plus kontrol (satu suku v11 dirusak →
 kasus sasarannya wajib berbalik). Semua kasus v10, v9, v8 & v7 lama tetap dijalankan atas v11 dan wajib sama hasilnya.
 
-## Hasil Playground & terbit
+## Hasil Playground & terbit (18 Nov 2026)
 
-Belum — diisi sesudah owner menerbitkan.
+- Isi editor Console sebelum uji = `firestore.rules` cabang ini, byte demi byte (SHA-256 berawalan `5940fcf8`, 60.151 byte; dibaca lewat JS dari editor),
+  sebelumnya v10 aktif (`1665c3b8`, 56.847 byte); dicek ulang sesudah ketiga kasus.
+- Wajib owner, akun owner (`uid-uji`, provider password, email owner di payload):
+  ★M2 create `pesanan/uji-v11-ps` isian PS (13 kolom; `nilaiPerkiraan` int64, `riwayatStatus` array kosong) → "Simulated write allowed" (LOLOS, sesuai);
+  ★M3 create `orderRutin/uji-v11-rutin` isian RUTIN (13 kolom; `hari` int64, `aktif` boolean, `lewati` array kosong) → "Simulated write allowed" (LOLOS,
+  sesuai; rincian Playground menilai `... || stafBuat(['ben'])` = blok baru v11); ★M4 update `pesanan/uji-v11-ps` PS dengan `status: "batal"` +
+  `alasanBatal: "uji"` → "Simulated write allowed" (LOLOS, sesuai; rincian menilai `... || stafUbahPesanan ...` & `... || stafAturPesanan ...`).
+- Owner klik **Publish** 18 Nov 2026 ±12.38 WIB (riwayat Console "Today • 12:38 PM"; sebelumnya v10 "Today • 4:43 AM"). Sesudah halaman dimuat ulang,
+  aturan yang berlaku = berkas ini (sidik sama, baris 2 `ATURAN FIRESTORE v11 FINAL`, tanpa draf tertunda).
