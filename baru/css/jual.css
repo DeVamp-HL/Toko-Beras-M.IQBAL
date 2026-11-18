@@ -25,6 +25,15 @@
 .ps-kartu .atas { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .ps-kartu .isi { font-size: 13px; }
 .ps-kartu .aksi { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+/* B4 (owner 18 Nov 2026): lembar Pesanan — pilihan barang / ulang / hari membungkus; baris barang pesanan; jumlah + tambah satu baris */
+.ps-form { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
+.ps-pil { display: flex; flex-wrap: wrap; gap: 6px; }
+.ps-pil .pil { cursor: pointer; }
+.ps-jumlah { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ps-jumlah .ketik-nama { flex: 1 1 120px; min-width: 0; }
+.baris-ps { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed var(--garis); }
+.baris-ps > span:first-child { flex: 1; }
+.baris-ps .pil { cursor: pointer; }
 .ps-kartu .aksi .pil { cursor: pointer; }
 .ps-kartu .aksi .pil.utamaKecil { background: var(--seg-aktif); border-color: var(--emas-garis); color: var(--emas1); }
 .pil.status-dipesan { color: var(--redup); }

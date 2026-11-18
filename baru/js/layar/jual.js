@@ -34,6 +34,8 @@ import { aturUpah } from './upah-logika.js';   // owner 17 Nov: daftar karyawan 
 import { tbDaftar } from './tablet-logika.js';
 import * as BN from './batal-nota-logika.js';   // owner 17 Nov (butir 2): batal nota apa pun dari Riwayat (owner)
 import { buatPanelAntar } from './antar-panel.js';   // B3 (owner 18 Nov 2026): surat jalan & antar — Bayar › Antar, daftar Antar, tanda terima
+// B4 (owner 18 Nov 2026): lembar Pesanan — pesanan dari katalog, PO, uang muka, batal, jadwal rutin & pengingatnya, cek stok
+import { buatPanelPesanan } from './pesanan-panel.js';
 import * as RW from './riwayat-logika.js';   // riwayat penjualan (owner 28 Sep): Jual › tab Riwayat   // 25c: saring rak per jenis beras (owner 27 Sep)
 
 const IKON = {
@@ -280,8 +282,9 @@ export function pasangLayarJual(akar, opsi) {
     psAlamat: (v) => set({ psAlamat: String(v || '').slice(0, 120) }),
     psNilai: (v) => set({ psNilai: String(v || '').slice(0, 15) }),
     simpanPesanan: () => tulisPesanan(L.susunPesananBaru(S(), L.waktuSekarang(S().sekarang || undefined))),
-    antarPesanan: ({ id }) => tulisPesanan(L.susunPesananAntar(id, L.waktuSekarang(S().sekarang || undefined))),
-    batalPesanan: ({ id }) => tulisPesanan(L.susunPesananBatal(id, L.waktuSekarang(S().sekarang || undefined))),
+    antarPesanan: ({ id }) => { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'pesanan'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });   // B4: owner + Ben
+      tulisPesanan(L.susunPesananAntar(id, L.waktuSekarang(S().sekarang || undefined))); },
+    batalPesanan: ({ id }) => aksi.psBatalBuka({ id }),   // B4: batal lewat panel Pesanan (uang muka → jadi saldo / dikembalikan owner)
     ikatPesanan: ({ id }) => set(L.ikatPesanan(SBN(), id)),   // B1: nego dihitung ulang dengan akun yang masuk
     lepasPesanan: () => set(L.lepasPesanan(S())),
     // ---- putaran 4: retur menunjuk nota ----
@@ -581,6 +584,11 @@ export function pasangLayarJual(akar, opsi) {
   const AP = buatPanelAntar({ set, S, akun: () => (opsi.akun ? opsi.akun() : null), waktu: () => L.waktuSekarang(S().sekarang || undefined), bukti: opsi.bukti || null,
     tunjukNota: (id) => aksi.tunjukNota({ id }) });
   Object.assign(aksi, AP.aksi); AP.pasang(akar);
+  // B4 (owner 18 Nov 2026): panel Pesanan — harga perkiraan baris = harga pembeli itu (tingkat / eceran) lewat bangunBaris yang sama dengan keranjang
+  const PP = buatPanelPesanan({ set, S, akun: () => (opsi.akun ? opsi.akun() : null), waktu: () => L.waktuSekarang(S().sekarang || undefined), rak: () => rakKini(),
+    hargaBaris: (chip, jumlah, nama) => { const t = L.bangunBaris(chip, jumlah, Object.assign({}, S(), { pelanggan: String(nama || '').trim(), keranjang: [] })); return t ? Number(t.hargaTotal) || 0 : 0; },
+    jadiNota: (saring, hari) => L.daftarPesananJadiNota(saring, hari) });
+  Object.assign(aksi, PP.aksi);
   delegasi(akar, aksi);
 
   let _rak = null, _rakUntuk = '', _rakDasar = '', _lembarSebelum = null, _ingatRak = {};
@@ -1029,38 +1037,7 @@ export function pasangLayarJual(akar, opsi) {
       </div>`;
     }
     if (s.lembar === 'antar' || s.lembar === 'antarTerima') return AP.gambarLembar(s, muncul, kepala, L1);   // B3: daftar Antar & tanda terima
-    if (s.lembar === 'pesanan') {
-      const daftar = L.daftarPesanan(s.psSaring); const jadiNota = L.daftarPesananJadiNota(s.psSaring, hariIniIso(s.sekarang || new Date()));
-      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
-        ${kepala('Pesanan', 'BUKAN uang & BUKAN stok sampai notanya dicatat · dipesan → diantar → jadi nota → lunas')}
-        <input class="ketik-nama" id="psSaring" type="text" value="${s.psSaring}" data-ketik="psSaring" placeholder="saring nama pemesan">
-        <div class="daftar-nama">${daftar.map((o) => h`<div class="ps-kartu">
-          <div class="atas"><b>${o.nama}</b><span class="pil status-${o.status}">${L.STATUS_PESANAN[o.status] || o.status}</span></div>
-          <div class="isi">${o.isi}${o.alamat ? h` · <span class="ket">${o.alamat}</span>` : ''}</div>
-          <div class="ket">${tanggalPendek(o.tanggal)}${o.jam ? ' · ' + o.jam : ''}${o.nilai ? ' · perkiraan ' + RP(o.nilai) : ''}</div>
-          <div class="aksi">
-            ${o.status === 'dipesan' ? h`<span class="pil" data-aksi="antarPesanan" data-id="${o.id}">→ antar</span>` : ''}
-            ${s.pesananId === o.id ? h`<span class="pil utamaKecil" data-aksi="lepasPesanan">✓ terikat ke keranjang · lepas</span>` : h`<span class="pil utamaKecil" data-aksi="ikatPesanan" data-id="${o.id}">catat jualnya →</span>`}
-            <span class="pil" data-aksi="batalPesanan" data-id="${o.id}">batalkan</span>
-          </div>
-        </div>`)}${daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">${s.psSaring ? 'Tidak ada pesanan aktif atas nama itu.' : 'Belum ada pesanan aktif.'}</div>`}</div>
-        ${jadiNota.length ? h`<div class="label" style="margin-top: 8px;">Sudah jadi nota · yang belum lunas + lunas 30 hari terakhir</div>
-        <div class="daftar-nama" data-k="ps-jadi-nota">${jadiNota.map((o) => h`<div class="ps-kartu">
-          <div class="atas"><b>${o.nama}</b><span class="pil ${o.uang.lunas ? '' : 'status-diantar'}">${L.STATUS_PESANAN.dibayar} · ${o.uang.lunas ? 'LUNAS' : 'BELUM LUNAS'}</span></div>
-          <div class="isi">${o.isi}${o.alamat ? h` · <span class="ket">${o.alamat}</span>` : ''}</div>
-          <div class="ket ${o.uang.lunas ? '' : 'awas-teks'}">nota ${tanggalPendek(o.uang.tanggal)} · ${o.uang.kata}</div>
-        </div>`)}</div>` : ''}
-        <div class="bulat"></div>
-        <div class="judul">Pesanan baru</div>
-        <div class="ps-form">
-          <input class="ketik-nama" id="psNama" type="text" value="${s.psNama}" data-ketik="psNama" placeholder="Nama pemesan">
-          <input class="ketik-nama" id="psIsi" type="text" value="${s.psIsi}" data-ketik="psIsi" placeholder="Pesan apa (mis. 2 karung Angsa)">
-          <input class="ketik-nama" id="psAlamat" type="text" value="${s.psAlamat}" data-ketik="psAlamat" placeholder="Alamat antar (boleh kosong)">
-          <input class="ketik-nama" id="psNilai" type="text" inputmode="numeric" value="${s.psNilai}" data-ketik="psNilai" placeholder="Perkiraan nilai Rp (boleh kosong)">
-          <div class="kaca-btn aktif" data-aksi="simpanPesanan">CATAT PESANAN</div>
-        </div>
-      </div>`;
-    }
+    if (s.lembar === 'pesanan') return PP.gambarLembar(s, muncul, kepala, L1);   // B4: panel Pesanan
     if (s.lembar === 'cekWadah') {
       // putaran 39 (owner e): satu baris per wadah — aktif: buku ±kg, status cek hari ini (hasil · jam · siapa), tiga tombol; belum aktif: redup, "aktifkan dulu"
       const CW = cekWadahRak(s); const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'isiUlang'); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;
@@ -1087,6 +1064,7 @@ export function pasangLayarJual(akar, opsi) {
         <div class="total"><span class="label">${t.kredit ? 'Pembeli bayar' : 'Ditagih'}</span><span class="n">${RP(Math.max(0, t.total))}</span></div>
         ${t.ongkir ? h`<div class="ket" data-k="ongkir-tagih">termasuk ongkir antar ${RP(t.ongkir)}</div>` : ''}
         ${t.bulat ? h`<div class="ket">termasuk pembulatan ke Rp500 ${RP(t.bulat)} (${s.cara === 'Kredit' ? 'bon ikut dibulatkan' : 'tunai'})</div>` : ''}
+        ${t.muka > 0 ? h`<div class="pita-info emas" data-k="uang-muka-tagih">uang muka pesanan ${RP(t.muka)} sudah masuk — yang dibayar sekarang <b>${RP(t.perlu)}</b>${t.dpSisa > 0 ? ' · sisa uang muka ' + RP(t.dpSisa) + ' tetap jadi saldo ' + s.pelanggan : ''}${s.cara === 'Kredit' ? ' (bon ' + RP(t.perlu) + ')' : ''}</div>` : ''}
         <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''} ${c === 'Kredit' && !tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon').boleh ? 'mati' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
         ${s.cara === 'Tunai' ? h`
           <div class="label">Uang yang diterima — ketuk lembarannya</div>
@@ -1104,7 +1082,7 @@ export function pasangLayarJual(akar, opsi) {
         ${AP.gambarBayar(s, t)}
         ${akunOwner() ? h`<div class="label">Dilayani</div><div class="bendera" data-k="dilayani">${[''].concat(daftarPelayan()).map((nm) => h`<span class="pil ${dilayaniSah() === nm ? 'nyala' : ''}" data-aksi="pilihDilayani" data-n="${nm}" data-k="dl-${nm || 'owner'}">${nm || namaOwner()}</span>`)}</div>${daftarPelayan().length ? '' : h`<div class="ket">Belum ada karyawan aktif — atur di Uang › Orang & upah.</div>`}` : ''}
         ${pitaTolak(s, 'bayar')}${s.tembusTanya && s.tembusTanya.length && s.keranjang.length ? h`<div class="kaca-btn awas" data-aksi="simpanTembus" data-k="tembus-bayar">JUAL DULU, TANDAI</div>` : ''}
-        <div class="utama ${tolak ? 'redup' : ''}" data-aksi="simpan">${tolak || 'CATAT NOTA · ' + RP(t.total)}</div>
+        <div class="utama ${tolak ? 'redup' : ''}" data-aksi="simpan">${tolak || 'CATAT NOTA · ' + RP(t.total) + (t.muka > 0 ? ' (bayar sekarang ' + RP(t.perlu) + ')' : '')}</div>
         <div class="ket" style="text-align: center;">${sumber.jenis === 'cadangan' ? 'SIMULASI — tidak ke Firestore' : 'masuk ke koleksi penjualan yang sama dengan sistem lama; bisa dibatalkan ' + L.BATAS_URUNGKAN_DETIK + ' detik sesudahnya'}</div>
         ${s.cara === 'Tunai' ? h`<div class="bulat"></div><div class="ket">atau ketik nominal uang yang diterima:</div><div class="angka" style="font-size: 20px;">${s.ketik ? RP(L.angkaKetik(s.ketik)) : 'Rp0'}</div>${tuts('uangKetik', 'PAKAI NOMINAL INI')}` : ''}
       </div>`;

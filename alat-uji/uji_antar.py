@@ -284,7 +284,7 @@ STATIS = [
     ('Pelanggan › Atur: tarif ongkir, pengantar, kendaraan', 'pelanggan', ['data-kolom="tarifOngkir"', "daftar('pengantarAntar',", "daftar('kendaraanAntar',"]),
     ('Dasbor & tutup hari memerah untuk bayar di tempat belum disetor', 'dasbor', ['data-k="db-cod"']),
     ('tutup hari (tiga lebar layar) memajang pita merah bayar di tempat', 'uang', ['data-k="k5-cod"']),
-    ('kisi peran: antar & terima antar', 'sistem', ["['antar', 'Bikin surat jalan & antar (bersama notanya)', 'Jual'], ['terimaAntar', 'Tandai barang antaran diterima / gagal', 'Jual']", "antar: 'sendiri', terimaAntar: 'sendiri' }", "antar: 'tidak', terimaAntar: 'sendiri' } };"]),
+    ('kisi peran: antar & terima antar', 'sistem', ["['antar', 'Bikin surat jalan & antar (bersama notanya)', 'Jual'], ['terimaAntar', 'Tandai barang antaran diterima / gagal', 'Jual']", "antar: 'sendiri', terimaAntar: 'sendiri', pesanan: 'sendiri' }", "antar: 'tidak', terimaAntar: 'sendiri', pesanan: 'tidak' } };"]),
     ('CI menjalankan uji ini', 'pages', ['python3 alat-uji/uji_antar.py && python3 alat-uji/uji_antar.py --kontrol']),
 ]
 
@@ -293,7 +293,7 @@ def kolom_sama(src):
     """Kolom tandai surat jalan: antar-logika AJ_KOLOM_TANDAI = akses.js KOLOM_TANDAI_SJ = rules v10 stafTandaiSJ (tanpa atribusi ubah); kolom terlarang surat jalan baru sama."""
     ambil = lambda t, n: re.findall(r"'(\w+)'", re.search(n + r" = \[(.*?)\];", t, re.S).group(1))
     aj, ak = ambil(src['antar'], 'AJ_KOLOM_TANDAI'), ambil(src['akses'], 'KOLOM_TANDAI_SJ')
-    r = re.search(r"affectedKeys\(\)\.hasOnly\(\[([^\]]*)\]\);\n    \}\n    // v10: bukti", src['rules'])
+    r = re.search(r"function stafTandaiSJ\(peranBoleh\) \{.*?affectedKeys\(\)\.hasOnly\(\[([^\]]*)\]\);", src['rules'], re.S)
     ru = [x for x in re.findall(r"'(\w+)'", r.group(1)) if not x.startswith('diubah')] if r else []
     bb = (ambil(src['antar'], 'AJ_KOLOM_BUKAN_BARU'), ambil(src['akses'], 'KOLOM_BUKAN_SJ_BARU'))
     rb = re.search(r"d\.get\('status', ''\) == 'berangkat'\n        && !d\.keys\(\)\.hasAny\(\[([^\]]*)\]\)", src['rules'])
@@ -306,7 +306,7 @@ RUSAK = [
     ('ongkir dipotong potongan nota (ditambah sebelum potongan)', JL, "  const bersih = subtotal - potongan - kredit + ongkir;", "  const bersih = subtotal + ongkir - Math.min(potongan + ongkir, subtotal + ongkir) + Math.min(ongkir, 0) - kredit;"),
     ('ongkir tidak menempel di baris nota', JL, "  if (ongkir > 0) { const ip = ajBarisPembawa(items); if (ip >= 0) { items[ip].ongkirAntar = ongkir; items[ip].hargaTotal += ongkir; } }", ""),
     ('surat jalan tidak lahir bersama nota', JL, "    dokumen.push({ koleksi: 'suratJalan', data: suratJalan });", ""),
-    ('bayar di tempat tetap kena batas kredit', JL, "  if (s.cara === 'Kredit' && !(s.antar && s.antar.cod)) { const k = alasanKunciKredit(s, t.total); if (k) return k; }", "  if (s.cara === 'Kredit') { const k = alasanKunciKredit(s, t.total); if (k) return k; }"),
+    ('bayar di tempat tetap kena batas kredit', JL, "  if (s.cara === 'Kredit' && !(s.antar && s.antar.cod)) { const nb = bonKeranjang(s, t); const k = nb > 0 ? alasanKunciKredit(s, nb) : null; if (k) return k; }", "  if (s.cara === 'Kredit') { const k = alasanKunciKredit(s, t.total); if (k) return k; }"),
     ('baris nota tanpa nomor surat jalan', JL, "    if (noSJ) { d.noSJ = noSJ; if (antar.cod) d.bayarDiTempat = true; }", ""),
     ('pembatalan nota tidak membatalkan surat jalan', JL, "  ajBatalUntukNota(notaTerakhir.trxId, { kini }).forEach((x) => dokumen.push(x));", ""),
     ('nomor surat jalan dipakai ulang', AJ, "aw + ('0000' + (maks + 1))", "aw + ('0000' + 1)"),
@@ -327,7 +327,7 @@ RUSAK = [
     # kesamaan BUAT_STAF dengan rules v10 dijaga periksa_rules.py (BUAT_STAF ↔ allow create), kisi dijaga kontrol di atas.
     ('penjaga menerima surat jalan baru berisi penerimaan', AK, " || KOLOM_BUKAN_SJ_BARU.some((k) => k in d))) return { tolak: tolakTindakan('antar') };", ")) return { tolak: tolakTindakan('antar') };"),
     ('penjaga menerima tandai ulang / batal oleh pengantar', AK, "(String(lama.status || '') !== 'berangkat' || ['diterima', 'gagal'].indexOf(String(d.status || '')) < 0)", "(false)"),
-    ('Atur tidak menyimpan tarif ongkir', PL, "      tarifOngkir: ab.tarifOngkir, pengantarAntar: ab.pengantarAntar, kendaraanAntar: ab.kendaraanAntar } }],", " } }],"),
+    ('Atur tidak menyimpan tarif ongkir', PL, "      tarifOngkir: ab.tarifOngkir, pengantarAntar: ab.pengantarAntar, kendaraanAntar: ab.kendaraanAntar, hariIngatRutin", "      hariIngatRutin"),
 ]
 RUSAK_LP = [
     ('Laporan per merek tidak memisahkan ongkir', LP, "    if (ong) { const o = luar.ongkir; o.nOngkir += 1;", "    if (false) { const o = luar.ongkir; o.nOngkir += 1;"),

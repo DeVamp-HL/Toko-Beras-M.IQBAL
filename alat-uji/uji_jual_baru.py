@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/batal-nota-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/inti/struk-model.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/pesanan-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/batal-nota-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/inti/struk-model.js']
 
 # KOTAK PASIR — angka contoh, bukan angka toko
 KOTAK = {
@@ -1194,7 +1194,7 @@ if __name__ == '__main__':
             '39b-19: omzet "Hari ini" Jual tidak mengurangi uang retur': js.replace("const omzet = baris.reduce((a, p) => a + (p.hargaTotal || 0), 0) - retur;", "const omzet = baris.reduce((a, p) => a + (p.hargaTotal || 0), 0);"),
             'no.4: struk mencetak "Sisa bon Rp0" untuk kelebihan bayar': js.replace("lebihBayar = pecahLebih(r).uang > 0.5 ? pecahLebih(r).uang : 0;", "lebihBayar = 0;"),
             'no.4 B1: struk menyebut hapus buku terbayar sebagai kelebihan bayar pembeli': js.replace("lebihBayar = pecahLebih(r).uang > 0.5 ? pecahLebih(r).uang : 0;", "lebihBayar = r && r.sisa < LEBIH_AMBANG ? -r.sisa : 0;"),
-            'no.4 B5: nota Kredit yang tertutup kelebihan bayar tetap "belum dibayar"': js.replace("const pakaiLebih = rB ? stPakaiLebih(rB, nota, bb) : 0;", "const pakaiLebih = 0;"),
+            'no.4 B5: nota Kredit yang tertutup kelebihan bayar tetap "belum dibayar"': js.replace("const pakaiLebih = rB && !(Number(nota.uangMuka) > 0) ? stPakaiLebih(rB, nota, bb) : 0;", "const pakaiLebih = 0;"),
             'no.4 B5: pembayaran sesudah nota ikut dianggap sebelum nota': js.replace("    if (String(m.tanggal || '') + ' ' + String(m.jam || '') > t) return a;\n", ""),
             'no.4: daftar nama Jual tanpa kelebihan bayar': js.replace("lebih: pecahLebih(r).lebih, lebihUang: pecahLebih(r).uang, lebihHapus: pecahLebih(r).hapus, umurHari", "lebih: 0, lebihUang: 0, lebihHapus: 0, umurHari"),
             'no.4: info Kredit tanpa kelebihan bayar': js.replace("i.lebih = PL.lebih; i.lebihUang = PL.uang; i.lebihHapus = PL.hapus;", "i.lebih = 0; i.lebihUang = 0; i.lebihHapus = 0;"),
@@ -1283,7 +1283,7 @@ if __name__ == '__main__':
             'bon tidak dibulatkan (aturan lama)': js.replace("return (c === 'Tunai' || c === 'Kredit') && total > 0 ?", "return c === 'Tunai' && total > 0 ?"),
             'struk parkir tidak memegang stok': js.replace("s.antrean.map((a) => ({ beku: { items: barisPegang(a.beku.items), nama: a.beku.pelanggan } }))", "[]"),   # putaran 27: baris ½ karung dipegang sebagai 50 kg, literan wadah per merek asal
             'langit-langit stok diabaikan': js.replace("if (maks !== null && j > maks) {", "if (false) {"),
-            'uang kurang dianggap lunas': js.replace("const kurang = s.cara === 'Tunai' && uang > 0 ? Math.max(0, total - uang) : 0;", "const kurang = 0;"),
+            'uang kurang dianggap lunas': js.replace("const kurang = s.cara === 'Tunai' && uang > 0 ? Math.max(0, perlu - uang) : 0;", "const kurang = 0;"),
             'sisa bon tanpa nama lolos': js.replace("if (t.sisaJadiBon && !nama) return", "if (false) return"),
             'nego di bawah modal tidak diberi tahu': js.replace("kabarAwas: p.status === 'bawahModal' };", "kabarAwas: false };"),
             'nego di bawah modal tanpa alasan dipakai (owner 7 Okt)': js.replace("if (!alasan) return P('perluAlasan'", "if (false) return P('perluAlasan'"),
@@ -1297,7 +1297,7 @@ if __name__ == '__main__':
             'bayar sebagian dicatat Tunai (kekurangan hilang dari buku bon)': js.replace("if (cara !== 'Kredit' && uang > 0 && uang < tagihan) { bayarSebagian = uang; cara = 'Kredit'; }", "if (false) { }"),
             'pelunasan sebagian tidak dicatat': js.replace("if (bayarSebagian > 0) {\n    piutangId = w.idUnik();", "if (false) {\n    piutangId = w.idUnik();"),
             'kantong literan tidak dicatat terpakai': js.replace("if (d.kemasanLiteran && d.jumlahKemasanLiteranDipakai > 0) {\n      dokumen.push", "if (false) {\n      dokumen.push"),
-            'KR1 dilewati untuk bon': js.replace("if (s.cara === 'Kredit' && !(s.antar && s.antar.cod)) { const k = alasanKunciKredit(s, t.total); if (k) return k; }", ""),
+            'KR1 dilewati untuk bon': js.replace("if (s.cara === 'Kredit' && !(s.antar && s.antar.cod)) { const nb = bonKeranjang(s, t); const k = nb > 0 ? alasanKunciKredit(s, nb) : null; if (k) return k; }", ""),
             'stok tidak dicek ulang saat mencatat': js.replace("const stok = periksaStokKeranjang(s); let tembus = [];   // pemeriksaan ulang TIDAK berubah (31b)", "const stok = ''; let tembus = [];"),   # putaran 31b: simpanNota memisahkan alasanTolak & periksaStokKeranjang
             # ---- audit 39b no. 8: struk nota bayar sebagian ----
             'struk bayar sebagian tidak mencari uang yang diterima': js.replace("const bb = bayarSaatBeli(nota);", "const bb = null;"),

@@ -60,8 +60,16 @@ AJ_PEMAKAI = ('jual-logika.js', 'retur-logika.js', 'struk-logika.js', 'laporan-l
               'uang-logika.js', 'batal-nota-logika.js')
 
 
+# B4 (owner 18 Nov 2026): pesanan, PO & order rutin — jual-logika (uang muka memotong nota, keranjang dari pesanan), Dasbor (pengingat & stok pesanan),
+# Pelanggan › Atur (hari pengingat) memakai pesanan-logika (modul daun: data + pembantu + format). Ikut OTOMATIS (sekali, di belakang).
+PO_MODUL = 'baru/js/layar/pesanan-logika.js'
+PO_PEMAKAI = ('jual-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js')
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in PO_PEMAKAI for x in d) and not any(x.endswith('pesanan-logika.js') for x in d):
+        d.append(PO_MODUL)
     if any(os.path.basename(x) in AJ_PEMAKAI for x in d) and not any(x.endswith('antar-logika.js') for x in d):
         d.append(AJ_MODUL)
         if not any(x.endswith('faktur-logika.js') for x in d):

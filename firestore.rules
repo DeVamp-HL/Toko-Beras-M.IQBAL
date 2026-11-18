@@ -1,5 +1,15 @@
 // ============================================================================
-// ATURAN FIRESTORE v10 FINAL — Toko Beras M.IQBAL (DRAF 18 Nov 2026, B3 surat jalan & antar) = v9 FINAL + PERSIS dua blok baru & tiga fungsinya
+// ATURAN FIRESTORE v11 FINAL — Toko Beras M.IQBAL (DRAF 18 Nov 2026, B4 pesanan, PO & order rutin) = v10 FINAL + PERSIS tiga ubahan & tiga fungsinya
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v10; uji server: docs/uji-rules-v11.md). Owner menerbitkan v11 SEKALI lewat Console
+// SEBELUM cabang B4 digabung:
+//   (v11-1) pesanan create: owner || stafBuatPesanan(ben) — pesanan baru dari tablet: atas nama penulisnya, 'dipesan', belum bernota, tanpa kolom batal.
+//   (v11-2) pesanan update: + stafAturPesanan(ben) — Ben mengubah isi / PO / tanggal kirim / alamat, mengantar, atau membatalkan pesanan yang belum jadi nota
+//           (status dipesan / diantar → dipesan / diantar / batal), kolom dibatasi. Jadi nota tetap stafUbahPesanan (ben & karyawan) sejak v1. Uang muka =
+//           piutangMutasi bayar yang sudah terbuka untuk ben & karyawan sejak v3 — rules uang tidak berubah.
+//   (v11-3) blok orderRutin — jadwal pesanan rutin pelanggan: baca owner/ben/karyawan; create owner || stafBuat(ben); update owner || stafUbahRutin(ben)
+//           (kolom dibatasi); hapus owner.
+// Sisanya = v10 FINAL di bawah ini, apa adanya. Kepala v10:
+// ATURAN FIRESTORE v10 FINAL — (B3 surat jalan & antar) = v9 FINAL + PERSIS dua blok baru & tiga fungsinya
 // (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v9; uji server: docs/uji-rules-v10.md). Owner menerbitkan v10 SEKALI lewat Console
 // SEBELUM cabang B3 digabung:
 //   (v10-1) blok suratJalan — baca owner/ben/karyawan; create owner || stafBuatSJ(ben): surat jalan BERSAMA notanya, status 'berangkat', tanpa kolom
@@ -207,6 +217,22 @@ service cloud.firestore {
       return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid
         && resource.data.get('status', '') == 'berangkat' && request.resource.data.get('status', '') in ['diterima', 'gagal']
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riwayatStatus', 'penerima', 'diterimaPada', 'diterimaTanggal', 'diterimaJam', 'catatanTerima', 'buktiTtd', 'buktiFoto', 'uangDiterima', 'caraUang', 'pelunasanId', 'alasanGagal', 'ditandaiOleh', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v11 (B4, owner 18 Nov 2026): pesanan baru dari tablet — atas nama penulisnya, 'dipesan', belum bernota, tanpa kolom batal
+    function stafBuatPesanan(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('status', '') == 'dipesan' && d.get('trxIdJual', null) == null && !d.keys().hasAny(['dibatalkan', 'alasanBatal', 'nasibUangMuka']);
+    }
+    // v11: Ben mengubah / mengantar / membatalkan pesanan yang belum jadi nota — kolom dibatasi (uang & nota tidak tersentuh; jadi nota = stafUbahPesanan)
+    function stafAturPesanan(peranBoleh) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid
+        && resource.data.get('status', '') in ['dipesan', 'diantar'] && request.resource.data.get('status', '') in ['dipesan', 'diantar', 'batal']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riwayatStatus', 'baris', 'isi', 'noPO', 'tanggalKirim', 'alamat', 'nilaiPerkiraan', 'catatan', 'alasanBatal', 'nasibUangMuka', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v11: Ben mengubah jadwal order rutin — kolom dibatasi (pembuat & tanggal dibuat tetap)
+    function stafUbahRutin(peranBoleh) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['namaPelanggan', 'baris', 'isi', 'alamat', 'noPO', 'catatan', 'ulang', 'hari', 'tanggalBulan', 'mulai', 'aktif', 'lewati', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
     }
     // v10: bukti terima antar (tanda tangan / foto penerima) — bentuk dibatasi seperti fotoBon
     function buktiSah(id) {
@@ -475,8 +501,8 @@ service cloud.firestore {
 
     match /pesanan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if owner();
-      allow update: if owner() || stafUbahPesanan(['ben', 'karyawan']);   // peta §5 baris 1: jadi dibayar
+      allow create: if owner() || stafBuatPesanan(['ben']);   // v11 (B4): pesanan dari tablet
+      allow update: if owner() || stafUbahPesanan(['ben', 'karyawan']) || stafAturPesanan(['ben']);   // peta §5 baris 1: jadi dibayar · v11: Ben mengubah pesanan
       allow delete: if owner();
     }
 
@@ -754,6 +780,14 @@ service cloud.firestore {
     match /buktiTerima/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
       allow create: if (owner() || stafBuat(['ben', 'karyawan'])) && buktiSah(id);
+      allow delete: if owner();
+    }
+
+    // v11 (B4, owner 18 Nov 2026): jadwal order rutin pelanggan — owner & ben membuat dan mengubah (kolom terbatas), hapus owner
+    match /orderRutin/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuat(['ben']);
+      allow update: if owner() || stafUbahRutin(['ben']);
       allow delete: if owner();
     }
 
