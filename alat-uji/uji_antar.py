@@ -134,6 +134,8 @@ ok('D: draf antar ikut diparkir & kembali saat dibuka', Dp.antar === null && Dp.
 
 // ---- E · tanda terima, setor, gagal, batal
 var sj2 = ajCari(SJ2.id);
+var UP = uangNotaPesanan({ status: 'dibayar', trxIdJual: N2.trxId }, '2026-11-18');
+ok('E: pesanan yang notanya bayar di tempat → BELUM lunas: "BAYAR DI TEMPAT — belum setor Rp82.000"', !UP.lunas && UP.sisa === 82000 && /BAYAR DI TEMPAT — belum setor Rp82\.000/.test(UP.kata), J(UP));
 ok('E: tanpa tanda tangan → ditolak', /tanda tangan/.test(ajSusunTerima(sj2, { uang: '82000' }, W).tolak || ''));
 ok('E: uang lebih dari tagihan → ditolak', /lebih besar/.test(ajSusunTerima(sj2, { ttdId: 'T1', uang: '90000' }, W).tolak || ''));
 var R1 = ajSusunTerima(sj2, { ttdId: 'T1', fotoId: '', uang: '82000', caraUang: 'Tunai', penerima: 'Deka', oleh: 'Ben Contoh' }, W);
@@ -158,6 +160,7 @@ ok('E: karyawan membatalkan surat jalan → DITOLAK', !!kirimUbah(KRY, 'suratJal
 ok('E: Ben membuat surat jalan berisi kolom penerimaan → DITOLAK', !!kirim(BEN, [{ koleksi: 'suratJalan', data: Object.assign({}, SJ2, { penerima: 'x' }) }]).tolak);
 ok('E: menandai ulang yang sudah diterima → DITOLAK', !!kirimUbah(BEN, 'suratJalan', U1, Object.assign({}, U1, { status: 'gagal', alasanGagal: 'x' })).tolak);
 terapkanKeCache(R1.dokumen);
+ok('E: uang di tempat pulang → pesanan nota itu LUNAS', uangNotaPesanan({ status: 'dibayar', trxIdJual: N2.trxId }, '2026-11-18').lunas);
 ok('E: sesudah uang pulang: bon Deka kembali ke awal, tidak ada bayar di tempat yang belum disetor', hitungPiutang().find(function (r) { return r.kunci === 'deka'; }).sisa === bonDekaAwal && ajCodBelumSetor('2026-11-18').length === 0);
 var NS2 = notaDariBaris(ambilPenjualanSemua().filter(function (p) { return String(p.trxId) === String(N2.trxId); }));
 var ST2 = susunStruk(NS2, stAtur(), { kertas: 80 });

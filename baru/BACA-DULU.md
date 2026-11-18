@@ -2709,6 +2709,11 @@ uang dibawa pulang; **owner + Ben** membuat surat jalan, **pengantar** (Ben / ka
   `AJ_PENGANTAR_INGAT_HARI` (60) hari terakhir (`ajPilihanPengantar`, dari surat jalan, tanpa kembar) + **"+ orang lain"** (ketik nama, ≤ 30 huruf;
   draf `pengantarKetik`, tidak ikut ke dokumen). Kurir lepas tidak perlu akun: tanda terimanya ditandai di toko (lembar toko difoto); uang bayar di tempat
   tercatat `dibawaOleh` namanya, peringatan merah tutup hari atas namanya.
+- **Susulan owner 18 Nov — Pesanan "DIBAYAR" menyesatkan**: begitu notanya dicatat pesanan langsung berstatus `dibayar` walau notanya bon / bayar di
+  tempat. Data TETAP `dibayar` (rules `pesanan`, `pesananBelumTuntas` beku, pembatalan nota); LAYAR menyebutnya **JADI NOTA** (`STATUS_PESANAN`) + keadaan
+  uang notanya (`uangNotaPesanan`: tunai/QRIS = LUNAS; bayar di tempat = sisa surat jalan; bon = sisa rincian bon baris nota itu, `fkRincian`). Lembar
+  Pesanan memajang "Sudah jadi nota" (`daftarPesananJadiNota`: yang belum lunas + lunas 30 hari terakhir); ringkasan nota: "pesanan X JADI NOTA · LUNAS /
+  bon — lunas setelah dibayar / bayar di tempat — lunas setelah uangnya pulang".
 - **Akses**: kisi peran + `antar` (Ben sendiri, karyawan tidak) & `terimaAntar` (Ben & karyawan sendiri); `akses.js` BUAT_STAF `suratJalan: ['ben']`,
   UBAH_STAF kolom tandai (`KOLOM_TANDAI_SJ` = `AJ_KOLOM_TANDAI` = rules), surat jalan baru tanpa kolom penerimaan (`KOLOM_BUKAN_SJ_BARU`).
 - **Pelanggan › Atur**: `tarifOngkir`, `pengantarAntar` (minimal satu), `kendaraanAntar` di `aturanToko/pelanggan` (dibaca tablet Ben).
