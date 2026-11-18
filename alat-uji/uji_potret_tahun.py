@@ -346,11 +346,13 @@ coba('P10', function () {
 """
 
 # ---------- P9 · laporan.js ASLI digambar di jsc (pasang/delegasi/jadwal diganti penangkap; tanpa DOM) ----------
-MODUL_LAYAR = MODUL + ['baru/js/inti/dom.js', 'baru/js/inti/kunci.js', 'baru/js/inti/keadaan.js', 'baru/js/inti/isian.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerak.js', 'baru/js/layar/laporan.js']
+# B5 (owner 18 Nov 2026): laporan.js memanggil PG.pelangganBulan (laba-pelanggan-logika → faktur & harga tingkat) — modul yang dibawa pemakainya ikut lewat
+# bundel_baru.lengkapi, sama dengan bundelan() (bundel_baru.bundel)
+MODUL_LAYAR = bundel_baru.lengkapi(MODUL) + ['baru/js/inti/dom.js', 'baru/js/inti/kunci.js', 'baru/js/inti/keadaan.js', 'baru/js/inti/isian.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerak.js', 'baru/js/layar/laporan.js']
 LAYAR = r"""
 var __html = ''; pasang = function (akar, isi) { __html = isi && isi.__mentah ? isi.html : String(isi); }; delegasi = function () {}; gulirkan = function () {}; nanti = function () {}; segera = function () {};
 setelKunci(false); window.matchMedia = function (q) { return { matches: /1100px/.test(q) }; }; window.addEventListener = function () {}; if (typeof setTimeout === 'undefined') { var setTimeout = function () { return 0; }; var clearTimeout = function () {}; }
-var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP;
+var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP; var PG = LP;   // B5: kartu Per pelanggan (laba-pelanggan-logika)
 var akarL = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0 };
 var L9 = null; var gambarL = function (patch) { L9.keadaan.setel(patch); L9.gambar(); return __html; };
 coba('P9', function () {
