@@ -75,6 +75,23 @@ export function ajBacaAtur(isi) {
   return { tarifOngkir: tarif, pengantarAntar: p, kendaraanAntar: k };
 }
 
+/** Berapa hari nama pengantar dari luar daftar (kurir lepas) tetap muncul sebagai pilihan di Bayar › Antar. */
+export const AJ_PENGANTAR_INGAT_HARI = 60;
+/**
+ * Pilihan "yang mengantar" di Bayar › Antar (owner 18 Nov: yang mengantar sekarang BUKAN pegawai tetap): { tetap: daftar Pelanggan › Atur,
+ * lain: nama yang pernah mengantar tapi tidak di daftar — surat jalan AJ_PENGANTAR_INGAT_HARI hari terakhir, terbaru dulu, paling banyak 6 }.
+ * Nama baru diketik lewat "+ orang lain" (kurir lepas tidak perlu akun — tanda terimanya ditandai di toko, lembar toko difoto).
+ */
+export function ajPilihanPengantar(hariIso) {
+  const A = ajAtur(); const kenal = {}; A.pengantar.forEach((n) => { kenal[kunciPelanggan(n)] = 1; });
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(hariIso || '')); const batas = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] - AJ_PENGANTAR_INGAT_HARI)).toISOString().slice(0, 10) : '';
+  const lain = [];
+  (ambilSuratJalan() || []).filter((x) => x && !ajKosong(x.pengantar) && String(x.tanggal || '') >= batas)
+    .sort((a, b) => (String(b.tanggal || '') + String(b.jam || '')).localeCompare(String(a.tanggal || '') + String(a.jam || '')))
+    .forEach((x) => { const n = String(x.pengantar).trim().slice(0, 30); const k = kunciPelanggan(n); if (!kenal[k] && lain.length < 6) { kenal[k] = 1; lain.push(n); } });
+  return { tetap: A.pengantar, lain };
+}
+
 // ---------- draf antar di keranjang Jual ----------
 /** Draf baru untuk keranjang: alamat dari kartu pelanggan, ongkir = tarif bawaan, pengantar & kendaraan pertama. */
 export function ajDrafBaru(nama) {
@@ -89,7 +106,7 @@ export function ajAlasanTolak(s) {
   if (s.tukar) return 'Tukar tidak bisa sekaligus diantar — catat tukarnya dulu, lalu nota antarnya';
   if (s.karcis) return 'Rincian karcis tidak bisa diantar';
   if (ajRupiahSah(a.ongkir) === null) return 'Ongkir: ketik angka rupiah 0 – ' + RP(AJ_TARIF_MAKS);
-  if (ajKosong(a.pengantar)) return 'Pilih siapa yang mengantar';
+  if (ajKosong(a.pengantar)) return a.pengantarKetik ? 'Ketik nama yang mengantar (orang lain / kurir lepas)' : 'Pilih siapa yang mengantar';
   if (a.cod && ajKosong(s.pelanggan)) return 'Bayar di tempat = bon sementara — isi nama pembelinya';
   if (a.cod && s.cara !== 'Kredit') return 'Bayar di tempat dicatat sebagai bon sementara — ketuk "Bayar di tempat" lagi';
   if (String(a.alamat || '').length > 160) return 'Alamat antar terlalu panjang (maks. 160 huruf)';

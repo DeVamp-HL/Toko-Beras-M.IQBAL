@@ -2705,6 +2705,10 @@ uang dibawa pulang; **owner + Ben** membuat surat jalan, **pengantar** (Ben / ka
   pulang; WhatsApp tetap satu teks). Lembar Tanda terima bawaan "di kertas": **foto lembar toko WAJIB** (kertas termal memudar), kotak tanda tangan layar
   tetap ada lewat pilihan "di layar ini". Data: `buktiTtd: []` + `buktiFoto: [foto lembar]`, `riwayatStatus[...].bukti = 'kertas' | 'layar'`
   (`ajCaraTerima`), dokumen bukti `isiBukti: 'kertas' | 'layar' | 'barang'`. Kolom yang berubah tetap di daftar `stafTandaiSJ` → **rules v10 tidak berubah**.
+- **Susulan owner 18 Nov — yang mengantar bukan pegawai tetap**: Bayar › Antar › Yang mengantar = daftar Pelanggan › Atur + nama yang pernah mengantar
+  `AJ_PENGANTAR_INGAT_HARI` (60) hari terakhir (`ajPilihanPengantar`, dari surat jalan, tanpa kembar) + **"+ orang lain"** (ketik nama, ≤ 30 huruf;
+  draf `pengantarKetik`, tidak ikut ke dokumen). Kurir lepas tidak perlu akun: tanda terimanya ditandai di toko (lembar toko difoto); uang bayar di tempat
+  tercatat `dibawaOleh` namanya, peringatan merah tutup hari atas namanya.
 - **Akses**: kisi peran + `antar` (Ben sendiri, karyawan tidak) & `terimaAntar` (Ben & karyawan sendiri); `akses.js` BUAT_STAF `suratJalan: ['ben']`,
   UBAH_STAF kolom tandai (`KOLOM_TANDAI_SJ` = `AJ_KOLOM_TANDAI` = rules), surat jalan baru tanpa kolom penerimaan (`KOLOM_BUKAN_SJ_BARU`).
 - **Pelanggan › Atur**: `tarifOngkir`, `pengantarAntar` (minimal satu), `kendaraanAntar` di `aturanToko/pelanggan` (dibaca tablet Ben).

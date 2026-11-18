@@ -222,6 +222,17 @@ ok('H: cetak 2 lembar: LEMBAR PEMBELI lalu LEMBAR TOKO (WAJIB ditandatangani, ba
   && /WAJIB ditandatangani/.test(L2) && /Bawa pulang ke toko/.test(L2) && /Diterima oleh/.test(L1) && /Diterima oleh/.test(L2) && (L1 + '\n' + L2).split('\n').every(function (l) { return l.length <= 32; })
   && L2b.split('\n').every(function (l) { return l.length <= 48; }), L1 + '\n=====\n' + L2);
 ok('H: WhatsApp tetap satu teks tanpa nama lembar', !/LEMBAR/.test(TX));
+
+// ---- I · yang mengantar BUKAN pegawai tetap (owner 18 Nov): "+ orang lain" = ketik nama; nama itu muncul lagi sebagai pilihan 60 hari (bagian TERAKHIR — cache surat jalan ditimpa)
+ok('I: "orang lain" tanpa nama → ditolak dengan kalimat ketik', /Ketik nama yang mengantar/.test(ajAlasanTolak({ antar: { ongkir: '', pengantar: '', pengantarKetik: true } }) || ''));
+var DSJ = ajDokumenSJ({ antar: { alamat: 'Jl. Contoh', ongkir: '', pengantar: '  Kurir Lepas Contoh  ', pengantarKetik: true, kendaraan: '', cod: true, catatan: '' }, pelanggan: 'Deka', keranjang: [] }, W, { noSJ: 'SJ26-TES-0777', trxId: 'tx-777', total: 50000, isi: [] });
+ok('I: surat jalan menyimpan nama kurir lepas apa adanya (dirapikan), tanpa kolom bantu draf', !!DSJ && DSJ.pengantar === 'Kurir Lepas Contoh' && !('pengantarKetik' in DSJ), J(DSJ));
+var RL = ajSusunTerima(Object.assign({}, sjK, { id: 'sjL', noSJ: 'SJ26-TES-0778', pengantar: 'Kurir Lepas Contoh' }), { cara: 'kertas', fotoId: 'F2', uang: '82000' }, W);
+ok('I: uang bayar di tempat tercatat dibawa kurir lepas (dibawaOleh = namanya)', !RL.tolak && RL.dokumen[0].data.dibawaOleh === 'Kurir Lepas Contoh' && /dibawa Kurir Lepas Contoh/.test(RL.patch.kabar), RL.tolak || J(RL.dokumen[0].data));
+pasok('suratJalan', [{ id: 'a', tanggal: '2026-11-17', jam: '09:00', pengantar: 'Kurir Lepas Contoh' }, { id: 'b', tanggal: '2026-11-10', jam: '09:00', pengantar: 'kurir lepas contoh ' },
+  { id: 'c', tanggal: '2026-11-12', jam: '09:00', pengantar: 'Ben' }, { id: 'd', tanggal: '2026-10-01', jam: '09:00', pengantar: 'Teman Contoh' }, { id: 'e', tanggal: '2026-08-01', jam: '09:00', pengantar: 'Lama Contoh' }]);
+var PP = ajPilihanPengantar('2026-11-18');
+ok('I: pilihan = daftar Atur (Ben, …) + yang pernah mengantar 60 hari terakhir, terbaru dulu, tanpa kembar & tanpa yang sudah di daftar', PP.tetap.indexOf('Ben') >= 0 && J(PP.lain) === '["Kurir Lepas Contoh","Teman Contoh"]', J(PP));
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 
@@ -262,6 +273,8 @@ STATIS = [
     ('panel: tanda tangan di KERTAS bawaan, foto lembar wajib, dua pilihan cara, kartu & bukti menyebut kertas', 'panel', ["caraUang: 'Tunai', cara: 'kertas' }, ajTtdN",
      "if (kertas) { if (!foto) return set({ kabar: 'Foto dulu LEMBAR TOKO", 'data-aksi="ajCaraTerima"', "cara: kertas ? 'kertas' : 'layar', ttdId: rt ? rt.data.id : ''",
      "AJ.ajCaraTerima(x) === 'kertas' ? ' · tanda tangan di kertas (foto lembar)'", "d.isiBukti === 'kertas' ? 'foto lembar bertanda tangan'"]),
+    ('panel: yang mengantar = daftar + pernah mengantar + "orang lain" (ketik nama)', 'panel', ['const P = AJ.ajPilihanPengantar(hari());', 'data-aksi="ajPengantarLain"', 'data-kolom="pengantar" data-k="aj-pengantar-ketik"',
+     "!(k === 'pengantar' && s.antar.pengantarKetik)", "if (kolom === 'pengantar') o.pengantarKetik = false;", '${gambarPengantar(a, A)}']),
     ('panel: cetak surat jalan = 2 lembar berurutan di printer & dialog', 'panel', ['const lembar = AJ.ajLembarCetak(sj, atur.kop);', 'return lembar.reduce((p, g) => p.then(() => PR.susunCetak(g, { gaya: \'teks\' }))',
      "lembar.map((g) => AJ.ajTeksCetak(g, kertas === 58 ? 32 : 48)).join("]),
     ('modul baru di-modulepreload', 'index', ['<link rel="modulepreload" href="js/layar/antar-logika.js">', '<link rel="modulepreload" href="js/layar/antar-panel.js">']),
@@ -299,6 +312,8 @@ RUSAK = [
     ('tanda tangan kertas tanpa foto lembar diterima', AJ, "  if (kertas && ajKosong(x.fotoId)) return", "  if (false) return"),
     ('cara kertas tetap menulis id tanda tangan layar', AJ, "buktiTtd: kertas ? [] : [String(x.ttdId)]", "buktiTtd: [String(x.ttdId)]"),
     ('riwayat tidak mencatat cara tanda terima', AJ, "ajRiwayat(sj, 'diterima', w, { bukti: kertas ? 'kertas' : 'layar' })", "ajRiwayat(sj, 'diterima', w)"),
+    ('pilihan pengantar melupakan kurir lepas', AJ, "if (!kenal[k] && lain.length < 6) { kenal[k] = 1; lain.push(n); }", "if (false) { kenal[k] = 1; lain.push(n); }"),
+    ('pilihan pengantar tidak membatasi 60 hari', AJ, "String(x.tanggal || '') >= batas)", "String(x.tanggal || '') >= '')"),
     ('cetak surat jalan cuma satu lembar', AJ, "  return [ajGarisCetak(sj, kop, 'pembeli'), ajGarisCetak(sj, kop, 'toko')];", "  return [ajGarisCetak(sj, kop, 'toko')];"),
     ('lembar toko tanpa perintah bawa pulang', AJ, "b('Bawa pulang ke toko, lalu foto');", ""),
     ('uang di tempat tanpa alamat surat jalan', AJ, "      untukSJ: String(sj.noSJ), catatan: 'Bayar di tempat — surat jalan ' + sj.noSJ };", "      catatan: 'Bayar di tempat — surat jalan ' + sj.noSJ };"),
@@ -321,6 +336,7 @@ RUSAK_STATIS = [
     ('panel menerima tanda terima tanpa tanda tangan', 'panel', 'if (!AJ.ajTtdCukup(nTitik())) return', 'if (false) return'),
     ('panel menerima tanda tangan kertas tanpa foto lembar', 'panel', "if (kertas) { if (!foto) return set(", "if (kertas) { if (false) return set("),
     ('layar Terima bawaan tanda tangan di layar', 'panel', "caraUang: 'Tunai', cara: 'kertas' }, ajTtdN", "caraUang: 'Tunai', cara: 'layar' }, ajTtdN"),
+    ('nama orang lain tidak bisa diketik', 'panel', "!(k === 'pengantar' && s.antar.pengantarKetik)", "false"),
     ('printer tablet cuma mencetak satu lembar', 'panel', 'const lembar = AJ.ajLembarCetak(sj, atur.kop);', 'const lembar = [AJ.ajGarisCetak(sj, atur.kop)];'),
     ('akses.js berbeda kolom tandai dengan rules', 'akses', "'uangDiterima', 'caraUang', 'pelunasanId', 'alasanGagal', 'ditandaiOleh'];", "'uangDiterima', 'caraUang', 'pelunasanId', 'alasanGagal', 'ditandaiOleh', 'tagihRp'];"),
 ]

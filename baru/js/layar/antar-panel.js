@@ -99,8 +99,11 @@ export function buatPanelAntar(ctx) {
     // ---- draf antar di Bayar
     ajBuat: () => { const tb = tombolAkun(akun(), 'antar'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ antar: AJ.ajDrafBaru(S().pelanggan), kabar: '' }); },
     ajLepas: () => { const s = S(); set({ antar: null, cara: s.antar && s.antar.cod ? 'Tunai' : s.cara, kabar: 'Tidak jadi diantar — nota ini nota biasa', kabarAwas: false }); },
-    ajKetik: (v, el) => { const s = S(); if (!s.antar) return; const k = el.dataset.kolom; if (['alamat', 'ongkir', 'catatan'].indexOf(k) < 0) return; const o = {}; o[k] = String(v || '').slice(0, k === 'ongkir' ? 12 : 160); set({ antar: Object.assign({}, s.antar, o) }); },
-    ajPilih: ({ kolom, n }) => { const s = S(); if (!s.antar || ['pengantar', 'kendaraan'].indexOf(kolom) < 0) return; const o = {}; o[kolom] = s.antar[kolom] === n && kolom === 'kendaraan' ? '' : String(n || ''); set({ antar: Object.assign({}, s.antar, o) }); },
+    ajKetik: (v, el) => { const s = S(); if (!s.antar) return; const k = el.dataset.kolom; if (['alamat', 'ongkir', 'catatan'].indexOf(k) < 0 && !(k === 'pengantar' && s.antar.pengantarKetik)) return;
+      const o = {}; o[k] = String(v || '').slice(0, k === 'ongkir' ? 12 : k === 'pengantar' ? 30 : 160); set({ antar: Object.assign({}, s.antar, o) }); },
+    ajPilih: ({ kolom, n }) => { const s = S(); if (!s.antar || ['pengantar', 'kendaraan'].indexOf(kolom) < 0) return; const o = {}; o[kolom] = s.antar[kolom] === n && kolom === 'kendaraan' ? '' : String(n || ''); if (kolom === 'pengantar') o.pengantarKetik = false; set({ antar: Object.assign({}, s.antar, o) }); },
+    // yang mengantar bukan dari daftar (kurir lepas / bukan pegawai tetap): ketik namanya
+    ajPengantarLain: () => { const s = S(); if (!s.antar || s.antar.pengantarKetik) return; set({ antar: Object.assign({}, s.antar, { pengantar: '', pengantarKetik: true }), kabar: '' }); },
     ajTarif: () => { const s = S(); if (!s.antar) return; set({ antar: Object.assign({}, s.antar, { ongkir: String(AJ.ajAtur().tarif || '') }) }); },
     ajCod: () => { const s = S(); if (!s.antar) return; if (!s.antar.cod) { const tb = tombolAkun(akun(), 'jualBon'); if (!tb.boleh) return set({ kabar: 'Bayar di tempat dicatat sebagai bon sementara — ' + tb.kalimat, kabarAwas: true }); }
       set(Object.assign(AJ.ajSetelCod(s, !s.antar.cod), { kabar: '' })); },
@@ -186,11 +189,20 @@ export function buatPanelAntar(ctx) {
         <div><div class="ket">Catatan untuk pengantar</div><input class="ketik-nama" type="text" value="${a.catatan}" data-ketik="ajKetik" data-kolom="catatan" data-k="aj-catatan" placeholder="mis. taruh di dapur"></div>
       </div>
       ${ongkirSah ? (t.ongkir ? h`<div class="ket">ongkir ${RP(t.ongkir)} masuk nota sebagai baris sendiri (bukan jualan beras)</div>` : '') : h`<div class="ket awas-teks">Ongkir: ketik angka rupiah (0 – ${RP(AJ.AJ_TARIF_MAKS)})</div>`}
-      <div class="label">Yang mengantar</div>${pil('pengantar', A.pengantar)}
+      <div class="label">Yang mengantar</div>${gambarPengantar(a, A)}
       ${A.kendaraan.length ? h`<div class="label">Kendaraan</div>${pil('kendaraan', A.kendaraan)}` : ''}
       <div class="tombol-baris"><div class="kaca-btn ${a.cod ? 'aktif emas' : ''}" data-aksi="ajCod" data-k="aj-cod">${a.cod ? '✓ Bayar di tempat' : 'Bayar di tempat'}</div></div>
       ${a.cod ? h`<div class="pita-info emas" data-k="aj-cod-pita">BAYAR DI TEMPAT — nota dicatat sekarang sebagai bon sementara atas nama ${s.pelanggan || '… (pilih nama pembelinya)'}; ${a.pengantar || 'pengantar'} menagih ${RP(Math.max(0, t.total))} dan membawa uangnya pulang. Bebas batas kredit hari ini; kalau sampai tutup hari uangnya belum disetor, Dasbor & tutup hari memerah.</div>` : ''}
     </div>`;
+  }
+  /** Pilihan yang mengantar: daftar Atur + yang pernah mengantar (kurir lepas) + "orang lain" (ketik nama). */
+  function gambarPengantar(a, A) {
+    const P = AJ.ajPilihanPengantar(hari()); const ketik = !!a.pengantarKetik;
+    const pilN = (nm) => h`<span class="pil ${!ketik && a.pengantar === nm ? 'nyala' : ''}" data-aksi="ajPilih" data-kolom="pengantar" data-n="${nm}" data-k="aj-pengantar-${nm}">${nm}</span>`;
+    const luar = !ketik && a.pengantar && A.pengantar.indexOf(a.pengantar) < 0;
+    return h`<div class="bendera">${P.tetap.map(pilN)}${P.lain.map(pilN)}<span class="pil ${ketik ? 'nyala' : ''}" data-aksi="ajPengantarLain" data-k="aj-pengantar-lain">+ orang lain</span></div>
+      ${ketik ? h`<input class="ketik-nama" type="text" value="${a.pengantar}" data-ketik="ajKetik" data-kolom="pengantar" data-k="aj-pengantar-ketik" maxlength="30" placeholder="Nama yang mengantar (kurir lepas / bukan pegawai tetap)">` : ''}
+      ${ketik || luar ? h`<div class="ket">bukan pegawai tetap — tidak perlu akun: tanda terimanya ditandai di toko (lembar toko difoto)${a.cod ? '; uang bayar di tempat tercatat dibawa ' + (a.pengantar || 'dia') : ''}. Nama ini muncul lagi sebagai pilihan selama ${AJ.AJ_PENGANTAR_INGAT_HARI} hari.</div>` : ''}`;
   }
   /** Tombol daftar Antar di bilah Jual: jumlah yang masih di jalan + bayar di tempat yang belum pulang. */
   function tombolDaftar() {

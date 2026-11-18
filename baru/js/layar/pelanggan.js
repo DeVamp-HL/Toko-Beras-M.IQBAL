@@ -626,7 +626,7 @@ export function pasangLayarPelanggan(akar, opsi) {
         <div><div class="ket">Salam penutup tagihan WhatsApp</div><input class="ketik-nama" type="text" value="${a.salamTagih}" data-ketik="aturKetik" data-kolom="salamTagih"></div>
         <div><div class="ket">Ongkir antar bawaan (Rp) — 0 = gratis; tiap nota antar boleh diubah</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.tarifOngkir}" data-ketik="aturKetik" data-kolom="tarifOngkir" data-k="atur-ongkir"></div></div></div>
       ${gambarAturUmur(a)}
-      ${daftar('pengantarAntar', 'Yang bisa mengantar', 'Pilihan "yang mengantar" di Jual › Bayar › Antar. Minimal satu nama. (Hanya yang bisa berkendara.)', '+ pengantar')}
+      ${daftar('pengantarAntar', 'Yang bisa mengantar', 'Pilihan "yang mengantar" di Jual › Bayar › Antar. Minimal satu nama. (Hanya yang bisa berkendara.) Kurir lepas tidak perlu didaftar — ketik namanya di Bayar › Antar › + orang lain.', '+ pengantar')}
       ${daftar('kendaraanAntar', 'Kendaraan antar', 'Boleh kosong. Tercetak di surat jalan.', '+ kendaraan')}
       ${daftar('ciriDaftar', 'Cip ciri yang bisa diketuk', 'Di kartu dan di tebakan. Yang masih dipakai kartu orang tidak bisa dihapus atau diganti namanya.', '+ ciri')}
       ${daftar('arahDaftar', 'Arah datangnya', 'Pakai sebutan yang memang dipakai di toko, mis. gang masjid.', '+ arah')}
