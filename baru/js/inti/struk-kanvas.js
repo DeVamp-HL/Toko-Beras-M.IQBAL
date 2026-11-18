@@ -217,9 +217,10 @@ function gambarSertifikat(garis, opsi) {
     M.barang.forEach((b, i) => {
       const wn = b.n ? lebarT(b.n, F_BOD(600, P(24))) + P(16) : 0; huruf(F_SANS(500, P(22)));
       bungkus(c, epTanpaEmoji(b.nama), R - L - P(20) - wn).forEach((t, j, arr) => { tulis(t, F_SANS(500, P(22)), L + P(10), y + P(19)); if (j === arr.length - 1 && b.n) tulis(b.n, F_BOD(600, P(24)), R - P(10), y + P(19), 'right'); y += P(27); });
+      // baris rincian "2 L × 20.000" = Jost tegak (owner 18 Nov): Cormorant miring berangka gaya lama tercetak "a L × ao.ooo" di printer panas
       b.rinci.forEach((r) => {
-        const wr = r.n ? lebarT(r.n, F_SANS(500, P(18))) + P(14) : 0; huruf(F_ITA(500, P(20)));
-        bungkus(c, epTanpaEmoji(r.teks), R - L - P(20) - wr).forEach((t, j, arr) => { tulis(t, F_ITA(500, P(20)), L + P(10), y + P(16)); if (j === arr.length - 1 && r.n) tulis(r.n, F_SANS(500, P(18)), R - P(10), y + P(16), 'right'); y += P(24); });
+        const wr = r.n ? lebarT(r.n, F_SANS(500, P(18))) + P(14) : 0; huruf(F_SANS(500, P(19)));
+        bungkus(c, epTanpaEmoji(r.teks), R - L - P(20) - wr).forEach((t, j, arr) => { tulis(t, F_SANS(500, P(19)), L + P(10), y + P(16)); if (j === arr.length - 1 && r.n) tulis(r.n, F_SANS(500, P(18)), R - P(10), y + P(16), 'right'); y += P(24); });
       });
       y += P(6); if (i < M.barang.length - 1) { titik(y, L + P(10), R - P(10)); y += P(14); }
     });

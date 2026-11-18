@@ -1166,6 +1166,11 @@ def cek_kanvas(src):
     if 'const tb = stTebalHuruf(f, k);' not in badan: g.append('statis · Sertifikat: tebal goresan tidak dari stTebalHuruf')
     l0 = src.find('export function gambarLogoToko('); l1 = src.find('\n}\n', l0)
     if l0 < 0 or "c.strokeText('M', cx, cy + h * 0.2)" not in src[l0:l1]: g.append('statis · logo: huruf M tanpa goresan tepi (tercetak "VI")')
+    # cetak CPad 18 Nov: baris rincian "2 L × 20.000" dengan Cormorant miring (angka gaya lama) tercetak "a L × ao.ooo" → wajib Jost tegak
+    r0 = badan.find('b.rinci.forEach('); r1 = badan.find('});', r0)
+    rinci = badan[r0:r1] if r0 >= 0 and r1 > r0 else ''
+    if not rinci or 'F_ITA(' in rinci or 'tulis(t, F_SANS(' not in rinci:
+        g.append('statis · Sertifikat: baris rincian jumlah × harga tidak memakai Jost (angka gaya lama: 2 terbaca a, 0 terbaca o di printer)')
     return g
 
 
@@ -1454,6 +1459,7 @@ if __name__ == '__main__':
             'kanvas: tulisan Sertifikat tanpa goresan tepi': KANVAS.replace('const tb = stTebalHuruf(f, k);', 'const tb = 0;'),
             'kanvas: teks digambar langsung tanpa isiHuruf': KANVAS.replace("c.textAlign = align || 'left'; isiHuruf(t, x, yb, tb); return;", "c.textAlign = align || 'left'; c.fillText(t, x, yb); return;"),
             'kanvas: huruf M logo tanpa goresan': KANVAS.replace("c.strokeText('M', cx, cy + h * 0.2);", ''),
+            'kanvas: baris rincian kembali ke Cormorant miring': KANVAS.replace('tulis(t, F_SANS(500, P(19)), L + P(10), y + P(16));', 'tulis(t, F_ITA(500, P(20)), L + P(10), y + P(16));'),
         }
         for nama, isi in rusak_kanvas.items():
             if isi == KANVAS: print('KONTROL BASI  ' + nama); kode = 3; continue

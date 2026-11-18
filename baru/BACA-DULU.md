@@ -2638,6 +2638,9 @@ Mesin beku tidak disentuh (`beku2.py --sidik` 91/91), rules tidak berubah, kasir
   padahal pratinjau Mac utuh (perender Mac lebih tebal). Obat: semua teks Sertifikat lewat `isiHuruf` = isi + gores tepi selebar `stTebalHuruf` (struk-model,
   Bodoni ≥ 2 titik, Cormorant ≥ 1,6, Cinzel ≥ 1, Jost 0); M logo digores ≥ 3 titik; cap padi berbulir lebih besar & renggang. Dijaga `uji_jual_baru.py`
   (uji SF + periksa statis kanvas + kontrol). Simulasi "printer tipis" (ambang 160 lalu kikis 1 titik) meniru foto cetak — dipakai untuk bukti sebelum/sesudah.
+  **Cetak ulang 18 Nov:** semua angka uang, Nº, M logo dan cap utuh. Sisa satu: baris rincian `jumlah × harga` bercetak Cormorant miring berangka gaya lama
+  ("2 L × 20.000" terbaca "a L × ao.ooo") → diganti Jost tegak 500 (setebal baris Uang diterima/alamat yang terbukti tercetak jelas). Simulasi kikis 1 titik
+  terlalu keras untuk Jost (nama barang Jost juga tampak putus, padahal di cetakan nyata utuh) — untuk Jost pakai foto cetak sebagai bukti, bukan simulasi.
 - **4 · Amplop laba** — Pindah uang: amplop tempat keempat (dari & ke), ditulis `amplopLaba` `ambil {ke}` / `setor {dari}` (mesin `saldoAmplop` & blok Amplop
   Laba tetap benar), tanpa biaya admin, bisa diurungkan. Uang keluar (termasuk ambil pribadi), kasbon owner, kasbon karyawan bisa bersumber amplop: catatan
   aslinya dari laci + `amplopLaba` ambil amplop → laci (`untuk` = id catatannya) satu kiriman (`lewatAmplop`). Kertas laci tutup hari hanya memuat gerakan amplop
