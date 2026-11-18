@@ -97,21 +97,6 @@ const tinggi = 500; const rb = epRaster(new Uint8Array(576 * tinggi), 576, tingg
 cek('raster: dipecah per pita (500 baris → 3 perintah)', pita === 3 && rb.length === 3 * 8 + 72 * tinggi, pita + ' / ' + rb.length);
 const sg = epSusunGambar({ bit, lebar: 10, tinggi: 2 }, { potong: 'penuh', qr: 'X1' });
 cek('struk gambar: ESC @ · raster · QR · potong penuh', sg.byte[0] === 0x1b && sg.byte[1] === 0x40 && cari(sg.byte, [0x1d, 0x76, 0x30]) > 0 && cari(sg.byte, [0x1d, 0x28, 0x6b]) > 0 && cari(sg.byte, [0x1d, 0x56, 0x41, 0x00]) > 0);
-// ---- kepekatan cetak (owner 18 Nov: kertas Blueprint pudar di NT320) ----
-const PK = (m) => [0x1d, 0x28, 0x4b, 0x02, 0x00, 0x31, m];
-cek('kepekatan: standar (0) = tanpa perintah', epPekat(0).length === 0 && epPekat(undefined).length === 0 && epPekat(5).length === 0 && epPekat('4').length === 0, JSON.stringify([epPekat(0), epPekat(5), epPekat('4')]));
-cek('kepekatan: +4 = GS ( K 2 0 49 4', epPekat(4).join(',') === PK(4).join(','), epPekat(4));
-const g0 = epSusunGambar({ bit, lebar: 10, tinggi: 2 }, {}), g4 = epSusunGambar({ bit, lebar: 10, tinggi: 2 }, { pekat: 4 });
-cek('struk gambar tanpa setelan: byte sama seperti dulu (ESC @ · ESC a 1)', arr(g0.byte).slice(0, 5).join(',') === [0x1b, 0x40, 0x1b, 0x61, 1].join(',') && cari(g0.byte, [0x1d, 0x28, 0x4b]) < 0, arr(g0.byte).slice(0, 8));
-cek('struk gambar +4: kepekatan tepat sesudah ESC @', arr(g4.byte).slice(0, 9).join(',') === [0x1b, 0x40].concat(PK(4)).join(',') && g4.byte.length === g0.byte.length + 7, arr(g4.byte).slice(0, 12));
-const t2 = epSusun([{ kiri: 'A', kanan: '' }], { pekat: 2 }), t0 = epSusun([{ kiri: 'A', kanan: '' }], {});
-cek('struk teks +2: kepekatan sesudah ESC @, standar tanpa perintah', arr(t2.byte).slice(0, 9).join(',') === [0x1b, 0x40].concat(PK(2)).join(',') && arr(t0.byte).slice(0, 5).join(',') === [0x1b, 0x40, 0x1b, 0x74, 0].join(','), arr(t2.byte).slice(0, 12));
-const pitaUji = [0, 2, 4, 6].map((t) => ({ tingkat: t, gambar: { bit, lebar: 10, tinggi: 2 } }));
-const lu = epSusunUjiPekat(pitaUji, { potong: 'sebagian' }); const la = arr(lu.byte); const urut = []; const posR = [];
-for (let i = 0; i + 7 <= la.length; i++) { if (la[i] === 0x1d && la[i + 1] === 0x28 && la[i + 2] === 0x4b && la[i + 5] === 0x31) urut.push([la[i + 6], i]); if (la[i] === 0x1d && la[i + 1] === 0x76 && la[i + 2] === 0x30) posR.push(i); }
-cek('lembar uji: tingkat 0·2·4·6 lalu kembali standar', urut.map((x) => x[0]).join(',') === '0,2,4,6,0', urut.map((x) => x[0]).join(','));
-cek('lembar uji: tiap pita didahului perintahnya sendiri', posR.length === 4 && posR.every((r, i) => urut[i][1] < r && (i === 0 || urut[i][1] > posR[i - 1])), JSON.stringify({ urut, posR }));
-cek('lembar uji: diakhiri potong', cari(lu.byte, [0x1d, 0x56, 0x42, 0x00]) > urut[4][1]);
 if (typeof btoa === 'function') cek('base64: byte → teks', epBase64(new Uint8Array([0x1b, 0x40, 0x41])) === 'G0BB', epBase64(new Uint8Array([0x1b, 0x40, 0x41])));
 print(JSON.stringify(hasil));
 """
@@ -161,12 +146,6 @@ MUTASI = [
     ('emoji tidak dibuang di gaya gambar', ".replace(EMOJI, '')", ""),
     ('penyambung ZWJ tertinggal', "\\u{200D}", ""),
     ('pemilih varian tertinggal', "\\u{FE00}-\\u{FE0F}", ""),
-    ('kepekatan standar tetap mengirim perintah', "x[0] === n && n > 0", "x[0] === n"),
-    ('kode fungsi kepekatan salah (50 = kecepatan)', "0x02, 0x00, 0x31, m]", "0x02, 0x00, 0x32, m]"),
-    ('struk gambar mengabaikan setelan kepekatan', "w.byte(ESC, 0x40).byte(...epPekat(o.pekat)).byte(ESC, 0x61, 1);", "w.byte(ESC, 0x40).byte(ESC, 0x61, 1);"),
-    ('struk teks mengabaikan setelan kepekatan', ".byte(...epPekat(o.pekat)).byte(ESC, 0x74, 0x00);", ".byte(ESC, 0x74, 0x00);"),
-    ('lembar uji tidak kembali ke standar', "w.byte(...epPekatTepat(0)).byte(ESC, 0x61, 0);", "w.byte(ESC, 0x61, 0);"),
-    ('pita standar tanpa perintah sendiri', "w.byte(...epPekatTepat(p.tingkat));", "w.byte(...epPekat(p.tingkat));"),
 ]
 
 

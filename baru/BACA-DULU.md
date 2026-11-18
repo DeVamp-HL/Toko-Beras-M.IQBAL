@@ -2641,11 +2641,6 @@ Mesin beku tidak disentuh (`beku2.py --sidik` 91/91), rules tidak berubah, kasir
   **Cetak ulang 18 Nov:** semua angka uang, Nº, M logo dan cap utuh. Sisa satu: baris rincian `jumlah × harga` bercetak Cormorant miring berangka gaya lama
   ("2 L × 20.000" terbaca "a L × ao.ooo") → diganti Jost tegak 500 (setebal baris Uang diterima/alamat yang terbukti tercetak jelas). Simulasi kikis 1 titik
   terlalu keras untuk Jost (nama barang Jost juga tampak putus, padahal di cetakan nyata utuh) — untuk Jost pakai foto cetak sebagai bukti, bukan simulasi.
-  **Kepekatan cetak (18 Nov):** kertas Blueprint (agak kekuningan, berlapis tahan minyak) tercetak lebih pudar dari kertas Sunmi; bidang hitam logo berbintik
-  abu. Gambar struk sudah hitam-putih murni, jadi tuasnya hanya panas printer: `epPekat` = perintah standar ESC/POS GS ( K fn 49 (1D 28 4B 02 00 31 m)
-  sesudah ESC @, setelan per tablet `pekat` (0 standar · 2 · 4 · 6) di uji-cetak.html. Dokumen Sunmi TIDAK menyebut perintah ini untuk NT320 → tombol
-  **Uji kepekatan** mencetak satu lembar empat pita bergambar sama (`gambarPitaPekat`, ±13,6 cm), tiap pita didahului perintahnya sendiri lalu kembali
-  standar. Tingkat 0 tidak mengirim byte apa pun (struk sama persis seperti sebelumnya). Dijaga `uji_escpos.py` (+ kontrol).
 - **4 · Amplop laba** — Pindah uang: amplop tempat keempat (dari & ke), ditulis `amplopLaba` `ambil {ke}` / `setor {dari}` (mesin `saldoAmplop` & blok Amplop
   Laba tetap benar), tanpa biaya admin, bisa diurungkan. Uang keluar (termasuk ambil pribadi), kasbon owner, kasbon karyawan bisa bersumber amplop: catatan
   aslinya dari laci + `amplopLaba` ambil amplop → laci (`untuk` = id catatannya) satu kiriman (`lewatAmplop`). Kertas laci tutup hari hanya memuat gerakan amplop
