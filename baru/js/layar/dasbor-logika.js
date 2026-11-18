@@ -26,6 +26,8 @@ import { fkPengingat, fkTeksTempo } from './faktur-logika.js';
 import { ajCodBelumSetor, ajKalimatCod, ajDaftar } from './antar-logika.js';
 // B4 (owner 18 Nov 2026): order rutin yang perlu dibuat (pengingat), pesanan yang dikirim ≤ 2 hari lagi, stok yang kurang untuk pesanan
 import { poPengingat, poDaftarAktif, poHariKe, poCekStok, poKataStok } from './pesanan-logika.js';
+// B5 (owner 18 Nov 2026): porsi pelanggan usaha bulan ini, pelanggan usaha teratas & faktur lewat tempo (Laporan › Laba › Per pelanggan)
+import { pelangganBulan, pgHariTeks } from './laba-pelanggan-logika.js';
 import { susunBon as bpSusunBon } from './bon-pemasok-logika.js';
 import { hetHargaKasir } from './het-logika.js';
 import { rekapTimbangMutu } from './stok-catat-logika.js';
@@ -150,11 +152,23 @@ export function dbMutu(kini) {
   };
 }
 
+/** B5 PELANGGAN USAHA bulan ini (owner 18 Nov 2026): porsi laba kotor & omzet pelanggan usaha, tiga teratas menurut laba kotor, faktur lewat jatuh tempo — APA
+ *  ADANYA dari pelangganBulan (Laporan › Laba › Per pelanggan, satu sumber, menutup ke laba kotor Laporan). Tidak ada rumus uang di sini. */
+export function dbB2b(kini) {
+  const key = hariIniIso(kini).slice(0, 7); const G = pelangganBulan(key, 1, kini); const tujuan = { ke: 'laporan', keluarga: 'laba', bulan: key };
+  if (G.diarsip) return { nama: G.nama, arsip: true, kalimat: G.kalimat, periode: G.nama, sumber: 'Laporan › Laba › Per pelanggan', tujuan };
+  return { nama: G.nama, arsip: false, periode: G.nama + (G.berjalan ? ' · berjalan' : ''), sumber: 'Laporan › Laba › Per pelanggan', tujuan, menutup: G.menutup, kalimat: G.kalimat,
+    ada: !!G.usaha, porsiLaba: G.b2b ? G.b2b.porsiLaba : null, porsiOmzet: G.b2b ? G.b2b.porsiOmzet : null, laba: G.b2b ? G.b2b.laba : null, omzet: G.b2b ? G.b2b.omzet : 0, nOrang: G.b2b ? G.b2b.nOrang : 0,
+    labaKotor: G.L.margin, tingkat: G.tingkat.map((t) => ({ id: t.id, nama: t.nama, laba: t.labaKotor, porsiLaba: t.porsiLaba, omzet: t.omzet, nOrang: t.nOrang })),
+    teratas: G.orang.filter((o) => o.labaKotor !== null && !o.tanpaJualan).slice(0, 3).map((o) => ({ nama: o.nama, tingkat: o.tingkatNama, laba: o.labaKotor, pct: o.pct, rata: pgHariTeks(o.tempo.rata) })),
+    lewat: G.lewat, rataUsaha: G.usaha ? pgHariTeks(G.usaha.tempo.rata) : '—' };
+}
+
 /** Seluruh dasbor untuk satu saat. Tiap kelompok dibungkus: galat di satu kelompok tampil sebagai kalimat di kelompok itu, kelompok lain tetap jalan.
  *  lama (owner 3 Okt, ganti rentang patah-patah): hasil dasbor saat & data yang SAMA — hanya tren yang memakai rentang, jadi hari ini · bulan ini · stok ·
  *  tagihan diambil dari situ dan cuma tren yang dihitung (dulu seluruh dasbor dihitung ulang tiap ganti Hari / Minggu / Bulan). */
 export function susunDasbor(kini, rentang, lama) {
   const aman = (nama, f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor ' + nama, e); return { galat: String((e && e.message) || e) }; } };
-  if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, tren: aman('tren', () => dbTren(rentang, kini)) };
-  return { hari: aman('hari ini', () => dbHariIni(kini)), bulan: aman('bulan ini', () => dbBulanIni(kini)), stok: aman('stok', () => dbStok(kini)), tagihan: aman('tagihan', () => dbTagihan(kini)), mutu: aman('mutu usaha', () => dbMutu(kini)), tren: aman('tren', () => dbTren(rentang, kini)) };
+  if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, tren: aman('tren', () => dbTren(rentang, kini)) };
+  return { hari: aman('hari ini', () => dbHariIni(kini)), bulan: aman('bulan ini', () => dbBulanIni(kini)), stok: aman('stok', () => dbStok(kini)), tagihan: aman('tagihan', () => dbTagihan(kini)), mutu: aman('mutu usaha', () => dbMutu(kini)), b2b: aman('pelanggan usaha', () => dbB2b(kini)), tren: aman('tren', () => dbTren(rentang, kini)) };
 }

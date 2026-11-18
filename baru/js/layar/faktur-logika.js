@@ -93,7 +93,7 @@ export function fkKolomNota(nama, cara, tanggal, kode) {
 // ---------- alokasi pembayaran ke faktur ----------
 const fkKunciNota = (p) => String(p.trxId || p.grupNota || p.id);
 /** Peta bantu, diingat per versi data (dipakai bersama — jangan diubah di tempat): baris penjualan → noFaktur, nota → noFaktur, pembayaran → dokumennya. */
-function fkPeta() { return ingatPerVersi('fkPeta', fkPetaHitung); }
+export function fkPeta() { return ingatPerVersi('fkPeta', fkPetaHitung); }   // B5: laba-pelanggan-logika (tempo) memakai peta yang sama
 function fkPetaHitung() {
   const baris = {}, nota = {}, bayar = {}, trx = {}, ps = {};
   // B4 (owner 18 Nov 2026): baris → 'trx:<kunci nota>' (pembayaran ber-untukPesanan menutup baris nota pesanannya, bernomor faktur atau tidak)

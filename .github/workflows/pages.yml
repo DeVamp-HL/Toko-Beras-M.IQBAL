@@ -154,6 +154,8 @@ jobs:
         run: python3 alat-uji/uji_antar.py && python3 alat-uji/uji_antar.py --kontrol
       - name: "Pesanan, PO & order rutin (B4, owner 18 Nov 2026): isi dari katalog (keranjang terisi sendiri), PO di nota / struk / surat jalan, uang muka = pelunasan bon ber-untukPesanan yang memotong nota pesanannya (bukan omzet; KR1 hanya utang baru; bayar di tempat menagih total − DP), batal ber-DP jadi saldo / dikembalikan owner, jadwal rutin = pengingat (hari diatur owner), cek stok + laju jual, penjaga = rules v11 (kotak pasir + statis + kontrol)"
         run: python3 alat-uji/uji_pesanan.py && python3 alat-uji/uji_pesanan.py --kontrol
+      - name: "Laporan per pelanggan (B5, owner 18 Nov 2026): laba kotor per tingkat harga + Eceran, pelanggan usaha dirinci (pembeli eceran digabung), ongkir yang ditagih, dilepas dari eceran (tingkat · nego · potongan nota), tempo dalam hari (bayar beralamat dulu, lalu bon tertua; hapus buku bukan dibayar), faktur lewat tempo, 1/3/12 bulan, Dasbor = angka yang sama, menutup ke laba kotor Laporan (kotak pasir + statis + kontrol)"
+        run: python3 alat-uji/uji_laba_pelanggan.py && python3 alat-uji/uji_laba_pelanggan.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

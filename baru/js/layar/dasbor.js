@@ -213,6 +213,25 @@ export function pasangDasbor(akar, opsi) {
     out.push(R.galat ? salah('mutu', 'Mutu kedatangan', R) : baris('mutu', 'Kedatangan mutu AWAS', R.awas ? R.awas + ' kedatangan' : R.ditimbang || R.awas ? '0' : 'belum dicek', R.awas > 0, { judul: 'Timbang & mutu kedatangan', baris: [['Ditimbang', R.ditimbang + ' dari ' + R.kedatangan + ' kedatangan'], ['Kurang timbang', dbKg(R.kgKurang)], ['Mutu AWAS', String(R.awas)]], tujuan: R.tujuan, ke: 'Stok › Barang masuk' }));
     return '<div class="kartu db-kartu db-mutu">' + kepala('Mutu usaha', Q.periode, 'sumber:mutu', Q.sumber, Q.tujuan) + out.join('') + '</div>';
   }
+  // B5 (owner 18 Nov 2026): PELANGGAN USAHA bulan ini — porsi laba kotor & omzet, tiga teratas, faktur lewat tempo. Angka apa adanya dari DL.dbB2b (= Laporan › Laba › Per pelanggan)
+  function kartuB2b(Q) {
+    if (!Q) return '';
+    if (Q.galat) return '<div class="kartu db-kartu db-b2b">' + galat(Q) + '</div>';
+    const pc = (x) => (x === null || x === undefined ? '—' : DESIMAL(Math.round(x * 10) / 10) + '%');
+    const baris = (id, nama, nilai, awas, isi) => '<div class="db-baris db-ketuk' + (awas ? ' awas-teks' : '') + '"' + daftar('b2b:' + id, isi) + '><span class="db-nama">' + esc(nama) + '</span><span class="db-nilai">' + esc(nilai) + '</span></div>';
+    const ke = 'Laporan › Laba › Per pelanggan'; const out = [];
+    if (Q.arsip) out.push('<div class="ket">' + esc(Q.kalimat) + '</div>');
+    else if (!Q.ada) out.push('<div class="ket">Belum ada pelanggan usaha (bertingkat harga) yang belanja ' + esc(Q.nama) + '. Pasang tingkat di Pelanggan › Harga pelanggan.</div>');
+    else {
+      out.push(baris('porsi', 'Porsi laba kotor', pc(Q.porsiLaba) + ' · ' + dbRpPendek(Q.laba || 0), Q.menutup === false, { judul: 'Pelanggan usaha · ' + Q.nama, baris: [['Laba kotor pelanggan usaha', RP(Math.round(Q.laba || 0)) + ' (' + pc(Q.porsiLaba) + ')'], ['Omzet barang', RP(Math.round(Q.omzet)) + ' (' + pc(Q.porsiOmzet) + ')'], ['Pelanggan usaha belanja', String(Q.nOrang)]]
+        .concat(Q.tingkat.map((t) => [t.nama, (t.laba === null ? 'laba belum bisa dihitung' : RP(Math.round(t.laba)) + ' · ' + pc(t.porsiLaba)) + ' · ' + t.nOrang + ' pelanggan'])).concat(Q.menutup === false ? [['Peringatan', 'per pelanggan TIDAK menutup ke laba kotor Laporan — buka Laporan']] : []), tujuan: Q.tujuan, ke }));
+      out.push('<div class="db-pita-b2b" title="porsi laba kotor pelanggan usaha"><i style="width: ' + Math.max(0, Math.min(100, Q.porsiLaba || 0)).toFixed(1) + '%;"></i></div>');
+      const top = Q.teratas[0];
+      out.push(baris('teratas', 'Teratas', top ? top.nama + ' ' + dbRpPendek(top.laba) : 'laba belum bisa dihitung', false, { judul: 'Pelanggan usaha teratas menurut laba kotor · ' + Q.nama, baris: Q.teratas.map((x, i) => [(i + 1) + '. ' + x.nama + ' (' + x.tingkat + ')', RP(Math.round(x.laba)) + ' · margin ' + pc(x.pct) + ' · bon dibayar ' + x.rata]), tujuan: Q.tujuan, ke }));
+    }
+    if (!Q.arsip) out.push(baris('lewat', 'Faktur lewat tempo', Q.lewat.n ? Q.lewat.n + ' · ' + dbRpPendek(Q.lewat.rp) : 'tidak ada', Q.lewat.n > 0, { judul: 'Faktur lewat jatuh tempo', baris: [['Jumlah', Q.lewat.n + ' faktur'], ['Sisa', RP(Math.round(Q.lewat.rp))], ['Pelanggan usaha bayar bon', 'rata-rata ' + Q.rataUsaha]], tujuan: { ke: 'pelanggan', keluarga: 'bon' }, ke: 'Pelanggan › Bon' }));
+    return '<div class="kartu db-kartu db-b2b" data-k="db-b2b">' + kepala('Pelanggan usaha', Q.periode, 'sumber:b2b', Q.sumber, Q.tujuan) + out.join('') + '</div>';
+  }
 
   function tutupTip() { pilih = null; const t = tip(); if (t) t.hidden = true; akar.querySelectorAll('.db-dipilih').forEach((el) => el.classList.remove('db-dipilih')); }
   function tampilTip(id, el) {
@@ -241,7 +260,7 @@ export function pasangDasbor(akar, opsi) {
     // owner 3 Okt: dua lajur DISUSUN DI SINI, bukan CSS columns — Safari/WebKit tidak menggambar kartu beranimasi di dalam columns (kartu Bulan ini kosong
     // sampai ada yang diketuk, sisa kartu nyangkut di atas Hari ini). Lajur kiri Bulan ini · pemicu · stok, kanan wadah · piutang (= pembagian columns dulu).
     akar.innerHTML = kartuHari(D.hari) + kartuTren(D.tren) + '<div class="db-lajur">' + kartuBulan(D.bulan) + kartuPemicu(D.bulan) + kartuStok(D.stok) + '</div>'
-      + '<div class="db-lajur">' + kartuWadah(D.stok) + kartuTagihan(D.tagihan) + kartuMutu(D.mutu) + '</div>' + '<div class="db-tip kartu" hidden></div>';
+      + '<div class="db-lajur">' + kartuWadah(D.stok) + kartuTagihan(D.tagihan) + kartuMutu(D.mutu) + kartuB2b(D.b2b) + '</div>' + '<div class="db-tip kartu" hidden></div>';
     pilih = null; if (tadi && reg[tadi]) { const el = akar.querySelector('[data-db="' + (window.CSS && CSS.escape ? CSS.escape(tadi) : tadi) + '"]'); if (el) tampilTip(tadi, el); }
     if (masuk) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1400); }
   }

@@ -136,3 +136,12 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
 .layar-laporan .lp-cip.awas { border-color: var(--awas); color: var(--awas); }
 @keyframes lpMrMasuk { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .layar-laporan .lp-mr-baris { animation: none; } .layar-laporan .lp-mr-pita span { transition: none; } }
+/* B5 (owner 18 Nov 2026): kartu Per pelanggan — rentang 1/3/12 bulan, pita porsi pelanggan usaha, baris tingkat & pelanggan (pola baris Per merek) */
+.layar-laporan .lp-pg-rentang { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; } .layar-laporan .lp-pg-rentang .seg { justify-content: center; text-align: center; min-height: 34px; display: flex; align-items: center; font-size: 11.5px; }
+.layar-laporan .lp-pg-porsi { display: flex; height: 10px; border-radius: 5px; overflow: hidden; border: 1px solid var(--kaca-tepi); background: var(--seg); margin: 2px 0; }
+.layar-laporan .lp-pg-porsi i { display: block; height: 100%; transition: width 640ms cubic-bezier(.2,.8,.2,1); animation: lpPgTumbuh 700ms cubic-bezier(.2,.8,.2,1) both; transform-origin: 0 50%; }
+.layar-laporan .lp-pg-porsi i.usaha { background: linear-gradient(90deg, var(--emas-garis), var(--aktif)); } .layar-laporan .lp-pg-porsi i.eceran { background: var(--platina2, var(--hantu)); opacity: 0.7; }
+.layar-laporan .lp-pg-sub { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--redup); padding-top: 8px; }
+.layar-laporan .lp-mr-baris .k2.tempo { color: var(--teks); opacity: .8; } .layar-laporan .lp-mr-baris .k2.tempo.awas { color: var(--awas); opacity: 1; }
+@keyframes lpPgTumbuh { from { transform: scaleX(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .layar-laporan .lp-pg-porsi i { animation: none; transition: none; } }
