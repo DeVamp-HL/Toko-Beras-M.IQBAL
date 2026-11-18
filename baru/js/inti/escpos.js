@@ -87,7 +87,7 @@ function tulisQr(w, data, ukuran) {
 export function epSusun(garis, opsi) {
   const o = opsi || {}; const lebar = EP_KOLOM[o.kertas] || EP_KOLOM[80];
   const w = Penulis(); const teks = [];
-  w.byte(ESC, 0x40).byte(ESC, 0x74, 0x00);   // mulai ulang printer · halaman kode PC437
+  w.byte(ESC, 0x40).byte(...epPekat(o.pekat)).byte(ESC, 0x74, 0x00);   // mulai ulang printer · kepekatan (0 = tanpa perintah) · halaman kode PC437
   (garis || []).forEach((g) => {
     if (!g) return;
     if (g.garis) { const s = new Array(lebar + 1).join('-'); w.byte(ESC, 0x61, 0).baris(s); teks.push(s); return; }
@@ -159,11 +159,33 @@ export function epRaster(bit, lebar, tinggi) {
 /** Struk gaya gambar: gambar = { bit, lebar, tinggi } (dari struk-kanvas.js). opsi sama dengan epSusun (qr, potong, umpan, laci). */
 export function epSusunGambar(gambar, opsi) {
   const o = opsi || {}; const w = Penulis();
-  w.byte(ESC, 0x40).byte(ESC, 0x61, 1);
+  w.byte(ESC, 0x40).byte(...epPekat(o.pekat)).byte(ESC, 0x61, 1);
   const r = epRaster(gambar.bit, gambar.lebar, gambar.tinggi); for (let i = 0; i < r.length; i++) w.byte(r[i]);
   w.byte(ESC, 0x61, 0);
   tutup(w, o, null);
   return { byte: w.hasil(), lebar: gambar.lebar, tinggi: gambar.tinggi };
+}
+
+// ---------- KEPEKATAN CETAK (owner 18 Nov 2026) ----------
+// Kertas Blueprint tercetak lebih pudar dari kertas Sunmi di printer NT320. Satu-satunya tuas dari aplikasi = perintah standar ESC/POS
+// GS ( K fn 49 "pilih kepekatan" (Epson: m 1–127 lebih pekat, 0 standar). Dokumen Sunmi untuk NT320 TIDAK menyebut perintah ini → dukungannya
+// diuji dulu lewat "Uji kepekatan" (uji-cetak.html). Tingkat 0 = TIDAK mengirim perintah apa pun, jadi byte struk sama persis seperti sebelumnya.
+export const EP_PEKAT = [[0, 'standar'], [2, '+2'], [4, '+4'], [6, '+6']];
+/** Perintah kepekatan apa adanya (0–6; 0 = kembali standar). */
+export function epPekatTepat(n) { const m = Math.max(0, Math.min(6, Math.round(Number(n) || 0))); return [GS, 0x28, 0x4b, 0x02, 0x00, 0x31, m]; }
+/** Perintah kepekatan untuk struk: tingkat 0 / tak dikenal = tanpa perintah. */
+export function epPekat(n) { return EP_PEKAT.some((x) => x[0] === n && n > 0) ? epPekatTepat(n) : []; }
+/**
+ * Lembar "Uji kepekatan": pita = [{ tingkat, gambar: { bit, lebar, tinggi } }] berurutan. Tiap pita didahului perintah kepekatannya SENDIRI
+ * (termasuk 0, supaya pita standar benar-benar standar walau printer masih menyimpan tingkat lama); di akhir dikembalikan ke standar.
+ */
+export function epSusunUjiPekat(pita, opsi) {
+  const o = opsi || {}; const w = Penulis();
+  w.byte(ESC, 0x40).byte(ESC, 0x61, 1);
+  (pita || []).forEach((p) => { w.byte(...epPekatTepat(p.tingkat)); const r = epRaster(p.gambar.bit, p.gambar.lebar, p.gambar.tinggi); for (let i = 0; i < r.length; i++) w.byte(r[i]); });
+  w.byte(...epPekatTepat(0)).byte(ESC, 0x61, 0);
+  tutup(w, o, null);
+  return { byte: w.hasil() };
 }
 
 /** Byte → base64 (untuk jembatan aplikasi Android). Dipotong per 32 KB supaya String.fromCharCode tidak kehabisan tumpukan. */
