@@ -2758,3 +2758,27 @@ pesanan; **isi pesanan dari katalog**. Mesin beku tidak disentuh (`beku2.py --si
   `stafAturPesanan(ben)`, blok `orderRutin` (`stafBuat(ben)`, `stafUbahRutin(ben)`). **Owner menerbitkan v11 di Console SEBELUM merge**; kalau terbalik,
   pesanan / jadwal dari tablet ditolak server sampai v11 terbit (jual, antar, uang muka tetap jalan).
 - Uji: `alat-uji/uji_pesanan.py` (jsc + statis + kontrol), `periksa_rules.py` (v11 = v10 + tiga ubahan, model 25 kasus ★M), `uji_rules_emulator.py` bagian V11.
+
+## Putaran B5 — laporan per pelanggan & cost controlling B2B (18 Nov 2026, cabang `paket/b5-laporan-b2b`)
+Keputusan owner 18 Nov 2026 (memori `b5-laporan-b2b-keputusan`, semua "Recommended"): kelompok **per tingkat harga + Eceran**, pelanggan **usaha** dirinci
+per orang (pembeli eceran — bernama atau tidak — digabung); **tempo dalam HARI saja** (tanpa rupiah taksiran / bunga); **ongkir yang ditagih saja** (bensin
+& angkut tetap di Biaya toko, tidak dibagi per pelanggan); kartu **Laporan › Laba › Per pelanggan** (1 / 3 / 12 bulan) + kartu **Dasbor › Pelanggan usaha**.
+BACA SAJA — tidak ada dokumen baru, rules tetap v11. Mesin beku tidak disentuh (`beku2.py --sidik`).
+- **Logika**: `baru/js/layar/laba-pelanggan-logika.js` (tanpa DOM, awalan `pg`): `pelangganBulan(key, n, kini)` (diingat per versi data), `pgRentang`,
+  `pgDilepas`, `pgTempo`, `pgKet` / `pgKetTempo` / `pgDilepasTeks` (kalimat layar). Layar: `kartuPelanggan` di `laporan.js` (keadaan `pgN`, `pgSemua`),
+  `kartuB2b` di `dasbor.js` ← `dbB2b` di `dasbor-logika.js` (kelompok `b2b` di `susunDasbor`, ikut `lama` saat ganti rentang).
+- **Tidak ada rumus laba baru**: baris = baris mesin laba Laporan (`ambilPenjualan` + tanggal; modal = `hppTotalSaatJual` tersimpan); retur periode itu memotong
+  omzet (`uangKembaliRetur`), modal retur UTUH dibatalkan (`hppTaksiranRetur`) — pola `merekBulan`, cuma dipilah per pelanggan (`kunciPelanggan` nama di nota;
+  retur ikut nama di **nota asalnya**). Ongkir (`ongkirAntar`) masuk laba kotor pelanggan itu (HPP 0), ditulis terpisah. **Penjaga**: Σ kelompok = laba kotor,
+  omzet tanpa modal, jumlah baris nota & kg di nota Laporan periode itu, persis sampai rupiah → `menutup: false` + kalimat "jangan dipakai memutuskan".
+- **Pelanggan usaha** = punya tingkat sekarang (`aturanToko/hargaTingkat.orang`); yang tingkatnya **dicabut** tapi notanya di periode itu bertingkat tetap
+  terbaca di tingkat notanya (`tingkatDulu`, cip "tingkatnya sudah dicabut"). Pelanggan usaha yang tidak belanja periode itu tapi masih punya bon / faktur lewat
+  tempo tetap tampil ("tidak belanja periode ini").
+- **Dibanding eceran** (keterangan, bukan pengurang kedua): potongan tingkat (`hargaEceranSatuan − hargaAsliSatuan`) × jumlah, nego (`negoSelisih` × jumlah —
+  turun / naik), potongan nota (`potonganTransaksi`); jumlah satuan = harga barang baris ÷ harga satuan akhir.
+- **Tempo** dari buku piutang mesin (`hitungPiutang`) disusun menurut waktu: bayar yang DITUJU (faktur / pesanan, `fkTujuanBayar` + peta `fkPeta`, kini
+  diekspor) menutup barisnya dulu, retur menutup nota asalnya, sisanya bon TERTUA dulu (= mesin); uang muka sebelum nota menutup saat nota lahir. Rata-rata hari
+  dibayar = nota bon periode itu yang lunas, ditimbang rupiah; hapus buku bukan "dibayar". Sisa bon & umur tertua = sekarang; faktur lewat tempo dari `fkSemua`.
+- **Rentang**: 1 / 3 / 12 bulan yang berakhir di bulan yang dilihat; bulan di tahun yang sudah ditutup buku ikut arsip — disebut, tidak dirinci.
+- **Uji**: `alat-uji/uji_laba_pelanggan.py` (kotak pasir 29 + statis 9; kontrol 12 berbunyi; jalan di CI `pages.yml`). Bundel uji: `PG_MODUL` ikut otomatis
+  bila `dasbor-logika.js` dibundel (`bundel_baru.lengkapi`).

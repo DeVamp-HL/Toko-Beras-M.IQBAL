@@ -50,7 +50,7 @@ KG_PEMAKAI = ('jual-logika.js', 'wadah-bernama-logika.js', 'harga-logika.js', 'h
 # B2 (owner 17 Nov 2026): faktur bertempo & batas kredit — jual-logika (KR1, nomor faktur), bon-logika (alokasi bayar per faktur) memakai faktur-logika,
 # yang sendiri memakai harga-tingkat-logika. Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada.
 FK_MODUL = 'baru/js/layar/faktur-logika.js'
-FK_PEMAKAI = ('jual-logika.js', 'bon-logika.js', 'sistem-logika.js', 'struk-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js')
+FK_PEMAKAI = ('jual-logika.js', 'bon-logika.js', 'sistem-logika.js', 'struk-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js', 'laba-pelanggan-logika.js')
 
 
 # B3 (owner 18 Nov 2026): surat jalan & antar — jual-logika (ongkir & surat jalan bersama nota), retur (ongkir tidak ikut dikembalikan), struk, laporan,
@@ -66,8 +66,16 @@ PO_MODUL = 'baru/js/layar/pesanan-logika.js'
 PO_PEMAKAI = ('jual-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js')
 
 
+# B5 (owner 18 Nov 2026): laporan per pelanggan (Laporan › Laba › Per pelanggan, kartu Dasbor) — laba-pelanggan-logika memakai laporan-logika, faktur-logika &
+# harga-tingkat-logika. Dasbor memakainya; ikut OTOMATIS (sekali, di belakang) — faktur & harga tingkat menyusul lewat FK_PEMAKAI.
+PG_MODUL = 'baru/js/layar/laba-pelanggan-logika.js'
+PG_PEMAKAI = ('dasbor-logika.js',)
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in PG_PEMAKAI for x in d) and not any(x.endswith('laba-pelanggan-logika.js') for x in d):
+        d.append(PG_MODUL)
     if any(os.path.basename(x) in PO_PEMAKAI for x in d) and not any(x.endswith('pesanan-logika.js') for x in d):
         d.append(PO_MODUL)
     if any(os.path.basename(x) in AJ_PEMAKAI for x in d) and not any(x.endswith('antar-logika.js') for x in d):

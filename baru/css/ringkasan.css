@@ -217,3 +217,7 @@ main.layar-ringkasan.masuk > .rk-dasbor, main.layar-ringkasan.masuk > .rk-saklar
   .layar-ringkasan .rk-dasbor.masuk .db-tumbuh-y, .layar-ringkasan .rk-dasbor.masuk .db-tumbuh-x, .layar-ringkasan .rk-dasbor.masuk > .db-kartu, .layar-ringkasan .rk-dasbor.masuk > .db-lajur > .db-kartu, .layar-ringkasan .db-tip { animation: none; }
   .layar-ringkasan .db-ketuk { transition: none; }
 }
+/* B5 (owner 18 Nov 2026): kartu Pelanggan usaha — pita porsi laba kotor, tumbuh dari kiri saat dasbor masuk */
+.layar-ringkasan .db-pita-b2b { height: 6px; border-radius: 4px; background: var(--seg); border: 1px solid var(--kaca-tepi); overflow: hidden; margin: 2px 0 4px; }
+.layar-ringkasan .db-pita-b2b i { display: block; height: 100%; background: linear-gradient(90deg, var(--emas-garis), var(--aktif)); transform-origin: 0 50%; animation: dbTumbuhX 620ms cubic-bezier(.2,.8,.2,1) both; animation-delay: 160ms; }
+@media (prefers-reduced-motion: reduce) { .layar-ringkasan .db-pita-b2b i { animation: none; } }
