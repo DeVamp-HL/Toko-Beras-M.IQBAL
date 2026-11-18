@@ -8,6 +8,8 @@ uji_antar.py — B3 SURAT JALAN & ANTAR (keputusan owner 18 Nov 2026). KOTAK PAS
   · bayar di tempat = nota bon sementara (cara Kredit), BEBAS batas kredit hari itu; uang pulang = pelunasan ber-untukSJ (dibawaOleh pengantar,
     untukFaktur bila faktur); belum disetor = peringatan merah (Dasbor, tutup hari) atas nama pengantar;
   · tanda terima: tanda tangan WAJIB, foto boleh dilewati; gagal antar; batal (owner); pembatalan nota ikut membatalkan surat jalannya;
+  · SUSULAN owner 18 Nov (perangkat kasir cuma satu): tanda tangan DI KERTAS = cara utama — surat jalan dicetak 2 lembar (pembeli · toko), lembar toko
+    ditandatangani & dibawa pulang, di toko ditandai diterima + FOTO lembar (WAJIB); rules v10 tidak berubah (buktiTtd kosong, kolom tetap di daftar tandai);
   · penjaga kiriman = rules v10: ben membuat (bersama nota), karyawan tidak; pengantar menandai dengan kolom terbatas; batal = owner;
   · Pelanggan › Atur: tarif ongkir bawaan, yang bisa mengantar, kendaraan.
 
@@ -132,6 +134,8 @@ ok('D: draf antar ikut diparkir & kembali saat dibuka', Dp.antar === null && Dp.
 
 // ---- E · tanda terima, setor, gagal, batal
 var sj2 = ajCari(SJ2.id);
+var UP = uangNotaPesanan({ status: 'dibayar', trxIdJual: N2.trxId }, '2026-11-18');
+ok('E: pesanan yang notanya bayar di tempat → BELUM lunas: "BAYAR DI TEMPAT — belum setor Rp82.000"', !UP.lunas && UP.sisa === 82000 && /BAYAR DI TEMPAT — belum setor Rp82\.000/.test(UP.kata), J(UP));
 ok('E: tanpa tanda tangan → ditolak', /tanda tangan/.test(ajSusunTerima(sj2, { uang: '82000' }, W).tolak || ''));
 ok('E: uang lebih dari tagihan → ditolak', /lebih besar/.test(ajSusunTerima(sj2, { ttdId: 'T1', uang: '90000' }, W).tolak || ''));
 var R1 = ajSusunTerima(sj2, { ttdId: 'T1', fotoId: '', uang: '82000', caraUang: 'Tunai', penerima: 'Deka', oleh: 'Ben Contoh' }, W);
@@ -156,6 +160,7 @@ ok('E: karyawan membatalkan surat jalan → DITOLAK', !!kirimUbah(KRY, 'suratJal
 ok('E: Ben membuat surat jalan berisi kolom penerimaan → DITOLAK', !!kirim(BEN, [{ koleksi: 'suratJalan', data: Object.assign({}, SJ2, { penerima: 'x' }) }]).tolak);
 ok('E: menandai ulang yang sudah diterima → DITOLAK', !!kirimUbah(BEN, 'suratJalan', U1, Object.assign({}, U1, { status: 'gagal', alasanGagal: 'x' })).tolak);
 terapkanKeCache(R1.dokumen);
+ok('E: uang di tempat pulang → pesanan nota itu LUNAS', uangNotaPesanan({ status: 'dibayar', trxIdJual: N2.trxId }, '2026-11-18').lunas);
 ok('E: sesudah uang pulang: bon Deka kembali ke awal, tidak ada bayar di tempat yang belum disetor', hitungPiutang().find(function (r) { return r.kunci === 'deka'; }).sisa === bonDekaAwal && ajCodBelumSetor('2026-11-18').length === 0);
 var NS2 = notaDariBaris(ambilPenjualanSemua().filter(function (p) { return String(p.trxId) === String(N2.trxId); }));
 var ST2 = susunStruk(NS2, stAtur(), { kertas: 80 });
@@ -194,6 +199,43 @@ var BT = ajSusunBukti(sj2, 'ttd', { jenis: 'image/png', base64: 'iVBORw0KGgo=', 
 ok('G: bukti tanda tangan: id, idSJ, noSJ, jenisBukti ttd, png (bentuk rules v10 buktiSah)', BT.data && BT.data.idSJ === String(sj2.id) && BT.data.jenisBukti === 'ttd' && BT.data.jenis === 'image/png' && BT.data.noSJ === 'SJ26-TES-0002', J(BT));
 ok('G: bukti bukan gambar / terlalu besar ditolak', !!ajSusunBukti(sj2, 'ttd', { jenis: 'text/html', base64: 'AAAA' }, W).tolak && !!ajSusunBukti(sj2, 'foto', { jenis: 'image/jpeg', base64: new Array(1000001).join('A') }, W).tolak);
 ok('G: tanda tangan cukup = ≥ 12 titik goresan', !ajTtdCukup(3) && ajTtdCukup(12));
+
+// ---- H · tanda tangan di KERTAS (owner 18 Nov: perangkat kasir cuma satu, tablet tetap di toko) — foto lembar toko WAJIB; rules v10 tidak berubah
+// sj2 sudah lunas di cache (E) → surat jalan bayar di tempat kembarannya yang belum ditandai, nomor lain
+var sjK = Object.assign({}, sj2, { id: 'sjK', noSJ: 'SJ26-TES-0099' });
+ok('H: kertas tanpa foto lembar → ditolak (walau ada id tanda tangan)', /LEMBAR TOKO/.test(ajSusunTerima(sjK, { cara: 'kertas', ttdId: 'T9', uang: '82000' }, W).tolak || ''));
+var RK = ajSusunTerima(sjK, { cara: 'kertas', fotoId: 'F1', uang: '82000', caraUang: 'Tunai', penerima: 'Deka', oleh: 'Ben Contoh' }, W);
+var UK = RK.dokumen ? RK.dokumen.filter(function (x) { return x.koleksi === 'suratJalan'; })[0].data : null;
+var MK = RK.dokumen ? RK.dokumen.filter(function (x) { return x.koleksi === 'piutangMutasi'; })[0] : null;
+ok('H: kertas + foto → diterima TANPA tanda tangan layar: buktiTtd kosong, buktiFoto = foto lembar, riwayat bukti kertas', !!UK && UK.status === 'diterima' && J(UK.buktiTtd) === '[]' && J(UK.buktiFoto) === '["F1"]'
+  && UK.riwayatStatus[UK.riwayatStatus.length - 1].bukti === 'kertas' && ajCaraTerima(UK) === 'kertas', RK.tolak || J(UK));
+ok('H: uang bayar di tempat tetap tercatat saat menandai (pelunasan 82.000 ber-untukSJ, dibawa Ben)', !!MK && MK.data.nominal === 82000 && MK.data.untukSJ === 'SJ26-TES-0099' && MK.data.dibawaOleh === 'Ben', J(MK));
+ok('H: kabar menyebut tanda tangan di kertas', RK.patch && /tanda tangan di kertas/.test(RK.patch.kabar), RK.patch && RK.patch.kabar);
+ok('H: cara terima: layar untuk tanda tangan layar; data tanpa keterangan dibaca dari buktiTtd; belum diterima = kosong',
+  ajCaraTerima(U1) === 'layar' && U1.riwayatStatus[U1.riwayatStatus.length - 1].bukti === 'layar' && ajCaraTerima(Object.assign({}, U1, { riwayatStatus: [] })) === 'layar'
+  && ajCaraTerima(Object.assign({}, UK, { riwayatStatus: [] })) === 'kertas' && ajCaraTerima(sjK) === '');
+var ubahK = UK ? Object.keys(UK).filter(function (k) { return J(UK[k]) !== J(sjK[k]); }) : ['?'];
+ok('H: kolom yang berubah ⊆ kolom tandai rules v10 (rules tidak perlu terbit ulang)', ubahK.every(function (k) { return AJ_KOLOM_TANDAI.indexOf(k) >= 0; }), J(ubahK));
+ok('H: karyawan (pengantar) menandai diterima cara kertas + uang pulang → diterima penjaga', !periksaKiriman(KRY, [{ koleksi: 'suratJalan', data: atribusi(KRY, UK, true), ada: true, lama: sjK }, { koleksi: 'piutangMutasi', data: atribusi(KRY, MK.data, false), ada: false, lama: null }], [], hak(KRY), KINI).tolak);
+var BK = ajSusunBukti(sj2, 'foto', { jenis: 'image/jpeg', base64: '/9j/AAAA', lebar: 900, tinggi: 1200 }, W, 'kertas');
+ok('H: bukti foto lembar: jenisBukti foto + isiBukti kertas (bentuk buktiSah tetap); tanda tangan layar = isiBukti layar', !!BK.data && BK.data.jenisBukti === 'foto' && BK.data.isiBukti === 'kertas' && BK.data.idSJ === String(sj2.id) && BT.data.isiBukti === 'layar'
+  && ajSusunBukti(sj2, 'foto', { jenis: 'image/jpeg', base64: '/9j/AAAA' }, W).data.isiBukti === 'barang', J([BK, BT.data.isiBukti]));
+var LB = ajLembarCetak(sj2, { nama: 'Toko Contoh', alamat: 'Jl. Contoh', telp: '0800' }); var L1 = ajTeksCetak(LB[0], 32), L2 = ajTeksCetak(LB[1], 32), L2b = ajTeksCetak(LB[1], 48);
+ok('H: cetak 2 lembar: LEMBAR PEMBELI lalu LEMBAR TOKO (WAJIB ditandatangani, bawa pulang & foto); tiap baris ≤ 32 / 48 kolom', LB.length === 2 && /LEMBAR PEMBELI/.test(L1) && !/LEMBAR TOKO/.test(L1) && /LEMBAR TOKO/.test(L2)
+  && /WAJIB ditandatangani/.test(L2) && /Bawa pulang ke toko/.test(L2) && /Diterima oleh/.test(L1) && /Diterima oleh/.test(L2) && (L1 + '\n' + L2).split('\n').every(function (l) { return l.length <= 32; })
+  && L2b.split('\n').every(function (l) { return l.length <= 48; }), L1 + '\n=====\n' + L2);
+ok('H: WhatsApp tetap satu teks tanpa nama lembar', !/LEMBAR/.test(TX));
+
+// ---- I · yang mengantar BUKAN pegawai tetap (owner 18 Nov): "+ orang lain" = ketik nama; nama itu muncul lagi sebagai pilihan 60 hari (bagian TERAKHIR — cache surat jalan ditimpa)
+ok('I: "orang lain" tanpa nama → ditolak dengan kalimat ketik', /Ketik nama yang mengantar/.test(ajAlasanTolak({ antar: { ongkir: '', pengantar: '', pengantarKetik: true } }) || ''));
+var DSJ = ajDokumenSJ({ antar: { alamat: 'Jl. Contoh', ongkir: '', pengantar: '  Kurir Lepas Contoh  ', pengantarKetik: true, kendaraan: '', cod: true, catatan: '' }, pelanggan: 'Deka', keranjang: [] }, W, { noSJ: 'SJ26-TES-0777', trxId: 'tx-777', total: 50000, isi: [] });
+ok('I: surat jalan menyimpan nama kurir lepas apa adanya (dirapikan), tanpa kolom bantu draf', !!DSJ && DSJ.pengantar === 'Kurir Lepas Contoh' && !('pengantarKetik' in DSJ), J(DSJ));
+var RL = ajSusunTerima(Object.assign({}, sjK, { id: 'sjL', noSJ: 'SJ26-TES-0778', pengantar: 'Kurir Lepas Contoh' }), { cara: 'kertas', fotoId: 'F2', uang: '82000' }, W);
+ok('I: uang bayar di tempat tercatat dibawa kurir lepas (dibawaOleh = namanya)', !RL.tolak && RL.dokumen[0].data.dibawaOleh === 'Kurir Lepas Contoh' && /dibawa Kurir Lepas Contoh/.test(RL.patch.kabar), RL.tolak || J(RL.dokumen[0].data));
+pasok('suratJalan', [{ id: 'a', tanggal: '2026-11-17', jam: '09:00', pengantar: 'Kurir Lepas Contoh' }, { id: 'b', tanggal: '2026-11-10', jam: '09:00', pengantar: 'kurir lepas contoh ' },
+  { id: 'c', tanggal: '2026-11-12', jam: '09:00', pengantar: 'Ben' }, { id: 'd', tanggal: '2026-10-01', jam: '09:00', pengantar: 'Teman Contoh' }, { id: 'e', tanggal: '2026-08-01', jam: '09:00', pengantar: 'Lama Contoh' }]);
+var PP = ajPilihanPengantar('2026-11-18');
+ok('I: pilihan = daftar Atur (Ben, …) + yang pernah mengantar 60 hari terakhir, terbaru dulu, tanpa kembar & tanpa yang sudah di daftar', PP.tetap.indexOf('Ben') >= 0 && J(PP.lain) === '["Kurir Lepas Contoh","Teman Contoh"]', J(PP));
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 
@@ -231,6 +273,13 @@ STATIS = [
     ('app.js memberi Jual jalur bukti terima', 'app', ["bukti: { ada: () => sumberData().jenis === 'firestore', baca: (idSJ) => fb.bacaBuktiTerima(idSJ), simpan: (d) => fb.simpanBuktiTerima(d) }"]),
     ('Jual memasang panel Antar (Bayar, daftar, tanda terima, tanda tangan digambar ulang)', 'jual', ['const AP = buatPanelAntar(', 'Object.assign(aksi, AP.aksi); AP.pasang(akar);', '${AP.gambarBayar(s, t)}', '${AP.tombolDaftar()}', "return AP.gambarLembar(s, muncul, kepala, L1);", 'AP.sesudahGambar(akar);']),
     ('panel: tanda tangan wajib, foto boleh dilewati, kanvas tanpa gulir', 'panel', ['if (!AJ.ajTtdCukup(nTitik())) return', 'touch-action: none', 'data-aj-foto="1"', 'Foto (boleh dilewati)']),
+    ('panel: tanda tangan di KERTAS bawaan, foto lembar wajib, dua pilihan cara, kartu & bukti menyebut kertas', 'panel', ["caraUang: 'Tunai', cara: 'kertas' }, ajTtdN",
+     "if (kertas) { if (!foto) return set({ kabar: 'Foto dulu LEMBAR TOKO", 'data-aksi="ajCaraTerima"', "cara: kertas ? 'kertas' : 'layar', ttdId: rt ? rt.data.id : ''",
+     "AJ.ajCaraTerima(x) === 'kertas' ? ' · tanda tangan di kertas (foto lembar)'", "d.isiBukti === 'kertas' ? 'foto lembar bertanda tangan'"]),
+    ('panel: yang mengantar = daftar + pernah mengantar + "orang lain" (ketik nama)', 'panel', ['const P = AJ.ajPilihanPengantar(hari());', 'data-aksi="ajPengantarLain"', 'data-kolom="pengantar" data-k="aj-pengantar-ketik"',
+     "!(k === 'pengantar' && s.antar.pengantarKetik)", "if (kolom === 'pengantar') o.pengantarKetik = false;", '${gambarPengantar(a, A)}']),
+    ('panel: cetak surat jalan = 2 lembar berurutan di printer & dialog', 'panel', ['const lembar = AJ.ajLembarCetak(sj, atur.kop);', 'return lembar.reduce((p, g) => p.then(() => PR.susunCetak(g, { gaya: \'teks\' }))',
+     "lembar.map((g) => AJ.ajTeksCetak(g, kertas === 58 ? 32 : 48)).join("]),
     ('modul baru di-modulepreload', 'index', ['<link rel="modulepreload" href="js/layar/antar-logika.js">', '<link rel="modulepreload" href="js/layar/antar-panel.js">']),
     ('Pelanggan › Atur: tarif ongkir, pengantar, kendaraan', 'pelanggan', ['data-kolom="tarifOngkir"', "daftar('pengantarAntar',", "daftar('kendaraanAntar',"]),
     ('Dasbor & tutup hari memerah untuk bayar di tempat belum disetor', 'dasbor', ['data-k="db-cod"']),
@@ -262,7 +311,14 @@ RUSAK = [
     ('pembatalan nota tidak membatalkan surat jalan', JL, "  ajBatalUntukNota(notaTerakhir.trxId, { kini }).forEach((x) => dokumen.push(x));", ""),
     ('nomor surat jalan dipakai ulang', AJ, "aw + ('0000' + (maks + 1))", "aw + ('0000' + 1)"),
     ('kisi "bikin surat jalan" tidak ditegakkan', AK, "  if (ada('suratJalan')) t.antar = 1;\n", ""),
-    ('tanda terima tanpa tanda tangan diterima', AJ, "  if (ajKosong(x.ttdId)) return { tolak: 'Minta tanda tangan penerima dulu (kotak tanda tangan)' };\n", ""),
+    ('tanda terima tanpa tanda tangan diterima', AJ, "  if (!kertas && ajKosong(x.ttdId)) return { tolak: 'Minta tanda tangan penerima dulu (kotak tanda tangan)' };\n", ""),
+    ('tanda tangan kertas tanpa foto lembar diterima', AJ, "  if (kertas && ajKosong(x.fotoId)) return", "  if (false) return"),
+    ('cara kertas tetap menulis id tanda tangan layar', AJ, "buktiTtd: kertas ? [] : [String(x.ttdId)]", "buktiTtd: [String(x.ttdId)]"),
+    ('riwayat tidak mencatat cara tanda terima', AJ, "ajRiwayat(sj, 'diterima', w, { bukti: kertas ? 'kertas' : 'layar' })", "ajRiwayat(sj, 'diterima', w)"),
+    ('pilihan pengantar melupakan kurir lepas', AJ, "if (!kenal[k] && lain.length < 6) { kenal[k] = 1; lain.push(n); }", "if (false) { kenal[k] = 1; lain.push(n); }"),
+    ('pilihan pengantar tidak membatasi 60 hari', AJ, "String(x.tanggal || '') >= batas)", "String(x.tanggal || '') >= '')"),
+    ('cetak surat jalan cuma satu lembar', AJ, "  return [ajGarisCetak(sj, kop, 'pembeli'), ajGarisCetak(sj, kop, 'toko')];", "  return [ajGarisCetak(sj, kop, 'toko')];"),
+    ('lembar toko tanpa perintah bawa pulang', AJ, "b('Bawa pulang ke toko, lalu foto');", ""),
     ('uang di tempat tanpa alamat surat jalan', AJ, "      untukSJ: String(sj.noSJ), catatan: 'Bayar di tempat — surat jalan ' + sj.noSJ };", "      catatan: 'Bayar di tempat — surat jalan ' + sj.noSJ };"),
     ('uang di tempat melebihi tagihan diterima', AJ, "    if (n > K.sisaTagih) return { tolak: 'Uang yang diterima '", "    if (false) return { tolak: 'Uang yang diterima '"),
     ('retur mengembalikan ongkir', RT, "  if (caraBayarKunci(t) !== 'kredit') return ajDasarRetur(t, rtDasarNota);", "  if (caraBayarKunci(t) !== 'kredit') return rtDasarNota(t);"),
@@ -281,6 +337,10 @@ RUSAK_LP = [
 RUSAK_STATIS = [
     ('Jual tidak menggambar ulang tanda tangan', 'jual', 'AP.sesudahGambar(akar);', ''),
     ('panel menerima tanda terima tanpa tanda tangan', 'panel', 'if (!AJ.ajTtdCukup(nTitik())) return', 'if (false) return'),
+    ('panel menerima tanda tangan kertas tanpa foto lembar', 'panel', "if (kertas) { if (!foto) return set(", "if (kertas) { if (false) return set("),
+    ('layar Terima bawaan tanda tangan di layar', 'panel', "caraUang: 'Tunai', cara: 'kertas' }, ajTtdN", "caraUang: 'Tunai', cara: 'layar' }, ajTtdN"),
+    ('nama orang lain tidak bisa diketik', 'panel', "!(k === 'pengantar' && s.antar.pengantarKetik)", "false"),
+    ('printer tablet cuma mencetak satu lembar', 'panel', 'const lembar = AJ.ajLembarCetak(sj, atur.kop);', 'const lembar = [AJ.ajGarisCetak(sj, atur.kop)];'),
     ('akses.js berbeda kolom tandai dengan rules', 'akses', "'uangDiterima', 'caraUang', 'pelunasanId', 'alasanGagal', 'ditandaiOleh'];", "'uangDiterima', 'caraUang', 'pelunasanId', 'alasanGagal', 'ditandaiOleh', 'tagihRp'];"),
 ]
 

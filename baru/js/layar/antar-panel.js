@@ -1,5 +1,6 @@
 // PANEL ANTAR — B3 surat jalan & antar (owner 18 Nov 2026). Dipakai layar Jual: bagian Antar di lembar Bayar, lembar daftar Antar, lembar Terima (tanda
-// tangan penerima di layar + foto + uang bayar di tempat). Logika & angka di antar-logika.js (tanpa DOM) — panel ini hanya menggambar & meneruskan ketukan.
+// tangan di KERTAS + foto lembar toko — cara utama, tablet tetap di toko — ATAU tanda tangan di layar + foto boleh dilewati; + uang bayar di tempat).
+// Cetak surat jalan = 2 lembar (LEMBAR PEMBELI · LEMBAR TOKO). Logika & angka di antar-logika.js (tanpa DOM) — panel ini hanya menggambar & meneruskan ketukan.
 // Gambar tanda tangan & foto TIDAK masuk keadaan layar (bisa ratusan KB): disimpan di memori panel sampai SIMPAN, lalu dikirim ke koleksi buktiTerima.
 import { h } from '../inti/dom.js';
 import { RP, tanggalPendek, hariIniIso } from '../inti/format.js';
@@ -64,13 +65,17 @@ export function buatPanelAntar(ctx) {
 
   // ---------- cetak & WhatsApp surat jalan ----------
   function cetakSJ(sj) {
-    const atur = ST.stAtur(); const garis = AJ.ajGarisCetak(sj, atur.kop); const kertas = Number(atur.kertas) === 58 ? 58 : 80;
+    const atur = ST.stAtur(); const lembar = AJ.ajLembarCetak(sj, atur.kop); const kertas = Number(atur.kertas) === 58 ? 58 : 80;
     const dialog = () => { const el = document.getElementById('cetakStruk'); if (!el) return set({ kabar: 'Dialog cetak tidak tersedia di layar ini', kabarAwas: true });
-      el.textContent = AJ.ajTeksCetak(garis, kertas === 58 ? 32 : 48); el.className = 'cetak-struk k' + kertas; try { window.print(); } catch (e) { set({ kabar: 'Dialog cetak tidak bisa dibuka: ' + (e && e.message ? e.message : e), kabarAwas: true }); } };
+      el.textContent = lembar.map((g) => AJ.ajTeksCetak(g, kertas === 58 ? 32 : 48)).join('\n\n' + '- - potong di sini - -' + '\n\n'); el.className = 'cetak-struk k' + kertas;
+      try { window.print(); } catch (e) { set({ kabar: 'Dialog cetak tidak bisa dibuka: ' + (e && e.message ? e.message : e), kabarAwas: true }); } };
     PR.jalurCetak().then((j) => {
       if (j === 'dialog') return dialog();
-      return PR.susunCetak(garis, { gaya: 'teks' }).then((x) => PR.kirimCetak(x.byte, j)).then(() => set({ kabar: 'Surat jalan ' + sj.noSJ + ' dicetak di printer tablet', kabarAwas: false }))
-        .catch((e) => { set({ kabar: 'Printer USB gagal (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true }); dialog(); });
+      // dua lembar berurutan, masing-masing dipotong printer: lembar pembeli dulu, lalu lembar toko (yang ditandatangani & dibawa pulang)
+      let n = 0;
+      return lembar.reduce((p, g) => p.then(() => PR.susunCetak(g, { gaya: 'teks' })).then((x) => PR.kirimCetak(x.byte, j)).then(() => { n += 1; }), Promise.resolve())
+        .then(() => set({ kabar: 'Surat jalan ' + sj.noSJ + ' dicetak 2 lembar: LEMBAR PEMBELI ditinggal, LEMBAR TOKO ditandatangani penerima & dibawa pulang', kabarAwas: false }))
+        .catch((e) => { set({ kabar: 'Printer USB gagal' + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true }); dialog(); });
     }).catch(() => dialog());
   }
   function waSJ(sj) {
@@ -94,8 +99,11 @@ export function buatPanelAntar(ctx) {
     // ---- draf antar di Bayar
     ajBuat: () => { const tb = tombolAkun(akun(), 'antar'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ antar: AJ.ajDrafBaru(S().pelanggan), kabar: '' }); },
     ajLepas: () => { const s = S(); set({ antar: null, cara: s.antar && s.antar.cod ? 'Tunai' : s.cara, kabar: 'Tidak jadi diantar — nota ini nota biasa', kabarAwas: false }); },
-    ajKetik: (v, el) => { const s = S(); if (!s.antar) return; const k = el.dataset.kolom; if (['alamat', 'ongkir', 'catatan'].indexOf(k) < 0) return; const o = {}; o[k] = String(v || '').slice(0, k === 'ongkir' ? 12 : 160); set({ antar: Object.assign({}, s.antar, o) }); },
-    ajPilih: ({ kolom, n }) => { const s = S(); if (!s.antar || ['pengantar', 'kendaraan'].indexOf(kolom) < 0) return; const o = {}; o[kolom] = s.antar[kolom] === n && kolom === 'kendaraan' ? '' : String(n || ''); set({ antar: Object.assign({}, s.antar, o) }); },
+    ajKetik: (v, el) => { const s = S(); if (!s.antar) return; const k = el.dataset.kolom; if (['alamat', 'ongkir', 'catatan'].indexOf(k) < 0 && !(k === 'pengantar' && s.antar.pengantarKetik)) return;
+      const o = {}; o[k] = String(v || '').slice(0, k === 'ongkir' ? 12 : k === 'pengantar' ? 30 : 160); set({ antar: Object.assign({}, s.antar, o) }); },
+    ajPilih: ({ kolom, n }) => { const s = S(); if (!s.antar || ['pengantar', 'kendaraan'].indexOf(kolom) < 0) return; const o = {}; o[kolom] = s.antar[kolom] === n && kolom === 'kendaraan' ? '' : String(n || ''); if (kolom === 'pengantar') o.pengantarKetik = false; set({ antar: Object.assign({}, s.antar, o) }); },
+    // yang mengantar bukan dari daftar (kurir lepas / bukan pegawai tetap): ketik namanya
+    ajPengantarLain: () => { const s = S(); if (!s.antar || s.antar.pengantarKetik) return; set({ antar: Object.assign({}, s.antar, { pengantar: '', pengantarKetik: true }), kabar: '' }); },
     ajTarif: () => { const s = S(); if (!s.antar) return; set({ antar: Object.assign({}, s.antar, { ongkir: String(AJ.ajAtur().tarif || '') }) }); },
     ajCod: () => { const s = S(); if (!s.antar) return; if (!s.antar.cod) { const tb = tombolAkun(akun(), 'jualBon'); if (!tb.boleh) return set({ kabar: 'Bayar di tempat dicatat sebagai bon sementara — ' + tb.kalimat, kabarAwas: true }); }
       set(Object.assign(AJ.ajSetelCod(s, !s.antar.cod), { kabar: '' })); },
@@ -107,7 +115,8 @@ export function buatPanelAntar(ctx) {
     // ---- terima
     ajTerimaBuka: ({ id }) => { const tb = tombolAkun(akun(), 'terimaAntar'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); const sj = AJ.ajCari(id); if (!sj) return;
       if (ttdUntuk !== String(id)) { gores = []; foto = null; ttdUntuk = String(id); }
-      const K = AJ.ajKeadaan(sj, hari()); set({ lembar: 'antarTerima', ajBuka: String(id), ajTerima: { penerima: '', catatan: '', uang: K.sisaTagih ? String(K.sisaTagih) : '', caraUang: 'Tunai' }, ajTtdN: nTitik(), kabar: '' }); },
+      const K = AJ.ajKeadaan(sj, hari()); set({ lembar: 'antarTerima', ajBuka: String(id), ajTerima: { penerima: '', catatan: '', uang: K.sisaTagih ? String(K.sisaTagih) : '', caraUang: 'Tunai', cara: 'kertas' }, ajTtdN: nTitik(), kabar: '' }); },
+    ajCaraTerima: ({ c }) => { const s = S(); if (s.ajTerima) set({ ajTerima: Object.assign({}, s.ajTerima, { cara: c === 'layar' ? 'layar' : 'kertas' }), kabar: '' }); },
     ajTerimaKetik: (v, el) => { const s = S(); const k = el.dataset.kolom; if (!s.ajTerima || ['penerima', 'catatan', 'uang'].indexOf(k) < 0) return; const o = {}; o[k] = String(v || '').slice(0, k === 'uang' ? 12 : 160); set({ ajTerima: Object.assign({}, s.ajTerima, o) }); },
     ajCaraUang: ({ c }) => { const s = S(); if (s.ajTerima) set({ ajTerima: Object.assign({}, s.ajTerima, { caraUang: c === 'QRIS' ? 'QRIS' : 'Tunai' }) }); },
     ajTtdHapus: () => { gores = []; set({ ajTtdN: 0 }); },
@@ -115,23 +124,27 @@ export function buatPanelAntar(ctx) {
     ajKembali: () => set({ lembar: 'antar', ajBuka: null, kabar: '' }),
     ajTerimaSimpan: async (d, el) => {
       const s = S(); const sj = AJ.ajCari(s.ajBuka); if (!sj) return set({ kabar: 'Surat jalan tidak ditemukan', kabarAwas: true });
-      if (!AJ.ajTtdCukup(nTitik())) return set({ kabar: 'Minta tanda tangan penerima dulu di kotak putih', kabarAwas: true });
-      const c = el && el.closest ? (el.closest('.lembar') || document).querySelector('canvas[data-ttd]') : document.querySelector('canvas[data-ttd]');
-      if (!c) return set({ kabar: 'Kotak tanda tangan tidak terbaca — buka lagi lembarnya', kabarAwas: true });
-      const w = ctx.waktu(); const p = AJ.ajPisahDataUrl(c.toDataURL('image/png'));
-      const rt = AJ.ajSusunBukti(sj, 'ttd', Object.assign({ lebar: c.width, tinggi: c.height }, p || {}), w); if (rt.tolak) return set({ kabar: rt.tolak, kabarAwas: true });
-      const rf = foto ? AJ.ajSusunBukti(sj, 'foto', foto, w) : null; if (rf && rf.tolak) return set({ kabar: rf.tolak, kabarAwas: true });
+      const kertas = !s.ajTerima || s.ajTerima.cara !== 'layar'; const w = ctx.waktu(); let rt = null;
+      if (kertas) { if (!foto) return set({ kabar: 'Foto dulu LEMBAR TOKO yang sudah ditandatangani penerima', kabarAwas: true }); }
+      else {
+        if (!AJ.ajTtdCukup(nTitik())) return set({ kabar: 'Minta tanda tangan penerima dulu di kotak putih', kabarAwas: true });
+        const c = el && el.closest ? (el.closest('.lembar') || document).querySelector('canvas[data-ttd]') : document.querySelector('canvas[data-ttd]');
+        if (!c) return set({ kabar: 'Kotak tanda tangan tidak terbaca — buka lagi lembarnya', kabarAwas: true });
+        const p = AJ.ajPisahDataUrl(c.toDataURL('image/png'));
+        rt = AJ.ajSusunBukti(sj, 'ttd', Object.assign({ lebar: c.width, tinggi: c.height }, p || {}), w); if (rt.tolak) return set({ kabar: rt.tolak, kabarAwas: true });
+      }
+      const rf = foto ? AJ.ajSusunBukti(sj, 'foto', foto, w, kertas ? 'kertas' : '') : null; if (rf && rf.tolak) return set({ kabar: rf.tolak, kabarAwas: true });
       // uang & bentuk tanda terima diperiksa DULU (sebelum bukti dikirim) — bukti tanpa tanda terima tidak pernah dikirim untuk isian yang pasti ditolak
-      const isi = Object.assign({}, s.ajTerima || {}, { ttdId: rt.data.id, fotoId: rf ? rf.data.id : '', oleh: namaAkun() });
+      const isi = Object.assign({}, s.ajTerima || {}, { cara: kertas ? 'kertas' : 'layar', ttdId: rt ? rt.data.id : '', fotoId: rf ? rf.data.id : '', oleh: namaAkun() });
       const r = AJ.ajSusunTerima(sj, isi, w); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
-      const daftar = [rt.data].concat(rf ? [rf.data] : []);
-      set({ kabar: 'Menyimpan tanda tangan' + (rf ? ' & foto' : '') + '…', kabarAwas: false });
+      const daftar = (rt ? [rt.data] : []).concat(rf ? [rf.data] : []);
+      set({ kabar: 'Menyimpan ' + (kertas ? 'foto lembar bertanda tangan' : 'tanda tangan' + (rf ? ' & foto' : '')) + '…', kabarAwas: false });
       const x = buktiServer() ? await ctx.bukti.simpan(daftar) : { ok: true, simulasi: true };
       if (x && x.gagal) return set({ kabar: 'Tanda terima TIDAK tersimpan: ' + (/permission/i.test(x.pesan || '') ? KABAR_PERMISI : x.pesan), kabarAwas: true });
       if (x && x.simulasi) sim[sj.id] = (sim[sj.id] || []).concat(daftar);
       gores = []; foto = null; ttdUntuk = '';
       await tulis(r, { lembar: 'antar', ajBuka: null, ajTerima: null, ajTtdN: 0 });
-      if (x && x.antre) set({ kabar: S().kabar + ' · tanda tangan' + (rf ? ' & foto' : '') + ' BELUM sampai server (sinyal lambat) — terkirim sendiri begitu tersambung', kabarAwas: true });
+      if (x && x.antre) set({ kabar: S().kabar + ' · ' + (kertas ? 'foto lembar' : 'tanda tangan' + (rf ? ' & foto' : '')) + ' BELUM sampai server (sinyal lambat) — terkirim sendiri begitu tersambung', kabarAwas: true });
     },
     // ---- gagal antar · batal (owner) · setor menyusul
     ajAlasanBuka: ({ id, jenis }) => { const tb = jenis === 'batal' ? (bukanOwner(akun()) ? { boleh: false, kalimat: 'Membatalkan surat jalan = owner' } : { boleh: true }) : tombolAkun(akun(), 'terimaAntar');
@@ -176,11 +189,20 @@ export function buatPanelAntar(ctx) {
         <div><div class="ket">Catatan untuk pengantar</div><input class="ketik-nama" type="text" value="${a.catatan}" data-ketik="ajKetik" data-kolom="catatan" data-k="aj-catatan" placeholder="mis. taruh di dapur"></div>
       </div>
       ${ongkirSah ? (t.ongkir ? h`<div class="ket">ongkir ${RP(t.ongkir)} masuk nota sebagai baris sendiri (bukan jualan beras)</div>` : '') : h`<div class="ket awas-teks">Ongkir: ketik angka rupiah (0 – ${RP(AJ.AJ_TARIF_MAKS)})</div>`}
-      <div class="label">Yang mengantar</div>${pil('pengantar', A.pengantar)}
+      <div class="label">Yang mengantar</div>${gambarPengantar(a, A)}
       ${A.kendaraan.length ? h`<div class="label">Kendaraan</div>${pil('kendaraan', A.kendaraan)}` : ''}
       <div class="tombol-baris"><div class="kaca-btn ${a.cod ? 'aktif emas' : ''}" data-aksi="ajCod" data-k="aj-cod">${a.cod ? '✓ Bayar di tempat' : 'Bayar di tempat'}</div></div>
       ${a.cod ? h`<div class="pita-info emas" data-k="aj-cod-pita">BAYAR DI TEMPAT — nota dicatat sekarang sebagai bon sementara atas nama ${s.pelanggan || '… (pilih nama pembelinya)'}; ${a.pengantar || 'pengantar'} menagih ${RP(Math.max(0, t.total))} dan membawa uangnya pulang. Bebas batas kredit hari ini; kalau sampai tutup hari uangnya belum disetor, Dasbor & tutup hari memerah.</div>` : ''}
     </div>`;
+  }
+  /** Pilihan yang mengantar: daftar Atur + yang pernah mengantar (kurir lepas) + "orang lain" (ketik nama). */
+  function gambarPengantar(a, A) {
+    const P = AJ.ajPilihanPengantar(hari()); const ketik = !!a.pengantarKetik;
+    const pilN = (nm) => h`<span class="pil ${!ketik && a.pengantar === nm ? 'nyala' : ''}" data-aksi="ajPilih" data-kolom="pengantar" data-n="${nm}" data-k="aj-pengantar-${nm}">${nm}</span>`;
+    const luar = !ketik && a.pengantar && A.pengantar.indexOf(a.pengantar) < 0;
+    return h`<div class="bendera">${P.tetap.map(pilN)}${P.lain.map(pilN)}<span class="pil ${ketik ? 'nyala' : ''}" data-aksi="ajPengantarLain" data-k="aj-pengantar-lain">+ orang lain</span></div>
+      ${ketik ? h`<input class="ketik-nama" type="text" value="${a.pengantar}" data-ketik="ajKetik" data-kolom="pengantar" data-k="aj-pengantar-ketik" maxlength="30" placeholder="Nama yang mengantar (kurir lepas / bukan pegawai tetap)">` : ''}
+      ${ketik || luar ? h`<div class="ket">bukan pegawai tetap — tidak perlu akun: tanda terimanya ditandai di toko (lembar toko difoto)${a.cod ? '; uang bayar di tempat tercatat dibawa ' + (a.pengantar || 'dia') : ''}. Nama ini muncul lagi sebagai pilihan selama ${AJ.AJ_PENGANTAR_INGAT_HARI} hari.</div>` : ''}`;
   }
   /** Tombol daftar Antar di bilah Jual: jumlah yang masih di jalan + bayar di tempat yang belum pulang. */
   function tombolDaftar() {
@@ -195,7 +217,7 @@ export function buatPanelAntar(ctx) {
       <div class="isi">${isiRingkas(x)}</div>
       <div class="ket">${x.alamat || 'tanpa alamat'} · ${x.pengantar || '—'}${x.kendaraan ? ' · ' + x.kendaraan : ''} · ${tanggalPendek(x.tanggal)} ${x.jam || ''}${x.ongkir ? ' · ongkir ' + RP(x.ongkir) : ''}${x.catatan ? ' · ' + x.catatan : ''}</div>
       ${x.bayarDiTempat ? h`<div class="ket ${x.sisaTagih > 0 ? 'awas-teks' : ''}">bayar di tempat ${RP(x.tagihRp)}${x.dibayar ? ' · sudah ' + RP(x.dibayar) : ''}${x.sisaTagih > 0 ? ' · BELUM SETOR ' + RP(x.sisaTagih) + (x.lewatHari ? ' (lewat hari — kini bon biasa)' : '') : ' · lunas'}</div>` : ''}
-      ${x.status === 'diterima' ? h`<div class="ket">diterima ${x.penerima ? x.penerima + ' · ' : ''}${tanggalPendek(x.diterimaTanggal || x.tanggal)} ${x.diterimaJam || ''}${x.ditandaiOleh ? ' · ditandai ' + x.ditandaiOleh : ''}${(x.buktiFoto || []).length ? '' : ' · tanpa foto'}${x.catatanTerima ? ' · ' + x.catatanTerima : ''}</div>` : ''}
+      ${x.status === 'diterima' ? h`<div class="ket">diterima ${x.penerima ? x.penerima + ' · ' : ''}${tanggalPendek(x.diterimaTanggal || x.tanggal)} ${x.diterimaJam || ''}${x.ditandaiOleh ? ' · ditandai ' + x.ditandaiOleh : ''}${AJ.ajCaraTerima(x) === 'kertas' ? ' · tanda tangan di kertas (foto lembar)' : (x.buktiFoto || []).length ? '' : ' · tanpa foto'}${x.catatanTerima ? ' · ' + x.catatanTerima : ''}</div>` : ''}
       ${x.status === 'gagal' ? h`<div class="ket awas-teks">gagal antar: ${x.alasanGagal || '—'}${x.gagalBelumBeres ? ' — notanya masih berlaku: owner membatalkan nota (hari ini) atau mencatat retur' : ''}</div>` : ''}
       ${x.status === 'batal' ? h`<div class="ket">dibatalkan${x.alasanBatal ? ': ' + x.alasanBatal : ''}</div>` : ''}
       ${x.notaBatalSuratJalan ? h`<div class="ket awas-teks">notanya sudah dibatalkan — surat jalan ini ikut dibatalkan owner</div>` : ''}
@@ -213,7 +235,7 @@ export function buatPanelAntar(ctx) {
         <div class="tombol-baris">${['Tunai', 'QRIS'].map((c) => h`<div class="kaca-btn ${se.caraUang === c ? 'aktif' : ''}" data-aksi="ajSetorCara" data-c="${c}">${c}</div>`)}</div>
         <div class="tombol-baris"><div class="kaca-btn" data-aksi="ajSetorTutup">tidak jadi</div><div class="kaca-btn aktif" data-aksi="ajSetorSimpan">CATAT UANG MASUK</div></div></div>` : ''}
       ${L ? h`<div class="aj-bukti" data-k="aj-bukti-${x.id}">${L.muat === 'baca' ? h`<div class="ket">membaca bukti…</div>` : L.muat === 'galat' ? h`<div class="ket awas-teks">${L.pesan}</div>`
-        : L.daftar.length ? L.daftar.map((d) => h`<div class="ket">${d.jenisBukti === 'ttd' ? 'tanda tangan' : 'foto'} · ${d.jam || ''}</div><img alt="${d.jenisBukti === 'ttd' ? 'tanda tangan penerima' : 'foto antar'}" src="${fbnSrc(d)}" style="max-width: 100%; border-radius: 8px; background: #fff;">`) : h`<div class="ket">Belum ada bukti di server${L.pesan ? ' · ' + L.pesan : ''}</div>`}</div>` : ''}
+        : L.daftar.length ? L.daftar.map((d) => h`<div class="ket">${d.jenisBukti === 'ttd' ? 'tanda tangan' : d.isiBukti === 'kertas' ? 'foto lembar bertanda tangan' : 'foto'} · ${d.jam || ''}</div><img alt="${d.jenisBukti === 'ttd' ? 'tanda tangan penerima' : d.isiBukti === 'kertas' ? 'foto lembar surat jalan bertanda tangan' : 'foto antar'}" src="${fbnSrc(d)}" style="max-width: 100%; border-radius: 8px; background: #fff;">`) : h`<div class="ket">Belum ada bukti di server${L.pesan ? ' · ' + L.pesan : ''}</div>`}</div>` : ''}
     </div>`;
   }
   /** Lembar daftar Antar & lembar Terima. kepala(judul, ket), L1 = tirai. */
@@ -237,22 +259,27 @@ export function buatPanelAntar(ctx) {
     if (s.lembar === 'antarTerima') {
       const sj = AJ.ajCari(s.ajBuka);
       if (!sj) return h`${L1}<div class="lembar ${muncul}" data-k="lembar-antarTerima">${kepala('Tanda terima', '')}<div class="ket">Surat jalan tidak ditemukan.</div><div class="kaca-btn" data-aksi="ajKembali">kembali ke daftar Antar</div></div>`;
-      const K = AJ.ajKeadaan(sj, hari()); const T = s.ajTerima || { penerima: '', catatan: '', uang: '', caraUang: 'Tunai' }; const cukup = AJ.ajTtdCukup(s.ajTtdN || 0);
+      const K = AJ.ajKeadaan(sj, hari()); const T = s.ajTerima || { penerima: '', catatan: '', uang: '', caraUang: 'Tunai', cara: 'kertas' }; const kertas = T.cara !== 'layar';
+      const cukup = kertas ? !!foto : AJ.ajTtdCukup(s.ajTtdN || 0);
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-antarTerima">
         ${kepala('Tanda terima · ' + sj.noSJ, (sj.namaPelanggan || 'tanpa nama') + (sj.alamat ? ' · ' + sj.alamat : ''))}
         <div class="ket">${isiRingkas(sj)}</div>
         <input class="ketik-nama" type="text" value="${T.penerima}" data-ketik="ajTerimaKetik" data-kolom="penerima" placeholder="Nama yang menerima (boleh kosong)">
-        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span class="label">Tanda tangan penerima</span><span class="ket tautan" data-aksi="ajTtdHapus">hapus, ulangi</span></div>
+        <div class="label">Tanda tangan penerima</div>
+        <div class="tombol-baris">${Object.keys(AJ.AJ_CARA_TERIMA).map((c) => h`<div class="kaca-btn ${(c === 'layar') === !kertas ? 'aktif' : ''}" data-aksi="ajCaraTerima" data-c="${c}" data-k="aj-cara-${c}">${c === 'kertas' ? 'di kertas (dibawa pulang)' : 'di layar ini'}</div>`)}</div>
+        ${kertas ? h`<div class="ket ${foto ? '' : 'awas-teks'}" data-k="aj-kertas">${foto ? 'foto lembar siap' : 'foto LEMBAR TOKO yang sudah ditandatangani penerima — wajib, kertas termal bisa pudar'}</div>
+          <div class="tombol-baris"><label class="kaca-btn ${foto ? '' : 'aktif'}" for="ajFotoKamera">${foto ? 'ganti foto lembar' : 'foto lembar bertanda tangan'}</label>${foto ? h`<div class="kaca-btn putus" data-aksi="ajFotoHapus">lepas foto (${fbnKB(foto.byte)})</div>` : ''}</div>`
+        : h`<div style="display: flex; justify-content: flex-end;"><span class="ket tautan" data-aksi="ajTtdHapus">hapus, ulangi</span></div>
         <canvas class="ttd-kanvas" data-ttd="1" data-k="ttd-${sj.id}" width="640" height="240" style="width: 100%; height: 180px; touch-action: none; background: #ffffff; border-radius: 10px; display: block;"></canvas>
         <div class="ket ${cukup ? '' : 'awas-teks'}">${cukup ? 'tanda tangan siap' : 'minta penerima tanda tangan di kotak putih (jari / pena)'}</div>
         <div class="label">Foto (boleh dilewati)</div>
-        <div class="tombol-baris"><label class="kaca-btn" for="ajFotoKamera">${foto ? 'ganti foto' : 'foto barang / penerima'}</label>${foto ? h`<div class="kaca-btn putus" data-aksi="ajFotoHapus">lepas foto (${fbnKB(foto.byte)})</div>` : ''}</div>
+        <div class="tombol-baris"><label class="kaca-btn" for="ajFotoKamera">${foto ? 'ganti foto' : 'foto barang / penerima'}</label>${foto ? h`<div class="kaca-btn putus" data-aksi="ajFotoHapus">lepas foto (${fbnKB(foto.byte)})</div>` : ''}</div>`}
         <input id="ajFotoKamera" type="file" accept="image/*" capture="environment" data-aj-foto="1" hidden>
         ${sj.bayarDiTempat ? h`<div class="label">Uang bayar di tempat · ditagih ${RP(K.sisaTagih)}</div>
           <input class="ketik-nama" type="text" inputmode="numeric" value="${T.uang}" data-ketik="ajTerimaKetik" data-kolom="uang" placeholder="Rp (0 = belum dibayar, tetap bon)">
           <div class="tombol-baris">${['Tunai', 'QRIS'].map((c) => h`<div class="kaca-btn ${T.caraUang === c ? 'aktif' : ''}" data-aksi="ajCaraUang" data-c="${c}">${c}</div>`)}</div>` : ''}
         <input class="ketik-nama" type="text" value="${T.catatan}" data-ketik="ajTerimaKetik" data-kolom="catatan" placeholder="Catatan (mis. ada 1 karung kembali — owner mencatat retur)">
-        <div class="utama ${cukup ? '' : 'redup'}" data-aksi="ajTerimaSimpan">${cukup ? 'SIMPAN · DITERIMA' : 'Tanda tangan dulu'}</div>
+        <div class="utama ${cukup ? '' : 'redup'}" data-aksi="ajTerimaSimpan">${cukup ? 'SIMPAN · DITERIMA' : kertas ? 'Foto lembar dulu' : 'Tanda tangan dulu'}</div>
         <div class="kaca-btn" data-aksi="ajKembali">kembali ke daftar Antar</div>
       </div>`;
     }

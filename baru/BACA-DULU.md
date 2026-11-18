@@ -2683,7 +2683,7 @@ pelunasan **tertua dulu + bisa pilih faktur**; batas kosong = **rumus lama KR1**
 Keputusan owner 18 Nov 2026 (memori `b3-surat-jalan-keputusan`): ongkir = **baris terpisah** di nota (bukan jualan beras, boleh Rp0), tarif bawaan **diatur
 owner** (Pelanggan › Atur); bayar di tempat = **nota dulu** (stok keluar saat berangkat) sebagai bon sementara, **bebas batas kredit hari itu**, lunas saat
 uang dibawa pulang; **owner + Ben** membuat surat jalan, **pengantar** (Ben / karyawan) menandai diterima; bukti = **tanda tangan di layar** (wajib) + **foto**
-(boleh dilewati). Mesin beku tidak disentuh (`beku2.py --sidik` 26/26, 91/91).
+(boleh dilewati) — DIGANTI susulan 18 Nov: tanda tangan di kertas + foto lembar wajib, lihat di bawah. Mesin beku tidak disentuh (`beku2.py --sidik` 26/26, 91/91).
 - **Logika**: `baru/js/layar/antar-logika.js` (tanpa DOM, awalan `aj`); layar: `baru/js/layar/antar-panel.js` (dipasang Jual: Bayar › Antar, daftar Antar,
   lembar Tanda terima).
 - **Ongkir MENEMPEL di satu baris nota** (kolom `ongkirAntar`, ikut `hargaTotal` — pola `upahRepack`): sesudah potongan, sebelum pembulatan Rp500; baris
@@ -2700,6 +2700,20 @@ uang dibawa pulang; **owner + Ben** membuat surat jalan, **pengantar** (Ben / ka
 - **Tanda terima**: tanda tangan (kanvas, ≥ 12 titik) wajib, foto boleh dilewati (pengecil foto bon). Gambar disimpan di koleksi `buktiTerima`
   (TIDAK di koleksi.js — dibaca `bacaBuktiTerima` saat dibuka, ditulis `simpanBuktiTerima` dengan jejak), tanda terima (`suratJalan` update + pelunasan)
   dikirim sesudahnya. Mode cadangan = simulasi di memori panel.
+- **Susulan owner 18 Nov — tanda tangan di KERTAS (cabang `perbaikan/b3-tanda-terima-kertas`)**: perangkat kasir cuma satu (tablet CPad tetap di toko),
+  jadi cara UTAMA = kertas. Cetak surat jalan = **2 lembar** (`ajLembarCetak`: LEMBAR PEMBELI ditinggal · LEMBAR TOKO ditandatangani penerima & dibawa
+  pulang; WhatsApp tetap satu teks). Lembar Tanda terima bawaan "di kertas": **foto lembar toko WAJIB** (kertas termal memudar), kotak tanda tangan layar
+  tetap ada lewat pilihan "di layar ini". Data: `buktiTtd: []` + `buktiFoto: [foto lembar]`, `riwayatStatus[...].bukti = 'kertas' | 'layar'`
+  (`ajCaraTerima`), dokumen bukti `isiBukti: 'kertas' | 'layar' | 'barang'`. Kolom yang berubah tetap di daftar `stafTandaiSJ` → **rules v10 tidak berubah**.
+- **Susulan owner 18 Nov — yang mengantar bukan pegawai tetap**: Bayar › Antar › Yang mengantar = daftar Pelanggan › Atur + nama yang pernah mengantar
+  `AJ_PENGANTAR_INGAT_HARI` (60) hari terakhir (`ajPilihanPengantar`, dari surat jalan, tanpa kembar) + **"+ orang lain"** (ketik nama, ≤ 30 huruf;
+  draf `pengantarKetik`, tidak ikut ke dokumen). Kurir lepas tidak perlu akun: tanda terimanya ditandai di toko (lembar toko difoto); uang bayar di tempat
+  tercatat `dibawaOleh` namanya, peringatan merah tutup hari atas namanya.
+- **Susulan owner 18 Nov — Pesanan "DIBAYAR" menyesatkan**: begitu notanya dicatat pesanan langsung berstatus `dibayar` walau notanya bon / bayar di
+  tempat. Data TETAP `dibayar` (rules `pesanan`, `pesananBelumTuntas` beku, pembatalan nota); LAYAR menyebutnya **JADI NOTA** (`STATUS_PESANAN`) + keadaan
+  uang notanya (`uangNotaPesanan`: tunai/QRIS = LUNAS; bayar di tempat = sisa surat jalan; bon = sisa rincian bon baris nota itu, `fkRincian`). Lembar
+  Pesanan memajang "Sudah jadi nota" (`daftarPesananJadiNota`: yang belum lunas + lunas 30 hari terakhir); ringkasan nota: "pesanan X JADI NOTA · LUNAS /
+  bon — lunas setelah dibayar / bayar di tempat — lunas setelah uangnya pulang".
 - **Akses**: kisi peran + `antar` (Ben sendiri, karyawan tidak) & `terimaAntar` (Ben & karyawan sendiri); `akses.js` BUAT_STAF `suratJalan: ['ben']`,
   UBAH_STAF kolom tandai (`KOLOM_TANDAI_SJ` = `AJ_KOLOM_TANDAI` = rules), surat jalan baru tanpa kolom penerimaan (`KOLOM_BUKAN_SJ_BARU`).
 - **Pelanggan › Atur**: `tarifOngkir`, `pengantarAntar` (minimal satu), `kendaraanAntar` di `aturanToko/pelanggan` (dibaca tablet Ben).
