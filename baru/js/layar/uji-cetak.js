@@ -8,8 +8,8 @@ import { epContohGaris, EP_POTONG, EP_KOLOM } from '../inti/escpos.js';
 import { usbAda, usbMinta, usbDiingat, usbKirim, usbRingkas } from '../inti/usb-cetak.js';
 import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk } from '../inti/struk-kanvas.js';
 import { PR_GAYA, PR_JALUR, PR_LABEL_CARA, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak, namaJalur, susunLabel, cetakLabel } from '../inti/printer.js';
-import { kemampuan, printerStatus, padaPindai, padaTempel, lampuPadam, lewatJalur, printerBt, printerMode, printerSetelMode, MODE_KERTAS, bacaModeKertas,
-  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji } from '../inti/perangkat.js';
+import { kemampuan, printerStatus, padaPindai, padaTempel, lampuPadam, lewatJalur, printerBt, printerMode, printerSetelMode, MODE_KERTAS, kalimatModeKertas,
+  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak } from '../inti/perangkat.js';
 
 const $ = (id) => document.getElementById(id);
 let printer = null;          // WebUSB (peramban biasa)
@@ -121,9 +121,8 @@ async function periksaBt() {
 async function bacaMode(diam) {
   $('ucModeBaca').disabled = true; if (!diam) { $('ucModeHasil').textContent = 'Menanyakan mode kertas…'; $('ucModeHasil').className = ''; }
   try {
-    const r = await printerMode(lewatKini()); const m = bacaModeKertas(r.mode);
-    const teks = 'Printer menjawab: ' + (m === 'label' ? 'mode LABEL (stiker bercelah)' : m === 'struk' ? 'mode STRUK (kertas bersambung)' : 'tidak dikenali') + ' — "' + (r.mode || '') + '"';
-    $('ucModeHasil').textContent = teks; $('ucModeHasil').className = m ? 'baik' : 'awas'; tulisLog('Mode kertas: ' + teks, !m);
+    const r = await printerMode(lewatKini()); const k = kalimatModeKertas(r && r.mode);
+    $('ucModeHasil').textContent = k.teks; $('ucModeHasil').className = k.baik ? 'baik' : 'awas'; tulisLog('Mode kertas: ' + k.teks, !k.baik);
   } catch (e) { $('ucModeHasil').textContent = 'Mode kertas tidak bisa ditanya: ' + pesan(e); $('ucModeHasil').className = 'awas'; tulisLog('Baca mode gagal: ' + pesan(e), true); }
   $('ucModeBaca').disabled = false;
 }
@@ -179,7 +178,7 @@ function gambarLampu() {
 async function ujiSidik() {
   $('ucSidikUji').disabled = true;
   try { await sidikJariUji(); tulisLog('Sidik jari: jari dikenali tablet'); $('ucSidik').textContent = 'sensor ada · uji tempel jari LULUS'; $('ucSidik').className = 'baik'; }
-  catch (e) { tulisLog('Sidik jari: ' + pesan(e), true); }
+  catch (e) { const t = sidikJariTolak(e); tulisLog('Sidik jari: ' + t.kalimat, !t.batal); }
   $('ucSidikUji').disabled = false;
 }
 async function tampilSunmi() {

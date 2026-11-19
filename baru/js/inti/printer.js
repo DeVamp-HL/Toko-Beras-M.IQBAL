@@ -9,7 +9,7 @@
 import { epSusun, epSusunGambar, epBase64, epSusunLabel, epTsplLabel } from './escpos.js';
 import { gambarStruk, siapkanHuruf, teksKeLogo } from './struk-kanvas.js';
 import { usbAda, usbDiingat, usbKirim } from './usb-cetak.js';
-import { asliAda, panggilAsli, cetakAsli, kirimTspl, lewatJalur } from './perangkat.js';
+import { asliAda, panggilAsli, cetakAsli, kirimTspl, lewatJalur, pastikanModeLabel } from './perangkat.js';
 
 export const PR_KUNCI = 'printerPerangkat';
 export const PR_GAYA = [['gambar', 'gambar (huruf toko, logo, total berpita)'], ['teks', 'teks (cepat, huruf printer)']];
@@ -114,6 +114,8 @@ export async function cetakLabel(isi, jumlah, timpa) {
   const pilih = timpa && asliAda() && PR_JALUR.some((x) => x[0] === timpa.jalur) ? (timpa.jalur === 'usb' ? 'aplikasi' : timpa.jalur) : '';
   const j = pilih || await jalurCetak(); if (j === 'dialog') throw new Error('Tidak ada printer di perangkat ini — label dicetak dari tablet kasir');
   const l = susunLabel(isi, jumlah, timpa);
+  // lewat SDK SUNMI printer bisa ditanya modenya: label yang bahasanya pasti salah untuk mode itu ditolak SEBELUM ada yang dikirim
+  if (j === 'sunmi' || j === 'sunmi-bt') await pastikanModeLabel(l.cara, lewatJalur(j));
   if (l.cara === 'tspl' && (j === 'sunmi' || j === 'sunmi-bt')) {
     // SDK SUNMI punya pintu sendiri untuk perintah label; pintu struknya menanyakan keadaan printer dengan bahasa struk, yang tidak dijawab di mode label
     const r = await kirimTspl(l.teks.join('\n') + '\n', lewatJalur(j));

@@ -3023,3 +3023,17 @@ dengan teks asli pustaka di belakangnya. *Cacat kedua yang ketemu:* bila jalur p
 layar hanya menyebut sebab kabel ("Printer Bluetooth gagal (Printer USB tidak ditemukan…)") — kini `cetakAsli` membawa kedua sebab, sebab jalur
 pilihan di depan. **Masih belum terbukti** (butuh APK susulan ini): cetak & label lewat Bluetooth, baca/pindah mode kertas, label TSPL, label di
 mode tanpa alas; label & mode lewat kabel juga belum dicoba (kabel sedang dicabut saat uji).
+
+**Uji owner kedua di CPad, 20 Nov 2026 ±02.53–03.02 WIB (APK 1.22)** — *terbukti jalan lewat Bluetooth:* struk bergambar TERCETAK (83.791 byte,
+±2 detik), baca mode, pindah mode struk ↔ label ↔ tanpa alas, label kertas bersambung terkirim. Jawaban printer saat ditanya modenya:
+"Receipt printer", "label printer", **"Linerless printer"** (mode 3 — dulu tampil "tidak dikenali"), dan **kosong** selama ±½ menit sesudah satu
+kali pindah dari label ke tanpa alas (printer juga tidak menjawab keadaannya selama itu). Kabar dua sebab (jalur pilihan + kabel) tampil benar.
+*Yang ketemu dan ditambal (susulan kedua):* (1) `bacaModeKertas` mengenali "Linerless printer" → `'tanpa-alas'`; jawaban kosong disebut "printer
+belum menjawab", bukan "tidak dikenali" (`kalimatModeKertas`). (2) **Penjaga label lawan mode** (`pastikanModeLabel`, dipanggil `cetakLabel` di
+jalur SDK): label bahasa struk ke printer di mode label dulu dijawab "kertas habis", perintah label (TSPL) ke printer di mode struk berangkat
+tanpa kabar — kini printer ditanya dulu dan dua pasangan yang pasti salah itu ditolak dengan kalimat yang menyebut jalan keluarnya (kode
+`SALAH_MODE`, tidak ada yang dikirim). Mode tanpa alas dan mode yang tidak terbaca dibiarkan lewat. Printer tak bisa ditanya: label bahasa struk
+tetap dicoba (masih bisa jatuh ke kabel), perintah label berhenti dengan sebab aslinya. (3) Uji sidik jari yang dibatalkan orangnya tampil
+"uji dibatalkan" (bukan baris merah berbahasa Inggris); terkunci / belum ada jari / tanpa sensor diberi kalimat (`sidikJariTolak`).
+**Masih belum terbukti:** apa yang SUNGGUH keluar di kertas untuk label (log hanya mencatat "dikirim"), label TSPL di stiker bercelah, label di
+mode tanpa alas, label & mode lewat kabel.
