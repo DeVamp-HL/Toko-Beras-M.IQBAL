@@ -89,7 +89,7 @@ def periksa_statis(logika, jual, app):
     ok('jual.js: scan diperiksa dulu (kode lain, rusak, lembar terbuka, nota ada) BARU membuka struk', all(x >= 0 for x in urut) and urut == sorted(urut) and blok.count('aksi.bukaStruk(') == 1, urut)
     ok('jual.js: layar terkunci tidak menanggapi scan', 'terkunci()' in blok.split("u.jenis === 'rusak'")[0])
     ok('jual.js: tiap penolakan scan berkabar (tidak diam)', blok.count('kabarAwas: true') == 3)
-    ok('jual.js: pindai keluar dari pasangLayarJual', 'return { keadaan: K, gambar, gambarGulir, tampilkan, pindai, ' in jual)
+    ok('jual.js: pindai keluar dari pasangLayarJual', 'pulihkanKeranjang, pindai,\n' in jual)
     ok('app.js: scan ke layar Jual hanya bila panel jaga tertutup & layar Jual di depan, galatnya ditelan',
        "if (panelOrang.hidden) { if (tabKini === 'jual') { try { layar.pindai(x && x.data); } catch (e) { console.error('pindai jual', e); } } return; }" in app and app.count('layar.pindai(') == 1)
     ok('index.html: modul dipramuat', '<link rel="modulepreload" href="js/layar/tanda-kenal-logika.js">' in baca('baru', 'index.html'))

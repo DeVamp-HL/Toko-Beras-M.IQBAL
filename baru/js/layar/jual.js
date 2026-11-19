@@ -1257,6 +1257,6 @@ export function pasangLayarJual(akar, opsi) {
   }
   // putaran 23c: keranjang tidak terbawa ke akun berikutnya — app.js menanyakannya saat Keluar lalu melupakannya
   const tampilkan = (ya) => { const tadi = _tampil; _tampil = !!ya; if (_tampil && !tadi && (_kotor || !akar.firstElementChild)) { _kotor = false; segera(gambarGulir); } };
-  return { keadaan: K, gambar, gambarGulir, tampilkan, pindai, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), pulihkanKeranjang,
+  return { keadaan: K, gambar, gambarGulir, tampilkan, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), pulihkanKeranjang, pindai,
     lupakanOrang: () => { lupakanSimpanan(); K.setel((s) => L.keadaanOrangBerikutnya(s)); } };   // owner 7 Okt: simpanan keranjang ikut dilupakan saat ganti orang
 }
