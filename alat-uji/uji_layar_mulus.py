@@ -558,13 +558,16 @@ def cad_dan_jam(p):
 
 
 RUSAK = [
-    ('ingatan tidak dikosongkan saat versi cache naik (nota baru → angka basi)', 'ingatan', {'baru/js/data/toko.js': [("if (I.versi !== _versiCache) { I.isi = new Map(); I.versi = _versiCache; }", "if (I.versi === -1) { I.isi = new Map(); I.versi = _versiCache; }")]}),
+    ('ingatan tidak dikosongkan saat versi cache naik (nota baru → angka basi)', 'ingatan', {'baru/js/data/toko.js': [("if (ingatanGantiHari() || I.versi !== _versiCache) { I.isi = new Map(); I.versi = _versiCache; }", "if (ingatanGantiHari() || I.versi === -1) { I.isi = new Map(); I.versi = _versiCache; }")]}),
     ('kunci kasPada tanpa titik kas (titik perangkat berubah → kas basi)', 'ingatan', {'baru/js/data/toko.js': [("ingatPerVersi('kasPada|' + (sampai || '') + '|' + JSON.stringify(ambilTitikKas())", "ingatPerVersi('kasPada|' + (sampai || '')")]}),
     ('kunci neraca tanpa titik kas', 'ingatan', {'baru/js/data/toko.js': [("ingatPerVersi('neraca|' + (sampai || '') + '|' + JSON.stringify(ambilTitikKas())", "ingatPerVersi('neraca|' + (sampai || '')")]}),
     ('kunci buku stok tanpa tanggal sampai', 'ingatan', {'baru/js/data/toko.js': [("ingatPerVersi('stokKarung|' + (sampai || '')", "ingatPerVersi('stokKarung|'")]}),
     ('kunci karung di belakang wadah tanpa nama wadah', 'ingatan', {'baru/js/layar/jual-logika.js': [("ingatPerVersi('karungUntukWadah|' + wadah,", "ingatPerVersi('karungUntukWadah',")]}),
     ('kunci omzet pajak tanpa bulan', 'ingatan', {'baru/js/layar/pajak-logika.js': [("ingatPerVersi('pjOmzetSistem|' + key,", "ingatPerVersi('pjOmzetSistem',")]}),
-    ('rekap pajak setahun diingat tanpa HARI (bulan berganti → basi)', 'ingatan', {'baru/js/layar/pajak-logika.js': [("ingatPerVersi('pjTahun|' + th + '|' + iso,", "ingatPerVersi('pjTahun|' + th,")]}),
+    # 19 Nov 2026: ganti hari kini dijaga DUA lapis — kunci HARI milik fungsinya sendiri + ingatPerVersi yang mengosongkan semua ingatan saat tengah malam
+    # (toko.js ingatanGantiHari; penjaganya sendiri di uji_riwayat_penjualan). Kontrol ini merusak KEDUANYA; satu lapis saja yang rusak memang tertolong lapis lain.
+    ('rekap pajak setahun diingat tanpa HARI, dan ingatan tidak dikosongkan saat ganti hari (bulan berganti → basi)', 'ingatan', {'baru/js/layar/pajak-logika.js': [("ingatPerVersi('pjTahun|' + th + '|' + iso,", "ingatPerVersi('pjTahun|' + th,")],
+                                                                                                                         'baru/js/data/toko.js': [("if (ingatanGantiHari() || I.versi !== _versiCache) {", "if (I.versi !== _versiCache) {")]}),
     ('pemanggil mengubah hasil ingatan di tempat (Stok › Gudang menulis ke buku stok bersama)', 'beku', {'baru/js/layar/stok-logika.js': [("const sisa = stokK[m].sisaKg || 0;", "const sisa = (stokK[m].sisaKg = stokK[m].sisaKg || 0);")]}),
     ('Tempat simpan kembali menyusun rantai stok per tumpukan (tanpa siap)', 'layar', {'baru/js/layar/stok-tempat-logika.js': [("const g = tumpukanGudang(b.nama, siap);", "const g = tumpukanGudang(b.nama);")]}),
     ('Dasbor ganti rentang memakai tren lama', 'layar', {'baru/js/layar/dasbor-logika.js': [("if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, tren: aman('tren', () => dbTren(rentang, kini)) };", "if (lama) return lama;")]}),

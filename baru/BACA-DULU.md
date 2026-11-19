@@ -2790,3 +2790,36 @@ BACA SAJA — tidak ada dokumen baru, rules tetap v11. Mesin beku tidak disentuh
 - **Rentang**: 1 / 3 / 12 bulan yang berakhir di bulan yang dilihat; bulan di tahun yang sudah ditutup buku ikut arsip — disebut, tidak dirinci.
 - **Uji**: `alat-uji/uji_laba_pelanggan.py` (kotak pasir 29 + statis 9; kontrol 12 berbunyi; jalan di CI `pages.yml`). Bundel uji: `PG_MODUL` ikut otomatis
   bila `dasbor-logika.js` dibundel (`bundel_baru.lengkapi`).
+
+## Mulus di Android — paket 1 (19 Nov 2026, cabang `perbaikan/mulus-android`)
+
+Owner 19 Nov: "masih belum mulus dan lag apalagi di Android, terutama ketika buka riwayat" — tablet Sunmi CPad 11 paling berat. Yang dikerjakan = yang **terukur**
+(cadangan toko 16 Nov: 9.864 baris penjualan, 8.527 nota; `jsc` di Mac — tablet beberapa kali lebih lambat dari angka ini):
+
+| | sebelum | sesudah |
+|---|---|---|
+| Jual › Riwayat disusun (tiap gambar: tiap huruf cari, tiap ketuk nota, tiap kabar data) | 2.332 ms | 27–38 ms sekali sesudah data berubah; 0 ms gambar berikutnya; ±1 ms per huruf cari |
+| di peramban (Mac, dengan menggambar): ketik cari / buka nota | ≥ 2,3 dtk | 8–14 ms / 10–15 ms |
+
+- **Sebab Riwayat**: `rwSusun` mengelompokkan SEMUA nota tiap gambar dan menghitung dasar retur tiap baris karung/kemasan (1.707 baris); hitungan itu
+  (`rtDasarRetur` → ongkir antar B3 `ajDasarRetur` + `rtDasarNota` mesin) menyaring seluruh penjualan dua kali. Hasilnya cuma tampil di nota yang DIBUKA.
+- **Obat** (`riwayat-logika.js`, mesin beku tidak disentuh, angka tidak berubah): `rwDasar` = nota + teks cari, sekali per versi data (`ingatPerVersi`);
+  `rwNotaLengkap(kunci)` = dasar retur untuk nota yang dibuka saja; `rwSusun` diingat per saringan + banyak tampil + tanggal hari ini. Nota dari `rwSusun`
+  TIDAK membawa `bisaRetur` / `sebabRetur` (bukan "false pura-pura") — `rwSemuaNota()` tetap lengkap (alat uji).
+- **Yang diukur lalu SENGAJA tidak diubah**: hitungan Jual selain rak tiap ketukan = 1–3 ms (tidak perlu ingatan). "Kabar server tanpa perubahan isi tidak
+  menaikkan versi" DITOLAK: hitungan yang diingat ikut membaca tanda "masih menunggu server / dari simpanan perangkat" yang segar justru karena versi naik di
+  kabar itu — melewatinya bisa membuat tutup buku menilai basi. Layar lain: tidak ada pemborosan sejenis; termahal = Dasbor ±170 ms (Mac) tiap data berubah,
+  tersebar di tujuh kartu (umur stok ±60 ms = puluhan potret buku stok harian) — ongkos wajar, bukan pindaian berulang.
+- **Ingatan per versi tidak menyeberang tengah malam** (`toko.js ingatanGantiHari`): mesin stok membaca tanggal hari ini (saklar modal FIFO berlaku mulai
+  tanggal tertentu), jadi buku stok & neraca bisa berbeda dari kemarin tanpa catatan baru. Ketahuan dari `uji_layar_mulus.py --cadangan` atas cadangan 16 Nov
+  (13 lulus · 2 gagal → 15 lulus · 0 gagal). Ganti hari kini dua lapis (kunci HARI fungsi + lapis dasar); kontrol merusak keduanya.
+- **Kelancaran perangkat** (`inti/ukur-mulus.js`, kartu di Menu › Sistem › Perangkat): perangkat mencatat sendiri tiap layar tersendat — reaksi ketukan
+  ≥ 0,15 detik (event timing, ikut waktu menggambar) dan layar macet ≥ 0,1 detik (long task): berapa lama, di layar & tab mana, sesudah ketukan apa. Tanpa isi
+  nota / nama / rupiah, tidak dikirim ke server (localStorage `miqbal_baru_ukur_mulus_v1`, mulai dari nol tiap hari). Tombol: lihat / salin rincian, mulai dari
+  nol. **Paket 2 (cat & gulir di Android) dikerjakan dari isi kartu ini di CPad & HP — bukan tebakan**; kandidatnya: sisa kaca buram, `content-visibility`
+  daftar panjang, layar yang HTML-nya sama tidak dipasang ulang, kabar data beruntun digabung, animasi `infinite` hanya saat terlihat.
+- **Uji**: `uji_riwayat_penjualan.py` (36 lulus; hasil baru = hitungan lama yang disalin utuh, 27 saringan × awal / nota baru / retur / batal / ganti hari &
+  bulan / cache sementara; data toko 6 saringan + daftar penuh; ongkos per panggilan; 24 kontrol berbunyi), `uji_ukur_mulus.py` (26 lulus; 16 kontrol),
+  `uji_layar_mulus.py` (kontrol 30/30). Ukur ulang: `python3 alat-uji/ukur_kinerja_baru.py`, `python3 alat-uji/uji_layar_mulus.py --cadangan <berkas> --terberat 12`.
+- **Catatan lokal (bukan dari paket ini, sama persis di `main` def8fe0)**: atas cadangan 16 Nov, asap data-toko `uji_ringkasan_baru`, `uji_stok_baru`,
+  `uji_varian_merek`, `uji_identitas_baru` keluar ≠ 0 (CI tidak punya cadangan, jadi tidak tampak di sana) — perlu ditelusuri sendiri.
