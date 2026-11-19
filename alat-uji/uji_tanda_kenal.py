@@ -7,6 +7,9 @@ Yang dijaga:
   · tanda-kenal-logika.js (dijalankan apa adanya di jsc): teks QR per bentuk kunci nota, urutan pilih kunci = notaDari (trxId dulu), kunci yang tidak
     bisa dicetak → struk TANPA QR (bukan QR yang salah), bolak-balik cetak → scan → kunci yang sama, kode bukan struk toko tidak dianggap nota,
     QR tidak utuh disebut rusak, lembar berisi isian (bayar, jumlah, …) tidak ditimpa lembar struk
+  · paket S2b — pasangan kode → sasaran: kode yang disimpan (barcode / nomor seri kartu), pasangan TERBARU menang, yang dilepas tidak dipakai, hanya
+    karung & kemasan yang bisa dipasangi barcode, berat karung dibedakan, mode daftar gugur sendiri, kartu tanpa nama ditolak; koleksi tandaKenal sama di
+    koleksi.js / toko.js / akses.js / firestore.rules; jual.js membungkus aksi asli (jalur ketuk biasa tidak berubah)
   · sambungan: jual.js mencetak QR hanya bila setelan printer perangkat menyertakannya; scan diperiksa dulu (lembar, nota ada) baru membuka struk;
     app.js meneruskan scan ke layar Jual hanya bila panel jaga tertutup & layar Jual di depan; printer.js / escpos.js sungguh mencetak QR itu
 
@@ -55,6 +58,59 @@ for (const k of ['MIQ:N:x:abc', 'MIQ:N:t:', 'MIQ:N:t', 'MIQ:N:', 'MIQ:N:t:a b', 
 cek('layar dasar, keranjang, struk lain boleh diganti lembar struk', tkLembarBolehDiganti(null) && tkLembarBolehDiganti('') && tkLembarBolehDiganti(undefined) && tkLembarBolehDiganti('struk') && tkLembarBolehDiganti('keranjang'));
 cek('lembar berisi isian TIDAK ditimpa', ['bayar', 'jumlah', 'retur', 'returTanpa', 'pelanggan', 'karcis', 'pesanan', 'potongan'].every((x) => tkLembarBolehDiganti(x) === false));
 
+// ================= paket S2b: pasangan kode → sasaran =================
+// ---- kode yang disimpan ----
+cek('barcode: angka EAN & kode GS1 berkurung diterima apa adanya, tepinya dirapikan', tkKode('barcode', ' 8991234567890\n') === '8991234567890' && tkKode('barcode', '(90)NA18250100004') === '(90)NA18250100004');
+cek('barcode: terlalu pendek / terlalu panjang / berhuruf bukan cetak / QR struk toko ditolak', tkKode('barcode', '123') === '' && tkKode('barcode', 'x'.repeat(65)) === '' && tkKode('barcode', 'beras—5kg') === '' && tkKode('barcode', 'MIQ:N:t:1') === '' && tkKode('barcode', '') === '' && tkKode('barcode', null) === '');
+cek('nfc: nomor seri heksa 4–10 byte jadi huruf besar', tkKode('nfc', '04a1b2c3') === '04A1B2C3' && tkKode('nfc', ' 04A1B2C3D4E5F6 ') === '04A1B2C3D4E5F6' && tkKode('nfc', '0102030405060708090A') === '0102030405060708090A');
+cek('nfc: bukan heksa / ganjil / terlalu pendek / terlalu panjang ditolak', tkKode('nfc', 'XYZ12345') === '' && tkKode('nfc', '04A1B') === '' && tkKode('nfc', '04A1B2') === '' && tkKode('nfc', '0102030405060708090A0B') === '');
+cek('jenis lain tidak punya kode', tkKode('qr', '8991234567890') === '' && tkKode(undefined, '8991234567890') === '');
+
+// ---- mencari pasangan terbaru ----
+const D = [
+  { id: 100, jenis: 'barcode', kode: '8991234567890', sasaran: { jalur: 'kemasan', kunci: 'Uji 5', berat: '', nama: 'Uji 5 kg' } },
+  { id: 300, jenis: 'barcode', kode: '8991234567890', sasaran: { jalur: 'karung', kunci: 'Uji', berat: '50', nama: 'Uji 50 kg' } },
+  { id: 200, jenis: 'barcode', kode: '8991234567890', sasaran: { jalur: 'kemasan', kunci: 'Lain', berat: '', nama: 'Lain' } },
+  { id: 150, jenis: 'nfc', kode: '04A1B2C3', sasaran: { nama: 'Contoh' } },
+  { id: 400, jenis: 'nfc', kode: '8991234567890', sasaran: { nama: 'Kebetulan sama' } },
+  { id: 500, jenis: 'barcode', kode: '111122223333', sasaran: { jalur: 'kemasan', kunci: 'Uji 5', berat: '', nama: 'Uji 5 kg' } },
+  { id: 600, jenis: 'barcode', kode: '111122223333', sasaran: null },
+  null,
+];
+cek('pasangan terbaru menang (bukan yang pertama, bukan yang terakhir di daftar)', tkCari(D, 'barcode', '8991234567890').id === 300);
+cek('jenis ikut dicocokkan (kode sama, jenis lain = pasangan lain)', tkCari(D, 'nfc', '8991234567890').sasaran.nama === 'Kebetulan sama' && tkCari(D, 'nfc', '04A1B2C3').sasaran.nama === 'Contoh');
+cek('kode belum dikenal → null; daftar kosong → null', tkCari(D, 'barcode', '0000') === null && tkCari([], 'nfc', '04A1B2C3') === null && tkCari(null, 'nfc', '04A1B2C3') === null);
+cek('pasangan yang terakhir DILEPAS (sasaran kosong) → null, tidak jatuh ke pasangan lama', tkCari(D, 'barcode', '111122223333') === null);
+
+// ---- chip rak ----
+const RAK = { karung: [{ jalur: 'karung', kunci: 'Uji', berat: 25, nama: 'Uji', ukuran: '25 kg' }, { jalur: 'karung', kunci: 'Uji', berat: 50, nama: 'Uji', ukuran: '50 kg' }],
+  kemasan: [{ jalur: 'kemasan', kunci: 'Uji 5', nama: 'Uji', ukuran: '5 kg' }], literan: [{ jalur: 'literan', kunci: 'Uji', nama: 'Uji', ukuran: 'per liter' }], repack: [], wadah: [] };
+cek('sasaran dari chip karung membawa berat', J(tkSasaranChip(RAK.karung[1])) === J({ jalur: 'karung', kunci: 'Uji', berat: '50', nama: 'Uji 50 kg' }), J(tkSasaranChip(RAK.karung[1])));
+cek('sasaran dari chip kemasan', J(tkSasaranChip(RAK.kemasan[0])) === J({ jalur: 'kemasan', kunci: 'Uji 5', berat: '', nama: 'Uji 5 kg' }), J(tkSasaranChip(RAK.kemasan[0])));
+cek('literan / repack / wadah / kosong tidak bisa dipasangi barcode', tkSasaranChip(RAK.literan[0]) === null && tkSasaranChip({ jalur: 'repack', kunci: 'Uji' }) === null && tkSasaranChip({ jalur: 'wadah', kunci: 'W' }) === null && tkSasaranChip(null) === null && tkSasaranChip({ jalur: 'kemasan', kunci: '' }) === null);
+cek('chip dari sasaran: karung dibedakan beratnya', tkChipDari(RAK, { jalur: 'karung', kunci: 'Uji', berat: '50' }) === RAK.karung[1] && tkChipDari(RAK, { jalur: 'karung', kunci: 'Uji', berat: '25' }) === RAK.karung[0]);
+cek('bolak-balik chip → sasaran → chip yang sama', [RAK.karung[0], RAK.karung[1], RAK.kemasan[0]].every((c) => tkChipDari(RAK, tkSasaranChip(c)) === c));
+cek('barang tidak sedang di rak → null (tidak dipilihkan barang lain)', tkChipDari(RAK, { jalur: 'kemasan', kunci: 'Habis', berat: '' }) === null && tkChipDari(RAK, { jalur: 'karung', kunci: 'Uji', berat: '10' }) === null && tkChipDari(RAK, { jalur: 'literan', kunci: 'Uji' }) === null && tkChipDari(null, { jalur: 'kemasan', kunci: 'Uji 5' }) === null && tkChipDari(RAK, null) === null);
+
+// ---- mode daftar gugur sendiri ----
+const TKD = { jenis: 'barcode', kode: '8991234567890', mode: 'daftar', pada: 1000000 };
+cek('mode daftar berlaku sampai batas gugur, lalu tidak', tkMasihDaftar(TKD, 'barcode', 1000000 + TK_DAFTAR_GUGUR_MS) === true && tkMasihDaftar(TKD, 'barcode', 1000001 + TK_DAFTAR_GUGUR_MS) === false);
+cek('mode daftar: jenis lain / mode kenal / kosong = tidak', tkMasihDaftar(TKD, 'nfc', 1000001) === false && tkMasihDaftar(Object.assign({}, TKD, { mode: 'kenal' }), 'barcode', 1000001) === false && tkMasihDaftar(null, 'barcode', 1) === false);
+cek('batas gugur: cukup untuk mencari barangnya, tidak sampai menempel ke pembeli berikutnya', TK_DAFTAR_GUGUR_MS >= 20000 && TK_DAFTAR_GUGUR_MS <= 120000);
+
+// ---- menyusun pasangan baru ----
+let nId = 0; const W = { tanggal: '2026-11-19', jam: '19:05', idUnik: () => 7000 + (++nId) };
+let r = tkSusunDaftar('barcode', ' 8991234567890 ', tkSasaranChip(RAK.karung[1]), W);
+cek('daftar barcode: satu dokumen tandaKenal, kode dirapikan, sasaran lengkap', r.dokumen && r.dokumen.length === 1 && r.dokumen[0].koleksi === 'tandaKenal' && J(r.dokumen[0].data) === J({ id: 7001, jenis: 'barcode', kode: '8991234567890', sasaran: { jalur: 'karung', kunci: 'Uji', berat: '50', nama: 'Uji 50 kg' }, tanggal: '2026-11-19', jam: '19:05' }), J(r));
+cek('daftar barcode: mode daftar ditutup & kabarnya menyebut barangnya', r.patch.tk === null && r.patch.kabarAwas === false && /8991234567890/.test(r.patch.kabar) && /Uji 50 kg/.test(r.patch.kabar), r.patch.kabar);
+cek('daftar barcode ke literan / tanpa sasaran DITOLAK dengan kalimat', !!tkSusunDaftar('barcode', '8991234567890', tkSasaranChip(RAK.literan[0]), W).tolak && !!tkSusunDaftar('barcode', '8991234567890', { jalur: 'literan', kunci: 'Uji' }, W).tolak && !tkSusunDaftar('barcode', '8991234567890', null, W).dokumen);
+cek('daftar barcode berkode rusak DITOLAK', !!tkSusunDaftar('barcode', '12', tkSasaranChip(RAK.kemasan[0]), W).tolak && !!tkSusunDaftar('barcode', 'MIQ:N:t:1', tkSasaranChip(RAK.kemasan[0]), W).tolak);
+r = tkSusunDaftar('nfc', '04a1b2c3d4e5f6', { nama: '  Contoh Pembeli  ' }, W);
+cek('daftar kartu: nomor seri huruf besar, nama dirapikan', r.dokumen && J(r.dokumen[0].data.sasaran) === J({ nama: 'Contoh Pembeli' }) && r.dokumen[0].data.kode === '04A1B2C3D4E5F6' && r.dokumen[0].data.jenis === 'nfc' && /Contoh Pembeli/.test(r.patch.kabar), J(r));
+cek('daftar kartu tanpa nama / nomor seri rusak DITOLAK', !!tkSusunDaftar('nfc', '04A1B2C3', { nama: '   ' }, W).tolak && !!tkSusunDaftar('nfc', '04A1B2C3', null, W).tolak && !!tkSusunDaftar('nfc', 'bukan-heksa', { nama: 'Contoh' }, W).tolak);
+cek('yang baru didaftarkan langsung ditemukan & menang atas yang lama', (() => { const baru = tkSusunDaftar('barcode', '8991234567890', tkSasaranChip(RAK.kemasan[0]), W).dokumen[0].data; const d = tkCari(D.concat([baru]), 'barcode', '8991234567890'); return d === baru && tkChipDari(RAK, d.sasaran) === RAK.kemasan[0]; })());
+cek('kode panjang dipendekkan di kalimat, kode pendek utuh', tkRingkasKode('8991234567890') === '8991234567890' && tkRingkasKode('(01)08991234567890(10)ABC123') === '(01)0899…ABC123');
+
 print(JSON.stringify(hasil));
 """
 
@@ -89,7 +145,7 @@ def periksa_statis(logika, jual, app):
     ok('jual.js: scan diperiksa dulu (kode lain, rusak, lembar terbuka, nota ada) BARU membuka struk', all(x >= 0 for x in urut) and urut == sorted(urut) and blok.count('aksi.bukaStruk(') == 1, urut)
     ok('jual.js: layar terkunci tidak menanggapi scan', 'terkunci()' in blok.split("u.jenis === 'rusak'")[0])
     ok('jual.js: tiap penolakan scan berkabar (tidak diam)', blok.count('kabarAwas: true') == 3)
-    ok('jual.js: pindai keluar dari pasangLayarJual', 'pulihkanKeranjang, pindai,\n' in jual)
+    ok('jual.js: pindai keluar dari pasangLayarJual', 'pulihkanKeranjang, pindai, ' in jual)
     ok('app.js: scan ke layar Jual hanya bila panel jaga tertutup & layar Jual di depan, galatnya ditelan',
        "if (panelOrang.hidden) { if (tabKini === 'jual') { try { layar.pindai(x && x.data); } catch (e) { console.error('pindai jual', e); } } return; }" in app and app.count('layar.pindai(') == 1)
     ok('index.html: modul dipramuat', '<link rel="modulepreload" href="js/layar/tanda-kenal-logika.js">' in baca('baru', 'index.html'))
@@ -98,6 +154,31 @@ def periksa_statis(logika, jual, app):
     ok('escpos.js: ekor struk mencetak QR bila ada', 'if (o.qr) {' in ep and 'tulisQr(w, o.qr, o.qrUkuran)' in ep)
     ok('struk-logika.js: notaDari membandingkan kunci sebagai teks (kunci hasil scan = teks)',
        all(x in baca('baru', 'js', 'layar', 'struk-logika.js') for x in ('String(x.trxId) === String(kunci.trxId)', 'String(x.grupNota) === String(kunci.grupNota)', 'String(x.id) === String(kunci.id)')))
+    # ---- paket S2b: koleksi tandaKenal terpasang di semua tempat yang harus sepakat ----
+    kol = baca('baru', 'js', 'data', 'koleksi.js'); aks = baca('baru', 'js', 'data', 'akses.js'); rules = baca('firestore.rules')
+    ok('koleksi.js: tandaKenal didengar penuh (kelas tetap — dokumennya tanpa cap jam server)', "{ nama: 'tandaKenal',          urut: 'id',    cache: 'tandaKenal', kelas: 'tetap' }," in kol)
+    ok('toko.js: ambilTandaKenal membaca cache yang sama', "export function ambilTandaKenal() { return _cache.tandaKenal || []; }" in baca('baru', 'js', 'data', 'toko.js'))
+    baca_staf = re.search(r"export const BACA_STAF = \[(.*?)\];", aks, re.S).group(1); buat_staf = re.search(r"export const BUAT_STAF = \{(.*?)\};", aks, re.S).group(1)
+    ok('akses.js: akun tablet membaca & membuat tandaKenal (ben, karyawan) — sama dengan rules v12', "'tandaKenal'" in baca_staf and "tandaKenal: ['ben', 'karyawan']" in buat_staf)
+    blok = re.search(r"\n    match /tandaKenal/\{id\} \{\n(.*?)\n    \}", rules, re.S)
+    ok('firestore.rules: blok tandaKenal — baca owner/ben/karyawan, buat owner atau staf atas nama sendiri, ubah & hapus owner',
+       blok and [x.strip() for x in blok.group(1).split('\n')] == ["allow read: if owner() || staf(['ben', 'karyawan']);", "allow create: if owner() || stafBuat(['ben', 'karyawan']);", "allow update, delete: if owner();"])
+    ok('jual.js: aksi chip & pilih pembeli ASLI tidak diubah (dibungkus)',
+       "    chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(Object.assign({ isiW: null }, L.ketukChip(S(), c))); }," in jual
+       and "    pilihPelanggan: ({ nama }) => set(Object.assign({ lembar: null, cariPelanggan: '', kabar: '' }, L.gantiPelanggan(SBN(), nama)))," in jual)
+    ok('jual.js: bungkus chip memasangkan dulu, lalu aksi asli; ditolak = ketukan berhenti', "if (tkPasangChip(c)) chipAsal(arg, el, ev);" in jual and "if (tkPasangChip(c)) seringAsal(arg, el, ev);" in jual and "if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }" in jual)
+    ok('jual.js: mode daftar yang gugur tidak memasangkan (barcode & kartu)', "if (!TK.tkMasihDaftar(t, 'barcode', Date.now())) { set({ tk: null }); return true; }" in jual and "if (!TK.tkMasihDaftar(t, 'nfc', Date.now()) || !nama) return set({ tk: null });" in jual)
+    ok('jual.js: lembar pembeli ditutup tanpa memilih → kartu yang menunggu dilupakan', "aksi.tutup = (arg, el, ev) => { const t = S().tk; tutupAsal(arg, el, ev); if (t && t.jenis === 'nfc') set({ tk: null }); };" in jual)
+    pb = jual[jual.index('  function pindaiBarcode(mentah) {'):]; pb = pb[:pb.index('\n  }\n') + 5]
+    urut = [pb.find(x) for x in ("if (!kode) return set(", "TK.tkLembarBolehDiganti(S().lembar)", "TK.tkCari(ambilTandaKenal(), 'barcode', kode)", "if (!d) return set({ tk: { jenis: 'barcode', kode, mode: 'daftar'", "TK.tkChipDari(rakKini(), d.sasaran)", "if (!c) return set(", "L.ketukChip(S(), c)")]
+    ok('jual.js: barcode — kode sah, lembar, dikenal?, barang di rak? BARU lembar jumlah (jalur ketukChip yang sama; tidak ada harga baru)', all(x >= 0 for x in urut) and urut == sorted(urut) and 'masukkan(' not in pb and 'hargaSatuan' not in pb, urut)
+    tp = jual[jual.index('  function tempel(uidMentah) {'):]; tp = tp[:tp.index('\n  }\n') + 5]
+    urut = [tp.find(x) for x in ("if (!kode || terkunci()) return;", "TK.tkLembarBolehDiganti(s.lembar) && s.lembar !== 'pelanggan'", "TK.tkCari(ambilTandaKenal(), 'nfc', kode)", "lembar: 'pelanggan'", "L.gantiPelanggan(SBN(), nama)")]
+    ok('jual.js: kartu — lembar, dikenal?, belum → lembar pembeli; dikenal → gantiPelanggan (jalur pilih nama yang sama), kabar harga tidak ditimpa', all(x >= 0 for x in urut) and urut == sorted(urut) and "g.kabar ? {} : { kabar: 'Kartu pelanggan: ' + nama, kabarAwas: false }" in tp, urut)
+    ok('jual.js: pita mode daftar & pita "salah barang? ganti" tampil; tempel keluar dari layar', 'data-k="pita-tk-daftar"' in jual and 'data-k="pita-tk-kenal"' in jual and 'data-k="pita-tk-kartu"' in jual and 'data-aksi="tkGanti"' in jual and jual.count('data-aksi="tkBatal"') == 3
+       and "${s.kabar || s.tk || adaUrung ||" in jual and 'pulihkanKeranjang, pindai, tempel,\n' in jual)
+    ok('app.js: kartu ke layar Jual hanya bila panel jaga tertutup & layar Jual di depan, galatnya ditelan',
+       "padaTempel((x) => { if (panelOrang.hidden && tabKini === 'jual') { try { layar.tempel(x && x.uid); } catch (e) { console.error('tempel jual', e); } } });" in app)
     return h
 
 
@@ -125,6 +206,22 @@ MUTASI = [
     ('QR tidak ikut ke printer', 'jual', "PR.cetakGaris(st.garis, { logoToko: st.logo, qr })", "PR.cetakGaris(st.garis, { logoToko: st.logo })"),
     ('struk dibuka tanpa memeriksa lembar yang terbuka', 'jual', "    if (!TK.tkLembarBolehDiganti(S().lembar)) return set({ kabar: 'Struk ter-scan, tapi lembar ini masih terbuka — tutup dulu, lalu scan lagi', kabarAwas: true });\n", ""),
     ('struk dibuka walau notanya tidak ada', 'jual', "    if (!ST.notaDari(u.kunci)) return set({", "    if (false) return set({"),
+    ('S2b: QR struk toko bisa didaftarkan sebagai barcode barang', 'logika', " && t.indexOf(TK_AWALAN_NOTA) !== 0 ? t : '';", " ? t : '';"),
+    ('S2b: nomor seri bukan heksa diterima', 'logika', "return /^(?:[0-9A-F]{2}){4,10}$/.test(u) ? u : '';", "return u;"),
+    ('S2b: pasangan pertama yang menang (bukan terbaru)', 'logika', "(!d || Number(x.id) > Number(d.id))", "!d"),
+    ('S2b: jenis tidak dicocokkan (barcode terbaca sebagai kartu)', 'logika', "x.jenis === jenis && String(x.kode)", "String(x.kode)"),
+    ('S2b: pasangan yang dilepas tetap dipakai', 'logika', "return d && d.sasaran && typeof d.sasaran === 'object' ? d : null;", "return d;"),
+    ('S2b: literan bisa dipasangi barcode', 'logika', "export const TK_JALUR_BARCODE = ['karung', 'kemasan'];", "export const TK_JALUR_BARCODE = ['karung', 'kemasan', 'literan'];"),
+    ('S2b: berat karung tidak dibedakan', 'logika', " && (!sasaran.berat || String(x.berat) === String(sasaran.berat))) || null;", ") || null;"),
+    ('S2b: mode daftar tidak pernah gugur', 'logika', " && Number(kini) - Number(tk.pada || 0) <= TK_DAFTAR_GUGUR_MS);", ");"),
+    ('S2b: kartu didaftarkan tanpa nama', 'logika', "    if (!nama) return { tolak: 'Pilih nama pembelinya dulu' };\n", ""),
+    ('S2b: mendaftarkan tidak menutup mode daftar', 'logika', "patch: { tk: null, kabar:", "patch: { kabar:"),
+    ('S2b: chip ditolak tetap membuka lembar jumlah', 'jual', "if (tkPasangChip(c)) chipAsal(arg, el, ev);", "tkPasangChip(c); chipAsal(arg, el, ev);"),
+    ('S2b: mode daftar gugur tetap memasangkan barcode', 'jual', "    if (!TK.tkMasihDaftar(t, 'barcode', Date.now())) { set({ tk: null }); return true; }\n", ""),
+    ('S2b: kartu yang menunggu tidak dilupakan saat lembar ditutup', 'jual', " if (t && t.jenis === 'nfc') set({ tk: null }); };", " };"),
+    ('S2b: barcode dikenal tapi barangnya tidak di rak → diam', 'jual', "    if (!c) return set({ tk: kenal, kabar:", "    if (!c) return; set({ tk: kenal, kabar:"),
+    ('S2b: kabar perubahan harga saat ganti pembeli ditimpa kabar kartu', 'jual', "g.kabar ? {} : { kabar: 'Kartu pelanggan: ' + nama, kabarAwas: false }", "{ kabar: 'Kartu pelanggan: ' + nama, kabarAwas: false }"),
+    ('S2b: kartu diteruskan ke Jual saat panel jaga terbuka', 'app', "padaTempel((x) => { if (panelOrang.hidden && tabKini === 'jual')", "padaTempel((x) => { if (tabKini === 'jual')"),
     ('scan diteruskan ke Jual walau layar lain di depan', 'app', "if (tabKini === 'jual') { try { layar.pindai(", "if (true) { try { layar.pindai("),
     ('scan diteruskan ke Jual saat panel jaga terbuka', 'app', "if (panelOrang.hidden) { if (tabKini === 'jual')", "if (true) { if (tabKini === 'jual')"),
 ]

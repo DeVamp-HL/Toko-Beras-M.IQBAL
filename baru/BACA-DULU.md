@@ -2934,3 +2934,32 @@ dipakai untuk **kartu pelanggan** (tempel → pembeli terpilih di Jual). Dipecah
 
 **Batas bukti S2a**: NFC dan cetak QR tidak bisa diuji di Mac / runner. Yang HARUS dibuktikan di CPad dengan APK baru: baris NFC menulis nomor seri
 saat kartu ditempel; struk baru keluar ber-QR; scan struk itu di layar Jual membuka notanya.
+
+## Paket S2b — barcode kemasan & kartu pelanggan NFC (19 Nov 2026; rules v12)
+
+Bagian kedua keputusan owner 19 Nov. Di atas pembaca S2a (scanner & NFC sudah sampai ke halaman); tidak butuh APK baru.
+
+- **Koleksi baru `tandaKenal`** — pasangan kode → sasaran. `jenis: 'barcode'` → barang di rak Jual (`sasaran: { jalur, kunci, berat, nama }`, hanya jalur
+  karung & kemasan); `jenis: 'nfc'` → pembeli (`sasaran: { nama }`). **Tambah-saja**: memasangkan ulang = dokumen baru, yang ber-id terbesar menang
+  (`tkCari`); riwayat siapa memasangkan apa tetap ada. Bukan uang, bukan stok. Terpasang di `koleksi.js` (kelas tetap), `toko.js` (`ambilTandaKenal`),
+  `akses.js` (BACA_STAF, BUAT_STAF ben & karyawan).
+- **Rules v12** = v11 + satu blok `tandaKenal` (baca owner/ben/karyawan; buat owner atau staf atas nama sendiri; ubah & hapus owner), tanpa fungsi baru.
+  Scanner & NFC hanya ada di tablet dan tablet berjalan sebagai akun tablet → pendaftaran harus bisa dari akun itu. Mesin penjaga: `firestore.rules.v11`
+  (pembanding), `periksa_rules.py` (`ke_v11`, `periksa_v12`, 11 kasus ★S, kontrol `v12:`), `uji_rules_emulator.py` bagian V12, `docs/uji-rules-v12.md`,
+  kutipan baris 2 & sidik di `docs/prosedur-pulih-darurat.md`. **v12 harus TERBIT dulu, baru cabang ini digabung** — kalau dibalik, tablet ditolak
+  server saat mendengarkan `tandaKenal`.
+- **Barcode di Jual** (`pindaiBarcode` di `jual.js`): dikenal → lembar jumlah barang itu terbuka lewat `L.ketukChip` — jalur yang sama dengan mengetuk
+  chipnya, tidak ada logika harga baru; barangnya tidak sedang di rak → berkabar. Belum dikenal → **mode daftar** (`s.tk`): pita emas di atas rak,
+  ketukan chip karung / kemasan BERIKUTNYA ikut dipasangkan lalu jalan seperti biasa; chip literan / repack ditolak dengan kalimat. Pita "Salah barang?
+  Ganti" sesudah scan yang dikenal memasangkan ulang. Mode daftar gugur sendiri sesudah 60 detik (`TK_DAFTAR_GUGUR_MS`).
+- **Kartu pelanggan** (`tempel` di `jual.js`, dipanggil `app.js` hanya bila panel jaga tertutup & layar Jual di depan): dikenal → `L.gantiPelanggan` —
+  jalur yang sama dengan memilih namanya (harga tingkat & bon ikut; kabar perubahan harga tidak ditimpa). Belum dikenal → lembar pembeli terbuka dengan
+  pita emas; nama yang dipilih / diketik jadi pemilik kartu. Lembar ditutup tanpa memilih → kartu yang menunggu dilupakan.
+- **Aksi asli `chip`, `sering`, `pilihPelanggan`, `enterPelanggan`, `tutup` tidak diubah** — dibungkus sesudah daftar aksi dibuat, supaya jalur ketuk
+  biasa persis seperti sebelumnya (dijaga `uji_tanda_kenal.py`: 76 pemeriksaan, 29 kontrol).
+- **Batas**: nomor seri kartu bisa ditiru → kartu hanya MEMILIH nama pembeli; bon tetap keputusan kasir di layar. Melepas pasangan (tanpa mengganti)
+  belum punya tombol — owner bisa mengubah / menghapus dokumennya; pasang ulang sudah cukup untuk salah pasang.
+
+**Batas bukti S2b**: scanner & NFC tidak bisa diuji di Mac / runner. Yang HARUS dibuktikan di CPad sesudah v12 terbit & cabang digabung: scan barcode
+baru → pita daftar → ketuk barang → scan lagi membuka lembar jumlahnya; tempel kartu baru → pilih pembeli → tempel lagi memilih pembeli itu.
+
