@@ -15,7 +15,7 @@
 //    retur + penjualan penggantinya lahir dalam SATU tulisan saat nota dicatat (jual-logika.js susunNotaDokumen).
 import { rtDasarNota, rtKalimatLebih, rtKunciNota, kunciPelanggan, bakuCaraBayar, formatTanggal, merkPunyaKarungBerat, kunciKemasan, namaSingkatTrx, tkApakahYatim, tkSetTertaut, tkTargetPengganti, tkPenjualanHidup, caraBayarKunci } from '../mesin/pembantu.js';
 import { hitungPiutang } from '../mesin/beku.js';
-import { ambilPenjualan, ambilRetur, tolakKunci, stokMerekSaja, petaUkuran, indukTerpisah, ingatStokKarung, ingatStokKemasan } from '../data/toko.js';
+import { ambilPenjualan, ambilRetur, tolakKunci, stokMerekSaja, petaUkuran, indukTerpisah, ingatStokKarung, ingatStokKemasan , ingatPerVersi } from '../data/toko.js';
 import { hariIniIso, RP, DESIMAL, LEBIH_AMBANG } from '../inti/format.js';
 import { nilaiSelisihKg } from '../mesin/modal-fifo.js';
 // B3 (owner 18 Nov 2026): ongkir antar menempel di satu baris nota — nilai retur dihitung tanpa ongkir (antar-logika ajDasarRetur membungkus rtDasarNota beku)
@@ -84,9 +84,14 @@ function bonMasihAda(d, piutang) {
   const B = bonPembeli(d, piutang); return B.sisa > 0.5 ? d : { ok: false, sebab: kalimatBonHabis(B) };
 }
 /** Nota yang bisa ditunjuk: baris karung/kemasan yang masih berlaku, 60 hari terakhir, terbaru dulu. */
+// owner 19 Nov 2026 (kartu Kelancaran tablet: Jual › Retur tersendat): dasar retur tiap nota menyisir seluruh penjualan, dan daftar ini disusun ulang TIAP
+// gambar selama tab Retur terbuka (tiap ketukan, tiap kabar data). Isinya hanya cache + tanggal + teks cari → diingat per versi; hasil DIPAKAI BERSAMA.
 export function daftarNotaRetur(s) {
-  const hari = hariIniIso(s.sekarang); const batas = geser(hari, -60); const piutang = hitungPiutang();
-  const c = String(s.rtCari || '').trim().toLowerCase();
+  const hari = hariIniIso(s.sekarang); const c = String(s.rtCari || '').trim().toLowerCase();
+  return ingatPerVersi('rtDaftarNota|' + hari + '|' + c, () => daftarNotaReturHitung(hari, c));
+}
+function daftarNotaReturHitung(hari, c) {
+  const batas = geser(hari, -60); const piutang = hitungPiutang();
   return ambilPenjualan().filter((t) => (t.jenis === 'karung' || t.jenis === 'kemasan') && (t.tanggal || '') >= batas && !t.penggantiRetur)
     .filter((t) => !c || (String(t.namaPelanggan || '') + ' ' + teksBarang(t)).toLowerCase().indexOf(c) >= 0)
     .sort((a, b) => ((b.tanggal || '') + (b.jam || '')).localeCompare((a.tanggal || '') + (a.jam || ''))).slice(0, 40)

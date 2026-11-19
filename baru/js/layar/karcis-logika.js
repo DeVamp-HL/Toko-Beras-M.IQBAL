@@ -7,7 +7,7 @@
 // Rapikan (perluKoreksi): bentuk koreksi (koreksiDari + alasanKoreksi, tanpa asalDarurat) dan jumlahnya harus menutup nominal PERSIS (uang tetap).
 // Tarik balik (urungkanRinciTrx): seluruh grup dibatalkan, catatan kantong id+1 dihapus, karcis asli dipulihkan — hanya bila grupnya masih utuh.
 import { penjualanMasihBerlaku, bakuCaraBayar, hargaKarungUtuh, namaSingkatTrx, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilHargaLiteran, ambilHargaKemasan, ambilPiutangMutasi, tolakKunci, butuhGet, ingatStokKarung } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilHargaLiteran, ambilHargaKemasan, ambilPiutangMutasi, tolakKunci, butuhGet, ingatStokKarung , ingatPerVersi } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, hariIniIso, tanggalPendek, jamSetempat } from '../inti/format.js';
 import { susunRak, masukkan, terapkanNego, periksaStokKeranjang, pecahItemsWadah, aturWadah, angkaRupiah } from './jual-logika.js';
@@ -22,8 +22,11 @@ const KC_TOLERANSI_BULAT = 500;   // literan: pecahan di bawah Rp500 tidak terpa
 const kcEkor = (id) => '#' + String(id).slice(-4);
 
 /** Karcis & nota kasir yang menunggu dirinci/dirapikan — hanya yang masih berlaku (sisa hasil rinci ikut, ia karcis juga). Terbaru dulu. */
-export function daftarKarcis(kini) {
-  const iso = hariIniIso(kini); const daftar = [];
+// owner 19 Nov 2026 (kartu Kelancaran tablet): Jual memanggil daftarKarcis & karcisDaruratHari TIAP ketukan, dan keduanya menyisir seluruh penjualan.
+// Keduanya hanya membaca cache + tanggal hari → diingat per versi & per tanggal; hasil DIPAKAI BERSAMA (pemanggil menyaring / memetakan, tidak mengubah).
+export function daftarKarcis(kini) { const iso = hariIniIso(kini); return ingatPerVersi('kcDaftar|' + iso, () => daftarKarcisHitung(iso)); }
+function daftarKarcisHitung(iso) {
+  const daftar = [];
   ambilPenjualan().forEach((p) => {
     const karcis = p.jenis === 'kasir_darurat_nominal'; if (!karcis && !p.perluKoreksi) return;
     daftar.push({ id: String(p.id), asliId: p.id, jenisAsal: karcis ? 'karcis' : 'rapikan', tanggal: p.tanggal || '', jam: p.jam || '', nominal: Math.round(p.hargaTotal || 0), cara: bakuCaraBayar(p.caraBayar), nama: String(p.namaPelanggan || '').trim(),
@@ -260,8 +263,8 @@ export function susunUrungRinci(rinci, w) {
 const KC_BATAL_TERKUNCI = 'karcis ini tidak bisa dibatalkan lagi — salah ketiknya tetap tercatat di bulan itu';
 export const kcDariDarurat = (p) => !!p && (p.jenis === 'kasir_darurat_nominal' || p.viaDarurat === true || /^d-/.test(String(p.perangkat || '')));
 /** Catatan kasir darurat bertanggal `iso` (bawaan: hari ini) yang masih berlaku — daftar "Karcis kasir darurat hari ini" di lembar Karcis. Terbaru dulu. */
-export function karcisDaruratHari(kini, iso) {
-  const hari = iso || hariIniIso(kini);
+export function karcisDaruratHari(kini, iso) { const hari = iso || hariIniIso(kini); return ingatPerVersi('kcDaruratHari|' + hari, () => karcisDaruratHariHitung(hari)); }
+function karcisDaruratHariHitung(hari) {
   return ambilPenjualan().filter((p) => kcDariDarurat(p) && p.tanggal === hari)
     .map((p) => ({ id: String(p.id), tanggal: p.tanggal, jam: p.jam || '', nominal: Math.round(p.hargaTotal || 0), cara: bakuCaraBayar(p.caraBayar), nama: String(p.namaPelanggan || '').trim(),
       oleh: String(p.operator || p.oleh || '').trim(), teks: p.jenis === 'kasir_darurat_nominal' ? (p.asalDarurat ? 'Sisa karcis ' + kcEkor(p.rinciDari || p.id) : 'Karcis ' + kcEkor(p.id)) : namaSingkatTrx(p) + ' · tuts kasir darurat',
