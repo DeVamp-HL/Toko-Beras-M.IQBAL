@@ -4,6 +4,8 @@
 uji_ringkasan_baru.py — uji logika layar RINGKASAN sistem baru (baru/js/layar/ringkasan-logika.js) di jsc.
 KOTAK PASIR (ANGKA CONTOH, bukan angka toko) dengan jam tetap; kalau ada backup-batch-*.json lokal ditambah uji asap:
 angka Ringkasan harus SAMA dengan jumlah langsung dari cadangan itu (penjualan − uang retur) DAN dengan omzet mesin laba (Laporan) — 39b no. 19.
+Uang retur = uang kembali + selisih tukar yang dikembalikan + nilai retur nota BON (kolom potongBon, 39b no. 37). Asap yang sama dijalankan juga
+atas KOTAK_ASAP (ANGKA CONTOH) supaya rumus pembandingnya ikut dijaga di CI, yang tidak punya cadangan toko.
 
     python3 alat-uji/uji_ringkasan_baru.py            → N lulus · 0 gagal
     python3 alat-uji/uji_ringkasan_baru.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -150,14 +152,39 @@ var langsungHari = hidup.filter(function (p) { return p.tanggal === akhir; }).re
 var langsungBulan = hidup.filter(function (p) { return (p.tanggal || '').slice(0, 7) === akhir.slice(0, 7) && p.tanggal <= akhir; }).reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0);
 var langsungTahun = hidup.filter(function (p) { return (p.tanggal || '').slice(0, 4) === akhir.slice(0, 4); }).reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0);
 // 39b no. 19: omzet = penjualan − uang retur (keputusan owner 9 Sep) — dulu asap ini MENGUNCI arti bruto; kini dibandingkan juga dengan mesin laba (omzet Laporan)
-var uangR = function (r) { return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0); };
+// 39b no. 37 (keputusan owner 2 Okt): retur atas nota BON tidak mengembalikan uang (nominalRefund 0) — nilainya memotong bon (kolom potongBon) dan TETAP
+// mengurangi omzet. Rumus pembanding ini dulu berhenti di uang kembali + selisih tukar → begitu retur nota bon pertama muncul di data toko (Nov 2026),
+// bulan & tahun "tidak sama" padahal Ringkasan = Laporan. Ditulis ulang di sini dengan sengaja (bukan memanggil uangKembaliRetur mesin): pembanding harus mandiri.
+var uangR = function (r) { return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0) + (r.potongBon || 0); };
 var rJumlah = function (f) { return (CAD.retur || []).filter(function (r) { return f(String(r.tanggal || '')); }).reduce(function (a, r) { return a + uangR(r); }, 0); };
 var fHari = function (t) { return t === akhir; }, fBulan = function (t) { return t.slice(0, 7) === akhir.slice(0, 7) && t <= akhir; }, fTahun = function (t) { return t.slice(0, 4) === akhir.slice(0, 4) && t <= akhir; };
 langsungHari -= rJumlah(fHari); langsungBulan -= rJumlah(fBulan); langsungTahun -= rJumlah(fTahun);
 var mesin = function (f) { return hitungLabaRentang(function (t) { return !!t && f(t); }).omzetPenuh; };
 var semuaSkala = SKALA.map(function (s) { var r = susunRingkasan(s[0], ix, KINI); return r.sektor.length > 0 && typeof r.angka === 'number' && !!r.judul; });
-print(JSON.stringify({ akhir: akhir, hariCocok: R.angka === langsungHari && R.angka === mesin(fHari), bulanCocok: B.angka === langsungBulan && B.angka === mesin(fBulan), tahunCocok: T.angka === langsungTahun && T.angka === mesin(fTahun), retur: [rJumlah(fHari), rJumlah(fBulan), rJumlah(fTahun)], skala: semuaSkala.filter(Boolean).length, perhatian: susunPerhatian().length, mulai: ix.mulai }));
+print(JSON.stringify({ akhir: akhir, hariCocok: R.angka === langsungHari && R.angka === mesin(fHari), bulanCocok: B.angka === langsungBulan && B.angka === mesin(fBulan), tahunCocok: T.angka === langsungTahun && T.angka === mesin(fTahun), retur: [rJumlah(fHari), rJumlah(fBulan), rJumlah(fTahun)], returBon: (CAD.retur || []).filter(function (r) { return (r.potongBon || 0) > 0; }).length, skala: semuaSkala.filter(Boolean).length, perhatian: susunPerhatian().length, mulai: ix.mulai }));
 """
+
+# Rumus pembanding SEBELUM 19 Nov 2026 (tidak kenal potongBon) — dipakai --kontrol: atas KOTAK_ASAP rumus lama ini WAJIB berbunyi.
+ASAP_LAMA = ASAP.replace(" + (r.potongBon || 0); };", "; };")
+
+# KOTAK_ASAP (ANGKA CONTOH): penjualan KOTAK + empat retur — uang kembali, nota BON (potongBon), tukar yang dikembalikan, tukar yang ditagih (selisih minus = bukan retur uang).
+#   hari terakhir 19 Sep → retur hari 20.000 · bulan (Sep s/d 19) 20.000 + 30.000 = 50.000 · tahun 50.000 + 10.000 + 5.000 = 65.000
+RETUR_ASAP = [
+  {'id': 'ra1', 'tanggal': '2026-09-19', 'jam': '10:00', 'nominalRefund': 20000, 'kondisi': 'utuh', 'penyelesaian': 'refund'},
+  {'id': 'ra2', 'tanggal': '2026-09-18', 'jam': '11:00', 'nominalRefund': 0, 'potongBon': 30000, 'kondisi': 'utuh', 'penyelesaian': 'potongBon'},
+  {'id': 'ra3', 'tanggal': '2026-08-30', 'jam': '12:00', 'nominalRefund': 10000, 'selisihHargaTukar': 5000, 'kondisi': 'utuh', 'penyelesaian': 'tukar'},
+  {'id': 'ra4', 'tanggal': '2026-09-01', 'jam': '12:00', 'nominalRefund': 0, 'selisihHargaTukar': -7000, 'kondisi': 'utuh', 'penyelesaian': 'tukar'},
+]
+RETUR_ASAP_HARAP = [20000, 50000, 65000]
+
+
+def asap_contoh(js, asap=None):
+    """Asap data toko dijalankan atas kotak contoh: tiga angka wajib cocok dan jumlah returnya = hitungan tangan di atas."""
+    kotak = dict(KOTAK); kotak['retur'] = RETUR_ASAP
+    h, e = jalan(js + '\nvar CAD = ' + json.dumps(kotak) + ';\n' + (asap or ASAP))
+    if h is None: return 0, ['asap contoh: JSC JATUH ' + e]
+    beres = h['hariCocok'] and h['bulanCocok'] and h['tahunCocok'] and h['retur'] == RETUR_ASAP_HARAP and h['returBon'] == 1 and h['skala'] == 7
+    return (1, []) if beres else (0, ['asap contoh (retur uang + nota bon + tukar): hari/bulan/tahun %s/%s/%s · retur %s (harap %s) · retur nota bon %s' % (h['hariCocok'], h['bulanCocok'], h['tahunCocok'], h['retur'], RETUR_ASAP_HARAP, h['returBon'])])
 
 
 def jalan(js):
@@ -424,6 +451,16 @@ if __name__ == '__main__':
             l, g = utama(isi)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
+        # asap atas kotak contoh: mesin / Ringkasan yang melupakan retur nota bon wajib ketahuan, dan rumus pembanding LAMA (tanpa potongBon) wajib berbunyi
+        rusak_asap = [('asap: mesin & Ringkasan melupakan retur nota bon (potongBon)', "return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0) + (r.potongBon || 0);", "return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0);", None),
+                      ('asap: Ringkasan bruto (tidak mengurangi uang retur)', "return { omzet: omzet - retur, penjualan: omzet,", "return { omzet: omzet, penjualan: omzet,", None),
+                      ('asap: rumus pembanding lama (uang kembali + selisih tukar saja) atas retur nota bon', None, None, ASAP_LAMA)]
+        for nama, lama, baru, asap in rusak_asap:
+            if lama is not None and js.count(lama) != 1: print('KONTROL BASI  ' + nama + ' (' + str(js.count(lama)) + '×)'); kode = 3; continue
+            la, ga = asap_contoh(js.replace(lama, baru) if lama is not None else js, asap)
+            print(('BERBUNYI ' if ga else 'DIAM!!   ') + nama + ' → ' + (ga[0][:150] if ga else '-'))
+            if not ga: kode = 3
+        if ASAP_LAMA == ASAP: print('KONTROL BASI  rumus pembanding lama tidak terbentuk'); kode = 3
         jsd = bundel_dasbor()
         for nama, lama, baru in RUSAK_DASBOR:
             if jsd.count(lama) != 1: print('KONTROL BASI  ' + nama + ' (' + str(jsd.count(lama)) + '×)'); kode = 3; continue
@@ -440,6 +477,7 @@ if __name__ == '__main__':
     l, g = utama(js)
     t31 = teks_titik_basi(berkas_titik()); g = g + ['39b-31: ' + x for x in t31]; l = l + (0 if t31 else 1)
     ld, gd = utama_dasbor(bundel_dasbor()); sd = statis_dasbor(*berkas_dasbor()); l += ld + (0 if sd else 1); g = g + gd + sd
+    la, ga = asap_contoh(js); l += la; g = g + ga
     print('KOTAK PASIR: %d lulus · %d gagal (termasuk dasbor owner: %d lulus)' % (l, len(g), ld + (0 if sd else 1))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')), key=os.path.basename)   # cadangan toko boleh di akar, _privat/ atau _arsip-mockup/ (semua di-gitignore); yang terbaru menurut tanggal di namanya
     if cad:
@@ -447,8 +485,8 @@ if __name__ == '__main__':
         h, e = jalan(js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP)
         if h is None: print('ASAP DATA TOKO: JSC JATUH ' + e); g.append('asap')
         else:
-            print('ASAP DATA TOKO (%s, hari terakhir %s, catatan mulai %s): omzet hari/bulan/tahun = penjualan − uang retur cadangan = omzet Laporan: %s/%s/%s · %d skala tergambar · %d hal perlu perhatian'
-                  % (os.path.basename(cad[-1]), h['akhir'], h['mulai'], h['hariCocok'], h['bulanCocok'], h['tahunCocok'], h['skala'], h['perhatian']))
+            print('ASAP DATA TOKO (%s, hari terakhir %s, catatan mulai %s): omzet hari/bulan/tahun = penjualan − uang retur cadangan (termasuk %d retur nota bon) = omzet Laporan: %s/%s/%s · %d skala tergambar · %d hal perlu perhatian'
+                  % (os.path.basename(cad[-1]), h['akhir'], h['mulai'], h['returBon'], h['hariCocok'], h['bulanCocok'], h['tahunCocok'], h['skala'], h['perhatian']))
             if not (h['hariCocok'] and h['bulanCocok'] and h['tahunCocok'] and h['skala'] == 7): g.append('asap: angka Ringkasan tidak sama dengan jumlah langsung baris cadangan')
         hd, ed = jalan(bundel_dasbor() + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP_DASBOR)
         if hd is None: print('ASAP DASBOR: JSC JATUH ' + ed); g.append('asap dasbor')

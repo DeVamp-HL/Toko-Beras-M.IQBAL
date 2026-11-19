@@ -15,6 +15,15 @@ tidak membawa tag itu → uji dilewati dengan pesan (sama dengan tanpa cadangan)
     python3 alat-uji/uji_identitas_baru.py [backup.json]     → 0 identik · 2 beda · 0 (dilewati)
     python3 alat-uji/uji_identitas_baru.py --kontrol          → buktikan alat bisa MELIHAT beda
 
+DUA PERUBAHAN SENGAJA SESUDAH SISTEM LAMA DIPENSIUNKAN (19 Nov 2026). Sisi lama dibekukan di tag 3 Okt; mesin sistem baru sesudah itu dibuka dua kali atas
+keputusan owner, jadi "byte-sama" mentah tidak mungkin lagi di dua tempat ini. Keduanya DISETARAKAN dengan aturan tertulis (setarakan() di bawah), bukan dilewati:
+  1. Modal FIFO (9 Okt): bila saklar menyala, buku karung ber-FIFO membawa hppTerakhirPerKg = nilai sisa menurut lapisan + kolom FIFO. Mesin baru tetap membawa
+     angka lamanya di hppRataPerKg → yang dibandingkan dengan sisi lama = hppRataPerKg; kolom FIFO dilepas. Lalu saklar DIMATIKAN di salinan cadangan: sisi baru
+     MENTAH (tanpa penyetaraan apa pun di karung) wajib sama dengan sisi lama — "saklar mati = rumus lama persis".
+  2. Buku kantong per merek (11 Okt): daftar jenis kantong mesin baru lebih panjang, jadi buku KOSONG lahir di satu sisi saja. Buku yang hanya ada di satu sisi
+     boleh dilepas HANYA bila tidak punya satu dokumen pun di cadangan dan seluruh angkanya nol; selain itu = BEDA.
+Aturan penyetaraan itu sendiri diuji tiap kali alat ini jalan (uji_setarakan, data karangan, tanpa cadangan & tanpa jsc) — termasuk di CI.
+
 Sisi LAMA: fungsi & konstanta dipotong dari index.html (tag sistem-lama-terakhir) apa adanya (cara yang sama
 dengan pindah_mesin.py yang sudah pensiun — pembantunya disalin ke sini), dengan ambil*() sederhana atas cache yang diisi cadangan. Sisi BARU: bundel modul
 baru/js (bundel_baru.py). Keduanya dijalankan di jsc, tanpa peramban.
@@ -189,19 +198,107 @@ def jalankan(js, cadangan):
     return r.stdout.strip().split('\n')[-1], ''
 
 
+# Kolom yang ditambahkan mfPasang (baru/js/mesin/modal-fifo.js) ke buku karung ber-FIFO — tidak dikenal sistem lama.
+FIFO_KOLOM = ['metode', 'fifoMulai', 'hppKeluarPerKg', 'posKeluar', 'hppRataPerKg', 'lapisan']
+
+
+def kanon(x):
+    return json.dumps(x, sort_keys=True)
+
+
+def setarakan(A, B, cadangan, fifo_boleh=True):
+    """Menyetarakan dua perubahan sengaja (lihat kepala berkas). Mengembalikan (A', B', catatan, salah). `salah` = pelanggaran aturan penyetaraan.
+    fifo_boleh=False (saklar sudah dimatikan di salinan cadangan): buku karung TIDAK disetarakan — sisa kolom FIFO apa pun jadi beda mentah."""
+    A2, B2 = dict(A), dict(B); cat = {'fifo': 0, 'kantongKosong': 0}; salah = []
+    if fifo_boleh and isinstance(B.get('karung'), dict):
+        kr = {}
+        for m, s in B['karung'].items():
+            if isinstance(s, dict) and s.get('metode') == 'fifo':
+                if 'hppRataPerKg' not in s: salah.append('karung.%s ber-FIFO tanpa hppRataPerKg (angka lama)' % m); kr[m] = s; continue
+                s2 = dict((k, v) for k, v in s.items() if k not in FIFO_KOLOM); s2['hppTerakhirPerKg'] = s['hppRataPerKg']; kr[m] = s2; cat['fifo'] += 1
+            else: kr[m] = s
+        B2['karung'] = kr
+    ka, kb = A.get('bahanKemasan'), B.get('bahanKemasan')
+    if isinstance(ka, dict) and isinstance(kb, dict):
+        berdok = set(str(d.get('jenis')) for d in (cadangan.get('stokBahanKemasan') or []) if isinstance(d, dict))
+        ka2, kb2 = dict(ka), dict(kb)
+        for sisi, punya, lawan in (('lama', ka2, kb), ('baru', kb2, ka)):
+            for j in sorted(set(punya) - set(lawan)):
+                v = punya[j]; nol = isinstance(v, dict) and all(isinstance(x, (int, float)) and x == 0 for x in v.values())
+                if j in berdok or not nol: salah.append('bahanKemasan.%s hanya di sisi %s padahal %s' % (j, sisi, 'punya dokumen di cadangan' if j in berdok else 'angkanya tidak nol'))
+                else: del punya[j]; cat['kantongKosong'] += 1
+        A2['bahanKemasan'], B2['bahanKemasan'] = ka2, kb2
+    return A2, B2, cat, salah
+
+
+def beda_kunci(A, B):
+    return [k for k in A if kanon(A[k]) != kanon(B.get(k))] + [k for k in B if k not in A]
+
+
+def tanpa_fifo(cadangan):
+    """Salinan cadangan dengan saklar modal FIFO dimatikan (aturanToko/catatStok: hari mulai & masa yang sudah ditutup dikosongkan)."""
+    c = dict(cadangan); c['aturanToko'] = [dict(d, modalFifoMulai='', modalFifoMasa=[]) if isinstance(d, dict) and str(d.get('id')) == 'catatStok' else d for d in (cadangan.get('aturanToko') or [])]
+    return c
+
+
+def uji_setarakan():
+    """Aturan penyetaraan atas data KARANGAN (bukan angka toko): yang sengaja disetarakan lolos, yang lain tetap terlihat. Mengembalikan (jumlah diperiksa, daftar yang gagal)."""
+    rata = {'sisaKg': 90, 'hargaTerakhirPerKg': 13500, 'hppTerakhirPerKg': 13045.5}
+    fifo = dict(rata, hppTerakhirPerKg=13500, hppRataPerKg=13045.5, metode='fifo', fifoMulai='2026-09-01', hppKeluarPerKg=13500, posKeluar=710, lapisan=[{'kg': 700, 'harga': 13000}])
+    nol = {'totalBeli': 0, 'totalTerpakai': 0, 'totalHargaBeli': 0, 'sisaPcs': 0, 'hppPerPcs': 0}; isi = dict(nol, totalBeli=5, sisaPcs=5)
+    cad = {'stokBahanKemasan': [{'jenis': 'gabung', 'tipe': 'beli', 'jumlah': 5}]}
+
+    def hasil(A, B, c=cad, fifo_boleh=True):
+        A2, B2, cat, salah = setarakan(A, B, c, fifo_boleh); return beda_kunci(A2, B2), salah, cat
+    g = []
+    b, s, c = hasil({'karung': {'X': rata}}, {'karung': {'X': fifo}})
+    if b or s or c['fifo'] != 1: g.append('buku ber-FIFO yang angka lamanya = sisi lama harus setara')
+    b, s, c = hasil({'karung': {'X': rata}}, {'karung': {'X': dict(fifo, hppRataPerKg=13045.6)}})
+    if not b: g.append('angka lama FIFO yang bergeser harus terlihat')
+    b, s, c = hasil({'karung': {'X': rata}}, {'karung': {'X': dict(fifo, sisaKg=91)}})
+    if not b: g.append('sisa kg buku ber-FIFO yang beda harus terlihat')
+    b, s, c = hasil({'karung': {'X': rata}}, {'karung': {'X': dict(rata, lapisan=[])}})
+    if not b: g.append('kolom FIFO pada buku yang BUKAN ber-FIFO harus terlihat')
+    b, s, c = hasil({'karung': {'X': rata}}, {'karung': {'X': fifo}}, fifo_boleh=False)
+    if not b: g.append('saklar dimatikan: buku yang masih ber-FIFO harus terlihat (tanpa penyetaraan)')
+    b, s, c = hasil({'karung': {'X': rata}}, {'karung': {'X': dict((k, v) for k, v in fifo.items() if k != 'hppRataPerKg')}})
+    if not s: g.append('buku ber-FIFO tanpa angka lama harus ditolak')
+    b, s, c = hasil({'bahanKemasan': {'gabung': isi}}, {'bahanKemasan': {'gabung': isi, 'permerek': nol}})
+    if b or s or c['kantongKosong'] != 1: g.append('buku kantong kosong tanpa dokumen di satu sisi harus setara')
+    b, s, c = hasil({'bahanKemasan': {'gabung': isi}}, {'bahanKemasan': {'gabung': isi, 'permerek': isi}})
+    if not s: g.append('buku kantong satu sisi yang BERISI harus terlihat')
+    b, s, c = hasil({'bahanKemasan': {}}, {'bahanKemasan': {'gabung': nol}})
+    if not s: g.append('buku kantong satu sisi yang PUNYA dokumen di cadangan harus terlihat')
+    b, s, c = hasil({'bahanKemasan': {'gabung': isi}}, {'bahanKemasan': {'gabung': dict(isi, totalTerpakai=1)}})
+    if not b: g.append('buku kantong di kedua sisi yang beda harus terlihat')
+    b, s, c = hasil({'kemasan': {'a': 1}}, {'kemasan': {'a': 2}})
+    if not b: g.append('kunci lain yang beda harus terlihat')
+    return 11, g
+
+
 def banding(cadangan, mod, js_baru):
     a, ea = jalankan(sisi_lama(mod), cadangan)
     b, eb = jalankan(js_baru, cadangan)
     if a is None or b is None:
         return False, 'JSC JATUH lama=' + ea + ' | baru=' + eb
-    if a == b:
-        H = json.loads(a)
-        return True, ('identik: %d merek karung · %d kemasan · %d piutang · %d kasbon · %d pemasok · laba Agu %s baris · %d maks karung'
-                      % (len(H['karung']), len(H['kemasan']), len(H['piutang']), len(H['kasbon']), len(H['utangPemasok']),
-                         'ada' if H['laba'] else 'kosong', len(H['maks'])))
     A, B = json.loads(a), json.loads(b)
-    beda = [k for k in A if json.dumps(A[k], sort_keys=True) != json.dumps(B.get(k), sort_keys=True)]
-    return False, 'BEDA di: ' + ', '.join(beda)
+    ringkas = ('%d merek karung · %d kemasan · %d piutang · %d kasbon · %d pemasok · laba Agu %s baris · %d maks karung'
+               % (len(A['karung']), len(A['kemasan']), len(A['piutang']), len(A['kasbon']), len(A['utangPemasok']), 'ada' if A['laba'] else 'kosong', len(A['maks'])))
+    if a == b: return True, 'identik: ' + ringkas
+    A2, B2, cat, salah = setarakan(A, B, cadangan)
+    beda = beda_kunci(A2, B2)
+    if beda or salah: return False, 'BEDA di: ' + ', '.join(beda + salah)
+    setara = []
+    if cat['fifo']:
+        # saklar FIFO dimatikan di salinan cadangan → sisi baru MENTAH wajib = sisi lama (sisi lama tidak membaca aturanToko, jadi hasilnya tetap A)
+        b0, e0 = jalankan(js_baru, tanpa_fifo(cadangan))
+        if b0 is None: return False, 'JSC JATUH (saklar FIFO dimatikan) baru=' + e0
+        A3, B3, cat3, salah3 = setarakan(A, json.loads(b0), cadangan, fifo_boleh=False)
+        beda3 = beda_kunci(A3, B3)
+        if beda3 or salah3: return False, 'BEDA sesudah saklar FIFO dimatikan (mestinya rumus lama persis) di: ' + ', '.join(beda3 + salah3)
+        setara.append('%d buku karung ber-FIFO: angka rata-rata lamanya (hppRataPerKg) = sistem lama, dan dengan saklar dimatikan seluruh buku karung sama mentah' % cat['fifo'])
+    if cat['kantongKosong']: setara.append('%d buku kantong kosong tanpa dokumen hanya ada di satu sisi (daftar jenis per merek)' % cat['kantongKosong'])
+    return True, 'identik: ' + ringkas + ' · disetarakan: ' + '; '.join(setara)
 
 
 def cari_cadangan(argv):
@@ -212,6 +309,28 @@ def cari_cadangan(argv):
 
 
 if __name__ == '__main__':
+    ns, gs = uji_setarakan()
+    print('ATURAN PENYETARAAN (data karangan): %d lulus · %d gagal' % (ns - len(gs), len(gs)) + (' — ' + ' | '.join(gs) if gs else ''))
+    if gs: sys.exit(2)
+    if '--kontrol' in sys.argv:
+        # aturan penyetaraan yang dilonggarkan wajib ketahuan uji_setarakan (murni Python — jalan juga tanpa cadangan)
+        asli = setarakan; kode0 = 0
+        def longgar_fifo(A, B, c, fifo_boleh=True): return asli(A, B, c, True)
+        def longgar_kantong(A, B, c, fifo_boleh=True):
+            A2, B2, cat, salah = asli(A, B, c, fifo_boleh)
+            for X, Y in ((A2, B2), (B2, A2)):
+                if isinstance(X.get('bahanKemasan'), dict) and isinstance(Y.get('bahanKemasan'), dict): X['bahanKemasan'] = dict((k, v) for k, v in X['bahanKemasan'].items() if k in Y['bahanKemasan'])
+            return A2, B2, cat, [x for x in salah if not x.startswith('bahanKemasan.')]
+        def buta_rata(A, B, c, fifo_boleh=True):
+            A2, B2, cat, salah = asli(A, B, c, fifo_boleh)
+            if isinstance(B2.get('karung'), dict) and isinstance(A2.get('karung'), dict):
+                B2['karung'] = dict((m, dict(s, hppTerakhirPerKg=A2['karung'].get(m, {}).get('hppTerakhirPerKg')) if isinstance(B['karung'].get(m), dict) and B['karung'][m].get('metode') == 'fifo' else s) for m, s in B2['karung'].items())
+            return A2, B2, cat, salah
+        for nama, palsu in [('penyetaraan FIFO tetap dipakai walau saklar sudah dimatikan', longgar_fifo), ('buku kantong satu sisi dilepas tanpa syarat (berisi / berdokumen ikut lolos)', longgar_kantong), ('angka lama buku ber-FIFO tidak dibandingkan', buta_rata)]:
+            setarakan = palsu; gk = uji_setarakan()[1]; setarakan = asli
+            print(('BERBUNYI ' if gk else 'DIAM!!   ') + 'aturan: ' + nama + ' → ' + (gk[0][:110] if gk else '-'))
+            if not gk: kode0 = 3
+        if kode0: sys.exit(kode0)
     berkas = cari_cadangan(sys.argv)
     if not berkas:
         print('DILEWATI: tidak ada backup-batch-*.json (uji identitas hanya jalan di mesin yang punya cadangan toko)'); sys.exit(0)
@@ -229,12 +348,22 @@ if __name__ == '__main__':
             'pembayaran piutang diabaikan': js.replace("if (m.tipe === 'bayar') {\n        s.bayar += n;", "if (m.tipe === 'bayar') {\n        s.bayar += 0;"),
             'penjualan batal ikut dihitung (ambilPenjualan tanpa saringan)': js.replace("ingatPerVersi('ambilPenjualan', () => ambilPenjualanSemua().filter(penjualanMasihBerlaku));", "ingatPerVersi('ambilPenjualan', () => ambilPenjualanSemua());"),
             'urutan cache dibalik (harga terakhir jadi salah batch)': js.replace("_cache[k.cache] = urutkanTerbaru(dokumen || [], k.urut);", "_cache[k.cache] = urutkanTerbaru(dokumen || [], k.urut).reverse();"),
+            # penyetaraan kantong tidak boleh membutakan: buku per jenis yang lahir BERISI wajib terlihat (di kedua sisi maupun di satu sisi)
+            'kantong: buku per jenis lahir berisi 1 lembar (bukan kosong)': js.replace("JENIS_BAHAN_KEMASAN.forEach(j => { stok[j] = { totalBeli: 0, totalTerpakai: 0, totalHargaBeli: 0 }; });", "JENIS_BAHAN_KEMASAN.forEach(j => { stok[j] = { totalBeli: 1, totalTerpakai: 0, totalHargaBeli: 0 }; });"),
+            'kantong & bahan literan: pemakaian diabaikan': js.replace("stok[b.jenis].totalTerpakai += b.jumlah;", "stok[b.jenis].totalTerpakai += 0;"),
         }
+        # dua kontrol ini hanya bermakna bila saklar modal FIFO menyala di cadangan yang dipakai (tanpa itu mesin tidak pernah masuk jalur FIFO)
+        mulai_fifo = [str(d.get('modalFifoMulai')) for d in (cadangan.get('aturanToko') or []) if isinstance(d, dict) and str(d.get('id')) == 'catatStok' and re.match(r'^\d{4}-\d{2}-\d{2}$', str(d.get('modalFifoMulai') or ''))]
+        if mulai_fifo:
+            rusak['modal FIFO: angka rata-rata lama yang dibawa mesin digeser'] = js.replace("h.hppRataPerKg = h.hppTerakhirPerKg;", "h.hppRataPerKg = h.hppTerakhirPerKg + 1;")
+            # buku HARI INI dipaksa tetap FIFO walau saklar kosong (buku ber-`sampai` dibiarkan: lapisan pembuka menghitung buku sehari sebelum mulai)
+            rusak['modal FIFO: saklar dimatikan tetapi mesin tetap FIFO'] = js.replace("const masa = mfMasaBerlaku(cacheMentah('aturan'), sampai);", "const masa = mfMasaBerlaku(cacheMentah('aturan'), sampai) || (sampai ? null : { mulai: '%s', selesai: '' });" % mulai_fifo[0])
+        else: print('DILEWATI 2 kontrol modal FIFO: saklar FIFO mati di cadangan ini')
         kode = 0
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
             ok, ket = banding(cadangan, mod, isi)
-            print(('DIAM!!   ' if ok else 'BERBUNYI ') + nama + ' → ' + ket[:100])
+            print(('DIAM!!   ' if ok else 'BERBUNYI ') + nama + ' → ' + ket[:140])
             if ok: kode = 3
         sys.exit(kode)
     ok, ket = banding(cadangan, mod, sisi_baru())

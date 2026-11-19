@@ -499,6 +499,18 @@ pasok('batchMasuk', KOTAK.batchMasuk.concat([{ id: 'b4', tanggal: '2026-09-05', 
   { id: 'b5', tanggal: '2026-08-08', stokAwal: true, biayaBongkar: 0, merkList: [{ merk: 'Beras Awal Contoh', satuan: 'karung', beratKarung: 50, jumlahKarung: 4, totalKg: 200, subtotalHarga: 2400000, hargaPerKg: 12000 }] }]));
 var KH = kartuHpp(); function kh(m) { return KH.kartu.find(function (k) { return k.merk === m; }); }
 ok('ST6 rumus replika = mesin: Σ nilai ÷ Σ kg tiap nama sama dengan hppTerakhirPerKg mesin, TERMASUK kedatangan berbongkar (Ketan Contoh 18.100 = 18.000 + 25.000/250) — penjaga yang berbunyi bila rumus mesin berubah', Object.keys(hitungStokKarungPerMerk()).every(function (m) { return Math.abs(totalMasuk(m).rata - hitungStokKarungPerMerk()[m].hppTerakhirPerKg) < 1e-6; }) && Math.abs(totalMasuk('Ketan Contoh').rata - 18100) < 1e-6 && Math.abs(hitungStokKarungPerMerk()['Ketan Contoh'].hppTerakhirPerKg - 18100) < 1e-6, JSON.stringify([totalMasuk('Ketan Contoh'), hitungStokKarungPerMerk()['Ketan Contoh']]));
+// ST6 dengan saklar modal FIFO MENYALA (owner 9 Okt). Hitungan tangan (ANGKA CONTOH): Angsa — hari mulai 1 Sep; sisa 31 Agu = 1.000 − 300 = 700 kg, rata-rata
+// kedatangan sebelum 1 Sep = 13.000 → lapisan pembuka 700 kg @13.000; kedatangan 19 Sep 100 kg @13.500. Sisa buku hari ini 90 kg (1.100 − 1.000 terjual − 10 selisih
+// hitung) = seluruhnya dari kedatangan TERBARU → modal 13.500/kg, bukan rata-rata 13.045,45. Asap lama ("rata-rata = mesin untuk semua nama") wajib GAGAL di sini.
+var st6Mati = st6Periksa();
+terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'catatStok', modalFifoMulai: '2026-09-01' } }]);
+var st6Nyala = st6Periksa(); var sA6 = hitungStokKarungPerMerk()['Angsa'];
+var st6CaraLama = Object.keys(hitungStokKarungPerMerk()).filter(function (m) { return Math.abs(totalMasuk(m).rata - hitungStokKarungPerMerk()[m].hppTerakhirPerKg) > 1e-6; });
+terapkanKeCache([{ koleksi: 'aturanToko', hapus: 'catatStok' }]);
+ok('ST6 saklar FIFO mati: tak satu nama pun ber-FIFO dan replika rata-rata = mesin untuk semua nama', st6Mati.beda.length === 0 && st6Mati.fifo === 0 && st6Mati.lain > 0, JSON.stringify(st6Mati));
+ok('ST6 saklar FIFO menyala (mulai 1 Sep): replika FIFO mandiri = mesin untuk semua nama ber-FIFO, angka rata-rata lama tetap = Σ nilai ÷ Σ kg; Angsa sisa 90 kg bernilai kedatangan terbaru 13.500/kg (rata-rata lama 13.045,45)',
+  st6Nyala.beda.length === 0 && st6Nyala.fifo > 0 && st6Nyala.fifoBedaRata >= 1 && sA6 && sA6.metode === 'fifo' && sA6.sisaKg === 90 && Math.abs(sA6.hppTerakhirPerKg - 13500) < 1e-6 && Math.abs(sA6.hppRataPerKg - 14350000 / 1100) < 1e-6, JSON.stringify([st6Nyala, sA6]));
+ok('ST6 saklar FIFO menyala: pembanding CARA LAMA (rata-rata = mesin untuk semua nama) berbunyi untuk Angsa — itulah sebab asap data toko dulu gagal sejak saklar dinyalakan', st6CaraLama.indexOf('Angsa') >= 0, JSON.stringify(st6CaraLama));
 ok('ST6 nama yang cuma punya batch FONDASI (stok awal): kartu bisaKoreksi false, nilaiKoreksi DITOLAK menyebut fondasi (tidak diubah dari sini)', kh('Beras Awal Contoh') && kh('Beras Awal Contoh').bisaKoreksi === false && /fondasi/.test(nilaiKoreksi('Beras Awal Contoh', '13000').tolak) && /stok awal \(fondasi\)/.test(kh('Beras Awal Contoh').sumber), JSON.stringify([kh('Beras Awal Contoh'), nilaiKoreksi('Beras Awal Contoh', '13000')]));
 ok('ST6 koreksi kedatangan berbongkar: harga 18.000 → 18.500 → HPP kedatangan 18.600 (bongkar 100/kg tetap ikut), teksTarget menyebut bongkar', (function () { var v = nilaiKoreksi('Ketan Contoh', '18500'); return !v.tolak && Math.abs(v.hppBaru - 18600) < 1e-6 && /bongkar Rp100\/kg/.test(v.teksTarget) && Math.abs(v.modalBaru - 18600) < 1e-6; })(), JSON.stringify(nilaiKoreksi('Ketan Contoh', '18500')));
 ok('ST6 kartu Angsa: modal rata-rata 13.045,45 (buku), harga beli terbaru 13.500 (aturan owner, pembanding), jual 13.400 → margin 355 untung; nilai rak 90 × modal; sumber = kedatangan terakhir', Math.abs(kh('Angsa').modal - 14350000 / 1100) < 0.001 && kh('Angsa').hargaTerbaru === 13500 && kh('Angsa').jual === 13400 && kh('Angsa').margin === 355 && kh('Angsa').kelasMargin === 'untung' && Math.abs(kh('Angsa').nilaiRak - 90 * 14350000 / 1100) < 0.01 && /kedatangan PEMASOK CONTOH · 2026-09-19/.test(kh('Angsa').sumber), JSON.stringify(kh('Angsa')));
@@ -567,6 +579,44 @@ pasok('batchMasuk', KOTAK.batchMasuk); cacheMentah('koreksiHpp').slice().forEach
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 
+# ST6 — replika modal vs mesin, dipakai kotak pasir DAN asap data toko (19 Nov 2026).
+# Sejak saklar modal FIFO (owner 9 Okt 2026) hppTerakhirPerKg mesin = NILAI SISA per kg menurut lapisan kedatangan, bukan lagi rata-rata seluruh kedatangan.
+# Asap lama menuntut "rata-rata = mesin untuk SEMUA nama" → begitu saklar menyala di data toko, tiap nama ber-FIFO yang sisanya bukan campuran
+# seluruh kedatangan dilaporkan "HPP replika ≠ mesin" walau hitungan benar. Yang dijaga kini, per nama:
+#   bukan FIFO (saklar mati / wadah campuran / tanpa lapisan) → rata-rata Σ nilai ÷ Σ kg (totalMasuk layar) = hppTerakhirPerKg — persis yang dulu;
+#   FIFO → rata-rata itu = hppRataPerKg (angka lama yang tetap dibawa mesin) DAN replika FIFO di bawah = hppTerakhirPerKg.
+# Replika FIFO MANDIRI (tidak memanggil modal-fifo.js; aturannya dari kepala berkas itu): lapisan pembuka = sisa buku sehari sebelum hari mulai × rata-rata
+# kedatangan SEBELUM hari mulai; lalu tiap kedatangan / adukan-jadi-karung sejak hari mulai (riwayatModal layar, lama → baru). Sisa diisi dari lapisan
+# TERBARU mundur (yang lama keluar duluan); sisa melebihi seluruh jejeran → kelebihannya harga lapisan pertama; sisa ≤ 0 → harga lapisan terakhir.
+# (Baris bertanggal sama diurutkan seperti riwayatModal; mesin mengurutkan tanggal lalu id — bila suatu hari satu buku menerima kedatangan DAN pindah buku
+#  berharga beda di tanggal yang sama dan garis sisa jatuh di antaranya, replika ini bisa berbunyi: periksa urutannya dulu.)
+ST6_JS = r"""
+function st6Kemarin(t) { var d = new Date(t + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); }
+function st6Fifo(m, s) {
+  var mulai = s.fifoMulai, R = riwayatModal(m), kgL = 0, nilaiL = 0, L = [];
+  R.forEach(function (r) { if (r.tanggal < mulai) { kgL += r.totalKg; nilaiL += r.hppPerKg * r.totalKg; } });
+  var buka = hitungStokKarungPerMerk(st6Kemarin(mulai))[m];
+  if (buka && buka.sisaKg > 0) L.push({ kg: buka.sisaKg, harga: kgL > 0 ? nilaiL / kgL : 0 });
+  R.forEach(function (r) { if (r.tanggal >= mulai && r.totalKg > 0) L.push({ kg: r.totalKg, harga: r.hppPerKg }); });
+  if (!L.length) return null;
+  var T = L.reduce(function (a, x) { return a + x.kg; }, 0), S = s.sisaKg || 0, perlu = S, nilai = 0;
+  if (Math.abs(S) <= 0.005) { var pos = T - S, awal = 0; for (var j = 0; j < L.length; j++) { awal += L[j].kg; if (pos < awal) return L[j].harga; } return L[L.length - 1].harga; }
+  if (S < 0) return L[L.length - 1].harga;
+  for (var i = L.length - 1; i >= 0 && perlu > 1e-9; i--) { var ambil = Math.min(perlu, L[i].kg); nilai += ambil * L[i].harga; perlu -= ambil; }
+  if (perlu > 1e-9) nilai += perlu * L[0].harga;
+  return nilai / S;
+}
+function st6Periksa() {
+  var st = hitungStokKarungPerMerk(), beda = [], fifo = 0, lain = 0, fifoBedaRata = 0;
+  Object.keys(st).forEach(function (m) { var s = st[m], rata = totalMasuk(m).rata;
+    if (s.metode !== 'fifo') { lain++; if (Math.abs(rata - s.hppTerakhirPerKg) > 1e-6) beda.push(m + ' (rata-rata)'); return; }
+    fifo++; if (Math.abs(rata - s.hppTerakhirPerKg) > 1e-6) fifoBedaRata++;
+    if (Math.abs(rata - s.hppRataPerKg) > 1e-6) beda.push(m + ' (angka rata-rata lama)');
+    var f = st6Fifo(m, s); if (f === null || Math.abs(f - s.hppTerakhirPerKg) > 1e-6) beda.push(m + ' (FIFO)'); });
+  return { beda: beda, fifo: fifo, lain: lain, fifoBedaRata: fifoBedaRata };
+}
+"""
+
 ASAP = r"""
 __dom['jualKarungBerat'] = { value: '50' };
 Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[n]); });
@@ -590,9 +640,9 @@ var kenalKt = {}; (CAD.stokBahanKemasan || []).forEach(function (b) { Object.key
 // ST4: dokumen beli kantong sistem baru = bentuk lama + kolom baru yang disebut (hargaPerPcs, jam, toko)
 var SK4 = susunSimpanBeli({ jenis: '5kg_kembang', jumlah: '10', harga: '1.125', toko: 'X' }, WX, { murah: true, lonjak: true });
 if (SK4.dokumen) Object.keys(SK4.dokumen[0].data).forEach(function (k) { if (!kenalKt[k] && ['hargaPerPcs', 'jam', 'toko'].indexOf(k) < 0) asingC.push('stokBahanKemasan.beli.' + k); }); else asingC.push('beli kantong ditolak: ' + SK4.tolak);
-// ST6: rumus replika Σnilai/Σkg = mesin untuk SEMUA nama di data toko
-var replikaBeda = Object.keys(hitungStokKarungPerMerk()).filter(function (m) { return Math.abs(totalMasuk(m).rata - hitungStokKarungPerMerk()[m].hppTerakhirPerKg) > 1e-6; });
-if (replikaBeda.length) asingC.push('HPP replika ≠ mesin: ' + replikaBeda.join(', '));
+// ST6: replika modal = mesin untuk SEMUA nama di data toko — rata-rata bagi nama tanpa FIFO, replika FIFO mandiri bagi nama ber-FIFO (lihat ST6_JS)
+var st6 = st6Periksa();
+if (st6.beda.length) asingC.push('HPP replika ≠ mesin: ' + st6.beda.join(', '));
 var cb = calonBahan()[0]; var cn = calonNamaHasil()[0]; var ck5 = kantongUntuk(5)[0]; var banyakAdukan = daftarAdukan(1e9).length; var rincianOk = true;
 if (cb && cn && ck5) { var dZ = drafAdukanKosong(WX); dZ.bahan = [{ merk: cb.merk, kg: '50' }]; dZ.hasil = [{ nama: cn, ukuran: '5', unit: '10', kantongJenis: ck5.jenis, kantongJumlah: '10' }]; dZ.upah = '10.000';
   var SZ = susunSimpanAdukan(dZ, WX, { bahan: true, kantong: true, susut: true, kantongKosong: true, kemasan: true, mundur: true });   // putaran 31.3: WX bertanggal sebelum cocokkan terakhir di cadangan → ketukan kedua
@@ -619,7 +669,7 @@ ambilSemuaBatch().filter(function (b) { return !b.stokAwal && b.caraBayar === 'u
 });
 bon2.selisihMesin = Math.round(sisaHitung - sisaMesin);
 ambilSemuaBatch().forEach(function (b) { if (b.stokAwal || b.lahirBuku || !b.pemasok) return; var e = ckEjaanPemasok(b.pemasok, b.id); if (e !== String(b.pemasok).trim()) bon2.ejaanGeser.push(b.pemasok + ' → ' + e); });
-print(JSON.stringify({ bon2: bon2, kunciAsingCatat: asingC, adukan: banyakAdukan, karantinaAntre: daftarKarantina(WX).antre.length, nilaiLayar: Math.round(G.jawab.total), nilaiPositif: Math.round(positif), neraca: N.nilaiSack + N.nilaiBags, minus: N.adaStokMinus, barang: G.banyakBarang, beli: susunGudang('beli', KINI).jawab.baris.length, mandek: susunGudang('mandek', KINI).jawab.baris.length, cocok: susunGudang('cocok', KINI).jawab.baris.length, kapur: susunKapur(KINI).banyak, wadah: susunWadah(keadaanAwal()).daftar.length }));
+print(JSON.stringify({ st6: { fifo: st6.fifo, lain: st6.lain, fifoBedaRata: st6.fifoBedaRata }, bon2: bon2, kunciAsingCatat: asingC, adukan: banyakAdukan, karantinaAntre: daftarKarantina(WX).antre.length, nilaiLayar: Math.round(G.jawab.total), nilaiPositif: Math.round(positif), neraca: N.nilaiSack + N.nilaiBags, minus: N.adaStokMinus, barang: G.banyakBarang, beli: susunGudang('beli', KINI).jawab.baris.length, mandek: susunGudang('mandek', KINI).jawab.baris.length, cocok: susunGudang('cocok', KINI).jawab.baris.length, kapur: susunKapur(KINI).banyak, wadah: susunWadah(keadaanAwal()).daftar.length }));
 """
 
 # ---- UMUR & PUTARAN (paket brief 9 Okt, butir 2) — KOTAK PASIR SENDIRI (ANGKA CONTOH), jam 19 Sep 2026 10:00 WIB; harapan dihitung tangan di komentar ----
@@ -791,7 +841,7 @@ def jalan(js):
 
 
 def utama(js):
-    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar KOTAK16 = ' + json.dumps(KOTAK16) + ';\n' + SKENARIO)
+    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar KOTAK16 = ' + json.dumps(KOTAK16) + ';\n' + ST6_JS + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e]
     return h['lulus'], h['gagal']
 
@@ -916,6 +966,10 @@ if __name__ == '__main__':
             'hpp: koreksi tanpa alasan lolos': js.replace("if (hpKosong(alasan)) return { tolak: 'Koreksi HPP butuh alasan", "if (false) return { tolak: 'Koreksi HPP butuh alasan"),
             'hpp: lonjakan tidak ditanya': js.replace("if (v.lonjak && !yakin) return { tolak: 'HPP: ' + v.lonjak", "if (false) return { tolak: 'HPP: ' + v.lonjak"),
             'hpp: Δ nilai rak salah (tanpa sisa kg)': js.replace("const delta = (modalBaru - K.modal) * Math.max(0, K.sisa);", "const delta = (modalBaru - K.modal);"),
+            'hpp ST6 FIFO: mesin menilai sisa dari kedatangan TERLAMA (bukan yang terbaru)': js.replace("const T = mfTotal(L); const S = h.sisaKg || 0; const P = T - S;", "const T = mfTotal(L); const S = h.sisaKg || 0; const P = 0;"),
+            'hpp ST6 FIFO: angka rata-rata lama yang dibawa mesin bukan lagi Σ nilai ÷ Σ kg': js.replace("h.hppRataPerKg = h.hppTerakhirPerKg;", "h.hppRataPerKg = h.hppTerakhirPerKg + 1;"),
+            'hpp ST6 FIFO: kedatangan sejak hari mulai tidak dijejerkan (sisa dinilai lapisan pembuka saja)': js.replace("(baru[merk] || []).slice().sort(", "([]).slice().sort("),
+            'hpp ST6 FIFO: saklar menyala tapi mesin tetap rata-rata': js.replace("const masa = mfMasaBerlaku(cacheMentah('aturan'), sampai);", "const masa = null;"),
             'hpp: replika rumus melewatkan bongkar (≠ mesin)': js.replace("function totalMasuk(merk) { let kg = 0, nilai = 0; riwayatModal(merk).forEach((r) => { kg += r.totalKg; nilai += r.hppPerKg * r.totalKg; });", "function totalMasuk(merk) { let kg = 0, nilai = 0; riwayatModal(merk).forEach((r) => { kg += r.totalKg; nilai += r.hargaPerKg * r.totalKg; });"),
             'hpp: massal menyimpan sebagian': js.replace("if (salah.length) return { tolak: salah.join(' · ') + ' — TIDAK ADA yang disimpan sampai semuanya beres', salah };", ""),
             'hpp: koreksi menulis batch BARU (kedatangan jadi dua)': js.replace("d.baris.forEach((b) => { if (perBatch[id][b.merk] !== undefined) b.hargaPerKg = String(perBatch[id][b.merk]); }); d.alasan = 'koreksi HPP: ' + w.alasan;", "d.id = null; d.baris.forEach((b) => { if (perBatch[id][b.merk] !== undefined) b.hargaPerKg = String(perBatch[id][b.merk]); }); d.alasan = 'koreksi HPP: ' + w.alasan;"),
@@ -970,7 +1024,7 @@ if __name__ == '__main__':
     if cad:
         c = json.load(open(cad[-1], encoding='utf-8'))
         tgl = os.path.basename(cad[-1]).split('miqbal-')[-1][:10]
-        h, e = jalan("var __KINI = new Date('%sT20:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n" % tgl + js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP)
+        h, e = jalan("var __KINI = new Date('%sT20:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n" % tgl + js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ST6_JS + ASAP)
         if h is None: print('ASAP DATA TOKO: JSC JATUH ' + e); g.append('asap')
         else:
             print('ASAP DATA TOKO (%s): nilai stok layar = Σ barang bersisa positif: %s · mesin neraca (termasuk yang minus): selisih %s · %d barang · beli %d · mandek %d · cocok %d · kapur %d · wadah %d'
@@ -978,6 +1032,8 @@ if __name__ == '__main__':
             if h['nilaiLayar'] != h['nilaiPositif'] or (h['neraca'] != h['nilaiLayar'] and not h['minus']): g.append('asap: nilai stok layar tidak cocok dengan mesin')
             print('ASAP DATA TOKO: kolom dokumen catat (barang masuk, cocokkan, adukan, kantong) vs cadangan: %s · %d adukan di buku · %d menunggu di karantina' % (', '.join(h['kunciAsingCatat']) or 'semua dikenal', h['adukan'], h['karantinaAntre']))
             if h['kunciAsingCatat']: g.append('asap: dokumen catat punya kolom yang tidak dikenal cadangan')
+            s6 = h.get('st6') or {}
+            print('   ST6 — replika modal vs mesin: %d nama ber-FIFO (replika FIFO mandiri; %d di antaranya memang ≠ rata-rata lama) · %d nama rata-rata (saklar mati / wadah campuran / tanpa lapisan)' % (s6.get('fifo', 0), s6.get('fifoBedaRata', 0), s6.get('lain', 0)))
             b2 = h.get('bon2') or {}
             print('   39b no. 2 — kedatangan bon di data toko: %d bon · %d sudah dibayar bertunjuk (Rp%s) · terkunci %d · di bulan terkunci %d · lolos %s · bon belum dibayar yang salah dikunci %s · Σ sisa vs mesin selisih %s · bertunjuk ≠ mesin %s · ejaan pemasok yang digeser %s'
                   % (b2.get('bon', 0), b2.get('dibayar', 0), format(b2.get('rpDibayar', 0), ',').replace(',', '.'), b2.get('kunci', 0), b2.get('kunciPeriode', 0), b2.get('lolos') or 'nihil', b2.get('bebasSalah') or 'nihil', b2.get('selisihMesin'), b2.get('bedaMesin') or 'nihil', b2.get('ejaanGeser') or 'nihil'))
