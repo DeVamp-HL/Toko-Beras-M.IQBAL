@@ -89,14 +89,20 @@ jobs:
         run: |
           chmod +x gradlew
           mkdir -p ../keluaran
-          # Bangun, dicoba ulang HANYA kalau gagalnya unduhan pustaka (429 / putus / habis waktu) — galat kompilasi tidak diulang, langsung gagal.
+          # Bangun, dicoba ulang HANYA kalau gagalnya unduhan pustaka (429 / putus / habis waktu / pustaka "tidak ditemukan") — galat kompilasi
+          # tidak diulang, langsung gagal. Run 9 (19 Nov): Maven Central yang sedang membatasi menjawab seolah pustakanya tidak ada
+          # ("Could not find org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.20"), padahal run kembarannya di commit yang sama mengunduhnya.
+          # Pustaka yang SUNGGUH tidak ada (versi salah ketik) tetap gagal — sesudah tiga percobaan yang semuanya tercatat.
           # Keputusan owner 26 Sep 2026: tiap percobaan ulang tercatat — satu baris DICOBA ULANG di log + peringatan di ringkasan run.
+          UNDUH_GAGAL='Received status code (429|5[0-9][0-9])[^.]*|Read timed out|Connection (reset|refused|timed out)|Could not GET |Could not find [A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+'
           bangun() {
-            local n
+            local n segar
             for n in 1 2 3; do
-              if ./gradlew --no-daemon "$1" 2>&1 | tee "$RUNNER_TEMP/gradle-$n.log"; then return 0; fi
-              if [ "$n" = 3 ] || ! grep -qE 'Received status code (429|5[0-9][0-9])|Read timed out|Connection (reset|refused|timed out)|Could not GET ' "$RUNNER_TEMP/gradle-$n.log"; then return 1; fi
-              echo "DICOBA ULANG: bangun APK ($1) — unduhan pustaka gagal: $(grep -oE 'Received status code [0-9]+[^.]*|Read timed out|Connection (reset|refused|timed out)' "$RUNNER_TEMP/gradle-$n.log" | sort | uniq -c | sort -rn | head -1 | sed 's/^ *//') (percobaan $((n + 1)) dari 3, menunggu $((n * 60)) detik)"
+              # percobaan ulang memaksa Gradle bertanya lagi ke gudang pustaka: jawaban "tidak ada" tadi diingatnya 24 jam
+              segar=''; if [ "$n" -gt 1 ]; then segar='--refresh-dependencies'; fi
+              if ./gradlew --no-daemon $segar "$1" 2>&1 | tee "$RUNNER_TEMP/gradle-$n.log"; then return 0; fi
+              if [ "$n" = 3 ] || ! grep -qE "$UNDUH_GAGAL" "$RUNNER_TEMP/gradle-$n.log"; then return 1; fi
+              echo "DICOBA ULANG: bangun APK ($1) — unduhan pustaka gagal: $(grep -oE "$UNDUH_GAGAL" "$RUNNER_TEMP/gradle-$n.log" | sort | uniq -c | sort -rn | head -1 | sed 's/^ *//') (percobaan $((n + 1)) dari 3, menunggu $((n * 60)) detik)"
               echo "::warning title=DICOBA ULANG::bangun APK ($1) — unduhan pustaka gagal, percobaan $((n + 1)) dari 3"
               sleep $((n * 60))
             done
