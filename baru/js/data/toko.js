@@ -111,7 +111,8 @@ const bkSaring = (arr) => { const s = arr.filter(pembukaBerlaku); return s.lengt
 // dan antrean tutup buku. modalOwner ikut sejak modal owner menyeberang tahun (dokumen pembuka setor, bertanggal 31 Des).
 export const CACHE_PEMBUKA = { batch: 'batchMasuk', piutang: 'piutangMutasi', kasbon: 'kasbonMutasi', produksi: 'produksiKemasan', bahanKemasan: 'stokBahanKemasan', bahanLiteran: 'stokBahanLiteran', utangPemasok: 'utangPemasokMutasi', utangOwner: 'utangOwnerMutasi', amplop: 'amplopLaba', modal: 'modalOwner' };
 /** ERA tutup buku = tahun saldo pembuka terakhir yang terlihat (pembukaBerlaku). `kecuali` = tahun yang tidak dihitung (pembatalan). Dibaca juga upah & lintas tahun. */
-export function eraBuku(kecuali) {
+export function eraBuku(kecuali) { return ingatPerVersi('eraBuku|' + String(kecuali), () => eraBukuHitung(kecuali)); }
+function eraBukuHitung(kecuali) {
   let t = null; Object.keys(CACHE_PEMBUKA).forEach((c) => (_cache[c] || []).forEach((x) => { if (x && x.tutupBuku && pembukaBerlaku(x)) { const n = Number(x.tahunDari); if (isFinite(n) && n !== kecuali && (t === null || n > t)) t = n; } }));
   return t;
 }
@@ -572,4 +573,5 @@ export function awalPotret(kolom) { let p = ''; const P = ptKeadaan().potret; Ob
 /** Tanggal CATATAN PERTAMA toko (nota apa pun atau kedatangan sungguhan — bukan saldo pembuka tutup buku) = awal buku. SATU sumber untuk Laporan (lpPertama:
  *  daftar bulan, awal buku) dan Menu (umur buku, pintu "satu bulan penuh") — sanggahan Paket B: Menu dulu punya salinan sendiri dari catatan hidup, jadi sesudah
  *  ritual pintunya tertutup lagi ("4 hari") sementara Laporan tetap membaca 2026. Catatan tahun yang sudah ditutup buku sudah diarsip → dari potretnya. */
-export function catatanPertama() { let p = ''; ambilPenjualanSemua().forEach((d) => { if (d.tanggal && (!p || d.tanggal < p)) p = d.tanggal; }); ambilSemuaBatch().forEach((b) => { if (!b.stokAwal && !b.tutupBuku && b.tanggal && (!p || b.tanggal < p)) p = b.tanggal; }); const q = awalPotret('pertama'); return q && (!p || q < p) ? q : p; }
+export function catatanPertama() { return ingatPerVersi('catatanPertama', catatanPertamaHitung); }
+function catatanPertamaHitung() { let p = ''; ambilPenjualanSemua().forEach((d) => { if (d.tanggal && (!p || d.tanggal < p)) p = d.tanggal; }); ambilSemuaBatch().forEach((b) => { if (!b.stokAwal && !b.tutupBuku && b.tanggal && (!p || b.tanggal < p)) p = b.tanggal; }); const q = awalPotret('pertama'); return q && (!p || q < p) ? q : p; }

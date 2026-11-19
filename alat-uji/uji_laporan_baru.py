@@ -613,7 +613,9 @@ denganCacheSementara(MR, function () {
       && T5.daftar.length === 3 && !!T5.sisa && T5.sisa.gabungan === 2 && T5.tergambar === 186200 && M5.L.margin === 186200 && M5.menutup, J([M5.atur, T5.daftar.length])); });
   // PENJAGA YANG BERBUNYI: laba kotor Laporan digeser 1.000 (mesin dibungkus sementara) → per merek TIDAK MENUTUP, kalimatnya menyebut bedanya
   var asliLR = hitungLabaRentang; var Mx = null; hitungLabaRentang = function (c) { var R = asliLR(c); R.margin += 1000; return R; };
-  try { Mx = merekBulan('2026-09', KINI); } finally { hitungLabaRentang = asliLR; }
+  // 19 Nov 2026: laba rentang diingat per versi data — mesin yang dibungkus tanpa data berubah baru terbaca sesudah ingatan dikosongkan (sebelum & sesudah)
+  setelIngatan({});
+  try { Mx = merekBulan('2026-09', KINI); } finally { hitungLabaRentang = asliLR; setelIngatan({}); }
   ok('MR penjaga BERBUNYI: laba kotor Laporan bergeser 1.000 dari Σ merek → menutup false, kalimat "TIDAK MENUTUP … Rp186.200 ≠ Laporan Rp187.200 (beda −Rp1.000)", teratas ikut tidak menutup',
     Mx.menutup === false && /^TIDAK MENUTUP ke Laporan: laba kotor per merek Rp186\.200 ≠ Laporan Rp187\.200 \(beda −Rp1\.000\)/.test(Mx.kalimat) && merekTeratas(Mx, 'kg').menutup === false && merekBulan('2026-09', KINI).menutup, Mx.kalimat);
   var Ma = merekBulan('2026-08', KINI);

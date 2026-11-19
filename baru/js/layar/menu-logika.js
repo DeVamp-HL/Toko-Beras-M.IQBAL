@@ -201,14 +201,16 @@ export const MN_LAYAR = [
   { nama: 'Tutup hari', sub: 'lembar tutup: hitung laci, cek QRIS, sisihkan laba, timbang cepat, amankan, rekap', tujuan: { ke: 'uang', keluarga: 'tutup', teks: 'buka Uang → Tutup hari' } }, { nama: 'Tutup buku', sub: 'berita acara tahunan: periksa, cadangan, arsip, saldo pembuka, paraf, kunci', tujuan: { ke: 'uang', keluarga: 'buku', teks: 'buka Uang → Tutup buku' } },
 ];
 const mnPolos = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-export function susunCari(kini, q) {
+/** orang (opsional) = pemberi daftar orang yang sudah disusun (menu.js mengingatnya per kunci gambar — tiap huruf cari tidak menyusun ulang semua pelanggan). */
+export function susunCari(kini, q, orang) {
   const t = mnPolos(q); if (t.length < 2) return { teks: t, hasil: [], kosong: false };
   const cocok = (s) => mnPolos(s).indexOf(t) >= 0; const hasil = [];
   MN_LAYAR.forEach((l) => { if (cocok(l.nama) || cocok(l.sub)) hasil.push({ jenis: 'layar', judul: l.nama, sub: l.sub, tujuan: l.tujuan }); });
   const stokK = stokMerekSaja(ingatStokKarung()); Object.keys(stokK).forEach((m) => { if (cocok(m)) hasil.push({ jenis: 'merek', judul: m, sub: 'beras · buku ' + ANGKA(Math.round(stokK[m].sisaKg || 0)) + ' kg', tujuan: { ke: 'stok', tab: 'gudang', teks: 'buka Stok → Gudang' } }); });
   const stokM = ingatStokKemasan(); Object.keys(stokM).forEach((k) => { const x = stokM[k]; const nm = x.namaProduk + ' ' + x.ukuranKemasan + ' kg'; if (cocok(nm)) hasil.push({ jenis: 'merek', judul: nm, sub: 'kemasan · ' + ANGKA(x.sisaUnit || 0) + ' unit', tujuan: { ke: 'stok', tab: 'gudang', teks: 'buka Stok → Gudang' } }); });
-  semuaOrang(kini).forEach((o) => { if (cocok(o.nama) || cocok(o.asli)) hasil.push({ jenis: 'orang', judul: o.nama, sub: (o.utang > 0 ? 'bon ' + RP(o.utang) + ' · ' : o.lebih > 0 ? ringkasLebih({ uang: o.lebihUang, hapus: o.lebihHapus }) + ' · ' : '') + o.kunjungan + ' kali datang', tujuan: { ke: 'pelanggan', keluarga: 'kenali', orang: o.kunci, teks: 'buka kartunya' } }); });
+  (orang ? orang() : semuaOrang(kini)).forEach((o) => { if (cocok(o.nama) || cocok(o.asli)) hasil.push({ jenis: 'orang', judul: o.nama, sub: (o.utang > 0 ? 'bon ' + RP(o.utang) + ' · ' : o.lebih > 0 ? ringkasLebih({ uang: o.lebihUang, hapus: o.lebihHapus }) + ' · ' : '') + o.kunjungan + ' kali datang', tujuan: { ke: 'pelanggan', keluarga: 'kenali', orang: o.kunci, teks: 'buka kartunya' } }); });
   return { teks: t, hasil: hasil.slice(0, 12), kosong: !hasil.length, lebih: Math.max(0, hasil.length - 12) };
 }
 export const mnKunci = kunciPelanggan;
+export const mnSemuaOrang = (kini) => semuaOrang(kini);
 export const MN_SUSUNAN = [['laci', 'Laci'], ['tanya', 'Tanya'], ['jam', 'Jam'], ['orang', 'Orang'], ['tertutup', 'Tertutup']];
