@@ -171,6 +171,14 @@ ok('TIDAK BASI: ganti hari TANPA data baru → "Hari ini" & "Bulan ini" ikut tan
   J([rwSusun({ rwPeriode: 'hari' }, BESOK).n, rwSusun({ rwPeriode: 'bulan' }, BULAN_DEPAN).n, setara(BESOK), setara(BULAN_DEPAN)]));
 ok('TIDAK BASI: di dalam cache sementara (seandainya) hasilnya ikut isi sementara, sesudahnya kembali', (function () { var a = S().n; var b = denganCacheSementara([{ koleksi: 'penjualan', data: { id: 8001, tanggal: '2026-09-19', jam: '09:59', jenis: 'literan', hargaTotal: 1000, caraBayar: 'Tunai', trxId: 'sx' } }], function () { return S().n; }); return b === a + 1 && S().n === a && !setara(KINI).length; })());
 rtDasarRetur = _rtAsli; ambilPenjualanSemua = _psAsli; pulih();
+// ---- 6 · ingatan per versi (toko.js) tidak menyeberang tengah malam — mesin stok membaca tanggal hari ini (saklar modal FIFO)
+var kiniAsal = __KINI; var nHit = 0; var fHit = function () { nHit += 1; return { ke: nHit }; };
+__KINI = new Date('2026-09-19T23:59:00+07:00').getTime(); var h1 = ingatPerVersi('ujiGantiHari', fHit); var h2 = ingatPerVersi('ujiGantiHari', fHit);
+__KINI = new Date('2026-09-20T00:00:30+07:00').getTime(); var h3 = ingatPerVersi('ujiGantiHari', fHit); var h4 = ingatPerVersi('ujiGantiHari', fHit);
+__KINI = new Date('2026-09-20T23:59:59+07:00').getTime(); var h5 = ingatPerVersi('ujiGantiHari', fHit);
+__KINI = new Date('2026-09-19T12:00:00+07:00').getTime(); var h6 = ingatPerVersi('ujiGantiHari', fHit);
+__KINI = kiniAsal;
+ok('INGATAN per versi tidak menyeberang tengah malam: 23.59 dihitung sekali; 00.00 hari berikutnya dihitung lagi (sekali, sampai 23.59.59); jam mundur ke kemarin dihitung lagi', h2 === h1 && h3 !== h1 && h4 === h3 && h5 === h3 && h6 !== h3 && nHit === 3, J([nHit, h1, h3, h6]));
 // ---- ASAP DATA TOKO
 var asap = null;
 if (CADANGAN) {
@@ -264,6 +272,7 @@ KONTROL = [
     ('ONGKOS: riwayat kembali menghitung dasar retur semua nota tiap disusun', {RW_: [("  const D = rwDasar(); const semua = D.daftar;", "  const D = rwDasar(); const semua = D.daftar; rwSemuaNota();")]}, ('jsc',)),
     ('ONGKOS: susunan riwayat tidak diingat (dihitung tiap gambar)', {RW_: [("  return ingatPerVersi('rwSusun|' + tanda, () => rwSusunHitung(S, kini));", "  return rwSusunHitung(S, kini);")]}, ('jsc',)),
     ('Jual: dasar retur dihitung untuk tiap nota yang tampil (bukan hanya yang dibuka)', {JU_: [("${s.rwBuka === o.kunci ? h`<div class=\"rw-rinci\"", "${RW.rwNotaLengkap(o.kunci) && s.rwBuka === o.kunci ? h`<div class=\"rw-rinci\"")]}, ('statis',)),
+    ('INGATAN basi: ingatan per versi menyeberang tengah malam', {'baru/js/data/toko.js': [("  if (ingatanGantiHari() || I.versi !== _versiCache) { I.isi = new Map(); I.versi = _versiCache; }", "  if (I.versi !== _versiCache) { I.isi = new Map(); I.versi = _versiCache; }")]}, ('jsc',)),
     ('periode 7 hari jadi 8 hari', {RW_: [("if (periode === '7') return { dari: rwGeser(hari, -6), sampai: hari };", "if (periode === '7') return { dari: rwGeser(hari, -7), sampai: hari };")]}, ('jsc',)),
     ('Jual: nota tak terhitung kembali disuruh ke layar Retur sistem lama (hanya-baca)', {JU_: [("' Yang seperti ini dicatat lewat “Tidak ada notanya? Retur ketik tangan” di atas — nominalnya diketik sendiri.'", "' Yang seperti ini masih lewat layar Retur sistem lama (nominalnya diketik tangan).'")]}, ('statis',)),
     ('Jual: struk tanpa kunci grupNota', {JU_: [("data-grup=\"${o.grupNota || ''}\" ", "")]}, ('statis',)),

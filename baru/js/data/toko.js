@@ -43,9 +43,19 @@ export const versiCache = () => _versiCache;
 // tidak disimpan. Hasil ingatan DIPAKAI BERSAMA: pemanggil tidak boleh mengubahnya di tempat (sort / push / Object.assign ke hasilnya) —
 // alat-uji/uji_layar_mulus.py membekukan semua hasil ingatan lalu menjalankan seluruh layar, dan membandingkan tiap gambar dengan / tanpa ingatan.
 const _ingatan = { versi: -1, isi: new Map(), mati: false, beku: null };
+// owner 19 Nov 2026 (ditemukan saat mengukur lag atas cadangan toko 16 Nov): mesin stok membaca TANGGAL HARI INI — saklar modal FIFO berlaku mulai tanggal
+// tertentu (mesin/modal-fifo.js mfHariIni), jadi buku stok & neraca hari ini bisa berbeda dari kemarin TANPA satu catatan pun berubah. Ingatan karena itu
+// tidak boleh menyeberang tengah malam: begitu jam keluar dari hari tempat ingatan dibuat (maju, atau mundur di alat uji), semuanya dikosongkan.
+// Ongkosnya satu perbandingan angka per panggilan (batas hari dihitung sekali per hari).
+let _hariDari = 0, _hariSampai = 0;
+function ingatanGantiHari() {
+  const t = Date.now(); if (t >= _hariDari && t < _hariSampai) return false;
+  const d = new Date(t); _hariDari = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); _hariSampai = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+  return true;
+}
 export function ingatPerVersi(kunci, f) {
   const I = _ingatan; if (I.mati) return f();
-  if (I.versi !== _versiCache) { I.isi = new Map(); I.versi = _versiCache; }
+  if (ingatanGantiHari() || I.versi !== _versiCache) { I.isi = new Map(); I.versi = _versiCache; }
   if (I.isi.has(kunci)) return I.isi.get(kunci);
   const v = _versiCache; const h = I.beku ? I.beku(f()) : f();
   if (v === _versiCache && I.versi === v) I.isi.set(kunci, h);
