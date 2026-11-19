@@ -37,6 +37,8 @@ import modul_es  # noqa: E402
 
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 LAYAR = ['baru/js/layar/%s.js' % n for n in ['ringkasan', 'stok', 'pelanggan', 'menu', 'harga', 'uang', 'laporan']]
+# 19 Nov 2026 (mulus Android paket 2): logika Jual yang kini diingat per versi — bukan layar, hanya dimuat supaya FUNGSI membandingkannya
+LOGIKA_TAMBAHAN = ['baru/js/layar/karcis-logika.js', 'baru/js/layar/retur-logika.js']
 JAM = '2026-09-21T03:00:00.000Z'   # 21 Sep 2026 10:00 WIB
 
 # ---------------------------------------------------------------- lingkungan jsc: jam palsu, DOM longgar, localStorage dalam memori
@@ -195,12 +197,53 @@ function bandingFungsi(tahap) {
     ['pjPotonganBulan(' + bulan + ')', function () { return PJ.pjPotonganBulan(bulan); }, function () { return mentah(function () { return PJ.pjPotonganBulan(bulan); }); }],
     ['pjTahun(tahun ini)', function () { return PJ.pjTahun(null, new Date()); }, function () { return mentah(function () { return PJ.pjTahun(null, new Date()); }); }],
   ];
+  // ---- 19 Nov 2026 (mulus Android paket 2, kartu Kelancaran tablet): hitungan yang dibaca TIAP ketukan Jual / Menu / Laporan / Ringkasan kini diingat
+  var UGf = __E['baru/js/layar/uang-logika.js'], KCf = __E['baru/js/layar/karcis-logika.js'], RTf = __E['baru/js/layar/retur-logika.js'], LGf = __E['baru/js/layar/laporan-logika.js'], KKf = __E['baru/js/data/katalog-kasir.js'];
+  var kiniF = new Date(), hariF = F.hariIniIso(kiniF), awalF = bulan + '-01', awalLalu = lalu + '-01', akhirLalu = F.hariIniIso(new Date(new Date(awalF + 'T00:00:00').getTime() - 86400000)), thF = Number(bulan.slice(0, 4));
+  var dua = function (nama, f) { daftar.push([nama, f, function () { return mentah(f); }]); };
+  dua('eraBuku()', function () { return [D.eraBuku(), D.eraBuku(thF)]; });
+  dua('catatanPertama()', function () { return D.catatanPertama(); });
+  dua('ugLabaBersih(bulan ini)', function () { return UGf.ugLabaBersih(awalF, hariF); });
+  dua('ugLabaBersih(bulan lalu)', function () { return UGf.ugLabaBersih(awalLalu, akhirLalu); });
+  daftar.push(['ugBayaran() = bayaranBiayaBulanan()', function () { return UGf.ugBayaran(); }, function () { return mentah(function () { return M.bayaranBiayaBulanan(); }); }]);
+  daftar.push(['ugLabaBersih(bayaran bawaan dioper) = mesin + lebih/kurang kas', function () { return UGf.ugLabaBersih(awalF, hariF, UGf.ugBayaran()); }, function () { return mentah(function () { return UGf.ugLabaBersih(awalF, hariF, M.bayaranBiayaBulanan()); }); }]);
+  daftar.push(['ugLabaBersih(bayaran KHUSUS kosong) tidak memakai ingatan bawaan', function () { UGf.ugLabaBersih(awalF, hariF); return UGf.ugLabaBersih(awalF, hariF, []); }, function () { return mentah(function () { return UGf.ugLabaBersih(awalF, hariF, []); }); }]);
+  dua('daftarKarcis(hari ini)', function () { return KCf.daftarKarcis(kiniF); });
+  dua('karcisDaruratHari(hari ini)', function () { return KCf.karcisDaruratHari(kiniF); });
+  dua('karcisDaruratHari(kemarin)', function () { return KCf.karcisDaruratHari(kiniF, kemarin); });
+  dua('Jual hariIni()', function () { return JL.hariIni({ sekarang: kiniF }); });
+  dua('notaTembusBelumCocok()', function () { return JL.notaTembusBelumCocok(); });
+  dua('aturWadah()', function () { return JL.aturWadah(); });
+  dua('semuaKarungTerbuka()', function () { return JL.semuaKarungTerbuka(); });
+  mentah(function () { return JL.semuaKarungTerbuka(); }).forEach(function (x) {
+    dua('karungBelakang(' + x.merk + ', "' + x.lokasi + '")', function () { return JL.karungBelakang(x.merk, x.lokasi); });
+    dua('karungBelakang(' + x.merk + ') tanpa tempat', function () { return JL.karungBelakang(x.merk); });
+    dua('karungBelakang(' + x.merk + ', "") tempat kosong', function () { return JL.karungBelakang(x.merk, ''); });
+  });
+  dua('daftarNotaRetur(tanpa cari)', function () { return RTf.daftarNotaRetur({ sekarang: kiniF, rtCari: '' }); });
+  dua('daftarNotaRetur(cari yang tidak ada)', function () { return RTf.daftarNotaRetur({ sekarang: kiniF, rtCari: 'zz-tidak-ada' }); });
+  dua('labaBulan(' + bulan + ')', function () { return LGf.labaBulan(bulan, kiniF); });
+  dua('labaBulan(' + lalu + ')', function () { return LGf.labaBulan(lalu, kiniF); });
+  daftar.push(['labaBulan(bayaran KHUSUS kosong) tidak memakai ingatan bawaan', function () { LGf.labaBulan(bulan, kiniF); return LGf.labaBulan(bulan, kiniF, []); }, function () { return mentah(function () { return LGf.labaBulan(bulan, kiniF, []); }); }]);
+  dua('rekapTahun(' + thF + ')', function () { return LGf.rekapTahun(thF, kiniF); });
+  dua('kkTertinggal()', function () { return [KKf.kkTertinggal()]; });
   JL.aturWadah().daftar.forEach(function (W) { daftar.push(['karungUntukWadah(' + W + ')', function () { return JL.karungUntukWadah(W); }, function () { return mentah(function () { return JL.karungUntukWadah(W); }); }]); });
   daftar.forEach(function (x) {
     var a1, a2, b, e = '';
     try { a1 = J(x[1]()); a2 = J(x[1]()); b = J(x[2]()); } catch (er) { e = String(er && er.message || er); }
     HASIL.fungsi.push({ tahap: tahap, nama: x[0], sama: !e && a1 === b && a2 === b, galat: e, ada: !!b && b !== '{}' && b !== '[]' && b !== 'null', contoh: e || (a1 === b ? '' : String(a1).slice(0, 160) + ' ≠ ' + String(b).slice(0, 160)) });
   });
+}
+// Kotak pasir tidak punya karcis kasir darurat: satu karcis KEMARIN disisipkan sementara → daftar hari ini (kosong) lalu daftar kemarin (berisi) wajib berbeda.
+// Dijalankan PALING AKHIR dan di luar bandingFungsi: cache sementara menaikkan versi data (ingatan dikosongkan), dan tahap-tahap bandingFungsi justru menguji
+// ingatan yang BERTAHAN dari tahap sebelumnya tanpa versi naik (titik kas perangkat, ganti hari) — disisipkan di tengah, dua kontrol lama jadi diam (CI 19 Nov).
+function bandingKarcisSisipan() {
+  if (MODE === 'mati') return;
+  var KCf = __E['baru/js/layar/karcis-logika.js'], kiniF = new Date(), kemarin = F.hariIniIso(new Date(Date.now() - 86400000)), a, b, e = '';
+  var kd = Object.assign({}, D.cacheMentah('penjualan')[0], { id: 8300000000001, grupNota: 'gUjiKD', trxId: 'tUjiKD', jenis: 'kasir_darurat_nominal', tanggal: kemarin, hargaTotal: 15000 }); delete kd.dibatalkan; delete kd.dikoreksiOleh;
+  var duaHari = function () { return D.denganCacheSementara([{ koleksi: 'penjualan', data: kd }], function () { return [KCf.karcisDaruratHari(kiniF), KCf.karcisDaruratHari(kiniF, kemarin)]; }); };
+  try { a = J(duaHari()); b = J(D.tanpaIngatan(duaHari)); } catch (er) { e = String(er && er.message || er); }
+  HASIL.fungsi.push({ tahap: 'karcis kemarin disisipkan sementara', nama: 'karcisDaruratHari: hari ini lalu kemarin', sama: !e && a === b, galat: e, ada: !!b && b !== '[[],[]]', contoh: e || (a === b ? '' : String(a).slice(0, 160) + ' ≠ ' + String(b).slice(0, 160)) });
 }
 function rangkaianFungsi() {
   var n0 = D.ambilPenjualan().length; var kas0 = D.ingatKasPada();
@@ -212,6 +255,7 @@ function rangkaianFungsi() {
   titikBaru(); bandingFungsi('sesudah titik kas perangkat berubah'); HASIL.info.titikMengubahKas = J(D.ingatKasPada()) !== J(kas0);
   var jam0 = __KINI; __KINI = new __DateAsli('2026-09-30T23:30:00+07:00').getTime(); bandingFungsi('30 Sep 23.30'); __KINI = new __DateAsli('2026-10-01T00:30:00+07:00').getTime(); bandingFungsi('1 Okt 00.30 (bulan berganti)');
   __KINI = jam0;
+  bandingKarcisSisipan();
 }
 
 // ---- ORAKEL DASBOR: Ringkasan yang baru dipasang menghitung segar — isinya harus sama dengan dasbor yang hidup terus
@@ -460,7 +504,7 @@ TITIK_KOTAK = {'tanggal': '2026-09-14', 'laci': 1500000, 'rekening': 300000, 'am
 
 
 def jalan(mode, cad, jam, titik, ganti=None, periksa=True):
-    js, peta, urut = modul_es.bundel(LAYAR, LINGKUNGAN, ganti)
+    js, peta, urut = modul_es.bundel(LAYAR + LOGIKA_TAMBAHAN, LINGKUNGAN, ganti)
     kode = (js + '\nvar CAD = ' + json.dumps(cad) + ';\nvar JAM = ' + json.dumps(jam) + ';\nvar MODE = ' + json.dumps(mode) + ';\nvar TITIK = ' + json.dumps(titik)
             + ';\nvar PERIKSA = ' + ('true' if periksa else 'false') + ';\n' + PEMANDU)
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f: f.write(kode); p = f.name
@@ -568,6 +612,18 @@ RUSAK = [
     # (toko.js ingatanGantiHari; penjaganya sendiri di uji_riwayat_penjualan). Kontrol ini merusak KEDUANYA; satu lapis saja yang rusak memang tertolong lapis lain.
     ('rekap pajak setahun diingat tanpa HARI, dan ingatan tidak dikosongkan saat ganti hari (bulan berganti → basi)', 'ingatan', {'baru/js/layar/pajak-logika.js': [("ingatPerVersi('pjTahun|' + th + '|' + iso,", "ingatPerVersi('pjTahun|' + th,")],
                                                                                                                          'baru/js/data/toko.js': [("if (ingatanGantiHari() || I.versi !== _versiCache) {", "if (I.versi !== _versiCache) {")]}),
+    # 19 Nov 2026 (mulus Android paket 2)
+    ('kunci laba bersih rentang tanpa rentangnya (bulan lalu = bulan ini)', 'ingatan', {'baru/js/layar/uang-logika.js': [("ingatPerVersi('ugLabaBersih|' + String(dari) + '|' + String(sampai),", "ingatPerVersi('ugLabaBersih',")]}),
+    ('bayaran KHUSUS ikut ingatan bayaran bawaan', 'ingatan', {'baru/js/layar/uang-logika.js': [("if (!kosong && bayaran !== ugBayaran()) return ugLabaBersihHitung(dari, sampai, bayaran);", "")]}),
+    ('kunci laba bulan tanpa bulannya', 'ingatan', {'baru/js/layar/laporan-logika.js': [("ingatPerVersi('lpLabaBulan|' + String(key) + '|' + kunciLuarCache(kini),", "ingatPerVersi('lpLabaBulan|' + kunciLuarCache(kini),")]}),
+    ('laba bulan dengan bayaran KHUSUS ikut ingatan bawaan', 'ingatan', {'baru/js/layar/laporan-logika.js': [("if (!lpBawaan(bayaran)) return labaBulanHitung(key, kini, bayaran);", "")]}),
+    ('kunci daftar nota retur tanpa teks cari', 'ingatan', {'baru/js/layar/retur-logika.js': [("ingatPerVersi('rtDaftarNota|' + hari + '|' + c,", "ingatPerVersi('rtDaftarNota|' + hari,")]}),
+    ('kunci karung belakang: tempat tak diberikan disamakan dengan tempat kosong', 'ingatan', {'baru/js/layar/jual-logika.js': [("(lokasi === undefined || lokasi === null ? '\\u0001' : '=' + String(lokasi))", "String(lokasi || '')")]}),
+    ('kunci karcis darurat tanpa tanggalnya (kemarin = hari ini)', 'ingatan', {'baru/js/layar/karcis-logika.js': [("ingatPerVersi('kcDaruratHari|' + hari,", "ingatPerVersi('kcDaruratHari',")]}),
+    # dua kontrol berikut: ingatan tanpa kunci luarnya membuat gambar SEGAR ikut basi — tertangkap penjaga ketajaman (Menu) / kesetaraan dengan hitung ulang (Ringkasan)
+    ('susunan Menu diingat tanpa kunci gambar (pita jam / titik kas berubah → laci basi)', 'kunci', {'baru/js/layar/menu.js': [("ingatPerVersi('mn|' + nama + '|' + _kunciGambar + '|' + luar, f)", "ingatPerVersi('mn|' + nama + '|' + luar, f)")]}, 'KUNCI LUAR'),
+    ('susunan Cincin diingat tanpa skalanya (ganti skala → angka skala lama)', 'layar', {'baru/js/layar/ringkasan.js': [("ingatRk('susun|' + skala, k,", "ingatRk('susun', k,")]}),
+    ('ingatan Ringkasan tanpa kunci luar & menit (titik kas / jam berubah → kartu basi)', 'kunci', {'baru/js/layar/ringkasan.js': [("ingatPerVersi('rk|' + nama + '|' + kunciLuarCache(k) + '|' + Math.floor(k.getTime() / 60000) + '|' +", "ingatPerVersi('rk|' + nama + '|' +")]}, 'KESETARAAN hidup'),
     ('pemanggil mengubah hasil ingatan di tempat (Stok › Gudang menulis ke buku stok bersama)', 'beku', {'baru/js/layar/stok-logika.js': [("const sisa = stokK[m].sisaKg || 0;", "const sisa = (stokK[m].sisaKg = stokK[m].sisaKg || 0);")]}),
     ('Tempat simpan kembali menyusun rantai stok per tumpukan (tanpa siap)', 'layar', {'baru/js/layar/stok-tempat-logika.js': [("const g = tumpukanGudang(b.nama, siap);", "const g = tumpukanGudang(b.nama);")]}),
     ('Dasbor ganti rentang memakai tren lama', 'layar', {'baru/js/layar/dasbor-logika.js': [("if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, tren: aman('tren', () => dbTren(rentang, kini)) };", "if (lama) return lama;")]}),
@@ -583,7 +639,9 @@ RUSAK = [
     ('kunci luar tanpa hari tutup aktif (jam 12 siang)', 'kunci', {'baru/js/data/toko.js': [("return hariIniIso(k) + '|' + tanggalTutupAktif(k) + '|' + JSON.stringify(ambilTitikKas());", "return hariIniIso(k) + '|' + JSON.stringify(ambilTitikKas());")]}, 'KUNCI LUAR hidup'),
     ('kunci luar tanpa titik kas perangkat', 'kunci', {'baru/js/data/toko.js': [("return hariIniIso(k) + '|' + tanggalTutupAktif(k) + '|' + JSON.stringify(ambilTitikKas());", "return hariIniIso(k) + '|' + tanggalTutupAktif(k);")]}, 'KUNCI LUAR hidup'),
     ('Menu dibuka lagi tanpa memeriksa kunci gambar (sebelum sanggahan)', 'kunci', {'baru/js/layar/menu.js': [("|| !akar.firstElementChild || _kunciGambar !== kunciGambar())) segera(gambar);", "|| !akar.firstElementChild)) segera(gambar);")]}, 'KUNCI LUAR hidup'),
-    ('kunci Menu tanpa pita jam', 'kunci', {'baru/js/layar/menu.js': [("return kunciLuarCache(d) + '|' + M.mnBagianDari(d.getHours()) +", "return kunciLuarCache(d) +")]}, 'KUNCI LUAR hidup'),
+    # 19 Nov 2026: susunan Menu kini diingat per kunci gambar — kunci tanpa pita jam membuat gambar SEGAR pun memakai pita lama, jadi kerusakan ini tertangkap
+    # penjaga ketajaman ("cakupan KUNCI LUAR": kejadian pita jam tidak lagi mengubah gambar segar), bukan lagi pembanding hidup-vs-segar
+    ('kunci Menu tanpa pita jam', 'kunci', {'baru/js/layar/menu.js': [("return kunciLuarCache(d) + '|' + M.mnBagianDari(d.getHours()) +", "return kunciLuarCache(d) +")]}, 'KUNCI LUAR'),
     ('kunci Menu tanpa menit selagi Sistem › Perangkat terbuka', 'kunci', {'baru/js/layar/menu.js': [(" + (st().sistem === 'perangkat' ? '|' + Math.floor(d.getTime() / 60000) : '')", "")]}, 'KUNCI LUAR hidup'),
     ('Stok dibuka lagi tanpa kunci luar', 'kunci', {'baru/js/layar/stok.js': [("|| !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar);", "|| !akar.firstElementChild)) segera(gambar);")]}, 'KUNCI LUAR hidup'),
     ('Uang dibuka lagi tanpa kunci luar', 'kunci', {'baru/js/layar/uang.js': [("|| !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar);", "|| !akar.firstElementChild)) segera(gambar);")]}, 'KUNCI LUAR hidup'),

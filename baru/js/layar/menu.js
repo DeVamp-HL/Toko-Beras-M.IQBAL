@@ -13,7 +13,7 @@ import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
 import * as TB from './tablet-logika.js';   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman, kunciLuarCache } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman, kunciLuarCache , ingatPerVersi } from '../data/toko.js';
 import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';
 // owner 19 Nov 2026 (lag di Android): kelancaran PERANGKAT INI — dicatat perangkat sendiri, dibaca di Sistem › Perangkat
 import { ukurMulusRingkas, ukurMulusSalin, ukurMulusKosongkan } from '../inti/ukur-mulus.js';
@@ -65,6 +65,11 @@ export function pasangLayarMenu(akar, opsi) {
   // + pita jam (+ menit selagi Sistem › Perangkat terbuka: "denyut N menit lalu", antrean lama); dibuka lagi dengan kunci lain = digambar ulang.
   let _kunciGambar = '';
   const kunciGambar = () => { const d = kini(); return kunciLuarCache(d) + '|' + M.mnBagianDari(d.getHours()) + (st().sistem === 'perangkat' ? '|' + Math.floor(d.getTime() / 60000) : ''); };
+  // owner 19 Nov 2026 (kartu Kelancaran tablet: Menu › Laci tersendat tiap huruf cari, tiap ketuk baris): susunan Menu (laci, pita jam, tanya, daftar orang
+  // untuk cari) dulu dihitung ulang TIAP gambar — laba bulan ini, buku stok, utang, bon, pengingat. Kini diingat per versi data + KUNCI GAMBAR yang sama
+  // dengan aturan "dibuka lagi tanpa data baru tidak digambar" (hari, hari tutup, titik kas, pita jam, menit selagi Perangkat terbuka) + masukan luarnya
+  // (isi perangkat: antrean, simpanan). Hasil DIPAKAI BERSAMA: penggambar hanya membaca / memetakan salinan.
+  const ingatMenu = (nama, luar, f) => ingatPerVersi('mn|' + nama + '|' + _kunciGambar + '|' + luar, f);
   const lamaAda = () => { const I = st().lamaInfo; return I && I.ada ? I : null; };   // null = belum dihitung / tidak terbaca
   const lokal = () => Object.assign({}, opsi.lokal ? opsi.lokal() : {}, { lsKb: st().lsKb, usageKb: st().usageKb, quotaKb: st().quotaKb, autoTanggal: st().autoTanggal,
     lamaKb: lamaAda() ? lamaAda().kb : null, lamaN: lamaAda() ? lamaAda().ada.length : null });
@@ -257,7 +262,7 @@ export function pasangLayarMenu(akar, opsi) {
     // putaran 23 (Tahap 3 tipis): bukan-owner tidak melihat laci owner — barisnya memajang angka uang dari koleksi yang tidak didengarkannya
     const akunM = opsi.akun ? opsi.akun() : null;
     if (akunM && akunM.jenis === 'aktif') return gambarStaf(s, d, akunM);
-    const cari = M.susunCari(d, s.cari); const L = lokal();
+    const cari = M.susunCari(d, s.cari, () => ingatMenu('orang', '', () => M.mnSemuaOrang(d))); const L = lokal();
     return h`<section class="mn-gulir" data-k="menu">
       <div class="jalur kisi5" data-k="susunan">${M.MN_SUSUNAN.map(([id, nm]) => h`<div class="seg ${s.susunan === id ? 'aktif' : ''}" data-aksi="susunan" data-s="${id}">${nm}</div>`)}</div>
       <label class="mn-cari" data-k="cari">${ik('cari', 16)}<input type="text" placeholder="Cari layar, merek, atau nama orang" value="${s.cari}" data-ketik="cari">${s.cari ? h`<span class="mn-x" data-aksi="cariHapus">×</span>` : ''}</label>
@@ -281,7 +286,7 @@ export function pasangLayarMenu(akar, opsi) {
     </section>`;
   }
   function gambarLaci(s, d, L) {
-    const pita = M.susunPita(d, s.bagian); const laci = M.susunLaci(d, L);
+    const pita = ingatMenu('pita', String(s.bagian), () => M.susunPita(d, s.bagian)); const laci = ingatMenu('laci', JSON.stringify(L), () => M.susunLaci(d, L));
     const gPita = { id: 'pita', nama: pita.kepala, ket: pita.ket, isi: pita.isi.map((b) => Object.assign({}, b, { id: 'pita-' + b.id })) };
     const gGanti = { id: 'ganti', nama: 'Ganti bagian hari', ket: 'lima laci ini urutannya tidak pernah bergeser', isi: [] };
     return [grup(gPita, s, 'pita'),
@@ -292,7 +297,7 @@ export function pasangLayarMenu(akar, opsi) {
     ].concat(laci.map((g) => grup(g, s)));
   }
   function gambarTanya(s, d) {
-    return h`<div class="mn-grup" data-k="g-tanya">${M.susunTanya(d).map((t) => h`<div class="mn-tanya ${s.buka === t.id ? 'buka' : ''}" data-k="t-${t.id}" data-aksi="baris" data-id="${t.id}">
+    return h`<div class="mn-grup" data-k="g-tanya">${ingatMenu('tanya', '', () => M.susunTanya(d)).map((t) => h`<div class="mn-tanya ${s.buka === t.id ? 'buka' : ''}" data-k="t-${t.id}" data-aksi="baris" data-id="${t.id}">
         <div class="mn-t-atas"><div class="mn-t">${t.judul}</div><div class="mn-t-n ${t.awas ? 'awas' : ''}">${t.angka}</div></div>
         <div class="mn-j">${t.sub}</div>
         ${s.buka === t.id ? h`<div class="mn-ke" data-aksi="pergi" data-tujuan="${JSON.stringify(t.tujuan)}">${t.tujuan.teks} ›</div>` : h`<div class="mn-ke redup">${t.cap}</div>`}

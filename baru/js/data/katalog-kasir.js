@@ -19,7 +19,7 @@
 import { susunIsiKatalogKasir, kunciPelanggan } from '../mesin/pembantu.js';
 import { arSaringKatalogKasir } from '../layar/arsip-logika.js';
 import { wbSaringKatalogKasir } from '../layar/wadah-bernama-logika.js';
-import { cacheMentah, denganCacheSementara, ambilPiutangMutasi, ingatStokKarung } from './toko.js';
+import { cacheMentah, denganCacheSementara, ambilPiutangMutasi, ingatStokKarung , ingatPerVersi } from './toko.js';
 import { kpPerangkatKasir, kpNomorVersiKasir, kpVersiKasirCukup, kpNamaAplikasiKasir, KP_VERSI_HARI } from './kunci-periode.js';
 import { waktuSetempat } from '../inti/format.js';
 import { hppKeluarPerKg } from '../mesin/modal-fifo.js';
@@ -84,7 +84,17 @@ export function kkKanon(x) {
 }
 /** true = isi sekarang belum sampai ke katalog di server · false = sama · null = belum bisa tahu (dokumen server belum terbaca / isi gagal disusun). */
 export function kkTertinggal(isi) {
-  const s = _kkServer; const x = isi === undefined ? kkIsi() : isi;
+  const s = _kkServer;
+  // owner 19 Nov 2026 (kartu Kelancaran tablet: Ringkasan › Cincin tersendat tiap ketuk skala): Ringkasan menanyakan ini TIAP gambar, dan menyusun isi katalog
+  // = mesin menghitung seluruh buku stok. Isi katalog toko hanya bergantung pada cache → bentuk bakunya (teks) diingat per versi; dokumen server tetap dibaca
+  // segar tiap kali. Pemanggil yang membawa isinya sendiri (penerbit) tetap lewat jalur lama.
+  if (isi === undefined) {
+    const kanon = ingatPerVersi('kkKanonIsi', () => { const y = kkIsi(); return y ? kkKanon(y) : null; });
+    if (kanon === null || s.ada === null) return null;
+    if (!s.ada) return true;
+    return kanon !== kkKanon(s.dok);
+  }
+  const x = isi;
   if (!x || s.ada === null) return null;
   if (!s.ada) return true;
   return kkKanon(x) !== kkKanon(s.dok);

@@ -419,8 +419,10 @@ export function maksUntuk(chip) {
   return null;
 }
 /** Liter yang bebas dijual: kolam kg merek itu dikurangi yang dipegang struk parkir & keranjang aktif (kolam yang sama dengan karung). */
+// owner 19 Nov 2026: batas bebas (liter / kg / liter wadah) dibaca lembar Jumlah TIAP ketukan — buku stoknya kini dari ingatan per versi (ingatStokKarung),
+// bukan hitung mesin baru tiap kali; angka keranjang & parkir tetap dibaca segar.
 function bebasLiter(merk, rasio) {
-  const sisaKg = (hitungStokKarungPerMerk()[merk] || {}).sisaKg || 0;
+  const sisaKg = (ingatStokKarung()[merk] || {}).sisaKg || 0;
   const dipakai = wzDiKeranjangParkir('karung', merk) + jumlahAktifKg(merk);
   return Math.max(0, Math.floor((sisaKg - dipakai) / rasio * 10) / 10);
 }
@@ -430,7 +432,7 @@ function bebasLiter(merk, rasio) {
  * pakai (opsional, owner 3 Okt rak inkremental): diisi merek-merek yang bukunya dibaca — chip wadah dihitung ulang bila keranjang menyentuh salah satunya.
  */
 function bebasLiterWadah(W, rasio, s, pakai) {
-  const K = wbKomposisi(W, s && s.keranjang ? s : null); const stok = hitungStokKarungPerMerk(); const bebasBuku = (m) => ((stok[m] || {}).sisaKg || 0) - wzDiKeranjangParkir('karung', m) - jumlahAktifKg(m);
+  const K = wbKomposisi(W, s && s.keranjang ? s : null); const stok = ingatStokKarung(); const bebasBuku = (m) => ((stok[m] || {}).sisaKg || 0) - wzDiKeranjangParkir('karung', m) - jumlahAktifKg(m);
   const tot = K.positif.reduce((a, x) => a + x.kg, 0);
   const kg = tot > 0 ? Math.min.apply(null, K.positif.map((x) => bebasBuku(x.merk) / (x.kg / tot))) : bebasBuku(wbMerkCadangan(W));
   if (pakai) (tot > 0 ? K.positif.map((x) => x.merk) : [wbMerkCadangan(W)]).forEach((m) => pakai.push(m));
@@ -438,7 +440,7 @@ function bebasLiterWadah(W, rasio, s, pakai) {
 }
 /** Kg yang bebas dijual lepas (repacking) dari kolam yang sama. */
 function bebasKg(merk) {
-  const sisaKg = (hitungStokKarungPerMerk()[merk] || {}).sisaKg || 0;
+  const sisaKg = (ingatStokKarung()[merk] || {}).sisaKg || 0;
   return Math.max(0, Math.floor((sisaKg - wzDiKeranjangParkir('karung', merk) - jumlahAktifKg(merk)) * 100) / 100);
 }
 const DESIMAL2 = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
@@ -523,8 +525,9 @@ export function infoPelanggan(nama) {
 // ---------- hari ini ----------
 // Kunci SATU nota — sama dengan plKunciNota (pelanggan-logika): grupNota → trxId (keranjang index.html & sistem baru, tanpa grupNota) → baris tunggal.
 const jlKunciNota = (p) => String(p.grupNota || p.trxId || p.id);
-export function hariIni(s) {
-  const iso = hariIniIso(s.sekarang);
+// owner 19 Nov 2026 (kartu Kelancaran tablet): kartu Hari ini dibaca gambar() Jual TIAP ketukan; isinya hanya cache + tanggal → diingat per versi & tanggal.
+export function hariIni(s) { const iso = hariIniIso(s.sekarang); return ingatPerVersi('jlHariIni|' + iso, () => hariIniHitung(iso)); }
+function hariIniHitung(iso) {
   const baris = ambilPenjualan().filter((p) => p.tanggal === iso);
   const nota = new Set(baris.map(jlKunciNota)).size;
   // 39b no. 19: omzet = penjualan − uang retur hari itu (satu arti dengan Laporan & Pajak); per cara bayar tetap penjualan, retur disebut sendiri (Σ menutup)
@@ -1127,7 +1130,8 @@ export function lepasTembusBasi(s, patch) {
   return patch && typeof patch === 'object' && patch.keranjang && patch.keranjang !== s.keranjang && !('tembusTanya' in patch) ? Object.assign({}, patch, { tembusTanya: null }) : patch;
 }
 /** Nota bertanda `perluCocokkan` yang belum tuntas: belum ada cocokkan nama itu bertanggal ≥ tanggal nota (karung/literan/repack: penyesuaianStok bukan rework; kemasan: penyesuaianKemasan). */
-export function notaTembusBelumCocok() {
+export function notaTembusBelumCocok() { return ingatPerVersi('jlNotaTembus', notaTembusHitung); }
+function notaTembusHitung() {
   const PS = ambilPenyesuaianStok().filter((q) => !q.dariRework); const PK = ambilPenyesuaianKemasan(); const out = [];
   ambilPenjualan().forEach((p) => { if (!p.perluCocokkan) return; const tgl = String(p.tanggal || '');
     const nama = p.jenis === 'kemasan' ? String(p.namaProduk) + ' ' + String(p.ukuranKemasan).replace('.', ',') + ' kg' : String(p.merkSumber || '');
@@ -1441,7 +1445,10 @@ export const wdTerbaru = (daftar) => daftar.reduce((a, x) => (!a || wdSesudah(x,
  * belum pernah diatur → bawaan dari keterangan owner (rata 50 kg · menggunung sampai 60 kg · isi ulang saat sisa 10 kg · takar 1,8 kg · delapan wadah).
  * daftar = URUTAN posisi kotak di toko (W1, W2, …); resep[wadah] = campuran bawaan wadah itu (kosong = merek itu sendiri).
  */
-export function aturWadah() {
+// owner 19 Nov 2026: aturan wadah dibaca ratusan kali per gambar (tiap wadah, tiap karung belakang) dan tiap kali menyaring seluruh catatan wadah →
+// diingat per versi (hanya cache). Hasil DIPAKAI BERSAMA: daftar & resepnya tidak boleh diubah di tempat.
+export function aturWadah() { return ingatPerVersi('aturWadah', aturWadahHitung); }
+function aturWadahHitung() {
   const a = wdTerbaru(ambilWadahLiteran().filter((w) => w.tipe === 'atur'));
   const penuhKg = a && Number(a.penuhKg) > 0 ? Number(a.penuhKg) : WADAH_PENUH_KG;
   // aturan lama (sebelum koreksi 19 Sep) belum punya batas menggunung → sebanding bawaan (60/50 dari isi rata)
@@ -1628,7 +1635,12 @@ export function susunIsiUlangWadah(merk, w, isiKg) {
  * lokasi tidak diberikan → tempat utama nama itu (wadah yang memegangnya, atau bahan campuran). sisaMentahKg = tanpa jepitan (untuk hitungan tumpukan).
  * wadah = wadah yang SEKARANG memegang karung ini ('' bila tidak); yatim = tercatat di belakang wadah yang kini memegang karung lain.
  */
+// owner 19 Nov 2026: satu kolam karung = seluruh catatan wadah disisir beberapa kali; lembar Jumlah, panel isi ulang & Stok memanggilnya per kolam tiap
+// ketukan → diingat per versi, kunci = nama + tempat (tempat tak diberikan ≠ tempat kosong). Hasil DIPAKAI BERSAMA.
 export function karungBelakang(merk, lokasi) {
+  return ingatPerVersi('karungBelakang|' + String(merk) + '|' + (lokasi === undefined || lokasi === null ? '\u0001' : '=' + String(lokasi)), () => karungBelakangHitung(merk, lokasi));
+}
+function karungBelakangHitung(merk, lokasi) {
   const daftar = aturWadah().daftar; const L = lokasi === undefined || lokasi === null ? (wadahUntukKarung(merk) || '') : String(lokasi);
   const semua = ambilWadahLiteran(); const diSini = (k) => k.merk === merk && wdLokasiDoc(k, daftar) === L;
   const dasar = wdTerbaru(semua.filter((k) => k.tipe === 'karungIsi' && diSini(k)));
@@ -1649,7 +1661,8 @@ export function kolamDitutup(merk, lokasi) {
   return !!d && d.tipe === 'karungIsi' && !(Number(d.isiKg) > 0) && !!(d.dikembalikan || d.selesai || d.pindahAwal);
 }
 /** Semua kolam karung terbuka yang DIKETAHUI (nama × tempat), dari catatan karung/karungIsi. */
-export function semuaKarungTerbuka() {
+export function semuaKarungTerbuka() { return ingatPerVersi('semuaKarungTerbuka', semuaKarungTerbukaHitung); }
+function semuaKarungTerbukaHitung() {
   const daftar = aturWadah().daftar; const kunci = {};
   ambilWadahLiteran().forEach((d) => { if ((d.tipe === 'karung' || d.tipe === 'karungIsi') && d.merk) kunci[String(d.merk) + '|#|' + wdLokasiDoc(d, daftar)] = 1; });
   return Object.keys(kunci).sort().map((k) => { const i = k.indexOf('|#|'); return karungBelakang(k.slice(0, i), k.slice(i + 3)); }).filter((x) => x.diketahui);

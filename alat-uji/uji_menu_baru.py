@@ -317,7 +317,7 @@ if __name__ == '__main__':
             'saksi menghitung semua cara bayar sebagai QRIS': js.replace("if (/qris/i.test(String(p.caraBayar || ''))) qris += p.hargaTotal || 0;", "qris += p.hargaTotal || 0;"),
             'pintu hapus buku dinyatakan tertutup': js.replace("pintu('hapusBuku', 'hapus', 'Hapus buku piutang mati', false,", "pintu('hapusBuku', 'hapus', 'Hapus buku piutang mati', true,"),
             'bulan penuh dihitung walau catatan mulai di tengah bulan': js.replace("if (awal >= pertama) bulanPenuh += 1;", "bulanPenuh += 1;"),
-            'cari mengabaikan nama orang': js.replace("semuaOrang(kini).forEach((o) => { if (cocok(o.nama) || cocok(o.asli))", "[].forEach((o) => { if (cocok(o.nama) || cocok(o.asli))"),
+            'cari mengabaikan nama orang': js.replace("(orang ? orang() : semuaOrang(kini)).forEach((o) => { if (cocok(o.nama) || cocok(o.asli))", "[].forEach((o) => { if (cocok(o.nama) || cocok(o.asli))"),
             'perangkat dianggap hidup tanpa batas denyut': js.replace("hidup: menit !== null && menit <= A.batasDenyut,", "hidup: menit !== null,"),
             'antrean lama tidak ditandai': js.replace("terlalu: lama !== null && lama > A.batasAntre,", "terlalu: false,"),
             'jejak "sampai" walau masih di antrean': js.replace("sampai: !tunda.has((l.koleksi || '') + '|' + String(l.idDok || ''))", "sampai: true"),

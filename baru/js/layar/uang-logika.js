@@ -10,9 +10,9 @@
 // Empat arti uang keluar (K1) ditulis sebelum disimpan: biaya toko (kas −, laba −) · toko berutang ke owner (kas tetap, laba −, utang +) · ambil
 // pribadi/prive (kas −, laba tetap) · bukan urusan toko (tidak ditulis). Semua dokumen = bentuk sistem lama (pengeluaranHarian kategori toko/owner/
 // tokoDompet) + kolom `dari`. Kasbon owner = kasbonMutasi a.n. "Owner" (mesin kasbon, neraca & tutup buku sudah menghitungnya) bertanda owner: true.
-import { hitungKasbon, hitungLabaBersihRentang, hitungUtangOwner } from '../mesin/beku.js';
+import { hitungKasbon, hitungLabaBersihRentang, hitungUtangOwner , bayaranBiayaBulanan } from '../mesin/beku.js';
 import { daftarModalOwner, kunciPelanggan, POS_BIAYA_BULANAN, namaBulanPanjang, akhirBulanIso } from '../mesin/pembantu.js';
-import { ambilTitikKas, ambilAmplopLaba, ambilPindahUang, ambilPengeluaranHarian, ambilKasbonMutasi, ambilModalOwner, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, ambilBiayaBulanan, ambilPiutangMutasi, ambilBahanKemasan, ambilBahanLiteran, cacheMentah, ambilTutupHari, ingatGerakanKas, ingatKasPada } from '../data/toko.js';
+import { ambilTitikKas, ambilAmplopLaba, ambilPindahUang, ambilPengeluaranHarian, ambilKasbonMutasi, ambilModalOwner, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, ambilBiayaBulanan, ambilPiutangMutasi, ambilBahanKemasan, ambilBahanLiteran, cacheMentah, ambilTutupHari, ingatGerakanKas, ingatKasPada , ingatPerVersi } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek, jamKini } from '../inti/format.js';
 import { TEMPAT_UANG, aturBon } from './bon-pemasok-logika.js';
 
@@ -114,7 +114,18 @@ export function ugLebihKurangKas(dari, sampai) {
   return { n: Math.round(n), malam };
 }
 /** hitungLabaBersihRentang (mesin beku) + baris lebih/kurang kas: labaMesin = laba tanpa selisih laci, labaBersih = labaMesin + lebihKurangKas. */
+// owner 19 Nov 2026 (kartu Kelancaran tablet: Menu & Laporan tersendat tiap ketukan): laba bersih satu rentang dihitung mesin dari SELURUH penjualan, dan
+// Menu (tiap huruf cari) serta Laporan (tiap ganti keluarga) memintanya lagi untuk rentang yang sama. Tanpa `bayaran` (bawaan: dari cache) hasilnya hanya
+// bergantung pada cache → diingat per versi; hasil DIPAKAI BERSAMA (jangan diubah di tempat). Dengan `bayaran` khusus tetap dihitung langsung.
+// Laporan / Kendali biaya / laba per pelanggan mengoper daftar bayaran biaya bulanan BAWAAN (mesin: bayaranBiayaBulanan) — ugBayaran() memberi daftar itu
+// sebagai SATU benda per versi, sehingga "bayaran = bawaan" dikenali (benda yang sama) dan ikut ingatan; mesin sendiri memakai bawaan yang sama bila kosong.
+export const ugBayaran = () => ingatPerVersi('ugBayaran', () => bayaranBiayaBulanan());
 export function ugLabaBersih(dari, sampai, bayaran) {
+  const kosong = bayaran === undefined || bayaran === null;
+  if (!kosong && bayaran !== ugBayaran()) return ugLabaBersihHitung(dari, sampai, bayaran);
+  return ingatPerVersi('ugLabaBersih|' + String(dari) + '|' + String(sampai), () => ugLabaBersihHitung(dari, sampai, kosong ? undefined : bayaran));
+}
+function ugLabaBersihHitung(dari, sampai, bayaran) {
   const L = hitungLabaBersihRentang(dari, sampai, bayaran); const K = ugLebihKurangKas(dari, sampai);
   return Object.assign(L, { labaMesin: L.labaBersih, lebihKurangKas: K.n, nLebihKurang: K.malam, labaBersih: L.labaBersih + K.n });
 }

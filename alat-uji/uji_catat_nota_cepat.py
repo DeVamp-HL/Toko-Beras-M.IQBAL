@@ -143,7 +143,9 @@ def jalan(ganti=None):
     if hC is None or hCL is None: return l, g + ['CHIP: JSC JATUH ' + (eC or eCL)], None
     l += hC['lulus']; g += hC['gagal']
     oN, oO = hC['ongkos'], hCL['ongkos']
-    if not (oN['stok'] * 3 <= oO['stok'] and oN['maks'] < oO['maks'] and not oN['tolak'] and oN['baris'] >= 3):
+    # 19 Nov 2026 (mulus Android paket 2): batas liter/kg bebas kini membaca buku stok dari ingatan per versi, jadi CARA LAMA pun ikut turun (10×);
+    # cara baru tetap paling banyak separuhnya — dulu pembandingnya sepertiga dari cara lama yang masih menghitung mesin tiap batas.
+    if not (oN['stok'] * 2 <= oO['stok'] and oN['maks'] < oO['maks'] and not oN['tolak'] and oN['baris'] >= 3):
         g.append('ONGKOS: simpanNota sesudah data berubah memanggil buku stok %d× (cara lama %d×), langit-langit %d× (lama %d×) — harus jauh lebih sedikit' % (oN['stok'], oO['stok'], oN['maks'], oO['maks']))
     else: l += 1
     return l, g, {'nota': len(kunci), 'dokumen': nDok, 'ongkos_baru': oN, 'ongkos_lama': oO}

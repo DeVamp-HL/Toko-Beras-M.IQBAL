@@ -22,7 +22,7 @@ import { bayaranBiayaBulanan, hitungPiutang } from '../mesin/beku.js';
 import { akhirBulanIso, hppTercatat, kunciPelanggan, hppTaksiranRetur, uangKembaliRetur } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilRetur, ingatStokKarung, ingatStokKemasan, tahunDiarsip, kunciNota, ingatPerVersi } from '../data/toko.js';
 import { RP, KG, hariIniIso } from '../inti/format.js';
-import { ugLabaBersih } from './uang-logika.js';
+import { ugLabaBersih, ugBayaran } from './uang-logika.js';
 import { lpFinal, lpNamaBulan, lpBulanPendek, lpPersenTeks } from './laporan-logika.js';
 import { fkSemua, fkPeta, fkTujuanBayar } from './faktur-logika.js';
 import { htAtur, htTingkat } from './harga-tingkat-logika.js';
@@ -126,7 +126,7 @@ function pgHitung(key, n, iso, bayaran) {
   const dasar = { key, n: R.n, nama: R.nama, final: R.final, berjalan: key === pgKey(iso), rentang: R,
     kalimatArsip: R.diarsip.length ? (R.diarsip.length === R.bulan.length ? 'Semua bulan ' + R.nama : R.diarsip.length + ' bulan pertama') + ' sudah tutup buku — catatan per notanya ikut arsip, tidak bisa dipilah per pelanggan (laba kotornya tetap di kartu Laba).' : '' };
   if (!R.pakai.length) return Object.assign(dasar, { diarsip: true, tingkat: [], orang: [], eceran: null, usaha: null, b2b: null, lewat: { rp: 0, n: 0 }, L: null, identitas: [], menutup: null, kalimat: dasar.kalimatArsip, tanpaCatatan: true });
-  const B = bayaran || bayaranBiayaBulanan(); const L = ugLabaBersih(R.dari, R.sampai, B); const cocok = (t) => !!t && t >= R.dari && t <= R.sampai;
+  const B = bayaran || ugBayaran(); const L = ugLabaBersih(R.dari, R.sampai, B); const cocok = (t) => !!t && t >= R.dari && t <= R.sampai;
   const A = htAtur(); const per = {}; const tanpaNama = pgKosong(); const baris = {}; const namaAkhir = {};
   const ke = (k) => (k ? (per[k] = per[k] || pgKosong()) : tanpaNama);
   ambilPenjualan().forEach((p) => {

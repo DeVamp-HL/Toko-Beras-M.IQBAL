@@ -14,7 +14,7 @@ import { esc } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { RP } from '../inti/format.js';
 import * as R from './ringkasan-logika.js';
-import { sumberData, dengarkan, kunciLuarCache } from '../data/toko.js';
+import { sumberData, dengarkan, kunciLuarCache, ingatPerVersi } from '../data/toko.js';
 import { pjPerhatian } from './pajak-logika.js';
 import { kpPerhatian, kpPerhatianPerangkat } from './kunci-periode-logika.js';
 import { bkPerhatian } from './tutup-buku-logika.js';
@@ -41,9 +41,11 @@ export function pasangLayarRingkasan(akar, opsi) {
   const perhatianKasir = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return kpPerhatianPerangkat(k); } catch (e) { console.error('perhatian kasir', e); return []; } };
   // putaran 25c: katalog HP kasir — kapan diperbarui, perubahan yang belum sampai, HP kasir yang masih memegang katalog lama (owner saja)
   const katalogKasir = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return null; try { return kkBeranda(k); } catch (e) { console.error('katalog kasir', e); return null; } };
-  const perhatianPajak = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return pjPerhatian(k); } catch (e) { console.error('perhatian pajak', e); return []; } };
+  const perhatianPajak = (k) => ingatRk('pajak', k, () => perhatianPajakHitung(k));   // 19 Nov 2026: diingat per versi + kunci luar + menit + peran (lihat ingatRk)
+  const perhatianPajakHitung = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return pjPerhatian(k); } catch (e) { console.error('perhatian pajak', e); return []; } };
   // siap 2027 (owner 7 Okt): tutup buku tahun lalu yang belum selesai sesudah 1 Jan & catatan susulan sesudah penanda (owner saja; galat tidak mematikan beranda)
-  const perhatianBuku = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return bkPerhatian(k); } catch (e) { console.error('perhatian tutup buku', e); return []; } };
+  const perhatianBuku = (k) => ingatRk('buku', k, () => perhatianBukuHitung(k));
+  const perhatianBukuHitung = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return bkPerhatian(k); } catch (e) { console.error('perhatian tutup buku', e); return []; } };
   // putaran 40: DASBOR hanya untuk peran owner (mode cadangan = owner, app.js). Akun lain tidak mendapat saklar maupun dasbornya: Ringkasan apa adanya.
   const pemilik = () => { const a = opsi.akun ? opsi.akun() : null; return !!a && a.jenis === 'owner'; };
   let tampilan = (() => { try { return localStorage.getItem(KUNCI_TAMPILAN) === 'cincin' ? 'cincin' : 'dasbor'; } catch (e) { return 'dasbor'; } })();
@@ -192,10 +194,15 @@ export function pasangLayarRingkasan(akar, opsi) {
   }
 
   // ---------- pembaruan: mengisi elemen yang sudah hidup ----------
+  // owner 19 Nov 2026 (kartu Kelancaran tablet: Ringkasan › Cincin tersendat tiap ketuk skala): daftar perhatian, susunan satu skala & kartu kas dulu dihitung
+  // ulang TIAP perbarui — laba rentang dari mesin, bon, utang, buku stok — padahal isinya hanya data + jam (menit) + kunci luar (hari, hari tutup, titik kas
+  // perangkat) + siapa yang masuk. Kini diingat per versi data dengan kunci itu: skala yang baru saja dilihat kembali seketika, detak menit tetap menghitung
+  // segar. Katalog kasir & denyut HP kasir TIDAK ikut (keduanya membaca keadaan di luar cache). Hasil DIPAKAI BERSAMA — penggambar hanya membaca.
+  const ingatRk = (nama, k, f) => ingatPerVersi('rk|' + nama + '|' + kunciLuarCache(k) + '|' + Math.floor(k.getTime() / 60000) + '|' + (((opsi.akun ? opsi.akun() : null) || {}).jenis || ''), f);
   function perbarui(sebab) {
     if (!tampil || terkunci()) return;
     if (!$('rkHero')) bangun();   // tirai baru terbuka: kerangka dibangun ulang
-    const k = kini(); const KK = katalogKasir(k); const perhatian = R.susunPerhatian().concat(perhatianKasir(k), KK ? KK.perhatian : [], perhatianPajak(k), perhatianBuku(k), perhatianKunci(k)); const sumber = sumberData();
+    const k = kini(); const KK = katalogKasir(k); const perhatian = ingatRk('perhatian', k, () => R.susunPerhatian()).concat(perhatianKasir(k), KK ? KK.perhatian : [], perhatianPajak(k), perhatianBuku(k), perhatianKunci(k)); const sumber = sumberData();
     // putaran 40: saklar Dasbor | Cincin hanya untuk owner; mode dasbor menyembunyikan cincin, nota & kartu kas (angkanya ada di dasbor) — perhatian tetap
     const dsb = modeDasbor(); akar.classList.toggle('mode-dasbor', dsb); $('rkSaklar').hidden = !pemilik(); $('rkDasbor').hidden = !dsb;
     akar.querySelectorAll('#rkSaklar .seg').forEach((el) => el.classList.toggle('aktif', el.dataset.tampil === (dsb ? 'dasbor' : 'cincin')));
@@ -216,7 +223,7 @@ export function pasangLayarRingkasan(akar, opsi) {
     // indeks cincin hanya membaca cache + TAHUN jam sekarang (potret hari tahun yang ditutup buku, bangunIndeks) — tahun ikut kunci: tanpa data baru (denyut HP
     // tidak lagi membasikan indeks) pergantian tahun tetap membangunnya ulang
     const thIx = hariIniIso(new Date(Date.now())).slice(0, 4); if (!ix || ixTahun !== thIx) { ix = R.bangunIndeks(); ixTahun = thIx; }
-    const r = R.susunRingkasan(skala, ix, k); const kas = R.susunKas(k);
+    const r = ingatRk('susun|' + skala, k, () => R.susunRingkasan(skala, ix, k)); const kas = ingatRk('kas', k, () => R.susunKas(k));
     menitLama = k.getHours() * 60 + k.getMinutes(); sektorKini = r.sektor;
     const pertama = sebab === 'tampil'; const gantiSk = sebab === 'skala';
     const kunciBaru = r.umpan.length ? r.umpan[0].k : ''; const mendarat = !pertama && kunciNotaLama !== null && !!kunciBaru && kunciBaru !== kunciNotaLama; kunciNotaLama = kunciBaru;
