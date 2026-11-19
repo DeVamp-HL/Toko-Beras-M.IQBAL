@@ -27,7 +27,7 @@ import { pasangGerbang } from './inti/gerbang.js';
 // putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang
 import * as TB from './layar/tablet-logika.js';
 // paket S1 (19 Nov 2026): pintu perangkat (aplikasi tablet) — asliAda pindah ke sini; scanner tidak boleh terbaca sebagai PIN
-import { asliAda, padaPindai, ketikTambah, ketikMesin, KETIK_TUNGGU } from './inti/perangkat.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
+import { asliAda, padaPindai, padaTempel, ketikTambah, ketikMesin, KETIK_TUNGGU } from './inti/perangkat.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
 // putaran T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi di tablet — bisa DIBUKA tanpa internet (pekerjanya sw-baru.js, dicap saat terbit)
 import * as SL from './inti/salinan.js';
 // owner 19 Nov 2026 ("masih berat di Android, terutama tablet"): pencatat tersendat DI PERANGKAT ini — dibaca di Menu › Sistem › Perangkat
@@ -511,6 +511,8 @@ padaPindai((x) => {
   clearTimeout(_ketikJam); _ketikTampung = [];
   if (!_periksaPin) { _pinKetik = ''; gambarPanelOrang(); pesanOrang(KALIMAT_SCAN); }
 });
+// paket S2b: kartu NFC ditempel — panel jaga tertutup & layar Jual di depan → milik layar Jual (kartu pelanggan → pembelinya terpilih)
+padaTempel((x) => { if (panelOrang.hidden && tabKini === 'jual') { try { layar.tempel(x && x.uid); } catch (e) { console.error('tempel jual', e); } } });
 // kunci diam (owner 16 Nov: 5 menit). Sentuhan apa pun = masih ada orang; tablet ditinggal / layar mati lama = kembali ke "Siapa yang jaga?"
 ['pointerdown', 'keydown', 'touchstart'].forEach((n) => document.addEventListener(n, () => { _sentuh = Date.now(); }, { passive: true, capture: true }));
 setInterval(() => { if (_jaga && TB.tbHarusKunci(_sentuh, Date.now())) kunciOrang(); }, 15000);

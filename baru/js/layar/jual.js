@@ -17,7 +17,7 @@ import { gambarStruk as gambarStrukKanvas, siapkanHuruf } from '../inti/struk-ka
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
-import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman, ambilTandaKenal } from '../data/toko.js';
 import { tombolAkun, tombolLuarKisi, batasBarisNota, batasDokumenKirim, bukanOwner, hakAkun, bolehMintaOwner } from './akses-layar.js';
 // owner 7 Okt (JS2-C): batas nego per orang + Buku Nego; keputusan owner atas permintaan nego = penyusun papan persetujuan yang sama (Menu › Sistem › Peran)
 import * as NG from './nego-logika.js';
@@ -601,6 +601,34 @@ export function pasangLayarJual(akar, opsi) {
     hargaBaris: (chip, jumlah, nama) => { const t = L.bangunBaris(chip, jumlah, Object.assign({}, S(), { pelanggan: String(nama || '').trim(), keranjang: [] })); return t ? Number(t.hargaTotal) || 0 : 0; },
     jadiNota: (saring, hari) => L.daftarPesananJadiNota(saring, hari) });
   Object.assign(aksi, PP.aksi);
+  // ---- paket S2b (19 Nov 2026): TANDA KENAL — barcode kemasan → barang di rak, kartu NFC → pembeli (koleksi tandaKenal, rules v12) ----
+  // Kode yang belum dikenal masuk "mode daftar" (s.tk): ketukan rak / nama pembeli BERIKUTNYA ikut dipasangkan ke kode itu, lalu jalan seperti biasa.
+  // Aksi asli tidak diubah — dibungkus, supaya jalur ketuk biasa (tanpa scanner) persis seperti sebelumnya. Mode daftar gugur sendiri (tkMasihDaftar).
+  const tkWaktu = () => L.waktuSekarang(S().sekarang || undefined);
+  /** Mode daftar barcode: pasangkan chip ini. false = ditolak (chip bukan karung / kemasan) → ketukan itu berhenti di sini, kasir memilih lagi. */
+  function tkPasangChip(c) {
+    const t = S().tk; if (!t || t.mode !== 'daftar' || t.jenis !== 'barcode' || !c) return true;
+    if (!TK.tkMasihDaftar(t, 'barcode', Date.now())) { set({ tk: null }); return true; }
+    const r = TK.tkSusunDaftar('barcode', t.kode, TK.tkSasaranChip(c), tkWaktu());
+    if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
+    tulisUmum(r); return true;
+  }
+  { const chipAsal = aksi.chip; const seringAsal = aksi.sering;
+    aksi.chip = (arg, el, ev) => { const c = (rakKini()[arg.jalur] || []).find((x) => x.kunci === arg.kunci && (!arg.berat || String(x.berat) === arg.berat)); if (tkPasangChip(c)) chipAsal(arg, el, ev); };
+    aksi.sering = (arg, el, ev) => { const c = rakKini().sering.find((x) => x.id === arg.id); if (tkPasangChip(c)) seringAsal(arg, el, ev); };
+    // kartu NFC yang menunggu pemiliknya: nama pembeli yang dipilih / diketik sesudahnya = pemilik kartu itu
+    ['pilihPelanggan', 'enterPelanggan'].forEach((n) => { const asal = aksi[n]; aksi[n] = (arg, el, ev) => {
+      const t = S().tk; asal(arg, el, ev);
+      if (!t || t.mode !== 'daftar' || t.jenis !== 'nfc') return;
+      const nama = String(S().pelanggan || '').trim();
+      if (!TK.tkMasihDaftar(t, 'nfc', Date.now()) || !nama) return set({ tk: null });
+      tulisUmum(TK.tkSusunDaftar('nfc', t.kode, { nama }, tkWaktu()));
+    }; });
+    // lembar pembeli ditutup tanpa memilih → kartu yang menunggu dilupakan (nama yang dipilih nanti bukan pemilik kartu itu)
+    const tutupAsal = aksi.tutup; aksi.tutup = (arg, el, ev) => { const t = S().tk; tutupAsal(arg, el, ev); if (t && t.jenis === 'nfc') set({ tk: null }); };
+    aksi.tkBatal = () => set({ tk: null });
+    aksi.tkGanti = () => { const t = S().tk; if (t && t.jenis === 'barcode') set({ tk: { jenis: 'barcode', kode: t.kode, mode: 'daftar', pada: Date.now() }, lembar: null, pilih: null, kabar: '' }); };
+  }
   delegasi(akar, aksi);
 
   let _rak = null, _rakUntuk = '', _rakDasar = '', _lembarSebelum = null, _ingatRak = {};
@@ -682,8 +710,10 @@ export function pasangLayarJual(akar, opsi) {
         // rapi-rapi 29 Sep: pita "Nota dicatat ke data toko … · tersambung" mengulang keadaan yang sudah tertulis di kepala → hanya tampil untuk keadaan
         // yang WAJIB dilihat (tanpa internet, ditolak server); keadaan normal / memuat cukup di bawah judul
         const aw = opsi.statusAwas ? opsi.statusAwas() : ''; return aw ? h`<div class="pita-info awas baca-saja">${aw}</div>` : ''; })()}
-      ${s.kabar || adaUrung || s.karcis || NGM || NGS.length || ((KCn.daftar.length || KDH.length) && s.lembar !== 'karcis') ? h`<div class="kabar-kotak">
+      ${s.kabar || s.tk || adaUrung || s.karcis || NGM || NGS.length || ((KCn.daftar.length || KDH.length) && s.lembar !== 'karcis') ? h`<div class="kabar-kotak">
         ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : ''}" data-aksi="tutupKabar">${s.kabar}</div>` : ''}
+        ${s.tk && s.tk.jenis === 'barcode' && s.tk.mode === 'daftar' ? h`<div class="pita-info emas" data-k="pita-tk-daftar" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Barcode <b>${TK.tkRingkasKode(s.tk.kode)}</b> belum dikenal — ketuk barangnya di rak Karung atau Kemasan untuk memasangkan (sekali saja)</span><span class="kaca-btn" data-aksi="tkBatal">Batal</span></div>` : ''}
+        ${s.tk && s.tk.jenis === 'barcode' && s.tk.mode === 'kenal' ? h`<div class="pita-info" data-k="pita-tk-kenal" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Barcode <b>${TK.tkRingkasKode(s.tk.kode)}</b> = ${s.tk.nama}</span><span style="display: flex; gap: 6px;"><span class="kaca-btn" data-aksi="tkGanti">Salah barang? Ganti</span><span class="kaca-btn" data-aksi="tkBatal">Tutup</span></span></div>` : ''}
         ${s.tembusTanya && s.tembusTanya.length && s.keranjang.length && s.lembar !== 'bayar' ? h`<div class="pita-info emas" data-k="pita-tembus" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Jual dulu, tandai untuk dicocokkan: ${s.tembusTanya.map((t) => t.nama + ' kurang ' + String(Math.round(t.selisihKg * 10) / 10).replace('.', ',') + ' kg').join(', ')} — buku dibiarkan minus sampai dicocokkan</span><span class="kaca-btn awas" data-aksi="simpanTembus">JUAL DULU, TANDAI</span></div>` : ''}
         ${NGM && s.lembar !== 'bukuNego' ? h`<div class="pita-info awas" data-k="pita-nego-menunggu" data-aksi="bukaBukuNego" style="cursor: pointer;">${NGM} permintaan nego menunggu owner — ketuk untuk menyetujui / menolak (Buku nego)</div>` : ''}
         ${NGS.map((x) => h`<div class="pita-info emas" data-k="pita-nego-siap-${x.id}" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Owner menyetujui nego ${x.label} ${RP(x.harga)}</span><span class="kaca-btn" data-aksi="pakaiSetuju" data-id="${x.id}" data-harga="${x.harga}">pakai</span></div>`)}
@@ -941,6 +971,7 @@ export function pasangLayarJual(akar, opsi) {
       const daftar = L.daftarPelanggan(s.cariPelanggan);
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Siapa pembelinya?', 'nama dari catatan penjualan & kartu pelanggan toko')}
+        ${s.tk && s.tk.jenis === 'nfc' && s.tk.mode === 'daftar' ? h`<div class="pita-info emas" data-k="pita-tk-kartu" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Kartu <b>${TK.tkRingkasKode(s.tk.kode)}</b> belum dikenal — pilih pemiliknya di bawah, atau ketik nama baru lalu Enter (sekali saja)</span><span class="kaca-btn" data-aksi="tkBatal">Batal</span></div>` : ''}
         <input class="ketik-nama" id="cariPelanggan" type="text" value="${s.cariPelanggan}" data-ketik="cariPelanggan" data-enter="enterPelanggan" placeholder="Ketik namanya — Enter untuk memakai nama baru">
         ${s.pelanggan ? h`<div class="kaca-btn putus" data-aksi="lepasPelanggan">Tanpa nama</div>` : ''}
         <div class="daftar-nama">${daftar.map((o) => h`<div class="baris-nama ${o.sisaBon > 0 ? 'berutang' : ''}" data-aksi="pilihPelanggan" data-nama="${o.nama}">
@@ -1247,16 +1278,40 @@ export function pasangLayarJual(akar, opsi) {
   dengarkan((nama) => { if (!BUKAN_RAK.has(nama)) _rakBasi = true; nanti(gambarGulir); });
   gambar(); gulirkan(akar, RP);
   // paket S2a (19 Nov 2026): scanner tablet saat layar Jual di depan (app.js yang memanggil). QR struk toko → lembar struk nota itu terbuka
-  // (cetak ulang, WhatsApp, retur dari lembar yang sama). Kode lain (barcode kemasan) belum punya arti di sini — didiamkan sampai paket S2b.
+  // (cetak ulang, WhatsApp, retur dari lembar yang sama). Kode lain = barcode barang (paket S2b, pindaiBarcode).
   function pindai(teks) {
-    const u = TK.tkUraiPindai(teks); if (!u || terkunci() || u.jenis === 'lain') return;
+    const u = TK.tkUraiPindai(teks); if (!u || terkunci()) return;
+    if (u.jenis === 'lain') return pindaiBarcode(u.kode);
     if (u.jenis === 'rusak') return set({ kabar: 'QR struk tidak terbaca utuh — scan ulang, atau cari notanya di Riwayat', kabarAwas: true });
     if (!TK.tkLembarBolehDiganti(S().lembar)) return set({ kabar: 'Struk ter-scan, tapi lembar ini masih terbuka — tutup dulu, lalu scan lagi', kabarAwas: true });
     if (!ST.notaDari(u.kunci)) return set({ kabar: 'Nota dari struk ini tidak ada di data perangkat ini — mungkin nota lama yang sudah ditutup bukunya', kabarAwas: true });
     aksi.bukaStruk({ trx: u.kunci.trxId, grup: u.kunci.grupNota, id: u.kunci.id });
   }
+  // paket S2b: barcode barang. Dikenal → lembar jumlah barang itu terbuka (jalur yang sama dengan mengetuk chipnya: tidak ada logika harga baru);
+  // belum dikenal → mode daftar: kasir mengetuk barangnya di rak, sekali, lalu barcode itu dikenal seterusnya.
+  function pindaiBarcode(mentah) {
+    const kode = TK.tkKode('barcode', mentah);
+    if (!kode) return set({ kabar: 'Kode yang ter-scan tidak bisa dipakai sebagai barcode barang', kabarAwas: true });
+    if (!TK.tkLembarBolehDiganti(S().lembar)) return set({ kabar: 'Barcode ter-scan, tapi lembar ini masih terbuka — tutup dulu, lalu scan lagi', kabarAwas: true });
+    const d = TK.tkCari(ambilTandaKenal(), 'barcode', kode);
+    if (!d) return set({ tk: { jenis: 'barcode', kode, mode: 'daftar', pada: Date.now() }, lembar: null, pilih: null, kabar: '' });
+    const c = TK.tkChipDari(rakKini(), d.sasaran); const kenal = { jenis: 'barcode', kode, mode: 'kenal', nama: String(d.sasaran.nama || d.sasaran.kunci) };
+    if (!c) return set({ tk: kenal, kabar: 'Barcode ini = ' + kenal.nama + ', tapi barangnya sedang tidak ada di rak (habis, belum berharga, atau diarsipkan)', kabarAwas: true });
+    set(Object.assign({ isiW: null, tk: kenal }, L.ketukChip(S(), c)));
+  }
+  // paket S2b: kartu NFC ditempel saat layar Jual di depan (app.js yang memanggil). Dikenal → pembelinya terpilih (jalur yang sama dengan memilih
+  // namanya: harga tingkat & bon ikut); belum dikenal → lembar pembeli terbuka, nama yang dipilih jadi pemilik kartu itu.
+  function tempel(uidMentah) {
+    const kode = TK.tkKode('nfc', uidMentah); if (!kode || terkunci()) return;
+    const s = S();
+    if (!TK.tkLembarBolehDiganti(s.lembar) && s.lembar !== 'pelanggan') return set({ kabar: 'Kartu terbaca, tapi lembar ini masih terbuka — tutup dulu, lalu tempel lagi', kabarAwas: true });
+    const d = TK.tkCari(ambilTandaKenal(), 'nfc', kode); const nama = d ? String(d.sasaran.nama || '').trim() : '';
+    if (!nama) return set({ tk: { jenis: 'nfc', kode, mode: 'daftar', pada: Date.now() }, lembar: 'pelanggan', cariPelanggan: '', kabar: '' });
+    const g = L.gantiPelanggan(SBN(), nama);
+    set(Object.assign(s.lembar === 'pelanggan' ? { lembar: null, cariPelanggan: '' } : {}, { tk: null }, g, g.kabar ? {} : { kabar: 'Kartu pelanggan: ' + nama, kabarAwas: false }));
+  }
   // putaran 23c: keranjang tidak terbawa ke akun berikutnya — app.js menanyakannya saat Keluar lalu melupakannya
   const tampilkan = (ya) => { const tadi = _tampil; _tampil = !!ya; if (_tampil && !tadi && (_kotor || !akar.firstElementChild)) { _kotor = false; segera(gambarGulir); } };
-  return { keadaan: K, gambar, gambarGulir, tampilkan, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), pulihkanKeranjang, pindai,
+  return { keadaan: K, gambar, gambarGulir, tampilkan, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), pulihkanKeranjang, pindai, tempel,
     lupakanOrang: () => { lupakanSimpanan(); K.setel((s) => L.keadaanOrangBerikutnya(s)); } };   // owner 7 Okt: simpanan keranjang ikut dilupakan saat ganti orang
 }

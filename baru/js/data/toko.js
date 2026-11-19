@@ -223,6 +223,7 @@ export function ambilPelangganCatatan() { return _cache.pelangganCat; }
 export function ambilPesanan() { return _cache.pesanan; }
 export function ambilSuratJalan() { return _cache.suratJalan || []; }   // B3 (owner 18 Nov 2026): surat jalan & antar
 export function ambilOrderRutin() { return _cache.orderRutin || []; }   // B4 (owner 18 Nov 2026): jadwal pesanan rutin pelanggan
+export function ambilTandaKenal() { return _cache.tandaKenal || []; }   // paket S2b (owner 19 Nov 2026): barcode kemasan → barang, kartu NFC → pembeli
 export function ambilWadahLiteran() { return _cache.wadah || []; }
 export function ambilTitipanHarian() { return _cache.titipan; }
 export function ambilSetoranKas() { return _cache.setoran; }

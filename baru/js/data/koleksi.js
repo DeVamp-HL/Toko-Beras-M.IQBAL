@@ -100,4 +100,9 @@ export const KOLEKSI = [
   //  Bukan uang & bukan stok: jadwal cuma memunculkan PENGINGAT; pesanannya dibuat orang (koleksi pesanan). Owner & Ben membuat dan mengubah (rules v11
   //  stafUbahRutin, kolom terbatas) — tanpa cap jam server, jadi 'tetap' seperti pesanan.
   { nama: 'orderRutin',          urut: 'id',    cache: 'orderRutin', kelas: 'tetap' },
+  // Paket S2b (owner 19 Nov 2026) — TANDA KENAL: pasangan kode → sasaran. jenis 'barcode' = barcode kemasan → barang di rak Jual (jalur, kunci, berat);
+  //  jenis 'nfc' = nomor seri kartu NFC → pembeli (nama). Catatan TAMBAH-SAJA: memasangkan ulang = dokumen baru, yang terbaru menang (riwayat siapa
+  //  memasangkan apa tetap ada). Bukan uang & bukan stok. Didaftarkan dari tablet (rules v12: owner || stafBuat ben/karyawan) — tanpa cap jam server,
+  //  jadi 'tetap' seperti pesanan.
+  { nama: 'tandaKenal',          urut: 'id',    cache: 'tandaKenal', kelas: 'tetap' },
 ];

@@ -22,14 +22,14 @@ export const BATAS_HASIL_ADUKAN_STAF = 8;   // adukan: 8 hasil × (produksi + ka
 
 // §3 — yang DIBACA bukan-owner. Koleksi utuh + setelan PER DOKUMEN (aturanToko & pengaturan bercampur tarif upah, NPWP, titik kas, PIN).
 // rules v7 (owner 7 Okt, JS2-C): persetujuan — yang minta nego membaca keputusan owner (pendengar koleksi utuh; rules bukan saringan)
-export const BACA_STAF = ['penjualan', 'piutangMutasi', 'pelangganCatatan', 'pelangganTitip', 'pesanan', 'tagihPelanggan', 'strukKeluar',
+export const BACA_STAF = ['penjualan', 'piutangMutasi', 'pelangganCatatan', 'pelangganTitip', 'pesanan', 'tagihPelanggan', 'strukKeluar', 'tandaKenal',
   'batchMasuk', 'produksiKemasan', 'penyesuaianStok', 'penyesuaianKemasan', 'retur', 'karantina', 'stokBahanKemasan', 'stokBahanLiteran', 'wadahLiteran', 'pindahTempat',
   'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan', 'suratJalan', 'orderRutin'];   // rules v10 (B3): surat jalan & antar · v11 (B4): jadwal order rutin
 export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip'], pengaturan: ['tempatSimpan'] };
 // rules v8 (B1, owner 16 Nov 2026): + hargaTingkat (harga pelanggan usaha dipakai kasir) + produkArsip (barang yang diarsipkan tidak tampil sebagai chip habis di tablet)
 // §4 — CREATE bukan-owner: koleksi → peran yang boleh. Menambah peran nanti = menambah satu nama di sini DAN di daftar yang sama di firestore.rules.
 export const BUAT_STAF = { penjualan: ['ben', 'karyawan'], piutangMutasi: ['ben', 'karyawan'], stokBahanLiteran: ['ben', 'karyawan'], stokBahanKemasan: ['ben', 'karyawan'],
-  produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'],
+  produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], tandaKenal: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'],
   wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'] };   // rules v11 (B4): pesanan & jadwal rutin = ben   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
 // rules v7 (owner 7 Okt, JS2-C): persetujuan hanya PERMINTAAN NEGO "menunggu" atas nama sendiri, tanpa kolom keputusan (stafMintaNego; periksaKiriman di bawah)
 export const TIPE_WADAH_STAF = ['takar', 'karung', 'karungIsi', 'cek'];   // = stafBuatWadah di rules v5

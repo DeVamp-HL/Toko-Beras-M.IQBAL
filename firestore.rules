@@ -1,5 +1,12 @@
 // ============================================================================
-// ATURAN FIRESTORE v11 FINAL — Toko Beras M.IQBAL (DRAF 18 Nov 2026, B4 pesanan, PO & order rutin) = v10 FINAL + PERSIS tiga ubahan & tiga fungsinya
+// ATURAN FIRESTORE v12 FINAL — Toko Beras M.IQBAL (DRAF 19 Nov 2026, paket S2b tanda kenal) = v11 FINAL + PERSIS satu blok baru, tanpa fungsi baru
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v11; uji server: docs/uji-rules-v12.md). Owner menerbitkan v12 SEKALI lewat Console
+// SEBELUM cabang S2b digabung:
+//   (v12-1) blok tandaKenal — pasangan kode → sasaran: barcode kemasan → barang di rak; nomor seri kartu NFC → pembeli. Catatan TAMBAH-SAJA (yang terbaru
+//           menang): baca owner/ben/karyawan; create owner || stafBuat(ben, karyawan) — scanner & pembaca NFC hanya ada di tablet (akun tablet), jadi
+//           pendaftaran harus bisa dari akun itu, atas nama penulisnya; ubah & hapus owner. Bukan uang, bukan stok.
+// Sisanya = v11 FINAL di bawah ini, apa adanya. Kepala v11:
+// ATURAN FIRESTORE v11 FINAL — (B4 pesanan, PO & order rutin) = v10 FINAL + PERSIS tiga ubahan & tiga fungsinya
 // (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v10; uji server: docs/uji-rules-v11.md). Owner menerbitkan v11 SEKALI lewat Console
 // SEBELUM cabang B4 digabung:
 //   (v11-1) pesanan create: owner || stafBuatPesanan(ben) — pesanan baru dari tablet: atas nama penulisnya, 'dipesan', belum bernota, tanpa kolom batal.
@@ -789,6 +796,14 @@ service cloud.firestore {
       allow create: if owner() || stafBuat(['ben']);
       allow update: if owner() || stafUbahRutin(['ben']);
       allow delete: if owner();
+    }
+
+    // v12 (paket S2b, owner 19 Nov 2026): tanda kenal — pasangan kode (barcode kemasan / nomor seri kartu NFC) → sasaran (barang di rak / pembeli).
+    // Tambah-saja; didaftarkan dari tablet (akun tablet) atas nama penulisnya; ubah & hapus owner
+    match /tandaKenal/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuat(['ben', 'karyawan']);
+      allow update, delete: if owner();
     }
 
     match /ringkasanKasir/{id} {
