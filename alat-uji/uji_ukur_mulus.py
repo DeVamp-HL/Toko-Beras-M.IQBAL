@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+uji_ukur_mulus.py — KELANCARAN PERANGKAT (owner 19 Nov 2026: "masih berat di Android, terutama tablet Sunmi CPad 11").
+baru/js/inti/ukur-mulus.js mencatat DI PERANGKAT tiap layar tersendat (reaksi ketukan ≥ 150 ms, layar macet ≥ 100 ms): berapa lama, di layar mana.
+Dibaca di Menu › Sistem › Perangkat. Yang dijaga di sini (jsc, tanpa peramban):
+  · catat: di bawah ambang tidak dicatat; hitungan / jumlah / terlama per jenis & per tempat menutup; daftar paling banyak 40, tempat paling banyak 30;
+    hari berganti = mulai dari nol; isi lama tidak diubah di tempat.
+  · baca: simpanan rusak / hari lain / bentuk asing → kosong; angka & teks dirapikan (tidak ada HTML, tidak ada angka minus).
+  · satu ketukan = SATU kejadian (pointerup + click, keydown + input digabung, diambil yang terlama); ketukan berikutnya dihitung sendiri.
+  · kalimat kartu & teks salin (bahasa biasa; tanpa rupiah).
+  · statis: dipasang app.js, kartunya di Sistem › Perangkat, dipramuat index.html; berkasnya TIDAK menulis ke server (tanpa toko.js / firebase.js),
+    simpanan lokal di dalam try/catch, dan tidak ada pengganti berbasis requestAnimationFrame yang jalan terus.
+
+    python3 alat-uji/uji_ukur_mulus.py            → N lulus · 0 gagal
+    python3 alat-uji/uji_ukur_mulus.py --kontrol  → kerusakan wajib ketahuan (keluar 3 kalau ada yang diam)
+"""
+import os, sys, json, subprocess, tempfile
+SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
+sys.path.insert(0, SINI)
+import bundel_baru  # noqa: E402
+JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
+UM = 'baru/js/inti/ukur-mulus.js'; FM = 'baru/js/inti/format.js'; AP = 'baru/js/app.js'; MN = 'baru/js/layar/menu.js'; IX = 'baru/index.html'
+
+SKENARIO = r"""
+var gagal = [], lulus = 0; var J = JSON.stringify;
+function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + String(ket).slice(0, 600) : '')); }
+var H = '2026-11-19'; var D = { ketuk: true, macet: true };
+// ---- catat
+var a = lcKosong(H);
+ok('kosong: hari, dua penghitung nol, tanpa tempat, tanpa daftar', J(a) === J({ hari: H, ketuk: { n: 0, total: 0, terlama: 0 }, macet: { n: 0, total: 0, terlama: 0 }, tempat: {}, daftar: [] }), J(a));
+var b = lcCatat(a, { jenis: 'ketuk', ms: 149, tempat: 'Jual', aksi: 'x', jam: '10:00' }, H); var c = lcCatat(a, { jenis: 'macet', ms: 99, tempat: 'Jual', jam: '10:00' }, H);
+ok('di bawah ambang (ketuk 149 ms, macet 99 ms) tidak dicatat — isi yang sama dikembalikan', b === a && c === a);
+var d = lcCatat(a, { jenis: 'ketuk', ms: 150, tempat: 'Jual › Riwayat', aksi: 'rwBuka', jam: '10:01' }, H);
+ok('tepat di ambang dicatat: ketuk 150 ms → n 1, total 150, terlama 150; tempat & daftar ikut; isi lama TIDAK berubah', d.ketuk.n === 1 && d.ketuk.total === 150 && d.ketuk.terlama === 150 && d.macet.n === 0 && J(d.tempat) === J({ 'Jual › Riwayat': { n: 1, total: 150, terlama: 150 } }) && J(d.daftar) === J([{ jam: '10:01', ms: 150, jenis: 'ketuk', tempat: 'Jual › Riwayat', aksi: 'rwBuka' }]) && a.ketuk.n === 0 && !a.daftar.length && !Object.keys(a.tempat).length, J([d, a]));
+var e = lcCatat(lcCatat(lcCatat(d, { jenis: 'macet', ms: 820.4, tempat: 'Jual › Riwayat', aksi: '', jam: '10:02' }, H), { jenis: 'macet', ms: 100, tempat: 'Stok', jam: '10:03' }, H), { jenis: 'ketuk', ms: 400, tempat: 'Stok', aksi: 'tab', jam: '10:04' }, H);
+ok('isi lama tidak diubah di tempat: sesudah tiga catatan berikutnya, isi sebelumnya (d) & isi kosong (a) masih seperti semula', J(d.tempat) === J({ 'Jual › Riwayat': { n: 1, total: 150, terlama: 150 } }) && d.daftar.length === 1 && d.ketuk.n === 1 && !Object.keys(a.tempat).length, J([d, a]));
+ok('menutup: Σ per tempat = Σ per jenis (n 4, total 1.470 ms); terlama per jenis & per tempat; pecahan dibulatkan', e.ketuk.n === 2 && e.macet.n === 2 && e.ketuk.total === 550 && e.macet.total === 920 && e.macet.terlama === 820 && e.ketuk.terlama === 400
+  && Object.keys(e.tempat).reduce(function (x, k) { return x + e.tempat[k].total; }, 0) === 1470 && Object.keys(e.tempat).reduce(function (x, k) { return x + e.tempat[k].n; }, 0) === 4 && e.tempat['Jual › Riwayat'].terlama === 820 && e.tempat.Stok.n === 2 && e.daftar.length === 4, J(e));
+var f = e; for (var i = 0; i < 60; i++) f = lcCatat(f, { jenis: 'macet', ms: 200 + i, tempat: 'T' + i, jam: '11:00' }, H);
+ok('batas: daftar paling banyak 40 (yang terbaru), tempat paling banyak 30 (tempat ke-31 dst tidak menambah kunci, penghitung jenis tetap jalan)', f.daftar.length === 40 && f.daftar[39].ms === 259 && Object.keys(f.tempat).length === 30 && f.macet.n === 62, J([f.daftar.length, Object.keys(f.tempat).length, f.macet.n]));
+var g = lcCatat(e, { jenis: 'macet', ms: 300, tempat: 'Jual', jam: '00:01' }, '2026-11-20');
+ok('hari berganti: mulai dari nol untuk hari baru (yang kemarin tidak terbawa)', g.hari === '2026-11-20' && g.macet.n === 1 && g.ketuk.n === 0 && g.daftar.length === 1 && Object.keys(g.tempat).length === 1, J(g));
+ok('tanpa tempat → "lainnya"; teks dirapikan (tanda HTML dibuang, dipotong)', lcCatat(a, { jenis: 'macet', ms: 500, tempat: '', jam: '10:00' }, H).daftar[0].tempat === 'lainnya' && lcCatat(a, { jenis: 'macet', ms: 500, tempat: '<b>Jual</b>', aksi: '"><script>', jam: '10:00' }, H).daftar[0].tempat === 'bJual/b' && lcCatat(a, { jenis: 'macet', ms: 500, tempat: 'x', aksi: '"><script>', jam: '10:00' }, H).daftar[0].aksi === 'script');
+// ---- baca
+ok('baca: teks JSON sah hari yang sama → isi yang sama', J(lcBaca(J(e), H)) === J(e), J(lcBaca(J(e), H)));
+ok('baca: rusak / kosong / hari lain / bentuk asing → kosong hari ini', [null, '', '{', '[]', '{"hari":"2026-11-19"}', J(Object.assign({}, e, { hari: '2026-11-18' })), J(Object.assign({}, e, { daftar: 'x' })), J(Object.assign({}, e, { tempat: null }))].every(function (x) { return J(lcBaca(x, H)) === J(lcKosong(H)); }));
+var kotor = lcBaca(J({ hari: H, ketuk: { n: -3, total: 'abc', terlama: 12.6 }, macet: { n: 2, total: 400, terlama: 300 }, tempat: { '<i>Jual</i>': { n: 1, total: 5, terlama: 5 } }, daftar: [{ jam: '10:00<', ms: -5, jenis: 'aneh', tempat: '<x>', aksi: null }] }), H);
+ok('baca: angka minus / bukan angka → 0, dibulatkan; teks dirapikan; jenis asing → macet', kotor.ketuk.n === 0 && kotor.ketuk.total === 0 && kotor.ketuk.terlama === 13 && kotor.macet.n === 2 && Object.keys(kotor.tempat)[0] === 'iJual/i' && kotor.daftar[0].jam === '10:00' && kotor.daftar[0].ms === 0 && kotor.daftar[0].jenis === 'macet' && kotor.daftar[0].tempat === 'x' && kotor.daftar[0].aksi === '', J(kotor));
+// ---- satu ketukan = satu kejadian
+var K = lcKelompokKetuk([{ nama: 'pointerdown', mulai: 1000, ms: 900, aksi: 'a' }, { nama: 'pointerup', mulai: 1090, ms: 200, aksi: 'a' }, { nama: 'click', mulai: 1092, ms: 640, aksi: 'rwBuka' }, { nama: 'mouseup', mulai: 1091, ms: 999, aksi: 'a' }], -1e9);
+ok('ketukan: pointerup + click satu ketukan → SATU kejadian, yang terlama (640 ms) + nama tombolnya; pointerdown / mouseup tidak dihitung', K.length === 1 && K[0].ms === 640 && K[0].aksi === 'rwBuka' && K[0].mulai === 1092, J(K));
+var K2 = lcKelompokKetuk([{ nama: 'click', mulai: 5000, ms: 300, aksi: 'satu' }, { nama: 'keydown', mulai: 5400, ms: 180, aksi: 'ketik rwCari' }, { nama: 'input', mulai: 5404, ms: 260, aksi: 'ketik rwCari' }, { nama: 'click', mulai: 6000, ms: 150, aksi: '' }], -1e9);
+ok('dua ketukan + satu ketikan (keydown + input) berjauhan → tiga kejadian; urutan masuk tidak menentukan', K2.length === 3 && K2[0].ms === 300 && K2[1].ms === 260 && K2[1].aksi === 'ketik rwCari' && K2[2].ms === 150 && J(lcKelompokKetuk([{ nama: 'input', mulai: 5404, ms: 260, aksi: 'q' }, { nama: 'keydown', mulai: 5400, ms: 180, aksi: 'q' }], -1e9).map(function (x) { return x.ms; })) === '[260]', J(K2));
+ok('susulan ketukan yang SUDAH dicatat (≤ 80 ms dari kejadian terakhir) tidak dihitung lagi; yang lebih jauh dihitung', lcKelompokKetuk([{ nama: 'click', mulai: 1150, ms: 700, aksi: 'x' }], 1092).length === 0 && lcKelompokKetuk([{ nama: 'click', mulai: 1173, ms: 700, aksi: 'x' }], 1092).length === 1 && lcKelompokKetuk([], 0).length === 0 && lcKelompokKetuk(null, 0).length === 0);
+// ---- kalimat
+var R = lcRingkas(e, D);
+ok('ringkas: "Tersendat hari ini: 4 kali · terlama 0,8 dtk"; dua baris jenis; tiga tempat terberat menurut jumlah waktu', R.n === 4 && R.terlama === 820 && R.judul === 'Tersendat hari ini: 4 kali · terlama 0,8 dtk' && R.baris[0] === 'Reaksi ketukan telat (0,15 detik ke atas): 2 kali · terlama 0,4 dtk' && R.baris[1] === 'Layar macet (0,1 detik ke atas): 2 kali · terlama 0,8 dtk'
+  && R.tempat[0].nama === 'Jual › Riwayat' && R.tempat[0].teks === '2 kali · terlama 0,8 dtk · jumlah 1 dtk' && R.tempat[1].nama === 'Stok' && R.adaIsi === true, J(R));
+ok('ringkas kosong: "Hari ini belum pernah tersendat"; tanpa alat ukur: "Peramban ini tidak punya alat ukurnya" (tanpa baris); hanya satu alat → satu baris', lcRingkas(a, D).judul === 'Hari ini belum pernah tersendat' && lcRingkas(a, D).adaIsi === false && lcRingkas(a, D).baris[1] === 'Layar macet (0,1 detik ke atas): tidak ada'
+  && lcRingkas(e, { ketuk: false, macet: false }).judul === 'Peramban ini tidak punya alat ukurnya' && !lcRingkas(e, { ketuk: false, macet: false }).baris.length && lcRingkas(a, { ketuk: false, macet: true }).baris.length === 1);
+ok('lama (sepersepuluh detik): 99 → "99 ms"; 150 → "0,2 dtk"; 820 → "0,8 dtk"; 1000 → "1 dtk"; 1250 → "1,3 dtk"; 12.345 → "12,3 dtk"', lcLama(99) === '99 ms' && lcLama(150) === '0,2 dtk' && lcLama(820) === '0,8 dtk' && lcLama(1000) === '1 dtk' && lcLama(1250) === '1,3 dtk' && lcLama(12345) === '12,3 dtk');
+var T = lcTeksSalin(e, D, { perangkat: 'Tablet kasir', peramban: 'UA x', layarPx: '1280×800 @1.5' });
+ok('teks salin: kepala hari + perangkat, peramban, layar, ringkasan, per tempat (terberat dulu), kejadian terakhir; tanpa "Rp"', T.split('\n')[0] === 'KELANCARAN 2026-11-19 · Tablet kasir' && /peramban: UA x/.test(T) && /layar: 1280×800 @1.5/.test(T) && /Jual › Riwayat: 2 · 820 ms · 970 ms/.test(T) && /10:02 macet 820 ms · Jual › Riwayat/.test(T) && /10:01 ketuk 150 ms · Jual › Riwayat · rwBuka/.test(T) && T.indexOf('Rp') < 0
+  && T.indexOf('Jual › Riwayat: 2') < T.indexOf('Stok: 2'), T);
+print(J({ lulus: lulus, gagal: gagal }));
+"""
+
+
+def baca(ganti=None):
+    t = dict((b, open(os.path.join(AKAR, b), encoding='utf-8').read()) for b in [UM, FM, AP, MN, IX])
+    for b, pasangan in (ganti or {}).items():
+        for lama, baru in pasangan:
+            assert t[b].count(lama) == 1, 'kontrol basi: ' + b + ' · ' + lama[:80] + ' (' + str(t[b].count(lama)) + '×)'
+            t[b] = t[b].replace(lama, baru, 1)
+    return t
+
+
+def periksa_statis(t):
+    out = []; ok = lambda n, c, k='': out.append(('statis · ' + n, bool(c), k))
+    um = t[UM]; ap = t[AP]; mn = t[MN]; ix = t[IX]
+    ok('dipasang app.js sekali, dengan nama layar + tab aktif sebagai tempat', "import { pasangUkurMulus } from './inti/ukur-mulus.js';" in ap and ap.count('pasangUkurMulus({ tempat: () => {') == 1 and "return NAMA_LAYAR[tabKini] + " in ap)
+    ok('kartu "Kelancaran perangkat ini" di Sistem › Perangkat (tab Perangkat), dengan lihat / salin rincian & mulai dari nol',
+       "import { ukurMulusRingkas, ukurMulusSalin, ukurMulusKosongkan } from '../inti/ukur-mulus.js';" in mn and mn.count('${gambarLancar(s)}') == 1 and '<div style="font-weight: 700;">Kelancaran perangkat ini</div>' in mn
+       and 'data-aksi="lcBuka"' in mn and 'data-aksi="lcSalin"' in mn and 'data-aksi="lcNol"' in mn and 'lcNol: () => { ukurMulusKosongkan();' in mn)
+    ok('kartu menyebut apa yang dicatat & bahwa tidak dikirim ke server', 'Isi nota, nama, dan rupiah tidak ikut dicatat, dan tidak ada yang dikirim ke server.' in mn)
+    ok('modul dipramuat index.html', '<link rel="modulepreload" href="js/inti/ukur-mulus.js">' in ix)
+    ok('ukur-mulus TIDAK menulis ke server & tidak membaca data toko: hanya mengimpor format.js', um.count('import ') == 1 and "import { hariIniIso } from './format.js';" in um and 'firebase' not in um.replace('// ', '') and 'tulisDokumen' not in um and 'fetch(' not in um and 'sendBeacon' not in um)
+    ok('simpanan lokal di dalam try/catch (simpanan penuh tidak menjatuhkan layar), satu kunci', um.count('localStorage.') == 2 and 'try { m = localStorage.getItem(LC_KUNCI); } catch (e)' in um and 'try { localStorage.setItem(LC_KUNCI, JSON.stringify(_isi)); } catch (e)' in um)
+    ok('tidak ada pengganti yang jalan terus (requestAnimationFrame / setInterval) — hanya pengamat peramban yang berbunyi saat ada kejadian', 'requestAnimationFrame' not in um and 'setInterval' not in um and "type: 'longtask'" in um and "type: 'event', durationThreshold: LC_AMBANG_KETUK" in um)
+    ok('pendengar ketukan pasif & hanya menyimpan nama tombol (data-aksi / data-tujuan / data-ketik), bukan isi layar', "{ capture: true, passive: true }" in um and "el.closest('[data-aksi], [data-tujuan], [data-ketik]')" in um and 'textContent' not in um and '.value' not in um)
+    return out
+
+
+def jalan(js):
+    with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f: f.write(js); p = f.name
+    r = subprocess.run([JSC, p], capture_output=True, text=True, env=dict(os.environ, TZ='Asia/Jakarta')); os.unlink(p)
+    out = (r.stdout or '').strip().split('\n')
+    if r.returncode != 0 or not out[-1].startswith('{'): return None, (r.stderr or r.stdout)[-900:]
+    return json.loads(out[-1]), ''
+
+
+def semua(ganti=None, bagian=('statis', 'jsc')):
+    t = baca(ganti); out = []
+    if 'statis' in bagian: out += periksa_statis(t)
+    if 'jsc' in bagian:
+        h, e = jalan(bundel_baru.polos(t[FM]) + '\n' + bundel_baru.polos(t[UM]) + '\n' + SKENARIO)
+        if h is None: out.append(('jsc · JATUH: ' + e, False, ''))
+        else: out += [('jsc · ' + x, False, '') for x in h['gagal']] + [('__jsc', not h['gagal'], h['lulus'])]
+    return out
+
+
+KONTROL = [
+    ('ambang ketukan diturunkan diam-diam (semua ketukan tercatat)', {UM: [("if (ms < (jenis === 'ketuk' ? LC_AMBANG_KETUK : LC_AMBANG_MACET)) return dasar;", "if (ms < 1) return dasar;")]}, ('jsc',)),
+    ('hari berganti tidak mengosongkan', {UM: [("const dasar = isi && isi.hari === String(hari || '') ? isi : lcKosong(hari);", "const dasar = isi || lcKosong(hari);")]}, ('jsc',)),
+    ('daftar tumbuh tanpa batas', {UM: [("aksi: lcTeks(e.aksi, 40) }]).slice(-LC_MAKS_DAFTAR);", "aksi: lcTeks(e.aksi, 40) }]);")]}, ('jsc',)),
+    ('tempat tumbuh tanpa batas', {UM: [("if (tempat[nama] || Object.keys(tempat).length < LC_MAKS_TEMPAT) tempat[nama]", "tempat[nama]")]}, ('jsc',)),
+    ('isi lama diubah di tempat', {UM: [("const tempat = Object.assign({}, dasar.tempat);", "const tempat = dasar.tempat;")]}, ('jsc',)),
+    ('simpanan hari lain dipakai', {UM: [("String(o.hari || '') !== String(hari || '') || ", "")]}, ('jsc',)),
+    ('teks tidak dirapikan (tanda HTML lolos)', {UM: [(".replace(/[^\\w ›·.,:()/+\\-\\u00C0-\\u024F]/g, '')", "")]}, ('jsc',)),
+    ('satu ketukan dihitung dua kali (pointerup & click sendiri-sendiri)', {UM: [("if (g && e.mulai - g.akhir <= LC_JARAK_KETUK_MS) {", "if (g && e.mulai - g.akhir <= -1) {")]}, ('jsc',)),
+    ('ketukan diambil yang pertama, bukan yang terlama', {UM: [("if (e.ms > g.ms) { g.ms = e.ms; g.aksi = e.aksi || g.aksi; }", "if (false) { g.ms = e.ms; }")]}, ('jsc',)),
+    ('susulan kejadian yang sudah dicatat dihitung lagi', {UM: [("if (e.mulai - batas <= LC_JARAK_KETUK_MS) { batas = e.mulai; return; }", "")]}, ('jsc',)),
+    ('tempat terberat diurut menurut nama, bukan jumlah waktu', {UM: [(".sort((a, b) => b.total - a.total || b.n - a.n || a.nama.localeCompare(b.nama)).slice(0, 3);", ".sort((a, b) => b.nama.localeCompare(a.nama)).slice(0, 3);")]}, ('jsc',)),
+    ('pencatat tidak dipasang di app.js', {AP: [("pasangUkurMulus({ tempat: () => {", "(() => 0)({ tempat: () => {")]}, ('statis',)),
+    ('kartu kelancaran hilang dari Sistem › Perangkat', {MN: [("      ${gambarLancar(s)}\n", "")]}, ('statis',)),
+    ('catatan dikirim ke server', {UM: [("function lcSimpan() { _jamSimpan = null; ", "function lcSimpan() { _jamSimpan = null; fetch('/x', { method: 'POST', body: JSON.stringify(_isi) }); ")]}, ('statis',)),
+    ('simpanan lokal tanpa try/catch', {UM: [("try { localStorage.setItem(LC_KUNCI, JSON.stringify(_isi)); } catch (e) { /* simpanan penuh / dilarang: catatan hari ini tetap di ingatan */ }", "localStorage.setItem(LC_KUNCI, JSON.stringify(_isi));")]}, ('statis',)),
+    ('pencatat membaca isi layar (teks tombol)', {UM: [("return a ? (a.dataset.aksi || ", "return a ? (a.textContent || a.dataset.aksi || ")]}, ('statis',)),
+]
+
+if __name__ == '__main__':
+    if '--kontrol' in sys.argv:
+        kode = 0
+        for nama, ganti, bagian in KONTROL:
+            try: h = semua(ganti, bagian)
+            except AssertionError as e: print('KONTROL BASI  ' + nama + ' · ' + str(e)[:160]); kode = 3; continue
+            g = [x for x in h if not x[1]]
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][0][:150] if g else '-'))
+            if not g: kode = 3
+        sys.exit(kode)
+    h = semua(); g = [x for x in h if not x[1]]
+    n = sum(1 for x in h if x[1] and x[0] != '__jsc') + next((x[2] for x in h if x[0] == '__jsc'), 0)
+    for x in g: print('   ✗ ' + x[0] + (' → ' + json.dumps(x[2], ensure_ascii=False)[:400] if x[2] not in ('', None) else ''))
+    print('UKUR MULUS: %d lulus · %d gagal' % (n, len(g)))
+    sys.exit(1 if g else 0)

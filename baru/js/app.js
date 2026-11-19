@@ -29,6 +29,8 @@ import * as TB from './layar/tablet-logika.js';
 import { asliAda } from './inti/printer.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
 // putaran T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi di tablet — bisa DIBUKA tanpa internet (pekerjanya sw-baru.js, dicap saat terbit)
 import * as SL from './inti/salinan.js';
+// owner 19 Nov 2026 ("masih berat di Android, terutama tablet"): pencatat tersendat DI PERANGKAT ini — dibaca di Menu › Sistem › Perangkat
+import { pasangUkurMulus } from './inti/ukur-mulus.js';
 
 const q = new URLSearchParams(location.search);
 const KUNCI_MODE = 'miqbal_baru_mode';
@@ -160,6 +162,10 @@ const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkas
 // (kanan = tab sesudahnya, kiri = sebelumnya) dan penanda menu meluncur ke tab aktif — orang merasa di mana ia berada.
 const URUT_TAB = ['ringkasan', 'stok', 'jual', 'pelanggan', 'menu', 'harga', 'uang', 'laporan'];
 let tabKini = null;
+// tempat untuk pencatat tersendat: nama layar + tab yang sedang aktif di layar itu (dibaca dari layar HANYA saat ada kejadian yang dicatat)
+const NAMA_LAYAR = { jual: 'Jual', ringkasan: 'Ringkasan', stok: 'Stok', pelanggan: 'Pelanggan', menu: 'Menu', harga: 'Harga', uang: 'Uang', laporan: 'Laporan' };
+pasangUkurMulus({ tempat: () => { const el = LAYAR_ADA[tabKini]; if (!el) return 'gerbang masuk'; const seg = el.querySelector('.jalur .seg.aktif, .seg.aktif'); const lembar = el.querySelector('.lembar:not(.tirai) .label');
+  return NAMA_LAYAR[tabKini] + (seg && seg.textContent ? ' › ' + seg.textContent.trim().slice(0, 24) : '') + (lembar && lembar.textContent ? ' · lembar ' + lembar.textContent.trim().slice(0, 24) : ''); } });
 // Web Animations pada ANAK <main> (lihat gerak.css §1): animasi CSS dasar anak tidak disentuh, jadi tidak ada yang terputar ulang sesudahnya.
 const DATANG_KECUALI = '.latar-bola, .jual-keranjang, .lembar, .tetes-terbang, input';
 function datangkan(el, dari, ke) {

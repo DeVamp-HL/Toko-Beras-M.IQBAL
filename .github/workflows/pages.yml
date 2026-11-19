@@ -237,6 +237,9 @@ jobs:
       # ---- owner 3 Okt: "masih ada lag atau patah-patah" — layar SELAIN Jual: ingatan per versi cache, hitung sekali per gambar ----
       - name: "Layar lain mulus (owner 3 Okt): tujuh layar asli di jsc (pemuat modul ES) — tiap gambar DENGAN ingatan = TANPA ingatan byte-sama, hasil ingatan dibekukan tanpa galat, fungsi yang diingat = hitung ulang penuh (nota baru, cache sementara, titik kas perangkat, ganti hari & bulan), dasbor = Ringkasan segar, ongkos per ketukan (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_layar_mulus.py && python3 alat-uji/uji_layar_mulus.py --kontrol
+      # ---- owner 19 Nov: "masih berat di Android, terutama tablet" — pencatat tersendat di perangkat (Menu › Sistem › Perangkat) ----
+      - name: "Kelancaran perangkat (owner 19 Nov): catatan tersendat menutup per jenis & per tempat, ambang, batas daftar/tempat, hari berganti, satu ketukan = satu kejadian, kalimat kartu; tidak menulis ke server, simpanan lokal dijaga (jsc + statis, 16 kontrol)"
+        run: python3 alat-uji/uji_ukur_mulus.py && python3 alat-uji/uji_ukur_mulus.py --kontrol
       # ---- owner 3 Okt: /baru/ dipakai sebagai web app Safari (Mac) + Safari iPhone/iPad — cacat khas WebKit ----
       - name: "Safari/WebKit (owner 3 Okt): sandi tidak terkunci selagi fokus & dilepas di pointerdown, jarak poni tiap layar, :hover menu samping hanya untuk kursor, tanpa kolom bulan, touchstart pasif (:active iOS), penjaga muat-ulang modul kenal kalimat Safari, jarak aman kiri/kanan, minus di #rtSelisih, WA/cetak Laporan dibuka di ketukan lalu nomornya dicatat; owner 7 Okt: WA Uang & Harga tanpa noopener, paket bank dicetak di ketukan, :hover semua stylesheet hanya untuk kursor (statis + jsc + kontrol)"
         run: python3 alat-uji/uji_safari_webkit.py && python3 alat-uji/uji_safari_webkit.py --kontrol
