@@ -53,6 +53,10 @@ hasil.riwayat_500_nota_ms = ukur(function () { segar(); rwSusun(Object.assign({}
 function jualSelainRak() { hitungTagihan(s); hariIni(s); infoPelanggan(s.pelanggan); daftarPesanan('').length; daftarKarcis(s.sekarang); hitungKarcis(s); notaTembusBelumCocok(); karcisDaruratHari(s.sekarang);
   if (typeof ngMenunggu === 'function') ngMenunggu(); }
 hasil.jual_ketukan_selain_rak_ms = ukur(jualSelainRak, 9);
+// dengan pembeli terpilih (nama berutang terbanyak mutasinya): infoPelanggan → kartu kredit + hitungPiutang mesin, tiap ketukan
+var per = {}; (CADANGAN.piutangMutasi || []).forEach(function (m) { var n = String(m.namaPelanggan || m.nama || '').trim(); if (n) per[n] = (per[n] || 0) + 1; });
+var pembeli = Object.keys(per).sort(function (x, y) { return per[y] - per[x]; })[0] || '';
+if (pembeli) { s.pelanggan = pembeli; hasil.jual_ketukan_dengan_pembeli_ms = ukur(jualSelainRak, 9); hasil.jual_setujuSiap_ms = ukur(function () { setujuSiap(s); }, 9); s.pelanggan = ''; }
 var k = s.sekarang;
 hasil.ringkasan_indeks_ms = ukur(function () { bangunIndeks(); }, 5);
 var ix = bangunIndeks();
