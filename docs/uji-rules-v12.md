@@ -1,4 +1,4 @@
-# Uji rules v12 di server — paket S2b tanda kenal (BELUM TERBIT)
+# Uji rules v12 di server — paket S2b tanda kenal (TERBIT 19 Nov 2026 ±20.45 WIB)
 
 v12 = v11 FINAL + **satu blok baru**, tanpa fungsi baru (berkas kanonik `firestore.rules`; pembanding `firestore.rules.v11`). Tidak ada yang lain berubah —
 `alat-uji/periksa_rules.py` mencabut balik blok itu lalu membandingkan sisanya huruf demi huruf dengan v11.
@@ -54,6 +54,18 @@ Di **v11** kasus ★S1 ★S2 ★S3 ★S4 ★S5 ★S9 DITOLAK (bloknya belum ada;
 atas atas `firestore.rules` (v12) dan atas `firestore.rules.v11` — yang berbeda wajib persis kasus yang dibuka v12 — plus kontrol (satu suku v12 dirusak →
 kasus sasarannya wajib berbalik). Semua kasus v11, v10, v9, v8 & v7 lama tetap dijalankan atas v12 dan wajib sama hasilnya.
 
-## Hasil Playground & terbit
+## Hasil Playground & terbit (19 Nov 2026)
 
-Belum diterbitkan. Diisi sesudah owner mengizinkan terbit: sidik isi editor, hasil tiga kasus Wajib owner, jam Publish.
+- Isi editor Console sebelum uji = `firestore.rules` cabang ini, byte demi byte (SHA-256 berawalan `a376220f`, 61.396 byte; dibaca lewat JS dari
+  editor), sebelumnya v11 aktif (`5940fcf8`, 60.151 byte); dicek ulang sesudah kasus pertama dan sesudah kasus ketiga.
+- Wajib owner, akun owner (`uid-uji`, provider password, email owner di payload):
+  ★S1 create `tandaKenal/uji-v12-tk` → "Simulated write allowed" (LOLOS, sesuai); ★S2 update jalur yang sama → "Simulated write allowed" (LOLOS,
+  sesuai); ★S3 delete jalur yang sama → "Simulated write allowed" (LOLOS, sesuai). Spanduk hasil ditutup dulu sebelum ★S2 dan ★S3 dijalankan, jadi
+  tiap hasil adalah hasil kasusnya sendiri. Rincian Playground menilai `masuk()` lalu `owner()`.
+- **Yang berbeda dari tabel Wajib owner:** dokumen uji yang dikirim hanya berisi kolom `id` (bukan isian TK lengkap, dan ★S2 tanpa `sasaran: null`).
+  Untuk akun owner aturan blok ini tidak membaca isi dokumen, jadi hasilnya tidak bergantung padanya; isian TK lengkap dan semua kasus staf
+  dibuktikan emulator (job `rules` di PR, hijau sebelum terbit).
+- Owner klik **Publish** 19 Nov 2026 ±20.45 WIB (riwayat Console "Today • 8:45 PM"; sebelumnya v11 "Yesterday • 12:38 PM"). Sesudah halaman dimuat
+  ulang, aturan yang berlaku = berkas ini (sidik sama, baris 2 `ATURAN FIRESTORE v12 FINAL`, tanpa draf tertunda).
+- Urutan terhadap CI: saat Publish, job `uji`, `uji-peramban`, dan `rules` (emulator) sudah hijau; job `gladi` (latihan tutup buku di emulator dengan
+  aturan cabang ini) masih berjalan — langkah intinya selesai sukses ±20.53 WIB, sesudah Publish.
