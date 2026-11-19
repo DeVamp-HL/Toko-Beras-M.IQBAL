@@ -87,8 +87,28 @@ export const printerStatus = (lewat) => panggilAsli('PrinterSunmi', 'status', { 
 export const printerBt = () => panggilAsli('PrinterSunmi', 'bt', {});
 /** Mode kertas printer NT32x: 1 struk · 2 label bercelah · 3 stiker tanpa alas (dokumen SUNMI setPrintMode). */
 export const MODE_KERTAS = [[1, 'struk (kertas bersambung)'], [2, 'label (stiker bercelah)'], [3, 'stiker tanpa alas']];
-/** Jawaban printer saat ditanya modenya → 'struk' | 'label' | '' (tidak dikenali; teks aslinya tetap ditampilkan). */
-export function bacaModeKertas(teks) { const t = String(teks || '').toLowerCase(); return t.indexOf('label') >= 0 ? 'label' : t.indexOf('receipt') >= 0 ? 'struk' : ''; }
+/** Jawaban printer saat ditanya modenya → 'struk' | 'label' | 'tanpa-alas' | '' (tidak dikenali / belum menjawab; teks aslinya tetap ditampilkan).
+ *  Tiga jawaban ini terbaca dari printer toko (uji owner 20 Nov 2026): "Receipt printer", "label printer", "Linerless printer". */
+export function bacaModeKertas(teks) {
+  const t = String(teks || '').toLowerCase();
+  return t.indexOf('linerless') >= 0 ? 'tanpa-alas' : t.indexOf('label') >= 0 ? 'label' : t.indexOf('receipt') >= 0 ? 'struk' : '';
+}
+/** Nama mode untuk layar. */
+export const MODE_NAMA = { struk: 'STRUK (kertas bersambung)', label: 'LABEL (stiker bercelah)', 'tanpa-alas': 'STIKER TANPA ALAS' };
+/** Kalimat hasil tanya mode untuk layar: { teks, baik }. Jawaban kosong = printer belum menjawab (uji owner: sesaat sesudah pindah mode). */
+export function kalimatModeKertas(teksPrinter) {
+  const asli = String(teksPrinter == null ? '' : teksPrinter).trim(); const m = bacaModeKertas(asli);
+  if (!asli) return { teks: 'Printer belum menjawab modenya — biasanya masih berpindah mode; tunggu beberapa detik lalu tekan Baca mode sekarang lagi', baik: false };
+  return { teks: 'Printer menjawab: ' + (m ? 'mode ' + MODE_NAMA[m] : 'tidak dikenali') + ' — "' + asli + '"', baik: !!m };
+}
+/** Cara label ('tspl' = bahasa label untuk stiker bercelah · selain itu bahasa struk untuk kertas bersambung) lawan mode printer.
+ *  '' = boleh dikirim; selain itu kalimat tolakannya. Hanya dua pasangan yang PASTI salah yang ditolak; mode tanpa alas & mode yang tidak
+ *  terbaca dibiarkan lewat (belum terbukti bahasanya). */
+export function labelTolakMode(cara, mode) {
+  if (cara === 'tspl' && mode === 'struk') return 'Printer sedang di mode STRUK (kertas bersambung), sedangkan label ini disusun untuk stiker bercelah — pindahkan printer ke mode label di layar Perangkat, atau ganti cara label ke "kertas bersambung"';
+  if (cara !== 'tspl' && mode === 'label') return 'Printer sedang di mode LABEL (stiker bercelah), sedangkan label ini disusun untuk kertas bersambung — pindahkan printer ke mode struk di layar Perangkat, atau ganti cara label ke "stiker bercelah"';
+  return '';
+}
 /** Tanya mode kertas printer: { mode: teks dari printer }. */
 export const printerMode = (lewat) => panggilAsli('PrinterSunmi', 'mode', { lewat: lewat === 'bt' ? 'bt' : 'usb' });
 /** Pindahkan mode kertas printer (1 | 2 | 3). Printer tidak mengabari hasilnya — tanyakan lagi modenya beberapa detik kemudian. */
@@ -98,6 +118,17 @@ export function printerSetelMode(mode, lewat) {
 }
 /** Kirim perintah label (TSPL) ke printer yang sedang di mode label. Printer label TIDAK mengabari hasil cetak. Hasil { nama, byte }. */
 export const kirimTspl = (data, lewat) => panggilAsli('PrinterSunmi', 'tspl', { data: String(data || ''), lewat: lewat === 'bt' ? 'bt' : 'usb' });
+/** Sebelum label dikirim lewat SDK SUNMI: tanya mode printer, tolak (kode 'SALAH_MODE') bila bahasa labelnya pasti salah untuk mode itu.
+ *  Uji owner 20 Nov 2026: label bahasa struk ke printer di mode label dijawab "kertas habis"; perintah label ke printer di mode struk
+ *  berangkat tanpa kabar. cara 'tspl': printer HARUS bisa ditanya (galat tanya dilempar apa adanya — pintu label butuh sambungan yang sama).
+ *  Cara lain: tanya yang gagal dibiarkan, supaya jalur cetak biasa tetap mencoba dan tetap bisa jatuh ke kabel. Hasil { mode, ditanya }. */
+export async function pastikanModeLabel(cara, lewat) {
+  let mode = '';
+  try { const r = await printerMode(lewat); mode = bacaModeKertas(r && r.mode); }
+  catch (e) { if (cara === 'tspl') throw e; return { mode: '', ditanya: false }; }
+  const tolak = labelTolakMode(cara, mode); if (tolak) throw galat(tolak, 'SALAH_MODE');
+  return { mode, ditanya: true };
+}
 
 // ---------- scanner ----------
 const _pendengarPindai = [];
@@ -224,6 +255,19 @@ export const lampuKertas = () => lampuKejadian('kertas');
 export const sidikJariInfo = () => panggilAsli('Biometrik', 'info', {});
 /** Minta satu kali tempel jari (dialog Android). Lulus = { ok: true }; batal / gagal = menolak dengan kalimat dari Android. */
 export const sidikJariUji = () => panggilAsli('Biometrik', 'minta', { judul: 'Uji sidik jari', ket: 'Tempelkan jari yang sudah didaftarkan di tablet ini' });
+/** Tolakan uji sidik jari (kode BIOMETRIK_<angka Android>) → { batal, kalimat }. batal = orangnya sendiri yang menutup, bukan kegagalan.
+ *  Angka = BiometricPrompt.ERROR_*: 5 dibatalkan sistem · 10 dibatalkan orang · 13 tombol Batal · 3 kehabisan waktu · 7/9 terkunci ·
+ *  11 belum ada jari terdaftar · 1/12 sensor tidak ada / tidak bisa dipakai. */
+export function sidikJariTolak(e) {
+  const kode = String((e && e.code) || ''); const n = /^BIOMETRIK_(\d+)$/.test(kode) ? Number(kode.slice(10)) : -1;
+  if (n === 5 || n === 10 || n === 13) return { batal: true, kalimat: 'uji dibatalkan' };
+  if (n === 3) return { batal: false, kalimat: 'tidak ada jari yang ditempelkan sampai waktunya habis' };
+  if (n === 7) return { batal: false, kalimat: 'terlalu banyak percobaan gagal — tunggu sekitar 30 detik lalu coba lagi' };
+  if (n === 9) return { batal: false, kalimat: 'sensor terkunci karena terlalu banyak percobaan gagal — buka kunci tablet dengan PIN/pola dulu' };
+  if (n === 11) return { batal: false, kalimat: 'belum ada jari yang didaftarkan di Setelan tablet' };
+  if (n === 1 || n === 12) return { batal: false, kalimat: 'sensor sidik jari tidak ada atau sedang tidak bisa dipakai' };
+  return { batal: false, kalimat: (e && e.message) ? String(e.message) : String(e) };
+}
 
 // ---------- kartu kemampuan (layar diagnosis) ----------
 /** Ringkasan apa yang ada di perangkat ini. Tidak pernah melempar. */

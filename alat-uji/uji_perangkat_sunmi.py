@@ -205,16 +205,45 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   cek('pindah mode: mode di luar 1, 2, 3 ditolak TANPA memanggil printer', nTolak === 6 && A.hitung('PrinterSunmi.setelMode') === 1, nTolak + ' / ' + A.hitung('PrinterSunmi.setelMode'));
   cek('mode kertas: tiga mode bernomor 1 2 3 (struk, label, tanpa alas)', MODE_KERTAS.map((x) => x[0]).join(',') === '1,2,3' && /struk/.test(MODE_KERTAS[0][1]) && /label/.test(MODE_KERTAS[1][1]) && /tanpa alas/.test(MODE_KERTAS[2][1]));
   cek('jawaban printer dibaca: struk / label / tidak dikenali', bacaModeKertas('Receipt printer') === 'struk' && bacaModeKertas('label printer') === 'label' && bacaModeKertas('') === '' && bacaModeKertas(null) === '' && bacaModeKertas('NORMAL') === '');
+  // uji owner 20 Nov 2026 (APK 1.22): printer toko menjawab "Linerless printer" untuk mode 3, dan "" sesaat sesudah pindah mode
+  cek('jawaban "Linerless printer" = mode tanpa alas (bukan "tidak dikenali")', bacaModeKertas('Linerless printer') === 'tanpa-alas' && bacaModeKertas('LINERLESS PRINTER') === 'tanpa-alas' && MODE_NAMA['tanpa-alas'] === 'STIKER TANPA ALAS');
+  const km = (t) => kalimatModeKertas(t);
+  cek('kalimat mode: tiga mode terbaca = baik, teks asli printer ikut', km('Receipt printer').baik && /mode STRUK \(kertas bersambung\) — "Receipt printer"$/.test(km('Receipt printer').teks)
+    && km('label printer').baik && /mode LABEL \(stiker bercelah\)/.test(km('label printer').teks) && km('Linerless printer').baik && /mode STIKER TANPA ALAS — "Linerless printer"$/.test(km('Linerless printer').teks), km('Linerless printer').teks);
+  cek('kalimat mode: jawaban kosong = "belum menjawab", bukan "tidak dikenali"', !km('').baik && /belum menjawab/.test(km('').teks) && !/tidak dikenali/.test(km('').teks) && !km(null).baik && /belum menjawab/.test(km('  ').teks)
+    && !km('NORMAL').baik && /tidak dikenali — "NORMAL"$/.test(km('NORMAL').teks), km('').teks);
+  cek('label lawan mode: hanya dua pasangan yang pasti salah yang ditolak', /mode STRUK/.test(labelTolakMode('tspl', 'struk')) && /mode LABEL/.test(labelTolakMode('struk', 'label'))
+    && labelTolakMode('tspl', 'label') === '' && labelTolakMode('struk', 'struk') === '' && labelTolakMode('struk', 'tanpa-alas') === '' && labelTolakMode('tspl', 'tanpa-alas') === ''
+    && labelTolakMode('struk', '') === '' && labelTolakMode('tspl', '') === '');
   cek('tanya mode: jalur diteruskan, jawaban printer pulang apa adanya', (await printerMode('bt')).mode === 'label printer' && isiTanyaMode.lewat === 'bt' && (await printerMode(), isiTanyaMode.lewat === 'usb'));
   await kirimTspl('CLS\nPRINT 1\n', 'usb');
   cek('perintah label: data & jalur diteruskan apa adanya', isiTspl && isiTspl.data === 'CLS\nPRINT 1\n' && isiTspl.lewat === 'usb', JSON.stringify(isiTspl));
   await printerStatus('bt'); const lewatBt = isiStatus.lewat; await printerStatus();
   cek('periksa printer: jalur bt diteruskan; tanpa isi = usb', lewatBt === 'bt' && isiStatus.lewat === 'usb');
   cek('daftar printer Bluetooth pulang apa adanya', (await printerBt()).daftar[0].nama === 'CloudPrint_0001');
+  let isiJaga = null;
+  const jaga = (jawab) => pasangAplikasi(['PrinterSunmi'], { 'PrinterSunmi.mode': (isi) => { isiJaga = isi; return typeof jawab === 'function' ? jawab() : { mode: jawab }; } });
+  const coba = async (cara, lewat) => { try { return { hasil: await pastikanModeLabel(cara, lewat) }; } catch (e) { return { galat: e }; } };
+  A = jaga('label printer'); let pj = await coba('struk', 'bt');
+  cek('penjaga label: bahasa struk ke printer di mode LABEL ditolak (SALAH_MODE) — printer ditanya lewat jalur yang sama', pj.galat && pj.galat.code === 'SALAH_MODE' && /mode LABEL/.test(pj.galat.message) && isiJaga.lewat === 'bt' && A.catat.join(',') === 'PrinterSunmi.mode', pj.galat && pj.galat.message);
+  A = jaga('Receipt printer'); pj = await coba('tspl', 'usb');
+  cek('penjaga label: perintah label ke printer di mode STRUK ditolak (SALAH_MODE)', pj.galat && pj.galat.code === 'SALAH_MODE' && /mode STRUK/.test(pj.galat.message) && isiJaga.lewat === 'usb', pj.galat && pj.galat.message);
+  A = jaga('label printer'); pj = await coba('tspl', 'bt');
+  const pj2 = (A = jaga('Receipt printer'), await coba('struk', 'usb')); const pj3 = (A = jaga('Linerless printer'), await coba('struk', 'usb')); const pj4 = (A = jaga(''), await coba('tspl', 'usb'));
+  cek('penjaga label: pasangan yang cocok, mode tanpa alas, dan jawaban kosong dibiarkan lewat', pj.hasil && pj.hasil.mode === 'label' && pj.hasil.ditanya && pj2.hasil && pj2.hasil.mode === 'struk'
+    && pj3.hasil && pj3.hasil.mode === 'tanpa-alas' && pj4.hasil && pj4.hasil.mode === '' && pj4.hasil.ditanya, JSON.stringify([pj, pj2, pj3, pj4]));
+  A = jaga(tolak('Printer SUNMI tidak ditemukan di USB', 'BELUM_KIRIM')); pj = await coba('struk', 'usb'); const pj5 = await coba('tspl', 'usb');
+  cek('penjaga label: printer tak bisa ditanya — bahasa struk dibiarkan (jalur cetak masih bisa jatuh ke kabel), perintah label melempar sebab aslinya', pj.hasil && pj.hasil.ditanya === false && pj.hasil.mode === ''
+    && pj5.galat && pj5.galat.code === 'BELUM_KIRIM' && /tidak ditemukan di USB/.test(pj5.galat.message), JSON.stringify(pj) + ' ' + (pj5.galat && pj5.galat.message));
 
   A = pasangAplikasi(['Biometrik'], { 'Biometrik.info': () => ({ ada: false, terdaftar: false, kode: 12, kalimat: 'tablet ini tidak punya sensor sidik jari' }), 'Biometrik.minta': (isi) => ({ ok: true, isi }) });
   const KB = await kemampuan();
   cek('kemampuan: sidik jari ditanya bila pluginnya ada', KB.plugin.Biometrik === true && KB.biometrik && KB.biometrik.ada === false && KB.biometrik.kode === 12, JSON.stringify(KB));
+  const st = (kode, pesan) => { const e = new Error(pesan || 'x'); if (kode) e.code = kode; return sidikJariTolak(e); };
+  cek('sidik jari dibatalkan orangnya (kode 5, 10, 13) = batal berkalimat toko, bukan kegagalan', [5, 10, 13].every((k) => st('BIOMETRIK_' + k, 'Fingerprint operation canceled by user.').batal && st('BIOMETRIK_' + k).kalimat === 'uji dibatalkan'));
+  cek('sidik jari gagal sungguhan tetap gagal: terkunci, belum ada jari, tanpa sensor; kode tak dikenal = pesan aslinya', !st('BIOMETRIK_7').batal && /terlalu banyak/.test(st('BIOMETRIK_7').kalimat)
+    && /belum ada jari/.test(st('BIOMETRIK_11').kalimat) && /sensor/.test(st('BIOMETRIK_12').kalimat) && !st('BIOMETRIK_99', 'aneh').batal && st('BIOMETRIK_99', 'aneh').kalimat === 'aneh'
+    && st('BIOMETRIK_GAGAL', 'Layar aplikasi belum siap').kalimat === 'Layar aplikasi belum siap' && !st('', 'tanpa kode').batal && st('BIOMETRIK_100').batal === false);
   cek('uji sidik jari memanggil Biometrik.minta; info pulang apa adanya', (await sidikJariUji()).isi.judul === 'Uji sidik jari' && (await sidikJariInfo()).kalimat === 'tablet ini tidak punya sensor sidik jari');
   A = pasangAplikasi(['CetakUsb'], {}); const KB0 = await kemampuan();
   cek('aplikasi lama tanpa plugin Biometrik: tidak dipanggil, biometrik = null', KB0.biometrik === null && KB0.plugin.Biometrik === false && A.hitung('Biometrik.info') === 0, A.catat.join(','));
@@ -442,6 +471,15 @@ def periksa_statis(perangkat_js):
     ok('printer.js S4: label stiker bercelah lewat SDK memakai pintu label (kirimTspl); selain itu byte yang sama lewat jalur cetak biasa; tanpa printer = melempar',
        "if (l.cara === 'tspl' && (j === 'sunmi' || j === 'sunmi-bt')) {" in pr and "const r = await kirimTspl(l.teks.join('\\n') + '\\n', lewatJalur(j));" in pr
        and "const j = pilih || await jalurCetak(); if (j === 'dialog') throw new Error('Tidak ada printer di perangkat ini — label dicetak dari tablet kasir');" in pr and "labelCara: 'struk'" in pr)
+    # uji owner 20 Nov 2026: label yang bahasanya salah untuk mode printer — ditanya & ditolak SEBELUM dikirim, hanya di jalur SDK
+    cl = pr[pr.index('export async function cetakLabel('):]
+    jg = "if (j === 'sunmi' || j === 'sunmi-bt') await pastikanModeLabel(l.cara, lewatJalur(j));"
+    ok('printer.js: mode printer dicocokkan dengan cara label SEBELUM ada yang dikirim (pintu label maupun jalur cetak biasa)',
+       cl.count(jg) == 1 and cl.index('const l = susunLabel(isi, jumlah, timpa);') < cl.index(jg) < cl.index('await kirimTspl(') < cl.index('await kirimCetak(l.byte, j);')
+       and 'pastikanModeLabel }' in pr)
+    ok('layar Perangkat: hasil tanya mode & batal sidik jari memakai kalimat dari perangkat.js',
+       "const k = kalimatModeKertas(r && r.mode);" in ujs and "tulisLog('Mode kertas: ' + k.teks, !k.baik);" in ujs
+       and "catch (e) { const t = sidikJariTolak(e); tulisLog('Sidik jari: ' + t.kalimat, !t.batal); }" in ujs and 'bacaModeKertas' not in ujs)
     # 19 Nov 2026 (ketahuan saat layar Perangkat dicoba): label contoh dulu selalu lewat jalur TERSIMPAN walau formulir memilih jalur lain
     ok('printer.js S4: label contoh memakai jalur yang dipilih di formulir (timpa.jalur), bukan hanya yang tersimpan — hanya di aplikasi',
        "const pilih = timpa && asliAda() && PR_JALUR.some((x) => x[0] === timpa.jalur) ? (timpa.jalur === 'usb' ? 'aplikasi' : timpa.jalur) : '';" in pr
@@ -481,12 +519,23 @@ MUTASI = [
     ('dua jalur gagal: sebab jalur yang dipilih hilang dari kabar', 'js', "const g = galat(sebab + ' · kirim langsung lewat kabel USB juga gagal: ' + pesanGalat(e3), e3 && e3.code);", "const g = galat(pesanGalat(e3), e3 && e3.code);"),
     ('dua jalur gagal: kode galat jalur kabel hilang', 'js', "pesanGalat(e3), e3 && e3.code);", "pesanGalat(e3), 'BELUM_KIRIM');"),
     ('dua jalur gagal: sebab utama tidak dibawa terpisah', 'js', "g.sebabUtama = sebab; throw g;", "throw g;"),
+    ('mode tanpa alas tidak dikenali', 'js', "return t.indexOf('linerless') >= 0 ? 'tanpa-alas' : t.indexOf('label') >= 0", "return t.indexOf('label') >= 0"),
+    ('jawaban mode kosong disebut "tidak dikenali"', 'js', "  if (!asli) return { teks: 'Printer belum menjawab modenya", "  if (false) return { teks: 'Printer belum menjawab modenya"),
+    ('penjaga label: perintah label ke mode struk lolos', 'js', "if (cara === 'tspl' && mode === 'struk') return", "if (false) return"),
+    ('penjaga label: bahasa struk ke mode label lolos', 'js', "if (cara !== 'tspl' && mode === 'label') return", "if (false) return"),
+    ('penjaga label: tolakan tidak pernah dilempar', 'js', "const tolak = labelTolakMode(cara, mode); if (tolak) throw galat(tolak, 'SALAH_MODE');", ""),
+    ('penjaga label: tolakan tanpa kode SALAH_MODE', 'js', "if (tolak) throw galat(tolak, 'SALAH_MODE');", "if (tolak) throw galat(tolak, 'BELUM_KIRIM');"),
+    ('penjaga label: printer tak bisa ditanya menghentikan label bahasa struk', 'js', "catch (e) { if (cara === 'tspl') throw e; return { mode: '', ditanya: false }; }", "catch (e) { throw e; }"),
+    ('penjaga label: perintah label dikirim buta saat printer tak bisa ditanya', 'js', "catch (e) { if (cara === 'tspl') throw e; return { mode: '', ditanya: false }; }", "catch (e) { return { mode: '', ditanya: false }; }"),
+    ('penjaga label: mode ditanya lewat jalur lain', 'js', "try { const r = await printerMode(lewat); mode = bacaModeKertas(r && r.mode); }", "try { const r = await printerMode(); mode = bacaModeKertas(r && r.mode); }"),
+    ('sidik jari dibatalkan dilaporkan sebagai kegagalan', 'js', "if (n === 5 || n === 10 || n === 13) return { batal: true, kalimat: 'uji dibatalkan' };", ""),
+    ('sidik jari terkunci dilaporkan sebagai batal', 'js', "if (n === 7) return { batal: false,", "if (n === 7) return { batal: true,"),
     ('jalur aplikasi ikut memakai SDK SUNMI', 'js', "if (jalur === 'sunmi' || jalur === 'sunmi-bt') {", "if (jalur) {"),
     ('S4: jalur Bluetooth diam-diam mencetak lewat kabel', 'js', "{ data, lewat: lewatJalur(jalur) }", "{ data }"),
     ('S4: jalur kabel dianggap Bluetooth', 'js', "(jalur === 'sunmi-bt' ? 'bt' : 'usb');", "(jalur ? 'bt' : 'usb');"),
     ('S4: hasil cetak Bluetooth dilaporkan sebagai jalur kabel', 'js', "return { jalur, nama: (r && r.nama) || '', peringatan:", "return { jalur: 'sunmi', nama: (r && r.nama) || '', peringatan:"),
     ('S4: mode kertas di luar 1–3 diteruskan ke printer', 'js', "if (!MODE_KERTAS.some((x) => x[0] === m)) return Promise.reject(galat('Mode kertas tidak dikenal', 'SALAH_ISI'));", ""),
-    ('S4: jawaban mode label terbaca sebagai struk', 'js', "return t.indexOf('label') >= 0 ? 'label' : t.indexOf('receipt') >= 0 ? 'struk' : '';", "return t.indexOf('label') >= 0 ? 'struk' : t.indexOf('receipt') >= 0 ? 'label' : '';"),
+    ('S4: jawaban mode label terbaca sebagai struk', 'js', ": t.indexOf('label') >= 0 ? 'label' : t.indexOf('receipt') >= 0 ? 'struk' : '';", ": t.indexOf('label') >= 0 ? 'struk' : t.indexOf('receipt') >= 0 ? 'label' : '';"),
     ('S4: jawaban mode tak dikenal dianggap struk', 'js', "t.indexOf('receipt') >= 0 ? 'struk' : '';", "'struk';"),
     ('S4: jalur perintah label tidak diteruskan', 'js', "{ data: String(data || ''), lewat: lewat === 'bt' ? 'bt' : 'usb' }", "{ data: String(data || '') }"),
     ('S4: lampu yang diatur "tidak menyala" tetap menyala', 'js', "  if (!a.warna || a.warna === LAMPU_MATI || !LAMPU_WARNA[a.warna]) return Promise.resolve({ ok: false, mati: true });\n", ""),
