@@ -292,6 +292,13 @@ def periksa_statis(perangkat_js):
     ok('app.js: keydown panel PIN menampung dulu, tidak memanggil tekanPin langsung', 'ketikTambah(' in blok and 'tekanPin(' not in blok and 'setTimeout(lepasKetik, KETIK_TUNGGU)' in blok and 'ev.timeStamp' in blok, blok[:200])
     ok('app.js: ketikan mesin / berbarengan siaran scanner dibuang tanpa memeriksa PIN', "if (ketikMesin(t) || Date.now() - _pindaiPada < 600) { _pinKetik = ''; gambarPanelOrang(); pesanOrang(KALIMAT_SCAN); return; }" in app)
     ok('index.html: perangkat.js dipramuat', '<link rel="modulepreload" href="js/inti/perangkat.js">' in baca('baru', 'index.html'))
+    # 19 Nov 2026 (owner, di CPad): scanner & lampu sekartu dengan "Periksa printer" terbaca seolah printer punya scanner → dua alat, dua kartu
+    hal = baca('baru', 'uji-cetak.html')
+    kartu = lambda i: hal[hal.index('<section id="%s"' % i):].split('</section>', 1)[0] if ('<section id="%s"' % i) in hal else ''
+    ok('uji-cetak.html: scanner & lampu di kartu TABLET, "Periksa printer" di kartu PRINTER',
+       'id="ucPindai"' in kartu('ucSunmi') and 'id="ucLampu"' in kartu('ucSunmi') and 'ucStatus' not in kartu('ucSunmi')
+       and 'id="ucStatus"' in kartu('ucPrinterSunmi') and 'ucPindai' not in kartu('ucPrinterSunmi') and 'ucLampu' not in kartu('ucPrinterSunmi')
+       and "$('ucPrinterSunmi').hidden = !app; $('ucSunmi').hidden = !app;" in baca('baru', 'js', 'layar', 'uji-cetak.js'))
     pr = baca('baru', 'js', 'inti', 'printer.js')
     ok('printer.js: teks jalur lama tidak berubah di catatan struk', "j === 'aplikasi' ? 'aplikasi tablet' : 'peramban'" in pr and "PR.namaJalur(r.jalur)" in baca('baru', 'js', 'layar', 'jual.js'))
     ok('printer.js: jalur bawaan tetap USB langsung; SDK SUNMI hanya bila dipilih di perangkat', "jalur: 'usb' };" in pr and "return a.jalur === 'sunmi' ? 'sunmi' : 'aplikasi';" in pr)
