@@ -52,6 +52,17 @@ jobs:
         with:
           python-version: '3.12'
 
+      # 19 Nov 2026 (run 6): Maven Central menjawab 429 "Too Many Requests" ke runner → bangun gagal sebelum satu baris pun dikompilasi.
+      # Pustaka yang sudah terunduh disimpan antar-run supaya bangun berikutnya nyaris tidak menyentuh Maven Central.
+      - name: Simpanan pustaka Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper
+          key: gradle-apk-${{ hashFiles('apk/package.json', 'apk/pasang.py') }}
+          restore-keys: gradle-apk-
+
       - name: Pasang Capacitor
         working-directory: apk
         run: |
@@ -78,8 +89,20 @@ jobs:
         run: |
           chmod +x gradlew
           mkdir -p ../keluaran
+          # Bangun, dicoba ulang HANYA kalau gagalnya unduhan pustaka (429 / putus / habis waktu) — galat kompilasi tidak diulang, langsung gagal.
+          # Keputusan owner 26 Sep 2026: tiap percobaan ulang tercatat — satu baris DICOBA ULANG di log + peringatan di ringkasan run.
+          bangun() {
+            local n
+            for n in 1 2 3; do
+              if ./gradlew --no-daemon "$1" 2>&1 | tee "$RUNNER_TEMP/gradle-$n.log"; then return 0; fi
+              if [ "$n" = 3 ] || ! grep -qE 'Received status code (429|5[0-9][0-9])|Read timed out|Connection (reset|refused|timed out)|Could not GET ' "$RUNNER_TEMP/gradle-$n.log"; then return 1; fi
+              echo "DICOBA ULANG: bangun APK ($1) — unduhan pustaka gagal: $(grep -oE 'Received status code [0-9]+[^.]*|Read timed out|Connection (reset|refused|timed out)' "$RUNNER_TEMP/gradle-$n.log" | sort | uniq -c | sort -rn | head -1 | sed 's/^ *//') (percobaan $((n + 1)) dari 3, menunggu $((n * 60)) detik)"
+              echo "::warning title=DICOBA ULANG::bangun APK ($1) — unduhan pustaka gagal, percobaan $((n + 1)) dari 3"
+              sleep $((n * 60))
+            done
+          }
           if [ -n "$KEYSTORE_B64" ]; then
-            ./gradlew --no-daemon assembleRelease
+            bangun assembleRelease
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kunci.jks"
             BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
             "$BT/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/rata.apk"
@@ -93,7 +116,7 @@ jobs:
             rm -f "$RUNNER_TEMP/kunci.jks"
             echo "### APK RILIS bertanda tangan kunci toko (V1 + V2 terbukti) — bisa dipasang menimpa versi lama" >> "$GITHUB_STEP_SUMMARY"
           else
-            ./gradlew --no-daemon assembleDebug
+            bangun assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk "../keluaran/toko-beras-kasir-1.${{ github.run_number }}-debug.apk"
             echo "### APK DEBUG (rahasia APK_KEYSTORE_* belum ada) — memasang versi baru = hapus aplikasi lama dulu" >> "$GITHUB_STEP_SUMMARY"
           fi
