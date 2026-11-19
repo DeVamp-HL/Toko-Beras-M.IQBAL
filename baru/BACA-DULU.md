@@ -2901,6 +2901,12 @@ Owner 19 Nov: sistem harus optimal di ekosistem SUNMI dan kelak masuk **SUNMI Ap
 **Batas bukti**: perangkat keras SUNMI tidak bisa diuji di Mac / runner. Yang terbukti di sini = logika halaman, pemasang, dan APK yang terbangun. Yang
 HARUS dibuktikan di CPad: cetak lewat SDK SUNMI, keadaan printer (buka tutupnya), scan di panel PIN, lampu, APK baru menimpa yang lama.
 
+**Uji owner di CPad, 19 Nov (APK 1.13)** — terbukti dari layar *Perangkat tablet ini*: tablet melapor "SUNMI OrderPAD 3 · Android 14"; printer
+NT320_L (firmware 4.1.22, SUNMI APP 4.1.44 — di atas syarat pustaka) menjawab **Periksa printer** lewat SDK SUNMI 1.0.16 dengan "siap"; lampu tablet
+"ada". Belum dilaporkan: cetak contoh lewat jalur SDK SUNMI, scan di panel PIN, tombol lampu. Koreksi owner: **scanner ada di tablet, bukan di printer**
+(printer tidak punya scanner) — plugin `Pindai` memang mendengar scanner tablet, tetapi baris Scanner & Lampu dulu sekartu dengan "Periksa printer" dan
+terbaca keliru. Sekarang dua kartu: **Printer struk** dan **Tablet ini** (dijaga `uji_perangkat_sunmi.py`). Tablet ini juga punya NFC dan slot SIM.
+
 **Belum (paket S2/S3)**: kartu member QR (format & tautan pelanggan = keputusan owner); laci uang hanya untuk tunai (tegangan port RJ12 NT320 belum
 dipastikan — pembanding SUNMI lain 24 V/1 A); sidik jari sebagai konfirmasi; NFC; label TSPL (`sendTSPLData` sudah ada di SDK); jalur App Store menunggu
 legalitas usaha + SN perangkat masuk channel sendiri.

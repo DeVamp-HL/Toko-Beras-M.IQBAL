@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- Putaran T1: printer tablet ini (uji cetak + setelan per perangkat). Tanpa Firebase, tanpa script sebaris; hanya modul sendiri + huruf toko.
-     Paket S1 (19 Nov 2026): juga layar PERANGKAT — printer lewat SDK SUNMI, scanner, lampu, kartu nama aplikasi. -->
+     Paket S1 (19 Nov 2026): juga layar PERANGKAT — kartu "Printer struk" (keadaan lewat SDK SUNMI) dan kartu "Tablet ini" (scanner bawaan, lampu, kartu nama aplikasi). -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
@@ -58,13 +58,18 @@
         <p>Pilih <b>SDK SUNMI</b> → <b>Cetak contoh</b>. Kalau catatan menulis "TERCETAK lewat aplikasi tablet (SDK SUNMI)" dan struknya benar, tekan <b>Simpan untuk tablet ini</b>. Kalau tidak, kembalikan ke USB langsung.</p>
       </div>
     </section>
-    <section id="ucSunmi" hidden>
-      <h2>Perangkat SUNMI</h2>
-      <p id="ucKartu">Memeriksa aplikasi…</p>
+    <!-- Dua alat, dua kartu (19 Nov 2026): scanner & lampu milik TABLET, bukan printer — dulu sekartu dan terbaca seolah printer punya scanner. -->
+    <section id="ucPrinterSunmi" hidden>
+      <h2>Printer struk</h2>
+      <p>Kertas, tutup, macet, dan panas printer — ditanyakan lewat SDK SUNMI.</p>
       <button id="ucStatus" type="button">Periksa printer</button>
       <p id="ucStatusHasil"></p>
-      <p><b>Scanner:</b> <span id="ucPindai">scan kode apa saja — hasilnya muncul di sini</span></p>
-      <p><b>Lampu:</b> <span id="ucLampu">belum diperiksa</span></p>
+    </section>
+    <section id="ucSunmi" hidden>
+      <h2>Tablet ini</h2>
+      <p id="ucKartu">Memeriksa aplikasi…</p>
+      <p><b>Scanner tablet:</b> <span id="ucPindai">scan kode apa saja dengan scanner bawaan tablet — hasilnya muncul di sini</span></p>
+      <p><b>Lampu tablet:</b> <span id="ucLampu">belum diperiksa</span></p>
       <button id="ucLampuHijau" type="button">Hijau</button>
       <button id="ucLampuMerah" type="button">Merah berkedip</button>
       <button id="ucLampuPadam" type="button">Padamkan</button>

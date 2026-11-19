@@ -92,7 +92,9 @@ async function periksaPrinter() {
   $('ucStatus').disabled = true; $('ucStatusHasil').textContent = 'Menanyakan printer…'; $('ucStatusHasil').className = '';
   try {
     const r = await printerStatus();
-    $('ucStatusHasil').textContent = 'Printer ' + (r.nama || 'SUNMI') + ': ' + r.kalimat + (r.sdk ? ' · SDK ' + r.sdk : '');
+    // pustaka melapor "SDK Version: 1.0.16 Print SDK for Android Copyright by SUNMI" — yang perlu dibaca owner cuma nomornya
+    const versi = (String(r.sdk || '').match(/\d+(?:\.\d+)+/) || [''])[0];
+    $('ucStatusHasil').textContent = 'Printer ' + (r.nama || 'SUNMI') + ': ' + r.kalimat + (versi ? ' · SDK SUNMI ' + versi : '');
     $('ucStatusHasil').className = r.siap ? 'baik' : 'awas'; tulisLog('Keadaan printer (SDK SUNMI): ' + r.status + ' — ' + r.kalimat, !r.siap);
   } catch (e) { $('ucStatusHasil').textContent = 'Printer tidak bisa ditanya lewat SDK SUNMI: ' + pesan(e); $('ucStatusHasil').className = 'awas'; tulisLog('Periksa printer gagal: ' + pesan(e), true); }
   $('ucStatus').disabled = false;
@@ -110,7 +112,7 @@ async function tampilSunmi() {
   const l = k.lampu;
   $('ucLampu').textContent = !l ? 'tidak ada di aplikasi ini' : l.dukung ? 'ada' : 'tidak didukung perangkat ini (kode ' + l.kode + ')';
   const p = k.pindai;
-  if (p && !p.terpasang) $('ucPindai').textContent = 'perangkat ini tidak punya layanan scanner SUNMI';
+  if (p && !p.terpasang) $('ucPindai').textContent = 'tablet ini tidak punya layanan scanner SUNMI';
   else if (!p) $('ucPindai').textContent = 'tidak ada di aplikasi ini';
   $('ucKemampuan').textContent = JSON.stringify(k, null, 2); $('ucKemampuan').hidden = false;
 }
@@ -131,7 +133,7 @@ function mulai() {
   $('ucDukung').textContent = app ? 'Aplikasi tablet kasir — cetak langsung ke printer USB.'
     : usbAda() ? 'Peramban biasa (WebUSB). Di Sunmi CPad pakai aplikasi tablet kasir (APK).' : 'Peramban ini tidak bisa mencetak ke USB — pakai aplikasi tablet kasir (APK).';
   $('ucDukung').className = app ? 'baik' : 'awas';
-  $('ucPilihBaris').hidden = app; $('ucJalurBaris').hidden = !app; $('ucSunmi').hidden = !app;
+  $('ucPilihBaris').hidden = app; $('ucJalurBaris').hidden = !app; $('ucPrinterSunmi').hidden = !app; $('ucSunmi').hidden = !app;
   if (app) {
     $('ucStatus').addEventListener('click', periksaPrinter);
     $('ucLampuHijau').addEventListener('click', () => cobaLampu('hijau', { batasMs: 3000 }, 'hijau'));
