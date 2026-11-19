@@ -2903,10 +2903,34 @@ HARUS dibuktikan di CPad: cetak lewat SDK SUNMI, keadaan printer (buka tutupnya)
 
 **Uji owner di CPad, 19 Nov (APK 1.13)** — terbukti dari layar *Perangkat tablet ini*: tablet melapor "SUNMI OrderPAD 3 · Android 14"; printer
 NT320_L (firmware 4.1.22, SUNMI APP 4.1.44 — di atas syarat pustaka) menjawab **Periksa printer** lewat SDK SUNMI 1.0.16 dengan "siap"; lampu tablet
-"ada". Belum dilaporkan: cetak contoh lewat jalur SDK SUNMI, scan di panel PIN, tombol lampu. Koreksi owner: **scanner ada di tablet, bukan di printer**
+"ada". Malamnya owner mengirim sisanya: lima struk nota tercatat "printer USB aplikasi tablet (SDK SUNMI)" (jalur SDK dipilih & disimpan), hasil scan
+tampil di kartu Tablet, panel jaga menulis "Itu hasil scan, bukan PIN". Belum terlihat: tombol lampu, pesan "tutup printer terbuka". Koreksi owner: **scanner ada di tablet, bukan di printer**
 (printer tidak punya scanner) — plugin `Pindai` memang mendengar scanner tablet, tetapi baris Scanner & Lampu dulu sekartu dengan "Periksa printer" dan
 terbaca keliru. Sekarang dua kartu: **Printer struk** dan **Tablet ini** (dijaga `uji_perangkat_sunmi.py`). Tablet ini juga punya NFC dan slot SIM.
 
 **Belum (paket S2/S3)**: kartu member QR (format & tautan pelanggan = keputusan owner); laci uang hanya untuk tunai (tegangan port RJ12 NT320 belum
 dipastikan — pembanding SUNMI lain 24 V/1 A); sidik jari sebagai konfirmasi; NFC; label TSPL (`sendTSPLData` sudah ada di SDK); jalur App Store menunggu
 legalitas usaha + SN perangkat masuk channel sendiri.
+
+## Paket S2a — scanner & NFC tablet mulai dipakai (19 Nov 2026)
+
+Keputusan owner 19 Nov (sesudah S1 lulus di CPad): scanner dipakai untuk **scan struk → notanya terbuka** dan **barcode kemasan → keranjang**; NFC
+dipakai untuk **kartu pelanggan** (tempel → pembeli terpilih di Jual). Dipecah dua menurut risikonya:
+
+- **S2a (paket ini — tanpa ubah aturan Firestore, tanpa bentuk data baru):**
+  - **Struk ber-QR.** `cetak()` di `jual.js` menyertakan QR nomor nota (`tanda-kenal-logika.js` › `tkQrNota`: `MIQ:N:t:<trxId>` / `g:<grupNota>` /
+    `i:<id>`, urutan pilih = `notaDari`) bila setelan printer perangkat itu mencentang "sertakan kode QR di bawah struk". Kunci yang tak bisa dicetak →
+    struk tanpa QR, bukan QR yang salah. Struk WhatsApp & dialog cetak tidak ber-QR.
+  - **Scan struk → lembar struk nota itu** (cetak ulang, WhatsApp, retur dari lembar yang sama). `app.js` meneruskan hasil scan ke layar Jual hanya
+    bila panel jaga tertutup dan layar Jual di depan; `pindai()` di `jual.js` memeriksa dulu: QR tidak utuh, lembar berisi isian masih terbuka
+    (bayar, jumlah, …), nota tidak ada di perangkat — masing-masing berkabar, tidak diam. Kode yang bukan struk toko didiamkan sampai S2b.
+  - **Pembaca NFC di aplikasi** (`apk/tambahan/NfcPlugin.java`, plugin `Nfc`): selama aplikasi di depan, kartu yang ditempelkan = kejadian `tempel`
+    berisi NOMOR SERI kartu (heksa). Tidak membaca isi, tidak menulis kartu. Nomor seri bisa ditiru → untuk mengenali, bukan membayar. Izin NFC
+    dipasang `pasang.py`; pembaca NFC tidak diwajibkan (aplikasi tetap terpasang di perangkat tanpa NFC). Layar *Perangkat tablet ini* › kartu
+    **Tablet ini** › baris **NFC tablet**: tempel kartu apa saja → nomornya muncul (bukti pembaca jalan SEBELUM kartu pelanggan dibeli).
+  - Penjaga: `uji_tanda_kenal.py` (jsc + statis + kontrol), `uji_perangkat_sunmi.py` (NFC di aplikasi tiruan, izin di manifest, plugin terdaftar).
+- **S2b (menyusul — koleksi baru + aturan Firestore v12):** pasangan kode → barang (barcode kemasan) dan nomor seri kartu → pembeli (kartu pelanggan).
+  Scanner & NFC hanya ada di tablet, dan tablet berjalan sebagai akun tablet → pendaftarannya harus bisa dari akun itu, bukan owner saja.
+
+**Batas bukti S2a**: NFC dan cetak QR tidak bisa diuji di Mac / runner. Yang HARUS dibuktikan di CPad dengan APK baru: baris NFC menulis nomor seri
+saat kartu ditempel; struk baru keluar ber-QR; scan struk itu di layar Jual membuka notanya.

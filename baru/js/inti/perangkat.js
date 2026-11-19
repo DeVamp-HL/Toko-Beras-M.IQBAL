@@ -1,6 +1,6 @@
 // PERANGKAT (paket S1, 19 Nov 2026) — SATU PINTU dari halaman ke perangkat keras lewat aplikasi tablet (APK Capacitor, apk/tambahan/*.java).
 // Tiap perangkat = satu plugin kecil di aplikasi: CetakUsb (byte ke printer USB), PrinterSunmi (SDK resmi SUNMI: keadaan printer, hasil cetak,
-// laci), Pindai (scanner bawaan), Lampu (LED CPad), Perangkat (kartu nama perangkat). Modul ini TIDAK membaca/menulis data toko dan TANPA impor
+// laci), Pindai (scanner bawaan), Lampu (LED CPad), Perangkat (kartu nama perangkat), Nfc (pembaca NFC bawaan). Modul ini TIDAK membaca/menulis data toko dan TANPA impor
 // (dijalankan apa adanya di jsc oleh alat-uji/uji_perangkat_sunmi.py). Di HP/Mac (bukan aplikasi) semua fungsinya diam: tidak ada yang melempar.
 
 const cap = () => (typeof window !== 'undefined' ? window.Capacitor : null);
@@ -91,6 +91,31 @@ export function padaPindai(fn) {
 /** Hasil scan terakhir sejak halaman dibuka ({ data, pada }) atau null. */
 export const pindaiTerakhir = () => _pindaiTerakhir;
 
+// ---------- NFC (paket S2a, 19 Nov 2026) ----------
+// Pembaca NFC bawaan tablet: tiap kartu / stiker yang ditempelkan = satu kejadian berisi NOMOR SERI kartu (heksadesimal). Nomor seri bisa ditiru:
+// dipakai untuk mengenali (kartu pelanggan), bukan untuk membayar.
+const _pendengarTempel = [];
+let _tempelTerpasang = false;
+let _tempelTerakhir = null;
+function pasangTempel() {
+  if (_tempelTerpasang || !asliAda() || adaPlugin('Nfc') === false) return;
+  _tempelTerpasang = true;
+  dengarAsli('Nfc', 'tempel', (d) => {
+    // nomor seri kartu = 4 sampai 10 byte heksadesimal; bentuk lain dibuang
+    const uid = d && typeof d.uid === 'string' ? d.uid.toUpperCase() : '';
+    if (!/^(?:[0-9A-F]{2}){4,10}$/.test(uid)) return;
+    _tempelTerakhir = { uid, jenis: Array.isArray(d.jenis) ? d.jenis.map(String) : [], pada: Date.now() };
+    _pendengarTempel.slice().forEach((f) => { try { f(_tempelTerakhir); } catch (e) { console.error('tempel', e); } });
+  });
+}
+/** Dengarkan kartu NFC yang ditempelkan ke tablet: fn({ uid, jenis, pada }). Hasil: fungsi pelepas. */
+export function padaTempel(fn) {
+  _pendengarTempel.push(fn); pasangTempel();
+  return () => { const i = _pendengarTempel.indexOf(fn); if (i >= 0) _pendengarTempel.splice(i, 1); };
+}
+/** Kartu terakhir yang ditempelkan sejak halaman dibuka ({ uid, jenis, pada }) atau null. */
+export const tempelTerakhir = () => _tempelTerakhir;
+
 // ---------- ketikan papan fisik vs scanner (panel PIN) ----------
 // Scanner bermode "ketikan" mengetik isi kode seperti papan ketik, jauh lebih cepat dari jari. Di panel PIN ketikan seperti itu dulu
 // terbaca sebagai PIN salah (5 kali = nama terkunci 5 menit). Ketikan papan fisik karena itu DITAMPUNG sebentar: beruntun secepat mesin = dibuang.
@@ -129,10 +154,10 @@ export const lampuGagal = () => lampu('merah', { kedip: true, nyalaMs: 250, mati
 // ---------- kartu kemampuan (layar diagnosis) ----------
 /** Ringkasan apa yang ada di perangkat ini. Tidak pernah melempar. */
 export async function kemampuan() {
-  const k = { aplikasi: asliAda(), plugin: {}, info: null, lampu: null, pindai: null };
+  const k = { aplikasi: asliAda(), plugin: {}, info: null, lampu: null, pindai: null, nfc: null };
   if (!k.aplikasi) return k;
-  ['CetakUsb', 'PrinterSunmi', 'Pindai', 'Lampu', 'Perangkat'].forEach((n) => { k.plugin[n] = adaPlugin(n); });
+  ['CetakUsb', 'PrinterSunmi', 'Pindai', 'Lampu', 'Perangkat', 'Nfc'].forEach((n) => { k.plugin[n] = adaPlugin(n); });
   const coba = (plugin, metode) => (k.plugin[plugin] === false ? Promise.resolve(null) : panggilAsli(plugin, metode, {}).catch(() => null));
-  [k.info, k.lampu, k.pindai] = await Promise.all([coba('Perangkat', 'info'), coba('Lampu', 'dukung'), coba('Pindai', 'info')]);
+  [k.info, k.lampu, k.pindai, k.nfc] = await Promise.all([coba('Perangkat', 'info'), coba('Lampu', 'dukung'), coba('Pindai', 'info'), coba('Nfc', 'info')]);
   return k;
 }

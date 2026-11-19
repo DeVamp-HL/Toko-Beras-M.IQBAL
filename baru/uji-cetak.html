@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <!-- Putaran T1: printer tablet ini (uji cetak + setelan per perangkat). Tanpa Firebase, tanpa script sebaris; hanya modul sendiri + huruf toko.
-     Paket S1 (19 Nov 2026): juga layar PERANGKAT — kartu "Printer struk" (keadaan lewat SDK SUNMI) dan kartu "Tablet ini" (scanner bawaan, lampu, kartu nama aplikasi). -->
+     Paket S1 (19 Nov 2026): juga layar PERANGKAT — kartu "Printer struk" (keadaan lewat SDK SUNMI) dan kartu "Tablet ini" (scanner bawaan, lampu, kartu nama aplikasi).
+     Paket S2a: baris NFC tablet — tempel kartu apa saja, nomor serinya muncul (bukti pembaca NFC jalan sebelum kartu pelanggan dibeli). -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
@@ -69,6 +70,7 @@
       <h2>Tablet ini</h2>
       <p id="ucKartu">Memeriksa aplikasi…</p>
       <p><b>Scanner tablet:</b> <span id="ucPindai">scan kode apa saja dengan scanner bawaan tablet — hasilnya muncul di sini</span></p>
+      <p><b>NFC tablet:</b> <span id="ucNfc">belum diperiksa</span></p>
       <p><b>Lampu tablet:</b> <span id="ucLampu">belum diperiksa</span></p>
       <button id="ucLampuHijau" type="button">Hijau</button>
       <button id="ucLampuMerah" type="button">Merah berkedip</button>

@@ -7,6 +7,7 @@ pasang.py — dijalankan GitHub Actions (apk.yml) SESUDAH `npx cap add android`:
   · izin & penyaring USB: printer Sunmi / kelas printer membuka aplikasi saat dicolok ("selalu" = izin tersimpan)
   · paket S1 (19 Nov 2026) — cangkang SUNMI: pustaka resmi SUNMI (printer luar + SunmiCustomer API) di app/build.gradle; <queries> layanan
     scanner & layanan perangkat SUNMI; penjaga "Hapus data" (manageSpaceActivity); allowBackup mati; configChanges anti layar kedip saat USB dicolok
+  · paket S2a (19 Nov 2026) — izin NFC (pembaca NFC bawaan tablet; tidak wajib ada di perangkat)
   · ikon & layar pembuka dari icon-sistem-512.png toko
   · versionCode/versionName dari nomor jalan Actions (APK baru bisa dipasang menimpa yang lama bila kuncinya sama)
 
@@ -27,6 +28,7 @@ PUSTAKA = ('com.sunmi:external-printerlibrary2:1.0.16', 'com.sunmi:customerservi
 TANYA_PAKET = ('com.sunmi.scanner', 'com.sunmi.tmservice')
 PENJAGA_DATA = PAKET + '.KelolaRuangActivity'
 ANTI_KEDIP = ('navigation', 'keyboard', 'keyboardHidden')
+IZIN_NFC = 'android.permission.NFC'
 
 
 def gagal(pesan):
@@ -69,6 +71,10 @@ def ubah_manifest(m):
                   '            <meta-data android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" android:resource="@xml/device_filter" />\n'
                   '        </activity>')
         m = m.replace('</activity>', tambah, 1)
+    # paket S2a: pembaca NFC bawaan tablet (kartu pelanggan). required="false" = aplikasi tetap bisa dipasang di perangkat tanpa NFC
+    if IZIN_NFC not in m:
+        if m.count('<application') != 1: raise Tolak('AndroidManifest punya %d <application' % m.count('<application'))
+        m = m.replace('<application', '<uses-permission android:name="%s" />\n    <uses-feature android:name="android.hardware.nfc" android:required="false" />\n\n    <application' % IZIN_NFC, 1)
     # paket S1: layanan SUNMI yang ditanya aplikasi (scanner, layanan perangkat)
     kurang = [p for p in TANYA_PAKET if ('<package android:name="%s"' % p) not in m]
     if kurang:
@@ -92,6 +98,7 @@ def ubah_manifest(m):
     wajib = ['android.hardware.usb.host', 'USB_DEVICE_ATTACHED', '@xml/device_filter', 'android:allowBackup="false"',
              'android:manageSpaceActivity="%s"' % PENJAGA_DATA, '<activity android:name="%s"' % PENJAGA_DATA]
     wajib += ['<package android:name="%s"' % p for p in TANYA_PAKET]
+    wajib += ['<uses-permission android:name="%s" />' % IZIN_NFC, '<uses-feature android:name="android.hardware.nfc" android:required="false" />']
     for w in wajib:
         if w not in m: raise Tolak('manifest tidak memuat ' + w)
     return m
@@ -117,7 +124,7 @@ def pasang_manifest():
     p = os.path.join(UTAMA, 'AndroidManifest.xml')
     try: m = ubah_manifest(baca(p))
     except Tolak as e: gagal(str(e))
-    tulis(p, m); print('  AndroidManifest.xml: usb.host + USB_DEVICE_ATTACHED + <queries> SUNMI + penjaga data + allowBackup mati + configChanges')
+    tulis(p, m); print('  AndroidManifest.xml: usb.host + USB_DEVICE_ATTACHED + <queries> SUNMI + izin NFC + penjaga data + allowBackup mati + configChanges')
 
 
 def pasang_versi(versi):

@@ -7,7 +7,7 @@ import { epContohGaris, EP_POTONG, EP_KOLOM } from '../inti/escpos.js';
 import { usbAda, usbMinta, usbDiingat, usbKirim, usbRingkas } from '../inti/usb-cetak.js';
 import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk } from '../inti/struk-kanvas.js';
 import { PR_GAYA, PR_JALUR, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak, namaJalur } from '../inti/printer.js';
-import { kemampuan, printerStatus, padaPindai, lampu, lampuPadam } from '../inti/perangkat.js';
+import { kemampuan, printerStatus, padaPindai, padaTempel, lampu, lampuPadam } from '../inti/perangkat.js';
 
 const $ = (id) => document.getElementById(id);
 let printer = null;          // WebUSB (peramban biasa)
@@ -114,6 +114,10 @@ async function tampilSunmi() {
   const p = k.pindai;
   if (p && !p.terpasang) $('ucPindai').textContent = 'tablet ini tidak punya layanan scanner SUNMI';
   else if (!p) $('ucPindai').textContent = 'tidak ada di aplikasi ini';
+  // paket S2a: pembaca NFC bawaan — ada / mati di Setelan / tidak ada di aplikasi lama
+  const n = k.nfc;
+  $('ucNfc').textContent = !n ? 'tidak ada di aplikasi ini — pasang APK terbaru' : !n.ada ? 'tablet ini tidak punya pembaca NFC'
+    : !n.nyala ? 'NFC dimatikan — nyalakan di Setelan tablet, lalu buka lagi layar ini' : 'siap — tempelkan kartu apa saja ke tablet, nomor serinya muncul di sini';
   $('ucKemampuan').textContent = JSON.stringify(k, null, 2); $('ucKemampuan').hidden = false;
 }
 
@@ -141,6 +145,8 @@ function mulai() {
     $('ucLampuPadam').addEventListener('click', () => cobaLampu('', null, 'padam'));
     let nPindai = 0;
     padaPindai((x) => { nPindai += 1; $('ucPindai').textContent = '"' + x.data + '" · ' + x.data.length + ' huruf · scan ke-' + nPindai; tulisLog('Scan diterima: ' + x.data); });
+    let nTempel = 0;
+    padaTempel((x) => { nTempel += 1; $('ucNfc').textContent = 'kartu ' + x.uid + (x.jenis.length ? ' · ' + x.jenis.join(', ') : '') + ' · tempel ke-' + nTempel; tulisLog('Kartu NFC terbaca: ' + x.uid); });
     tampilSunmi().catch((e) => tulisLog('Kartu perangkat tidak terbaca: ' + pesan(e), true));
   }
 
