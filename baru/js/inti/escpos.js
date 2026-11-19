@@ -166,6 +166,60 @@ export function epSusunGambar(gambar, opsi) {
   return { byte: w.hasil(), lebar: gambar.lebar, tinggi: gambar.tinggi };
 }
 
+// ---------- LABEL barang (paket S4, 19 Nov 2026): tanda kenal untuk ditempel di kemasan ----------
+// Printer toko (SUNMI NT32x) punya tiga mode kertas. Mode STRUK dan TANPA ALAS = kertas bersambung → label dikirim sebagai ESC/POS (epSusunLabel).
+// Mode LABEL = stiker bercelah → printer hanya mengerti TSPL (epTsplLabel; dokumen SUNMI "Label Printer TSPL Command Set", 203 dpi: 1 mm = 8 titik).
+// isi = { judul (nama barang), ket (baris kecil), kode (isi QR, yang dibaca scanner), teksKode (kode yang dibaca orang) }.
+const bulat = (v, min, maks, bawaan) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(min, Math.min(maks, n)) : bawaan; };
+export const EP_LABEL_MAKS = 50;
+
+/** Label di kertas bersambung: nama barang besar, baris kecil, QR, kode — lalu potong; diulang `jumlah` kali (tiap lembar dipotong sendiri).
+ *  opsi: { kertas, potong, umpan, qrUkuran, jumlah }. Hasil { byte, teks (satu lembar, untuk pratinjau & uji), jumlah }. */
+export function epSusunLabel(isi, opsi) {
+  const o = opsi || {}; const x = isi || {}; const lebar = EP_KOLOM[o.kertas] || EP_KOLOM[80]; const w = Penulis(); const teks = [];
+  const n = bulat(o.jumlah, 1, EP_LABEL_MAKS, 1);
+  const judul = epBungkus(x.judul || '', Math.floor(lebar / 2)).filter((s) => s !== '').slice(0, 3);
+  const ket = x.ket ? epBungkus(x.ket, lebar).slice(0, 1) : [];
+  for (let i = 0; i < n; i++) {
+    w.byte(ESC, 0x40).byte(ESC, 0x74, 0x00).byte(ESC, 0x61, 1);
+    // GS ! 0x11 = huruf dua kali lebar & tinggi (nama barang terbaca dari jauh); dikembalikan sebelum baris kecil
+    w.byte(GS, 0x21, 0x11).byte(ESC, 0x45, 1); judul.forEach((s) => { w.baris(s); if (!i) teks.push(s); });
+    w.byte(GS, 0x21, 0x00).byte(ESC, 0x45, 0);
+    ket.forEach((s) => { w.baris(s); if (!i) teks.push(s); });
+    if (x.kode) { tulisQr(w, x.kode, o.qrUkuran || 6); w.byte(LF); if (!i) teks.push('[QR ' + epAscii(x.kode) + ']'); }
+    if (x.teksKode) { w.baris(x.teksKode); if (!i) teks.push(epAscii(x.teksKode)); }
+    w.byte(ESC, 0x61, 0);
+    tutup(w, { potong: o.potong, umpan: o.umpan }, null);
+  }
+  return { byte: w.hasil(), teks, jumlah: n };
+}
+
+/** Label di stiker bercelah: perintah TSPL. opsi: { lebarMm (20–80), tinggiMm (15–200), celahMm (0–10; 0 = tanpa celah), jumlah, potong (true = potong
+ *  sesudah lembar terakhir) }. Hasil { teks (perintah, satu per baris), byte, jumlah, lebarMm, tinggiMm, celahMm }.
+ *  Tata letak: nama barang di atas (huruf 12×24 diperbesar bila muat), QR kiri-bawah, kode & baris kecil di kanannya. */
+export function epTsplLabel(isi, opsi) {
+  const o = opsi || {}; const x = isi || {};
+  const lb = bulat(o.lebarMm, 20, 80, 50); const tg = bulat(o.tinggiMm, 15, 200, 30); const celah = bulat(o.celahMm, 0, 10, 2); const n = bulat(o.jumlah, 1, EP_LABEL_MAKS, 1);
+  const W = lb * 8; const tepi = 16;
+  const kutip = (s) => epAscii(s).replace(/["\\]/g, "'");   // tanda kutip mengakhiri isi perintah
+  const besar = W >= 400 ? 2 : 1;                              // label ≥ 50 mm: nama barang dua kali lebih besar
+  const kolom = Math.max(6, Math.floor((W - 2 * tepi) / (12 * besar)));
+  const judul = epBungkus(x.judul || '', kolom).filter((s) => s !== '').slice(0, tg >= 40 ? 3 : 2);
+  const baris = ['SIZE ' + lb + ' mm,' + tg + ' mm', 'GAP ' + celah + ' mm,0 mm', 'DIRECTION 1', 'CLS'];
+  let y = tepi;
+  judul.forEach((s) => { baris.push('TEXT ' + tepi + ',' + y + ',"0",0,' + besar + ',' + besar + ',"' + kutip(s) + '"'); y += 24 * besar + 6; });
+  y += 4;
+  if (x.kode) baris.push('QRCODE ' + tepi + ',' + y + ',M,4,A,0,"' + kutip(x.kode) + '"');
+  // QR 4 titik per modul: kode sampai 64 huruf ≤ 41 modul = 164 titik → teks mulai di kanan lebar itu
+  const xTeks = tepi + 164 + 12;
+  if (x.teksKode && xTeks + 12 * 6 <= W) baris.push('TEXT ' + xTeks + ',' + y + ',"0",0,1,1,"' + kutip(x.teksKode) + '"');
+  if (x.ket && xTeks + 8 * 8 <= W) baris.push('TEXT ' + xTeks + ',' + (y + 34) + ',"1",0,1,1,"' + kutip(x.ket).slice(0, Math.max(0, Math.floor((W - xTeks - tepi) / 8))) + '"');
+  baris.push('PRINT ' + n); if (o.potong) baris.push('CUT');
+  const teks = baris.join('\n') + '\n'; const w = Penulis();
+  for (let i = 0; i < teks.length; i++) w.byte(teks.charCodeAt(i));
+  return { teks: baris, byte: w.hasil(), jumlah: n, lebarMm: lb, tinggiMm: tg, celahMm: celah };
+}
+
 /** Byte → base64 (untuk jembatan aplikasi Android). Dipotong per 32 KB supaya String.fromCharCode tidak kehabisan tumpukan. */
 export function epBase64(byte) {
   let s = '';

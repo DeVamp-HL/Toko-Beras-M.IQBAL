@@ -39,6 +39,8 @@ export function tkUraiPindai(teks) {
 export const tkLembarBolehDiganti = (lembar) => !lembar || lembar === 'struk' || lembar === 'keranjang';
 
 // ---------- paket S2b: pasangan kode → sasaran (catatan TAMBAH-SAJA; yang terbaru menang) ----------
+/** Kode di label CONTOH layar Perangkat (uji-cetak.js): tidak pernah jadi barcode barang — label uji yang ter-scan tidak ikut terpasang. */
+export const TK_KODE_CONTOH = 'UJI-LABEL';
 /** Jalur rak yang boleh dipasangi barcode: barang berbungkus (karung pabrik, kemasan toko). Literan / repack / wadah ditakar, tidak ber-barcode. */
 export const TK_JALUR_BARCODE = ['karung', 'kemasan'];
 /** Mode daftar (kode menunggu dipasangkan) gugur sendiri sesudah sekian ms — supaya ketukan rak berikutnya yang jauh sesudahnya tidak ikut terpasang. */
@@ -49,7 +51,7 @@ export const TK_DAFTAR_GUGUR_MS = 60000;
 export function tkKode(jenis, mentah) {
   const t = String(mentah === undefined || mentah === null ? '' : mentah).trim();
   if (jenis === 'nfc') { const u = t.toUpperCase(); return /^(?:[0-9A-F]{2}){4,10}$/.test(u) ? u : ''; }
-  if (jenis === 'barcode') return /^[\x20-\x7e]{4,64}$/.test(t) && t.indexOf(TK_AWALAN_NOTA) !== 0 ? t : '';
+  if (jenis === 'barcode') return /^[\x20-\x7e]{4,64}$/.test(t) && t.indexOf(TK_AWALAN_NOTA) !== 0 && t.indexOf(TK_KODE_CONTOH) !== 0 ? t : '';
   return '';
 }
 
@@ -97,4 +99,72 @@ export function tkSusunDaftar(jenis, kodeMentah, sasaran, w) {
 
 /** Kode panjang dipendekkan untuk kalimat di layar. */
 export function tkRingkasKode(kode) { const t = String(kode || ''); return t.length > 18 ? t.slice(0, 8) + '…' + t.slice(-6) : t; }
+
+// ---------- paket S4 (19 Nov 2026): daftar pasangan yang berlaku, LEPAS, dan label buatan toko ----------
+/** Awalan kode label yang DIBUAT toko untuk kemasan tanpa barcode pabrik. Saat di-scan ia barcode biasa (tkKode menerimanya, tkUraiPindai = 'lain'). */
+export const TK_AWALAN_LABEL = 'MIQ:B:';
+/** Huruf kode label: tanpa 0 O 1 I supaya tidak tertukar saat dibaca orang. */
+export const TK_HURUF_LABEL = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+export const TK_PANJANG_LABEL = 8;
+export const TK_LABEL_MAKS = 50;   // lembar label sekali cetak
+
+/** Pasangan yang BERLAKU sekarang: satu baris per (jenis, kode) = catatan terbarunya; yang terakhirnya dilepas tidak ikut. Terbaru di atas. */
+export function tkDaftarKini(daftar) {
+  const akhir = {};
+  (daftar || []).forEach((x) => {
+    if (!x || (x.jenis !== 'barcode' && x.jenis !== 'nfc')) return;
+    const k = x.jenis + '|' + String(x.kode); if (!akhir[k] || Number(x.id) > Number(akhir[k].id)) akhir[k] = x;
+  });
+  return Object.keys(akhir).map((k) => akhir[k]).filter((x) => x.sasaran && typeof x.sasaran === 'object').sort((a, b) => Number(b.id) - Number(a.id));
+}
+
+/** Catatan LEPAS: kode ini tidak lagi menunjuk apa pun (sasaran null). Catatan lamanya TIDAK dihapus — yang terbaru menang, jadi scan / tempel
+ *  berikutnya kembali "belum dikenal" dan bisa dipasangkan lagi. Kode yang tidak sedang terpasang ditolak (tidak ada yang dilepas). */
+export function tkSusunLepas(daftar, jenis, kodeMentah, w) {
+  const kode = tkKode(jenis, kodeMentah); const d = kode ? tkCari(daftar, jenis, kode) : null;
+  if (!d) return { tolak: (jenis === 'nfc' ? 'Kartu' : 'Barcode') + ' ini tidak sedang terpasang' };
+  return { dokumen: [{ koleksi: 'tandaKenal', data: { id: w.idUnik(), jenis, kode, sasaran: null, tanggal: w.tanggal, jam: w.jam } }],
+    patch: { kabar: (jenis === 'nfc' ? 'Kartu ' : 'Barcode ') + tkRingkasKode(kode) + ' dilepas dari ' + String(d.sasaran.nama || 'pasangannya'), kabarAwas: false } };
+}
+
+/** Kode label baru. acak() → bilangan 0 ≤ x < 1; sudahAda(kode) → true bila kode itu pernah dipakai. '' = tidak berhasil (dicoba 20 kali). */
+export function tkKodeLabel(acak, sudahAda) {
+  for (let coba = 0; coba < 20; coba++) {
+    let s = '';
+    for (let i = 0; i < TK_PANJANG_LABEL; i++) s += TK_HURUF_LABEL.charAt(Math.max(0, Math.min(TK_HURUF_LABEL.length - 1, Math.floor(Number(acak()) * TK_HURUF_LABEL.length))));
+    const kode = TK_AWALAN_LABEL + s; if (!sudahAda || !sudahAda(kode)) return kode;
+  }
+  return '';
+}
+
+/** Label buatan toko yang SEDANG terpasang ke barang ini (jalur, kunci, dan berat sama). null = barang ini belum punya label toko. */
+export function tkLabelBarang(daftar, sasaran) {
+  if (!sasaran) return null;
+  return tkDaftarKini(daftar).find((x) => x.jenis === 'barcode' && String(x.kode).indexOf(TK_AWALAN_LABEL) === 0 && x.sasaran.jalur === sasaran.jalur
+    && String(x.sasaran.kunci) === String(sasaran.kunci) && String(x.sasaran.berat || '') === String(sasaran.berat || '')) || null;
+}
+
+/** Siapkan label untuk satu chip rak: label toko yang sudah ada DIPAKAI LAGI (kemasan yang sama = kode yang sama); belum ada → kode baru + catatan
+ *  pasangannya. Hasil { kode, sasaran, dokumen ([] bila kodenya sudah ada) } atau { tolak }. */
+export function tkSiapkanLabel(daftar, chip, w, acak) {
+  const sasaran = tkSasaranChip(chip);
+  if (!sasaran) return { tolak: 'Label hanya untuk karung atau kemasan di rak — literan dan repack ditakar, tidak berlabel' };
+  const ada = tkLabelBarang(daftar, sasaran);
+  if (ada) return { kode: String(ada.kode), sasaran: ada.sasaran, dokumen: [] };
+  const terpakai = {}; (daftar || []).forEach((x) => { if (x && x.jenis === 'barcode') terpakai[String(x.kode)] = 1; });
+  const kode = tkKodeLabel(acak, (k) => !!terpakai[k]);
+  if (!kode) return { tolak: 'Kode label baru tidak berhasil dibuat — coba sekali lagi' };
+  const r = tkSusunDaftar('barcode', kode, sasaran, w);
+  return r.tolak ? { tolak: r.tolak } : { kode, sasaran: r.dokumen[0].data.sasaran, dokumen: r.dokumen };
+}
+
+/** Isi satu label: yang dibaca orang (nama barang, kode pendek) + yang dibaca scanner (kode utuh sebagai QR). */
+export function tkIsiLabel(sasaran, kode) {
+  const k = String(kode || '');
+  return { judul: String((sasaran && sasaran.nama) || '').slice(0, 80), ket: 'TOKO BERAS M.IQBAL', kode: k,
+    teksKode: k.indexOf(TK_AWALAN_LABEL) === 0 ? k.slice(TK_AWALAN_LABEL.length) : tkRingkasKode(k) };
+}
+
+/** Jumlah lembar label yang sah: bilangan bulat 1–TK_LABEL_MAKS; selain itu 0 (ditolak, bukan dibulatkan diam-diam). */
+export function tkJumlahLabel(v) { const n = Number(String(v === undefined || v === null ? '' : v).trim()); return Number.isInteger(n) && n >= 1 && n <= TK_LABEL_MAKS ? n : 0; }
 

@@ -101,6 +101,25 @@ cek('struk gambar: ESC @ · raster · QR · potong penuh', sg.byte[0] === 0x1b &
 // Setelan `pekat` yang telanjur tersimpan di tablet wajib diabaikan.
 const gp = epSusunGambar({ bit, lebar: 10, tinggi: 2 }, { pekat: 6 }), tp = epSusun([{ kiri: 'A', kanan: '' }], { pekat: 6 });
 cek('struk tanpa perintah kepekatan GS ( K (NT320 mencetaknya jadi "1")', cari(gp.byte, [0x1d, 0x28, 0x4b]) < 0 && cari(tp.byte, [0x1d, 0x28, 0x4b]) < 0 && arr(gp.byte).slice(0, 5).join(',') === [0x1b, 0x40, 0x1b, 0x61, 1].join(','), arr(gp.byte).slice(0, 9));
+// ---- label barang (paket S4, 19 Nov 2026) ----
+const IL = { judul: 'Beras contoh kemasan 5 kg', ket: 'TOKO BERAS M.IQBAL', kode: 'MIQ:B:JJJJJJJJ', teksKode: 'JJJJJJJJ' };
+const berapa = (b, pola) => { let n = 0; for (let i = 0; i + pola.length <= b.length; i++) { let sama = true; for (let k = 0; k < pola.length; k++) if (b[i + k] !== pola[k]) { sama = false; break; } if (sama) n++; } return n; };
+const lb = epSusunLabel(IL, { kertas: 80, potong: 'penuh', umpan: 2, jumlah: 3 });
+cek('label struk: tiap lembar punya QR sendiri & dipotong sendiri (3 lembar = 3 QR, 3 potong)', lb.jumlah === 3 && berapa(lb.byte, [0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30]) === 3 && berapa(lb.byte, [0x1d, 0x56, 0x41, 0x00]) === 3, berapa(lb.byte, [0x1d, 0x56, 0x41, 0x00]));
+cek('label struk: nama barang dua kali besar lalu DIKEMBALIKAN ke ukuran biasa sebelum baris kecil', berapa(lb.byte, [0x1d, 0x21, 0x11]) === 3 && berapa(lb.byte, [0x1d, 0x21, 0x00]) === 3 && cari(lb.byte, [0x1d, 0x21, 0x00]) > cari(lb.byte, [0x1d, 0x21, 0x11]));
+cek('label struk: isi QR = kode utuh', berapa(lb.byte, [0x31, 0x50, 0x30].concat('MIQ:B:JJJJJJJJ'.split('').map((c) => c.charCodeAt(0)))) === 3);
+cek('label struk: pratinjau satu lembar — nama, baris toko, QR, kode pendek', lb.teks.join('|') === 'Beras contoh kemasan 5|kg|TOKO BERAS M.IQBAL|[QR MIQ:B:JJJJJJJJ]|JJJJJJJJ', lb.teks.join('|'));
+cek('label struk: jumlah dijepit 1–50; tanpa jumlah = 1', epSusunLabel(IL, {}).jumlah === 1 && epSusunLabel(IL, { jumlah: 0 }).jumlah === 1 && epSusunLabel(IL, { jumlah: 999 }).jumlah === 50 && epSusunLabel(IL, { jumlah: 'x' }).jumlah === 1);
+cek('label struk: nama panjang berhenti di 3 baris; tanpa kode → tanpa QR', epSusunLabel({ judul: 'kata '.repeat(40) }, {}).teks.length === 3 && cari(epSusunLabel({ judul: 'A' }, {}).byte, [0x1d, 0x28, 0x6b]) < 0);
+cek('label struk: tanpa perintah kepekatan GS ( K (NT320 mencetaknya jadi "1")', cari(lb.byte, [0x1d, 0x28, 0x4b]) < 0);
+const tl = epTsplLabel(IL, { lebarMm: 50, tinggiMm: 30, celahMm: 2, jumlah: 4, potong: true });
+cek('label TSPL: ukuran, celah, arah, bersih di depan; cetak N lalu potong di belakang', JSON.stringify(tl.teks.slice(0, 4)) === JSON.stringify(['SIZE 50 mm,30 mm', 'GAP 2 mm,0 mm', 'DIRECTION 1', 'CLS']) && tl.teks[tl.teks.length - 2] === 'PRINT 4' && tl.teks[tl.teks.length - 1] === 'CUT', tl.teks.join(' / '));
+cek('label TSPL: QR berisi kode utuh; nama barang sebagai TEXT diperbesar (label 50 mm)', tl.teks.some((s) => /^QRCODE \d+,\d+,M,4,A,0,"MIQ:B:JJJJJJJJ"$/.test(s)) && tl.teks.some((s) => /^TEXT 16,16,"0",0,2,2,"Beras contoh/.test(s)) && tl.teks.some((s) => /"JJJJJJJJ"$/.test(s)), tl.teks.join(' / '));
+cek('label TSPL: byte = perintah ASCII, tiap perintah diakhiri baris baru', tl.byte.length === tl.teks.join('\n').length + 1 && tl.byte[tl.byte.length - 1] === 0x0a && arr(tl.byte).every((b) => b === 0x0a || (b >= 0x20 && b <= 0x7e)));
+cek('label TSPL: tanda kutip & garis miring terbalik di isi tidak memutus perintah', epTsplLabel({ judul: 'Beras "A"', kode: 'X"Y\\Z1', teksKode: 'k"1' }, { lebarMm: 80 }).teks.filter((s) => /^(TEXT|QRCODE)/.test(s)).every((s) => (s.match(/"/g) || []).length === (s.indexOf('TEXT') === 0 ? 4 : 2) && s.indexOf('\\') < 0));
+cek('label TSPL: ukuran dijepit (20–80 × 15–200 mm, celah 0–10); tanpa potong = tanpa CUT', (() => { const x = epTsplLabel(IL, { lebarMm: 500, tinggiMm: 1, celahMm: 99, jumlah: 0, potong: false }); return x.teks[0] === 'SIZE 80 mm,15 mm' && x.teks[1] === 'GAP 10 mm,0 mm' && x.teks[x.teks.length - 1] === 'PRINT 1'; })());
+cek('label TSPL: celah 0 = kertas bersambung; tanpa setelan = 50 × 30 celah 2', epTsplLabel(IL, { celahMm: 0 }).teks[1] === 'GAP 0 mm,0 mm' && epTsplLabel(IL, {}).teks[0] === 'SIZE 50 mm,30 mm' && epTsplLabel(IL, {}).teks[1] === 'GAP 2 mm,0 mm');
+cek('label TSPL: label sempit (30 mm) — huruf tidak diperbesar, kode pendek tidak dipaksa keluar tepi', (() => { const x = epTsplLabel(IL, { lebarMm: 30, tinggiMm: 30 }); return x.teks.some((s) => /^TEXT 16,16,"0",0,1,1,/.test(s)) && !x.teks.some((s) => /"JJJJJJJJ"$/.test(s)) && x.teks.some((s) => /^QRCODE/.test(s)); })());
 if (typeof btoa === 'function') cek('base64: byte → teks', epBase64(new Uint8Array([0x1b, 0x40, 0x41])) === 'G0BB', epBase64(new Uint8Array([0x1b, 0x40, 0x41])));
 print(JSON.stringify(hasil));
 """
@@ -151,6 +170,15 @@ MUTASI = [
     ('penyambung ZWJ tertinggal', "\\u{200D}", ""),
     ('pemilih varian tertinggal', "\\u{FE00}-\\u{FE0F}", ""),
     ('struk gambar mengirim kepekatan lagi', "w.byte(ESC, 0x40).byte(ESC, 0x61, 1);", "w.byte(ESC, 0x40).byte(GS, 0x28, 0x4b, 0x02, 0x00, 0x31, o.pekat || 0).byte(ESC, 0x61, 1);"),
+    ('label: huruf besar tidak dikembalikan (baris kecil & kode ikut raksasa)', "    w.byte(GS, 0x21, 0x00).byte(ESC, 0x45, 0);\n", "    w.byte(ESC, 0x45, 0);\n"),
+    ('label: semua lembar jadi satu potongan', "    tutup(w, { potong: o.potong, umpan: o.umpan }, null);\n  }\n  return { byte: w.hasil(), teks, jumlah: n };", "  }\n  tutup(w, { potong: o.potong, umpan: o.umpan }, null);\n  return { byte: w.hasil(), teks, jumlah: n };"),
+    ('label: jumlah lembar tidak dijepit', "  const n = bulat(o.jumlah, 1, EP_LABEL_MAKS, 1);\n  const judul", "  const n = Number(o.jumlah) || 1;\n  const judul"),
+    ('label: QR berisi kode pendek, bukan kode utuh', "if (x.kode) { tulisQr(w, x.kode, o.qrUkuran || 6);", "if (x.kode) { tulisQr(w, x.teksKode, o.qrUkuran || 6);"),
+    ('label TSPL: tanda kutip tidak dibuang', ".replace(/[\"\\\\]/g, \"'\")", ""),
+    ('label TSPL: perintah cetak hilang', "  baris.push('PRINT ' + n);", "  "),
+    ('label TSPL: celah tidak dikirim', "'GAP ' + celah + ' mm,0 mm', ", ""),
+    ('label TSPL: ukuran tidak dijepit', "const lb = bulat(o.lebarMm, 20, 80, 50);", "const lb = Number(o.lebarMm) || 50;"),
+    ('label TSPL: QR berisi kode pendek', "'QRCODE ' + tepi + ',' + y + ',M,4,A,0,\"' + kutip(x.kode)", "'QRCODE ' + tepi + ',' + y + ',M,4,A,0,\"' + kutip(x.teksKode)"),
     ('struk teks mengirim kepekatan lagi', "w.byte(ESC, 0x40).byte(ESC, 0x74, 0x00);", "w.byte(ESC, 0x40).byte(GS, 0x28, 0x4b, 0x02, 0x00, 0x31, o.pekat || 0).byte(ESC, 0x74, 0x00);"),
 ]
 

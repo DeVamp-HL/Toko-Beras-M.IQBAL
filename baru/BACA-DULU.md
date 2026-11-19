@@ -2904,7 +2904,8 @@ HARUS dibuktikan di CPad: cetak lewat SDK SUNMI, keadaan printer (buka tutupnya)
 **Uji owner di CPad, 19 Nov (APK 1.13)** — terbukti dari layar *Perangkat tablet ini*: tablet melapor "SUNMI OrderPAD 3 · Android 14"; printer
 NT320_L (firmware 4.1.22, SUNMI APP 4.1.44 — di atas syarat pustaka) menjawab **Periksa printer** lewat SDK SUNMI 1.0.16 dengan "siap"; lampu tablet
 "ada". Malamnya owner mengirim sisanya: lima struk nota tercatat "printer USB aplikasi tablet (SDK SUNMI)" (jalur SDK dipilih & disimpan), hasil scan
-tampil di kartu Tablet, panel jaga menulis "Itu hasil scan, bukan PIN". Belum terlihat: tombol lampu, pesan "tutup printer terbuka". Koreksi owner: **scanner ada di tablet, bukan di printer**
+tampil di kartu Tablet, panel jaga menulis "Itu hasil scan, bukan PIN". Tombol lampu ("Lampu hijau: jalan", "Lampu merah berkedip: jalan") dan pesan
+"Printer belum bisa mencetak: tutup printer terbuka" menyusul diperlihatkan owner 19 Nov malam — daftar bukti S1 habis. Koreksi owner: **scanner ada di tablet, bukan di printer**
 (printer tidak punya scanner) — plugin `Pindai` memang mendengar scanner tablet, tetapi baris Scanner & Lampu dulu sekartu dengan "Periksa printer" dan
 terbaca keliru. Sekarang dua kartu: **Printer struk** dan **Tablet ini** (dijaga `uji_perangkat_sunmi.py`). Tablet ini juga punya NFC dan slot SIM.
 
@@ -2963,3 +2964,50 @@ Bagian kedua keputusan owner 19 Nov. Di atas pembaca S2a (scanner & NFC sudah sa
 **Batas bukti S2b**: scanner & NFC tidak bisa diuji di Mac / runner. Yang HARUS dibuktikan di CPad sesudah v12 terbit & cabang digabung: scan barcode
 baru → pita daftar → ketuk barang → scan lagi membuka lembar jumlahnya; tempel kartu baru → pilih pembeli → tempel lagi memilih pembeli itu.
 
+**Uji owner di CPad, 19 Nov malam (APK 1.16)**: owner menyatakan S2a dan S2b lulus. Dari layar *Perangkat tablet ini*: NFC membaca dua jenis kartu
+(nomor seri 4 byte dan 7 byte), scanner menerima kode, lampu jalan. Tombol melepas pasangan dibuat di paket S4.
+
+## Paket S4 — daftar & lepas, label barang, printer Bluetooth, lampu berwarna, sidik jari (19 Nov 2026)
+
+Permintaan owner 19 Nov malam, sesudah S2 lulus: layar daftar barcode & kartu terdaftar (lihat dan lepas); cara membuat barcode untuk kemasan; lampu
+tablet bisa diatur, tidak hanya hijau dan merah; printer juga lewat Bluetooth; sidik jari dan label dulu, laci uang nanti. Jawaban pertanyaan pilihan:
+label di **ketiga** jenis kertas; sidik jari **periksa sensornya dulu**. Tanpa ubah aturan Firestore (rules tetap v12), butuh **APK baru**.
+
+- **Yang dibuktikan dari dokumen & isi pustaka SUNMI** (bukan tebakan): NT32x adalah *80 mm Label Printer* dengan tiga mode kertas —
+  `setPrintMode(1 struk | 2 label | 3 tanpa alas)`, dijalankan seketika, tanpa antrean cetak; `getPrintMode` menjawab teks; perintah label = TSPL
+  (`sendTSPLData`, dikirim seketika, printer label TIDAK mengabari hasil cetak). Bluetooth: pustaka menyambung lewat SPP ke perangkat yang SUDAH
+  dipasangkan (`CloudPrinterBuilder.buildPrinter(nama, mac)`); pencarian Bluetooth butuh izin lokasi → tidak dipakai. Sidik jari: SUNMI mewajibkan
+  AndroidX Biometric (FingerprintManager dimatikan di ROM baru).
+- **Jual › Label & kartu** (`jual.js › gambarTandaKenal`, logika `tanda-kenal-logika.js`): tiga tab.
+  - *Barcode* dan *Kartu*: hanya pasangan yang BERLAKU (`tkDaftarKini`: satu baris per kode = catatan terbarunya; yang sudah dilepas tidak ikut).
+    **Lepas** bertanya dulu, lalu menulis SATU catatan baru bersasaran kosong (`tkSusunLepas`) — catatan lama tidak dihapus, yang terbaru menang, jadi
+    kode itu kembali "belum dikenal" dan bisa dipasangkan lagi. Akun tablet (peran Ben) bisa melepas: rules v12 mengizinkan tambah catatan.
+  - *Buat label*: karung & kemasan di rak. Barang tanpa barcode pabrik diberi kode toko `MIQ:B:` + 8 huruf (tanpa 0 O 1 I). Barang yang sudah berlabel
+    memakai kode yang SAMA (cetak lagi = label yang sama); barcode pabrik bukan label toko. Urutan `tkLabelCetak`: jumlah sah (1–50, pilihan tetap) →
+    printer ada (HP owner: ditolak sebelum kode dibuat) → kode DICATAT (`tulisDokumen`, ditolak = berhenti) → baru dicetak. Label = nama barang +
+    QR kode utuh + kode pendek; **tidak memuat harga** (harga berubah, label tidak).
+  - Kabar ditampilkan DI DALAM lembar (pola cacat "kabar tertutup lembar").
+- **Label di tiga jenis kertas** (`escpos.js`, `printer.js › susunLabel / cetakLabel`; setelan per perangkat di layar Perangkat › Label barang):
+  - *kertas bersambung* (mode struk, juga stiker tanpa alas) → `epSusunLabel`: ESC/POS — nama barang dua kali besar (`GS !`), QR bawaan printer
+    (`GS ( k`, jalur yang sama dengan QR struk yang sudah terbukti), tiap lembar dipotong sendiri;
+  - *stiker bercelah* (mode label) → `epTsplLabel`: `SIZE`/`GAP`/`DIRECTION`/`CLS`/`TEXT`/`QRCODE`/`PRINT`(/`CUT`); lewat jalur SDK dikirim dengan
+    `kirimTspl` (pintu label), lewat jalur lain byte yang sama dikirim apa adanya.
+  - **Mode kertas printer** dipindah dari layar Perangkat › Printer struk; sesudah perintah dikirim modenya DITANYAKAN LAGI ke printer — yang tampil
+    jawaban printer, bukan mode yang diminta.
+- **Printer Bluetooth**: jalur ketiga `'sunmi-bt'` di `PR_JALUR` (bawaan tetap USB langsung). Syarat: printer dipasangkan di Setelan tablet › Bluetooth,
+  lalu **Periksa Bluetooth** (meminta izin Android "Perangkat di sekitar"). Gagal sebelum ada byte terkirim → jatuh ke USB langsung seperti jalur SDK
+  kabel; printer menjawab ada halangan → tidak dicetak ulang lewat jalur lain. Struk bergambar lewat Bluetooth lebih lambat (batas tunggu 60 dtk).
+- **Lampu** (`perangkat.js › LAMPU_KEJADIAN, lampuAtur, lampuKejadian`): lima kejadian — nota tersimpan (hijau), cetak gagal (merah berkedip),
+  barcode/kartu/struk dikenali (biru), belum dikenal (kuning berkedip), kertas hampir habis (magenta berkedip). Warna (7 + "tidak menyala"), kedip,
+  dan lama nyala diatur per perangkat di layar Perangkat › Tablet ini; disimpan di `localStorage` perangkat (`lampuPerangkat`), bukan data toko.
+- **Sidik jari** (plugin `Biometrik`): hanya `info` (ada sensor / ada jari terdaftar) dan `minta` (satu kali uji tempel jari). Android hanya menjawab
+  "jari ini terdaftar di tablet", BUKAN jari siapa — pemakaiannya di sistem belum diputuskan dan tidak dibangun.
+- **Penjaga**: `uji_tanda_kenal.py` (daftar, lepas, label, urutan catat-lalu-cetak), `uji_escpos.py` (byte label ESC/POS & perintah TSPL),
+  `uji_perangkat_sunmi.py` (Bluetooth, mode kertas, lampu, sidik jari, manifest & gradle, plugin Java ↔ halaman).
+
+**Batas bukti S4** — tidak satu pun bagian perangkat keras ini bisa diuji di Mac / runner; semuanya baru terbukti di CPad dengan APK baru:
+(1) cetak lewat Bluetooth; (2) baca & pindah mode kertas — termasuk apakah jawaban printer untuk mode *tanpa alas* dikenali (pustaka hanya memuat teks
+"Receipt printer" dan "label printer"); (3) label stiker bercelah (TSPL): arah cetak (`DIRECTION 1`), tata letak, dan ukuran modul QR belum pernah keluar
+dari printer toko; (4) label di mode tanpa alas (dianggap kertas bersambung = ESC/POS — belum terbukti); (5) baris Sidik jari (layar periksa-diri CPad
+owner tidak mencantumkan sensor sidik jari); (6) kelima lampu. Yang tidak bergantung perangkat (daftar, lepas, kode label, byte yang dikirim) terbukti
+di alat uji.

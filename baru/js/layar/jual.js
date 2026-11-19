@@ -367,13 +367,13 @@ export function pasangLayarJual(akar, opsi) {
       // paket S2a: QR nomor nota di bawah struk bila setelan printer perangkat ini menyertakan QR ("Printer tablet ini") — scan struk itu membuka notanya
       const qr = PR.prAtur().qr ? TK.tkQrNota(nota) : '';
       return PR.cetakGaris(st.garis, { logoToko: st.logo, qr }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
-        catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + 'printer USB ' + PR.namaJalur(r.jalur) + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
+        catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + PR.namaPrinter(r.jalur) + PR.namaJalur(r.jalur) + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
         // paket S1: SDK SUNMI mengabari kertas hampir habis; jalur SUNMI yang jatuh ke USB langsung disebut supaya ketahuan (struknya tetap keluar)
-        if (r.peringatan) set({ kabar: r.peringatan + ' — struk ini tetap tercetak', kabarAwas: true });
+        if (r.peringatan) { lampu('lampuKertas'); set({ kabar: r.peringatan + ' — struk ini tetap tercetak', kabarAwas: true }); }
         else if (r.cadanganDari) set({ kabar: 'Struk tercetak lewat USB langsung; jalur SDK SUNMI tidak jalan (' + r.cadanganDari + ')', kabarAwas: false });
       }).catch((e) => {
         lampu('lampuGagal');
-        set({ kabar: 'Printer USB gagal (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true });
+        set({ kabar: (j === 'sunmi-bt' ? 'Printer Bluetooth gagal (' : 'Printer USB gagal (') + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true });
         cetakDialog(st, nota, ket);
       });
     }).catch(() => cetakDialog(st, nota, ket));
@@ -628,6 +628,45 @@ export function pasangLayarJual(akar, opsi) {
     const tutupAsal = aksi.tutup; aksi.tutup = (arg, el, ev) => { const t = S().tk; tutupAsal(arg, el, ev); if (t && t.jenis === 'nfc') set({ tk: null }); };
     aksi.tkBatal = () => set({ tk: null });
     aksi.tkGanti = () => { const t = S().tk; if (t && t.jenis === 'barcode') set({ tk: { jenis: 'barcode', kode: t.kode, mode: 'daftar', pada: Date.now() }, lembar: null, pilih: null, kabar: '' }); };
+    // ---- paket S4 (19 Nov 2026): lembar "Label & kartu" — pasangan yang BERLAKU (lihat, lepas) + label barang (kode dibuat toko, dicetak) ----
+    const tkTabSah = (t) => (t === 'nfc' || t === 'label' ? t : 'barcode');
+    aksi.bukaTandaKenal = () => set({ lembar: 'tandaKenal', tkTab: tkTabSah(S().tkTab), tkLepas: null, tkLabel: null, tkLabelN: 1, kabar: '' });
+    aksi.tkTab = ({ tab }) => set({ tkTab: tkTabSah(tab), tkLepas: null, tkLabel: null, kabar: '' });
+    aksi.tkLepasTanya = ({ jenis, kode }) => set({ tkLepas: { jenis: jenis === 'nfc' ? 'nfc' : 'barcode', kode: String(kode || '') }, tkLabel: null, kabar: '' });
+    aksi.tkLepasBatal = () => set({ tkLepas: null });
+    // LEPAS = catatan baru bersasaran kosong (catatan lama tidak dihapus; yang terbaru menang) — kode itu kembali "belum dikenal"
+    aksi.tkLepas = () => { const t = S().tkLepas; if (!t) return; const r = TK.tkSusunLepas(ambilTandaKenal(), t.jenis, t.kode, tkWaktu()); if (r.patch) r.patch.tkLepas = null; else set({ tkLepas: null }); return tulisUmum(r); };
+    aksi.tkLabelBuka = ({ kode, jalur, kunci, berat }) => set({ tkLabel: kode ? { kode: String(kode) } : { jalur, kunci, berat: berat || '' }, tkLepas: null, tkLabelN: 1, kabar: '' });
+    aksi.tkLabelN = ({ n }) => set({ tkLabelN: TK.tkJumlahLabel(n) || 1 });
+    aksi.tkLabelBatal = () => set({ tkLabel: null });
+    aksi.tkLabelCetak = async () => {
+      const st = S(); const t = st.tkLabel; if (!t) return;
+      const n = TK.tkJumlahLabel(st.tkLabelN); if (!n) return set({ kabar: 'Jumlah label harus 1 sampai ' + TK.TK_LABEL_MAKS + ' lembar', kabarAwas: true });
+      // printer diperiksa DULU: tanpa printer (HP owner) kode label tidak dibuat — kode tanpa label di kemasan cuma mengotori daftar
+      if (await PR.jalurCetak() === 'dialog') return set({ kabar: 'Tidak ada printer di perangkat ini — label dicetak dari tablet kasir', kabarAwas: true });
+      let kode = ''; let sasaran = null; let dokumen = [];
+      if (t.kode) {
+        const d = TK.tkCari(ambilTandaKenal(), 'barcode', t.kode); if (!d) return set({ tkLabel: null, kabar: 'Barcode ini sudah tidak terpasang ke barang', kabarAwas: true });
+        kode = String(d.kode); sasaran = d.sasaran;
+      } else {
+        const c = (rakKini()[t.jalur] || []).find((x) => String(x.kunci) === String(t.kunci) && (!t.berat || String(x.berat) === String(t.berat)));
+        const r = TK.tkSiapkanLabel(ambilTandaKenal(), c, tkWaktu(), Math.random); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+        kode = r.kode; sasaran = r.sasaran; dokumen = r.dokumen;
+      }
+      // kode baru DICATAT dulu, baru dicetak: label yang kodenya tidak tercatat tidak akan pernah dikenali scanner
+      if (dokumen.length) {
+        try { const hsl = await tulisDokumen(dokumen); if (hsl && hsl.gagal) return set({ kabar: 'DITOLAK, kode label tidak tercatat: ' + hsl.pesan, kabarAwas: true }); }
+        catch (e) { return set({ kabar: 'GAGAL mencatat kode label: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+      }
+      try {
+        const r = await PR.cetakLabel(TK.tkIsiLabel(sasaran, kode), n);
+        if (r.peringatan) lampu('lampuKertas');
+        set({ tkLabel: null, kabarAwas: false, kabar: n + ' label ' + sasaran.nama + ' dikirim ke printer' + (r.tanpaKabar ? ' — printer di mode label tidak mengabari hasilnya, lihat kertasnya' : '') + (r.peringatan ? ' · ' + r.peringatan : '') });
+      } catch (e) {
+        lampu('lampuGagal');
+        set({ kabar: 'Label tidak tercetak: ' + (e && e.message ? e.message : e) + (dokumen.length ? ' — kodenya sudah tercatat, tinggal tekan Cetak label lagi' : ''), kabarAwas: true });
+      }
+    };
   }
   delegasi(akar, aksi);
 
@@ -761,6 +800,7 @@ export function pasangLayarJual(akar, opsi) {
             <div class="kaca-btn ${t.potongan ? 'aktif' : ''}" data-aksi="bukaPotongan">${t.potongan ? 'Potongan ' + RP(t.potongan) : 'Potongan'}</div>
             <div class="kaca-btn ${nPesanan ? 'aktif' : ''}" data-aksi="bukaPesanan" data-saring="">Pesanan${nPesanan ? ' · ' + nPesanan : ''}</div>
             ${AP.tombolDaftar()}
+            <div class="kaca-btn" data-aksi="bukaTandaKenal" data-k="tb-tanda-kenal">Label &amp; kartu</div>
             <div class="kaca-btn" data-aksi="pembeliLain">Pembeli lain</div>
           </div>
           ${(() => { const TP = s.pelanggan ? L.tingkatPembeli(s.pelanggan, s.sekarang) : null; return TP ? h`<div class="pita-info emas tingkat-pita" data-k="tg-${kunciPelanggan(s.pelanggan)}">Harga ${TP.nama} untuk ${s.pelanggan} · ${TP.teks}</div>` : ''; })()}
@@ -1100,6 +1140,7 @@ export function pasangLayarJual(akar, opsi) {
     if (s.lembar === 'struk') return gambarStruk(s, L1, muncul, kepala);
     if (s.lembar === 'aturStruk') return gambarAturStruk(s, L1, muncul, kepala);
     if (s.lembar === 'aturWadah') return gambarAturWadah(s, L1, muncul, kepala);
+    if (s.lembar === 'tandaKenal') return gambarTandaKenal(s, L1, muncul, kepala);
     if (s.lembar === 'bayar') {
       const tolak = L.alasanTolak(s);
       const bonN = L.bonKeranjang(s, t); const kunciKredit = bonN > 0 && s.keranjang.length && s.pelanggan ? L.alasanKunciKredit(s, bonN) : null;   // B2: bayar kurang ikut batas
@@ -1240,6 +1281,45 @@ export function pasangLayarJual(akar, opsi) {
     </div>`;
   }
 
+  // paket S4 (19 Nov 2026): lembar "Label & kartu". Tiga tab: Barcode (kode → barang), Kartu (kartu NFC → pembeli), Buat label (barang di rak →
+  // label ber-QR). Hanya pasangan yang BERLAKU yang tampil (tkDaftarKini); kabar ditampilkan DI DALAM lembar — kabar di belakang lembar tidak terlihat.
+  function gambarTandaKenal(s, L1, muncul, kepala) {
+    const semua = TK.tkDaftarKini(ambilTandaKenal()); const tab = s.tkTab === 'nfc' || s.tkTab === 'label' ? s.tkTab : 'barcode';
+    const bc = semua.filter((x) => x.jenis === 'barcode'); const kartu = semua.filter((x) => x.jenis === 'nfc'); const rak = rakKini();
+    const nKini = TK.tkJumlahLabel(s.tkLabelN) || 1;
+    const kotakLabel = (k) => h`<div class="pita-info emas" data-k="tk-cetak-${k}"><div class="bendera"><span class="ket" style="align-self: center;">berapa lembar</span>${[1, 2, 5, 10, 20, 50].map((n) => h`<span class="pil ${nKini === n ? 'nyala' : ''}" data-aksi="tkLabelN" data-n="${n}">${n}</span>`)}</div>
+      <div class="tombol-baris" style="grid-template-columns: 1fr 1fr; grid-auto-flow: row;"><div class="kaca-btn" data-aksi="tkLabelBatal">batal</div><div class="kaca-btn aktif emas" data-aksi="tkLabelCetak">CETAK ${nKini} LABEL</div></div></div>`;
+    const kotakLepas = (x, k) => h`<div class="pita-info awas" data-k="tk-lepas-${k}">Lepas ${x.jenis === 'nfc' ? 'kartu' : 'barcode'} <b>${TK.tkRingkasKode(x.kode)}</b> dari ${x.sasaran.nama}? Sesudah dilepas, ${x.jenis === 'nfc' ? 'kartu itu tidak memilih siapa pun' : 'scan kode itu tidak memilih barang apa pun'} sampai dipasangkan lagi.
+      <div class="tombol-baris" style="grid-template-columns: 1fr 1fr; grid-auto-flow: row;"><div class="kaca-btn" data-aksi="tkLepasBatal">batal</div><div class="kaca-btn awas" data-aksi="tkLepas">YA, LEPAS</div></div></div>`;
+    const sedangLepas = (x) => s.tkLepas && s.tkLepas.jenis === x.jenis && s.tkLepas.kode === String(x.kode);
+    const barisBarcode = (x, i) => { const diRak = !!TK.tkChipDari(rak, x.sasaran); const buatan = String(x.kode).indexOf(TK.TK_AWALAN_LABEL) === 0;
+      return h`<div class="baris-nama" data-k="tk-b-${i}" style="cursor: default; align-items: center;"><span><b>${x.sasaran.nama}</b><div class="ket">${buatan ? 'label toko' : 'barcode kemasan'} ${TK.tkRingkasKode(x.kode)} · sejak ${tanggalPendek(x.tanggal)}${diRak ? '' : ' · barangnya sedang tidak di rak'}</div></span>
+        <span style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;"><span class="kaca-btn kecil" data-aksi="tkLabelBuka" data-kode="${x.kode}">Cetak label</span><span class="kaca-btn kecil" data-aksi="tkLepasTanya" data-jenis="barcode" data-kode="${x.kode}">Lepas</span></span></div>
+        ${s.tkLabel && s.tkLabel.kode === String(x.kode) ? kotakLabel('b' + i) : ''}${sedangLepas(x) ? kotakLepas(x, 'b' + i) : ''}`; };
+    const barisKartu = (x, i) => h`<div class="baris-nama" data-k="tk-n-${i}" style="cursor: default; align-items: center;"><span><b>${x.sasaran.nama}</b><div class="ket">kartu ${TK.tkRingkasKode(x.kode)} · sejak ${tanggalPendek(x.tanggal)}</div></span>
+        <span class="kaca-btn kecil" data-aksi="tkLepasTanya" data-jenis="nfc" data-kode="${x.kode}">Lepas</span></div>${sedangLepas(x) ? kotakLepas(x, 'n' + i) : ''}`;
+    const barisRak = (c, i) => { const sa = TK.tkSasaranChip(c); if (!sa) return ''; const ada = TK.tkLabelBarang(ambilTandaKenal(), sa);
+      const dipilih = s.tkLabel && !s.tkLabel.kode && s.tkLabel.jalur === sa.jalur && String(s.tkLabel.kunci) === sa.kunci && String(s.tkLabel.berat || '') === sa.berat;
+      return h`<div class="baris-nama" data-k="tk-r-${sa.jalur}-${i}" style="cursor: default; align-items: center;"><span><b>${sa.nama}</b><div class="ket">${sa.jalur}${ada ? ' · sudah punya label toko ' + TK.tkRingkasKode(String(ada.kode).slice(TK.TK_AWALAN_LABEL.length)) : ' · belum punya label toko'}</div></span>
+        <span class="kaca-btn kecil" data-aksi="tkLabelBuka" data-jalur="${sa.jalur}" data-kunci="${sa.kunci}" data-berat="${sa.berat}">${ada ? 'Cetak lagi' : 'Buat label'}</span></div>${dipilih ? kotakLabel('r' + sa.jalur + i) : ''}`; };
+    const isiRak = TK.TK_JALUR_BARCODE.reduce((a, j) => a.concat(rak[j] || []), []);
+    return h`${L1}<div class="lembar ${muncul}" data-k="lembar-tandaKenal">
+      ${kepala('Label & kartu', 'barcode kemasan → barang · kartu → pembeli · label buatan toko')}
+      <div class="bendera" data-k="tk-tab">
+        <span class="pil ${tab === 'barcode' ? 'nyala' : ''}" data-aksi="tkTab" data-tab="barcode">Barcode · ${bc.length}</span>
+        <span class="pil ${tab === 'nfc' ? 'nyala' : ''}" data-aksi="tkTab" data-tab="nfc">Kartu · ${kartu.length}</span>
+        <span class="pil ${tab === 'label' ? 'nyala' : ''}" data-aksi="tkTab" data-tab="label">Buat label</span>
+      </div>
+      ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : ''}" data-k="kabar-tandaKenal" data-aksi="tutupKabar">${s.kabar}</div>` : ''}
+      ${tab === 'barcode' ? h`<div class="ket">Mendaftarkan barcode baru: tutup lembar ini, scan kodenya, lalu ketuk barangnya di rak. Kemasan tanpa barcode → tab Buat label.</div>
+        <div class="daftar-nama" style="max-height: 52vh;">${bc.map(barisBarcode)}${bc.length ? '' : h`<div class="ket">Belum ada barcode yang dipasangkan.</div>`}</div>` : ''}
+      ${tab === 'nfc' ? h`<div class="ket">Mendaftarkan kartu baru: tutup lembar ini, tempelkan kartunya ke tablet, lalu pilih pembelinya. Kartu hilang → Lepas di sini.</div>
+        <div class="daftar-nama" style="max-height: 52vh;">${kartu.map(barisKartu)}${kartu.length ? '' : h`<div class="ket">Belum ada kartu yang dipasangkan.</div>`}</div>` : ''}
+      ${tab === 'label' ? h`<div class="ket">Untuk karung & kemasan yang tidak punya barcode pabrik: toko membuat kodenya sendiri, mencetaknya sebagai QR, lalu ditempel di kemasan. Scan label itu = barangnya terpilih. Kertas & ukuran label diatur di <a class="tautan" href="uji-cetak.html">Printer tablet ini</a>.</div>
+        <div class="daftar-nama" style="max-height: 52vh;">${isiRak.map(barisRak)}${isiRak.length ? '' : h`<div class="ket">Tidak ada karung atau kemasan di rak saat ini.</div>`}</div>` : ''}
+    </div>`;
+  }
+
   K.dengar(() => { gambar(); gulirkan(akar, RP); });
   // ---- owner 7 Okt (J2, "Ya, simpan di perangkat"): keranjang & struk parkir BERTAHAN saat halaman dimuat ulang — penyimpanan SESI tab ini, per akun + hari ini
   //      (isi & batasnya: jual-logika susunSimpanKeranjang). Baru menulis sesudah pemulihan untuk akun yang masuk dicoba (app.js → pulihkanKeranjang), supaya
@@ -1282,9 +1362,10 @@ export function pasangLayarJual(akar, opsi) {
   function pindai(teks) {
     const u = TK.tkUraiPindai(teks); if (!u || terkunci()) return;
     if (u.jenis === 'lain') return pindaiBarcode(u.kode);
-    if (u.jenis === 'rusak') return set({ kabar: 'QR struk tidak terbaca utuh — scan ulang, atau cari notanya di Riwayat', kabarAwas: true });
+    if (u.jenis === 'rusak') { lampu('lampuAsing'); return set({ kabar: 'QR struk tidak terbaca utuh — scan ulang, atau cari notanya di Riwayat', kabarAwas: true }); }
     if (!TK.tkLembarBolehDiganti(S().lembar)) return set({ kabar: 'Struk ter-scan, tapi lembar ini masih terbuka — tutup dulu, lalu scan lagi', kabarAwas: true });
     if (!ST.notaDari(u.kunci)) return set({ kabar: 'Nota dari struk ini tidak ada di data perangkat ini — mungkin nota lama yang sudah ditutup bukunya', kabarAwas: true });
+    lampu('lampuKenal');
     aksi.bukaStruk({ trx: u.kunci.trxId, grup: u.kunci.grupNota, id: u.kunci.id });
   }
   // paket S2b: barcode barang. Dikenal → lembar jumlah barang itu terbuka (jalur yang sama dengan mengetuk chipnya: tidak ada logika harga baru);
@@ -1294,7 +1375,8 @@ export function pasangLayarJual(akar, opsi) {
     if (!kode) return set({ kabar: 'Kode yang ter-scan tidak bisa dipakai sebagai barcode barang', kabarAwas: true });
     if (!TK.tkLembarBolehDiganti(S().lembar)) return set({ kabar: 'Barcode ter-scan, tapi lembar ini masih terbuka — tutup dulu, lalu scan lagi', kabarAwas: true });
     const d = TK.tkCari(ambilTandaKenal(), 'barcode', kode);
-    if (!d) return set({ tk: { jenis: 'barcode', kode, mode: 'daftar', pada: Date.now() }, lembar: null, pilih: null, kabar: '' });
+    if (!d) { lampu('lampuAsing'); return set({ tk: { jenis: 'barcode', kode, mode: 'daftar', pada: Date.now() }, lembar: null, pilih: null, kabar: '' }); }
+    lampu('lampuKenal');
     const c = TK.tkChipDari(rakKini(), d.sasaran); const kenal = { jenis: 'barcode', kode, mode: 'kenal', nama: String(d.sasaran.nama || d.sasaran.kunci) };
     if (!c) return set({ tk: kenal, kabar: 'Barcode ini = ' + kenal.nama + ', tapi barangnya sedang tidak ada di rak (habis, belum berharga, atau diarsipkan)', kabarAwas: true });
     set(Object.assign({ isiW: null, tk: kenal }, L.ketukChip(S(), c)));
@@ -1306,7 +1388,8 @@ export function pasangLayarJual(akar, opsi) {
     const s = S();
     if (!TK.tkLembarBolehDiganti(s.lembar) && s.lembar !== 'pelanggan') return set({ kabar: 'Kartu terbaca, tapi lembar ini masih terbuka — tutup dulu, lalu tempel lagi', kabarAwas: true });
     const d = TK.tkCari(ambilTandaKenal(), 'nfc', kode); const nama = d ? String(d.sasaran.nama || '').trim() : '';
-    if (!nama) return set({ tk: { jenis: 'nfc', kode, mode: 'daftar', pada: Date.now() }, lembar: 'pelanggan', cariPelanggan: '', kabar: '' });
+    if (!nama) { lampu('lampuAsing'); return set({ tk: { jenis: 'nfc', kode, mode: 'daftar', pada: Date.now() }, lembar: 'pelanggan', cariPelanggan: '', kabar: '' }); }
+    lampu('lampuKenal');
     const g = L.gantiPelanggan(SBN(), nama);
     set(Object.assign(s.lembar === 'pelanggan' ? { lembar: null, cariPelanggan: '' } : {}, { tk: null }, g, g.kabar ? {} : { kabar: 'Kartu pelanggan: ' + nama, kabarAwas: false }));
   }
