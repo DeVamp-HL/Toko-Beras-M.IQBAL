@@ -1,6 +1,7 @@
 name: Bangun APK tablet kasir
 
 # Putaran T1 langkah 2 (16 Nov 2026): aplikasi Android pembungkus /baru/ untuk Sunmi CPad + plugin cetak USB (apk/).
+# Paket S1 (19 Nov 2026): cangkang SUNMI — pustaka resmi SUNMI (printer, lampu), scanner; tanda tangan V1 + V2 dibuktikan (syarat SUNMI App Store).
 # Dibangun di runner — Mac owner tidak perlu Node/Android Studio (README-PROYEK: tanpa build, tanpa Node untuk /baru/).
 # Hasil: artefak "apk-tablet-kasir" di halaman run ini (Actions › run › Artifacts), diunduh lalu dipasang di CPad.
 #
@@ -33,21 +34,21 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Ambil isi repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Java 21 (syarat Capacitor 7)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 
       - name: Python + Pillow (ikon)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -64,7 +65,7 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Pasang plugin cetak USB, izin USB, ikon, versi
+      - name: Pasang plugin perangkat (cetak USB, SDK SUNMI, pindai, lampu), izin USB, ikon, versi
         run: python apk/pasang.py --versi ${{ github.run_number }}
 
       - name: Bangun APK
@@ -82,11 +83,15 @@ jobs:
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kunci.jks"
             BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
             "$BT/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/rata.apk"
+            # SUNMI App Store ("APK Uploading FAQs"): APK wajib bertanda tangan V1 DAN V2 → dua-duanya dinyalakan terang-terangan, lalu DIBUKTIKAN
             "$BT/apksigner" sign --ks "$RUNNER_TEMP/kunci.jks" --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias "$KEY_ALIAS" \
-              --key-pass env:KEY_PASSWORD --out "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" "$RUNNER_TEMP/rata.apk"
-            "$BT/apksigner" verify "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk"
+              --key-pass env:KEY_PASSWORD --v1-signing-enabled true --v2-signing-enabled true \
+              --out "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" "$RUNNER_TEMP/rata.apk"
+            "$BT/apksigner" verify -v "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" | tee "$RUNNER_TEMP/tanda.txt"
+            grep -q 'Verified using v1 scheme (JAR signing): true' "$RUNNER_TEMP/tanda.txt" || { echo "GAGAL: APK tidak bertanda tangan V1"; exit 1; }
+            grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RUNNER_TEMP/tanda.txt" || { echo "GAGAL: APK tidak bertanda tangan V2"; exit 1; }
             rm -f "$RUNNER_TEMP/kunci.jks"
-            echo "### APK RILIS bertanda tangan kunci toko — bisa dipasang menimpa versi lama" >> "$GITHUB_STEP_SUMMARY"
+            echo "### APK RILIS bertanda tangan kunci toko (V1 + V2 terbukti) — bisa dipasang menimpa versi lama" >> "$GITHUB_STEP_SUMMARY"
           else
             ./gradlew --no-daemon assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk "../keluaran/toko-beras-kasir-1.${{ github.run_number }}-debug.apk"
@@ -95,7 +100,7 @@ jobs:
           ls -la ../keluaran
 
       - name: Simpan APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: apk-tablet-kasir
           path: apk/keluaran/*.apk

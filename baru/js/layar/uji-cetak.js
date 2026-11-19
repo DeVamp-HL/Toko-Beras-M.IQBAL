@@ -2,10 +2,12 @@
 // Langkah 1 (spike): membuktikan jalur cetak USB — hasil uji owner 16 Nov: WebUSB di Chrome CPad gagal mengklaim antarmuka printer NT320,
 // jadi jalurnya APK (plugin CetakUsb). Langkah 2: halaman ini juga SETELAN printer perangkat ini (gaya gambar/teks, logo, potong, QR) —
 // disimpan di localStorage perangkat (inti/printer.js), dipakai tombol Cetak di layar Jual.
+// Paket S1 (19 Nov 2026): layar PERANGKAT — jalur cetak SDK SUNMI diuji & dipilih di sini; keadaan printer, scanner, lampu, kartu nama aplikasi.
 import { epContohGaris, EP_POTONG, EP_KOLOM } from '../inti/escpos.js';
 import { usbAda, usbMinta, usbDiingat, usbKirim, usbRingkas } from '../inti/usb-cetak.js';
 import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk } from '../inti/struk-kanvas.js';
-import { PR_GAYA, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak } from '../inti/printer.js';
+import { PR_GAYA, PR_JALUR, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak, namaJalur } from '../inti/printer.js';
+import { kemampuan, printerStatus, padaPindai, lampu, lampuPadam } from '../inti/perangkat.js';
 
 const $ = (id) => document.getElementById(id);
 let printer = null;          // WebUSB (peramban biasa)
@@ -19,11 +21,11 @@ function tulisLog(teks, awas) {
 const pesan = (e) => (e && e.message ? e.message : String(e));
 
 function isian() {
-  return { gaya: $('ucGaya').value, kertas: Number($('ucKertas').value), potong: $('ucPotong').value, umpan: Number($('ucUmpan').value), qr: $('ucQr').checked, logo, aktif: $('ucAktif').checked };
+  return { gaya: $('ucGaya').value, kertas: Number($('ucKertas').value), potong: $('ucPotong').value, umpan: Number($('ucUmpan').value), qr: $('ucQr').checked, logo, aktif: $('ucAktif').checked, jalur: $('ucJalur').value || 'usb' };
 }
 function isiForm(a) {
   $('ucGaya').value = a.gaya; $('ucKertas').value = String(a.kertas); $('ucPotong').value = a.potong; $('ucUmpan').value = String(a.umpan);
-  $('ucQr').checked = !!a.qr; $('ucAktif').checked = a.aktif !== false; logo = a.logo || '';
+  $('ucQr').checked = !!a.qr; $('ucAktif').checked = a.aktif !== false; logo = a.logo || ''; $('ucJalur').value = a.jalur || 'usb';
 }
 
 async function pratinjau() {
@@ -75,10 +77,42 @@ async function cetak() {
   const a = isian(); $('ucCetak').disabled = true;
   try {
     const s = await susunCetak(epContohGaris(), a, { qr: a.qr ? 'UJI-CETAK' : '', logoToko: true });
-    if (asliAda()) { const r = await kirimCetak(s.byte, 'aplikasi'); tulisLog('TERCETAK lewat aplikasi · gaya ' + s.gaya + ' · ' + r.byte + ' byte · ' + (r.perangkat || 'printer')); }
+    if (asliAda()) {
+      const mulaiPada = Date.now(); const r = await kirimCetak(s.byte, a.jalur === 'sunmi' ? 'sunmi' : 'aplikasi');
+      tulisLog('TERCETAK lewat ' + namaJalur(r.jalur) + ' · gaya ' + s.gaya + ' · ' + r.byte + ' byte · ' + (r.perangkat || 'printer') + ' · ' + (Date.now() - mulaiPada) + ' ms' + (r.peringatan ? ' · ' + r.peringatan : ''));
+      if (r.cadanganDari) tulisLog('Jalur SDK SUNMI TIDAK jalan, struk ini keluar lewat USB langsung. Sebabnya: ' + r.cadanganDari, true);
+    }
     else { const r = await usbKirim(printer, s.byte); tulisLog('TERCETAK lewat peramban · gaya ' + s.gaya + ' · ' + r.byte + ' byte'); }
   } catch (e) { tulisLog(pesan(e), true); }
   tampilPrinter();
+}
+
+// ---------- paket S1: perangkat SUNMI (hanya di aplikasi tablet) ----------
+async function periksaPrinter() {
+  $('ucStatus').disabled = true; $('ucStatusHasil').textContent = 'Menanyakan printer…'; $('ucStatusHasil').className = '';
+  try {
+    const r = await printerStatus();
+    $('ucStatusHasil').textContent = 'Printer ' + (r.nama || 'SUNMI') + ': ' + r.kalimat + (r.sdk ? ' · SDK ' + r.sdk : '');
+    $('ucStatusHasil').className = r.siap ? 'baik' : 'awas'; tulisLog('Keadaan printer (SDK SUNMI): ' + r.status + ' — ' + r.kalimat, !r.siap);
+  } catch (e) { $('ucStatusHasil').textContent = 'Printer tidak bisa ditanya lewat SDK SUNMI: ' + pesan(e); $('ucStatusHasil').className = 'awas'; tulisLog('Periksa printer gagal: ' + pesan(e), true); }
+  $('ucStatus').disabled = false;
+}
+async function cobaLampu(warna, o, nama) {
+  const r = warna ? await lampu(warna, o) : await lampuPadam();
+  tulisLog('Lampu ' + nama + ': ' + (r && r.ok ? 'jalan' : 'tidak jalan' + (r && r.kode !== undefined ? ' (kode ' + r.kode + ')' : '')), !(r && r.ok));
+}
+async function tampilSunmi() {
+  const k = await kemampuan();
+  const i = k.info;
+  $('ucKartu').textContent = i ? (i.merek + ' ' + i.model + ' · Android ' + i.android + ' · aplikasi ' + (i.versiApk || '?') + (i.sunmi ? '' : ' · BUKAN perangkat SUNMI'))
+    : 'Aplikasi ini belum punya bagian perangkat SUNMI — pasang APK terbaru (cetak USB langsung tetap jalan).';
+  $('ucKartu').className = i ? 'baik' : 'awas';
+  const l = k.lampu;
+  $('ucLampu').textContent = !l ? 'tidak ada di aplikasi ini' : l.dukung ? 'ada' : 'tidak didukung perangkat ini (kode ' + l.kode + ')';
+  const p = k.pindai;
+  if (p && !p.terpasang) $('ucPindai').textContent = 'perangkat ini tidak punya layanan scanner SUNMI';
+  else if (!p) $('ucPindai').textContent = 'tidak ada di aplikasi ini';
+  $('ucKemampuan').textContent = JSON.stringify(k, null, 2); $('ucKemampuan').hidden = false;
 }
 
 function simpan() {
@@ -90,13 +124,23 @@ function mulai() {
   PR_GAYA.forEach((p) => { const o = document.createElement('option'); o.value = p[0]; o.textContent = p[1]; $('ucGaya').appendChild(o); });
   EP_POTONG.forEach((p) => { const o = document.createElement('option'); o.value = p[0]; o.textContent = p[1]; $('ucPotong').appendChild(o); });
   Object.keys(EP_KOLOM).forEach((k) => { const o = document.createElement('option'); o.value = k; o.textContent = k + ' mm'; $('ucKertas').appendChild(o); });
+  PR_JALUR.forEach((p) => { const o = document.createElement('option'); o.value = p[0]; o.textContent = p[1]; $('ucJalur').appendChild(o); });
   isiForm(prAtur());
 
   const app = asliAda();
   $('ucDukung').textContent = app ? 'Aplikasi tablet kasir — cetak langsung ke printer USB.'
     : usbAda() ? 'Peramban biasa (WebUSB). Di Sunmi CPad pakai aplikasi tablet kasir (APK).' : 'Peramban ini tidak bisa mencetak ke USB — pakai aplikasi tablet kasir (APK).';
   $('ucDukung').className = app ? 'baik' : 'awas';
-  $('ucPilihBaris').hidden = app;
+  $('ucPilihBaris').hidden = app; $('ucJalurBaris').hidden = !app; $('ucSunmi').hidden = !app;
+  if (app) {
+    $('ucStatus').addEventListener('click', periksaPrinter);
+    $('ucLampuHijau').addEventListener('click', () => cobaLampu('hijau', { batasMs: 3000 }, 'hijau'));
+    $('ucLampuMerah').addEventListener('click', () => cobaLampu('merah', { kedip: true, nyalaMs: 250, matiMs: 250, batasMs: 5000 }, 'merah berkedip'));
+    $('ucLampuPadam').addEventListener('click', () => cobaLampu('', null, 'padam'));
+    let nPindai = 0;
+    padaPindai((x) => { nPindai += 1; $('ucPindai').textContent = '"' + x.data + '" · ' + x.data.length + ' huruf · scan ke-' + nPindai; tulisLog('Scan diterima: ' + x.data); });
+    tampilSunmi().catch((e) => tulisLog('Kartu perangkat tidak terbaca: ' + pesan(e), true));
+  }
 
   $('ucPilih').addEventListener('click', () => pilih(false));
   $('ucPilihSemua').addEventListener('click', () => pilih(true));

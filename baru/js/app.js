@@ -26,7 +26,8 @@ import { nanti, setelMuat } from './inti/jadwal.js';
 import { pasangGerbang } from './inti/gerbang.js';
 // putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang
 import * as TB from './layar/tablet-logika.js';
-import { asliAda } from './inti/printer.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
+// paket S1 (19 Nov 2026): pintu perangkat (aplikasi tablet) — asliAda pindah ke sini; scanner tidak boleh terbaca sebagai PIN
+import { asliAda, padaPindai, ketikTambah, ketikMesin, KETIK_TUNGGU } from './inti/perangkat.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
 // putaran T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi di tablet — bisa DIBUKA tanpa internet (pekerjanya sw-baru.js, dicap saat terbit)
 import * as SL from './inti/salinan.js';
 // owner 19 Nov 2026 ("masih berat di Android, terutama tablet"): pencatat tersendat DI PERANGKAT ini — dibaca di Menu › Sistem › Perangkat
@@ -482,10 +483,31 @@ document.getElementById('tombolKeluarTablet').addEventListener('click', () => {
   if (!window.confirm('Keluar dari akun tablet? Untuk masuk lagi perlu email & sandi akun tablet (biasanya owner).')) return;
   keluarAkun();
 });
-// papan ketik fisik (Mac / keyboard di stand): angka, hapus, Enter — hanya selagi panel PIN terbuka
+// papan ketik fisik (Mac / keyboard di stand): angka, hapus, Enter — hanya selagi panel PIN terbuka.
+// Paket S1 (19 Nov 2026): scanner SUNMI bermode "ketikan" mengetik isi kode seperti papan ketik → dulu kartu/barcode yang ter-scan di panel ini
+// terbaca sebagai PIN salah (5 kali = nama terkunci 5 menit). Ketikan papan fisik DITAMPUNG ±80 ms: beruntun secepat mesin, atau berbarengan
+// dengan siaran scanner (plugin Pindai), = dibuang tanpa dihitung. Tombol PIN di layar tidak lewat sini.
+const KALIMAT_SCAN = 'Itu hasil scan, bukan PIN — ketik PIN di tombol layar.';
+let _ketikTampung = []; let _ketikJam = 0; let _pindaiPada = 0;
+function lepasKetik() {
+  const t = _ketikTampung; _ketikTampung = [];
+  if (!t.length || panelOrang.hidden || !_pilihOrang || _tanyaGanti) return;
+  if (ketikMesin(t) || Date.now() - _pindaiPada < 600) { _pinKetik = ''; gambarPanelOrang(); pesanOrang(KALIMAT_SCAN); return; }
+  t.forEach((x) => tekanPin(x.k));
+}
 document.addEventListener('keydown', (ev) => {
   if (panelOrang.hidden || !_pilihOrang || _tanyaGanti) return;
-  if (/^[0-9]$/.test(ev.key)) { tekanPin(ev.key); ev.preventDefault(); } else if (ev.key === 'Backspace') { tekanPin('hapus'); ev.preventDefault(); } else if (ev.key === 'Enter') { tekanPin('OK'); ev.preventDefault(); }
+  const k = /^[0-9]$/.test(ev.key) ? ev.key : ev.key === 'Backspace' ? 'hapus' : ev.key === 'Enter' ? 'OK' : '';
+  if (!k) return;
+  ev.preventDefault();
+  _ketikTampung = ketikTambah(_ketikTampung, k, ev.timeStamp);
+  clearTimeout(_ketikJam); _ketikJam = setTimeout(lepasKetik, KETIK_TUNGGU);
+});
+padaPindai(() => {
+  _pindaiPada = Date.now();
+  if (panelOrang.hidden || !_pilihOrang || _tanyaGanti) return;
+  clearTimeout(_ketikJam); _ketikTampung = [];
+  if (!_periksaPin) { _pinKetik = ''; gambarPanelOrang(); pesanOrang(KALIMAT_SCAN); }
 });
 // kunci diam (owner 16 Nov: 5 menit). Sentuhan apa pun = masih ada orang; tablet ditinggal / layar mati lama = kembali ke "Siapa yang jaga?"
 ['pointerdown', 'keydown', 'touchstart'].forEach((n) => document.addEventListener(n, () => { _sentuh = Date.now(); }, { passive: true, capture: true }));
