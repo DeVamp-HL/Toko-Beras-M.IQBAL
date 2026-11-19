@@ -39,6 +39,24 @@ hasil.jual_hariIni_ms = ukur(function () { hariIni(s); }, 5);
 hasil.jual_karcis_ms = ukur(function () { daftarKarcis(s.sekarang); hitungKarcis(s); karcisDaruratHari(s.sekarang); }, 5);
 hasil.jual_tembus_ms = ukur(function () { notaTembusBelumCocok(); }, 5);
 hasil.jual_gambar_penuh_ms = ukur(gambarJual, 7);
+// owner 19 Nov 2026 ("masih lag di Android, terutama waktu buka riwayat"): Jual › Riwayat — rwSusun dijalankan TIAP gambar selama tab itu terbuka
+// (tiap huruf cari, tiap ketuk nota, tiap kabar data). "pertama" = sesudah data berubah (pasok menaikkan versi); "ulang" = gambar berikutnya, data sama.
+var sr = Object.assign({}, s, { rwPeriode: 'semua', rwN: 50 });
+function segar() { pasok('penjualan', CADANGAN.penjualan); }
+hasil.riwayat_pertama_ms = ukur(function () { segar(); rwSusun(sr, s.sekarang); }, 3) - ukur(segar, 3);
+hasil.riwayat_ulang_ms = ukur(function () { rwSusun(sr, s.sekarang); }, 5);
+hasil.riwayat_buka_nota_ms = ukur(function () { rwSusun(Object.assign({}, sr, { rwBuka: 'x' }), s.sekarang); }, 5);
+var huruf = 'pandan'; var kali = 0;
+hasil.riwayat_ketik_cari_ms = ukur(function () { kali += 1; rwSusun(Object.assign({}, sr, { rwCari: huruf.slice(0, 1 + kali % huruf.length) }), s.sekarang); }, 6);
+hasil.riwayat_500_nota_ms = ukur(function () { segar(); rwSusun(Object.assign({}, sr, { rwN: 500 }), s.sekarang); }, 3) - ukur(segar, 3);
+// hitungan gambar() Jual SELAIN rak (rak punya ingatannya sendiri di jual.js) — jalan tiap ketukan di tab mana pun
+function jualSelainRak() { hitungTagihan(s); hariIni(s); infoPelanggan(s.pelanggan); daftarPesanan('').length; daftarKarcis(s.sekarang); hitungKarcis(s); notaTembusBelumCocok(); karcisDaruratHari(s.sekarang);
+  if (typeof ngMenunggu === 'function') ngMenunggu(); }
+hasil.jual_ketukan_selain_rak_ms = ukur(jualSelainRak, 9);
+// dengan pembeli terpilih (nama berutang terbanyak mutasinya): infoPelanggan → kartu kredit + hitungPiutang mesin, tiap ketukan
+var per = {}; (CADANGAN.piutangMutasi || []).forEach(function (m) { var n = String(m.namaPelanggan || m.nama || '').trim(); if (n) per[n] = (per[n] || 0) + 1; });
+var pembeli = Object.keys(per).sort(function (x, y) { return per[y] - per[x]; })[0] || '';
+if (pembeli) { s.pelanggan = pembeli; hasil.jual_ketukan_dengan_pembeli_ms = ukur(jualSelainRak, 9); hasil.jual_setujuSiap_ms = ukur(function () { setujuSiap(s); }, 9); s.pelanggan = ''; }
 var k = s.sekarang;
 hasil.ringkasan_indeks_ms = ukur(function () { bangunIndeks(); }, 5);
 var ix = bangunIndeks();

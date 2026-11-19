@@ -15,6 +15,8 @@ import * as TB from './tablet-logika.js';   // putaran T1 langkah 3 (owner 16 No
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman, kunciLuarCache } from '../data/toko.js';
 import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';
+// owner 19 Nov 2026 (lag di Android): kelancaran PERANGKAT INI — dicatat perangkat sendiri, dibaca di Sistem › Perangkat
+import { ukurMulusRingkas, ukurMulusSalin, ukurMulusKosongkan } from '../inti/ukur-mulus.js';
 // owner 7 Okt (sisa pensiun #103): tab "Kasir & PIN" (25c) DICABUT dari layar — setelan operator kasir (pengaturan/aksesKasir) tidak dibaca aplikasi
 // yang tayang sejak kasir.html & sistem lama pensiun 3 Okt (kasir darurat tidak pernah membacanya). PIN owner (pengaturan/keamanan) juga tidak dibaca
 // aplikasi yang tayang; satu-satunya pembacanya = gerbang sistem lama kalau prosedur pulih darurat menjalankannya dari tag di komputer
@@ -135,6 +137,12 @@ export function pasangLayarMenu(akar, opsi) {
       try { const blob = new Blob([teks], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'kiriman-ditolak-' + hariIniIso(kini()) + '.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 2000); }
       catch (e) { set({ kabar: 'Peramban ini tidak bisa mengunduh berkas: ' + (e && e.message ? e.message : e), kabarAwas: true }); } },
     buangDitolak: ({ id }) => { if (!opsi.buangDitolak) return; if (st().yakinBuang !== id) return set({ yakinBuang: id, kabar: 'Ketuk sekali lagi untuk membuang kiriman itu — isinya tidak akan pernah masuk data toko', kabarAwas: true }); opsi.buangDitolak(id); set({ yakinBuang: null, kabar: 'Kiriman yang ditolak dibuang', kabarAwas: false }); },
+    // owner 19 Nov 2026: kelancaran perangkat ini (inti/ukur-mulus.js) — lihat / salin rincian, mulai dari nol
+    lcBuka: () => set({ lcBuka: !st().lcBuka }),
+    lcSalin: async () => { const teks = ukurMulusSalin(infoLancar());
+      try { await navigator.clipboard.writeText(teks); set({ kabar: 'Rincian kelancaran disalin — tinggal ditempel', kabarAwas: false }); }
+      catch (e) { set({ lcBuka: true, kabar: 'Perangkat ini tidak mengizinkan menyalin otomatis — rinciannya ditampilkan di bawah; tekan lama untuk menyalin, atau potret layarnya', kabarAwas: true }); } },
+    lcNol: () => { ukurMulusKosongkan(); set({ lcBuka: false, kabar: 'Catatan kelancaran dimulai dari nol', kabarAwas: false }); },
     namaiPerangkat: (v) => set({ namaBaru: String(v).slice(0, 30) }), namaiSimpan: () => { if (!opsi.namaiPerangkat) return; opsi.namaiPerangkat(st().namaBaru || ''); set({ kabar: 'Perangkat ini kini bernama ' + (st().namaBaru || '(tanpa nama)') + ' — jejak & denyut memakai nama itu', kabarAwas: false, namaBaru: '' }); },
     peran: ({ id }) => set({ peran: id, kabar: '' }), putarHak: async ({ peran, t }) => { await tulis(S.susunPutarHak(peran, t, waktu())); },
     mintaKe: ({ id }) => set({ mintaKe: st().mintaKe === id ? null : id, alasan: '' }), alasan: (v) => set({ alasan: String(v).slice(0, 80) }),
@@ -318,6 +326,20 @@ export function pasangLayarMenu(akar, opsi) {
           ${HB.koleksi.map((x) => h`<div class="hb-baris" data-k="hb-k-${x.k}"><span>${x.nama}<div class="k2">${x.mode}</div></span><span class="k2">${x.ket}<div>dibaca penuh ${jamMs(x.totalPada)}</div></span><span class="pr-cap ${x.ok ? 'ok' : 'awas'}">${x.ok ? 'cocok' : 'belum'}</span></div>`)}
           <div class="hg-pil" data-k="hb-tombol"><div class="seg" data-aksi="hematBaca">baca penuh sekarang</div><div class="seg" data-aksi="hematConsole">saya baru mengubah data lewat Console</div><div class="seg ${s.yakinHemat === 'semua' ? 'aktif' : ''}" data-aksi="hematSemua">${s.yakinHemat === 'semua' ? 'yakin: semua perangkat baca penuh' : 'minta semua perangkat baca penuh'}</div></div></div>` : ''}`;
   }
+  // owner 19 Nov 2026 ("masih berat di Android, terutama tablet"): kelancaran PERANGKAT INI — yang mencatat perangkat itu sendiri (inti/ukur-mulus.js),
+  // supaya yang diperbaiki berikutnya adalah yang benar-benar tersendat di tablet. Tidak ada isi nota / rupiah, tidak dikirim ke server.
+  const infoLancar = () => { const L = lokal(); let ua = '', px = ''; try { ua = String(navigator.userAgent || '').slice(0, 220); px = window.innerWidth + '×' + window.innerHeight + ' @' + (window.devicePixelRatio || 1); } catch (e) { /* bukan peramban */ }
+    return { perangkat: L.namaPerangkat || '', peramban: ua, layarPx: px }; };
+  function gambarLancar(s) {
+    const R = ukurMulusRingkas();
+    return h`<div class="kartu" data-k="lancar" style="gap: 6px;"><div style="font-weight: 700;">Kelancaran perangkat ini</div>
+      <div data-k="lc-judul">${R.judul}</div>
+      ${R.baris.map((b, i) => h`<div class="k2" data-k="lc-b${i}">${b}</div>`)}
+      ${R.tempat.length ? h`<div class="label" data-k="lc-berat">Paling berat di</div>${R.tempat.map((x, i) => h`<div class="k2" data-k="lc-t${i}"><b>${x.nama}</b> — ${x.teks}</div>`)}` : ''}
+      <div class="k2" data-k="lc-ket">Perangkat ini mencatat sendiri tiap kali layarnya tersendat: berapa lama dan di layar mana. Isi nota, nama, dan rupiah tidak ikut dicatat, dan tidak ada yang dikirim ke server. Mulai dari nol tiap hari.</div>
+      <div class="hg-pil" data-k="lc-tombol"><div class="seg ${s.lcBuka ? 'aktif' : ''}" data-k="lc-buka" data-aksi="lcBuka">${s.lcBuka ? 'tutup rincian' : 'lihat rincian'}</div>${R.adaIsi ? h`<div class="seg" data-k="lc-salin" data-aksi="lcSalin">salin rincian</div><div class="seg" data-k="lc-nol" data-aksi="lcNol">mulai dari nol</div>` : ''}</div>
+      ${s.lcBuka ? h`<div class="k2" data-k="lc-teks" style="white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 11px; user-select: text; -webkit-user-select: text;">${ukurMulusSalin(infoLancar())}</div>` : ''}</div>`;
+  }
   function gambarPerangkat(s, d, tab) {
     if (tab === 'hemat') return gambarHemat(s);
     const L = lokal(); const P = S.ssPerangkat(d, L.antre, L.idPerangkat); const pilih = P.daftar.find((x) => x.id === s.pilihP) || P.daftar.find((x) => x.ini) || null;
@@ -354,6 +376,7 @@ export function pasangLayarMenu(akar, opsi) {
         <div class="label">Nama perangkat ini</div><div style="display: flex; gap: 6px;"><input class="ketik-nama" type="text" placeholder="${L.namaPerangkat || 'mis. iPhone owner, Mac toko'}" value="${s.namaBaru || ''}" data-ketik="namaiPerangkat"><div class="kaca-btn aktif" style="min-width: 84px;" data-aksi="namaiSimpan">simpan</div></div>
         <div class="label">Yang mencatat di perangkat ini</div><div class="pita-info" data-k="masuk-sebagai">Masuk sebagai: <b>${(() => { const a = opsi.akun ? opsi.akun() : null; return a ? (a.jenis === 'owner' ? 'Owner' : a.nama + ' (' + ((S.SS_PERAN.find((p) => p.id === a.peran) || {}).nama || a.peran) + ')') : 'Owner'; })()}</b></div>
         <div class="k2">Catatan membawa nama & uid akun yang MASUK — bukan pilihan di perangkat. Ganti orang = Keluar lalu masuk dengan akunnya sendiri (tombol Keluar di pojok atas).</div></div>` : pilih ? h`<div class="kartu" data-k="panel-lain" style="gap: 4px;"><div style="font-weight: 700;">${pilih.nama}</div><div class="k2">${pilih.denyutTeks} · ${pilih.aplikasi}</div><div class="k2">Antrean & pemegang perangkat lain hanya bisa diubah dari perangkat itu sendiri.</div></div>` : ''}
+      ${gambarLancar(s)}
       ${pintuAtur('Atur batas antrean, denyut & pencatat', 'antrean lama ' + P.atur.batasAntre + ' menit · denyut lama ' + P.atur.batasDenyut + ' menit · ' + P.atur.pemegang.length + ' pencatat')}`;
   }
   function gambarPeran(s, d, tab) {
