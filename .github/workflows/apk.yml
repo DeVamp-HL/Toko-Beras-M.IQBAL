@@ -1,6 +1,7 @@
 name: Bangun APK tablet kasir
 
 # Putaran T1 langkah 2 (16 Nov 2026): aplikasi Android pembungkus /baru/ untuk Sunmi CPad + plugin cetak USB (apk/).
+# Paket S1 (19 Nov 2026): cangkang SUNMI — pustaka resmi SUNMI (printer, lampu), scanner; tanda tangan V1 + V2 dibuktikan (syarat SUNMI App Store).
 # Dibangun di runner — Mac owner tidak perlu Node/Android Studio (README-PROYEK: tanpa build, tanpa Node untuk /baru/).
 # Hasil: artefak "apk-tablet-kasir" di halaman run ini (Actions › run › Artifacts), diunduh lalu dipasang di CPad.
 #
@@ -33,23 +34,34 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Ambil isi repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Java 21 (syarat Capacitor 7)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 
       - name: Python + Pillow (ikon)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+
+      # 19 Nov 2026 (run 6): Maven Central menjawab 429 "Too Many Requests" ke runner → bangun gagal sebelum satu baris pun dikompilasi.
+      # Pustaka yang sudah terunduh disimpan antar-run supaya bangun berikutnya nyaris tidak menyentuh Maven Central.
+      - name: Simpanan pustaka Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper
+          key: gradle-apk-${{ hashFiles('apk/package.json', 'apk/pasang.py') }}
+          restore-keys: gradle-apk-
 
       - name: Pasang Capacitor
         working-directory: apk
@@ -64,7 +76,7 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Pasang plugin cetak USB, izin USB, ikon, versi
+      - name: Pasang plugin perangkat (cetak USB, SDK SUNMI, pindai, lampu), izin USB, ikon, versi
         run: python apk/pasang.py --versi ${{ github.run_number }}
 
       - name: Bangun APK
@@ -77,25 +89,47 @@ jobs:
         run: |
           chmod +x gradlew
           mkdir -p ../keluaran
+          # Bangun, dicoba ulang HANYA kalau gagalnya unduhan pustaka (429 / putus / habis waktu / pustaka "tidak ditemukan") — galat kompilasi
+          # tidak diulang, langsung gagal. Run 9 (19 Nov): Maven Central yang sedang membatasi menjawab seolah pustakanya tidak ada
+          # ("Could not find org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.20"), padahal run kembarannya di commit yang sama mengunduhnya.
+          # Pustaka yang SUNGGUH tidak ada (versi salah ketik) tetap gagal — sesudah tiga percobaan yang semuanya tercatat.
+          # Keputusan owner 26 Sep 2026: tiap percobaan ulang tercatat — satu baris DICOBA ULANG di log + peringatan di ringkasan run.
+          UNDUH_GAGAL='Received status code (429|5[0-9][0-9])[^.]*|Read timed out|Connection (reset|refused|timed out)|Could not GET |Could not find [A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+'
+          bangun() {
+            local n segar
+            for n in 1 2 3; do
+              # percobaan ulang memaksa Gradle bertanya lagi ke gudang pustaka: jawaban "tidak ada" tadi diingatnya 24 jam
+              segar=''; if [ "$n" -gt 1 ]; then segar='--refresh-dependencies'; fi
+              if ./gradlew --no-daemon $segar "$1" 2>&1 | tee "$RUNNER_TEMP/gradle-$n.log"; then return 0; fi
+              if [ "$n" = 3 ] || ! grep -qE "$UNDUH_GAGAL" "$RUNNER_TEMP/gradle-$n.log"; then return 1; fi
+              echo "DICOBA ULANG: bangun APK ($1) — unduhan pustaka gagal: $(grep -oE "$UNDUH_GAGAL" "$RUNNER_TEMP/gradle-$n.log" | sort | uniq -c | sort -rn | head -1 | sed 's/^ *//') (percobaan $((n + 1)) dari 3, menunggu $((n * 60)) detik)"
+              echo "::warning title=DICOBA ULANG::bangun APK ($1) — unduhan pustaka gagal, percobaan $((n + 1)) dari 3"
+              sleep $((n * 60))
+            done
+          }
           if [ -n "$KEYSTORE_B64" ]; then
-            ./gradlew --no-daemon assembleRelease
+            bangun assembleRelease
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kunci.jks"
             BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
             "$BT/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/rata.apk"
+            # SUNMI App Store ("APK Uploading FAQs"): APK wajib bertanda tangan V1 DAN V2 → dua-duanya dinyalakan terang-terangan, lalu DIBUKTIKAN
             "$BT/apksigner" sign --ks "$RUNNER_TEMP/kunci.jks" --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias "$KEY_ALIAS" \
-              --key-pass env:KEY_PASSWORD --out "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" "$RUNNER_TEMP/rata.apk"
-            "$BT/apksigner" verify "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk"
+              --key-pass env:KEY_PASSWORD --v1-signing-enabled true --v2-signing-enabled true \
+              --out "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" "$RUNNER_TEMP/rata.apk"
+            "$BT/apksigner" verify -v "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" | tee "$RUNNER_TEMP/tanda.txt"
+            grep -q 'Verified using v1 scheme (JAR signing): true' "$RUNNER_TEMP/tanda.txt" || { echo "GAGAL: APK tidak bertanda tangan V1"; exit 1; }
+            grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RUNNER_TEMP/tanda.txt" || { echo "GAGAL: APK tidak bertanda tangan V2"; exit 1; }
             rm -f "$RUNNER_TEMP/kunci.jks"
-            echo "### APK RILIS bertanda tangan kunci toko — bisa dipasang menimpa versi lama" >> "$GITHUB_STEP_SUMMARY"
+            echo "### APK RILIS bertanda tangan kunci toko (V1 + V2 terbukti) — bisa dipasang menimpa versi lama" >> "$GITHUB_STEP_SUMMARY"
           else
-            ./gradlew --no-daemon assembleDebug
+            bangun assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk "../keluaran/toko-beras-kasir-1.${{ github.run_number }}-debug.apk"
             echo "### APK DEBUG (rahasia APK_KEYSTORE_* belum ada) — memasang versi baru = hapus aplikasi lama dulu" >> "$GITHUB_STEP_SUMMARY"
           fi
           ls -la ../keluaran
 
       - name: Simpan APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: apk-tablet-kasir
           path: apk/keluaran/*.apk

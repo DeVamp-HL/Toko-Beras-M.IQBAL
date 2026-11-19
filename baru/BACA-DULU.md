@@ -2860,3 +2860,47 @@ ketukan diulang puluhan kali. Polanya sama di semua layar: tiap gambar ulang (= 
 - **BELUM (ukuran sesudahnya)**: Dasbor dibuka sesudah data berubah = ±230 ms di Mac (±2 dtk di tablet) — ±30 potret buku stok harian (`umBarang`) dihitung
   ulang penuh; obat yang diusulkan = pemanasan bertahap di latar. Kabar data selagi Menu terbuka masih menghitung ulang seluruh laci. Cat & gulir (kaca
   buram, `content-visibility`) sengaja belum disentuh: kartu menunjukkan sumbatnya di hitungan, bukan di cat.
+
+## Paket S1 — cangkang SUNMI: perangkat lewat SDK resmi (19 Nov 2026)
+
+Owner 19 Nov: sistem harus optimal di ekosistem SUNMI dan kelak masuk **SUNMI App Store**. Keputusan: **bukan tulis ulang** — otak tetap web `/baru/`
+(juga dipakai di HP owner); APK-nya dinaikkan jadi cangkang yang memegang tiap perangkat lewat pustaka resmi SUNMI. Kolam App Store = **Privat**.
+
+**Yang dibuktikan ke dokumen resmi (docs.sunmi.com) sebelum menulis kode:**
+- Printer NT32x punya SDK Android resmi `com.sunmi:external-printerlibrary2` (Maven Central; syarat firmware ≥ 4.1.19 & SUNMI APP ≥ 4.1.32): lewat **USB**
+  bisa menanyakan keadaan printer (kertas habis / hampir habis, tutup terbuka, macet, panas), mengabari hasil cetak, membuka laci (`openCashBox`), dan
+  menerima byte mentah (`appendRawData`) — struk tetap disusun `escpos.js`.
+- Lampu CPad: SunmiCustomer API `com.sunmi:customerservice` (Maven sejak 1.3.82.0) → `TMSApi.getDeviceManager().openRgbLed(...)`. Modul **Kiosk** di SDK
+  itu bertanda khusus seri keuangan (P) → mode kunci aplikasi di CPad TIDAK dijanjikan.
+- Scanner: siaran `com.sunmi.scanner.ACTION_DATA_CODE_RECEIVED` (extra `data`); Android 11+ butuh `<queries>` paket `com.sunmi.scanner`.
+- Sidik jari: hanya BiometricPrompt (cocok / tidak, bukan "siapa") → PIN per orang tetap. NFC CPad = NFC Android biasa.
+- **SUNMI App Store**: pendaftar di luar Tiongkok hanya bisa bertipe **Company** (perlu legalitas usaha); ada **Private App Store** (hanya terlihat di
+  channel sendiri, pemeriksaan otomatis saja); APK wajib bertanda tangan **V1 + V2**, `versionCode` naik, nama paket tetap.
+
+**Yang dibangun:**
+- `apk/tambahan/`: `PrinterSunmiPlugin` (status · cetak · bukaLaci · lepas), `PindaiPlugin` (kejadian `pindai`), `LampuPlugin` (dukung · nyala · mati — tidak
+  pernah menolak), `PerangkatPlugin` (kartu nama perangkat), `KelolaRuangActivity` (penjaga "Hapus data"). `CetakUsbPlugin` tidak diubah.
+- `apk/pasang.py`: menyalin SEMUA `tambahan/*.java`; menyisipkan dua pustaka SUNMI (versi dikunci), `<queries>`, `manageSpaceActivity`, `allowBackup` mati,
+  `configChanges` anti layar kedip saat USB dicolok. Ubahan teksnya fungsi murni (`ubah_manifest`, `ubah_gradle`): pola Capacitor tak dikenal = bangun GAGAL.
+- `baru/js/inti/perangkat.js` — SATU PINTU ke aplikasi (tanpa impor): `panggilAsli`, `adaPlugin`, `cetakAsli`, `printerStatus`, `padaPindai`, `lampu*`,
+  `kemampuan`, dan penampung ketikan panel PIN. Di HP/Mac semuanya diam.
+- **Dua jalur cetak di aplikasi** (`printer.js`, setelan per perangkat `jalur`): `usb` = CetakUsb (BAWAAN, terbukti sejak 16 Nov) · `sunmi` = SDK resmi.
+  Jalur SUNMI **dipilih owner sesudah lulus "Cetak contoh"** di `uji-cetak.html` (sekarang layar *Perangkat tablet ini*) — pustakanya belum pernah
+  dijalankan di CPad toko, jadi tidak dijadikan bawaan diam-diam.
+- **Aturan tidak dobel**: SDK gagal SEBELUM ada byte terkirim (kode `BELUM_KIRIM`, atau plugin tak ada di APK lama) → jatuh ke CetakUsb, sebabnya dikabarkan.
+  Printer MENJAWAB ada halangan (`PRINTER_xxx`, termasuk `PRINTER_DIAM` = diam sesudah data dikirim) → galat apa adanya, TIDAK dikirim ulang lewat USB.
+- **Scan ≠ PIN** (`app.js`): ketikan papan fisik di panel "Siapa yang jaga?" ditampung ±80 ms; ≥ 3 ketukan beruntun < 35 ms, atau berbarengan siaran
+  scanner, = dibuang tanpa memeriksa PIN (dulu satu scan bisa terhitung PIN salah; 5 kali = nama terkunci 5 menit). Tombol PIN di layar tidak lewat situ.
+- Lampu: hijau sebentar saat nota tersimpan, merah berkedip saat cetak gagal. Padam sendiri (batas waktu wajib).
+  Di `jual.js` lampu HANYA lewat pembungkus `lampu(nama)` yang menelan galat apa pun: panggilan lampu telanjang di alur simpan sempat membuat nota
+  yang SUDAH tercatat dilaporkan "GAGAL mencatat" dan keranjangnya tidak dikosongkan (ditangkap `uji_keranjang_tahan.py` di CI, 19 Nov). Hiasan
+  tidak boleh bisa menggagalkan uang.
+- `apk.yml`: action diperbarui; tanda tangan V1 + V2 dinyalakan terang-terangan dan dibuktikan (`apksigner verify -v`).
+- Penjaga: `uji_perangkat_sunmi.py` (aplikasi TIRUAN di jsc + `pasang.py` + statis + 21 kontrol).
+
+**Batas bukti**: perangkat keras SUNMI tidak bisa diuji di Mac / runner. Yang terbukti di sini = logika halaman, pemasang, dan APK yang terbangun. Yang
+HARUS dibuktikan di CPad: cetak lewat SDK SUNMI, keadaan printer (buka tutupnya), scan di panel PIN, lampu, APK baru menimpa yang lama.
+
+**Belum (paket S2/S3)**: kartu member QR (format & tautan pelanggan = keputusan owner); laci uang hanya untuk tunai (tegangan port RJ12 NT320 belum
+dipastikan — pembanding SUNMI lain 24 V/1 A); sidik jari sebagai konfirmasi; NFC; label TSPL (`sendTSPLData` sudah ada di SDK); jalur App Store menunggu
+legalitas usaha + SN perangkat masuk channel sendiri.

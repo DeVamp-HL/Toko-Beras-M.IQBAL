@@ -9,6 +9,7 @@ import * as L from './jual-logika.js';
 import * as RT from './retur-logika.js';
 import * as WJ from './wadah-jual-logika.js';
 import * as ST from './struk-logika.js';
+import * as PK from '../inti/perangkat.js';   // paket S1 (19 Nov 2026): lampu CPad — hijau nota tersimpan, merah kedip cetak gagal; tanpa lampu = diam
 import * as PR from '../inti/printer.js';   // T1 (16 Nov 2026): printer USB tablet kasir — aplikasi CPad / WebUSB; tanpa printer = dialog cetak
 // owner 17 Nov (butir 3): pratinjau struk gambar + logo toko bersama
 import { gambarStruk as gambarStrukKanvas, siapkanHuruf } from '../inti/struk-kanvas.js';
@@ -173,6 +174,7 @@ export function pasangLayarJual(akar, opsi) {
       try {
         const h = await tulisDokumen(r.dokumen);
         if (h && h.gagal) { lepasBila(); lepasRak(0); return set({ kabar: 'DITOLAK, nota tidak tersimpan: ' + h.pesan, kabarAwas: true }); }
+        if (!(h && h.simulasi)) lampu('lampuBerhasil');
         const lamaAdegan = adeganNota(r.nota, keranjangTadi, uangTadi);
         tahanRak(4500); lepasRak(lamaAdegan ? Math.min(4000, lamaAdegan + 120) : 0);   // rak disusun ulang sesudah adegan selesai, bukan saat adegan mulai   // hanya sesudah nota SUNGGUH tercatat — adegan tidak boleh merayakan nota yang ditolak
         const tambahOmzet = r.dokumen.filter((d) => d.koleksi === 'penjualan').reduce((a, d) => a + (Number(d.data.hargaTotal) || 0), 0);
@@ -352,6 +354,9 @@ export function pasangLayarJual(akar, opsi) {
   // window.open(…, 'noopener') SELALU mengembalikan null menurut aturan peramban (walau jendelanya terbuka) → dulu tiap kirim tercatat "ditahan peramban".
   // Dibuka tanpa fitur itu supaya null = sungguh ditahan; opener diputus sesudahnya (jendela baru tidak bisa menyentuh halaman toko).
   function bukaWa(teks) { try { const w = window.open(ST.tautanWa(teks), '_blank'); if (w) { try { w.opener = null; } catch (e) { /* jendela sudah pindah asal */ } } return w; } catch (e) { return null; } }
+  // Lampu = hiasan penanda. Apa pun yang terjadi padanya (perangkat tanpa lampu, modul perangkat tidak termuat) TIDAK boleh menggagalkan
+  // simpan nota atau cetak: 19 Nov 2026 panggilan lampu yang melempar sempat membuat nota yang SUDAH tercatat dilaporkan "GAGAL mencatat".
+  function lampu(nama) { try { const f = PK[nama]; if (typeof f === 'function') { const j = f(); if (j && typeof j.catch === 'function') j.catch(() => {}); } } catch (e) { /* tanpa lampu */ } }
   /** Cetak: printer USB perangkat ini bila ada (aplikasi tablet kasir / WebUSB — inti/printer.js, setelan di uji-cetak.html), selain itu atau kalau
    *  printer gagal = teks struk yang sama lewat dialog cetak perangkat ini. Isi struk sama persis di kedua jalur (garis susunStruk). */
   function cetak(nota, atur, pilih, ket) {
@@ -359,8 +364,12 @@ export function pasangLayarJual(akar, opsi) {
     PR.jalurCetak().then((j) => {
       if (j === 'dialog') { cetakDialog(st, nota, ket); return; }
       return PR.cetakGaris(st.garis, { logoToko: st.logo }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
-        catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + 'printer USB ' + (r.jalur === 'aplikasi' ? 'aplikasi tablet' : 'peramban') + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
+        catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + 'printer USB ' + PR.namaJalur(r.jalur) + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
+        // paket S1: SDK SUNMI mengabari kertas hampir habis; jalur SUNMI yang jatuh ke USB langsung disebut supaya ketahuan (struknya tetap keluar)
+        if (r.peringatan) set({ kabar: r.peringatan + ' — struk ini tetap tercetak', kabarAwas: true });
+        else if (r.cadanganDari) set({ kabar: 'Struk tercetak lewat USB langsung; jalur SDK SUNMI tidak jalan (' + r.cadanganDari + ')', kabarAwas: false });
       }).catch((e) => {
+        lampu('lampuGagal');
         set({ kabar: 'Printer USB gagal (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true });
         cetakDialog(st, nota, ket);
       });

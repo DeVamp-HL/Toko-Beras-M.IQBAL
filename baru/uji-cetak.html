@@ -2,11 +2,12 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<!-- Putaran T1: printer tablet ini (uji cetak + setelan per perangkat). Tanpa Firebase, tanpa script sebaris; hanya modul sendiri + huruf toko. -->
+<!-- Putaran T1: printer tablet ini (uji cetak + setelan per perangkat). Tanpa Firebase, tanpa script sebaris; hanya modul sendiri + huruf toko.
+     Paket S1 (19 Nov 2026): juga layar PERANGKAT — printer lewat SDK SUNMI, scanner, lampu, kartu nama aplikasi. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Printer tablet ini · Toko Beras M.IQBAL</title>
+<title>Perangkat tablet ini · Toko Beras M.IQBAL</title>
 <link rel="icon" href="../icon-sistem-32.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500;6..96,600;6..96,700&family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Jost:wght@400;500;600;700&family=Kalam:wght@400;700&display=swap">
 <style>
@@ -41,7 +42,7 @@
 </head>
 <body>
 <main>
-  <header><h1>Printer tablet ini</h1><a href="./">← kembali ke sistem toko</a></header>
+  <header><h1>Perangkat tablet ini</h1><a href="./">← kembali ke sistem toko</a></header>
   <div class="kiri">
     <section>
       <h2>Jalur cetak</h2>
@@ -52,6 +53,21 @@
         <button id="ucPilihSemua" type="button">Tampilkan semua USB</button>
       </div>
       <label><input id="ucAktif" type="checkbox" checked> tombol Cetak di layar Jual memakai printer USB ini (mati = dialog cetak seperti dulu)</label>
+      <div id="ucJalurBaris" hidden>
+        <label><span>Jalur di aplikasi</span><select id="ucJalur"></select></label>
+        <p>Pilih <b>SDK SUNMI</b> → <b>Cetak contoh</b>. Kalau catatan menulis "TERCETAK lewat aplikasi tablet (SDK SUNMI)" dan struknya benar, tekan <b>Simpan untuk tablet ini</b>. Kalau tidak, kembalikan ke USB langsung.</p>
+      </div>
+    </section>
+    <section id="ucSunmi" hidden>
+      <h2>Perangkat SUNMI</h2>
+      <p id="ucKartu">Memeriksa aplikasi…</p>
+      <button id="ucStatus" type="button">Periksa printer</button>
+      <p id="ucStatusHasil"></p>
+      <p><b>Scanner:</b> <span id="ucPindai">scan kode apa saja — hasilnya muncul di sini</span></p>
+      <p><b>Lampu:</b> <span id="ucLampu">belum diperiksa</span></p>
+      <button id="ucLampuHijau" type="button">Hijau</button>
+      <button id="ucLampuMerah" type="button">Merah berkedip</button>
+      <button id="ucLampuPadam" type="button">Padamkan</button>
     </section>
     <section>
       <h2>Rupa struk</h2>
@@ -75,6 +91,7 @@
     <section>
       <h2>Printer (salin ini kalau gagal)</h2>
       <pre id="ucPrinter"></pre>
+      <pre id="ucKemampuan" hidden></pre>
     </section>
   </div>
   <div class="kanan">
