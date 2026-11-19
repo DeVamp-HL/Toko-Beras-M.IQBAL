@@ -5,7 +5,7 @@
 // rincian (penjualanMasihBerlaku, mesin laba memakai aturan yang sama); total nota = Σ hargaTotal baris berlaku (= panel "Hari ini"). Omzet LAPORAN = total nota − uang
 // retur hari itu (hitungLabaRentang.omzetPenuh) — riwayat menyebut keduanya selama tidak ada saringan jenis/cara/cari. Nota batal / dirinci hanya tampil bila diminta.
 // Tanpa DOM; nama berawalan rw (bundel uji satu lingkup). Dijaga alat-uji/uji_riwayat_penjualan.py.
-import { ambilPenjualanSemua, ambilRetur } from '../data/toko.js';
+import { ambilPenjualanSemua, ambilRetur, ingatPerVersi } from '../data/toko.js';
 import { penjualanMasihBerlaku, bakuCaraBayar, uangKembaliRetur } from '../mesin/pembantu.js';
 import { rtDasarRetur } from './retur-logika.js';
 import { hariIniIso, RP } from '../inti/format.js';
@@ -37,26 +37,55 @@ export function rwTeksBaris(p) {
 }
 const rwJenisBaris = (p) => (p.jenis === RW_KARCIS ? 'karcis' : String(p.jenis || ''));
 
-/** SEMUA nota sejak awal (terbaru dulu): { kunci, trxId, grupNota, id, tanggal, jam, nama, cara, total, kg, status, baris[], jenis{}, … }. */
-export function rwSemuaNota() {
-  const per = {}; const urut = [];
-  ambilPenjualanSemua().forEach((p) => { const k = rwKunci(p); if (!per[k]) { per[k] = []; urut.push(k); } per[k].push(p); });
-  return urut.map((k) => {
-    const rows = per[k].slice().sort(rwUrutId); const hidup = rows.filter(penjualanMasihBerlaku); const p0 = hidup[0] || rows[0];
-    const status = hidup.length === rows.length ? 'berlaku' : hidup.length ? 'sebagian' : rows.some((x) => x.dibatalkan) ? 'batal' : 'dirinci';
-    const tampil = gabungTakaran(hidup.length ? hidup : rows);
-    const baris = tampil.map((p) => { const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarRetur(p) : { ok: false };
-      const hidupBaris = status !== 'batal' && status !== 'dirinci' && !p.penggantiRetur;
-      return { id: String(p.id), teks: rwTeksBaris(p), n: Math.round(p.hargaTotal || 0), jenis: rwJenisBaris(p), bisaRetur: hidupBaris && !!(d && d.ok),
-        sebabRetur: hidupBaris && (p.jenis === 'karung' || p.jenis === 'kemasan') && d && !d.ok ? String(d.sebab || '') : '', tandai: !!p.perluCocokkan, pengganti: !!p.penggantiRetur }; });
-    const jenis = {}; tampil.forEach((p) => { jenis[rwJenisBaris(p)] = true; });
-    const total = hidup.reduce((a, p) => a + (p.hargaTotal || 0), 0);
-    return { kunci: k, trxId: p0.trxId || null, grupNota: p0.grupNota || null, id: String(p0.id), tanggal: String(p0.tanggal || ''), jam: String(p0.jam || ''), nama: String(p0.namaPelanggan || '').trim(),
-      cara: bakuCaraBayar(p0.caraBayar), oleh: String(p0.oleh || p0.operator || '').trim(), dilayani: String((rows.find((x) => String(x.dilayaniOleh || '').trim()) || {}).dilayaniOleh || '').trim(), total: Math.round(total), totalAsli: Math.round(rows.reduce((a, p) => a + (p.hargaTotal || 0), 0)),
-      kg: Math.round(hidup.reduce((a, p) => a + (Number(p.totalKg) || 0), 0) * 100) / 100, status, baris, jenis, karcis: !!jenis.karcis, tandai: baris.some((b) => b.tandai),
-      bisaRetur: baris.some((b) => b.bisaRetur), nBaris: baris.length };
-  }).sort((a, b) => (b.tanggal + ' ' + b.jam).localeCompare(a.tanggal + ' ' + a.jam) || (Number(b.id) || 0) - (Number(a.id) || 0));
+// owner 19 Nov 2026 ("masih lag di Android, terutama waktu buka riwayat") — terukur atas cadangan toko 16 Nov (9.864 baris penjualan, jsc di Mac): riwayat
+// disusun ulang ±2,3 detik TIAP gambar (tiap huruf cari, tiap ketuk nota, tiap kabar data). Sebabnya: semua nota sejak awal dikelompokkan lagi, dan untuk tiap
+// baris karung/kemasan (1.707) dasar returnya dihitung — hitungan itu (rtDasarRetur → ongkir antar + rtDasarNota mesin) menyaring SELURUH penjualan dua kali.
+// Padahal "boleh diretur / alasannya" hanya tampil di nota yang sedang DIBUKA. Kini:
+//  · rwDasar: nota dikelompokkan SEKALI per versi data (ingatPerVersi toko.js), TANPA hitungan retur; teks cari disiapkan sekali;
+//  · rwNotaLengkap(kunci): dasar retur dihitung hanya untuk nota yang diminta (yang dibuka), diingat per nota per versi data;
+//  · rwSusun diingat per (versi data, saringan, banyak tampil, tanggal hari ini) → buka/tutup nota & kabar data yang tidak mengubah isi tidak menghitung apa pun.
+// Nota dari rwSusun TIDAK membawa bisaRetur / sebabRetur sama sekali (bukan "false pura-pura") — yang perlu memintanya lewat rwNotaLengkap.
+// Hasil ingatan dipakai bersama: pemanggil tidak boleh mengubahnya di tempat. Kesetaraan dengan hitungan lama dijaga alat-uji/uji_riwayat_penjualan.py.
+const rwTeksCari = (o) => (o.nama + ' ' + o.baris.map((b) => b.teks).join(' ') + ' ' + o.cara + ' ' + o.kunci.slice(-6) + ' ' + String(o.trxId || o.grupNota || o.id || '').replace(/\D/g, '').slice(-6)).toLowerCase();
+function rwDasar() {
+  return ingatPerVersi('rwDasar', () => {
+    const per = {}; const urut = [];
+    ambilPenjualanSemua().forEach((p) => { const k = rwKunci(p); if (!per[k]) { per[k] = []; urut.push(k); } per[k].push(p); });
+    const mentah = {}; const peta = {}; const cari = {};
+    const daftar = urut.map((k) => {
+      const rows = per[k].slice().sort(rwUrutId); const hidup = rows.filter(penjualanMasihBerlaku); const p0 = hidup[0] || rows[0];
+      const status = hidup.length === rows.length ? 'berlaku' : hidup.length ? 'sebagian' : rows.some((x) => x.dibatalkan) ? 'batal' : 'dirinci';
+      const tampil = gabungTakaran(hidup.length ? hidup : rows);
+      mentah[k] = tampil;
+      const baris = tampil.map((p) => ({ id: String(p.id), teks: rwTeksBaris(p), n: Math.round(p.hargaTotal || 0), jenis: rwJenisBaris(p), tandai: !!p.perluCocokkan, pengganti: !!p.penggantiRetur }));
+      const jenis = {}; tampil.forEach((p) => { jenis[rwJenisBaris(p)] = true; });
+      const total = hidup.reduce((a, p) => a + (p.hargaTotal || 0), 0);
+      return { kunci: k, trxId: p0.trxId || null, grupNota: p0.grupNota || null, id: String(p0.id), tanggal: String(p0.tanggal || ''), jam: String(p0.jam || ''), nama: String(p0.namaPelanggan || '').trim(),
+        cara: bakuCaraBayar(p0.caraBayar), oleh: String(p0.oleh || p0.operator || '').trim(), dilayani: String((rows.find((x) => String(x.dilayaniOleh || '').trim()) || {}).dilayaniOleh || '').trim(), total: Math.round(total), totalAsli: Math.round(rows.reduce((a, p) => a + (p.hargaTotal || 0), 0)),
+        kg: Math.round(hidup.reduce((a, p) => a + (Number(p.totalKg) || 0), 0) * 100) / 100, status, baris, jenis, karcis: !!jenis.karcis, tandai: baris.some((b) => b.tandai), nBaris: baris.length };
+    }).sort((a, b) => (b.tanggal + ' ' + b.jam).localeCompare(a.tanggal + ' ' + a.jam) || (Number(b.id) || 0) - (Number(a.id) || 0));
+    daftar.forEach((o) => { peta[o.kunci] = o; cari[o.kunci] = rwTeksCari(o); });
+    return { daftar, mentah, peta, cari };
+  });
 }
+/**
+ * Satu nota LENGKAP dengan hitungan retur: baris[] + bisaRetur / sebabRetur per baris, dan bisaRetur nota. Hanya untuk nota yang dibuka (mahal: dasar retur
+ * menyaring seluruh penjualan). null bila kuncinya tidak ada di data sekarang.
+ */
+export function rwNotaLengkap(kunci) {
+  const k = String(kunci);
+  return ingatPerVersi('rwLengkap|' + k, () => {
+    const D = rwDasar(); const o = D.peta[k]; if (!o) return null;
+    const status = o.status;
+    const baris = D.mentah[k].map((p, i) => { const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarRetur(p) : { ok: false };
+      const hidupBaris = status !== 'batal' && status !== 'dirinci' && !p.penggantiRetur;
+      return Object.assign({}, o.baris[i], { bisaRetur: hidupBaris && !!(d && d.ok),
+        sebabRetur: hidupBaris && (p.jenis === 'karung' || p.jenis === 'kemasan') && d && !d.ok ? String(d.sebab || '') : '', id: String(p.id) }); });
+    return Object.assign({}, o, { baris, bisaRetur: baris.some((b) => b.bisaRetur) });
+  });
+}
+/** SEMUA nota sejak awal (terbaru dulu), LENGKAP dengan hitungan retur — mahal (alat uji & pemeriksaan); layar memakai rwSusun + rwNotaLengkap. */
+export function rwSemuaNota() { return rwDasar().daftar.map((o) => rwNotaLengkap(o.kunci)); }
 
 /** Rentang periode → { dari, sampai } (iso, inklusif); 'semua' → dari ''. */
 export function rwRentang(periode, kini) {
@@ -68,19 +97,24 @@ export function rwRentang(periode, kini) {
   return { dari: '', sampai: hari };
 }
 // owner 17 Nov 2026 (butir 3): "Nota No." di struk (6 angka terakhir kunci nota) ikut bisa dicari
-const rwCocokCari = (o, kata) => { const hay = (o.nama + ' ' + o.baris.map((b) => b.teks).join(' ') + ' ' + o.cara + ' ' + o.kunci.slice(-6) + ' ' + String(o.trxId || o.grupNota || o.id || '').replace(/\D/g, '').slice(-6)).toLowerCase(); const digit = String(o.total);
-  return kata.every((w) => { const d = w.replace(/[^\d]/g, ''); return hay.indexOf(w) >= 0 || (d.length >= 3 && d === w.replace(/[.,]/g, '') && digit.indexOf(d) >= 0); }); };
+const rwCocokCari = (hay, digit, kata) => kata.every((w) => { const d = w.replace(/[^\d]/g, ''); return hay.indexOf(w) >= 0 || (d.length >= 3 && d === w.replace(/[.,]/g, '') && digit.indexOf(d) >= 0); });
 
 /**
  * Riwayat yang tampil: s = { rwCari, rwPeriode, rwJenis, rwCara, rwBatal, rwN }. Hasil: nota yang cocok (terbaru dulu, dipotong rwN), dikelompokkan per hari
  * (omzet & jumlah nota per hari dihitung dari SEMUA nota yang cocok hari itu, bukan cuma yang tergambar), ringkasan semua yang cocok, dan kalimat saringan.
+ * Diingat per versi data + saringan + banyak tampil + tanggal hari ini (rentang periode hanya bergantung pada tanggal, bukan jam).
  */
 export function rwSusun(s, kini) {
-  const S = s || {}; const periode = RW_PERIODE.some((x) => x[0] === S.rwPeriode) ? S.rwPeriode : 'semua'; const R = rwRentang(periode, kini);
+  const S = s || {};
+  const tanda = JSON.stringify([String(S.rwCari || ''), String(S.rwPeriode || ''), String(S.rwJenis || ''), String(S.rwCara || ''), !!S.rwBatal, Number(S.rwN) || 0, hariIniIso(kini || new Date())]);
+  return ingatPerVersi('rwSusun|' + tanda, () => rwSusunHitung(S, kini));
+}
+function rwSusunHitung(S, kini) {
+  const periode = RW_PERIODE.some((x) => x[0] === S.rwPeriode) ? S.rwPeriode : 'semua'; const R = rwRentang(periode, kini);
   const kata = String(S.rwCari || '').toLowerCase().split(/\s+/).filter(Boolean); const n = Math.max(RW_LANGKAH, Number(S.rwN) || RW_LANGKAH);
-  const semua = rwSemuaNota();
+  const D = rwDasar(); const semua = D.daftar;
   const cocok = semua.filter((o) => (!R.dari || o.tanggal >= R.dari) && o.tanggal <= R.sampai && (!S.rwJenis || o.jenis[S.rwJenis]) && (!S.rwCara || o.cara === S.rwCara)
-    && (S.rwBatal || o.status === 'berlaku' || o.status === 'sebagian') && (!kata.length || rwCocokCari(o, kata)));
+    && (S.rwBatal || o.status === 'berlaku' || o.status === 'sebagian') && (!kata.length || rwCocokCari(D.cari[o.kunci], String(o.total), kata)));
   const hidup = cocok.filter((o) => o.status === 'berlaku' || o.status === 'sebagian');
   const perCara = {}; hidup.forEach((o) => { perCara[o.cara] = (perCara[o.cara] || 0) + o.total; });
   const perHari = {}; cocok.forEach((o) => { const h = perHari[o.tanggal] = perHari[o.tanggal] || { nota: 0, omzet: 0 }; if (o.status === 'berlaku' || o.status === 'sebagian') { h.nota += 1; h.omzet += o.total; } });
