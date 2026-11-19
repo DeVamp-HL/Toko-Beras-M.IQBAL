@@ -2892,6 +2892,9 @@ Owner 19 Nov: sistem harus optimal di ekosistem SUNMI dan kelak masuk **SUNMI Ap
 - **Scan ≠ PIN** (`app.js`): ketikan papan fisik di panel "Siapa yang jaga?" ditampung ±80 ms; ≥ 3 ketukan beruntun < 35 ms, atau berbarengan siaran
   scanner, = dibuang tanpa memeriksa PIN (dulu satu scan bisa terhitung PIN salah; 5 kali = nama terkunci 5 menit). Tombol PIN di layar tidak lewat situ.
 - Lampu: hijau sebentar saat nota tersimpan, merah berkedip saat cetak gagal. Padam sendiri (batas waktu wajib).
+  Di `jual.js` lampu HANYA lewat pembungkus `lampu(nama)` yang menelan galat apa pun: panggilan lampu telanjang di alur simpan sempat membuat nota
+  yang SUDAH tercatat dilaporkan "GAGAL mencatat" dan keranjangnya tidak dikosongkan (ditangkap `uji_keranjang_tahan.py` di CI, 19 Nov). Hiasan
+  tidak boleh bisa menggagalkan uang.
 - `apk.yml`: action diperbarui; tanda tangan V1 + V2 dinyalakan terang-terangan dan dibuktikan (`apksigner verify -v`).
 - Penjaga: `uji_perangkat_sunmi.py` (aplikasi TIRUAN di jsc + `pasang.py` + statis + 21 kontrol).
 

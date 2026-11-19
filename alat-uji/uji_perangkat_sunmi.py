@@ -23,6 +23,7 @@ Yang dijaga:
   STATIS
   · tiap *Plugin.java di apk/tambahan terdaftar di MainActivity; nama plugin di Java = nama yang dipanggil perangkat.js
   · app.js: pendengar keydown panel PIN menampung dulu (tidak memanggil tekanPin langsung); teks catatan struk jalur lama tidak berubah
+  · jual.js: lampu hanya lewat pembungkus yang menelan galat, hijau hanya sesudah nota sungguh tercatat
   · apk.yml membuktikan tanda tangan V1 dan V2 (syarat SUNMI App Store)
 
     python3 alat-uji/uji_perangkat_sunmi.py            → 0 = lulus, 1 = gagal
@@ -294,6 +295,14 @@ def periksa_statis(perangkat_js):
     pr = baca('baru', 'js', 'inti', 'printer.js')
     ok('printer.js: teks jalur lama tidak berubah di catatan struk', "j === 'aplikasi' ? 'aplikasi tablet' : 'peramban'" in pr and "PR.namaJalur(r.jalur)" in baca('baru', 'js', 'layar', 'jual.js'))
     ok('printer.js: jalur bawaan tetap USB langsung; SDK SUNMI hanya bila dipilih di perangkat', "jalur: 'usb' };" in pr and "return a.jalur === 'sunmi' ? 'sunmi' : 'aplikasi';" in pr)
+    jual = baca('baru', 'js', 'layar', 'jual.js')
+    # 19 Nov 2026: panggilan lampu yang melempar di alur simpan membuat nota yang SUDAH tercatat dilaporkan "GAGAL mencatat" (ditangkap uji_keranjang_tahan)
+    ok('jual.js: lampu hanya lewat pembungkus yang menelan galat — tidak ada panggilan lampu telanjang di alur simpan / cetak',
+       "function lampu(nama) { try { const f = PK[nama]; if (typeof f === 'function') {" in jual and "} catch (e) { /* tanpa lampu */ } }" in jual
+       and jual.count("lampu('lampuBerhasil')") == 1 and jual.count("lampu('lampuGagal')") == 1
+       and not re.search(r'(?<![\'\w.])lampu(Berhasil|Gagal)\(', jual) and not re.search(r'PK\.lampu\w*\(', jual))
+    ok('jual.js: lampu hijau hanya sesudah nota SUNGGUH tercatat (sesudah cabang DITOLAK), bukan saat simulasi',
+       jual.index("return set({ kabar: 'DITOLAK, nota tidak tersimpan: '") < jual.index("if (!(h && h.simulasi)) lampu('lampuBerhasil');") < jual.index('const lamaAdegan = adeganNota('))
     alur = baca('.github', 'workflows', 'apk.yml')
     ok('apk.yml: tanda tangan V1 dan V2 dinyalakan & dibuktikan', '--v1-signing-enabled true --v2-signing-enabled true' in alur and "grep -q 'Verified using v1 scheme (JAR signing): true'" in alur and "grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true'" in alur)
     return h
