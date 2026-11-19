@@ -64,7 +64,14 @@ export async function cetakAsli(data, jalur) {
       sebab = pesanGalat(e);
       try { await panggilAsli('PrinterSunmi', 'lepas', {}); } catch (e2) { /* APK lama: plugin tidak ada */ }
     }
-    const r = await panggilAsli('CetakUsb', 'cetak', { data });
+    let r;
+    try { r = await panggilAsli('CetakUsb', 'cetak', { data }); }
+    catch (e3) {
+      // Kedua jalur gagal: sebab jalur yang DIPILIH harus tetap terbaca. Dulu hanya sebab cadangan yang sampai ke layar — uji owner 20 Nov:
+      // "Printer Bluetooth gagal (Printer USB tidak ditemukan…)", sebab Bluetooth-nya sendiri hilang.
+      const g = galat(sebab + ' · kirim langsung lewat kabel USB juga gagal: ' + pesanGalat(e3), e3 && e3.code);
+      g.sebabUtama = sebab; throw g;
+    }
     return { jalur: 'aplikasi', nama: (r && r.nama) || '', peringatan: '', cadanganDari: sebab };
   }
   const r = await panggilAsli('CetakUsb', 'cetak', { data });

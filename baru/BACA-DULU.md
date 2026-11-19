@@ -3011,3 +3011,15 @@ label di **ketiga** jenis kertas; sidik jari **periksa sensornya dulu**. Tanpa u
 dari printer toko; (4) label di mode tanpa alas (dianggap kertas bersambung = ESC/POS — belum terbukti); (5) baris Sidik jari (layar periksa-diri CPad
 owner tidak mencantumkan sensor sidik jari); (6) kelima lampu. Yang tidak bergantung perangkat (daftar, lepas, kode label, byte yang dikirim) terbukti
 di alat uji.
+
+**Hasil uji owner di CPad, 20 Nov 2026 (APK 1.19)** — *terbukti jalan:* baris Sidik jari ("sensor ada · uji tempel jari LULUS"), kelima lampu
+berikut warna pilihan (putih, sian, hijau, merah, biru, kuning, magenta) dan Simpan lampu, Periksa Bluetooth (printer terpasang ketemu).
+*Gagal:* semua yang menyambung printer lewat Bluetooth (cetak, baca/pindah mode, label) berhenti di "Bluetooth permission is not granted".
+Sebabnya dibuktikan dari isi pustaka: `BtHelper.getDevice` memeriksa izin **lokasi akurat** (Android 9+) sebelum memegang perangkat yang sudah
+dipasangkan — sisa aturan Android lama. **Perbaikan (susulan S4):** aplikasi tetap TIDAK meminta izin lokasi; saat menyambung lewat Bluetooth
+pustaka diberi `KonteksBt` (di `PrinterSunmiPlugin.java`) yang menjawab "boleh" hanya untuk pertanyaan izin lokasi dari pustaka itu sendiri. Yang
+dijaga Android di jalur ini (memegang perangkat Bluetooth terpasang) tetap lewat izin BLUETOOTH_CONNECT. Sebab gagal sambung kini berkalimat toko
+dengan teks asli pustaka di belakangnya. *Cacat kedua yang ketemu:* bila jalur pilihan (SDK) gagal DAN kirim langsung lewat kabel juga gagal,
+layar hanya menyebut sebab kabel ("Printer Bluetooth gagal (Printer USB tidak ditemukan…)") — kini `cetakAsli` membawa kedua sebab, sebab jalur
+pilihan di depan. **Masih belum terbukti** (butuh APK susulan ini): cetak & label lewat Bluetooth, baca/pindah mode kertas, label TSPL, label di
+mode tanpa alas; label & mode lewat kabel juga belum dicoba (kabel sedang dicabut saat uji).

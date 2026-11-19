@@ -9,6 +9,10 @@ package id.miqbal.tokoberas;
 // CloudPrint_) lewat CloudPrinterBuilder.buildPrinter(nama, mac); pustaka sendiri menolak perangkat yang belum dipasangkan. Tidak ada
 // pencarian Bluetooth di sini (pencarian butuh izin lokasi); (2) MODE KERTAS NT32x — setPrintMode(1 struk | 2 label | 3 tanpa alas) dan
 // getPrintMode; (3) LABEL — sendTSPLData: perintah TSPL dikirim apa adanya, printer label tidak mengabari hasil cetak.
+// Susulan S4 (20 Nov 2026, uji owner di CPad dengan APK 1.19): pustaka menolak MENYAMBUNG lewat Bluetooth dengan "Bluetooth permission is
+// not granted" — BtHelper.getDevice memeriksa izin LOKASI AKURAT (sisa aturan Android lama, di mana Bluetooth = lokasi), padahal yang
+// dikerjakannya sesudah itu (perangkat terpasang → soket SPP) di Android 12+ hanya butuh BLUETOOTH_CONNECT. Aplikasi ini TIDAK meminta izin
+// lokasi: pustaka diberi KonteksBt, yang menjawab "boleh" khusus untuk pertanyaan izin lokasi dari pustaka itu sendiri (lihat kelasnya).
 //
 // Kode tolakan (dibaca inti/printer.js):
 //   BELUM_KIRIM  = belum ada satu byte pun sampai ke printer → halaman boleh jatuh ke jalur CetakUsb tanpa takut struk dobel
@@ -20,6 +24,8 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -75,8 +81,52 @@ public class PrinterSunmiPlugin extends Plugin {
         void jalan(CloudPrinterStatus s);
     }
 
+    /**
+     * Konteks yang diberikan ke pustaka SUNMI KHUSUS saat menyambung lewat Bluetooth. Pustaka (BtHelper.getDevice) bertanya lewat
+     * ContextCompat.checkSelfPermission → Context.checkPermission apakah aplikasi memegang izin lokasi, dan berhenti bila tidak. Konteks ini
+     * menjawab "boleh" hanya untuk dua izin lokasi itu; semua pertanyaan lain diteruskan apa adanya. Tidak ada yang dilewati di sisi Android:
+     * aplikasi tetap tidak punya izin lokasi (tidak ada di manifest, tidak pernah diminta) dan tidak bisa membaca lokasi; yang sungguh
+     * dijaga Android di jalur ini — memegang perangkat Bluetooth yang sudah dipasangkan — tetap lewat izin BLUETOOTH_CONNECT yang diminta
+     * dari tombol Periksa Bluetooth. Pencarian Bluetooth (yang memang butuh lokasi) tidak dipakai di aplikasi ini.
+     */
+    private static final class KonteksBt extends ContextWrapper {
+        KonteksBt(Context dasar) {
+            super(dasar);
+        }
+
+        private static boolean izinLokasi(String izin) {
+            return Manifest.permission.ACCESS_FINE_LOCATION.equals(izin) || Manifest.permission.ACCESS_COARSE_LOCATION.equals(izin);
+        }
+
+        @Override
+        public int checkPermission(String izin, int pid, int uid) {
+            return izinLokasi(izin) ? PackageManager.PERMISSION_GRANTED : super.checkPermission(izin, pid, uid);
+        }
+
+        @Override
+        public int checkSelfPermission(String izin) {
+            return izinLokasi(izin) ? PackageManager.PERMISSION_GRANTED : super.checkSelfPermission(izin);
+        }
+    }
+
     private static String hex(int n) {
         return String.format(Locale.US, "0x%04x", n);
+    }
+
+    /** Sebab gagal sambung dari pustaka (bahasa Inggris) → kalimat untuk orang toko; teks aslinya tetap ikut di belakang supaya bisa dilacak. */
+    private static String sebabSambung(String sebab, boolean bt) {
+        String s = sebab == null ? "" : sebab.trim();
+        if (!bt || s.isEmpty()) return s.isEmpty() ? "pustaka printer tidak menyebut sebabnya" : s;
+        String kecil = s.toLowerCase(Locale.US);
+        String arti;
+        if (kecil.contains("permission")) arti = "pustaka printer masih meminta izin yang tidak dipegang aplikasi";
+        else if (kecil.contains("not bonded")) arti = "printer belum dipasangkan — pasangkan dulu di Setelan tablet › Bluetooth";
+        else if (kecil.contains("is closed")) arti = "Bluetooth tablet mati — nyalakan di Setelan tablet";
+        else if (kecil.contains("ip change")) arti = "nomor seri printer tidak cocok dengan nama Bluetooth-nya";
+        else if (kecil.contains("socket") || kecil.contains("timeout") || kecil.contains("read failed") || kecil.contains("connect"))
+            arti = "printer tidak menjawab lewat Bluetooth — pastikan menyala, dekat dengan tablet, dan tidak sedang dipakai perangkat lain";
+        else return s;
+        return arti + " (" + s + ")";
     }
 
     private static String namaStatus(CloudPrinterStatus s) {
@@ -255,7 +305,8 @@ public class PrinterSunmiPlugin extends Plugin {
         };
         utama.postDelayed(habis, bt ? BATAS_SAMBUNG_BT_MS : BATAS_SAMBUNG_MS);
         try {
-            p.connect(getContext(), new ConnectCallback() {
+            // Bluetooth: pustaka diberi KonteksBt supaya pemeriksaan izin lokasinya tidak menghentikan sambungan (lihat kelasnya)
+            p.connect(bt ? new KonteksBt(getContext()) : getContext(), new ConnectCallback() {
                 @Override
                 public void onConnect() {
                     printer = p;
@@ -270,7 +321,7 @@ public class PrinterSunmiPlugin extends Plugin {
                     if (printer == p) printer = null;
                     if (!selesai.compareAndSet(false, true)) return;
                     utama.removeCallbacks(habis);
-                    call.reject("Printer SUNMI tidak bisa disambung: " + sebab, BELUM_KIRIM);
+                    call.reject((bt ? "Printer SUNMI tidak bisa disambung lewat Bluetooth: " : "Printer SUNMI tidak bisa disambung: ") + sebabSambung(sebab, bt), BELUM_KIRIM);
                 }
 
                 @Override
@@ -281,7 +332,7 @@ public class PrinterSunmiPlugin extends Plugin {
         } catch (Exception e) {
             if (!selesai.compareAndSet(false, true)) return;
             utama.removeCallbacks(habis);
-            call.reject("Printer SUNMI tidak bisa disambung: " + e.getMessage(), BELUM_KIRIM);
+            call.reject((bt ? "Printer SUNMI tidak bisa disambung lewat Bluetooth: " : "Printer SUNMI tidak bisa disambung: ") + sebabSambung(e.getMessage(), bt), BELUM_KIRIM);
         }
     }
 

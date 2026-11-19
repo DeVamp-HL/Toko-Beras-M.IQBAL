@@ -109,7 +109,7 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   cek('jalur aplikasi: hanya CetakUsb', r.jalur === 'aplikasi' && A.catat.join(',') === 'CetakUsb.cetak', A.catat.join(','));
   A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('x', 'BELUM_KIRIM'), 'CetakUsb.cetak': tolak('antarmuka dipegang aplikasi lain') });
   g = null; try { await cetakAsli('QUJD', 'sunmi'); } catch (e) { g = e; }
-  cek('dua jalur gagal: galat CetakUsb yang sampai ke pemanggil', g && /dipegang aplikasi lain/.test(g.message), g && g.message);
+  cek('dua jalur gagal: KEDUA sebab sampai ke pemanggil — sebab jalur yang dipilih di depan, sebab kabel menyusul', g && g.message === 'x · kirim langsung lewat kabel USB juga gagal: antarmuka dipegang aplikasi lain' && g.sebabUtama === 'x', g && g.message);
 
   // ---- pindai ----
   A = pasangAplikasi(['Pindai', 'Lampu'], { 'Lampu.nyala': (isi) => ({ ok: true, kode: 0, isi }), 'Lampu.mati': () => ({ ok: true, kode: 0 }) });
@@ -188,6 +188,12 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('halangan', 'PRINTER_COVER'), 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
   g = null; try { await cetakAsli('QUJD', 'sunmi-bt'); } catch (e) { g = e; }
   cek('Bluetooth: printer menjawab ada halangan → galat dilempar, TIDAK dicetak ulang lewat kabel', g && g.code === 'PRINTER_COVER' && A.hitung('CetakUsb.cetak') === 0, A.catat.join(','));
+  // uji owner 20 Nov (APK 1.19): Bluetooth gagal DAN kabel tidak tercolok — layar dulu hanya menyebut "Printer USB tidak ditemukan"
+  A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('Printer SUNMI tidak bisa disambung lewat Bluetooth: printer tidak menjawab', 'BELUM_KIRIM'), 'CetakUsb.cetak': tolak('Printer USB tidak ditemukan', 'KABEL') });
+  g = null; try { await cetakAsli('QUJD', 'sunmi-bt'); } catch (e) { g = e; }
+  cek('Bluetooth gagal & kabel tidak tercolok: sebab Bluetooth terbaca di depan, sebab kabel menyusul, kode galat = milik jalur kabel',
+    g && g.message.indexOf('Printer SUNMI tidak bisa disambung lewat Bluetooth: printer tidak menjawab · ') === 0 && /kabel USB juga gagal: Printer USB tidak ditemukan$/.test(g.message)
+    && g.code === 'KABEL' && !galatPrinter(g) && A.catat.join(',') === 'PrinterSunmi.cetak,PrinterSunmi.lepas,CetakUsb.cetak', g && (g.message + ' · ' + g.code + ' · ' + A.catat.join(',')));
   cek('lewatJalur: hanya sunmi-bt yang berarti Bluetooth', lewatJalur('sunmi-bt') === 'bt' && lewatJalur('sunmi') === 'usb' && lewatJalur('aplikasi') === 'usb' && lewatJalur(undefined) === 'usb');
 
   let isiMode = null, isiTspl = null, isiStatus = null, isiTanyaMode = null;
@@ -369,7 +375,22 @@ def periksa_statis(perangkat_js):
     # ---- paket S4: Bluetooth, mode kertas, label ----
     ok('PrinterSunmi Bluetooth: hanya perangkat yang SUDAH dipasangkan & bernama CloudPrint_ — tanpa pencarian (pencarian butuh izin lokasi)',
        'CloudPrinterBuilder.buildPrinter(d.getName(), d.getAddress())' in sunmi and sunmi.count('nama.startsWith(AWALAN_BT)') == 2 and 'AWALAN_BT = "CloudPrint_"' in sunmi
-       and 'getBondedDevices()' in sunmi and 'SearchMethod.BT' not in sunmi and 'startDiscovery' not in sunmi and 'ACCESS_FINE_LOCATION' not in sunmi)
+       and 'getBondedDevices()' in sunmi and 'SearchMethod.BT' not in sunmi and 'startDiscovery' not in sunmi)
+    # uji owner 20 Nov (APK 1.19): pustaka menolak menyambung — "Bluetooth permission is not granted" = BtHelper.getDevice memeriksa izin LOKASI
+    pasang = baca('apk', 'pasang.py')
+    ok('PrinterSunmi Bluetooth: pemeriksaan izin lokasi milik pustaka dijawab KonteksBt — hanya dua izin lokasi, hanya di sambungan Bluetooth',
+       'private static final class KonteksBt extends ContextWrapper {' in sunmi
+       and 'return Manifest.permission.ACCESS_FINE_LOCATION.equals(izin) || Manifest.permission.ACCESS_COARSE_LOCATION.equals(izin);' in sunmi
+       and 'return izinLokasi(izin) ? PackageManager.PERMISSION_GRANTED : super.checkPermission(izin, pid, uid);' in sunmi
+       and 'return izinLokasi(izin) ? PackageManager.PERMISSION_GRANTED : super.checkSelfPermission(izin);' in sunmi
+       and 'p.connect(bt ? new KonteksBt(getContext()) : getContext(), new ConnectCallback() {' in sunmi and sunmi.count('new KonteksBt(') == 1
+       and 'import android.content.ContextWrapper;' in sunmi and 'import android.content.pm.PackageManager;' in sunmi)
+    ok('aplikasi TIDAK meminta izin lokasi: tidak ada di daftar izin plugin, tidak dipasang ke manifest',
+       sunmi.count('ACCESS_FINE_LOCATION') == 1 and sunmi.count('ACCESS_COARSE_LOCATION') == 1 and not re.search(r'@Permission\([^)]*ACCESS_', sunmi)
+       and sunmi.count('@Permission(') == 1 and 'LOCATION' not in pasang and 'requestPermissionForAlias("bluetooth"' in sunmi and sunmi.count('requestPermissionForAlias(') == 1)
+    ok('PrinterSunmi Bluetooth: sebab gagal sambung diberi kalimat toko, teks asli pustaka tetap ikut',
+       sunmi.count('sebabSambung(sebab, bt)') == 1 and sunmi.count('sebabSambung(e.getMessage(), bt)') == 1 and 'return arti + " (" + s + ")";' in sunmi
+       and sunmi.count('"Printer SUNMI tidak bisa disambung lewat Bluetooth: "') == 2)
     ok('PrinterSunmi Bluetooth: izin saat jalan diminta dari tombol Periksa Bluetooth; tanpa izin = BELUM_KIRIM berkalimat',
        '@Permission(alias = "bluetooth", strings = { Manifest.permission.BLUETOOTH_CONNECT })' in sunmi and 'requestPermissionForAlias("bluetooth", call, "sesudahIzinBt");' in sunmi
        and re.search(r'if \(!izinBt\(\)\) \{\s+call\.reject\("Izin Bluetooth belum diberikan', sunmi))
@@ -457,6 +478,9 @@ MUTASI = [
     ('halangan printer tidak dikenali → struk dobel lewat USB', 'js', "e.code.indexOf('PRINTER_') === 0", "e.code.indexOf('PRINTER_') === 99"),
     ('jalur SUNMI tidak pernah jatuh ke CetakUsb', 'js', "if (galatPrinter(e)) throw e;", "throw e;"),
     ('printer tidak dilepas sebelum jatuh ke CetakUsb', 'js', "try { await panggilAsli('PrinterSunmi', 'lepas', {}); } catch (e2) { /* APK lama: plugin tidak ada */ }", ""),
+    ('dua jalur gagal: sebab jalur yang dipilih hilang dari kabar', 'js', "const g = galat(sebab + ' · kirim langsung lewat kabel USB juga gagal: ' + pesanGalat(e3), e3 && e3.code);", "const g = galat(pesanGalat(e3), e3 && e3.code);"),
+    ('dua jalur gagal: kode galat jalur kabel hilang', 'js', "pesanGalat(e3), e3 && e3.code);", "pesanGalat(e3), 'BELUM_KIRIM');"),
+    ('dua jalur gagal: sebab utama tidak dibawa terpisah', 'js', "g.sebabUtama = sebab; throw g;", "throw g;"),
     ('jalur aplikasi ikut memakai SDK SUNMI', 'js', "if (jalur === 'sunmi' || jalur === 'sunmi-bt') {", "if (jalur) {"),
     ('S4: jalur Bluetooth diam-diam mencetak lewat kabel', 'js', "{ data, lewat: lewatJalur(jalur) }", "{ data }"),
     ('S4: jalur kabel dianggap Bluetooth', 'js', "(jalur === 'sunmi-bt' ? 'bt' : 'usb');", "(jalur ? 'bt' : 'usb');"),
