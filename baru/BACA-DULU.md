@@ -2823,3 +2823,40 @@ Owner 19 Nov: "masih belum mulus dan lag apalagi di Android, terutama ketika buk
   `uji_layar_mulus.py` (kontrol 30/30). Ukur ulang: `python3 alat-uji/ukur_kinerja_baru.py`, `python3 alat-uji/uji_layar_mulus.py --cadangan <berkas> --terberat 12`.
 - **Catatan lokal (bukan dari paket ini, sama persis di `main` def8fe0)**: atas cadangan 16 Nov, asap data-toko `uji_ringkasan_baru`, `uji_stok_baru`,
   `uji_varian_merek`, `uji_identitas_baru` keluar ≠ 0 (CI tidak punya cadangan, jadi tidak tampak di sana) — perlu ditelusuri sendiri.
+
+## Mulus di Android — paket 2 (19 Nov 2026, cabang `perbaikan/mulus-android-2`)
+
+Owner mengirim isi kartu **Kelancaran** dari tablet (Sunmi CPad, Android 14, WebView Chrome 157, layar 1097×602): **250 kali tersendat** dalam satu sesi — 72
+reaksi ketukan telat, 178 layar macet, terlama 2,3 dtk — "masih kurang mulus, tidak semulus Apple maupun Mac". Terberat menurut jumlah waktu: Jual › Sering,
+Ringkasan › Dasbor, Jual › Riwayat, Menu › Laci, Ringkasan › Cincin. Hampir tiap "ketuk N ms" berpasangan dengan "macet N ms" → waktunya habis di **hitungan
+JavaScript**, bukan di cat / GPU; tablet ±10× lebih lambat dari Mac (pindah jalur Jual 13 ms di Mac ≈ 150–500 ms di kartu).
+
+**Cara mengukur**: profil sampel JS (JS Self-Profiling API; server lokal mengirim `Document-Policy: js-profiling`) di layar sungguhan atas cadangan toko 16 Nov,
+ketukan diulang puluhan kali. Polanya sama di semua layar: tiap gambar ulang (= tiap ketukan) menghitung lagi hal yang hanya bergantung pada data.
+
+| ms JavaScript per ketukan (Mac) | sebelum | sesudah |
+|---|---|---|
+| Jual: pindah jalur (Sering / Literan / Kemasan / Karung …) | 13 | 3 |
+| Jual: lembar Jumlah (buka, tuts, tutup) | 20 | 3 |
+| Jual › Retur: daftar nota (dulu disusun tiap gambar, dasar retur per nota) | ±70 tiap gambar | sekali per versi data |
+| Menu › Laci: tiap huruf cari / ketuk baris | 33 | 9 |
+| Ringkasan › Cincin: ketuk skala | 30 | 10 |
+| Laporan: ganti keluarga | 41 | 24 di putaran pertama, sesudahnya dari ingatan |
+| Stok: ganti tab | 17 | 8 |
+
+**Obat** — semuanya `ingatPerVersi` (hasil diingat sampai data berubah / hari berganti); mesin beku tidak disentuh, angka tidak berubah:
+- **Jual, tiap ketukan**: `daftarKarcis`, `karcisDaruratHari`, `hariIni`, `notaTembusBelumCocok` (masing-masing menyisir seluruh penjualan); `aturWadah`,
+  `karungBelakang` (kunci = nama + tempat; tempat TAK DIBERIKAN ≠ tempat kosong), `semuaKarungTerbuka`; batas bebas liter / kg / liter wadah membaca
+  `ingatStokKarung` (dulu mesin menghitung seluruh buku stok tiap tuts di lembar Jumlah); `daftarNotaRetur` (kunci = tanggal + teks cari).
+- **Laba**: `ugLabaBersih(dari, sampai)`; `ugBayaran()` = daftar bayaran biaya bulanan BAWAAN sebagai satu benda per versi, supaya "bayaran = bawaan" dikenali
+  (bayaran khusus tetap dihitung langsung); `labaBulan`, `rekapTahun` (kunci + `kunciLuarCache`); `eraBuku`, `catatanPertama`.
+- **Menu**: laci, pita jam, tanya, dan daftar orang untuk cari diingat per **kunci gambar** (aturan yang sama dengan "dibuka lagi tanpa data baru tidak
+  digambar": hari, hari tutup, titik kas perangkat, pita jam, menit selagi Perangkat terbuka) + isi perangkat (antrean, simpanan).
+- **Ringkasan**: daftar perhatian (bon / utang / stok, pajak, tutup buku), susunan satu skala cincin, kartu kas → per kunci luar + menit + peran. Katalog
+  kasir: bentuk baku isi katalog toko diingat (`kkTertinggal`; dokumen server tetap dibaca segar). Denyut HP kasir tidak ikut ingatan.
+- **Penjaga**: `uji_layar_mulus.py` — FUNGSI (tiap fungsi berbuku-ingatan = hitung ulang penuh: awal, nota baru, cache sementara, titik kas, ganti hari &
+  bulan), kesetaraan tujuh layar dengan / tanpa ingatan, beku, + 10 kontrol baru. Uji yang membungkus mesin TANPA mengubah data wajib `setelIngatan({})`
+  sebelum & sesudah (uji Laporan "MR penjaga"); pembanding ongkos `simpanNota` kini separuh (cara lama ikut turun karena batas bebas dari ingatan).
+- **BELUM (ukuran sesudahnya)**: Dasbor dibuka sesudah data berubah = ±230 ms di Mac (±2 dtk di tablet) — ±30 potret buku stok harian (`umBarang`) dihitung
+  ulang penuh; obat yang diusulkan = pemanasan bertahap di latar. Kabar data selagi Menu terbuka masih menghitung ulang seluruh laci. Cat & gulir (kaca
+  buram, `content-visibility`) sengaja belum disentuh: kartu menunjukkan sumbatnya di hitungan, bukan di cat.
