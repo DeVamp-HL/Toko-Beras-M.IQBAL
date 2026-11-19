@@ -630,6 +630,11 @@ def main():
             print('DATA TOKO (%s): %d lulus · %d gagal · %d aksi · total %d ms tanpa ingatan → %d ms dengan ingatan · >16 ms: %d → %d' % (os.path.basename(p), lt, len(gt), len(HT['hidup']['aksi']),
                   ms(HT['mati']), ms(HT['hidup']), sum(a['ms'] > 16 for a in HT['mati']['aksi']), sum(a['ms'] > 16 for a in HT['hidup']['aksi'])))
             for a, b in lambat: print('   %6.1f → %5.1f ms  %s | %s' % (a['ms'], b['ms'], a['layar'], a['aksi'][:80]))
+            # owner 19 Nov 2026 ("masih berat di Android"): yang dirasakan pemakai = ongkos DENGAN ingatan — `--terberat N` mencetak N aksi termahal sesudah ingatan
+            if '--terberat' in sys.argv:
+                nt = int(sys.argv[sys.argv.index('--terberat') + 1])
+                print('   TERBERAT dengan ingatan:')
+                for a, b in sorted(zip(HT['mati']['aksi'], HT['hidup']['aksi']), key=lambda x: -x[1]['ms'])[:nt]: print('   %6.1f → %5.1f ms  %s | %s' % (a['ms'], b['ms'], a['layar'], a['aksi'][:90]))
             for x in gt: print('   ✗ ' + x)
     else: print('DATA TOKO: dilewati — tidak ada _privat/backup-batch-*.json (worktree / CI); boleh --cadangan <berkas>')
     return 1 if g else 0
