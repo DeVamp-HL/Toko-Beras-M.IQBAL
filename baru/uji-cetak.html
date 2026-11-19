@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <!-- Putaran T1: printer tablet ini (uji cetak + setelan per perangkat). Tanpa Firebase, tanpa script sebaris; hanya modul sendiri + huruf toko.
      Paket S1 (19 Nov 2026): juga layar PERANGKAT — kartu "Printer struk" (keadaan lewat SDK SUNMI) dan kartu "Tablet ini" (scanner bawaan, lampu, kartu nama aplikasi).
-     Paket S2a: baris NFC tablet — tempel kartu apa saja, nomor serinya muncul (bukti pembaca NFC jalan sebelum kartu pelanggan dibeli). -->
+     Paket S2a: baris NFC tablet — tempel kartu apa saja, nomor serinya muncul (bukti pembaca NFC jalan sebelum kartu pelanggan dibeli).
+     Paket S4 (19 Nov 2026): printer lewat Bluetooth, mode kertas printer (struk / label / tanpa alas), label barang, lampu berwarna per kejadian,
+     baris sidik jari (periksa sensornya dulu). -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
@@ -32,6 +34,12 @@
   label { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
   label > span { min-width: 150px; color: var(--redup); }
   select, input[type=number] { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--garis); background: var(--latar); color: var(--teks); }
+  input[type=number].pendek { width: 84px; }
+  .lampu-baris { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto auto; gap: 8px; align-items: center; margin: 0 0 10px; }
+  .lampu-baris > span { color: var(--teks); min-width: 0; }
+  .lampu-baris label { margin: 0; flex-wrap: nowrap; }
+  .lampu-baris button { margin: 0; padding: 8px 12px; min-height: 40px; }
+  @media (max-width: 560px) { .lampu-baris { grid-template-columns: 1fr 1fr; } .lampu-baris > span { grid-column: 1 / -1; font-weight: 600; } }
   input[type=range] { flex: 1; min-width: 140px; }
   pre { margin: 0; padding: 12px; border-radius: 8px; background: var(--latar); overflow-x: auto; font: 13px/1.35 ui-monospace, Menlo, monospace; white-space: pre; }
   ol { margin: 0; padding-left: 20px; font-size: 14px; }
@@ -57,6 +65,7 @@
       <div id="ucJalurBaris" hidden>
         <label><span>Jalur di aplikasi</span><select id="ucJalur"></select></label>
         <p>Pilih <b>SDK SUNMI</b> → <b>Cetak contoh</b>. Kalau catatan menulis "TERCETAK lewat aplikasi tablet (SDK SUNMI)" dan struknya benar, tekan <b>Simpan untuk tablet ini</b>. Kalau tidak, kembalikan ke USB langsung.</p>
+        <p><b>Bluetooth:</b> pasangkan dulu printernya di Setelan tablet › Bluetooth (namanya berawalan CloudPrint_), tekan <b>Periksa Bluetooth</b> di kartu Printer, baru pilih jalur Bluetooth di sini. Struk bergambar lewat Bluetooth lebih lambat daripada kabel.</p>
       </div>
     </section>
     <!-- Dua alat, dua kartu (19 Nov 2026): scanner & lampu milik TABLET, bukan printer — dulu sekartu dan terbaca seolah printer punya scanner. -->
@@ -65,15 +74,41 @@
       <p>Kertas, tutup, macet, dan panas printer — ditanyakan lewat SDK SUNMI.</p>
       <button id="ucStatus" type="button">Periksa printer</button>
       <p id="ucStatusHasil"></p>
+      <button id="ucBt" type="button">Periksa Bluetooth</button>
+      <p id="ucBtHasil">Printer yang sudah dipasangkan ke tablet lewat Bluetooth muncul di sini.</p>
+      <h2>Mode kertas printer</h2>
+      <p>Printer ini punya tiga mode: struk, label (stiker bercelah), dan stiker tanpa alas. Pindah mode = ganti gulungan kertasnya juga. Sesudah pindah, printer bisa berbunyi dan mencetak tanda modenya.</p>
+      <label><span>Mode</span><select id="ucModeKertas"></select></label>
+      <button id="ucModeBaca" type="button">Baca mode sekarang</button>
+      <button id="ucModeSetel" type="button">Pindah ke mode ini</button>
+      <p id="ucModeHasil"></p>
+    </section>
+    <section id="ucLabel" hidden>
+      <h2>Label barang</h2>
+      <p>Label = nama barang + kode QR yang dibaca scanner tablet, untuk ditempel di kemasan. Dicetak dari Jual › Label &amp; kartu; di sini caranya diatur dan dicoba.</p>
+      <label><span>Kertas label</span><select id="ucLabelCara"></select></label>
+      <div id="ucLabelUkuran">
+        <label><span>Lebar label (mm)</span><input id="ucLabelLebar" class="pendek" type="number" min="20" max="80" step="1" value="50"></label>
+        <label><span>Tinggi label (mm)</span><input id="ucLabelTinggi" class="pendek" type="number" min="15" max="200" step="1" value="30"></label>
+        <label><span>Celah antar label (mm)</span><input id="ucLabelCelah" class="pendek" type="number" min="0" max="10" step="1" value="2"></label>
+        <label><input id="ucLabelPotong" type="checkbox" checked> potong sesudah lembar terakhir</label>
+        <p>Stiker bercelah hanya jalan kalau printer sudah di <b>mode label</b> (kartu Printer struk) dan gulungan labelnya terpasang. Printer di mode label tidak mengabari hasil cetak — lihat kertasnya.</p>
+      </div>
+      <button id="ucLabelCetak" type="button">Cetak label contoh</button>
+      <pre id="ucLabelPratinjau"></pre>
     </section>
     <section id="ucSunmi" hidden>
       <h2>Tablet ini</h2>
       <p id="ucKartu">Memeriksa aplikasi…</p>
       <p><b>Scanner tablet:</b> <span id="ucPindai">scan kode apa saja dengan scanner bawaan tablet — hasilnya muncul di sini</span></p>
       <p><b>NFC tablet:</b> <span id="ucNfc">belum diperiksa</span></p>
+      <p><b>Sidik jari:</b> <span id="ucSidik">belum diperiksa</span></p>
+      <button id="ucSidikUji" type="button" disabled>Uji sidik jari</button>
       <p><b>Lampu tablet:</b> <span id="ucLampu">belum diperiksa</span></p>
-      <button id="ucLampuHijau" type="button">Hijau</button>
-      <button id="ucLampuMerah" type="button">Merah berkedip</button>
+      <p>Tiap kejadian punya warna sendiri. <b>Coba</b> menyalakan lampunya; <b>Simpan lampu</b> membuat sistem toko memakainya di tablet ini.</p>
+      <div id="ucLampuAtur"></div>
+      <button id="ucLampuSimpan" type="button">Simpan lampu</button>
+      <button id="ucLampuBawaan" type="button">Kembali ke bawaan</button>
       <button id="ucLampuPadam" type="button">Padamkan</button>
     </section>
     <section>

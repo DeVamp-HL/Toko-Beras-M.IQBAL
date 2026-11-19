@@ -8,6 +8,8 @@ pasang.py — dijalankan GitHub Actions (apk.yml) SESUDAH `npx cap add android`:
   · paket S1 (19 Nov 2026) — cangkang SUNMI: pustaka resmi SUNMI (printer luar + SunmiCustomer API) di app/build.gradle; <queries> layanan
     scanner & layanan perangkat SUNMI; penjaga "Hapus data" (manageSpaceActivity); allowBackup mati; configChanges anti layar kedip saat USB dicolok
   · paket S2a (19 Nov 2026) — izin NFC (pembaca NFC bawaan tablet; tidak wajib ada di perangkat)
+  · paket S4 (19 Nov 2026) — pustaka AndroidX Biometric + izin USE_BIOMETRIC (sensor sidik jari; tidak wajib ada di perangkat). Izin Bluetooth
+    (BLUETOOTH_CONNECT dkk.) TIDAK ditambahkan di sini: manifest pustaka printer SUNMI sudah membawanya
   · ikon & layar pembuka dari icon-sistem-512.png toko
   · versionCode/versionName dari nomor jalan Actions (APK baru bisa dipasang menimpa yang lama bila kuncinya sama)
 
@@ -24,11 +26,15 @@ UTAMA = os.path.join(ANDROID, 'app', 'src', 'main')
 #   external-printerlibrary2 = "Cloud Printer SDK for Android" (NT21x/NT31x/NT32x lewat USB/LAN/BT: keadaan printer, hasil cetak, laci)
 #   customerservice          = SunmiCustomer API (TMSApi: lampu LED CPad, info perangkat) — tersedia di Maven sejak 1.3.82.0
 PUSTAKA = ('com.sunmi:external-printerlibrary2:1.0.16', 'com.sunmi:customerservice:1.3.82.1')
+# Pustaka bukan-SUNMI (versi dikunci): androidx.biometric = BiometricPrompt/BiometricManager, jalur sidik jari yang diwajibkan SUNMI
+# (dokumen "Biometric (Fingerprint) Development Guide" menyebut versi ini)
+PUSTAKA_LAIN = ('androidx.biometric:biometric:1.1.0',)
 # paket yang harus terlihat aplikasi ini di Android 11+ (tanpa <queries> layanannya dianggap tidak terpasang)
 TANYA_PAKET = ('com.sunmi.scanner', 'com.sunmi.tmservice')
 PENJAGA_DATA = PAKET + '.KelolaRuangActivity'
 ANTI_KEDIP = ('navigation', 'keyboard', 'keyboardHidden')
 IZIN_NFC = 'android.permission.NFC'
+IZIN_BIOMETRIK = 'android.permission.USE_BIOMETRIC'
 
 
 def gagal(pesan):
@@ -75,6 +81,10 @@ def ubah_manifest(m):
     if IZIN_NFC not in m:
         if m.count('<application') != 1: raise Tolak('AndroidManifest punya %d <application' % m.count('<application'))
         m = m.replace('<application', '<uses-permission android:name="%s" />\n    <uses-feature android:name="android.hardware.nfc" android:required="false" />\n\n    <application' % IZIN_NFC, 1)
+    # paket S4: sensor sidik jari (BiometricPrompt). required="false" = aplikasi tetap bisa dipasang di tablet tanpa sensor
+    if IZIN_BIOMETRIK not in m:
+        if m.count('<application') != 1: raise Tolak('AndroidManifest punya %d <application' % m.count('<application'))
+        m = m.replace('<application', '<uses-permission android:name="%s" />\n    <uses-feature android:name="android.hardware.fingerprint" android:required="false" />\n\n    <application' % IZIN_BIOMETRIK, 1)
     # paket S1: layanan SUNMI yang ditanya aplikasi (scanner, layanan perangkat)
     kurang = [p for p in TANYA_PAKET if ('<package android:name="%s"' % p) not in m]
     if kurang:
@@ -99,6 +109,7 @@ def ubah_manifest(m):
              'android:manageSpaceActivity="%s"' % PENJAGA_DATA, '<activity android:name="%s"' % PENJAGA_DATA]
     wajib += ['<package android:name="%s"' % p for p in TANYA_PAKET]
     wajib += ['<uses-permission android:name="%s" />' % IZIN_NFC, '<uses-feature android:name="android.hardware.nfc" android:required="false" />']
+    wajib += ['<uses-permission android:name="%s" />' % IZIN_BIOMETRIK, '<uses-feature android:name="android.hardware.fingerprint" android:required="false" />']
     for w in wajib:
         if w not in m: raise Tolak('manifest tidak memuat ' + w)
     return m
@@ -109,13 +120,13 @@ def ubah_gradle(g, versi):
     g2, n1 = re.subn(r'versionCode\s+\d+', 'versionCode %d' % versi, g, count=1)
     g2, n2 = re.subn(r'versionName\s+"[^"]*"', 'versionName "1.%d"' % versi, g2, count=1)
     if n1 != 1 or n2 != 1: raise Tolak('versionCode/versionName tidak ditemukan di app/build.gradle')
-    kurang = [p for p in PUSTAKA if p not in g2]
+    kurang = [p for p in PUSTAKA + PUSTAKA_LAIN if p not in g2]
     if kurang:
         blok = re.findall(r'(?m)^dependencies\s*\{[ \t]*$', g2)
         if len(blok) != 1: raise Tolak('app/build.gradle punya %d blok dependencies di tepi kiri — pola Capacitor berubah' % len(blok))
         sisip = ''.join("    implementation '%s'\n" % p for p in kurang)
         g2 = re.sub(r'(?m)^(dependencies\s*\{[ \t]*\n)', lambda mm: mm.group(1) + sisip, g2, count=1)
-    for p in PUSTAKA:
+    for p in PUSTAKA + PUSTAKA_LAIN:
         if g2.count("implementation '%s'" % p) != 1: raise Tolak('pustaka %s tidak tepat satu kali di app/build.gradle' % p)
     return g2
 
@@ -124,14 +135,14 @@ def pasang_manifest():
     p = os.path.join(UTAMA, 'AndroidManifest.xml')
     try: m = ubah_manifest(baca(p))
     except Tolak as e: gagal(str(e))
-    tulis(p, m); print('  AndroidManifest.xml: usb.host + USB_DEVICE_ATTACHED + <queries> SUNMI + izin NFC + penjaga data + allowBackup mati + configChanges')
+    tulis(p, m); print('  AndroidManifest.xml: usb.host + USB_DEVICE_ATTACHED + <queries> SUNMI + izin NFC + izin sidik jari + penjaga data + allowBackup mati + configChanges')
 
 
 def pasang_versi(versi):
     p = os.path.join(ANDROID, 'app', 'build.gradle')
     try: g = ubah_gradle(baca(p), versi)
     except Tolak as e: gagal(str(e))
-    tulis(p, g); print('  versi: 1.%d (kode %d) · pustaka: %s' % (versi, versi, ', '.join(PUSTAKA)))
+    tulis(p, g); print('  versi: 1.%d (kode %d) · pustaka: %s' % (versi, versi, ', '.join(PUSTAKA + PUSTAKA_LAIN)))
 
 
 def pasang_ikon():

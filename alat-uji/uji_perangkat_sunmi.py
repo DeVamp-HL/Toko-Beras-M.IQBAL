@@ -128,6 +128,27 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   L = await lampuGagal();
   cek('lampu gagal: merah (1), berkedip, padam sendiri', L.ok && L.isi.warna === 1 && L.isi.kedip === true && L.isi.batasMs > 0, JSON.stringify(L));
   cek('lampu padam memanggil Lampu.mati', (await lampuPadam()).ok === true && A.hitung('Lampu.mati') === 1);
+  // ---- paket S4: lampu berwarna per kejadian ----
+  const AL = lampuAtur(null);
+  cek('lampu bawaan: lima kejadian; nota tersimpan hijau, cetak gagal merah berkedip', Object.keys(AL).join(',') === 'berhasil,gagal,kenal,asing,kertas' && AL.berhasil.warna === 'hijau' && AL.berhasil.kedip === false && AL.gagal.warna === 'merah' && AL.gagal.kedip === true, JSON.stringify(AL));
+  cek('lampu bawaan: tidak ada dua kejadian yang terlihat sama', new Set(Object.keys(AL).map((k) => AL[k].warna + '|' + AL[k].kedip)).size === 5);
+  const AS = lampuAtur({ berhasil: { warna: 'sian', kedip: true, detik: 3 }, gagal: { warna: 'ungu', kedip: 'ya', detik: 99 }, kenal: { warna: 'mati' }, asing: 'x', lain: { warna: 'putih' } });
+  cek('setelan lampu tersimpan dipakai; isi tidak sah dibuang satu per satu (bawaannya tetap)', AS.berhasil.warna === 'sian' && AS.berhasil.kedip === true && AS.berhasil.detik === 3 && AS.gagal.warna === 'merah' && AS.gagal.kedip === true && AS.gagal.detik === 6 && AS.kenal.warna === 'mati' && AS.asing.warna === 'kuning' && AS.lain === undefined, JSON.stringify(AS));
+  L = await lampuKejadian('kenal');
+  cek('lampu kejadian "dikenali": biru (3), lama nyala = detik × 1000, tidak berkedip', L.ok && L.isi.warna === 3 && L.isi.batasMs === 1000 && L.isi.kedip === false, JSON.stringify(L));
+  L = await lampuAsing(); cek('lampu "belum dikenal": kuning (4) berkedip', L.ok && L.isi.warna === 4 && L.isi.kedip === true, JSON.stringify(L));
+  L = await lampuKertas(); cek('lampu "kertas hampir habis": magenta (6) berkedip', L.ok && L.isi.warna === 6 && L.isi.kedip === true, JSON.stringify(L));
+  L = await lampuKejadian('berhasil', { warna: 'putih', kedip: true, detik: 2.5 });
+  cek('lampu kejadian: timpaan tombol Coba dipakai', L.ok && L.isi.warna === 7 && L.isi.kedip === true && L.isi.batasMs === 2500, JSON.stringify(L));
+  const nNyala = A.hitung('Lampu.nyala'); L = await lampuKejadian('asing', { warna: 'mati' });
+  cek('kejadian yang diatur "tidak menyala" tidak memanggil lampu', L.ok === false && L.mati === true && A.hitung('Lampu.nyala') === nNyala);
+  cek('kejadian tak dikenal tidak menyalakan apa-apa', (await lampuKejadian('entah')).ok === false && A.hitung('Lampu.nyala') === nNyala);
+  const gudang = {}; globalThis.localStorage = { getItem: (k) => (k in gudang ? gudang[k] : null), setItem: (k, v) => { gudang[k] = String(v); } };
+  cek('simpan lampu: tersimpan di perangkat & langsung dipakai; kejadian lain tetap bawaan', lampuSimpan({ berhasil: { warna: 'magenta', kedip: false, detik: 2 } }) === true && JSON.parse(gudang[LAMPU_KUNCI]).berhasil.warna === 'magenta' && lampuAtur().berhasil.warna === 'magenta' && lampuAtur().gagal.warna === 'merah');
+  L = await lampuBerhasil(); cek('lampuBerhasil mengikuti setelan perangkat', L.ok && L.isi.warna === 6 && L.isi.batasMs === 2000, JSON.stringify(L));
+  gudang[LAMPU_KUNCI] = '{rusak'; cek('simpanan lampu rusak → bawaan, tidak melempar', lampuAtur().berhasil.warna === 'hijau' && lampuAtur().kertas.warna === 'magenta');
+  delete globalThis.localStorage;
+
   A = pasangAplikasi(['CetakUsb'], {});
   cek('aplikasi tanpa plugin Lampu: { ok: false } tanpa memanggil', (await lampuBerhasil()).ok === false && A.catat.length === 0, A.catat.join(','));
   A = pasangAplikasi(['Lampu'], { 'Lampu.nyala': tolak('layanan mati') });
@@ -153,6 +174,44 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   cek('nfc: kartu terakhir tersimpan', tempelTerakhir() && tempelTerakhir().uid === '04A1B2C3D4E5F6');
   const KN = await kemampuan();
   cek('kemampuan: NFC ditanya bila pluginnya ada', KN.plugin.Nfc === true && KN.nfc && KN.nfc.ada === true && KN.nfc.nyala === true && KN.lampu === null, JSON.stringify(KN));
+
+  // ================= paket S4: Bluetooth, mode kertas, label, sidik jari =================
+  let isiCetak = null;
+  A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': (isi) => { isiCetak = isi; return { nama: 'CloudPrint_0001' }; }, 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
+  r = await cetakAsli('QUJD', 'sunmi-bt');
+  cek('jalur sunmi-bt: SDK dipanggil dengan lewat = bt, jalurnya pulang apa adanya, CetakUsb tidak disentuh', r.jalur === 'sunmi-bt' && isiCetak.lewat === 'bt' && isiCetak.data === 'QUJD' && A.hitung('CetakUsb.cetak') === 0, JSON.stringify(r) + JSON.stringify(isiCetak));
+  r = await cetakAsli('QUJD', 'sunmi');
+  cek('jalur sunmi (kabel): lewat = usb', r.jalur === 'sunmi' && isiCetak.lewat === 'usb', JSON.stringify(isiCetak));
+  A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('Bluetooth tablet mati', 'BELUM_KIRIM'), 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
+  r = await cetakAsli('QUJD', 'sunmi-bt');
+  cek('Bluetooth gagal sebelum kirim: jatuh ke USB langsung tepat sekali, sebabnya ikut pulang', r.jalur === 'aplikasi' && r.cadanganDari === 'Bluetooth tablet mati' && A.catat.join(',') === 'PrinterSunmi.cetak,PrinterSunmi.lepas,CetakUsb.cetak', A.catat.join(','));
+  A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('halangan', 'PRINTER_COVER'), 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
+  g = null; try { await cetakAsli('QUJD', 'sunmi-bt'); } catch (e) { g = e; }
+  cek('Bluetooth: printer menjawab ada halangan → galat dilempar, TIDAK dicetak ulang lewat kabel', g && g.code === 'PRINTER_COVER' && A.hitung('CetakUsb.cetak') === 0, A.catat.join(','));
+  cek('lewatJalur: hanya sunmi-bt yang berarti Bluetooth', lewatJalur('sunmi-bt') === 'bt' && lewatJalur('sunmi') === 'usb' && lewatJalur('aplikasi') === 'usb' && lewatJalur(undefined) === 'usb');
+
+  let isiMode = null, isiTspl = null, isiStatus = null, isiTanyaMode = null;
+  A = pasangAplikasi(['PrinterSunmi'], { 'PrinterSunmi.setelMode': (isi) => { isiMode = isi; return { dikirim: true }; }, 'PrinterSunmi.tspl': (isi) => { isiTspl = isi; return { byte: 4 }; },
+    'PrinterSunmi.status': (isi) => { isiStatus = isi; return { siap: true }; }, 'PrinterSunmi.mode': (isi) => { isiTanyaMode = isi; return { mode: 'label printer' }; }, 'PrinterSunmi.bt': () => ({ ada: true, izin: true, nyala: true, daftar: [{ nama: 'CloudPrint_0001', mac: 'AA:BB' }] }) });
+  await printerSetelMode('2', 'bt');
+  cek('pindah mode: angka mode & jalur diteruskan', isiMode && isiMode.mode === 2 && isiMode.lewat === 'bt', JSON.stringify(isiMode));
+  let nTolak = 0; for (const m of [0, 4, 5, 'label', null, 1.5]) { try { await printerSetelMode(m); } catch (e) { if (e.code === 'SALAH_ISI') nTolak++; } }
+  cek('pindah mode: mode di luar 1, 2, 3 ditolak TANPA memanggil printer', nTolak === 6 && A.hitung('PrinterSunmi.setelMode') === 1, nTolak + ' / ' + A.hitung('PrinterSunmi.setelMode'));
+  cek('mode kertas: tiga mode bernomor 1 2 3 (struk, label, tanpa alas)', MODE_KERTAS.map((x) => x[0]).join(',') === '1,2,3' && /struk/.test(MODE_KERTAS[0][1]) && /label/.test(MODE_KERTAS[1][1]) && /tanpa alas/.test(MODE_KERTAS[2][1]));
+  cek('jawaban printer dibaca: struk / label / tidak dikenali', bacaModeKertas('Receipt printer') === 'struk' && bacaModeKertas('label printer') === 'label' && bacaModeKertas('') === '' && bacaModeKertas(null) === '' && bacaModeKertas('NORMAL') === '');
+  cek('tanya mode: jalur diteruskan, jawaban printer pulang apa adanya', (await printerMode('bt')).mode === 'label printer' && isiTanyaMode.lewat === 'bt' && (await printerMode(), isiTanyaMode.lewat === 'usb'));
+  await kirimTspl('CLS\nPRINT 1\n', 'usb');
+  cek('perintah label: data & jalur diteruskan apa adanya', isiTspl && isiTspl.data === 'CLS\nPRINT 1\n' && isiTspl.lewat === 'usb', JSON.stringify(isiTspl));
+  await printerStatus('bt'); const lewatBt = isiStatus.lewat; await printerStatus();
+  cek('periksa printer: jalur bt diteruskan; tanpa isi = usb', lewatBt === 'bt' && isiStatus.lewat === 'usb');
+  cek('daftar printer Bluetooth pulang apa adanya', (await printerBt()).daftar[0].nama === 'CloudPrint_0001');
+
+  A = pasangAplikasi(['Biometrik'], { 'Biometrik.info': () => ({ ada: false, terdaftar: false, kode: 12, kalimat: 'tablet ini tidak punya sensor sidik jari' }), 'Biometrik.minta': (isi) => ({ ok: true, isi }) });
+  const KB = await kemampuan();
+  cek('kemampuan: sidik jari ditanya bila pluginnya ada', KB.plugin.Biometrik === true && KB.biometrik && KB.biometrik.ada === false && KB.biometrik.kode === 12, JSON.stringify(KB));
+  cek('uji sidik jari memanggil Biometrik.minta; info pulang apa adanya', (await sidikJariUji()).isi.judul === 'Uji sidik jari' && (await sidikJariInfo()).kalimat === 'tablet ini tidak punya sensor sidik jari');
+  A = pasangAplikasi(['CetakUsb'], {}); const KB0 = await kemampuan();
+  cek('aplikasi lama tanpa plugin Biometrik: tidak dipanggil, biometrik = null', KB0.biometrik === null && KB0.plugin.Biometrik === false && A.hitung('Biometrik.info') === 0, A.catat.join(','));
 
   print(JSON.stringify(hasil));
 })().catch((e) => { print(JSON.stringify([{ nama: 'pemeriksa jatuh', ok: false, ket: String(e && e.stack || e) }])); });
@@ -254,6 +313,10 @@ def periksa_pasang(sumber):
     ok('manifest: izin NFC ada, pembaca NFC TIDAK diwajibkan, di luar <application>, tepat sekali',
        m.count('<uses-permission android:name="android.permission.NFC" />') == 1 and m.count('<uses-feature android:name="android.hardware.nfc" android:required="false" />') == 1
        and m.index('android.permission.NFC') < m.index('<application') and 'android.hardware.nfc" android:required="true"' not in m)
+    ok('manifest: izin sidik jari ada, sensor TIDAK diwajibkan, di luar <application>, tepat sekali',
+       m.count('<uses-permission android:name="android.permission.USE_BIOMETRIC" />') == 1 and m.count('<uses-feature android:name="android.hardware.fingerprint" android:required="false" />') == 1
+       and m.index('android.permission.USE_BIOMETRIC') < m.index('<application') and 'android.hardware.fingerprint" android:required="true"' not in m)
+    ok('manifest: tidak meminta izin lokasi (Bluetooth memakai perangkat yang sudah dipasangkan, tanpa pencarian)', 'ACCESS_FINE_LOCATION' not in m and 'ACCESS_COARSE_LOCATION' not in m)
     ok('manifest: allowBackup mati', 'android:allowBackup="false"' in m and 'android:allowBackup="true"' not in m)
     cc = re.search(r'android:configChanges="([^"]*)"', m).group(1).split('|')
     ok('manifest: configChanges memuat navigation, keyboard, keyboardHidden tanpa kembar', all(x in cc for x in ('navigation', 'keyboard', 'keyboardHidden')) and len(cc) == len(set(cc)), '|'.join(cc))
@@ -274,6 +337,7 @@ def periksa_pasang(sumber):
     pustaka = re.findall(r"implementation '(com\.sunmi:[^']+)'", g)
     ok('gradle: dua pustaka resmi SUNMI, versi dikunci, tepat sekali', sorted(pustaka) == sorted(P['PUSTAKA']) and len(pustaka) == 2 and all(re.search(r':\d+(\.\d+)+$', x) for x in pustaka), pustaka)
     ok('gradle: pustaka printer luar & SunmiCustomer API', any(x.startswith('com.sunmi:external-printerlibrary2:') for x in pustaka) and any(x.startswith('com.sunmi:customerservice:') for x in pustaka))
+    ok('gradle: pustaka sidik jari AndroidX, versi dikunci, tepat sekali', g.count("implementation 'androidx.biometric:biometric:1.1.0'") == 1 and P['PUSTAKA_LAIN'] == ('androidx.biometric:biometric:1.1.0',))
     ok('gradle: pustaka di dalam blok dependencies aplikasi', g.index('dependencies {') < g.index("implementation 'com.sunmi:") < g.index("apply from: 'capacitor.build.gradle'"))
     ok('gradle: dijalankan dua kali = sama', P['ubah_gradle'](g, 6) == g)
     ok('gradle tanpa versionCode DITOLAK', ditolak(P['ubah_gradle'], GRADLE.replace('versionCode 1', ''), 6))
@@ -289,19 +353,36 @@ def periksa_statis(perangkat_js):
     h = []; ok = lambda nama, benar, ket='': h.append({'nama': nama, 'ok': bool(benar), 'ket': str(ket)})
     utama = baca('apk', 'tambahan', 'MainActivity.java')
     plugin = sorted(os.path.basename(f)[:-5] for f in glob.glob(os.path.join(AKAR, 'apk', 'tambahan', '*Plugin.java')))
-    ok('enam plugin perangkat ada', plugin == ['CetakUsbPlugin', 'LampuPlugin', 'NfcPlugin', 'PerangkatPlugin', 'PindaiPlugin', 'PrinterSunmiPlugin'], plugin)
+    ok('tujuh plugin perangkat ada', plugin == ['BiometrikPlugin', 'CetakUsbPlugin', 'LampuPlugin', 'NfcPlugin', 'PerangkatPlugin', 'PindaiPlugin', 'PrinterSunmiPlugin'], plugin)
     belum = [p for p in plugin if ('registerPlugin(%s.class);' % p) not in utama]
     ok('tiap plugin terdaftar di MainActivity sebelum super.onCreate', not belum and utama.index('registerPlugin(') < utama.index('super.onCreate('), belum)
     nama = {}
     for p in plugin:
-        m = re.search(r'@CapacitorPlugin\(name = "(\w+)"\)', baca('apk', 'tambahan', p + '.java')); nama[p] = m.group(1) if m else ''
-    ok('nama plugin di Java = nama yang dipanggil halaman', nama == {'CetakUsbPlugin': 'CetakUsb', 'LampuPlugin': 'Lampu', 'NfcPlugin': 'Nfc', 'PerangkatPlugin': 'Perangkat', 'PindaiPlugin': 'Pindai', 'PrinterSunmiPlugin': 'PrinterSunmi'}, nama)
+        m = re.search(r'@CapacitorPlugin\(name = "(\w+)"[,)]', baca('apk', 'tambahan', p + '.java')); nama[p] = m.group(1) if m else ''
+    ok('nama plugin di Java = nama yang dipanggil halaman', nama == {'BiometrikPlugin': 'Biometrik', 'CetakUsbPlugin': 'CetakUsb', 'LampuPlugin': 'Lampu', 'NfcPlugin': 'Nfc', 'PerangkatPlugin': 'Perangkat', 'PindaiPlugin': 'Pindai', 'PrinterSunmiPlugin': 'PrinterSunmi'}, nama)
     dipanggil = set(re.findall(r"panggilAsli\('(\w+)', '(\w+)'", perangkat_js + baca('baru', 'js', 'inti', 'printer.js')))
     hilang = [p + '.' + m for p, m in sorted(dipanggil) if not re.search(r'@PluginMethod\s+public void ' + m + r'\(', baca('apk', 'tambahan', p + 'Plugin.java'))]
-    ok('tiap metode yang dipanggil halaman ada di plugin Java-nya', len(dipanggil) >= 7 and not hilang, hilang or sorted(dipanggil))
+    ok('tiap metode yang dipanggil halaman ada di plugin Java-nya', len(dipanggil) >= 13 and not hilang, hilang or sorted(dipanggil))
     sunmi = baca('apk', 'tambahan', 'PrinterSunmiPlugin.java')
     ok('PrinterSunmi: kode BELUM_KIRIM & PRINTER_ sama dengan yang dibaca perangkat.js', 'BELUM_KIRIM = "BELUM_KIRIM"' in sunmi and '"PRINTER_" + namaStatus(s)' in sunmi and '"PRINTER_DIAM"' in sunmi and "indexOf('PRINTER_') === 0" in perangkat_js)
     ok('PrinterSunmi: keadaan printer ditanya SEBELUM data dikirim', sunmi.index('siapkan(call, p -> tanya(p, s -> {\n            if (takPasti(s))') < sunmi.index('kirim(call, p, isi,'))
+    # ---- paket S4: Bluetooth, mode kertas, label ----
+    ok('PrinterSunmi Bluetooth: hanya perangkat yang SUDAH dipasangkan & bernama CloudPrint_ — tanpa pencarian (pencarian butuh izin lokasi)',
+       'CloudPrinterBuilder.buildPrinter(d.getName(), d.getAddress())' in sunmi and sunmi.count('nama.startsWith(AWALAN_BT)') == 2 and 'AWALAN_BT = "CloudPrint_"' in sunmi
+       and 'getBondedDevices()' in sunmi and 'SearchMethod.BT' not in sunmi and 'startDiscovery' not in sunmi and 'ACCESS_FINE_LOCATION' not in sunmi)
+    ok('PrinterSunmi Bluetooth: izin saat jalan diminta dari tombol Periksa Bluetooth; tanpa izin = BELUM_KIRIM berkalimat',
+       '@Permission(alias = "bluetooth", strings = { Manifest.permission.BLUETOOTH_CONNECT })' in sunmi and 'requestPermissionForAlias("bluetooth", call, "sesudahIzinBt");' in sunmi
+       and re.search(r'if \(!izinBt\(\)\) \{\s+call\.reject\("Izin Bluetooth belum diberikan', sunmi))
+    ok('PrinterSunmi: pindah jalur kabel ↔ Bluetooth melepas sambungan lama dulu; sambungan dipakai ulang hanya bila jalurnya sama',
+       'if (ada != null && printerBt != bt) lepasDiam();' in sunmi and 'if (ada != null && printerBt == bt && ada.isConnected()) {' in sunmi and 'printerBt = bt;' in sunmi)
+    tspl = sunmi[sunmi.index('    public void tspl(final PluginCall call) {'):]; tspl = tspl[:tspl.index('\n    }\n') + 7]
+    ok('PrinterSunmi label: perintah TSPL dikirim apa adanya, TANPA menanyakan keadaan printer dengan bahasa struk', 'p.sendTSPLData(data);' in tspl and 'tanya(' not in tspl and 'commitTransBuffer' not in tspl)
+    ok('PrinterSunmi mode kertas: hanya 1, 2, 3; hasilnya dibaca dari jawaban printer (getPrintMode)', 'if (m == null || m < 1 || m > 3) {' in sunmi and 'p.setPrintMode(m);' in sunmi and 'p.getPrintMode(new PropCallback() {' in sunmi)
+    bio = baca('apk', 'tambahan', 'BiometrikPlugin.java')
+    ok('Biometrik: jalur AndroidX (BiometricManager + BiometricPrompt), bukan FingerprintManager lama',
+       'BiometricManager.from(getContext()).canAuthenticate(JENIS)' in bio and 'new BiometricPrompt(a, ContextCompat.getMainExecutor(a)' in bio and 'import android.hardware.fingerprint' not in bio)
+    ok('Biometrik: hanya menjawab ada-tidaknya sensor & satu kali uji — tidak menyimpan, tidak membuka akun, tidak membaca data',
+       not re.search(r'SharedPreferences|Firebase|Cipher|KeyStore|CryptoObject|getFilesDir|WebView', bio) and bio.count('@PluginMethod') == 2)
     ok('Pindai: aksi siaran scanner SUNMI & penerima terbuka', 'com.sunmi.scanner.ACTION_DATA_CODE_RECEIVED' in baca('apk', 'tambahan', 'PindaiPlugin.java') and 'RECEIVER_EXPORTED' in baca('apk', 'tambahan', 'PindaiPlugin.java'))
     nfc = baca('apk', 'tambahan', 'NfcPlugin.java')
     ok('Nfc: membaca hanya selama aplikasi di depan (nyala saat kembali, mati saat ditinggal), kejadian "tempel" dari utas utama',
@@ -322,14 +403,34 @@ def periksa_statis(perangkat_js):
        'id="ucPindai"' in kartu('ucSunmi') and 'id="ucLampu"' in kartu('ucSunmi') and 'id="ucNfc"' in kartu('ucSunmi') and 'ucStatus' not in kartu('ucSunmi')
        and 'id="ucStatus"' in kartu('ucPrinterSunmi') and 'ucPindai' not in kartu('ucPrinterSunmi') and 'ucLampu' not in kartu('ucPrinterSunmi')
        and "$('ucPrinterSunmi').hidden = !app; $('ucSunmi').hidden = !app;" in baca('baru', 'js', 'layar', 'uji-cetak.js'))
+    ujs = baca('baru', 'js', 'layar', 'uji-cetak.js')
+    ok('uji-cetak.html S4: Bluetooth & mode kertas di kartu PRINTER; sidik jari & setelan lampu di kartu TABLET; kartu Label sendiri (hanya di aplikasi)',
+       all(('id="%s"' % i) in kartu('ucPrinterSunmi') for i in ('ucBt', 'ucBtHasil', 'ucModeKertas', 'ucModeBaca', 'ucModeSetel', 'ucModeHasil'))
+       and all(('id="%s"' % i) in kartu('ucSunmi') for i in ('ucSidik', 'ucSidikUji', 'ucLampuAtur', 'ucLampuSimpan', 'ucLampuBawaan', 'ucLampuPadam'))
+       and all(('id="%s"' % i) in kartu('ucLabel') for i in ('ucLabelCara', 'ucLabelLebar', 'ucLabelTinggi', 'ucLabelCelah', 'ucLabelPotong', 'ucLabelCetak', 'ucLabelPratinjau'))
+       and "$('ucLabel').hidden = !app;" in ujs and 'ucSidik' not in kartu('ucPrinterSunmi') and 'ucBt' not in kartu('ucSunmi'))
+    ok('uji-cetak.js S4: tiap id yang dipakai skrip ada di halaman', not [i for i in set(re.findall(r"\$\('(uc\w+)'\)", ujs)) if ('id="%s"' % i) not in hal], [i for i in set(re.findall(r"\$\('(uc\w+)'\)", ujs)) if ('id="%s"' % i) not in hal])
+    ok('uji-cetak.js S4: sesudah pindah mode, yang ditampilkan JAWABAN printer (ditanya lagi), bukan mode yang diminta',
+       "await printerSetelMode(m, lewatKini());" in ujs and "setTimeout(() => { bacaMode(true).then(() => { $('ucModeSetel').disabled = false; }); }, 3500);" in ujs)
+    ok('uji-cetak.js S4: label contoh berkode contoh (tidak pernah jadi barcode barang)', "kode: 'UJI-LABEL-0001'" in ujs and "export const TK_KODE_CONTOH = 'UJI-LABEL';" in baca('baru', 'js', 'layar', 'tanda-kenal-logika.js'))
     pr = baca('baru', 'js', 'inti', 'printer.js')
     ok('printer.js: teks jalur lama tidak berubah di catatan struk', "j === 'aplikasi' ? 'aplikasi tablet' : 'peramban'" in pr and "PR.namaJalur(r.jalur)" in baca('baru', 'js', 'layar', 'jual.js'))
     ok('printer.js: jalur bawaan tetap USB langsung; SDK SUNMI hanya bila dipilih di perangkat', "jalur: 'usb' };" in pr and "return a.jalur === 'sunmi' ? 'sunmi' : 'aplikasi';" in pr)
+    ok('printer.js S4: Bluetooth hanya bila dipilih di perangkat & hanya di aplikasi; ketiga jalur aplikasi lewat cetakAsli',
+       "if (asliAda() && a.jalur === 'sunmi-bt') return 'sunmi-bt';" in pr and "if (j === 'aplikasi' || j === 'sunmi' || j === 'sunmi-bt') {" in pr and "['sunmi-bt', 'SDK SUNMI lewat Bluetooth" in pr)
+    ok('printer.js S4: label stiker bercelah lewat SDK memakai pintu label (kirimTspl); selain itu byte yang sama lewat jalur cetak biasa; tanpa printer = melempar',
+       "if (l.cara === 'tspl' && (j === 'sunmi' || j === 'sunmi-bt')) {" in pr and "const r = await kirimTspl(l.teks.join('\\n') + '\\n', lewatJalur(j));" in pr
+       and "const j = pilih || await jalurCetak(); if (j === 'dialog') throw new Error('Tidak ada printer di perangkat ini — label dicetak dari tablet kasir');" in pr and "labelCara: 'struk'" in pr)
+    # 19 Nov 2026 (ketahuan saat layar Perangkat dicoba): label contoh dulu selalu lewat jalur TERSIMPAN walau formulir memilih jalur lain
+    ok('printer.js S4: label contoh memakai jalur yang dipilih di formulir (timpa.jalur), bukan hanya yang tersimpan — hanya di aplikasi',
+       "const pilih = timpa && asliAda() && PR_JALUR.some((x) => x[0] === timpa.jalur) ? (timpa.jalur === 'usb' ? 'aplikasi' : timpa.jalur) : '';" in pr
+       and "const r = await cetakLabel(LABEL_CONTOH, 1, a);" in ujs and "await PR.cetakLabel(TK.tkIsiLabel(sasaran, kode), n);" in baca('baru', 'js', 'layar', 'jual.js'))
+    ok('printer.js S4: setelan label di luar batas dibuang (bawaan tetap)', "if (Number.isInteger(d[k]) && d[k] >= b[0] && d[k] <= b[1]) a[k] = d[k];" in pr and "PR_LABEL_BATAS = { labelLebar: [20, 80], labelTinggi: [15, 200], labelCelah: [0, 10] }" in pr)
     jual = baca('baru', 'js', 'layar', 'jual.js')
     # 19 Nov 2026: panggilan lampu yang melempar di alur simpan membuat nota yang SUDAH tercatat dilaporkan "GAGAL mencatat" (ditangkap uji_keranjang_tahan)
     ok('jual.js: lampu hanya lewat pembungkus yang menelan galat — tidak ada panggilan lampu telanjang di alur simpan / cetak',
        "function lampu(nama) { try { const f = PK[nama]; if (typeof f === 'function') {" in jual and "} catch (e) { /* tanpa lampu */ } }" in jual
-       and jual.count("lampu('lampuBerhasil')") == 1 and jual.count("lampu('lampuGagal')") == 1
+       and jual.count("lampu('lampuBerhasil')") == 1 and jual.count("lampu('lampuGagal')") == 2   # cetak struk gagal + cetak label gagal (paket S4)
        and not re.search(r'(?<![\'\w.])lampu(Berhasil|Gagal)\(', jual) and not re.search(r'PK\.lampu\w*\(', jual))
     ok('jual.js: lampu hijau hanya sesudah nota SUNGGUH tercatat (sesudah cabang DITOLAK), bukan saat simulasi',
        jual.index("return set({ kabar: 'DITOLAK, nota tidak tersimpan: '") < jual.index("if (!(h && h.simulasi)) lampu('lampuBerhasil');") < jual.index('const lamaAdegan = adeganNota('))
@@ -356,7 +457,22 @@ MUTASI = [
     ('halangan printer tidak dikenali → struk dobel lewat USB', 'js', "e.code.indexOf('PRINTER_') === 0", "e.code.indexOf('PRINTER_') === 99"),
     ('jalur SUNMI tidak pernah jatuh ke CetakUsb', 'js', "if (galatPrinter(e)) throw e;", "throw e;"),
     ('printer tidak dilepas sebelum jatuh ke CetakUsb', 'js', "try { await panggilAsli('PrinterSunmi', 'lepas', {}); } catch (e2) { /* APK lama: plugin tidak ada */ }", ""),
-    ('jalur aplikasi ikut memakai SDK SUNMI', 'js', "if (jalur === 'sunmi') {", "if (jalur) {"),
+    ('jalur aplikasi ikut memakai SDK SUNMI', 'js', "if (jalur === 'sunmi' || jalur === 'sunmi-bt') {", "if (jalur) {"),
+    ('S4: jalur Bluetooth diam-diam mencetak lewat kabel', 'js', "{ data, lewat: lewatJalur(jalur) }", "{ data }"),
+    ('S4: jalur kabel dianggap Bluetooth', 'js', "(jalur === 'sunmi-bt' ? 'bt' : 'usb');", "(jalur ? 'bt' : 'usb');"),
+    ('S4: hasil cetak Bluetooth dilaporkan sebagai jalur kabel', 'js', "return { jalur, nama: (r && r.nama) || '', peringatan:", "return { jalur: 'sunmi', nama: (r && r.nama) || '', peringatan:"),
+    ('S4: mode kertas di luar 1–3 diteruskan ke printer', 'js', "if (!MODE_KERTAS.some((x) => x[0] === m)) return Promise.reject(galat('Mode kertas tidak dikenal', 'SALAH_ISI'));", ""),
+    ('S4: jawaban mode label terbaca sebagai struk', 'js', "return t.indexOf('label') >= 0 ? 'label' : t.indexOf('receipt') >= 0 ? 'struk' : '';", "return t.indexOf('label') >= 0 ? 'struk' : t.indexOf('receipt') >= 0 ? 'label' : '';"),
+    ('S4: jawaban mode tak dikenal dianggap struk', 'js', "t.indexOf('receipt') >= 0 ? 'struk' : '';", "'struk';"),
+    ('S4: jalur perintah label tidak diteruskan', 'js', "{ data: String(data || ''), lewat: lewat === 'bt' ? 'bt' : 'usb' }", "{ data: String(data || '') }"),
+    ('S4: lampu yang diatur "tidak menyala" tetap menyala', 'js', "  if (!a.warna || a.warna === LAMPU_MATI || !LAMPU_WARNA[a.warna]) return Promise.resolve({ ok: false, mati: true });\n", ""),
+    ('S4: setelan lampu tidak sah diterima', 'js', "if (x.warna === LAMPU_MATI || LAMPU_WARNA[x.warna]) b.warna = x.warna;", "if (x.warna) b.warna = x.warna;"),
+    ('S4: lama nyala lampu di luar batas diterima', 'js', "if (typeof x.detik === 'number' && x.detik >= LAMPU_DETIK[0] && x.detik <= LAMPU_DETIK[1]) b.detik = x.detik;", "if (typeof x.detik === 'number') b.detik = x.detik;"),
+    ('S4: lama nyala lampu diabaikan', 'js', "batasMs: Math.round((Number(a.detik) || 1.5) * 1000) });", "batasMs: 1500 });"),
+    ('S4: tombol Coba tidak memakai isian di layar', 'js', "const a = Object.assign({}, lampuAtur()[nama], timpa || {});", "const a = Object.assign({}, lampuAtur()[nama]);"),
+    ('S4: setelan lampu tersimpan tidak dibaca', 'js', "const d = (simpanan === undefined ? simpananLampu() : simpanan) || {};", "const d = simpanan || {};"),
+    ('S4: dua kejadian lampu terlihat sama', 'js', "['kertas', 'Kertas printer hampir habis', { warna: 'magenta', kedip: true,", "['kertas', 'Kertas printer hampir habis', { warna: 'kuning', kedip: true,"),
+    ('S4: kemampuan tidak menanyakan sidik jari', 'js', ", coba('Biometrik', 'info')]);", ", Promise.resolve(null)]);"),
     ('peringatan kertas hampir habis hilang', 'js', "peringatan: (r && r.peringatan) || '', cadanganDari: '' };\n    } catch (e) {", "peringatan: '', cadanganDari: '' };\n    } catch (e) {"),
     ('scanner tidak dikenali (jeda mesin 0)', 'js', "export const KETIK_JEDA_MESIN = 35;", "export const KETIK_JEDA_MESIN = 0;"),
     ('jari dianggap mesin (jeda mesin 200)', 'js', "export const KETIK_JEDA_MESIN = 35;", "export const KETIK_JEDA_MESIN = 200;"),
@@ -364,22 +480,25 @@ MUTASI = [
     ('beruntun tidak dihitung ulang sesudah jeda', 'js', "} else beruntun = 1;", "}"),
     ('lampu melempar saat aplikasi menolak', 'js', ".catch(() => { _lampuMati = true; return { ok: false }; })", ""),
     ('lampu terus memanggil aplikasi yang tak punya lampu', 'js', "_lampuMati = true; ", ""),
-    ('lampu gagal tidak berkedip', 'js', "lampu('merah', { kedip: true,", "lampu('merah', { kedip: false,"),
+    ('lampu gagal tidak berkedip', 'js', "['gagal', 'Cetak gagal atau perlu dilihat', { warna: 'merah', kedip: true,", "['gagal', 'Cetak gagal atau perlu dilihat', { warna: 'merah', kedip: false,"),
     ('pindai meneruskan isi bukan teks', 'js', "if (!d || typeof d.data !== 'string' || !d.data) return;", "if (!d) return;"),
     ('pelepas pindai melepas semua pendengar', 'js', "if (i >= 0) _pendengarPindai.splice(i, 1);", "_pendengarPindai.length = 0;"),
     ('kemampuan memanggil plugin yang tidak ada', 'js', "(k.plugin[plugin] === false ? Promise.resolve(null) : ", "(false ? Promise.resolve(null) : "),
     ('nfc meneruskan nomor seri yang bukan heksa', 'js', "if (!/^(?:[0-9A-F]{2}){4,10}$/.test(uid)) return;", "if (!uid) return;"),
     ('pelepas nfc melepas semua pendengar', 'js', "if (i >= 0) _pendengarTempel.splice(i, 1);", "_pendengarTempel.length = 0;"),
     ('nfc dipasang walau aplikasinya tidak punya plugin Nfc', 'js', "if (_tempelTerpasang || !asliAda() || adaPlugin('Nfc') === false) return;", "if (_tempelTerpasang || !asliAda()) return;"),
-    ('kemampuan tidak menanyakan NFC', 'js', ", coba('Nfc', 'info')]);", ", Promise.resolve(null)]);"),
+    ('kemampuan tidak menanyakan NFC', 'js', ", coba('Nfc', 'info'), coba('Biometrik', 'info')]);", ", Promise.resolve(null), coba('Biometrik', 'info')]);"),
     ('manifest: izin NFC tidak dipasang', 'py', "    if IZIN_NFC not in m:", "    if False:"),
     ('manifest: pembaca NFC diwajibkan', 'py', 'android:name="android.hardware.nfc" android:required="false" />\\n\\n    <application', 'android:name="android.hardware.nfc" android:required="true" />\\n\\n    <application'),
     ('manifest: <queries> scanner hilang', 'py', "TANYA_PAKET = ('com.sunmi.scanner', 'com.sunmi.tmservice')", "TANYA_PAKET = ('com.sunmi.tmservice',)"),
     ('manifest: allowBackup dibiarkan menyala', 'py', "m = m.replace('android:allowBackup=\"true\"', 'android:allowBackup=\"false\"')", "pass"),
     ('manifest: penjaga data tidak dideklarasikan', 'py', "'    <activity android:name=\"%s\" android:exported=\"false\" />\\n    </application>' % PENJAGA_DATA", "'    </application>'"),
     ('manifest: configChanges tidak dilengkapi', 'py', "lengkap = bagian + [x for x in ANTI_KEDIP if x not in bagian]", "lengkap = bagian"),
+    ('S4 manifest: izin sidik jari tidak dipasang', 'py', "    if IZIN_BIOMETRIK not in m:", "    if False:"),
+    ('S4 manifest: sensor sidik jari diwajibkan', 'py', 'android:name="android.hardware.fingerprint" android:required="false" />\\n\\n    <application', 'android:name="android.hardware.fingerprint" android:required="true" />\\n\\n    <application'),
+    ('S4 gradle: pustaka sidik jari hilang', 'py', "PUSTAKA_LAIN = ('androidx.biometric:biometric:1.1.0',)", "PUSTAKA_LAIN = ()"),
     ('gradle: pustaka printer SUNMI hilang', 'py', "PUSTAKA = ('com.sunmi:external-printerlibrary2:1.0.16', ", "PUSTAKA = ("),
-    ('gradle: pustaka disisipkan dua kali', 'py', "kurang = [p for p in PUSTAKA if p not in g2]", "kurang = list(PUSTAKA)"),
+    ('gradle: pustaka disisipkan dua kali', 'py', "kurang = [p for p in PUSTAKA + PUSTAKA_LAIN if p not in g2]", "kurang = list(PUSTAKA + PUSTAKA_LAIN)"),
 ]
 
 
