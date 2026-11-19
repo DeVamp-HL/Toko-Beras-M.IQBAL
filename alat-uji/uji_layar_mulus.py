@@ -211,10 +211,6 @@ function bandingFungsi(tahap) {
   dua('daftarKarcis(hari ini)', function () { return KCf.daftarKarcis(kiniF); });
   dua('karcisDaruratHari(hari ini)', function () { return KCf.karcisDaruratHari(kiniF); });
   dua('karcisDaruratHari(kemarin)', function () { return KCf.karcisDaruratHari(kiniF, kemarin); });
-  // kotak pasir tidak punya karcis kasir darurat: satu karcis KEMARIN disisipkan sementara → daftar hari ini (kosong) lalu daftar kemarin (berisi) wajib berbeda
-  var kd = Object.assign({}, D.cacheMentah('penjualan')[0], { id: 8300000000001, grupNota: 'gUjiKD', trxId: 'tUjiKD', jenis: 'kasir_darurat_nominal', tanggal: kemarin, hargaTotal: 15000 }); delete kd.dibatalkan; delete kd.dikoreksiOleh;
-  var duaHari = function () { return D.denganCacheSementara([{ koleksi: 'penjualan', data: kd }], function () { return [KCf.karcisDaruratHari(kiniF), KCf.karcisDaruratHari(kiniF, kemarin)]; }); };
-  daftar.push(['karcisDaruratHari: hari ini lalu kemarin (satu karcis kemarin disisipkan sementara)', duaHari, function () { return mentah(duaHari); }]);
   dua('Jual hariIni()', function () { return JL.hariIni({ sekarang: kiniF }); });
   dua('notaTembusBelumCocok()', function () { return JL.notaTembusBelumCocok(); });
   dua('aturWadah()', function () { return JL.aturWadah(); });
@@ -238,6 +234,17 @@ function bandingFungsi(tahap) {
     HASIL.fungsi.push({ tahap: tahap, nama: x[0], sama: !e && a1 === b && a2 === b, galat: e, ada: !!b && b !== '{}' && b !== '[]' && b !== 'null', contoh: e || (a1 === b ? '' : String(a1).slice(0, 160) + ' ≠ ' + String(b).slice(0, 160)) });
   });
 }
+// Kotak pasir tidak punya karcis kasir darurat: satu karcis KEMARIN disisipkan sementara → daftar hari ini (kosong) lalu daftar kemarin (berisi) wajib berbeda.
+// Dijalankan PALING AKHIR dan di luar bandingFungsi: cache sementara menaikkan versi data (ingatan dikosongkan), dan tahap-tahap bandingFungsi justru menguji
+// ingatan yang BERTAHAN dari tahap sebelumnya tanpa versi naik (titik kas perangkat, ganti hari) — disisipkan di tengah, dua kontrol lama jadi diam (CI 19 Nov).
+function bandingKarcisSisipan() {
+  if (MODE === 'mati') return;
+  var KCf = __E['baru/js/layar/karcis-logika.js'], kiniF = new Date(), kemarin = F.hariIniIso(new Date(Date.now() - 86400000)), a, b, e = '';
+  var kd = Object.assign({}, D.cacheMentah('penjualan')[0], { id: 8300000000001, grupNota: 'gUjiKD', trxId: 'tUjiKD', jenis: 'kasir_darurat_nominal', tanggal: kemarin, hargaTotal: 15000 }); delete kd.dibatalkan; delete kd.dikoreksiOleh;
+  var duaHari = function () { return D.denganCacheSementara([{ koleksi: 'penjualan', data: kd }], function () { return [KCf.karcisDaruratHari(kiniF), KCf.karcisDaruratHari(kiniF, kemarin)]; }); };
+  try { a = J(duaHari()); b = J(D.tanpaIngatan(duaHari)); } catch (er) { e = String(er && er.message || er); }
+  HASIL.fungsi.push({ tahap: 'karcis kemarin disisipkan sementara', nama: 'karcisDaruratHari: hari ini lalu kemarin', sama: !e && a === b, galat: e, ada: !!b && b !== '[[],[]]', contoh: e || (a === b ? '' : String(a).slice(0, 160) + ' ≠ ' + String(b).slice(0, 160)) });
+}
 function rangkaianFungsi() {
   var n0 = D.ambilPenjualan().length; var kas0 = D.ingatKasPada();
   bandingFungsi('awal');
@@ -248,6 +255,7 @@ function rangkaianFungsi() {
   titikBaru(); bandingFungsi('sesudah titik kas perangkat berubah'); HASIL.info.titikMengubahKas = J(D.ingatKasPada()) !== J(kas0);
   var jam0 = __KINI; __KINI = new __DateAsli('2026-09-30T23:30:00+07:00').getTime(); bandingFungsi('30 Sep 23.30'); __KINI = new __DateAsli('2026-10-01T00:30:00+07:00').getTime(); bandingFungsi('1 Okt 00.30 (bulan berganti)');
   __KINI = jam0;
+  bandingKarcisSisipan();
 }
 
 // ---- ORAKEL DASBOR: Ringkasan yang baru dipasang menghitung segar — isinya harus sama dengan dasbor yang hidup terus
