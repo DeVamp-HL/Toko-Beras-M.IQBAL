@@ -503,9 +503,11 @@ document.addEventListener('keydown', (ev) => {
   _ketikTampung = ketikTambah(_ketikTampung, k, ev.timeStamp);
   clearTimeout(_ketikJam); _ketikJam = setTimeout(lepasKetik, KETIK_TUNGGU);
 });
-padaPindai(() => {
+padaPindai((x) => {
   _pindaiPada = Date.now();
-  if (panelOrang.hidden || !_pilihOrang || _tanyaGanti) return;
+  // paket S2a: panel jaga tertutup & layar Jual di depan → hasil scan milik layar Jual (QR struk → notanya terbuka)
+  if (panelOrang.hidden) { if (tabKini === 'jual') { try { layar.pindai(x && x.data); } catch (e) { console.error('pindai jual', e); } } return; }
+  if (!_pilihOrang || _tanyaGanti) return;
   clearTimeout(_ketikJam); _ketikTampung = [];
   if (!_periksaPin) { _pinKetik = ''; gambarPanelOrang(); pesanOrang(KALIMAT_SCAN); }
 });

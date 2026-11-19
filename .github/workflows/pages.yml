@@ -147,6 +147,9 @@ jobs:
       - name: "Cangkang SUNMI (paket S1, 19 Nov): pintu perangkat — jalur SDK SUNMI jatuh ke USB hanya bila belum ada byte terkirim (tidak ada struk dobel), scan tidak terbaca sebagai PIN, lampu & pindai diam di luar aplikasi; pemasang APK: pustaka resmi SUNMI, <queries>, penjaga hapus data; tanda tangan V1+V2 (jsc + python + statis + kontrol)"
         run: python3 alat-uji/uji_perangkat_sunmi.py && python3 alat-uji/uji_perangkat_sunmi.py --kontrol
 
+      - name: "Tanda kenal (paket S2a, 19 Nov): QR nomor nota di struk — cetak lalu scan kembali ke nota yang sama, kode bukan struk toko tidak dianggap nota, lembar berisi isian tidak ditimpa"
+        run: python3 alat-uji/uji_tanda_kenal.py && python3 alat-uji/uji_tanda_kenal.py --kontrol
+
       - name: "Tablet: satu akun + PIN per orang (putaran T1 langkah 3, owner 16 Nov): PBKDF2 = hashlib, salah 5× terkunci 5 menit, diam 5 menit, nama orang di catatan, daftar tidak hilang saat hak diputar (jsc + kontrol)"
         run: python3 alat-uji/uji_tablet_pin.py && python3 alat-uji/uji_tablet_pin.py --kontrol
       - name: "Tablet dibuka tanpa internet (T1 langkah 4, owner 16 Nov 2026): salinan aplikasi sw-baru.js — pasang = semua berkas dicocokkan sidiknya (berkas basi = versi DITOLAK, tidak pernah campur), HTML bersuntikan jembatan Capacitor lolos & tersimpan, sajian dari salinan ada/tanpa internet, data toko tidak disentuh, berkas sama disalin dari versi lama, versi lama dihapus saat aktif, lepas; salinan.js: hanya tablet, pasang versi baru hanya di gerbang tanpa isian, kalimat jujur; cap saat terbit mencakup semua modul (jsc + statis + kontrol)"

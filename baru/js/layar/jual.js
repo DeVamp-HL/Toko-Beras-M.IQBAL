@@ -11,6 +11,7 @@ import * as WJ from './wadah-jual-logika.js';
 import * as ST from './struk-logika.js';
 import * as PK from '../inti/perangkat.js';   // paket S1 (19 Nov 2026): lampu CPad — hijau nota tersimpan, merah kedip cetak gagal; tanpa lampu = diam
 import * as PR from '../inti/printer.js';   // T1 (16 Nov 2026): printer USB tablet kasir — aplikasi CPad / WebUSB; tanpa printer = dialog cetak
+import * as TK from './tanda-kenal-logika.js';   // paket S2a (19 Nov 2026): QR nomor nota di struk; scan struk → notanya terbuka
 // owner 17 Nov (butir 3): pratinjau struk gambar + logo toko bersama
 import { gambarStruk as gambarStrukKanvas, siapkanHuruf } from '../inti/struk-kanvas.js';
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
@@ -363,7 +364,9 @@ export function pasangLayarJual(akar, opsi) {
     const st = ST.susunStruk(nota, atur, pilih); if (!st) return;
     PR.jalurCetak().then((j) => {
       if (j === 'dialog') { cetakDialog(st, nota, ket); return; }
-      return PR.cetakGaris(st.garis, { logoToko: st.logo }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
+      // paket S2a: QR nomor nota di bawah struk bila setelan printer perangkat ini menyertakan QR ("Printer tablet ini") — scan struk itu membuka notanya
+      const qr = PR.prAtur().qr ? TK.tkQrNota(nota) : '';
+      return PR.cetakGaris(st.garis, { logoToko: st.logo, qr }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
         catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + 'printer USB ' + PR.namaJalur(r.jalur) + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
         // paket S1: SDK SUNMI mengabari kertas hampir habis; jalur SUNMI yang jatuh ke USB langsung disebut supaya ketahuan (struknya tetap keluar)
         if (r.peringatan) set({ kabar: r.peringatan + ' — struk ini tetap tercetak', kabarAwas: true });
@@ -1243,8 +1246,17 @@ export function pasangLayarJual(akar, opsi) {
   const gambarGulir = () => { gambar(); gulirkan(akar, RP); };
   dengarkan((nama) => { if (!BUKAN_RAK.has(nama)) _rakBasi = true; nanti(gambarGulir); });
   gambar(); gulirkan(akar, RP);
+  // paket S2a (19 Nov 2026): scanner tablet saat layar Jual di depan (app.js yang memanggil). QR struk toko → lembar struk nota itu terbuka
+  // (cetak ulang, WhatsApp, retur dari lembar yang sama). Kode lain (barcode kemasan) belum punya arti di sini — didiamkan sampai paket S2b.
+  function pindai(teks) {
+    const u = TK.tkUraiPindai(teks); if (!u || terkunci() || u.jenis === 'lain') return;
+    if (u.jenis === 'rusak') return set({ kabar: 'QR struk tidak terbaca utuh — scan ulang, atau cari notanya di Riwayat', kabarAwas: true });
+    if (!TK.tkLembarBolehDiganti(S().lembar)) return set({ kabar: 'Struk ter-scan, tapi lembar ini masih terbuka — tutup dulu, lalu scan lagi', kabarAwas: true });
+    if (!ST.notaDari(u.kunci)) return set({ kabar: 'Nota dari struk ini tidak ada di data perangkat ini — mungkin nota lama yang sudah ditutup bukunya', kabarAwas: true });
+    aksi.bukaStruk({ trx: u.kunci.trxId, grup: u.kunci.grupNota, id: u.kunci.id });
+  }
   // putaran 23c: keranjang tidak terbawa ke akun berikutnya — app.js menanyakannya saat Keluar lalu melupakannya
   const tampilkan = (ya) => { const tadi = _tampil; _tampil = !!ya; if (_tampil && !tadi && (_kotor || !akar.firstElementChild)) { _kotor = false; segera(gambarGulir); } };
-  return { keadaan: K, gambar, gambarGulir, tampilkan, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), pulihkanKeranjang,
+  return { keadaan: K, gambar, gambarGulir, tampilkan, pindai, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), pulihkanKeranjang,
     lupakanOrang: () => { lupakanSimpanan(); K.setel((s) => L.keadaanOrangBerikutnya(s)); } };   // owner 7 Okt: simpanan keranjang ikut dilupakan saat ganti orang
 }

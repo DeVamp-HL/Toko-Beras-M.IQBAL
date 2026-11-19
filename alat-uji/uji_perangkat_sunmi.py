@@ -139,6 +139,21 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   const K = await kemampuan();
   cek('kemampuan: plugin yang ada ditanya, yang tidak ada dilewati', K.aplikasi && K.info.model === 'CPad' && K.pindai.terpasang === true && K.lampu === null && K.plugin.Lampu === false && A.hitung('Lampu.dukung') === 0, JSON.stringify(K));
 
+  // ---- NFC (paket S2a) ----
+  const lepasN0 = padaTempel(() => {}); lepasN0();
+  cek('aplikasi tanpa plugin Nfc: padaTempel tidak memasang pendengar', A.dengar['Nfc.tempel'] === undefined);
+  A = pasangAplikasi(['Nfc'], { 'Nfc.info': () => ({ ada: true, nyala: true }) });
+  const kartu = []; const kartu2 = [];
+  const lepasN = padaTempel((x) => kartu.push(x.uid)); padaTempel((x) => kartu2.push(x.uid + ':' + x.jenis.join('+')));
+  const tempel = A.dengar['Nfc.tempel'];
+  cek('nfc: pendengar terpasang di plugin Nfc', typeof tempel === 'function');
+  if (tempel) { tempel({ uid: '04a1b2c3', jenis: ['NfcA', 'MifareUltralight'] }); tempel({ uid: 'XYZ12345' }); tempel({ uid: '04A1B' }); tempel({ uid: '04A1B2' }); tempel({ uid: 12345678 }); tempel(null); tempel({ uid: '0102030405060708090A0B' }); lepasN(); tempel({ uid: '04A1B2C3D4E5F6' }); }
+  cek('nfc: nomor seri heksa 4–10 byte diteruskan berhuruf besar; bentuk lain dibuang', kartu.join('|') === '04A1B2C3', kartu.join('|'));
+  cek('nfc: pelepas hanya melepas pendengarnya sendiri; jenis kartu ikut', kartu2.join('|') === '04A1B2C3:NfcA+MifareUltralight|04A1B2C3D4E5F6:', kartu2.join('|'));
+  cek('nfc: kartu terakhir tersimpan', tempelTerakhir() && tempelTerakhir().uid === '04A1B2C3D4E5F6');
+  const KN = await kemampuan();
+  cek('kemampuan: NFC ditanya bila pluginnya ada', KN.plugin.Nfc === true && KN.nfc && KN.nfc.ada === true && KN.nfc.nyala === true && KN.lampu === null, JSON.stringify(KN));
+
   print(JSON.stringify(hasil));
 })().catch((e) => { print(JSON.stringify([{ nama: 'pemeriksa jatuh', ok: false, ket: String(e && e.stack || e) }])); });
 """
@@ -236,6 +251,9 @@ def periksa_pasang(sumber):
        all(('<package android:name="%s" />' % p) in m for p in ('com.sunmi.scanner', 'com.sunmi.tmservice')) and m.index('<queries>') < m.index('<application') and m.count('<queries>') == 1)
     ok('manifest: penjaga "Hapus data" terpasang & aktivitasnya dideklarasikan tertutup',
        'android:manageSpaceActivity="id.miqbal.tokoberas.KelolaRuangActivity"' in m and '<activity android:name="id.miqbal.tokoberas.KelolaRuangActivity" android:exported="false" />' in m)
+    ok('manifest: izin NFC ada, pembaca NFC TIDAK diwajibkan, di luar <application>, tepat sekali',
+       m.count('<uses-permission android:name="android.permission.NFC" />') == 1 and m.count('<uses-feature android:name="android.hardware.nfc" android:required="false" />') == 1
+       and m.index('android.permission.NFC') < m.index('<application') and 'android.hardware.nfc" android:required="true"' not in m)
     ok('manifest: allowBackup mati', 'android:allowBackup="false"' in m and 'android:allowBackup="true"' not in m)
     cc = re.search(r'android:configChanges="([^"]*)"', m).group(1).split('|')
     ok('manifest: configChanges memuat navigation, keyboard, keyboardHidden tanpa kembar', all(x in cc for x in ('navigation', 'keyboard', 'keyboardHidden')) and len(cc) == len(set(cc)), '|'.join(cc))
@@ -271,13 +289,13 @@ def periksa_statis(perangkat_js):
     h = []; ok = lambda nama, benar, ket='': h.append({'nama': nama, 'ok': bool(benar), 'ket': str(ket)})
     utama = baca('apk', 'tambahan', 'MainActivity.java')
     plugin = sorted(os.path.basename(f)[:-5] for f in glob.glob(os.path.join(AKAR, 'apk', 'tambahan', '*Plugin.java')))
-    ok('lima plugin perangkat ada', plugin == ['CetakUsbPlugin', 'LampuPlugin', 'PerangkatPlugin', 'PindaiPlugin', 'PrinterSunmiPlugin'], plugin)
+    ok('enam plugin perangkat ada', plugin == ['CetakUsbPlugin', 'LampuPlugin', 'NfcPlugin', 'PerangkatPlugin', 'PindaiPlugin', 'PrinterSunmiPlugin'], plugin)
     belum = [p for p in plugin if ('registerPlugin(%s.class);' % p) not in utama]
     ok('tiap plugin terdaftar di MainActivity sebelum super.onCreate', not belum and utama.index('registerPlugin(') < utama.index('super.onCreate('), belum)
     nama = {}
     for p in plugin:
         m = re.search(r'@CapacitorPlugin\(name = "(\w+)"\)', baca('apk', 'tambahan', p + '.java')); nama[p] = m.group(1) if m else ''
-    ok('nama plugin di Java = nama yang dipanggil halaman', nama == {'CetakUsbPlugin': 'CetakUsb', 'LampuPlugin': 'Lampu', 'PerangkatPlugin': 'Perangkat', 'PindaiPlugin': 'Pindai', 'PrinterSunmiPlugin': 'PrinterSunmi'}, nama)
+    ok('nama plugin di Java = nama yang dipanggil halaman', nama == {'CetakUsbPlugin': 'CetakUsb', 'LampuPlugin': 'Lampu', 'NfcPlugin': 'Nfc', 'PerangkatPlugin': 'Perangkat', 'PindaiPlugin': 'Pindai', 'PrinterSunmiPlugin': 'PrinterSunmi'}, nama)
     dipanggil = set(re.findall(r"panggilAsli\('(\w+)', '(\w+)'", perangkat_js + baca('baru', 'js', 'inti', 'printer.js')))
     hilang = [p + '.' + m for p, m in sorted(dipanggil) if not re.search(r'@PluginMethod\s+public void ' + m + r'\(', baca('apk', 'tambahan', p + 'Plugin.java'))]
     ok('tiap metode yang dipanggil halaman ada di plugin Java-nya', len(dipanggil) >= 7 and not hilang, hilang or sorted(dipanggil))
@@ -285,6 +303,11 @@ def periksa_statis(perangkat_js):
     ok('PrinterSunmi: kode BELUM_KIRIM & PRINTER_ sama dengan yang dibaca perangkat.js', 'BELUM_KIRIM = "BELUM_KIRIM"' in sunmi and '"PRINTER_" + namaStatus(s)' in sunmi and '"PRINTER_DIAM"' in sunmi and "indexOf('PRINTER_') === 0" in perangkat_js)
     ok('PrinterSunmi: keadaan printer ditanya SEBELUM data dikirim', sunmi.index('siapkan(call, p -> tanya(p, s -> {\n            if (takPasti(s))') < sunmi.index('kirim(call, p, isi,'))
     ok('Pindai: aksi siaran scanner SUNMI & penerima terbuka', 'com.sunmi.scanner.ACTION_DATA_CODE_RECEIVED' in baca('apk', 'tambahan', 'PindaiPlugin.java') and 'RECEIVER_EXPORTED' in baca('apk', 'tambahan', 'PindaiPlugin.java'))
+    nfc = baca('apk', 'tambahan', 'NfcPlugin.java')
+    ok('Nfc: membaca hanya selama aplikasi di depan (nyala saat kembali, mati saat ditinggal), kejadian "tempel" dari utas utama',
+       re.search(r'handleOnResume\(\) \{\s+super\.handleOnResume\(\);\s+mulai\(\);', nfc) and re.search(r'handleOnPause\(\) \{\s+berhenti\(\);', nfc)
+       and 'enableReaderMode(' in nfc and 'disableReaderMode(' in nfc and 'runOnUiThread(() -> notifyListeners("tempel", o))' in nfc)
+    ok('Nfc: hanya nomor seri yang dibaca — tidak ada tulis kartu, tidak ada baca isi', not re.search(r'Ndef|MifareClassic|transceive|writeNdefMessage|connect\(', nfc) and 'FLAG_READER_SKIP_NDEF_CHECK' in nfc)
     ok('KelolaRuangActivity langsung menutup diri', re.search(r'super\.onCreate\(savedInstanceState\);\s+finish\(\);', baca('apk', 'tambahan', 'KelolaRuangActivity.java')))
 
     app = baca('baru', 'js', 'app.js')
@@ -296,7 +319,7 @@ def periksa_statis(perangkat_js):
     hal = baca('baru', 'uji-cetak.html')
     kartu = lambda i: hal[hal.index('<section id="%s"' % i):].split('</section>', 1)[0] if ('<section id="%s"' % i) in hal else ''
     ok('uji-cetak.html: scanner & lampu di kartu TABLET, "Periksa printer" di kartu PRINTER',
-       'id="ucPindai"' in kartu('ucSunmi') and 'id="ucLampu"' in kartu('ucSunmi') and 'ucStatus' not in kartu('ucSunmi')
+       'id="ucPindai"' in kartu('ucSunmi') and 'id="ucLampu"' in kartu('ucSunmi') and 'id="ucNfc"' in kartu('ucSunmi') and 'ucStatus' not in kartu('ucSunmi')
        and 'id="ucStatus"' in kartu('ucPrinterSunmi') and 'ucPindai' not in kartu('ucPrinterSunmi') and 'ucLampu' not in kartu('ucPrinterSunmi')
        and "$('ucPrinterSunmi').hidden = !app; $('ucSunmi').hidden = !app;" in baca('baru', 'js', 'layar', 'uji-cetak.js'))
     pr = baca('baru', 'js', 'inti', 'printer.js')
@@ -345,6 +368,12 @@ MUTASI = [
     ('pindai meneruskan isi bukan teks', 'js', "if (!d || typeof d.data !== 'string' || !d.data) return;", "if (!d) return;"),
     ('pelepas pindai melepas semua pendengar', 'js', "if (i >= 0) _pendengarPindai.splice(i, 1);", "_pendengarPindai.length = 0;"),
     ('kemampuan memanggil plugin yang tidak ada', 'js', "(k.plugin[plugin] === false ? Promise.resolve(null) : ", "(false ? Promise.resolve(null) : "),
+    ('nfc meneruskan nomor seri yang bukan heksa', 'js', "if (!/^(?:[0-9A-F]{2}){4,10}$/.test(uid)) return;", "if (!uid) return;"),
+    ('pelepas nfc melepas semua pendengar', 'js', "if (i >= 0) _pendengarTempel.splice(i, 1);", "_pendengarTempel.length = 0;"),
+    ('nfc dipasang walau aplikasinya tidak punya plugin Nfc', 'js', "if (_tempelTerpasang || !asliAda() || adaPlugin('Nfc') === false) return;", "if (_tempelTerpasang || !asliAda()) return;"),
+    ('kemampuan tidak menanyakan NFC', 'js', ", coba('Nfc', 'info')]);", ", Promise.resolve(null)]);"),
+    ('manifest: izin NFC tidak dipasang', 'py', "    if IZIN_NFC not in m:", "    if False:"),
+    ('manifest: pembaca NFC diwajibkan', 'py', 'android:name="android.hardware.nfc" android:required="false" />\\n\\n    <application', 'android:name="android.hardware.nfc" android:required="true" />\\n\\n    <application'),
     ('manifest: <queries> scanner hilang', 'py', "TANYA_PAKET = ('com.sunmi.scanner', 'com.sunmi.tmservice')", "TANYA_PAKET = ('com.sunmi.tmservice',)"),
     ('manifest: allowBackup dibiarkan menyala', 'py', "m = m.replace('android:allowBackup=\"true\"', 'android:allowBackup=\"false\"')", "pass"),
     ('manifest: penjaga data tidak dideklarasikan', 'py', "'    <activity android:name=\"%s\" android:exported=\"false\" />\\n    </application>' % PENJAGA_DATA", "'    </application>'"),
