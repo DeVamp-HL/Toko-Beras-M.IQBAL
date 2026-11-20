@@ -183,6 +183,10 @@ def periksa_statis():
     ok('Jual: pratinjau struk memuat QR yang sama dengan cetakan (setelan printer perangkat ini), dan pratinjau lama tidak dipakai ulang saat QR berubah',
        "const url = pratinjauStruk(st, n.pilih.kertas, PR.prAtur().qr ? TK.tkQrNota(n.nota) : '');" in jl and "const kunci = kertas + '|' + (st.logo ? 'L' : '') + '|' + (qr || '') + '|' + st.teks;" in jl
        and "gambarStrukKanvas(st.garis, { kertas, logoToko: st.logo, qr: qr || '' })" in jl)
+    uj = baca('baru', 'js', 'layar', 'uji-cetak.js')
+    ok('layar Perangkat: pratinjau "persis yang keluar dari printer" memuat QR contoh yang sama dengan Cetak contoh, dan digambar ulang saat centang QR berubah',
+       "const g = gambarStruk(epContohGaris(), { kertas: a.kertas, logo: teksKeLogo(logo), logoToko: true, qr: a.qr ? 'UJI-CETAK' : '' });" in uj
+       and uj.count("qr: a.qr ? 'UJI-CETAK' : ''") >= 3 and "'ucQr'" in uj[uj.find('addEventListener'):] )
     ok('index.html: modul qr.js ikut dimuat di depan (dipakai gambar struk)', '<link rel="modulepreload" href="js/inti/qr.js">' in baca('baru', 'index.html'))
     return h
 
