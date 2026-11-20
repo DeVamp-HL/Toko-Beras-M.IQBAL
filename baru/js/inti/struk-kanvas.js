@@ -8,6 +8,7 @@
 // cap kecil bertangkai padi. Garis yang tidak bertanda `jenis` (contoh lama) tetap digambar gaya polos di bawah.
 import { EP_TITIK, epHitamPutih, epTanpaEmoji } from './escpos.js';
 import { stModelSertifikat, stTebalHuruf } from './struk-model.js';
+import { qrSusun, qrTitikMuat, QR_TENANG } from './qr.js';
 
 const HURUF = 'Jost, "Helvetica Neue", Arial, sans-serif';
 const F_SANS = (b, px) => b + ' ' + px + 'px Jost, "Helvetica Neue", Arial, sans-serif';
@@ -157,7 +158,8 @@ export function gambarLogoToko(c, cx, y, h) {
   return h;
 }
 
-/** Struk nota gaya Sertifikat. Isi dari model garis (struk-model.js); opsi: { kertas, logo (bitmap perangkat), logoToko (bool: logo F) }. */
+/** Struk nota gaya Sertifikat. Isi dari model garis (struk-model.js); opsi: { kertas, logo (bitmap perangkat), logoToko (bool: logo F),
+ *  qr (teks QR nota; digambar di antara tanda tangan dan cap bila muat) }. Hasil jadiBit + qrDiGambar (true = QR sudah ada di gambar). */
 function gambarSertifikat(garis, opsi) {
   const o = opsi || {}; const W = EP_TITIK[o.kertas] || EP_TITIK[80]; const k = W / 576; const P = (n) => Math.round(n * k); const M = stModelSertifikat(garis);
   const kanvas = document.createElement('canvas'); kanvas.width = W; kanvas.height = Math.round((2600 + 120 * (M.barang.length + M.bayar.length + M.catatan.length + M.bon.length)) * k);
@@ -244,18 +246,30 @@ function gambarSertifikat(garis, opsi) {
   M.bayar.forEach((b) => kolom(b.label, b.n, F_SANS(b.tebal ? 600 : 500, P(20)), F_SANS(600, P(20))));
   M.catatan.forEach((t) => { const f = F_ITA(t.tebal ? 600 : 500, P(20)); huruf(f); bungkus(c, epTanpaEmoji(t.teks), R - L - P(20)).forEach((s) => { tulis(s, f, L + P(10), y + P(17)); y += P(25); }); });
   y += P(26);
+  // QR nota di celah antara ujung garis tanda tangan dan tepi kiri cap. Lebih tinggi dari tanda tangan/cap → keduanya digeser turun supaya
+  // ketiganya segaris tengah; QR sendiri mulai tepat di atas blok.
+  const blokY = y; const qrKiri = L + P(236), qrKanan = R - P(86) - P(42);
+  const qr = o.qr ? qrSusun(o.qr) : null; const qrT = qr ? qrTitikMuat(qr.modul, qrKanan - qrKiri) : 0; const qrSisi = qrT ? qr.modul * qrT : 0;
+  const qrX = Math.round((qrKiri + qrKanan - qrSisi) / 2);
+  if (qrSisi) {
+    for (let b = 0; b < qr.modul; b++) for (let kk = 0; kk < qr.modul; kk++) if (qr.bit[b * qr.modul + kk]) c.fillRect(qrX + kk * qrT, blokY + b * qrT, qrT, qrT);
+    y += Math.max(0, Math.round((qrSisi - P(88)) / 2));
+  }
   const capX = R - P(86), capY = y; c.lineWidth = Math.max(1.5, P(2));
   c.beginPath(); c.arc(capX, capY + P(42), P(42), 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(capX, capY + P(42), P(35), 0, Math.PI * 2); c.stroke();
   c.save(); c.beginPath(); c.arc(capX, capY + P(42), P(32), 0, Math.PI * 2); c.clip();
   padi(c, [[capX - P(6), capY + P(76)], [capX - P(4), capY + P(48)], [capX + P(2), capY + P(24)], [capX + P(16), capY + P(16)]], 0.3, 0.85 * k, Math.max(2, P(3)), 3); c.restore();   // owner 17 Nov: bulir kecil menggumpal di printer → lebih besar & lebih sedikit
   if (M.pelayan) {
-    tulis(M.pelayan, F_ITA(600, P(40)), L + P(36), y + P(40)); y += P(50); garisH(L + P(16), L + P(236), y, Math.max(1.5, P(1.5))); y += P(8);
+    // nama panjang tidak boleh menabrak QR: hurufnya dikecilkan sampai berhenti sebelum daerah tenang QR
+    const pxN = qrSisi ? muatLebar(M.pelayan, (px) => F_ITA(600, px), P(40), qrX - QR_TENANG * qrT - (L + P(36))) : P(40);
+    tulis(M.pelayan, F_ITA(600, pxN), L + P(36), y + P(40)); y += P(50); garisH(L + P(16), L + P(236), y, Math.max(1.5, P(1.5))); y += P(8);
     tulis('DILAYANI OLEH', F_CIN(700, P(14)), L + P(16), y + P(16), 'left', P(2)); y += P(30);
   }
-  y = Math.max(y, capY + P(92));
+  y = Math.max(y, capY + P(92), qrSisi ? blokY + qrSisi + P(10) : 0);
   if (M.kaki) { y += P(10); huruf(F_ITA(500, P(25))); bungkus(c, epTanpaEmoji(M.kaki), R - L).forEach((t) => { tulis(t, F_ITA(500, P(25)), cx, y + P(20), 'center'); y += P(30); }); }
   y += P(16); guilloche(y, P(40)); y += P(50);
-  return jadiBit(kanvas, c, W, y);
+  const jadi = jadiBit(kanvas, c, W, y); jadi.qrDiGambar = !!qrSisi;
+  return jadi;
 }
 
 /**

@@ -143,6 +143,8 @@ jobs:
 
       - name: "Cetak ESC/POS (putaran T1, Sunmi CPad 80 mm): teks ASCII, baris ≤ lebar kertas, angka rata kanan, kode potong/QR/laci (jsc + kontrol)"
         run: python3 alat-uji/uji_escpos.py && python3 alat-uji/uji_escpos.py --kontrol
+      - name: "Kode QR di gambar struk: penyusun dibaca balik pembaca mandiri (versi 1–6, delapan topeng), kotak beku yang sudah dibaca pemindai, ukuran & pemasangan (jsc + kontrol)"
+        run: python3 alat-uji/uji_qr.py && python3 alat-uji/uji_qr.py --kontrol
 
       - name: "Cangkang SUNMI (paket S1, 19 Nov): pintu perangkat — jalur SDK SUNMI jatuh ke USB hanya bila belum ada byte terkirim (tidak ada struk dobel), scan tidak terbaca sebagai PIN, lampu & pindai diam di luar aplikasi; pemasang APK: pustaka resmi SUNMI, <queries>, penjaga hapus data; tanda tangan V1+V2 (jsc + python + statis + kontrol)"
         run: python3 alat-uji/uji_perangkat_sunmi.py && python3 alat-uji/uji_perangkat_sunmi.py --kontrol

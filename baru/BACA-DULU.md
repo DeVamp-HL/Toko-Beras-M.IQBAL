@@ -3159,3 +3159,19 @@ halaman printer:* owner menaikkan Density ke 130 dan Quality ke 100 — hasil di
 toko tidak mengirim perintah kepekatan atau mutu apa pun (dicabut di #145), jadi tidak ada yang bertabrakan; Quality memang menukar
 kecepatan dengan mutu. **Belum terbukti di perangkat:** tombol mode di jalur jaringan sesudah tambalan ini, label dan surat jalan lewat
 jaringan, Wi-Fi putus di tengah cetak.
+
+**QR nota pindah ke DALAM gambar struk (owner 20 Nov 2026 malam: "barcode pindahin" ke samping tanda tangan; struk mau rapat atas-bawah):**
+ruang kosong di struk dilacak dulu. *Bawah (±8 mm walau baris kosong sudah 0):* QR selama ini digambar PRINTER lewat perintahnya sendiri
+(`GS ( k`), jadi selalu jadi baris tersendiri di bawah gambar struk, baru sesudah itu potong. *Atas (±10 mm):* jarak kepala cetak ke pisau —
+kertas itu sudah lewat kepala cetak waktu struk sebelumnya dipotong; sistem toko tidak bisa menghapusnya. Satu-satunya saklar ada di halaman
+setelan printer › Cutter Settings › "Top paper saving mode (only valid for full cut mode)" (teks dibaca dari halaman printer; cara kerjanya
+belum terbukti, dan butuh Potong = penuh). *Yang dibangun:* `inti/qr.js` — penyusun QR murni (mode byte, koreksi M, versi 1–6 = sampai 106
+huruf; lebih dari itu / huruf di luar ASCII → `null`). `gambarSertifikat` menggambar QR di celah antara ujung garis tanda tangan dan tepi
+kiri cap: modul 3–5 titik (`qrTitikMuat`; QR nota 28 huruf = versi 3 = 29 modul × 4 titik ≈ 14,5 mm di kertas 80 mm, × 3 titik di 58 mm),
+tanda tangan dan cap digeser turun supaya segaris tengah dengan QR, nama yang melayani dikecilkan bila menabrak. Hasil gambar membawa
+`qrDiGambar`; `susunCetak` membuang perintah QR printer HANYA bila itu `true` — struk berakhir `ESC a 0 · ESC d <umpan> · GS V`, tepat
+sesudah hiasan bawah. Gaya teks, dan struk yang QR-nya tidak muat, tetap memakai QR printer di bawah seperti dulu. Pratinjau struk di Jual
+memuat QR yang sama. Logo tetap di sistem toko (gambar atas/bawah di halaman printer dibiarkan "nothing"). *Terbukti di Mac:* QR di
+gambar struk (sesudah dijadikan hitam-putih, 80 mm dan 58 mm, nama pendek dan panjang) dibaca pemindai sungguhan (BarcodeDetector di panel
+peramban) = teks notanya; penyusunnya dibaca 18 dari 18 untuk versi 1–6. **Belum terbukti di perangkat:** QR ±14,5 mm itu dibaca scanner
+CPad dari kertas (dulu ±18 mm), dan potongan bawah sungguh rapat di printer toko.
