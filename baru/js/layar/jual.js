@@ -396,8 +396,6 @@ export function pasangLayarJual(akar, opsi) {
         // uji owner 20 Nov 2026 (Bluetooth): printer diam sesudah data dikirim = hasil TIDAK DIKETAHUI, bukan "gagal". Kertasnya dilihat dulu;
         // dialog cetak tidak dibuka sendiri (kalau struknya ternyata keluar, dialog itu hanya membingungkan) — tombol Cetak tetap ada untuk mengulang.
         if (PK.hasilTakDiketahui(e)) { kabariGagal(PK.KALIMAT_TAK_DIKABARI); return; }
-        // kirim per potong berhenti di tengah: sebagian sudah di kertas — kalimatnya sudah menyebut berapa potong dan apa yang dilakukan
-        if (PK.strukTerpotong(e)) { kabariGagal(e.message); return; }
         // di aplikasi tablet tidak ada dialog cetak yang bisa dipakai (lihat cetakDialog): katakan terus terang struknya tidak keluar, jangan catat apa-apa
         if (PK.asliAda()) { kabariGagal(PR.sebutPrinter(j) + ' gagal (' + (e && e.message ? e.message : e) + ') — ' + TANPA_DIALOG); return; }
         kabariGagal(PR.sebutPrinter(j) + ' gagal (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya');
@@ -1278,7 +1276,7 @@ export function pasangLayarJual(akar, opsi) {
       ${(() => { const url = pratinjauStruk(st, n.pilih.kertas); return url ? h`<div class="st-gambar-bingkai" data-k="gambar-struk"><img class="st-gambar k${n.pilih.kertas}" src="${url}" alt="Pratinjau struk seperti keluar dari printer tablet"></div>` : h`<pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>`; })()}
       <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="kirimWa">Kirim WhatsApp</div><div class="kaca-btn" data-aksi="cetakStruk" data-k="tombol-cetak-struk">${sedangCetak() ? 'Mencetak…' : 'Cetak'}</div><a class="kaca-btn" href="uji-cetak.html" style="text-decoration: none; color: inherit;">Printer tablet ini</a></div>
       ${pitaTolak(s, 'struk')}
-      <div class="ket">Struk yang sama untuk kertas dan WhatsApp — cuma menyusun nota yang sudah tersimpan, tidak ada angka baru. WhatsApp dibuka tanpa nomor tujuan (WhatsApp yang bertanya ke siapa; nomor pembeli tidak disimpan). Cetak = printer USB tablet ini bila sudah diatur ("Printer tablet ini": gaya, logo), selain itu dialog cetak perangkat ini.</div>
+      <div class="ket">Struk yang sama untuk kertas dan WhatsApp — cuma menyusun nota yang sudah tersimpan, tidak ada angka baru. WhatsApp dibuka tanpa nomor tujuan (WhatsApp yang bertanya ke siapa; nomor pembeli tidak disimpan). Cetak = printer tablet ini bila sudah diatur ("Printer tablet ini": gaya, logo, jalur), selain itu dialog cetak perangkat ini.</div>
       ${n.nota.cara === 'QRIS' ? h`<div class="pita-info">QRIS: yang masuk rekening sudah dipotong MDR — catatan toko, tidak dicetak di struk pembeli.</div>` : ''}
       <div class="ket">Aturan otomatis untuk nota seperti ini: <b>${o.teks}</b> (diatur di "atur kop & aturan").</div>
       <div class="bulat"></div>

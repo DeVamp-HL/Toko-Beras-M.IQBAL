@@ -70,20 +70,18 @@
           <label><span>Alamat printer di jaringan</span><input id="ucAlamat" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="192.168.1.50" maxlength="60"></label>
           <p><b>Jaringan:</b> printer dan tablet harus di Wi-Fi / router yang sama. Alamatnya ada di struk uji jaringan printer (tekan dua kali tombol pairing di dasar printer; boleh juga <b>scan QR "WLAN" atau "LAN"</b> di struk itu ke kotak ini). Supaya alamatnya tidak berubah-ubah, pasang <b>IP statis</b> di halaman setelan printer. Isi alamatnya, tekan <b>Periksa printer</b>, lalu <b>Cetak contoh</b>; kalau struknya benar, <b>Simpan untuk tablet ini</b>.</p>
         </div>
-        <label><input id="ucBtPotong" type="checkbox"> Bluetooth: kirim struk bergambar <b>per potong</b> (percobaan)</label>
-        <p>Dipakai kalau struk bergambar lewat Bluetooth sering <b>tidak keluar</b> ("printer tidak mengabari hasil cetaknya"). Struknya dikirim sepotong-sepotong dan tiap potong ditunggu kabarnya dulu — lebih lambat (±6 detik), tapi kirimannya kecil-kecil. Centang, lalu <b>Cetak contoh</b> beberapa kali: lihat apakah selalu keluar dan apakah sambungan antar potong terlihat di kertas. Kalau bagus, tekan <b>Simpan untuk tablet ini</b> supaya layar Jual ikut memakainya.</p>
       </div>
     </section>
     <!-- Dua alat, dua kartu (19 Nov 2026): scanner & lampu milik TABLET, bukan printer — dulu sekartu dan terbaca seolah printer punya scanner. -->
     <section id="ucPrinterSunmi" hidden>
       <h2>Printer struk</h2>
-      <p>Kertas, tutup, macet, dan panas printer — ditanyakan lewat SDK SUNMI.</p>
+      <p>Kertas, tutup, macet, dan panas printer — ditanyakan lewat jalur cetak yang sedang dipilih (SDK SUNMI, atau jaringan).</p>
       <button id="ucStatus" type="button">Periksa printer</button>
       <p id="ucStatusHasil"></p>
       <button id="ucBt" type="button">Periksa Bluetooth</button>
       <p id="ucBtHasil">Printer yang sudah dipasangkan ke tablet lewat Bluetooth muncul di sini.</p>
       <h2>Mode kertas printer</h2>
-      <p>Printer ini punya tiga mode: struk, label (stiker bercelah), dan stiker tanpa alas. Pindah mode = ganti gulungan kertasnya juga. Sesudah pindah, printer bisa berbunyi dan mencetak tanda modenya.</p>
+      <p>Printer ini punya tiga mode: struk, label (stiker bercelah), dan stiker tanpa alas. Pindah mode = ganti gulungan kertasnya juga. Sesudah pindah, printer bisa berbunyi dan mencetak tanda modenya. Mode hanya bisa dibaca dan dipindah lewat kabel USB atau Bluetooth; di jalur jaringan dua-duanya dicoba sendiri (Bluetooth dulu, lalu kabel).</p>
       <label><span>Mode</span><select id="ucModeKertas"></select></label>
       <button id="ucModeBaca" type="button">Baca mode sekarang</button>
       <button id="ucModeSetel" type="button">Pindah ke mode ini</button>
