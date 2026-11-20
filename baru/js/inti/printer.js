@@ -9,14 +9,15 @@
 import { epSusun, epSusunGambar, epBase64, epSusunLabel, epTsplLabel, epPotong } from './escpos.js';
 import { gambarStruk, siapkanHuruf, teksKeLogo } from './struk-kanvas.js';
 import { usbAda, usbDiingat, usbKirim } from './usb-cetak.js';
-import { asliAda, panggilAsli, cetakAsli, kirimTspl, lewatJalur, pastikanModeLabel } from './perangkat.js';
+import { asliAda, panggilAsli, cetakAsli, kirimTspl, lewatJalur, pastikanModeLabel, alamatPrinterSah } from './perangkat.js';
 
 export const PR_KUNCI = 'printerPerangkat';
 export const PR_GAYA = [['gambar', 'gambar (huruf toko, logo, total berpita)'], ['teks', 'teks (cepat, huruf printer)']];
 /** Jalur cetak di aplikasi tablet: 'usb' = CetakUsb (bawaan, terbukti) · 'sunmi' = SDK resmi SUNMI lewat kabel USB (keadaan printer + hasil cetak)
  *  · 'sunmi-bt' = SDK yang sama lewat Bluetooth (printer dipasangkan dulu di Setelan tablet). */
 export const PR_JALUR = [['usb', 'USB langsung (bawaan, terbukti)'], ['sunmi', 'SDK SUNMI lewat kabel USB (periksa kertas & tutup dulu, hasil cetak dikabari)'],
-  ['sunmi-bt', 'SDK SUNMI lewat Bluetooth (tanpa kabel; struk bergambar lebih lambat)']];
+  ['sunmi-bt', 'SDK SUNMI lewat Bluetooth (tanpa kabel; struk bergambar lebih lambat)'],
+  ['jaringan', 'Jaringan Wi-Fi / LAN (tanpa kabel; printer dan tablet di router yang sama)']];
 /** Bluetooth + struk bergambar (uji owner 20 Nov 2026): kiriman ±84 ribu byte sering HILANG seluruhnya — printer menjawab tanya keadaan,
  *  menerima data, lalu diam dan tidak mencetak apa pun; kiriman kecil (gaya teks, label) selalu sampai. Sebab pastinya belum diketahui.
  *  `btPotong` = kirim per pita gambar, tiap potong ditunggu kabarnya dulu. PERCOBAAN: bawaan mati sampai terbukti di printer toko. */
@@ -24,7 +25,7 @@ export const PR_JALUR = [['usb', 'USB langsung (bawaan, terbukti)'], ['sunmi', '
 export const PR_LABEL_CARA = [['struk', 'kertas bersambung — mode struk atau stiker tanpa alas'], ['tspl', 'stiker bercelah — printer di mode label']];
 export const PR_LABEL_BATAS = { labelLebar: [20, 80], labelTinggi: [15, 200], labelCelah: [0, 10] };   // mm
 export const PR_BAWAAN = { gaya: 'gambar', kertas: 80, potong: 'sebagian', umpan: 4, qr: false, logo: '', aktif: true,
-  labelCara: 'struk', labelLebar: 50, labelTinggi: 30, labelCelah: 2, labelPotong: true, jalur: 'usb', btPotong: false };
+  labelCara: 'struk', labelLebar: 50, labelTinggi: 30, labelCelah: 2, labelPotong: true, jalur: 'usb', btPotong: false, alamatPrinter: '' };
 
 /** Setelan printer perangkat ini (bawaan ditimpa yang tersimpan). */
 export function prAtur() {
@@ -43,6 +44,8 @@ export function prAtur() {
     Object.keys(PR_LABEL_BATAS).forEach((k) => { const b = PR_LABEL_BATAS[k]; if (Number.isInteger(d[k]) && d[k] >= b[0] && d[k] <= b[1]) a[k] = d[k]; });
     if (typeof d.labelPotong === 'boolean') a.labelPotong = d.labelPotong;
     if (typeof d.btPotong === 'boolean') a.btPotong = d.btPotong;
+    // alamat printer di jaringan toko: hanya yang sah (IPv4 pribadi) yang dipakai; tinggal di perangkat ini saja, tidak ikut ke data toko
+    if (typeof d.alamatPrinter === 'string') a.alamatPrinter = alamatPrinterSah(d.alamatPrinter);
   } catch (e) { /* penyimpanan tidak bisa dibaca → bawaan */ }
   return a;
 }
@@ -55,14 +58,17 @@ export { asliAda };
 /** Daftar perangkat USB yang terlihat aplikasi (diagnosis). */
 export const asliDaftar = () => panggilAsli('CetakUsb', 'daftar', {});
 /** Nama jalur untuk catatan struk & kabar. 'aplikasi' dan 'peramban' sama persis dengan teks sebelum paket S1. */
-export function namaJalur(j) { return j === 'sunmi' ? 'aplikasi tablet (SDK SUNMI)' : j === 'sunmi-bt' ? 'aplikasi tablet (SDK SUNMI, Bluetooth)' : j === 'aplikasi' ? 'aplikasi tablet' : 'peramban'; }
+export function namaJalur(j) { return j === 'sunmi' ? 'aplikasi tablet (SDK SUNMI)' : j === 'sunmi-bt' ? 'aplikasi tablet (SDK SUNMI, Bluetooth)' : j === 'jaringan' ? 'aplikasi tablet (jaringan Wi-Fi/LAN)' : j === 'aplikasi' ? 'aplikasi tablet' : 'peramban'; }
 /** Kata depan catatan struk: jalur Bluetooth bukan "printer USB" (kata Bluetooth-nya sudah ada di namaJalur). */
-export function namaPrinter(j) { return j === 'sunmi-bt' ? 'printer ' : 'printer USB '; }
+export function namaPrinter(j) { return j === 'sunmi-bt' || j === 'jaringan' ? 'printer ' : 'printer USB '; }
+/** Sebutan printer untuk kabar gagal di layar: "Printer Bluetooth" · "Printer jaringan" · "Printer USB". */
+export function sebutPrinter(j) { return j === 'sunmi-bt' ? 'Printer Bluetooth' : j === 'jaringan' ? 'Printer jaringan' : 'Printer USB'; }
 
 /** Jalur cetak yang tersedia di perangkat ini: 'sunmi' / 'sunmi-bt' / 'aplikasi' (aplikasi tablet, menurut setelan perangkat) · 'peramban' (WebUSB, printer pernah diizinkan) · 'dialog'. */
 export async function jalurCetak() {
   const a = prAtur(); if (!a.aktif) return 'dialog';
   if (asliAda() && a.jalur === 'sunmi-bt') return 'sunmi-bt';
+  if (asliAda() && a.jalur === 'jaringan') return 'jaringan';
   if (asliAda()) return a.jalur === 'sunmi' ? 'sunmi' : 'aplikasi';
   if (usbAda()) { try { const d = await usbDiingat(); if (d.length) return 'peramban'; } catch (e) { /* tidak bisa membaca */ } }
   return 'dialog';
@@ -81,13 +87,15 @@ export async function susunCetak(garis, timpa, ekstra) {
 
 /** Kirim byte lewat jalur yang ada. Melempar galat berisi sebabnya (pemanggil memutuskan jatuh ke dialog cetak).
  *  Hasil: { jalur (yang SUNGGUH dipakai), byte, perangkat, peringatan ('' = tidak ada), cadanganDari ('' = bukan cadangan) }. */
-export async function kirimCetak(byte, jalur, batas) {
+export async function kirimCetak(byte, jalur, batas, timpa) {
   const j = jalur || await jalurCetak();
-  if (j === 'aplikasi' || j === 'sunmi' || j === 'sunmi-bt') {
+  if (j === 'aplikasi' || j === 'sunmi' || j === 'sunmi-bt' || j === 'jaringan') {
     // `batas` (dari susunCetak gaya gambar) hanya dipakai jalur Bluetooth: kiriman dipecah per pita gambar, tiap potong ditunggu kabarnya
     const bagian = j === 'sunmi-bt' && Array.isArray(batas) && batas.length ? epPotong(byte, batas).map((b) => epBase64(b)) : null;
-    const r = await cetakAsli(epBase64(byte), j, bagian);
-    return { jalur: r.jalur, byte: byte.length, perangkat: r.nama, peringatan: r.peringatan, cadanganDari: r.cadanganDari, potong: r.potong || 1 };
+    // jalur jaringan: alamat printer dari isian layar Perangkat (`timpa.alamat`, belum tentu tersimpan) atau dari setelan perangkat ini
+    const opsi = j === 'jaringan' ? { alamat: timpa && typeof timpa.alamat === 'string' ? timpa.alamat : prAtur().alamatPrinter } : null;
+    const r = await cetakAsli(epBase64(byte), j, bagian, opsi);
+    return { jalur: r.jalur, byte: byte.length, perangkat: r.nama, peringatan: r.peringatan, cadanganDari: r.cadanganDari, potong: r.potong || 1, tugas: r.tugas || '' };
   }
   if (j === 'peramban') { const d = (await usbDiingat())[0]; const r = await usbKirim(d, byte); return { jalur: j, byte: r.byte, perangkat: d.productName || '', peringatan: '', cadanganDari: '' }; }
   throw new Error('Tidak ada printer USB di perangkat ini');
@@ -129,6 +137,8 @@ export async function cetakLabel(isi, jumlah, timpa) {
     const r = await kirimTspl(l.teks.join('\n') + '\n', lewatJalur(j));
     return { cara: l.cara, jalur: j, jumlah: l.jumlah, byte: l.byte.length, perangkat: (r && r.nama) || '', peringatan: '', cadanganDari: '', tanpaKabar: true };
   }
-  const r = await kirimCetak(l.byte, j);
+  // jaringan: pintu printernya hanya menerima bahasa struk; perintah label stiker bercelah belum punya jalan lewat jaringan
+  if (l.cara === 'tspl' && j === 'jaringan') { const e = new Error('Label stiker bercelah belum bisa dikirim lewat jaringan — pakai jalur Bluetooth atau kabel, atau ganti cara label ke "kertas bersambung"'); e.code = 'SALAH_MODE'; throw e; }
+  const r = await kirimCetak(l.byte, j, null, timpa && typeof timpa.alamatPrinter === 'string' ? { alamat: timpa.alamatPrinter } : null);
   return { cara: l.cara, jalur: r.jalur, jumlah: l.jumlah, byte: r.byte, perangkat: r.perangkat, peringatan: r.peringatan || '', cadanganDari: r.cadanganDari || '', tanpaKabar: l.cara === 'tspl' };
 }

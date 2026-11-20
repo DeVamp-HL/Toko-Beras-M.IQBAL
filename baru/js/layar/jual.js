@@ -399,8 +399,8 @@ export function pasangLayarJual(akar, opsi) {
         // kirim per potong berhenti di tengah: sebagian sudah di kertas — kalimatnya sudah menyebut berapa potong dan apa yang dilakukan
         if (PK.strukTerpotong(e)) { kabariGagal(e.message); return; }
         // di aplikasi tablet tidak ada dialog cetak yang bisa dipakai (lihat cetakDialog): katakan terus terang struknya tidak keluar, jangan catat apa-apa
-        if (PK.asliAda()) { kabariGagal((j === 'sunmi-bt' ? 'Printer Bluetooth gagal (' : 'Printer USB gagal (') + (e && e.message ? e.message : e) + ') — ' + TANPA_DIALOG); return; }
-        kabariGagal((j === 'sunmi-bt' ? 'Printer Bluetooth gagal (' : 'Printer USB gagal (') + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya');
+        if (PK.asliAda()) { kabariGagal(PR.sebutPrinter(j) + ' gagal (' + (e && e.message ? e.message : e) + ') — ' + TANPA_DIALOG); return; }
+        kabariGagal(PR.sebutPrinter(j) + ' gagal (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya');
         cetakDialog(st, nota, ket);
       });
     }).catch(() => { usaiCetak(k); cetakDialog(st, nota, ket); });

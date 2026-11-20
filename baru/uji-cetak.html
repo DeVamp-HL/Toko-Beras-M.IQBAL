@@ -66,6 +66,10 @@
         <label><span>Jalur di aplikasi</span><select id="ucJalur"></select></label>
         <p>Pilih <b>SDK SUNMI</b> → <b>Cetak contoh</b>. Kalau catatan menulis "TERCETAK lewat aplikasi tablet (SDK SUNMI)" dan struknya benar, tekan <b>Simpan untuk tablet ini</b>. Kalau tidak, kembalikan ke USB langsung.</p>
         <p><b>Bluetooth:</b> pasangkan dulu printernya di Setelan tablet › Bluetooth (namanya berawalan CloudPrint_), tekan <b>Periksa Bluetooth</b> di kartu Printer, baru pilih jalur Bluetooth di sini. Struk bergambar lewat Bluetooth lebih lambat daripada kabel.</p>
+        <div id="ucAlamatBaris" hidden>
+          <label><span>Alamat printer di jaringan</span><input id="ucAlamat" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="192.168.1.50" maxlength="60"></label>
+          <p><b>Jaringan:</b> printer dan tablet harus di Wi-Fi / router yang sama. Alamatnya ada di struk uji jaringan printer (tekan dua kali tombol pairing di dasar printer; boleh juga <b>scan QR "WLAN" atau "LAN"</b> di struk itu ke kotak ini). Supaya alamatnya tidak berubah-ubah, pasang <b>IP statis</b> di halaman setelan printer. Isi alamatnya, tekan <b>Periksa printer</b>, lalu <b>Cetak contoh</b>; kalau struknya benar, <b>Simpan untuk tablet ini</b>.</p>
+        </div>
         <label><input id="ucBtPotong" type="checkbox"> Bluetooth: kirim struk bergambar <b>per potong</b> (percobaan)</label>
         <p>Dipakai kalau struk bergambar lewat Bluetooth sering <b>tidak keluar</b> ("printer tidak mengabari hasil cetaknya"). Struknya dikirim sepotong-sepotong dan tiap potong ditunggu kabarnya dulu — lebih lambat (±6 detik), tapi kirimannya kecil-kecil. Centang, lalu <b>Cetak contoh</b> beberapa kali: lihat apakah selalu keluar dan apakah sambungan antar potong terlihat di kertas. Kalau bagus, tekan <b>Simpan untuk tablet ini</b> supaya layar Jual ikut memakainya.</p>
       </div>

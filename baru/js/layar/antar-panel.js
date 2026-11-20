@@ -85,7 +85,7 @@ export function buatPanelAntar(ctx) {
           // dialog cetak tidak dibuka sendiri — tombol "cetak" surat jalan tetap ada untuk mengulang.
           if (masihMencetak(e)) return set({ kabar: KALIMAT_MASIH_MENCETAK + (n ? ' — ' + n + ' lembar sudah keluar' : ''), kabarAwas: true });
           if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-' + (n + 1) + ' dari ' + lembar.length + ' — lihat kertasnya dulu; kalau ada yang tidak keluar, cetak lagi surat jalannya', kabarAwas: true });
-          const gagal = (j === 'sunmi-bt' ? 'Printer Bluetooth gagal' : 'Printer USB gagal') + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — ';
+          const gagal = PR.sebutPrinter(j) + ' gagal' + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — ';
           if (asliAda()) return set({ kabar: gagal + 'surat jalan TIDAK tercetak' + (n ? ' lengkap' : '') + '. Bereskan printernya, lalu cetak lagi', kabarAwas: true });
           set({ kabar: gagal + 'dialog cetak dibuka sebagai gantinya', kabarAwas: true }); dialog();
         });

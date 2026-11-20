@@ -3110,3 +3110,31 @@ potong (struk contoh 5 potong ≈ 6 detik, dari 2,3 detik). **Belum terbukti di 
 "printer diam", apakah sambungan antar potong terlihat di kertas, dan apakah printer mau melanjutkan potong berikutnya selagi kertas potong
 sebelumnya masih menjulur. Kalau terbukti, langkah berikutnya memindahkan kirim per potong ke dalam aplikasi (APK baru) supaya tanya-keadaan
 per potong tidak perlu dan waktunya turun.
+
+**Jalur cetak lewat JARINGAN (paket jaringan, 20 Nov 2026 malam — butuh APK baru):** owner memperlihatkan halaman setelan bawaan printer
+(dibuka lewat alamat printer di jaringan; QR "WLAN"/"LAN" di struk uji jaringan = tekan dua kali tombol pairing). Printer toko ternyata
+tersambung ke router lewat kabel LAN dan Wi-Fi, dan di toko tablet berada di router yang sama (kata owner). *Uji sebelum membangun:* struk
+contoh bergambar yang SAMA dengan layar Perangkat (83.848 byte — kiriman yang lewat Bluetooth hilang ±5 dari 8 kali) dikirim dari Mac lewat
+pintu resmi SUNMI "Cloud Printer Over LAN HTTP": **6 dari 6 keluar utuh** (foto owner), tiap kiriman diterima 35–61 ms dan printer melaporkan
+tiap pekerjaan `printed`. *Pintunya* (dokumen SUNMI + dicoba ke printer toko): `POST http://<alamat>/cgi-bin/print.cgi?copies=1`, badan =
+heksa ESC/POS sebagai `text/plain` → `task_id: N`; `POST /cgi-bin/status.cgi[?task_id=N]` → baris `printing / no_paper / paper_jam /
+paper_not_taken / platen_opened / thermal_head_overheated / step_motor_overheated: yes|no` + `task_status: printed | not printed`.
+Nomor seri TIDAK wajib (tanpa nomor seri diterima; nomor seri yang salah ditolak) — jadi siapa pun di Wi-Fi yang sama bisa mencetak.
+*Yang dibangun:* (1) `inti/perangkat.js`: `alamatPrinterSah` (hanya IPv4 pribadi — pintu ini tidak bisa dipakai mengirim ke luar jaringan
+toko; tempelan `http://…/#/…` dari QR dirapikan), `bacaJawabJaringan`, `halanganJaringan` (kode & kalimat sama dengan jalur SDK),
+`b64KeHeksa`, `printerJaringanStatus`, dan `cetakJaringan` di dalam `cetakAsli(data, 'jaringan', null, { alamat })`: tanya keadaan dulu
+(halangan pasti / bukan printer = tidak ada yang dikirim) → kirim → tanya pekerjaannya tiap 0,4 detik sampai `printed` (paling lama 50 kali).
+Sesudah kiriman berangkat, apa pun yang tidak jelas = `PRINTER_DIAM` ("lihat kertasnya"), tanpa kirim ulang; gagal SEBELUM kirim
+(tidak terjangkau, aplikasi lama) = `BELUM_KIRIM` → kabel USB dicoba, kedua sebab terbaca. Satu kunci `satuCetakan` seperti jalur lain.
+Permintaannya dititipkan ke plugin inti Capacitor **CapacitorHttp** (halaman https tidak boleh memanggil http:// sendiri) — semua logika di
+halaman, bisa diubah tanpa APK baru. (2) `inti/printer.js`: jalur `'jaringan'` di `PR_JALUR`, setelan `alamatPrinter` (hanya di perangkat
+ini, tidak masuk data toko; catatan Struk keluar hanya menulis "printer aplikasi tablet (jaringan Wi-Fi/LAN)", tanpa alamat),
+`kirimCetak(byte, jalur, batas, { alamat })`, `sebutPrinter`. Label stiker bercelah (perintah label) BELUM bisa lewat jaringan — ditolak
+berkalimat; label kertas bersambung bisa. (3) Layar Perangkat: kotak "Alamat printer di jaringan" (tampil hanya untuk jalur jaringan),
+Periksa printer dan Cetak contoh memakai alamat di kotak itu. (4) `apk/pasang.py`: `android:usesCleartextTraffic="true"` di `<application>`
+— satu-satunya perubahan aplikasi; isi campuran di WebView tetap ditolak (`allowMixedContent: false`), dan perakitan berhenti bila manifest
+memakai `networkSecurityConfig`. *Terbukti:* kode halaman cabang ini, dijalankan di panel peramban Mac dengan CapacitorHttp diganti `fetch`,
+menanya printer toko ("siap") dan mencetak satu struk contoh lewat jaringan (pekerjaan dilaporkan `printed`, 3,1 detik). **Belum terbukti:**
+dari TABLET (butuh APK baru terpasang: apakah CapacitorHttp sungguh terpanggil dan HTTP polos sungguh diizinkan), surat jalan dan label lewat
+jaringan, dan kelakuan saat Wi-Fi toko putus di tengah cetak. *Tugas owner:* pasang IP statis di halaman setelan printer (alamat DHCP bisa
+berubah), pasang APK baru, isi alamat di layar Perangkat. Alamat, nomor seri, dan MAC printer tidak ditulis di repo.
