@@ -8,7 +8,7 @@ import { epContohGaris, EP_POTONG, EP_KOLOM } from '../inti/escpos.js';
 import { usbAda, usbMinta, usbDiingat, usbKirim, usbRingkas } from '../inti/usb-cetak.js';
 import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk } from '../inti/struk-kanvas.js';
 import { PR_GAYA, PR_JALUR, PR_LABEL_CARA, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak, namaJalur, susunLabel, cetakLabel } from '../inti/printer.js';
-import { kemampuan, printerStatus, padaPindai, padaTempel, lampuPadam, lewatJalur, printerBt, printerMode, printerSetelMode, MODE_KERTAS, kalimatModeKertas,
+import { kemampuan, printerStatus, padaPindai, padaTempel, lampuPadam, lewatJalur, lewatSdk, namaLewat, printerBt, printerMode, printerSetelMode, MODE_KERTAS, kalimatModeKertas,
   LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak, hasilTakDiketahui, masihMencetak, printerJaringanStatus } from '../inti/perangkat.js';
 
 const $ = (id) => document.getElementById(id);
@@ -36,6 +36,8 @@ function isiForm(a) {
 }
 /** Jalur SDK yang sedang dipilih di formulir → cara menyambung printer ('bt' | 'usb') untuk tombol Periksa printer & mode kertas. */
 const lewatKini = () => lewatJalur($('ucJalur').value);
+/** Di jalur jaringan mode kertas tetap lewat SDK (Bluetooth, lalu kabel) — catatan menyebut lewat mana jawabannya datang. */
+const sebutLewat = (r) => ($('ucJalur').value === 'jaringan' && r && r.lewat ? ' (lewat ' + namaLewat(r.lewat) + ')' : '');
 /** Kotak alamat hanya tampil untuk jalur jaringan. */
 function tampilJalur() { $('ucAlamatBaris').hidden = $('ucJalur').value !== 'jaringan'; }
 
@@ -152,8 +154,8 @@ async function periksaBt() {
 async function bacaMode(diam) {
   $('ucModeBaca').disabled = true; if (!diam) { $('ucModeHasil').textContent = 'Menanyakan mode kertas…'; $('ucModeHasil').className = ''; }
   try {
-    const r = await printerMode(lewatKini()); const k = kalimatModeKertas(r && r.mode);
-    $('ucModeHasil').textContent = k.teks; $('ucModeHasil').className = k.baik ? 'baik' : 'awas'; tulisLog('Mode kertas: ' + k.teks, !k.baik);
+    const r = await lewatSdk($('ucJalur').value, (l) => printerMode(l)); const k = kalimatModeKertas(r && r.mode);
+    $('ucModeHasil').textContent = k.teks + sebutLewat(r); $('ucModeHasil').className = k.baik ? 'baik' : 'awas'; tulisLog('Mode kertas' + sebutLewat(r) + ': ' + k.teks, !k.baik);
   } catch (e) { $('ucModeHasil').textContent = 'Mode kertas tidak bisa ditanya: ' + pesan(e); $('ucModeHasil').className = 'awas'; tulisLog('Baca mode gagal: ' + pesan(e), true); }
   $('ucModeBaca').disabled = false;
 }
@@ -161,7 +163,7 @@ async function setelMode() {
   const m = Number($('ucModeKertas').value); const nama = (MODE_KERTAS.filter((x) => x[0] === m)[0] || [0, '?'])[1];
   $('ucModeSetel').disabled = true; $('ucModeHasil').textContent = 'Meminta printer pindah ke mode ' + nama + '…'; $('ucModeHasil').className = '';
   try {
-    await printerSetelMode(m, lewatKini()); tulisLog('Perintah pindah mode terkirim: ' + nama + ' — printer tidak mengabari hasilnya, modenya ditanyakan lagi');
+    const r = await lewatSdk($('ucJalur').value, (l) => printerSetelMode(m, l)); tulisLog('Perintah pindah mode terkirim' + sebutLewat(r) + ': ' + nama + ' — printer tidak mengabari hasilnya, modenya ditanyakan lagi');
     // printer butuh waktu (bisa berbunyi / mencetak tanda mode); sesudah itu ditanya lagi supaya yang tampil = jawaban printer, bukan harapan
     setTimeout(() => { bacaMode(true).then(() => { $('ucModeSetel').disabled = false; }); }, 3500);
   } catch (e) { $('ucModeHasil').textContent = 'Printer tidak bisa dipindah modenya: ' + pesan(e); $('ucModeHasil').className = 'awas'; tulisLog('Pindah mode gagal: ' + pesan(e), true); $('ucModeSetel').disabled = false; }

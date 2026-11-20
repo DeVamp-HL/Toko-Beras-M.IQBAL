@@ -448,6 +448,31 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   cek('periksa printer: jalur bt diteruskan; tanpa isi = usb', lewatBt === 'bt' && isiStatus.lewat === 'usb');
   cek('daftar printer Bluetooth pulang apa adanya', (await printerBt()).daftar[0].nama === 'CloudPrint_0001');
   let isiJaga = null;
+  // uji owner 20 Nov 2026 malam (APK 1.25, jalur jaringan): tombol mode hanya mencari di USB → "tidak ditemukan di USB — pastikan tercolok ke stand"
+  {
+    const urut = []; let jw = {};
+    const sdk = (jawab) => { urut.length = 0; jw = jawab; return pasangAplikasi(['PrinterSunmi'], { 'PrinterSunmi.mode': (isi) => { urut.push('mode:' + isi.lewat); return jw[isi.lewat](); }, 'PrinterSunmi.setelMode': (isi) => { urut.push('setel:' + isi.lewat); return jw[isi.lewat](); } }); };
+    const btMati = tolak('Bluetooth tablet mati — nyalakan di Setelan tablet', 'BELUM_KIRIM'); const usbKosong = tolak('Printer SUNMI tidak ditemukan di USB — pastikan printer menyala dan tercolok ke stand', 'BELUM_KIRIM');
+    sdk({ bt: () => ({ mode: 'Receipt printer' }), usb: usbKosong }); let rm = await lewatSdk('jaringan', (l) => printerMode(l));
+    cek('mode di jalur jaringan: Bluetooth ditanya DULU dan jawabannya dipakai; kabel tidak disentuh; hasil menyebut lewat mana', rm.mode === 'Receipt printer' && rm.lewat === 'bt' && urut.join(',') === 'mode:bt' && URUT_SDK_JARINGAN.join(',') === 'bt,usb', JSON.stringify(rm) + ' ' + urut.join(','));
+    sdk({ bt: btMati, usb: () => ({ mode: 'label printer' }) }); rm = await lewatSdk('jaringan', (l) => printerMode(l));
+    cek('mode di jalur jaringan: Bluetooth belum bisa (belum ada yang dikirim) → kabel dicoba, jawabannya dipakai', rm.mode === 'label printer' && rm.lewat === 'usb' && urut.join(',') === 'mode:bt,mode:usb', JSON.stringify(rm) + ' ' + urut.join(','));
+    sdk({ bt: btMati, usb: usbKosong }); g = null; try { await lewatSdk('jaringan', (l) => printerMode(l)); } catch (e) { g = e; }
+    cek('mode di jalur jaringan: dua-duanya belum bisa → SATU kalimat yang menyebut kenapa lewat jaringan tidak bisa + sebab Bluetooth + sebab kabel', g && g.code === 'BELUM_KIRIM' && /^lewat jaringan mode kertas tidak bisa diurus/.test(g.message)
+      && g.message.indexOf('Bluetooth: Bluetooth tablet mati') > 0 && g.message.indexOf('kabel USB: Printer SUNMI tidak ditemukan di USB') > g.message.indexOf('Bluetooth: Bluetooth tablet mati') && urut.join(',') === 'mode:bt,mode:usb', g && g.message);
+    sdk({ bt: tolak('Printer tidak menjawab saat ditanya mode kertasnya', 'PRINTER_DIAM'), usb: () => ({ mode: 'label printer' }) }); g = null; try { await lewatSdk('jaringan', (l) => printerMode(l)); } catch (e) { g = e; }
+    cek('mode di jalur jaringan: printer DIAM lewat Bluetooth (bukan "belum kirim") → dilempar apa adanya, kabel TIDAK dicoba', g && g.code === 'PRINTER_DIAM' && urut.join(',') === 'mode:bt', (g && g.code) + ' ' + urut.join(','));
+    sdk({ bt: () => ({ dikirim: true }), usb: usbKosong }); rm = await lewatSdk('jaringan', (l) => printerSetelMode(2, l));
+    cek('pindah mode di jalur jaringan: perintah dikirim SEKALI, lewat Bluetooth', rm.dikirim === true && rm.lewat === 'bt' && urut.join(',') === 'setel:bt', JSON.stringify(rm) + ' ' + urut.join(','));
+    sdk({ bt: () => ({ dikirim: true }), usb: () => ({ dikirim: true }) }); g = null; try { await lewatSdk('jaringan', (l) => printerSetelMode(7, l)); } catch (e) { g = e; }
+    cek('pindah mode di jalur jaringan: mode tak dikenal ditolak TANPA menyentuh printer lewat cara mana pun', g && g.code === 'SALAH_ISI' && urut.length === 0, (g && g.code) + ' ' + urut.join(','));
+    sdk({ bt: () => ({ mode: 'Receipt printer' }), usb: () => ({ mode: 'label printer' }) });
+    const rb = await lewatSdk('sunmi-bt', (l) => printerMode(l)); const ru = await lewatSdk('sunmi', (l) => printerMode(l)); const ra = await lewatSdk('usb', (l) => printerMode(l));
+    cek('jalur selain jaringan: mode tetap ditanya lewat jalurnya sendiri, satu kali, tanpa cara cadangan', rb.lewat === 'bt' && rb.mode === 'Receipt printer' && ru.lewat === 'usb' && ru.mode === 'label printer' && ra.lewat === 'usb' && urut.join(',') === 'mode:bt,mode:usb,mode:usb', urut.join(','));
+    sdk({ bt: () => ({ mode: 'x' }), usb: usbKosong }); g = null; try { await lewatSdk('sunmi', (l) => printerMode(l)); } catch (e) { g = e; }
+    cek('jalur kabel: kabel tidak tercolok TIDAK diam-diam pindah ke Bluetooth', g && /tidak ditemukan di USB/.test(g.message) && urut.join(',') === 'mode:usb', (g && g.message) + ' ' + urut.join(','));
+    cek('nama cara menyambung untuk layar', namaLewat('bt') === 'Bluetooth' && namaLewat('usb') === 'kabel USB' && namaLewat() === 'kabel USB');
+  }
   const jaga = (jawab) => pasangAplikasi(['PrinterSunmi'], { 'PrinterSunmi.mode': (isi) => { isiJaga = isi; return typeof jawab === 'function' ? jawab() : { mode: jawab }; } });
   const coba = async (cara, lewat) => { try { return { hasil: await pastikanModeLabel(cara, lewat) }; } catch (e) { return { galat: e }; } };
   A = jaga('label printer'); let pj = await coba('struk', 'bt');
@@ -700,7 +725,17 @@ def periksa_statis(perangkat_js):
        and "$('ucLabel').hidden = !app;" in ujs and 'ucSidik' not in kartu('ucPrinterSunmi') and 'ucBt' not in kartu('ucSunmi'))
     ok('uji-cetak.js S4: tiap id yang dipakai skrip ada di halaman', not [i for i in set(re.findall(r"\$\('(uc\w+)'\)", ujs)) if ('id="%s"' % i) not in hal], [i for i in set(re.findall(r"\$\('(uc\w+)'\)", ujs)) if ('id="%s"' % i) not in hal])
     ok('uji-cetak.js S4: sesudah pindah mode, yang ditampilkan JAWABAN printer (ditanya lagi), bukan mode yang diminta',
-       "await printerSetelMode(m, lewatKini());" in ujs and "setTimeout(() => { bacaMode(true).then(() => { $('ucModeSetel').disabled = false; }); }, 3500);" in ujs)
+       "const r = await lewatSdk($('ucJalur').value, (l) => printerSetelMode(m, l));" in ujs and "setTimeout(() => { bacaMode(true).then(() => { $('ucModeSetel').disabled = false; }); }, 3500);" in ujs)
+    # susulan paket jaringan (20 Nov 2026 malam): di jalur jaringan tombol mode dulu hanya mencari printer di USB
+    ok('layar Perangkat: Baca mode & Pindah mode lewat lewatSdk (jalur yang DIPILIH menentukan caranya); tidak ada lagi panggilan mode yang menebak USB',
+       "const r = await lewatSdk($('ucJalur').value, (l) => printerMode(l)); const k = kalimatModeKertas(r && r.mode);" in ujs
+       and 'printerMode(lewatKini())' not in ujs and 'printerSetelMode(m, lewatKini())' not in ujs
+       and "const sebutLewat = (r) => ($('ucJalur').value === 'jaringan' && r && r.lewat ? ' (lewat ' + namaLewat(r.lewat) + ')' : '');" in ujs
+       and "$('ucModeHasil').textContent = k.teks + sebutLewat(r);" in ujs)
+    ok('halaman Perangkat: kartu printer tidak lagi berkata keadaan "ditanyakan lewat SDK SUNMI" saja; kartu mode menerangkan caranya di jalur jaringan',
+       'ditanyakan lewat SDK SUNMI.</p>' not in hal and 'ditanyakan lewat jalur cetak yang sedang dipilih (SDK SUNMI, atau jaringan).' in hal
+       and 'di jalur jaringan dua-duanya dicoba sendiri (Bluetooth dulu, lalu kabel).' in kartu('ucPrinterSunmi'))
+    ok('Jual: keterangan tombol Cetak tidak lagi menyebut "printer USB" saja', 'Cetak = printer USB tablet ini' not in baca('baru', 'js', 'layar', 'jual.js') and 'Cetak = printer tablet ini bila sudah diatur' in baca('baru', 'js', 'layar', 'jual.js'))
     ok('uji-cetak.js S4: label contoh berkode contoh (tidak pernah jadi barcode barang)', "kode: 'UJI-LABEL-0001'" in ujs and "export const TK_KODE_CONTOH = 'UJI-LABEL';" in baca('baru', 'js', 'layar', 'tanda-kenal-logika.js'))
     pr = baca('baru', 'js', 'inti', 'printer.js')
     ok('printer.js: teks jalur lama tidak berubah di catatan struk', "j === 'aplikasi' ? 'aplikasi tablet' : 'peramban'" in pr and "PR.namaJalur(r.jalur)" in baca('baru', 'js', 'layar', 'jual.js'))
@@ -733,7 +768,7 @@ def periksa_statis(perangkat_js):
        cl.count(jg) == 1 and cl.index('const l = susunLabel(isi, jumlah, timpa);') < cl.index(jg) < cl.index('await kirimTspl(') < cl.index('await kirimCetak(l.byte, j, null,')
        and "pastikanModeLabel, alamatPrinterSah } from './perangkat.js';" in pr)
     ok('layar Perangkat: hasil tanya mode & batal sidik jari memakai kalimat dari perangkat.js',
-       "const k = kalimatModeKertas(r && r.mode);" in ujs and "tulisLog('Mode kertas: ' + k.teks, !k.baik);" in ujs
+       "const k = kalimatModeKertas(r && r.mode);" in ujs and "tulisLog('Mode kertas' + sebutLewat(r) + ': ' + k.teks, !k.baik);" in ujs
        and "catch (e) { const t = sidikJariTolak(e); tulisLog('Sidik jari: ' + t.kalimat, !t.batal); }" in ujs and 'bacaModeKertas' not in ujs)
     # 19 Nov 2026 (ketahuan saat layar Perangkat dicoba): label contoh dulu selalu lewat jalur TERSIMPAN walau formulir memilih jalur lain
     ok('printer.js S4: label contoh memakai jalur yang dipilih di formulir (timpa.jalur), bukan hanya yang tersimpan — hanya di aplikasi',
@@ -896,6 +931,12 @@ MUTASI = [
     ('pasang.py: networkSecurityConfig tidak dijaga', 'py', "    if 'android:networkSecurityConfig' in m: raise Tolak(", "    if False: raise Tolak("),
     ('pasang.py: usesCleartextTraffic="false" dibiarkan', 'py', "    m = m.replace('android:usesCleartextTraffic=\"false\"', 'android:usesCleartextTraffic=\"true\"')", "    pass"),
     ('kalimat "tidak mengabari" menyebut gagal', 'js', "'Printer tidak mengabari hasil cetaknya — lihat kertasnya dulu; kalau tidak keluar, cetak lagi'", "'Cetak gagal — lihat kertasnya dulu; kalau tidak keluar, cetak lagi'"),
+    ('mode jaringan: hanya mencari di kabel (cacat 20 Nov malam)', 'js', "export const URUT_SDK_JARINGAN = ['bt', 'usb'];", "export const URUT_SDK_JARINGAN = ['usb'];"),
+    ('mode jaringan: kabel dulu (6 detik menunggu sebelum Bluetooth)', 'js', "export const URUT_SDK_JARINGAN = ['bt', 'usb'];", "export const URUT_SDK_JARINGAN = ['usb', 'bt'];"),
+    ('mode jaringan: printer diam tetap dicoba lewat cara lain', 'js', "    catch (e) { if (!(e && e.code === 'BELUM_KIRIM')) throw e; sebab.push(namaLewat(l) + ': ' + pesanGalat(e)); }", "    catch (e) { sebab.push(namaLewat(l) + ': ' + pesanGalat(e)); }"),
+    ('mode jaringan: sebab tiap cara tidak dibawa', 'js', "sebab.push(namaLewat(l) + ': ' + pesanGalat(e)); }", "sebab.push(namaLewat(l)); }"),
+    ('mode jaringan: hasil tidak menyebut lewat mana', 'js', "    try { return Object.assign({}, await kerja(l), { lewat: l }); }", "    try { return await kerja(l); }"),
+    ('mode jalur kabel: diam-diam pindah ke Bluetooth', 'js', "  if (jalur !== 'jaringan') { const l = lewatJalur(jalur); return Object.assign({}, await kerja(l), { lewat: l }); }\n", ""),
     ('mode tanpa alas tidak dikenali', 'js', "return t.indexOf('linerless') >= 0 ? 'tanpa-alas' : t.indexOf('label') >= 0", "return t.indexOf('label') >= 0"),
     ('jawaban mode kosong disebut "tidak dikenali"', 'js', "  if (!asli) return { teks: 'Printer belum menjawab modenya", "  if (false) return { teks: 'Printer belum menjawab modenya"),
     ('penjaga label: perintah label ke mode struk lolos', 'js', "if (cara === 'tspl' && mode === 'struk') return", "if (false) return"),

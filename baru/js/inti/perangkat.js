@@ -303,6 +303,23 @@ export async function pastikanModeLabel(cara, lewat) {
   const tolak = labelTolakMode(cara, mode); if (tolak) throw galat(tolak, 'SALAH_MODE');
   return { mode, ditanya: true };
 }
+/** Mode kertas di jalur JARINGAN. Pintu jaringan printer hanya menerima cetakan dan tanya keadaan — tidak ada perintah mode — jadi mode tetap
+ *  lewat SDK SUNMI: Bluetooth dulu (mati / belum dipasangkan = ditolak seketika), lalu kabel (mencari printer di USB makan 6 detik sebelum
+ *  menyerah). Cara berikutnya hanya dicoba bila cara sebelumnya PASTI belum mengirim apa-apa (BELUM_KIRIM); galat lain dilempar apa adanya.
+ *  Uji owner 20 Nov 2026 malam: di jalur jaringan tombol mode hanya mencari di USB dan menjawab "tidak ditemukan di USB — pastikan tercolok
+ *  ke stand", padahal printernya memang tidak dicolok ke tablet.
+ *  kerja(lewat) = perintah SDK-nya; hasilnya dipulangkan dengan tambahan { lewat } supaya layar bisa menyebut lewat mana. */
+export const URUT_SDK_JARINGAN = ['bt', 'usb'];
+export const namaLewat = (lewat) => (lewat === 'bt' ? 'Bluetooth' : 'kabel USB');
+export async function lewatSdk(jalur, kerja) {
+  if (jalur !== 'jaringan') { const l = lewatJalur(jalur); return Object.assign({}, await kerja(l), { lewat: l }); }
+  const sebab = [];
+  for (const l of URUT_SDK_JARINGAN) {
+    try { return Object.assign({}, await kerja(l), { lewat: l }); }
+    catch (e) { if (!(e && e.code === 'BELUM_KIRIM')) throw e; sebab.push(namaLewat(l) + ': ' + pesanGalat(e)); }
+  }
+  throw galat('lewat jaringan mode kertas tidak bisa diurus, jadi dicoba lewat Bluetooth dan kabel — dua-duanya belum bisa. ' + sebab.join(' · '), 'BELUM_KIRIM');
+}
 
 // ---------- scanner ----------
 const _pendengarPindai = [];
