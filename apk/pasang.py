@@ -97,6 +97,16 @@ def ubah_manifest(m):
     if ('android:name="%s"' % PENJAGA_DATA) not in m:
         if m.count('</application>') != 1: raise Tolak('AndroidManifest punya %d </application>' % m.count('</application>'))
         m = m.replace('</application>', '    <activity android:name="%s" android:exported="false" />\n    </application>' % PENJAGA_DATA, 1)
+    # paket jaringan (20 Nov 2026): printer toko di jaringan lokal hanya bicara HTTP POLOS (http://<alamat>/cgi-bin/print.cgi — dokumen SUNMI
+    # "Cloud Printer Over LAN HTTP"); Android menolak HTTP polos kecuali diizinkan di sini. Yang memakainya hanya permintaan ke printer lewat
+    # plugin inti CapacitorHttp (perangkat.js membatasi alamatnya ke IPv4 pribadi). Halaman toko sendiri tetap https: isi campuran di WebView
+    # tetap ditolak (capacitor.config.json › allowMixedContent false). networkSecurityConfig akan mengalahkan atribut ini — kalau cetakan
+    # Capacitor suatu hari memakainya, perakitan DIHENTIKAN supaya tidak diam-diam tanpa izin.
+    if 'android:networkSecurityConfig' in m: raise Tolak('AndroidManifest memakai networkSecurityConfig — izin HTTP polos untuk printer jaringan harus diatur di berkas itu')
+    if 'android:usesCleartextTraffic' not in m:
+        if m.count('<application') != 1: raise Tolak('AndroidManifest punya %d <application' % m.count('<application'))
+        m = m.replace('<application', '<application\n        android:usesCleartextTraffic="true"', 1)
+    m = m.replace('android:usesCleartextTraffic="false"', 'android:usesCleartextTraffic="true"')
     # paket S1: data aplikasi tidak ikut cadangan perangkat (syarat uji App Store SUNMI untuk perangkat keuangan; di sini sekadar rapi)
     m = m.replace('android:allowBackup="true"', 'android:allowBackup="false"')
     # paket S1: mencolok USB (printer, scanner HID, papan ketik) tidak memuat ulang halaman — tips resmi SUNMI "avoid app interface flickering"
@@ -105,7 +115,7 @@ def ubah_manifest(m):
     bagian = [x for x in cocok.group(1).split('|') if x]
     lengkap = bagian + [x for x in ANTI_KEDIP if x not in bagian]
     m = m[:cocok.start(1)] + '|'.join(lengkap) + m[cocok.end(1):]
-    wajib = ['android.hardware.usb.host', 'USB_DEVICE_ATTACHED', '@xml/device_filter', 'android:allowBackup="false"',
+    wajib = ['android.hardware.usb.host', 'USB_DEVICE_ATTACHED', '@xml/device_filter', 'android:allowBackup="false"', 'android:usesCleartextTraffic="true"',
              'android:manageSpaceActivity="%s"' % PENJAGA_DATA, '<activity android:name="%s"' % PENJAGA_DATA]
     wajib += ['<package android:name="%s"' % p for p in TANYA_PAKET]
     wajib += ['<uses-permission android:name="%s" />' % IZIN_NFC, '<uses-feature android:name="android.hardware.nfc" android:required="false" />']
@@ -135,7 +145,7 @@ def pasang_manifest():
     p = os.path.join(UTAMA, 'AndroidManifest.xml')
     try: m = ubah_manifest(baca(p))
     except Tolak as e: gagal(str(e))
-    tulis(p, m); print('  AndroidManifest.xml: usb.host + USB_DEVICE_ATTACHED + <queries> SUNMI + izin NFC + izin sidik jari + penjaga data + allowBackup mati + configChanges')
+    tulis(p, m); print('  AndroidManifest.xml: usb.host + USB_DEVICE_ATTACHED + <queries> SUNMI + izin NFC + izin sidik jari + penjaga data + allowBackup mati + HTTP polos (printer jaringan) + configChanges')
 
 
 def pasang_versi(versi):

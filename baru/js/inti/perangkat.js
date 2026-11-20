@@ -86,7 +86,7 @@ export const lewatJalur = (jalur) => (jalur === 'sunmi-bt' ? 'bt' : 'usb');
  *  `potongan` (larik base64, bila disambung = `data`): kiriman dikirim potong demi potong lewat SDK, tiap potong ditunggu kabarnya; satu kunci
  *  untuk semuanya. Potong PERTAMA gagal = belum ada yang di kertas → perlakuan biasa (boleh jatuh ke kabel dengan `data` utuh). Potong
  *  berikutnya gagal = sebagian sudah di kertas → PRINTER_TERPOTONG, tanpa kirim ulang lewat jalur mana pun. Hasil memuat `potong` (jumlahnya). */
-export const cetakAsli = (data, jalur, potongan) => satuCetakan(() => cetakAsliDalam(data, jalur, potongan));
+export const cetakAsli = (data, jalur, potongan, opsi) => satuCetakan(() => cetakAsliDalam(data, jalur, potongan, opsi));
 /** Struk yang dikirim per potong berhenti di tengah: sebagian SUDAH di kertas. Kalimatnya sudah lengkap — layar menampilkannya apa adanya. */
 export function strukTerpotong(e) { return !!(e && e.code === 'PRINTER_TERPOTONG'); }
 function galatTerpotong(e, sudah, semua) {
@@ -94,7 +94,19 @@ function galatTerpotong(e, sudah, semua) {
     + ' — sobek kertasnya, lalu cetak lagi', 'PRINTER_TERPOTONG');
   g.asli = pesanGalat(e); g.potongSudah = sudah; g.potongSemua = semua; return g;
 }
-async function cetakAsliDalam(data, jalur, potongan) {
+/** Jalur yang dipilih gagal SEBELUM ada yang sampai ke printer → dikirim langsung lewat kabel USB; kalau itu gagal juga, KEDUA sebab dibawa. */
+async function jatuhKeKabel(data, sebab) {
+  let r;
+  try { r = await panggilAsli('CetakUsb', 'cetak', { data }); }
+  catch (e3) {
+    // Kedua jalur gagal: sebab jalur yang DIPILIH harus tetap terbaca. Dulu hanya sebab cadangan yang sampai ke layar — uji owner 20 Nov:
+    // "Printer Bluetooth gagal (Printer USB tidak ditemukan…)", sebab Bluetooth-nya sendiri hilang.
+    const g = galat(sebab + ' · kirim langsung lewat kabel USB juga gagal: ' + pesanGalat(e3), e3 && e3.code);
+    g.sebabUtama = sebab; throw g;
+  }
+  return { jalur: 'aplikasi', nama: (r && r.nama) || '', peringatan: '', cadanganDari: sebab };
+}
+async function cetakAsliDalam(data, jalur, potongan, opsi) {
   if (jalur === 'sunmi' || jalur === 'sunmi-bt') {
     let sebab = '';
     try {
@@ -113,18 +125,127 @@ async function cetakAsliDalam(data, jalur, potongan) {
       sebab = pesanGalat(e);
       try { await panggilAsli('PrinterSunmi', 'lepas', {}); } catch (e2) { /* APK lama: plugin tidak ada */ }
     }
-    let r;
-    try { r = await panggilAsli('CetakUsb', 'cetak', { data }); }
-    catch (e3) {
-      // Kedua jalur gagal: sebab jalur yang DIPILIH harus tetap terbaca. Dulu hanya sebab cadangan yang sampai ke layar — uji owner 20 Nov:
-      // "Printer Bluetooth gagal (Printer USB tidak ditemukan…)", sebab Bluetooth-nya sendiri hilang.
-      const g = galat(sebab + ' · kirim langsung lewat kabel USB juga gagal: ' + pesanGalat(e3), e3 && e3.code);
-      g.sebabUtama = sebab; throw g;
+    return jatuhKeKabel(data, sebab);
+  }
+  if (jalur === 'jaringan') {
+    let sebab = '';
+    try {
+      const r = await cetakJaringan(data, opsi && opsi.alamat);
+      return { jalur, nama: r.nama, peringatan: r.peringatan, cadanganDari: '', potong: 1, tugas: r.tugas };
+    } catch (e) {
+      if (hasilTakDiketahui(e)) { const gj = galat(KALIMAT_TAK_DIKABARI, e.code); gj.asli = pesanGalat(e); throw gj; }
+      // halangan pasti dari printer, atau alamatnya belum diisi: kabel tidak dicoba (percuma / bukan itu yang diminta)
+      if (galatPrinter(e) || (e && e.code === 'SALAH_ISI')) throw e;
+      sebab = pesanGalat(e);
     }
-    return { jalur: 'aplikasi', nama: (r && r.nama) || '', peringatan: '', cadanganDari: sebab };
+    return jatuhKeKabel(data, sebab);
   }
   const r = await panggilAsli('CetakUsb', 'cetak', { data });
   return { jalur: 'aplikasi', nama: (r && r.nama) || '', peringatan: '', cadanganDari: '' };
+}
+
+// ---------- printer lewat JARINGAN (Wi-Fi / LAN) ----------
+// Uji owner 20 Nov 2026 malam: struk bergambar ±84 ribu byte lewat Bluetooth hilang kira-kira 5 dari 8 kali, sedangkan kiriman yang SAMA
+// lewat jaringan (dari Mac, pintu resmi SUNMI "Cloud Printer Over LAN HTTP") keluar 6 dari 6 dan printer melaporkan tiap pekerjaan tercetak.
+// Pintunya HTTP polos di printer sendiri: POST heksa ESC/POS ke /cgi-bin/print.cgi → "task_id: N"; POST /cgi-bin/status.cgi[?task_id=N] →
+// baris "kunci: yes|no" + "task_status: printed | not printed". Nomor seri tidak wajib (tanpa nomor seri diterima; nomor seri SALAH ditolak).
+// Halaman toko (https) tidak boleh memanggil http://… sendiri, jadi permintaannya dititipkan ke aplikasi tablet (CapacitorHttp bawaan
+// Capacitor); aplikasinya harus mengizinkan HTTP polos (apk/pasang.py). Semua logikanya di sini — bisa diubah tanpa APK baru.
+/** Jeda antar-tanya & batasnya. Benda yang bisa diubah supaya uji tidak menunggu sungguhan. */
+export const JARINGAN = { jedaMs: 400, tanyaMaks: 50, tungguMs: 30000, sambungMs: 4000, bacaMs: 15000 };
+const jeda = (ms) => new Promise((ok) => { if (ms > 0 && typeof setTimeout === 'function') setTimeout(ok, ms); else ok(); });
+const KALIMAT_ALAMAT = 'Alamat printer di jaringan belum diisi dengan benar — isi di layar Perangkat (contoh 192.168.1.50; lihat struk uji jaringan printer)';
+/** Alamat printer di jaringan toko → teks rapi, atau '' bila tidak sah. Hanya IPv4 PRIBADI (10.x · 172.16–31.x · 192.168.x): pintu ini
+ *  tidak boleh bisa dipakai mengirim apa pun ke alamat di luar jaringan toko. Tempelan "http://192.168.1.50/#/…" (hasil scan QR struk uji
+ *  jaringan) diterima dan dirapikan. */
+export function alamatPrinterSah(teks) {
+  const t = String(teks == null ? '' : teks).trim().replace(/^https?:\/\//i, '').replace(/[\/#?].*$/, '');
+  const m = t.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/); if (!m) return '';
+  const b = m.slice(1).map(Number); if (b.some((x) => x > 255)) return '';
+  const pribadi = b[0] === 10 || (b[0] === 172 && b[1] >= 16 && b[1] <= 31) || (b[0] === 192 && b[1] === 168);
+  return pribadi ? b.join('.') : '';
+}
+/** Jawaban printer → benda. dikenali = bentuknya memang jawaban keadaan printer SUNMI (supaya alamat perangkat lain tidak dikira printer). */
+export function bacaJawabJaringan(teks) {
+  const o = {}; String(teks == null ? '' : teks).split(/\r?\n/).forEach((b) => { const m = b.match(/^\s*([a-z_]+)\s*:\s*(.*?)\s*$/); if (m) o[m[1]] = m[2]; });
+  const ya = (k) => (o[k] === 'yes' ? true : o[k] === 'no' ? false : null);
+  return { dikenali: ya('no_paper') !== null && ya('platen_opened') !== null, mencetak: ya('printing'), kertasHabis: ya('no_paper'), macet: ya('paper_jam'),
+    belumDiambil: ya('paper_not_taken'), tutupTerbuka: ya('platen_opened'), kepalaPanas: ya('thermal_head_overheated'), motorPanas: ya('step_motor_overheated'),
+    tugas: o.task_id === undefined ? '' : o.task_id, tugasStatus: o.task_status || '' };
+}
+/** Halangan pasti dari keadaan itu → { kode, kalimat } (kode & kalimat sama dengan jalur SDK) atau null. */
+export function halanganJaringan(k) {
+  if (!k) return null;
+  if (k.tutupTerbuka) return { kode: 'PRINTER_COVER', kalimat: 'tutup printer terbuka' };
+  if (k.kertasHabis) return { kode: 'PRINTER_OUT_PAPER', kalimat: 'kertas habis' };
+  if (k.macet) return { kode: 'PRINTER_JAM_PAPER', kalimat: 'kertas macet' };
+  if (k.kepalaPanas) return { kode: 'PRINTER_OVER_HOT', kalimat: 'kepala cetak terlalu panas' };
+  if (k.motorPanas) return { kode: 'PRINTER_MOTOR_HOT', kalimat: 'motor printer terlalu panas' };
+  return null;
+}
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+/** base64 → heksa huruf kecil (bentuk yang diminta print.cgi). Murni, tanpa atob, supaya sama di tablet dan di uji. */
+export function b64KeHeksa(teks) {
+  const t = String(teks || '').replace(/[^A-Za-z0-9+/]/g, ''); const h = '0123456789abcdef'; const keluar = [];
+  let tampung = 0; let bit = 0;
+  for (let i = 0; i < t.length; i++) {
+    tampung = ((tampung << 6) | B64.indexOf(t[i])) & 0xffff; bit += 6;
+    if (bit >= 8) { bit -= 8; const v = (tampung >> bit) & 0xff; keluar.push(h[v >> 4] + h[v & 15]); }
+  }
+  return keluar.join('');
+}
+const tanyaJaringan = (alamat, jalan, badan, bacaMs) => panggilAsli('CapacitorHttp', 'request', { url: 'http://' + alamat + jalan, method: 'POST',
+  headers: { 'Content-Type': 'text/plain; charset=utf-8' }, data: badan || '', responseType: 'text', connectTimeout: JARINGAN.sambungMs, readTimeout: bacaMs || JARINGAN.bacaMs });
+/** Galat permintaan jaringan → 'apk' (aplikasi belum mengizinkan HTTP polos) · 'belum' (pasti belum ada yang sampai ke printer) · 'takjelas'. */
+function jenisGalatJaringan(e) {
+  const kode = String((e && e.code) || ''); const p = String((e && e.message) || '').toLowerCase();
+  if (kode === 'UnknownServiceException' || p.indexOf('cleartext') >= 0) return 'apk';
+  if (kode === 'TIDAK_ADA' || kode === 'ConnectException' || kode === 'NoRouteToHostException' || kode === 'UnknownHostException'
+    || /failed to connect|connect timed out|unreachable|refused|no route/.test(p)) return 'belum';
+  return 'takjelas';
+}
+function galatSambungJaringan(e, alamat) {
+  if (e && e.code === 'TIDAK_ADA') return galat(pesanGalat(e), 'BELUM_KIRIM');
+  if (jenisGalatJaringan(e) === 'apk') return galat('Aplikasi tablet ini belum boleh menghubungi printer lewat jaringan — pasang APK terbaru', 'BELUM_KIRIM');
+  return galat('Printer di ' + alamat + ' tidak terjangkau lewat jaringan — pastikan printer menyala dan tablet di Wi-Fi yang sama (' + pesanGalat(e) + ')', 'BELUM_KIRIM');
+}
+/** Keadaan printer di jaringan: { alamat, keadaan, siap, menghalangi, kalimat }. Menolak berkode SALAH_ISI (alamat) atau BELUM_KIRIM (tidak
+ *  terjangkau / yang menjawab bukan printer) — pada titik ini belum ada data cetak yang dikirim, jadi jalur lain masih boleh dicoba. */
+export async function printerJaringanStatus(alamat) {
+  const a = alamatPrinterSah(alamat); if (!a) throw galat(KALIMAT_ALAMAT, 'SALAH_ISI');
+  let r; try { r = await tanyaJaringan(a, '/cgi-bin/status.cgi', '', 6000); } catch (e) { throw galatSambungJaringan(e, a); }
+  const k = bacaJawabJaringan(r && r.data);
+  if (!r || r.status !== 200 || !k.dikenali) throw galat('Alamat ' + a + ' menjawab, tapi bukan seperti printer SUNMI (jawaban ' + (r ? r.status : '?') + ') — periksa alamatnya di layar Perangkat', 'BELUM_KIRIM');
+  const h = halanganJaringan(k);
+  return { alamat: a, keadaan: k, siap: !h, menghalangi: !!h, kalimat: h ? h.kalimat : k.belumDiambil ? 'siap (struk sebelumnya belum diambil)' : 'siap' };
+}
+/** Cetak lewat jaringan: tanya keadaan dulu (halangan pasti = tidak ada yang dikirim), kirim, lalu tanya pekerjaannya sampai "printed".
+ *  Sesudah kiriman berangkat, apa pun yang tidak jelas = PRINTER_DIAM (hasil tidak diketahui, TANPA kirim ulang lewat jalur mana pun). */
+async function cetakJaringan(data64, alamat) {
+  const s = await printerJaringanStatus(alamat);
+  if (s.menghalangi) throw galat('Printer belum bisa mencetak: ' + s.kalimat, halanganJaringan(s.keadaan).kode);
+  let r;
+  try { r = await tanyaJaringan(s.alamat, '/cgi-bin/print.cgi?copies=1', b64KeHeksa(data64), JARINGAN.bacaMs); }
+  catch (e) {
+    if (jenisGalatJaringan(e) !== 'takjelas') throw galatSambungJaringan(e, s.alamat);
+    throw galat('Kiriman ke printer terputus di tengah jalan (' + pesanGalat(e) + ')', 'PRINTER_DIAM');
+  }
+  const tugas = bacaJawabJaringan(r && r.data).tugas;
+  if (!r || r.status !== 200 || !/^\d+$/.test(tugas)) throw galat('Printer menerima kiriman tapi tidak memberi nomor pekerjaan (jawaban ' + (r ? r.status : '?') + ')', 'PRINTER_DIAM');
+  // dua batas: jumlah tanya DAN lama menunggu — kalau printer lenyap dari jaringan tiap tanya bisa makan beberapa detik, dan seluruh cetakan
+  // harus selesai (berhasil atau "lihat kertasnya") sebelum kunci satuCetakan dianggap lepas (BATAS_SIBUK_MS)
+  const habisPada = Date.now() + JARINGAN.tungguMs;
+  for (let i = 0; i < JARINGAN.tanyaMaks && Date.now() < habisPada; i++) {
+    await jeda(JARINGAN.jedaMs);
+    let k = null;
+    try { const t = await tanyaJaringan(s.alamat, '/cgi-bin/status.cgi?task_id=' + tugas, '', 6000); if (t && t.status === 200) k = bacaJawabJaringan(t.data); }
+    catch (e) { /* satu tanya yang gagal bukan kabar apa-apa — tanya lagi */ }
+    if (!k || !k.dikenali) continue;
+    if (k.tugasStatus === 'printed') return { nama: s.alamat, tugas, peringatan: '' };
+    const h = halanganJaringan(k);
+    if (h && !k.mencetak) throw galat('Cetak terhenti: ' + h.kalimat, h.kode);
+  }
+  throw galat('Printer menerima kiriman (pekerjaan ' + tugas + ') tapi belum melaporkannya tercetak', 'PRINTER_DIAM');
 }
 
 /** Keadaan printer lewat SDK SUNMI: { status, kalimat, siap, menghalangi, nama, sdk }. Menolak bila tidak bisa ditanya. lewat = 'usb' (bawaan) | 'bt'. */

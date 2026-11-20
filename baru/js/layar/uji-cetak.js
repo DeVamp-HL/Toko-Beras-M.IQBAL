@@ -9,7 +9,7 @@ import { usbAda, usbMinta, usbDiingat, usbKirim, usbRingkas } from '../inti/usb-
 import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk } from '../inti/struk-kanvas.js';
 import { PR_GAYA, PR_JALUR, PR_LABEL_CARA, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak, namaJalur, susunLabel, cetakLabel } from '../inti/printer.js';
 import { kemampuan, printerStatus, padaPindai, padaTempel, lampuPadam, lewatJalur, printerBt, printerMode, printerSetelMode, MODE_KERTAS, kalimatModeKertas,
-  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak, hasilTakDiketahui, masihMencetak } from '../inti/perangkat.js';
+  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak, hasilTakDiketahui, masihMencetak, printerJaringanStatus } from '../inti/perangkat.js';
 
 const $ = (id) => document.getElementById(id);
 let printer = null;          // WebUSB (peramban biasa)
@@ -26,16 +26,18 @@ const pesan = (e) => (e && e.message ? e.message : String(e));
 const pesanGagal = (e, mulaiPada) => pesan(e) + (e && e.asli ? ' · kabar aslinya: "' + e.asli + '"' : '') + (mulaiPada ? ' · ' + (Date.now() - mulaiPada) + ' ms' : '');
 
 function isian() {
-  return { gaya: $('ucGaya').value, kertas: Number($('ucKertas').value), potong: $('ucPotong').value, umpan: Number($('ucUmpan').value), qr: $('ucQr').checked, logo, aktif: $('ucAktif').checked, jalur: $('ucJalur').value || 'usb', btPotong: $('ucBtPotong').checked,
+  return { gaya: $('ucGaya').value, kertas: Number($('ucKertas').value), potong: $('ucPotong').value, umpan: Number($('ucUmpan').value), qr: $('ucQr').checked, logo, aktif: $('ucAktif').checked, jalur: $('ucJalur').value || 'usb', btPotong: $('ucBtPotong').checked, alamatPrinter: $('ucAlamat').value.trim(),
     labelCara: $('ucLabelCara').value || 'struk', labelLebar: Number($('ucLabelLebar').value), labelTinggi: Number($('ucLabelTinggi').value), labelCelah: Number($('ucLabelCelah').value), labelPotong: $('ucLabelPotong').checked };
 }
 function isiForm(a) {
   $('ucGaya').value = a.gaya; $('ucKertas').value = String(a.kertas); $('ucPotong').value = a.potong; $('ucUmpan').value = String(a.umpan);
-  $('ucQr').checked = !!a.qr; $('ucAktif').checked = a.aktif !== false; logo = a.logo || ''; $('ucJalur').value = a.jalur || 'usb'; $('ucBtPotong').checked = !!a.btPotong;
+  $('ucQr').checked = !!a.qr; $('ucAktif').checked = a.aktif !== false; logo = a.logo || ''; $('ucJalur').value = a.jalur || 'usb'; $('ucBtPotong').checked = !!a.btPotong; $('ucAlamat').value = a.alamatPrinter || ''; tampilJalur();
   $('ucLabelCara').value = a.labelCara; $('ucLabelLebar').value = String(a.labelLebar); $('ucLabelTinggi').value = String(a.labelTinggi); $('ucLabelCelah').value = String(a.labelCelah); $('ucLabelPotong').checked = a.labelPotong !== false;
 }
 /** Jalur SDK yang sedang dipilih di formulir → cara menyambung printer ('bt' | 'usb') untuk tombol Periksa printer & mode kertas. */
 const lewatKini = () => lewatJalur($('ucJalur').value);
+/** Kotak alamat hanya tampil untuk jalur jaringan. */
+function tampilJalur() { $('ucAlamatBaris').hidden = $('ucJalur').value !== 'jaringan'; }
 
 async function pratinjau() {
   const a = isian();
@@ -98,9 +100,12 @@ async function cetak() {
       // percobaan "kirim per potong": hanya jalur Bluetooth + gaya gambar (gaya teks tidak punya batas potong); isian di layar yang dipakai, belum tentu tersimpan
       const batas = a.jalur === 'sunmi-bt' && a.btPotong ? s.batas : null;
       if (batas && batas.length) ukuran += ' · dikirim per potong (' + (batas.length + 1) + ')';
-      mulaiPada = Date.now(); const r = await kirimCetak(s.byte, a.jalur === 'sunmi' || a.jalur === 'sunmi-bt' ? a.jalur : 'aplikasi', batas);
-      tulisLog('TERCETAK lewat ' + namaJalur(r.jalur) + ' · gaya ' + s.gaya + ' · ' + r.byte + ' byte' + (r.potong > 1 ? ' dalam ' + r.potong + ' potong' : '') + ' · ' + (r.perangkat || 'printer') + ' · ' + (Date.now() - mulaiPada) + ' ms' + (r.peringatan ? ' · ' + r.peringatan : ''));
-      if (r.cadanganDari) tulisLog('Jalur SDK SUNMI TIDAK jalan, struk ini keluar lewat USB langsung. Sebabnya: ' + r.cadanganDari, true);
+      // jalur yang dicoba = yang sedang DIPILIH di formulir (belum tentu tersimpan); jaringan memakai alamat di kotak isian
+      const jalurCoba = a.jalur === 'sunmi' || a.jalur === 'sunmi-bt' || a.jalur === 'jaringan' ? a.jalur : 'aplikasi';
+      mulaiPada = Date.now(); const r = await kirimCetak(s.byte, jalurCoba, batas, { alamat: a.alamatPrinter });
+      tulisLog('TERCETAK lewat ' + namaJalur(r.jalur) + ' · gaya ' + s.gaya + ' · ' + r.byte + ' byte' + (r.potong > 1 ? ' dalam ' + r.potong + ' potong' : '') + ' · ' + (r.perangkat || 'printer') + (r.tugas ? ' · pekerjaan ' + r.tugas : '')
+        + ' · ' + (Date.now() - mulaiPada) + ' ms' + (r.peringatan ? ' · ' + r.peringatan : ''));
+      if (r.cadanganDari) tulisLog((a.jalur === 'jaringan' ? 'Jalur jaringan' : 'Jalur SDK SUNMI') + ' TIDAK jalan, struk ini keluar lewat USB langsung. Sebabnya: ' + r.cadanganDari, true);
     }
     else { const r = await usbKirim(printer, s.byte); tulisLog('TERCETAK lewat peramban · gaya ' + s.gaya + ' · ' + r.byte + ' byte'); }
   } catch (e) {
@@ -113,6 +118,15 @@ async function cetak() {
 // ---------- paket S1: perangkat SUNMI (hanya di aplikasi tablet) ----------
 async function periksaPrinter() {
   $('ucStatus').disabled = true; $('ucStatusHasil').textContent = 'Menanyakan printer…'; $('ucStatusHasil').className = '';
+  // jalur jaringan: yang ditanya printer di alamat yang sedang diisi, lewat jaringan — bukan lewat SDK
+  if ($('ucJalur').value === 'jaringan') {
+    try {
+      const r = await printerJaringanStatus($('ucAlamat').value);
+      $('ucStatusHasil').textContent = 'Printer di ' + r.alamat + ' (jaringan): ' + r.kalimat; $('ucStatusHasil').className = r.siap ? 'baik' : 'awas';
+      tulisLog('Keadaan printer (jaringan, ' + r.alamat + '): ' + r.kalimat, !r.siap);
+    } catch (e) { $('ucStatusHasil').textContent = 'Printer tidak bisa ditanya lewat jaringan: ' + pesan(e); $('ucStatusHasil').className = 'awas'; tulisLog('Periksa printer (jaringan) gagal: ' + pesan(e), true); }
+    $('ucStatus').disabled = false; return;
+  }
   try {
     const r = await printerStatus(lewatKini());
     // pustaka melapor "SDK Version: 1.0.16 Print SDK for Android Copyright by SUNMI" — yang perlu dibaca owner cuma nomornya
@@ -267,6 +281,7 @@ function mulai() {
   $('ucLogoBerkas').addEventListener('change', pilihLogo);
   $('ucLogoUkuran').addEventListener('change', prosesLogo);
   $('ucLogoHapus').addEventListener('click', () => { gambarLogo = null; logo = ''; $('ucLogoBerkas').value = ''; tulisLog('Logo dilepas'); pratinjau(); });
+  $('ucJalur').addEventListener('change', tampilJalur);
   ['ucGaya', 'ucKertas', 'ucPotong', 'ucUmpan', 'ucQr'].forEach((id) => $(id).addEventListener('change', () => { if (id === 'ucKertas' && gambarLogo) prosesLogo(); else pratinjau(); }));
 
   if (!app && usbAda()) {

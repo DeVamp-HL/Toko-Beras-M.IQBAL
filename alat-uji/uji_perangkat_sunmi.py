@@ -214,6 +214,117 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
       lepasP2(); r = await jalan;
       cek('per potong: sesudah itu ketiga potong selesai dan kunci terbuka', r.potong === 3 && terima.join(',') === 'P1,P2,P3' && printerSibuk() === false, terima.join(','));
     }
+    // ---- jalur JARINGAN (20 Nov 2026): cetak lewat Wi-Fi/LAN ke pintu HTTP printer, dititipkan ke CapacitorHttp ----
+    {
+      JARINGAN.jedaMs = 0; JARINGAN.tanyaMaks = 6;
+      const ALAMAT = '192.168.7.21';
+      // printer tiruan: jawabannya disalin dari printer toko (uji 20 Nov 2026), termasuk akhiran baris \r\n
+      const NAMA = ['printing', 'no_paper', 'paper_jam', 'paper_not_taken', 'platen_opened', 'thermal_head_overheated', 'step_motor_overheated'];
+      const teksKeadaan = (k, tugas) => NAMA.map((n) => n + ': ' + ((k || {})[n] ? 'yes' : 'no')).join('\r\n') + '\r\n' + (tugas ? 'task_status: ' + tugas + '\r\n' : '');
+      function printer(o) {
+        const st = { tugas: 60, tanyaTugas: 0, kiriman: [], url: [], isi: [] }; o = o || {};
+        const jawab = (isi) => { st.url.push(isi.url); st.isi.push(isi);
+          if (isi.url.indexOf('/cgi-bin/print.cgi') >= 0) { if (o.cetak) return o.cetak(isi, st); st.kiriman.push(isi.data); st.tugas += 1; return { status: 200, data: 'task_id: ' + st.tugas + '\r\n' }; }
+          if (isi.url.indexOf('task_id=') >= 0) { st.tanyaTugas += 1; if (o.tanya) return o.tanya(isi, st); return { status: 200, data: teksKeadaan(o.keadaan, st.tanyaTugas >= (o.selesaiPada || 2) ? 'printed' : 'not printed') }; }
+          if (o.awal) return o.awal(isi, st);
+          return { status: 200, data: teksKeadaan(o.keadaan) }; };
+        return { st, jawab };
+      }
+      const lempar = (pesan, kode) => { const e = new Error(pesan); e.code = kode; throw e; };
+      const pasang = (P, usb) => pasangAplikasi(['CapacitorHttp', 'CetakUsb', 'PrinterSunmi'], { 'CapacitorHttp.request': P.jawab, 'CetakUsb.cetak': usb || (() => ({ nama: 'usb' })) });
+
+      // alamat: hanya IPv4 pribadi
+      cek('jaringan: alamat pribadi diterima dan dirapikan (spasi, tempelan http://…/#/… dari QR struk uji jaringan)', alamatPrinterSah(' 192.168.7.21 ') === '192.168.7.21' && alamatPrinterSah('http://192.168.7.21/#/deviceInfo') === '192.168.7.21'
+        && alamatPrinterSah('10.0.0.5') === '10.0.0.5' && alamatPrinterSah('172.16.0.1') === '172.16.0.1' && alamatPrinterSah('172.31.255.254') === '172.31.255.254' && alamatPrinterSah('192.168.007.021') === '192.168.7.21');
+      cek('jaringan: alamat di luar jaringan toko, nama, port, dan yang rusak DITOLAK', ['8.8.8.8', '172.32.0.1', '172.15.0.1', '192.169.1.1', '11.0.0.1', '192.168.1.256', '192.168.1', '192.168.7.21:8080', 'printer.local', 'https://contoh.com', '', null, undefined, '192.168.7.21.5', '1.2.3.4']
+        .every((x) => alamatPrinterSah(x) === ''));
+      // base64 → heksa
+      cek('jaringan: base64 → heksa huruf kecil, byte demi byte (termasuk ganjalan = dan baris baru)', b64KeHeksa('QUJD') === '414243' && b64KeHeksa('G0AbYQE=') === '1b401b6101' && b64KeHeksa('AA==') === '00' && b64KeHeksa('//8=') === 'ffff'
+        && b64KeHeksa('G0Ab\nYQE=') === '1b401b6101' && b64KeHeksa('') === '' && b64KeHeksa('AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=') === '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f',
+        [b64KeHeksa('QUJD'), b64KeHeksa('G0AbYQE='), b64KeHeksa('//8=')].join(' '));
+      // membaca jawaban printer
+      let k = bacaJawabJaringan(teksKeadaan({ paper_not_taken: 1 }, 'printed'));
+      cek('jaringan: jawaban keadaan printer terbaca (kertas belum diambil, pekerjaan tercetak)', k.dikenali && k.belumDiambil === true && k.kertasHabis === false && k.tutupTerbuka === false && k.mencetak === false && k.tugasStatus === 'printed', JSON.stringify(k));
+      cek('jaringan: nomor pekerjaan terbaca dari jawaban kirim', bacaJawabJaringan('task_id: 54\r\n').tugas === '54' && bacaJawabJaringan('task_id: 54\r\n').dikenali === false);
+      cek('jaringan: jawaban yang bukan dari printer TIDAK dikenali', !bacaJawabJaringan('<html><body>router</body></html>').dikenali && !bacaJawabJaringan('').dikenali && !bacaJawabJaringan(null).dikenali && !bacaJawabJaringan({ a: 1 }).dikenali);
+      cek('jaringan: halangan pasti → kode & kalimat yang sama dengan jalur SDK; tutup terbuka didahulukan', halanganJaringan(bacaJawabJaringan(teksKeadaan({ no_paper: 1 }))).kode === 'PRINTER_OUT_PAPER'
+        && halanganJaringan(bacaJawabJaringan(teksKeadaan({ no_paper: 1, platen_opened: 1 }))).kode === 'PRINTER_COVER' && halanganJaringan(bacaJawabJaringan(teksKeadaan({ paper_jam: 1 }))).kalimat === 'kertas macet'
+        && halanganJaringan(bacaJawabJaringan(teksKeadaan({ thermal_head_overheated: 1 }))).kode === 'PRINTER_OVER_HOT' && halanganJaringan(bacaJawabJaringan(teksKeadaan({ step_motor_overheated: 1 }))).kode === 'PRINTER_MOTOR_HOT'
+        && halanganJaringan(bacaJawabJaringan(teksKeadaan({ paper_not_taken: 1, printing: 1 }))) === null && halanganJaringan(null) === null);
+
+      // periksa printer
+      let P = printer(); A = pasang(P); let sj = await printerJaringanStatus(' 192.168.7.21 ');
+      cek('jaringan: periksa printer → siap; satu permintaan POST ke status.cgi di alamat itu, tanpa nomor seri', sj.siap && sj.kalimat === 'siap' && sj.alamat === ALAMAT && P.st.url.join(',') === 'http://192.168.7.21/cgi-bin/status.cgi'
+        && P.st.isi[0].method === 'POST' && P.st.isi[0].responseType === 'text' && P.st.url.join(',').indexOf('sn=') < 0, JSON.stringify(sj) + ' ' + P.st.url.join(','));
+      P = printer({ keadaan: { paper_not_taken: 1 } }); A = pasang(P); sj = await printerJaringanStatus(ALAMAT);
+      cek('jaringan: kertas belum diambil bukan halangan, tapi disebut', sj.siap && sj.kalimat === 'siap (struk sebelumnya belum diambil)', sj.kalimat);
+      P = printer({ keadaan: { no_paper: 1 } }); A = pasang(P); sj = await printerJaringanStatus(ALAMAT);
+      cek('jaringan: kertas habis → tidak siap, berkalimat', !sj.siap && sj.menghalangi && sj.kalimat === 'kertas habis', sj.kalimat);
+      P = printer(); A = pasang(P); g = null; try { await printerJaringanStatus('8.8.8.8'); } catch (e) { g = e; }
+      cek('jaringan: alamat tidak sah → SALAH_ISI, TIDAK ADA permintaan yang berangkat', g && g.code === 'SALAH_ISI' && A.catat.length === 0, (g && g.code) + ' ' + A.catat.join(','));
+      P = printer({ awal: () => ({ status: 200, data: '<html>router</html>' }) }); A = pasang(P); g = null; try { await printerJaringanStatus(ALAMAT); } catch (e) { g = e; }
+      cek('jaringan: alamat yang menjawab tapi bukan printer → BELUM_KIRIM "bukan seperti printer SUNMI"', g && g.code === 'BELUM_KIRIM' && /bukan seperti printer SUNMI/.test(g.message), g && g.message);
+      P = printer({ awal: () => lempar('Failed to connect to /192.168.7.21:80', 'ConnectException') }); A = pasang(P); g = null; try { await printerJaringanStatus(ALAMAT); } catch (e) { g = e; }
+      cek('jaringan: printer tidak terjangkau → BELUM_KIRIM berkalimat toko, sebab aslinya ikut', g && g.code === 'BELUM_KIRIM' && /tidak terjangkau lewat jaringan/.test(g.message) && /Failed to connect/.test(g.message), g && g.message);
+      P = printer({ awal: () => lempar('CLEARTEXT communication to 192.168.7.21 not permitted by network security policy', 'UnknownServiceException') }); A = pasang(P); g = null; try { await printerJaringanStatus(ALAMAT); } catch (e) { g = e; }
+      cek('jaringan: aplikasi lama (HTTP polos belum diizinkan) → "pasang APK terbaru"', g && g.code === 'BELUM_KIRIM' && /pasang APK terbaru/.test(g.message), g && g.message);
+
+      // cetak: jalan mulus
+      P = printer({ selesaiPada: 3 }); A = pasang(P); r = await cetakAsli('G0AbYQE=', 'jaringan', null, { alamat: ALAMAT });
+      cek('jaringan: cetak = tanya keadaan → kirim heksa → tanya pekerjaan sampai "printed"', r.jalur === 'jaringan' && r.tugas === '61' && r.nama === ALAMAT && r.potong === 1 && r.cadanganDari === ''
+        && P.st.url.join(' ') === ['http://192.168.7.21/cgi-bin/status.cgi', 'http://192.168.7.21/cgi-bin/print.cgi?copies=1', 'http://192.168.7.21/cgi-bin/status.cgi?task_id=61', 'http://192.168.7.21/cgi-bin/status.cgi?task_id=61', 'http://192.168.7.21/cgi-bin/status.cgi?task_id=61'].join(' '),
+        JSON.stringify(r) + ' · ' + P.st.url.join(' '));
+      cek('jaringan: isi kiriman = heksa dari data cetak, sebagai teks polos; kabel tidak disentuh', P.st.kiriman.join(',') === '1b401b6101' && P.st.isi[1].headers['Content-Type'] === 'text/plain; charset=utf-8' && P.st.isi[1].method === 'POST'
+        && A.hitung('CetakUsb.cetak') === 0 && A.hitung('PrinterSunmi.cetak') === 0, P.st.kiriman.join(',') + ' ' + A.catat.join(','));
+      cek('jaringan: sesudah cetak, kunci "sedang mencetak" terbuka', printerSibuk() === false);
+      // halangan pasti SEBELUM kirim
+      P = printer({ keadaan: { no_paper: 1 } }); A = pasang(P); g = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT }); } catch (e) { g = e; }
+      cek('jaringan: kertas habis → ditolak SEBELUM ada yang dikirim, kode printer, tanpa kabel', g && g.code === 'PRINTER_OUT_PAPER' && g.message === 'Printer belum bisa mencetak: kertas habis' && P.st.kiriman.length === 0 && A.hitung('CetakUsb.cetak') === 0, (g && g.message) + ' ' + A.catat.join(','));
+      // alamat kosong / di luar jaringan toko
+      P = printer(); A = pasang(P); g = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: '' }); } catch (e) { g = e; }
+      let g2 = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: '8.8.8.8' }); } catch (e) { g2 = e; }
+      let g3 = null; try { await cetakAsli('G0A=', 'jaringan', null, null); } catch (e) { g3 = e; }
+      cek('jaringan: alamat kosong / di luar jaringan toko → SALAH_ISI, tidak ada yang berangkat ke mana pun (juga tidak ke kabel)', g && g.code === 'SALAH_ISI' && g2 && g2.code === 'SALAH_ISI' && g3 && g3.code === 'SALAH_ISI' && A.catat.length === 0, [g && g.code, g2 && g2.code, g3 && g3.code, A.catat.join(',')].join(' '));
+      // tidak terjangkau → kabel dicoba, dengan sebab jaringan terbaca
+      let usbData = null;
+      P = printer({ awal: () => lempar('failed to connect to /192.168.7.21 (port 80) after 4000ms', 'SocketTimeoutException') }); A = pasang(P, (isi) => { usbData = isi.data; return { nama: 'usb' }; });
+      r = await cetakAsli('G0AbYQE=', 'jaringan', null, { alamat: ALAMAT });
+      cek('jaringan: printer tidak terjangkau (belum ada yang dikirim) → kabel USB menerima data yang sama, sebab jaringan ikut pulang', r.jalur === 'aplikasi' && usbData === 'G0AbYQE=' && /tidak terjangkau lewat jaringan/.test(r.cadanganDari) && P.st.kiriman.length === 0, JSON.stringify(r));
+      P = printer({ awal: () => lempar('Failed to connect', 'ConnectException') }); A = pasang(P, () => lempar('Printer USB tidak ditemukan', 'BELUM_KIRIM')); g = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT }); } catch (e) { g = e; }
+      cek('jaringan: jaringan DAN kabel gagal → kedua sebab terbaca, sebab jaringan di depan', g && /tidak terjangkau lewat jaringan/.test(g.sebabUtama) && /kirim langsung lewat kabel USB juga gagal: Printer USB tidak ditemukan/.test(g.message) && g.message.indexOf(g.sebabUtama) === 0, g && g.message);
+      // kiriman berangkat lalu tidak jelas → hasil tidak diketahui, TANPA kirim ulang
+      P = printer({ cetak: () => lempar('timeout', 'SocketTimeoutException') }); A = pasang(P); g = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT }); } catch (e) { g = e; }
+      cek('jaringan: sambungan putus SAAT mengirim → "lihat kertasnya" (PRINTER_DIAM), kabel TIDAK dicoba (bisa dobel)', g && g.code === 'PRINTER_DIAM' && g.message === KALIMAT_TAK_DIKABARI && /terputus di tengah jalan/.test(g.asli) && A.hitung('CetakUsb.cetak') === 0, (g && g.code) + ' ' + (g && g.asli) + ' ' + A.catat.join(','));
+      P = printer({ cetak: () => ({ status: 200, data: 'ok\r\n' }) }); A = pasang(P); g = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT }); } catch (e) { g = e; }
+      cek('jaringan: kiriman diterima tanpa nomor pekerjaan → hasil tidak diketahui, tanpa kabel', g && g.code === 'PRINTER_DIAM' && hasilTakDiketahui(g) && /tidak memberi nomor pekerjaan/.test(g.asli) && A.hitung('CetakUsb.cetak') === 0, g && g.asli);
+      P = printer({ selesaiPada: 999 }); A = pasang(P); g = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT }); } catch (e) { g = e; }
+      cek('jaringan: printer tidak pernah melapor "printed" → berhenti bertanya sesudah batasnya, hasil tidak diketahui, tanpa kabel, kunci terbuka', g && g.code === 'PRINTER_DIAM' && P.st.tanyaTugas === JARINGAN.tanyaMaks && /pekerjaan 61/.test(g.asli)
+        && A.hitung('CetakUsb.cetak') === 0 && printerSibuk() === false, (g && g.asli) + ' tanya ' + P.st.tanyaTugas);
+      // printer lenyap dari jaringan sesudah menerima kiriman: tiap tanya makan lama → berhenti menurut JAM, jauh sebelum kunci cetak kedaluwarsa
+      {
+        const jamAsli = Date.now; let maju = 0; Date.now = () => jamAsli() + maju; JARINGAN.tanyaMaks = 50;
+        P = printer({ tanya: () => { maju += 12000; lempar('timeout', 'SocketTimeoutException'); } }); A = pasang(P); g = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT }); } catch (e) { g = e; }
+        Date.now = jamAsli; JARINGAN.tanyaMaks = 6;
+        cek('jaringan: lama menunggu dibatasi ' + (JARINGAN.tungguMs / 1000) + ' detik (lebih pendek dari kunci cetak ' + (BATAS_SIBUK_MS / 1000) + ' detik) → berhenti sesudah beberapa tanya, hasil tidak diketahui', g && g.code === 'PRINTER_DIAM' && P.st.tanyaTugas === 3
+          && JARINGAN.tungguMs + 2 * (JARINGAN.sambungMs + JARINGAN.bacaMs) + 20000 < BATAS_SIBUK_MS, (g && g.code) + ' tanya ' + P.st.tanyaTugas);
+      }
+      // halangan muncul di tengah cetak
+      P = printer({ tanya: () => ({ status: 200, data: teksKeadaan({ no_paper: 1 }, 'not printed') }) }); A = pasang(P); g = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT }); } catch (e) { g = e; }
+      cek('jaringan: kertas habis di tengah cetak → "Cetak terhenti: kertas habis", kode printer, tanpa kabel', g && g.code === 'PRINTER_OUT_PAPER' && g.message === 'Cetak terhenti: kertas habis' && A.hitung('CetakUsb.cetak') === 0 && P.st.tanyaTugas === 1, g && g.message);
+      // satu tanya yang gagal bukan kabar
+      P = printer({ tanya: (isi, st) => { if (st.tanyaTugas === 1) lempar('timeout', 'SocketTimeoutException'); if (st.tanyaTugas === 2) return { status: 500, data: 'galat' }; return { status: 200, data: teksKeadaan({}, 'printed') }; } }); A = pasang(P);
+      r = await cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT });
+      cek('jaringan: tanya pekerjaan yang gagal / dijawab aneh diulang, bukan dianggap gagal cetak', r.jalur === 'jaringan' && P.st.tanyaTugas === 3 && A.hitung('CetakUsb.cetak') === 0, JSON.stringify(r) + ' tanya ' + P.st.tanyaTugas);
+      // satu cetakan pada satu waktu juga untuk jaringan
+      let lepasCetak = null; P = printer({ cetak: (isi, st) => new Promise((ok) => { lepasCetak = () => { st.tugas += 1; ok({ status: 200, data: 'task_id: ' + st.tugas + '\r\n' }); }; }) }); A = pasang(P);
+      const jl = cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT });
+      for (let i = 0; i < 30 && !lepasCetak; i++) await Promise.resolve();
+      g = null; try { await cetakAsli('G0A=', 'jaringan', null, { alamat: ALAMAT }); } catch (e) { g = e; }
+      cek('jaringan: cetakan kedua selagi yang pertama belum dikabari → SEDANG_CETAK, tidak ada kiriman kedua', !!lepasCetak && g && g.code === 'SEDANG_CETAK' && P.st.url.filter((u) => u.indexOf('print.cgi') >= 0).length === 1, (g && g.code) + ' ' + P.st.url.join(' '));
+      lepasCetak(); r = await jl;
+      cek('jaringan: cetakan pertama selesai tanpa terganggu', r.jalur === 'jaringan' && r.tugas === '61', JSON.stringify(r));
+      JARINGAN.jedaMs = 400; JARINGAN.tanyaMaks = 50;
+    }
     cek('masihMencetak hanya untuk SEDANG_CETAK — bukan galat printer, bukan "hasil tidak diketahui"', masihMencetak({ code: 'SEDANG_CETAK' }) && !masihMencetak({ code: 'PRINTER_UNKNOWN' }) && !masihMencetak({ code: 'BELUM_KIRIM' }) && !masihMencetak(null)
       && !galatPrinter({ code: 'SEDANG_CETAK' }) && !hasilTakDiketahui({ code: 'SEDANG_CETAK' }));
     cek('kalimat "masih mencetak" tidak menyebut gagal dan menyuruh menunggu', !/gagal/i.test(KALIMAT_MASIH_MENCETAK) && /tunggu/.test(KALIMAT_MASIH_MENCETAK) && /jangan ketuk/.test(KALIMAT_MASIH_MENCETAK), KALIMAT_MASIH_MENCETAK);
@@ -468,6 +579,14 @@ def periksa_pasang(sumber):
        and m.index('android.permission.USE_BIOMETRIC') < m.index('<application') and 'android.hardware.fingerprint" android:required="true"' not in m)
     ok('manifest: tidak meminta izin lokasi (Bluetooth memakai perangkat yang sudah dipasangkan, tanpa pencarian)', 'ACCESS_FINE_LOCATION' not in m and 'ACCESS_COARSE_LOCATION' not in m)
     ok('manifest: allowBackup mati', 'android:allowBackup="false"' in m and 'android:allowBackup="true"' not in m)
+    # paket jaringan (20 Nov 2026): printer di jaringan lokal hanya bicara HTTP polos
+    tag = m[m.index('<application'):]; tag = tag[:tag.index('>')]
+    ok('manifest: HTTP polos diizinkan (printer jaringan) — tepat sekali, di tag <application>', m.count('android:usesCleartextTraffic="true"') == 1 and 'android:usesCleartextTraffic="true"' in tag and 'usesCleartextTraffic="false"' not in m, tag)
+    ok('manifest: yang sudah menulis usesCleartextTraffic="false" dibalik, tetap tepat sekali',
+       P['ubah_manifest'](MANIFEST.replace('<application', '<application\n        android:usesCleartextTraffic="false"', 1)).count('android:usesCleartextTraffic="true"') == 1)
+    cc_json = json.load(open(os.path.join(AKAR, 'apk', 'capacitor.config.json'), encoding='utf-8'))
+    ok('capacitor.config.json: halaman toko tetap https dan isi campuran di WebView tetap DITOLAK (izin HTTP polos hanya untuk permintaan ke printer)',
+       cc_json.get('android', {}).get('allowMixedContent') is False and cc_json.get('server', {}).get('url', '').startswith('https://') and cc_json.get('server', {}).get('androidScheme') == 'https', cc_json)
     cc = re.search(r'android:configChanges="([^"]*)"', m).group(1).split('|')
     ok('manifest: configChanges memuat navigation, keyboard, keyboardHidden tanpa kembar', all(x in cc for x in ('navigation', 'keyboard', 'keyboardHidden')) and len(cc) == len(set(cc)), '|'.join(cc))
     ok('manifest: aktivitas utama tetap satu & masih bisa dibuka', m.count('android:name=".MainActivity"') == 1 and 'android.intent.category.LAUNCHER' in m and m.count('</activity>') == 1)
@@ -478,6 +597,7 @@ def periksa_pasang(sumber):
         except P['Tolak']: return True
         except Exception: return False
         return False
+    ok('manifest ber-networkSecurityConfig DITOLAK (atribut HTTP polos akan diam-diam tidak berlaku)', ditolak(P['ubah_manifest'], MANIFEST.replace('<application', '<application\n        android:networkSecurityConfig="@xml/jaringan"', 1)))
     ok('manifest tanpa configChanges DITOLAK', ditolak(P['ubah_manifest'], MANIFEST.replace('android:configChanges', 'android:lain')))
     ok('manifest dua aktivitas DITOLAK', ditolak(P['ubah_manifest'], MANIFEST.replace('</activity>', '</activity>\n<activity android:name=".Lain"></activity>')))
 
@@ -511,7 +631,11 @@ def periksa_statis(perangkat_js):
         m = re.search(r'@CapacitorPlugin\(name = "(\w+)"[,)]', baca('apk', 'tambahan', p + '.java')); nama[p] = m.group(1) if m else ''
     ok('nama plugin di Java = nama yang dipanggil halaman', nama == {'BiometrikPlugin': 'Biometrik', 'CetakUsbPlugin': 'CetakUsb', 'LampuPlugin': 'Lampu', 'NfcPlugin': 'Nfc', 'PerangkatPlugin': 'Perangkat', 'PindaiPlugin': 'Pindai', 'PrinterSunmiPlugin': 'PrinterSunmi'}, nama)
     dipanggil = set(re.findall(r"panggilAsli\('(\w+)', '(\w+)'", perangkat_js + baca('baru', 'js', 'inti', 'printer.js')))
-    hilang = [p + '.' + m for p, m in sorted(dipanggil) if not re.search(r'@PluginMethod\s+public void ' + m + r'\(', baca('apk', 'tambahan', p + 'Plugin.java'))]
+    # CapacitorHttp = plugin INTI Capacitor (selalu terdaftar: Bridge.registerAllPlugins), bukan berkas di apk/tambahan — dipakai jalur jaringan
+    inti = {(p, m) for p, m in dipanggil if p == 'CapacitorHttp'}
+    ok('plugin inti Capacitor yang dipanggil halaman: hanya CapacitorHttp.request, dan Capacitor-nya memang versi yang punya plugin itu (≥ 4)',
+       inti == {('CapacitorHttp', 'request')} and re.search(r'"@capacitor/android":\s*"\^?([4-9]|\d\d)\.', baca('apk', 'package.json')), sorted(inti))
+    hilang = [p + '.' + m for p, m in sorted(dipanggil - inti) if not re.search(r'@PluginMethod\s+public void ' + m + r'\(', baca('apk', 'tambahan', p + 'Plugin.java'))]
     ok('tiap metode yang dipanggil halaman ada di plugin Java-nya', len(dipanggil) >= 13 and not hilang, hilang or sorted(dipanggil))
     sunmi = baca('apk', 'tambahan', 'PrinterSunmiPlugin.java')
     ok('PrinterSunmi: kode BELUM_KIRIM & PRINTER_ sama dengan yang dibaca perangkat.js', 'BELUM_KIRIM = "BELUM_KIRIM"' in sunmi and '"PRINTER_" + namaStatus(s)' in sunmi and '"PRINTER_DIAM"' in sunmi and "indexOf('PRINTER_') === 0" in perangkat_js)
@@ -580,24 +704,25 @@ def periksa_statis(perangkat_js):
     ok('uji-cetak.js S4: label contoh berkode contoh (tidak pernah jadi barcode barang)', "kode: 'UJI-LABEL-0001'" in ujs and "export const TK_KODE_CONTOH = 'UJI-LABEL';" in baca('baru', 'js', 'layar', 'tanda-kenal-logika.js'))
     pr = baca('baru', 'js', 'inti', 'printer.js')
     ok('printer.js: teks jalur lama tidak berubah di catatan struk', "j === 'aplikasi' ? 'aplikasi tablet' : 'peramban'" in pr and "PR.namaJalur(r.jalur)" in baca('baru', 'js', 'layar', 'jual.js'))
-    ok('printer.js: jalur bawaan tetap USB langsung; SDK SUNMI hanya bila dipilih di perangkat', "jalur: 'usb', btPotong: false };" in pr and "return a.jalur === 'sunmi' ? 'sunmi' : 'aplikasi';" in pr)
+    ok('printer.js: jalur bawaan tetap USB langsung; SDK SUNMI hanya bila dipilih di perangkat', "jalur: 'usb', btPotong: false, alamatPrinter: '' };" in pr and "return a.jalur === 'sunmi' ? 'sunmi' : 'aplikasi';" in pr)
     # uji owner 20 Nov 2026 (keempat, lanjutan): struk bergambar lewat Bluetooth sering hilang → percobaan "kirim per potong"; dialog cetak di tablet hanya berkelebat
     es = baca('baru', 'js', 'inti', 'escpos.js'); uhtml = baca('baru', 'uji-cetak.html')
     ok('printer.js: kirim per potong = PERCOBAAN, bawaan mati, hanya setelan boolean yang diterima',
-       "jalur: 'usb', btPotong: false };" in pr and "if (typeof d.btPotong === 'boolean') a.btPotong = d.btPotong;" in pr)
+       "jalur: 'usb', btPotong: false, alamatPrinter: '' };" in pr and "if (typeof d.btPotong === 'boolean') a.btPotong = d.btPotong;" in pr)
     ok('printer.js: kiriman dipotong HANYA di jalur Bluetooth dan hanya bila batasnya ada; tiap potong di-base64 sendiri; kiriman utuh tetap ikut (cadangan kabel)',
        "const bagian = j === 'sunmi-bt' && Array.isArray(batas) && batas.length ? epPotong(byte, batas).map((b) => epBase64(b)) : null;" in pr
-       and "const r = await cetakAsli(epBase64(byte), j, bagian);" in pr)
+       and "const r = await cetakAsli(epBase64(byte), j, bagian, opsi);" in pr)
     ok('printer.js: struk Jual ikut per potong hanya bila setelan perangkat ini memintanya; batasnya dari penyusun gambar',
        "const r = await kirimCetak(s.byte, j, j === 'sunmi-bt' && prAtur().btPotong ? s.batas : null);" in pr
        and "return { byte: sg.byte, gaya: 'gambar', kertas: a.kertas, gambar: g, batas: sg.batas };" in pr and "return { byte: w.hasil(), lebar: gambar.lebar, tinggi: gambar.tinggi, batas };" in es)
     ok('layar Perangkat: saklar "kirim per potong" ada, ikut disimpan, dan cetak contoh memakai ISIAN di layar (belum tentu tersimpan)',
        'id="ucBtPotong"' in uhtml and "btPotong: $('ucBtPotong').checked," in ujs and "$('ucBtPotong').checked = !!a.btPotong;" in ujs
        and "const batas = a.jalur === 'sunmi-bt' && a.btPotong ? s.batas : null;" in ujs
-       and "const r = await kirimCetak(s.byte, a.jalur === 'sunmi' || a.jalur === 'sunmi-bt' ? a.jalur : 'aplikasi', batas);" in ujs
+       and "const jalurCoba = a.jalur === 'sunmi' || a.jalur === 'sunmi-bt' || a.jalur === 'jaringan' ? a.jalur : 'aplikasi';" in ujs
+       and "const r = await kirimCetak(s.byte, jalurCoba, batas, { alamat: a.alamatPrinter });" in ujs
        and "(r.potong > 1 ? ' dalam ' + r.potong + ' potong' : '')" in ujs)
     ok('printer.js S4: Bluetooth hanya bila dipilih di perangkat & hanya di aplikasi; ketiga jalur aplikasi lewat cetakAsli',
-       "if (asliAda() && a.jalur === 'sunmi-bt') return 'sunmi-bt';" in pr and "if (j === 'aplikasi' || j === 'sunmi' || j === 'sunmi-bt') {" in pr and "['sunmi-bt', 'SDK SUNMI lewat Bluetooth" in pr)
+       "if (asliAda() && a.jalur === 'sunmi-bt') return 'sunmi-bt';" in pr and "if (j === 'aplikasi' || j === 'sunmi' || j === 'sunmi-bt' || j === 'jaringan') {" in pr and "['sunmi-bt', 'SDK SUNMI lewat Bluetooth" in pr)
     ok('printer.js S4: label stiker bercelah lewat SDK memakai pintu label (kirimTspl); selain itu byte yang sama lewat jalur cetak biasa; tanpa printer = melempar',
        "if (l.cara === 'tspl' && (j === 'sunmi' || j === 'sunmi-bt')) {" in pr and "const r = await kirimTspl(l.teks.join('\\n') + '\\n', lewatJalur(j));" in pr
        and "const j = pilih || await jalurCetak(); if (j === 'dialog') throw new Error('Tidak ada printer di perangkat ini — label dicetak dari tablet kasir');" in pr and "labelCara: 'struk'" in pr)
@@ -605,8 +730,8 @@ def periksa_statis(perangkat_js):
     cl = pr[pr.index('export async function cetakLabel('):]
     jg = "if (j === 'sunmi' || j === 'sunmi-bt') await pastikanModeLabel(l.cara, lewatJalur(j));"
     ok('printer.js: mode printer dicocokkan dengan cara label SEBELUM ada yang dikirim (pintu label maupun jalur cetak biasa)',
-       cl.count(jg) == 1 and cl.index('const l = susunLabel(isi, jumlah, timpa);') < cl.index(jg) < cl.index('await kirimTspl(') < cl.index('await kirimCetak(l.byte, j);')
-       and 'pastikanModeLabel }' in pr)
+       cl.count(jg) == 1 and cl.index('const l = susunLabel(isi, jumlah, timpa);') < cl.index(jg) < cl.index('await kirimTspl(') < cl.index('await kirimCetak(l.byte, j, null,')
+       and "pastikanModeLabel, alamatPrinterSah } from './perangkat.js';" in pr)
     ok('layar Perangkat: hasil tanya mode & batal sidik jari memakai kalimat dari perangkat.js',
        "const k = kalimatModeKertas(r && r.mode);" in ujs and "tulisLog('Mode kertas: ' + k.teks, !k.baik);" in ujs
        and "catch (e) { const t = sidikJariTolak(e); tulisLog('Sidik jari: ' + t.kalimat, !t.batal); }" in ujs and 'bacaModeKertas' not in ujs)
@@ -627,14 +752,14 @@ def periksa_statis(perangkat_js):
     tangkap = jual[jual.index("lampu('lampuGagal');"):]; tangkap = tangkap[:tangkap.index('cetakDialog(st, nota, ket);')]
     ok('jual.js: struk yang hasilnya tidak dikabari printer → kalimat "lihat kertasnya", SEBELUM cabang "Printer … gagal" dan tanpa membuka dialog cetak',
        "if (PK.hasilTakDiketahui(e)) { kabariGagal(PK.KALIMAT_TAK_DIKABARI); return; }" in tangkap
-       and tangkap.index('PK.hasilTakDiketahui(e)') < tangkap.index("'Printer Bluetooth gagal ('"), tangkap[:300])
+       and tangkap.index('PK.hasilTakDiketahui(e)') < tangkap.index("PR.sebutPrinter(j) + ' gagal ('"), tangkap[:300])
     ok('jual.js: label yang hasilnya tidak dikabari printer tidak disebut "tidak tercetak"',
        "if (PK.hasilTakDiketahui(e)) return set({ kabar: PK.KALIMAT_TAK_DIKABARI + (dokumen.length ?" in jual
        and jual.index("if (PK.hasilTakDiketahui(e)) return set({ kabar: PK.KALIMAT_TAK_DIKABARI + (dokumen.length ?") < jual.index("set({ kabar: 'Label tidak tercetak: '"))
     antar = baca('baru', 'js', 'layar', 'antar-panel.js'); tangkap = antar[antar.index('.catch((e) => {\n          // uji owner 20 Nov 2026'):]; tangkap = tangkap[:tangkap.index('dialog();')]
     ok('antar-panel.js: lembar surat jalan yang hasilnya tidak dikabari printer → "lihat kertasnya", SEBELUM cabang "gagal" dan tanpa membuka dialog cetak',
        "import { hasilTakDiketahui, masihMencetak, printerSibuk, KALIMAT_MASIH_MENCETAK, asliAda } from '../inti/perangkat.js';" in antar and "if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-' + (n + 1) + ' dari ' + lembar.length" in tangkap
-       and tangkap.index('hasilTakDiketahui(e)') < tangkap.index("'Printer USB gagal'"), tangkap[:300])
+       and tangkap.index('hasilTakDiketahui(e)') < tangkap.index("PR.sebutPrinter(j) + ' gagal'"), tangkap[:300])
     ok('uji-cetak.js: baris cetak & label yang gagal memuat lama waktunya dan kabar asli aplikasi (pembeda ±1 detik dari ±40 detik)',
        "const pesanGagal = (e, mulaiPada) => pesan(e) + (e && e.asli ? ' · kabar aslinya: \"' + e.asli + '\"' : '') + (mulaiPada ? ' · ' + (Date.now() - mulaiPada) + ' ms' : '');" in ujs
        and "    tulisLog(pesanGagal(e, mulaiPada) + ukuran, true);\n" in ujs and "ukuran = ' · gaya ' + s.gaya + ' · ' + s.byte.length + ' byte';" in ujs
@@ -660,22 +785,41 @@ def periksa_statis(perangkat_js):
        and "if (sdk && hasilTakDiketahui(e)) tulisLog('Keadaan printer sebelum cetak itu: ' + sebelum + ' · sesudahnya: ' + await keadaanSingkat(lewatJalur(a.jalur)), true);" in ujs
        and "const keadaanSingkat = (lewat) => printerStatus(lewat).then((r) => '\"' + r.kalimat + '\"', (e) => 'tidak bisa ditanya (' + pesan(e) + ')');" in ujs)
     tj = jual[jual.index("lampu('lampuGagal');"):]; tj = tj[:tj.index('cetakDialog(st, nota, ket);')]
+    # paket jaringan (20 Nov 2026): jalur cetak lewat Wi-Fi/LAN
+    ok('printer.js: jalur "jaringan" ada di pilihan, hanya di aplikasi & hanya bila dipilih; bawaan tetap USB',
+       "['jaringan', 'Jaringan Wi-Fi / LAN" in pr and "if (asliAda() && a.jalur === 'jaringan') return 'jaringan';" in pr and "jalur: 'usb', btPotong: false, alamatPrinter: '' };" in pr)
+    ok('printer.js: alamat printer tersimpan disaring (hanya IPv4 pribadi) saat dibaca; isian layar Perangkat menang atas yang tersimpan',
+       "if (typeof d.alamatPrinter === 'string') a.alamatPrinter = alamatPrinterSah(d.alamatPrinter);" in pr
+       and "const opsi = j === 'jaringan' ? { alamat: timpa && typeof timpa.alamat === 'string' ? timpa.alamat : prAtur().alamatPrinter } : null;" in pr)
+    ok('printer.js: catatan struk & kabar menyebut jaringan dengan benar (bukan "printer USB")',
+       "j === 'jaringan' ? 'aplikasi tablet (jaringan Wi-Fi/LAN)'" in pr and "return j === 'sunmi-bt' || j === 'jaringan' ? 'printer ' : 'printer USB ';" in pr
+       and "export function sebutPrinter(j) { return j === 'sunmi-bt' ? 'Printer Bluetooth' : j === 'jaringan' ? 'Printer jaringan' : 'Printer USB'; }" in pr)
+    ok('printer.js: label stiker bercelah lewat jaringan ditolak berkalimat SEBELUM ada yang dikirim; label kertas bersambung lewat jalur cetak biasa',
+       cl.index("if (l.cara === 'tspl' && j === 'jaringan') {") < cl.index('await kirimCetak(l.byte, j, null,') and "e.code = 'SALAH_MODE'; throw e; }" in cl)
+    ok('perangkat.js: permintaan jaringan hanya lewat CapacitorHttp, hanya ke http://<alamat sah> + jalan tetap; tanpa nomor seri di alamat',
+       perangkat_js.count("panggilAsli('CapacitorHttp', 'request'") == 1 and "{ url: 'http://' + alamat + jalan, method: 'POST'," in perangkat_js
+       and "const a = alamatPrinterSah(alamat); if (!a) throw galat(KALIMAT_ALAMAT, 'SALAH_ISI');" in perangkat_js and 'sn=' not in perangkat_js and "'/cgi-bin/print.cgi?copies=1'" in perangkat_js)
+    ok('layar Perangkat: kotak alamat printer hanya tampil untuk jalur jaringan, ikut disimpan, dan dipakai Cetak contoh & Periksa printer',
+       'id="ucAlamatBaris" hidden' in uhtml and 'id="ucAlamat"' in uhtml and "alamatPrinter: $('ucAlamat').value.trim()," in ujs and "$('ucAlamat').value = a.alamatPrinter || ''; tampilJalur();" in ujs
+       and "function tampilJalur() { $('ucAlamatBaris').hidden = $('ucJalur').value !== 'jaringan'; }" in ujs and "$('ucJalur').addEventListener('change', tampilJalur);" in ujs
+       and "const r = await printerJaringanStatus($('ucAlamat').value);" in ujs
+       and ujs.index("if ($('ucJalur').value === 'jaringan') {") < ujs.index("const r = await printerStatus(lewatKini());"))
     cd = jual[jual.index('  function cetakDialog(st, nota, ket) {'):]; cd = cd[:cd.index('  function catatStruk(')]
     ok('jual.js: di aplikasi tablet cetakDialog tidak membuka dialog dan TIDAK mencatat baris struk keluar (dulu: baris untuk struk yang tidak pernah keluar)',
        cd.index("if (PK.asliAda()) { kabariGagal('Struk TIDAK tercetak:") < cd.index('window.print()') < cd.index("catatStruk(nota, 'cetak',")
        and cd.count("catatStruk(") == 1 and "lalu tekan Cetak lagi'); return; }\n    const el = document.getElementById('cetakStruk');" in cd)
     ok('jual.js: printer gagal di aplikasi tablet → kabar "struk TIDAK tercetak", sebab printernya tetap terbaca, tanpa dialog',
-       tj.index("if (PK.asliAda()) { kabariGagal((j === 'sunmi-bt' ? 'Printer Bluetooth gagal (' : 'Printer USB gagal (') + (e && e.message ? e.message : e) + ') — ' + TANPA_DIALOG); return; }")
+       tj.index("if (PK.asliAda()) { kabariGagal(PR.sebutPrinter(j) + ' gagal (' + (e && e.message ? e.message : e) + ') — ' + TANPA_DIALOG); return; }")
        < tj.index("') — dialog cetak dibuka sebagai gantinya'") and "const TANPA_DIALOG = 'struk TIDAK tercetak. Bereskan printernya, lalu tekan Cetak lagi';" in jual)
     ok('jual.js: struk terpotong (kirim per potong berhenti di tengah) → kalimatnya apa adanya, sebelum cabang "Printer … gagal", tanpa dialog',
-       tj.index("if (PK.strukTerpotong(e)) { kabariGagal(e.message); return; }") < tj.index("if (PK.asliAda()) { kabariGagal((j === 'sunmi-bt'"))
+       tj.index("if (PK.strukTerpotong(e)) { kabariGagal(e.message); return; }") < tj.index("if (PK.asliAda()) { kabariGagal(PR.sebutPrinter(j)"))
     ok('jual.js: kabar gagal cetak dibuang begitu struk berikutnya sungguh keluar (tidak hidup lebih lama dari gagalnya)',
        "const kabariGagal = (teks) => { kabarGagal = teks; set({ kabar: teks, kabarAwas: true }); };" in jual
        and "        usaiCetak(k);\n        if (kabarGagal && S().kabar === kabarGagal) set({ kabar: '', kabarAwas: false });\n        kabarGagal = '';\n        catatStruk(nota, 'cetak'," in jual)
     ok('antar-panel.js: di aplikasi tablet surat jalan yang gagal tidak membuka dialog; kabarnya menyebut jalur yang benar dan sebabnya',
        antar.index("const dialog = () => { if (asliAda()) return set({ kabar: 'Surat jalan TIDAK tercetak:") < antar.index('try { window.print(); }')
        and antar.index("if (asliAda()) return set({ kabar: gagal + 'surat jalan TIDAK tercetak'") < antar.index("set({ kabar: gagal + 'dialog cetak dibuka sebagai gantinya', kabarAwas: true }); dialog();")
-       and "const gagal = (j === 'sunmi-bt' ? 'Printer Bluetooth gagal' : 'Printer USB gagal') + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — ';" in antar)
+       and "const gagal = PR.sebutPrinter(j) + ' gagal' + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — ';" in antar)
     ok('perintah label: kabar "tanpa kabar" tidak menyebut mode printer (uji owner: dikirim juga saat printer di mode tanpa alas)',
        'di mode label tidak mengabari' not in ujs and 'di mode label tidak mengabari' not in jual and 'printer tidak mengabari hasil perintah label' in ujs and 'printer tidak mengabari hasil perintah label' in jual)
     alur = baca('.github', 'workflows', 'apk.yml')
@@ -717,12 +861,40 @@ MUTASI = [
     ('satu cetakan: kunci macet selamanya bila aplikasi tidak pernah menjawab', 'js', "export const printerSibuk = () => !!kunci && Date.now() - kunci.sejak < BATAS_SIBUK_MS;", "export const printerSibuk = () => !!kunci;"),
     ('satu cetakan: kunci lepas sebelum batas terpanjang aplikasi', 'js', "export const BATAS_SIBUK_MS = 90000;", "export const BATAS_SIBUK_MS = 30000;"),
     ('satu cetakan: tolakan tanpa kode SEDANG_CETAK (layar membuka dialog / lewat kabel)', 'js', "const tolakBilaSibuk = () => { if (printerSibuk()) throw galat(KALIMAT_MASIH_MENCETAK, 'SEDANG_CETAK'); };", "const tolakBilaSibuk = () => { if (printerSibuk()) throw galat(KALIMAT_MASIH_MENCETAK, 'BELUM_KIRIM'); };"),
-    ('satu cetakan: cetak struk tidak lewat kunci', 'js', "export const cetakAsli = (data, jalur, potongan) => satuCetakan(() => cetakAsliDalam(data, jalur, potongan));", "export const cetakAsli = (data, jalur, potongan) => cetakAsliDalam(data, jalur, potongan);"),
+    ('satu cetakan: cetak struk tidak lewat kunci', 'js', "export const cetakAsli = (data, jalur, potongan, opsi) => satuCetakan(() => cetakAsliDalam(data, jalur, potongan, opsi));", "export const cetakAsli = (data, jalur, potongan, opsi) => cetakAsliDalam(data, jalur, potongan, opsi);"),
     ('satu cetakan: perintah label tidak lewat kunci', 'js', "satuCetakan(() => panggilAsli('PrinterSunmi', 'tspl',", "(() => panggilAsli('PrinterSunmi', 'tspl',"),
     ('satu cetakan: mode ditanya di belakang cetakan yang belum dikabari', 'js', "  tolakBilaSibuk();\n  let mode = '';", "  let mode = '';"),
     ('satu cetakan: mode kertas dipindah di tengah cetakan', 'js', "  if (printerSibuk()) return Promise.reject(galat(KALIMAT_MASIH_MENCETAK, 'SEDANG_CETAK'));\n", ""),
     ('satu cetakan: "masih mencetak" dikenali sebagai galat printer', 'js', "export function masihMencetak(e) { return !!(e && e.code === 'SEDANG_CETAK'); }", "export function masihMencetak(e) { return galatPrinter(e); }"),
     ('kalimat "masih mencetak" menyebut gagal', 'js', "'Cetakan sebelumnya belum dikabari printer — tunggu kabarnya dulu, jangan ketuk Cetak lagi (paling lama ±1,5 menit)'", "'Cetak gagal — tunggu kabarnya dulu, jangan ketuk Cetak lagi'"),
+    ('jaringan: alamat di luar jaringan toko diterima', 'js', "  return pribadi ? b.join('.') : '';", "  return b.join('.');"),
+    ('jaringan: tempelan alamat web tidak dirapikan', 'js', ".replace(/^https?:\\/\\//i, '').replace(/[\\/#?].*$/, '');", ";"),
+    ('jaringan: heksa terbalik per byte', 'js', "keluar.push(h[v >> 4] + h[v & 15]);", "keluar.push(h[v & 15] + h[v >> 4]);"),
+    ('jaringan: jawaban bukan-printer dianggap printer', 'js', "return { dikenali: ya('no_paper') !== null && ya('platen_opened') !== null,", "return { dikenali: true,"),
+    ('jaringan: kertas habis dibaca sebagai tutup terbuka', 'js', "if (k.kertasHabis) return { kode: 'PRINTER_OUT_PAPER', kalimat: 'kertas habis' };", "if (k.kertasHabis) return { kode: 'PRINTER_COVER', kalimat: 'tutup printer terbuka' };"),
+    ('jaringan: kertas belum diambil dianggap halangan', 'js', "  if (k.macet) return { kode: 'PRINTER_JAM_PAPER', kalimat: 'kertas macet' };", "  if (k.macet || k.belumDiambil) return { kode: 'PRINTER_JAM_PAPER', kalimat: 'kertas macet' };"),
+    ('jaringan: alamat tidak sah tetap dihubungi', 'js', "const a = alamatPrinterSah(alamat); if (!a) throw galat(KALIMAT_ALAMAT, 'SALAH_ISI');", "const a = String(alamat || '').trim();"),
+    ('jaringan: aplikasi lama tidak diberi tahu "pasang APK terbaru"', 'js', "if (kode === 'UnknownServiceException' || p.indexOf('cleartext') >= 0) return 'apk';", ""),
+    ('jaringan: halangan pasti tetap dikirimi data', 'js', "  if (s.menghalangi) throw galat('Printer belum bisa mencetak: ' + s.kalimat, halanganJaringan(s.keadaan).kode);\n", ""),
+    ('jaringan: kiriman tanpa copies', 'js', "'/cgi-bin/print.cgi?copies=1'", "'/cgi-bin/print.cgi'"),
+    ('jaringan: data dikirim masih base64', 'js', "'/cgi-bin/print.cgi?copies=1', b64KeHeksa(data64),", "'/cgi-bin/print.cgi?copies=1', data64,"),
+    ('jaringan: sambungan putus saat kirim jatuh ke kabel (struk dobel)', 'js', "throw galat('Kiriman ke printer terputus di tengah jalan (' + pesanGalat(e) + ')', 'PRINTER_DIAM');", "throw galat('Kiriman ke printer terputus di tengah jalan (' + pesanGalat(e) + ')', 'BELUM_KIRIM');"),
+    ('jaringan: tanpa nomor pekerjaan dianggap berhasil dikirim ulang lewat kabel', 'js', "tapi tidak memberi nomor pekerjaan (jawaban ' + (r ? r.status : '?') + ')', 'PRINTER_DIAM');", "tapi tidak memberi nomor pekerjaan (jawaban ' + (r ? r.status : '?') + ')', 'BELUM_KIRIM');"),
+    ('jaringan: "printed" tidak pernah dikenali', 'js', "if (k.tugasStatus === 'printed') return { nama: s.alamat, tugas, peringatan: '' };", "if (k.tugasStatus === 'selesai') return { nama: s.alamat, tugas, peringatan: '' };"),
+    ('jaringan: "not printed" sudah dianggap tercetak', 'js', "if (k.tugasStatus === 'printed') return { nama: s.alamat, tugas, peringatan: '' };", "if (k.tugasStatus) return { nama: s.alamat, tugas, peringatan: '' };"),
+    ('jaringan: halangan di tengah cetak diabaikan', 'js', "    if (h && !k.mencetak) throw galat('Cetak terhenti: ' + h.kalimat, h.kode);\n", ""),
+    ('jaringan: satu tanya yang gagal menghentikan cetakan', 'js', "catch (e) { /* satu tanya yang gagal bukan kabar apa-apa — tanya lagi */ }", "catch (e) { throw e; }"),
+    ('jaringan: batas bertanya tidak dipatuhi (tidak pernah menyerah)', 'js', "for (let i = 0; i < JARINGAN.tanyaMaks && Date.now() < habisPada; i++) {", "for (let i = 0; i < JARINGAN.tanyaMaks * 3 && Date.now() < habisPada; i++) {"),
+    ('jaringan: lama menunggu tidak dibatasi (kunci cetak bisa kedaluwarsa duluan)', 'js', "for (let i = 0; i < JARINGAN.tanyaMaks && Date.now() < habisPada; i++) {", "for (let i = 0; i < JARINGAN.tanyaMaks; i++) {"),
+    ('jaringan: printer diam berakhir sebagai "belum kirim"', 'js', "tapi belum melaporkannya tercetak', 'PRINTER_DIAM');", "tapi belum melaporkannya tercetak', 'BELUM_KIRIM');"),
+    ('jaringan: tidak terjangkau tidak pernah mencoba kabel', 'js', "      if (galatPrinter(e) || (e && e.code === 'SALAH_ISI')) throw e;\n      sebab = pesanGalat(e);", "      throw e;"),
+    ('jaringan: alamat kosong jatuh ke kabel', 'js', "      if (galatPrinter(e) || (e && e.code === 'SALAH_ISI')) throw e;\n      sebab = pesanGalat(e);", "      if (galatPrinter(e)) throw e;\n      sebab = pesanGalat(e);"),
+    ('jaringan: hasil tak diketahui sampai ke layar dengan kalimat mentah', 'js', "      if (hasilTakDiketahui(e)) { const gj = galat(KALIMAT_TAK_DIKABARI, e.code); gj.asli = pesanGalat(e); throw gj; }\n", ""),
+    ('jaringan: jalur jaringan diam-diam lewat kabel', 'js', "  if (jalur === 'jaringan') {", "  if (jalur === 'jaringan-x') {"),
+    ('jaringan: nomor pekerjaan tidak dibawa pulang', 'js', "cadanganDari: '', potong: 1, tugas: r.tugas };", "cadanganDari: '', potong: 1 };"),
+    ('pasang.py: izin HTTP polos tidak dipasang', 'py', "        m = m.replace('<application', '<application\\n        android:usesCleartextTraffic=\"true\"', 1)", "        pass"),
+    ('pasang.py: networkSecurityConfig tidak dijaga', 'py', "    if 'android:networkSecurityConfig' in m: raise Tolak(", "    if False: raise Tolak("),
+    ('pasang.py: usesCleartextTraffic="false" dibiarkan', 'py', "    m = m.replace('android:usesCleartextTraffic=\"false\"', 'android:usesCleartextTraffic=\"true\"')", "    pass"),
     ('kalimat "tidak mengabari" menyebut gagal', 'js', "'Printer tidak mengabari hasil cetaknya — lihat kertasnya dulu; kalau tidak keluar, cetak lagi'", "'Cetak gagal — lihat kertasnya dulu; kalau tidak keluar, cetak lagi'"),
     ('mode tanpa alas tidak dikenali', 'js', "return t.indexOf('linerless') >= 0 ? 'tanpa-alas' : t.indexOf('label') >= 0", "return t.indexOf('label') >= 0"),
     ('jawaban mode kosong disebut "tidak dikenali"', 'js', "  if (!asli) return { teks: 'Printer belum menjawab modenya", "  if (false) return { teks: 'Printer belum menjawab modenya"),
@@ -762,7 +934,7 @@ MUTASI = [
     ('per potong: struk terpotong disebut "tidak mengabari" saja', 'js', "+ ' — sobek kertasnya, lalu cetak lagi', 'PRINTER_TERPOTONG');", "+ ' — sobek kertasnya, lalu cetak lagi', 'PRINTER_UNKNOWN');"),
     ('per potong: jumlah potong yang sudah tercetak salah', 'js', "throw galatTerpotong(e, i, bagian.length);", "throw galatTerpotong(e, i + 1, bagian.length);"),
     ('per potong: satu potong pun dianggap berpotong', 'js', "Array.isArray(potongan) && potongan.length > 1 ? potongan : [data];", "Array.isArray(potongan) && potongan.length > 0 ? potongan : [data];"),
-    ('per potong: potongan tidak diteruskan ke dalam kunci', 'js', "satuCetakan(() => cetakAsliDalam(data, jalur, potongan));", "satuCetakan(() => cetakAsliDalam(data, jalur));"),
+    ('per potong: potongan tidak diteruskan ke dalam kunci', 'js', "satuCetakan(() => cetakAsliDalam(data, jalur, potongan, opsi));", "satuCetakan(() => cetakAsliDalam(data, jalur, undefined, opsi));"),
     ('scanner tidak dikenali (jeda mesin 0)', 'js', "export const KETIK_JEDA_MESIN = 35;", "export const KETIK_JEDA_MESIN = 0;"),
     ('jari dianggap mesin (jeda mesin 200)', 'js', "export const KETIK_JEDA_MESIN = 35;", "export const KETIK_JEDA_MESIN = 200;"),
     ('dua ketukan cepat sudah dianggap mesin', 'js', "export const KETIK_MESIN_MIN = 3;", "export const KETIK_MESIN_MIN = 2;"),
