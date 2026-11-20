@@ -82,14 +82,30 @@ export const lewatJalur = (jalur) => (jalur === 'sunmi-bt' ? 'bt' : 'usb');
  *  Bluetooth mati, plugin tak ada di APK lama) → jatuh ke CetakUsb, alasannya di `cadanganDari`. Kalau printer menjawab ada halangan
  *  → galatnya dilempar apa adanya: mengirim ulang lewat jalur lain bisa mencetak dobel atau percuma. Kalau printer diam sesudah data
  *  dikirim (hasilTakDiketahui) → dilempar berkalimat KALIMAT_TAK_DIKABARI, juga TANPA kirim ulang: yang memutuskan orangnya, sesudah melihat kertas.
- *  Satu cetakan pada satu waktu: dipanggil saat cetakan lain belum dikabari → menolak berkode SEDANG_CETAK tanpa menyentuh aplikasi. */
-export const cetakAsli = (data, jalur) => satuCetakan(() => cetakAsliDalam(data, jalur));
-async function cetakAsliDalam(data, jalur) {
+ *  Satu cetakan pada satu waktu: dipanggil saat cetakan lain belum dikabari → menolak berkode SEDANG_CETAK tanpa menyentuh aplikasi.
+ *  `potongan` (larik base64, bila disambung = `data`): kiriman dikirim potong demi potong lewat SDK, tiap potong ditunggu kabarnya; satu kunci
+ *  untuk semuanya. Potong PERTAMA gagal = belum ada yang di kertas → perlakuan biasa (boleh jatuh ke kabel dengan `data` utuh). Potong
+ *  berikutnya gagal = sebagian sudah di kertas → PRINTER_TERPOTONG, tanpa kirim ulang lewat jalur mana pun. Hasil memuat `potong` (jumlahnya). */
+export const cetakAsli = (data, jalur, potongan) => satuCetakan(() => cetakAsliDalam(data, jalur, potongan));
+/** Struk yang dikirim per potong berhenti di tengah: sebagian SUDAH di kertas. Kalimatnya sudah lengkap — layar menampilkannya apa adanya. */
+export function strukTerpotong(e) { return !!(e && e.code === 'PRINTER_TERPOTONG'); }
+function galatTerpotong(e, sudah, semua) {
+  const g = galat('Struk TERPOTONG di kertas: ' + sudah + ' dari ' + semua + ' potong tercetak, lalu ' + (hasilTakDiketahui(e) ? 'printer tidak mengabari potong berikutnya' : pesanGalat(e))
+    + ' — sobek kertasnya, lalu cetak lagi', 'PRINTER_TERPOTONG');
+  g.asli = pesanGalat(e); g.potongSudah = sudah; g.potongSemua = semua; return g;
+}
+async function cetakAsliDalam(data, jalur, potongan) {
   if (jalur === 'sunmi' || jalur === 'sunmi-bt') {
     let sebab = '';
     try {
-      const r = await panggilAsli('PrinterSunmi', 'cetak', { data, lewat: lewatJalur(jalur) });
-      return { jalur, nama: (r && r.nama) || '', peringatan: (r && r.peringatan) || '', cadanganDari: '' };
+      const bagian = Array.isArray(potongan) && potongan.length > 1 ? potongan : [data];
+      let r = null; let peringatan = '';
+      for (let i = 0; i < bagian.length; i++) {
+        try { r = await panggilAsli('PrinterSunmi', 'cetak', { data: bagian[i], lewat: lewatJalur(jalur) }); }
+        catch (e) { if (i === 0) throw e; throw galatTerpotong(e, i, bagian.length); }
+        peringatan = (r && r.peringatan) || peringatan;
+      }
+      return { jalur, nama: (r && r.nama) || '', peringatan, cadanganDari: '', potong: bagian.length };
     } catch (e) {
       // hasil tidak diketahui: kalimatnya menyebut langkah berikutnya (lihat kertas), kodenya tetap, kabar asli aplikasi ikut di `asli`
       if (hasilTakDiketahui(e)) { const g = galat(KALIMAT_TAK_DIKABARI, e.code); g.asli = pesanGalat(e); throw g; }

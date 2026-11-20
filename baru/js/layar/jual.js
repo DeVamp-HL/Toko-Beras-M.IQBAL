@@ -365,6 +365,9 @@ export function pasangLayarJual(akar, opsi) {
   // Selama `mencetak`, tombolnya bertulisan "Mencetak…" dan ketukan berikutnya hanya dijawab kabar; tidak ada yang dikirim ke printer.
   // `mencetak` = saat cetakan yang sedang ditunggu dimulai (0 = tidak ada); sesudah PK.BATAS_SIBUK_MS dianggap selesai supaya tombol tidak macet.
   let mencetak = 0;
+  // Kabar gagal cetak tidak boleh hidup lebih lama dari gagalnya: begitu struk berikutnya SUNGGUH keluar, kabar gagal yang masih terpampang dibuang.
+  let kabarGagal = '';
+  const kabariGagal = (teks) => { kabarGagal = teks; set({ kabar: teks, kabarAwas: true }); };
   const sedangCetak = () => mencetak > 0 && Date.now() - mencetak < PK.BATAS_SIBUK_MS;
   // kabar "tunggu kabarnya dulu" tidak boleh hidup lebih lama dari cetakan yang ditunggunya; jawaban cetakan lama tidak menyentuh yang lebih baru
   const usaiCetak = (k) => { if (mencetak !== k) return; mencetak = 0; set(S().kabar === PK.KALIMAT_MASIH_MENCETAK ? { kabar: '', kabarAwas: false } : {}); };
@@ -379,6 +382,8 @@ export function pasangLayarJual(akar, opsi) {
       k = mencetak = Date.now(); set({});
       return PR.cetakGaris(st.garis, { logoToko: st.logo, qr }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
         usaiCetak(k);
+        if (kabarGagal && S().kabar === kabarGagal) set({ kabar: '', kabarAwas: false });
+        kabarGagal = '';
         catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + PR.namaPrinter(r.jalur) + PR.namaJalur(r.jalur) + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
         // paket S1: SDK SUNMI mengabari kertas hampir habis; jalur SUNMI yang jatuh ke USB langsung disebut supaya ketahuan (struknya tetap keluar)
         if (r.peringatan) { lampu('lampuKertas'); set({ kabar: r.peringatan + ' — struk ini tetap tercetak', kabarAwas: true }); }
@@ -390,13 +395,22 @@ export function pasangLayarJual(akar, opsi) {
         lampu('lampuGagal');
         // uji owner 20 Nov 2026 (Bluetooth): printer diam sesudah data dikirim = hasil TIDAK DIKETAHUI, bukan "gagal". Kertasnya dilihat dulu;
         // dialog cetak tidak dibuka sendiri (kalau struknya ternyata keluar, dialog itu hanya membingungkan) — tombol Cetak tetap ada untuk mengulang.
-        if (PK.hasilTakDiketahui(e)) { set({ kabar: PK.KALIMAT_TAK_DIKABARI, kabarAwas: true }); return; }
-        set({ kabar: (j === 'sunmi-bt' ? 'Printer Bluetooth gagal (' : 'Printer USB gagal (') + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true });
+        if (PK.hasilTakDiketahui(e)) { kabariGagal(PK.KALIMAT_TAK_DIKABARI); return; }
+        // kirim per potong berhenti di tengah: sebagian sudah di kertas — kalimatnya sudah menyebut berapa potong dan apa yang dilakukan
+        if (PK.strukTerpotong(e)) { kabariGagal(e.message); return; }
+        // di aplikasi tablet tidak ada dialog cetak yang bisa dipakai (lihat cetakDialog): katakan terus terang struknya tidak keluar, jangan catat apa-apa
+        if (PK.asliAda()) { kabariGagal((j === 'sunmi-bt' ? 'Printer Bluetooth gagal (' : 'Printer USB gagal (') + (e && e.message ? e.message : e) + ') — ' + TANPA_DIALOG); return; }
+        kabariGagal((j === 'sunmi-bt' ? 'Printer Bluetooth gagal (' : 'Printer USB gagal (') + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya');
         cetakDialog(st, nota, ket);
       });
     }).catch(() => { usaiCetak(k); cetakDialog(st, nota, ket); });
   }
+  // Uji owner 20 Nov 2026 di tablet: "dialog cetak dibuka sebagai gantinya" hanya BERKELEBAT lalu hilang — aplikasi tablet tidak punya
+  // dialog cetak yang bisa dipakai — tetapi tiap kali itu tercatat satu baris "dialog cetak perangkat ini" di Struk keluar, untuk struk
+  // yang tidak pernah keluar. Di aplikasi tablet: tidak ada window.print(), tidak ada baris; kabarnya menyebut struk TIDAK tercetak.
+  const TANPA_DIALOG = 'struk TIDAK tercetak. Bereskan printernya, lalu tekan Cetak lagi';
   function cetakDialog(st, nota, ket) {
+    if (PK.asliAda()) { kabariGagal('Struk TIDAK tercetak: di tablet ini struk hanya keluar lewat printer tablet — periksa di "Printer tablet ini", lalu tekan Cetak lagi'); return; }
     const el = document.getElementById('cetakStruk'); if (!el) return;
     el.textContent = st.teks; el.className = 'cetak-struk k' + st.kertasMm;
     try { window.print(); } catch (e) { set({ kabar: 'Dialog cetak tidak bisa dibuka: ' + (e && e.message ? e.message : e), kabarAwas: true }); return; }

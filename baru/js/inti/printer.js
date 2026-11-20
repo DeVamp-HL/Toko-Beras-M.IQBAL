@@ -6,7 +6,7 @@
 // kalau SDK-nya gagal sebelum ada byte terkirim, cetak jatuh ke CetakUsb (inti/perangkat.js › cetakAsli).
 // Paket S4 (19 Nov 2026): jalur ketiga 'sunmi-bt' (SDK SUNMI lewat Bluetooth) + LABEL barang — di kertas bersambung (ESC/POS) atau stiker bercelah
 // (TSPL, printer di mode label); ukuran label & caranya juga setelan perangkat ini.
-import { epSusun, epSusunGambar, epBase64, epSusunLabel, epTsplLabel } from './escpos.js';
+import { epSusun, epSusunGambar, epBase64, epSusunLabel, epTsplLabel, epPotong } from './escpos.js';
 import { gambarStruk, siapkanHuruf, teksKeLogo } from './struk-kanvas.js';
 import { usbAda, usbDiingat, usbKirim } from './usb-cetak.js';
 import { asliAda, panggilAsli, cetakAsli, kirimTspl, lewatJalur, pastikanModeLabel } from './perangkat.js';
@@ -17,11 +17,14 @@ export const PR_GAYA = [['gambar', 'gambar (huruf toko, logo, total berpita)'], 
  *  · 'sunmi-bt' = SDK yang sama lewat Bluetooth (printer dipasangkan dulu di Setelan tablet). */
 export const PR_JALUR = [['usb', 'USB langsung (bawaan, terbukti)'], ['sunmi', 'SDK SUNMI lewat kabel USB (periksa kertas & tutup dulu, hasil cetak dikabari)'],
   ['sunmi-bt', 'SDK SUNMI lewat Bluetooth (tanpa kabel; struk bergambar lebih lambat)']];
+/** Bluetooth + struk bergambar (uji owner 20 Nov 2026): kiriman ±84 ribu byte sering HILANG seluruhnya — printer menjawab tanya keadaan,
+ *  menerima data, lalu diam dan tidak mencetak apa pun; kiriman kecil (gaya teks, label) selalu sampai. Sebab pastinya belum diketahui.
+ *  `btPotong` = kirim per pita gambar, tiap potong ditunggu kabarnya dulu. PERCOBAAN: bawaan mati sampai terbukti di printer toko. */
 /** Cara mencetak label barang: 'struk' = kertas bersambung (mode struk / stiker tanpa alas) · 'tspl' = stiker bercelah (printer di mode label). */
 export const PR_LABEL_CARA = [['struk', 'kertas bersambung — mode struk atau stiker tanpa alas'], ['tspl', 'stiker bercelah — printer di mode label']];
 export const PR_LABEL_BATAS = { labelLebar: [20, 80], labelTinggi: [15, 200], labelCelah: [0, 10] };   // mm
 export const PR_BAWAAN = { gaya: 'gambar', kertas: 80, potong: 'sebagian', umpan: 4, qr: false, logo: '', aktif: true,
-  labelCara: 'struk', labelLebar: 50, labelTinggi: 30, labelCelah: 2, labelPotong: true, jalur: 'usb' };
+  labelCara: 'struk', labelLebar: 50, labelTinggi: 30, labelCelah: 2, labelPotong: true, jalur: 'usb', btPotong: false };
 
 /** Setelan printer perangkat ini (bawaan ditimpa yang tersimpan). */
 export function prAtur() {
@@ -39,6 +42,7 @@ export function prAtur() {
     if (PR_LABEL_CARA.some((x) => x[0] === d.labelCara)) a.labelCara = d.labelCara;
     Object.keys(PR_LABEL_BATAS).forEach((k) => { const b = PR_LABEL_BATAS[k]; if (Number.isInteger(d[k]) && d[k] >= b[0] && d[k] <= b[1]) a[k] = d[k]; });
     if (typeof d.labelPotong === 'boolean') a.labelPotong = d.labelPotong;
+    if (typeof d.btPotong === 'boolean') a.btPotong = d.btPotong;
   } catch (e) { /* penyimpanan tidak bisa dibaca → bawaan */ }
   return a;
 }
@@ -71,16 +75,19 @@ export async function susunCetak(garis, timpa, ekstra) {
   await siapkanHuruf();
   // owner 17 Nov (butir 3): logo perangkat sendiri menang; tanpa itu logo toko (F mahkota padi, digambar kode) bila setelan struk menyertakannya (ekstra.logoToko)
   const g = gambarStruk(garis, { kertas: a.kertas, logo: teksKeLogo(a.logo), logoToko: !!o.logoToko });
-  return { byte: epSusunGambar(g, o).byte, gaya: 'gambar', kertas: a.kertas, gambar: g };
+  const sg = epSusunGambar(g, o);
+  return { byte: sg.byte, gaya: 'gambar', kertas: a.kertas, gambar: g, batas: sg.batas };
 }
 
 /** Kirim byte lewat jalur yang ada. Melempar galat berisi sebabnya (pemanggil memutuskan jatuh ke dialog cetak).
  *  Hasil: { jalur (yang SUNGGUH dipakai), byte, perangkat, peringatan ('' = tidak ada), cadanganDari ('' = bukan cadangan) }. */
-export async function kirimCetak(byte, jalur) {
+export async function kirimCetak(byte, jalur, batas) {
   const j = jalur || await jalurCetak();
   if (j === 'aplikasi' || j === 'sunmi' || j === 'sunmi-bt') {
-    const r = await cetakAsli(epBase64(byte), j);
-    return { jalur: r.jalur, byte: byte.length, perangkat: r.nama, peringatan: r.peringatan, cadanganDari: r.cadanganDari };
+    // `batas` (dari susunCetak gaya gambar) hanya dipakai jalur Bluetooth: kiriman dipecah per pita gambar, tiap potong ditunggu kabarnya
+    const bagian = j === 'sunmi-bt' && Array.isArray(batas) && batas.length ? epPotong(byte, batas).map((b) => epBase64(b)) : null;
+    const r = await cetakAsli(epBase64(byte), j, bagian);
+    return { jalur: r.jalur, byte: byte.length, perangkat: r.nama, peringatan: r.peringatan, cadanganDari: r.cadanganDari, potong: r.potong || 1 };
   }
   if (j === 'peramban') { const d = (await usbDiingat())[0]; const r = await usbKirim(d, byte); return { jalur: j, byte: r.byte, perangkat: d.productName || '', peringatan: '', cadanganDari: '' }; }
   throw new Error('Tidak ada printer USB di perangkat ini');
@@ -90,7 +97,8 @@ export async function kirimCetak(byte, jalur) {
 export async function cetakGaris(garis, ekstra) {
   const j = await jalurCetak(); if (j === 'dialog') throw new Error('Tidak ada printer USB di perangkat ini');
   const s = await susunCetak(garis, null, Object.assign({ qr: '' }, ekstra || {}));
-  const r = await kirimCetak(s.byte, j);
+  // Bluetooth + struk bergambar: dikirim per potong bila setelan perangkat ini memintanya (layar Perangkat › "kirim per potong")
+  const r = await kirimCetak(s.byte, j, j === 'sunmi-bt' && prAtur().btPotong ? s.batas : null);
   return { jalur: r.jalur, gaya: s.gaya, kertas: s.kertas, byte: r.byte, perangkat: r.perangkat, peringatan: r.peringatan || '', cadanganDari: r.cadanganDari || '' };
 }
 

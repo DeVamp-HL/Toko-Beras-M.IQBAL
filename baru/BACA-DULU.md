@@ -3089,3 +3089,24 @@ sendiri masih melepas sambungan milik perintah lain bila dua perintah datang ber
 diam tetap ±43 detik (lamanya dari pustaka). **Belum terbukti di perangkat:** susulan keempat ini; apakah struk yang "tidak dikabari" keluar
 belakangan; di aplikasi tablet "dialog cetak dibuka sebagai gantinya" sungguh membuka sesuatu atau tidak (aplikasinya tidak punya pencetak
 sistem — kalau tidak, baris "dialog cetak perangkat ini" di Struk keluar tercatat untuk struk yang tidak pernah keluar).
+
+**Jawaban owner sesudah uji keempat (20 Nov 2026 malam) dan lanjutannya di PR yang sama:** (1) struk yang "tidak dikabari" **tidak keluar sama
+sekali**, juga tidak belakangan — kirimannya yang hilang, bukan cuma jawaban printernya; (2) cetak contoh **gaya teks** lewat Bluetooth keluar dan
+lebih cepat (berapa kali dicoba tidak disebut); (3) "dialog cetak dibuka sebagai gantinya" di tablet **hanya berkelebat lalu hilang**.
+*Dari (3):* di aplikasi tablet tidak ada dialog cetak yang bisa dipakai, tetapi tiap kali itu satu baris "dialog cetak perangkat ini" tercatat di
+Struk keluar untuk struk yang tidak pernah keluar (20 Nov: enam baris, 18.18–18.23). Sekarang di aplikasi tablet (`asliAda()`): Jual dan surat
+jalan tidak memanggil `window.print()` dan tidak mencatat baris; kabarnya "… struk TIDAK tercetak. Bereskan printernya, lalu tekan Cetak lagi"
+dengan sebab printernya tetap terbaca. Di peramban (HP, Mac) dialog cetak tetap seperti dulu. Enam baris 20 Nov itu TIDAK disentuh. Pintu
+dialog lain (Laporan › cetak dokumen, Uang › cetak) belum diperiksa di tablet.
+*Dari (1) dan (2):* yang hilang selalu kiriman besar (struk bergambar ±84 ribu byte = 5 pita `GS v 0`; pita pertama pun tidak tercetak);
+pustaka SUNMI menulis 1.024 byte beruntun tanpa jeda dan tidak punya pintu kirim berjeda. **Sebab pastinya tetap belum diketahui.**
+*Percobaan (halaman saja, bawaan MATI):* layar Perangkat › "Bluetooth: kirim struk bergambar per potong" (`btPotong`). `epSusunGambar`
+mengembalikan `batas` (ujung tiap pita kecuali yang terakhir), `epPotong` memecah kiriman di situ, `kirimCetak(byte, jalur, batas)` memotong
+HANYA di jalur Bluetooth, dan `cetakAsli(data, jalur, potongan)` mengirim potong demi potong lewat `PrinterSunmi.cetak` — tiap potong ditanya
+keadaannya, dikirim, dan ditunggu kabarnya — di bawah SATU kunci `satuCetakan`. Potong pertama gagal = belum ada yang di kertas → perlakuan
+biasa (boleh jatuh ke kabel dengan kiriman utuh). Potong berikutnya gagal = sebagian sudah di kertas → `PRINTER_TERPOTONG` ("Struk TERPOTONG
+di kertas: N dari M potong tercetak … sobek kertasnya, lalu cetak lagi"), tanpa kirim ulang lewat jalur mana pun. Harganya: ±1 detik per
+potong (struk contoh 5 potong ≈ 6 detik, dari 2,3 detik). **Belum terbukti di printer toko:** apakah per potong sungguh menghilangkan
+"printer diam", apakah sambungan antar potong terlihat di kertas, dan apakah printer mau melanjutkan potong berikutnya selagi kertas potong
+sebelumnya masih menjulur. Kalau terbukti, langkah berikutnya memindahkan kirim per potong ke dalam aplikasi (APK baru) supaya tanya-keadaan
+per potong tidak perlu dan waktunya turun.

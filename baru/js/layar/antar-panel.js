@@ -7,7 +7,7 @@ import { RP, tanggalPendek, hariIniIso } from '../inti/format.js';
 import * as AJ from './antar-logika.js';
 import * as ST from './struk-logika.js';
 import * as PR from '../inti/printer.js';
-import { hasilTakDiketahui, masihMencetak, printerSibuk, KALIMAT_MASIH_MENCETAK } from '../inti/perangkat.js';
+import { hasilTakDiketahui, masihMencetak, printerSibuk, KALIMAT_MASIH_MENCETAK, asliAda } from '../inti/perangkat.js';
 import { fbnKecilkan, fbnSrc, fbnKB } from './foto-bon-logika.js';
 import { tombolAkun, bukanOwner } from './akses-layar.js';
 import { tulisDokumen, kabarKiriman, ambilPenjualanSemua } from '../data/toko.js';
@@ -67,7 +67,9 @@ export function buatPanelAntar(ctx) {
   // ---------- cetak & WhatsApp surat jalan ----------
   function cetakSJ(sj) {
     const atur = ST.stAtur(); const lembar = AJ.ajLembarCetak(sj, atur.kop); const kertas = Number(atur.kertas) === 58 ? 58 : 80;
-    const dialog = () => { const el = document.getElementById('cetakStruk'); if (!el) return set({ kabar: 'Dialog cetak tidak tersedia di layar ini', kabarAwas: true });
+    // di aplikasi tablet dialog cetak hanya berkelebat lalu hilang (uji owner 20 Nov 2026): katakan terus terang surat jalannya tidak keluar
+    const dialog = () => { if (asliAda()) return set({ kabar: 'Surat jalan TIDAK tercetak: di tablet ini hanya keluar lewat printer tablet — periksa di Jual › Struk › "Printer tablet ini", lalu cetak lagi', kabarAwas: true });
+      const el = document.getElementById('cetakStruk'); if (!el) return set({ kabar: 'Dialog cetak tidak tersedia di layar ini', kabarAwas: true });
       el.textContent = lembar.map((g) => AJ.ajTeksCetak(g, kertas === 58 ? 32 : 48)).join('\n\n' + '- - potong di sini - -' + '\n\n'); el.className = 'cetak-struk k' + kertas;
       try { window.print(); } catch (e) { set({ kabar: 'Dialog cetak tidak bisa dibuka: ' + (e && e.message ? e.message : e), kabarAwas: true }); } };
     // satu cetakan pada satu waktu: selama cetakan lain belum dikabari printer, surat jalan tidak dikirim (ketukan kedua dulu memutus yang pertama)
@@ -83,7 +85,9 @@ export function buatPanelAntar(ctx) {
           // dialog cetak tidak dibuka sendiri — tombol "cetak" surat jalan tetap ada untuk mengulang.
           if (masihMencetak(e)) return set({ kabar: KALIMAT_MASIH_MENCETAK + (n ? ' — ' + n + ' lembar sudah keluar' : ''), kabarAwas: true });
           if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-' + (n + 1) + ' dari ' + lembar.length + ' — lihat kertasnya dulu; kalau ada yang tidak keluar, cetak lagi surat jalannya', kabarAwas: true });
-          set({ kabar: 'Printer USB gagal' + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true }); dialog();
+          const gagal = (j === 'sunmi-bt' ? 'Printer Bluetooth gagal' : 'Printer USB gagal') + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — ';
+          if (asliAda()) return set({ kabar: gagal + 'surat jalan TIDAK tercetak' + (n ? ' lengkap' : '') + '. Bereskan printernya, lalu cetak lagi', kabarAwas: true });
+          set({ kabar: gagal + 'dialog cetak dibuka sebagai gantinya', kabarAwas: true }); dialog();
         });
     }).catch(() => dialog());
   }
