@@ -130,6 +130,8 @@ print(JSON.stringify({ html: html, sesudah: keadaan.drafLuar }));
 # fitur 'noopener' = selalu null walau jendelanya terbuka (aturan peramban)
 GESTUR_UJI = r"""
 var gestur = false, blokir = false, gagalTulis = false, dibuka = [], dicetak = [], tulisan = [], keadaan = {};
+// owner 21 Nov 2026: di aplikasi tablet dokumen kertas besar ditolak SEBELUM bernomor — __app meniru "sedang di aplikasi tablet"
+var __app = false; function asliAda() { return __app; } var KALIMAT_TABLET = 'DITOLAK-DI-TABLET';
 var window = { open: function (url, target, fitur) { var w = (!blokir && gestur) ? { opener: {} } : null; dibuka.push({ url: url, gestur: gestur, terbuka: !!w }); return /noopener/.test(fitur || '') ? null : w; },
   print: function () { dicetak.push(gestur); }, addEventListener: function () {}, removeEventListener: function () {} };
 var document = { getElementById: function () { return { innerHTML: '' }; }, body: { classList: { add: function () {}, remove: function () {} } } };
@@ -153,6 +155,7 @@ async function ketuk(cara, o) {
 }
 (async function () { var h = {}; h.wa = await ketuk('wa'); h.cetak = await ketuk('cetak'); h.pdf = await ketuk('pdf'); h.gagalWa = await ketuk('wa', { gagal: true });
   h.gagalCetak = await ketuk('cetak', { gagal: true }); h.blokir = await ketuk('wa', { blokir: true }); h.tolak = await ketuk('wa', { D: { judul: 'X', tolak: 'Kop belum lengkap', kop: {} } });
+  __app = true; h.tabCetak = await ketuk('cetak'); h.tabPdf = await ketuk('pdf'); h.tabWa = await ketuk('wa'); __app = false; h.sesudahTab = await ketuk('cetak');
   print(JSON.stringify(h)); })().catch(function (e) { print(JSON.stringify({ galat: String(e) })); });
 """
 
@@ -169,6 +172,7 @@ print(JSON.stringify({ kembali: !!w, opener: w ? (w.opener === null ? 'putus' : 
 # owner 7 Okt: Laporan › Paket bank — penangan dkPaketSusun ASLI + cetakHtml ASLI; LP/kertas/tulis tiruan. window.print mencatat apakah gestur hidup.
 PAKET_UJI = r"""
 var gestur = false, gagalTulis = false, tolakPaket = false, dicetak = [], tulisan = [], keadaan = {};
+var __app = false; function asliAda() { return __app; } var KALIMAT_TABLET = 'DITOLAK-DI-TABLET';
 var EL = { innerHTML: '' };
 var window = { print: function () { dicetak.push(gestur); }, addEventListener: function () {}, removeEventListener: function () {} };
 var document = { getElementById: function () { return EL; }, body: { classList: { add: function () {}, remove: function () {} } } };
@@ -194,7 +198,7 @@ async function ketuk(o) {
   return { dicetak: dicetak, nTulis: tulisan.length, nomorTulis: tulisan.length ? tulisan[0].dokumen.map(function (d) { return d.data.nomor; }) : [],
     nomorKertas: (EL.innerHTML.match(/data-no="\d+"/g) || []).map(function (x) { return Number(x.replace(/\D/g, '')); }), kabar: keadaan.kabar, awas: keadaan.kabarAwas };
 }
-(async function () { var h = {}; h.biasa = await ketuk(); h.gagal = await ketuk({ gagal: true }); h.tolak = await ketuk({ tolak: true }); print(JSON.stringify(h)); })().catch(function (e) { print(JSON.stringify({ galat: String(e) })); });
+(async function () { var h = {}; h.biasa = await ketuk(); h.gagal = await ketuk({ gagal: true }); h.tolak = await ketuk({ tolak: true }); __app = true; h.tablet = await ketuk(); __app = false; h.sesudah = await ketuk(); print(JSON.stringify(h)); })().catch(function (e) { print(JSON.stringify({ galat: String(e) })); });
 """
 
 
@@ -325,6 +329,11 @@ def periksa(t):
     c.append(('9 gestur (jsc): dokumen yang ditolak (kop belum lengkap) tidak membuka apa pun & tidak mencatat nomor',
               T.get('dibuka') == [] and T.get('nTulis') == 0 and T.get('kabar') == 'Kop belum lengkap', T))
     kode = re.sub(r'^\s*//.*$', '', lap, flags=re.M)   # komentar baris penuh dibuang (komentarnya menyebut 'noopener')
+    TC = h.get('tabCetak') or {}; TP = h.get('tabPdf') or {}; TW = h.get('tabWa') or {}; ST = h.get('sesudahTab') or {}
+    c.append(('9 tablet (jsc): di aplikasi tablet CETAK & simpan PDF ditolak berkalimat — TIDAK ada dialog cetak, TIDAK ada nomor yang dihitung atau dicatat',
+              all(x.get('dicetak') == [] and x.get('nTulis') == 0 and x.get('awas') is True and x.get('kabar') == 'DITOLAK-DI-TABLET' and x.get('dibuka') == [] for x in (TC, TP)), (TC, TP)))
+    c.append(('9 tablet (jsc): kirim WA dari tablet tetap jalan dan bernomor seperti biasa; di peramban CETAK tetap seperti dulu',
+              [(d.get('gestur'), d.get('terbuka')) for d in TW.get('dibuka') or []] == [(True, True)] and TW.get('nTulis') == 1 and ST.get('dicetak') == [True] and ST.get('nTulis') == 1, (TW, ST)))
     c.append(("9 gestur: tidak ada window.open(…, 'noopener') di layar Laporan (selalu null → kabar \"ditahan\" palsu)", 'noopener' not in kode, ''))
 
     # ---- 10 WA LAIN (owner 7 Okt, sisa #104) ----
@@ -346,6 +355,10 @@ def periksa(t):
     c.append(('11 paket (jsc): catatan nomor gagal → kabar jujur: paket sudah dibuka di dialog cetak, nomornya TIDAK tercatat, alasan server ikut',
               PG.get('dicetak') == [True] and PG.get('awas') is True and 'dibuka di dialog cetak' in (PG.get('kabar') or '') and 'TIDAK tercatat' in (PG.get('kabar') or '') and 'DITOLAK: server menolak' in (PG.get('kabar') or ''), PG))
     c.append(('11 paket (jsc): paket yang ditolak (belum ada bulan final) tidak membuka dialog & tidak mencatat nomor', PT.get('dicetak') == [] and PT.get('nTulis') == 0 and PT.get('awas') is True, PT))
+    PA = h.get('tablet') or {}; PS = h.get('sesudah') or {}
+    c.append(('11 tablet (jsc): di aplikasi tablet paket bank ditolak berkalimat — tanpa dialog cetak, tanpa satu nomor pun terpakai; di peramban tetap seperti dulu',
+              PA.get('dicetak') == [] and PA.get('nTulis') == 0 and PA.get('nomorKertas') == [] and PA.get('awas') is True and PA.get('kabar') == 'DITOLAK-DI-TABLET'
+              and PS.get('dicetak') == [True] and PS.get('nomorTulis') == [7, 8, 9], (PA, PS)))
 
     # ---- 12 HOVER di semua stylesheet (owner 7 Okt) ----
     salah = [(b, m, s) for b, m, s, isi in A if ':hover' in s and not ('(hover: hover)' in m and '(pointer: fine)' in m)]
@@ -393,8 +406,13 @@ KONTROL = [
     ('11 paket: dialog cetak dibuka sesudah menunggu (gestur habis, seperti dulu)', {LAP: [("      cetakHtml(dok.map(", "      await null; cetakHtml(dok.map(")]}),
     ('11 paket: semua kertas paket bernomor sama', {LAP: [("kertas(d, r.nomor + i, 'p' + (r.nomor + i))", "kertas(d, r.nomor, 'p' + r.nomor)")]}),
     ('11 paket: catatan nomor gagal → diam', {LAP: [("if (!(await tulis(r, true))) { set({ kabar: teks + ', tapi", "if (!(await tulis(r, true))) { return; set({ kabar: teks + ', tapi")]}),
-    ('11 paket: paket ditolak tetap mencetak', {LAP: [("    dkPaketSusun: async () => { const P = LP.paketBank(st().paket, kini()); if (P.tolak) { set({ kabar: P.tolak, kabarAwas: true }); return; }",
-                                                    "    dkPaketSusun: async () => { const P = LP.paketBank(st().paket, kini()); if (P.tolak) { set({ kabar: P.tolak, kabarAwas: true }); P.daftar = []; }")]}),
+    ('11 paket: paket ditolak tetap mencetak', {LAP: [("      const P = LP.paketBank(st().paket, kini()); if (P.tolak) { set({ kabar: P.tolak, kabarAwas: true }); return; }",
+                                                    "      const P = LP.paketBank(st().paket, kini()); if (P.tolak) { set({ kabar: P.tolak, kabarAwas: true }); P.daftar = []; }")]}),
+    ('9 tablet: di aplikasi tablet dokumen tetap dikeluarkan (nomor terpakai untuk dialog yang cuma berkelebat)', {LAP: [("    if (cara !== 'wa' && asliAda()) { set({ kabar: KALIMAT_TABLET, kabarAwas: true }); return; }\n", "")]}),
+    ('9 tablet: kirim WA dari tablet ikut ditolak', {LAP: [("    if (cara !== 'wa' && asliAda()) {", "    if (asliAda()) {")]}),
+    ('9 tablet: penolakan datang SESUDAH nomor dihitung', {LAP: [("    if (cara !== 'wa' && asliAda()) { set({ kabar: KALIMAT_TABLET, kabarAwas: true }); return; }\n    if (D.tolak) { set({ kabar: D.tolak, kabarAwas: true }); return; } const r = LP.susunCetakan(info, cara, waktu());",
+                                                               "    if (D.tolak) { set({ kabar: D.tolak, kabarAwas: true }); return; } const r = LP.susunCetakan(info, cara, waktu()); if (cara !== 'wa' && asliAda()) { tulis(r); set({ kabar: KALIMAT_TABLET, kabarAwas: true }); return; }")]}),
+    ('11 tablet: di aplikasi tablet paket bank tetap dikeluarkan', {LAP: [("    dkPaketSusun: async () => { if (asliAda()) { set({ kabar: KALIMAT_TABLET, kabarAwas: true }); return; }\n", "    dkPaketSusun: async () => {\n")]}),
     ('12 hover: jual.css .buang:hover tanpa syarat kursor (lama)', {'baru/css/jual.css': [('@media (hover: hover) and (pointer: fine) { .tab-antre .buang:hover { opacity: 1; color: var(--awas); } }', '.tab-antre .buang:hover { opacity: 1; color: var(--awas); }')]}),
     ('12 hover: menu.css .mn-baris:hover tanpa syarat kursor (lama)', {'baru/css/menu.css': [('@media (hover: hover) and (pointer: fine) { .mn-baris:hover { border-color: var(--kaca-tepi); } }', '.mn-baris:hover { border-color: var(--kaca-tepi); }')]}),
     ('12 hover: pelanggan.css polaroid:hover tanpa syarat kursor (lama)', {'baru/css/pelanggan.css': [('@media (hover: hover) and (pointer: fine) { .layar-pelanggan .polaroid:hover { transform: rotate(0deg) translateY(-3px); } }', '.layar-pelanggan .polaroid:hover { transform: rotate(0deg) translateY(-3px); }')]}),

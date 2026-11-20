@@ -22,6 +22,8 @@ import { ssBerkasCadangan, susunCatatCadangan } from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip, kabarKiriman, kunciLuarCache } from '../data/toko.js';
 import { hbKalimatBelum } from '../data/hemat-baca.js';   // hemat baca nyala (#111): SATU sumber kelengkapan data perangkat ini
+import * as PR from '../inti/printer.js';   // owner 21 Nov 2026: slip upah & rekap tutup hari dicetak langsung di tablet
+import { asliAda, printerSibuk, masihMencetak, hasilTakDiketahui, KALIMAT_MASIH_MENCETAK, KALIMAT_TAK_DIKABARI } from '../inti/perangkat.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -87,7 +89,21 @@ export function pasangLayarUang(akar, opsi) {
   const bukaWa = (teks) => { try { const w = window.open('https://wa.me/?text=' + encodeURIComponent(teks), '_blank'); if (w) { try { w.opener = null; } catch (e) { /* jendela sudah pindah asal */ } } return w; } catch (e) { return null; } };
   // audit P2 (C2): web app layar penuh (ikon di layar utama) — pemeriksa yang SAMA dengan Jual (jual-logika webAppMandiri)
   const mandiri = () => webAppMandiri(typeof navigator !== 'undefined' ? navigator : null, typeof window !== 'undefined' ? window : null);
-  const cetak = (teks) => { const pre = document.getElementById('cetakStruk'); if (pre) pre.textContent = teks; try { window.print(); } catch (e) { /* abaikan */ } };
+  // owner 21 Nov 2026: di aplikasi tablet dialog cetak hanya berkelebat lalu hilang, jadi tombol Cetak terasa mati. Di tablet slip upah &
+  // rekap tutup hari dicetak LANGSUNG ke printer struk (gaya teks) dan hasilnya dikabarkan; di peramban (HP, Mac) tetap dialog cetak.
+  // Satu cetakan pada satu waktu: selama cetakan lain belum dikabari printer, tidak ada yang dikirim.
+  const cetak = (teks, nama) => {
+    if (!asliAda()) { const pre = document.getElementById('cetakStruk'); if (pre) pre.textContent = teks; try { window.print(); } catch (e) { /* abaikan */ } return; }
+    if (!String(teks || '').trim()) return set({ kabar: 'Belum ada ' + nama.toLowerCase() + ' untuk dicetak', kabarAwas: true });
+    if (printerSibuk()) return set({ kabar: KALIMAT_MASIH_MENCETAK, kabarAwas: true });
+    set({ kabar: 'Mencetak ' + nama.toLowerCase() + '…', kabarAwas: false });
+    PR.cetakTeks(teks).then((r) => set({ kabar: nama + ' tercetak lewat ' + PR.namaJalur(r.jalur) + (r.cadanganDari ? ' — jalur yang dipilih tidak jalan (' + r.cadanganDari + ')' : ''), kabarAwas: !!r.cadanganDari }))
+      .catch((e) => {
+        if (masihMencetak(e)) return set({ kabar: KALIMAT_MASIH_MENCETAK, kabarAwas: true });
+        if (hasilTakDiketahui(e)) return set({ kabar: KALIMAT_TAK_DIKABARI, kabarAwas: true });
+        set({ kabar: nama + ' TIDAK tercetak: ' + (e && e.message ? e.message : e), kabarAwas: true });
+      });
+  };
   const unduh = (isi, nama) => { const teks = JSON.stringify(isi, null, 2); let bytes = teks.length; try { const blob = new Blob([teks], { type: 'application/json' }); bytes = blob.size; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = nama; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000); return bytes; } catch (e) { return -1; } };
   const setelUrung = (kunci, daftar) => { const p = {}; p[kunci] = daftar && daftar.length ? { daftar, sampai: Date.now() + 90000 } : null; set(p); };
   const isoTutup = () => tanggalTutupAktif(kini());   // audit 39b no. 1: K5 menutup hari dagang — lewat tengah malam (sebelum jam 12) = hari kemarin
@@ -142,7 +158,7 @@ export function pasangLayarUang(akar, opsi) {
       if (await tulis(r)) { set({ lembarU: 'slip', slipTeks: r.slip.teks }); sekali(akar.querySelector('.or-hero'), 'pegas', 520); } },
     upSlip: ({ id }) => { const r = UP.riwayatUpah(null, 50).find((x) => x.id === id); if (r && r.teks) { set({ lembarU: 'slip', slipTeks: r.teks }); keAtas(); } },
     upSlipWa: () => { const w = bukaWa(st().slipTeks); set({ kabar: w ? 'WhatsApp dibuka dengan slipnya' : 'Peramban menahan jendela WhatsApp', kabarAwas: !w }); },
-    upSlipCetak: () => cetak(st().slipTeks),
+    upSlipCetak: () => cetak(st().slipTeks, 'Slip upah'),
     bukaAturU: () => { const a = UP.aturUpah(); set({ aturU: st().aturU ? null : { tarif: String(a.tarif), alasan: a.alasan.slice() } }); },
     // ---- K2 · KARYAWAN (HR, owner 23 Sep): tambah karyawan, tandai berhenti / aktifkan lagi, tanggal masuk, "hitung upah sejak"
     upKaryawanBuka: () => { const b = st().lembarU === 'karyawan'; set({ lembarU: b ? null : 'karyawan', karyawanDraf: b ? null : JSON.parse(JSON.stringify(UP.aturUpah().orang)), kabar: '' }); keAtas(); },
@@ -204,7 +220,7 @@ export function pasangLayarUang(akar, opsi) {
     tdTutup: async () => { const d = draf(); const r = TD.susunTutup(d, waktu(), st().yakinUlang); if (r.perluYakin === 'ulang') { set({ yakinUlang: true, kabar: r.tolak, kabarAwas: true }); return; } if (await tulis(r)) { setelTitik(r.titik); simpanLokal(KUNCI_DRAF_TUTUP, null); set({ draf: null, koreksi: false, yakinUlang: false, rekapTeks: r.teks }); sekali(akar.querySelector('.th-kertas'), 'pegas', 520); keAtas(); } },
     tdKoreksi: () => { set({ koreksi: !st().koreksi, yakinUlang: false, kabar: st().koreksi ? '' : 'Tutup ulang: hitung lagi isi laci SEKARANG (uang yang sudah dipindah ke brankas/amplop tidak ikut). Catatan lama turun ke riwayat.', kabarAwas: false }); },
     tdWa: () => { const R = TD.ringkasHari(isoTutup()); const teks = st().rekapTeks || (R.sudah ? TD.teksRekap(TD.hitungTutup(Object.assign({}, DRAF_TUTUP_KOSONG(), { lembar: { 1: R.sudah.kasFisikLaci || 0 }, status: { laci: 'beres' } }), kini()), isoTutup(), R.sudah.jam) : ''); const w = bukaWa(teks); set({ kabar: w ? 'WhatsApp dibuka dengan rekapnya' : 'Peramban menahan jendela WhatsApp', kabarAwas: !w }); },
-    tdCetak: () => cetak(st().rekapTeks),
+    tdCetak: () => cetak(st().rekapTeks, 'Rekap tutup hari'),
     bukaAturT: () => { const a = TD.aturTutup(); set({ aturT: st().aturT ? null : { persenSisih: String(a.persenSisih), kembalian: String(a.kembalian), maafSelisih: String(a.maafSelisih), alasan: a.alasan.slice() } }); },
     tdAturKetik: (v, el) => { const a = JSON.parse(JSON.stringify(st().aturT)); if (el.dataset.i !== undefined) a.alasan[Number(el.dataset.i)] = String(v).slice(0, 40); else a[el.dataset.kolom] = String(v).slice(0, 12); set({ aturT: a }); },
     tdAturTambah: () => { const a = JSON.parse(JSON.stringify(st().aturT)); a.alasan.push(''); set({ aturT: a }); }, tdAturLepas: ({ i }) => { const a = JSON.parse(JSON.stringify(st().aturT)); a.alasan.splice(Number(i), 1); set({ aturT: a }); },

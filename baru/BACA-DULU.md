@@ -3160,6 +3160,17 @@ toko tidak mengirim perintah kepekatan atau mutu apa pun (dicabut di #145), jadi
 kecepatan dengan mutu. **Belum terbukti di perangkat:** tombol mode di jalur jaringan sesudah tambalan ini, label dan surat jalan lewat
 jaringan, Wi-Fi putus di tengah cetak.
 
+**Cetak di tablet untuk Uang dan Laporan (owner 21 Nov 2026: "Oke kita bangun yang ini"):** di aplikasi tablet dialog cetak hanya berkelebat
+lalu hilang, jadi tombol Cetak di Uang (slip upah, rekap tutup hari) dan di Laporan (dokumen) terasa mati. *Uang:* di aplikasi tablet kedua
+teks itu dicetak LANGSUNG ke printer struk lewat `cetakTeks` (`inti/printer.js`) — selalu gaya teks, apa pun gaya struk yang disetel —
+sesudah diubah jadi garis struk oleh `epGarisDariTeks` (`inti/escpos.js`): baris pertama jadi judul, baris "label   nilai" dipisah supaya
+nilainya rata kanan selebar kertas, tanda yang tidak ada di printer diganti padanannya (÷ → /, ≈ → ~ ditambahkan). Satu cetakan pada satu
+waktu; tiap ujung dikabarkan (tercetak lewat jalur apa · tunggu kabarnya · lihat kertasnya · TIDAK tercetak beserta sebabnya). Di peramban
+(HP, Mac) tetap dialog cetak seperti dulu. *Laporan:* dokumen berkop itu untuk kertas besar; di aplikasi tablet CETAK dan simpan PDF ditolak
+berkalimat SEBELUM nomornya dihitung, jadi tidak ada nomor Cetakan bernomor yang terpakai untuk dokumen yang tidak pernah keluar; kirim WA
+tetap jalan. Halaman saja, tanpa APK baru. *Terbukti di Mac* (aplikasi tiruan): slip contoh berangkat sebagai 453 byte teks tanpa gambar dan
+tanpa QR, nilainya rata kanan. **Belum terbukti di perangkat.**
+
 **QR nota pindah ke DALAM gambar struk (owner 20 Nov 2026 malam: "barcode pindahin" ke samping tanda tangan; struk mau rapat atas-bawah):**
 ruang kosong di struk dilacak dulu. *Bawah (±8 mm walau baris kosong sudah 0):* QR selama ini digambar PRINTER lewat perintahnya sendiri
 (`GS ( k`), jadi selalu jadi baris tersendiri di bawah gambar struk, baru sesudah itu potong. *Atas (±10 mm):* jarak kepala cetak ke pisau —

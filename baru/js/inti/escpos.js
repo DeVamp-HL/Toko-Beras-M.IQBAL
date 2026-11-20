@@ -11,7 +11,7 @@ const ESC = 0x1b, GS = 0x1d, LF = 0x0a;
 
 // tanda yang sering muncul di struk toko → padanan ASCII; sisanya: huruf beraksen dilepas aksennya, yang tidak dikenal dibuang
 const PADANAN = { '·': '-', '•': '-', '×': 'x', '−': '-', '–': '-', '—': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '…': '...', '→': '->',
-  '←': '<-', '±': '+/-', '½': '1/2', '¼': '1/4', '¾': '3/4', '\u00a0': ' ', '\u202f': ' ', '°': ' derajat' };
+  '←': '<-', '±': '+/-', '½': '1/2', '¼': '1/4', '¾': '3/4', '\u00a0': ' ', '\u202f': ' ', '°': ' derajat', '÷': '/', '≈': '~' };
 // Emoji & simbol bergambar (termasuk penyambung ZWJ, pemilih varian, warna kulit, bendera). Gaya gambar: emoji berwarna jadi bintik acak
 // sesudah dijadikan hitam-putih (uji cetak owner 16 Nov); gaya teks: printer tidak punya hurufnya. Panah, ©, ®, ™, huruf beraksen TIDAK kena.
 const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu;
@@ -48,6 +48,22 @@ export function epBungkus(teks, lebar) {
 }
 
 /** Satu baris struk → baris teks selebar kolom. kanan menempel di kanan baris terakhir; kalau tidak muat, kanan turun ke baris sendiri. */
+/** Teks polos berbaris (slip upah, rekap tutup hari — disusun untuk layar & WhatsApp) → garis struk gaya teks. Baris berisi pertama =
+ *  judul (tengah, tebal). Baris "label   nilai" — tepat SATU celah dua spasi atau lebih — dipisah jadi kiri/kanan supaya nilainya rata kanan
+ *  selebar kertas: pembungkus kata merapatkan spasi, jadi kolom yang diratakan dengan spasi berantakan bila dicetak apa adanya. Baris lain
+ *  dicetak apa adanya (dibungkus bila kepanjangan); baris kosong tetap baris kosong; baris kosong di ekor dibuang. */
+export function epGarisDariTeks(teks) {
+  const baris = String(teks === undefined || teks === null ? '' : teks).replace(/\r/g, '').split('\n');
+  while (baris.length && !baris[baris.length - 1].trim()) baris.pop();
+  let judul = true;
+  return baris.map((b) => {
+    const t = b.trim();
+    if (judul && t) { judul = false; return { kiri: t, kanan: '', tengah: true, tebal: true }; }
+    const bagian = t.split(/\s{2,}/);
+    return bagian.length === 2 ? { kiri: bagian[0], kanan: bagian[1] } : { kiri: t, kanan: '' };
+  });
+}
+
 export function epSusunBaris(kiri, kanan, lebar) {
   const ka = epAscii(kanan); const ki = epBungkus(kiri, lebar);
   if (!ka) return ki;

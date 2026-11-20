@@ -6,7 +6,7 @@
 // kalau SDK-nya gagal sebelum ada byte terkirim, cetak jatuh ke CetakUsb (inti/perangkat.js › cetakAsli).
 // Paket S4 (19 Nov 2026): jalur ketiga 'sunmi-bt' (SDK SUNMI lewat Bluetooth) + LABEL barang — di kertas bersambung (ESC/POS) atau stiker bercelah
 // (TSPL, printer di mode label); ukuran label & caranya juga setelan perangkat ini.
-import { epSusun, epSusunGambar, epBase64, epSusunLabel, epTsplLabel } from './escpos.js';
+import { epSusun, epSusunGambar, epBase64, epSusunLabel, epTsplLabel, epGarisDariTeks } from './escpos.js';
 import { gambarStruk, siapkanHuruf, teksKeLogo } from './struk-kanvas.js';
 import { usbAda, usbDiingat, usbKirim } from './usb-cetak.js';
 import { asliAda, panggilAsli, cetakAsli, kirimTspl, lewatJalur, pastikanModeLabel, alamatPrinterSah } from './perangkat.js';
@@ -107,6 +107,16 @@ export async function cetakGaris(garis, ekstra) {
   const s = await susunCetak(garis, null, Object.assign({ qr: '' }, ekstra || {}));
   const r = await kirimCetak(s.byte, j);
   return { jalur: r.jalur, gaya: s.gaya, kertas: s.kertas, byte: r.byte, perangkat: r.perangkat, peringatan: r.peringatan || '', cadanganDari: r.cadanganDari || '' };
+}
+
+/** Cetak teks polos (slip upah, rekap tutup hari) lewat printer perangkat ini sebagai struk gaya TEKS — apa pun gaya struk yang disetel,
+ *  karena isinya memang teks berbaris. Printer perangkat ini belum dinyalakan untuk mencetak → melempar berkode TIDAK_ADA (pemanggil yang
+ *  berkata apa yang harus dilakukan). Hasil = kirimCetak. */
+export async function cetakTeks(teks) {
+  const j = await jalurCetak();
+  if (j === 'dialog') { const e = new Error('printer tablet ini belum dinyalakan untuk mencetak — nyalakan di Jual › Struk › "Printer tablet ini"'); e.code = 'TIDAK_ADA'; throw e; }
+  const s = await susunCetak(epGarisDariTeks(teks), { gaya: 'teks' }, { qr: '' });
+  return kirimCetak(s.byte, j);
 }
 
 // ---------- label barang (paket S4) ----------
