@@ -119,6 +119,58 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
     && !hasilTakDiketahui({ code: 'PRINTER_OFFLINE' }) && !hasilTakDiketahui({ code: 'BELUM_KIRIM' }) && !hasilTakDiketahui(new Error('x')) && !hasilTakDiketahui(null));
   cek('kalimat "tidak mengabari" tidak menyebut gagal dan menyebut langkah berikutnya', !/gagal/i.test(KALIMAT_TAK_DIKABARI) && /lihat kertasnya/.test(KALIMAT_TAK_DIKABARI) && /cetak lagi/.test(KALIMAT_TAK_DIKABARI), KALIMAT_TAK_DIKABARI);
 
+  // uji owner 20 Nov 2026 malam (Jual, Bluetooth): ketukan Cetak kedua saat cetakan pertama belum dikabari memutus sambungan cetakan pertama
+  // ("printer tidak tersambung", dua baris struk keluar). Satu cetakan pada satu waktu: yang kedua ditolak SEBELUM menyentuh aplikasi.
+  {
+    let lepasTahan = null; const tahan = new Promise((ok) => { lepasTahan = ok; });
+    A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': () => tahan.then(() => ({ nama: 'NT320' })), 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
+    cek('satu cetakan: sebelum ada cetakan, printer tidak sibuk', printerSibuk() === false);
+    const pertama = cetakAsli('QUJD', 'sunmi-bt');
+    cek('satu cetakan: selama cetakan pertama belum dikabari, printer sibuk', printerSibuk() === true);
+    g = null; try { await cetakAsli('QUJD', 'sunmi-bt'); } catch (e) { g = e; }
+    cek('satu cetakan: cetakan kedua ditolak berkode SEDANG_CETAK dengan kalimat "tunggu kabarnya"', g && g.code === 'SEDANG_CETAK' && g.message === KALIMAT_MASIH_MENCETAK, g && (g.code + ' · ' + g.message));
+    cek('satu cetakan: cetakan kedua TIDAK menyentuh aplikasi (tidak menanya printer, tidak melepas sambungan, tidak lewat kabel)', A.catat.join(',') === 'PrinterSunmi.cetak', A.catat.join(','));
+    g = null; try { await cetakAsli('QUJD', 'aplikasi'); } catch (e) { g = e; }
+    cek('satu cetakan: jalur kabel juga menunggu (tidak ada dua cetakan bersamaan lewat jalur mana pun)', g && g.code === 'SEDANG_CETAK' && A.hitung('CetakUsb.cetak') === 0, A.catat.join(','));
+    g = null; try { await kirimTspl('SIZE 40 mm,30 mm', 'bt'); } catch (e) { g = e; }
+    cek('satu cetakan: perintah label ditolak selama cetakan belum dikabari', g && g.code === 'SEDANG_CETAK' && A.hitung('PrinterSunmi.tspl') === 0, A.catat.join(','));
+    g = null; try { await pastikanModeLabel('struk', 'bt'); } catch (e) { g = e; }
+    cek('satu cetakan: mode printer tidak ditanya di belakang cetakan yang belum dikabari', g && g.code === 'SEDANG_CETAK' && A.hitung('PrinterSunmi.mode') === 0, A.catat.join(','));
+    g = null; try { await printerSetelMode(2, 'bt'); } catch (e) { g = e; }
+    cek('satu cetakan: mode kertas tidak dipindah di tengah cetakan', g && g.code === 'SEDANG_CETAK' && A.hitung('PrinterSunmi.setelMode') === 0, A.catat.join(','));
+    lepasTahan(); r = await pertama;
+    cek('satu cetakan: cetakan pertama selesai tanpa terganggu', r.jalur === 'sunmi-bt' && r.nama === 'NT320', JSON.stringify(r));
+    cek('satu cetakan: sesudah dikabari, printer tidak sibuk lagi', printerSibuk() === false);
+    r = await cetakAsli('QUJD', 'sunmi-bt');
+    cek('satu cetakan: cetakan berikutnya jalan seperti biasa', r.jalur === 'sunmi-bt' && A.hitung('PrinterSunmi.cetak') === 2, A.catat.join(','));
+    A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('Cetak gagal: keadaan printer tidak diketahui', 'PRINTER_UNKNOWN'), 'PrinterSunmi.tspl': tolak('Perintah label tidak terkirim', 'BELUM_KIRIM') });
+    g = null; try { await cetakAsli('QUJD', 'sunmi-bt'); } catch (e) { g = e; }
+    cek('satu cetakan: cetakan yang berakhir "tidak mengabari" juga membuka kunci', g && g.code === 'PRINTER_UNKNOWN' && printerSibuk() === false, g && g.code);
+    g = null; try { await kirimTspl('SIZE 40 mm,30 mm', 'bt'); } catch (e) { g = e; }
+    cek('satu cetakan: perintah label yang gagal juga membuka kunci', g && g.code === 'BELUM_KIRIM' && printerSibuk() === false && A.hitung('PrinterSunmi.tspl') === 1, (g && g.code) + ' · ' + A.catat.join(','));
+    // kunci tidak boleh macet: aplikasi yang tidak pernah menjawab tidak mengunci toko dari printernya
+    {
+      let lepasA = null, lepasB = null; let ke = 0; const jamAsli = Date.now; let maju = 0; Date.now = () => jamAsli() + maju;
+      A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': () => { ke += 1; return new Promise((ok) => { if (ke === 1) lepasA = ok; else lepasB = ok; }).then(() => ({ nama: 'NT320' })); } });
+      const a1 = cetakAsli('QUJD', 'sunmi-bt');
+      maju = BATAS_SIBUK_MS - 1000;
+      cek('kunci macet: sebelum ' + (BATAS_SIBUK_MS / 1000) + ' detik masih dianggap mencetak', printerSibuk() === true);
+      cek('kunci macet: batasnya lebih lama dari batas terpanjang aplikasi (sambung 12 + tanya 4 + cetak Bluetooth 60 detik)', BATAS_SIBUK_MS > (12 + 4 + 60) * 1000, BATAS_SIBUK_MS);
+      maju = BATAS_SIBUK_MS + 1000;
+      cek('kunci macet: aplikasi tidak pernah menjawab → sesudah batas, kunci dianggap lepas', printerSibuk() === false);
+      const a2 = cetakAsli('QUJD', 'sunmi-bt');
+      cek('kunci macet: cetakan baru boleh jalan dan memegang kuncinya sendiri', A.hitung('PrinterSunmi.cetak') === 2 && printerSibuk() === true, A.catat.join(','));
+      lepasA(); await a1;
+      cek('kunci macet: jawaban terlambat cetakan lama TIDAK membuka kunci cetakan baru', printerSibuk() === true);
+      lepasB(); await a2;
+      cek('kunci macet: cetakan baru selesai → kunci terbuka', printerSibuk() === false);
+      Date.now = jamAsli;
+    }
+    cek('masihMencetak hanya untuk SEDANG_CETAK — bukan galat printer, bukan "hasil tidak diketahui"', masihMencetak({ code: 'SEDANG_CETAK' }) && !masihMencetak({ code: 'PRINTER_UNKNOWN' }) && !masihMencetak({ code: 'BELUM_KIRIM' }) && !masihMencetak(null)
+      && !galatPrinter({ code: 'SEDANG_CETAK' }) && !hasilTakDiketahui({ code: 'SEDANG_CETAK' }));
+    cek('kalimat "masih mencetak" tidak menyebut gagal dan menyuruh menunggu', !/gagal/i.test(KALIMAT_MASIH_MENCETAK) && /tunggu/.test(KALIMAT_MASIH_MENCETAK) && /jangan ketuk/.test(KALIMAT_MASIH_MENCETAK), KALIMAT_MASIH_MENCETAK);
+  }
+
   A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
   r = await cetakAsli('QUJD', 'aplikasi');
   cek('jalur aplikasi: hanya CetakUsb', r.jalur === 'aplikasi' && A.catat.join(',') === 'CetakUsb.cetak', A.catat.join(','));
@@ -518,11 +570,32 @@ def periksa_statis(perangkat_js):
        and jual.index("if (PK.hasilTakDiketahui(e)) return set({ kabar: PK.KALIMAT_TAK_DIKABARI + (dokumen.length ?") < jual.index("set({ kabar: 'Label tidak tercetak: '"))
     antar = baca('baru', 'js', 'layar', 'antar-panel.js'); tangkap = antar[antar.index('.catch((e) => {\n          // uji owner 20 Nov 2026'):]; tangkap = tangkap[:tangkap.index('dialog();')]
     ok('antar-panel.js: lembar surat jalan yang hasilnya tidak dikabari printer → "lihat kertasnya", SEBELUM cabang "gagal" dan tanpa membuka dialog cetak',
-       "import { hasilTakDiketahui } from '../inti/perangkat.js';" in antar and "if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-' + (n + 1) + ' dari ' + lembar.length" in tangkap
+       "import { hasilTakDiketahui, masihMencetak, printerSibuk, KALIMAT_MASIH_MENCETAK } from '../inti/perangkat.js';" in antar and "if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-' + (n + 1) + ' dari ' + lembar.length" in tangkap
        and tangkap.index('hasilTakDiketahui(e)') < tangkap.index("'Printer USB gagal'"), tangkap[:300])
     ok('uji-cetak.js: baris cetak & label yang gagal memuat lama waktunya dan kabar asli aplikasi (pembeda ±1 detik dari ±40 detik)',
        "const pesanGagal = (e, mulaiPada) => pesan(e) + (e && e.asli ? ' · kabar aslinya: \"' + e.asli + '\"' : '') + (mulaiPada ? ' · ' + (Date.now() - mulaiPada) + ' ms' : '');" in ujs
-       and "} catch (e) { tulisLog(pesanGagal(e, mulaiPada), true); }" in ujs and "tulisLog((hasilTakDiketahui(e) ? 'Label contoh: ' : 'Label contoh gagal: ') + pesanGagal(e, mulai), true);" in ujs)
+       and "    tulisLog(pesanGagal(e, mulaiPada) + ukuran, true);\n" in ujs and "ukuran = ' · gaya ' + s.gaya + ' · ' + s.byte.length + ' byte';" in ujs
+       and "tulisLog((masihMencetak(e) ? 'Label contoh belum dikirim: ' : hasilTakDiketahui(e) ? 'Label contoh: ' : 'Label contoh gagal: ') + pesanGagal(e, mulai), true);" in ujs)
+    # uji owner 20 Nov 2026 malam (keempat): satu cetakan pada satu waktu + catatan keadaan printer sebelum/sesudah
+    ok('jual.js: selama satu struk belum dikabari printer, ketukan Cetak berikutnya hanya dijawab kabar — diperiksa SEBELUM jalur cetak disentuh',
+       "if (sedangCetak() || PK.printerSibuk()) { set({ kabar: PK.KALIMAT_MASIH_MENCETAK, kabarAwas: true }); return; }" in jual
+       and jual.index("if (sedangCetak() || PK.printerSibuk())") < jual.index("PR.jalurCetak().then((j) => {\n      if (j === 'dialog') { cetakDialog(st, nota, ket); return; }"))
+    ok('jual.js: tombol Cetak bertulisan "Mencetak…" selama menunggu printer, dan kembali di KETIGA ujung (berhasil, gagal, jalur tak terbaca)',
+       "k = mencetak = Date.now(); set({});\n      return PR.cetakGaris(" in jual and "${sedangCetak() ? 'Mencetak…' : 'Cetak'}" in jual
+       and "{   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya\n        usaiCetak(k);" in jual
+       and "}).catch((e) => {\n        usaiCetak(k);" in jual and "}).catch(() => { usaiCetak(k); cetakDialog(st, nota, ket); });" in jual
+       and "const usaiCetak = (k) => { if (mencetak !== k) return; mencetak = 0; set(S().kabar === PK.KALIMAT_MASIH_MENCETAK ? { kabar: '', kabarAwas: false } : {}); };" in jual
+       and "const sedangCetak = () => mencetak > 0 && Date.now() - mencetak < PK.BATAS_SIBUK_MS;" in jual)
+    ok('jual.js: "masih mencetak" bukan kegagalan printer — tanpa lampu gagal, tanpa dialog cetak (struk dan label)',
+       jual.index("if (PK.masihMencetak(e)) { set({ kabar: PK.KALIMAT_MASIH_MENCETAK, kabarAwas: true }); return; }") < jual.index("lampu('lampuGagal');")
+       and jual.index("if (PK.masihMencetak(e)) return set({ kabar: PK.KALIMAT_MASIH_MENCETAK + (dokumen.length ?") < jual.index("if (PK.hasilTakDiketahui(e)) return set({ kabar: PK.KALIMAT_TAK_DIKABARI + (dokumen.length ?"))
+    ok('antar-panel.js: surat jalan tidak dikirim selama cetakan lain belum dikabari, dan "masih mencetak" tidak membuka dialog',
+       antar.index("if (printerSibuk()) return set({ kabar: KALIMAT_MASIH_MENCETAK, kabarAwas: true });") < antar.index("PR.jalurCetak().then((j) => {\n      if (j === 'dialog') return dialog();")
+       and antar.index("if (masihMencetak(e)) return set({ kabar: KALIMAT_MASIH_MENCETAK") < antar.index("if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-'"))
+    ok('uji-cetak.js: cetak contoh lewat SDK mencatat jawaban printer SEBELUM cetak, dan menanyainya lagi SESUDAH printer diam',
+       "if (sdk) sebelum = await keadaanSingkat(lewatJalur(a.jalur));\n      mulaiPada = Date.now(); const r = await kirimCetak(" in ujs
+       and "if (sdk && hasilTakDiketahui(e)) tulisLog('Keadaan printer sebelum cetak itu: ' + sebelum + ' · sesudahnya: ' + await keadaanSingkat(lewatJalur(a.jalur)), true);" in ujs
+       and "const keadaanSingkat = (lewat) => printerStatus(lewat).then((r) => '\"' + r.kalimat + '\"', (e) => 'tidak bisa ditanya (' + pesan(e) + ')');" in ujs)
     ok('perintah label: kabar "tanpa kabar" tidak menyebut mode printer (uji owner: dikirim juga saat printer di mode tanpa alas)',
        'di mode label tidak mengabari' not in ujs and 'di mode label tidak mengabari' not in jual and 'printer tidak mengabari hasil perintah label' in ujs and 'printer tidak mengabari hasil perintah label' in jual)
     alur = baca('.github', 'workflows', 'apk.yml')
@@ -557,6 +630,19 @@ MUTASI = [
     ('printer diam: UNKNOWN dari pustaka tidak dikenali', 'js', "(e.code === 'PRINTER_UNKNOWN' || e.code === 'PRINTER_DIAM')", "(e.code === 'PRINTER_DIAM')"),
     ('printer diam: batas waktu aplikasi tidak dikenali', 'js', "(e.code === 'PRINTER_UNKNOWN' || e.code === 'PRINTER_DIAM')", "(e.code === 'PRINTER_UNKNOWN')"),
     ('halangan pasti ikut disebut "tidak mengabari"', 'js', "(e.code === 'PRINTER_UNKNOWN' || e.code === 'PRINTER_DIAM')", "(galatPrinter(e))"),
+    ('satu cetakan: ketukan kedua tetap dikirim ke aplikasi', 'js', "  tolakBilaSibuk(); const k = { sejak: Date.now() }; kunci = k;\n", "  const k = { sejak: Date.now() }; kunci = k;\n"),
+    ('satu cetakan: kunci tidak pernah dipasang', 'js', "  tolakBilaSibuk(); const k = { sejak: Date.now() }; kunci = k;\n", "  tolakBilaSibuk(); const k = { sejak: Date.now() };\n"),
+    ('satu cetakan: kunci tidak dibuka sesudah cetakan selesai atau gagal', 'js', "  try { return await kerja(); } finally { if (kunci === k) kunci = null; }", "  return await kerja();"),
+    ('satu cetakan: jawaban cetakan lama membuka kunci cetakan yang lebih baru', 'js', "finally { if (kunci === k) kunci = null; }", "finally { kunci = null; }"),
+    ('satu cetakan: kunci macet selamanya bila aplikasi tidak pernah menjawab', 'js', "export const printerSibuk = () => !!kunci && Date.now() - kunci.sejak < BATAS_SIBUK_MS;", "export const printerSibuk = () => !!kunci;"),
+    ('satu cetakan: kunci lepas sebelum batas terpanjang aplikasi', 'js', "export const BATAS_SIBUK_MS = 90000;", "export const BATAS_SIBUK_MS = 30000;"),
+    ('satu cetakan: tolakan tanpa kode SEDANG_CETAK (layar membuka dialog / lewat kabel)', 'js', "const tolakBilaSibuk = () => { if (printerSibuk()) throw galat(KALIMAT_MASIH_MENCETAK, 'SEDANG_CETAK'); };", "const tolakBilaSibuk = () => { if (printerSibuk()) throw galat(KALIMAT_MASIH_MENCETAK, 'BELUM_KIRIM'); };"),
+    ('satu cetakan: cetak struk tidak lewat kunci', 'js', "export const cetakAsli = (data, jalur) => satuCetakan(() => cetakAsliDalam(data, jalur));", "export const cetakAsli = (data, jalur) => cetakAsliDalam(data, jalur);"),
+    ('satu cetakan: perintah label tidak lewat kunci', 'js', "satuCetakan(() => panggilAsli('PrinterSunmi', 'tspl',", "(() => panggilAsli('PrinterSunmi', 'tspl',"),
+    ('satu cetakan: mode ditanya di belakang cetakan yang belum dikabari', 'js', "  tolakBilaSibuk();\n  let mode = '';", "  let mode = '';"),
+    ('satu cetakan: mode kertas dipindah di tengah cetakan', 'js', "  if (printerSibuk()) return Promise.reject(galat(KALIMAT_MASIH_MENCETAK, 'SEDANG_CETAK'));\n", ""),
+    ('satu cetakan: "masih mencetak" dikenali sebagai galat printer', 'js', "export function masihMencetak(e) { return !!(e && e.code === 'SEDANG_CETAK'); }", "export function masihMencetak(e) { return galatPrinter(e); }"),
+    ('kalimat "masih mencetak" menyebut gagal', 'js', "'Cetakan sebelumnya belum dikabari printer — tunggu kabarnya dulu, jangan ketuk Cetak lagi (paling lama ±1,5 menit)'", "'Cetak gagal — tunggu kabarnya dulu, jangan ketuk Cetak lagi'"),
     ('kalimat "tidak mengabari" menyebut gagal', 'js', "'Printer tidak mengabari hasil cetaknya — lihat kertasnya dulu; kalau tidak keluar, cetak lagi'", "'Cetak gagal — lihat kertasnya dulu; kalau tidak keluar, cetak lagi'"),
     ('mode tanpa alas tidak dikenali', 'js', "return t.indexOf('linerless') >= 0 ? 'tanpa-alas' : t.indexOf('label') >= 0", "return t.indexOf('label') >= 0"),
     ('jawaban mode kosong disebut "tidak dikenali"', 'js', "  if (!asli) return { teks: 'Printer belum menjawab modenya", "  if (false) return { teks: 'Printer belum menjawab modenya"),

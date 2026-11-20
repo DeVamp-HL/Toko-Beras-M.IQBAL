@@ -52,6 +52,28 @@ const pesanGalat = (e) => (e && e.message ? e.message : String(e));
 export function hasilTakDiketahui(e) { return !!(e && (e.code === 'PRINTER_UNKNOWN' || e.code === 'PRINTER_DIAM')); }
 export const KALIMAT_TAK_DIKABARI = 'Printer tidak mengabari hasil cetaknya — lihat kertasnya dulu; kalau tidak keluar, cetak lagi';
 
+// ---------- satu cetakan pada satu waktu ----------
+// Uji owner 20 Nov 2026 malam (Jual, Bluetooth): tiap gagal tercatat DUA baris dan kabarnya "printer tidak tersambung". Sebabnya dari isi
+// aplikasi & pustaka: pustaka SUNMI mengerjakan perintah satu per satu di SATU antrean dan satu sambungan. Cetakan pertama masih menunggu
+// printer (yang diam sampai ±43 detik); ketukan Cetak kedua menanya keadaan printer, antre di belakangnya, habis waktu 4 detik, lalu aplikasi
+// MELEPAS sambungan itu — sambungan yang sedang dipakai cetakan pertama. Cetakan pertama pun melapor "tidak tersambung".
+// Maka: selama satu cetakan belum dikabari hasilnya, permintaan cetak berikutnya DITOLAK di sini (kode SEDANG_CETAK) sebelum menyentuh aplikasi.
+// Kunci itu tidak boleh macet: aplikasi selalu menjawab dalam batasnya sendiri (sambung 12 + tanya 4 + cetak Bluetooth 60 detik), tapi kalau
+// jawabannya tidak pernah sampai ke halaman, kunci dianggap lepas sesudah BATAS_SIBUK_MS — supaya toko tidak terkunci dari printernya sendiri.
+export const BATAS_SIBUK_MS = 90000;
+let kunci = null;
+/** Masih ada cetakan yang belum dikabari hasilnya? */
+export const printerSibuk = () => !!kunci && Date.now() - kunci.sejak < BATAS_SIBUK_MS;
+/** Galat "masih mencetak": bukan kegagalan printer — jangan buka dialog, jangan kirim lewat jalur lain, jangan nyalakan lampu gagal. */
+export function masihMencetak(e) { return !!(e && e.code === 'SEDANG_CETAK'); }
+export const KALIMAT_MASIH_MENCETAK = 'Cetakan sebelumnya belum dikabari printer — tunggu kabarnya dulu, jangan ketuk Cetak lagi (paling lama ±1,5 menit)';
+const tolakBilaSibuk = () => { if (printerSibuk()) throw galat(KALIMAT_MASIH_MENCETAK, 'SEDANG_CETAK'); };
+async function satuCetakan(kerja) {
+  tolakBilaSibuk(); const k = { sejak: Date.now() }; kunci = k;
+  // jawaban cetakan lama yang datang terlambat tidak boleh membuka kunci cetakan yang lebih baru
+  try { return await kerja(); } finally { if (kunci === k) kunci = null; }
+}
+
 /** Jalur cetak → cara menyambung printer SUNMI: 'bt' (Bluetooth) atau 'usb'. */
 export const lewatJalur = (jalur) => (jalur === 'sunmi-bt' ? 'bt' : 'usb');
 /** Kirim byte struk (base64) lewat aplikasi tablet. Hasil: { jalur: 'sunmi' | 'sunmi-bt' | 'aplikasi', nama, peringatan, cadanganDari }.
@@ -59,8 +81,10 @@ export const lewatJalur = (jalur) => (jalur === 'sunmi-bt' ? 'bt' : 'usb');
  *  Bluetooth (paket S4: printer harus sudah dipasangkan di Setelan tablet). Kalau SDK gagal SEBELUM ada byte terkirim (printer tak ketemu,
  *  Bluetooth mati, plugin tak ada di APK lama) → jatuh ke CetakUsb, alasannya di `cadanganDari`. Kalau printer menjawab ada halangan
  *  → galatnya dilempar apa adanya: mengirim ulang lewat jalur lain bisa mencetak dobel atau percuma. Kalau printer diam sesudah data
- *  dikirim (hasilTakDiketahui) → dilempar berkalimat KALIMAT_TAK_DIKABARI, juga TANPA kirim ulang: yang memutuskan orangnya, sesudah melihat kertas. */
-export async function cetakAsli(data, jalur) {
+ *  dikirim (hasilTakDiketahui) → dilempar berkalimat KALIMAT_TAK_DIKABARI, juga TANPA kirim ulang: yang memutuskan orangnya, sesudah melihat kertas.
+ *  Satu cetakan pada satu waktu: dipanggil saat cetakan lain belum dikabari → menolak berkode SEDANG_CETAK tanpa menyentuh aplikasi. */
+export const cetakAsli = (data, jalur) => satuCetakan(() => cetakAsliDalam(data, jalur));
+async function cetakAsliDalam(data, jalur) {
   if (jalur === 'sunmi' || jalur === 'sunmi-bt') {
     let sebab = '';
     try {
@@ -123,15 +147,19 @@ export const printerMode = (lewat) => panggilAsli('PrinterSunmi', 'mode', { lewa
 /** Pindahkan mode kertas printer (1 | 2 | 3). Printer tidak mengabari hasilnya — tanyakan lagi modenya beberapa detik kemudian. */
 export function printerSetelMode(mode, lewat) {
   const m = Number(mode); if (!MODE_KERTAS.some((x) => x[0] === m)) return Promise.reject(galat('Mode kertas tidak dikenal', 'SALAH_ISI'));
+  // mode tidak dipindah di tengah cetakan yang belum dikabari
+  if (printerSibuk()) return Promise.reject(galat(KALIMAT_MASIH_MENCETAK, 'SEDANG_CETAK'));
   return panggilAsli('PrinterSunmi', 'setelMode', { mode: m, lewat: lewat === 'bt' ? 'bt' : 'usb' });
 }
 /** Kirim perintah label (TSPL) ke printer yang sedang di mode label. Printer label TIDAK mengabari hasil cetak. Hasil { nama, byte }. */
-export const kirimTspl = (data, lewat) => panggilAsli('PrinterSunmi', 'tspl', { data: String(data || ''), lewat: lewat === 'bt' ? 'bt' : 'usb' });
+export const kirimTspl = (data, lewat) => satuCetakan(() => panggilAsli('PrinterSunmi', 'tspl', { data: String(data || ''), lewat: lewat === 'bt' ? 'bt' : 'usb' }));
 /** Sebelum label dikirim lewat SDK SUNMI: tanya mode printer, tolak (kode 'SALAH_MODE') bila bahasa labelnya pasti salah untuk mode itu.
  *  Uji owner 20 Nov 2026: label bahasa struk ke printer di mode label dijawab "kertas habis"; perintah label ke printer di mode struk
  *  berangkat tanpa kabar. cara 'tspl': printer HARUS bisa ditanya (galat tanya dilempar apa adanya — pintu label butuh sambungan yang sama).
  *  Cara lain: tanya yang gagal dibiarkan, supaya jalur cetak biasa tetap mencoba dan tetap bisa jatuh ke kabel. Hasil { mode, ditanya }. */
 export async function pastikanModeLabel(cara, lewat) {
+  // pertanyaan mode antre di belakang cetakan yang belum dikabari lalu habis waktu — ditolak di depan, bukan dibiarkan menebak
+  tolakBilaSibuk();
   let mode = '';
   try { const r = await printerMode(lewat); mode = bacaModeKertas(r && r.mode); }
   catch (e) { if (cara === 'tspl') throw e; return { mode: '', ditanya: false }; }

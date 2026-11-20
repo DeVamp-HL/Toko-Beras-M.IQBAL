@@ -7,7 +7,7 @@ import { RP, tanggalPendek, hariIniIso } from '../inti/format.js';
 import * as AJ from './antar-logika.js';
 import * as ST from './struk-logika.js';
 import * as PR from '../inti/printer.js';
-import { hasilTakDiketahui } from '../inti/perangkat.js';
+import { hasilTakDiketahui, masihMencetak, printerSibuk, KALIMAT_MASIH_MENCETAK } from '../inti/perangkat.js';
 import { fbnKecilkan, fbnSrc, fbnKB } from './foto-bon-logika.js';
 import { tombolAkun, bukanOwner } from './akses-layar.js';
 import { tulisDokumen, kabarKiriman, ambilPenjualanSemua } from '../data/toko.js';
@@ -70,6 +70,8 @@ export function buatPanelAntar(ctx) {
     const dialog = () => { const el = document.getElementById('cetakStruk'); if (!el) return set({ kabar: 'Dialog cetak tidak tersedia di layar ini', kabarAwas: true });
       el.textContent = lembar.map((g) => AJ.ajTeksCetak(g, kertas === 58 ? 32 : 48)).join('\n\n' + '- - potong di sini - -' + '\n\n'); el.className = 'cetak-struk k' + kertas;
       try { window.print(); } catch (e) { set({ kabar: 'Dialog cetak tidak bisa dibuka: ' + (e && e.message ? e.message : e), kabarAwas: true }); } };
+    // satu cetakan pada satu waktu: selama cetakan lain belum dikabari printer, surat jalan tidak dikirim (ketukan kedua dulu memutus yang pertama)
+    if (printerSibuk()) return set({ kabar: KALIMAT_MASIH_MENCETAK, kabarAwas: true });
     PR.jalurCetak().then((j) => {
       if (j === 'dialog') return dialog();
       // dua lembar berurutan, masing-masing dipotong printer: lembar pembeli dulu, lalu lembar toko (yang ditandatangani & dibawa pulang)
@@ -79,6 +81,7 @@ export function buatPanelAntar(ctx) {
         .catch((e) => {
           // uji owner 20 Nov 2026: printer diam sesudah data dikirim = hasil lembar itu TIDAK DIKETAHUI, bukan "gagal". Kertasnya dilihat dulu;
           // dialog cetak tidak dibuka sendiri — tombol "cetak" surat jalan tetap ada untuk mengulang.
+          if (masihMencetak(e)) return set({ kabar: KALIMAT_MASIH_MENCETAK + (n ? ' — ' + n + ' lembar sudah keluar' : ''), kabarAwas: true });
           if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-' + (n + 1) + ' dari ' + lembar.length + ' — lihat kertasnya dulu; kalau ada yang tidak keluar, cetak lagi surat jalannya', kabarAwas: true });
           set({ kabar: 'Printer USB gagal' + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true }); dialog();
         });

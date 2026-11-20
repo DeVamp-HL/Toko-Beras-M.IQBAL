@@ -3058,3 +3058,34 @@ aslinya — ±1 detik = kiriman ditolak sambungan, ±40 detik = printer diam. (4
 label" (dikirim juga saat printer di mode tanpa alas). **Masih belum terbukti di perangkat:** penjaga label lawan mode (belum ada percobaan
 pasangan yang salah), batal uji sidik jari, label & mode lewat kabel, perintah label di stiker bercelah, hasil kertas di mode tanpa alas, dan
 apakah cetak pertama sesudah menganggur SELALU diam (cara uji: diamkan printer ≥ 3 menit, lalu Cetak contoh — catatannya kini memuat lamanya).
+
+**Uji owner keempat di CPad, 20 Nov 2026 ±18.03–18.23 WIB (APK 1.22, halaman `8e3e9ac` = susulan ketiga sudah tayang)** — *terbukti di
+perangkat:* susulan ketiga sendiri (baris "Printer tidak mengabari hasil cetaknya …" dengan kabar asli dan lamanya: **43.211 ms** dan **43.369 ms**
+— cocok dengan hitungan dari isi pustaka: printer DIAM, bukan kiriman yang ditolak); penjaga label lawan mode (label stiker bercelah ke printer di
+mode struk ditolak berkalimat dalam 53 ms, tidak ada yang dikirim); batal uji sidik jari ("uji dibatalkan"). *Yang ketemu:*
+(a) **Printer diam itu SERING, dan bukan soal "sesudah menganggur".** Di layar Perangkat 2 dari 4 cetak contoh diam, dua-duanya berturutan
+(selang ±40 detik); dua berikutnya keluar (2,3 dan 2,4 detik) padahal didahului jeda 5 dan 3 menit. Tanya-keadaan sebelum kirim selalu dijawab.
+**Sebabnya BELUM diketahui** — dari catatan itu tidak bisa dibedakan "printer menahan cetakan" dari "printer tidak menerima datanya".
+(b) **Di Jual tiap gagal tercatat DUA baris "dialog cetak perangkat ini" dan kabarnya "Cetak gagal: printer tidak tersambung"** (18.18, 18.19,
+18.23; yang berhasil — 18.22 — satu baris). *Sebabnya, dari isi aplikasi dan pustaka (bukan dari perangkat):* pustaka mengerjakan perintah satu
+per satu di satu antrean (`PriorityExecutor` satu benang) dan satu sambungan. Tombol Cetak di Jual tidak berubah selama printer belum
+mengabari, jadi diketuk lagi. Permintaan kedua menanya keadaan printer, antre di belakang cetakan pertama (yang sedang menunggu printer diam),
+habis waktu 4 detik, lalu aplikasi **melepas sambungan** (`lepasDiam` → `release`: antrean dimatikan, soket ditutup) — sambungan yang sedang
+dipakai cetakan pertama, yang lalu berakhir `onFailed(OFFLINE)`. Dua permintaan = dua kali jatuh ke dialog = dua baris. Layar Perangkat tidak
+kena karena tombol Cetak contohnya memang mati selama mencetak. *Tambalan (susulan keempat, halaman saja — APK tetap 1.22):*
+(1) **Satu cetakan pada satu waktu** di `inti/perangkat.js` (`satuCetakan`): selama satu cetakan belum dikabari, `cetakAsli` (jalur mana pun),
+perintah label, tanya mode sebelum label, dan pindah mode ditolak berkode `SEDANG_CETAK` SEBELUM menyentuh aplikasi; kuncinya dibuka di ujung
+mana pun (berhasil, gagal, tidak dikabari), dan dianggap lepas sendiri sesudah 90 detik bila aplikasi tidak pernah menjawab (batas terpanjang
+aplikasi 76 detik) — toko tidak boleh terkunci dari printernya oleh penjaga ini. `masihMencetak(e)` bukan galat printer: layar tidak membuka dialog, tidak mengirim lewat kabel, tidak
+menyalakan lampu gagal. (2) Jual: tombol Cetak bertulisan **"Mencetak…"** selama menunggu; ketukan berikutnya hanya dijawab "Cetakan sebelumnya
+belum dikabari printer — tunggu kabarnya dulu…", dan kabar itu hilang begitu cetakannya dikabari. Label dan surat jalan ikut aturan yang sama.
+(3) Layar Perangkat: cetak contoh lewat SDK menyimpan jawaban printer SEBELUM cetak dan, kalau printer diam, menanyainya lagi SESUDAHNYA
+("Keadaan printer sebelum cetak itu: … · sesudahnya: …"), dan baris yang gagal menyebut gaya serta besar kirimannya — data untuk mencari
+sebab (a). Yang terlihat sejauh ini: tiga kejadian printer diam yang tercatat di layar Perangkat (uji ketiga 1, keempat 2) semuanya cetak
+contoh BERGAMBAR ±84 ribu byte lewat Bluetooth (gayanya dibaca dari cetak berikutnya dengan isian yang sama), dan tiga gagal di Jual juga struk
+bergambar; label contoh (kiriman kecil) dan semua tanya keadaan / mode selalu dijawab. Belum dicoba: gaya teks lewat Bluetooth berkali-kali —
+itu yang membedakan "kiriman besar lewat Bluetooth" dari sebab lain. **Belum dikerjakan (butuh APK baru):** aplikasi
+sendiri masih melepas sambungan milik perintah lain bila dua perintah datang bersamaan (halaman kini tidak mengirimnya), dan menunggu printer
+diam tetap ±43 detik (lamanya dari pustaka). **Belum terbukti di perangkat:** susulan keempat ini; apakah struk yang "tidak dikabari" keluar
+belakangan; di aplikasi tablet "dialog cetak dibuka sebagai gantinya" sungguh membuka sesuatu atau tidak (aplikasinya tidak punya pencetak
+sistem — kalau tidak, baris "dialog cetak perangkat ini" di Struk keluar tercatat untuk struk yang tidak pernah keluar).

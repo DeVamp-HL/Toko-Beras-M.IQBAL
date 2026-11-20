@@ -360,18 +360,33 @@ export function pasangLayarJual(akar, opsi) {
   function lampu(nama) { try { const f = PK[nama]; if (typeof f === 'function') { const j = f(); if (j && typeof j.catch === 'function') j.catch(() => {}); } } catch (e) { /* tanpa lampu */ } }
   /** Cetak: printer USB perangkat ini bila ada (aplikasi tablet kasir / WebUSB — inti/printer.js, setelan di uji-cetak.html), selain itu atau kalau
    *  printer gagal = teks struk yang sama lewat dialog cetak perangkat ini. Isi struk sama persis di kedua jalur (garis susunStruk). */
+  // Satu cetakan pada satu waktu (uji owner 20 Nov 2026 malam): tombol Cetak dulu tidak berubah selama printer belum mengabari, jadi diketuk
+  // lagi — dan permintaan kedua itu memutus sambungan cetakan pertama ("printer tidak tersambung", dua baris struk keluar untuk satu struk).
+  // Selama `mencetak`, tombolnya bertulisan "Mencetak…" dan ketukan berikutnya hanya dijawab kabar; tidak ada yang dikirim ke printer.
+  // `mencetak` = saat cetakan yang sedang ditunggu dimulai (0 = tidak ada); sesudah PK.BATAS_SIBUK_MS dianggap selesai supaya tombol tidak macet.
+  let mencetak = 0;
+  const sedangCetak = () => mencetak > 0 && Date.now() - mencetak < PK.BATAS_SIBUK_MS;
+  // kabar "tunggu kabarnya dulu" tidak boleh hidup lebih lama dari cetakan yang ditunggunya; jawaban cetakan lama tidak menyentuh yang lebih baru
+  const usaiCetak = (k) => { if (mencetak !== k) return; mencetak = 0; set(S().kabar === PK.KALIMAT_MASIH_MENCETAK ? { kabar: '', kabarAwas: false } : {}); };
   function cetak(nota, atur, pilih, ket) {
     const st = ST.susunStruk(nota, atur, pilih); if (!st) return;
+    if (sedangCetak() || PK.printerSibuk()) { set({ kabar: PK.KALIMAT_MASIH_MENCETAK, kabarAwas: true }); return; }
+    let k = 0;
     PR.jalurCetak().then((j) => {
       if (j === 'dialog') { cetakDialog(st, nota, ket); return; }
       // paket S2a: QR nomor nota di bawah struk bila setelan printer perangkat ini menyertakan QR ("Printer tablet ini") — scan struk itu membuka notanya
       const qr = PR.prAtur().qr ? TK.tkQrNota(nota) : '';
+      k = mencetak = Date.now(); set({});
       return PR.cetakGaris(st.garis, { logoToko: st.logo, qr }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
+        usaiCetak(k);
         catatStruk(nota, 'cetak', (ket ? ket + ' · ' : '') + PR.namaPrinter(r.jalur) + PR.namaJalur(r.jalur) + ' · gaya ' + r.gaya + ' · ' + r.kertas + ' mm');
         // paket S1: SDK SUNMI mengabari kertas hampir habis; jalur SUNMI yang jatuh ke USB langsung disebut supaya ketahuan (struknya tetap keluar)
         if (r.peringatan) { lampu('lampuKertas'); set({ kabar: r.peringatan + ' — struk ini tetap tercetak', kabarAwas: true }); }
         else if (r.cadanganDari) set({ kabar: 'Struk tercetak lewat USB langsung; jalur SDK SUNMI tidak jalan (' + r.cadanganDari + ')', kabarAwas: false });
       }).catch((e) => {
+        usaiCetak(k);
+        // cetakan lain (label, surat jalan) belum dikabari: bukan kegagalan printer — tanpa lampu gagal, tanpa dialog
+        if (PK.masihMencetak(e)) { set({ kabar: PK.KALIMAT_MASIH_MENCETAK, kabarAwas: true }); return; }
         lampu('lampuGagal');
         // uji owner 20 Nov 2026 (Bluetooth): printer diam sesudah data dikirim = hasil TIDAK DIKETAHUI, bukan "gagal". Kertasnya dilihat dulu;
         // dialog cetak tidak dibuka sendiri (kalau struknya ternyata keluar, dialog itu hanya membingungkan) — tombol Cetak tetap ada untuk mengulang.
@@ -379,7 +394,7 @@ export function pasangLayarJual(akar, opsi) {
         set({ kabar: (j === 'sunmi-bt' ? 'Printer Bluetooth gagal (' : 'Printer USB gagal (') + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true });
         cetakDialog(st, nota, ket);
       });
-    }).catch(() => cetakDialog(st, nota, ket));
+    }).catch(() => { usaiCetak(k); cetakDialog(st, nota, ket); });
   }
   function cetakDialog(st, nota, ket) {
     const el = document.getElementById('cetakStruk'); if (!el) return;
@@ -666,6 +681,8 @@ export function pasangLayarJual(akar, opsi) {
         if (r.peringatan) lampu('lampuKertas');
         set({ tkLabel: null, kabarAwas: false, kabar: n + ' label ' + sasaran.nama + ' dikirim ke printer' + (r.tanpaKabar ? ' — printer tidak mengabari hasil perintah label, lihat kertasnya' : '') + (r.peringatan ? ' · ' + r.peringatan : '') });
       } catch (e) {
+        // cetakan lain belum dikabari printer: labelnya belum dikirim sama sekali — bukan kegagalan printer
+        if (PK.masihMencetak(e)) return set({ kabar: PK.KALIMAT_MASIH_MENCETAK + (dokumen.length ? ' — kodenya sudah tercatat, tinggal tekan Cetak label lagi sesudah itu' : ''), kabarAwas: true });
         lampu('lampuGagal');
         // printer diam sesudah data dikirim: belum tentu "tidak tercetak" — lihat kertasnya dulu
         if (PK.hasilTakDiketahui(e)) return set({ kabar: PK.KALIMAT_TAK_DIKABARI + (dokumen.length ? ' — kodenya sudah tercatat, tinggal tekan Cetak label lagi' : ''), kabarAwas: true });
@@ -1245,7 +1262,7 @@ export function pasangLayarJual(akar, opsi) {
       ${n.nota.noFaktur ? h`<div class="ket" data-k="struk-faktur">FAKTUR ${n.nota.noFaktur}${(() => { const F = FK.fkNota(n.nota.trxId || n.nota.grupNota || n.nota.id, s.sekarang || new Date()); return F ? ' · ' + FK.fkTeksTempo(F) + (F.sisa > 0.5 ? ' · sisa ' + RP(F.sisa) : '') : ''; })()}</div>`
         : akunOwner() && n.nota.berlaku && n.nota.nama ? h`<div class="kaca-btn" data-aksi="jadikanFaktur" data-k="jadikan-faktur">Jadikan faktur · nomor + jatuh tempo, tempo ${FK.fkTempoTeks(FK.fkTempo(n.nota.nama))}</div>` : ''}
       ${(() => { const url = pratinjauStruk(st, n.pilih.kertas); return url ? h`<div class="st-gambar-bingkai" data-k="gambar-struk"><img class="st-gambar k${n.pilih.kertas}" src="${url}" alt="Pratinjau struk seperti keluar dari printer tablet"></div>` : h`<pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>`; })()}
-      <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="kirimWa">Kirim WhatsApp</div><div class="kaca-btn" data-aksi="cetakStruk">Cetak</div><a class="kaca-btn" href="uji-cetak.html" style="text-decoration: none; color: inherit;">Printer tablet ini</a></div>
+      <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="kirimWa">Kirim WhatsApp</div><div class="kaca-btn" data-aksi="cetakStruk" data-k="tombol-cetak-struk">${sedangCetak() ? 'Mencetak…' : 'Cetak'}</div><a class="kaca-btn" href="uji-cetak.html" style="text-decoration: none; color: inherit;">Printer tablet ini</a></div>
       ${pitaTolak(s, 'struk')}
       <div class="ket">Struk yang sama untuk kertas dan WhatsApp — cuma menyusun nota yang sudah tersimpan, tidak ada angka baru. WhatsApp dibuka tanpa nomor tujuan (WhatsApp yang bertanya ke siapa; nomor pembeli tidak disimpan). Cetak = printer USB tablet ini bila sudah diatur ("Printer tablet ini": gaya, logo), selain itu dialog cetak perangkat ini.</div>
       ${n.nota.cara === 'QRIS' ? h`<div class="pita-info">QRIS: yang masuk rekening sudah dipotong MDR — catatan toko, tidak dicetak di struk pembeli.</div>` : ''}
