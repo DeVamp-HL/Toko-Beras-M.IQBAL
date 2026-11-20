@@ -26,12 +26,12 @@ const pesan = (e) => (e && e.message ? e.message : String(e));
 const pesanGagal = (e, mulaiPada) => pesan(e) + (e && e.asli ? ' · kabar aslinya: "' + e.asli + '"' : '') + (mulaiPada ? ' · ' + (Date.now() - mulaiPada) + ' ms' : '');
 
 function isian() {
-  return { gaya: $('ucGaya').value, kertas: Number($('ucKertas').value), potong: $('ucPotong').value, umpan: Number($('ucUmpan').value), qr: $('ucQr').checked, logo, aktif: $('ucAktif').checked, jalur: $('ucJalur').value || 'usb', btPotong: $('ucBtPotong').checked, alamatPrinter: $('ucAlamat').value.trim(),
+  return { gaya: $('ucGaya').value, kertas: Number($('ucKertas').value), potong: $('ucPotong').value, umpan: Number($('ucUmpan').value), qr: $('ucQr').checked, logo, aktif: $('ucAktif').checked, jalur: $('ucJalur').value || 'usb', alamatPrinter: $('ucAlamat').value.trim(),
     labelCara: $('ucLabelCara').value || 'struk', labelLebar: Number($('ucLabelLebar').value), labelTinggi: Number($('ucLabelTinggi').value), labelCelah: Number($('ucLabelCelah').value), labelPotong: $('ucLabelPotong').checked };
 }
 function isiForm(a) {
   $('ucGaya').value = a.gaya; $('ucKertas').value = String(a.kertas); $('ucPotong').value = a.potong; $('ucUmpan').value = String(a.umpan);
-  $('ucQr').checked = !!a.qr; $('ucAktif').checked = a.aktif !== false; logo = a.logo || ''; $('ucJalur').value = a.jalur || 'usb'; $('ucBtPotong').checked = !!a.btPotong; $('ucAlamat').value = a.alamatPrinter || ''; tampilJalur();
+  $('ucQr').checked = !!a.qr; $('ucAktif').checked = a.aktif !== false; logo = a.logo || ''; $('ucJalur').value = a.jalur || 'usb'; $('ucAlamat').value = a.alamatPrinter || ''; tampilJalur();
   $('ucLabelCara').value = a.labelCara; $('ucLabelLebar').value = String(a.labelLebar); $('ucLabelTinggi').value = String(a.labelTinggi); $('ucLabelCelah').value = String(a.labelCelah); $('ucLabelPotong').checked = a.labelPotong !== false;
 }
 /** Jalur SDK yang sedang dipilih di formulir → cara menyambung printer ('bt' | 'usb') untuk tombol Periksa printer & mode kertas. */
@@ -99,13 +99,10 @@ async function cetak() {
       // uji owner 20 Nov 2026 malam: printer diam 2 dari 4 cetak contoh dan belum diketahui kenapa. Jawaban printer SEBELUM cetak disimpan,
       // dan kalau ia diam, ditanya lagi SESUDAHNYA — dua jawaban itu yang membedakan "printer menahan cetakan" dari "printer tidak mendengar".
       if (sdk) sebelum = await keadaanSingkat(lewatJalur(a.jalur));
-      // percobaan "kirim per potong": hanya jalur Bluetooth + gaya gambar (gaya teks tidak punya batas potong); isian di layar yang dipakai, belum tentu tersimpan
-      const batas = a.jalur === 'sunmi-bt' && a.btPotong ? s.batas : null;
-      if (batas && batas.length) ukuran += ' · dikirim per potong (' + (batas.length + 1) + ')';
       // jalur yang dicoba = yang sedang DIPILIH di formulir (belum tentu tersimpan); jaringan memakai alamat di kotak isian
       const jalurCoba = a.jalur === 'sunmi' || a.jalur === 'sunmi-bt' || a.jalur === 'jaringan' ? a.jalur : 'aplikasi';
-      mulaiPada = Date.now(); const r = await kirimCetak(s.byte, jalurCoba, batas, { alamat: a.alamatPrinter });
-      tulisLog('TERCETAK lewat ' + namaJalur(r.jalur) + ' · gaya ' + s.gaya + ' · ' + r.byte + ' byte' + (r.potong > 1 ? ' dalam ' + r.potong + ' potong' : '') + ' · ' + (r.perangkat || 'printer') + (r.tugas ? ' · pekerjaan ' + r.tugas : '')
+      mulaiPada = Date.now(); const r = await kirimCetak(s.byte, jalurCoba, { alamat: a.alamatPrinter });
+      tulisLog('TERCETAK lewat ' + namaJalur(r.jalur) + ' · gaya ' + s.gaya + ' · ' + r.byte + ' byte · ' + (r.perangkat || 'printer') + (r.tugas ? ' · pekerjaan ' + r.tugas : '')
         + ' · ' + (Date.now() - mulaiPada) + ' ms' + (r.peringatan ? ' · ' + r.peringatan : ''));
       if (r.cadanganDari) tulisLog((a.jalur === 'jaringan' ? 'Jalur jaringan' : 'Jalur SDK SUNMI') + ' TIDAK jalan, struk ini keluar lewat USB langsung. Sebabnya: ' + r.cadanganDari, true);
     }

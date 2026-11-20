@@ -101,23 +101,15 @@ cek('struk gambar: ESC @ · raster · QR · potong penuh', sg.byte[0] === 0x1b &
 // Setelan `pekat` yang telanjur tersimpan di tablet wajib diabaikan.
 const gp = epSusunGambar({ bit, lebar: 10, tinggi: 2 }, { pekat: 6 }), tp = epSusun([{ kiri: 'A', kanan: '' }], { pekat: 6 });
 cek('struk tanpa perintah kepekatan GS ( K (NT320 mencetaknya jadi "1")', cari(gp.byte, [0x1d, 0x28, 0x4b]) < 0 && cari(tp.byte, [0x1d, 0x28, 0x4b]) < 0 && arr(gp.byte).slice(0, 5).join(',') === [0x1b, 0x40, 0x1b, 0x61, 1].join(','), arr(gp.byte).slice(0, 9));
-// uji owner 20 Nov 2026: struk bergambar ±84 ribu byte lewat Bluetooth sering hilang seluruhnya → kiriman boleh dipotong per pita gambar.
-{
-  const tg = 1164; const besar = epSusunGambar({ bit: new Uint8Array(576 * tg), lebar: 576, tinggi: tg }, { potong: 'penuh', qr: 'X1', umpan: 4 });
-  const pitaBesar = Math.ceil(tg / 240);
-  cek('batas potong: satu di tiap ujung pita kecuali yang terakhir (1164 baris → 5 pita → 4 batas)', besar.batas.length === pitaBesar - 1 && besar.batas.join(',') === [1, 2, 3, 4].map((k) => 5 + k * (8 + 72 * 240)).join(','), besar.batas.join(','));
-  const pt = epPotong(besar.byte, besar.batas); let sambung = []; pt.forEach((p) => { sambung = sambung.concat(arr(p)); });
-  cek('potongan disambung = kiriman asli, byte demi byte', pt.length === pitaBesar && sambung.length === besar.byte.length && sambung.every((v, i) => v === besar.byte[i]), pt.length + ' / ' + sambung.length);
-  cek('potong pertama membawa kepala struk (ESC @), potong berikutnya mulai TEPAT di kepala pita (GS v 0)', pt[0][0] === 0x1b && pt[0][1] === 0x40 && pt.slice(1).every((p) => p[0] === 0x1d && p[1] === 0x76 && p[2] === 0x30), pt.map((p) => arr(p).slice(0, 3).join(' ')).join(' | '));
-  cek('hanya potong terakhir yang membawa QR dan potong kertas', pt.slice(0, -1).every((p) => cari(p, [0x1d, 0x56, 0x41, 0x00]) < 0) && cari(pt[pt.length - 1], [0x1d, 0x56, 0x41, 0x00]) > 0 && cari(pt[pt.length - 1], [0x1d, 0x28, 0x6b]) > 0);
-  cek('tiap potong jauh lebih kecil dari kiriman utuh (≤ satu pita + ekor)', pt.every((p) => p.length <= 8 + 72 * 240 + 200) && besar.byte.length > 80000, pt.map((p) => p.length).join(',') + ' dari ' + besar.byte.length);
-  const kecil = epSusunGambar({ bit, lebar: 10, tinggi: 2 }, {});
-  cek('gambar satu pita: tanpa batas → satu potong utuh', kecil.batas.length === 0 && epPotong(kecil.byte, kecil.batas).length === 1 && epPotong(kecil.byte, kecil.batas)[0].length === kecil.byte.length);
-  cek('epPotong mengabaikan batas yang tidak sah (bukan bilangan bulat, mundur, di luar kiriman)', epPotong(besar.byte, [0, -3, 7.5, 'x', 100, 100, 50, 9999999]).map((p) => p.length).join(',') === '100,' + (besar.byte.length - 100) && epPotong(besar.byte, null).length === 1);
-}
 // ---- label barang (paket S4, 19 Nov 2026) ----
 const IL = { judul: 'Beras contoh kemasan 5 kg', ket: 'TOKO BERAS M.IQBAL', kode: 'MIQ:B:JJJJJJJJ', teksKode: 'JJJJJJJJ' };
 const berapa = (b, pola) => { let n = 0; for (let i = 0; i + pola.length <= b.length; i++) { let sama = true; for (let k = 0; k < pola.length; k++) if (b[i + k] !== pola[k]) { sama = false; break; } if (sama) n++; } return n; };
+// percobaan "kirim per potong" DICABUT (owner 20 Nov 2026 malam: di kertas hanya potong pertama yang keluar) → struk gambar = SATU kiriman
+{
+  const tg = 1164; const besar = epSusunGambar({ bit: new Uint8Array(576 * tg), lebar: 576, tinggi: tg }, { potong: 'penuh', qr: 'X1', umpan: 4 });
+  cek('struk gambar besar: satu kiriman utuh (5 pita, lalu QR dan potong kertas di ekornya), tanpa batas potong', besar.byte.length > 80000 && berapa(besar.byte, [0x1d, 0x76, 0x30, 0x00, 72, 0]) === Math.ceil(tg / 240)
+    && cari(besar.byte, [0x1d, 0x56, 0x41, 0x00]) > besar.byte.length - 40 && !('batas' in besar) && typeof epPotong === 'undefined', besar.byte.length + ' ' + Object.keys(besar).join(','));
+}
 const lb = epSusunLabel(IL, { kertas: 80, potong: 'penuh', umpan: 2, jumlah: 3 });
 cek('label struk: tiap lembar punya QR sendiri & dipotong sendiri (3 lembar = 3 QR, 3 potong)', lb.jumlah === 3 && berapa(lb.byte, [0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30]) === 3 && berapa(lb.byte, [0x1d, 0x56, 0x41, 0x00]) === 3, berapa(lb.byte, [0x1d, 0x56, 0x41, 0x00]));
 cek('label struk: nama barang dua kali besar lalu DIKEMBALIKAN ke ukuran biasa sebelum baris kecil', berapa(lb.byte, [0x1d, 0x21, 0x11]) === 3 && berapa(lb.byte, [0x1d, 0x21, 0x00]) === 3 && cari(lb.byte, [0x1d, 0x21, 0x00]) > cari(lb.byte, [0x1d, 0x21, 0x11]));
@@ -178,13 +170,6 @@ MUTASI = [
     ('bungkus tidak memotong kata panjang', "while (k.length > lebar)", "while (false)"),
     ('raster: bit kanan dulu (LSB)', "v |= 0x80 >> k", "v |= 1 << k"),
     ('raster: tanpa pita (satu perintah raksasa)', "const PITA = 240;", "const PITA = 100000;"),
-    ('batas potong: kepala struk tidak dihitung (potong jatuh di tengah pita)', "const kepala = 5;   // ESC @ (2 byte) + ESC a 1 (3 byte)", "const kepala = 0;"),
-    ('batas potong: kepala pita tidak dihitung', "pos += 8 + bpr * Math.min(PITA, gambar.tinggi - y0);", "pos += bpr * Math.min(PITA, gambar.tinggi - y0);"),
-    ('batas potong: ekor ikut dipotong tersendiri', "if (y0 + PITA < gambar.tinggi) batas.push(pos);", "batas.push(pos);"),
-    ('batas potong: tidak pernah dibuat', "if (y0 + PITA < gambar.tinggi) batas.push(pos);", ""),
-    ('epPotong: potongan kehilangan ekornya', "  hasil.push(byte.subarray(dari));\n", ""),
-    ('epPotong: batas di luar kiriman diterima', "b > dari && b < byte.length", "b > dari"),
-    ('epPotong: batas mundur diterima', "b > dari && b < byte.length", "b < byte.length"),
     ('dither dimatikan diam-diam', "if (!o.dither) {", "if (true) {"),
     ('transparan dianggap hitam', "abu[i] = 255 - a * (255 - l);", "abu[i] = a * l;"),
     ('emoji tidak dibuang di gaya gambar', ".replace(EMOJI, '')", ""),

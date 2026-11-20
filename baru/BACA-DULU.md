@@ -3145,7 +3145,10 @@ Bluetooth. Kunci "satu cetakan" juga terbukti (tombol "Mencetak…", ketukan ked
 tetap tidak tetap: satu struk bergambar "tidak mengabari", lalu enam berturut-turut keluar. *Percobaan kirim per potong:* foto owner
 memperlihatkan satu lembar berisi lima kali kepala struk (hiasan + logo) berturut-turut tanpa lanjutan dan tanpa potong, disusul satu struk
 contoh gaya teks yang utuh — tafsiran Claude: tiap percobaan hanya potong pertama yang sampai ke kertas; catatan layar Perangkat untuk
-percobaan itu tidak ada, jadi sebab potong kedua berhenti belum diketahui. Saklarnya masih ada dan bawaan mati. *Cacat yang ketahuan:* di
+percobaan itu tidak ada, jadi sebab potong kedua berhenti belum diketahui. **Dicabut atas keputusan owner malam itu juga ("Ya, cabut"):**
+saklar di layar Perangkat, setelan `btPotong`, pemotong kiriman (`epPotong`, batas potong dari `epSusunGambar`), lingkar potong di
+`cetakAsli`, dan kode `PRINTER_TERPOTONG` beserta cabangnya di Jual — satu struk kembali satu kiriman; `kirimCetak(byte, jalur, timpa)` dan
+`cetakAsli(data, jalur, opsi)` kehilangan argumen potongnya. Setelan `btPotong` yang telanjur tersimpan di tablet diabaikan. *Cacat yang ketahuan:* di
 jalur jaringan tombol Baca mode dan Pindah mode menjawab "Printer SUNMI tidak ditemukan di USB — pastikan … tercolok ke stand" (empat kali),
 sebab mode kertas selalu dicari lewat kabel bila jalurnya bukan Bluetooth. Lewat jaringan mode kertas memang tidak bisa diurus (pintu
 jaringan printer hanya menerima cetakan dan tanya keadaan), jadi sekarang `lewatSdk` (`inti/perangkat.js`) mencobanya lewat SDK SUNMI:

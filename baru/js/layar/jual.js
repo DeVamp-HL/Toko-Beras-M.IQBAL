@@ -396,8 +396,6 @@ export function pasangLayarJual(akar, opsi) {
         // uji owner 20 Nov 2026 (Bluetooth): printer diam sesudah data dikirim = hasil TIDAK DIKETAHUI, bukan "gagal". Kertasnya dilihat dulu;
         // dialog cetak tidak dibuka sendiri (kalau struknya ternyata keluar, dialog itu hanya membingungkan) — tombol Cetak tetap ada untuk mengulang.
         if (PK.hasilTakDiketahui(e)) { kabariGagal(PK.KALIMAT_TAK_DIKABARI); return; }
-        // kirim per potong berhenti di tengah: sebagian sudah di kertas — kalimatnya sudah menyebut berapa potong dan apa yang dilakukan
-        if (PK.strukTerpotong(e)) { kabariGagal(e.message); return; }
         // di aplikasi tablet tidak ada dialog cetak yang bisa dipakai (lihat cetakDialog): katakan terus terang struknya tidak keluar, jangan catat apa-apa
         if (PK.asliAda()) { kabariGagal(PR.sebutPrinter(j) + ' gagal (' + (e && e.message ? e.message : e) + ') — ' + TANPA_DIALOG); return; }
         kabariGagal(PR.sebutPrinter(j) + ' gagal (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya');

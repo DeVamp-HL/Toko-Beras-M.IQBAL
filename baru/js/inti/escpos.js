@@ -160,22 +160,10 @@ export function epRaster(bit, lebar, tinggi) {
 export function epSusunGambar(gambar, opsi) {
   const o = opsi || {}; const w = Penulis();
   w.byte(ESC, 0x40).byte(ESC, 0x61, 1);
-  const kepala = 5;   // ESC @ (2 byte) + ESC a 1 (3 byte)
   const r = epRaster(gambar.bit, gambar.lebar, gambar.tinggi); for (let i = 0; i < r.length; i++) w.byte(r[i]);
   w.byte(ESC, 0x61, 0);
   tutup(w, o, null);
-  // batas = tempat kiriman boleh dipotong: tepat sesudah tiap pita gambar kecuali yang terakhir (tiap pita = 8 byte kepala GS v 0 + isinya).
-  // Potong pertama membawa kepala struk, potong terakhir membawa QR / umpan / potong kertas. Dipakai jalur Bluetooth "kirim per potong".
-  const bpr = Math.ceil(gambar.lebar / 8); const batas = []; let pos = kepala;
-  for (let y0 = 0; y0 < gambar.tinggi; y0 += PITA) { pos += 8 + bpr * Math.min(PITA, gambar.tinggi - y0); if (y0 + PITA < gambar.tinggi) batas.push(pos); }
-  return { byte: w.hasil(), lebar: gambar.lebar, tinggi: gambar.tinggi, batas };
-}
-/** Potong satu kiriman di `batas` (letak byte, menaik). Hasil: larik Uint8Array yang bila disambung = kiriman asli. Batas yang tidak sah diabaikan. */
-export function epPotong(byte, batas) {
-  const hasil = []; let dari = 0;
-  (Array.isArray(batas) ? batas : []).forEach((b) => { if (Number.isInteger(b) && b > dari && b < byte.length) { hasil.push(byte.subarray(dari, b)); dari = b; } });
-  hasil.push(byte.subarray(dari));
-  return hasil;
+  return { byte: w.hasil(), lebar: gambar.lebar, tinggi: gambar.tinggi };
 }
 
 // ---------- LABEL barang (paket S4, 19 Nov 2026): tanda kenal untuk ditempel di kemasan ----------
