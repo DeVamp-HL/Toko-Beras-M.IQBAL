@@ -9,7 +9,7 @@ import { usbAda, usbMinta, usbDiingat, usbKirim, usbRingkas } from '../inti/usb-
 import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk } from '../inti/struk-kanvas.js';
 import { PR_GAYA, PR_JALUR, PR_LABEL_CARA, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak, namaJalur, susunLabel, cetakLabel } from '../inti/printer.js';
 import { kemampuan, printerStatus, padaPindai, padaTempel, lampuPadam, lewatJalur, printerBt, printerMode, printerSetelMode, MODE_KERTAS, kalimatModeKertas,
-  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak } from '../inti/perangkat.js';
+  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak, hasilTakDiketahui } from '../inti/perangkat.js';
 
 const $ = (id) => document.getElementById(id);
 let printer = null;          // WebUSB (peramban biasa)
@@ -21,6 +21,9 @@ function tulisLog(teks, awas) {
   if (awas) li.className = 'awas'; $('ucLog').insertBefore(li, $('ucLog').firstChild);
 }
 const pesan = (e) => (e && e.message ? e.message : String(e));
+// baris catatan untuk cetak yang gagal: kalimatnya, kabar asli aplikasi bila kalimatnya diganti (printer diam), dan lamanya — ±1 detik =
+// kiriman ditolak sambungan, ±40 detik = pustaka SUNMI menunggu jawaban printer sampai menyerah (uji owner 20 Nov 2026)
+const pesanGagal = (e, mulaiPada) => pesan(e) + (e && e.asli ? ' · kabar aslinya: "' + e.asli + '"' : '') + (mulaiPada ? ' · ' + (Date.now() - mulaiPada) + ' ms' : '');
 
 function isian() {
   return { gaya: $('ucGaya').value, kertas: Number($('ucKertas').value), potong: $('ucPotong').value, umpan: Number($('ucUmpan').value), qr: $('ucQr').checked, logo, aktif: $('ucAktif').checked, jalur: $('ucJalur').value || 'usb',
@@ -80,16 +83,16 @@ async function pilih(semua) {
 }
 
 async function cetak() {
-  const a = isian(); $('ucCetak').disabled = true;
+  const a = isian(); $('ucCetak').disabled = true; let mulaiPada = Date.now();
   try {
     const s = await susunCetak(epContohGaris(), a, { qr: a.qr ? 'UJI-CETAK' : '', logoToko: true });
     if (asliAda()) {
-      const mulaiPada = Date.now(); const r = await kirimCetak(s.byte, a.jalur === 'sunmi' || a.jalur === 'sunmi-bt' ? a.jalur : 'aplikasi');
+      mulaiPada = Date.now(); const r = await kirimCetak(s.byte, a.jalur === 'sunmi' || a.jalur === 'sunmi-bt' ? a.jalur : 'aplikasi');
       tulisLog('TERCETAK lewat ' + namaJalur(r.jalur) + ' · gaya ' + s.gaya + ' · ' + r.byte + ' byte · ' + (r.perangkat || 'printer') + ' · ' + (Date.now() - mulaiPada) + ' ms' + (r.peringatan ? ' · ' + r.peringatan : ''));
       if (r.cadanganDari) tulisLog('Jalur SDK SUNMI TIDAK jalan, struk ini keluar lewat USB langsung. Sebabnya: ' + r.cadanganDari, true);
     }
     else { const r = await usbKirim(printer, s.byte); tulisLog('TERCETAK lewat peramban · gaya ' + s.gaya + ' · ' + r.byte + ' byte'); }
-  } catch (e) { tulisLog(pesan(e), true); }
+  } catch (e) { tulisLog(pesanGagal(e, mulaiPada), true); }
   tampilPrinter();
 }
 
@@ -142,13 +145,13 @@ function pratinjauLabel() {
   try { $('ucLabelPratinjau').textContent = susunLabel(LABEL_CONTOH, 1, a).teks.join('\n'); } catch (e) { $('ucLabelPratinjau').textContent = pesan(e); }
 }
 async function cetakLabelContoh() {
-  const a = isian(); $('ucLabelCetak').disabled = true;
+  const a = isian(); $('ucLabelCetak').disabled = true; const mulai = Date.now();
   try {
     const r = await cetakLabel(LABEL_CONTOH, 1, a);
     tulisLog('LABEL contoh dikirim lewat ' + namaJalur(r.jalur) + ' · ' + (r.cara === 'tspl' ? 'stiker bercelah (TSPL)' : 'kertas bersambung') + ' · ' + r.byte + ' byte'
-      + (r.tanpaKabar ? ' · printer di mode label tidak mengabari hasilnya — lihat kertasnya' : '') + (r.peringatan ? ' · ' + r.peringatan : ''));
+      + (r.tanpaKabar ? ' · printer tidak mengabari hasil perintah label — lihat kertasnya' : '') + (r.peringatan ? ' · ' + r.peringatan : ''));
     if (r.cadanganDari) tulisLog('Jalur SDK SUNMI TIDAK jalan, label ini keluar lewat USB langsung. Sebabnya: ' + r.cadanganDari, true);
-  } catch (e) { tulisLog('Label contoh gagal: ' + pesan(e), true); }
+  } catch (e) { tulisLog((hasilTakDiketahui(e) ? 'Label contoh: ' : 'Label contoh gagal: ') + pesanGagal(e, mulai), true); }
   $('ucLabelCetak').disabled = false;
 }
 

@@ -7,6 +7,7 @@ import { RP, tanggalPendek, hariIniIso } from '../inti/format.js';
 import * as AJ from './antar-logika.js';
 import * as ST from './struk-logika.js';
 import * as PR from '../inti/printer.js';
+import { hasilTakDiketahui } from '../inti/perangkat.js';
 import { fbnKecilkan, fbnSrc, fbnKB } from './foto-bon-logika.js';
 import { tombolAkun, bukanOwner } from './akses-layar.js';
 import { tulisDokumen, kabarKiriman, ambilPenjualanSemua } from '../data/toko.js';
@@ -75,7 +76,12 @@ export function buatPanelAntar(ctx) {
       let n = 0;
       return lembar.reduce((p, g) => p.then(() => PR.susunCetak(g, { gaya: 'teks' })).then((x) => PR.kirimCetak(x.byte, j)).then(() => { n += 1; }), Promise.resolve())
         .then(() => set({ kabar: 'Surat jalan ' + sj.noSJ + ' dicetak 2 lembar: LEMBAR PEMBELI ditinggal, LEMBAR TOKO ditandatangani penerima & dibawa pulang', kabarAwas: false }))
-        .catch((e) => { set({ kabar: 'Printer USB gagal' + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true }); dialog(); });
+        .catch((e) => {
+          // uji owner 20 Nov 2026: printer diam sesudah data dikirim = hasil lembar itu TIDAK DIKETAHUI, bukan "gagal". Kertasnya dilihat dulu;
+          // dialog cetak tidak dibuka sendiri — tombol "cetak" surat jalan tetap ada untuk mengulang.
+          if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-' + (n + 1) + ' dari ' + lembar.length + ' — lihat kertasnya dulu; kalau ada yang tidak keluar, cetak lagi surat jalannya', kabarAwas: true });
+          set({ kabar: 'Printer USB gagal' + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true }); dialog();
+        });
     }).catch(() => dialog());
   }
   function waSJ(sj) {

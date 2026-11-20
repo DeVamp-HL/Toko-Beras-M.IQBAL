@@ -108,7 +108,7 @@ export function susunLabel(isi, jumlah, timpa) {
 }
 
 /** Cetak label barang lewat jalur cetak perangkat ini. Hasil { cara, jalur, jumlah, byte, perangkat, peringatan, cadanganDari, tanpaKabar }.
- *  tanpaKabar = true → printer di mode label tidak mengabari hasil cetak (TSPL): lihat kertasnya. Tanpa printer di perangkat ini → melempar. */
+ *  tanpaKabar = true → printer tidak mengabari hasil perintah label (TSPL): lihat kertasnya. Tanpa printer di perangkat ini → melempar. */
 export async function cetakLabel(isi, jumlah, timpa) {
   // layar Perangkat mencoba jalur yang sedang DIPILIH di formulir (belum tentu tersimpan): timpa.jalur menang atas setelan tersimpan — hanya di aplikasi
   const pilih = timpa && asliAda() && PR_JALUR.some((x) => x[0] === timpa.jalur) ? (timpa.jalur === 'usb' ? 'aplikasi' : timpa.jalur) : '';

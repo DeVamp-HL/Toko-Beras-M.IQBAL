@@ -45,6 +45,12 @@ export function dengarAsli(plugin, kejadian, fn) {
 /** Galat dari printer yang SUDAH menjawab (kertas habis, tutup terbuka, diam sesudah data dikirim): jangan dikirim ulang lewat jalur lain. */
 export function galatPrinter(e) { return !!(e && typeof e.code === 'string' && e.code.indexOf('PRINTER_') === 0); }
 const pesanGalat = (e) => (e && e.message ? e.message : String(e));
+/** Printer DIAM sesudah data cetak dikirim: pustaka SUNMI menyerah menanyai nomor pekerjaannya (kode PRINTER_UNKNOWN, ±40 detik) atau batas
+ *  waktu aplikasi habis (PRINTER_DIAM). Hasilnya TIDAK DIKETAHUI — bukan pasti gagal, bukan pasti keluar. Uji owner 20 Nov 2026 (Bluetooth,
+ *  cetak pertama sesudah printer menganggur ±3 menit): layar menulis "Cetak gagal: keadaan printer tidak diketahui", kertas tidak keluar,
+ *  cetak berikutnya 5 detik kemudian keluar. */
+export function hasilTakDiketahui(e) { return !!(e && (e.code === 'PRINTER_UNKNOWN' || e.code === 'PRINTER_DIAM')); }
+export const KALIMAT_TAK_DIKABARI = 'Printer tidak mengabari hasil cetaknya — lihat kertasnya dulu; kalau tidak keluar, cetak lagi';
 
 /** Jalur cetak → cara menyambung printer SUNMI: 'bt' (Bluetooth) atau 'usb'. */
 export const lewatJalur = (jalur) => (jalur === 'sunmi-bt' ? 'bt' : 'usb');
@@ -52,7 +58,8 @@ export const lewatJalur = (jalur) => (jalur === 'sunmi-bt' ? 'bt' : 'usb');
  *  jalur 'sunmi' = SDK resmi SUNMI lewat kabel USB (keadaan printer diperiksa dulu, hasil cetak dikabari); 'sunmi-bt' = SDK yang sama lewat
  *  Bluetooth (paket S4: printer harus sudah dipasangkan di Setelan tablet). Kalau SDK gagal SEBELUM ada byte terkirim (printer tak ketemu,
  *  Bluetooth mati, plugin tak ada di APK lama) → jatuh ke CetakUsb, alasannya di `cadanganDari`. Kalau printer menjawab ada halangan
- *  → galatnya dilempar apa adanya: mengirim ulang lewat jalur lain bisa mencetak dobel atau percuma. */
+ *  → galatnya dilempar apa adanya: mengirim ulang lewat jalur lain bisa mencetak dobel atau percuma. Kalau printer diam sesudah data
+ *  dikirim (hasilTakDiketahui) → dilempar berkalimat KALIMAT_TAK_DIKABARI, juga TANPA kirim ulang: yang memutuskan orangnya, sesudah melihat kertas. */
 export async function cetakAsli(data, jalur) {
   if (jalur === 'sunmi' || jalur === 'sunmi-bt') {
     let sebab = '';
@@ -60,6 +67,8 @@ export async function cetakAsli(data, jalur) {
       const r = await panggilAsli('PrinterSunmi', 'cetak', { data, lewat: lewatJalur(jalur) });
       return { jalur, nama: (r && r.nama) || '', peringatan: (r && r.peringatan) || '', cadanganDari: '' };
     } catch (e) {
+      // hasil tidak diketahui: kalimatnya menyebut langkah berikutnya (lihat kertas), kodenya tetap, kabar asli aplikasi ikut di `asli`
+      if (hasilTakDiketahui(e)) { const g = galat(KALIMAT_TAK_DIKABARI, e.code); g.asli = pesanGalat(e); throw g; }
       if (galatPrinter(e)) throw e;
       sebab = pesanGalat(e);
       try { await panggilAsli('PrinterSunmi', 'lepas', {}); } catch (e2) { /* APK lama: plugin tidak ada */ }

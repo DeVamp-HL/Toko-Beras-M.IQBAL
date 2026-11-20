@@ -373,6 +373,9 @@ export function pasangLayarJual(akar, opsi) {
         else if (r.cadanganDari) set({ kabar: 'Struk tercetak lewat USB langsung; jalur SDK SUNMI tidak jalan (' + r.cadanganDari + ')', kabarAwas: false });
       }).catch((e) => {
         lampu('lampuGagal');
+        // uji owner 20 Nov 2026 (Bluetooth): printer diam sesudah data dikirim = hasil TIDAK DIKETAHUI, bukan "gagal". Kertasnya dilihat dulu;
+        // dialog cetak tidak dibuka sendiri (kalau struknya ternyata keluar, dialog itu hanya membingungkan) — tombol Cetak tetap ada untuk mengulang.
+        if (PK.hasilTakDiketahui(e)) { set({ kabar: PK.KALIMAT_TAK_DIKABARI, kabarAwas: true }); return; }
         set({ kabar: (j === 'sunmi-bt' ? 'Printer Bluetooth gagal (' : 'Printer USB gagal (') + (e && e.message ? e.message : e) + ') — dialog cetak dibuka sebagai gantinya', kabarAwas: true });
         cetakDialog(st, nota, ket);
       });
@@ -661,9 +664,11 @@ export function pasangLayarJual(akar, opsi) {
       try {
         const r = await PR.cetakLabel(TK.tkIsiLabel(sasaran, kode), n);
         if (r.peringatan) lampu('lampuKertas');
-        set({ tkLabel: null, kabarAwas: false, kabar: n + ' label ' + sasaran.nama + ' dikirim ke printer' + (r.tanpaKabar ? ' — printer di mode label tidak mengabari hasilnya, lihat kertasnya' : '') + (r.peringatan ? ' · ' + r.peringatan : '') });
+        set({ tkLabel: null, kabarAwas: false, kabar: n + ' label ' + sasaran.nama + ' dikirim ke printer' + (r.tanpaKabar ? ' — printer tidak mengabari hasil perintah label, lihat kertasnya' : '') + (r.peringatan ? ' · ' + r.peringatan : '') });
       } catch (e) {
         lampu('lampuGagal');
+        // printer diam sesudah data dikirim: belum tentu "tidak tercetak" — lihat kertasnya dulu
+        if (PK.hasilTakDiketahui(e)) return set({ kabar: PK.KALIMAT_TAK_DIKABARI + (dokumen.length ? ' — kodenya sudah tercatat, tinggal tekan Cetak label lagi' : ''), kabarAwas: true });
         set({ kabar: 'Label tidak tercetak: ' + (e && e.message ? e.message : e) + (dokumen.length ? ' — kodenya sudah tercatat, tinggal tekan Cetak label lagi' : ''), kabarAwas: true });
       }
     };
