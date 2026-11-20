@@ -108,6 +108,9 @@ async function cetakAsliDalam(data, jalur, opsi) {
       // hasil tidak diketahui: kalimatnya menyebut langkah berikutnya (lihat kertas), kodenya tetap, kabar asli aplikasi ikut di `asli`
       if (hasilTakDiketahui(e)) { const g = galat(KALIMAT_TAK_DIKABARI, e.code); g.asli = pesanGalat(e); throw g; }
       if (galatPrinter(e)) throw e;
+      // aplikasi sendiri menolak karena perintah printer lain belum selesai (pintu di PrinterSunmiPlugin): cetakan itu masih jalan —
+      // mengirim struk ini lewat kabel bisa mencetak dobel, dan melepas sambungan memutus cetakan yang sedang jalan
+      if (masihMencetak(e)) { const gs = galat(KALIMAT_MASIH_MENCETAK, 'SEDANG_CETAK'); gs.asli = pesanGalat(e); throw gs; }
       sebab = pesanGalat(e);
       try { await panggilAsli('PrinterSunmi', 'lepas', {}); } catch (e2) { /* APK lama: plugin tidak ada */ }
     }

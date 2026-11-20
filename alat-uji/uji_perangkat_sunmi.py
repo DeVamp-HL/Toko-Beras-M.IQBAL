@@ -296,6 +296,12 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('x', 'BELUM_KIRIM'), 'CetakUsb.cetak': tolak('antarmuka dipegang aplikasi lain') });
   g = null; try { await cetakAsli('QUJD', 'sunmi'); } catch (e) { g = e; }
   cek('dua jalur gagal: KEDUA sebab sampai ke pemanggil — sebab jalur yang dipilih di depan, sebab kabel menyusul', g && g.message === 'x · kirim langsung lewat kabel USB juga gagal: antarmuka dipegang aplikasi lain' && g.sebabUtama === 'x', g && g.message);
+  // penjaga di sisi aplikasi (PrinterSunmiPlugin › ambilPintu, butuh APK baru): perintah printer lain belum selesai → aplikasi menolak SEDANG_CETAK
+  A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('Printer masih mengerjakan perintah sebelumnya — tunggu kabarnya dulu', 'SEDANG_CETAK'), 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
+  g = null; try { await cetakAsli('QUJD', 'sunmi-bt'); } catch (e) { g = e; }
+  cek('aplikasi menolak SEDANG_CETAK: sampai ke layar sebagai "tunggu kabarnya dulu" — TIDAK jatuh ke kabel (bisa dobel) dan TIDAK melepas sambungan cetakan yang sedang jalan',
+    g && g.code === 'SEDANG_CETAK' && masihMencetak(g) && g.message === KALIMAT_MASIH_MENCETAK && /mengerjakan perintah sebelumnya/.test(g.asli) && A.catat.join(',') === 'PrinterSunmi.cetak' && printerSibuk() === false,
+    (g && g.code) + ' · ' + (g && g.message) + ' · ' + A.catat.join(','));
 
   // ---- pindai ----
   A = pasangAplikasi(['Pindai', 'Lampu'], { 'Lampu.nyala': (isi) => ({ ok: true, kode: 0, isi }), 'Lampu.mati': () => ({ ok: true, kode: 0 }) });
@@ -646,11 +652,30 @@ def periksa_statis(perangkat_js):
        and sunmi.count('"Printer SUNMI tidak bisa disambung lewat Bluetooth: "') == 2)
     ok('PrinterSunmi Bluetooth: izin saat jalan diminta dari tombol Periksa Bluetooth; tanpa izin = BELUM_KIRIM berkalimat',
        '@Permission(alias = "bluetooth", strings = { Manifest.permission.BLUETOOTH_CONNECT })' in sunmi and 'requestPermissionForAlias("bluetooth", call, "sesudahIzinBt");' in sunmi
-       and re.search(r'if \(!izinBt\(\)\) \{\s+call\.reject\("Izin Bluetooth belum diberikan', sunmi))
+       and re.search(r'if \(!izinBt\(\)\) \{\s+tolak\(call, "Izin Bluetooth belum diberikan', sunmi))
     ok('PrinterSunmi: pindah jalur kabel ↔ Bluetooth melepas sambungan lama dulu; sambungan dipakai ulang hanya bila jalurnya sama',
        'if (ada != null && printerBt != bt) lepasDiam();' in sunmi and 'if (ada != null && printerBt == bt && ada.isConnected()) {' in sunmi and 'printerBt = bt;' in sunmi)
     tspl = sunmi[sunmi.index('    public void tspl(final PluginCall call) {'):]; tspl = tspl[:tspl.index('\n    }\n') + 7]
     ok('PrinterSunmi label: perintah TSPL dikirim apa adanya, TANPA menanyakan keadaan printer dengan bahasa struk', 'p.sendTSPLData(data);' in tspl and 'tanya(' not in tspl and 'commitTransBuffer' not in tspl)
+    # satu perintah printer pada satu waktu, di sisi aplikasi (owner 21 Nov 2026: "boleh kita kerjakan yang ini")
+    pintu = [n for n in ('status', 'cetak', 'bukaLaci', 'mode', 'setelMode', 'tspl') if ('    public void %s(final PluginCall call) {\n        if (!ambilPintu(call)) return;\n' % n) not in sunmi]
+    ok('PrinterSunmi pintu: tiap perintah yang memegang printer (status, cetak, laci, mode, pindah mode, label) mengambil pintu SEBELUM menyentuh sambungan', not pintu, pintu)
+    ok('PrinterSunmi pintu: perintah kedua ditolak berkode SEDANG_CETAK tanpa menyentuh sambungan; pemegang lama yang tak pernah selesai dianggap lepas',
+       'if (pemegang.compareAndSet(null, new Pegang(String.valueOf(call.getCallbackId()), kini()))) return true;\n        call.reject(KALIMAT_SIBUK, SEDANG_CETAK);\n        return false;' in sunmi
+       and 'if (lama != null && kini() - lama.sejak >= BATAS_PINTU_MS) pemegang.compareAndSet(lama, null);' in sunmi and 'private static final String SEDANG_CETAK = "SEDANG_CETAK";' in sunmi)
+    ok('PrinterSunmi pintu: SEMUA jawaban lewat jawab() / tolak() yang melepas pintu dulu — tidak ada jalan keluar yang meninggalkan pintu terkunci',
+       sunmi.count('call.reject(') == 3 and sunmi.count('call.resolve(') == 2 and sunmi.count('tolak(call, ') == 28 and sunmi.count('jawab(call, ') == 7
+       and 'private void jawab(PluginCall call, JSObject o) {\n        lepasPintu(call);\n        call.resolve(o);' in sunmi
+       and 'private void tolak(PluginCall call, String pesan, String kode) {\n        lepasPintu(call);\n        call.reject(pesan, kode);' in sunmi,
+       [sunmi.count('call.reject('), sunmi.count('call.resolve('), sunmi.count('tolak(call, '), sunmi.count('jawab(call, ')])
+    ok('PrinterSunmi pintu: hanya pemegangnya sendiri yang melepas (jawaban terlambat perintah lama tidak membuka pintu perintah baru)',
+       'if (p != null && p.id.equals(String.valueOf(call.getCallbackId()))) pemegang.compareAndSet(p, null);' in sunmi)
+    batas = {k: int(v) for k, v in re.findall(r'private static final (?:int|long) (BATAS_\w+) = (\d+);', sunmi)}
+    ok('PrinterSunmi pintu: batasnya lebih lama dari perintah terpanjang (sambung Bluetooth + tanya + cetak Bluetooth) dan sama dengan kunci di halaman',
+       batas.get('BATAS_PINTU_MS', 0) > batas.get('BATAS_SAMBUNG_BT_MS', 10**9) + batas.get('BATAS_STATUS_MS', 10**9) + batas.get('BATAS_CETAK_BT_MS', 10**9)
+       and ('export const BATAS_SIBUK_MS = %d;' % batas.get('BATAS_PINTU_MS', 0)) in perangkat_js, batas)
+    ok('PrinterSunmi lepas: sambungan TIDAK dilepas selagi perintah lain memegang printer',
+       'public void lepas(PluginCall call) {' in sunmi and sunmi.index('if (pintuDipegang()) {', sunmi.index('public void lepas(PluginCall call) {')) < sunmi.index('lepasDiam();', sunmi.index('public void lepas(PluginCall call) {')))
     ok('PrinterSunmi mode kertas: hanya 1, 2, 3; hasilnya dibaca dari jawaban printer (getPrintMode)', 'if (m == null || m < 1 || m > 3) {' in sunmi and 'p.setPrintMode(m);' in sunmi and 'p.getPrintMode(new PropCallback() {' in sunmi)
     bio = baca('apk', 'tambahan', 'BiometrikPlugin.java')
     ok('Biometrik: jalur AndroidX (BiometricManager + BiometricPrompt), bukan FingerprintManager lama',
@@ -901,6 +926,7 @@ MUTASI = [
     ('sidik jari dibatalkan dilaporkan sebagai kegagalan', 'js', "if (n === 5 || n === 10 || n === 13) return { batal: true, kalimat: 'uji dibatalkan' };", ""),
     ('sidik jari terkunci dilaporkan sebagai batal', 'js', "if (n === 7) return { batal: false,", "if (n === 7) return { batal: true,"),
     ('jalur aplikasi ikut memakai SDK SUNMI', 'js', "if (jalur === 'sunmi' || jalur === 'sunmi-bt') {", "if (jalur) {"),
+    ('aplikasi menolak SEDANG_CETAK tapi struk tetap dikirim lewat kabel (dobel)', 'js', "      if (masihMencetak(e)) { const gs = galat(KALIMAT_MASIH_MENCETAK, 'SEDANG_CETAK'); gs.asli = pesanGalat(e); throw gs; }\n", ""),
     ('S4: jalur Bluetooth diam-diam mencetak lewat kabel', 'js', "{ data, lewat: lewatJalur(jalur) }", "{ data }"),
     ('S4: jalur kabel dianggap Bluetooth', 'js', "(jalur === 'sunmi-bt' ? 'bt' : 'usb');", "(jalur ? 'bt' : 'usb');"),
     ('S4: hasil cetak Bluetooth dilaporkan sebagai jalur kabel', 'js', "return { jalur, nama: (r && r.nama) || '', peringatan: (r && r.peringatan) || '', cadanganDari: '' };", "return { jalur: 'sunmi', nama: (r && r.nama) || '', peringatan: (r && r.peringatan) || '', cadanganDari: '' };"),
