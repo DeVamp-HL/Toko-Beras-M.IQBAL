@@ -3037,3 +3037,24 @@ tetap dicoba (masih bisa jatuh ke kabel), perintah label berhenti dengan sebab a
 "uji dibatalkan" (bukan baris merah berbahasa Inggris); terkunci / belum ada jari / tanpa sensor diberi kalimat (`sidikJariTolak`).
 **Masih belum terbukti:** apa yang SUNGGUH keluar di kertas untuk label (log hanya mencatat "dikirim"), label TSPL di stiker bercelah, label di
 mode tanpa alas, label & mode lewat kabel.
+
+**Uji owner ketiga di CPad, 20 Nov 2026 ±16.23–16.29 WIB (APK 1.22, halaman `9f0bfc2`)** — *terbukti di perangkat:* mode tanpa alas tampil "mode
+STIKER TANPA ALAS" (tambalan susulan kedua); lima label contoh kertas bersambung terkirim dan sesudahnya scanner tablet membaca `UJI-LABEL-0001`
+(= kode QR label contoh; dibaca dari catatan layar, owner belum menyebutnya sendiri); kartu NFC terbaca; sidik jari dikenali; kelima lampu dan
+padam. Label contoh juga berangkat saat printer di mode tanpa alas (bahasa struk dan perintah label) — hasil di kertasnya belum diketahui.
+*Yang ketemu:* cetak contoh pertama sesudah printer menganggur ±3 menit ditulis **"Cetak gagal: keadaan printer tidak diketahui"**; kertas TIDAK
+keluar (kata owner); cetak berikutnya 5 detik kemudian keluar (2,1 detik). *Sebab kalimatnya (dibuktikan dari isi pustaka 1.0.16, `TransTask.run`):*
+itu `onFailed(UNKNOWN)`, yang hanya datang SESUDAH seluruh data ditulis ke sambungan — pustaka menanyai printer nomor pekerjaannya
+(`getPrintId`: 0,6 detik, lalu sampai sebelas kali menunggu jawaban 2 detik berselang 2 detik ≈ 40 detik) lalu menyerah; kalau tulisannya
+sendiri ditolak sambungan, menyerahnya ±1 detik. Tanya-keadaan sebelum kirim dijawab benar (kalau tidak, cetak berhenti sebagai `BELUM_KIRIM`).
+**Kenapa printer diam pada cetak pertama sesudah menganggur BELUM diketahui** — baru satu kejadian. *Tambalan (susulan ketiga, halaman saja —
+APK tetap 1.22):* (1) printer diam sesudah data dikirim (`PRINTER_UNKNOWN` dari pustaka, `PRINTER_DIAM` dari batas waktu aplikasi) =
+**hasil tidak diketahui**, bukan "gagal": `cetakAsli` melemparnya berkalimat `KALIMAT_TAK_DIKABARI` ("lihat kertasnya dulu; kalau tidak keluar,
+cetak lagi"), kode tetap, kabar asli di `asli`. TIDAK ada kirim ulang otomatis — kalau datanya sampai dan hanya jawabannya yang hilang, kirim
+ulang = struk dobel. (2) Jual: untuk keadaan itu kabarnya kalimat tadi, tanpa "Printer … gagal" dan tanpa membuka dialog cetak sendiri (tombol
+Cetak tetap ada); label tidak disebut "tidak tercetak"; surat jalan (dua lembar) menyebut lembar ke berapa yang tidak dikabari, juga tanpa
+dialog. (3) Layar Perangkat: baris cetak / label yang gagal memuat lama waktunya dan kabar
+aslinya — ±1 detik = kiriman ditolak sambungan, ±40 detik = printer diam. (4) Kabar perintah label "tanpa kabar" tidak lagi menyebut "di mode
+label" (dikirim juga saat printer di mode tanpa alas). **Masih belum terbukti di perangkat:** penjaga label lawan mode (belum ada percobaan
+pasangan yang salah), batal uji sidik jari, label & mode lewat kabel, perintah label di stiker bercelah, hasil kertas di mode tanpa alas, dan
+apakah cetak pertama sesudah menganggur SELALU diam (cara uji: diamkan printer ≥ 3 menit, lalu Cetak contoh — catatannya kini memuat lamanya).

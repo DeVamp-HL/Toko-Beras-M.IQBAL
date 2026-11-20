@@ -103,6 +103,21 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
     cek(kode + ': galat dilempar, CetakUsb TIDAK dipanggil (tidak dobel)', g && g.code === kode && A.hitung('CetakUsb.cetak') === 0, A.catat.join(','));
   }
   cek('galatPrinter mengenali hanya kode PRINTER_', galatPrinter({ code: 'PRINTER_COVER' }) && !galatPrinter({ code: 'BELUM_KIRIM' }) && !galatPrinter(new Error('x')) && !galatPrinter(null));
+  // uji owner 20 Nov 2026 (Bluetooth, cetak pertama sesudah printer menganggur): pustaka SUNMI mengabari UNKNOWN sesudah data dikirim dan layar
+  // menulis "Cetak gagal: keadaan printer tidak diketahui". Hasilnya tidak diketahui — kalimatnya harus menyebut langkah berikutnya, tanpa kirim ulang.
+  for (const kode of ['PRINTER_UNKNOWN', 'PRINTER_DIAM']) {
+    A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('Cetak gagal: keadaan printer tidak diketahui', kode), 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
+    g = null; try { await cetakAsli('QUJD', 'sunmi-bt'); } catch (e) { g = e; }
+    cek(kode + ': printer diam sesudah data dikirim → kalimat "tidak mengabari hasil, lihat kertasnya"', g && g.message === KALIMAT_TAK_DIKABARI, g && g.message);
+    cek(kode + ': kodenya tetap (tetap galat printer) dan tidak ada kiriman ulang lewat jalur lain', g && g.code === kode && galatPrinter(g) && A.catat.join(',') === 'PrinterSunmi.cetak', (g && g.code) + ' · ' + A.catat.join(','));
+    cek(kode + ': kabar asli aplikasi ikut dibawa untuk catatan layar Perangkat', g && g.asli === 'Cetak gagal: keadaan printer tidak diketahui', g && g.asli);
+  }
+  A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'PrinterSunmi.cetak': tolak('Printer belum bisa mencetak: kertas habis', 'PRINTER_OUT_PAPER'), 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
+  g = null; try { await cetakAsli('QUJD', 'sunmi-bt'); } catch (e) { g = e; }
+  cek('halangan pasti (kertas habis): kalimat printer sampai apa adanya, bukan "tidak mengabari"', g && g.message === 'Printer belum bisa mencetak: kertas habis' && g.asli === undefined, g && g.message);
+  cek('hasilTakDiketahui hanya untuk printer yang diam (UNKNOWN / DIAM)', hasilTakDiketahui({ code: 'PRINTER_UNKNOWN' }) && hasilTakDiketahui({ code: 'PRINTER_DIAM' }) && !hasilTakDiketahui({ code: 'PRINTER_OUT_PAPER' })
+    && !hasilTakDiketahui({ code: 'PRINTER_OFFLINE' }) && !hasilTakDiketahui({ code: 'BELUM_KIRIM' }) && !hasilTakDiketahui(new Error('x')) && !hasilTakDiketahui(null));
+  cek('kalimat "tidak mengabari" tidak menyebut gagal dan menyebut langkah berikutnya', !/gagal/i.test(KALIMAT_TAK_DIKABARI) && /lihat kertasnya/.test(KALIMAT_TAK_DIKABARI) && /cetak lagi/.test(KALIMAT_TAK_DIKABARI), KALIMAT_TAK_DIKABARI);
 
   A = pasangAplikasi(['CetakUsb', 'PrinterSunmi'], { 'CetakUsb.cetak': () => ({ nama: 'usb' }) });
   r = await cetakAsli('QUJD', 'aplikasi');
@@ -493,6 +508,23 @@ def periksa_statis(perangkat_js):
        and not re.search(r'(?<![\'\w.])lampu(Berhasil|Gagal)\(', jual) and not re.search(r'PK\.lampu\w*\(', jual))
     ok('jual.js: lampu hijau hanya sesudah nota SUNGGUH tercatat (sesudah cabang DITOLAK), bukan saat simulasi',
        jual.index("return set({ kabar: 'DITOLAK, nota tidak tersimpan: '") < jual.index("if (!(h && h.simulasi)) lampu('lampuBerhasil');") < jual.index('const lamaAdegan = adeganNota('))
+    # uji owner 20 Nov 2026 (ketiga): printer diam sesudah data dikirim — layar tidak boleh menyebut "gagal" / "tidak tercetak", dialog cetak tidak dibuka sendiri
+    tangkap = jual[jual.index("lampu('lampuGagal');"):]; tangkap = tangkap[:tangkap.index('cetakDialog(st, nota, ket);')]
+    ok('jual.js: struk yang hasilnya tidak dikabari printer → kalimat "lihat kertasnya", SEBELUM cabang "Printer … gagal" dan tanpa membuka dialog cetak',
+       "if (PK.hasilTakDiketahui(e)) { set({ kabar: PK.KALIMAT_TAK_DIKABARI, kabarAwas: true }); return; }" in tangkap
+       and tangkap.index('PK.hasilTakDiketahui(e)') < tangkap.index("'Printer Bluetooth gagal ('"), tangkap[:300])
+    ok('jual.js: label yang hasilnya tidak dikabari printer tidak disebut "tidak tercetak"',
+       "if (PK.hasilTakDiketahui(e)) return set({ kabar: PK.KALIMAT_TAK_DIKABARI + (dokumen.length ?" in jual
+       and jual.index("if (PK.hasilTakDiketahui(e)) return set({ kabar: PK.KALIMAT_TAK_DIKABARI + (dokumen.length ?") < jual.index("set({ kabar: 'Label tidak tercetak: '"))
+    antar = baca('baru', 'js', 'layar', 'antar-panel.js'); tangkap = antar[antar.index('.catch((e) => {\n          // uji owner 20 Nov 2026'):]; tangkap = tangkap[:tangkap.index('dialog();')]
+    ok('antar-panel.js: lembar surat jalan yang hasilnya tidak dikabari printer → "lihat kertasnya", SEBELUM cabang "gagal" dan tanpa membuka dialog cetak',
+       "import { hasilTakDiketahui } from '../inti/perangkat.js';" in antar and "if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-' + (n + 1) + ' dari ' + lembar.length" in tangkap
+       and tangkap.index('hasilTakDiketahui(e)') < tangkap.index("'Printer USB gagal'"), tangkap[:300])
+    ok('uji-cetak.js: baris cetak & label yang gagal memuat lama waktunya dan kabar asli aplikasi (pembeda ±1 detik dari ±40 detik)',
+       "const pesanGagal = (e, mulaiPada) => pesan(e) + (e && e.asli ? ' · kabar aslinya: \"' + e.asli + '\"' : '') + (mulaiPada ? ' · ' + (Date.now() - mulaiPada) + ' ms' : '');" in ujs
+       and "} catch (e) { tulisLog(pesanGagal(e, mulaiPada), true); }" in ujs and "tulisLog((hasilTakDiketahui(e) ? 'Label contoh: ' : 'Label contoh gagal: ') + pesanGagal(e, mulai), true);" in ujs)
+    ok('perintah label: kabar "tanpa kabar" tidak menyebut mode printer (uji owner: dikirim juga saat printer di mode tanpa alas)',
+       'di mode label tidak mengabari' not in ujs and 'di mode label tidak mengabari' not in jual and 'printer tidak mengabari hasil perintah label' in ujs and 'printer tidak mengabari hasil perintah label' in jual)
     alur = baca('.github', 'workflows', 'apk.yml')
     ok('apk.yml: tanda tangan V1 dan V2 dinyalakan & dibuktikan', '--v1-signing-enabled true --v2-signing-enabled true' in alur and "grep -q 'Verified using v1 scheme (JAR signing): true'" in alur and "grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true'" in alur)
     return h
@@ -519,6 +551,13 @@ MUTASI = [
     ('dua jalur gagal: sebab jalur yang dipilih hilang dari kabar', 'js', "const g = galat(sebab + ' · kirim langsung lewat kabel USB juga gagal: ' + pesanGalat(e3), e3 && e3.code);", "const g = galat(pesanGalat(e3), e3 && e3.code);"),
     ('dua jalur gagal: kode galat jalur kabel hilang', 'js', "pesanGalat(e3), e3 && e3.code);", "pesanGalat(e3), 'BELUM_KIRIM');"),
     ('dua jalur gagal: sebab utama tidak dibawa terpisah', 'js', "g.sebabUtama = sebab; throw g;", "throw g;"),
+    ('printer diam: kalimat pustaka "Cetak gagal" sampai ke layar', 'js', "      if (hasilTakDiketahui(e)) { const g = galat(KALIMAT_TAK_DIKABARI, e.code); g.asli = pesanGalat(e); throw g; }\n", ""),
+    ('printer diam: kode galat hilang (bisa dikirim ulang lewat kabel)', 'js', "const g = galat(KALIMAT_TAK_DIKABARI, e.code); g.asli", "const g = galat(KALIMAT_TAK_DIKABARI, 'BELUM_KIRIM'); g.asli"),
+    ('printer diam: kabar asli aplikasi tidak dibawa', 'js', "const g = galat(KALIMAT_TAK_DIKABARI, e.code); g.asli = pesanGalat(e); throw g; }", "const g = galat(KALIMAT_TAK_DIKABARI, e.code); throw g; }"),
+    ('printer diam: UNKNOWN dari pustaka tidak dikenali', 'js', "(e.code === 'PRINTER_UNKNOWN' || e.code === 'PRINTER_DIAM')", "(e.code === 'PRINTER_DIAM')"),
+    ('printer diam: batas waktu aplikasi tidak dikenali', 'js', "(e.code === 'PRINTER_UNKNOWN' || e.code === 'PRINTER_DIAM')", "(e.code === 'PRINTER_UNKNOWN')"),
+    ('halangan pasti ikut disebut "tidak mengabari"', 'js', "(e.code === 'PRINTER_UNKNOWN' || e.code === 'PRINTER_DIAM')", "(galatPrinter(e))"),
+    ('kalimat "tidak mengabari" menyebut gagal', 'js', "'Printer tidak mengabari hasil cetaknya — lihat kertasnya dulu; kalau tidak keluar, cetak lagi'", "'Cetak gagal — lihat kertasnya dulu; kalau tidak keluar, cetak lagi'"),
     ('mode tanpa alas tidak dikenali', 'js', "return t.indexOf('linerless') >= 0 ? 'tanpa-alas' : t.indexOf('label') >= 0", "return t.indexOf('label') >= 0"),
     ('jawaban mode kosong disebut "tidak dikenali"', 'js', "  if (!asli) return { teks: 'Printer belum menjawab modenya", "  if (false) return { teks: 'Printer belum menjawab modenya"),
     ('penjaga label: perintah label ke mode struk lolos', 'js', "if (cara === 'tspl' && mode === 'struk') return", "if (false) return"),
