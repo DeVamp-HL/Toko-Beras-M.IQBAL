@@ -377,7 +377,8 @@ export function pasangLayarJual(akar, opsi) {
     let k = 0;
     PR.jalurCetak().then((j) => {
       if (j === 'dialog') { cetakDialog(st, nota, ket); return; }
-      // paket S2a: QR nomor nota di bawah struk bila setelan printer perangkat ini menyertakan QR ("Printer tablet ini") — scan struk itu membuka notanya
+      // paket S2a: QR nomor nota di struk bila setelan printer perangkat ini menyertakan QR ("Printer tablet ini") — scan struk itu membuka notanya.
+      // Gaya gambar: digambar di samping tanda tangan (owner 20 Nov 2026); gaya teks: dicetak printer di bawah struk.
       const qr = PR.prAtur().qr ? TK.tkQrNota(nota) : '';
       k = mencetak = Date.now(); set({});
       return PR.cetakGaris(st.garis, { logoToko: st.logo, qr }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
@@ -1249,14 +1250,15 @@ export function pasangLayarJual(akar, opsi) {
   // owner 17 Nov 2026 (butir 3): pratinjau struk = GAMBAR yang sama dengan yang keluar dari printer tablet (huruf toko, logo, TOTAL di antara garis tebal).
   // Digambar di belakang layar sekali per isi struk; selama belum siap (atau kanvas gagal) yang tampil teks struknya. WA & dialog cetak tetap teks yang sama isinya.
   let _pratinjau = { kunci: '', url: '' }; let _pratinjauJalan = '';
-  function pratinjauStruk(st, kertas) {
-    const kunci = kertas + '|' + (st.logo ? 'L' : '') + '|' + st.teks;
+  // owner 20 Nov 2026: QR nota ikut di gambar (samping tanda tangan) bila setelan printer perangkat ini menyertakan QR — pratinjau = yang tercetak
+  function pratinjauStruk(st, kertas, qr) {
+    const kunci = kertas + '|' + (st.logo ? 'L' : '') + '|' + (qr || '') + '|' + st.teks;
     if (_pratinjau.kunci === kunci) return _pratinjau.url;
     if (_pratinjauJalan !== kunci) {
       _pratinjauJalan = kunci;
       (async () => {
         let url = '';
-        try { await siapkanHuruf(); url = gambarStrukKanvas(st.garis, { kertas, logoToko: st.logo }).kanvas.toDataURL('image/png'); } catch (e) { url = ''; }
+        try { await siapkanHuruf(); url = gambarStrukKanvas(st.garis, { kertas, logoToko: st.logo, qr: qr || '' }).kanvas.toDataURL('image/png'); } catch (e) { url = ''; }
         if (_pratinjauJalan !== kunci) return; _pratinjau = { kunci, url }; _pratinjauJalan = ''; gambar();
       })();
     }
@@ -1273,7 +1275,7 @@ export function pasangLayarJual(akar, opsi) {
       ${akunOwner() ? h`<div class="label">Dilayani · ketuk untuk mengubah</div><div class="bendera" data-k="ubah-dilayani">${[namaOwner()].concat(daftarPelayan()).map((nm) => h`<span class="pil ${ST.stPelayan(n.nota) === nm ? 'nyala' : ''}" data-aksi="ubahDilayani" data-n="${nm}" data-k="udl-${nm}">${nm}</span>`)}</div>` : ''}
       ${n.nota.noFaktur ? h`<div class="ket" data-k="struk-faktur">FAKTUR ${n.nota.noFaktur}${(() => { const F = FK.fkNota(n.nota.trxId || n.nota.grupNota || n.nota.id, s.sekarang || new Date()); return F ? ' · ' + FK.fkTeksTempo(F) + (F.sisa > 0.5 ? ' · sisa ' + RP(F.sisa) : '') : ''; })()}</div>`
         : akunOwner() && n.nota.berlaku && n.nota.nama ? h`<div class="kaca-btn" data-aksi="jadikanFaktur" data-k="jadikan-faktur">Jadikan faktur · nomor + jatuh tempo, tempo ${FK.fkTempoTeks(FK.fkTempo(n.nota.nama))}</div>` : ''}
-      ${(() => { const url = pratinjauStruk(st, n.pilih.kertas); return url ? h`<div class="st-gambar-bingkai" data-k="gambar-struk"><img class="st-gambar k${n.pilih.kertas}" src="${url}" alt="Pratinjau struk seperti keluar dari printer tablet"></div>` : h`<pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>`; })()}
+      ${(() => { const url = pratinjauStruk(st, n.pilih.kertas, PR.prAtur().qr ? TK.tkQrNota(n.nota) : ''); return url ? h`<div class="st-gambar-bingkai" data-k="gambar-struk"><img class="st-gambar k${n.pilih.kertas}" src="${url}" alt="Pratinjau struk seperti keluar dari printer tablet"></div>` : h`<pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>`; })()}
       <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="kirimWa">Kirim WhatsApp</div><div class="kaca-btn" data-aksi="cetakStruk" data-k="tombol-cetak-struk">${sedangCetak() ? 'Mencetak…' : 'Cetak'}</div><a class="kaca-btn" href="uji-cetak.html" style="text-decoration: none; color: inherit;">Printer tablet ini</a></div>
       ${pitaTolak(s, 'struk')}
       <div class="ket">Struk yang sama untuk kertas dan WhatsApp — cuma menyusun nota yang sudah tersimpan, tidak ada angka baru. WhatsApp dibuka tanpa nomor tujuan (WhatsApp yang bertanya ke siapa; nomor pembeli tidak disimpan). Cetak = printer tablet ini bila sudah diatur ("Printer tablet ini": gaya, logo, jalur), selain itu dialog cetak perangkat ini.</div>

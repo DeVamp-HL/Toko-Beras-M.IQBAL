@@ -80,8 +80,10 @@ export async function susunCetak(garis, timpa, ekstra) {
   if (a.gaya === 'teks') { const t = epSusun(garis, o); return { byte: t.byte, teks: t.teks, gaya: 'teks', kertas: a.kertas }; }
   await siapkanHuruf();
   // owner 17 Nov (butir 3): logo perangkat sendiri menang; tanpa itu logo toko (F mahkota padi, digambar kode) bila setelan struk menyertakannya (ekstra.logoToko)
-  const g = gambarStruk(garis, { kertas: a.kertas, logo: teksKeLogo(a.logo), logoToko: !!o.logoToko });
-  const sg = epSusunGambar(g, o);
+  // owner 20 Nov 2026: QR nota digambar DI DALAM struk (samping tanda tangan). Kalau sudah ada di gambar, printer tidak mencetaknya lagi di
+  // bawah — struk berakhir di hiasan bawah. Kalau tidak muat / struk gaya polos, QR tetap lewat perintah QR printer seperti dulu.
+  const g = gambarStruk(garis, { kertas: a.kertas, logo: teksKeLogo(a.logo), logoToko: !!o.logoToko, qr: o.qr || '' });
+  const sg = epSusunGambar(g, g.qrDiGambar ? Object.assign({}, o, { qr: '' }) : o);
   return { byte: sg.byte, gaya: 'gambar', kertas: a.kertas, gambar: g };
 }
 

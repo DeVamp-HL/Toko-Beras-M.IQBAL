@@ -46,7 +46,8 @@ async function pratinjau() {
   $('ucLogoBaris').hidden = a.gaya !== 'gambar';
   if (a.gaya === 'gambar') {
     await siapkanHuruf();
-    const g = gambarStruk(epContohGaris(), { kertas: a.kertas, logo: teksKeLogo(logo), logoToko: true });   // owner 17 Nov: contoh memakai logo toko (F mahkota padi) bila perangkat tidak punya logo sendiri
+    // QR contoh ikut di pratinjau (samping tanda tangan) bila dicentang — sama dengan yang dikirim Cetak contoh; judul kartunya "persis yang keluar dari printer"
+    const g = gambarStruk(epContohGaris(), { kertas: a.kertas, logo: teksKeLogo(logo), logoToko: true, qr: a.qr ? 'UJI-CETAK' : '' });   // owner 17 Nov: contoh memakai logo toko (F mahkota padi) bila perangkat tidak punya logo sendiri
     const wadah = $('ucGambar'); wadah.textContent = ''; g.kanvas.className = 'kertas'; wadah.appendChild(g.kanvas);
     $('ucPratinjau').hidden = true; wadah.hidden = false;
   } else {
