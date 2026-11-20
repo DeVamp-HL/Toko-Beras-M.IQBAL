@@ -17,6 +17,7 @@ package id.miqbal.tokoberas;
 // Kode tolakan (dibaca inti/printer.js):
 //   BELUM_KIRIM  = belum ada satu byte pun sampai ke printer → halaman boleh jatuh ke jalur CetakUsb tanpa takut struk dobel
 //   PRINTER_xxx  = printer menjawab ada halangan (xxx = nama CloudPrinterStatus) atau diam sesudah data dikirim → JANGAN kirim ulang sendiri
+//   SEDANG_CETAK = perintah printer lain belum selesai → perintah ini ditolak di depan, sambungan tidak disentuh; JANGAN kirim lewat jalur lain
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -54,6 +55,7 @@ import com.sunmi.externalprinterlibrary2.style.CloudPrinterStatus;
 
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @CapacitorPlugin(name = "PrinterSunmi", permissions = {
         // Android 12+: menyambung perangkat Bluetooth yang sudah dipasangkan butuh izin ini saat jalan (izin manifest-nya dibawa pustaka SUNMI)
@@ -68,6 +70,63 @@ public class PrinterSunmiPlugin extends Plugin {
     private static final int BATAS_STATUS_MS = 4000;
     private static final int BATAS_CETAK_MS = 30000;
     private static final int BATAS_CETAK_BT_MS = 60000;   // struk bergambar lewat Bluetooth lebih lama sampainya
+
+    // ---------- satu perintah printer pada satu waktu ----------
+    // Uji owner 20 Nov 2026: ketukan Cetak kedua datang selagi cetakan pertama menunggu kabar printer. Perintah kedua menanya keadaan
+    // printer, antre di belakang yang pertama, habis waktu, lalu MELEPAS sambungan — sambungan yang sedang dipakai cetakan pertama, yang lalu
+    // gagal "printer tidak tersambung". Halaman sudah menahan ketukan kedua (inti/perangkat.js › satuCetakan); pintu ini penjaganya di sisi
+    // aplikasi: selama satu perintah printer belum selesai (dijawab atau ditolak), perintah printer lain DITOLAK di depan berkode
+    // SEDANG_CETAK — tanpa menyentuh sambungan. Semua jawaban lewat jawab() / tolak(), yang melepas pintu lebih dulu.
+    private static final String SEDANG_CETAK = "SEDANG_CETAK";
+    private static final String KALIMAT_SIBUK = "Printer masih mengerjakan perintah sebelumnya — tunggu kabarnya dulu";
+    /** Lebih lama dari perintah terpanjang (sambung Bluetooth 12 + tanya 4 + cetak 60 detik): pemegang yang tidak pernah selesai dianggap lepas. */
+    private static final long BATAS_PINTU_MS = 90000;
+
+    private static final class Pegang {
+        final String id;
+        final long sejak;
+
+        Pegang(String id, long sejak) {
+            this.id = id;
+            this.sejak = sejak;
+        }
+    }
+
+    private final AtomicReference<Pegang> pemegang = new AtomicReference<>(null);
+
+    private static long kini() {
+        return System.nanoTime() / 1000000L;
+    }
+
+    private boolean pintuDipegang() {
+        final Pegang p = pemegang.get();
+        return p != null && kini() - p.sejak < BATAS_PINTU_MS;
+    }
+
+    /** Ambil pintu untuk perintah ini; false = perintah lain masih jalan dan perintah ini SUDAH ditolak. */
+    private boolean ambilPintu(PluginCall call) {
+        final Pegang lama = pemegang.get();
+        if (lama != null && kini() - lama.sejak >= BATAS_PINTU_MS) pemegang.compareAndSet(lama, null);
+        if (pemegang.compareAndSet(null, new Pegang(String.valueOf(call.getCallbackId()), kini()))) return true;
+        call.reject(KALIMAT_SIBUK, SEDANG_CETAK);
+        return false;
+    }
+
+    /** Hanya pemegangnya sendiri yang melepas: jawaban terlambat dari perintah lama tidak membuka pintu perintah yang lebih baru. */
+    private void lepasPintu(PluginCall call) {
+        final Pegang p = pemegang.get();
+        if (p != null && p.id.equals(String.valueOf(call.getCallbackId()))) pemegang.compareAndSet(p, null);
+    }
+
+    private void jawab(PluginCall call, JSObject o) {
+        lepasPintu(call);
+        call.resolve(o);
+    }
+
+    private void tolak(PluginCall call, String pesan, String kode) {
+        lepasPintu(call);
+        call.reject(pesan, kode);
+    }
 
     private final Handler utama = new Handler(Looper.getMainLooper());
     private volatile CloudPrinter printer;
@@ -216,12 +275,12 @@ public class PrinterSunmiPlugin extends Plugin {
     @SuppressLint("MissingPermission")
     private void siapkanBt(final PluginCall call, final Lanjut lanjut) {
         if (!izinBt()) {
-            call.reject("Izin Bluetooth belum diberikan ke aplikasi ini — buka layar Perangkat lalu tekan Periksa Bluetooth", BELUM_KIRIM);
+            tolak(call, "Izin Bluetooth belum diberikan ke aplikasi ini — buka layar Perangkat lalu tekan Periksa Bluetooth", BELUM_KIRIM);
             return;
         }
         BluetoothAdapter a = adaptorBt();
         if (a == null) {
-            call.reject("Tablet ini tidak punya Bluetooth", BELUM_KIRIM);
+            tolak(call, "Tablet ini tidak punya Bluetooth", BELUM_KIRIM);
             return;
         }
         boolean nyala;
@@ -231,23 +290,23 @@ public class PrinterSunmiPlugin extends Plugin {
             nyala = false;
         }
         if (!nyala) {
-            call.reject("Bluetooth tablet mati — nyalakan di Setelan tablet", BELUM_KIRIM);
+            tolak(call, "Bluetooth tablet mati — nyalakan di Setelan tablet", BELUM_KIRIM);
             return;
         }
         BluetoothDevice d = pilihBt(a, call.getString("mac"));
         if (d == null) {
-            call.reject("Belum ada printer SUNMI yang dipasangkan lewat Bluetooth — pasangkan dulu di Setelan tablet › Bluetooth (namanya berawalan " + AWALAN_BT + ")", BELUM_KIRIM);
+            tolak(call, "Belum ada printer SUNMI yang dipasangkan lewat Bluetooth — pasangkan dulu di Setelan tablet › Bluetooth (namanya berawalan " + AWALAN_BT + ")", BELUM_KIRIM);
             return;
         }
         final CloudPrinter p;
         try {
             p = CloudPrinterBuilder.buildPrinter(d.getName(), d.getAddress());
         } catch (Exception e) {
-            call.reject("Printer Bluetooth tidak bisa disiapkan: " + e.getMessage(), BELUM_KIRIM);
+            tolak(call, "Printer Bluetooth tidak bisa disiapkan: " + e.getMessage(), BELUM_KIRIM);
             return;
         }
         if (p == null) {
-            call.reject("Printer Bluetooth tidak bisa disiapkan", BELUM_KIRIM);
+            tolak(call, "Printer Bluetooth tidak bisa disiapkan", BELUM_KIRIM);
             return;
         }
         sambung(call, p, lanjut, true);
@@ -276,7 +335,7 @@ public class PrinterSunmiPlugin extends Plugin {
         final Runnable habis = () -> {
             if (!selesai.compareAndSet(false, true)) return;
             hentikanCari(ctx);
-            call.reject("Printer SUNMI tidak ditemukan di USB — pastikan printer menyala dan tercolok ke stand", BELUM_KIRIM);
+            tolak(call, "Printer SUNMI tidak ditemukan di USB — pastikan printer menyala dan tercolok ke stand", BELUM_KIRIM);
         };
         utama.postDelayed(habis, BATAS_CARI_MS);
         try {
@@ -292,7 +351,7 @@ public class PrinterSunmiPlugin extends Plugin {
         } catch (Exception e) {
             if (!selesai.compareAndSet(false, true)) return;
             utama.removeCallbacks(habis);
-            call.reject("Pencarian printer SUNMI gagal: " + e.getMessage(), BELUM_KIRIM);
+            tolak(call, "Pencarian printer SUNMI gagal: " + e.getMessage(), BELUM_KIRIM);
         }
     }
 
@@ -300,7 +359,7 @@ public class PrinterSunmiPlugin extends Plugin {
         final AtomicBoolean selesai = new AtomicBoolean(false);
         final Runnable habis = () -> {
             if (!selesai.compareAndSet(false, true)) return;
-            call.reject(bt ? "Printer SUNMI tidak mau tersambung lewat Bluetooth — pastikan printer menyala dan dekat dengan tablet"
+            tolak(call, bt ? "Printer SUNMI tidak mau tersambung lewat Bluetooth — pastikan printer menyala dan dekat dengan tablet"
                     : "Printer SUNMI ditemukan tapi tidak mau tersambung — cabut-colok kabel USB printer lalu coba lagi", BELUM_KIRIM);
         };
         utama.postDelayed(habis, bt ? BATAS_SAMBUNG_BT_MS : BATAS_SAMBUNG_MS);
@@ -321,7 +380,7 @@ public class PrinterSunmiPlugin extends Plugin {
                     if (printer == p) printer = null;
                     if (!selesai.compareAndSet(false, true)) return;
                     utama.removeCallbacks(habis);
-                    call.reject((bt ? "Printer SUNMI tidak bisa disambung lewat Bluetooth: " : "Printer SUNMI tidak bisa disambung: ") + sebabSambung(sebab, bt), BELUM_KIRIM);
+                    tolak(call, (bt ? "Printer SUNMI tidak bisa disambung lewat Bluetooth: " : "Printer SUNMI tidak bisa disambung: ") + sebabSambung(sebab, bt), BELUM_KIRIM);
                 }
 
                 @Override
@@ -332,7 +391,7 @@ public class PrinterSunmiPlugin extends Plugin {
         } catch (Exception e) {
             if (!selesai.compareAndSet(false, true)) return;
             utama.removeCallbacks(habis);
-            call.reject((bt ? "Printer SUNMI tidak bisa disambung lewat Bluetooth: " : "Printer SUNMI tidak bisa disambung: ") + sebabSambung(e.getMessage(), bt), BELUM_KIRIM);
+            tolak(call, (bt ? "Printer SUNMI tidak bisa disambung lewat Bluetooth: " : "Printer SUNMI tidak bisa disambung: ") + sebabSambung(e.getMessage(), bt), BELUM_KIRIM);
         }
     }
 
@@ -378,6 +437,7 @@ public class PrinterSunmiPlugin extends Plugin {
     /** Keadaan printer sekarang: { status, kalimat, siap, menghalangi, nama, vid, pid, sdk }. */
     @PluginMethod
     public void status(final PluginCall call) {
+        if (!ambilPintu(call)) return;
         siapkan(call, p -> tanya(p, s -> {
             JSObject o = kartu(p);
             o.put("status", namaStatus(s));
@@ -389,33 +449,34 @@ public class PrinterSunmiPlugin extends Plugin {
             } catch (Exception ignored) {
                 // versi SDK tidak wajib
             }
-            call.resolve(o);
+            jawab(call, o);
         }));
     }
 
     /** Cetak: { data: base64 byte ESC/POS } → { byte, nama, vid, pid, peringatan? }. Keadaan printer diperiksa DULU. */
     @PluginMethod
     public void cetak(final PluginCall call) {
+        if (!ambilPintu(call)) return;
         String data = call.getString("data");
         if (data == null || data.isEmpty()) {
-            call.reject("Data cetak kosong", BELUM_KIRIM);
+            tolak(call, "Data cetak kosong", BELUM_KIRIM);
             return;
         }
         final byte[] isi;
         try {
             isi = Base64.decode(data, Base64.DEFAULT);
         } catch (IllegalArgumentException e) {
-            call.reject("Data cetak rusak (base64)", BELUM_KIRIM);
+            tolak(call, "Data cetak rusak (base64)", BELUM_KIRIM);
             return;
         }
         siapkan(call, p -> tanya(p, s -> {
             if (takPasti(s)) {
                 lepasDiam();
-                call.reject("Printer SUNMI tidak menjawab saat ditanya keadaannya (" + kalimat(s) + ")", BELUM_KIRIM);
+                tolak(call, "Printer SUNMI tidak menjawab saat ditanya keadaannya (" + kalimat(s) + ")", BELUM_KIRIM);
                 return;
             }
             if (menghalangi(s)) {
-                call.reject("Printer belum bisa mencetak: " + kalimat(s), "PRINTER_" + namaStatus(s));
+                tolak(call, "Printer belum bisa mencetak: " + kalimat(s), "PRINTER_" + namaStatus(s));
                 return;
             }
             kirim(call, p, isi, s == CloudPrinterStatus.NEAR_OUT_PAPER ? "Kertas printer hampir habis" : null);
@@ -429,12 +490,12 @@ public class PrinterSunmiPlugin extends Plugin {
             p.appendRawData(isi);
         } catch (Exception e) {
             lepasDiam();
-            call.reject("Data cetak tidak bisa disiapkan: " + e.getMessage(), BELUM_KIRIM);
+            tolak(call, "Data cetak tidak bisa disiapkan: " + e.getMessage(), BELUM_KIRIM);
             return;
         }
         final Runnable habis = () -> {
             if (!selesai.compareAndSet(false, true)) return;
-            call.reject("Data sudah dikirim tapi printer tidak mengabari hasilnya — lihat kertasnya dulu sebelum mencetak ulang", "PRINTER_DIAM");
+            tolak(call, "Data sudah dikirim tapi printer tidak mengabari hasilnya — lihat kertasnya dulu sebelum mencetak ulang", "PRINTER_DIAM");
         };
         utama.postDelayed(habis, printerBt ? BATAS_CETAK_BT_MS : BATAS_CETAK_MS);
         try {
@@ -446,31 +507,32 @@ public class PrinterSunmiPlugin extends Plugin {
                     JSObject o = kartu(p);
                     o.put("byte", isi.length);
                     if (peringatan != null) o.put("peringatan", peringatan);
-                    call.resolve(o);
+                    jawab(call, o);
                 }
 
                 @Override
                 public void onFailed(CloudPrinterStatus s) {
                     if (!selesai.compareAndSet(false, true)) return;
                     utama.removeCallbacks(habis);
-                    call.reject("Cetak gagal: " + kalimat(s), "PRINTER_" + namaStatus(s));
+                    tolak(call, "Cetak gagal: " + kalimat(s), "PRINTER_" + namaStatus(s));
                 }
             });
         } catch (Exception e) {
             if (!selesai.compareAndSet(false, true)) return;
             utama.removeCallbacks(habis);
             lepasDiam();
-            call.reject("Data cetak tidak terkirim: " + e.getMessage(), BELUM_KIRIM);
+            tolak(call, "Data cetak tidak terkirim: " + e.getMessage(), BELUM_KIRIM);
         }
     }
 
     /** Buka laci uang yang tercolok ke port RJ12 printer. Dipanggil halaman HANYA untuk bayar tunai (paket S2). */
     @PluginMethod
     public void bukaLaci(final PluginCall call) {
+        if (!ambilPintu(call)) return;
         siapkan(call, p -> {
             final AtomicBoolean selesai = new AtomicBoolean(false);
             final Runnable habis = () -> {
-                if (selesai.compareAndSet(false, true)) call.reject("Printer tidak mengabari hasil perintah laci", "PRINTER_DIAM");
+                if (selesai.compareAndSet(false, true)) tolak(call, "Printer tidak mengabari hasil perintah laci", "PRINTER_DIAM");
             };
             try {
                 p.clearTransBuffer();
@@ -481,20 +543,20 @@ public class PrinterSunmiPlugin extends Plugin {
                     public void onComplete() {
                         if (!selesai.compareAndSet(false, true)) return;
                         utama.removeCallbacks(habis);
-                        call.resolve(kartu(p));
+                        jawab(call, kartu(p));
                     }
 
                     @Override
                     public void onFailed(CloudPrinterStatus s) {
                         if (!selesai.compareAndSet(false, true)) return;
                         utama.removeCallbacks(habis);
-                        call.reject("Perintah laci gagal: " + kalimat(s), "PRINTER_" + namaStatus(s));
+                        tolak(call, "Perintah laci gagal: " + kalimat(s), "PRINTER_" + namaStatus(s));
                     }
                 });
             } catch (Exception e) {
                 if (!selesai.compareAndSet(false, true)) return;
                 utama.removeCallbacks(habis);
-                call.reject("Perintah laci tidak terkirim: " + e.getMessage(), BELUM_KIRIM);
+                tolak(call, "Perintah laci tidak terkirim: " + e.getMessage(), BELUM_KIRIM);
             }
         });
     }
@@ -543,17 +605,18 @@ public class PrinterSunmiPlugin extends Plugin {
         o.put("izin", izin);
         o.put("nyala", nyala);
         o.put("daftar", daftar);
-        call.resolve(o);
+        jawab(call, o);
     }
 
     // ---------- paket S4: mode kertas & label ----------
     /** Mode kertas printer sekarang: { mode: teks jawaban printer }. */
     @PluginMethod
     public void mode(final PluginCall call) {
+        if (!ambilPintu(call)) return;
         siapkan(call, p -> {
             final AtomicBoolean selesai = new AtomicBoolean(false);
             final Runnable habis = () -> {
-                if (selesai.compareAndSet(false, true)) call.reject("Printer tidak menjawab saat ditanya mode kertasnya", "PRINTER_DIAM");
+                if (selesai.compareAndSet(false, true)) tolak(call, "Printer tidak menjawab saat ditanya mode kertasnya", "PRINTER_DIAM");
             };
             utama.postDelayed(habis, BATAS_STATUS_MS);
             try {
@@ -564,13 +627,13 @@ public class PrinterSunmiPlugin extends Plugin {
                         utama.removeCallbacks(habis);
                         JSObject o = kartu(p);
                         o.put("mode", hasil == null ? "" : hasil);
-                        call.resolve(o);
+                        jawab(call, o);
                     }
                 });
             } catch (Exception e) {
                 if (!selesai.compareAndSet(false, true)) return;
                 utama.removeCallbacks(habis);
-                call.reject("Mode kertas tidak bisa ditanyakan: " + e.getMessage(), BELUM_KIRIM);
+                tolak(call, "Mode kertas tidak bisa ditanyakan: " + e.getMessage(), BELUM_KIRIM);
             }
         });
     }
@@ -578,31 +641,33 @@ public class PrinterSunmiPlugin extends Plugin {
     /** Pindahkan mode kertas: { mode: 1 struk | 2 label | 3 tanpa alas } → { dikirim: true }. Printer tidak mengabari hasilnya; tanyakan lagi dengan `mode`. */
     @PluginMethod
     public void setelMode(final PluginCall call) {
+        if (!ambilPintu(call)) return;
         final Integer m = call.getInt("mode");
         if (m == null || m < 1 || m > 3) {
-            call.reject("Mode kertas harus 1 (struk), 2 (label), atau 3 (tanpa alas)", BELUM_KIRIM);
+            tolak(call, "Mode kertas harus 1 (struk), 2 (label), atau 3 (tanpa alas)", BELUM_KIRIM);
             return;
         }
         siapkan(call, p -> {
             try {
                 p.setPrintMode(m);
             } catch (Exception e) {
-                call.reject("Perintah pindah mode tidak terkirim: " + e.getMessage(), BELUM_KIRIM);
+                tolak(call, "Perintah pindah mode tidak terkirim: " + e.getMessage(), BELUM_KIRIM);
                 return;
             }
             JSObject o = kartu(p);
             o.put("dikirim", true);
             o.put("diminta", m);
-            call.resolve(o);
+            jawab(call, o);
         });
     }
 
     /** Kirim perintah label TSPL apa adanya: { data } → { byte }. Hanya berarti bila printer di mode label; printer label tidak mengabari hasil cetak. */
     @PluginMethod
     public void tspl(final PluginCall call) {
+        if (!ambilPintu(call)) return;
         final String data = call.getString("data");
         if (data == null || data.isEmpty()) {
-            call.reject("Perintah label kosong", BELUM_KIRIM);
+            tolak(call, "Perintah label kosong", BELUM_KIRIM);
             return;
         }
         siapkan(call, p -> {
@@ -610,18 +675,23 @@ public class PrinterSunmiPlugin extends Plugin {
                 p.sendTSPLData(data);
             } catch (Exception e) {
                 lepasDiam();
-                call.reject("Perintah label tidak terkirim: " + e.getMessage(), BELUM_KIRIM);
+                tolak(call, "Perintah label tidak terkirim: " + e.getMessage(), BELUM_KIRIM);
                 return;
             }
             JSObject o = kartu(p);
             o.put("byte", data.length());
-            call.resolve(o);
+            jawab(call, o);
         });
     }
 
     /** Lepaskan printer (supaya jalur CetakUsb bisa memegang antarmukanya). */
     @PluginMethod
     public void lepas(PluginCall call) {
+        // perintah lain sedang memegang printer → sambungannya TIDAK dilepas dari bawah kakinya
+        if (pintuDipegang()) {
+            call.reject(KALIMAT_SIBUK, SEDANG_CETAK);
+            return;
+        }
         lepasDiam();
         call.resolve();
     }

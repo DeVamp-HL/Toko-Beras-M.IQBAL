@@ -3175,3 +3175,17 @@ memuat QR yang sama. Logo tetap di sistem toko (gambar atas/bawah di halaman pri
 gambar struk (sesudah dijadikan hitam-putih, 80 mm dan 58 mm, nama pendek dan panjang) dibaca pemindai sungguhan (BarcodeDetector di panel
 peramban) = teks notanya; penyusunnya dibaca 18 dari 18 untuk versi 1–6. **Belum terbukti di perangkat:** QR ±14,5 mm itu dibaca scanner
 CPad dari kertas (dulu ±18 mm), dan potongan bawah sungguh rapat di printer toko.
+*Lulus uji owner 21 Nov 2026 ±02.00:* QR di samping tanda tangan dibaca scanner CPad dan notanya terbuka; potongan bawah rapat. Kosong di
+ATAS belum sesuai kemauan owner (saklar hemat kertas di halaman printer sudah dicentang; sistem toko tidak punya perintah umpan mundur).
+
+**Satu perintah printer pada satu waktu, di sisi APLIKASI (owner 21 Nov 2026: "boleh kita kerjakan yang ini" — butuh APK baru):** sampai
+APK 1.25 penjaganya hanya di halaman (`satuCetakan`). Kalau dua perintah tetap sampai ke aplikasi (halaman lama di perangkat lain, pintu
+cetak yang belum lewat kunci), perintah kedua menanya printer, antre, habis waktu, lalu melepas sambungan yang sedang dipakai perintah
+pertama. `PrinterSunmiPlugin` kini punya pintu: `status`, `cetak`, `bukaLaci`, `mode`, `setelMode`, `tspl` mengambil pintu di baris
+pertamanya (`ambilPintu`); selama pemegangnya belum selesai, perintah lain ditolak berkode `SEDANG_CETAK` TANPA menyentuh sambungan, dan
+`lepas` tidak melepas sambungan milik perintah yang sedang jalan. Semua jawaban plugin lewat `jawab()` / `tolak()`, yang melepas pintu lebih
+dulu — tidak ada jalan keluar yang meninggalkan pintu terkunci; pemegang yang tidak pernah selesai dianggap lepas sesudah 90 detik (sama
+dengan kunci halaman, lebih lama dari perintah terpanjang 12 + 4 + 60 detik); jawaban terlambat perintah lama tidak membuka pintu perintah
+baru. Halaman: `cetakAsli` yang ditolak `SEDANG_CETAK` oleh aplikasi TIDAK jatuh ke kabel (bisa dobel) dan tidak memanggil `lepas` — sampai
+ke layar sebagai "tunggu kabarnya dulu". **Belum terbukti:** kompilasi Java (Mac ini tanpa JDK — dibuktikan bangun APK di CI) dan
+kelakuannya di CPad.
