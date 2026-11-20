@@ -16,6 +16,7 @@ import { waktuSekarang } from './jual-logika.js';
 import { gulirkan } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, kabarKiriman, kunciLuarCache } from '../data/toko.js';
 import { hbKalimatBelum } from '../data/hemat-baca.js';   // hemat baca nyala (#111): SATU sumber kelengkapan data perangkat ini
+import { asliAda } from '../inti/perangkat.js';   // owner 21 Nov 2026: di aplikasi tablet dokumen kertas besar tidak dikeluarkan
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -87,7 +88,11 @@ export function pasangLayarLaporan(akar, opsi) {
   // sudah habis (Safari hanya meneruskannya lewat timer ≤ 1 detik, bukan lewat jawaban server), jadi jendelanya dibuang diam-diam.
   // Nomor tetap dihitung sinkron oleh LP.susunCetakan sebelum dokumen keluar: kertas/teks & catatan memuat nomor yang SAMA, satu nomor per ketukan seperti dulu.
   // Catatan nomor gagal → kabar menyebut dokumennya sudah keluar tanpa tercatat (bukan diam).
+  // owner 21 Nov 2026: di aplikasi tablet dialog cetak hanya berkelebat lalu hilang, dan dokumen ini untuk kertas besar (bukan kertas struk).
+  // Ditolak SEBELUM nomornya dihitung: tidak ada nomor Cetakan bernomor yang terpakai untuk dokumen yang tidak pernah keluar. Kirim WA tetap jalan.
+  const KALIMAT_TABLET = 'Dokumen ini untuk kertas besar — di tablet tidak bisa dicetak atau disimpan PDF. Buka sistem toko di HP atau Mac untuk mencetaknya; nomor dokumen belum dipakai. Kirim WA tetap bisa dari sini.';
   async function keluarkan(D, info, cara) {
+    if (cara !== 'wa' && asliAda()) { set({ kabar: KALIMAT_TABLET, kabarAwas: true }); return; }
     if (D.tolak) { set({ kabar: D.tolak, kabarAwas: true }); return; } const r = LP.susunCetakan(info, cara, waktu()); if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return; }
     let w = true;
     if (cara === 'wa') w = bukaWa(D.teksTambahan ? (D.cap ? D.cap + '\n' : '') + D.teksTambahan + '\nNo. ' + ANGKA(r.nomor) : LP.teksDokumen(D, r.nomor, iso()));
@@ -155,7 +160,8 @@ export function pasangLayarLaporan(akar, opsi) {
     // owner 7 Okt (Safari Mac/iPhone/iPad): dialog cetak paket bank dibuka SINKRON di ketukan. Dulu dibuka sesudah satu `await tulis` per dokumen — gestur
     // ketukan sudah habis dan Safari menahan dialognya. Nomor tetap urut satu per dokumen (LP.susunPaketCetakan menghitung semuanya dulu, bentuk catatan sama
     // dengan susunCetakan), isi kertas sama; catatan nomornya SATU kiriman sesudah dialog dibuka. Catatan gagal → kabar menyebut paketnya sudah keluar.
-    dkPaketSusun: async () => { const P = LP.paketBank(st().paket, kini()); if (P.tolak) { set({ kabar: P.tolak, kabarAwas: true }); return; }
+    dkPaketSusun: async () => { if (asliAda()) { set({ kabar: KALIMAT_TABLET, kabarAwas: true }); return; }
+      const P = LP.paketBank(st().paket, kini()); if (P.tolak) { set({ kabar: P.tolak, kabarAwas: true }); return; }
       const hbP = hematBelum(['*']); if (hbP) { set({ kabar: 'Paket bank ditahan — angkanya belum bisa dipastikan: ' + hbP, kabarAwas: true }); return; }
       const dok = P.daftar.map((D) => (D.jenis === 'omzet' ? dokRekap() : D)); const r = LP.susunPaketCetakan(dok.map((d) => ({ jenis: d.jenis || 'omzet', judul: d.judul, periode: d.periode, draf: false, paket: true })), waktu()); if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return; }
       cetakHtml(dok.map((d, i) => kertas(d, r.nomor + i, 'p' + (r.nomor + i)).html).join('<div class="dk-pisah"></div>'));

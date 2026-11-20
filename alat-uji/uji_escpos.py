@@ -127,6 +127,21 @@ cek('label TSPL: ukuran dijepit (20–80 × 15–200 mm, celah 0–10); tanpa po
 cek('label TSPL: celah 0 = kertas bersambung; tanpa setelan = 50 × 30 celah 2', epTsplLabel(IL, { celahMm: 0 }).teks[1] === 'GAP 0 mm,0 mm' && epTsplLabel(IL, {}).teks[0] === 'SIZE 50 mm,30 mm' && epTsplLabel(IL, {}).teks[1] === 'GAP 2 mm,0 mm');
 cek('label TSPL: label sempit (30 mm) — huruf tidak diperbesar, kode pendek tidak dipaksa keluar tepi', (() => { const x = epTsplLabel(IL, { lebarMm: 30, tinggiMm: 30 }); return x.teks.some((s) => /^TEXT 16,16,"0",0,1,1,/.test(s)) && !x.teks.some((s) => /"JJJJJJJJ"$/.test(s)) && x.teks.some((s) => /^QRCODE/.test(s)); })());
 if (typeof btoa === 'function') cek('base64: byte → teks', epBase64(new Uint8Array([0x1b, 0x40, 0x41])) === 'G0BB', epBase64(new Uint8Array([0x1b, 0x40, 0x41])));
+// ---- teks polos → garis struk (owner 21 Nov 2026: slip upah & rekap tutup hari dicetak langsung di tablet) ----
+{
+  const slip = 'TOKO BERAS M.IQBAL\nSlip upah · Hasan\n1–7 Nov 2026\n\n6 hari penuh × Rp100.000 = Rp600.000\nUpah               Rp600.000\nBonus (rajin)   +Rp50.000\nPotong kasbon     −Rp100.000\nDITERIMA           Rp550.000\n\nDibayar 7 Nov dari laci toko\n\n';
+  const G = epGarisDariTeks(slip);
+  cek('teks → garis: baris pertama = judul (tengah, tebal); baris kosong di ekor dibuang; baris kosong di tengah tetap', G[0].kiri === 'TOKO BERAS M.IQBAL' && G[0].tengah === true && G[0].tebal === true && G.length === 11 && G[3].kiri === '' && G[9].kiri === '' && !G[1].tengah, JSON.stringify(G.map((g) => g.kiri)));
+  cek('teks → garis: "label   nilai" (satu celah dua spasi atau lebih) dipisah jadi kiri/kanan', G[5].kiri === 'Upah' && G[5].kanan === 'Rp600.000' && G[6].kiri === 'Bonus (rajin)' && G[6].kanan === '+Rp50.000' && G[8].kiri === 'DITERIMA' && G[8].kanan === 'Rp550.000', JSON.stringify(G.slice(5, 9)));
+  cek('teks → garis: baris biasa (spasi tunggal) tidak dipisah', G[4].kiri === '6 hari penuh × Rp100.000 = Rp600.000' && G[4].kanan === '' && G[10].kanan === '');
+  const baris = epSusun(G, { kertas: 80 }).teks;
+  cek('teks dicetak: nilai rata kanan selebar kertas, tiap baris ≤ 48 huruf, semuanya ASCII', baris.every((b) => b.length <= 48 && ascii(b)) && baris.some((b) => b.length === 48 && /^Upah +Rp600\.000$/.test(b)) && baris.some((b) => b.length === 48 && /^DITERIMA +Rp550\.000$/.test(b)), JSON.stringify(baris));
+  cek('teks dicetak: tanda yang tidak ada di printer diganti padanannya (× → x, − → -, · → -, ÷ → /, ≈ → ~), bukan hilang', baris.some((b) => b.indexOf('6 hari penuh x Rp100.000 = Rp600.000') === 0) && baris.some((b) => /-Rp100\.000$/.test(b)) && baris.some((b) => b.indexOf('Slip upah - Hasan') === 0)
+    && epAscii('Rp600.000 ÷ 6 hari ≈ Rp100.000') === 'Rp600.000 / 6 hari ~ Rp100.000', JSON.stringify(baris));
+  cek('teks → garis: tiga kolom TIDAK ditebak (dicetak apa adanya); teks kosong = tanpa garis; baris kosong di depan bukan judul', epGarisDariTeks('JUDUL\na   b   c')[1].kanan === '' && epGarisDariTeks('JUDUL\na   b   c')[1].kiri === 'a   b   c'
+    && epGarisDariTeks('').length === 0 && epGarisDariTeks(null).length === 0 && epGarisDariTeks('\n\n').length === 0 && epGarisDariTeks('\n  Judul dulu\nisi')[1].tengah === true && !epGarisDariTeks('\n  Judul dulu\nisi')[0].tengah);
+  cek('teks 58 mm: baris panjang dibungkus, tidak ada yang lewat 32 huruf', epSusun(G, { kertas: 58 }).teks.every((b) => b.length <= 32));
+}
 print(JSON.stringify(hasil));
 """
 
@@ -148,8 +163,39 @@ def jalankan(sumber):
     return json.loads(r.stdout.strip().splitlines()[-1]), ''
 
 
+def baca(*bagian):
+    with open(os.path.join(AKAR, *bagian), encoding='utf-8') as f: return f.read()
+
+
+def periksa_statis():
+    """Owner 21 Nov 2026: di aplikasi tablet dialog cetak hanya berkelebat — slip upah & rekap tutup hari dicetak langsung; dokumen Laporan ditolak."""
+    h = []
+    def ok(nama, lulus, ket=''): h.append({'nama': 'statis · ' + nama, 'ok': bool(lulus), 'ket': str(ket)})
+    pr = baca('baru', 'js', 'inti', 'printer.js'); ug = baca('baru', 'js', 'layar', 'uang.js'); lp = baca('baru', 'js', 'layar', 'laporan.js')
+    a = pr.find('export async function cetakTeks('); b = pr.find('\n}\n', a); ct = pr[a:b] if a >= 0 and b > a else ''
+    ok('printer.js cetakTeks: selalu gaya TEKS dari epGarisDariTeks, lewat jalur cetak perangkat ini; printer belum dinyalakan → TIDAK_ADA (tidak diam, tidak dialog)',
+       "const s = await susunCetak(epGarisDariTeks(teks), { gaya: 'teks' }, { qr: '' });" in ct and 'return kirimCetak(s.byte, j);' in ct
+       and "if (j === 'dialog') {" in ct and "e.code = 'TIDAK_ADA'; throw e; }" in ct and 'window.print' not in ct)
+    a = ug.find('  const cetak = (teks, nama) => {'); b = ug.find('\n  };\n', a); ck = ug[a:b] if a >= 0 and b > a else ''
+    ok('Uang: di peramban tetap dialog cetak; di aplikasi tablet TIDAK ada window.print — teksnya dikirim ke printer struk',
+       "if (!asliAda()) { const pre = document.getElementById('cetakStruk'); if (pre) pre.textContent = teks; try { window.print(); } catch (e) { /* abaikan */ } return; }" in ck
+       and ck.count('window.print') == 1 and 'PR.cetakTeks(teks).then(' in ck)
+    ok('Uang: satu cetakan pada satu waktu, dan tiap ujung dikabarkan (tercetak · tunggu · lihat kertasnya · TIDAK tercetak beserta sebabnya)',
+       ck.find('if (printerSibuk()) return set({ kabar: KALIMAT_MASIH_MENCETAK, kabarAwas: true });') < ck.find('PR.cetakTeks(teks)') and ck.find('if (printerSibuk())') > 0
+       and "if (masihMencetak(e)) return set({ kabar: KALIMAT_MASIH_MENCETAK, kabarAwas: true });" in ck and "if (hasilTakDiketahui(e)) return set({ kabar: KALIMAT_TAK_DIKABARI, kabarAwas: true });" in ck
+       and "set({ kabar: nama + ' TIDAK tercetak: ' + (e && e.message ? e.message : e), kabarAwas: true });" in ck and "nama + ' tercetak lewat ' + PR.namaJalur(r.jalur)" in ck)
+    ok('Uang: slip upah dan rekap tutup hari sama-sama lewat pintu itu, dengan namanya', "upSlipCetak: () => cetak(st().slipTeks, 'Slip upah')," in ug and "tdCetak: () => cetak(st().rekapTeks, 'Rekap tutup hari')," in ug and ug.count('window.print') == 1)
+    k = lp.find('  async function keluarkan(D, info, cara) {'); pk = lp.find('    dkPaketSusun: async () => {')
+    ok('Laporan: di aplikasi tablet dokumen kertas besar ditolak SEBELUM nomornya dihitung (tidak ada nomor Cetakan bernomor yang terpakai sia-sia); kirim WA tetap jalan',
+       k > 0 and 0 < lp.find("if (cara !== 'wa' && asliAda()) { set({ kabar: KALIMAT_TABLET, kabarAwas: true }); return; }", k) < lp.find('LP.susunCetakan(info, cara, waktu())', k)
+       and pk > 0 and 0 < lp.find('if (asliAda()) { set({ kabar: KALIMAT_TABLET, kabarAwas: true }); return; }', pk) < lp.find('LP.susunPaketCetakan(', pk)
+       and 'nomor dokumen belum dipakai' in lp and lp.count('window.print') == 1)
+    return h
+
+
 def periksa(sumber, diam=False):
     h, galat = jalankan(sumber)
+    if h is not None: h = h + periksa_statis()
     if h is None:
         if not diam: print('GAGAL: jsc tidak jalan —', galat[:400])
         return False
@@ -170,6 +216,12 @@ MUTASI = [
     ('bungkus tidak memotong kata panjang', "while (k.length > lebar)", "while (false)"),
     ('raster: bit kanan dulu (LSB)', "v |= 0x80 >> k", "v |= 1 << k"),
     ('raster: tanpa pita (satu perintah raksasa)', "const PITA = 240;", "const PITA = 100000;"),
+    ('teks → garis: label/nilai tidak dipisah (kolom berantakan)', "    return bagian.length === 2 ? { kiri: bagian[0], kanan: bagian[1] } : { kiri: t, kanan: '' };", "    return { kiri: t, kanan: '' };"),
+    ('teks → garis: tiga kolom ditebak jadi dua', "    return bagian.length === 2 ?", "    return bagian.length >= 2 ?"),
+    ('teks → garis: judul tidak ditandai', "if (judul && t) { judul = false; return { kiri: t, kanan: '', tengah: true, tebal: true }; }", "if (judul && t) { judul = false; return { kiri: t, kanan: '' }; }"),
+    ('teks → garis: tiap baris dianggap judul', "if (judul && t) { judul = false; return {", "if (judul && t) { return {"),
+    ('teks → garis: baris kosong di ekor ikut dicetak', "  while (baris.length && !baris[baris.length - 1].trim()) baris.pop();\n", ""),
+    ('padanan ÷ hilang (angka pembagi upah jadi rancu)', "'÷': '/', ", ""),
     ('dither dimatikan diam-diam', "if (!o.dither) {", "if (true) {"),
     ('transparan dianggap hitam', "abu[i] = 255 - a * (255 - l);", "abu[i] = a * l;"),
     ('emoji tidak dibuang di gaya gambar', ".replace(EMOJI, '')", ""),
