@@ -34,7 +34,7 @@
     @keyframes hangat { 0% { background: var(--umpan-hangat); } 100% { background: transparent; } }
     .umpan .u .w { color: var(--redup); font-variant-numeric: tabular-nums; }
     .btn.isi { background: linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3)); color: var(--logam-teks); border-color: rgba(255,255,255,0.6); }
-    .nav { position: absolute; z-index: 3; left: 14px; right: 14px; bottom: 16px; height: 68px; border-radius: 22px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; background: var(--nav); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); box-shadow: 0 14px 34px -16px var(--bayang), inset 0 1px 0 var(--kaca-sorot); transition: background-color 480ms ease; }
+    .nav { position: absolute; z-index: 3; left: 14px; right: 14px; bottom: 16px; height: 68px; border-radius: 22px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: center; background: var(--nav); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); box-shadow: 0 14px 34px -16px var(--bayang), inset 0 1px 0 var(--kaca-sorot); transition: background-color 480ms ease; }
     .nav > div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 600; min-height: 44px; color: var(--nav-teks); }
     .nav > div.aktif, .nav .fab-label { color: var(--aktif); }
     .nav svg { width: 22px; height: 22px; }

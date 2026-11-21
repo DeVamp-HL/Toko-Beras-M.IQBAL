@@ -105,7 +105,7 @@ ok('diputar: Ben jual bon → "minta owner" → nota bon & bayar sebagian DITOLA
 putar('karyawan', 'terimaBon', 'tidak'); var r3 = kirim(KRY, bayarBon());
 ok('diputar: karyawan terima bon → "tidak" → pembayaran bon DITOLAK "Peran Karyawan tidak boleh terima pembayaran bon"', /^Peran Karyawan tidak boleh terima pembayaran bon/.test(r3.tolak || ''), J(r3));
 putar('ben', 'terimaBon', 'tidak'); var r3b = kirim(BEN, nota('Tunai', 1000)), r3c = kirim(BEN, bayarBon());
-ok('diputar: Ben terima bon → "tidak": bayar sebagian DI NOTA tetap boleh (bagian jual bon), terima bon sendiri DITOLAK', !r3b.tolak && /^Peran Ben \(penjaga laci\) tidak boleh terima pembayaran bon/.test(r3c.tolak || ''), J([r3b, r3c]));
+ok('diputar: Ben terima bon → "tidak": bayar sebagian DI NOTA tetap boleh (bagian jual bon), terima bon sendiri DITOLAK', !r3b.tolak && /^Peran Penjaga laci tidak boleh terima pembayaran bon/.test(r3c.tolak || ''), J([r3b, r3c]));
 putar('karyawan', 'pelangganBaru', 'owner'); var r4 = kirim(KRY, orangBaru());
 ok('diputar: karyawan pelanggan baru → "minta owner" → kartu baru DITOLAK minta owner', r4.tolak === MINTA, J(r4));
 putar('karyawan', 'adukan', 'tidak'); var r5 = kirim(KRY, aduk());
