@@ -6,7 +6,7 @@
 // pilihan owner; isi = omzet, tunai / QRIS / bon, titipan, laci seharusnya & uang keluar PERSIS seperti di HP (rumus laci Tutup hari yang sama), per orang
 // yang jaga, terlaris & stok tipis, pesanan & antar; bisa dicetak. Data uang dimuat firebase.js (setelDataUang) hanya selama orang itu jaga.
 import { ambilPenjualan, ambilPiutangMutasi, ambilPesanan, ambilSuratJalan, kunciNota, returUangPerHari, ingatGerakanKas } from '../data/toko.js';
-import { caraBayarKunci, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
+import { caraBayarKunci, AMBANG_HARI_KRITIS, JENDELA_LAJU_HARI } from '../mesin/pembantu.js';
 import { RP, KG, ANGKA, tanggalPendek, hariIniIso } from '../inti/format.js';
 import { rumusLaci, tdNamaGerak } from './tutup-hari-logika.js';
 import { tpMenungguSampai } from './titipan-logika.js';
@@ -16,6 +16,11 @@ import { ssAtur } from './sistem-logika.js';
 
 export const RT_TERLARIS = 5;
 export const RT_TIPIS = 6;
+export const RT_HABIS_NAMA = 3;   // nama barang habis yang disebut (paling laku dulu); sisanya cukup jumlahnya
+/** Sisa satu barang stok tipis untuk layar & cetak: "300 kg" / "2 unit". */
+export const rtTeksSisa = (b) => (b.satuan === 'kg' ? KG(b.sisa) : ANGKA(b.sisa) + ' unit');
+/** Kalimat barang habis yang masih laku ('' bila tidak ada). */
+export const rtTeksHabis = (H) => (!H || !H.n ? '' : 'Habis, padahal laku ' + JENDELA_LAJU_HARI + ' hari terakhir: ' + ANGKA(H.n) + ' barang — ' + H.nama.join(', ') + (H.n > H.nama.length ? ', …' : ''));
 
 /** Kode orang pilihan owner yang membuka Ringkas hari ini ('' = mati). */
 export const rtOrang = () => String((ssAtur('peran') || {}).ringkasOrang || '');
@@ -63,12 +68,19 @@ export function rtHitung(kini, akun, u) {
   const perOrang = Object.keys(orang).map((k) => ({ nama: orang[k].nama, nota: orang[k].nota.size, rp: Math.round(orang[k].rp) })).sort((a, b) => b.rp - a.rp || a.nama.localeCompare(b.nama));
   const terlaris = Object.keys(barang).map((k) => barang[k]).filter((b) => b.kg > 0).sort((a, b) => b.kg - a.kg || b.rp - a.rp).slice(0, RT_TERLARIS)
     .map((b) => ({ nama: b.nama, kg: Math.round(b.kg * 100) / 100, rp: Math.round(b.rp) }));
-  let tipis = [];
+  // stok tipis = MINUS dulu, lalu yang MASIH ADA tapi habis ≤ AMBANG_HARI_KRITIS hari (paling cepat habis dulu). Yang sudah HABIS (sisa 0) tapi masih laku
+  // dipisah: dulu ikut daftar sebagai "±0 hari" — puluhan barang kosong berurutan abjad memenuhi 6 baris dan mendorong keluar barang yang benar-benar
+  // hampir habis (owner 22 Nov 2026, CPad: enam baris "±0 hari").
+  let tipis = []; let habis = { n: 0, nama: [] };
   try {
-    tipis = daftarBarang().filter((b) => !b.wadahStok && (b.sisa < -0.004 || (b.laju > 0 && b.hariHabis !== null && b.hariHabis <= AMBANG_HARI_KRITIS)))
-      .sort((a, b) => (a.sisa < 0 ? -1 : a.hariHabis) - (b.sisa < 0 ? -1 : b.hariHabis)).slice(0, RT_TIPIS)
+    const B = daftarBarang().filter((b) => !b.wadahStok);
+    const minus = B.filter((b) => b.sisa < -0.004).sort((a, b) => a.sisa - b.sisa);
+    const tipisAda = B.filter((b) => b.sisa > 0.004 && b.laju > 0 && b.hariHabis !== null && b.hariHabis <= AMBANG_HARI_KRITIS).sort((a, b) => a.hariHabis - b.hariHabis || b.laju - a.laju);
+    tipis = minus.concat(tipisAda).slice(0, RT_TIPIS)
       .map((b) => ({ nama: b.nama, sisa: b.sisa, satuan: b.satuan === 'unit' ? 'unit' : 'kg', hari: b.hariHabis === null ? null : Math.max(0, Math.round(b.hariHabis * 10) / 10), minus: b.sisa < 0 }));
-  } catch (e) { tipis = []; }
+    const kosong = B.filter((b) => Math.abs(b.sisa) <= 0.004 && b.laju > 0).sort((a, b) => b.laju - a.laju || a.nama.localeCompare(b.nama));
+    habis = { n: kosong.length, nama: kosong.slice(0, RT_HABIS_NAMA).map((b) => b.nama) };
+  } catch (e) { tipis = []; habis = { n: 0, nama: [] }; }
   // pesanan yang jatuh hari ini / sudah lewat & belum tuntas · surat jalan masih di jalan · bayar di tempat belum disetor
   const pesanan = (ambilPesanan() || []).filter((x) => x && ['dipesan', 'diantar'].indexOf(String(x.status || '')) >= 0 && String(x.tanggalKirim || '') && String(x.tanggalKirim) <= iso)
     .map((x) => ({ nama: String(x.namaPelanggan || '').trim() || 'tanpa nama', isi: String(x.isi || '').trim(), status: String(x.status), tanggal: String(x.tanggalKirim), lewat: String(x.tanggalKirim) < iso }))
@@ -89,7 +101,7 @@ export function rtHitung(kini, akun, u) {
     keluar = { daftar, total: daftar.reduce((a, g) => a + g.rp, 0) };
   }
   return { iso, uang: K, omzet: tunai + qris + bon, nota: new Set(jual.map(kunciNota)).size, tunai, qris, bon, retur, bonTunai, bonQris, titipan: T, laci, keluar,
-    perOrang, terlaris, tipis, pesanan, jalan, cod: cod.map((x) => ({ pengantar: x.pengantar || 'pengantar', rp: Math.round(Number(x.sisa) || 0) })) };
+    perOrang, terlaris, tipis, habis, pesanan, jalan, cod: cod.map((x) => ({ pengantar: x.pengantar || 'pengantar', rp: Math.round(Number(x.sisa) || 0) })) };
 }
 
 /** Teks cetak (printer struk tablet). R = rtHitung; kop = stAtur().kop; dicetak = { tanggal, jam, oleh }. */
@@ -109,7 +121,9 @@ export function rtTeksCetak(R, kop, dicetak) {
   if (R.titipan.n) baris('Titipan tablet menunggu ' + R.titipan.n, RP(R.titipan.rp));
   if (R.perOrang.length) { g.push(''); g.push('Per orang'); R.perOrang.forEach((o) => baris('  ' + o.nama + ' · ' + o.nota + ' nota', RP(o.rp))); }
   if (R.terlaris.length) { g.push(''); g.push('Terlaris'); R.terlaris.forEach((b) => baris('  ' + b.nama, KG(b.kg))); }
-  if (R.tipis.length) { g.push(''); g.push('Stok tipis'); R.tipis.forEach((b) => baris('  ' + b.nama, b.minus ? 'MINUS ' + (b.satuan === 'kg' ? KG(b.sisa) : ANGKA(b.sisa) + ' unit') : '±' + String(b.hari).replace('.', ',') + ' hari')); }
+  if (R.tipis.length || (R.habis && R.habis.n)) { g.push(''); g.push('Stok tipis');
+    R.tipis.forEach((b) => baris('  ' + b.nama, b.minus ? 'MINUS ' + rtTeksSisa(b) : rtTeksSisa(b) + ' ±' + String(b.hari).replace('.', ',') + ' hari'));
+    if (R.habis && R.habis.n) g.push(rtTeksHabis(R.habis)); }
   if (R.pesanan.length || R.jalan.length || R.cod.length) {
     g.push(''); R.pesanan.forEach((x) => g.push((x.lewat ? 'LEWAT ' : 'Pesanan ') + x.nama + (x.isi ? ': ' + x.isi : '') + (x.status === 'diantar' ? ' (diantar)' : '')));
     if (R.jalan.length) g.push('Surat jalan di jalan: ' + R.jalan.length); R.cod.forEach((x) => baris('Bayar di tempat blm setor · ' + x.pengantar, RP(x.rp)));

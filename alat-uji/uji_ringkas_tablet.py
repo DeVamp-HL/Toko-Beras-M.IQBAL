@@ -100,6 +100,24 @@ cek('pesanan: yang lewat (18 Sep, diantar) lalu hari ini; tuntas & besok tidak i
 cek('surat jalan masih di jalan: 1', R.jalan.length === 1 && R.jalan[0].no === 'SJ26-X-0001', R.jalan);
 cek('stok tipis terbaca tanpa galat (daftar)', Array.isArray(R.tipis));
 
+// ---------- stok tipis vs HABIS (owner 22 Nov 2026, CPad: enam baris "±0 hari" berurutan abjad = barang kosong menutupi yang hampir habis) ----------
+var daftarAsli = daftarBarang;
+daftarBarang = function () { return [
+  { nama: 'Zeta', satuan: 'kg', sisa: 0, laju: 100, hariHabis: 0 }, { nama: 'Mawar', satuan: 'kg', sisa: 0, laju: 50, hariHabis: 0 },
+  { nama: 'Beta', satuan: 'kg', sisa: 0, laju: 20, hariHabis: 0 }, { nama: 'Alfa', satuan: 'kg', sisa: 0, laju: 10, hariHabis: 0 },
+  { nama: 'Cepat', satuan: 'kg', sisa: 300, laju: 500, hariHabis: 0.6 }, { nama: 'Kemasan 5 kg', satuan: 'unit', sisa: 2, laju: 1, hariHabis: 2 },
+  { nama: 'Minus', satuan: 'kg', sisa: -5, laju: 3, hariHabis: -5 / 3 }, { nama: 'Aman', satuan: 'kg', sisa: 100, laju: 10, hariHabis: 10 },
+  { nama: 'Wadah', satuan: 'kg', sisa: 0, laju: 5, hariHabis: 0, wadahStok: true }, { nama: 'Mati', satuan: 'kg', sisa: 0, laju: 0, hariHabis: null }]; };
+var Rs = rtHitung(KINI, OWNER_JAGA, SIAP); daftarBarang = daftarAsli;
+cek('stok tipis: MINUS dulu, lalu yang MASIH ADA paling cepat habis (Cepat 0,6 hari, Kemasan 2 hari); yang aman tidak ikut',
+  J(Rs.tipis.map(function (b) { return [b.nama, b.hari, b.minus]; })) === J([['Minus', 0, true], ['Cepat', 0.6, false], ['Kemasan 5 kg', 2, false]]), Rs.tipis);
+cek('stok tipis: barang bersisa 0 TIDAK jadi baris "±0 hari"', Rs.tipis.every(function (b) { return Math.abs(b.sisa) > 0.004; }), Rs.tipis);
+cek('barang habis yang masih laku disebut terpisah: 4 barang, paling laku dulu (Zeta, Mawar, Beta); wadah & yang tak laku tidak ikut',
+  Rs.habis.n === 4 && J(Rs.habis.nama) === J(['Zeta', 'Mawar', 'Beta']), Rs.habis);
+cek('kalimat habis menyebut jendela laju, jumlah, nama, dan tanda masih ada lagi', rtTeksHabis(Rs.habis) === 'Habis, padahal laku ' + JENDELA_LAJU_HARI + ' hari terakhir: 4 barang — Zeta, Mawar, Beta, …', rtTeksHabis(Rs.habis));
+var Ts = rtTeksCetak(Rs, null, { tanggal: '2026-09-19', jam: '10:30', oleh: 'Owner' });
+cek('cetak: stok tipis dengan sisa + hari, lalu kalimat barang habis', /Cepat  300 kg ±0,6 hari/.test(Ts) && /Kemasan 5 kg  2 unit ±2 hari/.test(Ts) && /Minus  MINUS /.test(Ts) && Ts.indexOf(rtTeksHabis(Rs.habis)) > 0, Ts);
+
 // ---------- cetak ----------
 var T = rtTeksCetak(R, { nama: 'Toko Contoh' }, { tanggal: '2026-09-19', jam: '10:30', oleh: 'Owner' });
 cek('cetak: omzet, perkiraan isi laci, uang keluar, per orang, pencetak', /Omzet · 3 nota  Rp1\.150\.000/.test(T) && /PERKIRAAN ISI LACI  Rp2\.385\.000/.test(T) && /Uang keluar hari ini Rp80\.000/.test(T) && /Owner · 1 nota  Rp600\.000/.test(T) && /Dicetak .* 10:30, Owner/.test(T), T);
@@ -182,9 +200,12 @@ def periksa_statis(t):
     M = t[MN]
     i_rt = M.find('${RT.rtTampil(akunM) ? kartuRingkas('); i_tp = M.find('${kartuTitipan(s, { akun: akunM')
     ok('Menu: kartu Ringkas hanya lewat gerbang rtTampil, paling atas (di atas titipan)', 0 < i_rt < i_tp and M.count('kartuRingkas(') == 1, (i_rt, i_tp))
+    ok('Menu: baris tanda baca uang berjudul "Akun tablet" + email (owner 22 Nov: bukan nama yang diketik saat akun minta didaftarkan)',
+       '<div class="pn-orang" data-k="rt-ak-${a.uid}"><b>Akun tablet</b> <span class="k2">${a.email} · ' in M)
     ok('Menu: owner memilih orang & menandai akun di Orang di tablet', '${gambarRingkasOwner(s, D)}' in M and "rtPilihOrang: ({ id }) => tulis(S.susunAturSistem('peran', { ringkasOrang: id === '-' ? '' : id }, waktu()))" in M and "S.susunUbahAkun(uid, { bacaUang: nyala === '1' }, waktu(), st().yakinRt === kunci)" in M)
     P = t[RTP]
     ok('panel: angka besar bergulir (omzet & laci) — layar baru wajib hidup', 'data-gulir="${Math.round(R.omzet)}"' in P and 'data-gulir="${Math.round(L.kira)}"' in P)
+    ok('panel: stok tipis bersisa + hari, barang habis satu kalimat terpisah', "RT.rtTeksSisa(x) + ' · ' + rtHari(x.hari)" in P and '${R.habis.n ? h`<div class="k2" data-k="rt-habis">${RT.rtTeksHabis(R.habis)}</div>` : \'\'}' in P)
     ok('panel: cetak hanya untuk orang pilihan owner', "if (!RT.rtTampil(a)) return set({ kabar: 'Ringkas hari ini hanya untuk orang pilihan owner'" in P)
     ok('panel & logika tidak menulis apa pun', not re.search(r'tulis\(|dokumen:\s*\[', P + t[RTL]))
     ok('CSS: kartu dua lajur di tablet, baris masuk bergiliran, hormat reduced-motion', '.layar-menu .rt-dua' in t[CSS] and 'animation: masuk' in t[CSS].split('.layar-menu .rt-baris {')[1].split('\n')[0] and '.layar-menu .rt-baris { animation: none; }' in t[CSS])
@@ -213,6 +234,7 @@ if (R) {
   cek('data toko: kartu memuat omzet & perkiraan laci (angka yang sama dengan hitungan)', html.indexOf(RP(R.omzet)) >= 0 && (!R.laci || !R.laci.ada || html.indexOf(RP(R.laci.kira)) >= 0));
   var tk = rtTeksCetak(R, null, { tanggal: iso, jam: '20:00', oleh: 'Owner' });
   cek('data toko: teks cetak tanpa "undefined" / "NaN"', !/undefined|NaN/.test(tk));
+  cek('data toko: stok tipis tanpa barang bersisa 0 (yang habis disebut terpisah, tidak menutupi yang hampir habis)', R.tipis.every(function (b) { return Math.abs(b.sisa) > 0.004; }) && R.habis && R.habis.nama.length <= 3);
   var Rm = rtHitung(KINI, AK, { nyala: true, siap: 3, total: 11, ditolak: [] }); var hm = kartuRingkas({}, { akun: AK, uang: { nyala: true, siap: 3, total: 11, ditolak: [] }, kini: KINI }).html;
   cek('data toko: data uang belum lengkap → kartu menyebut memuat, tanpa angka laci', Rm.laci === null && /Memuat data uang/.test(hm) && !/Perkiraan isi laci sekarang/.test(hm));
 }
@@ -226,7 +248,7 @@ def asap(t):
     isi = lambda m: t[m] if m in t else open(os.path.join(AKAR, m), encoding='utf-8').read()
     modul = list(dict.fromkeys(bundel_baru.lengkapi(MODUL) + [DOM, RTP]))
     js = '\n'.join([bundel_baru.PRELUDE] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(isi(m)) for m in modul])
-    js += '\nvar RT = { rtHitung: rtHitung, rtTampil: rtTampil, rtTeksCetak: rtTeksCetak, rtKeadaanUang: rtKeadaanUang };\n'   # import * as RT (panel) di satu lingkup
+    js += '\nvar RT = { rtHitung: rtHitung, rtTampil: rtTampil, rtTeksCetak: rtTeksCetak, rtKeadaanUang: rtKeadaanUang, rtTeksSisa: rtTeksSisa, rtTeksHabis: rtTeksHabis };\n'   # import * as RT (panel) di satu lingkup
     js = UB.JAM_TETAP + js + '\nvar CAD = ' + open(cad[-1], encoding='utf-8').read() + ';\n' + ASAP
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f: f.write(js); p = f.name
     r = subprocess.run([JSC, p], capture_output=True, text=True, env=dict(os.environ, TZ='Asia/Jakarta')); os.unlink(p)
@@ -258,6 +280,10 @@ def main():
             ('titipan belum diputus tidak dikurangkan dari laci', RTL, R.replace('kira: RL.seharusnya - T.rp,', 'kira: RL.seharusnya,')),
             ('uang keluar hari lain ikut', RTL, R.replace("if (r.t !== iso || !(r.keluar > 0)) return;", "if (!(r.keluar > 0)) return;")),
             ('per orang menghitung baris, bukan nota', RTL, R.replace('nota: orang[k].nota.size,', 'nota: orang[k].nota.size + 1,')),
+            ('barang bersisa 0 kembali jadi baris stok tipis "±0 hari"', RTL, R.replace('B.filter((b) => b.sisa > 0.004 && b.laju > 0', 'B.filter((b) => b.sisa > -0.004 && b.laju > 0')),
+            ('barang habis diurut abjad, bukan paling laku', RTL, R.replace('.sort((a, b) => b.laju - a.laju || a.nama.localeCompare(b.nama));', '.sort((a, b) => a.nama.localeCompare(b.nama));')),
+            ('cetak lupa kalimat barang habis', RTL, R.replace('    if (R.habis && R.habis.n) g.push(rtTeksHabis(R.habis)); }', '    }')),
+            ('baris akun kembali memakai nama saat minta didaftarkan', MN, M.replace('<b>Akun tablet</b> <span class="k2">${a.email} · ', '<b>${a.nama || a.email}</b> <span class="k2">${a.email} · ')),
             ('pesanan tuntas ikut', RTL, R.replace("['dipesan', 'diantar'].indexOf(String(x.status || '')) >= 0 && ", '')),
             ('tanda bacaUang untuk karyawan juga', AK, A.replace("bacaUang: peran === 'ben' && dok.bacaUang === true };", "bacaUang: dok.bacaUang === true };")),
             ('koleksi uang masuk pendengar dasar (layar staf lain ikut membaca uang)', AK, A.replace('const out = BACA_STAF.map((n) => ({ nama: n }));', 'const out = BACA_STAF.concat(BACA_UANG).map((n) => ({ nama: n }));')),
