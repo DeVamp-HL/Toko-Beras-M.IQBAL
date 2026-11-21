@@ -3161,15 +3161,17 @@ kecepatan dengan mutu. **Belum terbukti di perangkat:** tombol mode di jalur jar
 jaringan, Wi-Fi putus di tengah cetak.
 
 **Gerbang "Siapa yang jaga?" tidak lagi bisa digeser di tablet (owner 21 Nov 2026: "benerin gerbang yang belum fix, itu masih bisa
-digeser-geser"):** di CPad mendatar layar aplikasinya ±1156 × 635 titik CSS. Panel jaga 560 px + jarak 50 px lebih lebar dari separuh layar
-(lewat 32 px) dan lebih tinggi dari layar (lewat 66 px) → gerbang bisa digeser ke samping dan ke bawah, logo toko tertutup, tombol "Keluar
-dari akun tablet" di luar layar. Sekarang (`css/gerbang.css`): wadah gerbang tidak bisa digeser mendatar; di tablet mendatar panel jaga jadi
-DUA LAJUR (kiri nama + keterangan + keluar, kanan PIN), selebar lajurnya, duduk di bawah logo; daftar nama yang panjang digulir di
-daftarnya, bukan gerbangnya; di tablet tegak cincin dikecilkan selama panel jaga tampil. Aturan tata letak itu hanya untuk panel yang
-tampil (`:not([hidden])`) — panel tersembunyi tetap tersembunyi. *Terbukti di panel peramban:* 1156 × 635 (1, 3, 4, 8, 12 orang; salah PIN;
-belum pilih nama; tanya lanjut) tanpa geser, panel di bawah logo, tombol Keluar terlihat; 1280 × 720, 1024 × 600, 1440 × 900 tanpa geser;
-722 × 1065 tegak tanpa geser sampai 4 orang. **Belum terbukti di CPad.** Nama peran di layar: "Penjaga laci" (dulu "Ben (penjaga laci)";
-kunci perannya tetap `ben`).
+digeser-geser"):** di CPad mendatar layar aplikasinya ±1067 × 585 titik CSS (dihitung dari tangkapan layar owner: 1 titik CSS = 1,2 titik
+tangkapan). Panel jaga 560 px + jarak lajurnya lebih lebar dari separuh layar dan lebih tinggi dari layar → gerbang bisa digeser ke samping
+dan ke bawah, logo toko tertutup, tombol "Keluar dari akun tablet" di luar layar. Sekarang (`css/gerbang.css`): wadah gerbang tidak bisa
+digeser mendatar; di tablet mendatar panel jaga jadi DUA LAJUR (kiri nama + keterangan + keluar, kanan PIN), selebar lajurnya, duduk di
+bawah logo; daftar nama yang panjang digulir di daftarnya, bukan gerbangnya; di tablet tegak cincin dikecilkan selama panel jaga tampil.
+Aturan tata letak itu hanya untuk panel yang tampil (`:not([hidden])`) — panel tersembunyi tetap tersembunyi. *Bilah menu bawah:* akun
+tablet hanya punya empat menu (Stok, Jual, Pelanggan, Menu), tetapi bilahnya dibagi lima lajur mati sehingga lajur kelima kosong di kanan;
+sekarang lajurnya mengikuti jumlah menu yang tampil (`css/identitas.css`). *Terbukti di panel peramban:* 1067 × 585 mendatar dan 667 × 985
+tegak — 1, 3, 4, 8, 12 orang; salah PIN; belum pilih nama; tanya lanjut — tanpa geser, panel di bawah logo, tombol Keluar terlihat; juga
+1156 × 635, 1280 × 720, 1024 × 600, 1440 × 900 tanpa geser; bilah menu empat lajur rata 15–1052. **Belum terbukti di CPad.** Nama peran di
+layar: "Penjaga laci" (dulu "Ben (penjaga laci)"; kunci perannya tetap `ben`).
 
 **Cetak di tablet untuk Uang dan Laporan (owner 21 Nov 2026: "Oke kita bangun yang ini"):** di aplikasi tablet dialog cetak hanya berkelebat
 lalu hilang, jadi tombol Cetak di Uang (slip upah, rekap tutup hari) dan di Laporan (dokumen) terasa mati. *Uang:* di aplikasi tablet kedua
