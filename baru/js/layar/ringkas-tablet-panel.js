@@ -37,7 +37,9 @@ export function kartuRingkas(s, opsi) {
       <div class="rt-blok" data-k="rt-laris"><div class="label">Terlaris hari ini</div>${R.terlaris.length ? R.terlaris.map((x, i) => baris('tl-' + i, x.nama, KG(x.kg))) : h`<div class="k2">Belum ada barang keluar.</div>`}</div>
     </div>
     <div class="rt-dua" data-k="rt-dua3">
-      <div class="rt-blok" data-k="rt-tipis"><div class="label">Stok tipis</div>${R.tipis.length ? R.tipis.map((x, i) => baris('st-' + i, x.nama, x.minus ? 'MINUS ' + (x.satuan === 'kg' ? KG(x.sisa) : ANGKA(x.sisa) + ' unit') : rtHari(x.hari), x.minus ? 'awas' : '')) : h`<div class="k2">Tidak ada yang hampir habis.</div>`}</div>
+      <div class="rt-blok" data-k="rt-tipis"><div class="label">Stok tipis</div>${R.tipis.map((x, i) => baris('st-' + i, x.nama, x.minus ? 'MINUS ' + RT.rtTeksSisa(x) : RT.rtTeksSisa(x) + ' · ' + rtHari(x.hari), x.minus ? 'awas' : ''))}
+        ${R.habis.n ? h`<div class="k2" data-k="rt-habis">${RT.rtTeksHabis(R.habis)}</div>` : ''}
+        ${!R.tipis.length && !R.habis.n ? h`<div class="k2">Tidak ada yang hampir habis.</div>` : ''}</div>
       <div class="rt-blok" data-k="rt-pesan"><div class="label">Pesanan & antar</div>
         ${R.pesanan.map((x, i) => baris('ps-' + i, x.nama + (x.isi ? ' · ' + x.isi : ''), x.lewat ? 'LEWAT ' + tanggalPendek(x.tanggal) : x.status === 'diantar' ? 'diantar' : 'hari ini', x.lewat ? 'awas' : ''))}
         ${R.jalan.length ? baris('sj', 'Surat jalan masih di jalan', ANGKA(R.jalan.length)) : ''}
