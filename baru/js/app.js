@@ -26,6 +26,7 @@ import { nanti, setelMuat } from './inti/jadwal.js';
 import { pasangGerbang } from './inti/gerbang.js';
 // putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang
 import * as TB from './layar/tablet-logika.js';
+import { rtBukaUang } from './layar/ringkas-tablet-logika.js';   // owner 21 Nov 2026: Ringkas hari ini di tablet (rules v14)
 // paket S1 (19 Nov 2026): pintu perangkat (aplikasi tablet) — asliAda pindah ke sini; scanner tidak boleh terbaca sebagai PIN
 import { asliAda, padaPindai, padaTempel, ketikTambah, ketikMesin, KETIK_TUNGGU } from './inti/perangkat.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
 // putaran T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi di tablet — bisa DIBUKA tanpa internet (pekerjanya sw-baru.js, dicap saat terbit)
@@ -70,6 +71,9 @@ function efektifDari(a) {
   return TB.tbMenunggu(a, k);
 }
 const akunKini = () => efektifDari(akunAsli());
+// owner 21 Nov 2026 (rules v14): data uang untuk Ringkas hari ini dimuat HANYA selama orang pilihan owner jaga di akun tablet yang ditandai owner;
+// orang lain jaga / tirai menutup / owner mencabut tanda = pendengarnya dilepas & memorinya dikosongkan (firebase.js setelDataUang, sekali per perubahan).
+function segarkanUang() { try { fb.setelDataUang(rtBukaUang(akunKini())); } catch (e) { console.error('data uang ringkas', e); } }
 fb.setelAkunEfektif((a) => { const e = akunKini(); return e && e.uid === a.uid && e.operatorId ? e : null; });
 fb.setelSumberHak(() => { const a = akunKini(); if (!a || !a.peran || a.peran === 'owner') return {}; try { return Object.assign({}, (ssAtur('peran').hak || {})[a.peran] || {}, { jatahNego: ngJatah(a) }); } catch (e) { return {}; } });
 
@@ -170,7 +174,7 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
     pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })() }),   // putaran 24: pengingat pajak, owner saja
   periksaSambungan: () => fb.periksaSambungan(4000), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n),
-  akun: akunKini, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah),
+  akun: akunKini, statusUang: () => statusFb.uang, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah),
   // hemat baca (owner 7 Okt 2026): Menu › Toko ini › Perangkat & antrean › Hemat baca — keadaan, daftar siap-nyala, saklar perangkat ini, tombol baca penuh
   hemat: () => fb.hematKeadaan(), hematSiap: () => fb.hematSiapNyala(), setelSaklarHemat: (v) => fb.setelSaklarHemat(v), hematBacaPenuh: (sebab) => fb.hematBacaPenuh(sebab),
   hematMintaSemua: () => fb.hematMintaSemua(), muatUlang: () => location.reload() });
@@ -337,6 +341,7 @@ function gambarAkun(akun) {
   const asli = akun;
   if (!asli || !bisaBekerja(asli)) { _jaga = null; _jagaTerakhir = null; _pilihOrang = ''; _pinKetik = ''; _tanyaGanti = null; }   // keluar / nonaktif: orang yang jaga ikut lepas
   akun = efektifDari(asli); _tandaAkun = tandaAkun();
+  segarkanUang();
   _akunGerbang = asli || null;
   // owner 16 Nov: owner jualan di tablet lewat PIN, urusan owner di HP/Mac owner — owner yang masuk dengan akun owner di aplikasi tablet diingatkan sekali
   if (asli && asli.jenis === 'owner' && asliAda() && !_peringatanOwnerTablet) { _peringatanOwnerTablet = true; kabarSebentar('Ini aplikasi tablet toko. Jualan di sini lewat akun tablet + PIN; urusan owner di HP/Mac owner (data owner tersimpan di tablet selama masuk sebagai owner).'); }
@@ -622,6 +627,7 @@ if (q.get('cadangan')) {
   const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar, stok.gambar, pelanggan.gambar, menu.gambar, harga.gambar, uang.gambar, laporan.gambar];
   fb.dengarkanStatus((st) => { statusFb = st; gambarChipDanNav(); GAMBAR_STATUS.forEach(nanti); setelMuat(!!st.masuk && st.koleksiTotal > 0 && st.koleksiSiap < st.koleksiTotal); });
   fb.dengarkanStatus(() => periksaTablet());   // T1-3: koleksi selesai dimuat / tanpa internet → gerbang orang ikut
+  fb.dengarkanStatus(() => segarkanUang());   // rules v14: owner memilih / mencabut orang Ringkas atau tanda baca uang → data uang ikut
   // hemat baca nyala (owner 7 Okt): pendengar simpanan tab ini mati → tirai muat ulang (mati: hematMati tidak pernah ada)
   fb.dengarkanStatus((st) => { if (st.hematMati && !_tiraiTab) tiraiTab('Tab ini berhenti menerima data', 'Hemat baca: simpanan perangkat di tab ini tidak lagi diperbarui (biasanya karena tab lain peramban ini). Angka di layar bisa basi — muat ulang. Catatan yang belum terkirim tetap aman di perangkat.', 'Muat ulang', () => location.reload()); });
   gerbang.mulai();   // sebelum Firebase menjawab: gerbang tertutup tanpa formulir (dulu layar kosong); sudah masuk → pintu terbuka cepat

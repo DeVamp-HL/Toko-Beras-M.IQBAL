@@ -27,6 +27,18 @@ export const BACA_STAF = ['penjualan', 'piutangMutasi', 'pelangganCatatan', 'pel
   'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan', 'suratJalan', 'orderRutin'];   // rules v10 (B3): surat jalan & antar · v11 (B4): jadwal order rutin
 export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip'], pengaturan: ['tempatSimpan'] };
 // rules v8 (B1, owner 16 Nov 2026): + hargaTingkat (harga pelanggan usaha dipakai kasir) + produkArsip (barang yang diarsipkan tidak tampil sebagai chip habis di tablet)
+// rules v14 (owner 21 Nov 2026): RINGKAS HARI INI di tablet — akun Penjaga laci yang DITANDAI owner (aksesAkun.bacaUang) membaca data uang untuk laci
+// seharusnya & uang keluar. TIDAK masuk pendengarPeran: firebase.js memasangnya HANYA selama orang yang jaga = orang pilihan owner (aturanToko/peran.ringkasOrang)
+// dan mencabutnya (memori dikosongkan) begitu orang lain jaga / tirai menutup. Jadi angkaBoleh & layar staf lain tetap memperlakukan uang di luar haknya.
+export const BACA_UANG = ['pengeluaranHarian', 'kasbonMutasi', 'biayaBulanan', 'setoranKas', 'amplopLaba', 'modalOwner', 'utangOwnerMutasi', 'utangPemasokMutasi', 'pindahUang', 'tutupHari'];
+export const DOK_UANG = { pengaturan: ['titikKas'] };
+/** Akun ini DITANDAI owner boleh membaca data uang (rules v14 bacaUangDari): Penjaga laci aktif + bacaUang. Owner tidak perlu (membaca semuanya). */
+export const bacaUangAkun = (akun) => !!akun && akun.jenis === 'aktif' && akun.peran === 'ben' && akun.bacaUang === true;
+/** Pendengar data uang akun bertanda (bentuk = pendengarPeran): kosong bila akun tidak bertanda. */
+export function pendengarUang(akun) {
+  if (!bacaUangAkun(akun)) return [];
+  return BACA_UANG.map((n) => ({ nama: n })).concat(Object.keys(DOK_UANG).map((n) => ({ nama: n, dok: DOK_UANG[n].slice() })));
+}
 // §4 — CREATE bukan-owner: koleksi → peran yang boleh. Menambah peran nanti = menambah satu nama di sini DAN di daftar yang sama di firestore.rules.
 export const BUAT_STAF = { penjualan: ['ben', 'karyawan'], piutangMutasi: ['ben', 'karyawan'], stokBahanLiteran: ['ben', 'karyawan'], stokBahanKemasan: ['ben', 'karyawan'],
   produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], tandaKenal: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'],
@@ -74,7 +86,8 @@ export function keadaanAkun(email, uid, dok) {
   const peran = String(dok.peran || '');
   if (dok.aktif !== true) return { jenis: 'nonaktif', peran: null, nama: String(dok.nama || ''), uid, email: e, kalimat: 'Akun ini dinonaktifkan owner' };
   if (PERAN_BUKAN_OWNER.indexOf(peran) < 0) return { jenis: 'nonaktif', peran: null, nama: String(dok.nama || ''), uid, email: e, kalimat: 'Peran akun ini tidak dikenal ("' + peran + '") — minta owner memperbaikinya' };
-  return { jenis: 'aktif', peran, nama: String(dok.nama || '').trim() || e, uid, email: e };
+  // rules v14: tanda bacaUang hanya berarti untuk Penjaga laci (bacaUangDari) — dibawa ke akun supaya firebase.js tahu boleh memasang pendengar uang
+  return { jenis: 'aktif', peran, nama: String(dok.nama || '').trim() || e, uid, email: e, bacaUang: peran === 'ben' && dok.bacaUang === true };
 }
 export const bisaBekerja = (akun) => !!akun && (akun.jenis === 'owner' || akun.jenis === 'aktif');
 export const teksMasukSebagai = (akun) => (!akun || !bisaBekerja(akun) ? '' : akun.jenis === 'owner' ? 'Owner' : akun.nama + ' (' + namaPeran(akun.peran) + ')');

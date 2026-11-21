@@ -135,3 +135,15 @@ main.layar-menu.masuk > header, main.layar-menu.masuk > .mn-gulir > .jalur, main
 .layar-menu .tp-baris.lunas { opacity: .82; }
 .layar-menu .tp-baris .awas-teks { color: var(--awas); }
 .layar-menu .tp-cetak { align-self: center; }
+/* owner 21 Nov 2026: kartu Ringkas hari ini (akun tablet, hanya saat orang pilihan owner jaga) — dua lajur di tablet mendatar, satu lajur di HP;
+   angka besar bergulir (data-gulir), baris masuk bergiliran */
+.layar-menu .rt-kartu { border-color: var(--emas2, var(--kaca-tepi)); }
+.layar-menu .rt-dua { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 720px) { .layar-menu .rt-dua { grid-template-columns: 1fr 1fr; } }
+.layar-menu .rt-kolom, .layar-menu .rt-blok { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.layar-menu .rt-besar { font-size: 26px; line-height: 1.15; }
+.layar-menu .rt-baris { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: baseline; font-size: 12.5px; padding: 3px 0; border-bottom: 1px dashed var(--kaca-tepi); animation: masuk 420ms cubic-bezier(.2, .8, .2, 1); }
+.layar-menu .rt-baris > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layar-menu .rt-baris.awas > b { color: var(--awas); }
+.layar-menu .rt-rinci { display: flex; flex-direction: column; padding: 6px 10px; border-radius: 12px; border: 1px solid var(--kaca-tepi); }
+@media (prefers-reduced-motion: reduce) { .layar-menu .rt-baris { animation: none; } }

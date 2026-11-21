@@ -82,6 +82,8 @@ export function barangTimbang(iso) {
 }
 const TD_KELOMPOK = [[/^Pelunasan piutang/, 'Bon dibayar tunai', 1], [/^Kasbon kembali/, 'Kasbon dikembalikan', 1], [/^Modal owner disetor|^Pinjaman/, 'Uang owner masuk', 1], [/nambah\)/, 'Tukar — pelanggan menambah', 1],
   [/^Harian — /, 'Uang keluar toko', -1], [/^Prive owner/, 'Ambil pribadi', -1], [/^Gaji /, 'Upah', -1], [/^Bayar bon /, 'Bayar bon pemasok', -1], [/^Kasbon — /, 'Kasbon karyawan/owner', -1], [/^Belanja beras|^Bongkar/, 'Belanja beras & bongkar', -1], [/^Setoran ke owner|^Modal owner ditarik/, 'Tarik modal / setoran', -1], [/^Bayar utang ke owner/, 'Bayar utang ke owner', -1], [/^Refund|^Selisih tukar|^Tukar/, 'Retur & tukar', -1], [/^Beli /, 'Beli kantong & bahan', -1], [/ — biaya /, 'Biaya bulanan', -1]];
+/** Nama kelompok satu baris gerakan kas (label mesin) — satu kamus dengan rumus laci; dipakai juga Ringkas hari ini di tablet (owner 21 Nov 2026). */
+export function tdNamaGerak(label, arah) { const k = TD_KELOMPOK.find((x) => x[0].test(String(label || ''))); return k ? k[1] : arah > 0 ? 'Jual tunai' : 'Keluar lain'; }
 /** Rumus "seharusnya ada di laci": laci semalam + yang masuk laci hari ini − yang keluar laci hari ini (dari gerakan kas mesin, tempat menurut saldoKantong) + pindah tempat hari ini. */
 export function rumusLaci(iso) {
   const S1 = saldoKantong(iso); const t = ambilTitikKas(); if (!S1.ada) return { ada: false, seharusnya: null, baris: [], teks: 'titik kas belum disetel — laci yang seharusnya tidak bisa dihitung' };

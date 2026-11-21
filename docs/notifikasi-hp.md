@@ -15,20 +15,28 @@ Saat aplikasi **terbuka**, notifikasi dalam aplikasi (pita di atas layar, getar,
    **Simpan**. Cukup sekali untuk semua perangkat owner.
 4. **Pasang fungsi server** — sekali, dari browser, tanpa memasang apa pun di Mac:
    - buka `console.cloud.google.com`, pilih proyek **toko-beras-m-iqbal**, klik ikon **Cloud Shell** (`>_`, kanan atas);
-   - salin-tempel satu baris ini, Enter:
+   - salin-tempel satu baris ini **di terminal Cloud Shell** (bukan Terminal Mac / kotak perintah lain — di Mac tidak ada `gcloud` & `node`, skripnya
+     berhenti di langkah pertama tanpa mengubah apa pun), Enter:
 
      ```bash
      git clone https://github.com/DeVamp-HL/Toko-Beras-M.IQBAL.git && cd Toko-Beras-M.IQBAL && bash functions/pasang.sh
      ```
 
-   - Firebase CLI meminta **login** sekali (ikuti tautannya, pilih akun Google pemilik proyek, salin kodenya kembali) dan bisa menawarkan
-     **menyalakan API** (Cloud Functions, Cloud Build, Artifact Registry, Eventarc, Cloud Run, Pub/Sub) — jawab `Y`.
+   - Klik **Authorize** kalau Cloud Shell meminta izin memakai akun Google. Di Cloud Shell Firebase CLI biasanya **tidak** meminta login lagi (memakai
+     akun Cloud Shell); kalau tetap meminta, ikuti tautannya, pilih akun Google pemilik proyek, salin kodenya kembali.
+   - Layanan yang dibutuhkan (Cloud Functions, Cloud Build, Artifact Registry, Eventarc, Cloud Run, Pub/Sub) dinyalakan sendiri; kalau ditanya, jawab `Y`.
    - Skrip membaca lokasi database Firestore dan memasang fungsi di lokasi yang sama (wajib untuk pemicu Firestore).
-   - Selesai bila muncul `Deploy complete!` dan baris `Selesai.`
+   - **Pemasangan PERTAMA biasanya ditolak** dengan "Permission denied while using the Eventarc Service Agent … Retry the deployment in a few minutes"
+     (izin Eventarc baru menyebar beberapa menit). Tunggu ±2 menit lalu jalankan lagi di folder yang sama: `bash functions/pasang.sh` (21 Nov 2026: sekali
+     dicoba ulang → berhasil).
+   - Di akhir ditanya **"How many days do you want to keep container images before they're deleted?"** — jawab `1` (keputusan owner 21 Nov 2026: salinan
+     lama paket fungsi dihapus otomatis tiap 1 hari; fungsi yang berjalan tidak terpengaruh).
+   - Selesai bila muncul `Deploy complete!` dan baris `Selesai.` (21 Nov 2026: `kabarOwner` terpasang di asia-southeast2 = lokasi database.)
 5. **Nyalakan di tiap perangkat owner** — kartu yang sama › **Nyalakan notifikasi** › izinkan.
    - **iPhone / iPad:** hanya bisa dari ikon aplikasi di **Layar Utama** (iOS 16.4 ke atas). Kalau masih dibuka di tab Safari: tombol Bagikan ›
      Tambah ke Layar Utama, buka dari ikon itu, lalu nyalakan.
-   - **Mac:** Chrome / Safari biasa bisa langsung.
+   - **Mac:** Chrome / Safari biasa bisa langsung. Aplikasi yang dipasang di Dock (Safari › Tambah ke Dock) yang sudah terbuka SEBELUM pembaruan masih
+     versi lama — kartu Notifikasi belum ada. Tutup penuh (klik kanan ikon › Quit / ⌘Q) lalu buka lagi.
 6. **Coba:** di tablet kirim pesan "uji notifikasi" (Menu › kartu Uang keluar & pesan › Pesan). HP owner harus berbunyi dalam beberapa detik
    walau aplikasinya ditutup. Ketuk notifikasinya → aplikasi terbuka di layar Uang.
 

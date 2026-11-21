@@ -1,4 +1,12 @@
 // ============================================================================
+// ATURAN FIRESTORE v14 FINAL — Toko Beras M.IQBAL (DRAF 21 Nov 2026, RINGKAS HARI INI di tablet) = v13 FINAL + PERSIS dua fungsi baru dan sebelas baris
+// baca (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v13; uji server: docs/uji-rules-v14.md). Owner menerbitkan v14 SEKALI lewat Console
+// SEBELUM cabang ringkas hari ini digabung:
+//   (v14-1) stafBacaUang() + bacaUangDari() — akun Penjaga laci (peran ben, aktif) yang DITANDAI owner di aksesAkun/{uid}.bacaUang == true.
+//   (v14-2) baca: + stafBacaUang() di biayaBulanan, pengeluaranHarian, kasbonMutasi, tutupHari, setoranKas, amplopLaba, modalOwner, utangOwnerMutasi,
+//           utangPemasokMutasi, pindahUang, dan pengaturan/titikKas — data yang dipakai hitungan laci seharusnya & uang keluar. TULIS tidak berubah (owner).
+//           Tanpa tanda bacaUang (akun staf lain, karyawan, kasir@) = sama dengan v13. aksesAkun ditulis owner saja (sejak v3), jadi tanda itu hanya dari owner.
+// Sisanya = v13 FINAL di bawah ini, apa adanya. Kepala v13:
 // ATURAN FIRESTORE v13 FINAL — Toko Beras M.IQBAL (DRAF 21 Nov 2026, titipan uang keluar & pesan dari tablet + notifikasi HP owner) = v12 FINAL + PERSIS
 // satu ubahan, dua fungsinya, dan satu blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v12; uji server: docs/uji-rules-v13.md).
 // Owner menerbitkan v13 SEKALI lewat Console SEBELUM cabang titipan digabung:
@@ -238,6 +246,11 @@ service cloud.firestore {
         && d.get('teks', 0) is string && d.teks.size() > 0 && d.teks.size() <= 500
         && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan']);
     }
+    // v14 (owner 21 Nov 2026): RINGKAS HARI INI di tablet — akun Penjaga laci yang DITANDAI owner (aksesAkun.bacaUang) membaca data uang (titik kas, uang
+    // keluar, kasbon, upah, ambil pribadi, pindah uang, tutup hari) untuk laci seharusnya; layar menampilkannya hanya saat orang yang jaga = pilihan owner.
+    // Baca saja — tulis uang tetap owner. 1 get() aksesAkun seperti staf().
+    function stafBacaUang() { return masuk() && bacaUangDari(akun()); }
+    function bacaUangDari(a) { return a.aktif == true && a.peran == 'ben' && a.get('bacaUang', false) == true; }
     // v10 (B3, owner 18 Nov 2026): SURAT JALAN dibuat ben BERSAMA notanya — status 'berangkat', tanpa kolom penerimaan / keputusan
     function stafBuatSJ(peranBoleh) {
       let d = request.resource.data;
@@ -429,7 +442,7 @@ service cloud.firestore {
     }
 
     match /biayaBulanan/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if (owner() && tglBaru('bulan')) || (owner() && pintuTulis('biayaBulanan', id, bulanDok(request.resource.data, 'bulan')));
       allow update: if owner() && tglUbah('bulan');
       allow delete: if owner() && (tglLama('bulan') || pintuHapus('biayaBulanan', id, bulanDok(resource.data, 'bulan')));
@@ -462,7 +475,7 @@ service cloud.firestore {
     }
 
     match /pengeluaranHarian/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('pengeluaranHarian', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && (tglLama('tanggal') || pintuHapus('pengeluaranHarian', id, bulanDok(resource.data, 'tanggal')));
@@ -505,7 +518,7 @@ service cloud.firestore {
     }
 
     match /kasbonMutasi/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('kasbonMutasi', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && (tglLama('tanggal') || pintuHapus('kasbonMutasi', id, bulanDok(resource.data, 'tanggal')));
@@ -519,7 +532,7 @@ service cloud.firestore {
     }
 
     match /tutupHari/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('tutupHari', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && (tglLama('tanggal') || pintuHapus('tutupHari', id, bulanDok(resource.data, 'tanggal')));
@@ -551,7 +564,7 @@ service cloud.firestore {
     }
 
     match /setoranKas/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('setoranKas', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && (tglLama('tanggal') || pintuHapus('setoranKas', id, bulanDok(resource.data, 'tanggal')));
@@ -565,21 +578,21 @@ service cloud.firestore {
     }
 
     match /amplopLaba/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('amplopLaba', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && (tglLama('tanggal') || pintuHapus('amplopLaba', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /modalOwner/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('modalOwner', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && (tglLama('tanggal') || pintuHapus('modalOwner', id, bulanDok(resource.data, 'tanggal')));
     }
 
     match /utangOwnerMutasi/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('utangOwnerMutasi', id, bulanDok(request.resource.data, 'tanggal')));
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && (tglLama('tanggal') || pintuHapus('utangOwnerMutasi', id, bulanDok(resource.data, 'tanggal')));
@@ -590,7 +603,7 @@ service cloud.firestore {
     }
 
     match /utangPemasokMutasi/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if (owner() && upBaru()) || (owner() && pintuTulis('utangPemasokMutasi', id, bulanUP(request.resource.data)));
       allow update: if owner() && upUbah();
       allow delete: if owner() && (upLama() || pintuHapus('utangPemasokMutasi', id, bulanUP(resource.data)));
@@ -682,7 +695,7 @@ service cloud.firestore {
     }
 
     match /pengaturan/{id} {
-      allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan']));   // titikKas, keamanan, aksesKasir, pintuBuku: owner saja (v7: kasir@ dicabut)
+      allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan'])) || (id == 'titikKas' && stafBacaUang());   // keamanan, aksesKasir, pintuBuku: owner saja (v7: kasir@ dicabut); titikKas: + akun bacaUang (v14)
       // titik kas boleh MAJU dari bulan terkunci, tidak boleh mundur ke dalamnya — kecuali lewat pintu tutup buku (≤ 31 Des tahun pintu). v7: pintu tutup buku
       // (pintuBuku) dibuka hanya dengan syarat pintuSah(); ditutup (status 'tutup') kapan saja
       allow create, update: if owner() && (id != 'titikKas' || tglBaru('tanggal') || pintuTitik()) && (id != 'pintuBuku' || request.resource.data.get('status', '') == 'tutup' || pintuSah());
@@ -711,7 +724,7 @@ service cloud.firestore {
     }
 
     match /pindahUang/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafBacaUang();
       allow create: if owner() && tglBaru('tanggal');
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && tglLama('tanggal');
