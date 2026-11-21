@@ -62,6 +62,22 @@ Kasus staf butuh akun uji staf aktif (U11 dari `docs/uji-rules-v7.md`: `aksesAku
 
 Di **v14** kasus ★X4–★X7 DITOLAK (v15 yang membukanya); kasus lain sama hasilnya.
 
+## Hasil Playground & terbit (22 Nov 2026)
+
+- Isi editor Console sebelum uji = `firestore.rules` cabang ini (commit 40b10a0) tanpa baris kosong terakhir: SHA-256 berawalan `b3c512c8`, 69.344
+  byte (berkas `9b212638`, 69.345 byte; satu-satunya beda = `\n` penutup yang hilang saat disalin dari halaman teks mentah GitHub — tidak mengubah
+  aturan). Dibaca lewat JS dari editor; sebelumnya v14 aktif (`21cf7899`). Dicek ulang sesudah ★X3 — tetap sama.
+- Wajib owner, akun owner (`uid-uji`, provider bawaan Playground google.com, email owner di payload), tanggal dokumen `2026-11-22` (= jam simulasi):
+  ★X1 create `batchMasuk/uji-v15-bo` {tanggal, caraBayar `tunai`, biayaBongkar 50000 (int64)} → "Simulated write allowed" (LOLOS, sesuai);
+  ★X2 update `persetujuan/uji-v15-ts` {status `disetujui`, jenis `bayarBon`, tindakan `uangKeluar`} → "Simulated write allowed" (LOLOS, sesuai);
+  ★X3 create `utangPemasokMutasi/uji-v15-up` {tanggal, tipe `bayar`, dari `laci`} → "Simulated write allowed" (LOLOS, sesuai). Spanduk hasil ditutup
+  dulu sebelum kasus berikutnya dijalankan.
+- Kasus staf (Penjaga laci / karyawan / kasir@, bentuk kedatangan tablet, titipan bongkar & bayar supir, kabar) dibuktikan emulator: job `rules` di PR
+  hijau sebelum terbit.
+- Owner klik **Publish** 22 Nov 2026 ±05.30 WIB (riwayat Console "Today • 5:30 AM"; sebelumnya v14 "Today • 12:30 AM"). Sesudah halaman dimuat ulang,
+  aturan yang berlaku = isi di atas (sidik `b3c512c8`, baris 2 `ATURAN FIRESTORE v15 FINAL`, tanpa draf tertunda).
+- Urutan terhadap CI: saat Publish, job `rules` (emulator) sudah hijau pada commit 40b10a0; `uji`, `uji-peramban`, `gladi` masih berjalan (syarat merge).
+
 ## Bukti emulator
 
 `alat-uji/uji_rules_emulator.py` bagian **V15** (workflow *Uji rules di emulator*, jalan otomatis di PR yang mengubah `firestore.rules`): ke-23 kasus di
