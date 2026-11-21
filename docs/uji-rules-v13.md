@@ -71,6 +71,18 @@ Di **v12** kasus ★U2 ★U3 ★U4 ★U5 ★U6 DITOLAK (bloknya / bentuknya belu
 atas atas `firestore.rules` (v13) dan atas `firestore.rules.v12` — yang berbeda wajib persis kasus yang dibuka v13 — plus kontrol (satu suku v13
 dirusak → kasus sasarannya wajib berbalik). Semua kasus v12, v11, v10, v9, v8 & v7 lama tetap dijalankan atas v13 dan wajib sama hasilnya.
 
-## Hasil Playground & terbit
+## Hasil Playground & terbit (21 Nov 2026)
 
-Belum — diisi sesudah owner menjalankan Wajib owner dan menekan Publish.
+- Isi editor Console sebelum uji = `firestore.rules` cabang ini (commit 8f62d8f) tanpa baris kosong terakhir: SHA-256 berawalan `351dd593`, 64.359
+  byte (berkas `0d8660de`, 64.360 byte; satu-satunya beda = `\n` penutup yang hilang saat disalin dari halaman teks mentah GitHub — tidak mengubah
+  aturan). Dibaca lewat JS dari editor; sebelumnya v12 aktif. Dicek ulang sesudah ★U1 dan sesudah ★U3 — tetap sama.
+- Wajib owner, akun owner (`uid-uji`, provider bawaan Playground google.com, email owner di payload; rules hanya menilai `masuk()` & email):
+  ★U1 update `persetujuan/uji-v13-tt` → "Simulated write allowed" (LOLOS, sesuai); ★U2 create `notifOwner/uji-v13-hp` → "Simulated write allowed"
+  (LOLOS, sesuai — di v12 jalur ini tidak punya blok, jadi ditolak); ★U3 delete jalur yang sama → "Simulated write allowed" (LOLOS, sesuai). Spanduk
+  hasil ditutup dulu sebelum kasus berikutnya dijalankan, jadi tiap hasil adalah hasil kasusnya sendiri.
+- **Yang berbeda dari tabel Wajib owner:** dokumen uji tidak diisi (Build document dilewati). Untuk akun owner kedua blok ini (`persetujuan` update,
+  `notifOwner`) tidak membaca isi dokumen, jadi hasilnya tidak bergantung padanya; isian TT / PS / HP lengkap dan semua kasus staf dibuktikan
+  emulator (job `rules` di PR, hijau sebelum terbit).
+- Owner klik **Publish** 21 Nov 2026 ±20.27 WIB (riwayat Console "Today • 8:27 PM"; sebelumnya v12 "Nov 19, 2026 • 8:45 PM"). Sesudah halaman dimuat
+  ulang, aturan yang berlaku = isi di atas (sidik `351dd593`, baris 2 `ATURAN FIRESTORE v13 FINAL`, tanpa draf tertunda).
+- Urutan terhadap CI: saat Publish, job `uji`, `uji-peramban`, `rules` (emulator), dan `gladi` sudah hijau pada commit 8f62d8f.
