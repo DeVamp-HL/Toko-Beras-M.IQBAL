@@ -15,6 +15,8 @@ import { daftarModalOwner, kunciPelanggan, POS_BIAYA_BULANAN, namaBulanPanjang, 
 import { ambilTitikKas, ambilAmplopLaba, ambilPindahUang, ambilPengeluaranHarian, ambilKasbonMutasi, ambilModalOwner, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, ambilBiayaBulanan, ambilPiutangMutasi, ambilBahanKemasan, ambilBahanLiteran, cacheMentah, ambilTutupHari, ingatGerakanKas, ingatKasPada , ingatPerVersi } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek, jamKini } from '../inti/format.js';
 import { TEMPAT_UANG, aturBon } from './bon-pemasok-logika.js';
+// owner 21 Nov 2026: titipan uang keluar & pesan dari tablet — satu pintu memutus (bundel uji jsc: impor bernama, bukan namespace)
+import { tpMenunggu, tpSusunPutus } from './titipan-logika.js';
 
 export const NAMA_KASBON_OWNER = 'Owner';
 export const KELUARGA_UANG = [['keluar', 'Uang keluar'], ['upah', 'Orang & upah'], ['owner', 'Owner & toko'], ['pindah', 'Pindah uang'], ['tutup', 'Tutup hari'], ['buku', 'Tutup buku']];
@@ -254,19 +256,13 @@ export function susunUrungKeluar(urung) {
   if (!urung || !urung.length) return { tolak: 'Tidak ada yang bisa dibatalkan' };
   return { hapus: urung.slice(), patch: { kabar: 'Dibatalkan — catatan tadi dicabut, tidak ada yang berubah', kabarAwas: false, urung: null } };
 }
-/** Titipan dari tablet: permintaan "catat uang keluar" yang menunggu owner (koleksi persetujuan, SS2). Menyetujui = menulis pengeluarannya + memutus permintaannya. */
+/** Titipan dari tablet: uang keluar yang menunggu owner (koleksi persetujuan). Bentuk lama untuk layar Uang + kolom titipan-logika (tpBaris). */
 export function titipanKeluar() {
-  return cacheMentah('persetujuan').filter((m) => m.tindakan === 'uangKeluar' && (!m.status || m.status === 'menunggu')).sort((a, b) => String(b.pada || b.tanggal || '').localeCompare(String(a.pada || a.tanggal || '')))
-    .map((m) => ({ id: String(m.id), oleh: m.dari || '?', teks: m.teks || '(tanpa keterangan)', n: Math.round(Number(m.nominal) || 0), tanggal: m.tanggal || '', jam: m.jam || '', dari: m.dariTempat || 'laci' }));
+  return tpMenunggu().filter((b) => !b.pesan).map((b) => Object.assign({}, b, { oleh: b.dari, n: b.nominal, dari: 'laci', teks: b.teks || b.ringkas }));
 }
-export function susunPutusTitipan(id, setuju, alasan, w) {
-  const m = cacheMentah('persetujuan').find((x) => String(x.id) === String(id)); if (!m) return { tolak: 'Permintaannya tidak ditemukan' };
-  if (m.status && m.status !== 'menunggu') return { tolak: 'Sudah diputus ' + (m.diputusTanggal ? tanggalPendek(m.diputusTanggal) : '') };
-  if (!setuju && ugKosong(alasan)) return { tolak: 'Menolak butuh alasan — supaya ' + (m.dari || 'peminta') + ' tahu sebabnya' };
-  const dokumen = [{ koleksi: 'persetujuan', data: Object.assign({}, m, { status: setuju ? 'disetujui' : 'ditolak', alasanTolak: setuju ? '' : String(alasan).trim().slice(0, 80), diputusTanggal: w.tanggal, diputusJam: w.jam, diputusPada: w.kini }) }];
-  const n = Math.round(Number(m.nominal) || 0); const dari = m.dariTempat || 'laci';
-  if (setuju) { if (!(n > 0)) return { tolak: 'Permintaan ini tidak menyebut nominal — tolak, minta dicatat ulang' }; dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: String(m.teks || 'Titipan tablet').slice(0, 80), nominal: n, dari, oleh: (m.dari || 'tablet') + ' (disetujui owner)', dariPersetujuan: String(m.id) } }); }
-  return { dokumen, patch: { kabar: setuju ? 'Catatan ' + (m.dari || 'tablet') + ' disetujui · ' + ugNamaTempat(dari) + ' berkurang ' + RP(n) : 'Catatan ' + (m.dari || 'tablet') + ' ditolak — uang toko tidak berubah, ' + (m.dari || 'tablet') + ' diberi tahu di perangkatnya', kabarAwas: false } };
+/** Putus satu titipan uang keluar — SATU PINTU dengan papan Persetujuan (titipan-logika tpSusunPutus). isi = betulan owner { nominal, teks, jenis, nama }. */
+export function susunPutusTitipan(id, setuju, alasan, w, isi) {
+  return tpSusunPutus(id, setuju ? 'setuju' : 'tolak', setuju ? (isi || {}) : { alasan }, w);
 }
 /** Buku hari ini: semua uang keluar (harian toko/owner/tokoDompet + kasbon owner) bertanggal iso, terbaru di atas. */
 export function bukuKeluar(iso) {

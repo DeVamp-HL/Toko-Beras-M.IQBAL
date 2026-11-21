@@ -322,8 +322,8 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   cek('lampu padam memanggil Lampu.mati', (await lampuPadam()).ok === true && A.hitung('Lampu.mati') === 1);
   // ---- paket S4: lampu berwarna per kejadian ----
   const AL = lampuAtur(null);
-  cek('lampu bawaan: lima kejadian; nota tersimpan hijau, cetak gagal merah berkedip', Object.keys(AL).join(',') === 'berhasil,gagal,kenal,asing,kertas' && AL.berhasil.warna === 'hijau' && AL.berhasil.kedip === false && AL.gagal.warna === 'merah' && AL.gagal.kedip === true, JSON.stringify(AL));
-  cek('lampu bawaan: tidak ada dua kejadian yang terlihat sama', new Set(Object.keys(AL).map((k) => AL[k].warna + '|' + AL[k].kedip)).size === 5);
+  cek('lampu bawaan: enam kejadian (+ owner memutus titipan, 21 Nov 2026); nota tersimpan hijau, cetak gagal merah berkedip', Object.keys(AL).join(',') === 'berhasil,gagal,kenal,asing,kertas,owner' && AL.berhasil.warna === 'hijau' && AL.berhasil.kedip === false && AL.gagal.warna === 'merah' && AL.gagal.kedip === true, JSON.stringify(AL));
+  cek('lampu bawaan: tidak ada dua kejadian yang terlihat sama', new Set(Object.keys(AL).map((k) => AL[k].warna + '|' + AL[k].kedip)).size === Object.keys(AL).length);
   const AS = lampuAtur({ berhasil: { warna: 'sian', kedip: true, detik: 3 }, gagal: { warna: 'ungu', kedip: 'ya', detik: 99 }, kenal: { warna: 'mati' }, asing: 'x', lain: { warna: 'putih' } });
   cek('setelan lampu tersimpan dipakai; isi tidak sah dibuang satu per satu (bawaannya tetap)', AS.berhasil.warna === 'sian' && AS.berhasil.kedip === true && AS.berhasil.detik === 3 && AS.gagal.warna === 'merah' && AS.gagal.kedip === true && AS.gagal.detik === 6 && AS.kenal.warna === 'mati' && AS.asing.warna === 'kuning' && AS.lain === undefined, JSON.stringify(AS));
   L = await lampuKejadian('kenal');

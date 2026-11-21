@@ -698,6 +698,25 @@ export async function pulihkanBerkas(tahun, daftar, progres, biaya) {
 // belum diakui bertanda `antre`. Owner saja. Butuh blok rules `fotoBon` (rules v7, diterbitkan owner) — sebelum terbit server menolak (permission-denied).
 const KOLEKSI_FOTO_BON = 'fotoBon';
 const tungguServer = (janji, ms) => Promise.race([janji.then((x) => ({ x })), new Promise((r) => setTimeout(() => r({ lewat: true }), ms))]);
+// owner 21 Nov 2026: NOTIFIKASI HP OWNER — token push perangkat ini di notifOwner/{id perangkat} (rules v13: owner saja). Langsung ke server, tidak lewat
+// antrean / cache data toko / jejak (bukan catatan toko). Dibaca fungsi server (functions/index.js) lewat Admin SDK.
+export const KOLEKSI_NOTIF = 'notifOwner';
+export const appFirebase = () => app;
+export const idPerangkatIni = () => idPerangkat();
+const ownerSaja = () => (!status.akun || status.akun.jenis !== 'owner' ? 'Notifikasi HP hanya untuk akun owner' : '');
+export async function simpanTokenNotif(token) {
+  if (!db) throw new Error('belum tersambung'); const tolak = ownerSaja(); if (tolak) return { gagal: true, pesan: tolak };
+  const id = idPerangkat(); const d = { id, token: String(token || ''), perangkat: perangkatRingkas(), pada: new Date().toISOString() };
+  const b = writeBatch(db); b.set(doc(db, KOLEKSI_NOTIF, id), d);
+  try { const h = await tungguServer(b.commit(), 20000); return h.lewat ? { gagal: true, pesan: 'server belum menjawab dalam 20 detik — coba lagi saat internet lancar' } : { ok: true, id }; }
+  catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
+}
+export async function hapusTokenNotif() {
+  if (!db) throw new Error('belum tersambung'); const tolak = ownerSaja(); if (tolak) return { gagal: true, pesan: tolak };
+  const b = writeBatch(db); b.delete(doc(db, KOLEKSI_NOTIF, idPerangkat()));
+  try { const h = await tungguServer(b.commit(), 20000); return h.lewat ? { gagal: true, pesan: 'server belum menjawab dalam 20 detik' } : { ok: true }; }
+  catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
+}
 export async function bacaFotoBon(idBon) {
   if (!db) throw new Error('belum tersambung');
   if (pemilikSaja()) throw new Error(pemilikSaja());

@@ -1,0 +1,13 @@
+{
+  "name": "toko-beras-fungsi",
+  "private": true,
+  "description": "Fungsi server Toko Beras M.IQBAL: notifikasi HP owner untuk permintaan dari tablet",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-admin": "13.10.0",
+    "firebase-functions": "7.4.0"
+  }
+}

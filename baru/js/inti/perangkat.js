@@ -386,6 +386,7 @@ export const LAMPU_KEJADIAN = [
   ['kenal', 'Barcode, kartu, atau struk dikenali', { warna: 'biru', kedip: false, detik: 1 }],
   ['asing', 'Barcode atau kartu belum dikenal', { warna: 'kuning', kedip: true, detik: 3 }],
   ['kertas', 'Kertas printer hampir habis', { warna: 'magenta', kedip: true, detik: 4 }],
+  ['owner', 'Owner memutus titipan atau membalas pesan', { warna: 'sian', kedip: true, detik: 4 }],   // owner 21 Nov 2026: notifikasi dalam aplikasi
 ];
 const LAMPU_DETIK = [0.5, 10];
 function simpananLampu() { try { return typeof localStorage === 'undefined' ? null : JSON.parse(localStorage.getItem(LAMPU_KUNCI) || 'null'); } catch (e) { return null; } }

@@ -147,6 +147,15 @@ jobs:
         run: python3 alat-uji/uji_qr.py && python3 alat-uji/uji_qr.py --kontrol
       - name: "Tanda terima barang masuk untuk supir pemasok: nilai nota tanpa upah bongkar, tunai / bon belum / sebagian / lunas, akun yang tidak membaca pembayaran pemasok tidak mencetak sisa, muat di 80 & 58 mm, dua lembar, pemasangan di Stok (jsc + kontrol)"
         run: python3 alat-uji/uji_terima_barang.py && python3 alat-uji/uji_terima_barang.py --kontrol
+      - name: "Titipan uang keluar & pesan dari tablet + notifikasi: tablet hanya menitip (bentuk rules v13), owner menyetujui satu pintu (uang bertanggal titipan, betulan tercatat, tanpa dobel), kabar dalam aplikasi, isi push server, service worker (jsc + kontrol)"
+        run: python3 alat-uji/uji_titipan.py && python3 alat-uji/uji_titipan.py --kontrol
+      - name: "Fungsi server notifikasi HP: paket terpasang & fungsi termuat (tanpa deploy — deploy dijalankan owner di Cloud Shell)"
+        working-directory: functions
+        env:
+          GCLOUD_PROJECT: demo-uji
+        run: |
+          npm install --no-audit --no-fund
+          node -e "const f = require('./index.js'); if (!f.kabarOwner) { console.error('kabarOwner tidak diekspor'); process.exit(1); } const p = require('./pesan.js'); if (!p.pesanNotif({ tindakan: 'pesan', teks: 'uji' }, 'x')) process.exit(1); console.log('kabarOwner termuat; pesanNotif jalan')"
 
       - name: "Cangkang SUNMI (paket S1, 19 Nov): pintu perangkat — jalur SDK SUNMI jatuh ke USB hanya bila belum ada byte terkirim (tidak ada struk dobel), scan tidak terbaca sebagai PIN, lampu & pindai diam di luar aplikasi; pemasang APK: pustaka resmi SUNMI, <queries>, penjaga hapus data; tanda tangan V1+V2 (jsc + python + statis + kontrol)"
         run: python3 alat-uji/uji_perangkat_sunmi.py && python3 alat-uji/uji_perangkat_sunmi.py --kontrol
