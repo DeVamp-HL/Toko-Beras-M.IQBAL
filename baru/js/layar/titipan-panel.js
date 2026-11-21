@@ -8,8 +8,9 @@ import * as ST from './struk-logika.js';
 import * as PR from '../inti/printer.js';
 import { asliAda, printerSibuk, masihMencetak, hasilTakDiketahui, KALIMAT_MASIH_MENCETAK, KALIMAT_TAK_DIKABARI } from '../inti/perangkat.js';
 import { hakAkun } from './akses-layar.js';
+import { calonPemasok } from './stok-catat-logika.js';   // owner 22 Nov 2026: bayar bon pemasok lewat supir — nama pemasok yang pernah dipakai
 
-export const TP_DRAF_KOSONG = () => ({ tab: 'uang', jenis: 'toko', nominal: '', teks: '', nama: '', pesan: '' });
+export const TP_DRAF_KOSONG = () => ({ tab: 'uang', jenis: 'toko', nominal: '', teks: '', nama: '', pemasok: '', pesan: '' });
 const kelasStatus = (st) => (st === 'disetujui' || st === 'dibaca' ? 'lunas' : st === 'ditolak' ? 'awas' : 'tunggu');
 
 /** Kartu panel. s.tp = draf (TP_DRAF_KOSONG); opsi = { akun, orang: [nama orang di tablet], kiniIso }. */
@@ -21,13 +22,16 @@ export function kartuTitipan(s, opsi) {
     ? h`<div class="kaca-btn mati" data-aksi="tpMati" data-k="tp-mati">Catat uang keluar · tidak termasuk hak ${a ? a.nama : 'akun ini'}</div>`
     : h`<div class="tombol-baris rapat" data-k="tp-jenis">${TP.TP_JENIS.map(([j, nm]) => h`<div class="kaca-btn kecil ${d.jenis === j ? 'aktif' : ''}" data-aksi="tpJenis" data-j="${j}">${nm}</div>`)}</div>
       <div style="display: flex; gap: 6px;"><input class="ketik-nama" type="text" inputmode="numeric" placeholder="nominal (Rp)" value="${d.nominal}" data-ketik="tpKetik" data-kolom="nominal" style="max-width: 160px;">
-        <input class="ketik-nama" type="text" placeholder="${d.jenis === 'kasbon' ? 'keperluan (boleh kosong)' : d.jenis === 'karyawan' ? 'mis. makan siang, rokok, kopi' : 'mis. kantong 5 kg, bensin, kuli'}" value="${d.teks}" data-ketik="tpKetik" data-kolom="teks"></div>
-      ${d.jenis !== 'toko' ? h`<div class="tombol-baris rapat" data-k="tp-nama">${namaPilih.map((nm) => h`<div class="kaca-btn kecil ${d.nama === nm ? 'aktif' : ''}" data-aksi="tpNama" data-n="${nm}">${nm}</div>`)}</div>` : ''}
+        <input class="ketik-nama" type="text" placeholder="${d.jenis === 'kasbon' ? 'keperluan (boleh kosong)' : d.jenis === 'karyawan' ? 'mis. makan siang, rokok, kopi' : d.jenis === 'bayarBon' ? 'keterangan (boleh kosong), mis. bon lama' : 'mis. kantong 5 kg, bensin, kuli'}" value="${d.teks}" data-ketik="tpKetik" data-kolom="teks"></div>
+      ${d.jenis === 'bayarBon' ? h`<input class="ketik-nama" type="text" placeholder="nama pemasok" value="${d.pemasok}" data-ketik="tpKetik" data-kolom="pemasok" maxlength="60">
+        <div class="tombol-baris rapat" data-k="tp-pemasok">${calonPemasok().slice(0, 6).map((p) => h`<div class="kaca-btn kecil ${d.pemasok === p ? 'aktif' : ''}" data-aksi="tpPemasok" data-p="${p}">${p}</div>`)}</div>
+        <div class="ket" style="font-size: 11px;">Uang yang dibawa supir untuk bon pemasok. Owner yang memilih bon mana yang dibayar saat menyetujui.</div>` : ''}
+      ${d.jenis === 'kasbon' || d.jenis === 'karyawan' ? h`<div class="tombol-baris rapat" data-k="tp-nama">${namaPilih.map((nm) => h`<div class="kaca-btn kecil ${d.nama === nm ? 'aktif' : ''}" data-aksi="tpNama" data-n="${nm}">${nm}</div>`)}</div>` : ''}
       <div class="kaca-btn aktif emas" data-aksi="tpKirim" data-k="tp-kirim">KIRIM KE OWNER${n > 0 ? ' · ' + RP(n) : ''}</div>
       <div class="ket" style="font-size: 11px;">Uangnya boleh diambil dari laci sekarang; laci di buku baru berkurang sesudah owner menyetujui. Owner bisa membetulkan angka atau menolak dengan alasan.</div>`;
   const formPesan = h`<textarea class="ketik-nama" rows="3" maxlength="${TP.TP_BATAS.pesan}" placeholder="tulis pesan untuk owner (mis. kantong 5 kg tinggal 20 lembar)" data-ketik="tpKetik" data-kolom="pesan">${d.pesan}</textarea>
       <div class="kaca-btn aktif emas" data-aksi="tpKirimPesan" data-k="tp-kirim-pesan">KIRIM PESAN</div>`;
-  const baris = (b) => h`<div class="tp-baris ${kelasStatus(b.status)}" data-k="tp-${b.id}"><div style="min-width: 0;"><div>${b.pesan ? 'Pesan: ' + b.teks : b.ringkas}</div>
+  const baris = (b) => h`<div class="tp-baris ${kelasStatus(b.status)}" data-k="tp-${b.id}"><div style="min-width: 0;"><div>${b.kabar ? 'Kabar barang masuk: ' + b.teks : b.pesan ? 'Pesan: ' + b.teks : b.ringkas}</div>
       <div class="k2">${tanggalPendek(b.tanggal)} ${b.jam} · ${b.dari} · <b>${b.namaStatus}</b>${b.diputus ? ' ' + b.diputus : ''}${b.dikoreksi ? ' · dibetulkan owner (diketik ' + RP(b.asli.nominal) + ')' : ''}</div>
       ${b.alasan ? h`<div class="k2 awas-teks">Alasan owner: ${b.alasan}</div>` : ''}${b.balasan ? h`<div class="k2">Balasan owner: ${b.balasan}</div>` : ''}</div>
       <div class="kaca-btn kecil tp-cetak" data-aksi="tpCetak" data-id="${b.id}">Cetak</div></div>`;
@@ -56,9 +60,10 @@ export function aksiTitipan({ set, st, tulis, akun, waktu }) {
   const dicetak = () => { const w = waktu(); const a = ak(); return { tanggal: w.tanggal, jam: w.jam, oleh: (a && a.nama) || '' }; };
   return {
     tpTab: ({ t }) => ubah({ tab: t === 'pesan' ? 'pesan' : 'uang' }),
-    tpJenis: ({ j }) => ubah({ jenis: j, nama: j === 'toko' ? '' : draf().nama || ((ak() && ak().nama) || '') }),
+    tpJenis: ({ j }) => ubah({ jenis: j, nama: j === 'kasbon' || j === 'karyawan' ? draf().nama || ((ak() && ak().nama) || '') : '' }),
+    tpPemasok: ({ p }) => ubah({ pemasok: draf().pemasok === p ? '' : p }),
     tpNama: ({ n }) => ubah({ nama: draf().nama === n ? '' : n }),
-    tpKetik: (v, el) => { const k = el.dataset.kolom; ubah({ [k]: String(v).slice(0, k === 'pesan' ? TP.TP_BATAS.pesan : k === 'nominal' ? 14 : TP.TP_BATAS.teks) }); },
+    tpKetik: (v, el) => { const k = el.dataset.kolom; ubah({ [k]: String(v).slice(0, k === 'pesan' ? TP.TP_BATAS.pesan : k === 'nominal' ? 14 : k === 'pemasok' ? 60 : TP.TP_BATAS.teks) }); },
     tpMati: () => set({ kabar: 'Peran ' + ((ak() && ak().nama) || 'ini') + ' tidak boleh mencatat uang keluar — owner bisa mengubahnya di Menu › Toko ini › Peran & persetujuan', kabarAwas: true }),
     tpKirim: async () => { const d = draf(); if (await tulis(TP.tpSusunMinta(d, ak(), waktu()))) set({ tp: Object.assign(TP_DRAF_KOSONG(), { jenis: d.jenis }) }); },
     tpKirimPesan: async () => { const d = draf(); if (await tulis(TP.tpSusunPesan(d.pesan, ak(), waktu()))) set({ tp: Object.assign(TP_DRAF_KOSONG(), { tab: 'pesan' }) }); },

@@ -24,7 +24,7 @@ import { htTeksUbah, htPasangUsul, HT_TINDAKAN } from './harga-tingkat-logika.js
 // B2 (owner 17 Nov 2026): permintaan persetujuan bon (batas kredit terlewati) di papan Persetujuan
 import { fkTeksMinta, FK_TINDAKAN, fkSemua } from './faktur-logika.js';
 // owner 21 Nov 2026: titipan uang keluar & pesan dari tablet — papan ini memutusnya lewat pintu yang SAMA dengan Uang (tpSusunPutus menulis uangnya)
-import { tpSusunPutus, tpTeks, TP_TINDAKAN, TP_PESAN } from './titipan-logika.js';
+import { tpSusunPutus, tpTeks, TP_TINDAKAN, TP_PESAN, TP_KABAR } from './titipan-logika.js';
 
 export const ssHariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const ssTambahHari = (iso, n) => new Date((ssHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
@@ -35,7 +35,7 @@ const ssHariNama = (iso) => ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][ne
 
 // ---------- tindakan berpintu izin & peran (SS2) — dari kanvas-kanvas yang sudah dikunci ----------
 export const SS_TINDAKAN = [['jualTunai', 'Jual tunai & kembalian', 'Jual'], ['jualBon', 'Jual dengan bon (pelanggan lama)', 'Jual'], ['nego', 'Nego di bawah jatah margin', 'Jual'], ['terimaBon', 'Terima pembayaran bon', 'Uang'],
-  ['hitungLaci', 'Hitung & rapikan laci', 'Uang'], ['uangKeluar', 'Catat uang keluar dari laci', 'Uang'], ['adukan', 'Catat adukan (bongkar kemasan)', 'Stok'], ['kedatangan', 'Hitung truk & draf kedatangan', 'Stok'],
+  ['hitungLaci', 'Hitung & rapikan laci', 'Uang'], ['uangKeluar', 'Catat uang keluar dari laci', 'Uang'], ['adukan', 'Catat adukan (bongkar kemasan)', 'Stok'], ['kedatangan', 'Catat barang masuk (harga nota supir, jadi bon pemasok)', 'Stok'],
   ['hargaBeli', 'Isi harga beli / modal', 'Stok'], ['koreksi', 'Koreksi nota yang sudah tersimpan', 'Jual'], ['hapus', 'Hapus catatan', 'Semua'], ['pelangganBaru', 'Daftarkan pelanggan baru', 'Pelanggan'], ['hargaPelanggan', 'Atur harga pelanggan usaha (tingkat & harga khusus)', 'Pelanggan'], ['atur', 'Ubah setelan (Atur)', 'Sistem'],
   ['isiUlang', 'Isi ulang & cek wadah literan', 'Stok'],
   ['antar', 'Bikin surat jalan & antar (bersama notanya)', 'Jual'], ['terimaAntar', 'Tandai barang antaran diterima / gagal', 'Jual'],
@@ -185,7 +185,7 @@ export function ssHemat(K, siap) {
 // Putaran 23c (owner 24 Sep): kisi menampilkan KEBENARAN SERVER. Kisi `sendiri` yang tidak dibuka firestore.rules v3 (akses.js SERVER_BUKA)
 // tampil "tertutup server" beserta sebabnya (peta §6) — bukan "boleh sendiri". Nilai kisi tersimpan tetap; yang berubah cuma yang digambar.
 export const SS_TERTUTUP_SERVER = { hargaPelanggan: 'setelan harga hanya ditulis owner — "boleh sendiri" tetap jadi usul ke owner', hitungLaci: 'menutup hari menimpa titik kas (angka uang yang sudah tercatat) — owner saja sampai ada alur persetujuan',
-  kedatangan: 'kedatangan wajib harga beli, padahal harga beli tidak boleh untuk peran ini — owner saja sampai ada draf kedatangan tanpa harga',
+  kedatangan: 'barang masuk dari tablet hanya untuk Penjaga laci (rules v15, keputusan owner 22 Nov 2026) — karyawan tidak mencatat kedatangan',
   uangKeluar: 'uang keluar dari tablet selalu jadi TITIPAN ke owner (rules v13) — laci di buku berkurang sesudah owner menyetujui' };
 export const SS_LABEL_TAMPIL = { sendiri: 'boleh sendiri', server: 'tertutup server', owner: 'minta owner', tidak: 'tidak boleh' };
 export function ssHakServer(peran, tindakan, nilai) {
@@ -266,8 +266,10 @@ export function ssPersetujuan(kini) {
     teks: Q ? Q.teks : HU !== null ? HU : KR !== null ? KR : m.teks || '', n: Q ? Q.nominal || 0 : HU !== null ? 0 : Number(m.nominal) || 0, tanggal: m.tanggal || '', jam: m.jam || '', status: m.status || 'menunggu', alasanTolak: m.alasanTolak || '', diputusTanggal: m.diputusTanggal || '',
     saran: m.tindakan === TP_PESAN ? 'Pesan dari tablet — tandai dibaca, boleh dengan balasan singkat' : m.tindakan && P.hak(m.peran || 'karyawan', tKisi(m)) === 'tidak' ? 'Peran ' + (m.dari || 'ini') + ' sebenarnya TIDAK BOLEH untuk ini — kalau sering, ubah haknya' : 'Menurut kisi hak, ini memang minta owner' }; };
   // owner 21 Nov 2026: titipan uang keluar → kalimat titipan (jenis · keterangan · nama · rupiah); pesan → bukan uang (n 0), tidak pernah ikut "setujui sekaligus"
-  const barisTP = (m) => { const b = baris(m); if (m.tindakan === TP_TINDAKAN) b.teks = tpTeks(m); if (m.tindakan === TP_PESAN) Object.assign(b, { n: 0, sekaligus: false });
-    return Object.assign(b, { pesan: m.tindakan === TP_PESAN, balasan: m.balasan || '' }); };
+  // owner 22 Nov 2026: kabar barang masuk (tablet) = seperti pesan — bukan uang, ditandai diperiksa, tidak pernah ikut "setujui sekaligus"
+  const barisTP = (m) => { const b = baris(m); if (m.tindakan === TP_TINDAKAN) b.teks = tpTeks(m); if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR) Object.assign(b, { n: 0, sekaligus: false });
+    if (m.tindakan === TP_KABAR) Object.assign(b, { teks: 'Barang masuk · ' + (m.teks || ''), saran: 'Kabar barang masuk dari tablet — tandai sudah diperiksa; harga & jumlah dibetulkan di Stok › Barang masuk' });
+    return Object.assign(b, { pesan: m.tindakan === TP_PESAN || m.tindakan === TP_KABAR, balasan: m.balasan || '' }); };
   const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(barisTP); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(barisTP).slice(0, 20);
   return { menunggu, riwayat, kecil: menunggu.filter((m) => m.sekaligus && m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
 }
@@ -275,7 +277,7 @@ export function susunPutusPersetujuan(id, setuju, alasan, w) {
   const m = cacheMentah('persetujuan').find((x) => String(x.id) === String(id)); if (!m) return { tolak: 'Permintaannya tidak ditemukan' }; if (m.status && m.status !== 'menunggu') return { tolak: 'Sudah diputus ' + (m.diputusTanggal ? tanggalPendek(m.diputusTanggal) : '') };
   // owner 21 Nov 2026: titipan uang keluar → uangnya ditulis di kiriman yang sama; pesan → ditandai dibaca (alasan = balasan). Dulu titipan hanya ditandai disetujui.
   if (m.tindakan === TP_TINDAKAN) return tpSusunPutus(id, setuju ? 'setuju' : 'tolak', setuju ? {} : { alasan }, w);
-  if (m.tindakan === TP_PESAN) return tpSusunPutus(id, 'dibaca', { balasan: alasan }, w);
+  if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR) return tpSusunPutus(id, 'dibaca', { balasan: alasan }, w);
   if (!setuju && ssKosong(alasan)) return { tolak: 'Menolak butuh alasan — supaya ' + (m.dari || 'peminta') + ' tahu sebabnya' };
   // B1 (owner 16 Nov 2026): menyetujui usul harga pelanggan = memasang ubahannya ke setelan SEKARANG di kiriman yang sama (dihitung ulang, bukan teks kiriman)
   const HP = setuju && m.tindakan === HT_TINDAKAN ? htPasangUsul(m, w) : null; if (HP && HP.tolak) return { tolak: HP.tolak };

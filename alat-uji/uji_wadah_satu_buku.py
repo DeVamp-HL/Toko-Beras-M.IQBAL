@@ -870,7 +870,7 @@ RUSAK = {
     'cek wadah sebelum jam 12 dihitung hari kalender (cek tutup lewat tengah malam jatuh ke hari baru)': ("if (String(d.jam || '') >= '12:00' || !d.jam) return String(d.tanggal || '');", "if (true) return String(d.tanggal || '');"),
     # akses.js (rules v5 di perangkat)
     'karyawan boleh menulis aturan wadah / titik samakan isi': ("if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };", ""),
-    'batch berisi kg lolos sebagai batch lahir': ("if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };", ""),
+    'batch berisi kg lolos sebagai batch lahir': ("if (x.koleksi === 'batchMasuk' && !batchLahir(d) && !(P === 'ben' && batchTablet(d) && (hak.kedatangan || 'tidak') === 'sendiri')) return { tolak: tolakTindakan('kedatangan') };", ""),   # v15: + kedatangan tablet
     # tutup-buku-logika.js
     'tutup buku menandai karung belakang sebagai karung wadah': ("else if (bw[r.merk] && bw[r.merk].jenis === 'belakang') { r.karungBelakang = bw[r.merk].wadah; r.merkAsal = bw[r.merk].merk; }", "else if (false) { }"),
     # katalog HP kasir (wbSaringKatalogKasir)

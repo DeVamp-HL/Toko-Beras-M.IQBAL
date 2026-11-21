@@ -1,4 +1,14 @@
 // ============================================================================
+// ATURAN FIRESTORE v15 FINAL — Toko Beras M.IQBAL (DRAF 22 Nov 2026, BARANG MASUK & BAYAR SUPIR di tablet) = v14 FINAL + PERSIS dua fungsi baru, satu
+// ubahan fungsi, dan dua baris tulis (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v14; uji server: docs/uji-rules-v15.md). Owner
+// menerbitkan v15 SEKALI lewat Console SEBELUM cabang barang masuk tablet digabung:
+//   (v15-1) batchMasuk create: + stafCatatMasuk(ben) — kedatangan dari tablet: dariTablet, caraBayar 'utang' (langsung jadi bon pemasok), biayaBongkar 0,
+//           pemasok 1–60 huruf (bukan LAHIR BUKU), 1–20 baris barang, tanpa kolom buku baru / stok awal / tutup buku / koreksi owner; bulan tidak terkunci.
+//           Ubah & hapus kedatangan tetap owner.
+//   (v15-2) stafMintaKeluar: jenis titipan + 'bongkar' (wajib batchId = kedatangannya) dan 'bayarBon' (wajib nama pemasok) — uang ke kuli & supir dari laci
+//           tetap TITIPAN: owner yang menulis upah bongkar ke kedatangan / pembayaran bon (memilih bonnya) saat menyetujui.
+//   (v15-3) persetujuan create: + stafKabarMasuk(ben) — kabar barang masuk untuk owner (tindakan 'barangMasuk', menunjuk kedatangannya, tanpa keputusan).
+// Sisanya = v14 FINAL di bawah ini, apa adanya. Kepala v14:
 // ATURAN FIRESTORE v14 FINAL — Toko Beras M.IQBAL (DRAF 21 Nov 2026, RINGKAS HARI INI di tablet) = v13 FINAL + PERSIS dua fungsi baru dan sebelas baris
 // baca (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v13; uji server: docs/uji-rules-v14.md). Owner menerbitkan v14 SEKALI lewat Console
 // SEBELUM cabang ringkas hari ini digabung:
@@ -236,7 +246,9 @@ service cloud.firestore {
     function stafMintaKeluar(peranBoleh) {
       let d = request.resource.data;
       return stafBuat(peranBoleh) && d.get('tindakan', '') == 'uangKeluar' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
-        && d.get('jenis', '') in ['toko', 'karyawan', 'kasbon'] && d.get('nominal', 0) is int && d.get('nominal', 0) > 0
+        && d.get('jenis', '') in ['toko', 'karyawan', 'kasbon', 'bongkar', 'bayarBon'] && d.get('nominal', 0) is int && d.get('nominal', 0) > 0
+        && (d.get('jenis', '') != 'bongkar' || (d.get('batchId', 0) is string && d.batchId.size() > 0))
+        && (d.get('jenis', '') != 'bayarBon' || (d.get('pemasok', 0) is string && d.pemasok.size() > 0 && d.pemasok.size() <= 60))
         && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'koreksiOwner', 'balasan']);
     }
     // v13: PESAN untuk owner dari tablet — bentuk "menunggu" bertindakan pesan atas nama penulisnya, teks 1–500 huruf, tanpa keputusan / balasan
@@ -251,6 +263,22 @@ service cloud.firestore {
     // Baca saja — tulis uang tetap owner. 1 get() aksesAkun seperti staf().
     function stafBacaUang() { return masuk() && bacaUangDari(akun()); }
     function bacaUangDari(a) { return a.aktif == true && a.peran == 'ben' && a.get('bacaUang', false) == true; }
+    // v15 (owner 22 Nov 2026): BARANG MASUK dari tablet — Penjaga laci mencatat kedatangan yang LANGSUNG jadi stok + BON pemasok (caraBayar 'utang'), harga dari
+    // nota supir; upah bongkar 0 di kedatangan (bongkar & bayar ke supir = titipan ke owner); bukan buku baru / stok awal / tutup buku, tanpa kolom koreksi owner.
+    function stafCatatMasuk(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('dariTablet', false) == true && d.get('caraBayar', '') == 'utang' && d.get('biayaBongkar', -1) == 0
+        && d.get('pemasok', 0) is string && d.pemasok.size() > 0 && d.pemasok.size() <= 60 && d.pemasok != 'LAHIR BUKU'
+        && d.get('merkList', 0) is list && d.merkList.size() > 0 && d.merkList.size() <= 20
+        && !d.keys().hasAny(['lahirBuku', 'stokAwal', 'tutupBuku', 'riwayat', 'alasanKoreksi', 'noBon', 'bongkarTitipan']);
+    }
+    // v15: KABAR barang masuk untuk owner — bentuk "menunggu" bertindakan barangMasuk atas nama penulisnya, menunjuk kedatangannya, tanpa keputusan
+    function stafKabarMasuk(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'barangMasuk' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('batchId', 0) is string && d.batchId.size() > 0
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan']);
+    }
     // v10 (B3, owner 18 Nov 2026): SURAT JALAN dibuat ben BERSAMA notanya — status 'berangkat', tanpa kolom penerimaan / keputusan
     function stafBuatSJ(peranBoleh) {
       let d = request.resource.data;
@@ -436,7 +464,7 @@ service cloud.firestore {
     // ---- satu blok per koleksi di baru/js/data/koleksi.js (+ arsipTahun, ringkasanKasir, aksesAkun, permintaanAkses, fotoBon). Tanpa payung: yang tidak disebut = ditolak. ----
     match /batchMasuk/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('batchMasuk', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatLahir(['ben', 'karyawan']) && tglStaf('tanggal'));   // v5: batch LAHIR BUKU 0 kg saja
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('batchMasuk', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatLahir(['ben', 'karyawan']) && tglStaf('tanggal')) || (stafCatatMasuk(['ben']) && tglStaf('tanggal'));   // v15: + kedatangan dari tablet (Penjaga laci) · v5: batch LAHIR BUKU 0 kg saja
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && (tglLama('tanggal') || pintuHapus('batchMasuk', id, bulanDok(resource.data, 'tanggal')));
     }
@@ -675,7 +703,7 @@ service cloud.firestore {
 
     match /persetujuan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta membaca keputusan owner (pendengar koleksi utuh — rules bukan saringan)
-      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']);   // v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
+      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']);   // v15: + kabar barang masuk · v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
       allow update, delete: if owner();   // memutus (setuju / tolak) = owner
     }
 

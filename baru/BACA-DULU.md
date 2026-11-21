@@ -3223,6 +3223,25 @@ ditandai = laci & uang keluar TIDAK dihitung (kalimat sebabnya), bukan Rp0. Owne
 kartu **Ringkas hari ini di tablet**: "Dibuka oleh" (satu orang atau mati — `aturanToko/peran.ringkasOrang`) dan "baca data uang" per akun Penjaga laci
 (dua ketukan; peran turun dari Penjaga laci = tanda ikut mati). Alat uji `alat-uji/uji_ringkas_tablet.py` (jsc + kontrol, masuk CI; di Mac owner juga
 asap di atas cadangan toko: kartu = Tutup hari) + rules v14 di `periksa_rules.py` / `uji_rules_emulator.py` (22 kasus ★W).
+Susulan 22 Nov (#168): baris tanda akun berjudul **Akun tablet** + email; stok tipis = minus dulu lalu barang yang MASIH ADA (sisa + hari), barang yang sudah
+habis tapi masih laku = satu kalimat (jumlah + 3 paling laku), bukan baris "±0 hari".
+
+**Barang masuk & bayar supir di tablet (owner 22 Nov 2026, paket ③; rules v15):** Penjaga laci mencatat kedatangan di Stok › Barang masuk (form tablet
+`gambarMasukTablet`, `stok.js`): kedatangan LANGSUNG jadi stok + **bon pemasok** (`caraBayar` 'utang', tanggal hari ini, `dariTablet`), harga per kg dari nota
+supir. Keputusan owner (ditanya di depan): harga beda dari harga lalu → kedatangan ditandai (`hargaBeda`) dan owner dikabari (owner membetulkan dari HP lewat
+koreksi kedatangan); pencatat Penjaga laci saja (`SERVER_BUKA.kedatangan = ['ben']`); **upah bongkar** diisi di form yang sama → titipan jenis `bongkar`
+(menunjuk `batchId`), kedatangannya sendiri ditulis `biayaBongkar` 0; **bayar ke supir** → titipan jenis `bayarBon` (pemasok + batchId) — owner memilih bonnya
+saat menyetujui (bawaan = bon kedatangan itu, `tpBonPilihan`). Hanya nama yang sudah berbuku: merek baru / arsip ditolak dengan kalimat; harga jauh dari modal
+(pertanyaan varian) dicatat sebagai barang yang sama + `hargaJauh`. Satu kiriman: kedatangan + titipan bongkar + titipan bayar supir + **kabar barang masuk**
+(`persetujuan` tindakan `barangMasuk`, owner menandai "sudah diperiksa" seperti pesan). Logika `baru/js/layar/masuk-tablet-logika.js` (awalan `mt`, tanpa
+tulisan). Owner memutus di Uang › titipan / papan Persetujuan lewat `tpSusunPutus` (`titipan-logika.js`): setuju upah bongkar = kedatangan ditulis ulang
+dengan `biayaBongkar` + n dan `bongkarTitipan` (modal barang + kas keluar laci bertanggal datang, rumus mesin yang sama; penjaga dobel); setuju bayar supir =
+`utangPemasokMutasi` bayar dari laci **bertanggal titipan**, ke bon pilihan (`hitungBayar` Bon pemasok: satu pembayaran satu bon, tidak melebihi sisa). Kartu
+"Uang keluar & pesan" tablet punya jenis **Bayar bon pemasok** (bon lama lewat supir). Tanda terima tablet menyebut uang yang dibayar ke supir dari titipan
+(`titipSupir`). Koreksi kedatangan owner membawa `dariTablet`, `hargaBeda`, `hargaJauh`, `bongkarTitipan`. Server: rules v15 `stafCatatMasuk(['ben'])`,
+`stafKabarMasuk(['ben'])`, jenis titipan + `bongkar` / `bayarBon` (`docs/uji-rules-v15.md`, 23 kasus ★X). Notifikasi HP menyebut jenis baru sesudah owner
+memasang ulang fungsi (`functions/pesan.js`). Alat uji `alat-uji/uji_masuk_tablet.py` (jsc di atas data contoh: kiriman, penjaga kiriman, laci sebelum/sesudah
+setuju, bon, tanda terima; kontrol) + `uji_titipan.py`, `uji_akses_baru.py`, `uji_terima_barang.py`, `periksa_rules.py`, `uji_rules_emulator.py`.
 
 **Cetak di tablet untuk Uang dan Laporan (owner 21 Nov 2026: "Oke kita bangun yang ini"):** di aplikasi tablet dialog cetak hanya berkelebat
 lalu hilang, jadi tombol Cetak di Uang (slip upah, rekap tutup hari) dan di Laporan (dokumen) terasa mati. *Uang:* di aplikasi tablet kedua

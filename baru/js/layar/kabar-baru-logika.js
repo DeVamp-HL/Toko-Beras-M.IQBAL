@@ -6,21 +6,21 @@
 // di layar ada di app.js; push ke HP saat aplikasi tertutup dikirim fungsi server (functions/), bukan dari sini.
 import { cacheMentah } from '../data/toko.js';
 import { RP } from '../inti/format.js';
-import { tpTeks, TP_TINDAKAN, TP_PESAN } from './titipan-logika.js';
+import { tpTeks, TP_TINDAKAN, TP_PESAN, TP_KABAR } from './titipan-logika.js';
 
-export const KB_JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit' };
+export const KB_JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk dari tablet', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit' };
 const KB_PUTUS = { disetujui: 'disetujui owner', ditolak: 'DITOLAK owner', dibaca: 'dibaca owner' };
 const uidPeminta = (m) => String(m.mintaUid || m.negoUid || m.usulUid || '');
 /** Isi satu permintaan untuk kabar (tanpa kolom yang tidak ada). */
 export function kbIsi(m) {
   const dari = m.dari ? m.dari + ': ' : '';
   if (m.tindakan === TP_TINDAKAN) return dari + tpTeks(m);
-  if (m.tindakan === TP_PESAN) return dari + String(m.teks || '').replace(/\s+/g, ' ').slice(0, 120);
+  if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR) return dari + String(m.teks || '').replace(/\s+/g, ' ').slice(0, 120);
   const n = Math.round(Number(m.nominal) || 0);
   return dari + (String(m.teks || '').slice(0, 100) || KB_JUDUL[m.tindakan] || 'permintaan') + (n > 0 && !/Rp/.test(String(m.teks || '')) ? ' · ' + RP(n) : '');
 }
 /** Layar tujuan ketukan: titipan & pesan → Uang (owner) / Menu (tablet); lainnya → Menu (papan Persetujuan). */
-const layarOwner = (m) => (m.tindakan === TP_TINDAKAN || m.tindakan === TP_PESAN ? 'uang' : 'menu');
+const layarOwner = (m) => (m.tindakan === TP_TINDAKAN || m.tindakan === TP_PESAN || m.tindakan === TP_KABAR ? 'uang' : 'menu');
 
 /** Sidik keadaan sekarang untuk akun ini. owner: { menunggu: { id: kabar } } · tablet: { milik: { id: { status, kabar } } }. */
 export function kbSidik(akun, daftar) {

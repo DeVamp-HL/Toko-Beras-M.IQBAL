@@ -383,7 +383,7 @@ export function susunSimpanMasuk(draf, w, yakin) {
       .map((r, i) => Object.assign(r, h.sah[i].cek.kolom))
       .concat(ckBarisBal(lama).map((m, j) => Object.assign({}, m, { id: String(h.sah.length + j + 1) }))) };   // putaran 30: merkPemasok = keterangan merek pemasok pada kelas tanpa wadah; audit 39b no. 30: baris bal di belakang, apa adanya
   // owner 7 Okt: nomor bon pemasok (noBon, pembetulan bon) ikut terbawa saat kedatangan dikoreksi
-  if (lama) { data.jam = lama.jam || w.jam; data.alasanKoreksi = String(draf.alasan).trim(); data.riwayat = (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([{ teks: 'dikoreksi: ' + String(draf.alasan).trim(), tanggal: w.tanggal, jam: w.jam }]); Object.keys(lama).forEach((k) => { if (data[k] === undefined && ['oleh', 'perangkat', 'catatan', 'noBon'].indexOf(k) >= 0) data[k] = lama[k]; }); }
+  if (lama) { data.jam = lama.jam || w.jam; data.alasanKoreksi = String(draf.alasan).trim(); data.riwayat = (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([{ teks: 'dikoreksi: ' + String(draf.alasan).trim(), tanggal: w.tanggal, jam: w.jam }]); Object.keys(lama).forEach((k) => { if (data[k] === undefined && ['oleh', 'perangkat', 'catatan', 'noBon', 'dariTablet', 'hargaBeda', 'hargaJauh', 'bongkarTitipan'].indexOf(k) >= 0) data[k] = lama[k]; }); }   // owner 22 Nov 2026: tanda kedatangan tablet & upah bongkar titipan yang sudah ditulis ikut terbawa saat dikoreksi
   else data.jam = w.jam;
   const tempo = cara === 'utang' && atur.tempoHari > 0 ? ' · jatuh tempo ' + atur.tempoHari + ' hari' : '';
   // varian: jenis beras ikut induknya (satu kunci baru di peta yang sama); harga jualnya ditawarkan layar sesudah tersimpan
