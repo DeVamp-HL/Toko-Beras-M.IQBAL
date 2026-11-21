@@ -3209,6 +3209,21 @@ Perangkat & antrean. Kunci VAPID proyek di `aturanToko/notif`. Langkah owner (ru
 nyalakan per perangkat): `docs/notifikasi-hp.md`. CSP /baru/ + `firebaseinstallations` & `fcmregistrations`. Alat uji `alat-uji/uji_titipan.py`
 (jsc + kontrol, masuk CI) + rules v13 di `periksa_rules.py` / `uji_rules_emulator.py` (22 kasus ★U).
 
+**Ringkas hari ini di tablet (owner 21 Nov 2026; rules v14):** kartu paling atas Menu akun tablet — omzet & nota, tunai / QRIS / bon baru, retur, bon
+dibayar, **perkiraan isi laci** (= rumus laci Tutup hari `rumusLaci` − titipan tablet yang belum diputus) dengan rincian, **uang keluar hari ini**
+(gerakan kas mesin, dikelompokkan kamus yang sama `tdNamaGerak`), per orang yang jaga, terlaris (kg), stok tipis (`daftarBarang`, ambang hari kritis),
+pesanan jatuh hari ini / lewat, surat jalan di jalan, bayar di tempat belum disetor; tombol Cetak (printer tablet). Keputusan owner: **data uang dibuka**
+untuk akun tablet yang ditandai owner, tampil hanya untuk **satu orang pilihan owner** (lewat PIN di "Siapa yang jaga?"). Logika
+`baru/js/layar/ringkas-tablet-logika.js` (awalan `rt`, tanpa tulisan), panel `ringkas-tablet-panel.js`. Server: rules v14 `stafBacaUang()` — akun Penjaga
+laci aktif dengan `aksesAkun.bacaUang == true` membaca 10 koleksi uang + `pengaturan/titikKas` (baca saja; `docs/uji-rules-v14.md`). Aplikasi:
+`akses.js` `BACA_UANG` / `DOK_UANG` / `pendengarUang` (TIDAK masuk `pendengarPeran`, jadi `angkaBoleh` & layar staf lain tidak berubah);
+`firebase.js` `setelDataUang` memasang pendengar uang hanya selama orang pilihan owner jaga dan mencabutnya + **mengosongkan memorinya** begitu orang lain
+jaga / tirai menutup / tanda dicabut (`app.js` `segarkanUang` tiap ganti orang & tiap data/status). Data uang belum lengkap / ditolak server / akun belum
+ditandai = laci & uang keluar TIDAK dihitung (kalimat sebabnya), bukan Rp0. Owner mengatur di Menu › Toko ini › Peran & persetujuan › Orang di tablet ›
+kartu **Ringkas hari ini di tablet**: "Dibuka oleh" (satu orang atau mati — `aturanToko/peran.ringkasOrang`) dan "baca data uang" per akun Penjaga laci
+(dua ketukan; peran turun dari Penjaga laci = tanda ikut mati). Alat uji `alat-uji/uji_ringkas_tablet.py` (jsc + kontrol, masuk CI; di Mac owner juga
+asap di atas cadangan toko: kartu = Tutup hari) + rules v14 di `periksa_rules.py` / `uji_rules_emulator.py` (22 kasus ★W).
+
 **Cetak di tablet untuk Uang dan Laporan (owner 21 Nov 2026: "Oke kita bangun yang ini"):** di aplikasi tablet dialog cetak hanya berkelebat
 lalu hilang, jadi tombol Cetak di Uang (slip upah, rekap tutup hari) dan di Laporan (dokumen) terasa mati. *Uang:* di aplikasi tablet kedua
 teks itu dicetak LANGSUNG ke printer struk lewat `cetakTeks` (`inti/printer.js`) — selalu gaya teks, apa pun gaya struk yang disetel —

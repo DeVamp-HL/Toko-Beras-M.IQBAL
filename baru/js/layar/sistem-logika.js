@@ -53,7 +53,7 @@ export const SS_ATUR_BAWAAN = {
   perangkat: { batasAntre: 30, batasDenyut: 15, pemegang: ['Owner', 'Ben'] },
   // owner 7 Okt (JS2-C): jatah nego per peran (% margin) + per akun (uid → %, kosong = ikut peran), siapa boleh di bawah modal ('owner' | peran | 'uid:…'), langkah batas
   peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: NG_BAWAAN.ben, jatahKaryawan: NG_BAWAAN.karyawan, jatahAkun: {}, bawahModal: NG_BAWAAN.bawahModal.slice(), langkahNego: NG_BAWAAN.langkah, jejak: [],
-    operator: {} },   // putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js
+    operator: {}, ringkasOrang: '' },   // putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js · owner 21 Nov: orang yang membuka Ringkas hari ini (kode orang, '' = mati)
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
   pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'] },
@@ -102,6 +102,8 @@ export function susunAturSistem(id, isi, w) {
     const kenal = ['owner'].concat(SS_PERAN_AKUN.map((p) => p.id), cacheMentah('aksesAkun').map((a) => 'uid:' + String(a.uid || a.id)));
     o.bawahModal = (Array.isArray(isi.bawahModal) ? isi.bawahModal : A.bawahModal).map(String).filter((k, i, L) => kenal.indexOf(k) >= 0 && L.indexOf(k) === i);
     const ot = ssBersihkanOrangTablet(isi.operator !== undefined ? isi.operator : A.operator); if (ot.tolak) tolak = tolak || ot.tolak; else o.operator = ot.peta;   // T1-3: dibawa utuh
+    // owner 21 Nov 2026: Ringkas hari ini di tablet hanya untuk SATU orang pilihan owner — kode orang yang ada di daftar tablet, atau '' (mati). Dibawa utuh.
+    const ro = String(isi.ringkasOrang !== undefined ? isi.ringkasOrang : (A.ringkasOrang || '')).trim(); if (ro && !(o.operator || {})[ro]) tolak = tolak || 'Orang pembuka Ringkas hari ini tidak ada di daftar tablet'; else o.ringkasOrang = ro;
     const h = isi.hak || {}; Object.keys(h).forEach((p) => { if (p === 'owner' || !SS_HAK_BAWAAN[p]) { tolak = tolak || 'Hak owner tidak diubah — owner selalu boleh semuanya'; return; } Object.keys(h[p]).forEach((t) => { if (SS_NILAI_HAK.indexOf(h[p][t]) < 0 || !SS_TINDAKAN.some((x) => x.id === t)) { tolak = tolak || 'Nilai hak tidak dikenal'; return; } o.hak[p][t] = h[p][t]; }); }); }
   else if (id === 'cadangan') tolak = angka('simpanHari', 1, 365, 'hari') || angka('ambangKuota', 10, 100, '%') || angka('cadanganTiap', 1, 30, 'hari');
   else if (id === 'lokasi') { const daftar = (Array.isArray(isi.daftar) ? isi.daftar : A.daftar).map((l, i) => ({ id: String(l.id || ('lk' + (i + 1))).trim(), nama: String(l.nama || '').trim(), alamat: String(l.alamat || '').trim().slice(0, 80), utama: !!l.utama }));
@@ -217,7 +219,7 @@ export function ssAkun() {
   const akunDok = cacheMentah('aksesAkun'); const terdaftar = (uid) => akunDok.some((a) => String(a.uid || a.id) === uid);
   const minta = cacheMentah('permintaanAkses').map((m) => ({ uid: String(m.uid || m.id), email: String(m.email || ''), nama: String(m.nama || ''), pada: String(m.pada || '') }))
     .filter((m) => !terdaftar(m.uid)).sort((a, b) => b.pada.localeCompare(a.pada));
-  const akun = akunDok.map((a) => ({ uid: String(a.uid || a.id), nama: String(a.nama || ''), email: String(a.email || ''), peran: String(a.peran || ''), aktif: a.aktif === true,
+  const akun = akunDok.map((a) => ({ uid: String(a.uid || a.id), nama: String(a.nama || ''), email: String(a.email || ''), peran: String(a.peran || ''), aktif: a.aktif === true, bacaUang: a.peran === 'ben' && a.bacaUang === true,
     namaPeran: (SS_PERAN.find((p) => p.id === a.peran) || { nama: String(a.peran || '?') }).nama })).sort((x, y) => (Number(y.aktif) - Number(x.aktif)) || x.nama.localeCompare(y.nama));
   return { minta, akun };
 }
@@ -242,8 +244,14 @@ export function susunUbahAkun(uid, ubah, w, yakin) {
   const U = ubah || {}; void w;
   if (U.peran !== undefined && !SS_PERAN_AKUN.some((p) => p.id === U.peran)) return { tolak: 'Peran tidak dikenal — akun tidak pernah bisa jadi owner' };
   if (U.aktif !== undefined && !yakin) return { tolak: 'Ketuk sekali lagi untuk ' + (U.aktif ? 'mengaktifkan' : 'menonaktifkan') + ' ' + (a.nama || a.email) + (U.aktif ? '' : ' — perangkatnya langsung berhenti membaca data toko'), perluYakin: true };
-  const data = Object.assign({}, a, U.peran !== undefined ? { peran: U.peran } : {}, U.aktif !== undefined ? { aktif: U.aktif === true } : {});
-  const teks = U.peran !== undefined ? 'kini ' + (SS_PERAN.find((p) => p.id === U.peran) || {}).nama : U.aktif ? 'diaktifkan lagi' : 'DINONAKTIFKAN';
+  // rules v14 (owner 21 Nov 2026): tanda bacaUang = akun ini membaca data uang untuk Ringkas hari ini di tablet. Hanya Penjaga laci; menyalakan = dua ketukan.
+  if (U.bacaUang !== undefined) {
+    if (U.bacaUang && (U.peran !== undefined ? U.peran : a.peran) !== 'ben') return { tolak: 'Data uang untuk Ringkas hari ini hanya untuk akun Penjaga laci (akun tablet)' };
+    if (U.bacaUang && !yakin) return { tolak: 'Ketuk sekali lagi: akun ' + (a.nama || a.email) + ' akan MEMBACA data uang toko (titik kas, uang keluar, kasbon, upah, ambil pribadi). Di tablet angkanya tampil hanya saat orang pilihan lu yang jaga.', perluYakin: true };
+  }
+  const turunDariBen = U.peran !== undefined && U.peran !== 'ben';   // peran pindah dari Penjaga laci = tanda baca uang ikut mati
+  const data = Object.assign({}, a, U.peran !== undefined ? { peran: U.peran } : {}, U.aktif !== undefined ? { aktif: U.aktif === true } : {}, U.bacaUang !== undefined ? { bacaUang: U.bacaUang === true } : {}, turunDariBen && a.bacaUang ? { bacaUang: false } : {});
+  const teks = U.bacaUang !== undefined ? (U.bacaUang ? 'kini MEMBACA data uang untuk Ringkas hari ini di tablet' : 'tidak lagi membaca data uang') : U.peran !== undefined ? 'kini ' + (SS_PERAN.find((p) => p.id === U.peran) || {}).nama : U.aktif ? 'diaktifkan lagi' : 'DINONAKTIFKAN';
   return { dokumen: [{ koleksi: 'aksesAkun', data }], patch: { yakinAkun: null, kabar: (a.nama || a.email) + ' ' + teks + '.', kabarAwas: U.aktif === false } };
 }
 /** Permintaan "minta owner" (ditulis tablet/Mac ke koleksi persetujuan): yang menunggu + riwayat keputusan. */

@@ -11,7 +11,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
 import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda, setelDariCache, setelHapusTertunda, hapusTertunda, cacheMentah, tolakKunci } from './toko.js';
-import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan, kalimatPermintaanGagal } from './akses.js';
+import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, pendengarUang, bacaUangAkun, BACA_UANG, DOK_UANG, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan, kalimatPermintaanGagal } from './akses.js';
 import { buatAntre, cekDariCache, susunTulisUlang, jejakTulisUlang } from './antre-lokal.js';
 import { KP_BATAS_GET, kpPecahBiaya } from './kunci-periode.js';
 import { KK_KOLEKSI, KK_ID, KK_JEDA_MS, kkSetelServer, kkLupakanServer, kkIsi, kkDokumen, kkTertinggal, kkBolehTerbit, kkMentah, kkCatatTerbit, kkPasangGerbang, kkKanon } from './katalog-kasir.js';
@@ -63,7 +63,8 @@ export function tolakServerTiruan() { const t = bacaTiruan(); return t && t.tola
 let app = null, db = null, auth = null;
 // antre = catatan yang sudah tersimpan di perangkat ini tapi BELUM diakui server (hasPendingWrites) — putaran 14, layar Sistem → Perangkat
 // akun = keadaanAkun() dari akses.js; ditolak = koleksi yang pendengarnya ditolak rules (disebut di SS1, aplikasi tetap jalan); lokal = salinan antre (antre-lokal.js)
-const status = { masuk: false, email: '', akun: null, koleksiSiap: 0, koleksiTotal: KOLEKSI.length, galat: '', ditolak: [], offline: false, menunggu: 0, antre: [], lokal: { belum: 0, ditolak: 0 } };
+const status = { masuk: false, email: '', akun: null, koleksiSiap: 0, koleksiTotal: KOLEKSI.length, galat: '', ditolak: [], offline: false, menunggu: 0, antre: [], lokal: { belum: 0, ditolak: 0 },
+  uang: { nyala: false, siap: 0, total: 0, ditolak: [] } }   // rules v14: data uang Ringkas hari ini (tablet, selama orang pilihan owner jaga);
 const _antrePerKoleksi = {};
 const _dariCache = {};   // 25c: koleksi yang jawaban terakhirnya dari SALINAN PERANGKAT (belum dijawab server) — katalog kasir tidak terbit dari data itu
 const OLEH_TETAP = 'Owner';                 // sama dengan index.html (alat owner)
@@ -86,6 +87,7 @@ const KOLEKSI_LOG = 'logAktivitas';
 const pendengarStatus = new Set();
 const beriTahu = () => pendengarStatus.forEach((f) => f(Object.assign({}, status)));
 let _pendengarKoleksi = [];
+let _perDok = {};            // setelan per dokumen (bukan-owner): koleksi → id → isi — dipakai bersama pendengar dasar & pendengar uang (pengaturan/titikKas)
 
 // ---- HEMAT BACA (owner 7 Okt 2026, siap 2027 — baru/js/data/hemat-baca.js, docs/rancangan-hemat-baca.md) ----
 // Saklar PER PERANGKAT, dibaca sekali saat aplikasi dimuat (ganti saklar = muat ulang). MATI (bawaan) = pendengar penuh seperti sebelumnya; yang tetap jalan:
@@ -184,7 +186,7 @@ export async function mintaDidaftarkan(nama) {
 /** Pendengar PER PERAN (akses.js pendengarPeran; peta §3). Satu pendengar yang ditolak rules tidak mematikan aplikasi: disebut di SS1, sisanya jalan. */
 function pasangPendengar(akun) {
   if (_pendengarKoleksi.length) return;   // sudah terpasang
-  const daftarP = pendengarPeran(akun); const siap = {}; const perDok = {};
+  const daftarP = pendengarPeran(akun); const siap = {}; const perDok = {}; _perDok = perDok;
   status.koleksiSiap = 0; status.koleksiTotal = daftarP.length; status.ditolak = []; status.galat = '';
   const tandaiSiap = (nama) => { if (!siap[nama]) { siap[nama] = true; status.koleksiSiap += 1; } };
   let ulangAcara = null;   // pasang ulang pendengar berita acara tutup buku (dipakai sesi hemat saja — lensa jalan keluar, audit PR #122)
@@ -359,11 +361,56 @@ function cabutPendengar() {
   // aplikasi dimuat ulang; catatan di antrean Firestore tetap aman di perangkat
   if (_hemat && _hemat.adaMati() && typeof location !== 'undefined' && location.reload) { location.reload(); return; }
   if (_hemat) { _hemat.berhenti(); _hemat = null; status.hematPil = ''; status.hematMati = false; }
+  cabutUang(false);
   _pendengarKoleksi.forEach((f) => { try { f(); } catch (e) { /* abaikan */ } }); _pendengarKoleksi = [];
   Object.keys(_antrePerKoleksi).forEach((n) => { delete _antrePerKoleksi[n]; }); status.antre = [];
   Object.keys(_dariCache).forEach((n) => { delete _dariCache[n]; }); kkLupakanServer(); clearTimeout(_kkTimer);
   status.koleksiSiap = 0; status.ditolak = []; status.galat = '';
   KOLEKSI.forEach((k) => { pasok(k.nama, []); setelTertunda(k.nama, []); });
+}
+// ---- rules v14 (owner 21 Nov 2026): DATA UANG untuk Ringkas hari ini di tablet ----
+// Hanya akun Penjaga laci yang DITANDAI owner (akses.js bacaUangAkun), dan hanya selama app.js bilang nyala (orang yang jaga = orang pilihan owner).
+// Mati = pendengar dilepas & memori koleksi uang dikosongkan — layar orang lain tidak pernah menghitung dari data uang. Ditolak server (rules v14 belum
+// terbit) = disebut di status.uang.ditolak, aplikasi tetap jalan.
+let _pendengarUang = []; let _uangNyala = false;
+export function setelDataUang(nyala) {
+  const boleh = !!nyala && !!db && status.masuk && bacaUangAkun(status.akun);
+  if (boleh === _uangNyala) return;
+  if (boleh) pasangUang(status.akun); else cabutUang(true);
+}
+function pasangUang(akun) {
+  cabutUang(false); _uangNyala = true;
+  const daftar = pendengarUang(akun); const siap = {};
+  status.uang = { nyala: true, siap: 0, total: daftar.length, ditolak: [] };
+  const tandai = (n) => { if (!siap[n]) { siap[n] = true; status.uang.siap += 1; } };
+  const tolak = (n, err) => { const k = n + ': ' + String((err && err.code) || err); if (status.uang.ditolak.indexOf(k) < 0) status.uang.ditolak.push(k); beriTahu(); };
+  daftar.forEach((p) => {
+    if (p.dok) {
+      p.dok.forEach((id) => {
+        _pendengarUang.push(onSnapshot(doc(db, p.nama, id), (snap) => {
+          const peta = _perDok[p.nama] = _perDok[p.nama] || {};
+          if (snap.exists()) { const x = snap.data(); hbKupas(x); peta[id] = x; } else delete peta[id];
+          pasok(p.nama, Object.keys(peta).map((k) => peta[k])); tandai(p.nama); beriTahu();
+        }, (err) => { tandai(p.nama); tolak(p.nama + '/' + id, err); }));
+      });
+      return;
+    }
+    _pendengarUang.push(onSnapshot(collection(db, p.nama), (snap) => {
+      const isi = []; snap.forEach((d) => { const x = d.data(); hbKupas(x); isi.push(x); });
+      pasok(p.nama, isi); tandai(p.nama); beriTahu();
+    }, (err) => { tandai(p.nama); tolak(p.nama, err); }));
+  });
+  beriTahu();
+}
+function cabutUang(kabari) {
+  const ada = _uangNyala || _pendengarUang.length > 0;
+  _pendengarUang.forEach((f) => { try { f(); } catch (e) { /* abaikan */ } }); _pendengarUang = []; _uangNyala = false;
+  if (ada) {
+    BACA_UANG.forEach((n) => pasok(n, []));
+    Object.keys(DOK_UANG).forEach((n) => { const peta = _perDok[n]; if (!peta) return; DOK_UANG[n].forEach((id) => { delete peta[id]; }); pasok(n, Object.keys(peta).map((k) => peta[k])); });
+  }
+  status.uang = { nyala: false, siap: 0, total: 0, ditolak: [] };
+  if (kabari && ada) beriTahu();
 }
 // ---- salinan antre: sesudah semua pendengar siap, online, dan tidak ada tulisan tertunda — kiriman sesi lain dicocokkan ke server ----
 let _cocokJalan = false;

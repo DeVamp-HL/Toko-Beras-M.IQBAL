@@ -12,6 +12,9 @@ import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini, jamSetempat, waktuSetemp
 import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
 import { kartuTitipan, aksiTitipan, TP_DRAF_KOSONG } from './titipan-panel.js';   // owner 21 Nov 2026: uang keluar & pesan dari tablet
+// owner 21 Nov 2026: Ringkas hari ini di tablet — kartu paling atas Menu akun tablet, hanya saat orang pilihan owner jaga (rules v14: data uang)
+import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
+import * as RT from './ringkas-tablet-logika.js';
 import * as TB from './tablet-logika.js';
 import { nhDukung, nhTersimpan, nhIzin, nhNyalakan, nhMatikan, nhVapidSah } from '../data/notif-hp.js';   // owner 21 Nov 2026: notifikasi HP saat aplikasi tertutup   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
 import { gulirkan, sekali } from '../inti/gerak.js';
@@ -56,7 +59,7 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), nhVapid: '', nhSibuk: false });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))]], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
@@ -237,7 +240,11 @@ export function pasangLayarMenu(akar, opsi) {
     nhNyala: async () => { if (st().nhSibuk) return; const p = nhNyalakan(vapidToko()); set({ nhSibuk: true, kabar: 'Menyalakan notifikasi…', kabarAwas: false }); const r = await p;
       set({ nhSibuk: false, kabar: r.ok ? 'Notifikasi menyala di perangkat ini — titipan, pesan & permintaan dari tablet muncul walau aplikasi tertutup' : 'Notifikasi BELUM menyala: ' + r.pesan, kabarAwas: !r.ok }); },
     nhMati: async () => { if (st().nhSibuk) return; set({ nhSibuk: true }); const r = await nhMatikan(); set({ nhSibuk: false, kabar: r.ok ? 'Notifikasi dimatikan di perangkat ini' : 'Gagal mematikan: ' + r.pesan, kabarAwas: !r.ok }); },
-  }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }));
+    // owner 21 Nov 2026: Ringkas hari ini di tablet — owner memilih SATU orang di tablet yang membukanya, dan menandai akun tablet yang membaca data uang
+    rtPilihOrang: ({ id }) => tulis(S.susunAturSistem('peran', { ringkasOrang: id === '-' ? '' : id }, waktu())),
+    rtBacaUang: async ({ uid, nyala }) => { const kunci = uid + ':' + nyala; const r = S.susunUbahAkun(uid, { bacaUang: nyala === '1' }, waktu(), st().yakinRt === kunci);
+      if (r.perluYakin) return set({ yakinRt: kunci, kabar: r.tolak, kabarAwas: true }); set({ yakinRt: null }); await tulis(r); },
+  }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }), aksiRingkas({ set, st, akun: opsi.akun, uang: opsi.statusUang, waktu, kini }));
   const vapidToko = () => { const d = cacheMentah('aturan').find((x) => String(x.id) === 'notif'); return d && d.vapid ? String(d.vapid) : ''; };
   delegasi(akar, AKSI);
 
@@ -290,6 +297,7 @@ export function pasangLayarMenu(akar, opsi) {
     const AL = opsi.antreLokal ? opsi.antreLokal() : { belum: [], ditolak: [] };
     const orang = TB.tbDaftar().filter((o) => o.aktif).map((o) => o.nama);
     return h`<section class="mn-staf" data-k="staf" style="display: flex; flex-direction: column; gap: 10px;">
+      ${RT.rtTampil(akunM) ? kartuRingkas(s, { akun: akunM, uang: opsi.statusUang ? opsi.statusUang() : null, kini: kini() }) : ''}
       ${kartuTitipan(s, { akun: akunM, orang, kiniIso: hariIniIso(kini()) })}
       <div class="kartu" data-k="staf-akun" style="gap: 4px;"><div class="label">Masuk sebagai</div><div class="serif" style="font-size: 20px;">${akunM.nama}</div><div class="k2">${namaP} · ${L.namaPerangkat || 'perangkat ini'}</div></div>
       <div class="tombol-baris" data-k="staf-layar">${[['jual', 'Jual'], ['pelanggan', 'Pelanggan'], ['stok', 'Stok']].map(([t, n]) => h`<div class="kaca-btn aktif" data-aksi="stafKe" data-t="${t}">${n}</div>`)}</div>
@@ -453,12 +461,27 @@ export function pasangLayarMenu(akar, opsi) {
           ${s.tbGanti === o.id ? h`<div class="kartu" data-k="tb-ganti-${o.id}" style="gap: 6px;"><div class="k2">PIN baru ${o.nama} (4–6 angka)</div>${pinIn('pin', s.tbPinBaru.pin, 'tbPinIsi', 'PIN baru')}${pinIn('pin2', s.tbPinBaru.pin2, 'tbPinIsi', 'ulangi PIN baru')}
             <div class="kaca-btn aktif" data-aksi="tbGantiSimpan">${s.tbSibuk ? 'menyimpan…' : 'SIMPAN PIN BARU'}</div></div>` : ''}</div>`)
         : h`<div class="k2">Belum ada. Selama kosong, akun tablet bekerja seperti akun staf biasa (tanpa PIN).</div>`}</div>
+      ${gambarRingkasOwner(s, D)}
       <div class="kartu" data-k="tb-tambah" style="gap: 6px;"><div class="label">Tambah orang</div>
         <input class="ketik-nama" type="text" placeholder="Nama (tampil di tablet & di nota)" value="${t.nama}" data-ketik="tbIsi" data-kolom="nama" maxlength="30" autocomplete="off">
         <div class="hg-pil">${TB.TB_PERAN.map((p) => h`<div class="seg ${t.peran === p.id ? 'aktif' : ''}" data-aksi="tbPeran" data-peran="${p.id}">${p.nama}</div>`)}</div>
         ${pinIn('pin', t.pin, 'tbIsi', 'PIN 4–6 angka')}${pinIn('pin2', t.pin2, 'tbIsi', 'ulangi PIN')}
         <div class="kaca-btn aktif emas" data-aksi="tbTambah">${s.tbSibuk ? 'menyimpan…' : 'TAMBAH'}</div>
         <div class="k2">PIN tidak disimpan apa adanya — yang tersimpan hanya sidik acaknya. Owner juga bisa dimasukkan sebagai orang di tablet untuk jualan (urusan owner tetap di HP/Mac owner). Hak tiap orang = kisi perannya di tab Peran & hak, tidak pernah melebihi peran akun tablet.</div></div>`;
+  }
+  // owner 21 Nov 2026: Ringkas hari ini di tablet — siapa yang membukanya (SATU orang di daftar tablet) + akun tablet mana yang membaca data uang (rules v14)
+  function gambarRingkasOwner(s, D) {
+    const pilih = RT.rtOrang(); const akunBen = S.ssAkun().akun.filter((a) => a.peran === 'ben');
+    const op = D.find((o) => o.id === pilih); const adaTanda = akunBen.some((a) => a.bacaUang);
+    return h`<div class="kartu" data-k="rt-owner" style="gap: 6px;"><div class="label">Ringkas hari ini di tablet</div>
+      <div class="k2">Kartu paling atas Menu tablet: omzet, tunai / QRIS / bon, perkiraan isi laci, uang keluar, per orang, terlaris, stok tipis, pesanan & antar — bisa dicetak. Tampil HANYA saat orang yang lu pilih jaga (lewat PIN-nya).</div>
+      <div class="k2" style="font-weight: 600;">Dibuka oleh</div>
+      <div class="hg-pil" data-k="rt-orang"><div class="seg ${pilih ? '' : 'aktif'}" data-aksi="rtPilihOrang" data-id="-">mati</div>${D.map((o) => h`<div class="seg ${pilih === o.id ? 'aktif' : ''}" data-aksi="rtPilihOrang" data-id="${o.id}">${o.nama}</div>`)}</div>
+      <div class="k2" style="font-weight: 600;">Akun tablet yang membaca data uang (laci & uang keluar)</div>
+      ${akunBen.length ? akunBen.map((a) => h`<div class="pn-orang" data-k="rt-ak-${a.uid}"><b>${a.nama || a.email}</b> <span class="k2">${a.email} · ${a.bacaUang ? 'MEMBACA data uang' : 'tidak membaca data uang'}</span>
+        <div class="hg-pil"><div class="seg ${a.bacaUang ? 'aktif' : ''} ${s.yakinRt === a.uid + ':1' ? 'aktif' : ''}" data-aksi="rtBacaUang" data-uid="${a.uid}" data-nyala="1">${s.yakinRt === a.uid + ':1' ? 'YAKIN — buka data uang' : 'baca data uang'}</div>
+          <div class="seg ${a.bacaUang ? '' : 'aktif'}" data-aksi="rtBacaUang" data-uid="${a.uid}" data-nyala="0">tidak</div></div></div>`) : h`<div class="k2">Belum ada akun Penjaga laci terdaftar.</div>`}
+      <div class="pita-info ${pilih && adaTanda ? 'emas' : ''}" data-k="rt-status">${!pilih ? 'Mati — tidak ada kartu Ringkas di tablet.' : !adaTanda ? 'Kartu tampil untuk ' + (op ? op.nama : 'orang terpilih') + ', tapi laci & uang keluar tidak dihitung sampai akun tablet ditandai membaca data uang.' : 'Kartu tampil untuk ' + (op ? op.nama : 'orang terpilih') + ' dengan laci & uang keluar. Data uang dimuat ke tablet hanya selama ' + (op ? op.nama : 'orang itu') + ' jaga, dan dibuang dari layar begitu orang lain jaga.'} Butuh aturan server v14 (docs/uji-rules-v14.md).</div></div>`;
   }
   function gambarCadangan(s, d) {
     const C = S.ssCadangan(d, lokal(), s.hariC);
