@@ -10,6 +10,7 @@ import * as PR from '../inti/printer.js';
 import { epSusun } from '../inti/escpos.js';
 import { hasilTakDiketahui, masihMencetak, printerSibuk, KALIMAT_MASIH_MENCETAK, asliAda } from '../inti/perangkat.js';
 import { bukanOwner, akunMembaca } from './akses-layar.js';
+import { cacheMentah } from '../data/toko.js';
 
 const KOLEKSI_BAYAR = 'utangPemasokMutasi';
 
@@ -17,7 +18,15 @@ const KOLEKSI_BAYAR = 'utangPemasokMutasi';
 export function isiTerima(id, akun) {
   const batch = C.batchKedatangan(id); const tolak = TBM.tbmTolak(batch); if (tolak) return { tolak };
   const terbaca = akunMembaca(akun, KOLEKSI_BAYAR); const bb = terbaca ? C.ckBayarBon(batch) : null;
-  return { d: TBM.tbmData(batch, { terbaca, dibayar: bb ? bb.dibayarMesin : 0, rinci: bb ? bb.bayar : [] }) };
+  return { d: TBM.tbmData(batch, { terbaca, dibayar: bb ? bb.dibayarMesin : 0, rinci: bb ? bb.bayar : [], titipSupir: titipSupir(batch, terbaca) }) };
+}
+/**
+ * owner 22 Nov 2026 (paket ③): uang yang dibayar ke supir lewat TITIPAN tablet untuk kedatangan ini (bayar bon pemasok, menunjuk batchId). Yang masih menunggu
+ * owner selalu disebut (belum ada di buku bon); yang sudah disetujui disebut hanya bila akun ini tidak membaca buku bon (di akun owner ia sudah jadi pembayaran).
+ */
+function titipSupir(batch, terbaca) {
+  return Math.round(cacheMentah('persetujuan').filter((m) => m && m.tindakan === 'uangKeluar' && m.jenis === 'bayarBon' && String(m.batchId || '') === String(batch.id)
+    && ((m.status || 'menunggu') === 'menunggu' || (!terbaca && m.status === 'disetujui'))).reduce((a, m) => a + (Number(m.nominal) || 0), 0));
 }
 
 const sebutJumlah = (j) => [j.karung ? j.karung + ' karung' : '', j.bal ? j.bal + ' bal' : '', KG(j.kg)].filter(Boolean).join(' · ');
@@ -46,13 +55,13 @@ export function lembarTerima(s, opsi) {
   const o = opsi || {}; const pilih = s.tbm && s.tbm.id !== undefined ? String(s.tbm.id) : '';
   const daftar = C.daftarKedatangan(12).filter((k) => !k.fondasi && k.pemasok && k.pemasok !== '—');
   return h`<section class="stok-masuk" data-k="terima">
-    <div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Tanda terima barang masuk</div><div class="ket">kedatangan yang sudah dicatat owner · pilih satu, cetak untuk supir pemasok</div></div>
+    <div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Tanda terima barang masuk</div><div class="ket">kedatangan yang sudah dicatat · pilih satu, cetak untuk supir pemasok</div></div>
       <div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>
     ${pilih ? kartuTerima(pilih, { akun: o.akun, tutup: true }) : ''}
     <div class="kartu" data-k="tbm-daftar" style="gap: 6px;"><div class="label">Kedatangan terakhir</div>
       ${daftar.length ? daftar.map((k) => h`<div class="jawab ${pilih === String(k.id) ? 'dipilih' : ''}" data-k="tbm-${k.id}" data-aksi="tbmPilih" data-id="${k.id}"><span class="kiri"><span class="nm">${k.pemasok} <span class="w">· ${tanggalPendek(k.tanggal)}${k.jam ? ' ' + k.jam : ''}</span></span><span class="w">${k.ringkas}</span></span>
         <span class="kanan"><span class="n">${k.karung} karung</span><span class="w">${k.cara === 'utang' ? 'bon' : 'tunai'}</span></span></div>`)
-    : h`<div class="ket" data-k="tbm-kosong">Belum ada kedatangan yang tercatat. Barang masuk dicatat owner; begitu tersimpan, kedatangannya muncul di sini.</div>`}</div>
+    : h`<div class="ket" data-k="tbm-kosong">Belum ada kedatangan yang tercatat. Begitu barang masuk tersimpan (Stok › Barang masuk), kedatangannya muncul di sini.</div>`}</div>
   </section>`;
 }
 

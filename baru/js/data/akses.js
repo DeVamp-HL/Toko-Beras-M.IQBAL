@@ -70,7 +70,7 @@ export const UBAH_STAF = {
 export const LAYAR_STAF = ['jual', 'pelanggan', 'stok', 'menu'];
 // §1 — tindakan SS2 yang DIBUKA server putaran ini, per peran. Selebihnya tertutup (hitung laci & kedatangan: §6).
 export const SERVER_BUKA = { jualTunai: ['ben', 'karyawan'], jualBon: ['ben'], terimaBon: ['ben', 'karyawan'], adukan: ['ben', 'karyawan'], pelangganBaru: ['ben', 'karyawan'], isiUlang: ['ben', 'karyawan'],
-  antar: ['ben'], terimaAntar: ['ben', 'karyawan'], pesanan: ['ben'] };   // rules v11 (B4): pesanan, PO, jadwal rutin & uang muka = ben   // rules v10 (B3): bikin surat jalan = ben (stafBuatSJ) · tandai diterima / gagal = ben & karyawan (stafTandaiSJ)   // isiUlang: rules v5 (putaran 39)
+  antar: ['ben'], terimaAntar: ['ben', 'karyawan'], pesanan: ['ben'], kedatangan: ['ben'] };   // rules v15 (owner 22 Nov 2026): barang masuk dari tablet = Penjaga laci (stafCatatMasuk)   // rules v11 (B4): pesanan, PO, jadwal rutin & uang muka = ben   // rules v10 (B3): bikin surat jalan = ben (stafBuatSJ) · tandai diterima / gagal = ben & karyawan (stafTandaiSJ)   // isiUlang: rules v5 (putaran 39)
 export const KALIMAT_MINTA_OWNER = 'Perlu persetujuan owner — alurnya menyusul';
 
 const aKosong = (v) => v === undefined || v === null || String(v).trim() === '';
@@ -179,6 +179,12 @@ const NAMA_TINDAKAN = { kedatangan: 'hitung truk & draf kedatangan', uangKeluar:
   pesanan: 'bikin & ubah pesanan, PO, jadwal rutin' };
 /** rules v5 stafBuatLahir: batch LAHIR BUKU 0 kg (buku baru wadah / karung belakang) — bukan kedatangan. */
 const batchLahir = (d) => !!d && d.lahirBuku === true && d.stokAwal === true && !(Number(d.biayaBongkar) || 0) && String(d.pemasok || '') === 'LAHIR BUKU' && (d.merkList || []).every((r) => !(Number(r.totalKg) || 0) && !(Number(r.subtotalHarga) || 0));
+// rules v15 (owner 22 Nov 2026): kedatangan dari tablet = Penjaga laci, langsung BON, upah bongkar 0 (jadi titipan), tanpa kolom buku baru / koreksi owner (stafCatatMasuk)
+export const KOLOM_BUKAN_MASUK_TABLET = ['lahirBuku', 'stokAwal', 'tutupBuku', 'riwayat', 'alasanKoreksi', 'noBon', 'bongkarTitipan'];
+export const batchTablet = (d) => !!d && d.dariTablet === true && d.caraBayar === 'utang' && d.biayaBongkar === 0 && typeof d.pemasok === 'string' && d.pemasok.length > 0
+  && d.pemasok.length <= 60 && d.pemasok !== 'LAHIR BUKU' && Array.isArray(d.merkList) && d.merkList.length > 0 && d.merkList.length <= 20 && !KOLOM_BUKAN_MASUK_TABLET.some((k) => k in d);
+// rules v13 + v15: jenis titipan uang keluar dari tablet (= stafMintaKeluar). bongkar wajib batchId (kedatangannya), bayarBon wajib nama pemasok.
+export const JENIS_TITIPAN = ['toko', 'karyawan', 'kasbon', 'bongkar', 'bayarBon'];
 
 /**
  * owner 7 Okt (JS2-C batas nego): satu baris penjualan yang harganya DITAWAR boleh dikirim bukan-owner tanpa tindakan "nego di bawah jatah margin" bila
@@ -213,7 +219,9 @@ export function tindakanKiriman(D, jatahNego) {
   if (ada('pesanan') || (D || []).some((x) => x.koleksi === 'orderRutin') || (D || []).some((x) => x.ada && x.koleksi === 'pesanan' && String((x.data || {}).status || '') !== 'dibayar')
     || baru.some((x) => x.koleksi === 'piutangMutasi' && x.data && x.data.untukPesanan && !x.data.notaTrxId)) t.pesanan = 1;
   if (ada('pelangganCatatan')) t.pelangganBaru = 1;
-  const adaWadah = ada('wadahLiteran') || ada('batchMasuk');
+  // rules v15 (owner 22 Nov 2026): kedatangan dari tablet = tindakan kedatangan (bukan isi ulang — batch LAHIR BUKU tetap isi ulang)
+  if (baru.some((x) => x.koleksi === 'batchMasuk' && batchTablet(x.data))) t.kedatangan = 1;
+  const adaWadah = ada('wadahLiteran') || baru.some((x) => x.koleksi === 'batchMasuk' && !batchTablet(x.data));
   if (!jual.length) { if (adaWadah) t.isiUlang = 1; else if (ada('produksiKemasan') || ada('stokBahanKemasan') || ada('stokBahanLiteran')) t.adukan = 1; }
   return Object.keys(t);
 }
@@ -252,7 +260,7 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return { tolak: tolakTindakan('hargaBeli') };
       // rules v5 (putaran 39): karyawan menulis wadahLiteran hanya takar / karung / karungIsi / cek (aturan wadah & titik samakan isi = owner), batchMasuk hanya batch LAHIR BUKU 0 kg
       if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };
-      if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };
+      if (x.koleksi === 'batchMasuk' && !batchLahir(d) && !(P === 'ben' && batchTablet(d) && (hak.kedatangan || 'tidak') === 'sendiri')) return { tolak: tolakTindakan('kedatangan') };
       // rules v10 (B3, owner 18 Nov 2026): surat jalan baru buatan Ben — status 'berangkat', tanpa kolom keputusan (stafBuatSJ)
       if (x.koleksi === 'suratJalan' && (d.status !== 'berangkat' || KOLOM_BUKAN_SJ_BARU.some((k) => k in d))) return { tolak: tolakTindakan('antar') };
       // rules v11 (B4, owner 18 Nov 2026): pesanan baru buatan Ben — 'dipesan', belum bernota, tanpa kolom batal (stafBuatPesanan)
@@ -271,7 +279,10 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       // rules v13 (owner 21 Nov 2026): TITIPAN uang keluar dari tablet — bentuk "menunggu" bertindakan uangKeluar atas nama sendiri (mintaUid), jenis
       // toko/karyawan/kasbon, nominal bulat > 0, tanpa kolom keputusan / betulan owner, dari peran yang kisi uangKeluar-nya bukan "tidak boleh" (stafMintaKeluar).
       // Uangnya ditulis OWNER saat menyetujui (titipan-logika tpSusunPutus) — akun tablet tidak pernah menulis dokumen uang.
-      if (x.koleksi === 'persetujuan' && d.tindakan === 'uangKeluar') { const n = d.nominal; if (d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'koreksiOwner', 'balasan'].some((k) => k in d) || ['toko', 'karyawan', 'kasbon'].indexOf(d.jenis) < 0 || !(typeof n === 'number' && Number.isInteger(n) && n > 0) || (hak.uangKeluar || 'tidak') === 'tidak' || String(d.mintaUid || '') !== String(akun.uid || '')) return { tolak: tolakTindakan('uangKeluar') }; continue; }
+      if (x.koleksi === 'persetujuan' && d.tindakan === 'uangKeluar') { const n = d.nominal; if (d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'koreksiOwner', 'balasan'].some((k) => k in d) || JENIS_TITIPAN.indexOf(d.jenis) < 0 || !(typeof n === 'number' && Number.isInteger(n) && n > 0) || (hak.uangKeluar || 'tidak') === 'tidak' || String(d.mintaUid || '') !== String(akun.uid || '')
+        || (d.jenis === 'bongkar' && !(typeof d.batchId === 'string' && d.batchId.length > 0)) || (d.jenis === 'bayarBon' && !(typeof d.pemasok === 'string' && d.pemasok.length > 0 && d.pemasok.length <= 60))) return { tolak: tolakTindakan('uangKeluar') }; continue; }
+      // rules v15: KABAR barang masuk untuk owner — bentuk "menunggu" bertindakan barangMasuk atas nama sendiri, menunjuk kedatangannya, tanpa keputusan (stafKabarMasuk)
+      if (x.koleksi === 'persetujuan' && d.tindakan === 'barangMasuk') { if (P !== 'ben' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan'].some((k) => k in d) || !(typeof d.batchId === 'string' && d.batchId.length > 0) || String(d.mintaUid || '') !== String(akun.uid || '')) return { tolak: tolakTindakan('kedatangan') }; continue; }
       // rules v13: PESAN untuk owner — bentuk "menunggu" bertindakan pesan atas nama sendiri, teks 1–500 huruf, tanpa keputusan / balasan (stafKirimPesan)
       if (x.koleksi === 'persetujuan' && d.tindakan === 'pesan') { if (d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan'].some((k) => k in d) || typeof d.teks !== 'string' || !d.teks.length || d.teks.length > 500 || String(d.mintaUid || '') !== String(akun.uid || '')) return { tolak: 'Pesan untuk owner harus berisi 1–500 huruf, atas nama orang yang jaga' }; continue; }
       if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].some((k) => k in d) || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };

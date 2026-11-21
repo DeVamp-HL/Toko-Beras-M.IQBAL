@@ -10,6 +10,7 @@ import { RP, DESIMAL, tanggalPendek, tanggalTutupAktif } from '../inti/format.js
 import * as S from './stok-logika.js';
 import * as L from './jual-logika.js';
 import * as C from './stok-catat-logika.js';
+import * as MT from './masuk-tablet-logika.js';   // owner 22 Nov 2026 (paket ③): barang masuk dari tablet — bon + titipan bongkar & bayar supir + kabar owner
 import * as A from './stok-adukan-logika.js';
 import * as Q from './stok-karantina-logika.js';
 import * as KT from './stok-kantong-logika.js';
@@ -95,6 +96,8 @@ export function pasangLayarStok(akar, opsi) {
     const isi = _ingatW.isi; return (nama, f) => (nama in isi ? isi[nama] : (isi[nama] = f())); };
   // mode "atur susunan": draf di keadaan layar; baru ditulis saat SIMPAN (satu dokumen berisi seluruh aturan)
   const drafAtur = () => { const a = L.aturWadah(); const t = (n) => String(n).replace('.', ','); const kgl = { bawaan: a.kgPerLiter.bawaan ? t(a.kgPerLiter.bawaan) : '', merek: {} }; Object.keys(a.kgPerLiter.merek).forEach((m) => { kgl.merek[m] = t(a.kgPerLiter.merek[m]); }); return { kgl, penuh: t(a.penuhKg), puncak: t(a.puncakKg), ulang: t(a.isiUlangKg), takar: t(a.takarKg), susut: t(a.susutWajarKg), sisih: t(a.sisihKg), merekKarung: a.merekKarung.slice(), daftar: a.daftar.slice(), resep: JSON.parse(JSON.stringify(a.resep)), pilih: null, resepUntuk: null }; };
+  // owner 22 Nov 2026: draf kosong Barang masuk per akun — tablet (bukan owner) selalu bon, dengan isian upah bongkar & bayar ke supir (titipan)
+  const drafKosongMasuk = () => (bukanOwner(opsi.akun ? opsi.akun() : null) ? MT.mtDrafKosong(waktu()) : C.drafMasukKosong(waktu()));
   const ubahAtur = (f) => { const d = JSON.parse(JSON.stringify(st().atur || drafAtur())); f(d); set({ atur: d }); };
   const AKSI = Object.assign({
     // tombolMati (tombol peran mati dengan kalimat sebabnya) datang dari aksiPanelWadah (wadah-panel.js) — dulu ditulis dua kali, yang panel menang diam-diam
@@ -177,7 +180,7 @@ export function pasangLayarStok(akar, opsi) {
     aturResepTambah: ({ merk, bahan }) => ubahAtur((d) => { const r = d.resep[merk] || (d.resep[merk] = L.resepWadah(merk)); if (r.length < L.WADAH_MAKS_RESEP && !r.some((x) => x.merk === bahan)) r.push({ merk: bahan, takar: 1 }); }),
     simpanAtur: async () => { const d = st().atur; if (!d) return; const r = L.susunAturWadah({ penuhKg: d.penuh, puncakKg: d.puncak, isiUlangKg: d.ulang, takarKg: d.takar, susutWajarKg: d.susut, sisihKg: d.sisih, kgPerLiter: d.kgl, merekKarung: d.merekKarung || L.aturWadah().merekKarung, daftar: d.daftar, resep: d.resep }, waktu()); if (await tulis(r)) set({ atur: null }); },
     // ---- BARANG MASUK (ST1): draf di keadaan layar + localStorage; ditulis saat SIMPAN
-    bukaMasuk: () => set({ lembar: 'masuk', masuk: bacaLokal(KUNCI_DRAF_MASUK) || C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false, kabar: '', aturC: null, tbm: null }),
+    bukaMasuk: () => set({ lembar: 'masuk', masuk: bacaLokal(KUNCI_DRAF_MASUK) || drafKosongMasuk(), yakinM: false, yakinHapus: false, kabar: '', aturC: null, tbm: null }),
     tutupLembar: () => set({ lembar: null, kabar: '', aturC: null, yakinM: false, yakinHapus: false, yakinHapusA: false, bukaA: null, tbm: null }),
     mKetik: (v, el) => ubahMasuk((d) => { const k = el.dataset.kolom; const i = el.dataset.i; if (i !== undefined) d.baris[Number(i)][k] = String(v).slice(0, k === 'merk' || k === 'namaMutu' ? 40 : 12); else d[k] = String(v).slice(0, k === 'alasan' || k === 'pemasok' ? 60 : 12); }),
     mPilih: ({ kolom, i, nilai }) => ubahMasuk((d) => { if (i !== undefined) d.baris[Number(i)][kolom] = kolom === 'beratKarung' ? Number(nilai) : nilai; else d[kolom] = nilai; }),
@@ -194,13 +197,15 @@ export function pasangLayarStok(akar, opsi) {
       const sisa = (st().varianTawar || []).filter((x) => x.merk !== merk); const k = kkSertakanKiriman(r, waktu().kini); if (await tulis(Object.assign({}, k, { patch: Object.assign({}, k.patch, { varianTawar: sisa.length ? sisa : null }) }))) sekali(akar.querySelector('.stok-masuk'), 'pegas', 520); },
     vrNanti: ({ merk }) => { const sisa = (st().varianTawar || []).filter((x) => x.merk !== merk); set({ varianTawar: sisa.length ? sisa : null, kabar: 'Harga ' + merk + ' belum disetel — rak Jual belum menampilkannya sampai harganya terbit (Harga & Pemasok › Katalog).', kabarAwas: false }); },
     mLepasBaris: ({ i }) => ubahMasuk((d) => { if (d.baris.length > 1) d.baris.splice(Number(i), 1); else d.baris[0] = C.barisMasukKosong(); }),
-    mBaru: () => { simpanLokal(KUNCI_DRAF_MASUK, null); set({ masuk: C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false, kabar: '', tbm: null }); },
-    mSimpan: async () => { const d = st().masuk; if (!d) return; const r = C.susunSimpanMasuk(d, waktu(), st().yakinM);
+    mBaru: () => { simpanLokal(KUNCI_DRAF_MASUK, null); set({ masuk: drafKosongMasuk(), yakinM: false, yakinHapus: false, kabar: '', tbm: null }); },
+    mSimpan: async () => { const d = st().masuk; if (!d) return; const akM = opsi.akun ? opsi.akun() : null;
+      // owner 22 Nov 2026 (paket ③): akun tablet = Penjaga laci → kedatangan bon + titipan bongkar & bayar supir + kabar owner (masuk-tablet-logika, rules v15)
+      const r = bukanOwner(akM) ? MT.mtSusunSimpan(d, akM, waktu(), st().yakinM) : C.susunSimpanMasuk(d, waktu(), st().yakinM);
       // tinjauan E1: tolakan koreksi membawa jalan lainnya (r.pembalik: 'cocok' → Cocokkan hari ini · 'pindahNama' → pindah buku sisa nama lama ke nama baru)
       if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true, yakinM: !!r.perluYakin, kpPembalik: r.pembalik || null, kpTeks: r.pindahTeks || '', kpYakin: false }); return; }
       // owner 21 Nov 2026: kedatangan yang baru tersimpan langsung menawarkan tanda terimanya (untuk supir pemasok)
       const dm = (r.dokumen || []).find((x) => x.koleksi === 'batchMasuk'); const idT = dm && dm.data ? dm.data.id : null;
-      if (await tulis(r)) { simpanLokal(KUNCI_DRAF_MASUK, null); set({ masuk: C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false, tbm: idT !== null && idT !== undefined ? { id: String(idT) } : null }); sekali(akar.querySelector('.stok-masuk'), 'pegas', 520); } },
+      if (await tulis(r)) { simpanLokal(KUNCI_DRAF_MASUK, null); set({ masuk: drafKosongMasuk(), yakinM: false, yakinHapus: false, tbm: idT !== null && idT !== undefined ? { id: String(idT) } : null }); sekali(akar.querySelector('.stok-masuk'), 'pegas', 520); } },
     mKoreksi: ({ id }) => { const d = C.drafDariKedatangan(id); if (!d) return; if (d.fondasi) return set({ kabar: 'Batch fondasi (stok awal / saldo pembuka) menopang seluruh stok & modal — tidak diubah dari sini', kabarAwas: true });
       set({ masuk: d, yakinM: false, yakinHapus: false, tbm: null, kabar: d.adaBal ? 'Kedatangan ini punya baris bal (beli jadi) — baris itu tidak ikut diubah dari sini' : '', kabarAwas: false }); },
     mHapus: async () => { const d = st().masuk; if (!d || !d.id) return; if (!st().yakinHapus) { const r0 = C.susunHapusKedatangan(d.id, d.alasan, waktu()); if (r0.tolak) return set({ kabar: r0.tolak, kabarAwas: true, kpPembalik: r0.pembalik || null }); return set({ yakinHapus: true, kabar: 'Ketuk sekali lagi untuk menghapus kedatangan ini — stok & modal dihitung ulang tanpa kedatangan ini', kabarAwas: true }); }
@@ -347,7 +352,7 @@ export function pasangLayarStok(akar, opsi) {
   const cocokKosong = () => ({ tab: 'tumpukan', hitung: {}, alasan: {}, buka: null, karung: '', karung25: '', kg: '', angka: '', isi: '', satuanIsi: 'takar', kr: '' });
   // draf hitungan lama (tab 'beras' = satu angka untuk tumpukan + karung terbuka + wadah) dibuka di tab tumpukan; angkanya tidak dipakai (putaran 27)
   const drafCocok = () => { const c = bacaLokal(KUNCI_DRAF_COCOK); return c ? Object.assign(cocokKosong(), c, { tab: C.tabCocokSah(c.tab) }) : cocokKosong(); };
-  const ubahMasuk = (f) => { const d = JSON.parse(JSON.stringify(st().masuk || C.drafMasukKosong(waktu()))); f(d); simpanLokal(KUNCI_DRAF_MASUK, d); set({ masuk: d, yakinM: false, yakinHapus: false }); };
+  const ubahMasuk = (f) => { const d = JSON.parse(JSON.stringify(st().masuk || drafKosongMasuk())); f(d); simpanLokal(KUNCI_DRAF_MASUK, d); set({ masuk: d, yakinM: false, yakinHapus: false }); };
   // putaran 27: isi wadah boleh diketik dalam takar (× isi satu takar aturan wadah), liter (× rasio), atau kg
   const isiKeKg = (v, sat, B) => Math.round(angka(v) * (sat === 'takar' ? B.takarKg : sat === 'liter' ? B.rasio : 1) * 100) / 100;
   const kosongkanKetik = (c) => { c.karung = ''; c.karung25 = ''; c.kg = ''; c.angka = ''; c.isi = ''; c.kr = ''; };
@@ -795,6 +800,7 @@ export function pasangLayarStok(akar, opsi) {
       <div class="ket" style="font-size: 10.5px;">Kosong = belum ditimbang / tidak dicek (bukan selisih 0). Selisih = berat timbang − kg nota, rata-rata % ditimbang menurut kg. Nilai kg kurang = kg kurang × harga beli per kg barisnya — perkiraan nilai, tidak dibukukan: stok, modal, HPP, dan bon tetap menurut nota. AWAS = kadar air di atas ${tmD(R.atur.kadarAirMaks)} %, butir patah di atas ${tmD(R.atur.patahMaks)} %, ada kutu, atau bau tidak normal.${tmBawaanTeks(R.atur)}</div></div>`;
   }
   function gambarMasuk(s) {
+    if (bukanOwner(opsi.akun ? opsi.akun() : null)) return gambarMasukTablet(s);
     const d = s.masuk || C.drafMasukKosong(waktu()); const hm = C.hitungMasuk(d); const a = C.aturCatat(); const koreksi = !!d.id; const KG = (n) => DESIMAL(Math.round(n * 10) / 10) + ' kg';
     const pemasok = C.calonPemasok().slice(0, 6); const merk = C.calonMerkMasuk();
     return h`<section class="stok-masuk" data-k="masuk">
@@ -854,6 +860,48 @@ export function pasangLayarStok(akar, opsi) {
       ${C.bukuHapus(6).length ? h`<div class="kartu" data-k="buku-hapus" style="gap: 4px;"><div class="label">Buku hapus</div>${C.bukuHapus(6).map((x) => h`<div class="ket" data-k="bh-${x.id}">${tanggalPendek(x.tanggal)} ${x.jam} · ${x.pemasok} ${tanggalPendek(x.tanggalDok)} · ${x.ringkas} — ${x.alasan}</div>`)}</div>` : ''}
       ${gambarRekapTimbang()}
       <div class="ket tautan" data-aksi="bukaAturC">${s.aturC ? 'tutup aturan' : 'Atur: minimal karung per mobil, tempo bon, selisih wajar, ambang mutu saat terima'}</div>${gambarAturC(s)}
+    </section>`;
+  }
+  // ---------- BARANG MASUK DARI TABLET (owner 22 Nov 2026, paket ③; rules v15) ----------
+  // Penjaga laci: kedatangan langsung jadi stok + BON pemasok; harga dari nota supir (beda dari harga lalu = owner dikabari); upah bongkar & uang ke supir dari
+  // laci = TITIPAN ke owner. Tanpa pilihan cara bayar, tanggal, kelas, varian, koreksi, hapus, atau aturan — itu urusan owner di HP.
+  function gambarMasukTablet(s) {
+    const w = waktu(); const d = Object.assign(MT.mtDrafKosong(w), s.masuk || {}); const hm = MT.mtHitung(d, w); const a = C.aturCatat(); const KG = (n) => DESIMAL(Math.round(n * 10) / 10) + ' kg';
+    const pemasok = C.calonPemasok().slice(0, 6); const merk = C.calonMerkMasuk(); const ak = opsi.akun ? opsi.akun() : null;
+    const titip = (hm.bongkarTitip > 0 ? hm.bongkarTitip : 0) + (hm.supirTitip > 0 ? hm.supirTitip : 0);
+    return h`<section class="stok-masuk" data-k="masuk">
+      <div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Barang masuk</div><div class="ket">${tanggalPendek(w.tanggal)} · langsung jadi stok &amp; BON pemasok · harga dari nota supir · uang dari laci dititip ke owner</div></div>
+        <div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>
+      ${s.tbm ? kartuTerima(s.tbm.id, { akun: ak, tutup: true }) : ''}
+      <div class="kartu" data-k="masuk-kepala" style="gap: 8px;">
+        <div><div class="ket">Pemasok</div><input class="ketik-nama" id="mPemasok" type="text" placeholder="nama pemasok" value="${d.pemasok}" data-ketik="mKetik" data-kolom="pemasok">
+          ${pemasok.length ? h`<div class="tombol-baris rapat" data-k="calon-pemasok">${pemasok.map((p) => h`<div class="kaca-btn kecil ${d.pemasok === p ? 'aktif' : ''}" data-aksi="mPilih" data-kolom="pemasok" data-nilai="${p}">${p}</div>`)}</div>` : ''}</div>
+        <div class="pita-info" data-k="mt-bon">Dicatat sebagai <b>bon pemasok</b> (jatuh tempo ${a.tempoHari} hari). Uang yang dibayar ke supir sekarang diisi di bawah — owner yang mencatatnya ke bon.</div>
+      </div>
+      ${hm.baris.map((b, i) => h`<div class="kartu baris-masuk ${b.terisi && (b.masalah || b.masalahTablet) ? 'awas' : ''}" data-k="mb-${i}" style="gap: 6px;">
+        <div class="label">Baris ${i + 1}${b.sah ? ' · ' + KG(b.totalKg) + ' · ' + RP(b.subtotalHarga) : ''}</div>
+        <input class="ketik-nama" id="mMerk${i}" type="text" placeholder="nama beras / karung" value="${d.baris[i].merk}" data-ketik="mKetik" data-kolom="merk" data-i="${i}">
+        ${!b.merk ? h`<div class="tombol-baris rapat" data-k="calon-merk-${i}">${merk.slice(0, 8).map((m) => h`<div class="kaca-btn kecil" data-aksi="mPilih" data-kolom="merk" data-i="${i}" data-nilai="${m}">${m}</div>`)}</div>` : ''}
+        <div class="ps-form tiga"><div><div class="ket">Karung</div><input class="ketik-nama" id="mJml${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].jumlahKarung}" data-ketik="mKetik" data-kolom="jumlahKarung" data-i="${i}"></div>
+          <div><div class="ket">Harga / kg (nota supir)${b.lalu ? ' · lalu ' + RP(b.lalu.harga) : b.hargaLalu ? ' · lalu ' + RP(b.hargaLalu) : ''}</div><input class="ketik-nama" id="mHarga${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].hargaPerKg}" data-ketik="mKetik" data-kolom="hargaPerKg" data-i="${i}"></div>
+          <div><div class="ket">Isi karung</div><div class="jalur rapat">${C.BERAT_KARUNG_PILIHAN.map((n) => h`<div class="seg ${Number(d.baris[i].beratKarung) === n ? 'aktif' : ''}" data-aksi="mPilih" data-kolom="beratKarung" data-i="${i}" data-nilai="${n}">${n} kg</div>`)}</div></div></div>
+        ${gambarCekMasuk(b, d.baris[i], i, a)}
+        ${b.saranVarian && b.saranVarian.length ? h`<div class="pita-info emas" data-k="mt-sv-${i}"><div><b>${b.merkKetik}</b> sudah dicatat sebagai <b>${b.saranVarian.map((v) => v.nama).join(' / ')}</b> — pakai itu?</div>
+          <div class="tombol-baris rapat" data-k="mt-sv-pil-${i}">${b.saranVarian.map((v) => h`<div class="kaca-btn aktif emas" data-aksi="mPakaiVarian" data-i="${i}" data-merk="${v.nama}">pakai ${v.nama}</div>`)}</div></div>` : ''}
+        ${b.varianInduk && b.varianInduk.length ? h`<div class="pita-info emas" data-k="mt-vi-${i}"><div><b>${b.merk}</b> punya varian <b>${b.varianInduk.map((v) => v.nama).join(' / ')}</b> — karung yang datang ini yang mana?</div>
+          <div class="tombol-baris rapat" data-k="mt-vi-pil-${i}">${b.varianInduk.map((v) => h`<div class="kaca-btn aktif emas" data-aksi="mPakaiVarian" data-i="${i}" data-merk="${v.nama}">masuk ${v.nama}</div>`)}</div></div>` : ''}
+        ${b.gabung ? h`<div class="pita-info emas" data-k="mt-jauh-${i}">Harga ${RP(b.hargaPerKg)}/kg beda ${DESIMAL(b.vr.beda)} % dari modal ${b.merk} — dicatat sebagai ${b.merk} yang sama; owner dikabari dan yang memutus kalau ternyata beda mutu.</div>` : ''}
+        <div class="ket ${b.terisi && (b.masalah || b.masalahTablet) ? 'awas-teks' : ''}">${b.terisi && b.masalah ? b.masalah : b.terisi && b.masalahTablet ? b.masalahTablet : b.sah ? (hm.hargaBeda.some((x) => x.merk === b.merkSimpan) ? 'harga beda dari harga lalu — owner dikabari' : 'harga sama dengan harga lalu') : 'isi nama, jumlah karung, dan harga per kg dari nota supir'}${hm.baris.length > 1 || b.terisi ? h`<span class="tautan" style="float: right;" data-aksi="mLepasBaris" data-i="${i}">lepas baris</span>` : ''}</div>
+      </div>`)}
+      <div class="tombol-baris rapat"><div class="kaca-btn putus" data-aksi="mTambahBaris">+ baris nama lain</div>${d.pemasok || hm.sah.length ? h`<div class="kaca-btn" data-aksi="mBaru">kosongkan</div>` : ''}</div>
+      <div class="kartu" data-k="mt-titip" style="gap: 6px;"><div class="label">Uang dari laci saat barang datang · dititip ke owner</div>
+        <div class="ps-form dua"><div><div class="ket">Upah bongkar (Rp)</div><input class="ketik-nama" id="mBongkar" type="text" inputmode="numeric" placeholder="0" value="${d.bongkar}" data-ketik="mKetik" data-kolom="bongkar"></div>
+          <div><div class="ket">Dibayar ke supir sekarang (Rp)</div><input class="ketik-nama" id="mSupir" type="text" inputmode="numeric" placeholder="0" value="${d.bayarSupir}" data-ketik="mKetik" data-kolom="bayarSupir"></div></div>
+        <div class="ket" style="font-size: 11px;">Boleh diambil dari laci sekarang; laci di buku berkurang sesudah owner menyetujui. Upah bongkar masuk modal barang ini; bayar ke supir dicatat owner ke bon pemasoknya.</div></div>
+      <div class="kartu" data-k="masuk-ringkas" style="gap: 4px;"><div class="label">Jumlah</div>
+        <div class="serif" style="font-size: 19px;">${hm.karung} karung · ${KG(hm.kg)}</div>
+        <div class="ket">nilai nota ${RP(hm.nilaiBeras)} · <b>jadi bon pemasok</b>${titip ? ' · dititip ke owner ' + RP(titip) : ''}${hm.hargaBeda.length ? ' · ' + hm.hargaBeda.length + ' harga beda dari lalu' : ''}</div>
+        <div class="kaca-btn aktif emas" data-aksi="mSimpan">${s.yakinM ? 'YAKIN — SIMPAN BARANG MASUK' : 'SIMPAN BARANG MASUK · ' + RP(hm.nilaiBeras)}</div></div>
     </section>`;
   }
   // ---------- COCOKKAN / HITUNG GUDANG (ST3): beras (karung × isi + kg lepas), kemasan jadi (unit), kantong (lembar) ----------

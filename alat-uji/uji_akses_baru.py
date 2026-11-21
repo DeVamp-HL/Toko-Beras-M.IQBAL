@@ -109,6 +109,21 @@ var p4 = periksaKiriman(BEN, [{ koleksi: 'piutangMutasi', data: { id: 6, tanggal
   p6 = periksaKiriman(BEN, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p7 = periksaKiriman(KRY, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_KRY),
   p8 = periksaKiriman(BEN, [{ koleksi: 'pengeluaranHarian', data: { id: 9, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p9 = periksaKiriman(KRY, [], [{ koleksi: 'penjualan', id: 1 }], HAK_KRY),
   p10 = periksaKiriman(BEN, [{ koleksi: 'penjualan', data: { id: 10, tanggal: W.tanggal, dibatalkan: true }, ada: false }], [], HAK_BEN);
+// rules v15 (owner 22 Nov 2026): kedatangan dari tablet — Penjaga laci, bentuk stafCatatMasuk (bon, bongkar 0, dariTablet, tanpa kolom koreksi owner)
+var BMT = { id: 'bm1', tanggal: W.tanggal, pemasok: 'Pemasok Contoh', caraBayar: 'utang', biayaBongkar: 0, dariTablet: true, merkList: [{ id: '1', merk: 'Angsa', jumlahKarung: 2, beratKarung: 50, totalKg: 100, hargaPerKg: 12000, subtotalHarga: 1200000 }] };
+var bmKirim = function (akun, ubahan, hak) { return periksaKiriman(akun, [{ koleksi: 'batchMasuk', data: Object.assign({}, BMT, ubahan || {}), ada: false }], [], hak || HAK_BEN); };
+ok('kiriman v15: kedatangan tablet Penjaga laci (bon, bongkar 0, dariTablet) → boleh; karyawan / tunai / ada bongkar / tanpa dariTablet / LAHIR BUKU / tanpa baris / bawa riwayat → ditolak; kisi kedatangan Ben "tidak" → ditolak',
+  !bmKirim(BEN).tolak && !!bmKirim(KRY, null, HAK_KRY).tolak && !!bmKirim(BEN, { caraBayar: 'tunai' }).tolak && !!bmKirim(BEN, { biayaBongkar: 50000 }).tolak && !!bmKirim(BEN, { dariTablet: false }).tolak
+  && !!bmKirim(BEN, { pemasok: 'LAHIR BUKU' }).tolak && !!bmKirim(BEN, { merkList: [] }).tolak && !!bmKirim(BEN, { riwayat: [] }).tolak && !!bmKirim(BEN, null, Object.assign({}, HAK_BEN, { kedatangan: 'tidak' })).tolak,
+  JSON.stringify([bmKirim(BEN), bmKirim(KRY, null, HAK_KRY)]));
+var ttKirim = function (d) { return periksaKiriman(BEN, [{ koleksi: 'persetujuan', data: Object.assign({ id: 'tt1', tindakan: 'uangKeluar', status: 'menunggu', nominal: 50000, mintaUid: BEN.uid, teks: 'x' }, d), ada: false }], [], HAK_BEN); };
+ok('kiriman v15: titipan upah bongkar (wajib batchId) & bayar bon pemasok (wajib pemasok) → boleh; tanpa batchId / tanpa pemasok → ditolak; kabar barang masuk (menunggu, batchId, atas nama sendiri) → boleh, tanpa batchId / sudah diputus / karyawan → ditolak',
+  !ttKirim({ jenis: 'bongkar', batchId: 'bm1' }).tolak && !!ttKirim({ jenis: 'bongkar' }).tolak && !ttKirim({ jenis: 'bayarBon', pemasok: 'Pemasok Contoh' }).tolak && !!ttKirim({ jenis: 'bayarBon' }).tolak
+  && !periksaKiriman(BEN, [{ koleksi: 'persetujuan', data: { id: 'kb1', tindakan: 'barangMasuk', status: 'menunggu', batchId: 'bm1', mintaUid: BEN.uid }, ada: false }], [], HAK_BEN).tolak
+  && !!periksaKiriman(BEN, [{ koleksi: 'persetujuan', data: { id: 'kb1', tindakan: 'barangMasuk', status: 'menunggu', mintaUid: BEN.uid }, ada: false }], [], HAK_BEN).tolak
+  && !!periksaKiriman(BEN, [{ koleksi: 'persetujuan', data: { id: 'kb1', tindakan: 'barangMasuk', status: 'dibaca', diputusTanggal: W.tanggal, batchId: 'bm1', mintaUid: BEN.uid }, ada: false }], [], HAK_BEN).tolak
+  && !!periksaKiriman(KRY, [{ koleksi: 'persetujuan', data: { id: 'kb1', tindakan: 'barangMasuk', status: 'menunggu', batchId: 'bm1', mintaUid: KRY.uid }, ada: false }], [], HAK_KRY).tolak,
+  JSON.stringify([ttKirim({ jenis: 'bongkar', batchId: 'bm1' }), ttKirim({ jenis: 'bayarBon', pemasok: 'Pemasok Contoh' })]));
 ok('kiriman: hapus buku bon, beli kantong (bukan "pakai"), kedatangan (Ben kisi "sendiri" → minta owner, peta §6; karyawan juga), uang keluar, HAPUS apa pun, penjualan bertanda dibatalkan — semua DITOLAK di perangkat',
   !!p4.tolak && !!p5.tolak && p6.tolak === KALIMAT_MINTA_OWNER && p7.tolak === KALIMAT_MINTA_OWNER && p8.tolak === KALIMAT_MINTA_OWNER && p9.tolak === 'Peran Karyawan tidak boleh hapus catatan' && !!p10.tolak, JSON.stringify([p4, p5, p6, p8, p9, p10]));
 var PS = { id: 'ps1', status: 'dipesan', namaPelanggan: 'Pelanggan Contoh', nilai: 90000, riwayatStatus: [], oleh: 'Owner' };
@@ -221,12 +236,12 @@ ok('SS2: tolak butuh alasan, dicatat di jejak; nonaktifkan = dua ketukan (ketuka
 
 // ---- 9b · kisi SS2 menampilkan KEBENARAN SERVER (owner 24 Sep, putaran 23c)
 var SP = ssPeran(); var sel = function (p, x) { return SP.tampil(p, x); };
-ok('kisi SS2: hitung laci (Ben) & kedatangan (Ben, karyawan) — kisi "sendiri" tapi server menutup → tampil "tertutup server" beserta sebabnya, BUKAN "boleh sendiri"; jual tunai Ben tetap "boleh sendiri"; owner selalu "boleh sendiri"',
-  sel('ben', 'hitungLaci').label === 'tertutup server' && /titik kas/.test(sel('ben', 'hitungLaci').ket) && sel('ben', 'kedatangan').label === 'tertutup server' && /harga beli/.test(sel('karyawan', 'kedatangan').ket)
+ok('kisi SS2: hitung laci (Ben) & kedatangan (karyawan) — kisi "sendiri" tapi server menutup → tampil "tertutup server" beserta sebabnya, BUKAN "boleh sendiri"; kedatangan Ben (rules v15, owner 22 Nov 2026) & jual tunai Ben "boleh sendiri"; owner selalu "boleh sendiri"',
+  sel('ben', 'hitungLaci').label === 'tertutup server' && /titik kas/.test(sel('ben', 'hitungLaci').ket) && sel('ben', 'kedatangan').label === 'boleh sendiri' && /Penjaga laci/.test(sel('karyawan', 'kedatangan').ket)
   && sel('karyawan', 'kedatangan').label === 'tertutup server' && sel('ben', 'jualTunai').label === 'boleh sendiri' && sel('owner', 'hitungLaci').label === 'boleh sendiri' && sel('karyawan', 'hitungLaci').label === 'tidak boleh', JSON.stringify([sel('ben', 'hitungLaci'), sel('karyawan', 'kedatangan')]));
 var semuaSendiri = SS_TINDAKAN.filter(function (x) { return ['ben', 'karyawan'].some(function (p) { return sel(p, x.id).label === 'boleh sendiri' && (SERVER_BUKA[x.id] || []).indexOf(p) < 0; }); });
 ok('kisi SS2: TIDAK ADA sel "boleh sendiri" yang ditutup server (semua ' + SS_TINDAKAN.length + ' tindakan × 2 peran); "minta owner" menyebut alurnya belum ada; ringkasan peran menghitung "tertutup server" terpisah',
-  semuaSendiri.length === 0 && /belum ada/.test(sel('ben', 'nego').ket) && /2 tertutup server/.test(SP.peran[1].ket) && /1 tertutup server/.test(SP.peran[2].ket), JSON.stringify([semuaSendiri.map(function (x) { return x.id; }), SP.peran[1].ket, SP.peran[2].ket]));
+  semuaSendiri.length === 0 && /belum ada/.test(sel('ben', 'nego').ket) && /1 tertutup server/.test(SP.peran[1].ket) && /1 tertutup server/.test(SP.peran[2].ket), JSON.stringify([semuaSendiri.map(function (x) { return x.id; }), SP.peran[1].ket, SP.peran[2].ket]));
 
 // ---- 10 · sambungan di firebase.js (sumber diperiksa — tidak bisa dijalankan di jsc)
 var F = SUMBER.firebase, A = SUMBER.app;

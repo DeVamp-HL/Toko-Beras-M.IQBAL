@@ -130,11 +130,12 @@ export function pasangLayarUang(akar, opsi) {
     ukUrung: async () => { const u = st().urung; if (!u) return; if (Date.now() > u.sampai) return set({ urung: null, kabar: 'Sudah lewat 90 detik — catatannya tetap. Sistem baru belum punya tombol menghapus uang keluar yang lebih lama dari 90 detik', kabarAwas: true }); await tulis(UG.susunUrungKeluar(u.daftar)); },
     // owner 21 Nov 2026: titipan dari tablet — Setujui apa adanya · Betulkan (nominal, keterangan, jenis, nama) lalu setujui · Tolak beralasan. Pesan: tandai dibaca (+ balasan).
     ukTitipan: async ({ id, setuju }) => { if (setuju === '1') { if (await tulis(UG.susunPutusTitipan(id, true, '', waktu()))) set({ ttBuka: null }); return; } set({ ttBuka: st().ttBuka && st().ttBuka.id === id && st().ttBuka.mode === 'tolak' ? null : { id, mode: 'tolak', alasan: '' } }); },
-    ukTtBetul: ({ id }) => { const b = TP.tpMenunggu().find((x) => x.id === id); if (!b) return; set({ ttBuka: st().ttBuka && st().ttBuka.id === id && st().ttBuka.mode === 'betul' ? null : { id, mode: 'betul', nominal: String(b.nominal), teks: b.teks, jenis: b.jenis, nama: b.nama } }); },
+    ukTtBetul: ({ id }) => { const b = TP.tpMenunggu().find((x) => x.id === id); if (!b) return; set({ ttBuka: st().ttBuka && st().ttBuka.id === id && st().ttBuka.mode === 'betul' ? null : { id, mode: 'betul', nominal: String(b.nominal), teks: b.teks, jenis: b.jenis, nama: b.nama, bonId: b.jenis === 'bayarBon' ? TP.tpBonPilihan(id, kini()).bawaan : '' } }); },
+    ukTtBon: ({ b }) => set({ ttBuka: Object.assign({}, st().ttBuka, { bonId: String(b) }) }),   // owner 22 Nov 2026: bayar bon lewat supir — owner memilih bonnya
     ukTtJenis: ({ j }) => set({ ttBuka: Object.assign({}, st().ttBuka, { jenis: j }) }),
     ukTtNama: ({ n }) => set({ ttBuka: Object.assign({}, st().ttBuka, { nama: n }) }),
     ukTtKetik: (v, el) => { const k = el.dataset.kolom; set({ ttBuka: Object.assign({}, st().ttBuka, { [k]: String(v).slice(0, k === 'nominal' ? 14 : k === 'balasan' ? TP.TP_BATAS.balasan : 80) }) }); },
-    ukTtSetujuBetul: async () => { const t = st().ttBuka; if (!t || t.mode !== 'betul') return; if (await tulis(UG.susunPutusTitipan(t.id, true, '', waktu(), { nominal: t.nominal, teks: t.teks, jenis: t.jenis, nama: t.nama }))) set({ ttBuka: null }); },
+    ukTtSetujuBetul: async () => { const t = st().ttBuka; if (!t || t.mode !== 'betul') return; if (await tulis(UG.susunPutusTitipan(t.id, true, '', waktu(), { nominal: t.nominal, teks: t.teks, jenis: t.jenis, nama: t.nama, bonId: t.bonId || '' }))) set({ ttBuka: null }); },
     ukTolakKetik: (v) => set({ ttBuka: Object.assign({}, st().ttBuka, { alasan: String(v).slice(0, 80) }) }),
     ukTolakKirim: async () => { const t = st().ttBuka; if (!t || t.mode !== 'tolak') return; if (await tulis(UG.susunPutusTitipan(t.id, false, t.alasan, waktu()))) set({ ttBuka: null }); },
     ukPesanBuka: ({ id }) => set({ ttBuka: st().ttBuka && st().ttBuka.id === id ? null : { id, mode: 'baca', balasan: '' } }),
@@ -428,23 +429,31 @@ export function pasangLayarUang(akar, opsi) {
   // ---------- K1 · UANG KELUAR (Pita Laci)
   // owner 21 Nov 2026: titipan uang keluar & pesan dari tablet. Titipan: laci di buku belum berkurang sampai disetujui; uangnya ditulis bertanggal
   // titipannya (saat uang keluar dari laci). Betulkan = owner mengoreksi nominal / keterangan / jenis / nama sebelum menyetujui (angka asli tetap di catatan).
+  // owner 22 Nov 2026 (paket ③): ke mana titipan barang masuk ditulis kalau disetujui apa adanya — upah bongkar → kedatangannya; bayar supir → bon bawaan
+  function tujuanTitip(t) {
+    if (t.jenis === 'bongkar') return ' · disetujui = upah bongkar kedatangan ' + (t.pemasok || '') + ' (modal barang)';
+    if (t.jenis !== 'bayarBon') return '';
+    const P = TP.tpBonPilihan(t.id, kini()); const b = P.bon.find((x) => String(x.id) === String(P.bawaan));
+    return b ? ' · disetujui = bayar bon ' + b.pemasok + ' ' + tanggalPendek(b.tanggal) + ' (sisa ' + RP(b.sisa) + ') — bon lain: Betulkan' : ' · ' + (t.pemasok || 'pemasok ini') + ' tidak punya bon yang masih bersisa';
+  }
   function gambarTitipan(s, TT) {
     const P = TP.tpMenunggu().filter((b) => b.pesan); const T = s.ttBuka || {};
     const namaKasbon = UP.aturUpah().aktif.map((o) => o.nama);
     const satu = (t) => { const buka = T.id === t.id ? T : null;
       const betul = buka && buka.mode === 'betul' ? h`<div class="tt-betul" data-k="tt-betul-${t.id}" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
-          <div class="tombol-baris rapat">${TP.TP_JENIS.map(([j, n]) => h`<div class="kaca-btn kecil ${buka.jenis === j ? 'aktif' : ''}" data-aksi="ukTtJenis" data-j="${j}">${n}</div>`)}</div>
+          <div class="tombol-baris rapat">${(t.jenis === 'bongkar' ? TP.TP_JENIS_SEMUA : TP.TP_JENIS).map(([j, n]) => h`<div class="kaca-btn kecil ${buka.jenis === j ? 'aktif' : ''}" data-aksi="ukTtJenis" data-j="${j}">${n}</div>`)}</div>
+          ${buka.jenis === 'bayarBon' ? (() => { const P = TP.tpBonPilihan(t.id, kini()); return P.bon.length ? h`<div class="tombol-baris rapat" data-k="tt-bon">${P.bon.map((x) => h`<div class="kaca-btn kecil ${String(buka.bonId || P.bawaan) === String(x.id) ? 'aktif' : ''}" data-aksi="ukTtBon" data-b="${x.id}">bon ${tanggalPendek(x.tanggal)} · sisa ${RP(x.sisa)}${String(x.id) === String(t.batchId) ? ' · kedatangan ini' : ''}</div>`)}</div>` : h`<div class="ket awas-teks">${t.pemasok || 'Pemasok ini'} tidak punya bon yang masih bersisa — ganti jenisnya atau tolak.</div>`; })() : ''}
           <div style="display: flex; gap: 6px;"><input class="ketik-nama" type="text" inputmode="numeric" placeholder="nominal" value="${buka.nominal}" data-ketik="ukTtKetik" data-kolom="nominal"><input class="ketik-nama" type="text" placeholder="keterangan" value="${buka.teks}" data-ketik="ukTtKetik" data-kolom="teks"></div>
-          ${buka.jenis !== 'toko' ? h`<div class="tombol-baris rapat" data-k="tt-nama">${namaKasbon.map((n) => h`<div class="kaca-btn kecil ${buka.nama === n ? 'aktif' : ''}" data-aksi="ukTtNama" data-n="${n}">${n}</div>`)}${buka.nama && namaKasbon.indexOf(buka.nama) < 0 ? h`<div class="kaca-btn kecil aktif">${buka.nama} (dari tablet)</div>` : ''}</div>` : ''}
+          ${buka.jenis === 'kasbon' || buka.jenis === 'karyawan' ? h`<div class="tombol-baris rapat" data-k="tt-nama">${namaKasbon.map((n) => h`<div class="kaca-btn kecil ${buka.nama === n ? 'aktif' : ''}" data-aksi="ukTtNama" data-n="${n}">${n}</div>`)}${buka.nama && namaKasbon.indexOf(buka.nama) < 0 ? h`<div class="kaca-btn kecil aktif">${buka.nama} (dari tablet)</div>` : ''}</div>` : ''}
           <div class="kaca-btn aktif emas" data-aksi="ukTtSetujuBetul">Setujui dengan betulan</div></div>` : '';
       const tolak = buka && buka.mode === 'tolak' ? h`<div style="display: flex; gap: 6px; margin-top: 4px;"><input class="ketik-nama" type="text" placeholder="alasan menolak" value="${buka.alasan}" data-ketik="ukTolakKetik"><div class="kaca-btn kecil awas" data-aksi="ukTolakKirim">tolak</div></div>` : '';
-      return h`<div class="ug-baris dua tunggu" data-k="tt-${t.id}"><div style="min-width: 0;"><div>${t.oleh} · ${t.namaJenis}${t.nama ? ' · ' + t.nama : ''}${t.teks ? ' · ' + t.teks : ''} · <b>${RP(t.n)}</b></div>
-          <div class="k2">${tanggalPendek(t.tanggal)} ${t.jam} · dari tablet · laci</div>${tolak}${betul}</div>
+      return h`<div class="ug-baris dua tunggu" data-k="tt-${t.id}"><div style="min-width: 0;"><div>${t.oleh} · ${t.namaJenis}${t.nama ? ' · ' + t.nama : ''}${t.pemasok && (t.teks || '').indexOf(t.pemasok) < 0 ? ' · ' + t.pemasok : ''}${t.teks ? ' · ' + t.teks : ''} · <b>${RP(t.n)}</b></div>
+          <div class="k2">${tanggalPendek(t.tanggal)} ${t.jam} · dari tablet · laci${tujuanTitip(t)}</div>${tolak}${betul}</div>
         <div style="display: flex; gap: 6px; align-items: flex-start;"><div class="kaca-btn kecil" data-aksi="ukTitipan" data-id="${t.id}" data-setuju="0">Tolak</div><div class="kaca-btn kecil" data-aksi="ukTtBetul" data-id="${t.id}">Betulkan</div><div class="kaca-btn kecil aktif" data-aksi="ukTitipan" data-id="${t.id}" data-setuju="1">Setujui</div></div></div>`; };
     const pesan = (p) => { const buka = T.id === p.id && T.mode === 'baca' ? T : null;
-      return h`<div class="ug-baris dua tunggu" data-k="ps-${p.id}"><div style="min-width: 0;"><div>${p.dari}: ${p.teks}</div><div class="k2">${tanggalPendek(p.tanggal)} ${p.jam} · pesan dari tablet</div>
+      return h`<div class="ug-baris dua tunggu" data-k="ps-${p.id}"><div style="min-width: 0;"><div>${p.kabar ? h`<b>Barang masuk</b> · ${p.dari}: ${p.teks}` : h`${p.dari}: ${p.teks}`}</div><div class="k2">${tanggalPendek(p.tanggal)} ${p.jam} · ${p.kabar ? 'kabar dari tablet — harga & jumlah bisa dibetulkan di Stok › Barang masuk (koreksi kedatangan)' : 'pesan dari tablet'}</div>
           ${buka ? h`<div style="display: flex; gap: 6px; margin-top: 4px;"><input class="ketik-nama" type="text" placeholder="balasan singkat (boleh kosong)" value="${buka.balasan}" data-ketik="ukTtKetik" data-kolom="balasan"></div>` : ''}</div>
-        <div style="display: flex; gap: 6px; align-items: flex-start;">${buka ? '' : h`<div class="kaca-btn kecil" data-aksi="ukPesanBuka" data-id="${p.id}">Balas</div>`}<div class="kaca-btn kecil aktif" data-aksi="ukPesanBaca" data-id="${p.id}">${buka && buka.balasan ? 'Kirim & tandai dibaca' : 'Tandai dibaca'}</div></div></div>`; };
+        <div style="display: flex; gap: 6px; align-items: flex-start;">${buka ? '' : h`<div class="kaca-btn kecil" data-aksi="ukPesanBuka" data-id="${p.id}">Balas</div>`}<div class="kaca-btn kecil aktif" data-aksi="ukPesanBaca" data-id="${p.id}">${buka && buka.balasan ? 'Kirim & tandai ' + (p.kabar ? 'diperiksa' : 'dibaca') : p.kabar ? 'Sudah diperiksa' : 'Tandai dibaca'}</div></div></div>`; };
     return h`${TT.length ? h`<div class="label" data-k="tt-judul">${TT.length} titipan dari tablet menunggu · ${RP(TT.reduce((a, t) => a + t.n, 0))} — laci di buku belum berkurang</div>${TT.map(satu)}` : ''}
       ${P.length ? h`<div class="label" data-k="ps-judul">${P.length} pesan dari tablet</div>${P.map(pesan)}` : ''}`;
   }

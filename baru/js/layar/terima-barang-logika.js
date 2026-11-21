@@ -61,6 +61,8 @@ export function tbmData(batch, bayar) {
     const cocok = rinci.length > 0 && rinci.reduce((a, x) => a + x.nominal, 0) === dibayar;
     hasil = { keadaan: dibayar <= 0 ? 'belum' : dibayar >= nilai ? 'lunas' : 'sebagian', dibayar, sisa: nilai - dibayar, rinci: cocok ? rinci : [] };
   }
+  // owner 22 Nov 2026 (paket ③): uang yang dibayar ke supir lewat titipan tablet (belum / tidak terbaca di buku bon perangkat ini) — disebut apa adanya
+  hasil.titipSupir = bon ? Math.max(0, Math.round(bil(B.titipSupir))) : 0;
   return { no: tbmNomor(batch), tanggal: String(batch.tanggal || ''), jam: String(batch.jam || ''), pemasok: String(batch.pemasok || '').trim(), baris, jumlah, nilai, bon, bayar: hasil };
 }
 
@@ -68,7 +70,7 @@ export function tbmData(batch, bayar) {
 export function tbmKalimatBayar(d) {
   const b = d.bayar;
   if (b.keadaan === 'tunai') return 'tunai, lunas';
-  if (b.keadaan === 'takTerbaca') return 'bon, angka bayarnya tidak terbaca di akun ini';
+  if (b.keadaan === 'takTerbaca') return b.titipSupir > 0 ? 'bon, dibayar ke supir ' + RP(b.titipSupir) + ' (titipan ke owner)' : 'bon, angka bayarnya tidak terbaca di akun ini';
   if (b.keadaan === 'belum') return 'bon, belum dibayar';
   if (b.keadaan === 'lunas') return 'bon, sudah lunas';
   return 'bon, sudah dibayar ' + RP(b.dibayar) + ', sisa ' + RP(b.sisa);
@@ -97,11 +99,14 @@ export function tbmGaris(d, kop, lembar, dicetak) {
   g.push({ garis: true });
   const y = d.bayar;
   if (y.keadaan === 'tunai') { b('Cara bayar', 'TUNAI'); b('DIBAYAR', RP(d.nilai), { tebal: true }); b('Sisa', 'LUNAS', { tebal: true }); }
-  else if (y.keadaan === 'takTerbaca') { b('Cara bayar', 'BON'); b('Dibayar: Rp', TITIK); b('Sisa: Rp', TITIK); b('Angka bayar ditulis tangan, diparaf toko dan supir.'); }
+  else if (y.keadaan === 'takTerbaca') { b('Cara bayar', 'BON');
+    if (y.titipSupir > 0) { b('Dibayar ke supir', RP(y.titipSupir), { tebal: true }); b('Sisa: Rp', TITIK); b('Bayar ke supir dicatat ke bon oleh pemilik toko. Sisa ditulis tangan, diparaf toko dan supir.'); }
+    else { b('Dibayar: Rp', TITIK); b('Sisa: Rp', TITIK); b('Angka bayar ditulis tangan, diparaf toko dan supir.'); } }
   else {
     b('Cara bayar', y.keadaan === 'sebagian' ? 'BON, dibayar sebagian' : 'BON');
     y.rinci.forEach((x) => b('Bayar ' + (x.tanggal ? tanggalPendek(x.tanggal) : 'tanpa tanggal'), RP(x.nominal)));
     if (y.rinci.length !== 1) b('Sudah dibayar', RP(y.dibayar));
+    if (y.titipSupir > 0) b('Dibayar ke supir (belum dicatat)', RP(y.titipSupir));
     b('SISA BON', y.keadaan === 'lunas' ? 'LUNAS' : RP(y.sisa), { tebal: true });
   }
   if (C.tanggal) b('Keadaan per ' + tanggalPendek(C.tanggal) + (C.jam ? ' ' + C.jam : '') + (C.oleh ? ', dicetak ' + C.oleh : ''));

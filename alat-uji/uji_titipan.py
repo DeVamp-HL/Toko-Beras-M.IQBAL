@@ -40,6 +40,11 @@ var __DB = { persetujuan: [], harian: [], kasbon: [] }; var __KUNCI = '';
 function cacheMentah(n) { return __DB[n === 'persetujuan' ? 'persetujuan' : n] || []; }
 function ambilPengeluaranHarian() { return __DB.harian; } function ambilKasbonMutasi() { return __DB.kasbon; }
 function tolakKunciTanggal(t) { return __KUNCI && String(t || '').slice(0, 7) <= __KUNCI ? 'bulan ' + String(t).slice(0, 7) + ' sudah dikunci' : ''; }
+// v15 (barang masuk tablet): kedatangan, pembayaran bon pemasok, kunci kedatangan, kunci nama, buku bon tiruan (hitungBayar asli diuji di uji_masuk_tablet.py)
+function ambilSemuaBatch() { return __DB.batchMasuk || []; } function ambilUtangPemasokMutasi() { return __DB.utangPemasokMutasi || []; }
+function tolakKunci() { return ''; } function kunciPelanggan(n) { return String(n || '').trim().toLowerCase(); }
+function hitungBayar(d) { const bon = (__DB.bon || []).find((b) => String(b.id) === String(d.bonId)) || null; const n = Number(d.ketik) || 0;
+  return { B: { bon: __DB.bon || [] }, bon, n, lunas: !!bon && n === bon.sisa, tolak: !bon ? 'Pilih bon yang dibayar' : n > bon.sisa ? 'Melebihi sisa bon ini' : '' }; }
 """
 
 PEMERIKSA = r"""
@@ -164,6 +169,34 @@ cek('SW: pesan notifikasi biasa & teks polos tetap tampil berjudul', m2.judul ==
 let tampil = 0; __sw.daftar.push.forEach((f) => f({ data: { text: () => '{"data":{"judul":"x"}}' }, waitUntil: (p) => { tampil += 1; } }));
 cek('SW: tiap push menampilkan notifikasi (Safari mencabut izin situs yang diam)', tampil === 1 && __sw.tampil.length === 1 && __sw.tampil[0][0] === 'x', __sw.tampil);
 
+// ---------- v15 (owner 22 Nov 2026, barang masuk tablet): upah bongkar, bayar bon pemasok lewat supir, kabar barang masuk ----------
+__DB.batchMasuk = [{ id: 'bm1', tanggal: '2026-11-22', pemasok: 'Pemasok A', caraBayar: 'utang', biayaBongkar: 0, merkList: [], dariTablet: true }];
+__DB.bon = [{ id: 'bm1', pemasok: 'Pemasok A', tanggal: '2026-11-22', sisa: 1200000, nilai: 1200000 }, { id: 'bl0', pemasok: 'Pemasok A', tanggal: '2026-11-01', sisa: 300000, nilai: 300000 }];
+cek('v15: upah bongkar tidak bisa dipilih dari kartu (tanpa kedatangan)', /Barang masuk/.test(tpSusunMinta({ jenis: 'bongkar', nominal: '50000', teks: 'kuli' }, BEN, W).tolak || ''));
+cek('v15: bayar bon tanpa pemasok ditolak', /pemasoknya/.test(tpSusunMinta({ jenis: 'bayarBon', nominal: '50000' }, BEN, W).tolak || ''));
+const rbg = tulis(tpSusunMinta({ jenis: 'bongkar', nominal: '60000', teks: 'Upah bongkar · Pemasok A', pemasok: 'Pemasok A', batchId: 'bm1' }, BEN, W)); const tbg = rbg.dokumen[0].data;
+cek('v15: titipan upah bongkar = jenis bongkar + batchId + pemasok', tbg.jenis === 'bongkar' && tbg.batchId === 'bm1' && tbg.pemasok === 'Pemasok A', tbg);
+const rsp = tulis(tpSusunMinta({ jenis: 'bayarBon', nominal: '500.000', pemasok: 'Pemasok A', batchId: 'bm1' }, BEN, W)); const tsp = rsp.dokumen[0].data;
+cek('v15: titipan bayar bon = keterangan bawaan "Bayar lewat supir", pemasok, batchId', tsp.jenis === 'bayarBon' && tsp.teks === 'Bayar lewat supir' && tsp.pemasok === 'Pemasok A' && tsp.batchId === 'bm1', tsp);
+cek('v15: pilihan bon = bon pemasok itu yang bersisa, tertua dulu; bawaan = bon kedatangan titipan', (function () { const P = tpBonPilihan(tsp.id); return P.bawaan === 'bm1' && P.bon.length === 2 && P.bon[0].id === 'bl0'; })(), tpBonPilihan(tsp.id));
+const pbg = tpSusunPutus(tbg.id, 'setuju', {}, W);
+cek('v15: setujui upah bongkar = kedatangannya diubah (biayaBongkar 60.000, bongkarTitipan berisi titipan, riwayat), tanpa dokumen uang lain', pbg.dokumen && pbg.dokumen.length === 2 && pbg.dokumen[1].koleksi === 'batchMasuk' && pbg.dokumen[1].data.biayaBongkar === 60000 && pbg.dokumen[1].data.bongkarTitipan[0] === tbg.id && /upah bongkar/.test(JSON.stringify(pbg.dokumen[1].data.riwayat)), pbg);
+tulis(pbg);
+cek('v15: upah bongkar yang sudah ditulis tidak ditulis dua kali', (function () { const m = __DB.persetujuan.find((x) => x.id === tbg.id); m.status = 'menunggu'; const x = tpSusunPutus(tbg.id, 'setuju', {}, W); m.status = 'disetujui'; return /dua kali/.test(x.tolak || ''); })());
+cek('v15: upah bongkar yang kedatangannya sudah dihapus → ditolak, disuruh betulkan jenis', (function () { const x = tpSusunMinta({ jenis: 'bongkar', nominal: '1000', teks: 'u', pemasok: 'Pemasok A', batchId: 'hilang' }, BEN, W); tulis(x); return /sudah tidak ada/.test(tpSusunPutus(x.dokumen[0].data.id, 'setuju', {}, W).tolak || ''); })());
+const psp = tpSusunPutus(tsp.id, 'setuju', {}, W);
+cek('v15: setujui bayar supir apa adanya = bayar bon kedatangan itu, dari laci, bertanggal titipan, menunjuk titipan; titipan mencatat bonnya', psp.dokumen && psp.dokumen[1].koleksi === 'utangPemasokMutasi' && psp.dokumen[1].data.bonId === 'bm1' && psp.dokumen[1].data.dari === 'laci' && psp.dokumen[1].data.tipe === 'bayar' && psp.dokumen[1].data.nominal === 500000 && psp.dokumen[1].data.tanggal === tsp.tanggal && psp.dokumen[1].data.dariPersetujuan === tsp.id && psp.dokumen[0].data.bonId === 'bm1', psp);
+cek('v15: owner memilih bon lama tapi melebihi sisanya → ditolak (satu pembayaran satu bon)', /Melebihi/.test(tpSusunPutus(tsp.id, 'setuju', { bonId: 'bl0' }, W).tolak || ''));
+const psp3 = tpSusunPutus(tsp.id, 'setuju', { bonId: 'bl0', nominal: '300000' }, W);
+cek('v15: owner memilih bon lama + betulkan nominal = bayar bon lama, tercatat betulan owner (angka asli tersimpan)', psp3.dokumen && psp3.dokumen[1].data.bonId === 'bl0' && psp3.dokumen[1].data.nominal === 300000 && psp3.dokumen[0].data.koreksiOwner === true && psp3.dokumen[0].data.nominalAsli === 500000, psp3);
+cek('v15: bon pemasok lain tidak bisa dipilih', /bukan bon/.test(tpSusunPutus(tsp.id, 'setuju', { bonId: 'zz' }, W).tolak || ''));
+const kbm = tpDokKabarMasuk({ batchId: 'bm1', pemasok: 'Pemasok A', teks: 'Pemasok A · 2 karung', nominal: 1200000, hargaBeda: [{ merk: 'Angsa', harga: 12500, lalu: 12000 }] }, BEN, W).data; tulis({ dokumen: [{ koleksi: 'persetujuan', data: kbm }] });
+cek('v15: kabar barang masuk = bentuk rules v15 (barangMasuk, menunggu, batchId, atas nama penulis, tanpa keputusan)', kbm.tindakan === 'barangMasuk' && kbm.status === 'menunggu' && kbm.batchId === 'bm1' && kbm.mintaUid === BEN.uid && !KUNCI_PUTUS.some((k) => k in kbm), kbm);
+cek('v15: kabar tampil di daftar owner seperti pesan (bukan uang) dan tidak ikut titipan laci', tpMenunggu().some((b) => b.id === kbm.id && b.pesan && b.kabar) && tpMenungguSampai('2026-11-22').n === tpMenunggu().filter((b) => !b.pesan).length);
+cek('v15: kabar hanya ditandai diperiksa; setuju ditolak', /diperiksa/.test(tpSusunPutus(kbm.id, 'setuju', {}, W).tolak || '') && tpSusunPutus(kbm.id, 'dibaca', {}, W).dokumen[0].data.status === 'dibaca');
+const nb = P.pesanNotif({ tindakan: 'uangKeluar', status: 'menunggu', jenis: 'bongkar', teks: 'Upah bongkar · Pemasok A', nominal: 60000, dari: 'Penjaga A' }, 'x9'); const nk = P.pesanNotif(kbm, 'x10');
+cek('v15: push upah bongkar berjudul jenisnya (bukan "Belanja toko"); kabar barang masuk → layar uang', /Upah bongkar/.test(nb.isi) && !/Belanja toko/.test(nb.isi) && /Barang masuk/.test(nk.judul) && nk.layar === 'uang', [nb, nk]);
+
 // ---------- dukungan perangkat (notif-hp.js) ----------
 const W0 = (o) => Object.assign({ isSecureContext: true, PushManager: function () {}, Notification: function () {}, matchMedia: () => ({ matches: false }) }, o || {});
 const iphone = { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', serviceWorker: {}, standalone: false };
@@ -211,15 +244,17 @@ def jalankan(t):
 def periksa_statis(t):
     h = []
     def ok(nama, benar, ket=''): h.append({'nama': 'statis: ' + nama, 'ok': bool(benar), 'ket': ket})
-    ok('titipan-logika hanya membaca data (impor data/toko + format), tanpa penulis', re.findall(r"^import\s[^;]*;", t[TPL], flags=re.M) == [
-        "import { cacheMentah, ambilPengeluaranHarian, ambilKasbonMutasi, tolakKunciTanggal } from '../data/toko.js';", "import { RP, tanggalPendek } from '../inti/format.js';"])
+    ok('titipan-logika hanya membaca data (impor data/toko + kunci nama + format + hitungan bayar bon), tanpa penulis', re.findall(r"^import\s[^;]*;", t[TPL], flags=re.M) == [
+        "import { cacheMentah, ambilPengeluaranHarian, ambilKasbonMutasi, ambilSemuaBatch, ambilUtangPemasokMutasi, tolakKunci, tolakKunciTanggal } from '../data/toko.js';",
+        "import { kunciPelanggan } from '../mesin/pembantu.js';", "import { RP, tanggalPendek } from '../inti/format.js';", "import { hitungBayar } from './bon-pemasok-logika.js';"])
     ok('panel tablet tidak menulis dokumen uang (hanya lewat tpSusunMinta / tpSusunPesan)', not re.search(r"koleksi: '(pengeluaranHarian|kasbonMutasi)'", t[TPP]) and 'TP.tpSusunMinta(d, ak(), waktu())' in t[TPP] and 'TP.tpSusunPesan(d.pesan, ak(), waktu())' in t[TPP])
     ok('kisi uangKeluar "tidak boleh" → tombol mati di tablet', "const hak = hakAkun(a, 'uangKeluar');" in t[TPP] and "hak === 'tidak'" in t[TPP])
     ok('Uang memutus lewat titipan-logika (satu pintu)', "return tpSusunPutus(id, setuju ? 'setuju' : 'tolak', setuju ? (isi || {}) : { alasan }, w);" in t[UG])
-    ok('papan Persetujuan memutus titipan & pesan lewat pintu yang SAMA', "if (m.tindakan === TP_TINDAKAN) return tpSusunPutus(id, setuju ? 'setuju' : 'tolak', setuju ? {} : { alasan }, w);" in t[SL] and "if (m.tindakan === TP_PESAN) return tpSusunPutus(id, 'dibaca', { balasan: alasan }, w);" in t[SL])
+    ok('papan Persetujuan memutus titipan & pesan lewat pintu yang SAMA', "if (m.tindakan === TP_TINDAKAN) return tpSusunPutus(id, setuju ? 'setuju' : 'tolak', setuju ? {} : { alasan }, w);" in t[SL] and "if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR) return tpSusunPutus(id, 'dibaca', { balasan: alasan }, w);" in t[SL])
     ok('setujui sekaligus mengirim SEMUA dokumen tiap putusan (bukan hanya yang pertama)', 'if (r.dokumen) r.dokumen.forEach((x) => dokumen.push(x));' in t[SL] and 'dokumen.push(r.dokumen[0])' not in t[SL])
-    ok('pesan tidak ikut setujui sekaligus', "if (m.tindakan === TP_PESAN) Object.assign(b, { n: 0, sekaligus: false });" in t[SL])
-    ok('penjaga kiriman akses.js: bentuk titipan & pesan = rules v13', "['toko', 'karyawan', 'kasbon'].indexOf(d.jenis) < 0" in t[AK] and 'd.teks.length > 500' in t[AK])
+    ok('pesan & kabar barang masuk tidak ikut setujui sekaligus', "if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR) Object.assign(b, { n: 0, sekaligus: false });" in t[SL])
+    ok('penjaga kiriman akses.js: bentuk titipan & pesan = rules v13 + v15 (jenis = JENIS_TITIPAN, bongkar wajib batchId, bayarBon wajib pemasok)', "JENIS_TITIPAN.indexOf(d.jenis) < 0" in t[AK] and 'd.teks.length > 500' in t[AK]
+       and "(d.jenis === 'bongkar' && !(typeof d.batchId === 'string' && d.batchId.length > 0))" in t[AK] and "export const JENIS_TITIPAN = ['toko', 'karyawan', 'kasbon', 'bongkar', 'bayarBon'];" in t[AK])
     ok('tutup hari menyebut titipan menunggu (rekap & layar)', 'titipan: tpMenungguSampai(iso),' in t[TH] and "'Titipan uang keluar tablet BELUM diputus · '" in t[TH] and t[UJ].count('data-k="k5-titipan"') == 3)
     ok('kartu tablet paling atas di Menu akun tablet', "${kartuTitipan(s, { akun: akunM, orang, kiniIso: hariIniIso(kini()) })}\n      <div class=\"kartu\" data-k=\"staf-akun\"" in t[MN])
     ok('Uang owner: Setujui / Betulkan / Tolak + pesan dibaca', all(x in t[UJ] for x in ('data-aksi="ukTtBetul"', 'data-aksi="ukTtSetujuBetul"', 'data-aksi="ukPesanBaca"', '${gambarTitipan(s, TT)}')))
@@ -260,7 +295,7 @@ def periksa(t, diam=False):
 
 MUTASI = [
     ('uang ditanggali hari disetujui', TPL, "const tgl = String(m.tanggal || w.tanggal); const jam = String(m.jam || w.jam);", "const tgl = String(w.tanggal); const jam = String(w.jam);"),
-    ('kasbon ditulis sebagai biaya toko', TPL, "  if (jenis === 'kasbon') uang = {", "  if (false) uang = {"),
+    ('kasbon ditulis sebagai biaya toko', TPL, "  } else if (jenis === 'kasbon') {\n    uang = {", "  } else if (false) {\n    uang = {"),   # v15: cabang kasbon sesudah bongkar & bayarBon
     ('menyetujui tanpa menulis uangnya', TPL, "  return { dokumen: [{ koleksi: 'persetujuan', data: baru }, uang],", "  return { dokumen: [{ koleksi: 'persetujuan', data: baru }],"),
     ('penjaga dobel dicabut', TPL, "  if (sudahDitulis(m.id)) return", "  if (false) return"),
     ('bulan terkunci tidak diperiksa', TPL, "const kunci = tolakKunciTanggal(tgl, ''); if (kunci)", "const kunci = ''; if (kunci)"),
@@ -269,7 +304,7 @@ MUTASI = [
     ('titipan dikirim dua kali', TPL, "  if (ada) return { tolak: 'Titipan yang sama", "  if (false) return { tolak: 'Titipan yang sama"),
     ('nominal pecahan diterima', TPL, "  if (!/^\\d+$/.test(t)) return NaN;", "  if (!/^[\\d,]+$/.test(t)) return NaN; return Number(t.replace(',', '.'));"),
     ('titipan lama tanpa jenis ditolak', TPL, "export const tpJenis = (m) => (m && m.jenis ? String(m.jenis) : 'toko');", "export const tpJenis = (m) => (m && m.jenis ? String(m.jenis) : '');"),
-    ('pesan bisa disetujui seperti uang', TPL, "    if (keputusan !== 'dibaca') return { tolak: 'Pesan hanya ditandai dibaca", "    if (false) return { tolak: 'Pesan hanya ditandai dibaca"),
+    ('pesan bisa disetujui seperti uang', TPL, "    if (keputusan !== 'dibaca') return { tolak: kabar ?", "    if (false) return { tolak: kabar ?"),   # v15: pesan & kabar barang masuk satu cabang
     ('pesan tanpa batas panjang', TPL, "  if (t.length > TP_BATAS.pesan) return", "  if (false) return"),
     ('daftar tablet memuat milik akun lain', TPL, "const milik = (m, akun) => !!akun && String(m.mintaUid || '') === String(akun.uid || '');", "const milik = (m, akun) => !!akun;"),
     ('tutup hari menghitung titipan yang sudah diputus', TPL, "  const x = cacheMentah('persetujuan').filter((m) => m.tindakan === TP_TINDAKAN && (m.status || 'menunggu') === 'menunggu' && (!iso", "  const x = cacheMentah('persetujuan').filter((m) => m.tindakan === TP_TINDAKAN && (!iso"),

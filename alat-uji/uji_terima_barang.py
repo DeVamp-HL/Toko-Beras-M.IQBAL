@@ -184,7 +184,7 @@ def periksa_statis(t):
     ok('logika hanya mengimpor format (tanpa data toko, tanpa penulis)', re.findall(r"^import\s[^;]*;", lg, flags=re.M) == ["import { RP, KG, DESIMAL, tanggalPendek } from '../inti/format.js';"])
     ok('panel TIDAK menulis ke buku (tanpa tulisDokumen / hapusDokumen / tulisBertahap)', not re.search(r'tulisDokumen|hapusDokumen|tulisBertahap|\btulis\(', pn))
     ok('pembayaran pemasok dibaca hanya bila akun ini membacanya', "const KOLEKSI_BAYAR = 'utangPemasokMutasi';" in pn and "const terbaca = akunMembaca(akun, KOLEKSI_BAYAR); const bb = terbaca ? C.ckBayarBon(batch) : null;" in pn)
-    ok('angka "sudah dibayar" = angka buku utang pemasok (mesin), bukan hitungan sendiri', "TBM.tbmData(batch, { terbaca, dibayar: bb ? bb.dibayarMesin : 0, rinci: bb ? bb.bayar : [] })" in pn)
+    ok('angka "sudah dibayar" = angka buku utang pemasok (mesin), bukan hitungan sendiri', "TBM.tbmData(batch, { terbaca, dibayar: bb ? bb.dibayarMesin : 0, rinci: bb ? bb.bayar : [], titipSupir: titipSupir(batch, terbaca) })" in pn)
     ok('akunMembaca: owner ya; selain owner hanya koleksi yang dibuka server', "export const akunMembaca = (akun, koleksi) => !bukanOwner(akun) || BACA_STAF.indexOf(koleksi) >= 0;" in al)
     m = re.search(r"export const BACA_STAF = \[(.*?)\];", ak, flags=re.S)
     ok('pembayaran pemasok memang belum dibuka untuk akun bukan-owner (kalau dibuka: lembar tablet otomatis memuat angkanya — perbarui uji ini)', bool(m) and 'utangPemasokMutasi' not in m.group(1))
