@@ -25,6 +25,7 @@ AJ = 'baru/js/layar/antar-logika.js'; JL = 'baru/js/layar/jual-logika.js'; AK = 
 RT = 'baru/js/layar/retur-logika.js'; LP = 'baru/js/layar/laporan-logika.js'; TH = 'baru/js/layar/tutup-hari-logika.js'; PL = 'baru/js/layar/pelanggan-logika.js'
 MODUL = [m for m in uji_faktur.MODUL if m != AJ] + [AJ]
 MODUL_LP = [m for m in uji_laporan_baru.MODUL if m != AJ] + [AJ]
+MODUL_LP = MODUL_LP + [m for m in ['baru/js/layar/titipan-logika.js'] if m not in MODUL_LP]   # owner 21 Nov 2026: tutup hari menyebut titipan tablet
 SUMBER = {'jual': 'baru/js/layar/jual.js', 'panel': 'baru/js/layar/antar-panel.js', 'app': 'baru/js/app.js', 'index': 'baru/index.html', 'pages': '.github/workflows/pages.yml',
           'rules': 'firestore.rules', 'koleksi': 'baru/js/data/koleksi.js', 'firebase': 'baru/js/data/firebase.js', 'akses': AK, 'antar': AJ, 'pelanggan': 'baru/js/layar/pelanggan.js',
           'dasbor': 'baru/js/layar/dasbor.js', 'dasborL': 'baru/js/layar/dasbor-logika.js', 'uang': 'baru/js/layar/uang.js', 'sistem': 'baru/js/layar/sistem-logika.js'}

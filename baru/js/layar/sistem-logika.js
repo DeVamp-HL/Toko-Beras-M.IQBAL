@@ -23,6 +23,8 @@ import { NG_BAWAAN, ngPeriksaMinta } from './nego-logika.js';
 import { htTeksUbah, htPasangUsul, HT_TINDAKAN } from './harga-tingkat-logika.js';
 // B2 (owner 17 Nov 2026): permintaan persetujuan bon (batas kredit terlewati) di papan Persetujuan
 import { fkTeksMinta, FK_TINDAKAN, fkSemua } from './faktur-logika.js';
+// owner 21 Nov 2026: titipan uang keluar & pesan dari tablet — papan ini memutusnya lewat pintu yang SAMA dengan Uang (tpSusunPutus menulis uangnya)
+import { tpSusunPutus, tpTeks, TP_TINDAKAN, TP_PESAN } from './titipan-logika.js';
 
 export const ssHariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const ssTambahHari = (iso, n) => new Date((ssHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
@@ -181,12 +183,14 @@ export function ssHemat(K, siap) {
 // Putaran 23c (owner 24 Sep): kisi menampilkan KEBENARAN SERVER. Kisi `sendiri` yang tidak dibuka firestore.rules v3 (akses.js SERVER_BUKA)
 // tampil "tertutup server" beserta sebabnya (peta §6) — bukan "boleh sendiri". Nilai kisi tersimpan tetap; yang berubah cuma yang digambar.
 export const SS_TERTUTUP_SERVER = { hargaPelanggan: 'setelan harga hanya ditulis owner — "boleh sendiri" tetap jadi usul ke owner', hitungLaci: 'menutup hari menimpa titik kas (angka uang yang sudah tercatat) — owner saja sampai ada alur persetujuan',
-  kedatangan: 'kedatangan wajib harga beli, padahal harga beli tidak boleh untuk peran ini — owner saja sampai ada draf kedatangan tanpa harga' };
+  kedatangan: 'kedatangan wajib harga beli, padahal harga beli tidak boleh untuk peran ini — owner saja sampai ada draf kedatangan tanpa harga',
+  uangKeluar: 'uang keluar dari tablet selalu jadi TITIPAN ke owner (rules v13) — laci di buku berkurang sesudah owner menyetujui' };
 export const SS_LABEL_TAMPIL = { sendiri: 'boleh sendiri', server: 'tertutup server', owner: 'minta owner', tidak: 'tidak boleh' };
 export function ssHakServer(peran, tindakan, nilai) {
   if (peran === 'owner') return { nilai, label: SS_LABEL_TAMPIL[nilai], ket: '' };
   if (nilai === 'sendiri' && (SERVER_BUKA[tindakan] || []).indexOf(peran) < 0) return { nilai: 'server', label: SS_LABEL_TAMPIL.server, ket: SS_TERTUTUP_SERVER[tindakan] || 'server belum membuka tindakan ini untuk peran ini' };
   if (nilai === 'owner' && tindakan === HT_TINDAKAN) return { nilai, label: SS_LABEL_TAMPIL.owner, ket: 'usul ke owner lewat papan Persetujuan — berlaku sesudah owner setujui' };   // B1 (owner 16 Nov 2026), rules v8
+  if (nilai === 'owner' && tindakan === 'uangKeluar') return { nilai, label: SS_LABEL_TAMPIL.owner, ket: 'titipan dari tablet (kartu "Uang keluar & pesan" di Menu akun tablet) — owner menyetujui, membetulkan, atau menolak di Uang / papan Persetujuan' };   // owner 21 Nov 2026, rules v13
   if (nilai === 'owner') return { nilai, label: SS_LABEL_TAMPIL.owner, ket: 'alur persetujuannya belum ada — sampai itu dibangun, server menutupnya' };
   return { nilai, label: SS_LABEL_TAMPIL[nilai] || nilai, ket: '' };
 }
@@ -247,17 +251,23 @@ export function ssPersetujuan(kini) {
   const semua = cacheMentah('persetujuan').slice().sort(ssUrutTerbaru); const P = ssPeran();
   // B2 (owner 17 Nov 2026): permintaan BON lewat batas kredit — kalimatnya dihitung ulang dari buku bon sekarang (fkTeksMinta), tindakan kisinya = jualBon
   const tKisi = (m) => (m.tindakan === FK_TINDAKAN ? 'jualBon' : m.tindakan);
-  const baris = (m) => { const Q = m.tindakan === 'nego' ? ngPeriksaMinta(m) : null; const HU = m.tindakan === HT_TINDAKAN ? htTeksUbah(m.ubah) : null; const KR = m.tindakan === FK_TINDAKAN ? fkTeksMinta(m) : null; return { id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: KR !== null ? 'Bon melewati batas kredit' : (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: KR !== null ? 'Jual' : (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,
+  const baris = (m) => { const Q = m.tindakan === 'nego' ? ngPeriksaMinta(m) : null; const HU = m.tindakan === HT_TINDAKAN ? htTeksUbah(m.ubah) : null; const KR = m.tindakan === FK_TINDAKAN ? fkTeksMinta(m) : null; return { id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: KR !== null ? 'Bon melewati batas kredit' : m.tindakan === TP_PESAN ? 'Pesan untuk owner' : (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: KR !== null ? 'Jual' : m.tindakan === TP_PESAN ? 'Pesan' : (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,
     // sanggahan rules 7 Okt: permintaan NEGO tidak pernah ikut "setujui semua yang kecil" — rules tidak mengikat nominal / batas / alasan kiriman staf ke harga
     // barang, jadi owner melihatnya satu per satu; teks & angkanya dihitung ulang di sini (ngPeriksaMinta: barang, hargaMinta, jumlah + harga katalog sekarang)
     sekaligus: m.tindakan !== 'nego' && m.tindakan !== HT_TINDAKAN && m.tindakan !== FK_TINDAKAN,   // B1: usul harga pelanggan · B2: permintaan bon — dilihat satu per satu (kalimatnya dihitung ulang)
     teks: Q ? Q.teks : HU !== null ? HU : KR !== null ? KR : m.teks || '', n: Q ? Q.nominal || 0 : HU !== null ? 0 : Number(m.nominal) || 0, tanggal: m.tanggal || '', jam: m.jam || '', status: m.status || 'menunggu', alasanTolak: m.alasanTolak || '', diputusTanggal: m.diputusTanggal || '',
-    saran: m.tindakan && P.hak(m.peran || 'karyawan', tKisi(m)) === 'tidak' ? 'Peran ' + (m.dari || 'ini') + ' sebenarnya TIDAK BOLEH untuk ini — kalau sering, ubah haknya' : 'Menurut kisi hak, ini memang minta owner' }; };
-  const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(baris); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(baris).slice(0, 20);
+    saran: m.tindakan === TP_PESAN ? 'Pesan dari tablet — tandai dibaca, boleh dengan balasan singkat' : m.tindakan && P.hak(m.peran || 'karyawan', tKisi(m)) === 'tidak' ? 'Peran ' + (m.dari || 'ini') + ' sebenarnya TIDAK BOLEH untuk ini — kalau sering, ubah haknya' : 'Menurut kisi hak, ini memang minta owner' }; };
+  // owner 21 Nov 2026: titipan uang keluar → kalimat titipan (jenis · keterangan · nama · rupiah); pesan → bukan uang (n 0), tidak pernah ikut "setujui sekaligus"
+  const barisTP = (m) => { const b = baris(m); if (m.tindakan === TP_TINDAKAN) b.teks = tpTeks(m); if (m.tindakan === TP_PESAN) Object.assign(b, { n: 0, sekaligus: false });
+    return Object.assign(b, { pesan: m.tindakan === TP_PESAN, balasan: m.balasan || '' }); };
+  const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(barisTP); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(barisTP).slice(0, 20);
   return { menunggu, riwayat, kecil: menunggu.filter((m) => m.sekaligus && m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
 }
 export function susunPutusPersetujuan(id, setuju, alasan, w) {
   const m = cacheMentah('persetujuan').find((x) => String(x.id) === String(id)); if (!m) return { tolak: 'Permintaannya tidak ditemukan' }; if (m.status && m.status !== 'menunggu') return { tolak: 'Sudah diputus ' + (m.diputusTanggal ? tanggalPendek(m.diputusTanggal) : '') };
+  // owner 21 Nov 2026: titipan uang keluar → uangnya ditulis di kiriman yang sama; pesan → ditandai dibaca (alasan = balasan). Dulu titipan hanya ditandai disetujui.
+  if (m.tindakan === TP_TINDAKAN) return tpSusunPutus(id, setuju ? 'setuju' : 'tolak', setuju ? {} : { alasan }, w);
+  if (m.tindakan === TP_PESAN) return tpSusunPutus(id, 'dibaca', { balasan: alasan }, w);
   if (!setuju && ssKosong(alasan)) return { tolak: 'Menolak butuh alasan — supaya ' + (m.dari || 'peminta') + ' tahu sebabnya' };
   // B1 (owner 16 Nov 2026): menyetujui usul harga pelanggan = memasang ubahannya ke setelan SEKARANG di kiriman yang sama (dihitung ulang, bukan teks kiriman)
   const HP = setuju && m.tindakan === HT_TINDAKAN ? htPasangUsul(m, w) : null; if (HP && HP.tolak) return { tolak: HP.tolak };
@@ -267,8 +277,11 @@ export function susunPutusPersetujuan(id, setuju, alasan, w) {
 export function susunSetujuiKecil(w) {
   const P = ssPersetujuan(new Date(w.kini)); const kecil = P.menunggu.filter((m) => m.sekaligus && m.n <= P.batas); const nSatu = P.menunggu.filter((m) => !m.sekaligus).length;
   if (!kecil.length) return { tolak: P.menunggu.length ? 'Semua permintaan di atas batas "sekaligus" (' + RP(P.batas) + ')' + (nSatu ? ' atau permintaan nego' : '') + ' — setujui satu per satu' : 'Tidak ada yang menunggu' };
-  const dokumen = []; kecil.forEach((m) => { const r = susunPutusPersetujuan(m.id, true, '', w); if (r.dokumen) dokumen.push(r.dokumen[0]); });
-  return { dokumen, patch: { kabar: kecil.length + ' permintaan kecil (≤ ' + RP(P.batas) + ') disetujui sekaligus' + (P.menunggu.length - kecil.length - nSatu ? '; ' + (P.menunggu.length - kecil.length - nSatu) + ' yang besar masih menunggu' : '') + (nSatu ? '; ' + nSatu + ' permintaan nego dilihat satu per satu (angkanya dihitung ulang dari harga katalog)' : ''), kabarAwas: false } };
+  // owner 21 Nov 2026: SEMUA dokumen tiap putusan ikut (titipan uang = persetujuan + uangnya — dulu hanya dokumen pertama, uangnya hilang);
+  // yang tidak bisa diputus (mis. bulan terkunci) dilewati dan disebut
+  const dokumen = []; const lewat = []; kecil.forEach((m) => { const r = susunPutusPersetujuan(m.id, true, '', w); if (r.dokumen) r.dokumen.forEach((x) => dokumen.push(x)); else lewat.push((m.dari || '?') + ': ' + (r.tolak || 'tidak bisa')); });
+  if (!dokumen.length) return { tolak: 'Tidak ada yang bisa disetujui sekaligus — ' + lewat.join(' · ') };
+  return { dokumen, patch: { kabar: (kecil.length - lewat.length) + ' permintaan kecil (≤ ' + RP(P.batas) + ') disetujui sekaligus' + (P.menunggu.length - kecil.length - nSatu ? '; ' + (P.menunggu.length - kecil.length - nSatu) + ' yang besar masih menunggu' : '') + (nSatu ? '; ' + nSatu + ' permintaan nego dilihat satu per satu (angkanya dihitung ulang dari harga katalog)' : '') + (lewat.length ? '; dilewati: ' + lewat.join(' · ') : ''), kabarAwas: !!lewat.length } };
 }
 
 // ---------- SS3 · Cadangan & kuota ----------

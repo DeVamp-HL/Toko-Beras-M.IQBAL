@@ -11,6 +11,7 @@ import { pasangIsian } from '../inti/isian.js';
 import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini, jamSetempat, waktuSetempat } from '../inti/format.js';
 import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
+import { kartuTitipan, aksiTitipan, TP_DRAF_KOSONG } from './titipan-panel.js';   // owner 21 Nov 2026: uang keluar & pesan dari tablet
 import * as TB from './tablet-logika.js';   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman, kunciLuarCache , ingatPerVersi } from '../data/toko.js';
@@ -54,9 +55,9 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG() });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru'], []);
+  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))]], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -109,7 +110,7 @@ export function pasangLayarMenu(akar, opsi) {
     if (t.ke === 'jual' || t.ke === 'ringkasan') { opsi.pindah(t.ke); return; }
     set({ kabar: 'Belum ada layarnya di sistem baru.', kabarAwas: true });
   }
-  const AKSI = {
+  const AKSI = Object.assign({
     susunan: ({ s }) => { set({ susunan: s, buka: null, kabar: '' }); ingat(); }, mode: () => opsi.gantiMode(), tutupKabar: () => set({ kabar: '' }),
     // laci N1 terbuka sejak lahir; laci "Ganti bagian hari" TERTUTUP sejak lahir (tidak makan tempat) — keduanya diingat per perangkat
     laci: ({ id }) => { const t = Object.assign({}, st().tutup); t[id] = id === 'ganti' ? !(t.ganti === true) : !t[id]; set({ tutup: t }); ingat(); },
@@ -227,7 +228,7 @@ export function pasangLayarMenu(akar, opsi) {
     aturJatahAkun: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); a.jatahAkun = a.jatahAkun || {}; a.jatahAkun[el.dataset.uid] = String(v).replace(/[^\d]/g, '').slice(0, 3); set({ atur: a }); },
     aturBawahModal: ({ kunci }) => { const a = JSON.parse(JSON.stringify(st().atur)); const L = a.bawahModal || []; const i = L.indexOf(kunci); if (i >= 0) L.splice(i, 1); else L.push(kunci); a.bawahModal = L; set({ atur: a }); },
     simpanAtur: async () => { const a = st().atur; if (!a) return; const isi = Object.assign({}, a); delete isi.id; if (await tulis(S.susunAturSistem(a.id, isi, waktu()))) set({ atur: null }); },
-  };
+  }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }));
   delegasi(akar, AKSI);
 
   // ---------- GAMBAR ----------
@@ -277,12 +278,14 @@ export function pasangLayarMenu(akar, opsi) {
   function gambarStaf(s, d, akunM) {
     const namaP = (S.SS_PERAN.find((p) => p.id === akunM.peran) || {}).nama || akunM.peran; const L = lokal();
     const AL = opsi.antreLokal ? opsi.antreLokal() : { belum: [], ditolak: [] };
+    const orang = TB.tbDaftar().filter((o) => o.aktif).map((o) => o.nama);
     return h`<section class="mn-staf" data-k="staf" style="display: flex; flex-direction: column; gap: 10px;">
+      ${kartuTitipan(s, { akun: akunM, orang, kiniIso: hariIniIso(kini()) })}
       <div class="kartu" data-k="staf-akun" style="gap: 4px;"><div class="label">Masuk sebagai</div><div class="serif" style="font-size: 20px;">${akunM.nama}</div><div class="k2">${namaP} · ${L.namaPerangkat || 'perangkat ini'}</div></div>
       <div class="tombol-baris" data-k="staf-layar">${[['jual', 'Jual'], ['pelanggan', 'Pelanggan'], ['stok', 'Stok']].map(([t, n]) => h`<div class="kaca-btn aktif" data-aksi="stafKe" data-t="${t}">${n}</div>`)}</div>
       <div class="kartu" data-k="staf-antre" style="gap: 4px;"><div class="label">Catatan dari perangkat ini</div>
         <div class="k2">${(L.antre || []).length ? (L.antre || []).length + ' menunggu server' : 'semua sudah sampai server'} · ${AL.ditolak.length ? AL.ditolak.length + ' DITOLAK server — menunggu owner memutuskan' : 'tidak ada yang ditolak'}</div></div>
-      <div class="pita-info" data-k="staf-ket">Laci menu owner (uang, laporan, harga, setelan) tidak termasuk hak ${namaP}. Server menegakkan: baca & catat baru; koreksi, hapus, dan "minta owner" tertutup sampai alur persetujuan ada.</div>
+      <div class="pita-info" data-k="staf-ket">Laci menu owner (uang, laporan, harga, setelan) tidak termasuk hak ${namaP}. Server menegakkan: baca & catat baru; uang keluar dari tablet jadi titipan yang disetujui owner; koreksi & hapus tetap owner.</div>
     </section>`;
   }
   function gambarLaci(s, d, L) {
