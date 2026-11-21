@@ -38,7 +38,7 @@ export const SS_TINDAKAN = [['jualTunai', 'Jual tunai & kembalian', 'Jual'], ['j
   ['isiUlang', 'Isi ulang & cek wadah literan', 'Stok'],
   ['antar', 'Bikin surat jalan & antar (bersama notanya)', 'Jual'], ['terimaAntar', 'Tandai barang antaran diterima / gagal', 'Jual'],
   ['pesanan', 'Bikin & ubah pesanan, PO, jadwal rutin & uang muka', 'Jual']].map((t) => ({ id: t[0], nama: t[1], modul: t[2] }));   // B3 (owner 18 Nov 2026) — rules v10   // putaran 39 (owner 29 Sep): karyawan menuang & mengecek wadah — rules v5
-export const SS_PERAN = [['owner', 'Owner'], ['ben', 'Ben (penjaga laci)'], ['karyawan', 'Karyawan (giliran)']].map((p) => ({ id: p[0], nama: p[1] }));
+export const SS_PERAN = [['owner', 'Owner'], ['ben', 'Penjaga laci'], ['karyawan', 'Karyawan (giliran)']].map((p) => ({ id: p[0], nama: p[1] }));
 export const SS_NILAI_HAK = ['sendiri', 'owner', 'tidak'];
 export const SS_LABEL_HAK = { sendiri: 'boleh sendiri', owner: 'minta owner', tidak: 'tidak boleh' };
 const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: 'owner', terimaBon: 'sendiri', hitungLaci: 'sendiri', uangKeluar: 'owner', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'owner', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri', hargaPelanggan: 'owner', antar: 'sendiri', terimaAntar: 'sendiri', pesanan: 'sendiri' },

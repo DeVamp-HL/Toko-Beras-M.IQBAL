@@ -33,7 +33,7 @@ sys.path.insert(0, SINI)
 import bundel_baru, peta_akses  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = peta_akses.MODUL_KIRIM + ['baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/tablet-logika.js']
-STATIS = ['baru/js/data/firebase.js', 'baru/js/app.js', 'baru/index.html', 'baru/js/layar/menu.js']
+STATIS = ['baru/js/data/firebase.js', 'baru/js/app.js', 'baru/index.html', 'baru/js/layar/menu.js', 'baru/css/gerbang.css', 'baru/js/data/akses.js', 'baru/js/layar/sistem-logika.js']
 JAM = "var __KINI = new Date('2026-11-16T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 # garam dari acak tetap (16 bait 0x01..0x10) — sama dengan getRandomValues pengganti di bawah
@@ -224,6 +224,22 @@ def periksa_statis(t):
     ok('index.html: panel "Siapa yang jaga?" + modul tablet di modulepreload', 'id="panelOrang"' in html and '<link rel="modulepreload" href="js/layar/tablet-logika.js">' in html)
     ok('menu.js: PIN hanya diketik di tab Orang di tablet dan diteruskan ke tablet-logika (tidak ditulis sendiri)',
        mn.count('type="password"') == 1 and 'TB.tbSusunTambah(' in mn and 'TB.tbSusunGantiPin(' in mn and not re.search(r"pin:\s*st\(\)\.tb", mn))
+    # owner 21 Nov 2026 (CPad): gerbang "Siapa yang jaga?" bisa digeser ke samping & ke bawah, logo tertutup, tombol Keluar di luar layar.
+    # Ukurannya dibuktikan di panel peramban (1156 × 635 mendatar, 722 × 1065 tegak); di sini yang dijaga aturannya tidak hilang.
+    gb = t['baru/css/gerbang.css']
+    ok('gerbang.css: wadah gerbang tidak bisa digeser mendatar', '.gm-isi { overflow-x: hidden; overscroll-behavior: contain; }' in gb)
+    ok('gerbang.css: tablet mendatar — panel jaga dua lajur (nama · PIN) selebar lajurnya, isi yang kepanjangan tidak terpotong di atas',
+       '.gm-isi { align-content: safe center; }' in gb and 'grid-template-areas: "kepala kepala" "daftar pin" "catatan pin" "salinan pin" "keluar pin";' in gb
+       and '.gm-isi > .gm-pelat.tb-panel:not([hidden]) { justify-self: stretch; width: auto; max-width: 600px;' in gb
+       and '.tb-panel > .tb-pin, .tb-panel > .tb-tanya { grid-area: pin; }' in gb and '.tb-panel > #tombolKeluarTablet { grid-area: keluar; align-self: end; }' in gb)
+    ok('gerbang.css: panel jaga yang DISEMBUNYIKAN tetap tersembunyi (aturan tata letaknya hanya untuk panel yang tampil)',
+       not re.search(r'\.gm-pelat\.tb-panel(?!:not\(\[hidden\]\))[^{]*\{[^}]*display:\s*grid', gb) and '.gerbang-masuk .gm-pelat[hidden] { display: none; }' in gb)
+    ok('gerbang.css: daftar nama yang panjang digulir di DAFTARNYA (bukan gerbangnya), mendatar maupun tegak',
+       'max-height: min(38vh, 250px); overflow-y: auto; }' in gb and 'max-height: min(16vh, 150px); overflow-y: auto; }' in gb)
+    ok('gerbang.css: tablet tegak — cincin dikecilkan selama panel jaga tampil', '.gerbang-masuk:has(.tb-panel:not([hidden])) { --gm-cincin: min(180px, 17vh); }' in gb)
+    ak = t['baru/js/data/akses.js']; sl = t['baru/js/layar/sistem-logika.js']
+    ok('nama peran di layar: "Penjaga laci" (owner 21 Nov 2026: bukan lagi "Ben (penjaga laci)"); kunci perannya tetap ben',
+       "ben: 'Penjaga laci'" in ak and "['ben', 'Penjaga laci']" in sl and not [b for b in t if 'Ben (penjaga laci)' in t[b]])
     return out
 
 
@@ -254,6 +270,10 @@ KONTROL = [
     ('catatan baru tanpa kode orang', {'baru/js/data/akses.js': [("if (akun.operatorId) d.operatorId = akun.operatorId;", "")]}, ('jsc',)),
     ('penulis pusat memakai akun tablet apa adanya', {'baru/js/data/firebase.js': [("const akun = akunPenulis(); const owner = akun.jenis === 'owner';", "const akun = status.akun; const owner = akun.jenis === 'owner';")]}, ('statis',)),
     ('app.js tidak menyetel orang yang jaga', {'baru/js/app.js': [("fb.setelAkunEfektif(", "void (")]}, ('statis',)),
+    ('gerbang: panel jaga tersembunyi ikut tampil (aturan tata letak menimpa hidden)', {'baru/css/gerbang.css': [(".gm-isi > .gm-pelat.tb-panel:not([hidden]) { justify-self: stretch;", ".gm-isi > .gm-pelat.tb-panel { justify-self: stretch;")]}, ('statis',)),
+    ('gerbang: bisa digeser mendatar lagi', {'baru/css/gerbang.css': [(".gm-isi { overflow-x: hidden; overscroll-behavior: contain; }", ".gm-isi { overscroll-behavior: contain; }")]}, ('statis',)),
+    ('gerbang: panel jaga kembali satu lajur di tablet mendatar', {'baru/css/gerbang.css': [('grid-template-areas: "kepala kepala" "daftar pin" "catatan pin" "salinan pin" "keluar pin";', 'grid-template-areas: none;')]}, ('statis',)),
+    ('label peran kembali "Ben (penjaga laci)"', {'baru/js/data/akses.js': [("ben: 'Penjaga laci'", "ben: 'Ben (penjaga laci)'")]}, ('statis',)),
     ('kunci diam dicabut dari app.js', {'baru/js/app.js': [("setInterval(() => { if (_jaga && TB.tbHarusKunci(_sentuh, Date.now())) kunciOrang(); }, 15000);", "")]}, ('statis',)),
 ]
 

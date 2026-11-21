@@ -265,6 +265,35 @@ body.gelap .gm-kawanan { filter: drop-shadow(0 0 1.5px rgba(201,179,122,0.6)); }
 .tb-tombol:disabled { opacity: 0.45; }
 .tb-tanya { display: flex; flex-direction: column; gap: 10px; }
 .gerbang-masuk .tb-panel { --gm-pelat-w: min(560px, 100%); }
+/* owner 21 Nov 2026 (CPad mendatar, layar ±1156 × 635 titik CSS): panel jaga 560 px + jarak 50 px lebih lebar dari separuh layar dan lebih
+   tinggi dari layar → gerbang bisa digeser ke samping dan ke bawah, logo toko tertutup, tombol "Keluar dari akun tablet" di luar layar.
+   Mendatar: panel jadi DUA LAJUR (kiri nama + keterangan + keluar, kanan PIN) supaya muat utuh di bawah logo tanpa digulir; lebarnya ikut
+   lajur, bukan angka mati. Wadahnya tidak lagi bisa digeser mendatar, dan isi yang lebih tinggi dari layar tidak terpotong di atas. */
+.gm-isi { overflow-x: hidden; overscroll-behavior: contain; }
+@media (min-width: 1100px), (min-width: 900px) and (orientation: landscape) {
+  .gm-isi { align-content: safe center; }
+  .gm-isi > .gm-pelat.tb-panel:not([hidden]) { justify-self: stretch; width: auto; max-width: 600px; margin-left: 28px; margin-right: 20px; padding: 16px 18px 14px;
+    display: grid; grid-template-columns: minmax(0, 0.78fr) minmax(0, 1fr); column-gap: 16px; row-gap: 8px; align-items: start;
+    grid-template-areas: "kepala kepala" "daftar pin" "catatan pin" "salinan pin" "keluar pin"; grid-template-rows: auto auto auto auto 1fr; }
+  /* belum ada nama yang dipilih (lajur PIN kosong): satu lajur saja, daftar nama selebar panel */
+  .gm-isi > .gm-pelat.tb-panel:not([hidden]):has(> .tb-pin[hidden]):has(> .tb-tanya[hidden]) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "kepala" "daftar" "catatan" "salinan" "keluar"; grid-template-rows: none; }
+  .gm-isi > .gm-pelat.tb-panel:not([hidden]):has(> .tb-pin[hidden]):has(> .tb-tanya[hidden]) > .tb-daftar { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+  .tb-panel > .gm-kepala { grid-area: kepala; } .tb-panel > .tb-daftar { grid-area: daftar; } .tb-panel > .tb-pin, .tb-panel > .tb-tanya { grid-area: pin; }
+  .tb-panel > #orangCatatan { grid-area: catatan; } .tb-panel > #salinanGerbang { grid-area: salinan; } .tb-panel > #tombolKeluarTablet { grid-area: keluar; align-self: end; }
+  /* nama: sampai tiga orang satu per baris selebar lajur; empat orang atau lebih → dua per baris; kalau masih kepanjangan, DAFTARNYA yang digulir, bukan gerbangnya */
+  .tb-panel > .tb-daftar { grid-template-columns: minmax(0, 1fr); gap: 8px; max-height: min(38vh, 250px); overflow-y: auto; }
+  .tb-panel > .tb-daftar:has(> .tb-orang:nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tb-panel .tb-orang { min-height: 56px; font-size: 15px; line-height: 1.15; overflow-wrap: anywhere; } .tb-panel .tb-pin { gap: 8px; } .tb-panel .tb-pad { gap: 8px; }
+  .tb-panel .tb-tombol { min-height: 50px; } .tb-panel .gm-judul { font-size: 24px; } .tb-panel .gm-judul.kecil { font-size: 19px; }
+}
+/* tablet TEGAK (CPad berdiri, ±722 × 1065): cincin 260 px + panel jaga lebih tinggi dari layar → ikut bisa digeser. Selama panel jaga tampil
+   cincinnya dikecilkan dan tombol angka sedikit dipendekkan; nama empat per baris. */
+@media (min-width: 700px) and (max-width: 899px), (min-width: 900px) and (max-width: 1099px) and (orientation: portrait) {
+  .gerbang-masuk:has(.tb-panel:not([hidden])) { --gm-cincin: min(180px, 17vh); }
+  .gerbang-masuk:has(.tb-panel:not([hidden])) .gm-isi { gap: 16px; }
+  .tb-panel > .tb-daftar { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 8px; max-height: min(16vh, 150px); overflow-y: auto; }
+  .tb-panel .tb-orang { min-height: 56px; font-size: 15px; line-height: 1.15; overflow-wrap: anywhere; } .tb-panel .tb-tombol { min-height: 52px; } .tb-panel .tb-pad { gap: 8px; }
+}
 
 /* HP MENDATAR / jendela pendek — DI AKHIR berkas supaya menang atas .gm-isi dasar & aturan berdampingan ≥900 px (tinjauan 29 Sep: kotak Masuk seluruhnya di bawah layar 390 px): logo kecil, cincin kecil di samping kotak Masuk */
 @media (orientation: landscape) and (max-height: 560px) { .gerbang-masuk { --gm-papan-y: 10px; --gm-nama: 24px; --gm-mono: 38px; --gm-cincin: min(150px, 34vh); --gm-sawah-h: 90px; --gm-pelat-w: min(380px, 52vw); }

@@ -11,7 +11,7 @@ export const EMAIL_OWNER = 'owner@tokoberasmiqbal.web.app';
 export const EMAIL_KASIR = 'kasir@tokoberasmiqbal.web.app';
 // Id peran = SS_PERAN tanpa owner. UTANG (dicatat owner 24 Sep): 'ben' memakai nama orang; peran harus bernama jabatan. Data SS2 bergantung padanya.
 export const PERAN_BUKAN_OWNER = ['ben', 'karyawan'];
-export const NAMA_PERAN = { owner: 'Owner', ben: 'Ben (penjaga laci)', karyawan: 'Karyawan' };
+export const NAMA_PERAN = { owner: 'Owner', ben: 'Penjaga laci', karyawan: 'Karyawan' };
 export const BATAS_ACCESS_CALL = 20;   // per batch/transaksi (dokumentasi Firebase); cache dianggap TIDAK ada (keputusan owner poin 4)
 // Putaran 23c (owner 24 Sep): kiriman bukan-owner dijaga SISA 2 di bawah batas Firebase. Terburuk per jenis kiriman dihitung dari fungsi
 // aslinya oleh alat-uji/peta_akses.py --kiriman (CI, gagal bila > 18). Batas baris/hasil di bawah membuat terburuknya 17.
