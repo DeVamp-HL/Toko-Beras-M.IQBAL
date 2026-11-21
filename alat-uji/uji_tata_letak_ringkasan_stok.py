@@ -36,9 +36,9 @@ def periksa(t):
     SJ, RJ = t['baru/js/layar/stok.js'], t['baru/js/layar/ringkasan.js']
     g = SJ[SJ.index('function gambarGudang'):SJ.index('const kepalaLembar')]
     pos = {k: g.find(v) for k, v in [('tanya', 'class="tanya"'), ('samping', 'class="stok-samping"'), ('aksi', 'class="stok-aksi"'), ('masuk', "t('bukaMasuk'"),
-                                      ('hpp', 'HPP / modal</div>`}</div></div>'), ('jenis', 'data-k="per-jenis"'), ('tutup', '</aside>'), ('jawab', 'class="kartu jawaban"')]}
+                                      ('hpp', 'HPP / modal</div>`}</div>'), ('terima', 'data-aksi="bukaTerima">Tanda terima barang masuk</div>` : \'\'}</div>'), ('jenis', 'data-k="per-jenis"'), ('tutup', '</aside>'), ('jawab', 'class="kartu jawaban"')]}
     c.append(('stok: tombol kerja di <aside> sesudah kartu pertanyaan, sebelum daftar jawaban', all(v >= 0 for v in pos.values()) and
-              pos['tanya'] < pos['samping'] < pos['aksi'] < pos['masuk'] < pos['hpp'] < pos['jenis'] < pos['tutup'] < pos['jawab'], pos))
+              pos['tanya'] < pos['samping'] < pos['aksi'] < pos['masuk'] < pos['hpp'] < pos['terima'] < pos['jenis'] < pos['tutup'] < pos['jawab'], pos))
     S = aturan(t['baru/css/stok.css'])
     c.append(('stok: HP/tablet — aside larut (display: contents)', any('display: contents' in x for x in cari(S, '', '.layar-stok .stok-gudang > .stok-samping')), ''))
     urut = {k: cari(S, '', v) for k, v in [('tanya', '.layar-stok .stok-gudang > .tanya'), ('aksi', '.layar-stok .stok-aksi'), ('jawab', '.layar-stok .stok-gudang > .jawaban'), ('jenis', '.layar-stok .stok-samping > [data-k="per-jenis"]')]}

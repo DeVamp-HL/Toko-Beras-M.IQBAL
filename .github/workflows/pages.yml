@@ -145,6 +145,8 @@ jobs:
         run: python3 alat-uji/uji_escpos.py && python3 alat-uji/uji_escpos.py --kontrol
       - name: "Kode QR di gambar struk: penyusun dibaca balik pembaca mandiri (versi 1–6, delapan topeng), kotak beku yang sudah dibaca pemindai, ukuran & pemasangan (jsc + kontrol)"
         run: python3 alat-uji/uji_qr.py && python3 alat-uji/uji_qr.py --kontrol
+      - name: "Tanda terima barang masuk untuk supir pemasok: nilai nota tanpa upah bongkar, tunai / bon belum / sebagian / lunas, akun yang tidak membaca pembayaran pemasok tidak mencetak sisa, muat di 80 & 58 mm, dua lembar, pemasangan di Stok (jsc + kontrol)"
+        run: python3 alat-uji/uji_terima_barang.py && python3 alat-uji/uji_terima_barang.py --kontrol
 
       - name: "Cangkang SUNMI (paket S1, 19 Nov): pintu perangkat — jalur SDK SUNMI jatuh ke USB hanya bila belum ada byte terkirim (tidak ada struk dobel), scan tidak terbaca sebagai PIN, lampu & pindai diam di luar aplikasi; pemasang APK: pustaka resmi SUNMI, <queries>, penjaga hapus data; tanda tangan V1+V2 (jsc + python + statis + kontrol)"
         run: python3 alat-uji/uji_perangkat_sunmi.py && python3 alat-uji/uji_perangkat_sunmi.py --kontrol

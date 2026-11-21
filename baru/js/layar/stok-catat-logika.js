@@ -315,6 +315,8 @@ export function ckBayarBon(batch) {
   return { dibayar: dibayar > 0.5 ? dibayar : 0, dibayarMesin: Math.round(nilai - (bon ? bon.sisa : 0)), nilai, bayar, bayarPertama: bayar.length ? bayar[0].tanggal : '' };
 }
 export const ckBayarBonId = (id) => ckBayarBon(ambilSemuaBatch().find((b) => String(b.id) === String(id)) || null);
+/** Satu kedatangan tersimpan menurut id (null = tidak ada) — bahan tanda terima barang masuk (terima-barang-panel.js). */
+export const batchKedatangan = (id) => ambilSemuaBatch().find((b) => String(b.id) === String(id)) || null;
 const ckKalimatBayar = (bb) => 'Bon kedatangan ini sudah dibayar ' + RP(bb.dibayar) + (bb.bayar.length ? ' (' + bb.bayar.map((x) => x.tanggal ? tanggalPendek(x.tanggal) : 'tanpa tanggal').join(', ') + ')' : '');
 const CK_BETUL_BAYAR = ' Pembetulan pembayaran bon belum ada di sistem baru.';
 const CK_PINDAH = 'Pembayaran yang ditujukan ke bon ini akan pindah ke bon lain pemasok ini yang masih terbuka (atau jadi kelebihan bayar, atau hilang dari buku bon kalau pemasok ini tidak punya bon lain sama sekali)';
