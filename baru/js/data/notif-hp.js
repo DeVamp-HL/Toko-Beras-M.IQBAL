@@ -1,7 +1,10 @@
 // NOTIFIKASI HP / MAC OWNER saat aplikasi tertutup (owner 21 Nov 2026). Menyalakan = izin notifikasi → service worker baru/notif/sw-notif.js →
 // token Firebase Cloud Messaging → notifOwner/{id perangkat} (rules v13: owner saja). Fungsi server (functions/index.js) mengirim ke semua token itu
 // begitu tablet menulis permintaan baru. Bagian murni (nhDukung, nhVapidSah) tanpa peramban nyata — diuji di jsc (alat-uji/uji_notif_hp.py).
-import { appFirebase, simpanTokenNotif, hapusTokenNotif } from './firebase.js';
+// Alat Firebase DISUNTIK app.js (nhPasang) — modul layar tidak mengimpor firebase.js (SDK dari gstatic) secara langsung.
+let _alat = { app: () => null, simpan: async () => ({ gagal: true, pesan: 'Notifikasi belum tersambung ke Firebase' }), hapus: async () => ({ gagal: true, pesan: 'Notifikasi belum tersambung ke Firebase' }) };
+/** app.js: { app: () => app Firebase, simpan: (token) => hasil, hapus: () => hasil } (firebase.js appFirebase / simpanTokenNotif / hapusTokenNotif). */
+export function nhPasang(alat) { _alat = Object.assign({}, _alat, alat || {}); }
 
 export const NH_SDK = 'https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging.js';
 export const NH_SW = 'notif/sw-notif.js';
@@ -53,9 +56,9 @@ export async function nhNyalakan(vapid) {
     if (!(await tungguAktif(reg, 15000))) return { gagal: true, pesan: 'Service worker notifikasi belum aktif — muat ulang halaman lalu coba lagi' };
     const M = await import(NH_SDK);
     if (!(await M.isSupported())) return { gagal: true, pesan: 'Firebase Messaging tidak mendukung peramban ini' };
-    const token = await M.getToken(M.getMessaging(appFirebase()), { vapidKey: String(vapid).trim(), serviceWorkerRegistration: reg });
+    const token = await M.getToken(M.getMessaging(_alat.app()), { vapidKey: String(vapid).trim(), serviceWorkerRegistration: reg });
     if (!token) return { gagal: true, pesan: 'Token notifikasi tidak didapat' };
-    const r = await simpanTokenNotif(token); if (r.gagal) return r;
+    const r = await _alat.simpan(token); if (r.gagal) return r;
     try { localStorage.setItem(NH_KUNCI, JSON.stringify({ id: r.id, pada: new Date().toISOString() })); } catch (e) { /* keadaan lokal saja */ }
     return { ok: true };
   } catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
@@ -64,8 +67,8 @@ export async function nhNyalakan(vapid) {
 export async function nhMatikan() {
   try {
     const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration(NH_SCOPE) : null;
-    if (reg) { try { const M = await import(NH_SDK); await M.deleteToken(M.getMessaging(appFirebase())); } catch (e) { /* token sudah tidak ada */ } }
-    const r = await hapusTokenNotif(); if (r.gagal) return r;
+    if (reg) { try { const M = await import(NH_SDK); await M.deleteToken(M.getMessaging(_alat.app())); } catch (e) { /* token sudah tidak ada */ } }
+    const r = await _alat.hapus(); if (r.gagal) return r;
     try { localStorage.removeItem(NH_KUNCI); } catch (e) { /* keadaan lokal saja */ }
     return { ok: true };
   } catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }

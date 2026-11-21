@@ -33,6 +33,8 @@ import * as SL from './inti/salinan.js';
 // owner 21 Nov 2026: notifikasi dalam aplikasi (titipan & pesan dari tablet → owner; putusan owner → tablet)
 import { kbSidik, kbBanding, kbRingkas } from './layar/kabar-baru-logika.js';
 import { lampuKejadian } from './inti/perangkat.js';
+import { nhPasang } from './data/notif-hp.js';
+nhPasang({ app: () => fb.appFirebase(), simpan: (t) => fb.simpanTokenNotif(t), hapus: () => fb.hapusTokenNotif() });   // notifikasi HP owner: alat Firebase untuk Menu › Perangkat
 // owner 19 Nov 2026 ("masih berat di Android, terutama tablet"): pencatat tersendat DI PERANGKAT ini — dibaca di Menu › Sistem › Perangkat
 import { pasangUkurMulus } from './inti/ukur-mulus.js';
 

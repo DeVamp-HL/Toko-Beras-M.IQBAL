@@ -187,7 +187,8 @@ def baca_per_layar():
 BATAS_CI = 18   # batas Firebase 20 per batch − sisa 2 (keputusan owner). Sengaja TIDAK dibaca dari akses.js: menaikkan batas di sana tidak melonggarkan CI.
 MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/layar/arsip-logika.js',
                'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/pesanan-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
-               'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js']
+               'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
+               'baru/js/layar/titipan-logika.js']   # owner 21 Nov 2026: titipan dari tablet — Uang, papan Persetujuan & tutup hari memakainya
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 
@@ -435,7 +436,10 @@ OWNER_JALUR = {
     'susunKasbonKaryawan': '1 kasbonMutasi bertanggal hari ini', 'susunKeluar': 'uang keluar: paling banyak 2 dokumen (pengeluaranHarian + kasbon) bertanggal hari ini',
     'susunPindah': 'pindah uang: pindahUang + paling banyak 1 biaya admin hari ini · pindah tempat stok: pengaturan tempatSimpan & pindahTempat (tidak dikunci)',
     'susunUrungPindah': 'urung pindah: hapus 1 pindahUang + paling banyak 1 biaya admin (dokumen barusan)',
-    'susunPutusTitipan': 'titipan disetujui: 1 pengeluaranHarian hari ini (+ persetujuan, tidak dikunci)',
+    'susunPutusTitipan': 'titipan disetujui: 1 pengeluaranHarian ATAU 1 kasbonMutasi bertanggal titipannya (+ persetujuan, tidak dikunci) — owner 21 Nov 2026',
+    'tpSusunPutus': 'pintu titipan (titipan-logika): 1 pengeluaranHarian ATAU 1 kasbonMutasi bertanggal titipannya (+ persetujuan, tidak dikunci)',
+    'susunPutusPersetujuan': 'papan Persetujuan: persetujuan (tidak dikunci) + titipan uang lewat tpSusunPutus — 1 pengeluaranHarian / kasbonMutasi bertanggal titipannya',
+    'susunSetujuiKecil': 'setujui sekaligus: per permintaan persetujuan (tidak dikunci) + titipan uang lewat tpSusunPutus — 1 dokumen uang bertanggal titipannya per titipan',
     'susunCocok': 'penghitung daftar cocokkan — tidak menulis; yang menulis susunSimpanCocok (diukur)',
     'susunSimpanBeli': 'beli kantong: 1 dokumen bertanggal hari ini',
     'susunPecahKantong': 'pecah kantong gabungan per merek (owner 11 Okt): paling banyak 1 opname + 1 pakai di gabungan + 1 saldoAwal per merek (≤ 3), semuanya hari ini, + paling banyak 3 hargaWadah (katalog, tidak dikunci) — jumlah tetap ≤ 8',
