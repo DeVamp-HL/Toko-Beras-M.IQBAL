@@ -9,6 +9,9 @@ export const bukanOwner = (akun) => !!akun && akun.jenis !== 'owner';
  *  bisa bekerja & mode cadangan tidak disaring di sini). Owner 7 Okt (tinjauan): staf tanpa Laporan tidak diberi tombol yang hanya berujung kabar
  *  "tidak termasuk hak". */
 export const bolehBukaLayar = (akun, layar) => !akun || !bisaBekerja(akun) || bolehLayar(akun, layar);
+/** Akun ini MEMBACA koleksi itu? Owner / mode cadangan: ya. Selain owner: hanya yang dibuka server (BACA_STAF = firestore.rules). Dipakai layar
+ *  yang menampilkan angka dari koleksi owner (pembayaran bon pemasok di tanda terima barang): koleksi yang tidak terbaca BUKAN nol. */
+export const akunMembaca = (akun, koleksi) => !bukanOwner(akun) || BACA_STAF.indexOf(koleksi) >= 0;
 /** { boleh, kalimat } untuk satu tindakan SS2 bagi akun yang masuk (owner / mode cadangan = selalu boleh). */
 export function tombolAkun(akun, tindakan) {
   if (!bukanOwner(akun)) return { boleh: true, kalimat: '' };

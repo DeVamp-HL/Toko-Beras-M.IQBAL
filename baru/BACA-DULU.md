@@ -3173,6 +3173,21 @@ tegak — 1, 3, 4, 8, 12 orang; salah PIN; belum pilih nama; tanya lanjut — ta
 1156 × 635, 1280 × 720, 1024 × 600, 1440 × 900 tanpa geser; bilah menu empat lajur rata 15–1052. **Belum terbukti di CPad.** Nama peran di
 layar: "Penjaga laci" (dulu "Ben (penjaga laci)"; kunci perannya tetap `ben`).
 
+**Tanda terima barang masuk untuk supir pemasok (owner 21 Nov 2026: "Ya mulai dari tanda terima barang masuk untuk supir pemasok"):**
+bukti untuk pemilik pemasok, dibawa supir: barang apa yang diterima toko dan berapa yang sudah dibayar. Logika `baru/js/layar/terima-barang-logika.js`
+(awalan `tbm`, tanpa DOM, hanya mengimpor format), layar `baru/js/layar/terima-barang-panel.js`. HANYA MEMBACA: mencetak tidak mengubah stok, modal,
+bon, atau laci. Isi: kop toko, nomor `TT-<yymmdd>-<4 angka terakhir id kedatangan>` (dicetak ulang = nomor sama), tanggal datang, pemasok, baris
+merek × karung × isi = kg (baris bal: "n bal = kg"), JUMLAH, nilai nota = jumlah subtotal baris TANPA upah bongkar, lalu pembayaran: tunai = LUNAS;
+bon = "Sudah dibayar" + SISA BON menurut buku utang pemasok (`ckBayarBon().dibayarMesin`, angka yang sama dengan sisa bon di Harga & Pemasok;
+tanggal tiap bayaran dicetak bila jumlahnya persis sama). Harga per kg dan subtotal per baris TIDAK dicetak. Lembar memuat "Keadaan per <tanggal jam>,
+dicetak <nama>", karena bon bisa dicicil sesudahnya. Dua lembar gaya teks: LEMBAR PEMASOK (dibawa supir) lalu LEMBAR TOKO (ditandatangani supir,
+tempat nama terang & jam, arsip). **Akun tablet tidak membaca pembayaran pemasok** (`utangPemasokMutasi` bukan BACA_STAF): untuk bon, baris Dibayar
+dan Sisa dikosongkan jadi titik-titik untuk ditulis tangan dan diparaf — tidak pernah mencetak "sisa = nilai nota" seolah belum dibayar; tunai tetap
+tercetak LUNAS (terbaca dari kedatangannya sendiri). Di layar akun bukan-owner rupiah tidak tampil (di kertas tetap ada). Letak: owner — lembar Stok ›
+Barang masuk, kartu muncul sesudah SIMPAN dan saat kedatangan diketuk untuk koreksi; akun tablet — tombol Stok › "Tanda terima barang masuk" (daftar
+12 kedatangan terakhir, pilih satu). Cetak: satu cetakan pada satu waktu, printer diam = "lihat kertasnya", di aplikasi tablet tidak membuka dialog,
+WhatsApp hanya di peramban. Alat uji `alat-uji/uji_terima_barang.py` (jsc + kontrol, masuk CI).
+
 **Cetak di tablet untuk Uang dan Laporan (owner 21 Nov 2026: "Oke kita bangun yang ini"):** di aplikasi tablet dialog cetak hanya berkelebat
 lalu hilang, jadi tombol Cetak di Uang (slip upah, rekap tutup hari) dan di Laporan (dokumen) terasa mati. *Uang:* di aplikasi tablet kedua
 teks itu dicetak LANGSUNG ke printer struk lewat `cetakTeks` (`inti/printer.js`) — selalu gaya teks, apa pun gaya struk yang disetel —
