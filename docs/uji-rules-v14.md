@@ -69,6 +69,16 @@ Di **v13** kasus ★W4–★W14 DITOLAK (v14 yang membukanya); kasus lain sama h
 atas atas `firestore.rules` (v14) dan atas `firestore.rules.v13` — yang berbeda wajib persis kasus yang dibuka v14 — plus kontrol (satu suku v14 dirusak →
 kasus sasarannya wajib berbalik). Semua kasus v13, v12, v11, v10, v9, v8 & v7 lama tetap dijalankan atas v14 dan wajib sama hasilnya.
 
-## Hasil Playground & terbit
+## Hasil Playground & terbit (22 Nov 2026)
 
-Belum — diisi sesudah owner menjalankan Wajib owner dan menekan Publish.
+- Isi editor Console sebelum uji = `firestore.rules` cabang ini (commit 6e7adf1) tanpa baris kosong terakhir: SHA-256 berawalan `21cf7899`, 66.216
+  byte (berkas `7a82ad1d`, 66.217 byte; satu-satunya beda = `\n` penutup yang hilang saat disalin dari halaman teks mentah GitHub — tidak mengubah
+  aturan). Dibaca lewat JS dari editor; sebelumnya v13 aktif (`351dd593`). Dicek ulang sesudah ★W3 — tetap sama.
+- Wajib owner, akun owner (`uid-uji`, provider bawaan Playground google.com, email owner di payload), simulasi get: ★W1 `pengeluaranHarian/uji-v14-u` →
+  "Simulated read allowed" (LOLOS, sesuai); ★W2 `pengaturan/titikKas` (dokumen nyata) → "Simulated read allowed" (LOLOS, sesuai); ★W3
+  `tutupHari/uji-v14-u` → "Simulated read allowed" (LOLOS, sesuai). Spanduk hasil ditutup dulu sebelum kasus berikutnya dijalankan.
+- Kasus staf (bertanda / tanpa tanda / karyawan / nonaktif / tulis / pengaturan lain / slip upah / kasir@) dibuktikan emulator: job `rules` di PR hijau
+  sebelum terbit.
+- Owner klik **Publish** 22 Nov 2026 ±00.30 WIB (riwayat Console "Today • 12:30 AM"; sebelumnya v13 "Yesterday • 8:27 PM"). Sesudah halaman dimuat
+  ulang, aturan yang berlaku = isi di atas (sidik `21cf7899`, baris 2 `ATURAN FIRESTORE v14 FINAL`, tanpa draf tertunda).
+- Urutan terhadap CI: saat Publish, job `rules` (emulator) sudah hijau pada commit 6e7adf1; `uji`, `uji-peramban`, `gladi` masih berjalan (syarat merge).
