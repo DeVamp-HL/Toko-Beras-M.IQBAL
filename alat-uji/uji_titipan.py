@@ -265,7 +265,7 @@ MUTASI = [
     ('penjaga dobel dicabut', TPL, "  if (sudahDitulis(m.id)) return", "  if (false) return"),
     ('bulan terkunci tidak diperiksa', TPL, "const kunci = tolakKunciTanggal(tgl, ''); if (kunci)", "const kunci = ''; if (kunci)"),
     ('betulan owner tidak mencatat angka asli', TPL, "  if (ubah) Object.assign(baru, { koreksiOwner: true, nominalAsli:", "  if (ubah) Object.assign(baru, { koreksiOwnerX: true, nominalAsliX:"),
-    ('tolak tanpa alasan diterima', TPL, "const alasan = potong(o.alasan, TP_BATAS.alasan); if (!alasan) return", "const alasan = potong(o.alasan, TP_BATAS.alasan) || '-'; if (!alasan) return"),
+    ('tolak tanpa alasan diterima', TPL, "const alasan = tpPotong(o.alasan, TP_BATAS.alasan); if (!alasan) return", "const alasan = tpPotong(o.alasan, TP_BATAS.alasan) || '-'; if (!alasan) return"),
     ('titipan dikirim dua kali', TPL, "  if (ada) return { tolak: 'Titipan yang sama", "  if (false) return { tolak: 'Titipan yang sama"),
     ('nominal pecahan diterima', TPL, "  if (!/^\\d+$/.test(t)) return NaN;", "  if (!/^[\\d,]+$/.test(t)) return NaN; return Number(t.replace(',', '.'));"),
     ('titipan lama tanpa jenis ditolak', TPL, "export const tpJenis = (m) => (m && m.jenis ? String(m.jenis) : 'toko');", "export const tpJenis = (m) => (m && m.jenis ? String(m.jenis) : '');"),

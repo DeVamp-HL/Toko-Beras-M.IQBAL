@@ -21,7 +21,7 @@ export const TP_JENIS = [['toko', 'Belanja toko'], ['karyawan', 'Untuk karyawan'
 export const TP_STATUS = { menunggu: 'menunggu owner', disetujui: 'disetujui', ditolak: 'ditolak', dibaca: 'dibaca owner' };
 export const TP_BATAS = { teks: 80, nama: 40, pesan: 500, balasan: 200, alasan: 80 };
 const KOSONG = (v) => v === undefined || v === null || String(v).trim() === '';
-const potong = (v, n) => String(v === undefined || v === null ? '' : v).trim().slice(0, n);
+const tpPotong = (v, n) => String(v === undefined || v === null ? '' : v).trim().slice(0, n);
 /** Teks rupiah yang diketik → bilangan bulat (titik ribuan & "Rp" boleh). Bukan angka / pecahan → NaN. */
 export function tpAngka(v) {
   const t = String(v === undefined || v === null ? '' : v).replace(/rp/i, '').replace(/\s/g, '').replace(/\./g, '');
@@ -51,7 +51,7 @@ const milik = (m, akun) => !!akun && String(m.mintaUid || '') === String(akun.ui
  * tanpa kolom keputusan.
  */
 export function tpSusunMinta(draf, akun, w) {
-  const d = draf || {}; const jenis = String(d.jenis || ''); const n = tpAngka(d.nominal); const teks = potong(d.teks, TP_BATAS.teks); const nama = potong(d.nama, TP_BATAS.nama);
+  const d = draf || {}; const jenis = String(d.jenis || ''); const n = tpAngka(d.nominal); const teks = tpPotong(d.teks, TP_BATAS.teks); const nama = tpPotong(d.nama, TP_BATAS.nama);
   if (!akun || !akun.uid) return { tolak: 'Belum masuk — titipan butuh orang yang jaga' };
   if (!sah(jenis)) return { tolak: 'Pilih jenisnya dulu: belanja toko, untuk karyawan, atau kasbon' };
   if (!(n > 0)) return { tolak: KOSONG(d.nominal) ? 'Isi nominalnya dulu' : 'Nominal hanya angka rupiah bulat (mis. 50000 atau 50.000)' };
@@ -120,19 +120,19 @@ export function tpSusunPutus(id, keputusan, isi, w) {
   const siapa = m.dari || 'tablet';
   if (m.tindakan === TP_PESAN) {
     if (keputusan !== 'dibaca') return { tolak: 'Pesan hanya ditandai dibaca (boleh dengan balasan)' };
-    const balas = potong(o.balasan, TP_BATAS.balasan);
+    const balas = tpPotong(o.balasan, TP_BATAS.balasan);
     return { dokumen: [{ koleksi: 'persetujuan', data: Object.assign({}, m, { status: 'dibaca', balasan: balas }, putus) }],
       patch: { kabar: 'Pesan ' + siapa + ' ditandai dibaca' + (balas ? ' — balasan terbaca di tablet' : ''), kabarAwas: false } };
   }
   if (keputusan === 'tolak') {
-    const alasan = potong(o.alasan, TP_BATAS.alasan); if (!alasan) return { tolak: 'Menolak butuh alasan — supaya ' + siapa + ' tahu sebabnya' };
+    const alasan = tpPotong(o.alasan, TP_BATAS.alasan); if (!alasan) return { tolak: 'Menolak butuh alasan — supaya ' + siapa + ' tahu sebabnya' };
     return { dokumen: [{ koleksi: 'persetujuan', data: Object.assign({}, m, { status: 'ditolak', alasanTolak: alasan }, putus) }],
       patch: { kabar: 'Titipan ' + siapa + ' ditolak (' + alasan + ') — uang toko tidak berubah; kalau uangnya memang sudah keluar dari laci, laci akan tampak kurang sebesar ' + RP(Number(m.nominal) || 0) + ' saat tutup hari', kabarAwas: false } };
   }
   if (keputusan !== 'setuju') return { tolak: 'Keputusan tidak dikenal' };
   // betulan owner: yang diketik menimpa, yang kosong = apa adanya
   const jenis = KOSONG(o.jenis) ? tpJenis(m) : String(o.jenis); const n = KOSONG(o.nominal) ? Math.round(Number(m.nominal) || 0) : tpAngka(o.nominal);
-  const teks = KOSONG(o.teks) ? potong(m.teks, TP_BATAS.teks) : potong(o.teks, TP_BATAS.teks); const nama = KOSONG(o.nama) ? potong(m.namaPegawai, TP_BATAS.nama) : potong(o.nama, TP_BATAS.nama);
+  const teks = KOSONG(o.teks) ? tpPotong(m.teks, TP_BATAS.teks) : tpPotong(o.teks, TP_BATAS.teks); const nama = KOSONG(o.nama) ? tpPotong(m.namaPegawai, TP_BATAS.nama) : tpPotong(o.nama, TP_BATAS.nama);
   if (!sah(jenis)) return { tolak: 'Jenis titipan tidak dikenal — pilih belanja toko, untuk karyawan, atau kasbon' };
   if (!(n > 0)) return { tolak: 'Nominal hanya angka rupiah bulat di atas nol' };
   if (jenis === 'kasbon' && !nama) return { tolak: 'Kasbon butuh nama orangnya' };
