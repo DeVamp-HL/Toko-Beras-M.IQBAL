@@ -124,6 +124,9 @@ dengarkan(() => { versi += 1; setTimeout(periksaTablet, 0); setTimeout(periksaKa
 // Pita di atas layar (ketuk = buka layarnya) + getar + bunyi pendek (sesudah layar pernah disentuh — peramban melarang bunyi sebelum itu) + lampu CPad
 // (kejadian 'owner'). Owner: angka di ikon aplikasi (lencana). Pembanding pertama sesudah data lengkap tidak berbunyi. Push saat aplikasi tertutup = functions/.
 let _kb = null; let _audio = null;
+// notifikasi push diketuk (baru/notif/sw-notif.js): aplikasi yang sudah terbuka diberi pesan 'buka-layar'; yang baru dibuka membawa #layar di alamat
+let _layarTuju = (() => { try { const x = decodeURIComponent(location.hash.slice(1)); return ['uang', 'menu'].indexOf(x) >= 0 ? x : ''; } catch (e) { return ''; } })();
+try { if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', (e) => { const d = (e && e.data) || {}; if (d.jenis === 'buka-layar' && ['uang', 'menu'].indexOf(d.layar) >= 0) pindah(d.layar); }); } catch (e) { /* tanpa service worker */ }
 const dataLengkap = () => !!statusFb.masuk && statusFb.koleksiTotal > 0 && statusFb.koleksiSiap >= statusFb.koleksiTotal;
 document.addEventListener('pointerdown', () => { try { if (!_audio) { const C = window.AudioContext || window.webkitAudioContext; if (C) _audio = new C(); } if (_audio && _audio.state === 'suspended') _audio.resume(); } catch (e) { /* tanpa bunyi */ } }, { passive: true });
 function bunyiKabar() {
@@ -145,6 +148,7 @@ function tampilKabarBaru(r) {
 function periksaKabarBaru() {
   if (q.get('cadangan') || sumberData().jenis !== 'firestore') { _kb = null; return; }
   const a = akunKini(); if (!a || !a.uid || !dataLengkap()) { _kb = null; return; }
+  if (_layarTuju) { const t = _layarTuju; _layarTuju = ''; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* alamat tetap */ } pindah(t); }
   const baru = kbSidik(a); const ev = kbBanding(_kb, baru); _kb = baru;
   if (baru.owner) lencanaIkon(baru.n);
   const r = kbRingkas(ev); if (r) tampilKabarBaru(r);

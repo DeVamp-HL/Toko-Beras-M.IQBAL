@@ -3188,6 +3188,27 @@ Barang masuk, kartu muncul sesudah SIMPAN dan saat kedatangan diketuk untuk kore
 12 kedatangan terakhir, pilih satu). Cetak: satu cetakan pada satu waktu, printer diam = "lihat kertasnya", di aplikasi tablet tidak membuka dialog,
 WhatsApp hanya di peramban. Alat uji `alat-uji/uji_terima_barang.py` (jsc + kontrol, masuk CI).
 
+**Titipan uang keluar & pesan dari tablet, notifikasi (owner 21 Nov 2026; rules v13):** orang yang jaga tablet mencatat uang keluar (belanja toko ·
+untuk karyawan · kasbon karyawan) dan pesan untuk owner dari kartu paling atas Menu akun tablet. Keputusan owner: **menunggu owner** — titipan =
+dokumen `persetujuan` "menunggu" (tindakan `uangKeluar` / `pesan`), BUKAN dokumen uang; laci di buku baru berkurang saat owner menyetujui. Logika
+`baru/js/layar/titipan-logika.js` (awalan `tp`), panel tablet `titipan-panel.js`. Owner memutus di Uang › Uang keluar (Setujui · **Betulkan**
+nominal / keterangan / jenis / nama · Tolak beralasan; pesan: Tandai dibaca + balasan) atau papan Persetujuan (Menu) — **satu pintu**
+`tpSusunPutus`: persetujuan + uangnya dalam satu kiriman (belanja toko / untuk karyawan → `pengeluaranHarian` kategori toko, `untuk` toko/karyawan;
+kasbon → `kasbonMutasi` ambil), **bertanggal & berjam titipannya** (saat uang keluar dari laci; titik kas per tanggal membuat kas tidak dobel
+walau disetujui sesudah tutup hari), dari laci, `dariPersetujuan` = id titipan; betulan menyimpan angka asli (`koreksiOwner`, `nominalAsli`, …);
+penjaga putus dua kali, uang dobel, bulan terkunci. Titipan lama tanpa `jenis` = belanja toko. **Cacat terpendam yang ikut dibetulkan:** papan
+Persetujuan dulu hanya menandai titipan "disetujui" tanpa menulis uangnya, dan "setujui semua yang kecil" hanya mengirim dokumen PERTAMA tiap
+putusan. Tutup hari menyebut titipan yang masih menunggu (rekap + pita merah). Kisi peran `uangKeluar` "tidak boleh" = tombol mati di tablet;
+"boleh sendiri" / "minta owner" = titipan. **Notifikasi dalam aplikasi** (`kabar-baru-logika.js`, dipasang di `app.js`): owner diberi kabar
+permintaan BARU dari tablet; akun tablet diberi kabar putusan permintaannya sendiri — pita di atas layar (ketuk = buka layarnya), getar, bunyi
+pendek (sesudah layar pernah disentuh), lampu CPad kejadian `owner` (sian berkedip), lencana ikon owner; pembanding pertama sesudah data lengkap
+tidak berbunyi. **Push HP saat aplikasi tertutup:** fungsi server `functions/index.js` (`kabarOwner`, pemicu `persetujuan` baru → FCM ke token
+`notifOwner`, membuang token mati, tidak menulis data toko), service worker `baru/notif/sw-notif.js` (lingkup sendiri, tidak berebut dengan
+`sw-baru.js`), penyala `baru/js/data/notif-hp.js` (izin diminta langsung dari ketukan; iPhone hanya dari Layar Utama), kartu di Menu › Toko ini ›
+Perangkat & antrean. Kunci VAPID proyek di `aturanToko/notif`. Langkah owner (rules v13, kunci, pasang fungsi lewat Cloud Shell `functions/pasang.sh`,
+nyalakan per perangkat): `docs/notifikasi-hp.md`. CSP /baru/ + `firebaseinstallations` & `fcmregistrations`. Alat uji `alat-uji/uji_titipan.py`
+(jsc + kontrol, masuk CI) + rules v13 di `periksa_rules.py` / `uji_rules_emulator.py` (22 kasus ★U).
+
 **Cetak di tablet untuk Uang dan Laporan (owner 21 Nov 2026: "Oke kita bangun yang ini"):** di aplikasi tablet dialog cetak hanya berkelebat
 lalu hilang, jadi tombol Cetak di Uang (slip upah, rekap tutup hari) dan di Laporan (dokumen) terasa mati. *Uang:* di aplikasi tablet kedua
 teks itu dicetak LANGSUNG ke printer struk lewat `cetakTeks` (`inti/printer.js`) — selalu gaya teks, apa pun gaya struk yang disetel —

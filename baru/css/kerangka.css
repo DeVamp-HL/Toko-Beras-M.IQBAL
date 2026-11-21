@@ -59,6 +59,7 @@ main.layar-jual > input[type="hidden"] { display: none; }
 .kabar-nav.awas { border-color: var(--awas); color: var(--awas); cursor: pointer; }
 /* owner 21 Nov 2026: notifikasi dalam aplikasi — titipan / pesan baru (owner) atau putusan owner (tablet); ketuk = buka layarnya */
 .kabar-baru { position: fixed; left: 14px; right: 14px; top: calc(env(safe-area-inset-top, 0px) + 10px); z-index: 7; padding: 10px 14px; border-radius: 14px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--emas2, var(--kaca-tepi)); box-shadow: 0 10px 30px rgba(0, 0, 0, .18); font-size: 13px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.kabar-baru[hidden] { display: none; }   /* display: flex di atas mengalahkan atribut hidden tanpa baris ini */
 .kabar-baru.awas { border-color: var(--awas); }
 .kabar-baru.awas b { color: var(--awas); }
 .kabar-baru.masuk { animation: kabar-baru-masuk 420ms cubic-bezier(.2, .8, .2, 1.1); }

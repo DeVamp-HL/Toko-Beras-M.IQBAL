@@ -1,5 +1,17 @@
 {
   "firestore": {
     "rules": "firestore.rules"
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "notif",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.log",
+        "pasang.sh"
+      ]
+    }
+  ]
 }

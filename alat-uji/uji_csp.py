@@ -53,6 +53,8 @@ PENGALIH_404 = '404.html'
 TUJUAN_404 = '/Toko-Beras-M.IQBAL/baru/'
 CSP_PENGALIH = {'default-src': ["'none'"], 'img-src': ["'self'"], 'style-src': ["'unsafe-inline'"], 'base-uri': ["'none'"], 'form-action': ["'none'"]}
 FIREBASE = ['https://firestore.googleapis.com', 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com']
+# owner 21 Nov 2026: notifikasi HP owner — SDK Firebase Messaging (/baru/ saja) mendaftarkan token lewat dua host ini; kasir darurat tidak memakainya
+FCM = ['https://firebaseinstallations.googleapis.com', 'https://fcmregistrations.googleapis.com']
 # Kasir darurat: direktif selain script-src, PERSIS (urutan sumber diabaikan). script-src = hash script sebaris saja.
 CSP_DARURAT = {'default-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'img-src': ["'self'"], 'connect-src': ["'self'"] + FIREBASE,
                'worker-src': ["'self'"], 'object-src': ["'none'"], 'base-uri': ["'none'"], 'form-action': ["'none'"]}
@@ -154,7 +156,8 @@ def periksa(t):
               and (('https://fonts.googleapis.com' not in luar_gaya) or 'https://fonts.gstatic.com' in D.get('font-src', [])), sorted(luar_gaya)))
     c.append(('connect-src: Firestore & Auth Firebase (' + ', '.join(x.split('//')[1].split('.')[0] for x in FIREBASE) + ')', all(h in cs for h in FIREBASE), cs))
     # SDK Firebase dimuat dari gstatic; host lain di connect-src = celah tanpa guna
-    lebih = [h for h in cs if h not in FIREBASE + ["'self'", 'https://www.gstatic.com']]
+    lebih = [h for h in cs if h not in FIREBASE + FCM + ["'self'", 'https://www.gstatic.com']]
+    c.append(('connect-src: pendaftaran token notifikasi HP (' + ', '.join(x.split('//')[1].split('.')[0] for x in FCM) + ')', all(h in cs for h in FCM), cs))
     c.append(('connect-src tidak membuka host lain', not lebih, lebih))
     # semua halaman ber-CSP (/baru/ + templatnya, kasir darurat, pengalih): handler sebaris diblokir
     sebaris = []
@@ -259,7 +262,8 @@ KONTROL = [
     ('script-src kehilangan gstatic (SDK Firebase diblokir)', {HTML: [("script-src 'self' https://www.gstatic.com", "script-src 'self'")]}),
     ("script-src diberi 'unsafe-inline'", {HTML: [("script-src 'self' https://www.gstatic.com", "script-src 'self' 'unsafe-inline' https://www.gstatic.com")]}),
     ('connect-src kehilangan Firestore', {HTML: [('connect-src \'self\' https://firestore.googleapis.com ', 'connect-src \'self\' ')]}),
-    ('connect-src membuka host lain', {HTML: [('https://securetoken.googleapis.com https://www.gstatic.com;', 'https://securetoken.googleapis.com https://www.gstatic.com https://contoh.example;')]}),
+    ('connect-src membuka host lain', {HTML: [('https://fcmregistrations.googleapis.com;', 'https://fcmregistrations.googleapis.com https://contoh.example;')]}),
+    ('connect-src kehilangan pendaftaran token notifikasi HP', {HTML: [(' https://fcmregistrations.googleapis.com;', ';')]}),
     ('font Google tidak diizinkan', {HTML: [("font-src 'self' https://fonts.gstatic.com;", "font-src 'self';")]}),
     ('onclick sebaris di templat layar', {'baru/js/layar/jual.js': [('<div class="kaca-btn" data-aksi="pecahan"', '<div class="kaca-btn" onclick="x()" data-aksi="pecahan"')]}),
     ('onClick tanpa kutip di templat layar (owner 3 Okt, perkuat)', {'baru/js/layar/jual.js': [('<div class="kaca-btn" data-aksi="pecahan"', '<div class="kaca-btn" onClick=x() data-aksi="pecahan"')]}),

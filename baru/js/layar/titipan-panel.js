@@ -27,10 +27,10 @@ export function kartuTitipan(s, opsi) {
       <div class="ket" style="font-size: 11px;">Uangnya boleh diambil dari laci sekarang; laci di buku baru berkurang sesudah owner menyetujui. Owner bisa membetulkan angka atau menolak dengan alasan.</div>`;
   const formPesan = h`<textarea class="ketik-nama" rows="3" maxlength="${TP.TP_BATAS.pesan}" placeholder="tulis pesan untuk owner (mis. kantong 5 kg tinggal 20 lembar)" data-ketik="tpKetik" data-kolom="pesan">${d.pesan}</textarea>
       <div class="kaca-btn aktif emas" data-aksi="tpKirimPesan" data-k="tp-kirim-pesan">KIRIM PESAN</div>`;
-  const baris = (b) => h`<div class="ug-baris dua ${kelasStatus(b.status)}" data-k="tp-${b.id}"><div style="min-width: 0;"><div>${b.pesan ? 'Pesan: ' + b.teks : b.ringkas}</div>
+  const baris = (b) => h`<div class="tp-baris ${kelasStatus(b.status)}" data-k="tp-${b.id}"><div style="min-width: 0;"><div>${b.pesan ? 'Pesan: ' + b.teks : b.ringkas}</div>
       <div class="k2">${tanggalPendek(b.tanggal)} ${b.jam} · ${b.dari} · <b>${b.namaStatus}</b>${b.diputus ? ' ' + b.diputus : ''}${b.dikoreksi ? ' · dibetulkan owner (diketik ' + RP(b.asli.nominal) + ')' : ''}</div>
       ${b.alasan ? h`<div class="k2 awas-teks">Alasan owner: ${b.alasan}</div>` : ''}${b.balasan ? h`<div class="k2">Balasan owner: ${b.balasan}</div>` : ''}</div>
-      <div class="kaca-btn kecil" data-aksi="tpCetak" data-id="${b.id}">Cetak</div></div>`;
+      <div class="kaca-btn kecil tp-cetak" data-aksi="tpCetak" data-id="${b.id}">Cetak</div></div>`;
   return h`<div class="kartu" data-k="tp-kartu" style="gap: 8px;"><div class="label">Uang keluar & pesan untuk owner${tunggu.length ? ' · ' + tunggu.length + ' menunggu ' + RP(tunggu.reduce((x, b) => x + b.nominal, 0)) : ''}</div>
     <div class="tombol-baris" data-k="tp-tab"><div class="kaca-btn ${d.tab === 'uang' ? 'aktif' : ''}" data-aksi="tpTab" data-t="uang">Uang keluar</div><div class="kaca-btn ${d.tab === 'pesan' ? 'aktif' : ''}" data-aksi="tpTab" data-t="pesan">Pesan</div></div>
     ${d.tab === 'pesan' ? formPesan : formUang}

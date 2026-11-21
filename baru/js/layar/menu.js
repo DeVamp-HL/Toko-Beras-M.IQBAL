@@ -12,9 +12,10 @@ import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini, jamSetempat, waktuSetemp
 import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
 import { kartuTitipan, aksiTitipan, TP_DRAF_KOSONG } from './titipan-panel.js';   // owner 21 Nov 2026: uang keluar & pesan dari tablet
-import * as TB from './tablet-logika.js';   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
+import * as TB from './tablet-logika.js';
+import { nhDukung, nhTersimpan, nhIzin, nhNyalakan, nhMatikan, nhVapidSah } from '../data/notif-hp.js';   // owner 21 Nov 2026: notifikasi HP saat aplikasi tertutup   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman, kunciLuarCache , ingatPerVersi } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman, kunciLuarCache , ingatPerVersi, cacheMentah } from '../data/toko.js';
 import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';
 // owner 19 Nov 2026 (lag di Android): kelancaran PERANGKAT INI — dicatat perangkat sendiri, dibaca di Sistem › Perangkat
 import { ukurMulusRingkas, ukurMulusSalin, ukurMulusKosongkan } from '../inti/ukur-mulus.js';
@@ -55,7 +56,7 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG() });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), nhVapid: '', nhSibuk: false });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))]], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
@@ -228,7 +229,16 @@ export function pasangLayarMenu(akar, opsi) {
     aturJatahAkun: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); a.jatahAkun = a.jatahAkun || {}; a.jatahAkun[el.dataset.uid] = String(v).replace(/[^\d]/g, '').slice(0, 3); set({ atur: a }); },
     aturBawahModal: ({ kunci }) => { const a = JSON.parse(JSON.stringify(st().atur)); const L = a.bawahModal || []; const i = L.indexOf(kunci); if (i >= 0) L.splice(i, 1); else L.push(kunci); a.bawahModal = L; set({ atur: a }); },
     simpanAtur: async () => { const a = st().atur; if (!a) return; const isi = Object.assign({}, a); delete isi.id; if (await tulis(S.susunAturSistem(a.id, isi, waktu()))) set({ atur: null }); },
+    // owner 21 Nov 2026: notifikasi HP / Mac owner saat aplikasi tertutup. Kunci publik web push proyek (aturanToko/notif) ditempel owner SEKALI;
+    // tiap perangkat lalu menyalakan sendiri (izin diminta langsung dari ketukan — Safari menolak bila tidak).
+    nhKetik: (v) => set({ nhVapid: String(v).trim().slice(0, 140) }),
+    nhSimpanKunci: async () => { const v = st().nhVapid; if (!nhVapidSah(v)) return set({ kabar: 'Kunci ini bukan kunci publik web push (base64url ±87 huruf, diawali B) — salin dari Console › Project settings › Cloud Messaging › Web Push certificates › Key pair', kabarAwas: true });
+      const w = waktu(); if (await tulis({ dokumen: [{ koleksi: 'aturanToko', data: { id: 'notif', vapid: v, tanggal: w.tanggal, jam: w.jam } }], patch: { kabar: 'Kunci notifikasi tersimpan — sekarang tekan Nyalakan di tiap HP / Mac owner', kabarAwas: false } })) set({ nhVapid: '' }); },
+    nhNyala: async () => { if (st().nhSibuk) return; const p = nhNyalakan(vapidToko()); set({ nhSibuk: true, kabar: 'Menyalakan notifikasi…', kabarAwas: false }); const r = await p;
+      set({ nhSibuk: false, kabar: r.ok ? 'Notifikasi menyala di perangkat ini — titipan, pesan & permintaan dari tablet muncul walau aplikasi tertutup' : 'Notifikasi BELUM menyala: ' + r.pesan, kabarAwas: !r.ok }); },
+    nhMati: async () => { if (st().nhSibuk) return; set({ nhSibuk: true }); const r = await nhMatikan(); set({ nhSibuk: false, kabar: r.ok ? 'Notifikasi dimatikan di perangkat ini' : 'Gagal mematikan: ' + r.pesan, kabarAwas: !r.ok }); },
   }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }));
+  const vapidToko = () => { const d = cacheMentah('aturan').find((x) => String(x.id) === 'notif'); return d && d.vapid ? String(d.vapid) : ''; };
   delegasi(akar, AKSI);
 
   // ---------- GAMBAR ----------
@@ -384,8 +394,22 @@ export function pasangLayarMenu(akar, opsi) {
         <div class="label">Nama perangkat ini</div><div style="display: flex; gap: 6px;"><input class="ketik-nama" type="text" placeholder="${L.namaPerangkat || 'mis. iPhone owner, Mac toko'}" value="${s.namaBaru || ''}" data-ketik="namaiPerangkat"><div class="kaca-btn aktif" style="min-width: 84px;" data-aksi="namaiSimpan">simpan</div></div>
         <div class="label">Yang mencatat di perangkat ini</div><div class="pita-info" data-k="masuk-sebagai">Masuk sebagai: <b>${(() => { const a = opsi.akun ? opsi.akun() : null; return a ? (a.jenis === 'owner' ? 'Owner' : a.nama + ' (' + ((S.SS_PERAN.find((p) => p.id === a.peran) || {}).nama || a.peran) + ')') : 'Owner'; })()}</b></div>
         <div class="k2">Catatan membawa nama & uid akun yang MASUK — bukan pilihan di perangkat. Ganti orang = Keluar lalu masuk dengan akunnya sendiri (tombol Keluar di pojok atas).</div></div>` : pilih ? h`<div class="kartu" data-k="panel-lain" style="gap: 4px;"><div style="font-weight: 700;">${pilih.nama}</div><div class="k2">${pilih.denyutTeks} · ${pilih.aplikasi}</div><div class="k2">Antrean & pemegang perangkat lain hanya bisa diubah dari perangkat itu sendiri.</div></div>` : ''}
+      ${gambarNotifHp(s)}
       ${gambarLancar(s)}
       ${pintuAtur('Atur batas antrean, denyut & pencatat', 'antrean lama ' + P.atur.batasAntre + ' menit · denyut lama ' + P.atur.batasDenyut + ' menit · ' + P.atur.pemegang.length + ' pencatat')}`;
+  }
+  // owner 21 Nov 2026: notifikasi HP / Mac owner saat aplikasi tertutup (push lewat fungsi server functions/ — dipasang owner sekali di Cloud Shell)
+  function gambarNotifHp(s) {
+    const a = opsi.akun ? opsi.akun() : null; if (a && a.jenis !== 'owner') return '';
+    const D = nhDukung(); const T = nhTersimpan(); const izin = nhIzin(); const kunci = vapidToko();
+    const status = !D.ok ? D.sebab : T && izin === 'granted' ? 'MENYALA di perangkat ini sejak ' + waktuSetempat(T.pada) : izin === 'denied' ? 'Izin notifikasi DITOLAK di perangkat ini — izinkan dulu di setelan peramban / iPhone' : 'Belum menyala di perangkat ini';
+    return h`<div class="kartu" data-k="notif-hp" style="gap: 6px;"><div style="font-weight: 700;">Notifikasi di perangkat ini</div>
+      <div class="k2">Titipan uang keluar, pesan, dan permintaan lain dari tablet muncul di HP / Mac ini walau aplikasinya tertutup.</div>
+      <div class="pita-info ${T && izin === 'granted' ? 'emas' : D.ok ? '' : 'awas'}" data-k="nh-status">${status}</div>
+      ${kunci ? '' : h`<div class="label">Kunci notifikasi proyek (sekali saja)</div><div style="display: flex; gap: 6px;"><input class="ketik-nama" type="text" placeholder="kunci publik web push (diawali B…)" value="${s.nhVapid}" data-ketik="nhKetik"><div class="kaca-btn" data-aksi="nhSimpanKunci">Simpan</div></div>
+        <div class="k2">Console Firebase › Project settings › Cloud Messaging › Web Push certificates › Generate key pair, lalu salin "Key pair"-nya ke sini.</div>`}
+      ${D.ok ? h`<div class="tombol-baris rapat">${T && izin === 'granted' ? h`<div class="kaca-btn" data-aksi="nhNyala">${s.nhSibuk ? 'menunggu…' : 'Perbarui'}</div><div class="kaca-btn putus" data-aksi="nhMati">Matikan</div>` : h`<div class="kaca-btn aktif emas ${kunci ? '' : 'mati'}" data-aksi="nhNyala">${s.nhSibuk ? 'menunggu…' : 'Nyalakan notifikasi'}</div>`}</div>` : ''}
+      <div class="k2" style="font-size: 11px;">Butuh fungsi server notifikasi terpasang (sekali, oleh owner — docs/notifikasi-hp.md). Isi notifikasi lewat layanan push Google / Apple.</div></div>`;
   }
   function gambarPeran(s, d, tab) {
     const P = S.ssPeran();
