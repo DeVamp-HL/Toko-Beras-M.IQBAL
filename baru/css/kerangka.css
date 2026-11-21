@@ -57,6 +57,14 @@ main.layar-jual > input[type="hidden"] { display: none; }
 @media (prefers-reduced-motion: reduce) { .nav > div > svg { transition: none; } .nav > div.aktif > svg { transform: none; } }
 .kabar-nav { position: fixed; left: 14px; right: 14px; bottom: 96px; z-index: 6; padding: 10px 14px; border-radius: 14px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); font-size: 13px; }
 .kabar-nav.awas { border-color: var(--awas); color: var(--awas); cursor: pointer; }
+/* owner 21 Nov 2026: notifikasi dalam aplikasi — titipan / pesan baru (owner) atau putusan owner (tablet); ketuk = buka layarnya */
+.kabar-baru { position: fixed; left: 14px; right: 14px; top: calc(env(safe-area-inset-top, 0px) + 10px); z-index: 7; padding: 10px 14px; border-radius: 14px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--emas2, var(--kaca-tepi)); box-shadow: 0 10px 30px rgba(0, 0, 0, .18); font-size: 13px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.kabar-baru[hidden] { display: none; }   /* display: flex di atas mengalahkan atribut hidden tanpa baris ini */
+.kabar-baru.awas { border-color: var(--awas); }
+.kabar-baru.awas b { color: var(--awas); }
+.kabar-baru.masuk { animation: kabar-baru-masuk 420ms cubic-bezier(.2, .8, .2, 1.1); }
+@keyframes kabar-baru-masuk { from { transform: translateY(-120%); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .kabar-baru.masuk { animation: none; } }
 
 /* lembar melayang (HP). Sejak layar dimorf (elemen hidup terus), animasi naik cukup di elemennya: ia hanya berjalan saat
    lembar itu LAHIR (data-k berbeda per jenis lembar), tidak terulang tiap ketukan. */
@@ -131,6 +139,7 @@ main.layar-jual > input[type="hidden"] { display: none; }
   /* 100% (bukan 100vw): lebar viewport tanpa batang gulir — sama dengan yang dipakai margin auto <main> */
   main.layar-jual .lembar:not(.tirai) { right: max(28px, calc((100% - 72px - 1720px) / 2 + 28px)); width: var(--lebar-samping); bottom: auto; max-height: calc(100% - 50px); }
   .kabar-nav { right: auto; left: 90px; width: 360px; bottom: 24px; }
+  .kabar-baru { left: auto; right: 24px; width: 380px; }
 }
 /* owner 3 Okt (iPad mendatar dengan jari): WebKit iOS menempelkan :hover pada yang terakhir diketuk sampai ada ketukan lain — menu samping tetap
    selebar 236px menutupi isi sesudah pindah layar, dan monogram IQ tidak bisa menutupnya. Menepi-membuka hanya untuk kursor sungguhan;

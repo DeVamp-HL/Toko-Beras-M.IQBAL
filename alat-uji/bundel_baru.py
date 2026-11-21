@@ -72,8 +72,17 @@ PG_MODUL = 'baru/js/layar/laba-pelanggan-logika.js'
 PG_PEMAKAI = ('dasbor-logika.js',)
 
 
+
+# owner 21 Nov 2026: titipan uang keluar & pesan dari tablet — Uang (titipan menunggu), papan Persetujuan (sistem-logika) & tutup hari memakai
+# titipan-logika (modul daun: data + format). Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada.
+TP_MODUL = 'baru/js/layar/titipan-logika.js'
+TP_PEMAKAI = ('uang-logika.js', 'sistem-logika.js', 'tutup-hari-logika.js')
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in TP_PEMAKAI for x in d) and not any(x.endswith('titipan-logika.js') for x in d):
+        d.append(TP_MODUL)
     if any(os.path.basename(x) in PG_PEMAKAI for x in d) and not any(x.endswith('laba-pelanggan-logika.js') for x in d):
         d.append(PG_MODUL)
     if any(os.path.basename(x) in PO_PEMAKAI for x in d) and not any(x.endswith('pesanan-logika.js') for x in d):

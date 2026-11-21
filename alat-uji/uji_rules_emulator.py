@@ -127,10 +127,10 @@ KONTROL_V8 = [
 # ---- V9 (B2, owner 17 Nov 2026): kasus ★J docs/uji-rules-v9.md (periksa_rules.KASUS_V9) atas firestore.rules (v9) dan atas firestore.rules.v8 — yang berbeda
 # WAJIB persis periksa_rules.BEDA_V8 (yang dibuka v9). Kontrol: satu suku v9 dirusak → kasus sasarannya wajib berbalik.
 KONTROL_V9 = [
-    ('minta bon atas nama orang lain (tanpa mintaUid)', [(" && d.get('mintaUid', '') == request.auth.uid", "")], ['★J4']),
+    ('minta bon atas nama orang lain (tanpa mintaUid)', [("d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid", "d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu'")], ['★J4']),   # v13: jangkar khusus kredit (titipan & pesan juga ber-mintaUid)
     ('minta bon tanpa syarat status "menunggu"', [("d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu' && ", "d.get('tindakan', '') == 'kredit' && ")], ['★J5']),
-    ('minta bon dicabut dari create persetujuan', [(" || stafMintaKredit(['ben']);", ";")], ['★J1']),
-    ('minta bon dibuka untuk karyawan', [("stafMintaKredit(['ben']);", "stafMintaKredit(['ben', 'karyawan']);")], ['★J8']),
+    ('minta bon dicabut dari create persetujuan', [(" || stafMintaKredit(['ben']) ||", " ||")], ['★J1']),   # v13: baris create bersambung
+    ('minta bon dibuka untuk karyawan', [("stafMintaKredit(['ben']) ||", "stafMintaKredit(['ben', 'karyawan']) ||")], ['★J8']),
 ]
 # ---- V10 (B3, owner 18 Nov 2026): kasus ★L docs/uji-rules-v10.md (periksa_rules.KASUS_V10) atas firestore.rules (v10) dan atas firestore.rules.v9 — yang
 # berbeda WAJIB persis periksa_rules.BEDA_V9 (yang dibuka v10). Kontrol: satu suku v10 dirusak → kasus sasarannya wajib berbalik.
@@ -159,6 +159,18 @@ KONTROL_V12 = [
     ('staf boleh mengubah & menghapus tanda kenal', [("    match /tandaKenal/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben', 'karyawan']);\n      allow update, delete: if owner();", "    match /tandaKenal/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben', 'karyawan']);\n      allow update, delete: if owner() || staf(['ben', 'karyawan']);")], ['★S7', '★S8']),
     ('kasir@ membaca tanda kenal', [("    match /tandaKenal/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben', 'karyawan']);\n      allow update, delete: if owner();", "    match /tandaKenal/{id} {\n      allow read: if owner() || kasir() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben', 'karyawan']);\n      allow update, delete: if owner();")], ['★S10']),
     ('tanda kenal dibuka hanya untuk ben', [("    match /tandaKenal/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben', 'karyawan']);\n      allow update, delete: if owner();", "    match /tandaKenal/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben']);\n      allow update, delete: if owner();")], ['★S5']),
+]
+# ---- V13 (owner 21 Nov 2026: titipan uang keluar & pesan dari tablet + token notifikasi HP owner): kasus ★U docs/uji-rules-v13.md (periksa_rules.KASUS_V13)
+# atas firestore.rules (v13) dan atas firestore.rules.v12 — yang berbeda WAJIB persis periksa_rules.BEDA_V12 (yang dibuka v13). Kontrol: satu suku v13 dirusak →
+# kasus sasarannya wajib berbalik.
+KONTROL_V13 = [
+    ('titipan atas nama siapa saja', [(" && d.get('mintaUid', '') == request.auth.uid\n        && d.get('jenis', '') in", "\n        && d.get('jenis', '') in")], ['★U7']),
+    ('titipan jenis apa saja', [("\n        && d.get('jenis', '') in ['toko', 'karyawan', 'kasbon'] && d.get('nominal', 0) is int", "\n        && d.get('nominal', 0) is int")], ['★U10']),
+    ('nominal titipan boleh pecahan', [(" && d.get('nominal', 0) is int && d.get('nominal', 0) > 0", " && d.get('nominal', 0) > 0")], ['★U12']),
+    ('titipan boleh membawa betulan owner', [("'alasanTolak', 'koreksiOwner', 'balasan']);", "'alasanTolak']);")], ['★U9']),
+    ('pesan tanpa batas panjang', [(" && d.teks.size() <= 500", "")], ['★U17']),
+    ('karyawan tidak bisa menitip', [("stafMintaKeluar(['ben', 'karyawan'])", "stafMintaKeluar(['ben'])")], ['★U5']),
+    ('token notifikasi owner terbaca staf', [("    match /notifOwner/{id} {\n      allow read, write: if owner();", "    match /notifOwner/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow write: if owner();")], ['★U20']),
 ]
 # kontrol bagian C: suku kirim ulang bercap dicabut dari update penjualan → kirim ulang kasir-v33 & kasir-v32 atas nota bercap wajib berbunyi
 KONTROL_KASIR = ('suku (kasir() && ulangKasirBercap()) dicabut dari update penjualan', [(" || (kasir() && ulangKasirBercap());", ";")], ['c2', 'c4'])
@@ -696,6 +708,29 @@ def jalankan_emulator():
         lap['kontrolV12'].append(k)
         print('  %s %s → %s' % ('BERBUNYI' if k['berbunyi'] else 'DIAM!!  ', nama, k.get('galat') or ', '.join('%s %s (wajib %s)' % x for x in k['hasil'])), flush=True)
     pasang_aturan(v7)
+    # ---- V13 (owner 21 Nov 2026): kasus ★U atas firestore.rules cabang ini (v13) dan atas firestore.rules.v12; kontrol satu suku v13
+    v12lama = baca('firestore.rules.v12')
+    print('— V13 · %d kasus ★U atas firestore.rules (v13)' % len(P.KASUS_V13), flush=True)
+    H13 = jalankan_semua(J, v7, P.KASUS_V13); lap['v13'] = H13
+    for x in H13: print('  %s %-6s %-26s %-48s → %-13s wajib %-7s %s' % ('✓' if x['ok'] else '✗', x['no'], x['akun'] + ' ' + x['op'], x['jalur'][:48], x['hasil'], x['wajib'], x['ket'][:90]), flush=True)
+    print('— V13 · kasus yang sama atas firestore.rules.v12 (yang berbeda wajib persis BEDA_V12 = %s)' % ', '.join(sorted(P.BEDA_V12)), flush=True)
+    H12l = jalankan_semua(J, v12lama, P.KASUS_V13); lap['v13lama'] = []
+    for a, b in zip(H13, H12l):
+        harap = ('DITOLAK' if a['wajib'] == 'LOLOS' else 'LOLOS') if a['no'] in P.BEDA_V12 else a['wajib']
+        r13 = {'no': b['no'], 'jalur': b['jalur'], 'hasilV12': b['hasil'], 'hasilV13': a['hasil'], 'harapV12': harap, 'ok': b['hasil'] == harap and b['hasil'] != 'TIDAK TERUKUR'}
+        lap['v13lama'].append(r13)
+        if not r13['ok'] or a['no'] in P.BEDA_V12: print('  %s %-6s v12 %-13s v13 %-13s harap v12 %s' % ('✓' if r13['ok'] else '✗', r13['no'], r13['hasilV12'], r13['hasilV13'], harap), flush=True)
+    print('— V13 · KONTROL: satu suku v13 dirusak → kasus sasaran wajib berbalik', flush=True)
+    lap['kontrolV13'] = []; per13 = {K[0]: K for K in P.KASUS_V13}; utuh13 = {x['no']: x for x in H13}
+    for nama, ganti, sasaran in KONTROL_V13:
+        try:
+            R = rusak(v7, ganti); hs = jalankan_semua(J, R, [per13[s] for s in sasaran])
+            balik = [h for h in hs if h['hasil'] in ('LOLOS', 'DITOLAK') and h['hasil'] != h['wajib'] and utuh13.get(h['no'], {}).get('ok')]
+            k = {'nama': nama, 'sasaran': sasaran, 'hasil': [(h['no'], h['hasil'], h['wajib']) for h in hs], 'berbunyi': len(balik) == len(sasaran)}
+        except Exception as e: k = {'nama': nama, 'sasaran': sasaran, 'hasil': [], 'berbunyi': False, 'galat': str(e)[:300]}
+        lap['kontrolV13'].append(k)
+        print('  %s %s → %s' % ('BERBUNYI' if k['berbunyi'] else 'DIAM!!  ', nama, k.get('galat') or ', '.join('%s %s (wajib %s)' % x for x in k['hasil'])), flush=True)
+    pasang_aturan(v7)
     # ---- C · kasir darurat
     v33 = skrip_halaman(baca('kasir-darurat-nominal.html')); h32 = html_v32(); v32 = skrip_halaman(h32) if h32 else None
     lap['kasir'] = {}
@@ -727,14 +762,17 @@ def jalankan_emulator():
                       'v11': ringkas(lap['v11']), 'v11lama': {'kasus': len(lap['v11lama']), 'sesuai': sum(1 for x in lap['v11lama'] if x['ok'])},
                       'kontrolV11': {'jumlah': len(lap['kontrolV11']), 'berbunyi': sum(1 for x in lap['kontrolV11'] if x['berbunyi'])},
                       'v12': ringkas(lap['v12']), 'v12lama': {'kasus': len(lap['v12lama']), 'sesuai': sum(1 for x in lap['v12lama'] if x['ok'])},
-                      'kontrolV12': {'jumlah': len(lap['kontrolV12']), 'berbunyi': sum(1 for x in lap['kontrolV12'] if x['berbunyi'])}}
+                      'kontrolV12': {'jumlah': len(lap['kontrolV12']), 'berbunyi': sum(1 for x in lap['kontrolV12'] if x['berbunyi'])},
+                      'v13': ringkas(lap['v13']), 'v13lama': {'kasus': len(lap['v13lama']), 'sesuai': sum(1 for x in lap['v13lama'] if x['ok'])},
+                      'kontrolV13': {'jumlah': len(lap['kontrolV13']), 'berbunyi': sum(1 for x in lap['kontrolV13'] if x['berbunyi'])}}
     lap['lulus'] = (all(x['ok'] for x in A) and all(x['ok'] for x in lap['v6']) and all(x['berbunyi'] for x in lap['kontrol']) and lap['kontrolKasir']['berbunyi']
                     and all(x['ok'] for v in lap['kasir'].values() for x in v['cek'])
                     and all(x['ok'] for x in lap['v8']) and all(x['ok'] for x in lap['v8lama']) and all(x['berbunyi'] for x in lap['kontrolV8'])
                     and all(x['ok'] for x in lap['v9']) and all(x['ok'] for x in lap['v9lama']) and all(x['berbunyi'] for x in lap['kontrolV9'])
                     and all(x['ok'] for x in lap['v10']) and all(x['ok'] for x in lap['v10lama']) and all(x['berbunyi'] for x in lap['kontrolV10'])
                     and all(x['ok'] for x in lap['v11']) and all(x['ok'] for x in lap['v11lama']) and all(x['berbunyi'] for x in lap['kontrolV11'])
-                    and all(x['ok'] for x in lap['v12']) and all(x['ok'] for x in lap['v12lama']) and all(x['berbunyi'] for x in lap['kontrolV12']))
+                    and all(x['ok'] for x in lap['v12']) and all(x['ok'] for x in lap['v12lama']) and all(x['berbunyi'] for x in lap['kontrolV12'])
+                    and all(x['ok'] for x in lap['v13']) and all(x['ok'] for x in lap['v13lama']) and all(x['berbunyi'] for x in lap['kontrolV13']))
     return lap
 
 
@@ -756,7 +794,9 @@ def ringkasan_md(lap):
            '- **V11 (B4 pesanan, PO & order rutin)**: %s atas v11 · atas v10 %d/%d sesuai (berbeda tepat %s) · kontrol v11 %d/%d berbunyi'
            % (f(R['v11']), R['v11lama']['sesuai'], R['v11lama']['kasus'], ', '.join(sorted(P.BEDA_V10)), R['kontrolV11']['berbunyi'], R['kontrolV11']['jumlah']),
            '- **V12 (paket S2b tanda kenal)**: %s atas v12 · atas v11 %d/%d sesuai (berbeda tepat %s) · kontrol v12 %d/%d berbunyi'
-           % (f(R['v12']), R['v12lama']['sesuai'], R['v12lama']['kasus'], ', '.join(sorted(P.BEDA_V11)), R['kontrolV12']['berbunyi'], R['kontrolV12']['jumlah']), '']
+           % (f(R['v12']), R['v12lama']['sesuai'], R['v12lama']['kasus'], ', '.join(sorted(P.BEDA_V11)), R['kontrolV12']['berbunyi'], R['kontrolV12']['jumlah']),
+           '- **V13 (titipan uang keluar & pesan dari tablet + token notifikasi HP owner)**: %s atas v13 · atas v12 %d/%d sesuai (berbeda tepat %s) · kontrol v13 %d/%d berbunyi'
+           % (f(R['v13']), R['v13lama']['sesuai'], R['v13lama']['kasus'], ', '.join(sorted(P.BEDA_V12)), R['kontrolV13']['berbunyi'], R['kontrolV13']['jumlah']), '']
     out += ['### A · kasus (v7)', '', '| no | akun · operasi · jalur | wajib | emulator v7 | v6 |', '|---|---|---|---|---|']
     v6 = {x['no']: x for x in lap['v6']}
     for x in lap['v7']:
@@ -897,6 +937,16 @@ def periksa(rules=None, dok=None, html=None):
             Mx = RM.Rules(rusak(R, ganti)); diam = [s for s in sasaran if nilai_model(Mx, per12[s]).boleh == per12[s][8]]
             c.append(('kontrol v12 "%s": jangkar tepat 1× & model membalik %s' % (nama, ', '.join(sasaran)), not diam, {'diam': diam}))
     except Exception as e: c.append(('model v12 (KASUS_V12)', False, str(e)[:300]))
+    # V13 (owner 21 Nov 2026): model atas v13 = kolom wajib KASUS_V13; atas firestore.rules.v12 berbeda tepat BEDA_V12; kontrol V13 membalik sasarannya
+    try:
+        M13, M12lama = RM.Rules(R), RM.Rules(baca('firestore.rules.v12'))
+        salah13 = [K[0] for K in P.KASUS_V13 if nilai_model(M13, K).boleh != K[8]]; beda12 = {K[0] for K in P.KASUS_V13 if nilai_model(M12lama, K).boleh != nilai_model(M13, K).boleh}
+        c.append(('model v13 = kolom Wajib di %d kasus ★U; berbeda dari firestore.rules.v12 tepat %s' % (len(P.KASUS_V13), ', '.join(sorted(P.BEDA_V12))), not salah13 and beda12 == set(P.BEDA_V12), {'salah v13': salah13, 'beda v12': sorted(beda12)}))
+        per13 = {K[0]: K for K in P.KASUS_V13}
+        for nama, ganti, sasaran in KONTROL_V13:
+            Mx = RM.Rules(rusak(R, ganti)); diam = [s for s in sasaran if nilai_model(Mx, per13[s]).boleh == per13[s][8]]
+            c.append(('kontrol v13 "%s": jangkar tepat 1× & model membalik %s' % (nama, ', '.join(sasaran)), not diam, {'diam': diam}))
+    except Exception as e: c.append(('model v13 (KASUS_V13)', False, str(e)[:300]))
     H = html if html is not None else baca('kasir-darurat-nominal.html')
     try: s33 = skrip_halaman(H)
     except Exception as e: return c + [('skrip kasir darurat terbaca', False, str(e))]

@@ -1,4 +1,14 @@
 // ============================================================================
+// ATURAN FIRESTORE v13 FINAL — Toko Beras M.IQBAL (DRAF 21 Nov 2026, titipan uang keluar & pesan dari tablet + notifikasi HP owner) = v12 FINAL + PERSIS
+// satu ubahan, dua fungsinya, dan satu blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v12; uji server: docs/uji-rules-v13.md).
+// Owner menerbitkan v13 SEKALI lewat Console SEBELUM cabang titipan digabung:
+//   (v13-1) persetujuan create: + stafMintaKeluar(ben, karyawan) — TITIPAN uang keluar dari tablet: tindakan 'uangKeluar', status 'menunggu', mintaUid = penulis,
+//           jenis toko / karyawan / kasbon, nominal bulat > 0, tanpa kolom keputusan / betulan owner. Uangnya (pengeluaranHarian / kasbonMutasi) ditulis
+//           OWNER saat menyetujui — rules uang tidak berubah, akun tablet tetap tidak menulis dokumen uang.
+//           + stafKirimPesan(ben, karyawan) — PESAN untuk owner: tindakan 'pesan', status 'menunggu', mintaUid = penulis, teks 1–500 huruf, tanpa keputusan /
+//           balasan. Owner menandai dibaca & membalas lewat update (owner saja, sejak v7).
+//   (v13-2) blok notifOwner — token notifikasi HP / Mac owner (push saat aplikasi tertutup; dikirim fungsi server lewat Admin SDK): baca & tulis owner saja.
+// Sisanya = v12 FINAL di bawah ini, apa adanya. Kepala v12:
 // ATURAN FIRESTORE v12 FINAL — Toko Beras M.IQBAL (DRAF 19 Nov 2026, paket S2b tanda kenal) = v11 FINAL + PERSIS satu blok baru, tanpa fungsi baru
 // (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v11; uji server: docs/uji-rules-v12.md). Owner menerbitkan v12 SEKALI lewat Console
 // SEBELUM cabang S2b digabung:
@@ -212,6 +222,21 @@ service cloud.firestore {
       let d = request.resource.data;
       return stafBuat(peranBoleh) && d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
         && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
+    }
+    // v13 (owner 21 Nov 2026): TITIPAN uang keluar dari tablet — bentuk "menunggu" bertindakan uangKeluar atas nama penulisnya (mintaUid), jenis toko / karyawan /
+    // kasbon, nominal bulat > 0, tanpa kolom keputusan & betulan owner. Bukan dokumen uang: uangnya ditulis owner saat menyetujui.
+    function stafMintaKeluar(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'uangKeluar' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('jenis', '') in ['toko', 'karyawan', 'kasbon'] && d.get('nominal', 0) is int && d.get('nominal', 0) > 0
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'koreksiOwner', 'balasan']);
+    }
+    // v13: PESAN untuk owner dari tablet — bentuk "menunggu" bertindakan pesan atas nama penulisnya, teks 1–500 huruf, tanpa keputusan / balasan
+    function stafKirimPesan(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'pesan' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('teks', 0) is string && d.teks.size() > 0 && d.teks.size() <= 500
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan']);
     }
     // v10 (B3, owner 18 Nov 2026): SURAT JALAN dibuat ben BERSAMA notanya — status 'berangkat', tanpa kolom penerimaan / keputusan
     function stafBuatSJ(peranBoleh) {
@@ -637,7 +662,7 @@ service cloud.firestore {
 
     match /persetujuan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta membaca keputusan owner (pendengar koleksi utuh — rules bukan saringan)
-      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']);   // v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
+      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']);   // v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
       allow update, delete: if owner();   // memutus (setuju / tolak) = owner
     }
 
@@ -804,6 +829,11 @@ service cloud.firestore {
       allow read: if owner() || staf(['ben', 'karyawan']);
       allow create: if owner() || stafBuat(['ben', 'karyawan']);
       allow update, delete: if owner();
+    }
+
+    // v13 (owner 21 Nov 2026): token notifikasi HP / Mac owner — ditulis perangkat owner saat notifikasi dinyalakan; dibaca fungsi server lewat Admin SDK
+    match /notifOwner/{id} {
+      allow read, write: if owner();
     }
 
     match /ringkasanKasir/{id} {

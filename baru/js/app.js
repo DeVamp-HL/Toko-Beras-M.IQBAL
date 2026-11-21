@@ -30,6 +30,11 @@ import * as TB from './layar/tablet-logika.js';
 import { asliAda, padaPindai, padaTempel, ketikTambah, ketikMesin, KETIK_TUNGGU } from './inti/perangkat.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
 // putaran T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi di tablet — bisa DIBUKA tanpa internet (pekerjanya sw-baru.js, dicap saat terbit)
 import * as SL from './inti/salinan.js';
+// owner 21 Nov 2026: notifikasi dalam aplikasi (titipan & pesan dari tablet → owner; putusan owner → tablet)
+import { kbSidik, kbBanding, kbRingkas } from './layar/kabar-baru-logika.js';
+import { lampuKejadian } from './inti/perangkat.js';
+import { nhPasang } from './data/notif-hp.js';
+nhPasang({ app: () => fb.appFirebase(), simpan: (t) => fb.simpanTokenNotif(t), hapus: () => fb.hapusTokenNotif() });   // notifikasi HP owner: alat Firebase untuk Menu › Perangkat
 // owner 19 Nov 2026 ("masih berat di Android, terutama tablet"): pencatat tersendat DI PERANGKAT ini — dibaca di Menu › Sistem › Perangkat
 import { pasangUkurMulus } from './inti/ukur-mulus.js';
 
@@ -114,7 +119,42 @@ const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: (
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan · 27: Isi barang habis
   // B3 (owner 18 Nov 2026): bukti terima antar (tanda tangan & foto) — koleksi buktiTerima dibaca sekali saat dibuka (tidak didengar); mode cadangan = simulasi di panel
   bukti: { ada: () => sumberData().jenis === 'firestore', baca: (idSJ) => fb.bacaBuktiTerima(idSJ), simpan: (d) => fb.simpanBuktiTerima(d) } });
-dengarkan(() => { versi += 1; setTimeout(periksaTablet, 0); });   // T1-3: daftar orang / libur berubah → gerbang ikut
+dengarkan(() => { versi += 1; setTimeout(periksaTablet, 0); setTimeout(periksaKabarBaru, 0); });   // T1-3: daftar orang / libur berubah → gerbang ikut
+
+// ---- NOTIFIKASI DALAM APLIKASI (owner 21 Nov 2026) ----
+// Owner (HP / Mac): titipan uang keluar, pesan, dan permintaan lain dari tablet yang BARU masuk. Akun tablet: permintaannya yang baru diputus owner.
+// Pita di atas layar (ketuk = buka layarnya) + getar + bunyi pendek (sesudah layar pernah disentuh — peramban melarang bunyi sebelum itu) + lampu CPad
+// (kejadian 'owner'). Owner: angka di ikon aplikasi (lencana). Pembanding pertama sesudah data lengkap tidak berbunyi. Push saat aplikasi tertutup = functions/.
+let _kb = null; let _audio = null;
+// notifikasi push diketuk (baru/notif/sw-notif.js): aplikasi yang sudah terbuka diberi pesan 'buka-layar'; yang baru dibuka membawa #layar di alamat
+let _layarTuju = (() => { try { const x = decodeURIComponent(location.hash.slice(1)); return ['uang', 'menu'].indexOf(x) >= 0 ? x : ''; } catch (e) { return ''; } })();
+try { if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', (e) => { const d = (e && e.data) || {}; if (d.jenis === 'buka-layar' && ['uang', 'menu'].indexOf(d.layar) >= 0) pindah(d.layar); }); } catch (e) { /* tanpa service worker */ }
+const dataLengkap = () => !!statusFb.masuk && statusFb.koleksiTotal > 0 && statusFb.koleksiSiap >= statusFb.koleksiTotal;
+document.addEventListener('pointerdown', () => { try { if (!_audio) { const C = window.AudioContext || window.webkitAudioContext; if (C) _audio = new C(); } if (_audio && _audio.state === 'suspended') _audio.resume(); } catch (e) { /* tanpa bunyi */ } }, { passive: true });
+function bunyiKabar() {
+  try { if (!_audio || _audio.state !== 'running') return; const t = _audio.currentTime;
+    [880, 1320].forEach((f, i) => { const o = _audio.createOscillator(); const gn = _audio.createGain(); const m = t + i * 0.18; o.frequency.value = f;
+      gn.gain.setValueAtTime(0.0001, m); gn.gain.exponentialRampToValueAtTime(0.25, m + 0.02); gn.gain.exponentialRampToValueAtTime(0.0001, m + 0.16);
+      o.connect(gn); gn.connect(_audio.destination); o.start(m); o.stop(m + 0.17); }); } catch (e) { /* tanpa bunyi */ }
+}
+function lencanaIkon(n) { try { if (n > 0 && navigator.setAppBadge) navigator.setAppBadge(n).catch(() => {}); else if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {}); } catch (e) { /* peramban tanpa lencana */ } }
+function tampilKabarBaru(r) {
+  const k = document.getElementById('kabarBaru'); if (!k) return;
+  const j = document.createElement('b'); j.textContent = r.judul; const i = document.createElement('div'); i.textContent = r.isi; k.replaceChildren(j, i);
+  k.classList.toggle('awas', !!r.awas); k.hidden = false; k.classList.remove('masuk'); void k.offsetWidth; k.classList.add('masuk');
+  k.onclick = () => { k.hidden = true; pindah(r.layar); };
+  clearTimeout(k._t); k._t = setTimeout(() => { k.hidden = true; }, 12000);
+  try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { /* tanpa getar */ }
+  bunyiKabar(); if (asliAda()) lampuKejadian('owner');
+}
+function periksaKabarBaru() {
+  if (q.get('cadangan') || sumberData().jenis !== 'firestore') { _kb = null; return; }
+  const a = akunKini(); if (!a || !a.uid || !dataLengkap()) { _kb = null; return; }
+  if (_layarTuju) { const t = _layarTuju; _layarTuju = ''; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* alamat tetap */ } pindah(t); }
+  const baru = kbSidik(a); const ev = kbBanding(_kb, baru); _kb = baru;
+  if (baru.owner) lencanaIkon(baru.n);
+  const r = kbRingkas(ev); if (r) tampilKabarBaru(r);
+}
 
 // ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----
 const KUNCI_TAB = 'miqbal_baru_tab';
