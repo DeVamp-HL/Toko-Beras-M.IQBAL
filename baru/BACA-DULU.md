@@ -3286,3 +3286,12 @@ dengan kunci halaman, lebih lama dari perintah terpanjang 12 + 4 + 60 detik); ja
 baru. Halaman: `cetakAsli` yang ditolak `SEDANG_CETAK` oleh aplikasi TIDAK jatuh ke kabel (bisa dobel) dan tidak memanggil `lepas` — sampai
 ke layar sebagai "tunggu kabarnya dulu". **Belum terbukti:** kompilasi Java (Mac ini tanpa JDK — dibuktikan bangun APK di CI) dan
 kelakuannya di CPad.
+
+**CI dipercepat (owner 22 Nov 2026: "bisa dipercepat?"):** diukur di PR #171 — gladi tutup buku 77–87 menit (4 skenario ±43 + 6 kontrol ±32,
+berurutan), `uji` 14–21 menit (102 langkah berurutan), `uji-peramban` ±12 menit, dan cabang ber-PR menjalankan semuanya DUA kali (push + PR; runner
+macOS gratis paling banyak 5 sekaligus → antre). Sekarang: `pages.yml` push hanya di main (cabang diuji lewat pull_request); `uji` = matriks tiga
+bagian, `uji-peramban` = dua (tiap langkah `if: matrix.bagian == N`, dibagi dari durasi nyata ±6 menit per bagian; ambil tag sistem-lama + uji
+dokumen sisa satu bagian); `terbitkan` tetap menunggu SEMUA bagian. Gladi = matriks tujuh job Ubuntu: satu per skenario + kontrol dibagi tiga
+kelompok (nomor modulo 3), tiap skenario & kontrol tetap di emulator sendiri, artefak per bagian. **Langkah CI baru wajib diberi `if:` bagian** —
+dijaga `alat-uji/periksa_ci.py` (+ kontrol): langkah di bagian yang tidak ada di matriks = hijau palsu (tidak pernah jalan), tanpa `if:` = jalan di
+semua bagian.
