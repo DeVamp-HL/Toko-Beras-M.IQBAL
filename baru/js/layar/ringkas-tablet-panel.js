@@ -9,7 +9,7 @@ import { asliAda, printerSibuk, masihMencetak, hasilTakDiketahui, KALIMAT_MASIH_
 
 const rtHari = (x) => (x === null || x === undefined ? '' : '±' + String(x).replace('.', ',') + ' hari');
 
-/** Kartu. opsi = { akun (efektif), uang (status.uang firebase.js), kini (Date) }. */
+/** Kartu. opsi = { akun (efektif), uang (status.uang firebase.js), kini (Date), intip (detik — owner 22 Nov 2026: intip uang lewat sidik jari owner saat orang lain jaga; judul berganti, isi sama) }. */
 export function kartuRingkas(s, opsi) {
   const o = opsi || {}; const R = RT.rtHitung(o.kini || new Date(), o.akun, o.uang); const L = R.laci;
   const baris = (k, kiri, kanan, kelas) => h`<div class="rt-baris ${kelas || ''}" data-k="${k}"><span>${kiri}</span><b>${kanan}</b></div>`;
@@ -20,7 +20,7 @@ export function kartuRingkas(s, opsi) {
     : L ? h`<div class="k2">Perkiraan isi laci</div><div class="pita-info awas" data-k="rt-laci-ket">${L.teks}</div>`
       : h`<div class="k2">Perkiraan isi laci</div><div class="pita-info ${R.uang.st === 'ditolak' ? 'awas' : ''}" data-k="rt-uang-ket">${R.uang.teks}</div>`;
   return h`<div class="kartu rt-kartu" data-k="rt-kartu" style="gap: 8px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div class="label">Ringkas hari ini · ${tanggalPendek(R.iso)} · hanya saat ${o.akun ? o.akun.nama : 'owner'} jaga</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"><div class="label">${o.intip ? 'Intip uang · sidik jari owner · ' + tanggalPendek(R.iso) + ' · tertutup sendiri sesudah ' + (o.intip < 60 ? o.intip + ' dtk' : Math.round(o.intip / 60) + ' mnt') + ' tidak disentuh' : 'Ringkas hari ini · ' + tanggalPendek(R.iso) + ' · hanya saat ' + (o.akun ? o.akun.nama : 'owner') + ' jaga'}</div>
       <div class="kaca-btn kecil" data-aksi="rtCetak" data-k="rt-cetak">Cetak</div></div>
     <div class="rt-dua" data-k="rt-dua">
       <div class="rt-kolom" data-k="rt-omzet"><div class="k2">Omzet · ${ANGKA(R.nota)} nota</div><div class="serif rt-besar" data-gulir="${Math.round(R.omzet)}">${RP(R.omzet)}</div>

@@ -53,7 +53,7 @@ export const SS_ATUR_BAWAAN = {
   perangkat: { batasAntre: 30, batasDenyut: 15, pemegang: ['Owner', 'Ben'] },
   // owner 7 Okt (JS2-C): jatah nego per peran (% margin) + per akun (uid → %, kosong = ikut peran), siapa boleh di bawah modal ('owner' | peran | 'uid:…'), langkah batas
   peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: NG_BAWAAN.ben, jatahKaryawan: NG_BAWAAN.karyawan, jatahAkun: {}, bawahModal: NG_BAWAAN.bawahModal.slice(), langkahNego: NG_BAWAAN.langkah, jejak: [],
-    operator: {}, ringkasOrang: '' },   // putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js · owner 21 Nov: orang yang membuka Ringkas hari ini (kode orang, '' = mati)
+    operator: {}, ringkasOrang: '', intipDetik: 60 },   // owner 22 Nov 2026 (sidik jari Tahap A): intip uang tertutup sendiri sesudah intipDetik tidak disentuh · putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js · owner 21 Nov: orang yang membuka Ringkas hari ini (kode orang, '' = mati)
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
   pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'] },
@@ -95,7 +95,7 @@ export function susunAturSistem(id, isi, w) {
   const angka = (k, min, maks, satuan) => { const n = ssAngka(isi[k] !== undefined ? isi[k] : A[k], min, maks); if (n === null) return k + ' harus ' + min + '–' + maks + (satuan ? ' ' + satuan : ''); o[k] = Math.round(n); return ''; };
   let tolak = '';
   if (id === 'perangkat') { tolak = angka('batasAntre', 1, 600, 'menit') || angka('batasDenyut', 1, 600, 'menit'); o.pemegang = nama(isi.pemegang !== undefined ? isi.pemegang : A.pemegang); if (!tolak && !o.pemegang.some((x) => x.toLowerCase() === 'owner')) tolak = 'Owner tidak bisa dihapus dari daftar pencatat'; }
-  else if (id === 'peran') { tolak = angka('batasSekaligus', 0, 50000000, 'rupiah') || angka('jatahBen', 0, 100, '%') || angka('jatahKaryawan', 0, 100, '%') || angka('langkahNego', 1, 1000000, 'rupiah'); o.hak = ssSalin(A.hak); o.jejak = (A.jejak || []).slice(0, 40);
+  else if (id === 'peran') { tolak = angka('batasSekaligus', 0, 50000000, 'rupiah') || angka('jatahBen', 0, 100, '%') || angka('jatahKaryawan', 0, 100, '%') || angka('langkahNego', 1, 1000000, 'rupiah') || angka('intipDetik', 15, 600, 'detik'); o.hak = ssSalin(A.hak); o.jejak = (A.jejak || []).slice(0, 40);
     // owner 7 Okt (JS2-C): jatah per akun — kosong = ikut perannya; di bawah modal — kunci yang dikenal saja (owner, peran, uid akun terdaftar)
     const ja = isi.jatahAkun !== undefined ? isi.jatahAkun : A.jatahAkun; o.jatahAkun = {};
     Object.keys(ja || {}).forEach((u) => { if (ssKosong(ja[u])) return; const n = ssAngka(ja[u], 0, 100); if (n === null) tolak = tolak || 'jatah nego per akun harus 0–100 %'; else o.jatahAkun[u] = Math.round(n); });
@@ -142,7 +142,7 @@ export function ssJejak(kini, antre, saring) {
   const iso = hariIniIso(kini); const tunda = new Set((antre || []).map((q) => q.koleksi + '|' + q.id)); const batas = (KOLEKSI.find((k) => k.nama === 'logAktivitas') || {}).batas || 150;
   const semua = cacheMentah('log').map((l) => { const d = l.pada ? new Date(l.pada) : null; const ada = d && isFinite(d.getTime());
     return { id: String(l.id), pada: l.pada || '', tanggal: ada ? hariIniIso(d) : '', jam: ada ? jamKini(d) : '', oleh: l.oleh || '—', perangkat: l.perangkat || '—', aksi: l.aksi || 'tulis', koleksi: l.koleksi || '',
-      teks: (l.aksi === 'batalkan' ? 'BATAL · ' : l.aksi === 'tandai-koreksi' ? 'KOREKSI · ' : l.aksi === 'hapus' ? 'HAPUS · ' : '') + ssNamaKoleksi(l.koleksi) + (l.ringkas ? ' · ' + l.ringkas : ''), sampai: !tunda.has((l.koleksi || '') + '|' + String(l.idDok || '')) }; }).sort(ssUrutTerbaru);
+      teks: (l.lewat ? '[' + String(l.lewat) + '] ' : '') + (l.aksi === 'batalkan' ? 'BATAL · ' : l.aksi === 'tandai-koreksi' ? 'KOREKSI · ' : l.aksi === 'hapus' ? 'HAPUS · ' : '') + ssNamaKoleksi(l.koleksi) + (l.ringkas ? ' · ' + l.ringkas : ''), sampai: !tunda.has((l.koleksi || '') + '|' + String(l.idDok || '')) }; }).sort(ssUrutTerbaru);
   const hariIni = semua.filter((l) => l.tanggal === iso); const orang = {}; semua.forEach((l) => { orang[l.oleh] = (orang[l.oleh] || 0) + 1; });
   const tampil = (saring ? semua.filter((l) => l.oleh === saring) : semua).slice(0, 100);
   return { tampil, semua: semua.length, hariIni: hariIni.length, belumSampai: hariIni.filter((l) => !l.sampai).length, terbatas: semua.length >= batas, batas,

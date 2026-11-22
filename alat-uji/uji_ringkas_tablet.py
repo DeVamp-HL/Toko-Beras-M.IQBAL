@@ -194,11 +194,12 @@ def periksa_statis(t):
     ok('firebase.js: cabut semua pendengar (keluar / ganti peran) ikut mencabut data uang', 'cabutUang(false);' in (re.search(r'\nfunction cabutPendengar\(\) \{\n(.*?)\n\}\n', F, re.S) or re.search('', '')).group(0))
     ok('firebase.js: titikKas berbagi peta setelan per dokumen dengan pendengar dasar (tempatSimpan tidak tertimpa)', 'const perDok = {}; _perDok = perDok;' in F and 'const peta = _perDok[p.nama] = _perDok[p.nama] || {};' in F)
     A = t[APP]
-    ok('app.js: segarkanUang = setelDataUang(rtBukaUang(akun efektif))', 'function segarkanUang() { try { fb.setelDataUang(rtBukaUang(akunKini())); }' in A)
+    ok('app.js: segarkanUang = setelDataUang(rtBukaUang(akun efektif) || intip uang sidik jari owner)', 'function segarkanUang() { try { fb.setelDataUang(rtBukaUang(akunKini()) || intipAktif()); }' in A
+       and 'function intipAktif() { return _intip && SJ.sjBolehIntip(akunKini(), sjLokal(), akunAsli()); }' in A)   # owner 22 Nov 2026: intip dinilai ulang tiap kali
     ok('app.js: disegarkan tiap ganti orang (gambarAkun) & tiap data/status', re.search(r'akun = efektifDari\(asli\); _tandaAkun = tandaAkun\(\);\n  segarkanUang\(\);', A) is not None and 'fb.dengarkanStatus(() => segarkanUang());' in A)
     ok('app.js: Menu diberi status data uang', 'statusUang: () => statusFb.uang' in A)
     M = t[MN]
-    i_rt = M.find('${RT.rtTampil(akunM) ? kartuRingkas('); i_tp = M.find('${kartuTitipan(s, { akun: akunM')
+    i_rt = M.find('${RT.rtTampil(akunM) || intipNyala() ? kartuRingkas('); i_tp = M.find('${kartuTitipan(s, { akun: akunM')   # owner 22 Nov 2026: + intip uang sidik jari owner
     ok('Menu: kartu Ringkas hanya lewat gerbang rtTampil, paling atas (di atas titipan)', 0 < i_rt < i_tp and M.count('kartuRingkas(') == 1, (i_rt, i_tp))
     ok('Menu: baris tanda baca uang berjudul "Akun tablet" + email (owner 22 Nov: bukan nama yang diketik saat akun minta didaftarkan)',
        '<div class="pn-orang" data-k="rt-ak-${a.uid}"><b>Akun tablet</b> <span class="k2">${a.email} · ' in M)
@@ -293,7 +294,7 @@ def main():
             ('cabut tidak mengosongkan memori uang', FB, F.replace('BACA_UANG.forEach((n) => pasok(n, []));', '')),
             ('cabut semua pendengar lupa data uang', FB, F.replace('  cabutUang(false);\n  _pendengarKoleksi.forEach(', '  _pendengarKoleksi.forEach(')),
             ('app tidak menyegarkan data uang saat data / status berubah', APP, AP.replace('  fb.dengarkanStatus(() => segarkanUang());', '')),
-            ('Menu menggambar kartu tanpa gerbang', MN, M.replace('${RT.rtTampil(akunM) ? kartuRingkas(', '${true ? kartuRingkas(')),
+            ('Menu menggambar kartu tanpa gerbang', MN, M.replace('${RT.rtTampil(akunM) || intipNyala() ? kartuRingkas(', '${true ? kartuRingkas(')),
             ('rules: tanda dibaca untuk karyawan juga (peran tidak dinilai)', RULES, RU.replace("a.aktif == true && a.peran == 'ben' && a.get('bacaUang', false) == true", "a.aktif == true && a.get('bacaUang', false) == true")),
             ('rules: satu koleksi uang terbuka TULIS untuk akun bertanda', RULES, RU.replace("    match /pindahUang/{id} {\n      allow read: if owner() || stafBacaUang();\n      allow create: if owner() && tglBaru('tanggal');", "    match /pindahUang/{id} {\n      allow read: if owner() || stafBacaUang();\n      allow create: if (owner() || stafBacaUang()) && tglBaru('tanggal');")),
             ('rules: koleksi uang yang dibaca beda dengan akses.js', RULES, RU.replace("    match /tutupHari/{id} {\n      allow read: if owner() || stafBacaUang();", "    match /tutupHari/{id} {\n      allow read: if owner();")),

@@ -15,6 +15,7 @@ import { kartuTitipan, aksiTitipan, TP_DRAF_KOSONG } from './titipan-panel.js';
 import { kartuTutupTablet, aksiTutupTablet, hlTampil, HL_DRAF_KOSONG } from './tutup-tablet-panel.js';   // owner 22 Nov 2026 (paket ④): tutup hari dari tablet   // owner 21 Nov 2026: uang keluar & pesan dari tablet
 // owner 21 Nov 2026: Ringkas hari ini di tablet — kartu paling atas Menu akun tablet, hanya saat orang pilihan owner jaga (rules v14: data uang)
 import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
+import * as SJ from './sidik-logika.js';   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
 import * as RT from './ringkas-tablet-logika.js';
 import * as TB from './tablet-logika.js';
 import { nhDukung, nhTersimpan, nhIzin, nhNyalakan, nhMatikan, nhVapidSah } from '../data/notif-hp.js';   // owner 21 Nov 2026: notifikasi HP saat aplikasi tertutup   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
@@ -60,7 +61,7 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))]], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
@@ -243,6 +244,11 @@ export function pasangLayarMenu(akar, opsi) {
     nhMati: async () => { if (st().nhSibuk) return; set({ nhSibuk: true }); const r = await nhMatikan(); set({ nhSibuk: false, kabar: r.ok ? 'Notifikasi dimatikan di perangkat ini' : 'Gagal mematikan: ' + r.pesan, kabarAwas: !r.ok }); },
     // owner 21 Nov 2026: Ringkas hari ini di tablet — owner memilih SATU orang di tablet yang membukanya, dan menandai akun tablet yang membaca data uang
     rtPilihOrang: ({ id }) => tulis(S.susunAturSistem('peran', { ringkasOrang: id === '-' ? '' : id }, waktu())),
+    sjNyalakan: async () => { const X = sj(); if (!X || st().sjSibuk) return; set({ sjSibuk: true }); const r = await X.nyalakan(); set({ sjSibuk: false, kabar: r.kalimat, kabarAwas: !r.ok }); },
+    sjMatikan: async () => { const X = sj(); if (!X || st().sjSibuk) return; set({ sjSibuk: true }); const r = await X.matikan(); set({ sjSibuk: false, kabar: r.kalimat, kabarAwas: !r.ok }); },
+    sjIntip: async () => { const X = sj(); if (!X || st().sjSibuk) return; set({ sjSibuk: true }); const r = await X.mintaIntip(); set({ sjSibuk: false, kabar: r.kalimat, kabarAwas: !r.ok }); },
+    sjTutupIntip: () => { const X = sj(); if (X) X.tutupIntip(); set({ kabar: 'Intip uang ditutup — data uang dikosongkan dari tablet', kabarAwas: false }); },
+    rtIntip: ({ d }) => tulis(S.susunAturSistem('peran', { intipDetik: Number(d) }, waktu())),   // owner 22 Nov 2026: lama intip uang (detik)
     rtBacaUang: async ({ uid, nyala }) => { const kunci = uid + ':' + nyala; const r = S.susunUbahAkun(uid, { bacaUang: nyala === '1' }, waktu(), st().yakinRt === kunci);
       if (r.perluYakin) return set({ yakinRt: kunci, kabar: r.tolak, kabarAwas: true }); set({ yakinRt: null }); await tulis(r); },
   }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }), aksiTutupTablet({ set, st, tulis, akun: opsi.akun, waktu }), aksiRingkas({ set, st, akun: opsi.akun, uang: opsi.statusUang, waktu, kini }));
@@ -293,12 +299,30 @@ export function pasangLayarMenu(akar, opsi) {
         ${sumberData().jenis === 'cadangan' ? ' Angka di layar ini dari CADANGAN yang sedang dibaca, bukan data toko hari ini.' : ' Semua angka dari data toko lewat mesin yang sama dengan sistem lama; tidak ada angka yang lahir di layar Menu.'}</div>
     </section>`;
   }
+  // owner 22 Nov 2026 (sidik jari Tahap A): opsi.sidik = { lokal(), ada(), intip(), mintaIntip(), tutupIntip(), nyalakan(), matikan() } dari app.js
+  const sj = () => opsi.sidik || null;
+  const intipNyala = () => !!(sj() && sj().intip());
+  function kartuSidik(s, akunM) {
+    const X = sj(); if (!X) return '';
+    const asli = X.akunAsli ? X.akunAsli() : null; const L = X.lokal(); const orang = SJ.sjOrang();
+    if (String(akunM.operatorId || '') === orang && orang) {   // orang pilihan owner yang jaga: nyalakan / matikan di tablet ini
+      const K = SJ.sjKeadaan(L, asli, orang, X.ada());
+      return h`<div class="kartu" data-k="sj-kartu" style="gap: 6px;"><div class="label">Sidik jari owner di tablet ini</div>
+        <div class="pita-info ${K.st === 'nyala' ? 'emas' : K.st === 'hangus' ? 'awas' : ''}" data-k="sj-st">${K.teks}</div>
+        ${K.st === 'tidak' ? '' : K.st === 'nyala' ? h`<div class="kaca-btn" data-aksi="sjMatikan" data-k="sj-matikan">${s.sjSibuk ? '…' : 'Matikan sidik jari'}</div>`
+          : h`<div class="kaca-btn aktif emas" data-aksi="sjNyalakan" data-k="sj-nyalakan">${s.sjSibuk ? 'tempel jari…' : 'NYALAKAN · tempel jari owner'}</div>
+            <div class="ket" style="font-size: 11px;">Sebelum menyalakan: buka Setelan tablet › Keamanan › Sidik jari — pastikan HANYA jari lu yang terdaftar. Jari yang sudah terdaftar sebelum dinyalakan tidak terdeteksi.</div>`}</div>`;
+    }
+    if (intipNyala()) return h`<div class="kaca-btn kecil" data-aksi="sjTutupIntip" data-k="sj-tutup-intip" style="align-self: flex-start;">Tutup intip uang</div>`;
+    return SJ.sjBolehIntip(akunM, L, asli, orang) ? h`<div class="kaca-btn kecil" data-aksi="sjIntip" data-k="sj-intip" style="align-self: flex-start;">${s.sjSibuk ? 'tempel jari…' : 'Intip uang · sidik jari owner'}</div>` : '';
+  }
   function gambarStaf(s, d, akunM) {
     const namaP = (S.SS_PERAN.find((p) => p.id === akunM.peran) || {}).nama || akunM.peran; const L = lokal();
     const AL = opsi.antreLokal ? opsi.antreLokal() : { belum: [], ditolak: [] };
     const orang = TB.tbDaftar().filter((o) => o.aktif).map((o) => o.nama);
     return h`<section class="mn-staf" data-k="staf" style="display: flex; flex-direction: column; gap: 10px;">
-      ${RT.rtTampil(akunM) ? kartuRingkas(s, { akun: akunM, uang: opsi.statusUang ? opsi.statusUang() : null, kini: kini() }) : ''}
+      ${RT.rtTampil(akunM) || intipNyala() ? kartuRingkas(s, { akun: akunM, uang: opsi.statusUang ? opsi.statusUang() : null, kini: kini(), intip: intipNyala() ? SJ.sjIntipDetik() : 0 }) : ''}
+      ${kartuSidik(s, akunM)}
       ${kartuTitipan(s, { akun: akunM, orang, kiniIso: hariIniIso(kini()) })}
       ${hlTampil(akunM) ? kartuTutupTablet(s, { akun: akunM, kini: kini() }) : ''}
       <div class="kartu" data-k="staf-akun" style="gap: 4px;"><div class="label">Masuk sebagai</div><div class="serif" style="font-size: 20px;">${akunM.nama}</div><div class="k2">${namaP} · ${L.namaPerangkat || 'perangkat ini'}</div></div>
@@ -479,6 +503,9 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="k2">Kartu paling atas Menu tablet: omzet, tunai / QRIS / bon, perkiraan isi laci, uang keluar, per orang, terlaris, stok tipis, pesanan & antar — bisa dicetak. Tampil HANYA saat orang yang lu pilih jaga (lewat PIN-nya).</div>
       <div class="k2" style="font-weight: 600;">Dibuka oleh</div>
       <div class="hg-pil" data-k="rt-orang"><div class="seg ${pilih ? '' : 'aktif'}" data-aksi="rtPilihOrang" data-id="-">mati</div>${D.map((o) => h`<div class="seg ${pilih === o.id ? 'aktif' : ''}" data-aksi="rtPilihOrang" data-id="${o.id}">${o.nama}</div>`)}</div>
+      <div class="k2" style="font-weight: 600;">Sidik jari owner di tablet (orang ini, jari owner saja) · intip uang tertutup sendiri sesudah tidak disentuh</div>
+      <div class="hg-pil" data-k="rt-intip">${[30, 60, 120, 300].map((d) => h`<div class="seg ${SJ.sjIntipDetik() === d ? 'aktif' : ''}" data-aksi="rtIntip" data-d="${d}">${d < 60 ? d + ' dtk' : d / 60 + ' mnt'}</div>`)}</div>
+      <div class="k2">Sidik jari dinyalakan DI TABLET oleh orang ini sesudah masuk dengan PIN (Menu tablet › Sidik jari owner). Hanya menyala bila penanda jari baru terpasang: ada jari baru didaftarkan di Setelan tablet = mati sendiri + lu dikabari.</div>
       <div class="k2" style="font-weight: 600;">Akun tablet yang membaca data uang (laci & uang keluar)</div>
       ${akunBen.length ? akunBen.map((a) => h`<div class="pn-orang" data-k="rt-ak-${a.uid}"><b>Akun tablet</b> <span class="k2">${a.email} · ${a.bacaUang ? 'MEMBACA data uang' : 'tidak membaca data uang'}</span>
         <div class="hg-pil"><div class="seg ${a.bacaUang ? 'aktif' : ''} ${s.yakinRt === a.uid + ':1' ? 'aktif' : ''}" data-aksi="rtBacaUang" data-uid="${a.uid}" data-nyala="1">${s.yakinRt === a.uid + ':1' ? 'YAKIN — buka data uang' : 'baca data uang'}</div>

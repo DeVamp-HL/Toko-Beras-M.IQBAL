@@ -10,7 +10,7 @@ import { pasangLayarUang } from './layar/uang.js';
 import { pasangLayarLaporan } from './layar/laporan.js';
 import * as fb from './data/firebase.js';
 import { muatCadangan } from './data/cadangan.js';
-import { dengarkan, sumberData } from './data/toko.js';
+import { dengarkan, sumberData, tulisDokumen } from './data/toko.js';
 import { bolehLayar, bisaBekerja, teksMasukSebagai } from './data/akses.js';
 import { ssAtur } from './layar/sistem-logika.js';
 // owner 7 Okt (JS2-C): jatah nego akun yang masuk ikut ke penjaga kiriman
@@ -26,7 +26,9 @@ import { nanti, setelMuat } from './inti/jadwal.js';
 import { pasangGerbang } from './inti/gerbang.js';
 // putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang
 import * as TB from './layar/tablet-logika.js';
-import { rtBukaUang } from './layar/ringkas-tablet-logika.js';   // owner 21 Nov 2026: Ringkas hari ini di tablet (rules v14)
+import { rtBukaUang } from './layar/ringkas-tablet-logika.js';
+import * as SJ from './layar/sidik-logika.js';   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
+import { sidikJariKunci, penandaPasang, penandaCek, penandaHapus, penandaTolak } from './inti/perangkat.js';   // owner 21 Nov 2026: Ringkas hari ini di tablet (rules v14)
 // paket S1 (19 Nov 2026): pintu perangkat (aplikasi tablet) — asliAda pindah ke sini; scanner tidak boleh terbaca sebagai PIN
 import { asliAda, padaPindai, padaTempel, ketikTambah, ketikMesin, KETIK_TUNGGU } from './inti/perangkat.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
 // putaran T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi di tablet — bisa DIBUKA tanpa internet (pekerjanya sw-baru.js, dicap saat terbit)
@@ -55,6 +57,12 @@ let _jagaTerakhir = null;  // { id, nama } orang terakhir yang jaga (pemilik isi
 let _pilihOrang = '';      // id nama yang diketuk di panel (menunggu PIN)
 let _pinKetik = '';
 let _sentuh = Date.now();
+// owner 22 Nov 2026 (sidik jari Tahap A — layar/sidik-logika.js): penanda di aplikasi ini (APK 1.31+), simpanan perangkat, intip uang
+let _sjAda = false; let _sjCekPada = 0; let _intip = false;
+const sjLokal = () => { try { return SJ.sjBaca(localStorage.getItem(SJ.SJ_KUNCI)); } catch (e) { return null; } };
+const sjSimpan = (o) => { try { if (o) localStorage.setItem(SJ.SJ_KUNCI, JSON.stringify(o)); else localStorage.removeItem(SJ.SJ_KUNCI); } catch (e) { /* perangkat menolak: sidik jari tidak tersimpan */ } };
+const sjWaktu = () => { const d = new Date(); return { tanggal: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'),
+  jam: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'), kini: d.toISOString(), idUnik: () => Date.now() + Math.random() }; };
 let _periksaPin = false;
 let _tanyaGanti = null;    // { op, daftar } orang lain masuk sementara isian orang sebelumnya belum disimpan
 let _tbVersi = -1, _tbDaftar = [];
@@ -67,13 +75,15 @@ function keadaanTablet(a) {
 /** Akun yang dipakai layar dari akun yang masuk `a`: orang yang jaga (tablet), akun tablet yang menunggu orang (tirai), atau `a` apa adanya. */
 function efektifDari(a) {
   const k = keadaanTablet(a); if (k === 'bukan') return a;
-  if (_jaga && a && _jaga.uid === a.uid) { const op = daftarTablet().find((o) => o.id === _jaga.id); if (op && op.aktif) return TB.tbEfektif(a, op); }   // diliburkan / dihapus owner = langsung tertutup
+  if (_jaga && a && _jaga.uid === a.uid) { const op = daftarTablet().find((o) => o.id === _jaga.id); if (op && op.aktif) return _jaga.sidik ? Object.assign(TB.tbEfektif(a, op), { lewat: SJ.SJ_LEWAT }) : TB.tbEfektif(a, op); }   // owner 22 Nov 2026: masuk lewat jari = jejak bertanda   // diliburkan / dihapus owner = langsung tertutup
   return TB.tbMenunggu(a, k);
 }
 const akunKini = () => efektifDari(akunAsli());
 // owner 21 Nov 2026 (rules v14): data uang untuk Ringkas hari ini dimuat HANYA selama orang pilihan owner jaga di akun tablet yang ditandai owner;
 // orang lain jaga / tirai menutup / owner mencabut tanda = pendengarnya dilepas & memorinya dikosongkan (firebase.js setelDataUang, sekali per perubahan).
-function segarkanUang() { try { fb.setelDataUang(rtBukaUang(akunKini())); } catch (e) { console.error('data uang ringkas', e); } }
+function segarkanUang() { try { fb.setelDataUang(rtBukaUang(akunKini()) || intipAktif()); } catch (e) { console.error('data uang ringkas', e); } }
+// owner 22 Nov 2026: intip uang = jari owner membuka Ringkas sementara saat orang lain jaga (syaratnya dinilai ulang tiap kali: orang berganti / sidik jari mati = tertutup)
+function intipAktif() { return _intip && SJ.sjBolehIntip(akunKini(), sjLokal(), akunAsli()); }
 fb.setelAkunEfektif((a) => { const e = akunKini(); return e && e.uid === a.uid && e.operatorId ? e : null; });
 fb.setelSumberHak(() => { const a = akunKini(); if (!a || !a.peran || a.peran === 'owner') return {}; try { return Object.assign({}, (ssAtur('peran').hak || {})[a.peran] || {}, { jatahNego: ngJatah(a) }); } catch (e) { return {}; } });
 
@@ -168,6 +178,26 @@ const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan')
 const stok = pasangLayarStok(document.getElementById('layarStok'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, versiData: () => versi, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); } });
 const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   keTujuan: (t) => keTujuan(t) });   // owner 7 Okt: lembar bon → Kartu piutang berkop di Laporan (keTujuan didefinisikan di bawah; dipanggil saat ketukan)
+// owner 22 Nov 2026 (sidik jari Tahap A): pintu Menu tablet — nyalakan / matikan (orang pilihan owner yang jaga), intip uang (orang lain jaga)
+function tutupIntip() { if (!_intip) return; _intip = false; segarkanUang(); try { menu.gambar(); } catch (e) { /* Menu belum terpasang */ } }
+const sidikMenu = {
+  lokal: () => sjLokal(), ada: () => _sjAda, akunAsli: () => akunAsli(), intip: () => intipAktif(), tutupIntip: () => tutupIntip(),
+  async nyalakan() {
+    const r = SJ.sjSusunNyala(akunKini(), akunAsli(), sjWaktu()); if (r.tolak) return { ok: false, kalimat: r.tolak };
+    try { await penandaPasang(); await sidikJariKunci(); }
+    catch (e) { const t = penandaTolak(e); try { await penandaHapus(); } catch (x) { /* tidak ada yang perlu dihapus */ } return { ok: false, kalimat: t.batal ? 'Dibatalkan — sidik jari tetap mati' : 'Sidik jari TIDAK menyala: ' + t.kalimat }; }
+    sjSimpan(r.lokal); return { ok: true, kalimat: 'Sidik jari owner MENYALA di tablet ini — mati sendiri kalau ada jari baru didaftarkan di Setelan tablet' };
+  },
+  async matikan() { try { await penandaHapus(); } catch (e) { /* aplikasi lama / sudah tidak ada */ } sjSimpan(null); _intip = false; segarkanUang(); return { ok: true, kalimat: 'Sidik jari owner dimatikan di tablet ini — masuk pakai PIN' }; },
+  async mintaIntip() {
+    if (!SJ.sjBolehIntip(akunKini(), sjLokal(), akunAsli())) return { ok: false, kalimat: 'Intip uang tidak bisa: sidik jari owner mati, atau akun tablet belum ditandai membaca data uang' };
+    try { await sidikJariKunci(); }
+    catch (e) { const t = penandaTolak(e); if (e && (e.code === 'BIOMETRIK_HANGUS' || e.code === 'PENANDA_TIDAK_ADA')) { sjMatiHangus(e.code === 'BIOMETRIK_HANGUS'); return { ok: false, kalimat: 'Sidik jari owner DIMATIKAN: ' + t.kalimat + (e.code === 'BIOMETRIK_HANGUS' ? ' — owner dikabari' : '') }; }
+      return { ok: false, kalimat: t.batal ? 'Intip dibatalkan' : 'Sidik jari: ' + t.kalimat }; }
+    _intip = true; _sentuh = Date.now(); segarkanUang();
+    return { ok: true, kalimat: 'Intip uang terbuka — tertutup sendiri sesudah ' + SJ.sjIntipDetik() + ' detik tidak disentuh' };
+  },
+};
 // Menu (putaran 14): laci N1 + pita jam + Sistem (SS1–SS5). Tujuan baris = layar lain lewat pintu yang sama dengan ketukan di layar itu.
 const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab) => { pindah('stok'); stok.buka(lembar, tab); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); }, bukaLaporan: (keluarga, t) => { pindah('laporan'); laporan.buka(keluarga, t); }, bukaJual: (lembar) => { pindah('jual'); layar.keadaan.setel({ lembar, kabar: '' }); },
@@ -177,7 +207,7 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
   akun: akunKini, statusUang: () => statusFb.uang, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah),
   // hemat baca (owner 7 Okt 2026): Menu › Toko ini › Perangkat & antrean › Hemat baca — keadaan, daftar siap-nyala, saklar perangkat ini, tombol baca penuh
   hemat: () => fb.hematKeadaan(), hematSiap: () => fb.hematSiapNyala(), setelSaklarHemat: (v) => fb.setelSaklarHemat(v), hematBacaPenuh: (sebab) => fb.hematBacaPenuh(sebab),
-  hematMintaSemua: () => fb.hematMintaSemua(), muatUlang: () => location.reload() });
+  hematMintaSemua: () => fb.hematMintaSemua(), muatUlang: () => location.reload(), sidik: sidikMenu });
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
 const harga = pasangLayarHarga(document.getElementById('layarHarga'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 27: Isi barang habis dari katalog
@@ -486,6 +516,11 @@ function gambarPanelOrang() {
     if (x === 'hapus') b.setAttribute('aria-label', 'Hapus satu angka');
     b.disabled = _periksaPin || (x === 'OK' && _pinKetik.length < 4); pad.appendChild(b);
   });
+  // owner 22 Nov 2026 (sidik jari Tahap A): orang pilihan owner, penanda menyala di tablet ini → tombol jari (PIN tetap bisa)
+  let sb = document.getElementById('orangSidik');
+  if (!sb) { sb = tombolEl('SIDIK JARI', 'tb-tombol ok kecil', { sidik: '1' }); sb.id = 'orangSidik'; pad.parentNode.insertBefore(sb, pad.nextSibling); }
+  sb.hidden = !(_sjAda && SJ.sjBolehMasuk(op, sjLokal(), akunAsli())); sb.disabled = _periksaPin;
+  if (_sjAda && Date.now() - _sjCekPada > 60000) cekPenandaDiam();
 }
 function pesanOrang(t) { const el = document.getElementById('orangPesan'); el.textContent = t || ''; el.hidden = !t; }
 function tekanPin(x) {
@@ -503,17 +538,46 @@ async function masukkanPin() {
   _periksaPin = false; _pinKetik = ''; _salahMemori = r.peta; tulisSalah(r.peta);
   if (!r.ok) { gerbang.ditolak(); pesanOrang(r.kalimat); gambarPanelOrang(); return; }
   pesanOrang('');
-  const daftarIsian = _jagaTerakhir && _jagaTerakhir.id !== op.id ? isianBelum() : [];
-  if (daftarIsian.length) { _tanyaGanti = { op, daftar: daftarIsian }; gerbang.kembaliMasuk(); gambarPanelOrang(); return; }
-  mulaiJaga(op);
+  lanjutMasuk(op, false);
 }
-function mulaiJaga(op) {
-  _tanyaGanti = null; _pilihOrang = ''; _pinKetik = ''; _jaga = { id: op.id, uid: (akunAsli() || {}).uid || '' }; _jagaTerakhir = { id: op.id, nama: op.nama }; _sentuh = Date.now();
-  gambarAkun(akunAsli()); gambarChipDanNav(); kabarSebentar(op.nama + ' jaga — catatan berikutnya atas nama ' + op.nama);
+function lanjutMasuk(op, sidik) {
+  const daftarIsian = _jagaTerakhir && _jagaTerakhir.id !== op.id ? isianBelum() : [];
+  if (daftarIsian.length) { _tanyaGanti = { op, daftar: daftarIsian, sidik: !!sidik }; gerbang.kembaliMasuk(); gambarPanelOrang(); return; }
+  mulaiJaga(op, sidik);
+}
+// owner 22 Nov 2026 (sidik jari Tahap A): masuk lewat KUNCI PENANDA (sidik jari kuat, CryptoObject) — bukan "cocok/tidak". Hangus = sidik jari mati + kabar owner.
+async function masukSidik() {
+  const op = daftarTablet().find((o) => o.id === _pilihOrang); if (!op || _periksaPin || !SJ.sjBolehMasuk(op, sjLokal(), akunAsli())) return;
+  _periksaPin = true; gambarPanelOrang();
+  try { await sidikJariKunci(); }
+  catch (e) {
+    _periksaPin = false; const t = penandaTolak(e);
+    if (e && (e.code === 'BIOMETRIK_HANGUS' || e.code === 'PENANDA_TIDAK_ADA')) { sjMatiHangus(e.code === 'BIOMETRIK_HANGUS'); pesanOrang('Sidik jari owner DIMATIKAN: ' + t.kalimat + ' — masuk pakai PIN'); }
+    else pesanOrang(t.batal ? '' : 'Sidik jari: ' + t.kalimat);
+    gambarPanelOrang(); return;
+  }
+  _periksaPin = false; _pinKetik = ''; pesanOrang('');
+  lanjutMasuk(op, true);
+}
+/** Penanda hangus (ada jari baru) → tandai + kabar menyusul; penanda tidak ada (dihapus di layar Perangkat) → sidik jari mati tanpa kabar. */
+function sjMatiHangus(hangus) { const L = sjLokal(); if (!L) return; sjSimpan(hangus ? SJ.sjTandaiHangus(L, sjWaktu()) : null); _intip = false; segarkanUang(); kirimKabarHangus(); }
+function cekPenandaDiam() {
+  _sjCekPada = Date.now(); const L = sjLokal(); if (!L || L.hangus) return;
+  penandaCek().then((r) => { if (!r.ada) sjMatiHangus(false); else if (r.hangus) sjMatiHangus(true); }).catch(() => { /* cek gagal: dinilai lagi saat jari ditempel */ });
+}
+/** Kabar penanda hangus ke owner: pesan otomatis atas nama akun tablet, begitu ada orang jaga (sebelumnya tidak bisa menulis). Sekali. */
+function kirimKabarHangus() {
+  const L = sjLokal(); if (!SJ.sjPerluKabar(L)) return; const ef = akunKini(); if (!ef || !bisaBekerja(ef) || !ef.operatorId) return;
+  tulisDokumen([SJ.sjDokKabarHangus(L, ef, sjWaktu())], [], {}).then((x) => { if (x && !x.gagal) sjSimpan(Object.assign({}, sjLokal() || L, { dikabarkan: true })); }).catch((e) => console.error('kabar sidik jari', e));
+}
+function mulaiJaga(op, sidik) {
+  _tanyaGanti = null; _pilihOrang = ''; _pinKetik = ''; _jaga = { id: op.id, uid: (akunAsli() || {}).uid || '', sidik: !!sidik }; _jagaTerakhir = { id: op.id, nama: op.nama }; _sentuh = Date.now(); _intip = false;
+  gambarAkun(akunAsli()); gambarChipDanNav(); kabarSebentar(op.nama + ' jaga' + (sidik ? ' (sidik jari)' : '') + ' — catatan berikutnya atas nama ' + op.nama);
+  setTimeout(kirimKabarHangus, 0);
 }
 /** Kembali ke "Siapa yang jaga?" (tombol Ganti orang, atau tidak disentuh 5 menit). Isian TIDAK dibuang. */
 function kunciOrang() {
-  if (!_jaga) return; _jaga = null; _pilihOrang = ''; _pinKetik = ''; _tanyaGanti = null; pesanOrang('');
+  if (!_jaga) return; _jaga = null; _pilihOrang = ''; _pinKetik = ''; _tanyaGanti = null; pesanOrang(''); _intip = false;
   gambarAkun(akunAsli());
   setTimeout(cobaSalinan, 0);   // T1-4: layar "Siapa yang jaga?" tanpa isian = saat versi baru boleh dipasang
 }
@@ -521,9 +585,10 @@ panelOrang.addEventListener('click', (ev) => {
   const o = ev.target.closest && ev.target.closest('[data-orang]');
   if (o) { const op = daftarTablet().find((x) => x.id === o.dataset.orang); if (!op || _periksaPin) return; _pilihOrang = op.id; _pinKetik = ''; pesanOrang(!op.aktif ? op.nama + ' sedang libur — minta owner mengaktifkan' : ''); gambarPanelOrang(); return; }
   const p = ev.target.closest && ev.target.closest('[data-pin]'); if (p) tekanPin(p.dataset.pin);
+  if (ev.target.closest && ev.target.closest('[data-sidik]')) masukSidik();
 });
-document.getElementById('orangLanjut').addEventListener('click', () => { if (_tanyaGanti) mulaiJaga(_tanyaGanti.op); });
-document.getElementById('orangKosongkan').addEventListener('click', () => { if (!_tanyaGanti) return; const op = _tanyaGanti.op; lupakanSemua(); mulaiJaga(op); });
+document.getElementById('orangLanjut').addEventListener('click', () => { if (_tanyaGanti) mulaiJaga(_tanyaGanti.op, _tanyaGanti.sidik); });
+document.getElementById('orangKosongkan').addEventListener('click', () => { if (!_tanyaGanti) return; const op = _tanyaGanti.op; const sidik = _tanyaGanti.sidik; lupakanSemua(); mulaiJaga(op, sidik); });
 document.getElementById('tombolKeluarTablet').addEventListener('click', () => {
   if (!window.confirm('Keluar dari akun tablet? Untuk masuk lagi perlu email & sandi akun tablet (biasanya owner).')) return;
   keluarAkun();
@@ -561,7 +626,11 @@ padaTempel((x) => { if (panelOrang.hidden && tabKini === 'jual') { try { layar.t
 // kunci diam (owner 16 Nov: 5 menit). Sentuhan apa pun = masih ada orang; tablet ditinggal / layar mati lama = kembali ke "Siapa yang jaga?"
 ['pointerdown', 'keydown', 'touchstart'].forEach((n) => document.addEventListener(n, () => { _sentuh = Date.now(); }, { passive: true, capture: true }));
 setInterval(() => { if (_jaga && TB.tbHarusKunci(_sentuh, Date.now())) kunciOrang(); }, 15000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && _jaga && TB.tbHarusKunci(_sentuh, Date.now())) kunciOrang(); });
+// owner 22 Nov 2026 (sidik jari Tahap A): aplikasi tablet ini punya penanda (APK 1.31+)? Sekali saat mulai — sekalian: penanda hangus (ada jari baru) / hilang = sidik jari mati
+if (asliAda()) penandaCek().then((r) => { _sjAda = true; _sjCekPada = Date.now(); const L = sjLokal(); if (L && !L.hangus) { if (!r.ada) sjMatiHangus(false); else if (r.hangus) sjMatiHangus(true); } }).catch(() => { _sjAda = false; });
+// owner 22 Nov 2026: intip uang tertutup sendiri sesudah intipDetik tidak disentuh (setelan owner) — dinilai tiap 5 detik; tirai / berpindah aplikasi = tertutup
+setInterval(() => { if (_intip && SJ.sjHarusTutupIntip(_sentuh, Date.now(), SJ.sjIntipDetik())) tutupIntip(); }, 5000);
+document.addEventListener('visibilitychange', () => { if (document.hidden && _intip) tutupIntip(); if (!document.hidden && _jaga && TB.tbHarusKunci(_sentuh, Date.now())) kunciOrang(); });
 // ---- SALINAN APLIKASI (putaran T1 langkah 4, owner 16 Nov 2026): tablet bisa DIBUKA tanpa internet ----
 // Hanya aplikasi tablet yang memasang (HP & Mac owner tidak berubah). Versi baru diunduh di belakang layar lalu MENUNGGU; dipasang (muat ulang) hanya saat
 // layar tertutup gerbang (belum masuk / "Siapa yang jaga?" / belum disetujui), tanpa isian belum disimpan, tanpa orang yang sedang mengetik.
