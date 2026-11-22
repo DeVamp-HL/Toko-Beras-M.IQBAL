@@ -182,7 +182,7 @@ def periksa_statis(t):
     ok('kartu titipan tablet: bayar bon pemasok memilih / mengetik pemasok', "data-aksi=\"tpPemasok\"" in t[TPP] and "tpPemasok: ({ p }) =>" in t[TPP])
     ok('index.html memuat masuk-tablet-logika lebih dulu (modulepreload)', '<link rel="modulepreload" href="js/layar/masuk-tablet-logika.js">' in t[IDX])
     ok('push HP menyebut upah bongkar, bayar bon pemasok, barang masuk', "bongkar: 'Upah bongkar', bayarBon: 'Bayar bon pemasok'" in t[FN] and "barangMasuk: 'Barang masuk'" in t[FN])
-    ok('rules v15: kedatangan tablet lewat stafCatatMasuk([ben]); kabar lewat stafKabarMasuk([ben])', "(stafCatatMasuk(['ben']) && tglStaf('tanggal'))" in t[RULES] and "stafKabarMasuk(['ben']);" in t[RULES])
+    ok('rules v15: kedatangan tablet lewat stafCatatMasuk([ben]); kabar lewat stafKabarMasuk([ben])', "(stafCatatMasuk(['ben']) && tglStaf('tanggal'))" in t[RULES] and "stafKabarMasuk(['ben']) || (stafHitungLaci(" in t[RULES])   # v16: baris create persetujuan bersambung
     ok('logika tablet tidak menulis sendiri (hanya menyusun)', not re.search(r'tulisDokumen|setDoc|import .*firebase', t[MT]))
     return c
 

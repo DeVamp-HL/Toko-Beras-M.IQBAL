@@ -3246,6 +3246,23 @@ dengan `biayaBongkar` + n dan `bongkarTitipan` (modal barang + kas keluar laci b
 memasang ulang fungsi (`functions/pesan.js`). Alat uji `alat-uji/uji_masuk_tablet.py` (jsc di atas data contoh: kiriman, penjaga kiriman, laci sebelum/sesudah
 setuju, bon, tanda terima; kontrol) + `uji_titipan.py`, `uji_akses_baru.py`, `uji_terima_barang.py`, `periksa_rules.py`, `uji_rules_emulator.py`.
 
+**Tutup hari dari tablet (owner 22 Nov 2026, paket ④; rules v16):** kartu **Tutup hari** di Menu akun tablet (`tutup-tablet-panel.js`, hanya Penjaga laci
+yang kisi `hitungLaci`-nya bukan "tidak"). Keputusan owner (ditanya di depan): Penjaga laci **menghitung laci per pecahan**, **timbang cepat** (barang
+karung yang sama dengan lembar owner, `barangTimbang`), **cek wadah** (wadahLiteran 'cek' seperti di Jual, langsung tercatat) dan **amankan laci** (tablet
+menyebut "pindahkan Rp… ke brankas" = hitungan − uang kembalian owner `aturanToko/tutupHari`, terbaca Penjaga laci lewat `DOK_BEN`; setelan tak terbaca =
+tidak ditebak, uangnya tetap di laci; Ben menandai sudah / tidak dipindah). **Hitung buta**: tablet tidak pernah menampilkan seharusnya / selisih / alasan —
+itu di HP owner. Kiriman = SATU `persetujuan` tindakan `hitungLaci` (menunggu; `tanggal` = hari yang DITUTUP, lewat tengah malam sebelum jam 12 = kemarin;
+`lembar`, `receh`, `hitung`, `amankan`, `kembalian`, `timbang`, `cekWadah`). Cek QRIS & sisihkan laba tetap owner. **Owner menyelesaikan lembar** di
+Uang › Tutup hari: "Pakai hitungan ini" (`hlTerapkan`, `tutup-tablet-logika.js`) mengisi laci, timbang & amankan (Ben tidak memindah = amankan DILEWATI);
+draf membawa `dariHitung`, jam & tanggal tulis, `amankanTetap`. `hitungTutup`: laci SEKARANG = hitungan + uang laci yang tercatat **sesudah jam hitung**
+(`tdSesudahHitung`: gerakan kas tempat laci + amplop/pindah uang, hari yang sama, jam lebih besar) — selisih tidak berubah oleh nota sesudah hitungan;
+brankas = angka tablet. `susunTutup` menulis `kasFisikLaci` = laci saat ditutup, `dariTablet` {id, oleh, jam, hitung, sesudah, amankan}, dan di kiriman
+yang sama: hitungan dipakai → `disetujui` (+ `tutupJam`), hitungan lain hari itu yang masih menunggu → `dibaca` (tidak dipakai). "Minta hitung ulang" =
+ditolak beralasan (`hlSusunTolak`), terbaca di tablet. Papan Persetujuan tidak bisa "Setujui" hitungan (diarahkan ke Tutup hari); Tolak = minta hitung
+ulang. Pita di Uang › Uang keluar menunjuk Tutup hari; kabar dalam aplikasi & push HP (`functions/pesan.js`, sesudah fungsi dipasang ulang) menyebut
+hitungan laci. Server: rules v16 `stafHitungLaci(['ben']) && tglStaf` + aturanToko `tutupHari` terbaca ben (`docs/uji-rules-v16.md`, 19 kasus ★Y). Alat uji
+`alat-uji/uji_tutup_tablet.py` (jsc + kontrol) + `periksa_rules.py`, `uji_rules_emulator.py`.
+
 **Cetak di tablet untuk Uang dan Laporan (owner 21 Nov 2026: "Oke kita bangun yang ini"):** di aplikasi tablet dialog cetak hanya berkelebat
 lalu hilang, jadi tombol Cetak di Uang (slip upah, rekap tutup hari) dan di Laporan (dokumen) terasa mati. *Uang:* di aplikasi tablet kedua
 teks itu dicetak LANGSUNG ke printer struk lewat `cetakTeks` (`inti/printer.js`) — selalu gaya teks, apa pun gaya struk yang disetel —

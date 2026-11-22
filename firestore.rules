@@ -1,4 +1,13 @@
 // ============================================================================
+// ATURAN FIRESTORE v16 FINAL — Toko Beras M.IQBAL (DRAF 22 Nov 2026, TUTUP HARI dari tablet) = v15 FINAL + PERSIS satu fungsi baru dan dua ubahan baris
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v15; uji server: docs/uji-rules-v16.md). Owner menerbitkan v16 SEKALI lewat Console
+// SEBELUM cabang tutup hari tablet digabung:
+//   (v16-1) persetujuan create: + stafHitungLaci(ben) && tglStaf — HITUNGAN LACI dari tablet (tindakan 'hitungLaci', status 'menunggu', atas nama penulisnya,
+//           hitungan rupiah bulat > 0, yang sudah dipindah ke brankas 0..hitungan, tanpa keputusan). Hari ditutup OWNER dari lembar Tutup hari: tutupHari,
+//           titik kas, amplop, pindah uang & penyesuaian stok tetap ditulis owner saja.
+//   (v16-2) aturanToko read: + dokumen 'tutupHari' untuk Penjaga laci (ben) — uang kembalian yang ditinggal di laci (angka owner) dipakai tablet untuk
+//           "pindahkan Rp… ke brankas". Tulis tetap owner.
+// Sisanya = v15 FINAL di bawah ini, apa adanya. Kepala v15:
 // ATURAN FIRESTORE v15 FINAL — Toko Beras M.IQBAL (DRAF 22 Nov 2026, BARANG MASUK & BAYAR SUPIR di tablet) = v14 FINAL + PERSIS dua fungsi baru, satu
 // ubahan fungsi, dan dua baris tulis (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v14; uji server: docs/uji-rules-v15.md). Owner
 // menerbitkan v15 SEKALI lewat Console SEBELUM cabang barang masuk tablet digabung:
@@ -278,6 +287,15 @@ service cloud.firestore {
       return stafBuat(peranBoleh) && d.get('tindakan', '') == 'barangMasuk' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
         && d.get('batchId', 0) is string && d.batchId.size() > 0
         && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan']);
+    }
+    // v16 (owner 22 Nov 2026): HITUNGAN LACI dari tablet untuk tutup hari — bentuk "menunggu" bertindakan hitungLaci atas nama penulisnya, hitungan rupiah bulat
+    // > 0, yang sudah dipindah ke brankas 0..hitungan, tanpa keputusan. Hari ditutup OWNER (tutupHari & titik kas tetap owner saja).
+    function stafHitungLaci(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'hitungLaci' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('hitung', 0) is int && d.get('hitung', 0) > 0 && d.get('hitung', 0) <= 1000000000
+        && d.get('amankan', -1) is int && d.get('amankan', -1) >= 0 && d.get('amankan', -1) <= d.get('hitung', 0)
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan', 'koreksiOwner']);
     }
     // v10 (B3, owner 18 Nov 2026): SURAT JALAN dibuat ben BERSAMA notanya — status 'berangkat', tanpa kolom penerimaan / keputusan
     function stafBuatSJ(peranBoleh) {
@@ -653,7 +671,7 @@ service cloud.firestore {
     }
 
     match /aturanToko/{id} {
-      allow read: if owner() || (id in ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip'] && staf(['ben', 'karyawan']));   // per dokumen (peta §3) · v8: + hargaTingkat, produkArsip
+      allow read: if owner() || (id in ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip'] && staf(['ben', 'karyawan'])) || (id == 'tutupHari' && staf(['ben']));   // per dokumen (peta §3) · v8: + hargaTingkat, produkArsip · v16: + tutupHari (ben)
       allow create: if owner() && (id != 'kunciPeriode' || kunciPertama());
       allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());
       allow delete: if owner() && id != 'kunciPeriode';   // dokumen kunci tidak pernah dihapus (menghapusnya = membuka semua bulan)
@@ -703,7 +721,7 @@ service cloud.firestore {
 
     match /persetujuan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta membaca keputusan owner (pendengar koleksi utuh — rules bukan saringan)
-      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']);   // v15: + kabar barang masuk · v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
+      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']) || (stafHitungLaci(['ben']) && tglStaf('tanggal'));   // v16: + hitungan laci tutup hari · v15: + kabar barang masuk · v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
       allow update, delete: if owner();   // memutus (setuju / tolak) = owner
     }
 
