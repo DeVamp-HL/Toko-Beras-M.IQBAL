@@ -227,6 +227,10 @@ jobs:
         if: matrix.bagian == 1
         run: python3 alat-uji/uji_riwayat_barang.py && python3 alat-uji/uji_riwayat_barang.py --kontrol
 
+      - name: "Riwayat setelan & harga, tahap 3 lihat saja (owner 22 Nov 2026): penulis owner mencatat setelan dari → ke (riwayat lama selalu dibawa, cap penulis tidak dihitung, katalog & draf tidak disentuh), tampilan terbitan katalog / harga wadah / setelan / terakhir disimpan (jsc + statis + kontrol)"
+        if: matrix.bagian == 2
+        run: python3 alat-uji/uji_riwayat_setelan.py && python3 alat-uji/uji_riwayat_setelan.py --kontrol
+
       - name: Ringkas hari ini di tablet — laci = rumus Tutup hari, data uang hanya untuk orang pilihan owner & akun bertanda (rules v14) (owner 21 Nov 2026)
         if: matrix.bagian == 3
         run: python3 alat-uji/uji_ringkas_tablet.py && python3 alat-uji/uji_ringkas_tablet.py --kontrol

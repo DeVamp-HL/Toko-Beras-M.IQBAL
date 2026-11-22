@@ -176,7 +176,7 @@ def jalankan(t):
 def periksa_statis(t):
     c = []; ok = lambda n, x, k='': c.append({'nama': 'statis: ' + n, 'ok': bool(x), 'ket': k})
     M = t[MN]
-    ok('Menu: panel Riwayat & batal (Uang · Dibatalkan) hanya untuk owner', "riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['batal', 'Dibatalkan']]" in M and "s.sistem === 'riwayat' ? gambarRiwayat(s, tab)" in M)
+    ok('Menu: panel Riwayat & batal (Uang · Dibatalkan) hanya untuk owner', "riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['setelan', 'Setelan & harga'], ['batal', 'Dibatalkan']]" in M and "s.sistem === 'riwayat' ? gambarRiwayat(s, tab)" in M)
     ok('Menu: batal = alasan + ketukan kedua; pulihkan; hapus permanen = ketukan kedua', 'data-aksi="ruBatal"' in M and 'data-aksi="ruPulih"' in M and 'data-aksi="ruHapus"' in M
        and "(brg ? RB.rbSusunBatal : RU.ruSusunBatal)(" in M and ": RU.ruSusunPulih)(id, waktu())" in M and "RU.ruSusunHapusPermanen(" in M and 'yakinRu' in M)
     ok('Menu laci Toko ini: baris Riwayat & batal', "baris('riwayat'," in t[ML] and "sistem: 'riwayat'" in t[ML])

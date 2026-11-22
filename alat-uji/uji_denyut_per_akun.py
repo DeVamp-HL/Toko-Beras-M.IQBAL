@@ -22,7 +22,7 @@ import uji_kunci_periode  # noqa: E402
 import periksa_rules  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 _M = uji_kunci_periode.MODUL + ['baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/data/akses.js',
-                                'baru/js/layar/sistem-logika.js', 'baru/js/data/antre-lokal.js', 'baru/js/data/katalog-kasir.js', 'baru/js/data/hemat-baca.js', 'baru/js/data/firebase.js']   # hemat-baca SEBELUM firebase (owner 7 Okt: konstanta dipakai saat modul firebase dimuat)
+                                'baru/js/layar/sistem-logika.js', 'baru/js/data/antre-lokal.js', 'baru/js/data/katalog-kasir.js', 'baru/js/data/hemat-baca.js', 'baru/js/data/riwayat-setelan.js', 'baru/js/data/firebase.js']   # riwayat-setelan (22 Nov: pencatat setelan di tulisBerkas) · hemat-baca SEBELUM firebase (owner 7 Okt: konstanta dipakai saat modul firebase dimuat)
 MODUL = [m for i, m in enumerate(_M) if m not in _M[:i]]
 
 JAM = ("var __RealDate = Date; var __KINI = new __RealDate('2026-10-01T08:00:00+07:00').getTime();\n"

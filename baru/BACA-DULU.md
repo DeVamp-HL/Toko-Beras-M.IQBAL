@@ -3358,3 +3358,15 @@ kantong, karung bekas yang ikut catatan lain. Ditolak: bulan terkunci (termasuk 
 lain (batalkan yang terbaru dulu). Batas: karung bekas hari yang sama yang DIHAPUS sebuah kiriman tidak kembali. Rules tetap. Arsip `bukuHapus`
 `jenisBatal: 'barang'`, `jenis`, `dokumen`, `efek`, `koreksi.geser`. Alat uji `alat-uji/uji_riwayat_barang.py` (jsc memakai pencatat asli + render panel +
 statis + asap cadangan lokal + kontrol).
+
+**Riwayat setelan & harga — tahap 3 LIHAT SAJA (owner 22 Nov 2026):** tab **Setelan & harga** di Menu › Toko ini › Riwayat & batal (tanpa tombol batal;
+setelan & harga dibetulkan di layarnya masing-masing). Sensus: dokumen setelan `aturanToko/*` DITIMPA tiap simpan — isi lamanya tidak pernah tersimpan (2 dari
+21 punya `riwayat` sendiri); katalog harga punya riwayat lewat `hargaTerbit` (sejak 26 Sep). Mulai 22 Nov penulis owner (`firebase.js tulisBerkas`, sesudah
+`beriAtribusiAkun`) memanggil `rsdSertakan` (`baru/js/data/riwayat-setelan.js`, murni): `aturanToko` & `hargaWadah` membawa `riwayatUbah` = entri
+`{pada, tanggal, jam, oleh, perangkat, ubah: [{k, dari, ke}], baru?}` hanya bila ada kolom yang berubah (dua tingkat `induk.anak`; cap penulis, tanggal/jam
+simpan, `riwayat*` tidak dihitung), paling banyak 30, riwayat lama SELALU dibawa dari salinan cache (penulis yang menyusun dokumen dari nol tidak
+menghapusnya). Tidak disentuh: bukan owner, katalog harga (dibaca katalog HP kasir apa adanya), draf kerja katalog (`hargaDraf/hargaLabel/hargaSengaja`),
+`kunciPeriode` (rules & jejak nilai lama sendiri). Tampilan `baru/js/layar/riwayat-setelan-logika.js` (awalan `rs`): terbitan katalog (lama → baru per
+baris), harga wadah, setelan ber-riwayat, riwayat lama milik dokumen (nilai karung bekas, identitas, kunci bulan), setelan tanpa catatan = "terakhir disimpan —
+isi sebelumnya tidak tercatat"; jam UTC digambar setempat; saring harga / setelan; dokumen sistem `hematHarian` tidak tampil. Alat uji
+`alat-uji/uji_riwayat_setelan.py` (jsc + render panel + statis + asap cadangan lokal + kontrol).

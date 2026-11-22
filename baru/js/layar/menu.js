@@ -18,6 +18,7 @@ import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
 import * as SJ from './sidik-logika.js';   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
 import * as RU from './riwayat-uang-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 1 uang
 import * as RB from './riwayat-barang-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 2 barang
+import * as RS from './riwayat-setelan-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 3 setelan & harga (lihat saja)
 import * as RT from './ringkas-tablet-logika.js';
 import * as TB from './tablet-logika.js';
 import { nhDukung, nhTersimpan, nhIzin, nhNyalakan, nhMatikan, nhVapidSah } from '../data/notif-hp.js';   // owner 21 Nov 2026: notifikasi HP saat aplikasi tertutup   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
@@ -54,7 +55,7 @@ const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 // owner 7 Okt 2026: tab Hemat baca di Sistem › Perangkat (tab Kasir & PIN dicabut paket dokumen & sisa, #108)
-const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['batal', 'Dibatalkan']] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
+const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['setelan', 'Setelan & harga'], ['batal', 'Dibatalkan']] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
 const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat', riwayat: 'Riwayat & batal' };
 
 /** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
@@ -63,7 +64,7 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
@@ -251,6 +252,8 @@ export function pasangLayarMenu(akar, opsi) {
     sjIntip: async () => { const X = sj(); if (!X || st().sjSibuk) return; set({ sjSibuk: true }); const r = await X.mintaIntip(); set({ sjSibuk: false, kabar: r.kalimat, kabarAwas: !r.ok }); },
     sjTutupIntip: () => { const X = sj(); if (X) X.tutupIntip(); set({ kabar: 'Intip uang ditutup — data uang dikosongkan dari tablet', kabarAwas: false }); },
     // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
+    rsSaring: ({ g }) => set({ rsSaring: g || '', rsN: 40 }),
+    rsLagi: () => set({ rsN: (Number(st().rsN) || 40) + 40 }),
     ruGeser: ({ d }) => { const n = Number(d); const kiniIso = hariIniIso(kini()); const dasar = st().ruHari || kiniIso; const t = new Date(dasar + 'T12:00:00'); t.setDate(t.getDate() + n);
       set({ ruHari: n === 0 ? kiniIso : hariIniIso(t), ruBuka: null, yakinRu: null, ruAlasan: '' }); },
     ruSaring: ({ o }) => set({ ruSaring: o || '', ruBuka: null, yakinRu: null }),
@@ -578,6 +581,16 @@ export function pasangLayarMenu(akar, opsi) {
   // owner 22 Nov 2026 (paket riwayat & pembatalan, tahap 1 UANG): catatan uang per hari & per orang · batalkan (alasan, ketukan kedua) · daftar Dibatalkan:
   // pulihkan / hapus permanen. Logika & koreksi hari tertutup / patokan kas di riwayat-uang-logika.js.
   function gambarRiwayat(s, tab) {
+    // tahap 3 (owner 22 Nov 2026): setelan & harga — LIHAT SAJA, terbaru di atas, saring harga / setelan, muat 40 lagi
+    if (tab === 'setelan') {
+      const R = RS.rsDaftar(s.rsSaring || '', s.rsN || 40);
+      return h`<div class="kartu" data-k="rs-saring" style="gap: 6px;"><div class="hg-pil">${RS.RS_SARING.map(([g, nm]) => h`<div class="seg ${(s.rsSaring || '') === g ? 'aktif' : ''}" data-aksi="rsSaring" data-g="${g}">${nm}</div>`)}</div></div>
+        <div class="kartu" data-k="rs-daftar" style="gap: 2px;"><div class="label">${R.total ? R.total + ' perubahan' : 'Belum ada riwayat'}</div>
+          ${R.baris.map((r) => h`<div class="ug-baris dua ${r.akhir ? 'redup' : ''}" data-k="rs-${r.id}"><div style="min-width: 0;"><div>${tanggalPendek(r.tanggal)}${r.jam ? ' ' + r.jam : ''} · ${r.judul}</div>
+            <div class="k2">${r.oleh || '—'}</div>${r.rinci.map((t) => h`<div class="k2">· ${t}</div>`)}</div></div>`)}
+          ${R.total > R.baris.length ? h`<div class="kaca-btn kecil" data-aksi="rsLagi">tampilkan ${Math.min(40, R.total - R.baris.length)} lagi</div>` : ''}</div>
+        <div class="ket" style="font-size: 11px;">Lihat saja — setelan & harga dibetulkan di layarnya masing-masing. Harga katalog: tiap terbit (sejak 26 Sep 2026). Setelan dicatat dari → ke mulai ${tanggalPendek(RS.RS_MULAI)} (30 perubahan terakhir per setelan); sebelum itu hanya kapan terakhir disimpan.</div>`;
+    }
     if (tab === 'batal') {
       const D = RU.ruDibatalkan();
       return h`<div class="kartu" data-k="ru-batal" style="gap: 2px;"><div class="label">${D.length ? D.length + ' catatan dibatalkan' : 'Belum ada yang dibatalkan'}</div>

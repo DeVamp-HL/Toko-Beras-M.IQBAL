@@ -204,7 +204,7 @@ def jalankan(t):
 def periksa_statis(t):
     c = []; ok = lambda n, x, k='': c.append({'nama': 'statis: ' + n, 'ok': bool(x), 'ket': k})
     M = t[MN]
-    ok('Menu: tab Barang di panel Riwayat & batal', "riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['batal', 'Dibatalkan']]" in M and "import * as RB from './riwayat-barang-logika.js';" in M)
+    ok('Menu: tab Barang di panel Riwayat & batal', "riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['setelan', 'Setelan & harga'], ['batal', 'Dibatalkan']]" in M and "import * as RB from './riwayat-barang-logika.js';" in M)
     ok('Menu: batal barang & pulihkan barang memakai logika barang', "(brg ? RB.rbSusunBatal : RU.ruSusunBatal)(" in M and "x.jenisBatal === 'barang' ? RB.rbSusunPulih : RU.ruSusunPulih" in M)
     ok('index.html memuat riwayat-barang-logika (modulepreload)', '<link rel="modulepreload" href="js/layar/riwayat-barang-logika.js">' in t[IDX])
     ok('logika riwayat barang tidak menulis sendiri', not re.search(r'tulisDokumen|setDoc|writeBatch|import .*firebase', t[RBL]))

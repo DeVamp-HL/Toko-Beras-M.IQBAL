@@ -69,7 +69,7 @@ JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Help
 MURNI = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/data/hemat-baca.js']
 _M = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js',
       'baru/js/layar/arsip-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/data/akses.js', 'baru/js/data/antre-lokal.js', 'baru/js/data/katalog-kasir.js',
-      'baru/js/data/hemat-baca.js', 'baru/js/data/firebase.js']
+      'baru/js/data/hemat-baca.js', 'baru/js/data/riwayat-setelan.js', 'baru/js/data/firebase.js']   # riwayat-setelan (owner 22 Nov 2026): pencatat setelan dipanggil tulisBerkas
 BERKAS = sorted(set(_M + MURNI + ['kasir-darurat-nominal.html', 'sw-kasir.js']))
 
 
@@ -1383,6 +1383,10 @@ if (__MODE === 'mati') {
   ok('C2 tulisBerkas: koleksi HEMAT bercap jam server; berita acara tutup buku, pesanan, setelan, katalog kasir, baris jejak TIDAK bercap',
     CAP(op('set', 'penjualan', 'n2')[3]) && !CAP(op('set', 'tutupBukuAcara', '2026')[3]) && !CAP(op('set', 'pesanan', 'ps1')[3]) && !CAP(op('set', 'aturanToko', 'struk')[3]) && !CAP(op('set', 'ringkasanKasir', 'aktif')[3])
     && ops.filter(function (o) { return o[1] === 'logAktivitas'; }).every(function (o) { return !CAP(o[3]); }), J(ops.map(function (o) { return [o[0], o[1], o[2], CAP(o[3])]; })));
+  // owner 22 Nov 2026 (riwayat setelan, tahap 3): dokumen setelan yang DIKIRIM ke SDK membawa riwayatUbah (dokumen baru: entri "baru" berisi kolomnya); nota tidak
+  ok('C2 riwayat setelan: aturanToko/struk yang dikirim membawa riwayatUbah {baru, ubah a: kosong → 1, oleh}; penjualan & pesanan tanpa riwayatUbah',
+    (function () { var r = (op('set', 'aturanToko', 'struk')[3] || {}).riwayatUbah; return Array.isArray(r) && r.length === 1 && r[0].baru === true && J(r[0].ubah) === J([{ k: 'a', dari: null, ke: 1 }]) && !!r[0].pada; })()
+    && !('riwayatUbah' in op('set', 'penjualan', 'n2')[3]) && !('riwayatUbah' in op('set', 'pesanan', 'ps1')[3]), J(op('set', 'aturanToko', 'struk')[3]));
   ok('C2: aturan v7 BELUM terbukti di perangkat ini → hapus TANPA batu nisan (persis sebelum 7 Okt — aman bila rules v6 masih terbit)', !ops.some(function (o) { return o[1] === 'batuNisan'; }) && !!op('delete', 'stokBahanLiteran', 's9'));
   var salinan = JSON.parse(__ls.miqbal_baru_antre_v1 || '[]'); var sal = (salinan[salinan.length - 1] || {}).dokumen || [];
   ok('C2: salinan antre lokal TANPA sentinel cap (bisa ditulis ulang / dibandingkan apa adanya)', sal.length >= 1 && sal.every(function (x) { return !('capServer' in (x.data || {})); }), J(sal).slice(0, 300));
