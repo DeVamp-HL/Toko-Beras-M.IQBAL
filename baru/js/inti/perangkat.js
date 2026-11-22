@@ -10,6 +10,12 @@ const cap = () => (typeof window !== 'undefined' ? window.Capacitor : null);
 export function asliAda() { const c = cap(); return !!(c && typeof c.isNativePlatform === 'function' && c.isNativePlatform()); }
 
 /** Plugin `nama` ada di aplikasi yang terpasang? true / false; null = aplikasi tidak bisa ditanya (anggap "coba saja"). APK lama tidak punya plugin baru. */
+/** Plugin `nama` punya metode `metode` di APK terpasang? (PluginHeaders Capacitor) true · false · null = tidak bisa diketahui. Owner 23 Nov 2026: penanda APK lama tanpa rahasia. */
+export function adaMetode(nama, metode) {
+  const c = cap(); if (!asliAda()) return false;
+  try { if (Array.isArray(c.PluginHeaders)) { const p = c.PluginHeaders.find((x) => x && x.name === nama); return !!p && Array.isArray(p.methods) && p.methods.some((m) => m && m.name === metode); } } catch (e) { /* tidak diketahui */ }
+  return null;
+}
 export function adaPlugin(nama) {
   const c = cap(); if (!asliAda()) return false;
   try { if (Array.isArray(c.PluginHeaders)) return c.PluginHeaders.some((x) => x && x.name === nama); } catch (e) { /* lanjut ke cara lain */ }
@@ -460,12 +466,18 @@ export const penandaCek = () => panggilAsli('Biometrik', 'penandaCek', {});
 export const penandaHapus = () => panggilAsli('Biometrik', 'penandaHapus', {});
 /** Tempel jari lewat kunci penanda (hanya sidik jari kuat) → { ok, panjang }. */
 export const sidikJariKunci = () => panggilAsli('Biometrik', 'ujiKunci', {});
+// owner 23 Nov 2026 (sidik jari Tahap B): satu teks (sandi akun owner, diketik owner sendiri) terkunci penanda — tempel jari tiap simpan / buka.
+/** Kunci teks dengan penanda sesudah tempel jari → { ok, data, iv } (base64). */
+export const rahasiaSimpan = (teks) => panggilAsli('Biometrik', 'rahasiaSimpan', { teks: String(teks || ''), judul: 'Kunci sandi owner di tablet ini' });
+/** Buka teks terkunci ({ data, iv }) sesudah tempel jari → { ok, teks }. sub = kalimat di bawah judul (mis. putusan yang akan dikirim). */
+export const rahasiaBuka = (simpanan, judul, sub) => panggilAsli('Biometrik', 'rahasiaBuka', { data: String((simpanan || {}).data || ''), iv: String((simpanan || {}).iv || ''), judul: String(judul || 'Putusan owner'), sub: String(sub || 'Tempelkan jari owner') });
 /** Tolakan penanda / uji kunci → kalimat. PENANDA_TIDAK_ADA · BIOMETRIK_HANGUS · PENANDA_GAGAL (Android menolak — biasanya sensor bukan kelas kuat /
  *  layar kunci tablet belum disetel) · BIOMETRIK_<n> = sidikJariTolak. */
 export function penandaTolak(e) {
   const kode = String((e && e.code) || '');
   if (kode === 'PENANDA_TIDAK_ADA') return { batal: false, kalimat: 'penanda belum dipasang — tekan Pasang penanda dulu' };
   if (kode === 'BIOMETRIK_HANGUS') return { batal: false, kalimat: 'penanda HANGUS: ada jari baru didaftarkan sejak penanda dipasang' };
+  if (kode === 'RAHASIA_RUSAK' || kode === 'RAHASIA_KOSONG') return { batal: false, kalimat: 'simpanan sandi owner di tablet rusak / kosong' };
   if (/^BIOMETRIK_\d+$/.test(kode)) return sidikJariTolak(e);
   return { batal: false, kalimat: (e && e.message) ? String(e.message) : String(e) };
 }

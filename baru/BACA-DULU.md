@@ -3370,3 +3370,15 @@ menghapusnya). Tidak disentuh: bukan owner, katalog harga (dibaca katalog HP kas
 baris), harga wadah, setelan ber-riwayat, riwayat lama milik dokumen (nilai karung bekas, identitas, kunci bulan), setelan tanpa catatan = "terakhir disimpan —
 isi sebelumnya tidak tercatat"; jam UTC digambar setempat; saring harga / setelan; dokumen sistem `hematHarian` tidak tampil. Alat uji
 `alat-uji/uji_riwayat_setelan.py` (jsc + render panel + statis + asap cadangan lokal + kontrol).
+
+**Sidik jari owner — Tahap B: PUTUSAN OWNER DI TABLET (owner 23 Nov 2026):** owner: satu tempel jari = SATU putusan; sandi akun owner diketik sekali di
+tablet lalu disimpan TERKUNCI penanda jari; isi "lu yang pilih". Dipilih: titipan uang keluar, pesan & kabar barang masuk (dibaca), nego harga, bon lewat
+batas, usul harga pelanggan — semuanya lewat `susunPutusPersetujuan` yang sama dengan HP/Mac (uang / setelan ikut di kiriman yang sama), dokumen permintaan
+bercap `diputusDi: 'tablet · sidik jari owner'`; hitungan laci = TOLAK saja (minta hitung ulang); tutup hari di tablet TIDAK (akun tablet tidak membaca semua
+koleksi uang, mis. kunci bulan). Plugin `Biometrik` (APK baru) + `rahasiaSimpan` / `rahasiaBuka`: AES-GCM dengan penanda yang sama (sidik jari KUAT lewat
+CryptoObject tiap pakai, hangus bila ada jari baru); halaman menyimpan hanya `{data, iv, uid, dipasang}` di `miqbal_owner_tablet_v1`. Logika
+`baru/js/layar/owner-tablet-logika.js` (awalan `ow`), jembatan `app.js ownerTablet` (nyalakan: sandi diperiksa ke server lalu dikunci jari; kunci dipasang ulang
+= Tahap A ditandai mati dulu; putus: periksa → jari → dihitung ulang → kirim → sandi dibuang), kartu "Putusan owner" di Menu tablet (sandi = kolom password,
+bukan isian/draf). Penulis `firebase.js tulisSebagaiOwner`: app Firebase kedua `ownerTablet`, auth `inMemoryPersistence`, cache memori (impor SDK dinamis —
+SDK palsu uji peramban tidak berubah), offline ditolak, `jagaKunci`, pencatat setelan, jejak bertanda `lewat`, `await commit`, `signOut` di finally. Rules
+tetap. Alat uji `alat-uji/uji_owner_tablet.py` (jsc + render kartu + statis + kontrol); kontrak plugin di `uji_perangkat_sunmi.py`.

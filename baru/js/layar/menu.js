@@ -15,7 +15,8 @@ import { kartuTitipan, aksiTitipan, TP_DRAF_KOSONG } from './titipan-panel.js';
 import { kartuTutupTablet, aksiTutupTablet, hlTampil, HL_DRAF_KOSONG } from './tutup-tablet-panel.js';   // owner 22 Nov 2026 (paket ④): tutup hari dari tablet   // owner 21 Nov 2026: uang keluar & pesan dari tablet
 // owner 21 Nov 2026: Ringkas hari ini di tablet — kartu paling atas Menu akun tablet, hanya saat orang pilihan owner jaga (rules v14: data uang)
 import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
-import * as SJ from './sidik-logika.js';   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
+import * as SJ from './sidik-logika.js';
+import * as OW from './owner-tablet-logika.js';   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
 import * as RU from './riwayat-uang-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 1 uang
 import * as RB from './riwayat-barang-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 2 barang
 import * as RS from './riwayat-setelan-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 3 setelan & harga (lihat saja)
@@ -64,7 +65,7 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
@@ -247,6 +248,17 @@ export function pasangLayarMenu(akar, opsi) {
     nhMati: async () => { if (st().nhSibuk) return; set({ nhSibuk: true }); const r = await nhMatikan(); set({ nhSibuk: false, kabar: r.ok ? 'Notifikasi dimatikan di perangkat ini' : 'Gagal mematikan: ' + r.pesan, kabarAwas: !r.ok }); },
     // owner 21 Nov 2026: Ringkas hari ini di tablet — owner memilih SATU orang di tablet yang membukanya, dan menandai akun tablet yang membaca data uang
     rtPilihOrang: ({ id }) => tulis(S.susunAturSistem('peran', { ringkasOrang: id === '-' ? '' : id }, waktu())),
+    // owner 23 Nov 2026 (sidik jari Tahap B)
+    owBukaNyala: () => set({ owBukaNyala: !st().owBukaNyala, owSandi: '' }),
+    owSandiKetik: (v) => set({ owSandi: String(v).slice(0, 128) }),
+    owNyalakan: async () => { const X = ow(); if (!X || st().owSibuk) return; const sandi = st().owSandi; set({ owSibuk: true, owSandi: '' }); const r = await X.nyalakan(sandi);
+      set({ owSibuk: false, owBukaNyala: !r.ok, kabar: r.kalimat, kabarAwas: !r.ok }); },
+    owMatikan: () => { const X = ow(); if (!X) return; if (!st().yakinOw) return set({ yakinOw: true, kabar: 'Ketuk sekali lagi: sandi owner yang terkunci dihapus dari tablet ini', kabarAwas: true });
+      const r = X.matikan(); set({ yakinOw: false, kabar: r.kalimat, kabarAwas: false }); },
+    owBukaTolak: ({ id }) => set({ owTolak: st().owTolak === id ? null : id, owAlasan: '' }),
+    owAlasanKetik: (v) => set({ owAlasan: String(v).slice(0, 80) }),
+    owPutus: async ({ id, a }) => { const X = ow(); if (!X || st().owSibuk) return; set({ owSibuk: true }); const r = await X.putus(id, a, a === 'tolak' ? st().owAlasan : '');
+      set({ owSibuk: false, owTolak: r.ok ? null : st().owTolak, owAlasan: r.ok ? '' : st().owAlasan, kabar: r.kalimat, kabarAwas: !r.ok }); },
     sjNyalakan: async () => { const X = sj(); if (!X || st().sjSibuk) return; set({ sjSibuk: true }); const r = await X.nyalakan(); set({ sjSibuk: false, kabar: r.kalimat, kabarAwas: !r.ok }); },
     sjMatikan: async () => { const X = sj(); if (!X || st().sjSibuk) return; set({ sjSibuk: true }); const r = await X.matikan(); set({ sjSibuk: false, kabar: r.kalimat, kabarAwas: !r.ok }); },
     sjIntip: async () => { const X = sj(); if (!X || st().sjSibuk) return; set({ sjSibuk: true }); const r = await X.mintaIntip(); set({ sjSibuk: false, kabar: r.kalimat, kabarAwas: !r.ok }); },
@@ -336,6 +348,30 @@ export function pasangLayarMenu(akar, opsi) {
     if (intipNyala()) return h`<div class="kaca-btn kecil" data-aksi="sjTutupIntip" data-k="sj-tutup-intip" style="align-self: flex-start;">Tutup intip uang</div>`;
     return SJ.sjBolehIntip(akunM, L, asli, orang) ? h`<div class="kaca-btn kecil" data-aksi="sjIntip" data-k="sj-intip" style="align-self: flex-start;">${s.sjSibuk ? 'tempel jari…' : 'Intip uang · sidik jari owner'}</div>` : '';
   }
+  // owner 23 Nov 2026 (sidik jari Tahap B): opsi.ownerTablet = { keadaan(), daftar(), nyalakan(sandi), matikan(), putus(id, aksi, alasan) } dari app.js.
+  // Tiap putusan = tempel jari owner. Sandi owner hanya diketik waktu menyalakan (kolom sandi, tidak pernah disimpan sebagai isian / draf).
+  const ow = () => opsi.ownerTablet || null;
+  function kartuOwnerTablet(s) {
+    const X = ow(); if (!X) return '';
+    const K = X.keadaan(); if (K.st === 'tidak') return '';
+    if (K.st !== 'nyala') return h`<div class="kartu" data-k="ow-kartu" style="gap: 6px;"><div class="label">Putusan owner di tablet</div><div class="pita-info" data-k="ow-st">${K.teks}</div>
+      ${s.owBukaNyala ? h`<input class="ketik-nama" type="password" autocomplete="off" placeholder="sandi akun owner" value="${s.owSandi || ''}" data-ketik="owSandiKetik" maxlength="128">
+        <div class="kaca-btn aktif emas" data-aksi="owNyalakan" data-k="ow-nyalakan">${s.owSibuk ? 'memeriksa sandi · tempel jari…' : 'NYALAKAN · tempel jari owner'}</div>
+        <div class="ket" style="font-size: 11px;">Sandi diperiksa ke server, lalu dikunci sidik jari di tablet ini — tidak tersimpan terbuka. Pastikan HANYA jari lu yang terdaftar di Setelan tablet.</div>`
+        : h`<div class="kaca-btn kecil" data-aksi="owBukaNyala" data-k="ow-buka" style="align-self: flex-start;">Nyalakan (owner)</div>`}</div>`;
+    const D = X.daftar();
+    return h`<div class="kartu" data-k="ow-kartu" style="gap: 6px;"><div class="label">Putusan owner · ${D.length ? D.length + ' menunggu' : 'tidak ada yang menunggu'}</div>
+      ${D.map((m) => h`<div class="ug-baris dua" data-k="ow-${m.id}"><div style="min-width: 0;"><div>${m.dari} · ${m.namaTindakan || m.tindakan}${m.n ? h` · <b>${RP(m.n)}</b>` : ''}</div><div class="k2">${m.teks}</div>
+          ${m.hanyaHp ? h`<div class="k2">${m.hanyaHp}</div>` : ''}
+          ${s.owTolak === m.id ? h`<div style="display: flex; gap: 6px; margin-top: 6px;"><input class="ketik-nama" type="text" placeholder="alasan menolak (wajib)" value="${s.owAlasan || ''}" data-ketik="owAlasanKetik" maxlength="80">
+            <div class="kaca-btn aktif awas" data-aksi="owPutus" data-id="${m.id}" data-a="tolak">${s.owSibuk ? 'tempel jari…' : 'TOLAK · jari'}</div></div>` : ''}</div>
+        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+          ${m.boleh.setuju ? h`<div class="kaca-btn kecil aktif emas" data-aksi="owPutus" data-id="${m.id}" data-a="setuju">${s.owSibuk ? '…' : 'Setujui · jari'}</div>` : ''}
+          ${m.boleh.dibaca ? h`<div class="kaca-btn kecil aktif" data-aksi="owPutus" data-id="${m.id}" data-a="dibaca">${s.owSibuk ? '…' : 'Dibaca · jari'}</div>` : ''}
+          ${m.boleh.tolak ? h`<div class="kaca-btn kecil ${s.owTolak === m.id ? 'aktif' : ''}" data-aksi="owBukaTolak" data-id="${m.id}">${s.owTolak === m.id ? 'tutup' : 'Tolak'}</div>` : ''}</div></div>`)}
+      <div class="pita-info emas" data-k="ow-st" style="font-size: 12px;">${K.teks}</div>
+      <div class="kaca-btn kecil" data-aksi="owMatikan" data-k="ow-matikan" style="align-self: flex-start;">${s.yakinOw ? 'KETUK LAGI · matikan' : 'Matikan putusan owner'}</div></div>`;
+  }
   function gambarStaf(s, d, akunM) {
     const namaP = (S.SS_PERAN.find((p) => p.id === akunM.peran) || {}).nama || akunM.peran; const L = lokal();
     const AL = opsi.antreLokal ? opsi.antreLokal() : { belum: [], ditolak: [] };
@@ -343,6 +379,7 @@ export function pasangLayarMenu(akar, opsi) {
     return h`<section class="mn-staf" data-k="staf" style="display: flex; flex-direction: column; gap: 10px;">
       ${RT.rtTampil(akunM) || intipNyala() ? kartuRingkas(s, { akun: akunM, uang: opsi.statusUang ? opsi.statusUang() : null, kini: kini(), intip: intipNyala() ? SJ.sjIntipDetik() : 0 }) : ''}
       ${kartuSidik(s, akunM)}
+      ${kartuOwnerTablet(s)}
       ${kartuTitipan(s, { akun: akunM, orang, kiniIso: hariIniIso(kini()) })}
       ${hlTampil(akunM) ? kartuTutupTablet(s, { akun: akunM, kini: kini() }) : ''}
       <div class="kartu" data-k="staf-akun" style="gap: 4px;"><div class="label">Masuk sebagai</div><div class="serif" style="font-size: 20px;">${akunM.nama}</div><div class="k2">${namaP} · ${L.namaPerangkat || 'perangkat ini'}</div></div>

@@ -223,7 +223,9 @@ def periksa_statis(t):
     ok('app.js: hitungan salah PIN disimpan per perangkat (tahan muat ulang)', 'localStorage.setItem(TB.TB_KUNCI_SALAH' in app)
     ok('index.html: panel "Siapa yang jaga?" + modul tablet di modulepreload', 'id="panelOrang"' in html and '<link rel="modulepreload" href="js/layar/tablet-logika.js">' in html)
     ok('menu.js: PIN hanya diketik di tab Orang di tablet dan diteruskan ke tablet-logika (tidak ditulis sendiri)',
-       mn.count('type="password"') == 1 and 'TB.tbSusunTambah(' in mn and 'TB.tbSusunGantiPin(' in mn and not re.search(r"pin:\s*st\(\)\.tb", mn))
+       # + owner 23 Nov 2026 (sidik jari Tahap B): SATU kolom sandi akun owner di kartuOwnerTablet (owSandiKetik) — bukan PIN, tidak diteruskan ke tablet-logika
+       mn.count('type="password"') == 2 and len(re.findall(r'function kartuOwnerTablet\(s\)[\s\S]*?type="password" autocomplete="off" placeholder="sandi akun owner" value="\$\{s\.owSandi \|\| \'\'\}" data-ketik="owSandiKetik"', mn)) == 1
+       and 'TB.tbSusunTambah(' in mn and 'TB.tbSusunGantiPin(' in mn and not re.search(r"pin:\s*st\(\)\.tb", mn))
     # owner 21 Nov 2026 (CPad): gerbang "Siapa yang jaga?" bisa digeser ke samping & ke bawah, logo tertutup, tombol Keluar di luar layar.
     # Ukurannya dibuktikan di panel peramban (1067 × 585 mendatar, 667 × 985 tegak); di sini yang dijaga aturannya tidak hilang.
     gb = t['baru/css/gerbang.css']
