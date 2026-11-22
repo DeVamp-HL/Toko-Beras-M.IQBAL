@@ -188,7 +188,16 @@ KONTROL_V15 = [
     ('kedatangan tablet boleh dibayar tunai', [("d.get('caraBayar', '') == 'utang' && d.get('biayaBongkar', -1) == 0", "d.get('biayaBongkar', -1) == 0")], ['★X9']),
     ('kedatangan tablet boleh membawa upah bongkar', [(" && d.get('biayaBongkar', -1) == 0\n", "\n")], ['★X10']),
     ('titipan upah bongkar tanpa kedatangan', [("        && (d.get('jenis', '') != 'bongkar' || (d.get('batchId', 0) is string && d.batchId.size() > 0))\n", "")], ['★X17']),
-    ('kabar barang masuk untuk karyawan', [("stafKabarMasuk(['ben']);", "stafKabarMasuk(['ben', 'karyawan']);")], ['★X23']),
+    ('kabar barang masuk untuk karyawan', [("stafKabarMasuk(['ben']) || (stafHitungLaci(", "stafKabarMasuk(['ben', 'karyawan']) || (stafHitungLaci(")], ['★X23']),   # v16: baris create bersambung
+]
+# ---- V16 (owner 22 Nov 2026: tutup hari dari tablet): kasus ★Y docs/uji-rules-v16.md (periksa_rules.KASUS_V16) atas firestore.rules (v16)
+# dan atas firestore.rules.v15 — yang berbeda WAJIB persis periksa_rules.BEDA_V15 (yang dibuka v16). Kontrol: satu suku v16 dirusak → kasus sasarannya wajib berbalik.
+KONTROL_V16 = [
+    ('karyawan ikut mengirim hitungan laci', [("(stafHitungLaci(['ben']) && tglStaf('tanggal'))", "(stafHitungLaci(['ben', 'karyawan']) && tglStaf('tanggal'))")], ['★Y6']),
+    ('hitungan laci boleh nol', [("d.get('hitung', 0) is int && d.get('hitung', 0) > 0 &&", "d.get('hitung', 0) is int && d.get('hitung', 0) >= 0 &&")], ['★Y8']),
+    ('brankas boleh melebihi hitungan', [(" && d.get('amankan', -1) <= d.get('hitung', 0)\n", "\n")], ['★Y9']),
+    ('hitungan tanpa penjaga bulan', [("(stafHitungLaci(['ben']) && tglStaf('tanggal'))", "stafHitungLaci(['ben'])")], ['★Y14']),
+    ('aturan tutup hari terbaca karyawan', [("(id == 'tutupHari' && staf(['ben']))", "(id == 'tutupHari' && staf(['ben', 'karyawan']))")], ['★Y7']),
 ]
 # kontrol bagian C: suku kirim ulang bercap dicabut dari update penjualan → kirim ulang kasir-v33 & kasir-v32 atas nota bercap wajib berbunyi
 KONTROL_KASIR = ('suku (kasir() && ulangKasirBercap()) dicabut dari update penjualan', [(" || (kasir() && ulangKasirBercap());", ";")], ['c2', 'c4'])
@@ -795,6 +804,29 @@ def jalankan_emulator():
         lap['kontrolV15'].append(k)
         print('  %s %s → %s' % ('BERBUNYI' if k['berbunyi'] else 'DIAM!!  ', nama, k.get('galat') or ', '.join('%s %s (wajib %s)' % x for x in k['hasil'])), flush=True)
     pasang_aturan(v7)
+    # ---- V16 (owner 22 Nov 2026): kasus ★Y atas firestore.rules cabang ini (v16) dan atas firestore.rules.v15; kontrol satu suku v16
+    v15lama_t = baca('firestore.rules.v15')
+    print('— V16 · %d kasus ★Y atas firestore.rules (v16)' % len(P.KASUS_V16), flush=True)
+    H16 = jalankan_semua(J, v7, P.KASUS_V16); lap['v16'] = H16
+    for x in H16: print('  %s %-6s %-26s %-48s → %-13s wajib %-7s %s' % ('✓' if x['ok'] else '✗', x['no'], x['akun'] + ' ' + x['op'], x['jalur'][:48], x['hasil'], x['wajib'], x['ket'][:90]), flush=True)
+    print('— V16 · kasus yang sama atas firestore.rules.v15 (yang berbeda wajib persis BEDA_V15 = %s)' % ', '.join(sorted(P.BEDA_V15)), flush=True)
+    H16l = jalankan_semua(J, v15lama_t, P.KASUS_V16); lap['v16lama'] = []
+    for a, b in zip(H16, H16l):
+        harap = ('DITOLAK' if a['wajib'] == 'LOLOS' else 'LOLOS') if a['no'] in P.BEDA_V15 else a['wajib']
+        r16 = {'no': b['no'], 'jalur': b['jalur'], 'hasilV15': b['hasil'], 'hasilV16': a['hasil'], 'harapV15': harap, 'ok': b['hasil'] == harap and b['hasil'] != 'TIDAK TERUKUR'}
+        lap['v16lama'].append(r16)
+        if not r16['ok'] or a['no'] in P.BEDA_V15: print('  %s %-6s v15 %-13s v16 %-13s harap v15 %s' % ('✓' if r16['ok'] else '✗', r16['no'], r16['hasilV15'], r16['hasilV16'], harap), flush=True)
+    print('— V16 · KONTROL: satu suku v16 dirusak → kasus sasaran wajib berbalik', flush=True)
+    lap['kontrolV16'] = []; per16 = {K[0]: K for K in P.KASUS_V16}; utuh16 = {x['no']: x for x in H16}
+    for nama, ganti, sasaran in KONTROL_V16:
+        try:
+            R = rusak(v7, ganti); hs = jalankan_semua(J, R, [per16[s] for s in sasaran])
+            balik = [h for h in hs if h['hasil'] in ('LOLOS', 'DITOLAK') and h['hasil'] != h['wajib'] and utuh16.get(h['no'], {}).get('ok')]
+            k = {'nama': nama, 'sasaran': sasaran, 'hasil': [(h['no'], h['hasil'], h['wajib']) for h in hs], 'berbunyi': len(balik) == len(sasaran)}
+        except Exception as e: k = {'nama': nama, 'sasaran': sasaran, 'hasil': [], 'berbunyi': False, 'galat': str(e)[:300]}
+        lap['kontrolV16'].append(k)
+        print('  %s %s → %s' % ('BERBUNYI' if k['berbunyi'] else 'DIAM!!  ', nama, k.get('galat') or ', '.join('%s %s (wajib %s)' % x for x in k['hasil'])), flush=True)
+    pasang_aturan(v7)
     # ---- C · kasir darurat
     v33 = skrip_halaman(baca('kasir-darurat-nominal.html')); h32 = html_v32(); v32 = skrip_halaman(h32) if h32 else None
     lap['kasir'] = {}
@@ -832,7 +864,9 @@ def jalankan_emulator():
                       'v14': ringkas(lap['v14']), 'v14lama': {'kasus': len(lap['v14lama']), 'sesuai': sum(1 for x in lap['v14lama'] if x['ok'])},
                       'kontrolV14': {'jumlah': len(lap['kontrolV14']), 'berbunyi': sum(1 for x in lap['kontrolV14'] if x['berbunyi'])},
                       'v15': ringkas(lap['v15']), 'v15lama': {'kasus': len(lap['v15lama']), 'sesuai': sum(1 for x in lap['v15lama'] if x['ok'])},
-                      'kontrolV15': {'jumlah': len(lap['kontrolV15']), 'berbunyi': sum(1 for x in lap['kontrolV15'] if x['berbunyi'])}}
+                      'kontrolV15': {'jumlah': len(lap['kontrolV15']), 'berbunyi': sum(1 for x in lap['kontrolV15'] if x['berbunyi'])},
+                      'v16': ringkas(lap['v16']), 'v16lama': {'kasus': len(lap['v16lama']), 'sesuai': sum(1 for x in lap['v16lama'] if x['ok'])},
+                      'kontrolV16': {'jumlah': len(lap['kontrolV16']), 'berbunyi': sum(1 for x in lap['kontrolV16'] if x['berbunyi'])}}
     lap['lulus'] = (all(x['ok'] for x in A) and all(x['ok'] for x in lap['v6']) and all(x['berbunyi'] for x in lap['kontrol']) and lap['kontrolKasir']['berbunyi']
                     and all(x['ok'] for v in lap['kasir'].values() for x in v['cek'])
                     and all(x['ok'] for x in lap['v8']) and all(x['ok'] for x in lap['v8lama']) and all(x['berbunyi'] for x in lap['kontrolV8'])
@@ -842,7 +876,8 @@ def jalankan_emulator():
                     and all(x['ok'] for x in lap['v12']) and all(x['ok'] for x in lap['v12lama']) and all(x['berbunyi'] for x in lap['kontrolV12'])
                     and all(x['ok'] for x in lap['v13']) and all(x['ok'] for x in lap['v13lama']) and all(x['berbunyi'] for x in lap['kontrolV13'])
                     and all(x['ok'] for x in lap['v14']) and all(x['ok'] for x in lap['v14lama']) and all(x['berbunyi'] for x in lap['kontrolV14'])
-                    and all(x['ok'] for x in lap['v15']) and all(x['ok'] for x in lap['v15lama']) and all(x['berbunyi'] for x in lap['kontrolV15']))
+                    and all(x['ok'] for x in lap['v15']) and all(x['ok'] for x in lap['v15lama']) and all(x['berbunyi'] for x in lap['kontrolV15'])
+                    and all(x['ok'] for x in lap['v16']) and all(x['ok'] for x in lap['v16lama']) and all(x['berbunyi'] for x in lap['kontrolV16']))
     return lap
 
 
@@ -870,7 +905,9 @@ def ringkasan_md(lap):
            '- **V14 (data uang untuk Ringkas hari ini di tablet)**: %s atas v14 · atas v13 %d/%d sesuai (berbeda tepat %s) · kontrol v14 %d/%d berbunyi'
            % (f(R['v14']), R['v14lama']['sesuai'], R['v14lama']['kasus'], ', '.join(sorted(P.BEDA_V13)), R['kontrolV14']['berbunyi'], R['kontrolV14']['jumlah']),
            '- **V15 (barang masuk & bayar supir di tablet)**: %s atas v15 · atas v14 %d/%d sesuai (berbeda tepat %s) · kontrol v15 %d/%d berbunyi'
-           % (f(R['v15']), R['v15lama']['sesuai'], R['v15lama']['kasus'], ', '.join(sorted(P.BEDA_V14)), R['kontrolV15']['berbunyi'], R['kontrolV15']['jumlah']), '']
+           % (f(R['v15']), R['v15lama']['sesuai'], R['v15lama']['kasus'], ', '.join(sorted(P.BEDA_V14)), R['kontrolV15']['berbunyi'], R['kontrolV15']['jumlah']),
+           '- **V16 (tutup hari dari tablet)**: %s atas v16 · atas v15 %d/%d sesuai (berbeda tepat %s) · kontrol v16 %d/%d berbunyi'
+           % (f(R['v16']), R['v16lama']['sesuai'], R['v16lama']['kasus'], ', '.join(sorted(P.BEDA_V15)), R['kontrolV16']['berbunyi'], R['kontrolV16']['jumlah']), '']
     out += ['### A · kasus (v7)', '', '| no | akun · operasi · jalur | wajib | emulator v7 | v6 |', '|---|---|---|---|---|']
     v6 = {x['no']: x for x in lap['v6']}
     for x in lap['v7']:
@@ -1041,6 +1078,16 @@ def periksa(rules=None, dok=None, html=None):
             Mx = RM.Rules(rusak(R, ganti)); diam = [s for s in sasaran if nilai_model(Mx, per15[s]).boleh == per15[s][8]]
             c.append(('kontrol v15 "%s": jangkar tepat 1× & model membalik %s' % (nama, ', '.join(sasaran)), not diam, {'diam': diam}))
     except Exception as e: c.append(('model v15 (KASUS_V15)', False, str(e)[:300]))
+    # V16 (owner 22 Nov 2026): model atas v16 = kolom wajib KASUS_V16; atas firestore.rules.v15 berbeda tepat BEDA_V15; kontrol V16 membalik sasarannya
+    try:
+        M16, M15lama = RM.Rules(R), RM.Rules(baca('firestore.rules.v15'))
+        salah16 = [K[0] for K in P.KASUS_V16 if nilai_model(M16, K).boleh != K[8]]; beda15 = {K[0] for K in P.KASUS_V16 if nilai_model(M15lama, K).boleh != nilai_model(M16, K).boleh}
+        c.append(('model v16 = kolom Wajib di %d kasus ★Y; berbeda dari firestore.rules.v15 tepat %s' % (len(P.KASUS_V16), ', '.join(sorted(P.BEDA_V15))), not salah16 and beda15 == set(P.BEDA_V15), {'salah v16': salah16, 'beda v15': sorted(beda15)}))
+        per16 = {K[0]: K for K in P.KASUS_V16}
+        for nama, ganti, sasaran in KONTROL_V16:
+            Mx = RM.Rules(rusak(R, ganti)); diam = [s for s in sasaran if nilai_model(Mx, per16[s]).boleh == per16[s][8]]
+            c.append(('kontrol v16 "%s": jangkar tepat 1× & model membalik %s' % (nama, ', '.join(sasaran)), not diam, {'diam': diam}))
+    except Exception as e: c.append(('model v16 (KASUS_V16)', False, str(e)[:300]))
     H = html if html is not None else baca('kasir-darurat-nominal.html')
     try: s33 = skrip_halaman(H)
     except Exception as e: return c + [('skrip kasir darurat terbaca', False, str(e))]

@@ -32,6 +32,9 @@ export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 
 // dan mencabutnya (memori dikosongkan) begitu orang lain jaga / tirai menutup. Jadi angkaBoleh & layar staf lain tetap memperlakukan uang di luar haknya.
 export const BACA_UANG = ['pengeluaranHarian', 'kasbonMutasi', 'biayaBulanan', 'setoranKas', 'amplopLaba', 'modalOwner', 'utangOwnerMutasi', 'utangPemasokMutasi', 'pindahUang', 'tutupHari'];
 export const DOK_UANG = { pengaturan: ['titikKas'] };
+// rules v16 (owner 22 Nov 2026): TUTUP HARI dari tablet — Penjaga laci (ben) membaca aturanToko/tutupHari (uang kembalian yang ditinggal di laci = angka owner)
+// untuk "pindahkan Rp… ke brankas". Ikut pendengarPeran akun ben saja (karyawan tidak).
+export const DOK_BEN = { aturanToko: ['tutupHari'] };
 /** Akun ini DITANDAI owner boleh membaca data uang (rules v14 bacaUangDari): Penjaga laci aktif + bacaUang. Owner tidak perlu (membaca semuanya). */
 export const bacaUangAkun = (akun) => !!akun && akun.jenis === 'aktif' && akun.peran === 'ben' && akun.bacaUang === true;
 /** Pendengar data uang akun bertanda (bentuk = pendengarPeran): kosong bila akun tidak bertanda. */
@@ -115,7 +118,7 @@ export function pendengarPeran(akun) {
   if (!bisaBekerja(akun)) return [];
   if (akun.jenis === 'owner') return KOLEKSI.map((k) => ({ nama: k.nama }));
   const out = BACA_STAF.map((n) => ({ nama: n }));
-  Object.keys(DOK_STAF).forEach((n) => out.push({ nama: n, dok: DOK_STAF[n].slice() }));
+  Object.keys(DOK_STAF).forEach((n) => out.push({ nama: n, dok: DOK_STAF[n].concat(akun.peran === 'ben' ? DOK_BEN[n] || [] : []) }));   // v16: + DOK_BEN (ben)
   return out;
 }
 /** Batas baris per nota / hasil per adukan untuk akun ini (0 = tanpa batas: owner). Layar menyerahkannya ke logika (s.batasBaris, draf.batasHasil). */
@@ -183,6 +186,10 @@ const batchLahir = (d) => !!d && d.lahirBuku === true && d.stokAwal === true && 
 export const KOLOM_BUKAN_MASUK_TABLET = ['lahirBuku', 'stokAwal', 'tutupBuku', 'riwayat', 'alasanKoreksi', 'noBon', 'bongkarTitipan'];
 export const batchTablet = (d) => !!d && d.dariTablet === true && d.caraBayar === 'utang' && d.biayaBongkar === 0 && typeof d.pemasok === 'string' && d.pemasok.length > 0
   && d.pemasok.length <= 60 && d.pemasok !== 'LAHIR BUKU' && Array.isArray(d.merkList) && d.merkList.length > 0 && d.merkList.length <= 20 && !KOLOM_BUKAN_MASUK_TABLET.some((k) => k in d);
+// rules v16 (owner 22 Nov 2026): HITUNGAN LACI dari tablet (= stafHitungLaci): Penjaga laci, menunggu, atas nama sendiri, hitungan bulat 1..1 M, amankan 0..hitungan, tanpa keputusan
+export const KOLOM_KEPUTUSAN_HITUNG = ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan', 'koreksiOwner'];
+export const hitungLaciSah = (d, uid) => !!d && d.tindakan === 'hitungLaci' && d.status === 'menunggu' && String(d.mintaUid || '') === String(uid || '') && Number.isInteger(d.hitung) && d.hitung > 0
+  && d.hitung <= 1000000000 && Number.isInteger(d.amankan) && d.amankan >= 0 && d.amankan <= d.hitung && typeof d.tanggal === 'string' && !KOLOM_KEPUTUSAN_HITUNG.some((k) => k in d);
 // rules v13 + v15: jenis titipan uang keluar dari tablet (= stafMintaKeluar). bongkar wajib batchId (kedatangannya), bayarBon wajib nama pemasok.
 export const JENIS_TITIPAN = ['toko', 'karyawan', 'kasbon', 'bongkar', 'bayarBon'];
 
@@ -283,6 +290,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
         || (d.jenis === 'bongkar' && !(typeof d.batchId === 'string' && d.batchId.length > 0)) || (d.jenis === 'bayarBon' && !(typeof d.pemasok === 'string' && d.pemasok.length > 0 && d.pemasok.length <= 60))) return { tolak: tolakTindakan('uangKeluar') }; continue; }
       // rules v15: KABAR barang masuk untuk owner — bentuk "menunggu" bertindakan barangMasuk atas nama sendiri, menunjuk kedatangannya, tanpa keputusan (stafKabarMasuk)
       if (x.koleksi === 'persetujuan' && d.tindakan === 'barangMasuk') { if (P !== 'ben' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan'].some((k) => k in d) || !(typeof d.batchId === 'string' && d.batchId.length > 0) || String(d.mintaUid || '') !== String(akun.uid || '')) return { tolak: tolakTindakan('kedatangan') }; continue; }
+      // rules v16: HITUNGAN LACI untuk tutup hari — Penjaga laci saja, kisi hitungLaci bukan "tidak boleh" (stafHitungLaci); harinya ditutup owner
+      if (x.koleksi === 'persetujuan' && d.tindakan === 'hitungLaci') { if (P !== 'ben' || (hak.hitungLaci || 'tidak') === 'tidak' || !hitungLaciSah(d, akun.uid)) return { tolak: tolakTindakan('hitungLaci') }; continue; }
       // rules v13: PESAN untuk owner — bentuk "menunggu" bertindakan pesan atas nama sendiri, teks 1–500 huruf, tanpa keputusan / balasan (stafKirimPesan)
       if (x.koleksi === 'persetujuan' && d.tindakan === 'pesan') { if (d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan'].some((k) => k in d) || typeof d.teks !== 'string' || !d.teks.length || d.teks.length > 500 || String(d.mintaUid || '') !== String(akun.uid || '')) return { tolak: 'Pesan untuk owner harus berisi 1–500 huruf, atas nama orang yang jaga' }; continue; }
       if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].some((k) => k in d) || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };

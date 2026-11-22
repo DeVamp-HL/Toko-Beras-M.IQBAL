@@ -151,6 +151,8 @@ jobs:
         run: python3 alat-uji/uji_titipan.py && python3 alat-uji/uji_titipan.py --kontrol
       - name: "Barang masuk & bayar supir dari tablet (owner 22 Nov 2026, rules v15): kedatangan bon + titipan upah bongkar & bayar supir + kabar owner; owner menyetujui ke kedatangan / bon pilihan, bertanggal titipan"
         run: python3 alat-uji/uji_masuk_tablet.py && python3 alat-uji/uji_masuk_tablet.py --kontrol
+      - name: "Tutup hari dari tablet (owner 22 Nov 2026, rules v16): hitung buta, brankas = hitungan − kembalian owner, owner memakai hitungan di lembar (catatan sesudah hitungan tidak mengubah selisih), hitungan disetujui / dibaca saat Tutup"
+        run: python3 alat-uji/uji_tutup_tablet.py && python3 alat-uji/uji_tutup_tablet.py --kontrol
       - name: Ringkas hari ini di tablet — laci = rumus Tutup hari, data uang hanya untuk orang pilihan owner & akun bertanda (rules v14) (owner 21 Nov 2026)
         run: python3 alat-uji/uji_ringkas_tablet.py && python3 alat-uji/uji_ringkas_tablet.py --kontrol
       - name: "Fungsi server notifikasi HP: paket terpasang & fungsi termuat (tanpa deploy — deploy dijalankan owner di Cloud Shell)"

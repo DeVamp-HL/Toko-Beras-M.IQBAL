@@ -184,7 +184,8 @@ export function ssHemat(K, siap) {
 // ---------- SS2 · Peran & persetujuan ----------
 // Putaran 23c (owner 24 Sep): kisi menampilkan KEBENARAN SERVER. Kisi `sendiri` yang tidak dibuka firestore.rules v3 (akses.js SERVER_BUKA)
 // tampil "tertutup server" beserta sebabnya (peta §6) — bukan "boleh sendiri". Nilai kisi tersimpan tetap; yang berubah cuma yang digambar.
-export const SS_TERTUTUP_SERVER = { hargaPelanggan: 'setelan harga hanya ditulis owner — "boleh sendiri" tetap jadi usul ke owner', hitungLaci: 'menutup hari menimpa titik kas (angka uang yang sudah tercatat) — owner saja sampai ada alur persetujuan',
+export const SS_HITUNG_LACI = 'hitungLaci';   // rules v16 — sama dengan tutup-hari-logika HL_TINDAKAN (dijaga uji_tutup_tablet)
+export const SS_TERTUTUP_SERVER = { hargaPelanggan: 'setelan harga hanya ditulis owner — "boleh sendiri" tetap jadi usul ke owner', hitungLaci: 'menutup hari menimpa titik kas (angka uang yang sudah tercatat) — Penjaga laci MENGIRIM hitungan laci dari kartu Tutup hari di tablet (rules v16), harinya ditutup owner dari Uang › Tutup hari',
   kedatangan: 'barang masuk dari tablet hanya untuk Penjaga laci (rules v15, keputusan owner 22 Nov 2026) — karyawan tidak mencatat kedatangan',
   uangKeluar: 'uang keluar dari tablet selalu jadi TITIPAN ke owner (rules v13) — laci di buku berkurang sesudah owner menyetujui' };
 export const SS_LABEL_TAMPIL = { sendiri: 'boleh sendiri', server: 'tertutup server', owner: 'minta owner', tidak: 'tidak boleh' };
@@ -268,6 +269,8 @@ export function ssPersetujuan(kini) {
   // owner 21 Nov 2026: titipan uang keluar → kalimat titipan (jenis · keterangan · nama · rupiah); pesan → bukan uang (n 0), tidak pernah ikut "setujui sekaligus"
   // owner 22 Nov 2026: kabar barang masuk (tablet) = seperti pesan — bukan uang, ditandai diperiksa, tidak pernah ikut "setujui sekaligus"
   const barisTP = (m) => { const b = baris(m); if (m.tindakan === TP_TINDAKAN) b.teks = tpTeks(m); if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR) Object.assign(b, { n: 0, sekaligus: false });
+    // owner 22 Nov 2026 (paket ④): hitungan laci dari tablet — bukan uang keluar; diselesaikan di Uang › Tutup hari (Setujui di sini ditolak), tidak ikut sekaligus
+    if (m.tindakan === SS_HITUNG_LACI) Object.assign(b, { n: 0, sekaligus: false, teks: 'Hitungan laci ' + tanggalPendek(m.tanggal || '') + ' · ' + RP(Number(m.hitung) || 0) + (Number(m.amankan) ? ' · ' + RP(Number(m.amankan)) + ' ke brankas' : ''), saran: 'Diselesaikan di Uang › Tutup hari (Pakai hitungan ini) — Tolak = minta hitung ulang' });
     if (m.tindakan === TP_KABAR) Object.assign(b, { teks: 'Barang masuk · ' + (m.teks || ''), saran: 'Kabar barang masuk dari tablet — tandai sudah diperiksa; harga & jumlah dibetulkan di Stok › Barang masuk' });
     return Object.assign(b, { pesan: m.tindakan === TP_PESAN || m.tindakan === TP_KABAR, balasan: m.balasan || '' }); };
   const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(barisTP); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(barisTP).slice(0, 20);
@@ -278,6 +281,8 @@ export function susunPutusPersetujuan(id, setuju, alasan, w) {
   // owner 21 Nov 2026: titipan uang keluar → uangnya ditulis di kiriman yang sama; pesan → ditandai dibaca (alasan = balasan). Dulu titipan hanya ditandai disetujui.
   if (m.tindakan === TP_TINDAKAN) return tpSusunPutus(id, setuju ? 'setuju' : 'tolak', setuju ? {} : { alasan }, w);
   if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR) return tpSusunPutus(id, 'dibaca', { balasan: alasan }, w);
+  // owner 22 Nov 2026 (paket ④): menyetujui hitungan laci = menutup hari — hanya lewat lembar Tutup hari (dokumen uang ikut); menolak = minta hitung ulang (di bawah)
+  if (m.tindakan === SS_HITUNG_LACI && setuju) return { tolak: 'Hitungan laci diselesaikan di Uang › Tutup hari — ketuk "Pakai hitungan ini", cek QRIS (atau lewati), lalu Tutup' };
   if (!setuju && ssKosong(alasan)) return { tolak: 'Menolak butuh alasan — supaya ' + (m.dari || 'peminta') + ' tahu sebabnya' };
   // B1 (owner 16 Nov 2026): menyetujui usul harga pelanggan = memasang ubahannya ke setelan SEKARANG di kiriman yang sama (dihitung ulang, bukan teks kiriman)
   const HP = setuju && m.tindakan === HT_TINDAKAN ? htPasangUsul(m, w) : null; if (HP && HP.tolak) return { tolak: HP.tolak };

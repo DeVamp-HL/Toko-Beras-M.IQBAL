@@ -79,7 +79,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 EMAIL_OWNER = 'owner@tokoberasmiqbal.web.app'; EMAIL_KASIR = 'kasir@tokoberasmiqbal.web.app'
 PERAN = ['ben', 'karyawan']
 FUNGSI_JUJUR = {'stafBuat', 'stafBuatTipe', 'stafBuatJual', 'stafJejak', 'stafUbahPesanan', 'stafDenyut', 'stafBuatWadah', 'stafBuatLahir', 'stafMintaNego', 'stafUsulHarga', 'stafMintaKredit', 'stafBuatSJ', 'stafTandaiSJ',
-                'stafBuatPesanan', 'stafAturPesanan', 'stafUbahRutin', 'stafMintaKeluar', 'stafKirimPesan', 'stafCatatMasuk', 'stafKabarMasuk'}   # v15: barang masuk tablet (lewat stafBuat)   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
+                'stafBuatPesanan', 'stafAturPesanan', 'stafUbahRutin', 'stafMintaKeluar', 'stafKirimPesan', 'stafCatatMasuk', 'stafKabarMasuk', 'stafHitungLaci'}   # v16: hitungan laci tablet (lewat stafBuat)   # v15: barang masuk tablet (lewat stafBuat)   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
 LUAR_KOLEKSI = ['aksesAkun', 'permintaanAkses', 'arsipTahun', 'ringkasanKasir', 'batuNisan', 'fotoBon', 'buktiTerima', 'notifOwner']   # blok rules di luar baru/js/data/koleksi.js (v7: fotoBon)
 
 
@@ -1034,6 +1034,81 @@ def periksa_v15(rules, r14, c15, akses_js):
     return cacat
 
 
+# ---- v16 (owner 22 Nov 2026: TUTUP HARI dari tablet): v15 + PERSIS satu fungsi (stafHitungLaci) dan dua ubahan baris (persetujuan create: hitungan laci;
+#      aturanToko read: dokumen tutupHari untuk ben). ----
+GANTI_V16 = [
+    ("stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']) || (stafHitungLaci(['ben']) && tglStaf('tanggal'));",
+     "stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']);", 'v16 persetujuan create stafHitungLaci'),
+    ("'hargaTingkat', 'produkArsip'] && staf(['ben', 'karyawan'])) || (id == 'tutupHari' && staf(['ben']));",
+     "'hargaTingkat', 'produkArsip'] && staf(['ben', 'karyawan']));", 'v16 aturanToko read tutupHari (ben)'),
+]
+FUNGSI_V16 = ['stafHitungLaci']
+HITUNG_WAJIB = ("let d = request.resource.data; return stafBuat(peranBoleh) && d.get('tindakan', '') == 'hitungLaci' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid"
+                " && d.get('hitung', 0) is int && d.get('hitung', 0) > 0 && d.get('hitung', 0) <= 1000000000"
+                " && d.get('amankan', -1) is int && d.get('amankan', -1) >= 0 && d.get('amankan', -1) <= d.get('hitung', 0)"
+                " && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan', 'koreksiOwner']);")
+V15_TEKS = None   # kontrol: pengganti isi firestore.rules.v15
+BANDING_V15 = True
+
+
+def ke_v15(R):
+    """v16 → v15: cabut PERSIS ubahan v16 (dua penggantian — masing-masing satu kali; satu fungsi). Kembali (teks, cacat)."""
+    cacat = []
+    for baru, lama, nama in GANTI_V16:
+        k = R.count(baru)
+        if k != 1: cacat.append('v16 ≠ v15 + ubahan yang tercatat: %s — %r ditemukan %d× (wajib 1×)' % (nama, baru[:90], k))
+        else: R = R.replace(baru, lama)
+    for f in FUNGSI_V16:
+        R2 = buang_fungsi(R, f)
+        if R2 == R: cacat.append('fungsi v16 ' + f + '() tidak ada')
+        R = R2
+    return R, cacat
+
+
+def periksa_v16(rules, r15, c16, akses_js):
+    """20 · v16: bentuk persis satu fungsi & dua ubahan + sisanya = firestore.rules.v15 + daftar = akses.js + model kasus ★Y (v16 & v15, beda = BEDA_V15)."""
+    cacat = list(c16); B = blok_rules(rules); F = fungsi_rules(rules); rata = lambda t: re.sub(r'\s+', ' ', t).strip()
+    if rata(F.get('stafHitungLaci', '')) != rata(HITUNG_WAJIB): cacat.append('stafHitungLaci() bukan bentuk v16 yang tercatat: %s' % rata(F.get('stafHitungLaci', '(tidak ada)')))
+    xs = [rata(x) for x in allow(B.get('persetujuan', ''), 'create')]
+    if not any("(stafHitungLaci(['ben']) && tglStaf('tanggal'))" in x for x in xs): cacat.append('persetujuan create: hitungan laci tidak lewat stafHitungLaci([ben]) && tglStaf (v16): %s' % xs)
+    if not any("(id == 'tutupHari' && staf(['ben']))" in rata(x) for x in allow(B.get('aturanToko', ''), 'read')): cacat.append("aturanToko read: dokumen tutupHari tidak dibuka untuk ben saja (v16)")
+    for n, b in B.items():
+        if 'stafHitungLaci' in b and n != 'persetujuan': cacat.append(n + ': stafHitungLaci() dipakai di luar persetujuan create (v16)')
+        for op in ('update', 'delete'):
+            if any('stafHitungLaci' in x for x in allow(b, op)): cacat.append(n + ': ' + op + ' memakai fungsi v16 — v16 hanya membuka CREATE')
+    for n in ('tutupHari', 'pengaturan', 'amplopLaba', 'pindahUang', 'penyesuaianStok'):
+        for op in ('create', 'update', 'delete'):
+            if any(re.search(r'\bstaf\w*\(', x) for x in allow(B.get(n, ''), op)): cacat.append(n + ': ' + op + ' dibuka untuk bukan-owner — v16: hari ditutup OWNER saja')
+    # daftar = akses.js: dokumen setelan untuk ben & penjaga kiriman hitungan laci
+    if "export const DOK_BEN = { aturanToko: ['tutupHari'] };" not in akses_js: cacat.append("akses.js DOK_BEN bukan { aturanToko: ['tutupHari'] } (rules v16 aturanToko read ben)")
+    if "if (P !== 'ben' || (hak.hitungLaci || 'tidak') === 'tidak' || !hitungLaciSah(d, akun.uid))" not in akses_js: cacat.append('akses.js periksaKiriman: hitungan laci tidak dibatasi Penjaga laci + bentuk stafHitungLaci (rules v16)')
+    v15 = V15_TEKS if V15_TEKS is not None else baca('firestore.rules.v15')
+    a, b = rata(r15), rata(tanpa_komentar(v15))
+    if BANDING_V15 and a != b:
+        i = next((j for j in range(min(len(a), len(b))) if a[j] != b[j]), min(len(a), len(b)))
+        cacat.append('v16 mengubah lebih dari ubahan yang tercatat atas firestore.rules.v15 — dekat "…%s…" (v15: "…%s…")' % (a[max(0, i - 60):i + 60], b[max(0, i - 60):i + 60]))
+    dok = DOK_V16_TEKS if DOK_V16_TEKS is not None else (baca('docs/uji-rules-v16.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v16.md')) else '')
+    v7dok = baca('docs/uji-rules-v7.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v7.md')) else ''
+    lama = set(re.findall(r'(★[A-Z]\d+)', v7dok)) | set(k[0] for k in KASUS_V15 + KASUS_V14 + KASUS_V13 + KASUS_V12 + KASUS_V11 + KASUS_V10 + KASUS_V9 + KASUS_V8 + KASUS_V7)
+    bentrok = sorted(set(k[0] for k in KASUS_V16) & lama)
+    if bentrok: cacat.append('nomor kasus v16 bertabrakan dengan v7–v15 (penguji emulator mengambil kolom Wajib v7 per nomor): ' + ', '.join(bentrok))
+    di_dok = set(re.findall(r'^\|(?: \d+ \|)? (★Y\d+) \|', dok, re.M)); di_model = set(k[0] for k in KASUS_V16)
+    if di_dok != di_model: cacat.append('docs/uji-rules-v16.md tidak sama dengan kasus model v16 — hanya di berkas: %s · hanya di model: %s' % (sorted(di_dok - di_model), sorted(di_model - di_dok)))
+    mw = re.search(r'\n## Wajib owner[^\n]*\n(.*?)\n## ', dok, re.S)
+    wajib = re.findall(r'^\| \d+ \| (★Y\d+) \|', mw.group(1), re.M) if mw else []
+    if wajib != WAJIB_V16: cacat.append('docs/uji-rules-v16.md bagian "Wajib owner" bukan WAJIB_V16 — berkas: %s · model: %s' % (wajib, WAJIB_V16))
+    try: M16 = rules_mini.Rules(rules); M15 = rules_mini.Rules(tanpa_komentar(v15))
+    except Exception as e: return cacat + ['model v16: rules tidak bisa diurai penafsir mini — %s' % e]
+    for no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks in KASUS_V16:
+        db = dict(DB_UJI_V7); db.update(ubah_db or {}); db = dict((k, v) for k, v in db.items() if v is not None)
+        h = M16.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7)
+        if h.boleh != boleh: cacat.append('model v16 %s %s → %s, wajib %s%s' % (no, nama, 'LOLOS' if h.boleh else 'DITOLAK', 'LOLOS' if boleh else 'DITOLAK', (' (' + h.galat + ')') if h.galat else ''))
+        elif maks is not None and h.akses > maks: cacat.append('model v16 %s %s: %d access call (batas jalur ini %d)' % (no, nama, h.akses, maks))
+        h15 = M15.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7); harap15 = (not boleh) if no in BEDA_V15 else boleh
+        if h15.boleh != harap15: cacat.append('model v16 %s atas firestore.rules.v15 → %s, harap %s (%s)' % (no, 'LOLOS' if h15.boleh else 'DITOLAK', 'LOLOS' if harap15 else 'DITOLAK', 'ubahan v16' if no in BEDA_V15 else 'wajib sama dengan v15'))
+    return cacat
+
+
 def ke_v6(R, KOL, ARSIP):
     """v7 → v6: cabut PERSIS ubahan v7 (tiap ganti wajib kena tepat sekali, blok demi blok). R = rules tanpa komentar. Kembali (teks, cacat)."""
     cacat = []; rata = lambda t: re.sub(r'\s+', ' ', t).strip()
@@ -1601,13 +1676,45 @@ KASUS_V15 = [
 ]
 BEDA_V14 = {'★X4', '★X5', '★X6', '★X7'}   # yang DIBUKA v15 (ditolak v14); kasus lain wajib sama hasilnya di v14
 DOK_V15_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v15.md
+# ---- MODEL v16 (owner 22 Nov 2026): kasus ★Y docs/uji-rules-v16.md — staf = U11 (ben, uid-uji-b). Hitungan laci tablet = menunggu, bulat, brankas ≤ hitungan.
+HL_UJI = {'id': 'uji-v16-hl', 'tindakan': 'hitungLaci', 'status': 'menunggu', 'tanggal': '2026-10-09', 'jam': '21:00', 'tanggalTulis': '2026-10-09', 'hitung': 607500, 'amankan': 415000,
+          'lembar': {'100000': 5, '50000': 2, '2000': 3}, 'receh': 1500, 'kembalian': 192500, 'mintaUid': 'uid-uji-b', 'olehUid': 'uid-uji-b', 'dari': 'Uji', 'peran': 'ben'}
+AT_TUTUP = {'id': 'tutupHari', 'tanggal': '2026-10-01', 'jam': '09:00', 'persenSisih': 50, 'kembalian': 192500, 'maafSelisih': 5000, 'alasan': ['Belum tahu']}
+TH_UJI = {'id': '2026-10-09', 'tanggal': '2026-10-09', 'jam': '22:00', 'omzet': 0, 'kasFisikLaci': 607500, 'selisih': 0, 'alasanSelisih': '', 'setoranOwner': 0, 'kasAwalBesokLaci': 192500, 'sistemBaru': True}
+DB_HL = {'persetujuan/uji-v16-hl': HL_UJI}; DB_AT = {'aturanToko/tutupHari': AT_TUTUP}
+WAJIB_V16 = ['★Y1', '★Y2', '★Y3']   # owner saja (tanpa dokumen uji staf); kasus staf dibuktikan emulator — boleh juga di Playground dengan U11
+KASUS_V16 = [
+    ('★Y1', 'owner menutup hari (tutupHari baru)', 'owner', 'create', 'tutupHari', '2026-10-09', TH_UJI, None, True, 0),
+    ('★Y2', 'owner menandai hitungan tablet disetujui (update status)', 'owner', 'update', 'persetujuan', 'uji-v16-hl', dict(HL_UJI, status='disetujui', diputusTanggal='2026-10-09', tutupJam='22:00'), DB_HL, True, 0),
+    ('★Y3', 'owner menyimpan aturan tutup hari', 'owner', 'update', 'aturanToko', 'tutupHari', dict(AT_TUTUP, kembalian=200000), DB_AT, True, 0),
+    ('★Y4', 'Penjaga laci mengirim hitungan laci', 'staf', 'create', 'persetujuan', 'uji-v16-hl', HL_UJI, None, True, None),
+    ('★Y5', 'Penjaga laci membaca aturan tutup hari (uang kembalian)', 'staf', 'get', 'aturanToko', 'tutupHari', None, DB_AT, True, None),
+    ('★Y6', 'karyawan mengirim hitungan laci', 'staf', 'create', 'persetujuan', 'uji-v16-hl', dict(HL_UJI, peran='karyawan'), U11_KARYAWAN, False, None),
+    ('★Y7', 'karyawan membaca aturan tutup hari', 'staf', 'get', 'aturanToko', 'tutupHari', None, dict(DB_AT, **U11_KARYAWAN), False, None),
+    ('★Y8', 'hitungan laci nol', 'staf', 'create', 'persetujuan', 'uji-v16-hl', dict(HL_UJI, hitung=0, amankan=0), None, False, None),
+    ('★Y9', 'yang dipindah ke brankas lebih besar dari hitungan', 'staf', 'create', 'persetujuan', 'uji-v16-hl', dict(HL_UJI, amankan=700000), None, False, None),
+    ('★Y10', 'hitungan rupiah pecahan', 'staf', 'create', 'persetujuan', 'uji-v16-hl', dict(HL_UJI, hitung=607500.5), None, False, None),
+    ('★Y11', 'hitungan tanpa kolom brankas', 'staf', 'create', 'persetujuan', 'uji-v16-hl', dict((k, v) for k, v in HL_UJI.items() if k != 'amankan'), None, False, None),
+    ('★Y12', 'hitungan yang sudah diputus', 'staf', 'create', 'persetujuan', 'uji-v16-hl', dict(HL_UJI, status='disetujui', diputusTanggal='2026-10-09'), None, False, None),
+    ('★Y13', 'hitungan atas nama orang lain', 'staf', 'create', 'persetujuan', 'uji-v16-hl', dict(HL_UJI, mintaUid='uid-lain'), None, False, None),
+    ('★Y14', 'hitungan bertanggal bulan yang sudah lewat tenggang', 'staf', 'create', 'persetujuan', 'uji-v16-hl', dict(HL_UJI, tanggal='2026-08-20'), None, False, None),
+    ('★Y15', 'Penjaga laci memutus hitungannya sendiri', 'staf', 'update', 'persetujuan', 'uji-v16-hl', dict(HL_UJI, status='disetujui', diputusTanggal='2026-10-09'), DB_HL, False, None),
+    ('★Y16', 'Penjaga laci menutup hari sendiri (tutupHari)', 'staf', 'create', 'tutupHari', '2026-10-09', dict(TH_UJI, olehUid='uid-uji-b'), None, False, None),
+    ('★Y17', 'Penjaga laci memajukan titik kas', 'staf', 'update', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2026-10-09', 'laci': 192500, 'olehUid': 'uid-uji-b'}, None, False, None),
+    ('★Y18', 'Penjaga laci mengubah aturan tutup hari', 'staf', 'update', 'aturanToko', 'tutupHari', dict(AT_TUTUP, kembalian=0, olehUid='uid-uji-b'), DB_AT, False, None),
+    ('★Y19', 'kasir@ mengirim hitungan laci', 'kasir', 'create', 'persetujuan', 'uji-v16-hl', HL_UJI, None, False, None),
+]
+BEDA_V15 = {'★Y4', '★Y5'}   # yang DIBUKA v16 (ditolak v15); kasus lain wajib sama hasilnya di v15
+DOK_V16_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v16.md
 
 
 def periksa(rules, koleksi_js, akses_js):
     cacat = []
     rules = tanpa_komentar(rules)
-    r14, c15 = ke_v14(rules)       # 19 · v15 → v14 (cabut balik tiga ubahan & dua fungsi v15)
-    cacat += periksa_v15(rules, r14, c15, akses_js)
+    r15, c16 = ke_v15(rules)       # 20 · v16 → v15 (cabut balik dua ubahan & satu fungsi v16)
+    cacat += periksa_v16(rules, r15, c16, akses_js)
+    r14, c15 = ke_v14(r15)         # 19 · v15 → v14 (cabut balik tiga ubahan & dua fungsi v15)
+    cacat += periksa_v15(r15, r14, c15, akses_js)
     r13, c14 = ke_v13(r14)         # 18 · v14 → v13 (cabut balik sebelas baris baca & dua fungsi v14)
     cacat += periksa_v14(r14, r13, c14, akses_js)
     r12, c13 = ke_v12(r13)         # 17 · v13 → v12 (cabut balik satu ubahan, satu blok & dua fungsi v13)
@@ -1859,7 +1966,16 @@ if __name__ == '__main__':
             'v15: Penjaga laci boleh MENGUBAH kedatangan': R.replace("      allow update: if owner() && tglUbah('tanggal');\n      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('batchMasuk'", "      allow update: if (owner() && tglUbah('tanggal')) || stafCatatMasuk(['ben']);\n      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('batchMasuk'"),
             'v15: titipan upah bongkar tanpa kedatangan': R.replace("        && (d.get('jenis', '') != 'bongkar' || (d.get('batchId', 0) is string && d.batchId.size() > 0))\n", ""),
             'v15: titipan bayar bon tanpa pemasok': R.replace("        && (d.get('jenis', '') != 'bayarBon' || (d.get('pemasok', 0) is string && d.pemasok.size() > 0 && d.pemasok.size() <= 60))\n", ""),
-            'v15: kabar barang masuk untuk karyawan': R.replace("stafKabarMasuk(['ben']);", "stafKabarMasuk(['ben', 'karyawan']);"),
+            'v15: kabar barang masuk untuk karyawan': R.replace("stafKabarMasuk(['ben']) || (stafHitungLaci(", "stafKabarMasuk(['ben', 'karyawan']) || (stafHitungLaci("),   # v16: baris create bersambung
+            'v16: karyawan ikut mengirim hitungan laci': R.replace("(stafHitungLaci(['ben']) && tglStaf('tanggal'))", "(stafHitungLaci(['ben', 'karyawan']) && tglStaf('tanggal'))"),
+            'v16: hitungan laci tanpa penjaga bulan (tglStaf hilang)': R.replace("(stafHitungLaci(['ben']) && tglStaf('tanggal'))", "stafHitungLaci(['ben'])"),
+            'v16: hitungan laci boleh nol': R.replace("d.get('hitung', 0) is int && d.get('hitung', 0) > 0 &&", "d.get('hitung', 0) is int && d.get('hitung', 0) >= 0 &&"),
+            'v16: yang dipindah ke brankas boleh melebihi hitungan': R.replace(" && d.get('amankan', -1) <= d.get('hitung', 0)\n", "\n"),
+            'v16: hitungan laci boleh membawa keputusan owner': R.replace("['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan', 'koreksiOwner']", "['diputusPada', 'balasan', 'koreksiOwner']"),
+            'v16: hitungan atas nama orang lain': R.replace("d.get('tindakan', '') == 'hitungLaci' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid", "d.get('tindakan', '') == 'hitungLaci' && d.get('status', '') == 'menunggu'"),
+            'v16: aturan tutup hari terbaca karyawan': R.replace("(id == 'tutupHari' && staf(['ben']))", "(id == 'tutupHari' && staf(['ben', 'karyawan']))"),
+            'v16: Penjaga laci boleh menutup hari sendiri': R.replace("      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('tutupHari', id,", "      allow create: if stafBuat(['ben']) || (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('tutupHari', id,"),
+            'v16: baris lain berubah dari v15 (tetap wajib ketahuan)': R.replace("    match /notifOwner/{id} {\n      allow read, write: if owner();", "    match /notifOwner/{id} {\n      allow read: if owner();\n      allow write: if owner();"),
             'v15: kabar barang masuk tanpa kedatangan': R.replace("d.get('tindakan', '') == 'barangMasuk' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid\n        && d.get('batchId', 0) is string && d.batchId.size() > 0\n", "d.get('tindakan', '') == 'barangMasuk' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid\n"),
             'v15: baris lain berubah dari v14 (tetap wajib ketahuan)': R.replace("    match /notifOwner/{id} {\n      allow read, write: if owner();", "    match /notifOwner/{id} {\n      allow read: if owner();\n      allow write: if owner();"),
             'v9: minta bon atas nama orang lain (tanpa mintaUid)': R.replace(" && d.get('mintaUid', '') == request.auth.uid", ""),
@@ -1942,12 +2058,12 @@ if __name__ == '__main__':
             if isi == R: print('KONTROL BASI  ' + nama); kode = 3; continue
             # kontrol lama (sebelum v7) WAJIB tertangkap pemeriksa KHUSUSNYA — pembanding "sama dengan v6" (yang menangkap perubahan apa pun) dimatikan untuknya;
             # 'model:' — bentuk v7 (persetujuan, fotoBon, pintu) juga dimatikan: yang wajib berbunyi = penafsir rules mini pada kasus Playground ★/M
-            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:'); BANDING_V9 = BANDING_V8 or nama.startswith('v10:'); BANDING_V10 = BANDING_V9 or nama.startswith('v11:'); BANDING_V11 = BANDING_V10 or nama.startswith('v12:'); BANDING_V12 = BANDING_V11 or nama.startswith('v13:'); BANDING_V13 = BANDING_V12 or nama.startswith('v14:'); BANDING_V14 = BANDING_V13 or nama.startswith('v15:')
+            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:'); BANDING_V9 = BANDING_V8 or nama.startswith('v10:'); BANDING_V10 = BANDING_V9 or nama.startswith('v11:'); BANDING_V11 = BANDING_V10 or nama.startswith('v12:'); BANDING_V12 = BANDING_V11 or nama.startswith('v13:'); BANDING_V13 = BANDING_V12 or nama.startswith('v14:'); BANDING_V14 = BANDING_V13 or nama.startswith('v15:'); BANDING_V15 = BANDING_V14 or nama.startswith('v16:')
             c = periksa(isi, K, A)
-            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ', 'model v10 ', 'model v11 ', 'model v12 ', 'model v13 ', 'model v14 ', 'model v15 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
+            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ', 'model v10 ', 'model v11 ', 'model v12 ', 'model v13 ', 'model v14 ', 'model v15 ', 'model v16 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
-        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; BANDING_V9 = True; BANDING_V10 = True; BANDING_V11 = True; BANDING_V12 = True; BANDING_V13 = True; BANDING_V14 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
+        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; BANDING_V9 = True; BANDING_V10 = True; BANDING_V11 = True; BANDING_V12 = True; BANDING_V13 = True; BANDING_V14 = True; BANDING_V15 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
         for nama, isi in rusak_dok.items():
             DOK_V7_TEKS = isi; c = periksa(R, K, A); DOK_V7_TEKS = None
             c = [x for x in c if 'docs/uji-rules-v7.md' in x]   # berbunyi karena SEBABNYA (berkas Playground), bukan kegagalan lain
@@ -1963,7 +2079,8 @@ if __name__ == '__main__':
     if c: print('RULES CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
     KOL, TMIN = kp_js()
     nS = sum(1 for k in KASUS_BUKU if k[4]); nT = len(KASUS_BUKU) - nS
-    print('RULES v15 LULUS: v15 = firestore.rules.v14 + barang masuk dari tablet (Penjaga laci, langsung bon, bongkar 0) + titipan upah bongkar & bayar bon pemasok + kabar barang masuk; ubah kedatangan & tulis uang tetap owner (model %d kasus ★X, beda v14 = %d kasus) · ' % (len(KASUS_V15), len(BEDA_V14))
+    print('RULES v16 LULUS: v16 = firestore.rules.v15 + hitungan laci dari tablet (Penjaga laci, menunggu, bulat, brankas ≤ hitungan) + aturan tutup hari terbaca ben; hari ditutup owner saja (model %d kasus ★Y, beda v15 = %d kasus) · ' % (len(KASUS_V16), len(BEDA_V15))
+          + 'v15 = firestore.rules.v14 + barang masuk dari tablet (Penjaga laci, langsung bon, bongkar 0) + titipan upah bongkar & bayar bon pemasok + kabar barang masuk; ubah kedatangan & tulis uang tetap owner (model %d kasus ★X, beda v14 = %d kasus) · ' % (len(KASUS_V15), len(BEDA_V14))
           + 'v14 = firestore.rules.v13 + data uang (sebelas baris BACA) untuk akun Penjaga laci yang ditandai owner — Ringkas hari ini di tablet; tulis tetap owner (model %d kasus ★W, beda v13 = %d kasus) · ' % (len(KASUS_V14), len(BEDA_V13))
           + 'v13 = firestore.rules.v12 + titipan uang keluar & pesan dari tablet (bentuk persis; uangnya tetap ditulis owner) + token notifikasi HP owner (model %d kasus ★U, beda v12 = %d kasus) · ' % (len(KASUS_V13), len(BEDA_V12))
           + 'v12 = firestore.rules.v11 + tanda kenal (barcode kemasan & kartu NFC; blok baru, tanpa fungsi baru; model %d kasus ★S, beda v11 = %d kasus) · ' % (len(KASUS_V12), len(BEDA_V11))
