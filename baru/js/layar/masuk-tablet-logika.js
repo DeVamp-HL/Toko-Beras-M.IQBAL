@@ -8,8 +8,10 @@
 //  4. UPAH BONGKAR diisi di form yang sama → titipan "upah bongkar" yang menunjuk kedatangannya; disetujui owner = ditulis ke biayaBongkar kedatangan itu
 //     (modal barang + kas keluar laci bertanggal datang, rumus mesin yang sama). Kedatangannya sendiri ditulis dengan biayaBongkar 0.
 //  5. BAYAR KE SUPIR → titipan "bayar bon pemasok" (nominal + pemasok + kedatangan ini); owner MEMILIH bonnya saat menyetujui (bawaan = bon kedatangan ini).
-// Batas tablet (owner memutus mutu & buku): hanya nama yang SUDAH berbuku. Merek baru / nama yang diarsipkan / kelas → owner dari HP. Harga beda jauh dari
-// modal (pertanyaan "sama barangnya / beda mutu?") dicatat sebagai barang yang SAMA dan ikut kabar — beda mutu diputus owner.
+// Batas tablet (owner memutus mutu & buku): MEREK BARU dicatat (owner 22 Nov 2026: "jangan ditolak, nanti gua koreksi / hapus kedatangannya dari akun owner")
+// — bukunya dibuka atas nama yang diketik, TANPA kelas (tebakan kelas tidak dipakai, peta kelas tidak ditulis), ditandai merekBaru & disebut di kabar; kelas,
+// jenis beras & harga jual diatur owner dari HP. Nama yang DIARSIPKAN tetap owner (memulihkan = setelan owner). Harga beda jauh dari modal (pertanyaan
+// "sama barangnya / beda mutu?") dicatat sebagai barang yang SAMA dan ikut kabar — beda mutu diputus owner.
 // Satu kiriman: batchMasuk + (titipan bongkar) + (titipan bayar supir) + kabar barang masuk — semuanya bentuk rules v15, diperiksa periksaKiriman (akses.js).
 import { hitungMasuk, susunSimpanMasuk, drafMasukKosong } from './stok-catat-logika.js';
 import { tpSusunMinta, tpDokKabarMasuk, tpAngka } from './titipan-logika.js';
@@ -28,7 +30,7 @@ const mtRp = (v) => (mtKosong(v) ? 0 : tpAngka(v));
 /** Draf yang benar-benar dihitung: tanggal hari ini, bon, tanpa bongkar (bongkar = titipan), pertanyaan varian dijawab "sama barangnya". */
 function mtDrafHitung(draf, w) {
   const d = JSON.parse(JSON.stringify(Object.assign(mtDrafKosong(w), draf || {})));
-  d.id = null; d.tanggal = w.tanggal; d.caraBayar = 'utang'; d.bongkar = ''; d.alasan = '';
+  d.id = null; d.tanggal = w.tanggal; d.caraBayar = 'utang'; d.bongkar = ''; d.alasan = ''; d.tanpaTebakKelas = true;
   (d.baris || []).forEach((b) => { b.varian = ''; b.namaMutu = ''; b.kelas = ''; b.kelasPilih = false; });
   const h0 = hitungMasuk(d);
   h0.baris.forEach((b) => { if (b.sah && b.vr && b.vr.perlu && !b.vr.arsip) d.baris[b.ke - 1].varian = 'sama'; });
@@ -46,10 +48,10 @@ export function mtHargaBeda(h) {
 export function mtHitung(draf, w) {
   const d = mtDrafHitung(draf, w); const h = hitungMasuk(d);
   h.baris.forEach((b) => {
-    if (b.terisi && !b.masalah && b.baru) b.masalahTablet = b.merkKetik + ' belum punya buku stok — merek baru dicatat owner dari HP (kirim Pesan ke owner), atau pilih nama yang sudah ada';
-    else if (b.terisi && !b.masalah && b.vr && b.vr.arsip) b.masalahTablet = b.merk + ' sudah DIARSIPKAN — owner yang memulihkannya dari HP';
+    if (b.terisi && !b.masalah && b.vr && b.vr.arsip) b.masalahTablet = b.merk + ' sudah DIARSIPKAN — owner yang memulihkannya dari HP';
     else b.masalahTablet = '';
     b.gabung = !!(b.sah && b.vr && b.vr.perlu && !b.vr.arsip);   // harga beda jauh dari modal → dicatat sebagai barang yang sama, owner dikabari
+    b.merekBaru = !!(b.sah && b.baru);   // owner 22 Nov 2026: merek baru dicatat atas nama yang diketik, owner dikabari
   });
   const bongkar = mtRp((draf || {}).bongkar); const supir = mtRp((draf || {}).bayarSupir);
   return Object.assign(h, { hargaBeda: mtHargaBeda(h), bongkarTitip: bongkar, supirTitip: supir, bermasalahTablet: h.baris.filter((b) => b.masalahTablet) });
@@ -70,24 +72,29 @@ export function mtSusunSimpan(draf, akun, w, yakin) {
   if (H.sah.length > MT_BATAS.baris) return { tolak: 'Paling banyak ' + MT_BATAS.baris + ' baris satu kedatangan — catat sisanya sebagai kedatangan kedua' };
   const r = susunSimpanMasuk(d, w, yakin); if (r.tolak) return r;
   const lain = (r.dokumen || []).filter((x) => x.koleksi !== 'batchMasuk');
-  if (lain.length) return { tolak: 'Kedatangan ini butuh keputusan owner (nama baru / beda mutu / arsip) — owner yang mencatatnya dari HP' };
+  if (lain.length) return { tolak: 'Kedatangan ini butuh keputusan owner (beda mutu / arsip) — owner yang mencatatnya dari HP' };
   const bm = Object.assign({}, r.dokumen[0].data, { dariTablet: true, biayaBongkar: 0, caraBayar: 'utang' });
   const beda = mtHargaBeda(r.hitung); if (beda.length) bm.hargaBeda = beda;
   const gabung = r.hitung.sah.filter((b) => b.varian === 'sama' && b.vr && b.vr.perlu).map((b) => b.merkSimpan);
   if (gabung.length) bm.hargaJauh = gabung;
+  const merekBaru = r.hitung.sah.filter((b) => b.baru).map((b) => b.merkSimpan).filter((m, i, a) => a.indexOf(m) === i);
+  if (merekBaru.length) bm.merekBaru = merekBaru;
   const pemasok = String(bm.pemasok); const id = String(bm.id);
   const dokumen = [{ koleksi: 'batchMasuk', data: bm }];
   const titip = (jenis, n, teks) => { const t = tpSusunMinta({ jenis, nominal: String(n), teks, pemasok, batchId: id }, akun, w); if (t.tolak) return t; dokumen.push(t.dokumen[0]); return null; };
   if (bongkar > 0) { const g = titip('bongkar', bongkar, 'Upah bongkar · ' + pemasok); if (g) return g; }
   if (supir > 0) { const g = titip('bayarBon', supir, 'Bayar supir · ' + pemasok); if (g) return g; }
   const h = r.hitung;
+  // merek baru disebut di depan: teks kabar dipotong 500 huruf (TP_BATAS.pesan)
   const teksKabar = pemasok + ' · ' + h.karung + ' karung · ' + mtKg(h.kg) + ' · ' + RP(h.nilaiBeras) + ' (bon)'
+    + (merekBaru.length ? ' · MEREK BARU: ' + merekBaru.join(', ') + ' (buku baru tanpa kelas & harga jual — atur dari HP, atau koreksi / hapus kedatangan)' : '')
     + (beda.length ? ' · harga beda dari lalu: ' + beda.map((x) => x.merk + ' ' + RP(x.harga) + ' (lalu ' + RP(x.lalu) + ')').join(', ') : '')
     + (gabung.length ? ' · beda jauh dari modal, digabung: ' + gabung.join(', ') : '')
     + (bongkar > 0 ? ' · bongkar ' + RP(bongkar) : '') + (supir > 0 ? ' · dibayar ke supir ' + RP(supir) : '');
   dokumen.push(tpDokKabarMasuk({ batchId: id, pemasok, nominal: h.nilaiBeras, teks: teksKabar, hargaBeda: beda }, akun, w));
   const kabar = 'Barang masuk tersimpan: ' + pemasok + ' · ' + h.karung + ' karung · ' + mtKg(h.kg) + ' · ' + RP(h.nilaiBeras) + ' — jadi BON pemasok, stok langsung bertambah.'
     + (bongkar > 0 || supir > 0 ? ' Dititip ke owner: ' + [bongkar > 0 ? 'upah bongkar ' + RP(bongkar) : '', supir > 0 ? 'bayar ke supir ' + RP(supir) : ''].filter(Boolean).join(' + ') + ' — laci di buku berkurang sesudah owner menyetujui.' : '')
-    + (beda.length ? ' Harga beda dari harga lalu (' + beda.map((x) => x.merk).join(', ') + ') — owner dikabari.' : '');
+    + (beda.length ? ' Harga beda dari harga lalu (' + beda.map((x) => x.merk).join(', ') + ') — owner dikabari.' : '')
+    + (merekBaru.length ? ' Merek baru ' + merekBaru.join(', ') + ' dibuka bukunya — owner dikabari (kelas & harga jualnya diatur owner).' : '');
   return { dokumen, batchId: id, hitung: h, patch: { kabar, kabarAwas: false } };
 }

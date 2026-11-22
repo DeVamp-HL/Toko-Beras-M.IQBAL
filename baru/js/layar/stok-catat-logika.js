@@ -248,7 +248,8 @@ export function hitungMasuk(draf) {
     // paket brief 9 Okt (butir 6 & 7): isian timbang & mutu baris ini — catatan pemeriksaan, tidak mengubah kg / modal / bon
     const cek = tmBaris(b, jumlah * berat, harga, aturMutu);
     const baru = !draf.id && !!merkKetik && !vrAda(merkKetik) && !kelas[merkKetik.split(' \u00b7 ')[0]] && !wadahStok[merkKetik] && !ukuran[merkKetik] && !sendiri[merkKetik];
-    const tebak = baru ? kmKelasMerk(merkKetik) : { kelas: '', asal: '' };
+    // owner 22 Nov 2026: draf TABLET (tanpaTebakKelas) tidak memakai tebakan kelas — merek baru dibukukan atas nama yang diketik, kelasnya diatur owner
+    const tebak = baru && !draf.tanpaTebakKelas ? kmKelasMerk(merkKetik) : { kelas: '', asal: '' };
     const saranVarian = baru ? ckSaranVarian(merkKetik) : [];   // audit 39b no. 43: "TH" padahal bukunya "TH · House" → layar bertanya "pakai itu?"
     const kelasPilih = !!b.kelasPilih; const kelasKetik = String(b.kelas || '').trim();
     const kelasBaris = !baru ? '' : kelasPilih ? (bolehKelas[kelasKetik] ? kelasKetik : '') : (tebak.asal === 'tebakan' && bolehKelas[tebak.kelas] ? tebak.kelas : '');
@@ -383,7 +384,7 @@ export function susunSimpanMasuk(draf, w, yakin) {
       .map((r, i) => Object.assign(r, h.sah[i].cek.kolom))
       .concat(ckBarisBal(lama).map((m, j) => Object.assign({}, m, { id: String(h.sah.length + j + 1) }))) };   // putaran 30: merkPemasok = keterangan merek pemasok pada kelas tanpa wadah; audit 39b no. 30: baris bal di belakang, apa adanya
   // owner 7 Okt: nomor bon pemasok (noBon, pembetulan bon) ikut terbawa saat kedatangan dikoreksi
-  if (lama) { data.jam = lama.jam || w.jam; data.alasanKoreksi = String(draf.alasan).trim(); data.riwayat = (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([{ teks: 'dikoreksi: ' + String(draf.alasan).trim(), tanggal: w.tanggal, jam: w.jam }]); Object.keys(lama).forEach((k) => { if (data[k] === undefined && ['oleh', 'perangkat', 'catatan', 'noBon', 'dariTablet', 'hargaBeda', 'hargaJauh', 'bongkarTitipan'].indexOf(k) >= 0) data[k] = lama[k]; }); }   // owner 22 Nov 2026: tanda kedatangan tablet & upah bongkar titipan yang sudah ditulis ikut terbawa saat dikoreksi
+  if (lama) { data.jam = lama.jam || w.jam; data.alasanKoreksi = String(draf.alasan).trim(); data.riwayat = (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([{ teks: 'dikoreksi: ' + String(draf.alasan).trim(), tanggal: w.tanggal, jam: w.jam }]); Object.keys(lama).forEach((k) => { if (data[k] === undefined && ['oleh', 'perangkat', 'catatan', 'noBon', 'dariTablet', 'hargaBeda', 'hargaJauh', 'merekBaru', 'bongkarTitipan'].indexOf(k) >= 0) data[k] = lama[k]; }); }   // owner 22 Nov 2026: tanda kedatangan tablet & upah bongkar titipan yang sudah ditulis ikut terbawa saat dikoreksi
   else data.jam = w.jam;
   const tempo = cara === 'utang' && atur.tempoHari > 0 ? ' · jatuh tempo ' + atur.tempoHari + ' hari' : '';
   // varian: jenis beras ikut induknya (satu kunci baru di peta yang sama); harga jualnya ditawarkan layar sesudah tersimpan
