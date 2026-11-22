@@ -39,8 +39,8 @@ def kotak():
     K['amplopLaba'] = K.get('amplopLaba', []) + [{'id': 'amk-ru-h4', 'tanggal': '2026-09-19', 'jam': '11:30', 'tipe': 'ambil', 'nominal': 40000, 'ke': 'laci', 'untuk': 'ru-h4'}]
     K['pindahUang'] = [{'id': 'ru-p2', 'tanggal': '2026-09-19', 'jam': '12:00', 'dari': 'laci', 'ke': 'rekening', 'nominal': 100000, 'biayaAdmin': 2500, 'adminNama': 'transfer', 'oleh': 'Owner'}]
     K['kasbonMutasi'] = K.get('kasbonMutasi', []) + [
-        {'id': 'ru-k1', 'tipe': 'ambil', 'namaPegawai': 'Hasan Uji', 'nominal': 100000, 'tanggal': '2026-09-19', 'jam': '09:00', 'dari': 'laci', 'oleh': 'Owner'},
-        {'id': 'ru-k2', 'tipe': 'bayar', 'namaPegawai': 'Hasan Uji', 'nominal': 60000, 'tanggal': '2026-09-19', 'jam': '13:00', 'caraBayar': 'Tunai', 'oleh': 'Owner'}]
+        {'id': 'ru-k1', 'tipe': 'ambil', 'namaPegawai': 'Pegawai Uji', 'nominal': 100000, 'tanggal': '2026-09-19', 'jam': '09:00', 'dari': 'laci', 'oleh': 'Owner'},
+        {'id': 'ru-k2', 'tipe': 'bayar', 'namaPegawai': 'Pegawai Uji', 'nominal': 60000, 'tanggal': '2026-09-19', 'jam': '13:00', 'caraBayar': 'Tunai', 'oleh': 'Owner'}]
     K['utangOwnerMutasi'] = K.get('utangOwnerMutasi', []) + [{'id': 'ru-u1', 'tipe': 'saldoAwal', 'pinjaman': True, 'nominal': 500000, 'tanggal': '2026-09-19', 'jam': '14:00', 'catatan': 'Pinjaman owner ke toko — uji'}]
     K['modalOwner'] = K.get('modalOwner', []) + [{'id': 'ru-m1', 'tipe': 'setor', 'pinjaman': True, 'pasangan': 'ru-u1', 'nominal': 500000, 'tanggal': '2026-09-19', 'jam': '14:00', 'catatan': 'Pinjaman owner', 'tempat': 'laci'}]
     K['piutangMutasi'] = K.get('piutangMutasi', []) + [{'id': 'ru-b1', 'tipe': 'bayar', 'namaPelanggan': 'Bu Uji', 'nominal': 75000, 'tanggal': '2026-09-19', 'jam': '15:00', 'caraBayar': 'Tunai', 'notaTrxId': 'trx-9'}]
