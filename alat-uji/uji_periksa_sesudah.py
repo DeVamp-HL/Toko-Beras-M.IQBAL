@@ -495,6 +495,11 @@ coba('S7-layar', function () {
   ok('S7 layar: perkiraan kuota tutup buku "?" — belum bisa dihitung dari data setengah (tanpa angka baca/tulis), sebabnya disebut; g7 belum (sebab dari sumber yang sama)',
     /data-k="tb-kuota-hemat"><span class="t">\?<\/span>/.test(h3) && /Perkiraan kuota tutup buku 2027 belum bisa dihitung/.test(h3) && !/Perkiraan kuota Firestore \(batas Spark/.test(h3) && /class="tb-cek tidak" data-k="g-g7"/.test(h3)
     && /data-k="g-g7">[\s\S]*?data perangkat ini belum dibaca penuh sejak kuota baca direset pukul 15\.00 WIB \(\d+ jenis catatan\) — ketuk/.test(h3), (h3.match(/data-k="tb-kuota[\s\S]{0,400}/) || [''])[0]);
+  // owner 23 Nov 2026 (tangkapan layar Mac tiga lajur): petunjuk jalan yang panjang di lajur KANAN (auto) menggencet lajur tengah jadi satu kata per baris —
+  // kolom alasan g1 & "Simpan putusan" tidak terlihat. Petunjuk tulisan kini di lajur tengah; lajur kanan hanya tombol (g3 "Sudah dimatikan")
+  var b7 = (h3.match(/data-k="g-g7">[\s\S]*?<\/div><div>[^]*?<\/div><\/div>/) || [''])[0];
+  ok('tata letak gerbang: petunjuk "Baca penuh dulu…" di lajur TENGAH (bukan lajur kanan yang menggencet), lajur kanan kosong',
+    /data-k="g-jalan"><b>Baca penuh dulu/.test(b7) && /<\/div><div><\/div><\/div>$/.test(b7), b7.slice(-300));
   var kp3 = /data-k="kp-butir"/.test(h3), kp0 = /data-k="kp-butir"/.test(h0);
   ok('S7 layar: kartu kunci bulan (Desember 2026 bisa dicalonkan) — ⛔ butir hemat muncul HANYA saat nyala & memblokir; mati: tidak ada', kp0 && kp3 && !/data-k="kp-hemat"/.test(h0) && /class="tb-cek tidak" data-k="kp-hemat"/.test(h3), J([kp0, kp3]));
   __hemat = null;
@@ -759,6 +764,8 @@ RUSAK_LAIN = [
 ]
 # uang.js — layar dijalankan di jsc; kontrolnya memakai bundel layar
 RUSAK_LAYAR = [
+    ('tata letak gerbang: petunjuk tulisan kembali ke lajur kanan (lajur tengah tergencet)', "<div>${!g.ok && g.aksi && g.bisaLewati ? h`<div class=\"kaca-btn kecil\" data-aksi=\"bkLewatiG3\">${g.aksi}</div>` : ''}</div></div>`)}</div>",
+     "<div>${!g.ok && g.aksi ? (g.bisaLewati ? h`<div class=\"kaca-btn kecil\" data-aksi=\"bkLewatiG3\">${g.aksi}</div>` : h`<span class=\"ket\" style=\"font-size: 10.5px;\">${g.aksi}</span>`) : ''}</div></div>`)}</div>"),
     ('audit P2 (C2): cadangan SUNGGUHAN dari web app layar penuh tidak ditolak', "      const tm = BK.bkTolakMandiri(mandiri(), false); if (tm) return set({ kabar: tm, kabarAwas: true });\n", ""),
     ('audit P2 (C2): arsip SUNGGUHAN dari web app layar penuh tidak ditolak', "const tm = BK.bkTolakMandiri(mandiri(), s.modeB === 'latihan'); if (tm) return", "const tm = ''; if (tm) return"),
     ('audit P2 (C2): latihan arsip ikut ditolak di web app layar penuh', "const tm = BK.bkTolakMandiri(mandiri(), s.modeB === 'latihan'); if (tm) return", "const tm = BK.bkTolakMandiri(mandiri(), false); if (tm) return"),
