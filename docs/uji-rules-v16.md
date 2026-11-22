@@ -58,6 +58,21 @@ Kasus staf butuh akun uji staf aktif (U11 dari `docs/uji-rules-v7.md`: `aksesAku
 
 Di **v15** kasus ★Y4 & ★Y5 DITOLAK (v16 yang membukanya); kasus lain sama hasilnya.
 
+## Hasil Playground & terbit (22 Nov 2026)
+
+- Isi editor Console sebelum uji = `firestore.rules` cabang ini (commit ae3a1c7) persis: SHA-256 berawalan `da193ffd`, 71.408 byte (termasuk `\n` penutup;
+  disalin ke clipboard owner dari cabang yang sudah di-push, owner menempel). Dibaca lewat JS dari editor; sebelumnya v15 aktif (`b3c512c8`). Dicek ulang
+  sesudah ★Y3 — tetap sama.
+- Wajib owner, akun owner (`uid-uji`, provider bawaan Playground google.com, email owner di payload), tanggal dokumen `2026-11-22` (= jam simulasi):
+  ★Y1 create `tutupHari/2026-11-22` {tanggal `2026-11-22`} → "Simulated write allowed" (LOLOS, sesuai);
+  ★Y2 update `persetujuan/uji-v16-hl` {status `disetujui`, tindakan `hitungLaci`} → "Simulated write allowed" (LOLOS, sesuai);
+  ★Y3 update `aturanToko/tutupHari` {kembalian 200000 (int64)} → "Simulated write allowed" (LOLOS, sesuai). Spanduk hasil ditutup dulu sebelum kasus
+  berikutnya dijalankan.
+- Kasus staf (Penjaga laci / karyawan / kasir@, hitungan laci, aturan tutup hari) dibuktikan emulator: job `rules` di PR #171 hijau sebelum terbit.
+- Owner klik **Publish** 22 Nov 2026 ±11.23 WIB (riwayat Console "Today • 11:23 AM"; sebelumnya v15 "Today • 5:30 AM"). Sesudah halaman dimuat ulang,
+  aturan yang berlaku = isi di atas (sidik `da193ffd`, baris 2 `ATURAN FIRESTORE v16 FINAL`, tanpa draf tertunda).
+- Urutan terhadap CI: saat Publish, job `rules` (emulator) sudah hijau pada commit ae3a1c7; `uji`, `uji-peramban`, `gladi` masih berjalan (syarat merge).
+
 ## Bukti emulator
 
 `alat-uji/uji_rules_emulator.py` bagian **V16** (workflow *Uji rules di emulator*, jalan otomatis di PR yang mengubah `firestore.rules`): ke-19 kasus di
