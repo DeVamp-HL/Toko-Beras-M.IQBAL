@@ -176,9 +176,9 @@ def jalankan(t):
 def periksa_statis(t):
     c = []; ok = lambda n, x, k='': c.append({'nama': 'statis: ' + n, 'ok': bool(x), 'ket': k})
     M = t[MN]
-    ok('Menu: panel Riwayat & batal (Uang · Dibatalkan) hanya untuk owner', "riwayat: [['uang', 'Uang'], ['batal', 'Dibatalkan']]" in M and "s.sistem === 'riwayat' ? gambarRiwayat(s, tab)" in M)
+    ok('Menu: panel Riwayat & batal (Uang · Dibatalkan) hanya untuk owner', "riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['batal', 'Dibatalkan']]" in M and "s.sistem === 'riwayat' ? gambarRiwayat(s, tab)" in M)
     ok('Menu: batal = alasan + ketukan kedua; pulihkan; hapus permanen = ketukan kedua', 'data-aksi="ruBatal"' in M and 'data-aksi="ruPulih"' in M and 'data-aksi="ruHapus"' in M
-       and "RU.ruSusunBatal(" in M and "RU.ruSusunPulih(" in M and "RU.ruSusunHapusPermanen(" in M and 'yakinRu' in M)
+       and "(brg ? RB.rbSusunBatal : RU.ruSusunBatal)(" in M and ": RU.ruSusunPulih)(id, waktu())" in M and "RU.ruSusunHapusPermanen(" in M and 'yakinRu' in M)
     ok('Menu laci Toko ini: baris Riwayat & batal', "baris('riwayat'," in t[ML] and "sistem: 'riwayat'" in t[ML])
     ok('index.html memuat riwayat-uang-logika (modulepreload)', '<link rel="modulepreload" href="js/layar/riwayat-uang-logika.js">' in t[IDX])
     ok('logika riwayat tidak menulis sendiri', not re.search(r'tulisDokumen|setDoc|writeBatch|import .*firebase', t[RUL]))
@@ -274,7 +274,7 @@ def main():
             ('bulan terkunci boleh dibatalkan', RUL, R.replace("for (const x of K) { const k = tolakKunci(x.koleksi, x.data, 'bulan itu sudah dikunci — catatan tidak bisa dibatalkan lagi'); if (k) return { tolak: k }; }", "")),
             ('batal tanpa alasan', RUL, R.replace("if (!a) return { tolak: 'Membatalkan butuh alasan' };", "")),
             ('tombol Batalkan tidak tergambar', MN, t[MN].replace('data-aksi="ruBuka" data-k-ru=', 'data-k-ru=')),
-            ('panel memakai nama yang tidak ada (layar jatuh)', MN, t[MN].replace("const D = RU.ruDaftar(iso, s.ruSaring || '');", "const D = RU.ruDaftarX(iso, s.ruSaring || '');")),
+            ('panel memakai nama yang tidak ada (layar jatuh)', MN, t[MN].replace("{ daftar: RU.ruDaftar, orang: RU.ruOrang, periksa: RU.ruPeriksa }", "{ daftar: RU.ruDaftarX, orang: RU.ruOrang, periksa: RU.ruPeriksa }")),
         ]
         kode = 0
         for nama, berkas, isi in rusak:

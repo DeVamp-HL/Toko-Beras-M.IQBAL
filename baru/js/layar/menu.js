@@ -17,6 +17,7 @@ import { kartuTutupTablet, aksiTutupTablet, hlTampil, HL_DRAF_KOSONG } from './t
 import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
 import * as SJ from './sidik-logika.js';   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
 import * as RU from './riwayat-uang-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 1 uang
+import * as RB from './riwayat-barang-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 2 barang
 import * as RT from './ringkas-tablet-logika.js';
 import * as TB from './tablet-logika.js';
 import { nhDukung, nhTersimpan, nhIzin, nhNyalakan, nhMatikan, nhVapidSah } from '../data/notif-hp.js';   // owner 21 Nov 2026: notifikasi HP saat aplikasi tertutup   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
@@ -53,7 +54,7 @@ const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 // owner 7 Okt 2026: tab Hemat baca di Sistem › Perangkat (tab Kasir & PIN dicabut paket dokumen & sisa, #108)
-const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['batal', 'Dibatalkan']] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
+const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['batal', 'Dibatalkan']] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
 const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat', riwayat: 'Riwayat & batal' };
 
 /** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
@@ -256,12 +257,12 @@ export function pasangLayarMenu(akar, opsi) {
     ruBuka: (_, el) => { const k = el.dataset.kRu; set({ ruBuka: st().ruBuka === k ? null : k, ruAlasan: '', yakinRu: null, kabar: '' }); },
     ruAlasan: ({ a }) => set({ ruAlasan: a, yakinRu: null }),
     ruAlasanKetik: (v) => set({ ruAlasan: String(v).slice(0, 120), yakinRu: null }),
-    ruBatal: async () => { const k = st().ruBuka; if (!k) return; const koleksi = k.slice(0, k.indexOf('|')); const id = k.slice(k.indexOf('|') + 1);
+    ruBatal: async () => { const k0 = st().ruBuka; if (!k0) return; const brg = /^barang\|/.test(k0); const k1 = brg ? k0.slice(7) : k0; const koleksi = k1.slice(0, k1.indexOf('|')); const id = k1.slice(k1.indexOf('|') + 1); const k = k0;
       if (!String(st().ruAlasan || '').trim()) return set({ kabar: 'Pilih atau ketik alasannya dulu', kabarAwas: true });
       if (st().yakinRu !== 'b:' + k) return set({ yakinRu: 'b:' + k, kabar: 'Ketuk sekali lagi untuk membatalkan — akibatnya tertulis di atas tombol', kabarAwas: true });
-      if (await tulis(RU.ruSusunBatal(koleksi, id, st().ruAlasan, waktu()))) set({ ruBuka: null, ruAlasan: '', yakinRu: null }); else set({ yakinRu: null }); },
+      if (await tulis((brg ? RB.rbSusunBatal : RU.ruSusunBatal)(koleksi, id, st().ruAlasan, waktu()))) set({ ruBuka: null, ruAlasan: '', yakinRu: null }); else set({ yakinRu: null }); },
     ruPulih: async ({ id }) => { if (st().yakinRu !== 'p:' + id) return set({ yakinRu: 'p:' + id, kabar: 'Ketuk sekali lagi: catatan kembali ke buku persis seperti semula', kabarAwas: true });
-      set({ yakinRu: null }); await tulis(RU.ruSusunPulih(id, waktu())); },
+      set({ yakinRu: null }); const x = RU.ruDibatalkan().find((b) => b.id === String(id)); await tulis((x && x.jenisBatal === 'barang' ? RB.rbSusunPulih : RU.ruSusunPulih)(id, waktu())); },
     ruHapus: async ({ id }) => { if (st().yakinRu !== 'h:' + id) return set({ yakinRu: 'h:' + id, kabar: 'Ketuk sekali lagi: salinannya hilang selamanya dari daftar Dibatalkan', kabarAwas: true });
       set({ yakinRu: null }); await tulis(RU.ruSusunHapusPermanen(id)); },
     rtIntip: ({ d }) => tulis(S.susunAturSistem('peran', { intipDetik: Number(d) }, waktu())),   // owner 22 Nov 2026: lama intip uang (detik)
@@ -585,11 +586,13 @@ export function pasangLayarMenu(akar, opsi) {
             ${x.bisaPulih ? '' : h`<div class="k2">${x.sebabTidakPulih}</div>`}</div>
           <div style="display: flex; gap: 6px; align-items: flex-start;">${x.bisaPulih ? h`<div class="kaca-btn kecil ${s.yakinRu === 'p:' + x.id ? 'aktif emas' : ''}" data-aksi="ruPulih" data-id="${x.id}">${s.yakinRu === 'p:' + x.id ? 'KETUK LAGI · pulihkan' : 'Pulihkan'}</div>` : ''}
             <div class="kaca-btn kecil ${s.yakinRu === 'h:' + x.id ? 'awas' : ''}" data-aksi="ruHapus" data-id="${x.id}">${s.yakinRu === 'h:' + x.id ? 'KETUK LAGI · hapus permanen' : 'Hapus permanen'}</div></div></div>`)}</div>
-        <div class="ket" style="font-size: 11px;">Pulihkan = catatan kembali ke buku persis seperti semula (koreksi tutup hari & patokan kas dibalik). Hapus permanen = salinannya hilang dari daftar ini; catatannya sendiri sudah tidak dihitung sejak dibatalkan.</div>`;
+        <div class="ket" style="font-size: 11px;">Pulihkan = catatan kembali ke buku persis seperti semula (koreksi tutup hari, patokan kas & hitungan sesudahnya dibalik). Hapus permanen = salinannya hilang dari daftar ini; catatannya sendiri sudah tidak dihitung sejak dibatalkan.</div>`;
     }
-    const iso = s.ruHari || hariIniIso(kini()); const D = RU.ruDaftar(iso, s.ruSaring || ''); const orang = RU.ruOrang(iso);
-    const buka = s.ruBuka ? D.find((b) => b.kunci === s.ruBuka) : null; const P = buka && buka.bisa ? RU.ruPeriksa(buka.koleksi, buka.id) : null;
-    const baris = (b) => h`<div class="ug-baris dua ${b.bisa ? '' : 'redup'}" data-k="ru-${b.id}"><div style="min-width: 0;"><div>${b.jam ? b.jam + ' · ' : ''}${b.jenis} · <b>${RP(b.nominal)}</b>${b.anggota ? h` <span class="k2">(+${b.anggota} pendamping)</span>` : ''}</div>
+    // tab Barang (tahap 2) memakai bentuk baris yang sama; kunci baris barang berawalan 'barang|' (ruBatal memilih logikanya dari situ)
+    const brg = tab === 'barang'; const L = brg ? { daftar: RB.rbDaftar, orang: RB.rbOrang, periksa: RB.rbPeriksa } : { daftar: RU.ruDaftar, orang: RU.ruOrang, periksa: RU.ruPeriksa };
+    const iso = s.ruHari || hariIniIso(kini()); const D = L.daftar(iso, s.ruSaring || ''); const orang = L.orang(iso);
+    const buka = s.ruBuka ? D.find((b) => b.kunci === s.ruBuka) : null; const P = buka && buka.bisa ? L.periksa(buka.koleksi, buka.id) : null;
+    const baris = (b) => h`<div class="ug-baris dua ${b.bisa ? '' : 'redup'}" data-k="ru-${b.id}"><div style="min-width: 0;"><div>${b.jam ? b.jam + ' · ' : ''}${b.jenis}${brg ? '' : h` · <b>${RP(b.nominal)}</b>`}${b.anggota ? h` <span class="k2">(+${b.anggota} ${brg ? 'catatan satu ketukan' : 'pendamping'})</span>` : ''}</div>
         <div class="k2">${b.oleh || '—'}${b.teksEfek ? ' · ' + b.teksEfek : ''}${b.ket ? ' · ' + b.ket : ''}${b.titipan ? ' · dari titipan tablet' : ''}</div>${b.bisa ? '' : h`<div class="k2">${b.sebab}</div>`}
         ${buka && buka.kunci === b.kunci ? h`<div data-k="ru-buka" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
           ${P && P.tolak ? h`<div class="pita-info awas">${P.tolak}</div>` : h`<div class="hg-pil" data-k="ru-alasan">${RU.RU_ALASAN.map(([id, nm]) => h`<div class="seg ${s.ruAlasan === nm ? 'aktif' : ''}" data-aksi="ruAlasan" data-a="${nm}">${nm}</div>`)}</div>
@@ -601,8 +604,8 @@ export function pasangLayarMenu(akar, opsi) {
         <div class="kaca-btn kecil" data-aksi="ruGeser" data-d="-1">‹</div><div class="serif" style="font-size: 18px;">${tanggalPendek(iso)}</div><div class="kaca-btn kecil" data-aksi="ruGeser" data-d="1">›</div>
         ${iso !== hariIniIso(kini()) ? h`<div class="kaca-btn kecil" data-aksi="ruGeser" data-d="0">hari ini</div>` : ''}</div>
       ${orang.length > 1 ? h`<div class="hg-pil" data-k="ru-orang"><div class="seg ${s.ruSaring ? '' : 'aktif'}" data-aksi="ruSaring" data-o="">semua</div>${orang.map((o) => h`<div class="seg ${s.ruSaring === o ? 'aktif' : ''}" data-aksi="ruSaring" data-o="${o}">${o}</div>`)}</div>` : ''}</div>
-      <div class="kartu" data-k="ru-daftar" style="gap: 2px;"><div class="label">${D.length ? D.length + ' catatan uang' : 'Tidak ada catatan uang di hari ini'}</div>${D.map(baris)}</div>
-      <div class="ket" style="font-size: 11px;">Batalkan = catatan keluar dari buku (laci, laba, laporan tidak menghitungnya), salinannya tetap di tab Dibatalkan dan bisa dipulihkan. Catatan yang dibuat bersamaan (biaya admin, ambilan amplop, pasangan pinjaman) ikut. Hari yang sudah ditutup: selisih laci malam itu dibetulkan otomatis; rekening / brankas / amplop: patokan kasnya. Bulan terkunci tidak bisa. Nota penjualan: Jual › Riwayat. Upah & biaya bulanan: menyusul.</div>`;
+      <div class="kartu" data-k="ru-daftar" style="gap: 2px;"><div class="label">${D.length ? D.length + (brg ? ' catatan barang' : ' catatan uang') : brg ? 'Tidak ada catatan barang di hari ini' : 'Tidak ada catatan uang di hari ini'}</div>${D.map(baris)}</div>
+      ${brg ? h`<div class="ket" style="font-size: 11px;">Batalkan = seluruh catatan satu ketukan keluar dari buku (isi ulang: karung yang dibuka balik ke tumpukan, karung bekasnya ikut), salinannya tetap di tab Dibatalkan dan bisa dipulihkan. Sudah dihitung sesudahnya (cocokkan, timbang tutup hari, bongkar): selisih hitungan berikutnya dibetulkan otomatis — stok tetap = hitungan fisik. Cocokkan dibatalkan per barang. Kedatangan & adukan: di layarnya sendiri. Bulan terkunci tidak bisa.</div>` : h`<div class="ket" style="font-size: 11px;">Batalkan = catatan keluar dari buku (laci, laba, laporan tidak menghitungnya), salinannya tetap di tab Dibatalkan dan bisa dipulihkan. Catatan yang dibuat bersamaan (biaya admin, ambilan amplop, pasangan pinjaman) ikut. Hari yang sudah ditutup: selisih laci malam itu dibetulkan otomatis; rekening / brankas / amplop: patokan kasnya. Bulan terkunci tidak bisa. Nota penjualan: Jual › Riwayat. Upah & biaya bulanan: menyusul.</div>`}`;
   }
   function gambarPengingat(s, d, tab) {
     const G = S.ssPengingat(d, lokal(), s.hariP);
