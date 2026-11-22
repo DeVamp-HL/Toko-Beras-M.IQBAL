@@ -11,7 +11,8 @@ terhitung dua kali, bayar supir yang masuk bon yang salah / bertanggal hari owne
 Yang dipegang:
   · kiriman tablet = kedatangan (bon, hari ini, bongkar 0, dariTablet) + titipan upah bongkar (batchId) + titipan bayar supir (pemasok, batchId) + kabar owner
   · bentuknya lolos penjaga kiriman akses.js (= rules v15); karyawan / kisi kedatangan "tidak" ditolak
-  · merek baru / arsip ditolak dengan kalimat (owner dari HP); harga beda dari harga lalu ditandai & disebut di kabar; beda jauh dari modal = digabung, ditandai
+  · merek baru DICATAT (owner 22 Nov 2026) atas nama yang diketik, tanpa tebakan kelas & tanpa menulis peta kelas, ditandai merekBaru & disebut di kabar
+    (jalur owner tetap memakai tebakan kelas); nama arsip ditolak dengan kalimat (owner dari HP); harga beda dari harga lalu ditandai & disebut di kabar; beda jauh dari modal = digabung, ditandai
   · owner menyetujui upah bongkar → biayaBongkar kedatangan itu (laci keluar sekali, bertanggal datang); dua kali tidak bisa
   · owner menyetujui bayar supir → bon kedatangan itu (bawaan) atau bon pilihan owner; bertanggal TITIPAN; sisa bon turun; melebihi sisa ditolak
   · titipan yang menunggu ikut perkiraan laci (laci fisik sudah berkurang); tanda terima tablet menyebut uang yang dibayar ke supir
@@ -42,6 +43,11 @@ def kotak():
                             'merkList': [{'id': '1', 'merk': 'Pandan Contoh', 'satuan': 'karung', 'jumlahKarung': 10, 'beratKarung': 50, 'totalKg': 500, 'hargaPerKg': 14000, 'subtotalHarga': 7000000}]})
     # titik kas dari DOKUMEN (pola uji_ringkas_tablet): laci 2.000.000 dst. per 15 Sep — rumus laci tanggal 19 Sep terhitung
     K['pengaturan'] = [{'id': 'titikKas', 'tanggal': '2026-09-15', 'laci': 2000000, 'brankas': 10000000, 'rekening': 3000000, 'amplop': 1000000, 'diubahPada': '2026-09-15T14:00:00.000Z'}]
+    # owner 22 Nov 2026 (merek baru dari tablet): peta kelas berisi TEBAKAN untuk dua merek yang belum berbuku — satu ke kelas berwadah/merek (Pandan Contoh),
+    # satu ke kelas TANPA wadah (Ketan Contoh: buku atas nama kelas). Tablet wajib mengabaikan keduanya; owner tetap memakainya. + satu nama diarsipkan.
+    K['aturanToko'] = [{'id': 'kelasMerek', 'peta': {'Merek Tebak Contoh': 'Pandan Contoh', 'Merek Sendiri Contoh': 'Ketan Contoh'},
+                        'asal': {'Merek Tebak Contoh': 'tebakan', 'Merek Sendiri Contoh': 'tebakan'}, 'kelasSendiri': ['Ketan Contoh']},
+                       {'id': 'produkArsip', 'daftar': [{'kunci': 'K:Arsip Contoh', 'jenis': 'beras', 'nama': 'Arsip Contoh', 'tanggal': '2026-09-01', 'jam': '09:00'}]}]
     K['aksesAkun'] = [{'id': 'uid-tablet', 'uid': 'uid-tablet', 'nama': 'Tablet', 'email': 'tablet@contoh.com', 'peran': 'ben', 'aktif': True}]
     return K
 
@@ -82,7 +88,18 @@ cek('akses.js: kedatangan tablet = tindakan kedatangan (bukan isi ulang)', J(tin
 
 // ---------- tolakan tablet ----------
 var Rb = mtSusunSimpan(Object.assign({}, DRAF, { baris: [{ merk: 'Merek Contoh Baru', jumlahKarung: '60', beratKarung: 50, hargaPerKg: '12000' }] }), BEN, W, false);
-cek('merek baru → ditolak, owner yang mencatat dari HP', /belum punya buku stok/.test(Rb.tolak || ''), Rb.tolak);
+var bmB = Rb.dokumen && Rb.dokumen[0].data; var kbB = Rb.dokumen && Rb.dokumen.find(function (x) { return x.data.tindakan === 'barangMasuk'; });
+cek('merek baru → DICATAT atas nama yang diketik (owner 22 Nov 2026), ditandai merekBaru, disebut di kabar owner & kalimat layar', bmB && bmB.merkList[0].merk === 'Merek Contoh Baru' && J(bmB.merekBaru) === J(['Merek Contoh Baru'])
+  && kbB && /MEREK BARU: Merek Contoh Baru/.test(kbB.data.teks) && /Merek baru Merek Contoh Baru dibuka bukunya/.test(Rb.patch.kabar), Rb.tolak || bmB);
+cek('kiriman merek baru = kedatangan + titipan + kabar saja (tanpa setelan kelas / jenis / arsip) dan lolos penjaga kiriman (rules v15)', Rb.dokumen && Rb.dokumen.every(function (x) { return x.koleksi === 'batchMasuk' || x.koleksi === 'persetujuan'; }) && !kirim(BEN, Rb, HAK_BEN).tolak, Rb.dokumen && Rb.dokumen.map(function (x) { return x.koleksi; }));
+var DT = function (m) { return Object.assign({}, DRAF, { bongkar: '', bayarSupir: '', baris: [{ merk: m, jumlahKarung: '60', beratKarung: 50, hargaPerKg: '12000' }] }); };
+var Rt = mtSusunSimpan(DT('Merek Tebak Contoh'), BEN, W, false); var Rs = mtSusunSimpan(DT('Merek Sendiri Contoh'), BEN, W, false);
+cek('tablet: merek baru bertebakan kelas berwadah → tetap atas nama yang diketik, tanpa setelan lain (kelas = owner)', Rt.dokumen && Rt.dokumen.length === 2 && Rt.dokumen[0].data.merkList[0].merk === 'Merek Tebak Contoh' && !Rt.dokumen[0].data.merkList[0].merkPemasok, Rt.tolak || Rt.dokumen.map(function (x) { return x.koleksi; }));
+cek('tablet: merek baru bertebakan kelas TANPA wadah → tidak dibukukan atas nama kelas (Ketan Contoh)', Rs.dokumen && Rs.dokumen[0].data.merkList[0].merk === 'Merek Sendiri Contoh' && J(Rs.dokumen[0].data.merekBaru) === J(['Merek Sendiri Contoh']), Rs.tolak || Rs.dokumen[0].data.merkList);
+var Os = susunSimpanMasuk(Object.assign({}, DT('Merek Sendiri Contoh'), { tanggal: '2026-09-19' }), W, false);
+cek('jalur OWNER tidak berubah: tebakan kelas tetap dipakai (Merek Sendiri Contoh → dibukukan atas nama kelas Ketan Contoh + merek pemasok), tanpa tanda merekBaru', Os.dokumen && Os.dokumen[0].data.merkList[0].merk === 'Ketan Contoh' && Os.dokumen[0].data.merkList[0].merkPemasok === 'Merek Sendiri Contoh'
+  && !Os.dokumen[0].data.merekBaru, Os.tolak || Os.dokumen[0].data.merkList);
+cek('nama yang DIARSIPKAN tetap ditolak dari tablet dengan kalimat tablet (memulihkan = owner; bukan pilihan PULIHKAN yang tidak ada di tablet)', /DIARSIPKAN — owner yang memulihkannya dari HP/.test(mtSusunSimpan(DT('Arsip Contoh'), BEN, W, false).tolak || ''), mtSusunSimpan(DT('Arsip Contoh'), BEN, W, false).tolak);
 var Rk = mtSusunSimpan(Object.assign({}, DRAF, { baris: [{ merk: 'Angsa', jumlahKarung: '10', beratKarung: 50, hargaPerKg: '13000' }] }), BEN, W, false);
 cek('karung sedikit → ketuk sekali lagi; ketukan kedua tersimpan', !!Rk.perluYakin && !!(mtSusunSimpan(Object.assign({}, DRAF, { baris: [{ merk: 'Angsa', jumlahKarung: '10', beratKarung: 50, hargaPerKg: '13000' }] }), BEN, W, true).dokumen), Rk.tolak);
 var Rj = mtSusunSimpan(Object.assign({}, DRAF, { baris: [{ merk: 'Angsa', jumlahKarung: '60', beratKarung: 50, hargaPerKg: '15000' }] }), BEN, W, false);
@@ -155,6 +172,7 @@ def periksa_statis(t):
     ok('Stok: akun tablet menggambar form tablet', "if (bukanOwner(opsi.akun ? opsi.akun() : null)) return gambarMasukTablet(s);" in S)
     m = re.search(r'\n  function gambarMasukTablet\(s\) \{\n(.*?)\n  \}\n', S, re.S); f = m.group(1) if m else ''
     ok('form tablet: tanpa pilihan cara bayar / tanggal / koreksi / hapus / aturan; ada upah bongkar & bayar ke supir', f and not re.search(r"caraBayar|mTanggal|mKoreksi|mHapus|bukaAturC|mKelas|mVarian", f) and 'data-kolom="bongkar"' in f and 'data-kolom="bayarSupir"' in f, len(f))
+    ok('form tablet: merek baru diberi pita "tetap dicatat, owner dikabari" (bukan penolakan)', 'data-k="mt-baru-${i}"' in f and "b.merekBaru ? 'merek baru" in f)
     ok('Stok: draf kosong tablet = mtDrafKosong (selalu bon)', "bukanOwner(opsi.akun ? opsi.akun() : null) ? MT.mtDrafKosong(waktu()) : C.drafMasukKosong(waktu())" in S)
     U = t[UG]
     ok('Uang: owner memilih bon untuk bayar supir & melihat ke mana titipan barang masuk ditulis', 'ukTtBon: ({ b }) =>' in U and 'bonId: t.bonId || \'\'' in U and 'function tujuanTitip(t)' in U and '${tujuanTitip(t)}' in U)
@@ -187,7 +205,12 @@ def main():
             ('kedatangan tablet memakai tanggal draf', MT, M.replace("d.id = null; d.tanggal = w.tanggal;", "d.id = null;")),
             ('upah bongkar ikut ditulis di kedatangan (terhitung dua kali sesudah disetujui)', MT, M.replace("{ dariTablet: true, biayaBongkar: 0, caraBayar: 'utang' }", "{ dariTablet: true, biayaBongkar: bongkar, caraBayar: 'utang' }")),
             ('tanpa kabar owner', MT, M.replace("  dokumen.push(tpDokKabarMasuk({ batchId: id, pemasok, nominal: h.nilaiBeras, teks: teksKabar, hargaBeda: beda }, akun, w));\n", "")),
-            ('merek baru boleh dari tablet', MT, M.replace("if (b.terisi && !b.masalah && b.baru) b.masalahTablet", "if (false) b.masalahTablet")),
+            ('merek baru ditolak lagi dari tablet', MT, M.replace("    if (b.terisi && !b.masalah && b.vr && b.vr.arsip) b.masalahTablet", "    if (b.terisi && !b.masalah && b.baru) b.masalahTablet = 'merek baru';\n    else if (b.terisi && !b.masalah && b.vr && b.vr.arsip) b.masalahTablet")),
+            ('merek baru tablet memakai tebakan kelas', MT, M.replace(" d.tanpaTebakKelas = true;", "")),
+            ('jalur owner kehilangan tebakan kelas', SC, t[SC].replace("baru && !draf.tanpaTebakKelas ? kmKelasMerk(merkKetik)", "baru && false ? kmKelasMerk(merkKetik)")),
+            ('merek baru tidak ditandai', MT, M.replace("if (merekBaru.length) bm.merekBaru = merekBaru;", "")),
+            ('kabar owner tidak menyebut merek baru', MT, M.replace("(merekBaru.length ? ' · MEREK BARU: '", "(false ? ' · MEREK BARU: '")),
+            ('nama arsip boleh dari tablet', MT, M.replace("if (b.terisi && !b.masalah && b.vr && b.vr.arsip) b.masalahTablet", "if (false) b.masalahTablet")),
             ('harga beda tidak ditandai', MT, M.replace("if (beda.length) bm.hargaBeda = beda;", "")),
             ('upah bongkar disetujui tanpa menambah kedatangan', TPL, T.replace("biayaBongkar: (Number(b.biayaBongkar) || 0) + n,", "biayaBongkar: (Number(b.biayaBongkar) || 0),")),
             ('bayar supir mengabaikan bon pilihan owner', TPL, T.replace("const bonId = KOSONG(o.bonId) ? P.bawaan : String(o.bonId);", "const bonId = P.bawaan;")),

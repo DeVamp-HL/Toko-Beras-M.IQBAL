@@ -3231,14 +3231,17 @@ habis tapi masih laku = satu kalimat (jumlah + 3 paling laku), bukan baris "±0 
 supir. Keputusan owner (ditanya di depan): harga beda dari harga lalu → kedatangan ditandai (`hargaBeda`) dan owner dikabari (owner membetulkan dari HP lewat
 koreksi kedatangan); pencatat Penjaga laci saja (`SERVER_BUKA.kedatangan = ['ben']`); **upah bongkar** diisi di form yang sama → titipan jenis `bongkar`
 (menunjuk `batchId`), kedatangannya sendiri ditulis `biayaBongkar` 0; **bayar ke supir** → titipan jenis `bayarBon` (pemasok + batchId) — owner memilih bonnya
-saat menyetujui (bawaan = bon kedatangan itu, `tpBonPilihan`). Hanya nama yang sudah berbuku: merek baru / arsip ditolak dengan kalimat; harga jauh dari modal
-(pertanyaan varian) dicatat sebagai barang yang sama + `hargaJauh`. Satu kiriman: kedatangan + titipan bongkar + titipan bayar supir + **kabar barang masuk**
+saat menyetujui (bawaan = bon kedatangan itu, `tpBonPilihan`). **Merek baru dicatat** (owner 22 Nov 2026: "jangan ditolak, nanti gua koreksi / hapus
+kedatangannya"): buku baru atas nama yang diketik, TANPA kelas — draf tablet membawa `tanpaTebakKelas` sehingga `hitungMasuk` tidak memakai tebakan kelas dan
+peta kelas tidak ditulis (jalur owner tetap memakai tebakan) — ditandai `merekBaru` dan disebut paling depan di kabar; kelas, jenis beras & harga jual diatur
+owner. Nama yang diarsipkan tetap ditolak dengan kalimat (memulihkan = owner); harga jauh dari modal (pertanyaan varian) dicatat sebagai barang yang sama +
+`hargaJauh`. Satu kiriman: kedatangan + titipan bongkar + titipan bayar supir + **kabar barang masuk**
 (`persetujuan` tindakan `barangMasuk`, owner menandai "sudah diperiksa" seperti pesan). Logika `baru/js/layar/masuk-tablet-logika.js` (awalan `mt`, tanpa
 tulisan). Owner memutus di Uang › titipan / papan Persetujuan lewat `tpSusunPutus` (`titipan-logika.js`): setuju upah bongkar = kedatangan ditulis ulang
 dengan `biayaBongkar` + n dan `bongkarTitipan` (modal barang + kas keluar laci bertanggal datang, rumus mesin yang sama; penjaga dobel); setuju bayar supir =
 `utangPemasokMutasi` bayar dari laci **bertanggal titipan**, ke bon pilihan (`hitungBayar` Bon pemasok: satu pembayaran satu bon, tidak melebihi sisa). Kartu
 "Uang keluar & pesan" tablet punya jenis **Bayar bon pemasok** (bon lama lewat supir). Tanda terima tablet menyebut uang yang dibayar ke supir dari titipan
-(`titipSupir`). Koreksi kedatangan owner membawa `dariTablet`, `hargaBeda`, `hargaJauh`, `bongkarTitipan`. Server: rules v15 `stafCatatMasuk(['ben'])`,
+(`titipSupir`). Koreksi kedatangan owner membawa `dariTablet`, `hargaBeda`, `hargaJauh`, `merekBaru`, `bongkarTitipan`. Server: rules v15 `stafCatatMasuk(['ben'])`,
 `stafKabarMasuk(['ben'])`, jenis titipan + `bongkar` / `bayarBon` (`docs/uji-rules-v15.md`, 23 kasus ★X). Notifikasi HP menyebut jenis baru sesudah owner
 memasang ulang fungsi (`functions/pesan.js`). Alat uji `alat-uji/uji_masuk_tablet.py` (jsc di atas data contoh: kiriman, penjaga kiriman, laci sebelum/sesudah
 setuju, bon, tanda terima; kontrol) + `uji_titipan.py`, `uji_akses_baru.py`, `uji_terima_barang.py`, `periksa_rules.py`, `uji_rules_emulator.py`.
