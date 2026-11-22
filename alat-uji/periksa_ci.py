@@ -43,7 +43,7 @@ def langkah(blok):
         elif cur is not None:
             cur['isi'] += '\n' + x
             m = re.match(r'^        if:\s*(.*)$', x)
-            if m: cur['if'].append(m.group(1).strip())
+            if m: cur['if'].append(re.sub(r'\s+#.*$', '', m.group(1)).strip())   # komentar YAML di ujung baris bukan bagian syarat
             m = re.match(r'^        name:\s*(.*)$', x)
             if m and not cur['nama']: cur['nama'] = m.group(1).strip().strip('"')
     return out
