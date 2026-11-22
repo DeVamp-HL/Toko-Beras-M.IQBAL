@@ -19,7 +19,7 @@ sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 import uji_uang_baru as UB  # noqa: E402
 JSC = UB.JSC
-RUL = 'baru/js/layar/riwayat-uang-logika.js'; MN = 'baru/js/layar/menu.js'; ML = 'baru/js/layar/menu-logika.js'; IDX = 'baru/index.html'
+RUL = 'baru/js/layar/riwayat-uang-logika.js'; TK = 'baru/js/data/toko.js'; MN = 'baru/js/layar/menu.js'; ML = 'baru/js/layar/menu-logika.js'; IDX = 'baru/index.html'
 MODUL = list(dict.fromkeys(UB.MODUL + ['baru/js/data/hemat-baca.js', 'baru/js/layar/titipan-logika.js', RUL]))
 STATIS = [MN, ML, IDX]
 
@@ -127,6 +127,22 @@ cek('baris Dibatalkan lama (hapus kedatangan tanpa salinan) tampil, tidak bisa d
 var R8 = ruSusunBatal('pindahUang', 'ru-p2', 'Dobel', W); terap(R8);
 terap({ dokumen: [{ koleksi: 'pindahUang', data: R8.dokumen[0].data.dokumen.filter(function (x) { return x.koleksi === 'pindahUang'; })[0].data }] });
 cek('pulihkan ditolak bila catatan bernomor sama sudah ada lagi', /sudah ada lagi/.test(ruSusunPulih(R8.dokumen[0].data.id, W).tolak || ''));
+// ---------- tahun yang sudah ditutup buku (gladi ulang 23 Nov 2026, keputusan owner K-B) ----------
+// Dulu: sesudah tutup buku 2026, pindah uang 2026 (tidak ikut diarsip) masih bertombol Batalkan dan membatalkannya menulis ulang patokan kas 31 Des (kas pembuka
+// tahun baru); salinan di Dibatalkan masih bisa dipulihkan ke tahun yang sudah ditutup. Era 2026 = ada saldo pembuka bertanda tutup buku tahunDari 2026.
+var modalAsli = cacheMentah(cacheDari('modalOwner')).slice();
+pasok('modalOwner', modalAsli.concat([{ id: 'ru-pembuka26', tanggal: '2026-12-31', jam: '00:00', nominal: 1000000, tutupBuku: true, tahunDari: 2026, catatan: 'Saldo pembuka modal owner (kotak pasir)' }]));
+pasok('pengeluaranHarian', cacheMentah(cacheDari('pengeluaranHarian')).concat([{ id: 'ru-h27', tanggal: '2027-01-04', jam: '09:00', kategori: 'toko', keterangan: 'Plastik (kotak pasir)', nominal: 5000, dari: 'laci', oleh: 'Owner' }]));
+var bT = ruDaftar('2026-09-19', '').find(function (b) { return b.id === 'ru-p2'; });
+cek('tahun ditutup: baris pindah uang 2026 tanpa tombol Batalkan, sebabnya ditulis', eraBuku() === 2026 && bT && !bT.bisa && /2026 sudah ditutup buku/.test(bT.sebab), [eraBuku(), bT]);
+var tT = ruSusunBatal('pindahUang', 'ru-p2', 'Salah', W).tolak || '';
+cek('tahun ditutup: batal pindah uang 2026 DITOLAK di pintu masuk (patokan kas 31 Des tidak ditulis ulang)', /2026 sudah ditutup buku/.test(tT) && /catatan hari ini/.test(tT), tT);
+var dA = ruDibatalkan().find(function (b) { return b.id === idA; }); var pT = ruSusunPulih(idA, W).tolak || '';
+cek('tahun ditutup: salinan 2026 di Dibatalkan tanpa tombol Pulihkan, pulihkan DITOLAK di pintu masuk', dA && !dA.bisaPulih && /ditutup buku/.test(dA.sebabTidakPulih) && /2026 sudah ditutup buku/.test(pT), [dA, pT]);
+var b27 = ruDaftar('2027-01-04', '').find(function (b) { return b.id === 'ru-h27'; }); var r27 = ruSusunBatal('pengeluaranHarian', 'ru-h27', 'Salah', W);
+cek('tahun berjalan (2027) tetap bisa dibatalkan', b27 && b27.bisa && !r27.tolak && r27.hapus.some(function (h) { return h.id === 'ru-h27'; }), [b27, r27.tolak]);
+pasok('modalOwner', modalAsli); pasok('pengeluaranHarian', cacheMentah(cacheDari('pengeluaranHarian')).filter(function (d) { return d.id !== 'ru-h27'; }));
+cek('tanpa tutup buku: 2026 kembali bisa dibatalkan', eraBuku() === null && !ruSusunBatal('pindahUang', 'ru-p2', 'Salah', W).tolak, eraBuku());
 pasok('aturanToko', cacheMentah('aturan').concat([{ id: 'kunciPeriode', sampaiBulan: '2026-09', riwayat: [] }]));
 cek('bulan terkunci: batal & pulihkan ditolak', !!ruSusunBatal('pengeluaranHarian', 'ru-h3', 'x', W).tolak && !!ruSusunPulih(idA, W).tolak);
 print(J(hasil));
@@ -271,7 +287,13 @@ def main():
             ('pembayaran bersama nota boleh dibatalkan di sini', RUL, R.replace("if (koleksi === 'piutangMutasi' && (d.notaTrxId || d.dariNota)) return", "if (false) return")),
             ('pulihkan tidak membalik selisih', RUL, R.replace("if (T) { const geser = -e.laci; dokumen.push(", "if (false) { const geser = -e.laci; dokumen.push(")),
             ('pulihkan boleh dua kali', RUL, R.replace("if (ruCari(d.koleksi, d.data.id)) return { tolak:", "if (false) return { tolak:")),
-            ('bulan terkunci boleh dibatalkan', RUL, R.replace("for (const x of K) { const k = tolakKunci(x.koleksi, x.data, 'bulan itu sudah dikunci — catatan tidak bisa dibatalkan lagi'); if (k) return { tolak: k }; }", "")),
+            ('bulan terkunci boleh dibatalkan', RUL, R.replace("for (const x of K) { const k = tolakKunci(x.koleksi, x.data, 'bulan itu sudah dikunci — catatan tidak bisa dibatalkan lagi') || tolakBukuDitutup(x.data, 'catatan tidak dibatalkan lagi'); if (k) return { tolak: k }; }", "")),
+            # gladi ulang 23 Nov 2026 (K-B): tahun yang sudah ditutup buku
+            ('tahun ditutup: batal pindah uang 2026 diterima (patokan kas 31 Des ditulis ulang)', RUL, R.replace(" || tolakBukuDitutup(x.data, 'catatan tidak dibatalkan lagi'); if (k) return { tolak: k }; }", "; if (k) return { tolak: k }; }")),
+            ('tahun ditutup: tombol Batalkan tetap hidup', RUL, R.replace("const sebab = ruBukanTangan(koleksi, d) || tolakBukuDitutup(d, 'tidak dibatalkan lagi');", "const sebab = ruBukanTangan(koleksi, d);")),
+            ('tahun ditutup: pulihkan ke tahun yang sudah ditutup diterima', RUL, R.replace(" || tolakBukuDitutup(d.data, 'catatannya tidak dipulihkan lagi'); if (k) return { tolak: k };", "; if (k) return { tolak: k };")),
+            ('tahun ditutup: tombol Pulihkan tetap tampil', RUL, R.replace("bisaPulih: salinan && !ditutup,", "bisaPulih: salinan,")),
+            ('penjaga tahun ditutup memakai tahun yang salah (2027 ikut ditolak)', TK, t[TK].replace("&& tahunDitutup(t) ?", "&& (tahunDitutup(t) || tahunDitutup(String(Number(t.slice(0, 4)) - 1))) ?")),
             ('batal tanpa alasan', RUL, R.replace("if (!a) return { tolak: 'Membatalkan butuh alasan' };", "")),
             ('tombol Batalkan tidak tergambar', MN, t[MN].replace('data-aksi="ruBuka" data-k-ru=', 'data-k-ru=')),
             ('panel memakai nama yang tidak ada (layar jatuh)', MN, t[MN].replace("{ daftar: RU.ruDaftar, orang: RU.ruOrang, periksa: RU.ruPeriksa }", "{ daftar: RU.ruDaftarX, orang: RU.ruOrang, periksa: RU.ruPeriksa }")),

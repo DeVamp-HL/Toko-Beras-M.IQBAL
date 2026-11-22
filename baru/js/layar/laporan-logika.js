@@ -651,7 +651,10 @@ export function laporanBerkop(jenis, keKey, rentang, kini, bayaran) {
  *  tidak menghitung mundur → kas menurut titik kas saat tahun dikunci (potret kasTitik — angka yang sama dengan sebelum ritual), atau kas akhir bulan dari hitungan
  *  tutup hari (potret kas) bila titik kas saat itu pun belum bisa. Sanggahan Paket B: dulu kas awal Nov 2026 – Jan 2027 hilang sesudah ritual. */
 function lpKasPadaLintas(iso) {
-  if (!lpTutup(iso)) return ingatKasPada(iso); const Pt = potretBulan(iso); if (!Pt || iso !== akhirBulanIso(lpKey(iso))) return null;
+  // gladi ulang 23 Nov 2026 (cadangan toko November): sebelum ritual titik kas lebih muda dari akhir bulan itu → kasPada null, padahal hitungan fisik tutup hari
+  // akhir bulan ada — sesudah ritual angka yang sama dibaca dari potret (kas). Dua sisi kini satu sumber: sebelum = sesudah ritual
+  if (!lpTutup(iso)) { const k = ingatKasPada(iso); if (k !== null || iso !== akhirBulanIso(lpKey(iso))) return k; const KA = lpKasAkhirBulan(lpKey(iso)); return KA && typeof KA.kas === 'number' ? KA.kas : null; }
+  const Pt = potretBulan(iso); if (!Pt || iso !== akhirBulanIso(lpKey(iso))) return null;
   return typeof Pt.kasTitik === 'number' ? Pt.kasTitik : Pt.kas && typeof Pt.kas.kas === 'number' ? Pt.kas.kas : null;
 }
 /** Paket bank: beberapa laporan jadi satu, hanya dari bulan yang sudah tutup buku; kop butuh nama & alamat. */

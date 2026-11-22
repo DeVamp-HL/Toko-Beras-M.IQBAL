@@ -19,9 +19,9 @@
 //
 // TIDAK lewat sini (disebut sebabnya di baris): catatan buatan tutup hari (MDR, amankan, sisihan, setoran nol, titik kas) → tutup ulang; pembayaran bon yang
 // lahir bersama nota → batal nota (Jual › Riwayat); saldo pembuka tutup buku; upah & biaya bulanan (slip, gaji, listrik — dokumen per bulan) → tahap berikut.
-// Bulan terkunci = ditolak (tolakKunci).
+// Bulan terkunci = ditolak (tolakKunci). Tahun yang sudah ditutup buku = ditolak juga, batal & pulihkan (tolakBukuDitutup; keputusan owner K-B 23 Nov 2026).
 import { cacheMentah, ambilPengeluaranHarian, ambilKasbonMutasi, ambilModalOwner, ambilUtangOwnerMutasi, ambilAmplopLaba, ambilPindahUang, ambilUtangPemasokMutasi,
-  ambilPiutangMutasi, ambilTutupHari, ambilTitikKas, ambilSlipUpah, ingatGerakanKas, tolakKunci } from '../data/toko.js';
+  ambilPiutangMutasi, ambilTutupHari, ambilTitikKas, ambilSlipUpah, ingatGerakanKas, tolakKunci, tolakBukuDitutup } from '../data/toko.js';
 import { RP, tanggalPendek } from '../inti/format.js';
 import { kantongGerakan, ugAmplopLawan, ugSesudahTitik, ugNamaTempat } from './uang-logika.js';
 import { kunciPelanggan } from '../mesin/pembantu.js';
@@ -105,7 +105,7 @@ const ruTeksEfek = (e) => RU_TEMPAT.filter((k) => e[k]).map((k) => ugNamaTempat(
 
 /** Satu baris riwayat (kepala kelompok). */
 function ruBaris(koleksi, d) {
-  const sebab = ruBukanTangan(koleksi, d); const K = sebab ? [{ koleksi, data: d }] : ruKelompok(koleksi, d.id); const e = K.reduce((a, x) => ruJumlah(a, ruEfek(x.koleksi, x.data)), ruKosong());
+  const sebab = ruBukanTangan(koleksi, d) || tolakBukuDitutup(d, 'tidak dibatalkan lagi'); const K = sebab ? [{ koleksi, data: d }] : ruKelompok(koleksi, d.id); const e = K.reduce((a, x) => ruJumlah(a, ruEfek(x.koleksi, x.data)), ruKosong());
   const nominal = ruN(d.nominal);
   return { kunci: koleksi + '|' + String(d.id), koleksi, id: String(d.id), tanggal: String(d.tanggal || ''), jam: ruJam(d.jam), oleh: String(d.oleh || d.diubahOleh || ''), jenis: ruJenis(koleksi, d),
     ket: String(d.keterangan || d.catatan || d.alasan || '').slice(0, 80), nominal, efek: e, teksEfek: ruTeksEfek(e), anggota: K.length - 1, titipan: K.some((x) => x.data.dariPersetujuan),
@@ -182,12 +182,14 @@ export function ruPeriksa(koleksi, id) {
   const d = ruCari(koleksi, id); if (!d) return { tolak: 'Catatan ini tidak ada (sudah dibatalkan / dihapus?)' };
   const sebab = ruBukanTangan(koleksi, d); if (sebab) return { tolak: 'Tidak dibatalkan di sini: ' + sebab };
   const K = ruKelompok(koleksi, id); if (!K.length) return { tolak: 'Catatan ini tidak ada' };
-  for (const x of K) { const k = tolakKunci(x.koleksi, x.data, 'bulan itu sudah dikunci — catatan tidak bisa dibatalkan lagi'); if (k) return { tolak: k }; }
+  for (const x of K) { const k = tolakKunci(x.koleksi, x.data, 'bulan itu sudah dikunci — catatan tidak bisa dibatalkan lagi') || tolakBukuDitutup(x.data, 'catatan tidak dibatalkan lagi'); if (k) return { tolak: k }; }
   // kasbon: membatalkan AMBIL tidak boleh membuat sisa kasbon orangnya minus (cicilannya sudah dicatat)
   const kb = K.find((x) => x.koleksi === 'kasbonMutasi' && x.data.tipe === 'ambil');
   if (kb) { const kunci = kunciPelanggan(kb.data.namaPegawai); const sisa = ambilKasbonMutasi().filter((m) => kunciPelanggan(m.namaPegawai) === kunci).reduce((a, m) => a + (m.tipe === 'ambil' || m.tipe === 'saldoAwal' ? ruN(m.nominal) : -ruN(m.nominal)), 0);
     if (sisa - ruN(kb.data.nominal) < -0.5) return { tolak: 'Kasbon ' + kb.data.namaPegawai + ' ini sudah dicicil / dikembalikan — batalkan dulu pembayarannya, supaya sisa kasbonnya tidak minus' }; }
   const R = ruKoreksi(K, -1, 'cek', '');
+  // koreksi yang menyentuh tahun yang sudah ditutup (tutup hari / patokan kas 31 Des = kas pembuka tahun baru) juga ditolak
+  for (const x of R.dokumen) { const k = tolakBukuDitutup(x.data, 'tutup hari & patokan kas ' + String(x.data.tanggal || '').slice(0, 4) + ' tidak diubah lagi'); if (k) return { tolak: k }; }
   const akibat = ['Dibatalkan: ' + K.map((x) => ruJenis(x.koleksi, x.data) + ' ' + RP(ruN(x.data.nominal))).join(' + ') + ' — tidak dihitung lagi, salinannya tetap di daftar Dibatalkan'];
   if (R.efek && ruTeksEfek(R.efek)) akibat.push('Uang yang tercatat berbalik: ' + ruTeksEfek(Object.fromEntries(RU_TEMPAT.map((k) => [k, -R.efek[k]]))));
   if (K.some((x) => x.data.dariPersetujuan)) akibat.push('Titipan tablet asalnya ikut ditandai dibatalkan owner (terbaca di tablet)');
@@ -213,10 +215,14 @@ export function ruSusunBatal(koleksi, id, alasan, w) {
 /** Baris daftar Dibatalkan (semua isi bukuHapus: uang tahap 1, barang tahap 2 + hapus kedatangan / kantong / adukan lama), terbaru di atas. */
 export function ruDibatalkan() {
   return cacheMentah('bukuHapus').slice().sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || ruJam(b.jam).localeCompare(ruJam(a.jam)))
-    .map((x) => ({ id: String(x.id), tanggal: String(x.tanggal || ''), jam: ruJam(x.jam), oleh: String(x.oleh || ''), koleksi: String(x.koleksi || ''), tanggalDok: String(x.tanggalDok || ''),
-      ringkas: String(x.ringkas || ''), alasan: String(x.alasan || ''), jenisBatal: String(x.jenisBatal || ''),
-      bisaPulih: (x.jenisBatal === 'uang' || x.jenisBatal === 'barang') && Array.isArray(x.dokumen) && x.dokumen.length > 0,   // barang: tahap 2 (riwayat-barang-logika.js rbSusunPulih)
-      sebabTidakPulih: x.jenisBatal === 'uang' || x.jenisBatal === 'barang' ? '' : 'dihapus lewat layarnya sendiri (tanpa salinan utuh) — tidak bisa dipulihkan dari sini' }));
+    .map((x) => {
+      // K-B (23 Nov 2026): salinan catatan bertanggal tahun yang sudah ditutup buku tidak dipulihkan lagi — tombolnya tidak tampil, sebabnya ditulis
+      const ditutup = Array.isArray(x.dokumen) ? x.dokumen.map((d) => tolakBukuDitutup(d && d.data, 'catatannya tidak dipulihkan lagi')).find(Boolean) || '' : '';
+      const salinan = (x.jenisBatal === 'uang' || x.jenisBatal === 'barang') && Array.isArray(x.dokumen) && x.dokumen.length > 0;   // barang: tahap 2 (riwayat-barang-logika.js rbSusunPulih)
+      return { id: String(x.id), tanggal: String(x.tanggal || ''), jam: ruJam(x.jam), oleh: String(x.oleh || ''), koleksi: String(x.koleksi || ''), tanggalDok: String(x.tanggalDok || ''),
+        ringkas: String(x.ringkas || ''), alasan: String(x.alasan || ''), jenisBatal: String(x.jenisBatal || ''), bisaPulih: salinan && !ditutup,
+        sebabTidakPulih: !salinan ? 'dihapus lewat layarnya sendiri (tanpa salinan utuh) — tidak bisa dipulihkan dari sini' : ditutup };
+    });
 }
 /** Pulihkan pembatalan uang `idBatal`: catatan ditulis kembali (id sama), koreksi dibalik menurut keadaan SEKARANG, titipan kembali, baris Dibatalkan dihapus. */
 export function ruSusunPulih(idBatal, w) {
@@ -224,11 +230,12 @@ export function ruSusunPulih(idBatal, w) {
   if (x.jenisBatal !== 'uang' || !Array.isArray(x.dokumen) || !x.dokumen.length) return { tolak: 'Yang ini dihapus lewat layarnya sendiri, tanpa salinan utuh — tidak bisa dipulihkan dari sini' };
   for (const d of x.dokumen) {
     if (ruCari(d.koleksi, d.data.id)) return { tolak: 'Catatan ' + d.koleksi + ' dengan nomor yang sama sudah ada lagi — tidak dipulihkan dua kali' };
-    const k = tolakKunci(d.koleksi, d.data, 'bulan itu sudah dikunci — tidak bisa dipulihkan'); if (k) return { tolak: k };
+    const k = tolakKunci(d.koleksi, d.data, 'bulan itu sudah dikunci — tidak bisa dipulihkan') || tolakBukuDitutup(d.data, 'catatannya tidak dipulihkan lagi'); if (k) return { tolak: k };
   }
   const K = x.dokumen.map((d) => ({ koleksi: d.koleksi, data: d.data }));
   // pengaruh catatan dihitung dari salinannya (catatannya sedang tidak ada di buku): efek tersimpan saat dibatalkan
   const R = ruKoreksiPulih(K, x, w.kini);
+  for (const d of R.dokumen) { const k = tolakBukuDitutup(d.data, 'tutup hari & patokan kas ' + String(d.data.tanggal || '').slice(0, 4) + ' tidak diubah lagi'); if (k) return { tolak: k }; }
   const tt = (x.titipan || []).filter((p) => { const kini = cacheMentah('persetujuan').find((m) => String(m.id) === String(p.id)); return kini && kini.batalOwner === String(idBatal); });
   return { dokumen: K.map((d) => ({ koleksi: d.koleksi, data: d.data })).concat(R.dokumen, tt.map((p) => ({ koleksi: 'persetujuan', data: p }))), hapus: [{ koleksi: 'bukuHapus', id: String(idBatal) }],
     jejakHapus: 'Pulihkan: ' + String(x.ringkas || ''), patch: { kabar: 'Dipulihkan — ' + String(x.ringkas || '') + ' kembali di buku' + (R.akibat.length ? '. ' + R.akibat.join(' · ') : '') + (tt.length ? ' · titipan tablet kembali disetujui' : ''), kabarAwas: false } };

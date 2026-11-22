@@ -154,6 +154,14 @@ terapkanKeCache(['7000011', '7000012', '7100001'].map(function (id) { return { k
 
 // ---------- 7 · yang tidak lewat sini & bulan terkunci ----------
 ok('kedatangan tampil tanpa tombol (koreksi / hapus di Stok › Barang masuk)', rbDaftar('2026-09-10', '').some(function (b) { return /^Kedatangan/.test(b.jenis) && !b.bisa && /Barang masuk/.test(b.sebab); }), rbDaftar('2026-09-10', ''));
+// gladi ulang 23 Nov 2026 (keputusan owner K-B): tahun yang sudah ditutup buku — wadah & pindah tempat tidak ikut diarsip (pasangannya sudah), dulu masih bertombol
+// Batalkan sesudah ritual dengan kabar "karung balik ke tumpukan" yang tidak terjadi; salinan di Dibatalkan bisa dipulihkan ke tahun yang sudah ditutup
+var modalAsli = cacheMentah('modal').slice();
+pasok('modalOwner', modalAsli.concat([{ id: 'rb-pembuka26', tanggal: '2026-12-31', jam: '00:00', nominal: 1000000, tutupBuku: true, tahunDari: 2026, catatan: 'Saldo pembuka modal owner (kotak pasir)' }]));
+var bTd = baris('barang|penyesuaianStok|' + pc.id); var tTd = rbPeriksa('penyesuaianStok', pc.id).tolak || ''; var pTd = rbSusunPulih(Apa, WJ('09:10')).tolak || '';
+ok('tahun ditutup: baris barang 2026 tanpa tombol Batalkan, batal & pulihkan DITOLAK di pintu masuk', eraBuku() === 2026 && bTd && !bTd.bisa && /2026 sudah ditutup buku/.test(bTd.sebab) && /2026 sudah ditutup buku/.test(tTd) && /2026 sudah ditutup buku — catatannya tidak dipulihkan lagi/.test(pTd), [eraBuku(), bTd, tTd, pTd]);
+pasok('modalOwner', modalAsli);
+ok('tanpa tutup buku: barang 2026 kembali bisa dibatalkan', eraBuku() === null && !rbPeriksa('penyesuaianStok', pc.id).tolak, rbPeriksa('penyesuaianStok', pc.id).tolak);
 pasok('aturanToko', cacheMentah('aturan').concat([{ id: 'kunciPeriode', sampaiBulan: '2026-09', riwayat: [] }]));
 ok('bulan terkunci: batal & pulihkan ditolak', /dikunci/.test(rbPeriksa('penyesuaianStok', pc.id).tolak || '') && /dikunci/.test(rbSusunPulih(Apa, WJ('09:10')).tolak || ''), [rbPeriksa('penyesuaianStok', pc.id).tolak, rbSusunPulih(Apa, WJ('09:10')).tolak]);
 pasok('aturanToko', cacheMentah('aturan').filter(function (x) { return x.id !== 'kunciPeriode'; }));
@@ -287,7 +295,11 @@ def main():
             ('pindah stok terpakai boleh dibatalkan', RBL, R.replace("if (ada + 0.005 < (Number(ke.data.kg) || 0)) return", "if (false) return")),
             ('pindah tempat lama boleh dibatalkan', RBL, R.replace("if (RB_AMBIL.pindahTempat().some((p) => String(p.kunci) === String(d.kunci) && String(p.id) !== String(d.id) && rbSesudah(p, d))) return", "if (false) return")),
             ('batal pindah tempat tidak mengembalikan peta', RBL, R.replace("if (d.dari) peta[d.kunci] = d.dari; else delete peta[d.kunci];", "")),
-            ('bulan terkunci boleh dibatalkan', RBL, R.replace("for (const x of g.anggota) { const k = tolakKunci(x.koleksi, x.data, 'bulan itu sudah dikunci — catatan tidak bisa dibatalkan lagi'); if (k) return { tolak: k }; }", "")),
+            ('bulan terkunci boleh dibatalkan', RBL, R.replace("for (const x of g.anggota) { const k = tolakKunci(x.koleksi, x.data, 'bulan itu sudah dikunci — catatan tidak bisa dibatalkan lagi') || tolakBukuDitutup(x.data, 'catatan tidak dibatalkan lagi'); if (k) return { tolak: k }; }", "")),
+            # gladi ulang 23 Nov 2026 (K-B): tahun yang sudah ditutup buku
+            ('tahun ditutup: batal barang 2026 diterima', RBL, R.replace(" || tolakBukuDitutup(x.data, 'catatan tidak dibatalkan lagi'); if (k) return { tolak: k }; }", "; if (k) return { tolak: k }; }")),
+            ('tahun ditutup: tombol Batalkan barang tetap hidup', RBL, R.replace("const sebab = g.sebab || tolakBukuDitutup(d, 'tidak dibatalkan lagi');", "const sebab = g.sebab;")),
+            ('tahun ditutup: pulihkan barang ke tahun yang sudah ditutup diterima', RBL, R.replace(" || tolakBukuDitutup(d.data, 'catatannya tidak dipulihkan lagi'); if (k) return { tolak: k };", "; if (k) return { tolak: k };")),
             ('kedatangan boleh dibatalkan di sini', RBL, R.replace("tambah('kedatangan', [{ koleksi: 'batchMasuk', data: b }], RB_SEBAB.kedatangan)", "tambah('kedatangan', [{ koleksi: 'batchMasuk', data: b }], '')")),
             ('aktivasi wadah boleh dibatalkan', RBL, R.replace("pindah(d, () => true).forEach((p) => A.push(ambil('produksiKemasan', p))); tambah('aktivasi', A, RB_SEBAB.aktivasi);", "pindah(d, () => true).forEach((p) => A.push(ambil('produksiKemasan', p))); tambah('aktivasi', A, '');")),
             ('batal tanpa alasan', RBL, R.replace("if (!a) return { tolak: 'Membatalkan butuh alasan' };", "")),
