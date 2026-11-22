@@ -3330,3 +3330,16 @@ pindah aplikasi / ganti orang. (3) **Jejak**: kiriman selama masuk lewat jari be
 Dinyalakan / dimatikan DI TABLET oleh orang itu sesudah masuk PIN (Menu tablet › Sidik jari owner; nyala = pasang penanda + tempel jari, simpanan
 perangkat `miqbal_sidik_owner_v1`). Penanda HANGUS (ada jari baru) / hilang = mati; hangus → pesan otomatis ke owner sekali begitu ada orang jaga.
 Tahap B (owner menyetujui di tablet) belum. Alat uji `alat-uji/uji_sidik_tablet.py` (jsc + kontrol).
+
+**Riwayat & batal — tahap 1 UANG (owner 22 Nov 2026):** owner sering salah catat → batal untuk semua catatan uang yang belum punya; owner saja
+(tablet tidak). Menu › Toko ini › **Riwayat & batal** (`sistem: 'riwayat'`), logika `baru/js/layar/riwayat-uang-logika.js` (awalan `ru`, tanpa
+DOM & tanpa menulis sendiri). Tab **Uang**: catatan uang per hari (geser hari) & per orang; **Batalkan** = alasan wajib (Salah catat / Tercatat dua
+kali / Uji coba / ketik) + ketukan kedua; akibatnya tertulis sebelum tombol. Batal = catatan + pendampingnya (biaya admin pindah uang, ambilan amplop
+`amk-`, pasangan pinjaman owner ↔ modal, pasangan saling lunas) disalin utuh ke `bukuHapus` (`jenisBatal: 'uang'`, `dokumen`, `efek`, `koreksi`) lalu
+dihapus dari buku. Hari yang SUDAH ditutup (penutupan dengan jam ≥ jam catatan): `selisih`/`selisihLaci` digeser sebesar efek laci, `kasSeharusnya`
+ikut, jejak `koreksiBatal` (pola batal nota `bnTutup`) — tanpa ini laba kena dua kali. Rekening / brankas / amplop di dalam titik kas: patokan titik
+dibetulkan + `diubahPada` maju 1 ms (salinan perangkat lama tidak menang). Titipan tablet asal catatan → persetujuan `ditolak` + "Dibatalkan owner: …".
+Ditolak: bulan terkunci, kasbon yang sisanya jadi minus, catatan buatan tutup hari (MDR, amankan, sisihan, setoran), saldo pembuka, pembayaran bersama
+nota (→ Jual › Riwayat), bon pemasok/piutang non-bayar. Upah & biaya bulanan tampil tanpa tombol (menyusul). Tab **Dibatalkan**: semua baris
+`bukuHapus`; **Pulihkan** (hanya batal uang: catatan ditulis lagi dengan id sama, koreksi dibalik, ditolak bila id sama sudah ada lagi) dan **Hapus
+permanen** (hanya baris arsip). Rules tetap (bukuHapus owner saja). Alat uji `alat-uji/uji_riwayat_uang.py` (jsc + statis + kontrol).
