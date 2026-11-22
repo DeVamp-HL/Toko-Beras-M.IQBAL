@@ -3312,3 +3312,11 @@ dokumen sisa satu bagian); `terbitkan` tetap menunggu SEMUA bagian. Gladi = matr
 kelompok (nomor modulo 3), tiap skenario & kontrol tetap di emulator sendiri, artefak per bagian. **Langkah CI baru wajib diberi `if:` bagian** —
 dijaga `alat-uji/periksa_ci.py` (+ kontrol): langkah di bagian yang tidak ada di matriks = hijau palsu (tidak pernah jalan), tanpa `if:` = jalan di
 semua bagian.
+
+**Sidik jari owner — langkah 1 "cek sensor dulu" (owner 22 Nov 2026):** Android hanya tahu "jari ini terdaftar", bukan jari siapa, dan PIN layar
+kunci tablet bukan pengaman (staf pasti dikasih PIN waktu layar terkunci). Keputusan: hanya jari owner yang didaftarkan, dan sidik jari owner di aplikasi
+toko HANYA dibangun bila tablet bisa memasang **penanda jari baru** — kunci AES di AndroidKeyStore (alias `miqbal_penanda_jari`, wajib sidik jari KUAT
+tiap pemakaian, `setInvalidatedByBiometricEnrollment`) yang hangus sendiri begitu ada jari baru didaftarkan. Plugin `Biometrik` (APK): + `kelas`,
+`penandaPasang`, `penandaCek`, `penandaHapus`, `ujiKunci` (CryptoObject); pembungkus `sidikJariKelas`, `penandaPasang/Cek/Hapus`, `sidikJariKunci`,
+`penandaTolak` (`inti/perangkat.js`); layar Perangkat (`uji-cetak`) berisi tombol & petunjuk uji owner (pasang → uji kunci → daftarkan satu jari lain
+milik owner → cek wajib HANGUS → hapus). Belum ada fitur toko yang memakainya; Tahap A (masuk owner dengan jari, intip uang, jejak) menunggu hasil CPad.
