@@ -156,6 +156,8 @@ async function selesai(tahun, w) { var SL = susunSelesai(tahun, 'cadangan-sesuda
 // ==================== P0 · tutup buku 2026 (tanpa bulan terkunci) ====================
 async function siapkan2026() {
   KOLEKSI.forEach(function (k) { pasok(k.nama, []); }); Object.keys(KOTAK).forEach(function (n) { pasok(n, salin(KOTAK[n])); });
+  // gladi ulang 23 Nov 2026 (K-C): titipan tablet kotak pasir yang masih menunggu diputus dulu — tanpa itu g9 menahan tutup buku
+  pasok('persetujuan', cacheMentah('persetujuan').map(function (m) { return m.tindakan === 'uangKeluar' && (m.status || 'menunggu') === 'menunggu' ? Object.assign({}, m, { status: 'ditolak', alasanTolak: 'kotak pasir: diputus sebelum tutup buku' }) : m; }));
   localStorage.setItem('miqbal_titik_kas_v1', J({ tanggal: '2026-12-31', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }));
   SRV.arsip = {}; putusSemua();
   SRV.fase = 'P0 tutup buku 2026'; var w = jam('2027-01-05T10:00:00+07:00');

@@ -3382,3 +3382,28 @@ CryptoObject tiap pakai, hangus bila ada jari baru); halaman menyimpan hanya `{d
 bukan isian/draf). Penulis `firebase.js tulisSebagaiOwner`: app Firebase kedua `ownerTablet`, auth `inMemoryPersistence`, cache memori (impor SDK dinamis —
 SDK palsu uji peramban tidak berubah), offline ditolak, `jagaKunci`, pencatat setelan, jejak bertanda `lewat`, `await commit`, `signOut` di finally. Rules
 tetap. Alat uji `alat-uji/uji_owner_tablet.py` (jsc + render kartu + statis + kontrol); kontrak plugin di `uji_perangkat_sunmi.py`.
+
+## Gladi ulang tutup buku 2026 atas cadangan 23 Nov — fitur November × tahun yang ditutup (23 Nov 2026, cabang `perbaikan/tutup-buku-fitur-nov`)
+
+Gladi ulang semua alat tutup buku atas cadangan toko 23 Nov (lokal, `_privat/`): ritual lulus (14 baris sama, kartu pemeriksaan 27/27, Batalkan persis). Yang
+ketahuan dari fitur sesudah gladi Oktober, dibetulkan atas keputusan owner 23 Nov (K-A, K-B, K-C — semua saran diambil):
+- **K-B · Riwayat & batal tidak menyentuh tahun yang sudah ditutup buku.** `pindahUang`, `wadahLiteran`, `pindahTempat` (juga `slipUpah`) TIDAK ikut diarsip
+  (`tbDaftarKoleksi`), jadi sesudah ritual catatan 2026-nya masih tampil bertombol Batalkan: membatalkan pindah uang 2026 menulis ulang patokan kas 31 Des
+  (kas pembuka 2027), barang membatalkan sisa kelompok yang pasangannya sudah di arsip (kabar bohong), dan salinan 2026 di
+  tab Dibatalkan bisa dipulihkan ke tahun yang sudah ditutup (catatan susulan; cocokkan mengubah stok tahun baru). Satu penjaga `toko.js tolakBukuDitutup(dok,
+  apa)` (era = `tahunDitutup`) dipakai berdampingan dengan `tolakKunci` di `ruBaris`/`ruPeriksa` (anggota + koreksi tutup hari / titik kas)/`ruSusunPulih`/
+  `ruDibatalkan` dan `rbBaris`/`rbPeriksa`/`rbSusunPulih`: baris tanpa tombol, kalimat "Tahun 2026 sudah ditutup buku — …; betulkan dengan catatan hari ini".
+- **K-A · uang muka pesanan tidak menyeberang tahun.** Uang muka = `piutangMutasi` bayar ber-`untukPesanan` (diarsip), pesanannya belum tuntas (tidak diarsip)
+  → nota Januari tidak terpotong, pemesan ditagih dua kali; g6 menahan dengan saran salah ("kembalikan uangnya"). Kini butir **g8** "Tidak ada pesanan
+  ber-uang muka yang belum jadi nota" (`bkUangMukaTerbuka`, pembayaran ≤ 31 Des, pengembalian minus ikut dijumlah) dan jalan g6 untuk nama itu menunjuk
+  Jual › Pesanan. Dibawa menyeberang otomatis = tidak (keputusan owner: jadikan nota / batalkan sebelum ritual).
+- **K-C · titipan uang tablet bertanggal tahun itu yang menunggu** (`persetujuan` `uangKeluar`, `bkTitipanMenunggu`) = butir **g9**; disetujui sesudah ritual =
+  uang keluar bertanggal tahun lama. g8 & g9 juga di pintu masuk `susunKunci` (seperti g1/g6/g7), `bisaLewati: false`.
+- **Arus kas berkop lintas tahun:** sebelum ritual kas awal akhir bulan yang tidak terhitung titik kas (titik lebih muda) jatuh ke hitungan fisik tutup hari
+  akhir bulan itu (`lpKasPadaLintas` → `lpKasAkhirBulan`) — sumber yang sama dengan potret sesudah ritual. Dulu sebelum "belum bisa dihitung", sesudah Rp….
+- Kotak pasir `uji_uang_baru` (titipan contoh 19 Sep menunggu) kini menahan tutup buku lewat g9 — alat tutup buku memutusnya dulu (`uji_tutup_buku_bertahap`,
+  `uji_tutup_buku_2027` kotak(), `uji_uang_baru` K6 memeriksa g9 berbunyi lalu memutusnya).
+
+Alat uji: `uji_riwayat_uang.py` (+5 skenario, +5 kontrol), `uji_riwayat_barang.py` (+2, +3), `uji_tutup_buku_bertahap.py` S-A10 (+5, +6 kontrol),
+`uji_potret_tahun.py` P2b (+1, +1 kontrol), `uji_uang_baru.py` (+1). Asap cadangan toko 23 Nov: bertahap, potret, pemeriksaan sesudah, belanja lulus; sesudah
+ritual 0 catatan 2026 bertombol Batalkan (dulu 47 uang + 973 barang). Laporan gladi untuk owner: di luar repo (catatan sesi).

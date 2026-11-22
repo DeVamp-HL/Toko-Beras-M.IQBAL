@@ -343,6 +343,14 @@ coba('P10', function () {
   tulis(susunProfilPajak({ statusPasangan: 'belumDiketahui', batasBebas: '500.000.000', tahunPajak: 2026 }, w));
   ok('dikembalikan ke aturan saat dikunci → tanda hilang, PPh 2026 = semula', !pjTahun(2026, k).aturanSejakTutup && pjTahun(2026, k).totalPph === pph0, pjTahun(2026, k).aturanSejakTutup);
 });
+// ---- P2b (gladi ulang 23 Nov 2026, cadangan toko November): titik kas LEBIH MUDA dari akhir bulan sebelum periode arus kas. Sesudah ritual kas awal dibaca dari
+// potret (hitungan fisik tutup hari akhir bulan); sebelum ritual dulu "belum bisa dihitung" → sebelum ≠ sesudah. Kini dua sisi dari hitungan tutup hari yang sama.
+coba('P2b', function () {
+  var w = persiapkan(jam('2027-01-05T10:00:00+07:00')); localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-12-15', laci: 2600000, brankas: 12000000, rekening: 9200000, amplop: 0 }));
+  var awal = function () { var L = laporanBerkop('aruskas', '2026-12', 1, new Date(__KINI)); return L.baris[0].nama + '=' + L.baris[0].teks; };
+  var sebelum = awal(); var R = ritual(w); var sesudah = R.tolak ? 'ritual ditolak: ' + R.tolak.slice(0, 200) : awal();
+  ok('P2b arus kas Desember 2026, titik kas 15 Des: kas awal = hitungan tutup hari 30 Nov (Rp23.500.000) SEBELUM dan SESUDAH ritual', sebelum === sesudah && /^Kas awal periode=Rp23\.500\.000$/.test(sebelum), [sebelum, sesudah]);
+});
 """
 
 # ---------- P9 · laporan.js ASLI digambar di jsc (pasang/delegasi/jadwal diganti penangkap; tanpa DOM) ----------
@@ -493,6 +501,7 @@ RUSAK = [
     ('bon pecahan saldo awal mulai dari nilai aslinya, bukan sisanya', 'baru/js/layar/laporan-logika.js', "sisa: Math.max(0, (utang[j].sub ? utang[j].sisaAwal : utang[j].nominal) || 0) };", "sisa: Math.max(0, utang[j].nominal || 0) };"),
     ('arus kas lintas tahun belum final: kas awal tidak dari potret (hilang sesudah ritual)', 'baru/js/layar/laporan-logika.js', "const kasAwal = KW ? KW.kas : lpKasPadaLintas(sebelumIso);", "const kasAwal = KW ? KW.kas : kasPada(sebelumIso);"),
     ('potret tanpa kas titik akhir bulan', 'baru/js/layar/potret-logika.js', "    kasTitik: kasPada(akhirBulanIso(key)),\n", ""),
+    ('arus kas: kas awal sebelum ritual tanpa hitungan tutup hari akhir bulan (sebelum ≠ sesudah)', 'baru/js/layar/laporan-logika.js', "if (k !== null || iso !== akhirBulanIso(lpKey(iso))) return k;", "return k;"),
     ('Cincin tidak membaca potret hari (pembanding tahun lalu absen)', 'baru/js/layar/ringkasan-logika.js', "const P = tahunDiarsip(y + '-01-01') ? potretTahun(y) : null;", "const P = null;"),
     ('Cincin: kemarin jam segini di hari tutup buku dihitung Rp0', 'baru/js/layar/ringkasan-logika.js', "const ketKmr = rkKetJam(ix, kemarin);", "const ketKmr = '';"),
     ('Cincin: margin minggu yang menyeberang ke tahun tutup buku hanya dari catatan hidup', 'baru/js/layar/ringkasan-logika.js', "  const arsip = ix && ix.arsip ? Object.keys(ix.arsip).filter(cocok) : [];", "  const arsip = [];"),

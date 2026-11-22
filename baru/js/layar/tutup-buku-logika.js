@@ -26,7 +26,7 @@
 // acara 'selesai' / 'dibatalkan' selalu satu kiriman dengan pintu yang ditutup (server menolaknya bila pintu tahun itu masih terbuka).
 import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungPiutang, hitungKasbon, hitungUtangPemasok, hitungUtangOwner, saldoAmplop } from '../mesin/beku.js';
 import { tbCutoff, tbPunyaBerat, kunciPelanggan, merkPunyaKarungBerat, labelBahan, pesananBelumTuntas, KOLEKSI_PESANAN } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilPesanan, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, pintuBuku, pintuDari, petaStokWadah, petaBukuWadah, petaUkuran, ukuranDigabung, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache, hapusTertunda, CACHE_PEMBUKA, eraBuku, ringkasKreditLaju, kunciNota, versiCache, ingatStokKarung, ingatStokKemasan, denganCacheSaring } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPesanan, ambilPiutangMutasi, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, pintuBuku, pintuDari, petaStokWadah, petaBukuWadah, petaUkuran, ukuranDigabung, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache, hapusTertunda, CACHE_PEMBUKA, eraBuku, ringkasKreditLaju, kunciNota, versiCache, ingatStokKarung, ingatStokKemasan, denganCacheSaring } from '../data/toko.js';
 import { KOLEKSI } from '../data/koleksi.js';
 import { KP_BATAS_GET, kpPotong, kpNilaiKiriman, kpBulanDok, kpBebas, kpIdx, kpWib, kpNamaBulan, KP_ID_PINTU, KP_PINTU_JAM, KP_PINTU_SISA_JAM, kpPecahBiaya } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, jamKini, tanggalPendek, lebihBayarDari, kalimatLebih } from '../inti/format.js';
@@ -134,7 +134,7 @@ export function gerbangBuku(tahun, kini, lokal, lewati) {
   const t = kini.getTime(); const lain = cacheMentah('perangkat').filter((d) => String(d.id) !== String(L.idPerangkat || '') && d.pada && t - new Date(d.pada).getTime() < 15 * 60000).map((d) => d.nama || d.id);
   const karcis = ambilPenjualan().filter((p) => p.tanggal && p.tanggal.slice(0, 4) === String(tahun) && (p.jenis === 'kasir_darurat_nominal' || p.perluKoreksi)).length;   // yang masih berlaku saja — persis daftarDaruratBelumRinci & daftarPerluRapikan
   const nAntre = (L.antre || []).length + (Number(L.menunggu) || 0);
-  const M = minusBuku(sampai);
+  const M = minusBuku(sampai); const UM = bkUangMukaTerbuka(tahun); const TT = bkTitipanMenunggu(tahun);
   const g = [
     { id: 'g1', teks: 'Semua hari berjualan tahun ' + tahun + ' sudah ditutup — atau diputus "tidak ditutup — diterima apa adanya"', ok: belumPutus.length === 0,
       ket: !belumTutup.length ? 'semua hari berjualan punya penutupan' : belumPutus.length ? belumPutus.length + ' hari belum ditutup & belum diputus: ' + belumPutus.slice(0, 3).map(tanggalPendek).join(', ') + (belumPutus.length > 3 ? ' …' : '') + (belumTutup.length > belumPutus.length ? ' · ' + (belumTutup.length - belumPutus.length) + ' hari sudah diputus' : '')
@@ -148,6 +148,15 @@ export function gerbangBuku(tahun, kini, lokal, lewati) {
     { id: 'g6', teks: 'Tidak ada stok minus atau kelebihan bayar per ' + tanggalPendek(sampai), ok: !M.n,
       ket: M.n ? M.n + ' hal — ' + M.daftar.slice(0, 3).map((x) => x.teks).join(' · ') + (M.n > 3 ? ' · …' : '') + '. Kalau dibiarkan, angkanya hilang dari buku saat tahun ditutup.' : 'tidak ada buku yang minus, tidak ada yang dibayar lebih',
       aksi: M.n ? 'Bereskan satu per satu (jalannya di tiap baris)' : '', bisaLewati: false, rincian: M.daftar },
+    // gladi ulang 23 Nov 2026 (keputusan owner K-A): uang muka TIDAK menyeberang tahun — pembayarannya ikut arsip, pesanannya (masih berjalan) tidak, sehingga nota
+    // Januari tidak terpotong dan pemesan ditagih dua kali. Pesanan ber-uang muka dijadikan nota atau dibatalkan SEBELUM ritual.
+    { id: 'g8', teks: 'Tidak ada pesanan ber-uang muka yang belum jadi nota', ok: !UM.length,
+      ket: UM.length ? UM.length + ' pesanan — ' + UM.slice(0, 3).map((x) => x.nama + ' ' + RP(x.uangMuka) + ' (pesanan ' + tanggalPendek(x.tanggal) + ')').join(' · ') + (UM.length > 3 ? ' · …' : '') + '. Uang muka tidak menyeberang tahun.' : 'tidak ada',
+      aksi: UM.length ? 'Jual › Pesanan: jadikan nota (barangnya diserahkan), atau batalkan pesanannya — sebelum ritual' : '', bisaLewati: false },
+    // keputusan owner K-C: titipan uang tablet bertanggal tahun itu yang masih menunggu — disetujui sesudah ritual = uang keluar bertanggal tahun lama (susulan)
+    { id: 'g9', teks: 'Tidak ada titipan uang tablet bertanggal ' + tahun + ' yang menunggu diputus', ok: !TT.length,
+      ket: TT.length ? TT.length + ' titipan — ' + TT.slice(0, 3).map((m) => tanggalPendek(m.tanggal) + ' ' + String(m.dari || '?') + ' ' + RP(Number(m.nominal) || 0)).join(' · ') + (TT.length > 3 ? ' · …' : '') : 'tidak ada',
+      aksi: TT.length ? 'Setujui atau tolak dulu — Uang › Uang keluar (titipan dari tablet), atau kartu Putusan owner di tablet' : '', bisaLewati: false },
   ];
   // owner 7 Okt (hemat baca nyala): tutup buku (setahun sekali) dimulai hanya sesudah perangkat ini membaca penuh SEMUA koleksi di sesi ini — angka 31 Des tidak
   // boleh dari simpanan yang belum terperiksa. Hemat baca mati: butir ini tidak ada (daftar sama dengan sebelumnya).
@@ -162,13 +171,30 @@ export function gerbangBuku(tahun, kini, lokal, lewati) {
  * membawa sisa > 0: kemasan & kantong minus dibuang diam-diam, beras minus jadi baris pembuka bermodal 0, kelebihan bayar pelanggan / ke pemasok / ke owner &
  * kasbon yang dibayar lebih lenyap bersama catatan pembayarannya. Ambang sama dengan mesin (0,01 kg; 0,5 rupiah).
  */
+/**
+ * Gladi ulang 23 Nov 2026 (K-A): pesanan yang belum jadi nota / belum batal dan punya uang muka (pembayaran bon ber-untukPesanan, pengembalian bernilai minus)
+ * bertanggal ≤ 31 Des tahun itu. → [{ id, nama, tanggal, uangMuka }]
+ */
+export function bkUangMukaTerbuka(tahun) {
+  const c = tbCutoff(tahun); const um = {};
+  ambilPiutangMutasi().forEach((m) => { if (m && m.tipe === 'bayar' && m.untukPesanan && String(m.tanggal || '') <= c) um[String(m.untukPesanan)] = (um[String(m.untukPesanan)] || 0) + (Number(m.nominal) || 0); });
+  return (ambilPesanan() || []).filter((p) => p && pesananBelumTuntas(p) && (um[String(p.id)] || 0) > 0.5)
+    .map((p) => ({ id: String(p.id), nama: String(p.namaPelanggan || '?'), tanggal: String(p.tanggal || ''), uangMuka: Math.round(um[String(p.id)]) }));
+}
+/** K-C: titipan uang dari tablet (persetujuan 'uangKeluar') bertanggal ≤ 31 Des tahun itu yang masih menunggu diputus. */
+export function bkTitipanMenunggu(tahun) {
+  const c = tbCutoff(tahun);
+  return cacheMentah('persetujuan').filter((m) => m && m.tindakan === 'uangKeluar' && (m.status || 'menunggu') === 'menunggu' && String(m.tanggal || '') <= c);
+}
 export function minusBuku(sampai) {
   const d = []; const tambah = (jenis, teks, jalan) => d.push({ jenis, teks, jalan });
   const K = ingatStokKarung(sampai); Object.keys(K).sort().forEach((m) => { const s = K[m].sisaKg; if (s <= -0.01) tambah('beras', 'Buku ' + m + ' minus ' + KG(-s), 'hitung isinya di Stok › Cocokkan (opname), atau catat kedatangan / pindah buku yang terlupa'); });
   const KM = ingatStokKemasan(sampai); Object.keys(KM).sort().forEach((k) => { const s = KM[k]; if (s.sisaUnit < -0.001) tambah('kemasan', s.namaProduk + ' ' + String(s.ukuranKemasan).replace('.', ',') + ' kg minus ' + ANGKA(-s.sisaUnit) + ' kantong', 'hitung kemasannya di Stok › Cocokkan › kemasan, atau catat adukan yang terlupa'); });
   const BK = hitungStokBahanKemasan(sampai), BL = hitungStokBahanLiteran(sampai);
   [[BK, 'kantong kemasan'], [BL, 'kantong literan']].forEach(([peta, jenis]) => Object.keys(peta).sort().forEach((j) => { if (peta[j].sisaPcs < -0.001) tambah('kantong', labelBahan(j) + ' minus ' + ANGKA(-peta[j].sisaPcs) + ' lembar', 'hitung ' + jenis + ' di Stok › Kantong, atau catat pembelian kantong yang terlupa'); }));
-  lebihBayarDari(hitungPiutang(sampai)).orang.forEach((o) => tambah('pelanggan', o.nama + ': ' + kalimatLebih(o), o.uang > 0.5 ? 'kembalikan uangnya atau catat bon yang terlupa (Pelanggan)' : 'balik hapus bukunya (Pelanggan)'));
+  // K-A: kelebihan yang lahir dari uang muka pesanan yang belum jadi nota — jalannya jadikan nota / batalkan pesanannya (butir g8), bukan "kembalikan uangnya"
+  const um = {}; bkUangMukaTerbuka(Number(String(sampai).slice(0, 4))).forEach((x) => { um[kunciPelanggan(x.nama)] = true; });
+  lebihBayarDari(hitungPiutang(sampai)).orang.forEach((o) => tambah('pelanggan', o.nama + ': ' + kalimatLebih(o), um[kunciPelanggan(o.nama)] ? 'uang muka pesanan yang belum jadi nota — jadikan notanya atau batalkan pesanannya (Jual › Pesanan)' : o.uang > 0.5 ? 'kembalikan uangnya atau catat bon yang terlupa (Pelanggan)' : 'balik hapus bukunya (Pelanggan)'));
   hitungUtangPemasok(sampai).forEach((px) => { if ((px.tekor || 0) > 0.5) tambah('pemasok', 'Bayar ke ' + px.pemasok + ' lebih ' + RP(px.tekor) + ' dari semua bon yang tercatat', 'catat bon / kedatangan berutang yang terlupa (Harga & Pemasok), atau catat uang yang dikembalikan pemasok'); });
   const uo = hitungUtangOwner(sampai); if ((uo.tekor || 0) > 0.5) tambah('owner', 'Toko membayar owner lebih ' + RP(uo.tekor) + ' dari utang yang pernah tercatat', 'catat belanja toko yang dibayar dompet owner tapi terlupa (Uang › Owner & toko)');
   hitungKasbon(sampai).forEach((x) => { if (x.sisa < -0.5) tambah('kasbon', 'Kasbon ' + x.nama + ' dibayar lebih ' + RP(-x.sisa), 'catat kasbon yang terlupa, atau kembalikan kelebihannya (Uang › Orang & upah)'); });
@@ -519,7 +545,8 @@ export function susunKunci(tahun, D, w, L) {
   // siap 2027 (pintu masuk, bukan hanya layar): hari tanpa tutup hari yang belum diputus (g1) dan stok minus / kelebihan bayar (g6) menolak kunci SUNGGUHAN.
   // Sanggahan 7 Okt (#111): kelengkapan hemat baca (g7) juga di PINTU — sesudah unduh cadangan, arsip, saldo & paraf berdua, potret & saldo pembuka disusun
   // dari seluruh buku perangkat ini; layar langkah 1 saja tidak cukup. L = lokal() layar (membawa `hemat` saat nyala); mati / tanpa L: g7 tidak ada (sama dulu)
-  const G = gerbangBuku(tahun, ugKiniDari(w), L || {}, {}); const gTolak = G.daftar.filter((g) => (g.id === 'g1' || g.id === 'g6' || g.id === 'g7') && !g.ok);
+  // gladi ulang 23 Nov 2026: pesanan ber-uang muka (g8) & titipan tablet menunggu (g9) juga di pintu
+  const G = gerbangBuku(tahun, ugKiniDari(w), L || {}, {}); const gTolak = G.daftar.filter((g) => (g.id === 'g1' || g.id === 'g6' || g.id === 'g7' || g.id === 'g8' || g.id === 'g9') && !g.ok);
   if (gTolak.length) return { tolak: 'Periksa dulu belum beres — ' + gTolak.map((g) => g.teks + ': ' + g.ket).join(' · ') };
   const T0 = titikTahun(tahun); const sebelum = barisBuku(T.cutoff, T.cutoff, T0); const P = pembukaBuku(tahun, w); const B = bandingBuku(sebelum, sesudahDariPembuka(P, sebelum));
   if (!B.semuaSama) return { tolak: B.ringkas + ': ' + B.beda.map((b) => b.nama).join(', ') };

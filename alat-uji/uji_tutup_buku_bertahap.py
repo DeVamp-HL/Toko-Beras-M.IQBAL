@@ -95,6 +95,8 @@ function coba(nama, f) { try { f(); } catch (e) { gagal.push(nama + ' → JATUH:
 var TITIK31 = { tanggal: '2026-12-31', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 };
 function kotak(nNama, tambah) {
   KOLEKSI.forEach(function (k) { pasok(k.nama, []); }); Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); });
+  // gladi ulang 23 Nov 2026 (K-C): titipan tablet kotak pasir yang masih menunggu diputus dulu — tanpa itu g9 menahan tutup buku
+  pasok('persetujuan', cacheMentah('persetujuan').map(function (m) { return m.tindakan === 'uangKeluar' && (m.status || 'menunggu') === 'menunggu' ? Object.assign({}, m, { status: 'ditolak', alasanTolak: 'kotak pasir: diputus sebelum tutup buku' }) : m; }));
   pasok('aturanToko', []); pasok('tutupBukuAcara', []); pasok('pengaturan', []); while (arsipSimulasi().length) pulihkanArsip(arsipSimulasi()[0].tahun, []);
   var jual = KOTAK.penjualan.slice(); for (var q = 0; q < nNama; q++) jual.push({ id: 'k' + q, tanggal: '2026-08-' + String(2 + (q % 20)).padStart(2, '0'), jam: '10:00', caraBayar: 'Kredit', jenis: 'karung', merkSumber: 'Angsa', totalKg: 10, beratKarungAcuan: 50, jumlahKarung: 0.2, hargaTotal: 200000, hppTotalSaatJual: 130000, namaPelanggan: 'Pengutang Contoh ' + q });
   (tambah || []).forEach(function (x) { jual.push(x); }); pasok('penjualan', jual);
@@ -819,6 +821,28 @@ coba('S-A5', function () { kotak(3);
   var SB = barisTahun(2026); var BD = bandingBuku(SB, sesudahDariPembuka(pembukaBuku(2026, W), SB)); var beda = BD.beda.map(function (b) { return b.id; });
   ok('A5 baris pembanding tidak lagi buta minus: beras, kemasan, piutang (dibayar LEBIH), utang pemasok (dibayar LEBIH) berbeda sebelum/sesudah', ['beras', 'kemasan', 'piutang', 'utangP'].every(function (k) { return beda.indexOf(k) >= 0; }) && SB.utang[0].n === -5000000 && /dibayar LEBIH/.test(SB.utang[0].nama) && /MINUS/.test(SB.harta[1].nama), J([beda, SB.utang[0], SB.harta[1]])); });
 
+// ---- A10 (gladi ulang 23 Nov 2026, keputusan owner K-A & K-C): pesanan ber-uang muka yang belum jadi nota & titipan uang tablet yang menunggu MENAHAN ritual.
+// Uang muka tidak menyeberang tahun (pembayarannya ikut arsip, pesanannya yang masih berjalan tidak → nota Januari tidak terpotong, pemesan ditagih dua kali);
+// titipan 2026 yang disetujui sesudah ritual = uang keluar bertanggal 2026 (catatan susulan). Dulu g6 menyuruh "kembalikan uangnya" untuk uang muka.
+coba('S-A10', function () { kotak(3);
+  terapkanKeCache([
+    { koleksi: 'pesanan', data: { id: 'um-ps1', tanggal: '2026-12-28', jam: '10:00', namaPelanggan: 'Pemesan Contoh', status: 'dipesan', isi: '2 karung Angsa 50 kg', baris: [] } },
+    { koleksi: 'piutangMutasi', data: { id: 'um-dp1', tipe: 'bayar', namaPelanggan: 'Pemesan Contoh', nominal: 500000, tanggal: '2026-12-28', jam: '10:05', caraBayar: 'Tunai', untukPesanan: 'um-ps1' } },
+    { koleksi: 'persetujuan', data: { id: 'um-tt1', tindakan: 'uangKeluar', status: 'menunggu', tanggal: '2026-12-31', jam: '20:00', dari: 'Penjaga Contoh', nominal: 25000, teks: 'Beli plastik' } }]);
+  putusSemua(); W = jam('2027-01-05T10:00:00+07:00'); var G = gerbangBuku(2026, new Date(__KINI), {}, {}); var g = function (id) { return G.daftar.filter(function (x) { return x.id === id; })[0]; };
+  var g6 = g('g6'), g8 = g('g8'), g9 = g('g9'); var t6 = (g6.rincian || []).map(function (x) { return x.teks + ' — ' + x.jalan; }).join(' | ');
+  ok('A10 g8 MEMBLOKIR pesanan ber-uang muka yang belum jadi nota (nama, rupiah, tanggal pesanan, jalan Jual › Pesanan)', !!g8 && !g8.ok && !g8.bisaLewati && /Pemesan Contoh Rp500\.000 \(pesanan 28 Des/.test(g8.ket) && /Jual › Pesanan/.test(g8.aksi), J(g8));
+  ok('A10 g6: kelebihan yang lahir dari uang muka diberi jalan pesanan, bukan "kembalikan uangnya"', !g6.ok && /Pemesan Contoh/.test(t6) && /uang muka pesanan yang belum jadi nota/.test(t6) && !/Pemesan Contoh[^|]*kembalikan uangnya/.test(t6), t6);
+  ok('A10 g9 MEMBLOKIR titipan uang tablet bertanggal 2026 yang menunggu (tanggal, peminta, rupiah)', !!g9 && !g9.ok && !g9.bisaLewati && /31 Des/.test(g9.ket) && /Penjaga Contoh/.test(g9.ket) && /Rp25\.000/.test(g9.ket), J(g9));
+  var tk = susunKunci(2026, D, W).tolak || ''; ok('A10 susunKunci menolak keduanya (pintu masuk, bukan hanya layar)', /pesanan ber-uang muka/.test(tk) && /titipan uang tablet/.test(tk), tk);
+  // pesanan jadi nota & titipan diputus → lolos; titipan & uang muka bertanggal Januari tidak menahan ritual 2026
+  terapkanKeCache([{ koleksi: 'pesanan', data: { id: 'um-ps1', tanggal: '2026-12-28', jam: '10:00', namaPelanggan: 'Pemesan Contoh', status: 'dibayar', isi: '2 karung Angsa 50 kg', baris: [] } },
+    { koleksi: 'persetujuan', data: { id: 'um-tt1', tindakan: 'uangKeluar', status: 'ditolak', tanggal: '2026-12-31', jam: '20:00', dari: 'Penjaga Contoh', nominal: 25000 } },
+    { koleksi: 'persetujuan', data: { id: 'um-tt2', tindakan: 'uangKeluar', status: 'menunggu', tanggal: '2027-01-02', jam: '08:00', dari: 'Penjaga Contoh', nominal: 10000 } },
+    { koleksi: 'pesanan', data: { id: 'um-ps2', tanggal: '2027-01-02', jam: '09:00', namaPelanggan: 'Pemesan Januari', status: 'dipesan', isi: '1 karung', baris: [] } },
+    { koleksi: 'piutangMutasi', data: { id: 'um-dp2', tipe: 'bayar', namaPelanggan: 'Pemesan Januari', nominal: 100000, tanggal: '2027-01-02', jam: '09:05', caraBayar: 'Tunai', untukPesanan: 'um-ps2' } }]);
+  G = gerbangBuku(2026, new Date(__KINI), {}, {}); ok('A10 sudah jadi nota & diputus → g8 & g9 lolos; titipan & uang muka Januari tidak menahan', g('g8').ok && g('g9').ok, J([g('g8'), g('g9')])); });
+
 // ---- A8 · perkiraan kuota Firestore & jam reset
 coba('S-A8', function () { kotak(40); W = jam('2026-12-20T10:00:00+07:00'); var Q = perkiraanKuota(2026, new Date(__KINI));
   ok('A8 perkiraan untuk 1 Jan 2027 sesudah reset 15.00 WIB: tulis ≥ 2×saldo pembuka + arsip, hapus = arsip, baca ≥ satu muat penuh; batal ≥ 2×arsip baca; kalimat saran jam, Console', Q.rencana === '2027-01-01' && Q.jamReset === 15 && Q.ritual.tulis >= 2 * Q.nPembuka + Q.nArsip && Q.ritual.hapus === Q.nArsip && Q.ritual.baca >= Q.muat && Q.batal.baca >= 2 * Q.nArsip
@@ -1145,6 +1169,12 @@ RUSAK = [
     ('A4 · modal owner tanpa saringan pembuka bertahap', 'baru/js/data/toko.js', "export function ambilModalOwner() { return bkSaring(_cache.modal); }", "export function ambilModalOwner() { return _cache.modal; }"),
     ('A4 · baris modal owner tidak dibandingkan', 'baru/js/layar/tutup-buku-logika.js', "  const lain = [{ id: 'modal',", "  const lain = [{ id: 'modalX',"),
     ('A5 · gerbang g6 dimatikan', 'baru/js/layar/tutup-buku-logika.js', "tanggalPendek(sampai), ok: !M.n,", "tanggalPendek(sampai), ok: true,"),
+    ('A10 · gerbang pesanan ber-uang muka dimatikan', 'baru/js/layar/tutup-buku-logika.js', "teks: 'Tidak ada pesanan ber-uang muka yang belum jadi nota', ok: !UM.length,", "teks: 'Tidak ada pesanan ber-uang muka yang belum jadi nota', ok: true,"),
+    ('A10 · gerbang titipan tablet dimatikan', 'baru/js/layar/tutup-buku-logika.js', "yang menunggu diputus', ok: !TT.length,", "yang menunggu diputus', ok: true,"),
+    ('A10 · pintu masuk tidak memeriksa g8 & g9', 'baru/js/layar/tutup-buku-logika.js', " || g.id === 'g8' || g.id === 'g9') && !g.ok);", ") && !g.ok);"),
+    ('A10 · uang muka pengembalian (minus) / tanggal Januari ikut dihitung', 'baru/js/layar/tutup-buku-logika.js', "if (m && m.tipe === 'bayar' && m.untukPesanan && String(m.tanggal || '') <= c)", "if (m && m.tipe === 'bayar' && m.untukPesanan)"),
+    ('A10 · titipan bertanggal Januari ikut menahan', 'baru/js/layar/tutup-buku-logika.js', "(m.status || 'menunggu') === 'menunggu' && String(m.tanggal || '') <= c);", "(m.status || 'menunggu') === 'menunggu');"),
+    ('A10 · g6 tetap menyuruh "kembalikan uangnya" untuk uang muka', 'baru/js/layar/tutup-buku-logika.js', "um[kunciPelanggan(o.nama)] ? 'uang muka pesanan", "false ? 'uang muka pesanan"),
     ('A5 · baris kemasan buta minus lagi', 'baru/js/layar/tutup-buku-logika.js', "if (!(Math.abs(s.sisaUnit) > 1e-9)) return; unit += s.sisaUnit;", "if (!(s.sisaUnit > 0)) return; unit += s.sisaUnit;"),
     ('A5 · bayar lebih ke pemasok tidak mengurangi baris utang', 'baru/js/layar/tutup-buku-logika.js', "const utangP = up.reduce((a, x) => a + x.totalUtang, 0) - tekorP,", "const utangP = up.reduce((a, x) => a + x.totalUtang, 0),"),
     ('A5 · baris pembuka beras minus dinilai minus (buta)', 'baru/js/layar/tutup-buku-logika.js', "j.beras += Number(m.totalKg) > 0 ? Number(m.subtotalHarga) || 0 : 0;", "j.beras += Number(m.subtotalHarga) || 0;"),

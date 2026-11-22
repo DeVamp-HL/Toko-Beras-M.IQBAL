@@ -14,8 +14,9 @@
 //      + catatan isi + karung bekasnya).
 // TIDAK lewat sini (disebut sebabnya di baris): kedatangan (Stok › Barang masuk: koreksi/hapus), adukan (Stok › Adukan), timbang tutup hari (tutup ulang),
 // rework karantina, aktivasi wadah, pindah buku ganti nama / gabung / pisah ukuran, setelan wadah & nilai karung bekas (tahap 3), beli kantong. Bulan terkunci
-// = ditolak. Batas yang diketahui: karung bekas hari yang sama yang DIHAPUS oleh kiriman (karung "ternyata belum habis") tidak bisa dikembalikan dari sini.
-import { cacheMentah, ambilWadahLiteran, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanLiteran, ambilBahanKemasan, ambilSemuaBatch, tolakKunci } from '../data/toko.js';
+// = ditolak; tahun yang sudah ditutup buku juga (tolakBukuDitutup, keputusan owner K-B 23 Nov 2026 — wadah & pindah tempat tidak ikut diarsip, pasangannya sudah).
+// Batas yang diketahui: karung bekas hari yang sama yang DIHAPUS oleh kiriman (karung "ternyata belum habis") tidak bisa dikembalikan dari sini.
+import { cacheMentah, ambilWadahLiteran, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanLiteran, ambilBahanKemasan, ambilSemuaBatch, tolakKunci, tolakBukuDitutup } from '../data/toko.js';
 import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
 import { tanggalPendek, RP } from '../inti/format.js';
@@ -230,10 +231,10 @@ function rbJenis(g) {
   }
 }
 function rbBaris(g) {
-  const d = g.anggota[0].data; const e = rbJumlahPengaruh(g.anggota);
+  const d = g.anggota[0].data; const e = rbJumlahPengaruh(g.anggota); const sebab = g.sebab || tolakBukuDitutup(d, 'tidak dibatalkan lagi');
   return { kunci: 'barang|' + g.anggota[0].koleksi + '|' + String(d.id), koleksi: g.anggota[0].koleksi, id: String(d.id), tanggal: String(d.tanggal || ''), jam: rbJam(d.jam),
     oleh: String(d.oleh || d.diubahOleh || ''), jenis: rbJenis(g), ket: String(d.alasan || d.catatan || d.keterangan || '').slice(0, 80), efek: e, teksEfek: rbTeksPengaruh(e),
-    anggota: g.anggota.length - 1, bisa: !g.sebab, sebab: g.sebab };
+    anggota: g.anggota.length - 1, bisa: !sebab, sebab };
 }
 /** Riwayat barang hari `iso` (terbaru di atas). saring = nama orang ('' = semua). */
 export function rbDaftar(iso, saring) {
@@ -251,7 +252,7 @@ function rbKelompok(koleksi, id) {
 export function rbPeriksa(koleksi, id) {
   const g = rbKelompok(koleksi, id); if (!g) return { tolak: 'Catatan ini tidak ada (sudah dibatalkan / dihapus?), atau ikut kelompok catatan lain' };
   if (g.sebab) return { tolak: 'Tidak dibatalkan di sini: ' + g.sebab };
-  for (const x of g.anggota) { const k = tolakKunci(x.koleksi, x.data, 'bulan itu sudah dikunci — catatan tidak bisa dibatalkan lagi'); if (k) return { tolak: k }; }
+  for (const x of g.anggota) { const k = tolakKunci(x.koleksi, x.data, 'bulan itu sudah dikunci — catatan tidak bisa dibatalkan lagi') || tolakBukuDitutup(x.data, 'catatan tidak dibatalkan lagi'); if (k) return { tolak: k }; }
   const d = g.anggota[0].data;
   // karung yang dibuka di ketukan ini sudah punya catatan lanjutan (karung bekas lahir di ketukan lain) → yang terbaru dulu
   const ids = g.anggota.filter((x) => x.koleksi === 'wadahLiteran' && x.data.tipe === 'karung').map((x) => String(x.data.id));
@@ -264,7 +265,7 @@ export function rbPeriksa(koleksi, id) {
   if (g.jenis === 'pindahStok') { const ke = g.anggota.find((x) => x.data.tipe === 'masuk'); if (ke) { const ada = (ssStokLokasi()[ke.data.merk] || {})[ke.data.lokasi] || 0;
     if (ada + 0.005 < (Number(ke.data.kg) || 0)) return { tolak: 'Di ' + ke.data.lokasi + ' tinggal ' + rbAngka(ada) + ' kg ' + ke.data.merk + ' — sebagian sudah terpakai, pindahan ini tidak bisa dibatalkan utuh' }; } }
   const e = rbJumlahPengaruh(g.anggota); const R = rbKoreksi(g.anggota, e, -1, 'cek', '');
-  for (const x of R.dokumen) { const k = tolakKunci(x.koleksi, x.data, 'hitungan sesudahnya ada di bulan yang sudah dikunci — tidak bisa dibatalkan lagi'); if (k) return { tolak: k }; }
+  for (const x of R.dokumen) { const k = tolakKunci(x.koleksi, x.data, 'hitungan sesudahnya ada di bulan yang sudah dikunci — tidak bisa dibatalkan lagi') || tolakBukuDitutup(x.data, 'hitungan sesudahnya tidak diubah lagi'); if (k) return { tolak: k }; }
   const akibat = ['Dibatalkan: ' + rbJenis(g) + (g.anggota.length > 1 ? ' (' + g.anggota.length + ' catatan satu ketukan)' : '') + ' — tidak dihitung lagi, salinannya tetap di daftar Dibatalkan'];
   if (g.jenis === 'pindahTempat') akibat.push(String(d.barang || '') + ' kembali ke ' + (d.dari || 'tanpa tempat'));
   if (g.anggota.some((x) => x.koleksi === 'stokBahanLiteran' && x.data.lahirKarungBekas)) akibat.push('Karung bekas yang lahir / dicabut di ketukan itu ikut batal');
@@ -289,13 +290,13 @@ export function rbSusunPulih(idBatal, w) {
   if (x.jenisBatal !== 'barang' || !Array.isArray(x.dokumen) || !x.dokumen.length) return { tolak: 'Yang ini bukan pembatalan barang' };
   for (const d of x.dokumen) {
     if (rbCari(d.koleksi, d.data.id)) return { tolak: 'Catatan ' + d.koleksi + ' dengan nomor yang sama sudah ada lagi — tidak dipulihkan dua kali' };
-    const k = tolakKunci(d.koleksi, d.data, 'bulan itu sudah dikunci — tidak bisa dipulihkan'); if (k) return { tolak: k };
+    const k = tolakKunci(d.koleksi, d.data, 'bulan itu sudah dikunci — tidak bisa dipulihkan') || tolakBukuDitutup(d.data, 'catatannya tidak dipulihkan lagi'); if (k) return { tolak: k };
   }
   const A = x.dokumen.map((d) => ({ koleksi: d.koleksi, data: d.data })); const kepala = A[0].data; const dokumen = A.slice();
   if (x.jenis === 'pindahTempat') { const peta = petaTempat(); if (String(peta[kepala.kunci] || '') !== String(kepala.dari || '')) return { tolak: String(kepala.barang || 'Barang ini') + ' sudah dipindah lagi sesudah dibatalkan — tidak dipulihkan' };
     if (kepala.ke) peta[kepala.kunci] = kepala.ke; else delete peta[kepala.kunci]; dokumen.push({ koleksi: 'pengaturan', data: { id: 'tempatSimpan', peta, diubahPada: w.kini } }); }
   const R = rbKoreksi(A, Object.assign({}, x.efek || rbJumlahPengaruh(A)), 1, x.id, w.kini);
-  for (const d of R.dokumen) { const k = tolakKunci(d.koleksi, d.data, 'hitungan sesudahnya ada di bulan yang sudah dikunci — tidak bisa dipulihkan'); if (k) return { tolak: k }; }
+  for (const d of R.dokumen) { const k = tolakKunci(d.koleksi, d.data, 'hitungan sesudahnya ada di bulan yang sudah dikunci — tidak bisa dipulihkan') || tolakBukuDitutup(d.data, 'hitungan sesudahnya tidak diubah lagi'); if (k) return { tolak: k }; }
   return { dokumen: dokumen.concat(R.dokumen), hapus: [{ koleksi: 'bukuHapus', id: String(idBatal) }], jejakHapus: 'Pulihkan: ' + String(x.ringkas || ''),
     patch: { kabar: 'Dipulihkan — ' + String(x.ringkas || '') + ' kembali di buku' + (R.akibat.length ? '. ' + R.akibat.join(' · ') : ''), kabarAwas: false } };
 }

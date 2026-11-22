@@ -336,6 +336,13 @@ export function kunciTenggang() { return kpTenggang(_cache.aturan); }
 /** Untuk logika layar: '' = boleh; selain itu kalimat "Bulan X terkunci — <pembalik>". Dokumen satu koleksi / satu tanggal. */
 export function tolakKunci(koleksi, dok, pembalik) { const s = kunciSampai(); const b = s ? kpBulanDok(koleksi, dok) : null; return b !== null && b !== undefined && b <= kpIdx(s) ? kpKalimat(kpBulanStr(b), pembalik) : ''; }
 export function tolakKunciTanggal(tgl, pembalik) { const s = kunciSampai(); return s && kpIdx(tgl || null) <= kpIdx(s) ? kpKalimat(kpBulanStr(kpIdx(tgl || null)), pembalik) : ''; }
+// Gladi ulang 23 Nov 2026 (keputusan owner K-B): catatan bertanggal TAHUN YANG SUDAH DITUTUP BUKU (era) tidak dibatalkan / dipulihkan lagi dari Riwayat & batal —
+// tahun itu final; kesalahan yang ketahuan belakangan dibetulkan dengan catatan HARI INI (prosedur "Jalan mundur tutup buku" no. 3). Dulu yang tidak ikut diarsip
+// (pindah uang, wadah, pindah tempat) masih bertombol Batalkan sesudah ritual dan pindah uang menulis ulang patokan kas 31 Des. Bulan terkunci tetap tolakKunci.
+export function tolakBukuDitutup(dok, apa) {
+  const t = String((dok && (dok.tanggal || (dok.bulan ? dok.bulan + '-01' : ''))) || '');
+  return /^\d{4}-\d\d/.test(t) && tahunDitutup(t) ? 'Tahun ' + t.slice(0, 4) + ' sudah ditutup buku — ' + (apa || 'catatannya tidak diubah lagi') + '; betulkan dengan catatan hari ini' : '';
+}
 // tanda = 'arsip' (hapus = pindah ke arsipTahun di batch yang sama) | 'pulih' (tulis = kembali dari arsipTahun) — hanya arsipkanDokumen / pulihkanArsip
 function opsKiriman(daftar, hapus, tanda) {
   return (daftar || []).map(({ koleksi, data }) => Object.assign({ koleksi, data, lama: dokDiCache(koleksi, data.id) }, tanda === 'pulih' ? { pulih: true } : {}))

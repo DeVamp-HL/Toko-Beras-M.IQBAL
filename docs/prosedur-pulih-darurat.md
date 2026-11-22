@@ -176,6 +176,9 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 
 - Tidak ada tombol, dan aturan server (v7) menolak berita acara `selesai` diubah dari aplikasi. **Anggap tahun itu final:** kesalahan yang ketahuan
   belakangan dibetulkan dengan catatan HARI INI (Stok › Cocokkan, bayar bon, catat bon yang terlupa) — bukan dengan membuka tahun lama.
+- **Riwayat & batal** (Menu › Toko ini) tidak membatalkan atau memulihkan catatan bertanggal tahun yang sudah ditutup buku — juga pindah uang, wadah, dan
+  pindah tempat yang memang tidak ikut diarsip (keputusan owner 23 Nov 2026). Barisnya tampil tanpa tombol dengan kalimat "Tahun 2026 sudah ditutup buku …
+  betulkan dengan catatan hari ini". Dulu pindah uang 2026 yang dibatalkan sesudah ritual menulis ulang patokan kas 31 Des (kas pembuka 2027).
 - Jalan pulang darurat (keputusan owner; belum pernah diuji di server; dikerjakan owner sendiri lewat Console — tidak ada pemeriksa dari luar sesudah
   13 Okt 2026; yang dicocokkan sesudahnya ada di langkah 5):
   1. Unduh cadangan keadaan sekarang — dua kali (sebelum & sesudah).
@@ -262,6 +265,11 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
       jangan dipaksakan — toko tetap boleh berjualan dengan buku 2026 terbuka (Laporan & Pajak 2026 tetap membaca catatannya), simpan ketiga PDF di
       butir atas (Rekap pajak, Laba-Rugi 12 bulan, Neraca 31 Des) dan cadangan; kunci bulan Januari 2027 menunggu sampai tutup buku 2026 selesai (daftar
       periksa kunci bulan menolak sendiri).
+- [ ] **Pesanan yang sudah dibayar uang mukanya** (keputusan owner 23 Nov 2026): jadikan nota (barangnya diserahkan) atau batalkan pesanannya SEBELUM ritual —
+      Jual › Pesanan. Uang muka tidak menyeberang tahun: pembayarannya ikut arsip 2026, pesanannya tidak, jadi nota Januari tidak terpotong dan pemesan
+      ditagih dua kali. Langkah 1 menahan ritual selama masih ada (butir "Tidak ada pesanan ber-uang muka yang belum jadi nota").
+- [ ] **Titipan uang dari tablet** bertanggal 2026 yang masih menunggu: setujui atau tolak sebelum ritual (keputusan owner 23 Nov 2026). Disetujui sesudah
+      ritual = uang keluar bertanggal 2026 masuk ke tahun yang sudah ditutup. Langkah 1 menahan ritual selama masih ada.
 - [ ] Retur barang yang sudah diketahui dicatat SEBELUM ritual (Jual › Retur, selagi notanya masih di daftar) — sesudah ritual nota 2026 tidak muncul
       lagi di daftar Retur (lihat "Sesudahnya").
 - [ ] **Perangkat hilang atau rusak** (tidak bisa dinyalakan lagi). Perangkat yang diam lebih dari 24 jam ditawari tombol "<nama> sudah tidak dipakai"
@@ -290,7 +298,7 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] Sebelum langkah 1: **TUTUP aplikasi di iPhone / iPad / HP lain** (geser keluar dari daftar aplikasi, tab peramban ditutup — layar mati saja tidak
       cukup) dan jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis". Bukan lagi soal kuota: selama arsip berjalan stok, piutang & utang
       terhitung DOBEL di perangkat mana pun, dan perangkat lain yang terbuka bisa dipakai berjualan atau menagih dengan angka DOBEL itu.
-- [ ] Uang › Tutup buku › **SUNGGUHAN** → langkah 1: g1–g6 semua ✓ (g7 tidak muncul — hemat baca mati). Kartu **Perkiraan kuota Firestore**:
+- [ ] Uang › Tutup buku › **SUNGGUHAN** → langkah 1: g1–g6, g8 (pesanan ber-uang muka), g9 (titipan tablet) semua ✓ (g7 tidak muncul — hemat baca mati). Kartu **Perkiraan kuota Firestore**:
       "Muat dalam kuota satu hari", "MEPET", atau "TIDAK MUAT" — **ketiganya: mulai** (kartu masih menghitung batas Spark; sejak Blaze kelebihannya
       ditagih, tidak menghentikan arsip). K11 (toko tutup 2 Jan) DICABUT 9 Okt 2026. Arsip terhenti karena sebab lain (internet putus, Mac tertidur, aplikasi
       tertutup) → **Lanjutkan** dari Mac yang sama; sampai pita "Tahun 2026 terkunci dan arsipnya habis" toko jangan berjualan atau menagih. Tutup buku
