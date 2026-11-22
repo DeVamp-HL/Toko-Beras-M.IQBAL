@@ -52,10 +52,20 @@ env:
 
 jobs:
   gladi:
+    # 22 Nov 2026 (owner: "bisa dipercepat?"): dulu SATU job berurutan — 4 skenario ±43 menit lalu 6 kontrol ±32 menit = 77–87 menit per PR. Tiap skenario
+    # & tiap kontrol memang sudah di EMULATOR SENDIRI, jadi dipecah jadi 7 job paralel (runner Ubuntu, bukan batas macOS): satu per skenario + kontrol
+    # dibagi tiga kelompok (nomor kontrol modulo 3). Laporan & artefak per bagian. Dijaga alat-uji/periksa_ci.py.
+    name: gladi (${{ matrix.bagian }})
+    strategy:
+      fail-fast: false
+      matrix:
+        bagian: [latihan, gerbang, ritual, pintu, kontrol-1, kontrol-2, kontrol-3]
     runs-on: ubuntu-latest
-    timeout-minutes: 170
+    timeout-minutes: 90
     env:
-      GLADI_SKENARIO: ${{ github.event.inputs.skenario || 'latihan,gerbang,ritual,pintu' }}
+      GLADI_PILIHAN: ${{ github.event.inputs.skenario || 'latihan,gerbang,ritual,pintu' }}
+      # skenario bagian ini (kontrol: tetap daftar bawaan — --gabung & --kontrol memakainya hanya sebagai daftar yang diharapkan)
+      GLADI_SKENARIO: ${{ startsWith(matrix.bagian, 'kontrol-') && 'latihan,gerbang,ritual,pintu' || matrix.bagian }}
       GLADI_SKALA: ${{ github.event.inputs.skala || '0.65' }}
     steps:
       - name: Ambil isi repo
@@ -143,6 +153,8 @@ jobs:
       # di sini emulators:exec dijalankan lagi dengan --ulang-dari $U (sanggahan 7 Okt: percobaan kedua di emulator yang sama sudah "antrean penuh 7×"
       # sebelum masuk karena sesi percobaan pertama). Baris DICOBA ULANG & peringatan dicetak alatnya (alat-uji/coba_ulang.py).
       - name: "GLADI — emulator Firestore + Auth, /baru/ di Chrome headless: latihan · gerbang · ritual · pintu (rules v7, data terkunci)"
+        # bagian skenario saja, dan hanya bila skenario ini dipilih (Run workflow boleh memilih sebagian)
+        if: ${{ !startsWith(matrix.bagian, 'kontrol-') && contains(format(',{0},', env.GLADI_PILIHAN), format(',{0},', matrix.bagian)) }}
         working-directory: ${{ runner.temp }}/proyek-gladi
         run: |
           gagal=0
@@ -170,19 +182,23 @@ jobs:
           exit $gagal
 
       - name: Ringkasan gladi ke halaman run
-        if: always()
+        if: ${{ always() && !startsWith(matrix.bagian, 'kontrol-') && contains(format(',{0},', env.GLADI_PILIHAN), format(',{0},', matrix.bagian)) }}
         run: |
           if [ -f gladi-hasil/ringkasan.md ]; then cat gladi-hasil/ringkasan.md >> "$GITHUB_STEP_SUMMARY"; else echo "Ringkasan gladi tidak terbentuk — lihat log langkah GLADI." >> "$GITHUB_STEP_SUMMARY"; fi
 
       # Tiap kontrol di EMULATOR SENDIRI (sama dengan skenario): sesi kanal halaman kontrol sebelumnya tidak boleh membanjiri muat kontrol berikutnya — kontrol
       # yang ceknya ikut gagal karena antrean emulator dihitung DIAM, bukan berbunyi.
       - name: "KONTROL — salinan uji dirusak (latihan menulis, latihan menulis tertunda, gerbang g1 dibuang, satu koleksi tidak lengkap, pemulihan arsip kurang satu, selesai tanpa menutup pintu) wajib ketahuan karena sebab yang benar"
-        if: success() && (github.event_name == 'pull_request' || github.event.inputs.kontrol == 'true')
+        # bagian kontrol-K: kontrol nomor i dengan (i - 1) modulo 3 == K - 1 (6 kontrol → 2 per bagian); tiap kontrol tetap di emulator sendiri
+        if: ${{ success() && startsWith(matrix.bagian, 'kontrol-') && (github.event_name == 'pull_request' || github.event.inputs.kontrol == 'true') }}
         working-directory: ${{ runner.temp }}/proyek-gladi
         run: |
           N=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --jumlah-kontrol); test "$N" -ge 1
-          gagal=0
+          K=${BAGIAN#kontrol-}; KELOMPOK=3; case "$K" in 1|2|3) ;; *) echo "bagian kontrol tidak dikenal: $BAGIAN"; exit 2;; esac
+          gagal=0; jalan=0
           for i in $(seq 1 "$N"); do
+            [ $(( (i - 1) % KELOMPOK )) -eq $(( K - 1 )) ] || continue
+            jalan=$((jalan + 1))
             echo "::group::kontrol $i dari $N"
             rm -f firestore-debug.log
             export GLADI_GESER_JAM=$(python3 "$GITHUB_WORKSPACE/alat-uji/gladi_tutup_buku.py" --geser-jam-kontrol "$i"); echo "jam JVM emulator digeser $GLADI_GESER_JAM dtk"
@@ -196,7 +212,10 @@ jobs:
             tail -c 20000000 firestore-debug.log > "$GITHUB_WORKSPACE/gladi-hasil/firestore-debug-kontrol-$i.log" 2>/dev/null || true
             echo "::endgroup::"
           done
+          echo "bagian $BAGIAN: $jalan dari $N kontrol"; test "$jalan" -ge 1 || gagal=1
           exit $gagal
+        env:
+          BAGIAN: ${{ matrix.bagian }}
 
       - name: Log firebase-tools ke artefak
         if: always()
@@ -206,7 +225,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: laporan-gladi-tutup-buku
+          name: laporan-gladi-tutup-buku-${{ matrix.bagian }}
           path: gladi-hasil/
           if-no-files-found: warn
 
