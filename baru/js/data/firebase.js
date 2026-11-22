@@ -18,6 +18,8 @@ import { KK_KOLEKSI, KK_ID, KK_JEDA_MS, kkSetelServer, kkLupakanServer, kkIsi, k
 import { HB_VERSI, HB_LIMIT_F, HB_KOLEKSI_NISAN, HB_ID_KLAIM, HB_MULAI_MS, hbHemat, hbKoleksiHemat, hbKupas, hbSaklar, hbSetelSaklar, hbNisanSah, hbTandaiNisanSah, hbBacaRekam, hbSimpanRekam,
   hbSesi, hbKunciTab, hbAyunanBaru, hbCatatTerbitKatalog, hbNilaiKatalogServer, hbBolehTerbitKatalog, hbSiapNyala, hbTanpaCapStatis } from './hemat-baca.js';
 import { serverTiruan, configTiruan } from './server-tiruan.js';
+// owner 22 Nov 2026: riwayat setelan (tahap 3) — perubahan setelan owner dicatat dari → ke
+import { rsdSertakan } from './riwayat-setelan.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA',
@@ -520,7 +522,8 @@ export async function tulisBerkas(daftar, hapus, opsi) {
   const b = writeBatch(db); const ditulis = [];
   isi.forEach((x) => {
     if (kkMentah(x.koleksi)) { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }   // 25c: katalog kasir apa adanya — tanpa atribusi & jejak
-    const d = beriAtribusiAkun(x.data, akun, k, x.ada);
+    // owner 22 Nov 2026 (riwayat & batal tahap 3): setelan owner membawa riwayatUbah (kolom dari → ke) — riwayat lama dari salinan cache tidak pernah hilang
+    const d = rsdSertakan(x.koleksi, beriAtribusiAkun(x.data, akun, k, x.ada), x.lama, owner, k.kini);
     // owner 7 Okt: koleksi hemat bercap jam server (SESUDAH penjaga kiriman; salinan antre & `ditulis` tetap tanpa sentinel)
     b.set(doc(db, x.koleksi, String(d.id)), pasangCap(x.koleksi, d)); ditulis.push({ koleksi: x.koleksi, data: d });
     // audit P5: tulisan perangkat ini tetap tampil selagi koleksinya ditahan tutup buku (memori beku sampai baca penuh selesai)

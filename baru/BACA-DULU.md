@@ -3343,3 +3343,30 @@ Ditolak: bulan terkunci, kasbon yang sisanya jadi minus, catatan buatan tutup ha
 nota (→ Jual › Riwayat), bon pemasok/piutang non-bayar. Upah & biaya bulanan tampil tanpa tombol (menyusul). Tab **Dibatalkan**: semua baris
 `bukuHapus`; **Pulihkan** (hanya batal uang: catatan ditulis lagi dengan id sama, koreksi dibalik, ditolak bila id sama sudah ada lagi) dan **Hapus
 permanen** (hanya baris arsip). Rules tetap (bukuHapus owner saja). Alat uji `alat-uji/uji_riwayat_uang.py` (jsc + statis + kontrol).
+
+**Riwayat & batal — tahap 2 BARANG (owner 22 Nov 2026):** tab **Barang** di Menu › Toko ini › Riwayat & batal, logika `baru/js/layar/riwayat-barang-logika.js`
+(awalan `rb`). Satu baris = satu KETUKAN: catatan satu kiriman bertanggal & bermenit sama dan bernomor Date.now()+acak berurutan (< 3 detik); anggota dicari
+lewat kolom penghubung di dalam kiriman itu (`takarId`, `produksiId`, `bukaKarung`+`merkAsal`, `dariWadah`, `sisihWadah`, `bongkarWadah`, `dariId` karung bekas,
+`kolam`). Keputusan owner: (1) isi ulang dibatalkan UTUH — karung yang dibuka balik ke tumpukan, tuang batal, karung bekas yang lahir ikut hilang; (2) sudah
+dihitung sesudahnya (cocokkan, timbang tutup hari, bongkar, karung habis) → hitungan fisik PERTAMA sesudahnya per buku digeser (`selisih += pengaruh`,
+`kgSistem −=`, nilai = selisih × modal saat hitungan, jejak `koreksiBatal` dengan angka `sebelum`/`sesudah`; pulihkan mengembalikan angka aslinya persis);
+tanpa hitungan sesudahnya bukunya saja yang bergeser (boleh minus, disebut); (3) cocokkan dibatalkan PER BARANG (tumpukan, kemasan, kantong, wadah = penyesuaian
++ titik isi, karung terbuka = penyesuaian + catatan isi + karung bekasnya). Juga: sisih, tuang balik, bongkar, cek wadah, buka karung, karung habis /
+dikembalikan / catat isi, samakan isi, pindah tempat (hanya yang terbaru; peta `tempatSimpan` kembali), pindah stok antarlokasi. Tampil tanpa tombol:
+kedatangan, adukan, timbang tutup hari (tutup ulang), rework karantina, aktivasi wadah, pindah buku ganti nama / gabung / pisah, setelan (tahap 3), beli
+kantong, karung bekas yang ikut catatan lain. Ditolak: bulan terkunci (termasuk hitungan sesudahnya), karung yang dibuka sudah jadi karung bekas di ketukan
+lain (batalkan yang terbaru dulu). Batas: karung bekas hari yang sama yang DIHAPUS sebuah kiriman tidak kembali. Rules tetap. Arsip `bukuHapus`
+`jenisBatal: 'barang'`, `jenis`, `dokumen`, `efek`, `koreksi.geser`. Alat uji `alat-uji/uji_riwayat_barang.py` (jsc memakai pencatat asli + render panel +
+statis + asap cadangan lokal + kontrol).
+
+**Riwayat setelan & harga — tahap 3 LIHAT SAJA (owner 22 Nov 2026):** tab **Setelan & harga** di Menu › Toko ini › Riwayat & batal (tanpa tombol batal;
+setelan & harga dibetulkan di layarnya masing-masing). Sensus: dokumen setelan `aturanToko/*` DITIMPA tiap simpan — isi lamanya tidak pernah tersimpan (2 dari
+21 punya `riwayat` sendiri); katalog harga punya riwayat lewat `hargaTerbit` (sejak 26 Sep). Mulai 22 Nov penulis owner (`firebase.js tulisBerkas`, sesudah
+`beriAtribusiAkun`) memanggil `rsdSertakan` (`baru/js/data/riwayat-setelan.js`, murni): `aturanToko` & `hargaWadah` membawa `riwayatUbah` = entri
+`{pada, tanggal, jam, oleh, perangkat, ubah: [{k, dari, ke}], baru?}` hanya bila ada kolom yang berubah (dua tingkat `induk.anak`; cap penulis, tanggal/jam
+simpan, `riwayat*` tidak dihitung), paling banyak 30, riwayat lama SELALU dibawa dari salinan cache (penulis yang menyusun dokumen dari nol tidak
+menghapusnya). Tidak disentuh: bukan owner, katalog harga (dibaca katalog HP kasir apa adanya), draf kerja katalog (`hargaDraf/hargaLabel/hargaSengaja`),
+`kunciPeriode` (rules & jejak nilai lama sendiri). Tampilan `baru/js/layar/riwayat-setelan-logika.js` (awalan `rs`): terbitan katalog (lama → baru per
+baris), harga wadah, setelan ber-riwayat, riwayat lama milik dokumen (nilai karung bekas, identitas, kunci bulan), setelan tanpa catatan = "terakhir disimpan —
+isi sebelumnya tidak tercatat"; jam UTC digambar setempat; saring harga / setelan; dokumen sistem `hematHarian` tidak tampil. Alat uji
+`alat-uji/uji_riwayat_setelan.py` (jsc + render panel + statis + asap cadangan lokal + kontrol).

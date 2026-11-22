@@ -210,12 +210,13 @@ export function ruSusunBatal(koleksi, id, alasan, w) {
 }
 
 // ---------- daftar dibatalkan, pulihkan, hapus permanen ----------
-/** Baris daftar Dibatalkan (semua isi bukuHapus: uang tahap ini + hapus kedatangan / kantong / adukan lama), terbaru di atas. */
+/** Baris daftar Dibatalkan (semua isi bukuHapus: uang tahap 1, barang tahap 2 + hapus kedatangan / kantong / adukan lama), terbaru di atas. */
 export function ruDibatalkan() {
   return cacheMentah('bukuHapus').slice().sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || ruJam(b.jam).localeCompare(ruJam(a.jam)))
     .map((x) => ({ id: String(x.id), tanggal: String(x.tanggal || ''), jam: ruJam(x.jam), oleh: String(x.oleh || ''), koleksi: String(x.koleksi || ''), tanggalDok: String(x.tanggalDok || ''),
-      ringkas: String(x.ringkas || ''), alasan: String(x.alasan || ''), bisaPulih: x.jenisBatal === 'uang' && Array.isArray(x.dokumen) && x.dokumen.length > 0,
-      sebabTidakPulih: x.jenisBatal === 'uang' ? '' : 'dihapus lewat layarnya sendiri (tanpa salinan utuh) — tidak bisa dipulihkan dari sini' }));
+      ringkas: String(x.ringkas || ''), alasan: String(x.alasan || ''), jenisBatal: String(x.jenisBatal || ''),
+      bisaPulih: (x.jenisBatal === 'uang' || x.jenisBatal === 'barang') && Array.isArray(x.dokumen) && x.dokumen.length > 0,   // barang: tahap 2 (riwayat-barang-logika.js rbSusunPulih)
+      sebabTidakPulih: x.jenisBatal === 'uang' || x.jenisBatal === 'barang' ? '' : 'dihapus lewat layarnya sendiri (tanpa salinan utuh) — tidak bisa dipulihkan dari sini' }));
 }
 /** Pulihkan pembatalan uang `idBatal`: catatan ditulis kembali (id sama), koreksi dibalik menurut keadaan SEKARANG, titipan kembali, baris Dibatalkan dihapus. */
 export function ruSusunPulih(idBatal, w) {
