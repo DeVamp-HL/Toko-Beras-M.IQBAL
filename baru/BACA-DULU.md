@@ -3320,3 +3320,13 @@ tiap pemakaian, `setInvalidatedByBiometricEnrollment`) yang hangus sendiri begit
 `penandaPasang`, `penandaCek`, `penandaHapus`, `ujiKunci` (CryptoObject); pembungkus `sidikJariKelas`, `penandaPasang/Cek/Hapus`, `sidikJariKunci`,
 `penandaTolak` (`inti/perangkat.js`); layar Perangkat (`uji-cetak`) berisi tombol & petunjuk uji owner (pasang → uji kunci → daftarkan satu jari lain
 milik owner → cek wajib HANGUS → hapus). Belum ada fitur toko yang memakainya; Tahap A (masuk owner dengan jari, intip uang, jejak) menunggu hasil CPad.
+
+**Sidik jari owner di tablet — Tahap A (owner 22 Nov 2026):** uji OrderPAD 3 (Android 14, APK 1.31): kelas sensor KUAT, uji kunci LULUS, penanda HANGUS
+sesudah jari baru → dibangun. Logika `baru/js/layar/sidik-logika.js` (awalan `sj`); orang yang dibuka jari = orang pembuka Ringkas (`ringkasOrang`).
+(1) **Masuk dengan jari** di "Siapa yang jaga?" (tombol SIDIK JARI di panel PIN orang itu; PIN tetap bisa) lewat `sidikJariKunci` (kunci penanda,
+sidik jari kuat) — bukan `sidikJariUji`. (2) **Intip uang**: saat orang LAIN jaga, jari owner membuka Ringkas hari ini sementara (data uang ikut,
+`intipAktif`), tertutup sendiri sesudah `aturanToko/peran.intipDetik` (15–600, bawaan 60; diatur owner di Orang di tablet) tidak disentuh, saat tirai /
+pindah aplikasi / ganti orang. (3) **Jejak**: kiriman selama masuk lewat jari bertanda `lewat: 'sidik jari'` (jejak pencatat "[sidik jari]").
+Dinyalakan / dimatikan DI TABLET oleh orang itu sesudah masuk PIN (Menu tablet › Sidik jari owner; nyala = pasang penanda + tempel jari, simpanan
+perangkat `miqbal_sidik_owner_v1`). Penanda HANGUS (ada jari baru) / hilang = mati; hangus → pesan otomatis ke owner sekali begitu ada orang jaga.
+Tahap B (owner menyetujui di tablet) belum. Alat uji `alat-uji/uji_sidik_tablet.py` (jsc + kontrol).

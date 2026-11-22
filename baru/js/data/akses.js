@@ -324,5 +324,7 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
 export function jejakKiriman(akun, dokumen, konteks) {
   const k = konteks || {}; const daftar = (dokumen || []).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id), ringkas: ringkasDok(x.data) }));
   return { id: k.idJejak, pada: k.kini, aksi: 'kirim', koleksi: daftar.length === 1 ? daftar[0].koleksi : '(kiriman)', idDok: daftar.length ? daftar[0].id : '', oleh: akun.nama, olehUid: akun.uid,
-    perangkat: k.perangkat, ringkas: daftar.length + ' catatan: ' + daftar.map((d) => d.koleksi + (d.ringkas ? ' ' + d.ringkas : '')).join(' | ').slice(0, 300), dokumen: daftar };
+    perangkat: k.perangkat, ringkas: daftar.length + ' catatan: ' + daftar.map((d) => d.koleksi + (d.ringkas ? ' ' + d.ringkas : '')).join(' | ').slice(0, 300), dokumen: daftar,
+    // owner 22 Nov 2026 (sidik jari Tahap A): kiriman selama orang itu masuk lewat jari bertanda — terlihat di Jejak pencatat (rules stafJejak tanpa daftar kolom)
+    ...(akun.lewat ? { lewat: String(akun.lewat) } : {}) };
 }
