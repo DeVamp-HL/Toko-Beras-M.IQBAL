@@ -16,6 +16,7 @@ import { kartuTutupTablet, aksiTutupTablet, hlTampil, HL_DRAF_KOSONG } from './t
 // owner 21 Nov 2026: Ringkas hari ini di tablet — kartu paling atas Menu akun tablet, hanya saat orang pilihan owner jaga (rules v14: data uang)
 import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
 import * as SJ from './sidik-logika.js';   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
+import * as RU from './riwayat-uang-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 1 uang
 import * as RT from './ringkas-tablet-logika.js';
 import * as TB from './tablet-logika.js';
 import { nhDukung, nhTersimpan, nhIzin, nhNyalakan, nhMatikan, nhVapidSah } from '../data/notif-hp.js';   // owner 21 Nov 2026: notifikasi HP saat aplikasi tertutup   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
@@ -52,8 +53,8 @@ const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 // owner 7 Okt 2026: tab Hemat baca di Sistem › Perangkat (tab Kasir & PIN dicabut paket dokumen & sisa, #108)
-const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']] };
-const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat' };
+const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['batal', 'Dibatalkan']] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
+const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat', riwayat: 'Riwayat & batal' };
 
 /** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
 export function pasangLayarMenu(akar, opsi) {
@@ -61,9 +62,9 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))]], []);
+  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -248,6 +249,21 @@ export function pasangLayarMenu(akar, opsi) {
     sjMatikan: async () => { const X = sj(); if (!X || st().sjSibuk) return; set({ sjSibuk: true }); const r = await X.matikan(); set({ sjSibuk: false, kabar: r.kalimat, kabarAwas: !r.ok }); },
     sjIntip: async () => { const X = sj(); if (!X || st().sjSibuk) return; set({ sjSibuk: true }); const r = await X.mintaIntip(); set({ sjSibuk: false, kabar: r.kalimat, kabarAwas: !r.ok }); },
     sjTutupIntip: () => { const X = sj(); if (X) X.tutupIntip(); set({ kabar: 'Intip uang ditutup — data uang dikosongkan dari tablet', kabarAwas: false }); },
+    // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
+    ruGeser: ({ d }) => { const n = Number(d); const kiniIso = hariIniIso(kini()); const dasar = st().ruHari || kiniIso; const t = new Date(dasar + 'T12:00:00'); t.setDate(t.getDate() + n);
+      set({ ruHari: n === 0 ? kiniIso : hariIniIso(t), ruBuka: null, yakinRu: null, ruAlasan: '' }); },
+    ruSaring: ({ o }) => set({ ruSaring: o || '', ruBuka: null, yakinRu: null }),
+    ruBuka: (_, el) => { const k = el.dataset.kRu; set({ ruBuka: st().ruBuka === k ? null : k, ruAlasan: '', yakinRu: null, kabar: '' }); },
+    ruAlasan: ({ a }) => set({ ruAlasan: a, yakinRu: null }),
+    ruAlasanKetik: (v) => set({ ruAlasan: String(v).slice(0, 120), yakinRu: null }),
+    ruBatal: async () => { const k = st().ruBuka; if (!k) return; const koleksi = k.slice(0, k.indexOf('|')); const id = k.slice(k.indexOf('|') + 1);
+      if (!String(st().ruAlasan || '').trim()) return set({ kabar: 'Pilih atau ketik alasannya dulu', kabarAwas: true });
+      if (st().yakinRu !== 'b:' + k) return set({ yakinRu: 'b:' + k, kabar: 'Ketuk sekali lagi untuk membatalkan — akibatnya tertulis di atas tombol', kabarAwas: true });
+      if (await tulis(RU.ruSusunBatal(koleksi, id, st().ruAlasan, waktu()))) set({ ruBuka: null, ruAlasan: '', yakinRu: null }); else set({ yakinRu: null }); },
+    ruPulih: async ({ id }) => { if (st().yakinRu !== 'p:' + id) return set({ yakinRu: 'p:' + id, kabar: 'Ketuk sekali lagi: catatan kembali ke buku persis seperti semula', kabarAwas: true });
+      set({ yakinRu: null }); await tulis(RU.ruSusunPulih(id, waktu())); },
+    ruHapus: async ({ id }) => { if (st().yakinRu !== 'h:' + id) return set({ yakinRu: 'h:' + id, kabar: 'Ketuk sekali lagi: salinannya hilang selamanya dari daftar Dibatalkan', kabarAwas: true });
+      set({ yakinRu: null }); await tulis(RU.ruSusunHapusPermanen(id)); },
     rtIntip: ({ d }) => tulis(S.susunAturSistem('peran', { intipDetik: Number(d) }, waktu())),   // owner 22 Nov 2026: lama intip uang (detik)
     rtBacaUang: async ({ uid, nyala }) => { const kunci = uid + ':' + nyala; const r = S.susunUbahAkun(uid, { bacaUang: nyala === '1' }, waktu(), st().yakinRt === kunci);
       if (r.perluYakin) return set({ yakinRt: kunci, kabar: r.tolak, kabarAwas: true }); set({ yakinRt: null }); await tulis(r); },
@@ -357,7 +373,7 @@ export function pasangLayarMenu(akar, opsi) {
     return h`<section class="mn-gulir ss" data-k="sistem-${s.sistem}">
       <div class="mn-kembali" data-aksi="sistem" data-s="">‹ Menu</div>
       ${tabs.length ? h`<div class="jalur kisi${tabs.length}" data-k="tabS">${tabs.map(([id, nm]) => h`<div class="seg ${tab === id ? 'aktif' : ''}" data-aksi="tabS" data-t="${id}">${nm}</div>`)}</div>` : ''}
-      ${s.atur ? gambarAtur(s) : s.sistem === 'perangkat' ? gambarPerangkat(s, d, tab) : s.sistem === 'peran' ? gambarPeran(s, d, tab) : s.sistem === 'cadangan' ? gambarCadangan(s, d) : s.sistem === 'lokasi' ? gambarLokasi(s, d, tab) : gambarPengingat(s, d, tab)}
+      ${s.atur ? gambarAtur(s) : s.sistem === 'perangkat' ? gambarPerangkat(s, d, tab) : s.sistem === 'peran' ? gambarPeran(s, d, tab) : s.sistem === 'cadangan' ? gambarCadangan(s, d) : s.sistem === 'lokasi' ? gambarLokasi(s, d, tab) : s.sistem === 'riwayat' ? gambarRiwayat(s, tab) : gambarPengingat(s, d, tab)}
     </section>`;
   }
   const pintuAtur = (judul, ringkas) => h`<div class="at-pintu" data-k="pintu-atur" data-aksi="bukaAtur"><div><div style="font-weight: 600;">${judul}</div><div class="ket" style="font-size: 10.5px;">${ringkas}</div></div><div class="ket">ubah ›</div></div>`;
@@ -557,6 +573,36 @@ export function pasangLayarMenu(akar, opsi) {
         <div class="kaca-btn ${pilih.utama ? 'mati' : 'aktif'}" data-aksi="jadikanUtama" data-id="${pilih.id}">${pilih.utama ? 'lokasi utama' : 'jadikan lokasi utama'}</div>
         <div class="k2">Fondasi: tiap catatan membawa lokasi perangkat yang mencatatnya (kolom lokasi). Catatan lama tanpa kolom itu dihitung di lokasi utama. Mesin stok & laba belum memisahkan per lokasi — laporan per lokasi membaca kolom itu.</div></div>
       ${pintuAtur('Atur daftar lokasi & pengantar', LK.daftar.length + ' lokasi · ' + LK.pengantar.length + ' pengantar')}`;
+  }
+  // owner 22 Nov 2026 (paket riwayat & pembatalan, tahap 1 UANG): catatan uang per hari & per orang · batalkan (alasan, ketukan kedua) · daftar Dibatalkan:
+  // pulihkan / hapus permanen. Logika & koreksi hari tertutup / patokan kas di riwayat-uang-logika.js.
+  function gambarRiwayat(s, tab) {
+    if (tab === 'batal') {
+      const D = RU.ruDibatalkan();
+      return h`<div class="kartu" data-k="ru-batal" style="gap: 2px;"><div class="label">${D.length ? D.length + ' catatan dibatalkan' : 'Belum ada yang dibatalkan'}</div>
+        ${D.map((x) => h`<div class="ug-baris dua" data-k="rb-${x.id}"><div style="min-width: 0;"><div>${x.ringkas}</div>
+            <div class="k2">dibatalkan ${tanggalPendek(x.tanggal)} ${x.jam}${x.oleh ? ' · ' + x.oleh : ''}${x.tanggalDok ? ' · catatan ' + tanggalPendek(x.tanggalDok) : ''}${x.alasan ? ' · alasan: ' + x.alasan : ''}</div>
+            ${x.bisaPulih ? '' : h`<div class="k2">${x.sebabTidakPulih}</div>`}</div>
+          <div style="display: flex; gap: 6px; align-items: flex-start;">${x.bisaPulih ? h`<div class="kaca-btn kecil ${s.yakinRu === 'p:' + x.id ? 'aktif emas' : ''}" data-aksi="ruPulih" data-id="${x.id}">${s.yakinRu === 'p:' + x.id ? 'KETUK LAGI · pulihkan' : 'Pulihkan'}</div>` : ''}
+            <div class="kaca-btn kecil ${s.yakinRu === 'h:' + x.id ? 'awas' : ''}" data-aksi="ruHapus" data-id="${x.id}">${s.yakinRu === 'h:' + x.id ? 'KETUK LAGI · hapus permanen' : 'Hapus permanen'}</div></div></div>`)}</div>
+        <div class="ket" style="font-size: 11px;">Pulihkan = catatan kembali ke buku persis seperti semula (koreksi tutup hari & patokan kas dibalik). Hapus permanen = salinannya hilang dari daftar ini; catatannya sendiri sudah tidak dihitung sejak dibatalkan.</div>`;
+    }
+    const iso = s.ruHari || hariIniIso(kini()); const D = RU.ruDaftar(iso, s.ruSaring || ''); const orang = RU.ruOrang(iso);
+    const buka = s.ruBuka ? D.find((b) => b.kunci === s.ruBuka) : null; const P = buka && buka.bisa ? RU.ruPeriksa(buka.koleksi, buka.id) : null;
+    const baris = (b) => h`<div class="ug-baris dua ${b.bisa ? '' : 'redup'}" data-k="ru-${b.id}"><div style="min-width: 0;"><div>${b.jam ? b.jam + ' · ' : ''}${b.jenis} · <b>${RP(b.nominal)}</b>${b.anggota ? h` <span class="k2">(+${b.anggota} pendamping)</span>` : ''}</div>
+        <div class="k2">${b.oleh || '—'}${b.teksEfek ? ' · ' + b.teksEfek : ''}${b.ket ? ' · ' + b.ket : ''}${b.titipan ? ' · dari titipan tablet' : ''}</div>${b.bisa ? '' : h`<div class="k2">${b.sebab}</div>`}
+        ${buka && buka.kunci === b.kunci ? h`<div data-k="ru-buka" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+          ${P && P.tolak ? h`<div class="pita-info awas">${P.tolak}</div>` : h`<div class="hg-pil" data-k="ru-alasan">${RU.RU_ALASAN.map(([id, nm]) => h`<div class="seg ${s.ruAlasan === nm ? 'aktif' : ''}" data-aksi="ruAlasan" data-a="${nm}">${nm}</div>`)}</div>
+            <input class="ketik-nama" type="text" placeholder="alasan lain (wajib salah satu)" value="${RU.RU_ALASAN.some((x) => x[1] === s.ruAlasan) ? '' : s.ruAlasan || ''}" data-ketik="ruAlasanKetik" maxlength="120">
+            ${(P && P.akibat ? P.akibat : []).map((t) => h`<div class="k2">· ${t}</div>`)}
+            <div class="kaca-btn ${s.yakinRu === 'b:' + b.kunci ? 'aktif awas' : 'aktif'}" data-aksi="ruBatal">${s.yakinRu === 'b:' + b.kunci ? 'KETUK LAGI · BATALKAN' : 'BATALKAN'}</div>`}</div>` : ''}</div>
+      ${b.bisa ? h`<div class="kaca-btn kecil ${buka && buka.kunci === b.kunci ? 'aktif' : ''}" data-aksi="ruBuka" data-k-ru="${b.kunci}">${buka && buka.kunci === b.kunci ? 'tutup' : 'Batalkan'}</div>` : ''}</div>`;
+    return h`<div class="kartu" data-k="ru-hari" style="gap: 6px;"><div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+        <div class="kaca-btn kecil" data-aksi="ruGeser" data-d="-1">‹</div><div class="serif" style="font-size: 18px;">${tanggalPendek(iso)}</div><div class="kaca-btn kecil" data-aksi="ruGeser" data-d="1">›</div>
+        ${iso !== hariIniIso(kini()) ? h`<div class="kaca-btn kecil" data-aksi="ruGeser" data-d="0">hari ini</div>` : ''}</div>
+      ${orang.length > 1 ? h`<div class="hg-pil" data-k="ru-orang"><div class="seg ${s.ruSaring ? '' : 'aktif'}" data-aksi="ruSaring" data-o="">semua</div>${orang.map((o) => h`<div class="seg ${s.ruSaring === o ? 'aktif' : ''}" data-aksi="ruSaring" data-o="${o}">${o}</div>`)}</div>` : ''}</div>
+      <div class="kartu" data-k="ru-daftar" style="gap: 2px;"><div class="label">${D.length ? D.length + ' catatan uang' : 'Tidak ada catatan uang di hari ini'}</div>${D.map(baris)}</div>
+      <div class="ket" style="font-size: 11px;">Batalkan = catatan keluar dari buku (laci, laba, laporan tidak menghitungnya), salinannya tetap di tab Dibatalkan dan bisa dipulihkan. Catatan yang dibuat bersamaan (biaya admin, ambilan amplop, pasangan pinjaman) ikut. Hari yang sudah ditutup: selisih laci malam itu dibetulkan otomatis; rekening / brankas / amplop: patokan kasnya. Bulan terkunci tidak bisa. Nota penjualan: Jual › Riwayat. Upah & biaya bulanan: menyusul.</div>`;
   }
   function gambarPengingat(s, d, tab) {
     const G = S.ssPengingat(d, lokal(), s.hariP);
