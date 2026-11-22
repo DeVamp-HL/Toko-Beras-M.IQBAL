@@ -462,6 +462,16 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
     && /belum ada jari/.test(st('BIOMETRIK_11').kalimat) && /sensor/.test(st('BIOMETRIK_12').kalimat) && !st('BIOMETRIK_99', 'aneh').batal && st('BIOMETRIK_99', 'aneh').kalimat === 'aneh'
     && st('BIOMETRIK_GAGAL', 'Layar aplikasi belum siap').kalimat === 'Layar aplikasi belum siap' && !st('', 'tanpa kode').batal && st('BIOMETRIK_100').batal === false);
   cek('uji sidik jari memanggil Biometrik.minta; info pulang apa adanya', (await sidikJariUji()).isi.judul === 'Uji sidik jari' && (await sidikJariInfo()).kalimat === 'tablet ini tidak punya sensor sidik jari');
+  // owner 22 Nov 2026 (paket sidik jari, "cek sensor dulu"): kelas sensor & penanda jari baru — pembungkus memanggil metode plugin yang benar, tolakan berkalimat
+  A = pasangAplikasi(['Biometrik'], { 'Biometrik.kelas': () => ({ kuat: false, kodeKuat: 11, kalimatKuat: 'x', lemah: true, kodeLemah: 0, sdk: 30 }), 'Biometrik.penandaPasang': () => ({ ok: true }),
+    'Biometrik.penandaCek': () => ({ ada: true, hangus: true }), 'Biometrik.penandaHapus': () => ({ ok: true }), 'Biometrik.ujiKunci': () => ({ ok: true, panjang: 27 }) });
+  const KL = await sidikJariKelas(); const PC = await penandaCek(); const UK = await sidikJariKunci(); await penandaPasang(); await penandaHapus();
+  cek('penanda: kelas · pasang · cek · uji kunci · hapus memanggil metode Biometrik masing-masing, hasil apa adanya', KL.kuat === false && KL.lemah === true && PC.hangus === true && UK.panjang === 27
+    && ['Biometrik.kelas', 'Biometrik.penandaPasang', 'Biometrik.penandaCek', 'Biometrik.penandaHapus', 'Biometrik.ujiKunci'].every((n) => A.hitung(n) === 1), A.catat.join(','));
+  const pt = (kode, pesan) => { const e = new Error(pesan || 'x'); if (kode) e.code = kode; return penandaTolak(e); };
+  cek('penanda: hangus / belum dipasang berkalimat toko; kode sidik jari diteruskan ke sidikJariTolak; lainnya = pesan Android apa adanya',
+    /HANGUS: ada jari baru/.test(pt('BIOMETRIK_HANGUS').kalimat) && /belum dipasang/.test(pt('PENANDA_TIDAK_ADA').kalimat) && pt('BIOMETRIK_13').batal === true
+    && pt('PENANDA_GAGAL', 'Penanda tidak bisa dipasang: X — y').kalimat === 'Penanda tidak bisa dipasang: X — y' && !pt('PENANDA_GAGAL', 'z').batal);
   A = pasangAplikasi(['CetakUsb'], {}); const KB0 = await kemampuan();
   cek('aplikasi lama tanpa plugin Biometrik: tidak dipanggil, biometrik = null', KB0.biometrik === null && KB0.plugin.Biometrik === false && A.hitung('Biometrik.info') === 0, A.catat.join(','));
 
@@ -680,8 +690,16 @@ def periksa_statis(perangkat_js):
     bio = baca('apk', 'tambahan', 'BiometrikPlugin.java')
     ok('Biometrik: jalur AndroidX (BiometricManager + BiometricPrompt), bukan FingerprintManager lama',
        'BiometricManager.from(getContext()).canAuthenticate(JENIS)' in bio and 'new BiometricPrompt(a, ContextCompat.getMainExecutor(a)' in bio and 'import android.hardware.fingerprint' not in bio)
-    ok('Biometrik: hanya menjawab ada-tidaknya sensor & satu kali uji — tidak menyimpan, tidak membuka akun, tidak membaca data',
-       not re.search(r'SharedPreferences|Firebase|Cipher|KeyStore|CryptoObject|getFilesDir|WebView', bio) and bio.count('@PluginMethod') == 2)
+    # owner 22 Nov 2026 (paket sidik jari, "cek sensor dulu"): kontrak S4 diperluas — + kelas sensor & PENANDA JARI BARU (satu kunci AndroidKeyStore beralias tetap,
+    # wajib sidik jari KUAT per pemakaian, hangus bila ada jari baru). Tetap: tidak menyimpan berkas / preferensi, tidak membuka akun, tidak membaca data toko.
+    ok('Biometrik: tidak menyimpan berkas / preferensi, tidak membuka akun, tidak membaca data; tujuh metode (info, minta, kelas, penanda pasang/cek/hapus, uji kunci)',
+       not re.search(r'SharedPreferences|Firebase|getFilesDir|WebView|FileOutputStream', bio) and bio.count('@PluginMethod') == 7
+       and all('public void %s(' % m in bio for m in ('info', 'minta', 'kelas', 'penandaPasang', 'penandaCek', 'penandaHapus', 'ujiKunci')))
+    ok('Biometrik penanda: satu alias tetap di AndroidKeyStore, wajib sidik jari KUAT tiap pemakaian (tanpa jendela waktu), hangus bila ada jari baru',
+       'private static final String ALIAS_PENANDA = "miqbal_penanda_jari";' in bio and bio.count('ALIAS_PENANDA') >= 6 and '.setInvalidatedByBiometricEnrollment(true)' in bio
+       and '.setUserAuthenticationRequired(true)' in bio and 'b.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG);' in bio
+       and 'setUserAuthenticationValidityDurationSeconds' not in bio and '.setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)' in bio
+       and 'catch (KeyPermanentlyInvalidatedException e) {' in bio and 'p.authenticate(info, new BiometricPrompt.CryptoObject(c));' in bio)
     ok('Pindai: aksi siaran scanner SUNMI & penerima terbuka', 'com.sunmi.scanner.ACTION_DATA_CODE_RECEIVED' in baca('apk', 'tambahan', 'PindaiPlugin.java') and 'RECEIVER_EXPORTED' in baca('apk', 'tambahan', 'PindaiPlugin.java'))
     nfc = baca('apk', 'tambahan', 'NfcPlugin.java')
     ok('Nfc: membaca hanya selama aplikasi di depan (nyala saat kembali, mati saat ditinggal), kejadian "tempel" dari utas utama',
@@ -965,6 +983,8 @@ MUTASI = [
     ('manifest: configChanges tidak dilengkapi', 'py', "lengkap = bagian + [x for x in ANTI_KEDIP if x not in bagian]", "lengkap = bagian"),
     ('S4 manifest: izin sidik jari tidak dipasang', 'py', "    if IZIN_BIOMETRIK not in m:", "    if False:"),
     ('S4 manifest: sensor sidik jari diwajibkan', 'py', 'android:name="android.hardware.fingerprint" android:required="false" />\\n\\n    <application', 'android:name="android.hardware.fingerprint" android:required="true" />\\n\\n    <application'),
+    ('penanda: hangus berkalimat umum (owner tidak tahu ada jari baru)', 'js', "if (kode === 'BIOMETRIK_HANGUS') return", "if (kode === 'BIOMETRIK_HANGUS_X') return"),
+    ('penanda: cek memanggil metode lain', 'js', "export const penandaCek = () => panggilAsli('Biometrik', 'penandaCek', {});", "export const penandaCek = () => panggilAsli('Biometrik', 'info', {});"),
     ('S4 gradle: pustaka sidik jari hilang', 'py', "PUSTAKA_LAIN = ('androidx.biometric:biometric:1.1.0',)", "PUSTAKA_LAIN = ()"),
     ('gradle: pustaka printer SUNMI hilang', 'py', "PUSTAKA = ('com.sunmi:external-printerlibrary2:1.0.16', ", "PUSTAKA = ("),
     ('gradle: pustaka disisipkan dua kali', 'py', "kurang = [p for p in PUSTAKA + PUSTAKA_LAIN if p not in g2]", "kurang = list(PUSTAKA + PUSTAKA_LAIN)"),

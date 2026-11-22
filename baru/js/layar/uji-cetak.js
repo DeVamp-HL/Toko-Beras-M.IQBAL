@@ -9,7 +9,7 @@ import { usbAda, usbMinta, usbDiingat, usbKirim, usbRingkas } from '../inti/usb-
 import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk } from '../inti/struk-kanvas.js';
 import { PR_GAYA, PR_JALUR, PR_LABEL_CARA, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak, namaJalur, susunLabel, cetakLabel } from '../inti/printer.js';
 import { kemampuan, printerStatus, padaPindai, padaTempel, lampuPadam, lewatJalur, lewatSdk, namaLewat, printerBt, printerMode, printerSetelMode, MODE_KERTAS, kalimatModeKertas,
-  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak, hasilTakDiketahui, masihMencetak, printerJaringanStatus } from '../inti/perangkat.js';
+  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak, sidikJariKelas, penandaPasang, penandaCek, penandaHapus, sidikJariKunci, penandaTolak, hasilTakDiketahui, masihMencetak, printerJaringanStatus } from '../inti/perangkat.js';
 
 const $ = (id) => document.getElementById(id);
 let printer = null;          // WebUSB (peramban biasa)
@@ -212,6 +212,24 @@ async function ujiSidik() {
   catch (e) { const t = sidikJariTolak(e); tulisLog('Sidik jari: ' + t.kalimat, !t.batal); }
   $('ucSidikUji').disabled = false;
 }
+// owner 22 Nov 2026 (paket sidik jari, "cek sensor dulu"): kelas sensor & penanda jari baru — hasilnya bahan keputusan owner
+async function tampilKelas() {
+  let K = null; try { K = await sidikJariKelas(); } catch (e) { $('ucSidikKelas').textContent = 'tidak ada di aplikasi ini — pasang APK terbaru'; $('ucSidikKelas').className = 'awas'; return; }
+  $('ucSidikKelas').textContent = K.kuat ? 'KUAT (Android Class 3) — sidik jari bisa mengunci kunci di tablet' : K.lemah ? 'LEMAH (Class 2) — hanya "cocok / tidak"; penanda jari baru tidak bisa' : 'tidak bisa dipakai: ' + K.kalimatKuat;
+  $('ucSidikKelas').className = K.kuat ? 'baik' : 'awas'; ['ucPenandaPasang', 'ucPenandaCek', 'ucPenandaHapus', 'ucSidikKunci'].forEach((id) => { $(id).disabled = false; });
+  tulisLog('Kelas sensor: kuat ' + K.kuat + ' (kode ' + K.kodeKuat + ') · lemah ' + K.lemah + ' (kode ' + K.kodeLemah + ') · Android SDK ' + K.sdk);
+  await cekPenandaLayar(true);
+}
+async function cekPenandaLayar(diam) {
+  try { const r = await penandaCek(); $('ucPenanda').textContent = !r.ada ? 'belum dipasang' : r.hangus ? 'HANGUS — ada jari baru didaftarkan sejak dipasang' : 'utuh';
+    $('ucPenanda').className = r.ada && !r.hangus ? 'baik' : 'awas'; if (!diam) tulisLog('Penanda: ' + $('ucPenanda').textContent, !!(r.ada && r.hangus)); }
+  catch (e) { const t = penandaTolak(e); $('ucPenanda').textContent = t.kalimat; $('ucPenanda').className = 'awas'; if (!diam) tulisLog('Penanda: ' + t.kalimat, true); }
+}
+async function tombolPenanda(id, kerja, berhasil) {
+  $(id).disabled = true;
+  try { const r = await kerja(); tulisLog(berhasil(r)); } catch (e) { const t = penandaTolak(e); tulisLog(t.kalimat, !t.batal); }
+  $(id).disabled = false; await cekPenandaLayar(true);
+}
 async function tampilSunmi() {
   const k = await kemampuan();
   const i = k.info;
@@ -231,6 +249,7 @@ async function tampilSunmi() {
   const b = k.biometrik;
   $('ucSidik').textContent = !b ? 'tidak ada di aplikasi ini — pasang APK terbaru' : b.kalimat + (b.ada && !b.terdaftar ? ' — daftarkan jari di Setelan tablet › Keamanan, lalu buka lagi layar ini' : '');
   $('ucSidik').className = b && b.ada ? 'baik' : 'awas'; $('ucSidikUji').disabled = !(b && b.terdaftar);
+  if (b) tampilKelas().catch((e) => tulisLog('Kelas sensor tidak terbaca: ' + pesan(e), true));
   $('ucKemampuan').textContent = JSON.stringify(k, null, 2); $('ucKemampuan').hidden = false;
 }
 
@@ -267,6 +286,10 @@ function mulai() {
     $('ucLampuBawaan').addEventListener('click', () => { lampuIsi = lampuAtur(null); gambarLampu(); tulisLog('Lampu dikembalikan ke bawaan di formulir — tekan Simpan lampu supaya berlaku'); });
     $('ucLampuPadam').addEventListener('click', async () => { const r = await lampuPadam(); tulisLog('Lampu padam: ' + (r && r.ok ? 'jalan' : 'tidak jalan'), !(r && r.ok)); });
     $('ucSidikUji').addEventListener('click', ujiSidik);
+    $('ucPenandaPasang').addEventListener('click', () => tombolPenanda('ucPenandaPasang', penandaPasang, () => 'Penanda terpasang — kunci di tablet ini wajib sidik jari kuat dan hangus bila ada jari baru'));
+    $('ucSidikKunci').addEventListener('click', () => tombolPenanda('ucSidikKunci', sidikJariKunci, (r) => 'Uji kunci LULUS — jari membuka kunci penanda (' + r.panjang + ' byte)'));
+    $('ucPenandaCek').addEventListener('click', () => cekPenandaLayar(false));
+    $('ucPenandaHapus').addEventListener('click', () => tombolPenanda('ucPenandaHapus', penandaHapus, () => 'Penanda dihapus'));
     let nPindai = 0;
     padaPindai((x) => { nPindai += 1; $('ucPindai').textContent = '"' + x.data + '" · ' + x.data.length + ' huruf · scan ke-' + nPindai; tulisLog('Scan diterima: ' + x.data); });
     let nTempel = 0;

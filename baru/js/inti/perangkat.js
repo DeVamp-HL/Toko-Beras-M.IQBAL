@@ -450,6 +450,26 @@ export function sidikJariTolak(e) {
   return { batal: false, kalimat: (e && e.message) ? String(e.message) : String(e) };
 }
 
+// owner 22 Nov 2026 (paket sidik jari, "cek sensor dulu"): kelas sensor & PENANDA JARI BARU — bahan keputusan, belum dipakai fitur toko.
+/** { kuat, kodeKuat, kalimatKuat, lemah, kodeLemah, sdk } — kuat = Android Class 3 (kunci bisa diikat ke sidik jari). APK lama = menolak. */
+export const sidikJariKelas = () => panggilAsli('Biometrik', 'kelas', {});
+/** Pasang (ganti) penanda: kunci di tablet yang wajib sidik jari kuat dan HANGUS bila ada jari baru didaftarkan. */
+export const penandaPasang = () => panggilAsli('Biometrik', 'penandaPasang', {});
+/** { ada, hangus } tanpa tempel jari. */
+export const penandaCek = () => panggilAsli('Biometrik', 'penandaCek', {});
+export const penandaHapus = () => panggilAsli('Biometrik', 'penandaHapus', {});
+/** Tempel jari lewat kunci penanda (hanya sidik jari kuat) → { ok, panjang }. */
+export const sidikJariKunci = () => panggilAsli('Biometrik', 'ujiKunci', {});
+/** Tolakan penanda / uji kunci → kalimat. PENANDA_TIDAK_ADA · BIOMETRIK_HANGUS · PENANDA_GAGAL (Android menolak — biasanya sensor bukan kelas kuat /
+ *  layar kunci tablet belum disetel) · BIOMETRIK_<n> = sidikJariTolak. */
+export function penandaTolak(e) {
+  const kode = String((e && e.code) || '');
+  if (kode === 'PENANDA_TIDAK_ADA') return { batal: false, kalimat: 'penanda belum dipasang — tekan Pasang penanda dulu' };
+  if (kode === 'BIOMETRIK_HANGUS') return { batal: false, kalimat: 'penanda HANGUS: ada jari baru didaftarkan sejak penanda dipasang' };
+  if (/^BIOMETRIK_\d+$/.test(kode)) return sidikJariTolak(e);
+  return { batal: false, kalimat: (e && e.message) ? String(e.message) : String(e) };
+}
+
 // ---------- kartu kemampuan (layar diagnosis) ----------
 /** Ringkasan apa yang ada di perangkat ini. Tidak pernah melempar. */
 export async function kemampuan() {
