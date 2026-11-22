@@ -169,7 +169,9 @@ def periksa_statis(t):
        and not re.search(r'\b(opAktif|opHapus|opCabutPin|pinKetik|pinSimpan|opTambah)\s*:', mn)
        # putaran T1 langkah 3 (owner 16 Nov 2026): PIN orang di TABLET (tab Orang di tablet, tablet-logika.js — dijaga uji_tablet_pin.py) boleh; kolom PIN
        # lain tidak: satu-satunya type="password" ada di gambarTablet, dan aksi PIN di menu hanya tbIsi/tbPinIsi
-       and mn.count('type="password"') == len(re.findall(r'function gambarTablet\(s\)[\s\S]*?type="password"', mn)) == 1
+       # + owner 23 Nov 2026 (sidik jari Tahap B): satu kolom SANDI AKUN OWNER di kartuOwnerTablet (owSandiKetik) — bukan PIN operator kasir
+       and len(re.findall(r'function gambarTablet\(s\)[\s\S]*?type="password"', mn)) == 1 and len(re.findall(r'type="password"[^>]*data-ketik="owSandiKetik"', mn)) == 1
+       and mn.count('type="password"') == 2
        and not re.search(r'(?<!tb)(?<!tbP)[pP]inIsi\b', mn.replace('tbPinIsi', '')))
     penulis = sorted(p for p in t if p.startswith('baru/js/') and p != 'baru/js/layar/akses-kasir-logika.js' and re.search(r"id:\s*'(aksesKasir|keamanan)'", t[p] or ''))
     ok('tidak ada modul /baru/ lain yang menulis pengaturan/aksesKasir atau pengaturan/keamanan (tidak ada layar yang mengubah dokumen yang tidak dibaca aplikasi yang tayang)', not penulis, penulis)

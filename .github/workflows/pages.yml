@@ -219,6 +219,10 @@ jobs:
         if: matrix.bagian == 1
         run: python3 alat-uji/uji_sidik_tablet.py && python3 alat-uji/uji_sidik_tablet.py --kontrol
 
+      - name: "Sidik jari owner Tahap B (owner 23 Nov 2026): putusan owner di tablet — satu tempel jari satu putusan, sandi owner terkunci penanda, sesi owner sementara (auth di memori, keluar sesudah kiriman), hitungan laci tolak saja, tanpa tutup hari (jsc + statis + kontrol)"
+        if: matrix.bagian == 1
+        run: python3 alat-uji/uji_owner_tablet.py && python3 alat-uji/uji_owner_tablet.py --kontrol
+
       - name: "Riwayat & batal, tahap 1 uang (owner 22 Nov 2026): batalkan catatan uang (alasan, pendamping ikut), hari tertutup = selisih malam itu dibetulkan, patokan kas dibetulkan, pulihkan membalik, hapus permanen, bulan terkunci ditolak (jsc + kontrol)"
         if: matrix.bagian == 3
         run: python3 alat-uji/uji_riwayat_uang.py && python3 alat-uji/uji_riwayat_uang.py --kontrol

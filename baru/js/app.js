@@ -27,8 +27,9 @@ import { pasangGerbang } from './inti/gerbang.js';
 // putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang
 import * as TB from './layar/tablet-logika.js';
 import { rtBukaUang } from './layar/ringkas-tablet-logika.js';
-import * as SJ from './layar/sidik-logika.js';   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
-import { sidikJariKunci, penandaPasang, penandaCek, penandaHapus, penandaTolak } from './inti/perangkat.js';   // owner 21 Nov 2026: Ringkas hari ini di tablet (rules v14)
+import * as SJ from './layar/sidik-logika.js';
+import * as OW from './layar/owner-tablet-logika.js';   // owner 23 Nov 2026: putusan owner di tablet (sidik jari Tahap B)   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
+import { sidikJariKunci, penandaPasang, penandaCek, penandaHapus, penandaTolak, rahasiaSimpan, rahasiaBuka, adaMetode } from './inti/perangkat.js';   // owner 21 Nov 2026: Ringkas hari ini di tablet (rules v14)
 // paket S1 (19 Nov 2026): pintu perangkat (aplikasi tablet) — asliAda pindah ke sini; scanner tidak boleh terbaca sebagai PIN
 import { asliAda, padaPindai, padaTempel, ketikTambah, ketikMesin, KETIK_TUNGGU } from './inti/perangkat.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
 // putaran T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi di tablet — bisa DIBUKA tanpa internet (pekerjanya sw-baru.js, dicap saat terbit)
@@ -198,6 +199,38 @@ const sidikMenu = {
     return { ok: true, kalimat: 'Intip uang terbuka — tertutup sendiri sesudah ' + SJ.sjIntipDetik() + ' detik tidak disentuh' };
   },
 };
+// owner 23 Nov 2026 (sidik jari Tahap B): PUTUSAN OWNER DI TABLET — sandi akun owner terkunci penanda jari di perangkat ini (OW.OW_KUNCI); tiap putusan = tempel
+// jari → sandi dibuka sekali → fb.tulisSebagaiOwner (sesi owner sementara) → keluar. Sandi tidak pernah disimpan terbuka; variabelnya dibuang sesudah dipakai.
+const owLokal = () => { try { return OW.owBaca(localStorage.getItem(OW.OW_KUNCI)); } catch (e) { return null; } };
+const owSimpan = (o) => { try { if (o) localStorage.setItem(OW.OW_KUNCI, JSON.stringify(o)); else localStorage.removeItem(OW.OW_KUNCI); } catch (e) { /* perangkat menolak */ } };
+const ownerTablet = {
+  keadaan: () => OW.owKeadaan(owLokal(), akunAsli(), adaMetode('Biometrik', 'rahasiaBuka') === true),
+  daftar: () => OW.owDaftar(new Date()),
+  async nyalakan(sandi) {
+    const a = akunAsli(); if (!a || !sandi) return { ok: false, kalimat: 'Ketik sandi akun owner dulu' };
+    if (adaMetode('Biometrik', 'rahasiaBuka') !== true) return { ok: false, kalimat: 'Aplikasi tablet ini belum bisa — pasang APK terbaru dulu' };
+    const v = await fb.tulisSebagaiOwner(sandi, [], []); if (!v.ok) return { ok: false, kalimat: v.salahSandi ? 'Sandi owner salah — tidak disimpan' : (v.pesan || 'Sandi owner belum bisa diperiksa') };
+    let pasangUlang = false;
+    // kunci hangus / hilang → dipasang baru; Tahap A ditandai mati DULU (hangus = kabar ke owner) supaya pemasangan ulang tidak diam-diam menyalakannya lagi
+    try { const c = await penandaCek(); if (c.hangus) sjMatiHangus(true); else if (!c.ada) sjMatiHangus(false); if (!c.ada || c.hangus) { await penandaPasang(); pasangUlang = true; }
+      const r = await rahasiaSimpan(sandi); owSimpan({ data: r.data, iv: r.iv, uid: a.uid, dipasang: new Date().toISOString() }); }
+    catch (e) { const t = penandaTolak(e); return { ok: false, kalimat: t.batal ? 'Dibatalkan — putusan owner tetap mati' : 'Tidak menyala: ' + t.kalimat }; }
+    return { ok: true, kalimat: 'Putusan owner di tablet MENYALA — tiap putusan = tempel jari owner' + (pasangUlang ? ' (kunci sidik jari tablet dipasang baru — pastikan HANYA jari lu yang terdaftar di Setelan tablet)' : '') };
+  },
+  matikan() { owSimpan(null); return { ok: true, kalimat: 'Putusan owner di tablet dimatikan — sandi owner yang terkunci dihapus dari tablet ini' }; },
+  async putus(id, aksi, alasan) {
+    const L = owLokal(); if (!OW.owNyala(L, akunAsli())) return { ok: false, kalimat: 'Putusan owner di tablet mati — nyalakan dulu' };
+    const cek = OW.owSusunPutus(id, aksi, alasan, sjWaktu()); if (cek.tolak) return { ok: false, kalimat: cek.tolak };
+    let sandi = '';
+    try { sandi = String((await rahasiaBuka(L, OW.owNamaAksi(aksi) + ' · putusan owner', 'Tempelkan jari owner')).teks || ''); }
+    catch (e) { const g = OW.owArtiGagal(e); if (g.matikan) owSimpan(null); if (g.hangus) sjMatiHangus(true); const t = penandaTolak(e);
+      return { ok: false, kalimat: t.batal ? 'Dibatalkan — belum diputus' : 'Belum diputus: ' + (g.kalimat || t.kalimat) }; }
+    const R = OW.owSusunPutus(id, aksi, alasan, sjWaktu()); if (R.tolak) { sandi = ''; return { ok: false, kalimat: R.tolak }; }   // dihitung ulang SESUDAH jari (data terbaru)
+    const h = await fb.tulisSebagaiOwner(sandi, R.dokumen || [], R.hapus || []); sandi = '';
+    if (h.salahSandi) owSimpan(null);
+    return h.ok ? { ok: true, kalimat: OW.owNamaAksi(aksi) + ' — tersimpan atas nama owner (' + OW.OW_DI + ')' } : { ok: false, kalimat: h.pesan || 'Belum tersimpan' };
+  },
+};
 // Menu (putaran 14): laci N1 + pita jam + Sistem (SS1–SS5). Tujuan baris = layar lain lewat pintu yang sama dengan ketukan di layar itu.
 const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab) => { pindah('stok'); stok.buka(lembar, tab); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); }, bukaLaporan: (keluarga, t) => { pindah('laporan'); laporan.buka(keluarga, t); }, bukaJual: (lembar) => { pindah('jual'); layar.keadaan.setel({ lembar, kabar: '' }); },
@@ -207,7 +240,7 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
   akun: akunKini, statusUang: () => statusFb.uang, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah),
   // hemat baca (owner 7 Okt 2026): Menu › Toko ini › Perangkat & antrean › Hemat baca — keadaan, daftar siap-nyala, saklar perangkat ini, tombol baca penuh
   hemat: () => fb.hematKeadaan(), hematSiap: () => fb.hematSiapNyala(), setelSaklarHemat: (v) => fb.setelSaklarHemat(v), hematBacaPenuh: (sebab) => fb.hematBacaPenuh(sebab),
-  hematMintaSemua: () => fb.hematMintaSemua(), muatUlang: () => location.reload(), sidik: sidikMenu });
+  hematMintaSemua: () => fb.hematMintaSemua(), muatUlang: () => location.reload(), sidik: sidikMenu, ownerTablet });
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
 const harga = pasangLayarHarga(document.getElementById('layarHarga'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 27: Isi barang habis dari katalog

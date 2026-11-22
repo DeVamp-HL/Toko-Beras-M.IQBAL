@@ -1539,6 +1539,7 @@ TULIS = re.compile(r'\b(setDoc|updateDoc|addDoc)\(|\bb\.(set|update)\(')
 TANPA_CAP = [
     (r"if \(kkMentah\(x\.koleksi\)\) \{ b\.set\(doc\(db, x\.koleksi, String\(x\.data\.id\)\), x\.data\)", 'katalog kasir (ringkasanKasir): bentuk dokumen beku = sistem lama, didengar sebagai satu dokumen'),
     (r"b\.set\(doc\(db, KOLEKSI_LOG, ", 'jejak logAktivitas: kelas jejak (pendengar berbatas 150, tidak lewat delta)'),
+    (r"b\.set\(F\.doc\(d2, KOLEKSI_LOG, ", 'jejak logAktivitas putusan owner di tablet (sidik jari Tahap B, 23 Nov 2026): kelas jejak, sama dengan baris jejak penulis utama'),
     (r"setDoc\(doc\(db, 'permintaanAkses', ", 'permintaanAkses: kelas tetap; rules keys().hasOnly menolak kolom lain'),
     (r"setDoc\(doc\(db, KK_KOLEKSI, KK_ID\), kkDokumen\(isi, kini\)\)", 'katalog kasir: bentuk dokumen beku (uji_katalog_kasir)'),
     (r"setDoc\(doc\(db, KOLEKSI_PERANGKAT, id\), isi\)", 'denyut perangkatStatus: kelas tetap; staf dibatasi keys().hasOnly — owner menambah capServer (gema jam server)'),

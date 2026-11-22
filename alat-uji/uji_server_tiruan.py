@@ -86,8 +86,13 @@ def periksa_statis(T=None):
     i_au = mulai.find('auth = getAuth(app);'); i_ae = mulai.find('if (T) connectAuthEmulator(auth, T.auth, { disableWarnings: true });')
     c.append(('firebase.js: emulator disambung HANYA di belakang `if (T)`, tepat sesudah initializeFirestore / getAuth (sebelum db & auth dipakai)',
               0 <= i_db < i_fs < i_au < i_ae and mulai[i_fs:i_au].count('\n') <= 1 and mulai[i_ae:].find('setPersistence(auth') > 0, (i_db, i_fs, i_au, i_ae)))
-    luar = [x for x in re.findall(r'connect(?:Firestore|Auth)Emulator\([^)]*\)', fb) if x not in ('connectFirestoreEmulator(db, T.firestore.host, T.firestore.port)', 'connectAuthEmulator(auth, T.auth, { disableWarnings: true })')]
-    c.append(('firebase.js: tidak ada panggilan connect*Emulator lain', not luar and fb.count('connectFirestoreEmulator(') == 1 and fb.count('connectAuthEmulator(') == 1, luar))
+    # owner 23 Nov 2026 (sidik jari Tahap B): sesi owner sementara di app kedua (tulisSebagaiOwner) — emulatornya disambung HANYA di belakang `if (T && baru)`
+    # (T = serverTiruanAktif(), tepat sesudah initializeAuth / initializeFirestore app kedua). Selain dua pasang itu: tidak ada.
+    ow = fb[fb.find('export async function tulisSebagaiOwner('):fb.find('export async function simpanFotoBon(')]
+    ow_ok = 'const T = serverTiruanAktif();' in ow and 'if (T && baru) { F.connectFirestoreEmulator(d2, T.firestore.host, T.firestore.port); A.connectAuthEmulator(au, T.auth, { disableWarnings: true }); }' in ow
+    luar = [x for x in re.findall(r'connect(?:Firestore|Auth)Emulator\([^)]*\)', fb) if x not in ('connectFirestoreEmulator(db, T.firestore.host, T.firestore.port)', 'connectAuthEmulator(auth, T.auth, { disableWarnings: true })',
+            'connectFirestoreEmulator(d2, T.firestore.host, T.firestore.port)', 'connectAuthEmulator(au, T.auth, { disableWarnings: true })')]
+    c.append(('firebase.js: tidak ada panggilan connect*Emulator lain (selain sesi owner tablet di belakang `if (T && baru)`)', not luar and ow_ok and fb.count('connectFirestoreEmulator(') == 2 and fb.count('connectAuthEmulator(') == 2, luar))
     c.append(('firebase.js: alamat dibaca dari halaman (location.search + location.hostname) lewat serverTiruan(), tidak dari localStorage',
               'serverTiruan(new URLSearchParams(location.search), location.hostname)' in fb and not re.search(r'localStorage[^\n]*emulator', fb, re.I), ''))
     D, _ = uji_csp.csp_dari(html); cs = (D or {}).get('connect-src', [])

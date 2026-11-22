@@ -692,9 +692,17 @@ def periksa_statis(perangkat_js):
        'BiometricManager.from(getContext()).canAuthenticate(JENIS)' in bio and 'new BiometricPrompt(a, ContextCompat.getMainExecutor(a)' in bio and 'import android.hardware.fingerprint' not in bio)
     # owner 22 Nov 2026 (paket sidik jari, "cek sensor dulu"): kontrak S4 diperluas — + kelas sensor & PENANDA JARI BARU (satu kunci AndroidKeyStore beralias tetap,
     # wajib sidik jari KUAT per pemakaian, hangus bila ada jari baru). Tetap: tidak menyimpan berkas / preferensi, tidak membuka akun, tidak membaca data toko.
-    ok('Biometrik: tidak menyimpan berkas / preferensi, tidak membuka akun, tidak membaca data; tujuh metode (info, minta, kelas, penanda pasang/cek/hapus, uji kunci)',
-       not re.search(r'SharedPreferences|Firebase|getFilesDir|WebView|FileOutputStream', bio) and bio.count('@PluginMethod') == 7
-       and all('public void %s(' % m in bio for m in ('info', 'minta', 'kelas', 'penandaPasang', 'penandaCek', 'penandaHapus', 'ujiKunci')))
+    # owner 23 Nov 2026 (sidik jari Tahap B): + rahasiaSimpan / rahasiaBuka — satu teks (sandi owner, diketik owner) terkunci penanda; plugin TETAP tidak menyimpan
+    # berkas / preferensi (simpanan terkunci dipegang halaman), tidak membuka akun (masuk owner dikerjakan halaman lewat Firebase), tidak mencatat teks ke log.
+    ok('Biometrik: tidak menyimpan berkas / preferensi, tidak membuka akun, tidak membaca data, tidak mencatat ke log; sembilan metode (info, minta, kelas, penanda pasang/cek/hapus, uji kunci, rahasia simpan/buka)',
+       not re.search(r'SharedPreferences|Firebase|getFilesDir|WebView|FileOutputStream|Log\.[dievw]\(|System\.out', bio) and bio.count('@PluginMethod') == 9
+       and all('public void %s(' % m in bio for m in ('info', 'minta', 'kelas', 'penandaPasang', 'penandaCek', 'penandaHapus', 'ujiKunci', 'rahasiaSimpan', 'rahasiaBuka')))
+    ok('Biometrik rahasia: kunci penanda yang sama, buka = GCM dengan iv tersimpan (128 bit), tempel jari KUAT lewat CryptoObject, hangus / tidak ada / rusak punya kode sendiri',
+       'c.init(mode, (SecretKey) k.getKey(ALIAS_PENANDA, null), new GCMParameterSpec(128, iv));' in bio and 'o.put("iv", Base64.encodeToString(ci.getIV(), Base64.NO_WRAP));' in bio
+       and bio.count('.setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)') >= 2 and bio.count('p.authenticate(info, new BiometricPrompt.CryptoObject(c));') >= 2
+       and '"RAHASIA_RUSAK"' in bio and bio.count('"BIOMETRIK_HANGUS"') >= 2 and bio.count('"PENANDA_TIDAK_ADA"') >= 2
+       and "export const rahasiaSimpan = (teks) => panggilAsli('Biometrik', 'rahasiaSimpan'," in baca('baru', 'js', 'inti', 'perangkat.js')
+       and "export const rahasiaBuka = (simpanan, judul, sub) => panggilAsli('Biometrik', 'rahasiaBuka'," in baca('baru', 'js', 'inti', 'perangkat.js'))
     ok('Biometrik penanda: satu alias tetap di AndroidKeyStore, wajib sidik jari KUAT tiap pemakaian (tanpa jendela waktu), hangus bila ada jari baru',
        'private static final String ALIAS_PENANDA = "miqbal_penanda_jari";' in bio and bio.count('ALIAS_PENANDA') >= 6 and '.setInvalidatedByBiometricEnrollment(true)' in bio
        and '.setUserAuthenticationRequired(true)' in bio and 'b.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG);' in bio

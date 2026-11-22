@@ -531,7 +531,8 @@ def siapkan(jam, rusak=None):
         p = os.path.join(d, 'baru', rel); s = open(p, encoding='utf-8').read(); open(p, 'w', encoding='utf-8').write(f(s))
     ubah('index.html', lambda s: salinan_index(s, jam))
     def fb(s):
-        assert s.count(SDK + 'firebase-firestore.js') == 1, 'impor Firestore di firebase.js berubah — perbarui gladi'
+        # owner 23 Nov 2026 (sidik jari Tahap B): + satu import() dinamis Firestore di tulisSebagaiOwner — ikut diarahkan ke SDK penghitung (semua kemunculan)
+        assert s.count("from '" + SDK + "firebase-firestore.js'") == 1 and s.count(SDK + 'firebase-firestore.js') == 2, 'impor Firestore di firebase.js berubah — perbarui gladi'
         return s.replace(SDK + 'firebase-firestore.js', '/_gladi/firebase-firestore.js')
     ubah('js/data/firebase.js', fb)
     ubah('js/app.js', lambda s: s + '\nwindow.__gladiLayar = { uang, jual: layar };   // gladi_tutup_buku: pegangan layar (salinan uji saja)\n')

@@ -9,6 +9,9 @@ package id.miqbal.tokoberas;
 // satu kunci AES di AndroidKeyStore (alias tetap, tidak pernah keluar dari tablet, tidak mengunci data apa pun) yang wajib sidik jari kuat dan HANGUS
 // sendiri begitu ada jari baru didaftarkan (setInvalidatedByBiometricEnrollment). Halaman hanya bertanya "utuh / hangus / belum ada" + satu uji kunci
 // (tempel jari lewat CryptoObject). Belum ada fitur toko yang memakainya — ini bahan keputusan owner (sidik jari owner hanya menyala bila penanda bisa).
+// Owner 23 Nov 2026 (sidik jari Tahap B): + RAHASIA terkunci penanda — rahasiaSimpan(teks) mengenkripsi satu teks (sandi akun owner, diketik owner sendiri) dengan
+// penanda sesudah tempel jari kuat → { data, iv } base64 yang disimpan halaman; rahasiaBuka(data, iv) = tempel jari → teksnya, SATU kali pakai. Penanda hangus
+// (jari baru) = rahasianya tidak bisa dibuka lagi (BIOMETRIK_HANGUS) — owner mengetik sandinya lagi. Teks tidak pernah ditulis ke log / penyimpanan oleh plugin.
 
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;
@@ -23,6 +26,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import android.os.Build;
+import android.util.Base64;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.security.keystore.KeyProperties;
@@ -35,6 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 
 @CapacitorPlugin(name = "Biometrik")
 public class BiometrikPlugin extends Plugin {
@@ -272,6 +277,118 @@ public class BiometrikPlugin extends Plugin {
             } catch (Throwable t) {
                 if (selesai.compareAndSet(false, true)) call.reject("Sidik jari tidak bisa diminta: " + t.getMessage(), "BIOMETRIK_GAGAL");
             }
+        });
+    }
+
+    /** Satu tempel jari kuat lewat CryptoObject atas cipher c, lalu kerja(cipher) di dalam callback sukses. Kode tolak sama dengan ujiKunci. */
+    private interface Kerja { JSObject jalan(Cipher c) throws Exception; }
+    private void tempelLalu(final PluginCall call, final Cipher c, final String judul, final String sub, final Kerja kerja) {
+        final FragmentActivity a = getActivity();
+        if (a == null) {
+            call.reject("Layar aplikasi belum siap", "BIOMETRIK_GAGAL");
+            return;
+        }
+        final AtomicBoolean selesai = new AtomicBoolean(false);
+        a.runOnUiThread(() -> {
+            try {
+                BiometricPrompt p = new BiometricPrompt(a, ContextCompat.getMainExecutor(a), new BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult hasil) {
+                        if (!selesai.compareAndSet(false, true)) return;
+                        try {
+                            BiometricPrompt.CryptoObject co = hasil.getCryptoObject();
+                            if (co == null || co.getCipher() == null) {
+                                call.reject("Jari diterima tanpa kunci", "PENANDA_GAGAL");
+                                return;
+                            }
+                            call.resolve(kerja.jalan(co.getCipher()));
+                        } catch (Throwable t) {
+                            call.reject("Kunci tidak terbuka: " + t.getClass().getSimpleName(), "PENANDA_GAGAL");
+                        }
+                    }
+
+                    @Override
+                    public void onAuthenticationError(int kode, @NonNull CharSequence pesan) {
+                        if (!selesai.compareAndSet(false, true)) return;
+                        call.reject(String.valueOf(pesan), "BIOMETRIK_" + kode);
+                    }
+                });
+                BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
+                        .setTitle(judul)
+                        .setSubtitle(sub)
+                        .setNegativeButtonText("Batal")
+                        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                        .build();
+                p.authenticate(info, new BiometricPrompt.CryptoObject(c));
+            } catch (Throwable t) {
+                if (selesai.compareAndSet(false, true)) call.reject("Sidik jari tidak bisa diminta: " + t.getMessage(), "BIOMETRIK_GAGAL");
+            }
+        });
+    }
+
+    /** Cipher penanda untuk mode (ENCRYPT / DECRYPT dengan iv). null = sudah ditolak lewat call (tidak ada / hangus / gagal). */
+    private Cipher cipherPenanda(PluginCall call, int mode, byte[] iv) {
+        try {
+            KeyStore k = toko();
+            if (!k.containsAlias(ALIAS_PENANDA)) {
+                call.reject("Penanda belum dipasang", "PENANDA_TIDAK_ADA");
+                return null;
+            }
+            Cipher c = Cipher.getInstance(SANDI);
+            if (mode == Cipher.DECRYPT_MODE) c.init(mode, (SecretKey) k.getKey(ALIAS_PENANDA, null), new GCMParameterSpec(128, iv));
+            else c.init(mode, (SecretKey) k.getKey(ALIAS_PENANDA, null));
+            return c;
+        } catch (KeyPermanentlyInvalidatedException e) {
+            call.reject("Penanda hangus: ada jari baru didaftarkan", "BIOMETRIK_HANGUS");
+        } catch (Throwable t) {
+            call.reject("Kunci tidak bisa disiapkan: " + t.getClass().getSimpleName(), "PENANDA_GAGAL");
+        }
+        return null;
+    }
+
+    /** Owner 23 Nov 2026 (Tahap B): kunci satu teks dengan penanda sesudah tempel jari → { ok, data, iv } (base64). Teks tidak disimpan plugin. */
+    @PluginMethod
+    public void rahasiaSimpan(final PluginCall call) {
+        final String teks = call.getString("teks", "");
+        if (teks == null || teks.isEmpty()) {
+            call.reject("Tidak ada yang dikunci", "RAHASIA_KOSONG");
+            return;
+        }
+        Cipher c = cipherPenanda(call, Cipher.ENCRYPT_MODE, null);
+        if (c == null) return;
+        tempelLalu(call, c, call.getString("judul", "Kunci sandi owner"), "Tempelkan jari owner", (ci) -> {
+            byte[] keluar = ci.doFinal(teks.getBytes(StandardCharsets.UTF_8));
+            JSObject o = new JSObject();
+            o.put("ok", true);
+            o.put("data", Base64.encodeToString(keluar, Base64.NO_WRAP));
+            o.put("iv", Base64.encodeToString(ci.getIV(), Base64.NO_WRAP));
+            return o;
+        });
+    }
+
+    /** Owner 23 Nov 2026 (Tahap B): buka teks terkunci penanda (data + iv base64) sesudah tempel jari → { ok, teks }. Satu tempel jari = satu kali buka. */
+    @PluginMethod
+    public void rahasiaBuka(final PluginCall call) {
+        final byte[] data, iv;
+        try {
+            data = Base64.decode(call.getString("data", ""), Base64.NO_WRAP);
+            iv = Base64.decode(call.getString("iv", ""), Base64.NO_WRAP);
+        } catch (Throwable t) {
+            call.reject("Simpanan rahasia rusak", "RAHASIA_RUSAK");
+            return;
+        }
+        if (data.length == 0 || iv.length == 0) {
+            call.reject("Simpanan rahasia kosong", "RAHASIA_RUSAK");
+            return;
+        }
+        Cipher c = cipherPenanda(call, Cipher.DECRYPT_MODE, iv);
+        if (c == null) return;
+        tempelLalu(call, c, call.getString("judul", "Putusan owner"), call.getString("sub", "Tempelkan jari owner"), (ci) -> {
+            byte[] teks = ci.doFinal(data);
+            JSObject o = new JSObject();
+            o.put("ok", true);
+            o.put("teks", new String(teks, StandardCharsets.UTF_8));
+            return o;
         });
     }
 }

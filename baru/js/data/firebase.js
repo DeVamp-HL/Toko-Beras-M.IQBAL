@@ -774,6 +774,52 @@ export async function bacaFotoBon(idBon) {
   if (h.lewat) throw new Error('server belum menjawab dalam 15 detik');
   const out = []; h.x.forEach((d) => out.push(Object.assign({}, d.data(), d.metadata && d.metadata.hasPendingWrites ? { antre: true } : {}))); out.dariCache = !!(h.x.metadata && h.x.metadata.fromCache); return out;
 }
+// owner 23 Nov 2026 (sidik jari Tahap B): PUTUSAN OWNER DI TABLET — sesi owner SEMENTARA di app Firebase kedua ('ownerTablet'): auth di MEMORI (tidak pernah
+// tersimpan di tablet), cache Firestore di memori, satu kiriman (batch) yang menunggu server mengaku, lalu KELUAR lagi (finally). Sandi datang dari rahasia
+// terkunci sidik jari (perangkat.js rahasiaBuka) dan tidak disimpan di sini. Atribusi = owner, perangkat = tablet ini; jejak pencatat bertanda `lewat`.
+// Nama SDK yang belum dipakai halaman lain (initializeAuth, inMemoryPersistence, memoryLocalCache) diambil lewat import() dinamis saat dipakai saja — SDK palsu
+// alat uji peramban tidak perlu ikut berubah. Offline = ditolak (putusan owner tidak boleh menggantung di antrean tablet).
+let _appOwner = null;
+export const OWNER_TABLET_LEWAT = 'sidik jari owner di tablet';
+export async function tulisSebagaiOwner(sandi, daftar, hapus) {
+  if (!db || !app) throw new Error('belum tersambung');
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return { gagal: true, pesan: 'Putusan owner di tablet butuh internet — sambungkan dulu, lalu ulangi' };
+  const j = jagaKunci(daftar || [], hapus || [], {}); if (j) return j;
+  const A = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js');
+  const F = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+  if (!_appOwner) {
+    // percobaan sebelumnya gagal di tengah → app / auth / firestore kedua mungkin sudah ada: dipakai lagi (auth-nya tetap yang di memori — hanya fungsi ini yang membuatnya)
+    const AP = await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js');
+    let a2; try { a2 = AP.getApp('ownerTablet'); } catch (e) { a2 = initializeApp(app.options, 'ownerTablet'); }
+    const T = serverTiruanAktif(); let au, d2, baru = true;
+    try { au = A.initializeAuth(a2, { persistence: A.inMemoryPersistence }); } catch (e) { au = A.getAuth(a2); baru = false; }
+    try { d2 = F.initializeFirestore(a2, { localCache: F.memoryLocalCache() }); } catch (e) { d2 = F.getFirestore(a2); baru = false; }
+    if (T && baru) { F.connectFirestoreEmulator(d2, T.firestore.host, T.firestore.port); A.connectAuthEmulator(au, T.auth, { disableWarnings: true }); }
+    _appOwner = { auth: au, db: d2 };
+  }
+  const { auth: au, db: d2 } = _appOwner;
+  try {
+    let u = null;
+    try { u = await A.signInWithEmailAndPassword(au, EMAIL_OWNER, String(sandi || '')); }
+    catch (e) { const c = String((e && e.code) || ''); const salah = /wrong-password|invalid-credential|invalid-login|user-not-found/.test(c);
+      return { gagal: true, salahSandi: salah, pesan: salah ? 'Sandi owner yang tersimpan di tablet sudah tidak berlaku (sandi akun owner diganti?) — nyalakan lagi dengan sandi baru' : 'Masuk sebagai owner gagal: ' + (c || (e && e.message) || e) }; }
+    const akunO = { jenis: 'owner', nama: 'Owner', uid: u.user.uid }; const k = konteksTulis();
+    const b = F.writeBatch(d2); const ditulis = [];
+    (daftar || []).forEach(({ koleksi, data }) => {
+      const lama = dokDiCache(koleksi, data.id); const d = rsdSertakan(koleksi, beriAtribusiAkun(data, akunO, k, !!lama), lama, true, k.kini);
+      b.set(F.doc(d2, koleksi, String(d.id)), pasangCap(koleksi, d)); ditulis.push({ koleksi, data: d });   // cap hemat sama dengan penulis utama
+      const lid = idUnik(); b.set(F.doc(d2, KOLEKSI_LOG, String(lid)), { id: lid, pada: k.kini, aksi: 'tulis', koleksi, idDok: String(d.id), oleh: akunO.nama, olehUid: akunO.uid, perangkat: k.perangkat, ringkas: ringkasDok(d), lewat: OWNER_TABLET_LEWAT });
+    });
+    (hapus || []).forEach((x) => { b.delete(F.doc(d2, x.koleksi, String(x.id)));
+      const lid = idUnik(); b.set(F.doc(d2, KOLEKSI_LOG, String(lid)), { id: lid, pada: k.kini, aksi: 'hapus', koleksi: x.koleksi, idDok: String(x.id), oleh: akunO.nama, olehUid: akunO.uid, perangkat: k.perangkat, ringkas: 'hapus', lewat: OWNER_TABLET_LEWAT }); });
+    await b.commit();
+    return { ok: true, ditulis: ditulis.length };
+  } catch (e) {
+    return { gagal: true, pesan: 'Putusan owner tidak tersimpan: ' + ((e && (e.code || e.message)) || e) };
+  } finally {
+    try { await A.signOut(au); } catch (e) { /* sesi di memori — hilang juga saat aplikasi ditutup */ }
+  }
+}
 export async function simpanFotoBon(data) {
   if (!db) throw new Error('belum tersambung');
   if (pemilikSaja()) return { gagal: true, pesan: pemilikSaja() };
