@@ -392,9 +392,13 @@ jobs:
         if: matrix.bagian == 3
         run: python3 alat-uji/uji_layar_mulus.py && python3 alat-uji/uji_layar_mulus.py --kontrol
       # ---- owner 19 Nov: "masih berat di Android, terutama tablet" — pencatat tersendat di perangkat (Menu › Sistem › Perangkat) ----
-      - name: "Kelancaran perangkat (owner 19 Nov): catatan tersendat menutup per jenis & per tempat, ambang, batas daftar/tempat, hari berganti, satu ketukan = satu kejadian, kalimat kartu; tidak menulis ke server, simpanan lokal dijaga (jsc + statis, 16 kontrol)"
+      - name: "Kelancaran perangkat (owner 19 Nov): catatan tersendat menutup per jenis & per tempat, ambang, batas daftar/tempat, hari berganti, satu ketukan = satu kejadian, kalimat kartu; owner 23 Nov: penyebab bingkai panjang (skrip / gaya & tata letak / fungsi terberat); tidak menulis ke server, simpanan lokal dijaga (jsc + statis, 24 kontrol)"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_ukur_mulus.py && python3 alat-uji/uji_ukur_mulus.py --kontrol
+      # ---- owner 23 Nov: "app masih lag … terutama masalah responsif" (kartu Kelancaran CPad) — mulus Android paket 3 ----
+      - name: "Mulus Android 3 (owner 23 Nov): ingatan melewati denyut & jejak (yang membaca keduanya dihitung ulang, bersarang, galat), Ringkasan detak menit & denyut tanpa hitung ulang, Dasbor dipanaskan di latar = segar, tebakan karcis / rincian / ringkas tablet diingat, kartu Kelancaran di Menu staf, mode ringan Android tanpa kaca buram, animasi tanpa henti hanya transform/opacity (jsc + statis + 19 kontrol)"
+        if: matrix.bagian == 2
+        run: python3 alat-uji/uji_mulus_android_3.py && python3 alat-uji/uji_mulus_android_3.py --kontrol
       # ---- owner 3 Okt: /baru/ dipakai sebagai web app Safari (Mac) + Safari iPhone/iPad — cacat khas WebKit ----
       - name: "Safari/WebKit (owner 3 Okt): sandi tidak terkunci selagi fokus & dilepas di pointerdown, jarak poni tiap layar, :hover menu samping hanya untuk kursor, tanpa kolom bulan, touchstart pasif (:active iOS), penjaga muat-ulang modul kenal kalimat Safari, jarak aman kiri/kanan, minus di #rtSelisih, WA/cetak Laporan dibuka di ketukan lalu nomornya dicatat; owner 7 Okt: WA Uang & Harga tanpa noopener, paket bank dicetak di ketukan, :hover semua stylesheet hanya untuk kursor (statis + jsc + kontrol)"
         if: matrix.bagian == 3
