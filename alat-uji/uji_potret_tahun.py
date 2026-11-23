@@ -360,7 +360,7 @@ MODUL_LAYAR = bundel_baru.lengkapi(MODUL) + ['baru/js/inti/dom.js', 'baru/js/int
 LAYAR = r"""
 var __html = ''; pasang = function (akar, isi) { __html = isi && isi.__mentah ? isi.html : String(isi); }; delegasi = function () {}; gulirkan = function () {}; nanti = function () {}; segera = function () {};
 setelKunci(false); window.matchMedia = function (q) { return { matches: /1100px/.test(q) }; }; window.addEventListener = function () {}; if (typeof setTimeout === 'undefined') { var setTimeout = function () { return 0; }; var clearTimeout = function () {}; }
-var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP; var PG = LP;   // B5: kartu Per pelanggan (laba-pelanggan-logika)
+var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP; var PG = LP; var GE = LP;   // B5: kartu Per pelanggan (laba-pelanggan-logika) · 24 Nov: grosir/ecer per jenis
 var akarL = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0 };
 var L9 = null; var gambarL = function (patch) { L9.keadaan.setel(patch); L9.gambar(); return __html; };
 coba('P9', function () {

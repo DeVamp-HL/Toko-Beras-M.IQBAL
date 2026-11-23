@@ -1368,7 +1368,7 @@ if __name__ == '__main__':
             'sisa nota ini = TOTAL (uang yang diterima tidak dikurangkan)': js.replace("sisaNota = nota.total - bb.nominal;", "sisaNota = nota.total;"),
             'saldo bon tanpa tanggal saat struk disusun': js.replace(" baris('  per ' + formatTanggal(sisaBonPer), '', { jenis: 'catatan' });", ""),
             'pembatalan tidak melepas pelunasan sebagian': js.replace("[].concat(notaTerakhir.piutangId || []).forEach((id) => hapus.push({ koleksi: 'piutangMutasi', id }));", ""),
-            'isian layar bocor ke dokumen (label/satuan)': js.replace("['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'setengahDari', 'setengahHargaBaru', 'pecahan', '_takaran'].forEach((k) => { delete d[k]; });", ""),   # putaran 27: + bendera ½ karung
+            'isian layar bocor ke dokumen (label/satuan)': js.replace("['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'setengahDari', 'setengahHargaBaru', 'pecahan', '_takaran', 'pakaiGrosir'].forEach((k) => { delete d[k]; });", ""),   # putaran 27: + bendera ½ karung
             # ---- owner 18 Nov: pesanan JADI NOTA, lunas dari notanya ----
             'label pesanan kembali DIBAYAR': js.replace("dibayar: 'JADI NOTA', batal: 'BATAL' };", "dibayar: 'DIBAYAR', batal: 'BATAL' };"),
             'pesanan bon dianggap lunas': js.replace("if (baris.every((p) => caraBayarKunci(p) !== 'kredit')) return lunas;", "return lunas;"),
@@ -1488,7 +1488,7 @@ if __name__ == '__main__':
             'modal kantong dipakai walau buku belinya kosong (Rp0 jadi modal)': js.replace("const ada = (st.totalBeli || 0) > 0 && (st.hppPerPcs || 0) > 0;", "const ada = true;"),
             'wadah ditanggung toko tidak masuk HPP baris repack': js.replace("t.kemasanRepack = e.kemasanRepack; t.jumlahKemasanRepackDipakai = b.lembar; t.biayaKemasanRepack = b.biaya; t.hppTotalSaatJual += b.biaya;", "t.kemasanRepack = e.kemasanRepack; t.jumlahKemasanRepackDipakai = b.lembar; t.biayaKemasanRepack = b.biaya;"),
             'upah repack tidak ikut ditagih': js.replace("const nilai = Math.round(t.hargaSatuan * t.jumlah) + (t.upahRepack || 0);", "const nilai = Math.round(t.hargaSatuan * t.jumlah);"),
-            'wadah & upah hilang saat baris repack dibangun ulang (+1 kg)': js.replace("kemasanRepack: t.kemasanRepack, jumlahKemasanRepack: t.jumlahKemasanRepackDipakai, upahRepack: t.upahRepack }, NG_KOLOM", "}, NG_KOLOM"),
+            'wadah & upah hilang saat baris repack dibangun ulang (+1 kg)': js.replace("kemasanRepack: t.kemasanRepack, jumlahKemasanRepack: t.jumlahKemasanRepackDipakai, upahRepack: t.upahRepack, pakaiGrosir: !!t.pakaiGrosir }, NG_KOLOM", "pakaiGrosir: !!t.pakaiGrosir }, NG_KOLOM"),
             'pembatalan tidak memulihkan buku kantong wadah': js.replace("baris.forEach((p) => { if (p.jenis === 'wadah' && p.jenisWadah) hapus.push({ koleksi: koleksiWadah(p.jenisWadah), id: p.id + 1 });", "baris.forEach((p) => { if (false) hapus.push({ koleksi: koleksiWadah(p.jenisWadah), id: p.id + 1 });"),
             'lantai Rp100/lembar dilewati (Rp50 diterima)': js.replace("if (n > 0 && n < WJ_LANTAI_LEMBAR) { salah.push(d.label + ': ' + RP(n) + ' per lembar'); return; }", ""),
             'saran lembar dibulatkan ke bawah': js.replace("return Math.max(1, Math.ceil(Math.round(k / d.ukuranKg * 1000) / 1000));", "return Math.max(1, Math.floor(Math.round(k / d.ukuranKg * 1000) / 1000));"),
