@@ -493,6 +493,22 @@ export async function kemampuan() {
   return k;
 }
 
+// ---------- setelan layar Perangkat dikunci jari owner (owner 23 Nov 2026: sidik jari lain "lu yang pilih") ----------
+// Layar Perangkat (/baru/uji-cetak.html) tidak masuk akun — siapa pun yang memegang tablet bisa membukanya. Yang bisa merusak diam-diam: jalur/alamat printer,
+// lampu, mode kertas, dan PENANDA JARI (dihapus di sini = sidik jari owner Tahap A/B mati tanpa kabar; dipasang ulang = kunci baru). Begitu sidik jari owner
+// menyala di tablet ini (Tahap A belum hangus, atau Tahap B tersimpan), tombol-tombol itu minta tempel jari owner lewat penanda (kunci kuat, hangus bila ada
+// jari baru). Penanda hangus / tidak ada = tidak ada yang bisa dipakai memeriksa → dibuka tanpa jari dengan catatan keras (aplikasi toko mengabari owner soal
+// hangus) — kalau tidak, owner sendiri terkunci. Nama simpanan = SJ_KUNCI (layar/sidik-logika.js) & OW_KUNCI (layar/owner-tablet-logika.js), dijaga uji.
+export const SIDIK_SIMPANAN = ['miqbal_sidik_owner_v1', 'miqbal_owner_tablet_v1'];
+/** baca(kunci) → teks simpanan perangkat (localStorage.getItem). true = setelan layar Perangkat minta jari owner. */
+export function setelanTerkunciJari(baca) {
+  const j = (k) => { try { const o = JSON.parse(String((baca && baca(k)) || '')); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } };
+  const sj = j(SIDIK_SIMPANAN[0]); const ow = j(SIDIK_SIMPANAN[1]);
+  return !!((sj && sj.orang && sj.uid && sj.hangus !== true) || (ow && ow.data && ow.iv && ow.uid));
+}
+/** Tolakan penanda yang berarti "tidak ada yang bisa dipakai memeriksa" (bukan "jarinya salah / dibatalkan"). */
+export const penandaTakTerpakai = (e) => !!(e && (e.code === 'BIOMETRIK_HANGUS' || e.code === 'PENANDA_TIDAK_ADA'));
+
 // ---------- uji ukuran kiriman Bluetooth (owner 23 Nov 2026: "Uji ukuran, tanpa APK") ----------
 // hasil = [{ pita, byte, status: 'tercetak' | 'diam' | 'gagal' | 'sibuk', ms, pesan }] dari layar Perangkat (struk uji 1..5 pita, escpos.js epUjiUkuran).
 // Kesimpulan menurut KABAR printer saja — yang menentukan tetap kertasnya (jumlah garis hitam tebal & baris SELESAI), dan satu putaran belum bukti.

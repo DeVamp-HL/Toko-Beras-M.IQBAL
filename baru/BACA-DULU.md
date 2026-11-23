@@ -3406,6 +3406,14 @@ bukan isian/draf). Penulis `firebase.js tulisSebagaiOwner`: app Firebase kedua `
 SDK palsu uji peramban tidak berubah), offline ditolak, `jagaKunci`, pencatat setelan, jejak bertanda `lewat`, `await commit`, `signOut` di finally. Rules
 tetap. Alat uji `alat-uji/uji_owner_tablet.py` (jsc + render kartu + statis + kontrol); kontrak plugin di `uji_perangkat_sunmi.py`.
 
+**Sidik jari owner — setelan layar Perangkat dikunci jari (owner 23 Nov 2026, "lu yang pilih"):** layar Perangkat (`/baru/uji-cetak.html`) tidak masuk akun,
+jadi siapa pun yang memegang tablet bisa mengubah jalur/alamat printer, lampu, mode kertas, dan — paling berbahaya — **menghapus penanda jari** (Tahap A/B mati
+tanpa kabar). Begitu sidik jari owner menyala di tablet itu (`perangkat.js setelanTerkunciJari`: simpanan Tahap A belum hangus, atau sandi Tahap B tersimpan —
+nama simpanan = `SJ_KUNCI` & `OW_KUNCI`, dijaga uji), lima tombol yang MENGUBAH (Simpan setelan, Simpan lampu, Pindah mode, Pasang penanda, Hapus penanda)
+minta tempel jari owner lewat penanda (`sidikJariKunci`, kunci kuat). Periksa printer, cetak contoh, uji ukuran, label contoh, baca mode, uji sidik tetap
+bebas. Penanda hangus / tidak ada (`penandaTakTerpakai`) = tidak ada yang bisa memeriksa → dibuka tanpa jari dengan catatan keras (owner dikabari soal hangus
+oleh aplikasi toko), supaya owner tidak terkunci sendiri. Halaman saja, tanpa APK & rules.
+
 ## Gladi ulang tutup buku 2026 atas cadangan 23 Nov — fitur November × tahun yang ditutup (23 Nov 2026, cabang `perbaikan/tutup-buku-fitur-nov`)
 
 Gladi ulang semua alat tutup buku atas cadangan toko 23 Nov (lokal, `_privat/`): ritual lulus (14 baris sama, kartu pemeriksaan 27/27, Batalkan persis). Yang
