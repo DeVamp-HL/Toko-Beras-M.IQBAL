@@ -82,8 +82,18 @@ TP_MODUL = 'baru/js/layar/titipan-logika.js'
 TP_PEMAKAI = ('uang-logika.js', 'sistem-logika.js', 'tutup-hari-logika.js')
 
 
+# paket KPI laba (owner 24 Nov 2026): Dasbor memakai kpi-laba-logika (tiga margin, target harian, kas minimum, siklus uang, nota terbesar …) — modul itu ikut
+# OTOMATIS (sekali, di belakang, sesudah semua sumbernya), bersama riwayat-logika (nota terbesar = nota Jual › Riwayat) bila belum ada.
+KL_MODUL = 'baru/js/layar/kpi-laba-logika.js'
+KL_PEMAKAI = ('dasbor-logika.js',)
+RW_MODUL = 'baru/js/layar/riwayat-logika.js'
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in KL_PEMAKAI for x in d) and not any(x.endswith('kpi-laba-logika.js') for x in d):
+        if not any(x.endswith('riwayat-logika.js') for x in d): d.append(RW_MODUL)
+        d.append(KL_MODUL)
     if any(os.path.basename(x) in TP_PEMAKAI for x in d) and not any(x.endswith('titipan-logika.js') for x in d):
         d.append(TP_MODUL)
     if any(os.path.basename(x) in GE_PEMAKAI for x in d) and not any(x.endswith('grosir-ecer-logika.js') for x in d):

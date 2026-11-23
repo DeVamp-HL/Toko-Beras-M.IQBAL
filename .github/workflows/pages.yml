@@ -283,6 +283,9 @@ jobs:
       - name: "Laporan per pelanggan (B5, owner 18 Nov 2026): laba kotor per tingkat harga + Eceran, pelanggan usaha dirinci (pembeli eceran digabung), ongkir yang ditagih, dilepas dari eceran (tingkat · nego · potongan nota), tempo dalam hari (bayar beralamat dulu, lalu bon tertua; hapus buku bukan dibayar), faktur lewat tempo, 1/3/12 bulan, Dasbor = angka yang sama, menutup ke laba kotor Laporan (kotak pasir + statis + kontrol)"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_laba_pelanggan.py && python3 alat-uji/uji_laba_pelanggan.py --kontrol
+      - name: "Paket KPI laba (owner 24 Nov 2026, 15 butir): margin kotor · usaha · bersih % satu penyebut (laba usaha − hapus buku ± lebih/kurang kas = laba bersih mesin), per jenis menutup ke laba kotor, PPh tidak terpotong dua kali, saran harga & mark-up (target bawaan = margin 3 bulan), BPS, GMROI, siklus uang, target harian (laju jam), kas minimum 4 tempat, nota terbesar, bon dalam kg, batas HPP (tegas >), hari bayar pemasok, cek mingguan gudang (= rules v19), lama pemenuhan pesanan, Dasbor = angka yang sama (kotak pasir + statis + kontrol)"
+        if: matrix.bagian == 3
+        run: python3 alat-uji/uji_kpi_laba.py && python3 alat-uji/uji_kpi_laba.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"
