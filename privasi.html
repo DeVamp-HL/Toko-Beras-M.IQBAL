@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<!-- Google Play (23 Nov 2026, docs/google-play.md): kebijakan privasi aplikasi tablet kasir (id.miqbal.tokoberas). Halaman statis TANPA script, CSP ketat.
+     Isinya wajib cocok dengan docs/google-play/data-safety.md (dijaga alat-uji/uji_google_play.py). Repo publik: tanpa nama orang, tanpa angka uang toko. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kebijakan Privasi — Kasir Toko Beras</title>
+<meta name="theme-color" content="#101314">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: radial-gradient(ellipse at 50% 0%, #1d2122 0%, #080a0b 70%) fixed #080a0b; color: #e8e4da;
+         font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 44em; margin: 0 auto; padding: 32px 18px 64px; }
+  h1 { font-size: 1.6em; margin: 0 0 4px; color: #e6c983; letter-spacing: .01em; }
+  h2 { font-size: 1.1em; margin: 2em 0 .4em; color: #d6b05a; }
+  .ket { color: #a9a597; font-size: .92em; }
+  ul { padding-left: 1.2em; } li { margin: .25em 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .94em; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid #2c2f30; }
+  th { color: #d6b05a; font-weight: 600; }
+  hr { border: 0; border-top: 1px solid #3a3424; margin: 2.4em 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Kebijakan Privasi</h1>
+  <p class="ket">Aplikasi <b>Kasir Toko Beras</b> (Android, paket <code>id.miqbal.tokoberas</code>) · berlaku sejak 23 November 2026</p>
+
+  <p>Aplikasi ini adalah alat kerja internal sebuah toko beras: kasir, stok, bon, struk, dan laporan. Aplikasi hanya bisa dipakai dengan akun yang dibuat
+     oleh pemilik toko. Pengembang aplikasi adalah pemilik toko itu sendiri — data yang dicatat di aplikasi adalah catatan usahanya.</p>
+
+  <h2>Data yang dicatat dan dikirim ke server</h2>
+  <table>
+    <tr><th>Data</th><th>Untuk apa</th></tr>
+    <tr><td>Akun masuk: alamat email dan id akun</td><td>masuk ke aplikasi; menandai siapa mencatat apa</td></tr>
+    <tr><td>Catatan usaha: penjualan, harga, stok, pembayaran, bon dan utang-piutang, tutup hari</td><td>fungsi kasir dan pembukuan toko</td></tr>
+    <tr><td>Nama, nomor telepon, dan alamat pelanggan atau pemasok yang dicatat toko</td><td>bon, tagihan, surat jalan, kartu pelanggan</td></tr>
+    <tr><td>Foto kertas bon/nota, foto lembar surat jalan, tanda tangan penerima</td><td>bukti transaksi dan pengantaran</td></tr>
+    <tr><td>Pesan dan persetujuan antara pemilik dan tablet; log aktivitas</td><td>koordinasi kerja dan jejak pemeriksaan</td></tr>
+    <tr><td>Token notifikasi perangkat dan status perangkat (terakhir aktif, versi, kelancaran layar)</td><td>mengirim notifikasi ke tablet; memantau tablet toko</td></tr>
+  </table>
+  <p>Data disimpan di <b>Firebase (Google Cloud)</b> dalam proyek milik pemilik toko, dan dikirim dengan enkripsi (HTTPS). Salinan sementara disimpan di
+     perangkat supaya aplikasi tetap bisa dipakai saat sinyal putus. Halaman aplikasi dimuat dari GitHub Pages.</p>
+
+  <h2>Yang tidak dilakukan</h2>
+  <ul>
+    <li>Tidak ada iklan, tidak ada analitik pihak ketiga, tidak ada pelacak.</li>
+    <li>Data tidak dijual dan tidak dibagikan ke pihak lain. Google (Firebase) hanya menyimpan dan mengirimkan data atas nama pemilik toko.</li>
+    <li>Tidak membaca lokasi, kontak telepon, SMS, log panggilan, atau berkas lain di perangkat.</li>
+    <li>Sidik jari diperiksa oleh sensor Android di perangkat; aplikasi hanya menerima hasil "cocok" atau "tidak", gambar sidik jari tidak pernah dikirim.</li>
+  </ul>
+
+  <h2>Izin perangkat</h2>
+  <ul>
+    <li><b>Internet</b> — menyimpan dan membaca data toko.</li>
+    <li><b>Notifikasi</b> — kabar persetujuan dan pesan dari pemilik toko (diminta saat dinyalakan).</li>
+    <li><b>Bluetooth, USB, jaringan lokal</b> — mencetak struk ke printer toko dan membaca pemindai kode batang.</li>
+    <li><b>NFC</b> — membaca kartu pelanggan toko.</li>
+    <li><b>Sidik jari</b> — membuka fitur khusus pemilik.</li>
+    <li><b>Kamera</b> — hanya lewat pemilih foto Android saat memotret bon atau surat jalan.</li>
+  </ul>
+
+  <h2 id="hapus">Penyimpanan dan penghapusan data</h2>
+  <p>Data disimpan selama toko memakainya sebagai catatan usaha. Pelanggan, pemasok, atau penjaga yang ingin datanya dihapus dapat meminta langsung kepada
+     pemilik toko, atau lewat email pengembang yang tercantum di halaman aplikasi di Google Play. Akun penjaga dihapus oleh pemilik toko. Catatan yang
+     wajib disimpan untuk pembukuan dapat dipertahankan sesuai ketentuan yang berlaku.</p>
+
+  <h2>Anak-anak</h2>
+  <p>Aplikasi ini alat kerja untuk orang dewasa dan tidak ditujukan untuk anak-anak.</p>
+
+  <h2>Perubahan</h2>
+  <p>Bila jenis data yang dicatat berubah, halaman ini diperbarui dan tanggal berlakunya diganti.</p>
+
+  <h2>Kontak</h2>
+  <p>Pertanyaan tentang privasi: email pengembang yang tercantum di halaman aplikasi di Google Play.</p>
+
+  <hr>
+  <p class="ket" lang="en"><b>English summary.</b> Kasir Toko Beras is an internal point-of-sale app for one rice shop, usable only with accounts created by
+     the shop owner, who is also the developer. It stores the shop's business records (sales, stock, payments, credit, customer and supplier names, phone
+     numbers and addresses, receipt and delivery photos, internal messages, activity logs), sign-in email and account ID, and the device's push token and
+     status in the owner's Firebase (Google Cloud) project, encrypted in transit. No ads, no third-party analytics or tracking; data is not sold or shared.
+     Deletion requests: contact the shop owner or the developer email on the Google Play listing.</p>
+</main>
+</body>
+</html>

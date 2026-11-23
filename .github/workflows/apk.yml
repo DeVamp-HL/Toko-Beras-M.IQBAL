@@ -10,6 +10,10 @@ name: Bangun APK tablet kasir
 #   APK_KEYSTORE_B64 (keystore .jks dalam base64) · APK_KEYSTORE_PASSWORD · APK_KEY_ALIAS · APK_KEY_PASSWORD
 # Tanpa rahasia itu yang dibangun APK DEBUG: bisa dipasang & dicoba, tapi tiap bangun bertanda tangan beda — memasang yang baru
 # berarti hapus aplikasi lama dulu (masuk akun & setelan printer di tablet hilang).
+#
+# Google Play privat (23 Nov 2026, docs/google-play.md): dari bangun yang SAMA keluar juga AAB (artefak terpisah "aab-google-play") untuk jalur
+# UJI INTERNAL Play — versionCode & targetSdk sama dengan APK, ditandatangani kunci yang sama (= kunci unggah Play). APK tetap dibangun & disimpan
+# seperti biasa; AAB gagal TIDAK menghilangkan APK (artefak APK disimpan lebih dulu, run tetap merah supaya ketahuan). Tanpa rahasia kunci: tanpa AAB.
 
 on:
   workflow_dispatch:
@@ -128,6 +132,10 @@ jobs:
             grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RUNNER_TEMP/tanda.txt" || { echo "GAGAL: APK tidak bertanda tangan V2"; exit 1; }
             rm -f "$RUNNER_TEMP/kunci.jks"
             echo "### APK RILIS bertanda tangan kunci toko (V1 + V2 terbukti) — bisa dipasang menimpa versi lama" >> "$GITHUB_STEP_SUMMARY"
+            # Google Play: bundel dari proyek & versi yang sama (pustaka sudah terunduh oleh assembleRelease). Gagal di sini TIDAK menggagalkan langkah
+            # ini — APK di atas tetap disimpan; langkah "Tanda tangani & periksa AAB" yang merah.
+            if bangun bundleRelease; then echo "AAB_SIAP=1" >> "$GITHUB_ENV"
+            else echo "::error title=AAB Google Play::bundleRelease gagal — APK tetap disimpan, AAB tidak ada"; fi
           else
             bangun assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk "../keluaran/toko-beras-kasir-1.${{ github.run_number }}-debug.apk"
@@ -141,3 +149,55 @@ jobs:
           name: apk-tablet-kasir
           path: apk/keluaran/*.apk
           retention-days: 30
+
+      # Google Play (23 Nov 2026): AAB ditandatangani kunci yang sama dengan APK (jarsigner = tanda tangan bundel; apksigner hanya untuk APK).
+      # Diperiksa sebelum disimpan: targetSdk >= 36 (syarat aplikasi baru), kunci RSA >= 2048 bit (syarat kunci unggah), tanda tangan terverifikasi,
+      # bentuk bundel + pustaka native 16 KB (apk/periksa_aab.py). Sertifikat kunci memuat nama pemiliknya → yang ditampilkan HANYA baris algoritma
+      # & sidik SHA-256 (sidik itu juga terbaca dari APK mana pun; dicocokkan owner di Play Console › Play app signing).
+      - name: Tanda tangani & periksa AAB (Google Play)
+        working-directory: apk/android
+        env:
+          KEYSTORE_B64: ${{ secrets.APK_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "### AAB Google Play: TIDAK dibangun — rahasia APK_KEYSTORE_* belum ada (Play menolak bundel bertanda tangan debug)" >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          [ "${AAB_SIAP:-}" = 1 ] || { echo "GAGAL: bundleRelease tidak menghasilkan AAB (lihat log langkah Bangun APK) — APK sudah tersimpan"; exit 1; }
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APK=$(ls ../keluaran/*.apk | head -1)
+          SASARAN=$("$BT/aapt2" dump badging "$APK" | sed -n "s/^targetSdkVersion:'\([0-9]*\)'.*/\1/p" | head -1)
+          [ "${SASARAN:-0}" -ge 36 ] || { echo "GAGAL: targetSdk ${SASARAN:-?} < 36 — Google Play menolak aplikasi baru yang tidak menyasar Android 16 (apk/pasang.py SDK_SASARAN)"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kunci.jks"
+          keytool -list -v -keystore "$RUNNER_TEMP/kunci.jks" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" > "$RUNNER_TEMP/kunci.txt" || true
+          ALGO=$(grep -m1 'Subject Public Key Algorithm' "$RUNNER_TEMP/kunci.txt" | sed 's/^[^:]*: *//' || true)
+          SIDIK=$(grep -m1 -E '^[[:space:]]*SHA256:' "$RUNNER_TEMP/kunci.txt" | sed 's/^[^:]*: *//' || true)
+          rm -f "$RUNNER_TEMP/kunci.txt"
+          BIT=$(echo "$ALGO" | grep -oE '^[0-9]+' || true)
+          if ! echo "$ALGO" | grep -q 'RSA' || [ "${BIT:-0}" -lt 2048 ]; then
+            rm -f "$RUNNER_TEMP/kunci.jks"; echo "GAGAL: kunci unggah Google Play wajib RSA >= 2048 bit (kunci ini: ${ALGO:-tidak terbaca})"; exit 1
+          fi
+          AAB="../keluaran/toko-beras-kasir-1.${{ github.run_number }}.aab"
+          jarsigner -keystore "$RUNNER_TEMP/kunci.jks" -storepass:env KEYSTORE_PASSWORD -keypass:env KEY_PASSWORD -digestalg SHA-256 \
+            -signedjar "$AAB" app/build/outputs/bundle/release/app-release.aab "$KEY_ALIAS" > /dev/null
+          rm -f "$RUNNER_TEMP/kunci.jks"
+          jarsigner -verify "$AAB" > "$RUNNER_TEMP/aab.txt" || true
+          grep -q 'jar verified' "$RUNNER_TEMP/aab.txt" || { cat "$RUNNER_TEMP/aab.txt"; echo "GAGAL: tanda tangan AAB tidak terverifikasi"; exit 1; }
+          python3 ../periksa_aab.py "$AAB"
+          ls -la ../keluaran
+          {
+            echo "### AAB Google Play (uji internal) — $(basename "$AAB")"
+            echo "- targetSdk $SASARAN · kunci $ALGO · tanda tangan terverifikasi · bentuk bundel & pustaka native 16 KB lulus"
+            echo "- sidik SHA-256 sertifikat kunci: \`$SIDIK\` — cocokkan dengan Play Console › Play app signing (docs/google-play.md)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Simpan AAB (Google Play)
+        if: env.AAB_SIAP == '1'
+        uses: actions/upload-artifact@v5
+        with:
+          name: aab-google-play
+          path: apk/keluaran/*.aab
+          retention-days: 30
+          if-no-files-found: error

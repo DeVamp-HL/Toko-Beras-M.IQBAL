@@ -1,0 +1,88 @@
+name: Serahkan kunci aplikasi ke Google Play (sekali)
+
+# Google Play privat (23 Nov 2026, docs/google-play.md langkah 6). SEKALI SAJA, dijalankan owner dari tab Actions SEBELUM AAB pertama diunggah.
+#
+# Kenapa: aplikasi tablet yang sudah terpasang di CPad bertanda tangan kunci toko (rahasia APK_KEYSTORE_*). Bila Play memakai kunci buatannya sendiri
+# (bawaan Play Console), pembaruan dari Play TIDAK bisa menimpa APK itu — aplikasi wajib dihapus dulu (masuk akun & setelan printer tablet hilang), dan
+# sesudahnya APK dari Actions tidak bisa lagi dipasang menimpa versi Play. Dengan menyerahkan salinan kunci toko ke Play App Signing ("Export and upload a
+# key from Java keystore"), Play menandatangani dengan kunci yang SAMA → satu kunci untuk APK manual & Play, pembaruan saling menimpa tanpa hapus data.
+#
+# Alat Google "PEPK" (Play Encrypt Private Key) mengenkripsi kunci dengan KUNCI PUBLIK ENKRIPSI dari Play Console — hanya Google yang bisa membukanya.
+# Mac owner tidak punya Java, jadi dijalankan di runner. Isian: kunci enkripsi yang ditampilkan Play Console (isi berkas encryption_public_key.pem
+# lengkap dengan baris BEGIN/END, ATAU deret heksa setelah --encryptionkey=). Hasil: artefak "kunci-terenkripsi-untuk-play" (zip), hidup 1 hari,
+# diunggah owner ke Play Console. Isian ini data publik (kunci publik Google) — tidak ada rahasia yang tercetak.
+#
+# PEPK diunduh dari alamat resmi Google & DICOCOKKAN sidik SHA-256-nya (dibaca 23 Nov 2026). Google memperbarui alatnya → langkah gagal dengan kalimat
+# jelas; perbarui SIDIK_PEPK hanya sesudah memastikan berkas baru itu dari Google.
+
+on:
+  workflow_dispatch:
+    inputs:
+      kunci_enkripsi:
+        description: 'Kunci enkripsi dari Play Console (isi encryption_public_key.pem, atau heksa --encryptionkey)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-kunci
+  cancel-in-progress: false
+
+jobs:
+  kunci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Enkripsi kunci toko untuk Play App Signing (PEPK)
+        env:
+          KEYSTORE_B64: ${{ secrets.APK_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
+          KUNCI_ENKRIPSI: ${{ inputs.kunci_enkripsi }}
+          URL_PEPK: https://www.gstatic.com/play-apps-publisher-rapid/signing-tool/prod/pepk.jar
+          SIDIK_PEPK: aaccc0774b240aa5304bdad2a49865e92f229ca73209ecb6eaafe75dc858e24e
+        run: |
+          [ -n "$KEYSTORE_B64" ] || { echo "GAGAL: rahasia APK_KEYSTORE_B64 belum ada — tidak ada kunci toko untuk diserahkan"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/pepk" keluaran
+          curl -sSfL -m 120 -o "$RUNNER_TEMP/pepk/pepk.jar" "$URL_PEPK"
+          echo "$SIDIK_PEPK  $RUNNER_TEMP/pepk/pepk.jar" | sha256sum -c - || { echo "GAGAL: pepk.jar dari Google berubah (sidik SHA-256 lain) — periksa lalu perbarui SIDIK_PEPK di workflow ini"; exit 1; }
+          # Bentuk isian: PEM (RSA-AES) atau heksa. Selain itu ditolak — tidak pernah dijalankan sebagai perintah.
+          printf '%s\n' "$KUNCI_ENKRIPSI" | tr -d '\r' > "$RUNNER_TEMP/pepk/isian.txt"
+          if grep -q -- '-----BEGIN PUBLIC KEY-----' "$RUNNER_TEMP/pepk/isian.txt"; then
+            # isian satu baris dari kotak teks: pulihkan baris PEM (kepala, badan base64 per 64 huruf, ekor)
+            BADAN=$(tr -d '\n ' < "$RUNNER_TEMP/pepk/isian.txt" | sed -e 's/-----BEGIN PUBLIC KEY-----//' -e 's/-----END PUBLIC KEY-----//')
+            echo "$BADAN" | grep -qE '^[A-Za-z0-9+/=]+$' || { echo "GAGAL: isi PEM bukan base64"; exit 1; }
+            { echo '-----BEGIN PUBLIC KEY-----'; echo "$BADAN" | fold -w 64; echo '-----END PUBLIC KEY-----'; } > "$RUNNER_TEMP/pepk/enkripsi.pem"
+            CARA=(--rsa-aes-encryption "--encryption-key-path=$RUNNER_TEMP/pepk/enkripsi.pem")
+          else
+            HEKSA=$(tr -d '\n ' < "$RUNNER_TEMP/pepk/isian.txt" | sed 's/^--encryptionkey=//')
+            echo "$HEKSA" | grep -qE '^[0-9a-fA-F]{64,}$' || { echo "GAGAL: isian bukan PEM 'BEGIN PUBLIC KEY' dan bukan heksa — salin persis dari Play Console"; exit 1; }
+            CARA=("--encryptionkey=$HEKSA")
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kunci.jks"
+          java -jar "$RUNNER_TEMP/pepk/pepk.jar" --keystore="$RUNNER_TEMP/kunci.jks" --alias="$KEY_ALIAS" \
+            --keystore-pass="$KEYSTORE_PASSWORD" --key-pass="$KEY_PASSWORD" "${CARA[@]}" --include-cert --output=keluaran/kunci-terenkripsi-untuk-play.zip
+          rm -f "$RUNNER_TEMP/kunci.jks"
+          ls -la keluaran
+          {
+            echo "### Kunci toko terenkripsi untuk Play App Signing"
+            echo "Unduh artefak **kunci-terenkripsi-untuk-play** (hidup 1 hari), buka zip-nya sekali, unggah berkas di dalamnya di Play Console ›"
+            echo "Play app signing › *Export and upload a key from Java keystore*. Hanya Google yang bisa membukanya (dienkripsi kunci publik Play)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Simpan kunci terenkripsi
+        uses: actions/upload-artifact@v5
+        with:
+          name: kunci-terenkripsi-untuk-play
+          path: keluaran/kunci-terenkripsi-untuk-play.zip
+          retention-days: 1
+          if-no-files-found: error
