@@ -293,6 +293,8 @@ export function pasangLayarJual(akar, opsi) {
     // ---- putaran 3 ----
     namaRepack: (v) => set({ namaRepack: String(v || '').slice(0, 60) }),
     bonus: ({ id }) => set(L.toggleBonus(SBN(), id)),
+    // owner 24 Nov 2026: saran harga grosir per jumlah karung
+    grosir: ({ id }) => set(L.toggleGrosir(SBN(), id)),
     // tinjauan no. 22: pengganti retur (nota Rp0) = retur & tukar → owner saja; bukan-owner: tombol menyebut sebabnya (penjaga kiriman juga menolak)
     penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(SBN(), id)); },
     bukaPesanan: ({ saring }) => set({ lembar: 'pesanan', psSaring: saring || '' }),
@@ -839,6 +841,7 @@ export function pasangLayarJual(akar, opsi) {
               <div class="h" data-aksi="nego" data-id="${b.id}" title="ketuk untuk nego">${RP(b.trx.hargaTotal)}</div>
               <span class="hapus" data-aksi="hapusBaris" data-id="${b.id}">${mentah(IKON.hapus)}</span>
               <div class="bendera">
+                ${b.trx.pakaiGrosir ? h`<span class="pil nyala" data-aksi="grosir" data-id="${b.id}" data-k="grosir-${b.id}" title="ketuk untuk kembali ke harga biasa">✓ ${b.trx.grosirMin ? 'harga grosir ≥ ' + b.trx.grosirMin + ' karung' : 'grosir (jumlah belum mencapai jenjang)'}</span>` : (() => { const G = L.saranGrosir(b); return G ? h`<span class="pil emas" data-aksi="grosir" data-id="${b.id}" data-k="grosir-${b.id}" title="harga grosir per jumlah karung (diatur owner)">pakai harga grosir ${RP(G.harga)}/karung · hemat ${RP(G.hemat)}</span>` : ''; })()}
                 ${b.trx.jenis === 'kemasan' && !b.trx.setengahDari ? h`<span class="pil ${b.trx.bonusUnit ? 'nyala' : ''}" data-aksi="bonus" data-id="${b.id}" title="1 unit gratis: stok & modal ikut, uang tidak">${b.trx.bonusUnit ? '✓ bonus +1' : '+1 bonus'}</span>` : ''}
                 <span class="pil awas ${b.trx.penggantiRetur ? 'nyala' : ''} ${s.penggantiTanya === b.id ? 'nyala' : ''}" data-aksi="penggantiRetur" data-id="${b.id}" title="tukar tanpa nota: omzet & kas Rp0, modal tetap keluar">${b.trx.penggantiRetur ? '✓ pengganti retur' : s.penggantiTanya === b.id ? 'ketuk lagi: pengganti retur' : 'pengganti retur'}</span>
               </div>

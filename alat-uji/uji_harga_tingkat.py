@@ -197,13 +197,55 @@ var ki = susunSimpanKartu(new Date('2026-11-16T10:00:00'), 'bu suti', { nama: 'B
 ok('I: NPWP bukan 15/16 angka ditolak', /15 atau 16 angka/.test(ki.tolak || ''), J(ki));
 var ki2 = susunSimpanKartu(new Date('2026-11-16T10:00:00'), 'bu suti', { nama: 'Bu Suti', cip: [], catatan: 'warung depan pasar', arah: '', asli: '', kontak: '', biasa: '', alamat: 'Jl. Contoh 1', npwp: '01.234.567.8-901.000' }, W);
 ok('I: alamat antar & NPWP 15 angka tersimpan di kartu', ki2.dokumen && ki2.dokumen[0].data.alamat === 'Jl. Contoh 1' && ki2.dokumen[0].data.npwp === '01.234.567.8-901.000', J(ki2));
+// ---- J · SARAN HARGA GROSIR per jumlah karung (owner 24 Nov 2026: per merek, tidak ditumpuk, owner saja)
+var SETG = Object.assign(JSON.parse(J(SET)), { grosir: { 'karung|Angsa|50': [{ min: 10, harga: 660000 }, { min: 5, harga: 670000 }, { min: 1, harga: 1 }, { min: 7, harga: -5 }], 'kemasan|Kembang|5': [{ min: 5, harga: 60000 }] } });
+pasok('aturanToko', [SETG]);
+var AG = htAtur();
+ok('J: setelan dibersihkan: jenjang sah saja (min ≥ 2, harga > 0), urut naik; bukan karung dibuang', J(AG.grosir) === J({ 'karung|Angsa|50': [{ min: 5, harga: 670000 }, { min: 10, harga: 660000 }] }), J(AG.grosir));
+ok('J: jenjang yang berlaku = min terbesar yang tercapai', htGrosir('karung|Angsa|50', 4) === null && htGrosir('karung|Angsa|50', 5).harga === 670000 && htGrosir('karung|Angsa|50', 12).harga === 660000 && htGrosir('karung|Angsa|25', 12) === null);
+var TG1 = htTerapkan(AG, { jenis: 'grosir', barang: 'karung|Angsa|50', jenjang: [{ min: '5', harga: '670.000' }, { min: '10', harga: '680.000' }] }, W);
+ok('J: jenjang lebih banyak lebih MAHAL ditolak; bukan karung ditolak; min 1 ditolak', /tidak boleh lebih mahal/.test(TG1.tolak || '') && /karung utuh/.test(htTerapkan(AG, { jenis: 'grosir', barang: 'kemasan|Kembang|5', jenjang: [{ min: 5, harga: 1 }] }, W).tolak || '')
+  && /bilangan bulat 2/.test(htTerapkan(AG, { jenis: 'grosir', barang: 'karung|Angsa|50', jenjang: [{ min: 1, harga: 600000 }] }, W).tolak || ''), J(TG1));
+var SG = htSusun(OWN, { jenis: 'grosir', barang: 'karung|IR64 Apex|50', jenjang: [{ min: '3', harga: '720.000' }] }, W);
+ok('J: owner menyimpan jenjang → dokumen hargaTingkat membawa grosir + yang lama tetap', SG.dokumen && SG.dokumen[0].data.grosir['karung|IR64 Apex|50'][0].harga === 720000 && SG.dokumen[0].data.grosir['karung|Angsa|50'].length === 2 && SG.dokumen[0].data.tingkat.length === 3, J(SG.tolak || SG.dokumen[0].data.grosir));
+ok('J: Ben tidak bisa mengatur harga grosir (owner saja, bukan usul)', /owner saja/.test(htSusun(BEN, { jenis: 'grosir', barang: 'karung|Angsa|50', jenjang: [] }, W, { hak: 'owner', bisaMinta: true }).tolak || ''));
+var SG2 = htSusun(OWN, { jenis: 'tingkat', tingkat: AG.tingkat }, W);
+ok('J: ubahan lain (tingkat) tidak membuang harga grosir', SG2.dokumen && SG2.dokumen[0].data.grosir['karung|Angsa|50'].length === 2, J(SG2.tolak || SG2.dokumen[0].data.grosir));
+// Jual: pembeli tanpa tingkat, 5 karung Angsa → saran grosir 670.000 (eceran 690.000)
+s = keadaanAwal(); s.sekarang = new Date('2026-11-16T10:00:00'); sinkronKeranjang(s);
+terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap(tekanTuts(s, '5')); terap(masukkan(s));
+var bG = s.keranjang[0]; var SR = saranGrosir(bG);
+ok('J: 5 karung eceran → saran "pakai harga grosir" 670.000, hemat 100.000', SR && SR.harga === 670000 && SR.min === 5 && SR.hemat === 100000, J(SR));
+terap(toggleGrosir(s, bG.id)); var tG = s.keranjang[0].trx;
+ok('J: diketuk → harga dasar 670.000, total 3.350.000, tercatat grosir ≥ 5, eceran tetap tercatat', tG.hargaAsli === 670000 && tG.hargaSatuan === 670000 && tG.hargaTotal === 3350000 && tG.hargaSumber === 'grosir' && tG.grosirMin === 5 && tG.hargaEceranSatuan === 690000 && tG.pakaiGrosir === true, J(tG));
+terap(ubahJumlahBaris(s, s.keranjang[0].id, 5)); var t10 = s.keranjang[0].trx;
+ok('J: naik ke 10 karung → jenjang ≥ 10 (660.000) otomatis', t10.hargaAsli === 660000 && t10.grosirMin === 10, J(t10));
+terap(ubahJumlahBaris(s, s.keranjang[0].id, -6)); var t4 = s.keranjang[0].trx;
+ok('J: turun ke 4 karung (di bawah jenjang) → harga biasa lagi, tanda grosir tetap menunggu', t4.hargaAsli === 690000 && t4.hargaSumber !== 'grosir' && !t4.grosirMin && t4.pakaiGrosir === true, J(t4));
+terap(ubahJumlahBaris(s, s.keranjang[0].id, 1));
+var DG = susunNotaDokumen(Object.assign({}, s, { cara: 'QRIS' }), W).dokumen.filter(function (x) { return x.koleksi === 'penjualan'; }).map(function (x) { return x.data; });
+ok('J: dokumen nota: hargaAsliSatuan 670.000, hargaSumber grosir, grosirMin 5; tanda keranjang tidak ikut tersimpan', DG.length === 1 && DG[0].hargaAsliSatuan === 670000 && DG[0].hargaSumber === 'grosir' && DG[0].grosirMin === 5 && !('pakaiGrosir' in DG[0]), J(DG));
+var SETT0 = Object.assign(JSON.parse(J(SETG)), { tingkat: [{ id: 'warung', nama: 'Warung', potKg: 600 }, { id: 'catering', nama: 'Catering', potKg: 500 }, { id: 'instansi', nama: 'Instansi', potKg: 0 }] });
+pasok('aturanToko', [SETT0]); terap(gantiPelanggan(s, 'Bu Suti'));
+ok('J: tanda grosir menyala tapi pembeli Warung (660.000) lebih murah dari grosir (670.000) → harga Warung dipakai, TIDAK ditumpuk', s.keranjang[0].trx.hargaAsli === 660000 && s.keranjang[0].trx.hargaSumber === 'tingkat' && !s.keranjang[0].trx.grosirMin, J(s.keranjang[0].trx));
+pasok('aturanToko', [SETG]); terap(gantiPelanggan(s, ''));
+terap(toggleGrosir(s, s.keranjang[0].id));
+ok('J: diketuk lagi → kembali harga biasa', s.keranjang[0].trx.hargaAsli === 690000 && !s.keranjang[0].trx.pakaiGrosir);
+// tidak ditumpuk: pembeli bertingkat yang harganya sudah lebih murah dari grosir → tidak ada saran
+var SETT = Object.assign(JSON.parse(J(SETG)), { tingkat: [{ id: 'warung', nama: 'Warung', potKg: 600 }, { id: 'catering', nama: 'Catering', potKg: 500 }, { id: 'instansi', nama: 'Instansi', potKg: 0 }] });
+pasok('aturanToko', [SETT]); terap(gantiPelanggan(s, 'Bu Suti'));
+ok('J: Bu Suti Warung (690.000 − 600×50 = 660.000) sudah lebih murah dari grosir 670.000 → TIDAK ada saran (tidak ditumpuk)', s.keranjang[0].trx.hargaAsli === 660000 && saranGrosir(s.keranjang[0]) === null, J([s.keranjang[0].trx.hargaAsli, saranGrosir(s.keranjang[0])]));
+terap(ubahJumlahBaris(s, s.keranjang[0].id, 5));
+ok('J: 10 karung Bu Suti: grosir 660.000 = harga Warung 660.000 → tidak ada saran (harus LEBIH murah)', saranGrosir(s.keranjang[0]) === null);
+pasok('aturanToko', [JSON.parse(J(SET))]);
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
 STATIS = [
     ('layar Pelanggan punya keluarga Usaha (tingkat · harga barang · harga khusus) & bagian harga di kartu', 'pelanggan',
-     ["['usaha', 'Usaha']", "['tingkat', 'Tingkat'], ['barang', 'Harga barang'], ['khusus', 'Harga khusus']", "function gambarUsaha(s, d)", "${gambarHargaKartu(d)}", "data-aksi=\"uSimpanT\"", "data-aksi=\"uSimpanK\"", "data-kolom=\"npwp\"", "data-kolom=\"alamat\""]),
-    ('isian Usaha yang belum disimpan ikut penjaga ganti orang', 'pelanggan', ["'titip', 'uEdit', 'uBarang', 'uKhusus'"]),
+     ["['grosir', 'Harga grosir']", 'function gambarUGrosir(s, A, owner)', 'data-aksi="uSimpanG"', "susunHT({ jenis: 'grosir', barang: g.barang, jenjang: g.jenjang })", "['usaha', 'Usaha']", "['tingkat', 'Tingkat'], ['barang', 'Harga barang'], ['khusus', 'Harga khusus']", "function gambarUsaha(s, d)", "${gambarHargaKartu(d)}", "data-aksi=\"uSimpanT\"", "data-aksi=\"uSimpanK\"", "data-kolom=\"npwp\"", "data-kolom=\"alamat\""]),
+    ('isian Usaha yang belum disimpan ikut penjaga ganti orang', 'pelanggan', ["'titip', 'uEdit', 'uBarang', 'uKhusus', 'uGrosir'"]),
+    ('Jual: baris karung menawarkan "pakai harga grosir" (saranGrosir) & ketukannya', 'jual', ["grosir: ({ id }) => set(L.toggleGrosir(SBN(), id)),", 'const G = L.saranGrosir(b);', 'data-aksi="grosir"']),
     ('tombol Usaha berkata KIRIM USUL untuk bukan-owner', 'pelanggan', ["${owner ? 'SIMPAN' : 'KIRIM USUL'}"]),
     ('Jual: chip & lembar jumlah memakai harga tingkat, pita pembeli & tingkat di daftar nama', 'jual',
      ["${RP(c.hargaTingkat || c.harga)}", "tingkat-ket", "L.tingkatPembeli(s.pelanggan, s.sekarang)", "o.tingkat ? h`", "RP((c.hargaTingkat || c.harga) * L.angkaKetik(s.ketik))"]),
@@ -220,11 +262,21 @@ RUSAK = [
     ('harga sendiri barang diabaikan', HT, "  if (sendiri > 0) return { harga: sendiri,", "  if (false) return { harga: sendiri,"),
     ('harga khusus kalah dari tingkat', HT, "  if (kh) return { harga: kh.harga,", "  if (kh && !T) return { harga: kh.harga,"),
     ('wadah ikut harga tingkat', HT, "const HT_JENIS = ['karung', 'kemasan', 'literan', 'repack'];", "const HT_JENIS = ['karung', 'kemasan', 'literan', 'repack', 'wadah'];"),
-    ('baris nota tetap harga eceran', JL, "t.jumlah = j; t.hargaAsli = TG.hargaAsli; t.hargaSatuan = e.nego ? e.hargaSatuan : TG.hargaAsli;", "t.jumlah = j; t.hargaAsli = chip.harga; t.hargaSatuan = e.nego ? e.hargaSatuan : chip.harga;"),
+    ('baris nota tetap harga eceran', JL, "let hargaDasar = TG.hargaAsli; if (e.pakaiGrosir)", "let hargaDasar = chip.harga; if (e.pakaiGrosir)"),
+    # saran harga grosir (owner 24 Nov 2026)
+    ('grosir ditumpuk / dipakai walau lebih mahal', JL, "  if (GR && GR.harga < hargaDasar) {", "  if (GR) {"),
+    ('saran grosir muncul walau tidak lebih murah', JL, "if (!G || !(G.harga < b.trx.hargaAsli)) return null;", "if (!G) return null;"),
+    ('jenjang terkecil yang dipakai (bukan terbesar yang tercapai)', HT, "return J.filter((x) => n >= x.min).sort((a, b) => b.min - a.min)[0] || null; }", "return J.filter((x) => n >= x.min).sort((a, b) => a.min - b.min)[0] || null; }"),
+    ('tanda keranjang ikut tersimpan di nota', JL, "'_takaran', 'pakaiGrosir'].forEach((k) => { delete d[k]; });", "'_takaran'].forEach((k) => { delete d[k]; });"),
+    ('rebuild melupakan tanda grosir', JL, "upahRepack: t.upahRepack, pakaiGrosir: !!t.pakaiGrosir },", "upahRepack: t.upahRepack },"),
+    ('Ben boleh mengatur harga grosir', HT, "  if (u.jenis === 'grosir' && !owner) return { tolak: 'Harga grosir per jumlah karung diatur owner saja' };\n", ""),
+    ('ubahan lain membuang harga grosir', HT, "    grosir: htSalin(A.grosir || {}),\n", ""),
+    ('jenjang lebih banyak boleh lebih mahal', HT, "for (let i = 1; i < J.length; i++) if (J[i].harga > J[i - 1].harga) return", "for (let i = 1; i < J.length; i++) if (false) return"),
+
     ('baris nota tidak mencatat eceran & tingkat', JL, "HT_KOLOM_BARIS.forEach((k) => { delete t[k]; }); if (TG.kolom) Object.assign(t, TG.kolom);", "HT_KOLOM_BARIS.forEach((k) => { delete t[k]; });"),
     ('chip rak tidak menyebut harga tingkat', JL, "  htTandaiRak(rak, s.pelanggan, hariIniIso(s.sekarang));", ""),
     ('ganti pembeli tidak menghitung ulang keranjang', JL, "  if (!(s.keranjang || []).length) return patch;", "  return patch;"),
-    ('Ben menulis setelan langsung (tanpa usul)', HT, "  const owner = !akun || akun.jenis === 'owner';\n  if (owner) return", "  const owner = true;\n  if (owner) return"),
+    ('Ben menulis setelan langsung (tanpa usul)', HT, "  const owner = !akun || akun.jenis === 'owner';\n", "  const owner = true;\n"),
     ('kisi "tidak boleh" diabaikan', HT, "  if ((o.hak || 'tidak') === 'tidak') return { tolak:", "  if (false) return { tolak:"),
     ('menghapus tingkat yang dipakai pelanggan dibiarkan', HT, "if (n) return { tolak: 'Tingkat ' + t.nama + ' masih dipakai '", "if (false) return { tolak: 'Tingkat ' + t.nama + ' masih dipakai '"),
     ('papan memajang modal ke staf', HT, "const modal = !o.owner ? null : jl === 'kemasan'", "const modal = jl === 'kemasan'"),
