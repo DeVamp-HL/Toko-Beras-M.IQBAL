@@ -153,6 +153,7 @@ var BU = bukuUpah('Gama', KINI); ok('buku upah Gama: "9 hari tidak masuk" · "9 
 var KL = kalenderUpah('Alfa Contoh', KINI, 7); ok('kalender 7 hari Ben: 13–19 Sep; 14 = absen, 19 (hari ini) kosong & ditandai ini; semuanya bisa diubah', KL.length === 7 && KL[1].kelas === 'absen' && KL[6].ini && KL[6].kelas === 'kosong' && KL.every(function (k) { return k.bisa; }), J(KL));
 var HK = hitungKasbonKaryawan('Gama', '50.000', 'Berobat'); ok('kasbon karyawan: arti laci berkurang, jadi berutang 150.000; laci 500.000 cukup', !HK.tolak && /jadi berutang Rp150\.000/.test(HK.arti));
 R = tulis(susunKasbonKaryawan('Gama', '50.000', 'Berobat', W)); ok('dokumen kasbonMutasi {tipe ambil, namaPegawai, nominal, tanggal, catatan} + jam & dari laci; laci 450.000', R.dokumen[0].data.tipe === 'ambil' && R.dokumen[0].data.namaPegawai === 'Gama' && R.dokumen[0].data.dari === 'laci' && saldoKantong().laci === 450000);
+ok('kasbon tersimpan: isian dikembalikan KOSONG BIASA (bukan null) dan lembar ditutup sekaligus — layar tidak jatuh membaca .ketik (owner 23 Nov 2026)', R.patch && R.patch.lembarU === null && R.patch.kasbonK && R.patch.kasbonK.ketik === '' && R.patch.kasbonK.alasan === '', JSON.stringify(R.patch && { lembarU: R.patch.lembarU, kasbonK: R.patch.kasbonK }));
 identitas('sesudah kasbon karyawan');
 // bayar upah Ben: 990.000, potong semua 200.000 → diterima 790.000 > laci 450.000 → ditolak; isi laci dulu dari brankas
 ok('bayar Ben: diterima 790.000 > laci 450.000 → DITOLAK menyebut isi laci', /Laci cuma Rp450\.000/.test(susunBayarUpah('Alfa Contoh', 'semua', W).tolak));
@@ -237,6 +238,7 @@ var BO = bukuOwner(20); ok('buku owner: terbaru di atas (saling lunaskan), setia
   var S3 = saldoKantong(); var kbS = function () { var k = hitungKasbon().find(function (x) { return x.kunci === kunciPelanggan('Gama'); }); return k ? k.sisa : 0; }; var kb0 = kbS(); var kas3 = kasPada();
   var Rk = tulis(susunKasbonKaryawan('Gama', '30.000', 'Berobat', W, 'amplop'));
   var amk = Rk.dokumen.find(function (x) { return x.koleksi === 'amplopLaba'; }); var ksb = Rk.dokumen.find(function (x) { return x.koleksi === 'kasbonMutasi'; });
+  ok('AM: kasbon lewat amplop juga mengembalikan isian kosong biasa + menutup lembar (bukan null)', Rk.patch && Rk.patch.lembarU === null && Rk.patch.kasbonK && Rk.patch.kasbonK.ketik === '', JSON.stringify(Rk.patch && Rk.patch.kasbonK));
   ok('AM: kasbon Gama lewat amplop = amplopLaba ambil {ke laci, untuk = id kasbon} + kasbonMutasi dari laci, SATU kiriman, urung dua-duanya', amk && ksb && amk.data.tipe === 'ambil' && amk.data.ke === 'laci' && amk.data.untuk === String(ksb.data.id) && ksb.data.dari === 'laci' && Rk.urung.length === 2 && /Amplop laba berkurang/.test(Rk.patch.kabar), J(Rk));
   var S4 = saldoKantong();
   ok('AM: sesudahnya amplop −30.000, LACI TETAP, kasbon Gama +30.000, kas toko −30.000', S4.amplop === S3.amplop - 30000 && S4.laci === S3.laci && kbS() === kb0 + 30000 && kasPada() === kas3 - 30000, J([S3, S4, kbS() - kb0]));
@@ -537,6 +539,7 @@ if __name__ == '__main__':
             'belanja toko pakai dompet dianggap biaya dari laci': js.replace("if ((untuk === 'toko' || ky) && dari !== 'dompet') return { sel: 'beban',", "if (untuk === 'toko' || ky) return { sel: 'beban',"),
             'prive ditulis kategori toko (masuk laba)': js.replace("const kategori = H.arti.sel === 'beban' ? 'toko' : H.arti.sel === 'utang' ? 'tokoDompet' : 'owner';", "const kategori = H.arti.sel === 'utang' ? 'tokoDompet' : 'toko';"),
             'lewat batas aman lolos tanpa kasbon/alasan': js.replace("if (H.lewatAman && !P.jadiKasbon && !P.alasan) return { tolak:", "if (false) return { tolak:"),
+            'kasbon karyawan tersimpan: isian null lagi (lembar kasbon jatuh membaca .ketik)': js.replace("lembarU: null, kasbonK: { ketik: '', alasan: '' } } };", "kasbonK: null } };"),
             'kasbon owner tanpa tanda owner': js.replace("tipe: 'ambil', namaPegawai: NAMA_KASBON_OWNER, owner: true, nominal: H.n,", "tipe: 'ambil', namaPegawai: NAMA_KASBON_OWNER, owner: false, nominal: H.n,"),
             'batas aman bawaan angka karangan (bukan laba bulan berjalan)': js.replace("aman: amanOwner || Math.max(0, laba), amanDariLaba: !amanOwner,", "aman: amanOwner || 2000000, amanDariLaba: !amanOwner,"),
             'keperluan bawaan daftar karangan (bukan terukur dari catatan)': js.replace("  if (!urut.length) return UK_PERLU_UMUM[kategori === 'toko' ? 'toko' : kategori === 'karyawan' ? 'karyawan' : 'pribadi'].map((nama) => ({ nama, biasa: 0 }));\n  return urut.map(", "  return UK_PERLU_UMUM[kategori === 'toko' ? 'toko' : kategori === 'karyawan' ? 'karyawan' : 'pribadi'].map((nama) => ({ nama, biasa: 0 }));\n  const _x = urut.map("),
