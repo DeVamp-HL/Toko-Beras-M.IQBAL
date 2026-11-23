@@ -1,4 +1,11 @@
 // ============================================================================
+// ATURAN FIRESTORE v18 FINAL — Toko Beras M.IQBAL (DRAF 24 Nov 2026, DENYUT STAF TERIKAT) = v17 FINAL + PERSIS satu ubahan fungsi dan satu baris pemanggilnya
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v17; uji server: docs/uji-rules-v18.md). Owner menerbitkan v18 lewat Console kapan saja
+// (halaman TIDAK berubah: perangkat staf sudah menulis denyutnya ke id perangkat~uid sejak putaran denyut per akun):
+//   (v18-1) stafDenyut(peranBoleh, id) — temuan tinjauan 30 Sep (d): denyut ben / karyawan di perangkatStatus kini TERIKAT ke penulisnya: id dokumen wajib
+//           '<perangkat>~<uid penulis>' dan kolom id = id dokumen; dokumen yang sudah ada hanya bisa ditimpa bila akunUid-nya = penulis (dulu dokumen tanpa
+//           akunUid — denyut owner / kasir@ / bentuk lama — bisa ditimpa staf). Owner & kasir@ tidak berubah.
+// Sisanya = v17 FINAL di bawah ini, apa adanya. Kepala v17:
 // ATURAN FIRESTORE v17 FINAL — Toko Beras M.IQBAL (DRAF 23 Nov 2026, PUSH APLIKASI TABLET) = v16 FINAL + PERSIS satu fungsi baru dan satu blok baru
 // (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v16; uji server: docs/uji-rules-v17.md). Owner menerbitkan v17 SEKALI lewat Console
 // SEBELUM menyalakan notifikasi di tablet (halaman boleh digabung lebih dulu: tanpa v17 tombol Nyalakan di tablet ditolak server, tidak ada yang rusak):
@@ -240,9 +247,10 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riwayatStatus', 'trxIdJual', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
     }
     // peta §5 baris 2: denyut perangkat — dokumen perangkatnya sendiri, kolom denyut saja
-    function stafDenyut(peranBoleh) {
+    function stafDenyut(peranBoleh, id) {
       return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.akunUid == request.auth.uid
-        && (resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)
+        && id.matches('[^~/]{1,40}~' + request.auth.uid) && request.resource.data.get('id', '') == id
+        && (resource == null || resource.data.get('akunUid', '') == request.auth.uid)
         && request.resource.data.keys().hasOnly(['id', 'nama', 'akun', 'akunUid', 'aplikasi', 'pada', 'antrean', 'gagal', 'versi', 'pemegang', 'lokasi']);
     }
     // v7 (owner 7 Okt, JS2-C): permintaan nego ke owner — bentuk "menunggu" bertindakan nego saja, atas nama penulisnya sendiri, tanpa kolom keputusan
@@ -708,7 +716,7 @@ service cloud.firestore {
 
     match /perangkatStatus/{id} {
       allow read: if owner();
-      allow create, update: if owner() || kasir() || stafDenyut(['ben', 'karyawan']);   // peta §5 baris 2
+      allow create, update: if owner() || kasir() || stafDenyut(['ben', 'karyawan'], id);   // peta §5 baris 2
       allow delete: if owner();
     }
 

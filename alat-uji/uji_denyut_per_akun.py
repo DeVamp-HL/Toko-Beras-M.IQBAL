@@ -61,6 +61,7 @@ def aturan_js(rules):
         assert re.fullmatch(r'[\s|&()!]*', sisa), 'perangkatStatus: kondisi %s memakai fungsi yang belum diterjemahkan: %r' % (op, k[0])
     for f in ('masuk', 'owner', 'kasir', 'stafDenyut'):
         assert 'get(/' not in F[f] and 'exists(' not in F[f] and ' in ' not in F[f] and 'let ' not in F[f], 'fungsi %s memakai bentuk rules yang tidak diterjemahkan' % f
+    assert F['stafDenyut'].count('.matches(') == F['stafDenyut'].count('id.matches('), 'stafDenyut: .matches() selain atas id belum diterjemahkan'   # rules v18
     return ("function __bungkus(d) { var o = {}; Object.keys(d).forEach(function (k) { o[k] = d[k]; });\n"
             "  Object.defineProperty(o, 'get', { value: function (k, b) { return Object.prototype.hasOwnProperty.call(d, k) ? d[k] : b; } });\n"
             "  Object.defineProperty(o, 'keys', { value: function () { var ks = Object.keys(d); return { hasOnly: function (z) { return ks.every(function (x) { return z.indexOf(x) >= 0; }); } }; } }); return o; }\n"
@@ -74,7 +75,9 @@ def aturan_js(rules):
             "  function kasir() {" + F['kasir'] + "}\n"
             "  function akun() { var a = AKSES[request.auth.uid]; if (!a) throw new Error('get() aksesAkun tidak ada → ditolak'); return __bungkus(a); }\n"
             "  function aktifDengan(a, peranBoleh) { return a.aktif == true && peranBoleh.indexOf(a.peran) >= 0; }\n"
-            "  function stafDenyut(peranBoleh) {" + F['stafDenyut'] + "}\n"
+            "  function __cocok(t, r) { return new RegExp('^(?:' + r + ')$').test(String(t)); }\n"
+            "  function stafDenyut(peranBoleh, id) {" + F['stafDenyut'].replace('id.matches(', '__cocokId(') + "}\n"
+            "  function __cocokId(r) { return __cocok(id, r); }\n"
             "  try {\n"
             "    if (op === 'create') return !!(" + kond['create'][0] + ");\n"
             "    if (op === 'update') return !!(" + kond['update'][0] + ");\n"
@@ -226,7 +229,7 @@ if __name__ == '__main__':
             'jalan pintas di rules: penjaga pemilik dokumen dicabut, denyut tetap satu dokumen per perangkat (antrean Ben tertimpa 0)': (js.replace(
                 "const idDenyut = () => (status.akun && status.akun.jenis !== 'owner' ? idPerangkat() + '~' + status.akun.uid : idPerangkat());",
                 "const idDenyut = () => idPerangkat();"),
-                rules.replace("        && (resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)\n", "")),
+                rules.replace("        && (resource == null || resource.data.get('akunUid', '') == request.auth.uid)\n", "").replace("        && id.matches('[^~/]{1,40}~' + request.auth.uid) && request.resource.data.get('id', '') == id\n", "")),
             'nama baris denyut tanpa pemegang (dua baris tablet tak bisa dibedakan di daftar kunci bulan)': (js.replace(
                 "const kpNamaDenyut = (p) => (p.nama || p.id) + (p.pemegang ? ' (' + p.pemegang + ')' : '');", "const kpNamaDenyut = (p) => (p.nama || p.id);"), rules),
             # audit P2 · sanggahan #121
@@ -237,7 +240,7 @@ if __name__ == '__main__':
             'petunjuk siap-nyala tidak dipakai daftar siap-nyala': (js.replace("' — muat ulang tab itu di perangkatnya. Perangkat yang sudah tidak dipakai: ' + HB_TANDAI_TIDAK_DIPAKAI", "' — muat ulang tab itu / tandai sudah tidak dipakai'"), rules),
             'kunci bulan: perangkat diam berantrean tanpa jalan perangkat hilang': (js.replace("+ (diamAntre.length ? '. ' + diamAntre.map(kpNamaDenyut).join(', ') + ' masih melaporkan antrean / ditolak, jadi tidak bisa dinyatakan tidak dipakai dari sini — ' + KP_KALIMAT_HILANG : '')", ""), rules),
             'rules: penjaga pemilik dokumen dicabut (akun lain bisa menimpa denyut Ben)': (js,
-                rules.replace("        && (resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)\n", "")),
+                rules.replace("        && (resource == null || resource.data.get('akunUid', '') == request.auth.uid)\n", "").replace("        && id.matches('[^~/]{1,40}~' + request.auth.uid) && request.resource.data.get('id', '') == id\n", "")),
         }
         kode = 0
         for nama, (isi, ru) in rusak.items():

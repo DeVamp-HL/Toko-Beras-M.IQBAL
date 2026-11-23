@@ -311,6 +311,13 @@ pasok('katalogHargaLiteran', [{ id: 'Campur Enam', merk: 'Campur Enam', hargaPer
   var T6 = susunTakarWadah('Enam Aktif', isi(6), W, sT, {});
   if (!/^Isian ini jadi \d+ catatan sekali kirim/.test(T6.tolak || '')) salah('isian − / + takar 6 merek (karung belakang baru semua) tidak ditolak penjaga dokumen (' + p + '): ' + (T6.tolak || (T6.dokumen || []).length + ' dokumen'));
   var T5 = susunTakarWadah('Enam Aktif', isi(5), W, sT, {});
+  // tinjauan 30 Sep (c): buku satu merek KURANG (perlu ditandai) — 6 merek (lewat batas) → kalimat batas, TIDAK ditanya tandai dulu; 5 merek (muat) → tetap ditanya
+  var BM0 = JSON.parse(JSON.stringify(cacheMentah('batch')));
+  pasok('batchMasuk', BM0.map(function (b) { return Object.assign({}, b, { merkList: (b.merkList || []).map(function (m) { return m.merk === 'Bebek' ? Object.assign({}, m, { totalKg: 20, subtotalHarga: 260000 }) : m; }) }); }));
+  var K6 = susunTakarWadah('Enam Aktif', isi(6), W, sT, {}), K5 = susunTakarWadah('Enam Aktif', isi(5), W, sT, {});
+  pasok('batchMasuk', BM0);
+  if (!/^Isian ini jadi \d+ catatan sekali kirim/.test(K6.tolak || '') || K6.perluTandai) salah('tinjauan 30 Sep (c): buku Bebek kurang + 6 merek (lewat batas) → wajib kalimat batas tanpa pertanyaan tandai (' + p + '): ' + JSON.stringify([K6.tolak, !!K6.perluTandai]));
+  if (!K5.perluTandai || !/Bebek/.test(K5.tolak || '')) salah('tinjauan 30 Sep (c): buku Bebek kurang + 5 merek (muat) → tetap ditanya tandai dulu (' + p + '): ' + JSON.stringify([K5.tolak, !!K5.perluTandai]));
   if (T5.tolak) salah('isian − / + takar 5 merek ditolak (' + p + '): ' + T5.tolak); else catat('isi ulang wadah', p, '− / + takar 5 merek, karung belakang baru semua: 5 × (lahir + pindah + karung) + takar + pindah', kirim(p, T5.dokumen));
   var TO = susunTakarWadah('Enam Aktif', isi(6), W, { keranjang: [], antrean: [], batasDok: batasDokumenKirim(keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null)) }, {});
   if (!TO.dokumen || TO.dokumen.length <= BD) salah('isian takar owner (tanpa batas) 6 merek ditolak / tidak lagi melewati batas — skenario basi: ' + (TO.tolak || (TO.dokumen || []).length));
@@ -717,6 +724,7 @@ if __name__ == '__main__':
                 'pagar umum berkata "nota" untuk kiriman bukan nota': rusak(AK, "(D.some((x) => x.koleksi === 'penjualan') ? 'pecah jadi dua nota' : 'catat dalam dua kali')", "'pecah jadi dua nota'"),
                 'jual.js mencatat nota tanpa batas dokumen': rusak('baru/js/layar/jual.js', 'batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null), ', ''),
                 'jual.js: panel isi ulang tanpa batas dokumen': rusak('baru/js/layar/jual.js', 'keranjang: SB, waktu:', 'keranjang: S, waktu:'),
+                'tinjauan 30 Sep (c): pertanyaan tandai ditanya walau isian toh ditolak batas': rusak(JL, "    if (coba && coba.tolak && !coba.perluTandai) return { tolak: coba.tolak };\n", ""),
                 'stok.js: panel isi ulang tanpa batas dokumen': rusak('baru/js/layar/stok.js', ", batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null) });", " });"),
             }
             # putaran 25 — kiriman OWNER bulan lampau (sumber pengganti per berkas; berkas lain dibaca dari disk)

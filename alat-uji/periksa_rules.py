@@ -1179,6 +1179,68 @@ def periksa_v17(rules, r16, c17, akses_js):
 FB_V17_TEKS = None   # kontrol: pengganti isi baru/js/data/firebase.js
 
 
+# ---- v18 (owner 24 Nov 2026, tinjauan 30 Sep (d)): v17 + PERSIS satu ubahan fungsi (stafDenyut terikat id perangkat~uid penulis, dokumen lama hanya
+# bisa ditimpa bila akunUid = penulis) dan satu baris pemanggilnya (perangkatStatus create/update meneruskan id). ----
+DENYUT_V17 = ("    function stafDenyut(peranBoleh) {\n      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.akunUid == request.auth.uid\n"
+              "        && (resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)")
+DENYUT_V18 = ("    function stafDenyut(peranBoleh, id) {\n      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.akunUid == request.auth.uid\n"
+              "        && id.matches('[^~/]{1,40}~' + request.auth.uid) && request.resource.data.get('id', '') == id\n"
+              "        && (resource == null || resource.data.get('akunUid', '') == request.auth.uid)")
+PANGGIL_V17 = "allow create, update: if owner() || kasir() || stafDenyut(['ben', 'karyawan']);"
+PANGGIL_V18 = "allow create, update: if owner() || kasir() || stafDenyut(['ben', 'karyawan'], id);"
+V17_TEKS = None   # kontrol: pengganti isi firestore.rules.v17
+BANDING_V17 = True
+FB_V18_TEKS = None   # kontrol: pengganti isi baru/js/data/firebase.js
+DOK_V18_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v18.md
+
+
+def ke_v17(R):
+    """v18 → v17: cabut PERSIS ubahan v18 (fungsi stafDenyut & baris pemanggilnya). Kembali (teks, cacat)."""
+    cacat = []
+    for a, b, nm in ((DENYUT_V18, DENYUT_V17, 'fungsi stafDenyut'), (PANGGIL_V18, PANGGIL_V17, 'perangkatStatus create/update')):
+        n = R.count(a)
+        if n != 1: cacat.append('ubahan v18 %s ditemukan %d× (wajib 1×)' % (nm, n)); continue
+        R = R.replace(a, b)
+    return R, cacat
+
+
+def periksa_v18(rules, r17, c18):
+    """22 · v18: dua ubahan persis + sisanya = firestore.rules.v17 + penulis denyut staf di halaman = bentuk id rules + model kasus ★V (v18 & v17)."""
+    cacat = list(c18); rata = lambda t: re.sub(r'\s+', ' ', t).strip(); B = blok_rules(rules)
+    for n, b in B.items():
+        if 'stafDenyut(' in b and n != 'perangkatStatus': cacat.append(n + ': stafDenyut() dipakai di luar perangkatStatus (v18)')
+    fb = FB_V18_TEKS if FB_V18_TEKS is not None else baca('baru/js/data/firebase.js')
+    if "const idDenyut = () => (status.akun && status.akun.jenis !== 'owner' ? idPerangkat() + '~' + status.akun.uid : idPerangkat());" not in fb or "const isi = { id, nama, akun, akunUid: status.akun.uid," not in fb:
+        cacat.append('firebase.js: denyut akun bukan-owner bukan id perangkat~uid dengan kolom id & akunUid = penulis (bentuk rules v18) — denyut staf akan ditolak server')
+    if not re.search(r"d = 'p-' \+ Date\.now\(\)\.toString\(36\) \+ '-' \+ Math\.random\(\)\.toString\(36\)\.slice\(2, 7\);", fb):
+        cacat.append('firebase.js: bentuk id perangkat berubah — rules v18 menerima 1–40 huruf tanpa ~ / (periksa ulang)')
+    v17 = V17_TEKS if V17_TEKS is not None else baca('firestore.rules.v17')
+    a, b = rata(r17), rata(tanpa_komentar(v17))
+    if BANDING_V17 and a != b:
+        i = next((j for j in range(min(len(a), len(b))) if a[j] != b[j]), min(len(a), len(b)))
+        cacat.append('v18 mengubah lebih dari ubahan yang tercatat atas firestore.rules.v17 — dekat "…%s…" (v17: "…%s…")' % (a[max(0, i - 60):i + 60], b[max(0, i - 60):i + 60]))
+    dok = DOK_V18_TEKS if DOK_V18_TEKS is not None else (baca('docs/uji-rules-v18.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v18.md')) else '')
+    v7dok = baca('docs/uji-rules-v7.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v7.md')) else ''
+    lama = set(re.findall(r'(★[A-Z]\d+)', v7dok)) | set(k[0] for k in KASUS_V17 + KASUS_V16 + KASUS_V15 + KASUS_V14 + KASUS_V13 + KASUS_V12 + KASUS_V11 + KASUS_V10 + KASUS_V9 + KASUS_V8 + KASUS_V7)
+    bentrok = sorted(set(k[0] for k in KASUS_V18) & lama)
+    if bentrok: cacat.append('nomor kasus v18 bertabrakan dengan v7–v17: ' + ', '.join(bentrok))
+    di_dok = set(re.findall(r'^\|(?: \d+ \|)? (★V\d+) \|', dok, re.M)); di_model = set(k[0] for k in KASUS_V18)
+    if di_dok != di_model: cacat.append('docs/uji-rules-v18.md tidak sama dengan kasus model v18 — hanya di berkas: %s · hanya di model: %s' % (sorted(di_dok - di_model), sorted(di_model - di_dok)))
+    mw = re.search(r'\n## Wajib owner[^\n]*\n(.*?)\n## ', dok, re.S)
+    wajib = re.findall(r'^\| \d+ \| (★V\d+) \|', mw.group(1), re.M) if mw else []
+    if wajib != WAJIB_V18: cacat.append('docs/uji-rules-v18.md bagian "Wajib owner" bukan WAJIB_V18 — berkas: %s · model: %s' % (wajib, WAJIB_V18))
+    try: M18 = rules_mini.Rules(rules); M17 = rules_mini.Rules(tanpa_komentar(v17))
+    except Exception as e: return cacat + ['model v18: rules tidak bisa diurai penafsir mini — %s' % e]
+    for no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks in KASUS_V18:
+        db = dict(DB_UJI_V7); db.update(ubah_db or {}); db = dict((k, v) for k, v in db.items() if v is not None)
+        h = M18.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7)
+        if h.boleh != boleh: cacat.append('model v18 %s %s → %s, wajib %s%s' % (no, nama, 'LOLOS' if h.boleh else 'DITOLAK', 'LOLOS' if boleh else 'DITOLAK', (' (' + h.galat + ')') if h.galat else ''))
+        elif maks is not None and h.akses > maks: cacat.append('model v18 %s %s: %d access call (batas jalur ini %d)' % (no, nama, h.akses, maks))
+        h17 = M17.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7); harap17 = (not boleh) if no in BEDA_V17 else boleh
+        if h17.boleh != harap17: cacat.append('model v18 %s atas firestore.rules.v17 → %s, harap %s (%s)' % (no, 'LOLOS' if h17.boleh else 'DITOLAK', 'LOLOS' if harap17 else 'DITOLAK', 'ubahan v18' if no in BEDA_V17 else 'wajib sama'))
+    return cacat
+
+
 def ke_v6(R, KOL, ARSIP):
     """v7 → v6: cabut PERSIS ubahan v7 (tiap ganti wajib kena tepat sekali, blok demi blok). R = rules tanpa komentar. Kembali (teks, cacat)."""
     cacat = []; rata = lambda t: re.sub(r'\s+', ' ', t).strip()
@@ -1802,13 +1864,37 @@ KASUS_V17 = [
 ]
 BEDA_V16 = {'★Z1', '★Z2', '★Z3', '★Z4', '★Z5', '★Z6'}   # yang DIBUKA v17 (ditolak v16 — koleksi baru); kasus lain wajib sama hasilnya di v16
 DOK_V17_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v17.md
+# ---- MODEL v18 (owner 24 Nov 2026): kasus ★V docs/uji-rules-v18.md — staf = U11 (ben, uid-uji-b). Denyut perangkatStatus terikat penulisnya.
+DN_ID = 'p-uji-1~uid-uji-b'
+DN_UJI = {'id': DN_ID, 'nama': 'Tablet uji', 'akun': 'uji.b@contoh.com', 'akunUid': 'uid-uji-b', 'aplikasi': 'baru', 'pada': '2026-10-09T03:00:00.000Z', 'antrean': 0, 'gagal': 0, 'versi': 'uji', 'pemegang': '', 'lokasi': ''}
+DN_OWNER = {'id': 'p-uji-1', 'nama': 'HP owner', 'akun': EMAIL_OWNER, 'akunUid': 'uid-uji', 'aplikasi': 'baru', 'pada': '2026-10-09T03:00:00.000Z', 'antrean': 0, 'gagal': 0, 'versi': 'uji', 'pemegang': '', 'lokasi': ''}
+DN_LAMA = {'id': 'p-uji-2', 'nama': 'HP lama', 'aplikasi': 'kasir', 'pada': '2026-09-01T03:00:00.000Z'}
+WAJIB_V18 = ['★V1', '★V2']   # owner & kasir@ (tanpa dokumen uji staf); kasus staf dibuktikan emulator — boleh juga di Playground dengan U11
+KASUS_V18 = [
+    ('★V1', 'owner menulis denyut perangkatnya', 'owner', 'create', 'perangkatStatus', 'p-uji-1', DN_OWNER, None, True, 0),
+    ('★V2', 'kasir@ menulis denyut kasir darurat', 'kasir', 'create', 'perangkatStatus', 'd-uji', {'id': 'd-uji', 'aplikasi': 'darurat', 'pada': '2026-10-09T03:00:00Z'}, None, True, 1),
+    ('★V3', 'Penjaga laci menulis denyut perangkat~uid-nya', 'staf', 'create', 'perangkatStatus', DN_ID, DN_UJI, None, True, None),
+    ('★V4', 'Penjaga laci memperbarui denyutnya sendiri', 'staf', 'update', 'perangkatStatus', DN_ID, dict(DN_UJI, antrean=2), {'perangkatStatus/' + DN_ID: DN_UJI}, True, None),
+    ('★V5', 'karyawan menulis denyut perangkat~uid-nya', 'staf', 'create', 'perangkatStatus', DN_ID, DN_UJI, U11_KARYAWAN, True, None),
+    ('★V6', 'staf menimpa denyut OWNER (id perangkat owner)', 'staf', 'update', 'perangkatStatus', 'p-uji-1', dict(DN_OWNER, id='p-uji-1', akunUid='uid-uji-b'), {'perangkatStatus/p-uji-1': DN_OWNER}, False, None),
+    ('★V7', 'staf menimpa denyut lama tanpa akunUid', 'staf', 'update', 'perangkatStatus', 'p-uji-2', dict(DN_UJI, id='p-uji-2'), {'perangkatStatus/p-uji-2': DN_LAMA}, False, None),
+    ('★V8', 'staf menulis id perangkat~uid AKUN LAIN', 'staf', 'create', 'perangkatStatus', 'p-uji-1~uid-lain', dict(DN_UJI, id='p-uji-1~uid-lain'), None, False, None),
+    ('★V9', 'kolom id berbeda dari id dokumen', 'staf', 'create', 'perangkatStatus', DN_ID, dict(DN_UJI, id='p-lain~uid-uji-b'), None, False, None),
+    ('★V10', 'staf menulis id tanpa ~uid (bentuk lama)', 'staf', 'create', 'perangkatStatus', 'p-uji-3', dict(DN_UJI, id='p-uji-3'), None, False, None),
+    ('★V11', 'denyut atas nama akun lain (akunUid)', 'staf', 'create', 'perangkatStatus', DN_ID, dict(DN_UJI, akunUid='uid-lain'), None, False, None),
+    ('★V12', 'akun tablet yang dinonaktifkan owner', 'staf', 'create', 'perangkatStatus', DN_ID, DN_UJI, U11_MATI, False, None),
+    ('★V13', 'staf menimpa dokumen ber-id perangkat~uid-nya yang tanpa akunUid', 'staf', 'update', 'perangkatStatus', DN_ID, DN_UJI, {'perangkatStatus/' + DN_ID: dict(DN_LAMA, id=DN_ID)}, False, None),
+]
+BEDA_V17 = {'★V7', '★V8', '★V9', '★V10', '★V13'}   # yang DITUTUP v18 (lolos di v17); kasus lain wajib sama hasilnya di v17
 
 
 def periksa(rules, koleksi_js, akses_js):
     cacat = []
     rules = tanpa_komentar(rules)
-    r16, c17 = ke_v16(rules)       # 21 · v17 → v16 (cabut balik satu blok & satu fungsi v17)
-    cacat += periksa_v17(rules, r16, c17, akses_js)
+    r17, c18 = ke_v17(rules)       # 22 · v18 → v17 (cabut balik satu ubahan fungsi & satu baris v18)
+    cacat += periksa_v18(rules, r17, c18)
+    r16, c17 = ke_v16(r17)         # 21 · v17 → v16 (cabut balik satu blok & satu fungsi v17)
+    cacat += periksa_v17(r17, r16, c17, akses_js)
     r15, c16 = ke_v15(r16)         # 20 · v16 → v15 (cabut balik dua ubahan & satu fungsi v16)
     cacat += periksa_v16(r16, r15, c16, akses_js)
     r14, c15 = ke_v14(r15)         # 19 · v15 → v14 (cabut balik tiga ubahan & dua fungsi v15)
@@ -2065,6 +2151,11 @@ if __name__ == '__main__':
             'v15: titipan upah bongkar tanpa kedatangan': R.replace("        && (d.get('jenis', '') != 'bongkar' || (d.get('batchId', 0) is string && d.batchId.size() > 0))\n", ""),
             'v15: titipan bayar bon tanpa pemasok': R.replace("        && (d.get('jenis', '') != 'bayarBon' || (d.get('pemasok', 0) is string && d.pemasok.size() > 0 && d.pemasok.size() <= 60))\n", ""),
             'v15: kabar barang masuk untuk karyawan': R.replace("stafKabarMasuk(['ben']) || (stafHitungLaci(", "stafKabarMasuk(['ben', 'karyawan']) || (stafHitungLaci("),   # v16: baris create bersambung
+            'v18: denyut staf tidak terikat id perangkat~uid': R.replace("        && id.matches('[^~/]{1,40}~' + request.auth.uid) && request.resource.data.get('id', '') == id\n", ""),
+            'v18: denyut lama tanpa akunUid bisa ditimpa staf': R.replace("(resource == null || resource.data.get('akunUid', '') == request.auth.uid)", "(resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)"),
+            'v18: kolom id boleh beda dari id dokumen': R.replace(" && request.resource.data.get('id', '') == id\n", "\n"),
+            'v18: pemanggil tidak meneruskan id': R.replace("stafDenyut(['ben', 'karyawan'], id);", "stafDenyut(['ben', 'karyawan'], 'x~' + request.auth.uid);"),
+            'v18: baris lain berubah dari v17 (tetap wajib ketahuan)': R.replace("    match /ringkasanKasir/{id} {\n      allow read: if owner() || kasir();", "    match /ringkasanKasir/{id} {\n      allow read: if kasir() || owner();"),
             'v17: kasir@ ikut menulis token tablet': R.replace("stafTokenPush(['ben', 'karyawan'], id);", "stafTokenPush(['ben', 'karyawan'], id) || kasir();"),
             'v17: Penjaga laci boleh membaca token': R.replace("      allow read, delete: if owner();\n      allow create, update: if owner() || stafTokenPush", "      allow read: if owner() || staf(['ben']);\n      allow delete: if owner();\n      allow create, update: if owner() || stafTokenPush"),
             'v17: Penjaga laci boleh menghapus token': R.replace("      allow read, delete: if owner();\n      allow create, update: if owner() || stafTokenPush", "      allow read: if owner();\n      allow delete: if owner() || stafBuat(['ben']);\n      allow create, update: if owner() || stafTokenPush"),
@@ -2164,12 +2255,12 @@ if __name__ == '__main__':
             if isi == R: print('KONTROL BASI  ' + nama); kode = 3; continue
             # kontrol lama (sebelum v7) WAJIB tertangkap pemeriksa KHUSUSNYA — pembanding "sama dengan v6" (yang menangkap perubahan apa pun) dimatikan untuknya;
             # 'model:' — bentuk v7 (persetujuan, fotoBon, pintu) juga dimatikan: yang wajib berbunyi = penafsir rules mini pada kasus Playground ★/M
-            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:'); BANDING_V9 = BANDING_V8 or nama.startswith('v10:'); BANDING_V10 = BANDING_V9 or nama.startswith('v11:'); BANDING_V11 = BANDING_V10 or nama.startswith('v12:'); BANDING_V12 = BANDING_V11 or nama.startswith('v13:'); BANDING_V13 = BANDING_V12 or nama.startswith('v14:'); BANDING_V14 = BANDING_V13 or nama.startswith('v15:'); BANDING_V15 = BANDING_V14 or nama.startswith('v16:'); BANDING_V16 = BANDING_V15 or nama.startswith('v17:')
+            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:'); BANDING_V9 = BANDING_V8 or nama.startswith('v10:'); BANDING_V10 = BANDING_V9 or nama.startswith('v11:'); BANDING_V11 = BANDING_V10 or nama.startswith('v12:'); BANDING_V12 = BANDING_V11 or nama.startswith('v13:'); BANDING_V13 = BANDING_V12 or nama.startswith('v14:'); BANDING_V14 = BANDING_V13 or nama.startswith('v15:'); BANDING_V15 = BANDING_V14 or nama.startswith('v16:'); BANDING_V16 = BANDING_V15 or nama.startswith('v17:'); BANDING_V17 = BANDING_V16 or nama.startswith('v18:')
             c = periksa(isi, K, A)
-            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ', 'model v10 ', 'model v11 ', 'model v12 ', 'model v13 ', 'model v14 ', 'model v15 ', 'model v16 ', 'model v17 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
+            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ', 'model v10 ', 'model v11 ', 'model v12 ', 'model v13 ', 'model v14 ', 'model v15 ', 'model v16 ', 'model v17 ', 'model v18 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
-        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; BANDING_V9 = True; BANDING_V10 = True; BANDING_V11 = True; BANDING_V12 = True; BANDING_V13 = True; BANDING_V14 = True; BANDING_V15 = True; BANDING_V16 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
+        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; BANDING_V9 = True; BANDING_V10 = True; BANDING_V11 = True; BANDING_V12 = True; BANDING_V13 = True; BANDING_V14 = True; BANDING_V15 = True; BANDING_V16 = True; BANDING_V17 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
         for nama, isi in rusak_dok.items():
             DOK_V7_TEKS = isi; c = periksa(R, K, A); DOK_V7_TEKS = None
             c = [x for x in c if 'docs/uji-rules-v7.md' in x]   # berbunyi karena SEBABNYA (berkas Playground), bukan kegagalan lain
@@ -2179,13 +2270,23 @@ if __name__ == '__main__':
             TEKS_BEKU, TEKS_PEMBANTU = bk, pb; c = periksa(R, K, A); TEKS_BEKU = TEKS_PEMBANTU = None
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
+        # v18: halaman & berkas uji server — denyut staf bentuk lain / catatan ★V berkurang wajib ketahuan
+        FB0 = baca('baru/js/data/firebase.js'); DOK18 = baca('docs/uji-rules-v18.md')
+        for nama, (fbx, dkx) in {'v18: halaman menulis denyut staf tanpa ~uid (ditolak server sesudah v18)': (FB0.replace("idPerangkat() + '~' + status.akun.uid : idPerangkat()", "idPerangkat() : idPerangkat()"), None),
+                                 'v18: catatan uji server kehilangan kasus ★V8': (None, re.sub(r'\n\| ★V8 \|[^\n]*', '', DOK18)),
+                                 'v18: Wajib owner tanpa ★V2 (kasir@)': (None, re.sub(r'\n\| 2 \| ★V2 \|[^\n]*', '', DOK18))}.items():
+            if (fbx is not None and fbx == FB0) or (dkx is not None and dkx == DOK18): print('KONTROL BASI  ' + nama); kode = 3; continue
+            FB_V18_TEKS, DOK_V18_TEKS = fbx, dkx; c = periksa(R, K, A); FB_V18_TEKS = DOK_V18_TEKS = None
+            print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
+            if not c: kode = 3
         sys.exit(kode)
     c = periksa(R, K, A)
     B = blok_rules(R)
     if c: print('RULES CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
     KOL, TMIN = kp_js()
     nS = sum(1 for k in KASUS_BUKU if k[4]); nT = len(KASUS_BUKU) - nS
-    print('RULES v17 LULUS: v17 = firestore.rules.v16 + token push aplikasi tablet (notifPerangkat: atas nama penulisnya, id = uid_perangkat, kolom dibatasi; baca & hapus owner) (model %d kasus ★Z, beda v16 = %d kasus) · ' % (len(KASUS_V17), len(BEDA_V16))
+    print('RULES v18 LULUS: v18 = firestore.rules.v17 + denyut staf terikat penulisnya (id perangkat~uid, kolom id = id dokumen, dokumen lama hanya bila akunUid = penulis) (model %d kasus ★V, beda v17 = %d kasus) · ' % (len(KASUS_V18), len(BEDA_V17))
+          + 'v17 = firestore.rules.v16 + token push aplikasi tablet (notifPerangkat: atas nama penulisnya, id = uid_perangkat, kolom dibatasi; baca & hapus owner) (model %d kasus ★Z, beda v16 = %d kasus) · ' % (len(KASUS_V17), len(BEDA_V16))
           + 'v16 = firestore.rules.v15 + hitungan laci dari tablet (Penjaga laci, menunggu, bulat, brankas ≤ hitungan) + aturan tutup hari terbaca ben; hari ditutup owner saja (model %d kasus ★Y, beda v15 = %d kasus) · ' % (len(KASUS_V16), len(BEDA_V15))
           + 'v15 = firestore.rules.v14 + barang masuk dari tablet (Penjaga laci, langsung bon, bongkar 0) + titipan upah bongkar & bayar bon pemasok + kabar barang masuk; ubah kedatangan & tulis uang tetap owner (model %d kasus ★X, beda v14 = %d kasus) · ' % (len(KASUS_V15), len(BEDA_V14))
           + 'v14 = firestore.rules.v13 + data uang (sebelas baris BACA) untuk akun Penjaga laci yang ditandai owner — Ringkas hari ini di tablet; tulis tetap owner (model %d kasus ★W, beda v13 = %d kasus) · ' % (len(KASUS_V14), len(BEDA_V13))

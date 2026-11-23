@@ -364,6 +364,15 @@ export function susunSimpanMasuk(draf, w, yakin) {
   // putaran 25: kedatangan bulan terkunci tidak bisa dikoreksi (K2); kedatangan baru tidak boleh bertanggal bulan terkunci
   const kunci = (lama && tolakKunci('batchMasuk', lama, 'kedatangan ini tidak bisa dikoreksi. Jumlah kg yang salah: Stok › Cocokkan HARI INI. harga modal kedatangan bulan terkunci tidak bisa dikoreksi; selisihnya terbawa ke HPP penjualan sisa stoknya (keputusan owner K2)')) || tolakKunciTanggal(draf.tanggal, 'kedatangan tidak bisa dicatat di bulan itu; catat dengan tanggal hari ini dan sebut tanggal aslinya di alasan');
   if (kunci) return { tolak: kunci, pembalik: lama ? 'cocok' : '' };
+  // tinjauan 30 Sep (e): kedatangan berbaris BAL (beli jadi, sistem lama) — modal per bag pasangan beli-jadinya (dariBatch) memuat porsi bongkar menurut
+  // kg seluruh kedatangan & tanggalnya; koreksi tanggal / bongkar / kg karung TIDAK ikut membetulkan pasangan itu → ditolak (harga, pemasok, cara bayar tetap
+  // bisa). Data toko 23 Nov: 0 kedatangan ber-bal, dan /baru/ tidak bisa membuat baris bal — penjaga untuk catatan lama yang masih mungkin tersisa.
+  const balLama = lama ? ckBarisBal(lama) : [];
+  if (balLama.length) {
+    const kgLama = ckB2((lama.merkList || []).filter((m) => m && m.bentuk !== 'bal').reduce((a, m) => a + (Number(m.totalKg) || 0), 0));
+    const ubah = [String(draf.tanggal) !== String(lama.tanggal || '') ? 'tanggal' : '', Math.round(h.bongkar) !== Math.round(Number(lama.biayaBongkar) || 0) ? 'bongkar' : '', Math.abs(h.kg - kgLama) > 0.004 ? 'kg karung' : ''].filter(Boolean);
+    if (ubah.length) return { tolak: 'Kedatangan ini memuat ' + balLama.length + ' baris bal (beli jadi, catatan sistem lama) — ' + ubah.join(', ') + ' tidak bisa dikoreksi dari sini, karena modal per bag pasangan beli-jadinya ikut dihitung dari tanggal, bongkar & kg kedatangan ini dan tidak ikut dibetulkan. Harga karung, pemasok, dan cara bayar tetap bisa dikoreksi.' };
+  }
   // tinjauan E1 (no. 3): koreksi yang memindah kg antar nama di buku yang sudah bergerak → ditolak + jalan lain (pindah buku / Cocokkan); tidak boleh stok hantu
   const geser = lama ? ckGeserKoreksi(lama, ckBarisGeser(h)) : null;
   if (geser && geser.tolak) return { tolak: geser.tolak, pembalik: geser.pindah.length ? 'pindahNama' : 'cocok', pindahTeks: geser.pindahTeks };
