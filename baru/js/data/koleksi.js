@@ -105,4 +105,8 @@ export const KOLEKSI = [
   //  memasangkan apa tetap ada). Bukan uang & bukan stok. Didaftarkan dari tablet (rules v12: owner || stafBuat ben/karyawan) — tanpa cap jam server,
   //  jadi 'tetap' seperti pesanan.
   { nama: 'tandaKenal',          urut: 'id',    cache: 'tandaKenal', kelas: 'tetap' },
+  // paket KPI laba (owner 24 Nov 2026, butir 14) — CEK GUDANG: satu dokumen per cek mingguan timbangan & gudang (lima hal beres / ada masalah + catatan).
+  //  Catatan TAMBAH-SAJA; owner & Penjaga laci (tablet) membuatnya (rules v19: owner || stafCekGudang(ben), kolom dibatasi), ubah & hapus owner. Bukan uang
+  //  & bukan stok — tanpa cap jam server, jadi 'tetap' seperti pesanan.
+  { nama: 'cekGudang',           urut: 'id',    cache: 'cekGudang', kelas: 'tetap' },
 ];

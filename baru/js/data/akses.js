@@ -24,7 +24,7 @@ export const BATAS_HASIL_ADUKAN_STAF = 8;   // adukan: 8 hasil × (produksi + ka
 // rules v7 (owner 7 Okt, JS2-C): persetujuan — yang minta nego membaca keputusan owner (pendengar koleksi utuh; rules bukan saringan)
 export const BACA_STAF = ['penjualan', 'piutangMutasi', 'pelangganCatatan', 'pelangganTitip', 'pesanan', 'tagihPelanggan', 'strukKeluar', 'tandaKenal',
   'batchMasuk', 'produksiKemasan', 'penyesuaianStok', 'penyesuaianKemasan', 'retur', 'karantina', 'stokBahanKemasan', 'stokBahanLiteran', 'wadahLiteran', 'pindahTempat',
-  'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan', 'suratJalan', 'orderRutin'];   // rules v10 (B3): surat jalan & antar · v11 (B4): jadwal order rutin
+  'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan', 'suratJalan', 'orderRutin', 'cekGudang'];   // v19 (paket KPI laba): cek mingguan gudang   // rules v10 (B3): surat jalan & antar · v11 (B4): jadwal order rutin
 export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip'], pengaturan: ['tempatSimpan'] };
 // rules v8 (B1, owner 16 Nov 2026): + hargaTingkat (harga pelanggan usaha dipakai kasir) + produkArsip (barang yang diarsipkan tidak tampil sebagai chip habis di tablet)
 // rules v14 (owner 21 Nov 2026): RINGKAS HARI INI di tablet — akun Penjaga laci yang DITANDAI owner (aksesAkun.bacaUang) membaca data uang untuk laci
@@ -45,7 +45,7 @@ export function pendengarUang(akun) {
 // §4 — CREATE bukan-owner: koleksi → peran yang boleh. Menambah peran nanti = menambah satu nama di sini DAN di daftar yang sama di firestore.rules.
 export const BUAT_STAF = { penjualan: ['ben', 'karyawan'], piutangMutasi: ['ben', 'karyawan'], stokBahanLiteran: ['ben', 'karyawan'], stokBahanKemasan: ['ben', 'karyawan'],
   produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], tandaKenal: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'],
-  wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'] };   // rules v11 (B4): pesanan & jadwal rutin = ben   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
+  wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'], cekGudang: ['ben'] };   // rules v19 (paket KPI laba, owner 24 Nov 2026): cek gudang = ben   // rules v11 (B4): pesanan & jadwal rutin = ben   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
 // rules v7 (owner 7 Okt, JS2-C): persetujuan hanya PERMINTAAN NEGO "menunggu" atas nama sendiri, tanpa kolom keputusan (stafMintaNego; periksaKiriman di bawah)
 export const TIPE_WADAH_STAF = ['takar', 'karung', 'karungIsi', 'cek'];   // = stafBuatWadah di rules v5
 export const KREDIT_STAF = ['ben'];   // penjualan caraBayar Kredit (jualBon): ben `sendiri`, karyawan `owner`
@@ -265,6 +265,14 @@ export function tindakanKiriman(D, jatahNego) {
  * Putaran 25: bukan-owner hanya boleh menulis catatan bertanggal bulan berjalan atau bulan lalu SELAMA masa tenggang minimal — di rules tanpa get()
  * (kunciPeriode tidak pernah dibaca untuk bukan-owner), jadi access call tetap 1 per dokumen. Di luar itu: owner yang menulis (ditolak server → daftar ditolak).
  */
+// rules v19: bentuk dokumen cekGudang yang boleh ditulis bukan-owner (= stafCekGudang). Kolom atribusi penulis pusat ikut boleh.
+export const CEK_GUDANG_KOLOM = ['id', 'tanggal', 'jam', 'minggu', 'cek', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi'].concat(KOLOM_ATRIBUSI_UBAH);
+export const CEK_GUDANG_HAL = ['timbangan', 'palet', 'bocor', 'lembap', 'kutu'];
+export function cekGudangSah(d) {
+  if (!d || typeof d !== 'object') return false; if (Object.keys(d).some((k) => CEK_GUDANG_KOLOM.indexOf(k) < 0)) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d.tanggal || '')) || typeof d.catatan !== 'string' || d.catatan.length > 160 || !d.cek || typeof d.cek !== 'object') return false;
+  return Object.keys(d.cek).every((k) => CEK_GUDANG_HAL.indexOf(k) >= 0 && typeof d.cek[k] === 'boolean');
+}
 export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
   if (!akun) return { tolak: 'Belum masuk' };
   if (akun.jenis === 'owner') return { accessCall: 0 };
@@ -289,6 +297,9 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
         if (d.penggantiRetur) return { tolak: KALIMAT_MINTA_OWNER };
       }
       if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar') return { tolak: tolakTindakan('koreksi') };
+      // rules v19 (paket KPI laba, owner 24 Nov 2026): cek gudang dari tablet — kolom isi = SS_CEK_KOLOM (+ atribusi), cek = peta lima hal bernilai benar/salah,
+      // catatan ≤ 160 huruf, tanggal YYYY-MM-DD (stafCekGudang). Selain bentuk itu pasti ditolak server — tidak dikirim.
+      if (x.koleksi === 'cekGudang' && !cekGudangSah(d)) return { tolak: 'Bentuk catatan cek gudang tidak sah — isi ulang lembarnya' };
       if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return { tolak: tolakTindakan('hargaBeli') };
       // rules v5 (putaran 39): karyawan menulis wadahLiteran hanya takar / karung / karungIsi / cek (aturan wadah & titik samakan isi = owner), batchMasuk hanya batch LAHIR BUKU 0 kg
       if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };
