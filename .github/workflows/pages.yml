@@ -385,6 +385,9 @@ jobs:
       - name: "Batas nego per orang (JS2-C, owner 7 Okt): jatah % margin per peran & akun (owner 100 · Ben 50 · karyawan 0, setelan owner), batas naik ke langkah, di bawah jatah minta owner (harga nota tetap), di bawah modal hanya yang diizinkan + alasan, persetujuan owner sekali pakai, tiap nego tercatat di nota, penjaga kiriman Ben, Buku Nego, Atur (kotak pasir + kontrol)"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_jual_nego.py && python3 alat-uji/uji_jual_nego.py --kontrol
+      - name: "Penjaga bonus +1 staf (owner 23 Nov): bonus masuk jatah nego (satu rumus layar & penjaga kiriman), lewat jatah / rugi minta owner, persetujuan sekali pakai & jumlah sama, nota bertanda, Buku Nego mendaftar bonus (kotak pasir + kontrol)"
+        if: matrix.bagian == 2
+        run: python3 alat-uji/uji_jual_bonus.py && python3 alat-uji/uji_jual_bonus.py --kontrol
       - name: "Keranjang & struk parkir bertahan saat halaman dimuat ulang (owner 7 Okt): penyimpanan sesi per akun + hari ini, tanpa tukar/karcis/nota terakhir/uang, akun lain & hari lain dibuang, cermin stok ikut, dibersihkan sesudah nota & ganti orang, mode privat tidak jatuh (layar Jual asli di jsc + kontrol)"
         if: matrix.bagian == 3
         run: python3 alat-uji/uji_keranjang_tahan.py && python3 alat-uji/uji_keranjang_tahan.py --kontrol

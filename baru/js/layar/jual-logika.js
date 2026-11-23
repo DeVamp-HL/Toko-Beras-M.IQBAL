@@ -53,6 +53,8 @@ import { skChip, skTrxPegang, skPecah, skHapusPemecah } from './setengah-logika.
 import { gabungTakaran } from './struk-logika.js';
 // owner 7 Okt (JS2-C): batas nego per orang
 import { ngPutus, ngTandai, ngBolehPakai, ngPutusUlang, ngSetujuUntuk, ngSusunMinta, ngKunciBarang, NG_KOLOM } from './nego-logika.js';
+// owner 23 Nov 2026: bonus +1 staf masuk jatah nego (lewat batas → minta owner)
+import { ngPutusBonus, ngTandaiBonus, ngBonusBolehPakai, ngSetujuBonusUntuk, ngSusunMintaBonus } from './nego-logika.js';
 
 export const JALUR = [['sering', 'Sering'], ['literan', 'Literan'], ['kemasan', 'Kemasan'], ['karung', 'Karung'], ['wadah', 'Wadah'], ['repack', 'Repack'], ['retur', 'Retur'], ['riwayat', 'Riwayat']];   // riwayat: owner 28 Sep
 export const JALUR_NANTI = [];   // semua jalur desain sudah hidup (wadah: putaran 15)
@@ -80,7 +82,7 @@ export function keadaanAwal() {
     jalur: 'sering', lembar: null, pilih: null, ketik: '', satuanKarung: 50, namaRepack: '',
     rwCari: '', rwPeriode: 'semua', rwJenis: '', rwCara: '', rwBatal: false, rwN: 50, rwBuka: null,   // RIWAYAT PENJUALAN (owner 28 Sep): saringan tab Riwayat (riwayat-logika.js)
     keranjang: [], negoId: null, potongan: 0, penggantiTanya: null,
-    negoAlasan: '', negoMinta: null, ngAlasanTolak: '',   // owner 7 Okt (JS2-C): alasan di bawah modal · nego yang perlu minta owner · alasan owner menolak (Buku Nego)
+    negoAlasan: '', negoMinta: null, ngAlasanTolak: '', bonusMinta: null,   // owner 23 Nov: bonusMinta = { id, teks } bonus +1 yang perlu minta owner   // owner 7 Okt (JS2-C): alasan di bawah modal · nego yang perlu minta owner · alasan owner menolak (Buku Nego)
     pelanggan: '', cariPelanggan: '', cara: 'Tunai', uang: 0,
     antrean: [], aktifId: 1, idBerikut: 2, urutBaris: 0,
     pulihPeriksa: [],   // tinjauan 7 Okt: id baris yang DIPULIHKAN sesudah halaman dimuat ulang — dibangun ulang dari katalog sekarang saat nota dicatat (periksaPulih)
@@ -649,10 +651,29 @@ function bangunUlang(b, chip, j, s, ubah) {
  * Masih sah → kolom nego diperbarui (batas, jatah); tidak sah lagi (mis. bonus +1 menaikkan modal per satuan BAYAR sehingga harga nego jatuh di bawah jatah /
  * modal, persetujuan owner untuk jumlah lebih sedikit) → { tolak }.
  */
-function negoUlang(s, baru) {
-  if (!baru || !baru.nego) return { trx: baru };
-  const r = ngPutusUlang(baru, s.negoAkun || null, { hakNego: s.negoHak, bisaMinta: s.negoBisaMinta }); if (r.tolak) return { tolak: r.tolak };
-  return { trx: selesaikanHarga(ngTandai(baru, r.p), !!baru.penggantiRetur) };
+function negoUlang(s, baru, id) {
+  if (!baru) return { trx: baru };
+  let t = baru;
+  if (t.nego) { const r = ngPutusUlang(t, s.negoAkun || null, { hakNego: s.negoHak, bisaMinta: s.negoBisaMinta }); if (r.tolak) return { tolak: r.tolak }; t = selesaikanHarga(ngTandai(t, r.p), !!t.penggantiRetur); }
+  // owner 23 Nov 2026: baris berbonus diputus lagi (jumlah, harga, nego, pembeli berubah) — lewat jatah & tanpa persetujuan owner yang cocok → ditolak
+  if (!(Number(t.bonusUnit) > 0)) return { trx: t };
+  const p = putusBonusBaris(s, t, id);
+  if (!ngBonusBolehPakai(p)) return { tolak: 'Bonus +1 untuk ' + t.label + ' tidak berlaku lagi sesudah diubah: ' + p.teks + ' — lepas bonusnya dulu', bonusTolak: true };
+  return { trx: ngTandaiBonus(t, p) };
+}
+/** Putusan bonus +1 satu baris atas nama akun yang masuk (persetujuan owner yang dipegang baris LAIN tidak dipakai dua kali). */
+function putusBonusBaris(s, t, id) {
+  const akun = s.negoAkun || null;
+  const setuju = ngSetujuBonusUntuk(t, akun, { dipakai: setujuDipegang(s, id), tanggal: hariIniIso(s.sekarang) });
+  return ngPutusBonus(t, akun, { hakNego: s.negoHak, bisaMinta: s.negoBisaMinta, setuju, atur: s.negoAtur });
+}
+/** Baris yang negonya (atau bonusnya) tidak sah lagi: nego dilepas ke harga katalog; bonus yang masih lewat jatah ikut dilepas. → { trx, lepas } */
+function lepasTakSah(s, b, chip, id) {
+  let t = bangunUlang({ id: b.id, trx: Object.assign({}, b.trx, { nego: false }) }, chip, b.trx.jumlah, s); let lepas = 'nego';
+  const nu = negoUlang(s, t, id);
+  if (nu.tolak) { t = bangunUlang({ id: b.id, trx: Object.assign({}, b.trx, { nego: false }) }, chip, b.trx.jumlah, s, { bonusUnit: 0 }); lepas = b.trx.nego ? 'nego & bonus' : 'bonus'; }
+  else t = nu.trx;
+  return { trx: t, lepas };
 }
 /** Langit-langit untuk baris ini tanpa dirinya sendiri di keranjang. */
 function maksTanpaBaris(s, id, chip) {
@@ -667,8 +688,17 @@ export function toggleBonus(s, id) {
   const chip = chipDariBaris(b.trx); if (!chip) return {};
   const bonus = b.trx.bonusUnit ? 0 : 1;
   if (bonus) { const maks = maksTanpaBaris(s, id, chip); if (maks !== null && b.trx.jumlah + 1 > maks) return { kabar: 'Bonus butuh 1 unit lagi dari stok — yang bebas dijual cuma ' + tulisJumlah(maks, chip), kabarAwas: true }; }
-  const nu = negoUlang(s, bangunUlang(b, chip, b.trx.jumlah, s, { bonusUnit: bonus })); if (nu.tolak) return { kabar: nu.tolak, kabarAwas: true }; const baru = nu.trx; if (!baru) return {};
-  return { keranjang: s.keranjang.map((x) => (x.id === id ? { id, trx: baru } : x)), kabar: bonus ? b.trx.label + ' +1 bonus — stok & modal ikut ' + baru.jumlahUnit + ' unit, uang tetap ' + b.trx.jumlah : 'Bonus ' + b.trx.label + ' dilepas', kabarAwas: false };
+  let baru = bangunUlang(b, chip, b.trx.jumlah, s, { bonusUnit: bonus });
+  if (baru && baru.nego) { const r = ngPutusUlang(baru, s.negoAkun || null, { hakNego: s.negoHak, bisaMinta: s.negoBisaMinta }); if (r.tolak) return { kabar: r.tolak, kabarAwas: true }; baru = selesaikanHarga(ngTandai(baru, r.p), !!baru.penggantiRetur); }
+  if (!baru) return {};
+  // owner 23 Nov 2026: bonus dari staf masuk jatah nego — dalam jatah / disetujui owner → dipasang; lewat jatah → { bonusMinta } (baris TIDAK berubah)
+  if (bonus) {
+    const p = putusBonusBaris(s, baru, id);
+    if (p.status === 'minta') return { bonusMinta: { id, teks: p.teks }, kabar: 'Bonus ' + b.trx.label + ': ' + p.teks, kabarAwas: true };
+    if (!ngBonusBolehPakai(p)) return { bonusMinta: null, kabar: 'Bonus ' + b.trx.label + ': ' + p.teks, kabarAwas: true };
+    baru = ngTandaiBonus(baru, p);
+  } else baru = ngTandaiBonus(baru, null);
+  return { keranjang: s.keranjang.map((x) => (x.id === id ? { id, trx: baru } : x)), bonusMinta: null, kabar: bonus ? b.trx.label + ' +1 bonus — stok & modal ikut ' + baru.jumlahUnit + ' unit, uang tetap ' + b.trx.jumlah : 'Bonus ' + b.trx.label + ' dilepas', kabarAwas: false };
 }
 /** Pengganti retur (cara lama, untuk tukar TANPA nota): omzet & kas baris ini Rp0, nilai barang jadi jejak; HPP tetap keluar. */
 export function togglePenggantiRetur(s, id) {
@@ -681,7 +711,7 @@ export function togglePenggantiRetur(s, id) {
     const tukarB = ambilRetur().filter((r) => r.tukarModel === 'kreditBarang' && r.tanggal === hari);
     if (tukarB.length) return { penggantiTanya: id, kabar: 'Hari ini ada ' + tukarB.length + ' tukar yang MENUNJUK NOTA — untuk tukar bernota, barang pengganti wajib dijual PENUH. Tanda ini cuma untuk tukar TANPA nota; ketuk sekali lagi kalau memang begitu.', kabarAwas: true };
   }
-  const nu = negoUlang(s, bangunUlang(b, chip, b.trx.jumlah, s, { penggantiRetur: nyalakan })); if (nu.tolak) return { kabar: nu.tolak, kabarAwas: true }; const baru = nu.trx; if (!baru) return {};
+  const nu = negoUlang(s, bangunUlang(b, chip, b.trx.jumlah, s, { penggantiRetur: nyalakan }), id); if (nu.tolak) return { kabar: nu.tolak, kabarAwas: true }; const baru = nu.trx; if (!baru) return {};
   return { keranjang: s.keranjang.map((x) => (x.id === id ? { id, trx: baru } : x)), penggantiTanya: null,
     kabar: nyalakan ? b.trx.label + ' jadi PENGGANTI RETUR — omzet & kas Rp0, nilai barang ' + RP(baru.nilaiBarangPengganti) + ' tercatat, modal tetap keluar' : b.trx.label + ' dijual penuh lagi', kabarAwas: false };
 }
@@ -703,7 +733,7 @@ export function toggleGrosir(s, id) {
   const nu = negoUlang(s, bangunUlang(b, chip, b.trx.jumlah, s, { pakaiGrosir: pakai })); if (nu.tolak) return { kabar: nu.tolak, kabarAwas: true }; const baru = nu.trx; if (!baru) return {};
   return { keranjang: s.keranjang.map((x) => (x.id === id ? { id, trx: baru } : x)), kabar: pakai ? b.trx.label + ' pakai harga grosir ' + RP(baru.hargaAsli) + '/karung (≥ ' + baru.grosirMin + ' karung)' : b.trx.label + ' kembali ke harga biasa ' + RP(baru.hargaAsli) + '/karung', kabarAwas: false };
 }
-export function hapusBaris(s, id) { return { keranjang: s.keranjang.filter((b) => b.id !== id), negoId: null, negoMinta: null, kabar: '' }; }
+export function hapusBaris(s, id) { return { keranjang: s.keranjang.filter((b) => b.id !== id), negoId: null, negoMinta: null, bonusMinta: null, kabar: '' }; }
 export function ubahJumlahBaris(s, id, selisih) {
   const b = s.keranjang.find((x) => x.id === id); if (!b) return {};
   if (b.trx.setengahDari && selisih > 0) return { kabar: '½ karung satu-satu — dua ½ = jual 50 kg-nya utuh', kabarAwas: true };
@@ -713,7 +743,7 @@ export function ubahJumlahBaris(s, id, selisih) {
   const maks = maksTanpaBaris(s, id, chip);
   const butuh = j + (b.trx.jenis === 'kemasan' ? (b.trx.bonusUnit || 0) : 0);
   if (maks !== null && butuh > maks) return { kabar: 'Yang bebas dijual ' + tulisJumlah(maks, chip) + ' — ' + tulisJumlah(butuh, chip) + (b.trx.bonusUnit ? ' (termasuk bonus)' : '') + ' tidak bisa', kabarAwas: true };
-  const nu = negoUlang(s, bangunUlang(b, chip, j, s)); if (nu.tolak) return { kabar: nu.tolak, kabarAwas: true }; const baru = nu.trx; if (!baru) return {};
+  const nu = negoUlang(s, bangunUlang(b, chip, j, s), id); if (nu.tolak) return { kabar: nu.tolak, kabarAwas: true }; const baru = nu.trx; if (!baru) return {};
   return { keranjang: s.keranjang.map((x) => (x.id === id ? { id, trx: baru } : x)), kabar: '' };
 }
 // owner 3 Okt (patah-patah tiap +1/−1): dulu SELURUH rak disusun (±180 ms Mac, ±0,5 dtk iPad) hanya untuk mencari satu chip. Rak tanpa pelanggan & tanpa
@@ -736,8 +766,9 @@ function chipDariBaris(t) {
 }
 /** Persetujuan nego owner yang sedang dipegang baris LAIN di keranjang ini & struk parkir (sekali pakai — owner 7 Okt). */
 function setujuDipegang(s, kecuali) {
-  const out = []; const ambil = (b) => { if (b && b.trx && b.trx.negoSetujuId && b.id !== kecuali) out.push(String(b.trx.negoSetujuId)); };
-  (s.keranjang || []).forEach(ambil); (s.antrean || []).forEach((a) => (((a || {}).beku || {}).items || []).forEach((b) => { if (b && b.trx && b.trx.negoSetujuId) out.push(String(b.trx.negoSetujuId)); }));
+  // owner 23 Nov: persetujuan BONUS (bonusSetujuId) juga sekali pakai
+  const out = []; const ambil = (b) => { if (b && b.trx && b.id !== kecuali) { if (b.trx.negoSetujuId) out.push(String(b.trx.negoSetujuId)); if (b.trx.bonusSetujuId) out.push(String(b.trx.bonusSetujuId)); } };
+  (s.keranjang || []).forEach(ambil); (s.antrean || []).forEach((a) => (((a || {}).beku || {}).items || []).forEach((b) => { if (b && b.trx) { if (b.trx.negoSetujuId) out.push(String(b.trx.negoSetujuId)); if (b.trx.bonusSetujuId) out.push(String(b.trx.bonusSetujuId)); } }));
   return out;
 }
 /** Putusan nego untuk harga yang sedang diketik di lembar nego (dipakai layar untuk kalimat & tombolnya) — tidak mengubah keadaan. */
@@ -757,7 +788,9 @@ export function terapkanNego(s, id, hargaBaru) {
   const p = putusNego(s, id, hargaBaru);
   if (p.status === 'minta') return { negoMinta: { id, harga: p.harga, batas: p.batas, alasan: p.alasan, teks: p.teks }, kabar: b.trx.label + ' ' + RP(p.harga) + ': ' + p.teks, kabarAwas: true };
   if (!ngBolehPakai(p)) return { negoMinta: null, kabar: p.harga < NEGO_LANTAI ? p.teks : b.trx.label + ' ' + RP(p.harga) + ': ' + p.teks, kabarAwas: true };
-  const trx = selesaikanHarga(ngTandai(b.trx, p), !!b.trx.penggantiRetur);
+  let trx = selesaikanHarga(ngTandai(b.trx, p), !!b.trx.penggantiRetur);
+  // owner 23 Nov 2026: baris berbonus — nego + bonus bersama-sama harus tetap dalam jatah (atau disetujui owner)
+  if (Number(trx.bonusUnit) > 0) { const pb = putusBonusBaris(s, trx, id); if (!ngBonusBolehPakai(pb)) return { negoMinta: null, kabar: b.trx.label + ' ' + RP(p.harga) + ' dengan bonus +1: ' + pb.teks + ' — lepas bonusnya dulu, atau tawar lebih tinggi', kabarAwas: true }; trx = ngTandaiBonus(trx, pb); }
   return { keranjang: s.keranjang.map((x) => (x.id === id ? { id, trx } : x)), negoId: null, ketik: '', lembar: null, negoAlasan: '', negoMinta: null,
     kabar: p.status === 'katalog' ? b.trx.label + ' kembali ke harga katalog ' + RP(p.hargaAsli) : b.trx.label + ' dinego jadi ' + RP(p.harga) + ' — ' + p.teks,
     kabarAwas: p.status === 'bawahModal' };
@@ -769,6 +802,17 @@ export function susunMintaNego(s, w) {
   const r = ngSusunMinta(b.trx, p, s.negoAkun || null, w); if (r.tolak) return r;
   if (b.trx.tingkatHarga && r.dokumen && r.dokumen[0]) Object.assign(r.dokumen[0].data, { pelanggan: kunciPelanggan(s.pelanggan), tingkatHarga: b.trx.tingkatHarga });   // B1: owner menghitung dari harga pelanggan itu
   return { dokumen: r.dokumen, patch: Object.assign({}, r.patch, { negoMinta: null, negoAlasan: '', negoId: null, lembar: null, ketik: '' }) };
+}
+/** owner 23 Nov 2026: permintaan BONUS +1 ke owner untuk baris s.bonusMinta (dokumen persetujuan tindakan 'nego' + bonus 1) — baris tidak berubah sampai disetujui. */
+export function susunMintaBonus(s, w) {
+  const m = s.bonusMinta; const b = m && (s.keranjang || []).find((x) => x.id === m.id); if (!b) return { tolak: 'Baris yang diberi bonus sudah tidak ada di keranjang' };
+  const chip = chipDariBaris(b.trx); if (!chip) return { tolak: 'Barang ini tidak ada lagi di rak' };
+  let t = bangunUlang(b, chip, b.trx.jumlah, s, { bonusUnit: 1 }); if (!t) return { tolak: 'Bonus tidak bisa dipasang di baris ini' };
+  if (t.nego) { const r = ngPutusUlang(t, s.negoAkun || null, { hakNego: s.negoHak, bisaMinta: s.negoBisaMinta }); if (r.tolak) return { tolak: r.tolak }; t = selesaikanHarga(ngTandai(t, r.p), !!t.penggantiRetur); }
+  const p = putusBonusBaris(s, t, m.id); if (p.status !== 'minta') return { tolak: p.teks || 'Bonus ini tidak perlu minta owner — ketuk bonus lagi' };
+  const r = ngSusunMintaBonus(t, p, s.negoAkun || null, w); if (r.tolak) return r;
+  if (t.tingkatHarga && r.dokumen && r.dokumen[0]) Object.assign(r.dokumen[0].data, { pelanggan: kunciPelanggan(s.pelanggan), tingkatHarga: t.tingkatHarga });   // B1: owner menghitung dari harga pelanggan itu
+  return { dokumen: r.dokumen, patch: Object.assign({}, r.patch, { bonusMinta: null }) };
 }
 /** Baris keranjang yang permintaan negonya SUDAH disetujui owner tapi belum dipakai (bukan-owner): [{ id, label, harga }] — layar menawarkan memakainya. */
 export function setujuSiap(s) {
@@ -791,7 +835,7 @@ export function parkir(s) {
   // B3: draf antar (alamat, ongkir, pengantar, bayar di tempat) milik struk ini — ikut diparkir
   const beku = { items: s.keranjang, pelanggan: s.pelanggan, cara: s.cara, uang: s.uang, potongan: s.potongan, pesananId: s.pesananId || null, tukar: s.tukar || null, pada: new Date(Date.now()).toISOString(), kreditDibuka: !!s.kreditDibuka, antar: s.antar || null };
   const antrean = s.antrean.filter((a) => a.id !== s.aktifId).concat([{ id: s.aktifId, beku }]);
-  return { antrean, keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, negoMinta: null, negoAlasan: '', lembar: null, pesananId: null, tukar: null, penggantiTanya: null, kreditDibuka: false, antar: null,
+  return { antrean, keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, negoMinta: null, bonusMinta: null, negoAlasan: '', lembar: null, pesananId: null, tukar: null, penggantiTanya: null, kreditDibuka: false, antar: null,
     aktifId: s.idBerikut, idBerikut: s.idBerikut + 1, kabar: (s.pelanggan || 'Struk') + ' diparkir — stoknya tetap dipegang', kabarAwas: false };
 }
 export function pakaiAntrean(s, id) {
@@ -901,12 +945,12 @@ export function periksaPulih(s) {
     if (!tanda[String(b.id)]) return b;
     const chip = chipDariBaris(b.trx); const dasar = chip ? bangunUlang(b, chip, b.trx.jumlah, s) : null;
     if (!dasar) { hilang.push(b.trx.label); return b; }
-    let nu = negoUlang(s, dasar); let lepas = '';
-    if (nu.tolak) { lepas = nu.tolak; nu = { trx: bangunUlang({ id: b.id, trx: Object.assign({}, b.trx, { nego: false }) }, chip, b.trx.jumlah, s) }; }
+    let nu = negoUlang(s, dasar, b.id); let lepas = '';
+    let lp = 'nego'; if (nu.tolak) { lepas = nu.tolak; const L2 = lepasTakSah(s, b, chip, b.id); lp = L2.lepas; nu = { trx: L2.trx }; }
     const t = nu.trx; if (!t) { hilang.push(b.trx.label); return b; }
     if (UANG_BARIS.some((k) => String(b.trx[k]) !== String(t[k]))) {
       ubah.push(b.trx.label + (b.trx.hargaSatuan !== t.hargaSatuan ? ' ' + RP(b.trx.hargaSatuan) + ' → ' + RP(t.hargaSatuan) + '/' + t.satuan : ' (katalog ' + RP(b.trx.hargaAsli) + ' → ' + RP(t.hargaAsli) + ', harga ' + RP(t.hargaSatuan) + '/' + t.satuan + ' tetap)')
-        + (lepas ? ' — nego dilepas: ' + lepas : ''));
+        + (lepas ? ' — ' + lp + ' dilepas: ' + lepas : ''));
     }
     return { id: b.id, trx: t };
   });
@@ -934,10 +978,10 @@ export function gantiPelanggan(s, nama) {
   const s2 = Object.assign({}, s, { pelanggan: nm }); const ubah = [];
   const keranjang = s.keranjang.map((b) => {
     const chip = chipDariBaris(b.trx); const dasar = chip ? bangunUlang(b, chip, b.trx.jumlah, s2) : null; if (!dasar) return b;
-    let nu = negoUlang(s2, dasar); let lepas = false;
-    if (nu.tolak) { lepas = true; nu = { trx: bangunUlang({ id: b.id, trx: Object.assign({}, b.trx, { nego: false }) }, chip, b.trx.jumlah, s2) }; }
+    let nu = negoUlang(s2, dasar, b.id); let lepas = '';
+    if (nu.tolak) { const L2 = lepasTakSah(s2, b, chip, b.id); lepas = L2.lepas; nu = { trx: L2.trx }; }
     const t = nu.trx; if (!t) return b;
-    if (t.hargaSatuan !== b.trx.hargaSatuan || t.hargaTotal !== b.trx.hargaTotal) ubah.push(b.trx.label + ' ' + RP(b.trx.hargaSatuan) + ' → ' + RP(t.hargaSatuan) + '/' + t.satuan + (lepas ? ' (nego dilepas)' : ''));
+    if (t.hargaSatuan !== b.trx.hargaSatuan || t.hargaTotal !== b.trx.hargaTotal || (b.trx.bonusUnit || 0) !== (t.bonusUnit || 0)) ubah.push(b.trx.label + ' ' + RP(b.trx.hargaSatuan) + ' → ' + RP(t.hargaSatuan) + '/' + t.satuan + (lepas ? ' (' + lepas + ' dilepas)' : ''));
     return { id: b.id, trx: t };
   });
   if (!ubah.length) return Object.assign(patch, { keranjang });
@@ -1420,7 +1464,7 @@ export function simpanNota(s0, w) {
   const s2 = tembus.length ? Object.assign({}, s, { keranjang: s.keranjang.map((b) => (ids[b.id] ? Object.assign({}, b, { trx: Object.assign({}, b.trx, { perluCocokkan: true, selisihKg: ids[b.id].selisihKg }) }) : b)) }) : s;
   const n = susunNotaDokumen(s2, w || waktuSekarang(s.sekarang || undefined));
   if (n.tolak) return { tolak: n.tolak };
-  const patch = { keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, negoMinta: null, negoAlasan: '', lembar: null, ketik: '', kreditDibuka: false, pesananId: null, penggantiTanya: null, tukar: null, tembusTanya: null, tembusYakin: false, antar: null,
+  const patch = { keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, negoMinta: null, bonusMinta: null, negoAlasan: '', lembar: null, ketik: '', kreditDibuka: false, pesananId: null, penggantiTanya: null, tukar: null, tembusTanya: null, tembusYakin: false, antar: null,
     pulihPeriksa: (s.pulihPeriksa || []).filter((id) => !s.keranjang.some((b) => String(b.id) === String(id))),
     notaTerakhir: { trxId: n.trxId, idPenjualan: n.idPenjualan, piutangId: n.piutangId, pesanan: n.pesanan, retur: n.retur, pada: Date.now(), ringkas: n.ringkas, nama: String(s.pelanggan || '').trim() },
     kabar: 'Tersimpan — ' + n.ringkas + (tembus.length ? ' · TEMBUS STOK, tandai dicocokkan: ' + tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' ' + kgTeks(t.selisihKg)).join(', ') : ''), kabarAwas: false };

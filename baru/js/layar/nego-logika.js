@@ -13,6 +13,8 @@
 import { cacheMentah, ambilPenjualan, ambilHargaKemasan, ambilHargaLiteran, petaUkuran } from '../data/toko.js';
 import { NEGO_LANTAI, kunciKemasan, hargaKarungUtuh, cariHargaKarungPerKg } from '../mesin/pembantu.js';
 import { RP } from '../inti/format.js';
+// owner 23 Nov 2026: bonus +1 staf masuk jatah nego — rumus batasnya satu dengan penjaga kiriman
+import { bonusDalamBatas } from '../data/akses.js';
 // B1: nego di atas harga pelanggan bertingkat
 import { htHarga, htKgBarang } from './harga-tingkat-logika.js';
 
@@ -21,8 +23,12 @@ export const NG_BAWAAN = { ben: 50, karyawan: 0, langkah: 500, bawahModal: ['own
 export const NG_JATAH_OWNER = 100;
 // kolom nego yang dibawa baris keranjang & ditulis ke dokumen penjualan (selain nego + negoSelisih yang sudah ada sejak putaran 2)
 export const NG_KOLOM = ['negoStatus', 'negoBatas', 'negoJatah', 'negoAlasan', 'negoSetujuId'];
+// owner 23 Nov 2026: tanda bonus +1 di baris keranjang & nota — status ('owner' · 'jatah' · 'disetujui'), jatah yang dipakai, persetujuan owner (sekali pakai),
+// nilai bonus (harga katalog unit gratis) untuk Buku Nego
+export const NG_KOLOM_BONUS = ['bonusStatus', 'bonusJatah', 'bonusSetujuId', 'bonusNilai'];
 export const NG_LABEL = { jatah: 'dalam jatah', naik: 'di atas harga katalog', disetujui: 'disetujui owner', bawahModal: 'di bawah modal', lama: 'nego (sebelum ada batas nego)',
-  menunggu: 'menunggu owner', ditolak: 'ditolak owner', dipakai: 'disetujui owner · sudah dipakai' };
+  menunggu: 'menunggu owner', ditolak: 'ditolak owner', dipakai: 'disetujui owner · sudah dipakai',
+  bonusOwner: 'bonus dari owner', bonusJatah: 'bonus dalam jatah', bonusDisetujui: 'bonus disetujui owner', bonusLama: 'bonus (sebelum ada batas)' };
 
 const ngPersen = (v, cadang) => { const n = Number(v); return v !== undefined && v !== null && v !== '' && isFinite(n) && n >= 0 && n <= 100 ? n : cadang; };
 const ngOwner = (akun) => !akun || akun.jenis === 'owner';
@@ -82,7 +88,7 @@ export function ngBolehNego(akun, hakNego, A, bisaMinta) {
 }
 /** Persetujuan owner yang SUDAH dipakai nota yang berlaku (sekali pakai) + yang sedang dipegang keranjang / struk parkir perangkat ini. */
 function ngSetujuTerpakai(dipakai) {
-  const o = {}; ambilPenjualan().forEach((p) => { if (p.negoSetujuId) o[String(p.negoSetujuId)] = 1; });
+  const o = {}; ambilPenjualan().forEach((p) => { if (p.negoSetujuId) o[String(p.negoSetujuId)] = 1; if (p.bonusSetujuId) o[String(p.bonusSetujuId)] = 1; });
   (dipakai || []).forEach((id) => { if (id) o[String(id)] = 1; });
   return o;
 }
@@ -90,7 +96,7 @@ function ngSetujuTerpakai(dipakai) {
 export function ngSetujuUntuk(t, harga, akun, opsi) {
   if (ngOwner(akun) || !t) return null;
   const o = opsi || {}; const k = ngKunciBarang(t);
-  const calon = cacheMentah('persetujuan').filter((m) => m && m.tindakan === 'nego' && m.status === 'disetujui' && String(m.negoUid || m.olehUid || '') === String(akun.uid || '')
+  const calon = cacheMentah('persetujuan').filter((m) => m && m.tindakan === 'nego' && !m.bonus && m.status === 'disetujui' && String(m.negoUid || m.olehUid || '') === String(akun.uid || '')
     && m.barang === k && Number(m.hargaMinta) <= Number(harga) && Number(m.jumlah) >= Number(t.jumlah) && (!o.tanggal || m.tanggal === o.tanggal));
   if (!calon.length) return null;   // layar menanyakannya tiap gambar — nota berlaku baru dibaca kalau memang ada persetujuan yang cocok
   const pakai = ngSetujuTerpakai(o.dipakai);
@@ -162,6 +168,60 @@ export function ngSusunMinta(t, p, akun, w) {
     nominal: Math.round((asli - p.harga) * jumlah), barang: ngKunciBarang(t), label: t.label, satuan: t.satuan, jumlah, hargaAsli: asli, hargaMinta: p.harga, batas: p.batas, jatah: p.jatah, alasan: p.alasan || '' };
   return { dokumen: [{ koleksi: 'persetujuan', data }], patch: { kabar: 'Permintaan nego ' + t.label + ' ' + RP(p.harga) + ' terkirim ke owner — harga nota tetap ' + RP(t.hargaSatuan) + ' sampai disetujui. Sesudah disetujui, ketik harga yang sama lagi.', kabarAwas: false } };
 }
+// ---- BONUS +1 KEMASAN (owner 23 Nov 2026: "masuk jatah nego", lewat batas → minta owner, tercatat di Buku Nego) ----
+/** Angka bonus satu baris: harga katalog, harga bayar per unit, unit bayar, bonus, modal baris, yang diberikan & margin (rupiah). */
+export function ngBonusAngka(t) {
+  const asli = Number(t && t.hargaAsli) || 0; const harga = Number(t && t.hargaSatuan) || 0; const bayar = Number(t && t.jumlah) || 0; const bonus = Number(t && t.bonusUnit) || 0;
+  const modal = Number(t && t.hppTotalSaatJual) || 0;
+  return { asli, harga, bayar, bonus, modal: modal > 0 ? modal : null, diberi: Math.round(asli * (bayar + bonus) - harga * bayar), margin: modal > 0 ? Math.round(asli * (bayar + bonus) - modal) : null };
+}
+/** Persetujuan BONUS owner yang cocok untuk baris ini: milik akun ini, barang sama, jumlah bayar SAMA (bonus atas sedikit unit lebih berat), harga ≤ harga baris, belum dipakai. */
+export function ngSetujuBonusUntuk(t, akun, opsi) {
+  if (ngOwner(akun) || !t || !(Number(t.bonusUnit) > 0)) return null;
+  const o = opsi || {}; const k = ngKunciBarang(t);
+  const calon = cacheMentah('persetujuan').filter((m) => m && m.tindakan === 'nego' && m.bonus && m.status === 'disetujui' && String(m.negoUid || '') === String(akun.uid || '')
+    && m.barang === k && Number(m.jumlah) === Number(t.jumlah) && Number(m.hargaMinta) <= Number(t.hargaSatuan) && (!o.tanggal || m.tanggal === o.tanggal));
+  if (!calon.length) return null;
+  const pakai = ngSetujuTerpakai(o.dipakai);
+  return calon.filter((m) => !pakai[String(m.id)]).sort((a, b) => String(b.id).localeCompare(String(a.id)))[0] || null;
+}
+/**
+ * Putusan bonus +1 untuk baris t oleh akun. opsi = { hakNego, bisaMinta, setuju (ngSetujuBonusUntuk), atur }.
+ * status: 'tanpa' (baris tanpa bonus) · 'owner' · 'jatah' · 'disetujui' · 'minta' · 'tolak'. Bonus yang lewat jatah ATAU membuat baris rugi → minta owner.
+ */
+export function ngPutusBonus(t, akun, opsi) {
+  const o = opsi || {}; const A = o.atur || ngAtur(); const nm = ngNama(akun); const N = ngBonusAngka(t);
+  const P = (status, teks, x) => Object.assign({ status, teks, jatah: ngJatah(akun, A), nilai: Math.round(N.asli * N.bonus), diberi: N.diberi }, x || {});
+  if (!(N.bonus > 0)) return P('tanpa', '');
+  if (ngOwner(akun)) return P('owner', 'bonus dari owner');
+  const jatah = ngJatah(akun, A);
+  if (N.modal !== null && jatah > 0 && bonusDalamBatas(N.asli, N.harga, N.bayar, N.bonus, N.modal, jatah)) return P('jatah', 'bonus dalam jatah ' + nm + ' (' + jatah + ' % margin)');
+  if (o.setuju) return P('disetujui', 'bonus disetujui owner', { setujuId: String(o.setuju.id) });
+  const sebab = N.modal === null ? 'modal barang ini belum tercatat, jatah ' + nm + ' tidak bisa dihitung' : jatah > 0 ? 'bonus ini lewat jatah ' + nm + ' (' + jatah + ' % margin)' : nm + ' tidak punya jatah nego (0 % margin)';
+  if (o.hakNego === 'tidak') return P('tolak', 'Peran ' + nm + ' tidak boleh memberi bonus di luar jatah — ' + sebab);
+  if (o.bisaMinta === false) return P('minta', sebab + ' — perlu persetujuan owner, tapi minta owner dari perangkat ini belum bisa: parkir struk ini sampai owner datang, atau owner yang mencatat nota ini');
+  return P('minta', sebab + ' — minta owner');
+}
+/** Kolom bonus baris keranjang sesudah putusan yang boleh dipakai ('tanpa' membersihkan). */
+export function ngTandaiBonus(t, p) {
+  const x = Object.assign({}, t); NG_KOLOM_BONUS.forEach((k) => { delete x[k]; });
+  if (!p || p.status === 'tanpa' || !(Number(x.bonusUnit) > 0)) return x;
+  x.bonusStatus = p.status; x.bonusNilai = p.nilai;
+  if (p.status === 'jatah') x.bonusJatah = p.jatah;
+  if (p.setujuId) x.bonusSetujuId = p.setujuId;
+  return x;
+}
+export const ngBonusBolehPakai = (p) => ['tanpa', 'owner', 'jatah', 'disetujui'].indexOf(p && p.status) >= 0;
+/** Permintaan bonus ke owner: dokumen persetujuan tindakan 'nego' + bonus 1 (bentuk rules v7 stafMintaNego — rules tidak berubah). Baris keranjang tidak berubah. */
+export function ngSusunMintaBonus(t, p, akun, w) {
+  if (!t || !p || p.status !== 'minta') return { tolak: 'Tidak ada bonus yang perlu dimintakan ke owner' };
+  if (ngOwner(akun)) return { tolak: 'Owner tidak perlu minta persetujuan' };
+  const N = ngBonusAngka(t);
+  const data = { id: w.idUnik(), tindakan: 'nego', bonus: 1, status: 'menunggu', tanggal: w.tanggal, jam: w.jam, pada: w.kini, dari: String(akun.nama || ''), peran: String(akun.peran || ''), negoUid: String(akun.uid || ''),
+    teks: t.label + ': bonus +1 untuk ' + String(N.bayar).replace('.', ',') + ' ' + t.satuan + ' @ ' + RP(N.harga), nominal: N.diberi, barang: ngKunciBarang(t), label: t.label, satuan: t.satuan,
+    jumlah: N.bayar, hargaAsli: N.asli, hargaMinta: N.harga, jatah: p.jatah, alasan: '' };
+  return { dokumen: [{ koleksi: 'persetujuan', data }], patch: { kabar: 'Permintaan bonus ' + t.label + ' terkirim ke owner — bonusnya belum dipasang. Sesudah disetujui, ketuk bonus lagi.', kabarAwas: false } };
+}
 // ---- PERIKSA ULANG di perangkat OWNER (sanggahan rules 7 Okt): rules tidak mengikat nominal / teks / batas / label kiriman staf ke harga barang, jadi papan
 // persetujuan & Buku Nego menghitung angkanya sendiri dari kolom yang benar-benar dipakai persetujuan (ngSetujuUntuk: barang, hargaMinta, jumlah) + harga
 // katalog SEKARANG (rumus rak Jual: karung = hargaKarungUtuh buku induknya, kemasan, literan per wadah / merek, repack per kg).
@@ -189,10 +249,12 @@ export function ngPeriksaMinta(m) {
   const hargaMinta = Math.round(Number(m && m.hargaMinta) || 0); const jumlah = Number(m && m.jumlah) || 0; const eceran = ngHargaKatalog(m && m.barang);
   // B1 (owner 16 Nov 2026): nego di atas harga pelanggan bertingkat — dasar hitungnya harga pelanggan itu SEKARANG (bukan eceran), supaya potongannya tidak membesar
   const H = m && m.pelanggan && eceran !== null ? htHarga({ orang: m.pelanggan, barang: m.barang, eceran, kg: htKgBarang(m.barang) }) : null; const katalog = H ? H.harga : eceran;
-  const nominal = katalog !== null && hargaMinta > 0 && jumlah > 0 ? Math.max(0, Math.round((katalog - hargaMinta) * jumlah)) : null; const nama = ngNamaBarang(m && m.barang);
-  const teks = nama + ': ' + (katalog !== null ? (H ? 'harga ' + H.nama + ' ' : 'katalog ') + RP(katalog) + ' → ' : '') + RP(hargaMinta) + ' × ' + String(jumlah).replace('.', ',')
-    + (nominal !== null ? ' = potongan ' + RP(nominal) : ' — harga katalog barang ini tidak ditemukan, periksa di rak dulu') + (m && m.alasan ? ' · alasan: ' + String(m.alasan).slice(0, 80) : '');
-  return { nama, katalog, hargaMinta, jumlah, nominal, teks };
+  // owner 23 Nov 2026: permintaan BONUS +1 — yang diberikan = katalog × (jumlah + 1) − harga × jumlah (unit gratis + tawar, bila ada)
+  const bon = !!(m && m.bonus);
+  const nominal = katalog !== null && hargaMinta > 0 && jumlah > 0 ? Math.max(0, Math.round(bon ? katalog * (jumlah + 1) - hargaMinta * jumlah : (katalog - hargaMinta) * jumlah)) : null; const nama = ngNamaBarang(m && m.barang);
+  const teks = nama + ': ' + (bon ? 'BONUS +1 · ' : '') + (katalog !== null ? (H ? 'harga ' + H.nama + ' ' : 'katalog ') + RP(katalog) + ' → ' : '') + RP(hargaMinta) + ' × ' + String(jumlah).replace('.', ',')
+    + (bon ? ' + 1 gratis' : '') + (nominal !== null ? (bon ? ' = diberikan ' : ' = potongan ') + RP(nominal) : ' — harga katalog barang ini tidak ditemukan, periksa di rak dulu') + (m && m.alasan ? ' · alasan: ' + String(m.alasan).slice(0, 80) : '');
+  return { nama, katalog, hargaMinta, jumlah, nominal, teks, bonus: bon };
 }
 /** Permintaan nego yang masih menunggu owner (terbaru dulu). */
 export function ngMenunggu() {
@@ -217,15 +279,22 @@ export function ngBuku(tanggal) {
       totalSelisih: (Number(p.negoSelisih) || 0) * ngJumlahBayar(p), status: p.negoStatus || 'lama', alasan: String(p.negoAlasan || ''), batas: p.negoBatas, jatah: p.negoJatah };
   });
   const nota = Object.keys(grup).map((k) => Object.assign(grup[k], { totalSelisih: Math.round(grup[k].totalSelisih) }));
+  // owner 23 Nov 2026: bonus +1 yang sudah jadi nota — siapa · barang · nilai bonus (harga katalog unit gratis) · status jatah / disetujui / owner / lama
+  const bonus = ambilPenjualan().filter((p) => p.tanggal === tanggal && (Number(p.bonusUnit) || 0) > 0).map((p) => {
+    const n = Number(p.bonusUnit) || 0; const nilai = Number(p.bonusNilai) > 0 ? Number(p.bonusNilai) : Math.round((Number(p.hargaAsliSatuan) || 0) * n);
+    return { jenis: 'bonus', id: 'bonus-' + String(p.id), trxId: String(p.trxId || p.grupNota || p.id), jam: String(p.jam || ''), oleh: String(p.oleh || ''), barang: ngNamaBaris(p), pembeli: String(p.namaPelanggan || ''),
+      hargaAsli: Number(p.hargaAsliSatuan) || 0, harga: 0, selisih: 0, jumlah: n, totalSelisih: -nilai, nilai, status: p.bonusStatus ? 'bonus' + p.bonusStatus[0].toUpperCase() + p.bonusStatus.slice(1) : 'bonusLama', alasan: '' };
+  });
   const pakai = ngSetujuTerpakai();
   const minta = cacheMentah('persetujuan').filter((m) => m && m.tindakan === 'nego' && (m.tanggal === tanggal || (m.status || 'menunggu') === 'menunggu')).map((m) => {
     const st = m.status || 'menunggu'; const Q = ngPeriksaMinta(m);   // sanggahan rules 7 Okt: angka dihitung ulang dari barang / hargaMinta / jumlah + katalog sekarang
     return { jenis: 'minta', id: String(m.id), jam: String(m.jam || ''), tanggal: String(m.tanggal || ''), oleh: String(m.dari || ''), barang: Q.nama, hargaAsli: Q.katalog !== null ? Q.katalog : 0, harga: Q.hargaMinta,
       selisih: Q.katalog !== null ? Q.hargaMinta - Q.katalog : 0, jumlah: Q.jumlah, totalSelisih: Q.nominal !== null ? -Q.nominal : 0, alasan: String(m.alasan || ''), batas: m.batas, jatah: m.jatah,
-      periksa: Q.katalog === null ? 'harga katalog barang ini tidak ditemukan — periksa di rak dulu' : '', status: st === 'disetujui' && pakai[String(m.id)] ? 'dipakai' : st, alasanTolak: String(m.alasanTolak || '') };
+      periksa: Q.katalog === null ? 'harga katalog barang ini tidak ditemukan — periksa di rak dulu' : '', bonus: Q.bonus, status: st === 'disetujui' && pakai[String(m.id)] ? 'dipakai' : st, alasanTolak: String(m.alasanTolak || '') };
   });
-  const baris = nota.concat(minta).sort((a, b) => String(b.jam).localeCompare(String(a.jam)) || (a.jenis === 'minta' ? -1 : 1));
+  const baris = nota.concat(bonus, minta).sort((a, b) => String(b.jam).localeCompare(String(a.jam)) || (a.jenis === 'minta' ? -1 : 1));
   const turun = nota.filter((x) => x.selisih < 0); const potongan = -turun.reduce((a, x) => a + x.totalSelisih, 0);
-  const menunggu = minta.filter((x) => x.status === 'menunggu').length;
-  return { baris, nNota: nota.length, menunggu, potongan, judul: nota.length + ' nego tercatat · ' + menunggu + ' menunggu owner · potongan ' + RP(potongan) };
+  const menunggu = minta.filter((x) => x.status === 'menunggu').length; const nilaiBonus = bonus.reduce((a, x) => a + x.nilai, 0);
+  return { baris, nNota: nota.length, menunggu, potongan, nBonus: bonus.length, nilaiBonus,
+    judul: nota.length + ' nego tercatat · ' + menunggu + ' menunggu owner · potongan ' + RP(potongan) + (bonus.length ? ' · ' + bonus.length + ' bonus ' + RP(nilaiBonus) : '') };
 }
