@@ -224,7 +224,7 @@ KONTROL = [
     ('rak basi oleh penjualan diabaikan', {'baru/js/layar/jual.js': [("const BUKAN_RAK = new Set(['logAktivitas',", "const BUKAN_RAK = new Set(['penjualan', 'logAktivitas',")]}),
     ('ketukan ganda catat nota diterima lagi', {'baru/js/layar/jual.js': [('      if (_mencatat) return;\n', '')]}),
     ('+1 keranjang kembali menyusun seluruh rak', {'baru/js/layar/jual-logika.js': [("const rak = rakUntukChip();", "const rak = susunRak({ pelanggan: '', sekarang: null });")]}),
-    ('tulisan simulasi tidak menaikkan versi cache (rak chip basi)', {'baru/js/data/toko.js': [("urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut); _versiCache += 1;", "urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut);")]}),
+    ('tulisan simulasi tidak menaikkan versi cache (rak chip basi)', {'baru/js/data/toko.js': [("urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut); naikVersi(koleksi);", "urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut);")]}),
     ('rak menyusul tidak pernah dipaksa segar (tertunda terus)', {'baru/js/layar/jual.js': [("_rakPaksa = true; nanti(gambarGulir);", "nanti(gambarGulir);")]}),
     ('aksi chip memakai rak yang boleh basi', {'baru/js/layar/jual.js': [("chip: ({ jalur, kunci, berat }) => { const rak = rakKini();", "chip: ({ jalur, kunci, berat }) => { const rak = rakKini(true);")]}),
     ('rak tidak ditahan selama catat nota', {'baru/js/layar/jual.js': [('    if (_rak && Date.now() < _rakTahanSampai) return _rak;\n', '')]}),

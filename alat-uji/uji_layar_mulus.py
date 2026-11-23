@@ -602,7 +602,7 @@ def cad_dan_jam(p):
 
 
 RUSAK = [
-    ('ingatan tidak dikosongkan saat versi cache naik (nota baru → angka basi)', 'ingatan', {'baru/js/data/toko.js': [("if (ingatanGantiHari() || I.versi !== _versiCache) { I.isi = new Map(); I.versi = _versiCache; }", "if (ingatanGantiHari() || I.versi === -1) { I.isi = new Map(); I.versi = _versiCache; }")]}),
+    ('ingatan tidak dikosongkan saat versi cache naik (nota baru → angka basi)', 'ingatan', {'baru/js/data/toko.js': [("if (ingatanGantiHari() || I.versi !== _versiBerat) { I.isi = new Map(); I.versi = _versiBerat; }", "if (ingatanGantiHari() || I.versi === -1) { I.isi = new Map(); I.versi = _versiBerat; }")]}),
     ('kunci kasPada tanpa titik kas (titik perangkat berubah → kas basi)', 'ingatan', {'baru/js/data/toko.js': [("ingatPerVersi('kasPada|' + (sampai || '') + '|' + JSON.stringify(ambilTitikKas())", "ingatPerVersi('kasPada|' + (sampai || '')")]}),
     ('kunci neraca tanpa titik kas', 'ingatan', {'baru/js/data/toko.js': [("ingatPerVersi('neraca|' + (sampai || '') + '|' + JSON.stringify(ambilTitikKas())", "ingatPerVersi('neraca|' + (sampai || '')")]}),
     ('kunci buku stok tanpa tanggal sampai', 'ingatan', {'baru/js/data/toko.js': [("ingatPerVersi('stokKarung|' + (sampai || '')", "ingatPerVersi('stokKarung|'")]}),
@@ -611,7 +611,7 @@ RUSAK = [
     # 19 Nov 2026: ganti hari kini dijaga DUA lapis — kunci HARI milik fungsinya sendiri + ingatPerVersi yang mengosongkan semua ingatan saat tengah malam
     # (toko.js ingatanGantiHari; penjaganya sendiri di uji_riwayat_penjualan). Kontrol ini merusak KEDUANYA; satu lapis saja yang rusak memang tertolong lapis lain.
     ('rekap pajak setahun diingat tanpa HARI, dan ingatan tidak dikosongkan saat ganti hari (bulan berganti → basi)', 'ingatan', {'baru/js/layar/pajak-logika.js': [("ingatPerVersi('pjTahun|' + th + '|' + iso,", "ingatPerVersi('pjTahun|' + th,")],
-                                                                                                                         'baru/js/data/toko.js': [("if (ingatanGantiHari() || I.versi !== _versiCache) {", "if (I.versi !== _versiCache) {")]}),
+                                                                                                                         'baru/js/data/toko.js': [("if (ingatanGantiHari() || I.versi !== _versiBerat) {", "if (I.versi !== _versiBerat) {")]}),
     # 19 Nov 2026 (mulus Android paket 2)
     ('kunci laba bersih rentang tanpa rentangnya (bulan lalu = bulan ini)', 'ingatan', {'baru/js/layar/uang-logika.js': [("ingatPerVersi('ugLabaBersih|' + String(dari) + '|' + String(sampai),", "ingatPerVersi('ugLabaBersih',")]}),
     ('bayaran KHUSUS ikut ingatan bayaran bawaan', 'ingatan', {'baru/js/layar/uang-logika.js': [("if (!kosong && bayaran !== ugBayaran()) return ugLabaBersihHitung(dari, sampai, bayaran);", "")]}),
@@ -623,11 +623,11 @@ RUSAK = [
     # dua kontrol berikut: ingatan tanpa kunci luarnya membuat gambar SEGAR ikut basi — tertangkap penjaga ketajaman (Menu) / kesetaraan dengan hitung ulang (Ringkasan)
     ('susunan Menu diingat tanpa kunci gambar (pita jam / titik kas berubah → laci basi)', 'kunci', {'baru/js/layar/menu.js': [("ingatPerVersi('mn|' + nama + '|' + _kunciGambar + '|' + luar, f)", "ingatPerVersi('mn|' + nama + '|' + luar, f)")]}, 'KUNCI LUAR'),
     ('susunan Cincin diingat tanpa skalanya (ganti skala → angka skala lama)', 'layar', {'baru/js/layar/ringkasan.js': [("ingatRk('susun|' + skala, k,", "ingatRk('susun', k,")]}),
-    ('ingatan Ringkasan tanpa kunci luar & menit (titik kas / jam berubah → kartu basi)', 'kunci', {'baru/js/layar/ringkasan.js': [("ingatPerVersi('rk|' + nama + '|' + kunciLuarCache(k) + '|' + Math.floor(k.getTime() / 60000) + '|' +", "ingatPerVersi('rk|' + nama + '|' +")]}, 'KESETARAAN hidup'),
+    ('ingatan Ringkasan tanpa kunci luar & menit (titik kas / jam berubah → kartu basi)', 'kunci', {'baru/js/layar/ringkasan.js': [("ingatPerVersi('rk|' + nama + '|' + kunciLuarCache(k) + '|' + (menit ? Math.floor(k.getTime() / 60000) : '') + '|' +", "ingatPerVersi('rk|' + nama + '|' +")]}, 'KESETARAAN hidup'),
     ('pemanggil mengubah hasil ingatan di tempat (Stok › Gudang menulis ke buku stok bersama)', 'beku', {'baru/js/layar/stok-logika.js': [("const sisa = stokK[m].sisaKg || 0;", "const sisa = (stokK[m].sisaKg = stokK[m].sisaKg || 0);")]}),
     ('Tempat simpan kembali menyusun rantai stok per tumpukan (tanpa siap)', 'layar', {'baru/js/layar/stok-tempat-logika.js': [("const g = tumpukanGudang(b.nama, siap);", "const g = tumpukanGudang(b.nama);")]}),
-    ('Dasbor ganti rentang memakai tren lama', 'layar', {'baru/js/layar/dasbor-logika.js': [("if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, tren: aman('tren', () => dbTren(rentang, kini)) };", "if (lama) return lama;")]}),
-    ('Dasbor ganti rentang menghitung seluruh dasbor lagi', 'layar', {'baru/js/layar/ringkasan.js': [("else if (dbRentang !== r) { dbHasil = susunDasbor(k, r, dbHasil); dbRentang = r; }", "else if (dbRentang !== r) { dbHasil = susunDasbor(k, r); dbRentang = r; }")]}),
+    ('Dasbor ganti rentang memakai tren lama', 'layar', {'baru/js/layar/dasbor-logika.js': [("if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, tren: k('tren') };", "if (lama) return lama;")]}),
+    ('Dasbor ganti rentang menghitung seluruh dasbor lagi', 'layar', {'baru/js/layar/ringkasan.js': [("else if (dbRentang !== r) { dbHasil = susunDasbor(k, r, dbHasil, ingatDb(k)); dbRentang = r; }", "else if (dbRentang !== r) { dbHasil = susunDasbor(k, r); dbRentang = r; }")]}),
     ('denyut HP kembali menyusun dasbor', 'layar', {'baru/js/layar/ringkasan.js': [("const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas']);", "const BUKAN_DASBOR = new Set([]);")]}),
     ('penjualan dianggap tidak dibaca dasbor (nota baru tidak tergambar)', 'layar', {'baru/js/layar/ringkasan.js': [("const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas']);", "const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas', 'penjualan']);")]}),
     ('Menu menyetel keadaan simpanan walau sama (gambar ulang tiap dibuka)', 'layar', {'baru/js/layar/menu.js': [("if (Object.keys(u).length) set(u); };", "set(p); };")]}),
