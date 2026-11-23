@@ -112,6 +112,9 @@ ok('C: uang 1.300.000 → kembalian 4.000 (dari yang dibayar sekarang), tidak ku
 ok('C: nota yang tertutup penuh DP + uang tidak kena KR1 (bonKeranjang 0)', bonKeranjang(s) === 0);
 var S2 = Object.assign({}, s, { pelanggan: 'Deka' });
 ok('C: nama pembeli lain dari pemesan ber-DP ditolak', /atas nama Bu Suti/.test(alasanTolak(S2)), alasanTolak(S2));
+// owner 24 Nov 2026: sisa pesanan ber-DP dibayar lewat TRANSFER → pelunasan saat beli ber-caraBayar Transfer (masuk rekening)
+var ST = Object.assign({}, s, pilihCara(s, 'Transfer')); var PBT = dok(susunNotaDokumen(ST, W), 'piutangMutasi');
+ok('C: sisa pesanan ber-DP dibayar Transfer → satu pelunasan 1.296.000 ber-caraBayar Transfer, tanpa ketik uang', alasanTolak(ST) === '' && PBT.length === 1 && PBT[0].nominal === 1296000 && PBT[0].caraBayar === 'Transfer', J([alasanTolak(ST), PBT]));
 var N1 = susunNotaDokumen(s, W); var PJ1 = dok(N1, 'penjualan'); var PB1 = dok(N1, 'piutangMutasi'); var PS1 = dok(N1, 'pesanan')[0];
 ok('C: nota = BON sebesar total (semua baris Kredit), PO-78 di semua baris, DP di baris pertama', PJ1.every(function (p) { return p.caraBayar === 'Kredit' && p.noPO === 'PO-78'; }) && PJ1[0].uangMukaPesanan === 300000
   && PJ1.filter(function (p) { return p.uangMukaPesanan; }).length === 1 && N1.totalBayar === 1596000, J(PJ1.map(function (p) { return [p.caraBayar, p.noPO, p.uangMukaPesanan, p.hargaTotal]; })));
@@ -240,7 +243,8 @@ def kolom_sama(src):
 
 RUSAK = [
     ('uang muka tidak memotong tagihan', JL, "  const dp = uangMukaKeranjang(s).dp;", "  const dp = 0;"),
-    ('nota pesanan ber-DP dicatat tunai penuh (tanpa bon & pelunasan)', JL, "    if (!(antar && antar.cod)) { if (cara === 'Tunai') { bayarSebagian = Math.min(uang, perlu); kembaliMuka = Math.max(0, uang - perlu); } else if (cara === 'QRIS') bayarSebagian = perlu; }\n    cara = 'Kredit';",
+    ('sisa pesanan ber-DP lewat Transfer tidak tercatat dibayar', JL, "else if (cara === 'QRIS' || cara === 'Transfer') bayarSebagian = perlu; }", "else if (cara === 'QRIS') bayarSebagian = perlu; }"),
+    ('nota pesanan ber-DP dicatat tunai penuh (tanpa bon & pelunasan)', JL, "    if (!(antar && antar.cod)) { if (cara === 'Tunai') { bayarSebagian = Math.min(uang, perlu); kembaliMuka = Math.max(0, uang - perlu); } else if (cara === 'QRIS' || cara === 'Transfer') bayarSebagian = perlu; }\n    cara = 'Kredit';",
      "    if (!(antar && antar.cod)) { if (cara === 'Tunai') { kembaliMuka = Math.max(0, uang - perlu); } }"),
     ('pelunasan nota tidak menunjuk pesanannya', JL, "if (muka > 0) { pb.untukPesanan = UM.id;", "if (muka > 0) {"),
     ('faktur mengabaikan alamat pesanan (DP menutup bon tertua)', FK, "  if (m.untukPesanan !== undefined && m.untukPesanan !== null && String(m.untukPesanan) !== '') {", "  if (false) {"),

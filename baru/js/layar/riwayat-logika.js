@@ -14,7 +14,7 @@ import { gabungTakaran } from './struk-logika.js';
 export const RW_LANGKAH = 50;   // nota per halaman; "muat lagi" menambah sebanyak ini
 export const RW_PERIODE = [['hari', 'Hari ini'], ['7', '7 hari'], ['30', '30 hari'], ['bulan', 'Bulan ini'], ['semua', 'Semua']];
 export const RW_JENIS = [['', 'Semua jenis'], ['karung', 'Karung'], ['kemasan', 'Kemasan'], ['literan', 'Literan'], ['repacking', 'Repack'], ['wadah', 'Wadah'], ['karcis', 'Karcis kasir']];
-export const RW_CARA = [['', 'Semua cara'], ['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']];
+export const RW_CARA = [['', 'Semua cara'], ['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Transfer', 'Transfer'], ['Kredit', 'Bon']];
 const RW_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const RW_BLN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 export const RW_KARCIS = 'kasir_darurat_nominal';

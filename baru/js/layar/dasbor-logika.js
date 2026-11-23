@@ -43,7 +43,7 @@ export function dbHariIni(kini) {
   const iso = hariIniIso(kini); const R = rekapHari(iso); const S = saldoKantong(); const KC = daftarKarcis(kini);
   return {
     iso, periode: tanggalPendek(iso), sumber: 'Laporan › Harian', tujuan: { ke: 'laporan', keluarga: 'harian', hari: iso },
-    jenis: R.jenis || null, omzet: R.omzet, nota: R.n, retur: R.retur, margin: R.margin, tanpaHpp: R.jumlahTanpaHpp, tunai: R.tunai, qris: R.qris, kredit: R.kredit, nKredit: R.nKredit,
+    jenis: R.jenis || null, omzet: R.omzet, nota: R.n, retur: R.retur, margin: R.margin, tanpaHpp: R.jumlahTanpaHpp, tunai: R.tunai, qris: R.qris, transfer: R.transfer || 0, kredit: R.kredit, nKredit: R.nKredit,
     kas: S.ada ? { ada: true, total: S.total, cocok: S.cocok, minus: S.minus, titik: S.teksTitik, tempat: DB_TEMPAT.map((id) => ({ id, nama: ugNamaTempat(id), n: S[id] })) } : { ada: false, tempat: [] },
     kasSumber: 'Uang › Pindah uang', kasTujuan: { ke: 'uang', keluarga: 'pindah' },
     karcis: { n: KC.nKarcis, rp: KC.total, rapikan: KC.nRapikan, hariIni: KC.daftar.filter((d) => d.hariIni).length }, karcisSumber: 'Jual › Karcis kasir', karcisTujuan: { ke: 'jual', lembar: 'karcis' },

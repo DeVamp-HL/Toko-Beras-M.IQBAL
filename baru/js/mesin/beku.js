@@ -15,7 +15,9 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
     const jual = ambilPenjualan().filter(p => cocok(p.tanggal));
     const kredit = jual.filter(p => caraBayarKunci(p) === 'kredit');
     const qris = jual.filter(p => caraBayarKunci(p) === 'qris');
-    const tunai = jual.filter(p => caraBayarKunci(p) !== 'kredit' && caraBayarKunci(p) !== 'qris');
+    // TRANSFER (owner 24 Nov 2026): cara bayar keempat — uangnya masuk rekening (kantongBayar), dipisah dari tunai di arus kas
+    const transfer = jual.filter(p => caraBayarKunci(p) === 'transfer');
+    const tunai = jual.filter(p => caraBayarKunci(p) !== 'kredit' && caraBayarKunci(p) !== 'qris' && caraBayarKunci(p) !== 'transfer');
 
     const piutangBayar = ambilPiutangMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal));
     // KASBON DILUNASI POTONG GAJI BUKAN UANG MASUK (21 Agu 2026). Dikonfirmasi My DeV:
@@ -93,6 +95,7 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
     const masuk = [
       { label: 'Penjualan tunai', nominal: jmlHarga(tunai), n: tunai.length, satuan: 'transaksi' },
       { label: 'Penjualan QRIS', nominal: jmlHarga(qris), n: qris.length, satuan: 'transaksi' },
+      { label: 'Penjualan transfer', nominal: jmlHarga(transfer), n: transfer.length, satuan: 'transaksi' },
       { label: 'Pelunasan piutang', nominal: jmlNominal(piutangBayar), n: piutangBayar.length, satuan: 'pembayaran' },
       { label: 'Kasbon dikembalikan', nominal: jmlNominal(kasbonBayar), n: kasbonBayar.length, satuan: 'kali' },
       { label: 'Tukar — pelanggan menambah', nominal: tukarMasuk, n: returDipakai.filter(r => (r.selisihHargaTukar || 0) < 0).length, satuan: 'retur' },
@@ -129,7 +132,7 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
       // Angka mentah per pos (13 Agu 2026) — dipakai kartu "Ke mana uang bulan ini"
       // supaya pecahannya berasal dari SUMBER YANG SAMA, bukan hitungan tandingan.
       pos: {
-        tunai: jmlHarga(tunai), qris: jmlHarga(qris),
+        tunai: jmlHarga(tunai), qris: jmlHarga(qris), transfer: jmlHarga(transfer),
         pelunasan: jmlNominal(piutangBayar),
         kasbonBayar: jmlNominal(kasbonBayar), kasbonAmbil: jmlNominal(kasbonAmbil),
         tukarMasuk, refund, belanja, bayarBon: jmlNominal(bayarBon),

@@ -1050,7 +1050,7 @@ export function lepasPesanan(s) { return { pesananId: null, kabar: 'Ikatan pesan
 // ---------- bayar ----------
 export function pilihCara(s, cara) {
   const c = bakuCaraBayar(cara); const p = { cara: c, uang: 0, kabar: '' };
-  if (s.antar && s.antar.cod && c !== 'Kredit') p.antar = Object.assign({}, s.antar, { cod: false });   // B3: pilih Tunai / QRIS = bukan bayar di tempat lagi
+  if (s.antar && s.antar.cod && c !== 'Kredit') p.antar = Object.assign({}, s.antar, { cod: false });   // B3: pilih Tunai / QRIS / Transfer = bukan bayar di tempat lagi
   return p;
 }
 export function tambahUang(s, pecahan) { return { uang: (s.uang || 0) + pecahan }; }
@@ -1230,7 +1230,7 @@ export function susunNotaDokumen(s, w) {
   const UM = tk ? { dp: 0, nama: '', id: '' } : uangMukaKeranjang(s); const muka = Math.min(UM.dp, Math.max(0, tagihan)); let kembaliMuka = 0;
   if (muka > 0) {
     const perlu = tagihan - muka;
-    if (!(antar && antar.cod)) { if (cara === 'Tunai') { bayarSebagian = Math.min(uang, perlu); kembaliMuka = Math.max(0, uang - perlu); } else if (cara === 'QRIS') bayarSebagian = perlu; }
+    if (!(antar && antar.cod)) { if (cara === 'Tunai') { bayarSebagian = Math.min(uang, perlu); kembaliMuka = Math.max(0, uang - perlu); } else if (cara === 'QRIS' || cara === 'Transfer') bayarSebagian = perlu; }
     cara = 'Kredit';
   } else if (cara !== 'Kredit' && uang > 0 && uang < tagihan) { bayarSebagian = uang; cara = 'Kredit'; }
   const psIkat = s.pesananId ? ambilPesananDoc(s.pesananId) : null; const noPO = psIkat && pesananBelumTuntas(psIkat) ? String(psIkat.noPO || '').trim() : '';

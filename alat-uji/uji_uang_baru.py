@@ -251,6 +251,25 @@ var BO = bukuOwner(20); ok('buku owner: terbaru di atas (saling lunaskan), setia
   ok('AM: semua diurungkan → kantong kembali ke awal blok', saldoKantong().laci === S0.laci && saldoKantong().amplop === S0.amplop && saldoKantong().brankas === S0.brankas && kasPada() === kas0, J([S0, saldoKantong()]));
 })();
 
+// ==================== owner 24 Nov 2026: TRANSFER = cara bayar keempat, masuk REKENING tanpa MDR (mesin dibuka) ====================
+(function () {
+  var hari = function (t) { return t === '2026-09-19'; };
+  var K0 = hitungArusKasInti(hari); var S0 = saldoKantong('2026-09-19'); var RH0 = ringkasHari('2026-09-19'); var RK0 = rekapHari('2026-09-19');
+  var jualAsli = ambilPenjualanSemua().slice(); var piuAsli = ambilPiutangMutasi().slice();
+  pasok('penjualan', jualAsli.concat([{ id: 'tf1', trxId: 'ttf1', tanggal: '2026-09-19', jam: '11:00', caraBayar: 'Transfer', jenis: 'karung', merkSumber: 'Angsa', namaProduk: 'Angsa (karung utuh)', jumlahKarung: 1, beratKarungAcuan: 50, totalKg: 50, hargaTotal: 700000, hppTotalSaatJual: 650000 }]));
+  pasok('piutangMutasi', piuAsli.concat([{ id: 'tfb1', tipe: 'bayar', namaPelanggan: 'Bu Contoh', nominal: 40000, tanggal: '2026-09-19', jam: '12:00', caraBayar: 'Transfer' }]));
+  var K1 = hitungArusKasInti(hari); var S1 = saldoKantong('2026-09-19'); var RH1 = ringkasHari('2026-09-19'); var RK1 = rekapHari('2026-09-19');
+  ok('TF: mesin arus kas: penjualan transfer dipisah (pos.transfer 700.000, baris "Penjualan transfer"), tunai TIDAK berubah', K1.pos.transfer === 700000 && K1.pos.tunai === K0.pos.tunai && K1.pos.qris === K0.pos.qris
+    && K1.masuk.some(function (x) { return x.label === 'Penjualan transfer' && x.nominal === 700000 && x.n === 1; }) && K1.totalMasuk === K0.totalMasuk + 740000, J([K1.pos, K0.pos.tunai]));
+  ok('TF: uangnya masuk REKENING (jual 700.000 + bayar bon 40.000), laci tetap', S1.rekening === S0.rekening + 740000 && S1.laci === S0.laci && S1.brankas === S0.brankas, J([S0, S1]));
+  ok('TF: cara bayar baku "Transfer"; gerakan kas berlabel Transfer', bakuCaraBayar('transfer') === 'Transfer' && bakuCaraBayar(' TRANSFER ') === 'Transfer' && ingatGerakanKas().some(function (r) { return String(r.id) === 'tf1' && / · Transfer$/.test(r.label); }));
+  ok('TF: tutup hari: transfer bukan tunai laci, omzet ikut, tanpa MDR; bayar bon transfer bukan "bon dibayar" laci', RH1.transferJual === 700000 && RH1.transferBon === 40000 && RH1.tunai === RH0.tunai && RH1.omzet === RH0.omzet + 700000
+    && RH1.mdrKira === RH0.mdrKira && RH1.bonDibayar === RH0.bonDibayar && RH1.qris === RH0.qris, J([RH0.tunai, RH1.tunai, RH1.transferJual, RH1.transferBon, RH1.mdrKira, RH0.mdrKira]));
+  ok('TF: kertas laci tidak memuat transfer (seharusnya laci sama)', rumusLaci('2026-09-19').seharusnya === (function () { pasok('penjualan', jualAsli); pasok('piutangMutasi', piuAsli); var x = rumusLaci('2026-09-19').seharusnya; pasok('penjualan', jualAsli.concat([{ id: 'tf1', trxId: 'ttf1', tanggal: '2026-09-19', jam: '11:00', caraBayar: 'Transfer', jenis: 'karung', merkSumber: 'Angsa', namaProduk: 'Angsa (karung utuh)', jumlahKarung: 1, beratKarungAcuan: 50, totalKg: 50, hargaTotal: 700000, hppTotalSaatJual: 650000 }])); pasok('piutangMutasi', piuAsli.concat([{ id: 'tfb1', tipe: 'bayar', namaPelanggan: 'Bu Contoh', nominal: 40000, tanggal: '2026-09-19', jam: '12:00', caraBayar: 'Transfer' }])); return x; })());
+  ok('TF: Laporan › Harian & teks WA menyebut Transfer', RK1.transfer === 700000 && RK0.transfer === 0 && /Transfer: Rp700\.000/.test(teksRekapHari(RK1)) && !/Transfer:/.test(teksRekapHari(RK0)), teksRekapHari(RK1));
+  pasok('penjualan', jualAsli); pasok('piutangMutasi', piuAsli);
+})();
+
 __K5K6__
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
@@ -485,6 +504,13 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- owner 24 Nov 2026: TRANSFER
+            'transfer: uang masuk laci (bukan rekening)': js.replace("caraBayarKunci(x) === 'qris' || caraBayarKunci(x) === 'transfer' ? 'rekening' : 'laci'", "caraBayarKunci(x) === 'qris' ? 'rekening' : 'laci'"),
+            'transfer: arus kas menghitungnya sebagai tunai': js.replace("caraBayarKunci(p) !== 'qris' && caraBayarKunci(p) !== 'transfer');\n", "caraBayarKunci(p) !== 'qris');\n"),
+            'transfer: tutup hari menghitungnya tunai laci': js.replace("caraBayarKunci(p) !== 'kredit' && caraBayarKunci(p) !== 'transfer').reduce(", "caraBayarKunci(p) !== 'kredit').reduce("),
+            'transfer: omzet tutup hari tanpa transfer': js.replace("omzet: tunai + qrisJual + transferJual + kredit,", "omzet: tunai + qrisJual + kredit,"),
+            'transfer: bayar bon transfer dihitung uang laci di tutup hari': js.replace("caraBayarKunci(m) !== 'qris' && caraBayarKunci(m) !== 'transfer').reduce(", "caraBayarKunci(m) !== 'qris').reduce("),
+            'transfer: teks WA tanpa transfer': js.replace("  if (R.transfer) b.push('Transfer: ' + RP(R.transfer));\n", ""),
             # ---- owner 17 Nov 2026 (butir 4): amplop laba ----
             'amplop: pindah ke/dari amplop ditulis sebagai pindahUang (laporan Amplop Laba buta)': js.replace("if (D.dari === TEMPAT_AMPLOP || D.ke === TEMPAT_AMPLOP) {", "if (false) {"),
             'amplop: saldo kantong mengabaikan ke/dari (amplop selalu lawan laci)': js.replace("const lain = ugAmplopLawan(a);", "const lain = 'laci';"),
@@ -549,11 +575,11 @@ if __name__ == '__main__':
             # ---- audit 39b no. 3 · uang QRIS selain penjualan
             'bayar bon QRIS dibuang dari uang QRIS tutup hari (perilaku lama)': js.replace(".concat(masukQris(ambilPiutangMutasi()).map((m) =>", ".concat([].map((m) =>"),
             'kasbon kembali QRIS dibuang dari uang QRIS tutup hari': js.replace("masukQris(ambilKasbonMutasi())", "masukQris([])"),
-            'omzet ikut menghitung bayar bon/kasbon QRIS': js.replace("omzet: tunai + qrisJual + kredit,", "omzet: tunai + qris + kredit,"),
+            'omzet ikut menghitung bayar bon/kasbon QRIS': js.replace("omzet: tunai + qrisJual + transferJual + kredit,", "omzet: tunai + qris + transferJual + kredit,"),
             'potongan QRIS per baris barang (bukan per transaksi)': js.replace("const k = kunciTrx(p);", "const k = String(p.id);"),
             'rekap tanpa baris "Bon dibayar QRIS"': js.replace("R.qrisBon > 0 ? [['Bon dibayar QRIS'", "false ? [['Bon dibayar QRIS'"),
             'rekap QRIS (omzet) memakai seluruh uang QRIS': js.replace("['  QRIS', RP(R.qrisJual), '']", "['  QRIS', RP(R.qris), '']"),
-            'bayar bon QRIS juga dihitung "bon dibayar tunai"': js.replace("m.tanggal === iso && caraBayarKunci(m) !== 'qris').reduce(", "m.tanggal === iso).reduce("),
+            'bayar bon QRIS juga dihitung "bon dibayar tunai"': js.replace("m.tanggal === iso && caraBayarKunci(m) !== 'qris' && caraBayarKunci(m) !== 'transfer').reduce(", "m.tanggal === iso && caraBayarKunci(m) !== 'transfer').reduce("),
             'potongan QRIS nota HP kasir (grupNota) per baris': js.replace("return String(x.trxId || x.grupNota || x.id); };", "return String(x.trxId || x.id); };"),
             'baris hasil rapikan tidak ikut transaksi nota asalnya': js.replace("x && x.koreksiDari != null && i < 50;", "x && false && i < 50;"),
             'keterangan potongan tidak menyebut bayar bon': js.replace("(H.R.qrisBon ? ' + ' + H.R.qrisNota.filter((q) => q.jenis === 'bon').length + ' bayar bon' : '')", "''"),

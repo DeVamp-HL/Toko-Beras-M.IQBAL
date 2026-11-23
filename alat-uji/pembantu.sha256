@@ -1,7 +1,6 @@
-# sha256 55 fungsi + 36 konstanta pembantu mesin beku di baru/js/mesin/pembantu.js (alat-uji/beku2.py --sidik).
-# Dicatat 3 Okt 2026 saat sistem lama dipensiunkan: tiap potongan terbukti BYTE-SAMA dengan index.html di tag
-# sistem-lama-terakhir (commit 48a694d) — kunci ini menggantikan pembanding "huruf demi huruf = index.html" di alat uji.
-# Berkas ini hanya boleh berubah lewat commit yang menyebut "membekukan ulang" dan disetujui pemilik (beku2.py --catat).
+# sha256 55 fungsi + 36 konstanta pembantu mesin beku di baru/js/mesin/pembantu.js (alat-uji/beku2.py --catat).
+# Berkas ini hanya boleh berubah lewat commit yang menyebut "membekukan ulang"
+# dan disetujui pemilik. CI membandingkan pembantu.js ke berkas ini (beku2.py --sidik).
 9c52c63d1815de611bdc3abce6d54b3b3c50286f1e79d0ce6dfd3b640fcfb02f  AMBANG_HARI_KRITIS
 60a43e15791483d0dc567c9318ae2d55b589d0e1aae91552d17301648d410c66  HARGA_AWAL_BAHAN_LITERAN
 937207e2c42d30db9c789ee4cb75e8903bf5ded1c3d7692a9d3e9868ee88f561  JENDELA_LAJU_HARI
@@ -65,9 +64,9 @@ e912f1e20ccd611966958d8ac65e9601cf42366705a8dd4cd2fc09ce13d48cd5  tkPenjualanHid
 751b96ca539f2c3d5a17bace5a228f01f1d041ae50d5a8d1b7a6916252d1b373  tkTargetPengganti
 8301306298dc03507acdf3d95449493ea7910fa663014307ba444314d725a474  tkApakahYatim
 4d08bf927c257e61fb0c8549a80101e448f2ea43d5a70027935dd5feb7c9f9cc  tkSetTertaut
-ac83fdd01ec99fd801c24719ec842d052b4966754b4b5ba92a5e5da00256d352  daftarGerakanKas
+2c48cc0a2a0d5c59d352a6c5dc833e1b00e3eb478be5808ad6d6d50c0a6a51bb  daftarGerakanKas
 e40f655e67242be7470d5340358a320d39f66e0adb1ced213ab00287686b3175  totalUtangPemasokSemua
-395e0a249f4bbe4e7108680a97ace06819d400863b4cdaaa8b32a7bcc06bab12  bakuCaraBayar
+3bf42e3caddeb5aa238ee50471e7d425806774b2f0bd31e30729e27582eaff87  bakuCaraBayar
 7573b5b8ab9c609675ae8544b98fe5167be4bad45d0df867a8604193a9a7ca6d  bulatKeAtas500
 e44d679b55ed954fe8fa6834631dab7979a8c7aafbe41632e97417f8aa36804a  pesananBelumTuntas
 15ce03a41f311f6268370296f9c8711e0c99d2cb3811ca281834b977471b9e8a  tbCutoff

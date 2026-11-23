@@ -25,7 +25,7 @@ BN = 'baru/js/layar/bon-logika.js'; PL = 'baru/js/layar/pelanggan-logika.js'; ST
 MODUL = [m for m in uji_harga_tingkat.MODUL if m != FK] + [SM, FK]   # Dasbor (dbTagihan = fkPengingat apa adanya) dijaga statis — bundel Dasbor tidak satu lingkup dengan bundel Jual
 MODUL = [m for i, m in enumerate(MODUL) if m not in MODUL[:i]]
 SUMBER = {'pelanggan': 'baru/js/layar/pelanggan.js', 'jual': 'baru/js/layar/jual.js', 'index': 'baru/index.html', 'pages': '.github/workflows/pages.yml',
-          'rules': 'firestore.rules', 'app': 'baru/js/app.js', 'dasbor': 'baru/js/layar/dasbor.js', 'dasborL': 'baru/js/layar/dasbor-logika.js', 'kanvas': 'baru/js/inti/struk-kanvas.js'}
+          'rules': 'firestore.rules', 'app': 'baru/js/app.js', 'dasbor': 'baru/js/layar/dasbor.js', 'dasborL': 'baru/js/layar/dasbor-logika.js', 'kanvas': 'baru/js/inti/struk-kanvas.js', 'riwayatL': 'baru/js/layar/riwayat-logika.js'}
 
 SKENARIO = r"""
 var lulus = 0, gagal = [];
@@ -145,6 +145,9 @@ var BB = susunBayarBon(KINI, 'pak contoh', 50000, 'Tunai', '', '', W, ['F26-AAA-
 ok('D: bayar 50.000 untuk F2 → dokumen membawa untukFaktur [F2]', BB.dokumen && J(BB.dokumen[0].data.untukFaktur) === J(['F26-AAA-0002']), J(BB));
 ok('D: bayar melebihi sisa faktur pilihan ditolak (tidak diam-diam pindah)', !!susunBayarBon(KINI, 'pak contoh', 60000, 'Tunai', '', '', W, ['F26-AAA-0002']).tolak);
 ok('D: faktur yang bukan milik / bukan terbuka ditolak', !!susunBayarBon(KINI, 'pak contoh', 1000, 'Tunai', '', '', W, ['F26-ZZZ-0009']).tolak);
+// owner 24 Nov 2026: Transfer di bayar bon pelanggan
+var BT = susunBayarBon(KINI, 'pak contoh', 1000, 'Transfer', '', '', W, []);
+ok('H: bayar bon lewat Transfer → pelunasan caraBayar "Transfer" (masuk rekening)', BT.dokumen && BT.dokumen[0].data.caraBayar === 'Transfer', J(BT.tolak || BT.dokumen[0].data));
 terapkanKeCache(BB.dokumen);
 D = fkSemua(KINI); F1 = D.find(function (f) { return f.no === 'F26-AAA-0001'; }); F2 = D.find(function (f) { return f.no === 'F26-AAA-0002'; });
 var dPC = hitungPiutang().find(function (x) { return x.kunci === 'pak contoh'; });
@@ -242,6 +245,11 @@ ok('E2: Atur menyimpan stop bon 45; 400 & "abc" ditolak; kosong mempertahankan; 
   && !!susunAturPelanggan({ stopBonHari: 'abc' }, W).tolak && susunAturPelanggan({}, W).dokumen[0].data.stopBonHari === 30 && susunAturPelanggan({ stopBonHari: '0' }, W).dokumen[0].data.stopBonHari === 0, J(ATs.tolak || ATs.dokumen[0].data.stopBonHari));
 pasok('penjualan', JSON.parse(J(KOTAK.penjualan))); pasok('pelangganCatatan', JSON.parse(J(KOTAK.pelangganCatatan || [])));
 
+// ---- H · TRANSFER di Jual & bayar bon (owner 24 Nov 2026)
+mulai(); isi('kemasan', 'Kembang|5', 1); terap(pilihCara(s, 'Transfer'));
+var tT = hitungTagihan(s); var NT = susunNotaDokumen(s, W); var pT = pj(NT);
+ok('H: Jual cara Transfer: tanpa uang diketik sah, angka persis (tanpa pembulatan Rp500), nota caraBayar "Transfer"', alasanTolak(s) === '' && tT.perlu === tT.total && pT.length && pT.every(function (p) { return p.caraBayar === 'Transfer'; }), J([alasanTolak(s), tT, pT.map(function (p) { return p.caraBayar; })]));
+
 // ---- G · faktur pajak
 pasok('penjualan', KOTAK.penjualan.concat([R0('f1', '2026-11-01', 'F26-AAA-0001', 100000), R0('f2', '2026-11-10', 'F26-AAA-0002', 50000)]));
 var RK = fkRekapBulan('2026-11', KINI);
@@ -260,6 +268,9 @@ STATIS = [
     ('Jual: minta persetujuan bon, bayar kurang ikut KR1 di lembar Bayar, jadikan faktur di lembar Struk', 'jual',
      ['mintaKredit: () =>', 'const pitaMintaKredit = (s, bonN) =>', 'L.alasanKunciKredit(s, bonN)', 'jadikanFaktur: () =>', 'data-aksi="jadikanFaktur"', 'FK.fkSusunJadikan(x.nota']),
     ('app memasang id perangkat ke nomor faktur', 'app', ['fkPasangPerangkat(fb.idPerangkat());']),
+    ('Transfer: tombol di Jual (2 lembar bayar) & bayar bon pelanggan', 'jual', ["[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Transfer', 'Transfer'], ['Kredit', 'Bon']]", 'data-k="pita-transfer"']),
+    ('Transfer: Jual › Riwayat bisa disaring Transfer', 'riwayatL', ["['QRIS', 'QRIS'], ['Transfer', 'Transfer'], ['Kredit', 'Bon']]"]),
+    ('Transfer: bayar bon pelanggan punya pilihan Transfer → rekening', 'pelanggan', ['data-cara="Transfer" data-k="by-transfer">Transfer → rekening</div>']),
     ('Jual › Riwayat: ganti pembeli satu nota (owner 24 Nov 2026) — owner saja, lembar di baris nota, ketukan kedua', 'jual',
      ['gpBuka: ({ k, trx, grup, id }) => { if (!akunOwner()) return;', 'data-aksi="gpBuka"', "s.gpBuka && s.gpBuka.k === o.kunci ? formGantiPembeli(s) : ''", 'GP.gpSusun(b, b.nama, b.alasan', "if (!b.yakin) return set({ gpBuka: Object.assign({}, b, { yakin: true }) });"]),
     ('Dasbor menyebut faktur jatuh tempo (dbTagihan.faktur = fkPengingat)', 'dasbor', ['data-k="db-faktur"', 'G.faktur.daftar.map(']),
@@ -271,6 +282,7 @@ STATIS = [
 ]
 
 RUSAK = [
+    ('Transfer di bayar bon: dicatat Tunai (masuk laci)', BN, "  const c = cara === 'QRIS' || cara === 'Transfer' ? cara : 'Tunai'; const data = {", "  const c = cara === 'QRIS' ? cara : 'Tunai'; const data = {"),
     ('nota bon bukan usaha ikut jadi faktur', FK, "  if (cara !== 'Kredit' || !String(nama || '').trim() || !fkUsaha(nama)) return null;", "  if (cara !== 'Kredit' || !String(nama || '').trim()) return null;"),
     ('nomor faktur tidak membaca yang sudah ada', FK, "if (Number.isInteger(u) && u > maks) maks = u;", "if (false) maks = u;"),
     ('tempo kartu diabaikan', FK, "const n = c ? fkHariSah(c.tempoHari) : null; return n === null ?", "const n = null; return n === null ?"),

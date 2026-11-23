@@ -69,8 +69,11 @@ export function ringkasHari(iso) {
     .concat(masukQris(ambilKasbonMutasi()).map((m) => ({ id: String(m.id), jam: m.jam || '', n: Number(m.nominal) || 0, jenis: 'kasbon', ket: 'kasbon kembali ' + String(m.namaPegawai || '').trim() })))
     .map((q) => Object.assign(q, { mdr: mdrSatu(q.n, A) })).sort((a, b) => String(a.jam).localeCompare(String(b.jam)));
   const jmlQ = (j) => qrisNota.filter((q) => q.jenis === j).reduce((a, q) => a + q.n, 0); const qrisJual = jmlQ('jual'), qrisBon = jmlQ('bon'), qrisKasbon = jmlQ('kasbon');
-  const tunai = jual.filter((p) => caraBayarKunci(p) !== 'qris' && caraBayarKunci(p) !== 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0); const qris = qrisJual + qrisBon + qrisKasbon; const kredit = jual.filter((p) => caraBayarKunci(p) === 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0);
-  const bonDibayar = ambilPiutangMutasi().filter((m) => m.tipe === 'bayar' && m.tanggal === iso && caraBayarKunci(m) !== 'qris').reduce((a, m) => a + (Number(m.nominal) || 0), 0);
+  // owner 24 Nov 2026: TRANSFER masuk rekening (bukan laci, tanpa MDR) — dipisah dari tunai; disebut untuk dicocokkan dengan mutasi bluBCA
+  const transferJual = jual.filter((p) => caraBayarKunci(p) === 'transfer').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0);
+  const transferBon = ambilPiutangMutasi().filter((m) => m.tipe === 'bayar' && m.tanggal === iso && caraBayarKunci(m) === 'transfer').reduce((a, m) => a + (Number(m.nominal) || 0), 0);
+  const tunai = jual.filter((p) => caraBayarKunci(p) !== 'qris' && caraBayarKunci(p) !== 'kredit' && caraBayarKunci(p) !== 'transfer').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0); const qris = qrisJual + qrisBon + qrisKasbon; const kredit = jual.filter((p) => caraBayarKunci(p) === 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0);
+  const bonDibayar = ambilPiutangMutasi().filter((m) => m.tipe === 'bayar' && m.tanggal === iso && caraBayarKunci(m) !== 'qris' && caraBayarKunci(m) !== 'transfer').reduce((a, m) => a + (Number(m.nominal) || 0), 0);
   const mdrDok = ambilPengeluaranHarian().find((h) => String(h.id) === 'mdr-' + iso) || null; const mdrTercatat = mdrDok ? Number(mdrDok.nominal) || 0 : 0;
   // 39b no. 38: laba hari ini (R.laba) = laba bersih toko, termasuk lebih/kurang kas yang sudah tercatat; lembar tutup memakai laba SEBELUM selisih laci
   // (selisih malam ini punya barisnya sendiri di rekap, dasar sisihan tidak berubah)
@@ -78,7 +81,7 @@ export function ringkasHari(iso) {
   const semua = ambilPenjualan(); const rapikan = semua.filter((p) => p.perluKoreksi).length; const darurat = semua.filter((p) => p.jenis === 'kasir_darurat_nominal').length;
   // no. 19: omzet di layar = penjualan − uang retur (satu arti dengan Laporan & Jual); R.omzet tetap PENJUALAN (dokumen tutupHari.omzet dibaca sistem lama)
   const retur = Math.round(((returUangPerHari()[iso] || {}).uang) || 0);
-  return { iso, nota: new Set(jual.map(kunciNota)).size, baris: jual.length, retur, tunai, qris, qrisJual, qrisBon, qrisKasbon, qrisNota, kredit, omzet: tunai + qrisJual + kredit, bonDibayar, mdrKira: qrisNota.reduce((a, q) => a + q.mdr, 0), mdrTercatat, labaSebelumMdr, laba: L, rapikan, darurat, sudah: ambilTutupHari().find((t) => t.tanggal === iso) || null, atur: A };
+  return { iso, nota: new Set(jual.map(kunciNota)).size, baris: jual.length, retur, tunai, qris, qrisJual, qrisBon, qrisKasbon, qrisNota, kredit, transferJual, transferBon, omzet: tunai + qrisJual + transferJual + kredit, bonDibayar, mdrKira: qrisNota.reduce((a, q) => a + q.mdr, 0), mdrTercatat, labaSebelumMdr, laba: L, rapikan, darurat, sudah: ambilTutupHari().find((t) => t.tanggal === iso) || null, atur: A };
 }
 /** Tiga merek yang paling banyak keluar hari ini (kg) untuk ditimbang cepat, dengan angka catatan (kg di buku).
  *  Putaran 39 (owner 29 Sep e): buku KHUSUS (petaBukuWadah — 'Wadah X', 'Karung belakang …', 'Karung wadah …', 'Adukan …') tidak ditawarkan di sini:
@@ -166,7 +169,7 @@ export function hitungTutup(D, kini) {
 }
 /** Baris rekap (dibaca kertas, teks WA, dan dokumen). */
 export function rekapTutup(H) {
-  const R = H.R; const rows = [[(R.retur ? 'Penjualan · ' : 'Omzet · ') + R.nota + ' nota', RP(R.omzet), ''], ['  tunai', RP(R.tunai), ''], ['  QRIS', RP(R.qrisJual), ''], ['  bon baru', RP(R.kredit), '']].concat(R.retur ? [['Retur & refund', '−' + RP(R.retur), ''], ['Omzet (sudah dikurangi retur)', RP(R.omzet - R.retur), '']] : [], [['Bon dibayar tunai', RP(R.bonDibayar), '']]).concat(R.qrisBon > 0 ? [['Bon dibayar QRIS', RP(R.qrisBon), '']] : [], R.qrisKasbon > 0 ? [['Kasbon kembali QRIS', RP(R.qrisKasbon), '']] : [], [
+  const R = H.R; const rows = [[(R.retur ? 'Penjualan · ' : 'Omzet · ') + R.nota + ' nota', RP(R.omzet), ''], ['  tunai', RP(R.tunai), ''], ['  QRIS', RP(R.qrisJual), '']].concat(R.transferJual ? [['  transfer', RP(R.transferJual), '']] : []).concat([['  bon baru', RP(R.kredit), '']]).concat(R.retur ? [['Retur & refund', '−' + RP(R.retur), ''], ['Omzet (sudah dikurangi retur)', RP(R.omzet - R.retur), '']] : [], [['Bon dibayar tunai', RP(R.bonDibayar), '']]).concat(R.qrisBon > 0 ? [['Bon dibayar QRIS', RP(R.qrisBon), '']] : [], R.qrisKasbon > 0 ? [['Kasbon kembali QRIS', RP(R.qrisKasbon), '']] : [], [
     ['Potongan QRIS (MDR) · ' + (H.mdrDicatat ? (H.rekNyata !== null ? 'sebenarnya' : 'perkiraan') : 'perkiraan, belum dicatat'), '−' + RP(H.mdrDicatat ? H.mdrJadi : R.mdrKira), ''], ['Laba hari ini · sudah dipotong MDR', RP(H.labaHari), ''],
     [H.tablet ? 'Laci dihitung ' + (H.tablet.oleh || 'tablet') + ' ' + H.tablet.jam : 'Laci dihitung', H.hitung > 0 ? RP(H.hitung) : 'belum', H.hitung > 0 ? '' : 'awas'],
     // owner 22 Nov 2026: uang laci yang tercatat sesudah hitungan tablet (laci sekarang = hitungan + ini)
@@ -177,7 +180,9 @@ export function rekapTutup(H) {
     // B3: bayar di tempat hari ini yang uangnya belum pulang — bukan uang laci; disebut supaya tidak dianggap selisih / hilang
     H.cod && H.cod.length ? [['Bayar di tempat BELUM disetor · ' + H.cod.map((x) => x.pengantar || 'pengantar').filter((p, i, a) => a.indexOf(p) === i).join(', '), RP(H.cod.reduce((a, x) => a + x.sisa, 0)), 'awas']] : [],
     // owner 21 Nov 2026: titipan uang keluar dari tablet yang belum diputus — laci fisik sudah berkurang, buku belum
-    H.titipan && H.titipan.n ? [['Titipan uang keluar tablet BELUM diputus · ' + H.titipan.n, RP(H.titipan.rp), 'awas']] : []);
+    H.titipan && H.titipan.n ? [['Titipan uang keluar tablet BELUM diputus · ' + H.titipan.n, RP(H.titipan.rp), 'awas']] : [],
+    // owner 24 Nov 2026: transfer masuk rekening hari ini — dicocokkan dengan mutasi bluBCA (bukan uang laci, tanpa MDR)
+    R.transferJual || R.transferBon ? [['Transfer masuk rekening · cocokkan dengan mutasi bluBCA', RP(R.transferJual + R.transferBon), '']] : []);
   return rows.map((r) => ({ a: r[0], b: r[1], kelas: r[2] }));
 }
 export function teksRekap(H, iso, jam) {
