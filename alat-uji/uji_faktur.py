@@ -260,6 +260,8 @@ STATIS = [
     ('Jual: minta persetujuan bon, bayar kurang ikut KR1 di lembar Bayar, jadikan faktur di lembar Struk', 'jual',
      ['mintaKredit: () =>', 'const pitaMintaKredit = (s, bonN) =>', 'L.alasanKunciKredit(s, bonN)', 'jadikanFaktur: () =>', 'data-aksi="jadikanFaktur"', 'FK.fkSusunJadikan(x.nota']),
     ('app memasang id perangkat ke nomor faktur', 'app', ['fkPasangPerangkat(fb.idPerangkat());']),
+    ('Jual › Riwayat: ganti pembeli satu nota (owner 24 Nov 2026) — owner saja, lembar di baris nota, ketukan kedua', 'jual',
+     ['gpBuka: ({ k, trx, grup, id }) => { if (!akunOwner()) return;', 'data-aksi="gpBuka"', "s.gpBuka && s.gpBuka.k === o.kunci ? formGantiPembeli(s) : ''", 'GP.gpSusun(b, b.nama, b.alasan', "if (!b.yakin) return set({ gpBuka: Object.assign({}, b, { yakin: true }) });"]),
     ('Dasbor menyebut faktur jatuh tempo (dbTagihan.faktur = fkPengingat)', 'dasbor', ['data-k="db-faktur"', 'G.faktur.daftar.map(']),
     ('Dasbor: logika piutang membawa faktur dari fkPengingat', 'dasborL', ['const FP = fkPengingat(kini);', 'faktur: { n: FP.daftar.length, rpLewat: FP.lewat, rpSegera: FP.segera,']),
     ('Sertifikat bertajuk FAKTUR untuk nota faktur', 'kanvas', ["tulis('FAKTUR'", "isian('Jatuh tempo', M.jatuhTempo"]),
@@ -303,6 +305,7 @@ RUSAK = [
     ('pengingat faktur hilang', SL, "  fkSemua(kini).forEach((f) => { if (!(f.sisa > 0.5)", "  [].forEach((f) => { if (!(f.sisa > 0.5)"),
 ]
 RUSAK_STATIS = [
+    ('ganti pembeli tanpa ketukan kedua', 'jual', "if (!b.yakin) return set({ gpBuka: Object.assign({}, b, { yakin: true }) });", ""),
     ('lembar bayar bon tanpa pilihan faktur', 'pelanggan', 'data-aksi="bayarFaktur"', 'data-aksi="x"'),
     ('id perangkat tidak dipasang', 'app', 'fkPasangPerangkat(fb.idPerangkat());', ''),
 ]

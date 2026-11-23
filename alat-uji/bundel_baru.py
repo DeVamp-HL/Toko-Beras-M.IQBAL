@@ -57,7 +57,7 @@ FK_PEMAKAI = ('jual-logika.js', 'bon-logika.js', 'sistem-logika.js', 'struk-logi
 # kendali biaya, Dasbor, Pelanggan › Atur, tutup hari & pembatalan nota memakai antar-logika, yang sendiri memakai faktur-logika. Ikut OTOMATIS di belakang.
 AJ_MODUL = 'baru/js/layar/antar-logika.js'
 AJ_PEMAKAI = ('jual-logika.js', 'retur-logika.js', 'struk-logika.js', 'laporan-logika.js', 'kendali-biaya-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js',
-              'uang-logika.js', 'batal-nota-logika.js')
+              'uang-logika.js', 'batal-nota-logika.js', 'ganti-pembeli-logika.js')
 
 
 # B4 (owner 18 Nov 2026): pesanan, PO & order rutin — jual-logika (uang muka memotong nota, keranjang dari pesanan), Dasbor (pengingat & stok pesanan),

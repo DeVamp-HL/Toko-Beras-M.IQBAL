@@ -34,6 +34,7 @@ import * as AR from './arsip-logika.js';
 import * as SK from './setengah-logika.js';
 import { aturUpah } from './upah-logika.js';   // owner 17 Nov: daftar karyawan aktif untuk pilihan "Dilayani"
 import { tbDaftar } from './tablet-logika.js';
+import * as GP from './ganti-pembeli-logika.js';   // owner 24 Nov 2026: ganti pembeli satu nota yang salah orang (Riwayat, owner)
 import * as BN from './batal-nota-logika.js';   // owner 17 Nov (butir 2): batal nota apa pun dari Riwayat (owner)
 import { buatPanelAntar } from './antar-panel.js';   // B3 (owner 18 Nov 2026): surat jalan & antar — Bayar › Antar, daftar Antar, tanda terima
 // B4 (owner 18 Nov 2026): lembar Pesanan — pesanan dari katalog, PO, uang muka, batal, jadwal rutin & pengingatnya, cek stok
@@ -213,6 +214,21 @@ export function pasangLayarJual(akar, opsi) {
     // owner 17 Nov 2026 (butir 2): batalkan nota apa pun dari Riwayat — owner saja, alasan wajib, ketukan kedua (batal-nota-logika.js)
     bnBuka: ({ k, trx, grup, id }) => { if (!akunOwner()) return; set({ bnBuka: { k: String(k || ''), trxId: trx || null, grupNota: grup || null, id: id || null, alasan: '', yakin: false }, kabar: '' }); },
     bnTutup: () => set({ bnBuka: null }),
+    // owner 24 Nov 2026 ("gua ada salah catat"): ganti pembeli satu nota — owner saja, alasan wajib, ketukan kedua (ganti-pembeli-logika.js)
+    gpBuka: ({ k, trx, grup, id }) => { if (!akunOwner()) return; set({ gpBuka: { k: String(k || ''), trxId: trx || null, grupNota: grup || null, id: id || null, nama: '', alasan: '', yakin: false }, bnBuka: null, kabar: '' }); },
+    gpTutup: () => set({ gpBuka: null }),
+    gpNama: (v) => set({ gpBuka: Object.assign({}, S().gpBuka || {}, { nama: String(v || '').slice(0, 60), yakin: false }) }),
+    gpNamaPil: ({ nama }) => set({ gpBuka: Object.assign({}, S().gpBuka || {}, { nama: String(nama || ''), yakin: false }) }),
+    gpAlasan: (v) => set({ gpBuka: Object.assign({}, S().gpBuka || {}, { alasan: String(v || '').slice(0, 120), yakin: false }) }),
+    gpAlasanPil: ({ v }) => set({ gpBuka: Object.assign({}, S().gpBuka || {}, { alasan: String(v || ''), yakin: false }) }),
+    gpYa: async () => {
+      const b = S().gpBuka; if (!b || !akunOwner()) return;
+      const P = GP.gpPeriksa(b, b.nama); if (P.tolak) return set({ kabar: P.tolak, kabarAwas: true });
+      if (String(b.alasan || '').trim().length < 3) return set({ kabar: 'Tulis alasannya dulu (mis. salah orang)', kabarAwas: true });
+      if (!b.yakin) return set({ gpBuka: Object.assign({}, b, { yakin: true }) });
+      const r = GP.gpSusun(b, b.nama, b.alasan, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+      await tulisUmum(Object.assign({}, r, { patch: Object.assign({}, r.patch || {}, { gpBuka: null }) }));
+    },
     bnAlasan: (v) => set({ bnBuka: Object.assign({}, S().bnBuka || {}, { alasan: String(v || '').slice(0, 120), yakin: false }) }),
     bnAlasanPil: ({ v }) => set({ bnBuka: Object.assign({}, S().bnBuka || {}, { alasan: String(v || ''), yakin: false }) }),
     bnYa: async () => {
@@ -900,6 +916,21 @@ export function pasangLayarJual(akar, opsi) {
       <div class="tombol-baris"><div class="kaca-btn putus ${b.yakin ? 'awas' : ''}" data-aksi="bnYa" data-k="bn-ya">${b.yakin ? 'KETUK SEKALI LAGI · batalkan' : P.jalur === 'rinci' ? 'Tarik balik rincian' : 'Batalkan nota'}</div><div class="kaca-btn" data-aksi="bnTutup">tidak jadi</div></div>
     </div>`;
   }
+  // owner 24 Nov 2026: lembar kecil ganti pembeli di dalam baris Riwayat — nama baru (ketik / pilih nama yang ada), akibat dulu, alasan wajib, ketukan kedua
+  function formGantiPembeli(s) {
+    const b = s.gpBuka; const P = GP.gpPeriksa(b, b.nama); const saran = String(b.nama || '').trim().length >= 2 ? L.daftarPelanggan(b.nama).slice(0, 6) : [];
+    const tolakAwal = P.tolak && !/^Nama pembelinya sudah|^Nota ini memang tanpa nama|^Nota bon wajib punya nama/.test(P.tolak) ? P.tolak : '';
+    if (tolakAwal) return h`<div class="kartu" data-k="gp-form" data-aksi="bnDiam" style="gap: 6px; margin-top: 6px;"><div class="pita-info awas" data-k="gp-tolak">${tolakAwal}</div><div class="kaca-btn" data-aksi="gpTutup">tutup</div></div>`;
+    return h`<div class="kartu" data-k="gp-form" data-aksi="bnDiam" style="gap: 6px; margin-top: 6px;">
+      <div class="label">Ganti pembeli nota ini</div>
+      <input class="ketik-nama" id="gpNama" type="text" value="${b.nama || ''}" data-ketik="gpNama" placeholder="Nama pembeli yang benar (kosong = tanpa nama, hanya nota lunas)">
+      ${saran.length ? h`<div class="bendera" data-k="gp-saran">${saran.map((o, i) => h`<span class="pil ${String(b.nama || '') === o.nama ? 'nyala' : ''}" data-aksi="gpNamaPil" data-nama="${o.nama}" data-k="gps-${i}">${o.nama}</span>`)}</div>` : ''}
+      ${P.tolak ? h`<div class="ket" data-k="gp-belum">${P.tolak}</div>` : P.akibat.map((t, i) => h`<div class="ket" data-k="gp-ak-${i}">• ${t}</div>`)}
+      <div class="bendera" data-k="gp-alasan-pil">${GP.GP_ALASAN.map(([v, nm]) => h`<span class="pil ${String(b.alasan || '') === nm ? 'nyala' : ''}" data-aksi="gpAlasanPil" data-v="${nm}" data-k="gpp-${v}">${nm}</span>`)}</div>
+      <input class="ketik-nama" id="gpAlasan" type="text" value="${b.alasan || ''}" data-ketik="gpAlasan" placeholder="Alasan (wajib) — mis. salah orang">
+      <div class="tombol-baris"><div class="kaca-btn ${P.tolak ? 'mati' : b.yakin ? 'aktif awas' : 'aktif'}" data-aksi="gpYa" data-k="gp-ya">${b.yakin ? 'KETUK SEKALI LAGI · ganti pembeli' : 'Ganti pembeli'}</div><div class="kaca-btn" data-aksi="gpTutup">tidak jadi</div></div>
+    </div>`;
+  }
   // owner 19 Nov 2026 (lag Riwayat di Android): dasar retur (mahal — menyaring seluruh penjualan) hanya dihitung untuk nota yang DIBUKA, lewat
   // RW.rwNotaLengkap (diingat per nota per versi data); daftar yang tertutup tidak menghitungnya sama sekali.
   function gambarRiwayat(s) {
@@ -916,7 +947,7 @@ export function pasangLayarJual(akar, opsi) {
           <div class="atas"><span><b>${o.baris.length ? o.baris[0].teks : '—'}</b>${o.nBaris > 1 ? ' + ' + (o.nBaris - 1) + ' barang' : ''}${o.nama ? ' · ' + o.nama : ''}</span><span class="n">${RP(o.status === 'batal' || o.status === 'dirinci' ? o.totalAsli : o.total)}</span></div>
           <div class="ket">${o.jam} · ${o.cara === 'Kredit' ? 'Bon' : o.cara}${o.dilayani ? ' · dilayani ' + o.dilayani : o.oleh ? ' · ' + o.oleh : ''}${status[o.status] ? ' · ' + status[o.status] : ''}${o.tandai ? ' · jual dulu, tandai dicocokkan' : ''}</div>
           ${s.rwBuka === o.kunci ? h`<div class="rw-rinci" data-k="rwr-${o.kunci}" style="display: flex; flex-direction: column; gap: 4px; padding-top: 6px;">${RW.rwNotaLengkap(o.kunci).baris.map((b) => h`<div class="atas" data-k="rwb-${b.id}" style="font-size: 13px;"><span>${b.teks}${b.pengganti ? ' · pengganti retur' : ''}${b.tandai ? ' · tembus stok' : ''}</span><span style="display: flex; gap: 6px; align-items: center;"><span class="n">${RP(b.n)}</span>${b.bisaRetur ? h`<span class="kaca-btn kecil" data-aksi="tunjukNota" data-id="${b.id}">retur</span>` : ''}</span></div>${b.sebabRetur ? h`<div class="ket" style="font-size: 11px;">retur: ${b.sebabRetur}</div>` : ''}`)}
-            <div class="tombol-baris rapat"><div class="kaca-btn" data-aksi="bukaStruk" data-trx="${o.trxId || ''}" data-grup="${o.grupNota || ''}" data-id="${o.id}">Struk ›</div>${akunOwner() && o.status === 'berlaku' && !(s.bnBuka && s.bnBuka.k === o.kunci) ? h`<div class="kaca-btn putus" data-aksi="bnBuka" data-k="${o.kunci}" data-trx="${o.trxId || ''}" data-grup="${o.grupNota ? o.grupNota : ''}" data-id="${o.id}">Batalkan nota</div>` : ''}${RW.rwNotaLengkap(o.kunci).bisaRetur ? '' : h`<span class="ket" style="align-self: center;">${o.status === 'batal' || o.status === 'dirinci' ? 'nota ini tidak berlaku lagi' : 'tidak ada baris karung/kemasan yang bisa diretur dari sini'}</span>`}</div>${s.bnBuka && s.bnBuka.k === o.kunci ? formBatalNota(s) : ''}</div>` : ''}
+            <div class="tombol-baris rapat"><div class="kaca-btn" data-aksi="bukaStruk" data-trx="${o.trxId || ''}" data-grup="${o.grupNota || ''}" data-id="${o.id}">Struk ›</div>${akunOwner() && o.status === 'berlaku' && !(s.bnBuka && s.bnBuka.k === o.kunci) ? h`<div class="kaca-btn putus" data-aksi="bnBuka" data-k="${o.kunci}" data-trx="${o.trxId || ''}" data-grup="${o.grupNota ? o.grupNota : ''}" data-id="${o.id}">Batalkan nota</div>` : ''}${akunOwner() && o.status === 'berlaku' && !(s.gpBuka && s.gpBuka.k === o.kunci) ? h`<div class="kaca-btn" data-aksi="gpBuka" data-k="${o.kunci}" data-trx="${o.trxId || ''}" data-grup="${o.grupNota ? o.grupNota : ''}" data-id="${o.id}">Ganti pembeli</div>` : ''}${RW.rwNotaLengkap(o.kunci).bisaRetur ? '' : h`<span class="ket" style="align-self: center;">${o.status === 'batal' || o.status === 'dirinci' ? 'nota ini tidak berlaku lagi' : 'tidak ada baris karung/kemasan yang bisa diretur dari sini'}</span>`}</div>${s.bnBuka && s.bnBuka.k === o.kunci ? formBatalNota(s) : ''}${s.gpBuka && s.gpBuka.k === o.kunci ? formGantiPembeli(s) : ''}</div>` : ''}
         </div>`)}</div>`)}
       ${R.lebih ? h`<div class="kaca-btn putus" data-aksi="rwLagi" data-k="rw-lagi" style="margin-top: 8px;">tampilkan ${RW.RW_LANGKAH} nota lagi · ${R.nTampil} dari ${R.n}</div>` : R.n ? h`<div class="ket" data-k="rw-habis" style="padding: 8px 4px;">${R.n} nota tampil semua</div>` : ''}`;
   }
