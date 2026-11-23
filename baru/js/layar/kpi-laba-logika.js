@@ -37,7 +37,7 @@ import { akhirBulanIso } from '../mesin/pembantu.js';
 
 // ---------- pembanding BPS (butir 5): konteks, BUKAN target ----------
 export const KL_BPS = { grosir: 9.84, eceran: 11.35, tahun: 2016,
-  sumber: 'BPS, Distribusi Perdagangan Komoditas Beras Indonesia 2016 — rata-rata margin perdagangan & pengangkutan (MPP) beras: pedagang besar 9,84 %, pedagang eceran 11,35 % (termasuk ongkos angkut)',
+  sumber: 'BPS, Distribusi Perdagangan Komoditas Beras Indonesia 2016, hlm. 17 — rata-rata rasio margin perdagangan & pengangkutan (MPP) beras: pedagang besar 9,84 %, pedagang eceran 11,35 % (termasuk ongkos angkut). MPP = nilai penjualan − nilai pembelian (hlm. 6); publikasi tidak menyebut pembaginya (harga beli atau harga jual), jadi bandingkan dengan margin DAN mark-up toko',
   pendek: 'BPS 2016 (termasuk angkut)' };
 export const KL_ID = 'kpiLaba';
 export const KL_JENIS = LP_JENIS;   // karung · kemasan · literan · repack — satu daftar dengan Laporan › Laba › Per jenis

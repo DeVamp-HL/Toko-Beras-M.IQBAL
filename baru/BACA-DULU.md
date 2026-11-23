@@ -3566,7 +3566,8 @@ Uji server: `docs/uji-rules-v19.md` (★G1–★G18, wajib owner ★G1–★G3);
 Owner menerbitkan v19 SEBELUM PR digabung — tanpa v19 pendengar `cekGudang` di HP/tablet staf ditolak server (disebut di Sistem › Perangkat) dan Simpan cek ditolak.
 
 Pilihan teknis yang dipasang (bukan keputusan baru): ketiga margin satu penyebut = omzet ber-HPP (penyebut rasio titik impas) supaya tangganya bisa dibanding;
-laba usaha tidak memasukkan hapus buku & lebih/kurang kas (rumus brief), keduanya tampil di rincian; definisi pembagi angka BPS (atas harga beli / jual) belum
-dipastikan dari publikasinya — layar menyebutnya konteks, mark-up toko ditulis di sampingnya.
+laba usaha tidak memasukkan hapus buku & lebih/kurang kas (rumus brief), keduanya tampil di rincian; angka BPS dicek ke publikasinya
+(24 Nov): MPP = nilai penjualan − nilai pembelian (hlm. 6), 9,84 / 11,35 % = "rasio MPP" (hlm. 17, Tabel 3), PEMBAGINYA TIDAK DISEBUT di publikasi
+(metodologi & kuesioner VPDP16 juga tidak) — layar menyebutnya konteks dan menaruh margin (÷ harga jual) DAN mark-up (÷ modal) toko di sampingnya.
 
 Alat uji: `uji_kpi_laba.py` (67 kotak pasir + 19 statis, kontrol 37/37), `periksa_rules.py` (v19), `uji_menu_baru.py` (laci Toko ini 7 baris).
