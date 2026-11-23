@@ -299,6 +299,8 @@ export function susunBayarTagihan(kunci, ketik, dari, w) {
   // dokumen lama bertanggal tunggal (tanggalBayar): saat berpindah ke peta per pos, SEMUA pos yang sudah bernilai dibawa tanggalnya — kalau tidak, pos lain mendadak "belum dibayar" dan kas bergeser
   const peta = Object.assign({}, lama.tanggalBayarPos || {}); if (!lama.tanggalBayarPos && lama.tanggalBayar) { POS_BIAYA_BULANAN.forEach((p) => { if (Number(lama[p.kunci]) > 0) peta[p.kunci] = lama.tanggalBayar; }); if (Number(lama.gaji) > 0) peta.gaji = lama.tanggalBayar; }
   peta[t.kunci] = w.tanggal; data.tanggalBayarPos = peta; data[t.kunci] = n; data.dariPos = Object.assign({}, lama.dariPos || {}, { [t.kunci]: dari });
+  // owner 23 Nov 2026 (Riwayat & batal tagihan): jam bayar per pos — membatalkannya membetulkan penutupan yang memuatnya (bukan selalu tutup pertama hari itu)
+  if (w.jam) data.jamBayarPos = Object.assign({}, lama.jamBayarPos || {}, { [t.kunci]: String(w.jam) });
   ['akses', 'keamanan', 'listrik', 'internet'].forEach((k) => { if (data[k] === undefined) data[k] = 0; }); if (data.gaji === undefined) data.gaji = 0; if (data.gajiHariOrang === undefined) data.gajiHariOrang = 0; if (!Array.isArray(data.rincianGaji)) data.rincianGaji = [];
   return { dokumen: [{ koleksi: 'biayaBulanan', data }], patch: { kabar: t.nama + ' ' + T.namaBulan + ' dibayar ' + RP(n) + ' dari ' + ugNamaTempat(dari) + ' — uang keluar hari ini; di laba dibagi rata per hari sebulan (mesin lama)' + (c.takTerperiksa ? ' · ' + c.teks : ''), kabarAwas: false, bayarT: null } };
 }

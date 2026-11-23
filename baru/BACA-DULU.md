@@ -3340,9 +3340,22 @@ dihapus dari buku. Hari yang SUDAH ditutup (penutupan dengan jam ≥ jam catatan
 ikut, jejak `koreksiBatal` (pola batal nota `bnTutup`) — tanpa ini laba kena dua kali. Rekening / brankas / amplop di dalam titik kas: patokan titik
 dibetulkan + `diubahPada` maju 1 ms (salinan perangkat lama tidak menang). Titipan tablet asal catatan → persetujuan `ditolak` + "Dibatalkan owner: …".
 Ditolak: bulan terkunci, kasbon yang sisanya jadi minus, catatan buatan tutup hari (MDR, amankan, sisihan, setoran), saldo pembuka, pembayaran bersama
-nota (→ Jual › Riwayat), bon pemasok/piutang non-bayar. Upah & biaya bulanan tampil tanpa tombol (menyusul). Tab **Dibatalkan**: semua baris
+nota (→ Jual › Riwayat), bon pemasok/piutang non-bayar. Upah & tagihan bulanan: lihat "upah & tagihan bulanan" di bawah (23 Nov). Tab **Dibatalkan**: semua baris
 `bukuHapus`; **Pulihkan** (hanya batal uang: catatan ditulis lagi dengan id sama, koreksi dibalik, ditolak bila id sama sudah ada lagi) dan **Hapus
 permanen** (hanya baris arsip). Rules tetap (bukuHapus owner saja). Alat uji `alat-uji/uji_riwayat_uang.py` (jsc + statis + kontrol).
+
+**Riwayat & batal — upah & tagihan bulanan (owner 23 Nov 2026, "Dua-duanya bisa"):** di tab **Uang** yang sama (`ru`). **Upah** = SATU pembayaran utuh:
+`slipUpah` + baris gaji berkunci "Nama · tanggal" (`slip.kunci`) di `biayaBulanan` tiap bulan `slip.bulanan` + kasbon `caraBayar: 'Dipotong upah'` yang lahir
+bersamanya (tidak ada kolom penghubung: dikenali dari tanggal, jam, nama, nominal = `slip.potong`; tampil sebagai pendamping, dibatalkan sendiri ditolak). Hanya
+slip upah TERAKHIR tiap orang (`mulaiUpah` membaca `sampai` terbesar — slip lama dibatalkan selagi ada yang sesudahnya = hari itu tertutup tanpa uangnya); slip
+bonus bebas; hari kerja (`absenKaryawan`) tidak disentuh → kembali "belum dibayar". **Tagihan** = satu pos (listrik / akses / keamanan / internet) satu bulan:
+pos jadi 0, `tanggalBayarPos` / `dariPos` / `jamBayarPos` pos itu hilang; pos lain & gaji tetap. Dokumen bulan dipakai bersama → arsip `bukuHapus` `jenisBatal:
+'uang'`, `bentuk: 'upah' | 'tagihan'`, `bagian` (baris gaji + `urutan` / pos + nominal, tanggal, tempat, jam); pulihkan menggabungkan bagian itu ke dokumen
+SEKARANG (ditolak bila hari kerjanya / tagihannya sudah dibayar lagi). Pengaruh ke tempat uang = baris gerakan kas mesin (ber-id 0, label "… — biaya <Bulan
+Tahun>", tempat dari `dariPos`); hari tertutup & titik kas dibetulkan seperti catatan uang lain. `susunBayarTagihan` kini menulis `jamBayarPos[pos]`; tagihan
+lama tanpa jam dianggap dibayar sebelum tutup hari itu (kalimatnya ditulis). Gaji yang dibayar di sistem lama (tanpa slip) tidak lewat sini. Bulan terkunci &
+tahun yang sudah ditutup buku (bulan biaya MAUPUN tanggal bayar) ditolak. Uji: `uji_riwayat_uang.py` (dokumen ditulis penulis asli `susunBayarUpah` /
+`susunBonus` / `susunBayarTagihan`; asap cadangan lokal ikut membolak-balik `biayaBulanan` & `slipUpah`).
 
 **Riwayat & batal — tahap 2 BARANG (owner 22 Nov 2026):** tab **Barang** di Menu › Toko ini › Riwayat & batal, logika `baru/js/layar/riwayat-barang-logika.js`
 (awalan `rb`). Satu baris = satu KETUKAN: catatan satu kiriman bertanggal & bermenit sama dan bernomor Date.now()+acak berurutan (< 3 detik); anggota dicari
