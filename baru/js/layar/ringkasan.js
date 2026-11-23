@@ -20,7 +20,7 @@ import { kpPerhatian, kpPerhatianPerangkat } from './kunci-periode-logika.js';
 import { bkPerhatian } from './tutup-buku-logika.js';
 import { kkBeranda } from '../data/katalog-kasir.js';
 import { hariIniIso } from '../inti/format.js';
-import { susunDasbor } from './dasbor-logika.js';   // putaran 40: dasbor owner (saklar Dasbor | Cincin, owner 2 Okt)
+import { susunDasbor, dbKelompok, DB_PANAS } from './dasbor-logika.js';   // putaran 40: dasbor owner (saklar Dasbor | Cincin, owner 2 Okt)
 import { pasangDasbor } from './dasbor.js';
 
 const IKON = {
@@ -83,14 +83,13 @@ export function pasangLayarRingkasan(akar, opsi) {
       <div class="chip-naik" id="rkChip"></div>
       <div class="badan-hero">
         <div class="lapis" id="rkLapis"></div>
-        <div class="cincin-wadah"><svg class="cincin" id="rkCincin" viewBox="-6 -6 212 212">
+        <div class="cincin-wadah"><div class="cincin-kotak"><svg class="cincin" id="rkCincin" viewBox="-6 -6 212 212">
           <g id="rkSektorG"></g>
           <line class="jarum" x1="100" y1="60" x2="100" y2="4"></line>
-          <line class="jarum-detik" id="rkDetik" x1="100" y1="34" x2="100" y2="24"></line>
           <text class="pusat-jam" id="rkPusatJam" x="100" y="98" text-anchor="middle"></text>
           <text class="pusat-ket" id="rkPusatKet" x="100" y="112" text-anchor="middle"></text>
           <text class="pusat-ket" id="rkPusatKet2" x="100" y="124" text-anchor="middle"></text>
-        </svg></div>
+        </svg><svg class="rk-detik" id="rkDetik" viewBox="-6 -6 212 212" aria-hidden="true"><line x1="100" y1="34" x2="100" y2="24"></line></svg></div></div>
       </div>
       <div class="rk-detail" id="rkDetail"></div>
       <div class="pita" id="rkSkala"></div>
@@ -138,8 +137,8 @@ export function pasangLayarRingkasan(akar, opsi) {
   function gambarDasbor(masuk) {
     if (!dasbor || !$('rkDasbor')) return;
     const k = kini(); const kunci = kunciLuarCache(k); const r = dasbor.rentang();
-    if (!dbHasil || dbKunci !== kunci) { dbHasil = susunDasbor(k, r); dbKunci = kunci; dbRentang = r; }
-    else if (dbRentang !== r) { dbHasil = susunDasbor(k, r, dbHasil); dbRentang = r; }
+    if (!dbHasil || dbKunci !== kunci) { dbHasil = susunDasbor(k, r, null, ingatDb(k)); dbKunci = kunci; dbRentang = r; }
+    else if (dbRentang !== r) { dbHasil = susunDasbor(k, r, dbHasil, ingatDb(k)); dbRentang = r; }
     dasbor.gambar(dbHasil, masuk);
   }
   function gantiSkala(k) { if (k === skala || !R.SKALA.some((s) => s[0] === k)) return; skala = k; pilihId = null; try { localStorage.setItem(KUNCI_SKALA, k); } catch (e) { /* abaikan */ } perbarui('skala'); }
@@ -186,7 +185,13 @@ export function pasangLayarRingkasan(akar, opsi) {
         g.appendChild(el); lingkar.set(s.id, el);
       }
       const tetapSembunyi = el.style.opacity === '0' && s.op === 0 && !pertama;   // tersembunyi → tersembunyi: pindah tanpa transisi (hemat ±90 transisi per ganti skala)
-      el.setAttribute('class', 'sektor ' + s.kelas + (s.id === pilihId ? ' dipilih' : '') + (tetapSembunyi ? ' diam' : ''));
+      const kelas = 'sektor ' + s.kelas + (s.id === pilihId ? ' dipilih' : '') + (tetapSembunyi ? ' diam' : '');
+      if (el.getAttribute('class') !== kelas) el.setAttribute('class', kelas);
+      // mulus Android paket 3: sel yang target gambarnya TIDAK berubah (detak menit menggeser sebagian kecil sel) tidak disentuh — dulu ±90 lingkaran diberi
+      // gaya ulang tiap pembaruan, dan tiap sentuhan = gaya & cat ulang SVG di utas utama tablet
+      const sidik = s.r + '|' + s.w + '|' + s.da + '|' + s.do + '|' + s.op;
+      if (!pertama && el._sidik === sidik) return;
+      el._sidik = sidik;
       const pasang = () => { el.style.r = s.r + 'px'; el.style.strokeWidth = s.w + 'px'; el.style.strokeDasharray = s.da; el.style.strokeDashoffset = s.do + 'px'; el.style.opacity = String(s.op); };
       if (pertama && !document.hidden) { el.style.transitionDelay = (s.op ? Math.min(420, s.i * 9) : 0) + 'ms'; setTimeout(pasang, 40); setTimeout(() => { el.style.transitionDelay = ''; }, 1400); } else pasang();
     });
@@ -198,7 +203,15 @@ export function pasangLayarRingkasan(akar, opsi) {
   // ulang TIAP perbarui — laba rentang dari mesin, bon, utang, buku stok — padahal isinya hanya data + jam (menit) + kunci luar (hari, hari tutup, titik kas
   // perangkat) + siapa yang masuk. Kini diingat per versi data dengan kunci itu: skala yang baru saja dilihat kembali seketika, detak menit tetap menghitung
   // segar. Katalog kasir & denyut HP kasir TIDAK ikut (keduanya membaca keadaan di luar cache). Hasil DIPAKAI BERSAMA — penggambar hanya membaca.
-  const ingatRk = (nama, k, f) => ingatPerVersi('rk|' + nama + '|' + kunciLuarCache(k) + '|' + Math.floor(k.getTime() / 60000) + '|' + (((opsi.akun ? opsi.akun() : null) || {}).jenis || ''), f);
+  // mulus Android paket 3 (owner 23 Nov 2026, kartu CPad: Ringkasan › Cincin 481 kali tersendat ±0,4 dtk = SATU KALI TIAP MENIT selama ±8 jam layar ini
+  // terbuka): kunci menit dulu dipasang di SEMUA hitungan, jadi tiap detak menit bon, utang pemasok, laju & stok menipis, kas, pajak dihitung ulang dari nol.
+  // Yang benar-benar membaca jam-menit hanya SUSUNAN cincin (sel berjalan, jendela 60 menit, "nota terakhir N mnt lalu"); perhatian, kas, pajak & tutup buku
+  // membaca HARI (sudah di kunciLuarCache) — kini kuncinya per hari. menit = true hanya untuk susunan.
+  const ingatRk = (nama, k, f, menit) => ingatPerVersi('rk|' + nama + '|' + kunciLuarCache(k) + '|' + (menit ? Math.floor(k.getTime() / 60000) : '') + '|' + (((opsi.akun ? opsi.akun() : null) || {}).jenis || ''), f);
+  // Dasbor: tiap kelompok diingat per versi data + kunci luar (hari, hari tutup aktif, titik kas perangkat) — kunci yang sama dengan dbKunci di bawah
+  const ingatDb = (k) => (kunci, f) => ingatPerVersi('db|' + kunci + '|' + kunciLuarCache(k), f);
+  // tulis isi elemen HANYA bila berubah — detak menit yang isinya sama tidak memaksa peramban menata & mengecat ulang kartunya
+  const isi = (el, html) => { if (el && el._isi !== html) { el.innerHTML = html; el._isi = html; } };
   function perbarui(sebab) {
     if (!tampil || terkunci()) return;
     if (!$('rkHero')) bangun();   // tirai baru terbuka: kerangka dibangun ulang
@@ -208,11 +221,11 @@ export function pasangLayarRingkasan(akar, opsi) {
     akar.querySelectorAll('#rkSaklar .seg').forEach((el) => el.classList.toggle('aktif', el.dataset.tampil === (dsb ? 'dasbor' : 'cincin')));
     $('rkTanggal').textContent = R.tanggalPanjang(k); $('rkSalam').textContent = R.salam(k) + ', Owner';
     const pil = $('rkPil'); pil.textContent = sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'; pil.classList.toggle('kedip', sumber.jenis !== 'firestore');
-    $('rkMode').innerHTML = IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'];
-    $('rkSumber').innerHTML = sumber.jenis === 'cadangan' ? '<div class="pita-info emas">Angka dari ' + esc(sumber.keterangan) + ' — "sekarang" dianggap saat cadangan itu diunduh.</div>' : sumber.jenis !== 'firestore' ? '<div class="pita-info awas">Belum tersambung ke data toko — masuk dulu sebagai owner (layar Jual).</div>' : '';
-    $('rkPerhatian').innerHTML = '<div style="display: flex; justify-content: space-between; align-items: center;"><div class="label">Perlu perhatian</div><span class="pil" style="' + (perhatian.some((x) => x.awas) ? 'color: var(--awas);' : '') + '">' + (perhatian.length ? perhatian.length + ' hal' : 'aman') + '</span></div>'
+    isi($('rkMode'), IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap']);
+    isi($('rkSumber'), sumber.jenis === 'cadangan' ? '<div class="pita-info emas">Angka dari ' + esc(sumber.keterangan) + ' — "sekarang" dianggap saat cadangan itu diunduh.</div>' : sumber.jenis !== 'firestore' ? '<div class="pita-info awas">Belum tersambung ke data toko — masuk dulu sebagai owner (layar Jual).</div>' : '');
+    isi($('rkPerhatian'), '<div style="display: flex; justify-content: space-between; align-items: center;"><div class="label">Perlu perhatian</div><span class="pil" style="' + (perhatian.some((x) => x.awas) ? 'color: var(--awas);' : '') + '">' + (perhatian.length ? perhatian.length + ' hal' : 'aman') + '</span></div>'
       + (perhatian.map((x, i) => '<div class="baris ' + (i === perhatian.length - 1 ? 'akhir' : '') + '"><span>' + esc(x.teks) + '</span><span class="angka ' + (x.awas ? 'awas' : '') + '" style="font-size: 14px; white-space: nowrap;">' + esc(x.nilai) + '</span></div>').join('')
-        || '<div class="menolak">Tidak ada bon, utang pemasok, stok menipis, atau pesanan yang menunggu.</div>');
+        || '<div class="menolak">Tidak ada bon, utang pemasok, stok menipis, atau pesanan yang menunggu.</div>'));
     if ($('rkKatalog')) { $('rkKatalog').textContent = KK ? KK.status : ''; $('rkKatalog').style.color = KK && KK.awas ? 'var(--awas)' : ''; }
     if (dsb) {
       menitLama = k.getHours() * 60 + k.getMinutes();
@@ -223,7 +236,7 @@ export function pasangLayarRingkasan(akar, opsi) {
     // indeks cincin hanya membaca cache + TAHUN jam sekarang (potret hari tahun yang ditutup buku, bangunIndeks) — tahun ikut kunci: tanpa data baru (denyut HP
     // tidak lagi membasikan indeks) pergantian tahun tetap membangunnya ulang
     const thIx = hariIniIso(new Date(Date.now())).slice(0, 4); if (!ix || ixTahun !== thIx) { ix = R.bangunIndeks(); ixTahun = thIx; }
-    const r = ingatRk('susun|' + skala, k, () => R.susunRingkasan(skala, ix, k)); const kas = ingatRk('kas', k, () => R.susunKas(k));
+    const r = ingatRk('susun|' + skala, k, () => R.susunRingkasan(skala, ix, k), true); const kas = ingatRk('kas', k, () => R.susunKas(k));
     menitLama = k.getHours() * 60 + k.getMinutes(); sektorKini = r.sektor;
     const pertama = sebab === 'tampil'; const gantiSk = sebab === 'skala';
     const kunciBaru = r.umpan.length ? r.umpan[0].k : ''; const mendarat = !pertama && kunciNotaLama !== null && !!kunciBaru && kunciBaru !== kunciNotaLama; kunciNotaLama = kunciBaru;
@@ -234,19 +247,19 @@ export function pasangLayarRingkasan(akar, opsi) {
     gulirAngka(r.angka, pertama ? 900 : gantiSk ? 560 : 640);
     if (naik > 0) { const c = $('rkChip'); c.textContent = '+' + RP(naik); sekali(c, 'tampil', 1250); }
     if (mendarat) { terbangkanTetes(); setTimeout(() => { sekali($('rkHero'), 'mendarat', 1400); sekali($('rkKilau'), 'sapu', 1150); }, 420); }
-    $('rkLapis').innerHTML = r.lapisan.map((l) => '<div data-lapis="' + esc(l.lapis) + '"><div class="label">' + esc(l.nama) + '</div><div class="angka">' + esc(l.nilai) + '</div><div class="ket">' + esc(l.ket) + '</div></div>').join('')
-      + (r.lapisan.length < 3 ? '<div class="menolak">' + (r.lapisan.length === 2 ? 'Belum ada lapisan di bawah tahun.' : 'Belum ada lapisan induk maupun kakek.') + '</div>' : '');
+    isi($('rkLapis'), r.lapisan.map((l) => '<div data-lapis="' + esc(l.lapis) + '"><div class="label">' + esc(l.nama) + '</div><div class="angka">' + esc(l.nilai) + '</div><div class="ket">' + esc(l.ket) + '</div></div>').join('')
+      + (r.lapisan.length < 3 ? '<div class="menolak">' + (r.lapisan.length === 2 ? 'Belum ada lapisan di bawah tahun.' : 'Belum ada lapisan induk maupun kakek.') + '</div>' : ''));
     pasangSektor(r.sektor, pertama);
     $('rkPusatJam').textContent = p2(k.getHours()) + '.' + p2(k.getMinutes()); $('rkPusatKet').textContent = r.notaHariIni + ' NOTA'; $('rkPusatKet2').textContent = 'hari ini';
     akar.querySelectorAll('#rkSkala .seg').forEach((el) => el.classList.toggle('aktif', el.dataset.k === skala));
     const aktif = akar.querySelector('#rkSkala .seg.aktif'); if (aktif && gantiSk && aktif.scrollIntoView) aktif.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     gambarPilihan();
     const sj = r.sejakNotaMenit; $('rkSejak').textContent = sj === null ? 'belum ada nota hari ini' : sj < 1 ? 'nota terakhir baru saja' : 'nota terakhir ' + (sj < 60 ? sj + ' mnt lalu' : Math.floor(sj / 60) + ' jam ' + (sj % 60) + ' mnt lalu');
-    $('rkUmpan').innerHTML = r.umpan.slice(0, skala === 'langsung' ? 8 : 4).map((u, i) => '<div class="u ' + (mendarat && i === 0 ? 'baru' : '') + '"><span class="w">' + esc(u.jam) + '</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + esc(u.isi) + '</span><span class="angka" style="font-size: 13px;">' + esc(RP(u.rp)) + '</span></div>').join('')
-      || '<div class="menolak" style="padding: 8px 0;">Belum ada nota hari ini.</div>';
-    $('rkKas').innerHTML = '<div class="kartu platina"><div class="label">Kas tercatat · semua kantong</div>' + (kas.adaTitik ? '<div class="angka kas" style="font-size: 20px;">' + esc(RP(kas.total)) + '</div><div class="ket" style="font-size: 11.5px;">dihitung dari titik kas ' + esc(kas.titikTanggal) + '</div>'
+    isi($('rkUmpan'), r.umpan.slice(0, skala === 'langsung' ? 8 : 4).map((u, i) => '<div class="u ' + (mendarat && i === 0 ? 'baru' : '') + '"><span class="w">' + esc(u.jam) + '</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + esc(u.isi) + '</span><span class="angka" style="font-size: 13px;">' + esc(RP(u.rp)) + '</span></div>').join('')
+      || '<div class="menolak" style="padding: 8px 0;">Belum ada nota hari ini.</div>');
+    isi($('rkKas'), '<div class="kartu platina"><div class="label">Kas tercatat · semua kantong</div>' + (kas.adaTitik ? '<div class="angka kas" style="font-size: 20px;">' + esc(RP(kas.total)) + '</div><div class="ket" style="font-size: 11.5px;">dihitung dari titik kas ' + esc(kas.titikTanggal) + '</div>'
       : '<div class="menolak">Titik kas belum ada — Tutup hari malam ini (Uang › Tutup hari) menyetelnya untuk semua perangkat. Tanpa itu saldo tidak ditebak.</div>') + '</div>'
-      + '<div class="kartu platina"><div class="label">Uang hari ini</div><div class="angka kas" style="font-size: 20px;">+ ' + esc(RP(kas.masukLaci + kas.masukRek)) + '</div><div class="ket" style="font-size: 11.5px;">laci ' + esc(RP(kas.masukLaci)) + ' · rekening ' + esc(RP(kas.masukRek)) + (kas.keluar ? ' · keluar ' + esc(RP(kas.keluar)) : '') + '</div></div>';
+      + '<div class="kartu platina"><div class="label">Uang hari ini</div><div class="angka kas" style="font-size: 20px;">+ ' + esc(RP(kas.masukLaci + kas.masukRek)) + '</div><div class="ket" style="font-size: 11.5px;">laci ' + esc(RP(kas.masukLaci)) + ' · rekening ' + esc(RP(kas.masukRek)) + (kas.keluar ? ' · keluar ' + esc(RP(kas.keluar)) : '') + '</div></div>');
     detak(true);
   }
 
@@ -256,18 +269,41 @@ export function pasangLayarRingkasan(akar, opsi) {
     const k = kini(); const hidup = !opsi.sekarang();
     $('rkJam').textContent = p2(k.getHours()) + '.' + p2(k.getMinutes()) + '.' + p2(k.getSeconds());
     detikTotal += ((k.getSeconds() - (detikTotal % 60)) + 60) % 60;   // sudut selalu MAJU — dari detik 59 ke 0 jarum tidak berputar balik
-    $('rkDetik').style.transform = 'rotate(' + (detikTotal * 6) + 'deg)'; $('rkDetik').style.opacity = hidup ? '' : '0.25';
+    // jarum detik = <svg> lapisan sendiri di atas cincin (mulus Android paket 3): yang diputar KOTAKNYA (transform dikomposit kartu grafis), bukan garis di
+    // dalam SVG cincin — dulu tiap detik 420 ms gaya & cat ulang seluruh cincin di utas utama tablet
+    const dt = $('rkDetik'); const putar = 'rotate(' + (detikTotal * 6) + 'deg)'; if (dt.style.transform !== putar) dt.style.transform = putar;
+    const op = hidup ? '' : '0.25'; if (dt.style.opacity !== op) dt.style.opacity = op;
     if (pilihId && Date.now() - jamPilih > 8000) { pilihId = null; gambarPilihan(); }
     if (!paksa && k.getHours() * 60 + k.getMinutes() !== menitLama) perbarui('menit');
   }
   setInterval(() => detak(false), 1000);
   const perbaruiData = () => perbarui('data');
   const perbaruiTampil = () => perbarui('tampil');   // owner 29 Sep: dulu digambar langsung di ketukan (±80 ms menahan pindah layar)
-  const basiSemua = () => { ix = null; dbHasil = null; };   // indeks cincin & hasil dasbor dihitung ulang di gambar berikutnya
+  const basiSemua = () => { ix = null; dbHasil = null; };
+  let _panas = 0, _sentuhAkhir = 0;
+  document.addEventListener('pointerdown', () => { _sentuhAkhir = Date.now(); }, { capture: true, passive: true });
+  const luang = (f) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(f, { timeout: 5000 }) : setTimeout(f, 250));   // indeks cincin & hasil dasbor dihitung ulang di gambar berikutnya
   // owner 3 Okt (patah-patah): denyut HP (perangkatStatus, tiap ±5 menit per perangkat) & jejak tulisan (logAktivitas) tidak dibaca dasbor maupun indeks cincin
   // (pola BUKAN_RAK di Jual) — keduanya tidak membasikan hasil itu; Perlu perhatian (denyut kasir, antrean) tetap dihitung ulang di perbarui()
   const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas']);
-  dengarkan((nama) => { if (!BUKAN_DASBOR.has(nama)) basiSemua(); nanti(perbaruiData); });
+  const basiPanaskan = () => { basiSemua(); panaskanDasbor(); };
+  dengarkan((nama) => { if (!BUKAN_DASBOR.has(nama)) basiPanaskan(); nanti(perbaruiData); });
+
+  // PEMANASAN DASBOR DI LATAR (mulus Android paket 3, owner 23 Nov 2026; sisa paket 2: "Dasbor dibuka sesudah data berubah ±230 ms Mac, ±2 dtk tablet").
+  // Data berubah selagi Dasbor TIDAK tampil → kelompoknya dihitung SATU PER SATU di waktu luang peramban (requestIdleCallback; Safari: jeda pendek), hanya untuk
+  // owner yang memilih Dasbor, dan ditunda selama jari masih bekerja (≤ 1,5 dtk sejak sentuhan terakhir). Kuncinya SAMA dengan yang dipakai gambarDasbor →
+  // Dasbor yang dibuka sesudahnya tinggal menggambar. Data berubah lagi di tengah jalan = rantai lama berhenti, rantai baru mulai (hasil tetap per versi data).
+  function panaskanDasbor() {
+    if (!pemilik() || tampilan !== 'dasbor' || (tampil && modeDasbor()) || terkunci() || !dasbor) return;   // Dasbor yang sedang tampil dihitung perbarui()
+    const token = ++_panas; let i = 0;
+    const langkah = () => {
+      if (token !== _panas || !dasbor || (tampil && modeDasbor())) return;
+      if (Date.now() - _sentuhAkhir < 1500) { luang(langkah); return; }
+      const k = kini(); dbKelompok(DB_PANAS[i], k, dasbor.rentang(), ingatDb(k)); i += 1;
+      if (i < DB_PANAS.length) luang(langkah);
+    };
+    setTimeout(() => luang(langkah), 1200);
+  }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) perbarui('data'); });   // kembali ke depan → angka & cincin diselaraskan
 
   // putaran 23d: Beranda tidak punya kolom isian — tidak ada yang ditanyakan atau dikosongkan saat ganti orang (tirai sudah mengosongkan tampilannya)

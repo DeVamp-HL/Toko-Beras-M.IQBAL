@@ -158,8 +158,11 @@ def periksa(t, teks):
        and "tahanRak(2500);" in jl and "lepasRak(lamaAdegan ? Math.min(4000, lamaAdegan + 120) : 0);" in jl and "if (_rak && Date.now() < _rakTahanSampai) return _rak;" in jl)
     jlg = t['baru/js/layar/jual-logika.js']; tk = t['baru/js/data/toko.js']
     ok('jual: +1/−1 keranjang tidak menyusun seluruh rak — rak chip diingat per versi cache; versi naik di SEMUA jalan pengubah cache', "const rak = rakUntukChip();" in jlg
-       and "if (!_rakChip || _rakChipVersi !== v)" in jlg and tk.count('_versiCache += 1') == 7   # Paket C: denganCacheSaring (saring sementara + kembalikan) = 2
-       and "  _versiCache += 1;\n  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); _versiCache += 1; }" in tk)
+       and "if (!_rakChip || _rakChipVersi !== v)" in jlg and "function rakUntukChip() { const v = versiIsi();" in jlg
+       # mulus Android paket 3: semua pengubah cache lewat naikVersi() (satu-satunya `_versiCache += 1`); 7 jalan: pasok, setelSumber, cache sementara ×2,
+       # cache saring ×2 (saring sementara + kembalikan), terapkanKeCache
+       and tk.count('_versiCache += 1') == 1 and tk.count('naikVersi(') == 8
+       and "  naikVersi(null);\n  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); naikVersi(null); }" in tk)
     ok('jual: isi keranjang berubah → digambar dulu dengan rak lama, rak menyusul di bingkai berikut; aksi tetap rak segar', "const rak = rakKini(true);" in jl
        and "if (bolehTunda && !_rakPaksa && _rak && !_rakBasi && _rakUntuk !== tanda && typeof requestAnimationFrame === 'function' && !document.hidden) {" in jl and "_rakPaksa = true; nanti(gambarGulir);" in jl and jl.count('rakKini(true)') == 1)
     ok('jual: ketukan pemakai tetap seketika (K.dengar menggambar langsung)', "K.dengar(() => { gambar(); gulirkan(akar, RP); });" in jl)
@@ -221,7 +224,7 @@ KONTROL = [
     ('rak basi oleh penjualan diabaikan', {'baru/js/layar/jual.js': [("const BUKAN_RAK = new Set(['logAktivitas',", "const BUKAN_RAK = new Set(['penjualan', 'logAktivitas',")]}),
     ('ketukan ganda catat nota diterima lagi', {'baru/js/layar/jual.js': [('      if (_mencatat) return;\n', '')]}),
     ('+1 keranjang kembali menyusun seluruh rak', {'baru/js/layar/jual-logika.js': [("const rak = rakUntukChip();", "const rak = susunRak({ pelanggan: '', sekarang: null });")]}),
-    ('tulisan simulasi tidak menaikkan versi cache (rak chip basi)', {'baru/js/data/toko.js': [("urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut); _versiCache += 1;", "urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut);")]}),
+    ('tulisan simulasi tidak menaikkan versi cache (rak chip basi)', {'baru/js/data/toko.js': [("urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut); naikVersi(koleksi);", "urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut);")]}),
     ('rak menyusul tidak pernah dipaksa segar (tertunda terus)', {'baru/js/layar/jual.js': [("_rakPaksa = true; nanti(gambarGulir);", "nanti(gambarGulir);")]}),
     ('aksi chip memakai rak yang boleh basi', {'baru/js/layar/jual.js': [("chip: ({ jalur, kunci, berat }) => { const rak = rakKini();", "chip: ({ jalur, kunci, berat }) => { const rak = rakKini(true);")]}),
     ('rak tidak ditahan selama catat nota', {'baru/js/layar/jual.js': [('    if (_rak && Date.now() < _rakTahanSampai) return _rak;\n', '')]}),

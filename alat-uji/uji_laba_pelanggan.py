@@ -156,7 +156,7 @@ STATIS = [
     ('Laporan › Laba memasang kartu Per pelanggan', 'laporan', ['import * as PG from \'./laba-pelanggan-logika.js\';', 'kartuPelanggan(PG.pelangganBulan(key, s.pgN, kini()), s)', 'data-aksi="pgRentang"', 'data-aksi="pgSemua"',
                                                               '${pelanggan}${aman}', 'h`${pelanggan}${susut}${rugi}${tt}`', 'pgN: 1, pgSemua: false']),
     ('Dasbor memasang kartu Pelanggan usaha', 'dasbor', ['kartuB2b(D.b2b)', 'function kartuB2b(Q)', 'data-k="db-b2b"']),
-    ('dasbor-logika menyusun kelompok b2b', 'dasborL', ["import { pelangganBulan, pgHariTeks } from './laba-pelanggan-logika.js';", "b2b: aman('pelanggan usaha', () => dbB2b(kini))", 'b2b: lama.b2b']),
+    ('dasbor-logika menyusun kelompok b2b', 'dasborL', ["import { pelangganBulan, pgHariTeks } from './laba-pelanggan-logika.js';", "b2b: ['pelanggan usaha', dbB2b]", "b2b: k('b2b')", 'b2b: lama.b2b']),
     ('modul dipramuat & diuji CI', 'index', ['<link rel="modulepreload" href="js/layar/laba-pelanggan-logika.js">']),
     ('pages.yml menjalankan uji ini', 'pages', ['python3 alat-uji/uji_laba_pelanggan.py']),
     ('bundel uji melengkapi modul untuk Dasbor', 'bundel', ["PG_MODUL = 'baru/js/layar/laba-pelanggan-logika.js'", "PG_PEMAKAI = ('dasbor-logika.js',)"]),

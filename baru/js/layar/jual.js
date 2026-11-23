@@ -17,7 +17,7 @@ import { gambarStruk as gambarStrukKanvas, siapkanHuruf } from '../inti/struk-ka
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
-import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman, ambilTandaKenal } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman, ambilTandaKenal, versiIsi } from '../data/toko.js';
 import { tombolAkun, tombolLuarKisi, batasBarisNota, batasDokumenKirim, bukanOwner, hakAkun, bolehMintaOwner } from './akses-layar.js';
 // owner 7 Okt (JS2-C): batas nego per orang + Buku Nego; keputusan owner atas permintaan nego = penyusun papan persetujuan yang sama (Menu › Sistem › Peran)
 import * as NG from './nego-logika.js';
@@ -743,7 +743,7 @@ export function pasangLayarJual(akar, opsi) {
     const s = S(); L.sinkronKeranjang(s);
     // rak bergantung pada ISI keranjang (jumlah + bonus), bukan cuma banyaknya baris — +1 unit atau bonus mengubah sisa chip
     const dasar = (s.tukar ? 'tk' : '') + (s.karcis ? 'kc' + s.karcis.id : '') + s.pelanggan;
-    const tanda = dasar + '|' + s.keranjang.map((b) => b.trx.jenis + ':' + b.trx.jumlah + ':' + (b.trx.bonusUnit || 0) + ':' + (b.trx.kemasanRepack || '') + (b.trx.jumlahKemasanRepackDipakai || '')).join(',') + '|' + s.antrean.length + '|' + opsi.versiData();
+    const tanda = dasar + '|' + s.keranjang.map((b) => b.trx.jenis + ':' + b.trx.jumlah + ':' + (b.trx.bonusUnit || 0) + ':' + (b.trx.kemasanRepack || '') + (b.trx.jumlahKemasanRepackDipakai || '')).join(',') + '|' + s.antrean.length + '|' + versiIsi();   // mulus Android paket 3: versi isi TANPA denyut & jejak (dulu versi semua kabar → tiap denyut rak disusun penuh)
     if (_rak && Date.now() < _rakTahanSampai) return _rak;
     // owner 3 Okt (patah-patah tiap tambah barang): yang berubah CUMA isi keranjang → layar digambar dulu dengan rak lama (keranjang & lembar langsung
     // bereaksi), rak disusun ulang di bingkai berikutnya. Aksi (ketuk chip, Sering, ulangi) memanggil rakKini() tanpa tunda → selalu rak segar.

@@ -760,7 +760,7 @@ RUSAK_LAIN = [
     ('hemat (#111): g7 hanya "dibaca penuh sesi ini" (batu nisan & ubahan sesudahnya diabaikan)', 'baru/js/layar/tutup-buku-logika.js', "const ok7 = !!L.hemat.totalSesiIni && !hb;", "const ok7 = !!L.hemat.totalSesiIni;"),
     ('hemat (sanggahan 7 Okt): pintu susunKunci tidak memeriksa g7 (kelengkapan hanya di layar langkah 1)', 'baru/js/layar/tutup-buku-logika.js', "(g.id === 'g1' || g.id === 'g6' || g.id === 'g7' || g.id === 'g8' || g.id === 'g9') && !g.ok", "(g.id === 'g1' || g.id === 'g6' || g.id === 'g8' || g.id === 'g9') && !g.ok"),
     ('hemat (sanggahan 7 Okt): pintu susunKunci memanggil gerbang tanpa lokal() layar (g7 tidak pernah ada di pintu)', 'baru/js/layar/tutup-buku-logika.js', "const G = gerbangBuku(tahun, ugKiniDari(w), L || {}, {});", "const G = gerbangBuku(tahun, ugKiniDari(w), {}, {});"),
-    ('cache sementara tidak dikembalikan sesudah diperiksa (layar lain membaca saldo pembuka saja)', 'baru/js/data/toko.js', "  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); _versiCache += 1; }\n}\n\n// ---- keranjang aktif", "  return fn();\n}\n\n// ---- keranjang aktif"),
+    ('cache sementara tidak dikembalikan sesudah diperiksa (layar lain membaca saldo pembuka saja)', 'baru/js/data/toko.js', "  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); naikVersi(null); }\n}\n\n// ---- keranjang aktif", "  return fn();\n}\n\n// ---- keranjang aktif"),
 ]
 # uang.js — layar dijalankan di jsc; kontrolnya memakai bundel layar
 RUSAK_LAYAR = [

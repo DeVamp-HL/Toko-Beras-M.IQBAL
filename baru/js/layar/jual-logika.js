@@ -26,7 +26,7 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
-  wzDiKeranjangParkir, sumberData, cacheMentah, versiCache, ingatPerVersi, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, returUangPerHari, kreditLintas, ingatStokKarung, ingatStokKemasan, denganCacheSementara } from '../data/toko.js';
+  wzDiKeranjangParkir, sumberData, cacheMentah, versiIsi, ingatPerVersi, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, returUangPerHari, kreditLintas, ingatStokKarung, ingatStokKemasan, denganCacheSementara } from '../data/toko.js';
 import { hariIniIso, RP, tanggalPendek, pecahLebih } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan, tolakBatalReturBon, capModalKembali } from './retur-logika.js';
 import { tkSetTertaut, caraBayarKunci } from '../mesin/pembantu.js';
@@ -202,7 +202,7 @@ export function susunRak(s, opsi) {
 // Menyusun rak penuh ±176 ms di Mac / ±0,5 dtk di iPad, dan dulu diulang tiap +1/−1. Yang berubah sesudah ketukan keranjang hanya SISA beberapa chip:
 // nama, harga, modal, urutan, dan ada-tidaknya chip cuma bergantung pada data toko. susunRakLanjut(s, rakLama) memakai ulang chip yang masukannya
 // (jejak keranjang di bawah) sama dengan saat ia dihitung, dan menghitung ulang SISANYA saja dengan fungsi gera* yang sama dengan susun penuh.
-// Data toko berubah (versiCache naik), pelanggan / hari berganti, atau keranjang belum disinkronkan → susun penuh. Ragu → hitung ulang.
+// Data toko berubah (versiIsi naik — mulus Android paket 3: denyut perangkat & jejak tulisan tidak dihitung, rak tidak membaca keduanya), pelanggan / hari berganti, atau keranjang belum disinkronkan → susun penuh. Ragu → hitung ulang.
 // Dijaga alat-uji/uji_rak_inkremental.py: hasilnya sama persis (urutan, kelompok, Sering) dengan susunRak pada keadaan yang sama.
 const INGAT_RAK = '__ingatRak';
 const kelompokkan = (daftar, kunci, judul) => { const out = []; daftar.forEach((c) => { const k = kunci(c); let g = out.find((x) => x.k === k); if (!g) { g = { k, judul: judul(c), daftar: [] }; out.push(g); } g.daftar.push(c); }); return out; };
@@ -277,7 +277,7 @@ function pasangIngatanRak(rak, s, ig) {
   const J = jejakKeranjang(s);
   const sidik = { karung: rak.karung.map((c) => SIDIK.karung(c, J)), kemasan: rak.kemasan.map((c) => SIDIK.kemasan(c, J)), repack: rak.repack.map((c) => SIDIK.repack(c, J)),
     literan: rak.literan.map((c, i) => SIDIK.literan(c, J, ig.pakai[i])) };
-  Object.defineProperty(rak, INGAT_RAK, { value: Object.assign({ versi: versiCache(), pelanggan: kunciPelanggan(s.pelanggan), hari: hariIniIso(s.sekarang), lembar: J.lembar, sidik }, ig) });
+  Object.defineProperty(rak, INGAT_RAK, { value: Object.assign({ versi: versiIsi(), pelanggan: kunciPelanggan(s.pelanggan), hari: hariIniIso(s.sekarang), lembar: J.lembar, sidik }, ig) });
 }
 /**
  * Rak untuk keadaan s, disusun dari rakLama (hasil susunRak / susunRakLanjut sebelumnya): HASILNYA SAMA PERSIS dengan susunRak(s). Panggil sesudah
@@ -286,7 +286,7 @@ function pasangIngatanRak(rak, s, ig) {
  */
 export function susunRakLanjut(s, rakLama) {
   const ig = rakLama && rakLama[INGAT_RAK];
-  if (!ig || ig.versi !== versiCache() || !rakSelaras(s) || ig.pelanggan !== kunciPelanggan(s.pelanggan) || ig.hari !== hariIniIso(s.sekarang)) return susunRak(s);
+  if (!ig || ig.versi !== versiIsi() || !rakSelaras(s) || ig.pelanggan !== kunciPelanggan(s.pelanggan) || ig.hari !== hariIniIso(s.sekarang)) return susunRak(s);
   const J = jejakKeranjang(s);
   const rak = { karung: null, kemasan: null, literan: null, repack: null, wadah: null }; const sidik = {}; const pakai = [];
   ['karung', 'kemasan', 'repack'].forEach((jl) => { sidik[jl] = []; rak[jl] = rakLama[jl].map((c, i) => {
@@ -721,7 +721,7 @@ export function ubahJumlahBaris(s, id, selisih) {
 // owner 7 Okt (J3): data berubah sesudah TIAP nota (penjualan + jejak), jadi nota berikutnya tetap menyusun rak penuh (±80 ms di jsc, ±0,2 dtk di Mac) di dalam
 // "Mencatat…". Kini disusun sebagai rak IDENTITAS (tanpa sisa / Sering) — chipnya sama; dibuktikan alat-uji/uji_catat_nota_cepat.py (pembanding dokumen nota).
 let _rakChip = null, _rakChipVersi = -1;
-function rakUntukChip() { const v = versiCache(); if (!_rakChip || _rakChipVersi !== v) { _rakChip = susunRak({ pelanggan: '', sekarang: null }, { identitas: true }); _rakChipVersi = v; } return _rakChip; }
+function rakUntukChip() { const v = versiIsi(); if (!_rakChip || _rakChipVersi !== v) { _rakChip = susunRak({ pelanggan: '', sekarang: null }, { identitas: true }); _rakChipVersi = v; } return _rakChip; }
 /** B1: rak IDENTITAS (nama, harga eceran, modal tiap barang — tanpa sisa) untuk layar Pelanggan › Usaha. Diingat per versi data. */
 export function rakBarang() { return rakUntukChip(); }
 function chipDariBaris(t) {

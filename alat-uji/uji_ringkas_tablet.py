@@ -101,14 +101,15 @@ cek('surat jalan masih di jalan: 1', R.jalan.length === 1 && R.jalan[0].no === '
 cek('stok tipis terbaca tanpa galat (daftar)', Array.isArray(R.tipis));
 
 // ---------- stok tipis vs HABIS (owner 22 Nov 2026, CPad: enam baris "±0 hari" berurutan abjad = barang kosong menutupi yang hampir habis) ----------
-var daftarAsli = daftarBarang;
+// mulus Android paket 3: rtHitung diingat per versi — pembungkus mesin TANPA mengubah data wajib membuang ingatan sebelum & sesudah
+var daftarAsli = daftarBarang; setelIngatan({});
 daftarBarang = function () { return [
   { nama: 'Zeta', satuan: 'kg', sisa: 0, laju: 100, hariHabis: 0 }, { nama: 'Mawar', satuan: 'kg', sisa: 0, laju: 50, hariHabis: 0 },
   { nama: 'Beta', satuan: 'kg', sisa: 0, laju: 20, hariHabis: 0 }, { nama: 'Alfa', satuan: 'kg', sisa: 0, laju: 10, hariHabis: 0 },
   { nama: 'Cepat', satuan: 'kg', sisa: 300, laju: 500, hariHabis: 0.6 }, { nama: 'Kemasan 5 kg', satuan: 'unit', sisa: 2, laju: 1, hariHabis: 2 },
   { nama: 'Minus', satuan: 'kg', sisa: -5, laju: 3, hariHabis: -5 / 3 }, { nama: 'Aman', satuan: 'kg', sisa: 100, laju: 10, hariHabis: 10 },
   { nama: 'Wadah', satuan: 'kg', sisa: 0, laju: 5, hariHabis: 0, wadahStok: true }, { nama: 'Mati', satuan: 'kg', sisa: 0, laju: 0, hariHabis: null }]; };
-var Rs = rtHitung(KINI, OWNER_JAGA, SIAP); daftarBarang = daftarAsli;
+var Rs = rtHitung(KINI, OWNER_JAGA, SIAP); daftarBarang = daftarAsli; setelIngatan({});
 cek('stok tipis: MINUS dulu, lalu yang MASIH ADA paling cepat habis (Cepat 0,6 hari, Kemasan 2 hari); yang aman tidak ikut',
   J(Rs.tipis.map(function (b) { return [b.nama, b.hari, b.minus]; })) === J([['Minus', 0, true], ['Cepat', 0.6, false], ['Kemasan 5 kg', 2, false]]), Rs.tipis);
 cek('stok tipis: barang bersisa 0 TIDAK jadi baris "±0 hari"', Rs.tipis.every(function (b) { return Math.abs(b.sisa) > 0.004; }), Rs.tipis);

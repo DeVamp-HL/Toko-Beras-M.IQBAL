@@ -28,7 +28,7 @@ function urutkanTerbaru(arr, field) {
 export function pasok(namaKoleksi, dokumen) {
   const k = KOLEKSI.find((x) => x.nama === namaKoleksi);
   if (!k) return false;
-  _cache[k.cache] = urutkanTerbaru(dokumen || [], k.urut); _versiCache += 1;
+  _cache[k.cache] = urutkanTerbaru(dokumen || [], k.urut); naikVersi(namaKoleksi);
   _pendengar.forEach((f) => { try { f(namaKoleksi); } catch (e) { console.error('pendengar data', e); } });
   return true;
 }
@@ -53,24 +53,42 @@ function ingatanGantiHari() {
   const d = new Date(t); _hariDari = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); _hariSampai = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
   return true;
 }
+// mulus Android paket 3 (owner 23 Nov 2026, kartu Kelancaran CPad: ±1.600 "macet tanpa ketukan" sehari): DENYUT perangkat (perangkatStatus — tiap perangkat
+// tiap ±5 menit, ditulis lalu diakui server = 2 kabar) dan JEJAK tulisan (logAktivitas — tiap tulisan perangkat mana pun) dulu menaikkan versi yang SAMA →
+// seluruh ingatan dibuang → layar yang terbuka (Jual, Menu, Ringkasan) menghitung ulang buku stok, laci, kas dari nol, padahal hampir tidak ada hitungan yang
+// membaca kedua koleksi itu. Kini ingatan MENCATAT apakah hitungannya membaca cache denyut/jejak (lewat cacheMentah / dokDiCache — satu-satunya pintu ke
+// kedua cache itu): yang tidak membaca tetap berlaku melewati kabar denyut/jejak; yang membaca (mis. kisi perangkat Menu) dihitung ulang. Kabar koleksi lain
+// membuang semuanya seperti dulu. versiCache() tidak berubah artinya (naik untuk SEMUA koleksi).
+const CACHE_DENYUT = { perangkat: 1, log: 1 };
+const KOLEKSI_DENYUT = { perangkatStatus: 1, logAktivitas: 1 };
+let _versiBerat = 0, _versiDenyut = 0, _ingatDalam = 0, _ingatBacaDenyut = false;
+/** Versi isi cache DI LUAR denyut & jejak — rak Jual (yang tidak membaca keduanya) memakainya supaya denyut tidak menyusun ulang seluruh rak. */
+export const versiIsi = () => _versiBerat;
+function naikVersi(namaKoleksi) { _versiCache += 1; if (namaKoleksi && KOLEKSI_DENYUT[namaKoleksi]) _versiDenyut += 1; else _versiBerat += 1; }
+const tandaiBaca = (namaCache) => { if (_ingatDalam > 0 && CACHE_DENYUT[namaCache]) _ingatBacaDenyut = true; };
 export function ingatPerVersi(kunci, f) {
   const I = _ingatan; if (I.mati) return f();
-  if (ingatanGantiHari() || I.versi !== _versiCache) { I.isi = new Map(); I.versi = _versiCache; }
-  if (I.isi.has(kunci)) return I.isi.get(kunci);
-  const v = _versiCache; const h = I.beku ? I.beku(f()) : f();
-  if (v === _versiCache && I.versi === v) I.isi.set(kunci, h);
+  if (ingatanGantiHari() || I.versi !== _versiBerat) { I.isi = new Map(); I.versi = _versiBerat; }
+  const ada = I.isi.get(kunci);
+  if (ada && (!ada.denyut || ada.vd === _versiDenyut)) { if (ada.denyut && _ingatDalam > 0) _ingatBacaDenyut = true; return ada.h; }   // hitungan luar ikut bergantung pada denyut
+  const v = _versiCache; const luar = _ingatBacaDenyut; _ingatBacaDenyut = false; _ingatDalam += 1;
+  let h, denyut = false;
+  try { h = I.beku ? I.beku(f()) : f(); } finally { _ingatDalam -= 1; denyut = _ingatBacaDenyut; _ingatBacaDenyut = luar || denyut; }
+  if (v === _versiCache && I.versi === _versiBerat) I.isi.set(kunci, { h, denyut, vd: _versiDenyut });
   return h;
 }
 /** Khusus alat uji: { mati: true } = hitung ulang tiap panggilan (pembanding); { beku: fn } = tiap hasil ingatan dilewatkan fn (pembeku). */
 export function setelIngatan(o) { _ingatan.mati = !!(o && o.mati); _ingatan.beku = (o && o.beku) || null; _ingatan.isi = new Map(); _ingatan.versi = -1; }
+/** Khusus alat uji: kunci yang sedang diingat + apakah hitungannya membaca cache denyut/jejak (uji_mulus_android_3.py). */
+export function isiIngatan() { const o = {}; _ingatan.isi.forEach((x, k) => { o[k] = { denyut: !!x.denyut }; }); return o; }
 /** Khusus alat uji: f dihitung TANPA ingatan (pembanding hitung ulang penuh); ingatan yang sudah ada tidak disentuh. */
 export function tanpaIngatan(f) { const m = _ingatan.mati; _ingatan.mati = true; try { return f(); } finally { _ingatan.mati = m; } }
-export function setelSumber(jenis, keterangan) { _versiCache += 1; _sumber.jenis = jenis; _sumber.keterangan = keterangan || ''; _pendengar.forEach((f) => f('__sumber__')); }
+export function setelSumber(jenis, keterangan) { naikVersi(null); _sumber.jenis = jenis; _sumber.keterangan = keterangan || ''; _pendengar.forEach((f) => f('__sumber__')); }
 export function sumberData() { return Object.assign({}, _sumber); }
 export function dengarkan(f) { _pendengar.add(f); return () => _pendengar.delete(f); }
-export function cacheMentah(nama) { return _cache[nama] || []; }
+export function cacheMentah(nama) { tandaiBaca(nama); return _cache[nama] || []; }
 /** Dokumen satu koleksi (nama koleksi Firestore) menurut cache — dipakai penulis pusat untuk membedakan create dari update (putaran 23). */
-export function dokDiCache(koleksi, id) { const k = KOLEKSI.find((x) => x.nama === koleksi); return k ? (_cache[k.cache] || []).find((d) => String(d.id) === String(id)) || null : null; }
+export function dokDiCache(koleksi, id) { const k = KOLEKSI.find((x) => x.nama === koleksi); if (k) tandaiBaca(k.cache); return k ? (_cache[k.cache] || []).find((d) => String(d.id) === String(id)) || null : null; }
 // §8 no. 4 (tutup buku bertahap): dokumen yang masih MENUNGGU SERVER di perangkat ini — Firestore sudah menaruh tulisannya di cache (hasPendingWrites), server
 // belum mengaku (bisa saja nanti ditolak lalu dibuang). Diisi pendengar firebase.js per koleksi (nama Firestore); simulasi cadangan = selalu kosong.
 const _tertunda = {};
@@ -280,9 +298,9 @@ export function denganCacheSementara(daftar, fn) {
     const k = KOLEKSI.find((x) => x.nama === koleksi); if (!k || !data) return;
     if (!(k.cache in simpan)) simpan[k.cache] = _cache[k.cache];
     const id = String(data.id);
-    _cache[k.cache] = urutkanTerbaru(_cache[k.cache].filter((d) => String(d.id) !== id).concat([Object.assign({}, data)]), k.urut); _versiCache += 1;
+    _cache[k.cache] = urutkanTerbaru(_cache[k.cache].filter((d) => String(d.id) !== id).concat([Object.assign({}, data)]), k.urut); naikVersi(koleksi);
   });
-  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); _versiCache += 1; }
+  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); naikVersi(null); }
 }
 /**
  * Paket C (siap 2027, 7 Okt 2026): jalankan fn di atas cache yang DISARING sementara — koleksi `nama` (nama Firestore) hanya menyisakan dokumen yang lolos
@@ -294,8 +312,8 @@ export function denganCacheSaring(nama, lolos, fn, ganti) {
   const simpan = {};
   (nama || []).forEach((n) => { const k = KOLEKSI.find((x) => x.nama === n); if (!k || k.cache in simpan) return; simpan[k.cache] = _cache[k.cache];
     _cache[k.cache] = (_cache[k.cache] || []).filter((d) => lolos(d, n)).map((d) => (ganti ? ganti(d, n) : d)); });
-  _versiCache += 1;
-  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); _versiCache += 1; }
+  naikVersi(null);
+  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); naikVersi(null); }
 }
 
 // ---- keranjang aktif & yang diparkir (dibaca stokMaksJalur lewat wzDiKeranjang) ----
@@ -322,7 +340,7 @@ export function terapkanKeCache(daftar) {
     const k = KOLEKSI.find((x) => x.nama === koleksi); if (!k) return;
     const id = String((data && data.id) || hapus);
     const sisa = _cache[k.cache].filter((d) => String(d.id) !== id);
-    _cache[k.cache] = hapus ? sisa : urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut); _versiCache += 1;
+    _cache[k.cache] = hapus ? sisa : urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut); naikVersi(koleksi);
     kena[koleksi] = true;
   });
   Object.keys(kena).forEach((n) => _pendengar.forEach((f) => { try { f(n); } catch (e) { console.error('pendengar data', e); } }));

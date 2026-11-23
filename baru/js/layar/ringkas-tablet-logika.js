@@ -5,7 +5,7 @@
 // Keputusan owner 21 Nov 2026: data uang DIBUKA untuk akun tablet yang ditandai owner (rules v14 stafBacaUang; aksesAkun.bacaUang), tampil pakai PIN orang
 // pilihan owner; isi = omzet, tunai / QRIS / bon, titipan, laci seharusnya & uang keluar PERSIS seperti di HP (rumus laci Tutup hari yang sama), per orang
 // yang jaga, terlaris & stok tipis, pesanan & antar; bisa dicetak. Data uang dimuat firebase.js (setelDataUang) hanya selama orang itu jaga.
-import { ambilPenjualan, ambilPiutangMutasi, ambilPesanan, ambilSuratJalan, kunciNota, returUangPerHari, ingatGerakanKas } from '../data/toko.js';
+import { ambilPenjualan, ambilPiutangMutasi, ambilPesanan, ambilSuratJalan, kunciNota, returUangPerHari, ingatGerakanKas, ingatPerVersi } from '../data/toko.js';
 import { caraBayarKunci, AMBANG_HARI_KRITIS, JENDELA_LAJU_HARI } from '../mesin/pembantu.js';
 import { RP, KG, ANGKA, tanggalPendek, hariIniIso } from '../inti/format.js';
 import { rumusLaci, tdNamaGerak } from './tutup-hari-logika.js';
@@ -47,8 +47,14 @@ const rtTambah = (peta, k, isi) => { if (!peta[k]) peta[k] = isi(); return peta[
  * Hitung ringkas hari `kini` (tanggal perangkat). akun = akun efektif (orang yang jaga); u = status.uang. Hasil: semua angka kartu & cetakan.
  * Bagian uang (laci, uang keluar) hanya diisi bila data uangnya siap — selain itu null, BUKAN Rp0.
  */
+// mulus Android paket 3 (owner 23 Nov 2026, kartu CPad: Menu 185 kali tersendat, kebanyakan "tanpa ketukan (kabar data)"): kartu ini dulu dihitung ulang
+// tiap gambar Menu — tiap kabar data, tiap ketukan. Isinya hanya data + HARI + keadaan data uang (K) → diingat per versi + hari + K. Hasil dipakai bersama
+// (kartu & cetak hanya membaca).
 export function rtHitung(kini, akun, u) {
   const iso = hariIniIso(kini); const K = rtKeadaanUang(akun, u);
+  return ingatPerVersi('rtHitung|' + iso + '|' + K.st + '|' + K.teks, () => rtHitungIsi(iso, K));
+}
+function rtHitungIsi(iso, K) {
   const jual = ambilPenjualan().filter((p) => p.tanggal === iso);
   const jumlah = (xs) => xs.reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0);
   const tunai = jumlah(jual.filter((p) => caraBayarKunci(p) !== 'qris' && caraBayarKunci(p) !== 'kredit'));

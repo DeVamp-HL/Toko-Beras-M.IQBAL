@@ -38,8 +38,11 @@ function daftarKarcisHitung(iso) {
 }
 
 /** Tebakan dari katalog untuk satu nominal — kandidatDarurat + kombinasiDarurat sistem lama: literan kelipatan 0,5 L (toleransi bulat Rp500, harga PAS dibawa), kemasan 1–6, karung 50/25 1–4, kombinasi 2–3 barang yang jumlahnya persis. */
-export function tebakanKarcis(nominal) {
-  const n = Math.round(Number(nominal) || 0); if (!(n > 0)) return [];
+// mulus Android paket 3 (owner 23 Nov 2026, kartu CPad: lembar karcis ±290 kali tersendat sehari): tebakan = ratusan ribu pasangan harga (kolam² + jangkar ×
+// literan²) dan dulu dihitung ulang TIAP gambar lembar karcis — tiap ketukan tuts, tiap kabar data. Isinya hanya data (harga, stok, wadah) + nominal → diingat
+// per versi + nominal. Hasil DIPAKAI BERSAMA: pemanggil hanya membaca (pakaiTebakan menyalin isinya ke keranjang).
+export function tebakanKarcis(nominal) { const n = Math.round(Number(nominal) || 0); if (!(n > 0)) return []; return ingatPerVersi('kcTebak|' + n, () => tebakanKarcisHitung(n)); }
+function tebakanKarcisHitung(n) {
   // putaran 27: harga liter yang dipakai rak = wadah + merek literan langsung
   const hasil = []; const stokK = ingatStokKarung(); const lk = aturWadah().daftar.concat(wbLiteranLangsung().daftar); const literan = ambilHargaLiteran().filter((h) => h.hargaPerLiter > 0 && lk.indexOf(h.merk) >= 0); const kemasan = ambilHargaKemasan().filter((h) => h.hargaPerUnit > 0);
   literan.forEach((h) => { const L = Math.round(n / h.hargaPerLiter * 2) / 2; if (!(L >= 0.5 && L <= 40)) return; const katalog = Math.round(L * h.hargaPerLiter); const selisih = n - katalog;
@@ -290,7 +293,9 @@ export function susunBatalKarcis(id, alasan, w) {
 /** Rincian yang dibuat hari `iso` (menurut jam dinding setempat) dan masih utuh (bisa ditarik balik dari daftar karcis). Terbaru dirinci dulu.
  *  jam & tanggal = JAM KARCIS ASLI (saat penjualan terjadi di kasir) — sama dengan jam yang ditulis di baris rinciannya. jamRinci = kapan owner
  *  merinci (dirinciPada, disimpan UTC) digambar setempat. Dulu `jam` berisi jam merinci, padahal di layar tertulis di sebelah nomor karcis. */
-export function riwayatRinci(iso) {
+// mulus Android paket 3: rincian hari ini memindai SELURUH penjualan (dengan Date per baris) tiap gambar lembar karcis → diingat per versi + hari
+export function riwayatRinci(iso) { return ingatPerVersi('kcRinciHari|' + iso, () => riwayatRinciHitung(iso)); }
+function riwayatRinciHitung(iso) {
   const grup = {}; ambilPenjualanSemua().forEach((x) => { if (!x.grupNota || !x.dirinciPada || !(x.asalDarurat || x.koreksiDari)) return; const kapan = new Date(x.dirinciPada); if (isNaN(kapan.getTime()) || hariIniIso(kapan) !== iso) return; const g = grup[x.grupNota] = grup[x.grupNota] || { grupNota: x.grupNota, asliId: x.rinciDari || x.koreksiDari, idPertama: x.id, n: 0, total: 0, jam: x.jam || '', tanggal: x.tanggal, jamRinci: jamSetempat(x.dirinciPada), dirinciPada: String(x.dirinciPada), utuh: true }; g.n += 1; g.total += x.hargaTotal || 0; if (!penjualanMasihBerlaku(x)) g.utuh = false; });
   return Object.keys(grup).map((k) => grup[k]).sort((a, b) => b.dirinciPada.localeCompare(a.dirinciPada));   // ISO UTC: urut lintas tengah malam
 }

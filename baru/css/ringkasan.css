@@ -57,8 +57,12 @@ main[hidden] { display: none !important; }
 .layar-ringkasan .cincin.memilih .sektor:not(.dipilih) { stroke-opacity: 0.35; }
 .layar-ringkasan .sektor.dipilih { stroke: var(--emas-tepi); stroke-opacity: 1; filter: drop-shadow(0 0 3px var(--logam-glow)); }
 .layar-ringkasan .cincin { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.layar-ringkasan .jarum-detik { stroke: var(--emas-tepi); stroke-width: 1.6; stroke-linecap: round; transform-box: view-box; transform-origin: 100px 100px;
+/* mulus Android paket 3 (owner 23 Nov 2026): jarum detik = <svg> lapisan sendiri yang menutup cincin persis (viewBox sama, kotak sama) dan KOTAKNYA yang
+   diputar — transform pada kotak HTML dikomposit kartu grafis. Dulu garis di dalam SVG cincin: tiap detik 420 ms gaya & cat ulang seluruh cincin di utas utama. */
+.layar-ringkasan .cincin-kotak { position: relative; width: 100%; }
+.layar-ringkasan .rk-detik { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; transform-origin: 50% 50%; will-change: transform;
   transition: transform 420ms cubic-bezier(.34,1.56,.64,1), opacity 480ms ease; opacity: 0.9; }
+.layar-ringkasan .rk-detik line { stroke: var(--emas-tepi); stroke-width: 1.6; stroke-linecap: round; }
 .layar-ringkasan .rk-detail { min-height: 18px; font-size: 11.5px; text-align: center; color: var(--redup); opacity: 0.6; transition: opacity 240ms ease, color 240ms ease; }
 .layar-ringkasan .rk-detail.tampil { opacity: 1; color: var(--teks); font-weight: 600; }
 /* kilau: diam di luar kartu, MENYAPU saat skala berganti atau nota mendarat */
@@ -83,7 +87,7 @@ main.layar-ringkasan.masuk > .kartu:not(.hero) { animation-delay: 160ms; }
 main.layar-ringkasan.masuk > .rk-samping { animation-delay: 230ms; }   /* hero 70 → nota 160 → samping 230: atas/kiri naik lebih dulu (dulu .kartu:last-child 300 ms tak pernah kena) */
 @keyframes rkNaik { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .layar-ringkasan .sektor, .layar-ringkasan .jarum-detik, .layar-ringkasan .kartu.hero, .layar-ringkasan .lapis > div, .layar-ringkasan .pita .seg { transition: none; }
+  .layar-ringkasan .sektor, .layar-ringkasan .rk-detik, .layar-ringkasan .kartu.hero, .layar-ringkasan .lapis > div, .layar-ringkasan .pita .seg { transition: none; }
   .layar-ringkasan .kilau.sapu, .layar-ringkasan .ganti-teks, .layar-ringkasan .kartu.hero.mendarat, .layar-ringkasan .umpan .u.baru, main.layar-ringkasan.masuk > * { animation: none; }
 }
 
