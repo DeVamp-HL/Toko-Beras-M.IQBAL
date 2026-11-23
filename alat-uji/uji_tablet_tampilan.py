@@ -29,9 +29,9 @@ JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Help
 NT = 'baru/js/data/notif-tablet.js'; PR = 'baru/js/inti/perangkat.js'; KBL = 'baru/js/layar/kabar-baru-logika.js'; FMT = 'baru/js/inti/format.js'
 TPL = 'baru/js/layar/titipan-logika.js'; PSN = 'functions/pesan.js'; FIX = 'functions/index.js'; PAS = 'apk/pasang.py'
 IDX = 'baru/index.html'; KER = 'baru/css/kerangka.css'; APP = 'baru/js/app.js'; MA = 'apk/tambahan/MainActivity.java'; PP = 'apk/tambahan/PerangkatPlugin.java'
-FB = 'baru/js/data/firebase.js'; MENU = 'baru/js/layar/menu.js'; LC = 'baru/js/layar/lonceng.js'; YML = '.github/workflows/apk.yml'; PKG = 'apk/package.json'
+FB = 'baru/js/data/firebase.js'; SIS = 'baru/js/layar/sistem-logika.js'; MENU = 'baru/js/layar/menu.js'; LC = 'baru/js/layar/lonceng.js'; YML = '.github/workflows/apk.yml'; PKG = 'apk/package.json'
 LAYAR = ['harga', 'jual', 'laporan', 'pelanggan', 'menu', 'stok', 'uang', 'ringkasan']
-BERKAS = [NT, PR, KBL, FMT, TPL, PSN, FIX, PAS, IDX, KER, APP, MA, PP, FB, MENU, LC, YML, PKG] + ['baru/js/layar/%s.js' % n for n in LAYAR]
+BERKAS = [NT, PR, KBL, FMT, TPL, PSN, FIX, PAS, IDX, KER, APP, MA, PP, FB, MENU, LC, YML, PKG, SIS] + ['baru/js/layar/%s.js' % n for n in LAYAR]
 
 
 def baca(ganti=None):
@@ -153,6 +153,28 @@ async function utama() {
   cek('push tablet: kiriman = notifikasi Android saluran "kabar", prioritas tinggi, data layar teks', J(k.tokens) === J(['t1', 't2']) && k.notification.title === a.judul && k.android.priority === 'high' && k.android.notification.channelId === 'kabar' && k.data.layar === 'menu' && typeof k.data.tag === 'string', J(k));
   var pj = P.pesanPutus({ status: 'menunggu', tindakan: 'pesan', mintaUid: 'u' }, { status: 'dibaca', tindakan: 'pesan', teks: 'z'.repeat(300), balasan: 'y'.repeat(150), mintaUid: 'u' }, 'q');
   cek('push tablet: isi dipendekkan (layar kunci)', pj.isi.length <= P.BATAS_ISI, pj.isi.length);
+  // ---- pesan owner KE tablet (owner 23 Nov 2026)
+  var W = { tanggal: '2026-11-23', jam: '15:00', kini: '2026-11-23T08:00:00.000Z', idUnik: function () { return 'po1'; } };
+  var S1 = kbSusunPesanOwner('  Tolong   cek stok 5 kg  ', W, OW); var dPO = S1.dokumen && S1.dokumen[0].data;
+  cek('pesan owner: satu dokumen persetujuan pesanOwner, status terkirim (bukan menunggu), teks dirapikan, untuk tablet', S1.dokumen && S1.dokumen.length === 1 && S1.dokumen[0].koleksi === 'persetujuan'
+    && dPO.tindakan === 'pesanOwner' && dPO.status === 'terkirim' && dPO.teks === 'Tolong cek stok 5 kg' && dPO.untuk === 'tablet' && dPO.tanggal === '2026-11-23' && dPO.jam === '15:00', J(S1));
+  cek('pesan owner: kosong / lebih dari 500 huruf / bukan akun owner DITOLAK', !!kbSusunPesanOwner('   ', W, OW).tolak && !!kbSusunPesanOwner('x'.repeat(501), W, OW).tolak && !!kbSusunPesanOwner('halo', W, TB).tolak && !kbSusunPesanOwner('x'.repeat(500), W, OW).tolak);
+  var DP = D.concat([dPO]);
+  var LO = kbLonceng(OW, DP, kbTandai(L1));
+  cek('lonceng owner: pesan owner TIDAK dihitung & tidak di daftar menunggu; tampil di "terkirim"', LO.n === 0 && LO.menunggu === 2 && LO.daftar.every(function (x) { return x.id !== 'po1'; }) && LO.terkirim.length === 1 && LO.terkirim[0].isi === 'Tolong cek stok 5 kg', J([LO.n, LO.menunggu, LO.terkirim]));
+  var LT = kbLonceng(TB, DP, kbTandai(T0));
+  cek('lonceng tablet: pesan owner = kabar baru (angka 1, paling atas, judul "Pesan dari owner")', LT.n === 1 && LT.daftar[0].id === 'po1' && LT.daftar[0].judul === 'Pesan dari owner' && LT.daftar[0].baru === true, J([LT.n, LT.daftar[0]]));
+  cek('lonceng tablet: sesudah dibuka angka nol', kbLonceng(TB, DP, kbTandai(LT)).n === 0);
+  var LK = kbLonceng({ jenis: 'staf', uid: 'uid-lain', peran: 'karyawan' }, DP, {});
+  cek('lonceng akun tablet lain (karyawan) juga menerima pesan owner', LK.daftar.some(function (x) { return x.id === 'po1'; }));
+  var sTB0 = kbSidik(TB, D), sTB1 = kbSidik(TB, DP); var evT = kbBanding(sTB0, sTB1);
+  cek('kabar dalam aplikasi: tablet berbunyi "Pesan dari owner" saat pesan owner datang', evT.length === 1 && evT[0].judul === 'Pesan dari owner' && evT[0].isi === 'Tolong cek stok 5 kg', J(evT));
+  var evO = kbBanding(kbSidik(OW, D), kbSidik(OW, DP));
+  cek('kabar dalam aplikasi: owner yang menulis TIDAK berbunyi untuk pesannya sendiri', evO.length === 0, J(evO));
+  var pp = P.pesanDariOwner(dPO, 'po1');
+  cek('push dari owner: judul "Pesan dari owner", isi teks, tag owner-id, ke semua tablet (untukUid kosong)', pp && pp.judul === 'Pesan dari owner' && pp.isi === 'Tolong cek stok 5 kg' && pp.tag === 'owner-po1' && pp.untukUid === '' && pp.layar === 'menu', J(pp));
+  cek('push dari owner: bukan pesan owner / kosong = tidak dikirim; HP owner tidak dikabari pesannya sendiri', P.pesanDariOwner({ tindakan: 'pesan', teks: 'x' }, 'a') === null && P.pesanDariOwner({ tindakan: 'pesanOwner', teks: '  ' }, 'a') === null
+    && P.pesanNotif(Object.assign({}, dPO, { status: 'menunggu' }), 'po1') === null);
   print(JSON.stringify(H));
 }
 utama().catch(function (e) { print(JSON.stringify([{ nama: 'jsc jatuh', ok: false, ket: String(e && e.stack || e) }])); });
@@ -248,11 +270,14 @@ def periksa_statis(t):
     ok('lonceng: lembarnya ada di halaman & tersembunyi saat terkunci', 'id="lembarLonceng" class="lembar-lonceng kartu"' in I and 'body.terkunci .lembar-lonceng { display: none !important; }' in K and '.lembar-lonceng[hidden] { display: none; }' in K)
     ok('lonceng: bergoyang saat kabar baru, angka meletup', '.lonceng.goyang svg { animation: loncengGoyang' in K and '.lonceng-n.letup { animation: loncengLetup' in K)
     L = t[LC]
-    ok('lonceng: balas lewat pintu yang SAMA dengan Uang (tpSusunPutus dibaca), hanya akun owner', "tpSusunPutus(id, 'dibaca', { balasan: _lcBalas[id] || '' }" in L and "if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;" in L and "owner && x.bisaBalas ?" in L)
+    ok('lonceng: balas lewat pintu yang SAMA dengan Uang (tpSusunPutus dibaca), hanya akun owner', "tpSusunPutus(id, 'dibaca', { balasan: _lcBalas[id] || '' }" in L and "async function lcTandaiBaca(id) {\n  if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;" in L and "owner && x.bisaBalas ?" in L)
     ok('lonceng: dihitung ulang tiap data berubah (app.js periksaKabarBaru)', 'loncengSegarkan(' in A and 'pasangLonceng({ pindah: (t) => pindah(t)' in A)
     # ---- push sisi server & rules
     F = t[FIX]
     ok('fungsi kabarTablet: pemicu UBAH persetujuan, token notifPerangkat milik uid peminta, token kosong dilewati', "exports.kabarTablet = onDocumentUpdated('persetujuan/{id}'" in F and ".collection('notifPerangkat').where('uid', '==', p.uid)" in F and "typeof x.token === 'string' && x.token" in F)
+    ok('pesan owner: lonceng owner punya kotak "Kirim pesan ke tablet" yang menulis lewat kbSusunPesanOwner, owner saja', "kbSusunPesanOwner(_lcTulis, waktuSekarang(" in L and "if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;\n  const r = kbSusunPesanOwner" in L and 'data-ll="kirim"' in L)
+    ok('pesan owner: papan Persetujuan tidak memuat pesan owner', "cacheMentah('persetujuan').filter((m) => m && m.tindakan !== 'pesanOwner')" in t[SIS])
+    ok('fungsi kabarDariOwner: pemicu BUAT persetujuan, token notifPerangkat (semua / satu akun), token kosong dilewati', "exports.kabarDariOwner = onDocumentCreated('persetujuan/{id}'" in F and "(p.untukUid ? kol.where('uid', '==', p.untukUid) : kol)" in F)
     ok('firebase.js: token tablet atas nama akun yang masuk, id = uid_perangkat, mati = dikosongkan', "const id = uid + '_' + pid;" in t[FB] and "export const hapusTokenTablet = () => tulisTokenTablet('');" in t[FB])
     ok('app.js: token tablet diperbarui diam-diam sekali per akun; notifikasi diketuk = pindah layar', 'ntSegarkan().catch(() => {})' in A and "ntPadaKetuk((t) => { if (['uang', 'menu', 'jual'].indexOf(t) >= 0) pindah(t); });" in A)
     return h
@@ -285,7 +310,15 @@ KONTROL = [
     ('kartu notifikasi tablet tidak ada di Menu akun tablet', [(MENU, "      ${ntAplikasi() ? h`${gambarNotifTablet(s)}${gambarLayarPenuh(s)}` : ''}\n", "")]),
     ('lonceng hilang dari kepala Stok', [('baru/js/layar/stok.js', "${opsi.lonceng ? mentah(opsi.lonceng()) : ''}<div class=\"pil pil-akun", '<div class="pil pil-akun')]),
     ('app.js lupa menyuntik lonceng ke Uang', [(APP, "pasangLayarUang(document.getElementById('layarUang'), { lonceng: pintuLonceng,", "pasangLayarUang(document.getElementById('layarUang'), {")]),
-    ('karyawan tablet boleh membalas dari lonceng', [(LC, "if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;", "if (!_lcAkun || _lcSibuk) return;")]),
+    ('karyawan tablet boleh membalas dari lonceng', [(LC, "async function lcTandaiBaca(id) {\n  if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;", "async function lcTandaiBaca(id) {\n  if (!_lcAkun || _lcSibuk) return;")]),
+    ('pesan owner berstatus menunggu (masuk daftar menunggu owner)', [(KBL, "tindakan: KB_PESAN_OWNER, status: KB_STATUS_TERKIRIM,", "tindakan: KB_PESAN_OWNER, status: 'menunggu',")]),
+    ('lonceng tablet tidak memuat pesan owner', [(KBL, "      (owner ? terkirim : out).push(x); return;", "      if (owner) terkirim.push(x); return;")]),
+    ('kabar dalam aplikasi diam saat pesan owner datang', [(KBL, "  return pesan.concat(putus);", "  return putus;")]),
+    ('karyawan tablet boleh mengirim pesan owner dari lonceng', [(LC, "async function lcKirim() {\n  if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;", "async function lcKirim() {\n  if (!_lcAkun || _lcSibuk) return;")]),
+    ('pesan owner tanpa batas panjang', [(KBL, "  if (isi.length > TP_BATAS.pesan) return { tolak:", "  if (false) return { tolak:")]),
+    ('push dari owner tanpa isi', [(PSN, "  const isi = teks(d.teks); if (!isi) return null;\n  return { judul: 'Pesan dari owner'", "  const isi = teks(d.teks);\n  return { judul: 'Pesan dari owner'")]),
+    ('HP owner dikabari pesannya sendiri', [(PSN, "  if (d.tindakan === 'pesanOwner') return null;", "")]),
+    ('papan Persetujuan memuat pesan owner', [(SIS, ".filter((m) => m && m.tindakan !== 'pesanOwner')", "")]),
     ('kabarTablet mengirim ke semua token', [(FIX, ".collection('notifPerangkat').where('uid', '==', p.uid).get()", ".collection('notifPerangkat').get()")]),
 ]
 

@@ -19,6 +19,7 @@ const pendek = (s) => (s.length > BATAS_ISI ? s.slice(0, BATAS_ISI - 1) + '…' 
  */
 function pesanNotif(d, id) {
   if (!d || typeof d !== 'object') return null;
+  if (d.tindakan === 'pesanOwner') return null;   // owner 23 Nov 2026: pesan owner KE tablet — bukan kabar untuk HP owner (kabarDariOwner)
   if ((d.status || 'menunggu') !== 'menunggu') return null;
   const t = String(d.tindakan || '');
   const dari = teks(d.dari) || 'Tablet';
@@ -60,6 +61,16 @@ function pesanPutus(sebelum, sesudah, id) {
   return { uid, judul: (JUDUL_TABLET[t] || 'Permintaan') + ' ' + PUTUS_TABLET[st], isi: pendek(tambah + pokok), tag: 'putus-' + String(id || ''), layar: 'menu' };
 }
 
+/**
+ * Owner 23 Nov 2026 ("gimana gua kirim pesan lewat mac/HP ke tablet?"): isi push untuk PESAN OWNER yang baru ditulis (persetujuan bertindakan
+ * 'pesanOwner'). Hasil { judul, isi, tag, layar, untukUid } atau null (bukan pesan owner / kosong). untukUid kosong = semua tablet yang menyalakan notifikasi.
+ */
+function pesanDariOwner(d, id) {
+  if (!d || typeof d !== 'object' || d.tindakan !== 'pesanOwner') return null;
+  const isi = teks(d.teks); if (!isi) return null;
+  return { judul: 'Pesan dari owner', isi: pendek(isi), tag: 'owner-' + String(id || ''), layar: 'menu', untukUid: teks(d.untukUid) };
+}
+
 /** Kiriman FCM untuk aplikasi tablet (Android): notifikasi sistem (tampil walau aplikasi ditutup) di saluran "Kabar toko", data layar tujuan. */
 function kirimanTablet(p, tokens) {
   return { tokens: tokens.slice(), notification: { title: p.judul, body: p.isi },
@@ -80,4 +91,4 @@ function lokasiFungsi(lokasiDb) {
   return l;
 }
 
-module.exports = { pesanNotif, pesanPutus, kirimanTablet, tokenMati, lokasiFungsi, rp, JUDUL, JENIS, JUDUL_TABLET, SALURAN_TABLET, TOKEN_MATI, BATAS_ISI };
+module.exports = { pesanNotif, pesanPutus, pesanDariOwner, kirimanTablet, tokenMati, lokasiFungsi, rp, JUDUL, JENIS, JUDUL_TABLET, SALURAN_TABLET, TOKEN_MATI, BATAS_ISI };
