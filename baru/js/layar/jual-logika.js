@@ -1963,6 +1963,16 @@ function alasanBatasTakar(s, dokumen, h) {
  * Semua dokumen satu catat masuk satu writeBatch — ada semua atau tidak sama sekali.
  */
 export function susunTakarWadah(merk, baris, w, s, opsi) {
+  const r = takarWadahInti(merk, baris, w, s, opsi);
+  // tinjauan 30 Sep (c): "buku kurang — tandai untuk dicocokkan?" tidak ditanyakan kalau isian ini TOH ditolak sesudah dijawab (mis. lewat batas catatan
+  // sekali kirim akun bukan-owner) — dicoba seolah sudah ditandai; penolakan yang lain itu disebut lebih dulu, pertanyaannya tidak.
+  if (r && r.perluTandai && !(opsi && opsi.tandai)) {
+    const coba = takarWadahInti(merk, baris, w, s, Object.assign({}, opsi || {}, { tandai: true }));
+    if (coba && coba.tolak && !coba.perluTandai) return { tolak: coba.tolak };
+  }
+  return r;
+}
+function takarWadahInti(merk, baris, w, s, opsi) {
   const atur = aturWadah();
   if (atur.daftar.indexOf(merk) < 0) return { tolak: merk + ' bukan wadah kotak — literannya diserok langsung dari karung' };
   const h = hitungTakar(merk, baris, s);

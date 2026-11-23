@@ -248,6 +248,11 @@ var alok30 = function (merk) { var d = ambilSemuaBatch().find(function (b) { ret
 var d30 = drafDariKedatangan('bal30'); d30.baris[0].hargaPerKg = '13.050'; d30.alasan = 'salah ketik harga'; var K30 = susunSimpanMasuk(d30, W30, true); var t30 = K30.dokumen ? K30.dokumen[0].data : { merkList: [] };
 ok('39b-30: koreksi kedatangan berbaris bal: draf hanya baris karung (bal tidak diubah dari sini); dokumen yang ditulis MEMUAT baris bal apa adanya (hanya nomor barisnya, di belakang); kabar menyebut bal "tidak diubah"; pasangan beli-jadi tidak disentuh',
   d30.adaBal === true && d30.baris.length === 2 && !K30.tolak && t30.merkList.length === 3 && balSama(t30) && t30.merkList[2].bentuk === 'bal' && t30.merkList[2].id === '3' && /baris bal Rp2\.800\.000 \(tidak diubah\)/.test(K30.patch.kabar) && K30.dokumen.every(function (x) { return x.koleksi !== 'produksiKemasan'; }), JSON.stringify([K30.tolak, t30.merkList]).slice(0, 400));
+// tinjauan 30 Sep (e): tanggal / bongkar / kg karung kedatangan ber-bal tidak bisa dikoreksi (pasangan beli-jadi tidak ikut dibetulkan); harga tetap boleh (di atas)
+var e30 = function (ubah) { var d = drafDariKedatangan('bal30'); d.alasan = 'uji e'; ubah(d); return susunSimpanMasuk(d, W30, true); };
+var eT = e30(function (d) { d.tanggal = '2026-09-18'; }), eB = e30(function (d) { d.bongkar = '200.000'; d.biayaBongkar = '200.000'; }), eK = e30(function (d) { d.baris[0].jumlahKarung = '19'; });
+ok('tinjauan 30 Sep (e): koreksi kedatangan ber-bal — tanggal, bongkar, kg karung DITOLAK dengan kalimat "pasangan beli-jadi"; tanpa dokumen',
+  /tanggal tidak bisa dikoreksi/.test(eT.tolak || '') && /bongkar tidak bisa dikoreksi/.test(eB.tolak || '') && /kg karung tidak bisa dikoreksi/.test(eK.tolak || '') && /pasangan beli-jadinya/.test(eK.tolak || '') && !eT.dokumen && !eK.dokumen, JSON.stringify([eT.tolak, eB.tolak, eK.tolak]));
 var hm30 = hitungMasuk(d30);
 ok('39b-30: pratinjau koreksi (kartu Jumlah & modal per baris) = yang akan ditulis: nilai bal 2.800.000 ikut, total 13.050.000 + 6.500.000 + 2.800.000 + bongkar 170.000 = 22.520.000; bongkar Rojolele Bal Uji 100.000 → modal 13.150/kg (bukan 113.333 / 13.163)',
   hm30.nilaiBal === 2800000 && hm30.total === 22520000 && hm30.sah[0].alokasiBongkar === 100000 && Math.abs(hm30.sah[0].hppPerKg - 13150) < 0.01, JSON.stringify([hm30.nilaiBal, hm30.total, hm30.sah[0].alokasiBongkar, hm30.sah[0].hppPerKg]));
@@ -989,6 +994,7 @@ if __name__ == '__main__':
             'ejaan pemasok tidak disamakan': js.replace("const pemasok = ckEjaanPemasok(pemasokKetik, lama ? lama.id : null);", "const pemasok = pemasokKetik;"),
             'ejaan lama kedatangan yang dikoreksi memaksa (koreksi ejaan tunggal tidak bisa)': js.replace("(kecualiId !== undefined && kecualiId !== null && String(b.id) === String(kecualiId))", "false"),
             # ---- audit 39b no. 30: koreksi kedatangan berbaris bal
+            'tinjauan 30 Sep (e): koreksi tanggal / bongkar / kg kedatangan ber-bal lolos (pasangan beli-jadi basi)': js.replace("    if (ubah.length) return { tolak: 'Kedatangan ini memuat '", "    if (false) return { tolak: 'Kedatangan ini memuat '"),
             'koreksi kedatangan membuang baris bal (bon & porsi bongkar bergeser)': js.replace(".concat(ckBarisBal(lama).map((m, j) => Object.assign({}, m, { id: String(h.sah.length + j + 1) })))", ".concat([])"),
             'baris bal tertulis tapi nilainya tidak dihitung di pagar bon dibayar': js.replace("if (h.nilaiBeras + h.nilaiBal + 0.5 < bb.dibayar) return", "if (h.nilaiBeras + 0.5 < bb.dibayar) return"),
             'koreksi HPP satu nama: nilai bal tidak dihitung di pagar bon dibayar': js.replace("(m.bentuk === 'bal' ? (Number(m.subtotalHarga) || 0) : m.merk === merk ?", "(m.bentuk === 'bal' ? 0 : m.merk === merk ?"),
