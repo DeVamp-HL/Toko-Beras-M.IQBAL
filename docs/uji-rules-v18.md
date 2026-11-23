@@ -45,11 +45,12 @@ Kasus staf butuh akun uji staf aktif (U11 dari `docs/uji-rules-v7.md`: `aksesAku
 | ★V10 | Penjaga laci | create `perangkatStatus/p-uji-3` | id tanpa ~uid | DITOLAK | ditutup v18 |
 | ★V11 | Penjaga laci | create `perangkatStatus/p-uji-1~uid-uji-b` | akunUid akun lain | DITOLAK | denyut = milik penulis |
 | ★V12 | Penjaga laci nonaktif | create `perangkatStatus/p-uji-1~uid-uji-b` | denyut | DITOLAK | akun yang dinonaktifkan owner |
+| ★V13 | Penjaga laci | update `perangkatStatus/p-uji-1~uid-uji-b` | dokumen lama di id itu tanpa akunUid | DITOLAK | ditutup v18 (pemilik tidak tercatat) |
 
-Di **v17** kasus ★V7–★V10 LOLOS (yang ditutup v18); kasus lain sama hasilnya.
+Di **v17** kasus ★V7–★V10 dan ★V13 LOLOS (yang ditutup v18); kasus lain sama hasilnya.
 
 ## Bukti emulator
 
-`alat-uji/uji_rules_emulator.py` bagian **V18** (workflow *Uji rules di emulator*, jalan otomatis di PR yang mengubah `firestore.rules`): ke-12 kasus di
+`alat-uji/uji_rules_emulator.py` bagian **V18** (workflow *Uji rules di emulator*, jalan otomatis di PR yang mengubah `firestore.rules`): ke-13 kasus di
 atas atas `firestore.rules` (v18) dan atas `firestore.rules.v17` — yang berbeda wajib persis kasus yang ditutup v18 — plus kontrol (satu suku v18 dirusak →
 kasus sasarannya wajib berbalik). Semua kasus v17 sampai v7 lama tetap dijalankan atas v18 dan wajib sama hasilnya.

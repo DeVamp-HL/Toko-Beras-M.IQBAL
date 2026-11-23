@@ -212,7 +212,7 @@ KONTROL_V17 = [
 # firestore.rules (v18) dan atas firestore.rules.v17 — yang berbeda WAJIB persis periksa_rules.BEDA_V17 (yang ditutup v18). Kontrol: satu suku v18 dirusak.
 KONTROL_V18 = [
     ('denyut staf tidak terikat id perangkat~uid', [("        && id.matches('[^~/]{1,40}~' + request.auth.uid) && request.resource.data.get('id', '') == id\n", "")], ['★V8', '★V10']),
-    ('denyut lama tanpa akunUid bisa ditimpa', [("(resource == null || resource.data.get('akunUid', '') == request.auth.uid)", "(resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)")], ['★V7']),
+    ('denyut lama tanpa akunUid bisa ditimpa', [("(resource == null || resource.data.get('akunUid', '') == request.auth.uid)", "(resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)")], ['★V13']),
     ('kolom id boleh beda dari id dokumen', [(" && request.resource.data.get('id', '') == id\n", "\n")], ['★V9']),
 ]
 # kontrol bagian C: suku kirim ulang bercap dicabut dari update penjualan → kirim ulang kasir-v33 & kasir-v32 atas nota bercap wajib berbunyi

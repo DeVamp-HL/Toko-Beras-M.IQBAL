@@ -1883,8 +1883,9 @@ KASUS_V18 = [
     ('★V10', 'staf menulis id tanpa ~uid (bentuk lama)', 'staf', 'create', 'perangkatStatus', 'p-uji-3', dict(DN_UJI, id='p-uji-3'), None, False, None),
     ('★V11', 'denyut atas nama akun lain (akunUid)', 'staf', 'create', 'perangkatStatus', DN_ID, dict(DN_UJI, akunUid='uid-lain'), None, False, None),
     ('★V12', 'akun tablet yang dinonaktifkan owner', 'staf', 'create', 'perangkatStatus', DN_ID, DN_UJI, U11_MATI, False, None),
+    ('★V13', 'staf menimpa dokumen ber-id perangkat~uid-nya yang tanpa akunUid', 'staf', 'update', 'perangkatStatus', DN_ID, DN_UJI, {'perangkatStatus/' + DN_ID: dict(DN_LAMA, id=DN_ID)}, False, None),
 ]
-BEDA_V17 = {'★V7', '★V8', '★V9', '★V10'}   # yang DITUTUP v18 (lolos di v17); kasus lain wajib sama hasilnya di v17
+BEDA_V17 = {'★V7', '★V8', '★V9', '★V10', '★V13'}   # yang DITUTUP v18 (lolos di v17); kasus lain wajib sama hasilnya di v17
 
 
 def periksa(rules, koleksi_js, akses_js):
