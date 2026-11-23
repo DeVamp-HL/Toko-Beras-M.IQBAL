@@ -39,6 +39,15 @@ import { kbSidik, kbBanding, kbRingkas } from './layar/kabar-baru-logika.js';
 import { lampuKejadian } from './inti/perangkat.js';
 import { nhPasang } from './data/notif-hp.js';
 nhPasang({ app: () => fb.appFirebase(), simpan: (t) => fb.simpanTokenNotif(t), hapus: () => fb.hapusTokenNotif() });   // notifikasi HP owner: alat Firebase untuk Menu › Perangkat
+// owner 23 Nov 2026: push aplikasi TABLET (FCM Android lewat plugin resmi) — token atas nama akun yang masuk; notifikasi diketuk = buka layarnya
+import { ntPasang, ntSegarkan, ntPadaKetuk } from './data/notif-tablet.js';
+import { infoPerangkat } from './inti/perangkat.js';
+ntPasang({ simpan: (t) => fb.simpanTokenTablet(t), hapus: () => fb.hapusTokenTablet(), info: () => infoPerangkat(), uid: () => fb.uidMasuk() });
+ntPadaKetuk((t) => { if (['uang', 'menu', 'jual'].indexOf(t) >= 0) pindah(t); });
+let _ntSegar = '';
+// owner 23 Nov 2026: LONCENG kabar & pesan di kepala tiap layar (Mac, HP, tablet) — owner membalas pesan langsung dari lonceng
+import { pasangLonceng, loncengSegarkan } from './layar/lonceng.js';
+pasangLonceng({ pindah: (t) => pindah(t), sekarang: () => sekarangCadangan });
 // owner 19 Nov 2026 ("masih berat di Android, terutama tablet"): pencatat tersendat DI PERANGKAT ini — dibaca di Menu › Sistem › Perangkat
 import { pasangUkurMulus } from './inti/ukur-mulus.js';
 
@@ -163,9 +172,11 @@ function tampilKabarBaru(r) {
   bunyiKabar(); if (asliAda()) lampuKejadian('owner');
 }
 function periksaKabarBaru() {
+  try { const al = akunKini(); loncengSegarkan(al && al.uid !== undefined && bisaBekerja(al) && (sumberData().jenis === 'cadangan' || dataLengkap()) ? al : null); } catch (e) { console.error('lonceng', e); }
   if (q.get('cadangan') || sumberData().jenis !== 'firestore') { _kb = null; return; }
   const a = akunKini(); if (!a || !a.uid || !dataLengkap()) { _kb = null; return; }
   if (_layarTuju) { const t = _layarTuju; _layarTuju = ''; try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* alamat tetap */ } pindah(t); }
+  if (asliAda() && fb.uidMasuk() && _ntSegar !== fb.uidMasuk()) { _ntSegar = fb.uidMasuk(); ntSegarkan().catch(() => {}); }   // token push tablet yang diganti Google
   const baru = kbSidik(a); const ev = kbBanding(_kb, baru); _kb = baru;
   if (baru.owner) lencanaIkon(baru.n);
   const r = kbRingkas(ev); if (r) tampilKabarBaru(r);
@@ -303,6 +314,16 @@ function geserPenanda() {
   pasangDi(side, side && side.querySelector('.item[data-tujuan].aktif'), 'y');
 }
 window.addEventListener('resize', () => nanti(geserPenanda));
+// owner 23 Nov 2026: dock (menu bawah HP & tablet) bisa DILIPAT jadi tombol bulat — rak & keranjang memakai layar penuh. Diingat per perangkat; sesudah
+// dock naik lagi penanda emasnya diukur ulang (selama terlipat dock mengecil, ukurannya tidak bisa dipakai).
+const KUNCI_DOCK = 'miqbal_dock_lipat_v1';
+function dockLipat(lipat, simpan) {
+  document.body.classList.toggle('dock-lipat', !!lipat);
+  if (simpan) { try { localStorage.setItem(KUNCI_DOCK, lipat ? '1' : '0'); } catch (e) { /* perangkat menolak: berlaku sampai halaman dimuat ulang */ } }
+  if (!lipat) setTimeout(() => nanti(geserPenanda), 520);
+}
+try { dockLipat(localStorage.getItem(KUNCI_DOCK) === '1', false); } catch (e) { /* bawaan: dock terbuka */ }
+document.addEventListener('click', (ev) => { const b = ev.target && ev.target.closest ? ev.target.closest('[data-dock]') : null; if (!b) return; ev.preventDefault(); dockLipat(b.dataset.dock === 'lipat', true); });
 function pindah(tujuan) {
   if (!LAYAR_ADA[tujuan]) return false;
   const a = akunKini(); if (a && bisaBekerja(a) && !bolehLayar(a, tujuan)) { kabarSebentar('Layar ini tidak termasuk hak ' + teksMasukSebagai(a) + '.'); return true; }

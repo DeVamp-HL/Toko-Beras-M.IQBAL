@@ -85,8 +85,10 @@ main.layar-jual > input[type="hidden"] { display: none; }
 @media (min-width: 720px) {
   /* rapi-rapi 29 Sep: kolom kanan selebar tetap (keranjang), rak mengambil sisanya — lembar duduk TEPAT di atas kolom keranjang */
   main.layar-jual { --lebar-keranjang: clamp(320px, 40vw, 380px); grid-template-columns: minmax(0, 1fr) var(--lebar-keranjang); column-gap: 16px;
-    grid-template-areas: "kepala kepala" "pita pita" "kabar keranjang" "rak keranjang" "samping keranjang"; grid-template-rows: auto auto auto auto 1fr;
+    grid-template-areas: "kepala keranjang" "pita keranjang" "kabar keranjang" "rak keranjang" "samping keranjang"; grid-template-rows: auto auto auto auto 1fr;
     align-items: start; padding-bottom: 110px; }
+  /* owner 23 Nov 2026 ("tampilan tablet gua terlalu sempit gak full"): kolom keranjang mulai dari ATAS layar, bukan di bawah judul — keranjang setinggi
+     layar langsung terlihat utuh (BAYAR tidak lagi tertutup dock sebelum halaman digulir). Judul & pita hanya di kolom rak. */
   /* kabar (barang masuk, nota barusan, karcis) hanya mendorong kolom rak — keranjang tidak ikut meloncat tiap ada kabar */
   /* tinjauan gabungan 29 Sep: sejak sticky benar-benar menempel, keranjang yang lebih tinggi dari layar menahan Ditagih & BAYAR di luar layar / di bawah nav
      sampai halaman digulir ke ujung. Kini setinggi layar paling banyak (14 atas + nav 84 + 14); DAFTAR BARANG yang bergulir di dalam, total & BAYAR tetap
@@ -180,3 +182,76 @@ body.proyek-uji { padding-top: 28px; }
 /* putaran 23c: TIRAI — belum masuk / belum disetujui / nonaktif: di belakang formulir Masuk tidak ada apa-apa (isi <main> juga dikosongkan app.js).
    Pil akun ada di kepala tiap <main> (ikut kosong); lembar akun (nama + status jaringan) di luar <main> → ditutup app.js DAN disembunyikan di sini. */
 body.terkunci main, body.terkunci .nav, body.terkunci .side, body.terkunci .lembar-akun { display: none !important; }
+
+/* owner 23 Nov 2026: DOCK BISA DILIPAT ("Adakan animasinya") — pegangan kecil di atas dock = lipat: dock turun mengecil ke tombol bulat (ikon kiriman
+   owner) di pojok bawah; ketuk tombol = dock naik lagi. body.dock-lipat diingat per perangkat (app.js). Ruang yang dibebaskan dipakai keranjang, lembar,
+   dan rak. HP: tombol di kanan (laci keranjang menyisakan tempatnya); tablet: di kiri (kolom keranjang di kanan setinggi layar). Mac tanpa dock. */
+.nav { transition: transform 480ms cubic-bezier(.2,.8,.2,1), opacity 320ms ease, background-color 480ms ease; transform-origin: calc(100% - 26px) 100%; }
+.nav > .nav-lipat { position: absolute; left: 50%; top: -15px; width: 46px; height: 16px; margin-left: -23px; padding: 0; box-sizing: border-box; border: 1px solid var(--kaca-tepi); border-bottom: 0;
+  border-radius: 10px 10px 0 0; background: var(--nav); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); color: var(--nav-teks); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.nav > .nav-lipat::after { content: ''; position: absolute; left: -10px; right: -10px; top: -12px; bottom: -6px; }   /* sasaran jari lebih besar dari gambarnya */
+.nav > .nav-lipat svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 260ms cubic-bezier(.2,.8,.2,1); }
+.nav > .nav-lipat:active { color: var(--aktif); } .nav > .nav-lipat:active svg { transform: translateY(2px); }
+.dock-buka { position: fixed; z-index: 3; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: 16px; width: 52px; height: 52px; padding: 0; box-sizing: border-box; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--aktif); background: var(--nav); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--kaca-tepi); box-shadow: 0 14px 34px -16px var(--bayang), 0 0 22px -8px var(--logam-glow), inset 0 1px 0 var(--kaca-sorot);
+  opacity: 0; transform: scale(0.3) rotate(-90deg); pointer-events: none; transition: transform 480ms cubic-bezier(.2,.8,.2,1) 80ms, opacity 260ms ease 80ms; }
+.dock-buka svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+body.dock-lipat .nav { transform: translateY(calc(100% + 30px)) scale(0.3); opacity: 0; pointer-events: none; }
+body.dock-lipat .dock-buka { opacity: 1; transform: none; pointer-events: auto; }
+body.dock-lipat .dock-buka:active { transform: scale(0.9); transition-delay: 0ms; }
+body.terkunci .dock-buka { display: none !important; }
+body.dock-lipat .kabar-nav, body.dock-lipat .lembar:not(.tirai) { bottom: 80px; }   /* tirai tetap inset 0 */
+@media (max-width: 719px) {
+  .jual-keranjang { bottom: 104px; }   /* pegangan lipat (16 px di atas dock) tidak tertindih laci keranjang */
+  body.dock-lipat .jual-keranjang { bottom: 16px; right: 78px; }
+  body.dock-lipat main.layar-jual { padding-bottom: 110px; }
+}
+@media (min-width: 720px) {
+  .nav { transform-origin: 26px 100%; }
+  .dock-buka { right: auto; left: calc(16px + env(safe-area-inset-left, 0px)); }
+  body.dock-lipat main.layar-jual { padding-bottom: 28px; }
+  body.dock-lipat .jual-keranjang { max-height: calc(100vh - 28px); max-height: calc(100dvh - 28px); }
+  body.dock-lipat .lembar:not(.tirai) { bottom: 14px; }
+  body.dock-lipat main.layar-jual .lembar:not(.tirai) { max-height: calc(100% - 28px); }
+}
+@media (min-width: 1100px) { .dock-buka { display: none; } }
+@media (prefers-reduced-motion: reduce) { .nav, .dock-buka, .nav > .nav-lipat svg { transition: none; } }
+
+/* owner 23 Nov 2026: LONCENG kabar & pesan di kepala tiap layar (Mac, HP, tablet). Angka merah = kabar belum dibuka di perangkat ini; lonceng BERGOYANG
+   saat kabar baru datang dan angkanya meletup; lembar daftar turun dari pojok kanan atas. Gerak mengikuti tempo SENTUH 160 · DATA 480 ms. */
+.lonceng { position: relative; flex: none; width: 38px; height: 38px; padding: 0; box-sizing: border-box; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  color: var(--redup); background: var(--kaca); border: 1px solid var(--kaca-tepi); box-shadow: inset 0 1px 0 var(--kaca-sorot); transition: color 260ms ease, border-color 260ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.lonceng svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transform-origin: 50% 12%; }
+.lonceng:active { transform: scale(0.92); }
+.lonceng.ada { color: var(--aktif); border-color: var(--emas-garis); box-shadow: 0 0 18px -8px var(--logam-glow), inset 0 1px 0 var(--kaca-sorot); }
+.lonceng-n { position: absolute; top: -5px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; font-size: 10.5px; font-weight: 700; line-height: 18px;
+  text-align: center; background: var(--awas); color: #fff; box-shadow: 0 4px 10px -4px var(--bayang); font-variant-numeric: tabular-nums; }
+.lonceng-n:empty { display: none; }
+.lonceng-n.letup { animation: loncengLetup 420ms cubic-bezier(.2,.8,.2,1); }
+.lonceng.goyang svg { animation: loncengGoyang 900ms cubic-bezier(.2,.8,.2,1); }
+@keyframes loncengGoyang { 0% { transform: rotate(0); } 15% { transform: rotate(16deg); } 30% { transform: rotate(-14deg); } 45% { transform: rotate(10deg); } 60% { transform: rotate(-6deg); } 78% { transform: rotate(3deg); } 100% { transform: rotate(0); } }
+@keyframes loncengLetup { 0% { transform: scale(0.4); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.lembar-lonceng { position: fixed; z-index: 9; top: calc(10px + env(safe-area-inset-top, 0px)); left: 10px; right: calc(10px + env(safe-area-inset-right, 0px)); max-height: min(80vh, 660px);
+  overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 14px; box-sizing: border-box; border-radius: 20px;
+  border: 1px solid var(--kaca-tepi); box-shadow: 0 24px 60px -24px var(--bayang); transform-origin: top right; }
+.lembar-lonceng.kartu { background: var(--bg1); }
+.lembar-lonceng[hidden] { display: none; }
+.lembar-lonceng.masuk { animation: loncengMasuk 360ms cubic-bezier(.2,.8,.2,1); }
+@media (min-width: 720px) { .lembar-lonceng { left: auto; width: min(430px, 92vw); top: calc(62px + env(safe-area-inset-top, 0px)); } }
+@keyframes loncengMasuk { from { opacity: 0; transform: translateY(-10px) scale(0.96); } to { opacity: 1; transform: none; } }
+.ll-kepala { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.ll-tutup { flex: none; width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 1px solid var(--kaca-tepi); background: var(--seg); color: var(--teks); font-size: 18px; line-height: 1; cursor: pointer; }
+.ll-daftar { display: flex; flex-direction: column; gap: 6px; }
+.ll-baris { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; border-radius: 14px; background: var(--kaca); border: 1px solid var(--kaca-tepi);
+  animation: masukLl 360ms cubic-bezier(.2,.8,.2,1) backwards; animation-delay: calc(var(--urut, 0) * 30ms); transition: border-color 480ms ease; }
+.ll-baris.baru { border-color: var(--emas-garis); box-shadow: inset 0 0 0 1px var(--emas-garis); }
+.ll-baris.ditolak .ll-atas b { color: var(--awas); }
+.ll-atas { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-size: 12.5px; }
+.ll-isi { font-size: 13px; overflow-wrap: anywhere; }
+.ll-balasan { font-size: 12.5px; color: var(--aktif); overflow-wrap: anywhere; }
+.ll-balas { display: flex; gap: 6px; align-items: center; } .ll-balas input { flex: 1 1 auto; min-width: 0; } .ll-balas .kaca-btn { flex: none; }
+.ll-kaki { display: flex; justify-content: flex-end; font-size: 12px; }
+@keyframes masukLl { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+body.terkunci .lembar-lonceng { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .lonceng, .lonceng svg, .lonceng-n, .lembar-lonceng, .ll-baris { animation: none !important; transition: none; } }

@@ -206,6 +206,9 @@ jobs:
       - name: "Titipan uang keluar & pesan dari tablet + notifikasi: tablet hanya menitip (bentuk rules v13), owner menyetujui satu pintu (uang bertanggal titipan, betulan tercatat, tanpa dobel), kabar dalam aplikasi, isi push server, service worker (jsc + kontrol)"
         if: matrix.bagian == 3
         run: python3 alat-uji/uji_titipan.py && python3 alat-uji/uji_titipan.py --kontrol
+      - name: "Tampilan tablet (owner 23 Nov 2026): push aplikasi tablet (izin, token atas nama akun, segarkan, matikan, diketuk), lonceng kabar & pesan (owner / tablet, angka belum dibuka), isi push jawaban owner, pemasang APK (Firebase, izin notifikasi), dock lipat + layar penuh (jsc + kontrol)"
+        if: matrix.bagian == 1
+        run: python3 alat-uji/uji_tablet_tampilan.py && python3 alat-uji/uji_tablet_tampilan.py --kontrol
       - name: "Barang masuk & bayar supir dari tablet (owner 22 Nov 2026, rules v15): kedatangan bon + titipan upah bongkar & bayar supir + kabar owner; owner menyetujui ke kedatangan / bon pilihan, bertanggal titipan"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_masuk_tablet.py && python3 alat-uji/uji_masuk_tablet.py --kontrol

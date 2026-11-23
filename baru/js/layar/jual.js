@@ -2,6 +2,7 @@
 // Logika (rak, tagihan, antrean, bayar) ada di jual-logika.js dan diuji tanpa peramban.
 import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
 import { h, mentah, gabung, pasang, delegasi } from '../inti/dom.js';
+import { loncengMentah } from './lonceng.js';   // owner 23 Nov 2026: ikon lonceng kabar & pesan di kepala layar
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { RP, ANGKA, DESIMAL, tanggalPendek, kalimatLebih, ringkasLebih } from '../inti/format.js';
@@ -795,7 +796,7 @@ export function pasangLayarJual(akar, opsi) {
       <header class="kepala-jual">
         <div><div class="serif" style="font-size: 26px;">Jual</div><div class="ket">${tanggalPendek(hari.iso)} · ${opsi.statusTeks()}</div></div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <div class="pil pil-akun ${sumber.jenis === 'firestore' ? '' : 'kedip'}" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar">${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
+          ${loncengMentah()}<div class="pil pil-akun ${sumber.jenis === 'firestore' ? '' : 'kedip'}" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar">${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
           <div class="tombol-mode" data-aksi="mode" title="${opsi.mode() === 'gelap' ? 'Mode terang' : 'Mode gelap'}">${mentah(IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'])}</div>
         </div>
       </header>
