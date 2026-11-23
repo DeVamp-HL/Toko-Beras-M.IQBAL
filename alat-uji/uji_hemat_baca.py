@@ -1547,6 +1547,7 @@ TANPA_CAP = [
     (r"b\.set\(doc\(db, KOLEKSI_FOTO_BON, String\(d\.id\)\), d\)", 'fotoBon (paket E-2): tidak didengar & bukan koleksi.js (dibaca sekali saat bon dibuka); rules v7 blok fotoBon membatasi bentuk & ukuran, tanpa ubah'),
     (r"klaim: \(dok\) => setDoc\(doc\(db, 'aturanToko', HB_ID_KLAIM\), dok\)", 'aturanToko/hematHarian: kelas tetap (didengar penuh semua perangkat owner)'),
     (r"b\.set\(doc\(db, KOLEKSI_NOTIF, id\), d\)", 'notifOwner (owner 21 Nov 2026): token notifikasi HP owner — tidak didengar & bukan koleksi.js (dibaca fungsi server lewat Admin SDK); rules v13 owner saja'),
+    (r"b\.set\(doc\(db, KOLEKSI_NOTIF_PERANGKAT, d\.id\), d\)", 'notifPerangkat (owner 23 Nov 2026): token push aplikasi tablet — tidak didengar & bukan koleksi.js (dibaca fungsi server kabarTablet lewat Admin SDK); rules v17: kolom dibatasi hasOnly, capServer tidak diizinkan'),
     (r"b\.set\(doc\(db, KOLEKSI_BUKTI, String\(d\.id\)\), d\)", 'buktiTerima (B3, owner 18 Nov 2026): tidak didengar & bukan koleksi.js (dibaca sekali saat surat jalan dibuka); rules v10 buktiSah membatasi bentuk & ukuran, tanpa ubah'),
 ]
 DENGAN_CAP = ['pasangCap(', 'capServer: serverTimestamp()', 'nisanDok(']

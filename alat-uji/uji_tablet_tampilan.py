@@ -243,11 +243,12 @@ def periksa_statis(t):
     # ---- lonceng
     for n in LAYAR:
         s = t['baru/js/layar/%s.js' % n]
-        ok('lonceng di kepala layar %s, tepat sebelum pil akun' % n, ('${loncengMentah()}<div class="pil pil-akun' in s) if n != 'ringkasan' else ('${pintuLonceng()}<div class="pil pil-akun" id="rkPil"' in s))
+        ok('lonceng di kepala layar %s, tepat sebelum pil akun (disuntik app.js lewat opsi.lonceng)' % n, ('${opsi.lonceng ? mentah(opsi.lonceng()) : \'\'}<div class="pil pil-akun' in s) if n != 'ringkasan' else ('${opsi.lonceng ? opsi.lonceng() : \'\'}<div class="pil pil-akun" id="rkPil"' in s))
+    ok('lonceng: app.js menyuntik ikon ke kedelapan layar', A.count('lonceng: pintuLonceng,') == 8)
     ok('lonceng: lembarnya ada di halaman & tersembunyi saat terkunci', 'id="lembarLonceng" class="lembar-lonceng kartu"' in I and 'body.terkunci .lembar-lonceng { display: none !important; }' in K and '.lembar-lonceng[hidden] { display: none; }' in K)
     ok('lonceng: bergoyang saat kabar baru, angka meletup', '.lonceng.goyang svg { animation: loncengGoyang' in K and '.lonceng-n.letup { animation: loncengLetup' in K)
     L = t[LC]
-    ok('lonceng: balas lewat pintu yang SAMA dengan Uang (tpSusunPutus dibaca), hanya akun owner', "tpSusunPutus(id, 'dibaca', { balasan: _balas[id] || '' }" in L and "if (!_akun || _akun.jenis !== 'owner' || _sibuk) return;" in L and "owner && x.bisaBalas ?" in L)
+    ok('lonceng: balas lewat pintu yang SAMA dengan Uang (tpSusunPutus dibaca), hanya akun owner', "tpSusunPutus(id, 'dibaca', { balasan: _lcBalas[id] || '' }" in L and "if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;" in L and "owner && x.bisaBalas ?" in L)
     ok('lonceng: dihitung ulang tiap data berubah (app.js periksaKabarBaru)', 'loncengSegarkan(' in A and 'pasangLonceng({ pindah: (t) => pindah(t)' in A)
     # ---- push sisi server & rules
     F = t[FIX]
@@ -266,7 +267,7 @@ KONTROL = [
     ('APK tanpa Firebase tetap meminta izin & mendaftar', [(NT, "  if (info && info.pushSiap === false) return { ok: false, sebab: NT_TANPA_FIREBASE };\n", "")]),
     ('keadaan lokal tanpa uid (akun lain dianggap menyala)', [(NT, "return x && (!uid || x.uid === uid) ? x : null;", "return x;")]),
     ('pendengar pendaftaran tidak dilepas', [(NT, "pegang.forEach((x) => { try { if (x && typeof x.remove === 'function') x.remove(); } catch (e) { /* sudah lepas */ } }); ", "")]),
-    ('segarkan selalu menulis', [(NT, "  if (lama.ujung === ujungToken(t.token)) return { ok: true, sama: true };\n", "")]),
+    ('segarkan selalu menulis', [(NT, "  if (lama.ujung === ntUjung(t.token)) return { ok: true, sama: true };\n", "")]),
     ('segarkan meminta izin', [(NT, "const t = await ntToken(false); if (!t.ok) return t;\n  if (lama.ujung", "const t = await ntToken(true); if (!t.ok) return t;\n  if (lama.ujung")]),
     ('matikan tidak mencabut dari Google', [(NT, "try { if (P && typeof P.unregister === 'function') await P.unregister(); } catch (e) { /* sudah tidak terdaftar */ }", "")]),
     ('lonceng owner ikut memuat yang sudah diputus', [(KBL, "      if (st !== 'menunggu') return;\n", "")]),
@@ -282,8 +283,9 @@ KONTROL = [
     ('dock tidak diingat', [(APP, "try { dockLipat(localStorage.getItem(KUNCI_DOCK) === '1', false); } catch (e) { /* bawaan: dock terbuka */ }\n", "")]),
     ('layar penuh tidak diterapkan saat kembali ke depan', [(MA, "    public void onResume() {\n        super.onResume();\n        terapkanLayarPenuh(this, layarPenuhTersimpan(this));\n", "    public void onResume() {\n        super.onResume();\n")]),
     ('kartu notifikasi tablet tidak ada di Menu akun tablet', [(MENU, "      ${ntAplikasi() ? h`${gambarNotifTablet(s)}${gambarLayarPenuh(s)}` : ''}\n", "")]),
-    ('lonceng hilang dari kepala Stok', [('baru/js/layar/stok.js', '${loncengMentah()}<div class="pil pil-akun', '<div class="pil pil-akun')]),
-    ('karyawan tablet boleh membalas dari lonceng', [(LC, "if (!_akun || _akun.jenis !== 'owner' || _sibuk) return;", "if (!_akun || _sibuk) return;")]),
+    ('lonceng hilang dari kepala Stok', [('baru/js/layar/stok.js', "${opsi.lonceng ? mentah(opsi.lonceng()) : ''}<div class=\"pil pil-akun", '<div class="pil pil-akun')]),
+    ('app.js lupa menyuntik lonceng ke Uang', [(APP, "pasangLayarUang(document.getElementById('layarUang'), { lonceng: pintuLonceng,", "pasangLayarUang(document.getElementById('layarUang'), {")]),
+    ('karyawan tablet boleh membalas dari lonceng', [(LC, "if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;", "if (!_lcAkun || _lcSibuk) return;")]),
     ('kabarTablet mengirim ke semua token', [(FIX, ".collection('notifPerangkat').where('uid', '==', p.uid).get()", ".collection('notifPerangkat').get()")]),
 ]
 

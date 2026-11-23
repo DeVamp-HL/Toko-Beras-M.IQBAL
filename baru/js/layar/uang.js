@@ -4,7 +4,6 @@
 // Satu markup tiga lebar: HP = tab / tumpukan; Tablet = dua kolom; Mac = tiga kolom.
 import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
-import { loncengMentah } from './lonceng.js';   // owner 23 Nov 2026: ikon lonceng kabar & pesan di kepala layar
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { pasangIsian } from '../inti/isian.js';
@@ -419,7 +418,7 @@ export function pasangLayarUang(akar, opsi) {
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">
         <div><div class="serif" style="font-size: 26px;">Uang</div><div class="ket">${tanggalPendek(iso())} · ${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'membaca cadangan' : 'belum tersambung'}</div></div>
-        <div style="display: flex; gap: 8px; align-items: center;">${loncengMentah()}<div class="pil pil-akun ${sumber.jenis === 'firestore' ? '' : 'kedip'}" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar">${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
+        <div style="display: flex; gap: 8px; align-items: center;">${opsi.lonceng ? mentah(opsi.lonceng()) : ''}<div class="pil pil-akun ${sumber.jenis === 'firestore' ? '' : 'kedip'}" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar">${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
           <div class="kaca-btn kecil" data-aksi="keMenu">‹ Menu</div><div class="tombol-mode" data-aksi="mode">${mentah(IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'])}</div></div>
       </header>
       <div class="jalur rapat" data-k="keluarga">${UG.KELUARGA_UANG.map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-nama="${id}" data-k="kg-${id}">${nm}</div>`)}</div>

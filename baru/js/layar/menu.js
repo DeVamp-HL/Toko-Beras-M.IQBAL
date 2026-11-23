@@ -5,7 +5,6 @@
 // Layar dimorf (elemen hidup terus): laci membuka dengan transisi, angka bergulir, baris masuk bergiliran.
 import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
-import { loncengMentah } from './lonceng.js';   // owner 23 Nov 2026: ikon lonceng kabar & pesan di kepala layar
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { pasangIsian } from '../inti/isian.js';
@@ -308,7 +307,7 @@ export function pasangLayarMenu(akar, opsi) {
       <header class="kepala-jual">
         <div><div class="label">Menu</div><div class="serif" style="font-size: 24px;">${s.sistem ? JUDUL_SISTEM[s.sistem] : s.susunan === 'laci' ? 'Pita jam di atas laci' : s.susunan === 'tanya' ? 'Menu yang bertanya' : s.susunan === 'jam' ? 'Menu yang tahu jam' : s.susunan === 'orang' ? 'Menu menurut orang' : 'Menu yang menolak'}</div>
           <div class="ket">${tanggalPendek(hariIniIso(d))} · ${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'membaca cadangan' : 'belum tersambung'}</div></div>
-        <div style="display: flex; gap: 8px; align-items: center;">${loncengMentah()}<div class="pil pil-akun ${sumber.jenis === 'firestore' ? '' : 'kedip'}" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar">${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
+        <div style="display: flex; gap: 8px; align-items: center;">${opsi.lonceng ? mentah(opsi.lonceng()) : ''}<div class="pil pil-akun ${sumber.jenis === 'firestore' ? '' : 'kedip'}" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar">${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
           <div class="tombol-mode" data-aksi="mode">${mentah(IKON_MODE[opsi.mode() === 'gelap' ? 'terang' : 'gelap'])}</div></div>
       </header>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}

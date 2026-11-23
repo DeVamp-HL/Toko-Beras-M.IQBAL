@@ -46,7 +46,7 @@ ntPasang({ simpan: (t) => fb.simpanTokenTablet(t), hapus: () => fb.hapusTokenTab
 ntPadaKetuk((t) => { if (['uang', 'menu', 'jual'].indexOf(t) >= 0) pindah(t); });
 let _ntSegar = '';
 // owner 23 Nov 2026: LONCENG kabar & pesan di kepala tiap layar (Mac, HP, tablet) — owner membalas pesan langsung dari lonceng
-import { pasangLonceng, loncengSegarkan } from './layar/lonceng.js';
+import { pasangLonceng, loncengSegarkan, pintuLonceng } from './layar/lonceng.js';   // layar menerima ikonnya lewat opsi.lonceng (tanpa impor sendiri)
 pasangLonceng({ pindah: (t) => pindah(t), sekarang: () => sekarangCadangan });
 // owner 19 Nov 2026 ("masih berat di Android, terutama tablet"): pencatat tersendat DI PERANGKAT ini — dibaca di Menu › Sistem › Perangkat
 import { pasangUkurMulus } from './inti/ukur-mulus.js';
@@ -139,7 +139,7 @@ function statusRingkas() {
 
 terapkanMode();
 const akar = document.getElementById('layar');
-const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusAwas, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat(),
+const layar = pasangLayarJual(akar, { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusAwas, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat(),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan · 27: Isi barang habis
   // B3 (owner 18 Nov 2026): bukti terima antar (tanda tangan & foto) — koleksi buktiTerima dibaca sekali saat dibuka (tidak didengar); mode cadangan = simulasi di panel
   bukti: { ada: () => sumberData().jenis === 'firestore', baca: (idSJ) => fb.bacaBuktiTerima(idSJ), simpan: (d) => fb.simpanBuktiTerima(d) } });
@@ -185,10 +185,10 @@ function periksaKabarBaru() {
 // ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----
 const KUNCI_TAB = 'miqbal_baru_tab';
 let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diunduh
-const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
+const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   keTujuan: (t) => keTujuan(t) });   // putaran 40: ketukan dasbor owner → layar sumber angkanya (keTujuan didefinisikan di bawah; dipanggil sesudah semua layar terpasang)
-const stok = pasangLayarStok(document.getElementById('layarStok'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, versiData: () => versi, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); } });
-const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
+const stok = pasangLayarStok(document.getElementById('layarStok'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, versiData: () => versi, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); } });
+const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   keTujuan: (t) => keTujuan(t) });   // owner 7 Okt: lembar bon → Kartu piutang berkop di Laporan (keTujuan didefinisikan di bawah; dipanggil saat ketukan)
 // owner 22 Nov 2026 (sidik jari Tahap A): pintu Menu tablet — nyalakan / matikan (orang pilihan owner yang jaga), intip uang (orang lain jaga)
 function tutupIntip() { if (!_intip) return; _intip = false; segarkanUang(); try { menu.gambar(); } catch (e) { /* Menu belum terpasang */ } }
@@ -243,7 +243,7 @@ const ownerTablet = {
   },
 };
 // Menu (putaran 14): laci N1 + pita jam + Sistem (SS1–SS5). Tujuan baris = layar lain lewat pintu yang sama dengan ketukan di layar itu.
-const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
+const menu = pasangLayarMenu(document.getElementById('layarMenu'), { lonceng: pintuLonceng, gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab) => { pindah('stok'); stok.buka(lembar, tab); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); }, bukaLaporan: (keluarga, t) => { pindah('laporan'); laporan.buka(keluarga, t); }, bukaJual: (lembar) => { pindah('jual'); layar.keadaan.setel({ lembar, kabar: '' }); },
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
     pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })() }),   // putaran 24: pengingat pajak, owner saja
@@ -253,7 +253,7 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
   hemat: () => fb.hematKeadaan(), hematSiap: () => fb.hematSiapNyala(), setelSaklarHemat: (v) => fb.setelSaklarHemat(v), hematBacaPenuh: (sebab) => fb.hematBacaPenuh(sebab),
   hematMintaSemua: () => fb.hematMintaSemua(), muatUlang: () => location.reload(), sidik: sidikMenu, ownerTablet });
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
-const harga = pasangLayarHarga(document.getElementById('layarHarga'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
+const harga = pasangLayarHarga(document.getElementById('layarHarga'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 27: Isi barang habis dari katalog
   // owner 7 Okt: foto bon pemasok — koleksi fotoBon dibaca sekali saat bon dibuka (tidak didengar); di mode cadangan = simulasi di memori layar
   foto: { ada: () => sumberData().jenis === 'firestore', baca: (idBon) => fb.bacaFotoBon(idBon), simpan: (d) => fb.simpanFotoBon(d), hapus: (id, idBon) => fb.hapusFotoBon(id, idBon) },
@@ -268,13 +268,13 @@ const lokalPerangkat = () => ({ antre: statusFb.antre || [], menunggu: statusFb.
   // owner 7 Okt: tutup buku butuh baca penuh sesi ini saat hemat baca nyala. #111 × Paket C: `hemat.belumLengkap` (SATU sumber hemat-baca.js hbBelumLengkap) →
   // uang.js muatData → pstKurang (kartu pemeriksaan sesudah tutup buku "?"), daftar periksa kunci bulan, perkiraan kuota, Lanjutkan/Batalkan tutup buku
   hemat: (() => { try { return fb.hematKeadaan(); } catch (e) { return { nyala: false }; } })() });
-const uang = pasangLayarUang(document.getElementById('layarUang'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), lokal: lokalPerangkat,
+const uang = pasangLayarUang(document.getElementById('layarUang'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), lokal: lokalPerangkat,
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); } });   // putaran 39: kartu Cek wadah K5 → Stok › Wadah literan
 // Laporan & Dokumen (putaran 19): layar kedelapan — Laba · Harian · Bulanan · Neraca · Dokumen (berkop, paket bank, dokumen kecil) · Setelan (kop & identitas). Dibuka dari Menu; di Mac ada di menu samping.
 // keTujuan = satu pintu ke layar lain dengan bentuk tujuan yang sama dengan baris Menu ({ ke, keluarga, tab, lembar, sistem }).
 const keTujuan = (t) => { if (!t) return; if (t.ke === 'stok') { pindah('stok'); stok.buka(t.lembar || null, t.tab || null); } else if (t.ke === 'pelanggan') { pindah('pelanggan'); pelanggan.buka(t.keluarga || 'kenali', t.orang || null, t.tab || null); } else if (t.ke === 'harga') { pindah('harga'); harga.buka(t.keluarga || 'katalog', t); } else if (t.ke === 'uang') { pindah('uang'); uang.buka(t.keluarga || 'keluar', t); } else if (t.ke === 'laporan') { pindah('laporan'); laporan.buka(t.keluarga || 'laba', t); } else if (t.ke === 'sistem') { pindah('menu'); menu.buka && menu.buka(t.sistem || 'perangkat', t.tab || null); } else if (t.ke === 'jual' && t.lembar) { pindah('jual'); layar.keadaan.setel({ lembar: t.lembar, kabar: '' }); } else pindah(t.ke); };
 // hemat baca nyala (#111): Laporan › Pajak menahan rekap konsultan & catat setoran selama data pajak di perangkat ini belum lengkap (SATU sumber firebase.js hematKeadaan)
-const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan,
+const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan,
   hemat: () => { try { return fb.hematKeadaan(); } catch (e) { return { nyala: false }; } } });
 const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok'), pelanggan: document.getElementById('layarPelanggan'), menu: document.getElementById('layarMenu'), harga: document.getElementById('layarHarga'), uang: document.getElementById('layarUang'), laporan: document.getElementById('layarLaporan') };
 // GERAK PINDAH LAYAR (owner 29 Sep: "lebih hidup, lebih intuitif — dari segi motion terutama"): layar baru datang dari ARAH tab yang dituju
