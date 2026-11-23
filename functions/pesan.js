@@ -53,6 +53,9 @@ function pesanPutus(sebelum, sesudah, id) {
   const st = sesudah.status || 'menunggu'; if (st === 'menunggu' || !PUTUS_TABLET[st]) return null;
   const uid = teks(sesudah.mintaUid || sesudah.negoUid || sesudah.usulUid); if (!uid) return null;
   const t = String(sesudah.tindakan || '');
+  // owner 23 Nov 2026 (obrolan di lonceng, "seperti WhatsApp"): owner MEMBUKA obrolan = pesan tablet ditandai dibaca tanpa balasan → cukup centang dua
+  // di tablet, BUKAN notifikasi (balasan owner = pesan owner baru → kabarDariOwner). Dibaca DENGAN balasan (jalur lama Uang › titipan) tetap dikabarkan.
+  if (t === 'pesan' && st === 'dibaca' && !teks(sesudah.balasan)) return null;
   let pokok;
   if (t === 'uangKeluar') pokok = [JENIS[sesudah.jenis] || JENIS.toko, teks(sesudah.teks), rp(sesudah.nominal)].filter(Boolean).join(' · ');
   else if (t === 'hitungLaci') pokok = 'Laci ' + teks(sesudah.tanggal) + ' ' + rp(sesudah.hitung);

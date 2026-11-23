@@ -43,19 +43,25 @@ Saat aplikasi **terbuka**, kabar tetap lewat pita di atas layar, bunyi, lampu CP
 ## Uji (5 menit)
 
 1. Di tablet: kirim pesan ke owner (Menu › kartu "Uang keluar & pesan untuk owner"), lalu **tutup penuh** aplikasi tablet (geser dari daftar aplikasi terbuka).
-2. Di HP owner: buka lonceng (pojok kanan atas layar mana pun) → pesan itu → ketik balasan → **Tandai dibaca**.
-3. Di tablet: bunyi + notifikasi "Pesan dibaca owner — Balasan owner: …" muncul di bilah notifikasi. Ketuk = aplikasi terbuka di Menu.
+2. Di HP owner: buka lonceng (pojok kanan atas layar mana pun) → tab **Obrolan** → pesan itu tampil (di tablet berubah ✓✓) → ketik balasan → kirim.
+3. Di tablet: bunyi + notifikasi "Pesan dari owner" berisi balasan itu muncul di bilah notifikasi. Ketuk = aplikasi terbuka di Menu.
 
-## Pesan owner ke tablet (owner 23 Nov 2026)
+## Obrolan owner ↔ tablet (owner 23 Nov 2026: "seperti WhatsApp")
 
-Dari Mac / HP (akun owner): ketuk **lonceng** › kotak **Kirim pesan ke tablet** › tulis (paling banyak 500 huruf) › **Kirim**. Pesannya muncul di lonceng
-semua akun tablet (angka + "Pesan dari owner"), pita di atas layar tablet yang sedang terbuka, dan — kalau notifikasi tablet sudah dinyalakan — di bilah
-notifikasi tablet walau aplikasinya ditutup (fungsi server `kabarDariOwner`). Tiga pesan terakhir yang terkirim tampil di bawah kotak itu. Rules tidak
-berubah (v17): owner sudah boleh menulis `persetujuan` dan akun tablet sudah boleh membacanya. Pesan owner berstatus `terkirim`, jadi tidak masuk daftar
-"menunggu" owner, tidak memicu push ke HP owner, dan tidak tampil di papan Persetujuan. Tablet tidak bisa menandai "dibaca" di server — "sudah dibuka"
-dicatat lonceng di tablet itu sendiri.
+Ketuk **lonceng** (pojok kanan atas layar mana pun, Mac / HP / tablet) › tab **Obrolan**: satu utas owner ↔ tablet — gelembung kiri (lawan bicara) dan
+kanan (sendiri), label hari, nama orang yang jaga di atas gelembung tablet, kotak ketik di bawah (paling banyak 500 huruf; di Mac Enter = kirim,
+Shift+Enter = baris baru; di layar sentuh tombol kirim bulat). Tab **Kabar** berisi titipan uang, barang masuk, nego, usul harga, minta bon.
 
-Sesudah merge, fungsi server dipasang ulang sekali di Cloud Shell (baris yang sama dengan langkah 6 di atas) supaya `kabarDariOwner` terpasang.
+- **Owner menulis** → pesan owner (`persetujuan` bertindakan `pesanOwner`, status `terkirim`) → muncul di obrolan semua akun tablet, pita di atas layar
+  tablet yang terbuka, dan bilah notifikasi tablet walau aplikasinya ditutup (fungsi server `kabarDariOwner`).
+- **Tablet menulis** → pesan ke owner (tindakan `pesan`, sama dengan Menu › kartu pesan untuk owner) → lonceng owner berangka + notifikasi HP / Mac owner.
+- **Centang di gelembung tablet**: ✓ = terkirim, ✓✓ = **dibaca owner**. Owner membuka tab Obrolan = semua pesan tablet yang menunggu ditandai dibaca
+  (tanpa balasan) — tablet hanya melihat ✓✓, **tanpa** notifikasi "dibaca". Membaca di HP ikut membersihkan angka di Mac (keadaannya di server).
+- Pesan owner tidak punya ✓✓: akun tablet tidak boleh mengubah dokumen persetujuan (rules v17), jadi "sudah dibuka" dicatat di tablet itu sendiri.
+- Balasan lama (pesan ditandai dibaca + balasan dari Uang › titipan) tampil sebagai gelembung owner pada jam balasannya.
+
+Tidak ada koleksi atau rules baru (tetap v17). Sesudah merge, fungsi server dipasang ulang sekali di Cloud Shell (baris yang sama dengan langkah 6 di atas)
+supaya tanda dibaca dari obrolan tidak mengirim notifikasi ke tablet.
 
 ## Layar penuh (APK yang sama)
 

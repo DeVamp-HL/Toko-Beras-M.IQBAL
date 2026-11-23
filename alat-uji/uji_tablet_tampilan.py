@@ -27,11 +27,11 @@ import bundel_baru, uji_titipan  # noqa: E402
 
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 NT = 'baru/js/data/notif-tablet.js'; PR = 'baru/js/inti/perangkat.js'; KBL = 'baru/js/layar/kabar-baru-logika.js'; FMT = 'baru/js/inti/format.js'
-TPL = 'baru/js/layar/titipan-logika.js'; PSN = 'functions/pesan.js'; FIX = 'functions/index.js'; PAS = 'apk/pasang.py'
+TPL = 'baru/js/layar/titipan-logika.js'; PSN = 'functions/pesan.js'; FIX = 'functions/index.js'; PAS = 'apk/pasang.py'; IKM = 'apk/ikon_m.py'
 IDX = 'baru/index.html'; KER = 'baru/css/kerangka.css'; APP = 'baru/js/app.js'; MA = 'apk/tambahan/MainActivity.java'; PP = 'apk/tambahan/PerangkatPlugin.java'
 FB = 'baru/js/data/firebase.js'; SIS = 'baru/js/layar/sistem-logika.js'; MENU = 'baru/js/layar/menu.js'; LC = 'baru/js/layar/lonceng.js'; YML = '.github/workflows/apk.yml'; PKG = 'apk/package.json'
 LAYAR = ['harga', 'jual', 'laporan', 'pelanggan', 'menu', 'stok', 'uang', 'ringkasan']
-BERKAS = [NT, PR, KBL, FMT, TPL, PSN, FIX, PAS, IDX, KER, APP, MA, PP, FB, MENU, LC, YML, PKG, SIS] + ['baru/js/layar/%s.js' % n for n in LAYAR]
+BERKAS = [NT, PR, KBL, FMT, TPL, PSN, FIX, PAS, IKM, IDX, KER, APP, MA, PP, FB, MENU, LC, YML, PKG, SIS] + ['baru/js/layar/%s.js' % n for n in LAYAR]
 
 
 def baca(ganti=None):
@@ -118,26 +118,47 @@ async function utama() {
     { id: 'p0', tindakan: 'pesan', status: 'dibaca', teks: 'Lampu mati', balasan: 'Besok diganti', dari: 'Penjaga A', mintaUid: 'uid-tablet', tanggal: '2026-11-22', jam: '08:00', diputusTanggal: '2026-11-23', diputusJam: '11:00' },
     { id: 'k0', tindakan: 'uangKeluar', status: 'ditolak', alasanTolak: 'Belum perlu', jenis: 'toko', teks: 'Sapu', nominal: 15000, dari: 'Penjaga A', mintaUid: 'uid-tablet', tanggal: '2026-11-22', jam: '07:00', diputusTanggal: '2026-11-22', diputusJam: '12:00' },
     { id: 'x9', tindakan: 'pesan', status: 'dibaca', teks: 'dari akun lain', mintaUid: 'uid-lain', tanggal: '2026-11-23', jam: '12:00', diputusTanggal: '2026-11-23', diputusJam: '12:30' }];
-  var OW = { jenis: 'owner', uid: 'uid-owner' }; var TB = { jenis: 'staf', uid: 'uid-tablet', peran: 'ben' };
-  var L1 = kbLonceng(OW, D, {});
-  cek('lonceng owner: hanya yang MENUNGGU, terbaru dulu, angka = belum dibuka', L1.owner && L1.daftar.map(function (x) { return x.id; }).join() === 'k1,p1' && L1.n === 2 && L1.menunggu === 2, J(L1.daftar.map(function (x) { return x.id; })));
-  cek('lonceng owner: pesan bisa dibalas, titipan uang tidak (dibuka di Uang)', L1.daftar.find(function (x) { return x.id === 'p1'; }).bisaBalas === true && L1.daftar.find(function (x) { return x.id === 'k1'; }).bisaBalas === false && L1.daftar.find(function (x) { return x.id === 'k1'; }).layar === 'uang');
-  var L2 = kbLonceng(OW, D, kbTandai(L1));
-  cek('lonceng owner: sesudah dibuka angka nol, isi tetap', L2.n === 0 && L2.daftar.length === 2);
+  var OW = { jenis: 'owner', uid: 'uid-owner' }; var TB = { jenis: 'staf', uid: 'uid-tablet', peran: 'ben' }; var HI = '2026-11-23';
+  var kunci = function (L) { return L.map(function (x) { return x.kunci || x.id; }).join(); };
+  var L1 = kbLonceng(OW, D, {}, HI);
+  cek('lonceng owner: tab Kabar = permintaan MENUNGGU selain pesan (pesan pindah ke Obrolan)', L1.owner && kunci(L1.daftar) === 'k1' && L1.menunggu === 1 && L1.nKabar === 1 && L1.daftar[0].bisaBalas === false && L1.daftar[0].layar === 'uang', J(L1.daftar));
+  cek('obrolan owner: semua pesan tablet + balasan lama jadi gelembung owner, terlama dulu', kunci(L1.obrolan) === 'p0,p1,p0-balas,x9' && L1.obrolan[2].dari === 'owner' && L1.obrolan[2].teks === 'Besok diganti' && L1.obrolan[0].dari === 'tablet' && L1.obrolan[0].nama === 'Penjaga A', J(L1.obrolan));
+  cek('obrolan: label hari (Kemarin / Hari ini) di gelembung pertama tiap tanggal, nama di awal rentetan', L1.obrolan[0].pisah === 'Kemarin' && L1.obrolan[1].pisah === 'Hari ini' && L1.obrolan[2].pisah === '' && L1.obrolan[1].namaTampil === true && L1.obrolan[2].namaTampil === true, J(L1.obrolan.map(function (x) { return [x.kunci, x.pisah, x.namaTampil]; })));
+  cek('obrolan: centang — pesan tablet menunggu ✓ (1), sudah dibaca owner ✓✓ (2)', L1.obrolan[0].centang === 2 && L1.obrolan[1].centang === 1 && L1.obrolan[3].centang === 2);
+  cek('obrolan owner: belum dibaca = pesan tablet yang MENUNGGU (keadaan server); angka lonceng = kabar + obrolan', L1.nObrolan === 1 && J(L1.belumDibaca) === J(['p1']) && L1.n === 2, J([L1.nObrolan, L1.belumDibaca, L1.n]));
+  var L2 = kbLonceng(OW, D, kbTandai(L1), HI);
+  cek('owner: membuka lonceng saja TIDAK membersihkan obrolan (baru bersih sesudah pesan ditandai dibaca di server)', L2.nKabar === 0 && L2.nObrolan === 1 && L2.daftar.length === 1, J([L2.nKabar, L2.nObrolan]));
+  var Db = D.map(function (m) { return m.id === 'p1' ? Object.assign({}, m, { status: 'dibaca', balasan: '', diputusTanggal: HI, diputusJam: '09:05' }) : m; });
+  var L2b = kbLonceng(OW, Db, kbTandai(L1), HI);
+  cek('owner: pesan ditandai dibaca (dari HP / Mac mana pun) → obrolan bersih, centang tablet jadi dua, TANPA gelembung balasan kosong', L2b.nObrolan === 0 && L2b.belumDibaca.length === 0 && L2b.obrolan[1].centang === 2 && kunci(L2b.obrolan) === 'p0,p1,p0-balas,x9', J(L2b.obrolan));
   var D2 = D.concat([{ id: 'p2', tindakan: 'pesan', status: 'menunggu', teks: 'Pembeli tanya', mintaUid: 'uid-tablet', tanggal: '2026-11-23', jam: '13:00' }]);
-  cek('lonceng owner: pesan baru sesudah dibuka → angka 1, paling atas', kbLonceng(OW, D2, kbTandai(L1)).n === 1 && kbLonceng(OW, D2, kbTandai(L1)).daftar[0].id === 'p2');
-  var T0 = kbLonceng(TB, D, {});
-  cek('lonceng tablet: milik akun ini saja (menunggu + diputus), terbaru menurut jam kejadiannya (putusan / kiriman), akun lain tidak ikut', T0.daftar.map(function (x) { return x.id; }).join() === 'p0,k1,p1,k0' && T0.daftar.every(function (x) { return x.id !== 'x9'; }), J(T0.daftar.map(function (x) { return [x.id, x.urut]; })));
-  cek('lonceng tablet: angka = putusan yang belum dibuka (bukan yang masih menunggu)', T0.n === 2, T0.n);
-  var p0 = T0.daftar.find(function (x) { return x.id === 'p0'; }); var k0 = T0.daftar.find(function (x) { return x.id === 'k0'; });
-  cek('lonceng tablet: balasan owner & alasan tolak ikut, judul menyebut putusannya', p0.balasan === 'Besok diganti' && /dibaca owner/.test(p0.judul) && k0.alasan === 'Belum perlu' && /DITOLAK/.test(k0.judul) && !p0.bisaBalas, J([p0, k0]));
-  var T1b = kbLonceng(TB, D, kbTandai(T0)); var D3 = D.map(function (m) { return m.id === 'k1' ? Object.assign({}, m, { status: 'disetujui', diputusTanggal: '2026-11-23', diputusJam: '14:00' }) : m; });
-  var T2 = kbLonceng(TB, D3, kbTandai(T0));
+  var L3 = kbLonceng(OW, D2, kbTandai(L1), HI);
+  cek('owner: pesan tablet baru → angka obrolan naik, gelembungnya di ujung utas', L3.nObrolan === 2 && L3.obrolan[L3.obrolan.length - 1].kunci === 'p2' && L3.obrolan[L3.obrolan.length - 1].baru === true, J([L3.nObrolan, kunci(L3.obrolan)]));
+  var DK = [{ id: 'b1', tindakan: 'barangMasuk', status: 'menunggu', teks: 'Datang 10 karung', mintaUid: 'uid-tablet', tanggal: HI, jam: '07:00' }];
+  cek('owner: kabar barang masuk tetap di tab Kabar & bisa ditandai diperiksa + balasan', kbLonceng(OW, DK, {}, HI).daftar[0].bisaBalas === true && kbLonceng(OW, DK, {}, HI).obrolan.length === 0);
+  var T0 = kbLonceng(TB, D, {}, HI);
+  var Tz = kbLonceng(TB, D.concat([{ id: 'z1', tindakan: 'uangKeluar', status: 'ditolak', alasanTolak: 'x', jenis: 'toko', teks: 'Lain', nominal: 1000, mintaUid: 'uid-lain', tanggal: HI, jam: '15:00', diputusTanggal: HI, diputusJam: '15:10' }]), {}, HI);
+  cek('lonceng tablet: tab Kabar = permintaan milik akun ini selain pesan, terbaru menurut jam kejadiannya; akun lain tidak ikut', kunci(T0.daftar) === 'k1,k0' && kunci(Tz.daftar) === 'k1,k0', J([T0.daftar.map(function (x) { return [x.id, x.urut]; }), kunci(Tz.daftar)]));
+  cek('obrolan tablet: pesan akun ini + balasan owner (pesan akun lain tidak ikut)', kunci(T0.obrolan) === 'p0,p1,p0-balas' && T0.obrolan.every(function (x) { return x.id !== 'x9'; }), kunci(T0.obrolan));
+  cek('lonceng tablet: angka = putusan belum dibuka (Kabar) + balasan / pesan owner belum dibuka (Obrolan)', T0.nKabar === 1 && T0.nObrolan === 1 && T0.n === 2, J([T0.nKabar, T0.nObrolan]));
+  var k0 = T0.daftar.find(function (x) { return x.id === 'k0'; });
+  cek('lonceng tablet: alasan tolak ikut, judul menyebut putusannya', k0.alasan === 'Belum perlu' && /DITOLAK/.test(k0.judul), J(k0));
+  var Tk = kbLonceng(TB, D, kbTandai(T0, 'kabar'), HI), To = kbLonceng(TB, D, kbTandai(T0, 'obrolan'), HI), Tb = kbLonceng(TB, D, kbTandai(T0), HI);
+  cek('tablet: tab yang DILIHAT saja yang jadi sudah dibuka (Kabar ≠ Obrolan); keduanya = nol', Tk.nKabar === 0 && Tk.nObrolan === 1 && To.nKabar === 1 && To.nObrolan === 0 && Tb.n === 0, J([Tk.nKabar, Tk.nObrolan, To.nKabar, To.nObrolan, Tb.n]));
+  var Tko = kbLonceng(TB, D, kbTandai(Tk, 'obrolan'), HI);
+  cek('tablet: buka Kabar lalu Obrolan → catatan Kabar tidak hilang', Tko.n === 0, Tko.n);
+  var T1b = kbLonceng(TB, D, kbTandai(T0), HI); var D3 = D.map(function (m) { return m.id === 'k1' ? Object.assign({}, m, { status: 'disetujui', diputusTanggal: '2026-11-23', diputusJam: '14:00' }) : m; });
+  var T2 = kbLonceng(TB, D3, kbTandai(T0), HI);
   cek('lonceng tablet: owner menyetujui titipan sesudah dibuka → angka 1 (status berubah = kabar baru)', T1b.n === 0 && T2.n === 1 && T2.daftar[0].id === 'k1' && /disetujui/.test(T2.daftar[0].judul), J([T1b.n, T2.n, T2.daftar[0]]));
+  var Tc = kbLonceng(TB, Db, kbTandai(T0), HI);
+  cek('tablet: pesannya dibaca owner tanpa balasan → centang dua, BUKAN angka baru', Tc.n === 0 && Tc.obrolan.find(function (x) { return x.kunci === 'p1'; }).centang === 2, J([Tc.n, Tc.obrolan]));
   var teks = kbTulisLihat(null, 'uid-owner', { a: 'menunggu' }); teks = kbTulisLihat(teks, 'uid-tablet', { b: 'dibaca' });
   cek('peta "sudah dibuka" per akun: akun lain di perangkat yang sama tidak tertimpa', J(kbBacaLihat(teks, 'uid-owner')) === J({ a: 'menunggu' }) && J(kbBacaLihat(teks, 'uid-tablet')) === J({ b: 'dibaca' }) && kbBacaLihat(teks, 'uid-baru') === null && kbBacaLihat('rusak{', 'x') === null);
-  var banyak = []; for (var i = 0; i < 40; i++) banyak.push({ id: 'm' + i, tindakan: 'pesan', status: 'menunggu', teks: 'p' + i, mintaUid: 'u', tanggal: '2026-11-23', jam: String(10 + (i % 10)) + ':' + String(10 + i) });
-  var LB = kbLonceng(OW, banyak, {}); cek('lonceng: paling banyak 30 baris, sisanya disebut, angka dari SEMUA', LB.daftar.length === 30 && LB.lebih === 10 && LB.n === 40, J([LB.daftar.length, LB.lebih, LB.n]));
+  var banyak = []; for (var i = 0; i < 40; i++) banyak.push({ id: 'm' + i, tindakan: 'uangKeluar', status: 'menunggu', jenis: 'toko', teks: 'p' + i, nominal: 1000, mintaUid: 'u', tanggal: '2026-11-23', jam: String(10 + (i % 10)) + ':' + String(10 + i) });
+  var LB = kbLonceng(OW, banyak, {}, HI); cek('lonceng Kabar: paling banyak 30 baris, sisanya disebut, angka dari SEMUA', LB.daftar.length === 30 && LB.lebih === 10 && LB.n === 40, J([LB.daftar.length, LB.lebih, LB.n]));
+  var bp = []; for (var j = 0; j < 90; j++) bp.push({ id: 'q' + j, tindakan: 'pesan', status: 'menunggu', teks: 'p' + j, mintaUid: 'u', tanggal: '2026-11-23', jam: '10:' + String(10 + (j % 50)), pada: '2026-11-23T03:00:' + String(10 + (j % 50)) + '.' + String(100 + j) + 'Z' });
+  var LP = kbLonceng(OW, bp, {}, HI);
+  cek('obrolan: paling banyak 80 gelembung terbaru, sisanya disebut, angka dari SEMUA', LP.obrolan.length === 80 && LP.lebihObrolan === 10 && LP.nObrolan === 90 && LP.belumDibaca.length === 90, J([LP.obrolan.length, LP.lebihObrolan, LP.nObrolan]));
   // ---- isi push tablet (functions/pesan.js)
   var P = __modul.exports;
   var a = P.pesanPutus({ status: 'menunggu', tindakan: 'pesan', teks: 'Lampu mati', mintaUid: 'uid-tablet' }, { status: 'dibaca', tindakan: 'pesan', teks: 'Lampu mati', balasan: 'Besok diganti', mintaUid: 'uid-tablet' }, 'p0');
@@ -149,6 +170,9 @@ async function utama() {
   cek('push tablet: TIDAK dikirim bila belum diputus, sudah diputus sebelumnya, atau tanpa peminta',
     P.pesanPutus({ status: 'menunggu' }, { status: 'menunggu', mintaUid: 'u' }, 'x') === null && P.pesanPutus({ status: 'dibaca' }, { status: 'dibaca', balasan: 'lagi', mintaUid: 'u' }, 'x') === null
     && P.pesanPutus({ status: 'menunggu' }, { status: 'dibaca' }, 'x') === null && P.pesanPutus(null, {}, 'x') === null);
+  cek('push tablet: pesan dibaca TANPA balasan (owner membuka obrolan) → tidak ada notifikasi, cukup centang dua; kabar barang masuk tetap dikabarkan',
+    P.pesanPutus({ status: 'menunggu', tindakan: 'pesan', teks: 'Lampu', mintaUid: 'u' }, { status: 'dibaca', tindakan: 'pesan', teks: 'Lampu', balasan: '', mintaUid: 'u' }, 'q') === null
+    && !!P.pesanPutus({ status: 'menunggu', tindakan: 'barangMasuk', teks: 'Datang', mintaUid: 'u' }, { status: 'dibaca', tindakan: 'barangMasuk', teks: 'Datang', balasan: '', mintaUid: 'u' }, 'b'));
   var k = P.kirimanTablet(a, ['t1', 't2']);
   cek('push tablet: kiriman = notifikasi Android saluran "kabar", prioritas tinggi, data layar teks', J(k.tokens) === J(['t1', 't2']) && k.notification.title === a.judul && k.android.priority === 'high' && k.android.notification.channelId === 'kabar' && k.data.layar === 'menu' && typeof k.data.tag === 'string', J(k));
   var pj = P.pesanPutus({ status: 'menunggu', tindakan: 'pesan', mintaUid: 'u' }, { status: 'dibaca', tindakan: 'pesan', teks: 'z'.repeat(300), balasan: 'y'.repeat(150), mintaUid: 'u' }, 'q');
@@ -159,16 +183,21 @@ async function utama() {
   cek('pesan owner: satu dokumen persetujuan pesanOwner, status terkirim (bukan menunggu), teks dirapikan, untuk tablet', S1.dokumen && S1.dokumen.length === 1 && S1.dokumen[0].koleksi === 'persetujuan'
     && dPO.tindakan === 'pesanOwner' && dPO.status === 'terkirim' && dPO.teks === 'Tolong cek stok 5 kg' && dPO.untuk === 'tablet' && dPO.tanggal === '2026-11-23' && dPO.jam === '15:00', J(S1));
   cek('pesan owner: kosong / lebih dari 500 huruf / bukan akun owner DITOLAK', !!kbSusunPesanOwner('   ', W, OW).tolak && !!kbSusunPesanOwner('x'.repeat(501), W, OW).tolak && !!kbSusunPesanOwner('halo', W, TB).tolak && !kbSusunPesanOwner('x'.repeat(500), W, OW).tolak);
+  cek('pesan owner: baris baru dipertahankan (obrolan), spasi & baris kosong berlebih dirapikan', kbSusunPesanOwner('baris  satu \n\n\n\n baris dua', W, OW).dokumen[0].data.teks === 'baris satu\n\nbaris dua');
   var DP = D.concat([dPO]);
-  var LO = kbLonceng(OW, DP, kbTandai(L1));
-  cek('lonceng owner: pesan owner TIDAK dihitung & tidak di daftar menunggu; tampil di "terkirim"', LO.n === 0 && LO.menunggu === 2 && LO.daftar.every(function (x) { return x.id !== 'po1'; }) && LO.terkirim.length === 1 && LO.terkirim[0].isi === 'Tolong cek stok 5 kg', J([LO.n, LO.menunggu, LO.terkirim]));
-  var LT = kbLonceng(TB, DP, kbTandai(T0));
-  cek('lonceng tablet: pesan owner = kabar baru (angka 1, paling atas, judul "Pesan dari owner")', LT.n === 1 && LT.daftar[0].id === 'po1' && LT.daftar[0].judul === 'Pesan dari owner' && LT.daftar[0].baru === true, J([LT.n, LT.daftar[0]]));
-  cek('lonceng tablet: sesudah dibuka angka nol', kbLonceng(TB, DP, kbTandai(LT)).n === 0);
-  var LK = kbLonceng({ jenis: 'staf', uid: 'uid-lain', peran: 'karyawan' }, DP, {});
-  cek('lonceng akun tablet lain (karyawan) juga menerima pesan owner', LK.daftar.some(function (x) { return x.id === 'po1'; }));
+  var LO = kbLonceng(OW, DP, kbTandai(L1), HI);
+  cek('lonceng owner: pesan owner TIDAK dihitung & tidak di Kabar; tampil di Obrolan sebagai gelembung sendiri (✓)', LO.nKabar === 0 && LO.menunggu === 1 && LO.daftar.every(function (x) { return x.id !== 'po1'; })
+    && LO.obrolan.some(function (x) { return x.id === 'po1' && x.dari === 'owner' && !x.baru && x.centang === 1; }), J([LO.nKabar, LO.menunggu, LO.obrolan]));
+  var LT = kbLonceng(TB, DP, kbTandai(T0), HI); var ujung = LT.obrolan[LT.obrolan.length - 1];
+  cek('obrolan tablet: pesan owner = baru (angka 1, ujung utas, dari owner)', LT.n === 1 && LT.nObrolan === 1 && ujung.id === 'po1' && ujung.dari === 'owner' && ujung.baru === true && ujung.teks === 'Tolong cek stok 5 kg', J([LT.n, ujung]));
+  cek('obrolan tablet: sesudah Obrolan dibuka angka nol', kbLonceng(TB, DP, kbTandai(LT, 'obrolan'), HI).n === 0);
+  var LK = kbLonceng({ jenis: 'staf', uid: 'uid-lain', peran: 'karyawan' }, DP, {}, HI);
+  cek('akun tablet lain (karyawan) juga menerima pesan owner di obrolannya (tanpa pesan milik akun lain)', LK.obrolan.some(function (x) { return x.id === 'po1'; }) && LK.obrolan.every(function (x) { return x.id !== 'p1'; }), kunci(LK.obrolan));
   var sTB0 = kbSidik(TB, D), sTB1 = kbSidik(TB, DP); var evT = kbBanding(sTB0, sTB1);
   cek('kabar dalam aplikasi: tablet berbunyi "Pesan dari owner" saat pesan owner datang', evT.length === 1 && evT[0].judul === 'Pesan dari owner' && evT[0].isi === 'Tolong cek stok 5 kg', J(evT));
+  var evR = kbBanding(kbSidik(TB, D), kbSidik(TB, Db)); var Dr = D.map(function (m) { return m.id === 'p1' ? Object.assign({}, m, { status: 'dibaca', balasan: 'Oke', diputusTanggal: HI, diputusJam: '09:05' }) : m; });
+  var evR2 = kbBanding(kbSidik(TB, D), kbSidik(TB, Dr));
+  cek('kabar dalam aplikasi: pesan tablet dibaca TANPA balasan → tablet tidak berbunyi (centang dua saja); dengan balasan tetap berbunyi', evR.length === 0 && evR2.length === 1 && /dibaca owner/.test(evR2[0].judul), J([evR, evR2]));
   var evO = kbBanding(kbSidik(OW, D), kbSidik(OW, DP));
   cek('kabar dalam aplikasi: owner yang menulis TIDAK berbunyi untuk pesannya sendiri', evO.length === 0, J(evO));
   var pp = P.pesanDariOwner(dPO, 'po1');
@@ -203,6 +232,27 @@ def jalankan_jsc(t):
 MANIFEST_UJI = None
 
 
+_IKON = {}   # hasil ikon_m.semua() per teks sumbernya (±3 detik sekali; kontrol yang tidak mengubah ikon_m.py memakai ulang)
+
+
+def ikon_dari(teks):
+    if teks not in _IKON:
+        r = {'__name__': 'ikon_uji', '__file__': os.path.join(AKAR, IKM)}; exec(compile(teks, IKM, 'exec'), r); _IKON[teks] = (r['semua'](), r)
+    return _IKON[teks]
+
+
+def piksel_alfa(png, x, y):
+    """Alfa satu piksel PNG RGBA 8-bit tanpa interlace yang ditulis ikon_m.png() (filter 0 tiap baris)."""
+    import struct, zlib
+    w = struct.unpack('>I', png[16:20])[0]; i = 8; idat = b''
+    while i < len(png):
+        n = struct.unpack('>I', png[i:i + 4])[0]; jenis = png[i + 4:i + 8]
+        if jenis == b'IDAT': idat += png[i + 8:i + 8 + n]
+        i += 12 + n
+    d = zlib.decompress(idat); baris = 1 + w * 4
+    return d[y * baris + 1 + x * 4 + 3]
+
+
 def periksa_python(t):
     import importlib.util  # noqa: F401
     import uji_perangkat_sunmi as U
@@ -232,6 +282,17 @@ def periksa_python(t):
     ok('gradle: plugin google-services diterapkan & classpath-nya ditambah bila cetakan tidak membawanya', "apply plugin: 'com.google.gms.google-services'" in a2 and "classpath 'com.google.gms:google-services:" in r2 and r2.index('tools.build:gradle') < r2.index('google-services'))
     ok('gradle: cetakan yang sudah membawanya tidak diubah (dua kali = sama)', ruang['ubah_gradle_gs'](a2, r2) == (a2, r2))
     ok('gradle: build.gradle akar tanpa classpath Android DITOLAK', ditolak(ruang['ubah_gradle_gs'], app_g, 'buildscript {}'))
+    # ---- logo M (owner 23 Nov 2026: "ikon logo aplikasi gak rapi di tablet … ganti logo" → "logo M aja gak perlu IQ")
+    hasil, ikm = ikon_dari(t[IKM])
+    beda = [n for n, b in hasil.items() if not os.path.exists(os.path.join(AKAR, n)) or open(os.path.join(AKAR, n), 'rb').read() != b]
+    ok('logo M: icon-sistem.svg + PNG 512/192/180/32 + latar depan APK = hasil apk/ikon_m.py (satu sumber geometri)', not beda, beda)
+    dp = hasil['apk/ikon-depan-432.png']
+    ok('logo M: latar depan ikon adaptif TRANSPARAN di luar simbol (bukan kotak), cincin emas di dalam lingkar aman 66/108', piksel_alfa(dp, 0, 0) == 0 and piksel_alfa(dp, 431, 431) == 0
+       and piksel_alfa(dp, 216 + 125, 216) > 0 and 125 * 2 / 432 < 66 / 108, [piksel_alfa(dp, 0, 0), piksel_alfa(dp, 341, 216)])
+    ok('logo M: tanpa tulisan "IQ" / "BERAS" di ikon', 'IQ' not in hasil['icon-sistem.svg'].decode('utf-8') and 'BERAS' not in hasil['icon-sistem.svg'].decode('utf-8') and '<text' not in hasil['icon-sistem.svg'].decode('utf-8'))
+    ok('logo M: pasang.py — latar depan = apk/ikon-depan-432.png, latar belakang = LATAR_IKON hitam malam (sama dengan ikon_m.LATAR_APK), ikon bulat dipotong lingkaran',
+       "if os.path.exists(p): depan.resize(Image.open(p).size, Image.LANCZOS).save(p)" in t[PAS] and ruang.get('LATAR_IKON') == ikm['LATAR_APK'] and "re.sub(r'#[0-9A-Fa-f]{6,8}', LATAR_IKON, baca(latar))" in t[PAS]
+       and "if os.path.exists(p): bulat(n).save(p)" in t[PAS])
     ok('pasang.py memasang berkas Firebase dari rahasia GOOGLE_SERVICES_JSON & menyalin ikon notifikasi', "os.environ.get('GOOGLE_SERVICES_JSON'" in t[PAS] and "'ic_kabar.xml'" in t[PAS] and 'pasang_firebase();' in t[PAS])
     ok('apk.yml meneruskan rahasia GOOGLE_SERVICES_JSON ke langkah pasang & menulis ringkasan ada-tidaknya push', 'GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}' in t[YML] and 'Push tablet: TANPA berkas Firebase' in t[YML])
     ok('apk/package.json membawa plugin resmi @capacitor/push-notifications seri 7', json.loads(t[PKG])['dependencies'].get('@capacitor/push-notifications', '').startswith('^7'))
@@ -275,7 +336,10 @@ def periksa_statis(t):
     # ---- push sisi server & rules
     F = t[FIX]
     ok('fungsi kabarTablet: pemicu UBAH persetujuan, token notifPerangkat milik uid peminta, token kosong dilewati', "exports.kabarTablet = onDocumentUpdated('persetujuan/{id}'" in F and ".collection('notifPerangkat').where('uid', '==', p.uid)" in F and "typeof x.token === 'string' && x.token" in F)
-    ok('pesan owner: lonceng owner punya kotak "Kirim pesan ke tablet" yang menulis lewat kbSusunPesanOwner, owner saja', "kbSusunPesanOwner(_lcTulis, waktuSekarang(" in L and "if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;\n  const r = kbSusunPesanOwner" in L and 'data-ll="kirim"' in L)
+    ok('obrolan: satu kotak ketik di lonceng — owner menulis lewat kbSusunPesanOwner, akun tablet lewat tpSusunPesan (pintu yang sama dengan Menu)', "const r = _lcAkun.jenis === 'owner' ? kbSusunPesanOwner(_lcTulis, w, _lcAkun) : tpSusunPesan(_lcTulis, _lcAkun, w);" in L and 'data-ll="kirim"' in L and 'data-ll-tulis="1"' in L)
+    ok('obrolan: owner membuka tab Obrolan = pesan tablet yang menunggu ditandai dibaca TANPA balasan, satu kiriman, tiap id sekali per pembukaan', "if (_lcTab === 'obrolan' && _lcIsi.owner && !document.hidden) lcBacaSemua();" in L and "tpSusunPutus(id, 'dibaca', { balasan: '' }, w)" in L and "_lcIsi.belumDibaca.filter((id) => !_lcMenandai.has(id))" in L and 'const x = await tulisDokumen(dok);' in L)
+    ok('obrolan: tab Obrolan | Kabar, gelembung kiri-kanan, centang, label hari, gelembung & penanda tab beranimasi', 'data-ll="tab" data-tab="${k}"' in L and "${x.centang === 2 ? '✓✓' : '✓'}" in L and '.lo-gel.saya {' in K and '.lo-gel.dia {' in K and 'animation: masukGel' in K and 'transform: translateX(calc(var(--x, 0) * 100%)); transition: transform' in K and '.lo-hari {' in K)
+    ok('obrolan: Enter = kirim hanya dengan papan ketik fisik (layar sentuh: baris baru), kotak ketik ikut tinggi tulisannya', "fisik = matchMedia('(pointer: fine)').matches;" in L and 'if (fisik) { ev.preventDefault(); lcKirim(); }' in L and 'const lcTinggi = (k) =>' in L)
     ok('pesan owner: papan Persetujuan tidak memuat pesan owner', "cacheMentah('persetujuan').filter((m) => m && m.tindakan !== 'pesanOwner')" in t[SIS])
     ok('fungsi kabarDariOwner: pemicu BUAT persetujuan, token notifPerangkat (semua / satu akun), token kosong dilewati', "exports.kabarDariOwner = onDocumentCreated('persetujuan/{id}'" in F and "(p.untukUid ? kol.where('uid', '==', p.untukUid) : kol)" in F)
     ok('firebase.js: token tablet atas nama akun yang masuk, id = uid_perangkat, mati = dikosongkan', "const id = uid + '_' + pid;" in t[FB] and "export const hapusTokenTablet = () => tulisTokenTablet('');" in t[FB])
@@ -312,13 +376,26 @@ KONTROL = [
     ('app.js lupa menyuntik lonceng ke Uang', [(APP, "pasangLayarUang(document.getElementById('layarUang'), { lonceng: pintuLonceng,", "pasangLayarUang(document.getElementById('layarUang'), {")]),
     ('karyawan tablet boleh membalas dari lonceng', [(LC, "async function lcTandaiBaca(id) {\n  if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;", "async function lcTandaiBaca(id) {\n  if (!_lcAkun || _lcSibuk) return;")]),
     ('pesan owner berstatus menunggu (masuk daftar menunggu owner)', [(KBL, "tindakan: KB_PESAN_OWNER, status: KB_STATUS_TERKIRIM,", "tindakan: KB_PESAN_OWNER, status: 'menunggu',")]),
-    ('lonceng tablet tidak memuat pesan owner', [(KBL, "      (owner ? terkirim : out).push(x); return;", "      if (owner) terkirim.push(x); return;")]),
+    ('obrolan tablet tidak memuat pesan owner', [(KBL, "      ob.push(gelembung({ id, dari: 'owner', nama: 'Owner', teks: m.teks,", "      if (owner) ob.push(gelembung({ id, dari: 'owner', nama: 'Owner', teks: m.teks,")]),
+    ('obrolan tablet memuat pesan akun lain', [(KBL, "      if (!owner && (!uid || uidPeminta(m) !== uid)) return;\n", "")]),
+    ('obrolan owner: belum dibaca dari peta perangkat (bukan keadaan server)', [(KBL, "centang: st === 'menunggu' ? 1 : 2, baru: owner && st === 'menunggu' }));", "centang: st === 'menunggu' ? 1 : 2, baru: owner && L[id] !== st }));")]),
+    ('balasan lama hilang dari obrolan', [(KBL, "      if (bal && st !== 'menunggu') ob.push(", "      if (false) ob.push(")]),
+    ('membuka satu tab menandai kedua tab', [(KBL, "  if (bagian !== 'obrolan') Object.assign(out, kab);", "  Object.assign(out, kab);")]),
+    ('obrolan tanpa label hari', [(KBL, "x.pisah = !s || s.tanggal !== x.tanggal ? kbLabelHari(x.tanggal, hariIni) : '';", "x.pisah = '';")]),
+    ('obrolan tanpa batas gelembung', [(KBL, "  const utas = ob.slice(Math.max(0, ob.length - KB_MAKS_OBROLAN));", "  const utas = ob;")]),
+    ('push tablet saat owner sekadar membuka obrolan', [(PSN, "  if (t === 'pesan' && st === 'dibaca' && !teks(sesudah.balasan)) return null;\n", "")]),
+    ('tablet berbunyi untuk centang dua', [(KBL, "\n    && !(baru.milik[id].tindakan === TP_PESAN && baru.milik[id].status === 'dibaca' && !baru.milik[id].balasan)", "")]),
+    ('owner membuka obrolan tidak menandai dibaca', [(LC, "  if (_lcTab === 'obrolan' && _lcIsi.owner && !document.hidden) lcBacaSemua();\n", "")]),
+    ('pesan owner meratakan baris baru', [(KBL, ".replace(/[ \\t\\f\\v]+/g, ' ')", ".replace(/\\s+/g, ' ')")]),
     ('kabar dalam aplikasi diam saat pesan owner datang', [(KBL, "  return pesan.concat(putus);", "  return putus;")]),
-    ('karyawan tablet boleh mengirim pesan owner dari lonceng', [(LC, "async function lcKirim() {\n  if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;", "async function lcKirim() {\n  if (!_lcAkun || _lcSibuk) return;")]),
+    ('tablet menulis pesan owner dari obrolan', [(LC, "_lcAkun.jenis === 'owner' ? kbSusunPesanOwner(_lcTulis, w, _lcAkun) : tpSusunPesan(_lcTulis, _lcAkun, w)", "kbSusunPesanOwner(_lcTulis, w, _lcAkun)")]),
     ('pesan owner tanpa batas panjang', [(KBL, "  if (isi.length > TP_BATAS.pesan) return { tolak:", "  if (false) return { tolak:")]),
     ('push dari owner tanpa isi', [(PSN, "  const isi = teks(d.teks); if (!isi) return null;\n  return { judul: 'Pesan dari owner'", "  const isi = teks(d.teks);\n  return { judul: 'Pesan dari owner'")]),
     ('HP owner dikabari pesannya sendiri', [(PSN, "  if (d.tindakan === 'pesanOwner') return null;", "")]),
     ('papan Persetujuan memuat pesan owner', [(SIS, ".filter((m) => m && m.tindakan !== 'pesanOwner')", "")]),
+    ('latar depan ikon adaptif kembali ikon 512 berkotak', [(PAS, "if os.path.exists(p): depan.resize(Image.open(p).size, Image.LANCZOS).save(p)", "if os.path.exists(p): sumber.resize(Image.open(p).size, Image.LANCZOS).save(p)")]),
+    ('latar belakang ikon adaptif kembali terang', [(PAS, "LATAR_IKON = '#101314'", "LATAR_IKON = '#E2E7EC'")]),
+    ('geometri logo diubah tanpa membuat ulang PNG', [(IKM, "def susun(ukuran, cincin=True, skala_m=1.12,", "def susun(ukuran, cincin=True, skala_m=1.2,")]),
     ('kabarTablet mengirim ke semua token', [(FIX, ".collection('notifPerangkat').where('uid', '==', p.uid).get()", ".collection('notifPerangkat').get()")]),
 ]
 

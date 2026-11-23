@@ -2494,7 +2494,7 @@ keluar rapi. Owner: *"maunya tanpa pihak ketiga … jauh lebih bagus, jauh lebih
   `/baru/` di GitHub Pages (pembaruan sistem tetap lewat terbit biasa; kunci API ber-referrer tetap cocok), `www/galat.html` bila tablet belum
   tersambung saat dibuka. Plugin Java **CetakUsb** (`apk/tambahan/CetakUsbPlugin.java`): `daftar()` & `cetak({data base64})`, klaim antarmuka
   dengan force (yang tidak bisa dilakukan Chrome), antre satu per satu, izin USB lewat dialog Android + penyaring perangkat (printer dicolok →
-  "selalu buka" = izin tersimpan). Layar tidak padam selama aplikasi terbuka. Ikon & layar pembuka dari `icon-sistem-512.png`.
+  "selalu buka" = izin tersimpan). Layar tidak padam selama aplikasi terbuka. Ikon & layar pembuka: logo "M" (owner 23 Nov 2026) — `icon-sistem-512.png` + latar depan ikon adaptif `apk/ikon-depan-432.png` di atas latar hitam malam polos; semua gambar dibuat `apk/ikon_m.py` (ubah geometrinya di sana, jalankan ulang).
   Kunci tanda tangan: rahasia repo `APK_KEYSTORE_B64/PASSWORD`, `APK_KEY_ALIAS/PASSWORD`; tanpa itu APK DEBUG (versi baru = hapus aplikasi lama dulu).
 - **Struk gaya gambar** (`js/inti/struk-kanvas.js` + raster di `escpos.js`): garis `susunStruk()` digambar di kanvas 576 titik — kop besar,
   rincian menjorok, TOTAL di pita hitam, garis titik-titik, logo (dithering) — lalu GS v 0 per pita 240 baris. Isi & angka = struk teks.
@@ -3506,3 +3506,20 @@ Owner: "gimana gua kirim pesan lewat mac/HP ke tablet?" → "Ya, bangun". Dulu o
 - `functions/index.js` **`kabarDariOwner`** (onDocumentCreated persetujuan) + `pesan.js` `pesanDariOwner`: push ke token `notifPerangkat` (semua, atau satu akun
   bila `untukUid`). Rules tetap v17. Pasang ulang fungsi di Cloud Shell sesudah merge.
 Alat uji: `uji_tablet_tampilan.py` (96, kontrol 32/32), `uji_titipan.py` (fungsi server: tiga pemicu, hanya membuang token mati).
+
+## Obrolan di lonceng, logo M, kartu wadah ringkas (23 Nov 2026, cabang `paket/obrolan-logo-wadah`)
+Owner: (1) "hapus catatan takar % di kartu wadah literan" → "Hapus semua, tapi catatan terakhir takar, jam, oleh tetap ada"; (2) "notifikasi & kabar … bisa
+balas pesan … seperti WhatsApp" → **Obrolan di lonceng**; (3) "ikon logo aplikasi gak rapi di tablet … ganti logo" → **"logo M aja gak perlu IQ"**.
+- **Kartu wadah (Jual › Literan)**: hanya "takar terakhir HH:MM · oleh" (`wbKomposisiTurunan().terakhir`); komposisi % / banding merek & baris selisih wadah
+  dibuang dari kartu (rinciannya tetap di Stok › Wadah literan). `uji_cache_chip_literan.py`: oracle baru + kontrol "komposisi kembali tampil".
+- **Obrolan** (`kabar-baru-logika.js` `kbLonceng(akun, daftar, dilihat, hariIni)` → `obrolan` / `nObrolan` / `belumDibaca` / `lihatObrolan`; `kbTandai(isi, bagian)`):
+  satu utas dari dokumen `persetujuan` yang sudah ada — `pesan` (tablet → owner; ✓ menunggu, ✓✓ dibaca), `pesanOwner` (owner → tablet), balasan lama = gelembung
+  owner. Owner: semua pesan tablet, belum dibaca = status `menunggu` (server). Tablet: pesan akun ini + semua pesan owner, belum dibaca = peta perangkat.
+  Tab Kabar = permintaan selain pesan. `lonceng.js`: tab Obrolan | Kabar, gelembung beranimasi, label hari, kotak ketik (owner `kbSusunPesanOwner`, tablet
+  `tpSusunPesan`), owner membuka Obrolan = `lcBacaSemua` (tpSusunPutus dibaca tanpa balasan, satu kiriman, tiap id sekali per pembukaan).
+  `kbBanding` & `functions/pesan.js` `pesanPutus`: dibaca TANPA balasan = diam (tanpa pita / push) → **pasang ulang fungsi di Cloud Shell sesudah merge**.
+  Pesan owner kini mempertahankan baris baru. Rules tetap v17.
+- **Logo M**: `apk/ikon_m.py` (perender Python murni, tanpa Pillow) membuat `icon-sistem.svg`, PNG 512/192/180/32, dan `apk/ikon-depan-432.png` (latar depan
+  ikon adaptif transparan). `apk/pasang.py` `pasang_ikon`: latar depan = simbol transparan, latar belakang `LATAR_IKON` #101314, ikon bulat dipotong lingkaran,
+  layar pembuka hitam malam. APK baru dibangun otomatis sesudah merge (berkas `apk/` berubah). Monogram "IQ" di dalam aplikasi (gerbang G4) tidak diubah.
+Alat uji: `uji_tablet_tampilan.py` (116, kontrol 45/45: obrolan, push diam, logo = hasil ikon_m.py, latar depan transparan), `uji_cache_chip_literan.py` (16, kontrol 10/10).

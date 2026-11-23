@@ -18,7 +18,7 @@ export const KB_STATUS_TERKIRIM = 'terkirim';
 /** Susun pesan owner untuk tablet. teks 1–500 huruf (TP_BATAS.pesan). w = waktuSekarang(). Hasil { dokumen, patch } atau { tolak }. */
 export function kbSusunPesanOwner(teks, w, akun) {
   if (!akun || akun.jenis !== 'owner') return { tolak: 'Pesan ke tablet hanya dari akun owner' };
-  const isi = String(teks || '').replace(/\s+/g, ' ').trim(); if (!isi) return { tolak: 'Tulis dulu pesannya' };
+  const isi = String(teks || '').replace(/\r/g, '').replace(/[ \t\f\v]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim(); if (!isi) return { tolak: 'Tulis dulu pesannya' };   // baris baru dipertahankan (obrolan)
   if (isi.length > TP_BATAS.pesan) return { tolak: 'Pesan terlalu panjang — paling banyak ' + TP_BATAS.pesan + ' huruf' };
   const data = { id: w.idUnik(), tindakan: KB_PESAN_OWNER, status: KB_STATUS_TERKIRIM, untuk: 'tablet', teks: isi, dari: 'Owner', tanggal: w.tanggal, jam: w.jam, dibuatPada: w.kini };
   return { dokumen: [{ koleksi: 'persetujuan', data }], patch: { kabar: 'Pesan terkirim ke tablet — muncul di lonceng & bilah notifikasi tablet', kabarAwas: false } };
@@ -54,7 +54,9 @@ export function kbSidik(akun, daftar) {
 export function kbBanding(lama, baru) {
   if (!lama || !baru || lama.owner !== baru.owner || lama.uid !== baru.uid) return [];
   if (baru.owner) return Object.keys(baru.menunggu).filter((id) => !lama.menunggu[id]).map((id) => Object.assign({ id, jenis: 'masuk' }, baru.menunggu[id]));
-  const putus = Object.keys(baru.milik).filter((id) => lama.milik[id] && lama.milik[id].status === 'menunggu' && baru.milik[id].status !== 'menunggu').map((id) => {
+  // obrolan (owner 23 Nov 2026): pesan dibaca TANPA balasan = centang dua di obrolan, bukan kabar berbunyi
+  const putus = Object.keys(baru.milik).filter((id) => lama.milik[id] && lama.milik[id].status === 'menunggu' && baru.milik[id].status !== 'menunggu'
+    && !(baru.milik[id].tindakan === TP_PESAN && baru.milik[id].status === 'dibaca' && !baru.milik[id].balasan)).map((id) => {
     const x = baru.milik[id]; const judul = (KB_JUDUL[x.tindakan] || 'Permintaan') + ' ' + (KB_PUTUS[x.status] || x.status);
     return { id, jenis: 'putus', status: x.status, judul, isi: x.isi + (x.alasan ? ' — alasan: ' + x.alasan : '') + (x.balasan ? ' — balasan: ' + x.balasan : ''), layar: 'menu' };
   });
@@ -81,24 +83,51 @@ export const KB_NAMA_LAYAR = { uang: 'Uang', menu: 'Menu', jual: 'Jual' };
 const urutBuat = (m) => String(m.tanggal || '') + ' ' + String(m.jam || '');
 const urutPutus = (m) => String(m.diputusTanggal || m.tanggal || '') + ' ' + String(m.diputusJam || m.jam || '');
 const waktuTampil = (tgl, jam) => (tgl ? tanggalPendek(tgl) : '') + (jam ? ' ' + jam : '');
+// ---- OBROLAN (owner 23 Nov 2026: "notifikasi & kabar di tablet dan Mac/HP bisa balas pesan … seperti WhatsApp … chattingan" — pilihan "Obrolan di
+// lonceng"). TIDAK ada koleksi baru: satu utas owner ↔ tablet disusun dari dokumen persetujuan yang sudah ada —
+//  - pesan tablet → owner = tindakan 'pesan' (tpSusunPesan; status menunggu = ✓ terkirim, dibaca = ✓✓ dibaca owner),
+//  - pesan owner → tablet = tindakan 'pesanOwner' (kbSusunPesanOwner; status terkirim = ✓; tablet tidak bisa menulis "dibaca" ke server),
+//  - balasan lama (pesan ditandai dibaca + balasan, jalur Uang › titipan) = gelembung owner pada jam putusannya.
+// Owner: semua pesan tablet. Akun tablet: pesan milik akun ini + semua pesan owner. Belum dibaca — owner: pesan tablet yang masih MENUNGGU (keadaan server,
+// jadi membaca di HP ikut membersihkan Mac); tablet: pesan owner yang belum dibuka di perangkat ini (peta dilihat, sama dengan kabar).
+export const KB_MAKS_OBROLAN = 80;
+const urutWaktu = (tgl, jam, iso) => String(tgl || '') + ' ' + String(jam || '') + ' ' + String(iso || '');
+const HARI_INI = 'Hari ini'; const KEMARIN = 'Kemarin';
+function kbLabelHari(tgl, hariIni) {
+  if (!tgl) return ''; if (hariIni && tgl === hariIni) return HARI_INI;
+  if (hariIni) { const d = new Date(hariIni + 'T00:00:00Z'); if (isFinite(d.getTime())) { d.setUTCDate(d.getUTCDate() - 1); if (d.toISOString().slice(0, 10) === tgl) return KEMARIN; } }
+  return tanggalPendek(tgl);
+}
+/** Satu gelembung. dari 'owner' | 'tablet'; centang 1 = terkirim, 2 = dibaca owner (hanya pesan tablet). */
+const gelembung = (o) => ({ id: o.id, kunci: o.kunci || o.id, dari: o.dari, nama: o.nama, teks: String(o.teks || '').replace(/\r/g, '').trim(), tanggal: String(o.tanggal || ''),
+  jam: String(o.jam || ''), urut: o.urut, status: o.status, centang: o.centang || 1, baru: !!o.baru, lihat: !!o.lihat });
 /**
- * Isi lonceng untuk akun ini. daftar = persetujuan (bawaan: cache), dilihat = { id: status } yang sudah dibuka di perangkat ini.
- * Hasil { owner, daftar: [{ id, status, tindakan, judul, isi, alasan, balasan, waktu, layar, bisaBalas, baru }] (terbaru dulu, paling banyak KB_MAKS),
- * n (belum dibuka, dari SEMUA), menunggu, lebih, lihat: { id: status } semua (untuk kbTandai) }.
+ * Isi lonceng untuk akun ini. daftar = persetujuan (bawaan: cache), dilihat = { id: status } yang sudah dibuka di perangkat ini, hariIni = 'YYYY-MM-DD' (label hari
+ * obrolan). Hasil { owner, daftar (KABAR: permintaan selain pesan, terbaru dulu, ≤ KB_MAKS), obrolan (utas, terlama dulu, ≤ KB_MAKS_OBROLAN), n (belum dibuka,
+ * kabar + obrolan), nKabar, nObrolan, menunggu, lebih, lebihObrolan, belumDibaca (owner: id pesan tablet yang menunggu), lihat / lihatObrolan / dilihat (kbTandai) }.
  */
-export function kbLonceng(akun, daftar, dilihat) {
+export function kbLonceng(akun, daftar, dilihat, hariIni) {
   const D = daftar || cacheMentah('persetujuan'); const L = dilihat || {}; const owner = !!akun && akun.jenis === 'owner'; const uid = String((akun && akun.uid) || '');
-  const out = []; const terkirim = [];
+  const out = []; const ob = [];
   D.forEach((m) => {
     if (!m || m.id === undefined) return; const id = String(m.id); const st = m.status || 'menunggu'; const t = String(m.tindakan || '');
-    if (t === KB_PESAN_OWNER) {   // owner 23 Nov 2026: owner = daftar "terkirim" (tidak dihitung); tablet = kabar masuk (dihitung bila belum dibuka)
-      const x = { id, status: st, tindakan: t, judul: KB_JUDUL.pesanOwner, isi: String(m.teks || ''), alasan: '', balasan: '', waktu: waktuTampil(m.tanggal, m.jam), urut: urutBuat(m), layar: 'menu', bisaBalas: false, baru: !owner && L[id] !== st };
-      (owner ? terkirim : out).push(x); return;
+    if (t === KB_PESAN_OWNER) {   // pesan owner: owner = gelembung sendiri; tablet = masuk (belum dibuka bila peta dilihat belum mencatatnya)
+      ob.push(gelembung({ id, dari: 'owner', nama: 'Owner', teks: m.teks, tanggal: m.tanggal, jam: m.jam, urut: urutWaktu(m.tanggal, m.jam, m.dibuatPada), status: st, baru: !owner && L[id] !== st, lihat: !owner }));
+      return;
+    }
+    if (t === TP_PESAN) {
+      if (!owner && (!uid || uidPeminta(m) !== uid)) return;
+      ob.push(gelembung({ id, dari: 'tablet', nama: m.dari || 'Tablet', teks: m.teks, tanggal: m.tanggal, jam: m.jam, urut: urutWaktu(m.tanggal, m.jam, m.pada), status: st,
+        centang: st === 'menunggu' ? 1 : 2, baru: owner && st === 'menunggu' }));
+      const bal = String(m.balasan || '').trim();
+      if (bal && st !== 'menunggu') ob.push(gelembung({ id, kunci: id + '-balas', dari: 'owner', nama: 'Owner', teks: bal, tanggal: m.diputusTanggal || m.tanggal, jam: m.diputusJam || m.jam,
+        urut: urutWaktu(m.diputusTanggal || m.tanggal, m.diputusJam || m.jam, m.diputusPada), status: st, baru: !owner && L[id] !== st, lihat: !owner }));
+      return;
     }
     if (owner) {
       if (st !== 'menunggu') return;
       out.push({ id, status: st, tindakan: t, judul: KB_JUDUL[t] || 'Permintaan dari tablet', isi: kbIsi(m), alasan: '', balasan: '', waktu: waktuTampil(m.tanggal, m.jam), urut: urutBuat(m),
-        layar: layarOwner(m), bisaBalas: t === TP_PESAN || t === TP_KABAR, baru: L[id] !== st });
+        layar: layarOwner(m), bisaBalas: t === TP_KABAR, baru: L[id] !== st });
       return;
     }
     if (!uid || uidPeminta(m) !== uid) return;
@@ -107,13 +136,27 @@ export function kbLonceng(akun, daftar, dilihat) {
       waktu: putus ? waktuTampil(m.diputusTanggal || m.tanggal, m.diputusJam || m.jam) : waktuTampil(m.tanggal, m.jam), urut: putus ? urutPutus(m) : urutBuat(m), layar: 'menu', bisaBalas: false, baru: putus && L[id] !== st });
   });
   out.sort((a, b) => (a.urut < b.urut ? 1 : a.urut > b.urut ? -1 : 0));
+  ob.sort((a, b) => (a.urut < b.urut ? -1 : a.urut > b.urut ? 1 : 0));
   const lihat = {}; out.forEach((x) => { lihat[x.id] = x.status; });
-  terkirim.sort((a, b) => (a.urut < b.urut ? 1 : a.urut > b.urut ? -1 : 0));
-  return { owner, daftar: out.slice(0, KB_MAKS), n: out.filter((x) => x.baru).length, menunggu: out.filter((x) => x.status === 'menunggu').length, lebih: Math.max(0, out.length - KB_MAKS), lihat,
-    terkirim: terkirim.slice(0, 3) };
+  const lihatObrolan = {}; ob.forEach((x) => { if (x.lihat) lihatObrolan[x.id] = x.status; });
+  const nKabar = out.filter((x) => x.baru).length; const nObrolan = ob.filter((x) => x.baru).length;
+  const utas = ob.slice(Math.max(0, ob.length - KB_MAKS_OBROLAN));
+  utas.forEach((x, i) => { const s = utas[i - 1]; x.pisah = !s || s.tanggal !== x.tanggal ? kbLabelHari(x.tanggal, hariIni) : ''; x.namaTampil = !s || !!x.pisah || s.dari !== x.dari || s.nama !== x.nama; });
+  return { owner, daftar: out.slice(0, KB_MAKS), obrolan: utas, n: nKabar + nObrolan, nKabar, nObrolan, menunggu: out.filter((x) => x.status === 'menunggu').length,
+    lebih: Math.max(0, out.length - KB_MAKS), lebihObrolan: ob.length - utas.length,
+    belumDibaca: owner ? ob.filter((x) => x.dari === 'tablet' && x.status === 'menunggu').map((x) => x.id) : [], lihat, lihatObrolan, dilihat: L };
 }
-/** Semua isi lonceng sekarang = sudah dibuka. Peta baru { id: status } — id yang sudah tidak ada ikut terbuang. */
-export function kbTandai(isi) { return Object.assign({}, (isi && isi.lihat) || {}); }
+/**
+ * Isi lonceng yang tampil = sudah dibuka. bagian 'kabar' | 'obrolan' = hanya bagian itu (tab yang sedang dilihat); kosong = keduanya. Peta baru { id: status }:
+ * catatan lama untuk id yang masih ada ikut dibawa, id yang sudah tidak ada terbuang.
+ */
+export function kbTandai(isi, bagian) {
+  const I = isi || {}; const L = I.dilihat || {}; const kab = I.lihat || {}; const ob = I.lihatObrolan || {}; const out = {};
+  Object.keys(kab).concat(Object.keys(ob)).forEach((id) => { if (L[id] !== undefined) out[id] = L[id]; });
+  if (bagian !== 'obrolan') Object.assign(out, kab);
+  if (bagian !== 'kabar') Object.assign(out, ob);
+  return out;
+}
 /** Peta dilihat tersimpan untuk akun `uid` (teks localStorage → peta, rusak = null = belum pernah: semua yang ada sekarang dianggap sudah dibuka). */
 export function kbBacaLihat(teks, uid) {
   try { const x = JSON.parse(teks || 'null'); const p = x && typeof x === 'object' ? x[String(uid || '')] : null; return p && typeof p === 'object' ? p : null; } catch (e) { return null; }

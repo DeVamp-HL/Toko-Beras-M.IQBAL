@@ -254,8 +254,44 @@ body.dock-lipat .kabar-nav, body.dock-lipat .lembar:not(.tirai) { bottom: 80px; 
 .ll-kaki { display: flex; justify-content: flex-end; font-size: 12px; }
 @keyframes masukLl { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 body.terkunci .lembar-lonceng { display: none !important; }
-.ll-tulis { display: flex; flex-direction: column; gap: 6px; padding: 10px 11px; border-radius: 14px; background: var(--kaca); border: 1px solid var(--emas-garis); }   /* owner 23 Nov 2026: pesan owner ke tablet */
-.ll-tulis textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 54px; font: inherit; }
-.ll-kirim-baris { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .ll-kirim-baris .kaca-btn { flex: none; }
-.ll-terkirim { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; border-top: 1px solid var(--garis); }
-@media (prefers-reduced-motion: reduce) { .lonceng, .lonceng svg, .lonceng-n, .lembar-lonceng, .ll-baris { animation: none !important; transition: none; } }
+/* owner 23 Nov 2026 — OBROLAN di lonceng ("seperti WhatsApp"): tab Obrolan | Kabar, gelembung kiri (dia) – kanan (saya), label hari, centang, kotak ketik */
+.ll-tabs { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 13px; background: var(--seg); border: 1px solid var(--kaca-tepi); flex: none; }
+.ll-tab { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--redup); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: color 240ms ease; }
+.ll-tab.pilih { color: var(--teks); }
+.ll-tab-n { min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; font-size: 10.5px; line-height: 18px; text-align: center;
+  background: linear-gradient(160deg, var(--logam1), var(--logam2)); color: #1b1712; animation: loncengLetup 420ms cubic-bezier(.2,.8,.2,1); }
+.ll-tab-garis { position: absolute; z-index: 0; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 10px; background: var(--seg-aktif);
+  box-shadow: 0 1px 0 var(--kaca-sorot) inset, 0 6px 16px -10px var(--bayang); transform: translateX(calc(var(--x, 0) * 100%)); transition: transform 320ms cubic-bezier(.2,.8,.2,1); }
+.lembar-lonceng.tab-obrolan { height: min(80vh, 660px); overflow: hidden; }
+.lo-wadah { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.lo-gulir { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 3px; padding: 6px 4px 4px;
+  border-radius: 14px; background: var(--kaca); border: 1px solid var(--kaca-tepi); }
+.lo-gel { position: relative; max-width: 82%; padding: 6px 10px 4px; border-radius: 15px; font-size: 13.5px; line-height: 1.38; box-sizing: border-box;
+  animation: masukGel 300ms cubic-bezier(.2,.8,.2,1) backwards; animation-delay: calc(var(--urut, 0) * 22ms); }
+.lo-gel.awal { margin-top: 5px; }
+.lo-gel.dia { align-self: flex-start; background: var(--bg2); border: 1px solid var(--kaca-tepi); border-top-left-radius: 5px; transform-origin: 0 100%; }
+.lo-gel.saya { align-self: flex-end; background: linear-gradient(160deg, var(--logam1), var(--logam2)); color: #1b1712; border: 1px solid var(--emas-tepi); border-top-right-radius: 5px; transform-origin: 100% 100%; }
+.lo-gel:not(.awal).dia { border-top-left-radius: 15px; } .lo-gel:not(.awal).saya { border-top-right-radius: 15px; }
+.lo-gel.dia.baru { box-shadow: 0 0 0 1.5px var(--emas-garis), 0 0 18px -8px var(--logam-glow); }
+.lo-nama { font-size: 11.5px; font-weight: 700; color: var(--aktif); margin-bottom: 1px; }
+.lo-teks { white-space: pre-wrap; overflow-wrap: anywhere; }
+.lo-kaki { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 1px; font-size: 10.5px; opacity: 0.72; font-variant-numeric: tabular-nums; }
+.lo-centang { letter-spacing: -0.18em; padding-right: 0.18em; font-weight: 700; }
+.lo-centang.dibaca { color: #0f5f86; opacity: 1; }
+body.gelap .lo-gel.saya .lo-centang.dibaca { color: #0b4f72; }
+.lo-hari { align-self: center; margin: 8px 0 4px; font-size: 11px; font-weight: 600; color: var(--redup); }
+.lo-hari span { display: inline-block; padding: 3px 10px; border-radius: 10px; background: var(--seg); border: 1px solid var(--kaca-tepi); }
+.lo-lama { align-self: center; padding: 2px 0 6px; }
+.lo-kosong { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 18px 12px; text-align: center; }
+.lo-tulis { flex: none; display: flex; align-items: flex-end; gap: 8px; }
+.lo-tulis textarea { flex: 1 1 auto; min-width: 0; box-sizing: border-box; min-height: 42px; max-height: 132px; padding: 10px 14px; border-radius: 21px; resize: none; font: inherit; font-size: 14px; line-height: 1.35; }
+.lo-kirim { flex: none; width: 42px; height: 42px; padding: 0; border-radius: 50%; border: 1px solid var(--emas-tepi); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  background: linear-gradient(160deg, var(--logam1), var(--logam2)); color: #1b1712; box-shadow: 0 6px 18px -10px var(--logam-glow); transition: transform 160ms ease; }
+.lo-kirim svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linejoin: round; stroke-linecap: round; transform: translateX(1px); }
+.lo-kirim:active { transform: scale(0.9); }
+.lo-kirim.sibuk svg { animation: kirimTerbang 700ms cubic-bezier(.2,.8,.2,1) infinite; }
+.lo-tip { flex: none; text-align: right; font-size: 11px; }
+@keyframes masukGel { from { opacity: 0; transform: translateY(8px) scale(0.94); } to { opacity: 1; transform: none; } }
+@keyframes kirimTerbang { 0% { transform: translateX(1px); opacity: 1; } 50% { transform: translate(7px, -7px); opacity: 0; } 51% { transform: translate(-6px, 6px); opacity: 0; } 100% { transform: translateX(1px); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .lonceng, .lonceng svg, .lonceng-n, .lembar-lonceng, .ll-baris, .lo-gel, .ll-tab-n, .lo-kirim svg { animation: none !important; transition: none; } .ll-tab-garis { transition: none; } }
