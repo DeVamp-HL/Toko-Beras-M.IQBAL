@@ -254,6 +254,10 @@ jobs:
         if: matrix.bagian == 3
         run: python3 alat-uji/uji_perangkat_sunmi.py && python3 alat-uji/uji_perangkat_sunmi.py --kontrol
 
+      - name: "Google Play privat (owner 23 Nov 2026): targetSdk 36 dipasang ke proyek, AAB terpisah dari APK (APK tetap), tanda tangan lewat :env, RSA ≥ 2048, sertifikat tidak dicetak, pemeriksa AAB (16 KB), workflow kunci PEPK manual & tersegel, bahan toko & kebijakan privasi (python + statis + kontrol)"
+        if: matrix.bagian == 3
+        run: python3 alat-uji/uji_google_play.py && python3 alat-uji/uji_google_play.py --kontrol
+
       - name: "Tanda kenal (paket S2a, 19 Nov): QR nomor nota di struk — cetak lalu scan kembali ke nota yang sama, kode bukan struk toko tidak dianggap nota, lembar berisi isian tidak ditimpa"
         if: matrix.bagian == 1
         run: python3 alat-uji/uji_tanda_kenal.py && python3 alat-uji/uji_tanda_kenal.py --kontrol
