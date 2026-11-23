@@ -138,6 +138,9 @@ function statusRingkas() {
 }
 
 terapkanMode();
+// mulus Android paket 3 (owner 23 Nov 2026): perangkat Android (tablet CPad, HP staf) = tampilan RINGAN — kaca buram dimatikan & isi panjang di luar layar tidak
+// dicat (css/kinerja.css html.ringan). ?ringan=1 / ?ringan=0 memaksanya (pemeriksaan di peramban Mac).
+try { const r = q.get('ringan'); document.documentElement.classList.toggle('ringan', r === '1' || (r !== '0' && /Android/i.test(String(navigator.userAgent || '')))); } catch (e) { /* tanpa navigator */ }
 const akar = document.getElementById('layar');
 const layar = pasangLayarJual(akar, { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusAwas, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat(),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan · 27: Isi barang habis

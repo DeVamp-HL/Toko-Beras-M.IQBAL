@@ -24,3 +24,17 @@ body::after { content: ''; position: fixed; inset: 0; z-index: -3; pointer-event
 /* yang bergerak diberi lapisannya sendiri HANYA selama bergerak */
 .chip, .keranjang .b, .kelompok-rak, .lembar:not(.tirai) { backface-visibility: hidden; }
 .gb .isi-dalam, .gb .gunung { will-change: transform; }
+
+/* ---------- MULUS ANDROID PAKET 3 (owner 23 Nov 2026: "app masih lag … terutama masalah responsif") ----------
+   html.ringan = perangkat Android (tablet CPad, HP staf) — dipasang app.js dari user agent. Tablet itu ±10–20× lebih lambat dari Mac, dan kartu grafisnya kecil.
+   1. KACA BURAM DIMATIKAN SELURUHNYA: backdrop-filter memaksa peramban mengaburkan ulang latarnya tiap bingkai yang di bawahnya bergerak — nav bawah yang menempel
+      di atas rak yang digulir = buram ulang tiap bingkai gulir. Di ringan permukaannya memakai warna yang sedikit lebih pekat (tampilannya hampir sama).
+   2. ISI PANJANG DI LUAR LAYAR TIDAK DITATA & DICAT (content-visibility: auto) — baris nota & laci Menu; ukurannya ditebak dulu, lalu diingat sesudah tampil.
+   Gerak tidak dibuang: transisi & animasi transform/opacity tetap jalan (dikomposit kartu grafis, bukan utas utama). */
+html.ringan *, html.ringan *::before, html.ringan *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+html.ringan body { --nav: rgba(250,251,252,0.94); }
+html.ringan body.gelap { --nav: rgba(18,22,23,0.95); }
+html.ringan .kabar-baru, html.ringan .omzet-toast, html.ringan .lembar-akun.kartu, html.ringan .layar-stok .tp-zona { background: var(--nav); }
+html.ringan body .gerbang-masuk { --gm-kaca-pelat: var(--nav); --gm-kaca-pintu: rgba(238,241,244,0.88); }   /* pintu kaca & pelat Masuk: tanpa buram → lebih pekat */
+html.ringan body.gelap .gerbang-masuk { --gm-kaca-pintu: rgba(17,21,23,0.9); }
+html.ringan .daftar-nota > .baris-nota, html.ringan .mn-gulir > .mn-grup { content-visibility: auto; contain-intrinsic-size: auto 64px; }
