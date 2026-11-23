@@ -208,10 +208,11 @@ import { bayaranBiayaBulanan, hitungPiutang, hitungStokBahanLiteran, hitungStokK
       rows.push({ t: t || '', jam: jam || '', id: id || 0, label, masuk: masuk || 0, keluar: keluar || 0,
         kantong: keluar > 0 ? 'laci' : (kantong || 'laci') });
     };
-    const kantongBayar = x => caraBayarKunci(x) === 'qris' ? 'rekening' : 'laci';
+    // TRANSFER (owner 24 Nov 2026, membuka mesin atas izin 9 Okt): uang transfer langsung masuk REKENING, seperti QRIS (tanpa MDR)
+    const kantongBayar = x => caraBayarKunci(x) === 'qris' || caraBayarKunci(x) === 'transfer' ? 'rekening' : 'laci';
     ambilPenjualan().forEach(p => {
       if (caraBayarKunci(p) === 'kredit') return;  // belum jadi uang — masuk lewat pelunasan piutang
-      dorong(p.tanggal, p.jam, p.id, namaSingkatTrx(p) + (caraBayarKunci(p) === 'qris' ? ' · QRIS' : ''), p.hargaTotal, 0, kantongBayar(p));
+      dorong(p.tanggal, p.jam, p.id, namaSingkatTrx(p) + (caraBayarKunci(p) === 'qris' ? ' · QRIS' : caraBayarKunci(p) === 'transfer' ? ' · Transfer' : ''), p.hargaTotal, 0, kantongBayar(p));
     });
     ambilPiutangMutasi().forEach(m => {
       if (m.tipe !== 'bayar') return;
@@ -294,6 +295,7 @@ import { bayaranBiayaBulanan, hitungPiutang, hitungStokBahanLiteran, hitungStokK
   function bakuCaraBayar(c) {
     const k = String(c || '').trim().toLowerCase();
     if (k === 'qris') return 'QRIS';
+    if (k === 'transfer') return 'Transfer';
     if (k === 'kredit') return 'Kredit';
     if (k === 'tunai') return 'Tunai';
     return String(c || '').trim() || 'Tunai';

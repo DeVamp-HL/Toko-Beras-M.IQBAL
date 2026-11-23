@@ -5,6 +5,8 @@
 // sumbernya. Ketuk pertama = tooltip (iPad/HP), ketuk kedua di tempat yang sama = pindah ke layar sumbernya; di Mac tooltip muncul saat kursor lewat
 // dan klik langsung pindah. Animasi masuk ringan hanya saat dasbor dibuka / rentang diganti (data yang berubah tidak memutar ulang animasinya);
 // prefers-reduced-motion dihormati (ringkasan.css). Warna dari token identitas.css → mode gelap ikut sendiri. BACA SAJA.
+// owner 24 Nov 2026: grosir vs ecer per jenis barang
+import * as GE from './grosir-ecer-logika.js';
 import { esc } from '../inti/dom.js';
 import { RP, DESIMAL, tanggalPendek } from '../inti/format.js';
 import { DB_RENTANG } from './dasbor-logika.js';
@@ -36,7 +38,7 @@ export function pasangDasbor(akar, opsi) {
     const segmen = pos.map((t, i) => { const w = dbPersen(t.n, totalPos); const s = '<rect class="db-tumbuh-x db-kas-' + esc(t.id) + '" style="--i:' + i + '" x="' + x.toFixed(3) + '" y="0" width="' + w.toFixed(3) + '" height="10"' + daftar('kas:' + t.id, { judul: t.nama + ' · ' + H.periode, baris: [['Isi menurut buku', RP(t.n)], ['Semua tempat', RP(kas.total)], ['Dihitung dari', kas.titik]], tujuan: H.kasTujuan, ke: H.kasSumber }) + '></rect>'; x += w; return s; }).join('');
     const KC = H.karcis;
     return '<div class="kartu hero db-kartu db-hari">' + kepala('Hari ini', H.periode, 'sumber:hari', H.sumber, H.tujuan)
-      + '<div class="db-dua"><div' + daftar('hari:omzet', { judul: 'Omzet · ' + H.periode, baris: [['Omzet (sesudah retur)', RP(H.omzet)], ['Nota', String(H.nota)]].concat(H.retur ? [['Retur & refund', RP(H.retur)]] : []).concat([['Tunai', RP(H.tunai)], ['QRIS', RP(H.qris)], ['Bon', RP(H.kredit) + ' · ' + H.nKredit + ' nota']]), tujuan: H.tujuan, ke: H.sumber }) + ' class="db-ketuk"><div class="label" style="color: var(--hero-label);">Omzet</div>'
+      + '<div class="db-dua"><div' + daftar('hari:omzet', { judul: 'Omzet · ' + H.periode, baris: [['Omzet (sesudah retur)', RP(H.omzet)], ['Nota', String(H.nota)]].concat(H.retur ? [['Retur & refund', RP(H.retur)]] : []).concat([['Tunai', RP(H.tunai)], ['QRIS', RP(H.qris)]].concat(H.transfer ? [['Transfer', RP(H.transfer)]] : []).concat([['Bon', RP(H.kredit) + ' · ' + H.nKredit + ' nota']])).concat(H.jenis ? GE.geBaris(H.jenis, RP) : []), tujuan: H.tujuan, ke: H.sumber }) + ' class="db-ketuk"><div class="label" style="color: var(--hero-label);">Omzet</div>'
       + '<div class="angka dagang db-angka-besar">' + esc(RP(H.omzet)) + '</div><div class="ket">' + esc(H.nota + ' nota' + (H.retur ? ' · sudah dikurangi retur ' + RP(H.retur) : '')) + '</div></div>'
       + '<div' + daftar('hari:laba', { judul: 'Laba kotor · ' + H.periode, baris: [['Laba kotor (margin)', RP(H.margin)]].concat(H.tanpaHpp ? [['Baris tanpa modal', H.tanpaHpp + ' baris — tidak ikut dihitung']] : []), tujuan: H.tujuan, ke: H.sumber }) + ' class="db-ketuk"><div class="label" style="color: var(--hero-label);">Laba kotor</div>'
       + '<div class="angka db-angka-sedang">' + esc(RP(H.margin)) + '</div><div class="ket">' + esc(H.tanpaHpp ? H.tanpaHpp + ' baris tanpa modal tidak ikut' : 'semua baris bermodal') + '</div></div></div>'

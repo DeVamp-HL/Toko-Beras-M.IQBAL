@@ -57,7 +57,7 @@ FK_PEMAKAI = ('jual-logika.js', 'bon-logika.js', 'sistem-logika.js', 'struk-logi
 # kendali biaya, Dasbor, Pelanggan › Atur, tutup hari & pembatalan nota memakai antar-logika, yang sendiri memakai faktur-logika. Ikut OTOMATIS di belakang.
 AJ_MODUL = 'baru/js/layar/antar-logika.js'
 AJ_PEMAKAI = ('jual-logika.js', 'retur-logika.js', 'struk-logika.js', 'laporan-logika.js', 'kendali-biaya-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js',
-              'uang-logika.js', 'batal-nota-logika.js')
+              'uang-logika.js', 'batal-nota-logika.js', 'ganti-pembeli-logika.js')
 
 
 # B4 (owner 18 Nov 2026): pesanan, PO & order rutin — jual-logika (uang muka memotong nota, keranjang dari pesanan), Dasbor (pengingat & stok pesanan),
@@ -68,6 +68,9 @@ PO_PEMAKAI = ('jual-logika.js', 'dasbor-logika.js', 'pelanggan-logika.js')
 
 # B5 (owner 18 Nov 2026): laporan per pelanggan (Laporan › Laba › Per pelanggan, kartu Dasbor) — laba-pelanggan-logika memakai laporan-logika, faktur-logika &
 # harga-tingkat-logika. Dasbor memakainya; ikut OTOMATIS (sekali, di belakang) — faktur & harga tingkat menyusul lewat FK_PEMAKAI.
+# owner 24 Nov 2026: grosir vs ecer per jenis barang — dibaca rekap harian Laporan, teks WA tutup hari, dan Dasbor (lewat rekapHari)
+GE_MODUL = 'baru/js/layar/grosir-ecer-logika.js'
+GE_PEMAKAI = ('laporan-logika.js', 'tutup-hari-logika.js', 'dasbor-logika.js')
 PG_MODUL = 'baru/js/layar/laba-pelanggan-logika.js'
 PG_PEMAKAI = ('dasbor-logika.js',)
 
@@ -83,6 +86,8 @@ def lengkapi(daftar):
     d = list(daftar)
     if any(os.path.basename(x) in TP_PEMAKAI for x in d) and not any(x.endswith('titipan-logika.js') for x in d):
         d.append(TP_MODUL)
+    if any(os.path.basename(x) in GE_PEMAKAI for x in d) and not any(x.endswith('grosir-ecer-logika.js') for x in d):
+        d.append(GE_MODUL)
     if any(os.path.basename(x) in PG_PEMAKAI for x in d) and not any(x.endswith('laba-pelanggan-logika.js') for x in d):
         d.append(PG_MODUL)
     if any(os.path.basename(x) in PO_PEMAKAI for x in d) and not any(x.endswith('pesanan-logika.js') for x in d):

@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/pesanan-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/batal-nota-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/inti/struk-model.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/pesanan-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/batal-nota-logika.js', 'baru/js/layar/ganti-pembeli-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/inti/struk-model.js']
 
 # KOTAK PASIR — angka contoh, bukan angka toko
 KOTAK = {
@@ -1019,6 +1019,45 @@ Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
   ok('BN: karcis kasir darurat → jalur karcis (susunBatalKarcis): baris ditandai dibatalkan', !P9.tolak && P9.jalur === 'karcis' && !R9.tolak && R9.jalur === 'karcis' && R9.dokumen[0].data.dibatalkan === true, JSON.stringify(R9.tolak || P9.jalur));
 })();
 
+// ================= owner 24 Nov 2026: GANTI PEMBELI SATU NOTA (ganti-pembeli-logika.js) — "gua ada salah catat" =================
+(function () {
+  var W = { tanggal: '2026-09-19', jam: '10:00', kini: '2026-09-19T03:00:00.000Z', idUnik: function () { return 'gp' + Math.random(); } };
+  var jl = function (id, trx, tgl, jam, cara, n, x) { return { koleksi: 'penjualan', data: Object.assign({ id: id, trxId: trx, tanggal: tgl, jam: jam, caraBayar: cara, jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, hargaTotal: n, hppTotalSaatJual: 1 }, x || {}) }; };
+  var sisa = function (nm) { var r = hitungPiutang().find(function (x) { return x.kunci === kunciPelanggan(nm); }); return r ? Math.round(r.sisa) : 0; };
+  var terapR = function (R) { terapkanKeCache(R.dokumen || []); };
+  terapkanKeCache([
+    jl(60011, 'tgp1', '2026-09-19', '09:00', 'Tunai', 70000, { namaPelanggan: 'Salah Orang' }),
+    jl(60021, 'tgp2', '2026-09-19', '09:10', 'Kredit', 100000, { namaPelanggan: 'Bon Salah' }),
+    { koleksi: 'piutangMutasi', data: { id: 60022, tipe: 'bayar', namaPelanggan: 'Bon Salah', nominal: 30000, tanggal: '2026-09-19', jam: '09:10', caraBayar: 'Tunai', notaTrxId: 'tgp2' } },
+    jl(60031, 'tgp3', '2026-09-15', '09:00', 'Kredit', 50000, { namaPelanggan: 'Sudah Bayar' }),
+    { koleksi: 'piutangMutasi', data: { id: 60032, tipe: 'bayar', namaPelanggan: 'Sudah Bayar', nominal: 50000, tanggal: '2026-09-18', jam: '12:00', caraBayar: 'Tunai' } },
+    jl(60041, 'tgp4', '2026-09-15', '11:00', 'Tunai', 65000, { namaPelanggan: 'Retur Orang' }),
+    { koleksi: 'retur', data: { id: 60042, tanggal: '2026-09-16', jam: '10:00', notaAsalId: 60041, nominalRefund: 65000, jenisAsal: 'kemasan' } },
+    jl(60051, 'tgp5', '2026-08-20', '09:00', 'Tunai', 65000, { namaPelanggan: 'Agustus Orang' })]);
+  var P1 = gpPeriksa({ trxId: 'tgp1' }, 'Orang Benar');
+  ok('GP: nota tunai → akibat menyebut nama lama & baru, rupiah/stok/uang tidak berubah', !P1.tolak && P1.akibat.some(function (t) { return /atas nama "Orang Benar" — dulu "Salah Orang"/.test(t); }) && P1.akibat.some(function (t) { return /tidak berubah/.test(t); }), JSON.stringify(P1.tolak || P1.akibat));
+  ok('GP: alasan WAJIB', /alasannya/.test(gpSusun({ trxId: 'tgp1' }, 'Orang Benar', ' x ', W).tolak || ''));
+  var R1 = gpSusun({ trxId: 'tgp1' }, 'Orang Benar', 'salah orang', W); var d1 = R1.dokumen && R1.dokumen[0].data;
+  ok('GP: baris ditulis ulang: namaPelanggan baru, namaSebelum lama, jejak alasan; rupiah sama', !R1.tolak && R1.dokumen.length === 1 && d1.namaPelanggan === 'Orang Benar' && d1.namaSebelum === 'Salah Orang' && d1.gantiPembeliAlasan === 'salah orang' && d1.hargaTotal === 70000 && !R1.hapus, JSON.stringify(R1.tolak || d1));
+  terapR(R1);
+  ok('GP: sesudahnya nama yang persis sama ditolak ("sudah"); beda huruf besar saja boleh (membetulkan ejaan)', /sudah "Orang Benar"/.test(gpPeriksa({ trxId: 'tgp1' }, 'Orang  Benar ').tolak || '') && !gpPeriksa({ trxId: 'tgp1' }, 'orang benar').tolak);
+  // nota bon dibayar sebagian saat beli → bon 70.000 pindah, pelunasan saat beli ikut pindah nama
+  var a0 = sisa('Bon Salah'), b0 = sisa('Bon Benar');
+  var R2 = gpSusun({ trxId: 'tgp2' }, 'Bon Benar', 'salah orang', W);
+  ok('GP: nota bon → baris + pelunasan saat beli (60022) ikut pindah nama', !R2.tolak && R2.dokumen.length === 2 && R2.dokumen.some(function (d) { return d.koleksi === 'piutangMutasi' && d.data.id === 60022 && d.data.namaPelanggan === 'Bon Benar' && d.data.namaSebelum === 'Bon Salah'; }), JSON.stringify(R2.tolak || R2.dokumen.map(function (d) { return d.koleksi; })));
+  terapR(R2);
+  ok('GP: bon pindah tepat 70.000 (Bon Salah 70.000 → 0, Bon Benar 0 → 70.000)', a0 === 70000 && sisa('Bon Salah') === 0 && b0 === 0 && sisa('Bon Benar') === 70000, JSON.stringify([a0, sisa('Bon Salah'), b0, sisa('Bon Benar')]));
+  ok('GP: nota bon tanpa nama baru ditolak', /wajib punya nama/.test(gpPeriksa({ trxId: 'tgp2' }, '').tolak || ''));
+  ok('GP: bon yang sudah dibayar lewat pelunasan terpisah ditolak (bon lama jadi minus)', /sudah ikut dibayar lewat pelunasan terpisah/.test(gpPeriksa({ trxId: 'tgp3' }, 'Orang Lain').tolak || ''), gpPeriksa({ trxId: 'tgp3' }, 'Orang Lain').tolak);
+  ok('GP: nota yang barangnya sudah diretur ditolak', /sudah diretur/.test(gpPeriksa({ trxId: 'tgp4' }, 'Orang Lain').tolak || ''));
+  ok('GP: nota tunai boleh jadi TANPA NAMA', !gpPeriksa({ trxId: 'tgp1' }, '').tolak && gpSusun({ trxId: 'tgp1' }, '', 'salah ketik', W).dokumen[0].data.namaPelanggan === '');
+  ok('GP: nota pesanan ditolak (tbn7 jadi dari pesanan)', /pesanan/.test(gpPeriksa({ trxId: 'tbn7' }, 'Orang Lain').tolak || ''), gpPeriksa({ trxId: 'tbn7' }, 'Orang Lain').tolak);
+  terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'kunciPeriode', sampaiBulan: '2026-08', riwayat: [] } }]);
+  ok('GP: nota bulan TERKUNCI ditolak', /dikunci|terkunci/i.test(gpPeriksa({ trxId: 'tgp5' }, 'Orang Lain').tolak || ''), gpPeriksa({ trxId: 'tgp5' }, 'Orang Lain').tolak);
+  terapkanKeCache([{ koleksi: 'aturanToko', hapus: 'kunciPeriode' }]);
+  ok('GP: nota yang sudah dibatalkan ditolak (tbn1)', /dibatalkan/.test(gpPeriksa({ trxId: 'tbn1' }, 'Orang Lain').tolak || ''));
+})();
+
 // ================= owner 17 Nov 2026 (butir 5): BERAT 1 LITER diatur owner dari layar =================
 (function () {
   terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
@@ -1196,6 +1235,15 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- owner 24 Nov 2026: ganti pembeli satu nota
+            'GP: pelunasan saat beli tidak ikut pindah nama (bon terbelah dua orang)': js.replace("  if (P.bb) { const m = (cacheMentah('piutang') || []).find(", "  if (false) { const m = (cacheMentah('piutang') || []).find("),
+            'GP: bon lama yang sudah dibayar terpisah tetap dipindah (bon minus)': js.replace("    if (sisa - bon < LEBIH_AMBANG) return { tolak: 'Bon ' + lama + ' tinggal '", "    if (false) return { tolak: 'Bon ' + lama + ' tinggal '"),
+            'GP: nota yang sudah diretur boleh diganti': js.replace("if ((ambilRetur() || []).some((r) => ids.indexOf(String(r.notaAsalId)) >= 0)) return { tolak: 'Barang dari nota ini sudah diretur", "if (false) return { tolak: 'Barang dari nota ini sudah diretur"),
+            'GP: nota pesanan boleh diganti': js.replace("if ((ambilPesanan() || []).some((ps) => ps && String(ps.trxIdJual || '') === trxId) || rows.some((p) => p.pesananId)) return", "if (false) return"),
+            'GP: bulan terkunci boleh diganti': js.replace("const kunciBulan = rows.map((p) => tolakKunci('penjualan', p, 'nota di bulan itu tidak diubah lagi') || tolakBukuDitutup(p, 'notanya tidak diubah lagi')).find(Boolean); if (kunciBulan) return { tolak: kunciBulan };", ""),
+            'GP: nota bon boleh tanpa nama': js.replace("  if (nota.cara === 'Kredit' && !baru) return", "  if (false) return"),
+            'GP: nama lama tidak disimpan': js.replace("{ namaPelanggan: P.baru, namaSebelum: String(p.namaPelanggan || '') }, jejak)", "{ namaPelanggan: P.baru }, jejak)"),
+            'GP: alasan tidak wajib': js.replace("const a = String(alasan || '').trim(); if (a.length < 3) return { tolak: 'Tulis alasannya dulu (mis. salah orang)' };", "const a = String(alasan || '').trim();"),
             'tinjauan no. 9: SIMPAN RINCIAN membawa buka kredit ke nota berikutnya': js.replace("negoId: null, lembar: null, ketik: '', penggantiTanya: null, kreditDibuka: false,", "negoId: null, lembar: null, ketik: '', penggantiTanya: null,"),
             'tinjauan no. 9: Pembeli lain (keranjang kosong) membawa buka kredit': js.replace("{ kabar: 'Keranjang sudah kosong', kreditDibuka: false }", "{ kabar: 'Keranjang sudah kosong' }"),
             'tinjauan no. 9: mengikat karcis membawa buka kredit': js.replace("pesananId: null, lembar: null, kreditDibuka: false,", "pesananId: null, lembar: null,"),
@@ -1320,7 +1368,7 @@ if __name__ == '__main__':
             'sisa nota ini = TOTAL (uang yang diterima tidak dikurangkan)': js.replace("sisaNota = nota.total - bb.nominal;", "sisaNota = nota.total;"),
             'saldo bon tanpa tanggal saat struk disusun': js.replace(" baris('  per ' + formatTanggal(sisaBonPer), '', { jenis: 'catatan' });", ""),
             'pembatalan tidak melepas pelunasan sebagian': js.replace("[].concat(notaTerakhir.piutangId || []).forEach((id) => hapus.push({ koleksi: 'piutangMutasi', id }));", ""),
-            'isian layar bocor ke dokumen (label/satuan)': js.replace("['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'setengahDari', 'setengahHargaBaru', 'pecahan', '_takaran'].forEach((k) => { delete d[k]; });", ""),   # putaran 27: + bendera ½ karung
+            'isian layar bocor ke dokumen (label/satuan)': js.replace("['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'setengahDari', 'setengahHargaBaru', 'pecahan', '_takaran', 'pakaiGrosir'].forEach((k) => { delete d[k]; });", ""),   # putaran 27: + bendera ½ karung
             # ---- owner 18 Nov: pesanan JADI NOTA, lunas dari notanya ----
             'label pesanan kembali DIBAYAR': js.replace("dibayar: 'JADI NOTA', batal: 'BATAL' };", "dibayar: 'DIBAYAR', batal: 'BATAL' };"),
             'pesanan bon dianggap lunas': js.replace("if (baris.every((p) => caraBayarKunci(p) !== 'kredit')) return lunas;", "return lunas;"),
@@ -1440,7 +1488,7 @@ if __name__ == '__main__':
             'modal kantong dipakai walau buku belinya kosong (Rp0 jadi modal)': js.replace("const ada = (st.totalBeli || 0) > 0 && (st.hppPerPcs || 0) > 0;", "const ada = true;"),
             'wadah ditanggung toko tidak masuk HPP baris repack': js.replace("t.kemasanRepack = e.kemasanRepack; t.jumlahKemasanRepackDipakai = b.lembar; t.biayaKemasanRepack = b.biaya; t.hppTotalSaatJual += b.biaya;", "t.kemasanRepack = e.kemasanRepack; t.jumlahKemasanRepackDipakai = b.lembar; t.biayaKemasanRepack = b.biaya;"),
             'upah repack tidak ikut ditagih': js.replace("const nilai = Math.round(t.hargaSatuan * t.jumlah) + (t.upahRepack || 0);", "const nilai = Math.round(t.hargaSatuan * t.jumlah);"),
-            'wadah & upah hilang saat baris repack dibangun ulang (+1 kg)': js.replace("kemasanRepack: t.kemasanRepack, jumlahKemasanRepack: t.jumlahKemasanRepackDipakai, upahRepack: t.upahRepack }, NG_KOLOM", "}, NG_KOLOM"),
+            'wadah & upah hilang saat baris repack dibangun ulang (+1 kg)': js.replace("kemasanRepack: t.kemasanRepack, jumlahKemasanRepack: t.jumlahKemasanRepackDipakai, upahRepack: t.upahRepack, pakaiGrosir: !!t.pakaiGrosir }, NG_KOLOM", "pakaiGrosir: !!t.pakaiGrosir }, NG_KOLOM"),
             'pembatalan tidak memulihkan buku kantong wadah': js.replace("baris.forEach((p) => { if (p.jenis === 'wadah' && p.jenisWadah) hapus.push({ koleksi: koleksiWadah(p.jenisWadah), id: p.id + 1 });", "baris.forEach((p) => { if (false) hapus.push({ koleksi: koleksiWadah(p.jenisWadah), id: p.id + 1 });"),
             'lantai Rp100/lembar dilewati (Rp50 diterima)': js.replace("if (n > 0 && n < WJ_LANTAI_LEMBAR) { salah.push(d.label + ': ' + RP(n) + ' per lembar'); return; }", ""),
             'saran lembar dibulatkan ke bawah': js.replace("return Math.max(1, Math.ceil(Math.round(k / d.ukuranKg * 1000) / 1000));", "return Math.max(1, Math.floor(Math.round(k / d.ukuranKg * 1000) / 1000));"),

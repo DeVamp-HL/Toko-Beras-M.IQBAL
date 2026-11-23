@@ -18,9 +18,9 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru, uji_antar, uji_jual_baru, uji_ringkasan_baru, uji_kunci_periode  # noqa: E402
 JSC = uji_antar.JSC
-PG = 'baru/js/layar/laba-pelanggan-logika.js'; DL = 'baru/js/layar/dasbor-logika.js'
+PG = 'baru/js/layar/laba-pelanggan-logika.js'; DL = 'baru/js/layar/dasbor-logika.js'; GE = 'baru/js/layar/grosir-ecer-logika.js'; LG = 'baru/js/layar/laporan-logika.js'
 MODUL = bundel_baru.lengkapi(list(dict.fromkeys(uji_antar.MODUL + uji_ringkasan_baru.modul_dasbor() + ['baru/js/layar/pesanan-logika.js', PG])))
-SUMBER = {'laporan': 'baru/js/layar/laporan.js', 'dasbor': 'baru/js/layar/dasbor.js', 'dasborL': DL, 'index': 'baru/index.html', 'pages': '.github/workflows/pages.yml',
+SUMBER = {'tutup': 'baru/js/layar/tutup-hari-logika.js', 'laporan': 'baru/js/layar/laporan.js', 'dasbor': 'baru/js/layar/dasbor.js', 'dasborL': DL, 'index': 'baru/index.html', 'pages': '.github/workflows/pages.yml',
           'bundel': 'alat-uji/bundel_baru.py', 'cssL': 'baru/css/laporan.css', 'cssR': 'baru/css/ringkasan.css', 'pg': PG}
 
 SKENARIO = r"""
@@ -131,6 +131,24 @@ ok('E: Dasbor pelanggan usaha = Per pelanggan bulan ini apa adanya (porsi laba, 
 var SD = susunDasbor(KINI, 'hari');
 ok('E: susunDasbor memuat kelompok b2b (dan dipertahankan saat ganti rentang)', SD.b2b && !SD.b2b.galat && susunDasbor(KINI, 'bulan', SD).b2b === SD.b2b, J(SD.b2b && SD.b2b.galat));
 
+// ---- F · GROSIR vs ECER per jenis barang (owner 24 Nov 2026) + B5 "Eceran" → "Pembeli umum"
+ok('F: B5 baris pembeli tanpa tingkat bernama "Pembeli umum" (kata "Eceran" kini milik pemisah per jenis)', G.eceran.nama === 'Pembeli umum' && t('eceran') && t('eceran').nama === 'Pembeli umum', J(G.eceran.nama));
+ok('F: jenis baris: karung = grosir; literan, kemasan, repack = ecer; sisanya lain', geJenis({ jenis: 'karung' }) === 'grosir' && geJenis({ jenis: 'literan' }) === 'ecer' && geJenis({ jenis: 'kemasan' }) === 'ecer' && geJenis({ jenis: 'repacking' }) === 'ecer'
+  && geJenis({ jenis: 'kasir_darurat_nominal' }) === 'lain' && geJenis({}) === 'lain');
+var hariRows = function (iso) { return ambilPenjualan().filter(function (p) { return p.tanggal === iso; }); };
+var G12 = geRingkas(function (x) { return x === '2026-11-12'; }); var rows12 = hariRows('2026-11-12');
+ok('F: 12 Nov (karung Mbak Contoh + literan tanpa nama): grosir 1 nota, ecer 1 nota; grosir + ecer + lain = omzet penjualan hari itu PERSIS', G12.grosir.nota === 1 && G12.ecer.nota === 1
+  && G12.grosir.omzet + G12.ecer.omzet + G12.lain.omzet === G12.omzet && G12.omzet === Math.round(rows12.reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0))
+  && G12.grosir.kg === 50 && G12.ecer.kg > 0, J(G12));
+var G02 = geRingkas(function (x) { return x === '2026-11-02'; });
+ok('F: 2 Nov (karung + ongkir antar): ongkir masuk "lain", bukan grosir; jumlahnya tetap menutup', G02.grosir.nota === 1 && G02.lain.omzet === 12000 && G02.grosir.omzet + G02.ecer.omzet + G02.lain.omzet === G02.omzet, J(G02));
+var Bg = geBaris(G12, RP);
+ok('F: baris rekap: kelompok kosong tidak ditulis, label lengkap, kg & nota disebut', Bg.length === 2 && Bg[0][0] === 'Grosir (karung utuh)' && /50 kg · 1 nota$/.test(Bg[0][1]) && Bg[1][0] === 'Ecer (literan · kemasan · repack)', J(Bg));
+var RH = rekapHari('2026-11-12');
+ok('F: rekap harian Laporan membawa pemisah yang sama; teks WA menyebutnya', J(RH.jenis) === J(G12) && /Grosir \(karung utuh\): /.test(teksRekapHari(RH)) && /Ecer \(literan · kemasan · repack\): /.test(teksRekapHari(RH)), teksRekapHari(RH));
+ok('F: nota campuran dihitung di keduanya & disebut', (function () { mulai(); isi('karung', 'Angsa', 1, 50); isi('kemasan', 'Kembang|5', 1); terap(uangPas(s)); catat('2026-11-14', '09:00'); var g = geRingkas(function (x) { return x === '2026-11-14'; });
+  return g.grosir.nota === 1 && g.ecer.nota === 1 && g.notaCampur === 1 && geBaris(g, RP).some(function (x) { return x[0] === 'Nota campuran'; }); })());
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 
@@ -145,6 +163,10 @@ STATIS = [
     ('gaya bergerak (pita tumbuh) + hormat reduced motion', 'cssL', ['.layar-laporan .lp-pg-porsi i {', 'animation: lpPgTumbuh', '.layar-laporan .lp-pg-porsi i { animation: none; transition: none; }']),
     ('gaya Dasbor pita porsi', 'cssR', ['.layar-ringkasan .db-pita-b2b i {', 'animation: dbTumbuhX']),
     ('modul tanpa DOM & tanpa menulis', 'pg', []),
+    ('grosir/ecer: tutup hari, Laporan › Harian, Dasbor memakai satu sumber (grosir-ecer-logika)', 'tutup', ["const G = geBaris(geRingkas((t) => t === iso), RP); if (G.length)"]),
+    ('grosir/ecer di Laporan › Harian & Dasbor', 'laporan', ['data-k="jenis-hari"', 'GE.geBaris(R.jenis, RP)']),
+    ('grosir/ecer di Dasbor', 'dasbor', [".concat(H.jenis ? GE.geBaris(H.jenis, RP) : [])"]),
+    ('modul grosir/ecer dipramuat', 'index', ['<link rel="modulepreload" href="js/layar/grosir-ecer-logika.js">']),
 ]
 
 RUSAK = [
@@ -156,9 +178,17 @@ RUSAK = [
     ('tingkat dicabut jatuh ke eceran', PG, "    if (!r) return null; const t2 = htTingkat(A, r.tingkatId);", "    return null; const t2 = htTingkat(A, r.tingkatId);"),
     ('pelanggan usaha berbon tanpa jualan hilang', PG, "if (htTingkat(A, A.orang[k]) && ((piutang[k] && piutang[k].sisa > 0.5) || lewatOrang[k])) kunciUsaha[k] = 1;", ""),
     ('baris tanpa nama hilang dari Eceran', PG, ".concat([tanpaNama])", ""),
+    ('grosir/ecer: karung ikut ecer', GE, "return j === 'karung' ? 'grosir' :", "return j === 'karungX' ? 'grosir' :"),
+    ('grosir/ecer: repack ikut lain', GE, "j === 'literan' || j === 'kemasan' || j === 'repacking' ? 'ecer'", "j === 'literan' || j === 'kemasan' ? 'ecer'"),
+    ('grosir/ecer: ongkir antar ikut omzet grosir (tidak dipisah ke lain)', GE, "const ongkir = Math.max(0, Math.min(n, Number(p.ongkirAntar) || 0));", "const ongkir = 0;"),
+    ('grosir/ecer: rekap harian tanpa pemisah', LG, "  return { iso, jenis: geRingkas((t) => t === iso),", "  return { iso, jenis: null,"),
+    ('B5 kembali "Eceran"', PG, "nama: 'Pembeli umum',", "nama: 'Eceran',"),
     ('Dasbor memakai porsi omzet', DL, "porsiLaba: G.b2b ? G.b2b.porsiLaba : null", "porsiLaba: G.b2b ? G.b2b.porsiOmzet : null"),
 ]
 RUSAK_STATIS = [
+    ('tutup hari: teks WA tanpa pemisah per jenis', 'tutup', "const G = geBaris(geRingkas((t) => t === iso), RP); if (G.length)", "const G = []; if (G.length)"),
+    ('Laporan › Harian tanpa baris grosir/ecer', 'laporan', 'data-k="jenis-hari"', 'data-k="x"'),
+    ('Dasbor tanpa rincian grosir/ecer', 'dasbor', ".concat(H.jenis ? GE.geBaris(H.jenis, RP) : [])", ""),
     ('Laporan tanpa kartu Per pelanggan', 'laporan', '${pelanggan}${aman}', '${aman}'),
     ('Dasbor tanpa kartu B2B', 'dasbor', 'kartuB2b(D.b2b)', "''"),
     ('pages.yml tanpa uji ini', 'pages', 'python3 alat-uji/uji_laba_pelanggan.py', 'true'),

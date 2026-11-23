@@ -8,7 +8,10 @@
 //    Urutan yang dipakai: harga khusus yang berlaku hari itu → harga sendiri barang di tingkatnya → eceran − potongan tingkat → eceran.
 //  - Ben MENGUSULKAN (tingkat, pasang pelanggan ke tingkat, harga barang, harga khusus) lewat papan Persetujuan; berlaku sesudah owner menyetujui.
 //    Karyawan cuma memakai harganya di Jual. Kisi SS2 tindakan 'hargaPelanggan' (bawaan Ben "minta owner", karyawan "tidak boleh").
-//  - Saran harga grosir per JUMLAH (keputusan 9 Okt) BUKAN bagian B1 — ditunda.
+//  - Saran harga grosir per JUMLAH (keputusan 9 Okt) BUKAN bagian B1 — dibangun 24 Nov 2026 (owner: "per merek, tidak ditumpuk"): jenjang per karung
+//    { grosir: { 'karung|<merek>|<berat>': [{ min (karung), harga (Rp per karung) }] } } di dokumen yang SAMA (terbaca tablet, tanpa rules baru), diatur OWNER
+//    saja; di Jual tombol "pakai harga grosir" muncul bila jumlah karung baris itu mencapai jenjang DAN harganya lebih murah dari harga pembeli itu (tingkat
+//    / khusus) — yang lebih murah yang dipakai, tidak ditumpuk; nego tetap di atasnya. Baris mencatat hargaSumber 'grosir' + grosirMin.
 // Tempat: SATU dokumen aturanToko/hargaTingkat { tingkat: [{ id, nama, potKg }], barang: { <tingkat>: { <kunci barang>: harga } },
 //   orang: { <kunci pelanggan>: <tingkat> }, khusus: [{ id, orang, nama, barang, harga, mulai, sampai, catatan }] } — ditulis owner saja, dibaca staf
 //   (rules v8). Kunci barang = ngKunciBarang (nego-logika): karung|merek|berat · kemasan|merek|ukuran · literan|merek-atau-wadah · repack|merek.
@@ -27,8 +30,10 @@ export const HT_MAKS_TINGKAT = 8;
 export const HT_MAKS_KHUSUS = 300;
 export const HT_MAKS_POT_KG = 10000;     // potongan paling besar Rp10.000 per kg
 export const HT_MAKS_HARGA = 100000000;
+export const HT_MAKS_JENJANG = 5;       // jenjang grosir per barang
+export const HT_GROSIR_MIN = 2, HT_GROSIR_MAKS = 1000;   // jumlah karung jenjang
 export const HT_BAWAAN = { tingkat: [{ id: 'warung', nama: 'Warung', potKg: 0 }, { id: 'catering', nama: 'Catering', potKg: 0 }, { id: 'instansi', nama: 'Instansi', potKg: 0 }],
-  barang: {}, orang: {}, khusus: [] };
+  barang: {}, orang: {}, khusus: [], grosir: {} };
 const HT_JENIS = ['karung', 'kemasan', 'literan', 'repack'];
 const htSalin = (x) => JSON.parse(JSON.stringify(x));
 const htTeks = (v, n) => String(v === undefined || v === null ? '' : v).trim().replace(/\s+/g, ' ').slice(0, n || 60);
@@ -61,8 +66,18 @@ export function htAtur(dok) {
     if (Object.keys(isi).length) barang[tid] = isi; });
   const orang = {}; Object.keys(htObj(d.orang)).forEach((k) => { const kk = kunciPelanggan(k); const tid = String(d.orang[k] || ''); if (kk && ada(tid)) orang[kk] = tid; });
   const khusus = (Array.isArray(d.khusus) ? d.khusus : []).map(htBersihKhusus).filter(Boolean);
-  return { tingkat, barang, orang, khusus, ada: true, tanggal: String(d.tanggal || ''), jam: String(d.jam || '') };
+  const grosir = {}; Object.keys(htObj(d.grosir)).forEach((k) => { if (!htBarangSah(k) || k.indexOf('karung|') !== 0) return; const j = htJenjangBersih(d.grosir[k]); if (j.length) grosir[k] = j; });
+  return { tingkat, barang, orang, khusus, grosir, ada: true, tanggal: String(d.tanggal || ''), jam: String(d.jam || '') };
 }
+/** Jenjang grosir yang sah: min bulat 2–1000 (unik), harga bulat > 0; urut min naik; paling banyak HT_MAKS_JENJANG. */
+function htJenjangBersih(daftar) {
+  const out = []; (Array.isArray(daftar) ? daftar : []).forEach((x) => { const min = Math.round(Number(x && x.min)); const harga = Math.round(Number(x && x.harga));
+    if (Number.isInteger(min) && min >= HT_GROSIR_MIN && min <= HT_GROSIR_MAKS && harga > 0 && harga <= HT_MAKS_HARGA && !out.some((y) => y.min === min)) out.push({ min, harga }); });
+  return out.sort((a, b) => a.min - b.min).slice(0, HT_MAKS_JENJANG);
+}
+/** Jenjang grosir yang berlaku untuk barang karung & jumlah karung itu (jenjang ber-min terbesar yang tercapai) → { min, harga } | null. */
+export function htGrosir(barang, jumlah, A0) { const A = A0 || htAtur(); const J = (A.grosir || {})[String(barang || '')] || []; const n = Number(jumlah) || 0;
+  return J.filter((x) => n >= x.min).sort((a, b) => b.min - a.min)[0] || null; }
 function htBersihKhusus(x) {
   const o = htObj(x); const id = htTeks(o.id, 40); const orang = kunciPelanggan(o.orang); const barang = String(o.barang || ''); const harga = Math.round(Number(o.harga) || 0);
   const mulai = htTgl(o.mulai); const sampai = htTgl(o.sampai);
@@ -148,7 +163,7 @@ export function htKolomBaris(chip, t, orang, tanggal) {
   if (H.khususId) kolom.hargaKhususId = H.khususId;
   return { hargaAsli: H.harga, kolom };
 }
-export const HT_KOLOM_BARIS = ['hargaEceranSatuan', 'tingkatHarga', 'tingkatId', 'hargaSumber', 'hargaKhususId'];
+export const HT_KOLOM_BARIS = ['hargaEceranSatuan', 'tingkatHarga', 'tingkatId', 'hargaSumber', 'hargaKhususId', 'grosirMin'];
 
 // ---------- UBAH (owner langsung · Ben lewat usul) ----------
 const htSlug = (nama) => String(nama || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 20) || 'tingkat';
@@ -214,6 +229,18 @@ export function htTerapkan(A0, ubah, w) {
     A.khusus = A.khusus.filter((y) => y.id !== x.id).concat([x]);
     return { A, kabar: 'Harga khusus ' + x.nama + ' · ' + htNamaBarang(barang) + ' ' + RP(n) + ' ' + htMasaTeks(x) };
   }
+  if (u.jenis === 'grosir') {
+    const barang = String(u.barang || ''); if (!htBarangSah(barang) || barang.indexOf('karung|') !== 0) return { tolak: 'Harga grosir hanya untuk karung utuh — pilih karungnya dulu' };
+    const isi = (Array.isArray(u.jenjang) ? u.jenjang : []).filter((x) => x && (String(x.min || '').trim() || String(x.harga || '').trim()));
+    if (isi.length > HT_MAKS_JENJANG) return { tolak: 'Paling banyak ' + HT_MAKS_JENJANG + ' jenjang per barang' };
+    const J = []; for (const x of isi) { const min = htAngka(x.min); const harga = htAngka(x.harga);
+      if (!Number.isInteger(min) || min < HT_GROSIR_MIN || min > HT_GROSIR_MAKS) return { tolak: 'Jumlah karung jenjang harus bilangan bulat ' + HT_GROSIR_MIN + '–' + HT_GROSIR_MAKS };
+      if (!isFinite(harga) || harga <= 0 || Math.round(harga) !== harga || harga > HT_MAKS_HARGA) return { tolak: 'Harga grosir per karung harus rupiah bulat lebih dari 0' };
+      if (J.some((y) => y.min === min)) return { tolak: 'Jenjang ≥ ' + min + ' karung dua kali' }; J.push({ min, harga }); }
+    J.sort((a, b) => a.min - b.min); for (let i = 1; i < J.length; i++) if (J[i].harga > J[i - 1].harga) return { tolak: 'Jenjang lebih banyak (≥ ' + J[i].min + ' karung) tidak boleh lebih mahal dari jenjang ≥ ' + J[i - 1].min };
+    A.grosir = Object.assign({}, A.grosir || {}); if (!J.length) { if (!A.grosir[barang]) return { tolak: htNamaBarang(barang) + ' memang belum punya harga grosir' }; delete A.grosir[barang]; return { A, kabar: 'Harga grosir ' + htNamaBarang(barang) + ' dihapus' }; }
+    A.grosir[barang] = J; return { A, kabar: 'Harga grosir ' + htNamaBarang(barang) + ': ' + J.map((x) => '≥ ' + x.min + ' karung ' + RP(x.harga) + '/karung').join(' · ') };
+  }
   if (u.jenis === 'hapusKhusus') {
     const x = A.khusus.find((y) => y.id === String(u.id || '')); if (!x) return { tolak: 'Harga khusus itu sudah tidak ada' };
     A.khusus = A.khusus.filter((y) => y.id !== x.id); return { A, kabar: 'Harga khusus ' + x.nama + ' · ' + htNamaBarang(x.barang) + ' dihapus' };
@@ -229,6 +256,7 @@ export function htBersihUbah(ubah) {
   if (j === 'orang') return { jenis: j, orang: htTeks(u.orang, 40), nama: htTeks(u.nama, 40), tingkatId: htTeks(u.tingkatId, 24) };
   if (j === 'khusus') return { jenis: j, id: htTeks(u.id, 40), orang: htTeks(u.orang, 40), nama: htTeks(u.nama, 40), barang: String(u.barang || '').slice(0, 160), harga: htTeks(u.harga, 14), mulai: htTeks(u.mulai, 10), sampai: htTeks(u.sampai, 10), catatan: htTeks(u.catatan, 80) };
   if (j === 'hapusKhusus') return { jenis: j, id: htTeks(u.id, 40) };
+  if (j === 'grosir') return { jenis: j, barang: String(u.barang || '').slice(0, 160), jenjang: (Array.isArray(u.jenjang) ? u.jenjang : []).slice(0, HT_MAKS_JENJANG + 1).map((x) => ({ min: htTeks(x && x.min, 6), harga: htTeks(x && x.harga, 14) })) };
   return { jenis: '' };
 }
 /** Kalimat ubahan "dari → jadi" terhadap setelan SEKARANG (papan persetujuan menghitungnya sendiri, bukan teks kiriman). */
@@ -249,6 +277,7 @@ export function htTeksUbah(ubah, A0) {
 export function htDokumen(A, w) {
   return { id: HT_ID, tingkat: A.tingkat.map((t) => ({ id: t.id, nama: t.nama, potKg: t.potKg })), barang: htSalin(A.barang), orang: htSalin(A.orang),
     khusus: A.khusus.map((x) => ({ id: x.id, orang: x.orang, nama: x.nama, barang: x.barang, harga: x.harga, mulai: x.mulai, sampai: x.sampai, catatan: x.catatan })),
+    grosir: htSalin(A.grosir || {}),
     tanggal: w.tanggal, jam: w.jam, diubahPada: w.kini };
 }
 /**
@@ -259,6 +288,7 @@ export function htSusun(akun, ubah, w, opsi) {
   const o = opsi || {}; const A = htAtur(); const u = htBersihUbah(ubah); if (u.jenis === 'khusus' && !u.mulai) u.mulai = w.tanggal;
   const r = htTerapkan(A, u, w); if (r.tolak) return { tolak: r.tolak };
   const owner = !akun || akun.jenis === 'owner';
+  if (u.jenis === 'grosir' && !owner) return { tolak: 'Harga grosir per jumlah karung diatur owner saja' };
   if (owner) return { dokumen: [{ koleksi: 'aturanToko', data: htDokumen(r.A, w) }], patch: { kabar: r.kabar, kabarAwas: false } };
   if ((o.hak || 'tidak') === 'tidak') return { tolak: 'Peran ' + (akun.nama || 'ini') + ' tidak boleh mengatur harga pelanggan usaha' };
   if (o.bisaMinta === false) return { tolak: 'Usul ke owner dari perangkat ini belum bisa — server belum membuka usul harga (aturan v8). Sampaikan langsung ke owner.' };

@@ -242,7 +242,8 @@ export function susunBayarBon(kini, kunci, nominal, cara, catatan, pengantar, w,
   const b = semuaBon(kini).find((x) => x.kunci === kunci); if (!b) return { tolak: 'Nama itu tidak ada di buku bon' };
   if (b.status === 'lebih') return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada bon untuk dibayar.' }; const n = Math.round(bnAngka(nominal));
   if (!(n > 0)) return { tolak: 'Ketik jumlah yang dibayar' }; if (n > b.sisa) return { tolak: 'Pembayaran ' + RP(n) + ' melebihi sisa bonnya (' + RP(b.sisa) + ') — kalau memang lebih, catat sisanya sebagai penjualan biasa, bukan pembayaran bon' };
-  const c = cara === 'QRIS' ? 'QRIS' : 'Tunai'; const data = { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: w.tanggal, jam: w.jam, caraBayar: c, catatan: String(catatan || '').trim(), dicatatDi: 'sistem' };
+  // owner 24 Nov 2026: Transfer = masuk rekening tanpa MDR (kantongBayar mesin)
+  const c = cara === 'QRIS' || cara === 'Transfer' ? cara : 'Tunai'; const data = { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: w.tanggal, jam: w.jam, caraBayar: c, catatan: String(catatan || '').trim(), dicatatDi: 'sistem' };
   if (!bnKosong(pengantar) && kunciPelanggan(pengantar) !== kunci) data.dibawaOleh = String(pengantar).trim();
   const pilih = (Array.isArray(untukFaktur) ? untukFaktur : []).map(String).filter((x, i, a) => x && a.indexOf(x) === i);
   if (pilih.length) {
@@ -267,8 +268,8 @@ export function susunBayarSesudahHapus(kini, kunci, nominal, cara, catatan, w, y
   const n = Math.round(bnAngka(nominal)); if (!(n > 0)) return { tolak: sudah > 0 ? 'Ketik jumlah hapus buku yang dibalik' : 'Ketik jumlah yang dibayar' };
   const maks = sudah > 0 ? Math.min(sudah, dihapus) : dihapus;
   if (n > maks) return { tolak: sudah > 0 ? 'Yang dibayar padahal sudah dihapus ' + RP(maks) + ' — paling banyak sebesar itu' : 'Yang pernah dihapus dari buku a.n. ' + b.nama + ' ' + RP(maks) + ' — paling banyak sebesar itu' + (b.sisa > 0 ? '; sisanya catat sebagai pembayaran bon biasa' : '') };
-  const c = cara === 'QRIS' ? 'QRIS' : 'Tunai'; const ket = String(catatan || '').trim().slice(0, 60);
-  if (!yakin) return { tolak: (sudah > 0 ? 'Balik hapus buku ' + RP(n) + ' a.n. ' + b.nama + ' (uangnya sudah tercatat)?' : RP(n) + ' dari bon ' + b.nama + ' yang dulu dihapus dibayar ' + (c === 'QRIS' ? 'lewat QRIS' : 'tunai') + '?')
+  const c = cara === 'QRIS' || cara === 'Transfer' ? cara : 'Tunai'; const ket = String(catatan || '').trim().slice(0, 60);
+  if (!yakin) return { tolak: (sudah > 0 ? 'Balik hapus buku ' + RP(n) + ' a.n. ' + b.nama + ' (uangnya sudah tercatat)?' : RP(n) + ' dari bon ' + b.nama + ' yang dulu dihapus dibayar ' + (c === 'QRIS' ? 'lewat QRIS' : c === 'Transfer' ? 'lewat transfer' : 'tunai') + '?')
     + ' Hapus buku lama TETAP ada; dibalik dengan catatan baru — laba bulan ini naik ' + RP(n) + '. Ketuk sekali lagi', perluYakin: true };
   const dokumen = [{ koleksi: 'piutangMutasi', data: { id: w.idUnik(), tipe: 'hapusBuku', namaPelanggan: b.nama, nominal: -n, alasan: 'hapus buku dibalik — dibayar sesudah dihapus' + (ket ? ' · ' + ket : ''), balikHapus: true, tanggal: w.tanggal, jam: w.jam, dicatatDi: 'sistem' } }];
   if (!(sudah > 0)) dokumen.push({ koleksi: 'piutangMutasi', data: { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: w.tanggal, jam: w.jam, caraBayar: c, catatan: 'dibayar sesudah dihapus buku' + (ket ? ' · ' + ket : ''), dicatatDi: 'sistem' } });

@@ -160,7 +160,7 @@ function pgHitung(key, n, iso, bayaran) {
     .sort((a, b) => (a.labaKotor === null ? (b.labaKotor === null ? 0 : 1) : b.labaKotor === null ? -1 : b.labaKotor - a.labaKotor) || b.omzet - a.omzet || a.nama.localeCompare(b.nama));
   const kunciEceran = Object.keys(per).filter((k) => !kunciUsaha[k]);
   const eceranG = pgJadi(pgGabung(kunciEceran.map((k) => per[k]).concat([tanpaNama])));
-  const eceran = Object.assign(eceranG, { id: PG_ECERAN, nama: 'Eceran', nOrang: kunciEceran.length, nTanpaNama: Object.keys(tanpaNama.nota).length,
+  const eceran = Object.assign(eceranG, { id: PG_ECERAN, nama: 'Pembeli umum', nOrang: kunciEceran.length, nTanpaNama: Object.keys(tanpaNama.nota).length,
     tempo: pgTempoGabung(Object.keys(piutang).filter((k) => !kunciUsaha[k]).map((k) => tempo(k))), lewat: Object.keys(lewatOrang).filter((k) => !kunciUsaha[k]).reduce((a, k) => ({ rp: a.rp + lewatOrang[k].rp, n: a.n + lewatOrang[k].n, hariMaks: Math.max(a.hariMaks, lewatOrang[k].hariMaks) }), { rp: 0, n: 0, hariMaks: 0 }) });
   // per tingkat — urutan tingkat di setelan owner, tingkat lama yang sudah dihapus di belakang; Eceran paling bawah
   const urutT = (A.tingkat || []).map((t) => t.id); const idT = []; orang.forEach((o) => { if (idT.indexOf(o.tingkatId) < 0) idT.push(o.tingkatId); });
