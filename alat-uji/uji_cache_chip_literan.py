@@ -79,6 +79,8 @@ __dom['jualKarungBerat'] = { value: '50' };
 Object.keys(KOTAK).forEach(function (n) { pasok(n, JSON.parse(J(KOTAK[n]))); });
 var nId = 9000; var W = { tanggal: '2026-09-21', jam: '10:00', kini: '2026-09-21T03:00:00.000Z', idUnik: function () { nId += 1; return nId; } };
 terapkanKeCache(wbSusunAktifkan('IR64 Apex', W).dokumen);
+// satu isi ulang tercatat di wadah Angsa (belum aktif) → kartunya menulis "takar terakhir 10:30 · Kasir"
+terapkanKeCache([{ koleksi: 'wadahLiteran', data: { id: 8999, tanggal: '2026-09-21', jam: '10:30', tipe: 'takar', wadah: 'Angsa', takar: 0, kg: 2, takaran: 'kg', oleh: 'Kasir Uji', sumber: [{ merk: 'Angsa', kg: 2, dari: '' }] } }]);
 ok('kotak pasir: W1 IR64 Apex aktif (buku sendiri + karung belakang Kumala), W2–W5 belum', wbAktif('IR64 Apex') && !wbAktif('Tawon Super') && wbKarungBelakangWadah('IR64 Apex').length === 1);
 var opsiJ = { akun: function () { return null; }, gantiMode: function () {}, mode: function () { return 'gelap'; }, statusTeks: function () { return ''; }, statusAwas: function () { return false; },
   statusRingkas: function () { return ''; }, versiData: function () { return __versi; }, pemegang: function () { return null; }, bukaStok: null };
@@ -86,14 +88,17 @@ var aJ = __akar(); var JL = pasangLayarJual(aJ, opsiJ);
 var sJ = function () { return JL.keadaan.baca(); };
 // oracle: teks komposisi & selisih tiap chip wadah, dihitung LANGSUNG dari logika atas keadaan Jual sekarang
 var chipW = function () { return susunRak(sJ()).literan.filter(function (c) { return c.wadah; }); };
-var harapJ = function () { return chipW().map(function (c) { var KT = wbKomposisiTurunan(c.kunci, sJ()), SL = wbSelisihWadah(c.kunci, sJ(), c.sisa); return { k: c.kunci, kt: esc(KT.nama), sl: SL.ada ? esc(SL.teks) : '' }; }); };
+// owner 23 Nov 2026: kartu wadah Jual hanya "takar terakhir HH:MM · oleh"; komposisi % & selisih TIDAK lagi di kartu (rinciannya di Stok)
+var olehS = function (o) { var t = String(o || '').trim().split(/\s+/)[0] || ''; return t.length > 12 ? t.slice(0, 11) + '\u2026' : t; };
+var harapJ = function () { return chipW().map(function (c) { var KT = wbKomposisiTurunan(c.kunci, sJ()), SL = wbSelisihWadah(c.kunci, sJ(), c.sisa);
+  return { k: c.kunci, kt: KT.terakhir && KT.terakhir.jam ? esc('takar terakhir ' + KT.terakhir.jam + (KT.terakhir.oleh ? ' \u00b7 ' + olehS(KT.terakhir.oleh) : '')) : '', kmp: KT.banding ? esc(KT.banding) : (!KT.daftar.length ? esc(KT.nama) : ''), sl: SL.ada ? esc(SL.teks) : '' }; }); };
 var cekJ = function () { var CW = wbCekHari(tanggalTutupAktif(sJ().sekarang || new Date())); return 'Cek wadah · ' + CW.daftar.filter(function (x) { return x.aktif && x.dicek; }).length + '/' + CW.nAktif + ' hari ini'; };
-var cocokJ = function () { var H = harapJ(); var html = aJ.__html || ''; var kurang = H.filter(function (x) { return html.indexOf(x.kt) < 0 || (x.sl && html.indexOf(x.sl) < 0); }).map(function (x) { return x.k; });
+var cocokJ = function () { var H = harapJ(); var html = aJ.__html || ''; var kurang = H.filter(function (x) { return (x.kt && html.indexOf(x.kt) < 0) || (x.kmp && html.indexOf(x.kmp) >= 0) || (x.sl && html.indexOf(x.sl) >= 0); }).map(function (x) { return x.k; });
   if (html.indexOf(cekJ()) < 0) kurang.push('cek: ' + cekJ()); return kurang; };
 
 JL.keadaan.setel({ jalur: 'literan', sekarang: new Date(Date.now()) });   // jam dikunci (new Date() tanpa argumen di jsc = jam sungguhan)
 var nChip = chipW().length;
-ok('rak Literan tergambar: ' + nChip + ' chip wadah, teks komposisi/selisih/cek = hitungan logika langsung', nChip >= 3 && !cocokJ().length, J(cocokJ()));
+ok('rak Literan tergambar: ' + nChip + ' chip wadah, "takar terakhir" & cek = hitungan logika langsung; komposisi % & selisih TIDAK di kartu', nChip >= 3 && harapJ().some(function (x) { return x.kt === 'takar terakhir 10:30 \u00b7 Kasir'; }) && harapJ().some(function (x) { return x.kmp; }) && !cocokJ().length, J([cocokJ(), harapJ()]));
 // --- 1 · ketukan yang tidak mengubah data: TIDAK menghitung ulang
 var k1 = hitungBerat(BERAT, function () { JL.keadaan.setel({ kabar: '' }); }); var n1 = __nStok;
 __nStok = 0; JL.keadaan.setel({ kabar: '' }); var nStokKetuk = __nStok;
@@ -108,7 +113,7 @@ var sl0 = wbSelisihWadah('IR64 Apex', sJ(), chipW().filter(function (c) { return
 var sisa0 = chipW().filter(function (c) { return c.kunci === 'IR64 Apex'; })[0].sisa;
 terapkanKeCache(susunSamakanKarung(wbKunciKB('IR64 Apex', 'Kumala'), '10', W, 'IR64 Apex').dokumen);
 var cIA = chipW().filter(function (c) { return c.kunci === 'IR64 Apex'; })[0]; var sl1 = wbSelisihWadah('IR64 Apex', sJ(), cIA.sisa).teks;
-ok('Jual: catatan karung belakang disamakan 10 kg → selisih chip IR64 Apex tergambar baru (sisa chip tetap ' + sisa0 + ' L)', sl1 && sl1 !== sl0 && cIA.sisa === sisa0 && !cocokJ().length, J([sl0, sl1, cocokJ()]));
+ok('Jual: catatan karung belakang disamakan 10 kg → selisih IR64 Apex berubah di logika, tapi kartu Jual TETAP tanpa selisih (owner 23 Nov 2026) & sesuai oracle (sisa chip tetap ' + sisa0 + ' L)', sl1 && sl1 !== sl0 && cIA.sisa === sisa0 && (aJ.__html || '').indexOf(esc(sl1)) < 0 && !cocokJ().length, J([sl0, sl1, cocokJ()]));
 // --- 4 · keranjang berubah: 2 L dari Tawon Super (wadah belum aktif) masuk keranjang → bebas & selisih dihitung ulang
 var cTs = chipW().filter(function (c) { return c.kunci === 'Tawon Super'; })[0]; var rM = masukkan(Object.assign({}, sJ(), { pilih: cTs }), 2);
 JL.keadaan.setel({ keranjang: rM.keranjang, urutBaris: rM.urutBaris });
@@ -174,8 +179,10 @@ def jalan(ganti=None, cadangan=None):
 
 RUSAK = [
     ('Jual: ingatan tidak dikosongkan saat rak disusun ulang (data baru → teks basi)', [("_rakUntuk = tanda; _rakDasar = dasar; _ingatRak = {}; _rakBasi = false; }", "_rakUntuk = tanda; _rakDasar = dasar; _rakBasi = false; }")]),
-    ('Jual: chip wadah kembali menghitung tiap ketukan', [("const { KT, SL } = ingatRak('w|' + c.kunci + '|' + c.sisa, () => ({ KT: WB.wbKomposisiTurunan(c.kunci, s), SL: WB.wbSelisihWadah(c.kunci, s, c.sisa) }));",
-                                                          "const KT = WB.wbKomposisiTurunan(c.kunci, s); const SL = WB.wbSelisihWadah(c.kunci, s, c.sisa);")]),
+    ('Jual: chip wadah kembali menghitung tiap ketukan', [("const { KT } = ingatRak('w|' + c.kunci + '|' + c.sisa, () => ({ KT: WB.wbKomposisiTurunan(c.kunci, s) }));",
+                                                          "const KT = WB.wbKomposisiTurunan(c.kunci, s);")]),
+    ('Jual: komposisi % kembali tampil di kartu wadah', [("return KT.terakhir && KT.terakhir.jam ? h`<div class=\"stok wadah-komposisi\">takar terakhir ${KT.terakhir.jam}${KT.terakhir.oleh ?",
+                                                          "return true ? h`<div class=\"stok wadah-komposisi\">${KT.nama} takar terakhir ${(KT.terakhir || {}).jam}${(KT.terakhir || {}).oleh ?")]),
     ('Jual: tombol Cek wadah kembali menghitung tiap ketukan', [("const CW = cekWadahRak(s); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;\n      return h`<div class=\"baris-cek-wadah\"",
                                                                  "const CW = WB.wbCekHari(tanggalTutupAktif(s.sekarang || new Date())); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;\n      return h`<div class=\"baris-cek-wadah\"")]),
     ('Stok: kunci ingatan tanpa versi data (data baru → basi)', [("const k = opsi.versiData() + '|' + tanggalTutupAktif(kini())", "const k = '|' + tanggalTutupAktif(kini())")]),
