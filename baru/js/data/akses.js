@@ -207,6 +207,31 @@ export function negoDalamJatah(d, jatahNego) {
   return batas > 0 && harga >= batas && jatah > 0 && jatah <= (Number(jatahNego) || 0);
 }
 /**
+ * owner 23 Nov 2026 (bonus +1 staf masuk jatah nego): bonus kemasan = potongan dari MARGIN baris. asli = harga katalog satu unit, harga = harga yang dibayar
+ * per unit (sesudah nego), bayar = unit yang dibayar, bonus = unit gratis, modal = modal baris (unit bayar + bonus), jatah = % margin.
+ * Diberikan = asli × (bayar + bonus) − harga × bayar; margin = asli × (bayar + bonus) − modal. Boleh bila margin > 0 dan diberikan ≤ margin × jatah
+ * (jatah 100 = uang baris tidak di bawah modalnya). Satu rumus untuk layar Jual (nego-logika ngPutusBonus) dan penjaga kiriman (bonusDalamJatah).
+ */
+export function bonusDalamBatas(asli, harga, bayar, bonus, modal, jatah) {
+  const A = Number(asli) || 0; const H = Number(harga) || 0; const n = Number(bayar) || 0; const b = Number(bonus) || 0; const M = Number(modal) || 0; const J = Number(jatah) || 0;
+  if (!(A > 0) || !(n > 0) || !(M > 0) || !(J > 0)) return false;
+  const margin = A * (n + b) - M; const diberi = A * (n + b) - H * n;
+  return margin > 0 && diberi <= margin * Math.min(J, 100) / 100 + 0.5;
+}
+/**
+ * owner 23 Nov 2026: baris penjualan BERBONUS dari bukan-owner bukan tindakan nego bila (a) tanpa bonus, (b) bonusStatus 'disetujui' + bonusSetujuId
+ * (persetujuan owner sekali pakai), atau (c) bonusStatus 'jatah' dan — dihitung ULANG dari kolom nota — masih dalam jatah orangnya (0 < bonusJatah ≤ jatahNego).
+ * Selain itu (bentuk tanpa tanda, lewat jatah, rugi) = tindakan nego → kisi "minta owner" menolaknya.
+ */
+export function bonusDalamJatah(d, jatahNego) {
+  const b = Number(d && d.bonusUnit) || 0; if (!(b > 0)) return true;
+  if (d.bonusStatus === 'disetujui') return !!d.bonusSetujuId;
+  if (d.bonusStatus !== 'jatah') return false;
+  const jatah = Number(d.bonusJatah); if (!(jatah > 0 && jatah <= (Number(jatahNego) || 0))) return false;
+  const asli = Number(d.hargaAsliSatuan) || 0; const harga = asli + (Number(d.negoSelisih) || 0);
+  return bonusDalamBatas(asli, harga, (Number(d.jumlahUnit) || 0) - b, b, Number(d.hppTotalSaatJual) || 0, jatah);
+}
+/**
  * audit 39b no. 22: tindakan kisi SS2 yang dijalankan SATU kiriman bukan-owner (dokumen baru saja; update pesanan menumpang notanya).
  * Ada penjualan = nota: jual bon (Kredit, termasuk bayar sebagian) atau jual tunai, + nego bila ada harga ditawar (negoSelisih) atau potongan nota.
  * owner 7 Okt: harga ditawar DALAM jatah orangnya / disetujui owner bukan tindakan nego (negoDalamJatah; jatahNego = jatah akun yang mengirim).
@@ -217,7 +242,7 @@ export function tindakanKiriman(D, jatahNego) {
   const baru = (D || []).filter((x) => !x.ada); const t = {}; const ada = (k) => baru.some((x) => x.koleksi === k);
   const jual = baru.filter((x) => x.koleksi === 'penjualan');
   jual.forEach((x) => { const d = x.data || {}; t[String(d.caraBayar || '').toLowerCase() === 'kredit' ? 'jualBon' : 'jualTunai'] = 1;
-    if (!negoDalamJatah(d, jatahNego) || (Number(d.potonganTransaksi) || 0) > 0) t.nego = 1; });
+    if (!negoDalamJatah(d, jatahNego) || !bonusDalamJatah(d, jatahNego) || (Number(d.potonganTransaksi) || 0) > 0) t.nego = 1; });   // owner 23 Nov: bonus +1 ikut jatah nego
   if (!jual.length && baru.some((x) => x.koleksi === 'piutangMutasi')) t.terimaBon = 1;
   // B3 (rules v10): surat jalan baru = antar (ikut notanya) · surat jalan yang ditandai (update) = terima antar
   if (ada('suratJalan')) t.antar = 1;
