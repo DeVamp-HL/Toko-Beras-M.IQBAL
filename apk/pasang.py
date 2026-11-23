@@ -12,7 +12,7 @@ pasang.py — dijalankan GitHub Actions (apk.yml) SESUDAH `npx cap add android`:
     (BLUETOOTH_CONNECT dkk.) TIDAK ditambahkan di sini: manifest pustaka printer SUNMI sudah membawanya
   · owner 23 Nov 2026 — PUSH APLIKASI TABLET: berkas Firebase google-services.json dari rahasia repo GOOGLE_SERVICES_JSON (tanpa rahasia = APK tanpa push,
     tombol notifikasi tablet menolak dengan kalimat yang jelas), izin POST_NOTIFICATIONS (Android 13+), ikon & saluran bawaan notifikasi "Kabar toko"
-  · ikon & layar pembuka dari icon-sistem-512.png toko
+  · ikon & layar pembuka: logo M (icon-sistem-512.png + apk/ikon-depan-432.png, dibuat apk/ikon_m.py)
   · versionCode/versionName dari nomor jalan Actions (APK baru bisa dipasang menimpa yang lama bila kuncinya sama)
 
     python3 apk/pasang.py --versi 12
@@ -211,28 +211,37 @@ def pasang_versi(versi):
     tulis(p, g); print('  versi: 1.%d (kode %d) · pustaka: %s' % (versi, versi, ', '.join(PUSTAKA + PUSTAKA_LAIN)))
 
 
+LATAR_IKON = '#101314'   # = apk/ikon_m.py LATAR_APK (latar belakang ikon adaptif & layar pembuka; hitam malam)
+
+
 def pasang_ikon():
+    """Logo "M" (owner 23 Nov 2026). Ikon adaptif Android = latar DEPAN transparan (apk/ikon-depan-432.png: cincin + M di dalam lingkar aman) di atas
+    latar BELAKANG warna polos LATAR_IKON — rapi di bentuk peluncur apa pun. Dulu ikon 512 utuh (berkotak) ditempel ke latar depan → kotak di dalam kotak.
+    Ikon lama (Android < 8): icon-sistem-512.png; versi bulat dipotong lingkaran. Semua gambar dibuat apk/ikon_m.py."""
     try:
-        from PIL import Image
+        from PIL import Image, ImageDraw
     except ImportError:
         print('  ikon: Pillow tidak ada — ikon bawaan Capacitor dipakai'); return
     sumber = Image.open(os.path.join(AKAR, 'icon-sistem-512.png')).convert('RGBA')
+    depan = Image.open(os.path.join(AKAR, 'apk', 'ikon-depan-432.png')).convert('RGBA')
+    def bulat(n):
+        g = sumber.resize((n * 4, n * 4), Image.LANCZOS); topeng = Image.new('L', g.size, 0); ImageDraw.Draw(topeng).ellipse((0, 0, g.size[0] - 1, g.size[1] - 1), fill=255)
+        hasil = Image.new('RGBA', g.size, (0, 0, 0, 0)); hasil.paste(g, (0, 0), topeng); return hasil.resize((n, n), Image.LANCZOS)
     ukuran = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
     for d, n in ukuran.items():
-        for nama in ('ic_launcher.png', 'ic_launcher_round.png'):
-            p = os.path.join(UTAMA, 'res', 'mipmap-' + d, nama)
-            if os.path.exists(p): sumber.resize((n, n), Image.LANCZOS).save(p)
-        # latar depan ikon adaptif: logo di tengah area aman (66 %) kanvas 108 dp
+        p = os.path.join(UTAMA, 'res', 'mipmap-' + d, 'ic_launcher.png')
+        if os.path.exists(p): sumber.resize((n, n), Image.LANCZOS).save(p)
+        p = os.path.join(UTAMA, 'res', 'mipmap-' + d, 'ic_launcher_round.png')
+        if os.path.exists(p): bulat(n).save(p)
         p = os.path.join(UTAMA, 'res', 'mipmap-' + d, 'ic_launcher_foreground.png')
-        if os.path.exists(p):
-            kanvas = Image.new('RGBA', Image.open(p).size, (0, 0, 0, 0)); s = int(kanvas.size[0] * 0.66)
-            kanvas.paste(sumber.resize((s, s), Image.LANCZOS), ((kanvas.size[0] - s) // 2, (kanvas.size[1] - s) // 2)); kanvas.save(p)
+        if os.path.exists(p): depan.resize(Image.open(p).size, Image.LANCZOS).save(p)
     latar = os.path.join(UTAMA, 'res', 'values', 'ic_launcher_background.xml')
-    if os.path.exists(latar): tulis(latar, re.sub(r'#[0-9A-Fa-f]{6,8}', '#E2E7EC', baca(latar)))
+    if os.path.exists(latar): tulis(latar, re.sub(r'#[0-9A-Fa-f]{6,8}', LATAR_IKON, baca(latar)))
+    warna = tuple(int(LATAR_IKON[i:i + 2], 16) for i in (1, 3, 5))
     for p in glob.glob(os.path.join(UTAMA, 'res', 'drawable*', 'splash.png')):
-        w, h = Image.open(p).size; kanvas = Image.new('RGB', (w, h), (226, 231, 236)); s = int(min(w, h) * 0.32)
-        kanvas.paste(sumber.resize((s, s), Image.LANCZOS), ((w - s) // 2, (h - s) // 2), sumber.resize((s, s), Image.LANCZOS)); kanvas.save(p)
-    print('  ikon & layar pembuka dari icon-sistem-512.png')
+        w, h = Image.open(p).size; kanvas = Image.new('RGB', (w, h), warna); s = int(min(w, h) * 0.62); g = depan.resize((s, s), Image.LANCZOS)
+        kanvas.paste(g, ((w - s) // 2, (h - s) // 2), g); kanvas.save(p)
+    print('  ikon (logo M, latar ' + LATAR_IKON + ') & layar pembuka dari icon-sistem-512.png + apk/ikon-depan-432.png')
 
 
 def main():
