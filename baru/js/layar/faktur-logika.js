@@ -34,6 +34,23 @@ const fkAturMentah = () => cacheMentah('aturan').find((d) => String(d.id) === 'p
 export function fkHariSah(v) { if (v === undefined || v === null || String(v).trim() === '') return null; const n = Number(String(v).trim()); return Number.isInteger(n) && n >= 0 && n <= FK_TEMPO_MAKS ? n : null; }
 /** Tempo bawaan toko (aturanToko/pelanggan.tempoBawaan), belum diatur = 14 hari. */
 export function fkTempoBawaan() { const a = fkAturMentah(); const n = a ? fkHariSah(a.tempoBawaan) : null; return n === null ? FK_TEMPO_BAWAAN : n; }
+// ---------- STOP BON (owner 24 Nov 2026, keputusan 9 Okt): bon tertua belum lunas > N hari → bon baru ditahan ----------
+// N = aturanToko/pelanggan.stopBonHari, diatur owner di Pelanggan › Atur; belum diatur = 30; 0 = stop bon mati. Penahannya lewat gerbang kredit yang SAMA
+// dengan batas kredit B2 (kunciKr1 di jual-logika.js): karyawan minta persetujuan owner, owner di HP/Mac membuka sekali (dua ketukan).
+export const FK_STOP_BAWAAN = 30;
+/** Hari stop bon yang berlaku (0 = mati). */
+export function fkStopBonHari() { const a = fkAturMentah(); const n = a ? fkHariSah(a.stopBonHari) : null; return n === null ? FK_STOP_BAWAAN : n; }
+/** Stop bon kena untuk `nama`? → { hari (N), umur, tanggal (bon tertua belum lunas), sisa } | null. Umur = mesin piutang (FIFO: bayar menutup bon tertua dulu). */
+export function fkStopBon(nama) {
+  const N = fkStopBonHari(); if (!(N > 0) || !String(nama || '').trim()) return null;
+  const r = hitungPiutang().find((x) => x.kunci === kunciPelanggan(nama)); const tgl = r ? String(r.tanggalTertua || '') : '';
+  if (!r || !(Number(r.sisa) > 0.5) || !/^\d{4}-\d\d-\d\d$/.test(tgl)) return null;
+  // umur dihitung dari hari ini perangkat (Date.now — sama dengan jam Jual), bukan umurHari mesin (jam lain): tanggalTertua = bon tertua yang belum tertutup FIFO
+  const umur = Math.round((Date.parse(hariIniIso(new Date(Date.now())) + 'T00:00:00Z') - Date.parse(tgl + 'T00:00:00Z')) / 86400000);
+  if (!(umur > N)) return null;
+  return { hari: N, umur, tanggal: tgl, sisa: Math.round(Number(r.sisa) || 0) };
+}
+export const fkStopBonTeks = (nama, S) => 'Stop bon: bon tertua ' + nama + ' belum lunas sejak ' + tanggalPendek(S.tanggal) + ' (' + S.umur + ' hari, batas ' + S.hari + ' hari; sisa bon ' + RP(S.sisa) + ')';
 /** Kartu pelanggan mentah (pelangganCatatan) menurut kunci nama. */
 export function fkKartu(nama) { const k = kunciPelanggan(nama); if (!k) return null; return (ambilPelangganCatatan() || []).find((c) => kunciPelanggan(c.nama || c.id) === k) || null; }
 /** Tempo yang berlaku untuk seorang pelanggan: kartunya → bawaan toko. */
@@ -214,7 +231,8 @@ export function fkTeksMinta(m) {
   const nama = String((m && m.pelanggan) || ''); const n = Math.round(Number(m && m.nominal) || 0); const i = nama ? fkInfoKredit(nama) : null;
   if (!nama || !(n > 0)) return 'permintaan bon — bentuknya tidak lengkap (tanpa nama / nominal)';
   return 'Bon ' + nama + ': lama ' + RP(i ? i.sisa : 0) + ' + nota ini ' + RP(n) + ' = ' + RP((i ? i.sisa : 0) + n) + ' · batas ' + RP(i ? i.batas : 0) + ' (' + fkSumberBatas(i) + ')'
-    + (m && m.sisaJadiBon ? ' · sisa bayar kurang' : '') + (m && m.alasan ? ' · alasan: ' + String(m.alasan).slice(0, 80) : '');
+    + (m && m.sisaJadiBon ? ' · sisa bayar kurang' : '') + (m && m.alasan ? ' · alasan: ' + String(m.alasan).slice(0, 80) : '')
+    + ((S) => (S ? ' · ' + fkStopBonTeks(nama, S) : ''))(fkStopBon(nama));
 }
 /** Dokumen persetujuan 'kredit' menunggu (rules v9 stafMintaKredit: status menunggu, mintaUid = olehUid = penulis, tanpa kolom keputusan). */
 export function fkSusunMinta(akun, nama, nominal, w, opsi) {

@@ -33,7 +33,7 @@ import { tkSetTertaut, caraBayarKunci } from '../mesin/pembantu.js';
 // B1 (owner 16 Nov 2026): harga pelanggan usaha
 import { htKolomBaris, htTandaiRak, htTingkatOrang, htPapanKhusus, HT_KOLOM_BARIS } from './harga-tingkat-logika.js';
 // B2 (owner 17 Nov 2026): faktur bertempo & batas kredit — batas angka owner per pelanggan, minta persetujuan owner, bayar kurang ikut batas
-import { fkInfoKredit, fkSumberBatas, fkSetujuUntuk, fkKolomNota, fkRincian } from './faktur-logika.js';
+import { fkInfoKredit, fkSumberBatas, fkSetujuUntuk, fkKolomNota, fkRincian, fkStopBon, fkStopBonTeks } from './faktur-logika.js';
 // B3 (owner 18 Nov 2026): surat jalan & antar — ongkir menempel di satu baris nota (ikut hargaTotal), bayar di tempat = bon sementara bebas batas hari itu
 import { ajOngkir, ajAlasanTolak, ajBarisPembawa, ajDokumenSJ, ajNomorBaru, ajBatalUntukNota, ajDrafBaru, ajUntukNota, ajKeadaan } from './antar-logika.js';
 // B4 (owner 18 Nov 2026): pesanan dari katalog, PO pelanggan, uang muka (DP) yang memotong nota pesanannya, jadwal rutin
@@ -1046,8 +1046,11 @@ export function kunciKr1(nama, totalKredit) {
   if (!info.terdaftar) return nama + ' belum terdaftar di buku Pelanggan — kredit dimatikan (KR1). Isi ciri, catatan, atau rute di kartunya dulu.';
   if (info.batas <= 0) return 'Belum ada riwayat belanja — batas kredit belum terbentuk (KR1).';
   if (info.sisa + totalKredit > info.batas) return 'Melewati batas kredit ' + RP(info.batas) + ' (bon ' + RP(info.sisa) + ' + nota ini ' + RP(totalKredit) + ')' + (info.sumber === 'owner' ? ' — batas ' + fkSumberBatas(info) : '') + '.';
-  return null;
+  return stopBon(nama);
 }
+/** STOP BON (owner 24 Nov 2026): bon tertua yang belum lunas sudah lewat N hari (Pelanggan › Atur, 0 = mati) → bon baru ditahan. null = boleh.
+ *  Hitungannya satu tempat: faktur-logika fkStopBon (papan owner memakai yang sama). */
+export function stopBon(nama) { const S = fkStopBon(nama); return S ? fkStopBonTeks(nama, S) + ' — bon baru ditahan sampai dibayar.' : null; }
 /** KR1 — null = boleh. Pintu: owner membuka sekali (kreditDibuka), atau persetujuan owner atas permintaan bon (B2: hari ini, nominal ≥ bon nota ini, belum dipakai). */
 export function alasanKunciKredit(s, totalKredit) {
   const nama = String(s.pelanggan || '').trim();
