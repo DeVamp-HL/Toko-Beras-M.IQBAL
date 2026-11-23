@@ -237,7 +237,7 @@ export function pasangLayarLaporan(akar, opsi) {
     const pilih = h`<div class="kartu" data-k="pilih-bulan" style="gap: 6px;"><div class="label">Bulan yang dilihat · ✎ = belum tutup buku</div>${bulanCip('lbBulan', key, daftar)}</div>`;
     const kaki = h`<div class="lp-kaki">Satu mesin laba dengan sistem lama (retur ikut memotong, susut sejak 1 Sep 2026, upah KOTOR). "Diterima tunai" = laba bersih − margin nota bon bulan ini + margin bon yang dibayar bulan ini: angka paling turunan di layar ini, bukan hasil hitung laci.</div>`;
     if (L === 'hp') return h`<section data-k="laba">${pilih}${keping}${margin}${panel}${keMana}${merek}${gmroi}${pelanggan}${aman}${susut}${rugi}${tt}${kaki}</section>`;
-    return h`<section data-k="laba">${grid(L, [h`${pilih}${keping}${margin}${aman}${kaki}`, h`${panel}${keMana}${merek}`, h`${gmroi}${pelanggan}${susut}${rugi}${tt}`])}</section>`;
+    return h`<section data-k="laba">${grid(L, [h`${pilih}${keping}${margin}${gmroi}${aman}${kaki}`, h`${panel}${keMana}${merek}`, h`${pelanggan}${susut}${rugi}${tt}`])}</section>`;
   }
   // ---------- paket KPI laba (owner 24 Nov 2026, butir 1·2·3·5): tiga margin %, mark-up di sampingnya, per jenis, pembanding BPS. Angka dari KL.klMarginBulan
   // (= keManaLabaKotor + jenisBulan Laporan, dijaga uji_kpi_laba.py); layar cuma menggambar. "—" = belum bisa dihitung, bukan 0 %.

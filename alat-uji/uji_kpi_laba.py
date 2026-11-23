@@ -294,7 +294,7 @@ RUSAK = [
     ('cek gudang: masalah tanpa catatan lolos', SL, "if (masalah.length && cat.length < 5) return", "if (false) return"),
     ('cek gudang: jadwal tidak maju sesudah dicek', SL, "const jatuh = terakhir ? ssTambahHari(terakhir.tanggal, tiap) : iso;", "const jatuh = iso;"),
     ('cek gudang: penjaga kiriman membolehkan kolom lain', AK, "if (Object.keys(d).some((k) => CEK_GUDANG_KOLOM.indexOf(k) < 0)) return false;", ""),
-    ('cek gudang: karyawan boleh mengirim', AK, "orderRutin: ['ben'], cekGudang: ['ben'] };", "orderRutin: ['ben'], cekGudang: ['ben', 'karyawan'] };"),
+    ('cek gudang: karyawan boleh mengirim', AK, "perangkatStatus: ['ben', 'karyawan'], cekGudang: ['ben'],", "perangkatStatus: ['ben', 'karyawan'], cekGudang: ['ben', 'karyawan'],"),
     ('setelan: simpan target menimpa target margin', KL, "const lama = ugAturDok(KL_ID) || {}; const data = Object.assign({}, lama, { id: KL_ID, tanggal: w.tanggal, jam: w.jam });", "const lama = {}; const data = { id: KL_ID, tanggal: w.tanggal, jam: w.jam };"),
     ('Dasbor kpi memakai target bawaan tetap', DL, "target: aman(() => klTargetHari(kini))", "target: aman(() => ({ omzet: 0 }))"),
 ]
