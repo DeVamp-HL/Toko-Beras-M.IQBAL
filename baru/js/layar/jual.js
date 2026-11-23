@@ -984,8 +984,10 @@ export function pasangLayarJual(akar, opsi) {
         ${c.tingkatNama ? h`<div class="stok tingkat-ket">${c.tingkatNama}${c.hargaTingkat !== c.harga ? ' · eceran ' + RP(c.harga) : ''}</div>` : ''}
         <div class="stok">${c.sisa <= 0 && !c.tanpaBatas ? 'habis' : c.sisaTeks}${c.dipegang > 0 ? ' · ' + (c.jalur === 'kemasan' ? c.dipegang + ' unit' : c.jalur === 'wadah' ? c.dipegang + ' lembar' : DESIMAL(c.dipegang) + ' kg') + ' dipegang struk lain' : ''}</div>
         ${c.wadah ? h`<div class="stok wadah-ket">${!c.wadah.diketahui ? 'wadah belum ditandai isi ulang' : c.wadah.perluIsi ? 'WADAH ±' + DESIMAL(c.wadah.sisaKg) + ' kg — ISI ULANG' : 'wadah ±' + DESIMAL(c.wadah.sisaKg) + ' kg'}</div>` : ''}
-        ${c.wadah ? (() => { const { KT, SL } = ingatRak('w|' + c.kunci + '|' + c.sisa, () => ({ KT: WB.wbKomposisiTurunan(c.kunci, s), SL: WB.wbSelisihWadah(c.kunci, s, c.sisa) }));   // putaran 39 (owner c & f): komposisi turunan isi ulang + selisih dua angka disebut · 39b no. 29: sekali per rak
-          return h`<div class="stok wadah-komposisi">${KT.nama}${KT.terakhir && KT.terakhir.jam ? ' · ' + KT.terakhir.jam + (KT.terakhir.oleh ? ' ' + olehSingkat(KT.terakhir.oleh) : '') : ''}</div>${SL.ada ? h`<div class="stok awas-teks wadah-selisih">${SL.teks}</div>` : ''}`; })() : ''}
+        ${c.wadah ? (() => { const { KT } = ingatRak('w|' + c.kunci + '|' + c.sisa, () => ({ KT: WB.wbKomposisiTurunan(c.kunci, s) }));   // 39b no. 29: sekali per rak
+          // owner 23 Nov 2026 ("hapus catatan takar % … biar lebih hemat tata ruang"): kartu hanya menyebut TAKAR TERAKHIR (jam · oleh); komposisi % &
+          // selisih wadah tidak lagi di kartu Jual — rinciannya tetap di Stok › Wadah literan
+          return KT.terakhir && KT.terakhir.jam ? h`<div class="stok wadah-komposisi">takar terakhir ${KT.terakhir.jam}${KT.terakhir.oleh ? ' · ' + olehSingkat(KT.terakhir.oleh) : ''}</div>` : ''; })() : ''}
         ${c.jalur === 'wadah' ? h`<div class="stok ${c.modalAneh ? 'awas-teks' : ''}">${c.adaModal ? 'modal ' + RP(c.modal) + ' · margin ' + RP(c.harga - c.modal) + (c.modalAneh ? ' · PERIKSA' : '') : 'modal belum ada'}</div>` : ''}
       </div>
       <div class="gambar-chip">${mentah(gambarChipBarang(c, penuh))}</div>
