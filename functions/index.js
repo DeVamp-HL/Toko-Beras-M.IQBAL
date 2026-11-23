@@ -7,12 +7,12 @@
 // functions/.env sebelum deploy; tanpa .env = asia-southeast2 (Jakarta).
 'use strict';
 
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
-const { pesanNotif, tokenMati } = require('./pesan');
+const { pesanNotif, pesanPutus, kirimanTablet, tokenMati } = require('./pesan');
 
 initializeApp();
 setGlobalOptions({ region: process.env.LOKASI || 'asia-southeast2', maxInstances: 2, memory: '256MiB' });
@@ -33,4 +33,20 @@ exports.kabarOwner = onDocumentCreated('persetujuan/{id}', async (event) => {
   r.responses.forEach((x, i) => { if (!x.success && x.error && tokenMati(x.error.code)) mati.push(tujuan[i].ref); });
   await Promise.all(mati.map((ref) => ref.delete()));
   console.log('kabarOwner', event.params.id, 'terkirim', r.successCount, 'gagal', r.failureCount, 'token mati dibuang', mati.length);
+});
+
+// owner 23 Nov 2026 ("Push penuh lewat Google"): JAWABAN OWNER ke aplikasi tablet — begitu permintaan yang menunggu diputus (disetujui / ditolak /
+// dibaca + balasan), isi pendeknya dikirim ke token Android di notifPerangkat milik akun yang memintanya (rules v17). Token kosong (dimatikan dari tablet)
+// dilewati; token mati dibuang. Tidak menulis data toko.
+exports.kabarTablet = onDocumentUpdated('persetujuan/{id}', async (event) => {
+  const ch = event.data; if (!ch || !ch.before || !ch.after) return;
+  const p = pesanPutus(ch.before.data(), ch.after.data(), event.params.id); if (!p) return;
+  const q = await getFirestore().collection('notifPerangkat').where('uid', '==', p.uid).get();
+  const tujuan = q.docs.map((d) => ({ ref: d.ref, token: d.get('token') })).filter((x) => typeof x.token === 'string' && x.token);
+  if (!tujuan.length) return;
+  const r = await getMessaging().sendEachForMulticast(kirimanTablet(p, tujuan.map((x) => x.token)));
+  const mati = [];
+  r.responses.forEach((x, i) => { if (!x.success && x.error && tokenMati(x.error.code)) mati.push(tujuan[i].ref); });
+  await Promise.all(mati.map((ref) => ref.delete()));
+  console.log('kabarTablet', event.params.id, 'terkirim', r.successCount, 'gagal', r.failureCount, 'token mati dibuang', mati.length);
 });

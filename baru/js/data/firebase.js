@@ -767,6 +767,23 @@ export async function hapusTokenNotif() {
   try { const h = await tungguServer(b.commit(), 20000); return h.lewat ? { gagal: true, pesan: 'server belum menjawab dalam 20 detik' } : { ok: true }; }
   catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
 }
+// owner 23 Nov 2026: NOTIFIKASI APLIKASI TABLET — token push Android di notifPerangkat/{uid}_{id perangkat} atas nama AKUN yang masuk (rules v17: akun
+// staf aktif menulis dokumennya sendiri, tanpa hapus; owner semua). Dibaca fungsi server kabarTablet lewat Admin SDK. Langsung ke server seperti token owner.
+export const KOLEKSI_NOTIF_PERANGKAT = 'notifPerangkat';
+export function dokTokenTablet(akun, token, pid, pada) {
+  const uid = String((akun && akun.uid) || ''); const id = uid + '_' + pid;
+  return { id, uid, olehUid: uid, perangkatId: pid, token: String(token || ''), platform: 'android', perangkat: String(perangkatRingkas() || '').slice(0, 60), pada };
+}
+async function tulisTokenTablet(token) {
+  if (!db) throw new Error('belum tersambung'); const a = status.akun; if (!a || !a.uid || !status.masuk) return { gagal: true, pesan: 'Belum masuk' };
+  const d = dokTokenTablet(a, token, idPerangkat(), new Date().toISOString());
+  const b = writeBatch(db); b.set(doc(db, KOLEKSI_NOTIF_PERANGKAT, d.id), d);
+  try { const h = await tungguServer(b.commit(), 20000); return h.lewat ? { gagal: true, pesan: 'server belum menjawab dalam 20 detik — coba lagi saat internet lancar' } : { ok: true, id: d.id }; }
+  catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
+}
+export const simpanTokenTablet = (token) => tulisTokenTablet(token);
+export const hapusTokenTablet = () => tulisTokenTablet('');   // akun tablet tidak boleh menghapus: token dikosongkan, fungsi server melewatinya
+export const uidMasuk = () => String((status.akun && status.akun.uid) || '');
 export async function bacaFotoBon(idBon) {
   if (!db) throw new Error('belum tersambung');
   if (pemilikSaja()) throw new Error(pemilikSaja());

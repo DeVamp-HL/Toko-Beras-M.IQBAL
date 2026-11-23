@@ -22,7 +22,9 @@ import * as RB from './riwayat-barang-logika.js';   // owner 22 Nov 2026: riwaya
 import * as RS from './riwayat-setelan-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 3 setelan & harga (lihat saja)
 import * as RT from './ringkas-tablet-logika.js';
 import * as TB from './tablet-logika.js';
-import { nhDukung, nhTersimpan, nhIzin, nhNyalakan, nhMatikan, nhVapidSah } from '../data/notif-hp.js';   // owner 21 Nov 2026: notifikasi HP saat aplikasi tertutup   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
+import { nhDukung, nhTersimpan, nhIzin, nhNyalakan, nhMatikan, nhVapidSah } from '../data/notif-hp.js';
+import { ntAplikasi, ntDukung, ntTersimpan, ntNyalakan, ntMatikan } from '../data/notif-tablet.js';   // owner 23 Nov 2026: push aplikasi tablet (FCM Android)
+import { infoPerangkat, layarPenuhAda, setelLayarPenuh } from '../inti/perangkat.js';   // owner 23 Nov 2026: layar penuh Android   // owner 21 Nov 2026: notifikasi HP saat aplikasi tertutup   // putaran T1 langkah 3 (owner 16 Nov 2026): orang di tablet + PIN
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman, kunciLuarCache , ingatPerVersi, cacheMentah } from '../data/toko.js';
 import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';
@@ -65,7 +67,7 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
@@ -245,6 +247,14 @@ export function pasangLayarMenu(akar, opsi) {
       const w = waktu(); if (await tulis({ dokumen: [{ koleksi: 'aturanToko', data: { id: 'notif', vapid: v, tanggal: w.tanggal, jam: w.jam } }], patch: { kabar: 'Kunci notifikasi tersimpan — sekarang tekan Nyalakan di tiap HP / Mac owner', kabarAwas: false } })) set({ nhVapid: '' }); },
     nhNyala: async () => { if (st().nhSibuk) return; const p = nhNyalakan(vapidToko()); set({ nhSibuk: true, kabar: 'Menyalakan notifikasi…', kabarAwas: false }); const r = await p;
       set({ nhSibuk: false, kabar: r.ok ? 'Notifikasi menyala di perangkat ini — titipan, pesan & permintaan dari tablet muncul walau aplikasi tertutup' : 'Notifikasi BELUM menyala: ' + r.pesan, kabarAwas: !r.ok }); },
+    // owner 23 Nov 2026: push aplikasi tablet — izin Android diminta langsung dari ketukan; token atas nama akun yang masuk di tablet
+    ntNyala: async () => { if (st().ntSibuk) return; const p = ntNyalakan(); set({ ntSibuk: true, kabar: 'Menyalakan notifikasi tablet…', kabarAwas: false }); const r = await p;
+      set({ ntSibuk: false, kabar: r.ok ? 'Notifikasi tablet menyala — jawaban owner muncul di bilah notifikasi tablet walau aplikasinya ditutup' : 'Notifikasi tablet BELUM menyala: ' + r.pesan, kabarAwas: !r.ok }); },
+    ntMati: async () => { if (st().ntSibuk) return; set({ ntSibuk: true }); const r = await ntMatikan(); set({ ntSibuk: false, kabar: r.ok ? 'Notifikasi tablet dimatikan' : 'Gagal mematikan: ' + r.pesan, kabarAwas: !r.ok }); },
+    // owner 23 Nov 2026: layar penuh Android (bilah jam & tombol kembali/beranda disembunyikan) — disimpan aplikasi tablet sendiri
+    lpSetel: async ({ n }) => { if (st().lpSibuk) return; const nyala = n === '1'; set({ lpSibuk: true });
+      try { const r = await setelLayarPenuh(nyala); set({ lpSibuk: false, ntInfo: Object.assign({}, st().ntInfo || {}, { layarPenuh: !!(r && r.layarPenuh) }), kabar: nyala ? 'Layar penuh menyala — geser dari tepi bawah layar untuk memunculkan tombol Android sebentar' : 'Layar penuh dimatikan — bilah jam & tombol Android tampil lagi', kabarAwas: false }); }
+      catch (e) { set({ lpSibuk: false, kabar: 'Layar penuh gagal: ' + String((e && (e.message || e.code)) || e), kabarAwas: true }); } },
     nhMati: async () => { if (st().nhSibuk) return; set({ nhSibuk: true }); const r = await nhMatikan(); set({ nhSibuk: false, kabar: r.ok ? 'Notifikasi dimatikan di perangkat ini' : 'Gagal mematikan: ' + r.pesan, kabarAwas: !r.ok }); },
     // owner 21 Nov 2026: Ringkas hari ini di tablet — owner memilih SATU orang di tablet yang membukanya, dan menandai akun tablet yang membaca data uang
     rtPilihOrang: ({ id }) => tulis(S.susunAturSistem('peran', { ringkasOrang: id === '-' ? '' : id }, waktu())),
@@ -297,7 +307,7 @@ export function pasangLayarMenu(akar, opsi) {
       <header class="kepala-jual">
         <div><div class="label">Menu</div><div class="serif" style="font-size: 24px;">${s.sistem ? JUDUL_SISTEM[s.sistem] : s.susunan === 'laci' ? 'Pita jam di atas laci' : s.susunan === 'tanya' ? 'Menu yang bertanya' : s.susunan === 'jam' ? 'Menu yang tahu jam' : s.susunan === 'orang' ? 'Menu menurut orang' : 'Menu yang menolak'}</div>
           <div class="ket">${tanggalPendek(hariIniIso(d))} · ${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'membaca cadangan' : 'belum tersambung'}</div></div>
-        <div style="display: flex; gap: 8px; align-items: center;"><div class="pil pil-akun ${sumber.jenis === 'firestore' ? '' : 'kedip'}" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar">${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
+        <div style="display: flex; gap: 8px; align-items: center;">${opsi.lonceng ? mentah(opsi.lonceng()) : ''}<div class="pil pil-akun ${sumber.jenis === 'firestore' ? '' : 'kedip'}" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar">${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
           <div class="tombol-mode" data-aksi="mode">${mentah(IKON_MODE[opsi.mode() === 'gelap' ? 'terang' : 'gelap'])}</div></div>
       </header>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
@@ -386,6 +396,7 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="tombol-baris" data-k="staf-layar">${[['jual', 'Jual'], ['pelanggan', 'Pelanggan'], ['stok', 'Stok']].map(([t, n]) => h`<div class="kaca-btn aktif" data-aksi="stafKe" data-t="${t}">${n}</div>`)}</div>
       <div class="kartu" data-k="staf-antre" style="gap: 4px;"><div class="label">Catatan dari perangkat ini</div>
         <div class="k2">${(L.antre || []).length ? (L.antre || []).length + ' menunggu server' : 'semua sudah sampai server'} · ${AL.ditolak.length ? AL.ditolak.length + ' DITOLAK server — menunggu owner memutuskan' : 'tidak ada yang ditolak'}</div></div>
+      ${ntAplikasi() ? h`${gambarNotifTablet(s)}${gambarLayarPenuh(s)}` : ''}
       <div class="pita-info" data-k="staf-ket">Laci menu owner (uang, laporan, harga, setelan) tidak termasuk hak ${namaP}. Server menegakkan: baca & catat baru; uang keluar dari tablet jadi titipan yang disetujui owner; koreksi & hapus tetap owner.</div>
     </section>`;
   }
@@ -491,6 +502,7 @@ export function pasangLayarMenu(akar, opsi) {
   }
   // owner 21 Nov 2026: notifikasi HP / Mac owner saat aplikasi tertutup (push lewat fungsi server functions/ — dipasang owner sekali di Cloud Shell)
   function gambarNotifHp(s) {
+    if (ntAplikasi()) return h`${gambarNotifTablet(s)}${gambarLayarPenuh(s)}`;   // owner 23 Nov 2026: aplikasi tablet = push Android, bukan push peramban
     const a = opsi.akun ? opsi.akun() : null; if (a && a.jenis !== 'owner') return '';
     const D = nhDukung(); const T = nhTersimpan(); const izin = nhIzin(); const kunci = vapidToko();
     const status = !D.ok ? D.sebab : T && izin === 'granted' ? 'MENYALA di perangkat ini sejak ' + waktuSetempat(T.pada) : izin === 'denied' ? 'Izin notifikasi DITOLAK di perangkat ini — izinkan dulu di setelan peramban / iPhone' : 'Belum menyala di perangkat ini';
@@ -501,6 +513,28 @@ export function pasangLayarMenu(akar, opsi) {
         <div class="k2">Console Firebase › Project settings › Cloud Messaging › Web Push certificates › Generate key pair, lalu salin "Key pair"-nya ke sini.</div>`}
       ${D.ok ? h`<div class="tombol-baris rapat">${T && izin === 'granted' ? h`<div class="kaca-btn" data-aksi="nhNyala">${s.nhSibuk ? 'menunggu…' : 'Perbarui'}</div><div class="kaca-btn putus" data-aksi="nhMati">Matikan</div>` : h`<div class="kaca-btn aktif emas ${kunci ? '' : 'mati'}" data-aksi="nhNyala">${s.nhSibuk ? 'menunggu…' : 'Nyalakan notifikasi'}</div>`}</div>` : ''}
       <div class="k2" style="font-size: 11px;">Butuh fungsi server notifikasi terpasang (sekali, oleh owner — docs/notifikasi-hp.md). Isi notifikasi lewat layanan push Google / Apple.</div></div>`;
+  }
+  // owner 23 Nov 2026 ("di aplikasi tablet belum bisa"): push lewat Google untuk aplikasi tablet — semua akun yang masuk di tablet (owner yang jaga juga).
+  // Kartu perangkat (pushSiap, layarPenuh) ditanya ke aplikasi sekali per layar.
+  let _ntInfoMinta = false;   // ditanya sekali; jawabannya datang SESUDAH gambar ini (tidak menulis keadaan di tengah menggambar)
+  function mintaInfoTablet() { if (_ntInfoMinta) return; _ntInfoMinta = true; infoPerangkat().then((i) => set({ ntInfo: i || {} })).catch(() => set({ ntInfo: { gagal: true } })); }
+  function gambarNotifTablet(s) {
+    mintaInfoTablet();
+    const a = opsi.akun ? opsi.akun() : null; const D = ntDukung(s.ntInfo || {}); const T = ntTersimpan(a && a.uid ? a.uid : '');
+    const status = !D.ok ? D.sebab : T ? 'MENYALA di tablet ini sejak ' + waktuSetempat(T.pada) : 'Belum menyala di tablet ini';
+    return h`<div class="kartu" data-k="notif-tablet" style="gap: 6px;"><div style="font-weight: 700;">Notifikasi di tablet ini</div>
+      <div class="k2">Jawaban owner atas titipan, pesan, dan permintaan dari tablet ini (disetujui, ditolak, balasan) muncul di bilah notifikasi tablet walau aplikasinya ditutup. Saat aplikasi terbuka kabarnya tetap lewat pita & lonceng.</div>
+      <div class="pita-info ${T && D.ok ? 'emas' : D.ok ? '' : 'awas'}" data-k="nt-status">${status}</div>
+      ${D.ok ? h`<div class="tombol-baris rapat">${T ? h`<div class="kaca-btn" data-aksi="ntNyala">${s.ntSibuk ? 'menunggu…' : 'Perbarui'}</div><div class="kaca-btn putus" data-aksi="ntMati">Matikan</div>` : h`<div class="kaca-btn aktif emas" data-aksi="ntNyala">${s.ntSibuk ? 'menunggu…' : 'Nyalakan notifikasi tablet'}</div>`}</div>` : ''}
+      <div class="k2" style="font-size: 11px;">Butuh rules v17 terbit & fungsi server kabarTablet terpasang (sekali, oleh owner — docs/notifikasi-tablet.md). Isi notifikasi lewat layanan push Google.</div></div>`;
+  }
+  function gambarLayarPenuh(s) {
+    const ada = layarPenuhAda(); const nyala = !!(s.ntInfo && s.ntInfo.layarPenuh);
+    return h`<div class="kartu" data-k="layar-penuh" style="gap: 6px;"><div style="font-weight: 700;">Layar penuh</div>
+      <div class="k2">Bilah jam/baterai dan tombol kembali/beranda Android disembunyikan, rak & keranjang memakai seluruh layar. Geser dari tepi bawah (atau atas) layar = tombol Android muncul sebentar lalu hilang lagi. Menu bawah bisa dilipat lewat pegangan kecil di atasnya.</div>
+      ${ada === false ? h`<div class="pita-info awas" data-k="lp-status">APK di tablet ini belum bisa layar penuh — pasang APK terbaru (docs/notifikasi-tablet.md)</div>`
+        : h`<div class="pita-info ${nyala ? 'emas' : ''}" data-k="lp-status">${nyala ? 'MENYALA di tablet ini' : 'Mati — bilah jam & tombol Android tampil'}</div>
+      <div class="tombol-baris rapat">${nyala ? h`<div class="kaca-btn putus" data-aksi="lpSetel" data-n="0">${s.lpSibuk ? 'menunggu…' : 'Matikan layar penuh'}</div>` : h`<div class="kaca-btn aktif emas" data-aksi="lpSetel" data-n="1">${s.lpSibuk ? 'menunggu…' : 'Nyalakan layar penuh'}</div>`}</div>`}</div>`;
   }
   function gambarPeran(s, d, tab) {
     const P = S.ssPeran();

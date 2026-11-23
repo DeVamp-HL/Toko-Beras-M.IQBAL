@@ -1,5 +1,5 @@
 // Isi notifikasi HP owner dari satu dokumen persetujuan (permintaan dari tablet). Murni: tanpa Firebase, tanpa jaringan — diuji di jsc oleh
-// alat-uji/uji_notif_hp.py. Dipakai functions/index.js. Kalimatnya sengaja pendek: notifikasi tampil di layar kunci HP.
+// alat-uji/uji_titipan.py (+ pesanPutus / kirimanTablet: alat-uji/uji_tablet_tampilan.py). Dipakai functions/index.js. Kalimatnya sengaja pendek: notifikasi tampil di layar kunci HP.
 'use strict';
 
 const JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit' };
@@ -37,6 +37,36 @@ function pesanNotif(d, id) {
   return { judul: (JUDUL[t] || 'Permintaan dari tablet') + ' · ' + dari, isi: pendek(isi), tag: 'persetujuan-' + String(id || ''), layar: t === 'uangKeluar' || t === 'pesan' || t === 'barangMasuk' || t === 'hitungLaci' ? 'uang' : 'menu' };
 }
 
+// ---- PUSH APLIKASI TABLET (owner 23 Nov 2026: "Push penuh lewat Google") — jawaban owner atas permintaan dari tablet, untuk akun yang memintanya ----
+const JUDUL_TABLET = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan', barangMasuk: 'Kabar barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon' };
+const PUTUS_TABLET = { disetujui: 'disetujui owner', ditolak: 'DITOLAK owner', dibaca: 'dibaca owner' };
+const SALURAN_TABLET = 'kabar';   // saluran "Kabar toko" yang dibuat aplikasi tablet (MainActivity)
+
+/**
+ * Isi push untuk tablet dari satu PERUBAHAN dokumen persetujuan (sebelum → sesudah). Hanya saat permintaan yang tadinya menunggu diputus owner
+ * (disetujui / ditolak / dibaca). Hasil { uid peminta, judul, isi, tag, layar } — semuanya teks — atau null (tidak perlu dikabarkan).
+ */
+function pesanPutus(sebelum, sesudah, id) {
+  if (!sebelum || !sesudah || typeof sebelum !== 'object' || typeof sesudah !== 'object') return null;
+  if ((sebelum.status || 'menunggu') !== 'menunggu') return null;
+  const st = sesudah.status || 'menunggu'; if (st === 'menunggu' || !PUTUS_TABLET[st]) return null;
+  const uid = teks(sesudah.mintaUid || sesudah.negoUid || sesudah.usulUid); if (!uid) return null;
+  const t = String(sesudah.tindakan || '');
+  let pokok;
+  if (t === 'uangKeluar') pokok = [JENIS[sesudah.jenis] || JENIS.toko, teks(sesudah.teks), rp(sesudah.nominal)].filter(Boolean).join(' · ');
+  else if (t === 'hitungLaci') pokok = 'Laci ' + teks(sesudah.tanggal) + ' ' + rp(sesudah.hitung);
+  else { const n = Math.round(Number(sesudah.nominal) || 0); const k = teks(sesudah.teks); pokok = (k || JUDUL_TABLET[t] || 'Permintaan') + (n > 0 && !/Rp/.test(k) ? ' · ' + rp(n) : ''); }
+  const tambah = st === 'ditolak' && teks(sesudah.alasanTolak) ? 'Alasan: ' + teks(sesudah.alasanTolak) + ' — ' : st === 'dibaca' && teks(sesudah.balasan) ? 'Balasan owner: ' + teks(sesudah.balasan) + ' — ' : '';
+  return { uid, judul: (JUDUL_TABLET[t] || 'Permintaan') + ' ' + PUTUS_TABLET[st], isi: pendek(tambah + pokok), tag: 'putus-' + String(id || ''), layar: 'menu' };
+}
+
+/** Kiriman FCM untuk aplikasi tablet (Android): notifikasi sistem (tampil walau aplikasi ditutup) di saluran "Kabar toko", data layar tujuan. */
+function kirimanTablet(p, tokens) {
+  return { tokens: tokens.slice(), notification: { title: p.judul, body: p.isi },
+    android: { priority: 'high', notification: { channelId: SALURAN_TABLET, tag: p.tag, sound: 'default', defaultVibrateTimings: true } },
+    data: { layar: p.layar, tag: p.tag } };
+}
+
 /** Kode galat FCM yang berarti tokennya sudah mati (aplikasi dihapus, izin dicabut) — dokumennya dibuang supaya tidak dikirimi terus. */
 const TOKEN_MATI = ['messaging/registration-token-not-registered', 'messaging/invalid-registration-token', 'messaging/invalid-argument'];
 function tokenMati(kode) { return TOKEN_MATI.indexOf(String(kode || '')) >= 0; }
@@ -50,4 +80,4 @@ function lokasiFungsi(lokasiDb) {
   return l;
 }
 
-module.exports = { pesanNotif, tokenMati, lokasiFungsi, rp, JUDUL, JENIS, TOKEN_MATI, BATAS_ISI };
+module.exports = { pesanNotif, pesanPutus, kirimanTablet, tokenMati, lokasiFungsi, rp, JUDUL, JENIS, JUDUL_TABLET, SALURAN_TABLET, TOKEN_MATI, BATAS_ISI };

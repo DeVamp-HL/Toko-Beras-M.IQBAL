@@ -1,4 +1,12 @@
 // ============================================================================
+// ATURAN FIRESTORE v17 FINAL — Toko Beras M.IQBAL (DRAF 23 Nov 2026, PUSH APLIKASI TABLET) = v16 FINAL + PERSIS satu fungsi baru dan satu blok baru
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v16; uji server: docs/uji-rules-v17.md). Owner menerbitkan v17 SEKALI lewat Console
+// SEBELUM menyalakan notifikasi di tablet (halaman boleh digabung lebih dulu: tanpa v17 tombol Nyalakan di tablet ditolak server, tidak ada yang rusak):
+//   (v17-1) blok notifPerangkat — token push Android aplikasi tablet (owner 23 Nov 2026: "Push penuh lewat Google"): satu dokumen per akun × perangkat,
+//           id = uid penulis + '_' + perangkatId. create/update owner || stafTokenPush(ben, karyawan) — atas nama penulisnya (uid & olehUid), kolom dibatasi,
+//           platform 'android', token ≤ 4096 huruf (kosong = dimatikan); baca & hapus OWNER saja. Fungsi server kabarTablet membacanya lewat Admin SDK
+//           untuk mengirim jawaban owner ke akun yang meminta. Bukan data toko: tidak ada uang, stok, atau tanggal buku.
+// Sisanya = v16 FINAL di bawah ini, apa adanya. Kepala v16:
 // ATURAN FIRESTORE v16 FINAL — Toko Beras M.IQBAL (DRAF 22 Nov 2026, TUTUP HARI dari tablet) = v15 FINAL + PERSIS satu fungsi baru dan dua ubahan baris
 // (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v15; uji server: docs/uji-rules-v16.md). Owner menerbitkan v16 SEKALI lewat Console
 // SEBELUM cabang tutup hari tablet digabung:
@@ -199,6 +207,13 @@ service cloud.firestore {
     function jujur() { return request.resource.data.olehUid == request.auth.uid; }
     function staf(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh); }
     function stafBuat(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh) && jujur(); }
+    // v17 (owner 23 Nov 2026): token push aplikasi tablet atas nama penulisnya — id = uid penulis + '_' + perangkatId, kolom dibatasi, tanpa data toko
+    function stafTokenPush(peranBoleh, id) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('uid', '') == request.auth.uid && d.get('perangkatId', 0) is string && d.perangkatId.size() > 0 && d.perangkatId.size() <= 40
+        && id == request.auth.uid + '_' + d.perangkatId && d.get('token', 0) is string && d.token.size() <= 4096 && d.get('platform', '') == 'android'
+        && d.keys().hasOnly(['id', 'uid', 'olehUid', 'perangkatId', 'token', 'platform', 'perangkat', 'pada']);
+    }
     function stafBuatTipe(peranBoleh, tipe) { return stafBuat(peranBoleh) && request.resource.data.tipe == tipe; }
     // v5 (putaran 39, owner 29 Sep 2026): karyawan menuang & mengecek wadah literan — hanya catatan takar / karung / karungIsi / cek (aturan wadah & titik samakan isi tetap owner)
     function stafBuatWadah(peranBoleh) { return stafBuat(peranBoleh) && request.resource.data.tipe in ['takar', 'karung', 'karungIsi', 'cek']; }
@@ -893,6 +908,13 @@ service cloud.firestore {
     // v13 (owner 21 Nov 2026): token notifikasi HP / Mac owner — ditulis perangkat owner saat notifikasi dinyalakan; dibaca fungsi server lewat Admin SDK
     match /notifOwner/{id} {
       allow read, write: if owner();
+    }
+
+    // v17 (owner 23 Nov 2026): token push APLIKASI TABLET (FCM Android) — ditulis akun yang masuk di tablet atas namanya (id = uid + '_' + perangkatId);
+    // dibaca fungsi server kabarTablet lewat Admin SDK. Bukan-owner tidak membaca & tidak menghapus (dimatikan = token dikosongkan).
+    match /notifPerangkat/{id} {
+      allow read, delete: if owner();
+      allow create, update: if owner() || stafTokenPush(['ben', 'karyawan'], id);
     }
 
     match /ringkasanKasir/{id} {

@@ -1,6 +1,7 @@
 name: Bangun APK tablet kasir
 
 # Putaran T1 langkah 2 (16 Nov 2026): aplikasi Android pembungkus /baru/ untuk Sunmi CPad + plugin cetak USB (apk/).
+# Owner 23 Nov 2026: push aplikasi tablet (plugin resmi @capacitor/push-notifications) — rahasia repo GOOGLE_SERVICES_JSON = isi google-services.json.
 # Paket S1 (19 Nov 2026): cangkang SUNMI — pustaka resmi SUNMI (printer, lampu), scanner; tanda tangan V1 + V2 dibuktikan (syarat SUNMI App Store).
 # Dibangun di runner — Mac owner tidak perlu Node/Android Studio (README-PROYEK: tanpa build, tanpa Node untuk /baru/).
 # Hasil: artefak "apk-tablet-kasir" di halaman run ini (Actions › run › Artifacts), diunduh lalu dipasang di CPad.
@@ -76,8 +77,14 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Pasang plugin perangkat (cetak USB, SDK SUNMI, pindai, lampu), izin USB, ikon, versi
-        run: python apk/pasang.py --versi ${{ github.run_number }}
+      - name: Pasang plugin perangkat (cetak USB, SDK SUNMI, pindai, lampu), izin USB, ikon, versi, berkas Firebase push tablet
+        env:
+          # owner 23 Nov 2026: isi berkas google-services.json (Firebase Console › aplikasi Android id.miqbal.tokoberas). Kosong = APK tanpa push tablet.
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          python apk/pasang.py --versi ${{ github.run_number }}
+          if [ -f apk/android/app/google-services.json ]; then echo "### Push tablet: berkas Firebase TERPASANG (notifikasi tablet bisa dinyalakan)" >> "$GITHUB_STEP_SUMMARY"
+          else echo "### Push tablet: TANPA berkas Firebase — rahasia GOOGLE_SERVICES_JSON belum ada (docs/notifikasi-tablet.md)" >> "$GITHUB_STEP_SUMMARY"; fi
 
       - name: Bangun APK
         working-directory: apk/android

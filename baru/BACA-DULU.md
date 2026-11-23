@@ -3472,3 +3472,27 @@ Rules Firestore TIDAK berubah: semua setelan baru menumpang dokumen yang sudah t
 Alat uji: `uji_faktur.py` E2 stop bon + H Transfer (85, kontrol berbunyi), `uji_jual_baru.py` GP ganti pembeli (463, +8 kontrol), `uji_laba_pelanggan.py`
 F grosir/ecer (36, +8 kontrol), `uji_harga_tingkat.py` J saran grosir (81, 31 kontrol), `uji_uang_baru.py` TF Transfer (184, +6 kontrol),
 `uji_pesanan.py` DP lewat Transfer (66, +1 kontrol). Dua kontrol lama `uji_uang_baru` dan satu `uji_pesanan` ikut teks baru (tidak basi).
+
+## Paket tampilan tablet — push tablet, lonceng, Kemasan per nama, dock lipat + layar penuh (23 Nov 2026, cabang `paket/tablet-tampilan`)
+Keputusan owner 23 Nov 2026 (memori `tablet-tampilan-keputusan`): push tablet = **push penuh lewat Google**, ikon = **lonceng + balas langsung**, Kemasan
+per nama = **semua perangkat**, dock = **lipat + layar penuh**. Mesin uang beku TIDAK disentuh.
+
+- **Jual › Kemasan per nama** (`jual-logika.js` `kelompokKemasanNama`, `jual.js` `satuKemasan`, `jual.css` `.kartu-kemasan`): satu kartu per nama kemasan,
+  tombol ukuran (5/10/20/25 kg) berisi harga (termasuk harga bertingkat pembeli) & sisa, ukuran habis tetap tampak; ketukan tombol = ketukan chip lama.
+  Kartu termurah per kg (harga eceran) dulu, ukuran kecil → besar; kartu masuk bergiliran, tombol ukuran menyusul, terpilih bercahaya emas.
+- **Dock lipat** (`index.html` `.nav-lipat` + `#dockBuka`, `kerangka.css` `body.dock-lipat`, `app.js` `dockLipat`, localStorage `miqbal_dock_lipat_v1`):
+  pegangan kecil di atas menu bawah → menu turun mengecil jadi tombol bulat (HP kanan, tablet kiri); ruang dipakai keranjang, lembar, rak. Tablet
+  (720–1099 px): kolom keranjang mulai dari ATAS layar (dulu di bawah judul → BAYAR tertutup dock sebelum digulir).
+- **Layar penuh Android** (APK baru: `MainActivity.terapkanLayarPenuh`, `PerangkatPlugin.layarPenuh`, `perangkat.js` `setelLayarPenuh` / `layarPenuhAda`;
+  saklar di Menu akun tablet & Menu › Toko ini › Perangkat & antrean): bilah status & navigasi disembunyikan, geser dari tepi = muncul sebentar; diterapkan lagi saat aplikasi
+  kembali ke depan / fokus kembali.
+- **Lonceng kabar & pesan** (`lonceng.js`, `kabar-baru-logika.js` `kbLonceng` / `kbTandai` / `kbBacaLihat` / `kbTulisLihat`, kepala 8 layar, `#lembarLonceng`):
+  owner = permintaan yang menunggu (pesan & kabar barang masuk ditandai dibaca + dibalas langsung lewat `tpSusunPutus`, pintu yang sama dengan Uang);
+  akun tablet = permintaannya + jawaban owner. Angka = belum dibuka di perangkat ini (peta per akun, localStorage `miqbal_lonceng_v1`); goyang saat kabar baru.
+- **Push aplikasi tablet** (`notif-tablet.js`, `firebase.js` `simpanTokenTablet` / `hapusTokenTablet`, plugin resmi `@capacitor/push-notifications`,
+  rules **v17** blok `notifPerangkat`, fungsi server **`kabarTablet`** + `functions/pesan.js` `pesanPutus` / `kirimanTablet`): token atas nama akun yang
+  masuk di tablet; jawaban owner atas permintaan akun itu dikirim sebagai notifikasi Android saluran "Kabar toko". APK butuh rahasia repo
+  `GOOGLE_SERVICES_JSON` (`apk/pasang.py` `pasang_firebase`). Langkah owner: `docs/notifikasi-tablet.md`; rules: `docs/uji-rules-v17.md`.
+
+Alat uji: `uji_tablet_tampilan.py` (82, kontrol 22/22), `uji_jual_baru.py` N kemasan per nama (463, 3 kontrol baru), `periksa_rules.py` v17 (model 15 kasus
+★Z + 8 kontrol), `uji_rules_emulator.py` bagian V17 (5 kontrol), `uji_titipan.py` (fungsi server kini dua: hanya membuang token mati).

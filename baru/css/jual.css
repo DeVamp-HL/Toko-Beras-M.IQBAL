@@ -261,3 +261,31 @@ main.layar-jual .kaca-btn.kecil { min-height: 30px; font-size: 11.5px; padding: 
 .pita-info.tingkat-pita { animation: tingkatMasuk 480ms cubic-bezier(.2,.8,.2,1) both; }
 @keyframes tingkatMasuk { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .pita-info.tingkat-pita { animation: none; } }
+/* owner 23 Nov 2026: Jual › Kemasan = SATU kartu per nama kemasan (mis. Kembang), pilihan ukuran 5/10/20/25 kg di dalamnya. Kartu masuk bergiliran,
+   tombol ukuran menyusul di dalamnya; ukuran terpilih bercahaya emas; ukuran habis tetap tampak (putus-putus, redup). */
+.rak-kemasan { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@media (min-width: 520px) { .rak-kemasan { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { main.layar-jual .rak-kemasan { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); } }
+.kartu-kemasan { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-radius: 18px; background: var(--kaca-chip, var(--kaca)); border: 1px solid var(--kaca-tepi);
+  box-shadow: inset 0 1px 0 var(--kaca-sorot); contain: layout paint style; backface-visibility: hidden; animation: masukChip 420ms cubic-bezier(.2,.8,.2,1) backwards; animation-delay: calc(var(--urut, 0) * 40ms);
+  transition: border-color 260ms ease, box-shadow 480ms cubic-bezier(.2,.8,.2,1); }
+.kartu-kemasan.dipilih { border-color: var(--emas-garis); box-shadow: 0 12px 30px -20px var(--logam-glow), 0 0 0 1px var(--emas-garis), inset 0 1px 0 var(--kaca-sorot); }
+.kartu-kemasan.habis { opacity: 0.6; border-style: dashed; }
+.km-kepala { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.km-nama { min-width: 0; } .km-nama .nama { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; } .km-nama .rinci { font-size: 11px; color: var(--redup); }
+.kartu-kemasan .gambar-chip { flex: none; width: 52px; height: 52px; }
+.kartu-kemasan > .stok { font-size: 10.5px; color: var(--redup); }
+.km-ukuran { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 6px; }
+.km-uk { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 9px; min-height: 58px; box-sizing: border-box; border-radius: 13px; background: var(--seg); border: 1px solid var(--kaca-tepi); cursor: pointer;
+  transition: transform 160ms cubic-bezier(.2,.8,.2,1), background-color 260ms ease, border-color 260ms ease, box-shadow 480ms cubic-bezier(.2,.8,.2,1);
+  animation: kmUkMasuk 360ms cubic-bezier(.2,.8,.2,1) backwards; animation-delay: calc(var(--urut, 0) * 40ms + var(--urut-uk, 0) * 45ms + 120ms); }
+.km-uk:active { transform: scale(0.94); }
+.km-uk .km-kg { font-size: 13px; font-weight: 700; color: var(--aktif); letter-spacing: 0.02em; }
+.km-uk .harga { font-family: "Bodoni Moda", Georgia, serif; font-size: 14.5px; font-variant-numeric: tabular-nums; }
+.km-uk .stok { font-size: 10.5px; color: var(--redup); }
+.km-uk.dipilih { background: var(--seg-aktif); border-color: var(--emas-garis); box-shadow: 0 0 20px -6px var(--logam-glow); }
+.km-uk.kurang { border-style: dashed; border-color: var(--awas); }
+.km-uk.habis { opacity: 0.5; border-style: dashed; }
+.km-uk.habis .stok, .km-uk.kurang .stok { color: var(--awas); font-weight: 600; }
+@keyframes kmUkMasuk { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .kartu-kemasan, .km-uk { animation: none; transition: none; } }

@@ -50,3 +50,52 @@ export function kbRingkas(ev) {
   if (ev.length === 1) return { judul: ev[0].judul, isi: ev[0].isi, layar: ev[0].layar, awas: ev[0].status === 'ditolak' };
   return { judul: ev.length + ' kabar baru', isi: ev.slice(0, 3).map((e) => e.judul).join(' · ') + (ev.length > 3 ? ' · …' : ''), layar: ev[0].layar, awas: ev.some((e) => e.status === 'ditolak') };
 }
+
+// ---- LONCENG (owner 23 Nov 2026: "ada ikon notifikasi untuk pesan di aplikasi sistem mac/hp/tablet" — pilihan "Lonceng + balas langsung") ----
+// Ikon lonceng di kepala tiap layar; angka = kabar yang BELUM DIBUKA di perangkat ini (peta dilihat { id: status } per akun di localStorage).
+//  - OWNER: semua permintaan yang menunggu (pesan, titipan, barang masuk, hitungan laci, nego, usul harga, minta bon). Pesan & kabar barang masuk bisa
+//    langsung ditandai dibaca + dibalas dari lonceng (lonceng.js → tpSusunPutus, pintu yang sama dengan Uang). Lainnya = tombol buka layarnya.
+//  - AKUN TABLET: permintaan milik akun ini, yang menunggu dan yang sudah diputus owner (alasan tolak / balasan ikut). Baru = putusan yang belum dibuka.
+export const KB_LIHAT = 'miqbal_lonceng_v1';
+export const KB_MAKS = 30;
+const KB_STATUS = { menunggu: 'menunggu owner', disetujui: 'disetujui', ditolak: 'DITOLAK', dibaca: 'dibaca owner' };
+export const KB_NAMA_LAYAR = { uang: 'Uang', menu: 'Menu', jual: 'Jual' };
+const urutBuat = (m) => String(m.tanggal || '') + ' ' + String(m.jam || '');
+const urutPutus = (m) => String(m.diputusTanggal || m.tanggal || '') + ' ' + String(m.diputusJam || m.jam || '');
+const waktuTampil = (tgl, jam) => (tgl ? tanggalPendek(tgl) : '') + (jam ? ' ' + jam : '');
+/**
+ * Isi lonceng untuk akun ini. daftar = persetujuan (bawaan: cache), dilihat = { id: status } yang sudah dibuka di perangkat ini.
+ * Hasil { owner, daftar: [{ id, status, tindakan, judul, isi, alasan, balasan, waktu, layar, bisaBalas, baru }] (terbaru dulu, paling banyak KB_MAKS),
+ * n (belum dibuka, dari SEMUA), menunggu, lebih, lihat: { id: status } semua (untuk kbTandai) }.
+ */
+export function kbLonceng(akun, daftar, dilihat) {
+  const D = daftar || cacheMentah('persetujuan'); const L = dilihat || {}; const owner = !!akun && akun.jenis === 'owner'; const uid = String((akun && akun.uid) || '');
+  const out = [];
+  D.forEach((m) => {
+    if (!m || m.id === undefined) return; const id = String(m.id); const st = m.status || 'menunggu'; const t = String(m.tindakan || '');
+    if (owner) {
+      if (st !== 'menunggu') return;
+      out.push({ id, status: st, tindakan: t, judul: KB_JUDUL[t] || 'Permintaan dari tablet', isi: kbIsi(m), alasan: '', balasan: '', waktu: waktuTampil(m.tanggal, m.jam), urut: urutBuat(m),
+        layar: layarOwner(m), bisaBalas: t === TP_PESAN || t === TP_KABAR, baru: L[id] !== st });
+      return;
+    }
+    if (!uid || uidPeminta(m) !== uid) return;
+    const putus = st !== 'menunggu';
+    out.push({ id, status: st, tindakan: t, judul: (KB_JUDUL[t] || 'Permintaan') + ' · ' + (KB_STATUS[st] || st), isi: kbIsi(m), alasan: String(m.alasanTolak || ''), balasan: String(m.balasan || ''),
+      waktu: putus ? waktuTampil(m.diputusTanggal || m.tanggal, m.diputusJam || m.jam) : waktuTampil(m.tanggal, m.jam), urut: putus ? urutPutus(m) : urutBuat(m), layar: 'menu', bisaBalas: false, baru: putus && L[id] !== st });
+  });
+  out.sort((a, b) => (a.urut < b.urut ? 1 : a.urut > b.urut ? -1 : 0));
+  const lihat = {}; out.forEach((x) => { lihat[x.id] = x.status; });
+  return { owner, daftar: out.slice(0, KB_MAKS), n: out.filter((x) => x.baru).length, menunggu: out.filter((x) => x.status === 'menunggu').length, lebih: Math.max(0, out.length - KB_MAKS), lihat };
+}
+/** Semua isi lonceng sekarang = sudah dibuka. Peta baru { id: status } — id yang sudah tidak ada ikut terbuang. */
+export function kbTandai(isi) { return Object.assign({}, (isi && isi.lihat) || {}); }
+/** Peta dilihat tersimpan untuk akun `uid` (teks localStorage → peta, rusak = null = belum pernah: semua yang ada sekarang dianggap sudah dibuka). */
+export function kbBacaLihat(teks, uid) {
+  try { const x = JSON.parse(teks || 'null'); const p = x && typeof x === 'object' ? x[String(uid || '')] : null; return p && typeof p === 'object' ? p : null; } catch (e) { return null; }
+}
+/** Teks localStorage baru sesudah peta akun `uid` diganti (akun lain di perangkat ini tetap). */
+export function kbTulisLihat(teks, uid, peta) {
+  let x = {}; try { x = JSON.parse(teks || '{}') || {}; } catch (e) { x = {}; } if (typeof x !== 'object' || Array.isArray(x)) x = {};
+  x[String(uid || '')] = peta || {}; return JSON.stringify(x);
+}

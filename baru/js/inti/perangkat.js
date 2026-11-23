@@ -527,3 +527,13 @@ export function kesimpulanUkuran(hasil) {
     + ' printer diam. Dugaan "printer kewalahan menerima kiriman besar lewat Bluetooth" MENGUAT — belum bukti: ulangi sekali lagi; pola yang sama dua kali = cukup untuk membangun obatnya.' + cocok };
   return { pola: 'acak', baik: false, teks: 'TIDAK berpola ukuran (' + urut + '): ada yang kecil diam atau yang besar keluar. Dugaan "kewalahan karena ukuran" MELEMAH — ulangi sekali lagi; sebab lain (sambungan putus-sambung, printer sibuk) yang perlu dicari.' + cocok };
 }
+
+// ---------- layar penuh (owner 23 Nov 2026: "coba cari tahu apakah bisa layarnya dibuat full") ----------
+// Perangkat.layarPenuh (APK baru): bilah jam/baterai & tombol kembali/beranda Android disembunyikan; geser dari tepi atas / bawah = muncul sebentar lalu
+// hilang lagi. Disimpan APLIKASI (bukan halaman) dan diterapkan lagi tiap aplikasi kembali ke depan. APK lama tanpa metode ini = saklarnya tidak tampil.
+/** APK ini bisa layar penuh? true · false · null (tidak bisa diketahui). Bukan aplikasi tablet = false. */
+export const layarPenuhAda = () => adaMetode('Perangkat', 'layarPenuh');
+/** Nyalakan / matikan layar penuh. Hasil { layarPenuh } atau menolak (Error ber-code). */
+export const setelLayarPenuh = (nyala) => panggilAsli('Perangkat', 'layarPenuh', { nyala: !!nyala });
+/** Kartu perangkat dari aplikasi: { merek, model, android, versiApk, pushSiap, layarPenuh, … }. */
+export const infoPerangkat = () => panggilAsli('Perangkat', 'info', {});
