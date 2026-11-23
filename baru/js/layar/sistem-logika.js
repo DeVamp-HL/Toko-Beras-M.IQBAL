@@ -257,7 +257,8 @@ export function susunUbahAkun(uid, ubah, w, yakin) {
 }
 /** Permintaan "minta owner" (ditulis tablet/Mac ke koleksi persetujuan): yang menunggu + riwayat keputusan. */
 export function ssPersetujuan(kini) {
-  const semua = cacheMentah('persetujuan').slice().sort(ssUrutTerbaru); const P = ssPeran();
+  // owner 23 Nov 2026: pesan owner KE tablet bukan permintaan yang diputus — tidak tampil di papan ini (menunggu / riwayat)
+  const semua = cacheMentah('persetujuan').filter((m) => m && m.tindakan !== 'pesanOwner').slice().sort(ssUrutTerbaru); const P = ssPeran();
   // B2 (owner 17 Nov 2026): permintaan BON lewat batas kredit — kalimatnya dihitung ulang dari buku bon sekarang (fkTeksMinta), tindakan kisinya = jualBon
   const tKisi = (m) => (m.tindakan === FK_TINDAKAN ? 'jualBon' : m.tindakan);
   const baris = (m) => { const Q = m.tindakan === 'nego' ? ngPeriksaMinta(m) : null; const HU = m.tindakan === HT_TINDAKAN ? htTeksUbah(m.ubah) : null; const KR = m.tindakan === FK_TINDAKAN ? fkTeksMinta(m) : null; return { id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: KR !== null ? 'Bon melewati batas kredit' : m.tindakan === TP_PESAN ? 'Pesan untuk owner' : (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: KR !== null ? 'Jual' : m.tindakan === TP_PESAN ? 'Pesan' : (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,

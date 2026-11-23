@@ -3496,3 +3496,13 @@ per nama = **semua perangkat**, dock = **lipat + layar penuh**. Mesin uang beku 
 
 Alat uji: `uji_tablet_tampilan.py` (82, kontrol 22/22), `uji_jual_baru.py` N kemasan per nama (463, 3 kontrol baru), `periksa_rules.py` v17 (model 15 kasus
 ★Z + 8 kontrol), `uji_rules_emulator.py` bagian V17 (5 kontrol), `uji_titipan.py` (fungsi server kini dua: hanya membuang token mati).
+
+## Pesan owner ke tablet (23 Nov 2026, cabang `paket/pesan-owner-tablet`)
+Owner: "gimana gua kirim pesan lewat mac/HP ke tablet?" → "Ya, bangun". Dulu owner hanya bisa MEMBALAS pesan tablet.
+- `kabar-baru-logika.js` `kbSusunPesanOwner` (awalan kb): satu dokumen `persetujuan` `{ tindakan: 'pesanOwner', status: 'terkirim', untuk: 'tablet', teks ≤ 500 }`.
+  Status `terkirim` (bukan `menunggu`) → tidak masuk lonceng/daftar menunggu owner, `pesanNotif` (push HP owner) menolaknya, `ssPersetujuan` menyaringnya.
+  `kbSidik`/`kbBanding`: tablet berbunyi "Pesan dari owner"; `kbLonceng`: tablet = kabar baru (semua akun bukan-owner), owner = tiga pesan `terkirim`.
+- `lonceng.js` `lcKirim`: kotak "Kirim pesan ke tablet" di lembar lonceng owner (owner saja), lewat `tulisDokumen`.
+- `functions/index.js` **`kabarDariOwner`** (onDocumentCreated persetujuan) + `pesan.js` `pesanDariOwner`: push ke token `notifPerangkat` (semua, atau satu akun
+  bila `untukUid`). Rules tetap v17. Pasang ulang fungsi di Cloud Shell sesudah merge.
+Alat uji: `uji_tablet_tampilan.py` (96, kontrol 32/32), `uji_titipan.py` (fungsi server: tiga pemicu, hanya membuang token mati).

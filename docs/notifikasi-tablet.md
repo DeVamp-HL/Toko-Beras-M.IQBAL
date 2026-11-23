@@ -46,6 +46,17 @@ Saat aplikasi **terbuka**, kabar tetap lewat pita di atas layar, bunyi, lampu CP
 2. Di HP owner: buka lonceng (pojok kanan atas layar mana pun) → pesan itu → ketik balasan → **Tandai dibaca**.
 3. Di tablet: bunyi + notifikasi "Pesan dibaca owner — Balasan owner: …" muncul di bilah notifikasi. Ketuk = aplikasi terbuka di Menu.
 
+## Pesan owner ke tablet (owner 23 Nov 2026)
+
+Dari Mac / HP (akun owner): ketuk **lonceng** › kotak **Kirim pesan ke tablet** › tulis (paling banyak 500 huruf) › **Kirim**. Pesannya muncul di lonceng
+semua akun tablet (angka + "Pesan dari owner"), pita di atas layar tablet yang sedang terbuka, dan — kalau notifikasi tablet sudah dinyalakan — di bilah
+notifikasi tablet walau aplikasinya ditutup (fungsi server `kabarDariOwner`). Tiga pesan terakhir yang terkirim tampil di bawah kotak itu. Rules tidak
+berubah (v17): owner sudah boleh menulis `persetujuan` dan akun tablet sudah boleh membacanya. Pesan owner berstatus `terkirim`, jadi tidak masuk daftar
+"menunggu" owner, tidak memicu push ke HP owner, dan tidak tampil di papan Persetujuan. Tablet tidak bisa menandai "dibaca" di server — "sudah dibuka"
+dicatat lonceng di tablet itu sendiri.
+
+Sesudah merge, fungsi server dipasang ulang sekali di Cloud Shell (baris yang sama dengan langkah 6 di atas) supaya `kabarDariOwner` terpasang.
+
 ## Layar penuh (APK yang sama)
 
 Menu (akun tablet) › kartu **Layar penuh** › **Nyalakan layar penuh**: bilah jam/baterai dan tombol kembali/beranda Android disembunyikan.

@@ -6,16 +6,30 @@
 // di layar ada di app.js; push ke HP saat aplikasi tertutup dikirim fungsi server (functions/), bukan dari sini.
 import { cacheMentah } from '../data/toko.js';
 import { RP, tanggalPendek } from '../inti/format.js';
-import { tpTeks, TP_TINDAKAN, TP_PESAN, TP_KABAR } from './titipan-logika.js';
+import { tpTeks, TP_TINDAKAN, TP_PESAN, TP_KABAR, TP_BATAS } from './titipan-logika.js';
 
-export const KB_JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk dari tablet', hitungLaci: 'Hitungan laci dari tablet', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit' };
+export const KB_JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk dari tablet', hitungLaci: 'Hitungan laci dari tablet', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit', pesanOwner: 'Pesan dari owner' };
+// owner 23 Nov 2026 ("gimana gua kirim pesan lewat mac/HP ke tablet?"): PESAN OWNER KE TABLET — dokumen persetujuan bertindakan 'pesanOwner', status
+// 'terkirim' (BUKAN 'menunggu': tidak masuk daftar menunggu owner, tidak memicu push ke HP owner, tidak ikut papan Persetujuan). Rules tetap v17: owner
+// menulis persetujuan, akun tablet (ben/karyawan) membacanya. Tablet tidak bisa menandai dibaca di server (update = owner) — "sudah dibuka" dicatat
+// lonceng per perangkat. Push ke tablet = fungsi server kabarDariOwner (functions/).
+export const KB_PESAN_OWNER = 'pesanOwner';
+export const KB_STATUS_TERKIRIM = 'terkirim';
+/** Susun pesan owner untuk tablet. teks 1–500 huruf (TP_BATAS.pesan). w = waktuSekarang(). Hasil { dokumen, patch } atau { tolak }. */
+export function kbSusunPesanOwner(teks, w, akun) {
+  if (!akun || akun.jenis !== 'owner') return { tolak: 'Pesan ke tablet hanya dari akun owner' };
+  const isi = String(teks || '').replace(/\s+/g, ' ').trim(); if (!isi) return { tolak: 'Tulis dulu pesannya' };
+  if (isi.length > TP_BATAS.pesan) return { tolak: 'Pesan terlalu panjang — paling banyak ' + TP_BATAS.pesan + ' huruf' };
+  const data = { id: w.idUnik(), tindakan: KB_PESAN_OWNER, status: KB_STATUS_TERKIRIM, untuk: 'tablet', teks: isi, dari: 'Owner', tanggal: w.tanggal, jam: w.jam, dibuatPada: w.kini };
+  return { dokumen: [{ koleksi: 'persetujuan', data }], patch: { kabar: 'Pesan terkirim ke tablet — muncul di lonceng & bilah notifikasi tablet', kabarAwas: false } };
+}
 const KB_PUTUS = { disetujui: 'disetujui owner', ditolak: 'DITOLAK owner', dibaca: 'dibaca owner' };
 const uidPeminta = (m) => String(m.mintaUid || m.negoUid || m.usulUid || '');
 /** Isi satu permintaan untuk kabar (tanpa kolom yang tidak ada). */
 export function kbIsi(m) {
   const dari = m.dari ? m.dari + ': ' : '';
   if (m.tindakan === TP_TINDAKAN) return dari + tpTeks(m);
-  if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR) return dari + String(m.teks || '').replace(/\s+/g, ' ').slice(0, 120);
+  if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR || m.tindakan === KB_PESAN_OWNER) return dari + String(m.teks || '').replace(/\s+/g, ' ').slice(0, 120);
   // owner 22 Nov 2026 (paket ④): hitungan laci — jumlah dihitung & yang dipindah ke brankas (tanpa selisih: tablet hitung buta, owner melihatnya di Tutup hari)
   if (m.tindakan === 'hitungLaci') return dari + 'laci ' + tanggalPendek(m.tanggal || '') + ' dihitung ' + RP(Math.round(Number(m.hitung) || 0)) + (Number(m.amankan) ? ' · ' + RP(Math.round(Number(m.amankan))) + ' ke brankas' : '');
   const n = Math.round(Number(m.nominal) || 0);
@@ -27,10 +41,11 @@ const layarOwner = (m) => (m.tindakan === TP_TINDAKAN || m.tindakan === TP_PESAN
 /** Sidik keadaan sekarang untuk akun ini. owner: { menunggu: { id: kabar } } · tablet: { milik: { id: { status, kabar } } }. */
 export function kbSidik(akun, daftar) {
   const D = daftar || cacheMentah('persetujuan'); const owner = !!akun && akun.jenis === 'owner'; const uid = String((akun && akun.uid) || '');
-  const out = { owner, uid, menunggu: {}, milik: {}, n: 0 };
+  const out = { owner, uid, menunggu: {}, milik: {}, pesan: {}, n: 0 };
   D.forEach((m) => {
     if (!m || m.id === undefined) return; const id = String(m.id); const st = m.status || 'menunggu';
     if (owner) { if (st === 'menunggu') { out.menunggu[id] = { judul: KB_JUDUL[m.tindakan] || 'Permintaan dari tablet', isi: kbIsi(m), layar: layarOwner(m), tindakan: String(m.tindakan || '') }; out.n += 1; } return; }
+    if (m.tindakan === KB_PESAN_OWNER) { out.pesan[id] = { isi: String(m.teks || '').replace(/\s+/g, ' ').slice(0, 160) }; return; }   // owner 23 Nov 2026: pesan owner untuk tablet
     if (uid && uidPeminta(m) === uid) out.milik[id] = { status: st, tindakan: String(m.tindakan || ''), isi: kbIsi(m), alasan: String(m.alasanTolak || ''), balasan: String(m.balasan || '') };
   });
   return out;
@@ -39,10 +54,13 @@ export function kbSidik(akun, daftar) {
 export function kbBanding(lama, baru) {
   if (!lama || !baru || lama.owner !== baru.owner || lama.uid !== baru.uid) return [];
   if (baru.owner) return Object.keys(baru.menunggu).filter((id) => !lama.menunggu[id]).map((id) => Object.assign({ id, jenis: 'masuk' }, baru.menunggu[id]));
-  return Object.keys(baru.milik).filter((id) => lama.milik[id] && lama.milik[id].status === 'menunggu' && baru.milik[id].status !== 'menunggu').map((id) => {
+  const putus = Object.keys(baru.milik).filter((id) => lama.milik[id] && lama.milik[id].status === 'menunggu' && baru.milik[id].status !== 'menunggu').map((id) => {
     const x = baru.milik[id]; const judul = (KB_JUDUL[x.tindakan] || 'Permintaan') + ' ' + (KB_PUTUS[x.status] || x.status);
     return { id, jenis: 'putus', status: x.status, judul, isi: x.isi + (x.alasan ? ' — alasan: ' + x.alasan : '') + (x.balasan ? ' — balasan: ' + x.balasan : ''), layar: 'menu' };
   });
+  // owner 23 Nov 2026: pesan owner yang BARU muncul (tidak ada di sidik lama) = kabar masuk untuk tablet
+  const pesan = Object.keys(baru.pesan || {}).filter((id) => !(lama.pesan || {})[id]).map((id) => ({ id, jenis: 'masuk', judul: KB_JUDUL.pesanOwner, isi: baru.pesan[id].isi, layar: 'menu' }));
+  return pesan.concat(putus);
 }
 /** Satu kalimat untuk beberapa kabar sekaligus (mis. data menyusul sesudah internet kembali). */
 export function kbRingkas(ev) {
@@ -70,9 +88,13 @@ const waktuTampil = (tgl, jam) => (tgl ? tanggalPendek(tgl) : '') + (jam ? ' ' +
  */
 export function kbLonceng(akun, daftar, dilihat) {
   const D = daftar || cacheMentah('persetujuan'); const L = dilihat || {}; const owner = !!akun && akun.jenis === 'owner'; const uid = String((akun && akun.uid) || '');
-  const out = [];
+  const out = []; const terkirim = [];
   D.forEach((m) => {
     if (!m || m.id === undefined) return; const id = String(m.id); const st = m.status || 'menunggu'; const t = String(m.tindakan || '');
+    if (t === KB_PESAN_OWNER) {   // owner 23 Nov 2026: owner = daftar "terkirim" (tidak dihitung); tablet = kabar masuk (dihitung bila belum dibuka)
+      const x = { id, status: st, tindakan: t, judul: KB_JUDUL.pesanOwner, isi: String(m.teks || ''), alasan: '', balasan: '', waktu: waktuTampil(m.tanggal, m.jam), urut: urutBuat(m), layar: 'menu', bisaBalas: false, baru: !owner && L[id] !== st };
+      (owner ? terkirim : out).push(x); return;
+    }
     if (owner) {
       if (st !== 'menunggu') return;
       out.push({ id, status: st, tindakan: t, judul: KB_JUDUL[t] || 'Permintaan dari tablet', isi: kbIsi(m), alasan: '', balasan: '', waktu: waktuTampil(m.tanggal, m.jam), urut: urutBuat(m),
@@ -86,7 +108,9 @@ export function kbLonceng(akun, daftar, dilihat) {
   });
   out.sort((a, b) => (a.urut < b.urut ? 1 : a.urut > b.urut ? -1 : 0));
   const lihat = {}; out.forEach((x) => { lihat[x.id] = x.status; });
-  return { owner, daftar: out.slice(0, KB_MAKS), n: out.filter((x) => x.baru).length, menunggu: out.filter((x) => x.status === 'menunggu').length, lebih: Math.max(0, out.length - KB_MAKS), lihat };
+  terkirim.sort((a, b) => (a.urut < b.urut ? 1 : a.urut > b.urut ? -1 : 0));
+  return { owner, daftar: out.slice(0, KB_MAKS), n: out.filter((x) => x.baru).length, menunggu: out.filter((x) => x.status === 'menunggu').length, lebih: Math.max(0, out.length - KB_MAKS), lihat,
+    terkirim: terkirim.slice(0, 3) };
 }
 /** Semua isi lonceng sekarang = sudah dibuka. Peta baru { id: status } — id yang sudah tidak ada ikut terbuang. */
 export function kbTandai(isi) { return Object.assign({}, (isi && isi.lihat) || {}); }

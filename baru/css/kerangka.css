@@ -254,4 +254,8 @@ body.dock-lipat .kabar-nav, body.dock-lipat .lembar:not(.tirai) { bottom: 80px; 
 .ll-kaki { display: flex; justify-content: flex-end; font-size: 12px; }
 @keyframes masukLl { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 body.terkunci .lembar-lonceng { display: none !important; }
+.ll-tulis { display: flex; flex-direction: column; gap: 6px; padding: 10px 11px; border-radius: 14px; background: var(--kaca); border: 1px solid var(--emas-garis); }   /* owner 23 Nov 2026: pesan owner ke tablet */
+.ll-tulis textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 54px; font: inherit; }
+.ll-kirim-baris { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .ll-kirim-baris .kaca-btn { flex: none; }
+.ll-terkirim { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; border-top: 1px solid var(--garis); }
 @media (prefers-reduced-motion: reduce) { .lonceng, .lonceng svg, .lonceng-n, .lembar-lonceng, .ll-baris { animation: none !important; transition: none; } }

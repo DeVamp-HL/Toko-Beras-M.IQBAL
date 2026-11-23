@@ -12,7 +12,7 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
-const { pesanNotif, pesanPutus, kirimanTablet, tokenMati } = require('./pesan');
+const { pesanNotif, pesanPutus, pesanDariOwner, kirimanTablet, tokenMati } = require('./pesan');
 
 initializeApp();
 setGlobalOptions({ region: process.env.LOKASI || 'asia-southeast2', maxInstances: 2, memory: '256MiB' });
@@ -49,4 +49,21 @@ exports.kabarTablet = onDocumentUpdated('persetujuan/{id}', async (event) => {
   r.responses.forEach((x, i) => { if (!x.success && x.error && tokenMati(x.error.code)) mati.push(tujuan[i].ref); });
   await Promise.all(mati.map((ref) => ref.delete()));
   console.log('kabarTablet', event.params.id, 'terkirim', r.successCount, 'gagal', r.failureCount, 'token mati dibuang', mati.length);
+});
+
+// owner 23 Nov 2026 ("gimana gua kirim pesan lewat mac/HP ke tablet?"): PESAN OWNER KE TABLET — begitu owner menulis persetujuan bertindakan 'pesanOwner'
+// (lonceng › Kirim pesan ke tablet), isinya dikirim ke token Android di notifPerangkat (semua tablet yang menyalakan notifikasi, atau satu akun bila
+// untukUid diisi). Token kosong dilewati, token mati dibuang. Tidak menulis data toko.
+exports.kabarDariOwner = onDocumentCreated('persetujuan/{id}', async (event) => {
+  const snap = event.data; if (!snap) return;
+  const p = pesanDariOwner(snap.data(), event.params.id); if (!p) return;
+  const kol = getFirestore().collection('notifPerangkat');
+  const q = await (p.untukUid ? kol.where('uid', '==', p.untukUid) : kol).get();
+  const tujuan = q.docs.map((d) => ({ ref: d.ref, token: d.get('token') })).filter((x) => typeof x.token === 'string' && x.token);
+  if (!tujuan.length) return;
+  const r = await getMessaging().sendEachForMulticast(kirimanTablet(p, tujuan.map((x) => x.token)));
+  const mati = [];
+  r.responses.forEach((x, i) => { if (!x.success && x.error && tokenMati(x.error.code)) mati.push(tujuan[i].ref); });
+  await Promise.all(mati.map((ref) => ref.delete()));
+  console.log('kabarDariOwner', event.params.id, 'terkirim', r.successCount, 'gagal', r.failureCount, 'token mati dibuang', mati.length);
 });

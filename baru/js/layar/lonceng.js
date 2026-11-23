@@ -5,12 +5,12 @@
 // Lembar dibuka = semua kabar yang tampil dianggap sudah dibuka (angka kembali nol); peta "sudah dibuka" per akun di perangkat ini (localStorage).
 import { h, mentah, pasang } from '../inti/dom.js';
 import { tulisDokumen, kabarKiriman } from '../data/toko.js';
-import { kbLonceng, kbTandai, kbBacaLihat, kbTulisLihat, KB_LIHAT, KB_NAMA_LAYAR } from './kabar-baru-logika.js';
+import { kbLonceng, kbTandai, kbBacaLihat, kbTulisLihat, kbSusunPesanOwner, KB_LIHAT, KB_NAMA_LAYAR } from './kabar-baru-logika.js';
 import { tpSusunPutus, TP_BATAS } from './titipan-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 
 let _lcN = 0; let _lcIsi = null; let _lcAkun = null; let _lcBuka = false; let _lcSibuk = ''; let _lcKabar = null;
-const _lcBalas = {};
+const _lcBalas = {}; let _lcTulis = '';   // owner 23 Nov 2026: pesan owner ke tablet yang sedang diketik
 let _lcOpsi = { pindah: () => {}, sekarang: () => null, berbunyi: () => {} };
 
 /** Angka di lonceng sekarang (kabar belum dibuka di perangkat ini). */
@@ -69,8 +69,26 @@ function lcGambar() {
   pasang(el, h`<div class="ll-kepala"><div><b class="serif" style="font-size: 18px;">Kabar & pesan</b><div class="ket">${owner ? (I.menunggu ? I.menunggu + ' menunggu keputusan owner' : 'tidak ada yang menunggu') : 'permintaan dari akun ini & jawaban owner'}</div></div>
       <button type="button" class="ll-tutup" data-ll="tutup" aria-label="Tutup">×</button></div>
     ${_lcKabar ? h`<div class="pita-info ${_lcKabar.awas ? 'awas' : 'emas'}" data-k="ll-kabar">${_lcKabar.teks}</div>` : ''}
+    ${owner ? h`<div class="ll-tulis" data-k="ll-tulis"><div class="label">Kirim pesan ke tablet</div>
+      <textarea class="ketik-nama" rows="2" maxlength="500" placeholder="mis. Tolong cek stok kemasan 5 kg sore ini" data-ll-tulis="1">${_lcTulis}</textarea>
+      <div class="ll-kirim-baris"><span class="ket">muncul di lonceng & bilah notifikasi tablet · paling banyak 500 huruf</span><div class="kaca-btn aktif emas" data-ll="kirim">${_lcSibuk === 'kirim' ? 'mengirim…' : 'Kirim'}</div></div>
+      ${I.terkirim.length ? h`<div class="ll-terkirim" data-k="ll-terkirim">${I.terkirim.map((x) => h`<div class="ket" data-k="llt-${x.id}">${x.waktu} · ${x.isi}</div>`)}</div>` : ''}</div>` : ''}
     <div class="ll-daftar" data-k="ll-daftar">${I.daftar.length ? I.daftar.map(baris) : h`<div class="ket" data-k="ll-kosong" style="padding: 10px 2px;">${owner ? 'Belum ada pesan atau permintaan yang menunggu.' : 'Belum ada permintaan dari akun ini.'}</div>`}</div>
     ${I.lebih ? h`<div class="ket" data-k="ll-lebih">+ ${I.lebih} kabar lebih lama — lihat di ${owner ? 'Uang › titipan dan Menu › Toko ini › Peran & persetujuan › Persetujuan' : 'Menu'}</div>` : ''}`);
+}
+
+// owner 23 Nov 2026: pesan owner ke tablet — satu dokumen persetujuan 'pesanOwner' (kbSusunPesanOwner), ditulis lewat pintu tulis biasa
+async function lcKirim() {
+  if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;
+  const r = kbSusunPesanOwner(_lcTulis, waktuSekarang(_lcOpsi.sekarang() || undefined), _lcAkun);
+  if (r.tolak) { _lcKabar = { teks: r.tolak, awas: true }; lcGambar(); return; }
+  _lcSibuk = 'kirim'; lcGambar();
+  try {
+    const x = await tulisDokumen(r.dokumen || [], r.hapus);
+    if (x && x.gagal) _lcKabar = { teks: 'DITOLAK: ' + x.pesan, awas: true };
+    else { _lcKabar = { teks: kabarKiriman(x, (r.patch || {}).kabar || 'Terkirim'), awas: false }; _lcTulis = ''; const k = document.querySelector('[data-ll-tulis]'); if (k) k.value = ''; }
+  } catch (e) { _lcKabar = { teks: 'GAGAL mengirim: ' + String((e && e.message) || e), awas: true }; }
+  _lcSibuk = ''; loncengSegarkan(_lcAkun); lcGambar();
 }
 
 async function lcTandaiBaca(id) {
@@ -98,10 +116,12 @@ export function pasangLonceng(opsi) {
       if (k === 'tutup') lcTutup();
       else if (k === 'buka') { lcTutup(); _lcOpsi.pindah(a.dataset.layar || 'menu'); }
       else if (k === 'baca') lcTandaiBaca(a.dataset.id);
+      else if (k === 'kirim') lcKirim();
       return;
     }
     if (_lcBuka && !t.closest('#lembarLonceng')) lcTutup();
   });
-  document.addEventListener('input', (ev) => { const t = ev.target; if (t && t.dataset && t.dataset.llKetik) _lcBalas[t.dataset.llKetik] = String(t.value || '').slice(0, TP_BATAS.balasan); });
+  document.addEventListener('input', (ev) => { const t = ev.target; if (!t || !t.dataset) return; if (t.dataset.llKetik) _lcBalas[t.dataset.llKetik] = String(t.value || '').slice(0, TP_BATAS.balasan);
+    if (t.dataset.llTulis) _lcTulis = String(t.value || '').slice(0, TP_BATAS.pesan); });
   document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && _lcBuka) lcTutup(); });
 }
