@@ -3160,6 +3160,16 @@ toko tidak mengirim perintah kepekatan atau mutu apa pun (dicabut di #145), jadi
 kecepatan dengan mutu. **Belum terbukti di perangkat:** tombol mode di jalur jaringan sesudah tambalan ini, label dan surat jalan lewat
 jaringan, Wi-Fi putus di tengah cetak.
 
+**Uji ukuran kiriman Bluetooth (owner 23 Nov 2026: "Uji ukuran, tanpa APK"):** fakta dari bytecode pustaka SUNMI 1.0.16 (bukan dari perangkat):
+`TransTask.run` menulis kiriman 1024 byte beruntun tanpa jeda lewat `BtDevicePort.sendData` = `BluetoothSocket.getOutputStream().write()`; IOException
+ditelan (−1) dan hasilnya diabaikan `TransTask`; sesudah itu tidur 600 ms lalu SEKALI menanya nomor pekerjaan (`getPrintId`, jawaban harus tepat 4 / 7
+byte). Dugaan "printer kewalahan menerima kiriman besar lewat Bluetooth" BELUM terbukti. Layar Perangkat › Printer struk › **Uji ukuran Bluetooth (5
+struk)**: struk uji ke-n = n pita gambar (`escpos.js epUjiUkuran`, ±17 ribu byte per pita di 80 mm), tiap pita berakhir 16 baris hitam penuh (jumlah garis
+di kertas = pita yang sampai), baris SELESAI di ujung; dikirim SELALU lewat `sunmi-bt`, satu per satu menunggu kabar printer, jeda 5 detik; jatuh ke kabel
+atau ditolak = berhenti, uji tidak sah. `perangkat.js kesimpulanUkuran` membaca kabar printer: pola ukuran (yang kecil keluar, mulai ukuran tertentu diam)
+= dugaan menguat, BELUM bukti (ulangi); acak = melemah; semua diam = Bluetooth / ambang di bawah 17 ribu byte; selalu disuruh mencocokkan kertas. Halaman
+saja. Obat (kirim berjeda di plugin = APK baru) baru dibangun sesudah pola yang sama terlihat dua kali.
+
 **Gerbang "Siapa yang jaga?" tidak lagi bisa digeser di tablet (owner 21 Nov 2026: "benerin gerbang yang belum fix, itu masih bisa
 digeser-geser"):** di CPad mendatar layar aplikasinya ±1067 × 585 titik CSS (dihitung dari tangkapan layar owner: 1 titik CSS = 1,2 titik
 tangkapan). Panel jaga 560 px + jarak lajurnya lebih lebar dari separuh layar dan lebih tinggi dari layar → gerbang bisa digeser ke samping
