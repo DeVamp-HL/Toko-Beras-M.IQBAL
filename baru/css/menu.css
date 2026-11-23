@@ -151,3 +151,12 @@ main.layar-menu.masuk > header, main.layar-menu.masuk > .mn-gulir > .jalur, main
 .layar-menu .rt-baris.awas > b { color: var(--awas); }
 .layar-menu .rt-rinci { display: flex; flex-direction: column; padding: 6px 10px; border-radius: 12px; border: 1px solid var(--kaca-tepi); }
 @media (prefers-reduced-motion: reduce) { .layar-menu .rt-baris { animation: none; } }
+/* paket KPI laba (owner 24 Nov 2026, butir 14): kartu cek mingguan timbangan & gudang — tiap hal satu baris (nama · beres / ada masalah), masuk bergiliran,
+   kartu yang jatuh tempo diberi tepi emas berdenyut pelan; hormat reduced motion */
+.mn-cek-gudang .cg-hal { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--garis); animation: cgMasuk 480ms cubic-bezier(.2,.8,.2,1) both; }
+.mn-cek-gudang .cg-hal:nth-child(3) { animation-delay: 40ms; } .mn-cek-gudang .cg-hal:nth-child(4) { animation-delay: 80ms; } .mn-cek-gudang .cg-hal:nth-child(5) { animation-delay: 120ms; } .mn-cek-gudang .cg-hal:nth-child(6) { animation-delay: 160ms; }
+.mn-cek-gudang .seg { transition: background 160ms cubic-bezier(.2,.8,.2,1), color 160ms cubic-bezier(.2,.8,.2,1); } .mn-cek-gudang .seg.awas.aktif { color: var(--awas); border-color: var(--awas); }
+.mn-cek-gudang.perlu { box-shadow: 0 0 0 1px var(--emas-garis); } .mn-cek-gudang.perlu > .label::after { content: ' ●'; color: var(--emas-garis); display: inline-block; animation: cgPerlu 2600ms ease-in-out infinite; }
+@keyframes cgMasuk { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes cgPerlu { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.85); } }   /* transform/opacity saja (mulus Android) */
+@media (prefers-reduced-motion: reduce) { .mn-cek-gudang .cg-hal, .mn-cek-gudang.perlu > .label::after { animation: none; } .mn-cek-gudang .seg { transition: none; } }

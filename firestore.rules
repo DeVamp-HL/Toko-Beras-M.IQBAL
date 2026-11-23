@@ -1,4 +1,12 @@
 // ============================================================================
+// ATURAN FIRESTORE v19 FINAL — Toko Beras M.IQBAL (DRAF 24 Nov 2026, CEK GUDANG dari tablet) = v18 FINAL + PERSIS satu fungsi baru dan satu blok baru
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v18; uji server: docs/uji-rules-v19.md). Owner menerbitkan v19 SEKALI lewat Console
+// SEBELUM cabang paket KPI laba digabung (tanpa v19 pendengar cekGudang di HP/tablet staf ditolak server dan disebut di Sistem › Perangkat):
+//   (v19-1) blok cekGudang — cek mingguan timbangan & gudang (owner 24 Nov 2026: "Ben juga dari tablet"): satu dokumen per cek, tambah-saja.
+//           read owner || staf(ben, karyawan) · create owner || stafCekGudang(ben) — atas nama penulisnya (olehUid), kolom id = id dokumen, tanggal YYYY-MM-DD,
+//           cek = peta lima hal (timbangan · palet · bocor · lembap · kutu) bernilai benar/salah, catatan ≤ 160 huruf, kolom dibatasi · ubah & hapus OWNER saja.
+//           Bukan data uang / stok: tidak ada rupiah, kg, atau tanggal buku yang dikunci periode.
+// Sisanya = v18 FINAL di bawah ini, apa adanya. Kepala v18:
 // ATURAN FIRESTORE v18 FINAL — Toko Beras M.IQBAL (DRAF 24 Nov 2026, DENYUT STAF TERIKAT) = v17 FINAL + PERSIS satu ubahan fungsi dan satu baris pemanggilnya
 // (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v17; uji server: docs/uji-rules-v18.md). Owner menerbitkan v18 lewat Console kapan saja
 // (halaman TIDAK berubah: perangkat staf sudah menulis denyutnya ke id perangkat~uid sejak putaran denyut per akun):
@@ -220,6 +228,15 @@ service cloud.firestore {
       return stafBuat(peranBoleh) && d.get('uid', '') == request.auth.uid && d.get('perangkatId', 0) is string && d.perangkatId.size() > 0 && d.perangkatId.size() <= 40
         && id == request.auth.uid + '_' + d.perangkatId && d.get('token', 0) is string && d.token.size() <= 4096 && d.get('platform', '') == 'android'
         && d.keys().hasOnly(['id', 'uid', 'olehUid', 'perangkatId', 'token', 'platform', 'perangkat', 'pada']);
+    }
+    // v19 (owner 24 Nov 2026): cek mingguan timbangan & gudang dari tablet — atas nama penulisnya, id = kolom id, lima hal benar/salah, kolom dibatasi
+    function stafCekGudang(peranBoleh, id) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && d.get('cek', 0) is map && d.cek.keys().hasOnly(['timbangan', 'palet', 'bocor', 'lembap', 'kutu'])
+        && d.cek.get('timbangan', true) is bool && d.cek.get('palet', true) is bool && d.cek.get('bocor', true) is bool && d.cek.get('lembap', true) is bool && d.cek.get('kutu', true) is bool
+        && d.get('catatan', 0) is string && d.catatan.size() <= 160
+        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'minggu', 'cek', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
     }
     function stafBuatTipe(peranBoleh, tipe) { return stafBuat(peranBoleh) && request.resource.data.tipe == tipe; }
     // v5 (putaran 39, owner 29 Sep 2026): karyawan menuang & mengecek wadah literan — hanya catatan takar / karung / karungIsi / cek (aturan wadah & titik samakan isi tetap owner)
@@ -923,6 +940,13 @@ service cloud.firestore {
     match /notifPerangkat/{id} {
       allow read, delete: if owner();
       allow create, update: if owner() || stafTokenPush(['ben', 'karyawan'], id);
+    }
+
+    // v19 (owner 24 Nov 2026): cek mingguan timbangan & gudang — dicatat owner atau Penjaga laci dari tablet (tambah-saja); dibaca owner & staf (jadwal berikutnya)
+    match /cekGudang/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafCekGudang(['ben'], id);
+      allow update, delete: if owner();
     }
 
     match /ringkasanKasir/{id} {

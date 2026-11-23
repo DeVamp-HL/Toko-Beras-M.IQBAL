@@ -348,3 +348,31 @@ export function poKataStok(x) {
   return x.awas ? x.nama + ': KURANG ±' + poKgTeks(x.kurang, x.satuan) + (x.hari === 0 ? ' hari ini' : ' dalam ' + x.hari + ' hari') + ' — pesanan ' + poKgTeks(x.butuh, x.satuan) + ', sisa ' + poKgTeks(x.sisa, x.satuan) + lajuK
     : x.nama + ': cukup — pesanan ' + poKgTeks(x.butuh, x.satuan) + ', sisa ' + poKgTeks(x.sisa, x.satuan) + lajuK;
 }
+
+// ==================== LAMA PEMENUHAN PESANAN (paket KPI laba, owner 24 Nov 2026, butir 15) ====================
+const poJamKe = (x) => { const t = Date.parse(String(x || '')); return isFinite(t) ? t : null; };
+/** Saat pertama sebuah status di riwayatStatus (jam ISO `pada`); 'dipesan' tanpa riwayat = tanggal + jam pesanan (WIB). null = tidak tercatat. */
+function poSaat(p, status, terakhir) {
+  const rr = (Array.isArray(p.riwayatStatus) ? p.riwayatStatus : []).filter((x) => x && x.status === status && !x.ubah && poJamKe(x.pada) !== null); const r = terakhir ? rr[rr.length - 1] : rr[0];
+  if (r) return poJamKe(r.pada);
+  if (status === 'dipesan' && /^\d{4}-\d{2}-\d{2}$/.test(String(p.tanggal || ''))) return poJamKe(p.tanggal + 'T' + (/^\d{2}:\d{2}/.test(String(p.jam || '')) ? String(p.jam).slice(0, 5) : '00:00') + ':00+07:00');
+  return null;
+}
+/**
+ * Rata-rata lama pesanan dipenuhi, dalam HARI (pecahan, dari jam di riwayat status pesanan): dipesan → DIANTAR dan dipesan → JADI NOTA, atas pesanan yang mencapai
+ * status itu dalam N hari terakhir (hari ini ikut). Pesanan batal tidak dihitung; jadi nota = yang sekarang jadi nota (nota yang dibatalkan
+ * mengembalikan statusnya), saat jadi nota yang terakhir; pesanan tanpa jam dipesan disebut (tanpaJam), bukan nol. Baca saja.
+ */
+export function poLamaPenuhi(kini, hari) {
+  const akhir = new Date(kini || Date.now()).getTime(); const N = Math.max(7, Math.min(365, Math.round(Number(hari) || 90))); const awal = akhir - N * 86400000;
+  const tahap = (status) => { const out = { n: 0, jumlahHari: 0, maks: null, tanpaJam: 0 };
+    // jadi nota: hanya pesanan yang SEKARANG jadi nota (nota yang dibatalkan mengembalikan statusnya), saat jadi nota yang TERAKHIR
+    ambilPesanan().forEach((p) => { if (!p || p.status === 'batal' || (status === 'dibayar' && p.status !== 'dibayar')) return; const t1 = poSaat(p, status, status === 'dibayar'); if (t1 === null || t1 < awal || t1 > akhir) return; const t0 = poSaat(p, 'dipesan');
+      if (t0 === null || t1 < t0) { out.tanpaJam += 1; return; } const h = (t1 - t0) / 86400000; out.n += 1; out.jumlahHari += h; if (out.maks === null || h > out.maks) out.maks = h; });
+    return Object.assign(out, { rata: out.n ? out.jumlahHari / out.n : null }); };
+  const antar = tahap('diantar'), nota = tahap('dibayar');
+  const teks = (x) => (x.rata === null ? '—' : x.rata < 1 / 24 ? 'kurang dari 1 jam' : x.rata < 1 ? '±' + Math.max(1, Math.round(x.rata * 24)) + ' jam' : '±' + String(Math.round(x.rata * 10) / 10).replace('.', ',') + ' hari');
+  return { hari: N, antar: Object.assign(antar, { teks: teks(antar) }), nota: Object.assign(nota, { teks: teks(nota) }), keadaan: antar.n || nota.n ? 'ada' : 'kosong',
+    kalimat: antar.n || nota.n ? 'Pesanan dipenuhi rata-rata: dipesan → diantar ' + teks(antar) + ' (' + antar.n + ' pesanan) · dipesan → jadi nota ' + teks(nota) + ' (' + nota.n + ' pesanan) — ' + N + ' hari terakhir'
+      : 'Belum ada pesanan yang diantar atau jadi nota dalam ' + N + ' hari terakhir' };
+}

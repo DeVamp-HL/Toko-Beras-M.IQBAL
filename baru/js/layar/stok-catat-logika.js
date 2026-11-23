@@ -52,7 +52,43 @@ export function aturCatat() {
   const airMilik = milik('kadarAirMaks', TM_SYARAT.kadarAirMaks); const patahMilik = milik('patahMaks', TM_SYARAT.patahMaks);
   return { minKarung: ambil('minKarung', (n) => n >= 0), tempoHari: ambil('tempoHari', (n) => n >= 0), batasSelisih: ambil('batasSelisih', (n) => n >= 0 && n <= 100),
     ambangSusutPositif: ambil('ambangSusutPositif', (n) => n >= 0), jendelaGandaMenit: ATUR_CATAT_BAWAAN.jendelaGandaMenit, batasVarian: ambil('batasVarian', (n) => n >= 0 && n <= 100), dariOwner: !!a, sejak: a ? (a.tanggal || '') : '',
-    kadarAirMaks: airMilik ? Number(a.kadarAirMaks) : ATUR_CATAT_BAWAAN.kadarAirMaks, patahMaks: patahMilik ? Number(a.patahMaks) : ATUR_CATAT_BAWAAN.patahMaks, mutuBawaan: { kadarAirMaks: !airMilik, patahMaks: !patahMilik } };
+    kadarAirMaks: airMilik ? Number(a.kadarAirMaks) : ATUR_CATAT_BAWAAN.kadarAirMaks, patahMaks: patahMilik ? Number(a.patahMaks) : ATUR_CATAT_BAWAAN.patahMaks, mutuBawaan: { kadarAirMaks: !airMilik, patahMaks: !patahMilik },
+    hppMaks: ckPetaHppMaks(a) };
+}
+// ---------- HPP MAKSIMAL PER KG PER MEREK (paket KPI laba, owner 24 Nov 2026, butir 12) ----------
+// Setelan owner di aturanToko/catatStok.hppMaksPerKg { merek: Rp/kg } — dokumen yang SUDAH dibaca tablet (rules v7+, DOK_STAF), jadi Barang masuk di tablet ikut menandai.
+// HPP per kg kedatangan = rumus mesin hitungHppMerkDalamBatch (harga beli + bongkar dibagi menurut kg). Lewat batas = TEGAS `>` (sama persis dengan batas bukan "lewat").
+// Hanya TANDA — kedatangan tetap boleh dicatat; tidak ada uang, stok, atau bon yang berubah. Kosong / 0 = tanpa batas untuk merek itu.
+export const CK_HPP_MAKS_MAKS = 100000;   // penjaga salah ketik (Rp/kg), bukan kebijakan
+function ckPetaHppMaks(a) { const o = {}; const p = a && a.hppMaksPerKg && typeof a.hppMaksPerKg === 'object' ? a.hppMaksPerKg : {}; Object.keys(p).forEach((m) => { const n = Number(p[m]); const k = String(m || '').trim(); if (k && isFinite(n) && n > 0 && n <= CK_HPP_MAKS_MAKS) o[k] = Math.round(n); }); return o; }
+/** Batas HPP satu nama buku: buku per ukuran ('Merek 25 kg') & varian memakai batas merek induknya bila nama itu sendiri tidak diatur. 0 = tanpa batas. */
+export function ckBatasHpp(nama, peta) { const P = peta || aturCatat().hppMaks; const k = String(nama || '').trim(); if (P[k]) return P[k]; const u = petaUkuran()[k]; if (u && P[u.induk]) return P[u.induk]; const v = k.split(' \u00b7 ')[0]; return P[v] || 0; }
+/** Simpan batas (isi = { merek: ketikan }; kosong / 0 = hapus batas merek itu). Dokumen catatStok DISALIN utuh, hanya hppMaksPerKg yang ditimpa. */
+export function susunAturHppMaks(isi, w) {
+  const peta = {}; let tolak = '';
+  Object.keys(isi || {}).forEach((m) => { if (tolak) return; const k = String(m || '').trim(); const v = isi[m]; if (!k || ckKosong(v)) return; const n = ckAngka(v);
+    if (!(n >= 0) || n > CK_HPP_MAKS_MAKS || Math.round(n) !== n) { tolak = 'Batas HPP ' + k + ' harus Rp0–' + RP(CK_HPP_MAKS_MAKS).replace('Rp', '') + ' per kg, bilangan bulat (0 / kosong = tanpa batas)'; return; } if (n > 0) peta[k] = n; });
+  if (tolak) return { tolak };
+  const lama = cacheMentah('aturan').find((d) => String(d.id) === 'catatStok') || {};
+  const data = Object.assign({}, lama, { id: 'catatStok', tanggal: w.tanggal, jam: w.jam, hppMaksPerKg: peta }); const n = Object.keys(peta).length;
+  return { dokumen: [{ koleksi: 'aturanToko', data }], patch: { kabar: n ? 'Batas HPP per kg tersimpan untuk ' + n + ' merek — kedatangan yang lewat (lebih dari batas) ditandai di Barang masuk, Laporan per merek & Dasbor' : 'Semua batas HPP dihapus — tidak ada kedatangan yang ditandai', kabarAwas: false } };
+}
+/** Daftar merek untuk lembar Atur batas HPP: buku karung merek (bukan buku per ukuran / buku khusus wadah) + nama yang sudah berbatas; modal sekarang = modal keluar
+ *  berikutnya (sama dengan katalog Harga), harga beli terakhir dari buku mesin. */
+export function ckDaftarHppMaks() {
+  const P = aturCatat().hppMaks; const stokK = ingatStokKarung(); const u = petaUkuran(); const w = petaBukuWadah(); const nama = {};
+  Object.keys(stokMerekSaja(stokK)).forEach((m) => { if (!u[m] && !w[m]) nama[m] = 1; }); Object.keys(P).forEach((m) => { nama[m] = 1; });
+  return Object.keys(nama).sort((a, b) => a.localeCompare(b)).map((m) => ({ merek: m, batas: P[m] || 0, modal: stokK[m] ? hppKeluarPerKg(stokK[m]) : 0, beli: stokK[m] ? stokK[m].hargaTerakhirPerKg || 0 : 0 }));
+}
+/** Kedatangan dari–sampai (iso, inklusif) yang HPP per kg-nya LEBIH dari batas merek: [{ batchId, tanggal, pemasok, merk, merek, hppPerKg, batas, lebihPerKg, kg }].
+ *  Batch fondasi (stok awal / tutup buku) & baris bal (beli jadi) tidak dinilai. Baca saja. */
+export function ckHppLewat(dari, sampai) {
+  const P = aturCatat().hppMaks; if (!Object.keys(P).length) return { ada: false, daftar: [], nMerek: 0 };
+  const out = []; ambilSemuaBatch().forEach((b) => { const t = String(b.tanggal || ''); if (b.stokAwal || b.tutupBuku || !t || t < dari || t > sampai) return;
+    hitungHppMerkDalamBatch(b.merkList || [], Number(b.biayaBongkar) || 0).forEach((m) => { if (m.bentuk === 'bal' || !(m.totalKg > 0)) return; const bt = ckBatasHpp(m.merk, P);
+      if (bt > 0 && m.hppPerKg > bt) { const u = petaUkuran()[m.merk]; out.push({ batchId: String(b.id), tanggal: t, pemasok: String(b.pemasok || ''), merk: m.merk, merek: u ? u.induk : String(m.merk).split(' \u00b7 ')[0], hppPerKg: m.hppPerKg, batas: bt, lebihPerKg: m.hppPerKg - bt, kg: m.totalKg }); } }); });
+  out.sort((a, b) => b.tanggal.localeCompare(a.tanggal) || b.lebihPerKg - a.lebihPerKg);
+  return { ada: true, daftar: out, nMerek: Object.keys(P).length };
 }
 export function susunAturCatat(isi, w) {
   const kini = aturCatat(); const baca = (k, syarat, teks) => { if (ckKosong(isi[k])) return { nilai: kini[k] }; const n = ckAngka(isi[k]); return syarat(n) ? { nilai: n } : { tolak: teks }; };
@@ -283,13 +319,16 @@ export function hitungMasuk(draf) {
   const bal = ckBarisBal(lamaB); const nilaiBal = bal.reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0);
   const hpp = hitungHppMerkDalamBatch(sah.map((b) => ({ merk: b.merkSimpan, totalKg: b.totalKg, subtotalHarga: b.subtotalHarga })).concat(bal.map((m) => ({ merk: m.merk, totalKg: Number(m.totalKg) || 0, subtotalHarga: Number(m.subtotalHarga) || 0 }))), bongkar);
   sah.forEach((b, i) => { b.alokasiBongkar = Math.round(hpp[i].alokasiBongkar); b.hppPerKg = hpp[i].hppPerKg; });
+  // paket KPI laba (butir 12): HPP per kg baris ini dibanding batas owner — TANDA saja (tegas `>`), kedatangan tetap boleh dicatat
+  sah.forEach((b) => { const bt = ckBatasHpp(b.indukUkuran || b.merk, aturMutu.hppMaks); b.hppMaks = bt; b.lewatHppMaks = bt > 0 && b.hppPerKg > bt; });
   const karung = sah.reduce((a, b) => a + b.jumlahKarung, 0); const kg = ckB2(sah.reduce((a, b) => a + b.totalKg, 0)); const nilaiBeras = sah.reduce((a, b) => a + b.subtotalHarga, 0);
   // paket brief 9 Okt: ringkasan timbang & mutu draf (baris sah saja) — pembanding, bukan angka buku
   const tb = sah.filter((b) => b.cek.timbangKg !== null);
   const timbang = { baris: sah.length, ditimbang: tb.length, kgNota: ckB2(tb.reduce((a, b) => a + b.totalKg, 0)), selisihKg: ckB2(tb.reduce((a, b) => a + (b.cek.selisihKg || 0), 0)),
     nilaiKurang: tb.reduce((a, b) => a + b.cek.nilaiKurang, 0), dicek: sah.filter((b) => b.cek.dicek).length, awas: sah.filter((b) => b.cek.awas.length).length };
   timbang.persen = timbang.kgNota > 0 ? Math.round(timbang.selisihKg / timbang.kgNota * 1000) / 10 : null;
-  return { baris, sah, bongkar, karung, kg, nilaiBeras, nilaiBal, total: nilaiBeras + nilaiBal + bongkar, bermasalah: baris.filter((b) => b.terisi && b.masalah), tanyaVarian: sah.filter((b) => (b.vr.perlu || b.vr.arsip) && !b.varian), timbang };
+  return { baris, sah, bongkar, karung, kg, nilaiBeras, nilaiBal, total: nilaiBeras + nilaiBal + bongkar, bermasalah: baris.filter((b) => b.terisi && b.masalah), tanyaVarian: sah.filter((b) => (b.vr.perlu || b.vr.arsip) && !b.varian), timbang,
+    lewatHppMaks: sah.filter((b) => b.lewatHppMaks) };
 }
 /** Susun dokumen kedatangan (baru, atau koreksi bila draf.id menunjuk batch yang ada). yakin = sudah ditanya soal karung sedikit / tanggal mundur. */
 // ---------- BON KEDATANGAN YANG SUDAH DIBAYAR (audit 39b no. 2) ----------

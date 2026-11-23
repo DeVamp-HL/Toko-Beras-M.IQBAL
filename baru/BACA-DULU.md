@@ -1125,6 +1125,7 @@ baru/
   js/layar/upah-logika.js   K2 Orang & upah · owner-toko-logika.js K3 · tutup-hari-logika.js K5 · tutup-buku-logika.js K6 (tanpa DOM)
   js/layar/uang.js          gambar & ketukan layar Uang (enam keluarga, tiga lebar)
   js/layar/laporan-logika.js, pajak-logika.js, kendali-biaya-logika.js (38: jenis · anggaran · lampu · pemicu · impas · pareto)   logika Laporan tanpa DOM
+  js/layar/kpi-laba-logika.js PAKET KPI LABA (owner 24 Nov 2026): tiga margin + BPS, saran harga & mark-up, GMROI, siklus uang, target harian, kas minimum, bon dalam kg — memanggil fungsi sumber layar lain
   js/layar/potret-logika.js POTRET tahun yang ditutup buku (Paket B siap 2027) — disusun saat Kunci tahun, dibaca lewat toko.js potretBulan/potretHari
   js/layar/laporan.js       gambar & ketukan layar Laporan (Laba · Biaya · Harian · Mingguan · Bulanan · Pajak · Tahunan · Neraca · Dokumen · Setelan)
 ```
@@ -1192,6 +1193,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_jual_bonus.py` (+ `--kontrol`) | owner 23 Nov 2026: penjaga bonus +1 staf — rumus satu (layar = penjaga kiriman), putusan owner/jatah/minta/tolak, alur minta owner → disetujui → dipasang sekali (jumlah sama), nego + bonus bersama, penjaga kiriman menghitung ulang kolom nota, Buku Nego mendaftar bonus; 20 kerusakan wajib berbunyi |
 | `alat-uji/uji_keranjang_tahan.py` (+ `--kontrol`) | owner 7 Okt: keranjang & struk parkir bertahan saat dimuat ulang — layar Jual asli di jsc + penyimpanan sesi tiruan: per akun + hari ini, tanpa tukar / karcis / nota terakhir / uang, cermin stok ikut pulih, akun & hari lain dibuang, layar berisi tidak ditimpa, dibersihkan sesudah nota & ganti orang, tidak menulis sebelum pemulihan, mode privat tidak jatuh; tinjauan 7 Okt: muat ulang SELAGI nota menunggu server tidak memulihkan keranjangnya (tetap satu nota), ditolak / gagal / tercatat (asinkron), tab salinan, baris pulihan dibangun ulang dari katalog sekarang (modal diam-diam, harga ditahan, nego dilepas), web app layar penuh tetap tab yang sama + 27 kontrol |
 | `alat-uji/uji_catat_nota_cepat.py` (+ `--kontrol`) | owner 7 Okt: simpan nota lebih cepat — rak identitas = rak penuh tanpa kolom sisa; PEMBANDING dokumen nota cara baru vs lama byte-sama (15 hasil: nota, periksa ulang, tembus, ubah jumlah, bonus, nego); panggilan buku stok mesin ≤ ⅓; cadangan toko lokal: ms simpanNota lama vs baru + dokumen sama + 5 kontrol |
+| `alat-uji/uji_kpi_laba.py` (+ `--kontrol`) | paket KPI laba (owner 24 Nov 2026): 67 skenario kotak pasir + 19 statis — per jenis menutup ke laba kotor, laba usaha → laba bersih (identitas), PPh tidak dobel, saran harga & mark-up, GMROI, siklus uang, target harian, kas minimum, nota terbesar, bon kg, batas HPP tegas >, hari bayar pemasok, cek gudang = rules v19, lama pesanan, Dasbor = angka yang sama; 37 kontrol |
 | `alat-uji/uji_belanja_tutup_buku.py` (+ `--kontrol`) | siap 2027 · P4: Harga & Pemasok › Belanja sebelum = sesudah tutup buku (pemasok di truk, harga & tanggal per merek, muatan, saran, Pakai saran & WA, status pesanan, kartu pemasok) — juga sesudah kunci & arsip setengah jalan (bagian pemasok), kedatangan 2027 menang, susulan 2026 dihitung sekali, ringkasan lama tanpa pemasok tetap terbaca, Batalkan, tutup buku 2027 membawa ringkasan 2026, bentuk Firestore; sanggahan: id kedatangan & pesanan berupa angka seperti di toko (ejaan pemasok yang berganti, susulan di antara pesanan & kedatangan), kedatangan Januari dicatat sebelum kunci = HANYA Stok beras beda + kalimat prosedur (statis), langkah Kunci latihan memeriksa ringkasan tahun & kunci sungguhan menolak isian yang ditolak server + layar Uang (statis); 22 kontrol (satu mematikan penggabungan); `--cadangan=<cadangan lokal>` (atau `UJI_CADANGAN`) + nota & pesanan tiruan + latihan Kunci, dilewati di CI |
 
 Membuka mesin (HANYA atas perintah owner): sunting `js/mesin/beku.js` / `pembantu.js` langsung → `python3 alat-uji/beku2.py --catat` → sebut di pesan
@@ -3533,3 +3535,39 @@ balas pesan … seperti WhatsApp" → **Obrolan di lonceng**; (3) "ikon logo apl
   ikon adaptif transparan). `apk/pasang.py` `pasang_ikon`: latar depan = simbol transparan, latar belakang `LATAR_IKON` #101314, ikon bulat dipotong lingkaran,
   layar pembuka hitam malam. APK baru dibangun otomatis sesudah merge (berkas `apk/` berubah). Monogram "IQ" di dalam aplikasi (gerbang G4) tidak diubah.
 Alat uji: `uji_tablet_tampilan.py` (116, kontrol 45/45: obrolan, push diam, logo = hasil ikon_m.py, latar depan transparan), `uji_cache_chip_literan.py` (16, kontrol 10/10).
+
+## Paket KPI laba — 15 butir margin, harga, angka harian, beli & gudang (owner 24 Nov 2026, cabang `claude/paket-kpi-laba-2cd8ea`; rules v19)
+Paket brief terakhir sebelum sistem dibekukan 15 Des 2026. ATURAN: tiap angka baru memanggil fungsi sumber yang sudah ada (satu angka satu sumber, sumbernya
+disebut di layar); mesin uang (`baru/js/mesin/*`, laba bersih, arus kas) TIDAK disentuh. Komposisi di `baru/js/layar/kpi-laba-logika.js` (awalan `kl`, tanpa DOM).
+Setelan owner = satu dokumen `aturanToko/kpiLaba` (target harian, kas minimum, target margin per jenis; kolom yang tidak dikirim tidak tertimpa) + batas HPP di
+`aturanToko/catatStok.hppMaksPerKg` (dokumen yang sudah dibaca tablet, ditulis UTUH — saklar FIFO & ambang mutu ikut disalin).
+
+| Butir | Sumber angka | Layar |
+|---|---|---|
+| 1 margin laba kotor % per bulan & per jenis | `laporan-logika.js` `jenisBulan` / `lpJenisRentang` (baris mesin laba; retur ikut jenis NOTA ASAL; ongkir → "lain"; penjaga: Σ jenis = laba kotor, omzet ber-HPP, omzet tanpa modal, jumlah baris) | Laporan › Laba › kartu Margin & mark-up · Dasbor |
+| 2 margin laba usaha % | `keManaLabaKotor`: laba kotor − biaya toko − biaya karyawan − potongan QRIS + susut; **identitas dijaga**: laba usaha − hapus buku ± lebih/kurang kas = laba bersih mesin | sama |
+| 3 margin laba bersih % + "sesudah perkiraan PPh final" | laba bersih mesin; `pjPerkiraanBulan` − uang keluar toko bertulis pajak/PPh bulan itu (sudah di biaya → tidak terpotong dua kali) | sama |
+| 4 saran harga & mark-up | `klSaranBaris`: modal satuan katalog (`hgSemua`) ÷ (1 − target), dibulatkan ke atas seperti usul; target per jenis = owner atau BAWAAN margin terwujud 3 bulan (`klTargetMargin` = `lpJenisRentang`); hanya saran | Harga › Katalog (lembar ubah + kartu Target margin) |
+| 5 pembanding BPS 9,84 % / 11,35 % (2016, termasuk angkut) | konstanta `KL_BPS` + sumber; grosir = karung utuh, ecer = kemasan · literan · repack | Laporan, Harga, Dasbor |
+| 6 GMROI per merek | `merekBulan` ÷ `stok-logika.js` `umNilaiRata` (sisa akhir hari × modal per kg buku, buku per tanggal = Umur & putaran) | Laporan › Laba › kartu GMROI |
+| 7 siklus uang (hari) | `umRingkas` (periode ÷ perputaran) + `tertagihBon` − `bpHariBayar`; bagian yang belum ada disebut | Dasbor |
+| 8 omzet hari ini vs target | `rekapHari` vs target owner / bawaan `titikImpas.omzetImpasHari`; lampu hijau tercapai · kuning sesuai laju jam toko (`JAM_BUKA`–`JAM_TUTUP` Ringkasan) · merah di bawah laju | Dasbor · Menu › Toko ini › Target & ambang |
+| 9 ambang kas minimum | `saldoKantong` EMPAT tempat (owner 24 Nov: "Semua empat tempat"), tegas `<`, kosong = mati | Dasbor · Menu |
+| 10 nota terbesar 10 teratas hari / 7 hari / bulan | `riwayat-logika.js` `rwTerbesar` (nota yang sama dengan Jual › Riwayat; batal tidak); ketuk = `keTujuan({ ke: 'jual', jalur: 'riwayat', rwBuka })` | Laporan › Harian · Dasbor (3) |
+| 11 bon dalam kg beras | `klModalPerKg` (Σ sisa × modal per kg buku ÷ Σ sisa = nilai neraca) | Pelanggan › Bon (owner saja) · Dasbor piutang |
+| 12 HPP maksimal per kg per merek | `stok-catat-logika.js` `ckBatasHpp` / `ckHppLewat` / `hitungMasuk.lewatHppMaks` (HPP = `hitungHppMerkDalamBatch` mesin, tegas `>`, tanda saja) | Stok › Barang masuk (+ atur, owner) · Laporan per merek · Dasbor |
+| 13 rata-rata hari bayar pemasok | `bon-pemasok-logika.js` `bpHariBayar` (bayar yang menunjuk bonnya, ditimbang rupiah; bon lama, tanpa tunjuk, tanggal janggal disebut) | Harga & Pemasok › Bon pemasok |
+| 14 cek mingguan timbangan & gudang | `sistem-logika.js` `ssCekGudang` / `susunCekGudang` + jenis pengingat `gudang` (tiap `gudangTiap` hari, bawaan 7); koleksi BARU `cekGudang` | Menu › Toko ini › Pengingat (owner) · Menu tablet (Penjaga laci) |
+| 15 lama pemenuhan pesanan | `pesanan-logika.js` `poLamaPenuhi` (riwayat status: dipesan → diantar pertama / jadi nota terakhir yang masih jadi nota; batal tidak) | Dasbor |
+
+**Rules v19** (owner 24 Nov: "Ben juga dari tablet") = v18 + blok `cekGudang` + fungsi `stafCekGudang` (Penjaga laci atas namanya, lima hal benar/salah, catatan
+≤ 160, kolom dibatasi; ubah & hapus owner). Penjaga kiriman `akses.js` `cekGudangSah` = bentuk yang sama (BACA_STAF + BUAT_STAF `cekGudang: ['ben']`).
+Uji server: `docs/uji-rules-v19.md` (★G1–★G18, wajib owner ★G1–★G3); `periksa_rules.py` lapisan v19 (+ kontrol); `uji_rules_emulator.py` bagian V19.
+Owner menerbitkan v19 SEBELUM PR digabung — tanpa v19 pendengar `cekGudang` di HP/tablet staf ditolak server (disebut di Sistem › Perangkat) dan Simpan cek ditolak.
+
+Pilihan teknis yang dipasang (bukan keputusan baru): ketiga margin satu penyebut = omzet ber-HPP (penyebut rasio titik impas) supaya tangganya bisa dibanding;
+laba usaha tidak memasukkan hapus buku & lebih/kurang kas (rumus brief), keduanya tampil di rincian; angka BPS dicek ke publikasinya
+(24 Nov): MPP = nilai penjualan − nilai pembelian (hlm. 6), 9,84 / 11,35 % = "rasio MPP" (hlm. 17, Tabel 3), PEMBAGINYA TIDAK DISEBUT di publikasi
+(metodologi & kuesioner VPDP16 juga tidak) — layar menyebutnya konteks dan menaruh margin (÷ harga jual) DAN mark-up (÷ modal) toko di sampingnya.
+
+Alat uji: `uji_kpi_laba.py` (67 kotak pasir + 19 statis, kontrol 37/37), `periksa_rules.py` (v19), `uji_menu_baru.py` (laci Toko ini 7 baris).

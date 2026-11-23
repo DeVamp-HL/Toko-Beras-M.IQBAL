@@ -145,3 +145,9 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
 .layar-laporan .lp-mr-baris .k2.tempo { color: var(--teks); opacity: .8; } .layar-laporan .lp-mr-baris .k2.tempo.awas { color: var(--awas); opacity: 1; }
 @keyframes lpPgTumbuh { from { transform: scaleX(0); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .layar-laporan .lp-pg-porsi i { animation: none; transition: none; } }
+/* paket KPI laba (owner 24 Nov 2026): Margin & mark-up · GMROI · nota terbesar — memakai lp-terjun / lp-mr-baris / lp-mr-pita yang sudah bergerak (pita tumbuh 640 ms) */
+.layar-laporan .lp-kl-jenis, .layar-laporan .lp-kl-bps, .layar-laporan .lp-kl-rinci { display: grid; gap: 2px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--garis); }
+.layar-laporan .lp-kl-rinci { animation: lpKlBuka 320ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-laporan .lp-kl-nota { transition: background 160ms cubic-bezier(.2,.8,.2,1); border-radius: 8px; } .layar-laporan .lp-kl-nota:active { background: var(--seg); }
+@keyframes lpKlBuka { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .layar-laporan .lp-kl-rinci { animation: none; } .layar-laporan .lp-kl-nota { transition: none; } }

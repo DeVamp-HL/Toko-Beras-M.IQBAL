@@ -45,7 +45,7 @@ export const SS_NILAI_HAK = ['sendiri', 'owner', 'tidak'];
 export const SS_LABEL_HAK = { sendiri: 'boleh sendiri', owner: 'minta owner', tidak: 'tidak boleh' };
 const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: 'owner', terimaBon: 'sendiri', hitungLaci: 'sendiri', uangKeluar: 'owner', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'owner', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri', hargaPelanggan: 'owner', antar: 'sendiri', terimaAntar: 'sendiri', pesanan: 'sendiri' },
   karyawan: { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri', hargaPelanggan: 'tidak', antar: 'tidak', terimaAntar: 'sendiri', pesanan: 'tidak' } };   // B4 (owner 18 Nov 2026): pesanan, PO, jadwal rutin = owner + Ben — rules v11
-export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon'], ['janji', 'Janji bayar pelanggan', 'hariJanji'], ['kantong', 'Kantong menipis', 'hariKantong'], ['opname', 'Opname rutin', 'hariOpname'], ['cadangan', 'Cadangan berkas', 'hariCadangan'], ['pajak', 'Setoran PPh final bulan lalu', 'hariPajak'], ['faktur', 'Faktur pelanggan jatuh tempo', 'hariFaktur']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));
+export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon'], ['janji', 'Janji bayar pelanggan', 'hariJanji'], ['kantong', 'Kantong menipis', 'hariKantong'], ['opname', 'Opname rutin', 'hariOpname'], ['cadangan', 'Cadangan berkas', 'hariCadangan'], ['pajak', 'Setoran PPh final bulan lalu', 'hariPajak'], ['faktur', 'Faktur pelanggan jatuh tempo', 'hariFaktur'], ['gudang', 'Cek mingguan timbangan & gudang', 'hariGudang']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));   // gudang: paket KPI laba (owner 24 Nov 2026, butir 14)
 export const SS_PENERIMA = ['Owner', 'Ben'];
 
 // ---------- ATUR SENDIRI — angka & daftar kebijakan owner, satu dokumen aturanToko per layar; bawaan = angka desain terkunci ----------
@@ -56,8 +56,8 @@ export const SS_ATUR_BAWAAN = {
     operator: {}, ringkasOrang: '', intipDetik: 60 },   // owner 22 Nov 2026 (sidik jari Tahap A): intip uang tertutup sendiri sesudah intipDetik tidak disentuh · putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js · owner 21 Nov: orang yang membuka Ringkas hari ini (kode orang, '' = mati)
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
-  pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'] },
-    hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, hariFaktur: 3, tundaHari: 2, maksTunda: 2, opnameTiap: 14 },
+  pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true, gudang: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'], gudang: ['Owner', 'Ben'] },
+    hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, hariFaktur: 3, hariGudang: 0, tundaHari: 2, maksTunda: 2, opnameTiap: 14, gudangTiap: 7 },
 };
 const ssSalin = (x) => JSON.parse(JSON.stringify(x));
 // ---------- orang di tablet (putaran T1 langkah 3, owner 16 Nov 2026) — bentuk yang boleh ditulis; diatur lewat tablet-logika.js ----------
@@ -112,7 +112,7 @@ export function susunAturSistem(id, isi, w) {
     else { const hilang = A.daftar.filter((l) => !daftar.some((x) => x.id === l.id)); const isi3 = ssStokLokasi(); const perangkat = cacheMentah('perangkat');
       hilang.forEach((l) => { if (tolak) return; const kg = Object.keys(isi3).reduce((a, m) => a + (isi3[m][l.id] || 0), 0); if (kg > 0.05) tolak = 'Masih ada ' + ANGKA(kg) + ' kg stok di ' + l.nama + ' — pindahkan dulu'; else if (perangkat.some((p) => p.lokasi === l.id)) tolak = perangkat.filter((p) => p.lokasi === l.id).map((p) => p.nama || p.id).join(', ') + ' masih mencatat di ' + l.nama; }); }
     o.daftar = daftar; o.pengantar = nama(isi.pengantar !== undefined ? isi.pengantar : A.pengantar); }
-  else if (id === 'pengingat') { tolak = angka('hariBon', 0, 60, 'hari') || angka('hariJanji', 0, 60, 'hari') || angka('hariKantong', 0, 90, 'hari') || angka('hariOpname', 0, 60, 'hari') || angka('hariCadangan', 0, 60, 'hari') || angka('hariPajak', 0, 14, 'hari') || angka('hariFaktur', 0, 30, 'hari') || angka('tundaHari', 1, 30, 'hari') || angka('maksTunda', 0, 10, 'kali') || angka('opnameTiap', 1, 90, 'hari');
+  else if (id === 'pengingat') { tolak = angka('hariBon', 0, 60, 'hari') || angka('hariJanji', 0, 60, 'hari') || angka('hariKantong', 0, 90, 'hari') || angka('hariOpname', 0, 60, 'hari') || angka('hariCadangan', 0, 60, 'hari') || angka('hariPajak', 0, 14, 'hari') || angka('hariFaktur', 0, 30, 'hari') || angka('hariGudang', 0, 7, 'hari') || angka('tundaHari', 1, 30, 'hari') || angka('maksTunda', 0, 10, 'kali') || angka('opnameTiap', 1, 90, 'hari') || angka('gudangTiap', 1, 30, 'hari');
     o.nyala = Object.assign({}, A.nyala, isi.nyala || {}); o.ke = Object.assign({}, A.ke); Object.keys(isi.ke || {}).forEach((j) => { o.ke[j] = nama(isi.ke[j], 4); }); SS_JENIS_PENGINGAT.forEach((j) => { if (!tolak && o.nyala[j.id] && !(o.ke[j.id] || []).length) tolak = 'Minimal satu orang yang diingatkan untuk ' + j.nama.toLowerCase(); }); }
   else return { tolak: 'Setelan tidak dikenal' };
   if (tolak) return { tolak };
@@ -445,6 +445,8 @@ export function ssSumberPengingat(kini, lokal) {
   (lokal && Array.isArray(lokal.pajak) ? lokal.pajak : []).forEach((p) => { if (p && p.jenis === 'pajak' && /^\d{4}-\d{2}-\d{2}$/.test(String(p.jatuh || ''))) out.push(p); });
   // B2 (owner 17 Nov 2026): faktur pelanggan usaha yang masih terbuka — jatuh = tanggal jatuh tempo faktur (tempo pelanggan), nominal = sisa faktur itu
   fkSemua(kini).forEach((f) => { if (!(f.sisa > 0.5) || !/^\d{4}-\d{2}-\d{2}$/.test(String(f.jatuhTempo || ''))) return; out.push({ id: 'faktur|' + f.no, jenis: 'faktur', kunci: f.kunci, teks: 'Faktur ' + f.no + ' · ' + f.nama + ' jatuh tempo', siapa: f.nama, jatuh: f.jatuhTempo, n: f.sisa, ket: 'sisa ' + RP(f.sisa) + ' dari ' + RP(f.total) + ' · nota ' + tanggalPendek(f.tanggal) + ' · tempo ' + f.tempoHari + ' hari' }); });
+  // paket KPI laba (owner 24 Nov 2026, butir 14): cek mingguan timbangan & gudang — jatuh = cek terakhir (koleksi cekGudang) + gudangTiap hari; belum pernah = hari ini
+  const CG = ssCekGudang(kini); out.push({ id: 'gudang|' + CG.jatuh, jenis: 'gudang', kunci: 'gudang', teks: CG.terakhir ? 'Cek timbangan & gudang (terakhir ' + tanggalPendek(CG.terakhir.tanggal) + ')' : 'Cek timbangan & gudang — belum pernah', siapa: 'gudang', jatuh: CG.jatuh, n: 0, ket: 'tiap ' + CG.tiap + ' hari · ' + SS_CEK_GUDANG.length + ' hal: ' + SS_CEK_GUDANG.map((c) => c.pendek).join(', ') });
   out.bonTanpaTanggal = bonTanpaTanggal; return out;
 }
 /** Semua pengingat + keadaannya (selesai / ditunda / WA hari ini) menurut aturan owner; kalender −3 … +10 hari. */
@@ -461,9 +463,35 @@ export function ssPengingat(kini, lokal, hariKe) {
     ringkas: aktif.length ? lewat.length + ' lewat · ' + hariIni.length + ' hari ini · ' + segera.length + ' segera' + (lewat.some((p) => p.jenis === 'bon') ? ' · bon pemasok lewat ' + RP(lewat.filter((p) => p.jenis === 'bon').reduce((a, p) => a + p.n, 0)) : '') : 'Tidak ada pengingat — semua beres',
     aturan: SS_JENIS_PENGINGAT.map((j) => ({ id: j.id, nama: j.nama, nyala: A.nyala[j.id] !== false, hari: Number(A[j.kunci]) || 0, ke: A.ke[j.id] || [], sumber: sumber.filter((p) => p.jenis === j.id && !p.selesai).length, ket: (A.nyala[j.id] !== false ? 'ingatkan ' + (Number(A[j.kunci]) || 0) + ' hari sebelum' : 'mati') + ' · ke ' + (A.ke[j.id] || []).join(' & ') })), atur: A, bonTanpaTanggal: sumber.bonTanpaTanggal || 0 };
 }
+// ---------- CEK MINGGUAN TIMBANGAN & GUDANG (paket KPI laba, owner 24 Nov 2026, butir 14) ----------
+// Owner 24 Nov: "Ben juga dari tablet" → koleksi BARU cekGudang (rules v19: owner || stafCekGudang(ben), atas nama penulisnya, kolom dibatasi; ubah & hapus owner).
+// Satu dokumen per cek (tambah-saja). Tiap hal dijawab beres / ada masalah; ada masalah = catatan wajib. Bukan uang, bukan stok.
+export const SS_CEK_GUDANG = [['timbangan', 'Timbangan akurat', 'timbangan', 'dicek dengan anak timbang / beras 1 kg yang sudah pasti'], ['palet', 'Palet utuh, karung tidak menyentuh lantai & dinding', 'palet', ''],
+  ['bocor', 'Tidak ada bocor (atap, karung)', 'bocor', ''], ['lembap', 'Gudang kering, tidak lembap', 'kelembapan', ''], ['kutu', 'Tidak ada kutu / hama', 'kutu', '']].map((c) => ({ id: c[0], nama: c[1], pendek: c[2], ket: c[3] }));
+export const SS_CEK_KOLOM = ['id', 'tanggal', 'jam', 'minggu', 'cek', 'catatan'];   // = kolom isi stafCekGudang rules v19 (+ kolom atribusi penulis pusat)
+export const SS_CEK_CATATAN_MAKS = 160;
+/** Keadaan cek: terakhir (dokumen terbaru), jatuh (terakhir + tiap hari; belum pernah = hari ini), riwayat 8 terakhir dengan hal yang bermasalah. Dibaca owner & tablet. */
+export function ssCekGudang(kini) {
+  const iso = hariIniIso(kini); const A = ssAtur('pengingat'); const tiap = Number(A.gudangTiap) || 7;
+  const semua = cacheMentah('cekGudang').filter((d) => d && /^\d{4}-\d{2}-\d{2}$/.test(String(d.tanggal || ''))).slice().sort((a, b) => String(b.tanggal + ' ' + (b.jam || '')).localeCompare(String(a.tanggal + ' ' + (a.jam || ''))) || String(b.id).localeCompare(String(a.id)));
+  const terakhir = semua[0] || null; const jatuh = terakhir ? ssTambahHari(terakhir.tanggal, tiap) : iso; const sisa = ssHariKe(jatuh) - ssHariKe(iso);
+  const riwayat = semua.slice(0, 8).map((d) => { const c = d.cek || {}; const masalah = SS_CEK_GUDANG.filter((x) => c[x.id] === false).map((x) => x.pendek); return { id: String(d.id), tanggal: d.tanggal, jam: d.jam || '', oleh: d.oleh || '', masalah, catatan: d.catatan || '' }; });
+  return { iso, tiap, terakhir: terakhir ? riwayat[0] : null, jatuh, sisa, perlu: sisa <= 0, riwayat, teks: !terakhir ? 'Belum pernah dicek — cek hari ini' : sisa < 0 ? 'Lewat ' + (-sisa) + ' hari (terakhir ' + tanggalPendek(terakhir.tanggal) + ')' : sisa === 0 ? 'Waktunya hari ini (terakhir ' + tanggalPendek(terakhir.tanggal) + ')' : 'Berikutnya ' + tanggalPendek(jatuh) + ' · ' + sisa + ' hari lagi' };
+}
+/** Simpan satu cek: cek = { hal: true (beres) | false (ada masalah) } — kelima hal WAJIB dijawab; ada masalah → catatan wajib (apa & di mana). */
+export function susunCekGudang(cek, catatan, w, kini) {
+  const C = {}; let kurang = 0; SS_CEK_GUDANG.forEach((x) => { const v = cek ? cek[x.id] : undefined; if (v === true || v === false) C[x.id] = v; else kurang += 1; });
+  if (kurang) return { tolak: 'Jawab dulu kelima hal (beres / ada masalah) — ' + kurang + ' belum dijawab' };
+  const cat = String(catatan || '').trim(); const masalah = SS_CEK_GUDANG.filter((x) => C[x.id] === false);
+  if (masalah.length && cat.length < 5) return { tolak: 'Ada masalah (' + masalah.map((x) => x.pendek).join(', ') + ') — tulis catatannya dulu: apa & di mana' };
+  if (cat.length > SS_CEK_CATATAN_MAKS) return { tolak: 'Catatan paling panjang ' + SS_CEK_CATATAN_MAKS + ' huruf' };
+  const G = ssCekGudang(kini || new Date(w.kini));
+  const data = { id: 'cg-' + w.tanggal + '-' + String(w.idUnik()).replace(/[^0-9a-z]/gi, '').slice(-10), tanggal: w.tanggal, jam: w.jam, minggu: G.jatuh, cek: C, catatan: cat };
+  return { dokumen: [{ koleksi: 'cekGudang', data }], patch: { cekG: null, kabar: 'Cek timbangan & gudang tersimpan' + (masalah.length ? ' — ' + masalah.length + ' masalah dicatat: ' + masalah.map((x) => x.pendek).join(', ') : ' — semua beres') + ' · berikutnya ' + tanggalPendek(ssTambahHari(w.tanggal, G.tiap)), kabarAwas: masalah.length > 0 } };
+}
 const ssDokPengingat = (p, w, tambahan) => ({ koleksi: 'pengingat', data: Object.assign({ id: p.id, jenis: p.jenis, kunci: p.kunci, jatuh: p.jatuh, teks: p.teks, tanggal: w.tanggal, jam: w.jam, status: 'tunda', catatan: p.catatan || '', tundaHari: p.tunda || 0, tundaKali: p.tundaKali || 0 }, tambahan) });
 export function susunSelesaiPengingat(p, catatan, w) {
-  if (!p) return { tolak: 'Pilih pengingatnya' }; if (p.selesai) return { tolak: 'Sudah ditandai selesai' }; if (p.sisa < 0 && ssKosong(catatan)) return { tolak: 'Pengingat yang sudah lewat butuh catatan: apa yang terjadi?' };
+  if (!p) return { tolak: 'Pilih pengingatnya' }; if (p.jenis === 'gudang') return { tolak: 'Cek gudang diselesaikan dengan mengisi kelima halnya — tombol SIMPAN CEK di bawah' }; if (p.selesai) return { tolak: 'Sudah ditandai selesai' }; if (p.sisa < 0 && ssKosong(catatan)) return { tolak: 'Pengingat yang sudah lewat butuh catatan: apa yang terjadi?' };
   return { dokumen: [ssDokPengingat(p, w, { status: 'selesai', catatan: String(catatan || '').trim().slice(0, 80) })], patch: { kabar: p.jenis === 'bon' ? 'Ditandai selesai — pembayarannya sendiri dicatat di bon pemasok (Harga & Pemasok → Bon pemasok)' : p.jenis === 'janji' ? 'Ditandai selesai — pembayarannya dicatat lewat Pelanggan → Bon' : 'Ditandai selesai', kabarAwas: false } };
 }
 export function susunTundaPengingat(p, w) {

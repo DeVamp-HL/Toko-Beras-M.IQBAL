@@ -383,6 +383,53 @@ export function merekTeratas(M, urut, n) {
   return { urut: by, n: N, daftar, sisa, luar: M.luar, baris, lebar, tergambar, menutup: !!M.menutup && tergambar === Math.round(M.L.margin) };
 }
 
+// ==================== PER JENIS · laba kotor & margin % karung · kemasan · literan · repack (paket KPI laba, owner 24 Nov 2026, butir 1) ====================
+// Sumber yang SAMA dengan Per merek (merekBulan): baris mesin laba Laporan (ambilPenjualan + tanggal, modal TERSIMPAN di nota), retur bulan itu memotong omzet
+// (uangKembaliRetur) & modal retur UTUH dibatalkan (hppTaksiranRetur), ongkir antar dipisah ke "lain". Jenis = kolom `jenis` baris nota (karung utuh · kemasan ·
+// literan · repacking); wadah dijual, ongkir & nota darurat yang belum dirinci = "lain". Retur ikut jenis NOTA ASALNYA (notaAsalId), tanpa itu dari satuannya.
+// PENJAGA: Σ jenis = laba kotor, omzet ber-HPP, omzet tanpa modal & jumlah baris Laporan bulan itu — persis sampai rupiah, kalau tidak: menutup false + kalimat.
+export const LP_JENIS = [['karung', 'Karung utuh'], ['kemasan', 'Kemasan'], ['literan', 'Literan'], ['repack', 'Repack (per kg)']].map((x) => ({ id: x[0], nama: x[1] }));
+export const LP_JENIS_LAIN = { id: 'lain', nama: 'Lain (wadah · ongkir · karcis belum dirinci)' };
+const LP_JENIS_DARI = { karung: 'karung', kemasan: 'kemasan', literan: 'literan', repacking: 'repack' };
+/** Jenis satu baris nota: karung · kemasan · literan · repack · lain. */
+export const lpJenisBaris = (p) => LP_JENIS_DARI[String((p && p.jenis) || '')] || 'lain';
+/** Jenis satu retur: jenis nota asalnya (peta id → baris) · tanpa nota asal: satuan nota (liter · unit · karung · kg) · kemasan / karung dari jenisAsal. */
+export function lpJenisRetur(r, peta) {
+  const a = r && r.notaAsalId !== undefined && r.notaAsalId !== null ? peta[String(r.notaAsalId)] : null; if (a) return lpJenisBaris(a);
+  const s = String((r && r.satuanNota) || ''); if (s === 'liter') return 'literan'; if (s === 'unit') return 'kemasan'; if (s === 'kg') return 'repack'; if (s === 'karung') return 'karung';
+  return r && r.jenisAsal === 'kemasan' ? 'kemasan' : 'karung';
+}
+const lpJenisKosong = (id, nama) => ({ id, nama, nBaris: 0, kg: 0, omzetHitung: 0, hppHitung: 0, adaHitung: false, nTanpaHpp: 0, omzetTanpaHpp: 0, nRetur: 0, returUang: 0, returHpp: 0 });
+function lpJadiJenis(g) {
+  const omzet = g.omzetHitung - g.returUang; const hpp = g.hppHitung - g.returHpp; const margin = g.adaHitung || g.nRetur > 0 ? omzet - hpp : null;
+  return Object.assign(g, { omzet, hpp, margin, pct: margin !== null && omzet > 0 ? margin / omzet * 100 : null, keadaan: margin !== null ? 'ada' : g.nTanpaHpp > 0 ? 'belum' : 'kosong' });
+}
+/** Per jenis satu RENTANG tanggal (dari–sampai iso, inklusif): { jenis: [4 jenis], lain, L (mesin laba rentang itu), identitas, menutup, kalimat }. Baca saja. */
+export function lpJenisRentang(dari, sampai, bayaran) {
+  const B = bayaran || ugBayaran(); const L = ugLabaBersih(dari, sampai, B); const cocok = (t) => !!t && t >= dari && t <= sampai;
+  const per = {}; LP_JENIS.forEach((j) => { per[j.id] = lpJenisKosong(j.id, j.nama); }); per.lain = lpJenisKosong('lain', LP_JENIS_LAIN.nama);
+  const peta = {}; ambilPenjualanSemua().forEach((p) => { peta[String(p.id)] = p; });
+  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal)) return; const g = per[lpJenisBaris(p)]; const ong = Math.round(Number(p.ongkirAntar) || 0); const harga = (p.hargaTotal || 0) - ong; const tercatat = hppTercatat(p);
+    g.nBaris += 1; if (g.id !== 'lain') g.kg += Number(p.totalKg) || 0;
+    if (tercatat) { g.adaHitung = true; g.omzetHitung += harga; g.hppHitung += p.hppTotalSaatJual || 0; } else { g.nTanpaHpp += 1; g.omzetTanpaHpp += harga; }
+    if (ong) { const o = per.lain; if (tercatat) { o.adaHitung = true; o.omzetHitung += ong; } else o.omzetTanpaHpp += ong; } });
+  const retur = ambilRetur().filter((r) => cocok(r.tanggal)); const adaUtuh = retur.some((r) => r.kondisi === 'utuh'); const stokKrg = adaUtuh ? ingatStokKarung() : null; const stokKem = adaUtuh ? ingatStokKemasan() : null;
+  retur.forEach((r) => { const g = per[lpJenisRetur(r, peta)]; g.nRetur += 1; g.returUang += uangKembaliRetur(r); if (r.kondisi === 'utuh') g.returHpp += hppTaksiranRetur(r, stokKrg, stokKem); });
+  const jenis = LP_JENIS.map((j) => lpJadiJenis(per[j.id])); const lain = lpJadiJenis(per.lain); const semua = jenis.concat([lain]);
+  const sig = (f) => semua.reduce((a, g) => a + (Number(g[f]) || 0), 0); const banding = (nm, x, y) => ({ nama: nm, jenis: x, laporan: y, beda: x - y, cocok: Math.abs(x - y) < 0.5 });
+  const identitas = [banding('laba kotor', semua.reduce((a, g) => a + (g.margin || 0), 0), L.margin), banding('omzet ber-HPP', sig('omzet'), L.omzetHitung), banding('omzet tanpa modal', sig('omzetTanpaHpp'), L.omzetTanpaHpp), banding('jumlah baris nota', sig('nBaris'), L.jumlahTrx)];
+  const menutup = identitas.every((x) => x.cocok); const teks = (nm, x) => (/baris/.test(nm) ? ANGKA(x) : RP(x));
+  const kalimat = menutup ? 'Σ 4 jenis + lain = laba kotor Laporan ' + RP(L.margin) + ' — menutup persis sampai rupiah.'
+    : 'TIDAK MENUTUP ke Laporan: ' + identitas.filter((x) => !x.cocok).map((x) => x.nama + ' per jenis ' + teks(x.nama, x.jenis) + ' ≠ Laporan ' + teks(x.nama, x.laporan)).join('; ') + '. Angka per jenis jangan dipakai memutuskan — laporkan.';
+  return { dari, sampai, jenis, lain, L: { margin: L.margin, omzetHitung: L.omzetHitung, omzetTanpaHpp: L.omzetTanpaHpp, jumlahTrx: L.jumlahTrx }, identitas, menutup, kalimat, tanpaCatatan: !semua.some((g) => g.nBaris || g.nRetur) };
+}
+/** Per jenis satu bulan ('YYYY-MM'). Tahun yang sudah ditutup buku: catatan per notanya ikut arsip → { diarsip, kalimat } (disebut, bukan Rp0). */
+export function jenisBulan(key, kini, bayaran) {
+  const nama = lpNamaBulan(key); const dasar = { key, nama, final: lpFinal(key), berjalan: key === lpKey(hariIniIso(kini)) };
+  if (lpTutup(key)) return Object.assign(dasar, { diarsip: true, jenis: [], lain: null, menutup: null, kalimat: 'Rincian per jenis ' + nama + ' ikut arsip tutup buku ' + key.slice(0, 4) + ' — laba kotornya tetap di kartu Laba.' });
+  return Object.assign(dasar, lpJenisRentang(key + '-01', akhirBulanIso(key), bayaran));
+}
+
 // ==================== HARIAN · rekap satu hari ====================
 /** Rekap satu hari — arus kas & laba dari mesin yang sama (dataRekapHarian sistem lama) + per jam + tutup hari + buku kas hari itu. */
 export function rekapHari(iso, bayaran) {

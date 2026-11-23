@@ -31,6 +31,9 @@ import { pelangganBulan, pgHariTeks } from './laba-pelanggan-logika.js';
 import { susunBon as bpSusunBon } from './bon-pemasok-logika.js';
 import { hetHargaKasir } from './het-logika.js';
 import { rekapTimbangMutu } from './stok-catat-logika.js';
+// paket KPI laba (owner 24 Nov 2026): tiga margin + pembanding BPS, target harian, kas minimum, siklus uang, nota terbesar, kedatangan lewat batas HPP,
+// lama pemenuhan pesanan, bon dalam kg beras — APA ADANYA dari kpi-laba-logika.js (yang memanggil fungsi sumber layar lain)
+import { klMarginBulan, klTargetHari, klKasMinimum, klSiklusUang, klNotaTerbesar, klHppLewatBulan, klLamaPesanan, klBonKg, klModalPerKg } from './kpi-laba-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
@@ -105,7 +108,8 @@ export function dbTagihan(kini) {
     faktur: { n: FP.daftar.length, rpLewat: FP.lewat, rpSegera: FP.segera, nLewat: FP.daftar.filter((f) => f.status === 'lewat').length, sumber: 'Pelanggan › Usaha › Faktur', tujuan: tujuF,
       daftar: FP.daftar.slice(0, 4).map((f) => ({ no: f.no, nama: f.nama, sisa: f.sisa, ket: fkTeksTempo(f), awas: f.status === 'lewat', tujuan: tujuF })) },
     periode: 'Sekarang · ' + tanggalPendek(hariIniIso(kini)),
-    piutang: { total: bon.reduce((a, b) => a + b.sisa, 0), n: bon.length, perStatus, jatuh, nJatuh: jatuh.length, rpJatuh: jatuh.reduce((a, b) => a + b.sisa, 0), sumber: 'Pelanggan › Bon', tujuan: { ke: 'pelanggan', keluarga: 'bon' } },
+    piutang: { total: bon.reduce((a, b) => a + b.sisa, 0), n: bon.length, perStatus, jatuh, nJatuh: jatuh.length, rpJatuh: jatuh.reduce((a, b) => a + b.sisa, 0), sumber: 'Pelanggan › Bon', tujuan: { ke: 'pelanggan', keluarga: 'bon' },
+      kg: (() => { try { return klBonKg(bon.reduce((a, b) => a + b.sisa, 0), klModalPerKg()); } catch (e) { return null; } })() },   // paket KPI laba (butir 11)
     pemasok: { total: BP.total, nBon: BP.nBon, nPemasok: BP.nPemasok, tekor: BP.tekor, lewat: BP.lewat.map(satuBon), dekat: BP.dekat.map(satuBon), nTanpaTempo: BP.tanpaTempo.length, rpTanpaTempo: BP.tanpaTempo.reduce((a, b) => a + b.sisa, 0), nJauh: jauh.length, rpJauh: jauh.reduce((a, b) => a + b.sisa, 0),
       rpLewat: BP.lewat.reduce((a, b) => a + b.sisa, 0), rpDekat: BP.dekat.reduce((a, b) => a + b.sisa, 0),
       dekatHari: BP.atur.dekatHari, cukupTeks: BP.cukupTeks, kurang: BP.kurang, adaKas: BP.adaKas, sumber: 'Harga & Pemasok › Bon pemasok', tujuan: { ke: 'harga', keluarga: 'bon', tab: 'garis' } },
@@ -152,6 +156,16 @@ export function dbMutu(kini) {
   };
 }
 
+/** PAKET KPI LABA (owner 24 Nov 2026): margin kotor · usaha · bersih % bulan ini (+ BPS), omzet hari ini vs target, kas minimum, siklus uang, 3 nota terbesar hari ini,
+ *  kedatangan lewat batas HPP bulan ini, lama pemenuhan pesanan. Tiap baris = kpi-laba-logika apa adanya; satu baris galat tidak mematikan yang lain. */
+export function dbKpi(kini) {
+  const key = hariIniIso(kini).slice(0, 7);
+  const aman = (f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor kpi', e); return { galat: String((e && e.message) || e) }; } };
+  return { periode: 'Bulan ini & hari ini', sumber: 'Laporan › Laba', tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key },
+    margin: aman(() => klMarginBulan(key, kini)), target: aman(() => klTargetHari(kini)), kas: aman(() => klKasMinimum()), siklus: aman(() => klSiklusUang(kini)),
+    nota: aman(() => klNotaTerbesar('hari', kini, 3)), hpp: aman(() => klHppLewatBulan(key)), pesanan: aman(() => klLamaPesanan(kini)) };
+}
+
 /** B5 PELANGGAN USAHA bulan ini (owner 18 Nov 2026): porsi laba kotor & omzet pelanggan usaha, tiga teratas menurut laba kotor, faktur lewat jatuh tempo — APA
  *  ADANYA dari pelangganBulan (Laporan › Laba › Per pelanggan, satu sumber, menutup ke laba kotor Laporan). Tidak ada rumus uang di sini. */
 export function dbB2b(kini) {
@@ -167,7 +181,7 @@ export function dbB2b(kini) {
 /** Seluruh dasbor untuk satu saat. Tiap kelompok dibungkus: galat di satu kelompok tampil sebagai kalimat di kelompok itu, kelompok lain tetap jalan.
  *  lama (owner 3 Okt, ganti rentang patah-patah): hasil dasbor saat & data yang SAMA — hanya tren yang memakai rentang, jadi hari ini · bulan ini · stok ·
  *  tagihan diambil dari situ dan cuma tren yang dihitung (dulu seluruh dasbor dihitung ulang tiap ganti Hari / Minggu / Bulan). */
-const DB_KELOMPOK = { hari: ['hari ini', dbHariIni], bulan: ['bulan ini', dbBulanIni], stok: ['stok', dbStok], tagihan: ['tagihan', dbTagihan], mutu: ['mutu usaha', dbMutu], b2b: ['pelanggan usaha', dbB2b] };
+const DB_KELOMPOK = { hari: ['hari ini', dbHariIni], bulan: ['bulan ini', dbBulanIni], stok: ['stok', dbStok], tagihan: ['tagihan', dbTagihan], mutu: ['mutu usaha', dbMutu], b2b: ['pelanggan usaha', dbB2b], kpi: ['margin & target', dbKpi] };
 /** Satu kelompok dasbor ('hari' · 'bulan' · 'stok' · 'tagihan' · 'mutu' · 'b2b' · 'tren'), dibungkus aman (galat = kalimat di kelompok itu) dan — kalau
  *  ingat(kunci, f) diberikan — diingat dengan kunci kelompoknya. Dipakai susunDasbor dan pemanasan di latar (kunci SAMA → hasil yang dipanaskan terpakai). */
 export function dbKelompok(kel, kini, rentang, ingat) {
@@ -179,8 +193,8 @@ export function dbKelompok(kel, kini, rentang, ingat) {
 // pemanasan di latar bisa menghitungnya SATU PER SATU dan Dasbor yang dibuka sesudahnya tinggal menggambar. Tanpa ingat = hitung langsung seperti dulu.
 export function susunDasbor(kini, rentang, lama, ingat) {
   const k = (nama) => dbKelompok(nama, kini, rentang, ingat);
-  if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, tren: k('tren') };
-  return { hari: k('hari'), bulan: k('bulan'), stok: k('stok'), tagihan: k('tagihan'), mutu: k('mutu'), b2b: k('b2b'), tren: k('tren') };
+  if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, kpi: lama.kpi, tren: k('tren') };
+  return { hari: k('hari'), bulan: k('bulan'), stok: k('stok'), tagihan: k('tagihan'), mutu: k('mutu'), b2b: k('b2b'), kpi: k('kpi'), tren: k('tren') };
 }
 /** Urutan pemanasan dasbor di latar: yang paling atas di layar dulu. */
-export const DB_PANAS = ['hari', 'bulan', 'stok', 'tagihan', 'tren', 'mutu', 'b2b'];
+export const DB_PANAS = ['hari', 'kpi', 'bulan', 'stok', 'tagihan', 'tren', 'mutu', 'b2b'];

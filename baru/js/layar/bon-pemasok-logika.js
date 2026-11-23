@@ -9,7 +9,7 @@
 // Uang toko: sistem lama tidak punya saldo per kantong, yang bisa dijaga TOTAL kas (kasPada; null bila titik kas belum disetel) — "dari mana uangnya" dicatat sebagai kolom.
 import { hitungUtangPemasok, kasPada } from '../mesin/beku.js';
 import { batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, ambilTutupHari, ambilPesananPemasok, cacheMentah, kunciSampai, namaSistemPemasok, tolakKunci, denganCacheSementara, ingatKasPada, ringkasArsip } from '../data/toko.js';
+import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, ambilTutupHari, ambilPesananPemasok, cacheMentah, kunciSampai, namaSistemPemasok, tolakKunci, denganCacheSementara, ingatKasPada, ringkasArsip, ingatPerVersi } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
 export const ATUR_BON_BAWAAN = { dekatHari: 7, admin: [{ nama: 'BI-FAST', n: 2500 }, { nama: 'Transfer antarbank', n: 6500 }] };
@@ -387,3 +387,37 @@ export function susunBetulBonLama(bonId, isi, alasan, w) {
   const data = Object.assign({}, H.baru, { alasanKoreksi: al, dikoreksiPada: w.kini, riwayat: bpRiwayat(H.m, w, { jenis: 'bonLama', teks: 'nilai ' + RP(H.m.nominal || 0) + ' → ' + RP(H.n) + ', tanggal ' + (H.m.bonTanggal || '—') + ' → ' + (H.tgl || '—') + ': ' + al, dari: { nominal: H.m.nominal, bonTanggal: H.m.bonTanggal || null }, ke: { nominal: H.n, bonTanggal: H.tgl || null }, alasan: al }) });
   return { dokumen: [{ koleksi: 'utangPemasokMutasi', data }], patch: { betul: null, kabar: 'Pembetulan tersimpan — ' + H.arti + '. Nilai lama ada di riwayat bon itu.', kabarAwas: false } };
 }
+
+// ==================== RATA-RATA HARI BAYAR PEMASOK (paket KPI laba, owner 24 Nov 2026, butir 13) ====================
+/**
+ * Berapa hari rata-rata toko membayar bon pemasok: tiap PEMBAYARAN (utangPemasokMutasi bayar) yang MENUNJUK bonnya (bonId — bon yang sama dengan Buku bon, bpSemuaBon)
+ * dalam N hari terakhir: hari = tanggal bayar − tanggal bon, ditimbang rupiah (seperti rata-rata hari bon pelanggan tertagih). Terpisah & DISEBUT, tidak dihitung:
+ * bon lama sebelum sistem (saldo awal — tanggalnya perkiraan), pembayaran yang tidak menunjuk bon yang ada, dan bayar bertanggal sebelum bonnya. Per pemasok & total.
+ * Bon yang dibayar tunai saat datang bukan bon (tidak dihitung). Diingat per versi data + hari + N. Baca saja.
+ */
+export function bpHariBayar(kini, hari) {
+  const akhir = hariIniIso(kini || new Date()); const N = Math.max(7, Math.min(365, Math.round(Number(hari) || 90)));
+  return ingatPerVersi('bpHariBayar|' + akhir + '|' + N, () => bpHariBayarHitung(akhir, N));
+}
+function bpHariBayarHitung(akhir, N) {
+  const awal = bpTambahHari(akhir, -(N - 1)); const dalam = (t) => !!t && t >= awal && t <= akhir;
+  const kosong = () => ({ n: 0, rp: 0 }); const T = { rp: 0, rh: 0, n: 0 }; const saldoAwal = kosong(), tanpaTunjuk = kosong(), janggal = kosong();
+  const pemasok = daftarPemasok().map((px) => {
+    const P = { kunci: px.kunci, nama: px.nama, rp: 0, rh: 0, n: 0, nBon: 0 }; const kena = {};
+    const bon = bpSemuaBon(px.nama); const ada = {}; bon.forEach((b) => { ada[b.id] = 1; });
+    bon.forEach((b) => { let ikut = false; (b.bayar || []).forEach((m) => { const n = Math.round(Number(m.nominal) || 0); if (!dalam(m.tanggal) || !(n > 0)) return; kena[String(m.id)] = 1;
+      if (b.jenis === 'saldoAwal') { saldoAwal.n += 1; saldoAwal.rp += n; return; }
+      const h = b.tanggal ? bpHariKe(m.tanggal) - bpHariKe(b.tanggal) : null; if (h === null || h < 0) { janggal.n += 1; janggal.rp += n; return; }
+      P.rp += n; P.rh += n * h; P.n += 1; ikut = true; }); if (ikut) P.nBon += 1; });
+    ambilUtangPemasokMutasi().forEach((m) => { if (m.tipe !== 'bayar' || bpNama(m.pemasok) !== bpNama(px.nama) || !dalam(m.tanggal) || kena[String(m.id)] || ada[String(m.bonId || '')]) return; const n = Math.round(Number(m.nominal) || 0); if (n > 0) { tanpaTunjuk.n += 1; tanpaTunjuk.rp += n; } });
+    T.rp += P.rp; T.rh += P.rh; T.n += P.n;
+    return Object.assign(P, { rataHari: P.rp > 0 ? P.rh / P.rp : null });
+  }).filter((P) => P.n > 0).sort((a, b) => b.rp - a.rp || a.nama.localeCompare(b.nama));
+  const rataHari = T.rp > 0 ? T.rh / T.rp : null;
+  const sebab = [saldoAwal.n ? saldoAwal.n + ' pembayaran bon lama sebelum sistem ' + RP(saldoAwal.rp) + ' (tanggal bonnya perkiraan)' : '', tanpaTunjuk.n ? tanpaTunjuk.n + ' pembayaran tidak menunjuk bon ' + RP(tanpaTunjuk.rp) : '',
+    janggal.n ? janggal.n + ' pembayaran bertanggal sebelum bonnya ' + RP(janggal.rp) : ''].filter(Boolean);
+  return { hari: N, awal, akhir, pemasok, total: { rp: T.rp, n: T.n, rataHari }, rataHari, saldoAwal, tanpaTunjuk, janggal, sebab, keadaan: T.n ? 'ada' : sebab.length ? 'belum' : 'kosong',
+    teks: rataHari === null ? (sebab.length ? 'Belum bisa dihitung — ' + sebab.join(' · ') : 'Belum ada pembayaran bon pemasok dalam ' + N + ' hari terakhir') : 'Bon pemasok dibayar rata-rata ' + bpHariTeks(rataHari) + ' sesudah barang datang (' + T.n + ' pembayaran, ' + N + ' hari terakhir)' };
+}
+/** "±12 hari" · "hari itu juga" · "—". */
+export const bpHariTeks = (h) => (h === null || h === undefined || !isFinite(h) ? '—' : h < 0.5 ? 'hari itu juga' : '±' + String(Math.round(h * 10) / 10).replace('.', ',') + ' hari');

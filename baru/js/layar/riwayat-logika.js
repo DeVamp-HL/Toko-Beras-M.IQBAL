@@ -132,3 +132,15 @@ function rwSusunHitung(S, kini) {
       + (bersihBisa && returTotal ? ' − retur ' + RP(Math.round(returTotal)) + ' = omzet ' + RP(Math.round(hidup.reduce((a, o) => a + o.total, 0) - returTotal)) : '') + (Object.keys(perCara).length ? ' · ' + ['Tunai', 'QRIS', 'Kredit'].filter((c) => perCara[c]).map((c) => (c === 'Kredit' ? 'Bon' : c) + ' ' + RP(Math.round(perCara[c]))).join(' · ') : ''),
     saringTeks: saring.length ? 'Saringan: ' + saring.join(' · ') : 'Semua nota sejak ' + (awal ? rwTanggalPanjang(awal) : 'awal'), kosong: !cocok.length ? (semua.length ? 'Tidak ada nota yang cocok dengan saringan ini.' : 'Belum ada penjualan tercatat.') : '' };
 }
+
+// ==================== NOTA TERBESAR (paket KPI laba, owner 24 Nov 2026, butir 10) ====================
+/** N nota TERBESAR rentang dari–sampai (iso, inklusif) — nota yang SAMA dengan Jual › Riwayat (rwDasar: kunci nota, total = Σ baris berlaku, cara bayar baku),
+ *  hanya yang berlaku / sebagian. Urut total terbesar, seri: terbaru dulu. Tiap nota membawa tujuan yang membuka nota itu di Riwayat (satu ketukan). Baca saja. */
+export function rwTerbesar(dari, sampai, n) {
+  const N = Math.max(1, Math.min(50, Number(n) || 10)); const D = rwDasar();
+  const cocok = D.daftar.filter((o) => (o.status === 'berlaku' || o.status === 'sebagian') && (!dari || o.tanggal >= dari) && o.tanggal <= sampai);
+  const urut = cocok.slice().sort((a, b) => b.total - a.total || (b.tanggal + ' ' + b.jam).localeCompare(a.tanggal + ' ' + a.jam) || (Number(b.id) || 0) - (Number(a.id) || 0));
+  const daftar = urut.slice(0, N).map((o) => ({ kunci: o.kunci, tanggal: o.tanggal, jam: o.jam, nama: o.nama, cara: o.cara, caraTeks: o.cara === 'Kredit' ? 'Bon' : o.cara, total: o.total, nBaris: o.nBaris, kg: o.kg, karcis: o.karcis,
+    tujuan: { ke: 'jual', jalur: 'riwayat', rwBuka: o.kunci } }));
+  return { dari, sampai, n: N, daftar, nNota: cocok.length, totalSemua: Math.round(cocok.reduce((a, o) => a + o.total, 0)), totalTampil: Math.round(daftar.reduce((a, o) => a + o.total, 0)) };
+}

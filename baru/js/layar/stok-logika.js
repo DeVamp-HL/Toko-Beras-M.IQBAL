@@ -356,6 +356,21 @@ function umBarangHitung(hari) {
   }).filter((r) => r.ada || r.minus || r.keluarKg > 0);
 }
 
+/**
+ * Paket KPI laba (owner 24 Nov 2026, butir 6 · GMROI): NILAI stok (modal) rata-rata tiap buku karung dari–sampai (iso, inklusif) = rata-rata sisa AKHIR HARI × nilai per kg
+ * buku pada hari itu — buku mesin yang SAMA dengan Umur & putaran (ingatStokKarung per tanggal; nilai per kg = hppTerakhirPerKg, angka yang dipakai neraca & tutup
+ * buku: FIFO = nilai sisa per kg). Sisa minus dihitung 0 (tidak ada modal yang tertanam). Hari ini memakai buku sekarang. Diingat per versi data + rentang.
+ * → { dari, sampai, n (hari), buku: { kunci: { rp, kg } } }. Baca saja.
+ */
+export function umNilaiRata(dari, sampai) { return ingatPerVersi('umNilaiRata|' + dari + '|' + sampai, () => umNilaiRataHitung(dari, sampai)); }
+function umNilaiRataHitung(dari, sampai) {
+  const hari = []; for (let d = dari; d <= sampai && hari.length < 400; d = umHariGeser(d, 1)) hari.push(d);
+  const jum = {}; hari.forEach((t) => { const B = ingatStokKarung(t); Object.keys(B).forEach((k) => { const x = B[k]; const kg = Math.max(0, Number(x.sisaKg) || 0); if (!(kg > 0)) return;
+    const j = jum[k] || (jum[k] = { rp: 0, kg: 0 }); j.kg += kg; j.rp += kg * (Number(x.hppTerakhirPerKg) || 0); }); });
+  const buku = {}; Object.keys(jum).forEach((k) => { buku[k] = { rp: hari.length ? jum[k].rp / hari.length : 0, kg: hari.length ? jum[k].kg / hari.length : 0 }; });
+  return { dari, sampai, n: hari.length, buku };
+}
+
 /** Ringkas untuk dasbor kelak: lambat laku, 5 merek tertua, kg bertanggal / tanpa tanggal / minus (menutup ke Σ sisa positif), putaran tumpukan merek. */
 export function umRingkas(kini) {
   const R = umBarang(kini); const berisi = R.filter((r) => r.ada); const A = umAtur();

@@ -17,7 +17,7 @@ export const SKALA = [['langsung', 'Langsung'], ['menit', 'Menit'], ['jam', 'Jam
 const LAPISAN = { langsung: ['m15', 'menit', 'jam'], menit: ['menit', 'jam', 'hari'], jam: ['jam', 'hari', 'bulan'], hari: ['hari', 'minggu', 'bulan'], minggu: ['minggu', 'bulan', 'tahun'], bulan: ['bulan', 'tahun', null], tahun: ['tahun', null, null] };
 const SEMUA_LAPIS = ['m15', 'menit', 'jam', 'hari', 'minggu', 'bulan', 'tahun'];
 const RK_NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-const JAM_BUKA = 5, JAM_TUTUP = 21;   // rentang cincin jam; nota di luar rentang tetap masuk angka, hanya tidak punya sel
+export const JAM_BUKA = 5, JAM_TUTUP = 21;   // rentang cincin jam; nota di luar rentang tetap masuk angka, hanya tidak punya sel
 
 const rkP2 = (n) => String(n).padStart(2, '0');
 const rkIso = (d) => hariIniIso(d);
