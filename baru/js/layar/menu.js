@@ -397,6 +397,7 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="kartu" data-k="staf-antre" style="gap: 4px;"><div class="label">Catatan dari perangkat ini</div>
         <div class="k2">${(L.antre || []).length ? (L.antre || []).length + ' menunggu server' : 'semua sudah sampai server'} · ${AL.ditolak.length ? AL.ditolak.length + ' DITOLAK server — menunggu owner memutuskan' : 'tidak ada yang ditolak'}</div></div>
       ${ntAplikasi() ? h`${gambarNotifTablet(s)}${gambarLayarPenuh(s)}` : ''}
+      ${gambarLancar(s)}
       <div class="pita-info" data-k="staf-ket">Laci menu owner (uang, laporan, harga, setelan) tidak termasuk hak ${namaP}. Server menegakkan: baca & catat baru; uang keluar dari tablet jadi titipan yang disetujui owner; koreksi & hapus tetap owner.</div>
     </section>`;
   }

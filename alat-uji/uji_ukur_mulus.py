@@ -63,6 +63,30 @@ ok('lama (sepersepuluh detik): 99 → "99 ms"; 150 → "0,2 dtk"; 820 → "0,8 d
 var T = lcTeksSalin(e, D, { perangkat: 'Tablet kasir', peramban: 'UA x', layarPx: '1280×800 @1.5' });
 ok('teks salin: kepala hari + perangkat, peramban, layar, ringkasan, per tempat (terberat dulu), kejadian terakhir; tanpa "Rp"', T.split('\n')[0] === 'KELANCARAN 2026-11-19 · Tablet kasir' && /peramban: UA x/.test(T) && /layar: 1280×800 @1.5/.test(T) && /Jual › Riwayat: 2 · 820 ms · 970 ms/.test(T) && /10:02 macet 820 ms · Jual › Riwayat/.test(T) && /10:01 ketuk 150 ms · Jual › Riwayat · rwBuka/.test(T) && T.indexOf('Rp') < 0
   && T.indexOf('Jual › Riwayat: 2') < T.indexOf('Stok: 2'), T);
+// ---- mulus Android paket 3: PENYEBAB bingkai panjang (long animation frame) per tempat
+var B0 = lcCatatBingkai(e, { ms: 99, skrip: 99, gaya: 0, tempat: 'Jual', fungsi: [] }, H);
+ok('bingkai: di bawah 100 ms tidak dicatat — isi yang sama', B0 === e);
+var B1 = lcCatatBingkai(e, { ms: 400, skrip: 300, gaya: 80, tempat: 'Jual › Sering', fungsi: [{ nama: 'gambarGulir (jual.js)', ms: 250 }, { nama: 'susunRak (jual-logika.js)', ms: 50 }] }, H);
+var B2 = lcCatatBingkai(B1, { ms: 200, skrip: 20, gaya: 170, tempat: 'Jual › Sering', fungsi: [{ nama: 'gambarGulir (jual.js)', ms: 20 }] }, H);
+var B3 = lcCatatBingkai(B2, { ms: 300, skrip: 900, gaya: 0, tempat: 'Ringkasan › Cincin', fungsi: [{ nama: '<b>x</b>', ms: 300 }] }, H);
+ok('bingkai: per tempat — kali, jumlah, skrip, gaya & tata letak menutup; fungsi dijumlah per nama; skrip tidak melebihi lama bingkai; isi lama tidak berubah',
+  J(B2.bingkai['Jual › Sering']) === J({ n: 2, total: 600, skrip: 320, gaya: 250, fungsi: { 'gambarGulir (jual.js)': 270, 'susunRak (jual-logika.js)': 50 } }) && B3.bingkai['Ringkasan › Cincin'].skrip === 300
+  && !e.bingkai && Object.keys(B1.bingkai).length === 1 && B3.bingkai['Ringkasan › Cincin'].fungsi['bx/b'] === 300, J(B3.bingkai));
+ok('bingkai: catatan ketuk/macet sesudahnya MEMBAWA penyebabnya; hari berganti = kosong', J(lcCatat(B3, { jenis: 'macet', ms: 300, tempat: 'Jual', jam: '10:09' }, H).bingkai) === J(B3.bingkai)
+  && !lcCatatBingkai(B3, { ms: 50, tempat: 'x' }, '2026-11-20').bingkai && !lcCatat(B3, { jenis: 'macet', ms: 300, tempat: 'Jual', jam: '00:01' }, '2026-11-20').bingkai);
+ok('bingkai: baca/simpan pulang-pergi sama; isi rusak dirapikan (angka minus → 0, teks bersih); tanpa bingkai tetap tanpa kunci bingkai', J(lcBaca(J(B3), H)) === J(B3)
+  && J(lcBaca(J(Object.assign({}, e, { bingkai: { '<i>J</i>': { n: -2, total: 'a', skrip: 5, gaya: 1, fungsi: { '<x>': -9 } } } })), H).bingkai) === J({ 'iJ/i': { n: 0, total: 0, skrip: 5, gaya: 1, fungsi: { x: 0 } } })
+  && !('bingkai' in lcBaca(J(e), H)), J(lcBaca(J(B3), H)));
+var B4 = e; for (var q = 0; q < 45; q++) B4 = lcCatatBingkai(B4, { ms: 150, skrip: 100, gaya: 0, tempat: 'T' + q, fungsi: [{ nama: 'f' + (q % 9), ms: 100 }] }, H);
+B4 = lcCatatBingkai(B4, { ms: 150, skrip: 100, gaya: 0, tempat: 'T0', fungsi: [{ nama: 'baru1', ms: 1 }, { nama: 'baru2', ms: 1 }, { nama: 'baru3', ms: 1 }, { nama: 'baru4', ms: 1 }, { nama: 'baru5', ms: 1 }, { nama: 'baru6', ms: 1 }] }, H);
+ok('bingkai: batas — paling banyak 30 tempat, 6 nama fungsi per tempat (tempat lama tetap bertambah)', Object.keys(B4.bingkai).length === 30 && B4.bingkai.T0.n === 2 && Object.keys(B4.bingkai.T0.fungsi).length === 6 && !B4.bingkai.T44, J(B4.bingkai.T0));
+var L1 = lcTeksBingkai('Jual › Sering', B2.bingkai['Jual › Sering']);
+ok('bingkai: baris teks "kali · skrip % · gaya & tata letak % · lain % · terberat"', L1 === 'Jual › Sering: 2 · skrip 53% · gaya & tata letak 42% · lain 5% · terberat: gambarGulir (jual.js) 270 ms, susunRak (jual-logika.js) 50 ms', L1);
+var U = lcUraiBingkai({ startTime: 1000, duration: 400, renderStart: 1300, styleAndLayoutStart: 1320, scripts: [{ duration: 200, sourceFunctionName: 'gambar', sourceURL: 'https://x/baru/js/layar/jual.js?v=1' }, { duration: 90, invoker: 'TimerHandler:setTimeout', sourceURL: '' }, { duration: 5, sourceFunctionName: 'kecil', sourceURL: 'a.js' }] });
+ok('bingkai: urai entri peramban → skrip = Σ skrip, gaya = akhir − mulai gaya & tata letak, dua fungsi terberat (nama + berkas)', U.ms === 400 && U.skrip === 295 && U.gaya === 80 && J(U.fungsi) === J([{ nama: 'gambar (jual.js)', ms: 200 }, { nama: 'TimerHandler:setTimeout', ms: 90 }]), J(U));
+var T3 = lcTeksSalin(B3, D, {}); var R3 = lcRingkas(B3, D);
+ok('bingkai: teks salin punya bagian penyebab (terberat dulu); kartu menyebut penyebab gabungan', /— penyebab bingkai panjang per tempat \(kali · skrip · gaya & tata letak · lain\) —/.test(T3) && T3.indexOf('Jual › Sering: 2 · skrip') > 0
+  && T3.indexOf('Jual › Sering: 2 · skrip') < T3.indexOf('Ringkasan › Cincin: 1 · skrip') && R3.baris[2] === 'Penyebab bingkai panjang: skrip 69% · gaya & tata letak 28% · lain 3%' && lcRingkas(e, D).baris.length === 2, T3 + ' || ' + J(R3.baris));
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
@@ -81,8 +105,10 @@ def periksa_statis(t):
     um = t[UM]; ap = t[AP]; mn = t[MN]; ix = t[IX]
     ok('dipasang app.js sekali, dengan nama layar + tab aktif sebagai tempat', "import { pasangUkurMulus } from './inti/ukur-mulus.js';" in ap and ap.count('pasangUkurMulus({ tempat: () => {') == 1 and "return NAMA_LAYAR[tabKini] + " in ap)
     ok('kartu "Kelancaran perangkat ini" di Sistem › Perangkat (tab Perangkat), dengan lihat / salin rincian & mulai dari nol',
-       "import { ukurMulusRingkas, ukurMulusSalin, ukurMulusKosongkan } from '../inti/ukur-mulus.js';" in mn and mn.count('${gambarLancar(s)}') == 1 and '<div style="font-weight: 700;">Kelancaran perangkat ini</div>' in mn
+       "import { ukurMulusRingkas, ukurMulusSalin, ukurMulusKosongkan } from '../inti/ukur-mulus.js';" in mn and mn.count('${gambarLancar(s)}') == 2 and '<div style="font-weight: 700;">Kelancaran perangkat ini</div>' in mn
        and 'data-aksi="lcBuka"' in mn and 'data-aksi="lcSalin"' in mn and 'data-aksi="lcNol"' in mn and 'lcNol: () => { ukurMulusKosongkan();' in mn)
+    ok('mulus Android paket 3: kartu juga di Menu akun tablet (staf) — owner minta kartunya dari CPad', "${ntAplikasi() ? h`${gambarNotifTablet(s)}${gambarLayarPenuh(s)}` : ''}\n      ${gambarLancar(s)}" in mn)
+    ok('mulus Android paket 3: penyebab bingkai dari long-animation-frame (peramban tanpa → tidak diukur)', "jenisAda.indexOf('long-animation-frame') >= 0" in um and "observe({ type: 'long-animation-frame', buffered: false })" in um and 'lcTerimaBingkai(e)' in um)
     ok('kartu menyebut apa yang dicatat & bahwa tidak dikirim ke server', 'Isi nota, nama, dan rupiah tidak ikut dicatat, dan tidak ada yang dikirim ke server.' in mn)
     ok('modul dipramuat index.html', '<link rel="modulepreload" href="js/inti/ukur-mulus.js">' in ix)
     ok('ukur-mulus TIDAK menulis ke server & tidak membaca data toko: hanya mengimpor format.js', um.count('import ') == 1 and "import { hariIniIso } from './format.js';" in um and 'firebase' not in um.replace('// ', '') and 'tulisDokumen' not in um and 'fetch(' not in um and 'sendBeacon' not in um)
@@ -123,7 +149,15 @@ KONTROL = [
     ('susulan kejadian yang sudah dicatat dihitung lagi', {UM: [("if (e.mulai - batas <= LC_JARAK_KETUK_MS) { batas = e.mulai; return; }", "")]}, ('jsc',)),
     ('tempat terberat diurut menurut nama, bukan jumlah waktu', {UM: [(".sort((a, b) => b.total - a.total || b.n - a.n || a.nama.localeCompare(b.nama)).slice(0, 3);", ".sort((a, b) => b.nama.localeCompare(a.nama)).slice(0, 3);")]}, ('jsc',)),
     ('pencatat tidak dipasang di app.js', {AP: [("pasangUkurMulus({ tempat: () => {", "(() => 0)({ tempat: () => {")]}, ('statis',)),
-    ('kartu kelancaran hilang dari Sistem › Perangkat', {MN: [("      ${gambarLancar(s)}\n", "")]}, ('statis',)),
+    ('kartu kelancaran hilang dari Sistem › Perangkat', {MN: [("      ${gambarNotifHp(s)}\n      ${gambarLancar(s)}\n", "      ${gambarNotifHp(s)}\n")]}, ('statis',)),
+    ('kartu kelancaran hilang dari Menu staf', {MN: [("${gambarLayarPenuh(s)}` : ''}\n      ${gambarLancar(s)}\n", "${gambarLayarPenuh(s)}` : ''}\n")]}, ('statis',)),
+    ('bingkai: skrip melebihi lama bingkai', {UM: [("skrip: lama.skrip + Math.min(ms, lcBulat(e.skrip))", "skrip: lama.skrip + lcBulat(e.skrip)")]}, ('jsc',)),
+    ('bingkai: catatan ketuk/macet membuang penyebab', {UM: [("  if (dasar.bingkai) out.bingkai = dasar.bingkai;", "")]}, ('jsc',)),
+    ('bingkai: tempat tumbuh tanpa batas', {UM: [("if (!bk[nama] && Object.keys(bk).length >= LC_MAKS_TEMPAT) return dasar;", "")]}, ('jsc',)),
+    ('bingkai: hari berganti tidak mengosongkan', {UM: [("const dasar = isi && isi.hari === hariIni ? isi : lcKosong(hariIni);", "const dasar = isi || lcKosong(hariIni);")]}, ('jsc',)),
+    ('bingkai: nama fungsi tanpa batas', {UM: [("if (fn[k] !== undefined || Object.keys(fn).length < LC_MAKS_FUNGSI) fn[k]", "fn[k]")]}, ('jsc',)),
+    ('bingkai: tidak diamati', {UM: [("observe({ type: 'long-animation-frame', buffered: false })", "observe({ type: 'longtask-x', buffered: false })")]}, ('statis',)),
+    ('bingkai: gaya dihitung dari mulai bingkai', {UM: [("const gaya = e.styleAndLayoutStart > 0 ? Math.max(0, akhir - e.styleAndLayoutStart) : 0;", "const gaya = e.duration;")]}, ('jsc',)),
     ('catatan dikirim ke server', {UM: [("function lcSimpan() { _jamSimpan = null; ", "function lcSimpan() { _jamSimpan = null; fetch('/x', { method: 'POST', body: JSON.stringify(_isi) }); ")]}, ('statis',)),
     ('simpanan lokal tanpa try/catch', {UM: [("try { localStorage.setItem(LC_KUNCI, JSON.stringify(_isi)); } catch (e) { /* simpanan penuh / dilarang: catatan hari ini tetap di ingatan */ }", "localStorage.setItem(LC_KUNCI, JSON.stringify(_isi));")]}, ('statis',)),
     ('pencatat membaca isi layar (teks tombol)', {UM: [("return a ? (a.dataset.aksi || ", "return a ? (a.textContent || a.dataset.aksi || ")]}, ('statis',)),
