@@ -492,3 +492,38 @@ export async function kemampuan() {
   [k.info, k.lampu, k.pindai, k.nfc, k.biometrik] = await Promise.all([coba('Perangkat', 'info'), coba('Lampu', 'dukung'), coba('Pindai', 'info'), coba('Nfc', 'info'), coba('Biometrik', 'info')]);
   return k;
 }
+
+// ---------- setelan layar Perangkat dikunci jari owner (owner 23 Nov 2026: sidik jari lain "lu yang pilih") ----------
+// Layar Perangkat (/baru/uji-cetak.html) tidak masuk akun — siapa pun yang memegang tablet bisa membukanya. Yang bisa merusak diam-diam: jalur/alamat printer,
+// lampu, mode kertas, dan PENANDA JARI (dihapus di sini = sidik jari owner Tahap A/B mati tanpa kabar; dipasang ulang = kunci baru). Begitu sidik jari owner
+// menyala di tablet ini (Tahap A belum hangus, atau Tahap B tersimpan), tombol-tombol itu minta tempel jari owner lewat penanda (kunci kuat, hangus bila ada
+// jari baru). Penanda hangus / tidak ada = tidak ada yang bisa dipakai memeriksa → dibuka tanpa jari dengan catatan keras (aplikasi toko mengabari owner soal
+// hangus) — kalau tidak, owner sendiri terkunci. Nama simpanan = SJ_KUNCI (layar/sidik-logika.js) & OW_KUNCI (layar/owner-tablet-logika.js), dijaga uji.
+export const SIDIK_SIMPANAN = ['miqbal_sidik_owner_v1', 'miqbal_owner_tablet_v1'];
+/** baca(kunci) → teks simpanan perangkat (localStorage.getItem). true = setelan layar Perangkat minta jari owner. */
+export function setelanTerkunciJari(baca) {
+  const j = (k) => { try { const o = JSON.parse(String((baca && baca(k)) || '')); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } };
+  const sj = j(SIDIK_SIMPANAN[0]); const ow = j(SIDIK_SIMPANAN[1]);
+  return !!((sj && sj.orang && sj.uid && sj.hangus !== true) || (ow && ow.data && ow.iv && ow.uid));
+}
+/** Tolakan penanda yang berarti "tidak ada yang bisa dipakai memeriksa" (bukan "jarinya salah / dibatalkan"). */
+export const penandaTakTerpakai = (e) => !!(e && (e.code === 'BIOMETRIK_HANGUS' || e.code === 'PENANDA_TIDAK_ADA'));
+
+// ---------- uji ukuran kiriman Bluetooth (owner 23 Nov 2026: "Uji ukuran, tanpa APK") ----------
+// hasil = [{ pita, byte, status: 'tercetak' | 'diam' | 'gagal' | 'sibuk', ms, pesan }] dari layar Perangkat (struk uji 1..5 pita, escpos.js epUjiUkuran).
+// Kesimpulan menurut KABAR printer saja — yang menentukan tetap kertasnya (jumlah garis hitam tebal & baris SELESAI), dan satu putaran belum bukti.
+const ukRibu = (b) => String(Math.round((Number(b) || 0) / 100) / 10).replace('.', ',') + ' ribu byte';
+export function kesimpulanUkuran(hasil) {
+  const h = (hasil || []).filter(Boolean); const cocok = ' Cocokkan dengan kertasnya: tiap struk uji harus punya garis hitam tebal sebanyak pitanya dan baris SELESAI.';
+  if (!h.length) return { pola: 'kosong', baik: false, teks: 'Belum ada struk uji yang dikirim' };
+  const tolak = h.filter((x) => x.status === 'gagal' || x.status === 'sibuk');
+  if (tolak.length) return { pola: 'tidak-sah', baik: false, teks: 'Uji TIDAK SAH: struk uji ' + tolak[0].pita + ' pita ditolak (' + String(tolak[0].pesan || 'tanpa kabar') + ') — periksa Bluetooth & printer dulu, lalu ulangi.' };
+  const ok = h.filter((x) => x.status === 'tercetak'); const diam = h.filter((x) => x.status === 'diam');
+  const urut = h.map((x) => x.pita + ' pita ' + (x.status === 'tercetak' ? 'keluar' : 'DIAM')).join(' · ');
+  if (!diam.length) return { pola: 'semua', baik: true, teks: 'Menurut printer semuanya tercetak (' + urut + ').' + cocok + ' Kertasnya juga lengkap → ulangi sekali lagi; kalau tetap lengkap, struk toko yang hilang bukan soal ukuran saja.' };
+  if (!ok.length) return { pola: 'semua-diam', baik: false, teks: 'Semuanya DIAM, termasuk yang terkecil (' + ukRibu(h[0].byte) + ') — Bluetooth sedang bermasalah, atau batasnya di bawah itu. Coba Cetak contoh gaya TEKS lewat Bluetooth, lalu ulangi uji ini.' };
+  const maksOk = Math.max.apply(null, ok.map((x) => x.byte)); const minDiam = Math.min.apply(null, diam.map((x) => x.byte));
+  if (maksOk < minDiam) return { pola: 'ukuran', baik: false, batasKeluar: maksOk, batasDiam: minDiam, teks: 'Berpola UKURAN (' + urut + '): sampai ' + ukRibu(maksOk) + ' keluar, mulai ' + ukRibu(minDiam)
+    + ' printer diam. Dugaan "printer kewalahan menerima kiriman besar lewat Bluetooth" MENGUAT — belum bukti: ulangi sekali lagi; pola yang sama dua kali = cukup untuk membangun obatnya.' + cocok };
+  return { pola: 'acak', baik: false, teks: 'TIDAK berpola ukuran (' + urut + '): ada yang kecil diam atau yang besar keluar. Dugaan "kewalahan karena ukuran" MELEMAH — ulangi sekali lagi; sebab lain (sambungan putus-sambung, printer sibuk) yang perlu dicari.' + cocok };
+}

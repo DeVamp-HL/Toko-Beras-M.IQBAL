@@ -4,12 +4,13 @@
 // disimpan di localStorage perangkat (inti/printer.js), dipakai tombol Cetak di layar Jual.
 // Paket S1 (19 Nov 2026): layar PERANGKAT — jalur cetak SDK SUNMI diuji & dipilih di sini; keadaan printer, scanner, lampu, kartu nama aplikasi.
 // Paket S4 (19 Nov 2026): printer lewat Bluetooth, mode kertas printer, label barang (contoh), lampu berwarna per kejadian, sidik jari (periksa sensor).
-import { epContohGaris, EP_POTONG, EP_KOLOM } from '../inti/escpos.js';
+import { epContohGaris, EP_POTONG, EP_KOLOM, epUjiUkuran, EP_UJI_PITA_MAKS } from '../inti/escpos.js';
 import { usbAda, usbMinta, usbDiingat, usbKirim, usbRingkas } from '../inti/usb-cetak.js';
 import { siapkanLogo, logoKeTeks, teksKeLogo, siapkanHuruf, gambarStruk } from '../inti/struk-kanvas.js';
 import { PR_GAYA, PR_JALUR, PR_LABEL_CARA, prAtur, prSimpan, asliAda, asliDaftar, susunCetak, kirimCetak, namaJalur, susunLabel, cetakLabel } from '../inti/printer.js';
 import { kemampuan, printerStatus, padaPindai, padaTempel, lampuPadam, lewatJalur, lewatSdk, namaLewat, printerBt, printerMode, printerSetelMode, MODE_KERTAS, kalimatModeKertas,
-  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak, sidikJariKelas, penandaPasang, penandaCek, penandaHapus, sidikJariKunci, penandaTolak, hasilTakDiketahui, masihMencetak, printerJaringanStatus } from '../inti/perangkat.js';
+  LAMPU_KEJADIAN, LAMPU_WARNA, LAMPU_MATI, lampuAtur, lampuSimpan, lampuKejadian, sidikJariInfo, sidikJariUji, sidikJariTolak, sidikJariKelas, penandaPasang, penandaCek, penandaHapus, sidikJariKunci, penandaTolak, hasilTakDiketahui, masihMencetak, printerJaringanStatus,
+  kesimpulanUkuran, setelanTerkunciJari, penandaTakTerpakai } from '../inti/perangkat.js';
 
 const $ = (id) => document.getElementById(id);
 let printer = null;          // WebUSB (peramban biasa)
@@ -149,6 +150,32 @@ async function periksaBt() {
   } catch (e) { $('ucBtHasil').textContent = 'Bluetooth tidak bisa ditanya: ' + pesan(e) + ' — pasang APK terbaru.'; $('ucBtHasil').className = 'awas'; tulisLog('Periksa Bluetooth gagal: ' + pesan(e), true); }
   $('ucBt').disabled = false;
 }
+// ---------- uji ukuran kiriman Bluetooth (owner 23 Nov 2026: "Uji ukuran, tanpa APK") ----------
+// Struk uji 1..5 pita gambar lewat SDK SUNMI Bluetooth, SATU PER SATU: tiap struk menunggu kabar printer (tercetak / diam ±43 dtk / ditolak), lalu jeda
+// supaya printer selesai mengeluarkan kertasnya. Jalur selalu 'sunmi-bt' apa pun yang dipilih di formulir. Struk yang jatuh ke kabel = uji tidak sah.
+const UKURAN_JEDA_MS = 5000;
+async function ujiUkuran() {
+  const a = isian(); const hasil = []; $('ucUkuran').disabled = true; $('ucUkuranHasil').className = '';
+  tulisLog('UJI UKURAN Bluetooth mulai: ' + EP_UJI_PITA_MAKS + ' struk uji, 1–' + EP_UJI_PITA_MAKS + ' pita gambar, satu per satu menunggu kabar printer');
+  for (let n = 1; n <= EP_UJI_PITA_MAKS; n++) {
+    const u = epUjiUkuran(n, { kertas: a.kertas, potong: a.potong, umpan: a.umpan, total: EP_UJI_PITA_MAKS }); const awal = 'Uji ukuran ' + n + '/' + EP_UJI_PITA_MAKS + ' · ' + n + ' pita · ' + u.byte.length + ' byte · ';
+    $('ucUkuranHasil').textContent = 'Mengirim struk uji ' + n + '/' + EP_UJI_PITA_MAKS + ' (' + u.byte.length + ' byte) lewat Bluetooth…';
+    const mulaiPada = Date.now(); let r;
+    try {
+      const k = await kirimCetak(u.byte, 'sunmi-bt');
+      if (k.cadanganDari) { r = { pita: n, byte: u.byte.length, status: 'gagal', ms: Date.now() - mulaiPada, pesan: 'Bluetooth tidak jalan, struk uji keluar lewat kabel USB: ' + k.cadanganDari }; tulisLog(awal + r.pesan, true); }
+      else { r = { pita: n, byte: u.byte.length, status: 'tercetak', ms: Date.now() - mulaiPada }; tulisLog(awal + 'TERCETAK menurut printer · ' + r.ms + ' ms'); }
+    } catch (e) {
+      r = { pita: n, byte: u.byte.length, status: masihMencetak(e) ? 'sibuk' : hasilTakDiketahui(e) ? 'diam' : 'gagal', ms: Date.now() - mulaiPada, pesan: pesan(e) };
+      tulisLog(awal + (r.status === 'diam' ? 'printer DIAM (tidak mengabari) · ' : 'DITOLAK · ') + pesanGagal(e, mulaiPada), true);
+    }
+    hasil.push(r);
+    if (r.status === 'gagal' || r.status === 'sibuk') break;
+    if (n < EP_UJI_PITA_MAKS) await new Promise((selesai) => setTimeout(selesai, UKURAN_JEDA_MS));
+  }
+  const K = kesimpulanUkuran(hasil); $('ucUkuranHasil').textContent = K.teks; $('ucUkuranHasil').className = K.baik ? 'baik' : 'awas';
+  tulisLog('UJI UKURAN selesai: ' + K.teks, !K.baik); $('ucUkuran').disabled = false;
+}
 async function bacaMode(diam) {
   $('ucModeBaca').disabled = true; if (!diam) { $('ucModeHasil').textContent = 'Menanyakan mode kertas…'; $('ucModeHasil').className = ''; }
   try {
@@ -253,6 +280,25 @@ async function tampilSunmi() {
   $('ucKemampuan').textContent = JSON.stringify(k, null, 2); $('ucKemampuan').hidden = false;
 }
 
+// ---------- setelan dikunci jari owner (owner 23 Nov 2026: sidik jari lain "lu yang pilih") ----------
+// Hanya yang MENGUBAH: simpan setelan printer, simpan lampu, pindah mode kertas, pasang / hapus penanda. Periksa, cetak contoh, uji ukuran, label contoh tetap bebas.
+const bacaLokal = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const terkunciJari = () => setelanTerkunciJari(bacaLokal);
+function tampilKunciJari() {
+  $('ucKunciJari').textContent = terkunciJari() ? 'Setelan di layar ini dikunci jari owner: Simpan setelan, Simpan lampu, Pindah mode, Pasang / Hapus penanda minta tempel jari owner. Periksa & cetak contoh tetap bebas.'
+    : 'Kunci jari owner belum menyala di tablet ini — setelan di layar ini bisa diubah siapa pun yang memegang tablet.';
+  $('ucKunciJari').className = terkunciJari() ? 'baik' : '';
+}
+async function pintuJari(apa) {
+  if (!terkunciJari()) return true;
+  try { await sidikJariKunci(); tulisLog(apa + ' — dibuka jari owner'); return true; } catch (e) {
+    const t = penandaTolak(e);
+    if (penandaTakTerpakai(e)) { tulisLog(apa + ': kunci jari owner TIDAK BISA dipakai (' + t.kalimat + ') — dibuka TANPA jari; aplikasi toko mengabari owner soal penanda yang hangus', true); return true; }
+    tulisLog(apa + ' DITOLAK — ' + (t.batal ? 'sidik jari dibatalkan' : t.kalimat), true); return false;
+  }
+}
+const lewatJari = (apa, kerja) => async () => { if (await pintuJari(apa)) await kerja(); };
+
 function simpan() {
   const ok = prSimpan(isian());
   tulisLog(ok ? 'Setelan tersimpan untuk perangkat ini — tombol Cetak di layar Jual memakainya' : 'Setelan TIDAK tersimpan (penyimpanan perangkat ditolak)', !ok);
@@ -265,31 +311,33 @@ function mulai() {
   PR_JALUR.forEach((p) => { const o = document.createElement('option'); o.value = p[0]; o.textContent = p[1]; $('ucJalur').appendChild(o); });
   PR_LABEL_CARA.forEach((p) => { const o = document.createElement('option'); o.value = p[0]; o.textContent = p[1]; $('ucLabelCara').appendChild(o); });
   MODE_KERTAS.forEach((p) => { const o = document.createElement('option'); o.value = String(p[0]); o.textContent = p[1]; $('ucModeKertas').appendChild(o); });
-  isiForm(prAtur());
+  isiForm(prAtur()); tampilKunciJari();
 
   const app = asliAda();
   $('ucDukung').textContent = app ? 'Aplikasi tablet kasir — cetak langsung ke printer USB.'
     : usbAda() ? 'Peramban biasa (WebUSB). Di Sunmi CPad pakai aplikasi tablet kasir (APK).' : 'Peramban ini tidak bisa mencetak ke USB — pakai aplikasi tablet kasir (APK).';
   $('ucDukung').className = app ? 'baik' : 'awas';
   $('ucPilihBaris').hidden = app; $('ucJalurBaris').hidden = !app; $('ucPrinterSunmi').hidden = !app; $('ucSunmi').hidden = !app;
-  $('ucLabel').hidden = !app;
+  // kunci jari hanya berarti di aplikasi tablet
+  $('ucLabel').hidden = !app; $('ucKunciJari').hidden = !app;
   if (app) {
     $('ucStatus').addEventListener('click', periksaPrinter);
     $('ucBt').addEventListener('click', periksaBt);
+    $('ucUkuran').addEventListener('click', ujiUkuran);
     $('ucModeBaca').addEventListener('click', () => bacaMode(false));
-    $('ucModeSetel').addEventListener('click', setelMode);
+    $('ucModeSetel').addEventListener('click', lewatJari('Pindah mode kertas', setelMode));
     $('ucLabelCetak').addEventListener('click', cetakLabelContoh);
     ['ucLabelCara', 'ucLabelLebar', 'ucLabelTinggi', 'ucLabelCelah', 'ucLabelPotong', 'ucKertas'].forEach((id) => $(id).addEventListener('change', pratinjauLabel));
     pratinjauLabel();
     lampuIsi = lampuAtur(); gambarLampu();
-    $('ucLampuSimpan').addEventListener('click', () => { const ok = lampuSimpan(lampuIsi); tulisLog(ok ? 'Setelan lampu tersimpan untuk tablet ini' : 'Setelan lampu TIDAK tersimpan (penyimpanan perangkat ditolak)', !ok); });
+    $('ucLampuSimpan').addEventListener('click', lewatJari('Simpan lampu', () => { const ok = lampuSimpan(lampuIsi); tulisLog(ok ? 'Setelan lampu tersimpan untuk tablet ini' : 'Setelan lampu TIDAK tersimpan (penyimpanan perangkat ditolak)', !ok); }));
     $('ucLampuBawaan').addEventListener('click', () => { lampuIsi = lampuAtur(null); gambarLampu(); tulisLog('Lampu dikembalikan ke bawaan di formulir — tekan Simpan lampu supaya berlaku'); });
     $('ucLampuPadam').addEventListener('click', async () => { const r = await lampuPadam(); tulisLog('Lampu padam: ' + (r && r.ok ? 'jalan' : 'tidak jalan'), !(r && r.ok)); });
     $('ucSidikUji').addEventListener('click', ujiSidik);
-    $('ucPenandaPasang').addEventListener('click', () => tombolPenanda('ucPenandaPasang', penandaPasang, () => 'Penanda terpasang — kunci di tablet ini wajib sidik jari kuat dan hangus bila ada jari baru'));
+    $('ucPenandaPasang').addEventListener('click', lewatJari('Pasang penanda', () => tombolPenanda('ucPenandaPasang', penandaPasang, () => 'Penanda terpasang — kunci di tablet ini wajib sidik jari kuat dan hangus bila ada jari baru')));
     $('ucSidikKunci').addEventListener('click', () => tombolPenanda('ucSidikKunci', sidikJariKunci, (r) => 'Uji kunci LULUS — jari membuka kunci penanda (' + r.panjang + ' byte)'));
     $('ucPenandaCek').addEventListener('click', () => cekPenandaLayar(false));
-    $('ucPenandaHapus').addEventListener('click', () => tombolPenanda('ucPenandaHapus', penandaHapus, () => 'Penanda dihapus'));
+    $('ucPenandaHapus').addEventListener('click', lewatJari('Hapus penanda', () => tombolPenanda('ucPenandaHapus', penandaHapus, () => 'Penanda dihapus')));
     let nPindai = 0;
     padaPindai((x) => { nPindai += 1; $('ucPindai').textContent = '"' + x.data + '" · ' + x.data.length + ' huruf · scan ke-' + nPindai; tulisLog('Scan diterima: ' + x.data); });
     let nTempel = 0;
@@ -300,7 +348,7 @@ function mulai() {
   $('ucPilih').addEventListener('click', () => pilih(false));
   $('ucPilihSemua').addEventListener('click', () => pilih(true));
   $('ucCetak').addEventListener('click', cetak);
-  $('ucSimpan').addEventListener('click', simpan);
+  $('ucSimpan').addEventListener('click', lewatJari('Simpan setelan printer', simpan));
   $('ucLogoBerkas').addEventListener('change', pilihLogo);
   $('ucLogoUkuran').addEventListener('change', prosesLogo);
   $('ucLogoHapus').addEventListener('click', () => { gambarLogo = null; logo = ''; $('ucLogoBerkas').value = ''; tulisLog('Logo dilepas'); pratinjau(); });

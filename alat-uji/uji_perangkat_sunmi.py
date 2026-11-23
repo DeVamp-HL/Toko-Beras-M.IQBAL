@@ -475,6 +475,32 @@ const tolak = (pesan, kode) => () => { const e = new Error(pesan); if (kode) e.c
   A = pasangAplikasi(['CetakUsb'], {}); const KB0 = await kemampuan();
   cek('aplikasi lama tanpa plugin Biometrik: tidak dipanggil, biometrik = null', KB0.biometrik === null && KB0.plugin.Biometrik === false && A.hitung('Biometrik.info') === 0, A.catat.join(','));
 
+  // ---- uji ukuran kiriman Bluetooth (owner 23 Nov 2026): kesimpulan dari kabar printer — jujur soal "belum bukti" ----
+  const uk = (st) => st.map((s, i) => ({ pita: i + 1, byte: 17300 * (i + 1), status: s, ms: 1000, pesan: s === 'gagal' ? 'printer tidak tersambung' : '' }));
+  const K1 = kesimpulanUkuran(uk(['tercetak', 'tercetak', 'diam', 'diam', 'diam']));
+  cek('uji ukuran: kecil keluar & besar diam = pola UKURAN, batasnya disebut, dugaan MENGUAT tapi "belum bukti" + suruh ulangi', K1.pola === 'ukuran' && K1.batasKeluar === 34600 && K1.batasDiam === 51900
+    && /MENGUAT/.test(K1.teks) && /belum bukti/.test(K1.teks) && /ulangi/.test(K1.teks) && /34,6 ribu byte/.test(K1.teks) && /garis hitam tebal/.test(K1.teks), K1.teks);
+  const K2 = kesimpulanUkuran(uk(['tercetak', 'diam', 'tercetak', 'diam', 'tercetak']));
+  cek('uji ukuran: kecil diam / besar keluar = TIDAK berpola ukuran, dugaan MELEMAH', K2.pola === 'acak' && /MELEMAH/.test(K2.teks), K2.teks);
+  const K3 = kesimpulanUkuran(uk(['tercetak', 'tercetak', 'tercetak', 'tercetak', 'tercetak']));
+  cek('uji ukuran: semua keluar = baik, tetap minta cocokkan kertas & ulangi', K3.pola === 'semua' && K3.baik && /Cocokkan/.test(K3.teks) && /ulangi/.test(K3.teks), K3.teks);
+  const K4 = kesimpulanUkuran(uk(['tercetak', 'gagal']));
+  cek('uji ukuran: struk ditolak (tidak tersambung / jatuh ke kabel) = uji TIDAK SAH, bukan kesimpulan ukuran', K4.pola === 'tidak-sah' && !K4.baik && /TIDAK SAH/.test(K4.teks) && /tidak tersambung/.test(K4.teks), K4.teks);
+  const K5 = kesimpulanUkuran(uk(['diam', 'diam', 'diam', 'diam', 'diam']));
+  cek('uji ukuran: semua diam (termasuk yang terkecil) = bukan pola ukuran, sarankan gaya teks', K5.pola === 'semua-diam' && /terkecil/.test(K5.teks) && /TEKS/.test(K5.teks), K5.teks);
+  // ---- setelan layar Perangkat dikunci jari owner (owner 23 Nov 2026: sidik jari lain "lu yang pilih") ----
+  const lk = (isi) => (k) => (isi[k] === undefined ? null : JSON.stringify(isi[k]));
+  const SJ = SIDIK_SIMPANAN[0], OW = SIDIK_SIMPANAN[1];
+  cek('kunci jari: menyala bila sidik jari owner Tahap A aktif (belum hangus) atau sandi owner Tahap B tersimpan; mati bila tidak ada / hangus / rusak',
+    setelanTerkunciJari(lk({ [SJ]: { orang: 'o1', uid: 'u1', dipasang: 'x' } })) === true && setelanTerkunciJari(lk({ [OW]: { data: 'd', iv: 'i', uid: 'u1' } })) === true
+    && setelanTerkunciJari(lk({})) === false && setelanTerkunciJari(lk({ [SJ]: { orang: 'o1', uid: 'u1', hangus: true } })) === false && setelanTerkunciJari(() => '{rusak') === false
+    && setelanTerkunciJari(lk({ [SJ]: { orang: '', uid: 'u1' } })) === false && setelanTerkunciJari(lk({ [OW]: { data: 'd', uid: 'u1' } })) === false && setelanTerkunciJari(null) === false
+    && setelanTerkunciJari(() => { throw new Error('penyimpanan ditolak'); }) === false);
+  const ek = (kode) => { const e = new Error('x'); e.code = kode; return e; };
+  cek('kunci jari: penanda hangus / tidak ada = tidak terpakai (dibuka tanpa jari, berkalimat); jari salah / dibatalkan = TIDAK', penandaTakTerpakai(ek('BIOMETRIK_HANGUS')) && penandaTakTerpakai(ek('PENANDA_TIDAK_ADA'))
+    && !penandaTakTerpakai(ek('BIOMETRIK_13')) && !penandaTakTerpakai(ek('PENANDA_GAGAL')) && !penandaTakTerpakai(null));
+  cek('uji ukuran: kosong & sibuk', kesimpulanUkuran([]).pola === 'kosong' && kesimpulanUkuran(uk(['sibuk'])).pola === 'tidak-sah');
+
   print(JSON.stringify(hasil));
 })().catch((e) => { print(JSON.stringify([{ nama: 'pemeriksa jatuh', ok: false, ket: String(e && e.stack || e) }])); });
 """
@@ -860,6 +886,24 @@ def periksa_statis(perangkat_js):
        and "const gagal = PR.sebutPrinter(j) + ' gagal' + (n ? ' sesudah ' + n + ' lembar' : '') + ' (' + (e && e.message ? e.message : e) + ') — ';" in antar)
     ok('perintah label: kabar "tanpa kabar" tidak menyebut mode printer (uji owner: dikirim juga saat printer di mode tanpa alas)',
        'di mode label tidak mengabari' not in ujs and 'di mode label tidak mengabari' not in jual and 'printer tidak mengabari hasil perintah label' in ujs and 'printer tidak mengabari hasil perintah label' in jual)
+    # setelan layar Perangkat dikunci jari owner (owner 23 Nov 2026): nama simpanan = SJ_KUNCI & OW_KUNCI; hanya tombol yang MENGUBAH lewat jari
+    sl = baca('baru', 'js', 'layar', 'sidik-logika.js'); owl = baca('baru', 'js', 'layar', 'owner-tablet-logika.js')
+    ok('kunci jari: nama simpanan sama dengan sidik-logika (SJ_KUNCI) & owner-tablet-logika (OW_KUNCI)', "export const SIDIK_SIMPANAN = ['miqbal_sidik_owner_v1', 'miqbal_owner_tablet_v1'];" in pk
+       and "export const SJ_KUNCI = 'miqbal_sidik_owner_v1';" in sl and "export const OW_KUNCI = 'miqbal_owner_tablet_v1';" in owl)
+    dijari = ["$('ucModeSetel').addEventListener('click', lewatJari('Pindah mode kertas', setelMode));", "$('ucLampuSimpan').addEventListener('click', lewatJari('Simpan lampu',",
+              "$('ucPenandaPasang').addEventListener('click', lewatJari('Pasang penanda',", "$('ucPenandaHapus').addEventListener('click', lewatJari('Hapus penanda',",
+              "$('ucSimpan').addEventListener('click', lewatJari('Simpan setelan printer', simpan));"]
+    bebas = ["$('ucStatus').addEventListener('click', periksaPrinter);", "$('ucCetak').addEventListener('click', cetak);", "$('ucUkuran').addEventListener('click', ujiUkuran);",
+             "$('ucLabelCetak').addEventListener('click', cetakLabelContoh);", "$('ucModeBaca').addEventListener('click', () => bacaMode(false));", "$('ucSidikUji').addEventListener('click', ujiSidik);"]
+    ok('kunci jari: simpan setelan, simpan lampu, pindah mode, pasang & hapus penanda lewat jari owner; periksa / cetak contoh / uji ukuran / label / baca mode / uji sidik tetap bebas',
+       all(x in ujs for x in dijari) and all(x in ujs for x in bebas) and ujs.count("addEventListener('click', lewatJari(") == 5, [x for x in dijari + bebas if x not in ujs])
+    ok('kunci jari: gerbangnya memakai penanda (sidikJariKunci), bukan sekadar cocok/tidak; hangus / tidak ada = dibuka tanpa jari dengan catatan keras; keadaan kunci tampil di halaman',
+       'try { await sidikJariKunci(); tulisLog(apa + ' in ujs and 'if (penandaTakTerpakai(e)) {' in ujs and 'dibuka TANPA jari' in ujs and 'isiForm(prAtur()); tampilKunciJari();' in ujs and 'id="ucKunciJari"' in uhtml)
+    # uji ukuran kiriman Bluetooth (owner 23 Nov 2026): tombol di kartu Printer struk, selalu lewat Bluetooth, satu per satu, kabel = tidak sah
+    ok('uji-cetak.js: uji ukuran Bluetooth — tombol di kartu Printer struk, jalur selalu sunmi-bt, satu per satu menunggu kabar, jatuh ke kabel/ditolak = berhenti & tidak sah',
+       'id="ucUkuran"' in kartu('ucPrinterSunmi') and 'id="ucUkuranHasil"' in kartu('ucPrinterSunmi') and "$('ucUkuran').addEventListener('click', ujiUkuran);" in ujs
+       and "await kirimCetak(u.byte, 'sunmi-bt');" in ujs and "if (k.cadanganDari) { r = { pita: n, byte: u.byte.length, status: 'gagal'" in ujs
+       and "if (r.status === 'gagal' || r.status === 'sibuk') break;" in ujs and 'const K = kesimpulanUkuran(hasil);' in ujs and 'epUjiUkuran(n, {' in ujs)
     alur = baca('.github', 'workflows', 'apk.yml')
     ok('apk.yml: tanda tangan V1 dan V2 dinyalakan & dibuktikan', '--v1-signing-enabled true --v2-signing-enabled true' in alur and "grep -q 'Verified using v1 scheme (JAR signing): true'" in alur and "grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true'" in alur)
     return h
@@ -880,6 +924,16 @@ def periksa(perangkat_js, pasang_py, diam=False):
 
 # (nama, berkas 'js' | 'py', lama, baru)
 MUTASI = [
+    # setelan layar Perangkat dikunci jari owner (owner 23 Nov 2026)
+    ('kunci jari: tetap menyala walau penanda hangus (owner terkunci sendiri)', 'js', "sj.hangus !== true", "true"),
+    ('kunci jari: sandi owner Tahap B tidak dihitung', 'js', " || (ow && ow.data && ow.iv && ow.uid)", ""),
+    ('kunci jari: hangus dianggap jari salah (owner terkunci)', 'js', "e.code === 'BIOMETRIK_HANGUS' || ", ""),
+    ('kunci jari: simpanan rusak melempar (layar Perangkat jatuh)', 'js', "try { const o = JSON.parse(String((baca && baca(k)) || '')); return o && typeof o === 'object' ? o : null; } catch (e) { return null; }", "const o = JSON.parse(String((baca && baca(k)) || '')); return o && typeof o === 'object' ? o : null;"),
+    # uji ukuran kiriman Bluetooth (owner 23 Nov 2026)
+    ('uji ukuran: pola ukuran tidak dikenali', 'js', "if (maksOk < minDiam) return { pola: 'ukuran'", "if (false) return { pola: 'ukuran'"),
+    ('uji ukuran: struk yang ditolak / jatuh ke kabel ikut disimpulkan', 'js', "const tolak = h.filter((x) => x.status === 'gagal' || x.status === 'sibuk');", "const tolak = [];"),
+    ('uji ukuran: kesimpulan mengaku pasti (tanpa "belum bukti")', 'js', " MENGUAT — belum bukti: ulangi sekali lagi;", " TERBUKTI;"),
+    ('uji ukuran: semua diam dianggap pola ukuran', 'js', "  if (!ok.length) return { pola: 'semua-diam'", "  if (false) return { pola: 'semua-diam'"),
     ('halangan printer tidak dikenali → struk dobel lewat USB', 'js', "e.code.indexOf('PRINTER_') === 0", "e.code.indexOf('PRINTER_') === 99"),
     ('jalur SUNMI tidak pernah jatuh ke CetakUsb', 'js', "if (galatPrinter(e)) throw e;", "throw e;"),
     ('printer tidak dilepas sebelum jatuh ke CetakUsb', 'js', "try { await panggilAsli('PrinterSunmi', 'lepas', {}); } catch (e2) { /* APK lama: plugin tidak ada */ }", ""),

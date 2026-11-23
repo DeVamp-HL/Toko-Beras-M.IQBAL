@@ -56,6 +56,7 @@
     <section>
       <h2>Jalur cetak</h2>
       <p id="ucDukung">Memeriksa…</p>
+      <p id="ucKunciJari" hidden></p>
       <div id="ucPilihBaris">
         <p>Peramban biasa: colok printer → <b>Pilih printer</b>; daftar kosong → <b>Tampilkan semua USB</b>.</p>
         <button id="ucPilih" type="button">Pilih printer</button>
@@ -80,6 +81,10 @@
       <p id="ucStatusHasil"></p>
       <button id="ucBt" type="button">Periksa Bluetooth</button>
       <p id="ucBtHasil">Printer yang sudah dipasangkan ke tablet lewat Bluetooth muncul di sini.</p>
+      <h2>Uji ukuran kiriman Bluetooth</h2>
+      <p>Struk bergambar lewat Bluetooth kadang tidak keluar. Tombol ini mengirim <b>5 struk uji</b> lewat Bluetooth, ukurannya naik: 1, 2, 3, 4, lalu 5 pita gambar (±17 sampai ±86 ribu byte), satu per satu menunggu kabar printer (paling lama ±4 menit). Tiap pita berakhir dengan <b>satu garis hitam tebal</b>; baris <b>SELESAI</b> di ujung struk hanya keluar kalau seluruh kiriman sampai. Sesudahnya: foto kelima struknya + screenshot catatan di bawah, kirim ke Claude. Printer harus sudah dipasangkan (Periksa Bluetooth).</p>
+      <button id="ucUkuran" type="button">Uji ukuran Bluetooth (5 struk)</button>
+      <p id="ucUkuranHasil"></p>
       <h2>Mode kertas printer</h2>
       <p>Printer ini punya tiga mode: struk, label (stiker bercelah), dan stiker tanpa alas. Pindah mode = ganti gulungan kertasnya juga. Sesudah pindah, printer bisa berbunyi dan mencetak tanda modenya. Mode hanya bisa dibaca dan dipindah lewat kabel USB atau Bluetooth; di jalur jaringan dua-duanya dicoba sendiri (Bluetooth dulu, lalu kabel).</p>
       <label><span>Mode</span><select id="ucModeKertas"></select></label>

@@ -236,6 +236,26 @@ export function epTsplLabel(isi, opsi) {
   return { teks: baris, byte: w.hasil(), jumlah: n, lebarMm: lb, tinggiMm: tg, celahMm: celah };
 }
 
+// ---------- UJI UKURAN KIRIMAN (owner 23 Nov 2026: "Uji ukuran, tanpa APK") ----------
+// Struk bergambar ±84 ribu byte lewat Bluetooth kadang tidak keluar sama sekali, kiriman kecil selalu keluar. Isi pustaka SUNMI 1.0.16: kiriman ditulis
+// 1024 byte beruntun tanpa jeda ke sambungan Bluetooth, galat tulisnya ditelan. Dugaan (BELUM terbukti): printer kewalahan menerima kiriman besar.
+// Struk uji ke-n = n pita gambar (lebar penuh × 240 baris, ±17 ribu byte per pita di 80 mm) supaya KERTASNYA yang bicara: tiap pita berakhir dengan satu
+// garis hitam tebal (jumlah garis = jumlah pita yang sampai), dan baris SELESAI di ujung hanya tercetak kalau seluruh kiriman sampai.
+export const EP_UJI_PITA_MAKS = 5;
+/** Struk uji ukuran. opsi: { kertas, potong, umpan, total (jumlah struk uji, untuk "n/total") }. Hasil { byte, pita, rasterByte, teks }. */
+export function epUjiUkuran(n, opsi) {
+  const o = opsi || {}; const kertas = EP_TITIK[o.kertas] ? Number(o.kertas) : 80; const lebar = EP_TITIK[kertas]; const pita = bulat(n, 1, EP_UJI_PITA_MAKS, 1);
+  const total = bulat(o.total, 1, EP_UJI_PITA_MAKS, EP_UJI_PITA_MAKS); const tinggi = PITA * pita; const bit = new Uint8Array(lebar * tinggi);
+  // kisi tipis (tiap 24 baris & 48 titik) + garis tebal 16 baris di ujung tiap pita
+  for (let y = 0; y < tinggi; y++) { const d = y % PITA; for (let x = 0; x < lebar; x++) if (d >= PITA - 16 || d % 24 === 0 || x % 48 < 2) bit[y * lebar + x] = 1; }
+  const raster = epRaster(bit, lebar, tinggi);
+  const kepala = epSusun([{ kiri: 'UJI UKURAN BLUETOOTH ' + pita + '/' + total, tengah: true, tebal: true }, { kiri: pita + ' pita gambar - ' + raster.length + ' byte gambar', tengah: true },
+    { kiri: 'harus ada ' + pita + ' garis hitam tebal + baris SELESAI', tengah: true }], { kertas, potong: 'tidak', umpan: 0 });
+  const ekor = epSusun([{ kiri: 'SELESAI ' + pita + '/' + total + ' - ' + pita + ' garis', tengah: true, tebal: true }], { kertas, potong: o.potong, umpan: o.umpan });
+  const w = Penulis(); [kepala.byte, [ESC, 0x61, 1], raster, [ESC, 0x61, 0], ekor.byte].forEach((b) => { for (let i = 0; i < b.length; i++) w.byte(b[i]); });
+  return { byte: w.hasil(), pita, rasterByte: raster.length, teks: kepala.teks.concat(['[gambar ' + pita + ' pita · ' + raster.length + ' byte]'], ekor.teks) };
+}
+
 /** Byte → base64 (untuk jembatan aplikasi Android). Dipotong per 32 KB supaya String.fromCharCode tidak kehabisan tumpukan. */
 export function epBase64(byte) {
   let s = '';

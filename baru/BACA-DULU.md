@@ -3160,6 +3160,16 @@ toko tidak mengirim perintah kepekatan atau mutu apa pun (dicabut di #145), jadi
 kecepatan dengan mutu. **Belum terbukti di perangkat:** tombol mode di jalur jaringan sesudah tambalan ini, label dan surat jalan lewat
 jaringan, Wi-Fi putus di tengah cetak.
 
+**Uji ukuran kiriman Bluetooth (owner 23 Nov 2026: "Uji ukuran, tanpa APK"):** fakta dari bytecode pustaka SUNMI 1.0.16 (bukan dari perangkat):
+`TransTask.run` menulis kiriman 1024 byte beruntun tanpa jeda lewat `BtDevicePort.sendData` = `BluetoothSocket.getOutputStream().write()`; IOException
+ditelan (−1) dan hasilnya diabaikan `TransTask`; sesudah itu tidur 600 ms lalu SEKALI menanya nomor pekerjaan (`getPrintId`, jawaban harus tepat 4 / 7
+byte). Dugaan "printer kewalahan menerima kiriman besar lewat Bluetooth" BELUM terbukti. Layar Perangkat › Printer struk › **Uji ukuran Bluetooth (5
+struk)**: struk uji ke-n = n pita gambar (`escpos.js epUjiUkuran`, ±17 ribu byte per pita di 80 mm), tiap pita berakhir 16 baris hitam penuh (jumlah garis
+di kertas = pita yang sampai), baris SELESAI di ujung; dikirim SELALU lewat `sunmi-bt`, satu per satu menunggu kabar printer, jeda 5 detik; jatuh ke kabel
+atau ditolak = berhenti, uji tidak sah. `perangkat.js kesimpulanUkuran` membaca kabar printer: pola ukuran (yang kecil keluar, mulai ukuran tertentu diam)
+= dugaan menguat, BELUM bukti (ulangi); acak = melemah; semua diam = Bluetooth / ambang di bawah 17 ribu byte; selalu disuruh mencocokkan kertas. Halaman
+saja. Obat (kirim berjeda di plugin = APK baru) baru dibangun sesudah pola yang sama terlihat dua kali.
+
 **Gerbang "Siapa yang jaga?" tidak lagi bisa digeser di tablet (owner 21 Nov 2026: "benerin gerbang yang belum fix, itu masih bisa
 digeser-geser"):** di CPad mendatar layar aplikasinya ±1067 × 585 titik CSS (dihitung dari tangkapan layar owner: 1 titik CSS = 1,2 titik
 tangkapan). Panel jaga 560 px + jarak lajurnya lebih lebar dari separuh layar dan lebih tinggi dari layar → gerbang bisa digeser ke samping
@@ -3340,9 +3350,22 @@ dihapus dari buku. Hari yang SUDAH ditutup (penutupan dengan jam ≥ jam catatan
 ikut, jejak `koreksiBatal` (pola batal nota `bnTutup`) — tanpa ini laba kena dua kali. Rekening / brankas / amplop di dalam titik kas: patokan titik
 dibetulkan + `diubahPada` maju 1 ms (salinan perangkat lama tidak menang). Titipan tablet asal catatan → persetujuan `ditolak` + "Dibatalkan owner: …".
 Ditolak: bulan terkunci, kasbon yang sisanya jadi minus, catatan buatan tutup hari (MDR, amankan, sisihan, setoran), saldo pembuka, pembayaran bersama
-nota (→ Jual › Riwayat), bon pemasok/piutang non-bayar. Upah & biaya bulanan tampil tanpa tombol (menyusul). Tab **Dibatalkan**: semua baris
+nota (→ Jual › Riwayat), bon pemasok/piutang non-bayar. Upah & tagihan bulanan: lihat "upah & tagihan bulanan" di bawah (23 Nov). Tab **Dibatalkan**: semua baris
 `bukuHapus`; **Pulihkan** (hanya batal uang: catatan ditulis lagi dengan id sama, koreksi dibalik, ditolak bila id sama sudah ada lagi) dan **Hapus
 permanen** (hanya baris arsip). Rules tetap (bukuHapus owner saja). Alat uji `alat-uji/uji_riwayat_uang.py` (jsc + statis + kontrol).
+
+**Riwayat & batal — upah & tagihan bulanan (owner 23 Nov 2026, "Dua-duanya bisa"):** di tab **Uang** yang sama (`ru`). **Upah** = SATU pembayaran utuh:
+`slipUpah` + baris gaji berkunci "Nama · tanggal" (`slip.kunci`) di `biayaBulanan` tiap bulan `slip.bulanan` + kasbon `caraBayar: 'Dipotong upah'` yang lahir
+bersamanya (tidak ada kolom penghubung: dikenali dari tanggal, jam, nama, nominal = `slip.potong`; tampil sebagai pendamping, dibatalkan sendiri ditolak). Hanya
+slip upah TERAKHIR tiap orang (`mulaiUpah` membaca `sampai` terbesar — slip lama dibatalkan selagi ada yang sesudahnya = hari itu tertutup tanpa uangnya); slip
+bonus bebas; hari kerja (`absenKaryawan`) tidak disentuh → kembali "belum dibayar". **Tagihan** = satu pos (listrik / akses / keamanan / internet) satu bulan:
+pos jadi 0, `tanggalBayarPos` / `dariPos` / `jamBayarPos` pos itu hilang; pos lain & gaji tetap. Dokumen bulan dipakai bersama → arsip `bukuHapus` `jenisBatal:
+'uang'`, `bentuk: 'upah' | 'tagihan'`, `bagian` (baris gaji + `urutan` / pos + nominal, tanggal, tempat, jam); pulihkan menggabungkan bagian itu ke dokumen
+SEKARANG (ditolak bila hari kerjanya / tagihannya sudah dibayar lagi). Pengaruh ke tempat uang = baris gerakan kas mesin (ber-id 0, label "… — biaya <Bulan
+Tahun>", tempat dari `dariPos`); hari tertutup & titik kas dibetulkan seperti catatan uang lain. `susunBayarTagihan` kini menulis `jamBayarPos[pos]`; tagihan
+lama tanpa jam dianggap dibayar sebelum tutup hari itu (kalimatnya ditulis). Gaji yang dibayar di sistem lama (tanpa slip) tidak lewat sini. Bulan terkunci &
+tahun yang sudah ditutup buku (bulan biaya MAUPUN tanggal bayar) ditolak. Uji: `uji_riwayat_uang.py` (dokumen ditulis penulis asli `susunBayarUpah` /
+`susunBonus` / `susunBayarTagihan`; asap cadangan lokal ikut membolak-balik `biayaBulanan` & `slipUpah`).
 
 **Riwayat & batal — tahap 2 BARANG (owner 22 Nov 2026):** tab **Barang** di Menu › Toko ini › Riwayat & batal, logika `baru/js/layar/riwayat-barang-logika.js`
 (awalan `rb`). Satu baris = satu KETUKAN: catatan satu kiriman bertanggal & bermenit sama dan bernomor Date.now()+acak berurutan (< 3 detik); anggota dicari
@@ -3382,6 +3405,14 @@ CryptoObject tiap pakai, hangus bila ada jari baru); halaman menyimpan hanya `{d
 bukan isian/draf). Penulis `firebase.js tulisSebagaiOwner`: app Firebase kedua `ownerTablet`, auth `inMemoryPersistence`, cache memori (impor SDK dinamis —
 SDK palsu uji peramban tidak berubah), offline ditolak, `jagaKunci`, pencatat setelan, jejak bertanda `lewat`, `await commit`, `signOut` di finally. Rules
 tetap. Alat uji `alat-uji/uji_owner_tablet.py` (jsc + render kartu + statis + kontrol); kontrak plugin di `uji_perangkat_sunmi.py`.
+
+**Sidik jari owner — setelan layar Perangkat dikunci jari (owner 23 Nov 2026, "lu yang pilih"):** layar Perangkat (`/baru/uji-cetak.html`) tidak masuk akun,
+jadi siapa pun yang memegang tablet bisa mengubah jalur/alamat printer, lampu, mode kertas, dan — paling berbahaya — **menghapus penanda jari** (Tahap A/B mati
+tanpa kabar). Begitu sidik jari owner menyala di tablet itu (`perangkat.js setelanTerkunciJari`: simpanan Tahap A belum hangus, atau sandi Tahap B tersimpan —
+nama simpanan = `SJ_KUNCI` & `OW_KUNCI`, dijaga uji), lima tombol yang MENGUBAH (Simpan setelan, Simpan lampu, Pindah mode, Pasang penanda, Hapus penanda)
+minta tempel jari owner lewat penanda (`sidikJariKunci`, kunci kuat). Periksa printer, cetak contoh, uji ukuran, label contoh, baca mode, uji sidik tetap
+bebas. Penanda hangus / tidak ada (`penandaTakTerpakai`) = tidak ada yang bisa memeriksa → dibuka tanpa jari dengan catatan keras (owner dikabari soal hangus
+oleh aplikasi toko), supaya owner tidak terkunci sendiri. Halaman saja, tanpa APK & rules.
 
 ## Gladi ulang tutup buku 2026 atas cadangan 23 Nov — fitur November × tahun yang ditutup (23 Nov 2026, cabang `perbaikan/tutup-buku-fitur-nov`)
 

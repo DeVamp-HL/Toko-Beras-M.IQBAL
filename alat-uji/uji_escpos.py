@@ -142,6 +142,23 @@ if (typeof btoa === 'function') cek('base64: byte → teks', epBase64(new Uint8A
     && epGarisDariTeks('').length === 0 && epGarisDariTeks(null).length === 0 && epGarisDariTeks('\n\n').length === 0 && epGarisDariTeks('\n  Judul dulu\nisi')[1].tengah === true && !epGarisDariTeks('\n  Judul dulu\nisi')[0].tengah);
   cek('teks 58 mm: baris panjang dibungkus, tidak ada yang lewat 32 huruf', epSusun(G, { kertas: 58 }).teks.every((b) => b.length <= 32));
 }
+// ---- uji ukuran kiriman Bluetooth (owner 23 Nov 2026: "Uji ukuran, tanpa APK") ----
+{
+  const U = [1, 2, 3, 4, 5].map((n) => epUjiUkuran(n, { kertas: 80, potong: 'sebagian', umpan: 0, total: 5 }));
+  const nRaster = (b) => { const a = arr(b); let c = 0; for (let i = 0; i + 3 < a.length; i++) if (a[i] === 0x1d && a[i + 1] === 0x76 && a[i + 2] === 0x30 && a[i + 3] === 0x00) c++; return c; };
+  const nPotong = (b) => { const a = arr(b); let c = 0; for (let i = 0; i + 1 < a.length; i++) if (a[i] === 0x1d && a[i + 1] === 0x56) c++; return c; };
+  cek('uji ukuran: struk ke-n = n pita GS v 0 (240 baris × 72 byte di 80 mm); byte gambar = n × 17.288', U.every((u, i) => u.pita === i + 1 && nRaster(u.byte) === i + 1 && u.rasterByte === (i + 1) * (8 + 72 * 240)),
+    JSON.stringify(U.map((u) => [u.pita, nRaster(u.byte), u.rasterByte])));
+  cek('uji ukuran: ukuran naik ±17 ribu → ±86 ribu byte (5 pita setara struk bergambar yang hilang)', U[0].byte.length > 17000 && U[0].byte.length < 18500 && U[4].byte.length > 86000 && U[4].byte.length < 88000
+    && U.every((u, i) => !i || u.byte.length > U[i - 1].byte.length), JSON.stringify(U.map((u) => u.byte.length)));
+  const a3 = arr(U[2].byte); const r0 = cari(U[2].byte, [0x1d, 0x76, 0x30, 0x00]); const baris = (p, y) => a3.slice(r0 + 8 + p * (8 + 72 * 240) + y * 72, r0 + 8 + p * (8 + 72 * 240) + (y + 1) * 72);
+  const penuh = (b) => b.length === 72 && b.every((v) => v === 0xff);
+  cek('uji ukuran: tiap pita berakhir 16 baris hitam penuh (garis tebal yang dihitung di kertas); badannya kisi tipis, bukan blok hitam', [0, 1, 2].every((p) => { for (let y = 224; y < 240; y++) if (!penuh(baris(p, y))) return false; return !penuh(baris(p, 1)) && !penuh(baris(p, 223)); }));
+  const selesai = cari(U[4].byte, Array.from('SELESAI 5/5').map((c) => c.charCodeAt(0))); const potong = cari(U[4].byte, [0x1d, 0x56, 0x42, 0x00]);
+  cek('uji ukuran: kepala tanpa potong, baris SELESAI sesudah gambar, potong tepat sekali di ujung', nPotong(U[4].byte) === 1 && selesai > r0 && potong > selesai && cari(U[4].byte, Array.from('UJI UKURAN BLUETOOTH 5/5').map((c) => c.charCodeAt(0))) >= 0, [selesai, potong, nPotong(U[4].byte)]);
+  cek('uji ukuran: pita dijepit 1–5, total bawaan 5; 58 mm memakai 48 byte/baris', epUjiUkuran(9).pita === 5 && epUjiUkuran(0).pita === 1 && cari(epUjiUkuran(2).byte, Array.from('2/5').map((c) => c.charCodeAt(0))) >= 0
+    && epUjiUkuran(1, { kertas: 58 }).rasterByte === 8 + 48 * 240, epUjiUkuran(1, { kertas: 58 }).rasterByte);
+}
 print(JSON.stringify(hasil));
 """
 
@@ -237,6 +254,11 @@ MUTASI = [
     ('label TSPL: celah tidak dikirim', "'GAP ' + celah + ' mm,0 mm', ", ""),
     ('label TSPL: ukuran tidak dijepit', "const lb = bulat(o.lebarMm, 20, 80, 50);", "const lb = Number(o.lebarMm) || 50;"),
     ('label TSPL: QR berisi kode pendek', "'QRCODE ' + tepi + ',' + y + ',M,4,A,0,\"' + kutip(x.kode)", "'QRCODE ' + tepi + ',' + y + ',M,4,A,0,\"' + kutip(x.teksKode)"),
+    ('uji ukuran: garis tebal ujung pita hilang (kertas tidak bisa dihitung)', "if (d >= PITA - 16 || d % 24 === 0 || x % 48 < 2)", "if (d % 24 === 0 || x % 48 < 2)"),
+    ('uji ukuran: kepala ikut memotong kertas', "{ kertas, potong: 'tidak', umpan: 0 });\n  const ekor", "{ kertas, potong: o.potong, umpan: 0 });\n  const ekor"),
+    ('uji ukuran: jumlah pita tidak dijepit', "const pita = bulat(n, 1, EP_UJI_PITA_MAKS, 1);", "const pita = Math.max(1, Number(n) || 1);"),
+    ('uji ukuran: tinggi gambar selalu satu pita', "const tinggi = PITA * pita;", "const tinggi = PITA;"),
+    ('uji ukuran: baris SELESAI hilang', "{ kiri: 'SELESAI ' + pita", "{ kiri: 'SELESAI-' + pita"),
     ('struk teks mengirim kepekatan lagi', "w.byte(ESC, 0x40).byte(ESC, 0x74, 0x00);", "w.byte(ESC, 0x40).byte(GS, 0x28, 0x4b, 0x02, 0x00, 0x31, o.pekat || 0).byte(ESC, 0x74, 0x00);"),
 ]
 
