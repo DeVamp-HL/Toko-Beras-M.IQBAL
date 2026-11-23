@@ -206,7 +206,7 @@ export function hitungKasbonKaryawan(nama, ketik, alasan, dari) {
 export function susunKasbonKaryawan(nama, ketik, alasan, w, dari) {
   const H = hitungKasbonKaryawan(nama, ketik, alasan, dari); if (H.tolak) return { tolak: H.tolak };
   const data = { id: w.idUnik(), tipe: 'ambil', namaPegawai: String(nama).trim(), nominal: H.n, tanggal: w.tanggal, jam: w.jam, catatan: String(alasan).slice(0, 60), dari: 'laci' };
-  const r = { dokumen: [{ koleksi: 'kasbonMutasi', data }], urung: [{ koleksi: 'kasbonMutasi', id: data.id }], patch: { kabar: 'Kasbon ' + String(nama).split(' ')[0] + ' ' + RP(H.n) + ' tercatat · laci berkurang ' + RP(H.n) + (H.takTerperiksa ? ' · isi ' + ugNamaTempat(H.asal).toLowerCase() + ' belum bisa dihitung, tidak diperiksa' : ''), kabarAwas: false, kasbonK: null } };
+  const r = { dokumen: [{ koleksi: 'kasbonMutasi', data }], urung: [{ koleksi: 'kasbonMutasi', id: data.id }], patch: { kabar: 'Kasbon ' + String(nama).split(' ')[0] + ' ' + RP(H.n) + ' tercatat · laci berkurang ' + RP(H.n) + (H.takTerperiksa ? ' · isi ' + ugNamaTempat(H.asal).toLowerCase() + ' belum bisa dihitung, tidak diperiksa' : ''), kabarAwas: false, lembarU: null, kasbonK: { ketik: '', alasan: '' } } };   // owner 23 Nov 2026: dulu kasbonK: null — lembar kasbon yang masih terbuka jatuh membaca .ketik ("Cannot read properties of null (reading 'ketik')"); isian kosong biasa + lembar ditutup SEKALIGUS
   return H.asal === TEMPAT_AMPLOP ? lewatAmplop(r, H.n, w, data.id, 'Kasbon ' + String(nama).trim() + ' — ' + String(alasan).slice(0, 40)) : r;
 }
 const UP_POTONG = [['semua', 'Potong semua'], ['separuh', 'Potong separuh'], ['tidak', 'Jangan dipotong']];
