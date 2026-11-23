@@ -34,7 +34,8 @@ import * as AR from './arsip-logika.js';
 import * as SK from './setengah-logika.js';
 import { aturUpah } from './upah-logika.js';   // owner 17 Nov: daftar karyawan aktif untuk pilihan "Dilayani"
 import { tbDaftar } from './tablet-logika.js';
-import * as GP from './ganti-pembeli-logika.js';   // owner 24 Nov 2026: ganti pembeli satu nota yang salah orang (Riwayat, owner)
+// owner 24 Nov 2026: ganti pembeli satu nota yang salah orang (Riwayat, owner)
+import * as GP from './ganti-pembeli-logika.js';
 import * as BN from './batal-nota-logika.js';   // owner 17 Nov (butir 2): batal nota apa pun dari Riwayat (owner)
 import { buatPanelAntar } from './antar-panel.js';   // B3 (owner 18 Nov 2026): surat jalan & antar — Bayar › Antar, daftar Antar, tanda terima
 // B4 (owner 18 Nov 2026): lembar Pesanan — pesanan dari katalog, PO, uang muka, batal, jadwal rutin & pengingatnya, cek stok

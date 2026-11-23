@@ -7,6 +7,8 @@
 // dinomori, lalu dicetak / PDF / WA. Yang BARU ditulis: aturanToko/{identitas, dokumen, rekapOmzet, laporan} + koleksi dokumenCetak (tiap cetakan bernomor).
 // Kejujuran: bulan belum tutup buku = DRAF; neraca yang kasnya belum bisa dihitung / stoknya minus TIDAK dicetak; kas akhir arus kas = kas neraca (satu mesin);
 // tarif/batas rekap omzet bukan nasihat pajak. Nama pembantu diprefiks `lp` (bundel uji jsc satu lingkup).
+// owner 24 Nov 2026: grosir vs ecer per jenis barang
+import { geRingkas, geBaris } from './grosir-ecer-logika.js';
 import { hitungLabaRentang, hitungArusKasInti, barisSusutStok, bayaranBiayaBulanan, hitungNeraca, kasPada, hitungPiutang, hitungUtangPemasok } from '../mesin/beku.js';
 import { akhirBulanIso, bulanDari, namaBulanPanjang, caraBayarKunci, hppTercatat, namaSingkatTrx, kunciPelanggan, formatTanggal, hppTaksiranRetur, uangKembaliRetur, MULAI_SUSUT_LABA } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilPiutangMutasi, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota, returUangPerHari, ambilHargaTerbit, eraBuku, tahunDiarsip, potretTahun, potretBulan, potretHari, catatanPertama, ingatGerakanKas, ingatKasPada, ingatNeraca,
@@ -391,14 +393,14 @@ export function rekapHari(iso, bayaran) {
   // siap 2027 (A4): saldo pembuka modal owner tutup buku (31 Des 00.00) bukan gerakan uang — tidak digambar di buku kas hari itu
   const pembukaModal = {}; cacheMentah('modal').forEach((m) => { if (m && m.tutupBuku) pembukaModal[String(m.id)] = true; });
   const tutup = ambilTutupHari().find((t) => t.tanggal === iso) || null; const buku = ingatGerakanKas().filter((r) => r.t === iso && !pembukaModal[String(r.id)]).sort((a, b) => String(a.jam).localeCompare(String(b.jam)));
-  return { iso, omzet: L.omzetPenuh, retur: Math.round(((returUangPerHari()[iso] || {}).uang) || 0), n: jumlahNota((t) => t === iso), margin: L.margin, jumlahTanpaHpp: L.jumlahTanpaHpp, tunai: K.pos.tunai, qris: K.pos.qris, kredit: K.kreditBulanIni, nKredit: jumlahNota((t) => t === iso, (p) => caraBayarKunci(p) === 'kredit'), pelunasan: K.pos.pelunasan, refund: K.pos.refund, keluarHarian: K.pos.harian, prive: K.pos.prive, setoran: K.pos.setoran, belanja: K.pos.belanja, bayarBon: K.pos.bayarBon, biayaBulanan: K.pos.biayaBulanan,
+  return { iso, jenis: geRingkas((t) => t === iso), omzet: L.omzetPenuh, retur: Math.round(((returUangPerHari()[iso] || {}).uang) || 0), n: jumlahNota((t) => t === iso), margin: L.margin, jumlahTanpaHpp: L.jumlahTanpaHpp, tunai: K.pos.tunai, qris: K.pos.qris, kredit: K.kreditBulanIni, nKredit: jumlahNota((t) => t === iso, (p) => caraBayarKunci(p) === 'kredit'), pelunasan: K.pos.pelunasan, refund: K.pos.refund, keluarHarian: K.pos.harian, prive: K.pos.prive, setoran: K.pos.setoran, belanja: K.pos.belanja, bayarBon: K.pos.bayarBon, biayaBulanan: K.pos.biayaBulanan,
     totalMasuk: K.totalMasuk, totalKeluar: K.totalKeluar, bersih: K.bersih, masuk: K.masuk.filter((x) => x.nominal > 0), keluar: K.keluar.filter((x) => x.nominal > 0), perJam, maksJam, tutup: tutup ? { jam: tutup.jam || '', selisih: Number(tutup.selisihLaci || tutup.selisih || 0), sistemBaru: !!tutup.sistemBaru } : null, buku, kosong: L.jumlahTrx === 0 && K.totalMasuk === 0 && K.totalKeluar === 0 };
 }
 /** Paket B · rekap hari di tahun yang sudah ditutup buku: omzet, nota, margin dari potret hari; uang per cara bayar, per jam, arus kas & buku kas hari itu
  *  ikut arsip → null / kosong dan `diarsip` (layar menyebutnya, tidak menggambar Rp0). Tahun tanpa potret: `tanpaPotret`. */
 function lpHariArsip(iso) {
   const P = potretHari(iso); const x = P || { omzet: null, margin: null, tanpaHpp: 0, retur: null, nota: 0 }; const kos = ['tunai', 'qris', 'kredit', 'pelunasan', 'refund', 'keluarHarian', 'prive', 'setoran', 'belanja', 'bayarBon', 'biayaBulanan', 'totalMasuk', 'totalKeluar', 'bersih'];
-  const R = { iso, omzet: x.omzet, retur: x.retur, n: x.nota, margin: x.margin, jumlahTanpaHpp: x.tanpaHpp, nKredit: 0, masuk: [], keluar: [], perJam: [], maksJam: 1, tutup: null, buku: [], kosong: !!P && !x.nota && !x.omzet && !x.retur, diarsip: true, tanpaPotret: !P };
+  const R = { iso, jenis: null, omzet: x.omzet, retur: x.retur, n: x.nota, margin: x.margin, jumlahTanpaHpp: x.tanpaHpp, nKredit: 0, masuk: [], keluar: [], perJam: [], maksJam: 1, tutup: null, buku: [], kosong: !!P && !x.nota && !x.omzet && !x.retur, diarsip: true, tanpaPotret: !P };
   kos.forEach((k) => { R[k] = null; }); return R;
 }
 /** Empat belas hari terakhir untuk pemilih tanggal: omzet & jumlah nota per hari (yang kosong tetap ada, ditandai). Paket B: hari di tahun yang sudah ditutup = potret hari. */
@@ -412,6 +414,7 @@ export const lpReturBonHari = (R) => Math.max(0, Math.round((R.retur || 0) - (R.
 /** Teks rekap untuk WhatsApp — kalimat kirimRekapHarianWa sistem lama, ditambah yang dulu tidak disebut (pelunasan bon, prive, margin). */
 export function teksRekapHari(R, kop) {
   const b = ['*Rekap ' + ((kop && kop.nama) || IDENTITAS_BAWAAN.nama) + ' — ' + tanggalPendek(R.iso) + '*', 'Omzet: ' + RP(R.omzet) + ' (' + R.n + ' nota)', 'Tunai: ' + RP(R.tunai), 'QRIS: ' + RP(R.qris)];
+  if (R.jenis) geBaris(R.jenis, RP).forEach((x) => b.push(x[0] + ': ' + x[1]));
   if (R.kredit) b.push('Bon (belum jadi uang): ' + RP(R.kredit) + ' · ' + R.nKredit + ' nota'); if (R.pelunasan) b.push('Pembayaran bon pelanggan: ' + RP(R.pelunasan)); if (R.refund) b.push('Refund & tukar retur: ' + RP(R.refund));
   const rb = lpReturBonHari(R); if (rb) b.push('Retur nota bon (bon dipotong): ' + RP(rb));
   if (R.keluarHarian) b.push('Belanja & biaya toko: ' + RP(R.keluarHarian)); if (R.belanja) b.push('Belanja beras tunai + bongkar: ' + RP(R.belanja)); if (R.bayarBon) b.push('Bayar bon pemasok: ' + RP(R.bayarBon)); if (R.biayaBulanan) b.push('Tagihan bulanan: ' + RP(R.biayaBulanan));

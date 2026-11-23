@@ -18,6 +18,8 @@
 // (tutup-tablet-logika hlTerapkan) → draf membawa dariHitung + jam hitung + amankanTetap. Laci SEKARANG = hitungan + uang laci yang tercatat SESUDAH jam
 // hitung (tdSesudahHitung) — selisih dibanding seharusnya sekarang; yang sudah dipindah ke brankas = angka tablet (uangnya sudah pindah). Saat Tutup,
 // hitungan yang dipakai jadi 'disetujui' dan hitungan lain hari itu yang masih menunggu ditandai 'dibaca' (tidak dipakai) di kiriman yang sama.
+// owner 24 Nov 2026: grosir vs ecer per jenis barang
+import { geRingkas, geBaris } from './grosir-ecer-logika.js';
 import { thDorongRiwayat } from '../mesin/beku.js';
 import { caraBayarKunci } from '../mesin/pembantu.js';
 import { cacheMentah, ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah, kunciNota, returUangPerHari, ingatStokKarung, ingatGerakanKas } from '../data/toko.js';
@@ -180,7 +182,9 @@ export function rekapTutup(H) {
 }
 export function teksRekap(H, iso, jam) {
   const L = ['TOKO BERAS M.IQBAL', 'REKAP TUTUP HARI · ' + tanggalPendek(iso) + (jam ? ' ' + jam : ''), ''];
-  rekapTutup(H).forEach((r) => L.push((r.a + '                              ').slice(0, 30) + r.b)); if (H.dilewati.length) L.push('', 'Tidak dikerjakan: ' + H.dilewati.join(' · '));
+  rekapTutup(H).forEach((r) => L.push((r.a + '                              ').slice(0, 30) + r.b));
+  const G = geBaris(geRingkas((t) => t === iso), RP); if (G.length) { L.push('', 'Penjualan per jenis:'); G.forEach((x) => L.push('  ' + x[0] + ': ' + x[1])); }
+  if (H.dilewati.length) L.push('', 'Tidak dikerjakan: ' + H.dilewati.join(' · '));
   return L.join('\n');
 }
 /** Susun SEMUA dokumen malam ini sekaligus. D seperti hitungTutup + alasan; yakinUlang wajib bila hari ini sudah pernah ditutup. */
