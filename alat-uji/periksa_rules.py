@@ -79,8 +79,8 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 EMAIL_OWNER = 'owner@tokoberasmiqbal.web.app'; EMAIL_KASIR = 'kasir@tokoberasmiqbal.web.app'
 PERAN = ['ben', 'karyawan']
 FUNGSI_JUJUR = {'stafBuat', 'stafBuatTipe', 'stafBuatJual', 'stafJejak', 'stafUbahPesanan', 'stafDenyut', 'stafBuatWadah', 'stafBuatLahir', 'stafMintaNego', 'stafUsulHarga', 'stafMintaKredit', 'stafBuatSJ', 'stafTandaiSJ',
-                'stafBuatPesanan', 'stafAturPesanan', 'stafUbahRutin', 'stafMintaKeluar', 'stafKirimPesan', 'stafCatatMasuk', 'stafKabarMasuk', 'stafHitungLaci'}   # v16: hitungan laci tablet (lewat stafBuat)   # v15: barang masuk tablet (lewat stafBuat)   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
-LUAR_KOLEKSI = ['aksesAkun', 'permintaanAkses', 'arsipTahun', 'ringkasanKasir', 'batuNisan', 'fotoBon', 'buktiTerima', 'notifOwner']   # blok rules di luar baru/js/data/koleksi.js (v7: fotoBon)
+                'stafBuatPesanan', 'stafAturPesanan', 'stafUbahRutin', 'stafMintaKeluar', 'stafKirimPesan', 'stafCatatMasuk', 'stafKabarMasuk', 'stafHitungLaci', 'stafTokenPush'}   # v16: hitungan laci tablet (lewat stafBuat)   # v15: barang masuk tablet (lewat stafBuat)   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
+LUAR_KOLEKSI = ['aksesAkun', 'permintaanAkses', 'arsipTahun', 'ringkasanKasir', 'batuNisan', 'fotoBon', 'buktiTerima', 'notifOwner', 'notifPerangkat']   # blok rules di luar baru/js/data/koleksi.js (v7: fotoBon)
 
 
 def baca(p): return open(os.path.join(AKAR, p), encoding='utf-8').read()
@@ -1109,6 +1109,76 @@ def periksa_v16(rules, r15, c16, akses_js):
     return cacat
 
 
+# ---- v17 (owner 23 Nov 2026: PUSH APLIKASI TABLET): v16 + PERSIS satu fungsi (stafTokenPush) dan satu blok baru (notifPerangkat). ----
+BLOK_V17 = {'notifPerangkat': {'read': 'if owner()', 'create': "if owner() || stafTokenPush(['ben', 'karyawan'], id)", 'update': "if owner() || stafTokenPush(['ben', 'karyawan'], id)", 'delete': 'if owner()'}}
+FUNGSI_V17 = ['stafTokenPush']
+TOKEN_WAJIB = ("let d = request.resource.data; return stafBuat(peranBoleh) && d.get('uid', '') == request.auth.uid && d.get('perangkatId', 0) is string && d.perangkatId.size() > 0 && d.perangkatId.size() <= 40"
+               " && id == request.auth.uid + '_' + d.perangkatId && d.get('token', 0) is string && d.token.size() <= 4096 && d.get('platform', '') == 'android'"
+               " && d.keys().hasOnly(['id', 'uid', 'olehUid', 'perangkatId', 'token', 'platform', 'perangkat', 'pada']);")
+V16_TEKS = None   # kontrol: pengganti isi firestore.rules.v16
+BANDING_V16 = True
+
+
+def ke_v16(R):
+    """v17 → v16: cabut PERSIS ubahan v17 (blok notifPerangkat; satu fungsi). Kembali (teks, cacat)."""
+    cacat = []
+    for n in BLOK_V17:
+        ms = list(re.finditer(r'\n    match /' + n + r'/\{\w+\} \{\n.*?\n    \}', R, re.S))
+        if len(ms) != 1: cacat.append('blok v17 %s ditemukan %d× (wajib 1×)' % (n, len(ms))); continue
+        R = R[:ms[0].start()] + R[ms[0].end():]
+    for f in FUNGSI_V17:
+        R2 = buang_fungsi(R, f)
+        if R2 == R: cacat.append('fungsi v17 ' + f + '() tidak ada')
+        R = R2
+    return R, cacat
+
+
+def periksa_v17(rules, r16, c17, akses_js):
+    """21 · v17: bentuk persis satu fungsi & satu blok + sisanya = firestore.rules.v16 + penulis token di halaman = bentuk rules + model kasus ★Z (v17 & v16)."""
+    cacat = list(c17); B = blok_rules(rules); F = fungsi_rules(rules); rata = lambda t: re.sub(r'\s+', ' ', t).strip()
+    for n, ops in BLOK_V17.items():
+        for op in OPERASI:
+            xs = [rata(x) for x in allow(B.get(n, ''), op)]
+            w = ops.get(op) or (ops.get('read') if op in ('get', 'list') else None)
+            if (xs != [w]) if w else xs: cacat.append('%s: allow %s bukan "%s" (v17): %s' % (n, op, w or '(tidak ada)', xs))
+    if rata(F.get('stafTokenPush', '')) != rata(TOKEN_WAJIB): cacat.append('stafTokenPush() bukan bentuk v17 yang tercatat: %s' % rata(F.get('stafTokenPush', '(tidak ada)')))
+    for n, b in B.items():
+        if 'stafTokenPush' in b and n != 'notifPerangkat': cacat.append(n + ': stafTokenPush() dipakai di luar notifPerangkat (v17)')
+    for n, badan in F.items():
+        if n != 'stafTokenPush' and 'stafTokenPush(' in badan: cacat.append('stafTokenPush() dipanggil dari fungsi ' + n)
+    # penulis token di halaman (firebase.js dokTokenTablet) = kolom & id yang diizinkan rules v17
+    fb = FB_V17_TEKS if FB_V17_TEKS is not None else baca('baru/js/data/firebase.js')
+    w = "return { id, uid, olehUid: uid, perangkatId: pid, token: String(token || ''), platform: 'android', perangkat: String(perangkatRingkas() || '').slice(0, 60), pada };"
+    if w not in fb or "const id = uid + '_' + pid;" not in fb: cacat.append('firebase.js dokTokenTablet tidak menulis kolom & id bentuk rules v17 (uid_perangkatId; id, uid, olehUid, perangkatId, token, platform android, perangkat, pada)')
+    if "export const hapusTokenTablet = () => tulisTokenTablet('');" not in fb: cacat.append('firebase.js: mematikan push tablet bukan "token dikosongkan" — akun tablet tidak boleh menghapus (rules v17)')
+    v16 = V16_TEKS if V16_TEKS is not None else baca('firestore.rules.v16')
+    a, b = rata(r16), rata(tanpa_komentar(v16))
+    if BANDING_V16 and a != b:
+        i = next((j for j in range(min(len(a), len(b))) if a[j] != b[j]), min(len(a), len(b)))
+        cacat.append('v17 mengubah lebih dari ubahan yang tercatat atas firestore.rules.v16 — dekat "…%s…" (v16: "…%s…")' % (a[max(0, i - 60):i + 60], b[max(0, i - 60):i + 60]))
+    dok = DOK_V17_TEKS if DOK_V17_TEKS is not None else (baca('docs/uji-rules-v17.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v17.md')) else '')
+    v7dok = baca('docs/uji-rules-v7.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v7.md')) else ''
+    lama = set(re.findall(r'(★[A-Z]\d+)', v7dok)) | set(k[0] for k in KASUS_V16 + KASUS_V15 + KASUS_V14 + KASUS_V13 + KASUS_V12 + KASUS_V11 + KASUS_V10 + KASUS_V9 + KASUS_V8 + KASUS_V7)
+    bentrok = sorted(set(k[0] for k in KASUS_V17) & lama)
+    if bentrok: cacat.append('nomor kasus v17 bertabrakan dengan v7–v16 (penguji emulator mengambil kolom Wajib v7 per nomor): ' + ', '.join(bentrok))
+    di_dok = set(re.findall(r'^\|(?: \d+ \|)? (★Z\d+) \|', dok, re.M)); di_model = set(k[0] for k in KASUS_V17)
+    if di_dok != di_model: cacat.append('docs/uji-rules-v17.md tidak sama dengan kasus model v17 — hanya di berkas: %s · hanya di model: %s' % (sorted(di_dok - di_model), sorted(di_model - di_dok)))
+    mw = re.search(r'\n## Wajib owner[^\n]*\n(.*?)\n## ', dok, re.S)
+    wajib = re.findall(r'^\| \d+ \| (★Z\d+) \|', mw.group(1), re.M) if mw else []
+    if wajib != WAJIB_V17: cacat.append('docs/uji-rules-v17.md bagian "Wajib owner" bukan WAJIB_V17 — berkas: %s · model: %s' % (wajib, WAJIB_V17))
+    try: M17 = rules_mini.Rules(rules); M16 = rules_mini.Rules(tanpa_komentar(v16))
+    except Exception as e: return cacat + ['model v17: rules tidak bisa diurai penafsir mini — %s' % e]
+    for no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks in KASUS_V17:
+        db = dict(DB_UJI_V7); db.update(ubah_db or {}); db = dict((k, v) for k, v in db.items() if v is not None)
+        h = M17.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7)
+        if h.boleh != boleh: cacat.append('model v17 %s %s → %s, wajib %s%s' % (no, nama, 'LOLOS' if h.boleh else 'DITOLAK', 'LOLOS' if boleh else 'DITOLAK', (' (' + h.galat + ')') if h.galat else ''))
+        elif maks is not None and h.akses > maks: cacat.append('model v17 %s %s: %d access call (batas jalur ini %d)' % (no, nama, h.akses, maks))
+        h16 = M16.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7); harap16 = (not boleh) if no in BEDA_V16 else boleh
+        if h16.boleh != harap16: cacat.append('model v17 %s atas firestore.rules.v16 → %s, harap %s (%s)' % (no, 'LOLOS' if h16.boleh else 'DITOLAK', 'LOLOS' if harap16 else 'DITOLAK', 'ubahan v17' if no in BEDA_V16 else 'wajib sama dengan v16'))
+    return cacat
+FB_V17_TEKS = None   # kontrol: pengganti isi baru/js/data/firebase.js
+
+
 def ke_v6(R, KOL, ARSIP):
     """v7 → v6: cabut PERSIS ubahan v7 (tiap ganti wajib kena tepat sekali, blok demi blok). R = rules tanpa komentar. Kembali (teks, cacat)."""
     cacat = []; rata = lambda t: re.sub(r'\s+', ' ', t).strip()
@@ -1706,13 +1776,41 @@ KASUS_V16 = [
 ]
 BEDA_V15 = {'★Y4', '★Y5'}   # yang DIBUKA v16 (ditolak v15); kasus lain wajib sama hasilnya di v15
 DOK_V16_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v16.md
+# ---- MODEL v17 (owner 23 Nov 2026): kasus ★Z docs/uji-rules-v17.md — staf = U11 (ben, uid-uji-b). Token push aplikasi tablet atas nama penulisnya.
+TK_ID = 'uid-uji-b_p-uji-1'
+TK_UJI = {'id': TK_ID, 'uid': 'uid-uji-b', 'olehUid': 'uid-uji-b', 'perangkatId': 'p-uji-1', 'token': 'token-uji-tablet', 'platform': 'android', 'perangkat': 'Tablet uji', 'pada': '2026-10-09T03:00:00.000Z'}
+TK_OWNER = dict(TK_UJI, id='uid-uji_p-uji-1', uid='uid-uji', olehUid='uid-uji')
+DB_TK = {'notifPerangkat/' + TK_ID: TK_UJI}
+U11_MATI = {'aksesAkun/uid-uji-b': {'uid': 'uid-uji-b', 'nama': 'UJI B', 'email': 'uji.b@contoh.com', 'peran': 'ben', 'aktif': False}}
+WAJIB_V17 = ['★Z1', '★Z2', '★Z3']   # owner saja (tanpa dokumen uji staf); kasus staf dibuktikan emulator — boleh juga di Playground dengan U11
+KASUS_V17 = [
+    ('★Z1', 'owner menulis token push perangkatnya', 'owner', 'create', 'notifPerangkat', 'uid-uji_p-uji-1', TK_OWNER, None, True, 0),
+    ('★Z2', 'owner membaca token tablet', 'owner', 'get', 'notifPerangkat', TK_ID, None, DB_TK, True, 0),
+    ('★Z3', 'owner menghapus token tablet', 'owner', 'delete', 'notifPerangkat', TK_ID, None, DB_TK, True, 0),
+    ('★Z4', 'Penjaga laci menyimpan token tablet atas namanya', 'staf', 'create', 'notifPerangkat', TK_ID, TK_UJI, None, True, None),
+    ('★Z5', 'Penjaga laci mematikan notifikasi (token dikosongkan)', 'staf', 'update', 'notifPerangkat', TK_ID, dict(TK_UJI, token=''), DB_TK, True, None),
+    ('★Z6', 'karyawan menyimpan token atas namanya', 'staf', 'create', 'notifPerangkat', TK_ID, TK_UJI, U11_KARYAWAN, True, None),
+    ('★Z7', 'token atas nama akun lain (kolom uid)', 'staf', 'create', 'notifPerangkat', TK_ID, dict(TK_UJI, uid='uid-lain'), None, False, None),
+    ('★Z8', 'id dokumen bukan uid penulis + perangkat', 'staf', 'create', 'notifPerangkat', 'uid-lain_p-uji-1', dict(TK_UJI, id='uid-lain_p-uji-1'), None, False, None),
+    ('★Z9', 'token membawa kolom lain (nominal)', 'staf', 'create', 'notifPerangkat', TK_ID, dict(TK_UJI, nominal=50000), None, False, None),
+    ('★Z10', 'platform bukan android', 'staf', 'create', 'notifPerangkat', TK_ID, dict(TK_UJI, platform='web'), None, False, None),
+    ('★Z11', 'Penjaga laci membaca token', 'staf', 'get', 'notifPerangkat', TK_ID, None, DB_TK, False, None),
+    ('★Z12', 'Penjaga laci menghapus token', 'staf', 'delete', 'notifPerangkat', TK_ID, None, DB_TK, False, None),
+    ('★Z13', 'kasir@ menulis token', 'kasir', 'create', 'notifPerangkat', TK_ID, TK_UJI, None, False, None),
+    ('★Z14', 'akun tablet yang dinonaktifkan owner', 'staf', 'create', 'notifPerangkat', TK_ID, TK_UJI, U11_MATI, False, None),
+    ('★Z15', 'token tanpa nama penulis (olehUid)', 'staf', 'create', 'notifPerangkat', TK_ID, dict((k, v) for k, v in TK_UJI.items() if k != 'olehUid'), None, False, None),
+]
+BEDA_V16 = {'★Z1', '★Z2', '★Z3', '★Z4', '★Z5', '★Z6'}   # yang DIBUKA v17 (ditolak v16 — koleksi baru); kasus lain wajib sama hasilnya di v16
+DOK_V17_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v17.md
 
 
 def periksa(rules, koleksi_js, akses_js):
     cacat = []
     rules = tanpa_komentar(rules)
-    r15, c16 = ke_v15(rules)       # 20 · v16 → v15 (cabut balik dua ubahan & satu fungsi v16)
-    cacat += periksa_v16(rules, r15, c16, akses_js)
+    r16, c17 = ke_v16(rules)       # 21 · v17 → v16 (cabut balik satu blok & satu fungsi v17)
+    cacat += periksa_v17(rules, r16, c17, akses_js)
+    r15, c16 = ke_v15(r16)         # 20 · v16 → v15 (cabut balik dua ubahan & satu fungsi v16)
+    cacat += periksa_v16(r16, r15, c16, akses_js)
     r14, c15 = ke_v14(r15)         # 19 · v15 → v14 (cabut balik tiga ubahan & dua fungsi v15)
     cacat += periksa_v15(r15, r14, c15, akses_js)
     r13, c14 = ke_v13(r14)         # 18 · v14 → v13 (cabut balik sebelas baris baca & dua fungsi v14)
@@ -1967,6 +2065,14 @@ if __name__ == '__main__':
             'v15: titipan upah bongkar tanpa kedatangan': R.replace("        && (d.get('jenis', '') != 'bongkar' || (d.get('batchId', 0) is string && d.batchId.size() > 0))\n", ""),
             'v15: titipan bayar bon tanpa pemasok': R.replace("        && (d.get('jenis', '') != 'bayarBon' || (d.get('pemasok', 0) is string && d.pemasok.size() > 0 && d.pemasok.size() <= 60))\n", ""),
             'v15: kabar barang masuk untuk karyawan': R.replace("stafKabarMasuk(['ben']) || (stafHitungLaci(", "stafKabarMasuk(['ben', 'karyawan']) || (stafHitungLaci("),   # v16: baris create bersambung
+            'v17: kasir@ ikut menulis token tablet': R.replace("stafTokenPush(['ben', 'karyawan'], id);", "stafTokenPush(['ben', 'karyawan'], id) || kasir();"),
+            'v17: Penjaga laci boleh membaca token': R.replace("      allow read, delete: if owner();\n      allow create, update: if owner() || stafTokenPush", "      allow read: if owner() || staf(['ben']);\n      allow delete: if owner();\n      allow create, update: if owner() || stafTokenPush"),
+            'v17: Penjaga laci boleh menghapus token': R.replace("      allow read, delete: if owner();\n      allow create, update: if owner() || stafTokenPush", "      allow read: if owner();\n      allow delete: if owner() || stafBuat(['ben']);\n      allow create, update: if owner() || stafTokenPush"),
+            'v17: token atas nama akun lain (uid tidak diperiksa)': R.replace("return stafBuat(peranBoleh) && d.get('uid', '') == request.auth.uid && d.get('perangkatId'", "return stafBuat(peranBoleh) && d.get('perangkatId'"),
+            'v17: id dokumen tidak terikat uid penulis': R.replace("        && id == request.auth.uid + '_' + d.perangkatId && d.get('token'", "        && d.get('token'"),
+            'v17: kolom token bebas': R.replace(" && d.keys().hasOnly(['id', 'uid', 'olehUid', 'perangkatId', 'token', 'platform', 'perangkat', 'pada']);", ";"),
+            'v17: platform bebas': R.replace(" && d.get('platform', '') == 'android'\n", "\n"),
+            'v17: baris lain berubah dari v16 (tetap wajib ketahuan)': R.replace("    match /ringkasanKasir/{id} {\n      allow read: if owner() || kasir();", "    match /ringkasanKasir/{id} {\n      allow read: if kasir() || owner();"),
             'v16: karyawan ikut mengirim hitungan laci': R.replace("(stafHitungLaci(['ben']) && tglStaf('tanggal'))", "(stafHitungLaci(['ben', 'karyawan']) && tglStaf('tanggal'))"),
             'v16: hitungan laci tanpa penjaga bulan (tglStaf hilang)': R.replace("(stafHitungLaci(['ben']) && tglStaf('tanggal'))", "stafHitungLaci(['ben'])"),
             'v16: hitungan laci boleh nol': R.replace("d.get('hitung', 0) is int && d.get('hitung', 0) > 0 &&", "d.get('hitung', 0) is int && d.get('hitung', 0) >= 0 &&"),
@@ -2058,12 +2164,12 @@ if __name__ == '__main__':
             if isi == R: print('KONTROL BASI  ' + nama); kode = 3; continue
             # kontrol lama (sebelum v7) WAJIB tertangkap pemeriksa KHUSUSNYA — pembanding "sama dengan v6" (yang menangkap perubahan apa pun) dimatikan untuknya;
             # 'model:' — bentuk v7 (persetujuan, fotoBon, pintu) juga dimatikan: yang wajib berbunyi = penafsir rules mini pada kasus Playground ★/M
-            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:'); BANDING_V9 = BANDING_V8 or nama.startswith('v10:'); BANDING_V10 = BANDING_V9 or nama.startswith('v11:'); BANDING_V11 = BANDING_V10 or nama.startswith('v12:'); BANDING_V12 = BANDING_V11 or nama.startswith('v13:'); BANDING_V13 = BANDING_V12 or nama.startswith('v14:'); BANDING_V14 = BANDING_V13 or nama.startswith('v15:'); BANDING_V15 = BANDING_V14 or nama.startswith('v16:')
+            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:'); BANDING_V9 = BANDING_V8 or nama.startswith('v10:'); BANDING_V10 = BANDING_V9 or nama.startswith('v11:'); BANDING_V11 = BANDING_V10 or nama.startswith('v12:'); BANDING_V12 = BANDING_V11 or nama.startswith('v13:'); BANDING_V13 = BANDING_V12 or nama.startswith('v14:'); BANDING_V14 = BANDING_V13 or nama.startswith('v15:'); BANDING_V15 = BANDING_V14 or nama.startswith('v16:'); BANDING_V16 = BANDING_V15 or nama.startswith('v17:')
             c = periksa(isi, K, A)
-            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ', 'model v10 ', 'model v11 ', 'model v12 ', 'model v13 ', 'model v14 ', 'model v15 ', 'model v16 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
+            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ', 'model v10 ', 'model v11 ', 'model v12 ', 'model v13 ', 'model v14 ', 'model v15 ', 'model v16 ', 'model v17 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
-        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; BANDING_V9 = True; BANDING_V10 = True; BANDING_V11 = True; BANDING_V12 = True; BANDING_V13 = True; BANDING_V14 = True; BANDING_V15 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
+        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; BANDING_V9 = True; BANDING_V10 = True; BANDING_V11 = True; BANDING_V12 = True; BANDING_V13 = True; BANDING_V14 = True; BANDING_V15 = True; BANDING_V16 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
         for nama, isi in rusak_dok.items():
             DOK_V7_TEKS = isi; c = periksa(R, K, A); DOK_V7_TEKS = None
             c = [x for x in c if 'docs/uji-rules-v7.md' in x]   # berbunyi karena SEBABNYA (berkas Playground), bukan kegagalan lain
@@ -2079,7 +2185,8 @@ if __name__ == '__main__':
     if c: print('RULES CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
     KOL, TMIN = kp_js()
     nS = sum(1 for k in KASUS_BUKU if k[4]); nT = len(KASUS_BUKU) - nS
-    print('RULES v16 LULUS: v16 = firestore.rules.v15 + hitungan laci dari tablet (Penjaga laci, menunggu, bulat, brankas ≤ hitungan) + aturan tutup hari terbaca ben; hari ditutup owner saja (model %d kasus ★Y, beda v15 = %d kasus) · ' % (len(KASUS_V16), len(BEDA_V15))
+    print('RULES v17 LULUS: v17 = firestore.rules.v16 + token push aplikasi tablet (notifPerangkat: atas nama penulisnya, id = uid_perangkat, kolom dibatasi; baca & hapus owner) (model %d kasus ★Z, beda v16 = %d kasus) · ' % (len(KASUS_V17), len(BEDA_V16))
+          + 'v16 = firestore.rules.v15 + hitungan laci dari tablet (Penjaga laci, menunggu, bulat, brankas ≤ hitungan) + aturan tutup hari terbaca ben; hari ditutup owner saja (model %d kasus ★Y, beda v15 = %d kasus) · ' % (len(KASUS_V16), len(BEDA_V15))
           + 'v15 = firestore.rules.v14 + barang masuk dari tablet (Penjaga laci, langsung bon, bongkar 0) + titipan upah bongkar & bayar bon pemasok + kabar barang masuk; ubah kedatangan & tulis uang tetap owner (model %d kasus ★X, beda v14 = %d kasus) · ' % (len(KASUS_V15), len(BEDA_V14))
           + 'v14 = firestore.rules.v13 + data uang (sebelas baris BACA) untuk akun Penjaga laci yang ditandai owner — Ringkas hari ini di tablet; tulis tetap owner (model %d kasus ★W, beda v13 = %d kasus) · ' % (len(KASUS_V14), len(BEDA_V13))
           + 'v13 = firestore.rules.v12 + titipan uang keluar & pesan dari tablet (bentuk persis; uangnya tetap ditulis owner) + token notifikasi HP owner (model %d kasus ★U, beda v12 = %d kasus) · ' % (len(KASUS_V13), len(BEDA_V12))

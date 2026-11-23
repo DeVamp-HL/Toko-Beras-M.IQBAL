@@ -10,12 +10,14 @@ pasang.py — dijalankan GitHub Actions (apk.yml) SESUDAH `npx cap add android`:
   · paket S2a (19 Nov 2026) — izin NFC (pembaca NFC bawaan tablet; tidak wajib ada di perangkat)
   · paket S4 (19 Nov 2026) — pustaka AndroidX Biometric + izin USE_BIOMETRIC (sensor sidik jari; tidak wajib ada di perangkat). Izin Bluetooth
     (BLUETOOTH_CONNECT dkk.) TIDAK ditambahkan di sini: manifest pustaka printer SUNMI sudah membawanya
+  · owner 23 Nov 2026 — PUSH APLIKASI TABLET: berkas Firebase google-services.json dari rahasia repo GOOGLE_SERVICES_JSON (tanpa rahasia = APK tanpa push,
+    tombol notifikasi tablet menolak dengan kalimat yang jelas), izin POST_NOTIFICATIONS (Android 13+), ikon & saluran bawaan notifikasi "Kabar toko"
   · ikon & layar pembuka dari icon-sistem-512.png toko
   · versionCode/versionName dari nomor jalan Actions (APK baru bisa dipasang menimpa yang lama bila kuncinya sama)
 
     python3 apk/pasang.py --versi 12
 """
-import argparse, glob, os, re, shutil, sys
+import argparse, glob, json, os, re, shutil, sys
 
 APK = os.path.dirname(os.path.abspath(__file__))
 AKAR = os.path.dirname(APK)
@@ -35,6 +37,12 @@ PENJAGA_DATA = PAKET + '.KelolaRuangActivity'
 ANTI_KEDIP = ('navigation', 'keyboard', 'keyboardHidden')
 IZIN_NFC = 'android.permission.NFC'
 IZIN_BIOMETRIK = 'android.permission.USE_BIOMETRIC'
+# owner 23 Nov 2026: push aplikasi tablet (plugin resmi @capacitor/push-notifications = Firebase Cloud Messaging)
+IZIN_NOTIF = 'android.permission.POST_NOTIFICATIONS'
+META_IKON = '<meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_kabar" />'
+META_SALURAN = '<meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="kabar" />'
+GS_PLUGIN = 'com.google.gms.google-services'
+GS_CLASSPATH = "classpath 'com.google.gms:google-services:4.4.2'"
 
 
 def gagal(pesan):
@@ -59,6 +67,9 @@ def pasang_java():
         shutil.copyfile(os.path.join(APK, 'tambahan', nama), os.path.join(tujuan, nama)); print('  java:', nama)
     shutil.copyfile(os.path.join(APK, 'tambahan', 'res', 'xml', 'device_filter.xml'), os.path.join(UTAMA, 'res', 'xml', 'device_filter.xml'))
     print('  res/xml/device_filter.xml')
+    os.makedirs(os.path.join(UTAMA, 'res', 'drawable'), exist_ok=True)
+    shutil.copyfile(os.path.join(APK, 'tambahan', 'res', 'drawable', 'ic_kabar.xml'), os.path.join(UTAMA, 'res', 'drawable', 'ic_kabar.xml'))
+    print('  res/drawable/ic_kabar.xml (ikon notifikasi)')
 
 
 class Tolak(Exception):
@@ -85,6 +96,15 @@ def ubah_manifest(m):
     if IZIN_BIOMETRIK not in m:
         if m.count('<application') != 1: raise Tolak('AndroidManifest punya %d <application' % m.count('<application'))
         m = m.replace('<application', '<uses-permission android:name="%s" />\n    <uses-feature android:name="android.hardware.fingerprint" android:required="false" />\n\n    <application' % IZIN_BIOMETRIK, 1)
+    # owner 23 Nov 2026: push aplikasi tablet — izin tampil notifikasi (Android 13+ wajib diminta saat jalan; diminta dari ketukan Nyalakan)
+    if IZIN_NOTIF not in m:
+        if m.count('<application') != 1: raise Tolak('AndroidManifest punya %d <application' % m.count('<application'))
+        m = m.replace('<application', '<uses-permission android:name="%s" />\n\n    <application' % IZIN_NOTIF, 1)
+    # ikon kecil & saluran bawaan untuk notifikasi yang ditampilkan Firebase saat aplikasi tertutup (ikon warna-warni = kotak putih di bilah notifikasi)
+    for meta in (META_IKON, META_SALURAN):
+        if meta not in m:
+            if m.count('</application>') != 1: raise Tolak('AndroidManifest punya %d </application>' % m.count('</application>'))
+            m = m.replace('</application>', '    ' + meta + '\n    </application>', 1)
     # paket S1: layanan SUNMI yang ditanya aplikasi (scanner, layanan perangkat)
     kurang = [p for p in TANYA_PAKET if ('<package android:name="%s"' % p) not in m]
     if kurang:
@@ -120,6 +140,7 @@ def ubah_manifest(m):
     wajib += ['<package android:name="%s"' % p for p in TANYA_PAKET]
     wajib += ['<uses-permission android:name="%s" />' % IZIN_NFC, '<uses-feature android:name="android.hardware.nfc" android:required="false" />']
     wajib += ['<uses-permission android:name="%s" />' % IZIN_BIOMETRIK, '<uses-feature android:name="android.hardware.fingerprint" android:required="false" />']
+    wajib += ['<uses-permission android:name="%s" />' % IZIN_NOTIF, META_IKON, META_SALURAN]
     for w in wajib:
         if w not in m: raise Tolak('manifest tidak memuat ' + w)
     return m
@@ -141,11 +162,46 @@ def ubah_gradle(g, versi):
     return g2
 
 
+def periksa_gs(teks):
+    """Isi rahasia GOOGLE_SERVICES_JSON → teks JSON rapi. Wajib JSON berkas google-services Firebase yang memuat aplikasi Android paket ini
+    (salah tempel = bangun GAGAL dengan kalimat jelas, bukan APK yang diam-diam tanpa push)."""
+    try: d = json.loads(teks)
+    except Exception: raise Tolak('rahasia GOOGLE_SERVICES_JSON bukan JSON — salin SELURUH isi berkas google-services.json dari Firebase Console')
+    nama = [((c.get('client_info') or {}).get('android_client_info') or {}).get('package_name') for c in (d.get('client') or []) if isinstance(c, dict)]
+    if PAKET not in nama: raise Tolak('google-services.json tidak memuat aplikasi Android %s (ada: %s) — daftarkan aplikasi Android dengan nama paket itu di Firebase Console' % (PAKET, ', '.join(x for x in nama if x) or 'tidak ada'))
+    if not (d.get('project_info') or {}).get('project_id'): raise Tolak('google-services.json tanpa project_id')
+    return json.dumps(d, indent=2, ensure_ascii=False) + '\n'
+
+
+def ubah_gradle_gs(app_g, akar_g):
+    """Pastikan plugin google-services terpasang (cetakan Capacitor 7 sudah membawanya: classpath di build.gradle akar, apply bersyarat di app). Murni."""
+    if GS_PLUGIN not in app_g:
+        app_g = app_g.rstrip('\n') + "\n\napply plugin: '%s'\n" % GS_PLUGIN
+    if 'com.google.gms:google-services' not in akar_g:
+        cocok = re.search(r"(?m)^([ \t]*)classpath ['\"]com\.android\.tools\.build:gradle:[^'\"]+['\"][ \t]*$", akar_g)
+        if not cocok: raise Tolak('build.gradle akar tanpa classpath Android Gradle — pola Capacitor berubah, plugin google-services tidak bisa dipasang')
+        akar_g = akar_g[:cocok.end()] + '\n' + cocok.group(1) + GS_CLASSPATH + akar_g[cocok.end():]
+    return app_g, akar_g
+
+
+def pasang_firebase():
+    """owner 23 Nov 2026: berkas Firebase untuk push tablet dari rahasia repo. Tanpa rahasia = APK tetap jadi, push tablet mati (dikabarkan di layar)."""
+    teks = os.environ.get('GOOGLE_SERVICES_JSON', '').strip()
+    if not teks: print('  push tablet: TANPA berkas Firebase (rahasia GOOGLE_SERVICES_JSON kosong) — notifikasi tablet tidak bisa dinyalakan di APK ini'); return False
+    try:
+        isi = periksa_gs(teks)
+        pa = os.path.join(ANDROID, 'app', 'build.gradle'); pr = os.path.join(ANDROID, 'build.gradle')
+        app_g, akar_g = ubah_gradle_gs(baca(pa), baca(pr))
+    except Tolak as e: gagal(str(e))
+    tulis(os.path.join(ANDROID, 'app', 'google-services.json'), isi); tulis(pa, app_g); tulis(pr, akar_g)
+    print('  push tablet: google-services.json terpasang (paket %s) + plugin google-services' % PAKET); return True
+
+
 def pasang_manifest():
     p = os.path.join(UTAMA, 'AndroidManifest.xml')
     try: m = ubah_manifest(baca(p))
     except Tolak as e: gagal(str(e))
-    tulis(p, m); print('  AndroidManifest.xml: usb.host + USB_DEVICE_ATTACHED + <queries> SUNMI + izin NFC + izin sidik jari + penjaga data + allowBackup mati + HTTP polos (printer jaringan) + configChanges')
+    tulis(p, m); print('  AndroidManifest.xml: usb.host + USB_DEVICE_ATTACHED + <queries> SUNMI + izin NFC + izin sidik jari + izin notifikasi + ikon/saluran notifikasi + penjaga data + allowBackup mati + HTTP polos (printer jaringan) + configChanges')
 
 
 def pasang_versi(versi):
@@ -183,7 +239,7 @@ def main():
     a = argparse.ArgumentParser(); a.add_argument('--versi', type=int, default=1); x = a.parse_args()
     if not os.path.isdir(ANDROID): gagal('apk/android belum ada — jalankan `npx cap add android` dulu')
     print('Memasang tablet kasir ke proyek Android:')
-    pasang_java(); pasang_manifest(); pasang_versi(max(1, x.versi)); pasang_ikon()
+    pasang_java(); pasang_manifest(); pasang_versi(max(1, x.versi)); pasang_firebase(); pasang_ikon()
     print('SELESAI')
 
 
