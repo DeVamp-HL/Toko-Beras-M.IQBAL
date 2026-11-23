@@ -225,3 +225,14 @@ main.layar-ringkasan.masuk > .rk-dasbor, main.layar-ringkasan.masuk > .rk-saklar
 .layar-ringkasan .db-pita-b2b { height: 6px; border-radius: 4px; background: var(--seg); border: 1px solid var(--kaca-tepi); overflow: hidden; margin: 2px 0 4px; }
 .layar-ringkasan .db-pita-b2b i { display: block; height: 100%; background: linear-gradient(90deg, var(--emas-garis), var(--aktif)); transform-origin: 0 50%; animation: dbTumbuhX 620ms cubic-bezier(.2,.8,.2,1) both; animation-delay: 160ms; }
 @media (prefers-reduced-motion: reduce) { .layar-ringkasan .db-pita-b2b i { animation: none; } }
+/* paket KPI laba (owner 24 Nov 2026): kartu Margin & target — lampu target harian (hijau / kuning / merah menurut laju jam), bilah omzet vs target bergerak tumbuh,
+   penanda laju jam; hormat reduced motion lewat aturan .db-tumbuh-x yang sudah ada */
+.layar-ringkasan .db-kpi-target { display: grid; gap: 4px; padding: 4px 0 6px; border-bottom: 1px solid var(--garis); }
+.layar-ringkasan .db-kpi-kepala { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 12.5px; }
+.layar-ringkasan .db-lampu { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--hantu); box-shadow: 0 0 0 2px var(--seg); transition: background 480ms cubic-bezier(.2,.8,.2,1); }
+.layar-ringkasan .db-lampu.hijau { background: #2f8a4a; animation: dbLampuDenyut 2400ms ease-in-out infinite; } .layar-ringkasan .db-lampu.kuning { background: var(--emas-garis); } .layar-ringkasan .db-lampu.merah { background: var(--awas); animation: dbLampuDenyut 1600ms ease-in-out infinite; }
+.layar-ringkasan .db-bilah-target { height: 12px; border-radius: 6px; overflow: hidden; background: var(--seg); }
+.layar-ringkasan .db-target-hijau { fill: #2f8a4a; } .layar-ringkasan .db-target-kuning { fill: var(--emas-garis); } .layar-ringkasan .db-target-merah { fill: var(--awas); }
+.layar-ringkasan .db-laju { fill: var(--teks, currentColor); opacity: 0.7; }
+@keyframes dbLampuDenyut { 0%, 100% { box-shadow: 0 0 0 2px var(--seg); } 50% { box-shadow: 0 0 0 5px transparent; } }
+@media (prefers-reduced-motion: reduce) { .layar-ringkasan .db-lampu { animation: none; transition: none; } }

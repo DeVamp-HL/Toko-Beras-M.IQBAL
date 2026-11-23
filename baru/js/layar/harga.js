@@ -9,6 +9,7 @@ import { pasangIsian } from '../inti/isian.js';
 import { RP, ANGKA, DESIMAL, tanggalPendek } from '../inti/format.js';
 import * as HG from './harga-logika.js';
 import * as BP from './bon-pemasok-logika.js';
+import * as KL from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 2026): saran harga & mark-up, target margin per jenis, pembanding BPS, hari bayar pemasok
 // owner 7 Okt: foto kertas bon pemasok — dikecilkan di perangkat, satu dokumen per foto di koleksi fotoBon (dibaca saat bon dibuka)
 import * as FB from './foto-bon-logika.js';
 import * as BL from './belanja-logika.js';
@@ -46,10 +47,11 @@ export function pasangLayarHarga(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ keluarga: ['katalog', 'bon', 'belanja'].indexOf(bacaLokal(KUNCI_KELUARGA)) >= 0 ? bacaLokal(KUNCI_KELUARGA) : 'katalog', kabar: '', kabarAwas: false,
     tabH: tabLokal.h || 'papan', ubah: null, ketik: '', ketikApa: 'jual', terbit: false, yakinRugi: false, kal: { arah: 'naik', merek: 'semua', satuan: 'semua', rp: 100 }, papanSisi: 'owner', wa: false, bedah: { merek: '', satuan: '', bayar: 'tunai' }, aturH: null,
+    aturTm: null,   // paket KPI laba: draf target margin per jenis
     tabB: tabLokal.b || 'tusuk', bukuNama: '', bayar: null, lama: null, kartu: null, urung: null, aturB: null, betul: null, foto: null,
     tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, kmUbah: null, kmDaftar: false, hetBuka: false, aturHet: null, vrBaru: null, vrYakin: false, arYakin: '', arBuka: false, ltYakin: '' });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturHet', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))]], [KUNCI_DRAF_BELANJA]);
+  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturHet', 'aturTm', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))]], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -130,6 +132,10 @@ export function pasangLayarHarga(akar, opsi) {
     hgKetik: (v) => set({ ketik: String(v).slice(0, 12) }),
     hgKetikApa: ({ apa }) => set({ ketikApa: apa, ketik: '' }),
     hgIsi: ({ n }) => set({ ketik: String(n) }),
+    // paket KPI laba (butir 4): target margin per jenis — draf → KL.susunAturKpi (aturanToko/kpiLaba.targetMargin; kolom lain dokumen itu tidak tertimpa)
+    tmBuka: () => { const T = KL.klTargetMargin(kini()); const d = {}; KL.KL_JENIS.forEach((j) => { const x = T.jenis[j.id]; d[j.id] = x.dariOwner ? String(x.pct).replace('.', ',') : ''; }); set({ aturTm: st().aturTm ? null : d }); },
+    tmKetik: (v, el) => { const a = Object.assign({}, st().aturTm || {}); a[el.dataset.jenis] = String(v).slice(0, 8); set({ aturTm: a }); },
+    tmSimpan: async () => { const a = st().aturTm; if (a && await tulis(KL.susunAturKpi({ targetMargin: a }, waktu()))) set({ aturTm: null }); },
     hgSimpanUbah: async () => { const s = st(); if (!s.ubah) return; if (await tulis(HG.susunUbah(s.ubah, s.ketik, s.ketikApa, waktu()))) sekali(akar.querySelector('.hg-ubah'), 'pegas', 520); },
     hgHapusPasar: async () => { const s = st(); if (s.ubah) await tulis(HG.susunHapusPasar(s.ubah, waktu())); },
     hgBuangDraf: async ({ kunci }) => { await tulis(HG.susunBuangDraf(kunci || null, waktu())); },
@@ -298,7 +304,7 @@ export function pasangLayarHarga(akar, opsi) {
       <div class="hg-ringkas" data-k="ringkas">${S.ringkas.map((r) => h`<div class="${r.nyala ? 'nyala' : ''}" data-k="r-${r.id}"><span class="a">${r.a}</span><span class="l">${r.l}</span></div>`)}</div>
       ${s.jbUbah ? gambarJenisUbah(s) : ''}${s.kmUbah ? gambarKelasUbah(s) : ''}${s.ubah ? gambarUbah(s, S) : ''}${s.terbit ? gambarTerbit(s, S) : ''}${s.wa ? gambarWaHarga(S) : ''}
       <div class="hg-grid ${L}" data-k="grid">${tetapKiri ? h`<div class="hg-kolom" data-k="hg-kiri">${gambarPapan(s, S, HT)}</div>` : ''}${tengah}${tetapKanan ? h`<div class="hg-kolom" data-k="hg-kanan">${gambarLabel(S, lbl)}</div>` : ''}</div>
-      ${gambarHet(s, HT)}
+      ${gambarHet(s, HT)}${gambarTargetMargin(s)}
       ${S.nDraf ? h`<div class="hg-bilah" data-k="bilah"><div><div style="font-weight: 600;">${S.nDraf} harga berubah — kasir belum tahu</div><div class="ket">draf tidak sampai ke kasir sebelum diterbitkan</div></div><div class="kaca-btn aktif" data-aksi="hgBukaTerbit">Periksa & terbitkan</div></div>` : ''}
       ${gambarRiwayat()}${gambarAturH(s, S)}${gambarJenisDaftar(s)}${gambarKelasDaftar(s)}${gambarVarianBaru(s, S)}${gambarProdukArsip(s)}
       <div class="ket" style="font-size: 11px;">Katalog ini = katalog yang dibaca kasir (harga karung per kg, kemasan per kantong, literan per liter — koleksi yang sama dengan sistem lama). Perubahan jadi DRAF dulu; terbit = semuanya berganti sekaligus. ${mfMasaBerlaku(cacheMentah('aturan')) ? 'Modal = modal nota berikutnya (FIFO: karung terlama yang masih ada; nilai rak di HPP)' : 'Modal = modal rata-rata di buku (sama dengan laba, neraca & layar HPP)'}; harga beli terbaru dibawa sebagai pembanding. ${S.atur.targetDariRata ? 'Target untung ' + RP(S.target) + '/kg = rata-rata untung katalog karung yang sedang berlaku (belum diatur owner).' : 'Target untung ' + RP(S.target) + '/kg diatur owner.'}${S.tanpaModal ? ' ' + S.tanpaModal + ' harga belum bisa dinilai karena modalnya belum tercatat.' : ''}</div>
@@ -338,6 +344,7 @@ export function pasangLayarHarga(akar, opsi) {
       <div class="hg-ketik-baris"><input class="ketik-nama" id="hgKetik" type="text" inputmode="numeric" placeholder="${modeP ? 'harga di toko lain' : 'harga baru per ' + b.st.per}" value="${s.ketik}" data-ketik="hgKetik">
         ${!modeP && b.usul ? h`<div class="kaca-btn aktif" data-aksi="hgIsi" data-n="${b.usul}"><span>pakai usul</span><b>${RP(b.usul)}</b></div>` : ''}${modeP && b.pasar ? h`<div class="kaca-btn" data-aksi="hgIsi" data-n="${b.pasar.harga}">samakan</div>` : ''}</div>
       <div class="ket">${modeP ? 'Harga pasar = catatan lu tentang harga toko lain. Tidak pernah jadi draf, tidak pernah sampai ke kasir.' : 'usul = ' + U.usulTeks}</div>
+      ${modeP ? '' : gambarSaran(b, S)}
       ${U.arti ? h`<div class="${U.awas ? 'pita-info awas' : 'pita-info'}" data-k="arti">${U.arti}</div>` : ''}
       ${modeP ? '' : (() => { const X = HET.hetSatuHarga(b, U.n > 0 ? U.n : b.n); return !X ? '' : X.status === 'atas' ? h`<div class="pita-info awas" data-k="ubah-het">${X.teks} — boleh; owner yang memutuskan</div>` : h`<div class="ket" data-k="ubah-het">${X.status === 'belum' ? 'HET: ' + X.unit + ' belum dipetakan (kartu HET › Atur)' : 'HET: ' + X.teks}</div>`; })()}
       <div class="utama ${U.tolak ? 'redup' : ''}" data-aksi="hgSimpanUbah">${U.label}</div>
@@ -503,6 +510,27 @@ export function pasangLayarHarga(akar, opsi) {
         <div class="jalur rapat">${HET.HET_KATEGORI.map(([id, nm]) => h`<div class="seg ${u.kategori === id ? 'aktif' : ''}" data-aksi="hetPeta" data-unit="${u.unit}" data-kat="${u.kategori === id ? '' : id}" data-k="hp-${u.unit}-${id}">${nm}</div>`)}</div></div>`)}
       ${HT.tidakDipakai.length ? h`<div class="ket" data-k="het-yatim">Pemetaan yang tidak punya baris katalog lagi (nama berganti / diarsipkan): ${HT.tidakDipakai.map((u, i) => h`${i ? ' · ' : ''}<span class="tautan" data-aksi="hetPeta" data-unit="${u}" data-kat="">${u} (${A.peta[u]}) — lepas</span>`)}</div>` : ''}</div>`;
   }
+  // paket KPI laba (owner 24 Nov 2026, butir 4 · 5): SARAN harga dari target margin per jenis — modal ÷ (1 − target), mark-up selalu di samping margin.
+  // Hanya saran: ketuk "pakai saran" mengisi kotak ketik (jadi draf kalau lu simpan); harga tidak pernah berubah sendiri. Angka dari KL.klSaranBaris.
+  function gambarSaran(b, S) {
+    const T = KL.klTargetMargin(kini()); const X = KL.klSaranBaris(b, T, S); const P = KL.klPctTeks;
+    if (X.tanpaModal) return h`<div class="ket" data-k="saran">Saran harga belum bisa — modalnya belum tercatat.</div>`;
+    return h`<div class="hg-saran" data-k="saran"><div class="label">Margin & saran dari target</div>
+      <div class="ket" data-k="saran-kini">Harga sekarang: margin ${P(X.pctKini)} · mark-up ${P(X.markupKini)} (modal ${RP(Math.round(X.modal))} per ${b.st.per})</div>
+      ${X.saran.map((x) => h`<div class="hg-saran-baris" data-k="saran-${x.jenis}"><div><b>${x.nama}</b><div class="ket">target ${P(x.target)} (${x.dariOwner ? 'owner' : 'bawaan: margin 3 bulan'}) · mark-up ${P(x.markup)}${x.karungUtuh ? ' · karung 50 kg ' + RP(x.karungUtuh) : ''}</div></div>
+        ${x.harga !== null ? h`<div class="kaca-btn kecil ${x.beda > 0 ? 'aktif' : ''}" data-aksi="hgIsi" data-n="${x.harga}"><span>pakai saran</span> <b>${RP(x.harga)}</b></div>` : h`<span class="ket">target belum ada</span>`}</div>`)}
+      <div class="ket">Saran = modal ÷ (1 − target margin), dibulatkan ke atas seperti usul. Hanya saran — harga baru berlaku sesudah lu simpan & terbitkan.</div></div>`;
+  }
+  // paket KPI laba (butir 4 · 5): kartu target margin per jenis — bawaan = margin terwujud 3 bulan dari mesin (supaya tidak menyalakan alarm), owner bisa mengubah
+  function gambarTargetMargin(s) {
+    const T = KL.klTargetMargin(kini()); const P = KL.klPctTeks; const a = s.aturTm;
+    return h`<div class="kartu" data-k="target-margin" style="gap: 6px;"><div class="label">Target margin per jenis · dasar saran harga</div>
+      ${KL.KL_JENIS.map((j) => { const x = T.jenis[j.id]; return h`<div class="hg-dua-kolom" data-k="tm-${j.id}"><span>${j.nama}<br><span class="ket">${x.dariOwner ? 'diatur owner · ' + x.bawaanTeks : 'bawaan · ' + x.bawaanTeks}</span></span><span class="n">${P(x.pct)}<br><span class="ket">mark-up ${P(KL.klMarkup(x.pct))}</span></span></div>`; })}
+      <div class="ket" data-k="tm-bps">Pembanding ${KL.KL_BPS.pendek}: pedagang besar ${P(KL.KL_BPS.grosir)} · pedagang eceran ${P(KL.KL_BPS.eceran)} — konteks, bukan target. Sumber: ${KL.KL_BPS.sumber}.</div>
+      ${a ? h`<div class="ps-form tiga" data-k="tm-form">${KL.KL_JENIS.map((j) => h`<div data-k="tmf-${j.id}"><div class="ket">${j.nama} (%) · kosong = bawaan</div><input class="ketik-nama" type="text" inputmode="decimal" placeholder="${P(T.jenis[j.id].bawaan)}" value="${a[j.id] || ''}" data-ketik="tmKetik" data-jenis="${j.id}"></div>`)}</div>
+        <div class="tombol-baris"><div class="kaca-btn" data-aksi="tmBuka">batal</div><div class="kaca-btn aktif emas" data-aksi="tmSimpan">SIMPAN TARGET</div></div>`
+        : h`<div class="kaca-btn kecil" data-aksi="tmBuka" style="align-self: flex-start;">Atur target margin per jenis ›</div>`}</div>`;
+  }
   function gambarRiwayat() {
     const r = HG.riwayatTerbit(10); if (!r.length) return '';
     return h`<div class="kartu platina" data-k="riwayat" style="gap: 2px;"><div class="label">Harga yang berubah (terbit dari sistem baru)</div>${r.map((x, i) => h`<div class="hg-daftar tiga" data-k="rw-${i}"><span class="ket">${tanggalPendek(x.tanggal)} ${x.jam}</span><span>${x.nama}<br><span class="ket">${x.arah}</span></span><span class="n">${RP(x.baru)}</span></div>`)}</div>`;
@@ -527,9 +555,19 @@ export function pasangLayarHarga(akar, opsi) {
       ${L === 'mac' ? h`<div class="hg-grid mac tiga" data-k="grid-bon"><div class="hg-kolom" data-k="k1">${gambarTusukan(s, B)}</div><div class="hg-kolom" data-k="k2">${gambarGaris(B)}</div><div class="hg-kolom" data-k="k3">${gambarBuku(s, B)}</div></div>`
         : L === 'tablet' ? h`<div class="hg-grid tablet" data-k="grid-bon"><div class="hg-kolom" data-k="k1">${gambarTusukan(s, B)}</div><div class="hg-kolom" data-k="k2">${tabBaris(tabAda.map(([id, nm]) => [id, nama(id, nm)]), tab, 'tabB')}${panel(tab)}</div></div>`
         : h`<div class="hg-kolom" data-k="grid-bon">${tabBaris(tabAda.map(([id, nm]) => [id, nama(id, nm)]), tab, 'tabB')}${panel(tab)}</div>`}
+      ${gambarHariBayar()}
       <div class="tombol-baris rapat"><div class="kaca-btn putus" data-aksi="bpLamaBuka">＋ Catat bon lama (sebelum sistem)</div>${gambarAturB(s, B)}</div>
       <div class="ket" style="font-size: 11px;">Sisa bon = nilai − yang sudah dibayar (mesin yang sama dengan sistem lama); bon yang dibayar sebagian TETAP di daftar. Satu pembayaran = satu bon; bon tertua cuma saran — lu yang memilih. Jatuh tempo = tanggal barang datang + tempo di kartu pemasok (atau tempo umum di Atur Barang masuk) — ramalan, bukan janji tertulis. Membayar bon tidak mengubah laba; biaya admin transfer masuk biaya toko.</div>
     </section>`;
+  }
+  // paket KPI laba (owner 24 Nov 2026, butir 13): rata-rata hari bayar bon pemasok — per pemasok & total, dari pembayaran yang MENUNJUK bonnya (BP.bpHariBayar)
+  function gambarHariBayar() {
+    const R = BP.bpHariBayar(kini()); const maks = Math.max(1, ...R.pemasok.map((p) => p.rataHari || 0));
+    return h`<div class="kartu" data-k="hari-bayar" style="gap: 4px;"><div class="label">Rata-rata hari bayar pemasok · ${R.hari} hari terakhir</div>
+      <div style="font-weight: 600;" data-k="hb-total">${R.teks}</div>
+      ${R.pemasok.map((p) => h`<div class="hg-dua-kolom" data-k="hb-${p.kunci}"><span>${p.nama}<br><span class="ket">${p.n} pembayaran · ${RP(p.rp)}</span><span class="hg-pita-hari"><i style="width: ${Math.max(0, Math.min(100, (p.rataHari || 0) / maks * 100)).toFixed(1)}%;"></i></span></span><span class="n">${BP.bpHariTeks(p.rataHari)}</span></div>`)}
+      ${R.sebab.length ? h`<div class="ket" data-k="hb-sebab">Tidak dihitung: ${R.sebab.join(' · ')}.</div>` : ''}
+      <div class="ket">Hari = tanggal bayar − tanggal bon (barang datang), ditimbang rupiah. Dipakai juga di siklus uang Dasbor.</div></div>`;
   }
   const bonSlip = (b, i, kelas) => h`<div class="bn-tusuk" data-k="slip-${b.id}"><div class="bn-slip ${i % 2 ? 'genap' : ''} ${b.jenis === 'saldoAwal' ? 'lama' : ''} ${kelas || ''}" data-aksi="bpBayarBuka" data-pemasok="${b.pemasok}" data-bon="${b.id}"><div><div class="tg">Bon ${b.gulir || b.tanggal ? tanggalPendek(b.gulir || b.tanggal) : '(tanpa tanggal)'}${b.cap ? h`<span class="bn-cap ${b.jenis === 'saldoAwal' ? 'redup' : ''}">${b.cap}</span>` : ''}${b.saran ? h`<span class="bn-cap saran">saran: ini dulu</span>` : ''}<span class="bn-cap betul" data-aksi="bpBetulBuka" data-pemasok="${b.pemasok}" data-bon="${b.id}">${b.noBon ? 'No. ' + b.noBon + ' · ' : ''}betulkan · foto</span></div><div class="kt">${b.ket}</div><div class="kt ${b.status === 'lewat' ? 'awas' : ''}">${b.tempoTeks}</div>${b.isi ? h`<div class="kt">${b.isi}</div>` : ''}</div><div class="n">${RP(b.sisa)}</div></div></div>`;
   function gambarTusukan(s, B) {

@@ -16,6 +16,7 @@ import { bukanOwner, bolehBukaLayar, hakAkun, bolehMintaOwner } from './akses-la
 import * as HT from './harga-tingkat-logika.js';
 import { rakBarang } from './jual-logika.js';
 import { hetAtur, hetUnit, hetNilai } from './het-logika.js';
+import { klBonKg, klModalPerKg } from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 2026, butir 11): bon dalam kg beras (owner saja — memuat modal per kg)
 import * as FK from './faktur-logika.js';   // B2 (owner 17 Nov 2026): faktur bertempo, batas kredit, rekap faktur
 
 const IKON = {
@@ -374,6 +375,7 @@ export function pasangLayarPelanggan(akar, opsi) {
     const kartuBon = (b) => h`<div class="bp-kartu ${b.status === 'janjiLewat' ? 'lewat' : b.status === 'macet' ? 'macet' : ''}" data-k="bk-${b.kunci}" data-aksi="bukaOrangBon" data-kunci="${b.kunci}"><div><div class="nm" style="font-weight: 600;">${b.nama}</div><div class="ket ${b.status === 'janjiLewat' ? 'awas-teks' : ''}">${b.ket}</div><div class="ket">${b.nBon} · ${b.cap}</div></div><div class="n" ${mentah('data-gulir="' + Math.round(b.sisa) + '"')}>${RP(b.sisa)}</div><div class="batang"><i class="${b.status === 'macet' ? 'tua' : ''}" style="width: ${b.lebar}%;"></i></div></div>`;
     return h`<section class="pl-bon" data-k="bon">
       <div class="hero" data-k="hero"><div><div class="ket">Bon pelanggan · sisa semuanya</div><div class="besar" ${mentah('data-gulir="' + Math.round(Bn.total) + '"')}>${RP(Bn.total)}</div></div><div class="ket" style="text-align: right;">${Bn.berutang} orang masih punya bon<br>tagih sesudah ${Bn.atur.tagihHari} hari · macet sesudah ${Bn.atur.macetHari} hari</div></div>
+      ${(() => { if (bukanOwner(akunKini())) return ''; const X = klBonKg(Bn.total, klModalPerKg()); return X.teks ? h`<div class="ket" data-k="bon-kg">${X.teks} — stok karung yang tertahan di bon (modal rata-rata stok sekarang, nilai neraca)</div>` : ''; })()}
       ${Bn.lebih.length ? h`<div class="pita-info awas" data-k="lebih-bayar">Sisa bon di bawah nol dari ${Bn.lebih.length} nama: ${kalimatLebih({ uang: Bn.jumlahLebihUang, hapus: Bn.jumlahLebihHapus })}. Tidak ikut "sisa semuanya" di atas — ketuk namanya untuk melihat bukunya.</div>
         <div class="tombol-baris" data-k="lebih-nama">${Bn.lebih.map((o) => h`<div class="kaca-btn" data-k="lb-${o.kunci}" data-aksi="bukaOrangBon" data-kunci="${o.kunci}">${o.nama} · ${RP(o.lebih)}</div>`)}</div>` : ''}
       ${Bn.dihapus.length && !bukanOwner(opsi.akun ? opsi.akun() : null) ? h`<div class="ket" data-k="dihapus-ket">Dihapus dari buku · ${Bn.dihapus.length} nama · ${RP(Bn.jumlahDihapus)} — catatannya tetap ada. Ketuk namanya kalau ada yang datang membayar.</div>
