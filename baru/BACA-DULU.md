@@ -3438,3 +3438,37 @@ ketahuan dari fitur sesudah gladi Oktober, dibetulkan atas keputusan owner 23 No
 Alat uji: `uji_riwayat_uang.py` (+5 skenario, +5 kontrol), `uji_riwayat_barang.py` (+2, +3), `uji_tutup_buku_bertahap.py` S-A10 (+5, +6 kontrol),
 `uji_potret_tahun.py` P2b (+1, +1 kontrol), `uji_uang_baru.py` (+1). Asap cadangan toko 23 Nov: bertahap, potret, pemeriksaan sesudah, belanja lulus; sesudah
 ritual 0 catatan 2026 bertombol Batalkan (dulu 47 uang + 973 barang). Laporan gladi untuk owner: di luar repo (catatan sesi).
+
+## Paket brief berikut — Transfer, stop bon, grosir/ecer, saran harga grosir, ganti pembeli (24 Nov 2026, cabang `paket/brief-berikut`)
+Keputusan owner 24 Nov 2026 (memori `paket-brief-berikut-keputusan-24-nov`, semua "Recommended"; empat butir dari sensus brief 9 Okt + satu susulan owner).
+Rules Firestore TIDAK berubah: semua setelan baru menumpang dokumen yang sudah terbaca tablet (`aturanToko/pelanggan`, `aturanToko/hargaTingkat`).
+
+- **Stop bon** (`faktur-logika.js` `fkStopBonHari` / `fkStopBon` / `fkStopBonTeks`, `jual-logika.js` `stopBon` di ujung `kunciKr1`): bon tertua orang itu
+  yang belum lunas lewat **N hari** → nota bon & bayar kurang baru ditahan lewat gerbang kredit B2 yang sama (staf minta persetujuan owner, owner meloloskan
+  dengan dua ketukan; papan owner menyebut tanggal bon tertua, umurnya, batas dan sisa bon). N diatur owner di **Pelanggan › Atur** (`stopBonHari`,
+  bawaan 30, 0 = mati, 0–365). Umur dihitung dari hari ini setempat (`hariIniIso`), bukan dari `umurHari` mesin. Kasir darurat tidak ditahan.
+- **Ganti pembeli satu nota** (`ganti-pembeli-logika.js`, awalan `gp`; Jual › Riwayat › nota › "Ganti pembeli", owner saja, alasan wajib, ketukan kedua):
+  semua baris nota itu pindah nama (`namaSebelum`, `gantiPembeliPada`, `gantiPembeliAlasan` dicatat), bon dan pelunasan saat beli ikut pindah. Ditolak bila
+  nota batal/dirinci, bulan terkunci / tahun ditutup, sudah diretur atau hasil tukar retur, terikat pesanan atau surat jalan, nota bon tanpa nama baru,
+  atau bon lamanya sudah dibayar terpisah. Nama persis sama ditolak; beda huruf besar-kecil saja boleh (membetulkan ejaan). Hapus nama pelanggan sudah ada
+  di kartu pelanggan (tidak dibangun ulang).
+- **Grosir vs ecer per jenis barang** (`grosir-ecer-logika.js`, awalan `ge`): karung utuh = "Grosir (karung utuh)"; literan, kemasan, repack = "Ecer
+  (literan · kemasan · repack)"; ongkir antar dipisah dari `hargaTotal` (bukan jualan beras). Tampil di Laporan › Harian (`data-k="jenis-hari"`), teks WA
+  rekap harian & tutup hari ("Penjualan per jenis:"), dan popover omzet Dasbor. Arsip lama tanpa baris tidak dihitung ulang (`jenis: null`).
+  B5: baris "Eceran" di Laporan › Per pelanggan diganti nama **"Pembeli umum"** (isi dan rumusnya tetap, cuma namanya).
+- **Saran harga grosir per jumlah karung** (`harga-tingkat-logika.js` `htGrosir`, `grosir` di `aturanToko/hargaTingkat`; Pelanggan › Harga grosir, owner
+  saja): jenjang per merek+berat `{ min karung 2–1000, harga per karung }`, paling banyak 5, jenjang lebih tinggi tidak boleh lebih mahal, daftar kosong =
+  hapus. Baris karung yang jumlahnya mencapai jenjang menawarkan "pakai harga grosir · hemat Rp…" **hanya bila lebih murah** dari harga pembeli itu
+  (tingkat / harga khusus / eceran) — tidak ditumpuk; nego tetap di atasnya. Nota mencatat `hargaSumber: 'grosir'`, `grosirMin`, `tingkatHarga`
+  ("grosir ≥ N karung"), dan potongannya ikut "dilepas dari harga eceran" di Laporan › Per pelanggan.
+- **Transfer = cara bayar keempat** (mesin dibuka atas izin owner 9 Okt, **dibekukan ulang** `beku2.py --catat`): tombol Transfer di dua lembar bayar Jual
+  (HP/Mac & tablet) dan di bayar bon pelanggan ("Transfer → rekening"). Uang tidak diketik, angka persis (pembulatan Rp500 hanya tunai); sisa pesanan ber-DP
+  bisa dilunasi lewat Transfer (pelunasan saat beli ber-`caraBayar: 'Transfer'`). Mesin: `kantongBayar` menaruh Transfer di **rekening** seperti QRIS
+  (tanpa MDR), `hitungArusKasInti` memisah "Penjualan transfer" (`pos.transfer`) dari tunai, `daftarGerakanKas` berlabel " · Transfer", `bakuCaraBayar`
+  kenal "Transfer". Tutup hari: transfer bukan uang laci, omzet ikut, tanpa MDR; baris **"Transfer masuk rekening · cocokkan dengan mutasi bluBCA"**
+  (jual + bayar bon hari itu). Laporan › Harian, teks WA, Dasbor dan saring Jual › Riwayat memisah Tunai · QRIS · Transfer · Bon. Kasir darurat tetap
+  Tunai / QRIS / Bon.
+
+Alat uji: `uji_faktur.py` E2 stop bon + H Transfer (85, kontrol berbunyi), `uji_jual_baru.py` GP ganti pembeli (463, +8 kontrol), `uji_laba_pelanggan.py`
+F grosir/ecer (36, +8 kontrol), `uji_harga_tingkat.py` J saran grosir (81, 31 kontrol), `uji_uang_baru.py` TF Transfer (184, +6 kontrol),
+`uji_pesanan.py` DP lewat Transfer (66, +1 kontrol). Dua kontrol lama `uji_uang_baru` dan satu `uji_pesanan` ikut teks baru (tidak basi).
