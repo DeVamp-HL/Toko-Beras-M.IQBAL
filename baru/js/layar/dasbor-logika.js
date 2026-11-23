@@ -170,10 +170,10 @@ export function dbB2b(kini) {
 const DB_KELOMPOK = { hari: ['hari ini', dbHariIni], bulan: ['bulan ini', dbBulanIni], stok: ['stok', dbStok], tagihan: ['tagihan', dbTagihan], mutu: ['mutu usaha', dbMutu], b2b: ['pelanggan usaha', dbB2b] };
 /** Satu kelompok dasbor ('hari' · 'bulan' · 'stok' · 'tagihan' · 'mutu' · 'b2b' · 'tren'), dibungkus aman (galat = kalimat di kelompok itu) dan — kalau
  *  ingat(kunci, f) diberikan — diingat dengan kunci kelompoknya. Dipakai susunDasbor dan pemanasan di latar (kunci SAMA → hasil yang dipanaskan terpakai). */
-export function dbKelompok(nama, kini, rentang, ingat) {
-  const aman = (judul, f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor ' + judul, e); return { galat: String((e && e.message) || e) }; } };
-  const hitung = nama === 'tren' ? () => aman('tren', () => dbTren(rentang, kini)) : () => aman(DB_KELOMPOK[nama][0], () => DB_KELOMPOK[nama][1](kini));
-  return ingat ? ingat(nama === 'tren' ? 'tren|' + rentang : nama, hitung) : hitung();
+export function dbKelompok(kel, kini, rentang, ingat) {
+  const aman = (nama, f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor ' + nama, e); return { galat: String((e && e.message) || e) }; } };
+  const hitung = kel === 'tren' ? () => aman('tren', () => dbTren(rentang, kini)) : () => aman(DB_KELOMPOK[kel][0], () => DB_KELOMPOK[kel][1](kini));
+  return ingat ? ingat(kel === 'tren' ? 'tren|' + rentang : kel, hitung) : hitung();
 }
 // mulus Android paket 3 (owner 23 Nov 2026): ingat(kunci, f) dari layar (Ringkasan: ingatan per versi + kunci luar) — tiap kelompok diingat sendiri, jadi
 // pemanasan di latar bisa menghitungnya SATU PER SATU dan Dasbor yang dibuka sesudahnya tinggal menggambar. Tanpa ingat = hitung langsung seperti dulu.
