@@ -207,7 +207,17 @@ export function susunRak(s, opsi) {
 const INGAT_RAK = '__ingatRak';
 const kelompokkan = (daftar, kunci, judul) => { const out = []; daftar.forEach((c) => { const k = kunci(c); let g = out.find((x) => x.k === k); if (!g) { g = { k, judul: judul(c), daftar: [] }; out.push(g); } g.daftar.push(c); }); return out; };
 function kelompokRak(rak) {
-  return { kemasan: kelompokkan(rak.kemasan, (c) => c.ukuranKg, (c) => String(c.ukuranKg).replace('.', ',') + ' kg'), karung: kelompokkan(rak.karung, (c) => c.berat, (c) => 'Karung ' + c.berat + ' kg') };
+  return { kemasan: kelompokKemasanNama(rak.kemasan), karung: kelompokkan(rak.karung, (c) => c.berat, (c) => 'Karung ' + c.berat + ' kg') };
+}
+/**
+ * Owner 23 Nov 2026: rak Kemasan = SATU kartu per NAMA kemasan (mis. Kembang) dengan pilihan ukuran 5/10/20/25 kg di dalamnya — dulu rak berjudul
+ * ukuran. Ukuran di dalam kartu kecil → besar (ukuran habis tetap ikut, tampak habis). Urutan kartu = termurah per kg dulu (papan harga toko, owner
+ * 19 Sep) memakai harga eceran, supaya kartu tidak berpindah tempat saat pembeli bertingkat dipilih; sama = abjad. Murni (uji: uji_rak_kemasan_nama.py).
+ */
+export function kelompokKemasanNama(daftar) {
+  const g = kelompokkan(daftar || [], (c) => String(c.nama || ''), (c) => String(c.nama || ''));
+  g.forEach((x) => { x.daftar.sort((a, b) => (a.ukuranKg || 0) - (b.ukuranKg || 0)); x.perKg = Math.min(...x.daftar.map((c) => (Number(c.harga) || 0) / (Number(c.ukuranKg) || 1))); });
+  return g.sort((a, b) => a.perKg - b.perKg || a.judul.localeCompare(b.judul));
 }
 // bagian chip yang bergantung pada keranjang aktif & struk parkir — SATU rumus untuk susun penuh dan susun lanjutan
 function geraKarung(merk, berat) {

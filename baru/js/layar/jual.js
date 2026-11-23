@@ -991,7 +991,24 @@ export function pasangLayarJual(akar, opsi) {
       <div class="gambar-chip">${mentah(gambarChipBarang(c, penuh))}</div>
     </div>`;
     const maks = (d) => Math.max(1, ...d.map((c) => c.sisa || 0));
+    const dipilihChip = (c) => !!(s.pilih && s.pilih.kunci === c.kunci && s.pilih.jalur === c.jalur && (s.pilih.berat || 0) === (c.berat || 0));
+    const satuKemasan = (g, i) => {
+      const pilih = g.daftar.find(dipilihChip) || null; const ada = g.daftar.filter((c) => c.sisa > 0 || c.tanpaBatas); const wakil = pilih || ada[0] || g.daftar[0];
+      const tingkat = g.daftar.find((c) => c.tingkatNama); const pegang = g.daftar.filter((c) => c.dipegang > 0);
+      return h`<div class="kartu-kemasan ${pilih ? 'dipilih' : ''} ${ada.length ? '' : 'habis'}" data-k="km-${g.k}" style="--urut: ${Math.min(i, 14)};">
+        <div class="km-kepala"><div class="km-nama"><div class="nama">${g.judul}</div><div class="rinci">${g.daftar.map((c) => String(c.ukuranKg).replace('.', ',')).join(' · ')} kg${ada.length ? '' : ' · semua habis'}</div></div>
+          <div class="gambar-chip">${mentah(gambarChipBarang(wakil, maks(g.daftar)))}</div></div>
+        <div class="km-ukuran" data-k="kmu-${g.k}">${g.daftar.map((c, j) => h`<div class="km-uk ${dipilihChip(c) ? 'dipilih' : ''} ${c.sisa <= 0 && !c.tanpaBatas ? 'habis' : c.sisa <= 2 && !c.tanpaBatas ? 'kurang' : ''}" style="--urut-uk: ${j};"
+            data-k="chip-kemasan-${c.jalur}-${c.kunci}-${c.berat || ''}" data-aksi="chip" data-id="${c.id || ''}" data-jalur="${c.jalur}" data-kunci="${c.kunci}" data-berat="${c.berat || ''}">
+          <b class="km-kg">${String(c.ukuranKg).replace('.', ',')} kg</b><span class="harga">${RP(c.hargaTingkat || c.harga)}</span><span class="stok">${c.sisa <= 0 && !c.tanpaBatas ? 'habis' : c.sisaTeks}</span></div>`)}</div>
+        ${tingkat ? h`<div class="stok tingkat-ket">${tingkat.tingkatNama}${tingkat.hargaTingkat !== tingkat.harga ? ' · harga khusus pembeli ini' : ''}</div>` : ''}
+        ${pegang.length ? h`<div class="stok">${pegang.map((c) => String(c.ukuranKg).replace('.', ',') + ' kg: ' + c.dipegang + ' unit').join(' · ')} dipegang struk lain</div>` : ''}
+      </div>`;
+    };
     const kelompok = s.jalur !== 'sering' && rak.kelompok && rak.kelompok[s.jalur] ? rak.kelompok[s.jalur].map((g) => Object.assign({}, g, { daftar: jbSaringRak(g.daftar, jenisAktif) })).filter((g) => g.daftar.length) : null;
+    // owner 23 Nov 2026: Kemasan = satu kartu per NAMA (mis. Kembang), pilihan ukuran di dalamnya — tiap tombol ukuran = ketukan chip yang sama (harga & sisa
+    // per ukuran tetap terlihat, ukuran habis tetap tampak habis). Semua perangkat (HP, Mac, tablet).
+    if (kelompok && s.jalur === 'kemasan') return h`${barisJenis}<div class="rak-kemasan" data-k="rak-kemasan-nama">${kelompok.map((g, i) => satuKemasan(g, i))}</div>`;
     if (kelompok) return h`${barisJenis}${kelompok.map((g) => h`<div class="kelompok-rak" data-k="kel-${s.jalur}-${g.k}"><div class="judul-kelompok"><span>${g.judul}</span><span class="ket">${g.daftar.length} barang · termurah dulu</span></div>
       <div class="rak-chip">${g.daftar.map((c, i) => satuChip(c, maks(g.daftar), i))}</div></div>`)}`;
     return h`${kartuPT}${pitaWadah}${tombolCek}${barisJenis}<div class="rak-chip" data-k="rak-${s.jalur}">${daftar.map((c, i) => satuChip(c, maks(daftar), i))}</div>`;
