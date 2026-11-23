@@ -38,7 +38,30 @@ KOTAK = {
       {'id': 'hargaDraf', 'draf': {'NG|S': 14000}, 'diubahPada': '2026-11-21T01:00:00.000Z'}],
 }
 
-SKENARIO = r"""
+# Penghitung asap (satu-satunya; dipakai asap data toko DAN kotak pasir). Tiap dokumen setelan disimpan ulang apa adanya: riwayatUbah hasilnya WAJIB sama persis
+# dengan riwayatUbah dokumen itu sebelumnya (riwayat lama dibawa, tidak ada entri baru) — beda sedikit saja = catatan palsu. Dulu dihitung "ada riwayatUbah =
+# palsu", sehingga setelan yang sudah punya riwayat ASLI (23 Nov: satu setelan yang diubah owner) terhitung palsu padahal riwayatnya cuma dibawa — celah alat
+# uji, bukan cacat pencatat. Lalu tambah satu kolom: tepat satu entri baru {ujiAsap: kosong → 1} di ujung, riwayat lama tetap utuh di depannya.
+HITUNG = r"""
+function hitungAsap(CAD, catat) {
+  var J = JSON.stringify, kini = '2026-12-31T16:00:00.000Z', palsu = 0, baru = 0, dibawa = 0, galat = [], contoh = [];
+  var semua = (CAD.aturanToko || []).map(function (d) { return ['aturanToko', d]; }).concat((CAD.hargaWadah || []).map(function (d) { return ['hargaWadah', d]; }));
+  semua.forEach(function (p) { var k = p[0], d = p[1];
+    try {
+      var lamaR = Array.isArray(d.riwayatUbah) ? d.riwayatUbah : [];
+      var x = Object.assign({}, d, { tanggal: '2026-12-31', jam: '23:00', diubahPada: kini }); var r = catat(k, x, d, true, kini);
+      if (J((r && r.riwayatUbah) || []) !== J(lamaR)) { palsu++; contoh.push(k + '/' + d.id + ': ' + lamaR.length + ' → ' + (((r && r.riwayatUbah) || []).length) + ' entri'); }
+      else if (lamaR.length) dibawa++;
+      if (!rsdDicatat(k, d.id, true)) return;
+      var R2 = (catat(k, Object.assign({}, x, { ujiAsap: 1 }), d, true, kini) || {}).riwayatUbah || [];
+      if (R2.length === Math.min(RSD_MAKS, lamaR.length + 1) && J(R2[R2.length - 1].ubah) === J([{ k: 'ujiAsap', dari: null, ke: 1 }]) && J(R2.slice(0, -1)) === J(lamaR.slice(-(RSD_MAKS - 1)))) baru++;
+      else galat.push(k + '/' + d.id + ': perubahan satu kolom tidak tercatat persis (atau riwayat lama tidak utuh)');
+    } catch (e) { galat.push(k + '/' + d.id + ': ' + e); } });
+  return { palsu: palsu, baru: baru, dibawa: dibawa, galat: galat, contoh: contoh };
+}
+"""
+
+SKENARIO = HITUNG + r"""
 var hasil = []; var J = JSON.stringify;
 function cek(nama, ok, ket) { hasil.push({ nama: nama, ok: !!ok, ket: ket === undefined ? '' : (typeof ket === 'string' ? ket : J(ket)) }); }
 Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); });
@@ -60,13 +83,19 @@ var b2 = rsdSertakan('aturanToko', cap({ id: 'catatStok', minKarung: 50, tempoHa
 cek('ubah satu kolom: entri kedua hanya kolom itu (60 → 50); tanggal/jam simpan tidak dihitung; penulis menyusun dari nol → riwayat lama tetap dibawa',
   b2.riwayatUbah.length === 2 && J(b2.riwayatUbah[1].ubah) === J([{ k: 'minKarung', dari: 60, ke: 50 }]) && !b2.riwayatUbah[1].baru && b2.riwayatUbah[1].jam === '12:00', b2.riwayatUbah);
 var b3 = rsdSertakan('aturanToko', cap({ id: 'catatStok', minKarung: 50, tempoHari: 21, tanggal: '2026-11-23', jam: '08:00' }), b2, true, '2026-11-23T01:00:00.000Z');
-cek('simpan tanpa perubahan isi: tidak ada entri baru, riwayat tetap', b3.riwayatUbah.length === 2 && J(b3.riwayatUbah) === J(b2.riwayatUbah), b3.riwayatUbah);
+cek('simpan tanpa perubahan isi: tidak ada entri baru, riwayat tetap', (b3.riwayatUbah || []).length === 2 && J(b3.riwayatUbah) === J(b2.riwayatUbah), b3.riwayatUbah);
 var p0 = cap({ id: 'upah', tarif: { harian: 100000, lembur: 20000 } }); var p1 = rsdSertakan('aturanToko', cap({ id: 'upah', tarif: { harian: 110000, lembur: 20000 } }), p0, true, KINI);
 cek('peta di dalam dokumen: yang dicatat cuma anak yang berubah (tarif.harian)', J(p1.riwayatUbah[0].ubah) === J([{ k: 'tarif.harian', dari: 100000, ke: 110000 }]), p1.riwayatUbah);
 var L = { id: 'tempat', daftar: [] }; for (var i = 0; i < 35; i++) { L = rsdSertakan('aturanToko', cap({ id: 'tempat', daftar: [{ nama: 'T' + i }], batasTumpuk: 50 }), L, true, KINI); }
 cek('paling banyak 30 entri (yang tertua dibuang); daftar disimpan sebagai teks ≤ 300 huruf', L.riwayatUbah.length === 30 && /T34/.test(L.riwayatUbah[29].ubah[0].ke) && String(L.riwayatUbah[29].ubah[0].ke).length <= 300, L.riwayatUbah.length);
 var hw = rsdSertakan('hargaWadah', cap({ id: 'karungbekas', jenis: 'karungbekas', harga: 2500, hargaSebelum: 2000 }), KOTAK.hargaWadah[0], true, KINI);
 cek('harga wadah dicatat juga (harga 2.000 → 2.500)', hw.riwayatUbah && hw.riwayatUbah[0].ubah.some(function (u) { return u.k === 'harga' && u.dari === 2000 && u.ke === 2500; }), hw.riwayatUbah);
+// penghitung asap yang sama dengan asap data toko, dijalankan atas KOTAK (catatStok sudah ber-riwayat; 5 dokumen dicatat: 4 setelan + 1 harga wadah, draf dilewati)
+var hk = hitungAsap(KOTAK, rsdSertakan);
+cek('asap di kotak pasir: setelan yang SUDAH ber-riwayat disimpan ulang apa adanya = riwayatnya dibawa utuh, bukan catatan palsu; tambah satu kolom = tercatat persis',
+  hk.palsu === 0 && hk.dibawa === 1 && hk.baru === 5 && !hk.galat.length, hk);
+var entriKosong = function (k, d, l, o, t) { var r = rsdSertakan(k, d, l, o, t); return rsdDicatat(k, d && d.id, o) ? Object.assign({}, r, { riwayatUbah: (r.riwayatUbah || []).concat([{ pada: t, ubah: [] }]) }) : r; };
+cek('penghitung asap tidak buta: pencatat yang menambah entri tanpa perubahan → 5 catatan palsu terhitung', hitungAsap(KOTAK, entriKosong).palsu === 5, hitungAsap(KOTAK, entriKosong));
 
 // ---------- tampilan ----------
 var S = rsSemua(); var cari = function (re) { return S.find(function (r) { return re.test(r.judul); }); };
@@ -130,17 +159,12 @@ def periksa_statis(t):
     return c
 
 
-ASAP = r"""
+ASAP = HITUNG + r"""
 var J = JSON.stringify; Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[n]); });
 var galat = []; var S = []; try { S = rsSemua(); } catch (e) { galat.push('rsSemua: ' + e); }
-var kini = '2026-12-31T16:00:00.000Z'; var palsu = 0, baru = 0;
-(CAD.aturanToko || []).concat(CAD.hargaWadah || []).forEach(function (d) { var k = (CAD.hargaWadah || []).indexOf(d) >= 0 ? 'hargaWadah' : 'aturanToko';
-  try { var x = Object.assign({}, d, { tanggal: '2026-12-31', jam: '23:00', diubahPada: kini }); var r = rsdSertakan(k, x, d, true, kini);
-    if (r !== x && r.riwayatUbah && r.riwayatUbah.length) palsu++;   // simpan ulang apa adanya = tidak ada yang berubah
-    var y = Object.assign({}, x, { ujiAsap: 1 }); var r2 = rsdSertakan(k, y, d, true, kini); if (rsdDicatat(k, d.id, true)) { if (r2.riwayatUbah && J(r2.riwayatUbah[r2.riwayatUbah.length - 1].ubah) === J([{ k: 'ujiAsap', dari: null, ke: 1 }])) baru++; else galat.push(k + '/' + d.id + ': perubahan satu kolom tidak tercatat persis'); }
-  } catch (e) { galat.push(k + '/' + d.id + ': ' + e); } });
+var h = hitungAsap(CAD, rsdSertakan); galat = galat.concat(h.contoh.map(function (c) { return 'catatan palsu ' + c; }), h.galat);
 if (S.some(function (r) { return /undefined|NaN|\[object/.test(r.judul + r.rinci.join(' ')); })) galat.push('kalimat cacat: ' + J(S.filter(function (r) { return /undefined|NaN|\[object/.test(r.judul + r.rinci.join(' ')); }).slice(0, 2)));
-print(J({ baris: S.length, harga: S.filter(function (r) { return r.golong === 'harga'; }).length, akhir: S.filter(function (r) { return r.akhir; }).length, palsu: palsu, baru: baru, galat: galat.slice(0, 6), nGalat: galat.length + palsu }));
+print(J({ baris: S.length, harga: S.filter(function (r) { return r.golong === 'harga'; }).length, akhir: S.filter(function (r) { return r.akhir; }).length, palsu: h.palsu, baru: h.baru, dibawa: h.dibawa, galat: galat.slice(0, 6), nGalat: galat.length }));
 """
 
 
@@ -168,7 +192,7 @@ def periksa(t, diam=False):
         a, info = asap(t)
         for x in a: print(('✓ ' if x['ok'] else '✗ ') + x['nama'] + ('' if x['ok'] else ' → ' + json.dumps(x['ket'], ensure_ascii=False)[:1200]))
         g = g + [x for x in a if not x['ok']]
-        if info: print('ASAP DATA TOKO (%s): %d baris riwayat (%d harga, %d setelan "terakhir disimpan"), %d setelan dicatat persis, %d catatan palsu' % (info[0], info[1]['baris'], info[1]['harga'], info[1]['akhir'], info[1]['baru'], info[1]['palsu']))
+        if info: print('ASAP DATA TOKO (%s): %d baris riwayat (%d harga, %d setelan "terakhir disimpan"), %d setelan dicatat persis, %d setelan ber-riwayat dibawa utuh, %d catatan palsu' % (info[0], info[1]['baris'], info[1]['harga'], info[1]['akhir'], info[1]['baru'], info[1]['dibawa'], info[1]['palsu']))
     return g
 
 
@@ -183,6 +207,8 @@ def main():
             ('katalog harga ikut dicatat', RSD, D.replace("export const RSD_KOLEKSI = { aturanToko: true, hargaWadah: true };", "export const RSD_KOLEKSI = { aturanToko: true, hargaWadah: true, katalogHargaKarung: true };")),
             ('draf katalog ikut dicatat', RSD, D.replace("'aturanToko/hargaDraf': true, ", "")),
             ('riwayat tanpa batas', RSD, D.replace("dulu.concat(entri).slice(-RSD_MAKS)", "dulu.concat(entri)")),
+            ('simpan ulang tanpa perubahan menambah entri kosong', RSD, D.replace("const entri = ubah.length ? [", "const entri = true ? [")),
+            ('riwayat lama tidak dibawa saat tidak ada perubahan', RSD, D.replace("if (!ubah.length && !dulu.length) return d;", "if (!ubah.length) return Object.assign({}, d, { riwayatUbah: [] });")),
             ('peta dibandingkan utuh (bukan per anak)', RSD, D.replace("if (rsdPeta(v) && Object.keys(v).length) Object.keys(v).forEach((s) => { o[k + '.' + s] = v[s]; }); else o[k] = v;", "o[k] = v;")),
             ('penulis owner tidak memanggil pencatat', FB, F.replace("const d = rsdSertakan(x.koleksi, beriAtribusiAkun(x.data, akun, k, x.ada), x.lama, owner, k.kini);", "const d = beriAtribusiAkun(x.data, akun, k, x.ada);")),
             ('setelan tanpa catatan tidak tampil', RSL, L.replace("if (!R.length && !(Array.isArray(a.riwayat) && a.riwayat.length) && id !== 'kunciPeriode') {", "if (false) {")),
