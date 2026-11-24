@@ -3683,6 +3683,14 @@ sendiri, diingat per versi data + hari + titik kas):
 
 Alat uji: `uji_pondasi.py` (kotak pasir pelanggan dihitung tangan lewat selisih sebelum–sesudah, statis, 7 kontrol baru; asap data toko memeriksa `menutup`).
 
+## uji_layar_mulus: pemanasan Dasbor diukur sebagai barisnya sendiri (25 Nov 2026, cabang `perbaikan/uji-mulus-pemanasan`; hanya alat uji)
+Sejak pemanasan Dasbor di latar (mulus Android paket 3, 23 Nov) bagian DATA TOKO `uji_layar_mulus.py` tidak pernah selesai (batas 1.200 dtk). Sebabnya di alat uji:
+peramban tiruannya tidak punya `requestIdleCallback`, jadi pemanasan jatuh ke `setTimeout` dan ikut dikuras `__sisa()` sesudah TIAP aksi yang mengubah data, di
+semua layar; di rangkaian tanpa ingatan itu berarti seluruh Dasbor dihitung ulang 24–29 dtk per perubahan data. Kode toko tidak salah dan tidak diubah.
+Sekarang: `requestIdleCallback` tiruan punya antrean sendiri (`__luang`), dibuang di awal tiap aksi, dan pemanasan diukur SATU kali ("pemanasan Dasbor di latar
+(waktu luang) sesudah nota baru" + "Dasbor dibuka sesudah dipanaskan"), dengan pemeriksaan PEMANASAN dan satu kontrol (rantai tidak dijadwalkan → berbunyi).
+Bagian data toko tidak jalan di CI (tidak ada cadangan) — jalankan sendiri di Mac sesudah mengubah apa pun yang berjalan di latar.
+
 ## Pondasi paket keempat — siapa pegang apa & catatan percobaan (owner 25 Nov 2026, cabang `fitur/pondasi-4`; menulis SETELAN saja, tanpa rules baru)
 Sisa catatan "Pondasi bisnis" sesudah paket ketiga: struktur organisasi & R&D. Keputusan owner (ditanya di depan): pembagian tugas dibaca **owner + staf**;
 percobaan **dicatat + diukur otomatis**; prakiraan musiman **menunggu data setahun** (tidak dibangun).
