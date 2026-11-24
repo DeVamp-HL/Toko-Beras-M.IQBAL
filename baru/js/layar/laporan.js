@@ -655,7 +655,7 @@ export function pasangLayarLaporan(akar, opsi) {
     // paket kedua (owner 24 Nov 2026): kekayaan dari waktu ke waktu · rantai pasok · risiko & prakiraan · organisasi — tiap kartu dibungkus sendiri
     const aman = (nama, f) => { try { return f(); } catch (e) { console.error('pondasi ' + nama, e); return { galat: String((e && e.message) || e) }; } };
     const gagal = (X) => h`<div class="pita-info awas">Gagal dihitung: ${X.galat}</div>`;
-    const KY = aman('kekayaan', () => PD.pdKekayaan(kini())); const RN = aman('rantai', () => PD.pdRantai(kini())); const RS = aman('risiko', () => PD.pdRisiko(kini())); const OR = aman('organisasi', () => PD.pdOrganisasi(kini()));
+    const KY = aman('kekayaan', () => PD.pdKekayaan(kini())); const RN = aman('rantai', () => PD.pdRantai(kini())); const RS = aman('risiko', () => PD.pdRisiko(kini())); const OR = aman('organisasi', () => PD.pdOrganisasi(kini())); const PLG = aman('pelanggan', () => PD.pdPelanggan(kini()));
     const lebarPita = (n, maks) => Math.max(0, Math.min(100, Math.abs(n) / maks * 100)).toFixed(1);
     const kekayaan = h`<div class="kartu" data-k="pd-kekayaan" style="gap: 4px;"><div class="label">Kekayaan toko dari waktu ke waktu · akhir bulan · harta − utang</div>${KY.galat ? gagal(KY) : h`<div class="k2">${KY.kalimat}</div>
       ${KY.bulan.map((b) => b.ada ? h`<div class="lp-mr-baris" data-k="pdk-${b.key}"><div class="no">·</div><div class="isi"><div>${b.nama}${b.berjalan ? ' · hari ini' : ''}</div><div class="k2">harta ${RP(b.aset)} · utang ${RP(b.kewajiban)}${b.naik === null || b.naik === undefined ? '' : ' · ' + (b.naik >= 0 ? '▲ ' : '▼ ') + RP(Math.abs(b.naik)) + ' dari titik sebelumnya'}</div>
@@ -675,6 +675,21 @@ export function pasangLayarLaporan(akar, opsi) {
     const organisasi = h`<div class="kartu" data-k="pd-organisasi" style="gap: 4px;"><div class="label">Organisasi · siapa mencatat apa · 30 hari</div>${OR.galat ? gagal(OR) : h`<div class="${OR.tanpaNama ? 'pita-info awas' : 'k2'}">${OR.kalimat}</div>
       ${OR.orang.map((o, i) => h`<div class="lp-mr-baris" data-k="pdo-${i}"><div class="no">${i + 1}</div><div class="isi"><div>${o.tampil}</div><div class="k2 ${o.nSelisih ? 'tempo' : ''}">${o.kalimat}</div></div><div class="n"><b>${o.nota}</b></div></div>`)}
       <div class="k2">Nota = Jual › Riwayat (menurut pencatatnya) · nego = Buku Nego · tutup hari = yang menghitung laci malam itu. Angka di kanan = jumlah nota.</div>`}</div>`;
+    // paket ketiga (owner 25 Nov 2026): pilar marketing — siapa yang membeli. Angka apa adanya dari pdPelanggan (→ Laporan › Laba › Per pelanggan · Pelanggan)
+    const keLaba = mentah(' data-aksi="tujuan" data-ke="laporan" data-keluarga="laba" data-tab="" data-lembar="" data-sistem=""'); const keOrang = mentah(' data-aksi="tujuan" data-ke="pelanggan" data-keluarga="" data-tab="" data-lembar="" data-sistem=""');
+    const pelanggan = h`<div class="kartu" data-k="pd-pelanggan" style="gap: 4px;"><div class="label">Pelanggan · siapa yang membeli${PLG.galat ? '' : ' · ' + PLG.rentang}</div>${PLG.galat ? gagal(PLG) : h`<div class="${PLG.menutup ? 'k2' : 'pita-info awas'}" data-k="pdg-kalimat">${PLG.kalimat}</div>
+      ${PLG.dikenal && PLG.dikenal.pct !== null ? h`<div class="lp-terjun jumlah" data-k="pdg-dikenal"><span>Omzet yang pembelinya dikenal<small> · nota bernama</small></span><b>${PD.pdPctTeks(PLG.dikenal.pct)}</b></div><div class="lp-mr-pita"><span style="width: ${lebarPita(PLG.dikenal.pct, 100)}%;"></span></div>` : ''}
+      ${PLG.pembeli.length ? h`<div class="label" style="padding-top: 6px;">Pembeli terbesar · porsi omzet</div>` : ''}
+      ${PLG.pembeli.map((o, i) => h`<div class="lp-mr-baris"${keLaba} data-k="pdg-${i}" style="cursor: pointer;"><div class="no">${i + 1}</div><div class="isi"><div>${i === 0 ? h`<span class="lp-kb-lampu ${PLG.lampu}" title="${PD.PD_KATA_LAMPU[PLG.lampu]}" style="display: inline-block; margin-right: 6px;"></span>` : ''}${o.nama}${o.usaha ? h` <span class="lp-cip">${o.tingkatNama}</span>` : ''}</div>
+          <div class="k2">${RP(o.omzet)} · ${o.nNota} nota${o.labaKotor === null ? '' : ' · laba kotor ' + RP(o.labaKotor)}</div>${o.pct !== null ? h`<div class="lp-mr-pita"><span style="width: ${lebarPita(o.pct, 100)}%;"></span></div>` : ''}</div>
+          <div class="n">${o.pct !== null ? h`<b class="${i === 0 && PLG.lampu === 'merah' ? 'rugi' : ''}">${PD.pdPctTeks(o.pct)}</b>` : h`<span class="lp-mr-belum">—</span>`}</div></div>`)}
+      ${PLG.segmen.length ? h`<div class="label" style="padding-top: 6px;">Per kelompok pembeli · porsi laba kotor</div>` : ''}
+      ${PLG.segmen.map((g) => h`<div class="lp-mr-baris"${keLaba} data-k="pdt-${g.id}" style="cursor: pointer;"><div class="no">·</div><div class="isi"><div>${g.nama}</div><div class="k2">${g.nOrang} orang bernama · omzet ${RP(g.omzet)}${g.labaKotor === null ? ' · laba kotor belum bisa dihitung' : ' · laba kotor ' + RP(g.labaKotor)}${g.margin === null ? '' : ' · margin ' + PD.pdPctTeks(g.margin)}</div>
+          ${g.porsiLaba !== null ? h`<div class="lp-mr-pita"><span style="width: ${lebarPita(g.porsiLaba, 100)}%;"></span></div>` : ''}</div><div class="n">${g.porsiLaba !== null ? h`<b>${PD.pdPctTeks(g.porsiLaba)}</b>` : h`<span class="lp-mr-belum">—</span>`}</div></div>`)}
+      <div class="label" style="padding-top: 6px;">Datang lagi atau tidak · 30 hari</div><div class="k2" data-k="pdg-datang">${PLG.datang.kalimat}</div>
+      ${PLG.datang.kosong.map((o, i) => h`<div class="lp-mr-baris"${keOrang} data-k="pdb-${i}" style="cursor: pointer;"><div class="no">·</div><div class="isi"><div>${o.nama}</div><div class="k2 tempo">sudah ${o.sejak} hari tidak datang · biasanya tiap ±${Math.round(o.selang)} hari · belanja selama tercatat ${RP(o.total)}</div></div><div class="n"><b>${o.sejak} hr</b></div></div>`)}
+      ${PLG.datang.nKosong > PLG.datang.kosong.length ? h`<div class="k2">… dan ${PLG.datang.nKosong - PLG.datang.kosong.length} orang lagi — lihat Pelanggan.</div>` : ''}
+      <div class="k2">Pembeli = nama yang diketik di nota; nota tanpa nama tidak bisa dipilah. Tiga bulan = bulan berjalan dan dua bulan sebelumnya. Warna pembeli terbesar: ${PLG.ambang}. Sumber angka: ${PLG.sumber}.</div>`}</div>`;
     const luar = h`<div class="kartu" data-k="pd-luar" style="gap: 4px;"><div class="label">Yang tidak bisa diukur sistem · tiga pertanyaan untuk owner</div>${P.luar.map((t, i) => h`<div class="lp-terjun" data-k="pdl-${i}" style="min-height: 0; padding: 5px 0;"><span>${t}</span></div>`)}</div>`;
     const d = s.aturPd;
     const atur = d ? h`<div class="kartu lp-lembar" data-k="aturPd" style="gap: 8px;"><div class="kepala-lembar"><div class="serif" style="font-size: 18px;">Ambang lampu pondasi</div><div class="kaca-btn" data-aksi="pdAturTutup">tutup</div></div>
@@ -683,8 +698,8 @@ export function pasangLayarLaporan(akar, opsi) {
         <div class="utama" data-aksi="pdAturSimpan">SIMPAN</div></div>`
       : h`<div class="kaca-btn" data-aksi="pdAturBuka" data-k="aturPd-buka" style="min-height: 38px; font-size: 12px;">Atur ambang lampu · ${PD.PD_ATUR.filter((x) => P.atur[x.id] > 0).length} dari ${PD.PD_ATUR.length} diatur</div>`;
     const kaki = h`<div class="lp-kaki">Layar ini hanya membaca: tiap angka diambil dari layar asalnya (Neraca, Laba, Biaya, Bon pemasok, Uang) dan tidak ada rumus uang baru. Lampu mengukur dan mengingatkan — keputusan menambah cabang, gudang, atau utang tetap di owner. Prakiraan memakai 30 hari terakhir sebagai patokan, jadi bulan yang tidak biasa (Lebaran, panen) akan meleset.</div>`;
-    if (L === 'hp') return h`<section data-k="pondasi">${hero}${daftar}${risiko}${kekayaan}${rantai}${disiplin}${organisasi}${atur}${luar}${kaki}</section>`;
-    return h`<section data-k="pondasi">${grid(L, [h`${hero}${atur}${kekayaan}${kaki}`, h`${daftar}${risiko}`, h`${disiplin}${organisasi}${rantai}${luar}`])}</section>`;
+    if (L === 'hp') return h`<section data-k="pondasi">${hero}${daftar}${risiko}${kekayaan}${rantai}${pelanggan}${disiplin}${organisasi}${atur}${luar}${kaki}</section>`;
+    return h`<section data-k="pondasi">${grid(L, [h`${hero}${atur}${kekayaan}${kaki}`, h`${daftar}${risiko}${pelanggan}`, h`${disiplin}${organisasi}${rantai}${luar}`])}</section>`;
   }
 
   // ---------- DOKUMEN · DK2 + DK4

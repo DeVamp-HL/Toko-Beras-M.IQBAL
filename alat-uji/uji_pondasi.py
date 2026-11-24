@@ -20,6 +20,7 @@ sys.path.insert(0, SINI)
 import bundel_baru, uji_kpi_laba, uji_jual_baru, uji_kunci_periode  # noqa: E402
 JSC = uji_kpi_laba.JSC
 PD = 'baru/js/layar/pondasi-logika.js'; DL = 'baru/js/layar/dasbor-logika.js'; LG = 'baru/js/layar/laporan-logika.js'
+PGL = 'baru/js/layar/laba-pelanggan-logika.js'; PLL = 'baru/js/layar/pelanggan-logika.js'
 SLG = 'baru/js/layar/sistem-logika.js'; KW = 'baru/js/layar/kuartal-logika.js'; BP = 'baru/js/layar/bon-pemasok-logika.js'; RW = 'baru/js/layar/riwayat-logika.js'
 MODUL = bundel_baru.lengkapi(list(uji_kpi_laba.MODUL)) + [KW]
 SUMBER = {'laporan': 'baru/js/layar/laporan.js', 'laporanL': 'baru/js/layar/laporan-logika.js', 'dasbor': 'baru/js/layar/dasbor.js', 'dasborL': DL, 'index': 'baru/index.html', 'pages': '.github/workflows/pages.yml',
@@ -254,6 +255,38 @@ ok('organisasi (tangan): Orang A 2 tutup hari, 1 malam berselisih −2 rb (tutup
 pasang();
 ok('mulus paket kedua: kekayaan, rantai pasok, risiko & organisasi diingat per versi data (ketukan tidak menghitung ulang)', pdKekayaan(KINI) === pdKekayaan(KINI) && pdRantai(KINI) === pdRantai(KINI) && pdRisiko(KINI) === pdRisiko(KINI) && pdOrganisasi(KINI) === pdOrganisasi(KINI));
 
+// ==================== paket ketiga: PELANGGAN (pilar marketing) ====================
+// tangan: Bu Uji Besar 3 nota × 7 jt (5, 10, 15 Nov; modal 6,6 jt → laba kotor 3 × 400 rb) · Pak Uji Kecil 1 nota 300 rb (12 Nov) · Pak Uji Balik 2 nota × 400 rb
+// (1 Sep & 11 Nov) · Bu Uji Lama 3 nota Agustus (10, 20, 30 → selang 10 hari, terakhir 80 hari lalu = bangku kosong; di luar Sep–Nov) · 1 nota tanpa nama 500 rb
+var PL0 = pdPelanggan(KINI);
+var nj = function (id, nama, tgl, harga, hpp) { return { id: id, grupNota: 'g' + id, tanggal: tgl, jam: '10:00', caraBayar: 'Tunai', namaPelanggan: nama, jenis: 'karung', merkSumber: 'Angsa', beratKarungAcuan: 50, jumlahKarung: 1, totalKg: 50, hargaTotal: harga, hppTotalSaatJual: hpp }; };
+var NOTA_PL = [nj('pl1', 'Bu Uji Besar', '2026-11-05', 7000000, 6600000), nj('pl2', 'Bu Uji Besar', '2026-11-10', 7000000, 6600000), nj('pl3', 'Bu Uji Besar', '2026-11-15', 7000000, 6600000),
+  nj('pl4', 'Pak Uji Kecil', '2026-11-12', 300000, 280000), nj('pl5', 'Pak Uji Balik', '2026-09-01', 400000, 380000), nj('pl6', 'Pak Uji Balik', '2026-11-11', 400000, 380000),
+  nj('pl7', 'Bu Uji Lama', '2026-08-10', 200000, 190000), nj('pl8', 'Bu Uji Lama', '2026-08-20', 200000, 190000), nj('pl9', 'Bu Uji Lama', '2026-08-30', 200000, 190000), nj('pl10', '', '2026-11-14', 500000, 470000)];
+var SETP = { id: 'hargaTingkat', tingkat: [{ id: 'warung', nama: 'Warung', potKg: 0 }], barang: {}, orang: { 'bu uji besar': 'warung' }, khusus: [] };
+var aturPl = function (maks) { aturDengan([SETP].concat(maks === null ? [] : [{ id: 'pondasi', pembeliMaks: maks }])); };
+pasok('penjualan', K1.penjualan.concat(NOTA_PL)); aturPl(null);
+var PL1 = pdPelanggan(KINI); var pb = function (X, nm) { return X.pembeli.find(function (o) { return o.nama === nm; }); }; var sg = function (X, id) { return X.segmen.find(function (g) { return g.id === id; }); };
+var BL = pelangganBulan('2026-11', 3, KINI);
+ok('pelanggan: sumber menutup — Σ pembeli bernama + nota tanpa nama = omzet barang = Σ kelompok; angka per pelanggan menutup ke Laporan', BL.menutup && Math.abs(BL.pembeli.reduce(function (a, o) { return a + o.omzet; }, 0) + BL.tanpaNama.omzet - BL.omzetBarang) < 0.5 && Math.abs(BL.tingkat.reduce(function (a, g) { return a + g.omzet; }, 0) - BL.omzetBarang) < 0.5 && PL1.menutup, J([BL.omzetBarang, BL.tanpaNama, BL.kalimat]));
+ok('pelanggan (tangan): omzet bernama Sep–Nov naik 21 jt + 300 rb + 800 rb = 22,1 jt (nota Agustus di luar tiga bulan); nota tanpa nama naik 1 nota 500 rb; orang bernama +3', PL1.dikenal.omzetNama - PL0.dikenal.omzetNama === 22100000 && PL1.dikenal.omzetTanpa - PL0.dikenal.omzetTanpa === 500000 && PL1.dikenal.nNotaTanpa - PL0.dikenal.nNotaTanpa === 1 && PL1.dikenal.nOrang - PL0.dikenal.nOrang === 3 && PL1.dikenal.omzet - PL0.dikenal.omzet === 22600000 && Math.abs(PL1.dikenal.pct - PL1.dikenal.omzetNama / PL1.dikenal.omzet * 100) < 1e-9, J([PL0.dikenal, PL1.dikenal]));
+ok('pelanggan (tangan): pembeli terbesar Bu Uji Besar 21 jt, 3 nota, laba kotor 1,2 jt, porsi = 21 jt ÷ omzet barang; ia pelanggan usaha tingkat Warung; daftar paling banyak ' + PD_PEMBELI_TERATAS + ' orang, omzet terbesar dulu', PL1.terbesar && PL1.terbesar.nama === 'Bu Uji Besar' && PL1.terbesar.omzet === 21000000 && PL1.terbesar.nNota === 3 && PL1.terbesar.labaKotor === 1200000 && Math.abs(PL1.terbesar.pct - 21000000 / PL1.dikenal.omzet * 100) < 1e-9 && PL1.terbesar.usaha === true && PL1.terbesar.tingkatNama === 'Warung' && PL1.pembeli.length <= PD_PEMBELI_TERATAS && PL1.pembeli.every(function (o, i) { return !i || PL1.pembeli[i - 1].omzet >= o.omzet; }), J(PL1.pembeli));
+ok('pelanggan (tangan): kelompok Warung = 1 orang, omzet 21 jt, laba kotor 1,2 jt, margin 1,2 ÷ 21 = 5,71 %; pembeli umum tetap ada; kalimat menyebut nota tanpa nama & pembeli terbesar', sg(PL1, 'warung') && sg(PL1, 'warung').nOrang === 1 && sg(PL1, 'warung').omzet === 21000000 && sg(PL1, 'warung').labaKotor === 1200000 && Math.abs(sg(PL1, 'warung').margin - 1200000 / 21000000 * 100) < 1e-9 && !!sg(PL1, 'eceran') && /nota tanpa nama/.test(PL1.kalimat) && /Pembeli terbesar Bu Uji Besar/.test(PL1.kalimat) && PL1.ada === true, J([PL1.segmen, PL1.kalimat]));
+var pctB = PL1.terbesar.pct;
+ok('pelanggan: warna pembeli terbesar hanya dari ambang owner — mati = tanpa warna', PL1.lampu === 'tanpa' && /belum diatur/.test(PL1.ambang), J([PL1.lampu, PL1.ambang]));
+aturPl(Math.floor(pctB) - 1); ok('pelanggan: porsi lewat ambang owner → merah', pdPelanggan(KINI).lampu === 'merah' && /ambang owner/.test(pdPelanggan(KINI).ambang), J([pctB, pdPelanggan(KINI).lampu]));
+aturPl(Math.min(100, Math.round(pctB * 1.05 * 100) / 100)); ok('pelanggan: porsi dalam ' + PD_DEKAT + ' % di bawah ambang → kuning', pdPelanggan(KINI).lampu === 'amber', J([pctB, pdAtur().pembeliMaks, pdPelanggan(KINI).lampu]));
+if (pctB < 89) { aturPl(100); ok('pelanggan: porsi jauh di bawah ambang → aman', pdPelanggan(KINI).lampu === 'hijau', J([pctB, pdPelanggan(KINI).lampu])); } else ok('pelanggan: kotak pasir tidak cocok untuk uji aman (porsi ≥ 89 %)', false, String(pctB));
+aturPl(null);
+ok('datang lagi (tangan, 30 hari = 20 Okt–18 Nov): baru +2 (Bu Uji Besar, Pak Uji Kecil) · kembali +1 (Pak Uji Balik, pertama 1 Sep) · orang lama +2 (Pak Uji Balik, Bu Uji Lama) · bangku kosong +1', PL1.datang.baru - PL0.datang.baru === 2 && PL1.datang.kembali - PL0.datang.kembali === 1 && PL1.datang.lama - PL0.datang.lama === 2 && PL1.datang.nKosong - PL0.datang.nKosong === 1 && PL1.datang.nDatang - PL0.datang.nDatang === 3 && PL1.datang.dari === '2026-10-20', J([PL0.datang, PL1.datang]));
+var OS = semuaOrang(KINI); var os = function (nm) { return OS.find(function (o) { return o.nama === nm; }); };
+ok('datang lagi (tangan): Bu Uji Lama selang 10 hari, terakhir 30 Agu = 80 hari lalu → bangku kosong; kunjungan pertama tercatat (Pak Uji Balik 1 Sep, terakhir 11 Nov)', os('Bu Uji Lama').selang === 10 && os('Bu Uji Lama').sejak === 80 && os('Bu Uji Lama').kosong === true && os('Bu Uji Lama').pertama === '2026-08-10' && os('Pak Uji Balik').pertama === '2026-09-01' && os('Pak Uji Balik').terakhir === '2026-11-11' && os('Pak Uji Balik').kosong === false, J([os('Bu Uji Lama').selang, os('Bu Uji Lama').sejak, os('Pak Uji Balik').pertama]));
+ok('pelanggan: diingat per versi data (ketukan tidak menghitung ulang)', pdPelanggan(KINI) === pdPelanggan(KINI));
+pasok('penjualan', []); var PLk = pdPelanggan(KINI);
+ok('pelanggan: tanpa jualan → disebut "belum ada jualan", tanpa warna, tanpa daftar — tidak jatuh & tidak dianggap 0 %', PLk.ada === false && PLk.lampu === 'tanpa' && PLk.pembeli.length === 0 && PLk.terbesar === null && PLk.dikenal.pct === null && /Belum ada jualan/.test(PLk.kalimat), J(PLk));
+var Spm = susunAturPondasi({ pembeliMaks: '40' }, W); ok('setelan: ambang satu pembeli disimpan di aturanToko/pondasi; lewat 100 % ditolak', !Spm.tolak && Spm.dokumen[0].data.pembeliMaks === 40 && !!susunAturPondasi({ pembeliMaks: '101' }, W).tolak, J(Spm));
+pasang();
+
 // ==================== PR B: target per kuartal · rapor kuartal · pengingat ====================
 ok('target (tangan): lampu = tercapai hijau · belum tercapai tapi sesuai laju hari kuning · di bawah laju merah · kuartal SELESAI tidak ada kuning · tanpa target / tanpa angka = tanpa warna',
   kwLampuTarget(100, 100, 0.5) === 'hijau' && kwLampuTarget(60, 100, 0.5) === 'amber' && kwLampuTarget(50, 100, 0.5) === 'amber' && kwLampuTarget(40, 100, 0.5) === 'merah' && kwLampuTarget(90, 100, 1) === 'merah' && kwLampuTarget(90, 0, 0.5) === 'tanpa' && kwLampuTarget(null, 100, 0.5) === 'tanpa');
@@ -330,6 +363,9 @@ STATIS = [
     ('BACA-DULU menyebut paket ini', 'baca', ['## Pondasi', 'uji_pondasi.py', 'js/layar/pondasi-logika.js']),
     ('Laporan memasang keluarga Kuartal', 'laporan', ["import * as KW from './kuartal-logika.js';", "s.keluarga === 'kuartal' ? gambarKuartal(s, L)", 'function gambarKuartal(s, L)', 'KW.kwRekap(key, kini())', 'KW.kwTahun(KW.kwTahunDari(key), kini())', 'data-aksi="kwPilih"', 'kwPilih: ({ q }) => set({ kuartalQ: q']),
     ('Laporan: keluarga Kuartal terdaftar sesudah Bulanan', 'laporanL', ["['bulanan', 'Bulanan'], ['kuartal', 'Kuartal'], ['pajak', 'Pajak']"]),
+    ('Pondasi memasang kartu Pelanggan (paket ketiga), dibungkus sendiri, di HP & layar lebar', 'laporan', ['data-k="pd-pelanggan"', "aman('pelanggan', () => PD.pdPelanggan(kini()))", '${rantai}${pelanggan}${disiplin}', '${daftar}${risiko}${pelanggan}', 'data-k="pdg-dikenal"', 'data-k="pdg-datang"']),
+    ('pondasi-logika membaca pelanggan lewat fungsi sumber + ambang satu pembeli', 'pd', ["import { pelangganBulan } from './laba-pelanggan-logika.js';", "import { semuaOrang } from './pelanggan-logika.js';", "{ id: 'pembeliMaks', nama: 'Omzet dari satu pembeli paling banyak'"]),
+    ('kalimat modal awal tidak lagi bilang "hanya setoran modal yang tercatat"', 'pd', ['hasil atas modal di sini memakai posisi toko pada hari pertama sistem mencatat']),
     ('Pondasi memasang empat kartu paket kedua, tiap kartu dibungkus sendiri', 'laporan', ['data-k="pd-kekayaan"', 'data-k="pd-rantai"', 'data-k="pd-risiko"', 'data-k="pd-organisasi"', "aman('kekayaan', () => PD.pdKekayaan(kini()))", "aman('organisasi', () => PD.pdOrganisasi(kini()))"]),
     ('modul kuartal dipramuat', 'index', ['<link rel="modulepreload" href="js/layar/kuartal-logika.js">']),
     ('BACA-DULU menyebut paket kedua', 'baca', ['## Pondasi paket kedua', 'js/layar/kuartal-logika.js', 'bpLamaKirim', 'rwPerOrang']),
@@ -396,6 +432,12 @@ RUSAK = [
     ('lama kirim: yang masih menunggu dihitung 0 hari', BP, "if (!D.datang || !D.tanggal) { menunggu += 1; return; }", "if (!D.datang || !D.tanggal) { D.tanggal = t; }"),
     ('rantai pasok: gerak harga dibalik (lama − baru)', PD, "const d = r[0].hargaPerKg - r[1].hargaPerKg; if (d > 0) naik += 1;", "const d = r[1].hargaPerKg - r[0].hargaPerKg; if (d > 0) naik += 1;"),
     ('nota per orang: nota batal dihitung nota berlaku', RW, "if (o.status === 'batal') { x.batal += 1; nBatal += 1; } else { x.nota += 1; x.omzet += o.total; nBerlaku += 1; }", "{ x.nota += 1; x.omzet += o.total; nBerlaku += 1; }"),
+    ('pelanggan: pembeli eceran bernama tidak ikut daftar pembeli', PGL, ".concat(eceranNama.map((o) => pgRingkas(o, false)))", ""),
+    ('pelanggan: nota tanpa nama dianggap dikenal', PD, "const omzetNama = B.pembeli.reduce((a, o) => a + o.omzet, 0);", "const omzetNama = omzet;"),
+    ('pelanggan: warna pembeli terbesar tidak membaca ambang owner', PD, "const lampu = t0 ? pdLampuAtas(t0.pct, A.pembeliMaks) : 'tanpa';", "const lampu = 'tanpa';"),
+    ('pelanggan: kunjungan pertama = kunjungan terakhir (yang kembali dihitung baru)', PLL, "pertama: tgl.length ? tgl[0] : '', terakhir,", "pertama: terakhir, terakhir,"),
+    ('pelanggan: tiga bulan dibaca satu bulan', PD, "export const PD_BULAN_PELANGGAN = 3;", "export const PD_BULAN_PELANGGAN = 1;"),
+    ('pelanggan: bangku kosong tidak dihitung', PD, "const kosong = S.filter((o) => o.kosong)", "const kosong = S.filter((o) => false)"),
     ('organisasi: tutup hari di luar 30 hari ikut', PD, "riwayatTutup(PD_HARI + 5).forEach((t) => { if (!t.tanggal || t.tanggal < awal || t.tanggal > iso) return;", "riwayatTutup(999).forEach((t) => { if (!t.tanggal) return;"),
     ('organisasi: nego naik ikut dihitung potongan', PD, "if (b.totalSelisih < 0) x.potongan += -b.totalSelisih;", "x.potongan += Math.abs(b.totalSelisih) + 1;"),
     ('target: belum tercapai selalu kuning (tanpa laju hari)', KW, "capai >= target ? 'hijau' : bagian < 1 && capai >= target * bagian ? 'amber' : 'merah');", "capai >= target ? 'hijau' : bagian < 1 ? 'amber' : 'merah');"),
@@ -427,6 +469,7 @@ RUSAK = [
     ('Dasbor: pondasi dihitung ulang tiap ganti rentang', DL, "pondasi: lama.pondasi, tren: k('tren') };", "pondasi: k('pondasi'), tren: k('tren') };"),
 ]
 RUSAK_STATIS = [
+    ('Laporan tanpa kartu Pelanggan di layar lebar', 'laporan', 'h`${daftar}${risiko}${pelanggan}`', 'h`${daftar}${risiko}`'),
     ('Laporan tanpa tab Pondasi', 'laporan', "s.keluarga === 'pondasi' ? gambarPondasi(s, L) : ", ''),
     ('Dasbor tanpa kartu Pondasi', 'dasbor', 'kartuPondasi(D.pondasi)', "''"),
     ('modul membaca koleksi mentah (rumus uang baru)', 'pd', "import { ambilTutupHari, ambilTitikKas, ingatPerVersi } from '../data/toko.js';", "import { ambilTutupHari, ambilTitikKas, ingatPerVersi, ambilPenjualan } from '../data/toko.js';"),
@@ -455,6 +498,7 @@ try {
   out.disiplin = pdDisiplin(K).baris.map(function (b) { return { id: b.id, lampu: b.lampu }; });
   var T = kwTahun(Number(akhir.slice(0, 4)), K); out.kuartalMenutup = T.menutup; out.kuartal = kwDaftar(K).map(function (k) { var q = kwRekap(k.key, K); return { key: k.key, utuh: q.utuh, kekayaan: q.kekayaan.ada, lampu: q.lampu.map(function (l) { return l.lampu; }).join(',') }; });
   out.kekayaan = pdKekayaan(K).bulan.map(function (b) { return b.key + (b.ada ? ':ada' : ':belum'); }); out.rantai = pdRantai(K).pemasok.length; out.risiko = pdRisiko(K).skenario.length; out.orang = pdOrganisasi(K).orang.length;
+  var PLA = pdPelanggan(K); out.pelanggan = { ada: PLA.ada, menutup: PLA.menutup, lampu: PLA.lampu, nOrang: PLA.dikenal ? PLA.dikenal.nOrang : null, pctDikenal: PLA.dikenal && PLA.dikenal.pct !== null ? Math.round(PLA.dikenal.pct * 10) / 10 : null, pctTerbesar: PLA.terbesar ? Math.round(PLA.terbesar.pct * 10) / 10 : null, segmen: PLA.segmen.length, baru: PLA.datang.baru, kembali: PLA.datang.kembali, lama: PLA.datang.lama, kosong: PLA.datang.nKosong };
 } catch (e) { out.galat = String((e && e.stack) || e).slice(0, 600); }
 print(JSON.stringify(out));
 """
@@ -529,7 +573,7 @@ if __name__ == '__main__':
         r, out = jsc(bundel(teks) + '\nvar CAD = ' + open(cad[-1], encoding='utf-8').read() + ';\n' + ASAP)
         if r.returncode != 0 or not out.startswith('{'): print('ASAP DATA TOKO: JSC JATUH ' + (r.stderr or r.stdout)[-600:]); g.append('asap')
         else:
-            h = json.loads(out); beres = not h['galat'] and len(h['lampu']) == 8 and all(x['keadaan'] != 'galat' for x in h['lampu']) and h.get('utangCocok') and h.get('dasbor') and h.get('kuartalMenutup') and h.get('risiko') == 4
+            h = json.loads(out); beres = not h['galat'] and len(h['lampu']) == 8 and all(x['keadaan'] != 'galat' for x in h['lampu']) and h.get('utangCocok') and h.get('dasbor') and h.get('kuartalMenutup') and h.get('risiko') == 4 and bool(h.get('pelanggan')) and h['pelanggan'].get('menutup')
             print('ASAP DATA TOKO (%s, hari terakhir %s): %s — %s' % (os.path.basename(cad[-1]), h.get('akhir'), 'LULUS' if beres else 'GAGAL', json.dumps(h, ensure_ascii=False)))
-            if not beres: g.append('asap data toko: ada lampu galat, utang ÷ harta tidak sama dengan Neraca, Dasbor berbeda dari Laporan, atau Σ kuartal tidak menutup ke tahun')
+            if not beres: g.append('asap data toko: ada lampu galat, utang ÷ harta tidak sama dengan Neraca, Dasbor berbeda dari Laporan, Σ kuartal tidak menutup ke tahun, atau angka per pelanggan tidak menutup ke Laporan')
     sys.exit(1 if g or gs else 0)

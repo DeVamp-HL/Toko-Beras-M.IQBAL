@@ -3661,3 +3661,24 @@ Keputusan owner 24 Nov 2026: "Tetap rules v20" (ditawari cara tanpa rules — me
 - **Layar**: owner — Menu › Toko ini › **Buku pegangan** (`gambarPegangan`: tulis bab, ubah, naik/turun, hapus dua ketukan); staf — kartu **Buku pegangan** di
   menu tablet (`kartuPegangan`, baca saja, bab untuk perannya). Tidak ada tanda "sudah dibaca": itu butuh tulisan staf, tidak dibuka v20.
 
+
+## Pondasi paket ketiga — Pelanggan, pilar marketing (owner 25 Nov 2026, cabang `fitur/pondasi-3`; hanya membaca, tanpa rules baru)
+Owner sesudah paket kedua lulus: "apa lagi yang belum padahal ada di catatan?" — pilar ketiga catatannya (marketing: segmen · target · posisi) belum punya satu
+angka pun di Pondasi. Jawaban "Ya, pelanggan dulu". Yang dibangun = satu kartu **Pelanggan · siapa yang membeli** di Laporan › Pondasi (`pdPelanggan`, dibungkus
+sendiri, diingat per versi data + hari + titik kas):
+
+| Isi kartu | Dari mana (tidak ada rumus uang baru) |
+|---|---|
+| Omzet yang pembelinya dikenal (nota bernama vs tanpa nama), tiga bulan = bulan berjalan + dua sebelumnya | `pelangganBulan(key, 3)` — kolom baru `pembeli` (SEMUA pembeli bernama satu per satu, usaha + eceran bernama), `tanpaNama`, `omzetBarang` |
+| Pembeli terbesar & porsi omzetnya (5 teratas) | `pelangganBulan().pembeli`; warna hanya dari ambang owner `pembeliMaks` di `aturanToko/pondasi` (mati = tanpa warna; kuning dalam `PD_DEKAT` %) |
+| Per kelompok pembeli: laba kotor, margin, porsi laba (tingkat harga + Pembeli umum) | `pelangganBulan().tingkat` apa adanya (= kartu Per pelanggan di Laporan › Laba) |
+| Datang lagi atau tidak, 30 hari: baru · kembali · bangku kosong | `semuaOrang` (Pelanggan) — kolom baru `pertama` (hari kunjungan pertama) |
+
+- Pembeli = NAMA di nota (`kunciPelanggan`). Nota tanpa nama tidak bisa dipilah dan DISEBUT (jumlah nota & rupiahnya), tidak dianggap satu orang.
+- Penjaga: Σ `pembeli` + `tanpaNama` = `omzetBarang` = Σ kelompok; bila angka per pelanggan tidak menutup ke Laporan (`menutup` salah) kartu berkata begitu dan
+  tidak memberi kesimpulan. Tahun yang sudah tutup buku: kalimat arsip `pelangganBulan` dipakai apa adanya.
+- Delapan lampu TIDAK bertambah (jangkar "delapan lampu" di Dasbor & uji tetap): warna pembeli terbesar hidup di dalam kartunya.
+- Ikut dibetulkan: kalimat ketiga "Yang tidak bisa diukur sistem" — dulu "hasil atas modal hanya memakai setoran modal yang tercatat", basi sejak lampu 4
+  memakai posisi toko pada hari pertama sistem mencatat (owner menegaskan 25 Nov: "posisi toko per 8 Agustus 2026").
+
+Alat uji: `uji_pondasi.py` (kotak pasir pelanggan dihitung tangan lewat selisih sebelum–sesudah, statis, 7 kontrol baru; asap data toko memeriksa `menutup`).
