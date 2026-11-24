@@ -25,7 +25,7 @@ import { pjOmzetSistem, pjGabungRekap, pjTahun, PJ_LABEL } from './pajak-logika.
 // owner 7 Okt: daftar harga & harga yang naik untuk pelanggan dibaca dari katalog yang dipakai kasir
 import { hgSemua } from './harga-logika.js';
 
-export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['biaya', 'Biaya'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['pajak', 'Pajak'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep · Biaya: kendali biaya, putaran 38 (kendali-biaya-logika.js)
+export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['biaya', 'Biaya'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['pajak', 'Pajak'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['pondasi', 'Pondasi'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep · Biaya: kendali biaya, putaran 38 (kendali-biaya-logika.js)
 export const JENIS_LAPORAN = [['labarugi', 'Laba-Rugi'], ['neraca', 'Neraca'], ['aruskas', 'Arus Kas']];
 export const RENTANG_LAPORAN = [[1, '1 bulan'], [3, '3 bulan'], [12, '12 bulan']];
 export const JENIS_KECIL = [['setor', 'Bukti setoran modal', 'dari catatan Owner & toko'], ['upah', 'Slip upah', 'dari buku upah'], ['piutang', 'Kartu piutang', 'per pelanggan'], ['bon', 'Rekap bon pemasok', 'per pemasok'], ['nota', 'Cetak ulang nota', 'SALINAN bercap'],
@@ -598,6 +598,18 @@ export function lpKasAkhirBulan(key) {
   if (!d) { const kenapa = th.length ? 'tutup hari ' + nama + ' belum menyimpan isi tempat uang sesudah tutup (tutup hari lama)' : 'tidak ada tutup hari di ' + nama; return { kas: null, kenapa, sumber: '', tolak: 'Kas akhir ' + nama + ' belum bisa dihitung — ' + kenapa + '. Bulan final memakai hitungan fisik tutup hari akhir bulan, bukan titik kas sekarang' }; }
   const t = { tanggal: d.tanggal, laci: Number(d.titik.laci) || 0, rekening: Number(d.titik.rekening) || 0, amplop: Number(d.titik.amplop) || 0, brankas: Number(d.titik.brankas) || 0 };
   return { kas: saldoKantong(akhir, t).total, kenapa: '', sumber: 'hitungan fisik tutup hari ' + tanggalPendek(t.tanggal) + (t.tanggal < akhir ? ' + catatan uang sesudahnya sampai ' + tanggalPendek(akhir) : ''), tolak: '' };
+}
+/**
+ * Pondasi (owner 24 Nov 2026): uang toko pada SATU tanggal lampau. Titik kas sekarang maju tiap tutup hari, jadi mesin (kasPada) tidak menghitung mundur; yang
+ * dipakai = hitungan fisik tutup hari TERAKHIR pada/sebelum tanggal itu (kolom `titik`, aturan yang sama dengan lpKasAkhirBulan) + catatan uang sesudahnya
+ * sampai tanggal itu (saldoKantong). Tanpa hitungan itu → kas null + sebabnya (tidak ditebak). Baca saja.
+ */
+export function lpKasPadaTanggal(iso) {
+  if (lpTutup(iso)) return { kas: null, kenapa: 'catatan ' + String(iso).slice(0, 4) + ' sudah diarsip (tutup buku)', sumber: '' };
+  const d = ambilTutupHari().filter((x) => x && x.titik && x.tanggal && x.tanggal <= iso).sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)))[0];
+  if (!d) return { kas: null, kenapa: 'tidak ada tutup hari yang menyimpan isi tempat uang pada atau sebelum ' + tanggalPendek(iso), sumber: '' };
+  const t = { tanggal: d.tanggal, laci: Number(d.titik.laci) || 0, rekening: Number(d.titik.rekening) || 0, amplop: Number(d.titik.amplop) || 0, brankas: Number(d.titik.brankas) || 0 };
+  return { kas: saldoKantong(iso, t).total, kenapa: '', sumber: 'hitungan fisik tutup hari ' + tanggalPendek(t.tanggal) + (t.tanggal < iso ? ' + catatan uang sesudahnya sampai ' + tanggalPendek(iso) : '') };
 }
 /**
  * Tinjauan 39b UU36-2: neraca LAYAR untuk tanggal yang dipilih (Laporan → Neraca, layar & kertasnya). Bulan FINAL: akhir bulan = kas dari hitungan fisik tutup

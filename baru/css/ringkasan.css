@@ -236,3 +236,5 @@ main.layar-ringkasan.masuk > .rk-dasbor, main.layar-ringkasan.masuk > .rk-saklar
 .layar-ringkasan .db-laju { fill: var(--teks, currentColor); opacity: 0.7; }
 @keyframes dbLampuDenyut { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.25); opacity: 0.7; } }   /* transform/opacity saja (dikomposit, mulus Android) */
 @media (prefers-reduced-motion: reduce) { .layar-ringkasan .db-lampu { animation: none; transition: none; } }
+/* Pondasi toko (owner 24 Nov 2026): baris lampu dua kolom — nama (dengan lampu) & nilai; lampu tanpa warna = ambang belum diatur / belum bisa dihitung */
+.layar-ringkasan .db-pd-baris { grid-template-columns: minmax(0, 1fr) auto; }

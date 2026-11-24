@@ -151,3 +151,12 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
 .layar-laporan .lp-kl-nota { transition: background 160ms cubic-bezier(.2,.8,.2,1); border-radius: 8px; } .layar-laporan .lp-kl-nota:active { background: var(--seg); }
 @keyframes lpKlBuka { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .layar-laporan .lp-kl-rinci { animation: none; } .layar-laporan .lp-kl-nota { transition: none; } }
+/* Pondasi (owner 24 Nov 2026): deret delapan lampu di kartu atas muncul bergiliran lalu berdenyut pelan bila merah; baris lampunya memakai lp-kb-baris */
+.layar-laporan .lp-pd-deret { display: flex; gap: 9px; align-items: center; padding: 2px 0; }
+.layar-laporan .lp-pd-titik { width: 13px; height: 13px; margin-top: 0; animation: lpPdMuncul 420ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.layar-laporan .lp-pd-titik.merah { animation: lpPdMuncul 420ms cubic-bezier(.2,.8,.2,1) both, lpPdDenyut 2200ms ease-in-out infinite; animation-delay: calc(var(--i, 0) * 70ms), calc(var(--i, 0) * 70ms + 420ms); }
+.layar-laporan .lp-pd-baris .n { font-size: 13px; max-width: 132px; white-space: normal; line-height: 1.2; }
+@keyframes lpPdMuncul { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
+@keyframes lpPdDenyut { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.22); } }
+.layar-laporan .lp-status[data-k="pd-tiga"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (prefers-reduced-motion: reduce) { .layar-laporan .lp-pd-titik, .layar-laporan .lp-pd-titik.merah { animation: none; } }
