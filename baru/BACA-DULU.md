@@ -3707,3 +3707,16 @@ percobaan **dicatat + diukur otomatis**; prakiraan musiman **menunggu data setah
 - Layar Laporan memanggil pintu tulis percobaan lewat pondasi-logika (`pdSusunPercobaan` …) — pondasi-logika tetap hanya menulis `aturanToko/pondasi` sendiri.
   `pdPercobaanMaks` sengaja FUNGSI: bundel Dasbor memuat pondasi-logika tanpa sistem-logika.
 Alat uji: `uji_pondasi.py` (tugas & percobaan dihitung tangan, 10 kontrol baru).
+
+## Pondasi paket kelima — sanggup bayar upah, biaya antar per kiriman, harta pribadi owner (owner 25 Nov 2026, cabang `fitur/pondasi-5`; tanpa rules baru)
+Tiga butir catatan "Pondasi bisnis" yang baru terjawab sebagian. Semua di Laporan › Pondasi, tiap kartu dibungkus sendiri & diingat per versi data.
+- **Sanggup bayar upah** — `pdUpah`: upah per bulan = baris "Upah & gaji" `kendaliBulan` (gaji kotor mesin laba), rata-rata ≤ 3 bulan penuh terakhir yang ADA
+  upahnya; upah yang sudah dikerjakan & belum dibayar = `kendaliBulan(bulan berjalan).U.total`; uang toko = Neraca hari ini. Warna = fakta: uang toko minus /
+  kurang dari upah yang belum dibayar → merah; kurang dari satu bulan upah → kuning. Hanya membaca.
+- **Biaya antar per kiriman** — `pdAntar`: 3 bulan (berjalan + 2), dari baris "Bensin & angkut" `kendaliBulan` + ongkir ditagih & jumlah nota diantar
+  (`ajOngkirRentang`). Biaya belum dicatat / tidak ada nota diantar → DISEBUT belum bisa dihitung (bukan Rp0 per kiriman). Tanpa warna (kebijakan owner).
+  Baris itu juga memuat kuli & parkir yang bukan antaran — disebut di layar, tidak dipisah dengan tebakan. Hanya membaca.
+- **Harta pribadi owner** — isian owner per kuartal (`susunPribadi` → kolom `pribadi` dokumen `aturanToko/pondasi`; ambang lampu & target kuartal ikut disalin),
+  `pdPribadi` menaruhnya berdampingan dengan kekayaan bersih toko akhir kuartal (`pdKekayaan`). Pribadi naik selagi kekayaan toko turun = kuning. Owner saja
+  (dokumen `pondasi` tidak di daftar baca staf).
+Alat uji: `uji_pondasi.py` (tangan + 7 kontrol baru; asap data toko mencetak lampu upah & porsi ongkir, tanpa rupiah).

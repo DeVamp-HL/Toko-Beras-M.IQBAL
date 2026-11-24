@@ -27,7 +27,8 @@ import { semuaOrang } from './pelanggan-logika.js';
 import { ngBuku } from './nego-logika.js';
 import { riwayatTutup } from './tutup-hari-logika.js';
 import { klAtur } from './kpi-laba-logika.js';
-import { ssCekGudang, ssTargetKuartal, ssKuartalNama, SS_TARGET_KUARTAL, ssTugas, ssPercobaan, ssDrafPercobaan, susunPercobaan, susunHapusPercobaan, SS_PERCOBAAN_MAKS } from './sistem-logika.js';
+import { kendaliBulan } from './kendali-biaya-logika.js';
+import { ssCekGudang, ssTargetKuartal, ssKuartalNama, ssKuartalKey, ssKuartalGeser, SS_TARGET_KUARTAL, ssTugas, ssPercobaan, ssDrafPercobaan, susunPercobaan, susunHapusPercobaan, SS_PERCOBAAN_MAKS } from './sistem-logika.js';
 import { ambilTutupHari, ambilTitikKas, ingatPerVersi } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
@@ -549,4 +550,80 @@ function pdPercobaanHitung(kini) {
   const jalan = daftar.filter((d) => d.status === 'berjalan').length;
   return { iso, ada: P.ada, n: P.n, daftar, kalimat: !P.ada ? 'Belum ada percobaan yang dicatat. Tiap mencoba merek, harga, atau kemasan baru: catat di sini, sistem mengukur hasilnya dari nota.'
     : P.n + ' percobaan dicatat' + (jalan ? ', ' + jalan + ' masih berjalan' : '') + '. Angkanya dari nota — tanpa susut stok, dan tidak memisahkan sebab lain (musim, harga pemasok).' };
+}
+
+// ==================== paket kelima (owner 25 Nov 2026): upah · biaya antar · harta pribadi ====================
+export const PD_BULAN_UPAH = 3;
+export const pdBulanTeks = (n) => (!pdBilangan(n) ? '—' : pdSatu(n) + ' bln');
+/**
+ * Sanggup bayar upah — catatan Pondasi bisnis menyebut gaji karyawan sebagai ukuran sehat tersendiri. Baca saja: upah per bulan = baris "Upah & gaji" Kendali
+ * biaya (kendaliBulan: gaji kotor mesin laba) rata-rata ≤ 3 bulan penuh terakhir yang ada upahnya; upah yang sudah dikerjakan tapi belum dibayar = kendaliBulan
+ * bulan berjalan (U.total, dari buku upah); uang toko = neracaPada hari ini. Warna = FAKTA: uang toko kurang dari upah yang belum dibayar → merah; kurang dari
+ * satu bulan upah → kuning.
+ */
+export function pdUpah(kini) { return ingatPerVersi(pdKunciIngat('pdUpah', kini), () => pdUpahHitung(kini)); }
+function pdUpahHitung(kini) {
+  const B = daftarBulan(kini, PD_BULAN_UPAH + 1); const jalan = B.find((b) => b.berjalan) || null; const N = neracaPada(null, kini); const kas = N.N && pdBilangan(N.N.kas) ? N.N.kas : null;
+  const bulan = B.filter((b) => !b.berjalan).map((b) => { const K = kendaliBulan(b.key, kini); return { key: b.key, nama: b.pendek, upah: Number(K.per.upah.n) || 0 }; }); const ada = bulan.filter((b) => b.upah > 0);
+  const rata = ada.length ? Math.round(ada.reduce((a, b) => a + b.upah, 0) / ada.length) : null; const KJ = jalan ? kendaliBulan(jalan.key, kini) : null; const belum = KJ && KJ.U ? Number(KJ.U.total) || 0 : 0;
+  const cukup = rata && kas !== null ? Math.max(0, kas) / rata : null; const lampu = kas === null || (!rata && !belum) ? 'tanpa' : kas < 0 || kas < belum ? 'merah' : rata && kas < rata ? 'amber' : 'hijau';
+  return { kas, rata, nBulan: ada.length, bulan, belum, belumTeks: KJ && KJ.U ? KJ.U.teks : '', cukup, lampu, sumber: 'Laporan › Biaya · Uang › Upah',
+    kalimat: kas === null ? 'Uang toko belum bisa dihitung — titik kas belum disetel.'
+      : !rata && !belum ? 'Belum ada upah yang tercatat di ' + PD_BULAN_UPAH + ' bulan penuh terakhir.'
+        : (rata ? 'Upah rata-rata ' + RP(rata) + ' per bulan (' + ada.map((b) => b.nama).join(', ') + '); uang toko ' + RP(kas) + (kas < 0 ? ' — MINUS, tidak cukup untuk upah.' : ' cukup untuk ' + pdSatu(cukup) + ' bulan upah.') : 'Belum ada bulan penuh yang upahnya tercatat.')
+          + (belum > 0 ? ' Upah yang sudah dikerjakan dan belum dibayar: ' + RP(belum) + (kas < belum ? ' — LEBIH BESAR dari uang toko.' : '.') : ' Tidak ada upah yang menunggu dibayar.') };
+}
+/**
+ * Biaya antar per kiriman (rantai pasok · distribusi). Baca saja, 3 bulan (berjalan + 2 sebelumnya), dari baris "Bensin & angkut" Kendali biaya: biaya yang
+ * tercatat, ongkir yang DITAGIH ke pembeli & jumlah nota yang diantar (ajOngkirRentang lewat kendaliBulan). Baris itu juga memuat kuli & parkir yang bukan
+ * antaran — DISEBUT, tidak dipisah-pisah dengan tebakan. Tanpa warna: berapa yang wajar ditanggung toko = kebijakan owner.
+ */
+export function pdAntar(kini) { return ingatPerVersi(pdKunciIngat('pdAntar', kini), () => pdAntarHitung(kini)); }
+function pdAntarHitung(kini) {
+  const bulan = daftarBulan(kini, 3).map((b) => { const K = kendaliBulan(b.key, kini); const r = (K.baris || []).find((x) => x.id === 'angkut') || {};
+    return { key: b.key, nama: b.pendek, berjalan: !!b.berjalan, biaya: Number(K.per.angkut.n) || 0, ongkir: Number(r.ongkirMasuk) || 0, n: Number(r.nAntar) || 0 }; });
+  const biaya = bulan.reduce((a, b) => a + b.biaya, 0), ongkir = bulan.reduce((a, b) => a + b.ongkir, 0), n = bulan.reduce((a, b) => a + b.n, 0);
+  const perKirim = n > 0 && biaya > 0 ? Math.round(biaya / n) : null, ongkirPerKirim = n > 0 ? Math.round(ongkir / n) : null, tertutup = biaya > 0 ? ongkir / biaya * 100 : null;
+  const rentang = bulan.length ? bulan[bulan.length - 1].nama + ' – ' + bulan[0].nama : '';
+  return { bulan, rentang, biaya, ongkir, n, perKirim, ongkirPerKirim, tertutup, ditanggung: biaya - ongkir, sumber: 'Laporan › Biaya › Bensin & angkut · Surat jalan',
+    kalimat: !biaya && !n ? 'Belum ada biaya bensin & angkut maupun nota yang diantar dalam ' + bulan.length + ' bulan ini.'
+      : !biaya ? n + ' nota diantar (' + rentang + ') dengan ongkir ditagih ' + RP(ongkir) + ', tapi belum ada biaya bensin & angkut yang dicatat — biaya per kiriman belum bisa dihitung.'
+      : !n ? 'Bensin & angkut ' + RP(biaya) + ' (' + rentang + '), tapi tidak ada nota yang dicatat diantar — biaya per kiriman belum bisa dihitung.'
+        : n + ' nota diantar (' + rentang + '): bensin & angkut ' + RP(biaya) + ' = ' + RP(perKirim) + ' per kiriman; ongkir yang ditagih ' + RP(ongkir) + ' = ' + RP(ongkirPerKirim) + ' per kiriman'
+          + (tertutup === null ? '.' : ' — menutup ' + pdPctTeks(tertutup) + ' biayanya' + (biaya > ongkir ? ', sisanya ' + RP(biaya - ongkir) + ' ditanggung toko.' : '.')) };
+}
+
+// ---------- harta pribadi owner per kuartal (ekuitas pribadi vs ekuitas toko) ----------
+export const PD_KUARTAL_PRIBADI = 4;
+const pdPribadiPeta = () => { const d = ugAturDok(PD_ID) || {}; return d.pribadi && typeof d.pribadi === 'object' ? d.pribadi : {}; };
+/** Simpan harta pribadi owner untuk satu kuartal (rupiah bulat > 0; kosong = dihapus) — kolom `pribadi` dokumen aturanToko/pondasi; kolom lain ikut disalin. */
+export function susunPribadi(key, ketik, w) {
+  if (!/^\d{4}-K[1-4]$/.test(String(key))) return { tolak: 'Kuartal tidak dikenal' };
+  const lama = ugAturDok(PD_ID) || {}; const peta = Object.assign({}, pdPribadiPeta()); const dulu = Number(peta[key]) || 0;
+  if (ugKosong(ketik)) { if (!dulu) return { tolak: 'Tidak ada yang diubah' }; delete peta[key];
+    return pdSimpanAtur(Object.assign({}, lama, { id: PD_ID, tanggal: w.tanggal, jam: w.jam, pribadi: peta }), { drafPribadi: null, kabar: 'Harta pribadi ' + ssKuartalNama(key) + ' dihapus', kabarAwas: false }); }
+  const n = ugAngka(ketik); if (!(n > 0) || n > PD_TARGET_MAKS || Math.round(n) !== n) return { tolak: 'Harta pribadi ditulis dalam rupiah bulat, lebih dari 0 — kosong = dihapus' };
+  if (n === dulu) return { tolak: 'Tidak ada yang diubah' }; peta[key] = n;
+  return pdSimpanAtur(Object.assign({}, lama, { id: PD_ID, tanggal: w.tanggal, jam: w.jam, pribadi: peta }), { drafPribadi: null, kabar: 'Harta pribadi ' + ssKuartalNama(key) + ' tersimpan — ' + RP(n), kabarAwas: false });
+}
+/**
+ * Harta pribadi owner (angka yang DIISI owner sendiri — sistem tidak mencatat harta pribadi) berdampingan dengan kekayaan bersih toko akhir kuartal (pdKekayaan:
+ * bulan terakhir kuartal itu; kuartal berjalan = hari ini). Catatan Pondasi bisnis: yang dibesarkan dulu ekuitas toko, baru ekuitas pribadi → DISEBUT bila
+ * pribadi naik selagi kekayaan toko turun (kuning). Belum diisi / belum bisa dihitung = disebut, bukan nol.
+ */
+export function pdPribadi(kini) { return ingatPerVersi(pdKunciIngat('pdPribadi', kini), () => pdPribadiHitung(kini)); }
+function pdPribadiHitung(kini) {
+  const iso = hariIniIso(kini); const kiniQ = ssKuartalKey(iso); const peta = pdPribadiPeta(); const KY = pdKekayaan(kini);
+  const kuartal = []; for (let i = 0; i < PD_KUARTAL_PRIBADI; i++) { const key = ssKuartalGeser(kiniQ, -i); const q = Number(key.slice(6, 7)); const bulanAkhir = key.slice(0, 4) + '-' + String(q * 3).padStart(2, '0');
+    const b = i === 0 ? KY.bulan.find((x) => x.berjalan) : KY.bulan.find((x) => x.key === bulanAkhir); const pribadi = Number(peta[key]) > 0 ? Math.round(Number(peta[key])) : null;
+    kuartal.push({ key, nama: ssKuartalNama(key), berjalan: i === 0, toko: b && b.ada ? b.bersih : null, tokoKenapa: b && !b.ada ? b.kenapa : !b ? 'di luar catatan toko' : '', pribadi }); }
+  const kini0 = kuartal[0]; const lalu = kuartal.slice(1).find((q) => q.pribadi !== null && q.toko !== null) || null; const lengkap = kini0.pribadi !== null && kini0.toko !== null;
+  const dPribadi = lengkap && lalu ? kini0.pribadi - lalu.pribadi : null, dToko = lengkap && lalu ? kini0.toko - lalu.toko : null;
+  const lampu = dPribadi === null ? 'tanpa' : dPribadi > 0 && dToko < 0 ? 'amber' : 'hijau';
+  return { kuartal, kiniKey: kiniQ, lampu, dPribadi, dToko, banding: lalu ? lalu.nama : '', sumber: 'isian owner · Laporan › Neraca',
+    kalimat: kini0.pribadi === null ? 'Harta pribadi ' + kini0.nama + ' belum diisi — sistem hanya tahu sisi toko. Isi sendiri perkiraannya (tabungan, kendaraan, rumah, dikurangi utang pribadi).'
+      : kini0.toko === null ? 'Harta pribadi ' + kini0.nama + ' ' + RP(kini0.pribadi) + '; kekayaan toko belum bisa dihitung' + (kini0.tokoKenapa ? ' — ' + kini0.tokoKenapa : '') + '.'
+        : 'Harta pribadi ' + RP(kini0.pribadi) + ' · kekayaan bersih toko ' + RP(kini0.toko) + ' (' + kini0.nama + ').'
+          + (dPribadi === null ? ' Belum ada kuartal sebelumnya yang terisi untuk dibandingkan.' : ' Sejak ' + lalu.nama + ': pribadi ' + (dPribadi >= 0 ? 'naik ' : 'turun ') + RP(Math.abs(dPribadi)) + ', toko ' + (dToko >= 0 ? 'naik ' : 'turun ') + RP(Math.abs(dToko))
+            + (lampu === 'amber' ? ' — harta pribadi tumbuh selagi kekayaan toko menyusut.' : '.')) };
 }
