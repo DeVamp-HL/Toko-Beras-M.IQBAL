@@ -7,23 +7,24 @@
 // (pdLampu…, ambang owner yang sama). Yang tidak bisa dihitung DISEBUT (null + sebab), tidak dianggap 0:
 //   · kuartal yang belum utuh (catatan toko baru mulai di tengahnya, atau masih berjalan) ditandai dan tidak dibandingkan apel-ke-apel;
 //   · bulan di tahun yang ditutup tanpa potret → angka kuartalnya null.
-import { rekapTahun, lpPertama, lpNamaBulan, neracaPada, lpKasAkhirBulan } from './laporan-logika.js';
+import { rekapTahun, lpPertama, lpNamaBulan, neracaPada, lpKasAkhirBulan, lpFinal, identitasUsaha, kopUntuk, pakaiKop } from './laporan-logika.js';
 import { priveRentang } from './uang-logika.js';
 import { pdAtur, pdLampuAtas, pdLampuHasil, pdLampuAmbil, pdPctTeks, pdPorsiPemasok, pdAkhirBulan } from './pondasi-logika.js';
+import { ssKuartalKey, ssKuartalGeser, ssKuartalNama, ssTargetKuartal, SS_TARGET_KUARTAL } from './sistem-logika.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
 const kwDua = (n) => String(n).padStart(2, '0');
 const kwBilangan = (n) => typeof n === 'number' && isFinite(n);
 /** 'YYYY-MM-DD' / 'YYYY-MM' → 'YYYY-K1'…'YYYY-K4'. */
-export const kwKey = (iso) => String(iso).slice(0, 4) + '-K' + (Math.floor((Number(String(iso).slice(5, 7)) - 1) / 3) + 1);
+export const kwKey = (iso) => ssKuartalKey(iso);
 export const kwTahunDari = (key) => Number(String(key).slice(0, 4));
 export const kwNomor = (key) => Number(String(key).slice(6, 7));
 /** Tiga bulan satu kuartal: 'YYYY-K4' → ['YYYY-10', 'YYYY-11', 'YYYY-12']. */
 export const kwBulan = (key) => { const t = kwTahunDari(key), q = kwNomor(key); return [0, 1, 2].map((i) => t + '-' + kwDua((q - 1) * 3 + 1 + i)); };
 export const kwRentang = (key) => { const b = kwBulan(key); return { awal: b[0] + '-01', akhir: pdAkhirBulan(b[2]) }; };
 /** Geser n kuartal (negatif = mundur). */
-export const kwGeser = (key, n) => { const i = kwTahunDari(key) * 4 + (kwNomor(key) - 1) + n; return Math.floor(i / 4) + '-K' + ((i % 4 + 4) % 4 + 1); };
-export const kwNama = (key) => 'K' + kwNomor(key) + ' ' + kwTahunDari(key);
+export const kwGeser = (key, n) => ssKuartalGeser(key, n);
+export const kwNama = (key) => ssKuartalNama(key);
 const kwPersen = (a, b) => (kwBilangan(a) && kwBilangan(b) && b !== 0 ? (a - b) / Math.abs(b) * 100 : null);
 
 /** Daftar kuartal dari catatan pertama toko sampai kuartal berjalan, TERBARU dulu. */
@@ -88,10 +89,51 @@ export function kwRekap(key, kini) {
     if (P.total > 0) tambah('pemasok', 'Bergantung pada satu pemasok', pdLampuAtas(P.pct, A.pemasokMaks), pdPctTeks(P.pct), 'Belanja beras ' + Q.nama + ' ' + RP(P.total) + ' dari ' + P.daftar.length + ' pemasok; terbesar ' + P.daftar[0].nama + ' ' + RP(P.daftar[0].rp) + '.');
     else tambah('pemasok', 'Bergantung pada satu pemasok', 'tanpa', 'belum bisa', 'Tidak ada kedatangan beras bernilai di kuartal ini.'); }
   else tambah('pemasok', 'Bergantung pada satu pemasok', 'tanpa', 'belum bisa', 'Kedatangan kuartal ini sudah diarsip (tutup buku) atau kuartalnya belum mulai.');
-  return Object.assign({}, Q, { prive, tinggal, banding, kekayaan: K, kekayaanLalu: KL, kekayaanNaik: naik, lampu,
+  return Object.assign({}, Q, { prive, tinggal, banding, kekayaan: K, kekayaanLalu: KL, kekayaanNaik: naik, lampu, target: kwTarget(Q, K),
     status: Q.depan ? 'belum mulai' : Q.utuh ? 'utuh · ' + lpNamaBulan(kwBulan(key)[0]).split(' ')[0] + ' – ' + lpNamaBulan(kwBulan(key)[2]) : 'TIDAK UTUH — ' + Q.sebab,
     kalimat: Q.depan ? Q.nama + ' belum mulai.' : !kwBilangan(Q.omzet) ? Q.nama + ' belum bisa dihitung — ' + Q.sebab + '.'
       : Q.nama + ': omzet ' + RP(Q.omzet) + ' dari ' + Q.nota + ' nota, laba bersih ' + RP(Q.labaBersih) + (kwBilangan(prive) ? ', ambil pribadi ' + RP(prive) : '') + '.' });
+}
+
+// ---------- target owner per kuartal (PR B) ----------
+/**
+ * Lampu satu target "makin besar makin baik" (omzet, laba bersih). bagian = bagian kuartal yang sudah lewat (0–1; kuartal selesai = 1).
+ * hijau = target tercapai · kuning = belum tercapai tapi sesuai laju hari (capai ≥ target × bagian) · merah = di bawah laju. Kuartal selesai: tercapai / tidak.
+ */
+export const kwLampuTarget = (capai, target, bagian) => (!(target > 0) || !kwBilangan(capai) ? 'tanpa' : capai >= target ? 'hijau' : bagian < 1 && capai >= target * bagian ? 'amber' : 'merah');
+/** Target owner kuartal ini (ssTargetKuartal) dibanding yang tercapai. Q = kwInti, K = kwKekayaan. */
+export function kwTarget(Q, K) {
+  const T = ssTargetKuartal(Q.key); const hariSemua = Math.round((Date.parse(Q.akhir) - Date.parse(Q.awal)) / 86400000) + 1; const hariLewat = Q.depan ? 0 : Math.round((Date.parse(Q.sampai) - Date.parse(Q.awal)) / 86400000) + 1;
+  const bagian = Q.depan ? 0 : Q.berjalan ? Math.min(1, hariLewat / hariSemua) : 1; const pct = (a, b) => (kwBilangan(a) && b > 0 ? a / b * 100 : null);
+  const naik = (id, nama, capai, target) => { const lampu = kwLampuTarget(capai, target, bagian); const laju = Math.round(target * bagian);
+    return { id, nama, target, capai, pct: pct(capai, target), laju, lampu, teks: !(target > 0) ? 'belum ditarget' : !kwBilangan(capai) ? 'belum bisa dihitung' : lampu === 'hijau' ? 'tercapai — ' + RP(capai) + ' dari ' + RP(target)
+      : lampu === 'amber' ? 'sesuai laju: ' + RP(capai) + ' dari ' + RP(target) + ' (seharusnya sudah ±' + RP(laju) + ')' : bagian < 1 ? 'DI BAWAH laju: ' + RP(capai) + ', seharusnya sudah ±' + RP(laju) + ' dari ' + RP(target) : 'TIDAK tercapai: ' + RP(capai) + ' dari ' + RP(target) + ' — kurang ' + RP(target - capai) }; };
+  const utang = K && K.ada ? K.kewajiban : null; const lampuU = !(T.utangMaks > 0) || utang === null ? 'tanpa' : utang > T.utangMaks ? 'merah' : 'hijau';
+  const baris = [naik('omzet', 'Omzet', Q.omzet, T.omzet), naik('labaBersih', 'Laba bersih', Q.labaBersih, T.labaBersih),
+    { id: 'utangMaks', nama: 'Utang ' + (Q.berjalan ? 'hari ini' : 'akhir kuartal'), target: T.utangMaks, capai: utang, pct: pct(utang, T.utangMaks), laju: null, lampu: lampuU,
+      teks: !(T.utangMaks > 0) ? 'belum ditarget' : utang === null ? 'utang belum bisa dihitung' : utang > T.utangMaks ? 'LEWAT batas: ' + RP(utang) + ' — lebih ' + RP(utang - T.utangMaks) + ' dari ' + RP(T.utangMaks) : 'di bawah batas: ' + RP(utang) + ' dari paling banyak ' + RP(T.utangMaks) }];
+  return { key: Q.key, ada: T.ada, bagian, hariLewat, hariSemua, baris, daftar: SS_TARGET_KUARTAL,
+    kalimat: !T.ada ? 'Target ' + Q.nama + ' belum diisi.' : Q.berjalan ? 'Hari ke-' + hariLewat + ' dari ' + hariSemua + ' — kuning berarti belum tercapai tetapi sesuai laju hari.' : Q.depan ? 'Kuartal ini belum mulai.' : 'Kuartal sudah selesai — tercapai atau tidak.' };
+}
+
+// ---------- rapor kuartal siap cetak (PR B) ----------
+/**
+ * Dokumen berkop satu halaman (bentuk = laporanBerkop: judul, sub, baris [{ nama, n, kelas, teks }], catatan, tolak, kop, cap) — hasil kuartal, yang tinggal di
+ * toko, kekayaan, banding kuartal lalu, target & potret lampu. Angkanya kwRekap apa adanya. DRAF bila ada bulannya yang belum final / kuartal belum utuh.
+ */
+export function kwRapor(key, kini) {
+  const Q = kwRekap(key, kini); const I = identitasUsaha(); const final = !Q.depan && Q.utuh && kwBulan(key).every(lpFinal); const kata = { merah: 'merah', amber: 'kuning', hijau: 'aman', tanpa: '' };
+  const rp = (nama, n, kelas) => ({ nama, n: n === undefined ? null : n, kelas: kelas || '', teks: n === null || n === undefined ? '—' : RP(n) }); const kel = (nama) => ({ nama, n: null, kelas: 'kel', teks: '' }); const teks = (nama, t) => ({ nama, n: null, kelas: '', teks: t });
+  let baris = [kel('Hasil ' + Q.nama), rp('Omzet' + (kwBilangan(Q.nota) ? ' (' + Q.nota + ' nota)' : ''), Q.omzet), rp('Laba kotor', Q.labaKotor), rp('Biaya toko', kwBilangan(Q.biaya) ? -Q.biaya : null), rp('Laba bersih', Q.labaBersih, 'jumlah'),
+    rp('Ambil pribadi owner', kwBilangan(Q.prive) ? -Q.prive : null), rp('Tinggal di toko', Q.tinggal, 'jumlah')];
+  const K = Q.kekayaan; baris.push(kel('Kekayaan toko per ' + tanggalPendek(K.per)));
+  baris = baris.concat(K.ada ? [rp('Harta', K.aset), rp('Utang', -K.kewajiban), rp('Kekayaan bersih', K.bersih, 'jumlah')].concat(Q.kekayaanNaik === null ? [] : [rp('Dibanding akhir kuartal sebelumnya', Q.kekayaanNaik)]) : [teks('Belum bisa dihitung', '—')]);
+  if (Q.banding.ada) baris = baris.concat([kel('Kuartal sebelumnya · ' + Q.banding.nama + (Q.banding.setara ? '' : ' (bukan banding setara)')), rp('Omzet', Q.banding.omzet), rp('Laba bersih', Q.banding.labaBersih)]);
+  if (Q.target.ada) baris = baris.concat([kel('Target owner')]).concat(Q.target.baris.filter((b) => b.target > 0).map((b) => teks(b.nama + ' — target ' + RP(b.target), (kwBilangan(b.capai) ? RP(b.capai) : '—') + (kata[b.lampu] ? ' · ' + kata[b.lampu] : ''))));
+  baris = baris.concat([kel('Potret pondasi')]).concat(Q.lampu.map((l) => teks(l.nama, l.nilai + (kata[l.lampu] ? ' · ' + kata[l.lampu] : ''))));
+  const tolak = Q.depan ? Q.nama + ' belum mulai' : !kwBilangan(Q.omzet) ? Q.nama + ' belum bisa dihitung — ' + Q.sebab : !I.lengkap ? 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)' : '';
+  return { jenis: 'kuartal', namaJenis: 'Rapor kuartal', judul: 'Rapor Kuartal ' + Q.nama, sub: tanggalPendek(Q.awal) + ' – ' + tanggalPendek(Q.sampai) + ' · ' + (final ? 'FINAL (tutup buku)' : 'DRAF — ' + (Q.utuh ? 'belum tutup buku' : Q.sebab)), periode: Q.nama, final, cap: final ? '' : 'DRAF', baris,
+    catatan: 'Satu kuartal = jumlah tiga bulan mesin laba yang sama dengan laporan Laba-Rugi. ' + Q.banding.teks + (K.ada ? '' : ' Kekayaan: ' + K.kenapa + '.') + ' Warna potret pondasi & target memakai ambang dan target yang diisi pemilik.', tolak, kop: kopUntuk(pakaiKop().pakai.laporan, I) };
 }
 
 /** Empat kuartal satu tahun + pemeriksa: Σ kuartal = angka tahun Laporan › Tahunan (omzet, laba kotor, biaya, laba bersih). */

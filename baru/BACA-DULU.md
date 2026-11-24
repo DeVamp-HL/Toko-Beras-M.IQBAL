@@ -3635,3 +3635,17 @@ Catatan penting:
 
 Alat uji: `uji_pondasi.py` (kotak pasir + statis + `--kontrol`, kini memuat kuartal & paket kedua; asap data toko lokal memeriksa Σ kuartal = tahun).
 
+### Pondasi paket kedua · PR B — target per kuartal, rapor kuartal siap cetak, pengingat (cabang `fitur/pondasi-2b`, di atas PR A; menulis SETELAN saja, tanpa rules baru)
+- **Target per kuartal** — owner mengisi target omzet, laba bersih, dan utang paling banyak di akhir kuartal (rupiah; kosong = tidak ditarget). Disimpan di
+  `aturanToko/pondasi.targetKuartal['YYYY-Kn']` lewat `susunTargetKuartal` (pondasi-logika; SATU pintu tulis modul = `pdSimpanAtur` — ambang lampu & target
+  kuartal lain ikut disalin). Pembaca tunggal: `ssTargetKuartal` (sistem-logika). Penilaiannya `kwTarget` / `kwLampuTarget` (kuartal-logika): tercapai =
+  hijau · belum tercapai tapi sesuai LAJU HARI (capai ≥ target × bagian kuartal yang lewat) = kuning · di bawah laju = merah · kuartal selesai tidak punya
+  kuning · utang lewat batas = merah. Layar: Laporan › Kuartal › kartu Target + lembar "Atur target".
+- **Rapor kuartal** — `kwRapor`: dokumen berkop satu halaman berbentuk `laporanBerkop` (hasil kuartal, tinggal di toko, kekayaan, kuartal sebelumnya, target,
+  potret lampu), dikeluarkan lewat `keluarkan` yang sama (cetak · PDF · WA; tercatat di Cetakan bernomor `dokumenCetak` jenis `kuartal`). DRAF bila kuartalnya
+  belum utuh / bulannya belum final; syarat kop sama dengan laporan berkop lain. Di aplikasi tablet hanya kirim WA (aturan dokumen kertas besar).
+- **Pengingat** — jenis baru `kuartal` ("Target kuartal belum diisi", setelan `hariKuartal`, bawaan 7 hari sebelum, ke Owner): target kuartal BERIKUTNYA yang
+  belum diisi jatuh di hari pertama kuartal itu; kuartal BERJALAN yang masih kosong ditagih hanya `SS_KUARTAL_SUSUL` (14) hari pertamanya, supaya tidak jadi
+  pengingat "lewat" yang abadi. Kunci kuartal (`ssKuartalKey` / `ssKuartalGeser` / `ssKuartalAwal`) tinggal di sistem-logika — satu sumber untuk pengingat &
+  kuartal-logika (sistem-logika tidak boleh mengimpor kuartal-logika: bundel uji yang memuat sistem-logika tidak semuanya memuat mesin laporan).
+

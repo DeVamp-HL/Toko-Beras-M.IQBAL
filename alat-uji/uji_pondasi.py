@@ -20,10 +20,10 @@ sys.path.insert(0, SINI)
 import bundel_baru, uji_kpi_laba, uji_jual_baru, uji_kunci_periode  # noqa: E402
 JSC = uji_kpi_laba.JSC
 PD = 'baru/js/layar/pondasi-logika.js'; DL = 'baru/js/layar/dasbor-logika.js'; LG = 'baru/js/layar/laporan-logika.js'
-KW = 'baru/js/layar/kuartal-logika.js'; BP = 'baru/js/layar/bon-pemasok-logika.js'; RW = 'baru/js/layar/riwayat-logika.js'
+SLG = 'baru/js/layar/sistem-logika.js'; KW = 'baru/js/layar/kuartal-logika.js'; BP = 'baru/js/layar/bon-pemasok-logika.js'; RW = 'baru/js/layar/riwayat-logika.js'
 MODUL = bundel_baru.lengkapi(list(uji_kpi_laba.MODUL)) + [KW]
 SUMBER = {'laporan': 'baru/js/layar/laporan.js', 'laporanL': 'baru/js/layar/laporan-logika.js', 'dasbor': 'baru/js/layar/dasbor.js', 'dasborL': DL, 'index': 'baru/index.html', 'pages': '.github/workflows/pages.yml',
-          'pd': PD, 'kw': KW, 'bundel': 'alat-uji/bundel_baru.py', 'cssL': 'baru/css/laporan.css', 'cssR': 'baru/css/ringkasan.css', 'baca': 'baru/BACA-DULU.md'}
+          'pd': PD, 'kw': KW, 'sl': SLG, 'bundel': 'alat-uji/bundel_baru.py', 'cssL': 'baru/css/laporan.css', 'cssR': 'baru/css/ringkasan.css', 'baca': 'baru/BACA-DULU.md'}
 
 KOTAK_PD = {
   'penjualan': [
@@ -254,12 +254,52 @@ ok('organisasi (tangan): Orang A 2 tutup hari, 1 malam berselisih −2 rb (tutup
 pasang();
 ok('mulus paket kedua: kekayaan, rantai pasok, risiko & organisasi diingat per versi data (ketukan tidak menghitung ulang)', pdKekayaan(KINI) === pdKekayaan(KINI) && pdRantai(KINI) === pdRantai(KINI) && pdRisiko(KINI) === pdRisiko(KINI) && pdOrganisasi(KINI) === pdOrganisasi(KINI));
 
+// ==================== PR B: target per kuartal · rapor kuartal · pengingat ====================
+ok('target (tangan): lampu = tercapai hijau · belum tercapai tapi sesuai laju hari kuning · di bawah laju merah · kuartal SELESAI tidak ada kuning · tanpa target / tanpa angka = tanpa warna',
+  kwLampuTarget(100, 100, 0.5) === 'hijau' && kwLampuTarget(60, 100, 0.5) === 'amber' && kwLampuTarget(50, 100, 0.5) === 'amber' && kwLampuTarget(40, 100, 0.5) === 'merah' && kwLampuTarget(90, 100, 1) === 'merah' && kwLampuTarget(90, 0, 0.5) === 'tanpa' && kwLampuTarget(null, 100, 0.5) === 'tanpa');
+ok('kuartal: kunci, geser, awal & nama = SATU sumber (sistem-logika) dipakai Laporan & pengingat', ssKuartalKey('2026-11-18') === kwKey('2026-11-18') && ssKuartalGeser('2026-K4', 1) === '2027-K1' && ssKuartalAwal('2026-K4') === '2026-10-01' && ssKuartalAwal('2027-K1') === kwRentang('2027-K1').awal && ssKuartalNama('2027-K1') === 'K1 2027');
+var TQ1 = susunTargetKuartal('2026-K4', { omzet: '3.000.000', labaBersih: '', utangMaks: '5000000' }, W);
+ok('target: disimpan ke aturanToko/pondasi.targetKuartal[kuartal]; titik ribuan dibaca; kosong = tidak ditarget', !TQ1.tolak && TQ1.dokumen.length === 1 && TQ1.dokumen[0].koleksi === 'aturanToko' && TQ1.dokumen[0].data.id === 'pondasi' && J(TQ1.dokumen[0].data.targetKuartal) === J({ '2026-K4': { omzet: 3000000, utangMaks: 5000000 } }) && TQ1.patch.aturTq === null, J(TQ1));
+ok('target: ketikan rusak DITOLAK (huruf, nol, pecahan, kuartal tidak dikenal)', !!susunTargetKuartal('2026-K4', { omzet: 'abc' }, W).tolak && !!susunTargetKuartal('2026-K4', { omzet: '0' }, W).tolak && !!susunTargetKuartal('2026-K4', { omzet: '1,5' }, W).tolak && !!susunTargetKuartal('2026-K5', { omzet: '1000' }, W).tolak && !!susunTargetKuartal('K4', { omzet: '1000' }, W).tolak);
+aturDengan([{ id: 'pondasi', utangMaks: 150, targetKuartal: { '2026-K3': { omzet: 111 }, '2026-K4': { omzet: 3000000, utangMaks: 5000000 } } }]);
+var TQ2 = susunTargetKuartal('2026-K4', { labaBersih: '250000' }, W);
+ok('target: simpan satu target TIDAK menimpa target lain, kuartal lain, atau ambang lampu; pembaca & drafnya sama', J(TQ2.dokumen[0].data.targetKuartal) === J({ '2026-K3': { omzet: 111 }, '2026-K4': { omzet: 3000000, labaBersih: 250000, utangMaks: 5000000 } }) && TQ2.dokumen[0].data.utangMaks === 150 && ssTargetKuartal('2026-K4').omzet === 3000000 && ssTargetKuartal('2026-K4').ada === true && ssTargetKuartal('2027-K1').ada === false && pdDrafTarget('2026-K4').utangMaks === '5000000' && pdDrafTarget('2026-K4').labaBersih === '' && pdAtur().utangMaks === 150, J([TQ2, pdDrafTarget('2026-K4')]));
+var TQ3 = susunTargetKuartal('2026-K3', { omzet: '' }, W);
+ok('target: mengosongkan satu-satunya target kuartal menghapus kuartal itu dari daftar; tidak ada yang diubah → ditolak', !TQ3.tolak && J(Object.keys(TQ3.dokumen[0].data.targetKuartal)) === J(['2026-K4']) && susunTargetKuartal('2026-K4', { omzet: '3000000' }, W).tolak === 'Tidak ada yang diubah');
+var QT = kwRekap('2026-K4', KINI); var tg = function (Q, id) { return Q.target.baris.find(function (b) { return b.id === id; }); };
+ok('target K4 (tangan): hari ke-49 dari 92 (1 Okt – 18 Nov); utang 4,8 jt di bawah batas 5 jt = aman; omzet dinilai dengan laju hari', QT.target.ada && QT.target.hariLewat === 49 && QT.target.hariSemua === 92 && Math.abs(QT.target.bagian - 49 / 92) < 1e-12 && tg(QT, 'utangMaks').lampu === 'hijau' && tg(QT, 'utangMaks').capai === 4800000 && tg(QT, 'omzet').lampu === kwLampuTarget(QT.omzet, 3000000, 49 / 92) && tg(QT, 'omzet').laju === Math.round(3000000 * 49 / 92) && tg(QT, 'labaBersih').lampu === 'tanpa', J(QT.target));
+aturDengan([{ id: 'pondasi', targetKuartal: { '2026-K4': { omzet: QT.omzet + 1, labaBersih: 1000000, utangMaks: 4000000 } } }]);
+var QT2 = kwRekap('2026-K4', KINI);
+ok('target K4: omzet kurang Rp1 dari target tapi di atas laju = kuning; toko rugi vs target laba 1 jt = merah di bawah laju; utang 4,8 jt lewat batas 4 jt = merah, lebihnya 800 rb (tangan)', tg(QT2, 'omzet').lampu === 'amber' && /sesuai laju/.test(tg(QT2, 'omzet').teks) && tg(QT2, 'labaBersih').lampu === 'merah' && /DI BAWAH laju/.test(tg(QT2, 'labaBersih').teks) && tg(QT2, 'utangMaks').lampu === 'merah' && /lebih Rp800\.000 dari Rp4\.000\.000/.test(tg(QT2, 'utangMaks').teks), J(QT2.target));
+aturDengan([{ id: 'pondasi', targetKuartal: { '2026-K3': { omzet: Q3.omzet + 1 } } }]);
+ok('target kuartal yang SUDAH selesai: kurang Rp1 = TIDAK tercapai (merah, tidak ada kuning)', tg(kwRekap('2026-K3', KINI), 'omzet').lampu === 'merah' && /TIDAK tercapai/.test(tg(kwRekap('2026-K3', KINI), 'omzet').teks) && kwRekap('2026-K3', KINI).target.bagian === 1);
+aturDengan([]);
+ok('tanpa target: disebut belum diisi, tidak ada lampu yang berwarna', QT && kwRekap('2026-K4', KINI).target.ada === false && /belum diisi/.test(kwRekap('2026-K4', KINI).target.kalimat) && kwRekap('2026-K4', KINI).target.baris.every(function (b) { return b.lampu === 'tanpa'; }));
+
+// ---- rapor kuartal berkop
+var RP4 = kwRapor('2026-K4', KINI); var rb = function (D, nama) { var r = D.baris.find(function (x) { return x.nama === nama; }); return r ? r.teks : null; };
+ok('rapor kuartal: bentuk dokumen berkop (judul, sub, baris, catatan, kop) dengan angka kwRekap apa adanya; kuartal belum utuh → bercap DRAF & sebabnya di sub', RP4.jenis === 'kuartal' && RP4.judul === 'Rapor Kuartal K4 2026' && RP4.cap === 'DRAF' && RP4.final === false && /DRAF — masih berjalan/.test(RP4.sub) && rb(RP4, 'Laba bersih') === RP(Q4.labaBersih) && rb(RP4, 'Tinggal di toko') === RP(Q4.tinggal) && rb(RP4, 'Ambil pribadi owner') === RP(-300000) && rb(RP4, 'Kekayaan bersih') === RP(N.aset - N.kewajiban) && rb(RP4, 'Bergantung pada satu pemasok') === '75 %' && /merah$/.test(rb(RP4, 'Ambil pribadi dibanding laba')) && RP4.baris.some(function (r) { return r.kelas === 'kel' && r.nama === 'Potret pondasi'; }) && !RP4.baris.some(function (r) { return r.nama === 'Target owner'; }) && !!RP4.kop, J(RP4));
+ok('rapor kuartal: syarat kop sama dengan laporan berkop lain (kop belum lengkap → ditolak dengan kalimat yang sama); teks WA-nya memuat judul & nomor', RP4.tolak === laporanBerkop('labarugi', '2026-11', 1, KINI).tolak && /RAPOR KUARTAL K4 2026 — DRAF/.test(teksDokumen(RP4, 7, '2026-11-18')) && /No\. 7/.test(teksDokumen(RP4, 7, '2026-11-18')), J([RP4.tolak, teksDokumen(RP4, 7, '2026-11-18').slice(0, 200)]));
+aturDengan([{ id: 'pondasi', targetKuartal: { '2026-K4': { utangMaks: 4000000 } } }]);
+ok('rapor kuartal: target yang diisi ikut tercetak dengan warnanya', (function () { var D = kwRapor('2026-K4', KINI); return D.baris.some(function (r) { return r.nama === 'Target owner'; }) && /Rp4\.800\.000 · merah$/.test(rb(D, 'Utang hari ini — target Rp4.000.000')); })(), J(kwRapor('2026-K4', KINI).baris.slice(-9)));
+aturDengan([]);
+
+// ---- pengingat target kuartal
+var pk = function (kini) { return ssSumberPengingat(kini).filter(function (p) { return p.jenis === 'kuartal'; }); };
+ok('pengingat: jenis "kuartal" terdaftar (bawaan 7 hari sebelum, ke Owner); 18 Nov: sumbernya K1 2027 (jatuh 1 Jan 2027) saja — K4 yang sudah berjalan 49 hari TIDAK ditagih; belum aktif (44 hari lagi)', SS_JENIS_PENGINGAT.some(function (j) { return j.id === 'kuartal' && j.kunci === 'hariKuartal'; }) && ssAtur('pengingat').hariKuartal === 7 && J(ssAtur('pengingat').ke.kuartal) === J(['Owner']) && J(pk(KINI).map(function (p) { return [p.id, p.jatuh]; })) === J([['kuartal|2027-K1', '2027-01-01']]) && !ssPengingat(KINI).aktif.some(function (p) { return p.jenis === 'kuartal'; }), J(pk(KINI)));
+var K26 = new Date('2026-12-26T10:00:00+07:00');
+ok('pengingat: 26 Des (6 hari sebelum 1 Jan) → "Isi target K1 2027" aktif', ssPengingat(K26).aktif.some(function (p) { return p.id === 'kuartal|2027-K1' && p.teks === 'Isi target K1 2027' && p.sisa === 6; }), J(ssPengingat(K26).aktif.map(function (p) { return [p.id, p.sisa]; })));
+aturDengan([{ id: 'pondasi', targetKuartal: { '2027-K1': { omzet: 5000000 } } }]);
+ok('pengingat: target K1 2027 sudah diisi → tidak diingatkan lagi', pk(K26).length === 0, J(pk(K26))); aturDengan([]);
+ok('pengingat: kuartal berjalan yang targetnya kosong ditagih hanya 14 hari pertamanya (5 Jan ya, 20 Jan tidak)', pk(new Date('2027-01-05T10:00:00+07:00')).some(function (p) { return p.id === 'kuartal|2027-K1' && /sudah berjalan/.test(p.teks); }) && !pk(new Date('2027-01-20T10:00:00+07:00')).some(function (p) { return p.id === 'kuartal|2027-K1'; }), J([pk(new Date('2027-01-05T10:00:00+07:00')), pk(new Date('2027-01-20T10:00:00+07:00'))]));
+pasang();
+
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
 STATIS = [
     ('Laporan memasang tab Pondasi + lembar ambang', 'laporan', ["import * as PD from './pondasi-logika.js';", "s.keluarga === 'pondasi' ? gambarPondasi(s, L)", 'function gambarPondasi(s, L)', 'PD.pdPondasi(kini())', 'PD.pdDisiplin(kini())', 'data-aksi="pdBuka"',
-                                                     'pdAturSimpan: () => tulis(PD.susunAturPondasi(st().aturPd || {}, waktu()))', "'aturPd']", 'bukaPd: {}, aturPd: null']),
+                                                     'pdAturSimpan: () => tulis(PD.susunAturPondasi(st().aturPd || {}, waktu()))', "'aturPd'", 'bukaPd: {}, aturPd: null']),
     ('Laporan: keluarga Pondasi terdaftar', 'laporanL', ["['neraca', 'Neraca'], ['pondasi', 'Pondasi'], ['dokumen', 'Dokumen']"]),
     ('Dasbor memasang kartu Pondasi', 'dasbor', ['function kartuPondasi(Q)', 'kartuPondasi(D.pondasi)', "daftar('pondasi:' + l.id"]),
     ('Dasbor logika: kelompok pondasi, dipertahankan & dipanaskan', 'dasborL', ["import { pdPondasi } from './pondasi-logika.js';", "pondasi: ['pondasi toko', dbPondasi]", 'pondasi: lama.pondasi', "pondasi: k('pondasi')", "'b2b', 'pondasi'];"]),
@@ -274,6 +314,9 @@ STATIS = [
     ('Pondasi memasang empat kartu paket kedua, tiap kartu dibungkus sendiri', 'laporan', ['data-k="pd-kekayaan"', 'data-k="pd-rantai"', 'data-k="pd-risiko"', 'data-k="pd-organisasi"', "aman('kekayaan', () => PD.pdKekayaan(kini()))", "aman('organisasi', () => PD.pdOrganisasi(kini()))"]),
     ('modul kuartal dipramuat', 'index', ['<link rel="modulepreload" href="js/layar/kuartal-logika.js">']),
     ('BACA-DULU menyebut paket kedua', 'baca', ['## Pondasi paket kedua', 'js/layar/kuartal-logika.js', 'bpLamaKirim', 'rwPerOrang']),
+    ('Kuartal memasang kartu target, lembarnya & rapor berkop', 'laporan', ['data-k="kw-target"', 'kwTargetSimpan: () =>', 'PD.susunTargetKuartal(a.key || kwKeyAktif(), a, waktu())', "kertas(DR, null, 'kertas-kuartal')", "tigaTombol('kwKeluar', DR.tolak)", "await keluarkan(D, { jenis: 'kuartal', judul: 'Rapor kuartal'", "'aturPd', 'aturTq']"]),
+    ('pengingat: jenis kuartal + satu sumber kunci & target', 'sl', ["['kuartal', 'Target kuartal belum diisi', 'hariKuartal']", 'hariKuartal: 7', 'export function ssTargetKuartal(key)', 'export const ssKuartalKey', "id: 'kuartal|' + kwDepan"]),
+    ('BACA-DULU menyebut PR B', 'baca', ['PR B', 'susunTargetKuartal', 'kwRapor', 'hariKuartal']),
     ('modul hanya membaca', 'pd', []),
 ]
 # yang TIDAK boleh ada di pondasi-logika: DOM, tulisan langsung, mesin uang, dan pembaca koleksi mentah (angka harus lewat fungsi sumber layar lain)
@@ -314,7 +357,7 @@ RUSAK = [
     ('kuartal: kuartal tidak utuh dibandingkan seolah setara', KW, "const utuh = !berjalan && !depan && !mulaiTengah && ada.length === 3 && !tanpaPotret;", "const utuh = true;"),
     ('kuartal: tinggal di toko = laba + ambil pribadi', KW, "const tinggal = kwBilangan(Q.labaBersih) && kwBilangan(prive) ? Q.labaBersih - prive : null;", "const tinggal = kwBilangan(Q.labaBersih) && kwBilangan(prive) ? Q.labaBersih + prive : null;"),
     ('kuartal: kekayaan akhir kuartal tanpa hitungan tutup hari (kas ditebak)', KW, "N = berjalan ? neracaPada(null, kini) : neracaPada(r.akhir, kini, KB);", "N = neracaPada(null, kini);"),
-    ('kuartal: geser kuartal salah di pergantian tahun', KW, "return Math.floor(i / 4) + '-K' + ((i % 4 + 4) % 4 + 1); };", "return kwTahunDari(key) + '-K' + ((i % 4 + 4) % 4 + 1); };"),
+    ('kuartal: geser kuartal salah di pergantian tahun', SLG, "return Math.floor(i / 4) + '-K' + ((i % 4 + 4) % 4 + 1); };", "return String(key).slice(0, 4) + '-K' + ((i % 4 + 4) % 4 + 1); };"),
     ('kuartal: potret tidak memakai ambang owner', KW, "tambah('utang', 'Utang dibanding harta', pdLampuAtas(pct, A.utangMaks), pdPctTeks(pct),", "tambah('utang', 'Utang dibanding harta', 'tanpa', pdPctTeks(pct),"),
     ('kekayaan: naik/turun dibanding bulan SESUDAHNYA (terbalik)', PD, "const lalu = bulan.slice(i + 1).find((x) => x.ada); b.naik = lalu ? b.bersih - lalu.bersih : null;", "const lalu = bulan.slice(0, i).reverse().find((x) => x.ada); b.naik = lalu ? b.bersih - lalu.bersih : null;"),
     ('kekayaan: bulan lampau memakai titik kas sekarang (tanpa hitungan tutup hari)', PD, "N = b.berjalan ? neracaPada(null, kini) : neracaPada(per, kini, KB);", "N = neracaPada(null, kini);"),
@@ -327,6 +370,18 @@ RUSAK = [
     ('nota per orang: nota batal dihitung nota berlaku', RW, "if (o.status === 'batal') { x.batal += 1; nBatal += 1; } else { x.nota += 1; x.omzet += o.total; nBerlaku += 1; }", "{ x.nota += 1; x.omzet += o.total; nBerlaku += 1; }"),
     ('organisasi: tutup hari di luar 30 hari ikut', PD, "riwayatTutup(PD_HARI + 5).forEach((t) => { if (!t.tanggal || t.tanggal < awal || t.tanggal > iso) return;", "riwayatTutup(999).forEach((t) => { if (!t.tanggal) return;"),
     ('organisasi: nego naik ikut dihitung potongan', PD, "if (b.totalSelisih < 0) x.potongan += -b.totalSelisih;", "x.potongan += Math.abs(b.totalSelisih) + 1;"),
+    ('target: belum tercapai selalu kuning (tanpa laju hari)', KW, "capai >= target ? 'hijau' : bagian < 1 && capai >= target * bagian ? 'amber' : 'merah');", "capai >= target ? 'hijau' : bagian < 1 ? 'amber' : 'merah');"),
+    ('target: kuartal selesai masih boleh kuning', KW, "capai >= target ? 'hijau' : bagian < 1 && capai >= target * bagian ? 'amber' : 'merah');", "capai >= target ? 'hijau' : capai >= target * bagian * 0.5 ? 'amber' : 'merah');"),
+    ('target: kuartal berjalan dianggap sudah selesai (bagian = 1)', KW, "const bagian = Q.depan ? 0 : Q.berjalan ? Math.min(1, hariLewat / hariSemua) : 1;", "const bagian = Q.depan ? 0 : 1;"),
+    ('target: utang lewat batas tidak merah', KW, "utang === null ? 'tanpa' : utang > T.utangMaks ? 'merah' : 'hijau';", "utang === null ? 'tanpa' : 'hijau';"),
+    ('target: simpan satu kuartal membuang kuartal lain & ambang lampu', PD, "const lama = ugAturDok(PD_ID) || {}; const semua = Object.assign({}, lama.targetKuartal && typeof lama.targetKuartal === 'object' ? lama.targetKuartal : {});", "const lama = {}; const semua = {};"),
+    ('target: target lain di kuartal yang sama terhapus saat satu diubah', PD, "if (v === undefined) { if (dulu[x.id]) baru[x.id] = dulu[x.id]; return; }", "if (v === undefined) return;"),
+    ('target: ketikan rusak diterima', PD, "if (!(n > 0) || n > PD_TARGET_MAKS || Math.round(n) !== n) { tolak = ", "if (false) { tolak = "),
+    ('rapor: kuartal belum utuh tidak bercap DRAF', KW, "const final = !Q.depan && Q.utuh && kwBulan(key).every(lpFinal);", "const final = true;"),
+    ('rapor: kop belum lengkap tetap dikeluarkan', KW, ": !I.lengkap ? 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)' : '';", ": '';"),
+    ('pengingat: kuartal berjalan ditagih terus (tanpa batas 14 hari)', SLG, "if (!ssTargetKuartal(kwKini).ada && ssHariKe(iso) - ssHariKe(ssKuartalAwal(kwKini)) < SS_KUARTAL_SUSUL) out.push(", "if (!ssTargetKuartal(kwKini).ada) out.push("),
+    ('pengingat: target yang sudah diisi tetap diingatkan', SLG, "if (!ssTargetKuartal(kwDepan).ada) out.push(", "if (true) out.push("),
+    ('pengingat: awal kuartal salah bulan', SLG, "String((Number(String(key).slice(6, 7)) - 1) * 3 + 1).padStart(2, '0') + '-01';", "String(Number(String(key).slice(6, 7)) * 3).padStart(2, '0') + '-01';"),
     ('satu lampu galat mematikan semuanya', PD, "const lampu = PD_LAMPU.map(([id, nama, f]) => { try { return f(X); } catch (e) {", "const lampu = PD_LAMPU.map(([id, nama, f]) => { try { return f(X); } catch (e) { throw e;"),
     ('setelan: ketikan rusak dibulatkan diam-diam', PD, "if (!(n > 0) || n > x.maks) { tolak = ", "if (false) { tolak = "),
     ('setelan: simpan satu ambang menimpa yang lain', PD, "const lama = ugAturDok(PD_ID) || {}; const data = Object.assign({}, lama, { id: PD_ID, tanggal: w.tanggal, jam: w.jam });", "const lama = {}; const data = { id: PD_ID, tanggal: w.tanggal, jam: w.jam };"),
@@ -339,7 +394,8 @@ RUSAK_STATIS = [
     ('Laporan tanpa tab Pondasi', 'laporan', "s.keluarga === 'pondasi' ? gambarPondasi(s, L) : ", ''),
     ('Dasbor tanpa kartu Pondasi', 'dasbor', 'kartuPondasi(D.pondasi)', "''"),
     ('modul membaca koleksi mentah (rumus uang baru)', 'pd', "import { ambilTutupHari, ambilTitikKas, ingatPerVersi } from '../data/toko.js';", "import { ambilTutupHari, ambilTitikKas, ingatPerVersi, ambilPenjualan } from '../data/toko.js';"),
-    ('modul menulis dokumen kedua', 'pd', "return { dokumen: [{ koleksi: 'aturanToko', data }],", "return { dokumen: [{ koleksi: 'aturanToko', data }, { koleksi: 'aturanToko', data }],"),
+    ('modul menulis dokumen kedua', 'pd', "({ dokumen: [{ koleksi: 'aturanToko', data }], patch });", "({ dokumen: [{ koleksi: 'aturanToko', data }, { koleksi: 'aturanToko', data }], patch });"),
+    ('Kuartal tanpa rapor berkop', 'laporan', "tigaTombol('kwKeluar', DR.tolak)", "''"),
     ('Laporan tanpa keluarga Kuartal', 'laporan', "s.keluarga === 'kuartal' ? gambarKuartal(s, L) : ", ''),
     ('Pondasi tanpa kartu risiko', 'laporan', 'data-k="pd-risiko"', 'data-k="x"'),
     ('modul kuartal menulis dokumen', 'kw', "import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';", "import { RP, hariIniIso, tanggalPendek } from '../inti/format.js'; const x = { koleksi: 'aturanToko' };"),
