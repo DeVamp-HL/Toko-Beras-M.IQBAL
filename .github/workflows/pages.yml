@@ -511,6 +511,21 @@ jobs:
         with:
           path: '.'
 
+      # 24 Nov 2026 (run #989 & #990, dua kali berturut-turut): bungkusan github-pages SUDAH terunggah (4 MB, "successfully finalized"), tetapi langkah Terbitkan
+      # yang jalan ±2 detik sesudahnya membaca daftar bungkusan run ini dan mendapat 0 → terbit gagal walau semua uji hijau. Daftar yang sama dibaca beberapa
+      # menit kemudian berisi 1. Jadi ditunggu dulu sampai daftar itu memuat bungkusannya (paling lama 150 detik), baru diterbitkan. Menjalankan ulang job
+      # ini TIDAK menolong: bungkusan kedua bernama sama menumpuk di run yang sama.
+      - name: "Tunggu bungkusan github-pages terbaca di daftar run ini (paling lama 150 detik)"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 30); do
+            n=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=github-pages" | python3 -c "import sys, json; print(json.load(sys.stdin).get('total_count', 0))" || echo 0)
+            if [ "${n:-0}" -ge 1 ]; then echo "bungkusan terbaca pada percobaan ke-$i"; exit 0; fi
+            echo "belum terbaca (percobaan $i dari 30) — tunggu 5 detik"; sleep 5
+          done
+          echo "::error::bungkusan github-pages tidak terbaca di daftar run ini sesudah 150 detik"; exit 1
+
       - name: Terbitkan
         id: deploy
         uses: actions/deploy-pages@v4
