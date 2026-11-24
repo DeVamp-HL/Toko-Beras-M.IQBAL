@@ -3690,3 +3690,20 @@ semua layar; di rangkaian tanpa ingatan itu berarti seluruh Dasbor dihitung ulan
 Sekarang: `requestIdleCallback` tiruan punya antrean sendiri (`__luang`), dibuang di awal tiap aksi, dan pemanasan diukur SATU kali ("pemanasan Dasbor di latar
 (waktu luang) sesudah nota baru" + "Dasbor dibuka sesudah dipanaskan"), dengan pemeriksaan PEMANASAN dan satu kontrol (rantai tidak dijadwalkan → berbunyi).
 Bagian data toko tidak jalan di CI (tidak ada cadangan) — jalankan sendiri di Mac sesudah mengubah apa pun yang berjalan di latar.
+
+## Pondasi paket keempat — siapa pegang apa & catatan percobaan (owner 25 Nov 2026, cabang `fitur/pondasi-4`; menulis SETELAN saja, tanpa rules baru)
+Sisa catatan "Pondasi bisnis" sesudah paket ketiga: struktur organisasi & R&D. Keputusan owner (ditanya di depan): pembagian tugas dibaca **owner + staf**;
+percobaan **dicatat + diukur otomatis**; prakiraan musiman **menunggu data setahun** (tidak dibangun).
+- **Siapa pegang apa** — `ssTugas` / `susunTugas` / `susunHapusTugas` (sistem-logika): urusan · pemegang · pengganti, paling banyak 30. Disimpan sebagai kolom `tugas`
+  di dokumen `aturanToko/bukuPegangan` yang SUDAH terbaca staf (rules v20) → tanpa rules baru. Tiap simpan membawa `bab` DAN `tugas` utuh (`ssDokPegangan`) —
+  menyimpan bab tidak menghapus tugas dan sebaliknya. Owner: Menu › Toko ini › Buku pegangan (bagian kedua); staf: kartu "Siapa pegang apa" di menu tablet
+  (`kartuTugas`, baca saja). Pondasi › Organisasi: `pdTugas` — urusan tanpa pengganti = kuning dan disebut. Ini BUKAN hak akses (akses tetap di Peran).
+- **Catatan percobaan** — `ssPercobaan` / `susunPercobaan` / `susunHapusPercobaan`: judul · merek (kosong = seluruh toko) · mulai · selesai · catatan · kesimpulan,
+  satu dokumen `aturanToko/percobaan`, owner saja. ANGKA TIDAK DISIMPAN: `pdPercobaan` mengukur tiap dibuka — selama percobaan dibanding rentang sama panjang
+  tepat sebelumnya, per hari (omzet · kg · laba kotor · margin). Yang belum bisa dibandingkan disebut (belum mulai, pembanding lebih tua dari catatan pertama,
+  menyentuh tahun arsip, merek tanpa jualan).
+- **Sumber baru** `merekRentang(awal, akhir)` (laporan-logika): per merek untuk rentang tanggal bebas — peta merek, modal nota, retur & pemisahan ongkir yang sama
+  dengan `merekBulan`; TANPA susut (susut dicatat per bulan). Dijaga: bulan penuh = `merekBulan` (omzet · kg · baris per merek).
+- Layar Laporan memanggil pintu tulis percobaan lewat pondasi-logika (`pdSusunPercobaan` …) — pondasi-logika tetap hanya menulis `aturanToko/pondasi` sendiri.
+  `pdPercobaanMaks` sengaja FUNGSI: bundel Dasbor memuat pondasi-logika tanpa sistem-logika.
+Alat uji: `uji_pondasi.py` (tugas & percobaan dihitung tangan, 10 kontrol baru).
