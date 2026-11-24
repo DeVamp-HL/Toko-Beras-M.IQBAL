@@ -59,18 +59,18 @@ const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 // owner 7 Okt 2026: tab Hemat baca di Sistem › Perangkat (tab Kasir & PIN dicabut paket dokumen & sisa, #108)
-const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['setelan', 'Setelan & harga'], ['batal', 'Dibatalkan']], target: [] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
-const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat', riwayat: 'Riwayat & batal', target: 'Target & ambang' };   // paket KPI laba (owner 24 Nov 2026): target omzet harian & ambang kas minimum
+const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['setelan', 'Setelan & harga'], ['batal', 'Dibatalkan']], target: [], pegangan: [] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
+const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat', riwayat: 'Riwayat & batal', target: 'Target & ambang', pegangan: 'Buku pegangan' };   // paket KPI laba (owner 24 Nov 2026): target omzet harian & ambang kas minimum
 
 /** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
 export function pasangLayarMenu(akar, opsi) {
   const tabAwal = bacaLokal(KUNCI_TAB) || {}; const laciAwal = bacaLokal(KUNCI_LACI) || {};
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
-    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, aturKpi: null, cekG: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
+    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, aturKpi: null, bpgDraf: null, yakinBpg: null, bpgBuka: {}, cekG: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
     tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'aturKpi', ['cekG', (v) => !!(v && (Object.keys(v.cek || {}).length || String(v.catatan || '').trim()))], 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
+  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'aturKpi', 'bpgDraf', ['cekG', (v) => !!(v && (Object.keys(v.cek || {}).length || String(v.catatan || '').trim()))], 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -209,6 +209,14 @@ export function pasangLayarMenu(akar, opsi) {
     cgHal: ({ hal, v }) => { const a = Object.assign({ cek: {}, catatan: '' }, st().cekG || {}); a.cek = Object.assign({}, a.cek, { [hal]: v === '1' }); set({ cekG: a }); },
     cgCatatan: (v) => { const a = Object.assign({ cek: {}, catatan: '' }, st().cekG || {}); a.catatan = String(v).slice(0, 160); set({ cekG: a }); },
     cgSimpan: async () => { const a = st().cekG || { cek: {}, catatan: '' }; await tulis(S.susunCekGudang(a.cek, a.catatan, waktu(), kini())); },
+    // Pondasi paket kedua C (owner 24 Nov 2026, rules v20): buku pegangan — owner menulis / mengubah / menghapus / menggeser bab; staf hanya membuka-tutup bab
+    bpgBaru: () => set({ bpgDraf: S.ssDrafBab(''), yakinBpg: null, kabar: '' }), bpgUbah: ({ id }) => set({ bpgDraf: S.ssDrafBab(id), yakinBpg: null, kabar: '' }), bpgBatal: () => set({ bpgDraf: null }),
+    bpgKetik: (v, el) => { const a = Object.assign({}, st().bpgDraf || S.ssDrafBab('')); a[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'isi' ? S.SS_PEGANGAN_MAKS.isi + 200 : S.SS_PEGANGAN_MAKS.judul + 20); set({ bpgDraf: a }); },
+    bpgUntuk: ({ u }) => set({ bpgDraf: Object.assign({}, st().bpgDraf || S.ssDrafBab(''), { untuk: u }) }),
+    bpgSimpan: () => tulis(S.susunBabPegangan(st().bpgDraf || {}, waktu())),
+    bpgHapus: ({ id }) => (st().yakinBpg === id ? tulis(S.susunHapusBab(id, waktu())) : set({ yakinBpg: id, kabar: '' })),
+    bpgGeser: ({ id, arah }) => tulis(S.susunGeserBab(id, Number(arah), waktu())),
+    bpgBuka: ({ id }) => { const o = Object.assign({}, st().bpgBuka); o[id] = !o[id]; set({ bpgBuka: o }); },
     kpiBatal: () => set({ aturKpi: null }), kpiSimpan: async () => { const a = st().aturKpi; if (!a) return set({ kabar: 'Belum ada yang diubah', kabarAwas: false }); if (await tulis(KL.susunAturKpi(a, waktu()))) set({ aturKpi: null }); },
     hariP: ({ h }) => set({ hariP: Number(h), pilihG: null }), pilihG: ({ id }) => set({ pilihG: st().pilihG === id ? null : id, catatanG: '', yakinWa: false }), catatanG: (v) => set({ catatanG: String(v).slice(0, 80) }),
     selesaiG: async () => { const p = S.ssPengingat(kini(), lokal()).sumber.find((x) => x.id === st().pilihG); if (await tulis(S.susunSelesaiPengingat(p, st().catatanG, waktu()))) set({ pilihG: null, catatanG: '' }); },
@@ -402,6 +410,7 @@ export function pasangLayarMenu(akar, opsi) {
       ${hlTampil(akunM) ? kartuTutupTablet(s, { akun: akunM, kini: kini() }) : ''}
       <div class="kartu" data-k="staf-akun" style="gap: 4px;"><div class="label">Masuk sebagai</div><div class="serif" style="font-size: 20px;">${akunM.nama}</div><div class="k2">${namaP} · ${L.namaPerangkat || 'perangkat ini'}</div></div>
       ${akunM.peran === 'ben' ? kartuCekGudang(s, d) : ''}
+      ${kartuPegangan(s, akunM)}
       <div class="tombol-baris" data-k="staf-layar">${[['jual', 'Jual'], ['pelanggan', 'Pelanggan'], ['stok', 'Stok']].map(([t, n]) => h`<div class="kaca-btn aktif" data-aksi="stafKe" data-t="${t}">${n}</div>`)}</div>
       <div class="kartu" data-k="staf-antre" style="gap: 4px;"><div class="label">Catatan dari perangkat ini</div>
         <div class="k2">${(L.antre || []).length ? (L.antre || []).length + ' menunggu server' : 'semua sudah sampai server'} · ${AL.ditolak.length ? AL.ditolak.length + ' DITOLAK server — menunggu owner memutuskan' : 'tidak ada yang ditolak'}</div></div>
@@ -435,7 +444,7 @@ export function pasangLayarMenu(akar, opsi) {
     return h`<section class="mn-gulir ss" data-k="sistem-${s.sistem}">
       <div class="mn-kembali" data-aksi="sistem" data-s="">‹ Menu</div>
       ${tabs.length ? h`<div class="jalur kisi${tabs.length}" data-k="tabS">${tabs.map(([id, nm]) => h`<div class="seg ${tab === id ? 'aktif' : ''}" data-aksi="tabS" data-t="${id}">${nm}</div>`)}</div>` : ''}
-      ${s.atur ? gambarAtur(s) : s.sistem === 'perangkat' ? gambarPerangkat(s, d, tab) : s.sistem === 'peran' ? gambarPeran(s, d, tab) : s.sistem === 'cadangan' ? gambarCadangan(s, d) : s.sistem === 'lokasi' ? gambarLokasi(s, d, tab) : s.sistem === 'riwayat' ? gambarRiwayat(s, tab) : s.sistem === 'target' ? gambarTarget(s, d) : gambarPengingat(s, d, tab)}
+      ${s.atur ? gambarAtur(s) : s.sistem === 'perangkat' ? gambarPerangkat(s, d, tab) : s.sistem === 'peran' ? gambarPeran(s, d, tab) : s.sistem === 'cadangan' ? gambarCadangan(s, d) : s.sistem === 'lokasi' ? gambarLokasi(s, d, tab) : s.sistem === 'riwayat' ? gambarRiwayat(s, tab) : s.sistem === 'target' ? gambarTarget(s, d) : s.sistem === 'pegangan' ? gambarPegangan(s) : gambarPengingat(s, d, tab)}
     </section>`;
   }
   const pintuAtur = (judul, ringkas) => h`<div class="at-pintu" data-k="pintu-atur" data-aksi="bukaAtur"><div><div style="font-weight: 600;">${judul}</div><div class="ket" style="font-size: 10.5px;">${ringkas}</div></div><div class="ket">ubah ›</div></div>`;
@@ -700,6 +709,32 @@ export function pasangLayarMenu(akar, opsi) {
       ${orang.length > 1 ? h`<div class="hg-pil" data-k="ru-orang"><div class="seg ${s.ruSaring ? '' : 'aktif'}" data-aksi="ruSaring" data-o="">semua</div>${orang.map((o) => h`<div class="seg ${s.ruSaring === o ? 'aktif' : ''}" data-aksi="ruSaring" data-o="${o}">${o}</div>`)}</div>` : ''}</div>
       <div class="kartu" data-k="ru-daftar" style="gap: 2px;"><div class="label">${D.length ? D.length + (brg ? ' catatan barang' : ' catatan uang') : brg ? 'Tidak ada catatan barang di hari ini' : 'Tidak ada catatan uang di hari ini'}</div>${D.map(baris)}</div>
       ${brg ? h`<div class="ket" style="font-size: 11px;">Batalkan = seluruh catatan satu ketukan keluar dari buku (isi ulang: karung yang dibuka balik ke tumpukan, karung bekasnya ikut), salinannya tetap di tab Dibatalkan dan bisa dipulihkan. Sudah dihitung sesudahnya (cocokkan, timbang tutup hari, bongkar): selisih hitungan berikutnya dibetulkan otomatis — stok tetap = hitungan fisik. Cocokkan dibatalkan per barang. Kedatangan & adukan: di layarnya sendiri. Bulan terkunci tidak bisa.</div>` : h`<div class="ket" style="font-size: 11px;">Batalkan = catatan keluar dari buku (laci, laba, laporan tidak menghitungnya), salinannya tetap di tab Dibatalkan dan bisa dipulihkan. Catatan yang dibuat bersamaan (biaya admin, ambilan amplop, pasangan pinjaman) ikut. Hari yang sudah ditutup: selisih laci malam itu dibetulkan otomatis; rekening / brankas / amplop: patokan kasnya. Bulan terkunci tidak bisa. Nota penjualan: Jual › Riwayat. Upah = satu pembayaran utuh (slip, biaya gaji, potongan kasbon dari slip itu), hanya slip terakhir tiap orang — hari kerjanya kembali belum dibayar. Tagihan bulanan = satu tagihan kembali belum dibayar, yang lain tidak tersentuh.</div>`}`;
+  }
+  // Pondasi paket kedua C (owner 24 Nov 2026, rules v20): BUKU PEGANGAN — aturan kerja tertulis toko. Owner menulis di sini (satu dokumen aturanToko/bukuPegangan,
+  // S.susunBabPegangan / susunHapusBab / susunGeserBab); staf membacanya di tablet (kartuPegangan — hanya bab untuk perannya, tanpa tombol tulis).
+  const isiBab = (t) => h`<div class="mn-bpg-isi">${String(t || '').split('\n').map((x) => h`<div>${x || ' '}</div>`)}</div>`;
+  function gambarPegangan(s) {
+    const P = S.ssPegangan(); const d = s.bpgDraf; const M = S.SS_PEGANGAN_MAKS;
+    const lembar = d ? h`<div class="kartu" data-k="bpg-tulis" style="gap: 8px;"><div class="serif" style="font-size: 18px;">${d.id ? 'Ubah bab' : 'Bab baru'}</div>
+        <input class="ketik-nama" type="text" maxlength="${M.judul}" placeholder="Judul bab — mis. Buka toko pagi" value="${d.judul}" data-ketik="bpgKetik" data-kolom="judul">
+        <textarea class="ketik-nama" rows="8" maxlength="${M.isi}" placeholder="Tulis langkahnya satu per baris: siapa mengerjakan apa, kapan, dan apa yang dilakukan kalau ada yang tidak beres." data-ketik="bpgKetik" data-kolom="isi">${d.isi}</textarea>
+        <div class="label">Bab ini untuk</div><div class="jalur kisi3" data-k="bpg-untuk">${S.SS_PEGANGAN_UNTUK.map(([id, nm]) => h`<div class="seg ${d.untuk === id ? 'aktif' : ''}" data-aksi="bpgUntuk" data-u="${id}">${nm}</div>`)}</div>
+        <div class="tombol-baris" style="grid-template-columns: 1fr 1fr;"><div class="kaca-btn" data-aksi="bpgBatal">batal</div><div class="kaca-btn aktif emas" data-aksi="bpgSimpan" data-k="bpg-simpan">SIMPAN</div></div>
+        <div class="k2">Judul paling panjang ${M.judul} huruf, isi ${ANGKA(M.isi)} huruf. Tersimpan = langsung terbaca di tablet orang yang dituju.</div></div>` : '';
+    const daftar = h`<div class="kartu" data-k="bpg-daftar" style="gap: 6px;"><div class="label">Buku pegangan · ${P.teks}</div>
+      ${P.ada ? P.bab.map((b, i) => h`<div class="mn-bpg-bab" data-k="bpg-${b.id}"><div class="mn-bpg-kepala" data-aksi="bpgBuka" data-id="${b.id}"><span class="no">${i + 1}</span><span class="judul">${b.judul}</span><span class="pg-cap">${b.untukNama}</span></div>
+          ${s.bpgBuka[b.id] ? h`${isiBab(b.isi)}<div class="mn-bpg-tombol"><div class="kaca-btn kecil" data-aksi="bpgUbah" data-id="${b.id}">ubah</div><div class="kaca-btn kecil" data-aksi="bpgGeser" data-id="${b.id}" data-arah="-1">naik</div><div class="kaca-btn kecil" data-aksi="bpgGeser" data-id="${b.id}" data-arah="1">turun</div>
+            <div class="kaca-btn kecil ${s.yakinBpg === b.id ? 'aktif awas' : ''}" data-aksi="bpgHapus" data-id="${b.id}">${s.yakinBpg === b.id ? 'KETUK LAGI · hapus' : 'hapus'}</div></div>` : ''}</div>`)
+        : h`<div class="k2">Belum ada bab. Mulai dari yang paling sering ditanyakan: buka toko, terima barang dari supir, memberi bon, tutup hari.</div>`}
+      ${d ? '' : h`<div class="kaca-btn aktif" data-aksi="bpgBaru" data-k="bpg-baru" style="min-height: 40px;">+ Tulis bab baru</div>`}</div>`;
+    return h`${lembar}${daftar}<div class="k2" data-k="bpg-kaki">Ditulis owner; Penjaga laci & karyawan hanya membaca (rules v20). Bab "Semua" tampil di semua tablet; bab untuk satu peran hanya di tablet peran itu. Ketuk judul bab untuk membuka isinya.</div>`;
+  }
+  /** Tablet / HP staf: buku pegangan untuk perannya — baca saja. Belum ada bab untuk peran ini = satu kalimat (bukan kartu kosong). */
+  function kartuPegangan(s, akunM) {
+    const B = S.ssPeganganUntuk(akunM.peran);
+    return h`<div class="kartu" data-k="staf-pegangan" style="gap: 6px;"><div class="label">Buku pegangan · ${B.length ? B.length + ' bab' : 'belum ada'}</div>
+      ${B.length ? B.map((b, i) => h`<div class="mn-bpg-bab" data-k="sbpg-${b.id}"><div class="mn-bpg-kepala" data-aksi="bpgBuka" data-id="${b.id}"><span class="no">${i + 1}</span><span class="judul">${b.judul}</span><span class="pg-cap">${s.bpgBuka[b.id] ? 'tutup' : 'baca'}</span></div>${s.bpgBuka[b.id] ? isiBab(b.isi) : ''}</div>`)
+        : h`<div class="k2">Owner belum menulis aturan kerja untuk peran ini.</div>`}</div>`;
   }
   // paket KPI laba (owner 24 Nov 2026, butir 8 · 9): target omzet harian (kosong = omzet impas per hari, Laporan › Biaya) & ambang kas minimum (kosong = mati).
   // Satu dokumen aturanToko/kpiLaba (KL.susunAturKpi — kolom yang tidak dikirim, mis. target margin dari Harga, tidak ikut tertimpa).

@@ -1,4 +1,10 @@
 // ============================================================================
+// ATURAN FIRESTORE v20 FINAL — Toko Beras M.IQBAL (DRAF 24 Nov 2026, BUKU PEGANGAN terbaca staf) = v19 FINAL + PERSIS satu nama dokumen di satu baris baca
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v19; uji server: docs/uji-rules-v20.md). Owner menerbitkan v20 SEKALI lewat Console
+// SEBELUM cabang buku pegangan digabung (tanpa v20 pendengar aturanToko/bukuPegangan di HP/tablet staf ditolak server dan disebut di Sistem › Perangkat):
+//   (v20-1) aturanToko read: + dokumen 'bukuPegangan' untuk ben & karyawan — aturan kerja tertulis yang diisi owner (Pondasi paket kedua, owner 24 Nov 2026:
+//           "Tetap rules v20"), dibaca staf di tablet. Tulis TETAP owner saja. Bukan data uang / stok: tidak ada rupiah, kg, atau tanggal buku.
+// Sisanya = v19 FINAL di bawah ini, apa adanya. Kepala v19:
 // ATURAN FIRESTORE v19 FINAL — Toko Beras M.IQBAL (DRAF 24 Nov 2026, CEK GUDANG dari tablet) = v18 FINAL + PERSIS satu fungsi baru dan satu blok baru
 // (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v18; uji server: docs/uji-rules-v19.md). Owner menerbitkan v19 SEKALI lewat Console
 // SEBELUM cabang paket KPI laba digabung (tanpa v19 pendengar cekGudang di HP/tablet staf ditolak server dan disebut di Sistem › Perangkat):
@@ -711,7 +717,7 @@ service cloud.firestore {
     }
 
     match /aturanToko/{id} {
-      allow read: if owner() || (id in ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip'] && staf(['ben', 'karyawan'])) || (id == 'tutupHari' && staf(['ben']));   // per dokumen (peta §3) · v8: + hargaTingkat, produkArsip · v16: + tutupHari (ben)
+      allow read: if owner() || (id in ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])) || (id == 'tutupHari' && staf(['ben']));   // per dokumen (peta §3) · v8: + hargaTingkat, produkArsip · v16: + tutupHari (ben) · v20: + bukuPegangan
       allow create: if owner() && (id != 'kunciPeriode' || kunciPertama());
       allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());
       allow delete: if owner() && id != 'kunciPeriode';   // dokumen kunci tidak pernah dihapus (menghapusnya = membuka semua bulan)

@@ -534,3 +534,54 @@ export function susunKePengingat(jenis, nama, w) {
   if (!ada.length) return { tolak: 'Minimal satu orang yang diingatkan' }; const ke = {}; ke[jenis] = ada; const r = susunAturSistem('pengingat', { ke }, w); if (r.dokumen) r.patch = { kabar: j.nama + ' → ' + ada.join(' & '), kabarAwas: false }; return r;
 }
 export const ssKunciOrang = kunciPelanggan;
+
+// ==================== BUKU PEGANGAN (Pondasi paket kedua C, owner 24 Nov 2026; rules v20: aturanToko/bukuPegangan terbaca ben & karyawan, tulis owner) ====================
+// Aturan kerja tertulis toko: owner menulis bab (judul · isi · untuk siapa) di Menu › Toko ini › Buku pegangan; staf MEMBACANYA di tablet. Satu dokumen,
+// bab berurutan. Bukan uang, bukan stok. Tidak ada tanda "sudah dibaca" (itu butuh tulisan staf — tidak dibuka rules v20).
+export const SS_PEGANGAN_ID = 'bukuPegangan';
+export const SS_PEGANGAN_UNTUK = [['semua', 'Semua'], ['ben', 'Penjaga laci'], ['karyawan', 'Karyawan']];
+export const SS_PEGANGAN_MAKS = { bab: 40, judul: 80, isi: 2000 };
+const ssPeganganDok = () => cacheMentah('aturan').find((d) => d && String(d.id) === SS_PEGANGAN_ID) || null;
+/** Buku pegangan yang tersimpan: { ada, n, bab: [{ id, judul, isi, untuk, untukNama }], tanggal, jam, teks }. Bab tanpa judul dibuang; `untuk` tak dikenal = semua. */
+export function ssPegangan() {
+  const d = ssPeganganDok();
+  const bab = (d && Array.isArray(d.bab) ? d.bab : []).filter((b) => b && String(b.judul || '').trim()).map((b) => { const untuk = SS_PEGANGAN_UNTUK.some((u) => u[0] === b.untuk) ? b.untuk : 'semua';
+    return { id: String(b.id || ''), judul: String(b.judul).trim(), isi: String(b.isi || ''), untuk, untukNama: SS_PEGANGAN_UNTUK.find((u) => u[0] === untuk)[1] }; });
+  return { ada: bab.length > 0, n: bab.length, bab, tanggal: d ? String(d.tanggal || '') : '', jam: d ? String(d.jam || '') : '',
+    teks: bab.length ? bab.length + ' bab' + (d && d.tanggal ? ' · terakhir diubah ' + tanggalPendek(d.tanggal) : '') : 'belum ada isinya' };
+}
+/** Bab yang tampil untuk satu peran: owner semua; ben / karyawan = bab "semua" + bab untuk perannya. */
+export function ssPeganganUntuk(peran) { const B = ssPegangan().bab; return peran === 'owner' ? B : B.filter((b) => b.untuk === 'semua' || b.untuk === peran); }
+/** Draf lembar tulis: bab yang ada (id) atau bab baru kosong. */
+export function ssDrafBab(id) { const b = id ? ssPegangan().bab.find((x) => x.id === id) : null; return b ? { id: b.id, judul: b.judul, isi: b.isi, untuk: b.untuk } : { id: '', judul: '', isi: '', untuk: 'semua' }; }
+const ssSimpanPegangan = (bab, w, kabar) => ({ dokumen: [{ koleksi: 'aturanToko', data: { id: SS_PEGANGAN_ID, bab: bab.map((b) => ({ id: b.id, judul: b.judul, isi: b.isi, untuk: b.untuk })), tanggal: w.tanggal, jam: w.jam } }],
+  patch: { bpgDraf: null, yakinBpg: null, kabar, kabarAwas: false } });
+/** Tambah bab baru (id kosong) atau ubah bab yang ada. Judul 3–80 huruf & tidak kembar, isi 5–2.000 huruf, untuk siapa wajib dipilih, paling banyak 40 bab. */
+export function susunBabPegangan(d, w) {
+  const judul = String((d && d.judul) || '').trim(), isi = String((d && d.isi) || '').replace(/\r\n/g, '\n').trim(), untuk = d ? d.untuk : ''; const M = SS_PEGANGAN_MAKS; const bab = ssPegangan().bab.slice();
+  if (judul.length < 3) return { tolak: 'Judul bab paling sedikit 3 huruf' };
+  if (judul.length > M.judul) return { tolak: 'Judul bab paling panjang ' + M.judul + ' huruf' };
+  if (isi.length < 5) return { tolak: 'Isi bab belum ditulis' };
+  if (isi.length > M.isi) return { tolak: 'Isi bab paling panjang ' + M.isi + ' huruf — pecah jadi dua bab' };
+  if (!SS_PEGANGAN_UNTUK.some((u) => u[0] === untuk)) return { tolak: 'Pilih bab ini untuk siapa' };
+  const id = String((d && d.id) || ''); const i = id ? bab.findIndex((b) => b.id === id) : -1;
+  if (id && i < 0) return { tolak: 'Bab yang diubah sudah tidak ada — tutup lalu buka lagi' };
+  if (i < 0 && bab.length >= M.bab) return { tolak: 'Paling banyak ' + M.bab + ' bab — gabungkan atau hapus yang tidak dipakai' };
+  if (bab.some((b, k) => k !== i && b.judul.toLowerCase() === judul.toLowerCase())) return { tolak: 'Sudah ada bab berjudul "' + judul + '"' };
+  if (i >= 0 && bab[i].judul === judul && bab[i].isi === isi && bab[i].untuk === untuk) return { tolak: 'Tidak ada yang diubah' };
+  const b = { id: i >= 0 ? id : 'bab-' + w.idUnik(), judul, isi, untuk }; if (i >= 0) bab[i] = b; else bab.push(b);
+  return ssSimpanPegangan(bab, w, 'Bab "' + judul + '" ' + (i >= 0 ? 'diubah' : 'ditambahkan') + ' — terbaca di tablet ' + SS_PEGANGAN_UNTUK.find((u) => u[0] === untuk)[1].toLowerCase());
+}
+/** Hapus satu bab. */
+export function susunHapusBab(id, w) {
+  const bab = ssPegangan().bab; const b = bab.find((x) => x.id === String(id)); if (!b) return { tolak: 'Bab itu sudah tidak ada' };
+  return ssSimpanPegangan(bab.filter((x) => x.id !== b.id), w, 'Bab "' + b.judul + '" dihapus');
+}
+/** Geser urutan satu bab: arah −1 = naik, +1 = turun. Di ujung = ditolak dengan kalimat. */
+export function susunGeserBab(id, arah, w) {
+  const bab = ssPegangan().bab.slice(); const i = bab.findIndex((x) => x.id === String(id)); const j = i + (Number(arah) < 0 ? -1 : 1);
+  if (i < 0) return { tolak: 'Bab itu sudah tidak ada' }; if (j < 0 || j >= bab.length) return { tolak: 'Bab itu sudah di ' + (j < 0 ? 'paling atas' : 'paling bawah') };
+  const t = bab[i]; bab[i] = bab[j]; bab[j] = t;
+  return ssSimpanPegangan(bab, w, 'Urutan bab diubah — "' + t.judul + '" sekarang nomor ' + (j + 1));
+}
+
