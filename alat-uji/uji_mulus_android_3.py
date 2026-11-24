@@ -119,7 +119,8 @@ var RD = __E['baru/js/layar/dasbor-logika.js'];
 localStorage.setItem('miqbal_baru_ringkasan_tampilan', 'dasbor');
 var AR2 = new __El('main'); var RL2 = __E['baru/js/layar/ringkasan.js'].pasangLayarRingkasan(AR2, opsi);
 RL2.tampilkan(true); __tuntas(); __sisa(); RL2.tampilkan(false); __tuntas(); __sisa();
-nol(); notaBaru(); __kurasMikro(); var segera1 = J(__n); __jam += 5000; __sisa();
+// 25 Nov 2026: peramban tiruan kini punya requestIdleCallback sendiri (uji_layar_mulus) — rantai pemanasan dijadwalkan __sisa, DIJALANKAN __jalanLuang
+nol(); notaBaru(); __kurasMikro(); var segera1 = J(__n); __jam += 5000; __sisa(); __jalanLuang();
 var panas = J(__n);
 ok('dasbor: data berubah selagi tersembunyi → kelompok dipanaskan di LATAR (sesudah jeda, bukan di kabar datanya)', JSON.parse(segera1).rekapHari === undefined && (__n.rekapHari || 0) >= 1 && (__n.umRingkas || 0) >= 1, [segera1, panas]);
 nol(); RL2.tampilkan(true); __tuntas(); __sisa();
@@ -134,7 +135,7 @@ var AR3 = new __El('main'); var RL3 = __E['baru/js/layar/ringkasan.js'].pasangLa
 RL2 = null;
 // hanya RL3 (cincin) yang mendengar sekarang? RL & RL2 tetap terpasang → pakai akun bukan-owner untuk kasus "bukan owner"
 AKUN = { jenis: 'aktif', peran: 'ben', nama: 'Tablet', uid: 'u-tab', operatorId: 'o1' };
-nol(); notaBaru(); __jam += 5000; __sisa();
+nol(); notaBaru(); __jam += 5000; __sisa(); __jalanLuang();
 ok('dasbor: akun bukan owner → tidak ada pemanasan dasbor', !__n.umRingkas, __n);
 AKUN = { jenis: 'owner', peran: 'owner', nama: 'Owner', uid: 'u-owner' };
 
