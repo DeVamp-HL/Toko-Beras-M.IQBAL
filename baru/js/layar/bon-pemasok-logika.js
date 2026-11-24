@@ -421,3 +421,27 @@ function bpHariBayarHitung(akhir, N) {
 }
 /** "±12 hari" · "hari itu juga" · "—". */
 export const bpHariTeks = (h) => (h === null || h === undefined || !isFinite(h) ? '—' : h < 0.5 ? 'hari itu juga' : '±' + String(Math.round(h * 10) / 10).replace('.', ',') + ' hari');
+
+// ==================== LAMA KIRIM PEMASOK (paket Pondasi kedua, owner 24 Nov 2026) ====================
+/**
+ * Berapa hari dari DIPESAN sampai DATANG, per pemasok, untuk pesanan (Belanja) bertanggal dalam N hari terakhir. Aturan "sudah datang" = aturan pesananSemua
+ * (belanja-logika): status 'batal' tidak dihitung; status 'datang' ber-`datangTanggal` menang; selain itu datang = kedatangan pertama pemasok itu sesudah
+ * pesanannya (bpPesananDatang, termasuk ringkasan tahun yang diarsip). Yang masih menunggu DISEBUT jumlahnya, tidak dihitung. Diingat per versi + hari + N. Baca saja.
+ */
+export function bpLamaKirim(kini, hari) {
+  const akhir = hariIniIso(kini || new Date()); const N = Math.max(7, Math.min(730, Math.round(Number(hari) || 180)));
+  return ingatPerVersi('bpLamaKirim|' + akhir + '|' + N, () => bpLamaKirimHitung(akhir, N));
+}
+function bpLamaKirimHitung(akhir, N) {
+  const awal = bpTambahHari(akhir, -(N - 1)); const batch = ambilSemuaBatch().filter((b) => !b.stokAwal && pemasokSungguhan(b.pemasok)); const RA = ringkasArsip(); const per = {}; let menunggu = 0, nSemua = 0, hSemua = 0;
+  ambilPesananPemasok().forEach((p) => {
+    const t = String(p.tanggal || ''); if (!t || t < awal || t > akhir || p.status === 'batal' || !pemasokSungguhan(p.pemasok)) return;
+    const D = p.status === 'datang' && p.datangTanggal ? { datang: true, tanggal: String(p.datangTanggal) } : bpPesananDatang(p, batch, p.status === 'datang' ? null : RA);
+    if (!D.datang || !D.tanggal) { menunggu += 1; return; }
+    const h = bpHariKe(D.tanggal) - bpHariKe(t); if (!(h >= 0)) return;
+    const k = kunciPelanggan(p.pemasok); const o = per[k] || (per[k] = { kunci: k, nama: String(p.pemasok).trim(), n: 0, hari: 0, maks: 0 }); o.n += 1; o.hari += h; if (h > o.maks) o.maks = h; nSemua += 1; hSemua += h;
+  });
+  const pemasok = Object.keys(per).map((k) => Object.assign(per[k], { rataHari: per[k].hari / per[k].n })).sort((a, b) => b.n - a.n || a.nama.localeCompare(b.nama));
+  return { hari: N, awal, akhir, pemasok, n: nSemua, menunggu, rataHari: nSemua ? hSemua / nSemua : null };
+}
+

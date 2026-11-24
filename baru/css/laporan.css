@@ -160,3 +160,6 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
 @keyframes lpPdDenyut { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.22); } }
 .layar-laporan .lp-status[data-k="pd-tiga"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (prefers-reduced-motion: reduce) { .layar-laporan .lp-pd-titik, .layar-laporan .lp-pd-titik.merah { animation: none; } }
+/* Pondasi paket kedua (owner 24 Nov 2026): pita utang di bawah pita harta pada kartu Kekayaan dari waktu ke waktu */
+.layar-laporan .lp-pd-pita-utang { margin-top: 2px; } .layar-laporan .lp-pd-pita-utang span { background: var(--awas); opacity: .55; }
+

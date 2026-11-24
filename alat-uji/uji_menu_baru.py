@@ -379,5 +379,5 @@ if __name__ == '__main__':
             print('ASAP DATA TOKO (%s): laci %s · pemasok = mesin: %s · piutang = mesin: %s · tanya %d · %s · pita (%s) = silang: %s · cari "angsa" %d · orang %d kelompok · pengingat: %s'
                   % (os.path.basename(cad[-1]), h['laci'], h['pemasokCocok'], h['pelangganCocok'], h['tanya'], h['tertutup'], h['pitaBagian'], h['pitaCocok'], h['cariAngsa'], h['orang'], h['pengingat']))
             print('ASAP DATA TOKO: berkas cadangan sistem baru memuat %d koleksi · %d catatan · koleksi cadangan lama yang HILANG: %s · yang jumlahnya beda: %s' % (h['koleksiBerkas'], h['dokumenBerkas'], h['hilang'] or 'tidak ada', h['beda'] or 'tidak ada'))
-            if not (h['pemasokCocok'] and h['pelangganCocok'] and h['pitaCocok'] and h['tanya'] == 10 and h['laci'] == [3, 4, 6]) or h['hilang'] or h['beda']: g.append('asap: angka layar tidak cocok dengan mesin / berkas cadangan tidak utuh')
+            if not (h['pemasokCocok'] and h['pelangganCocok'] and h['pitaCocok'] and h['tanya'] == 10 and h['laci'] == [3, 4, 7]) or h['hilang'] or h['beda']: g.append('asap: angka layar tidak cocok dengan mesin / berkas cadangan tidak utuh')
     sys.exit(2 if g else 0)
