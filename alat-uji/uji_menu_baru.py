@@ -91,7 +91,7 @@ ok('jam: mnJam membaca HH:MM, HH.MM, ISO (jam setempat) dan menolak sampah', mnJ
 // ---- LACI (N1 + Sistem)
 var LC = susunLaci(KINI, LOKAL); var br = function (id) { var r = null; LC.forEach(function (g) { g.isi.forEach(function (b) { if (b.id === id) r = b; }); }); return r; };
 var UP = hitungUtangPemasok(); var totalUP = UP.reduce(function (a, x) { return a + x.totalUtang; }, 0);
-ok('laci: tiga kelompok 3 · 4 · 7 baris (Buku besar, Alat toko, Toko ini + Lokasi, Pengingat, Target & ambang & Riwayat)', LC.length === 3 && J(LC.map(function (g) { return g.isi.length; })) === '[3,4,7]', J(LC.map(function (g) { return g.id + ':' + g.isi.length; })));
+ok('laci: tiga kelompok 3 · 4 · 8 baris (Buku besar, Alat toko, Toko ini + Lokasi, Pengingat, Target & ambang, Buku pegangan & Riwayat)', LC.length === 3 && J(LC.map(function (g) { return g.isi.length; })) === '[3,4,8]', J(LC.map(function (g) { return g.id + ':' + g.isi.length; })));
 ok('laci pemasok: angka = mesin beku (26 jt + 21 jt = 47 jt), 1 pemasok, 2 bon terbuka; bon 20 Agu lewat tempo 21 hari (tempo umum, kartu kosong) → AWAS, tujuan layar Harga & Pemasok → Bon', totalUP === 47000000 && br('pemasok').angka === 'Rp47.000.000' && /1 pemasok · 2 bon terbuka · 1 lewat tempo/.test(br('pemasok').sub) && br('pemasok').awas && br('pemasok').tujuan.ke === 'harga' && br('pemasok').tujuan.keluarga === 'bon', J(br('pemasok')) + ' ' + totalUP);
 var PI = hitungPiutang().filter(function (x) { return x.sisa > 0; }); var totalPI = PI.reduce(function (a, x) { return a + x.sisa; }, 0);
 ok('laci pelanggan: angka = mesin beku piutang; Pak Hartawan (2022, tanpa bayar) macet → AWAS; tujuan Pelanggan → Bon', br('pelanggan').angka === RP(totalPI) && /macet/.test(br('pelanggan').sub) && br('pelanggan').awas && br('pelanggan').tujuan.keluarga === 'bon', J(br('pelanggan')) + ' ' + totalPI);
@@ -379,5 +379,5 @@ if __name__ == '__main__':
             print('ASAP DATA TOKO (%s): laci %s · pemasok = mesin: %s · piutang = mesin: %s · tanya %d · %s · pita (%s) = silang: %s · cari "angsa" %d · orang %d kelompok · pengingat: %s'
                   % (os.path.basename(cad[-1]), h['laci'], h['pemasokCocok'], h['pelangganCocok'], h['tanya'], h['tertutup'], h['pitaBagian'], h['pitaCocok'], h['cariAngsa'], h['orang'], h['pengingat']))
             print('ASAP DATA TOKO: berkas cadangan sistem baru memuat %d koleksi · %d catatan · koleksi cadangan lama yang HILANG: %s · yang jumlahnya beda: %s' % (h['koleksiBerkas'], h['dokumenBerkas'], h['hilang'] or 'tidak ada', h['beda'] or 'tidak ada'))
-            if not (h['pemasokCocok'] and h['pelangganCocok'] and h['pitaCocok'] and h['tanya'] == 10 and h['laci'] == [3, 4, 7]) or h['hilang'] or h['beda']: g.append('asap: angka layar tidak cocok dengan mesin / berkas cadangan tidak utuh')
+            if not (h['pemasokCocok'] and h['pelangganCocok'] and h['pitaCocok'] and h['tanya'] == 10 and h['laci'] == [3, 4, 8]) or h['hilang'] or h['beda']: g.append('asap: angka layar tidak cocok dengan mesin / berkas cadangan tidak utuh')
     sys.exit(2 if g else 0)

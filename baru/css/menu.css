@@ -160,3 +160,12 @@ main.layar-menu.masuk > header, main.layar-menu.masuk > .mn-gulir > .jalur, main
 @keyframes cgMasuk { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes cgPerlu { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.85); } }   /* transform/opacity saja (mulus Android) */
 @media (prefers-reduced-motion: reduce) { .mn-cek-gudang .cg-hal, .mn-cek-gudang.perlu > .label::after { animation: none; } .mn-cek-gudang .seg { transition: none; } }
+/* Buku pegangan (Pondasi paket kedua C, owner 24 Nov 2026): bab = kepala yang bisa diketuk + isi berbaris; isi muncul dengan gerak buka pendek */
+.mn-bpg-bab { border: 1px solid var(--kaca-tepi); border-radius: 12px; padding: 0 10px; background: var(--seg); }
+.mn-bpg-kepala { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 44px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mn-bpg-kepala .no { font-size: 11px; color: var(--redup); font-variant-numeric: tabular-nums; } .mn-bpg-kepala .judul { font-weight: 600; font-size: 13.5px; min-width: 0; overflow-wrap: anywhere; }
+.mn-bpg-isi { display: grid; gap: 3px; padding: 2px 0 10px 30px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; animation: mnBpgBuka 260ms cubic-bezier(.2,.8,.2,1) both; }
+.mn-bpg-tombol { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 10px 30px; }
+@keyframes mnBpgBuka { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mn-bpg-isi { animation: none; } }
+

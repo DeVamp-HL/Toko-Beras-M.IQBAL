@@ -15,7 +15,7 @@ import { ambilPenjualan, ambilTutupHari, ambilPengeluaranHarian, ambilPiutangMut
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek, lebihBayarDari, kalimatLebih, ringkasLebih } from '../inti/format.js';
 import { semuaBon } from './bon-logika.js';
 import { semuaOrang } from './pelanggan-logika.js';
-import { ssHariKe, ssTambahHari, ssPerangkat, ssPersetujuan, ssCadangan, ssLokasi, ssPengingat, ssEraTutupBuku } from './sistem-logika.js';
+import { ssHariKe, ssTambahHari, ssPerangkat, ssPersetujuan, ssCadangan, ssLokasi, ssPengingat, ssEraTutupBuku, ssPegangan } from './sistem-logika.js';
 // modal FIFO (owner 9 Okt): untung katalog = harga − modal nota berikutnya (karung terlama); saklar mati = modal rata-rata
 import { hppKeluarPerKg } from '../mesin/modal-fifo.js';
 
@@ -101,6 +101,8 @@ export function susunLaci(kini, lokal) {
       baris('pengingat', 'lonceng', 'Pengingat', G.ringkas, G.aktif.length ? G.aktif.length + ' pengingat' : 'beres', G.lewat.length ? G.lewat.length + ' sudah lewat' : 'bon pemasok · janji bayar · kantong · opname · cadangan', G.lewat.length > 0, { ke: 'sistem', sistem: 'pengingat', teks: 'buka Pengingat' }),
       // paket KPI laba (owner 24 Nov 2026): target omzet harian & ambang kas minimum — angkanya dihitung di lembarnya (kpi-laba-logika), baris ini cuma pintu
       baris('target', 'naik', 'Target & ambang', 'target omzet harian (bawaan omzet impas) · ambang kas minimum · lampu di Dasbor', 'atur', 'setelan owner · aturanToko', false, { ke: 'sistem', sistem: 'target', teks: 'buka Target & ambang' }),
+      // Pondasi paket kedua C (owner 24 Nov 2026, rules v20): buku pegangan — aturan kerja tertulis yang dibaca staf di tablet
+      baris('pegangan', 'dokumen', 'Buku pegangan', 'aturan kerja tertulis toko · ditulis owner, dibaca Penjaga laci & karyawan di tablet', ssPegangan().ada ? ssPegangan().n + ' bab' : 'belum ada', ssPegangan().teks, false, { ke: 'sistem', sistem: 'pegangan', teks: 'buka Buku pegangan' }),
       // owner 22 Nov 2026: riwayat & batal (tahap 1 uang) — jumlah dari bukuHapus langsung (RU tidak diimpor di sini)
       baris('riwayat', 'dokumen', 'Riwayat & batal', 'catatan uang & barang per hari & per orang · batalkan yang salah catat · pulihkan / hapus permanen · riwayat setelan & harga', cacheMentah('bukuHapus').length ? cacheMentah('bukuHapus').length + ' dibatalkan' : 'belum ada', 'uang · barang: isi ulang wadah, cocokkan, pindah tempat', false, { ke: 'sistem', sistem: 'riwayat', teks: 'buka Riwayat & batal' }),
     ] },

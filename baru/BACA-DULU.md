@@ -3649,3 +3649,15 @@ Alat uji: `uji_pondasi.py` (kotak pasir + statis + `--kontrol`, kini memuat kuar
   pengingat "lewat" yang abadi. Kunci kuartal (`ssKuartalKey` / `ssKuartalGeser` / `ssKuartalAwal`) tinggal di sistem-logika — satu sumber untuk pengingat &
   kuartal-logika (sistem-logika tidak boleh mengimpor kuartal-logika: bundel uji yang memuat sistem-logika tidak semuanya memuat mesin laporan).
 
+### Pondasi paket kedua · PR C — buku pegangan (cabang `fitur/pondasi-2c`, di atas PR B; **rules v20 — owner menerbitkan di Console SEBELUM PR digabung**)
+Keputusan owner 24 Nov 2026: "Tetap rules v20" (ditawari cara tanpa rules — menumpang di `aturanToko/peran` — dan menolaknya).
+- **Rules v20** = v19 + PERSIS satu nama dokumen: `aturanToko/bukuPegangan` masuk daftar baca ben & karyawan; tulis tetap owner. Salinan pembanding
+  `firestore.rules.v19`, pemeriksa `periksa_rules.py` (`ke_v19` / `periksa_v20`, 11 kasus ★D, beda v19 = ★D3 & ★D4), emulator bagian V20, langkah owner
+  `docs/uji-rules-v20.md`. `akses.js` `DOK_STAF.aturanToko` ikut (perangkat staf mendengar dokumennya). `docs/prosedur-pulih-darurat.md` mengutip sidik &
+  baris 2 rules → ikut diperbarui ke v20 (dijaga `uji_dokumen_sisa.py`).
+- **Logika** di sistem-logika (tanpa modul baru — menu-logika sudah mengimpornya): `ssPegangan` (pembaca), `ssPeganganUntuk(peran)` (owner semua; ben / karyawan =
+  bab "Semua" + bab perannya), `susunBabPegangan` / `susunHapusBab` / `susunGeserBab` (satu dokumen `{ id, bab: [{ id, judul, isi, untuk }], tanggal, jam }`;
+  judul 3–80 huruf & tidak kembar, isi 5–2.000 huruf, paling banyak 40 bab). Bukan uang, bukan stok.
+- **Layar**: owner — Menu › Toko ini › **Buku pegangan** (`gambarPegangan`: tulis bab, ubah, naik/turun, hapus dua ketukan); staf — kartu **Buku pegangan** di
+  menu tablet (`kartuPegangan`, baca saja, bab untuk perannya). Tidak ada tanda "sudah dibaca": itu butuh tulisan staf, tidak dibuka v20.
+

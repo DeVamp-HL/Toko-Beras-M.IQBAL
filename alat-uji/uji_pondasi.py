@@ -23,7 +23,7 @@ PD = 'baru/js/layar/pondasi-logika.js'; DL = 'baru/js/layar/dasbor-logika.js'; L
 SLG = 'baru/js/layar/sistem-logika.js'; KW = 'baru/js/layar/kuartal-logika.js'; BP = 'baru/js/layar/bon-pemasok-logika.js'; RW = 'baru/js/layar/riwayat-logika.js'
 MODUL = bundel_baru.lengkapi(list(uji_kpi_laba.MODUL)) + [KW]
 SUMBER = {'laporan': 'baru/js/layar/laporan.js', 'laporanL': 'baru/js/layar/laporan-logika.js', 'dasbor': 'baru/js/layar/dasbor.js', 'dasborL': DL, 'index': 'baru/index.html', 'pages': '.github/workflows/pages.yml',
-          'pd': PD, 'kw': KW, 'sl': SLG, 'bundel': 'alat-uji/bundel_baru.py', 'cssL': 'baru/css/laporan.css', 'cssR': 'baru/css/ringkasan.css', 'baca': 'baru/BACA-DULU.md'}
+          'pd': PD, 'kw': KW, 'sl': SLG, 'menu': 'baru/js/layar/menu.js', 'menuL': 'baru/js/layar/menu-logika.js', 'akses': 'baru/js/data/akses.js', 'rules': 'firestore.rules', 'rules19': 'firestore.rules.v19', 'dok20': 'docs/uji-rules-v20.md', 'cssM': 'baru/css/menu.css', 'bundel': 'alat-uji/bundel_baru.py', 'cssL': 'baru/css/laporan.css', 'cssR': 'baru/css/ringkasan.css', 'baca': 'baru/BACA-DULU.md'}
 
 KOTAK_PD = {
   'penjualan': [
@@ -294,6 +294,25 @@ ok('pengingat: target K1 2027 sudah diisi → tidak diingatkan lagi', pk(K26).le
 ok('pengingat: kuartal berjalan yang targetnya kosong ditagih hanya 14 hari pertamanya (5 Jan ya, 20 Jan tidak)', pk(new Date('2027-01-05T10:00:00+07:00')).some(function (p) { return p.id === 'kuartal|2027-K1' && /sudah berjalan/.test(p.teks); }) && !pk(new Date('2027-01-20T10:00:00+07:00')).some(function (p) { return p.id === 'kuartal|2027-K1'; }), J([pk(new Date('2027-01-05T10:00:00+07:00')), pk(new Date('2027-01-20T10:00:00+07:00'))]));
 pasang();
 
+// ==================== PR C: buku pegangan (rules v20) ====================
+ok('pegangan: belum ada isi → disebut, bukan galat; tidak ada bab untuk siapa pun', ssPegangan().ada === false && ssPegangan().teks === 'belum ada isinya' && ssPeganganUntuk('ben').length === 0 && ssPeganganUntuk('owner').length === 0 && ssDrafBab('').untuk === 'semua');
+var BB1 = susunBabPegangan({ id: '', judul: '  Buka toko pagi ', isi: 'Hitung uang kembalian.\r\nCek timbangan.  ', untuk: 'semua' }, W);
+ok('pegangan: bab baru → SATU dokumen aturanToko/bukuPegangan berisi bab saja (id · bab · tanggal · jam); judul dirapikan, baris baru disatukan, id bab baru', !BB1.tolak && BB1.dokumen.length === 1 && BB1.dokumen[0].koleksi === 'aturanToko' && BB1.dokumen[0].data.id === 'bukuPegangan' && BB1.dokumen[0].data.bab.length === 1 && BB1.dokumen[0].data.bab[0].judul === 'Buka toko pagi' && BB1.dokumen[0].data.bab[0].isi === 'Hitung uang kembalian.\nCek timbangan.' && /^bab-/.test(BB1.dokumen[0].data.bab[0].id) && J(Object.keys(BB1.dokumen[0].data).sort()) === J(['bab', 'id', 'jam', 'tanggal']) && J(Object.keys(BB1.dokumen[0].data.bab[0]).sort()) === J(['id', 'isi', 'judul', 'untuk']) && BB1.patch.bpgDraf === null, J(BB1));
+var bbTolak = function (d) { return !!susunBabPegangan(d, W).tolak; };
+ok('pegangan: ketikan ditolak dengan kalimat — judul < 3 huruf, isi kosong, untuk tidak dipilih / tak dikenal, judul > 80 huruf, isi > 2.000 huruf', bbTolak({ judul: 'ab', isi: 'isi yang cukup', untuk: 'semua' }) && bbTolak({ judul: 'Judul', isi: '   ', untuk: 'semua' }) && bbTolak({ judul: 'Judul', isi: 'isi yang cukup', untuk: '' }) && bbTolak({ judul: 'Judul', isi: 'isi yang cukup', untuk: 'owner' }) && bbTolak({ judul: new Array(82).join('x'), isi: 'isi yang cukup', untuk: 'semua' }) && bbTolak({ judul: 'Judul', isi: new Array(2002).join('x'), untuk: 'semua' }) && !bbTolak({ judul: new Array(81).join('x'), isi: new Array(2001).join('x'), untuk: 'ben' }));
+var BKU = { id: 'bukuPegangan', tanggal: '2026-11-24', jam: '10:00', kolomLama: 'x', bab: [{ id: 'b1', judul: 'Buka toko', isi: 'Hitung laci.', untuk: 'semua' }, { id: 'b2', judul: 'Tutup hari', isi: 'Hitung laci, amankan.', untuk: 'ben' }, { id: 'b3', judul: 'Angkat karung', isi: 'Dua orang.', untuk: 'karyawan' }, { id: 'b4', judul: '', isi: 'tanpa judul', untuk: 'semua' }, { id: 'b5', judul: 'Peran aneh', isi: 'untuk tak dikenal', untuk: 'bos' }] };
+aturDengan([BKU]); var idb = function (L) { return L.map(function (b) { return b.id; }); };
+ok('pegangan: tiap peran hanya melihat bab "Semua" + bab perannya; owner melihat semua; bab tanpa judul dibuang, untuk tak dikenal dibaca Semua', J(idb(ssPeganganUntuk('ben'))) === J(['b1', 'b2', 'b5']) && J(idb(ssPeganganUntuk('karyawan'))) === J(['b1', 'b3', 'b5']) && J(idb(ssPeganganUntuk('owner'))) === J(['b1', 'b2', 'b3', 'b5']) && ssPegangan().n === 4 && ssPegangan().teks === '4 bab · terakhir diubah 24 Nov 2026' && ssPegangan().bab[1].untukNama === 'Penjaga laci', J([idb(ssPeganganUntuk('ben')), ssPegangan().teks]));
+var BB2 = susunBabPegangan({ id: 'b2', judul: 'Tutup hari', isi: 'Hitung laci, catat selisih, amankan.', untuk: 'ben' }, W);
+ok('pegangan: mengubah satu bab → bab lain & urutannya utuh, id tetap; kolom lain di dokumen TIDAK ikut ditulis ulang', !BB2.tolak && J(idb(BB2.dokumen[0].data.bab)) === J(['b1', 'b2', 'b3', 'b5']) && BB2.dokumen[0].data.bab[1].isi === 'Hitung laci, catat selisih, amankan.' && BB2.dokumen[0].data.bab[0].isi === 'Hitung laci.' && BB2.dokumen[0].data.kolomLama === undefined && ssDrafBab('b2').judul === 'Tutup hari', J(BB2));
+ok('pegangan: judul kembar (huruf besar-kecil diabaikan), tidak ada yang diubah, dan bab yang sudah tidak ada → ditolak', susunBabPegangan({ id: '', judul: 'buka TOKO', isi: 'isi lain yang cukup', untuk: 'semua' }, W).tolak === 'Sudah ada bab berjudul "buka TOKO"' && susunBabPegangan({ id: 'b1', judul: 'Buka toko', isi: 'Hitung laci.', untuk: 'semua' }, W).tolak === 'Tidak ada yang diubah' && !!susunBabPegangan({ id: 'b9', judul: 'Bab hantu', isi: 'isi yang cukup', untuk: 'semua' }, W).tolak && !susunBabPegangan({ id: 'b1', judul: 'Buka toko', isi: 'Hitung laci.', untuk: 'ben' }, W).tolak);
+var BH = susunHapusBab('b2', W), BG1 = susunGeserBab('b3', -1, W), BG2 = susunGeserBab('b1', 1, W);
+ok('pegangan: hapus hanya bab itu; geser naik / turun menukar DUA bab bersebelahan; di ujung ditolak dengan kalimat', J(idb(BH.dokumen[0].data.bab)) === J(['b1', 'b3', 'b5']) && J(idb(BG1.dokumen[0].data.bab)) === J(['b1', 'b3', 'b2', 'b5']) && J(idb(BG2.dokumen[0].data.bab)) === J(['b2', 'b1', 'b3', 'b5']) && /paling atas/.test(susunGeserBab('b1', -1, W).tolak) && /paling bawah/.test(susunGeserBab('b5', 1, W).tolak) && !!susunHapusBab('b9', W).tolak && !!susunGeserBab('b9', 1, W).tolak, J([idb(BH.dokumen[0].data.bab), idb(BG1.dokumen[0].data.bab)]));
+var banyak = []; for (var bi = 0; bi < 40; bi++) banyak.push({ id: 'x' + bi, judul: 'Bab nomor ' + bi, isi: 'isi bab ' + bi, untuk: 'semua' });
+aturDengan([{ id: 'bukuPegangan', bab: banyak }]);
+ok('pegangan: paling banyak 40 bab — bab ke-41 ditolak, mengubah bab yang ada tetap bisa', /Paling banyak 40 bab/.test(susunBabPegangan({ id: '', judul: 'Bab ke-41', isi: 'isi yang cukup', untuk: 'semua' }, W).tolak) && !susunBabPegangan({ id: 'x3', judul: 'Bab nomor 3', isi: 'isi diubah', untuk: 'semua' }, W).tolak);
+aturDengan([]); pasang();
+
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
@@ -317,6 +336,15 @@ STATIS = [
     ('Kuartal memasang kartu target, lembarnya & rapor berkop', 'laporan', ['data-k="kw-target"', 'kwTargetSimpan: () =>', 'PD.susunTargetKuartal(a.key || kwKeyAktif(), a, waktu())', "kertas(DR, null, 'kertas-kuartal')", "tigaTombol('kwKeluar', DR.tolak)", "await keluarkan(D, { jenis: 'kuartal', judul: 'Rapor kuartal'", "'aturPd', 'aturTq']"]),
     ('pengingat: jenis kuartal + satu sumber kunci & target', 'sl', ["['kuartal', 'Target kuartal belum diisi', 'hariKuartal']", 'hariKuartal: 7', 'export function ssTargetKuartal(key)', 'export const ssKuartalKey', "id: 'kuartal|' + kwDepan"]),
     ('BACA-DULU menyebut PR B', 'baca', ['PR B', 'susunTargetKuartal', 'kwRapor', 'hariKuartal']),
+    ('Menu owner memasang lembar Buku pegangan + pintunya di Toko ini', 'menu', ["pegangan: 'Buku pegangan'", "s.sistem === 'pegangan' ? gambarPegangan(s)", 'function gambarPegangan(s)', 'bpgSimpan: () => tulis(S.susunBabPegangan(st().bpgDraf || {}, waktu()))', "'aturKpi', 'bpgDraf',", 'target: [], pegangan: []']),
+    ('Menu staf (tablet) memasang kartu baca Buku pegangan untuk perannya', 'menu', ['${kartuPegangan(s, akunM)}', 'function kartuPegangan(s, akunM)', 'S.ssPeganganUntuk(akunM.peran)']),
+    ('Toko ini: baris Buku pegangan', 'menuL', ["baris('pegangan', 'dokumen', 'Buku pegangan',", "sistem: 'pegangan'"]),
+    ('rules v20 & halaman sepakat: bukuPegangan di daftar baca staf, salinan v19 tanpa itu, dokumen uji ada', 'rules', ["'hargaTingkat', 'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", 'ATURAN FIRESTORE v20 FINAL']),
+    ('akses.js: staf mendengar dokumen bukuPegangan', 'akses', ["'hargaTingkat', 'produkArsip', 'bukuPegangan'], pengaturan:"]),
+    ('salinan firestore.rules.v19 = rules sebelum buku pegangan', 'rules19', ["'hargaTingkat', 'produkArsip'] && staf(['ben', 'karyawan'])", 'ATURAN FIRESTORE v19 FINAL']),
+    ('dokumen uji server v20 untuk owner', 'dok20', ['## Wajib owner', '★D1', '★D11', 'Terbitkan v20 SEBELUM PR']),
+    ('gerak buku pegangan + hormat reduced motion', 'cssM', ['mnBpgBuka', '.mn-bpg-isi { animation: none; }']),
+    ('BACA-DULU menyebut PR C', 'baca', ['PR C', 'rules v20', 'ssPeganganUntuk', 'docs/uji-rules-v20.md']),
     ('modul hanya membaca', 'pd', []),
 ]
 # yang TIDAK boleh ada di pondasi-logika: DOM, tulisan langsung, mesin uang, dan pembaca koleksi mentah (angka harus lewat fungsi sumber layar lain)
@@ -382,6 +410,14 @@ RUSAK = [
     ('pengingat: kuartal berjalan ditagih terus (tanpa batas 14 hari)', SLG, "if (!ssTargetKuartal(kwKini).ada && ssHariKe(iso) - ssHariKe(ssKuartalAwal(kwKini)) < SS_KUARTAL_SUSUL) out.push(", "if (!ssTargetKuartal(kwKini).ada) out.push("),
     ('pengingat: target yang sudah diisi tetap diingatkan', SLG, "if (!ssTargetKuartal(kwDepan).ada) out.push(", "if (true) out.push("),
     ('pengingat: awal kuartal salah bulan', SLG, "String((Number(String(key).slice(6, 7)) - 1) * 3 + 1).padStart(2, '0') + '-01';", "String(Number(String(key).slice(6, 7)) * 3).padStart(2, '0') + '-01';"),
+    ('pegangan: karyawan ikut melihat bab untuk Penjaga laci', SLG, "return peran === 'owner' ? B : B.filter((b) => b.untuk === 'semua' || b.untuk === peran); }", "return B; }"),
+    ('pegangan: judul kembar diterima', SLG, "if (bab.some((b, k) => k !== i && b.judul.toLowerCase() === judul.toLowerCase())) return", "if (false) return"),
+    ('pegangan: isi tanpa batas panjang', SLG, "if (isi.length > M.isi) return { tolak: 'Isi bab paling panjang '", "if (false) return { tolak: 'Isi bab paling panjang '"),
+    ('pegangan: batas 40 bab tidak dijaga', SLG, "if (i < 0 && bab.length >= M.bab) return", "if (false) return"),
+    ('pegangan: hapus satu bab menghapus semuanya', SLG, "return ssSimpanPegangan(bab.filter((x) => x.id !== b.id), w,", "return ssSimpanPegangan([], w,"),
+    ('pegangan: geser di ujung tidak ditolak', SLG, "if (j < 0 || j >= bab.length) return { tolak: 'Bab itu sudah di '", "if (false) return { tolak: 'Bab itu sudah di '"),
+    ('pegangan: mengubah bab menambah bab baru (id tidak dipakai)', SLG, "const b = { id: i >= 0 ? id : 'bab-' + w.idUnik(), judul, isi, untuk }; if (i >= 0) bab[i] = b; else bab.push(b);", "const b = { id: 'bab-' + w.idUnik(), judul, isi, untuk }; bab.push(b);"),
+    ('pegangan: dokumen membawa kolom di luar bentuknya', SLG, "data: { id: SS_PEGANGAN_ID, bab: bab.map(", "data: { id: SS_PEGANGAN_ID, kolomLama: 'x', bab: bab.map("),
     ('satu lampu galat mematikan semuanya', PD, "const lampu = PD_LAMPU.map(([id, nama, f]) => { try { return f(X); } catch (e) {", "const lampu = PD_LAMPU.map(([id, nama, f]) => { try { return f(X); } catch (e) { throw e;"),
     ('setelan: ketikan rusak dibulatkan diam-diam', PD, "if (!(n > 0) || n > x.maks) { tolak = ", "if (false) { tolak = "),
     ('setelan: simpan satu ambang menimpa yang lain', PD, "const lama = ugAturDok(PD_ID) || {}; const data = Object.assign({}, lama, { id: PD_ID, tanggal: w.tanggal, jam: w.jam });", "const lama = {}; const data = { id: PD_ID, tanggal: w.tanggal, jam: w.jam };"),
@@ -395,6 +431,10 @@ RUSAK_STATIS = [
     ('Dasbor tanpa kartu Pondasi', 'dasbor', 'kartuPondasi(D.pondasi)', "''"),
     ('modul membaca koleksi mentah (rumus uang baru)', 'pd', "import { ambilTutupHari, ambilTitikKas, ingatPerVersi } from '../data/toko.js';", "import { ambilTutupHari, ambilTitikKas, ingatPerVersi, ambilPenjualan } from '../data/toko.js';"),
     ('modul menulis dokumen kedua', 'pd', "({ dokumen: [{ koleksi: 'aturanToko', data }], patch });", "({ dokumen: [{ koleksi: 'aturanToko', data }, { koleksi: 'aturanToko', data }], patch });"),
+    ('tablet staf tanpa kartu Buku pegangan', 'menu', '${kartuPegangan(s, akunM)}', ''),
+    ('Menu owner tanpa lembar Buku pegangan', 'menu', "s.sistem === 'pegangan' ? gambarPegangan(s) : ", ''),
+    ('halaman tidak mendengar bukuPegangan di perangkat staf', 'akses', "'produkArsip', 'bukuPegangan'], pengaturan:", "'produkArsip'], pengaturan:"),
+    ('rules tidak membuka bukuPegangan untuk staf', 'rules', "'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", "'produkArsip'] && staf(['ben', 'karyawan'])"),
     ('Kuartal tanpa rapor berkop', 'laporan', "tigaTombol('kwKeluar', DR.tolak)", "''"),
     ('Laporan tanpa keluarga Kuartal', 'laporan', "s.keluarga === 'kuartal' ? gambarKuartal(s, L) : ", ''),
     ('Pondasi tanpa kartu risiko', 'laporan', 'data-k="pd-risiko"', 'data-k="x"'),

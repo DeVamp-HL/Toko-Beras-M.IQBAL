@@ -25,7 +25,7 @@ export const BATAS_HASIL_ADUKAN_STAF = 8;   // adukan: 8 hasil × (produksi + ka
 export const BACA_STAF = ['penjualan', 'piutangMutasi', 'pelangganCatatan', 'pelangganTitip', 'pesanan', 'tagihPelanggan', 'strukKeluar', 'tandaKenal',
   'batchMasuk', 'produksiKemasan', 'penyesuaianStok', 'penyesuaianKemasan', 'retur', 'karantina', 'stokBahanKemasan', 'stokBahanLiteran', 'wadahLiteran', 'pindahTempat',
   'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan', 'suratJalan', 'orderRutin', 'cekGudang'];   // v19 (paket KPI laba): cek mingguan gudang   // rules v10 (B3): surat jalan & antar · v11 (B4): jadwal order rutin
-export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip'], pengaturan: ['tempatSimpan'] };
+export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip', 'bukuPegangan'], pengaturan: ['tempatSimpan'] };
 // rules v8 (B1, owner 16 Nov 2026): + hargaTingkat (harga pelanggan usaha dipakai kasir) + produkArsip (barang yang diarsipkan tidak tampil sebagai chip habis di tablet)
 // rules v14 (owner 21 Nov 2026): RINGKAS HARI INI di tablet — akun Penjaga laci yang DITANDAI owner (aksesAkun.bacaUang) membaca data uang untuk laci
 // seharusnya & uang keluar. TIDAK masuk pendengarPeran: firebase.js memasangnya HANYA selama orang yang jaga = orang pilihan owner (aturanToko/peran.ringkasOrang)
