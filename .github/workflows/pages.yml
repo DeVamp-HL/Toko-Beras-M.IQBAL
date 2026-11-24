@@ -491,7 +491,7 @@ jobs:
       cancel-in-progress: false
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy2.outputs.page_url || steps.deploy3.outputs.page_url }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -511,21 +511,41 @@ jobs:
         with:
           path: '.'
 
-      # 24 Nov 2026 (run #989 & #990, dua kali berturut-turut): bungkusan github-pages SUDAH terunggah (4 MB, "successfully finalized"), tetapi langkah Terbitkan
-      # yang jalan ±2 detik sesudahnya membaca daftar bungkusan run ini dan mendapat 0 → terbit gagal walau semua uji hijau. Daftar yang sama dibaca beberapa
-      # menit kemudian berisi 1. Jadi ditunggu dulu sampai daftar itu memuat bungkusannya (paling lama 150 detik), baru diterbitkan. Menjalankan ulang job
-      # ini TIDAK menolong: bungkusan kedua bernama sama menumpuk di run yang sama.
-      - name: "Tunggu bungkusan github-pages terbaca di daftar run ini (paling lama 150 detik)"
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          for i in $(seq 1 30); do
-            n=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=github-pages" | python3 -c "import sys, json; print(json.load(sys.stdin).get('total_count', 0))" || echo 0)
-            if [ "${n:-0}" -ge 1 ]; then echo "bungkusan terbaca pada percobaan ke-$i"; exit 0; fi
-            echo "belum terbaca (percobaan $i dari 30) — tunggu 5 detik"; sleep 5
-          done
-          echo "::error::bungkusan github-pages tidak terbaca di daftar run ini sesudah 150 detik"; exit 1
+      # TERBIT GAGAL "No artifacts named github-pages" (24 Nov 2026: run #989, #990, #994 gagal; #986, #992 berhasil — isi & versi action sama persis).
+      # Bungkusan SUDAH terunggah ("successfully finalized"), tetapi deploy-pages ±0,5 detik sesudahnya menanyakan daftar bungkusan run ini ke layanan runtime
+      # Actions dan kadang mendapat 0. Langkah tunggu lewat REST API (#194) TIDAK menolong: di run #994 REST sudah melihat bungkusannya pada percobaan pertama,
+      # deploy-pages tetap mendapat 0 — yang terlambat adalah layanan yang ditanya deploy-pages, bukan REST. Jadi: jeda dulu, lalu deploy-pages DICOBA ULANG
+      # (paling banyak tiga kali). Bungkusan diunggah SEKALI saja — yang diulang hanya langkah terbit, jadi tidak ada bungkusan kedua bernama sama
+      # (itu sebab menjalankan ulang job ini dari awal tidak boleh). Tiap percobaan ulang ditulis "DICOBA ULANG" di ringkasan run (keputusan owner 26 Sep).
+      - name: "Jeda 20 detik sebelum terbit (bungkusan baru saja diunggah)"
+        run: sleep 20
 
       - name: Terbitkan
         id: deploy
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: "DICOBA ULANG: terbitkan (percobaan 2 dari 3) — tunggu 45 detik"
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo "::warning title=DICOBA ULANG::terbitkan — deploy-pages gagal di percobaan 1 (biasanya: bungkusan belum terbaca layanan runtime); dicoba lagi sesudah 45 detik"
+          echo "DICOBA ULANG: terbitkan — percobaan 2 dari 3" >> "$GITHUB_STEP_SUMMARY"
+          sleep 45
+
+      - name: Terbitkan (percobaan 2)
+        id: deploy2
+        if: steps.deploy.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: "DICOBA ULANG: terbitkan (percobaan 3 dari 3) — tunggu 90 detik"
+        if: steps.deploy.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        run: |
+          echo "::warning title=DICOBA ULANG::terbitkan — deploy-pages gagal di percobaan 2; percobaan terakhir sesudah 90 detik"
+          echo "DICOBA ULANG: terbitkan — percobaan 3 dari 3" >> "$GITHUB_STEP_SUMMARY"
+          sleep 90
+
+      - name: Terbitkan (percobaan 3 — terakhir, gagal = job gagal)
+        id: deploy3
+        if: steps.deploy.outcome == 'failure' && steps.deploy2.outcome == 'failure'
         uses: actions/deploy-pages@v4
