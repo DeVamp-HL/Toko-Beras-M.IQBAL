@@ -59,6 +59,13 @@ function clearTimeout(id) { for (var i = 0; i < __timer.length; i++) if (__timer
 function setInterval(f, ms) { __interval.push(f); return __nomor++; }
 function clearInterval() {}
 function requestAnimationFrame(f) { __raf.push(f); return __raf.length; }
+// WAKTU LUANG (25 Nov 2026): pekerjaan requestIdleCallback antre sendiri dan TIDAK dihabiskan __sisa. Dulu peramban tiruan ini tidak punya requestIdleCallback →
+// pemanasan Dasbor di latar (ringkasan.js, mulus Android paket 3) jatuh ke setTimeout dan ikut dikuras sesudah TIAP aksi yang mengubah data, di semua layar:
+// dengan data toko rangkaian tanpa ingatan menghitung ulang seluruh Dasbor 24–29 dtk per perubahan data dan tidak pernah selesai (batas 1.200 dtk).
+// Sekarang pemanasan diukur SATU kali sebagai barisnya sendiri; antrean lama dibuang di awal tiap aksi (di peramban ia memang baru jalan saat perangkat luang).
+var __luang = [];
+function requestIdleCallback(f) { __luang.push(f); return __luang.length; }
+function __jalanLuang() { var n = 0; while (__luang.length && n < 400) { var f = __luang.shift(); try { f({ didTimeout: false, timeRemaining: function () { return 50; } }); } catch (e) { console.error('luang', e); } __kurasMikro(); n++; } return n; }
 function cancelAnimationFrame() {}
 function queueMicrotask(f) { __mikro.push(f); }
 var performance = { now: function () { return __jam; } };
@@ -151,7 +158,7 @@ function __tuntas() { __kurasMikro(); __bingkai(); __kurasMikro(); }
 function __sisa() { for (var i = 0; i < 120 && (__raf.length || __timer.length); i++) { if (__raf.length) __bingkai(); else { __jam += 50; __jalanTimer(__jam); } } __timer = []; __raf = []; }
 var LAYAR_KINI = '';
 function ukur(label, f, persiapan) {
-  var g0 = __galat.length;
+  var g0 = __galat.length; __luang = [];
   if (persiapan) { try { persiapan(); } catch (e) { console.error('persiapan ' + label, e); } __tuntas(); __sisa(); }
   __gb = { n: 0, sidik: 0, bytes: 0 }; __n = {};
   var t0 = preciseTime();
@@ -355,6 +362,12 @@ satuLayar('ringkasan-cincin', R, AR, function () {
   ukur('detak tiap menit (cincin)', function () { __KINI += 60000; __interval.forEach(function (f) { f(); }); });
   ukurDb('ganti tampilan → Dasbor', function () { klik('rkSaklar', { tampil: 'dasbor' }); });
 });
+R.tampilkan(false); __tuntas(); __sisa();
+// pemanasan Dasbor di latar: tampilan terpilih = Dasbor, layar tersembunyi, nota baru masuk → rantai dijadwalkan (1,2 dtk) lalu jalan di waktu luang
+LAYAR_KINI = 'ringkasan-dasbor'; var __panasN = 0;
+ukur('pemanasan Dasbor di latar (waktu luang) sesudah nota baru', function () { __panasN = __jalanLuang(); }, function () { notaBaru(); });
+HASIL.info.panasLangkah = __panasN;
+ukur('Dasbor dibuka sesudah dipanaskan', function () { R.tampilkan(true); });
 R.tampilkan(false); __tuntas(); __sisa();
 
 function layarBiasa(nama, keluargaAksi, daftar, kunciDs) {
@@ -568,6 +581,8 @@ def periksa(H, nama_kotak, data_toko=False):
     ok('ONGKOS · Dasbor: denyut HP (perangkatStatus) tidak menyusun dasbor ulang (susunDasbor 0×)', len(d) >= 2 and all(P(a, 'susunDasbor') == 0 for a in d), [a['panggil'] for a in d])
     n = [a for a in cari('ringkasan-dasbor', r'^data berubah selagi tampil: pasok (penjualan|wadahLiteran)$') + cari('ringkasan-dasbor', r'^nota baru')]
     ok('ONGKOS · Dasbor: data yang dibaca dasbor (penjualan, wadah) TETAP menyusun dasbor ulang (susunDasbor 1×)', n and all(P(a, 'susunDasbor') == 1 for a in n), [a['panggil'] for a in n])
+    pn = cari('ringkasan-dasbor', r'^pemanasan Dasbor di latar')
+    ok('PEMANASAN · Dasbor dipanaskan di waktu luang sesudah nota baru: rantainya berjalan (≥ 2 langkah) dan diukur sebagai SATU baris, tidak dikuras sesudah tiap aksi', len(pn) == 1 and all((X or {}).get('info', {}).get('panasLangkah', 0) >= 2 for X in (A, B)), [(X or {}).get('info', {}).get('panasLangkah') for X in (A, B)])
     mb = cari('menu', r'^buka lagi, data sama$')
     ok('ONGKOS · Menu dibuka lagi tanpa data baru: tidak digambar ulang (0 gambar; dulu 2)', mb and all(a['gambar'] == 0 for a in mb), [a['gambar'] for a in mb])
     bl = cari('laporan', r'^laporan › bulanan › ')
@@ -627,6 +642,7 @@ RUSAK = [
     ('pemanggil mengubah hasil ingatan di tempat (Stok › Gudang menulis ke buku stok bersama)', 'beku', {'baru/js/layar/stok-logika.js': [("const sisa = stokK[m].sisaKg || 0;", "const sisa = (stokK[m].sisaKg = stokK[m].sisaKg || 0);")]}),
     ('Tempat simpan kembali menyusun rantai stok per tumpukan (tanpa siap)', 'layar', {'baru/js/layar/stok-tempat-logika.js': [("const g = tumpukanGudang(b.nama, siap);", "const g = tumpukanGudang(b.nama);")]}),
     ('Dasbor ganti rentang memakai tren lama', 'layar', {'baru/js/layar/dasbor-logika.js': [("if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, kpi: lama.kpi, pondasi: lama.pondasi, tren: k('tren') };", "if (lama) return lama;")]}),
+    ('pemanasan Dasbor di latar tidak pernah dijadwalkan', 'layar', {'baru/js/layar/ringkasan.js': [("setTimeout(() => luang(langkah), 1200);", "")]}, 'PEMANASAN'),
     ('Dasbor ganti rentang menghitung seluruh dasbor lagi', 'layar', {'baru/js/layar/ringkasan.js': [("else if (dbRentang !== r) { dbHasil = susunDasbor(k, r, dbHasil, ingatDb(k)); dbRentang = r; }", "else if (dbRentang !== r) { dbHasil = susunDasbor(k, r); dbRentang = r; }")]}),
     ('denyut HP kembali menyusun dasbor', 'layar', {'baru/js/layar/ringkasan.js': [("const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas']);", "const BUKAN_DASBOR = new Set([]);")]}),
     ('penjualan dianggap tidak dibaca dasbor (nota baru tidak tergambar)', 'layar', {'baru/js/layar/ringkasan.js': [("const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas']);", "const BUKAN_DASBOR = new Set(['perangkatStatus', 'logAktivitas', 'penjualan']);")]}),
