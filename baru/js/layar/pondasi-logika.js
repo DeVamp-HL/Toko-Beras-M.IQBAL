@@ -22,6 +22,8 @@ import { neracaPada, lpHariRentang, hariTerakhir, lpPertama, lpKasPadaTanggal, l
 import { ugAturDok, ugAngka, ugKosong, ugLabaBersih, ugTambahHari, aturKeluar, priveBulan, priveRentang, modalTertanam } from './uang-logika.js';
 import { susunBon as bpSusunBon, daftarPemasok, bpHariBayar, bpLamaKirim, tempoPemasok, bpHariTeks } from './bon-pemasok-logika.js';
 import { rwPerOrang } from './riwayat-logika.js';
+import { pelangganBulan } from './laba-pelanggan-logika.js';
+import { semuaOrang } from './pelanggan-logika.js';
 import { ngBuku } from './nego-logika.js';
 import { riwayatTutup } from './tutup-hari-logika.js';
 import { klAtur } from './kpi-laba-logika.js';
@@ -41,12 +43,13 @@ export const PD_ATUR = [
   { id: 'utangMaks', nama: 'Utang paling banyak', satuan: '% dari harta', maks: 1000, ket: 'lampu Utang dibanding harta merah bila lewat angka ini' },
   { id: 'kasHariMin', nama: 'Uang toko paling sedikit cukup', satuan: 'hari biaya', maks: 3650, ket: 'lampu Kas cukup berapa hari merah bila di bawah angka ini' },
   { id: 'hasilMin', nama: 'Laba bersih 30 hari paling sedikit', satuan: '% dari harta', maks: 100, ket: 'lampu Hasil atas harta kuning bila di bawah angka ini' },
-  { id: 'pemasokMaks', nama: 'Belanja ke satu pemasok paling banyak', satuan: '% dari belanja', maks: 100, ket: 'lampu Bergantung pada satu pemasok merah bila lewat angka ini' }];
+  { id: 'pemasokMaks', nama: 'Belanja ke satu pemasok paling banyak', satuan: '% dari belanja', maks: 100, ket: 'lampu Bergantung pada satu pemasok merah bila lewat angka ini' },
+  { id: 'pembeliMaks', nama: 'Omzet dari satu pembeli paling banyak', satuan: '% dari omzet', maks: 100, ket: 'kartu Pelanggan: pembeli terbesar merah bila lewat angka ini' }];
 /** Yang tidak bisa diukur sistem — pertanyaan untuk owner, bukan lampu. */
 export const PD_LUAR = [
   'Rekening toko sudah terpisah dari rekening pribadi? Selama masih satu, uang pribadi dan uang toko hanya terpisah lewat catatan ambil pribadi.',
   'Legalitas (NPWP, NIB, badan usaha) sudah ada? Bank dan pemasok besar memintanya saat toko mau naik tingkat.',
-  'Modal awal toko sebelum sistem mulai mencatat tidak pernah dicatat — hasil atas modal di sini hanya memakai setoran modal yang tercatat.'];
+  'Uang yang dulu benar-benar ditanam sebelum sistem mulai mencatat tidak ada catatannya — hasil atas modal di sini memakai posisi toko pada hari pertama sistem mencatat (harta dikurangi utang menurut buku).'];
 
 const pdBilangan = (n) => typeof n === 'number' && isFinite(n);
 const pdSatu = (n) => String(Math.round(Math.abs(n) * 10) / 10).replace('.', ',');
@@ -387,6 +390,50 @@ function pdRantaiHitung(kini) {
   return { pemasok, total: P.total, nPesananMenunggu: K.menunggu, rataKirim: K.rataHari,
     kalimat: !pemasok.length ? 'Belum ada pemasok yang mengirim dalam ' + (2 * PD_HARI_PANJANG) + ' hari terakhir.' : pemasok.length + ' pemasok mengirim dalam ' + (2 * PD_HARI_PANJANG) + ' hari terakhir'
       + (K.rataHari === null ? '' : '; dari dipesan sampai datang ' + bpHariTeks(K.rataHari) + ' (' + K.n + ' pesanan lewat Belanja)') + (K.menunggu ? '; ' + K.menunggu + ' pesanan masih menunggu datang' : '') + '.' };
+}
+
+// ---------- pelanggan: pilar marketing ----------
+export const PD_PEMBELI_TERATAS = 5;
+export const PD_BULAN_PELANGGAN = 3;
+/**
+ * Paket ketiga (owner 25 Nov 2026 — pilar "Marketing" di catatan Pondasi bisnis: segmen · target · posisi hanya bisa dikerjakan kalau pembelinya DIKENAL).
+ * Baca saja, tanpa rumus uang baru:
+ *  - dikenal            = porsi omzet barang 3 bulan (bulan berjalan + 2 sebelumnya) yang pembelinya bernama; sisanya nota tanpa nama — pelangganBulan
+ *  - satu pembeli       = porsi omzet pembeli bernama terbesar; warna hanya bila owner mengisi ambang pembeliMaks (kebijakan)
+ *  - segmen             = laba kotor & margin per tingkat harga + pembeli umum, angka pelangganBulan apa adanya (Laporan › Laba › Per pelanggan)
+ *  - datang lagi, 30 hr = orang baru · yang kembali · bangku kosong (langganan yang sudah lewat N× selangnya sendiri) — semuaOrang (Pelanggan)
+ * Pembeli dikenali dari NAMA di nota; nota tanpa nama tidak bisa dipilah, dan itu DISEBUT (bukan dianggap satu orang).
+ */
+export function pdPelanggan(kini) { return ingatPerVersi(pdKunciIngat('pdPelanggan', kini), () => pdPelangganHitung(kini)); }
+function pdPelangganHitung(kini) {
+  const iso = hariIniIso(kini); const A = pdAtur(); const B = pelangganBulan(iso.slice(0, 7), PD_BULAN_PELANGGAN, kini); const awal = ugTambahHari(iso, -(PD_HARI - 1));
+  // datang lagi atau tidak — orang = nama di nota / buku bon; hari datang = hari ada nota atau bayar bon
+  const S = semuaOrang(kini).filter((o) => o.kunjungan > 0); const datangList = S.filter((o) => o.terakhir >= awal); const baru = datangList.filter((o) => o.pertama >= awal);
+  const lama = S.filter((o) => o.pertama < awal); const kembali = datangList.length - baru.length;
+  const kosong = S.filter((o) => o.kosong).sort((a, b) => b.total - a.total || a.nama.localeCompare(b.nama));
+  const datang = { dari: awal, sampai: iso, nDatang: datangList.length, baru: baru.length, kembali, lama: lama.length, pctKembali: lama.length ? kembali / lama.length * 100 : null, nKosong: kosong.length,
+    kosong: kosong.slice(0, PD_PEMBELI_TERATAS).map((o) => ({ kunci: o.kunci, nama: o.nama, sejak: o.sejak, selang: o.selang, total: o.total })),
+    kalimat: !S.length ? 'Belum ada pembeli bernama yang tercatat.'
+      : PD_HARI + ' hari terakhir: ' + datangList.length + ' orang bernama datang — ' + baru.length + ' baru pertama kali, ' + kembali + ' sudah pernah datang sebelumnya'
+        + (lama.length ? ' (dari ' + lama.length + ' orang yang pernah datang sebelum itu, ' + pdPctTeks(kembali / lama.length * 100) + ' datang lagi)' : '') + '. '
+        + (kosong.length ? kosong.length + ' langganan sudah lebih lama dari biasanya tidak datang.' : 'Tidak ada langganan yang lebih lama dari biasanya tidak datang.') };
+  const dasar = { iso, rentang: B.nama, datang, ambang: A.pembeliMaks > 0 ? 'merah bila satu pembeli lebih dari ' + pdPctTeks(A.pembeliMaks) + ' omzet (ambang owner)' : 'ambang satu pembeli belum diatur — tanpa warna',
+    sumber: 'Laporan › Laba › Per pelanggan · Pelanggan' };
+  if (B.diarsip || !B.pembeli) return Object.assign(dasar, { ada: false, lampu: 'tanpa', kalimat: B.kalimatArsip || 'Catatan per nota ' + B.nama + ' tidak tersedia.', dikenal: null, terbesar: null, pembeli: [], segmen: [], segmenLaba: null, segmenMargin: null, menutup: true });
+  const omzet = Number(B.omzetBarang) || 0; const omzetNama = B.pembeli.reduce((a, o) => a + o.omzet, 0); const T = B.tanpaNama || { omzet: 0, nNota: 0 };
+  const dikenal = { omzet, omzetNama, omzetTanpa: T.omzet, nOrang: B.pembeli.length, nNotaNama: B.pembeli.reduce((a, o) => a + o.nNota, 0), nNotaTanpa: T.nNota, pct: omzet > 0 ? omzetNama / omzet * 100 : null };
+  const pembeli = B.pembeli.slice(0, PD_PEMBELI_TERATAS).map((o) => ({ kunci: o.kunci, nama: o.nama, usaha: o.usaha, tingkatNama: o.tingkatNama, omzet: o.omzet, labaKotor: o.labaKotor, nNota: o.nNota, pct: o.porsiOmzet }));
+  const t0 = pembeli.length && pembeli[0].omzet > 0 && pembeli[0].pct !== null ? pembeli[0] : null; const lampu = t0 ? pdLampuAtas(t0.pct, A.pembeliMaks) : 'tanpa';
+  const segmen = B.tingkat.map((g) => ({ id: g.id, nama: g.nama, nOrang: g.nOrang, omzet: g.omzet, labaKotor: g.labaKotor, margin: g.pct, porsiLaba: g.porsiLaba, porsiOmzet: g.porsiOmzet }));
+  const berLaba = segmen.filter((g) => g.labaKotor !== null && g.omzet > 0); const segmenLaba = berLaba.slice().sort((a, b) => b.labaKotor - a.labaKotor)[0] || null;
+  const segmenMargin = berLaba.filter((g) => g.margin !== null).sort((a, b) => b.margin - a.margin)[0] || null;
+  const kalimat = !B.menutup ? 'Angka per pelanggan ' + B.nama + ' TIDAK menutup ke Laporan — jangan dipakai memutuskan; lihat Laporan › Laba › Per pelanggan.'
+    : !(omzet > 0) ? 'Belum ada jualan ' + B.nama + ' yang bisa dipilah per pembeli.'
+      : pdPctTeks(dikenal.pct) + ' omzet barang ' + B.nama + ' pembelinya bernama (' + RP(omzetNama) + ' dari ' + RP(omzet) + ', ' + dikenal.nOrang + ' orang); '
+        + (T.nNota ? T.nNota + ' nota tanpa nama (' + RP(T.omzet) + ') tidak bisa dipilah siapa pembelinya. ' : 'tidak ada nota tanpa nama. ')
+        + (t0 ? 'Pembeli terbesar ' + t0.nama + ': ' + pdPctTeks(t0.pct) + ' omzet.' : 'Belum ada pembeli bernama.')
+        + (segmenLaba ? ' Laba kotor terbesar dari ' + segmenLaba.nama + (segmenLaba.porsiLaba !== null ? ' (' + pdPctTeks(segmenLaba.porsiLaba) + ')' : '') + (segmenMargin && segmenMargin.id !== segmenLaba.id ? '; margin tertinggi ' + segmenMargin.nama + ' (' + pdPctTeks(segmenMargin.margin) + ')' : '') + '.' : '');
+  return Object.assign(dasar, { ada: omzet > 0, lampu, kalimat, dikenal, terbesar: t0, pembeli, segmen, segmenLaba, segmenMargin, menutup: !!B.menutup, berjalan: !!B.berjalan });
 }
 
 // ---------- risiko: kalau omzet turun ----------

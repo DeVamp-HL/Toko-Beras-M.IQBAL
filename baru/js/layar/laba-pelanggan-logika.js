@@ -114,7 +114,8 @@ export const pgHariTeks = (h) => (h === null || h === undefined ? '—' : h < 0.
 
 /**
  * Per pelanggan untuk n bulan yang berakhir di bulan key → { key, n, nama, final, berjalan, rentang, diarsip (semua bulannya ikut arsip), kalimatArsip,
- * tingkat: [kelompok per tingkat … , Eceran], orang: [pelanggan usaha, laba kotor terbesar dulu], eceran, usaha (gabungan semua pelanggan usaha), b2b
+ * tingkat: [kelompok per tingkat … , Eceran], orang: [pelanggan usaha, laba kotor terbesar dulu], pembeli: [SEMUA pembeli bernama, omzet terbesar dulu],
+ * tanpaNama (nota tanpa nama pembeli), omzetBarang (Σ omzet barang semua kelompok, tanpa ongkir), eceran, usaha (gabungan semua pelanggan usaha), b2b
  * { porsiLaba, porsiOmzet }, lewat { rp, n }, L, identitas, menutup, kalimat, tanpaCatatan }.
  */
 export function pelangganBulan(key, n, kini, bayaran) {
@@ -125,7 +126,7 @@ function pgHitung(key, n, iso, bayaran) {
   const R = pgRentang(key, n);
   const dasar = { key, n: R.n, nama: R.nama, final: R.final, berjalan: key === pgKey(iso), rentang: R,
     kalimatArsip: R.diarsip.length ? (R.diarsip.length === R.bulan.length ? 'Semua bulan ' + R.nama : R.diarsip.length + ' bulan pertama') + ' sudah tutup buku — catatan per notanya ikut arsip, tidak bisa dipilah per pelanggan (laba kotornya tetap di kartu Laba).' : '' };
-  if (!R.pakai.length) return Object.assign(dasar, { diarsip: true, tingkat: [], orang: [], eceran: null, usaha: null, b2b: null, lewat: { rp: 0, n: 0 }, L: null, identitas: [], menutup: null, kalimat: dasar.kalimatArsip, tanpaCatatan: true });
+  if (!R.pakai.length) return Object.assign(dasar, { diarsip: true, tingkat: [], orang: [], pembeli: [], tanpaNama: null, eceran: null, usaha: null, b2b: null, lewat: { rp: 0, n: 0 }, L: null, identitas: [], menutup: null, kalimat: dasar.kalimatArsip, tanpaCatatan: true });
   const B = bayaran || ugBayaran(); const L = ugLabaBersih(R.dari, R.sampai, B); const cocok = (t) => !!t && t >= R.dari && t <= R.sampai;
   const A = htAtur(); const per = {}; const tanpaNama = pgKosong(); const baris = {}; const namaAkhir = {};
   const ke = (k) => (k ? (per[k] = per[k] || pgKosong()) : tanpaNama);
@@ -162,6 +163,10 @@ function pgHitung(key, n, iso, bayaran) {
   const eceranG = pgJadi(pgGabung(kunciEceran.map((k) => per[k]).concat([tanpaNama])));
   const eceran = Object.assign(eceranG, { id: PG_ECERAN, nama: 'Pembeli umum', nOrang: kunciEceran.length, nTanpaNama: Object.keys(tanpaNama.nota).length,
     tempo: pgTempoGabung(Object.keys(piutang).filter((k) => !kunciUsaha[k]).map((k) => tempo(k))), lewat: Object.keys(lewatOrang).filter((k) => !kunciUsaha[k]).reduce((a, k) => ({ rp: a.rp + lewatOrang[k].rp, n: a.n + lewatOrang[k].n, hariMaks: Math.max(a.hariMaks, lewatOrang[k].hariMaks) }), { rp: 0, n: 0, hariMaks: 0 }) });
+  // Pondasi paket ketiga (owner 25 Nov 2026): pembeli BERNAMA satu per satu (usaha + eceran bernama) dan kelompok nota tanpa nama — bahan "bergantung pada
+  // satu pembeli" & "berapa omzet yang pembelinya dikenal". Disusun SESUDAH eceran digabung: pgJadi menulis angka turunan ke objek kelompoknya sendiri.
+  const eceranNama = kunciEceran.map((k) => Object.assign(pgJadi(per[k]), { kunci: k, nama: namaAkhir[k] ? namaAkhir[k].nama : k }));
+  const tanpaNamaG = Object.assign(pgJadi(tanpaNama), { nama: 'Tanpa nama' });
   // per tingkat — urutan tingkat di setelan owner, tingkat lama yang sudah dihapus di belakang; Eceran paling bawah
   const urutT = (A.tingkat || []).map((t) => t.id); const idT = []; orang.forEach((o) => { if (idT.indexOf(o.tingkatId) < 0) idT.push(o.tingkatId); });
   idT.sort((a, b) => (urutT.indexOf(a) < 0 ? 99 : urutT.indexOf(a)) - (urutT.indexOf(b) < 0 ? 99 : urutT.indexOf(b)));
@@ -172,6 +177,10 @@ function pgHitung(key, n, iso, bayaran) {
   const totLaba = tingkat.reduce((a, g) => a + (g.labaKotor || 0), 0); const totOmzet = tingkat.reduce((a, g) => a + g.omzet, 0);
   const porsi = (g) => { g.porsiLaba = totLaba > 0 && g.labaKotor !== null ? g.labaKotor / totLaba * 100 : null; g.porsiOmzet = totOmzet > 0 ? g.omzet / totOmzet * 100 : null; };
   tingkat.forEach(porsi); orang.forEach(porsi); if (usaha) porsi(usaha);
+  eceranNama.forEach(porsi); porsi(tanpaNamaG);
+  const pgRingkas = (g, usahaYa) => ({ kunci: g.kunci, nama: g.nama, usaha: usahaYa, tingkatNama: usahaYa ? g.tingkatNama : '', omzet: g.omzet, labaKotor: g.labaKotor, nNota: g.nNota, porsiOmzet: g.porsiOmzet, porsiLaba: g.porsiLaba });
+  const pembeli = orang.filter((o) => !o.tanpaJualan).map((o) => pgRingkas(o, true)).concat(eceranNama.map((o) => pgRingkas(o, false)))
+    .sort((a, b) => b.omzet - a.omzet || a.nama.localeCompare(b.nama));
   // PENJAGA IDENTITAS — tiap jumlah dibandingkan dengan angka Laporan (mesin) periode itu, bukan dengan dirinya sendiri
   const sig = (f) => tingkat.reduce((a, g) => a + (Number(g[f]) || 0), 0);
   const banding = (nm, x, y) => ({ nama: nm, pelanggan: x, laporan: y, beda: x - y, cocok: Math.abs(x - y) < 0.5 });
@@ -182,7 +191,7 @@ function pgHitung(key, n, iso, bayaran) {
   const kalimat = menutup ? 'Σ ' + (idT.length ? idT.length + ' tingkat + ' : '') + 'eceran = laba kotor Laporan ' + RP(L.margin) + ' — menutup persis sampai rupiah.'
     : 'TIDAK MENUTUP ke Laporan: ' + identitas.filter((x) => !x.cocok).map((x) => x.nama + ' per pelanggan ' + teks(x.nama, x.pelanggan) + ' ≠ Laporan ' + teks(x.nama, x.laporan) + ' (beda ' + teks(x.nama, x.beda) + ')').join('; ') + '. Angka per pelanggan jangan dipakai memutuskan — laporkan.';
   const lewat = orang.concat([eceran]).reduce((a, g) => ({ rp: a.rp + g.lewat.rp, n: a.n + g.lewat.n }), { rp: 0, n: 0 });
-  return Object.assign(dasar, { diarsip: false, tingkat, orang, eceran, usaha, b2b: usaha ? { porsiLaba: usaha.porsiLaba, porsiOmzet: usaha.porsiOmzet, laba: usaha.labaKotor, omzet: usaha.omzet, nOrang: usaha.nOrang } : null,
+  return Object.assign(dasar, { diarsip: false, tingkat, orang, pembeli, tanpaNama: { omzet: tanpaNamaG.omzet, labaKotor: tanpaNamaG.labaKotor, nNota: tanpaNamaG.nNota, porsiOmzet: tanpaNamaG.porsiOmzet }, omzetBarang: totOmzet, eceran, usaha, b2b: usaha ? { porsiLaba: usaha.porsiLaba, porsiOmzet: usaha.porsiOmzet, laba: usaha.labaKotor, omzet: usaha.omzet, nOrang: usaha.nOrang } : null,
     lewat, L: { margin: L.margin, omzetTanpaHpp: L.omzetTanpaHpp, jumlahTrx: L.jumlahTrx, omzetHitung: L.omzetHitung }, identitas, menutup, kalimat, tanpaCatatan: !L.jumlahTrx && !retur.length && !orang.length });
 }
 
