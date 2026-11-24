@@ -50,9 +50,9 @@ export function pasangLayarLaporan(akar, opsi) {
     drafI: null, isiI: null, aturD: null, sibuk: false,
     drafPj: null, drafSetor: null, drafLuar: null, yakinPj: null, tahunPj: null,   // Paket B: tahun yang dibuka di Pajak (null = bawaan: Jan–Mar tahun lalu selama ada masa terutang)
     bulanK: null, bukaKb: {}, aturB: null, pilahK: null,
-    bukaPd: {}, aturPd: null, kuartalQ: null, aturTq: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
+    bukaPd: {}, aturPd: null, pcDraf: null, yakinPc: null, kuartalQ: null, aturTq: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq'], []);
+  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq', 'pcDraf'], []);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -141,6 +141,13 @@ export function pasangLayarLaporan(akar, opsi) {
     pdAturBuka: () => set({ aturPd: PD.pdDrafAtur(), kabar: '' }), pdAturTutup: () => set({ aturPd: null }),
     pdAturKetik: (v, el) => { const a = Object.assign({}, st().aturPd || PD.pdDrafAtur()); a[el.dataset.kunci] = v; set({ aturPd: a }); },
     pdAturSimpan: () => tulis(PD.susunAturPondasi(st().aturPd || {}, waktu())),
+    // Pondasi paket keempat (owner 25 Nov 2026): catatan percobaan — owner menulis apa yang dicoba; angkanya diukur pdPercobaan dari nota
+    pcBaru: () => set({ pcDraf: PD.pdDrafPercobaan('', iso()), yakinPc: null, kabar: '' }), pcUbah: ({ id }) => set({ pcDraf: PD.pdDrafPercobaan(id, iso()), yakinPc: null, kabar: '' }), pcBatal: () => set({ pcDraf: null }),
+    pcKetik: (v, el) => { const a = Object.assign({}, st().pcDraf || PD.pdDrafPercobaan('', iso())); const k = el.dataset.kolom; a[k] = k === 'mulai' || k === 'selesai' ? (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '') : String(v).slice(0, PD.pdPercobaanMaks().teks + 50); set({ pcDraf: a }); },
+    pcSemua: () => set({ pcSemua: !st().pcSemua }),
+    pcMerek: ({ m }) => set({ pcDraf: Object.assign({}, st().pcDraf || PD.pdDrafPercobaan('', iso()), { merek: m || '' }) }),
+    pcSimpan: () => tulis(PD.pdSusunPercobaan(st().pcDraf || {}, waktu())),
+    pcHapus: ({ id }) => (st().yakinPc === id ? tulis(PD.pdSusunHapusPercobaan(id, waktu())) : set({ yakinPc: id, kabar: '' })),
     // ---- HARIAN
     hrHari: ({ t }) => set({ hariH: t, kabar: '' }), hrBuku: () => set({ bukaBuku: !st().bukaBuku }),
     hrKeluar: async ({ cara }) => { const t = st().hariH || iso(); const R = LP.rekapHari(t); if (R.diarsip) { set({ kabar: 'Rekap ' + tanggalPendek(t) + ' tidak dicetak — rincian hari itu sudah diarsip (tutup buku ' + t.slice(0, 4) + '); ringkasan bulannya di Laporan › Bulanan', kabarAwas: true }); return; } const I = LP.identitasUsaha(); const D = { kop: LP.kopUntuk(LP.pakaiKop().pakai.harian, I), judul: 'Rekap Harian', sub: tanggalPendek(t) + ' · ' + R.n + ' nota' + (R.tutup ? ' · sudah tutup hari' : ''), baris: barisRekap(R), catatan: 'Kas bersih = masuk − keluar hari itu; bon belum jadi uang.', tolak: I.lengkap ? '' : 'Kop belum lengkap: nama & alamat wajib (Setelan)' };
@@ -655,7 +662,7 @@ export function pasangLayarLaporan(akar, opsi) {
     // paket kedua (owner 24 Nov 2026): kekayaan dari waktu ke waktu · rantai pasok · risiko & prakiraan · organisasi — tiap kartu dibungkus sendiri
     const aman = (nama, f) => { try { return f(); } catch (e) { console.error('pondasi ' + nama, e); return { galat: String((e && e.message) || e) }; } };
     const gagal = (X) => h`<div class="pita-info awas">Gagal dihitung: ${X.galat}</div>`;
-    const KY = aman('kekayaan', () => PD.pdKekayaan(kini())); const RN = aman('rantai', () => PD.pdRantai(kini())); const RS = aman('risiko', () => PD.pdRisiko(kini())); const OR = aman('organisasi', () => PD.pdOrganisasi(kini())); const PLG = aman('pelanggan', () => PD.pdPelanggan(kini()));
+    const KY = aman('kekayaan', () => PD.pdKekayaan(kini())); const RN = aman('rantai', () => PD.pdRantai(kini())); const RS = aman('risiko', () => PD.pdRisiko(kini())); const OR = aman('organisasi', () => PD.pdOrganisasi(kini())); const PLG = aman('pelanggan', () => PD.pdPelanggan(kini())); const TG = aman('tugas', () => PD.pdTugas()); const PC = aman('percobaan', () => PD.pdPercobaan(kini()));
     const lebarPita = (n, maks) => Math.max(0, Math.min(100, Math.abs(n) / maks * 100)).toFixed(1);
     const kekayaan = h`<div class="kartu" data-k="pd-kekayaan" style="gap: 4px;"><div class="label">Kekayaan toko dari waktu ke waktu · akhir bulan · harta − utang</div>${KY.galat ? gagal(KY) : h`<div class="k2">${KY.kalimat}</div>
       ${KY.bulan.map((b) => b.ada ? h`<div class="lp-mr-baris" data-k="pdk-${b.key}"><div class="no">·</div><div class="isi"><div>${b.nama}${b.berjalan ? ' · hari ini' : ''}</div><div class="k2">harta ${RP(b.aset)} · utang ${RP(b.kewajiban)}${b.naik === null || b.naik === undefined ? '' : ' · ' + (b.naik >= 0 ? '▲ ' : '▼ ') + RP(Math.abs(b.naik)) + ' dari titik sebelumnya'}</div>
@@ -674,7 +681,30 @@ export function pasangLayarLaporan(akar, opsi) {
         Skenario: laba kotor turun sebanding, biaya toko dianggap tetap; ambil pribadi & pembayaran bon pemasok tidak ikut. Musim (Lebaran, panen) belum terbaca karena catatan belum setahun.</div>`}</div>`;
     const organisasi = h`<div class="kartu" data-k="pd-organisasi" style="gap: 4px;"><div class="label">Organisasi · siapa mencatat apa · 30 hari</div>${OR.galat ? gagal(OR) : h`<div class="${OR.tanpaNama ? 'pita-info awas' : 'k2'}">${OR.kalimat}</div>
       ${OR.orang.map((o, i) => h`<div class="lp-mr-baris" data-k="pdo-${i}"><div class="no">${i + 1}</div><div class="isi"><div>${o.tampil}</div><div class="k2 ${o.nSelisih ? 'tempo' : ''}">${o.kalimat}</div></div><div class="n"><b>${o.nota}</b></div></div>`)}
-      <div class="k2">Nota = Jual › Riwayat (menurut pencatatnya) · nego = Buku Nego · tutup hari = yang menghitung laci malam itu. Angka di kanan = jumlah nota.</div>`}</div>`;
+      <div class="k2">Nota = Jual › Riwayat (menurut pencatatnya) · nego = Buku Nego · tutup hari = yang menghitung laci malam itu. Angka di kanan = jumlah nota.</div>`}
+      <div class="label" style="padding-top: 6px;">Siapa pegang apa</div>${TG.galat ? gagal(TG) : h`<div class="lp-kb-baris lp-pd-baris" data-aksi="tujuan" data-ke="sistem" data-keluarga="" data-tab="" data-lembar="" data-sistem="pegangan" data-k="pd-tugas" style="cursor: pointer;"><span class="lp-kb-lampu ${TG.lampu}"></span><div><div class="k2 ${TG.lampu === 'amber' ? 'tempo' : ''}">${TG.kalimat}</div><div class="k2">ditulis di Menu › Toko ini › Buku pegangan</div></div><div class="n">${TG.ada ? TG.n : '—'}</div></div>`}</div>`;
+    // paket keempat: catatan percobaan (R&D) — ditulis owner di sini, diukur dari nota
+    const pd4 = s.pcDraf; const MP = PD.pdPercobaanMaks(); const merekPilih = pd4 ? aman('merek', () => PD.pdMerekPilihan(kini())) : [];
+    const merekSemua = Array.isArray(merekPilih) ? merekPilih : []; const merekAtas = s.pcSemua ? merekSemua : merekSemua.slice(0, PD.PD_MEREK_PILIH);
+    const merekTampil = pd4 && pd4.merek && merekAtas.indexOf(pd4.merek) < 0 ? merekAtas.concat([pd4.merek]) : merekAtas;
+    const lembarPc = pd4 ? h`<div class="kartu lp-lembar" data-k="pc-tulis" style="gap: 8px;"><div class="kepala-lembar"><div class="serif" style="font-size: 18px;">${pd4.id ? 'Ubah percobaan' : 'Percobaan baru'}</div><div class="kaca-btn" data-aksi="pcBatal">tutup</div></div>
+        <input class="ketik-nama" type="text" maxlength="${MP.judul}" placeholder="Apa yang dicoba — mis. Harga 5 kg turun Rp500" value="${pd4.judul}" data-ketik="pcKetik" data-kolom="judul">
+        <div class="label">Diukur pada</div><div class="lp-deret" data-k="pc-merek" style="flex-wrap: wrap;"><div class="seg ${pd4.merek ? '' : 'aktif'}" data-aksi="pcMerek" data-m="">Seluruh toko</div>${merekTampil.map((m) => h`<div class="seg ${pd4.merek === m ? 'aktif' : ''}" data-aksi="pcMerek" data-m="${m}">${m}</div>`)}${merekSemua.length > PD.PD_MEREK_PILIH ? h`<div class="seg" data-aksi="pcSemua" data-k="pc-semua">${s.pcSemua ? 'ringkas' : 'semua merek (' + merekSemua.length + ')'}</div>` : ''}</div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;"><label class="k2">mulai<br><input class="ketik-nama" type="date" value="${pd4.mulai}" data-ketik="pcKetik" data-kolom="mulai" style="max-width: 170px; min-height: 36px;"></label><label class="k2">selesai (kosong = masih berjalan)<br><input class="ketik-nama" type="date" value="${pd4.selesai}" data-ketik="pcKetik" data-kolom="selesai" style="max-width: 170px; min-height: 36px;"></label></div>
+        <textarea class="ketik-nama" rows="3" maxlength="${MP.teks}" placeholder="Apa persisnya yang diubah, dan apa yang diharapkan" data-ketik="pcKetik" data-kolom="catatan">${pd4.catatan}</textarea>
+        <textarea class="ketik-nama" rows="3" maxlength="${MP.teks}" placeholder="Kesimpulan — diisi sesudah selesai: diteruskan, dihentikan, atau diubah" data-ketik="pcKetik" data-kolom="kesimpulan">${pd4.kesimpulan}</textarea>
+        <div class="utama" data-aksi="pcSimpan" data-k="pc-simpan">SIMPAN</div></div>` : '';
+    const angkaPc = (nama, a, b, uang) => h`<div data-k="pca-${nama}"><span>${nama}</span><span>${b === null ? '—' : uang ? RP(Math.round(b)) : KG(b)} → <b>${a === null ? '—' : uang ? RP(Math.round(a)) : KG(a)}</b></span></div>`;
+    const percobaan = h`<div class="kartu" data-k="pd-percobaan" style="gap: 4px;"><div class="label">Percobaan · yang dicoba dan hasilnya</div>${PC.galat ? gagal(PC) : h`<div class="k2">${PC.kalimat}</div>
+      ${PC.daftar.map((x) => h`<div class="lp-kb-baris lp-pd-baris" data-aksi="pdBuka" data-p-id="pc-${x.id}" data-k="pc-${x.id}"><span class="lp-kb-lampu ${x.status === 'berjalan' ? 'amber' : x.status === 'selesai' ? 'hijau' : 'tanpa'}" title="${x.statusNama}"></span><div><div>${x.judul} <span class="lp-cip">${x.statusNama}</span></div>
+          <div class="k2">${x.sasaran} · ${tanggalPendek(x.mulai)}${x.selesai ? ' – ' + tanggalPendek(x.selesai) : ' – sekarang'}</div><div class="k2">${x.kalimat}</div></div><div class="n">${x.hari ? x.hari + ' hr' : '—'}</div></div>
+        ${s.bukaPd['pc-' + x.id] ? h`<div class="lp-kb-rinci" data-k="pcr-${x.id}">${x.selama ? h`<div class="k2">Per hari · ${x.bisaBanding ? tanggalPendek(x.pembanding.awal) + ' – ' + tanggalPendek(x.pembanding.akhir) + ' → selama percobaan' : 'selama percobaan saja'}</div>
+            ${angkaPc('omzet', x.selama.omzetHari, x.bisaBanding ? x.sebelum.omzetHari : null, true)}${angkaPc('kg', x.selama.kgHari, x.bisaBanding ? x.sebelum.kgHari : null, false)}${angkaPc('laba kotor', x.selama.labaHari, x.bisaBanding ? x.sebelum.labaHari : null, true)}
+            <div><span>margin</span><span>${x.bisaBanding ? PD.pdPctTeks(x.sebelum.margin) : '—'} → <b>${PD.pdPctTeks(x.selama.margin)}</b></span></div>${x.selama.nTanpaHpp ? h`<div class="k2">${x.selama.nTanpaHpp} baris nota tanpa modal tercatat — omzetnya dihitung, laba kotornya tidak.</div>` : ''}` : ''}
+          ${x.catatan ? h`<div class="k2">Yang diubah: ${x.catatan}</div>` : ''}${x.kesimpulan ? h`<div class="k2"><b>Kesimpulan:</b> ${x.kesimpulan}</div>` : x.status === 'selesai' ? h`<div class="k2 tempo">Sudah selesai, kesimpulannya belum ditulis.</div>` : ''}
+          <div style="display: flex; gap: 6px;"><div class="kaca-btn kecil" data-aksi="pcUbah" data-id="${x.id}">ubah</div><div class="kaca-btn kecil ${s.yakinPc === x.id ? 'aktif awas' : ''}" data-aksi="pcHapus" data-id="${x.id}">${s.yakinPc === x.id ? 'KETUK LAGI · hapus' : 'hapus'}</div></div></div>` : ''}`)}
+      ${pd4 ? '' : h`<div class="kaca-btn aktif" data-aksi="pcBaru" data-k="pc-baru" style="min-height: 40px;">+ Catat percobaan baru</div>`}
+      <div class="k2">Pembanding = rentang sama panjang tepat sebelum mulai. Sumber angka: nota (peta merek Laporan › Laba › Per merek), tanpa susut stok.</div>`}</div>`;
     // paket ketiga (owner 25 Nov 2026): pilar marketing — siapa yang membeli. Angka apa adanya dari pdPelanggan (→ Laporan › Laba › Per pelanggan · Pelanggan)
     const keLaba = mentah(' data-aksi="tujuan" data-ke="laporan" data-keluarga="laba" data-tab="" data-lembar="" data-sistem=""'); const keOrang = mentah(' data-aksi="tujuan" data-ke="pelanggan" data-keluarga="" data-tab="" data-lembar="" data-sistem=""');
     const pelanggan = h`<div class="kartu" data-k="pd-pelanggan" style="gap: 4px;"><div class="label">Pelanggan · siapa yang membeli${PLG.galat ? '' : ' · ' + PLG.rentang}</div>${PLG.galat ? gagal(PLG) : h`<div class="${PLG.menutup ? 'k2' : 'pita-info awas'}" data-k="pdg-kalimat">${PLG.kalimat}</div>
@@ -698,8 +728,8 @@ export function pasangLayarLaporan(akar, opsi) {
         <div class="utama" data-aksi="pdAturSimpan">SIMPAN</div></div>`
       : h`<div class="kaca-btn" data-aksi="pdAturBuka" data-k="aturPd-buka" style="min-height: 38px; font-size: 12px;">Atur ambang lampu · ${PD.PD_ATUR.filter((x) => P.atur[x.id] > 0).length} dari ${PD.PD_ATUR.length} diatur</div>`;
     const kaki = h`<div class="lp-kaki">Layar ini hanya membaca: tiap angka diambil dari layar asalnya (Neraca, Laba, Biaya, Bon pemasok, Uang) dan tidak ada rumus uang baru. Lampu mengukur dan mengingatkan — keputusan menambah cabang, gudang, atau utang tetap di owner. Prakiraan memakai 30 hari terakhir sebagai patokan, jadi bulan yang tidak biasa (Lebaran, panen) akan meleset.</div>`;
-    if (L === 'hp') return h`<section data-k="pondasi">${hero}${daftar}${risiko}${kekayaan}${rantai}${pelanggan}${disiplin}${organisasi}${atur}${luar}${kaki}</section>`;
-    return h`<section data-k="pondasi">${grid(L, [h`${hero}${atur}${kekayaan}${kaki}`, h`${daftar}${risiko}${pelanggan}`, h`${disiplin}${organisasi}${rantai}${luar}`])}</section>`;
+    if (L === 'hp') return h`<section data-k="pondasi">${hero}${daftar}${risiko}${kekayaan}${rantai}${pelanggan}${lembarPc}${percobaan}${disiplin}${organisasi}${atur}${luar}${kaki}</section>`;
+    return h`<section data-k="pondasi">${grid(L, [h`${hero}${atur}${kekayaan}${lembarPc}${percobaan}${kaki}`, h`${daftar}${risiko}${pelanggan}`, h`${disiplin}${organisasi}${rantai}${luar}`])}</section>`;
   }
 
   // ---------- DOKUMEN · DK2 + DK4

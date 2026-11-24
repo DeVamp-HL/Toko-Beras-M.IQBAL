@@ -18,7 +18,7 @@
 // Warna: yang berupa FAKTA hitung (uang tidak cukup untuk bon yang segera jatuh tempo, bon lewat tempo, ambil lebih besar dari laba, rugi) langsung berwarna; yang berupa KEBIJAKAN
 // (berapa persen utang yang masih wajar, berapa hari kas minimal, berapa porsi satu pemasok) hanya berwarna bila owner mengisi ambangnya — tanpa itu
 // angkanya tampil tanpa warna. "Kuning mendekati batas" = dalam PD_DEKAT % dari ambang owner.
-import { neracaPada, lpHariRentang, hariTerakhir, lpPertama, lpKasPadaTanggal, lpKasAkhirBulan, daftarBulan } from './laporan-logika.js';
+import { neracaPada, lpHariRentang, hariTerakhir, lpPertama, lpKasPadaTanggal, lpKasAkhirBulan, daftarBulan, merekRentang } from './laporan-logika.js';
 import { ugAturDok, ugAngka, ugKosong, ugLabaBersih, ugTambahHari, aturKeluar, priveBulan, priveRentang, modalTertanam } from './uang-logika.js';
 import { susunBon as bpSusunBon, daftarPemasok, bpHariBayar, bpLamaKirim, tempoPemasok, bpHariTeks } from './bon-pemasok-logika.js';
 import { rwPerOrang } from './riwayat-logika.js';
@@ -27,7 +27,7 @@ import { semuaOrang } from './pelanggan-logika.js';
 import { ngBuku } from './nego-logika.js';
 import { riwayatTutup } from './tutup-hari-logika.js';
 import { klAtur } from './kpi-laba-logika.js';
-import { ssCekGudang, ssTargetKuartal, ssKuartalNama, SS_TARGET_KUARTAL } from './sistem-logika.js';
+import { ssCekGudang, ssTargetKuartal, ssKuartalNama, SS_TARGET_KUARTAL, ssTugas, ssPercobaan, ssDrafPercobaan, susunPercobaan, susunHapusPercobaan, SS_PERCOBAAN_MAKS } from './sistem-logika.js';
 import { ambilTutupHari, ambilTitikKas, ingatPerVersi } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
@@ -494,3 +494,59 @@ function pdOrganisasiHitung(kini) {
       + (tanpaNama ? '; ' + tanpaNama + ' nota tanpa nama pencatat — tidak bisa ditelusuri siapa yang mencatat' : '') + '.' };
 }
 
+// ---------- organisasi: siapa pegang apa (paket keempat) ----------
+/** Pembagian tugas apa adanya dari ssTugas (Menu › Toko ini › Buku pegangan) + satu kalimat. Urusan tanpa pengganti = kuning (toko berhenti kalau orangnya absen). */
+export function pdTugas() {
+  const T = ssTugas();
+  return Object.assign({}, T, { lampu: !T.ada ? 'tanpa' : T.nTanpaGanti ? 'amber' : 'hijau',
+    kalimat: !T.ada ? 'Belum ada pembagian tugas tertulis — siapa memegang urusan apa masih di kepala.'
+      : T.n + ' urusan tertulis; ' + (T.nTanpaGanti ? T.nTanpaGanti + ' belum punya pengganti: ' + T.tanpaGanti.slice(0, 4).join(' · ') + (T.nTanpaGanti > 4 ? ' …' : '') + '.' : 'semuanya punya pengganti.')
+        + (T.bebanTerbanyak && T.bebanTerbanyak.n > 1 ? ' Paling banyak memegang: ' + T.bebanTerbanyak.nama + ' (' + T.bebanTerbanyak.n + ' urusan).' : '') });
+}
+
+// ---------- percobaan: R&D yang diukur (paket keempat) ----------
+const pdHariAntara = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000) + 1;
+const pdRingkasMerek = (g, hari) => { const ada = !!g && g.nBaris + g.nRetur > 0; const omzet = ada ? g.omzet + g.omzetTanpaHpp : 0;
+  return { ada, hari, nBaris: ada ? g.nBaris : 0, kg: ada ? g.kg : 0, omzet, laba: ada ? g.margin : null, margin: ada ? g.pct : null, nTanpaHpp: ada ? g.nTanpaHpp : 0,
+    omzetHari: hari > 0 ? omzet / hari : 0, kgHari: hari > 0 && ada ? g.kg / hari : 0, labaHari: hari > 0 && ada && g.margin !== null ? g.margin / hari : null }; };
+const pdBedaPct = (baru, lama) => (pdBilangan(baru) && pdBilangan(lama) && lama > 0 ? (baru - lama) / lama * 100 : null);
+// pintu tulis percobaan tetap di sistem-logika (satu dokumen aturanToko/percobaan); Laporan memanggilnya lewat sini supaya layar cukup mengenal pondasi-logika
+// fungsi (bukan const): bundel Dasbor memuat modul ini TANPA sistem-logika — nama dari sana tidak boleh dibaca saat modul dimuat
+export const pdPercobaanMaks = () => SS_PERCOBAAN_MAKS;
+export const pdDrafPercobaan = (id, hariIni) => ssDrafPercobaan(id, hariIni);
+export const pdSusunPercobaan = (d, w) => susunPercobaan(d, w);
+export const pdSusunHapusPercobaan = (id, w) => susunHapusPercobaan(id, w);
+export const PD_MEREK_PILIH = 12;   // pilihan merek yang langsung tampil di lembar percobaan (terlaris dulu); sisanya di balik "semua merek"
+/** Merek yang punya jualan 90 hari terakhir (kg terbanyak dulu) — pilihan di lembar tulis percobaan. */
+export function pdMerekPilihan(kini) { const iso = hariIniIso(kini); const R = merekRentang(ugTambahHari(iso, -(PD_HARI_PANJANG - 1)), iso);
+  return Object.keys(R.merek).filter((n) => R.merek[n].nBaris > 0).sort((a, b) => R.merek[b].kg - R.merek[a].kg || a.localeCompare(b)); }
+/**
+ * Tiap percobaan owner (ssPercobaan) diukur dari nota: SELAMA percobaan (mulai … selesai / hari ini) dibanding rentang SAMA PANJANG tepat sebelumnya, per hari —
+ * omzet, kg, laba kotor, margin. Sumber merekRentang (peta merek & modal nota yang sama dengan Laporan › Laba › Per merek, tanpa susut). Yang belum bisa
+ * dibandingkan DISEBUT: belum mulai, rentang pembanding lebih tua dari catatan pertama, menyentuh tahun yang sudah tutup buku, atau mereknya tanpa jualan.
+ */
+export function pdPercobaan(kini) { return ingatPerVersi(pdKunciIngat('pdPercobaan', kini), () => pdPercobaanHitung(kini)); }
+function pdPercobaanHitung(kini) {
+  const iso = hariIniIso(kini); const P = ssPercobaan(); const mulaiCatat = lpPertama() || '';
+  const daftar = P.daftar.map((x) => {
+    const dasar = Object.assign({}, x, { sasaran: x.merek || 'seluruh toko' });
+    if (x.mulai > iso) return Object.assign(dasar, { status: 'belum', statusNama: 'belum mulai', hari: 0, selama: null, sebelum: null, beda: null, bisaBanding: false, kalimat: 'Mulai ' + tanggalPendek(x.mulai) + ' — belum ada yang diukur.' });
+    const akhir = x.selesai && x.selesai < iso ? x.selesai : iso; const hari = pdHariAntara(x.mulai, akhir); const awalB = ugTambahHari(x.mulai, -hari), akhirB = ugTambahHari(x.mulai, -1);
+    const RS = merekRentang(x.mulai, akhir), RB = merekRentang(awalB, akhirB); const pilih = (R) => (x.merek ? R.merek[x.merek] : R.semua);
+    const selama = pdRingkasMerek(pilih(RS), hari), sebelum = pdRingkasMerek(pilih(RB), hari); const status = x.selesai && x.selesai <= iso ? 'selesai' : 'berjalan';
+    const kenapa = RS.arsip || RB.arsip ? 'rentangnya menyentuh tahun yang sudah tutup buku — notanya ikut arsip'
+      : mulaiCatat && awalB < mulaiCatat ? 'rentang pembanding (' + tanggalPendek(awalB) + ' – ' + tanggalPendek(akhirB) + ') lebih tua dari catatan pertama toko (' + tanggalPendek(mulaiCatat) + ')'
+        : !sebelum.ada ? (x.merek ? x.merek + ' tidak punya jualan' : 'toko tidak punya jualan') + ' pada ' + hari + ' hari sebelum percobaan — tidak ada pembanding' : '';
+    const bisa = !kenapa; const beda = bisa ? { omzet: pdBedaPct(selama.omzetHari, sebelum.omzetHari), kg: pdBedaPct(selama.kgHari, sebelum.kgHari), laba: pdBedaPct(selama.labaHari, sebelum.labaHari),
+      marginPoin: pdBilangan(selama.margin) && pdBilangan(sebelum.margin) ? selama.margin - sebelum.margin : null } : null;
+    const arah = (p) => (p === null ? 'tidak bisa dibandingkan' : (p >= 0 ? 'naik ' : 'turun ') + pdPctTeks(Math.abs(p)));
+    const kalimat = !selama.ada ? (x.merek || 'Toko') + ' belum punya jualan selama percobaan (' + hari + ' hari).' + (kenapa ? '' : ' Sebelumnya ' + RP(Math.round(sebelum.omzetHari)) + ' per hari.')
+      : !bisa ? hari + ' hari percobaan: omzet ' + RP(Math.round(selama.omzetHari)) + ' per hari' + (selama.labaHari === null ? '' : ', laba kotor ' + RP(Math.round(selama.labaHari)) + ' per hari') + '. Belum bisa dibandingkan: ' + kenapa + '.'
+        : 'Per hari, ' + hari + ' hari percobaan dibanding ' + hari + ' hari sebelumnya: omzet ' + arah(beda.omzet) + ', kg ' + arah(beda.kg) + ', laba kotor ' + arah(beda.laba)
+          + (beda.marginPoin === null ? '' : '; margin ' + pdPctTeks(sebelum.margin) + ' → ' + pdPctTeks(selama.margin)) + '.';
+    return Object.assign(dasar, { status, statusNama: status === 'selesai' ? 'selesai' : 'berjalan', hari, akhir, pembanding: { awal: awalB, akhir: akhirB }, selama, sebelum, beda, bisaBanding: bisa, kenapa, kalimat });
+  });
+  const jalan = daftar.filter((d) => d.status === 'berjalan').length;
+  return { iso, ada: P.ada, n: P.n, daftar, kalimat: !P.ada ? 'Belum ada percobaan yang dicatat. Tiap mencoba merek, harga, atau kemasan baru: catat di sini, sistem mengukur hasilnya dari nota.'
+    : P.n + ' percobaan dicatat' + (jalan ? ', ' + jalan + ' masih berjalan' : '') + '. Angkanya dari nota — tanpa susut stok, dan tidak memisahkan sebab lain (musim, harga pemasok).' };
+}

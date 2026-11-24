@@ -305,6 +305,31 @@ function lpGabungMerek(daftar, nama, dihitung, ambang, luar) {
   const g = lpMerekKosong(nama); daftar.forEach((x) => { LP_JUMLAH_MEREK.forEach((f) => { g[f] += x[f] || 0; }); if (x.adaHitung) g.adaHitung = true; });
   return lpJadiMerek(Object.assign(g, { gabungan: daftar.length, nBelum: daftar.filter((x) => x.keadaanMargin === 'belum').length, nKosong: daftar.filter((x) => x.keadaanMargin === 'kosong').length, luar: !!luar }), dihitung, ambang);
 }
+/** Satu baris nota masuk kelompok mereknya — pola merekBulan, dipakai merekRentang: ongkir antar dipisah ke kelompok luar 'ongkir' (HPP 0). */
+function lpNotaKeMerek(p, g, luar) {
+  g.nBaris += 1; g.kgNota += Number(p.totalKg) || 0; const ongkos = Math.round(Number(p.ongkirAntar) || 0); const harga = (p.hargaTotal || 0) - ongkos; const tercatat = hppTercatat(p);
+  if (tercatat) { g.adaHitung = true; g.omzetHitung += harga; g.hppHitung += p.hppTotalSaatJual || 0; } else { g.nTanpaHpp += 1; g.omzetTanpaHpp += harga; }
+  if (!ongkos) return; const o = luar.ongkir; o.nOngkir = o.nOngkir + 1;
+  if (tercatat) { o.adaHitung = true; o.omzetHitung += ongkos; } else { o.nTanpaHpp += 1; o.omzetTanpaHpp += ongkos; }
+}
+/**
+ * Per merek untuk RENTANG TANGGAL BEBAS (Pondasi paket keempat, owner 25 Nov 2026 — bahan "catatan percobaan"): nota & retur rentang itu, dipilah dengan peta
+ * merek yang sama dengan merekBulan (lpMerekBaris / lpMerekNama), modal = hppTotalSaatJual yang tersimpan di nota, retur memotong omzet & modal retur utuh
+ * dibatalkan. TANPA susut stok (susut dicatat per bulan, bukan per hari) dan ongkir antar dipisah seperti merekBulan. → { awal, akhir, arsip (rentang menyentuh
+ * tahun yang sudah tutup buku — notanya tidak dimuat), merek: { nama: kelompok }, semua (gabungan semua kelompok termasuk di luar merek) }.
+ */
+export function merekRentang(awal, akhir) { return ingatPerVersi('lpMerekRentang|' + String(awal) + '|' + String(akhir), () => merekRentangHitung(String(awal), String(akhir))); }
+function merekRentangHitung(awal, akhir) {
+  const cocok = (t) => !!t && t >= awal && t <= akhir; const P = lpPetaMerek(); const per = {}; const luar = {}; LP_LUAR_MEREK.forEach((x) => { luar[x.id] = Object.assign(lpMerekKosong(x.nama), { id: x.id, luar: true }); });
+  const ke = (x) => (x.merek ? (per[x.merek] = per[x.merek] || lpMerekKosong(x.merek)) : luar[x.luar]);
+  ambilPenjualan().forEach((p) => { if (cocok(p.tanggal)) lpNotaKeMerek(p, ke(lpMerekBaris(p, P)), luar); });
+  const retur = ambilRetur().filter((r) => cocok(r.tanggal)); const adaUtuh = retur.some((r) => r.kondisi === 'utuh'); const stokKrg = adaUtuh ? ingatStokKarung() : null; const stokKem = adaUtuh ? ingatStokKemasan() : null;
+  retur.forEach((r) => { const g = ke(lpMerekNama(r.jenisAsal === 'karung' ? r.merkSumber : (r.namaProduk || r.merkSumber), P)); g.nRetur += 1; g.returUang += uangKembaliRetur(r); g.kgKembali += Number(r.totalKg) || 0;
+    if (r.kondisi === 'utuh') g.returHpp += hppTaksiranRetur(r, stokKrg, stokKem); });
+  const merek = {}; Object.keys(per).forEach((n) => { merek[n] = lpJadiMerek(per[n], false, 0); });
+  const semua = lpGabungMerek(Object.keys(per).map((n) => merek[n]).concat(Object.keys(luar).map((k) => lpJadiMerek(luar[k], false, 0))), 'Seluruh toko', false, 0, false);
+  return { awal, akhir, arsip: lpTutup(awal.slice(0, 7)) || lpTutup(akhir.slice(0, 7)), merek, semua };
+}
 /**
  * Per merek satu bulan (key 'YYYY-MM'). → { key, nama, final, berjalan, atur, dihitung (susut sudah dicatat bulan itu), merek: [kelompok beras], luar (gabungan
  * di luar merek + rincian), L { margin, susutStok, jumlahTrx, omzetTanpaHpp } = mesin laba Laporan, identitas, menutup, kalimat, susut { … } }.

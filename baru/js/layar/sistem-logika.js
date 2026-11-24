@@ -554,7 +554,10 @@ export function ssPegangan() {
 export function ssPeganganUntuk(peran) { const B = ssPegangan().bab; return peran === 'owner' ? B : B.filter((b) => b.untuk === 'semua' || b.untuk === peran); }
 /** Draf lembar tulis: bab yang ada (id) atau bab baru kosong. */
 export function ssDrafBab(id) { const b = id ? ssPegangan().bab.find((x) => x.id === id) : null; return b ? { id: b.id, judul: b.judul, isi: b.isi, untuk: b.untuk } : { id: '', judul: '', isi: '', untuk: 'semua' }; }
-const ssSimpanPegangan = (bab, w, kabar) => ({ dokumen: [{ koleksi: 'aturanToko', data: { id: SS_PEGANGAN_ID, bab: bab.map((b) => ({ id: b.id, judul: b.judul, isi: b.isi, untuk: b.untuk })), tanggal: w.tanggal, jam: w.jam } }],
+// SATU dokumen memuat bab DAN pembagian tugas (paket keempat, 25 Nov 2026): tiap simpan membawa keduanya utuh — menyimpan bab tidak boleh menghapus tugas, dan sebaliknya.
+const ssDokPegangan = (bab, tugas, w) => ({ koleksi: 'aturanToko', data: { id: SS_PEGANGAN_ID, bab: bab.map((b) => ({ id: b.id, judul: b.judul, isi: b.isi, untuk: b.untuk })),
+  tugas: tugas.map((t) => ({ id: t.id, urusan: t.urusan, pegang: t.pegang, ganti: t.ganti })), tanggal: w.tanggal, jam: w.jam } });
+const ssSimpanPegangan = (bab, w, kabar) => ({ dokumen: [ssDokPegangan(bab, ssTugas().baris, w)],
   patch: { bpgDraf: null, yakinBpg: null, kabar, kabarAwas: false } });
 /** Tambah bab baru (id kosong) atau ubah bab yang ada. Judul 3–80 huruf & tidak kembar, isi 5–2.000 huruf, untuk siapa wajib dipilih, paling banyak 40 bab. */
 export function susunBabPegangan(d, w) {
@@ -583,5 +586,86 @@ export function susunGeserBab(id, arah, w) {
   if (i < 0) return { tolak: 'Bab itu sudah tidak ada' }; if (j < 0 || j >= bab.length) return { tolak: 'Bab itu sudah di ' + (j < 0 ? 'paling atas' : 'paling bawah') };
   const t = bab[i]; bab[i] = bab[j]; bab[j] = t;
   return ssSimpanPegangan(bab, w, 'Urutan bab diubah — "' + t.judul + '" sekarang nomor ' + (j + 1));
+}
+
+// ==================== PEMBAGIAN TUGAS (Pondasi paket keempat, owner 25 Nov 2026 — pilar "organisasi": tim & hirarki) ====================
+// Siapa memegang urusan apa dan siapa penggantinya. Owner menulis; Penjaga laci & karyawan membaca di tablet. Disimpan di dokumen buku pegangan yang SAMA
+// (kolom `tugas`) — dokumen itu sudah terbaca staf (rules v20), jadi tanpa rules baru. Bukan uang, bukan stok, bukan hak akses (akses tetap di Peran).
+export const SS_TUGAS_MAKS = { baris: 30, urusan: 60, nama: 40 };
+/** Pembagian tugas tersimpan: { ada, n, baris: [{ id, urusan, pegang, ganti }], nTanpaGanti, tanpaGanti: [urusan], bebanTerbanyak { nama, n } | null, teks }. */
+export function ssTugas() {
+  const d = ssPeganganDok();
+  const baris = (d && Array.isArray(d.tugas) ? d.tugas : []).filter((t) => t && String(t.urusan || '').trim() && String(t.pegang || '').trim())
+    .map((t) => ({ id: String(t.id || ''), urusan: String(t.urusan).trim(), pegang: String(t.pegang).trim(), ganti: String(t.ganti || '').trim() }));
+  const tanpa = baris.filter((t) => !t.ganti); const per = {}; baris.forEach((t) => { const k = t.pegang.toLowerCase(); per[k] = per[k] || { nama: t.pegang, n: 0 }; per[k].n += 1; });
+  const beban = Object.keys(per).map((k) => per[k]).sort((a, b) => b.n - a.n || a.nama.localeCompare(b.nama))[0] || null;
+  return { ada: baris.length > 0, n: baris.length, baris, nTanpaGanti: tanpa.length, tanpaGanti: tanpa.map((t) => t.urusan), bebanTerbanyak: beban,
+    teks: baris.length ? baris.length + ' urusan' + (tanpa.length ? ' · ' + tanpa.length + ' belum punya pengganti' : ' · semua punya pengganti') : 'belum ditulis' };
+}
+export function ssDrafTugas(id) { const t = id ? ssTugas().baris.find((x) => x.id === id) : null; return t ? { id: t.id, urusan: t.urusan, pegang: t.pegang, ganti: t.ganti } : { id: '', urusan: '', pegang: '', ganti: '' }; }
+const ssSimpanTugas = (baris, w, kabar) => ({ dokumen: [ssDokPegangan(ssPegangan().bab, baris, w)], patch: { tgsDraf: null, yakinTgs: null, kabar, kabarAwas: false } });
+/** Tambah / ubah satu urusan. Urusan 3–60 huruf & tidak kembar, pemegang wajib (2–40 huruf), pengganti boleh kosong (DISEBUT belum ada) tapi tidak boleh orang yang sama. */
+export function susunTugas(d, w) {
+  const urusan = String((d && d.urusan) || '').trim(), pegang = String((d && d.pegang) || '').trim(), gantiT = String((d && d.ganti) || '').trim(); const M = SS_TUGAS_MAKS; const baris = ssTugas().baris.slice();
+  if (urusan.length < 3) return { tolak: 'Urusan paling sedikit 3 huruf — mis. Terima barang dari supir' };
+  if (urusan.length > M.urusan) return { tolak: 'Urusan paling panjang ' + M.urusan + ' huruf' };
+  if (pegang.length < 2) return { tolak: 'Tulis siapa yang memegang urusan ini' };
+  if (pegang.length > M.nama || gantiT.length > M.nama) return { tolak: 'Nama paling panjang ' + M.nama + ' huruf' };
+  if (gantiT && gantiT.toLowerCase() === pegang.toLowerCase()) return { tolak: 'Pengganti harus orang lain — kosongkan kalau memang belum ada' };
+  const id = String((d && d.id) || ''); const i = id ? baris.findIndex((t) => t.id === id) : -1;
+  if (id && i < 0) return { tolak: 'Urusan yang diubah sudah tidak ada — tutup lalu buka lagi' };
+  if (i < 0 && baris.length >= M.baris) return { tolak: 'Paling banyak ' + M.baris + ' urusan — gabungkan yang mirip' };
+  if (baris.some((t, k) => k !== i && t.urusan.toLowerCase() === urusan.toLowerCase())) return { tolak: 'Urusan "' + urusan + '" sudah ada' };
+  if (i >= 0 && baris[i].urusan === urusan && baris[i].pegang === pegang && baris[i].ganti === gantiT) return { tolak: 'Tidak ada yang diubah' };
+  const t = { id: i >= 0 ? id : 'tgs-' + w.idUnik(), urusan, pegang, ganti: gantiT }; if (i >= 0) baris[i] = t; else baris.push(t);
+  return ssSimpanTugas(baris, w, 'Urusan "' + urusan + '" ' + (i >= 0 ? 'diubah' : 'ditambahkan') + ' — dipegang ' + pegang + (gantiT ? ', pengganti ' + gantiT : ', BELUM ada pengganti'));
+}
+export function susunHapusTugas(id, w) {
+  const baris = ssTugas().baris; const t = baris.find((x) => x.id === String(id)); if (!t) return { tolak: 'Urusan itu sudah tidak ada' };
+  return ssSimpanTugas(baris.filter((x) => x.id !== t.id), w, 'Urusan "' + t.urusan + '" dihapus');
+}
+
+// ==================== CATATAN PERCOBAAN (Pondasi paket keempat, owner 25 Nov 2026 — "R&D" di catatan Pondasi bisnis) ====================
+// Owner menulis APA yang dicoba, untuk merek mana (kosong = seluruh toko), mulai & selesai. Angkanya TIDAK disimpan di sini: Laporan › Pondasi mengukurnya
+// tiap dibuka dari nota (pdPercobaan → merekRentang). Satu dokumen aturanToko/percobaan, owner saja (staf tidak membacanya — tidak masuk daftar baca rules).
+export const SS_PERCOBAAN_ID = 'percobaan';
+export const SS_PERCOBAAN_MAKS = { n: 30, judul: 80, teks: 600, merek: 60 };
+// tanggal yang tidak ada (31 Feb) → Date tidak sah: toISOString MELEMPAR, jadi diperiksa dulu
+const ssIsoSah = (t) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t || ''))) return false; const d = new Date(t + 'T00:00:00Z'); return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === t; };
+/** Percobaan tersimpan, yang mulai paling baru dulu: { ada, n, daftar: [{ id, judul, merek, mulai, selesai, catatan, kesimpulan }] }. */
+export function ssPercobaan() {
+  const d = cacheMentah('aturan').find((x) => x && String(x.id) === SS_PERCOBAAN_ID) || null;
+  const daftar = (d && Array.isArray(d.daftar) ? d.daftar : []).filter((x) => x && String(x.judul || '').trim() && ssIsoSah(x.mulai))
+    .map((x) => ({ id: String(x.id || ''), judul: String(x.judul).trim(), merek: String(x.merek || '').trim(), mulai: String(x.mulai), selesai: ssIsoSah(x.selesai) ? String(x.selesai) : '', catatan: String(x.catatan || ''), kesimpulan: String(x.kesimpulan || '') }))
+    .sort((a, b) => b.mulai.localeCompare(a.mulai) || a.judul.localeCompare(b.judul));
+  return { ada: daftar.length > 0, n: daftar.length, daftar };
+}
+export function ssDrafPercobaan(id, hariIni) { const x = id ? ssPercobaan().daftar.find((y) => y.id === id) : null;
+  return x ? { id: x.id, judul: x.judul, merek: x.merek, mulai: x.mulai, selesai: x.selesai, catatan: x.catatan, kesimpulan: x.kesimpulan } : { id: '', judul: '', merek: '', mulai: String(hariIni || ''), selesai: '', catatan: '', kesimpulan: '' }; }
+const ssSimpanPercobaan = (daftar, w, kabar) => ({ dokumen: [{ koleksi: 'aturanToko', data: { id: SS_PERCOBAAN_ID, daftar: daftar.map((x) => ({ id: x.id, judul: x.judul, merek: x.merek, mulai: x.mulai, selesai: x.selesai, catatan: x.catatan, kesimpulan: x.kesimpulan })), tanggal: w.tanggal, jam: w.jam } }],
+  patch: { pcDraf: null, yakinPc: null, kabar, kabarAwas: false } });
+/** Tambah / ubah satu percobaan. Judul 3–80 huruf & tidak kembar; mulai wajib (tanggal sah); selesai kosong = masih berjalan, kalau diisi tidak boleh sebelum mulai. */
+export function susunPercobaan(d, w) {
+  const M = SS_PERCOBAAN_MAKS; const judul = String((d && d.judul) || '').trim(), merek = String((d && d.merek) || '').trim(), mulai = String((d && d.mulai) || '').trim(), selesai = String((d && d.selesai) || '').trim();
+  const catatan = String((d && d.catatan) || '').replace(/\r\n/g, '\n').trim(), kesimpulan = String((d && d.kesimpulan) || '').replace(/\r\n/g, '\n').trim(); const daftar = ssPercobaan().daftar.slice();
+  if (judul.length < 3) return { tolak: 'Tulis apa yang dicoba — paling sedikit 3 huruf' };
+  if (judul.length > M.judul) return { tolak: 'Judul paling panjang ' + M.judul + ' huruf' };
+  if (merek.length > M.merek) return { tolak: 'Nama merek terlalu panjang' };
+  if (!ssIsoSah(mulai)) return { tolak: 'Tanggal mulai belum diisi' };
+  if (selesai && !ssIsoSah(selesai)) return { tolak: 'Tanggal selesai tidak terbaca — kosongkan kalau masih berjalan' };
+  if (selesai && selesai < mulai) return { tolak: 'Tanggal selesai tidak boleh sebelum tanggal mulai' };
+  if (catatan.length > M.teks || kesimpulan.length > M.teks) return { tolak: 'Catatan & kesimpulan paling panjang ' + M.teks + ' huruf' };
+  const id = String((d && d.id) || ''); const i = id ? daftar.findIndex((x) => x.id === id) : -1;
+  if (id && i < 0) return { tolak: 'Percobaan yang diubah sudah tidak ada — tutup lalu buka lagi' };
+  if (i < 0 && daftar.length >= M.n) return { tolak: 'Paling banyak ' + M.n + ' percobaan — hapus yang sudah tidak dipakai' };
+  if (daftar.some((x, k) => k !== i && x.judul.toLowerCase() === judul.toLowerCase())) return { tolak: 'Sudah ada percobaan berjudul "' + judul + '"' };
+  const baru = { id: i >= 0 ? id : 'pc-' + w.idUnik(), judul, merek, mulai, selesai, catatan, kesimpulan };
+  if (i >= 0 && ['judul', 'merek', 'mulai', 'selesai', 'catatan', 'kesimpulan'].every((k) => daftar[i][k] === baru[k])) return { tolak: 'Tidak ada yang diubah' };
+  if (i >= 0) daftar[i] = baru; else daftar.push(baru);
+  return ssSimpanPercobaan(daftar, w, 'Percobaan "' + judul + '" ' + (i >= 0 ? 'diubah' : 'dicatat') + ' — ' + (merek || 'seluruh toko') + ', mulai ' + tanggalPendek(mulai) + (selesai ? ' sampai ' + tanggalPendek(selesai) : ', masih berjalan'));
+}
+export function susunHapusPercobaan(id, w) {
+  const daftar = ssPercobaan().daftar; const x = daftar.find((y) => y.id === String(id)); if (!x) return { tolak: 'Percobaan itu sudah tidak ada' };
+  return ssSimpanPercobaan(daftar.filter((y) => y.id !== x.id), w, 'Percobaan "' + x.judul + '" dihapus (nota & angkanya tidak tersentuh)');
 }
 
