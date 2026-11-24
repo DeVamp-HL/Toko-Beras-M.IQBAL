@@ -87,6 +87,10 @@ TP_PEMAKAI = ('uang-logika.js', 'sistem-logika.js', 'tutup-hari-logika.js')
 KL_MODUL = 'baru/js/layar/kpi-laba-logika.js'
 KL_PEMAKAI = ('dasbor-logika.js',)
 RW_MODUL = 'baru/js/layar/riwayat-logika.js'
+# Pondasi (owner 24 Nov 2026): Dasbor memakai pondasi-logika (delapan lampu) — ikut OTOMATIS sesudah kpi-laba-logika (ia membaca klAtur: kas minimum).
+# pdDisiplin (cek gudang, tutup hari) hanya dipanggil Laporan; bundel Dasbor tidak perlu sistem-logika.
+PD_MODUL = 'baru/js/layar/pondasi-logika.js'
+PD_PEMAKAI = ('dasbor-logika.js',)
 
 
 def lengkapi(daftar):
@@ -94,6 +98,8 @@ def lengkapi(daftar):
     if any(os.path.basename(x) in KL_PEMAKAI for x in d) and not any(x.endswith('kpi-laba-logika.js') for x in d):
         if not any(x.endswith('riwayat-logika.js') for x in d): d.append(RW_MODUL)
         d.append(KL_MODUL)
+    if any(os.path.basename(x) in PD_PEMAKAI for x in d) and not any(x.endswith('pondasi-logika.js') for x in d):
+        d.append(PD_MODUL)
     if any(os.path.basename(x) in TP_PEMAKAI for x in d) and not any(x.endswith('titipan-logika.js') for x in d):
         d.append(TP_MODUL)
     if any(os.path.basename(x) in GE_PEMAKAI for x in d) and not any(x.endswith('grosir-ecer-logika.js') for x in d):

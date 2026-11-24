@@ -34,6 +34,8 @@ import { rekapTimbangMutu } from './stok-catat-logika.js';
 // paket KPI laba (owner 24 Nov 2026): tiga margin + pembanding BPS, target harian, kas minimum, siklus uang, nota terbesar, kedatangan lewat batas HPP,
 // lama pemenuhan pesanan, bon dalam kg beras — APA ADANYA dari kpi-laba-logika.js (yang memanggil fungsi sumber layar lain)
 import { klMarginBulan, klTargetHari, klKasMinimum, klSiklusUang, klNotaTerbesar, klHppLewatBulan, klLamaPesanan, klBonKg, klModalPerKg } from './kpi-laba-logika.js';
+// Pondasi (owner 24 Nov 2026): delapan lampu pondasi toko — APA ADANYA dari pondasi-logika.js (yang memanggil fungsi sumber layar lain)
+import { pdPondasi } from './pondasi-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
@@ -178,10 +180,13 @@ export function dbB2b(kini) {
     lewat: G.lewat, rataUsaha: G.usaha ? pgHariTeks(G.usaha.tempo.rata) : '—' };
 }
 
+/** PONDASI TOKO (owner 24 Nov 2026): delapan lampu apa adanya dari pdPondasi (Laporan › Pondasi — satu sumber). Tidak ada rumus uang di sini. */
+export function dbPondasi(kini) { return Object.assign({ periode: 'Hari ini', sumber: 'Laporan › Pondasi', tujuan: { ke: 'laporan', keluarga: 'pondasi' } }, pdPondasi(kini)); }
+
 /** Seluruh dasbor untuk satu saat. Tiap kelompok dibungkus: galat di satu kelompok tampil sebagai kalimat di kelompok itu, kelompok lain tetap jalan.
  *  lama (owner 3 Okt, ganti rentang patah-patah): hasil dasbor saat & data yang SAMA — hanya tren yang memakai rentang, jadi hari ini · bulan ini · stok ·
  *  tagihan diambil dari situ dan cuma tren yang dihitung (dulu seluruh dasbor dihitung ulang tiap ganti Hari / Minggu / Bulan). */
-const DB_KELOMPOK = { hari: ['hari ini', dbHariIni], bulan: ['bulan ini', dbBulanIni], stok: ['stok', dbStok], tagihan: ['tagihan', dbTagihan], mutu: ['mutu usaha', dbMutu], b2b: ['pelanggan usaha', dbB2b], kpi: ['margin & target', dbKpi] };
+const DB_KELOMPOK = { hari: ['hari ini', dbHariIni], bulan: ['bulan ini', dbBulanIni], stok: ['stok', dbStok], tagihan: ['tagihan', dbTagihan], mutu: ['mutu usaha', dbMutu], b2b: ['pelanggan usaha', dbB2b], kpi: ['margin & target', dbKpi], pondasi: ['pondasi toko', dbPondasi] };
 /** Satu kelompok dasbor ('hari' · 'bulan' · 'stok' · 'tagihan' · 'mutu' · 'b2b' · 'tren'), dibungkus aman (galat = kalimat di kelompok itu) dan — kalau
  *  ingat(kunci, f) diberikan — diingat dengan kunci kelompoknya. Dipakai susunDasbor dan pemanasan di latar (kunci SAMA → hasil yang dipanaskan terpakai). */
 export function dbKelompok(kel, kini, rentang, ingat) {
@@ -193,8 +198,8 @@ export function dbKelompok(kel, kini, rentang, ingat) {
 // pemanasan di latar bisa menghitungnya SATU PER SATU dan Dasbor yang dibuka sesudahnya tinggal menggambar. Tanpa ingat = hitung langsung seperti dulu.
 export function susunDasbor(kini, rentang, lama, ingat) {
   const k = (nama) => dbKelompok(nama, kini, rentang, ingat);
-  if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, kpi: lama.kpi, tren: k('tren') };
-  return { hari: k('hari'), bulan: k('bulan'), stok: k('stok'), tagihan: k('tagihan'), mutu: k('mutu'), b2b: k('b2b'), kpi: k('kpi'), tren: k('tren') };
+  if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, kpi: lama.kpi, pondasi: lama.pondasi, tren: k('tren') };
+  return { hari: k('hari'), bulan: k('bulan'), stok: k('stok'), tagihan: k('tagihan'), mutu: k('mutu'), b2b: k('b2b'), kpi: k('kpi'), pondasi: k('pondasi'), tren: k('tren') };
 }
 /** Urutan pemanasan dasbor di latar: yang paling atas di layar dulu. */
-export const DB_PANAS = ['hari', 'kpi', 'bulan', 'stok', 'tagihan', 'tren', 'mutu', 'b2b'];
+export const DB_PANAS = ['hari', 'kpi', 'bulan', 'stok', 'tagihan', 'tren', 'mutu', 'b2b', 'pondasi'];

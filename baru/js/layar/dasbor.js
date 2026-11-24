@@ -236,6 +236,18 @@ export function pasangDasbor(akar, opsi) {
     return '<div class="kartu db-kartu db-b2b" data-k="db-b2b">' + kepala('Pelanggan usaha', Q.periode, 'sumber:b2b', Q.sumber, Q.tujuan) + out.join('') + '</div>';
   }
 
+  // PONDASI TOKO (owner 24 Nov 2026): delapan lampu — utang dibanding harta, bon 30 hari, kas cukup berapa hari, hasil atas harta, ambil pribadi, laju tumbuh,
+  // ketergantungan pemasok, prakiraan 30 hari. Angka apa adanya dari DL.dbPondasi (= pondasi-logika → fungsi sumber layar lain); ketuk baris = rincian & sumbernya.
+  function kartuPondasi(Q) {
+    if (!Q) return '';
+    if (Q.galat) return '<div class="kartu db-kartu db-pondasi">' + galat(Q) + '</div>';
+    const warna = { merah: 'merah', amber: 'kuning', hijau: 'hijau', tanpa: '' };
+    const out = Q.lampu.map((l) => '<div class="db-baris db-ketuk db-pd-baris' + (l.lampu === 'merah' || l.keadaan === 'galat' ? ' awas-teks' : '') + '"'
+      + daftar('pondasi:' + l.id, { judul: l.nama, baris: l.rinci.concat([['Keadaan', l.kalimat]]), tujuan: l.tujuan, ke: l.sumber, catatan: l.ambang ? 'Warna: ' + l.ambang : '' })
+      + '><span class="db-nama"><i class="db-lampu ' + warna[l.lampu] + '"></i>' + esc(l.nama) + '</span><span class="db-nilai">' + esc(l.nilai) + '</span></div>');
+    return '<div class="kartu db-kartu db-pondasi" data-k="db-pondasi">' + kepala('Pondasi toko', Q.periode, 'sumber:pondasi', Q.sumber, Q.tujuan) + out.join('') + '<div class="ket">' + esc(Q.kalimat) + '</div></div>';
+  }
+
   // PAKET KPI LABA (owner 24 Nov 2026): target harian (lampu laju jam), kas minimum, tiga margin + mark-up + BPS, siklus uang, 3 nota terbesar hari ini,
   // kedatangan lewat batas HPP, lama pemenuhan pesanan. Angka apa adanya dari DL.dbKpi (= kpi-laba-logika → fungsi sumber layar lain).
   function kartuKpi(Q) {
@@ -300,7 +312,7 @@ export function pasangDasbor(akar, opsi) {
     D = hasil; const tadi = pilih; reg = {};
     // owner 3 Okt: dua lajur DISUSUN DI SINI, bukan CSS columns — Safari/WebKit tidak menggambar kartu beranimasi di dalam columns (kartu Bulan ini kosong
     // sampai ada yang diketuk, sisa kartu nyangkut di atas Hari ini). Lajur kiri Bulan ini · pemicu · stok, kanan wadah · piutang (= pembagian columns dulu).
-    akar.innerHTML = kartuHari(D.hari) + kartuKpi(D.kpi) + kartuTren(D.tren) + '<div class="db-lajur">' + kartuBulan(D.bulan) + kartuPemicu(D.bulan) + kartuStok(D.stok) + '</div>'
+    akar.innerHTML = kartuHari(D.hari) + kartuKpi(D.kpi) + kartuTren(D.tren) + '<div class="db-lajur">' + kartuBulan(D.bulan) + kartuPemicu(D.bulan) + kartuStok(D.stok) + kartuPondasi(D.pondasi) + '</div>'
       + '<div class="db-lajur">' + kartuWadah(D.stok) + kartuTagihan(D.tagihan) + kartuMutu(D.mutu) + kartuB2b(D.b2b) + '</div>' + '<div class="db-tip kartu" hidden></div>';
     pilih = null; if (tadi && reg[tadi]) { const el = akar.querySelector('[data-db="' + (window.CSS && CSS.escape ? CSS.escape(tadi) : tadi) + '"]'); if (el) tampilTip(tadi, el); }
     if (masuk) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1400); }

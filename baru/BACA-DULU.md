@@ -1126,8 +1126,9 @@ baru/
   js/layar/uang.js          gambar & ketukan layar Uang (enam keluarga, tiga lebar)
   js/layar/laporan-logika.js, pajak-logika.js, kendali-biaya-logika.js (38: jenis · anggaran · lampu · pemicu · impas · pareto)   logika Laporan tanpa DOM
   js/layar/kpi-laba-logika.js PAKET KPI LABA (owner 24 Nov 2026): tiga margin + BPS, saran harga & mark-up, GMROI, siklus uang, target harian, kas minimum, bon dalam kg — memanggil fungsi sumber layar lain
+  js/layar/pondasi-logika.js PONDASI (owner 24 Nov 2026): delapan lampu pondasi toko + disiplin dalam — hanya membaca fungsi sumber layar lain; tulisannya cuma setelan ambang aturanToko/pondasi
   js/layar/potret-logika.js POTRET tahun yang ditutup buku (Paket B siap 2027) — disusun saat Kunci tahun, dibaca lewat toko.js potretBulan/potretHari
-  js/layar/laporan.js       gambar & ketukan layar Laporan (Laba · Biaya · Harian · Mingguan · Bulanan · Pajak · Tahunan · Neraca · Dokumen · Setelan)
+  js/layar/laporan.js       gambar & ketukan layar Laporan (Laba · Biaya · Harian · Mingguan · Bulanan · Pajak · Tahunan · Neraca · Pondasi · Dokumen · Setelan)
 ```
 Tidak pernah dipindah, PENSIUN bersama sistem lama (3 Okt 2026): `tulisSaldoPembuka` (ritual Tutup Buku lama) & `thPagar` (pagar Tutup Hari lama) —
 `/baru/` punya padanannya sendiri (`tutup-buku-logika.js`, `tutup-hari-logika.js`); baris acuannya di `beku.sha256` dibiarkan dan dilewati `--sidik`.
@@ -3571,3 +3572,38 @@ laba usaha tidak memasukkan hapus buku & lebih/kurang kas (rumus brief), keduany
 (metodologi & kuesioner VPDP16 juga tidak) — layar menyebutnya konteks dan menaruh margin (÷ harga jual) DAN mark-up (÷ modal) toko di sampingnya.
 
 Alat uji: `uji_kpi_laba.py` (67 kotak pasir + 19 statis, kontrol 37/37), `periksa_rules.py` (v19), `uji_menu_baru.py` (laci Toko ini 7 baris).
+
+## Pondasi — delapan lampu "kuat tidak untuk naik tingkat?" (owner 24 Nov 2026, cabang `fitur/pondasi`; tanpa rules baru)
+Asalnya catatan owner "Pondasi bisnis": usaha runtuh saat naik tingkat karena yang dibesarkan cuma omzet, sedangkan keuangan, organisasi & rantai pasok tidak
+ikut dikuatkan. Sebagian besar bahannya sudah ada (Neraca, Laba, Biaya, Bon pemasok, Uang, KPI laba) tetapi tersebar; yang ditambah = SATU tempat yang
+menjawab pertanyaan itu. ATURAN (sama dengan paket KPI laba): `baru/js/layar/pondasi-logika.js` (awalan `pd`, tanpa DOM) HANYA MEMBACA — tiap angka memanggil
+fungsi sumber layar lain dan menyebut sumbernya; mesin uang tidak disentuh, tidak ada koleksi baru, tidak ada rules baru. Satu-satunya tulisan = ambang owner
+di `aturanToko/pondasi` (owner sudah boleh menulis dokumen `aturanToko` mana pun).
+
+| Lampu | Sumber angka | Warna |
+|---|---|---|
+| 1 utang dibanding harta | `neracaPada`: kewajiban ÷ aset | ambang owner `utangMaks` (mati = tanpa warna) |
+| 2 bon pemasok yang segera jatuh tempo | `susunBon` (Bon pemasok): `lewat` + `dekat` (≤ `dekatHari`, setelan owner di Bon pemasok) vs uang toko; jendela 30 hari hanya disebut — bon yang masih jauh dibayar dari penjualan (lampu 8), kalau ikut dibandingkan dengan uang hari ini toko yang berjalan di atas tempo pemasok merah selamanya (terlihat di asap data toko 24 Nov) | FAKTA: uang kurang / ada yang lewat tempo = merah; ada bon tanpa tempo = kuning |
+| 3 uang toko cukup berapa hari | uang toko (`neracaPada.N.kas`) ÷ biaya toko per hari (`ugLabaBersih` 30 hari ÷ 30) | ambang owner `kasHariMin` |
+| 4 hasil atas harta & modal | laba bersih 30 hari (`ugLabaBersih`) ÷ aset, ÷ `modalTertanam` (modal 0 → DISEBUT belum bisa) | rugi = merah (fakta); ambang owner `hasilMin` = kuning |
+| 5 ambil pribadi dibanding laba | `priveRentang` 90 hari vs laba bersih 90 hari; batas aman bulan ini `aturKeluar` | FAKTA: ADA ambil dan lebih besar dari laba = merah; bulan ini lewat batas aman = kuning |
+| 6 laju tumbuh | omzet 30 hari vs 30 hari sebelumnya (`lpHariRentang`); utang pemasok, uang & stok dari `neracaPada` dua tanggal | hanya bila omzet NAIK: utang naik lebih cepat DAN uang turun = merah; salah satunya = kuning |
+| 7 bergantung pada satu pemasok | `daftarPemasok`: porsi RUPIAH belanja pemasok terbesar, 90 hari | ambang owner `pemasokMaks` |
+| 8 prakiraan 30 hari [PERKIRAAN] | `pdKasDepan`: uang kini + gerak toko 30 hari terakhir sebelum bayar pemasok (perubahan uang − setor/tarik modal + `bpHariBayar` 30 hari) − bon jatuh tempo | di bawah nol = merah; di bawah kas minimum owner (`kpiLaba`) = kuning |
+
+Yang belum bisa dihitung (titik kas belum ada / disetel sesudah 30 hari lalu, catatan belum 60 hari, tidak ada kedatangan) DISEBUT "belum" — tidak dianggap 0,
+tidak diberi warna. Tiap lampu dibungkus: galat di satu lampu jadi kalimat di lampunya, tujuh lainnya tetap. "Kuning mendekati batas" = dalam `PD_DEKAT` (10) %
+dari ambang; ambang TEGAS (`>` / `<`, sama dengan ambang bukan merah). **Disiplin dalam** (`pdDisiplin`, hanya Laporan): hari berjualan 30 hari terakhir yang
+ditutup malamnya (hari ini & tahun yang sudah ditutup buku tidak ikut) + cek mingguan gudang (`ssCekGudang`). Tiga hal yang tidak bisa diukur sistem
+(rekening terpisah, legalitas, modal awal sebelum sistem) ditulis sebagai pertanyaan (`PD_LUAR`), bukan lampu.
+
+Layar: Laporan › **Pondasi** (keluarga baru di antara Neraca & Dokumen: kartu atas + deret delapan lampu, daftar lampu — ketuk = rincian, aturan warna, sumber
+& tombol ke layar asalnya, Disiplin dalam, lembar "Atur ambang lampu") · Dasbor › kartu **Pondasi toko** (`dbPondasi` = `pdPondasi` apa adanya, kelompok
+`pondasi`, dipertahankan saat ganti rentang & ikut dipanaskan). Bundel uji: `bundel_baru.lengkapi` menambahkan modul ini bila `dasbor-logika.js` ikut.
+
+Uang toko 30 hari lalu (lampu 6 & 8): titik kas maju tiap tutup hari, jadi mesin tidak menghitung mundur — dipakai `lpKasPadaTanggal` (laporan-logika, BARU):
+hitungan fisik tutup hari TERAKHIR pada/sebelum tanggalnya (kolom `titik`, aturan `lpKasAkhirBulan`) + catatan uang sesudahnya; tanpa itu DISEBUT belum bisa.
+Mulus: `pdPondasi` & `pdDisiplin` diingat per versi data + hari (+ titik kas) — tanpa itu tiap ketukan menghitung ulang neraca dua tanggal & laba 30/90 hari
+(`uji_layar_mulus.py` macet sebelum ingatan dipasang). Hasilnya dipakai bersama; jangan diubah di tempat.
+
+Alat uji: `uji_pondasi.py` (60 kotak pasir + 11 statis, kontrol 39/39; asap data toko lokal bila cadangannya ada), `uji_tata_letak_ringkasan_stok.py` (lajur kiri Dasbor + kartu Pondasi).
