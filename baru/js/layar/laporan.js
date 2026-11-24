@@ -50,9 +50,9 @@ export function pasangLayarLaporan(akar, opsi) {
     drafI: null, isiI: null, aturD: null, sibuk: false,
     drafPj: null, drafSetor: null, drafLuar: null, yakinPj: null, tahunPj: null,   // Paket B: tahun yang dibuka di Pajak (null = bawaan: Jan–Mar tahun lalu selama ada masa terutang)
     bulanK: null, bukaKb: {}, aturB: null, pilahK: null,
-    bukaPd: {}, aturPd: null, kuartalQ: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
+    bukaPd: {}, aturPd: null, kuartalQ: null, aturTq: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB', 'aturM', 'aturPd'], []);
+  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq'], []);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -131,7 +131,12 @@ export function pasangLayarLaporan(akar, opsi) {
     kbAturAcuan: () => { const s = st(); const daftar = LP.daftarBulan(kini(), 24); const key = s.bulanK && daftar.some((b) => b.key === s.bulanK) ? s.bulanK : bulanKini(); const D = KB.drafDariAcuan(KB.kendaliBulan(key, kini()), s.aturB || KB.drafAtur()); set({ aturB: D.draf, kabar: D.n ? D.n + ' anggaran diisi dari acuan terukur (median bulan-bulan lalu, dibulatkan ke ribuan) — belum tersimpan, periksa lalu SIMPAN' : 'Belum ada acuan terukur — bulan-bulan sebelumnya tidak punya catatan jenis itu', kabarAwas: !D.n }); },
     kbAturSimpan: () => tulis(KB.susunAturKendali(st().aturB || {}, waktu())),
     // Pondasi (owner 24 Nov 2026): buka rincian satu lampu · lembar ambang owner (aturanToko/pondasi)
-    kwPilih: ({ q }) => set({ kuartalQ: q, kabar: '' }),
+    kwPilih: ({ q }) => set({ kuartalQ: q, kabar: '', aturTq: null }),
+    // Pondasi paket kedua B (owner 24 Nov 2026): target owner per kuartal (aturanToko/pondasi.targetKuartal) & rapor kuartal berkop (Cetakan bernomor)
+    kwTargetBuka: () => set({ aturTq: PD.pdDrafTarget(kwKeyAktif()), kabar: '' }), kwTargetTutup: () => set({ aturTq: null }),
+    kwTargetKetik: (v, el) => { const a = Object.assign({}, st().aturTq || PD.pdDrafTarget(kwKeyAktif())); a[el.dataset.kunci] = v; set({ aturTq: a }); },
+    kwTargetSimpan: () => { const a = st().aturTq || {}; return tulis(PD.susunTargetKuartal(a.key || kwKeyAktif(), a, waktu())); },
+    kwKeluar: async ({ cara }) => { const D = tahanDok(KW.kwRapor(kwKeyAktif(), kini()), ['*']); await keluarkan(D, { jenis: 'kuartal', judul: 'Rapor kuartal', periode: D.periode, draf: !D.final }, cara); },
     pdBuka: ({ pId }) => { const o = Object.assign({}, st().bukaPd); o[pId] = !o[pId]; set({ bukaPd: o }); },
     pdAturBuka: () => set({ aturPd: PD.pdDrafAtur(), kabar: '' }), pdAturTutup: () => set({ aturPd: null }),
     pdAturKetik: (v, el) => { const a = Object.assign({}, st().aturPd || PD.pdDrafAtur()); a[el.dataset.kunci] = v; set({ aturPd: a }); },
@@ -594,8 +599,9 @@ export function pasangLayarLaporan(akar, opsi) {
   }
 
   // ---------- KUARTAL (owner 24 Nov 2026, paket Pondasi kedua): K1–K4 = Σ tiga bulan Laporan › Tahunan, kekayaan & potret lampu akhir kuartal. Angka apa adanya dari kuartal-logika
+  const kwKeyAktif = () => { const d = KW.kwDaftar(kini()); const q = st().kuartalQ; return q && d.some((k) => k.key === q) ? q : d[0].key; };
   function gambarKuartal(s, L) {
-    const daftar = KW.kwDaftar(kini()); const key = s.kuartalQ && daftar.some((k) => k.key === s.kuartalQ) ? s.kuartalQ : daftar[0].key; const Q = KW.kwRekap(key, kini()); const T = KW.kwTahun(KW.kwTahunDari(key), kini());
+    const daftar = KW.kwDaftar(kini()); const key = kwKeyAktif(); const Q = KW.kwRekap(key, kini()); const T = KW.kwTahun(KW.kwTahunDari(key), kini());
     const rp = (n) => (n === null || n === undefined ? '—' : RP(n)); const arah = (n) => (n !== null && n !== undefined && n < 0 ? 'rugi' : '');
     const pilih = h`<div class="kartu" data-k="kw-pilih" style="gap: 6px;"><div class="label">Kuartal yang dilihat · K1 = Jan–Mar · K2 = Apr–Jun · K3 = Jul–Sep · K4 = Okt–Des</div><div class="lp-pg-rentang" data-k="kw-cip">${daftar.map((k) => h`<div class="seg ${k.key === key ? 'aktif' : ''}" data-aksi="kwPilih" data-q="${k.key}" data-k="kwc-${k.key}">${k.nama}${k.berjalan ? ' ✎' : ''}</div>`)}</div></div>`;
     const hero = h`<div class="kartu hero" data-k="kw-hero" style="gap: 6px;"><div class="label">Omzet ${Q.nama} · ${Q.status}</div>
@@ -614,9 +620,19 @@ export function pasangLayarLaporan(akar, opsi) {
         <div class="lp-terjun jumlah"><span>Kekayaan bersih</span><b class="${arah(K.bersih)}">${RP(K.bersih)}</b></div><div class="k2">${Q.kekayaanNaik === null ? 'Kekayaan akhir kuartal sebelumnya belum bisa dihitung' + (Q.kekayaanLalu.kenapa ? ' — ' + Q.kekayaanLalu.kenapa : '') + '.' : 'Dibanding akhir kuartal sebelumnya ' + (Q.kekayaanNaik >= 0 ? 'NAIK ' : 'TURUN ') + RP(Math.abs(Q.kekayaanNaik)) + '.'}</div>` : h`<div class="k2">${K.kenapa}.</div>`}</div>`;
     const lampu = h`<div class="kartu" data-k="kw-lampu" style="gap: 2px;"><div class="label">Potret pondasi ${Q.nama} · warna = ambang owner di Laporan › Pondasi</div>${Q.lampu.map((l) => h`<div class="lp-kb-baris lp-pd-baris" data-k="kwl-${l.id}" style="cursor: default;"><span class="lp-kb-lampu ${l.lampu}"></span><div><div>${l.nama}</div><div class="k2 ${l.lampu === 'merah' ? 'awas-teks' : ''}">${l.kalimat}</div></div><div class="n ${l.lampu === 'merah' ? 'rugi' : ''}">${l.nilai}</div></div>`)}
       <div class="k2" style="padding-top: 4px;">Lampu bon pemasok & prakiraan tidak ikut potret kuartal — keduanya hanya bisa dihitung untuk hari ini (Laporan › Pondasi).</div><div class="kaca-btn kecil" data-aksi="tujuan" data-ke="laporan" data-keluarga="pondasi" data-tab="" data-lembar="" data-sistem="" style="align-self: flex-start; cursor: pointer;">buka Laporan › Pondasi ›</div></div>`;
+    const TG = Q.target; const d = s.aturTq && s.aturTq.key === key ? s.aturTq : null;
+    const target = h`<div class="kartu" data-k="kw-target" style="gap: 2px;"><div class="label">Target ${Q.nama} · angka owner</div>
+      ${TG.ada ? TG.baris.filter((b) => b.target > 0).map((b) => h`<div class="lp-kb-baris lp-pd-baris" data-k="kwt-${b.id}" style="cursor: default;"><span class="lp-kb-lampu ${b.lampu}"></span><div><div>${b.nama}</div><div class="k2 ${b.lampu === 'merah' ? 'awas-teks' : ''}">${b.teks}</div>
+          ${b.pct !== null ? h`<div class="lp-mr-pita"><span style="width: ${Math.max(0, Math.min(100, b.pct)).toFixed(1)}%;"></span></div>` : ''}</div><div class="n ${b.lampu === 'merah' ? 'rugi' : ''}">${b.pct === null ? '—' : PD.pdPctTeks(b.pct)}</div></div>`) : ''}
+      <div class="k2" style="padding-top: 4px;">${TG.kalimat}</div>
+      ${d ? h`<div class="lp-kb-form" data-k="form-tq">${TG.daftar.map((x) => h`<label for="kwT-${x.id}" data-k="lt-${x.id}"><div>${x.nama}</div><div class="k2">rupiah · kosong = tidak ditarget</div></label><input id="kwT-${x.id}" class="ketik-nama" type="text" inputmode="numeric" value="${d[x.id] || ''}" data-ketik="kwTargetKetik" data-kunci="${x.id}" placeholder="kosong = tidak ditarget">`)}</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;"><div class="kaca-btn" data-aksi="kwTargetTutup">batal</div><div class="kaca-btn aktif emas" data-aksi="kwTargetSimpan" data-k="kw-target-simpan">SIMPAN</div></div>`
+        : h`<div class="kaca-btn" data-aksi="kwTargetBuka" data-k="kw-target-buka" style="min-height: 38px; font-size: 12px;">${TG.ada ? 'Ubah target ' + Q.nama : 'Atur target ' + Q.nama}</div>`}</div>`;
+    const DR = tahanDok(KW.kwRapor(key, kini()), ['*']);
+    const rapor = h`<div data-k="kw-rapor">${kertas(DR, null, 'kertas-kuartal')}${tigaTombol('kwKeluar', DR.tolak)}</div>`;
     const kaki = h`<div class="lp-kaki">Satu kuartal = jumlah tiga bulan dari mesin laba yang sama dengan Laba, Bulanan & Tahunan — tidak ada rumus baru. Kuartal yang belum utuh (catatan mulai di tengahnya, atau masih berjalan) ditandai dan tidak dibandingkan setara.</div>`;
-    if (L === 'hp') return h`<section data-k="kuartal">${pilih}${hero}${tinggal}${perBulan}${kekayaan}${lampu}${empat}${kaki}</section>`;
-    return h`<section data-k="kuartal">${grid(L, [h`${pilih}${hero}${kaki}`, h`${tinggal}${perBulan}${empat}`, h`${kekayaan}${lampu}`])}</section>`;
+    if (L === 'hp') return h`<section data-k="kuartal">${pilih}${hero}${target}${tinggal}${perBulan}${kekayaan}${lampu}${empat}${rapor}${kaki}</section>`;
+    return h`<section data-k="kuartal">${grid(L, [h`${pilih}${hero}${target}${kaki}`, h`${tinggal}${perBulan}${empat}${kekayaan}${lampu}`, h`${rapor}`])}</section>`;
   }
 
   // ---------- PONDASI (owner 24 Nov 2026 — catatan "Pondasi bisnis"): delapan lampu + disiplin dalam. Angka apa adanya dari pondasi-logika (→ fungsi sumber layar lain)

@@ -25,7 +25,7 @@ import { rwPerOrang } from './riwayat-logika.js';
 import { ngBuku } from './nego-logika.js';
 import { riwayatTutup } from './tutup-hari-logika.js';
 import { klAtur } from './kpi-laba-logika.js';
-import { ssCekGudang } from './sistem-logika.js';
+import { ssCekGudang, ssTargetKuartal, ssKuartalNama, SS_TARGET_KUARTAL } from './sistem-logika.js';
 import { ambilTutupHari, ambilTitikKas, ingatPerVersi } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
@@ -92,7 +92,31 @@ export function susunAturPondasi(isi, w) {
   });
   if (tolak) return { tolak };
   if (!ubah.length) return { tolak: 'Tidak ada yang diubah' };
-  return { dokumen: [{ koleksi: 'aturanToko', data }], patch: { aturPd: null, kabar: 'Ambang pondasi tersimpan — ' + ubah.join(' · '), kabarAwas: false } };
+  return pdSimpanAtur(data, { aturPd: null, kabar: 'Ambang pondasi tersimpan — ' + ubah.join(' · '), kabarAwas: false });
+}
+/** SATU pintu tulis modul ini: dokumen aturanToko/pondasi (ambang lampu + target kuartal dalam satu dokumen; kolom yang tidak disentuh ikut disalin). */
+const pdSimpanAtur = (data, patch) => ({ dokumen: [{ koleksi: 'aturanToko', data }], patch });
+export const PD_TARGET_MAKS = 100000000000;
+/** Draf lembar "Atur target" satu kuartal: ketikan per target ('' = belum diisi). */
+export function pdDrafTarget(key) { const T = ssTargetKuartal(key); const d = { key }; SS_TARGET_KUARTAL.forEach((x) => { d[x.id] = T[x.id] ? String(T[x.id]) : ''; }); return d; }
+/**
+ * Simpan target owner SATU kuartal ke aturanToko/pondasi.targetKuartal[key] — target kuartal lain & ambang lampu tidak tersentuh. Kosong = target itu dihapus.
+ * Rupiah bulat lebih dari 0; ketikan rusak DITOLAK dengan kalimat. Hanya setelan: tidak ada uang, stok, atau laporan yang berubah.
+ */
+export function susunTargetKuartal(key, isi, w) {
+  if (!/^\d{4}-K[1-4]$/.test(String(key))) return { tolak: 'Kuartal tidak dikenal' };
+  const lama = ugAturDok(PD_ID) || {}; const semua = Object.assign({}, lama.targetKuartal && typeof lama.targetKuartal === 'object' ? lama.targetKuartal : {}); const dulu = ssTargetKuartal(key); const baru = {}; const ubah = []; let tolak = '';
+  SS_TARGET_KUARTAL.forEach((x) => {
+    if (tolak) return; const v = isi ? isi[x.id] : undefined;
+    if (v === undefined) { if (dulu[x.id]) baru[x.id] = dulu[x.id]; return; }
+    if (ugKosong(v)) { if (dulu[x.id]) ubah.push(x.nama.toLowerCase() + ' dihapus'); return; }
+    const n = ugAngka(v); if (!(n > 0) || n > PD_TARGET_MAKS || Math.round(n) !== n) { tolak = x.nama + ' ditulis dalam rupiah bulat, lebih dari 0 — kosong = tidak ditarget'; return; }
+    baru[x.id] = n; if (n !== dulu[x.id]) ubah.push(x.nama.toLowerCase() + ' ' + RP(n));
+  });
+  if (tolak) return { tolak };
+  if (!ubah.length) return { tolak: 'Tidak ada yang diubah' };
+  if (Object.keys(baru).length) semua[key] = baru; else delete semua[key];
+  return pdSimpanAtur(Object.assign({}, lama, { id: PD_ID, tanggal: w.tanggal, jam: w.jam, targetKuartal: semua }), { aturTq: null, kabar: 'Target ' + ssKuartalNama(key) + ' tersimpan — ' + ubah.join(' · '), kabarAwas: false });
 }
 
 // ---------- sumber bersama: dihitung SEKALI per susunan, hanya saat lampunya memintanya ----------
