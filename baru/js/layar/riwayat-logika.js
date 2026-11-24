@@ -144,3 +144,19 @@ export function rwTerbesar(dari, sampai, n) {
     tujuan: { ke: 'jual', jalur: 'riwayat', rwBuka: o.kunci } }));
   return { dari, sampai, n: N, daftar, nNota: cocok.length, totalSemua: Math.round(cocok.reduce((a, o) => a + o.total, 0)), totalTampil: Math.round(daftar.reduce((a, o) => a + o.total, 0)) };
 }
+
+// ==================== NOTA PER ORANG (paket Pondasi kedua, owner 24 Nov 2026) ====================
+/**
+ * Nota dalam [dari, sampai] dikelompokkan menurut orang yang MENCATATNYA (kolom `oleh` nota — nota yang sama dengan Jual › Riwayat): jumlah & rupiah nota yang
+ * berlaku, dan jumlah nota yang dibatalkan. Nota tanpa nama pencatat dikumpulkan di '' (disebut "tanpa nama pencatat" di layar). Baca saja.
+ */
+export function rwPerOrang(dari, sampai) {
+  const per = {}; let nBerlaku = 0, nBatal = 0;
+  rwDasar().daftar.forEach((o) => {
+    if ((dari && o.tanggal < dari) || o.tanggal > sampai || o.status === 'dirinci') return;
+    const k = String(o.oleh || ''); const x = per[k] || (per[k] = { nama: k, nota: 0, omzet: 0, batal: 0 });
+    if (o.status === 'batal') { x.batal += 1; nBatal += 1; } else { x.nota += 1; x.omzet += o.total; nBerlaku += 1; }
+  });
+  return { dari, sampai, orang: Object.keys(per).map((k) => per[k]).sort((a, b) => b.nota - a.nota || a.nama.localeCompare(b.nama)), nBerlaku, nBatal };
+}
+

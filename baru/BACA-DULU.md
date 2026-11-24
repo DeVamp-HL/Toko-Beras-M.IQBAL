@@ -1127,8 +1127,9 @@ baru/
   js/layar/laporan-logika.js, pajak-logika.js, kendali-biaya-logika.js (38: jenis · anggaran · lampu · pemicu · impas · pareto)   logika Laporan tanpa DOM
   js/layar/kpi-laba-logika.js PAKET KPI LABA (owner 24 Nov 2026): tiga margin + BPS, saran harga & mark-up, GMROI, siklus uang, target harian, kas minimum, bon dalam kg — memanggil fungsi sumber layar lain
   js/layar/pondasi-logika.js PONDASI (owner 24 Nov 2026): delapan lampu pondasi toko + disiplin dalam — hanya membaca fungsi sumber layar lain; tulisannya cuma setelan ambang aturanToko/pondasi
+  js/layar/kuartal-logika.js KUARTAL (owner 24 Nov 2026, Pondasi paket kedua): K1–K4 = Σ tiga bulan rekapTahun, kekayaan & potret lampu akhir kuartal — hanya membaca, tidak menulis apa pun
   js/layar/potret-logika.js POTRET tahun yang ditutup buku (Paket B siap 2027) — disusun saat Kunci tahun, dibaca lewat toko.js potretBulan/potretHari
-  js/layar/laporan.js       gambar & ketukan layar Laporan (Laba · Biaya · Harian · Mingguan · Bulanan · Pajak · Tahunan · Neraca · Pondasi · Dokumen · Setelan)
+  js/layar/laporan.js       gambar & ketukan layar Laporan (Laba · Biaya · Harian · Mingguan · Bulanan · Kuartal · Pajak · Tahunan · Neraca · Pondasi · Dokumen · Setelan)
 ```
 Tidak pernah dipindah, PENSIUN bersama sistem lama (3 Okt 2026): `tulisSaldoPembuka` (ritual Tutup Buku lama) & `thPagar` (pagar Tutup Hari lama) —
 `/baru/` punya padanannya sendiri (`tutup-buku-logika.js`, `tutup-hari-logika.js`); baris acuannya di `beku.sha256` dibiarkan dan dilewati `--sidik`.
@@ -3607,3 +3608,30 @@ Mulus: `pdPondasi` & `pdDisiplin` diingat per versi data + hari (+ titik kas) �
 (`uji_layar_mulus.py` macet sebelum ingatan dipasang). Hasilnya dipakai bersama; jangan diubah di tempat.
 
 Alat uji: `uji_pondasi.py` (60 kotak pasir + 11 statis, kontrol 39/39; asap data toko lokal bila cadangannya ada), `uji_tata_letak_ringkasan_stok.py` (lajur kiri Dasbor + kartu Pondasi).
+
+## Pondasi paket kedua — kuartal, kekayaan dari waktu ke waktu, rantai pasok, risiko, organisasi (owner 24 Nov 2026, cabang `fitur/pondasi-2`; PR A = hanya membaca)
+Owner sesudah melihat layar Pondasi: "cuma segini doang?" lalu meminta SEMUA sisa catatannya + "Kuartal 1, 2 dan seterusnya", dikerjakan sekarang. Paket dibagi
+tiga PR: **A hanya membaca (ini)** · B target per kuartal + rapor kuartal cetak + pengingat akhir kuartal (menulis setelan) · C buku pegangan/SOP (rules v20).
+ATURAN tetap: tidak ada rumus uang baru, tidak ada koleksi/rules baru; tiap angka memanggil fungsi sumber dan menyebut sumbernya; yang tidak bisa dihitung DISEBUT.
+
+| Bagian | Fungsi | Sumber | Layar |
+|---|---|---|---|
+| Kuartal K1–K4 | `kuartal-logika.js` `kwRekap` / `kwTahun` / `kwDaftar` | Σ tiga bulan `rekapTahun` (termasuk potret tahun yang ditutup); pemeriksa Σ kuartal = tahun; ambil pribadi `priveRentang` | Laporan › **Kuartal** (keluarga baru sesudah Bulanan) |
+| Kekayaan akhir kuartal + potret lampu | `kwKekayaan`, lampu di `kwRekap` | `neracaPada` + `lpKasAkhirBulan`; aturan warna & ambang `pondasi-logika` (`pdLampu…`, `pdAtur`) | sama |
+| Kekayaan dari waktu ke waktu | `pdKekayaan` | tiap akhir bulan: `neracaPada(akhir, kini, lpKasAkhirBulan(bulan))`; bulan berjalan = hari ini | Laporan › Pondasi |
+| Rantai pasok | `pdRantai`, `pdPorsiPemasok` | porsi belanja; **`bpLamaKirim` (bon-pemasok-logika, BARU)** = hari dari dipesan (Belanja) sampai datang, aturan `pesananSemua`; gerak harga = harga beli terakhir vs kedatangan sebelumnya (riwayat `daftarPemasok`); `tempoPemasok` | sama |
+| Risiko & prakiraan | `pdRisiko`, `pdSkenario`, `pdBatasTurun`, `pdPolaHari` | `ugLabaBersih` 30 hari + uang toko Neraca; skenario: laba kotor turun sebanding, biaya toko tetap; pola hari = rata-rata omzet per nama hari, 56 hari (`hariTerakhir`) | sama |
+| Organisasi | `pdOrganisasi` | **`rwPerOrang` (riwayat-logika, BARU)** nota per pencatat (`oleh`) & yang dibatalkan; `ngBuku` (nego & potongan); `riwayatTutup` (siapa menghitung laci, selisih) | sama |
+| Modal untuk lampu 4 | `pdHasil` | posisi toko saat sistem mulai mencatat = modal tercatat + beda "belum terjelaskan buku" Neraca (`neracaPada.selisihBuku`); minus → DISEBUT, tidak dipakai membagi | Laporan › Pondasi › lampu Hasil |
+
+Catatan penting:
+- **Modal awal** — kata owner: "Modal awal tulis aja dimulai 8 Agustus. Karena sebelumnya gak ada catatan." Ditafsirkan: posisi toko pada hari catatan pertama, DIHITUNG
+  dari buku untuk lampu saja. TIDAK ditulis sebagai setoran modal (`modalOwner` setor menaikkan uang toko) — keputusan K9 (Neraca tidak diubah) tetap utuh.
+- **Kuartal tidak utuh** (catatan mulai di tengahnya, atau masih berjalan) ditandai `utuh: false` + sebab; banding dengan kuartal sebelumnya ditulis "BUKAN banding
+  setara". Lampu bon pemasok & prakiraan tidak ikut potret kuartal (hanya bisa dihitung untuk hari ini).
+- **Kekayaan bulan lampau** butuh tutup hari yang menyimpan `titik` di bulan itu; tutup hari lama (sebelum kolom itu ada) → bulan itu "belum bisa dihitung".
+- **Prakiraan musiman belum ada**: catatan belum setahun; pola hari dalam minggu saja, dan layarnya mengatakan begitu.
+- Empat kartu baru di Pondasi dibungkus sendiri-sendiri (galat satu kartu tidak mematikan yang lain) dan hasilnya diingat per versi data + hari + titik kas.
+
+Alat uji: `uji_pondasi.py` (kotak pasir + statis + `--kontrol`, kini memuat kuartal & paket kedua; asap data toko lokal memeriksa Σ kuartal = tahun).
+
