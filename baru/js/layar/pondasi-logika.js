@@ -28,7 +28,9 @@ import { ngBuku } from './nego-logika.js';
 import { riwayatTutup } from './tutup-hari-logika.js';
 import { klAtur } from './kpi-laba-logika.js';
 import { kendaliBulan } from './kendali-biaya-logika.js';
-import { ssCekGudang, ssTargetKuartal, ssKuartalNama, ssKuartalKey, ssKuartalGeser, SS_TARGET_KUARTAL, ssTugas, ssPercobaan, ssDrafPercobaan, susunPercobaan, susunHapusPercobaan, SS_PERCOBAAN_MAKS } from './sistem-logika.js';
+import { aturUpah } from './upah-logika.js';
+import { ssCekGudang, ssTargetKuartal, ssKuartalNama, ssKuartalKey, ssKuartalGeser, SS_TARGET_KUARTAL, ssTugas, ssPercobaan, ssDrafPercobaan, susunPercobaan, susunHapusPercobaan, SS_PERCOBAAN_MAKS,
+  ssPihak, susunPihak, susunHapusPihak, SS_PIHAK_JENIS, SS_PIHAK_MAKS, ssTinjauan, ssTinjauanBulan, susunTinjauan, susunHapusTinjauan, SS_TINJAUAN_MAKS, ssBulanGeser } from './sistem-logika.js';
 import { ambilTutupHari, ambilTitikKas, ingatPerVersi } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
@@ -665,4 +667,63 @@ function pdNilaiTambahHitung(kini) {
             + ' Ecer / kemasan = ' + pdPctTeks(kgBeras > 0 ? ecer.kg / kgBeras * 100 : null) + ' kg terjual' + (labaBeras > 0 && ecer.laba !== null ? ' tapi ' + pdPctTeks(ecer.laba / labaBeras * 100) + ' laba kotor beras.' : '.'),
     kalimatKemas: !(K.kg > 0) ? 'Tidak ada adukan / repack yang menghasilkan kemasan dalam ' + PD_HARI_PANJANG + ' hari terakhir.'
       : K.adukan + ' adukan menghasilkan kemasan dalam ' + PD_HARI_PANJANG + ' hari. Ongkos kantong ' + RP(K.kantongRp) + ' + upah kemas ' + RP(K.upahRp) + ' = ' + RP(Math.round((K.kantongRp + K.upahRp) / K.kg)) + ' per kg' + (tambahPerKg !== null ? ' (sudah di dalam modal kemasannya; nilai tambah di atas sudah bersih dari ongkos ini).' : '.') };
+}
+
+// ==================== paket ketujuh (owner 25 Nov 2026): pihak yang berkepentingan & tinjauan bulanan ====================
+// pintu tulis tetap di sistem-logika (dokumen aturanToko/pihak & aturanToko/tinjauan); layar memanggilnya lewat sini. Semua FUNGSI, bukan const yang membaca
+// nama sistem-logika saat modul dimuat (bundel Dasbor memuat modul ini tanpa sistem-logika).
+export const pdPihakJenis = () => SS_PIHAK_JENIS;
+export const pdPihakMaks = () => SS_PIHAK_MAKS;
+export const pdTinjauanMaks = () => SS_TINJAUAN_MAKS;
+export const pdSusunPihak = (d, w) => susunPihak(d, w);
+export const pdSusunHapusPihak = (kunci, w) => susunHapusPihak(kunci, w);
+export const pdSusunHapusTinjauan = (bulan, w) => susunHapusTinjauan(bulan, w);
+export const PD_PIHAK_PEMBELI = 5;
+/**
+ * Pihak yang berkepentingan. Daftarnya DISUSUN dari data — pemasok yang mengirim 180 hari terakhir (pdRantai), pembeli terbesar 3 bulan (pdPelanggan, 5 teratas),
+ * staf aktif (aturUpah) — ditambah pihak yang ditulis owner sendiri (bank, pemilik tempat, …). Per pihak owner mencatat: apa yang mereka harapkan dari toko & apa
+ * yang toko butuhkan dari mereka (ssPihak). Tiap sumber dibungkus: satu sumber gagal tidak mematikan daftar. Yang belum bercatatan DISEBUT.
+ */
+export function pdPihak(kini) { return ingatPerVersi(pdKunciIngat('pdPihak', kini), () => pdPihakHitung(kini)); }
+function pdPihakHitung(kini) {
+  const C = {}; ssPihak().daftar.forEach((x) => { C[x.kunci] = x; }); const out = []; const gagal = []; const jenisNama = (j) => (SS_PIHAK_JENIS.find((x) => x[0] === j) || SS_PIHAK_JENIS[SS_PIHAK_JENIS.length - 1])[1];
+  const tambah = (kunci, jenis, nama, ket) => { const c = C[kunci] || null; delete C[kunci]; out.push({ kunci, jenis, jenisNama: jenisNama(jenis), nama, ket, dariData: true, manual: false, harap: c ? c.harap : '', butuh: c ? c.butuh : '', lengkap: !!(c && c.harap && c.butuh) }); };
+  const coba = (nama, f) => { try { f(); } catch (e) { gagal.push(nama); if (typeof console !== 'undefined') console.error('pihak ' + nama, e); } };
+  coba('pemasok', () => pdRantai(kini).pemasok.forEach((p) => tambah('pemasok|' + p.kunci, 'pemasok', p.nama, p.pct === null ? 'pemasok' : pdPctTeks(p.pct) + ' belanja ' + PD_HARI_PANJANG + ' hari')));
+  coba('pembeli', () => pdPelanggan(kini).pembeli.slice(0, PD_PIHAK_PEMBELI).forEach((o) => tambah('pembeli|' + o.kunci, 'pembeli', o.nama, o.pct === null ? 'pembeli' : pdPctTeks(o.pct) + ' omzet 3 bulan')));
+  coba('staf', () => (aturUpah().aktif || []).forEach((o) => tambah('staf|' + String(o.nama).trim().toLowerCase(), 'staf', o.nama, o.peran ? String(o.peran) : 'staf')));
+  Object.keys(C).forEach((k) => { const c = C[k]; out.push({ kunci: c.kunci, jenis: c.jenis, jenisNama: jenisNama(c.jenis), nama: c.nama, ket: c.manual ? 'ditambahkan owner' : 'tidak lagi muncul di data toko', dariData: false, manual: c.manual, harap: c.harap, butuh: c.butuh, lengkap: !!(c.harap && c.butuh) }); });
+  const urut = SS_PIHAK_JENIS.map((j) => j[0]); out.sort((a, b) => urut.indexOf(a.jenis) - urut.indexOf(b.jenis)); const belum = out.filter((x) => !x.lengkap);
+  return { daftar: out, n: out.length, nBelum: belum.length, gagal, lampu: !out.length ? 'tanpa' : belum.length ? 'amber' : 'hijau', sumber: 'Harga & Pemasok · Pelanggan · Uang › Upah · isian owner',
+    kalimat: !out.length ? 'Belum ada pihak yang terbaca dari data — tambahkan sendiri (pemasok, bank, pemilik tempat).'
+      : out.length + ' pihak berkepentingan dengan toko; ' + (belum.length ? belum.length + ' belum ditulis apa yang mereka harapkan & apa yang toko butuhkan dari mereka.' : 'semuanya sudah bercatatan.') + (gagal.length ? ' Gagal dibaca: ' + gagal.join(', ') + '.' : '') };
+}
+export function pdDrafPihak(kini, kunci) { const x = kunci ? pdPihak(kini).daftar.find((y) => y.kunci === kunci) : null;
+  return x ? { kunci: x.kunci, jenis: x.jenis, nama: x.nama, harap: x.harap, butuh: x.butuh, manual: x.manual, dariData: x.dariData } : { kunci: '', jenis: 'uang', nama: '', harap: '', butuh: '', manual: true, dariData: false }; }
+
+/** Potret keadaan lampu SEKARANG untuk dibekukan di tinjauan: warna tiap lampu + kekayaan bersih & uang toko (Neraca) + laba bersih 30 hari. null = belum bisa dihitung. */
+export function pdPotret(kini) {
+  const P = pdPondasi(kini); const lampu = {}; P.lampu.forEach((l) => { lampu[l.id] = l.lampu; }); let N = null, laba = null;
+  try { N = neracaPada(null, kini); } catch (e) { N = null; } try { laba = Number(ugLabaBersih(ugTambahHari(P.iso, -(PD_HARI - 1)), P.iso).labaBersih); } catch (e) { laba = null; }
+  return { tanggal: P.iso, lampu, bersih: N && pdBilangan(N.aset) && pdBilangan(N.kewajiban) ? N.aset - N.kewajiban : null, kas: N && N.N && pdBilangan(N.N.kas) ? N.N.kas : null, laba30: pdBilangan(laba) ? laba : null };
+}
+export const pdSusunTinjauan = (d, w, kini) => susunTinjauan(d, pdPotret(kini), w);
+const pdNamaBulan = (key) => ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][Number(String(key).slice(5, 7)) - 1] + ' ' + String(key).slice(0, 4);
+export function pdDrafTinjauan(key) { const x = ssTinjauanBulan(key); return x ? { bulan: x.bulan, jalan: x.jalan, macet: x.macet, putusan: x.putusan, ada: true } : { bulan: String(key), jalan: '', macet: '', putusan: '', ada: false }; }
+/**
+ * Tinjauan bulanan: bulan lalu sudah ditinjau atau belum (itu yang ditagih), daftar tinjauan yang ada, dan — untuk tiap tinjauan — potret lampunya saat ditulis
+ * dibanding SEKARANG (lampu merah waktu itu → sekarang; lampu mana yang berubah warna). Baca saja; potretnya disimpan susunTinjauan.
+ */
+export function pdTinjauan(kini) { return ingatPerVersi(pdKunciIngat('pdTinjauan', kini), () => pdTinjauanHitung(kini)); }
+function pdTinjauanHitung(kini) {
+  const iso = hariIniIso(kini); const bulanIni = iso.slice(0, 7), bulanLalu = ssBulanGeser(bulanIni, -1); const T = ssTinjauan(); const kiniP = pdPotret(kini); const nama = {}; PD_LAMPU.forEach((l) => { nama[l[0]] = l[1]; });
+  const daftar = T.daftar.map((x) => { const p = x.potret; const ubah = p ? Object.keys(p.lampu).filter((k) => kiniP.lampu[k] && kiniP.lampu[k] !== p.lampu[k]).map((k) => ({ id: k, nama: nama[k] || k, dulu: p.lampu[k], kini: kiniP.lampu[k] })) : [];
+    const merahKini = Object.keys(kiniP.lampu).filter((k) => kiniP.lampu[k] === 'merah').length;
+    return Object.assign({}, x, { nama: pdNamaBulan(x.bulan), ubah, merahKini,
+      banding: !p ? 'Tanpa potret lampu.' : 'Saat ditulis (' + (p.tanggal ? tanggalPendek(p.tanggal) : '—') + '): ' + p.merah + ' merah, ' + p.amber + ' kuning. Sekarang: ' + merahKini + ' merah'
+        + (ubah.length ? ' — berubah: ' + ubah.map((u) => u.nama.toLowerCase() + ' ' + PD_KATA_LAMPU[u.dulu] + ' → ' + PD_KATA_LAMPU[u.kini]).join(' · ') + '.' : ' — tidak ada lampu yang berubah warna.') }); });
+  const lalu = daftar.find((x) => x.bulan === bulanLalu) || null, ini = daftar.find((x) => x.bulan === bulanIni) || null;
+  return { bulanIni, bulanLalu, namaLalu: pdNamaBulan(bulanLalu), namaIni: pdNamaBulan(bulanIni), lalu, ini, daftar, n: T.n, lampu: lalu ? 'hijau' : 'amber', putusanLalu: lalu ? lalu.putusan : '',
+    kalimat: lalu ? 'Tinjauan ' + pdNamaBulan(bulanLalu) + ' sudah ditulis ' + (lalu.tanggal ? tanggalPendek(lalu.tanggal) : '') + '. Keputusannya: ' + lalu.putusan.split('\n')[0]
+      : 'Tinjauan ' + pdNamaBulan(bulanLalu) + ' belum ditulis — duduk sebentar: apa yang berjalan, apa yang tidak, apa keputusannya.' + (T.n ? ' Sudah ada ' + T.n + ' tinjauan bulan lain.' : '') };
 }
