@@ -715,7 +715,7 @@ RUSAK = {
     'Tahap 3: isi karung tak wajar lolos': ("        : !(berat >= UK_BATAS.min && berat <= UK_BATAS.maks) ? 'isi karungnya '", "        : false ? 'isi karungnya '"),
     'Tahap 3: menambah ukuran membuang setelan lain': ("return Object.assign({}, lama, { id: 'catatStok', ukuranKarung: daftar.slice()", "return Object.assign({}, { id: 'catatStok', ukuranKarung: daftar.slice()"),
     'Tahap 3: merek karung 10 kg tetap dibuka 50 kg': ("return ukuranLainTerakhir()[asal] || KARUNG_BELAKANG_KG; }", "return KARUNG_BELAKANG_KG; }"),
-    'Tahap 3: tutup buku membuka merek karung 10 kg sebagai karung 50 kg': ("!merkPunyaKarungBerat(x.merk, 50) && ukLain(x.merk)) || 50; merkList.push(", "false) || 50; merkList.push("),
+    'Tahap 3: tutup buku membuka merek karung 10 kg sebagai karung 50 kg': ("!merkPunyaKarungBerat(x.merk, 50) && ukLain(x.merk)) || 50;", "false) || 50;"),
     'Tahap 3: uang kembali — patokan laci tidak dinaikkan (hari sudah ditutup)': ("if (Object.keys(ubah).length) { const t = ambilTitikKas(); const baru =", "if (false) { const t = ambilTitikKas(); const baru ="),
     'Tahap 3: uang kembali — patokan dinaikkan padahal hari belum ditutup': ("out.dalamTitik = !!out.titik && String(b.tanggal || '') <= out.titik;", "out.dalamTitik = !!out.titik;"),
     'Tahap 3: uang kembali — patokan naik tanpa memajukan jam pasang (salinan perangkat menang)': ("const baru = Object.assign({}, t, { id: 'titikKas', diubahPada: ptMajuSedikit(t.diubahPada) });", "const baru = Object.assign({}, t, { id: 'titikKas' });"),
