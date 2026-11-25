@@ -3919,6 +3919,23 @@ pemasok tetap sesuai nota; adukan tetap memotong kg yang diketik. Mesin beku tid
   timbang, bulan terkunci, uang berubah. Asap cadangan 25 Nov (kedatangan tunai 7 baris bertimbang sampel): buku turun 15,4 kg, uang & nota jual tidak berubah.
 - **Tidak diubah (dicatat)**: kasir darurat (`kasir-darurat-nominal.html`) tetap memotong 50 kg per karung (mengubahnya = rantai versi sw-kasir); karung yang dibuka
   ke belakang wadah (kolam karung, `kg: berat`) tetap 50 / 25 kg — selisih ≤ 0,2 kg per karung muncul di Cocokkan / susut wadah. Adukan memotong kg yang diketik.
+- **Saldo pembuka tutup buku membawa berat asli** (owner 25 Nov 2026, pilihan "bawa berat asli"; cabang `fitur/tutup-buku-berat-asli` di atas Tahap 6). Dulu
+  `pembukaBuku` menulis satu baris per buku (`totalKg` = sisa 31 Des) tanpa tanda timbang → sesudah tutup buku semua karung sisa dianggap 50 kg lagi (karung terakhir
+  tiap buku nyangkut ½ sampai Cocokkan). Sekarang baris utama buku yang sisanya berasal dari kedatangan ikut timbang membawa `beratAsli` = [{ kg, faktor, dari }]
+  — sisa 31 Des sebagai potongan lapisan TERLAMA dulu (`baSisaPada`: lapisan bertanggal ≤ 31 Des saja, cara potong = `baAntre`, potongan berfaktor sama digabung,
+  `dari` = tanggal kedatangan asal, ikut terbawa ke tahun-tahun berikutnya). Potongan pertama boleh membawa `keluar` = faktor karung yang terakhir keluar sebelum
+  tutup buku (retur tanpa nota sesudah ritual tetap memakai berat karung kedatangan sebelumnya — sisa yang tepat di batas kedatangan). `baLapisan` memecah baris itu
+  jadi lapisan per potongan — HANYA di batch `tutupBuku` dan hanya bila Σ kg potongan = `totalKg` (± 0,01); selain itu satu lapisan faktor 1. Kolom baris yang lain
+  (kg, karung, modal, rupiah, tanda buku) TIDAK berubah, mesin & modal FIFO tidak membaca kolom baru, `ringkasPembuka` (berita acara) tidak menyalinnya, katalog kasir
+  tidak membacanya, rules tidak berubah (baris batch owner tidak diperiksa kolomnya). Buku tanpa kedatangan ikut timbang: baris PERSIS seperti dulu (cadangan 25 Nov:
+  dokumen pembuka BYTE-SAMA dengan kode Tahap 6; sesudah pembetulan 25 Nov disimulasikan: 7 baris membawa `beratAsli`, tanpa kolom itu byte-sama).
+  Batas yang diketahui: karung yang dihitung Cocokkan MELEBIHI buku (karung asal tak dikenal) sesudah tutup buku berfaktor potongan pertama, bukan kedatangan lama
+  yang sudah diarsip (sebelum ritual: kedatangan terlama). **Temuan terpisah (bukan dari perubahan ini, belum dibangun):** modal FIFO karung sisa juga diratakan saldo
+  pembuka (satu `hargaPerKg` per buku) — nota Januari yang tercatat SEBELUM ritual memotong modal kedatangan terlama, sesudah ritual sisa buku dinilai dari rata-rata,
+  jadi "periksa ulang" baris Stok beras bisa TIDAK SAMA (kotak pasir: selisih Rp5.085 pada 2 kedatangan bermodal per kg beda).
+  Uji: `uji_tutup_buku_bertahap.py` S-BERAT (tangan: 5 buku, ritual penuh, sebelum = sesudah untuk karung berikutnya, n karung, langit-langit, retur tanpa nota,
+  tumpukan, rak Jual; tahun berikutnya; potongan rusak diabaikan) + 9 kontrol; ASAP SIAP 2027 membandingkan berat asli tiap buku dan menambah jalur "sesudah
+  pembetulan timbang 25 Nov" (`--asap=`).
 Alat uji: `uji_barang_masuk_baru.py` (212, kontrol 201 — skenario Tahap 1–5 ditimbang "pas" lewat `bundel_baru.TIMBANG_PAS`), `uji_masuk_tablet.py` (93, kontrol 50),
 `uji_jual_baru.py` (473, kontrol 260), `uji_terima_barang.py` (147, kontrol 49), uji lain yang menyimpan kedatangan memakai `bundel_baru.TIMBANG_PAS`;
 `peta_akses.py` (`susunBetulTimbang` terdaftar). Belum dicoba: menyimpan ke data toko, kasir darurat, cetak tanda terima di printer sungguhan.

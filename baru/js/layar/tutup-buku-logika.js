@@ -37,6 +37,7 @@ import { ringkasPemasokTahun, ringkasPesananTahun } from './bon-pemasok-logika.j
 import { susunPotret, ringkasPotret } from './potret-logika.js';
 import { lpBonTerbuka, LP_KALIMAT_MODAL_AWAL } from './laporan-logika.js';
 import { hbKalimatBelum, HB_TEMPAT } from '../data/hemat-baca.js';
+import { baSisaPada } from './berat-asli-logika.js';
 
 export const LANGKAH_BUKU = [['periksa', 'Periksa dulu'], ['cadangan1', 'Cadangan sebelum mulai'], ['arsip', 'Simpan arsip'], ['saldo', 'Susun saldo pembuka'], ['paraf', 'Paraf dua orang'], ['kunci', 'Kunci tahun'], ['cadangan2', 'Cadangan sesudahnya & selesai']];
 const bkTutupBuku = (x) => !!(x && x.tutupBuku);
@@ -273,7 +274,11 @@ export function pembukaBuku(tahun, w) {
   // kedatangan terakhirnya — bukan 50 kg, supaya tahun berikutnya tidak tiba-tiba "punya karung 50 kg". Merek ber-karung 50 / 25 kg: persis seperti dulu.
   const ukLain = (m) => { let t = ''; let n = 0; ambilSemuaBatch().forEach((b) => { const tg = String(b.tanggal || ''); if (tg > tahun + '-12-31') return;
     (b.merkList || []).forEach((r) => { if (r && r.merk === m && r.satuan === 'karung' && Number(r.beratKarung) > 0 && Number(r.jumlahKarung) > 0 && tg >= t) { t = tg; n = Number(r.beratKarung); } }); }); return n; };
-  const merkList = []; saldo.karung.forEach((x) => { const beratUtama = x.punya25 && !x.punya50 ? 25 : (!x.punya50 && !x.punya25 && !merkPunyaKarungBerat(x.merk, 50) && ukLain(x.merk)) || 50; merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratUtama, jumlahKarung: Math.floor(x.sisaKg / beratUtama), totalKg: x.sisaKg, hargaPerKg: x.hppPerKg, subtotalHarga: Math.round(x.sisaKg * x.hppPerKg) });
+  const merkList = []; saldo.karung.forEach((x) => { const beratUtama = x.punya25 && !x.punya50 ? 25 : (!x.punya50 && !x.punya25 && !merkPunyaKarungBerat(x.merk, 50) && ukLain(x.merk)) || 50;
+    // Tahap 6 (owner 25 Nov 2026, "bawa berat asli"): sisa buku yang berasal dari kedatangan ikut timbang membawa potongan lapisannya (`beratAsli`, terlama
+    // dulu, faktor = kg timbang ÷ kg nota) — karung sisa tetap keluar dengan berat aslinya sesudah tahun ditutup. Buku tanpa kedatangan ikut timbang: baris persis seperti dulu
+    const ba = baSisaPada(x.merk, tbCutoff(tahun), x.sisaKg);
+    merkList.push(Object.assign({ merk: x.merk, satuan: 'karung', beratKarung: beratUtama, jumlahKarung: Math.floor(x.sisaKg / beratUtama), totalKg: x.sisaKg, hargaPerKg: x.hppPerKg, subtotalHarga: Math.round(x.sisaKg * x.hppPerKg) }, ba ? { beratAsli: ba } : {}));
     // siap 2027: "punya karung 50 kg" juga dari produksi jadi karung utuh (merkPunyaKarungBerat) — produksinya ikut diarsip, jadi barisnya dibawa ke sini
     const beratLain = beratUtama === 50 ? 25 : 50; if ((beratLain === 25 && x.punya25) || (beratLain === 50 && (x.punya50 || merkPunyaKarungBerat(x.merk, 50)))) merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratLain, jumlahKarung: 0, totalKg: 0, hargaPerKg: x.hppPerKg, subtotalHarga: 0 }); });
   // putaran 28: buku STOK WADAH tetap dikenali sesudah tutup buku — barisnya membawa tanda stokWadah; yang sisanya nol ikut lahir lagi (baris 0 kg), karena
