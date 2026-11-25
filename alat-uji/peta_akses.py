@@ -463,6 +463,7 @@ OWNER_JALUR = {
     'susunCocok': 'penghitung daftar cocokkan — tidak menulis; yang menulis susunSimpanCocok (diukur)',
     'susunPotongKlaim': 'pembungkus: memilih kg dari catatan klaim lalu memanggil susunPotong (diukur)',
     'susunReturPemasok': 'pembungkus: membaca kg ketikan lalu memanggil susunPotong (diukur)',
+    'susunTerimaPotongan': 'uang potongan pemasok diterima (Tahap 4): 1 dokumen kedatangan asal (bulan terkunci ditolak tolakKunci) + 1 pengaturan/titikKas — jumlah tetap 2, bentuk kiriman yang sama dengan susunPotong kedatangan tunai (diukur)',
     'susunSimpanBeli': 'beli kantong: 1 dokumen bertanggal hari ini',
     'susunPecahKantong': 'pecah kantong gabungan per merek (owner 11 Okt): paling banyak 1 opname + 1 pakai di gabungan + 1 saldoAwal per merek (≤ 3), semuanya hari ini, + paling banyak 3 hargaWadah (katalog, tidak dikunci) — jumlah tetap ≤ 8',
     'susunTakarWadah': 'wadahLiteran (tidak dikunci) + produksiKemasan pindah buku (28: karung → stok wadah; 39: + 1 pindah merek → karung belakang per karung otomatis yang dibuka) + paling banyak 1 batch lahir 0 kg per buku baru, hari ini — kiriman karyawan diukur di --kiriman (isi ulang wadah) + karung bekas (owner 7 Okt): per karung yang habis 1 stokBahanLiteran opname +1 hari ini; dicabut = hapus kelahiran HARI INI atau 1 catatan pembalik opname −1 hari ini (catatan bulan lampau tidak pernah disentuh → 0 pemeriksaan kunci)',

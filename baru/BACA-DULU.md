@@ -3811,14 +3811,40 @@ Owner sesudah Tahap 2: "buatkan jalur masuk tersendiri untuk pembelian tunai lal
   **Laci ATAU rekening** (owner: "bisa juga selain laci, yaitu rekening") — `PT_TEMPAT`, dipilih saat membukukan (`ptTempat` / `rtDraf.tempat`). Belanja tunai di
   mesin selalu keluar dari laci, jadi ke REKENING ditulis lewat patokan kas (`ptUbahPatokan`): sudah termuat patokan → rekening + uang kembali; belum termuat →
   laci − uang kembali & rekening + uang kembali (laci di buku sudah naik sendiri lewat belanja yang mengecil; jumlah patokan tetap). Tanpa patokan kas sama
-  sekali, ke rekening ditolak dengan kalimat. Yang TIDAK dibangun: "dipotong dari pembelian berikutnya" (catat sebagai "diganti barang" / "cukup dicatat").
+  sekali, ke rekening ditolak dengan kalimat. "Dipotong dari pembelian berikutnya" dibangun di Tahap 4.
 - **Isi karung bebas** — `aturanToko/catatStok.ukuranKarung` (daftar milik owner, 0,25–100 kg, dua angka di belakang koma, ≤ 12 ukuran; belum diatur = 50 & 25):
   `ukuranKarungPilihan`, `susunTambahUkuran`, `susunHapusUkuran`; lembar owner "Atur isi karung". Karung berukuran lain masuk BUKU BERAS PER KG merek itu
   (kg = jumlah × isi karung); buku sendiri 'Merek 25 kg' tetap hanya untuk karung 25 kg merek dua ukuran. Merek yang tidak pernah datang 50 / 25 kg:
-  `beratKarungBuka` = isi karung kedatangan terakhirnya, dan saldo pembuka tutup buku memakai ukuran itu (bukan 50). BELUM dibangun: pilihan "masuk buku
-  Kemasan (dijual per kemasan)" — butuh jalur beli-jadi tanpa kantong; rak Jual "karung utuh" tetap hanya 50 / 25 kg, ukuran lain dijual per kg / liter.
+  `beratKarungBuka` = isi karung kedatangan terakhirnya, dan saldo pembuka tutup buku memakai ukuran itu (bukan 50). Pilihan "masuk buku
+  Kemasan (dijual per kemasan)" dibangun di Tahap 4; rak Jual "karung utuh" tetap hanya 50 / 25 kg, ukuran lain dijual per kg / liter.
 - **Tablet (Penjaga laci)** — lembar tablet memakai pembantu yang sama (`pilUkuran`, `pilPotong`, `pilTolak`): isi karung dari daftar owner, klaim langsung,
   tolak baris, catatan bebas untuk pemasok; timbang sampel & mutu rinci sudah ikut sejak Tahap 1 (`gambarCekMasuk`). **Ongkos kirim** dari tablet = titipan
   berjenis `bongkar` bertanda `ongkir: true` (bentuk rules v15 tidak berubah); disetujui owner = `biayaBongkar += n` DAN `ongkosKirim += n`. Kedatangan tablet
   tetap BON dengan `biayaBongkar 0`; kabar owner menyebut potongan, baris ditolak, dan ongkos kirim.
 Alat uji: `uji_barang_masuk_baru.py` (141 pemeriksaan, kontrol 118) dan `uji_masuk_tablet.py` (58 pemeriksaan, kontrol 21).
+
+## Barang masuk & mutu — Tahap 4 (owner 26 Nov 2026, cabang `fitur/barang-masuk-4`; tanpa rules baru): kemasan jadi · dipotong di pembelian berikutnya · sampel opname
+Owner: "Lanjut sisa yang belum dibangun." — tiga butir yang di Tahap 3 ditulis BELUM.
+- **Kemasan jadi dari pemasok** — baris lembar Barang masuk (owner, kedatangan baru) bisa dijadikan KEMASAN JADI (`masuk: 'kemasan'` di draf): karung kecil
+  yang dijual utuh per kemasan. Bentuk dokumennya = baris BAL sistem lama yang sudah dikenal mesin beku: baris kedatangan `bentuk: 'bal'` + `kemasanJadi: true`
+  (nilainya tetap bagian bon / belanja tunai; dilewati buku beras per kg) + SATU dokumen `produksiKemasan` beli-jadi pasangannya (`beliJadi`, `dariBatch`,
+  tanpa beras karung & kantong) yang melahirkan unit di buku Kemasan. Modal per kemasan = (nilai baris + porsi bongkar & ongkos kirim menurut kg) ÷ jumlah
+  kemasan (`hitungHppMerkDalamBatch`). `hitungMasuk` → `kemasan`, `nilaiKemasan`, `unitKemasan`; baris kemasan bukan `sah` (tidak ikut hitungan karung, varian,
+  kelas, timbang). Koreksi kedatangan membawa baris itu apa adanya (penjaga baris bal: tanggal / bongkar / kg karung ditolak); hapus kedatangan mencabut
+  pasangannya dan DITOLAK bila kemasannya sudah keluar (buku Kemasan tidak boleh minus). Tidak ada di tablet; tidak bisa dipotong / ditolak / diretur per kg.
+  Harga jualnya diatur di Harga seperti kemasan lain.
+- **Dipotong di pembelian berikutnya** — pilihan ketiga `PT_TEMPAT` (`berikut`) saat membukukan klaim / retur kedatangan TUNAI. Saat dibukukan: kg & nilai
+  kedatangan lama turun (stok benar hari itu), uangnya BELUM kembali sehingga laci di buku tidak boleh naik: kedatangan yang belum termuat patokan kas → patokan
+  laci − potongan; sudah termuat → patokan tidak disentuh. Jejak `potongan[]` { tempat 'berikut', tunggu }. `ptMenunggu(pemasok)` = yang belum dipakai.
+  Kedatangan BARU pemasok itu menawarkannya (`draf.pakaiPotong`, `hitungMasuk.tunggu / potongTunggu`): `ptSusunPakai` menulis `potonganPakai` { rp, dari } di
+  kedatangan baru + patokan laci + potongan; kedatangan BON ditambah satu `utangPemasokMutasi` bayar sebesar potongan dari laci yang menunjuk bon itu (laci
+  tetap, bon tinggal selisihnya). Mesin tetap mencatat nilai penuh barangnya (stok & modal benar). Ditolak: potongan > nilai barang, kedatangan bertanggal ≤
+  tanggal patokan kas, tanpa patokan. Kedatangan pemakai: cara bayar / pemasok / tanggal dikunci, tidak bisa dihapus; kedatangan berpotongan `berikut` tidak
+  bisa dihapus. Uangnya ternyata dibayar pemasok → `susunTerimaPotongan` (patokan laci / rekening + potongan, `dipakai` di jejaknya). Daftar periksa tutup buku
+  (`minusBuku`) menyebut potongan yang masih menunggu — kedatangannya akan diarsipkan. Selama menunggu, neraca lebih kecil sebesar potongan (belum ada pos
+  "piutang ke pemasok").
+- **Timbang sampel saat opname** — Cocokkan › Tumpukan gudang: isian "berapa karung ditimbang" + "berat seluruh sampel" (`ccSampel`). Karung utuh yang dihitung
+  × rata-rata sampel (kg lepas tidak ikut dikalikan; sampel berlaku untuk karung 50 kg, atau 25 kg bila hanya itu yang dihitung; rata-rata di luar 80–105 %
+  isi karung ditolak). Hasilnya PERKIRAAN yang dipakai sebagai hitungan bila owner mengetuk PAKAI; selisihnya dibukukan seperti hitungan biasa dan dokumen
+  `penyesuaianStok` membawa jejak `sampel` { karung, kg, isiKarung, rata }.
+Alat uji: `uji_barang_masuk_baru.py` (178 pemeriksaan, kontrol 160).
