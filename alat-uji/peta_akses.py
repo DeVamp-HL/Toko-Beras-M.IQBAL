@@ -433,7 +433,7 @@ def periksa_kiriman(src):
 OWNER_JALUR = {
     # diukur langsung (jsc, dua keadaan) — termasuk SEMUA jalur yang jumlah dokumennya bisa membesar karena perulangan (owner 25 Sep)
     'susunRinciDokumen': 'diukur', 'susunUrungRinci': 'diukur', 'susunPerbaikanKarcis': 'diukur', 'susunGabung': 'diukur', 'susunHapusNama': 'diukur',
-    'susunKoreksiAdukan': 'diukur', 'susunHapusAdukan': 'diukur', 'susunSimpanAdukan': 'diukur', 'susunSimpanMasuk': 'diukur', 'susunHapusKedatangan': 'diukur',
+    'susunKoreksiAdukan': 'diukur', 'susunHapusAdukan': 'diukur', 'susunSimpanAdukan': 'diukur', 'susunSimpanMasuk': 'diukur', 'susunHapusKedatangan': 'diukur', 'susunCatatanPemasok': 'diukur',
     'susunKoreksiHpp': 'diukur', 'susunKoreksiMassal': 'diukur', 'susunHapusBeli': 'diukur', 'susunBayarUpah': 'diukur', 'susunPutusKarantina': 'diukur', 'susunBonLama': 'diukur', 'susunRetur': 'diukur',
     'simpanNota': 'diukur', 'susunNotaDokumen': 'diukur', 'susunPembatalan': 'diukur', 'susunIniDia': 'diukur', 'susunSimpanCocok': 'diukur', 'susunTutup': 'diukur',
     'susunKunci': 'diukur', 'susunBatal': 'diukur',
@@ -565,6 +565,7 @@ function jalankan(keadaan) {
   ukur(keadaan, 'adukan BARU bertanggal Agustus · 8 hasil berkantong', 'susunSimpanAdukan', susunSimpanAdukan(drafAduk(8, '2026-08-30'), W, YAKIN));
   ukur(keadaan, 'adukan BARU bertanggal Agustus · 12 hasil berkantong', 'susunSimpanAdukan', susunSimpanAdukan(drafAduk(12, '2026-08-30'), W, YAKIN));
   ukur(keadaan, 'koreksi kedatangan Agustus', 'susunSimpanMasuk', susunSimpanMasuk(Object.assign(drafDariKedatangan(5001), { alasan: 'salah ketik' }), W, true));
+  ukur(keadaan, 'catatan untuk pemasok + klaim pada kedatangan Agustus', 'susunCatatanPemasok', susunCatatanPemasok(5002, { baris: [{ jenis: 'kurang', merk: 'Beo', jumlah: '10', satuan: 'kg', ket: 'uji' }], cara: 'catat', status: 'diminta' }, W));
   ukur(keadaan, 'hapus kedatangan Agustus', 'susunHapusKedatangan', susunHapusKedatangan(5002, 'salah catat', W));
   ukur(keadaan, 'koreksi HPP satu nama (kedatangan terakhir Agustus)', 'susunKoreksiHpp', susunKoreksiHpp('Beo', '13100', 'salah ketik', W, true));
   ukur(keadaan, 'koreksi HPP massal · 2 nama kedatangan Agustus', 'susunKoreksiMassal', susunKoreksiMassal({ Beo: '13100', Cendana: '13200' }, 'salah ketik', W));

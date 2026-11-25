@@ -20,6 +20,8 @@ import { notaDari, notaDariBaris, susunStruk, stAtur, namaBaris } from './struk-
 import { riwayatUpah } from './upah-logika.js';
 import { semuaBon } from './bon-logika.js';
 import { daftarPemasok, bukuBon } from './bon-pemasok-logika.js';
+// paket Barang masuk & mutu (owner 26 Nov 2026): surat catatan untuk pemasok
+import { cpKedatangan, cpDaftar } from './stok-catat-logika.js';
 import { bukuOwner } from './owner-toko-logika.js';
 import { pjOmzetSistem, pjGabungRekap, pjTahun, PJ_LABEL } from './pajak-logika.js';
 // owner 7 Okt: daftar harga & harga yang naik untuk pelanggan dibaca dari katalog yang dipakai kasir
@@ -28,7 +30,7 @@ import { hgSemua } from './harga-logika.js';
 export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['biaya', 'Biaya'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['kuartal', 'Kuartal'], ['pajak', 'Pajak'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['pondasi', 'Pondasi'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep · Biaya: kendali biaya, putaran 38 (kendali-biaya-logika.js)
 export const JENIS_LAPORAN = [['labarugi', 'Laba-Rugi'], ['neraca', 'Neraca'], ['aruskas', 'Arus Kas']];
 export const RENTANG_LAPORAN = [[1, '1 bulan'], [3, '3 bulan'], [12, '12 bulan']];
-export const JENIS_KECIL = [['setor', 'Bukti setoran modal', 'dari catatan Owner & toko'], ['upah', 'Slip upah', 'dari buku upah'], ['piutang', 'Kartu piutang', 'per pelanggan'], ['bon', 'Rekap bon pemasok', 'per pemasok'], ['nota', 'Cetak ulang nota', 'SALINAN bercap'],
+export const JENIS_KECIL = [['setor', 'Bukti setoran modal', 'dari catatan Owner & toko'], ['upah', 'Slip upah', 'dari buku upah'], ['piutang', 'Kartu piutang', 'per pelanggan'], ['bon', 'Rekap bon pemasok', 'per pemasok'], ['nota', 'Cetak ulang nota', 'SALINAN bercap'], ['pemasok', 'Catatan untuk pemasok', 'per kedatangan'],
   ['harga', 'Daftar harga', 'untuk pelanggan · yang dipakai kasir'], ['naik', 'Harga yang naik', 'untuk pelanggan · dari riwayat terbit']].map((j) => ({ id: j[0], nama: j[1], ket: j[2] }));   // harga & naik: owner 7 Okt (visi 17 Sep)
 export const DOKUMEN_KOP = [['nota', 'Nota pelanggan & cetak ulang', 'ringkas'], ['kartu', 'Kartu piutang', 'ringkas'], ['slip', 'Slip upah', 'ringkas'], ['harian', 'Rekap harian', 'ringkas'], ['laporan', 'Laba-rugi · neraca · arus kas', 'penuh'], ['omzet', 'Rekap omzet bulanan', 'penuh'], ['bon', 'Rekap bon pemasok', 'penuh'], ['setor', 'Bukti setoran modal', 'penuh'], ['harga', 'Daftar harga & harga yang naik', 'ringkas']].map((d) => ({ id: d[0], nama: d[1], awal: d[2] }));
 export const KOLOM_IDENTITAS = [['nama', 'Nama usaha', 'wajib'], ['alamat', 'Alamat', 'wajib'], ['telepon', 'Telepon / WA', 'boleh kosong'], ['npwp', 'NPWP', '15 atau 16 angka, boleh kosong'], ['nib', 'NIB', '13 angka, boleh kosong'], ['slogan', 'Baris kaki', 'boleh kosong']].map((k) => ({ id: k[0], nama: k[1], ket: k[2] }));
@@ -863,6 +865,21 @@ export function dokumenKecil(jenis, pilih, cari, kini) {
     if (X) { const N = notaDari(X.kunci.indexOf('t:') === 0 ? { trxId: X.trxId } : X.kunci.indexOf('g:') === 0 ? { grupNota: X.trxId } : { id: X.id }); const S = N ? susunStruk(N, stAtur(), { kini: iso }) : null; trxId = X.trxId; salinan = salinanKe(trxId); judul = 'Nota'; sub = tanggalPendek(X.tanggal) + ' ' + X.jam + ' · ' + X.nama + ' · ' + X.cara;
       baris = S ? S.garis.filter((g) => !g.garis && g.kanan).map((g) => brs(g.sisaBonPer ? g.kiri + ' · per ' + formatTanggal(g.sisaBonPer) : g.kiri, g.kanan.replace(/[^\d−-]/g, '') ? Number(g.kanan.replace(/[^\d−-]/g, '').replace('−', '-')) : '', undefined, /^TOTAL/i.test(g.kiri) ? 'jumlah' : '')) : [brs(X.isi, X.total, undefined, 'jumlah')]; teksTambahan = S ? S.teks : '';
       cap = X.batal ? 'DIBATALKAN' : 'SALINAN ke-' + salinan; identitas = X.batal ? 'Nota ini dibatalkan — tidak dicetak ulang' : 'Cetak ulang ke-' + salinan + ' · nota asli ' + tanggalPendek(X.tanggal) + ' ' + X.jam + ' · angka dari nota yang tersimpan'; if (X.batal) tolak = 'Nota dibatalkan tidak dicetak ulang'; } else { sub = cocokN + ' nota cocok — ketuk salah satu'; tolak = 'Pilih notanya'; } }
+  // paket Barang masuk & mutu (owner 26 Nov 2026): SURAT CATATAN UNTUK PEMASOK — bahan berunding soal klaim. Isinya catatan Barang masuk APA ADANYA (baris nota,
+  // hasil timbang / sampel, mutu, catatan kurang · lebih · tertinggal, permintaan klaim); tidak ada angka yang dihitung di sini selain yang sudah ada di catatannya.
+  if (J.id === 'pemasok') { ragam = P.bon; const DF = cpDaftar(40); const dKg = (n) => String(Math.round(n * 100) / 100).replace('.', ',') + ' kg';
+    pilihan = DF.map((x) => ({ id: String(x.id), nama: (x.pemasok || 'tanpa nama pemasok') + ' · ' + tanggalPendek(x.tanggal) + (x.klaim ? ' · ' + x.klaim.caraNama.toLowerCase() : x.nCatatan ? ' · ' + x.nCatatan + ' catatan' : ' · belum dicatat'), n: null, teksN: x.klaim ? x.klaim.statusNama : x.nUsul ? x.nUsul + ' usul' : '' }));
+    const C = (pilih ? cpKedatangan(pilih) : null) || (DF[0] ? cpKedatangan(DF[0].id) : null);
+    if (C) { judul = 'Catatan untuk Pemasok'; sub = (C.pemasok || 'tanpa nama pemasok') + ' · barang datang ' + tanggalPendek(C.tanggal) + (C.noBon ? ' · bon No. ' + C.noBon : '') + (C.cara === 'utang' ? ' · bon' : ' · tunai');
+      baris.push(brs('Yang tertulis di nota', '', undefined, 'kel'));
+      C.timbang.baris.forEach((x) => { baris.push(brs((x.merkPemasok || x.merk) + ' · ' + dKg(x.kgNota) + ' @ ' + RP(x.hargaPerKg) + '/kg', Math.round(x.kgNota * x.hargaPerKg)));
+        if (x.timbangKg !== null) baris.push(brs('   ' + (x.perkiraan ? 'timbang sampel ' + x.sampel.karung + ' karung, rata-rata ' + String(x.sampel.rata).replace('.', ',') + ' kg per karung → perkiraan ' : 'ditimbang ') + dKg(x.timbangKg) + (x.selisihKg === null || x.selisihKg === 0 ? ' (pas)' : x.selisihKg < 0 ? ' — KURANG ' + dKg(-x.selisihKg) : ' — lebih ' + dKg(x.selisihKg)), ''));
+        if (x.awas.length) baris.push(brs('   mutu: ' + x.awas.join('; '), '')); });
+      if (C.catatan.length) { baris.push(brs('Catatan toko', '', undefined, 'kel')); C.catatan.forEach((c) => baris.push(brs(c.jenisNama + ' · ' + c.merk + (c.jumlah ? ' · ' + String(c.jumlah).replace('.', ',') + ' ' + c.satuan : '') + (c.ket ? ' — ' + c.ket : ''), ''))); }
+      if (C.klaim) { baris.push(brs('Permintaan toko', '', undefined, 'kel')); baris.push(brs(C.klaim.caraNama + (C.klaim.catatan ? ' — ' + C.klaim.catatan : ''), C.klaim.cara === 'catat' || !C.klaim.nilai ? '' : C.klaim.nilai, undefined, C.klaim.cara === 'catat' ? '' : 'jumlah')); }
+      identitas = 'Dibuat dari catatan Barang masuk toko' + (C.timbang.ditimbang ? ' (' + C.timbang.ditimbang + ' dari ' + C.timbang.nBaris + ' baris ditimbang' + (C.timbang.baris.some((x) => x.perkiraan) ? '; yang bertanda "perkiraan" dihitung dari timbang sampel' : '') + ')' : '') + '. Nilai kurang timbang = kg kurang × harga beli per kg. Mohon dikonfirmasi.';
+      if (!C.catatan.length && !C.klaim) tolak = 'Kedatangan ini belum punya catatan untuk pemasok — tulis dulu di Stok → Barang masuk → ketuk kedatangannya → Catatan untuk pemasok'; }
+    else { sub = 'belum ada kedatangan yang perlu dicatat'; tolak = 'Belum ada kedatangan dengan catatan, timbang kurang, atau mutu AWAS'; } }
   // owner 7 Okt: daftar harga untuk pelanggan — dikelompokkan per merek; pilihan = kelompok satuan (jumlah harganya, bukan rupiah → teksN)
   if (J.id === 'harga') { ragam = P.harga; const H = daftarHargaBerlaku(kini, pilih || 'semua'); const G = LP_KELOMPOK_HARGA.find((g) => g.id === H.kelompok);
     pilihan = LP_KELOMPOK_HARGA.filter((g) => g.id === 'semua' || H.hit[g.id] > 0).map((g) => ({ id: g.id, nama: g.nama, n: null, teksN: H.hit[g.id] + ' harga' }));
