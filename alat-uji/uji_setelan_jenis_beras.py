@@ -25,7 +25,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru, beku2, uji_jual_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = uji_jual_baru.MODUL + ['baru/js/layar/jenis-beras-logika.js']
+MODUL = bundel_baru.lengkapi(uji_jual_baru.MODUL + ['baru/js/layar/jenis-beras-logika.js'])   # Tahap 6: modul daun (berat-asli-logika) ikut lewat lengkapi
 BERKAS = list(dict.fromkeys(MODUL + ['baru/js/mesin/pembantu.js', 'baru/js/layar/harga.js', 'baru/js/layar/stok.js', 'baru/js/layar/jual.js', 'baru/js/layar/sistem-logika.js']))
 JAM = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 KOTAK = json.loads(json.dumps(uji_jual_baru.KOTAK))
