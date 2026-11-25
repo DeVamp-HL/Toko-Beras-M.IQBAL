@@ -71,6 +71,7 @@ export function lembarTerima(s, opsi) {
     <div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Tanda terima barang masuk</div><div class="ket">kedatangan yang sudah dicatat · pilih satu, cetak untuk supir pemasok</div></div>
       <div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>
     ${pilih ? kartuTerima(pilih, { akun: o.akun, tutup: true }) : ''}
+    ${o.bawah || ''}
     <div class="kartu" data-k="tbm-daftar" style="gap: 6px;"><div class="label">Kedatangan terakhir</div>
       ${daftar.length ? daftar.map((k) => h`<div class="jawab ${pilih === String(k.id) ? 'dipilih' : ''}" data-k="tbm-${k.id}" data-aksi="tbmPilih" data-id="${k.id}"><span class="kiri"><span class="nm">${k.pemasok} <span class="w">· ${tanggalPendek(k.tanggal)}${k.jam ? ' ' + k.jam : ''}</span></span><span class="w">${k.ringkas}</span></span>
         <span class="kanan"><span class="n">${k.karung} karung</span><span class="w">${k.cara === 'utang' ? 'bon' : 'tunai'}</span></span></div>`)

@@ -363,6 +363,18 @@ pasok('katalogHargaLiteran', [{ id: 'Campur Enam', merk: 'Campur Enam', hargaPer
     { koleksi: 'persetujuan', data: { id: 'kb-peta', tindakan: 'barangMasuk', status: 'menunggu', batchId: 'bm-peta', teks: 'x', mintaUid: u, tanggal: W.tanggal, jam: W.jam } }].map(function (x) { return { koleksi: x.koleksi, data: x.data, ada: false, lama: null }; });
   var rM = periksaKiriman(AKUN[p], DM, [], Object.assign({}, HAK_LONGGAR, { uangKeluar: 'owner' }));
   catat('barang masuk', p, 'kedatangan tablet (bon) + titipan upah bongkar + titipan bayar supir + kabar owner', rM.tolak ? { dilewati: rM.tolak } : { ac: DM.length + 1, dok: DM.length, ditolakPerangkat: false });
+  // Tahap 5 (owner 26 Nov 2026): kedatangan tablet TERBESAR — + 8 (= MT_BATAS.kemasan, dijaga uji_masuk_tablet) baris kemasan jadi (satu beli-jadi per baris) + titipan ongkos kirim
+  var nK = 8; var bm2 = JSON.parse(JSON.stringify(bm)); bm2.id = 'bm-peta2'; var jadi = [];
+  for (var q = 0; q < nK; q++) { bm2.merkList.push({ id: String(q + 2), merk: 'Kemasan ' + q, satuan: 'bal', bentuk: 'bal', kemasanJadi: true, ukuranBag: 5, jumlahBal: 10, isiPerBal: 1, jumlahPcs: 10, totalKg: 50, hargaPerBal: 70000, hargaPerKg: 14000, subtotalHarga: 700000 });
+    jadi.push({ koleksi: 'produksiKemasan', data: { id: 'pk-peta' + q, tanggal: W.tanggal, jam: W.jam, namaProduk: 'Kemasan ' + q, ukuranKemasan: 5, jumlahUnit: 10, hppPerUnit: 70000, modalPerUnit: 70000, merkSumber: 'BELI JADI', kgDipakai: 0, kantongJumlah: 0, beliJadi: true, dariBatch: 'bm-peta2' } }); }
+  var DM2 = [{ koleksi: 'batchMasuk', data: bm2 }].concat(jadi).concat([tt('tb-peta2', 'bongkar', { batchId: 'bm-peta2', pemasok: 'Pemasok Contoh' }), tt('to-peta2', 'bongkar', { batchId: 'bm-peta2', pemasok: 'Pemasok Contoh', ongkir: true }), tt('ts-peta2', 'bayarBon', { batchId: 'bm-peta2', pemasok: 'Pemasok Contoh' }),
+    { koleksi: 'persetujuan', data: { id: 'kb-peta2', tindakan: 'barangMasuk', status: 'menunggu', batchId: 'bm-peta2', teks: 'x', mintaUid: u, tanggal: W.tanggal, jam: W.jam } }]).map(function (x) { return { koleksi: x.koleksi, data: x.data, ada: false, lama: null }; });
+  var rM2 = periksaKiriman(AKUN[p], DM2, [], Object.assign({}, HAK_LONGGAR, { uangKeluar: 'owner' }));
+  catat('barang masuk', p, 'kedatangan tablet + ' + nK + ' baris kemasan jadi (beli-jadi) + titipan bongkar, ongkos kirim & bayar supir + kabar owner', rM2.tolak ? { dilewati: rM2.tolak } : { ac: DM2.length + 1, dok: DM2.length, ditolakPerangkat: false });
+  // Tahap 5: usul untuk kedatangan tersimpan = satu kabar barang masuk berkolom usul
+  var DU = [{ koleksi: 'persetujuan', data: { id: 'us-peta', tindakan: 'barangMasuk', status: 'menunggu', batchId: 'bm-peta', teks: 'x', usul: { jenis: 'koreksi', teks: 'contoh' }, mintaUid: u, tanggal: W.tanggal, jam: W.jam }, ada: false, lama: null }];
+  var rU = periksaKiriman(AKUN[p], DU, [], Object.assign({}, HAK_LONGGAR, { uangKeluar: 'owner' }));
+  catat('barang masuk', p, 'usul untuk kedatangan tersimpan (kabar barang masuk berkolom usul)', rU.tolak ? { dilewati: rU.tolak } : { ac: DU.length + 1, dok: DU.length, ditolakPerangkat: false });
 });
 
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas
@@ -463,6 +475,8 @@ OWNER_JALUR = {
     'susunCocok': 'penghitung daftar cocokkan — tidak menulis; yang menulis susunSimpanCocok (diukur)',
     'susunPotongKlaim': 'pembungkus: memilih kg dari catatan klaim lalu memanggil susunPotong (diukur)',
     'susunReturPemasok': 'pembungkus: membaca kg ketikan lalu memanggil susunPotong (diukur)',
+    'susunSetujuPakaiPotong': 'usul pakai potongan dari tablet disetujui owner (Tahap 5): 1 dokumen kedatangan (bulan terkunci ditolak tolakKunci) + 1 utangPemasokMutasi bertanggal HARI INI + paling banyak 1 pengaturan/titikKas — jumlah tetap, paling banyak 3',
+    'susunLepasUsulPakai': 'usul pakai potongan tidak dipakai (Tahap 5): 1 dokumen kedatangan, kolom usulnya saja yang dilepas (bulan terkunci ditolak tolakKunci)',
     'susunTerimaPotongan': 'uang potongan pemasok diterima (Tahap 4): 1 dokumen kedatangan asal (bulan terkunci ditolak tolakKunci) + 1 pengaturan/titikKas — jumlah tetap 2, bentuk kiriman yang sama dengan susunPotong kedatangan tunai (diukur)',
     'susunSimpanBeli': 'beli kantong: 1 dokumen bertanggal hari ini',
     'susunPecahKantong': 'pecah kantong gabungan per merek (owner 11 Okt): paling banyak 1 opname + 1 pakai di gabungan + 1 saldoAwal per merek (≤ 3), semuanya hari ini, + paling banyak 3 hargaWadah (katalog, tidak dikunci) — jumlah tetap ≤ 8',

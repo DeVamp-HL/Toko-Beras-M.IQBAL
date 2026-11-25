@@ -3841,10 +3841,45 @@ Owner: "Lanjut sisa yang belum dibangun." — tiga butir yang di Tahap 3 ditulis
   tetap, bon tinggal selisihnya). Mesin tetap mencatat nilai penuh barangnya (stok & modal benar). Ditolak: potongan > nilai barang, kedatangan bertanggal ≤
   tanggal patokan kas, tanpa patokan. Kedatangan pemakai: cara bayar / pemasok / tanggal dikunci, tidak bisa dihapus; kedatangan berpotongan `berikut` tidak
   bisa dihapus. Uangnya ternyata dibayar pemasok → `susunTerimaPotongan` (patokan laci / rekening + potongan, `dipakai` di jejaknya). Daftar periksa tutup buku
-  (`minusBuku`) menyebut potongan yang masih menunggu — kedatangannya akan diarsipkan. Selama menunggu, neraca lebih kecil sebesar potongan (belum ada pos
-  "piutang ke pemasok").
+  (`minusBuku`) menyebut potongan yang masih menunggu — kedatangannya akan diarsipkan. Selama menunggu potongannya tercatat sebagai harta "Piutang ke pemasok" di neraca
+  (Tahap 5, di bawah).
 - **Timbang sampel saat opname** — Cocokkan › Tumpukan gudang: isian "berapa karung ditimbang" + "berat seluruh sampel" (`ccSampel`). Karung utuh yang dihitung
   × rata-rata sampel (kg lepas tidak ikut dikalikan; sampel berlaku untuk karung 50 kg, atau 25 kg bila hanya itu yang dihitung; rata-rata di luar 80–105 %
   isi karung ditolak). Hasilnya PERKIRAAN yang dipakai sebagai hitungan bila owner mengetuk PAKAI; selisihnya dibukukan seperti hitungan biasa dan dokumen
   `penyesuaianStok` membawa jejak `sampel` { karung, kg, isiKarung, rata }.
 Alat uji: `uji_barang_masuk_baru.py` (178 pemeriksaan, kontrol 160).
+
+## Barang masuk & mutu — Tahap 5 (owner 26 Nov 2026, cabang `fitur/barang-masuk-5` di atas Tahap 4; tanpa rules baru): piutang ke pemasok di neraca · semua barang masuk di tablet · catatan dicetak dari tanda terima
+Owner: "Ya, buatkan pos piutang ke pemasok di neraca." · "Adakan juga di tablet." + "Semua tentang barang masuk adakan di tablet." · "Coba untuk catatan bisa
+juga di cetak lewat tanda terima, tidak hanya melewati dokumen." Mesin beku tidak diubah.
+- **Piutang ke pemasok (neraca)** — potongan `berikut` yang belum dipakai / uangnya belum diterima kini HARTA. Dihitung `piutangPemasokPada(sampai)` (toko.js) dan
+  ditambahkan di SATU pintu, `ingatNeraca`: kolom `piutangPemasok`, `nPiutangPemasok`, dan `total` + pos itu. Semua pembaca ikut dari pintu itu: Laporan › Neraca
+  (`neracaPada`: baris harta "Piutang ke pemasok", harta & kekayaan; juga saat kas dari hitungan tutup hari akhir bulan), Pondasi & Kuartal (lewat `aset`),
+  Menu "toko ini kaya atau tidak", potret kunci bulan (`kpPotret`, kini lewat `ingatNeraca`), dan baris tutup buku (`barisBuku`, id `piutangP`). TANPA potongan
+  menunggu objeknya PERSIS objek mesin (tidak ada kolom / baris baru) — neraca toko yang tidak punya potongan byte-sama dengan sebelumnya.
+  **Per tanggal:** lahir = tanggal KEDATANGAN asalnya (sejak hari itu kg & nilai kedatangannya di buku sudah turun — stok per tanggal ikut turun); selesai = tanggal
+  kedatangan yang memakainya, hari owner menyetujui usul dari tablet (`potonganPakai.disetujui`), atau hari uangnya dicatat diterima (`potongan[].dipakai`).
+  **Tutup buku:** pos ini TIDAK menyeberang (kedatangannya diarsipkan) — gerbang g6 (`minusBuku`) tetap menyebut tiap potongan yang masih menunggu dan kalimatnya
+  kini menyebut posnya; pakai dulu / catat uangnya diterima sebelum tahun dikunci.
+- **Semua tentang barang masuk di tablet (Penjaga laci)** — sensus lembar owner vs lembar tablet, dan cara tiap selisih ditutup:
+  | di lembar owner | di tablet sebelum Tahap 5 | sekarang |
+  |---|---|---|
+  | baris karung, isi karung bebas, klaim langsung (kg dipotong), tolak baris, timbang & sampel, mutu rinci, catatan bebas | ada | ada |
+  | upah bongkar, ongkos kirim, bayar supir | titipan ke owner | tetap titipan |
+  | baris KEMASAN JADI | tidak ada | ADA — baris bal + satu `produksiKemasan` beli-jadi (create staf sudah dibuka rules sejak v3); paling banyak 8 baris kemasan per kedatangan (`MT_BATAS.kemasan`, kiriman terbesar 14 dari 20 pemeriksaan server — diukur `peta_akses`); modal per kemasan tidak ditampilkan di tablet |
+  | catatan untuk pemasok (kurang / lebih / tertinggal / mutu) + cara klaim | hanya catatan bebas | ADA saat mencatat — kolom `catatanPemasok` & `klaim` (status "sudah disampaikan", nilai dari timbang) ikut tersimpan; "isi dari hasil timbang & cek mutu" satu ketukan |
+  | memakai potongan yang menunggu | tidak ada | USUL — kolom `usulPakaiPotong` { rp, dari } di kedatangannya; bon dicatat PENUH; owner menyetujui di Koreksi kedatangan (`ptUsulPakai` → `susunSetujuPakaiPotong`: `potonganPakai` + satu bayar bon dari laci bertanggal HARI DISETUJUI + patokan laci + potongan; `susunLepasUsulPakai` = tidak dipakai) |
+  | catatan & klaim belakangan, retur ke pemasok, koreksi, hapus kedatangan | tidak ada | USUL — lembar "Kedatangan tersimpan" (lembar tanda terima) punya kartu "Catatan & usul untuk owner": `mtSusunUsul` menulis SATU kabar barang masuk (`persetujuan`, tindakan `barangMasuk`, bentuk rules v15) berkolom `usul` { jenis catatan / retur / koreksi / hapus, … }. Owner melihatnya di Koreksi kedatangan (kartu "Usul dari tablet"): usul catatan / retur MENGISI lembarnya (`mtDrafDariUsul`), owner memeriksa lalu menyimpan sendiri — kiriman itu sekaligus menandai usulnya "sudah diperiksa" |
+  | tanda terima + cetak catatan pemasok | tanda terima | + cetak catatan (lihat bawah) |
+  | tanggal datang, tunai / bon, kelas & varian merek baru, uang kembali ke laci / rekening, potong bon membukukan, patokan kas, hapus, Atur (isi karung, ambang mutu, batas HPP) | owner saja | TETAP owner (keputusan owner 22 Nov: tablet selalu bon bertanggal hari ini, uang lewat titipan, koreksi / hapus oleh owner) |
+  Akun tablet tidak pernah menulis kedatangan yang SUDAH tersimpan, `pengaturan/titikKas`, atau bayar bon — karena itu tidak ada rules baru. `akses.js`: pasangan
+  beli-jadi kedatangan tablet dihitung tindakan KEDATANGAN (bukan adukan), jadi Penjaga laci yang kisi adukannya "tidak boleh" tetap bisa mencatat kemasan jadi.
+- **Catatan untuk pemasok dicetak dari kartu tanda terima** — tombol "CETAK CATATAN PEMASOK" (+ WhatsApp di luar aplikasi tablet) di kartu tanda terima (sesudah
+  simpan, saat koreksi, dan di lembar kedatangan tersimpan tablet). Muncul hanya bila kedatangan itu punya catatan / klaim / catatan bebas / baris ditolak /
+  potongan, ATAU usul dari timbang & cek mutu (`cpIsiSurat().bisaCetak`). Isinya SATU penyusun, `cpIsiSurat` (stok-catat-logika) — dipakai Laporan › Dokumen ›
+  Dokumen kecil (berkop) dan struk (`tbmGarisCatatan`: satu lembar, judul kelompok huruf besar, angka di kanan, potongan yang sudah dibukukan bertanda minus,
+  tempat tanda tangan toko & pemasok). Jalur cetaknya sama dengan tanda terima (`kirim`): printer tablet / jaringan, atau dialog cetak peramban (HP / Mac — bisa
+  disimpan PDF).
+Alat uji: `uji_barang_masuk_baru.py` (185 pemeriksaan, kontrol 174), `uji_masuk_tablet.py` (88, kontrol 47), `uji_terima_barang.py` (145, kontrol 47),
+`peta_akses.py` (jalur `susunSetujuPakaiPotong` & `susunLepasUsulPakai` terdaftar; kiriman tablet terbesar diukur). Belum dicoba: menyimpan ke data toko, cetak di
+printer sungguhan, push kabar usul di HP owner.

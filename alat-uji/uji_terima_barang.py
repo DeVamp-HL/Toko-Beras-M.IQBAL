@@ -228,7 +228,7 @@ def periksa_statis(t):
     ok('stok.js memasang panel', "import { kartuTerima, lembarTerima, aksiPanelTerima } from './terima-barang-panel.js';" in st and 'aksiPanelTerima({ set, akun: opsi.akun, waktu }));' in st)
     ok('keadaan awal punya tbm (ganti orang = kartu tertutup)', re.search(r"\n    tbm: null \}\);\n  const K = buatKeadaan\(awal\(\)\);", st) is not None)
     ok('akun bukan-owner punya tombol "Tanda terima barang masuk" di Stok', "${bukanOwner(ak) ? h`<div class=\"kaca-btn\" data-k=\"tombol-terima\" data-aksi=\"bukaTerima\">Tanda terima barang masuk</div>` : ''}" in st)
-    ok('lembar daftar terpasang di pemilih lembar', "s.lembar === 'terima' ? lembarTerima(s, { akun: opsi.akun ? opsi.akun() : null })" in st)
+    ok('lembar daftar terpasang di pemilih lembar', "s.lembar === 'terima' ? lembarTerima(s, { akun: opsi.akun ? opsi.akun() : null, bawah: gambarUsulTablet(s) })" in st)
     ok('lembar Barang masuk: kartu kedatangan yang dikoreksi, atau yang baru tersimpan', "${koreksi ? kartuTerima(d.id, { akun: opsi.akun ? opsi.akun() : null }) : s.tbm ? kartuTerima(s.tbm.id, { akun: opsi.akun ? opsi.akun() : null, tutup: true }) : ''}" in st)
     ok('sesudah Simpan: kartu kedatangan yang baru tersimpan dibuka', "const dm = (r.dokumen || []).find((x) => x.koleksi === 'batchMasuk'); const idT = dm && dm.data ? dm.data.id : null;" in st and "tbm: idT !== null && idT !== undefined ? { id: String(idT) } : null });" in st)
     ok('tutup lembar / buka lembar / batal koreksi / koreksi menutup kartu lama', all(x in st for x in ["yakinHapusA: false, bukaA: null, tbm: null }),", "kabar: '', aturC: null, tbm: null }),", "yakinHapus: false, kabar: '', tbm: null }); },", "set({ masuk: d, yakinM: false, yakinHapus: false, tbm: null, kabar:"]))
@@ -293,7 +293,7 @@ MUTASI = [
     ('panel: menulis ke buku', PANEL, "import { bukanOwner, akunMembaca } from './akses-layar.js';", "import { bukanOwner, akunMembaca } from './akses-layar.js';\nimport { tulisDokumen } from '../data/toko.js';"),
     ('akses: akun bukan-owner dianggap membaca semua koleksi', AKSES_LAYAR, "!bukanOwner(akun) || BACA_STAF.indexOf(koleksi) >= 0;", "true;"),
     ('stok: tombol akun tablet hilang', STOK, " data-k=\"tombol-terima\" data-aksi=\"bukaTerima\">", " data-k=\"tombol-terima\" data-aksi=\"tombolMati\">"),
-    ('stok: lembar daftar tidak terpasang', STOK, "s.lembar === 'terima' ? lembarTerima(s, { akun: opsi.akun ? opsi.akun() : null }) : ", ""),
+    ('stok: lembar daftar tidak terpasang', STOK, "s.lembar === 'terima' ? lembarTerima(s, { akun: opsi.akun ? opsi.akun() : null, bawah: gambarUsulTablet(s) }) : ", ""),
     ('stok: sesudah Simpan kartu tidak dibuka', STOK, "tbm: idT !== null && idT !== undefined ? { id: String(idT) } : null });", "tbm: null });"),
     ('stok: aksi panel tidak digabung', STOK, "\n  aksiPanelTerima({ set, akun: opsi.akun, waktu }));", ");"),
     ('index: modul panel tidak dimuat lebih dulu', INDEX, '<link rel="modulepreload" href="js/layar/terima-barang-panel.js">\n', ''),
