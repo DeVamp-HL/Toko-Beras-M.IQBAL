@@ -69,7 +69,7 @@ export function ringkasHari(iso) {
     .concat(masukQris(ambilKasbonMutasi()).map((m) => ({ id: String(m.id), jam: m.jam || '', n: Number(m.nominal) || 0, jenis: 'kasbon', ket: 'kasbon kembali ' + String(m.namaPegawai || '').trim() })))
     .map((q) => Object.assign(q, { mdr: mdrSatu(q.n, A) })).sort((a, b) => String(a.jam).localeCompare(String(b.jam)));
   const jmlQ = (j) => qrisNota.filter((q) => q.jenis === j).reduce((a, q) => a + q.n, 0); const qrisJual = jmlQ('jual'), qrisBon = jmlQ('bon'), qrisKasbon = jmlQ('kasbon');
-  // owner 24 Nov 2026: TRANSFER masuk rekening (bukan laci, tanpa MDR) — dipisah dari tunai; disebut untuk dicocokkan dengan mutasi bluBCA
+  // owner 24 Nov 2026: TRANSFER masuk rekening (bukan laci, tanpa MDR) — dipisah dari tunai; disebut untuk dicocokkan dengan mutasi rekening usaha
   const transferJual = jual.filter((p) => caraBayarKunci(p) === 'transfer').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0);
   const transferBon = ambilPiutangMutasi().filter((m) => m.tipe === 'bayar' && m.tanggal === iso && caraBayarKunci(m) === 'transfer').reduce((a, m) => a + (Number(m.nominal) || 0), 0);
   const tunai = jual.filter((p) => caraBayarKunci(p) !== 'qris' && caraBayarKunci(p) !== 'kredit' && caraBayarKunci(p) !== 'transfer').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0); const qris = qrisJual + qrisBon + qrisKasbon; const kredit = jual.filter((p) => caraBayarKunci(p) === 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0);
@@ -181,8 +181,8 @@ export function rekapTutup(H) {
     H.cod && H.cod.length ? [['Bayar di tempat BELUM disetor · ' + H.cod.map((x) => x.pengantar || 'pengantar').filter((p, i, a) => a.indexOf(p) === i).join(', '), RP(H.cod.reduce((a, x) => a + x.sisa, 0)), 'awas']] : [],
     // owner 21 Nov 2026: titipan uang keluar dari tablet yang belum diputus — laci fisik sudah berkurang, buku belum
     H.titipan && H.titipan.n ? [['Titipan uang keluar tablet BELUM diputus · ' + H.titipan.n, RP(H.titipan.rp), 'awas']] : [],
-    // owner 24 Nov 2026: transfer masuk rekening hari ini — dicocokkan dengan mutasi bluBCA (bukan uang laci, tanpa MDR)
-    R.transferJual || R.transferBon ? [['Transfer masuk rekening · cocokkan dengan mutasi bluBCA', RP(R.transferJual + R.transferBon), '']] : []);
+    // owner 24 Nov 2026: transfer masuk rekening hari ini — dicocokkan dengan mutasi rekening usaha (bukan uang laci, tanpa MDR)
+    R.transferJual || R.transferBon ? [['Transfer masuk rekening · cocokkan dengan mutasi rekening usaha', RP(R.transferJual + R.transferBon), '']] : []);
   return rows.map((r) => ({ a: r[0], b: r[1], kelas: r[2] }));
 }
 export function teksRekap(H, iso, jam) {

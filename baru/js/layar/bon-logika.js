@@ -9,11 +9,11 @@
 // `tagihPelanggan` supaya besok layar tahu janji siapa yang lewat. Macet = bon tertua lebih tua dari N hari DAN tidak ada pembayaran selama itu (usul saja).
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
-import { cacheMentah, ambilTutupHari, ambilPiutangMutasi, eraBuku } from '../data/toko.js';
+import { cacheMentah, ambilTutupHari, ambilPiutangMutasi, eraBuku, ambilPenjualan, kunciNota } from '../data/toko.js';
 import { RP, hariIniIso, LEBIH_AMBANG, kalimatLebih, pecahLebih } from '../inti/format.js';
-import { aturPelanggan, kartuTersimpan, hariKe } from './pelanggan-logika.js';
+import { aturPelanggan, kartuTersimpan, hariKe, hariMingguKe, HARI_PANJANG } from './pelanggan-logika.js';
 // B2 (owner 17 Nov 2026): pembayaran boleh menunjuk faktur tertentu — pembagian sisa ke baris bon dipusatkan di faktur-logika (fkAlokasi)
-import { fkRincian, fkAdaAlamat, fkTerbukaOrang } from './faktur-logika.js';
+import { fkRincian, fkAdaAlamat, fkTerbukaOrang, fkKartu, fkHariSah, fkSemua } from './faktur-logika.js';
 
 const bnAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0;
   const n = Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return isFinite(n) ? n : 0; };
@@ -285,4 +285,63 @@ export function susunHapusBon(kini, kunci, nominal, alasan, w, yakin) {
   if (!yakin) return { tolak: 'Hapus ' + RP(n) + ' dari buku a.n. ' + b.nama + '? BUKAN uang masuk — kas tidak berubah; dicatat sebagai KERUGIAN bulan ini dan tidak bisa dibatalkan. Ketuk sekali lagi', perluYakin: true };
   const data = { id: w.idUnik(), tipe: 'hapusBuku', namaPelanggan: b.nama, nominal: n, alasan: String(alasan).trim(), tanggal: w.tanggal, jam: w.jam, dicatatDi: 'sistem' };
   return { dokumen: [{ koleksi: 'piutangMutasi', data }], patch: { kabar: 'Dihapus dari buku ' + RP(n) + ' a.n. ' + b.nama + ' (' + data.alasan + '). Kas tidak berubah; kerugiannya masuk laporan bulan ini.' + (b.sisa - n <= 0 ? ' Bonnya kini nol.' : ' Sisa bon ' + RP(b.sisa - n) + '.'), kabarAwas: false } };
+}
+
+// ==================== PIUTANG PER NOTA, JATUH TEMPO & HARI TAGIH (owner 26 Nov 2026, sensus 1c A105 · B29 · B30 · B31 — "paket saran") ====================
+// Mesin beku (hitungPiutang) menghitung umur PER ORANG dari bon tertua dan TIDAK diubah. Di sini sisa tiap orang dibagi ke NOTA-nya yang masih terbuka — pembagian
+// yang SAMA dengan buku bon (rincianBelumLunas: retur memadamkan nota asalnya, pembayaran & hapus buku bon tertua dulu, pembayaran beralamat faktur dulu) — lalu
+// tiap nota diberi jatuh tempo: faktur = jatuh tempo fakturnya; nota bon lain = tanggal nota + tempo di kartu pelanggan, kosong = "waktunya ditagih" (Pelanggan ›
+// Atur, bawaan 14 hari — angka yang sama dengan status "waktunya ditagih", jadi papan tagih & jatuh tempo per nota tidak saling membantah). Saldo awal = satu
+// "nota" bertanggal saldo awalnya (saldo pembuka tutup buku bertanggal bon tertua orang itu: bon tahun lalu terbaca SATU nota — tanggal bon mudanya tidak dibawa).
+// Σ sisa nota tiap orang WAJIB = sisa mesin orang itu; kalau tidak, orangnya disebut (tidakMenutup) dan totalnya tetap total mesin.
+export const PN_KELOMPOK = [['lewat', 'Lewat jatuh tempo'], ['hariIni', 'Jatuh tempo hari ini'], ['minggu', 'Jatuh tempo 7 hari ke depan'], ['nanti', 'Belum jatuh tempo'], ['tanpa', 'Tanpa tanggal']];
+const pnIsoSah = (t) => /^\d{4}-\d\d-\d\d$/.test(String(t || ''));
+/** Tempo nota bon (bukan faktur) seorang pelanggan: tempo di kartunya → "waktunya ditagih". */
+export function pnTempo(nama) { const c = fkKartu(nama); const n = c ? fkHariSah(c.tempoHari) : null; return n === null ? { hari: aturPelanggan().tagihHari, sumber: 'tagih' } : { hari: n, sumber: 'kartu' }; }
+/** Status satu jatuh tempo terhadap iso: lewat · hariIni · minggu (besok … +6 hari) · nanti · tanpa. */
+export const pnStatus = (jt, iso) => (!pnIsoSah(jt) ? 'tanpa' : jt < iso ? 'lewat' : jt === iso ? 'hariIni' : hariKe(jt) - hariKe(iso) <= 6 ? 'minggu' : 'nanti');
+/** Semua nota bon yang masih terbuka (sisa > 0), dengan jatuh tempo & statusnya. semua = semuaBon(kini) bila sudah dihitung. */
+export function pnNota(kini, semua) {
+  const iso = hariIniIso(kini); const B = semua || semuaBon(kini); const baris = {}; ambilPenjualan().forEach((p) => { baris[String(p.id)] = p; });
+  const fk = {}; fkSemua(kini).forEach((f) => { if (f.kredit && f.berlaku) (f.baris || []).forEach((p) => { fk[String(p.id)] = f; }); });
+  const nota = []; const tidakMenutup = [];
+  B.filter((b) => b.sisa > 0).forEach((b) => { const per = {}; const T = pnTempo(b.nama); let jml = 0;
+    b.buka.forEach((r) => { const p = r.idTrx !== null && r.idTrx !== undefined ? baris[String(r.idTrx)] : null; const f = p ? fk[String(p.id)] || null : null; const k = p ? 'n:' + kunciNota(p) : 'sa:' + String(r.idMutasi || r.tanggal || '');
+      const x = per[k] || (per[k] = { kunci: k, orang: b.kunci, nama: b.nama, tanggal: String(r.tanggal || ''), sisa: 0, nominal: 0, ket: r.ket || (p ? 'Belanja' : 'Saldo awal'), saldoAwal: !p, faktur: f ? f.no : '', jatuhTempo: '', tempo: f ? f.tempoHari : T.hari, sumberTempo: f ? 'faktur' : T.sumber });
+      x.sisa += Number(r.sisa) || 0; x.nominal += Number(r.nominal) || 0; jml += Number(r.sisa) || 0;
+      if (f) x.jatuhTempo = String(f.jatuhTempo || ''); else if (pnIsoSah(x.tanggal)) x.jatuhTempo = new Date((hariKe(x.tanggal) + T.hari) * 86400000).toISOString().slice(0, 10); });
+    if (Math.abs(jml - b.sisa) >= 0.5) tidakMenutup.push({ kunci: b.kunci, nama: b.nama, sisa: b.sisa, nota: jml, selisih: b.sisa - jml });
+    Object.keys(per).forEach((k) => { const x = per[k]; x.sisa = Math.round(x.sisa * 100) / 100; x.status = pnStatus(x.jatuhTempo, iso); x.hariLewat = x.status === 'lewat' ? hariKe(iso) - hariKe(x.jatuhTempo) : 0;
+      x.hariLagi = x.status === 'minggu' || x.status === 'nanti' ? hariKe(x.jatuhTempo) - hariKe(iso) : 0; nota.push(x); }); });
+  nota.sort((a, b) => String(a.jatuhTempo || '9999').localeCompare(String(b.jatuhTempo || '9999')) || b.sisa - a.sisa);
+  return { iso, nota, tidakMenutup, total: B.filter((b) => b.sisa > 0).reduce((a, b) => a + b.sisa, 0) };
+}
+/**
+ * Piutang dipecah PER NOTA: lewat · hari ini · 7 hari ke depan · belum jatuh tempo · tanpa tanggal (+ lewat dibagi umur keterlambatan memakai batas kelompok umur
+ * owner). Σ kelompok = total mesin bila semua orang menutup; kalau tidak, `menutup` = false dan selisihnya disebut.
+ */
+export function pnRingkas(kini, semua) {
+  const N = pnNota(kini, semua); const kel = PN_KELOMPOK.map(([id, label]) => { const isi = N.nota.filter((x) => x.status === id); return { id, label, n: isi.length, orang: isi.map((x) => x.orang).filter((o, i, a) => a.indexOf(o) === i).length, rp: isi.reduce((a, x) => a + x.sisa, 0), isi }; });
+  const jumlah = kel.reduce((a, k) => a + k.rp, 0); const umur = kelompokUmur(aturPelanggan().umurBatas).map((e) => { const isi = N.nota.filter((x) => x.status === 'lewat' && x.hariLewat >= Math.max(1, e.dari) && x.hariLewat <= e.sampai); return { id: e.id, label: 'lewat ' + e.label, n: isi.length, rp: isi.reduce((a, x) => a + x.sisa, 0) }; });
+  const g = (id) => kel.find((k) => k.id === id);
+  return { iso: N.iso, nota: N.nota, kelompok: kel, umurLewat: umur, total: N.total, jumlah, menutup: !N.tidakMenutup.length && Math.abs(jumlah - N.total) < 0.5, tidakMenutup: N.tidakMenutup, selisih: Math.round((N.total - jumlah) * 100) / 100,
+    lewat: g('lewat').rp, hariIni: g('hariIni').rp, minggu: g('minggu').rp, nanti: g('nanti').rp, tanpa: g('tanpa').rp, jatuhSampaiMinggu: g('lewat').rp + g('hariIni').rp + g('minggu').rp };
+}
+// ---------- HARI TAGIH TETAP (A105) ----------
+// Owner memilih SATU hari tagih per minggu (Pelanggan › Atur, bawaan Sabtu; -1 = mati). Pada hari itu Papan tagih membuka "Tagih hari ini": orang yang punya
+// nota jatuh tempo SAMPAI hari itu, atau janji bayarnya lewat / jatuh hari itu. Hari lain: hari tagih berikutnya + siapa yang akan ditagih saat itu.
+// Satu sumber angka: aturPelanggan().hariTagih (bawaan Sabtu = 5 di ATUR_PELANGGAN_BAWAAN; Senin = 0, sama dengan hariMingguKe).
+export function pnHariTagih(kini, semua) {
+  const iso = hariIniIso(kini); const A = aturPelanggan(); const h = Number(A.hariTagih);
+  if (!(h >= 0 && h <= 6)) return { nyala: false, iso, teks: 'Hari tagih tetap mati (Pelanggan › Atur)', daftar: [], rp: 0 };
+  const geser = (h - hariMingguKe(iso) + 7) % 7; const berikut = new Date((hariKe(iso) + geser) * 86400000).toISOString().slice(0, 10);
+  const B = semua || semuaBon(kini); const N = pnNota(kini, B); const per = {};
+  N.nota.forEach((x) => { if (!pnIsoSah(x.jatuhTempo) || x.jatuhTempo > berikut) return; const o = per[x.orang] || (per[x.orang] = { kunci: x.orang, nama: x.nama, rp: 0, nNota: 0, tertua: x.jatuhTempo, janji: '' }); o.rp += x.sisa; o.nNota += 1; if (x.jatuhTempo < o.tertua) o.tertua = x.jatuhTempo; });
+  B.forEach((b) => { if (!(b.sisa > 0) || !b.tagih || !b.tagih.janji || (b.status !== 'janjiLewat' && b.status !== 'menunggu') || b.tagih.janji > berikut) return; const o = per[b.kunci] || (per[b.kunci] = { kunci: b.kunci, nama: b.nama, rp: 0, nNota: 0, tertua: '', janji: '' }); o.janji = b.tagih.janji; });
+  const sisaOrang = {}; B.forEach((b) => { sisaOrang[b.kunci] = b; });
+  const daftar = Object.keys(per).map((k) => Object.assign(per[k], { sisa: sisaOrang[k] ? sisaOrang[k].sisa : per[k].rp, kontak: sisaOrang[k] ? sisaOrang[k].kontak : '', status: sisaOrang[k] ? sisaOrang[k].status : '' }))
+    .sort((a, b) => String(a.tertua || a.janji).localeCompare(String(b.tertua || b.janji)) || b.rp - a.rp);
+  const rp = daftar.reduce((a, o) => a + o.rp, 0); const nama = HARI_PANJANG[h];
+  return { nyala: true, iso, hari: h, nama, hariIni: geser === 0, berikut, lagi: geser, daftar, rp,
+    teks: geser === 0 ? 'Hari ini hari tagih (' + nama + ') · ' + (daftar.length ? daftar.length + ' orang · ' + RP(rp) + ' jatuh tempo sampai hari ini' : 'tidak ada bon yang jatuh tempo') : 'Hari tagih berikutnya ' + nama + ' ' + formatTanggal(berikut) + ' (' + geser + ' hari lagi) · ' + (daftar.length ? daftar.length + ' orang · ' + RP(rp) + ' jatuh tempo sampai hari itu' : 'belum ada bon yang jatuh tempo sampai hari itu') };
 }

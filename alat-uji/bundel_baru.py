@@ -98,6 +98,11 @@ PD_MODUL = 'baru/js/layar/pondasi-logika.js'
 PD_PEMAKAI = ('dasbor-logika.js',)
 
 
+# owner 26 Nov 2026 (kas & rekening): Dasbor memakai kas-rekening-logika (awal hari semua tempat, cocok rekening) — modul itu membaca uang-logika & data/toko.js.
+# Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada; fungsi terangkat, jadi urutan tidak menentukan.
+KR_MODUL = 'baru/js/layar/kas-rekening-logika.js'
+KR_PEMAKAI = ('dasbor-logika.js',)
+
 # paket Susut + HPP & harga minimum (owner 26 Nov 2026): Dasbor memakai susut-harga-logika (target susut, opname bulan ini, harga minimum, alarm HET) — modul itu
 # hanya membaca laporan / kendali biaya / harga / HET / stok-catat / jual, yang sudah ada di bundel Dasbor. Ikut OTOMATIS (sekali, di belakang).
 SH_MODUL = 'baru/js/layar/susut-harga-logika.js'
@@ -106,6 +111,8 @@ SH_PEMAKAI = ('dasbor-logika.js',)
 
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in KR_PEMAKAI for x in d) and not any(x.endswith('kas-rekening-logika.js') for x in d):
+        d.append(KR_MODUL)
     if any(os.path.basename(x) in SH_PEMAKAI for x in d) and not any(x.endswith('susut-harga-logika.js') for x in d):
         d.append(SH_MODUL)
     if any(os.path.basename(x) in KL_PEMAKAI for x in d) and not any(x.endswith('kpi-laba-logika.js') for x in d):

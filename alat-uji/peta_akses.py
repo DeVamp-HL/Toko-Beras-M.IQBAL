@@ -467,6 +467,7 @@ OWNER_JALUR = {
     'susunBayarSesudahHapus': 'dibayar sesudah dihapus buku (Paket F2): paling banyak 2 piutangMutasi (hapus buku minus + bayar) bertanggal hari ini',
     'susunBayarTagihan': '1 dokumen: biayaBulanan bulan INI atau pengeluaranHarian hari ini', 'susunBonus': '2 dokumen: biayaBulanan bulan INI + slipUpah hari ini',
     'susunKasbonKaryawan': '1 kasbonMutasi bertanggal hari ini', 'susunKeluar': 'uang keluar: paling banyak 2 dokumen (pengeluaranHarian + kasbon) bertanggal hari ini',
+    'susunTandaNota': 'owner 26 Nov 2026 (kas kecil): tandai nota satu catatan uang keluar = 1 pengeluaranHarian DIUBAH (salinan catatannya + nota/alasan/foto) — bulan terkunci ditolak rules (tglUbah); foto nota ditulis terpisah di fotoBon (bukan koleksi bertanggal)',
     'susunPindah': 'pindah uang: pindahUang + paling banyak 1 biaya admin hari ini · pindah tempat stok: pengaturan tempatSimpan & pindahTempat (tidak dikunci)',
     'susunUrungPindah': 'urung pindah: hapus 1 pindahUang + paling banyak 1 biaya admin (dokumen barusan)',
     'susunPutusTitipan': 'titipan disetujui: 1 pengeluaranHarian ATAU 1 kasbonMutasi bertanggal titipannya (+ persetujuan, tidak dikunci) — owner 21 Nov 2026',

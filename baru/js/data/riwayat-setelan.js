@@ -29,7 +29,10 @@ export function rsdBeda(lama, baru) {
   return kunci.filter((k) => rsdJ(a[k]) !== rsdJ(b[k])).slice(0, 20).map((k) => ({ k, dari: rsdNilai(a[k]), ke: rsdNilai(b[k]) }));
 }
 /** Dicatat? (owner, koleksi setelan, bukan draf/kunci) */
-export const rsdDicatat = (koleksi, id, owner) => !!owner && !!RSD_KOLEKSI[koleksi] && !RSD_LEWAT[koleksi + '/' + String(id)];
+// owner 26 Nov 2026: aturanToko/cocokRek-YYYY-MM = centang & hasil cocok rekening satu bulan — CATATAN (bukan setelan), tiap centang menulisnya: tidak dicatat
+// (setelannya sendiri — toleransi, jenis penjelasan, bentuk berkas — ada di aturanToko/rekening dan tetap dicatat)
+export const RSD_LEWAT_AWALAN = ['aturanToko/cocokRek-'];
+export const rsdDicatat = (koleksi, id, owner) => !!owner && !!RSD_KOLEKSI[koleksi] && !RSD_LEWAT[koleksi + '/' + String(id)] && !RSD_LEWAT_AWALAN.some((a) => (koleksi + '/' + String(id)).indexOf(a) === 0);
 /**
  * Dokumen d (sudah bercap penulis) + entri riwayatUbah bila ada kolom yang berubah dari `lama` (salinan cache; tidak ada = dokumen baru).
  * Riwayat lama selalu dibawa. Tidak dicatat / tidak berubah & tanpa riwayat = d apa adanya (objek yang sama).

@@ -22,6 +22,8 @@ import { fkPasangPerangkat } from './layar/faktur-logika.js';
 fkPasangPerangkat(fb.idPerangkat());
 import { kalimatIsianKeluar } from './inti/isian.js';
 import { pjSumberPengingat } from './layar/pajak-logika.js';
+// owner 26 Nov 2026: pengingat setor ke bank & cocok saldo rekening akhir bulan (owner saja — butuh uang), diteruskan seperti pengingat pajak
+import { khSumberPengingat } from './layar/kas-rekening-logika.js';
 import { nanti, setelMuat } from './inti/jadwal.js';
 import { pasangGerbang } from './inti/gerbang.js';
 // putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang
@@ -249,7 +251,8 @@ const ownerTablet = {
 const menu = pasangLayarMenu(document.getElementById('layarMenu'), { lonceng: pintuLonceng, gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab) => { pindah('stok'); stok.buka(lembar, tab); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); }, bukaLaporan: (keluarga, t) => { pindah('laporan'); laporan.buka(keluarga, t); }, bukaJual: (lembar) => { pindah('jual'); layar.keadaan.setel({ lembar, kabar: '' }); },
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
-    pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })() }),   // putaran 24: pengingat pajak, owner saja
+    pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })(),
+    uang: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return khSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat uang', e); return []; } })() }),   // putaran 24: pengingat pajak, owner saja
   periksaSambungan: () => fb.periksaSambungan(4000), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n),
   akun: akunKini, statusUang: () => statusFb.uang, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah),
   // hemat baca (owner 7 Okt 2026): Menu › Toko ini › Perangkat & antrean › Hemat baca — keadaan, daftar siap-nyala, saklar perangkat ini, tombol baca penuh
@@ -272,6 +275,8 @@ const lokalPerangkat = () => ({ antre: statusFb.antre || [], menunggu: statusFb.
   // uang.js muatData → pstKurang (kartu pemeriksaan sesudah tutup buku "?"), daftar periksa kunci bulan, perkiraan kuota, Lanjutkan/Batalkan tutup buku
   hemat: (() => { try { return fb.hematKeadaan(); } catch (e) { return { nyala: false }; } })() });
 const uang = pasangLayarUang(document.getElementById('layarUang'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), lokal: lokalPerangkat,
+  // owner 26 Nov 2026 (kas kecil): foto nota uang keluar — koleksi fotoBon yang sama dengan foto bon pemasok (idBon 'uk-' + id catatan), owner saja
+  foto: { ada: () => sumberData().jenis === 'firestore', baca: (idBon) => fb.bacaFotoBon(idBon), simpan: (d) => fb.simpanFotoBon(d), hapus: (id, idBon) => fb.hapusFotoBon(id, idBon) },
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); } });   // putaran 39: kartu Cek wadah K5 → Stok › Wadah literan
 // Laporan & Dokumen (putaran 19): layar kedelapan — Laba · Harian · Bulanan · Neraca · Dokumen (berkop, paket bank, dokumen kecil) · Setelan (kop & identitas). Dibuka dari Menu; di Mac ada di menu samping.
 // keTujuan = satu pintu ke layar lain dengan bentuk tujuan yang sama dengan baris Menu ({ ke, keluarga, tab, lembar, sistem }).

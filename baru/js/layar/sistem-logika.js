@@ -14,7 +14,7 @@ import { ambilPenjualan, ambilRetur, ambilPenyesuaianStok, ambilPenyesuaianKemas
 import { tempoPemasok, petaGulir, gulirBon } from './bon-pemasok-logika.js';
 import { kantongLama } from './wadah-jual-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
-import { semuaBon, pesanTagih } from './bon-logika.js';
+import { semuaBon, pesanTagih, pnHariTagih } from './bon-logika.js';
 import { SERVER_BUKA, PERAN_BUKAN_OWNER } from '../data/akses.js';
 import { HB_TEMPAT } from '../data/hemat-baca.js';
 // owner 7 Okt (JS2-C): bawaan batas nego satu sumber
@@ -45,7 +45,9 @@ export const SS_NILAI_HAK = ['sendiri', 'owner', 'tidak'];
 export const SS_LABEL_HAK = { sendiri: 'boleh sendiri', owner: 'minta owner', tidak: 'tidak boleh' };
 const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: 'owner', terimaBon: 'sendiri', hitungLaci: 'sendiri', uangKeluar: 'owner', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'owner', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri', hargaPelanggan: 'owner', antar: 'sendiri', terimaAntar: 'sendiri', pesanan: 'sendiri' },
   karyawan: { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri', hargaPelanggan: 'tidak', antar: 'tidak', terimaAntar: 'sendiri', pesanan: 'tidak' } };   // B4 (owner 18 Nov 2026): pesanan, PO, jadwal rutin = owner + Ben — rules v11
-export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon'], ['janji', 'Janji bayar pelanggan', 'hariJanji'], ['kantong', 'Kantong menipis', 'hariKantong'], ['opname', 'Opname rutin', 'hariOpname'], ['cadangan', 'Cadangan berkas', 'hariCadangan'], ['pajak', 'Setoran PPh final bulan lalu', 'hariPajak'], ['faktur', 'Faktur pelanggan jatuh tempo', 'hariFaktur'], ['gudang', 'Cek mingguan timbangan & gudang', 'hariGudang'], ['kuartal', 'Target kuartal belum diisi', 'hariKuartal'], ['tinjauan', 'Tinjauan bulanan belum ditulis', 'hariTinjauan']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));   // gudang: paket KPI laba (owner 24 Nov 2026, butir 14)
+export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon'], ['janji', 'Janji bayar pelanggan', 'hariJanji'], ['kantong', 'Kantong menipis', 'hariKantong'], ['opname', 'Opname rutin', 'hariOpname'], ['cadangan', 'Cadangan berkas', 'hariCadangan'], ['pajak', 'Setoran PPh final bulan lalu', 'hariPajak'], ['faktur', 'Faktur pelanggan jatuh tempo', 'hariFaktur'], ['gudang', 'Cek mingguan timbangan & gudang', 'hariGudang'], ['kuartal', 'Target kuartal belum diisi', 'hariKuartal'], ['tinjauan', 'Tinjauan bulanan belum ditulis', 'hariTinjauan'],
+  // owner 26 Nov 2026 (kas & rekening, bon eceran): setor ke bank · cocok saldo rekening akhir bulan · hari tagih bon pelanggan
+  ['setor', 'Setor ke bank (brankas lewat batas)', 'hariSetor'], ['rekening', 'Cocok saldo rekening usaha akhir bulan', 'hariRekening'], ['tagih', 'Hari tagih bon pelanggan', 'hariTagih']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));   // gudang: paket KPI laba (owner 24 Nov 2026, butir 14)
 export const SS_PENERIMA = ['Owner', 'Ben'];
 
 // ---------- ATUR SENDIRI — angka & daftar kebijakan owner, satu dokumen aturanToko per layar; bawaan = angka desain terkunci ----------
@@ -56,8 +58,8 @@ export const SS_ATUR_BAWAAN = {
     operator: {}, ringkasOrang: '', intipDetik: 60 },   // owner 22 Nov 2026 (sidik jari Tahap A): intip uang tertutup sendiri sesudah intipDetik tidak disentuh · putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js · owner 21 Nov: orang yang membuka Ringkas hari ini (kode orang, '' = mati)
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
-  pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true, gudang: true, kuartal: true, tinjauan: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'], gudang: ['Owner', 'Ben'], kuartal: ['Owner'], tinjauan: ['Owner'] },
-    hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, hariFaktur: 3, hariGudang: 0, hariKuartal: 7, hariTinjauan: 0, tundaHari: 2, maksTunda: 2, opnameTiap: 14, gudangTiap: 7 },
+  pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true, gudang: true, setor: true, rekening: true, tagih: true, kuartal: true, tinjauan: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'], gudang: ['Owner', 'Ben'], setor: ['Owner'], rekening: ['Owner'], tagih: ['Owner', 'Ben'], kuartal: ['Owner'], tinjauan: ['Owner'] },
+    hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, hariFaktur: 3, hariGudang: 0, hariSetor: 0, hariRekening: 1, hariTagih: 0, hariKuartal: 7, hariTinjauan: 0, tundaHari: 2, maksTunda: 2, opnameTiap: 14, gudangTiap: 7 },
 };
 const ssSalin = (x) => JSON.parse(JSON.stringify(x));
 // ---------- orang di tablet (putaran T1 langkah 3, owner 16 Nov 2026) — bentuk yang boleh ditulis; diatur lewat tablet-logika.js ----------
@@ -112,7 +114,7 @@ export function susunAturSistem(id, isi, w) {
     else { const hilang = A.daftar.filter((l) => !daftar.some((x) => x.id === l.id)); const isi3 = ssStokLokasi(); const perangkat = cacheMentah('perangkat');
       hilang.forEach((l) => { if (tolak) return; const kg = Object.keys(isi3).reduce((a, m) => a + (isi3[m][l.id] || 0), 0); if (kg > 0.05) tolak = 'Masih ada ' + ANGKA(kg) + ' kg stok di ' + l.nama + ' — pindahkan dulu'; else if (perangkat.some((p) => p.lokasi === l.id)) tolak = perangkat.filter((p) => p.lokasi === l.id).map((p) => p.nama || p.id).join(', ') + ' masih mencatat di ' + l.nama; }); }
     o.daftar = daftar; o.pengantar = nama(isi.pengantar !== undefined ? isi.pengantar : A.pengantar); }
-  else if (id === 'pengingat') { tolak = angka('hariBon', 0, 60, 'hari') || angka('hariJanji', 0, 60, 'hari') || angka('hariKantong', 0, 90, 'hari') || angka('hariOpname', 0, 60, 'hari') || angka('hariCadangan', 0, 60, 'hari') || angka('hariPajak', 0, 14, 'hari') || angka('hariFaktur', 0, 30, 'hari') || angka('hariGudang', 0, 7, 'hari') || angka('hariKuartal', 0, 30, 'hari') || angka('hariTinjauan', 0, 14, 'hari') || angka('tundaHari', 1, 30, 'hari') || angka('maksTunda', 0, 10, 'kali') || angka('opnameTiap', 1, 90, 'hari') || angka('gudangTiap', 1, 30, 'hari');
+  else if (id === 'pengingat') { tolak = angka('hariBon', 0, 60, 'hari') || angka('hariJanji', 0, 60, 'hari') || angka('hariKantong', 0, 90, 'hari') || angka('hariOpname', 0, 60, 'hari') || angka('hariCadangan', 0, 60, 'hari') || angka('hariPajak', 0, 14, 'hari') || angka('hariFaktur', 0, 30, 'hari') || angka('hariGudang', 0, 7, 'hari') || angka('hariKuartal', 0, 30, 'hari') || angka('hariTinjauan', 0, 14, 'hari') || angka('hariSetor', 0, 14, 'hari') || angka('hariRekening', 0, 14, 'hari') || angka('hariTagih', 0, 6, 'hari') || angka('tundaHari', 1, 30, 'hari') || angka('maksTunda', 0, 10, 'kali') || angka('opnameTiap', 1, 90, 'hari') || angka('gudangTiap', 1, 30, 'hari');
     o.nyala = Object.assign({}, A.nyala, isi.nyala || {}); o.ke = Object.assign({}, A.ke); Object.keys(isi.ke || {}).forEach((j) => { o.ke[j] = nama(isi.ke[j], 4); }); SS_JENIS_PENGINGAT.forEach((j) => { if (!tolak && o.nyala[j.id] && !(o.ke[j.id] || []).length) tolak = 'Minimal satu orang yang diingatkan untuk ' + j.nama.toLowerCase(); }); }
   else return { tolak: 'Setelan tidak dikenal' };
   if (tolak) return { tolak };
@@ -457,6 +459,11 @@ export function ssSumberPengingat(kini, lokal) {
   const blnLalu = ssBulanGeser(iso.slice(0, 7), -1);
   if (!ssTinjauanBulan(blnLalu) && Number(iso.slice(8, 10)) <= SS_TINJAUAN_SUSUL && ambilPenjualan().some((p) => String(p.tanggal || '').slice(0, 7) === blnLalu))
     out.push({ id: 'tinjauan|' + blnLalu, jenis: 'tinjauan', kunci: blnLalu, teks: 'Tulis tinjauan bulan ' + blnLalu.slice(5, 7) + '/' + blnLalu.slice(0, 4), siapa: 'tinjauan', jatuh: iso.slice(0, 7) + '-01', n: 0, ket: 'yang berjalan, yang tidak, keputusan — Laporan › Pondasi › Tinjauan bulanan' });
+  // owner 26 Nov 2026 (A105): HARI TAGIH — satu pengingat pada hari tagih tetap (jatuh = hari tagih berikutnya), nominal = bon yang jatuh tempo sampai hari itu
+  const HT = pnHariTagih(kini); if (HT.nyala && HT.daftar.length) out.push({ id: 'tagih|' + HT.berikut, jenis: 'tagih', kunci: 'tagih', teks: 'Hari tagih ' + HT.nama + ': ' + HT.daftar.length + ' orang', siapa: 'bon pelanggan', jatuh: HT.berikut, n: HT.rp,
+    ket: HT.daftar.slice(0, 4).map((o) => o.nama + ' ' + RP(o.rp)).join(' · ') + (HT.daftar.length > 4 ? ' · +' + (HT.daftar.length - 4) + ' orang' : '') + ' — Pelanggan › Bon › Papan tagih' });
+  // owner 26 Nov 2026: setor ke bank & cocok rekening — dihitung kas-rekening-logika (owner saja, butuh uang) dan diteruskan lewat lokal.uang (pola lokal.pajak)
+  (lokal && Array.isArray(lokal.uang) ? lokal.uang : []).forEach((p) => { if (p && (p.jenis === 'setor' || p.jenis === 'rekening') && /^\d{4}-\d{2}-\d{2}$/.test(String(p.jatuh || ''))) out.push(p); });
   out.bonTanpaTanggal = bonTanpaTanggal; return out;
 }
 // ---------- KUARTAL: kunci & target (Pondasi paket kedua) — SATU sumber untuk pengingat di atas, kuartal-logika (Laporan › Kuartal) & pondasi-logika (penyimpan) ----------

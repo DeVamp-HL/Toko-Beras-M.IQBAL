@@ -23,6 +23,7 @@ BUKAN_ISIAN = {
                   'uCariK': 'pencarian nama (Usaha › harga khusus)', 'uCariKB': 'pencarian barang (Usaha › harga khusus)'},
     'menu': {'cari': 'pencarian', 'owSandi': 'sandi akun owner (sidik jari Tahap B, 23 Nov 2026) — SENGAJA tidak pernah disimpan sebagai draf / ditanyakan; dikosongkan begitu Nyalakan diketuk',
              'owAlasan': 'alasan menolak di kartu Putusan owner (tablet) — dipakai saat itu juga, bersama tempel jari'},
+    'uang': {'crBerkas': 'isi berkas / tempelan mutasi rekening (owner 26 Nov 2026) — bisa ratusan KB, dibaca di perangkat saat itu juga; yang disimpan hanya centang & hasil cocoknya (bukan draf isian)'},
     'laporan': {'cariK': 'pencarian dokumen kecil', 'sampaiN': 'tanggal lihat neraca (saringan tampilan)'},
     'jual': {'cariPelanggan': 'pencarian nama', 'psSaring': 'saringan daftar pesanan', 'rtCari': 'pencarian nota retur', 'rwCari': 'pencarian riwayat penjualan',
              'psCari': 'pencarian barang katalog di form pesanan (B4)'},

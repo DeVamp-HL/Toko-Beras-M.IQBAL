@@ -3994,3 +3994,54 @@ sampai owner mengetik angka; ambang per merek kuning 0,5 % · merah 1 %; penyebu
 - Layar: Laporan › Laba (kartu Susut: target, tren 6 bulan bergaris target, alami vs operasional, opname bulan ini, per pemasok 3 bulan; Per merek: pita kuning &
   Atur target/kuning/merah), Laporan › Mingguan (susut per merek sementara), Laporan › Bulanan (HPP periode), Harga › Katalog (kartu Harga minimum & HET, baris
   di lembar ubah, peringatan sebelum terbit), Dasbor › Mutu usaha (susut vs target + merah/kuning, opname, harga di bawah minimum, dekat HET).
+
+## Kas & rekening + bon pelanggan eceran (owner 26 Nov 2026, sensus ulang 26 Nov bagian 1c; cabang `claude/kas-rekening-bon-eceran-965f73`; tanpa rules baru)
+Keputusan owner (satu AskUserQuestion 26 Nov): kas kecil = **batas + tanda nota + foto nota, wajib/tidaknya foto setelan owner**; cocok rekening = **centang per baris DAN
+unggah berkas, bentuknya diatur sendiri** ("agar gua tidak perlu ngoding lagi"), nama bank di layar → **"rekening usaha"**; setor = **ingatkan bila brankas lewat batas**;
+bon eceran = **paket saran** (jatuh tempo per nota, hari tagih Sabtu, syarat bon baru). Mesin beku (`beku.js`, `pembantu.js`) TIDAK diubah; `firestore.rules` TIDAK diubah.
+- **Kas kecil (A37)** — `uang-logika.js` `aturKasKecil` / `ksKena` / `ksPeriksa` / `ksHari` / `ksNotaKurang` / `susunAturKasKecil` / `susunTandaNota`. Kas kecil = uang keluar
+  untuk toko / karyawan dari LACI (catat sendiri & titipan tablet); bukan: dompet owner, brankas, rekening, amplop, catatan otomatis (MDR, admin, tutup hari), tagihan
+  "(bulanan)". Setelan di `aturanToko/uangKeluar.kasKecil` (bawaan per catatan 150.000 · sehari 300.000 · nota mulai 50.000 · foto tidak wajib; 0 = mati) — penyimpan
+  aturan uang keluar & kas kecil saling MEMBAWA kolom. Lewat batas = alasan wajib (`alasanKasKecil`); ≥ notaMin = pilih "ada nota" / "tanpa nota + alasan" (`nota`,
+  `alasanNota`); foto wajib = nota "ada" baru tersimpan bila fotonya ikut. Foto = koleksi `fotoBon` yang sudah ada (owner saja), `idBon` = `'uk-' + id catatan`, ditulis
+  DULU (id catatan dipesan layar, `D.idDok`), baru catatannya (`fotoNota: [id foto]`) — catatan yang menyebut foto selalu punya foto. Tablet belum bisa mengirim foto:
+  titipan tablet ditandai (lewat batas merah sebelum disetujui; sesudahnya "nota belum ditandai" sampai owner menandai / memfoto di Uang › Uang keluar › Hari ini).
+  Dasbor & hero Uang keluar: kas kecil hari ini, sisa, catatan yang notanya belum beres. Urung 90 detik tidak menghapus fotonya (foto yatim owner, tidak terbaca di mana pun).
+- **Setor ke bank (A84)** — `aturPindah` + `setorBatas` (bawaan 20.000.000) & `setorSisa` (bawaan 10.000.000), `susunAturPindah` kini MEMBAWA kolom lama, `ugSetor`,
+  rutin "Setor ke bank" (`rutinPindah`, brankas → rekening, alasan "Setor ke bank", tanpa biaya admin — pakai Pindah uang biasa bila ada admin). Pengingat `setor`
+  (jatuh hari ini, hanya bila brankas > batas) & Dasbor.
+- **Buku kas harian semua tempat (A55)** — `kas-rekening-logika.js` `khPatokan` / `khPosisi` / `khSusulan` / `khGerakHari` / `khBukuHari`, kartu Laporan › Harian
+  `data-k="buku-tempat"`, Dasbor "awal hari → sekarang". Posisi akhir hari = patokan terbaru pada/sebelum hari itu (kolom `titik` tutupHari atau titik kas; terbaru
+  menang) + `saldoKantong(iso, patokan)` + catatan bertanggal hari patokan yang dicatat sesudah patokan dipasang (gerakan kas, amplop, pindah; aturan `ugSesudahTitik`).
+  Per tempat: awal (akhir kemarin) + masuk − keluar ± pindah + **beda** = akhir — beda = hitungan tutup hari (laci: = selisih laci) / patokan disetel ulang, disebut.
+  Hari ini: empat tempat tanpa catatan susulan = kas mesin (`cocokMesin`). Tidak dibangun: hitung fisik brankas & amplop di Tutup hari (ritual tidak diubah).
+- **Cocok rekening (A35 · A134 · B86 · B128)** — keluarga baru **Uang › Rekening** (`gambarRekening`), logika `cr*` di `kas-rekening-logika.js`. `crBaris(dari, sampai)`
+  = semua uang lewat rekening dari sumber yang sama dengan `saldoKantong` (gerakan kas bertempat rekening + pindah uang + amplop berlawan rekening); penjualan
+  QRIS / transfer satu NOTA = satu baris; Σ baris = gerakan rekening (penjaga identitas di uji). Centang "ada di mutasi" per baris (tangan atau dari berkas) →
+  `aturanToko/cocokRek-YYYY-MM.cek` (satu dokumen per bulan tanggal barisnya; centang lain dibawa). Berkas mutasi (`crBacaMutasi`): CSV / TSV berkepala (kolom ditebak
+  dari nama kepala & isinya; owner memilih kolom tanggal / keterangan / nominal atau masuk & keluar / DB-CR / saldo, urutan tanggal, desimal) atau teks tempelan
+  (disalin dari PDF: tanggal di depan, angka sebelum saldo, DB/CR); PDF tidak dibaca langsung. Bentuk berkas diingat per tanda kepala (`crSusunBentuk`, paling banyak 8,
+  di `aturanToko/rekening.bentuk`). Isi berkas TIDAK disimpan. `crCocokkan`: persis (arah sama, rupiah ≤ toleransi, hari ≤ toleransi; terdekat) lalu QRIS GABUNG
+  (pencairan GoPay Merchant = Σ QRIS satu hari, atau Σ itu − potongan QRIS yang tercatat hari itu). Cocok saldo (`crHitungHasil` / `crSusunHasil`): bank − buku =
+  bawaan cocok sebelumnya + Σ baris mutasi yang tidak ada di buku (penjelasan berjenis: uang pribadi owner, biaya bank, … daftar owner) − Σ baris buku yang belum
+  dicek → sisa = belum terjelaskan. Hasil DISIMPAN di dokumen bulan itu (`hasil`, hasil lama turun ke `riwayatHasil` ≤ 5); **titik kas TIDAK ditulis** (yang mau
+  menyetel buku: Pindah uang › Catat isi rekening). Pengingat `rekening` (bulan lalu belum dicocokkan · akhir bulan ini), Dasbor "N transaksi belum dicek · terakhir
+  dicocokkan". Setelan `aturanToko/rekening` (toleransi hari 3, rupiah 0, jenis penjelasan) ikut riwayat setelan; `cocokRek-` DILEWATI riwayat setelan (`RSD_LEWAT_AWALAN`).
+  Teks layar "mutasi bluBCA" (Tutup hari, Jual) → "mutasi rekening usaha".
+- **Piutang per nota (B29 · B30 · B31)** — `bon-logika.js` `pnTempo` / `pnStatus` / `pnNota` / `pnRingkas`, tab **Pelanggan › Bon › Jatuh tempo**, Dasbor "per nota".
+  Sisa mesin tiap orang dibagi ke nota terbukanya lewat `rincianBelumLunas` (pembagian buku bon yang sama); jatuh tempo: faktur → jatuh tempo faktur; nota bon lain →
+  tanggal + tempo kartu, kosong = "waktunya ditagih" (`tagihHari`, bawaan 14 — angka yang sama dengan status "waktunya ditagih"); saldo awal = satu nota. Kelompok lewat ·
+  hari ini · 7 hari ke depan (besok … +6) · belum · tanpa tanggal MENUTUP ke total bon mesin; kalau satu orang tidak menutup, `tidakMenutup` + pita merah. Lewat dibagi
+  umur keterlambatan memakai batas kelompok umur owner. `umurHari` mesin tidak disentuh. Batas: sesudah tutup buku bon tahun lalu terbaca SATU nota bertanggal bon
+  tertua orang itu (saldo pembuka `marginBon` tidak membawa tanggal tiap bon).
+- **Hari tagih tetap (A105)** — `aturPelanggan().hariTagih` (Senin = 0 … Minggu = 6, -1 = mati, bawaan Sabtu), `pnHariTagih`: hari itu Papan tagih membuka "Tagih hari ini"
+  (nota jatuh tempo sampai hari itu + janji yang lewat / jatuh hari itu); hari lain = hari tagih berikutnya + siapa saja. Pengingat `tagih` (ke Owner & Ben).
+- **Syarat bon baru (A101)** — `faktur-logika.js` `fkSyaratAtur` / `fkSyaratBon` / `fkMundurBulan`, dipanggil `kunciKr1` (jual-logika) sesudah "terdaftar": langganan ≥
+  `syaratBulan` bulan sejak catatan pertama (belanja, saldo awal bon, pembayaran) DAN ≥ `syaratNota` nota dalam `syaratHari` hari (bawaan 1 · 2 · 90; 0 = syarat itu mati). Batas kredit yang diisi owner di
+  kartu = lolos. Tidak lolos = gerbang kredit B2 yang sama (karyawan minta izin, owner dua ketukan). Lintas tutup buku: belanja pertama & hari belanja ≤ 31 Des dari
+  ringkasan tahun yang diarsip (`ringkasArsip().pelanggan.hari` & `kredit.hari`, satu nota per hari). Kasir darurat tidak ditahan (sama dengan stop bon).
+- Setelan Pelanggan › Atur: hari tagih (pilih hari / mati) & tiga angka syarat — `susunAturPelanggan` menyimpannya (batas sah). Pengingat baru `setor`, `rekening`,
+  `tagih` (SS_JENIS_PENGINGAT, hari sebelum diatur owner); setor & rekening dihitung `khSumberPengingat` dan diteruskan app.js lewat `lokal.uang` (pola `lokal.pajak`).
+Alat uji: `uji_kas_rekening.py` (kotak pasir + kontrol + asap cadangan), `uji_bon_eceran.py` (kotak pasir + kontrol + asap), `peta_akses.py` (`susunTandaNota`),
+`uji_isian_lokal.py` (`crBerkas` bukan isian), `uji_menu_baru.py` (hari tagih dimatikan di kotaknya). Belum dicoba di data toko: menyimpan setelan & centang ke
+Firestore sungguhan, foto nota dari HP owner, berkas mutasi asli dari bank.

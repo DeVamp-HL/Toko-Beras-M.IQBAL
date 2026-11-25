@@ -15,7 +15,7 @@ import { ambilPenjualanSemua, ambilPenjualan, ambilPiutangMutasi, ambilPelanggan
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, hariIniIso, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/format.js';
 // B2 (owner 17 Nov 2026): tempo faktur bawaan (Atur) & tempo / batas kredit per pelanggan (kartu) — penentu & penjaganya di faktur-logika
-import { fkHariSah, fkRupiahSah, fkTempoBawaan, fkStopBonHari } from './faktur-logika.js';
+import { fkHariSah, fkRupiahSah, fkTempoBawaan, fkStopBonHari, fkSyaratAtur, FK_SYARAT_BATAS } from './faktur-logika.js';
 // B3 (owner 18 Nov 2026): tarif ongkir bawaan, yang bisa mengantar, kendaraan — diatur owner di Pelanggan › Atur (dokumen yang juga dibaca tablet Ben)
 import { ajAtur, ajBacaAtur } from './antar-logika.js';
 // B4 (owner 18 Nov 2026): berapa hari sebelum tanggal kirim pengingat order rutin muncul — diatur owner di Pelanggan › Atur (dokumen yang dibaca tablet)
@@ -41,6 +41,8 @@ export function cipTerlarang(nama) {
 const ciriDicabut = (nama, grup) => GRUP_DICABUT.indexOf(String(grup || '')) >= 0 || cipTerlarang(nama);
 export const ATUR_PELANGGAN_BAWAAN = {
   kosongKali: 20, notaBesar: 500000, tagihHari: 14, macetHari: 180, anggaranThr: 500000,
+  // owner 26 Nov 2026 (A105): hari tagih tetap per minggu — Senin = 0 … Minggu = 6, -1 = mati; bawaan Sabtu
+  hariTagih: 5,
   // paket brief 9 Okt (butir 1): batas kelompok umur bon (hari; bawaan = garis umur yang dikunci owner 18 Sep: ≤ 7 hari · 8–30 hari · 1–3 bulan · > 3 bulan)
   // dan periode "rata-rata hari bon tertagih" (bon yang lunas dalam N hari terakhir) — keduanya bisa diubah owner di Atur
   umurBatas: [7, 30, 90], tertagihHari: 90,
@@ -79,8 +81,8 @@ export function aturPelanggan() {
   const a = plAturMentah(); const B = ATUR_PELANGGAN_BAWAAN;
   const angka = (k, syarat) => (a && isFinite(Number(a[k])) && syarat(Number(a[k])) ? Number(a[k]) : B[k]);
   const daftar = (k, bersih) => (a && Array.isArray(a[k]) ? a[k].map(bersih).filter(Boolean) : B[k].slice());
-  const AJ = ajAtur();
-  return { hariIngatRutin: poHariIngat(), tarifOngkir: AJ.tarif, pengantarAntar: AJ.pengantar, kendaraanAntar: AJ.kendaraan, tempoBawaan: fkTempoBawaan(), stopBonHari: fkStopBonHari(), kosongKali: angka('kosongKali', (n) => n >= 10 && n <= 100), notaBesar: angka('notaBesar', (n) => n >= 0), tagihHari: angka('tagihHari', (n) => n >= 0 && n <= 365), macetHari: angka('macetHari', (n) => n >= 0 && n <= 3650), anggaranThr: angka('anggaranThr', (n) => n >= 0),
+  const AJ = ajAtur(); const SY = fkSyaratAtur();
+  return { hariIngatRutin: poHariIngat(), tarifOngkir: AJ.tarif, pengantarAntar: AJ.pengantar, kendaraanAntar: AJ.kendaraan, tempoBawaan: fkTempoBawaan(), stopBonHari: fkStopBonHari(), hariTagih: angka('hariTagih', (n) => Number.isInteger(n) && n >= -1 && n <= 6), syaratBulan: SY.syaratBulan, syaratNota: SY.syaratNota, syaratHari: SY.syaratHari, kosongKali: angka('kosongKali', (n) => n >= 10 && n <= 100), notaBesar: angka('notaBesar', (n) => n >= 0), tagihHari: angka('tagihHari', (n) => n >= 0 && n <= 365), macetHari: angka('macetHari', (n) => n >= 0 && n <= 3650), anggaranThr: angka('anggaranThr', (n) => n >= 0),
     umurBatas: a && umurBatasSah(Array.isArray(a.umurBatas) ? a.umurBatas.map(Number) : null) ? a.umurBatas.map(Number) : B.umurBatas.slice(), tertagihHari: angka('tertagihHari', (n) => Number.isInteger(n) && n >= 1 && n <= 3650),
     ciriDaftar: daftar('ciriDaftar', (x) => (x && x.nama && !ciriDicabut(x.nama, x.grup) ? { nama: String(x.nama).trim(), grup: String(x.grup || 'lain') } : null)), arahDaftar: daftar('arahDaftar', (x) => (plKosong(x) ? null : String(x).trim())), titipDaftar: daftar('titipDaftar', (x) => (plKosong(x) ? null : String(x).trim())),
     alasanHapus: daftar('alasanHapus', (x) => (plKosong(x) ? null : String(x).trim())), salamTagih: a && !plKosong(a.salamTagih) ? String(a.salamTagih) : B.salamTagih, bentukThr: daftar('bentukThr', (x) => (x && x.nama ? { nama: String(x.nama).trim(), n: Math.max(0, Number(x.n) || 0) } : null)), dariOwner: !!a };
@@ -99,6 +101,10 @@ export function susunAturPelanggan(isi, w) {
   const tb = !plKosong(isi.tempoBawaan) && fkHariSah(isi.tempoBawaan) === null ? { tolak: 'Tempo faktur bawaan: 0–365 hari (bilangan bulat)' } : baca('tempoBawaan', (n) => fkHariSah(n) !== null, 'Tempo faktur bawaan: 0–365 hari (bilangan bulat)'); if (tb.tolak) return { tolak: tb.tolak };
   // stop bon (owner 24 Nov 2026): bon tertua lewat N hari → bon baru ditahan; 0 = mati
   const sb = !plKosong(isi.stopBonHari) && fkHariSah(isi.stopBonHari) === null ? { tolak: 'Stop bon: 0–365 hari (bilangan bulat; 0 = tidak dipakai)' } : baca('stopBonHari', (n) => fkHariSah(n) !== null, 'Stop bon: 0–365 hari (bilangan bulat; 0 = tidak dipakai)'); if (sb.tolak) return { tolak: sb.tolak };
+  // owner 26 Nov 2026 (A101 · A105): hari tagih tetap (-1 = mati, Senin = 0 … Minggu = 6) & syarat bon baru (0 = syarat itu mati)
+  const ht = baca('hariTagih', (n) => Number.isInteger(n) && n >= -1 && n <= 6, 'Hari tagih: pilih satu hari, atau matikan'); if (ht.tolak) return { tolak: ht.tolak };
+  const sy = {}; for (const [k, nama, satuan] of [['syaratBulan', 'Syarat langganan', 'bulan'], ['syaratNota', 'Syarat jumlah nota', 'nota'], ['syaratHari', 'Jendela hitung nota', 'hari']]) {
+    const [lo, hi] = FK_SYARAT_BATAS[k]; const r = baca(k, (n) => Number.isInteger(n) && n >= lo && n <= hi, nama + ': ' + lo + '–' + hi + ' ' + satuan + ' (bilangan bulat' + (lo === 0 ? '; 0 = tidak dipakai' : '') + ')'); if (r.tolak) return { tolak: r.tolak }; sy[k] = r.nilai; }
   // B3: antar — tarif ongkir bawaan, yang bisa mengantar (minimal satu), kendaraan
   const ab = ajBacaAtur({ tarifOngkir: isi.tarifOngkir, pengantarAntar: isi.pengantarAntar, kendaraanAntar: isi.kendaraanAntar }); if (ab.tolak) return { tolak: ab.tolak };
   // B4: pengingat order rutin (hari sebelum tanggal kirim)
@@ -121,9 +127,9 @@ export function susunAturPelanggan(isi, w) {
   const hilangArah = kini.arahDaftar.filter((a) => arah.indexOf(a) < 0).filter((a) => orang.some((o) => o.arah === a)); if (hilangArah.length) return { tolak: 'Arah "' + hilangArah[0] + '" masih dipakai kartu orang — lepas dulu' };
   const hilangTitip = kini.titipDaftar.filter((a) => titip.indexOf(a) < 0).filter((a) => cacheMentah('titip').some((t) => t.apa === a)); if (hilangTitip.length) return { tolak: 'Urusan "' + hilangTitip[0] + '" masih dipakai benang — buang dulu benangnya' };
   const salam = plKosong(isi.salamTagih) ? kini.salamTagih : String(isi.salamTagih).trim().slice(0, 200);
-  return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'pelanggan', tanggal: w.tanggal, jam: w.jam, tempoBawaan: tb.nilai, stopBonHari: sb.nilai, kosongKali: kk.nilai, notaBesar: nb.nilai, tagihHari: th.nilai, macetHari: mh.nilai, anggaranThr: ag.nilai, umurBatas: umur, tertagihHari: tg.nilai, ciriDaftar: ciri.concat(bawa), arahDaftar: arah, titipDaftar: titip, alasanHapus: alasan, salamTagih: salam, bentukThr: bentuk,
+  return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'pelanggan', tanggal: w.tanggal, jam: w.jam, tempoBawaan: tb.nilai, stopBonHari: sb.nilai, hariTagih: ht.nilai, syaratBulan: sy.syaratBulan, syaratNota: sy.syaratNota, syaratHari: sy.syaratHari, kosongKali: kk.nilai, notaBesar: nb.nilai, tagihHari: th.nilai, macetHari: mh.nilai, anggaranThr: ag.nilai, umurBatas: umur, tertagihHari: tg.nilai, ciriDaftar: ciri.concat(bawa), arahDaftar: arah, titipDaftar: titip, alasanHapus: alasan, salamTagih: salam, bentukThr: bentuk,
       tarifOngkir: ab.tarifOngkir, pengantarAntar: ab.pengantarAntar, kendaraanAntar: ab.kendaraanAntar, hariIngatRutin: pi.hariIngatRutin } }],
-    patch: { kabar: 'Aturan pelanggan disimpan — tempo faktur ' + tb.nilai + ' hari · stop bon ' + (sb.nilai > 0 ? sb.nilai + ' hari' : 'mati') + ' · ongkir bawaan ' + RP(ab.tarifOngkir) + ' · pengantar ' + ab.pengantarAntar.join(', ') + ' · pengingat order rutin ' + pi.hariIngatRutin + ' hari' + ' · ' + ciri.length + ' cip ciri · bangku kosong ' + (kk.nilai / 10).toFixed(1).replace('.', ',') + '× selang · nota ≥ ' + RP(nb.nilai) + ' perlu nama · tagih sesudah ' + th.nilai + ' hari · macet sesudah ' + mh.nilai + ' hari · anggaran THR ' + RP(ag.nilai) + ' · umur bon dibagi di ' + umur.join(' / ') + ' hari · tertagih dihitung dari ' + tg.nilai + ' hari terakhir', kabarAwas: false } };
+    patch: { kabar: 'Aturan pelanggan disimpan — tempo faktur ' + tb.nilai + ' hari · stop bon ' + (sb.nilai > 0 ? sb.nilai + ' hari' : 'mati') + ' · hari tagih ' + (ht.nilai >= 0 ? HARI_PANJANG[ht.nilai] : 'mati') + ' · syarat bon ' + (sy.syaratBulan || sy.syaratNota ? (sy.syaratBulan ? '≥ ' + sy.syaratBulan + ' bulan langganan' : '') + (sy.syaratBulan && sy.syaratNota ? ' & ' : '') + (sy.syaratNota ? '≥ ' + sy.syaratNota + ' nota/' + sy.syaratHari + ' hari' : '') : 'mati') + ' · ongkir bawaan ' + RP(ab.tarifOngkir) + ' · pengantar ' + ab.pengantarAntar.join(', ') + ' · pengingat order rutin ' + pi.hariIngatRutin + ' hari' + ' · ' + ciri.length + ' cip ciri · bangku kosong ' + (kk.nilai / 10).toFixed(1).replace('.', ',') + '× selang · nota ≥ ' + RP(nb.nilai) + ' perlu nama · tagih sesudah ' + th.nilai + ' hari · macet sesudah ' + mh.nilai + ' hari · anggaran THR ' + RP(ag.nilai) + ' · umur bon dibagi di ' + umur.join(' / ') + ' hari · tertagih dihitung dari ' + tg.nilai + ' hari terakhir', kabarAwas: false } };
 }
 const plBukanKembar = () => { const d = cacheMentah('aturan').find((x) => String(x.id) === 'pelangganKembar'); return d && Array.isArray(d.bukan) ? d.bukan.map(String) : []; };
 
