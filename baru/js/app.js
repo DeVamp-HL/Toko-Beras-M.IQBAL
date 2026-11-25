@@ -190,7 +190,7 @@ const KUNCI_TAB = 'miqbal_baru_tab';
 let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diunduh
 const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   keTujuan: (t) => keTujuan(t) });   // putaran 40: ketukan dasbor owner → layar sumber angkanya (keTujuan didefinisikan di bawah; dipanggil sesudah semua layar terpasang)
-const stok = pasangLayarStok(document.getElementById('layarStok'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, versiData: () => versi, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); } });
+const stok = pasangLayarStok(document.getElementById('layarStok'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, versiData: () => versi, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); }, keTujuan: (t) => keTujuan(t) });
 const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   keTujuan: (t) => keTujuan(t) });   // owner 7 Okt: lembar bon → Kartu piutang berkop di Laporan (keTujuan didefinisikan di bawah; dipanggil saat ketukan)
 // owner 22 Nov 2026 (sidik jari Tahap A): pintu Menu tablet — nyalakan / matikan (orang pilihan owner yang jaga), intip uang (orang lain jaga)

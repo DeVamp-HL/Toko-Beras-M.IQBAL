@@ -3751,3 +3751,29 @@ owner**; tinjauan **tiap bulan**, berisi **potret angka + catatan owner**. Kedua
 - **Pengingat** — jenis baru `tinjauan` ("Tinjauan bulanan belum ditulis", setelan `hariTinjauan`, ke Owner): bulan LALU yang belum ditinjau, jatuh tanggal 1 bulan
   ini, ditagih hanya `SS_TINJAUAN_SUSUL` (14) hari pertama dan hanya kalau bulan lalu ada jualannya.
 Alat uji: `uji_pondasi.py` (tangan + 11 kontrol baru).
+
+## Barang masuk & mutu — Tahap 1 (owner 26 Nov 2026, cabang `fitur/barang-masuk-1`; tanpa rules baru)
+Kelompok yang dipilih owner dari sensus ulang 26 Nov. Keputusan owner (dua putaran tanya): kurang timbang diselesaikan dengan TIGA cara per klaim (bon dipotong ·
+diganti barang · cukup dicatat); tolak saat datang DAN retur sesudah masuk stok; timbang SAMPEL; mutu rinci per kelas; ongkos kirim supir = masuk modal beras, tunai
+dari laci; potong bon = kg ikut yang datang; barang 5 / 10 kg = per baris pilih buku Kemasan atau buku beras. Dibangun BERTAHAP:
+- **Tahap 1 (ini)** — ongkos kirim, timbang sampel, mutu rinci, catatan & surat untuk pemasok, klaim TERCATAT. Stok / bon / modal tidak berubah oleh catatan & klaim.
+- Tahap 2 — potong bon membukukan (kg ikut yang datang), tolak saat datang, retur sesudah masuk stok.
+- Tahap 3 — ukuran karung 5 / 10 kg diatur owner (buku Kemasan atau beras), timbang sampel saat opname.
+
+Isi Tahap 1 (semua di `stok-catat-logika.js`, layar Stok › Barang masuk):
+- **Ongkos kirim** — isian `ongkir` di kepala lembar. `biayaBongkar` (yang DIBACA MESIN BEKU: modal per kg & uang keluar laci hari itu) = upah bongkar + ongkos kirim;
+  kolom baru `ongkosKirim` menyimpan bagian ongkirnya (`ckOngkir`). Tanpa ongkir dokumen berbentuk lama persis. Draf koreksi memisahkannya lagi. Akibat yang
+  diketahui: layar lain yang menyebut "bongkar" dari `biayaBongkar` (rata bongkar per kg di Harga, kedatangan di Laporan › Biaya) kini memuat ongkir juga.
+  Tablet (Penjaga laci) belum punya isian ongkir — owner mengisinya lewat Koreksi kedatangan.
+- **Timbang sampel** — `sampelKarung` + `sampelKg` per baris → rata-rata per karung & PERKIRAAN berat seluruh baris (`tmBaris.sampel`, `perkiraan`). Dipakai hanya bila
+  "berat timbang seluruh baris" kosong; perkiraan TIDAK ditulis sebagai `timbangKg`.
+- **Mutu rinci** — `kelasMutu` (premium / medium) + `menir`, `kuning`, `butirLain` (%) & `gabah` (butir per 100 g). Ambang per kelas = `aturanToko/catatStok.mutuKelas`
+  (`susunAturMutuKelas`); bawaan hanya patah & menir (premium 15 % · 0,5 %, medium 25 % · 2 % — angka riset owner, periksa dengan aturan yang berlaku), sisanya 0 =
+  tidak dinilai. Baris tanpa kelas: dicatat, tidak dinilai.
+- **Catatan untuk pemasok & klaim** — kolom `catatanPemasok` [{ jenis kurang|lebih|tertinggal|mutu, merk, jumlah, satuan, ket }] & `klaim` { cara potong|ganti|catat,
+  status, nilai, … } PADA dokumen kedatangan (`cpKedatangan` · `cpDraf` · `susunCatatanPemasok` · `cpDaftar`). Usul baris dibaca dari timbang & mutu AWAS. Dokumen
+  kedatangan disalin utuh — dijaga uji: stok, bon & laba sama persis sebelum/sesudah. Koreksi kedatangan membawa kolom ini. Bulan terkunci → ditolak.
+- **Surat siap cetak** — Laporan › Dokumen › Dokumen kecil › **Catatan untuk pemasok** (`dokumenKecil('pemasok', idKedatangan)`): baris nota, hasil timbang / sampel,
+  mutu, catatan, permintaan. Kedatangan tanpa catatan tidak dicetak.
+Alat uji: `uji_barang_masuk_baru.py` (78 kotak pasir + statis, kontrol 69/69). Jebakan bundel: komentar di BELAKANG baris `import` di laporan-logika menjatuhkan
+bundel asap uji ini — komentar impor ditaruh di baris sendiri.

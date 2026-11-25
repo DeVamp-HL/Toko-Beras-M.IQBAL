@@ -171,7 +171,7 @@ def statis(teks=None):
     g = []; T = teks or {}
     def baca(p): return T[p] if p in T else open(os.path.join(AKAR, p), encoding='utf-8').read()
     sc = baca('baru/js/layar/stok-catat-logika.js')
-    if "['oleh', 'perangkat', 'catatan', 'noBon', 'dariTablet', 'hargaBeda', 'hargaJauh', 'merekBaru', 'bongkarTitipan'].indexOf(k) >= 0" not in sc: g.append('koreksi kedatangan tidak membawa noBon')
+    if "['oleh', 'perangkat', 'catatan', 'noBon', 'dariTablet', 'hargaBeda', 'hargaJauh', 'merekBaru', 'bongkarTitipan', 'catatanPemasok', 'klaim'].indexOf(k) >= 0" not in sc: g.append('koreksi kedatangan tidak membawa noBon')
     hj = baca('baru/js/layar/harga.js')
     for aksi in ['bpBetulBuka', 'bpBetulPindah', 'bpBetulNominal', 'bpBetulNo', 'bpBetulLama']:
         if ('data-aksi="' + aksi + '"') not in hj or (aksi + ':') not in hj: g.append('layar: tombol/penangan ' + aksi + ' tidak lengkap')
