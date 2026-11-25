@@ -3807,8 +3807,11 @@ Owner sesudah Tahap 2: "buatkan jalur masuk tersendiri untuk pembelian tunai lal
   (tanggal > tanggal patokan) → laci di buku naik sendiri; yang SUDAH termuat (tanggal ≤ patokan; baris belanja mesin tidak berjam) → `susunPotong` ikut menulis
   `pengaturan/titikKas` dengan `laci += uang kembali` dan `diubahPada` maju 1 milidetik (pola `riwayat-uang-logika` — dokumen menang atas salinan perangkat).
   Tanpa itu uang kembali terbaca "lebih kas" di tutup hari dan menambah laba, padahal ia pengganti stok yang tidak jadi diterima. Mesin uang beku tidak diubah.
-  Jejak: `potongan[].uangKembali` + `kePatokan`. Patokan bentuk lama (tanpa `diubahPada`) ditolak dengan kalimat. Yang TIDAK dibangun: uang kembali ke rekening,
-  dan "dipotong dari pembelian berikutnya" (catat sebagai klaim "diganti barang" / "cukup dicatat").
+  Jejak: `potongan[].uangKembali` + `tempat` + `kePatokan`. Patokan bentuk lama (tanpa `diubahPada`) ditolak dengan kalimat.
+  **Laci ATAU rekening** (owner: "bisa juga selain laci, yaitu rekening") — `PT_TEMPAT`, dipilih saat membukukan (`ptTempat` / `rtDraf.tempat`). Belanja tunai di
+  mesin selalu keluar dari laci, jadi ke REKENING ditulis lewat patokan kas (`ptUbahPatokan`): sudah termuat patokan → rekening + uang kembali; belum termuat →
+  laci − uang kembali & rekening + uang kembali (laci di buku sudah naik sendiri lewat belanja yang mengecil; jumlah patokan tetap). Tanpa patokan kas sama
+  sekali, ke rekening ditolak dengan kalimat. Yang TIDAK dibangun: "dipotong dari pembelian berikutnya" (catat sebagai "diganti barang" / "cukup dicatat").
 - **Isi karung bebas** — `aturanToko/catatStok.ukuranKarung` (daftar milik owner, 0,25–100 kg, dua angka di belakang koma, ≤ 12 ukuran; belum diatur = 50 & 25):
   `ukuranKarungPilihan`, `susunTambahUkuran`, `susunHapusUkuran`; lembar owner "Atur isi karung". Karung berukuran lain masuk BUKU BERAS PER KG merek itu
   (kg = jumlah × isi karung); buku sendiri 'Merek 25 kg' tetap hanya untuk karung 25 kg merek dua ukuran. Merek yang tidak pernah datang 50 / 25 kg:
@@ -3818,4 +3821,4 @@ Owner sesudah Tahap 2: "buatkan jalur masuk tersendiri untuk pembelian tunai lal
   tolak baris, catatan bebas untuk pemasok; timbang sampel & mutu rinci sudah ikut sejak Tahap 1 (`gambarCekMasuk`). **Ongkos kirim** dari tablet = titipan
   berjenis `bongkar` bertanda `ongkir: true` (bentuk rules v15 tidak berubah); disetujui owner = `biayaBongkar += n` DAN `ongkosKirim += n`. Kedatangan tablet
   tetap BON dengan `biayaBongkar 0`; kabar owner menyebut potongan, baris ditolak, dan ongkos kirim.
-Alat uji: `uji_barang_masuk_baru.py` (133 pemeriksaan, kontrol 112) dan `uji_masuk_tablet.py` (58 pemeriksaan, kontrol 21).
+Alat uji: `uji_barang_masuk_baru.py` (141 pemeriksaan, kontrol 118) dan `uji_masuk_tablet.py` (58 pemeriksaan, kontrol 21).
