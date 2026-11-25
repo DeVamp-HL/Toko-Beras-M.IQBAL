@@ -3794,3 +3794,28 @@ Owner sesudah Tahap 1 tayang: "Lanjut tahap 2. Sekalian catatan bebas untuk gua 
 - **Tolak saat datang** — baris bertanda `ditolak` + alasan di lembar Barang masuk: TIDAK masuk `merkList` (tidak masuk stok & bon), dicatat di kolom `ditolak`
   [{ merk, jumlahKarung, beratKarung, kg, nilai, alasan }] dan tercetak di surat. Semua baris ditolak = tidak ada kedatangan yang dicatat (ditolak dengan kalimat).
 Alat uji: `uji_barang_masuk_baru.py` (101 pemeriksaan — bon & stok dihitung tangan lewat selisih; kontrol 86); `peta_akses.py` mengukur `susunPotong`.
+
+## Barang masuk & mutu — Tahap 3 (owner 26 Nov 2026, cabang `fitur/barang-masuk-3`; tanpa rules baru): klaim langsung · uang kembali tunai · isi karung bebas · tablet
+Owner sesudah Tahap 2: "buatkan jalur masuk tersendiri untuk pembelian tunai lalu klaim. Tapi seringnya gua langsung klaim saat itu juga (tunai maupun BON)";
+"Ukuran disini gak saklek 5 atau 10 kg saja … termasuk setengah kg, 2,5 kg"; "Di akun tablet … juga adakan".
+- **Klaim langsung saat datang (tunai & bon)** — isian "kg yang dipotong" per baris di lembar Barang masuk (`kgPotong` di draf; `mPotongTimbang` memakai selisih
+  timbang baris itu). Kg buku & nilai baris sudah dari kg yang benar-benar datang (rumus Tahap 2), jadi kedatangan tunai hanya mengeluarkan nilai sesudah potong
+  dan kedatangan bon hanya menagih nilai sesudah potong. Jejak: `potongan` [{ jenis 'klaim', saatDatang: true, kg, rp, alasan, baris }] (alasan = `alasanPotong`
+  draf, bawaan "kurang timbang saat datang"); tercetak di surat pemasok. Koreksi kedatangan membawa `kgPotong` dan TIDAK menulis jejak baru.
+- **Uang kembali dari pemasok (kedatangan TUNAI, klaim / retur belakangan)** — `hitungPotong` tidak lagi menolak kedatangan tunai (`tunai`, `uangKembali`,
+  `dalamTitik`). Jalan bukunya sama (kg baris turun → nilai belanja tunai kedatangan itu turun). Uangnya masuk LACI: kedatangan yang belum termuat patokan kas
+  (tanggal > tanggal patokan) → laci di buku naik sendiri; yang SUDAH termuat (tanggal ≤ patokan; baris belanja mesin tidak berjam) → `susunPotong` ikut menulis
+  `pengaturan/titikKas` dengan `laci += uang kembali` dan `diubahPada` maju 1 milidetik (pola `riwayat-uang-logika` — dokumen menang atas salinan perangkat).
+  Tanpa itu uang kembali terbaca "lebih kas" di tutup hari dan menambah laba, padahal ia pengganti stok yang tidak jadi diterima. Mesin uang beku tidak diubah.
+  Jejak: `potongan[].uangKembali` + `kePatokan`. Patokan bentuk lama (tanpa `diubahPada`) ditolak dengan kalimat. Yang TIDAK dibangun: uang kembali ke rekening,
+  dan "dipotong dari pembelian berikutnya" (catat sebagai klaim "diganti barang" / "cukup dicatat").
+- **Isi karung bebas** — `aturanToko/catatStok.ukuranKarung` (daftar milik owner, 0,25–100 kg, dua angka di belakang koma, ≤ 12 ukuran; belum diatur = 50 & 25):
+  `ukuranKarungPilihan`, `susunTambahUkuran`, `susunHapusUkuran`; lembar owner "Atur isi karung". Karung berukuran lain masuk BUKU BERAS PER KG merek itu
+  (kg = jumlah × isi karung); buku sendiri 'Merek 25 kg' tetap hanya untuk karung 25 kg merek dua ukuran. Merek yang tidak pernah datang 50 / 25 kg:
+  `beratKarungBuka` = isi karung kedatangan terakhirnya, dan saldo pembuka tutup buku memakai ukuran itu (bukan 50). BELUM dibangun: pilihan "masuk buku
+  Kemasan (dijual per kemasan)" — butuh jalur beli-jadi tanpa kantong; rak Jual "karung utuh" tetap hanya 50 / 25 kg, ukuran lain dijual per kg / liter.
+- **Tablet (Penjaga laci)** — lembar tablet memakai pembantu yang sama (`pilUkuran`, `pilPotong`, `pilTolak`): isi karung dari daftar owner, klaim langsung,
+  tolak baris, catatan bebas untuk pemasok; timbang sampel & mutu rinci sudah ikut sejak Tahap 1 (`gambarCekMasuk`). **Ongkos kirim** dari tablet = titipan
+  berjenis `bongkar` bertanda `ongkir: true` (bentuk rules v15 tidak berubah); disetujui owner = `biayaBongkar += n` DAN `ongkosKirim += n`. Kedatangan tablet
+  tetap BON dengan `biayaBongkar 0`; kabar owner menyebut potongan, baris ditolak, dan ongkos kirim.
+Alat uji: `uji_barang_masuk_baru.py` (133 pemeriksaan, kontrol 112) dan `uji_masuk_tablet.py` (58 pemeriksaan, kontrol 21).

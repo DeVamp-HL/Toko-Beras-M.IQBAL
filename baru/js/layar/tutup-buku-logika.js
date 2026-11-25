@@ -262,7 +262,11 @@ export function barisTahun(tahun) { const c = tbCutoff(tahun); return barisBuku(
 /** Dokumen saldo pembuka = persis tulisSaldoPembuka index.html (id dari w.idUnik). */
 export function pembukaBuku(tahun, w) {
   const saldo = hitungSaldoTutup(tahun); const tglBuka = (tahun + 1) + '-01-01'; const d = []; const tb = { tutupBuku: true, tahunDari: tahun };
-  const merkList = []; saldo.karung.forEach((x) => { const beratUtama = x.punya25 && !x.punya50 ? 25 : 50; merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratUtama, jumlahKarung: Math.floor(x.sisaKg / beratUtama), totalKg: x.sisaKg, hargaPerKg: x.hppPerKg, subtotalHarga: Math.round(x.sisaKg * x.hppPerKg) });
+  // Tahap 3 barang masuk (owner 26 Nov 2026, isi karung bebas): merek yang TIDAK pernah datang 50 kg / 25 kg (mis. hanya karung 10 kg) dibuka dengan isi karung
+  // kedatangan terakhirnya — bukan 50 kg, supaya tahun berikutnya tidak tiba-tiba "punya karung 50 kg". Merek ber-karung 50 / 25 kg: persis seperti dulu.
+  const ukLain = (m) => { let t = ''; let n = 0; ambilSemuaBatch().forEach((b) => { const tg = String(b.tanggal || ''); if (tg > tahun + '-12-31') return;
+    (b.merkList || []).forEach((r) => { if (r && r.merk === m && r.satuan === 'karung' && Number(r.beratKarung) > 0 && Number(r.jumlahKarung) > 0 && tg >= t) { t = tg; n = Number(r.beratKarung); } }); }); return n; };
+  const merkList = []; saldo.karung.forEach((x) => { const beratUtama = x.punya25 && !x.punya50 ? 25 : (!x.punya50 && !x.punya25 && !merkPunyaKarungBerat(x.merk, 50) && ukLain(x.merk)) || 50; merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratUtama, jumlahKarung: Math.floor(x.sisaKg / beratUtama), totalKg: x.sisaKg, hargaPerKg: x.hppPerKg, subtotalHarga: Math.round(x.sisaKg * x.hppPerKg) });
     // siap 2027: "punya karung 50 kg" juga dari produksi jadi karung utuh (merkPunyaKarungBerat) — produksinya ikut diarsip, jadi barisnya dibawa ke sini
     const beratLain = beratUtama === 50 ? 25 : 50; if ((beratLain === 25 && x.punya25) || (beratLain === 50 && (x.punya50 || merkPunyaKarungBerat(x.merk, 50)))) merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratLain, jumlahKarung: 0, totalKg: 0, hargaPerKg: x.hppPerKg, subtotalHarga: 0 }); });
   // putaran 28: buku STOK WADAH tetap dikenali sesudah tutup buku — barisnya membawa tanda stokWadah; yang sisanya nol ikut lahir lagi (baris 0 kg), karena

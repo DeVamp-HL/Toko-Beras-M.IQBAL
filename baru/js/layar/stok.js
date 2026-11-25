@@ -62,7 +62,7 @@ export function pasangLayarStok(akar, opsi) {
     // owner 21 Nov 2026: tanda terima barang masuk — tbm = { id } kedatangan yang kartunya sedang dibuka (null = tidak ada)
     tbm: null });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['isiW', 'aturHpp', 'krKetik', 'kbNilai', 'krNama', 'gnKetik', 'shKetik', 'bgKetik', 'bgAlasan', ['puKetik', (v) => !!(v && Object.keys(v).length)], 'atur', 'koreksiA', 'qAlasan', 'kt', 'ktAlasan', 'aturKt', 'aturC', 'cpDraf', 'aturMutu', 'rtDraf', ['tp', (v) => !!(v && v.pilih)], 'aturTp', ['hp', (v) => !!(v && (v.ketik || v.alasan || Object.keys(v.massal || {}).length))], 'aturHp', 'aturUm', ['pkIsi', (v) => !!(v && Object.keys(v).length)], ['vrKetik', (v) => !!(v && Object.keys(v).some((k) => v[k]))]], [KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);
+  const ISIAN = pasangIsian(K, awal, ['isiW', 'aturHpp', 'krKetik', 'kbNilai', 'krNama', 'gnKetik', 'shKetik', 'bgKetik', 'bgAlasan', ['puKetik', (v) => !!(v && Object.keys(v).length)], 'atur', 'koreksiA', 'qAlasan', 'kt', 'ktAlasan', 'aturKt', 'aturC', 'cpDraf', 'aturMutu', 'rtDraf', 'ukKetik', ['tp', (v) => !!(v && v.pilih)], 'aturTp', ['hp', (v) => !!(v && (v.ketik || v.alasan || Object.keys(v.massal || {}).length))], 'aturHp', 'aturUm', ['pkIsi', (v) => !!(v && Object.keys(v).length)], ['vrKetik', (v) => !!(v && Object.keys(v).some((k) => v[k]))]], [KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date();
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -182,9 +182,15 @@ export function pasangLayarStok(akar, opsi) {
     // ---- BARANG MASUK (ST1): draf di keadaan layar + localStorage; ditulis saat SIMPAN
     bukaMasuk: () => set({ lembar: 'masuk', masuk: bacaLokal(KUNCI_DRAF_MASUK) || drafKosongMasuk(), yakinM: false, yakinHapus: false, kabar: '', aturC: null, tbm: null }),
     tutupLembar: () => set({ lembar: null, kabar: '', aturC: null, yakinM: false, yakinHapus: false, yakinHapusA: false, bukaA: null, tbm: null }),
-    mKetik: (v, el) => ubahMasuk((d) => { const k = el.dataset.kolom; const i = el.dataset.i; if (i !== undefined) d.baris[Number(i)][k] = String(v).slice(0, k === 'merk' || k === 'namaMutu' ? 40 : k === 'alasanTolak' ? 160 : 12); else d[k] = String(v).slice(0, k === 'alasan' || k === 'pemasok' ? 60 : k === 'catatanBebas' ? C.CP_MAKS.bebas : 12); }),
+    mKetik: (v, el) => ubahMasuk((d) => { const k = el.dataset.kolom; const i = el.dataset.i; if (i !== undefined) d.baris[Number(i)][k] = String(v).slice(0, k === 'merk' || k === 'namaMutu' ? 40 : k === 'alasanTolak' ? 160 : 12); else d[k] = String(v).slice(0, k === 'alasan' || k === 'pemasok' ? 60 : k === 'alasanPotong' ? 160 : k === 'catatanBebas' ? C.CP_MAKS.bebas : 12); }),
     mPilih: ({ kolom, i, nilai }) => ubahMasuk((d) => { if (i !== undefined) d.baris[Number(i)][kolom] = kolom === 'beratKarung' ? Number(nilai) : nilai; else d[kolom] = nilai; }),
     mTambahBaris: () => ubahMasuk((d) => { d.baris.push(C.barisMasukKosong()); }),
+    // Tahap 3 (owner 26 Nov 2026): klaim LANGSUNG saat datang — selisih timbang baris itu dipakai sebagai kg yang dipotong; isi karung bebas (daftar owner)
+    mPotongTimbang: ({ i, kg }) => ubahMasuk((d) => { d.baris[Number(i)].kgPotong = String(kg).replace('.', ','); }),
+    ukBuka: () => set({ ukBuka: !st().ukBuka, ukKetik: '', kabar: '' }),
+    ukKetik: (v) => set({ ukKetik: String(v).slice(0, 6) }),
+    ukTambah: async () => { await tulis(C.susunTambahUkuran(st().ukKetik, waktu())); },
+    ukHapus: async ({ n }) => { await tulis(C.susunHapusUkuran(n, waktu())); },
     // paket Barang masuk & mutu, Tahap 1 (owner 26 Nov 2026): catatan untuk pemasok + klaim pada kedatangan yang sedang dibuka; ambang mutu per kelas
     cpBuka: ({ id }) => set({ cpDraf: st().cpDraf && String(st().cpDraf.id) === String(id) ? null : C.cpDraf(id), kabar: '' }),
     cpKetik: (v, el) => { const d = JSON.parse(JSON.stringify(st().cpDraf || {})); if (!d.baris) return; const k = el.dataset.kolom, i = el.dataset.i; if (i !== undefined) d.baris[Number(i)][k] = String(v).slice(0, k === 'ket' ? C.CP_MAKS.ket + 20 : k === 'merk' ? 60 : 12); else d[k] = String(v).slice(0, k === 'catatan' ? C.CP_MAKS.ket + 20 : k === 'bebas' ? C.CP_MAKS.bebas + 20 : 14); d.dariUsul = false; set({ cpDraf: d }); },
@@ -866,9 +872,9 @@ export function pasangLayarStok(akar, opsi) {
         ${!b.merk ? h`<div class="tombol-baris rapat" data-k="calon-merk-${i}">${merk.slice(0, 8).map((m) => h`<div class="kaca-btn kecil" data-aksi="mPilih" data-kolom="merk" data-i="${i}" data-nilai="${m}">${m}</div>`)}</div>` : ''}
         <div class="ps-form tiga"><div><div class="ket">Karung</div><input class="ketik-nama" id="mJml${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].jumlahKarung}" data-ketik="mKetik" data-kolom="jumlahKarung" data-i="${i}"></div>
           <div><div class="ket">Harga / kg${b.lalu ? ' · lalu ' + RP(b.lalu.harga) + (b.lalu.tanggalTeks ? ' · ' + b.lalu.tanggalTeks : '') + (b.lalu.pemasok && !b.lalu.fondasi ? ' · ' + b.lalu.pemasok : b.lalu.fondasi ? ' · stok awal' : '') : b.hargaLalu ? ' · lalu ' + RP(b.hargaLalu) : ''}</div><input class="ketik-nama" id="mHarga${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].hargaPerKg}" data-ketik="mKetik" data-kolom="hargaPerKg" data-i="${i}"></div>
-          <div><div class="ket">Isi karung</div><div class="jalur rapat">${C.BERAT_KARUNG_PILIHAN.map((n) => h`<div class="seg ${Number(d.baris[i].beratKarung) === n ? 'aktif' : ''}" data-aksi="mPilih" data-kolom="beratKarung" data-i="${i}" data-nilai="${n}">${n} kg</div>`)}</div></div></div>
-        ${koreksi ? '' : h`<div data-k="mt-${i}" style="display: flex; flex-direction: column; gap: 6px;"><div class="ket tautan ${d.baris[i].ditolak ? 'awas-teks' : ''}" data-aksi="mPilih" data-kolom="ditolak" data-i="${i}" data-nilai="${d.baris[i].ditolak ? '' : '1'}">${d.baris[i].ditolak ? 'baris ini DITOLAK — tidak masuk stok & bon (ketuk untuk membatalkan)' : 'tolak baris ini (mutu tidak sesuai — tidak diterima)'}</div>
-          ${d.baris[i].ditolak ? h`<input class="ketik-nama" id="mTolak${i}" type="text" maxlength="160" placeholder="alasan ditolak (wajib) — mis. berkutu, kadar air tinggi" value="${d.baris[i].alasanTolak || ''}" data-ketik="mKetik" data-kolom="alasanTolak" data-i="${i}">` : ''}</div>`}
+          <div><div class="ket">Isi karung</div>${pilUkuran(d.baris[i], i)}</div></div>
+        ${koreksi || d.baris[i].ditolak ? '' : pilPotong(b, d.baris[i], i)}
+        ${koreksi ? '' : pilTolak(d.baris[i], i)}
         ${gambarCekMasuk(b, d.baris[i], i, a)}
         ${b.sah && (b.vr.perlu || b.vr.arsip || b.varian) ? h`<div class="pita-info ${b.varian ? '' : 'emas'}" data-k="mv-${i}">${b.vr.arsip ? b.merk + ' sudah DIARSIPKAN (habis, tidak tampil di Jual & katalog). Barang ini sama dengan ' + b.merk + ' yang dulu?' + (b.vr.perlu ? ' Harga belinya beda ' + DESIMAL(b.vr.beda) + ' % dari modal lama.' : '') : b.vr.perlu ? 'Harga beli ' + RP(b.hargaPerKg) + '/kg beda ' + DESIMAL(b.vr.beda) + ' % dari modal ' + b.merk + ' ' + RP(Math.round(b.vr.modal)) + '/kg (batas ' + DESIMAL(b.vr.batas) + ' %) — barangnya sama?' : 'Baris ini ditandai beda mutu.'}
           <div class="tombol-baris rapat"><div class="kaca-btn ${b.varian === 'sama' ? 'aktif' : ''}" data-aksi="mVarian" data-i="${i}" data-v="sama">${b.vr.arsip ? 'Pulihkan ' + b.merk + ' — sama barangnya' : 'Sama barangnya — gabung'}</div><div class="kaca-btn ${b.varian === 'beda' ? 'aktif' : ''}" data-aksi="mVarian" data-i="${i}" data-v="beda">Beda mutu — jadi varian</div></div>
@@ -892,7 +898,9 @@ export function pasangLayarStok(akar, opsi) {
         <div class="serif" style="font-size: 19px;">${hm.karung} karung · ${KG(hm.kg)}</div>
         <div class="ket">beras ${RP(hm.nilaiBeras)}${hm.nilaiBal ? ' + baris bal ' + RP(hm.nilaiBal) + ' (tidak diubah)' : ''}${hm.bongkar ? ' + bongkar ' + RP(hm.bongkar) : ''}${hm.ongkir ? ' + ongkos kirim ' + RP(hm.ongkir) : ''} = <b>${RP(hm.total)}</b> · ${d.caraBayar === 'utang' ? 'jadi bon pemasok' : 'tunai dari laci'}${hm.bongkar || hm.ongkir ? ' (bongkar & ongkos kirim selalu tunai)' : ''}</div>
         ${hm.ditolak.length ? h`<div class="ket awas-teks" data-k="masuk-ditolak">${hm.ditolak.length} baris DITOLAK (${hm.ditolak.map((b) => (b.merkKetik || b.merk) + ' ' + b.jumlahKarung + ' karung').join(', ')}) — tidak masuk stok dan tidak masuk bon; hanya dicatat untuk surat pemasok.</div>` : ''}
-        ${hm.sah.some((b) => b.kgPotong > 0) ? h`<div class="ket" data-k="masuk-potong">Sudah dipotong ${DESIMAL(hm.sah.reduce((a, b) => a + b.kgPotong, 0))} kg (klaim / retur) — kg dan nilai di atas sudah sesudah potongan.</div>` : ''}
+        ${hm.potongKg > 0 ? (koreksi ? h`<div class="ket" data-k="masuk-potong">Sudah dipotong ${UK(hm.potongKg)} kg (klaim / retur) — kg dan nilai di atas sudah sesudah potongan.</div>`
+          : h`<div data-k="masuk-potong" style="display: flex; flex-direction: column; gap: 6px;"><div class="pita-info emas">Dipotong langsung <b>${UK(hm.potongKg)} kg</b> (${RP(hm.potongRp)}) karena kurang — kg dan nilai di atas sudah dari kg yang benar-benar datang; ${d.caraBayar === 'utang' ? 'bon pemasok dicatat ' + RP(hm.nilaiBeras) : 'laci keluar ' + RP(hm.nilaiBeras) + ' untuk berasnya'}. Tercatat di surat untuk pemasok.</div>
+            <input class="ketik-nama" id="mAlasanPotong" type="text" maxlength="160" placeholder="alasan dipotong (boleh kosong) — mis. ditimbang kurang, karung bocor" value="${d.alasanPotong || ''}" data-ketik="mKetik" data-kolom="alasanPotong"></div>`) : ''}
         ${(() => { const T = hm.timbang; if (!T.ditimbang && !T.dicek) return ''; return h`<div class="ket ${T.awas || T.selisihKg < 0 ? 'awas-teks' : ''}" data-k="masuk-timbang">Timbang: ${T.ditimbang} dari ${T.baris} baris${T.ditimbang ? ' · selisih ' + (T.selisihKg === 0 ? 'pas 0 kg' : (T.selisihKg > 0 ? '+' : '−') + tmD(Math.abs(T.selisihKg)) + ' kg (' + (T.selisihKg > 0 ? '+' : '−') + tmD(Math.abs(T.persen)) + ' %)') + (T.nilaiKurang ? ' · kurang ≈ ' + RP(T.nilaiKurang) + ' (perkiraan nilai, tidak dibukukan)' : '') : ''} · mutu dicek ${T.dicek} baris${T.awas ? ' · ' + T.awas + ' baris AWAS' : ''} — catatan pemeriksaan saja: ${KG(hm.kg)} di atas, stok, modal, HPP &amp; bon tetap menurut nota.</div>`; })()}
         ${koreksi ? h`<input class="ketik-nama" id="mAlasan" type="text" placeholder="alasan koreksi / hapus (wajib)" value="${d.alasan || ''}" data-ketik="mKetik" data-kolom="alasan">` : ''}
         <div class="kaca-btn aktif emas" data-aksi="mSimpan">${koreksi ? 'SIMPAN KOREKSI' : 'SIMPAN BARANG MASUK · ' + RP(hm.total)}</div>
@@ -905,6 +913,7 @@ export function pasangLayarStok(akar, opsi) {
       ${koreksi ? gambarCatatanPemasok(s, d.id) : ''}
       ${gambarRekapTimbang()}
       <div class="ket tautan" data-aksi="bukaAturMutu" data-k="atur-mutu-buka">${s.aturMutu ? 'tutup ambang mutu per kelas' : 'Atur: ambang mutu per kelas (premium · medium) — butir patah, menir, kuning, butir lain, gabah'}</div>${gambarAturMutu(s)}
+      ${gambarAturUkuran(s)}
       <div class="ket tautan" data-aksi="bukaAturC">${s.aturC ? 'tutup aturan' : 'Atur: minimal karung per mobil, tempo bon, selisih wajar, ambang mutu saat terima'}</div>${gambarAturC(s)}
       ${gambarAturHpp(s)}
     </section>`;
@@ -918,13 +927,13 @@ export function pasangLayarStok(akar, opsi) {
       ${K.catatan.map((c, i) => h`<div class="ket" data-k="cpl-${i}">${c.jenisNama} · ${c.merk}${c.jumlah ? ' · ' + DESIMAL(c.jumlah) + ' ' + c.satuan : ''}${c.ket ? ' — ' + c.ket : ''}</div>`)}
       ${K.bebas.trim() ? h`<div class="ket" data-k="cp-bebas">Catatan: ${K.bebas}</div>` : ''}
       ${K.ditolak.map((x, i) => h`<div class="ket awas-teks" data-k="cpt-${i}">Ditolak saat datang · ${x.merk} · ${x.jumlahKarung} karung — ${x.alasan}</div>`)}
-      ${K.potongan.map((x, i) => h`<div class="ket" data-k="cpp-${i}">${tanggalPendek(x.tanggal)} · ${x.jenisNama} · ${DESIMAL(x.kg)} kg · bon turun ${RP(x.rp)}${x.alasan ? ' — ' + x.alasan : ''}</div>`)}
+      ${K.potongan.map((x, i) => h`<div class="ket" data-k="cpp-${i}">${tanggalPendek(x.tanggal)} · ${x.jenisNama} · ${DESIMAL(x.kg)} kg · ${x.uangKembali ? 'uang kembali ke laci ' + RP(x.uangKembali) : x.saatDatang ? 'nilai turun ' + RP(x.rp) : 'bon turun ' + RP(x.rp)}${x.alasan ? ' — ' + x.alasan : ''}</div>`)}
       ${K.kunci ? h`<div class="ket">${K.kunci.split(' — ')[0]} — catatannya tidak bisa diubah.</div>` : h`<div class="tombol-baris rapat"><div class="kaca-btn aktif" data-aksi="cpBuka" data-id="${id}" data-k="cp-buka">${K.ada ? 'ubah catatan & klaim' : 'tulis catatan untuk pemasok'}</div>${K.ada ? h`<div class="kaca-btn" data-aksi="cpSurat" data-id="${id}" data-k="cp-surat">buat surat siap cetak</div>` : ''}</div>`}
-      ${!K.kunci && K.klaim && K.klaim.cara === 'potong' && !K.klaim.dibukukan ? (() => { const H = C.hitungPotongKlaim(id); return H.tolak ? h`<div class="pita-info" data-k="pt-belum">Bon belum dipotong: ${H.tolak}</div>`
-        : h`<div class="pita-info emas" data-k="pt-siap">Pemasok sudah setuju. Kalau dibukukan: ${H.baris.map((x) => x.merk + ' ' + DESIMAL(x.kgNota - x.kgSudah) + ' → ' + DESIMAL(x.kgBaru) + ' kg').join(' · ')}; bon ${RP(H.bonLama)} → <b>${RP(H.bonBaru)}</b> (turun ${RP(H.rp)}); stok ikut turun ${DESIMAL(H.kg)} kg. Harga per kg tidak berubah.</div>
-          <div class="kaca-btn ${s.ptYakin === String(id) ? 'awas' : 'aktif emas'}" data-aksi="ptKlaim" data-id="${id}" data-k="pt-bukukan">${s.ptYakin === String(id) ? 'YAKIN — potong bon ' + RP(H.rp) : 'BUKUKAN · potong bon ' + RP(H.rp)}</div>`; })() : ''}
-      ${!K.kunci && K.cara === 'utang' ? gambarRetur(s, id, K) : ''}
-      <div class="ket" style="font-size: 10.5px;">Bahan berunding dengan pemasok. Catatan dan klaim tidak mengubah stok, modal, atau bon — yang mengubah hanya "BUKUKAN potong bon" dan "kembalikan ke pemasok" di atas.</div></div>`;
+      ${!K.kunci && K.klaim && K.klaim.cara === 'potong' && !K.klaim.dibukukan ? (() => { const H = C.hitungPotongKlaim(id); return H.tolak ? h`<div class="pita-info" data-k="pt-belum">Belum dibukukan: ${H.tolak}</div>`
+        : h`<div class="pita-info emas" data-k="pt-siap">Pemasok sudah setuju. Kalau dibukukan: ${H.baris.map((x) => x.merk + ' ' + DESIMAL(x.kgNota - x.kgSudah) + ' → ' + DESIMAL(x.kgBaru) + ' kg').join(' · ')}; ${H.tunai ? 'belanja tunai' : 'bon'} ${RP(H.bonLama)} → <b>${RP(H.bonBaru)}</b> (turun ${RP(H.rp)}); stok ikut turun ${DESIMAL(H.kg)} kg. Harga per kg tidak berubah.${H.tunai ? ' ' + kalimatUangKembali(H) : ''}</div>
+          <div class="kaca-btn ${s.ptYakin === String(id) ? 'awas' : 'aktif emas'}" data-aksi="ptKlaim" data-id="${id}" data-k="pt-bukukan">${s.ptYakin === String(id) ? 'YAKIN — ' + (H.tunai ? 'uang kembali ' : 'potong bon ') + RP(H.rp) : 'BUKUKAN · ' + (H.tunai ? 'uang kembali ' : 'potong bon ') + RP(H.rp)}</div>`; })() : ''}
+      ${!K.kunci ? gambarRetur(s, id, K) : ''}
+      <div class="ket" style="font-size: 10.5px;">Bahan berunding dengan pemasok. Catatan dan klaim tidak mengubah stok, modal, bon, atau uang — yang mengubah hanya "BUKUKAN" dan "kembalikan ke pemasok" di atas.</div></div>`;
     return h`<div class="kartu" data-k="cp-tulis" style="gap: 8px;"><div class="label">Catatan untuk pemasok · ${K.pemasok || 'tanpa nama'} · ${tanggalPendek(K.tanggal)}</div>
       ${d.dariUsul ? h`<div class="pita-info" data-k="cp-usul">Baris di bawah diusulkan dari hasil timbang & cek mutu kedatangan ini — periksa, ubah, lalu simpan.</div>` : ''}
       ${d.baris.map((r, i) => h`<div data-k="cpr-${i}" style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--kaca-tepi); padding-top: 6px;">
@@ -941,19 +950,21 @@ export function pasangLayarStok(akar, opsi) {
       ${d.cara ? h`<div class="jalur rapat" data-k="cp-status">${C.KLAIM_STATUS.map(([sid, nm]) => h`<div class="seg ${d.status === sid ? 'aktif' : ''}" data-aksi="cpPilih" data-kolom="status" data-nilai="${sid}">${nm}</div>`)}</div>
         ${d.cara === 'catat' ? '' : h`<div class="ps-form dua"><div><div class="ket">Nilai yang diminta (Rp)${K.nilaiKurang ? ' · kosong = perkiraan dari timbang ' + RP(K.nilaiKurang) : ''}</div><input class="ketik-nama" id="cpNilai" type="text" inputmode="numeric" placeholder="${K.nilaiKurang || 0}" value="${d.nilai}" data-ketik="cpKetik" data-kolom="nilai"></div>
           <div><div class="ket">Catatan kesepakatan</div><input class="ketik-nama" id="cpCat" type="text" placeholder="mis. dipotong di bon berikutnya" value="${d.catatan}" data-ketik="cpKetik" data-kolom="catatan"></div></div>`}
-        ${d.cara === 'potong' ? h`<div class="pita-info" data-k="cp-potong">Menyimpan klaim ini BELUM memotong bon. Sesudah pemasok setuju: ubah statusnya jadi "Disetujui pemasok", simpan, lalu ketuk BUKUKAN di kartu catatan — bon dan stok dihitung dari kg yang benar-benar datang.</div>` : ''}` : h`<div class="ket">Belum dipilih = catatan disimpan tanpa klaim.</div>`}
+        ${d.cara === 'potong' ? h`<div class="pita-info" data-k="cp-potong">Menyimpan klaim ini BELUM mengubah bon, stok, atau uang. Sesudah pemasok setuju: ubah statusnya jadi "Disetujui pemasok", simpan, lalu ketuk BUKUKAN di kartu catatan — stok dihitung dari kg yang benar-benar datang; kedatangan bon = bonnya turun, kedatangan tunai = uang kembali dari pemasok masuk laci.</div>` : ''}` : h`<div class="ket">Belum dipilih = catatan disimpan tanpa klaim.</div>`}
       <div class="tombol-baris"><div class="kaca-btn" data-aksi="cpBuka" data-id="${id}">batal</div><div class="kaca-btn aktif emas" data-aksi="cpSimpan" data-k="cp-simpan">SIMPAN CATATAN</div></div></div>`;
   }
   // Tahap 2: beras yang SUDAH masuk stok lalu dikembalikan ke pemasok — stok & bon kedatangan itu turun (dua ketukan, pratinjau dulu)
+  // kedatangan TUNAI (Tahap 3): yang turun = nilai belanja tunainya; uangnya kembali dari pemasok ke laci (lihat stok-catat-logika, bagian Tahap 2)
+  const kalimatUangKembali = (H) => 'Uang kembali ' + RP(H.rp) + ' masuk LACI — ketuk SESUDAH uangnya diterima. ' + (H.dalamTitik ? 'Hari kedatangannya sudah ditutup, jadi patokan laci ' + tanggalPendek(H.titik) + ' dinaikkan ' + RP(H.rp) + ' supaya hitungan laci malam ini tidak terbaca lebih.' : 'Hari kedatangannya belum ditutup: laci di buku naik sendiri.');
   function gambarRetur(s, id, K) {
-    const d = s.rtDraf && String(s.rtDraf.id) === String(id) ? s.rtDraf : null;
-    if (!d) return h`<div class="ket tautan" data-aksi="rtBuka" data-id="${id}" data-k="rt-buka">kembalikan sebagian beras kedatangan ini ke pemasok (stok & bon turun)</div>`;
+    const d = s.rtDraf && String(s.rtDraf.id) === String(id) ? s.rtDraf : null; const tunai = K.cara !== 'utang';
+    if (!d) return h`<div class="ket tautan" data-aksi="rtBuka" data-id="${id}" data-k="rt-buka">kembalikan sebagian beras kedatangan ini ke pemasok (${tunai ? 'stok turun, uangnya kembali ke laci' : 'stok & bon turun'})</div>`;
     const H = d.merk && String(d.kg).trim() ? C.hitungReturPemasok(id, d) : null;
     return h`<div data-k="rt-tulis" style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--kaca-tepi); padding-top: 6px;"><div class="label">Kembalikan ke pemasok</div>
       <div class="jalur rapat" data-k="rt-merk">${K.timbang.baris.map((x) => h`<div class="seg ${d.merk === (x.merkPemasok || x.merk) ? 'aktif' : ''}" data-aksi="rtPilih" data-merk="${x.merkPemasok || x.merk}">${x.merkPemasok || x.merk}</div>`)}</div>
       <div class="ps-form dua"><div><div class="ket">Berapa kg dikembalikan</div><input class="ketik-nama" id="rtKg" type="text" inputmode="decimal" placeholder="0" value="${d.kg}" data-ketik="rtKetik" data-kolom="kg"></div>
         <div><div class="ket">Alasannya (wajib)</div><input class="ketik-nama" id="rtAlasan" type="text" placeholder="mis. berkutu, apek" value="${d.alasan}" data-ketik="rtKetik" data-kolom="alasan"></div></div>
-      ${H ? (H.tolak ? h`<div class="ket awas-teks" data-k="rt-tolak">${H.tolak}</div>` : h`<div class="pita-info" data-k="rt-pratinjau">${H.baris[0].merk}: ${DESIMAL(H.baris[0].kgNota - H.baris[0].kgSudah)} → ${DESIMAL(H.baris[0].kgBaru)} kg; bon ${RP(H.bonLama)} → <b>${RP(H.bonBaru)}</b> (turun ${RP(H.rp)}); stok turun ${DESIMAL(H.kg)} kg. Dibukukan pada kedatangan ini, bukan sebagai catatan hari ini.</div>`) : ''}
+      ${H ? (H.tolak ? h`<div class="ket awas-teks" data-k="rt-tolak">${H.tolak}</div>` : h`<div class="pita-info" data-k="rt-pratinjau">${H.baris[0].merk}: ${DESIMAL(H.baris[0].kgNota - H.baris[0].kgSudah)} → ${DESIMAL(H.baris[0].kgBaru)} kg; ${H.tunai ? 'belanja tunai' : 'bon'} ${RP(H.bonLama)} → <b>${RP(H.bonBaru)}</b> (turun ${RP(H.rp)}); stok turun ${DESIMAL(H.kg)} kg. Dibukukan pada kedatangan ini, bukan sebagai catatan hari ini.${H.tunai ? ' ' + kalimatUangKembali(H) : ''}</div>`) : ''}
       <div class="tombol-baris"><div class="kaca-btn" data-aksi="rtBuka" data-id="${id}">batal</div><div class="kaca-btn ${d.yakin ? 'awas' : 'aktif emas'}" data-aksi="rtSimpan" data-k="rt-simpan">${d.yakin ? 'YAKIN — kembalikan' : 'KEMBALIKAN KE PEMASOK'}</div></div></div>`;
   }
   function gambarAturMutu(s) {
@@ -966,10 +977,35 @@ export function pasangLayarStok(akar, opsi) {
   // ---------- BARANG MASUK DARI TABLET (owner 22 Nov 2026, paket ③; rules v15) ----------
   // Penjaga laci: kedatangan langsung jadi stok + BON pemasok; harga dari nota supir (beda dari harga lalu = owner dikabari); upah bongkar & uang ke supir dari
   // laci = TITIPAN ke owner. Tanpa pilihan cara bayar, tanggal, kelas, varian, koreksi, hapus, atau aturan — itu urusan owner di HP.
+  // ---------- Tahap 3 (owner 26 Nov 2026): isi karung bebas, klaim langsung saat datang, tolak baris — dipakai lembar owner DAN tablet ----------
+  const UK = (n) => String(Math.round(Number(n) * 100) / 100).replace('.', ',');
+  function pilUkuran(r, i) {
+    const L = C.ukuranKarungPilihan(); const kini = Number(r.beratKarung); const semua = kini > 0 && L.indexOf(kini) < 0 ? L.concat([kini]) : L;
+    return h`<div class="jalur rapat" data-k="uk-${i}" style="flex-wrap: wrap;">${semua.map((n) => h`<div class="seg ${kini === n ? 'aktif' : ''}" data-aksi="mPilih" data-kolom="beratKarung" data-i="${i}" data-nilai="${n}">${UK(n)} kg</div>`)}</div>`;
+  }
+  function pilPotong(b, r, i) {
+    const sel = b.cek && b.cek.selisihKg !== null && b.cek.selisihKg !== undefined && b.cek.selisihKg < 0 ? Math.round(-b.cek.selisihKg * 100) / 100 : 0;
+    return h`<div class="ps-form dua" data-k="mpt-${i}"><div><div class="ket">Kurang saat datang — kg yang dipotong (klaim langsung)</div><input class="ketik-nama" id="mPotong${i}" type="text" inputmode="decimal" placeholder="0 = sesuai nota" value="${r.kgPotong || ''}" data-ketik="mKetik" data-kolom="kgPotong" data-i="${i}"></div>
+      <div class="ket" style="align-self: end;">${b.kgPotong > 0 && b.sah ? h`nota ${UK(b.kgNota)} kg − ${UK(b.kgPotong)} = <b>${UK(b.totalKg)} kg</b> yang dibukukan · nilai turun ${RP(Math.round(b.kgNota * b.hargaPerKg) - b.subtotalHarga)}`
+        : sel > 0 && !(b.kgPotong > 0) ? h`<span class="tautan" data-aksi="mPotongTimbang" data-i="${i}" data-kg="${sel}">pakai selisih timbang: potong ${UK(sel)} kg</span>` : 'Kosong = diterima sesuai nota. Diisi = stok & nilai dihitung dari kg yang benar-benar datang; harga per kg tetap.'}</div></div>`;
+  }
+  function pilTolak(r, i) {
+    return h`<div data-k="mt-${i}" style="display: flex; flex-direction: column; gap: 6px;"><div class="ket tautan ${r.ditolak ? 'awas-teks' : ''}" data-aksi="mPilih" data-kolom="ditolak" data-i="${i}" data-nilai="${r.ditolak ? '' : '1'}">${r.ditolak ? 'baris ini DITOLAK — tidak masuk stok & bon (ketuk untuk membatalkan)' : 'tolak baris ini (mutu tidak sesuai — tidak diterima)'}</div>
+      ${r.ditolak ? h`<input class="ketik-nama" id="mTolak${i}" type="text" maxlength="160" placeholder="alasan ditolak (wajib) — mis. berkutu, kadar air tinggi" value="${r.alasanTolak || ''}" data-ketik="mKetik" data-kolom="alasanTolak" data-i="${i}">` : ''}</div>`;
+  }
+  /** Atur isi karung (owner): daftar ukuran yang bisa dipilih di Barang masuk — tambah / lepas, tanpa ngoding. */
+  function gambarAturUkuran(s) {
+    const L = C.ukuranKarungPilihan();
+    return h`<div class="ket tautan" data-aksi="ukBuka" data-k="uk-buka">${s.ukBuka ? 'tutup isi karung' : 'Atur isi karung: ' + L.map((n) => UK(n) + ' kg').join(' · ')}</div>
+      ${s.ukBuka ? h`<div class="kartu" data-k="uk-atur" style="gap: 8px;"><div class="label">Isi karung yang bisa dipilih${C.ukuranMilikOwner() ? '' : ' · bawaan'}</div>
+        <div class="tombol-baris rapat" data-k="uk-daftar">${L.map((n) => h`<div class="kaca-btn kecil" data-aksi="ukHapus" data-n="${n}" data-k="ukd-${n}">${UK(n)} kg ✕</div>`)}</div>
+        <div class="tombol-baris rapat"><input class="ketik-nama sempit" id="ukKetik" type="text" inputmode="decimal" placeholder="mis. 10 · 2,5 · 0,5" value="${s.ukKetik || ''}" data-ketik="ukKetik"><div class="kaca-btn aktif emas" data-aksi="ukTambah" data-k="uk-tambah">TAMBAH UKURAN</div></div>
+        <div class="ket" style="font-size: 11px;">Bebas ${UK(C.UK_BATAS.min)}–${C.UK_BATAS.maks} kg, paling banyak ${C.UK_BATAS.banyak} ukuran; ketuk ukuran untuk melepasnya (kedatangan lama tidak berubah). Tampil juga di tablet. Karung berukuran selain 25 kg masuk buku beras per kg merek itu: stok = jumlah karung × isi karung.</div></div>` : ''}`;
+  }
   function gambarMasukTablet(s) {
     const w = waktu(); const d = Object.assign(MT.mtDrafKosong(w), s.masuk || {}); const hm = MT.mtHitung(d, w); const a = C.aturCatat(); const KG = (n) => DESIMAL(Math.round(n * 10) / 10) + ' kg';
     const pemasok = C.calonPemasok().slice(0, 6); const merk = C.calonMerkMasuk(); const ak = opsi.akun ? opsi.akun() : null;
-    const titip = (hm.bongkarTitip > 0 ? hm.bongkarTitip : 0) + (hm.supirTitip > 0 ? hm.supirTitip : 0);
+    const titip = (hm.bongkarTitip > 0 ? hm.bongkarTitip : 0) + (hm.supirTitip > 0 ? hm.supirTitip : 0) + (hm.ongkirTitip > 0 ? hm.ongkirTitip : 0);
     return h`<section class="stok-masuk" data-k="masuk">
       <div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Barang masuk</div><div class="ket">${tanggalPendek(w.tanggal)} · langsung jadi stok &amp; BON pemasok · harga dari nota supir · uang dari laci dititip ke owner</div></div>
         <div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>
@@ -985,7 +1021,9 @@ export function pasangLayarStok(akar, opsi) {
         ${!b.merk ? h`<div class="tombol-baris rapat" data-k="calon-merk-${i}">${merk.slice(0, 8).map((m) => h`<div class="kaca-btn kecil" data-aksi="mPilih" data-kolom="merk" data-i="${i}" data-nilai="${m}">${m}</div>`)}</div>` : ''}
         <div class="ps-form tiga"><div><div class="ket">Karung</div><input class="ketik-nama" id="mJml${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].jumlahKarung}" data-ketik="mKetik" data-kolom="jumlahKarung" data-i="${i}"></div>
           <div><div class="ket">Harga / kg (nota supir)${b.lalu ? ' · lalu ' + RP(b.lalu.harga) : b.hargaLalu ? ' · lalu ' + RP(b.hargaLalu) : ''}</div><input class="ketik-nama" id="mHarga${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].hargaPerKg}" data-ketik="mKetik" data-kolom="hargaPerKg" data-i="${i}"></div>
-          <div><div class="ket">Isi karung</div><div class="jalur rapat">${C.BERAT_KARUNG_PILIHAN.map((n) => h`<div class="seg ${Number(d.baris[i].beratKarung) === n ? 'aktif' : ''}" data-aksi="mPilih" data-kolom="beratKarung" data-i="${i}" data-nilai="${n}">${n} kg</div>`)}</div></div></div>
+          <div><div class="ket">Isi karung</div>${pilUkuran(d.baris[i], i)}</div></div>
+        ${d.baris[i].ditolak ? '' : pilPotong(b, d.baris[i], i)}
+        ${pilTolak(d.baris[i], i)}
         ${gambarCekMasuk(b, d.baris[i], i, a)}
         ${b.saranVarian && b.saranVarian.length ? h`<div class="pita-info emas" data-k="mt-sv-${i}"><div><b>${b.merkKetik}</b> sudah dicatat sebagai <b>${b.saranVarian.map((v) => v.nama).join(' / ')}</b> — pakai itu?</div>
           <div class="tombol-baris rapat" data-k="mt-sv-pil-${i}">${b.saranVarian.map((v) => h`<div class="kaca-btn aktif emas" data-aksi="mPakaiVarian" data-i="${i}" data-merk="${v.nama}">pakai ${v.nama}</div>`)}</div></div>` : ''}
@@ -999,10 +1037,17 @@ export function pasangLayarStok(akar, opsi) {
       <div class="kartu" data-k="mt-titip" style="gap: 6px;"><div class="label">Uang dari laci saat barang datang · dititip ke owner</div>
         <div class="ps-form dua"><div><div class="ket">Upah bongkar (Rp)</div><input class="ketik-nama" id="mBongkar" type="text" inputmode="numeric" placeholder="0" value="${d.bongkar}" data-ketik="mKetik" data-kolom="bongkar"></div>
           <div><div class="ket">Dibayar ke supir sekarang (Rp)</div><input class="ketik-nama" id="mSupir" type="text" inputmode="numeric" placeholder="0" value="${d.bayarSupir}" data-ketik="mKetik" data-kolom="bayarSupir"></div></div>
-        <div class="ket" style="font-size: 11px;">Boleh diambil dari laci sekarang; laci di buku berkurang sesudah owner menyetujui. Upah bongkar masuk modal barang ini; bayar ke supir dicatat owner ke bon pemasoknya.</div></div>
+        <div class="ps-form dua" data-k="mt-ongkir"><div><div class="ket">Ongkos kirim supir pemasok (Rp)</div><input class="ketik-nama" id="mOngkir" type="text" inputmode="numeric" placeholder="0" value="${d.ongkir || ''}" data-ketik="mKetik" data-kolom="ongkir"></div>
+          <div class="ket" style="align-self: end;">Ongkos antar barang ini (bukan pembayaran berasnya).</div></div>
+        <div class="ket" style="font-size: 11px;">Boleh diambil dari laci sekarang; laci di buku berkurang sesudah owner menyetujui. Upah bongkar &amp; ongkos kirim masuk modal barang ini; bayar ke supir dicatat owner ke bon pemasoknya.</div></div>
+      <div class="kartu" data-k="mt-bebas" style="gap: 6px;"><div class="label">Catatan untuk pemasok (boleh kosong)</div>
+        <textarea class="ketik-nama" id="mBebas" rows="2" maxlength="${C.CP_MAKS.bebas}" placeholder="mis. 2 karung sobek, 1 karung tertinggal — owner yang meneruskan ke pemasok" data-ketik="mKetik" data-kolom="catatanBebas">${d.catatanBebas || ''}</textarea></div>
       <div class="kartu" data-k="masuk-ringkas" style="gap: 4px;"><div class="label">Jumlah</div>
         <div class="serif" style="font-size: 19px;">${hm.karung} karung · ${KG(hm.kg)}</div>
-        <div class="ket">nilai nota ${RP(hm.nilaiBeras)} · <b>jadi bon pemasok</b>${titip ? ' · dititip ke owner ' + RP(titip) : ''}${hm.hargaBeda.length ? ' · ' + hm.hargaBeda.length + ' harga beda dari lalu' : ''}</div>
+        <div class="ket">nilai ${RP(hm.nilaiBeras)} · <b>jadi bon pemasok</b>${titip ? ' · dititip ke owner ' + RP(titip) : ''}${hm.hargaBeda.length ? ' · ' + hm.hargaBeda.length + ' harga beda dari lalu' : ''}</div>
+        ${hm.potongKg > 0 ? h`<div class="pita-info emas" data-k="mt-potong">Dipotong langsung <b>${UK(hm.potongKg)} kg</b> (${RP(hm.potongRp)}) karena kurang — bon dicatat dari kg yang benar-benar datang; owner dikabari.</div>
+          <input class="ketik-nama" id="mAlasanPotong" type="text" maxlength="160" placeholder="alasan dipotong (boleh kosong) — mis. ditimbang kurang, karung bocor" value="${d.alasanPotong || ''}" data-ketik="mKetik" data-kolom="alasanPotong">` : ''}
+        ${hm.ditolak.length ? h`<div class="ket awas-teks" data-k="mt-ditolak">${hm.ditolak.length} baris DITOLAK (${hm.ditolak.map((b) => (b.merkKetik || b.merk) + ' ' + b.jumlahKarung + ' karung').join(', ')}) — tidak masuk stok dan tidak masuk bon; owner dikabari.</div>` : ''}
         <div class="kaca-btn aktif emas" data-aksi="mSimpan">${s.yakinM ? 'YAKIN — SIMPAN BARANG MASUK' : 'SIMPAN BARANG MASUK · ' + RP(hm.nilaiBeras)}</div></div>
     </section>`;
   }

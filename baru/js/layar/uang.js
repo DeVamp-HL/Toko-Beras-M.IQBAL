@@ -439,7 +439,7 @@ export function pasangLayarUang(akar, opsi) {
   // titipannya (saat uang keluar dari laci). Betulkan = owner mengoreksi nominal / keterangan / jenis / nama sebelum menyetujui (angka asli tetap di catatan).
   // owner 22 Nov 2026 (paket ③): ke mana titipan barang masuk ditulis kalau disetujui apa adanya — upah bongkar → kedatangannya; bayar supir → bon bawaan
   function tujuanTitip(t) {
-    if (t.jenis === 'bongkar') return ' · disetujui = upah bongkar kedatangan ' + (t.pemasok || '') + ' (modal barang)';
+    if (t.jenis === 'bongkar') return ' · disetujui = ' + (t.ongkir ? 'ongkos kirim' : 'upah bongkar') + ' kedatangan ' + (t.pemasok || '') + ' (modal barang)';
     if (t.jenis !== 'bayarBon') return '';
     const P = TP.tpBonPilihan(t.id, kini()); const b = P.bon.find((x) => String(x.id) === String(P.bawaan));
     return b ? ' · disetujui = bayar bon ' + b.pemasok + ' ' + tanggalPendek(b.tanggal) + ' (sisa ' + RP(b.sisa) + ') — bon lain: Betulkan' : ' · ' + (t.pemasok || 'pemasok ini') + ' tidak punya bon yang masih bersisa';

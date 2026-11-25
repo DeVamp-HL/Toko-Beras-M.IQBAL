@@ -1754,7 +1754,12 @@ export function lokasiSumber(merk, wadah) {
   return lain || '';
 }
 /** Isi satu karung utuh nama itu di gudang: 50 kg; nama yang HANYA pernah masuk sebagai karung 25 kg → 25. */
-export function beratKarungBuka(merk) { const asal = wbMerkAsal(merk); const u = petaUkuran()[asal]; if (u) return u.berat; return !merkPunyaKarungBerat(asal, 50) && merkPunyaKarungBerat(asal, 25) ? 25 : KARUNG_BELAKANG_KG; }   // putaran 28: buku per ukuran = ukurannya · 39: kunci karung belakang → berat merek asalnya
+// Tahap 3 (owner 26 Nov 2026, isi karung bebas): merek yang TIDAK pernah datang 50 kg maupun 25 kg → isi karung = ukuran kedatangan terakhirnya (mis. 10 kg);
+// merek yang punya karung 50 / 25 kg tidak berubah (aturan lama persis). Peta dihitung sekali per versi data.
+function ukuranLainTerakhir() { return ingatPerVersi('jlUkuranLain', () => { const o = {}; const tgl = {};
+  ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { const n = Number(m && m.beratKarung); if (!m || !m.merk || m.satuan !== 'karung' || !(n > 0) || !(Number(m.jumlahKarung) > 0)) return; const k = String(m.merk); const t = String(b.tanggal || '') + '|' + String(b.jam || '');
+    if (tgl[k] === undefined || t >= tgl[k]) { tgl[k] = t; o[k] = n; } })); return o; }); }
+export function beratKarungBuka(merk) { const asal = wbMerkAsal(merk); const u = petaUkuran()[asal]; if (u) return u.berat; if (merkPunyaKarungBerat(asal, 50)) return KARUNG_BELAKANG_KG; if (merkPunyaKarungBerat(asal, 25)) return 25; return ukuranLainTerakhir()[asal] || KARUNG_BELAKANG_KG; }   // putaran 28: buku per ukuran = ukurannya · 39: kunci karung belakang → berat merek asalnya
 /**
  * BUKA KARUNG: satu karung utuh bernama `merk` diambil dari TUMPUKAN GUDANG, dibuka di belakang `wadah` (kosong = karung bahan campuran, tanpa wadah).
  * Jalur pertama rantai stok: tumpukan gudang nama itu turun satu karung SAAT INI JUGA (lihat tumpukanGudang). Buku mesin lama tidak ditulis —
