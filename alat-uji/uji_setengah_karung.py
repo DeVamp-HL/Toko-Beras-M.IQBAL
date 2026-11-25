@@ -187,5 +187,8 @@ if __name__ == '__main__':
         baik = [x for x in asap['hasil'] if x.get('ok')]
         print('ASAP DATA TOKO (%s): %d kemasan 50 kg bersisa dijual ½ · stok 50 −1, stok 25 +1, modal dipindah utuh & baris jual = modal pecahan: %d/%d · laba Agustus byte-sama: %s'
               % (os.path.basename(cadangan_toko()), len(asap['hasil']), len(baik), len(asap['hasil']), asap['labaLaluSama']))
-        if len(baik) != len(asap['hasil']) or not asap['labaLaluSama'] or not asap['hasil']: g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:300])
+        # 26 Nov 2026: "tidak ada kemasan 50 kg yang bersisa" BUKAN kegagalan — itu keadaan stok toko hari itu (cadangan 23 Nov: tiga nama 50 kg, semuanya sisa 0),
+        # dan dulu membuat uji ini keluar 2 tiap dijalankan dengan cadangan terbaru. Disebut "tidak ada yang bisa dicoba"; laba bulan lalu tetap dijaga.
+        if not asap['hasil']: print('   (tidak ada kemasan 50 kg yang bersisa di cadangan ini — jual ½ tidak bisa dicoba di data toko; kotak pasir di atas tetap mengujinya)')
+        if len(baik) != len(asap['hasil']) or not asap['labaLaluSama']: g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:300])
     sys.exit(2 if g else 0)
