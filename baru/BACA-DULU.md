@@ -3777,3 +3777,20 @@ Isi Tahap 1 (semua di `stok-catat-logika.js`, layar Stok › Barang masuk):
   mutu, catatan, permintaan. Kedatangan tanpa catatan tidak dicetak.
 Alat uji: `uji_barang_masuk_baru.py` (78 kotak pasir + statis, kontrol 69/69). Jebakan bundel: komentar di BELAKANG baris `import` di laporan-logika menjatuhkan
 bundel asap uji ini — komentar impor ditaruh di baris sendiri.
+
+## Barang masuk & mutu — Tahap 2 (owner 26 Nov 2026, cabang `fitur/barang-masuk-2`; tanpa rules baru): potong bon membukukan · retur · tolak saat datang · catatan bebas
+Owner sesudah Tahap 1 tayang: "Lanjut tahap 2. Sekalian catatan bebas untuk gua ketik sendiri untuk dikirim ke pemasok."
+- **Catatan bebas** — kolom `catatanBebas` (≤ 600 huruf) di dokumen kedatangan: diketik di lembar Barang masuk ATAU di lembar Catatan untuk pemasok; tercetak di
+  surat. Kedatangan yang hanya punya catatan bebas / baris ditolak tetap bisa dicetak (`cpBaca().ada`).
+- **Potong bon membukukan ("kg ikut yang datang")** — bon pemasok = Σ `subtotalHarga` baris kedatangan (mesin beku), jadi memotong bon = mengurangi kg baris:
+  kolom baris `kgPotong`; kg buku = jumlah × isi karung − kgPotong, nilai = kg buku × harga (harga per kg TETAP; jumlah karung tetap). `hitungPotongKlaim` /
+  `susunPotongKlaim`: hanya klaim berkara `potong` yang statusnya "Disetujui pemasok" dan belum dibukukan; kg diambil dari baris catatan berjenis "kurang".
+  Sesudahnya klaim = selesai + `dibukukan { kg, rp, tanggal }` (tidak bisa dua kali; caranya tidak bisa diganti / dihapus).
+- **Retur sesudah masuk stok** — `susunReturPemasok(id, { merk, kg, alasan })`: jalan yang sama (kg baris turun → stok & bon turun), alasan wajib, tidak boleh lebih
+  dari sisa buku. Dibukukan pada kedatangan ASALNYA (mesin beku tidak punya gerak "retur ke pemasok" bertanggal hari ini) — layar menyebutnya.
+- Keduanya lewat **`susunPotong` → `susunSimpanMasuk`** (jalur koreksi kedatangan), jadi semua penjaganya berlaku: bulan terkunci, bon yang sudah dibayar (nilai
+  tidak boleh di bawah yang dibayar), baris bal, pindah nama. Jejak di kolom `potongan` [{ jenis klaim|retur, tanggal, kg, rp, alasan, baris }]. HANYA kedatangan
+  BON: yang tunai ditolak dengan kalimat (uang kembali dari pemasok belum bisa dibukukan). Timbang tetap dibanding kg nota ASLI (kg buku + kgPotong).
+- **Tolak saat datang** — baris bertanda `ditolak` + alasan di lembar Barang masuk: TIDAK masuk `merkList` (tidak masuk stok & bon), dicatat di kolom `ditolak`
+  [{ merk, jumlahKarung, beratKarung, kg, nilai, alasan }] dan tercetak di surat. Semua baris ditolak = tidak ada kedatangan yang dicatat (ditolak dengan kalimat).
+Alat uji: `uji_barang_masuk_baru.py` (101 pemeriksaan — bon & stok dihitung tangan lewat selisih; kontrol 86); `peta_akses.py` mengukur `susunPotong`.

@@ -433,7 +433,7 @@ def periksa_kiriman(src):
 OWNER_JALUR = {
     # diukur langsung (jsc, dua keadaan) — termasuk SEMUA jalur yang jumlah dokumennya bisa membesar karena perulangan (owner 25 Sep)
     'susunRinciDokumen': 'diukur', 'susunUrungRinci': 'diukur', 'susunPerbaikanKarcis': 'diukur', 'susunGabung': 'diukur', 'susunHapusNama': 'diukur',
-    'susunKoreksiAdukan': 'diukur', 'susunHapusAdukan': 'diukur', 'susunSimpanAdukan': 'diukur', 'susunSimpanMasuk': 'diukur', 'susunHapusKedatangan': 'diukur', 'susunCatatanPemasok': 'diukur',
+    'susunKoreksiAdukan': 'diukur', 'susunHapusAdukan': 'diukur', 'susunSimpanAdukan': 'diukur', 'susunSimpanMasuk': 'diukur', 'susunHapusKedatangan': 'diukur', 'susunCatatanPemasok': 'diukur', 'susunPotong': 'diukur',
     'susunKoreksiHpp': 'diukur', 'susunKoreksiMassal': 'diukur', 'susunHapusBeli': 'diukur', 'susunBayarUpah': 'diukur', 'susunPutusKarantina': 'diukur', 'susunBonLama': 'diukur', 'susunRetur': 'diukur',
     'simpanNota': 'diukur', 'susunNotaDokumen': 'diukur', 'susunPembatalan': 'diukur', 'susunIniDia': 'diukur', 'susunSimpanCocok': 'diukur', 'susunTutup': 'diukur',
     'susunKunci': 'diukur', 'susunBatal': 'diukur',
@@ -461,6 +461,8 @@ OWNER_JALUR = {
     'susunPutusPersetujuan': 'papan Persetujuan: persetujuan (tidak dikunci) + titipan uang lewat tpSusunPutus — 1 pengeluaranHarian / kasbonMutasi bertanggal titipannya',
     'susunSetujuiKecil': 'setujui sekaligus: per permintaan persetujuan (tidak dikunci) + titipan uang lewat tpSusunPutus — 1 dokumen uang bertanggal titipannya per titipan',
     'susunCocok': 'penghitung daftar cocokkan — tidak menulis; yang menulis susunSimpanCocok (diukur)',
+    'susunPotongKlaim': 'pembungkus: memilih kg dari catatan klaim lalu memanggil susunPotong (diukur)',
+    'susunReturPemasok': 'pembungkus: membaca kg ketikan lalu memanggil susunPotong (diukur)',
     'susunSimpanBeli': 'beli kantong: 1 dokumen bertanggal hari ini',
     'susunPecahKantong': 'pecah kantong gabungan per merek (owner 11 Okt): paling banyak 1 opname + 1 pakai di gabungan + 1 saldoAwal per merek (≤ 3), semuanya hari ini, + paling banyak 3 hargaWadah (katalog, tidak dikunci) — jumlah tetap ≤ 8',
     'susunTakarWadah': 'wadahLiteran (tidak dikunci) + produksiKemasan pindah buku (28: karung → stok wadah; 39: + 1 pindah merek → karung belakang per karung otomatis yang dibuka) + paling banyak 1 batch lahir 0 kg per buku baru, hari ini — kiriman karyawan diukur di --kiriman (isi ulang wadah) + karung bekas (owner 7 Okt): per karung yang habis 1 stokBahanLiteran opname +1 hari ini; dicabut = hapus kelahiran HARI INI atau 1 catatan pembalik opname −1 hari ini (catatan bulan lampau tidak pernah disentuh → 0 pemeriksaan kunci)',
@@ -566,6 +568,7 @@ function jalankan(keadaan) {
   ukur(keadaan, 'adukan BARU bertanggal Agustus · 12 hasil berkantong', 'susunSimpanAdukan', susunSimpanAdukan(drafAduk(12, '2026-08-30'), W, YAKIN));
   ukur(keadaan, 'koreksi kedatangan Agustus', 'susunSimpanMasuk', susunSimpanMasuk(Object.assign(drafDariKedatangan(5001), { alasan: 'salah ketik' }), W, true));
   ukur(keadaan, 'catatan untuk pemasok + klaim pada kedatangan Agustus', 'susunCatatanPemasok', susunCatatanPemasok(5002, { baris: [{ jenis: 'kurang', merk: 'Beo', jumlah: '10', satuan: 'kg', ket: 'uji' }], cara: 'catat', status: 'diminta' }, W));
+  ukur(keadaan, 'potong bon / retur ke pemasok pada kedatangan Agustus', 'susunPotong', (function () { var b = ambilSemuaBatch().find(function (x) { return String(x.id) === '5002'; }); return susunPotong(5002, [{ merk: b.merkList[0].merk, kg: 1 }], 'klaim', 'uji akses', W); })());
   ukur(keadaan, 'hapus kedatangan Agustus', 'susunHapusKedatangan', susunHapusKedatangan(5002, 'salah catat', W));
   ukur(keadaan, 'koreksi HPP satu nama (kedatangan terakhir Agustus)', 'susunKoreksiHpp', susunKoreksiHpp('Beo', '13100', 'salah ketik', W, true));
   ukur(keadaan, 'koreksi HPP massal · 2 nama kedatangan Agustus', 'susunKoreksiMassal', susunKoreksiMassal({ Beo: '13100', Cendana: '13200' }, 'salah ketik', W));
