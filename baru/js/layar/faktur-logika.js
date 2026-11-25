@@ -14,7 +14,7 @@
 // Dua perangkat tidak memakai awalan yang sama; satu perangkat membaca tulisannya sendiri (termasuk yang masih antre) jadi urutnya tidak berulang.
 // MESIN UANG TIDAK DISENTUH: faktur hanyalah KOLOM di baris penjualan (noFaktur, jatuhTempo, tempoHari) dan di pembayaran (untukFaktur); sisa bon tetap
 // dari mesin beku hitungPiutang — pembagian ke faktur cuma membagi sisa yang sama.
-import { cacheMentah, ambilPenjualanSemua, ambilPelangganCatatan, ambilPiutangMutasi, kreditLintas, tolakKunci, ingatPerVersi, ambilPesanan } from '../data/toko.js';
+import { cacheMentah, ambilPenjualanSemua, ambilPelangganCatatan, ambilPiutangMutasi, kreditLintas, tolakKunci, ingatPerVersi, ambilPesanan, ambilPenjualan, ringkasArsip } from '../data/toko.js';
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, infoKreditPelanggan, penjualanMasihBerlaku } from '../mesin/pembantu.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
@@ -50,6 +50,41 @@ export function fkStopBon(nama) {
   if (!(umur > N)) return null;
   return { hari: N, umur, tanggal: tgl, sisa: Math.round(Number(r.sisa) || 0) };
 }
+// ---------- SYARAT BON (owner 26 Nov 2026, sensus 1c A101 — "paket saran"): siapa boleh bon BARU ----------
+// Bon baru (nota bon / bayar kurang) hanya untuk orang yang sudah langganan ≥ syaratBulan bulan (belanja pertama tercatat) DAN punya ≥ syaratNota nota belanja
+// dalam syaratHari hari terakhir (nota yang sedang dibuat tidak dihitung). Angka setelan owner di aturanToko/pelanggan (Pelanggan › Atur); 0 = syarat itu mati.
+// Batas kredit yang DIISI OWNER di kartu = owner sudah memutuskan orangnya → lolos syarat (fkInfoKredit sumber 'owner'). Tidak lolos = gerbang kredit B2 yang
+// sama (karyawan minta persetujuan owner, owner membuka dua ketukan). Lintas tutup buku: belanja pertama & hari belanja ≤ 31 Des dibaca dari ringkasan tahun
+// yang diarsip (ringkasArsip: pelanggan.hari & kredit.hari) — hari belanja tahun lalu dihitung SATU nota per hari (ringkasan tidak menyimpan nota).
+export const FK_SYARAT_BAWAAN = { syaratBulan: 1, syaratNota: 2, syaratHari: 90 };
+export const FK_SYARAT_BATAS = { syaratBulan: [0, 36], syaratNota: [0, 100], syaratHari: [7, 365] };
+/** Syarat bon yang berlaku (angka owner; belum diatur = bawaan). */
+export function fkSyaratAtur() {
+  const a = fkAturMentah() || {}; const n = (k) => { const v = a[k]; const x = Number(v); const [lo, hi] = FK_SYARAT_BATAS[k]; return v !== undefined && v !== null && String(v).trim() !== '' && Number.isInteger(x) && x >= lo && x <= hi ? x : FK_SYARAT_BAWAAN[k]; };
+  return { syaratBulan: n('syaratBulan'), syaratNota: n('syaratNota'), syaratHari: n('syaratHari'), dariOwner: !!(a && (a.syaratBulan !== undefined || a.syaratNota !== undefined)) };
+}
+/** iso mundur n bulan kalender (tanggal dipotong ke akhir bulan bila perlu): 2026-03-31 − 1 = 2026-02-28. */
+export function fkMundurBulan(iso, n) {
+  const y = Number(String(iso).slice(0, 4)), m = Number(String(iso).slice(5, 7)) - 1 - (Number(n) || 0), d = Number(String(iso).slice(8, 10)); const Y = y + Math.floor(m / 12), M = ((m % 12) + 12) % 12;
+  const akhir = new Date(Date.UTC(Y, M + 1, 0)).getUTCDate(); return Y + '-' + String(M + 1).padStart(2, '0') + '-' + String(Math.min(d, akhir)).padStart(2, '0');
+}
+/** Syarat bon untuk `nama` pada hari iso → null (lolos / syarat mati) | { pertama, nNota, kurang: [kalimat], S }. Batas owner di kartu TIDAK diperiksa di sini (pemanggil). */
+export function fkSyaratBon(nama, iso) {
+  const S = fkSyaratAtur(); if (!(S.syaratBulan > 0) && !(S.syaratNota > 0)) return null; const k = kunciPelanggan(nama); if (!k) return null;
+  const dari = fkTambahHari(iso, -(S.syaratHari - 1)); let pertama = ''; const nota = {}; const hidupHari = {};
+  ambilPenjualan().forEach((p) => { if (kunciPelanggan(p.namaPelanggan) !== k) return; const t = String(p.tanggal || ''); if (!/^\d{4}-\d\d-\d\d$/.test(t) || t > iso) return;
+    hidupHari[t] = true; if (!pertama || t < pertama) pertama = t; if (t >= dari) nota[fkKunciNota(p)] = true; });
+  let lintas = 0; const R = ringkasArsip();
+  if (R && R.cutoff) {
+    const rp = R.pelanggan && R.pelanggan[k]; if (rp && rp.hari) Object.keys(rp.hari).forEach((t) => { if (t <= R.cutoff && (!pertama || t < pertama)) pertama = t; });
+    const kh = R.kredit && R.kredit.hari ? R.kredit.hari[k] : null; if (kh) Object.keys(kh).forEach((t) => { if (t >= dari && t <= R.cutoff && Number(kh[t]) > 0 && !hidupHari[t]) lintas += 1; });
+  }
+  const nNota = Object.keys(nota).length + lintas; const kurang = [];
+  if (S.syaratBulan > 0 && (!pertama || pertama > fkMundurBulan(iso, S.syaratBulan))) kurang.push(pertama ? 'langganan sejak ' + tanggalPendek(pertama) + ' (syarat ≥ ' + S.syaratBulan + ' bulan)' : 'belum pernah belanja tercatat (syarat langganan ≥ ' + S.syaratBulan + ' bulan)');
+  if (S.syaratNota > 0 && nNota < S.syaratNota) kurang.push('baru ' + nNota + ' nota dalam ' + S.syaratHari + ' hari (syarat ≥ ' + S.syaratNota + ')');
+  return kurang.length ? { pertama, nNota, kurang, S } : null;
+}
+export const fkSyaratBonTeks = (nama, Y) => 'Syarat bon: ' + nama + ' ' + Y.kurang.join(' · ') + ' — minta izin owner, atau owner isi batas kredit di kartunya';
 export const fkStopBonTeks = (nama, S) => 'Stop bon: bon tertua ' + nama + ' belum lunas sejak ' + tanggalPendek(S.tanggal) + ' (' + S.umur + ' hari, batas ' + S.hari + ' hari; sisa bon ' + RP(S.sisa) + ')';
 /** Kartu pelanggan mentah (pelangganCatatan) menurut kunci nama. */
 export function fkKartu(nama) { const k = kunciPelanggan(nama); if (!k) return null; return (ambilPelangganCatatan() || []).find((c) => kunciPelanggan(c.nama || c.id) === k) || null; }

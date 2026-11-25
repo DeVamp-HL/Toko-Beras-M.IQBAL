@@ -15,11 +15,13 @@ import { AMBANG_HARI_KRITIS, JENDELA_LAJU_HARI, akhirBulanIso, kunciPelanggan } 
 import { hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { rekapHari, hariTerakhir, daftarMinggu, daftarBulan, lpPertama, lpHariRentang, merekBulan, merekTeratas } from './laporan-logika.js';
 import { kendaliBulan, titikImpas, pemicuBiaya, peringatanBiaya } from './kendali-biaya-logika.js';
-import { saldoKantong, ugNamaTempat } from './uang-logika.js';
+import { saldoKantong, ugNamaTempat, ksHari, ugSetor, ugTambahHari } from './uang-logika.js';
+// owner 26 Nov 2026 (kas & rekening): awal hari semua tempat (buku kas harian) & cocok rekening — APA ADANYA dari kas-rekening-logika (Laporan › Harian, Uang › Rekening)
+import { khPosisi, crRingkas } from './kas-rekening-logika.js';
 import { daftarKarcis } from './karcis-logika.js';
 import { daftarBarang, susunWadah, umRingkas } from './stok-logika.js';
 import { wbCekHari } from './wadah-bernama-logika.js';
-import { semuaBon, KATA_STATUS, tertagihBon } from './bon-logika.js';
+import { semuaBon, KATA_STATUS, tertagihBon, pnRingkas, pnHariTagih } from './bon-logika.js';
 // B2 (owner 17 Nov 2026): faktur pelanggan usaha yang lewat / segera jatuh tempo
 import { fkPengingat, fkTeksTempo } from './faktur-logika.js';
 // B3 (owner 18 Nov 2026): bayar di tempat yang uangnya belum disetor (merah, atas nama pengantar) & antar yang masih di jalan
@@ -52,8 +54,14 @@ export function dbHariIni(kini) {
     kas: S.ada ? { ada: true, total: S.total, cocok: S.cocok, minus: S.minus, titik: S.teksTitik, tempat: DB_TEMPAT.map((id) => ({ id, nama: ugNamaTempat(id), n: S[id] })) } : { ada: false, tempat: [] },
     kasSumber: 'Uang › Pindah uang', kasTujuan: { ke: 'uang', keluarga: 'pindah' },
     karcis: { n: KC.nKarcis, rp: KC.total, rapikan: KC.nRapikan, hariIni: KC.daftar.filter((d) => d.hariIni).length }, karcisSumber: 'Jual › Karcis kasir', karcisTujuan: { ke: 'jual', lembar: 'karcis' },
+    // owner 26 Nov 2026: awal hari (akhir kemarin, buku kas harian) · kas kecil hari ini · setor ke bank · cocok rekening — satu yang galat tidak mematikan kartu
+    awalHari: dbCoba(() => { const A = khPosisi(ugTambahHari(iso, -1)); return A.ada ? { ada: true, total: A.total, sumber: A.sumber } : { ada: false, sebab: A.sebab }; }), awalSumber: 'Laporan › Harian', awalTujuan: { ke: 'laporan', keluarga: 'harian', hari: iso },
+    kasKecil: dbCoba(() => ksHari(iso)), kasKecilTujuan: { ke: 'uang', keluarga: 'keluar' },
+    setor: dbCoba(() => ugSetor()), setorTujuan: { ke: 'uang', keluarga: 'pindah' },
+    rekening: dbCoba(() => crRingkas(kini)), rekeningTujuan: { ke: 'uang', keluarga: 'rekening' },
   };
 }
+const dbCoba = (f) => { try { return f(); } catch (e) { return { galat: String((e && e.message) || e) }; } };
 
 /** BULAN INI: margin, biaya per jenis + lampu anggaran, laba bersih vs titik impas, susut, pemicu yang naik — semuanya Laporan › Biaya. */
 export function dbBulanIni(kini) {
@@ -91,7 +99,7 @@ export function dbStok(kini) {
 
 /** PIUTANG (Pelanggan › Bon) & UTANG PEMASOK (Harga & Pemasok › Bon pemasok) — yang jatuh tempo didahulukan. */
 export function dbTagihan(kini) {
-  const bon = semuaBon(kini).filter((b) => b.sisa > 0);
+  const SB = semuaBon(kini); const bon = SB.filter((b) => b.sisa > 0);
   const perStatus = DB_STATUS_BON.map((s) => { const d = bon.filter((b) => b.status === s); return { status: s, kata: KATA_STATUS[s], n: d.length, rp: d.reduce((a, b) => a + b.sisa, 0), jatuh: DB_JATUH.indexOf(s) >= 0 }; });
   const jatuh = bon.filter((b) => DB_JATUH.indexOf(b.status) >= 0).sort((a, b) => DB_JATUH.indexOf(a.status) - DB_JATUH.indexOf(b.status) || b.sisa - a.sisa)
     .map((b) => ({ kunci: b.kunci, nama: b.nama, sisa: b.sisa, kata: b.cap, ket: b.ket, tujuan: { ke: 'pelanggan', keluarga: 'bon', orang: b.kunci } }));
@@ -111,7 +119,10 @@ export function dbTagihan(kini) {
       daftar: FP.daftar.slice(0, 4).map((f) => ({ no: f.no, nama: f.nama, sisa: f.sisa, ket: fkTeksTempo(f), awas: f.status === 'lewat', tujuan: tujuF })) },
     periode: 'Sekarang · ' + tanggalPendek(hariIniIso(kini)),
     piutang: { total: bon.reduce((a, b) => a + b.sisa, 0), n: bon.length, perStatus, jatuh, nJatuh: jatuh.length, rpJatuh: jatuh.reduce((a, b) => a + b.sisa, 0), sumber: 'Pelanggan › Bon', tujuan: { ke: 'pelanggan', keluarga: 'bon' },
-      kg: (() => { try { return klBonKg(bon.reduce((a, b) => a + b.sisa, 0), klModalPerKg()); } catch (e) { return null; } })() },   // paket KPI laba (butir 11)
+      kg: (() => { try { return klBonKg(bon.reduce((a, b) => a + b.sisa, 0), klModalPerKg()); } catch (e) { return null; } })(),   // paket KPI laba (butir 11)
+      // owner 26 Nov 2026 (B29 · B30 · B31 · A105): piutang PER NOTA (Pelanggan › Bon › Jatuh tempo) & hari tagih tetap — apa adanya dari bon-logika
+      nota: dbCoba(() => { const R = pnRingkas(kini, SB); return { lewat: R.lewat, hariIni: R.hariIni, minggu: R.minggu, nanti: R.nanti, tanpa: R.tanpa, total: R.total, menutup: R.menutup, selisih: R.selisih, nLewat: R.kelompok[0].n, orangLewat: R.kelompok[0].orang }; }),
+      notaTujuan: { ke: 'pelanggan', keluarga: 'bon', tab: 'tempo' }, hariTagih: dbCoba(() => { const T = pnHariTagih(kini, SB); return { nyala: T.nyala, teks: T.teks, hariIni: !!T.hariIni, n: T.daftar.length, rp: T.rp }; }) },
     pemasok: { total: BP.total, nBon: BP.nBon, nPemasok: BP.nPemasok, tekor: BP.tekor, lewat: BP.lewat.map(satuBon), dekat: BP.dekat.map(satuBon), nTanpaTempo: BP.tanpaTempo.length, rpTanpaTempo: BP.tanpaTempo.reduce((a, b) => a + b.sisa, 0), nJauh: jauh.length, rpJauh: jauh.reduce((a, b) => a + b.sisa, 0),
       rpLewat: BP.lewat.reduce((a, b) => a + b.sisa, 0), rpDekat: BP.dekat.reduce((a, b) => a + b.sisa, 0),
       dekatHari: BP.atur.dekatHari, cukupTeks: BP.cukupTeks, kurang: BP.kurang, adaKas: BP.adaKas, sumber: 'Harga & Pemasok › Bon pemasok', tujuan: { ke: 'harga', keluarga: 'bon', tab: 'garis' } },
