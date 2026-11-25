@@ -16,6 +16,7 @@ import * as KB from './kendali-biaya-logika.js';
 import * as PG from './laba-pelanggan-logika.js';   // B5 (owner 18 Nov 2026): kartu Per pelanggan di Laba
 import * as KL from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 2026): margin & mark-up, GMROI, batas HPP, nota terbesar
 import * as PD from './pondasi-logika.js';
+import * as KR from './kas-rekening-logika.js';   // owner 26 Nov 2026 (A55): buku kas harian semua tempat — saldo awal & akhir laci · brankas · rekening · amplop
 import * as KW from './kuartal-logika.js';   // Kuartal (owner 24 Nov 2026, paket Pondasi kedua): K1–K4 = Σ tiga bulan Laporan › Tahunan + kekayaan & potret lampu akhir kuartal   // Pondasi (owner 24 Nov 2026): delapan lampu pondasi toko — hanya membaca fungsi sumber layar lain
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan } from '../inti/gerak.js';
@@ -441,6 +442,15 @@ export function pasangLayarLaporan(akar, opsi) {
   }
 
   // ---------- HARIAN · rekap satu hari
+  // owner 26 Nov 2026 (A55): BUKU KAS HARIAN SEMUA TEMPAT — awal (akhir kemarin) → masuk − keluar ± pindah → beda (hitungan tutup hari / patokan disetel ulang) → akhir
+  function kartuBukuTempat(t) {
+    const K = KR.khBukuHari(t, kini()); const rp = (n) => (n === null ? '—' : (n < 0 ? '−' : '') + RP(Math.abs(n))); const tanda = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + RP(Math.abs(n));
+    return h`<div class="kartu" data-k="buku-tempat" style="gap: 4px;"><div class="label">Buku kas ${t === iso() ? 'hari ini' : tanggalPendek(t)} · semua tempat uang</div>
+      ${K.tempat.map((x) => h`<div class="lp-baris" data-k="bt-${x.id}"><div class="j">${x.nama}</div><div><div>${rp(x.awal)} → <b>${rp(x.akhir)}</b></div><div class="k2">${x.masuk ? 'masuk +' + RP(x.masuk) + ' · ' : ''}${x.keluar ? 'keluar −' + RP(x.keluar) + ' · ' : ''}${x.pindahMasuk || x.pindahKeluar ? 'pindah ' + tanda(x.pindahMasuk - x.pindahKeluar) + ' · ' : ''}${x.beda ? 'beda ' + tanda(x.beda) + ' (' + x.sebab + ')' : x.beda === null ? x.sebab : x.n ? 'menutup' : 'tidak bergerak'}</div></div><div class="n ${x.akhir !== null && x.awal !== null && x.akhir < x.awal ? 'rugi' : ''}">${x.awal !== null && x.akhir !== null ? tanda(x.akhir - x.awal) : ''}</div></div>`)}
+      <div class="lp-terjun jumlah" data-k="bt-total"><span>Jumlah uang toko</span><b>${rp(K.total.awal)} → ${rp(K.total.akhir)}</b></div>
+      <div class="k2" data-k="bt-sumber">awal = akhir ${tanggalPendek(UG_kemarin(t))} (${K.teksAwal}) · akhir = ${K.teksAkhir}${K.hariIni && K.cocokMesin === false ? ' · TIDAK SAMA dengan kas mesin — laporkan' : ''}</div></div>`;
+  }
+  const UG_kemarin = (t) => new Date(Date.parse(t + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10);
   function gambarHarian(s, L) {
     const hari = LP.hariTerakhir(kini(), 14); const t = s.hariH && hari.some((x) => x.iso === s.hariH) ? s.hariH : iso(); const R = LP.rekapHari(t);
     const pilih = h`<div class="kartu" data-k="pilih-hari" style="gap: 6px;"><div class="label">Hari yang dilihat · 14 hari terakhir</div><div class="lp-bulan">${hari.map((x) => h`<div class="seg ${x.iso === t ? 'aktif' : ''} ${x.n ? '' : 'sepi'}" data-aksi="hrHari" data-t="${x.iso}" data-k="h-${x.iso}">${x.hariIni ? 'hari ini' : tanggalPendek(x.iso).slice(0, 6)}${x.n ? '' : ' ·'}</div>`)}</div></div>`;
@@ -463,8 +473,9 @@ export function pasangLayarLaporan(akar, opsi) {
     const buku = h`<div class="kartu platina" data-k="buku" style="gap: 4px;"><div class="kepala-lembar" data-aksi="hrBuku" style="cursor: pointer;"><div><div class="label">Buku kas ${tanggalPendek(t)}</div><div class="k2">${R.buku.length} gerakan uang, satu per satu</div></div><div class="kaca-btn kecil">${s.bukaBuku ? 'tutup' : 'lihat'}</div></div>
       ${s.bukaBuku ? (R.buku.length ? R.buku.map((r, i) => h`<div class="lp-baris" data-k="bk-${i}"><div class="j">${r.jam || '—'}</div><div><div>${r.label}</div><div class="k2">${r.kantong}</div></div><div class="n ${r.keluar ? 'rugi' : ''}">${r.masuk ? '+' + RP(r.masuk) : '−' + RP(r.keluar)}</div></div>`) : h`<div class="k2">tidak ada gerakan uang</div>`) : ''}</div>`;
     const kaki = h`<div class="lp-kaki">Rekap harian = mesin arus kas & laba yang sama dengan sistem lama (dataRekapHarian). Mencatat uang keluar & tutup hari ada di layar Uang.</div>`;
-    if (L === 'hp') return h`<section data-k="harian">${pilih}${hero}${terbesar}${rekap}${arus}${buku}${kaki}</section>`;
-    return h`<section data-k="harian">${grid(L, [h`${pilih}${hero}${kaki}`, h`${terbesar}${rekap}`, h`${arus}${buku}`])}</section>`;
+    const tempat = kartuBukuTempat(t);
+    if (L === 'hp') return h`<section data-k="harian">${pilih}${hero}${tempat}${terbesar}${rekap}${arus}${buku}${kaki}</section>`;
+    return h`<section data-k="harian">${grid(L, [h`${pilih}${hero}${tempat}${kaki}`, h`${terbesar}${rekap}`, h`${arus}${buku}`])}</section>`;
   }
 
   // ---------- MINGGUAN · Senin–Minggu (owner 23 Sep)
