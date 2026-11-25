@@ -98,8 +98,16 @@ PD_MODUL = 'baru/js/layar/pondasi-logika.js'
 PD_PEMAKAI = ('dasbor-logika.js',)
 
 
+# owner 26 Nov 2026 (kas & rekening): Dasbor memakai kas-rekening-logika (awal hari semua tempat, cocok rekening) — modul itu membaca uang-logika & data/toko.js.
+# Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada; fungsi terangkat, jadi urutan tidak menentukan.
+KR_MODUL = 'baru/js/layar/kas-rekening-logika.js'
+KR_PEMAKAI = ('dasbor-logika.js',)
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in KR_PEMAKAI for x in d) and not any(x.endswith('kas-rekening-logika.js') for x in d):
+        d.append(KR_MODUL)
     if any(os.path.basename(x) in KL_PEMAKAI for x in d) and not any(x.endswith('kpi-laba-logika.js') for x in d):
         if not any(x.endswith('riwayat-logika.js') for x in d): d.append(RW_MODUL)
         d.append(KL_MODUL)
