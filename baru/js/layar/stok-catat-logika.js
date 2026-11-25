@@ -1038,6 +1038,28 @@ export function cpDaftar(n) {
   return out;
 }
 
+// ---------- SURAT "CATATAN UNTUK PEMASOK": SATU PENYUSUN (Tahap 5, owner 26 Nov 2026: "catatan bisa juga dicetak lewat tanda terima, tidak hanya melewati dokumen") ----------
+// Isi surat satu kedatangan — baris nota, hasil timbang / sampel, mutu, catatan toko, yang ditolak, yang sudah dibukukan, catatan bebas, permintaan toko — disusun
+// DI SINI dan dipakai dua kertas: Laporan › Dokumen › Dokumen kecil (berkop, A4 / PDF) dan struk di kartu tanda terima (terima-barang-logika tbmGarisCatatan).
+// Tidak ada angka yang dihitung selain yang sudah ada di catatannya. baris = [{ nama, n ('' = tanpa angka), kelas '' | 'kel' (judul kelompok) | 'jumlah' }].
+// bisaCetak = ada catatan / klaim / catatan bebas / baris ditolak / potongan tersimpan, ATAU ada usul dari timbang & mutu (kurang, lebih, mutu AWAS).
+export function cpIsiSurat(id, atur) {
+  const C = cpKedatangan(id, atur); if (!C) return null; const dKg = (n) => String(Math.round(n * 100) / 100).replace('.', ',') + ' kg';
+  const baris = []; const brs = (nama, n, saldo, kelas) => ({ nama, n: n === undefined ? '' : n, kelas: kelas || '' });
+  const sub = (C.pemasok || 'tanpa nama pemasok') + ' · barang datang ' + tanggalPendek(C.tanggal) + (C.noBon ? ' · bon No. ' + C.noBon : '') + (C.cara === 'utang' ? ' · bon' : ' · tunai');
+    baris.push(brs('Yang tertulis di nota', '', undefined, 'kel'));
+    C.timbang.baris.forEach((x) => { baris.push(brs((x.merkPemasok || x.merk) + ' · ' + dKg(x.kgNota) + ' @ ' + RP(x.hargaPerKg) + '/kg', Math.round(x.kgNota * x.hargaPerKg)));
+      if (x.timbangKg !== null) baris.push(brs('   ' + (x.perkiraan ? 'timbang sampel ' + x.sampel.karung + ' karung, rata-rata ' + String(x.sampel.rata).replace('.', ',') + ' kg per karung → perkiraan ' : 'ditimbang ') + dKg(x.timbangKg) + (x.selisihKg === null || x.selisihKg === 0 ? ' (pas)' : x.selisihKg < 0 ? ' — KURANG ' + dKg(-x.selisihKg) : ' — lebih ' + dKg(x.selisihKg)), ''));
+      if (x.awas.length) baris.push(brs('   mutu: ' + x.awas.join('; '), '')); });
+    if (C.catatan.length) { baris.push(brs('Catatan toko', '', undefined, 'kel')); C.catatan.forEach((c) => baris.push(brs(c.jenisNama + ' · ' + c.merk + (c.jumlah ? ' · ' + String(c.jumlah).replace('.', ',') + ' ' + c.satuan : '') + (c.ket ? ' — ' + c.ket : ''), ''))); }
+    if (C.ditolak.length) { baris.push(brs('Ditolak saat datang (tidak diterima, tidak masuk tagihan)', '', undefined, 'kel')); C.ditolak.forEach((x) => baris.push(brs(x.merk + ' · ' + x.jumlahKarung + ' karung × ' + String(x.beratKarung).replace('.', ',') + ' kg' + (x.alasan ? ' — ' + x.alasan : ''), ''))); }
+    if (C.potongan.length) { baris.push(brs('Sudah dibukukan toko', '', undefined, 'kel')); C.potongan.forEach((x) => baris.push(brs(tanggalPendek(x.tanggal) + ' · ' + x.jenisNama + ' · ' + dKg(x.kg) + (x.alasan ? ' — ' + x.alasan : ''), -x.rp))); }
+    if (C.bebas.trim()) { baris.push(brs('Catatan', '', undefined, 'kel')); C.bebas.split('\n').filter((t) => t.trim()).forEach((t) => baris.push(brs(t.trim(), ''))); }
+    if (C.klaim) { baris.push(brs('Permintaan toko', '', undefined, 'kel')); baris.push(brs(C.klaim.caraNama + (C.klaim.catatan ? ' — ' + C.klaim.catatan : ''), C.klaim.cara === 'catat' || !C.klaim.nilai ? '' : C.klaim.nilai, undefined, C.klaim.cara === 'catat' ? '' : 'jumlah')); }
+  const identitas = 'Dibuat dari catatan Barang masuk toko' + (C.timbang.ditimbang ? ' (' + C.timbang.ditimbang + ' dari ' + C.timbang.nBaris + ' baris ditimbang' + (C.timbang.baris.some((x) => x.perkiraan) ? '; yang bertanda "perkiraan" dihitung dari timbang sampel' : '') + ')' : '') + '. Nilai kurang timbang = kg kurang × harga beli per kg. Mohon dikonfirmasi.';
+  return { C, id: C.id, judul: 'Catatan untuk Pemasok', sub, baris, identitas, ada: C.ada, bisaCetak: C.ada || C.usul.length > 0 };
+}
+
 // ==================== TAHAP 2 (owner 26 Nov 2026): POTONG BON YANG MEMBUKUKAN & RETUR KE PEMASOK ====================
 // Keputusan owner: bon dipotong karena kurang timbang = "kg ikut yang datang" — stok & bon dihitung dari kg yang benar-benar datang, harga per kg tetap.
 // Bon pemasok = Σ subtotalHarga baris kedatangan (mesin beku hitungUtangPemasok), jadi memotong bon = mengurangi kg baris kedatangannya (kolom kgPotong):
