@@ -47,7 +47,8 @@ const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? J
 const KELUARGA = [['kenali', 'Kenali'], ['bon', 'Bon'], ['usaha', 'Usaha'], ['thr', 'THR']];   // B1: Usaha = harga pelanggan usaha (tingkat · harga barang · harga khusus)
 const TAB_U = [['tingkat', 'Tingkat'], ['barang', 'Harga barang'], ['khusus', 'Harga khusus'], ['grosir', 'Harga grosir'], ['faktur', 'Faktur']];   // B2 (owner 17 Nov 2026): + Faktur
 const TAB_K = [['wajah', 'Wajah'], ['tampah', 'Tampah'], ['belanja', 'Belanja'], ['jam', 'Jam'], ['minggu', 'Minggu'], ['benang', 'Benang'], ['hafal', 'Hafalan']];
-const TAB_B = [['buku', 'Buku bon'], ['papan', 'Papan tagih'], ['tempo', 'Jatuh tempo'], ['umur', 'Garis umur']];   // owner 26 Nov 2026: + Jatuh tempo (piutang per nota) const TAB_T = [['daftar', 'Daftar setia'], ['meja', 'Meja bingkisan'], ['amplop', 'Amplop']];
+// owner 26 Nov 2026: + Jatuh tempo (piutang per nota) di keluarga Bon
+const TAB_B = [['buku', 'Buku bon'], ['papan', 'Papan tagih'], ['tempo', 'Jatuh tempo'], ['umur', 'Garis umur']]; const TAB_T = [['daftar', 'Daftar setia'], ['meja', 'Meja bingkisan'], ['amplop', 'Amplop']];
 const kuisKosong = (hanya, putaran) => ({ putaran: putaran || 1, no: 0, jawab: null, benar: 0, salah: [], hanya: hanya || null });
 
 export function pasangLayarPelanggan(akar, opsi) {
