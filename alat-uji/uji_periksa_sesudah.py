@@ -420,15 +420,15 @@ coba('S7c', function () {
 
 # ---- S6 · layar Uang › Tutup buku ASLI digambar di jsc (uang.js + modul impornya; peramban tidak dinyalakan) ----
 MODUL_LAYAR = MODUL + ['baru/js/inti/dom.js', 'baru/js/inti/kunci.js', 'baru/js/inti/keadaan.js', 'baru/js/inti/isian.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerak.js',
-                       'baru/js/layar/akses-layar.js', 'baru/js/layar/uang.js']
+                       'baru/js/layar/akses-layar.js', 'baru/js/layar/kas-rekening-logika.js', 'baru/js/layar/foto-bon-logika.js', 'baru/js/layar/uang.js']
 LAYAR = r"""
 var __html = ''; pasang = function (akar, isi) { __html = isi && isi.__mentah ? isi.html : String(isi); }; delegasi = function () {}; gulirkan = function () {}; nanti = function () {}; segera = function () {};
 setelKunci(false); var __lebar = 1100; window.matchMedia = function (q) { var m = /min-width: (\d+)px/.exec(q); return { matches: !!m && __lebar >= Number(m[1]) }; }; window.addEventListener = function () {};
 if (typeof setTimeout === 'undefined') { var setTimeout = function () { return 0; }; var clearTimeout = function () {}; }
-var NS = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var UG = NS, UP = NS, OT = NS, TD = NS, BK = NS, KP = NS, PST = NS, WB = NS;
+var NS = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var UG = NS, UP = NS, OT = NS, TD = NS, BK = NS, KP = NS, PST = NS, WB = NS, KR = NS, FB = NS;   // owner 26 Nov 2026: + kas-rekening-logika (Rekening) & foto-bon-logika (foto nota)
 // ekspor berganti nama (`export { a as b }` dibuang bundel) — nama yang dipakai uang.js lewat ruang nama
 var kpNama = kpNamaBulan, kpWaktu = kpWib, PILIHAN_POTONG = UP_POTONG, bkRP = RP, tdAngka = ANGKA;
-var akarU = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0 };
+var akarU = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0, addEventListener: function () {} };   // 26 Nov: uang.js mendengar 'change' (foto nota, berkas mutasi)
 var __muat = { koleksiSiap: 56, koleksiTotal: 56, ditolak: [], offline: false };
 var U = null; var gambarU = function (patch) { U.keadaan.setel(patch || {}); U.gambar(); return __html; };
 // hemat baca (#111): null = lokal() TANPA kolom hemat (persis uji S6 lama); objek = app.js lokalPerangkat `hemat` (fb.hematKeadaan())
@@ -546,13 +546,13 @@ coba('S8-unduh', function () {
 
 
 # ---- S7 · Laporan › Pajak ASLI (laporan.js) dengan hemat baca: pita "?", rekap konsultan / catat setoran / omzet tahun lalu dari sistem DITAHAN; mati = HTML sama ----
-MODUL_PAJAK = MODUL + ['baru/js/inti/dom.js', 'baru/js/inti/kunci.js', 'baru/js/inti/keadaan.js', 'baru/js/inti/isian.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerak.js', 'baru/js/layar/laporan.js']
+MODUL_PAJAK = MODUL + ['baru/js/layar/kas-rekening-logika.js', 'baru/js/inti/dom.js', 'baru/js/inti/kunci.js', 'baru/js/inti/keadaan.js', 'baru/js/inti/isian.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerak.js', 'baru/js/layar/laporan.js']
 LAYAR_PAJAK = r"""
 // laporan.js mengimpor asliAda dari inti/perangkat.js (di luar bundel ini): uji ini meniru PERAMBAN, bukan aplikasi tablet
 var asliAda = function () { return false; };
 var __html = ''; pasang = function (akar, isi) { __html = isi && isi.__mentah ? isi.html : String(isi); }; var __aksi = null; delegasi = function (akar, a) { __aksi = a; }; gulirkan = function () {}; nanti = function () {}; segera = function () {};
 setelKunci(false); window.matchMedia = function (q) { return { matches: /1100px/.test(q) }; }; window.addEventListener = function () {}; if (typeof setTimeout === 'undefined') { var setTimeout = function () { return 0; }; var clearTimeout = function () {}; }
-var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP;
+var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP; var KR = LP;   // 26 Nov: buku kas semua tempat (Laporan › Harian)
 var akarL = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0 };
 var __hematL = null; var L9 = null; var gambarL = function (patch) { L9.keadaan.setel(patch || {}); L9.gambar(); return __html; };
 function hbHarianP(daftar) { var o = {}; daftar.forEach(function (k) { o[k] = { jenis: 'harian', sebab: hbSebabHarian('2027-01-05') }; }); return o; }

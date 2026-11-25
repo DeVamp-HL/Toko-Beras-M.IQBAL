@@ -96,6 +96,7 @@ var SA = fkSyaratAtur(); ok('SY: bawaan langganan ≥ 1 bulan & ≥ 2 nota dalam
 ok('SY: Bu Sari (sejak 1 Sep, 4 nota) LOLOS', fkSyaratBon('Bu Sari', '2026-11-28') === null);
 var Y = fkSyaratBon('Baru Datang', '2026-11-28');
 ok('SY: Baru Datang (pertama 20 Nov, 1 nota) TIDAK lolos — dua sebab disebut', Y && Y.kurang.length === 2 && /langganan sejak 20 Nov/.test(Y.kurang[0]) && /baru 1 nota dalam 90 hari \(syarat ≥ 2\)/.test(Y.kurang[1]) && Y.pertama === '2026-11-20' && Y.nNota === 1, J(Y));
+ok('SY: saldo awal bon dari sebelum sistem = sudah langganan (Deka, tanpa belanja): kurang NOTA saja', (function () { var x = fkSyaratBon('Deka', '2026-11-28'); return x && x.pertama === '2026-08-20' && x.kurang.length === 1 && /baru 0 nota/.test(x.kurang[0]); })(), J(fkSyaratBon('Deka', '2026-11-28')));
 ok('SY: mundur bulan kalender (31 Mar − 1 = 28 Feb; Jan − 1 = Des tahun lalu)', fkMundurBulan('2026-03-31', 1) === '2026-02-28' && fkMundurBulan('2027-01-15', 1) === '2026-12-15' && fkMundurBulan('2026-11-28', 1) === '2026-10-28');
 ok('SY: tepat 1 bulan (pertama 28 Okt pada 28 Nov) lolos syarat bulan', (function () { var x = fkSyaratBon('Pak Budi', '2026-11-28'); return x === null; })());
 var KR = kunciKr1('Baru Datang', 50000);
@@ -157,6 +158,7 @@ RUSAK = [
     ('hari tagih: hari berikutnya bisa mundur', BN, "const geser = (h - hariMingguKe(iso) + 7) % 7;", "const geser = Math.abs(h - hariMingguKe(iso));"),
     ('hari tagih: bawaan mati', PL, "  hariTagih: 5,", "  hariTagih: -1,"),
     ('syarat: ringkasan tahun lalu diabaikan', FK, "  let lintas = 0; const R = ringkasArsip();", "  let lintas = 0; const R = null;"),
+    ('syarat: saldo awal tidak dihitung langganan', FK, "if (/^\\d{4}-\\d\\d-\\d\\d$/.test(t) && t <= iso && (!pertama || t < pertama)) pertama = t; });", "});"),
     ('syarat: nota di luar jendela ikut', FK, "if (t >= dari) nota[fkKunciNota(p)] = true;", "nota[fkKunciNota(p)] = true;"),
     ('syarat: langganan diukur dari hari ini, bukan belanja pertama', FK, "if (S.syaratBulan > 0 && (!pertama || pertama > fkMundurBulan(iso, S.syaratBulan)))", "if (false)"),
     ('syarat: batas owner tidak meloloskan', JL, "if (info.sumber !== 'owner') { const Y = fkSyaratBon(", "if (true) { const Y = fkSyaratBon("),

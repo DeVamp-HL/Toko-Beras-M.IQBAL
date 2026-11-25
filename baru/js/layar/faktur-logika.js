@@ -51,7 +51,7 @@ export function fkStopBon(nama) {
   return { hari: N, umur, tanggal: tgl, sisa: Math.round(Number(r.sisa) || 0) };
 }
 // ---------- SYARAT BON (owner 26 Nov 2026, sensus 1c A101 — "paket saran"): siapa boleh bon BARU ----------
-// Bon baru (nota bon / bayar kurang) hanya untuk orang yang sudah langganan ≥ syaratBulan bulan (belanja pertama tercatat) DAN punya ≥ syaratNota nota belanja
+// Bon baru (nota bon / bayar kurang) hanya untuk orang yang sudah langganan ≥ syaratBulan bulan (catatan pertama: belanja, saldo awal bon, pembayaran) DAN punya ≥ syaratNota nota belanja
 // dalam syaratHari hari terakhir (nota yang sedang dibuat tidak dihitung). Angka setelan owner di aturanToko/pelanggan (Pelanggan › Atur); 0 = syarat itu mati.
 // Batas kredit yang DIISI OWNER di kartu = owner sudah memutuskan orangnya → lolos syarat (fkInfoKredit sumber 'owner'). Tidak lolos = gerbang kredit B2 yang
 // sama (karyawan minta persetujuan owner, owner membuka dua ketukan). Lintas tutup buku: belanja pertama & hari belanja ≤ 31 Des dibaca dari ringkasan tahun
@@ -74,6 +74,8 @@ export function fkSyaratBon(nama, iso) {
   const dari = fkTambahHari(iso, -(S.syaratHari - 1)); let pertama = ''; const nota = {}; const hidupHari = {};
   ambilPenjualan().forEach((p) => { if (kunciPelanggan(p.namaPelanggan) !== k) return; const t = String(p.tanggal || ''); if (!/^\d{4}-\d\d-\d\d$/.test(t) || t > iso) return;
     hidupHari[t] = true; if (!pertama || t < pertama) pertama = t; if (t >= dari) nota[fkKunciNota(p)] = true; });
+  // langganan dihitung dari catatan PERTAMA orang itu di buku bon juga (saldo awal dari sebelum sistem, pembayaran) — bon lama = sudah langganan; nota tetap hanya belanja
+  ambilPiutangMutasi().forEach((m) => { if (kunciPelanggan(m.namaPelanggan) !== k) return; const t = String(m.tanggal || ''); if (/^\d{4}-\d\d-\d\d$/.test(t) && t <= iso && (!pertama || t < pertama)) pertama = t; });
   let lintas = 0; const R = ringkasArsip();
   if (R && R.cutoff) {
     const rp = R.pelanggan && R.pelanggan[k]; if (rp && rp.hari) Object.keys(rp.hari).forEach((t) => { if (t <= R.cutoff && (!pertama || t < pertama)) pertama = t; });

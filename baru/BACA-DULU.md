@@ -4005,7 +4005,7 @@ bon eceran = **paket saran** (jatuh tempo per nota, hari tagih Sabtu, syarat bon
 - **Hari tagih tetap (A105)** — `aturPelanggan().hariTagih` (Senin = 0 … Minggu = 6, -1 = mati, bawaan Sabtu), `pnHariTagih`: hari itu Papan tagih membuka "Tagih hari ini"
   (nota jatuh tempo sampai hari itu + janji yang lewat / jatuh hari itu); hari lain = hari tagih berikutnya + siapa saja. Pengingat `tagih` (ke Owner & Ben).
 - **Syarat bon baru (A101)** — `faktur-logika.js` `fkSyaratAtur` / `fkSyaratBon` / `fkMundurBulan`, dipanggil `kunciKr1` (jual-logika) sesudah "terdaftar": langganan ≥
-  `syaratBulan` bulan sejak belanja pertama DAN ≥ `syaratNota` nota dalam `syaratHari` hari (bawaan 1 · 2 · 90; 0 = syarat itu mati). Batas kredit yang diisi owner di
+  `syaratBulan` bulan sejak catatan pertama (belanja, saldo awal bon, pembayaran) DAN ≥ `syaratNota` nota dalam `syaratHari` hari (bawaan 1 · 2 · 90; 0 = syarat itu mati). Batas kredit yang diisi owner di
   kartu = lolos. Tidak lolos = gerbang kredit B2 yang sama (karyawan minta izin, owner dua ketukan). Lintas tutup buku: belanja pertama & hari belanja ≤ 31 Des dari
   ringkasan tahun yang diarsip (`ringkasArsip().pelanggan.hari` & `kredit.hari`, satu nota per hari). Kasir darurat tidak ditahan (sama dengan stop bon).
 - Setelan Pelanggan › Atur: hari tagih (pilih hari / mati) & tiga angka syarat — `susunAturPelanggan` menyimpannya (batas sah). Pengingat baru `setor`, `rekening`,
