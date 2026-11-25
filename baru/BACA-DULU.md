@@ -3963,6 +3963,38 @@ Alat uji: `uji_barang_masuk_baru.py` (212, kontrol 201 — skenario Tahap 1–5 
 `uji_jual_baru.py` (473, kontrol 260), `uji_terima_barang.py` (147, kontrol 49), uji lain yang menyimpan kedatangan memakai `bundel_baru.TIMBANG_PAS`;
 `peta_akses.py` (`susunBetulTimbang` terdaftar). Belum dicoba: menyimpan ke data toko, kasir darurat, cetak tanda terima di printer sungguhan.
 
+## Paket Susut + HPP & harga minimum (owner 26 Nov 2026, cabang `claude/susut-hpp-minimum-a8e4fe`; tanpa rules baru, mesin beku tidak diubah)
+
+Dari sensus ulang 26 Nov bagian 1c: Susut (A8 A40 A41 A71 A72 A73 A128 A135) + HPP & harga minimum (A11 A64 A65 A66 A97 A98). Logika di
+`baru/js/layar/susut-harga-logika.js` (awalan `sh`, hanya membaca; satu-satunya tulisan = setelan `aturanToko/hargaMinimum`), dijaga `alat-uji/uji_susut_harga.py`
+(kotak pasir + `--kontrol` + asap cadangan toko).
+
+**Keputusan owner (AskUserQuestion 26 Nov 2026):** target susut se-toko = susut 3 bulan selesai yang tercatat, DIGABUNG (Σ kg hilang ÷ Σ kg keluar + hilang),
+sampai owner mengetik angka; ambang per merek kuning 0,5 % · merah 1 %; penyebut susut % tetap "beras yang keluar"; harga minimum = modal + biaya toko per kg
+(3 bulan selesai, digabung) + target laba per kg (bawaan 0 = impas), di bawahnya DITANDAI saja; alarm HET bawaan Rp500/kg. Semua angka = setelan owner.
+
+- **Setelan susut** ada di dokumen yang sama dengan kartu Per merek (`aturanToko/merekLaporan`): `ambangSusutPersen` = merah (sudah ada), `ambangSelidikPersen` =
+  kuning (≤ merah; dokumen lama tanpa kolom ini = min(0,5, merah)), `targetSusutPersen` (null = terukur). `lpJadiMerek` memberi `selidik` (kuning, bukan merah).
+- **Satu pengumpul per merek** `lpKumpulMerek` (dulu badan `merekBulan`) dipakai `merekBulan` DAN `susutRentang` — susut mingguan tidak mungkin beda rumus.
+  `susutRentang` punya penjaga: Σ selisih semua kelompok = Σ `barisSusutStok` rentang itu.
+- **Alami vs operasional (A71):** Cocokkan › Tumpukan bersampel menyimpan `sampel.alamiKg` = berat karung yang dihitung menurut sampel − menurut buku (berat asli
+  kedatangan bila ikut timbang). Bertanda, TIDAK dijepit; operasional = selisih − alami. Sampel lama tanpa kolom ini = `nSampelLama` (seluruhnya operasional).
+- **Opname penuh (A135):** hitungan tumpukan & kemasan yang COCOK PERSIS kini ditulis (`selisihKg`/`selisihUnit` 0, `nilaiRp` 0, `cocokPersis: true`) — jejak
+  "sudah dihitung"; `barisSusutStok` melewati Rp0, stok tidak bergerak. Kantong & bahan yang cocok persis tetap tidak ditulis. Akibat sampingan yang benar: hitungan
+  cocok persis kini juga menuntaskan tanda "perlu dicocokkan" nota / takar (dulu hanya hitungan berselisih).
+- **Per pemasok (A73):** tiap baris susut beras dibagi ke kedatangan yang masih di tumpukan saat dihitung (buku sebelum dihitung `kgSistem` = kedatangan TERBARU
+  sampai tanggal itu, mundur sampai tertutup; karung terlama sudah keluar dulu). Buku tanpa kedatangan = kelompok sendiri. Σ pemasok = Σ baris, persis.
+- **Harga minimum (A97) & HET (A98):** `shMinimumKatalog` (tampil / terbit), `shDekatHet` (≥ HET = lewat, ≥ HET − jarak = dekat). Susut TIDAK masuk minimum —
+  hanya angka bantu "HPP layak jual" = modal ÷ (1 − target susut) (A64). Biaya per kg dari `kbBiayaKgBulan` (kendali-biaya, biaya toko tanpa susut & hapus buku).
+- **Kalkulator sebelum beli (A65 · A66):** Harga & Pemasok › Belanja, kartu "Hitung sebelum beli" — modal per kg dibagi kg TIMBANG kalau diisi, modal per karung,
+  impas, untung di HET / harga jual rencana. Tidak menulis apa pun (`hb` = isian layar).
+- **HPP periode (A11):** Laporan › Bulanan — nilai stok awal (neraca hari sebelumnya) + pembelian + stok yang dicatat + beli kantong & bahan + upah adukan − nilai
+  stok akhir, dibanding HPP nota + susut. Pembanding, bukan angka laba: bedanya (stok dinilai ulang dengan modal rata-rata terbaru, nota tanpa modal, koreksi
+  modal) disebut. Uji: harga beli tetap → beda 0 persis.
+- Layar: Laporan › Laba (kartu Susut: target, tren 6 bulan bergaris target, alami vs operasional, opname bulan ini, per pemasok 3 bulan; Per merek: pita kuning &
+  Atur target/kuning/merah), Laporan › Mingguan (susut per merek sementara), Laporan › Bulanan (HPP periode), Harga › Katalog (kartu Harga minimum & HET, baris
+  di lembar ubah, peringatan sebelum terbit), Dasbor › Mutu usaha (susut vs target + merah/kuning, opname, harga di bawah minimum, dekat HET).
+
 ## Kas & rekening + bon pelanggan eceran (owner 26 Nov 2026, sensus ulang 26 Nov bagian 1c; cabang `claude/kas-rekening-bon-eceran-965f73`; tanpa rules baru)
 Keputusan owner (satu AskUserQuestion 26 Nov): kas kecil = **batas + tanda nota + foto nota, wajib/tidaknya foto setelan owner**; cocok rekening = **centang per baris DAN
 unggah berkas, bentuknya diatur sendiri** ("agar gua tidak perlu ngoding lagi"), nama bank di layar → **"rekening usaha"**; setor = **ingatkan bila brankas lewat batas**;

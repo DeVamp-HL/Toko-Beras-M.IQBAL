@@ -738,7 +738,7 @@ def merek_layar(t):
     """paket brief 9 Okt 2026 (butir 3·4·5) — kartu Per merek di Laba: dipasang di ketiga lebar; penjaga identitas yang meleset = PITA AWAS (bukan diam);
     margin "belum bisa dihitung" / "tidak ada jualan" dan susut tanpa selisih tercatat tidak digambar sebagai rupiah / 0%; stok naik ditulis terpisah."""
     out = []
-    if 'const merek = kartuMerek(LP.merekBulan(key, kini()), s);' not in t or t.count('${keMana}${merek}') != 2: out.append('kartu Per merek tidak dipasang di Laba (HP / tablet / Mac)')
+    if 'const MB = LP.merekBulan(key, kini()); const merek = kartuMerek(MB, s);' not in t or t.count('${keMana}${merek}') != 2: out.append('kartu Per merek tidak dipasang di Laba (HP / tablet / Mac)')   # paket Susut 26 Nov: merekBulan sekali, dipakai kartu Per merek & kartu Susut
     if 'h`<div class="pita-info awas" data-k="mr-jaga">' not in t: out.append('penjaga identitas Per merek yang meleset tidak jadi pita awas')
     if "g.keadaanMargin === 'ada' ? h`<b class=\"${arah(g.margin)}\" data-gulir=" not in t or "'belum bisa dihitung' : 'tidak ada jualan'" not in t: out.append('margin yang belum bisa dihitung / tanpa jualan tidak dibedakan dari rupiah')
     if "'susut — (tidak ada selisih stok tercatat)'" not in t: out.append('susut tanpa selisih tercatat tidak disebut (terbaca 0%)')
@@ -931,7 +931,7 @@ if __name__ == '__main__':
             'per merek: wadah dijual dibuang diam-diam (tidak masuk di luar merek)': js.replace("  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal)) return; const g = ke(lpMerekBaris(p, P));", "  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal) || p.jenis === 'wadah') return; const g = ke(lpMerekBaris(p, P));"),
             'per merek: penjaga identitas diam (selalu menutup)': js.replace("const menutup = identitas.every((x) => x.cocok);", "const menutup = true;"),
             'per merek: tanpa selisih tercatat digambar susut 0%': js.replace("const ukur = !g.luar && dihitung && g.nSusut > 0 && !returLebih;", "const ukur = !g.luar && dihitung && !returLebih;").replace("const kgDicocok = g.gabungan ? g.kgDicocok : g.nSusut > 0 && !returLebih ? kg : 0;", "const kgDicocok = g.gabungan ? g.kgDicocok : !returLebih ? kg : 0;"),
-            'per merek: Atur diabaikan (ambang tetap 1%)': js.replace("tinggi: susutPct !== null && susutPct > ambang });", "tinggi: susutPct !== null && susutPct > 1 });"),
+            'per merek: Atur diabaikan (ambang tetap 1%)': js.replace("tinggi: susutPct !== null && susutPct > ambang,", "tinggi: susutPct !== null && susutPct > 1,"),   # paket Susut 26 Nov: baris itu kini diikuti selidik (kuning)
             'per merek: sisa di luar N teratas dibuang': js.replace("const sisa = lain.length ? lpGabungMerek(", "const sisa = false ? lpGabungMerek("),
             'per merek: buku per ukuran & stok wadah tidak dipetakan ke mereknya': js.replace("p.ukuran[k] ? p.ukuran[k] : /^Wadah ./.test(k) ? k.slice(6) : k;", "k;"),
             'per merek: karung belakang tidak ke merek pemasoknya': js.replace("const ke = asal !== k ? asal : b && b.jenis !== 'belakang' && b.wadah", "const ke = b && b.jenis !== 'belakang' && b.wadah"),

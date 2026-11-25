@@ -122,6 +122,9 @@ export function kendaliPotret(key, kini, bayaran) {
   const out = {}; Object.keys(X).forEach((k) => { if (['key', 'nama', 'pendek', 'berjalan', 'final', 'L', 'per', 'awal', 'akhir'].indexOf(k) < 0) out[k] = X[k]; });
   return Object.assign(out, { per, pemicu: kbDasarPemicu(X, B) });
 }
+/** paket HPP & harga minimum (owner 26 Nov 2026, A97): biaya toko & kg terjual satu bulan — angka yang SAMA dengan pemicu "Biaya toko per kg terjual"
+ *  (biaya toko mesin = harian + jatah bulanan; kg = semua nota ber-kg). Tanpa hapus buku & susut: susut dihitung terpisah lewat target susut. */
+export function kbBiayaKgBulan(key, kini, bayaran) { const X = kbInti(key, kini, bayaran || ugBayaran(), aturKendali()); return { key, nama: X.nama, biayaToko: X.biayaToko, kgTerjual: X.kgTerjual, tanpaCatatan: !!X.tanpaCatatan, diarsip: !!X.diarsip }; }
 /** Upah bulan `key` yang BELUM DIBAYAR sampai hari ini (dari absen, upah-logika: hari sejak terakhir dibayar) — [PERKIRAAN] bukan angka mesin laba. */
 export function upahMenggantung(key, kini) {
   const iso = hariIniIso(kini); const awal = key + '-01', akhir = akhirBulanIso(key); const batas = akhir < iso ? akhir : iso; const orang = []; let total = 0, nHari = 0;

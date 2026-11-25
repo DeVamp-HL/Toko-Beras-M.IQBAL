@@ -38,6 +38,8 @@ import { rekapTimbangMutu } from './stok-catat-logika.js';
 import { klMarginBulan, klTargetHari, klKasMinimum, klSiklusUang, klNotaTerbesar, klHppLewatBulan, klLamaPesanan, klBonKg, klModalPerKg } from './kpi-laba-logika.js';
 // Pondasi (owner 24 Nov 2026): delapan lampu pondasi toko — APA ADANYA dari pondasi-logika.js (yang memanggil fungsi sumber layar lain)
 import { pdPondasi } from './pondasi-logika.js';
+// paket Susut + HPP & harga minimum (owner 26 Nov 2026): target & dua ambang susut, opname bulan ini, harga di bawah minimum, alarm dekat HET — APA ADANYA dari susut-harga-logika.js
+import { shDasborSusut, shRingkasHarga } from './susut-harga-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
@@ -157,6 +159,7 @@ export function dbMutu(kini) {
   const aman = (f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor mutu', e); return { galat: String((e && e.message) || e) }; } };
   const T = aman(() => tertagihBon(kini)); const U = aman(() => umRingkas(kini)); const M = aman(() => merekBulan(key, kini)); const H = aman(() => hetHargaKasir(kini));
   const R = aman(() => rekapTimbangMutu({})); const TT = M.galat ? null : aman(() => merekTeratas(M, 'margin', 3));
+  const SS = M.galat || M.diarsip ? null : aman(() => shDasborSusut(M, kini)); const HM = aman(() => shRingkasHarga(kini));
   return {
     periode: 'Sekarang · merek & susut ' + (M.galat ? key : M.nama), sumber: 'Laporan › Laba › Per merek', tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key },
     tertagih: T.galat ? T : { keadaan: T.keadaan, rataTeks: T.rataTeks, hari: T.hari, teks: T.teks, periodeTeks: T.periodeTeks, tujuan: { ke: 'pelanggan', keluarga: 'bon' } },
@@ -166,6 +169,9 @@ export function dbMutu(kini) {
       susutPct: M.susut ? M.susut.pct : null, susutTinggi: M.susut ? (Array.isArray(M.susut.tinggi) ? M.susut.tinggi.length : Number(M.susut.tinggi) || 0) : 0, tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key } },
     het: H.galat ? H : { keadaan: H.keadaan, judul: H.judul, nAtas: H.nAtas, tujuan: { ke: 'harga', keluarga: 'katalog' } },
     mutu: R.galat ? R : { kedatangan: R.total.kedatangan, ditimbang: R.total.ditimbang, awas: R.total.kedatanganAwas, kgKurang: R.total.kgKurang, tujuan: { ke: 'stok', lembar: 'masuk' } },
+    // paket Susut + HPP & harga minimum (owner 26 Nov 2026)
+    susut: SS === null ? null : SS.galat ? SS : Object.assign({}, SS, { tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key }, opnameTujuan: { ke: 'stok', lembar: 'cocok' } }),
+    harga: HM.galat ? HM : Object.assign({}, HM, { tujuan: { ke: 'harga', keluarga: 'katalog' } }),
   };
 }
 
