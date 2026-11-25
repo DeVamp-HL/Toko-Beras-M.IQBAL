@@ -147,3 +147,10 @@ main.layar-harga.masuk > header, main.layar-harga.masuk > .jalur { animation: rk
 .layar-harga .hg-pita-hari { display: block; height: 4px; margin-top: 3px; border-radius: 3px; background: var(--seg); overflow: hidden; } .layar-harga .hg-pita-hari i { display: block; height: 100%; background: linear-gradient(90deg, var(--emas-garis), var(--aktif)); transition: width 640ms cubic-bezier(.2,.8,.2,1); transform-origin: 0 50%; animation: hgPitaTumbuh 640ms cubic-bezier(.2,.8,.2,1) both; }
 @keyframes hgPitaTumbuh { from { transform: scaleX(0); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .layar-harga .hg-pita-hari i { transition: none; animation: none; } }
+/* paket HPP & harga minimum (owner 26 Nov 2026): kartu harga minimum & HET, kalkulator sebelum beli — baris hasil masuk berurutan, hormat reduced motion */
+.layar-harga .sh-minimum .het-baris { animation: hgShMasuk 360ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-harga .sh-hitung .sh-hasil { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px solid var(--garis); }
+.layar-harga .sh-hitung .sh-hasil > div { animation: hgShMasuk 320ms cubic-bezier(.2,.8,.2,1) both; } .layar-harga .sh-hitung .sh-hasil > div:nth-child(2) { animation-delay: 40ms; } .layar-harga .sh-hitung .sh-hasil > div:nth-child(3) { animation-delay: 80ms; } .layar-harga .sh-hitung .sh-hasil > div:nth-child(n+4) { animation-delay: 120ms; }
+.layar-harga .sh-hitung .hg-dua-kolom .n.emas-teks { color: var(--emas-garis); font-weight: 700; }
+@keyframes hgShMasuk { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .layar-harga .sh-minimum .het-baris, .layar-harga .sh-hitung .sh-hasil > div { animation: none; } }

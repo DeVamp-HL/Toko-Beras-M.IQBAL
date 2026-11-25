@@ -340,7 +340,7 @@ export function pasangLayarStok(akar, opsi) {
      ubahCocok((c) => {
       const tab = kunci.indexOf('karungKhusus|') === 0 ? 'wadah' : kunci.split('|')[0]; const B = C.barangCocok(tab).find((b) => b.kunci === kunci);
       // timbang sampel (boleh kosong): karung utuh × rata-rata sampel — tanpa sampel = karung × 50 / 25 kg seperti dulu; Tahap 6: buku ikut timbang = berat asli karung terbaru
-      if (tab === 'tumpukan') { const S = C.ccSampel(c, kunci.slice('tumpukan|'.length)); c.hitung[kunci] = String(S.kg); c.sampel = Object.assign({}, c.sampel || {}); if (S.ada) c.sampel[kunci] = { karung: S.karung, kgSampel: S.kgSampel, isiKarung: S.isiKarung, rata: S.rata }; else delete c.sampel[kunci]; }
+      if (tab === 'tumpukan') { const S = C.ccSampel(c, kunci.slice('tumpukan|'.length)); c.hitung[kunci] = String(S.kg); c.sampel = Object.assign({}, c.sampel || {}); if (S.ada) c.sampel[kunci] = { karung: S.karung, kgSampel: S.kgSampel, isiKarung: S.isiKarung, rata: S.rata, alamiKg: S.alamiKg }; else delete c.sampel[kunci]; }   // paket Susut A71: bagian alami ikut tersimpan
       else if (tab === 'wadah' && B) { if (B.jenis !== 'karung' && String(c.isi || '').trim()) c.hitung[kunci] = String(isiKeKg(c.isi, c.satuanIsi, B)); if (String(c.kr || '').trim()) c.hitung[B.kunciKarung] = String(angka(c.kr)); }
       else if (satuan !== 'kg') c.hitung[kunci] = String(angka(c.angka));
       c.buka = null; kosongkanKetik(c); }); },

@@ -210,9 +210,24 @@ export function pasangDasbor(akar, opsi) {
     else {
       const top = M.teratas[0];
       out.push(baris('merek', 'Margin teratas ' + M.nama, top ? top.merek + ' ' + dbRpPendek(top.margin) : 'belum ada jualan', M.menutup === false, { judul: 'Merek teratas menurut margin · ' + M.nama, baris: M.teratas.map((x, i) => [(i + 1) + '. ' + x.merek, RP(Math.round(x.margin)) + ' · ' + pc(x.pct)]).concat(M.menutup === false ? [['Peringatan', 'per merek TIDAK menutup ke laba kotor Laporan — buka Laporan']] : []), tujuan: M.tujuan, ke: 'Laporan › Laba › Per merek' }));
-      out.push(baris('susut', 'Susut beras ' + M.nama, pc(M.susutPct) + (M.susutTinggi ? ' · ' + M.susutTinggi + ' merek tinggi' : ''), M.susutTinggi > 0, { judul: 'Susut % se-toko · ' + M.nama, baris: [['Susut', pc(M.susutPct)], ['Merek di atas ambang', String(M.susutTinggi || 0)]], tujuan: M.tujuan, ke: 'Laporan › Laba › Per merek' }));
+      // paket Susut (owner 26 Nov 2026): susut bulan ini vs target, merek kuning / merah, opname bulan ini — DL.dbMutu (susut-harga-logika) apa adanya
+      const SS = Q.susut;
+      if (SS && SS.galat) out.push(salah('susut', 'Susut beras', SS));
+      else if (SS) {
+        const st = SS.status === 'diAtas' ? 'di atas target ' + pc(SS.target) : SS.status === 'diBawah' ? 'target ' + pc(SS.target) : 'target —';
+        out.push(baris('susut', 'Susut beras ' + M.nama, pc(SS.pct) + ' · ' + st + (SS.merah.length ? ' · ' + SS.merah.length + ' merah' : '') + (SS.kuning.length ? ' · ' + SS.kuning.length + ' kuning' : ''), SS.status === 'diAtas' || SS.merah.length > 0,
+          { judul: 'Susut % se-toko · ' + M.nama, baris: [['Susut bulan ini', pc(SS.pct)], ['Target', pc(SS.target) + (SS.targetDariOwner ? ' (owner)' : ' (' + SS.targetAsal + ')')], ['Merah (di atas ' + pc(SS.ambangMerah) + ')', SS.merah.length ? SS.merah.slice(0, 6).join(', ') + (SS.merah.length > 6 ? ', …' : '') : 'tidak ada'], ['Kuning (di atas ' + pc(SS.ambangKuning) + ')', SS.kuning.length ? SS.kuning.slice(0, 6).join(', ') + (SS.kuning.length > 6 ? ', …' : '') : 'tidak ada']], tujuan: SS.tujuan, ke: 'Laporan › Laba › Susut' }));
+        const O = SS.opname; out.push(baris('opname', 'Opname ' + M.nama, O.n ? O.nDihitung + ' dari ' + O.n + ' dihitung' : 'tidak ada stok', O.nBelum > 0, { judul: 'Opname bulan ini', baris: [['Sudah dihitung', O.nDihitung + ' dari ' + O.n + ' barang'], ['Belum', O.belum.length ? O.belum.join(', ') + (O.nBelum > O.belum.length ? ', …' : '') : 'tidak ada'], ['Keterangan', O.kalimat]], tujuan: SS.opnameTujuan, ke: 'Stok › Cocokkan' }));
+      } else out.push(baris('susut', 'Susut beras ' + M.nama, pc(M.susutPct) + (M.susutTinggi ? ' · ' + M.susutTinggi + ' merek tinggi' : ''), M.susutTinggi > 0, { judul: 'Susut % se-toko · ' + M.nama, baris: [['Susut', pc(M.susutPct)], ['Merek di atas ambang', String(M.susutTinggi || 0)]], tujuan: M.tujuan, ke: 'Laporan › Laba › Per merek' }));
     }
     out.push(H.galat ? salah('het', 'HET', H) : baris('het', 'Harga di atas HET', H.keadaan === 'belum' || H.keadaan === 'kosong' ? 'belum dipetakan' : String(H.nAtas || 0), (H.nAtas || 0) > 0, { judul: 'HET beras', baris: [['Keadaan', H.judul]], tujuan: H.tujuan, ke: 'Harga › Katalog' }));
+    // paket HPP & harga minimum (owner 26 Nov 2026): harga yang DIPAKAI KASIR di bawah harga minimum + modal & biaya per kg dekat / lewat HET
+    const HM = Q.harga;
+    if (HM && HM.galat) out.push(salah('minimum', 'Harga minimum', HM));
+    else if (HM) {
+      out.push(baris('minimum', 'Harga di bawah minimum', HM.keadaanMin === 'tanpaBiaya' ? 'belum bisa dihitung' : String(HM.nBawah), HM.nBawah > 0, { judul: 'Harga kasir di bawah harga minimum', baris: [['Biaya toko per kg', HM.biayaKg === null ? 'belum bisa dihitung' : RP(Math.round(HM.biayaKg))]].concat(HM.bawah.map((x) => [x.judul, RP(x.n) + ' < ' + RP(x.minimum)])).concat([['Keterangan', HM.kalimatMin]]), tujuan: HM.tujuan, ke: 'Harga › Katalog' }));
+      out.push(baris('dekatHet', 'Modal + biaya dekat HET', HM.keadaanHet === 'ada' ? (HM.nLewat ? HM.nLewat + ' lewat · ' : '') + HM.nDekat + ' dekat' : HM.keadaanHet === 'belumDipetakan' ? 'belum dipetakan' : 'belum bisa dihitung', HM.nLewat + HM.nDekat > 0, { judul: 'Modal + biaya per kg vs HET', baris: HM.alarm.map((x) => [x.merk + ' · ' + x.kategori, RP(Math.round(x.biayaKg)) + '/kg · HET ' + RP(x.het) + (x.status === 'lewat' ? ' · LEWAT' : '')]).concat([['Keterangan', HM.kalimatHet]]), tujuan: HM.tujuan, ke: 'Harga › Katalog › Harga minimum & HET' }));
+    }
     out.push(R.galat ? salah('mutu', 'Mutu kedatangan', R) : baris('mutu', 'Kedatangan mutu AWAS', R.awas ? R.awas + ' kedatangan' : R.ditimbang || R.awas ? '0' : 'belum dicek', R.awas > 0, { judul: 'Timbang & mutu kedatangan', baris: [['Ditimbang', R.ditimbang + ' dari ' + R.kedatangan + ' kedatangan'], ['Kurang timbang', dbKg(R.kgKurang)], ['Mutu AWAS', String(R.awas)]], tujuan: R.tujuan, ke: 'Stok › Barang masuk' }));
     return '<div class="kartu db-kartu db-mutu">' + kepala('Mutu usaha', Q.periode, 'sumber:mutu', Q.sumber, Q.tujuan) + out.join('') + '</div>';
   }

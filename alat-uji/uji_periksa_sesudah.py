@@ -546,13 +546,13 @@ coba('S8-unduh', function () {
 
 
 # ---- S7 · Laporan › Pajak ASLI (laporan.js) dengan hemat baca: pita "?", rekap konsultan / catat setoran / omzet tahun lalu dari sistem DITAHAN; mati = HTML sama ----
-MODUL_PAJAK = MODUL + ['baru/js/inti/dom.js', 'baru/js/inti/kunci.js', 'baru/js/inti/keadaan.js', 'baru/js/inti/isian.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerak.js', 'baru/js/layar/laporan.js']
+MODUL_PAJAK = MODUL + ['baru/js/inti/dom.js', 'baru/js/inti/kunci.js', 'baru/js/inti/keadaan.js', 'baru/js/inti/isian.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerak.js', 'baru/js/layar/susut-harga-logika.js', 'baru/js/layar/laporan.js']   # paket Susut 26 Nov: Bulanan memakai SH (HPP periode)
 LAYAR_PAJAK = r"""
 // laporan.js mengimpor asliAda dari inti/perangkat.js (di luar bundel ini): uji ini meniru PERAMBAN, bukan aplikasi tablet
 var asliAda = function () { return false; };
 var __html = ''; pasang = function (akar, isi) { __html = isi && isi.__mentah ? isi.html : String(isi); }; var __aksi = null; delegasi = function (akar, a) { __aksi = a; }; gulirkan = function () {}; nanti = function () {}; segera = function () {};
 setelKunci(false); window.matchMedia = function (q) { return { matches: /1100px/.test(q) }; }; window.addEventListener = function () {}; if (typeof setTimeout === 'undefined') { var setTimeout = function () { return 0; }; var clearTimeout = function () {}; }
-var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP;
+var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP; var SH = LP;
 var akarL = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0 };
 var __hematL = null; var L9 = null; var gambarL = function (patch) { L9.keadaan.setel(patch || {}); L9.gambar(); return __html; };
 function hbHarianP(daftar) { var o = {}; daftar.forEach(function (k) { o[k] = { jenis: 'harian', sebab: hbSebabHarian('2027-01-05') }; }); return o; }
