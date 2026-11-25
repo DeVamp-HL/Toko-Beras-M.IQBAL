@@ -49,7 +49,7 @@ KG_PEMAKAI = ('jual-logika.js', 'wadah-bernama-logika.js', 'harga-logika.js', 'h
 # Tahap 6 (owner 25 Nov 2026, "stok ikut timbang"): berat ASLI karung per kedatangan — modul daun berat-asli-logika.js (hanya membaca data/toko.js), dipakai
 # Barang masuk & Cocokkan, Jual, dan retur. Ikut OTOMATIS (sekali, di belakang) bila salah satu pemakainya ada; fungsi terangkat, jadi urutan tidak menentukan.
 BA_MODUL = 'baru/js/layar/berat-asli-logika.js'
-BA_PEMAKAI = ('stok-catat-logika.js', 'jual-logika.js', 'retur-logika.js')
+BA_PEMAKAI = ('stok-catat-logika.js', 'jual-logika.js', 'retur-logika.js', 'tutup-buku-logika.js')
 
 
 # B2 (owner 17 Nov 2026): faktur bertempo & batas kredit — jual-logika (KR1, nomor faktur), bon-logika (alokasi bayar per faktur) memakai faktur-logika,

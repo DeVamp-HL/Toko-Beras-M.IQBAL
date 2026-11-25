@@ -70,9 +70,13 @@ Yang dijaga:
   S-A8     perkiraan kuota tulis/hapus/baca vs batas Spark + jam reset (14.00/15.00 WIB) + peringatan MEPET / TIDAK MUAT + perkiraan Batalkan
   S-A9     catatan 2026 yang mendarat sesudah penanda (di tengah arsip / sesudah selesai): terdeteksi, pita selesaikan (bukan lanjutkan arsip), ketukan kedua,
            tercatat di berita acara & Beranda, "sudah dicatat" tanpa menghapus
+  S-BERAT  (Tahap 6, owner 25 Nov 2026 "bawa berat asli") saldo pembuka membawa berat asli karung sisa kedatangan ikut timbang (beratAsli per potongan lapisan,
+           terlama dulu, + karung terakhir keluar): tangan 5 buku; ritual penuh → karung berikutnya, n karung, langit-langit, retur tanpa nota, tumpukan & rak Jual
+           sebelum = sesudah; nota & kedatangan Januari sebelum ritual tidak ikut; buku tanpa timbang baris persis; tahun berikutnya; potongan rusak diabaikan
   S-A2     Beranda 3 Jan: tutup buku tahun lalu belum dikerjakan — kunci bulan menunggu (daftar periksa kunci bulan: uji_kunci_periode.py)
   ASAP SIAP 2027 (cadangan LOKAL, tidak di-commit; dilewati di CI): ritual penuh pada 1 Jan 2027 15.10 & 5 Jan 2027 (+ Batalkan) dengan putusan TIRUAN:
            semua baris sama persis, rak Jual, buku 25 kg, tanda buku, modal, upah, KR1 tiap pelanggan terdaftar, laju, daftar pelanggan, stok tiap buku sama.
+           Tahap 6: berat asli tiap buku sebelum = sesudah; jalur ke-4 = pembetulan timbang kedatangan 25 Nov dulu (buku ikut timbang menyeberang tahun).
            python3 alat-uji/uji_tutup_buku_bertahap.py --asap=/jalur/backup-batch-….json   (atau env TUTUP_BUKU_ASAP=/jalur/…)
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
@@ -807,6 +811,70 @@ coba('S-RITUAL', function () { kotak(3);
   var UB = susunBayarUpah('Gama', 'tidak', W); var bb = (UB.dokumen || []).filter(function (x) { return x.koleksi === 'biayaBulanan'; });
   ok('A6 bayar upah 5 Jan: biayaBulanan hanya 2027-01 (hari kerja Desember dibukukan ke bulan bayar, rincian tetap 1 Des – 4 Jan); tidak ada biaya 2026 baru', !UB.tolak && bb.length === 1 && bb[0].data.bulan === '2027-01' && /tahun yang sudah ditutup buku/.test(UB.patch.kabar) && bb[0].data.rincianGaji.some(function (r) { return r.dari === '2026-12-01'; }), J(UB.tolak || bb)); });
 
+// ---- Tahap 6 (owner 25 Nov 2026, "bawa berat asli"): saldo pembuka membawa berat asli karung sisa kedatangan ikut timbang — FIFO per kedatangan menyeberang tahun
+// Tangan (kotak pasir): Timbang Contoh = 1 Nov 4 karung 200 kg (lama, faktor 1) + 2 Des 10 karung ditimbang 497 kg (49,7/karung) + 20 Des 6 karung 298,8 kg (49,8);
+// terjual Des 4 karung 200 kg + 3 karung 149,1 kg → sisa 31 Des 646,7 kg = 7 karung 2 Des (347,9 kg) + 6 karung 20 Des (298,8 kg). Januari SEBELUM ritual:
+// 3 Jan 2 karung ditimbang 101 kg (50,5 — timbang lebih), 4 Jan terjual 1 karung 49,7 → 5 Jan 698 kg. Campur Contoh = 1 Nov 2 karung 100 kg (lama) + 10 Des 2 karung
+// 99 kg (49,5), terjual 1 karung 50 → 149 kg = 50 kg lama + 99 kg. Lebih Contoh (isi 25 kg) = 2 Des 8 karung 25 kg ditimbang 202 kg (25,25). Angsa: tanpa timbang.
+// Batas Contoh = 1 Nov 2 karung 100 kg (lama) + 10 Des 2 karung ditimbang 99,6 kg (49,8), terjual 15 Des 2 karung lama → sisa TEPAT kedatangan 10 Des: karung yang
+// terakhir keluar = karung lama 50 kg (retur tanpa nota 1 karung = 50 kg, bukan 49,8) — dibawa potongan pembuka sebagai `keluar`.
+var BT6 = function (id, tgl, rows) { return { koleksi: 'batchMasuk', data: { id: id, tanggal: tgl, jam: '08:00', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: rows } }; };
+// modal per kg SAMA di semua kedatangan (harga nota = harga dasar × faktor timbang) — uji ini tentang BERAT; modal FIFO karung sisa yang menyeberang tahun = catatan lain
+var RB6 = function (merk, n, isi, kg, kgT, harga) { var r = { merk: merk, satuan: 'karung', beratKarung: isi, jumlahKarung: n, totalKg: kg, hargaPerKg: kgT ? harga * kgT / (n * isi) : harga, subtotalHarga: Math.round(kg * harga) }; if (kgT) r.kgTerima = kgT; return r; };
+var JL6 = function (id, tgl, merk, n, kg) { return { koleksi: 'penjualan', data: { id: id, tanggal: tgl, jam: '10:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: merk, totalKg: kg, beratKarungAcuan: 50, jumlahKarung: n, hargaTotal: n * 650000, hppTotalSaatJual: Math.round(kg * 12000) } }; };
+var MEREK6 = [['Timbang Contoh', 50], ['Campur Contoh', 50], ['Lebih Contoh', 25], ['Batas Contoh', 50], ['Angsa', 50]];
+function potretBerat() { var o = {}; MEREK6.forEach(function (x) { var m = x[0], b = x[1]; var mx = baMaksKarung(m, b, 0); var N = mx === null ? 4 : mx; var seq = [];
+  for (var n = 0.5; n <= N + 0.001; n += 0.5) seq.push(baKgKarung(m, b, n, 0));
+  // tumpukan gudang DALAM sisa buku (karung yang dihitung melebihi buku = karung asal tak dikenal: sesudah tutup buku berfaktor potongan pertama — catatan BACA-DULU)
+  var S = (hitungStokKarungPerMerk()[m] || {}).sisaKg || 0; var nom = N * b;
+  o[m] = J({ ada: baAda(m), maks: mx, seq: seq, kembali: baKgKembali(m, b, 1), tumpukan: [baKarungTumpukan(m, S, b), baKarungTumpukan(m, S / 2, b)], kgTumpukan: [baKgTumpukan(m, nom), baKgTumpukan(m, Math.floor(N / 2) * b)], berikut: baBeratBerikut(m, b, 0) }); }); return o; }
+coba('S-BERAT', function () { kotak(3);
+  terapkanKeCache([BT6('bt6-0', '2026-11-01', [RB6('Timbang Contoh', 4, 50, 200, 0, 12000), RB6('Campur Contoh', 2, 50, 100, 0, 11000), RB6('Batas Contoh', 2, 50, 100, 0, 11500)]),
+    BT6('bt6-1', '2026-12-02', [RB6('Timbang Contoh', 10, 50, 497, 497, 12000), RB6('Lebih Contoh', 8, 25, 202, 202, 13000)]),
+    BT6('bt6-2', '2026-12-10', [RB6('Campur Contoh', 2, 50, 99, 99, 11000), RB6('Batas Contoh', 2, 50, 99.6, 99.6, 11500)]), JL6('jl6-5', '2026-12-15', 'Batas Contoh', 2, 100), BT6('bt6-3', '2026-12-20', [RB6('Timbang Contoh', 6, 50, 298.8, 298.8, 12000)]),
+    BT6('bt6-4', '2027-01-03', [RB6('Timbang Contoh', 2, 50, 101, 101, 12000)]),
+    JL6('jl6-1', '2026-12-05', 'Timbang Contoh', 4, 200), JL6('jl6-2', '2026-12-22', 'Timbang Contoh', 3, 149.1), JL6('jl6-3', '2026-12-23', 'Campur Contoh', 1, 50), JL6('jl6-4', '2027-01-04', 'Timbang Contoh', 1, 49.7),
+    { koleksi: 'katalogHargaKarung', data: { id: 'Timbang Contoh', merk: 'Timbang Contoh', hargaPerKg: 13000 } }, { koleksi: 'katalogHargaKarung', data: { id: 'Campur Contoh', merk: 'Campur Contoh', hargaPerKg: 12000 } },
+    { koleksi: 'katalogHargaKarung', data: { id: 'Lebih Contoh', merk: 'Lebih Contoh', hargaPerKg: 14000 } }]);
+  putusSemua(); W = jam('2027-01-05T10:00:00+07:00'); var kini = new Date(__KINI);
+  var sk = function (m) { var x = hitungStokKarungPerMerk()[m]; return x ? Math.round(x.sisaKg * 1000) / 1000 : null; };
+  ok('S-BERAT kotak (tangan): 5 Jan Timbang Contoh 698 kg, Campur Contoh 149 kg, Lebih Contoh 202 kg; karung berikutnya 49,7 / 50 / 25,25 kg; rak Timbang 14 karung (300 + 300 + 100 kg nota ÷ 50), Campur 3, Lebih 8 (isi 25)',
+    sk('Timbang Contoh') === 698 && sk('Campur Contoh') === 149 && sk('Lebih Contoh') === 202 && baKgKarung('Timbang Contoh', 50, 1, 0) === 49.7 && baKgKarung('Campur Contoh', 50, 1, 0) === 50 && baKgKarung('Lebih Contoh', 25, 1, 0) === 25.25
+    && baMaksKarung('Timbang Contoh', 50, 0) === 14 && baMaksKarung('Campur Contoh', 50, 0) === 3 && baMaksKarung('Lebih Contoh', 25, 0) === 8 && baKgKarung('Timbang Contoh', 50, 7, 0) === 348 && baKgKarung('Timbang Contoh', 50, 13, 0) === 647.5
+    && baKgKarung('Campur Contoh', 50, 2, 0) === 99.5, J([sk('Timbang Contoh'), sk('Campur Contoh'), sk('Lebih Contoh'), baKgKarung('Timbang Contoh', 50, 1, 0), baMaksKarung('Timbang Contoh', 50, 0), baKgKarung('Timbang Contoh', 50, 7, 0)]));
+  var dk = function (seg) { return (seg || []).map(function (p) { return [Math.round(p.kg * 1000) / 1000, Math.round(p.faktor * 1e6) / 1e6, p.dari]; }); };
+  ok('S-BERAT baSisaPada (tangan, 31 Des): Timbang = 347,9 kg kedatangan 2 Des (0,994) + 298,8 kg 20 Des (0,996) — kedatangan 3 Jan & nota 4 Jan TIDAK ikut; Campur = 50 kg lama (1) + 99 kg (0,99); Lebih = 202 kg (1,01); Angsa null; sisa melebihi jejeran berfaktor kedatangan pertama (digabung)',
+    J(dk(baSisaPada('Timbang Contoh', '2026-12-31', 646.7))) === J([[347.9, 0.994, '2026-12-02'], [298.8, 0.996, '2026-12-20']]) && J(dk(baSisaPada('Campur Contoh', '2026-12-31', 149))) === J([[50, 1, '2026-11-01'], [99, 0.99, '2026-12-10']])
+    && J(dk(baSisaPada('Lebih Contoh', '2026-12-31', 202))) === J([[202, 1.01, '2026-12-02']]) && baSisaPada('Angsa', '2026-12-31', 500) === null && J(dk(baSisaPada('Lebih Contoh', '2026-12-31', 210))) === J([[210, 1.01, '2026-12-02']])
+    && baSisaPada('Timbang Contoh', '2026-12-31', 0) === null && baSisaPada('Timbang Contoh', '2026-12-31', 150) !== null
+    && J(dk(baSisaPada('Batas Contoh', '2026-12-31', 99.6))) === J([[99.6, 0.996, '2026-12-10']]) && baSisaPada('Batas Contoh', '2026-12-31', 99.6)[0].keluar === 1 && !('keluar' in baSisaPada('Timbang Contoh', '2026-12-31', 646.7)[0])
+    && baKgKembali('Batas Contoh', 50, 1) === 50 && baKgKembali('Timbang Contoh', 50, 1) === 49.7,
+    J([dk(baSisaPada('Timbang Contoh', '2026-12-31', 646.7)), dk(baSisaPada('Campur Contoh', '2026-12-31', 149)), dk(baSisaPada('Lebih Contoh', '2026-12-31', 202))]));
+  var A = potretSiap(kini), BA0 = potretBerat();
+  var R = ritualPenuh(2026, W, HPA); ok('S-BERAT ritual penuh diterima (kunci, semua kiriman, arsip habis)', !R.tolak && arsipBuku(2026).n === 0, R.tolak);
+  var B = potretSiap(kini), BA1 = potretBerat(); var PU = periksaUlangBuku(2026);
+  ok('S-BERAT periksa ulang dari mesin: semua baris sama persis', !!PU && PU.semuaSama, PU && J(PU.beda));
+  var tanda = ambilSemuaBatch().filter(function (x) { return x.tutupBuku && x.penandaBuku; })[0] || { merkList: [] }; var rb = function (m) { return tanda.merkList.filter(function (x) { return x.merk === m; }); };
+  var utamaB = function (m) { return rb(m).filter(function (x) { return x.totalKg > 0; })[0] || {}; };
+  ok('S-BERAT baris pembuka (tangan): Timbang 646,7 kg membawa beratAsli [347,9 kg 2 Des ×0,994; 298,8 kg 20 Des ×0,996]; Campur [50 kg ×1; 99 kg ×0,99]; Lebih (karung 25 kg) [202 kg ×1,01]; kg, karung, modal & rupiah baris tetap rumus lama',
+    Math.abs(utamaB('Timbang Contoh').totalKg - 646.7) < 1e-6 && utamaB('Timbang Contoh').jumlahKarung === 12 && J(dk(utamaB('Timbang Contoh').beratAsli)) === J([[347.9, 0.994, '2026-12-02'], [298.8, 0.996, '2026-12-20']])
+    && J(dk(utamaB('Campur Contoh').beratAsli)) === J([[50, 1, '2026-11-01'], [99, 0.99, '2026-12-10']]) && utamaB('Lebih Contoh').beratKarung === 25 && J(dk(utamaB('Lebih Contoh').beratAsli)) === J([[202, 1.01, '2026-12-02']])
+    && utamaB('Timbang Contoh').subtotalHarga === Math.round(utamaB('Timbang Contoh').totalKg * utamaB('Timbang Contoh').hargaPerKg)
+    && J(dk(utamaB('Batas Contoh').beratAsli)) === J([[99.6, 0.996, '2026-12-10']]) && utamaB('Batas Contoh').beratAsli[0].keluar === 1 && baKgKembali('Batas Contoh', 50, 1) === 50, J(tanda.merkList.filter(function (x) { return /Contoh/.test(x.merk); })));
+  var kunciBaku = J(['merk', 'satuan', 'beratKarung', 'jumlahKarung', 'totalKg', 'hargaPerKg', 'subtotalHarga']);
+  ok('S-BERAT buku TANPA kedatangan ikut timbang (Angsa & semua buku kotak): baris pembuka tanpa kolom beratAsli — kolomnya persis seperti dulu', tanda.merkList.filter(function (x) { return !/Contoh/.test(x.merk) || x.totalKg === 0; }).every(function (x) { return !('beratAsli' in x); })
+    && utamaB('Angsa').merk === 'Angsa' && J(Object.keys(utamaB('Angsa'))) === kunciBaku, J(utamaB('Angsa')));
+  ok('S-BERAT berat asli sebelum = sesudah ritual (karung berikutnya, n karung ½ demi ½, langit-langit, retur tanpa nota, tumpukan gudang) untuk Timbang, Campur, Lebih, Angsa', bedaObj(BA0, BA1).length === 0, J(bedaObj(BA0, BA1)));
+  ok('S-BERAT rak Jual & 12 baris sebelum = sesudah (sisa karung Timbang tetap 14, bukan 13,5)', bedaObj(A.chip, B.chip).length === 0 && bedaObj(A.baris, B.baris).length === 0 && /\|14$/.test(B.chip['karung|Timbang Contoh|50'] || ''), J([bedaObj(A.chip, B.chip), B.chip['karung|Timbang Contoh|50']]));
+  // tahun berikutnya: potongan pembuka ikut dipotong lagi (FIFO berlanjut; tanggal kedatangan asal terbawa)
+  ok('S-BERAT tutup buku 2027 kelak (tangan): sisa 698 kg = 298,2 kg kedatangan 2 Des 2026 + 298,8 kg 20 Des 2026 + 101 kg 3 Jan 2027 (×1,01) — potongan pembuka ikut terpotong lagi',
+    J(dk(baSisaPada('Timbang Contoh', '2027-12-31', 698))) === J([[298.2, 0.994, '2026-12-02'], [298.8, 0.996, '2026-12-20'], [101, 1.01, '2027-01-03']]), J(dk(baSisaPada('Timbang Contoh', '2027-12-31', 698))));
+  // dokumen pembuka yang dirusak (Σ potongan ≠ totalKg / bukan batch tutup buku) tidak dipakai → satu lapisan biasa (faktor 1), bukan angka karangan
+  var salin = JSON.parse(J(tanda)); salin.merkList.forEach(function (x) { if (x.merk === 'Timbang Contoh' && x.beratAsli) x.beratAsli[0].kg += 5; });
+  var lapRusak = denganCacheSementara([{ koleksi: 'batchMasuk', data: salin }], function () { return J((baLapisan()['Timbang Contoh'] || []).map(function (l) { return [l.kg, l.faktor]; })); });
+  var bukanTB = JSON.parse(J(tanda)); delete bukanTB.tutupBuku; var lapBukan = denganCacheSementara([{ koleksi: 'batchMasuk', data: bukanTB }], function () { return baLapisan()['Timbang Contoh'][0].faktor; });
+  ok('S-BERAT potongan pembuka yang tidak cocok dengan kg barisnya (atau di batch yang bukan saldo pembuka) diabaikan → satu lapisan faktor 1', /^\[\[646\.\d+,1\]/.test(lapRusak) && lapBukan === 1, J([lapRusak, lapBukan])); });
+
 // ---- A5 · stok minus, kemasan minus, kelebihan bayar pelanggan, kelebihan bayar ke pemasok per 31 Des
 coba('S-A5', function () { kotak(3);
   terapkanKeCache([
@@ -995,28 +1063,41 @@ function potretA(kini) { var hari = hariIniIso(kini); var B = barisBuku(hari, ha
   var orang = {}; semuaOrang(kini).forEach(function (o) { orang[o.kunci] = o.kunjungan + '|' + o.terakhir + '|' + Math.round(o.total) + '|' + o.nota + '|' + o.selang + '|' + o.jam + '|' + o.pola.join('+'); });
   var stok = {}; var SK = hitungStokKarungPerMerk(); Object.keys(SK).forEach(function (m) { stok[m] = Math.round(SK[m].sisaKg * 100) / 100; });
   var kem = {}; var SM = hitungStokKemasan(); Object.keys(SM).forEach(function (k) { if (SM[k].sisaUnit > 0) kem[k] = SM[k].sisaUnit; });
-  return { baris: baris, chip: chip, ukuran: J(petaUkuran()), terpisah: J(indukTerpisah()), digabung: J(ukuranDigabung()), wadah: J(petaBukuWadah()), stokWadah: J(petaStokWadah()), modal: Math.round(modalTertanam()),
+  // Tahap 6: berat asli karung per buku (karung berikutnya, 5 karung, langit-langit, retur tanpa nota, tumpukan) — isi 50 & 25 kg
+  var berat = {}; Object.keys(SK).forEach(function (m) { if (!(SK[m].sisaKg > 0.01)) return; berat[m] = J([50, 25].map(function (b) { return [baAda(m), baMaksKarung(m, b, 0), baKgKarung(m, b, 1, 0), baKgKarung(m, b, 5, 0), baKgKembali(m, b, 1), baKarungTumpukan(m, SK[m].sisaKg, b)]; })); });
+  return { berat: berat, baris: baris, chip: chip, ukuran: J(petaUkuran()), terpisah: J(indukTerpisah()), digabung: J(ukuranDigabung()), wadah: J(petaBukuWadah()), stokWadah: J(petaStokWadah()), modal: Math.round(modalTertanam()),
     kredit: kredit, laju: lajuLintas(hitungLajuPakai()), orang: orang, stok: stok, kem: kem, upah: upahPada(hari).jumlah, nMerek: Object.keys(SK).length }; }
 function bedaA(a, b) { var out = []; Object.keys(a).concat(Object.keys(b).filter(function (k) { return !(k in a); })).forEach(function (k) { if (a[k] !== b[k]) out.push(k); }); return out; }
 function bedaLaju(a, b) { var out = []; ['kgMerk', 'unitKemasan', 'pcsBahan'].forEach(function (g) { var x = a[g] || {}, y = b[g] || {}; Object.keys(x).concat(Object.keys(y)).forEach(function (k) { if (Math.abs((x[k] || 0) - (y[k] || 0)) > 1e-6) out.push(g + '|' + k); }); }); return out; }
 function bedaStok(a, b) { var out = []; Object.keys(a).concat(Object.keys(b)).forEach(function (k) { if (Math.abs((a[k] || 0) - (b[k] || 0)) > 0.011) out.push(k); }); return out.filter(function (x, i) { return out.indexOf(x) === i; }); }
-function ritualA(isoJam, ujiBatal) {
-  muatCad(); var w = Wk(isoJam); var kini = new Date(__KINI); var r = { jam: isoJam }; var tanda = isoJam.slice(0, 10) + ': ';
+function ritualA(isoJam, ujiBatal, betul25) {
+  muatCad(); var r = { jam: isoJam + (betul25 ? ' · sesudah pembetulan timbang 25 Nov' : '') }; var tanda = isoJam.slice(0, 10) + (betul25 ? ' (betul 25 Nov)' : '') + ': ';
+  // Tahap 6: kedatangan 25 Nov (timbang sampel) dibetulkan jadi kg timbang DULU (simulasi ketukan owner, 25 Nov malam) → buku itu ikut timbang saat tutup buku
+  if (betul25) { Wk('2026-11-25T22:00:00+07:00'); var b25 = ambilSemuaBatch().filter(function (b) { return b.tanggal === '2026-11-25' && (b.merkList || []).some(function (m) { return Number(m.sampelKg) > 0; }); })[0];
+    var SB = b25 ? susunBetulTimbang(b25.id, '', Wk('2026-11-25T22:00:00+07:00'), true) : { tolak: 'kedatangan 25 Nov bersampel tidak ada di cadangan' };
+    if (SB.tolak) { salah.push(tanda + 'pembetulan 25 Nov ditolak: ' + SB.tolak); return r; } terapkanKeCache(SB.dokumen); r.betul = SB.dokumen[0].data.merkList.length; }
+  var w = Wk(isoJam); var kini = new Date(__KINI);
   var G0 = gerbangBuku(2026, kini, LA, { g3: true }); r.hariTanpaTutup = G0.hari.length; r.belumDiputus = G0.belumPutus.length;
   var isi = {}; G0.belumPutus.forEach(function (t) { isi[t] = 'asap: putusan TIRUAN, bukan putusan owner'; }); var P = G0.belumPutus.length ? susunPutusanHari(isi, w) : { dokumen: [] };
   if (P.tolak) salah.push(tanda + 'putusan tiruan ditolak: ' + P.tolak); else terapkanKeCache(P.dokumen);
   var G = gerbangBuku(2026, kini, LA, { g3: true }); r.gerbang = G.daftar.map(function (g) { return g.id + (g.ok ? ' ok' : ' BELUM: ' + g.ket.slice(0, 160)); });
   ['g1', 'g6'].forEach(function (id) { var g = G.daftar.filter(function (x) { return x.id === id; })[0]; if (!g.ok) salah.push(tanda + id + ' belum lolos: ' + g.ket.slice(0, 200)); });
   var Q = perkiraanKuota(2026, kini); r.kuota = { rencana: Q.rencana, jam: Q.jamReset, ritual: Q.ritual, batal: Q.batal, muat: Q.muat, lewat: Q.lewat, mepet: Q.mepet };
+  var adaTimbang = ambilSemuaBatch().some(function (b) { return !b.tutupBuku && (b.merkList || []).some(function (m) { return Number(m.kgTerima) > 0; }); });   // sebelum diarsip
   var A = potretA(kini); var R = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'asap', langkah: {} }, w, LA);
   if (R.tolak) { salah.push(tanda + 'kunci ditolak: ' + R.tolak.slice(0, 300)); return r; }
   r.kiriman = R.kiriman.map(function (k) { return butuhGet(k.dokumen, k.hapus || []); }); r.pembuka = R.acara.nPembuka; r.arsip = R.arsip.length; r.banding = R.banding.ringkas;
   if (!R.banding.semuaSama) salah.push(tanda + 'banding sebelum/sesudah: ' + R.banding.ringkas);
   if (r.kiriman.some(function (g) { return g > 18; })) salah.push(tanda + 'ada kiriman > 18 pemeriksaan');
   R.kiriman.forEach(kirimA); arsipkanDokumen(2026, arsipBuku(2026).daftar); var PA = susunPeriksaArsip(2026, w, LA, true); if (PA.dokumen) terapkanKeCache(PA.dokumen);
+  // Tahap 6: baris pembuka ber-beratAsli = buku yang sisanya dari kedatangan ikut timbang; data tanpa kgTerima → NOL (dokumen pembuka persis seperti dulu)
+  var pbA = []; ambilSemuaBatch().forEach(function (b) { if (b.tutupBuku && Number(b.tahunDari) === 2026) (b.merkList || []).forEach(function (m) { if (m.beratAsli) pbA.push(m.merk + ' ' + m.beratAsli.map(function (p) { return Math.round(p.kg * 100) / 100 + '×' + Math.round(p.faktor * 10000) / 10000; }).join('+')); }); });
+  r.beratAsli = pbA;
+  if (!adaTimbang && pbA.length) salah.push(tanda + 'data tanpa kgTerima tapi pembuka membawa beratAsli: ' + pbA.join('; '));
+  if (betul25 && !pbA.length) salah.push(tanda + 'sesudah pembetulan 25 Nov tidak ada baris pembuka ber-beratAsli');
   var PU = periksaUlangBuku(2026); r.periksaUlang = PU ? PU.ringkas : 'tidak bisa'; if (!PU || !PU.semuaSama) salah.push(tanda + 'periksa ulang: ' + (PU ? PU.ringkas : 'tidak bisa'));
   var B = potretA(kini); var c = {};
-  c.baris = bedaA(A.baris, B.baris); c.chip = bedaA(A.chip, B.chip); c.kredit = bedaA(A.kredit, B.kredit); c.orang = bedaA(A.orang, B.orang); c.laju = bedaLaju(A.laju, B.laju); c.stok = bedaStok(A.stok, B.stok); c.kem = bedaStok(A.kem, B.kem);
+  c.baris = bedaA(A.baris, B.baris); c.chip = bedaA(A.chip, B.chip); c.kredit = bedaA(A.kredit, B.kredit); c.orang = bedaA(A.orang, B.orang); c.laju = bedaLaju(A.laju, B.laju); c.stok = bedaStok(A.stok, B.stok); c.kem = bedaStok(A.kem, B.kem); c.berat = bedaA(A.berat, B.berat);
   ['ukuran', 'terpisah', 'digabung', 'stokWadah', 'modal', 'upah'].forEach(function (k) { if (A[k] !== B[k]) c[k] = [A[k], B[k]]; }); var wa = JSON.parse(A.wadah), wb = JSON.parse(B.wadah); var dw = Object.keys(wa).concat(Object.keys(wb)).filter(function (k) { return J(wa[k]) !== J(wb[k]); }).map(function (k) { return k + ' : ' + J(wa[k]) + ' → ' + J(wb[k]); }); if (dw.length) c.wadah = dw;
   Object.keys(c).forEach(function (k) { if (Array.isArray(c[k]) ? c[k].length : c[k] !== undefined) salah.push(tanda + 'BEDA sebelum/sesudah · ' + k + ': ' + J(c[k]).slice(0, 400)); });
   r.dibandingkan = { baris: Object.keys(A.baris).length, chip: Object.keys(A.chip).length, kreditTerdaftar: Object.keys(A.kredit).length, kreditBerbatas: Object.keys(A.kredit).filter(function (k) { return Number(A.kredit[k].split('|')[1]) > 0; }).length,
@@ -1036,7 +1117,7 @@ function ritualA(isoJam, ujiBatal) {
   return r;
 }
 function acara(tahun) { return ambilTutupBukuAcara().filter(function (a) { return Number(a.tahun) === tahun; })[0] || null; }
-var hasil = [ritualA('2027-01-01T15:10:00+07:00', false), ritualA('2027-01-05T10:00:00+07:00', false), ritualA('2027-01-05T10:00:00+07:00', true)];
+var hasil = [ritualA('2027-01-01T15:10:00+07:00', false), ritualA('2027-01-05T10:00:00+07:00', false), ritualA('2027-01-05T10:00:00+07:00', true), ritualA('2027-01-05T10:00:00+07:00', false, true)];
 print(JSON.stringify({ hasil: hasil, salah: salah }));
 """
 
@@ -1152,6 +1233,17 @@ JAM_RESET_BARU = '\n'.join([
 JAM_RESET_LAMA = JAM_RESET_BARU.replace("if (j === 0) return 14; if (j === 23) return 15; }", "void j; }").replace("return d > minggu(2, 2) && d <= minggu(10, 1) ? 14 : 15;", "return d >= minggu(2, 2) && d < minggu(10, 1) ? 14 : 15;")
 
 RUSAK = [
+    # ---- Tahap 6 (owner 25 Nov 2026, "bawa berat asli"): saldo pembuka membawa berat asli karung sisa kedatangan ikut timbang
+    ('Tahap 6 · saldo pembuka tanpa berat asli (karung sisa dianggap 50 kg lagi)', 'baru/js/layar/tutup-buku-logika.js', "}, ba ? { beratAsli: ba } : {}));", "}, {}));"),
+    ('Tahap 6 · potongan pembuka tidak dibaca (satu lapisan faktor 1)', 'baru/js/layar/berat-asli-logika.js', "const P = baPotonganPembuka(b, m);", "const P = null;"),
+    ('Tahap 6 · sisa 31 Des ikut kedatangan Januari', 'baru/js/layar/berat-asli-logika.js', "(baLapisan()[String(merk || '')] || []).filter((x) => x.tanggal <= String(c || ''));", "(baLapisan()[String(merk || '')] || []);"),
+    ('Tahap 6 · potongan di batch yang bukan saldo pembuka ikut dipakai', 'baru/js/layar/berat-asli-logika.js', "const P = b && b.tutupBuku && m ? m.beratAsli : null;", "const P = m ? m.beratAsli : null;"),
+    ('Tahap 6 · potongan yang tidak cocok dengan kg barisnya tetap dipakai', 'baru/js/layar/berat-asli-logika.js', "return Math.abs(P.reduce((a, p) => a + Number(p.kg), 0) - Number(m.totalKg)) < 0.01 ? P : null;", "return P;"),
+    ('Tahap 6 · berat rata-rata, bukan karung terlama dulu', 'baru/js/layar/berat-asli-logika.js', "return seg.some((s) => Math.abs(s.faktor - 1) > BA_EPS) || Math.abs(keluar - 1) > BA_EPS ? seg : null;",
+     "return seg.some((s) => Math.abs(s.faktor - 1) > BA_EPS) ? [{ kg: Number(sisaKg), faktor: Number(sisaKg) / seg.reduce((a, s) => a + s.kg / s.faktor, 0), dari: '' }] : null;"),
+    ('Tahap 6 · karung terakhir keluar tidak dibawa (retur tanpa nota sesudah tutup buku memakai berat sisa)', 'baru/js/layar/berat-asli-logika.js', "if (Math.abs(keluar - seg[0].faktor) > BA_EPS) seg[0].keluar = keluar;", ""),
+    ('Tahap 6 · retur tanpa nota mengabaikan karung terakhir keluar dari saldo pembuka', 'baru/js/layar/berat-asli-logika.js', "(i === 0 && L[0].keluar !== undefined ? L[0].keluar : f)", "f"),
+    ('Tahap 6 · tanggal kedatangan asal tidak terbawa potongan', 'baru/js/layar/berat-asli-logika.js', "dari: String(p.dari || b.tanggal || ''), i, j,", "dari: String(b.tanggal || ''), i, j,"),
     # ---- siap 2027 (owner 7 Okt, paket A)
     ('A1 · alasan putusan tidak dinilai (kurang dari 5 huruf diterima)', 'baru/js/layar/tutup-buku-logika.js', "const bkAlasanCukup = (a) => String(a || '').trim().length >= 5;", "const bkAlasanCukup = (a) => true;"),
     ('A1 · kunci tanpa gerbang di pintu masuk (hari belum diputus / minus lolos)', 'baru/js/layar/tutup-buku-logika.js', "if (gTolak.length) return { tolak: 'Periksa dulu belum beres — '", "if (false) return { tolak: 'Periksa dulu belum beres — '"),
@@ -1354,6 +1446,7 @@ if __name__ == '__main__':
         if a is not None:
             for h in a['hasil']:
                 print('ASAP SIAP 2027 %s · putusan tiruan %d hari · kiriman %s · %d pembuka · %d arsip · %s · periksa ulang: %s · %s' % (h['jam'], h.get('belumDiputus', 0), h.get('kiriman'), h.get('pembuka', 0), h.get('arsip', 0), h.get('banding', '-'), h.get('periksaUlang', '-'), h.get('batal') or h.get('kunciJanuari', '-')))
+                if h.get('betul') or h.get('beratAsli'): print('    berat asli di saldo pembuka (Tahap 6): %d buku%s%s' % (len(h.get('beratAsli') or []), (' — pembetulan 25 Nov %d baris' % h['betul']) if h.get('betul') else '', (' · ' + '; '.join(h['beratAsli'])) if h.get('beratAsli') else ''))
                 print('    dibandingkan: %s · kuota ritual %s · batal %s (rencana %s, reset %s.00 WIB)' % (json.dumps(h.get('dibandingkan')), json.dumps(h.get('kuota', {}).get('ritual')), json.dumps(h.get('kuota', {}).get('batal')), h.get('kuota', {}).get('rencana'), h.get('kuota', {}).get('jam')))
         for x in salah: print('   ✗ ASAP ' + x[:500])
         print('ASAP SIAP 2027 (%s): %s' % (os.path.basename(berkas), 'LULUS' if not salah else '%d GAGAL' % len(salah)))
