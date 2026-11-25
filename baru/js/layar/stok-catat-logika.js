@@ -982,18 +982,25 @@ function gandaBaruSaja(kunci, w, jendela) {
 export function susunSimpanCocok(tab, hitung, alasan, w, yakin, sampel) {
   const atur = aturCatat(); const c = susunCocok(tab, hitung, alasan, yakin);
   if (c.tolak) return { tolak: c.tolak, perluYakin: c.perluYakin };
-  const berubah = c.baris.filter((b) => b.ada && (b.selisih !== 0 || tab === 'wadah'));   // wadah: hitungan yang cocok persis tetap jadi titik samakan
+  // wadah: hitungan yang cocok persis tetap jadi titik samakan. paket Susut (owner 26 Nov 2026, A135 opname penuh): tumpukan & kemasan yang cocok persis juga
+  // DICATAT (selisih 0, nilaiRp 0, cocokPersis) — jejak "sudah dihitung" untuk opname bulanan; mesin laba & stok tidak bergerak (barisSusutStok melewati Rp0).
+  // Kantong & bahan yang cocok persis tetap tidak ditulis (bukan beras).
+  const berubah = c.baris.filter((b) => b.ada && (b.selisih !== 0 || tab === 'wadah' || tab === 'tumpukan' || tab === 'kemasan'));
+  const nPersis = berubah.filter((b) => b.selisih === 0).length;
   const ganda = berubah.filter((b) => gandaBaruSaja(b.kunci, w, atur.jendelaGandaMenit));
   if (ganda.length && !(yakin || {}).ganda) return { tolak: ganda.map((b) => b.nama).join(', ') + ' baru saja dicocokkan kurang dari ' + atur.jendelaGandaMenit + ' menit lalu — angka sistemnya sudah termasuk hitungan itu. Ketuk sekali lagi kalau ini memang hitungan baru', perluYakin: 'ganda' };
   if (tab === 'wadah') return ccSimpanWadah(c, berubah, w);
   const dokumen = berubah.map((b) => { const al = String(b.alasan || '').trim() || 'Cocokkan stok';
     // putaran 27: yang dihitung cuma TUMPUKAN — kgSistem/kgFisik = buku sebelum/sesudah (mesin membaca selisihKg), bagian*Kg = tumpukan tercatat/dihitung
     if (b.tab === 'tumpukan') return { koleksi: 'penyesuaianStok', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk: b.nama, kgSistem: b.buku, kgFisik: ckB2(b.buku + b.selisih), selisihKg: b.selisih, alasan: al, nilaiRp: b.rp, hppPerKgSaatOpname: Math.round(b.modal),
-      bagian: 'tumpukan', bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung }, ((x) => (x && x.karung > 0 && x.kgSampel > 0 ? { sampel: { karung: Number(x.karung), kg: Number(x.kgSampel), isiKarung: Number(x.isiKarung) || 0, rata: Number(x.rata) || 0 } } : {}))((sampel || {})[b.kunci])) };
-    if (b.tab === 'kemasan') return { koleksi: 'penyesuaianKemasan', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, namaProduk: b.namaProduk, ukuranKemasan: isFinite(Number(b.ukuranKemasan)) ? Number(b.ukuranKemasan) : b.ukuranKemasan, unitSistem: b.sistem, unitFisik: b.dihitung, selisihUnit: b.selisih, alasan: al, nilaiRp: b.rp, hppPerUnitSaatOpname: Math.round(b.modal) } };
+      bagian: 'tumpukan', bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung }, ((x) => (x && x.karung > 0 && x.kgSampel > 0 ? { sampel: Object.assign({ karung: Number(x.karung), kg: Number(x.kgSampel), isiKarung: Number(x.isiKarung) || 0, rata: Number(x.rata) || 0 },
+        // A71: bagian ALAMI dari selisih ini (sampel karung tertutup), bertanda, TIDAK dijepit — sisanya (selisih − alami) = operasional, boleh beda tanda
+        isFinite(Number(x.alamiKg)) && x.alamiKg !== null && x.alamiKg !== undefined && x.alamiKg !== '' ? { alamiKg: ckB2(Number(x.alamiKg)) } : {}) } : {}))((sampel || {})[b.kunci]), b.selisih === 0 ? { cocokPersis: true } : {}) };
+    if (b.tab === 'kemasan') return { koleksi: 'penyesuaianKemasan', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, namaProduk: b.namaProduk, ukuranKemasan: isFinite(Number(b.ukuranKemasan)) ? Number(b.ukuranKemasan) : b.ukuranKemasan, unitSistem: b.sistem, unitFisik: b.dihitung, selisihUnit: b.selisih, alasan: al, nilaiRp: b.rp, hppPerUnitSaatOpname: Math.round(b.modal) }, b.selisih === 0 ? { cocokPersis: true } : {}) };
     return { koleksi: b.koleksi, data: { id: w.idUnik(), tipe: 'opname', jenis: b.jenis, jumlah: b.selisih, hargaTotal: 0, tanggal: w.tanggal, jam: w.jam, pcsSistem: b.sistem, pcsFisik: b.dihitung, catatan: al, nilaiRp: b.rp, hargaPerPcsSaatOpname: Math.round(b.modal) } }; });
   const dampak = w.tanggal < MULAI_SUSUT_LABA ? 'Kas, laba, dan omzet tidak berubah.' : (c.susutRp ? 'Laba bulan ini turun ' + RP(-c.susutRp) + ' lewat baris "Susut & selisih stok". ' : '') + (c.lebihRp ? 'Stok naik ' + RP(c.lebihRp) + ' tanpa mengubah modal per kg. ' : '') + 'Kas dan omzet tidak bergerak.';
-  return { dokumen, hitung: c, patch: { kabar: 'Cocokkan tersimpan: ' + c.dihitung + ' barang dihitung, ' + berubah.length + ' berubah' + (c.belum ? ', ' + c.belum + ' belum dihitung' : '') + (dokumen.length ? ' — ' + dampak + ' Stok tercatat kini = hasil hitungan.' : ' — semuanya cocok persis, tidak ada yang ditulis.'), kabarAwas: false } };
+  const nUbah = berubah.length - nPersis;
+  return { dokumen, hitung: c, patch: { kabar: 'Cocokkan tersimpan: ' + c.dihitung + ' barang dihitung, ' + nUbah + ' berubah' + (nPersis ? ', ' + nPersis + ' cocok persis (dicatat sebagai sudah dihitung)' : '') + (c.belum ? ', ' + c.belum + ' belum dihitung' : '') + (!dokumen.length ? ' — semuanya cocok persis, tidak ada yang ditulis.' : nUbah ? ' — ' + dampak + ' Stok tercatat kini = hasil hitungan.' : ' — stok, laba, kas tidak bergerak.'), kabarAwas: false } };
 }
 /** Simpan cocokkan wadah: penyesuaianStok per merek asal (bagian 'wadah') + titik samakan isi (komposisi baru) & karung terbuka, satu kiriman. */
 function ccSimpanWadah(c, berubah, w) {
@@ -1358,5 +1365,8 @@ export function ccSampel(isi, merk) {
   const rata = kgS / n; const rasio = rata / isiK;
   if (rasio < CS_BATAS.bawah || rasio > CS_BATAS.atas) return salah('timbang sampel: rata-rata ' + ukD(rata) + ' kg per karung ' + isiK + ' kg tidak masuk akal — periksa ketikannya (berat SELURUH sampel, bukan per karung)');
   const kg = ckB2(kgKarung * rasio + lepas);
-  return { ada: true, masalah: '', karung: n, kgSampel: ckB2(kgS), isiKarung: isiK, rata: ckB2(rata), rasio, persen: Math.round((rasio - 1) * 1000) / 10, kgNota: ckB2(kgKarung + lepas), kg, selisihKg: ckB2(kg - kgKarung - lepas) };
+  // paket Susut (owner 26 Nov 2026, A71): SUSUT ALAMI = karung tertutup yang dihitung menurut sampel − menurut buku (berat asli kedatangan, atau isi label bila buku
+  // tidak ikut timbang). Bagian selisih lainnya (jumlah karung, kg lepas) = operasional. Minus = karungnya menyusut.
+  return { ada: true, masalah: '', karung: n, kgSampel: ckB2(kgS), isiKarung: isiK, rata: ckB2(rata), rasio, persen: Math.round((rasio - 1) * 1000) / 10, kgNota: ckB2(kgKarung + lepas), kg, selisihKg: ckB2(kg - kgKarung - lepas),
+    kgKarung: ckB2(kgKarung), kgKarungBuku: ckB2(kgAsli), alamiKg: ckB2(kgKarung * rasio - kgAsli) };
 }

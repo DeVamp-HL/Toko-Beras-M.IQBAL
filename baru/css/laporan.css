@@ -163,3 +163,16 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
 /* Pondasi paket kedua (owner 24 Nov 2026): pita utang di bawah pita harta pada kartu Kekayaan dari waktu ke waktu */
 .layar-laporan .lp-pd-pita-utang { margin-top: 2px; } .layar-laporan .lp-pd-pita-utang span { background: var(--awas); opacity: .55; }
 
+/* paket Susut + HPP & harga minimum (owner 26 Nov 2026): target vs bulan ini, tren susut dengan garis target, pita kuning, opname — gerak lembut, hormat reduced motion */
+.layar-laporan .lp-cip.kuning { border-color: var(--emas-garis); color: var(--emas-garis); }
+.layar-laporan .pita-info.kuning { border-color: var(--emas-garis); }
+.layar-laporan .lp-sh-target { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 2px 0; } .layar-laporan .lp-sh-target > div { display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; border-radius: 10px; background: var(--seg); border: 1px solid var(--kaca-tepi); animation: lpShMasuk 420ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-laporan .lp-sh-target > div:nth-child(2) { animation-delay: 60ms; } .layar-laporan .lp-sh-target > div:nth-child(3) { animation-delay: 120ms; }
+.layar-laporan .lp-sh-target .l { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--redup); } .layar-laporan .lp-sh-target b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.layar-laporan .lp-sh-target.awas > div:first-child { border-color: var(--awas); } .layar-laporan .lp-sh-target.awas > div:first-child b { color: var(--awas); } .layar-laporan .lp-sh-target.baik > div:first-child { border-color: var(--emas-garis); }
+.layar-laporan .lp-sh-tren { position: relative; } .layar-laporan .lp-sh-tren::after { content: ''; position: absolute; left: 0; right: 0; bottom: calc(var(--sh-dasar, 24px) + var(--sh-target)); height: 0; border-top: 1.5px dashed var(--emas-garis); pointer-events: none; opacity: .85; }
+.layar-laporan .lp-sh-tren.tanpa-target::after { display: none; } .layar-laporan .lp-sh-tren > div { cursor: pointer; } .layar-laporan .lp-sh-tren > div.lewat i { background: linear-gradient(180deg, var(--awas), var(--seg)); border-color: var(--awas); } .layar-laporan .lp-sh-tren i { transform-origin: bottom; animation: lpShTumbuh 520ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-laporan .lp-sh-pisah { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--garis); }
+@keyframes lpShMasuk { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes lpShTumbuh { from { transform: scaleY(0.1); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .layar-laporan .lp-sh-target > div, .layar-laporan .lp-sh-tren i { animation: none; } }
