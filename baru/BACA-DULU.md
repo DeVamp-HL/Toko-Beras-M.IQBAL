@@ -3736,3 +3736,18 @@ Sisa catatan "Pondasi bisnis" yang bisa dijawab dari data yang sudah ada (audit 
   `jenisRentang().semua.hpp`.
 Tanpa warna (seberapa banyak dikemas sendiri = keputusan owner). Tanpa susut stok. Alat uji: `uji_pondasi.py` (tangan + 8 kontrol baru; jangkar statis impor
 `geJenis` — bundel uji satu-lingkup TIDAK melihat impor yang hilang, peramban melihatnya).
+
+## Pondasi paket ketujuh — pihak yang berkepentingan & tinjauan bulanan (owner 25 Nov 2026, cabang `fitur/pondasi-7`; menulis SETELAN owner saja, tanpa rules baru)
+Dua butir terakhir catatan "Pondasi bisnis" (stakeholders · tata kelola / tinjauan rutin). Keputusan owner (ditanya di depan): pihak **diisi sistem lalu dilengkapi
+owner**; tinjauan **tiap bulan**, berisi **potret angka + catatan owner**. Keduanya di Laporan › Pondasi, owner saja (dokumennya tidak di daftar baca staf).
+- **Pihak yang berkepentingan** — `pdPihak`: daftar DISUSUN dari data (pemasok yang mengirim = `pdRantai`, 5 pembeli terbesar = `pdPelanggan`, staf aktif =
+  `aturUpah`) + pihak yang ditambahkan owner (bank, pemilik tempat, …). Catatan per pihak (`harap` · `butuh`) di `aturanToko/pihak` (`ssPihak` / `susunPihak` /
+  `susunHapusPihak`). Baru separuh ditulis = BELUM lengkap. Pihak dari data tidak bisa dihapus (catatannya dikosongkan); catatan untuk pihak yang tidak lagi muncul
+  di data TETAP ditampilkan ("tidak lagi muncul di data toko"). Tiap sumber dibungkus sendiri.
+- **Tinjauan bulanan** — `aturanToko/tinjauan` (`ssTinjauan` / `susunTinjauan` / `susunHapusTinjauan`): satu catatan per bulan — yang berjalan · yang tidak ·
+  KEPUTUSAN (wajib). Saat PERTAMA disimpan `pdPotret` dibekukan bersamanya: warna delapan lampu + kekayaan bersih, uang toko, laba bersih 30 hari. Mengubah tulisan
+  TIDAK mengganti potret. `pdTinjauan` membandingkan potret tiap tinjauan dengan keadaan sekarang (lampu merah dulu → sekarang, lampu mana yang berubah warna).
+  Paling banyak 36 bulan terbaru.
+- **Pengingat** — jenis baru `tinjauan` ("Tinjauan bulanan belum ditulis", setelan `hariTinjauan`, ke Owner): bulan LALU yang belum ditinjau, jatuh tanggal 1 bulan
+  ini, ditagih hanya `SS_TINJAUAN_SUSUL` (14) hari pertama dan hanya kalau bulan lalu ada jualannya.
+Alat uji: `uji_pondasi.py` (tangan + 11 kontrol baru).
