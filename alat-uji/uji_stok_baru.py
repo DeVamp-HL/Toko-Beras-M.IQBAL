@@ -62,7 +62,8 @@ KOTAK16 = {
   'pengaturan': [{'id': 'tempatSimpan', 'peta': {'K:Angsa': 'rak depan'}}],
 }
 
-SKENARIO = r"""
+SKENARIO = bundel_baru.TIMBANG_PAS + r"""   // Tahap 6: draf barang masuk baru ditimbang pas (bundel_baru.TIMBANG_PAS)
+
 var gagal = [], lulus = 0;
 function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + ket : '')); }
 __dom['jualKarungBerat'] = { value: '50' };
@@ -162,7 +163,7 @@ ok('tinjauan rantai laporan (no. 11): pemasok bernama sistem ("Lahir Buku", "Sto
 var dmKecil = Object.assign({}, dm, { baris: [{ merk: 'Angsa', jumlahKarung: '5', beratKarung: 50, hargaPerKg: '13.200' }] });
 ok('masuk: 5 karung (< 60) DITANYA dulu (perluYakin), ketukan kedua boleh', susunSimpanMasuk(dmKecil, WM).perluYakin === true && /Cuma 5 karung/.test(susunSimpanMasuk(dmKecil, WM).tolak) && !susunSimpanMasuk(dmKecil, WM, true).tolak);
 var SM = susunSimpanMasuk(dm, WM); var dokM = SM.dokumen[0].data;
-ok('masuk: SATU dokumen batchMasuk {tanggal, jam, pemasok, biayaBongkar, caraBayar utang, merkList[{id, merk, satuan karung, jumlahKarung, beratKarung, totalKg, hargaPerKg, subtotalHarga}]} — kolom persis sistem berjalan', SM.dokumen.length === 1 && SM.dokumen[0].koleksi === 'batchMasuk' && dokM.pemasok === 'PEMASOK CONTOH' && dokM.caraBayar === 'utang' && dokM.biayaBongkar === 100000 && dokM.tanggal === '2026-09-19' && dokM.merkList.length === 2 && Object.keys(dokM.merkList[0]).sort().join() === 'beratKarung,hargaPerKg,id,jumlahKarung,merk,satuan,subtotalHarga,totalKg' && dokM.merkList[0].subtotalHarga === 26400000 && dokM.merkList[0].totalKg === 2000 && dokM.merkList[0].id === '1' && /jadi bon pemasok · jatuh tempo 21 hari/.test(SM.patch.kabar), JSON.stringify(dokM));
+ok('masuk: SATU dokumen batchMasuk {tanggal, jam, pemasok, biayaBongkar, caraBayar utang, merkList[{id, merk, satuan karung, jumlahKarung, beratKarung, totalKg, hargaPerKg, subtotalHarga}]} — kolom persis sistem berjalan + timbangKg & kgTerima (Tahap 6, ditimbang pas oleh skenario)', SM.dokumen.length === 1 && SM.dokumen[0].koleksi === 'batchMasuk' && dokM.pemasok === 'PEMASOK CONTOH' && dokM.caraBayar === 'utang' && dokM.biayaBongkar === 100000 && dokM.tanggal === '2026-09-19' && dokM.merkList.length === 2 && Object.keys(dokM.merkList[0]).sort().join() === 'beratKarung,hargaPerKg,id,jumlahKarung,kgTerima,merk,satuan,subtotalHarga,timbangKg,totalKg' && dokM.merkList[0].kgTerima === 2000 && dokM.merkList[0].subtotalHarga === 26400000 && dokM.merkList[0].totalKg === 2000 && dokM.merkList[0].id === '1' && /jadi bon pemasok · jatuh tempo 21 hari/.test(SM.patch.kabar), JSON.stringify(dokM));
 var bkM = hitungStokKarungPerMerk(); terapkanKeCache(SM.dokumen); var bkM2 = hitungStokKarungPerMerk();
 ok('masuk: sesudah dicatat, buku Angsa +2.000 kg; Apex +1.000 kg; BON pemasok 40.500.000 (beras saja, bongkar tunai) tercatat di utang pemasok', Math.abs(bkM2['Angsa'].sisaKg - bkM['Angsa'].sisaKg - 2000) < 0.011 && Math.abs(bkM2['IR64 Apex'].sisaKg - bkM['IR64 Apex'].sisaKg - 1000) < 0.011 && (hitungUtangPemasok().find(function (x) { return x.pemasok === 'PEMASOK CONTOH'; }) || { bon: [] }).bon.some(function (b) { return String(b.id) === String(dokM.id) && b.nilai === 40500000; }), JSON.stringify(hitungUtangPemasok().find(function (x) { return x.pemasok === 'PEMASOK CONTOH'; })));
 var buku = daftarKedatangan(10);
@@ -637,6 +638,7 @@ TM_KOLOM.forEach(function (k) { kenalB['merkList.' + k] = 1; });
 var kenalP = {}; (CAD.penyesuaianStok || []).forEach(function (b) { Object.keys(b).forEach(function (k) { kenalP[k] = 1; }); }); ['bagian', 'bagianSistemKg', 'bagianFisikKg', 'wadah'].forEach(function (k) { kenalP[k] = 1; });   // kolom tambahan putaran 27 (izin owner 27 Sep), disebut eksplisit
 var WX = { tanggal: '2026-09-22', jam: '10:00', idUnik: function () { return Math.random(); } }; var asingC = [];
 var dX = drafMasukKosong(WX); dX.pemasok = calonPemasok()[0] || 'X'; dX.baris = [{ merk: calonMerkMasuk()[0], jumlahKarung: '70', beratKarung: 50, hargaPerKg: '13.000', varian: 'sama', timbangKg: '3.490', kadarAir: '14,5', kutu: 'tidak', bau: 'normal', butirPatah: '20' }]; var SX = susunSimpanMasuk(dX, WX, true);
+kenalB['merkList.kgTerima'] = 1; kenalB['merkList.kgRetur'] = 1;   // Tahap 6 (owner 25 Nov 2026): kg hasil timbang yang dibukukan & kg retur baris ikut timbang — kolom baru yang disengaja
 if (SX.dokumen) { Object.keys(SX.dokumen[0].data).forEach(function (k) { if (!kenalB[k]) asingC.push('batchMasuk.' + k); }); Object.keys(SX.dokumen[0].data.merkList[0]).forEach(function (k) { if (!kenalB['merkList.' + k]) asingC.push('batchMasuk.merkList.' + k); }); } else asingC.push('masuk ditolak: ' + SX.tolak);
 var bY = barangCocok('tumpukan').filter(function (b) { return b.sistem > 0; })[0]; if (bY) { var HY = {}; HY[bY.kunci] = String(bY.sistem - 1); var SY = susunSimpanCocok('tumpukan', HY, {}, WX, { sebagian: true }); if (SY.dokumen) Object.keys(SY.dokumen[0].data).forEach(function (k) { if (!kenalP[k]) asingC.push('penyesuaianStok.' + k); }); else asingC.push('cocok ditolak: ' + SY.tolak); }
 // adukan & karantina: kolom dokumen produksi / pemakaian kantong / rework wajib dikenal cadangan (kolom tambahan sistem baru: jam)

@@ -188,7 +188,8 @@ BATAS_CI = 18   # batas Firebase 20 per batch − sisa 2 (keputusan owner). Seng
 MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/layar/arsip-logika.js',
                'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/pesanan-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
                'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
-               'baru/js/layar/titipan-logika.js']   # owner 21 Nov 2026: titipan dari tablet — Uang, papan Persetujuan & tutup hari memakainya
+               'baru/js/layar/titipan-logika.js',   # owner 21 Nov 2026: titipan dari tablet — Uang, papan Persetujuan & tutup hari memakainya
+               'baru/js/layar/berat-asli-logika.js']   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Jual, retur, Barang masuk)
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 
@@ -475,6 +476,7 @@ OWNER_JALUR = {
     'susunCocok': 'penghitung daftar cocokkan — tidak menulis; yang menulis susunSimpanCocok (diukur)',
     'susunPotongKlaim': 'pembungkus: memilih kg dari catatan klaim lalu memanggil susunPotong (diukur)',
     'susunReturPemasok': 'pembungkus: membaca kg ketikan lalu memanggil susunPotong (diukur)',
+    'susunBetulTimbang': 'pembetulan kedatangan lama jadi kg timbang (Tahap 6, owner 25 Nov 2026): pembungkus koreksi kedatangan — memanggil susunSimpanMasuk (diukur) dengan draf ikut timbang; 1 dokumen batchMasuk saja (bulan terkunci ditolak tolakKunci), uang tidak berubah',
     'susunSetujuPakaiPotong': 'usul pakai potongan dari tablet disetujui owner (Tahap 5): 1 dokumen kedatangan (bulan terkunci ditolak tolakKunci) + 1 utangPemasokMutasi bertanggal HARI INI + paling banyak 1 pengaturan/titikKas — jumlah tetap, paling banyak 3',
     'susunLepasUsulPakai': 'usul pakai potongan tidak dipakai (Tahap 5): 1 dokumen kedatangan, kolom usulnya saja yang dilepas (bulan terkunci ditolak tolakKunci)',
     'susunTerimaPotongan': 'uang potongan pemasok diterima (Tahap 4): 1 dokumen kedatangan asal (bulan terkunci ditolak tolakKunci) + 1 pengaturan/titikKas — jumlah tetap 2, bentuk kiriman yang sama dengan susunPotong kedatangan tunai (diukur)',

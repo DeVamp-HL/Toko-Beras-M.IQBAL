@@ -592,7 +592,15 @@ def utama(js):
 
 
 # ---- pemeriksaan statis stok.js (layar DOM tidak ikut kotak pasir): lembar Barang masuk memuat isian, kalimat "catatan pemeriksaan saja", rekap & Atur
-POT = [('baris: isian berat timbang', 'data-kolom="timbangKg" data-i="${i}"'),
+POT = [('Tahap 6: isian timbang baris ikut timbang selalu terbuka (tidak bisa dilipat)', "if (!c.ada && !isi.cekBuka && !b.ikutTimbang) return"),
+       ('Tahap 6: label WAJIB di isian timbang', '${b.ikutTimbang ? h` <b class="awas-teks">WAJIB</b> (atau sampel di bawah)` : \'\'}'),
+       ('Tahap 6: baris menyebut kg yang dibukukan & uang tetap', 'dibukukan ${tmD(b.totalKg)} kg</b> (nota ${tmD(b.kgNota)} kg · uang tetap ${RP(b.subtotalHarga)})'),
+       ('Tahap 6: kartu Jumlah owner menyebut nota → dibukukan', 'data-k="masuk-ikut">Stok ikut timbang: nota <b>${KG(T.kgNota)}</b> → dibukukan <b>${KG(T.kgBuku)}</b>'),
+       ('Tahap 6: kartu pembetulan kedatangan lama di lembar owner', '${gambarBetulTimbang(s, koreksi ? d.id : null)}'),
+       ('Tahap 6: pembetulan dua ketukan lewat C.susunBetulTimbang', "btTimbang: async ({ id }) => { if (st().btYakin !== String(id)) return set({ btYakin: String(id), kabar: '' }); if (await tulis(C.susunBetulTimbang(id, '', waktu(), true)))"),
+       ('Tahap 6: kartu pembetulan memakai pratinjau logika (C.hitungBetulTimbang / calonBetulTimbang)', "const daftar = idKoreksi ? [C.hitungBetulTimbang(idKoreksi)].filter((x) => !x.tolak) : C.calonBetulTimbang(3);"),
+       ('Tahap 6: Cocokkan tumpukan menyebut berat asli', 'berat asli <b>${KG(S0.kg)} kg</b>'),
+       ('baris: isian berat timbang', 'data-kolom="timbangKg" data-i="${i}"'),
        ('baris: isian kadar air', 'data-kolom="kadarAir" data-i="${i}"'),
        ('baris: isian butir patah', 'data-kolom="butirPatah" data-i="${i}"'),
        ('baris: pil kutu & bau (dengan "tidak dicek")', "<div><div class=\"ket\">Kutu</div>${pil('kutu', C.TM_KUTU)}</div>"),

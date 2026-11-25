@@ -39,7 +39,8 @@ KOTAK = {
                  {'id': 'hargaDraf', 'draf': {'Kumala|S': 14700}}],
 }
 
-SKENARIO = r"""
+SKENARIO = bundel_baru.TIMBANG_PAS + r"""   // Tahap 6: draf barang masuk baru ditimbang pas (bundel_baru.TIMBANG_PAS)
+
 var gagal = [], lulus = 0; var J = JSON.stringify;
 function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + String(ket).slice(0, 600) : '')); }
 // audit 39b no. 43 — pemeriksa yang DITURUNKAN dari data (19 Nov 2026), dipakai kotak pasir dan asap data toko. Asap dulu menulis mati enam nama
