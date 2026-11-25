@@ -15,6 +15,7 @@ contoh tidak menggeser nilai stok maupun laba bulan itu.
 import os, sys, json
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
+import bundel_baru  # noqa: E402
 import uji_wadah_bernama  # noqa: E402
 import uji_wadah_stok_sendiri as UW  # noqa: E402
 
@@ -30,7 +31,8 @@ KOTAK = {
 # audit 39b no. 35: kedatangan Ketan Putih 25 kg (dipasok di tengah skenario, sesudah Ketan Putih 50 kg) — merek per liter yang datang dua ukuran
 B8 = {'id': 'b8', 'tanggal': '2026-09-19', 'jam': '08:00', 'pemasok': 'PEMASOK CONTOH', 'caraBayar': 'tunai', 'biayaBongkar': 0, 'merkList': [brs(1, 'Ketan Putih', 2, 18500, 25)]}
 
-SKENARIO = r"""
+SKENARIO = bundel_baru.TIMBANG_PAS + r"""   // Tahap 6: draf barang masuk baru ditimbang pas (bundel_baru.TIMBANG_PAS)
+
 var gagal = [], lulus = 0; var J = JSON.stringify;
 function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + String(ket).slice(0, 600) : '')); }
 __dom['jualKarungBerat'] = { value: '50' };

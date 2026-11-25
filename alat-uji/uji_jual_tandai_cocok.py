@@ -16,7 +16,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru, uji_stok_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = uji_stok_baru.MODUL
+MODUL = bundel_baru.lengkapi(uji_stok_baru.MODUL)   # Tahap 6: modul daun (berat-asli-logika) ikut lewat lengkapi
 LAYAR = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/mesin/pembantu.js']
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 

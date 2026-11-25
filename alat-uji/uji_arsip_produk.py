@@ -58,7 +58,8 @@ KOTAK = {
   'wadahLiteran': [{'id': 1, 'tanggal': '2026-09-01', 'jam': '08:00', 'tipe': 'atur', 'literanLangsung': ['Lama']}],
 }
 
-SKENARIO = r"""
+SKENARIO = bundel_baru.TIMBANG_PAS + r"""   // Tahap 6: draf barang masuk baru ditimbang pas (bundel_baru.TIMBANG_PAS)
+
 var gagal = [], lulus = 0; var J = JSON.stringify;
 function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + String(ket).slice(0, 600) : '')); }
 __dom['jualKarungBerat'] = { value: '50' };

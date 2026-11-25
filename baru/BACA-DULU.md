@@ -3883,3 +3883,42 @@ juga di cetak lewat tanda terima, tidak hanya melewati dokumen." Mesin beku tida
 Alat uji: `uji_barang_masuk_baru.py` (185 pemeriksaan, kontrol 174), `uji_masuk_tablet.py` (88, kontrol 47), `uji_terima_barang.py` (145, kontrol 47),
 `peta_akses.py` (jalur `susunSetujuPakaiPotong` & `susunLepasUsulPakai` terdaftar; kiriman tablet terbesar diukur). Belum dicoba: menyimpan ke data toko, cetak di
 printer sungguhan, push kabar usul di HP owner.
+
+## Barang masuk & mutu — Tahap 6 (owner 25 Nov 2026, cabang `fitur/barang-masuk-6` di atas Tahap 5): stok ikut hasil timbang · "50 kg hanya tampilan"
+Owner: "Ya, stok ikut timbang. Jadi 50 kg hanya tampilan saja … termasuk ketika jual ke customer." Empat keputusan (AskUserQuestion 25 Nov): karung terlama
+dulu (FIFO per kedatangan, bukan rata-rata) · wajib timbang / sampel · kedatangan 25 Nov dibetulkan jadi kg timbang · timbang LEBIH ikut menaikkan stok. Uang ke
+pemasok tetap sesuai nota; adukan tetap memotong kg yang diketik. Mesin beku tidak diubah, tanpa rules baru. Sensus dampak: catatan sesi `tahap6-sensus-stok-ikut-timbang.md`.
+- **Bentuk baris kedatangan baru** — `kgTerima` = kg hasil timbang yang dibukukan (timbang seluruh baris, atau perkiraan sampel rata-rata × jumlah karung) = TANDA
+  baris "ikut timbang". `totalKg` (dibaca mesin: stok & modal) = `kgTerima − kgRetur`; `subtotalHarga` (bon / belanja tunai) = (jumlah × isi karung − `kgPotong`) ×
+  harga — TIDAK ikut timbang, jadi modal per kg = (nilai nota + bongkar) ÷ kg timbang (naik bila kurang, turun bila lebih). Kedatangan yang ikut timbang tetap
+  ikut timbang saat dikoreksi (`drafDariKedatangan().ikutTimbang` = ada baris ber-`kgTerima`); kedatangan LAMA tanpa `kgTerima` tetap rumus lama persis.
+- **Wajib timbang** — `susunSimpanMasuk` (satu pintu owner & tablet `mtSusunSimpan`) menolak baris karung kedatangan ikut timbang yang belum ditimbang / disampel
+  (`hitungMasuk().ikutTimbang.belum`, kalimat menyebut barisnya). Baris ditolak & kemasan jadi tidak ditimbang. Batas wajar 80–105 % kg nota (`CS_BATAS`, sama
+  dengan sampel opname) — di luar itu = salah ketik (berat satu karung diketik sebagai berat seluruh sampel). Lembar owner & tablet: isian timbang selalu terbuka
+  bertanda WAJIB; kartu Jumlah: "nota X kg → dibukukan Y kg (kurang / lebih …). Uang tetap sesuai nota".
+- **Klaim & retur pada baris ikut timbang** (`hitungPotong` / `susunPotong`): klaim belakangan (bon dipotong / uang kembali / dipotong di pembelian berikutnya)
+  = UANG saja turun — stoknya sudah dari timbang ("Stok tidak berubah"); retur ke pemasok = uang DAN stok turun (`kgRetur` bertambah). Baris lama: rumus Tahap 2 (kg
+  buku & uang turun bersama). Klaim langsung saat datang (`kgPotong` di lembar) = uang dipotong; stok tetap hasil timbang.
+- **Berat asli karung** — modul daun `baru/js/layar/berat-asli-logika.js` (hanya membaca data/toko.js). Lapisan per nama buku = baris kedatangan (+ karung utuh
+  hasil adukan, faktor 1) diurut tanggal lalu id — sama dengan lapisan modal FIFO mesin. Faktor baris = kgTerima ÷ (jumlah × isi karung). Sisa buku S kg = S kg
+  TERAKHIR jejeran (yang keluar selalu yang terlama); n karung "50 kg" yang keluar berikutnya = kg nominal n × 50 diambil dari depan, tiap bagian lapisan ×
+  faktornya (karung yang menyeberang dua kedatangan memakai keduanya sebanding). Buku TANPA baris ikut timbang (`baAda` = false) → semua pembaca memakai angka lama
+  persis (byte-sama: ASAP GLOBAL cadangan 25 Nov tetap BYTE-SAMA).
+- **Jual** (`jual-logika.js`): baris keranjang karung = berat asli sesudah yang dipegang keranjang & struk parkir (`kgDipegangKarung`); saat nota DICATAT
+  (`pecahItemsWadah`, juga rinci karcis) kg pastinya dihitung ulang berurutan dari depan buku (struk parkir belum mengambil apa pun) + modalnya (FIFO membaca kg baru;
+  saklar mati = modal per kg × kg). Label, harga per karung, struk, riwayat tetap "50 kg" (`beratKarungAcuan`). Sisa karung di rak & langit-langit keranjang =
+  `baMaksKarung` (15 karung 49,8 kg = 15, bukan 14,5). Retur dengan nota: pecahan karung dari berat asli nota itu; retur tanpa nota: berat asli karung yang terakhir
+  keluar (`baKgKembali`).
+- **Hitungan karung lain**: tumpukan gudang (`tumpukanGudang().karung`: Cocokkan, Stok › Tempat, lokasi) = karung terbaru (`baKarungTumpukan`); Cocokkan › Tumpukan
+  tanpa sampel = karung utuh × berat asli karung terbaru (`ccSampel(isi, merk)` → `kg` asli, `kgNota` nominal; sampel tetap mengalahkan); tanda terima menulis
+  "jumlah × isi = kg nota" + "hasil timbang (dibukukan) Y kg"; surat pemasok membandingkan timbang dengan kg nota (jumlah × isi).
+- **Pembetulan kedatangan lama** (`hitungBetulTimbang` / `calonBetulTimbang` / `susunBetulTimbang`, owner saja, dua ketukan): kartu "Stok ikut timbang ·
+  kedatangan lama yang bukunya masih ikut nota" di lembar Barang masuk (dan di Koreksi kedatangan itu) — pratinjau per baris: nota, buku lama → baru, modal per kg
+  lama → baru, sisa buku sekarang → sesudah, uang tetap. Jalannya koreksi kedatangan (`susunSimpanMasuk`, semua penjaga) dengan draf ikut timbang; jejak `betulTimbang`
+  + riwayat koreksi. Nota jual yang sudah tercatat TIDAK diubah. Ditolak: sudah ikut timbang, punya retur ke pemasok (kg retur lama tercampur klaim), baris tanpa
+  timbang, bulan terkunci, uang berubah. Asap cadangan 25 Nov (kedatangan tunai 7 baris bertimbang sampel): buku turun 15,4 kg, uang & nota jual tidak berubah.
+- **Tidak diubah (dicatat)**: kasir darurat (`kasir-darurat-nominal.html`) tetap memotong 50 kg per karung (mengubahnya = rantai versi sw-kasir); karung yang dibuka
+  ke belakang wadah (kolam karung, `kg: berat`) tetap 50 / 25 kg — selisih ≤ 0,2 kg per karung muncul di Cocokkan / susut wadah. Adukan memotong kg yang diketik.
+Alat uji: `uji_barang_masuk_baru.py` (212, kontrol 201 — skenario Tahap 1–5 ditimbang "pas" lewat `bundel_baru.TIMBANG_PAS`), `uji_masuk_tablet.py` (93, kontrol 50),
+`uji_jual_baru.py` (473, kontrol 260), `uji_terima_barang.py` (147, kontrol 49), uji lain yang menyimpan kedatangan memakai `bundel_baru.TIMBANG_PAS`;
+`peta_akses.py` (`susunBetulTimbang` terdaftar). Belum dicoba: menyimpan ke data toko, kasir darurat, cetak tanda terima di printer sungguhan.

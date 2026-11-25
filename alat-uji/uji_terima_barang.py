@@ -161,6 +161,12 @@ const SURAT = { sub: 'PT Uji Beras · barang datang 10 Nov 2026 · bon', identit
   cek(k + ' mm · catatan pemasok: hasil timbang, catatan toko, kalimat asal & kapan dicetak, tempat tanda tangan dua pihak', /KURANG 12,5 kg/.test(gab) && /Kurang - Angsa - 12,5 kg/.test(gab) && /Mohon dikonfirmasi\./.test(gab) && /Dicetak 21 Nov 2026 09:30, Uji/.test(gab) && /Dari toko,/.test(gab) && /Diterima pemasok \/ supir,/.test(gab), gab.slice(0, 400)); });
 cek('catatan pemasok: tanpa nomor & tanpa kapan dicetak tetap tersusun (WhatsApp)', (() => { const t = epSusun(tbmGarisCatatan(SURAT, null, '', null), { kertas: 58 }).teks; return t.some((x) => x.trim() === 'CATATAN UNTUK PEMASOK') && !t.some((x) => /Tanda terima No|Dicetak/.test(x)); })());
 
+// ---------- Tahap 6 (owner 25 Nov 2026): stok ikut timbang — kg nota & kg yang dibukukan sama-sama tertulis; uang tetap dari nota ----------
+const dT6 = tbmData(kedatangan({ merkList: [{ id: '1', merk: 'Beras A', satuan: 'karung', jumlahKarung: 12, beratKarung: 50, totalKg: 597.6, kgTerima: 597.6, sampelKarung: 2, sampelKg: 99.6, hargaPerKg: 14000, subtotalHarga: 8400000 }] }), { terbaca: true, dibayar: 0, rinci: [] });
+const tT6 = teks(dT6, 58);
+cek('Tahap 6 tanda terima: baris ikut timbang = "12 x 50 = 600 kg" (nota) + "hasil timbang (dibukukan) 597,6 kg"; nilai nota tetap Rp8.400.000; jumlah = kg yang dibukukan',
+  dT6.baris[0].ikut === true && dT6.baris[0].kgNota === 600 && dT6.baris[0].kg === 597.6 && dT6.nilai === 8400000 && dT6.jumlah.kg === 597.6 && /12 x 50 = 600 kg/.test(tT6) && /hasil timbang \(dibukukan\)/.test(tT6) && /597,6 kg/.test(tT6), tT6);
+cek('Tahap 6 tanda terima: kedatangan lama (tanpa kgTerima) tidak berubah — tanpa baris "hasil timbang"', !/hasil timbang/.test(teks(tbmData(kedatangan(), { terbaca: true, dibayar: 0, rinci: [] }), 58)) && tbmData(kedatangan(), { terbaca: true }).baris[0].ikut === false);
 print(JSON.stringify(hasil));
 """
 
@@ -250,6 +256,8 @@ def periksa(t, diam=False):
 
 
 MUTASI = [
+    ('Tahap 6: tanda terima mencetak kg yang dibukukan sebagai kg nota (jumlah × isi ≠ kg)', LOGIKA, "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.ikut ? x.kgNota : x.kg));", "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg));"),
+    ('Tahap 6: tanda terima tanpa baris hasil timbang', LOGIKA, "    if (x.ikut) b('  hasil timbang (dibukukan)', KG(x.kg)); });", "    });"),
     ('nilai nota ikut upah bongkar', LOGIKA, "const nilai = Math.round(baris.reduce((a, x) => a + x.nilai, 0));", "const nilai = Math.round(baris.reduce((a, x) => a + x.nilai, 0)) + bil(batch.biayaBongkar);"),
     ('akun yang tidak membaca pembayaran dicetak "belum dibayar"', LOGIKA, "else if (!B.terbaca) hasil = {", "else if (false) hasil = {"),
     ('pembayaran tidak terbaca mencetak sisa = nilai nota', LOGIKA, "b('Dibayar: Rp', TITIK); b('Sisa: Rp', TITIK);", "b('Sudah dibayar', RP(0)); b('SISA BON', RP(d.nilai));"),
@@ -260,7 +268,7 @@ MUTASI = [
     ('rincian bayar dicetak walau jumlahnya tidak cocok', LOGIKA, "rinci: cocok ? rinci : [] };", "rinci };"),
     ('sisa bon tidak dikurangi yang dibayar', LOGIKA, "sisa: nilai - dibayar, rinci", "sisa: nilai, rinci"),
     ('bon lunas dicetak sebagai sebagian', LOGIKA, "dibayar >= nilai ? 'lunas' : 'sebagian'", "dibayar > nilai ? 'lunas' : 'sebagian'"),
-    ('subtotal per baris ikut tercetak', LOGIKA, "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg)));", "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg) + ' ' + RP(x.nilai)));"),
+    ('subtotal per baris ikut tercetak', LOGIKA, "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.ikut ? x.kgNota : x.kg));", "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.ikut ? x.kgNota : x.kg) + ' ' + RP(x.nilai));"),   # jangkar disesuaikan Tahap 6
     ('baris bal dihitung karung', LOGIKA, "karung: baris.reduce((a, x) => a + (x.bal ? 0 : x.jumlah), 0)", "karung: baris.reduce((a, x) => a + x.jumlah, 0)"),
     ('stok awal diberi tanda terima', LOGIKA, "if (batch.stokAwal || batch.tutupBuku || batch.lahirBuku) return", "if (batch.tutupBuku || batch.lahirBuku) return"),
     ('kedatangan tanpa pemasok diberi tanda terima', LOGIKA, "if (!String(batch.pemasok || '').trim()) return", "if (false) return"),

@@ -46,6 +46,11 @@ HT_PEMAKAI = ('jual-logika.js', 'nego-logika.js', 'sistem-logika.js')
 KG_MODUL = 'baru/js/layar/kg-liter-logika.js'
 KG_PEMAKAI = ('jual-logika.js', 'wadah-bernama-logika.js', 'harga-logika.js', 'harga-tingkat-logika.js', 'nego-logika.js', 'sistem-logika.js')
 
+# Tahap 6 (owner 25 Nov 2026, "stok ikut timbang"): berat ASLI karung per kedatangan — modul daun berat-asli-logika.js (hanya membaca data/toko.js), dipakai
+# Barang masuk & Cocokkan, Jual, dan retur. Ikut OTOMATIS (sekali, di belakang) bila salah satu pemakainya ada; fungsi terangkat, jadi urutan tidak menentukan.
+BA_MODUL = 'baru/js/layar/berat-asli-logika.js'
+BA_PEMAKAI = ('stok-catat-logika.js', 'jual-logika.js', 'retur-logika.js')
+
 
 # B2 (owner 17 Nov 2026): faktur bertempo & batas kredit — jual-logika (KR1, nomor faktur), bon-logika (alokasi bayar per faktur) memakai faktur-logika,
 # yang sendiri memakai harga-tingkat-logika. Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada.
@@ -122,6 +127,8 @@ def lengkapi(daftar):
         d.append(HT_MODUL)
     if any(os.path.basename(x) in KG_PEMAKAI for x in d) and not any(x.endswith('kg-liter-logika.js') for x in d):
         d.append(KG_MODUL)
+    if any(os.path.basename(x) in BA_PEMAKAI for x in d) and not any(x.endswith('berat-asli-logika.js') for x in d):
+        d.append(BA_MODUL)
     return d
 
 
@@ -131,6 +138,20 @@ def bundel(daftar, prelude=True):
         jalur = p if os.path.isabs(p) else os.path.join(AKAR, p)
         bagian.append('\n// ===== ' + p + ' =====\n' + polos(open(jalur, encoding='utf-8').read()))
     return '\n'.join(bagian)
+
+
+# Tahap 6 (owner 25 Nov 2026, "stok ikut timbang"): kedatangan BARU wajib ditimbang dan stoknya dibukukan dari hasil timbang. Skenario alat uji yang ditulis
+# sebelum aturan itu memasang penimbang PAS ini di depan SKENARIO-nya: draf baru tanpa timbang / sampel ditimbang = kg nota − kg dipotong (klaim langsung =
+# selisih timbang), jadi angka bukunya sama dengan nota seperti dulu. Baris bertimbang / bersampel, kemasan jadi, baris ditolak, dan koreksi tidak disentuh.
+# Jalur aslinya tetap tersedia sebagai _ssm (dipakai kasus Tahap 6 sendiri di uji_barang_masuk_baru / uji_masuk_tablet).
+TIMBANG_PAS = r"""
+var _tpKosong = function (v) { return v === undefined || v === null || String(v).trim() === ''; };
+var _tpAngka = function (v, b) { var t = String(v === undefined || v === null || v === '' ? b : v); return Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t) || 0; };
+function pasTimbang(d) { if (!d || d.id) return d; var x = JSON.parse(JSON.stringify(d)); (x.baris || []).forEach(function (b) { if (!b || b.masuk === 'kemasan' || b.ditolak) return;
+  if (!_tpKosong(b.timbangKg) || !_tpKosong(b.sampelKarung) || !_tpKosong(b.sampelKg)) return; var j = _tpAngka(b.jumlahKarung, ''), be = _tpAngka(b.beratKarung, 50) || 50, pot = _tpAngka(b.kgPotong, 0);
+  if (j > 0) b.timbangKg = String(Math.round((j * be - pot) * 100) / 100).replace('.', ','); }); return x; }
+var _ssm = susunSimpanMasuk; susunSimpanMasuk = function (d, w, y) { return _ssm(pasTimbang(d), w, y); };
+"""
 
 
 MODUL_DATA = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js']

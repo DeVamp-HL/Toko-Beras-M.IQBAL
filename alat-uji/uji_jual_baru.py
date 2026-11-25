@@ -1132,6 +1132,56 @@ terapkanKeCache([{ koleksi: 'piutangMutasi', data: { id: 'byr-k2', tipe: 'bayar'
 var U2b = uangNotaPesanan(ambilPesananDoc(ps2), W.tanggal);
 ok('K2: sesudah bon Deka dibayar lunas → pesanan LUNAS', U2b.lunas && U2b.kata === 'LUNAS' && U2b.sisa === 0, JSON.stringify(U2b));
 ok('K2: pesanan yang belum jadi nota → bukan lunas', !uangNotaPesanan({ status: 'diantar', trxIdJual: null }, W.tanggal).lunas);
+// ==================== Tahap 6 (owner 25 Nov 2026): "50 kg hanya tampilan" — nota karung utuh memotong BERAT ASLI, karung kedatangan TERLAMA dulu ====================
+// Tangan: buku "Timbang" = kedatangan 3 Sep 2 karung timbang sampel 99 kg (49,5 per karung, faktor 0,99) + kedatangan 4 Sep 3 karung timbang pas 150 kg = 249 kg.
+var stokJ6 = function (m) { var x = hitungStokKarungPerMerk()[m]; return x ? Math.round(x.sisaKg * 1000) / 1000 : null; };
+mulaiNota();
+pasok('katalogHargaKarung', cacheMentah('hargaKarung').concat([{ id: 'hkT6', merk: 'Timbang', hargaPerKg: 15000 }]));
+terapkanKeCache([{ koleksi: 'batchMasuk', data: { id: 'bT61', tanggal: '2026-09-03', jam: '08:00', pemasok: 'PEMASOK T', caraBayar: 'utang', biayaBongkar: 0, merkList: [
+    { id: '1', merk: 'Timbang', satuan: 'karung', jumlahKarung: 2, beratKarung: 50, totalKg: 99, kgTerima: 99, hargaPerKg: 14000, subtotalHarga: 1400000, sampelKarung: 2, sampelKg: 99 }] } },
+  { koleksi: 'batchMasuk', data: { id: 'bT62', tanggal: '2026-09-04', jam: '08:00', pemasok: 'PEMASOK T', caraBayar: 'utang', biayaBongkar: 0, merkList: [
+    { id: '1', merk: 'Timbang', satuan: 'karung', jumlahKarung: 3, beratKarung: 50, totalKg: 150, kgTerima: 150, hargaPerKg: 14000, subtotalHarga: 2100000, timbangKg: 150 }] } }]);
+var cT = chip('karung', 'Timbang', 50);
+ok('Tahap 6 rak: buku Timbang 249 kg = 5 karung "50 kg" (2 × 49,5 + 3 × 50), BUKAN 4,5 (= 249 ÷ 50); harga per karung tetap 15.000 × 50 = Rp750.000', stokJ6('Timbang') === 249 && cT && cT.sisa === 5 && cT.harga === 750000 && cT.ukuran === '50 kg', JSON.stringify(cT && [cT.sisa, cT.harga, stokJ6('Timbang')]));
+terap(ketukChip(s, cT)); terap({ ketik: '5' }); var pJ5 = masukkan(s); terap(pJ5);
+ok('Tahap 6 langit-langit: 5 karung sekaligus BOLEH (berat asli 2 × 49,5 + 3 × 50 = 249 kg = seluruh buku); 5,5 ditolak', s.keranjang.length === 1 && s.keranjang[0].trx.totalKg === 249 && (mulaiNota(), terap(ketukChip(s, chip('karung', 'Timbang', 50))), terap({ ketik: '5,5' }), /bebas dijual sekarang 5 karung/.test(masukkan(s).kabar || '')), JSON.stringify([pJ5.kabar, s.keranjang.map(function (b) { return b.trx.totalKg; })]));
+mulaiNota();
+terap(Object.assign(returAwal(), { rtJenis: 'karung', rtBarang: 'Timbang|50', ketik: '1', rtAlasan: 'salah beli', rtKondisi: 'utuh', rtPenyelesaian: 'refund', rtNominal: '700000', rtYakin: true }));
+var RTN6 = susunReturTanpaNota(s, W); var rtn6 = RTN6.dokumen ? RTN6.dokumen[0].data : {};
+ok('Tahap 6 retur TANPA nota: 1 karung "50 kg" Timbang kembali = berat asli karung yang terakhir keluar dari depan buku (kedatangan 3 Sep, 49,5 kg), bukan 50', !RTN6.tolak && rtn6.totalKg === 49.5 && rtn6.jumlahKarung === 1 && rtn6.beratKarungAcuan === 50, JSON.stringify([RTN6.tolak, rtn6.totalKg]));
+mulaiNota(); terap(returAwal());
+terap(ketukChip(s, chip('karung', 'Timbang', 50))); terap({ ketik: '1' }); terap(masukkan(s)); terap(ketukChip(s, chip('karung', 'Timbang', 50))); terap({ ketik: '2' }); terap(masukkan(s));
+ok('Tahap 6 keranjang: baris 1 = 1 karung 49,5 kg; baris 2 = 2 karung 49,5 + 50 = 99,5 kg (kedatangan terlama dulu, sesudah baris 1); label & harga tetap "50 kg" Rp750.000 per karung; chip tinggal 2',
+  s.keranjang.length === 2 && s.keranjang[0].trx.totalKg === 49.5 && s.keranjang[1].trx.totalKg === 99.5 && s.keranjang[0].trx.beratKarungAcuan === 50 && /Timbang 50 kg/.test(s.keranjang[1].trx.label) && s.keranjang[1].trx.hargaTotal === 1500000 && chip('karung', 'Timbang', 50).sisa === 2,
+  JSON.stringify(s.keranjang.map(function (b) { return [b.trx.totalKg, b.trx.label, b.trx.hargaTotal]; })));
+terap({ uang: 2250000 }); var RJ6 = simpanNota(s, W); var dJ6 = RJ6.nota ? RJ6.nota.dokumen.filter(function (x) { return x.koleksi === 'penjualan'; }).map(function (x) { return x.data; }) : [];
+var modalT = 3500000 / 249;
+ok('Tahap 6 nota tersimpan (tangan): dua baris karung totalKg 49,5 & 99,5 (berat asli), jumlahKarung 1 & 2, beratKarungAcuan 50; uang 750.000 + 1.500.000; modal (rata-rata 3,5 jt ÷ 249 kg) × kg asli',
+  !RJ6.tolak && dJ6.length === 2 && dJ6[0].totalKg === 49.5 && dJ6[1].totalKg === 99.5 && dJ6[0].jumlahKarung === 1 && dJ6[1].jumlahKarung === 2 && dJ6[1].beratKarungAcuan === 50 && dJ6[0].hargaTotal === 750000 && dJ6[1].hargaTotal === 1500000
+  && dJ6[0].hppTotalSaatJual === Math.round(modalT * 49.5) && dJ6[1].hppTotalSaatJual === Math.round(modalT * 99.5), JSON.stringify([RJ6.tolak, dJ6.map(function (d) { return [d.totalKg, d.jumlahKarung, d.hargaTotal, d.hppTotalSaatJual]; })]));
+if (RJ6.nota) { terapkanKeCache(RJ6.nota.dokumen); terap(RJ6.patch); }
+var RN6 = RJ6.nota ? susunRetur(Object.assign(returAwal(), { rtNotaId: dJ6[0].id, ketik: '49,5', rtAlasan: 'kualitas kurang', rtKondisi: 'utuh', rtPenyelesaian: 'refund' }), W) : { tolak: 'tanpa nota' };
+var rn6 = RN6.dokumen ? RN6.dokumen.filter(function (x) { return x.koleksi === 'retur'; })[0].data : {};
+ok('Tahap 6 retur DENGAN nota: nota 1 karung 49,5 kg dikembalikan 49,5 kg = 1 karung utuh (bukan 0,99), stok kembali 49,5 kg', !RN6.tolak && rn6.totalKg === 49.5 && rn6.jumlahKarung === 1 && rn6.beratKarungAcuan === 50, JSON.stringify([RN6.tolak, rn6.totalKg, rn6.jumlahKarung]));
+ok('Tahap 6 sesudah nota (tangan): buku Timbang 249 − 149 = 100 kg = 2 karung kedatangan 4 Sep (50 kg asli); karung berikutnya 50 kg, setengah karung 25 kg', stokJ6('Timbang') === 100 && chip('karung', 'Timbang', 50).sisa === 2 && baKgKarung('Timbang', 50, 1, 0) === 50 && baKgKarung('Timbang', 50, 0.5, 0) === 25, JSON.stringify([stokJ6('Timbang'), chip('karung', 'Timbang', 50).sisa]));
+// nota yang menyeberang lapisan dalam SATU baris, dan buku lama tetap byte-sama
+terapkanKeCache([{ koleksi: 'batchMasuk', data: { id: 'bT63', tanggal: '2026-09-05', jam: '08:00', pemasok: 'PEMASOK T', caraBayar: 'utang', biayaBongkar: 0, merkList: [
+  { id: '1', merk: 'Timbang', satuan: 'karung', jumlahKarung: 4, beratKarung: 50, totalKg: 196, kgTerima: 196, hargaPerKg: 14000, subtotalHarga: 2800000, timbangKg: 196 }] } }]);
+// parkir: struk lain memegang 2 karung (100 kg) — baris keranjang baru SEMENTARA dihitung dari karung sesudahnya (kedatangan 5 Sep, 49 kg); saat dicatat, struk parkir
+// belum mengambil apa pun dari buku, jadi nota ini memotong karung TERDEPAN (50 kg, kedatangan 4 Sep) dan modalnya ikut kg pasti itu
+mulaiNota(); terap({ pelanggan: 'Pembeli Parkir' }); terap(ketukChip(s, chip('karung', 'Timbang', 50))); terap({ ketik: '2' }); terap(masukkan(s)); terap(parkir(s));
+terap(ketukChip(s, chip('karung', 'Timbang', 50))); terap({ ketik: '1' }); terap(masukkan(s)); var semJ8 = s.keranjang[0] ? s.keranjang[0].trx.totalKg : null;
+terap({ uang: 750000 }); var RJ8 = simpanNota(s, W); var dJ8 = RJ8.nota ? RJ8.nota.dokumen.filter(function (x) { return x.koleksi === 'penjualan'; })[0].data : {};
+var modalJ8 = hitungStokKarungPerMerk()['Timbang'].hppTerakhirPerKg;
+ok('Tahap 6 parkir (tangan): keranjang sementara 49 kg (sesudah 100 kg yang dipegang struk parkir) → nota tercatat memotong karung TERDEPAN 50 kg; modal = modal per kg × 50',
+  semJ8 === 49 && !RJ8.tolak && dJ8.totalKg === 50 && dJ8.hppTotalSaatJual === Math.round(modalJ8 * 50), JSON.stringify([semJ8, RJ8.tolak, dJ8.totalKg, dJ8.hppTotalSaatJual, Math.round(modalJ8 * 50)]));
+mulaiNota(); terap(ketukChip(s, chip('karung', 'Timbang', 50))); terap({ ketik: '3' }); terap(masukkan(s));
+terap({ uang: 2250000 }); var RJ7 = simpanNota(s, W); var dJ7 = RJ7.nota ? RJ7.nota.dokumen.filter(function (x) { return x.koleksi === 'penjualan'; })[0].data : {};
+ok('Tahap 6 satu baris menyeberang kedatangan (tangan): sisa 2 karung 4 Sep (50) + kedatangan 5 Sep 4 karung timbang 196 (49 per karung) → 3 karung = 50 + 50 + 49 = 149 kg; sisa 6 karung sebelum dijual',
+  !RJ7.tolak && dJ7.totalKg === 149 && dJ7.jumlahKarung === 3, JSON.stringify([RJ7.tolak, dJ7.totalKg]));
+mulaiNota(); terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '2' }); terap(masukkan(s));
+ok('Tahap 6: buku TANPA kedatangan ikut timbang (Angsa) tetap 2 × 50 = 100 kg persis, langit-langit rumus mesin', s.keranjang[0].trx.totalKg === 100 && !baAda('Angsa') && baMaksKarung('Angsa', 50, 0) === null, JSON.stringify(s.keranjang[0].trx.totalKg));
+mulaiNota();
 print(JSON.stringify({ lulus: lulus, gagal: gagal, kunci: { retur: Object.keys(KUNCI.retur), karantina: Object.keys(KUNCI.karantina) } }));
 """
 
@@ -1235,6 +1285,15 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- Tahap 6 (owner 25 Nov 2026): "50 kg hanya tampilan" — berat asli karung per kedatangan
+            'Tahap 6: baris karung memotong karung × 50 (bukan berat asli)': js.replace("const totalKg = baAda(chip.kunci) ? baKgKarung(chip.kunci, chip.berat, j, kgDipegangKarung(chip.kunci)) : j * chip.berat;", "const totalKg = j * chip.berat;"),
+            'Tahap 6: nota memakai kg keranjang sementara (tidak dihitung ulang saat dicatat)': js.replace("if (t.jenis === 'karung' && t.merkSumber && baAda(t.merkSumber)) {", "if (false) {"),
+            'Tahap 6: modal nota dari kg sementara (bukan kg pasti)': js.replace("if (!st0 || st0.metode !== 'fifo') t.hppTotalSaatJual = Math.round(((st0 && st0.hppTerakhirPerKg) || 0) * kg);", ""),
+            'Tahap 6: sisa karung di rak = rumus mesin (kg ÷ 50)': js.replace("const ba = baMaksKarung(merk, berat, kgDipegangKarung(merk)); const maks = ba !== null ? ba : stokMaksJalur('karung', merk);", "const maks = stokMaksJalur('karung', merk);"),
+            'Tahap 6: langit-langit keranjang = rumus mesin (kg ÷ 50)': js.replace("const ba = baMaksKarung(chip.kunci, chip.berat, kgDipegangKarung(chip.kunci)); return ba !== null ? ba : stokMaksJalur('karung', chip.kunci);", "return stokMaksJalur('karung', chip.kunci);"),
+            'Tahap 6: retur dengan nota menghitung karung dari label 50 kg': js.replace("const perKarung = Number(t.jumlahKarung) > 0 && Number(t.totalKg) > 0 ? Number(t.totalKg) / Number(t.jumlahKarung) : berat;", "const perKarung = berat;"),
+            'Tahap 6: retur tanpa nota = karung × 50': js.replace("totalKg: baKgKembali(B.merk, B.berat, jml) };", "totalKg: jml * B.berat };"),
+            'Tahap 6: berat asli tanpa memperhitungkan yang dipegang (baris kedua mengulang karung pertama)': js.replace("function kgDipegangKarung(merk) { return wzDiKeranjangParkir('karung', merk) + jumlahAktifKg(merk); }", "function kgDipegangKarung(merk) { return 0; }"),
             # ---- owner 24 Nov 2026: ganti pembeli satu nota
             'GP: pelunasan saat beli tidak ikut pindah nama (bon terbelah dua orang)': js.replace("  if (P.bb) { const m = (cacheMentah('piutang') || []).find(", "  if (false) { const m = (cacheMentah('piutang') || []).find("),
             'GP: bon lama yang sudah dibayar terpisah tetap dipindah (bon minus)': js.replace("    if (sisa - bon < LEBIH_AMBANG) return { tolak: 'Bon ' + lama + ' tinggal '", "    if (false) return { tolak: 'Bon ' + lama + ' tinggal '"),

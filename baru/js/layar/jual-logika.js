@@ -49,6 +49,8 @@ import { wbDariWadah, wbPecahanBaris, wbBagianMerk, wbKomposisi, wbPecah, wbModa
 // putaran 39: karung belakang = buku sendiri (wbDokBukaKB, wbKunciKB, wbMerkAsal), pindah bertanda (wbPindahTembusBelumCocok)
 import { wbAktif, wbKunci, wbDokLahir, wbDokPindah, wbDokBukaKB, wbKunciKB, wbMerkAsal, wbBukuKhusus, wbPindahTembusBelumCocok, wbSertakanKarungBekas } from './wadah-bernama-logika.js';
 import { arPeta, arBeras, arKemasan } from './arsip-logika.js';
+// Tahap 6 (owner 25 Nov 2026): "50 kg hanya tampilan" — nota karung utuh memotong berat ASLI karung, karung kedatangan terlama dulu
+import { baAda, baKgKarung, baMaksKarung, baKarungTumpukan } from './berat-asli-logika.js';
 import { skChip, skTrxPegang, skPecah, skHapusPemecah } from './setengah-logika.js';
 import { gabungTakaran } from './struk-logika.js';
 // owner 7 Okt (JS2-C): batas nego per orang
@@ -224,8 +226,8 @@ export function kelompokKemasanNama(daftar) {
 // bagian chip yang bergantung pada keranjang aktif & struk parkir — SATU rumus untuk susun penuh dan susun lanjutan
 function geraKarung(merk, berat) {
   setelBeratDom(berat);
-  // sudah dikurangi keranjang aktif + yang diparkir
-  const maks = stokMaksJalur('karung', merk); const sisa = maks === null ? 0 : maks;
+  // sudah dikurangi keranjang aktif + yang diparkir; Tahap 6: buku yang ikut timbang dihitung dari berat asli karung (49,8 kg per "50 kg" → 15 karung tetap 15)
+  const ba = baMaksKarung(merk, berat, kgDipegangKarung(merk)); const maks = ba !== null ? ba : stokMaksJalur('karung', merk); const sisa = maks === null ? 0 : maks;
   return { sisa, sisaTeks: sisa + ' karung', dipegang: wzDiKeranjangParkir('karung', merk) };
 }
 function geraKemasan(kunci) { const maks = stokMaksJalur('kemasan', kunci); const sisa = maks === null ? 0 : maks; return { sisa, sisaTeks: sisa + ' sisa', dipegang: wzDiKeranjangParkir('kemasan', kunci) }; }
@@ -363,7 +365,9 @@ export function bangunBaris(chip, jumlah, s, ekstra) {
   if (j <= 0) return null;
   let t = null;
   if (chip.jalur === 'karung') {
-    const totalKg = j * chip.berat;
+    // Tahap 6: kg = berat ASLI karung yang keluar berikutnya (sesudah yang dipegang keranjang & struk parkir); buku tanpa kedatangan ikut timbang = j × isi persis.
+    // Angka pastinya dihitung ulang saat nota dicatat (pecahItemsWadah, urutan baris nota). Label, harga & struk tetap "50 kg".
+    const totalKg = baAda(chip.kunci) ? baKgKarung(chip.kunci, chip.berat, j, kgDipegangKarung(chip.kunci)) : j * chip.berat;
     t = { jenis: 'karung', merkSumber: chip.kunci, jumlahKarung: j, beratKarungAcuan: chip.berat, totalKg, namaProduk: chip.kunci + ' (karung utuh)',
       hppTotalSaatJual: modalBarisKarung(chip, totalKg), label: chip.nama + ' ' + chip.berat + ' kg', satuan: 'karung' };
   } else if (chip.jalur === 'kemasan') {
@@ -428,7 +432,7 @@ const butuhStok = (t) => t.jenis === 'kemasan' ? t.jumlah + (t.bonusUnit || 0) :
 
 /** Langit-langit stok untuk chip ini SEKARANG (keranjang aktif + parkir sudah dikurangi oleh mesin). */
 export function maksUntuk(chip) {
-  if (chip.jalur === 'karung') { setelBeratDom(chip.berat); return stokMaksJalur('karung', chip.kunci); }
+  if (chip.jalur === 'karung') { setelBeratDom(chip.berat); const ba = baMaksKarung(chip.kunci, chip.berat, kgDipegangKarung(chip.kunci)); return ba !== null ? ba : stokMaksJalur('karung', chip.kunci); }
   if (chip.jalur === 'kemasan') return stokMaksJalur('kemasan', chip.kunci);
   if (chip.jalur === 'literan') return chip.wadahLiteran ? bebasLiterWadah(chip.kunci, chip.rasio, { keranjang: _keranjangKini, antrean: _antreanKini }) : bebasLiter(chip.kunci, chip.rasio || rasioMerk(chip.kunci));
   if (chip.jalur === 'repack') return bebasKg(chip.kunci);
@@ -462,6 +466,8 @@ function bebasKg(merk) {
 }
 const DESIMAL2 = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
 let _keranjangKini = [], _antreanKini = [];
+/** Tahap 6: kg buku merek itu yang sudah dipegang struk parkir + keranjang aktif (yang keluar lebih dulu dari karung berikutnya). */
+function kgDipegangKarung(merk) { return wzDiKeranjangParkir('karung', merk) + jumlahAktifKg(merk); }
 function jumlahAktifKg(merk) { return _keranjangKini.reduce((a, b) => a + trxPegang(b.trx).reduce((c, t) => c + ((t.merkSumber === merk && (t.jenis === 'karung' || t.jenis === 'literan' || t.jenis === 'repacking')) ? (t.totalKg || 0) : 0), 0), 0); }
 /** putaran 27: bentuk "dipegang" satu baris keranjang untuk langit-langit stok — literan WADAH dipegang per merek asal (pecahan), ½ karung = 1 × 50 kg. */
 function trxPegang(t) { if (t && t.jenis === 'literan' && t.dariWadah && Array.isArray(t.pecahan) && t.pecahan.length) return t.pecahan.map((x) => ({ jenis: 'literan', merkSumber: x.merk, totalKg: x.kg })); return [skTrxPegang(t)]; }
@@ -1402,7 +1408,12 @@ export function susunNotaDokumen(s, w) {
 export function pecahItemsWadah(items, s) {
   const out = []; const stok = hitungStokKarungPerMerk(); const sudah = []; const antrean = (s && s.antrean) || []; const pakai = {};
   items.forEach((t, i) => {
-    if (!(t.jenis === 'literan' && t.dariWadah)) { out.push(t); if (t.merkSumber) pakai[t.merkSumber] = (pakai[t.merkSumber] || 0) + (Number(t.totalKg) || 0); return; }
+    if (!(t.jenis === 'literan' && t.dariWadah)) {
+      // Tahap 6 (owner 25 Nov 2026): kg PASTI nota karung utuh = berat asli karung yang keluar berikutnya dari buku (karung kedatangan terlama dulu), sesudah
+      // baris nota ini yang lebih dulu. Buku tanpa kedatangan ikut timbang tidak disentuh (byte-sama). Modal FIFO di bawah membaca kg baru ini.
+      if (t.jenis === 'karung' && t.merkSumber && baAda(t.merkSumber)) { const kg = baKgKarung(t.merkSumber, Number(t.beratKarungAcuan) || 50, Number(t.jumlahKarung) || 0, pakai[t.merkSumber] || 0);
+        if (Math.abs(kg - (Number(t.totalKg) || 0)) > 0.0001) { const st0 = stok[t.merkSumber]; t = Object.assign({}, t, { totalKg: kg }); if (!st0 || st0.metode !== 'fifo') t.hppTotalSaatJual = Math.round(((st0 && st0.hppTerakhirPerKg) || 0) * kg); } }
+      out.push(t); if (t.merkSumber) pakai[t.merkSumber] = (pakai[t.merkSumber] || 0) + (Number(t.totalKg) || 0); return; }
     const pc = wbPecah(t.dariWadah, t.totalKg || 0, { keranjang: sudah, antrean }); const bag = pc.bagian.length ? pc.bagian : [{ merk: wbMerkCadangan(t.dariWadah), kg: t.totalKg || 0 }];
     const kgTot = bag.reduce((a, x) => a + x.kg, 0) || 1; const n = bag.length; let rp = 0, lt = 0, nb = 0;
     // 39b no. 14 (J4): tanda "jual dulu, tandai untuk dicocokkan" di literan wadah campuran — kekurangannya jatuh ke merek asal yang bukunya MEMANG kurang
@@ -1909,7 +1920,7 @@ export function tumpukanGudang(merk, siap) {
   const diBelakang = wdB2(kolam.reduce((a, k) => a + k.sisaMentahKg, 0)); const diWadah = wdB2(bagian[merk] || 0);
   const namaKg = wdB2(buku.sisaKg - keluarKg + masukKg); const kg = wdB2(namaKg - diBelakang - diWadah); const berat = beratKarungBuka(merk);
   return { merk, adaBuku: true, bukuKg: buku.sisaKg, pindahKeluarKg: keluarKg, pindahMasukKg: masukKg, namaKg, diBelakangKg: diBelakang, diWadahKg: diWadah, kg, beratKarung: berat,
-    karung: Math.max(0, Math.floor((kg + 0.0001) / berat)), punyaWadah: !!w || Math.abs(diWadah) > 0.0005, wadahDiketahui: !w || !!w.diketahui, karungDiketahui: kolam.length > 0, karungDiWadah: pemegang[0] || '', kolam: kolam.length, dipegang: pemegang.filter((x) => karungUntukWadah(x).dariCatatan),
+    karung: baKarungTumpukan(merk, kg, berat), punyaWadah: !!w || Math.abs(diWadah) > 0.0005, wadahDiketahui: !w || !!w.diketahui, karungDiketahui: kolam.length > 0, karungDiWadah: pemegang[0] || '', kolam: kolam.length, dipegang: pemegang.filter((x) => karungUntukWadah(x).dariCatatan),
     // lengkap = isi wadahnya diketahui, dan tiap wadah yang memegang karung nama ini sudah menandai karungnya (belum ditandai → angka ini perkiraan)
     lengkap: (!w || w.diketahui) && pemegang.every((x) => kolam.some((k) => k.lokasi === x)), minus: kg < -0.0001 };
 }

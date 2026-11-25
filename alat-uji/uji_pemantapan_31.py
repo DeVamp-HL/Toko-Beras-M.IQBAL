@@ -43,7 +43,8 @@ KOTAK = {
   'penjualan': [], 'wadahLiteran': [], 'pengaturan': [], 'stokBahanKemasan': [],
 }
 
-SKENARIO = r"""
+SKENARIO = bundel_baru.TIMBANG_PAS + r"""   // Tahap 6: draf barang masuk baru ditimbang pas (bundel_baru.TIMBANG_PAS)
+
 var gagal = [], lulus = 0; var J = JSON.stringify;
 function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + String(ket).slice(0, 700) : '')); }
 __dom['jualKarungBerat'] = { value: '50' };
@@ -82,7 +83,7 @@ print(J({ lulus: lulus, gagal: gagal }));
 
 
 def baca(ganti=None):
-    t = dict((b, open(os.path.join(AKAR, b), encoding='utf-8').read()) for b in list(dict.fromkeys(MODUL + LAYAR)))
+    t = dict((b, open(os.path.join(AKAR, b), encoding='utf-8').read()) for b in list(dict.fromkeys(bundel_baru.lengkapi(MODUL) + LAYAR)))   # Tahap 6: modul daun (berat-asli-logika) ikut lewat lengkapi
     for b, pasangan in (ganti or {}).items():
         for lama, baru in pasangan:
             assert t[b].count(lama) == 1, 'kontrol basi: ' + b + ' · ' + lama[:80] + ' (' + str(t[b].count(lama)) + '×)'
@@ -91,7 +92,7 @@ def baca(ganti=None):
 
 
 def bundel_dari(t):
-    js = '\n'.join([bundel_baru.PRELUDE] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(t[m]) for m in MODUL]); tanda = '// ===== baru/js/layar/stok-hpp-logika.js ====='
+    js = '\n'.join([bundel_baru.PRELUDE] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(t[m]) for m in bundel_baru.lengkapi(MODUL)]); tanda = '// ===== baru/js/layar/stok-hpp-logika.js ====='
     i = js.index(tanda); j = js.find('// ===== ', i + len(tanda)); j = len(js) if j < 0 else j
     return js[:i] + js[i:j].replace('teksMargin', 'teksMarginHpp') + js[j:]
 

@@ -22,7 +22,8 @@ _M = uji_laporan_baru.MODUL + ['baru/js/layar/stok-logika.js', 'baru/js/layar/va
                                 'baru/js/layar/stok-kantong-logika.js', 'baru/js/layar/stok-tempat-logika.js', 'baru/js/layar/stok-hpp-logika.js', 'baru/js/layar/kelas-merek-logika.js', 'baru/js/layar/karcis-logika.js',
                                 'baru/js/data/akses.js', 'baru/js/layar/kunci-periode-logika.js',
                                 'baru/js/layar/titipan-logika.js',   # owner 21 Nov 2026: Uang & tutup hari memakai titipan-logika
-                                'baru/js/layar/grosir-ecer-logika.js']   # owner 24 Nov 2026: rekap Harian & tutup hari memakai grosir-ecer-logika
+                                'baru/js/layar/grosir-ecer-logika.js',   # owner 24 Nov 2026: rekap Harian & tutup hari memakai grosir-ecer-logika
+                                'baru/js/layar/berat-asli-logika.js']   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Barang masuk, Jual, Cocokkan)
 MODUL = [m for i, m in enumerate(_M) if m not in _M[:i]]
 JAM_TETAP = "var __KINI = new Date('2026-09-24T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
@@ -72,7 +73,8 @@ KOTAK = {
   'penyesuaianStok': [], 'penyesuaianKemasan': [], 'pengaturan': [], 'dokumenCetak': [], 'tutupBukuAcara': [], 'pesanan': [], 'thrPelanggan': [], 'tagihPelanggan': [], 'pelangganTitip': [],
 }
 
-SKENARIO = r"""
+SKENARIO = bundel_baru.TIMBANG_PAS + r"""   // Tahap 6: draf barang masuk baru ditimbang pas (bundel_baru.TIMBANG_PAS)
+
 var gagal = [], lulus = 0; var J = JSON.stringify;
 function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + String(ket).slice(0, 400) : '')); }
 Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); });
