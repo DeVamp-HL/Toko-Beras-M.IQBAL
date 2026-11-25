@@ -45,7 +45,7 @@ const tpPemasokTitip = (m) => tpPotong(m && m.pemasok, 60);
 
 /** Kalimat satu titipan untuk layar & cetak: "Belanja toko · kantong 5 kg · Rp50.000" / "Kasbon karyawan · Hasan · Rp100.000". */
 export function tpTeks(m) {
-  const b = [tpNamaJenis(tpJenis(m))];
+  const b = [tpJenis(m) === 'bongkar' && m.ongkir === true ? 'Ongkos kirim' : tpNamaJenis(tpJenis(m))];
   if (tpJenis(m) === 'kasbon' && m.namaPegawai) b.push(m.namaPegawai);
   if ((tpJenis(m) === 'bayarBon' || tpJenis(m) === 'bongkar') && tpPemasokTitip(m) && String(m.teks || '').indexOf(tpPemasokTitip(m)) < 0) b.push(tpPemasokTitip(m));
   if (m.teks) b.push(m.teks);
@@ -79,6 +79,9 @@ export function tpSusunMinta(draf, akun, w) {
   if (nama && (jenis === 'kasbon' || jenis === 'karyawan')) data.namaPegawai = nama;
   if (pemasok && (jenis === 'bayarBon' || jenis === 'bongkar')) data.pemasok = pemasok;
   if (d.batchId && (jenis === 'bayarBon' || jenis === 'bongkar')) data.batchId = String(d.batchId);
+  // Tahap 3 (owner 26 Nov 2026): ONGKOS KIRIM supir pemasok dari tablet = titipan berjenis 'bongkar' (bentuk rules v15, wajib kedatangannya) bertanda ongkir —
+  // disetujui owner = masuk modal kedatangan itu sebagai ongkos kirim (biayaBongkar + ongkosKirim), bukan upah bongkar
+  if (d.ongkir && jenis === 'bongkar') data.ongkir = true;
   return { dokumen: [{ koleksi: 'persetujuan', data }], patch: { kabar: 'Titipan terkirim ke owner — ' + tpTeks(data) + '. Laci di buku belum berkurang sampai owner menyetujui.', kabarAwas: false } };
 }
 /** Kabar barang masuk untuk owner (rules v15 stafKabarMasuk): bukan uang — owner menandainya "sudah diperiksa". isi = { batchId, teks, nominal, hargaBeda }. */
@@ -189,9 +192,11 @@ export function tpSusunPutus(id, keputusan, isi, w) {
     const b = ambilSemuaBatch().find((x) => String(x.id) === String(m.batchId || ''));
     if (!b) return { tolak: 'Kedatangan untuk upah bongkar ini sudah tidak ada — Betulkan jenisnya jadi Belanja toko, atau tolak' };
     const kb = tolakKunci('batchMasuk', b, 'upah bongkarnya tidak bisa ditulis ke kedatangan itu'); if (kb) return { tolak: kb };
-    const riwayat = (Array.isArray(b.riwayat) ? b.riwayat : []).concat([{ teks: 'upah bongkar ' + RP(n) + ' dari titipan tablet (' + siapa + ') disetujui owner', tanggal: w.tanggal, jam: w.jam }]);
-    uang = { koleksi: 'batchMasuk', data: Object.assign({}, b, { biayaBongkar: (Number(b.biayaBongkar) || 0) + n, bongkarTitipan: (Array.isArray(b.bongkarTitipan) ? b.bongkarTitipan : []).concat([String(m.id)]), riwayat }) };
-    arti = 'upah bongkar ' + RP(n) + ' masuk modal kedatangan ' + String(b.pemasok || '') + ' ' + tanggalPendek(b.tanggal || tgl) + ' (dari laci)';
+    const ok = m.ongkir === true; const nmB = ok ? 'ongkos kirim' : 'upah bongkar';
+    const riwayat = (Array.isArray(b.riwayat) ? b.riwayat : []).concat([{ teks: nmB + ' ' + RP(n) + ' dari titipan tablet (' + siapa + ') disetujui owner', tanggal: w.tanggal, jam: w.jam }]);
+    uang = { koleksi: 'batchMasuk', data: Object.assign({}, b, { biayaBongkar: (Number(b.biayaBongkar) || 0) + n, bongkarTitipan: (Array.isArray(b.bongkarTitipan) ? b.bongkarTitipan : []).concat([String(m.id)]), riwayat },
+      ok ? { ongkosKirim: Math.round(Number(b.ongkosKirim) || 0) + n } : {}) };
+    arti = nmB + ' ' + RP(n) + ' masuk modal kedatangan ' + String(b.pemasok || '') + ' ' + tanggalPendek(b.tanggal || tgl) + ' (dari laci)';
   } else if (jenis === 'bayarBon') {
     // bayar bon pemasok lewat supir → owner memilih bonnya (bawaan tpBonPilihan); satu pembayaran satu bon, tidak melebihi sisa (aturan Bon pemasok)
     const P = tpBonPilihan(m.id, new Date(w.kini)); const bonId = KOSONG(o.bonId) ? P.bawaan : String(o.bonId);

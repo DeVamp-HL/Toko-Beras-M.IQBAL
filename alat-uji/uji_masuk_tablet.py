@@ -143,6 +143,28 @@ var TT2 = tbmData(BM, { terbaca: false, titipSupir: 1000000 }); cek('kalimat lay
 
 // ---------- kabar owner ----------
 cek('kabar barang masuk tampil di daftar owner sebagai kabar (bukan uang); ditandai sudah diperiksa', tpMenunggu().some(function (b) { return b.id === KBR.id && b.kabar && b.pesan; }) && tpSusunPutus(KBR.id, 'dibaca', {}, W2).dokumen[0].data.status === 'dibaca');
+// ==================== TAHAP 3 (owner 26 Nov 2026): isian baru barang masuk juga di tablet — hitung tangan ====================
+// Angsa 20 × 50 kg @ 13.000 = nota 1.000 kg; kurang 15 kg → 985 kg × 13.000 = Rp12.805.000 (dipotong Rp195.000); Pandan Contoh 5 karung DITOLAK;
+// ongkos kirim supir Rp150.000 = titipan (bukan di kedatangan); catatan bebas untuk pemasok ikut
+var DRAF3 = { pemasok: 'RODA CONTOH', bongkar: '', ongkir: '150.000', bayarSupir: '', catatanBebas: ' 1 karung sobek ', alasanPotong: 'ditimbang kurang',
+  baris: [{ merk: 'Angsa', jumlahKarung: '20', beratKarung: 50, hargaPerKg: '13000', kgPotong: '15' }, { merk: 'Pandan Contoh', jumlahKarung: '5', beratKarung: 50, hargaPerKg: '14.500', ditolak: '1', alasanTolak: 'berkutu' }] };
+var H3 = mtHitung(DRAF3, W); var R3 = mtSusunSimpan(DRAF3, BEN, W, true); var BM3 = R3.dokumen ? R3.dokumen[0].data : {}; var T3 = R3.dokumen && R3.dokumen[1] ? R3.dokumen[1].data : {}; var K3 = R3.dokumen && R3.dokumen[2] ? R3.dokumen[2].data : {};
+cek('tablet Tahap 3: kiriman = kedatangan + titipan ongkos kirim + kabar (3 dokumen), lolos pagar kiriman Penjaga laci', !R3.tolak && R3.dokumen.length === 3 && R3.dokumen[1].koleksi === 'persetujuan' && R3.dokumen[2].data.tindakan === 'barangMasuk' && !kirim(BEN, R3, HAK_BEN).tolak && batchTablet(BM3) === true, R3.tolak || kirim(BEN, R3, HAK_BEN));
+cek('tablet klaim langsung (tangan): 1.000 − 15 = 985 kg; bon Rp12.805.000; jejak potong 15 kg / Rp195.000 beralasan; tetap BON, bongkar 0', H3.potongKg === 15 && H3.potongRp === 195000 && BM3.merkList.length === 1 && BM3.merkList[0].totalKg === 985 && BM3.merkList[0].subtotalHarga === 12805000 && BM3.merkList[0].kgPotong === 15 && BM3.caraBayar === 'utang' && BM3.biayaBongkar === 0 && BM3.potongan.length === 1 && BM3.potongan[0].saatDatang === true && BM3.potongan[0].kg === 15 && BM3.potongan[0].rp === 195000 && BM3.potongan[0].alasan === 'ditimbang kurang', BM3);
+cek('tablet tolak baris & catatan bebas: Pandan Contoh 5 karung tercatat ditolak (tidak di baris kedatangan), catatan bebas dirapikan', BM3.ditolak && BM3.ditolak.length === 1 && BM3.ditolak[0].merk === 'Pandan Contoh' && BM3.ditolak[0].jumlahKarung === 5 && BM3.ditolak[0].alasan === 'berkutu' && BM3.catatanBebas === '1 karung sobek', [BM3.ditolak, BM3.catatanBebas]);
+cek('tablet ongkos kirim: TIDAK ditulis di kedatangan (bongkar 0, tanpa kolom ongkosKirim) — jadi titipan berjenis bongkar bertanda ongkir Rp150.000 yang menunjuk kedatangannya', BM3.ongkosKirim === undefined && H3.ongkirTitip === 150000 && H3.ongkir === 0 && T3.jenis === 'bongkar' && T3.ongkir === true && T3.nominal === 150000 && T3.batchId === String(BM3.id) && T3.teks === 'Ongkos kirim · RODA CONTOH' && /^Ongkos kirim/.test(tpTeks(T3)), [BM3.ongkosKirim, T3]);
+cek('tablet: kabar owner menyebut potongan, yang ditolak, dan ongkos kirim', /DIPOTONG 15 kg \(Rp195\.000\)/.test(K3.teks) && /DITOLAK: Pandan Contoh 5 karung/.test(K3.teks) && /ongkos kirim Rp150\.000/.test(K3.teks) && /Sudah dipotong 15 kg/.test(R3.patch.kabar), [K3.teks, R3.patch && R3.patch.kabar]);
+tulis(R3); var P3 = tpSusunPutus(T3.id, 'setuju', {}, W2); var B3 = P3.dokumen ? P3.dokumen.find(function (x) { return x.koleksi === 'batchMasuk'; }) : null;
+cek('owner menyetujui ongkos kirim: kedatangan ditulis ulang — biayaBongkar 150.000 (dibaca mesin) DAN ongkosKirim 150.000; riwayatnya menyebut ongkos kirim', !!B3 && B3.data.biayaBongkar === 150000 && B3.data.ongkosKirim === 150000 && ckOngkir(B3.data) === 150000 && /ongkos kirim Rp150\.000/.test(B3.data.riwayat[B3.data.riwayat.length - 1].teks) && B3.data.merkList[0].totalKg === 985 && B3.data.potongan.length === 1, P3.tolak || (B3 && B3.data));
+tulis(P3);
+// upah bongkar 50.000 + ongkos kirim 100.000 di satu kedatangan: dua titipan (bukan kembar); keduanya disetujui → biayaBongkar 150.000, ongkos kirim 100.000
+var DRAF4 = { pemasok: 'RODA CONTOH', bongkar: '50.000', ongkir: '100.000', bayarSupir: '', baris: [{ merk: 'Angsa', jumlahKarung: '30', beratKarung: 50, hargaPerKg: '13000' }] };
+var R4 = mtSusunSimpan(DRAF4, BEN, W, true); var tt4 = (R4.dokumen || []).filter(function (x) { return x.koleksi === 'persetujuan' && x.data.jenis === 'bongkar'; });
+cek('tablet bongkar + ongkos kirim: dua titipan terpisah (upah bongkar 50.000 tanpa tanda, ongkos kirim 100.000 bertanda)', !R4.tolak && tt4.length === 2 && tt4[0].data.nominal === 50000 && tt4[0].data.ongkir === undefined && tt4[1].data.nominal === 100000 && tt4[1].data.ongkir === true && !kirim(BEN, R4, HAK_BEN).tolak, R4.tolak || tt4);
+tulis(R4); tulis(tpSusunPutus(tt4[0].data.id, 'setuju', {}, W2)); tulis(tpSusunPutus(tt4[1].data.id, 'setuju', {}, W2));
+var B4 = cacheMentah('batch').find(function (b) { return String(b.id) === String(R4.dokumen[0].data.id); });
+cek('keduanya disetujui (tangan): biayaBongkar 50.000 + 100.000 = 150.000; ongkosKirim 100.000 → upah bongkar 50.000', B4.biayaBongkar === 150000 && B4.ongkosKirim === 100000 && B4.biayaBongkar - ckOngkir(B4) === 50000 && B4.bongkarTitipan.length === 2, B4);
+cek('tablet: ongkos kirim bukan angka DITOLAK dengan kalimat', /Ongkos kirim hanya angka/.test(mtSusunSimpan(Object.assign({}, DRAF4, { ongkir: 'seratus' }), BEN, W, true).tolak || ''));
 print(J(hasil));
 """
 
@@ -212,6 +234,11 @@ def main():
             ('kabar owner tidak menyebut merek baru', MT, M.replace("(merekBaru.length ? ' · MEREK BARU: '", "(false ? ' · MEREK BARU: '")),
             ('nama arsip boleh dari tablet', MT, M.replace("if (b.terisi && !b.masalah && b.vr && b.vr.arsip) b.masalahTablet", "if (false) b.masalahTablet")),
             ('harga beda tidak ditandai', MT, M.replace("if (beda.length) bm.hargaBeda = beda;", "")),
+            ('Tahap 3: ongkos kirim tablet ikut ditulis di kedatangan', MT, M.replace("d.bongkar = ''; d.ongkir = '';", "d.bongkar = '';")),
+            ('Tahap 3: ongkos kirim disetujui sebagai upah bongkar', TPL, T.replace("const ok = m.ongkir === true;", "const ok = false;")),
+            ('Tahap 3: titipan ongkos kirim tanpa tanda', TPL, T.replace("  if (d.ongkir && jenis === 'bongkar') data.ongkir = true;\n", "")),
+            ('Tahap 3: kabar owner tidak menyebut potongan', MT, M.replace("(h.potongKg > 0 ? ' · DIPOTONG '", "(false ? ' · DIPOTONG '")),
+            ('Tahap 3: kabar owner tidak menyebut yang ditolak', MT, M.replace("(h.ditolak.length ? ' · DITOLAK: '", "(false ? ' · DITOLAK: '")),
             ('upah bongkar disetujui tanpa menambah kedatangan', TPL, T.replace("biayaBongkar: (Number(b.biayaBongkar) || 0) + n,", "biayaBongkar: (Number(b.biayaBongkar) || 0),")),
             ('bayar supir mengabaikan bon pilihan owner', TPL, T.replace("const bonId = KOSONG(o.bonId) ? P.bawaan : String(o.bonId);", "const bonId = P.bawaan;")),
             ('bayar supir bertanggal hari owner menyetujui', TPL, T.replace("uang = { koleksi: 'utangPemasokMutasi', data: { id: w.idUnik(), tanggal: tgl, jam,", "uang = { koleksi: 'utangPemasokMutasi', data: { id: w.idUnik(), tanggal: w.tanggal, jam,")),
