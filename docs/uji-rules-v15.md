@@ -59,8 +59,16 @@ Kasus staf butuh akun uji staf aktif (U11 dari `docs/uji-rules-v7.md`: `aksesAku
 | ★X21 | Penjaga laci | create `utangPemasokMutasi/uji-v15-up` | bayar bon sendiri | DITOLAK | uang ditulis owner |
 | ★X22 | kasir@ | create `batchMasuk/uji-v15-bm` | kedatangan | DITOLAK | kasir darurat tidak mencatat stok |
 | ★X23 | karyawan | create `persetujuan/uji-v15-kb` | kabar barang masuk | DITOLAK | kabar = Penjaga laci saja |
+| ★X24 | Penjaga laci | create `batchMasuk/uji-v15-bm` | kedatangan tablet berbaris kemasan jadi + catatan pemasok + klaim + usul pakai potongan (Tahap 5) | LOLOS | kolom tambahan tidak dilarang; bentuk inti tetap v15 |
+| ★X25 | Penjaga laci | create `produksiKemasan/uji-v15-pk` | pasangan beli-jadi kemasan jadi (Tahap 5) | LOLOS | create produksi staf sudah dibuka sejak v3 |
+| ★X26 | Penjaga laci | create `persetujuan/uji-v15-kb` | usul untuk kedatangan tersimpan — kabar berkolom `usul` (Tahap 5) | LOLOS | usul = kabar; owner yang memutuskan |
+| ★X27 | Penjaga laci | update `batchMasuk/uji-v15-bm` | menulis catatan pemasok ke kedatangan tersimpan | DITOLAK | ubah kedatangan = owner |
+| ★X28 | Penjaga laci | create `pengaturan/titikKas` | patokan kas | DITOLAK | patokan kas = owner |
+| ★X29 | Penjaga laci | create `persetujuan/uji-v15-kb` | usul yang sudah membawa keputusan | DITOLAK | keputusan = owner |
 
-Di **v14** kasus ★X4–★X7 DITOLAK (v15 yang membukanya); kasus lain sama hasilnya.
+Di **v14** kasus ★X4–★X7 DITOLAK (v15 yang membukanya), begitu juga ★X24 & ★X26 (bentuk Tahap 5 di atas jalur yang sama); kasus lain sama hasilnya.
+
+★X24–★X29 ditambahkan 26 Nov 2026 (Barang masuk Tahap 5, owner: "nomor 1 tanpa rules") — TIDAK ada suku rules yang berubah; kasus ini membuktikan bentuk baru yang ditulis tablet muat di rules yang sudah terbit, dan yang mengubah kedatangan tersimpan / uang tetap ditolak.
 
 ## Hasil Playground & terbit (22 Nov 2026)
 

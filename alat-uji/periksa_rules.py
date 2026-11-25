@@ -1863,6 +1863,12 @@ KB_UJI = {'id': 'uji-v15-kb', 'tindakan': 'barangMasuk', 'status': 'menunggu', '
 UP_TITIP = {'id': 'uji-v15-up', 'tanggal': '2026-10-09', 'jam': '10:00', 'tipe': 'bayar', 'pemasok': 'Pemasok Uji', 'nominal': 500000, 'bonId': 'uji-v15-bm', 'bonTanggal': '2026-10-09',
             'dari': 'laci', 'catatan': 'Bayar lewat supir', 'dariPersetujuan': 'uji-v15-ts'}
 DB_TS = {'persetujuan/uji-v15-ts': TT_SUPIR}; DB_BM = {'batchMasuk/uji-v15-bm': BM_TABLET}
+# Tahap 5: kedatangan tablet terbesar bentuknya — baris karung + baris KEMASAN JADI (bal) + catatan untuk pemasok + klaim + usul pakai potongan; dan pasangan beli-jadinya
+BM_TABLET_T5 = dict(BM_TABLET, merkList=BM_TABLET['merkList'] + [{'id': '2', 'merk': 'Kemasan Uji', 'satuan': 'bal', 'bentuk': 'bal', 'kemasanJadi': True, 'ukuranBag': 5, 'jumlahBal': 20, 'isiPerBal': 1, 'jumlahPcs': 20, 'totalKg': 100, 'hargaPerBal': 70000, 'hargaPerKg': 14000, 'subtotalHarga': 1400000}],
+                    catatanPemasok=[{'jenis': 'kurang', 'merk': 'Beras Uji', 'jumlah': 10, 'satuan': 'kg', 'ket': 'hasil timbang'}], klaim={'cara': 'potong', 'status': 'diminta', 'nilai': 120000, 'nilaiDari': 'timbang', 'catatan': '', 'tanggal': '2026-10-09', 'diubah': '2026-10-09'},
+                    usulPakaiPotong={'rp': 130000, 'dari': [{'id': 'uji-lama', 'i': 0, 'rp': 130000, 'tanggal': '2026-10-01'}]}, catatanBebas='1 karung sobek')
+PK_TABLET_T5 = {'id': 'uji-v15-pk', 'tanggal': '2026-10-09', 'jam': '10:00', 'namaProduk': 'Kemasan Uji', 'ukuranKemasan': 5, 'jumlahUnit': 20, 'hppPerUnit': 70000, 'modalPerUnit': 70000, 'merkSumber': 'BELI JADI', 'kgDipakai': 0,
+                'hppSumberPerKgDipakai': 0, 'kantongJenis': None, 'kantongJumlah': 0, 'biayaKemasan': 0, 'upahRepacking': 0, 'beliJadi': True, 'dariBatch': 'uji-v15-bm', 'oleh': 'Uji', 'olehUid': 'uid-uji-b'}
 WAJIB_V15 = ['★X1', '★X2', '★X3']   # owner saja (tanpa dokumen uji staf); kasus staf dibuktikan emulator — boleh juga di Playground dengan U11
 KASUS_V15 = [
     ('★X1', 'owner mencatat kedatangan biasa (tunai + upah bongkar)', 'owner', 'create', 'batchMasuk', 'uji-v15-bo', BM_OWNER, None, True, 0),
@@ -1888,8 +1894,16 @@ KASUS_V15 = [
     ('★X21', 'Penjaga laci menulis pembayaran bon pemasok sendiri', 'staf', 'create', 'utangPemasokMutasi', 'uji-v15-up', dict(UP_TITIP, olehUid='uid-uji-b'), None, False, None),
     ('★X22', 'kasir@ mencatat kedatangan', 'kasir', 'create', 'batchMasuk', 'uji-v15-bm', BM_TABLET, None, False, None),
     ('★X23', 'karyawan mengirim kabar barang masuk', 'staf', 'create', 'persetujuan', 'uji-v15-kb', dict(KB_UJI, peran='karyawan'), U11_KARYAWAN, False, None),
+    # Barang masuk Tahap 5 (owner 26 Nov 2026: "nomor 1 tanpa rules" — staf mengusulkan, owner memutuskan): bentuk BARU yang ditulis tablet DIBUKTIKAN muat di
+    # rules yang sudah terbit (tidak ada suku rules yang berubah); yang mengubah kedatangan tersimpan / uang tetap ditolak
+    ('★X24', 'kedatangan tablet berbaris kemasan jadi + catatan pemasok + klaim + usul pakai potongan', 'staf', 'create', 'batchMasuk', 'uji-v15-bm', BM_TABLET_T5, None, True, None),
+    ('★X25', 'Penjaga laci membuat pasangan beli-jadi kemasan jadi kedatangan itu', 'staf', 'create', 'produksiKemasan', 'uji-v15-pk', PK_TABLET_T5, None, True, None),
+    ('★X26', 'Penjaga laci mengirim USUL untuk kedatangan tersimpan (kabar barang masuk berkolom usul)', 'staf', 'create', 'persetujuan', 'uji-v15-kb', dict(KB_UJI, nominal=0, usul={'jenis': 'retur', 'merk': 'Beras Uji', 'kg': 25, 'alasan': 'berkutu'}), None, True, None),
+    ('★X27', 'Penjaga laci menulis catatan pemasok ke kedatangan yang SUDAH tersimpan', 'staf', 'update', 'batchMasuk', 'uji-v15-bm', dict(BM_TABLET, catatanPemasok=[{'jenis': 'kurang', 'merk': 'Beras Uji', 'jumlah': 10, 'satuan': 'kg', 'ket': ''}]), DB_BM, False, None),
+    ('★X28', 'Penjaga laci menulis patokan kas (titik kas)', 'staf', 'create', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2026-10-09', 'laci': 1000000, 'brankas': 0, 'rekening': 0, 'amplop': 0, 'olehUid': 'uid-uji-b'}, None, False, None),
+    ('★X29', 'usul dari tablet yang sudah membawa keputusan', 'staf', 'create', 'persetujuan', 'uji-v15-kb', dict(KB_UJI, usul={'jenis': 'koreksi', 'teks': 'harga salah'}, status='dibaca', diputusTanggal='2026-10-09'), None, False, None),
 ]
-BEDA_V14 = {'★X4', '★X5', '★X6', '★X7'}   # yang DIBUKA v15 (ditolak v14); kasus lain wajib sama hasilnya di v14
+BEDA_V14 = {'★X4', '★X5', '★X6', '★X7', '★X24', '★X26'}   # yang DIBUKA v15 (ditolak v14); kasus lain wajib sama hasilnya di v14
 DOK_V15_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v15.md
 # ---- MODEL v16 (owner 22 Nov 2026): kasus ★Y docs/uji-rules-v16.md — staf = U11 (ben, uid-uji-b). Hitungan laci tablet = menunggu, bulat, brankas ≤ hitungan.
 HL_UJI = {'id': 'uji-v16-hl', 'tindakan': 'hitungLaci', 'status': 'menunggu', 'tanggal': '2026-10-09', 'jam': '21:00', 'tanggalTulis': '2026-10-09', 'hitung': 607500, 'amankan': 415000,

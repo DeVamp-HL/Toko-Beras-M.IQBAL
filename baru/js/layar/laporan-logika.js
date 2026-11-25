@@ -21,7 +21,7 @@ import { riwayatUpah } from './upah-logika.js';
 import { semuaBon } from './bon-logika.js';
 import { daftarPemasok, bukuBon } from './bon-pemasok-logika.js';
 // paket Barang masuk & mutu (owner 26 Nov 2026): surat catatan untuk pemasok
-import { cpKedatangan, cpDaftar } from './stok-catat-logika.js';
+import { cpIsiSurat, cpDaftar } from './stok-catat-logika.js';
 import { bukuOwner } from './owner-toko-logika.js';
 import { pjOmzetSistem, pjGabungRekap, pjTahun, PJ_LABEL } from './pajak-logika.js';
 // owner 7 Okt: daftar harga & harga yang naik untuk pelanggan dibaca dari katalog yang dipakai kasir
@@ -591,11 +591,12 @@ export function susunAturLaporan(isi, w) { const n = ugKosong(isi.asetTetap) ? 0
 export function neracaPada(sampai, kini, kasBulan) {
   const iso = hariIniIso(kini); const s = sampai || null; if (s && lpTutup(s)) return lpNeracaArsip(s);   // Paket B: tanggal di tahun yang sudah ditutup buku
   const N0 = ingatNeraca(s); const KB = kasBulan || null;
-  const N = KB ? Object.assign({}, N0, { kas: KB.kas, total: KB.kas === null ? null : Math.round(KB.kas + N0.stok + N0.piutang + N0.kasbon - N0.utangOwner - N0.utangPemasok) }) : N0; const modal = modalTertanam(s); const AT = aturLaporan(); const pertama = lpPertama();
-  const kasAda = N.kas !== null; const aset = kasAda ? N.kas + N.stok + N.piutang + N.kasbon + AT.asetTetap : null; const kewajiban = N.utangPemasok + N.utangOwner; const labaDitahan = aset === null ? null : aset - kewajiban - modal;
+  const PP = Number(N0.piutangPemasok) > 0 ? N0.piutangPemasok : 0;   // Tahap 5: piutang ke pemasok (toko.js ingatNeraca) — 0 = tidak ada baris & tidak ada kolom
+  const N = KB ? Object.assign({}, N0, { kas: KB.kas, total: KB.kas === null ? null : Math.round(KB.kas + N0.stok + N0.piutang + N0.kasbon + PP - N0.utangOwner - N0.utangPemasok) }) : N0; const modal = modalTertanam(s); const AT = aturLaporan(); const pertama = lpPertama();
+  const kasAda = N.kas !== null; const aset = kasAda ? N.kas + N.stok + N.piutang + N.kasbon + PP + AT.asetTetap : null; const kewajiban = N.utangPemasok + N.utangOwner; const labaDitahan = aset === null ? null : aset - kewajiban - modal;
   let labaKum = null, prive = 0; if (pertama) { const X = lpLabaKum(pertama, s, iso); labaKum = X.laba; prive = X.prive; }
   const menurutMesin = labaKum === null ? null : labaKum - prive; const selisihBuku = labaDitahan === null || menurutMesin === null ? null : labaDitahan - menurutMesin;
-  const harta = [['Kas (laci · brankas · rekening · amplop)', N.kas, kasAda ? '' : KB ? KB.kenapa : 'titik kas belum disetel'], ['Stok beras — karung', N.nilaiSack], ['Stok kemasan jadi', N.nilaiBags], ['Kantong & bahan', N.nilaiBahan], ['Piutang pelanggan (' + N.nPiutang + ' nama)', N.piutang], ['Kasbon pegawai & owner (' + N.nKasbon + ' nama)', N.kasbon]].concat(AT.asetTetap ? [['Aset tetap (isian owner' + (AT.asetKet ? ': ' + AT.asetKet : '') + ')', AT.asetTetap]] : []).map((r) => ({ nama: r[0], n: r[1], ket: r[2] || '' }));
+  const harta = [['Kas (laci · brankas · rekening · amplop)', N.kas, kasAda ? '' : KB ? KB.kenapa : 'titik kas belum disetel'], ['Stok beras — karung', N.nilaiSack], ['Stok kemasan jadi', N.nilaiBags], ['Kantong & bahan', N.nilaiBahan], ['Piutang pelanggan (' + N.nPiutang + ' nama)', N.piutang], ['Kasbon pegawai & owner (' + N.nKasbon + ' nama)', N.kasbon]].concat(PP ? [['Piutang ke pemasok (' + N.nPiutangPemasok + ' potongan menunggu pembelian berikutnya)', PP]] : []).concat(AT.asetTetap ? [['Aset tetap (isian owner' + (AT.asetKet ? ': ' + AT.asetKet : '') + ')', AT.asetTetap]] : []).map((r) => ({ nama: r[0], n: r[1], ket: r[2] || '' }));
   const pasiva = [['Utang ke pemasok (' + N.nBonPemasok + ' bon)', N.utangPemasok], ['Utang toko ke owner', N.utangOwner], ['Modal owner tertanam', modal], ['Laba ditahan (dihitung: aset − kewajiban − modal)', labaDitahan]].map((r) => ({ nama: r[0], n: r[1], ket: '' }));
   const kataLebih = lebihNeraca(s, kasAda).kata;   // no. 4 (lihat lebihNeraca): ikut catatan → semua kertas; bentuk objek ini TETAP (ASAP GLOBAL membandingkannya byte-sama)
   const tolak = !kasAda ? 'Kas belum bisa dihitung — titik kas belum disetel; Tutup hari malam ini menyetelnya' : N.adaStokMinus ? 'Buku menyebut stok MINUS (' + N.sackMinus.concat(N.bagsMinus).slice(0, 3).join(', ') + ') — cocokkan dulu di Stok, neraca tidak dicetak' : '';
@@ -867,20 +868,11 @@ export function dokumenKecil(jenis, pilih, cari, kini) {
       cap = X.batal ? 'DIBATALKAN' : 'SALINAN ke-' + salinan; identitas = X.batal ? 'Nota ini dibatalkan — tidak dicetak ulang' : 'Cetak ulang ke-' + salinan + ' · nota asli ' + tanggalPendek(X.tanggal) + ' ' + X.jam + ' · angka dari nota yang tersimpan'; if (X.batal) tolak = 'Nota dibatalkan tidak dicetak ulang'; } else { sub = cocokN + ' nota cocok — ketuk salah satu'; tolak = 'Pilih notanya'; } }
   // paket Barang masuk & mutu (owner 26 Nov 2026): SURAT CATATAN UNTUK PEMASOK — bahan berunding soal klaim. Isinya catatan Barang masuk APA ADANYA (baris nota,
   // hasil timbang / sampel, mutu, catatan kurang · lebih · tertinggal, permintaan klaim); tidak ada angka yang dihitung di sini selain yang sudah ada di catatannya.
-  if (J.id === 'pemasok') { ragam = P.bon; const DF = cpDaftar(40); const dKg = (n) => String(Math.round(n * 100) / 100).replace('.', ',') + ' kg';
+  if (J.id === 'pemasok') { ragam = P.bon; const DF = cpDaftar(40);
     pilihan = DF.map((x) => ({ id: String(x.id), nama: (x.pemasok || 'tanpa nama pemasok') + ' · ' + tanggalPendek(x.tanggal) + (x.klaim ? ' · ' + x.klaim.caraNama.toLowerCase() : x.nCatatan ? ' · ' + x.nCatatan + ' catatan' : ' · belum dicatat'), n: null, teksN: x.klaim ? x.klaim.statusNama : x.nUsul ? x.nUsul + ' usul' : '' }));
-    const C = (pilih ? cpKedatangan(pilih) : null) || (DF[0] ? cpKedatangan(DF[0].id) : null);
-    if (C) { judul = 'Catatan untuk Pemasok'; sub = (C.pemasok || 'tanpa nama pemasok') + ' · barang datang ' + tanggalPendek(C.tanggal) + (C.noBon ? ' · bon No. ' + C.noBon : '') + (C.cara === 'utang' ? ' · bon' : ' · tunai');
-      baris.push(brs('Yang tertulis di nota', '', undefined, 'kel'));
-      C.timbang.baris.forEach((x) => { baris.push(brs((x.merkPemasok || x.merk) + ' · ' + dKg(x.kgNota) + ' @ ' + RP(x.hargaPerKg) + '/kg', Math.round(x.kgNota * x.hargaPerKg)));
-        if (x.timbangKg !== null) baris.push(brs('   ' + (x.perkiraan ? 'timbang sampel ' + x.sampel.karung + ' karung, rata-rata ' + String(x.sampel.rata).replace('.', ',') + ' kg per karung → perkiraan ' : 'ditimbang ') + dKg(x.timbangKg) + (x.selisihKg === null || x.selisihKg === 0 ? ' (pas)' : x.selisihKg < 0 ? ' — KURANG ' + dKg(-x.selisihKg) : ' — lebih ' + dKg(x.selisihKg)), ''));
-        if (x.awas.length) baris.push(brs('   mutu: ' + x.awas.join('; '), '')); });
-      if (C.catatan.length) { baris.push(brs('Catatan toko', '', undefined, 'kel')); C.catatan.forEach((c) => baris.push(brs(c.jenisNama + ' · ' + c.merk + (c.jumlah ? ' · ' + String(c.jumlah).replace('.', ',') + ' ' + c.satuan : '') + (c.ket ? ' — ' + c.ket : ''), ''))); }
-      if (C.ditolak.length) { baris.push(brs('Ditolak saat datang (tidak diterima, tidak masuk tagihan)', '', undefined, 'kel')); C.ditolak.forEach((x) => baris.push(brs(x.merk + ' · ' + x.jumlahKarung + ' karung × ' + String(x.beratKarung).replace('.', ',') + ' kg' + (x.alasan ? ' — ' + x.alasan : ''), ''))); }
-      if (C.potongan.length) { baris.push(brs('Sudah dibukukan toko', '', undefined, 'kel')); C.potongan.forEach((x) => baris.push(brs(tanggalPendek(x.tanggal) + ' · ' + x.jenisNama + ' · ' + dKg(x.kg) + (x.alasan ? ' — ' + x.alasan : ''), -x.rp))); }
-      if (C.bebas.trim()) { baris.push(brs('Catatan', '', undefined, 'kel')); C.bebas.split('\n').filter((t) => t.trim()).forEach((t) => baris.push(brs(t.trim(), ''))); }
-      if (C.klaim) { baris.push(brs('Permintaan toko', '', undefined, 'kel')); baris.push(brs(C.klaim.caraNama + (C.klaim.catatan ? ' — ' + C.klaim.catatan : ''), C.klaim.cara === 'catat' || !C.klaim.nilai ? '' : C.klaim.nilai, undefined, C.klaim.cara === 'catat' ? '' : 'jumlah')); }
-      identitas = 'Dibuat dari catatan Barang masuk toko' + (C.timbang.ditimbang ? ' (' + C.timbang.ditimbang + ' dari ' + C.timbang.nBaris + ' baris ditimbang' + (C.timbang.baris.some((x) => x.perkiraan) ? '; yang bertanda "perkiraan" dihitung dari timbang sampel' : '') + ')' : '') + '. Nilai kurang timbang = kg kurang × harga beli per kg. Mohon dikonfirmasi.';
+    // Tahap 5 (owner 26 Nov 2026): isi suratnya disusun SATU penyusun (stok-catat-logika cpIsiSurat) — dipakai juga struk "catatan untuk pemasok" di kartu tanda terima
+    const S = (pilih ? cpIsiSurat(pilih) : null) || (DF[0] ? cpIsiSurat(DF[0].id) : null); const C = S ? S.C : null;
+    if (S) { judul = S.judul; sub = S.sub; S.baris.forEach((x) => baris.push(brs(x.nama, x.n, undefined, x.kelas))); identitas = S.identitas;
       if (!C.ada) tolak = 'Kedatangan ini belum punya catatan untuk pemasok — tulis dulu di Stok → Barang masuk → ketuk kedatangannya → Catatan untuk pemasok'; }
     else { sub = 'belum ada kedatangan yang perlu dicatat'; tolak = 'Belum ada kedatangan dengan catatan, timbang kurang, atau mutu AWAS'; } }
   // owner 7 Okt: daftar harga untuk pelanggan — dikelompokkan per merek; pilihan = kelompok satuan (jumlah harganya, bukan rupiah → teksN)

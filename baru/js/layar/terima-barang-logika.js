@@ -123,3 +123,23 @@ export function tbmGaris(d, kop, lembar, dicetak) {
 
 /** Dua lembar cetak: [LEMBAR PEMASOK, LEMBAR TOKO]. */
 export function tbmLembar(d, kop, dicetak) { return [tbmGaris(d, kop, 'pemasok', dicetak), tbmGaris(d, kop, 'toko', dicetak)]; }
+
+/**
+ * Tahap 5 (owner 26 Nov 2026: "catatan bisa juga dicetak lewat tanda terima, tidak hanya melewati dokumen"): garis cetak STRUK "Catatan untuk pemasok" satu
+ * kedatangan. S = hasil cpIsiSurat (stok-catat-logika) — isi yang SAMA dengan Laporan › Dokumen kecil › Catatan untuk pemasok; di sini hanya ditata untuk kertas
+ * struk: judul kelompok = garis + huruf besar, baris berangka = angka di kanan (potongan yang sudah dibukukan bertanda minus). no = nomor tanda terimanya.
+ */
+export function tbmGarisCatatan(S, kop, no, dicetak) {
+  const g = []; const b = (kiri, kanan, o) => g.push(Object.assign({ kiri: String(kiri || ''), kanan: kanan === undefined || kanan === null ? '' : String(kanan) }, o || {}));
+  const K = kop || {}; const C = dicetak || {};
+  if (K.nama) b(String(K.nama).toUpperCase(), '', { tebal: true, tengah: true }); if (K.alamat) b(K.alamat, '', { tengah: true }); if (K.telp) b('Telp ' + K.telp, '', { tengah: true });
+  g.push({ garis: true }); b('CATATAN UNTUK PEMASOK', '', { tebal: true, tengah: true }); if (no) b('Tanda terima No. ' + no, '', { tengah: true });
+  g.push({ garis: true }); String(S.sub || '').split(' \u00b7 ').filter(Boolean).forEach((t, i) => b(i === 0 ? 'Kepada: ' + t : t, '', i === 0 ? { tebal: true } : {}));
+  (S.baris || []).forEach((x) => { const adaN = x.n !== '' && x.n !== null && x.n !== undefined;
+    if (x.kelas === 'kel') { g.push({ garis: true }); b(String(x.nama).toUpperCase(), '', { tebal: true }); return; }
+    b(String(x.nama).replace(/^\s+/, '  '), adaN ? (x.n < 0 ? '-' + RP(-x.n) : RP(x.n)) : '', x.kelas === 'jumlah' ? { tebal: true } : {}); });
+  g.push({ garis: true }); b(S.identitas || '');
+  if (C.tanggal) b('Dicetak ' + tanggalPendek(C.tanggal) + (C.jam ? ' ' + C.jam : '') + (C.oleh ? ', ' + C.oleh : ''));
+  g.push({ garis: true }); b('Dari toko,', 'Diterima pemasok / supir,'); b(''); b(''); b('(............)', '(............)');
+  return g;
+}

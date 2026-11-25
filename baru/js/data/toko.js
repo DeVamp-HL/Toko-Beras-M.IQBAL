@@ -137,8 +137,9 @@ function eraBukuHitung(kecuali) {
 function bacaCadanganLokal() { return []; }   // cadangan lokal buatan sendiri tidak ada di sistem baru
 export function ambilSemuaBatch() { return ingatPerVersi('ambilSemuaBatch', () => bkSaring(_cache.batch)); }
 // ---------- potongan pemasok yang MENUNGGU pembelian berikutnya (Barang masuk Tahap 4, owner 26 Nov 2026 — lihat stok-catat-logika, PT_TEMPAT 'berikut') ----------
-/** Potongan 'berikut' yang sudah dipakai kedatangan lain: { 'idKedatanganAsal|urutan': { tanggal, id } } (dibaca dari kolom potonganPakai kedatangan pemakainya). */
-export function potonganTerpakai() { const o = {}; ambilSemuaBatch().forEach((b) => { const p = b && b.potonganPakai; if (!p || !Array.isArray(p.dari)) return; p.dari.forEach((x) => { if (x) o[String(x.id) + '|' + Number(x.i)] = { tanggal: String(b.tanggal || ''), id: b.id }; }); }); return o; }
+/** Potongan 'berikut' yang sudah dipakai kedatangan lain: { 'idKedatanganAsal|urutan': { tanggal, selesai, id } } (dibaca dari kolom potonganPakai kedatangan pemakainya;
+ *  selesai = hari potongannya benar-benar dipakai: tanggal kedatangan pemakainya, atau hari owner menyetujui usul dari tablet — Tahap 5). */
+export function potonganTerpakai() { const o = {}; ambilSemuaBatch().forEach((b) => { const p = b && b.potonganPakai; if (!p || !Array.isArray(p.dari)) return; const selesai = String((p.disetujui && p.disetujui.tanggal) || b.tanggal || ''); p.dari.forEach((x) => { if (x) o[String(x.id) + '|' + Number(x.i)] = { tanggal: String(b.tanggal || ''), selesai, id: b.id }; }); }); return o; }
 /** Potongan pemasok yang belum dipakai & uangnya belum diterima, tertua dulu. pemasok tidak diisi = semua pemasok. → [{ id, i, pemasok, tanggalDatang, tanggal, jenis, kg, rp }] */
 export function potonganMenunggu(pemasok) {
   const k = pemasok === undefined || pemasok === null ? null : kunciPelanggan(String(pemasok)); const pk = potonganTerpakai(); const out = [];
@@ -146,6 +147,21 @@ export function potonganMenunggu(pemasok) {
     b.potongan.forEach((x, i) => { if (!x || x.tempat !== 'berikut' || x.dipakai || !(Number(x.tunggu) > 0) || pk[String(b.id) + '|' + i]) return;
       out.push({ id: b.id, i, pemasok: String(b.pemasok || ''), tanggalDatang: String(b.tanggal || ''), tanggal: String(x.tanggal || ''), jenis: x.jenis, kg: Number(x.kg) || 0, rp: Math.round(Number(x.tunggu)) }); }); });
   return out.sort((a, c) => a.tanggal.localeCompare(c.tanggal) || (Number(a.id) || 0) - (Number(c.id) || 0));
+}
+/**
+ * PIUTANG KE PEMASOK per tanggal (Barang masuk Tahap 5, owner 26 Nov 2026: "buatkan pos piutang ke pemasok di neraca"): potongan 'berikut' yang pada tanggal
+ * `sampai` (kosong = sekarang) SUDAH ADA dan BELUM dipakai / diterima. Lahir = tanggal KEDATANGAN asalnya — sejak hari itu kg & nilai kedatangannya di buku sudah
+ * turun (stok per tanggal ikut turun), padahal uangnya belum kembali. Selesai = tanggal kedatangan yang memakainya, atau tanggal uangnya dicatat diterima.
+ * → { rp, n (banyak potongan), daftar: [{ id, i, pemasok, tanggalDatang, rp }] }. Baca saja; mesin beku tidak diubah.
+ */
+export function piutangPemasokPada(sampai) {
+  const s = sampai || null; const pk = potonganTerpakai(); const daftar = [];
+  ambilSemuaBatch().forEach((b) => { if (!b || !Array.isArray(b.potongan)) return; const tgl = String(b.tanggal || ''); if (s && tgl > s) return;
+    b.potongan.forEach((x, i) => { if (!x || x.tempat !== 'berikut' || !(Number(x.tunggu) > 0)) return;
+      const u = pk[String(b.id) + '|' + i]; const selesai = x.dipakai ? String((x.dipakai && x.dipakai.tanggal) || '') : u ? String(u.selesai || u.tanggal || '') : null;
+      if (selesai !== null && (!s || selesai <= s)) return;
+      daftar.push({ id: b.id, i, pemasok: String(b.pemasok || ''), tanggalDatang: tgl, rp: Math.round(Number(x.tunggu)) }); }); });
+  return { rp: daftar.reduce((a, x) => a + x.rp, 0), n: daftar.length, daftar };
 }
 export function ambilBiayaBulanan() { return _cache.bulanan; }
 export function ambilPenjualanSemua() { return _cache.penjualan; }
@@ -234,7 +250,11 @@ export function ingatMerkDikenal() { return ingatPerVersi('merkDikenal', semuaMe
 // TANPA versi cache naik (tab lain, tutup hari), jadi titik kas yang sedang terbaca ikut KUNCI ingatan: titik berubah → dihitung ulang.
 export function ingatGerakanKas() { return ingatPerVersi('gerakanKas', daftarGerakanKas); }
 export function ingatKasPada(sampai) { return ingatPerVersi('kasPada|' + (sampai || '') + '|' + JSON.stringify(ambilTitikKas()), () => kasPada(sampai)); }
-export function ingatNeraca(sampai) { return ingatPerVersi('neraca|' + (sampai || '') + '|' + JSON.stringify(ambilTitikKas()), () => hitungNeraca(sampai)); }
+// Tahap 5 (owner 26 Nov 2026): + PIUTANG KE PEMASOK (potongan yang menunggu pembelian berikutnya) — ditambahkan DI SINI, satu pintu untuk semua pembaca neraca
+// (Laporan › Neraca, Pondasi, Kuartal, Menu, potret kunci bulan). Mesin beku hitungNeraca tidak diubah. Tanpa potongan menunggu objeknya PERSIS objek mesin
+// (tidak ada kolom baru), jadi neraca toko yang tidak punya potongan byte-sama dengan sebelumnya.
+export function ingatNeraca(sampai) { return ingatPerVersi('neraca|' + (sampai || '') + '|' + JSON.stringify(ambilTitikKas()), () => { const N = hitungNeraca(sampai); const P = piutangPemasokPada(sampai);
+  return P.rp > 0 ? Object.assign({}, N, { piutangPemasok: P.rp, nPiutangPemasok: P.n, total: N.total === null ? null : N.total + P.rp }) : N; }); }
 export function ambilRetur() { return _cache.retur; }
 export function ambilKarantina() { return _cache.karantina; }
 export function ambilPengeluaranHarian() { return _cache.harian; }

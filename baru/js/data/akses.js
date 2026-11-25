@@ -254,7 +254,10 @@ export function tindakanKiriman(D, jatahNego) {
   // rules v15 (owner 22 Nov 2026): kedatangan dari tablet = tindakan kedatangan (bukan isi ulang — batch LAHIR BUKU tetap isi ulang)
   if (baru.some((x) => x.koleksi === 'batchMasuk' && batchTablet(x.data))) t.kedatangan = 1;
   const adaWadah = ada('wadahLiteran') || baru.some((x) => x.koleksi === 'batchMasuk' && !batchTablet(x.data));
-  if (!jual.length) { if (adaWadah) t.isiUlang = 1; else if (ada('produksiKemasan') || ada('stokBahanKemasan') || ada('stokBahanLiteran')) t.adukan = 1; }
+  // Tahap 5 (owner 26 Nov 2026): pasangan BELI-JADI baris kemasan jadi kedatangan tablet (produksiKemasan beliJadi yang menunjuk kedatangan tablet di kiriman
+  // yang sama) bagian dari tindakan KEDATANGAN, bukan adukan — Penjaga laci yang kisi adukannya "tidak boleh" tetap bisa mencatat kemasan jadi dari pemasok
+  const beliJadiTablet = (x) => !!x && x.koleksi === 'produksiKemasan' && !!x.data && x.data.beliJadi === true && baru.some((y) => y.koleksi === 'batchMasuk' && batchTablet(y.data) && String(y.data.id) === String(x.data.dariBatch));
+  if (!jual.length) { if (adaWadah) t.isiUlang = 1; else if ((D || []).some((x) => x.koleksi === 'produksiKemasan' && !beliJadiTablet(x)) || ada('stokBahanKemasan') || ada('stokBahanLiteran')) t.adukan = 1; }
   return Object.keys(t);
 }
 

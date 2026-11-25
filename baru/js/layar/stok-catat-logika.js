@@ -567,7 +567,7 @@ export function susunSimpanMasuk(draf, w, yakin) {
     data.potongan = [{ jenis: 'klaim', saatDatang: true, tanggal: w.tanggal, jam: w.jam, kg: h.potongKg, rp: h.potongRp, alasan: String(draf.alasanPotong || '').trim().slice(0, 160) || 'kurang timbang saat datang',
       baris: pl.map((b) => ({ merk: b.merkPemasok || b.merkKetik || b.merk, kg: b.kgPotong, rp: Math.round(b.kgNota * b.hargaPerKg) - b.subtotalHarga })) }]; }
   // owner 7 Okt: nomor bon pemasok (noBon, pembetulan bon) ikut terbawa saat kedatangan dikoreksi
-  if (lama) { data.jam = lama.jam || w.jam; data.alasanKoreksi = String(draf.alasan).trim(); data.riwayat = (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([{ teks: 'dikoreksi: ' + String(draf.alasan).trim(), tanggal: w.tanggal, jam: w.jam }]); Object.keys(lama).forEach((k) => { if (data[k] === undefined && ['oleh', 'perangkat', 'catatan', 'noBon', 'dariTablet', 'hargaBeda', 'hargaJauh', 'merekBaru', 'bongkarTitipan', 'catatanPemasok', 'klaim', 'potongan', 'ditolak', 'potonganPakai'].indexOf(k) >= 0) data[k] = lama[k]; }); }   // owner 22 Nov 2026: tanda kedatangan tablet & upah bongkar titipan yang sudah ditulis ikut terbawa saat dikoreksi
+  if (lama) { data.jam = lama.jam || w.jam; data.alasanKoreksi = String(draf.alasan).trim(); data.riwayat = (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([{ teks: 'dikoreksi: ' + String(draf.alasan).trim(), tanggal: w.tanggal, jam: w.jam }]); Object.keys(lama).forEach((k) => { if (data[k] === undefined && ['oleh', 'perangkat', 'catatan', 'noBon', 'dariTablet', 'hargaBeda', 'hargaJauh', 'merekBaru', 'bongkarTitipan', 'catatanPemasok', 'klaim', 'potongan', 'ditolak', 'potonganPakai', 'usulPakaiPotong'].indexOf(k) >= 0) data[k] = lama[k]; }); }   // owner 22 Nov 2026: tanda kedatangan tablet & upah bongkar titipan yang sudah ditulis ikut terbawa saat dikoreksi
   else data.jam = w.jam;
   const tempo = cara === 'utang' && atur.tempoHari > 0 ? ' · jatuh tempo ' + atur.tempoHari + ' hari' : '';
   // varian: jenis beras ikut induknya (satu kunci baru di peta yang sama); harga jualnya ditawarkan layar sesudah tersimpan
@@ -987,6 +987,24 @@ export function cpDraf(id) {
     nilai: C.klaim && C.klaim.nilai ? String(C.klaim.nilai) : '', catatan: C.klaim ? C.klaim.catatan : '', bebas: C.bebas, dariUsul: !C.catatan.length && C.usul.length > 0 };
 }
 export const cpBarisKosong = () => ({ jenis: 'kurang', merk: '', jumlah: '', satuan: 'kg', ket: '' });
+/** Baris catatan yang benar-benar diisi (baris kosong dibuang). */
+export const cpBarisTerisi = (baris) => (Array.isArray(baris) ? baris : []).filter((r) => r && (String(r.merk || '').trim() || !ckKosong(r.jumlah) || String(r.ket || '').trim()));
+/**
+ * Periksa baris catatan untuk pemasok (satu aturan untuk lembar owner, lembar tablet & usul dari tablet): jenis sah; kurang / lebih / tertinggal WAJIB berjumlah
+ * > 0; mutu boleh tanpa jumlah tapi wajib keterangan. → { tolak } atau { catatan: [{ jenis, merk, jumlah, satuan, ket }] } (bentuk yang disimpan).
+ */
+export function cpPeriksaBaris(rows) {
+  if ((rows || []).length > CP_MAKS.baris) return { tolak: 'Paling banyak ' + CP_MAKS.baris + ' baris catatan per kedatangan' };
+  const catatan = []; for (let i = 0; i < rows.length; i++) { const r = rows[i]; const jenis = String(r.jenis || ''); const ket = String(r.ket || '').trim(); const merk = String(r.merk || '').trim(); const n = tmAngka(r.jumlah);
+    if (!CP_JENIS.some((j) => j[0] === jenis)) return { tolak: 'Baris ' + (i + 1) + ': pilih jenisnya (kurang, lebih, tertinggal, atau mutu)' };
+    if (!merk) return { tolak: 'Baris ' + (i + 1) + ': tulis barangnya' };
+    if (n !== null && !(n > 0)) return { tolak: 'Baris ' + (i + 1) + ': jumlah harus angka lebih dari 0' };
+    if (jenis !== 'mutu' && n === null) return { tolak: 'Baris ' + (i + 1) + ' (' + cpNama(CP_JENIS, jenis).toLowerCase() + '): jumlahnya belum diisi' };
+    if (jenis === 'mutu' && !ket) return { tolak: 'Baris ' + (i + 1) + ': tulis apa yang tidak sesuai mutunya' };
+    if (ket.length > CP_MAKS.ket) return { tolak: 'Baris ' + (i + 1) + ': keterangan paling panjang ' + CP_MAKS.ket + ' huruf' };
+    catatan.push({ jenis, merk: merk.slice(0, 60), jumlah: n === null ? 0 : ckB2(n), satuan: CP_SATUAN.some((x) => x[0] === r.satuan) ? r.satuan : 'kg', ket }); }
+  return { catatan };
+}
 /**
  * Simpan catatan untuk pemasok + klaim pada kedatangan itu. Baris: jenis sah; kurang / lebih / tertinggal WAJIB berjumlah > 0; mutu boleh tanpa jumlah tapi wajib
  * keterangan. Klaim: cara kosong = belum diklaim; nilai rupiah bulat ≥ 0 (kosong + ada timbang kurang → perkiraan dari timbang). Dokumen kedatangan disalin UTUH
@@ -996,16 +1014,8 @@ export function susunCatatanPemasok(id, isi, w) {
   const lama = ambilSemuaBatch().find((x) => String(x.id) === String(id)) || null; if (!lama) return { tolak: 'Kedatangan itu sudah tidak ada' };
   if (ccFondasi(lama) || lama.lahirBuku) return { tolak: 'Catatan stok awal / saldo pembuka bukan kedatangan dari pemasok' };
   const kunci = tolakKunci('batchMasuk', lama, 'catatan untuk pemasok kedatangan ini tidak bisa diubah'); if (kunci) return { tolak: kunci };
-  const rows = (isi && Array.isArray(isi.baris) ? isi.baris : []).filter((r) => r && (String(r.merk || '').trim() || !ckKosong(r.jumlah) || String(r.ket || '').trim()));
-  if (rows.length > CP_MAKS.baris) return { tolak: 'Paling banyak ' + CP_MAKS.baris + ' baris catatan per kedatangan' };
-  const catatan = []; for (let i = 0; i < rows.length; i++) { const r = rows[i]; const jenis = String(r.jenis || ''); const ket = String(r.ket || '').trim(); const merk = String(r.merk || '').trim(); const n = tmAngka(r.jumlah);
-    if (!CP_JENIS.some((j) => j[0] === jenis)) return { tolak: 'Baris ' + (i + 1) + ': pilih jenisnya (kurang, lebih, tertinggal, atau mutu)' };
-    if (!merk) return { tolak: 'Baris ' + (i + 1) + ': tulis barangnya' };
-    if (n !== null && !(n > 0)) return { tolak: 'Baris ' + (i + 1) + ': jumlah harus angka lebih dari 0' };
-    if (jenis !== 'mutu' && n === null) return { tolak: 'Baris ' + (i + 1) + ' (' + cpNama(CP_JENIS, jenis).toLowerCase() + '): jumlahnya belum diisi' };
-    if (jenis === 'mutu' && !ket) return { tolak: 'Baris ' + (i + 1) + ': tulis apa yang tidak sesuai mutunya' };
-    if (ket.length > CP_MAKS.ket) return { tolak: 'Baris ' + (i + 1) + ': keterangan paling panjang ' + CP_MAKS.ket + ' huruf' };
-    catatan.push({ jenis, merk: merk.slice(0, 60), jumlah: n === null ? 0 : ckB2(n), satuan: CP_SATUAN.some((x) => x[0] === r.satuan) ? r.satuan : 'kg', ket }); }
+  const rows = cpBarisTerisi(isi && isi.baris);
+  const PB = cpPeriksaBaris(rows); if (PB.tolak) return { tolak: PB.tolak }; const catatan = PB.catatan;
   const cara = String((isi && isi.cara) || ''); let klaim = null; const lamaK0 = cpBaca(lama).klaim;
   if (!cara && lamaK0 && lamaK0.dibukukan) return { tolak: 'Klaim ini sudah dibukukan (bon sudah dipotong) — tidak bisa dihapus dari catatan' };
   if (cara) {
@@ -1036,6 +1046,28 @@ export function cpDaftar(n) {
     out.push({ id: C.id, tanggal: C.tanggal, pemasok: C.pemasok, nCatatan: C.catatan.length + (C.bebas.trim() ? 1 : 0) + C.ditolak.length + C.potongan.length, nUsul: C.ada ? 0 : C.usul.length, klaim: C.klaim, nilaiKurang: C.nilaiKurang,
       terbuka: !!C.klaim && (C.klaim.status === 'diminta' || C.klaim.status === 'disetujui') && C.klaim.cara !== 'catat' }); });
   return out;
+}
+
+// ---------- SURAT "CATATAN UNTUK PEMASOK": SATU PENYUSUN (Tahap 5, owner 26 Nov 2026: "catatan bisa juga dicetak lewat tanda terima, tidak hanya melewati dokumen") ----------
+// Isi surat satu kedatangan — baris nota, hasil timbang / sampel, mutu, catatan toko, yang ditolak, yang sudah dibukukan, catatan bebas, permintaan toko — disusun
+// DI SINI dan dipakai dua kertas: Laporan › Dokumen › Dokumen kecil (berkop, A4 / PDF) dan struk di kartu tanda terima (terima-barang-logika tbmGarisCatatan).
+// Tidak ada angka yang dihitung selain yang sudah ada di catatannya. baris = [{ nama, n ('' = tanpa angka), kelas '' | 'kel' (judul kelompok) | 'jumlah' }].
+// bisaCetak = ada catatan / klaim / catatan bebas / baris ditolak / potongan tersimpan, ATAU ada usul dari timbang & mutu (kurang, lebih, mutu AWAS).
+export function cpIsiSurat(id, atur) {
+  const C = cpKedatangan(id, atur); if (!C) return null; const dKg = (n) => String(Math.round(n * 100) / 100).replace('.', ',') + ' kg';
+  const baris = []; const brs = (nama, n, saldo, kelas) => ({ nama, n: n === undefined ? '' : n, kelas: kelas || '' });
+  const sub = (C.pemasok || 'tanpa nama pemasok') + ' · barang datang ' + tanggalPendek(C.tanggal) + (C.noBon ? ' · bon No. ' + C.noBon : '') + (C.cara === 'utang' ? ' · bon' : ' · tunai');
+    baris.push(brs('Yang tertulis di nota', '', undefined, 'kel'));
+    C.timbang.baris.forEach((x) => { baris.push(brs((x.merkPemasok || x.merk) + ' · ' + dKg(x.kgNota) + ' @ ' + RP(x.hargaPerKg) + '/kg', Math.round(x.kgNota * x.hargaPerKg)));
+      if (x.timbangKg !== null) baris.push(brs('   ' + (x.perkiraan ? 'timbang sampel ' + x.sampel.karung + ' karung, rata-rata ' + String(x.sampel.rata).replace('.', ',') + ' kg per karung → perkiraan ' : 'ditimbang ') + dKg(x.timbangKg) + (x.selisihKg === null || x.selisihKg === 0 ? ' (pas)' : x.selisihKg < 0 ? ' — KURANG ' + dKg(-x.selisihKg) : ' — lebih ' + dKg(x.selisihKg)), ''));
+      if (x.awas.length) baris.push(brs('   mutu: ' + x.awas.join('; '), '')); });
+    if (C.catatan.length) { baris.push(brs('Catatan toko', '', undefined, 'kel')); C.catatan.forEach((c) => baris.push(brs(c.jenisNama + ' · ' + c.merk + (c.jumlah ? ' · ' + String(c.jumlah).replace('.', ',') + ' ' + c.satuan : '') + (c.ket ? ' — ' + c.ket : ''), ''))); }
+    if (C.ditolak.length) { baris.push(brs('Ditolak saat datang (tidak diterima, tidak masuk tagihan)', '', undefined, 'kel')); C.ditolak.forEach((x) => baris.push(brs(x.merk + ' · ' + x.jumlahKarung + ' karung × ' + String(x.beratKarung).replace('.', ',') + ' kg' + (x.alasan ? ' — ' + x.alasan : ''), ''))); }
+    if (C.potongan.length) { baris.push(brs('Sudah dibukukan toko', '', undefined, 'kel')); C.potongan.forEach((x) => baris.push(brs(tanggalPendek(x.tanggal) + ' · ' + x.jenisNama + ' · ' + dKg(x.kg) + (x.alasan ? ' — ' + x.alasan : ''), -x.rp))); }
+    if (C.bebas.trim()) { baris.push(brs('Catatan', '', undefined, 'kel')); C.bebas.split('\n').filter((t) => t.trim()).forEach((t) => baris.push(brs(t.trim(), ''))); }
+    if (C.klaim) { baris.push(brs('Permintaan toko', '', undefined, 'kel')); baris.push(brs(C.klaim.caraNama + (C.klaim.catatan ? ' — ' + C.klaim.catatan : ''), C.klaim.cara === 'catat' || !C.klaim.nilai ? '' : C.klaim.nilai, undefined, C.klaim.cara === 'catat' ? '' : 'jumlah')); }
+  const identitas = 'Dibuat dari catatan Barang masuk toko' + (C.timbang.ditimbang ? ' (' + C.timbang.ditimbang + ' dari ' + C.timbang.nBaris + ' baris ditimbang' + (C.timbang.baris.some((x) => x.perkiraan) ? '; yang bertanda "perkiraan" dihitung dari timbang sampel' : '') + ')' : '') + '. Nilai kurang timbang = kg kurang × harga beli per kg. Mohon dikonfirmasi.';
+  return { C, id: C.id, judul: 'Catatan untuk Pemasok', sub, baris, identitas, ada: C.ada, bisaCetak: C.ada || C.usul.length > 0 };
 }
 
 // ==================== TAHAP 2 (owner 26 Nov 2026): POTONG BON YANG MEMBUKUKAN & RETUR KE PEMASOK ====================
@@ -1162,6 +1194,47 @@ function ptSusunPakai(h, data, draf, cara, pemasok, w) {
   const dokumen = [{ koleksi: 'pengaturan', data: Object.assign({}, t, { id: 'titikKas', diubahPada: ptMajuSedikit(t.diubahPada), laci: (Number(t.laci) || 0) + P }) }];
   if (cara === 'utang') dokumen.push({ koleksi: 'utangPemasokMutasi', data: { id: w.idUnik(), tanggal: draf.tanggal, jam: w.jam, tipe: 'bayar', pemasok, nominal: P, catatan: 'Dipotong dari klaim / retur sebelumnya — bukan uang baru', bonId: String(data.id), bonTanggal: draf.tanggal, dari: 'laci', dariPotongan: true } });
   return { dokumen, kabar: 'memakai potongan ' + pemasok + ' ' + RP(P) + ' dari klaim / retur sebelumnya: ' + (cara === 'utang' ? 'bonnya tinggal ' + RP(nilai - P) : 'yang dibayar dari laci untuk barangnya ' + RP(nilai - P)) };
+}
+// ---------- Tahap 5 (owner 26 Nov 2026: "adakan juga di tablet"): PAKAI POTONGAN yang DIUSULKAN dari tablet ----------
+// Akun tablet (Penjaga laci) tidak menulis patokan kas maupun bayar bon. Di lembar tablet "potong di kedatangan ini" hanya menulis kolom `usulPakaiPotong`
+// { rp, dari: [{ id, i, rp, tanggal }] } pada kedatangannya (bon tetap PENUH, potongannya tetap menunggu) dan owner dikabari. OWNER yang memutuskan di sini:
+// setuju = jalan buku yang sama dengan ptSusunPakai untuk kedatangan BON: satu "bayar bon" sebesar potongan dari laci yang menunjuk bon itu, bertanggal HARI
+// DISETUJUI (bukan tanggal datang — hari yang sudah ditutup tidak diberi uang keluar susulan) + patokan laci + potongan → laci di buku tetap. Kalau hari ini pun
+// sudah ditutup (tanggal ≤ patokan kas), bayar bon itu tidak lagi dihitung kas, jadi patokan tidak disentuh.
+/** Hitung usul pakai potongan kedatangan itu terhadap keadaan SEKARANG. → { ada, tolak, rp, dari, nilai, dibayar, sisaBon, dalamTitik, pemasok } */
+export function ptUsulPakai(id, hariIni) {
+  const b = ambilSemuaBatch().find((x) => String(x.id) === String(id)) || null; const u = b && b.usulPakaiPotong && typeof b.usulPakaiPotong === 'object' ? b.usulPakaiPotong : null;
+  const out = { ada: !!u, tolak: '', rp: 0, dari: [], nilai: 0, dibayar: 0, sisaBon: 0, dalamTitik: false, pemasok: b ? String(b.pemasok || '') : '', usulRp: u ? Math.round(Number(u.rp) || 0) : 0 };
+  if (!u) return Object.assign(out, { tolak: 'Kedatangan ini tidak punya usul pakai potongan' });
+  if (b.potonganPakai && Number(b.potonganPakai.rp) > 0) return Object.assign(out, { tolak: 'Kedatangan ini sudah dibayar dengan potongan pemasok' });
+  if (b.caraBayar !== 'utang') return Object.assign(out, { tolak: 'Usul pakai potongan hanya untuk kedatangan bon (kedatangan dari tablet selalu bon)' });
+  // yang dipakai = potongan pemasok itu yang MASIH menunggu sekarang dan memang disebut di usulnya (yang sudah terpakai di tempat lain tidak ikut)
+  const minta = {}; (Array.isArray(u.dari) ? u.dari : []).forEach((x) => { if (x) minta[String(x.id) + '|' + Number(x.i)] = true; });
+  out.dari = ptMenunggu(out.pemasok).filter((x) => minta[String(x.id) + '|' + x.i]); out.rp = out.dari.reduce((a, x) => a + x.rp, 0);
+  out.nilai = (b.merkList || []).reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0); out.dibayar = ckBayarBon(b).dibayar; out.sisaBon = out.nilai - out.dibayar;
+  const t = ptTitikSiap(); out.titik = t ? String(t.tanggal) : ''; out.tanggalBayar = String(hariIni || hariIniIso()); out.dalamTitik = !!t && out.tanggalBayar <= String(t.tanggal);
+  if (!(out.rp > 0)) return Object.assign(out, { tolak: 'Potongan yang diusulkan sudah tidak menunggu (sudah dipakai di kedatangan lain, atau uangnya sudah dicatat diterima)' });
+  if (out.rp > out.sisaBon) return Object.assign(out, { tolak: 'Potongan ' + RP(out.rp) + ' lebih besar dari sisa bon kedatangan ini ' + RP(out.sisaBon) + (out.dibayar ? ' (sudah dibayar ' + RP(out.dibayar) + ')' : '') + ' — catat uangnya diterima lewat kartu catatan kedatangan lamanya, atau pakai di kedatangan lain' });
+  if (!t) return Object.assign(out, { tolak: 'Patokan kas toko belum siap (belum pernah tutup hari) — tutup hari sekali dulu, baru potongan bisa dipakai' });
+  const kunci = tolakKunci('batchMasuk', b, 'kedatangan ini tidak bisa diubah; pakai potongannya di kedatangan lain'); if (kunci) return Object.assign(out, { tolak: kunci });
+  return out;
+}
+/** OWNER menyetujui usul pakai potongan dari tablet: kedatangan + potonganPakai, satu bayar bon sebesar potongan, patokan laci (bila harinya belum ditutup). */
+export function susunSetujuPakaiPotong(id, w) {
+  const H = ptUsulPakai(id, w.tanggal); if (H.tolak) return { tolak: H.tolak };
+  const b = ambilSemuaBatch().find((x) => String(x.id) === String(id)); const t = ptTitikSiap();
+  const data = Object.assign({}, b, { potonganPakai: { rp: H.rp, dari: H.dari.map((x) => ({ id: String(x.id), i: x.i, rp: x.rp, tanggal: x.tanggalDatang })), disetujui: { tanggal: w.tanggal, jam: w.jam } } }); delete data.usulPakaiPotong;
+  const dokumen = [{ koleksi: 'batchMasuk', data }, { koleksi: 'utangPemasokMutasi', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'bayar', pemasok: String(b.pemasok || '').trim(), nominal: H.rp, catatan: 'Dipotong dari klaim / retur sebelumnya — bukan uang baru', bonId: String(b.id), bonTanggal: String(b.tanggal), dari: 'laci', dariPotongan: true } }];
+  if (!H.dalamTitik) dokumen.push({ koleksi: 'pengaturan', data: Object.assign({}, t, { id: 'titikKas', diubahPada: ptMajuSedikit(t.diubahPada), laci: (Number(t.laci) || 0) + H.rp }) });
+  return { dokumen, hitung: H, patch: { kabar: 'Potongan ' + H.pemasok + ' ' + RP(H.rp) + ' dipakai di kedatangan ' + tanggalPendek(b.tanggal) + ' (usul dari tablet disetujui): bonnya tinggal ' + RP(H.sisaBon - H.rp) + '; tidak ada uang yang bergerak, laci di buku tetap'
+    + (H.dalamTitik ? ' (hari ini sudah ditutup — patokan kas tidak disentuh)' : ' (patokan laci ' + tanggalPendek(H.titik) + ' + ' + RP(H.rp) + ' mengimbangi bayar bon dari laci)') + '. Potongannya tidak lagi menunggu.', kabarAwas: false } };
+}
+/** OWNER tidak memakai usul itu: kolom usulnya dilepas, bon tetap penuh, potongannya tetap menunggu pembelian berikutnya. */
+export function susunLepasUsulPakai(id, w) {
+  const b = ambilSemuaBatch().find((x) => String(x.id) === String(id)) || null; if (!b || !b.usulPakaiPotong) return { tolak: 'Kedatangan ini tidak punya usul pakai potongan' };
+  const kunci = tolakKunci('batchMasuk', b, 'kedatangan ini tidak bisa diubah'); if (kunci) return { tolak: kunci };
+  const data = Object.assign({}, b); delete data.usulPakaiPotong;
+  return { dokumen: [{ koleksi: 'batchMasuk', data }], patch: { kabar: 'Usul pakai potongan di kedatangan ' + (b.pemasok || '') + ' ' + tanggalPendek(b.tanggal) + ' tidak dipakai — bonnya tetap penuh, potongannya tetap menunggu pembelian berikutnya.', kabarAwas: false } };
 }
 /** Potongan yang menunggu ternyata DIBAYAR pemasok dengan uang (bukan dipotong di belanja berikutnya): uangnya masuk laci / rekening lewat patokan kas. */
 export function susunTerimaPotongan(id, i, tempat, w) {
