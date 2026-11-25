@@ -47,7 +47,9 @@ export function tbmNomor(batch) {
 export function tbmData(batch, bayar) {
   const B = bayar || {};
   const baris = (batch.merkList || []).map((m) => { const bal = m.bentuk === 'bal';
-    return { nama: String(m.merk || ''), namaPemasok: String(m.merkPemasok || ''), bal, kemasan: bal && !!m.kemasanJadi, jumlah: bal ? bil(m.jumlahBal) : bil(m.jumlahKarung), berat: bal ? (m.kemasanJadi ? bil(m.ukuranBag) : 0) : bil(m.beratKarung), kg: bil(m.totalKg), nilai: bil(m.subtotalHarga) }; });
+    return { nama: String(m.merk || ''), namaPemasok: String(m.merkPemasok || ''), bal, kemasan: bal && !!m.kemasanJadi, jumlah: bal ? bil(m.jumlahBal) : bil(m.jumlahKarung), berat: bal ? (m.kemasanJadi ? bil(m.ukuranBag) : 0) : bil(m.beratKarung), kg: bil(m.totalKg), nilai: bil(m.subtotalHarga),
+      // Tahap 6 (owner 25 Nov 2026): baris "stok ikut timbang" — kg yang dibukukan = hasil timbang; nota tetap jumlah × isi karung (uang dari nota)
+      ikut: !bal && bil(m.kgTerima) > 0, kgNota: bal ? bil(m.totalKg) : Math.round(bil(m.jumlahKarung) * bil(m.beratKarung) * 100) / 100 }; });
   const nilai = Math.round(baris.reduce((a, x) => a + x.nilai, 0));
   const jumlah = { karung: baris.reduce((a, x) => a + (x.bal ? 0 : x.jumlah), 0), bal: baris.reduce((a, x) => a + (x.bal && !x.kemasan ? x.jumlah : 0), 0), kemasan: baris.reduce((a, x) => a + (x.kemasan ? x.jumlah : 0), 0), kg: Math.round(baris.reduce((a, x) => a + x.kg, 0) * 100) / 100 };
   const bon = batch.caraBayar === 'utang';
@@ -95,7 +97,8 @@ export function tbmGaris(d, kop, lembar, dicetak) {
   b('Datang: ' + tanggalPendek(d.tanggal) + (d.jam ? ' ' + d.jam : ''));
   b('Dari: ' + d.pemasok, '', { tebal: true });
   g.push({ garis: true });
-  d.baris.forEach((x) => b(x.nama + (x.namaPemasok ? ' (' + x.namaPemasok + ')' : ''), x.kemasan ? x.jumlah + ' kemasan x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg) : x.bal ? x.jumlah + ' bal' + (x.kg ? ' = ' + KG(x.kg) : '') : x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg)));
+  d.baris.forEach((x) => { b(x.nama + (x.namaPemasok ? ' (' + x.namaPemasok + ')' : ''), x.kemasan ? x.jumlah + ' kemasan x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg) : x.bal ? x.jumlah + ' bal' + (x.kg ? ' = ' + KG(x.kg) : '') : x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.ikut ? x.kgNota : x.kg));
+    if (x.ikut) b('  hasil timbang (dibukukan)', KG(x.kg)); });   // Tahap 6: stok ikut timbang — kg nota & kg yang dibukukan sama-sama tertulis
   g.push({ garis: true });
   b('JUMLAH', sebutJumlah(d.jumlah), { tebal: true });
   b('Nilai nota', RP(d.nilai), { tebal: true });

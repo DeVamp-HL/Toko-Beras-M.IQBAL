@@ -46,6 +46,11 @@ HT_PEMAKAI = ('jual-logika.js', 'nego-logika.js', 'sistem-logika.js')
 KG_MODUL = 'baru/js/layar/kg-liter-logika.js'
 KG_PEMAKAI = ('jual-logika.js', 'wadah-bernama-logika.js', 'harga-logika.js', 'harga-tingkat-logika.js', 'nego-logika.js', 'sistem-logika.js')
 
+# Tahap 6 (owner 25 Nov 2026, "stok ikut timbang"): berat ASLI karung per kedatangan — modul daun berat-asli-logika.js (hanya membaca data/toko.js), dipakai
+# Barang masuk & Cocokkan, Jual, dan retur. Ikut OTOMATIS (sekali, di belakang) bila salah satu pemakainya ada; fungsi terangkat, jadi urutan tidak menentukan.
+BA_MODUL = 'baru/js/layar/berat-asli-logika.js'
+BA_PEMAKAI = ('stok-catat-logika.js', 'jual-logika.js', 'retur-logika.js')
+
 
 # B2 (owner 17 Nov 2026): faktur bertempo & batas kredit — jual-logika (KR1, nomor faktur), bon-logika (alokasi bayar per faktur) memakai faktur-logika,
 # yang sendiri memakai harga-tingkat-logika. Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada.
@@ -122,6 +127,8 @@ def lengkapi(daftar):
         d.append(HT_MODUL)
     if any(os.path.basename(x) in KG_PEMAKAI for x in d) and not any(x.endswith('kg-liter-logika.js') for x in d):
         d.append(KG_MODUL)
+    if any(os.path.basename(x) in BA_PEMAKAI for x in d) and not any(x.endswith('berat-asli-logika.js') for x in d):
+        d.append(BA_MODUL)
     return d
 
 

@@ -121,7 +121,9 @@ export function mtSusunSimpan(draf, akun, w, yakin) {
   if (supir > 0) { const g = titip('bayarBon', supir, 'Bayar supir · ' + pemasok); if (g) return g; }
   // merek baru disebut di depan: teks kabar dipotong 500 huruf (TP_BATAS.pesan)
   const kms = h.kemasan.length ? ' + ' + h.kemasan.map((b) => b.jumlahKarung + ' kemasan ' + b.merk + ' ' + String(b.beratKarung).replace('.', ',') + ' kg').join(', ') : '';
-  const teksKabar = pemasok + ' · ' + h.karung + ' karung · ' + mtKg(h.kg) + kms + ' · ' + RP(nilai) + ' (bon)'
+  // Tahap 6 (owner 25 Nov 2026): stok ikut hasil timbang — kabar & kalimat menyebut kg nota dan kg yang dibukukan; bon tetap dari nota
+  const ikutT = h.ikutTimbang && h.ikutTimbang.baris ? ' (nota ' + mtKg(h.ikutTimbang.kgNota) + ' → dibukukan hasil timbang)' : '';
+  const teksKabar = pemasok + ' · ' + h.karung + ' karung · ' + mtKg(h.kg) + ikutT + kms + ' · ' + RP(nilai) + ' (bon)'
     + (usul ? ' · USUL: potong ' + RP(h.potongTunggu) + ' dari klaim / retur sebelumnya (bon jadi ' + RP(nilai - h.potongTunggu) + ') — setujui di Koreksi kedatangan' : '')
     + (h.kemasan.length ? ' · KEMASAN JADI masuk buku Kemasan — harga jualnya diatur owner' : '')
     + (PB.catatan.length ? ' · catatan untuk pemasok ' + PB.catatan.length + ' baris' + (cara ? ' (' + KLAIM_CARA.find((x) => x[0] === cara)[1].toLowerCase() + ')' : '') : '')
@@ -131,7 +133,7 @@ export function mtSusunSimpan(draf, akun, w, yakin) {
     + (h.potongKg > 0 ? ' · DIPOTONG ' + mtKg(h.potongKg) + ' (' + RP(h.potongRp) + ') karena kurang' : '') + (h.ditolak.length ? ' · DITOLAK: ' + h.ditolak.map((b) => (b.merkKetik || b.merk) + ' ' + b.jumlahKarung + ' karung').join(', ') : '')
     + (bongkar > 0 ? ' · bongkar ' + RP(bongkar) : '') + (ongkir > 0 ? ' · ongkos kirim ' + RP(ongkir) : '') + (supir > 0 ? ' · dibayar ke supir ' + RP(supir) : '');
   dokumen.push(tpDokKabarMasuk({ batchId: id, pemasok, nominal: nilai, teks: teksKabar, hargaBeda: beda }, akun, w));
-  const kabar = 'Barang masuk tersimpan: ' + pemasok + ' · ' + h.karung + ' karung · ' + mtKg(h.kg) + kms + ' · ' + RP(nilai) + ' — jadi BON pemasok, stok langsung bertambah.'
+  const kabar = 'Barang masuk tersimpan: ' + pemasok + ' · ' + h.karung + ' karung · ' + mtKg(h.kg) + ikutT + kms + ' · ' + RP(nilai) + ' — jadi BON pemasok (sesuai nota), stok langsung bertambah sebesar hasil timbang.'
     + (h.kemasan.length ? ' Kemasan jadi masuk buku Kemasan (dijual per kemasan); harga jualnya diatur owner.' : '')
     + (usul ? ' Potongan ' + RP(h.potongTunggu) + ' DIUSULKAN ke owner — bon dicatat penuh dulu, berkurang sesudah owner menyetujui.' : '')
     + (PB.catatan.length ? ' Catatan untuk pemasok tersimpan (' + PB.catatan.length + ' baris) — bisa dicetak dari kartu tanda terima.' : '')

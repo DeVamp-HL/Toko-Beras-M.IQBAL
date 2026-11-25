@@ -20,6 +20,8 @@ import { hariIniIso, RP, DESIMAL, LEBIH_AMBANG } from '../inti/format.js';
 import { nilaiSelisihKg } from '../mesin/modal-fifo.js';
 // B3 (owner 18 Nov 2026): ongkir antar menempel di satu baris nota — nilai retur dihitung tanpa ongkir (antar-logika ajDasarRetur membungkus rtDasarNota beku)
 import { ajDasarRetur } from './antar-logika.js';
+// Tahap 6 (owner 25 Nov 2026): retur tanpa nota = berat asli karung yang terakhir keluar
+import { baKgKembali } from './berat-asli-logika.js';
 
 /**
  * Modal FIFO (tinjauan 9 Okt): karung UTUH yang diretur kembali ke DEPAN antrean — rupiah yang dibatalkan dari modal laba = irisan itu SAAT retur
@@ -131,8 +133,9 @@ function susunDraf(s, w) {
     draf = { jenisAsal: 'kemasan', namaProduk: t.namaProduk, ukuranKemasan: uk, jumlahUnit: jml, totalKg: uk * jml };
   } else {
     // karung sebagian (41,5 kg dari sack 50): totalKg = kg sungguhan, jumlahKarung = pecahannya — mesin stok membaca totalKg
-    const berat = t.beratKarungAcuan || 50;
-    draf = { jenisAsal: 'karung', merkSumber: t.merkSumber, jumlahKarung: Math.round(jml / berat * 1000) / 1000, beratKarungAcuan: berat, totalKg: jml };
+    // Tahap 6: nota yang memotong berat ASLI karung (49,8 kg per "50 kg") — pecahan karung dihitung dari berat asli nota itu, bukan dari label
+    const berat = t.beratKarungAcuan || 50; const perKarung = Number(t.jumlahKarung) > 0 && Number(t.totalKg) > 0 ? Number(t.totalKg) / Number(t.jumlahKarung) : berat;
+    draf = { jenisAsal: 'karung', merkSumber: t.merkSumber, jumlahKarung: Math.round(jml / perKarung * 1000) / 1000, beratKarungAcuan: berat, totalKg: jml };
   }
   Object.assign(draf, { notaAsalId: String(t.id), notaAsalTanggal: t.tanggal || '', notaAsalKunci: rtKunciNota(t), hargaPerSatuanNota: d.perSatuan,
     satuanNota: d.satuan, jumlahDikembalikan: jml, nilaiDikembalikan: nilai, dasarHargaNota: d.dasar,
@@ -281,7 +284,7 @@ export function susunReturTanpaNota(s, w) {
   if (s.rtKondisi !== 'utuh' && s.rtKondisi !== 'tidak_utuh') return { tolak: 'Jawab dulu: barang yang kembali BOLEH DIJUAL LAGI? Layak → kembali ke stok; rusak/diragukan → Karantina' };
   const bebas = B.terjual - B.diretur;
   if (jml > bebas && !s.rtYakin) return { tolak: B.nama + ' cuma pernah terjual ' + String(B.terjual).replace('.', ',') + ' ' + B.satuan + ' (sudah diretur ' + String(B.diretur).replace('.', ',') + ') — retur ' + String(jml).replace('.', ',') + ' melebihi itu, mungkin salah ketik. Ketuk sekali lagi kalau memang benar.', perluYakin: true };
-  const draf = s.rtJenis === 'kemasan' ? { jenisAsal: 'kemasan', namaProduk: B.namaProduk, ukuranKemasan: B.ukuran, jumlahUnit: jml, totalKg: B.ukuran * jml } : { jenisAsal: 'karung', merkSumber: B.merk, jumlahKarung: jml, beratKarungAcuan: B.berat, totalKg: jml * B.berat };
+  const draf = s.rtJenis === 'kemasan' ? { jenisAsal: 'kemasan', namaProduk: B.namaProduk, ukuranKemasan: B.ukuran, jumlahUnit: jml, totalKg: B.ukuran * jml } : { jenisAsal: 'karung', merkSumber: B.merk, jumlahKarung: jml, beratKarungAcuan: B.berat, totalKg: baKgKembali(B.merk, B.berat, jml) };   // Tahap 6: berat asli karung yang terakhir keluar
   Object.assign(draf, { kondisi: s.rtKondisi, penyelesaian: s.rtPenyelesaian === 'tukar' ? 'tukar' : 'refund', catatan, id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tanpaNota: true });
   let uang = 0;
   if (draf.penyelesaian === 'refund') { const n = rupiah(s.rtNominal); if (!(n > 0)) return { tolak: 'Isi nominal uang yang dikembalikan — tanpa nota tidak ada yang bisa menghitungnya untukmu' }; draf.nominalRefund = n; uang = n; }
