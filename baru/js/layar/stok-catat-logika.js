@@ -16,7 +16,7 @@
 // Koleksi BARU milik sistem baru: aturanToko (angka kebijakan owner, id tetap) dan bukuHapus (jejak kedatangan yang dihapus, beralasan).
 import { hitungStokKarungPerMerk, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungHppMerkDalamBatch, hitungUtangPemasok } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, kunciKemasan, merkPunyaKarungBerat, batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah, petaBukuWadah, ambilProduksiBerlaku, kunciUkuran, petaUkuran, indukTerpisah, ukuranDigabung, namaSistemPemasok, ingatStokKarung, ingatStokKemasan, ambilTitikKas } from '../data/toko.js';
+import { potonganMenunggu, potonganTerpakai, ambilSemuaBatch, ambilUtangPemasokMutasi, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah, petaBukuWadah, ambilProduksiBerlaku, kunciUkuran, petaUkuran, indukTerpisah, ukuranDigabung, namaSistemPemasok, ingatStokKarung, ingatStokKemasan, ambilTitikKas } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { hppKeluarPerKg, nilaiSelisihKg } from '../mesin/modal-fifo.js';
 import { hitunganFisik, tumpukanGudang, aturWadah, pindahNama, semuaKarungTerbuka, karungUntukWadah, karungBelakang, beratKarungBuka, ckCocokTerakhir, ckKalimatMundur, kolamDitutup } from './jual-logika.js';
@@ -162,7 +162,7 @@ export function susunHapusUkuran(nilai, w) {
 }
 const ukBawaan = () => { const L = ukuranKarungPilihan(); return L.indexOf(50) >= 0 ? 50 : L[0]; };
 // paket brief 9 Okt: + isian timbang & mutu (opsional, kosong = belum ditimbang / tidak dicek)
-export function barisMasukKosong() { return { merk: '', jumlahKarung: '', beratKarung: ukBawaan(), hargaPerKg: '', kgPotong: '', timbangKg: '', kadarAir: '', kutu: '', bau: '', butirPatah: '', sampelKarung: '', sampelKg: '', kelasMutu: '', menir: '', kuning: '', butirLain: '', gabah: '' }; }
+export function barisMasukKosong() { return { masuk: '', merk: '', jumlahKarung: '', beratKarung: ukBawaan(), hargaPerKg: '', kgPotong: '', timbangKg: '', kadarAir: '', kutu: '', bau: '', butirPatah: '', sampelKarung: '', sampelKg: '', kelasMutu: '', menir: '', kuning: '', butirLain: '', gabah: '' }; }
 export function drafMasukKosong(w) { return { id: null, tanggal: w.tanggal, pemasok: '', caraBayar: 'tunai', bongkar: '', ongkir: '', catatanBebas: '', alasanPotong: '', baris: [barisMasukKosong()], alasan: '' }; }
 const ccFondasi = (b) => !!(b && (b.stokAwal || b.tutupBuku));
 /** Nama pemasok yang pernah dipakai, yang terbaru dulu (stok awal / tutup buku tidak ikut). */
@@ -339,6 +339,26 @@ export function rekapTimbangMutu(opsi) {
 // audit 39b no. 30: baris BAL (beli jadi, sistem lama) kedatangan yang dikoreksi TIDAK diubah dari sini — ikut tertulis APA ADANYA (hanya nomor barisnya).
 // Nilainya bagian bon / belanja kedatangan itu, dan bongkar tetap dibagi ke SEMUA baris termasuk bal (porsinya sudah di modal per bag pasangan beli-jadi) — sama dengan mesin.
 const ckBarisBal = (batch) => ((batch && batch.merkList) || []).filter((m) => m && m.bentuk === 'bal');
+// ---------- KEMASAN JADI DARI PEMASOK (owner 26 Nov 2026: karung kecil — 5 kg, 10 kg, 2,5 kg, … — boleh masuk buku KEMASAN dan dijual per kemasan) ----------
+// Bentuk dokumennya = baris BAL sistem lama, yang sudah dikenal mesin beku: baris kedatangan ber-`bentuk: 'bal'` (nilainya tetap bagian bon / belanja tunai,
+// dilewati buku beras per kg) + SATU dokumen produksi beli-jadi pasangannya (`beliJadi`, `dariBatch`) yang melahirkan unit di buku Kemasan TANPA memakai
+// beras karung maupun kantong. Modal per kemasan = (nilai baris + porsi bongkar & ongkos kirim menurut kg) ÷ jumlah kemasan — rumus hitungHppMerkDalamBatch.
+// Hanya kedatangan BARU di lembar owner; koreksi kedatangan membawa baris itu apa adanya (penjaga baris bal yang sudah ada).
+export const KJ_MAKS_UNIT = 100000;
+function ckBarisKemasan(b, i, aturMutu) {
+  const jumlah = ckAngka(b.jumlahKarung); const berat = ckAngka(b.beratKarung) || 0; const harga = ckAngka(b.hargaPerKg); const nama = String(b.merk || '').trim();
+  const terisi = !!nama || jumlah > 0 || harga > 0;
+  const masalah = !terisi ? '' : !nama ? 'nama kemasannya belum diisi' : nama.indexOf('|') >= 0 ? 'nama kemasan tidak boleh memakai garis tegak' : !(jumlah > 0) ? 'jumlah kemasannya belum diisi'
+    : Math.round(jumlah) !== jumlah ? 'jumlah kemasan harus bilangan bulat (kemasan dihitung per buah)' : jumlah > KJ_MAKS_UNIT ? 'jumlah kemasannya terlalu besar — periksa ketikannya' : !(harga > 0) ? 'harga beli per kg belum diisi'
+      : !(berat >= UK_BATAS.min && berat <= UK_BATAS.maks) ? 'isi kemasannya ' + ukD(berat) + ' kg — harus ' + ukD(UK_BATAS.min) + '–' + UK_BATAS.maks + ' kg' : '';
+  const totalKg = ckB2(jumlah * berat);
+  return { ke: i + 1, kemasan: true, merk: nama, merkSimpan: nama, merkKetik: nama, indukUkuran: '', merkAsal: '', varian: '', namaMutu: '', vr: { perlu: false }, jumlahKarung: jumlah, beratKarung: berat, hargaPerKg: harga, totalKg, kgNota: totalKg, kgPotong: 0,
+    subtotalHarga: Math.round(totalKg * harga), terisi, masalah, ditolak: false, alasanTolak: '', sah: false, kemasanSah: terisi && !masalah, hargaLalu: 0, baru: false, saranVarian: [], varianInduk: [], kelas: '', kelasAsal: '', kelasPilih: false,
+    keSendiri: false, merkPemasok: '', lalu: null, laluKelas: null, arah: null, kelasTanya: '', calonKelas: [], cek: tmBaris({}, 0, 0, aturMutu) };
+}
+/** Nama + ukuran kemasan jadi yang sudah ada di buku Kemasan (calon ketikan baris kemasan jadi), terbanyak stoknya dulu. */
+export function kjCalonNama() { const st = ingatStokKemasan(); const hit = {}; Object.keys(st).forEach((k) => { const x = st[k]; if (x && x.namaProduk) hit[x.namaProduk] = (hit[x.namaProduk] || 0) + Math.max(0, Number(x.sisaUnit) || 0); });
+  return Object.keys(hit).sort((a, b) => hit[b] - hit[a] || a.localeCompare(b)); }
 /** Hitung draf: tiap baris kg, subtotal, alokasi bongkar & HPP per kg (rumus hitungHppMerkDalamBatch sistem berjalan) + masalah per baris. */
 export function hitungMasuk(draf) {
   // putaran 27 (Bagian 5, owner 27 Sep): nama WADAH / kelas mutu (IR64 Apex dkk.) tidak pernah lagi dibukukan lewat barang masuk — kecuali nama wadah yang
@@ -358,6 +378,7 @@ export function hitungMasuk(draf) {
   const aturMutu = aturCatat();   // paket brief 9 Okt: ambang mutu owner, sekali per hitungan
   // Tahap 1 (owner 26 Nov 2026): ONGKOS KIRIM supir pemasok — masuk modal beras bersama upah bongkar (dibagi per kg, rumus mesin yang sama), tunai dari laci
   const bongkar = ckAngka(draf.bongkar); const ongkir = ckAngka(draf.ongkir); const baris = (draf.baris || []).map((b, i) => {
+    if (b.masuk === 'kemasan' && !draf.id) return ckBarisKemasan(b, i, aturMutu);
     const jumlah = ckAngka(b.jumlahKarung); const berat = ckAngka(b.beratKarung) || 50; const harga = ckAngka(b.hargaPerKg); const merkKetik = String(b.merk || '').trim();
     // paket brief 9 Okt (butir 6 & 7): isian timbang & mutu baris ini — catatan pemeriksaan, tidak mengubah kg / modal / bon
     const cek = tmBaris(b, jumlah * berat, harga, aturMutu);
@@ -402,8 +423,12 @@ export function hitungMasuk(draf) {
       merkKetik, baru, saranVarian, varianInduk, kelas: kelasBaris, kelasAsal, kelasPilih, keSendiri, merkPemasok, lalu, laluKelas, arah, kelasTanya, calonKelas: baru ? calonKelas : [], cek }; });
   const sah = baris.filter((b) => b.sah); const tolakDatang = baris.filter((b) => b.terisi && !b.masalah && b.ditolak);
   const bal = ckBarisBal(lamaB); const nilaiBal = bal.reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0);
-  const hpp = hitungHppMerkDalamBatch(sah.map((b) => ({ merk: b.merkSimpan, totalKg: b.totalKg, subtotalHarga: b.subtotalHarga })).concat(bal.map((m) => ({ merk: m.merk, totalKg: Number(m.totalKg) || 0, subtotalHarga: Number(m.subtotalHarga) || 0 }))), bongkar + ongkir);
+  const kms = baris.filter((b) => b.kemasanSah); const nilaiKemasan = kms.reduce((a, b) => a + b.subtotalHarga, 0);
+  const hpp = hitungHppMerkDalamBatch(sah.map((b) => ({ merk: b.merkSimpan, totalKg: b.totalKg, subtotalHarga: b.subtotalHarga })).concat(kms.map((b) => ({ merk: b.merk, totalKg: b.totalKg, subtotalHarga: b.subtotalHarga }))).concat(bal.map((m) => ({ merk: m.merk, totalKg: Number(m.totalKg) || 0, subtotalHarga: Number(m.subtotalHarga) || 0 }))), bongkar + ongkir);
   sah.forEach((b, i) => { b.alokasiBongkar = Math.round(hpp[i].alokasiBongkar); b.hppPerKg = hpp[i].hppPerKg; });
+  kms.forEach((b, j) => { const x = hpp[sah.length + j]; b.alokasiBongkar = Math.round(x.alokasiBongkar); b.hppPerKg = x.hppPerKg; b.hppPerUnit = ckB2((b.subtotalHarga + x.alokasiBongkar) / b.jumlahKarung); });
+  // potongan pemasok ini yang MENUNGGU pembelian berikutnya (lihat bagian "dipotong di pembelian berikutnya" di bawah) — ditawarkan di kedatangan baru
+  const tunggu = !draf.id && pemasokDraf ? ptMenunggu(pemasokDraf) : []; const potongTunggu = tunggu.reduce((a, x) => a + x.rp, 0); const pakaiPotong = !!draf.pakaiPotong && potongTunggu > 0;
   // paket KPI laba (butir 12): HPP per kg baris ini dibanding batas owner — TANDA saja (tegas `>`), kedatangan tetap boleh dicatat
   sah.forEach((b) => { const bt = ckBatasHpp(b.indukUkuran || b.merk, aturMutu.hppMaks); b.hppMaks = bt; b.lewatHppMaks = bt > 0 && b.hppPerKg > bt; });
   const karung = sah.reduce((a, b) => a + b.jumlahKarung, 0); const kg = ckB2(sah.reduce((a, b) => a + b.totalKg, 0)); const nilaiBeras = sah.reduce((a, b) => a + b.subtotalHarga, 0);
@@ -414,7 +439,8 @@ export function hitungMasuk(draf) {
   timbang.persen = timbang.kgNota > 0 ? Math.round(timbang.selisihKg / timbang.kgNota * 1000) / 10 : null;
   // klaim LANGSUNG saat datang (owner 26 Nov 2026): kg yang dipotong di lembar ini — nilai & kg baris sudah dari kg yang benar-benar datang
   const potongKg = ckB2(sah.reduce((a, b) => a + b.kgPotong, 0)); const potongRp = sah.reduce((a, b) => a + (b.kgPotong > 0 ? Math.round(b.kgNota * b.hargaPerKg) - b.subtotalHarga : 0), 0);
-  return { baris, sah, ditolak: tolakDatang, potongKg, potongRp, bongkar, ongkir, karung, kg, nilaiBeras, nilaiBal, total: nilaiBeras + nilaiBal + bongkar + ongkir, bermasalah: baris.filter((b) => b.terisi && b.masalah), tanyaVarian: sah.filter((b) => (b.vr.perlu || b.vr.arsip) && !b.varian), timbang,
+  return { baris, sah, kemasan: kms, nilaiKemasan, unitKemasan: kms.reduce((a, b) => a + b.jumlahKarung, 0), kgKemasan: ckB2(kms.reduce((a, b) => a + b.totalKg, 0)), tunggu, potongTunggu, pakaiPotong,
+    ditolak: tolakDatang, potongKg, potongRp, bongkar, ongkir, karung, kg, nilaiBeras, nilaiBal, total: nilaiBeras + nilaiKemasan + nilaiBal + bongkar + ongkir, bermasalah: baris.filter((b) => b.terisi && b.masalah), tanyaVarian: sah.filter((b) => (b.vr.perlu || b.vr.arsip) && !b.varian), timbang,
     lewatHppMaks: sah.filter((b) => b.lewatHppMaks) };
 }
 /** Susun dokumen kedatangan (baru, atau koreksi bila draf.id menunjuk batch yang ada). yakin = sudah ditanya soal karung sedikit / tanggal mundur. */
@@ -472,7 +498,7 @@ export function susunSimpanMasuk(draf, w, yakin) {
   if (namaSistemPemasok(pemasok)) return { tolak: '"' + pemasok + '" nama yang dipakai sistem, bukan pemasok — ketik nama pemasok yang mengirim barangnya' };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(draf.tanggal || ''))) return { tolak: 'Tanggal datangnya belum benar' };
   if (h.bermasalah.length) return { tolak: 'Baris ' + h.bermasalah.map((b) => b.ke + (b.merk ? ' (' + b.merk + ')' : '')).join(', ') + ': ' + h.bermasalah[0].masalah + ' — lengkapi atau kosongkan barisnya' };
-  if (!h.sah.length) return { tolak: 'Isi minimal satu baris: nama beras, jumlah karung, dan harga per kg' };
+  if (!h.sah.length && !h.kemasan.length && !(lama && ckBarisBal(lama).length)) return { tolak: 'Isi minimal satu baris: nama beras, jumlah karung, dan harga per kg' };
   if (h.bongkar < 0) return { tolak: 'Upah bongkar tidak boleh minus' };
   if (h.ongkir < 0) return { tolak: 'Ongkos kirim tidak boleh minus' };
   if (h.tanyaVarian.length && h.tanyaVarian[0].vr.arsip) { const x = h.tanyaVarian[0]; return { tolak: 'Baris ' + x.ke + ': ' + x.merk + ' sudah DIARSIPKAN — pilih dulu: PULIHKAN ' + x.merk + ' (sama barangnya, namanya tampil lagi) atau BEDA MUTU (jadi varian sendiri)', perluVarian: x.ke }; }
@@ -481,9 +507,11 @@ export function susunSimpanMasuk(draf, w, yakin) {
   const salahMutu = beda.find((b) => String(b.namaMutu || '').indexOf('\u00b7') >= 0); if (salahMutu) return { tolak: 'Baris ' + salahMutu.ke + ': nama mutu tidak boleh memakai titik tengah' };
   const kembar = h.sah.find((b, i) => h.sah.findIndex((x) => x.merkSimpan === b.merkSimpan && x.beratKarung === b.beratKarung && x.merkPemasok === b.merkPemasok) !== i);   // putaran 30: dua merek pemasok satu kelas tanpa wadah = dua baris sah
   if (kembar) return { tolak: kembar.merkSimpan + (kembar.merkPemasok ? ' (' + kembar.merkPemasok + ')' : '') + ' ' + kembar.beratKarung + ' kg tertulis dua kali — gabungkan jadi satu baris' };
+  const kembarK = h.kemasan.find((b, i) => h.kemasan.findIndex((x) => kunciKemasan(x.merk, x.beratKarung) === kunciKemasan(b.merk, b.beratKarung)) !== i);
+  if (kembarK) return { tolak: 'Kemasan ' + kembarK.merk + ' ' + ukD(kembarK.beratKarung) + ' kg tertulis dua kali — gabungkan jadi satu baris' };
   const kelasSalah = h.sah.find((b) => b.baru && b.kelasPilih && String(draf.baris[b.ke - 1].kelas || '').trim() && !b.kelas);
   if (kelasSalah) return { tolak: 'Baris ' + kelasSalah.ke + ' (' + kelasSalah.merkKetik + '): kelas "' + String(draf.baris[kelasSalah.ke - 1].kelas).trim() + '" tidak dikenal — pilih dari pil kelas, atau "tanpa kelas"' };
-  if (h.karung < atur.minKarung && !yakin) return { tolak: 'Cuma ' + h.karung + ' karung — biasanya satu mobil minimal ' + atur.minKarung + ' karung. Ketuk sekali lagi kalau memang benar', perluYakin: true };
+  if (h.sah.length && h.karung < atur.minKarung && !yakin) return { tolak: 'Cuma ' + h.karung + ' karung — biasanya satu mobil minimal ' + atur.minKarung + ' karung. Ketuk sekali lagi kalau memang benar', perluYakin: true };
   // putaran 31.3: kedatangan BARU bertanggal sebelum cocokkan terakhir nama itu → dua ketukan (koreksi kedatangan lama tidak ditanya: tanggalnya sudah ada)
   const mundur = lama ? '' : ckKalimatMundur(draf.tanggal, h.sah.map((b) => ({ nama: b.merkSimpan, cocok: ckCocokTerakhir(b.merkSimpan) })), 'datang');
   if (mundur && !yakin) return { tolak: mundur, perluYakin: true };
@@ -498,7 +526,7 @@ export function susunSimpanMasuk(draf, w, yakin) {
   if (balLama.length) {
     const kgLama = ckB2((lama.merkList || []).filter((m) => m && m.bentuk !== 'bal').reduce((a, m) => a + (Number(m.totalKg) || 0), 0));
     const ubah = [String(draf.tanggal) !== String(lama.tanggal || '') ? 'tanggal' : '', Math.round(h.bongkar + h.ongkir) !== Math.round(Number(lama.biayaBongkar) || 0) ? (Math.round(h.ongkir) !== ckOngkir(lama) && Math.round(h.bongkar) === Math.round(Number(lama.biayaBongkar) || 0) - ckOngkir(lama) ? 'ongkos kirim' : 'bongkar') : '', Math.abs(h.kg - kgLama) > 0.004 ? 'kg karung' : ''].filter(Boolean);
-    if (ubah.length) return { tolak: 'Kedatangan ini memuat ' + balLama.length + ' baris bal (beli jadi, catatan sistem lama) — ' + ubah.join(', ') + ' tidak bisa dikoreksi dari sini, karena modal per bag pasangan beli-jadinya ikut dihitung dari tanggal, bongkar & kg kedatangan ini dan tidak ikut dibetulkan. Harga karung, pemasok, dan cara bayar tetap bisa dikoreksi.' };
+    if (ubah.length) return { tolak: 'Kedatangan ini memuat ' + balLama.length + ' baris kemasan jadi (beli jadi) — ' + ubah.join(', ') + ' tidak bisa dikoreksi dari sini, karena modal per kemasan pasangan beli-jadinya ikut dihitung dari tanggal, bongkar & kg kedatangan ini dan tidak ikut dibetulkan. Harga karung, pemasok, dan cara bayar tetap bisa dikoreksi.' };
   }
   // tinjauan E1 (no. 3): koreksi yang memindah kg antar nama di buku yang sudah bergerak → ditolak + jalan lain (pindah buku / Cocokkan); tidak boleh stok hantu
   const geser = lama ? ckGeserKoreksi(lama, ckBarisGeser(h)) : null;
@@ -513,13 +541,22 @@ export function susunSimpanMasuk(draf, w, yakin) {
     // nilai bon yang TERTULIS = baris karung draf + baris bal lama yang ikut tertulis apa adanya (audit 39b no. 30)
     if (h.nilaiBeras + h.nilaiBal + 0.5 < bb.dibayar) return { tolak: ckKalimatBayar(bb) + ' — nilai bon sesudah koreksi ' + RP(h.nilaiBeras + h.nilaiBal) + ' lebih kecil; kelebihan ' + RP(bb.dibayar - h.nilaiBeras - h.nilaiBal) + ' akan pindah ke bon lain yang masih terbuka (atau jadi kelebihan bayar) tanpa uang baru. Periksa harga & jumlahnya (nilai bon boleh naik, tidak boleh di bawah yang sudah dibayar).' };
   }
+  // kedatangan yang MEMAKAI potongan pemasok (dibayar lebih sedikit dari nilainya): cara bayar, pemasok, tanggal dikunci; nilainya tidak boleh di bawah potongan itu
+  const pk = lama && lama.potonganPakai && Number(lama.potonganPakai.rp) > 0 ? Math.round(Number(lama.potonganPakai.rp)) : 0;
+  if (pk) { const kal = 'Kedatangan ini dibayar dengan potongan pemasok ' + RP(pk) + ' (klaim / retur sebelumnya)';
+    if (cara !== (lama.caraBayar === 'utang' ? 'utang' : 'tunai')) return { tolak: kal + ' — cara bayarnya tidak bisa diganti' };
+    if (pemasok !== String(lama.pemasok || '').trim()) return { tolak: kal + ' — nama pemasoknya tidak bisa diganti' };
+    if (String(draf.tanggal) !== String(lama.tanggal || '')) return { tolak: kal + ' — tanggal datangnya tidak bisa diubah' };
+    if (h.nilaiBeras + h.nilaiBal < pk) return { tolak: kal + ' — nilai barangnya sesudah koreksi ' + RP(h.nilaiBeras + h.nilaiBal) + ' lebih kecil dari potongan itu' }; }
   // biayaBongkar = yang DIBACA MESIN (modal per kg & uang keluar laci hari itu) = upah bongkar + ongkos kirim; ongkosKirim menyimpan bagian ongkirnya saja
   const data = { id: lama ? lama.id : w.idUnik(), tanggal: draf.tanggal, pemasok, biayaBongkar: h.bongkar + h.ongkir, caraBayar: cara,
     merkList: h.sah.map((b, i) => Object.assign({ id: String(i + 1), merk: b.merkSimpan, satuan: 'karung', jumlahKarung: b.jumlahKarung, beratKarung: b.beratKarung, totalKg: b.totalKg, hargaPerKg: b.hargaPerKg, subtotalHarga: b.subtotalHarga },
       b.indukUkuran ? { indukUkuran: b.indukUkuran } : {}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {}, b.kgPotong > 0 ? { kgPotong: b.kgPotong } : {}))
       // paket brief 9 Okt: kolom timbang & mutu hanya yang diisi (kosong = tidak ditulis → kedatangan tanpa isian berbentuk lama persis)
       .map((r, i) => Object.assign(r, h.sah[i].cek.kolom))
-      .concat(ckBarisBal(lama).map((m, j) => Object.assign({}, m, { id: String(h.sah.length + j + 1) }))) };   // putaran 30: merkPemasok = keterangan merek pemasok pada kelas tanpa wadah; audit 39b no. 30: baris bal di belakang, apa adanya
+      .concat(h.kemasan.map((b, j) => ({ id: String(h.sah.length + j + 1), merk: b.merk, satuan: 'bal', bentuk: 'bal', kemasanJadi: true, ukuranBag: b.beratKarung, jumlahBal: b.jumlahKarung, isiPerBal: 1, jumlahPcs: b.jumlahKarung, totalKg: b.totalKg,
+        hargaPerBal: Math.round(b.beratKarung * b.hargaPerKg), hargaPerKg: b.hargaPerKg, subtotalHarga: b.subtotalHarga })))
+      .concat(ckBarisBal(lama).map((m, j) => Object.assign({}, m, { id: String(h.sah.length + h.kemasan.length + j + 1) }))) };   // putaran 30: merkPemasok = keterangan merek pemasok pada kelas tanpa wadah; audit 39b no. 30: baris bal di belakang, apa adanya
   if (h.ongkir > 0) data.ongkosKirim = h.ongkir;
   // Tahap 2: baris yang ditolak saat datang (tidak di merkList → tidak masuk stok / bon); catatan bebas owner untuk pemasok
   if (h.ditolak.length) data.ditolak = h.ditolak.map((b) => ({ merk: b.merkKetik || b.merk, jumlahKarung: b.jumlahKarung, beratKarung: b.beratKarung, kg: b.kgNota, hargaPerKg: b.hargaPerKg, nilai: Math.round(b.kgNota * b.hargaPerKg), alasan: b.alasanTolak.slice(0, 160) }));
@@ -530,11 +567,16 @@ export function susunSimpanMasuk(draf, w, yakin) {
     data.potongan = [{ jenis: 'klaim', saatDatang: true, tanggal: w.tanggal, jam: w.jam, kg: h.potongKg, rp: h.potongRp, alasan: String(draf.alasanPotong || '').trim().slice(0, 160) || 'kurang timbang saat datang',
       baris: pl.map((b) => ({ merk: b.merkPemasok || b.merkKetik || b.merk, kg: b.kgPotong, rp: Math.round(b.kgNota * b.hargaPerKg) - b.subtotalHarga })) }]; }
   // owner 7 Okt: nomor bon pemasok (noBon, pembetulan bon) ikut terbawa saat kedatangan dikoreksi
-  if (lama) { data.jam = lama.jam || w.jam; data.alasanKoreksi = String(draf.alasan).trim(); data.riwayat = (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([{ teks: 'dikoreksi: ' + String(draf.alasan).trim(), tanggal: w.tanggal, jam: w.jam }]); Object.keys(lama).forEach((k) => { if (data[k] === undefined && ['oleh', 'perangkat', 'catatan', 'noBon', 'dariTablet', 'hargaBeda', 'hargaJauh', 'merekBaru', 'bongkarTitipan', 'catatanPemasok', 'klaim', 'potongan', 'ditolak'].indexOf(k) >= 0) data[k] = lama[k]; }); }   // owner 22 Nov 2026: tanda kedatangan tablet & upah bongkar titipan yang sudah ditulis ikut terbawa saat dikoreksi
+  if (lama) { data.jam = lama.jam || w.jam; data.alasanKoreksi = String(draf.alasan).trim(); data.riwayat = (Array.isArray(lama.riwayat) ? lama.riwayat : []).concat([{ teks: 'dikoreksi: ' + String(draf.alasan).trim(), tanggal: w.tanggal, jam: w.jam }]); Object.keys(lama).forEach((k) => { if (data[k] === undefined && ['oleh', 'perangkat', 'catatan', 'noBon', 'dariTablet', 'hargaBeda', 'hargaJauh', 'merekBaru', 'bongkarTitipan', 'catatanPemasok', 'klaim', 'potongan', 'ditolak', 'potonganPakai'].indexOf(k) >= 0) data[k] = lama[k]; }); }   // owner 22 Nov 2026: tanda kedatangan tablet & upah bongkar titipan yang sudah ditulis ikut terbawa saat dikoreksi
   else data.jam = w.jam;
   const tempo = cara === 'utang' && atur.tempoHari > 0 ? ' · jatuh tempo ' + atur.tempoHari + ' hari' : '';
   // varian: jenis beras ikut induknya (satu kunci baru di peta yang sama); harga jualnya ditawarkan layar sesudah tersimpan
-  const dokumen = [{ koleksi: 'batchMasuk', data }]; const dj = vrDokJenis(beda.map((b) => ({ varian: b.merkSimpan, induk: b.merk })), w); if (dj) dokumen.push(dj);
+  const dokumen = [{ koleksi: 'batchMasuk', data }];
+  // kemasan jadi: satu dokumen beli-jadi per baris (pasangan baris bal di atas) — unitnya lahir di buku Kemasan, modal per kemasan sudah memuat porsi bongkar & ongkir
+  h.kemasan.forEach((b) => dokumen.push({ koleksi: 'produksiKemasan', data: { id: w.idUnik(), tanggal: draf.tanggal, jam: w.jam, namaProduk: b.merk, ukuranKemasan: b.beratKarung, jumlahUnit: b.jumlahKarung, hppPerUnit: b.hppPerUnit, modalPerUnit: b.hppPerUnit,
+    merkSumber: 'BELI JADI', kgDipakai: 0, hppSumberPerKgDipakai: 0, kantongJenis: null, kantongJumlah: 0, biayaKemasan: 0, upahRepacking: 0, beliJadi: true, dariBatch: data.id } }));
+  const sp = lama ? null : ptSusunPakai(h, data, draf, cara, pemasok, w); if (sp && sp.tolak) return { tolak: sp.tolak }; if (sp) sp.dokumen.forEach((x) => dokumen.push(x));
+  const dj = vrDokJenis(beda.map((b) => ({ varian: b.merkSimpan, induk: b.merk })), w); if (dj) dokumen.push(dj);
   // nama arsip yang dijawab "sama barangnya" dipulihkan di kiriman yang sama (juga varian yang pernah diarsipkan lalu datang lagi)
   const arsip = arPeta(); const pulih = h.sah.filter((b) => arsip[arKunciBeras(b.merkSimpan)]).map((b) => arKunciBeras(b.merkSimpan)); const dp = arDokPulihBanyak(pulih, w); if (dp) dokumen.push(dp);
   const varianBaru = beda.filter((b, i) => beda.findIndex((x) => x.merkSimpan === b.merkSimpan) === i).map((b) => ({ merk: b.merkSimpan, induk: b.merk, hargaBeli: b.hargaPerKg, modalKg: b.hppPerKg, baru: !vrAda(b.merkSimpan) }));
@@ -543,8 +585,9 @@ export function susunSimpanMasuk(draf, w, yakin) {
   const dk = kmDokKelas(kelasBaru, w); if (dk) dokumen.push(dk);
   const ketKelas = h.sah.filter((b) => b.baru && (b.kelas || b.keSendiri)).map((b) => b.keSendiri ? b.merkKetik + ' dibukukan sebagai ' + b.merk + ' (merek pemasok dicatat)' : b.merkKetik + ' → kelas ' + b.kelas + (b.kelasAsal === 'tebakan' ? ' (tebakan)' : ''));
   return { dokumen, hitung: h, varianBaru,
-    patch: { varianTawar: varianBaru.length ? varianBaru : null, kabar: (lama ? 'Koreksi tersimpan: ' : 'Barang masuk tersimpan: ') + pemasok + (pemasok !== pemasokKetik ? ' (ditulis dengan ejaan yang sudah dipakai, bukan "' + pemasokKetik + '")' : '') + ' · ' + h.karung + ' karung · ' + ckKG(h.kg) + ' · beras ' + RP(h.nilaiBeras) + (h.nilaiBal ? ' + baris bal ' + RP(h.nilaiBal) + ' (tidak diubah)' : '') + (h.bongkar ? ' + bongkar ' + RP(h.bongkar) : '') + (h.ongkir ? ' + ongkos kirim ' + RP(h.ongkir) : '')
+    patch: { varianTawar: varianBaru.length ? varianBaru : null, kabar: (lama ? 'Koreksi tersimpan: ' : 'Barang masuk tersimpan: ') + pemasok + (pemasok !== pemasokKetik ? ' (ditulis dengan ejaan yang sudah dipakai, bukan "' + pemasokKetik + '")' : '') + ' · ' + h.karung + ' karung · ' + ckKG(h.kg) + ' · beras ' + RP(h.nilaiBeras) + (h.kemasan.length ? ' + kemasan jadi ' + h.kemasan.map((b) => b.jumlahKarung + ' × ' + b.merk + ' ' + ukD(b.beratKarung) + ' kg').join(', ') + ' ' + RP(h.nilaiKemasan) + ' (masuk buku Kemasan, dijual per kemasan)' : '') + (h.nilaiBal ? ' + baris bal ' + RP(h.nilaiBal) + ' (tidak diubah)' : '') + (h.bongkar ? ' + bongkar ' + RP(h.bongkar) : '') + (h.ongkir ? ' + ongkos kirim ' + RP(h.ongkir) : '')
       + (!lama && h.potongKg > 0 ? ' · sudah dipotong ' + ukD(h.potongKg) + ' kg (' + RP(h.potongRp) + ') karena kurang — yang dibukukan kg yang benar-benar datang' : '')
+      + (sp ? ' · ' + sp.kabar : '')
       + (cara === 'utang' ? ' — jadi bon pemasok' + tempo : ' — tunai, keluar dari laci hari ini') + (h.bongkar || h.ongkir ? '; bongkar & ongkos kirim selalu tunai dari laci' : '') + '. Stok & modal tiap nama ikut berubah.'
       + (varianBaru.length ? ' Varian: ' + varianBaru.map((x) => x.merk + (x.baru ? ' (nama baru, jenis beras ikut ' + x.induk + ')' : ' (gabung ke varian yang sudah ada)')).join(', ') + ' — kolam lama tidak disentuh.' : '')
       + (dp ? ' Dipulihkan dari arsip: ' + pulih.map((k) => k.slice(2)).join(', ') + '.' : '') + (ketKelas.length ? ' Kelas: ' + ketKelas.join('; ') + '.' : ''), kabarAwas: false } };
@@ -657,7 +700,7 @@ export function daftarKedatangan(n) {
   return semua.slice(0, n || 30).map((b) => { const baris = (b.merkList || []); const karung = baris.reduce((a, m) => a + (m.satuan === 'karung' ? (Number(m.jumlahKarung) || 0) : 0), 0); const kg = ckB2(baris.reduce((a, m) => a + (Number(m.totalKg) || 0), 0));
     const nilai = baris.reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0) + (Number(b.biayaBongkar) || 0);
     return { id: b.id, tanggal: b.tanggal || '', jam: b.jam || '', pemasok: b.pemasok || (b.stokAwal ? 'stok awal' : b.tutupBuku ? 'saldo pembuka' : '—'), karung, kg, nilai, cara: b.caraBayar === 'utang' ? 'utang' : 'tunai', fondasi: ccFondasi(b), adaBal: baris.some((m) => m.bentuk === 'bal'),
-      ringkas: baris.map((m) => m.merk + (m.merkPemasok ? ' (' + m.merkPemasok + ')' : '') + ' ' + (m.bentuk === 'bal' ? (m.jumlahBal || 0) + ' bal' : (m.jumlahKarung || 0) + '×' + (m.beratKarung || '?'))).join(' · '), dikoreksi: !!b.alasanKoreksi, riwayat: Array.isArray(b.riwayat) ? b.riwayat : [],
+      ringkas: baris.map((m) => m.merk + (m.merkPemasok ? ' (' + m.merkPemasok + ')' : '') + ' ' + (m.bentuk === 'bal' ? (m.kemasanJadi ? (m.jumlahBal || 0) + ' kemasan ' + ukD(Number(m.ukuranBag) || 0) + ' kg' : (m.jumlahBal || 0) + ' bal') : (m.jumlahKarung || 0) + '×' + (m.beratKarung || '?'))).join(' · '), dikoreksi: !!b.alasanKoreksi, riwayat: Array.isArray(b.riwayat) ? b.riwayat : [],
       cek: tmKedatangan(b, A) }; });   // paket brief 9 Okt: ringkasan timbang & mutu kedatangan itu (cek.teks kosong = belum ditimbang & tidak dicek)
 }
 /** Bagian ONGKOS KIRIM dari biayaBongkar kedatangan itu (0 bila tidak dicatat; tidak pernah lebih besar dari biayaBongkar — sisanya upah bongkar). */
@@ -678,6 +721,11 @@ export function susunHapusKedatangan(id, alasan, w) {
   const lepas = ckGeserKoreksi(b, []); if (lepas.tolak) return { tolak: lepas.tolak, pembalik: 'cocok' };
   if (ckKosong(alasan)) return { tolak: 'Hapus kedatangan butuh alasan — supaya jejaknya bisa dibaca nanti' };
   const pasangan = ambilProduksi().filter((p) => String(p.dariBatch || '') === String(id));
+  // kemasan jadi kedatangan ini yang sudah terjual / terpakai: menghapusnya membuat buku Kemasan minus
+  const stK = pasangan.length ? ingatStokKemasan() : {}; const kurangK = pasangan.filter((p) => { const x = stK[kunciKemasan(p.namaProduk, p.ukuranKemasan)]; return (Number(p.jumlahUnit) || 0) > (x ? Number(x.sisaUnit) || 0 : 0) + 0.0001; });
+  if (kurangK.length) return { tolak: 'Kemasan jadi dari kedatangan ini sudah keluar (terjual / dipakai): ' + kurangK.map((p) => p.namaProduk + ' ' + ukD(Number(p.ukuranKemasan) || 0) + ' kg').join(', ') + ' — menghapusnya membuat buku Kemasan minus. Yang salah hitung: Stok › Cocokkan › Kemasan jadi', pembalik: 'cocok' };
+  if (b.potonganPakai && Number(b.potonganPakai.rp) > 0) return { tolak: 'Kedatangan ini dibayar dengan potongan pemasok ' + RP(Math.round(Number(b.potonganPakai.rp))) + ' — tidak bisa dihapus (potongannya sudah terpakai di sini). Koreksi saja isinya' };
+  if ((Array.isArray(b.potongan) ? b.potongan : []).some((x) => x && x.tempat === 'berikut')) return { tolak: 'Kedatangan ini punya potongan yang dipindah ke pembelian berikutnya — tidak bisa dihapus, supaya potongannya tidak hilang dari buku' };
   const k = daftarKedatangan(1e9).find((x) => String(x.id) === String(id));
   return { hapus: [{ koleksi: 'batchMasuk', id: b.id }].concat(pasangan.map((p) => ({ koleksi: 'produksiKemasan', id: p.id }))),
     dokumen: [{ koleksi: 'bukuHapus', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, koleksi: 'batchMasuk', idDok: String(b.id), tanggalDok: b.tanggal || '', pemasok: b.pemasok || '', ringkas: k ? k.ringkas + ' · ' + RP(k.nilai) : '', alasan: String(alasan).trim(), pasangan: pasangan.length } }],
@@ -848,7 +896,7 @@ function gandaBaruSaja(kunci, w, jendela) {
   const m1 = ckMenit(a.jam); const m2 = ckMenit(w.jam); return m1 !== null && m2 !== null && Math.abs(m2 - m1) <= jendela;
 }
 /** Susun dokumen cocokkan untuk semua baris yang dihitung dan selisihnya bukan nol. yakin = {aneh, susutPositif, sebagian, ganda}. */
-export function susunSimpanCocok(tab, hitung, alasan, w, yakin) {
+export function susunSimpanCocok(tab, hitung, alasan, w, yakin, sampel) {
   const atur = aturCatat(); const c = susunCocok(tab, hitung, alasan, yakin);
   if (c.tolak) return { tolak: c.tolak, perluYakin: c.perluYakin };
   const berubah = c.baris.filter((b) => b.ada && (b.selisih !== 0 || tab === 'wadah'));   // wadah: hitungan yang cocok persis tetap jadi titik samakan
@@ -857,8 +905,8 @@ export function susunSimpanCocok(tab, hitung, alasan, w, yakin) {
   if (tab === 'wadah') return ccSimpanWadah(c, berubah, w);
   const dokumen = berubah.map((b) => { const al = String(b.alasan || '').trim() || 'Cocokkan stok';
     // putaran 27: yang dihitung cuma TUMPUKAN — kgSistem/kgFisik = buku sebelum/sesudah (mesin membaca selisihKg), bagian*Kg = tumpukan tercatat/dihitung
-    if (b.tab === 'tumpukan') return { koleksi: 'penyesuaianStok', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk: b.nama, kgSistem: b.buku, kgFisik: ckB2(b.buku + b.selisih), selisihKg: b.selisih, alasan: al, nilaiRp: b.rp, hppPerKgSaatOpname: Math.round(b.modal),
-      bagian: 'tumpukan', bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung } };
+    if (b.tab === 'tumpukan') return { koleksi: 'penyesuaianStok', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk: b.nama, kgSistem: b.buku, kgFisik: ckB2(b.buku + b.selisih), selisihKg: b.selisih, alasan: al, nilaiRp: b.rp, hppPerKgSaatOpname: Math.round(b.modal),
+      bagian: 'tumpukan', bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung }, ((x) => (x && x.karung > 0 && x.kgSampel > 0 ? { sampel: { karung: Number(x.karung), kg: Number(x.kgSampel), isiKarung: Number(x.isiKarung) || 0, rata: Number(x.rata) || 0 } } : {}))((sampel || {})[b.kunci])) };
     if (b.tab === 'kemasan') return { koleksi: 'penyesuaianKemasan', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, namaProduk: b.namaProduk, ukuranKemasan: isFinite(Number(b.ukuranKemasan)) ? Number(b.ukuranKemasan) : b.ukuranKemasan, unitSistem: b.sistem, unitFisik: b.dihitung, selisihUnit: b.selisih, alasan: al, nilaiRp: b.rp, hppPerUnitSaatOpname: Math.round(b.modal) } };
     return { koleksi: b.koleksi, data: { id: w.idUnik(), tipe: 'opname', jenis: b.jenis, jumlah: b.selisih, hargaTotal: 0, tanggal: w.tanggal, jam: w.jam, pcsSistem: b.sistem, pcsFisik: b.dihitung, catatan: al, nilaiRp: b.rp, hargaPerPcsSaatOpname: Math.round(b.modal) } }; });
   const dampak = w.tanggal < MULAI_SUSUT_LABA ? 'Kas, laba, dan omzet tidak berubah.' : (c.susutRp ? 'Laba bulan ini turun ' + RP(-c.susutRp) + ' lewat baris "Susut & selisih stok". ' : '') + (c.lebihRp ? 'Stok naik ' + RP(c.lebihRp) + ' tanpa mengubah modal per kg. ' : '') + 'Kas dan omzet tidak bergerak.';
@@ -886,7 +934,7 @@ function ccSimpanWadah(c, berubah, w) {
 /** Hitungan fisik sebelumnya (semua jenis), dikelompokkan per tanggal+jam, terbaru dulu. */
 export function riwayatCocok(n) {
   const semua = [];
-  ambilPenyesuaianStok().forEach((d) => { if (hitunganFisik(d)) semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.merk + (d.bagian === 'wadah' ? (d.wadah ? ' (wadah ' + d.wadah + ')' : ' (karung lepas)') : d.bagian === 'tumpukan' ? ' (tumpukan)' : ''), teks: (d.selisihKg > 0 ? '+' : '') + String(Math.round((d.selisihKg || 0) * 100) / 100).replace('.', ',') + ' kg', rp: d.nilaiRp || 0, alasan: d.alasan || '' }); });
+  ambilPenyesuaianStok().forEach((d) => { if (hitunganFisik(d)) semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.merk + (d.bagian === 'wadah' ? (d.wadah ? ' (wadah ' + d.wadah + ')' : ' (karung lepas)') : d.bagian === 'tumpukan' ? ' (tumpukan' + (d.sampel && d.sampel.karung ? ' · sampel ' + d.sampel.karung + ' karung rata-rata ' + ukD(Number(d.sampel.rata) || 0) + ' kg' : '') + ')' : ''), teks: (d.selisihKg > 0 ? '+' : '') + String(Math.round((d.selisihKg || 0) * 100) / 100).replace('.', ',') + ' kg', rp: d.nilaiRp || 0, alasan: d.alasan || '' }); });
   ambilPenyesuaianKemasan().forEach((d) => semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.namaProduk + ' ' + String(d.ukuranKemasan).replace('.', ',') + ' kg', teks: (d.selisihUnit > 0 ? '+' : '') + (d.selisihUnit || 0) + ' unit', rp: d.nilaiRp || 0, alasan: d.alasan || '' }));
   ambilBahanKemasan().concat(ambilBahanLiteran()).forEach((d) => { if (d.tipe === 'opname' && !d.lahirKarungBekas && !d.nilaiKarungBekas) semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: ccLabelBahan(d.jenis), teks: (d.jumlah > 0 ? '+' : '') + (d.jumlah || 0) + ' lembar', rp: d.nilaiRp || 0, alasan: d.catatan || '' }); });
   const kel = {}; semua.forEach((x) => { const k = x.tanggal + ' ' + x.jam; if (!kel[k]) kel[k] = { kunci: k, tanggal: x.tanggal, jam: x.jam, baris: [], rp: 0 }; kel[k].baris.push(x); kel[k].rp += x.rp; });
@@ -912,9 +960,12 @@ export function cpBaca(b) {
   const klaim = k && KLAIM_CARA.some((x) => x[0] === k.cara) ? { cara: k.cara, caraNama: cpNama(KLAIM_CARA, k.cara), status: KLAIM_STATUS.some((x) => x[0] === k.status) ? k.status : 'diminta', nilai: Number(k.nilai) > 0 ? Math.round(Number(k.nilai)) : 0, catatan: String(k.catatan || ''), tanggal: String(k.tanggal || '') } : null;
   if (klaim) klaim.statusNama = cpNama(KLAIM_STATUS, klaim.status);
   const bebas = String((b && b.catatanBebas) || ''); const ditolak = (b && Array.isArray(b.ditolak) ? b.ditolak : []).filter((x) => x && x.merk).map((x) => ({ merk: String(x.merk), jumlahKarung: Number(x.jumlahKarung) || 0, beratKarung: Number(x.beratKarung) || 0, kg: Number(x.kg) || 0, nilai: Number(x.nilai) || 0, alasan: String(x.alasan || '') }));
-  const potongan = (b && Array.isArray(b.potongan) ? b.potongan : []).filter((x) => x && PT_JENIS[x.jenis]).map((x) => ({ jenis: x.jenis, saatDatang: !!x.saatDatang, uangKembali: Math.round(Number(x.uangKembali) || 0), tempat: ptTempat(x.tempat),
-    jenisNama: x.saatDatang ? 'dipotong saat datang (kurang timbang)' : Number(x.uangKembali) > 0 ? (x.jenis === 'retur' ? 'dikembalikan ke pemasok, uangnya kembali' : 'uang kembali dari pemasok (klaim kurang timbang)') : PT_JENIS[x.jenis], tanggal: String(x.tanggal || ''), kg: Number(x.kg) || 0, rp: Number(x.rp) || 0, alasan: String(x.alasan || ''), baris: Array.isArray(x.baris) ? x.baris : [] }));
+  const potongan = (b && Array.isArray(b.potongan) ? b.potongan : []).filter((x) => x && PT_JENIS[x.jenis]).map((x, i) => ({ i, jenis: x.jenis, saatDatang: !!x.saatDatang, uangKembali: Math.round(Number(x.uangKembali) || 0), tempat: ptTempat(x.tempat), tunggu: x.tempat === 'berikut' ? Math.round(Number(x.tunggu) || 0) : 0,
+    dipakai: x.dipakai && typeof x.dipakai === 'object' ? { tanggal: String(x.dipakai.tanggal || ''), cara: String(x.dipakai.cara || '') } : null,
+    jenisNama: x.tempat === 'berikut' ? (x.jenis === 'retur' ? 'dikembalikan ke pemasok, dipotong di pembelian berikutnya' : 'klaim kurang timbang, dipotong di pembelian berikutnya') : x.saatDatang ? 'dipotong saat datang (kurang timbang)' : Number(x.uangKembali) > 0 ? (x.jenis === 'retur' ? 'dikembalikan ke pemasok, uangnya kembali' : 'uang kembali dari pemasok (klaim kurang timbang)') : PT_JENIS[x.jenis], tanggal: String(x.tanggal || ''), kg: Number(x.kg) || 0, rp: Number(x.rp) || 0, alasan: String(x.alasan || ''), baris: Array.isArray(x.baris) ? x.baris : [] }));
   if (klaim && k.dibukukan && typeof k.dibukukan === 'object') klaim.dibukukan = { kg: Number(k.dibukukan.kg) || 0, rp: Number(k.dibukukan.rp) || 0, tanggal: String(k.dibukukan.tanggal || '') };
+  // potongan 'berikut' yang sudah dipakai kedatangan lain (tercatat di kedatangan pemakainya) ikut ditandai
+  if (b && potongan.some((x) => x.tunggu > 0 && !x.dipakai)) { const pk = ptTerpakai(); potongan.forEach((x) => { const u = pk[String(b.id) + '|' + x.i]; if (x.tunggu > 0 && !x.dipakai && u) x.dipakai = { tanggal: u.tanggal, cara: 'beli' }; }); }
   return { catatan, klaim, bebas, ditolak, potongan, ada: catatan.length > 0 || !!klaim || !!bebas.trim() || ditolak.length > 0 || potongan.length > 0 };
 }
 /**
@@ -1001,10 +1052,15 @@ export function cpDaftar(n) {
 // Owner 26 Nov 2026: "Eh bisa juga selain laci, yaitu rekening." → tempat uang kembali = laci | rekening (PT_TEMPAT). Belanja tunai di mesin selalu keluar dari
 // LACI, jadi uang kembali ke REKENING ditulis lewat patokan kas: kedatangan sudah termuat patokan → patokan rekening + uang kembali; belum termuat → laci di buku
 // naik sendiri (belanja mengecil) lalu dipindah ke rekening di patokan (laci − uang kembali, rekening + uang kembali; jumlah patokan tetap).
-export const PT_TEMPAT = [['laci', 'Laci'], ['rekening', 'Rekening']];
-const ptTempat = (t) => (t === 'rekening' ? 'rekening' : 'laci');
+// Owner 26 Nov 2026 ("lanjut sisa yang belum dibangun"): pilihan ketiga = DIPOTONG DI PEMBELIAN BERIKUTNYA — uangnya tidak kembali sekarang; pemasok memotongnya
+// dari belanja berikutnya. Saat dibukukan: kg & nilai kedatangan lama turun (stok benar hari itu juga), laci di buku TIDAK boleh naik (uangnya belum kembali):
+// kedatangan yang belum termuat patokan kas → patokan laci − potongan (menghapus kenaikan yang dibuat mesin); sudah termuat → patokan tidak disentuh.
+// Potongannya MENUNGGU (ptMenunggu) sampai dipakai di kedatangan baru pemasok itu (ptSusunPakai: patokan laci + potongan; kedatangan bon = ditambah satu
+// "bayar bon" sebesar potongan dari laci, sehingga laci tetap dan bonnya tinggal selisihnya) atau uangnya ternyata diterima (susunTerimaPotongan).
+export const PT_TEMPAT = [['laci', 'Laci'], ['rekening', 'Rekening'], ['berikut', 'Dipotong di pembelian berikutnya']];
+const ptTempat = (t) => (t === 'rekening' ? 'rekening' : t === 'berikut' ? 'berikut' : 'laci');
 /** Perubahan patokan kas untuk uang kembali rp ke tempat itu: { laci: Δ, rekening: Δ } (kosong = patokan tidak disentuh). */
-const ptUbahPatokan = (tempat, dalamTitik, rp) => (tempat === 'rekening' ? (dalamTitik ? { rekening: rp } : { laci: -rp, rekening: rp }) : (dalamTitik ? { laci: rp } : {}));
+const ptUbahPatokan = (tempat, dalamTitik, rp) => (tempat === 'berikut' ? (dalamTitik ? {} : { laci: -rp }) : tempat === 'rekening' ? (dalamTitik ? { rekening: rp } : { laci: -rp, rekening: rp }) : (dalamTitik ? { laci: rp } : {}));
 export const PT_JENIS = { klaim: 'bon dipotong (klaim kurang timbang)', retur: 'dikembalikan ke pemasok' };
 const ptSama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 /**
@@ -1031,8 +1087,9 @@ export function hitungPotong(id, daftar, jenis, tempat) {
     out.baris.push({ i, merk: m.merkPemasok || m.merk, buku: m.merk, kgNota: ckB2(kgLama + kgSudah), kgSudah, kgPotong: per[i], kgBaru, harga, rp: Math.round(kgLama * harga) - Math.round(kgBaru * harga) }); }
   out.kg = ckB2(out.baris.reduce((a, x) => a + x.kgPotong, 0)); out.rp = out.baris.reduce((a, x) => a + x.rp, 0);
   out.bonLama = (b.merkList || []).reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0); out.bonBaru = out.bonLama - out.rp; out.dibayar = ckBayarBon(b).dibayar;
-  if (out.tunai) { const t = ambilTitikKas(); out.uangKembali = out.rp; out.tempat = ptTempat(tempat); out.titik = t && t.tanggal ? String(t.tanggal) : ''; out.dalamTitik = !!out.titik && String(b.tanggal || '') <= out.titik;
-    out.ubahPatokan = ptUbahPatokan(out.tempat, out.dalamTitik, out.rp); const perlu = Object.keys(out.ubahPatokan).length > 0;
+  if (out.tunai) { const t = ambilTitikKas(); out.tempat = ptTempat(tempat); out.uangKembali = out.tempat === 'berikut' ? 0 : out.rp; out.tunggu = out.tempat === 'berikut' ? out.rp : 0; out.titik = t && t.tanggal ? String(t.tanggal) : ''; out.dalamTitik = !!out.titik && String(b.tanggal || '') <= out.titik;
+    out.ubahPatokan = ptUbahPatokan(out.tempat, out.dalamTitik, out.rp); const perlu = Object.keys(out.ubahPatokan).length > 0 || out.tempat === 'berikut';
+    if (out.tempat === 'berikut' && !out.titik) return Object.assign(out, { tolak: 'Patokan kas toko belum disetel (belum pernah tutup hari) — potongan untuk pembelian berikutnya belum bisa dicatat; pilih Laci, atau tutup hari sekali dulu' });
     if (perlu && !out.titik) return Object.assign(out, { tolak: 'Patokan kas toko belum disetel (belum pernah tutup hari) — uang kembali ke rekening belum bisa dicatat; pilih Laci, atau tutup hari sekali dulu' });
     if (perlu && !t.diubahPada) return Object.assign(out, { tolak: 'Patokan kas toko masih bentuk lama (tanpa jam pasang) — tutup hari sekali dulu, baru uang kembali dari pemasok bisa dicatat' }); }
   return out;
@@ -1049,12 +1106,15 @@ export function susunPotong(id, daftar, jenis, alasan, w, tempat) {
   const R = susunSimpanMasuk(draf, w, true); if (R.tolak) return { tolak: R.tolak };
   const data = R.dokumen[0].data; const lama = ambilSemuaBatch().find((x) => String(x.id) === String(id));
   data.potongan = (Array.isArray(lama.potongan) ? lama.potongan : []).concat([Object.assign({ jenis, tanggal: w.tanggal, jam: w.jam, kg: H.kg, rp: H.rp, alasan: ket.slice(0, 160), baris: H.baris.map((x) => ({ merk: x.merk, kg: x.kgPotong, rp: x.rp })) },
-    H.tunai ? { uangKembali: H.rp, tempat: H.tempat, kePatokan: Object.keys(H.ubahPatokan).length > 0 } : {})]);
+    H.tunai ? (H.tempat === 'berikut' ? { tempat: 'berikut', tunggu: H.rp, kePatokan: Object.keys(H.ubahPatokan).length > 0 } : { uangKembali: H.rp, tempat: H.tempat, kePatokan: Object.keys(H.ubahPatokan).length > 0 }) : {})]);
   if (H.tunai) {
     const dokumen = R.dokumen.slice();
     const ubah = H.ubahPatokan; const nmT = H.tempat === 'rekening' ? 'REKENING' : 'LACI';
     if (Object.keys(ubah).length) { const t = ambilTitikKas(); const baru = Object.assign({}, t, { id: 'titikKas', diubahPada: ptMajuSedikit(t.diubahPada) }); Object.keys(ubah).forEach((k) => { baru[k] = (Number(t[k]) || 0) + ubah[k]; }); dokumen.push({ koleksi: 'pengaturan', data: baru }); }
     if (jenis === 'klaim' && data.klaim) data.klaim = Object.assign({}, data.klaim, { status: 'selesai', dibukukan: { kg: H.kg, rp: H.rp, tanggal: w.tanggal } });
+    if (H.tempat === 'berikut') return { dokumen, hitung: H, patch: { cpDraf: null, ptYakin: null, rtDraf: null, kabar: (jenis === 'klaim' ? 'Klaim kurang timbang dibukukan: ' : 'Dikembalikan ke pemasok: ') + H.pemasok + ' · ' + tmD(H.kg) + ' kg · ' + RP(H.rp)
+      + ' DIPOTONG DI PEMBELIAN BERIKUTNYA — belanja tunai kedatangan itu ' + RP(H.bonLama) + ' → ' + RP(H.bonBaru) + '; uangnya belum kembali, jadi laci di buku tidak berubah'
+      + (H.dalamTitik ? '' : ' (patokan laci ' + tanggalPendek(H.titik) + ' diturunkan ' + RP(H.rp) + ' supaya laci di buku tidak naik)') + '. Stok ikut turun ' + tmD(H.kg) + ' kg. Potongannya ditawarkan saat barang ' + H.pemasok + ' berikutnya dicatat.', kabarAwas: false } };
     return { dokumen, hitung: H, patch: { cpDraf: null, ptYakin: null, rtDraf: null, kabar: (jenis === 'klaim' ? 'Uang kembali dari pemasok (klaim kurang timbang): ' : 'Dikembalikan ke pemasok, uangnya kembali: ') + H.pemasok + ' · ' + tmD(H.kg) + ' kg · ' + RP(H.rp)
       + ' masuk ' + nmT + ' — belanja tunai kedatangan itu ' + RP(H.bonLama) + ' → ' + RP(H.bonBaru)
       + (H.tempat === 'rekening' ? (H.dalamTitik ? '; hari itu sudah ditutup, jadi patokan rekening ' + tanggalPendek(H.titik) + ' dinaikkan ' + RP(H.rp) : '; hari itu belum ditutup: laci di buku naik sendiri lalu dipindah ke rekening di patokan kas ' + tanggalPendek(H.titik) + ' (laci tidak berubah, rekening naik ' + RP(H.rp) + ')')
@@ -1082,3 +1142,55 @@ export function susunPotongKlaim(id, w, tempat) { const H = hitungPotongKlaim(id
 export function susunReturPemasok(id, isi, w) { const n = tmAngka(isi && isi.kg); if (n === null || !(n > 0)) return { tolak: 'Berapa kg yang dikembalikan? Tulis angkanya' };
   return susunPotong(id, [{ merk: isi.merk, kg: n }], 'retur', isi.alasan, w, isi.tempat); }
 export const hitungReturPemasok = (id, isi) => { const n = tmAngka(isi && isi.kg); return n === null || !(n > 0) ? { tolak: 'Berapa kg yang dikembalikan? Tulis angkanya' } : hitungPotong(id, [{ merk: isi.merk, kg: n }], 'retur', isi.tempat); };
+
+// ---------- potongan pemasok yang MENUNGGU pembelian berikutnya ----------
+// potonganTerpakai / potonganMenunggu tinggal di data/toko.js (dibaca juga oleh daftar periksa tutup buku)
+export const ptMenunggu = (pemasok) => potonganMenunggu(pemasok);
+const ptTerpakai = () => potonganTerpakai();
+const ptTitikSiap = () => { const t = ambilTitikKas(); return t && t.tanggal && t.diubahPada ? t : null; };
+/**
+ * Kedatangan BARU yang memakai potongan menunggu pemasok itu (draf.pakaiPotong): yang dibayar = nilai barang − potongan. Mesin tetap mencatat nilai penuh
+ * (stok & modal benar), jadi selisihnya dikembalikan lewat patokan laci (+ potongan). Kedatangan BON: ditambah satu "bayar bon" sebesar potongan dari laci
+ * (laci − potongan, patokan + potongan → laci tetap; bon tinggal nilai − potongan). Jejaknya di kolom potonganPakai kedatangan baru. → null bila tidak dipakai.
+ */
+function ptSusunPakai(h, data, draf, cara, pemasok, w) {
+  if (!h.pakaiPotong) return null; const P = h.potongTunggu; const nilai = h.nilaiBeras + h.nilaiKemasan; const t = ptTitikSiap();
+  if (P > nilai) return { tolak: 'Potongan ' + pemasok + ' yang menunggu ' + RP(P) + ' lebih besar dari nilai barang kedatangan ini ' + RP(nilai) + ' — lepas centang "pakai potongan", atau catat uangnya diterima lewat kartu catatan kedatangan lamanya' };
+  if (!t) return { tolak: 'Patokan kas toko belum siap (belum pernah tutup hari) — potongan belum bisa dipakai; lepas centangnya dulu' };
+  if (String(draf.tanggal) <= String(t.tanggal)) return { tolak: 'Kedatangan ini bertanggal ' + tanggalPendek(draf.tanggal) + ', hari yang sudah ditutup (patokan kas ' + tanggalPendek(t.tanggal) + ') — potongan hanya bisa dipakai di kedatangan bertanggal sesudahnya; lepas centangnya, atau betulkan tanggalnya' };
+  data.potonganPakai = { rp: P, dari: h.tunggu.map((x) => ({ id: String(x.id), i: x.i, rp: x.rp, tanggal: x.tanggalDatang })) };
+  const dokumen = [{ koleksi: 'pengaturan', data: Object.assign({}, t, { id: 'titikKas', diubahPada: ptMajuSedikit(t.diubahPada), laci: (Number(t.laci) || 0) + P }) }];
+  if (cara === 'utang') dokumen.push({ koleksi: 'utangPemasokMutasi', data: { id: w.idUnik(), tanggal: draf.tanggal, jam: w.jam, tipe: 'bayar', pemasok, nominal: P, catatan: 'Dipotong dari klaim / retur sebelumnya — bukan uang baru', bonId: String(data.id), bonTanggal: draf.tanggal, dari: 'laci', dariPotongan: true } });
+  return { dokumen, kabar: 'memakai potongan ' + pemasok + ' ' + RP(P) + ' dari klaim / retur sebelumnya: ' + (cara === 'utang' ? 'bonnya tinggal ' + RP(nilai - P) : 'yang dibayar dari laci untuk barangnya ' + RP(nilai - P)) };
+}
+/** Potongan yang menunggu ternyata DIBAYAR pemasok dengan uang (bukan dipotong di belanja berikutnya): uangnya masuk laci / rekening lewat patokan kas. */
+export function susunTerimaPotongan(id, i, tempat, w) {
+  const b = ambilSemuaBatch().find((x) => String(x.id) === String(id)) || null; const x = ptMenunggu().find((p) => String(p.id) === String(id) && p.i === Number(i)) || null;
+  if (!b || !x) return { tolak: 'Potongan itu sudah tidak menunggu (sudah dipakai, atau uangnya sudah dicatat diterima)' };
+  const tp = tempat === 'rekening' ? 'rekening' : 'laci'; const t = ptTitikSiap(); if (!t) return { tolak: 'Patokan kas toko belum siap (belum pernah tutup hari) — tutup hari sekali dulu' };
+  const kunci = tolakKunci('batchMasuk', b, 'catatan potongan kedatangan ini tidak bisa diubah; pakai potongannya di pembelian berikutnya'); if (kunci) return { tolak: kunci };
+  const data = Object.assign({}, b, { potongan: b.potongan.map((p, n) => (n === x.i ? Object.assign({}, p, { dipakai: { tanggal: w.tanggal, jam: w.jam, cara: tp } }) : p)) });
+  const titik = Object.assign({}, t, { id: 'titikKas', diubahPada: ptMajuSedikit(t.diubahPada) }); titik[tp] = (Number(t[tp]) || 0) + x.rp;
+  return { dokumen: [{ koleksi: 'batchMasuk', data }, { koleksi: 'pengaturan', data: titik }], hitung: x,
+    patch: { ptTerima: null, kabar: 'Uang potongan ' + x.pemasok + ' ' + RP(x.rp) + ' diterima di ' + (tp === 'rekening' ? 'REKENING' : 'LACI') + ' — patokan ' + tp + ' ' + tanggalPendek(t.tanggal) + ' dinaikkan ' + RP(x.rp) + '; potongannya tidak lagi menunggu pembelian berikutnya.', kabarAwas: false } };
+}
+
+// ---------- TIMBANG SAMPEL SAAT OPNAME (owner 26 Nov 2026) ----------
+// Cocokkan › Tumpukan gudang: karung utuh dihitung per buah, tapi isinya bisa susut. Beberapa karung ditimbang → rata-rata per karung → dikalikan seluruh karung
+// yang dihitung. Hasilnya PERKIRAAN yang dipakai sebagai hitungan (owner mengetuk "PAKAI"); selisihnya dibukukan seperti hitungan biasa. isi = ketikan panel.
+export const CS_BATAS = { bawah: 0.8, atas: 1.05 };
+export function ccSampel(isi) {
+  const I = isi || {}; const k50 = ckAngka(I.karung); const k25 = ckAngka(I.karung25); const lepas = ckAngka(I.kg); const kosongS = ckKosong(I.sampelKarung) && ckKosong(I.sampelKg);
+  const kgKarung = k50 * 50 + k25 * 25; const tanpa = { ada: false, masalah: '', kg: ckB2(kgKarung + lepas), kgNota: ckB2(kgKarung + lepas), selisihKg: 0, rasio: 1 };
+  if (kosongS) return tanpa;
+  const n = tmAngka(I.sampelKarung); const kgS = tmAngka(I.sampelKg); const isiK = k50 > 0 ? 50 : 25; const nK = k50 > 0 ? k50 : k25;
+  const salah = (m) => Object.assign({}, tanpa, { ada: true, masalah: m });
+  if (n === null || kgS === null) return salah('timbang sampel: isi dua-duanya — berapa karung ditimbang dan berat seluruhnya');
+  if (!isFinite(n) || !isFinite(kgS) || !(n > 0) || !(kgS > 0) || Math.round(n) !== n) return salah('timbang sampel: jumlah karung bilangan bulat, beratnya angka lebih dari 0');
+  if (!(nK > 0)) return salah('timbang sampel: isi dulu jumlah karung utuh yang dihitung');
+  if (n > nK) return salah('timbang sampel: ' + n + ' karung ditimbang, padahal karung ' + isiK + ' kg yang dihitung cuma ' + nK);
+  const rata = kgS / n; const rasio = rata / isiK;
+  if (rasio < CS_BATAS.bawah || rasio > CS_BATAS.atas) return salah('timbang sampel: rata-rata ' + ukD(rata) + ' kg per karung ' + isiK + ' kg tidak masuk akal — periksa ketikannya (berat SELURUH sampel, bukan per karung)');
+  const kg = ckB2(kgKarung * rasio + lepas);
+  return { ada: true, masalah: '', karung: n, kgSampel: ckB2(kgS), isiKarung: isiK, rata: ckB2(rata), rasio, persen: Math.round((rasio - 1) * 1000) / 10, kgNota: ckB2(kgKarung + lepas), kg, selisihKg: ckB2(kg - kgKarung - lepas) };
+}

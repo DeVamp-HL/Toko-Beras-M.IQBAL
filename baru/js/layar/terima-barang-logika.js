@@ -47,12 +47,14 @@ export function tbmNomor(batch) {
 export function tbmData(batch, bayar) {
   const B = bayar || {};
   const baris = (batch.merkList || []).map((m) => { const bal = m.bentuk === 'bal';
-    return { nama: String(m.merk || ''), namaPemasok: String(m.merkPemasok || ''), bal, jumlah: bal ? bil(m.jumlahBal) : bil(m.jumlahKarung), berat: bal ? 0 : bil(m.beratKarung), kg: bil(m.totalKg), nilai: bil(m.subtotalHarga) }; });
+    return { nama: String(m.merk || ''), namaPemasok: String(m.merkPemasok || ''), bal, kemasan: bal && !!m.kemasanJadi, jumlah: bal ? bil(m.jumlahBal) : bil(m.jumlahKarung), berat: bal ? (m.kemasanJadi ? bil(m.ukuranBag) : 0) : bil(m.beratKarung), kg: bil(m.totalKg), nilai: bil(m.subtotalHarga) }; });
   const nilai = Math.round(baris.reduce((a, x) => a + x.nilai, 0));
-  const jumlah = { karung: baris.reduce((a, x) => a + (x.bal ? 0 : x.jumlah), 0), bal: baris.reduce((a, x) => a + (x.bal ? x.jumlah : 0), 0), kg: Math.round(baris.reduce((a, x) => a + x.kg, 0) * 100) / 100 };
+  const jumlah = { karung: baris.reduce((a, x) => a + (x.bal ? 0 : x.jumlah), 0), bal: baris.reduce((a, x) => a + (x.bal && !x.kemasan ? x.jumlah : 0), 0), kemasan: baris.reduce((a, x) => a + (x.kemasan ? x.jumlah : 0), 0), kg: Math.round(baris.reduce((a, x) => a + x.kg, 0) * 100) / 100 };
   const bon = batch.caraBayar === 'utang';
   let hasil;
-  if (!bon) hasil = { keadaan: 'tunai', dibayar: nilai, sisa: 0, rinci: [] };
+  // kedatangan yang memakai potongan pemasok (klaim / retur sebelumnya): yang dibayar = nilai nota − potongan
+  const potongan = Math.max(0, Math.min(nilai, Math.round(bil(batch.potonganPakai && batch.potonganPakai.rp))));
+  if (!bon) hasil = { keadaan: 'tunai', dibayar: nilai - potongan, sisa: 0, rinci: [] };
   else if (!B.terbaca) hasil = { keadaan: 'takTerbaca', dibayar: null, sisa: null, rinci: [] };
   else {
     // batas 0…nilai bukan penjepit diam: uang di atas nilai bon sudah mengalir ke bon lain dan bukan milik lembar ini (aturan ckBayarBon)
@@ -63,6 +65,7 @@ export function tbmData(batch, bayar) {
   }
   // owner 22 Nov 2026 (paket ③): uang yang dibayar ke supir lewat titipan tablet (belum / tidak terbaca di buku bon perangkat ini) — disebut apa adanya
   hasil.titipSupir = bon ? Math.max(0, Math.round(bil(B.titipSupir))) : 0;
+  hasil.potongan = potongan;
   return { no: tbmNomor(batch), tanggal: String(batch.tanggal || ''), jam: String(batch.jam || ''), pemasok: String(batch.pemasok || '').trim(), baris, jumlah, nilai, bon, bayar: hasil };
 }
 
@@ -76,7 +79,7 @@ export function tbmKalimatBayar(d) {
   return 'bon, sudah dibayar ' + RP(b.dibayar) + ', sisa ' + RP(b.sisa);
 }
 
-const sebutJumlah = (j) => [j.karung ? j.karung + ' karung' : '', j.bal ? j.bal + ' bal' : '', KG(j.kg)].filter(Boolean).join(', ');
+const sebutJumlah = (j) => [j.karung ? j.karung + ' karung' : '', j.kemasan ? j.kemasan + ' kemasan' : '', j.bal ? j.bal + ' bal' : '', KG(j.kg)].filter(Boolean).join(', ');
 
 /**
  * Garis cetak satu lembar. kop = { nama, alamat, telp } (setelan struk); lembar = 'pemasok' | 'toko' | '' (tanpa nama lembar: WhatsApp);
@@ -92,13 +95,14 @@ export function tbmGaris(d, kop, lembar, dicetak) {
   b('Datang: ' + tanggalPendek(d.tanggal) + (d.jam ? ' ' + d.jam : ''));
   b('Dari: ' + d.pemasok, '', { tebal: true });
   g.push({ garis: true });
-  d.baris.forEach((x) => b(x.nama + (x.namaPemasok ? ' (' + x.namaPemasok + ')' : ''), x.bal ? x.jumlah + ' bal' + (x.kg ? ' = ' + KG(x.kg) : '') : x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg)));
+  d.baris.forEach((x) => b(x.nama + (x.namaPemasok ? ' (' + x.namaPemasok + ')' : ''), x.kemasan ? x.jumlah + ' kemasan x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg) : x.bal ? x.jumlah + ' bal' + (x.kg ? ' = ' + KG(x.kg) : '') : x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg)));
   g.push({ garis: true });
   b('JUMLAH', sebutJumlah(d.jumlah), { tebal: true });
   b('Nilai nota', RP(d.nilai), { tebal: true });
   g.push({ garis: true });
   const y = d.bayar;
-  if (y.keadaan === 'tunai') { b('Cara bayar', 'TUNAI'); b('DIBAYAR', RP(d.nilai), { tebal: true }); b('Sisa', 'LUNAS', { tebal: true }); }
+  if (y.potongan > 0) b('Potongan klaim / retur lalu', RP(y.potongan));
+  if (y.keadaan === 'tunai') { b('Cara bayar', 'TUNAI'); b('DIBAYAR', RP(d.nilai - (y.potongan || 0)), { tebal: true }); b('Sisa', 'LUNAS', { tebal: true }); }
   else if (y.keadaan === 'takTerbaca') { b('Cara bayar', 'BON');
     if (y.titipSupir > 0) { b('Dibayar ke supir', RP(y.titipSupir), { tebal: true }); b('Sisa: Rp', TITIK); b('Bayar ke supir dicatat ke bon oleh pemilik toko. Sisa ditulis tangan, diparaf toko dan supir.'); }
     else { b('Dibayar: Rp', TITIK); b('Sisa: Rp', TITIK); b('Angka bayar ditulis tangan, diparaf toko dan supir.'); } }

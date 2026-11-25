@@ -29,7 +29,7 @@ function titipSupir(batch, terbaca) {
     && ((m.status || 'menunggu') === 'menunggu' || (!terbaca && m.status === 'disetujui'))).reduce((a, m) => a + (Number(m.nominal) || 0), 0));
 }
 
-const sebutJumlah = (j) => [j.karung ? j.karung + ' karung' : '', j.bal ? j.bal + ' bal' : '', KG(j.kg)].filter(Boolean).join(' · ');
+const sebutJumlah = (j) => [j.karung ? j.karung + ' karung' : '', j.kemasan ? j.kemasan + ' kemasan' : '', j.bal ? j.bal + ' bal' : '', KG(j.kg)].filter(Boolean).join(' · ');
 // modal tidak tampil di layar akun bukan-owner (keputusan 16 Nov: modal boleh di tablet asal tersembunyi) — di kertasnya nilai nota tetap ada
 const sebutBayarLayar = (d, staf) => (staf ? (d.bon ? 'bon' : 'tunai') : 'nilai nota ' + RP(d.nilai) + ' · ' + TBM.tbmKalimatBayar(d));
 

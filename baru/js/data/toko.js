@@ -136,6 +136,17 @@ function eraBukuHitung(kecuali) {
 }
 function bacaCadanganLokal() { return []; }   // cadangan lokal buatan sendiri tidak ada di sistem baru
 export function ambilSemuaBatch() { return ingatPerVersi('ambilSemuaBatch', () => bkSaring(_cache.batch)); }
+// ---------- potongan pemasok yang MENUNGGU pembelian berikutnya (Barang masuk Tahap 4, owner 26 Nov 2026 — lihat stok-catat-logika, PT_TEMPAT 'berikut') ----------
+/** Potongan 'berikut' yang sudah dipakai kedatangan lain: { 'idKedatanganAsal|urutan': { tanggal, id } } (dibaca dari kolom potonganPakai kedatangan pemakainya). */
+export function potonganTerpakai() { const o = {}; ambilSemuaBatch().forEach((b) => { const p = b && b.potonganPakai; if (!p || !Array.isArray(p.dari)) return; p.dari.forEach((x) => { if (x) o[String(x.id) + '|' + Number(x.i)] = { tanggal: String(b.tanggal || ''), id: b.id }; }); }); return o; }
+/** Potongan pemasok yang belum dipakai & uangnya belum diterima, tertua dulu. pemasok tidak diisi = semua pemasok. → [{ id, i, pemasok, tanggalDatang, tanggal, jenis, kg, rp }] */
+export function potonganMenunggu(pemasok) {
+  const k = pemasok === undefined || pemasok === null ? null : kunciPelanggan(String(pemasok)); const pk = potonganTerpakai(); const out = [];
+  ambilSemuaBatch().forEach((b) => { if (!b || !Array.isArray(b.potongan)) return; if (k !== null && kunciPelanggan(String(b.pemasok || '')) !== k) return;
+    b.potongan.forEach((x, i) => { if (!x || x.tempat !== 'berikut' || x.dipakai || !(Number(x.tunggu) > 0) || pk[String(b.id) + '|' + i]) return;
+      out.push({ id: b.id, i, pemasok: String(b.pemasok || ''), tanggalDatang: String(b.tanggal || ''), tanggal: String(x.tanggal || ''), jenis: x.jenis, kg: Number(x.kg) || 0, rp: Math.round(Number(x.tunggu)) }); }); });
+  return out.sort((a, c) => a.tanggal.localeCompare(c.tanggal) || (Number(a.id) || 0) - (Number(c.id) || 0));
+}
 export function ambilBiayaBulanan() { return _cache.bulanan; }
 export function ambilPenjualanSemua() { return _cache.penjualan; }
 export function ambilPenjualan() { return ingatPerVersi('ambilPenjualan', () => ambilPenjualanSemua().filter(penjualanMasihBerlaku)); }
