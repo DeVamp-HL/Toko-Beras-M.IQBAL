@@ -3930,12 +3930,35 @@ pemasok tetap sesuai nota; adukan tetap memotong kg yang diketik. Mesin beku tid
   tidak membacanya, rules tidak berubah (baris batch owner tidak diperiksa kolomnya). Buku tanpa kedatangan ikut timbang: baris PERSIS seperti dulu (cadangan 25 Nov:
   dokumen pembuka BYTE-SAMA dengan kode Tahap 6; sesudah pembetulan 25 Nov disimulasikan: 7 baris membawa `beratAsli`, tanpa kolom itu byte-sama).
   Batas yang diketahui: karung yang dihitung Cocokkan MELEBIHI buku (karung asal tak dikenal) sesudah tutup buku berfaktor potongan pertama, bukan kedatangan lama
-  yang sudah diarsip (sebelum ritual: kedatangan terlama). **Temuan terpisah (bukan dari perubahan ini, belum dibangun):** modal FIFO karung sisa juga diratakan saldo
-  pembuka (satu `hargaPerKg` per buku) — nota Januari yang tercatat SEBELUM ritual memotong modal kedatangan terlama, sesudah ritual sisa buku dinilai dari rata-rata,
-  jadi "periksa ulang" baris Stok beras bisa TIDAK SAMA (kotak pasir: selisih Rp5.085 pada 2 kedatangan bermodal per kg beda).
+  yang sudah diarsip (sebelum ritual: kedatangan terlama). Modal FIFO karung sisa: lihat butir berikut (dulu "temuan terpisah", sekarang dibangun).
   Uji: `uji_tutup_buku_bertahap.py` S-BERAT (tangan: 5 buku, ritual penuh, sebelum = sesudah untuk karung berikutnya, n karung, langit-langit, retur tanpa nota,
   tumpukan, rak Jual; tahun berikutnya; potongan rusak diabaikan) + 9 kontrol; ASAP SIAP 2027 membandingkan berat asli tiap buku dan menambah jalur "sesudah
   pembetulan timbang 25 Nov" (`--asap=`).
+- **Saldo pembuka membawa modal FIFO per kedatangan & nilai apa adanya** (owner 25 Nov 2026, dua kotak pilihan: "bangun per kedatangan" — bukan "ritual
+  sebelum jualan Januari" / "biarkan" — lalu "simpan apa adanya"; cabang `fitur/tutup-buku-modal-lapisan` di atas `fitur/tutup-buku-berat-asli`). Dulu sisa buku
+  31 Des ditulis SATU baris bernilai rata-rata FIFO yang dibulatkan ke rupiah: nota Januari yang tercatat SEBELUM ritual memotong modal kedatangan terlama, tapi
+  sesudah ritual sisa yang sama dinilai rata-rata → "periksa ulang" Stok beras TIDAK SAMA dan nota Januari sesudah ritual dimodali rata-rata (bukan terlama); dan
+  pembulatan rupiah per buku menggeser modal per kg sepersekian rupiah sehingga pembulatan per merek loncat Rp1 begitu ada nota Januari (terlihat juga di buku
+  bermodal tunggal). Sekarang (`tutup-buku-logika.js`, mesin & rules TIDAK berubah):
+  - `bkIrisanModal(st)` = sisa buku pada 31 Des sebagai irisan lapisan modal mesin (posKeluar … ujung jejeran, rupiah cara `mfIrisan`; sisa melebihi jejeran =
+    lapisan pertama; irisan bersebelahan bermodal sama digabung). Buku FIFO dengan > 1 irisan ditulis SATU BARIS PER IRISAN, terlama dulu — mesin sudah membaca
+    tiap baris batch sebagai lapisan sendiri (tanggal & id batch sama, urutan baris dipertahankan) dan menilai baris dari `subtotalHarga ÷ totalKg`. Karung
+    (`jumlahKarung`) dibawa baris pertama saja (Σ = dulu); `hargaPerKg` tetap rata-rata buku di semua baris (harga beli terakhir di layar tidak bergeser); berat asli
+    dibagi per irisan (`bkPotongBerat`, Σ potongan = kg baris, `keluar` hanya di potongan pertama baris pertama).
+  - `subtotalHarga` = nilai sisa APA ADANYA (rupiah pecahan, seperti `hppPerUnit` kemasan) untuk SEMUA buku → modal per kg sesudah ritual = sebelum ritual persis.
+    Rupiah tetap dibulatkan PER MEREK saat dijumlah: `barisBuku` (sudah) dan `sesudahDariPembuka` (sekarang per merek, langkah 4 & kartu pemeriksaan sesudah);
+    baris lama yang sudah bulat memberi jumlah yang sama persis.
+  - `ringkasPembuka` (berita acara) menggabung irisan berurutan satu buku jadi satu baris (kg dijumlah) — kartu pemeriksaan sesudah menghitung karung di rak &
+    tanda buku per buku seperti dulu.
+  Bukti: S-MODAL kotak pasir (saklar FIFO menyala; 3 buku: tiga irisan, satu modal berpecahan, irisan modal ≠ potongan berat; nota & kedatangan Januari sebelum
+  ritual) — hitungan tangan, langkah 4 & periksa ulang SAMA, per merek kg / rupiah / modal 50 & 120 kg berikutnya / berat karung berikutnya sebelum = sesudah, + 10
+  kontrol. ASAP cadangan 25 Nov: 6 jalur LULUS, termasuk dua jalur baru "nota Januari tiruan sebelum ritual" (sebelumnya periksa ulang TIDAK SAMA); dokumen pembuka
+  dibanding kode lama: dokumen selain batch beras & ringkasan berita acara byte-sama, langkah 4 sama, beberapa buku jadi 2 baris (Σ kg, rupiah dibulatkan, karung &
+  harga per kg = baris lama), baris tunggal hanya berbeda pecahan rupiah (< Rp0,5).
+  Batas yang diketahui (bukan dari perubahan ini): (1) saklar FIFO MATI (rata-rata) + kedatangan Januari sebelum ritual → periksa ulang bisa beda: rata-rata sejak
+  awal tidak bisa dibawa satu saldo pembuka (kotak pasir S-BERAT dengan modal per kg beda = Rp5.085 — dulu dikira FIFO; toko FIFO menyala sejak Okt). (2) kedatangan
+  BERTANGGAL 1 Jan yang dicatat sebelum ritual: id-nya lebih kecil dari batch pembuka (id = jam ritual), jadi mesin & berat asli mengurutkannya di DEPAN sisa tahun
+  lalu → periksa ulang beda. Keduanya hilang bila ritual dikerjakan 1 Jan dini hari sebelum catatan Januari apa pun (keputusan K3, 9 Okt).
 Alat uji: `uji_barang_masuk_baru.py` (212, kontrol 201 — skenario Tahap 1–5 ditimbang "pas" lewat `bundel_baru.TIMBANG_PAS`), `uji_masuk_tablet.py` (93, kontrol 50),
 `uji_jual_baru.py` (473, kontrol 260), `uji_terima_barang.py` (147, kontrol 49), uji lain yang menyimpan kedatangan memakai `bundel_baru.TIMBANG_PAS`;
 `peta_akses.py` (`susunBetulTimbang` terdaftar). Belum dicoba: menyimpan ke data toko, kasir darurat, cetak tanda terima di printer sungguhan.

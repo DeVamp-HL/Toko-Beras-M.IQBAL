@@ -267,18 +267,59 @@ export function titikTahun(tahun) {
 }
 /** 12 baris pada 31 Des tahun itu dengan titik kas tahun (layar K6, berita acara, susunKunci). */
 export function barisTahun(tahun) { const c = tbCutoff(tahun); return barisBuku(c, c, titikTahun(tahun)); }
-/** Dokumen saldo pembuka = persis tulisSaldoPembuka index.html (id dari w.idUnik). */
+// ---- MODAL FIFO MENYEBERANG TAHUN (owner 25 Nov 2026: "bangun per kedatangan" + "simpan apa adanya") ----
+// Dulu sisa buku 31 Des ditulis SATU baris bernilai rata-rata FIFO (hppTerakhirPerKg) yang dibulatkan ke rupiah. Nota Januari yang tercatat SEBELUM ritual
+// memotong modal kedatangan terlama, tapi sesudah ritual sisa yang sama dinilai rata-rata → "periksa ulang" Stok beras TIDAK SAMA, dan nota Januari sesudah
+// ritual dimodali rata-rata, bukan kedatangan terlama; pembulatan rupiah per buku juga menggeser modal per kg sepersekian rupiah (Rp1 loncat begitu ada nota
+// Januari). Sekarang: (1) buku FIFO yang sisanya dari beberapa lapisan bermodal beda ditulis SATU BARIS PER IRISAN modal, terlama dulu (urutan merkList =
+// urutan lapisan mesin: tanggal & id batch sama, urutan baris dipertahankan); (2) subtotalHarga = nilai sisa APA ADANYA (rupiah pecahan, seperti hppPerUnit
+// kemasan) untuk SEMUA buku — modal per kg sesudah ritual = sebelum ritual persis. Mesin & rules tidak berubah: mesin sudah membaca tiap baris batch sebagai
+// lapisan sendiri dan menilai baris dari subtotalHarga ÷ totalKg. Rupiah per merek tetap dibulatkan di barisBuku & sesudahDariPembuka (sama dengan neraca).
+/**
+ * Irisan modal sisa satu buku pada 31 Des (st = hitungStokKarungPerMerk(c)[merk]): [{ kg, harga, rp }] terlama dulu — rentang posKeluar … ujung jejeran
+ * lapisan mesin (modal-fifo.js), rupiah per lapisan = cara mfIrisan; sisa melebihi jejeran (posKeluar < 0) bermodal lapisan pertama. Irisan bersebelahan
+ * bermodal sama digabung. null = bukan FIFO / wadah / tanpa lapisan / sisa ≤ 0 / hanya satu modal → baris tunggal seperti dulu.
+ */
+export function bkIrisanModal(st) {
+  if (!st || st.metode !== 'fifo' || !Array.isArray(st.lapisan) || !st.lapisan.length || !(Number(st.sisaKg) > 0)) return null;
+  const L = st.lapisan; const T = L.reduce((a, l) => a + l.kg, 0); const P = Number(st.posKeluar) || 0; const out = [];
+  const taruh = (kg, harga) => { if (!(kg > 1e-9)) return; const a = out[out.length - 1];
+    if (a && Math.abs(a.harga - harga) < 1e-7) { a.kg += kg; a.rp += kg * harga; } else out.push({ kg, harga, rp: kg * harga }); };
+  if (P < 0) taruh(-P, L[0].harga);
+  let awal = 0; L.forEach((l) => { const a = Math.max(P, awal), b = Math.min(T, awal + l.kg); if (b > a) taruh(b - a, l.harga); awal += l.kg; });
+  return out.length > 1 ? out : null;
+}
+/**
+ * Potongan berat asli sisa buku (baSisaPada: terlama dulu, Σ = sisa) dibagi ke irisan modal (terlama dulu, Σ = sisa): tiap irisan mendapat potongan yang jatuh
+ * di rentangnya, Σ potongan = kg irisan (syarat baLapisan). `keluar` (karung terakhir keluar) hanya di potongan pertama irisan pertama — sama dengan baris tunggal.
+ */
+export function bkPotongBerat(irisan, ba) {
+  const out = irisan.map(() => []); let j = 0; let sisaB = ba.length ? Number(ba[0].kg) : 0;
+  irisan.forEach((s, i) => { let perlu = s.kg;
+    while (perlu > 1e-9 && j < ba.length) { const k = Math.min(perlu, sisaB);
+      if (k > 1e-9) { const p = { kg: k, faktor: ba[j].faktor, dari: ba[j].dari }; if (i === 0 && j === 0 && !out[0].length && ba[0].keluar !== undefined) p.keluar = ba[0].keluar; out[i].push(p); }
+      perlu -= k; sisaB -= k; if (sisaB <= 1e-9) { j += 1; sisaB = j < ba.length ? Number(ba[j].kg) : 0; } }
+    const jml = out[i].reduce((a, p) => a + p.kg, 0); if (out[i].length) out[i][out[i].length - 1].kg += s.kg - jml; });
+  return out;
+}
+/** Dokumen saldo pembuka = persis tulisSaldoPembuka index.html (id dari w.idUnik) — KECUALI beras: irisan modal FIFO & nilai pecahan (owner 25 Nov 2026, lihat di atas). */
 export function pembukaBuku(tahun, w) {
   const saldo = hitungSaldoTutup(tahun); const tglBuka = (tahun + 1) + '-01-01'; const d = []; const tb = { tutupBuku: true, tahunDari: tahun };
   // Tahap 3 barang masuk (owner 26 Nov 2026, isi karung bebas): merek yang TIDAK pernah datang 50 kg / 25 kg (mis. hanya karung 10 kg) dibuka dengan isi karung
   // kedatangan terakhirnya — bukan 50 kg, supaya tahun berikutnya tidak tiba-tiba "punya karung 50 kg". Merek ber-karung 50 / 25 kg: persis seperti dulu.
   const ukLain = (m) => { let t = ''; let n = 0; ambilSemuaBatch().forEach((b) => { const tg = String(b.tanggal || ''); if (tg > tahun + '-12-31') return;
     (b.merkList || []).forEach((r) => { if (r && r.merk === m && r.satuan === 'karung' && Number(r.beratKarung) > 0 && Number(r.jumlahKarung) > 0 && tg >= t) { t = tg; n = Number(r.beratKarung); } }); }); return n; };
+  const c = tbCutoff(tahun); const stokK = hitungStokKarungPerMerk(c);
   const merkList = []; saldo.karung.forEach((x) => { const beratUtama = x.punya25 && !x.punya50 ? 25 : (!x.punya50 && !x.punya25 && !merkPunyaKarungBerat(x.merk, 50) && ukLain(x.merk)) || 50;
     // Tahap 6 (owner 25 Nov 2026, "bawa berat asli"): sisa buku yang berasal dari kedatangan ikut timbang membawa potongan lapisannya (`beratAsli`, terlama
-    // dulu, faktor = kg timbang ÷ kg nota) — karung sisa tetap keluar dengan berat aslinya sesudah tahun ditutup. Buku tanpa kedatangan ikut timbang: baris persis seperti dulu
-    const ba = baSisaPada(x.merk, tbCutoff(tahun), x.sisaKg);
-    merkList.push(Object.assign({ merk: x.merk, satuan: 'karung', beratKarung: beratUtama, jumlahKarung: Math.floor(x.sisaKg / beratUtama), totalKg: x.sisaKg, hargaPerKg: x.hppPerKg, subtotalHarga: Math.round(x.sisaKg * x.hppPerKg) }, ba ? { beratAsli: ba } : {}));
+    // dulu, faktor = kg timbang ÷ kg nota) — karung sisa tetap keluar dengan berat aslinya sesudah tahun ditutup. Buku tanpa kedatangan ikut timbang: tanpa beratAsli
+    const ba = baSisaPada(x.merk, c, x.sisaKg);
+    // owner 25 Nov 2026 (modal per kedatangan, nilai apa adanya — lihat bkIrisanModal): satu baris per irisan modal; karung dibawa baris pertama (Σ = dulu),
+    // hargaPerKg tetap angka rata-rata buku (harga beli terakhir di layar tidak bergeser); baris tunggal = nilai sisa × modal per kg tanpa pembulatan
+    const ir = bkIrisanModal(stokK[x.merk]); const pb = ir && ba ? bkPotongBerat(ir, ba) : null;
+    const baris = (kg, rp, i) => ({ merk: x.merk, satuan: 'karung', beratKarung: beratUtama, jumlahKarung: i === 0 ? Math.floor(x.sisaKg / beratUtama) : 0, totalKg: kg, hargaPerKg: x.hppPerKg, subtotalHarga: rp });
+    if (!ir) merkList.push(Object.assign(baris(x.sisaKg, x.sisaKg * x.hppPerKg, 0), ba ? { beratAsli: ba } : {}));
+    else ir.forEach((s, i) => merkList.push(Object.assign(baris(s.kg, s.rp, i), pb && pb[i].length ? { beratAsli: pb[i] } : {})));
     // siap 2027: "punya karung 50 kg" juga dari produksi jadi karung utuh (merkPunyaKarungBerat) — produksinya ikut diarsip, jadi barisnya dibawa ke sini
     const beratLain = beratUtama === 50 ? 25 : 50; if ((beratLain === 25 && x.punya25) || (beratLain === 50 && (x.punya50 || merkPunyaKarungBerat(x.merk, 50)))) merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratLain, jumlahKarung: 0, totalKg: 0, hargaPerKg: x.hppPerKg, subtotalHarga: 0 }); });
   // putaran 28: buku STOK WADAH tetap dikenali sesudah tutup buku — barisnya membawa tanda stokWadah; yang sisanya nol ikut lahir lagi (baris 0 kg), karena
@@ -287,7 +328,7 @@ export function pembukaBuku(tahun, w) {
   // A3 (siap 2027): SEMUA buku yang dikenal pada 31 Des lahir lagi — yang berstok 0 jadi baris 0 kg dengan ukuran karung yang sama (rak Jual sama: chip "habis"
   // tetap ada) — dan tiap baris membawa tanda bukunya: buku karung 25 kg (indukUkuran, + digabungKe bila sudah digabung balik), kemasan adukan yang dibuka
   // (bukuAdukan — dulu salah jadi karungWadah), merek pemasok kelas (merkPemasok). Pembaca tanda di toko.js tidak berubah: sebelum = sesudah ritual.
-  const c = tbCutoff(tahun); const stokK = hitungStokKarungPerMerk(c); const pw = petaStokWadah(); const bw = petaBukuWadah();
+  const pw = petaStokWadah(); const bw = petaBukuWadah();
   Object.keys(stokK).concat(Object.keys(pw)).sort().forEach((k) => { if (merkList.some((r) => r.merk === k)) return; const hpp = stokK[k] ? stokK[k].hppTerakhirPerKg || 0 : 0;
     const berat = [50, 25].filter((b) => tbPunyaBerat(k, b, c) || merkPunyaKarungBerat(k, b));
     if (berat.length) berat.forEach((b) => merkList.push({ merk: k, satuan: 'karung', beratKarung: b, jumlahKarung: 0, totalKg: 0, hargaPerKg: hpp, subtotalHarga: 0 }));
@@ -337,7 +378,11 @@ export function ringkasPembuka(dokumen, tahun) {
   const beras = [], kemasan = [];
   (dokumen || []).forEach(({ koleksi, data }) => {
     if (koleksi === 'batchMasuk') (data.merkList || []).forEach((m) => { if (!m || !m.merk) return; const r = { merk: String(m.merk), satuan: String(m.satuan || ''), berat: Number(m.beratKarung) || 0, kg: Number(m.totalKg) || 0 };
-      BK_TANDA_BUKU.forEach((t) => { if (m[t] !== undefined && m[t] !== null && m[t] !== '') r[t] = m[t]; }); beras.push(r); });
+      BK_TANDA_BUKU.forEach((t) => { if (m[t] !== undefined && m[t] !== null && m[t] !== '') r[t] = m[t]; });
+      // owner 25 Nov 2026 (modal per kedatangan): irisan modal satu buku = baris berurutan bermerek, satuan, berat & tanda sama → SATU baris ringkasan (kg dijumlah),
+      // supaya kartu pemeriksaan sesudah tutup buku menghitung karung di rak & tanda buku per buku, bukan per irisan. Tanpa irisan: ringkasan persis seperti dulu
+      const a = beras[beras.length - 1]; const tanpaKg = (o) => JSON.stringify(Object.assign({}, o, { kg: 0 }));
+      if (a && tanpaKg(a) === tanpaKg(r)) a.kg = Math.round((a.kg + r.kg) * 100) / 100; else beras.push(r); });
     else if (koleksi === 'produksiKemasan') kemasan.push({ nama: String(data.namaProduk || ''), ukuran: data.ukuranKemasan, unit: Number(data.jumlahUnit) || 0 });
   });
   const R = { versi: tahun === undefined || tahun === null ? 1 : 2, beras, kemasan };
@@ -431,10 +476,14 @@ export function bkPdfSpt(tahun) {
 export function sesudahDariPembuka(P, sebelum) {
   const j = { beras: 0, kemasan: 0, bahan: 0, piutang: 0, kasbonK: 0, kasbonO: 0, amplop: 0, utangP: 0, utangO: 0, modal: 0, upah: 0 }; const kO = kunciPelanggan(NAMA_KASBON_OWNER);
   // A5 (siap 2027): baris pembuka beras yang MINUS dinilai mesin dengan modal 0 (hitungHppMerkDalamBatch: totalKg ≤ 0 → hpp 0) — sesudahnya bernilai 0, bukan minus
-  P.dokumen.forEach(({ koleksi, data }) => { if (koleksi === 'batchMasuk') (data.merkList || []).forEach((m) => { j.beras += Number(m.totalKg) > 0 ? Number(m.subtotalHarga) || 0 : 0; }); else if (koleksi === 'produksiKemasan') j.kemasan += (Number(data.jumlahUnit) || 0) * (Number(data.hppPerUnit) || 0);
+  // owner 25 Nov 2026 (nilai apa adanya): rupiah beras dijumlah per MEREK lalu dibulatkan — cara barisBuku (rupiah stok dibulatkan per merek); baris lama yang
+  // sudah rupiah bulat memberi jumlah yang sama persis
+  const rpMerek = {};
+  P.dokumen.forEach(({ koleksi, data }) => { if (koleksi === 'batchMasuk') (data.merkList || []).forEach((m) => { if (Number(m.totalKg) > 0) rpMerek[m.merk] = (rpMerek[m.merk] || 0) + (Number(m.subtotalHarga) || 0); }); else if (koleksi === 'produksiKemasan') j.kemasan += (Number(data.jumlahUnit) || 0) * (Number(data.hppPerUnit) || 0);
     else if (koleksi === 'modalOwner') j.modal += (data.tipe === 'setor' ? 1 : -1) * (Number(data.nominal) || 0);
     else if (koleksi === 'stokBahanKemasan' || koleksi === 'stokBahanLiteran') j.bahan += Number(data.hargaTotal) || 0; else if (koleksi === 'piutangMutasi') j.piutang += Number(data.nominal) || 0; else if (koleksi === 'kasbonMutasi') { if (kunciPelanggan(data.namaPegawai) === kO) j.kasbonO += Number(data.nominal) || 0; else j.kasbonK += Number(data.nominal) || 0; }
     else if (koleksi === 'amplopLaba') j.amplop += Number(data.nominal) || 0; else if (koleksi === 'utangPemasokMutasi') j.utangP += Number(data.nominal) || 0; else if (koleksi === 'utangOwnerMutasi') j.utangO += Number(data.nominal) || 0; });
+  j.beras = Object.keys(rpMerek).reduce((a, k) => a + Math.round(rpMerek[k]), 0);
   j.kemasan = Math.round(j.kemasan); j.amplopDok = j.amplop; ['laci', 'brankas', 'rekening', 'amplop'].forEach((k) => { j[k] = sebelum.kasAda ? Math.round(sebelum.K[k]) : null; });   // uang per tempat dibawa titik kas 31 Des, bukan dokumen
   // A6: upah yang belum dibayar dibawa hari kerja (absenKaryawan, tidak diarsip) + patokan "terakhir dibayar" di berita acara — sesudahnya dihitung ulang mesin upah
   j.modal = Math.round(j.modal); j.upah = P.upah ? P.upah.jumlah : null;
