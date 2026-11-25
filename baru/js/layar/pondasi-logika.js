@@ -18,7 +18,7 @@
 // Warna: yang berupa FAKTA hitung (uang tidak cukup untuk bon yang segera jatuh tempo, bon lewat tempo, ambil lebih besar dari laba, rugi) langsung berwarna; yang berupa KEBIJAKAN
 // (berapa persen utang yang masih wajar, berapa hari kas minimal, berapa porsi satu pemasok) hanya berwarna bila owner mengisi ambangnya — tanpa itu
 // angkanya tampil tanpa warna. "Kuning mendekati batas" = dalam PD_DEKAT % dari ambang owner.
-import { neracaPada, lpHariRentang, hariTerakhir, lpPertama, lpKasPadaTanggal, lpKasAkhirBulan, daftarBulan, merekRentang } from './laporan-logika.js';
+import { neracaPada, lpHariRentang, hariTerakhir, lpPertama, lpKasPadaTanggal, lpKasAkhirBulan, daftarBulan, merekRentang, jenisRentang, kemasRentang } from './laporan-logika.js';
 import { ugAturDok, ugAngka, ugKosong, ugLabaBersih, ugTambahHari, aturKeluar, priveBulan, priveRentang, modalTertanam } from './uang-logika.js';
 import { susunBon as bpSusunBon, daftarPemasok, bpHariBayar, bpLamaKirim, tempoPemasok, bpHariTeks } from './bon-pemasok-logika.js';
 import { rwPerOrang } from './riwayat-logika.js';
@@ -448,6 +448,11 @@ export function pdSkenario(labaKotor30, labaBersih30, kas, turunPct) {
   return { turunPct, hilang, laba, rugiHari, tahanHari: laba >= 0 ? null : kas > 0 ? kas / rugiHari : 0 };
 }
 /** Omzet boleh turun paling banyak berapa persen sebelum toko rugi = laba bersih 30 hari ÷ laba kotor 30 hari. null = sudah rugi / laba kotor tidak positif. */
+export const PD_BELI_NAIK = [2, 5, 10];
+/** MURNI: harga beli naik naikPct %, harga jual & kg tetap → modal naik sebanding, laba bersih turun sebesar itu; naikPerKg = kenaikan harga jual per kg yang menutupnya. */
+export function pdSkenarioBeli(hpp30, labaBersih30, kg30, naikPct) { const tambah = hpp30 * naikPct / 100; return { naikPct, tambah: Math.round(tambah), laba: Math.round(labaBersih30 - tambah), naikPerKg: kg30 > 0 ? Math.ceil(tambah / kg30) : null }; }
+/** MURNI: harga beli boleh naik berapa persen sebelum laba bersih habis; null = sudah rugi / tanpa modal tercatat. */
+export const pdBatasBeli = (hpp30, labaBersih30) => (hpp30 > 0 && labaBersih30 > 0 ? labaBersih30 / hpp30 * 100 : null);
 export const pdBatasTurun = (labaKotor30, labaBersih30) => (labaKotor30 > 0 && labaBersih30 > 0 ? Math.min(100, labaBersih30 / labaKotor30 * 100) : null);
 const PD_NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const pdHariKe = (iso) => new Date(String(iso) + 'T00:00:00').getDay();
@@ -469,7 +474,13 @@ function pdRisikoHitung(kini) {
   const labaKotor = Number(L.margin) || 0, laba = Number(L.labaBersih) || 0; const batas = pdBatasTurun(labaKotor, laba); const pola = pdPolaHari(kini);
   const skenario = PD_TURUN.map((t) => { const S = pdSkenario(labaKotor, laba, pdBilangan(kas) ? kas : 0, t);
     return Object.assign(S, { kasAda: pdBilangan(kas), kalimat: S.laba >= 0 ? 'masih untung ' + RP(S.laba) + ' per ' + PD_HARI + ' hari' : 'RUGI ' + RP(-S.laba) + ' per ' + PD_HARI + ' hari' + (pdBilangan(kas) ? (kas > 0 ? ' — uang toko tahan ±' + Math.floor(S.tahanHari) + ' hari' : ' — uang toko sudah habis') : ' — uang toko belum bisa dihitung') }); });
-  return { labaKotor, laba, omzet: Number(L.omzetPenuh) || 0, kas, batas, skenario, pola,
+  // paket keenam (owner 25 Nov 2026): kalau HARGA BELI naik sedangkan harga jual & kg tetap — modal barang terjual 30 hari = jenisRentang (modal nota − modal retur utuh)
+  const J30 = jenisRentang(ugTambahHari(iso, -(PD_HARI - 1)), iso).semua; const hpp = Number(J30.hpp) || 0, kg = Number(J30.kg) || 0; const batasBeli = pdBatasBeli(hpp, laba);
+  const beli = { hpp, kg, batas: batasBeli, skenario: PD_BELI_NAIK.map((t) => pdSkenarioBeli(hpp, laba, kg, t)),
+    kalimat: !(hpp > 0) ? 'Belum ada modal barang terjual ' + PD_HARI + ' hari terakhir yang tercatat — skenario harga beli naik belum bisa dihitung.'
+      : batasBeli === null ? 'Toko sudah rugi dalam ' + PD_HARI + ' hari terakhir — tiap kenaikan harga beli menambah ruginya kalau harga jual tidak ikut naik.'
+        : 'Harga beli boleh naik paling banyak ' + pdPctTeks(batasBeli) + ' sebelum toko rugi, kalau harga jual tidak ikut naik (laba bersih ' + RP(laba) + ' dari modal barang terjual ' + RP(hpp) + ', ' + PD_HARI + ' hari terakhir).' };
+  return { labaKotor, laba, omzet: Number(L.omzetPenuh) || 0, kas, batas, skenario, pola, beli,
     kalimat: !(labaKotor > 0) ? 'Laba kotor ' + PD_HARI + ' hari terakhir nol atau minus — skenario omzet turun tidak bermakna; bahasannya harga jual.'
       : batas === null ? 'Toko sudah RUGI ' + RP(-laba) + ' dalam ' + PD_HARI + ' hari terakhir — tiap penurunan omzet menambah ruginya.'
         : 'Omzet boleh turun paling banyak ' + pdPctTeks(batas) + ' sebelum toko rugi (laba bersih ' + RP(laba) + ' dari laba kotor ' + RP(labaKotor) + ', ' + PD_HARI + ' hari terakhir; biaya toko dianggap tetap).' };
@@ -626,4 +637,32 @@ function pdPribadiHitung(kini) {
         : 'Harta pribadi ' + RP(kini0.pribadi) + ' · kekayaan bersih toko ' + RP(kini0.toko) + ' (' + kini0.nama + ').'
           + (dPribadi === null ? ' Belum ada kuartal sebelumnya yang terisi untuk dibandingkan.' : ' Sejak ' + lalu.nama + ': pribadi ' + (dPribadi >= 0 ? 'naik ' : 'turun ') + RP(Math.abs(dPribadi)) + ', toko ' + (dToko >= 0 ? 'naik ' : 'turun ') + RP(Math.abs(dToko))
             + (lampu === 'amber' ? ' — harta pribadi tumbuh selagi kekayaan toko menyusut.' : '.')) };
+}
+
+// ==================== paket keenam (owner 25 Nov 2026): nilai tambah & kemas sendiri ====================
+/**
+ * Nilai tambah (pilar marketing: "cara menambahkan value") & rantai pasok mandiri (Mixue: mengemas sendiri). Baca saja, 90 hari:
+ *  - laba kotor per kg beras yang dijual KARUNG UTUH vs yang dijual ECER / KEMASAN (jenisRentang, modal yang tersimpan di nota) → selisihnya = nilai tambah per kg
+ *  - porsi kg & porsi laba kotor dari ecer / kemasan
+ *  - yang dikemas sendiri: kg, adukan, ongkos kantong & upah kemas per kg (kemasRentang — angka di catatan adukannya)
+ * Tanpa warna: mau seberapa banyak dikemas sendiri = keputusan owner. Tanpa susut stok.
+ */
+export function pdNilaiTambah(kini) { return ingatPerVersi(pdKunciIngat('pdNilaiTambah', kini), () => pdNilaiTambahHitung(kini)); }
+function pdNilaiTambahHitung(kini) {
+  const iso = hariIniIso(kini); const awal = ugTambahHari(iso, -(PD_HARI_PANJANG - 1)); const J = jenisRentang(awal, iso); const K = kemasRentang(awal, iso);
+  // sisi yang hanya punya retur (tanpa satu pun nota di rentang itu) = tidak ada jualan — bukan kg minus
+  const sisi = (g) => { const ada = g.nBaris > 0; const kg = ada ? g.kg : 0; const laba = ada ? g.margin : null; return { ada, nama: g.merek, kg, omzet: ada ? g.omzet + g.omzetTanpaHpp : 0, laba, margin: ada ? g.pct : null, labaPerKg: laba !== null && kg > 0 ? laba / kg : null, nTanpaHpp: ada ? g.nTanpaHpp : 0 }; };
+  const karung = sisi(J.grosir), ecer = sisi(J.ecer); const kgBeras = karung.kg + ecer.kg; const labaBeras = (karung.laba || 0) + (ecer.laba || 0);
+  const tambahPerKg = karung.labaPerKg !== null && ecer.labaPerKg !== null ? ecer.labaPerKg - karung.labaPerKg : null;
+  const rinci = (J.ecerRinci || []).map((g) => Object.assign(sisi(g), { id: g.id })).filter((x) => x.ada).map((x) => Object.assign(x, { tambahPerKg: x.labaPerKg !== null && karung.labaPerKg !== null ? x.labaPerKg - karung.labaPerKg : null, porsiKg: kgBeras > 0 ? x.kg / kgBeras * 100 : null }));
+  const kemas = Object.assign({}, K, { ongkosRp: K.kantongRp + K.upahRp, ongkosPerKg: K.kg > 0 ? (K.kantongRp + K.upahRp) / K.kg : null, susutKg: K.kgBahan > 0 ? K.kgBahan - K.kg : null });
+  return { dari: awal, sampai: iso, arsip: J.arsip, karung, ecer, porsiKgEcer: kgBeras > 0 ? ecer.kg / kgBeras * 100 : null, porsiLabaEcer: labaBeras > 0 && ecer.laba !== null ? ecer.laba / labaBeras * 100 : null, tambahPerKg, rinci, kemas,
+    sumber: 'Laporan › Harian (grosir · ecer) · Stok › Adukan',
+    kalimat: J.arsip ? 'Rentang ' + PD_HARI_PANJANG + ' hari menyentuh tahun yang sudah tutup buku — nota per jenisnya ikut arsip.'
+      : !karung.ada && !ecer.ada ? 'Belum ada jualan beras ' + PD_HARI_PANJANG + ' hari terakhir.'
+        : tambahPerKg === null ? 'Laba kotor per kg belum bisa dibandingkan — ' + (!karung.ada ? 'tidak ada jualan karung utuh' : !ecer.ada ? 'tidak ada jualan ecer / kemasan' : 'modal salah satu sisi belum tercatat di notanya') + '.'
+          : 'Per kg, beras yang dijual ecer / kemasan memberi laba kotor ' + RP(Math.round(ecer.labaPerKg)) + ', karung utuh ' + RP(Math.round(karung.labaPerKg)) + ' — ' + (tambahPerKg >= 0 ? 'nilai tambah ' + RP(Math.round(tambahPerKg)) + ' per kg.' : 'LEBIH RENDAH ' + RP(Math.round(-tambahPerKg)) + ' per kg.')
+            + ' Ecer / kemasan = ' + pdPctTeks(kgBeras > 0 ? ecer.kg / kgBeras * 100 : null) + ' kg terjual' + (labaBeras > 0 && ecer.laba !== null ? ' tapi ' + pdPctTeks(ecer.laba / labaBeras * 100) + ' laba kotor beras.' : '.'),
+    kalimatKemas: !(K.kg > 0) ? 'Tidak ada adukan / repack yang menghasilkan kemasan dalam ' + PD_HARI_PANJANG + ' hari terakhir.'
+      : K.adukan + ' adukan menghasilkan kemasan dalam ' + PD_HARI_PANJANG + ' hari. Ongkos kantong ' + RP(K.kantongRp) + ' + upah kemas ' + RP(K.upahRp) + ' = ' + RP(Math.round((K.kantongRp + K.upahRp) / K.kg)) + ' per kg' + (tambahPerKg !== null ? ' (sudah di dalam modal kemasannya; nilai tambah di atas sudah bersih dari ongkos ini).' : '.') };
 }

@@ -3720,3 +3720,19 @@ Tiga butir catatan "Pondasi bisnis" yang baru terjawab sebagian. Semua di Lapora
   `pdPribadi` menaruhnya berdampingan dengan kekayaan bersih toko akhir kuartal (`pdKekayaan`). Pribadi naik selagi kekayaan toko turun = kuning. Owner saja
   (dokumen `pondasi` tidak di daftar baca staf).
 Alat uji: `uji_pondasi.py` (tangan + 7 kontrol baru; asap data toko mencetak lampu upah & porsi ongkir, tanpa rupiah).
+
+## Pondasi paket keenam — nilai tambah, kemas sendiri, skenario harga beli naik (owner 25 Nov 2026, cabang `fitur/pondasi-6` di atas paket kelima; HANYA MEMBACA)
+Sisa catatan "Pondasi bisnis" yang bisa dijawab dari data yang sudah ada (audit ulang kalimat per kalimat sesudah owner bertanya "yakin sudah semua?").
+- **Nilai tambah** — `pdNilaiTambah` (90 hari): laba kotor per kg beras yang dijual KARUNG UTUH vs ECER / KEMASAN; selisihnya = nilai tambah per kg; porsi kg & porsi
+  laba kotor ecer. Sumber baru `jenisRentang(awal, akhir)` (laporan-logika): pengelompokan `geJenis` (= Laporan › Harian), baris nota lewat `lpNotaKeMerek` yang
+  sama dengan `merekRentang` → Σ tiga kelompok = `merekRentang().semua` (dijaga uji). Sisi yang hanya punya retur = "tidak ada jualan", bukan kg minus.
+  Owner melihat angkanya dan bertanya "literan gak ada?" → kelompok ecer DIRINCI: `ecerRinci` = literan · kemasan · repack (Σ = ecer), tiap baris dengan
+  laba kotor per kg & selisihnya dibanding karung utuh.
+- **Yang dikemas sendiri** — sumber baru `kemasRentang(awal, akhir)`: adukan / repack yang menghasilkan kemasan (`ambilProduksiBerlaku`), TANPA pindah buku jadi
+  karung utuh, takar ke wadah, kemasan beli jadi & stok awal. Kg jadi, adukan, ongkos kantong (`biayaKemasan`) + upah kemas (`upahRepacking`) per kg — angka yang
+  tersimpan di catatan adukannya. Ongkos itu SUDAH di dalam modal kemasan, jadi nilai tambah di atas sudah bersih darinya (layar menyebutnya).
+- **Kalau harga beli naik** — di kartu Risiko: `pdSkenarioBeli` / `pdBatasBeli` (murni): harga beli naik 2 · 5 · 10 %, harga jual & kg tetap → laba bersih 30 hari
+  berkurang sebesar tambahan modalnya; batas = laba bersih ÷ modal barang terjual; "tertutup kalau harga jual naik Rp… per kg". Modal barang terjual 30 hari =
+  `jenisRentang().semua.hpp`.
+Tanpa warna (seberapa banyak dikemas sendiri = keputusan owner). Tanpa susut stok. Alat uji: `uji_pondasi.py` (tangan + 8 kontrol baru; jangkar statis impor
+`geJenis` — bundel uji satu-lingkup TIDAK melihat impor yang hilang, peramban melihatnya).

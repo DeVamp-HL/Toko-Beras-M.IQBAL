@@ -8,7 +8,7 @@
 // Kejujuran: bulan belum tutup buku = DRAF; neraca yang kasnya belum bisa dihitung / stoknya minus TIDAK dicetak; kas akhir arus kas = kas neraca (satu mesin);
 // tarif/batas rekap omzet bukan nasihat pajak. Nama pembantu diprefiks `lp` (bundel uji jsc satu lingkup).
 // owner 24 Nov 2026: grosir vs ecer per jenis barang
-import { geRingkas, geBaris } from './grosir-ecer-logika.js';
+import { geRingkas, geBaris, geJenis } from './grosir-ecer-logika.js';
 import { hitungLabaRentang, hitungArusKasInti, barisSusutStok, bayaranBiayaBulanan, hitungNeraca, kasPada, hitungPiutang, hitungUtangPemasok } from '../mesin/beku.js';
 import { akhirBulanIso, bulanDari, namaBulanPanjang, caraBayarKunci, hppTercatat, namaSingkatTrx, kunciPelanggan, formatTanggal, hppTaksiranRetur, uangKembaliRetur, MULAI_SUSUT_LABA } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilPiutangMutasi, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota, returUangPerHari, ambilHargaTerbit, eraBuku, tahunDiarsip, potretTahun, potretBulan, potretHari, catatanPertama, ingatGerakanKas, ingatKasPada, ingatNeraca,
@@ -304,6 +304,38 @@ function lpJadiMerek(g, dihitung, ambang) {
 function lpGabungMerek(daftar, nama, dihitung, ambang, luar) {
   const g = lpMerekKosong(nama); daftar.forEach((x) => { LP_JUMLAH_MEREK.forEach((f) => { g[f] += x[f] || 0; }); if (x.adaHitung) g.adaHitung = true; });
   return lpJadiMerek(Object.assign(g, { gabungan: daftar.length, nBelum: daftar.filter((x) => x.keadaanMargin === 'belum').length, nKosong: daftar.filter((x) => x.keadaanMargin === 'kosong').length, luar: !!luar }), dihitung, ambang);
+}
+/**
+ * Per JENIS JUAL untuk rentang tanggal bebas (Pondasi paket keenam, owner 25 Nov 2026 — "nilai tambah"): karung utuh (grosir) · ecer (literan, kemasan, repack) ·
+ * lain (wadah, ongkir, karcis belum dirinci), pengelompokan geJenis yang sama dengan Laporan › Harian. Baris, modal nota, retur & pemisahan ongkir = merekRentang
+ * (lpNotaKeMerek) → Σ ketiga kelompok = merekRentang(awal, akhir).semua. Retur ikut jenis asalnya. TANPA susut stok. `ecerRinci` = kelompok ecer dipecah
+ * literan · kemasan · repack (Σ ketiganya = ecer).
+ */
+export function jenisRentang(awal, akhir) { return ingatPerVersi('lpJenisRentang|' + String(awal) + '|' + String(akhir), () => jenisRentangHitung(String(awal), String(akhir))); }
+function jenisRentangHitung(awal, akhir) {
+  const cocok = (t) => !!t && t >= awal && t <= akhir; const g = { grosir: lpMerekKosong('Karung utuh'), ecer: lpMerekKosong('Ecer & kemasan'), lain: lpMerekKosong('Lain') }; const luar = { ongkir: g.lain };
+  // rincian ECER per jenis baris nota (owner 25 Nov 2026: "literan gak ada?") — literan · kemasan · repack dicatat sejajar; ongkirnya sudah dipisah di atas
+  const rinci = { literan: lpMerekKosong('Literan'), kemasan: lpMerekKosong('Kemasan'), repacking: lpMerekKosong('Repack') }; const buang = { ongkir: lpMerekKosong('ongkir') };
+  ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal)) return; lpNotaKeMerek(p, g[geJenis(p)], luar); if (rinci[p.jenis]) lpNotaKeMerek(p, rinci[p.jenis], buang); });
+  const retur = ambilRetur().filter((r) => cocok(r.tanggal)); const adaUtuh = retur.some((r) => r.kondisi === 'utuh'); const stokKrg = adaUtuh ? ingatStokKarung() : null; const stokKem = adaUtuh ? ingatStokKemasan() : null;
+  retur.forEach((r) => { [g[geJenis({ jenis: r.jenisAsal })], rinci[r.jenisAsal]].forEach((x) => { if (!x) return; x.nRetur += 1; x.returUang += uangKembaliRetur(r); x.kgKembali += Number(r.totalKg) || 0; if (r.kondisi === 'utuh') x.returHpp += hppTaksiranRetur(r, stokKrg, stokKem); }); });
+  const jadi = {}; Object.keys(g).forEach((k) => { jadi[k] = lpJadiMerek(g[k], false, 0); });
+  return { awal, akhir, arsip: lpTutup(awal.slice(0, 7)) || lpTutup(akhir.slice(0, 7)), grosir: jadi.grosir, ecer: jadi.ecer, lain: jadi.lain, ecerRinci: ['literan', 'kemasan', 'repacking'].map((k) => Object.assign(lpJadiMerek(rinci[k], false, 0), { id: k })), semua: lpGabungMerek([jadi.grosir, jadi.ecer, jadi.lain], 'Seluruh toko', false, 0, false) };
+}
+/**
+ * Yang DIKEMAS SENDIRI dalam rentang tanggal (paket keenam — "rantai pasok mandiri"): adukan / repack yang menghasilkan kemasan (ambilProduksiBerlaku), TANPA
+ * baris yang bukan pengemasan — pindah buku jadi karung utuh, takar ke wadah, kemasan beli jadi & stok awal. → { n baris, adukan, kg (jadi = unit × ukuran),
+ * kgBahan, kantongRp (Σ biayaKemasan), upahRp (Σ upahRepacking), nKantong, perUkuran: [{ ukuran, kg, unit }] }. Angka yang tersimpan di catatannya, tanpa rumus baru.
+ */
+export function kemasRentang(awal, akhir) { return ingatPerVersi('lpKemasRentang|' + String(awal) + '|' + String(akhir), () => kemasRentangHitung(String(awal), String(akhir))); }
+function kemasRentangHitung(awal, akhir) {
+  const out = { awal, akhir, n: 0, adukan: 0, kg: 0, kgBahan: 0, kantongRp: 0, upahRp: 0, nKantong: 0, perUkuran: [] }; const adukan = {}; const ukuran = {};
+  ambilProduksiBerlaku().forEach((pr) => { const t = pr.tanggal || ''; if (t < awal || t > akhir || pr.jadiKarungUtuh || pr.dariTakar || pr.beliJadi || pr.stokAwal || pr.pindahAwalWadah) return;
+    const unit = Number(pr.jumlahUnit) || 0, uk = Number(pr.ukuranKemasan) || 0; if (!(unit > 0) || !(uk > 0)) return;
+    out.n += 1; adukan[String(pr.batchProduksi || pr.id)] = 1; out.kg += unit * uk; out.kgBahan += (Number(pr.kgDipakai) || 0) + (Number(pr.kgKemasanDipakai) || 0); out.kantongRp += Number(pr.biayaKemasan) || 0; out.upahRp += Number(pr.upahRepacking) || 0; out.nKantong += Number(pr.kantongJumlah) || 0;
+    const u = ukuran[uk] = ukuran[uk] || { ukuran: uk, kg: 0, unit: 0 }; u.kg += unit * uk; u.unit += unit; });
+  out.adukan = Object.keys(adukan).length; out.perUkuran = Object.keys(ukuran).map((k) => ukuran[k]).sort((a, b) => b.kg - a.kg);
+  return out;
 }
 /** Satu baris nota masuk kelompok mereknya — pola merekBulan, dipakai merekRentang: ongkir antar dipisah ke kelompok luar 'ongkir' (HPP 0). */
 function lpNotaKeMerek(p, g, luar) {
