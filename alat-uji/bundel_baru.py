@@ -48,6 +48,10 @@ KG_PEMAKAI = ('jual-logika.js', 'wadah-bernama-logika.js', 'harga-logika.js', 'h
 
 # Tahap 6 (owner 25 Nov 2026, "stok ikut timbang"): berat ASLI karung per kedatangan — modul daun berat-asli-logika.js (hanya membaca data/toko.js), dipakai
 # Barang masuk & Cocokkan, Jual, dan retur. Ikut OTOMATIS (sekali, di belakang) bila salah satu pemakainya ada; fungsi terangkat, jadi urutan tidak menentukan.
+# QR satu pintu (owner 26 Nov 2026): struk-logika membakukan nomor WhatsApp toko (setelan struk) dengan tkWaNomor dari tanda-kenal-logika.js (modul daun tanpa
+# impor; semua namanya tk… / TK_… / tiga nama pribadi yang tidak dipakai modul lain). Ikut OTOMATIS di belakang bila pemakainya ada; fungsinya terangkat.
+TK_MODUL = 'baru/js/layar/tanda-kenal-logika.js'
+TK_PEMAKAI = ('struk-logika.js', 'pindai-logika.js')
 BA_MODUL = 'baru/js/layar/berat-asli-logika.js'
 BA_PEMAKAI = ('stok-catat-logika.js', 'jual-logika.js', 'retur-logika.js', 'tutup-buku-logika.js')
 
@@ -181,6 +185,8 @@ def lengkapi(daftar):
         d.append(KG_MODUL)
     if any(os.path.basename(x) in BA_PEMAKAI for x in d) and not any(x.endswith('berat-asli-logika.js') for x in d):
         d.append(BA_MODUL)
+    if any(os.path.basename(x) in TK_PEMAKAI for x in d) and not any(x.endswith('tanda-kenal-logika.js') for x in d):
+        d.append(TK_MODUL)
     return d
 
 

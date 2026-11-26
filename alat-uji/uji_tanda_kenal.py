@@ -15,6 +15,11 @@ Yang dijaga:
     jumlah lembar 1–50 tanpa pembulatan diam-diam; jual.js: printer diperiksa dulu → kode DICATAT → baru dicetak, kabar tampil di dalam lembar
   · sambungan: jual.js mencetak QR hanya bila setelan printer perangkat menyertakannya; scan diperiksa dulu (lembar, nota ada) baru membuka struk;
     app.js meneruskan scan ke layar Jual hanya bila panel jaga tertutup & layar Jual di depan; printer.js / escpos.js sungguh mencetak QR itu
+  · QR satu pintu (owner 26 Nov 2026): nomor WA toko dibakukan (0858… / +62 … → 62…), QR struk = tautan wa.me toko berpesan nomor nota + kunci nota di
+    belakang '#' (tablet tetap membuka nota), dipendekkan bila kepanjangan, tanpa nomor WA = QR lama; surat jalan: lembar toko 'MIQ:J:<id>', lembar
+    pembeli = WA toko; scan tautan WA toko / lembar surat jalan dikenali, tautan WA lain = kode biasa; jual.js scan surat jalan (diperiksa dulu → tanda
+    terima / setor / daftar), pita keadaan nota hanya saat struk dibuka dari scan, tombol bayar memeriksa hak dulu; app.js membuang ketikan scanner
+    dari kotak isian; antar-panel mencetak QR per lembar; setelan struk menolak nomor WA yang tidak dikenali
 
     python3 alat-uji/uji_tanda_kenal.py            → 0 = lulus, 1 = gagal
     python3 alat-uji/uji_tanda_kenal.py --kontrol  → tiap kerusakan WAJIB ketahuan; 0 = semua tertangkap, 3 = ada yang lolos
@@ -143,6 +148,38 @@ cek('isi label: nama barang, kode UTUH untuk QR, kode pendek untuk dibaca orang'
 cek('jumlah label: bulat 1–50; selain itu ditolak (0), tidak dibulatkan diam-diam', tkJumlahLabel(1) === 1 && tkJumlahLabel('20') === 20 && tkJumlahLabel(TK_LABEL_MAKS) === 50 && [0, 51, 2.5, '', 'abc', null, undefined, -3].every((v) => tkJumlahLabel(v) === 0));
 cek('kode label CONTOH layar Perangkat tidak pernah jadi barcode barang', tkKode('barcode', 'UJI-LABEL-0001') === '' && !!tkSusunDaftar('barcode', 'UJI-LABEL-0001', tkSasaranChip(RAK.kemasan[0]), W).tolak);
 
+// ================= QR satu pintu (owner 26 Nov 2026) =================
+cek('nomor WA toko dibakukan ke bentuk wa.me', ['081200001111', '6281200001111', '81200001111', '+62 812-0000-1111', ' 0812.0000.1111 '].every((x) => tkWaNomor(x) === '6281200001111'), ['081200001111', '+62 812-0000-1111'].map(tkWaNomor).join(','));
+cek('nomor WA tersimpan dibaca orang dalam bentuk 0…; yang sedang diketik / belum sah apa adanya', tkWaTampil('6281200001111') === '081200001111' && tkWaTampil('0858') === '0858' && tkWaTampil('+62 858') === '+62 858' && tkWaTampil('') === '' && tkWaTampil(undefined) === '' && tkWaNomor(tkWaTampil('6281200001111')) === '6281200001111');
+cek('nomor WA yang bukan nomor ditolak', ['', '0858', 'abc', '12345678901', '0858-abc', '62012345678', null, undefined].every((x) => tkWaNomor(x) === ''), ['0858', '12345678901'].map(tkWaNomor).join(','));
+const NW = { trxId: 1764134567890.123 }; const QW = tkQrStruk(NW, { wa: '081200001111', no: '567890', tgl: '2026-11-26' });
+cek('QR struk ber-WA: tautan wa.me toko berpesan nomor nota & tanggal, kunci nota di belakang #', QW === 'https://wa.me/6281200001111?text=Halo%2C%20nota%20No.%20567890%20(26%2F11%2F2026)#t:1764134567890.123', QW);
+cek('QR struk ber-WA muat di QR yang bisa digambar (≤ ' + TK_QR_WA_MAKS + ' huruf) & bisa dicetak tanpa spasi', QW.length <= TK_QR_WA_MAKS && /^[\x21-\x7e]+$/.test(QW), QW.length);
+cek('bolak-balik QR ber-WA → kunci nota yang SAMA (teks)', J(tkUraiPindai(QW)) === J({ jenis: 'nota', kunci: { trxId: '1764134567890.123' } }), J(tkUraiPindai(QW)));
+for (const n of [{ grupNota: 'grup-77' }, { id: 1761999999999.25 }, { trxId: '1764134567890.1234567' }]) {
+  const q = tkQrStruk(n, { wa: '0812 0000 1111', no: '123456', tgl: '2026-11-26' }); const kol = Object.keys(n)[0]; const u = tkUraiPindai(q);
+  cek('bolak-balik QR ber-WA ' + kol, q.indexOf('https://wa.me/6281200001111?text=') === 0 && q.length <= TK_QR_WA_MAKS && u && u.jenis === 'nota' && u.kunci[kol] === String(n[kol]), q + ' → ' + J(u));
+}
+const QP = tkQrStruk({ grupNota: 'g'.repeat(40) }, { wa: '081200001111', no: '123456', tgl: '2026-11-26' });
+cek('kunci panjang → pesan dipendekkan dulu (tetap ber-WA, tetap ≤ batas)', QP.indexOf('https://wa.me/') === 0 && QP.indexOf('%2F') < 0 && QP.length <= TK_QR_WA_MAKS && tkUraiPindai(QP).kunci.grupNota === 'g'.repeat(40), QP);
+const QL = tkQrStruk({ grupNota: 'g'.repeat(80) }, { wa: '081200001111', no: '123456', tgl: '2026-11-26' });
+cek('tetap kepanjangan → QR kunci nota seperti dulu (bukan QR yang tidak bisa digambar)', QL === 'MIQ:N:g:' + 'g'.repeat(80), QL);
+cek('tanpa nomor WA / nomor tidak dikenali → QR kunci nota seperti dulu', tkQrStruk(NW, { wa: '' }) === 'MIQ:N:t:1764134567890.123' && tkQrStruk(NW, { wa: '0858' }) === 'MIQ:N:t:1764134567890.123' && tkQrStruk(NW) === 'MIQ:N:t:1764134567890.123');
+cek('nota tanpa kunci → tanpa QR walau ada nomor WA', tkQrStruk({}, { wa: '081200001111' }) === '' && tkQrStruk(null, { wa: '081200001111' }) === '');
+cek('tanggal tidak terbaca → pesan tanpa tanggal', tkQrStruk(NW, { wa: '081200001111', no: '567890', tgl: '26 Nov' }).indexOf('text=Halo%2C%20nota%20No.%20567890#') > 0);
+const SJ = { id: 1764134567890.5, noSJ: 'SJ26-AB-0001' };
+cek('surat jalan: lembar toko = MIQ:J:<id>, terbaca sebagai surat jalan', tkQrSJ(SJ, {}, 'toko') === 'MIQ:J:1764134567890.5' && J(tkUraiPindai('MIQ:J:1764134567890.5')) === J({ jenis: 'sj', id: '1764134567890.5' }));
+const QSJ = tkQrSJ(SJ, { wa: '081200001111' }, 'pembeli');
+cek('surat jalan: lembar pembeli = WA toko berpesan nomor surat jalan; tablet membacanya sebagai surat jalan yang sama', QSJ === 'https://wa.me/6281200001111?text=Halo%2C%20surat%20jalan%20SJ26-AB-0001#j:1764134567890.5' && J(tkUraiPindai(QSJ)) === J({ jenis: 'sj', id: '1764134567890.5' }), QSJ);
+cek('surat jalan: lembar pembeli tanpa nomor WA = tanpa QR; tanpa id = tanpa QR', tkQrSJ(SJ, { wa: '' }, 'pembeli') === '' && tkQrSJ({ noSJ: 'x' }, {}, 'toko') === '' && tkQrSJ({ id: 'a b' }, {}, 'toko') === '');
+for (const k of ['https://wa.me/6281200001111?text=halo', 'https://wa.me/6281200001111', 'https://contoh.id/x#t:1', 'https://wa.me/1#x:1', 'https://wa.me.contoh.id/62#t:1']) {
+  const u = tkUraiPindai(k); cek('tautan yang bukan QR toko = kode biasa: ' + k.slice(0, 40), u && u.jenis === 'lain' && u.kode === k, J(u));
+}
+for (const k of ['https://wa.me/62#t:a b', 'MIQ:J:', 'MIQ:J:a b', 'MIQ:J:' + 'x'.repeat(TK_PANJANG_MAKS)]) {
+  const u = tkUraiPindai(k); cek('QR toko tidak utuh disebut rusak: ' + k.slice(0, 24), u && u.jenis === 'rusak' && u.kode === k, J(u));
+}
+cek('tautan WA struk lewat api.whatsapp.com juga dikenali', J(tkUraiPindai('https://api.whatsapp.com/send?phone=62858&text=x#t:99')) === J({ jenis: 'nota', kunci: { trxId: '99' } }));
+
 print(JSON.stringify(hasil));
 """
 
@@ -170,8 +207,9 @@ def jalankan_jsc(sumber):
 def periksa_statis(logika, jual, app):
     h = []; ok = lambda nama, benar, ket='': h.append({'nama': nama, 'ok': bool(benar), 'ket': str(ket)})
     ok('modul tanpa impor (dijalankan apa adanya di jsc)', not re.search(r'^\s*import\s', logika, re.M))
-    ok('jual.js: QR dicetak hanya bila setelan printer perangkat menyertakan QR, isinya dari tkQrNota',
-       "const qr = PR.prAtur().qr ? TK.tkQrNota(nota) : '';" in jual and "PR.cetakGaris(st.garis, { logoToko: st.logo, qr })" in jual and jual.count('PR.cetakGaris(') == 1)
+    ok('jual.js: QR dicetak hanya bila setelan printer perangkat menyertakan QR, isinya dari tkQrStruk (nomor WA toko setelan struk + nomor nota & tanggal struk)',
+       "const qr = PR.prAtur().qr ? qrStruk(nota) : '';" in jual and "PR.cetakGaris(st.garis, { logoToko: st.logo, qr })" in jual and jual.count('PR.cetakGaris(') == 1
+       and "const qrStruk = (nota) => TK.tkQrStruk(nota, { wa: ST.stAtur().kop.wa, no: ST.stNoNota(nota), tgl: nota && nota.tanggal });" in jual and 'TK.tkQrNota(' not in jual)
     blok = jual[jual.index('  function pindai(teks) {'):]; blok = blok[:blok.index('\n  }\n') + 5]
     urut = [blok.find(x) for x in ("u.jenis === 'lain'", "u.jenis === 'rusak'", 'TK.tkLembarBolehDiganti(S().lembar)', 'ST.notaDari(u.kunci)', 'aksi.bukaStruk(')]
     ok('jual.js: scan diperiksa dulu (kode lain, rusak, lembar terbuka, nota ada) BARU membuka struk', all(x >= 0 for x in urut) and urut == sorted(urut) and blok.count('aksi.bukaStruk(') == 1, urut)
@@ -223,7 +261,38 @@ def periksa_statis(logika, jual, app):
     ok('jual.js S4: cetak label — jumlah sah, printer ada, kode DICATAT (ditolak = berhenti), BARU dicetak', all(x >= 0 for x in urut) and urut == sorted(urut) and lc.count('PR.cetakLabel(') == 1 and lc.count('tulisDokumen(') == 1, urut)
     ok('jual.js S4: label gagal tercetak = berkabar & menyebut kodenya sudah tercatat; label tidak menyentuh keranjang / harga',
        "set({ kabar: 'Label tidak tercetak: '" in lc and "kodenya sudah tercatat, tinggal tekan Cetak label lagi" in lc and 'keranjang' not in lc and 'harga' not in lc.lower())
-    ok('jual.js S4: lampu kejadian scan & kartu lewat pembungkus yang menelan galat', jual.count("lampu('lampuKenal')") == 3 and jual.count("lampu('lampuAsing')") == 3 and not re.search(r"(?<!['\w.])lampu(Kenal|Asing|Kertas)\(", jual))
+    ok('jual.js S4: lampu kejadian scan & kartu lewat pembungkus yang menelan galat', jual.count("lampu('lampuKenal')") == 4 and jual.count("lampu('lampuAsing')") == 4 and not re.search(r"(?<!['\w.])lampu(Kenal|Asing|Kertas)\(", jual))
+    # ---- QR satu pintu (owner 26 Nov 2026) ----
+    blok = jual[jual.index('  function pindai(teks) {'):]; blok = blok[:blok.index('\n  }\n') + 5]
+    ok('jual.js QR1: kode surat jalan diteruskan ke pindaiSJ sebelum pemeriksaan nota; struk dari scan membawa tanda scan', "if (u.jenis === 'sj') return pindaiSJ(u.id);" in blok
+       and blok.index("u.jenis === 'rusak'") < blok.index("u.jenis === 'sj'") < blok.index('TK.tkLembarBolehDiganti(S().lembar)') and "id: u.kunci.id, scan: true });" in blok)
+    sj = jual[jual.index('  function pindaiSJ(id) {'):]; sj = sj[:sj.index('\n  }\n') + 5]
+    urut = [sj.find(x) for x in ("TK.tkLembarBolehDiganti(s.lembar) && s.lembar !== 'antar'", 'const sj = AJ.ajCari(id); if (!sj) {', "lampu('lampuKenal')", "if (sj.status === 'berangkat') return aksi.ajTerimaBuka({ id: sj.id });",
+                                 "set({ lembar: 'antar', ajSaring: String(sj.noSJ || '')", "if (K.sisaTagih > 0 && sj.status === 'diterima') aksi.ajSetorBuka({ id: sj.id });")]
+    ok('jual.js QR1: scan surat jalan — lembar, ada?, BARU tanda terima (masih di jalan) / daftar + setor (uang bayar di tempat belum pulang); tidak menulis apa pun',
+       all(x >= 0 for x in urut) and urut == sorted(urut) and 'tulis' not in sj and sj.count('kabarAwas: true') == 2, urut)
+    ok('jual.js QR2: pita keadaan nota hanya saat struk dibuka dari scan; bukaStruk biasa mematikannya', "${s.strukScan ? pitaScan(n.nota, s) : ''}" in jual
+       and "strukScan: !!scan, strukSertakan: null, kabar: '' })," in jual and 'const K = SP.spKeadaanNota(nota, s.sekarang || new Date()); if (!K) return' in jual)
+    sb = jual[jual.index('    scanBayar: () => {'):]; sb = sb[:sb.index(' },\n') + 4]
+    urut = [sb.find(x) for x in ("if (!K || !K.bayar) return;", "tombolAkun(opsi.akun ? opsi.akun() : null, 'terimaBon'); if (!tb.boleh) return set(", 'opsi.bukaBayarBon(K.bayar.orang,')]
+    ok('jual.js QR2: tombol bayar — ada bon?, hak akun, BARU membuka Pelanggan (tidak menulis apa pun)', all(x >= 0 for x in urut) and urut == sorted(urut) and 'tulis' not in sb, urut)
+    ok('app.js QR2: bayar bon dari struk membuka Pelanggan › Bon hanya bila pindah layar diizinkan',
+       "bukaBayarBon: (orang, isi) => { if (pindah('pelanggan') && tabKini === 'pelanggan') pelanggan.buka('bon', orang, null, { bayar: isi }); } });" in app)
+    pl = baca('baru', 'js', 'layar', 'pelanggan.js')
+    ok('pelanggan.js QR2: buka(…, isi.bayar) membuka lembar bayar orang ITU saja, isiannya dirapikan (nominal angka, catatan ≤ 60 = batas ketik)',
+       "const by = isi && isi.bayar; if (!by || keluarga !== 'bon' || !orang || st().orangBon !== orang) return;" in pl and "nominal: String(by.nominal || '').replace(/\\D/g, '').slice(0, 14), catatan: String(by.catatan || '').slice(0, 60)" in pl)
+    ok('app.js QR: ketikan scanner dibuang dari kotak isian hanya saat hasil scan dipakai layar Jual, hanya bila isinya cuma bertambah potongan kode',
+       "if (panelOrang.hidden && tabKini === 'jual') hapusKetikanScan(x && x.data);" in app and "if (v.length <= p.nilai.length || (p.nilai + kode).indexOf(v) !== 0) return;" in app
+       and app.index('hapusKetikanScan(x && x.data)') < app.index('layar.pindai(x && x.data)'))
+    ap = baca('baru', 'js', 'layar', 'antar-panel.js')
+    ok('antar-panel QR1: QR per lembar surat jalan hanya bila setelan printer menyertakan QR; lembar pertama pembeli, kedua toko',
+       "const qrLembar = (i) => (PR.prAtur().qr ? TK.tkQrSJ(sj, { wa: atur.kop.wa }, i === 0 ? 'pembeli' : 'toko') : '');" in ap and "{ gaya: 'teks' }, { qr: qrLembar(i) })" in ap)
+    stl = baca('baru', 'js', 'layar', 'struk-logika.js')
+    ok('struk-logika QR3: nomor WA toko disimpan dalam bentuk wa.me; salah ketik ditolak dengan kalimat', "const waKetik = String(kop.wa || '').trim(); const wa = waKetik ? tkWaNomor(waKetik) : '';" in stl
+       and "if (waKetik && !wa) return { tolak: 'Nomor WhatsApp toko" in stl and "telp: String(kop.telp || '').trim().slice(0, 30), wa }," in stl and "telp: '', wa: '' }" in stl)
+    ok('jual.js QR3: isian nomor WA toko di Atur struk; nomor tersimpan dibuka dalam bentuk 0… (disimpan lagi = dibakukan lagi)', 'data-ketik="aturStrukKop" data-kolom="wa"' in jual
+       and "bukaAturStruk: () => { const a = ST.stAtur(); a.kop.wa = TK.tkWaTampil(a.kop.wa); set({ lembar: 'aturStruk', aturStruk: a, kabar: '' }); }," in jual)
+    ok('index.html QR: modul pindai-logika dipramuat', '<link rel="modulepreload" href="js/layar/pindai-logika.js">' in baca('baru', 'index.html'))
     ok('app.js: kartu ke layar Jual hanya bila panel jaga tertutup & layar Jual di depan, galatnya ditelan',
        "padaTempel((x) => { if (panelOrang.hidden && tabKini === 'jual') { try { layar.tempel(x && x.uid); } catch (e) { console.error('tempel jual', e); } } });" in app)
     return h
@@ -249,7 +318,20 @@ MUTASI = [
     ('kunci grup dibaca sebagai nomor transaksi', 'logika', "const KUNCI_DARI = { t: 'trxId', g: 'grupNota', i: 'id' };", "const KUNCI_DARI = { t: 'trxId', g: 'trxId', i: 'id' };"),
     ('hasil scan tidak dirapikan', 'logika', "teks).trim();", "teks);"),
     ('lembar bayar ditimpa lembar struk', 'logika', "!lembar || lembar === 'struk' || lembar === 'keranjang'", "true"),
-    ('QR dicetak walau setelan perangkat tidak menyertakannya', 'jual', "const qr = PR.prAtur().qr ? TK.tkQrNota(nota) : '';", "const qr = TK.tkQrNota(nota);"),
+    ('QR dicetak walau setelan perangkat tidak menyertakannya', 'jual', "const qr = PR.prAtur().qr ? qrStruk(nota) : '';", "const qr = qrStruk(nota);"),
+    ('QR1: nomor WA berawalan 0 tidak dibakukan', 'logika', "const n = d.charAt(0) === '0' ? '62' + d.slice(1) : d.charAt(0) === '8' ? '62' + d : d;", "const n = d.charAt(0) === '8' ? '62' + d : d;"),
+    ('QR1: nomor WA asal angka diterima', 'logika', "return /^62[1-9]\\d{7,12}$/.test(n) ? n : '';", "return n;"),
+    ('QR1: QR ber-WA tidak memeriksa panjang', 'logika', "const t = tkTautanWa(wa, pesan[i], ekor); if (t.length <= TK_QR_WA_MAKS) return t; }\n  return kunci;", "return tkTautanWa(wa, pesan[0], ekor); }\n  return kunci;"),
+    ('QR1: kunci nota tidak ikut di tautan WA', 'logika', "+ encodeURIComponent(String(pesan || '')) + (ekor ? '#' + ekor : '');", "+ encodeURIComponent(String(pesan || ''));"),
+    ('QR1: tautan WA dari mana saja dianggap QR toko', 'logika', "const WA_TAUTAN = /^https?:\\/\\/(?:wa\\.me|api\\.whatsapp\\.com)\\/[^#\\s]*#([tgij]):(.+)$/;", "const WA_TAUTAN = /^[^#]*#([tgij]):(.+)$/;"),
+    ('QR1: kode surat jalan tidak dikenali', 'logika', "  if (t.indexOf(TK_AWALAN_SJ) === 0) {", "  if (false) {"),
+    ('QR1: lembar pembeli surat jalan berisi kunci toko walau tanpa WA', 'logika', "  const wa = tkWaNomor(o && o.wa); if (!wa) return '';\n  const no = String((sj && sj.noSJ) || '')", "  const wa = tkWaNomor(o && o.wa); if (!wa) return TK_AWALAN_SJ + id;\n  const no = String((sj && sj.noSJ) || '')"),
+    ('QR1: scan surat jalan menimpa lembar berisi isian', 'jual', "const s = S(); if (!TK.tkLembarBolehDiganti(s.lembar) && s.lembar !== 'antar') return set(", "const s = S(); if (false) return set("),
+    ('QR1: surat jalan yang sudah diterima dibuka lagi tanda terimanya', 'jual', "    if (sj.status === 'berangkat') return aksi.ajTerimaBuka({ id: sj.id });", "    return aksi.ajTerimaBuka({ id: sj.id });"),
+    ('QR2: pita scan tampil di struk yang dibuka biasa', 'jual', "strukScan: !!scan, strukSertakan: null, kabar: '' }),", "strukScan: true, strukSertakan: null, kabar: '' }),"),
+    ('QR2: tombol bayar tanpa memeriksa hak akun', 'jual', "const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'terimaBon'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });\n      if (!opsi.bukaBayarBon)", "\n      if (!opsi.bukaBayarBon)"),
+    ('QR: ketikan scanner tidak dibuang', 'app', "  if (panelOrang.hidden && tabKini === 'jual') hapusKetikanScan(x && x.data);\n", ""),
+    ('QR: ketikan orang di kotak ikut terhapus', 'app', "if (v.length <= p.nilai.length || (p.nilai + kode).indexOf(v) !== 0) return;", "if (v.length <= p.nilai.length) return;"),
     ('QR tidak ikut ke printer', 'jual', "PR.cetakGaris(st.garis, { logoToko: st.logo, qr })", "PR.cetakGaris(st.garis, { logoToko: st.logo })"),
     ('struk dibuka tanpa memeriksa lembar yang terbuka', 'jual', "    if (!TK.tkLembarBolehDiganti(S().lembar)) return set({ kabar: 'Struk ter-scan, tapi lembar ini masih terbuka — tutup dulu, lalu scan lagi', kabarAwas: true });\n", ""),
     ('struk dibuka walau notanya tidak ada', 'jual', "    if (!ST.notaDari(u.kunci)) return set({", "    if (false) return set({"),

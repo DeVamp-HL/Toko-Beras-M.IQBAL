@@ -3428,6 +3428,38 @@ minta tempel jari owner lewat penanda (`sidikJariKunci`, kunci kuat). Periksa pr
 bebas. Penanda hangus / tidak ada (`penandaTakTerpakai`) = tidak ada yang bisa memeriksa → dibuka tanpa jari dengan catatan keras (owner dikabari soal hangus
 oleh aplikasi toko), supaya owner tidak terkunci sendiri. Halaman saja, tanpa APK & rules.
 
+## QR satu pintu — QR struk berguna untuk pembeli, scan surat jalan, keadaan nota saat di-scan (owner 26 Nov 2026, cabang `worktree-qr-satu-pintu`)
+
+Owner 26 Nov 2026 memilih satu paket (A + B + C). Halaman saja — tanpa APK, tanpa rules baru, tanpa koleksi baru.
+
+- **C · QR struk = chat WhatsApp toko.** Setelan struk punya isian baru **Nomor WhatsApp toko** (`aturanToko/struk` › `kop.wa`, disimpan dalam bentuk wa.me
+  `62…` oleh `tkWaNomor`; salah ketik DITOLAK dengan kalimat; kosong = QR lama). Ada nomornya → `tkQrStruk` mengisi QR dengan tautan
+  `https://wa.me/<nomor>?text=Halo, nota No. <6 angka> (<tanggal>)` dan kunci nota DI BELAKANG `#` (`#t:<trxId>` / `#g:` / `#i:`). Pembeli scan pakai kamera
+  HP → WhatsApp toko terbuka berisi nomor notanya (bagian `#` tidak ikut terkirim). Tablet men-scan QR yang SAMA → `tkUraiPindai` membaca kunci di belakang
+  `#` → notanya terbuka seperti dulu. Tautan maksimal 106 huruf (`TK_QR_WA_MAKS` = batas `inti/qr.js` versi 6): kepanjangan → pesan dipendekkan, tetap
+  kepanjangan → QR kunci nota lama. Struk lama yang sudah tercetak (`MIQ:N:…`) tetap terbaca. Tautan WA lain / tautan apa pun tanpa kunci toko = kode biasa.
+- **A · scan lembar surat jalan.** Cetak surat jalan (`antar-panel.js` › `cetakSJ`) kini ber-QR per lembar bila setelan printer perangkat menyertakan QR:
+  **LEMBAR TOKO** = `MIQ:J:<id surat jalan>` (+ baris "Atau scan QR ini di tablet."), **LEMBAR PEMBELI** = WhatsApp toko berpesan nomor surat jalan
+  (`#j:<id>` di belakangnya) bila nomor WA diisi, selain itu tanpa QR (`tkQrSJ`). Lembar toko yang dibawa pulang di-scan di Jual (`pindaiSJ`): masih di
+  jalan → **tanda terima** terbuka (sama dengan tombol "diterima →": hak akun, uang bayar di tempat terisi sisa tagihnya, foto lembar tetap wajib); sudah
+  diterima tapi uang bayar di tempat belum pulang → daftar Antar + isian **setor**; selain itu daftar Antar tersaring ke surat jalan itu + kabar keadaannya.
+  Lembar berisi isian yang sedang dikerjakan tidak ditimpa.
+- **B · keadaan nota saat struk di-scan.** Struk yang dibuka DARI SCAN (`bukaStruk({ …, scan: true })` → `strukScan`) menampilkan pita `pita-scan`
+  (`pindai-logika.js` › `spKeadaanNota`, angka dari penyusun yang sudah ada — tidak ada angka baru): NOTA ASLI & berlaku / SUDAH DIBATALKAN / SUDAH DIKOREKSI,
+  tanggal + umur + nama, total menurut data ("kalau angka di kertas beda, yang benar angka ini"), retur yang sudah terjadi (`notaAsalId`), lunas saat beli /
+  sisa bon nota ini (`pnNota`, menutup ke mesin) + lewat jatuh tempo / sisa faktur (`fkNota`), surat jalan + uang bayar di tempat yang belum pulang. Awas
+  (merah) = tidak berlaku, lewat jatuh tempo, atau uang bayar di tempat belum pulang. Tombol **Bayar bon / Bayar faktur ›** (hak `terimaBon` diperiksa dulu)
+  → Pelanggan › Bon orang itu dengan lembar bayar terbuka (`pelanggan.buka('bon', orang, null, { bayar })`): faktur nota itu terpilih + nominal = sisa
+  faktur; bon eceran: nominal = sisa nota HANYA bila nota itu yang tertua (bayar bon menutup yang tertua dulu), selain itu kosong + kalimat sebabnya;
+  catatan "Scan struk nota No. …". Pencatatan tetap tombol bayar di Pelanggan (`susunBayarBon`) — pita & tombol tidak menulis apa pun.
+- **Ketikan scanner nyasar** (cacat lama 21 Nov: teks QR masuk ke kotak cari Riwayat → "0 nota"): `app.js` memotret isi kotak isian di awal tiap rentetan
+  ketikan (`beforeinput`); sesudah layar Jual memakai hasil scan, kotak yang isinya hanya bertambah potongan awal kode itu dikembalikan ke potretnya
+  (begitu ketikan berhenti). Ketikan orang di kotak lain / di sela-selanya tidak disentuh. Belum terbukti di CPad (pemicunya hanya ada di perangkat).
+- Uji: `uji_tanda_kenal.py` (isi QR, pengurai, sambungan Jual/app/antar/setelan; kontrol), `uji_pindai_struk.py` (keadaan nota, bon/faktur/surat jalan,
+  setelan WA; kontrol). `bundel_baru.lengkapi` kini ikut membawa `tanda-kenal-logika.js` bila `struk-logika.js` / `pindai-logika.js` ada.
+- **Belum terbukti:** tautan WA dibuka kamera HP Android & iPhone (bagian `#` diabaikan WhatsApp — dari aturan tautan, belum dicoba di HP), QR 41 modul
+  @ 3 titik (±15 mm) terbaca kamera HP dari kertas termal, ketikan scanner benar-benar dibuang di CPad.
+
 ## Gladi ulang tutup buku 2026 atas cadangan 23 Nov — fitur November × tahun yang ditutup (23 Nov 2026, cabang `perbaikan/tutup-buku-fitur-nov`)
 
 Gladi ulang semua alat tutup buku atas cadangan toko 23 Nov (lokal, `_privat/`): ritual lulus (14 baris sama, kartu pemeriksaan 27/27, Batalkan persis). Yang
