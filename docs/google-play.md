@@ -28,7 +28,7 @@ pernah menekan **Produksi** atau **Uji terbuka** (uji terbuka = siapa pun bisa b
 | targetSdk & compileSdk **36** (syarat aplikasi baru di Play sejak 31 Agu 2026; Capacitor 7 bawaannya 35) | `apk/pasang.py` (`SDK_SASARAN`) |
 | minSdk **24** = Android 7.0 (26 Nov 2026: unggahan AAB 1.43 ditolak — perlindungan otomatis Play wajib minSdk ≥ 24; Capacitor 7 bawaannya 23) | `apk/pasang.py` (`SDK_MINIMUM`) |
 | Workflow sekali-jalan untuk menyerahkan **kunci toko** ke Play App Signing (alat PEPK Google, di runner — Mac tanpa Java) | `.github/workflows/play-kunci.yml` |
-| Ikon 512, grafis unggulan 1024 × 500 (logo M, hitam malam + emas) | `docs/google-play/` (perender `apk/bahan_play.py` dari geometri logo M `apk/ikon_m.py`) |
+| Ikon 512, grafis unggulan 1024 × 500 (logo toko padi + M stensil, emas di latar gelap — 26 Nov 2026; unggah ulang di Play Console bila berubah) | `docs/google-play/` (perender `apk/bahan_play.py` dari geometri logo `apk/ikon_m.py`) |
 | Nama, deskripsi pendek & lengkap | `docs/google-play/teks-toko.md` |
 | Kebijakan privasi (Pages) | `privasi.html` → `https://devamp-hl.github.io/Toko-Beras-M.IQBAL/privasi.html` |
 | Jawaban Data safety, rating konten, deklarasi | `docs/google-play/data-safety.md` |

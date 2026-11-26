@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Logo "M" (owner 23 Nov 2026). Dibuat apk/ikon_m.py — ubah geometrinya DI SANA, lalu jalankan ulang (PNG ikut). -->
-  <defs><radialGradient id="malam" cx="50%" cy="42%" r="72%"><stop offset="0" stop-color="#1d2122"/><stop offset="1" stop-color="#080a0b"/></radialGradient>
-    <linearGradient id="emas" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8e7b4"/><stop offset="0.55" stop-color="#d6b05a"/><stop offset="1" stop-color="#a87f2f"/></linearGradient></defs>
-  <rect width="512" height="512" fill="url(#malam)"/>
-  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#emas)" stroke-width="5" opacity=".95"/>
-  <circle cx="256" cy="256" r="176" fill="none" stroke="url(#emas)" stroke-width="1.6" opacity=".42"/>
-  <g fill="url(#emas)"><polygon points="160.8,157.44 170.88,157.44 170.88,354.56 160.8,354.56"/><polygon points="163.04,157.44 200,157.44 262.72,336.64 254.88,354.56 247.04,354.56"/><polygon points="249.28,345.6 333.28,157.44 344.48,157.44 259.36,354.56 253.76,354.56"/><polygon points="315.36,157.44 351.2,157.44 351.2,354.56 315.36,354.56"/><polygon points="145.12,157.44 170.88,157.44 170.88,161.92 145.12,161.92"/><polygon points="142.88,350.08 189.92,350.08 189.92,354.56 142.88,354.56"/><polygon points="297.44,350.08 369.12,350.08 369.12,354.56 297.44,354.56"/><polygon points="351.2,157.44 369.12,157.44 369.12,161.92 351.2,161.92"/></g>
+  <!-- Logo toko: padi + M stensil (owner 26 Nov 2026). Dibuat apk/ikon_m.py — ubah geometrinya DI SANA (dan baru/js/inti/logo-toko.js), lalu jalankan ulang. -->
+  <rect width="512" height="512" fill="#14110d"/>
+  <g transform="translate(-9.846 5.514) scale(4.72615)">
+    <path d="M38 84 C 50 66, 58 48, 70 26" fill="none" stroke="#c9b37a" stroke-width="2.4" stroke-linecap="round"/>
+    <g fill="#e6d7ad"><ellipse cx="62" cy="36" rx="4" ry="8" transform="rotate(30 62 36)"/><ellipse cx="71" cy="42" rx="4" ry="8" transform="rotate(70 71 42)"/><ellipse cx="56" cy="48" rx="4" ry="8" transform="rotate(25 56 48)"/><ellipse cx="65" cy="55" rx="4" ry="8" transform="rotate(70 65 55)"/><ellipse cx="50" cy="61" rx="4" ry="8" transform="rotate(20 50 61)"/><ellipse cx="59" cy="67" rx="4" ry="8" transform="rotate(70 59 67)"/><ellipse cx="70" cy="28" rx="3.5" ry="7" transform="rotate(35 70 28)"/></g>
+    <path d="M39.05 34.73 L38.33 37.6 Q38.2 38.11 38.51 38.29 Q38.63 38.37 38.8 38.42 L38.8 38.42 Q38.96 38.46 39.1 38.56 L38.98 39 L36.17 39 L36.28 38.56 Q36.43 38.46 36.62 38.41 L36.62 38.41 Q36.8 38.37 36.96 38.29 Q37.35 38.11 37.48 37.6 L38.77 32.46 L39.05 34.73ZM39.24 31.51 Q39.2 31.24 39.17 31.04 Q39.01 31 38.84 30.96 L38.84 30.96 Q38.68 30.93 38.52 30.89 Q38.17 30.79 37.99 30.71 L38.17 29.98 L41.23 29.98 L42.18 37.18 L41.27 39 L40.18 39 L39.24 31.51ZM42.51 35.15 L45.1 29.98 L48.45 29.98 L48.33 30.46 Q48.14 30.53 47.98 30.56 L47.98 30.56 Q47.81 30.6 47.66 30.66 Q47.35 30.8 47.25 31.2 L45.6 37.79 Q45.5 38.19 45.75 38.33 Q45.86 38.39 46.01 38.43 L46.01 38.43 Q46.16 38.46 46.31 38.53 L46.2 39 L42.33 39 L42.45 38.53 Q42.64 38.46 42.81 38.43 L42.81 38.43 Q42.98 38.39 43.12 38.33 Q43.44 38.19 43.54 37.79 L45.15 31.34 L45.12 31.34 L42.66 36.26 L42.51 35.15Z" fill="#c9b37a"/>
+    <path d="M33.5 42L48.5 42" stroke="#c9b37a" stroke-width="0.72"/>
+  </g>
 </svg>
