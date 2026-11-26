@@ -486,6 +486,8 @@ OWNER_JALUR = {
     'susunPintu': 'rules v7 pintu tutup buku (owner 7 Okt, K8): 1 dokumen pengaturan/pintuBuku — bukan titikKas, tidak dikunci; membuka pintu = 1 access call (berita acara, rules pintuSah)',
     'susunSelesai': 'berita acara selesai (tidak dikunci; rules v7 membaca dokumen pintu = 1 access call) + paling banyak 1 pengaturan/pintuBuku status tutup (bukan titikKas, 0 pemeriksaan) — jumlah tetap',
     'susunCatatSusulan': 'siap 2027 (A9): 1 dokumen pengaturan/susulan<tahun> (jumlah & id catatan susulan) — bukan titikKas, tidak dikunci (0 pemeriksaan)',
+    # owner 26 Nov 2026 (paket brankas & catatan susulan): Catat isi brankas = pola Catat isi rekening (satu penyusun susunTitikTempat)
+    'susunTitikTempat': 'catat isi rekening / brankas: 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (pola susunTitikRekening)', 'susunTitikBrankas': 'catat isi brankas: 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (pola susunTitikRekening)',
     'susunTitikRekening': 'catat isi rekening (putaran 29): 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (nilai baru dinilai; tenggang 3 hari melindungi tanggal 1–3)',
     'susunPesananBatal': 'B4 batal pesanan: 1 pesanan (tidak dikunci) + paling banyak 1 piutangMutasi pengembalian uang muka bertanggal hari ini (owner) — jumlah tetap',
     'susunBayarBon': 'terima bon: 1 piutangMutasi bertanggal hari ini', 'susunHapusBon': 'hapus buku piutang: 1 piutangMutasi bertanggal hari ini',

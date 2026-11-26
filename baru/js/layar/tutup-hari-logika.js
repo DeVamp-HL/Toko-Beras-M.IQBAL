@@ -32,7 +32,7 @@ import { nilaiSelisihKg } from '../mesin/modal-fifo.js';
 // modal FIFO (owner 9 Okt, tinjauan): rupiah selisih timbang cepat merek karung FIFO = irisan karung terlama (sama dengan Cocokkan); saklar mati = beda × modal
 const tdRpSelisih = (merk, beda, hpp, iso) => { const st = ingatStokKarung(iso)[merk]; return st && st.metode === 'fifo' ? Math.round(nilaiSelisihKg(st, beda)) : Math.round(beda * hpp); };
 import { aturHarga, hgPct } from './harga-logika.js';
-import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan, ugLabaBersih, ugSesudahTitik, ugAmplopLawan } from './uang-logika.js';
+import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan, ugLabaBersih, ugSesudahTitik, ugAmplopLawan, ugSusulan, ugJamPasang } from './uang-logika.js';
 
 export const HL_TINDAKAN = 'hitungLaci';   // rules v16 stafHitungLaci — hitungan laci dari tablet
 export const ATUR_TUTUP_BAWAAN = { persenSisih: 10, kembalian: 500000, maafSelisih: 2000, alasan: ['Salah kasih kembalian', 'Ada pengeluaran belum dicatat', 'Ada penjualan belum dicatat', 'Belum tahu — dicari besok'], pecahan: [100000, 50000, 20000, 10000, 5000, 2000, 1000] };
@@ -110,11 +110,17 @@ export function rumusLaci(iso) {
   const susul = ugSesudahTitik(t); const kataSusul = ' · dicatat sesudah tutup ' + tanggalPendek(t.tanggal); let nSusul = 0;
   ingatGerakanKas().forEach((r) => { if (!susul(r) || tempatnya(r) !== 'laci') return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label));
     if (r.masuk > 0) { dorong((k ? k[1] : 'Jual tunai') + kataSusul, 1, r.masuk); nSusul += r.masuk; } if (r.keluar > 0) { dorong((k ? k[1] : 'Keluar lain') + kataSusul, -1, r.keluar); nSusul -= r.keluar; } });
+  // owner 26 Nov 2026 (paket brankas & catatan susulan): amplop laba & pindah uang yang menyentuh laci dan dicatat sesudah tutup (hari patokan) ikut juga —
+  // aturan & angka SATU dengan ugSusulan (laci seharusnya = saldoKantong + susulan laci); tanpa ini pindah laci → brankas sesudah tutup jadi "kurang kas" besok
+  const jamT = ugJamPasang(t); const lewatT = (x) => !!jamT && x.tanggal === t.tanggal && /^\d\d:\d\d/.test(String(x.jam || '')) && String(x.jam).slice(0, 5) > jamT;
+  ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || String(a.id) === 'am-' + t.tanggal || !lewatT(a) || ugAmplopLawan(a) !== 'laci') return; dorong((a.tipe === 'ambil' ? 'Diambil dari amplop laba' : 'Disisihkan ke amplop laba') + kataSusul, a.tipe === 'ambil' ? 1 : -1, Number(a.nominal) || 0); });
+  ambilPindahUang().forEach((p) => { if (String(p.id) === 'pd-' + t.tanggal || !lewatT(p)) return; if (p.dari === 'laci') dorong('Dipindah ke ' + ugNamaTempat(p.ke).toLowerCase() + kataSusul, -1, Number(p.nominal) || 0); if (p.ke === 'laci') dorong('Diisi dari ' + ugNamaTempat(p.dari).toLowerCase() + kataSusul, 1, Number(p.nominal) || 0); });
+  const su = ugSusulan(t); const suTotal = su.laci + su.brankas + su.rekening + su.amplop;
   ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || a.tanggal !== iso || !(iso > t.tanggal) || ugAmplopLawan(a) !== 'laci') return; dorong(a.tipe === 'ambil' ? 'Diambil dari amplop laba' : 'Disisihkan ke amplop laba', a.tipe === 'ambil' ? 1 : -1, Number(a.nominal) || 0); });
   ambilPindahUang().forEach((p) => { if (p.tanggal !== iso || !(iso > t.tanggal)) return; if (p.dari === 'laci') dorong('Dipindah ke ' + ugNamaTempat(p.ke).toLowerCase(), -1, Number(p.nominal) || 0); if (p.ke === 'laci') dorong('Diisi dari ' + ugNamaTempat(p.dari).toLowerCase(), 1, Number(p.nominal) || 0); });
   const baris = [{ nama: S0 ? 'Laci semalam (' + tanggalPendek(kemarin) + ')' : 'Patokan kas hari ini (' + tanggalPendek(t.tanggal) + ')', arah: 0, n: S0 ? S0.laci : Number(t.laci) || 0 }].concat(Object.keys(grup).map((k) => grup[k]).sort((a, b) => b.arah - a.arah || b.n - a.n));
   // dokumen yang tempatnya disebut bukan laci (mis. bayar bon dari rekening) tidak muncul di sini — persis: hanya yang menyentuh laci
-  return { ada: true, seharusnya: S1.laci + nSusul, baris, teks: 'seharusnya ' + RP(S1.laci + nSusul), kasTotal: S1.total + nSusul, S1, awal: baris[0].n, masuk: baris.filter((b) => b.arah === 1).reduce((a, b) => a + b.n, 0), keluar: baris.filter((b) => b.arah === -1).reduce((a, b) => a + b.n, 0) };
+  return { ada: true, seharusnya: S1.laci + su.laci, baris, teks: 'seharusnya ' + RP(S1.laci + su.laci), kasTotal: S1.total + suTotal, S1, susulan: su, nSusulGerak: nSusul, awal: baris[0].n, masuk: baris.filter((b) => b.arah === 1).reduce((a, b) => a + b.n, 0), keluar: baris.filter((b) => b.arah === -1).reduce((a, b) => a + b.n, 0) };
 }
 /**
  * Uang laci yang tercatat SESUDAH hitungan tablet: hari `iso`, ditulis di hari yang sama (tglTulis = iso — hitungan lewat tengah malam = semua catatan iso
@@ -201,7 +207,10 @@ export function susunTutup(D, w, yakinUlang) {
   if (H.tablet && (!hlPakai || (hlPakai.status || 'menunggu') !== 'menunggu')) return { tolak: 'Hitungan laci dari tablet yang dipakai sudah tidak menunggu (' + (hlPakai ? hlPakai.status : 'tidak ditemukan') + ') — lepas hitungannya, lalu hitung atau pakai hitungan lain' };
   if (H.R.sudah && !yakinUlang) return { tolak: 'Hari ini sudah pernah ditutup jam ' + (H.R.sudah.jam || '') + '. Menutup lagi menulis catatan baru; yang lama turun ke riwayat bertanggal, tidak hilang. Ketuk sekali lagi', perluYakin: 'ulang' };
   // kasFisik* = isi SAAT DIHITUNG (sebelum sisihan/amankan malam ini), supaya Σ fisik − seharusnya = selisih laci persis seperti dokumen lama; isi SESUDAH tutup ada di titik kas
-  const iso = H.iso; const S = H.S; const mdrBaru = H.mdrDicatat ? H.mdrJadi : 0; const rekening = S.ada ? S.rekening : 0; const amplop = S.ada ? S.amplop : 0; const brankas = S.ada ? S.brankas : 0;
+  const iso = H.iso; const S = H.S; const mdrBaru = H.mdrDicatat ? H.mdrJadi : 0;
+  // owner 26 Nov 2026 (paket brankas & catatan susulan): uang brankas / rekening / amplop yang dicatat sesudah tutup terakhir (bertanggal hari itu) ikut isi malam ini —
+  // dulu saldoKantong melewatinya dan titik baru menghapusnya dari buku tempat itu selamanya (contoh: bayar utang ke owner dari brankas sesudah tutup)
+  const su = (H.RL && H.RL.susulan) || { rekening: 0, amplop: 0, brankas: 0 }; const rekening = S.ada ? S.rekening + su.rekening : 0; const amplop = S.ada ? S.amplop + su.amplop : 0; const brankas = S.ada ? S.brankas + su.brankas : 0;
   const alasan = H.perluAlasan ? String(D.alasan || '').trim() : (H.selisih === null ? String(D.alasan || 'patokan kas belum bisa dihitung').trim() : '');
   const dokTutup = { id: iso, tanggal: iso, jam: w.jam, omzet: H.R.omzet, jumlahTransaksi: H.R.baris, jumlahNota: H.R.nota, kasSeharusnya: H.RL.kasTotal === undefined ? null : H.RL.kasTotal, kasFisikLaci: H.hitungKini, kasFisikRekening: rekening, kasFisikAmplop: amplop, kasFisikBrankas: brankas,
     selisih: H.selisih, alasanSelisih: alasan, setoranOwner: 0, kasAwalBesokLaci: H.laciAkhir, menggantung: { rapikanKasir: H.R.rapikan, daruratBelumRinci: H.R.darurat }, diubahPada: w.kini,

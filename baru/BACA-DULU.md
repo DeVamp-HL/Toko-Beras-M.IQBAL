@@ -4232,3 +4232,20 @@ mendesak** · pembanding omzet = **kemarin + hari yang sama minggu lalu, sampai 
   kolom & baris, chip "w/12 · N px"), "tinggi otomatis", × hapus, + tambah, Kembalikan bawaan, Batal; "Selesai" menyimpan SEKALI (`simpanWidget` →
   `tulisDokumen`). HP (< 720 px): satu kolom, urutan sama, ukuran tarikan diabaikan, pegangan tidak tampil. Angka yang berubah berkilau lewat Web Animations
   (markup tidak berubah → gambar yang hidup = gambar segar, `uji_layar_mulus`).
+
+## Brankas & catatan sesudah tutup (owner 26 Nov 2026, "Batalkan + paket brankas"; cabang `claude/brankas-catatan-susulan`; tanpa rules baru, mesin beku tidak diubah)
+
+Sebab: uang di brankas / rekening / amplop yang dicatat SESUDAH tutup hari tetapi bertanggal hari itu (mis. bayar utang ke owner dari brankas jam 20.50 sesudah
+tutup 18.05, owner mengembalikan kasbon ke rekening sesudah tutup) dilewati `saldoKantong` (ia hanya membaca catatan bertanggal SESUDAH patokan), lalu hilang dari
+buku tempat itu begitu tutup berikutnya menulis titik baru. Laci sudah aman sejak 39b UU38-1 (gerakan kas sesudah tutup masuk "laci seharusnya").
+- **Satu aturan susulan** `ugSusulan(t)` (uang-logika; `ugJamPasang`): gerakan kas mesin (aturan `ugSesudahTitik`) + amplop laba + pindah uang yang jamnya lewat jam
+  patokan dipasang (sisihan `am-` & amankan `pd-` tutup itu sendiri tidak) → per tempat. Dipakai buku kas harian (`khSusulan` kini membungkusnya), tutup hari, dan
+  Catat isi tempat. Patokan yang dipasang lewat tengah malam tetap tanpa susulan (aturan lama).
+- **Tutup hari** (`rumusLaci` / `susunTutup`): laci seharusnya = saldoKantong + susulan LACI (kini termasuk pindah & amplop sesudah tutup — baris kertas "· dicatat
+  sesudah tutup", Σ baris = seharusnya); `kasTotal` + susulan semua tempat; isi rekening / amplop / brankas tutup ini (kasFisik* & titik) + susulan tempat itu
+  (Σ fisik − seharusnya = selisih laci tetap). Tutup ulang hari yang sama ikut catatan sesudah tutup pertama.
+- **Catat isi brankas menurut hitungan** (Uang › Pindah uang, `hitungTitikTempat('brankas', …)` / `susunTitikBrankas`; Catat isi rekening = pembungkus yang sama):
+  pengaturan/titikKas bertanggal kemarin (tempat yang dicatat = angka diketik − gerakan tempat itu hari ini) atau patokan hari ini ditulis ulang; tempat lain =
+  hitungan + catatan susulan patokan lama (dulu ikut hilang). Patokan, bukan laba.
+- Titik yang sudah tersimpan TIDAK diubah: tambalan berlaku untuk tutup / catat isi berikutnya. Uji `alat-uji/uji_brankas_susulan.py` (kotak pasir angka contoh pola dua
+  kasus nyata, kontrol, asap cadangan toko: daftar patokan yang dulu kehilangan catatan).

@@ -601,7 +601,7 @@ if __name__ == '__main__':
             'UU38-1: catatan sesudah tutup tidak ikut "seharusnya" laci (lebih/kurang palsu dihitung lagi di laba)': js.replace("const susul = ugSesudahTitik(t);", "const susul = () => false;"),
             'UU38-1: jam uang keluar tidak dibaca dari dokumennya (baris mesin tanpa jam)': js.replace("const j = String(r.jam || jamDok[String(r.id)] || '').slice(0, 5);", "const j = String(r.jam || '').slice(0, 5);"),
             'UU38-1: titik yang dipasang lewat tengah malam dianggap punya catatan susulan': js.replace("|| hariIniIso(d) !== t.tanggal) return () => false;", ") return () => false;"),
-            'UU38-1: kasSeharusnya dokumen tutup tidak ikut catatan susulan (Σ fisik − seharusnya ≠ selisih)': js.replace("kasTotal: S1.total + nSusul,", "kasTotal: S1.total,"),
+            'UU38-1: kasSeharusnya dokumen tutup tidak ikut catatan susulan (Σ fisik − seharusnya ≠ selisih)': js.replace("kasTotal: S1.total + suTotal,", "kasTotal: S1.total,"),
         }
         kode = 0
         for nama, isi in rusak.items():
