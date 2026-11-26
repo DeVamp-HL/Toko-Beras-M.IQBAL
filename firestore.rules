@@ -1,4 +1,11 @@
 // ============================================================================
+// ATURAN FIRESTORE v21 FINAL — Toko Beras M.IQBAL (DRAF 26 Nov 2026, USUL HARGA BANDING dari tablet) = v20 FINAL + PERSIS satu fungsi baru dan satu
+// sambungan di baris create persetujuan (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v20; uji server: docs/uji-rules-v21.md). Owner
+// menerbitkan v21 SEKALI lewat Console SEBELUM cabang Banding pemasok digabung (tanpa v21 usul harga dari tablet ditolak server — layar owner tetap jalan):
+//   (v21-1) persetujuan create: + stafUsulBanding(ben) — USUL harga tawaran pemasok / harga acuan resmi dari Penjaga laci (owner 26 Nov 2026: "Owner + Ben
+//           lewat usul"): bentuk "menunggu" bertindakan hargaBanding atas nama penulisnya, jenis tawaran | acuan, harga per kg bulat 1.000–100.000, kalimat
+//           1–300 huruf, tanpa kolom keputusan. Catatan bandingnya ditulis OWNER saat menyetujui (aturanToko, owner saja). Tidak ada uang, stok, atau tanggal buku.
+// Sisanya = v20 FINAL di bawah ini, apa adanya. Kepala v20:
 // ATURAN FIRESTORE v20 FINAL — Toko Beras M.IQBAL (DRAF 24 Nov 2026, BUKU PEGANGAN terbaca staf) = v19 FINAL + PERSIS satu nama dokumen di satu baris baca
 // (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v19; uji server: docs/uji-rules-v20.md). Owner menerbitkan v20 SEKALI lewat Console
 // SEBELUM cabang buku pegangan digabung (tanpa v20 pendengar aturanToko/bukuPegangan di HP/tablet staf ditolak server dan disebut di Sistem › Perangkat):
@@ -342,6 +349,16 @@ service cloud.firestore {
         && d.get('hitung', 0) is int && d.get('hitung', 0) > 0 && d.get('hitung', 0) <= 1000000000
         && d.get('amankan', -1) is int && d.get('amankan', -1) >= 0 && d.get('amankan', -1) <= d.get('hitung', 0)
         && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan', 'koreksiOwner']);
+    }
+    // v21 (paket Banding pemasok, owner 26 Nov 2026: "Owner + Ben lewat usul"): USUL harga tawaran pemasok / harga acuan resmi dari tablet — bentuk "menunggu"
+    // bertindakan hargaBanding atas nama penulisnya, jenis tawaran | acuan, harga per kg rupiah bulat 1.000–100.000, kalimat 1–300 huruf, tanpa keputusan.
+    // Catatan bandingnya (aturanToko/banding-YYYY-MM) ditulis OWNER saat menyetujui; isian lain (peta isi) dicek ulang di perangkat owner. Tanpa get().
+    function stafUsulBanding(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'hargaBanding' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('hargaPerKg', 0) is int && d.get('hargaPerKg', 0) >= 1000 && d.get('hargaPerKg', 0) <= 100000 && d.get('jenis', '') in ['tawaran', 'acuan']
+        && d.get('teks', 0) is string && d.teks.size() > 0 && d.teks.size() <= 300
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan']);
     }
     // v10 (B3, owner 18 Nov 2026): SURAT JALAN dibuat ben BERSAMA notanya — status 'berangkat', tanpa kolom penerimaan / keputusan
     function stafBuatSJ(peranBoleh) {
@@ -767,7 +784,7 @@ service cloud.firestore {
 
     match /persetujuan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta membaca keputusan owner (pendengar koleksi utuh — rules bukan saringan)
-      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']) || (stafHitungLaci(['ben']) && tglStaf('tanggal'));   // v16: + hitungan laci tutup hari · v15: + kabar barang masuk · v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
+      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']) || (stafHitungLaci(['ben']) && tglStaf('tanggal')) || stafUsulBanding(['ben']);   // v21: + usul harga banding · v16: + hitungan laci tutup hari · v15: + kabar barang masuk · v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
       allow update, delete: if owner();   // memutus (setuju / tolak) = owner
     }
 

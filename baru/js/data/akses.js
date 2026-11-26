@@ -190,6 +190,11 @@ export const batchTablet = (d) => !!d && d.dariTablet === true && d.caraBayar ==
 export const KOLOM_KEPUTUSAN_HITUNG = ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan', 'koreksiOwner'];
 export const hitungLaciSah = (d, uid) => !!d && d.tindakan === 'hitungLaci' && d.status === 'menunggu' && String(d.mintaUid || '') === String(uid || '') && Number.isInteger(d.hitung) && d.hitung > 0
   && d.hitung <= 1000000000 && Number.isInteger(d.amankan) && d.amankan >= 0 && d.amankan <= d.hitung && typeof d.tanggal === 'string' && !KOLOM_KEPUTUSAN_HITUNG.some((k) => k in d);
+// rules v21 (paket Banding pemasok, owner 26 Nov 2026): USUL harga tawaran / acuan dari tablet (= stafUsulBanding): Penjaga laci, menunggu, atas nama sendiri,
+// jenis tawaran | acuan, hargaPerKg bulat 1.000–100.000, teks 1–300 huruf, tanpa kolom keputusan. Isian lain (peta isi) dicek ulang owner saat menyetujui.
+export const usulBandingSah = (d, uid) => !!d && d.tindakan === 'hargaBanding' && d.status === 'menunggu' && String(d.mintaUid || '') === String(uid || '') && ['tawaran', 'acuan'].indexOf(d.jenis) >= 0
+  && Number.isInteger(d.hargaPerKg) && d.hargaPerKg >= 1000 && d.hargaPerKg <= 100000 && typeof d.teks === 'string' && d.teks.length > 0 && d.teks.length <= 300
+  && !['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan'].some((k) => k in d);
 // rules v13 + v15: jenis titipan uang keluar dari tablet (= stafMintaKeluar). bongkar wajib batchId (kedatangannya), bayarBon wajib nama pemasok.
 export const JENIS_TITIPAN = ['toko', 'karyawan', 'kasbon', 'bongkar', 'bayarBon'];
 
@@ -331,6 +336,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'persetujuan' && d.tindakan === 'barangMasuk') { if (P !== 'ben' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan'].some((k) => k in d) || !(typeof d.batchId === 'string' && d.batchId.length > 0) || String(d.mintaUid || '') !== String(akun.uid || '')) return { tolak: tolakTindakan('kedatangan') }; continue; }
       // rules v16: HITUNGAN LACI untuk tutup hari — Penjaga laci saja, kisi hitungLaci bukan "tidak boleh" (stafHitungLaci); harinya ditutup owner
       if (x.koleksi === 'persetujuan' && d.tindakan === 'hitungLaci') { if (P !== 'ben' || (hak.hitungLaci || 'tidak') === 'tidak' || !hitungLaciSah(d, akun.uid)) return { tolak: tolakTindakan('hitungLaci') }; continue; }
+      // rules v21: USUL harga tawaran / acuan (banding pemasok) — Penjaga laci saja (stafUsulBanding); catatannya ditulis owner saat menyetujui
+      if (x.koleksi === 'persetujuan' && d.tindakan === 'hargaBanding') { if (P !== 'ben' || !usulBandingSah(d, akun.uid)) return { tolak: 'Usul harga tawaran / acuan hanya dari Penjaga laci, atas nama orang yang jaga, harga per kg Rp1.000–Rp100.000' }; continue; }
       // rules v13: PESAN untuk owner — bentuk "menunggu" bertindakan pesan atas nama sendiri, teks 1–500 huruf, tanpa keputusan / balasan (stafKirimPesan)
       if (x.koleksi === 'persetujuan' && d.tindakan === 'pesan') { if (d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan'].some((k) => k in d) || typeof d.teks !== 'string' || !d.teks.length || d.teks.length > 500 || String(d.mintaUid || '') !== String(akun.uid || '')) return { tolak: 'Pesan untuk owner harus berisi 1–500 huruf, atas nama orang yang jaga' }; continue; }
       if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].some((k) => k in d) || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };

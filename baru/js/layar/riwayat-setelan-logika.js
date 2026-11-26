@@ -11,13 +11,13 @@ import { RP, ANGKA, tanggalPendek, hariIniIso, jamSetempat } from '../inti/forma
 
 export const RS_MULAI = '2026-11-22';   // pencatatan setelan dari → ke mulai hari ini
 export const RS_SARING = [['', 'Semua'], ['harga', 'Harga'], ['setelan', 'Setelan']];
-export const RS_JUDUL = { catatStok: 'Pencatatan stok', tutupHari: 'Tutup hari', uangKeluar: 'Uang keluar', peran: 'Peran & persetujuan', struk: 'Struk', notif: 'Notifikasi',
+export const RS_JUDUL = { bandingPemasok: 'Banding pemasok', catatStok: 'Pencatatan stok', tutupHari: 'Tutup hari', uangKeluar: 'Uang keluar', peran: 'Peran & persetujuan', struk: 'Struk', notif: 'Notifikasi',
   upah: 'Upah', pindahUang: 'Pindah uang', bonPemasok: 'Bon pemasok', tempat: 'Tempat simpan', karungBekas: 'Nilai karung bekas', identitas: 'Identitas toko',
   hargaTingkat: 'Harga tingkat (warung · catering · instansi)', het: 'HET', kelasMerek: 'Kelas merek', pengingat: 'Pengingat', pelangganKembar: 'Pelanggan kembar',
   produkArsip: 'Produk diarsipkan', harga: 'Aturan harga', kendaliBiaya: 'Kendali biaya', kantong: 'Kantong', laporan: 'Laporan', dokumen: 'Dokumen', stokUmur: 'Umur stok',
   hpp: 'Modal (HPP)', hargaMinimum: 'Harga minimum & HET', merekLaporan: 'Susut & per merek', tutupBuku: 'Tutup buku', pelanggan: 'Pelanggan', kunciPeriode: 'Kunci bulan', perangkat: 'Perangkat' };
 const RS_GOLONG_HARGA = { harga: true, hargaTingkat: true, het: true, karungBekas: true, hargaMinimum: true };
-const RS_SISTEM = { hematHarian: true };   // dokumen sistem (klaim baca penuh harian) — bukan setelan owner
+const RS_SISTEM = { hematHarian: true, acuanTarik: true };   // dokumen sistem (klaim baca penuh harian · hasil tarik harga acuan fungsi server) — bukan setelan owner
 const rsJam = (j) => String(j || '').slice(0, 5);
 /** 'minKarung' → 'min karung', 'tarif.harian' → 'tarif › harian'. */
 export const rsKolom = (k) => String(k || '').split('.').map((x) => x.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase()).join(' › ');

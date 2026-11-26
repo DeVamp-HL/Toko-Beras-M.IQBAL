@@ -2,7 +2,7 @@
 // alat-uji/uji_titipan.py (+ pesanPutus / kirimanTablet: alat-uji/uji_tablet_tampilan.py). Dipakai functions/index.js. Kalimatnya sengaja pendek: notifikasi tampil di layar kunci HP.
 'use strict';
 
-const JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit' };
+const JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit', hargaBanding: 'Usul harga tawaran / acuan' };   // + banding pemasok (owner 26 Nov 2026, rules v21)
 const JENIS = { toko: 'Belanja toko', karyawan: 'Untuk karyawan', kasbon: 'Kasbon karyawan', bongkar: 'Upah bongkar', bayarBon: 'Bayar bon pemasok' };   // + barang masuk dari tablet (owner 22 Nov 2026, rules v15)
 const BATAS_ISI = 160;
 
@@ -39,7 +39,7 @@ function pesanNotif(d, id) {
 }
 
 // ---- PUSH APLIKASI TABLET (owner 23 Nov 2026: "Push penuh lewat Google") — jawaban owner atas permintaan dari tablet, untuk akun yang memintanya ----
-const JUDUL_TABLET = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan', barangMasuk: 'Kabar barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon' };
+const JUDUL_TABLET = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan', barangMasuk: 'Kabar barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon', hargaBanding: 'Usul harga tawaran / acuan' };
 const PUTUS_TABLET = { disetujui: 'disetujui owner', ditolak: 'DITOLAK owner', dibaca: 'dibaca owner' };
 const SALURAN_TABLET = 'kabar';   // saluran "Kabar toko" yang dibuat aplikasi tablet (MainActivity)
 

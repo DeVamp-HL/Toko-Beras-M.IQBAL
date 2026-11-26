@@ -25,6 +25,9 @@ import { htTeksUbah, htPasangUsul, HT_TINDAKAN } from './harga-tingkat-logika.js
 import { fkTeksMinta, FK_TINDAKAN, fkSemua } from './faktur-logika.js';
 // owner 21 Nov 2026: titipan uang keluar & pesan dari tablet — papan ini memutusnya lewat pintu yang SAMA dengan Uang (tpSusunPutus menulis uangnya)
 import { tpSusunPutus, tpTeks, TP_TINDAKAN, TP_PESAN, TP_KABAR } from './titipan-logika.js';
+// paket Banding pemasok (owner 26 Nov 2026): pengingat mingguan (harga ≥ N pemasok) & bulanan (banding bulan lalu) + usul harga tawaran / acuan dari tablet
+// (rules v21) — modul DAUN banding-catat-logika (tanpa mesin laporan)
+import { bcSumberPengingat, bcPasangUsul, bcTeksUsul, BC_TINDAKAN } from './banding-catat-logika.js';
 
 export const ssHariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const ssTambahHari = (iso, n) => new Date((ssHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
@@ -47,7 +50,9 @@ const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: '
   karyawan: { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri', hargaPelanggan: 'tidak', antar: 'tidak', terimaAntar: 'sendiri', pesanan: 'tidak' } };   // B4 (owner 18 Nov 2026): pesanan, PO, jadwal rutin = owner + Ben — rules v11
 export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon'], ['janji', 'Janji bayar pelanggan', 'hariJanji'], ['kantong', 'Kantong menipis', 'hariKantong'], ['opname', 'Opname rutin', 'hariOpname'], ['cadangan', 'Cadangan berkas', 'hariCadangan'], ['pajak', 'Setoran PPh final bulan lalu', 'hariPajak'], ['faktur', 'Faktur pelanggan jatuh tempo', 'hariFaktur'], ['gudang', 'Cek mingguan timbangan & gudang', 'hariGudang'], ['kuartal', 'Target kuartal belum diisi', 'hariKuartal'], ['tinjauan', 'Tinjauan bulanan belum ditulis', 'hariTinjauan'],
   // owner 26 Nov 2026 (kas & rekening, bon eceran): setor ke bank · cocok saldo rekening akhir bulan · hari tagih bon pelanggan
-  ['setor', 'Setor ke bank (brankas lewat batas)', 'hariSetor'], ['rekening', 'Cocok saldo rekening usaha akhir bulan', 'hariRekening'], ['tagih', 'Hari tagih bon pelanggan', 'hariTagih']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));   // gudang: paket KPI laba (owner 24 Nov 2026, butir 14)
+  ['setor', 'Setor ke bank (brankas lewat batas)', 'hariSetor'], ['rekening', 'Cocok saldo rekening usaha akhir bulan', 'hariRekening'], ['tagih', 'Hari tagih bon pelanggan', 'hariTagih'],
+  // paket Banding pemasok (owner 26 Nov 2026): harga dari N pemasok tiap minggu · banding bulan lalu — hari, tanggal & N diatur di Harga & Pemasok › Banding › Atur
+  ['banding', 'Harga dari N pemasok minggu ini', 'hariBanding'], ['bandingBulan', 'Banding pemasok bulan lalu', 'hariBandingBulan']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));   // gudang: paket KPI laba (owner 24 Nov 2026, butir 14)
 export const SS_PENERIMA = ['Owner', 'Ben'];
 
 // ---------- ATUR SENDIRI — angka & daftar kebijakan owner, satu dokumen aturanToko per layar; bawaan = angka desain terkunci ----------
@@ -58,8 +63,8 @@ export const SS_ATUR_BAWAAN = {
     operator: {}, ringkasOrang: '', intipDetik: 60 },   // owner 22 Nov 2026 (sidik jari Tahap A): intip uang tertutup sendiri sesudah intipDetik tidak disentuh · putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js · owner 21 Nov: orang yang membuka Ringkas hari ini (kode orang, '' = mati)
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
-  pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true, gudang: true, setor: true, rekening: true, tagih: true, kuartal: true, tinjauan: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'], gudang: ['Owner', 'Ben'], setor: ['Owner'], rekening: ['Owner'], tagih: ['Owner', 'Ben'], kuartal: ['Owner'], tinjauan: ['Owner'] },
-    hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, hariFaktur: 3, hariGudang: 0, hariSetor: 0, hariRekening: 1, hariTagih: 0, hariKuartal: 7, hariTinjauan: 0, tundaHari: 2, maksTunda: 2, opnameTiap: 14, gudangTiap: 7 },
+  pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true, gudang: true, setor: true, rekening: true, tagih: true, kuartal: true, tinjauan: true, banding: true, bandingBulan: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'], gudang: ['Owner', 'Ben'], setor: ['Owner'], rekening: ['Owner'], tagih: ['Owner', 'Ben'], kuartal: ['Owner'], tinjauan: ['Owner'], banding: ['Owner', 'Ben'], bandingBulan: ['Owner'] },
+    hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, hariFaktur: 3, hariGudang: 0, hariSetor: 0, hariRekening: 1, hariTagih: 0, hariKuartal: 7, hariTinjauan: 0, hariBanding: 0, hariBandingBulan: 0, tundaHari: 2, maksTunda: 2, opnameTiap: 14, gudangTiap: 7 },
 };
 const ssSalin = (x) => JSON.parse(JSON.stringify(x));
 // ---------- orang di tablet (putaran T1 langkah 3, owner 16 Nov 2026) — bentuk yang boleh ditulis; diatur lewat tablet-logika.js ----------
@@ -275,6 +280,8 @@ export function ssPersetujuan(kini) {
     // owner 22 Nov 2026 (paket ④): hitungan laci dari tablet — bukan uang keluar; diselesaikan di Uang › Tutup hari (Setujui di sini ditolak), tidak ikut sekaligus
     if (m.tindakan === SS_HITUNG_LACI) Object.assign(b, { n: 0, sekaligus: false, teks: 'Hitungan laci ' + tanggalPendek(m.tanggal || '') + ' · ' + RP(Number(m.hitung) || 0) + (Number(m.amankan) ? ' · ' + RP(Number(m.amankan)) + ' ke brankas' : ''), saran: 'Diselesaikan di Uang › Tutup hari (Pakai hitungan ini) — Tolak = minta hitung ulang' });
     if (m.tindakan === TP_KABAR) Object.assign(b, { teks: 'Barang masuk · ' + (m.teks || ''), saran: 'Kabar barang masuk dari tablet — tandai sudah diperiksa; harga & jumlah dibetulkan di Stok › Barang masuk' });
+    // paket Banding pemasok (rules v21): usul harga tawaran / acuan dari tablet — bukan uang, dilihat satu per satu; Setujui = catatannya ditulis (dicek ulang)
+    if (m.tindakan === BC_TINDAKAN) Object.assign(b, { n: 0, sekaligus: false, namaTindakan: m.jenis === 'acuan' ? 'Usul harga acuan resmi' : 'Usul harga tawaran pemasok', teks: bcTeksUsul(m), saran: 'Setujui = dicatat di Harga & Pemasok › Banding atas nama ' + (m.dari || 'tablet') + ' · Tolak = tulis alasannya' });
     return Object.assign(b, { pesan: m.tindakan === TP_PESAN || m.tindakan === TP_KABAR, balasan: m.balasan || '' }); };
   const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(barisTP); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(barisTP).slice(0, 20);
   return { menunggu, riwayat, kecil: menunggu.filter((m) => m.sekaligus && m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
@@ -288,7 +295,7 @@ export function susunPutusPersetujuan(id, setuju, alasan, w) {
   if (m.tindakan === SS_HITUNG_LACI && setuju) return { tolak: 'Hitungan laci diselesaikan di Uang › Tutup hari — ketuk "Pakai hitungan ini", cek QRIS (atau lewati), lalu Tutup' };
   if (!setuju && ssKosong(alasan)) return { tolak: 'Menolak butuh alasan — supaya ' + (m.dari || 'peminta') + ' tahu sebabnya' };
   // B1 (owner 16 Nov 2026): menyetujui usul harga pelanggan = memasang ubahannya ke setelan SEKARANG di kiriman yang sama (dihitung ulang, bukan teks kiriman)
-  const HP = setuju && m.tindakan === HT_TINDAKAN ? htPasangUsul(m, w) : null; if (HP && HP.tolak) return { tolak: HP.tolak };
+  const HP = setuju && m.tindakan === HT_TINDAKAN ? htPasangUsul(m, w) : setuju && m.tindakan === BC_TINDAKAN ? bcPasangUsul(m, w) : null; if (HP && HP.tolak) return { tolak: HP.tolak };   // + banding pemasok (rules v21)
   return { dokumen: [{ koleksi: 'persetujuan', data: Object.assign({}, m, { status: setuju ? 'disetujui' : 'ditolak', alasanTolak: setuju ? '' : String(alasan).trim().slice(0, 80), diputusTanggal: w.tanggal, diputusJam: w.jam, diputusPada: w.kini }) }].concat(HP ? HP.dokumen : []),
     patch: { kabar: HP ? 'Disetujui & dipasang — ' + HP.kabar : setuju ? 'Disetujui — ' + (m.dari || 'peminta') + ' bisa melanjutkan di perangkatnya' : 'Ditolak (' + String(alasan).trim() + ') — ' + (m.dari || 'peminta') + ' dapat kabarnya', kabarAwas: false } };
 }
@@ -464,6 +471,9 @@ export function ssSumberPengingat(kini, lokal) {
     ket: HT.daftar.slice(0, 4).map((o) => o.nama + ' ' + RP(o.rp)).join(' · ') + (HT.daftar.length > 4 ? ' · +' + (HT.daftar.length - 4) + ' orang' : '') + ' — Pelanggan › Bon › Papan tagih' });
   // owner 26 Nov 2026: setor ke bank & cocok rekening — dihitung kas-rekening-logika (owner saja, butuh uang) dan diteruskan lewat lokal.uang (pola lokal.pajak)
   (lokal && Array.isArray(lokal.uang) ? lokal.uang : []).forEach((p) => { if (p && (p.jenis === 'setor' || p.jenis === 'rekening') && /^\d{4}-\d{2}-\d{2}$/.test(String(p.jatuh || ''))) out.push(p); });
+  // paket Banding pemasok (owner 26 Nov 2026): minggu ini belum punya harga dari N pemasok (jatuh = hari setelan, bawaan Jumat) · bulan lalu belum ditandai
+  // "sudah dibanding" (jatuh = tanggal setelan, bawaan tanggal 1; ditagih paling lama 7 hari) — aturan & jadwalnya di banding-catat-logika
+  bcSumberPengingat(iso).forEach((p) => out.push(p));
   out.bonTanpaTanggal = bonTanpaTanggal; return out;
 }
 // ---------- KUARTAL: kunci & target (Pondasi paket kedua) — SATU sumber untuk pengingat di atas, kuartal-logika (Laporan › Kuartal) & pondasi-logika (penyimpan) ----------

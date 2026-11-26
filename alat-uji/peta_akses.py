@@ -189,6 +189,7 @@ MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru
                'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/pesanan-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
                'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
                'baru/js/layar/titipan-logika.js',   # owner 21 Nov 2026: titipan dari tablet — Uang, papan Persetujuan & tutup hari memakainya
+               'baru/js/layar/banding-catat-logika.js',   # paket Banding pemasok (owner 26 Nov 2026, rules v21): usul harga tawaran / acuan dari tablet
                'baru/js/layar/berat-asli-logika.js']   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Jual, retur, Barang masuk)
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
@@ -376,6 +377,19 @@ pasok('katalogHargaLiteran', [{ id: 'Campur Enam', merk: 'Campur Enam', hargaPer
   var DU = [{ koleksi: 'persetujuan', data: { id: 'us-peta', tindakan: 'barangMasuk', status: 'menunggu', batchId: 'bm-peta', teks: 'x', usul: { jenis: 'koreksi', teks: 'contoh' }, mintaUid: u, tanggal: W.tanggal, jam: W.jam }, ada: false, lama: null }];
   var rU = periksaKiriman(AKUN[p], DU, [], Object.assign({}, HAK_LONGGAR, { uangKeluar: 'owner' }));
   catat('barang masuk', p, 'usul untuk kedatangan tersimpan (kabar barang masuk berkolom usul)', rU.tolak ? { dilewati: rU.tolak } : { ac: DU.length + 1, dok: DU.length, ditolakPerangkat: false });
+});
+
+// ---- 10 · paket Banding pemasok (owner 26 Nov 2026, rules v21 stafUsulBanding): usul harga tawaran / acuan dari tablet = SATU persetujuan menunggu
+//        (Penjaga laci; karyawan ditolak perangkat & server). Catatan bandingnya ditulis owner saat menyetujui — bukan kiriman staf.
+['ben', 'karyawan'].forEach(function (p) {
+  var ak = { uid: p === 'ben' ? 'uid-ben' : 'uid-kry', nama: p === 'ben' ? 'Ben Contoh' : 'Karyawan Contoh', peran: p };
+  var UT = bcSusunUsul('tawaran', { pemasok: 'Pemasok Contoh', kelas: 'Kelas Contoh', hargaPerKg: '12900', sampaiToko: true }, ak, W);
+  var UA = bcSusunUsul('acuan', { sumber: 'Panel Harga Bapanas', tingkat: 'grosir', mutu: 'medium', hargaPerKg: '13100' }, ak, W);
+  if (UT.tolak || UA.tolak) { salah('usul banding contoh ditolak: ' + (UT.tolak || UA.tolak)); return; }
+  catat('usul banding', p, 'usul harga tawaran pemasok (satu persetujuan menunggu)', kirim(p, UT.dokumen));
+  catat('usul banding', p, 'usul harga acuan resmi (satu persetujuan menunggu)', kirim(p, UA.dokumen));
+  if (p === 'karyawan' && !kirim(p, UT.dokumen).dilewati) salah('perangkat karyawan meloloskan usul harga banding — rules v21 hanya Penjaga laci');
+  if (p === 'ben' && kirim(p, UT.dokumen).dilewati) salah('perangkat Penjaga laci menolak usul harga banding yang sah: ' + kirim(p, UT.dokumen).dilewati);
 });
 
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas
