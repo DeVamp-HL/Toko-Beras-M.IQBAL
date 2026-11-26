@@ -310,6 +310,9 @@ jobs:
       - name: "Jurnal berpasangan (modul ERP no. 69: turunan dari catatan toko, tiap entri Σ debit = Σ kredit, uang per tempat = saldoKantong, laba jurnal = Laporan tiap bulan, neraca jurnal = Neraca Laporan dan beda belum terjelaskan terurai jadi baris bernama, koreksi owner hanya di jurnal) + Aset tetap & penyusutan (owner 26 Nov 2026, modul ERP no. 70): daftar aset isian owner + bawaan per jenis, susut garis lurus HARIAN (Σ hari = bulan persis, nilai sisa), penyusutan MEMOTONG laba bersih mulai 1 Des 2026 (sebelum itu cuma mengurangi nilai aset), uang keluar yang ditunjuk keluar dari biaya bulan catatannya (≤ nominal, satu catatan satu aset, bukan prive/QRIS), neraca membaca nilai buku (isian lama diganti), semua identitas laba menutup (Ke mana, Kendali biaya, KPI, terjun, berkop), bulan terkunci tidak bergeser; daftar kosong = byte-sama (kotak pasir + statis + kontrol + asap cadangan toko)"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_jurnal_aset.py && python3 alat-uji/uji_jurnal_aset.py --kontrol
+      - name: "Dasbor sensus (owner 26 Nov 2026, sensus ulang 1c B1 B9 B88–B91 B95 B109 B113 B127): banding kemarin & minggu lalu jam segini (rumus Cincin), rata-rata nilai nota, saringan tanggal, cap data per jam, headline, enam bulan, stok minimum per barang (= Belanja, = Perlu perhatian), widget angka utama yang owner atur — tiap widget menutup ke kartunya"
+        if: matrix.bagian == 3
+        run: python3 alat-uji/uji_dasbor_sensus.py && python3 alat-uji/uji_dasbor_sensus.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

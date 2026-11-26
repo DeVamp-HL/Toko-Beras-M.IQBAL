@@ -238,3 +238,111 @@ main.layar-ringkasan.masuk > .rk-dasbor, main.layar-ringkasan.masuk > .rk-saklar
 @media (prefers-reduced-motion: reduce) { .layar-ringkasan .db-lampu { animation: none; transition: none; } }
 /* Pondasi toko (owner 24 Nov 2026): baris lampu dua kolom — nama (dengan lampu) & nilai; lampu tanpa warna = ambang belum diatur / belum bisa dihitung */
 .layar-ringkasan .db-pd-baris { grid-template-columns: minmax(0, 1fr) auto; }
+
+/* ==================== paket Dasbor sensus (owner 26 Nov 2026, sensus ulang 1c: B88 B89 B90 B91 B95 B109 B113 B127) + TATA LETAK BERPEGANGAN ====================
+   #rkDasbor = bar kepala (Atur, cap data) · kisi PANEL (dasbor-kisi.js) · bilah atur. Owner 26 Nov 2026: "kartu perlu perhatian ganggu" → di mode Dasbor kolom
+   samping (Perlu perhatian, catatan katalog) DISEMBUNYIKAN & Dasbor selebar layar di Mac; "besar kecilnya kartu bisa gua sesuaikan … fleksibel gua menyesuaikan
+   ruang" + "Merapat otomatis" + "HP satu kolom" → tiap kartu = panel di kisi 12 kolom × baris 8 px (grid dense = merapat sendiri), lebar & tinggi ditarik lewat
+   pegangan di mode atur. Cincin tetap seperti dulu. */
+.layar-ringkasan .rk-dasbor > .wg-kepala, .layar-ringkasan .rk-dasbor > .wg-kisi, .layar-ringkasan .rk-dasbor > .wg-bilah-atur, .layar-ringkasan .rk-dasbor > .wg-katalog-wadah,
+.layar-ringkasan .rk-dasbor > [data-k="wg-kabar"] { grid-column: 1 / -1; }
+@media (min-width: 720px) { .layar-ringkasan .rk-dasbor { grid-auto-flow: row; } }
+main.layar-ringkasan.mode-dasbor > .rk-samping { display: none; }
+@media (min-width: 1100px) { main.layar-ringkasan.mode-dasbor > .rk-dasbor, main.layar-ringkasan.mode-dasbor > .rk-saklar { grid-column: 1 / -1; } }
+/* B91 headline + B109 cap "data per HH.MM" */
+.layar-ringkasan .db-headline { gap: 6px; }
+.layar-ringkasan .db-hl-kepala { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.layar-ringkasan .db-hl-teks { font-size: clamp(14px, 3.6vw, 17px); line-height: 1.45; font-weight: 500; }
+.layar-ringkasan .db-hl-bag.db-ketuk { padding: 0 2px; margin: 0 -2px; }
+.layar-ringkasan .db-hl-titik { color: var(--redup); }
+.layar-ringkasan .db-cap { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; color: var(--redup); white-space: nowrap; }
+.layar-ringkasan .db-cap i { width: 6px; height: 6px; border-radius: 50%; background: var(--hantu); }
+.layar-ringkasan .db-cap.hidup i { background: var(--emas-garis); animation: dbLampuDenyut 2400ms ease-in-out infinite; }
+.layar-ringkasan .db-cap.awas { color: var(--awas); } .layar-ringkasan .db-cap.awas i { background: var(--awas); }
+.layar-ringkasan .db-banding { font-size: 12px; } .layar-ringkasan .db-banding .db-ketuk { padding: 0 2px; }
+/* B88/B89 kepala Dasbor + kisi PANEL: 12 kolom × baris 8 px, panel merapat (dense); tinggi otomatis = rentang baris diukur dasbor-kisi.js; HP satu kolom */
+.layar-ringkasan .wg-kepala { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 2px; }
+.layar-ringkasan .wg-kepala .ket { flex: 1 1 0; min-width: 0; font-size: 11.5px; }
+.layar-ringkasan .wg-kepala .kaca-btn { flex: 0 0 auto; }
+@media (max-width: 719px) { .layar-ringkasan .wg-kepala .ket { flex: 1 1 100%; order: 3; } }   /* HP: petunjuk turun ke baris sendiri, cap & Atur tetap sebaris dengan judul */
+.layar-ringkasan .wg-kisi { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: 8px; grid-auto-flow: row dense; column-gap: 10px; row-gap: 0; -webkit-touch-callout: none; }
+.layar-ringkasan .pn { position: relative; min-width: 0; margin-bottom: 10px; align-self: start; }
+.layar-ringkasan .pn > :first-child { margin: 0; }
+.layar-ringkasan .pn.pn-tetap { align-self: stretch; }
+.layar-ringkasan .pn.pn-tetap > :first-child { height: 100%; box-sizing: border-box; overflow: auto; overscroll-behavior: contain; }   /* tinggi tarikan < isi: isi digulir di dalam kartu */
+@media (max-width: 719px) {   /* HP: satu kolom, urutan sama, tinggi ikut isi — ukuran tarikan hanya Mac / tablet */
+  .layar-ringkasan .wg-kisi { display: flex; flex-direction: column; gap: 10px; }
+  .layar-ringkasan .pn { margin-bottom: 0; grid-column: auto !important; grid-row-end: auto !important; }
+  .layar-ringkasan .pn.pn-tetap > :first-child { height: auto; overflow: visible; }
+  .layar-ringkasan .pn-tarik, .layar-ringkasan .pn-ukuran, .layar-ringkasan .pn-otomatis { display: none; }
+}
+.layar-ringkasan .wg-kosong { grid-column: 1 / -1; grid-row-end: span 8; padding: 18px 8px; text-align: center; }
+/* widget-angka & kartu tambahan ringkas (isi panel) */
+.layar-ringkasan .wg { position: relative; display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 12px 14px; border-radius: 18px; border: 1px solid var(--kaca-tepi);
+  background: var(--kaca); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); box-shadow: 0 14px 34px -26px var(--bayang);
+  cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; transition: box-shadow 240ms ease, border-color 240ms ease; box-sizing: border-box; }
+.layar-ringkasan .wg.db-dipilih { border-color: var(--emas-garis); }
+/* yang perlu dilihat ditandai titik merah di nama + angka merah */
+.layar-ringkasan .wg.awas > .wg-nama::before { content: ''; flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--awas); box-shadow: 0 0 0 3px var(--seg); }
+.layar-ringkasan .wg.awas[class*="lampu-"] > .wg-nama::before { display: none; }   /* kartu berlampu sudah punya titik warnanya sendiri */
+.layar-ringkasan .wg-nama { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--redup); display: flex; align-items: center; gap: 6px; }
+.layar-ringkasan .wg-nilai { font-size: clamp(17px, 2.2vw, 26px); line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.layar-ringkasan .wg-ket { font-size: 11.5px; line-height: 1.35; color: var(--redup); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.layar-ringkasan .wg-bilah { height: 6px; border-radius: 3px; background: var(--seg); overflow: hidden; margin-top: 3px; }
+.layar-ringkasan .wg-bilah i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--emas-garis), var(--aktif)); transform-origin: 0 50%; }
+.layar-ringkasan .wg.awas .wg-bilah i { background: var(--awas); }
+.layar-ringkasan .wg-tren { display: block; width: 100%; height: 56px; margin-top: 4px; overflow: visible; }
+.layar-ringkasan .wg-plus { fill: var(--emas-garis); fill-opacity: 0.75; } .layar-ringkasan .wg-minus { fill: var(--awas); fill-opacity: 0.7; }
+.layar-ringkasan .wg-tren .berjalan { fill-opacity: 0.4; stroke: var(--emas-tepi); stroke-dasharray: 3 2; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.layar-ringkasan .wg-sumbu { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--redup); }
+.layar-ringkasan .wg-sumbu span.aktif { color: var(--teks); font-weight: 600; }
+.layar-ringkasan .wg-rinci { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; font-size: 11.5px; }
+.layar-ringkasan .wg-rinci div { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--garis); padding-top: 2px; }
+.layar-ringkasan .wg-rinci span { color: var(--redup); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .layar-ringkasan .wg-rinci b { font-weight: 600; white-space: nowrap; }
+/* gerak masuk: panel naik bergiliran saat Dasbor dibuka / rentang diganti; bilah tumbuh */
+.layar-ringkasan .rk-dasbor.masuk .pn { animation: wgMasuk 520ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+.layar-ringkasan .rk-dasbor.masuk .wg-bilah i { animation: dbTumbuhX 620ms cubic-bezier(.2,.8,.2,1) both; animation-delay: 160ms; }
+@keyframes wgMasuk { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+/* mode atur: garis putus emas di tiap panel, isi tidak bisa diketuk (seret = pindah), pegangan kanan · bawah · sudut seperti kotak berpegangan, ukuran tampil */
+.layar-ringkasan .pn-atur .pn { outline: 1.5px dashed var(--emas-garis); outline-offset: 3px; border-radius: 20px; cursor: grab; touch-action: none; }
+.layar-ringkasan .pn-atur .pn > :first-child { pointer-events: none; user-select: none; -webkit-user-select: none; }
+.layar-ringkasan .pn-atur .pn.wg-diseret { cursor: grabbing; z-index: 8; opacity: 0.94; box-shadow: 0 26px 50px -18px var(--bayang); transition: none; }
+.layar-ringkasan .pn-atur .pn.pn-ditarik { outline-style: solid; outline-width: 2px; z-index: 7; }
+.layar-ringkasan .pn.wg-angkat { animation: wgAngkat 380ms cubic-bezier(.2,.8,.2,1); }
+@keyframes wgAngkat { 0% { transform: scale(1); } 40% { transform: scale(1.02); } 100% { transform: scale(1); } }
+.layar-ringkasan .pn-tarik { position: absolute; z-index: 4; touch-action: none; }
+.layar-ringkasan .pn-tarik::after { content: ''; position: absolute; background: var(--bg2); border: 2px solid var(--emas-garis); box-shadow: 0 4px 10px -4px var(--bayang); }
+.layar-ringkasan .pn-kanan { top: 0; bottom: 18px; right: -11px; width: 22px; cursor: ew-resize; }
+.layar-ringkasan .pn-kanan::after { top: 50%; left: 50%; width: 6px; height: 34px; margin: -17px 0 0 -3px; border-radius: 4px; }
+.layar-ringkasan .pn-bawah { left: 0; right: 18px; bottom: -11px; height: 22px; cursor: ns-resize; }
+.layar-ringkasan .pn-bawah::after { top: 50%; left: 50%; width: 34px; height: 6px; margin: -3px 0 0 -17px; border-radius: 4px; }
+.layar-ringkasan .pn-sudut { right: -13px; bottom: -13px; width: 26px; height: 26px; cursor: nwse-resize; }
+.layar-ringkasan .pn-sudut::after { top: 50%; left: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; }
+.layar-ringkasan .pn-ukuran { position: absolute; z-index: 5; top: 8px; right: 12px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; padding: 3px 9px; border-radius: 999px;
+  background: var(--emas-garis); color: var(--bg2); pointer-events: none; }
+.layar-ringkasan .pn-otomatis { position: absolute; z-index: 5; top: 34px; right: 12px; font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--seg);
+  border: 1px solid var(--kaca-tepi); cursor: pointer; }
+.layar-ringkasan .wg-x { position: absolute; top: -9px; left: -9px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; line-height: 1;
+  background: var(--bg2); border: 1px solid var(--kaca-tepi); color: var(--teks); box-shadow: 0 6px 14px -8px var(--bayang); cursor: pointer; z-index: 6; }
+.layar-ringkasan .wg-bilah-atur { display: flex; flex-wrap: wrap; gap: 8px; }
+.layar-ringkasan .wg-katalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.layar-ringkasan .wg-katalog-isi { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; border: 1px dashed var(--kaca-tepi); background: var(--seg); cursor: pointer; font-size: 12.5px;
+  animation: wgMasuk 360ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 25ms); }
+.layar-ringkasan .wg-katalog-isi span { font-size: 11px; color: var(--redup); }
+/* B95 saringan tanggal */
+.layar-ringkasan .db-periode-pita { overflow-x: auto; scrollbar-width: none; } .layar-ringkasan .db-periode-pita::-webkit-scrollbar { display: none; }
+.layar-ringkasan .db-periode-pita .seg { white-space: nowrap; }
+.layar-ringkasan .db-periode-tgl { display: flex; flex-wrap: wrap; gap: 8px; } .layar-ringkasan .db-periode-tgl label { display: flex; align-items: center; gap: 6px; }
+.layar-ringkasan .db-periode-tgl input { max-width: 170px; }
+.layar-ringkasan .db-naik { font-size: 12px; font-weight: 600; } .layar-ringkasan .db-naik.naik { color: var(--aktif); } .layar-ringkasan .db-naik.turun { color: var(--awas); }
+/* B113 kartu Enam bulan: dua kelompok grafik (laba & biaya · kas, piutang, stok), selebar dasbor di tablet & Mac */
+.layar-ringkasan .db-enam-kisi { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 18px; }
+@media (min-width: 720px) { .layar-ringkasan .db-enam-kisi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.layar-ringkasan .db-enam-satu { display: flex; flex-direction: column; gap: 2px; }
+.layar-ringkasan .db-enam-minus { fill: var(--awas); }
+.layar-ringkasan .db-enam-kas { fill: var(--emas-garis); } .layar-ringkasan i.db-enam-kas { background: var(--emas-garis); }
+.layar-ringkasan .db-enam-piu { fill: var(--aktif); fill-opacity: 0.8; } .layar-ringkasan i.db-enam-piu { background: var(--aktif); }
+.layar-ringkasan .db-enam-stk { fill: var(--platina2, var(--redup)); } .layar-ringkasan i.db-enam-stk { background: var(--platina2, var(--redup)); }
+@media (prefers-reduced-motion: reduce) {
+  .layar-ringkasan .rk-dasbor.masuk .pn, .layar-ringkasan .rk-dasbor.masuk .wg-bilah i, .layar-ringkasan .pn.wg-angkat, .layar-ringkasan .wg-katalog-isi, .layar-ringkasan .db-cap.hidup i, .layar-ringkasan .rk-sorot { animation: none; transition: none; }
+}
