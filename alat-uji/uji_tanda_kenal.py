@@ -290,6 +290,11 @@ def periksa_statis(logika, jual, app):
     stl = baca('baru', 'js', 'layar', 'struk-logika.js')
     ok('struk-logika QR3: nomor WA toko disimpan dalam bentuk wa.me; salah ketik ditolak dengan kalimat', "const waKetik = String(kop.wa || '').trim(); const wa = waKetik ? tkWaNomor(waKetik) : '';" in stl
        and "if (waKetik && !wa) return { tolak: 'Nomor WhatsApp toko" in stl and "telp: String(kop.telp || '').trim().slice(0, 30), wa }," in stl and "telp: '', wa: '' }" in stl)
+    ul = jual[jual.index('    ulangiStruk: () => {'):]; ul = ul[:ul.index(' },\n') + 4]
+    urut = [ul.find(x) for x in ("if (!n.nota.berlaku) return set(", "if (nm && !sama && s0.keranjang.length) return set(", "if (nm && !sama) set(L.gantiPelanggan(SBN(), nm));", "const r = L.ulangiBarisNota(SB(), rakKini(), { tanggal: n.nota.tanggal, baris: n.nota.baris }); set(r);")]
+    ok('jual.js QR kedua: Ulangi belanja dari struk — nota berlaku?, keranjang orang lain tidak dicampur, pembeli dipasang dulu, BARU jalan ulangiPembelian (batas baris SB())',
+       all(x >= 0 for x in urut) and urut == sorted(urut) and "${n.nota.berlaku ? h`<div class=\"kaca-btn\" data-aksi=\"ulangiStruk\"" in jual, urut)
+    ok('jual.js QR kedua: retur sekali scan — tombol tiap baris yang bisa diretur membuka lembar retur baris itu', 'data-aksi="tunjukNota" data-id="${b.id}" data-k="sr-${b.id}">Retur ${b.teks} ›</div>' in jual)
     ok('jual.js QR3: isian nomor WA toko di Atur struk; nomor tersimpan dibuka dalam bentuk 0… (disimpan lagi = dibakukan lagi)', 'data-ketik="aturStrukKop" data-kolom="wa"' in jual
        and "bukaAturStruk: () => { const a = ST.stAtur(); a.kop.wa = TK.tkWaTampil(a.kop.wa); set({ lembar: 'aturStruk', aturStruk: a, kabar: '' }); }," in jual)
     ok('index.html QR: modul pindai-logika dipramuat', '<link rel="modulepreload" href="js/layar/pindai-logika.js">' in baca('baru', 'index.html'))
@@ -330,6 +335,7 @@ MUTASI = [
     ('QR1: surat jalan yang sudah diterima dibuka lagi tanda terimanya', 'jual', "    if (sj.status === 'berangkat') return aksi.ajTerimaBuka({ id: sj.id });", "    return aksi.ajTerimaBuka({ id: sj.id });"),
     ('QR2: pita scan tampil di struk yang dibuka biasa', 'jual', "strukScan: !!scan, strukSertakan: null, kabar: '' }),", "strukScan: true, strukSertakan: null, kabar: '' }),"),
     ('QR2: tombol bayar tanpa memeriksa hak akun', 'jual', "const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'terimaBon'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });\n      if (!opsi.bukaBayarBon)", "\n      if (!opsi.bukaBayarBon)"),
+    ('QR kedua: ulangi struk mencampur keranjang orang lain', 'jual', "if (nm && !sama && s0.keranjang.length) return set(", "if (false) return set("),
     ('QR: ketikan scanner tidak dibuang', 'app', "  if (panelOrang.hidden && tabKini === 'jual') hapusKetikanScan(x && x.data);\n", ""),
     ('QR: ketikan orang di kotak ikut terhapus', 'app', "if (v.length <= p.nilai.length || (p.nilai + kode).indexOf(v) !== 0) return;", "if (v.length <= p.nilai.length) return;"),
     ('QR tidak ikut ke printer', 'jual', "PR.cetakGaris(st.garis, { logoToko: st.logo, qr })", "PR.cetakGaris(st.garis, { logoToko: st.logo })"),

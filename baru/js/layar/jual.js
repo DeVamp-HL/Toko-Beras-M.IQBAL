@@ -100,6 +100,16 @@ export function pasangLayarJual(akar, opsi) {
     chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(Object.assign({ isiW: null }, L.ketukChip(S(), c))); },
     sering: ({ id }) => { const c = rakKini().sering.find((x) => x.id === id); if (c) set(L.ketukChip(S(), c)); },
     ulangiTerakhir: ({ g }) => { const r = L.ulangiPembelian(SB(), rakKini(), g); set(r); if (r.keranjang) setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 60); },
+    // paket QR kedua (owner 26 Nov 2026): "Ulangi belanja ini" dari lembar struk (struk di-scan / dibuka dari Riwayat) — barang & jumlah nota itu masuk keranjang
+    // dengan HARGA HARI INI lewat jalan ulangiPembelian (ulangiBarisNota). Pembeli nota itu dipasang dulu (harga tingkat ikut); keranjang berisi belanja
+    // ORANG LAIN tidak dicampur.
+    ulangiStruk: () => { const n = notaStruk(); if (!n) return; const s0 = S();
+      if (!n.nota.berlaku) return set({ kabar: 'Nota ini sudah ' + (n.nota.dibatalkan ? 'dibatalkan' : 'dikoreksi') + ' — tidak bisa diulang', kabarAwas: true });
+      const nm = String(n.nota.nama || '').trim(); const sama = kunciPelanggan(s0.pelanggan) === kunciPelanggan(nm);
+      if (nm && !sama && s0.keranjang.length) return set({ kabar: 'Keranjang masih berisi belanja ' + (s0.pelanggan || 'tanpa nama') + ' — selesaikan atau parkir dulu, lalu ulangi', kabarAwas: true });
+      if (nm && !sama) set(L.gantiPelanggan(SBN(), nm));
+      const r = L.ulangiBarisNota(SB(), rakKini(), { tanggal: n.nota.tanggal, baris: n.nota.baris }); set(r);
+      if (r.keranjang) setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 60); },
     pakaiBenang: ({ nama }) => { const g = L.gantiPelanggan(SBN(), nama); set(Object.assign(g, { kabar: 'Nama diganti ke yang punya urusan: ' + nama + ' — nota, bon, dan pembayarannya atas nama itu' + (g.kabar ? '. ' + g.kabar : ''), kabarAwas: false })); },   // B1: harga ikut pembeli
     tuts: ({ t }) => set(L.tekanTuts(S(), t)),
     preset: ({ n }, el) => masukDenganGerak(L.masukkan(SB(), Number(n)), el),
@@ -1376,6 +1386,7 @@ export function pasangLayarJual(akar, opsi) {
     return h`${L1}<div class="lembar ${muncul}" data-k="lembar-struk">
       ${kepala('Struk · ' + (n.nota.nama || 'tanpa nama'), tanggalPendek(n.nota.tanggal) + (n.nota.jam ? ' ' + n.nota.jam : '') + ' · ' + RP(n.nota.total) + ' · ' + (n.nota.cara === 'Kredit' ? 'Bon' : n.nota.cara) + (n.nota.berlaku ? '' : ' · SUDAH ' + (n.nota.dibatalkan ? 'DIBATALKAN' : 'DIKOREKSI')))}
       ${s.strukScan ? pitaScan(n.nota, s) : ''}
+      ${n.nota.berlaku ? h`<div class="kaca-btn" data-aksi="ulangiStruk" data-k="ulangi-struk">Ulangi belanja ini · harga hari ini</div>` : ''}
       <div class="bendera"><span class="ket" style="align-self: center;">kertas</span>${[58, 80].map((k) => h`<span class="pil ${n.pilih.kertas === k ? 'nyala' : ''}" data-aksi="strukKertas" data-mm="${k}">${k} mm</span>`)}<span class="ket tautan" style="margin-left: auto; align-self: center;" data-aksi="bukaAturStruk">atur kop & aturan ›</span></div>
       <div class="bendera">${ST.ST_SERTAKAN.map(([k, nm]) => h`<span class="pil ${n.pilih.sertakan[k] ? 'nyala' : ''}" data-aksi="strukSertakan" data-nama="${k}">${nm}</span>`)}</div>
       ${akunOwner() ? h`<div class="label">Dilayani · ketuk untuk mengubah</div><div class="bendera" data-k="ubah-dilayani">${[namaOwner()].concat(daftarPelayan()).map((nm) => h`<span class="pil ${ST.stPelayan(n.nota) === nm ? 'nyala' : ''}" data-aksi="ubahDilayani" data-n="${nm}" data-k="udl-${nm}">${nm}</span>`)}</div>` : ''}

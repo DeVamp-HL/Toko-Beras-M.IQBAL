@@ -2089,6 +2089,12 @@ export function pembelianTerakhir(s, n) {
 /** Ulangi satu nota lama ke keranjang: tiap barisnya dicari di rak SEKARANG (harga hari ini); yang tidak ada / melampaui stok dilewati dan DISEBUT. */
 export function ulangiPembelian(s, rak, grup) {
   const nota = pembelianTerakhir(s, 12).find((x) => x.grup === String(grup)); if (!nota) return { kabar: 'Nota itu tidak ketemu di catatan ' + s.pelanggan, kabarAwas: true };
+  return ulangiBarisNota(s, rak, nota);
+}
+/** Paket QR kedua (owner 26 Nov 2026): "Ulangi belanja ini" dari lembar struk (struk di-scan / dibuka dari Riwayat) — nota mana pun, bukan hanya 12 terakhir.
+ *  nota = { tanggal, baris } (baris nota yang MASIH BERLAKU); jalannya sama persis dengan ulangiPembelian (rak sekarang, harga hari ini, dilewati disebut). */
+export function ulangiBarisNota(s, rak, nota) {
+  if (!nota || !(nota.baris || []).length) return { kabar: 'Nota itu tidak punya baris yang masih berlaku', kabarAwas: true };
   const peta = {}; [].concat(rak.karung.map((c) => Object.assign({}, c, { id: 'karung|' + c.kunci + '|' + c.berat })), rak.kemasan.map((c) => Object.assign({}, c, { id: 'kemasan|' + c.kunci })), rak.literan.map((c) => Object.assign({}, c, { id: 'literan|' + c.kunci })),
     rak.repack.map((c) => Object.assign({}, c, { id: 'repack|' + c.kunci })), rak.wadah.map((c) => Object.assign({}, c, { id: 'wadah|' + c.kunci }))).forEach((c) => { peta[c.id] = c; });
   let sn = Object.assign({}, s, { keranjang: s.keranjang.slice(), urutBaris: s.urutBaris, rpWadah: '', rpLembar: '', rpUpah: '', namaRepack: '' }); const masuk = [], lewat = [];
