@@ -40,10 +40,15 @@ export function kartuKalender(s, kini, jenisWp, statusPkp) {
 
 function kartuAtur(a) {
   const seg = (v, id, aksi, i, nama) => h`<span class="seg ${v === id ? 'aktif' : ''}" data-aksi="${aksi}" data-i="${i}" data-nilai="${id}">${nama}</span>`;
-  const contoh = (u) => (u === 'tahunan' ? 'BB-HH, mis. 03-31' : u === 'sekali' ? 'TTTT-BB-HH' : 'tanggal 01–31');
+  const contoh = (u) => (u === 'tahunan' ? 'tiap tahun, tahunnya diabaikan' : u === 'sekali' ? 'satu tanggal' : 'tanggal 1–31 tiap bulan');
+  // sekali & tahunan = pemilih tanggal (Safari/iPad: kotak teks angka tidak punya tanda "-"); tahunan disimpan BB-HH (tahun pinjaman 2028 = kabisat, 29 Feb bisa
+  // dipilih). Bulanan / 3 bulanan = nomor hari saja (bukan tanggal) → kolom "hari" berpapan angka, disimpan 2 digit.
+  const isianTanggal = (b, i) => (b.ulang === 'sekali' ? h`<input class="ketik-nama" type="date" value="${b.tanggal}" data-ketik="ptAturKetik" data-i="${i}" data-kolom="tanggal">`
+    : b.ulang === 'tahunan' ? h`<input class="ketik-nama" type="date" value="${b.tanggal ? '2028-' + b.tanggal : ''}" data-ketik="ptAturKetik" data-i="${i}" data-kolom="tanggal" data-ulang="tahunan">`
+      : h`<input class="ketik-nama sempit" type="text" inputmode="numeric" placeholder="1–31" value="${b.tanggal ? String(Number(b.tanggal)) : ''}" data-ketik="ptAturKetik" data-i="${i}" data-kolom="hari">`);
   return h`<div class="kartu pt-atur" data-k="pt-atur" style="gap: 8px;"><div class="label">Atur kalender · angka & daftar owner</div>
     ${a.butir.map((b, i) => h`<div class="pt-atur-baris" data-k="pt-a-${i}"><div class="ps-form dua"><div><div class="ket">Nama</div><input class="ketik-nama" type="text" maxlength="${PT_BATAS.nama}" value="${b.nama}" data-ketik="ptAturKetik" data-i="${i}" data-kolom="nama"></div>
-        <div><div class="ket">Tanggal (${contoh(b.ulang)}${b.id === 'spt' ? '; kosong = ikut bentuk usaha' : ''})</div><input class="ketik-nama" type="text" value="${b.tanggal}" data-ketik="ptAturKetik" data-i="${i}" data-kolom="tanggal"></div></div>
+        <div><div class="ket">Tanggal (${contoh(b.ulang)}${b.id === 'spt' ? '; kosong = ikut bentuk usaha' : ''})</div>${isianTanggal(b, i)}</div></div>
       <div class="hg-pil">${PT_ULANG.map((u) => seg(b.ulang, u.id, 'ptAturUlang', i, u.nama))}</div>
       <div class="ps-form dua"><div><div class="ket">Ingatkan … hari sebelum (0–${PT_BATAS.hariSebelum[1]})</div><input class="ketik-nama" type="text" inputmode="numeric" value="${b.hariSebelum}" data-ketik="ptAturKetik" data-i="${i}" data-kolom="hariSebelum"></div>
         <div><div class="ket">Keterangan (di mana mengeceknya)</div><input class="ketik-nama" type="text" maxlength="${PT_BATAS.ket}" value="${b.ket}" data-ketik="ptAturKetik" data-i="${i}" data-kolom="ket"></div></div>
@@ -52,7 +57,7 @@ function kartuAtur(a) {
     <div class="label">Bentuk usaha</div><div class="hg-pil" data-k="pt-a-bentuk">${PT_BENTUK.map((x) => h`<span class="seg ${a.usaha.bentuk === x.id ? 'aktif' : ''}" data-aksi="ptUsaha" data-kolom="bentuk" data-nilai="${x.id}">${x.nama}</span>`)}</div>
     <div class="label">Kewajiban catat</div><div class="hg-pil" data-k="pt-a-catat">${PT_CATAT.map((x) => h`<span class="seg ${a.usaha.catat === x.id ? 'aktif' : ''}" data-aksi="ptUsaha" data-kolom="catat" data-nilai="${x.id}">${x.nama}</span>`)}</div>
     <div class="ps-form dua"><div><div class="ket">Dikonfirmasi ke (KPP / konsultan)</div><input class="ketik-nama" type="text" maxlength="60" value="${a.usaha.konfirmasi.ke}" data-ketik="ptUsahaKetik" data-kolom="ke"></div>
-      <div><div class="ket">Tanggal konfirmasi (TTTT-BB-HH)</div><input class="ketik-nama" type="text" value="${a.usaha.konfirmasi.tanggal}" data-ketik="ptUsahaKetik" data-kolom="tanggal"></div></div>
+      <div><div class="ket">Tanggal konfirmasi</div><input class="ketik-nama" type="date" value="${a.usaha.konfirmasi.tanggal}" data-ketik="ptUsahaKetik" data-kolom="tanggal"></div></div>
     <div><div class="ket">Catatan konfirmasi (tanpa NIK / NPWP)</div><input class="ketik-nama" type="text" maxlength="200" value="${a.usaha.konfirmasi.catatan}" data-ketik="ptUsahaKetik" data-kolom="catatan"></div>
     <div class="tombol-baris" style="grid-template-columns: 1fr 1fr;"><div class="kaca-btn" data-aksi="ptAturBuka">batal</div><div class="kaca-btn aktif emas" data-aksi="ptAturSimpan">SIMPAN KALENDER</div></div>
     <div class="k2">Keterangan bawaan menyebut tempat mengecek, bukan nasihat hukum atau pajak — yang belum dibaca langsung dari sumber resmi bertanda ${PT_BELUM}.</div></div>`;
@@ -66,7 +71,10 @@ export function aksiPanelPatuh({ set, st, tulis, waktu, kini }) {
     ptCatatan: (v) => set({ ptCatatan: String(v).slice(0, PT_BATAS.catatan) }),
     ptCentang: async ({ id, periode }) => { const r = susunCentangPatuh(id, periode, st().ptCatatan, waktu(), kini()); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); await tulis(r); },
     ptAturBuka: () => set({ ptAtur: st().ptAtur ? null : drafDari(ptAtur()), kabar: '' }),
-    ptAturKetik: (v, el) => ubah((a) => { const b = a.butir[Number(el.dataset.i)]; if (b) b[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'ket' ? PT_BATAS.ket : 60); }),
+    ptAturKetik: (v, el) => ubah((a) => { const b = a.butir[Number(el.dataset.i)]; if (!b) return; const k = el.dataset.kolom; const t = String(v).trim();
+      if (k === 'hari') { const n = Number(t.replace(/[^0-9]/g, '')); b.tanggal = t && n ? String(n).padStart(2, '0') : ''; return; }   // nomor hari → 'DD'
+      if (k === 'tanggal' && el.dataset.ulang === 'tahunan') { b.tanggal = /^\d{4}-\d{2}-\d{2}$/.test(t) ? t.slice(5) : ''; return; }   // pemilih tanggal → 'BB-HH'
+      b[k] = String(v).slice(0, k === 'ket' ? PT_BATAS.ket : 60); }),
     ptAturUlang: ({ i, nilai }) => ubah((a) => { const b = a.butir[Number(i)]; if (b && b.ulang !== nilai) { b.ulang = nilai; b.tanggal = ''; } }),
     ptAturNyala: ({ i }) => ubah((a) => { const b = a.butir[Number(i)]; if (b) b.nyala = b.nyala === false; }),
     ptAturHapus: ({ i }) => ubah((a) => { a.butir.splice(Number(i), 1); }),

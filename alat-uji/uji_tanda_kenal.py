@@ -219,7 +219,7 @@ def periksa_statis(logika, jual, app):
        and "const r = TK.tkSusunLepas(ambilTandaKenal(), t.jenis, t.kode, tkWaktu()); if (r.patch) r.patch.tkLepas = null; else set({ tkLepas: null }); return tulisUmum(r); };" in jual)
     lc = jual[jual.index('    aksi.tkLabelCetak = async () => {'):]; lc = lc[:lc.index('\n    };\n') + 8]
     urut = [lc.find(x) for x in ("const n = TK.tkJumlahLabel(st.tkLabelN); if (!n) return set(", "if (await PR.jalurCetak() === 'dialog') return set(", "TK.tkSiapkanLabel(ambilTandaKenal(), c, tkWaktu(), Math.random)",
-                                 "const hsl = await tulisDokumen(dokumen); if (hsl && hsl.gagal) return set({ kabar: 'DITOLAK, kode label tidak tercatat: '", "await PR.cetakLabel(TK.tkIsiLabel(sasaran, kode), n)")]
+                                 "const hsl = await tulisDokumen(dokumen); if (hsl && hsl.gagal) return set({ kabar: 'DITOLAK, kode label tidak tercatat: '", "const r = await PR.cetakLabel(isiL, n)")]   # 26 Nov 2026: isi label = isiL (kemasan lengkap / karung tkIsiLabel)
     ok('jual.js S4: cetak label — jumlah sah, printer ada, kode DICATAT (ditolak = berhenti), BARU dicetak', all(x >= 0 for x in urut) and urut == sorted(urut) and lc.count('PR.cetakLabel(') == 1 and lc.count('tulisDokumen(') == 1, urut)
     ok('jual.js S4: label gagal tercetak = berkabar & menyebut kodenya sudah tercatat; label tidak menyentuh keranjang / harga',
        "set({ kabar: 'Label tidak tercetak: '" in lc and "kodenya sudah tercatat, tinggal tekan Cetak label lagi" in lc and 'keranjang' not in lc and 'harga' not in lc.lower())

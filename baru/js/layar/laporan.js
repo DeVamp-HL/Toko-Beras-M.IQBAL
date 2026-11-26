@@ -55,7 +55,7 @@ export function pasangLayarLaporan(akar, opsi) {
     bulanK: null, bukaKb: {}, aturB: null, pilahK: null,
     bukaPd: {}, aturPd: null, pcDraf: null, yakinPc: null, drafPribadi: null, phDraf: null, yakinPh: null, tjDraf: null, yakinTj: null, kuartalQ: null, aturTq: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq', 'pcDraf', 'drafPribadi', 'phDraf', 'tjDraf', 'ptAtur', ['ptCatatan', (v) => !!String(v || '').trim()]], []);   // 26 Nov 2026: Atur kalender & catatan tanda kepatuhan
+  const ISIAN = pasangIsian(K, awal, ['ptAtur', ['ptCatatan', (v) => !!String(v || '').trim()], 'drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq', 'pcDraf', 'drafPribadi', 'phDraf', 'tjDraf'], []);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat

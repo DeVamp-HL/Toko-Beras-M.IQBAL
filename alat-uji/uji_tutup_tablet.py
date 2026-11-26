@@ -224,7 +224,7 @@ def main():
             ('hitungan bertanggal tulis, bukan hari yang ditutup', HLL, L.replace("tanggal: H.iso, jam: w.jam, tanggalTulis: w.tanggal", "tanggal: w.tanggal, jam: w.jam, tanggalTulis: w.tanggal")),
             ('Ben tidak memindah tapi amankan dianggap beres', HLL, L.replace("amankan: b.amankan > 0 ? 'beres' : 'lewat'", "amankan: 'beres'")),
             ('karyawan boleh mengirim hitungan (penjaga kiriman)', AK, A.replace("if (P !== 'ben' || (hak.hitungLaci || 'tidak') === 'tidak'", "if ((hak.hitungLaci || 'tidak') === 'tidak'")),
-            ('akun tablet tidak mendengar setelan tutup hari', AK, A.replace(".concat(akun.peran === 'ben' ? DOK_BEN[n] || [] : [])", ".concat([])")),
+            ('akun tablet tidak mendengar setelan tutup hari', AK, A.replace(".concat(akun.peran === 'ben' ? (DOK_BEN[n] || []).concat(DOK_BEN_PATUH[n] || []) : [])", ".concat(akun.peran === 'ben' ? (DOK_BEN_PATUH[n] || []) : [])")),   # v22: DOK_BEN (tutup hari) hilang, kalender tetap
             ('catatan sesudah hitungan tidak dihitung (selisih berubah)', TDL, T.replace("const hitungKini = hitung + (tablet ? tablet.sesudah.net : 0);", "const hitungKini = hitung;")),
             ('hitungan lewat tengah malam ikut ditambah catatan sesudahnya', TDL, T.replace("if (!/^\\d\\d:\\d\\d$/.test(J) || String(tglTulis || '') !== String(iso)) return out;", "if (!/^\\d\\d:\\d\\d$/.test(J)) return out;")),
             ('laci tutupHari = hitungan tablet, bukan laci saat ditutup', TDL, T.replace("kasFisikLaci: H.hitungKini,", "kasFisikLaci: H.hitung,")),

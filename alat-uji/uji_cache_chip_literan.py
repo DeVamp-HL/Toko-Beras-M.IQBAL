@@ -19,7 +19,7 @@ import bundel_baru, uji_wadah_bernama, uji_wadah_stok_sendiri, uji_wadah_satu_bu
 
 TAMBAH = ['baru/js/layar/riwayat-logika.js', 'baru/js/inti/dom.js', 'baru/js/inti/kunci.js', 'baru/js/inti/isian.js']
 # impor layar yang menyentuh peramban → tiruan (nama yang diimpor jadi fungsi kosong; beberapa diberi bentuk)
-TIRUAN = {'../inti/jadwal.js', '../inti/gerak.js', './adegan.js', './gambar.js', './wadah-panel.js', './akses-layar.js', '../inti/keadaan.js', '../inti/dom.js', './antar-panel.js', './pesanan-panel.js', './terima-barang-panel.js'}   # B3: panel Antar (kanvas tanda tangan, kamera) = tiruan · B4: panel Pesanan
+TIRUAN = {'../inti/jadwal.js', '../inti/gerak.js', './adegan.js', './gambar.js', './wadah-panel.js', './akses-layar.js', '../inti/keadaan.js', '../inti/dom.js', './antar-panel.js', './pesanan-panel.js', './terima-barang-panel.js', './label-panel.js'}   # 26 Nov 2026: panel cetak label = tiruan (diuji uji_gudang_label_patuh.py)   # B3: panel Antar (kanvas tanda tangan, kamera) = tiruan · B4: panel Pesanan
 BENTUK = {'nanti': 'function (f) { f(); }', 'segera': 'function (f) { f(); }', 'aksiPanelWadah': 'function () { return {}; }', 'drafIsi': 'function () { return {}; }',
           'tombolAkun': "function () { return { boleh: true, kalimat: '' }; }", 'tombolLuarKisi': "function () { return { boleh: true, kalimat: '' }; }",
           'bukanOwner': 'function () { return false; }', 'batasBarisNota': 'function () { return null; }', 'batasHasilAdukan': 'function () { return null; }',
@@ -30,6 +30,8 @@ BENTUK = {'nanti': 'function (f) { f(); }', 'segera': 'function (f) { f(); }', '
           'buatPanelPesanan': "function () { return { aksi: {}, gambarLembar: function () { return ''; } }; }",
           # owner 21 Nov 2026: panel tanda terima barang masuk — kartu & lembarnya tidak digambar di tiruan (diuji uji_terima_barang.py)
           'aksiPanelTerima': 'function () { return {}; }', 'kartuTerima': "function () { return ''; }", 'lembarTerima': "function () { return ''; }",
+          # owner 26 Nov 2026: panel cetak label (sesudah adukan / Barang masuk) — kartunya tidak digambar di tiruan
+          'aksiPanelLabel': 'function () { return {}; }', 'kartuLabelAdukan': "function () { return ''; }", 'kartuLabelMasuk': "function () { return ''; }", 'lbpCetak': 'function () { return {}; }',
 }
 
 
