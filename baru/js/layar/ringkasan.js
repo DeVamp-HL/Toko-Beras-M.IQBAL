@@ -24,7 +24,7 @@ import { susunDasbor, dbKelompok, DB_PANAS } from './dasbor-logika.js';   // put
 import { pasangDasbor } from './dasbor.js';
 // paket Dasbor sensus (owner 26 Nov 2026, sensus ulang 1c + desain ulang tata letak): kisi widget Dasbor (dasbor.js + dasbor-kisi.js) — kartu ringkas, widget yang
 // owner atur sendiri, headline & saringan tanggal sebagai widget tambahan, cap "data per HH.MM"
-import { dbTambahan, dbCapData, dbKunciTambahan } from './dasbor-logika.js';
+import { dbTambahan, dbCapData, dbKunciTambahan, dbSaring } from './dasbor-logika.js';   // B94 (owner 27 Nov 2026): satu saringan untuk semua kartu
 import { susunAturDasbor } from './dasbor-widget-logika.js';
 import { tulisDokumen, kabarKiriman } from '../data/toko.js';
 
@@ -58,7 +58,7 @@ export function pasangLayarRingkasan(akar, opsi) {
   // dbHasil dihitung ulang hanya saat data berubah atau dbKunci berganti; ganti rentang cuma menghitung tren (dbRentang).
   // dbKunci = kunciLuarCache (sanggahan 7 Okt): hari · hari tutup aktif · titik kas yang terbaca — "cek tutup" wadah berganti jam 12 siang dan kas per tempat
   // membaca salinan titik kas perangkat; keduanya tidak menaikkan versi data, jadi denyut HP / ganti rentang / detak menit dulu memajang angka lama.
-  let dasbor = null, dbHasil = null, dbKunci = '', dbRentang = '';
+  let dasbor = null, dbHasil = null, dbKunci = '', dbRentang = '', dbSaringKunci = 'hari';
   // paket Dasbor sensus: daftar Perlu perhatian terakhir (headline & widget Perlu perhatian), kunci "jam segini" 5 menit (banding bergeser walau tanpa catatan baru)
   let perhatianKini = [], dbKunciJam = '';
   const capKini = (k) => dbCapData(opsi.dataPer ? opsi.dataPer() : { jenis: sumberData().jenis }, k);
@@ -126,7 +126,7 @@ export function pasangLayarRingkasan(akar, opsi) {
   $('rkLapis').addEventListener('click', (ev) => { const el = ev.target.closest('[data-lapis]'); if (el) gantiSkala(R.SKALA_DARI_LAPIS[el.dataset.lapis]); });
   $('rkMode').addEventListener('click', () => opsi.gantiMode());
   $('rkSaklar').addEventListener('click', (ev) => { const el = ev.target.closest('[data-tampil]'); if (el) gantiTampilan(el.dataset.tampil); });
-  dasbor = pasangDasbor($('rkDasbor'), { keTujuan: (t) => (opsi.keTujuan ? opsi.keTujuan(t) : opsi.pindah(t.ke)), mintaRentang: () => gambarDasbor(true),
+  dasbor = pasangDasbor($('rkDasbor'), { keTujuan: (t) => (opsi.keTujuan ? opsi.keTujuan(t) : opsi.pindah(t.ke)), mintaRentang: () => gambarDasbor(true),   // B94: ganti saringan memakai jalur yang sama (gambarDasbor membaca dasbor.saring())
     // desain ulang (owner 26 Nov 2026): kisi widget menyimpan susunannya sendiri, memakai ingatan dasbor & tahu jalan ke Perlu perhatian
     kini, ingat: (kunci, f) => ingatDb(kini())(kunci, f), simpanWidget,
     kePerhatian: () => { const el = $('rkPerhatian'); if (!el || !el.offsetParent) return; try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { el.scrollIntoView(); } sekali(el, 'rk-sorot', 1400); } });
@@ -154,11 +154,13 @@ export function pasangLayarRingkasan(akar, opsi) {
   /** Dasbor owner: hitung (kalau basi) lalu gambar. masuk = animasi masuk ringan (buka dasbor, ganti rentang). */
   function gambarDasbor(masuk) {
     if (!dasbor || !$('rkDasbor')) return;
-    const k = kini(); const kunci = kunciLuarCache(k); const r = dasbor.rentang();
-    if (!dbHasil || dbKunci !== kunci) { dbHasil = susunDasbor(k, r, null, ingatDb(k)); dbKunci = kunci; dbRentang = r; }
-    else if (dbRentang !== r) { dbHasil = susunDasbor(k, r, dbHasil, ingatDb(k)); dbRentang = r; }
+    const k = kini(); const kunci = kunciLuarCache(k); const r = dasbor.rentang(); const S = saringKini(k); const sk = S ? S.kunci : 'hari';
+    if (!dbHasil || dbKunci !== kunci || dbSaringKunci !== sk) { dbHasil = susunDasbor(k, r, null, ingatDb(k), S); dbKunci = kunci; dbRentang = r; dbSaringKunci = sk; }
+    else if (dbRentang !== r) { dbHasil = susunDasbor(k, r, dbHasil, ingatDb(k), S); dbRentang = r; }
     lukisDasbor(k, masuk);
   }
+  /** B94: saringan Dasbor yang berlaku (pilihan pita di atas kisi, diingat perangkat) — null bila belum terpasang / gagal (= Hari ini, Dasbor seperti dulu). */
+  function saringKini(k) { try { return dasbor && dasbor.saring ? dbSaring(dasbor.saring(), k) : null; } catch (e) { return null; } }
   /** paket Dasbor sensus: kelompok tambahan (banding · stok minimum · enam bulan, diingat per kelompok) + cap, lalu kartu & puncak Dasbor digambar. */
   function lukisDasbor(k, masuk) {
     dbTambahan(dbHasil, k, ingatDb(k)); dbKunciJam = dbKunciTambahan('banding', k);
@@ -325,7 +327,7 @@ export function pasangLayarRingkasan(akar, opsi) {
     const langkah = () => {
       if (token !== _panas || !dasbor || (tampil && modeDasbor())) return;
       if (Date.now() - _sentuhAkhir < 1500) { luang(langkah); return; }
-      const k = kini(); dbKelompok(DB_PANAS[i], k, dasbor.rentang(), ingatDb(k)); i += 1;
+      const k = kini(); dbKelompok(DB_PANAS[i], k, dasbor.rentang(), ingatDb(k), saringKini(k)); i += 1;
       if (i < DB_PANAS.length) luang(langkah);
     };
     setTimeout(() => luang(langkah), 1200);

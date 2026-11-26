@@ -426,9 +426,19 @@ export function pasangLayarPelanggan(akar, opsi) {
       ${R.menutup ? h`<div class="ket" data-k="pn-menutup">Dihitung per nota: sisa tiap orang dibagi ke nota-notanya yang masih terbuka (bayar & hapus buku menutup bon tertua dulu, retur nota asalnya). Jumlah semua kelompok = sisa bon semuanya ${RP(R.total)}.</div>`
         : h`<div class="pita-info awas" data-k="pn-tidak-menutup">Per nota TIDAK menutup ke sisa bon: selisih ${RP(R.selisih)}${R.tidakMenutup.length ? ' · ' + R.tidakMenutup.map((x) => x.nama).join(', ') : ''} — laporkan.</div>`}
       ${pilih === 'lewat' && R.lewat > 0 ? h`<div class="ket" data-k="pn-umur-lewat">${R.umurLewat.filter((u) => u.n).map((u) => u.label + ' ' + RP(u.rp) + ' (' + u.n + ')').join(' · ')}</div>` : ''}
+      ${gambarTelat(d)}
       <div class="ket">Jatuh tempo = tanggal nota + tempo kartu pelanggan, kosong = "waktunya ditagih" (${P.aturPelanggan().tagihHari} hari); faktur memakai jatuh tempo fakturnya. Bon tahun lalu sesudah tutup buku terbaca satu nota bertanggal bon tertuanya.</div>
       ${K.isi.slice(0, 60).map((x) => h`<div class="bp-kartu ${x.status === 'lewat' ? 'macet' : ''}" data-k="pn-${x.kunci}" data-aksi="bukaOrangBon" data-kunci="${x.orang}"><div><div class="nm" style="font-weight: 600;">${x.nama}</div><div class="ket">${x.saldoAwal ? 'saldo awal' : 'nota'} ${tanggalPendek(x.tanggal)}${x.faktur ? ' · faktur ' + x.faktur : ''} · ${x.status === 'lewat' ? 'lewat ' + x.hariLewat + ' hari (jatuh tempo ' + tanggalPendek(x.jatuhTempo) + ')' : x.status === 'hariIni' ? 'jatuh tempo HARI INI' : x.status === 'tanpa' ? 'tanpa tanggal' : 'jatuh tempo ' + tanggalPendek(x.jatuhTempo) + ' (' + x.hariLagi + ' hari lagi)'}</div><div class="ket">tempo ${x.tempo} hari · ${x.sumberTempo === 'faktur' ? 'faktur' : x.sumberTempo === 'kartu' ? 'dari kartu' : 'waktunya ditagih'}</div></div><div class="n">${RP(x.sisa)}</div></div>`)}
       ${K.isi.length > 60 ? h`<div class="ket">+${K.isi.length - 60} nota lagi</div>` : ''}${K.isi.length ? '' : h`<div class="menolak">Tidak ada nota di kelompok ini.</div>`}</div>`;
+  }
+  /** B35 (owner 27 Nov 2026): bon BELUM jatuh tempo milik pelanggan yang biasanya telat (2 dari 3 bon terakhirnya lunas lewat jatuh tempo) — B.pnPerkiraanTelat.
+   *  Perkiraan untuk menagih lebih awal, bukan vonis; ketuk orangnya = buku bonnya. */
+  function gambarTelat(d) {
+    let T; try { T = B.pnPerkiraanTelat(d); } catch (e) { return h`<div class="pita-info awas" data-k="pn-telat">Perkiraan telat gagal dihitung: ${String((e && e.message) || e)}</div>`; }
+    return h`<div class="kartu" data-k="pn-telat" style="gap: 6px;"><div class="label">Diperkirakan telat bayar · ${T.n ? T.n + ' orang · ' + RP(T.rp) : 'tidak ada'}</div>
+      ${T.daftar.slice(0, 8).map((o) => h`<div class="bp-kartu" data-k="pnt-${o.kunci}" data-aksi="bukaOrangBon" data-kunci="${o.kunci}"><div><div class="nm" style="font-weight: 600;">${o.nama}</div><div class="ket">${o.kalimat}</div><div class="ket">${o.nNota} nota belum jatuh tempo · ${o.hariLagi <= 0 ? 'jatuh tempo HARI INI' : o.hariLagi + ' hari lagi'} · tempo ${o.tempo} hari</div></div><div class="n">${RP(o.rp)}</div></div>`)}
+      ${T.daftar.length > 8 ? h`<div class="ket">+${T.daftar.length - 8} orang lagi</div>` : ''}
+      <div class="ket" data-k="pn-telat-ket">${T.kalimat}${T.nLewatBiasa ? ' · ' + T.nLewatBiasa + ' nota mereka (' + RP(T.rpLewatBiasa) + ') sudah lewat jatuh tempo — ada di kelompok Lewat jatuh tempo' : ''}. ${T.rumus}. Perkiraan, bukan vonis — dipakai untuk menagih lebih awal.</div></div>`;
   }
   /** Paket brief 9 Okt (butir 1): rata-rata hari bon tertagih (B.tertagihBon). Tiga keadaan digambar beda: kosong "—" · belum bisa dihitung · angka (boleh 0).
    *  Batang = komposisi rupiah bon yang lunas di periode (dibayar · saldo awal · bawaan tutup buku · hapus buku · retur · lain) — bagian-bagiannya menjumlah ke totalnya.

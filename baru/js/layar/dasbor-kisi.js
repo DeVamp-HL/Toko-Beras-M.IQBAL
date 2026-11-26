@@ -13,7 +13,7 @@
 // (markup tidak berubah → gambar yang hidup = gambar segar).
 import { esc } from '../inti/dom.js';
 import { RP, DESIMAL, tanggalPendek, hariIniIso } from '../inti/format.js';
-import { DB_PERIODE, dbHeadline, dbPeriode } from './dasbor-logika.js';
+import { DB_PERIODE, dbHeadline, dbPeriode, dbSaring, DB_SARING_TETAP } from './dasbor-logika.js';
 import { WG_KOLOM, WG_BARIS_PX, WG_BAWAAN, wgAtur, wgSusun, wgPindah, wgHapus, wgTambah, wgUkur, wgTinggiOtomatis, wgBelumDipasang, wgSama } from './dasbor-widget-logika.js';
 
 const KUNCI_PERIODE = 'miqbal_baru_dasbor_periode';
@@ -84,6 +84,19 @@ export function pasangKisi(akar, opsi) {
       + htmlIsi(w) + pegangan + '</div>';
   }
 
+  // ---------- B94 (owner 27 Nov 2026): SATU SARINGAN di atas kisi — berlaku ke semua kartu yang bisa disaring (dasbor-logika dbSaring) ----------
+  // Pita & tanggalnya pindah dari kartu Periode ke sini (satu ingatan perangkat, kunci yang sama). Ganti pilihan = Dasbor dihitung ulang (opsi.gantiSaring).
+  function htmlSaring() {
+    const k = opsi.kini(); const iso = hariIniIso(k); let S; try { S = dbSaring(pil, k); } catch (e) { S = { bawaan: true, tolak: String((e && e.message) || e) }; }
+    const pita = '<div class="pita db-periode-pita db-saring-pita" data-k="db-saring-pita">' + DB_PERIODE.map(([id, nm]) => '<div class="seg' + (id === pil.id ? ' aktif' : '') + '" data-da-periode="' + id + '">' + esc(nm) + '</div>').join('') + '</div>';
+    const tgl = pil.id === 'pilih' ? '<div class="db-periode-tgl"><label><span class="ket">dari</span><input type="date" class="ketik-nama" data-da-tgl="dari" max="' + iso + '" value="' + esc(pil.dari || '') + '"></label>'
+      + '<label><span class="ket">sampai</span><input type="date" class="ketik-nama" data-da-tgl="sampai" max="' + iso + '" value="' + esc(pil.sampai || '') + '"></label></div>' : '';
+    const ket = S.tolak ? '<div class="ket awas-teks" data-k="db-saring-tolak">' + esc(S.tolak) + ' — kartu menampilkan Hari ini</div>'
+      : S.bawaan ? '<div class="ket" data-k="db-saring-ket">Saringan: Hari ini (bulan ini untuk kartu bulanan) — pilih periode lain untuk menyaring semua kartu sekaligus</div>'
+        : '<div class="ket" data-k="db-saring-ket"><b>Saringan ' + esc(S.nama + (S.dari !== S.sampai ? ' · ' + tanggalPendek(S.dari) + ' – ' + tanggalPendek(S.sampai) : '')) + '</b>' + (S.bulanKet ? ' · ' + esc(S.bulanKet) : '') + '</div><div class="ket db-saring-tetap" data-k="db-saring-tetap">' + esc(DB_SARING_TETAP) + '</div>';
+    return '<div class="db-saring" data-k="db-saring">' + pita + tgl + ket + '</div>';
+  }
+
   // ---------- headline (B91) & periode (B95) ----------
   function htmlHeadline() {
     const H = dbHeadline(D || {}, perhatian);
@@ -95,9 +108,8 @@ export function pasangKisi(akar, opsi) {
     const k = opsi.kini(); const iso = hariIniIso(k);
     const kunci = 'periode|' + pil.id + '|' + (pil.dari || '') + '|' + (pil.sampai || '') + (pil.id === 'hari' ? '|' + Math.floor((k.getHours() * 60 + k.getMinutes()) / 5) : '');
     let P; try { P = opsi.ingat ? opsi.ingat(kunci, () => dbPeriode(pil, k)) : dbPeriode(pil, k); } catch (e) { P = { galat: String((e && e.message) || e) }; }
-    const pita = '<div class="pita db-periode-pita" data-k="db-periode-pita">' + DB_PERIODE.map(([id, nm]) => '<div class="seg' + (id === pil.id ? ' aktif' : '') + '" data-da-periode="' + id + '">' + esc(nm) + '</div>').join('') + '</div>';
-    const tgl = pil.id === 'pilih' ? '<div class="db-periode-tgl"><label><span class="ket">dari</span><input type="date" class="ketik-nama" data-da-tgl="dari" max="' + iso + '" value="' + esc(pil.dari || '') + '"></label>'
-      + '<label><span class="ket">sampai</span><input type="date" class="ketik-nama" data-da-tgl="sampai" max="' + iso + '" value="' + esc(pil.sampai || '') + '"></label></div>' : '';
+    // B94 (owner 27 Nov 2026): pita & tanggal pindah ke saringan di atas kisi (htmlSaring) — kartu ini membaca pilihan yang sama
+    const pita = '<div class="ket" data-k="db-periode-pita">ikut saringan di atas Dasbor</div>'; const tgl = ''; void iso;
     let isi;
     if (P.galat) isi = '<div class="menolak awas-teks">Periode gagal dihitung (' + esc(P.galat) + ').</div>';
     else if (P.tolak) isi = '<div class="menolak">' + esc(P.tolak) + '</div>';
@@ -123,7 +135,7 @@ export function pasangKisi(akar, opsi) {
     if (hasil) D = hasil; if (perh) perhatian = perh; if (c) cap = c; ujung = {};
     const W = wgSusun(daftarAktif(), Object.assign({}, D || {}, { perhatian }));
     const isi = W.length ? W.map(htmlPanel).join('') : '<div class="menolak wg-kosong">Dasbor kosong — ' + (atur ? 'tambah kartu dari katalog di bawah.' : 'ketuk Atur untuk menambah kartu.') + '</div>';
-    return htmlKepala() + '<div class="wg-kisi pn-kisi' + (atur ? ' pn-atur' : '') + '" data-k="wg-kisi">' + isi + '</div>' + htmlBilahAtur();
+    return htmlKepala() + (atur ? '' : htmlSaring()) + '<div class="wg-kisi pn-kisi' + (atur ? ' pn-atur' : '') + '" data-k="wg-kisi">' + isi + '</div>' + htmlBilahAtur();
   }
   /** Tinggi otomatis: panel tanpa tinggi tarikan diberi rentang baris = tinggi isinya (+ jarak). Diukur sesudah digambar & tiap isinya berubah ukuran. */
   function ukurTinggi() {
@@ -178,14 +190,16 @@ export function pasangKisi(akar, opsi) {
       const ot = ds('[data-pn-otomatis]', 'pnOtomatis'); if (ot) { ubahDraf(wgTinggiOtomatis(atur.daftar, Number(ot.dataset.pnOtomatis))); return true; }
       const tb = ds('[data-wg-tambah]', 'wgTambah'); if (tb) { ubahDraf(wgTambah(atur.daftar, tb.dataset.wgTambah)); return true; }
       return !!ev.target.closest('.pn-kisi'); }
-    const pr = ds('[data-da-periode]', 'daPeriode'); if (pr) { pil = Object.assign({}, pil, { id: pr.dataset.daPeriode }); if (pil.id === 'pilih' && !pil.dari) { const iso = hariIniIso(opsi.kini()); pil.dari = iso.slice(0, 8) + '01'; pil.sampai = iso; } simpanPil(); opsi.gambarUlang(); return true; }
+    const pr = ds('[data-da-periode]', 'daPeriode'); if (pr) { pil = Object.assign({}, pil, { id: pr.dataset.daPeriode }); if (pil.id === 'pilih' && !pil.dari) { const iso = hariIniIso(opsi.kini()); pil.dari = iso.slice(0, 8) + '01'; pil.sampai = iso; } simpanPil(); saringBerubah(); return true; }
     const ke = ds('[data-da-ke]', 'daKe'); if (ke) { const u = ujung[ke.dataset.daKe];
       if (u && u.perhatian) { const el = akar.querySelector('.pn[data-pn="kPerhatian"]'); if (el) { if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest', behavior: gerakDiam() ? 'auto' : 'smooth' }); }
         else { kabar = 'Perlu perhatian disembunyikan dari Dasbor (owner 26 Nov 2026) — tambahkan lagi lewat Atur › + Tambah kartu, atau lihat di Cincin.'; kabarAwas = false; opsi.gambarUlang(); } }
       else if (u && u.tujuan) opsi.keTujuan(u.tujuan); return true; }
     return false;
   }
-  akar.addEventListener('change', (ev) => { const t = ev.target.closest('[data-da-tgl]'); if (!t) return; pil = Object.assign({}, pil, { [t.dataset.daTgl]: t.value }); simpanPil(); opsi.gambarUlang(); });
+  akar.addEventListener('change', (ev) => { const t = ev.target.closest('[data-da-tgl]'); if (!t) return; pil = Object.assign({}, pil, { [t.dataset.daTgl]: t.value }); simpanPil(); saringBerubah(); });
+  // B94: saringan berubah = semua kartu yang ikut dihitung ulang (Ringkasan menyusun Dasbor dengan saringan baru); tanpa jalur itu cukup digambar ulang
+  const saringBerubah = () => (opsi.gantiSaring ? opsi.gantiSaring() : opsi.gambarUlang());
   const simpanPil = () => { try { localStorage.setItem(KUNCI_PERIODE, JSON.stringify(pil)); } catch (e) { /* abaikan */ } };
 
   // ---------- tekan lama · seret (pindah) · tarik pegangan (ukuran) ----------
@@ -236,5 +250,5 @@ export function pasangKisi(akar, opsi) {
   };
   akar.addEventListener('pointerup', lepas); akar.addEventListener('pointercancel', lepas);
 
-  return { html, sesudah, klik, sedangAtur: () => !!atur || !!seret || !!tarik, menyeret: () => !!seret || !!tarik, adaWidget: (id) => daftarAktif().some((w) => w.id === id) };
+  return { html, sesudah, klik, pil: () => Object.assign({}, pil), sedangAtur: () => !!atur || !!seret || !!tarik, menyeret: () => !!seret || !!tarik, adaWidget: (id) => daftarAktif().some((w) => w.id === id) };
 }

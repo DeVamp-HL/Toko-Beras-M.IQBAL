@@ -245,7 +245,7 @@ main.layar-ringkasan.masuk > .rk-dasbor, main.layar-ringkasan.masuk > .rk-saklar
    ruang" + "Merapat otomatis" + "HP satu kolom" → tiap kartu = panel di kisi 12 kolom × baris 8 px (grid dense = merapat sendiri), lebar & tinggi ditarik lewat
    pegangan di mode atur. Cincin tetap seperti dulu. */
 .layar-ringkasan .rk-dasbor > .wg-kepala, .layar-ringkasan .rk-dasbor > .wg-kisi, .layar-ringkasan .rk-dasbor > .wg-bilah-atur, .layar-ringkasan .rk-dasbor > .wg-katalog-wadah,
-.layar-ringkasan .rk-dasbor > [data-k="wg-kabar"] { grid-column: 1 / -1; }
+.layar-ringkasan .rk-dasbor > [data-k="wg-kabar"], .layar-ringkasan .rk-dasbor > .db-saring { grid-column: 1 / -1; }   /* B94: saringan selebar kisi */
 @media (min-width: 720px) { .layar-ringkasan .rk-dasbor { grid-auto-flow: row; } }
 main.layar-ringkasan.mode-dasbor > .rk-samping { display: none; }
 @media (min-width: 1100px) { main.layar-ringkasan.mode-dasbor > .rk-dasbor, main.layar-ringkasan.mode-dasbor > .rk-saklar { grid-column: 1 / -1; } }
@@ -346,3 +346,18 @@ main.layar-ringkasan.mode-dasbor > .rk-samping { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .layar-ringkasan .rk-dasbor.masuk .pn, .layar-ringkasan .rk-dasbor.masuk .wg-bilah i, .layar-ringkasan .pn.wg-angkat, .layar-ringkasan .wg-katalog-isi, .layar-ringkasan .db-cap.hidup i, .layar-ringkasan .rk-sorot { animation: none; transition: none; }
 }
+
+/* ---------- paket sisa sensus (owner 27 Nov 2026) ----------
+   B94 satu saringan di atas kisi Dasbor (pita + kalimat ikut / tetap) · cap "sekarang · tidak ikut saringan" di kartu yang tidak bisa disaring
+   B68 kartu Pembelian: batang bertumpuk bon (dibayar nanti) di bawah, dibayar langsung di atas — warna dari token identitas (mode gelap ikut sendiri) */
+.layar-ringkasan .db-saring { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 10px; }
+.layar-ringkasan .db-saring .ket b { color: var(--teks); font-weight: 600; }
+.layar-ringkasan .db-saring-tetap { color: var(--redup); font-size: 11px; }
+.layar-ringkasan .db-tetap { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--rel, var(--hantu)); color: var(--redup); font-size: 10px; font-weight: 600; letter-spacing: 0.03em; white-space: nowrap; }
+.layar-ringkasan .db-kepala .db-tetap { margin-left: 6px; }
+/* B94: kartu Hari ini disaring ke rentang panjang → angka bulanan/tahunan lebar; di HP omzet & laba kotor bertumpuk supaya tidak terpotong */
+@media (max-width: 719px) { .layar-ringkasan .db-hari-saring .db-dua { grid-template-columns: minmax(0, 1fr); } }
+.layar-ringkasan .db-beli-bon { fill: var(--emas-garis); fill-opacity: 0.7; } .layar-ringkasan i.db-beli-bon { background: var(--emas-garis); opacity: 0.8; }
+.layar-ringkasan .db-beli-langsung { fill: var(--platina2, var(--redup)); fill-opacity: 0.6; } .layar-ringkasan i.db-beli-langsung { background: var(--platina2, var(--redup)); opacity: 0.75; }
+.layar-ringkasan .db-kol.berjalan .db-beli-bon, .layar-ringkasan .db-kol.berjalan .db-beli-langsung { stroke: var(--emas-tepi); stroke-width: 1.2; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; fill-opacity: 0.32; }
+.layar-ringkasan .db-kol.db-dipilih .db-beli-bon, .layar-ringkasan .db-kol.db-dipilih .db-beli-langsung { fill-opacity: 0.9; }
