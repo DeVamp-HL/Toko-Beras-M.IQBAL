@@ -31,7 +31,11 @@ export const loncengMentah = () => mentah(pintuLonceng());
 
 const lcUid = () => String((_lcAkun && _lcAkun.uid) || '');
 const lcWaktu = () => waktuSekarang(_lcOpsi.sekarang() || undefined);
-const lcHitung = (L) => kbLonceng(_lcAkun, null, L, lcWaktu().tanggal);
+// owner 26 Nov 2026 ("pasang notifikasi"): pengingat jatuh — sumbernya & pintu bukanya dipasang app.js lewat loncengPengingat
+let _lcPg = { ambil: () => [], buka: null };
+export function loncengPengingat(o) { _lcPg = Object.assign({}, _lcPg, o || {}); }
+const lcPengingat = () => { try { return _lcPg.ambil(_lcAkun) || []; } catch (e) { return []; } };
+const lcHitung = (L) => kbLonceng(_lcAkun, null, L, lcWaktu().tanggal, lcPengingat());
 function lcBacaLihat() { try { return kbBacaLihat(localStorage.getItem(KB_LIHAT), lcUid()); } catch (e) { return null; } }
 function lcSimpanLihat(peta) { try { localStorage.setItem(KB_LIHAT, kbTulisLihat(localStorage.getItem(KB_LIHAT), lcUid(), peta)); } catch (e) { /* perangkat menolak: angka kembali muncul sesudah dimuat ulang */ } }
 
@@ -169,7 +173,7 @@ export function pasangLonceng(opsi) {
     if (a) {
       const k = a.dataset.ll;
       if (k === 'tutup') lcTutup();
-      else if (k === 'buka') { lcTutup(); _lcOpsi.pindah(a.dataset.layar || 'menu'); }
+      else if (k === 'buka') { lcTutup(); if (a.dataset.layar === 'pengingat' && _lcPg.buka) _lcPg.buka(); else _lcOpsi.pindah(a.dataset.layar || 'menu'); }
       else if (k === 'baca') lcTandaiBaca(a.dataset.id);
       else if (k === 'kirim') { lcKirim(); const tk = document.querySelector('[data-ll-tulis]'); if (tk) tk.focus(); }
       else if (k === 'tab') lcPilihTab(a.dataset.tab);

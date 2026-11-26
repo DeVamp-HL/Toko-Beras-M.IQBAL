@@ -11,7 +11,12 @@ import * as WJ from './wadah-jual-logika.js';
 import * as ST from './struk-logika.js';
 import * as PK from '../inti/perangkat.js';   // paket S1 (19 Nov 2026): lampu CPad — hijau nota tersimpan, merah kedip cetak gagal; tanpa lampu = diam
 import * as PR from '../inti/printer.js';   // T1 (16 Nov 2026): printer USB tablet kasir — aplikasi CPad / WebUSB; tanpa printer = dialog cetak
-import * as TK from './tanda-kenal-logika.js';   // paket S2a (19 Nov 2026): QR nomor nota di struk; scan struk → notanya terbuka
+import * as TK from './tanda-kenal-logika.js';
+// owner 26 Nov 2026 (label & kedaluwarsa): label kemasan LENGKAP (kelas mutu, berat bersih, nama & alamat toko, tanggal kemas, baik dipakai sebelum) + label tanggal masuk
+// tumpukan karung dicetak ulang dari sini; Atur label (owner): umur simpan, tanda dekat, kelas mutu per kemasan (aturanToko/catatStok.label — dibaca tablet)
+import * as LB from './label-logika.js';
+import { lbpCetak } from './label-panel.js';
+import { hetAtur } from './het-logika.js';   // paket S2a (19 Nov 2026): QR nomor nota di struk; scan struk → notanya terbuka
 // owner 17 Nov (butir 3): pratinjau struk gambar + logo toko bersama
 import { gambarStruk as gambarStrukKanvas, siapkanHuruf } from '../inti/struk-kanvas.js';
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
@@ -689,7 +694,18 @@ export function pasangLayarJual(akar, opsi) {
     aksi.tkLepasBatal = () => set({ tkLepas: null });
     // LEPAS = catatan baru bersasaran kosong (catatan lama tidak dihapus; yang terbaru menang) — kode itu kembali "belum dikenal"
     aksi.tkLepas = () => { const t = S().tkLepas; if (!t) return; const r = TK.tkSusunLepas(ambilTandaKenal(), t.jenis, t.kode, tkWaktu()); if (r.patch) r.patch.tkLepas = null; else set({ tkLepas: null }); return tulisUmum(r); };
-    aksi.tkLabelBuka = ({ kode, jalur, kunci, berat }) => set({ tkLabel: kode ? { kode: String(kode) } : { jalur, kunci, berat: berat || '' }, tkLepas: null, tkLabelN: 1, kabar: '' });
+    aksi.tkLabelBuka = ({ kode, jalur, kunci, berat }) => set({ tkLabel: kode ? { kode: String(kode) } : { jalur, kunci, berat: berat || '' }, tkLepas: null, tkLabelN: 1, tkPilih: '', kabar: '' });
+    // tanggal kemas (kemasan) / kedatangan (karung: label tanggal masuk, tanpa QR) yang dipilih di kotak cetak; '' = bawaan (adukan terbaru / label QR kasir)
+    aksi.tkPilih = ({ v }) => set({ tkPilih: String(v || '') === String(S().tkPilih || '') ? '' : String(v || '') });
+    // Atur label (owner): draf { umurBulan, ambangHari, kedaluwarsa, kelas: { kunci: kelas } } — kelas bawaan = saran peta HET (medium/premium) bila owner belum mengisi
+    aksi.lbAturBuka = () => { if (S().lbAtur) return set({ lbAtur: null }); const A = LB.lbAtur(); const H = (() => { try { return hetAtur().peta || {}; } catch (e) { return {}; } })(); const kelas = {};
+      (rakKini().kemasan || []).forEach((c) => { const k = String(c.kunci); if (A.kelas[k]) kelas[k] = A.kelas[k]; else { const p = H[c.nama] || H[String(k).split('|')[0]]; kelas[k] = p === 'medium' ? 'Medium' : p === 'premium' ? 'Premium' : ''; } });
+      set({ lbAtur: { umurBulan: String(A.umurBulan), ambangHari: String(A.ambangHari), kedaluwarsa: A.kedaluwarsa, kelas }, kabar: '' }); };
+    Object.assign(aksi, { lbAturKetik: (v, el) => { const a = Object.assign({}, S().lbAtur || {}); a[el.dataset.kolom] = String(v).replace(/[^0-9]/g, '').slice(0, 3); set({ lbAtur: a }); } });   // draf dijaga ISIAN_JUAL_LAIN (lbAtur)
+    aksi.lbAturKelas = ({ kunci, kelas }) => { const a = Object.assign({}, S().lbAtur || {}); a.kelas = Object.assign({}, a.kelas || {}); a.kelas[kunci] = a.kelas[kunci] === kelas ? '' : kelas; set({ lbAtur: a }); };
+    aksi.lbAturKedaluwarsa = () => { const a = Object.assign({}, S().lbAtur || {}); a.kedaluwarsa = !a.kedaluwarsa; set({ lbAtur: a }); };
+    aksi.lbAturSimpan = async () => { const a = S().lbAtur; if (!a) return; const r = LB.susunAturLabel(a, tkWaktu()); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+      try { const hsl = await tulisDokumen(r.dokumen); if (hsl && hsl.gagal) return set({ kabar: 'DITOLAK: ' + hsl.pesan, kabarAwas: true }); set(r.patch); } catch (e) { set({ kabar: 'GAGAL menyimpan setelan label: ' + (e && e.message ? e.message : e), kabarAwas: true }); } };
     aksi.tkLabelN = ({ n }) => set({ tkLabelN: TK.tkJumlahLabel(n) || 1 });
     aksi.tkLabelBatal = () => set({ tkLabel: null });
     aksi.tkLabelCetak = async () => {
@@ -697,6 +713,10 @@ export function pasangLayarJual(akar, opsi) {
       const n = TK.tkJumlahLabel(st.tkLabelN); if (!n) return set({ kabar: 'Jumlah label harus 1 sampai ' + TK.TK_LABEL_MAKS + ' lembar', kabarAwas: true });
       // printer diperiksa DULU: tanpa printer (HP owner) kode label tidak dibuat — kode tanpa label di kemasan cuma mengotori daftar
       if (await PR.jalurCetak() === 'dialog') return set({ kabar: 'Tidak ada printer di perangkat ini — label dicetak dari tablet kasir', kabarAwas: true });
+      // owner 26 Nov 2026 (A78): karung + kedatangan dipilih = label TANGGAL MASUK tumpukan (tanpa QR, tanpa kode baru)
+      if (!t.kode && t.jalur === 'karung' && st.tkPilih) { const KD = LB.lbKedatanganMerek(String(t.kunci), 8).find((x) => x.id === st.tkPilih); if (!KD) return set({ kabar: 'Kedatangan itu tidak ditemukan lagi', kabarAwas: true });
+        const r0 = await lbpCetak(LB.lbIsiTumpukan(String(t.kunci), KD.tanggal, KD.baris), n, false); if (r0.peringatan) lampu('lampuKertas'); if (r0.gagal) lampu('lampuGagal');
+        return set({ tkLabel: null, tkPilih: '', kabar: r0.kabar + ' · label tanggal masuk ' + tanggalPendek(KD.tanggal), kabarAwas: r0.kabarAwas }); }
       let kode = ''; let sasaran = null; let dokumen = [];
       if (t.kode) {
         const d = TK.tkCari(ambilTandaKenal(), 'barcode', t.kode); if (!d) return set({ tkLabel: null, kabar: 'Barcode ini sudah tidak terpasang ke barang', kabarAwas: true });
@@ -712,7 +732,10 @@ export function pasangLayarJual(akar, opsi) {
         catch (e) { return set({ kabar: 'GAGAL mencatat kode label: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
       }
       try {
-        const r = await PR.cetakLabel(TK.tkIsiLabel(sasaran, kode), n);
+        // owner 26 Nov 2026 (A49): kemasan = label LENGKAP (tanggal kemas = pilihan di kotak cetak, bawaan adukan terbaru); karung = label QR kasir seperti dulu
+        const isiL = sasaran.jalur === 'kemasan' ? (() => { const P = LB.lbPilihanKemas(String(sasaran.kunci), S().sekarang || undefined); const tg = st.tkPilih || (P[0] ? P[0].tanggal : '');
+          return LB.lbIsiKemasan(sasaran, kode, { tanggal: tg }, LB.lbAtur(), LB.lbKop(), TK.tkIsiLabel(sasaran, kode).teksKode); })() : TK.tkIsiLabel(sasaran, kode);
+        const r = await PR.cetakLabel(isiL, n);
         if (r.peringatan) lampu('lampuKertas');
         set({ tkLabel: null, kabarAwas: false, kabar: n + ' label ' + sasaran.nama + ' dikirim ke printer' + (r.tanpaKabar ? ' — printer tidak mengabari hasil perintah label, lihat kertasnya' : '') + (r.peringatan ? ' · ' + r.peringatan : '') });
       } catch (e) {
@@ -1378,13 +1401,37 @@ export function pasangLayarJual(akar, opsi) {
     </div>`;
   }
 
+  // owner 26 Nov 2026 (label & kedaluwarsa): ATUR LABEL — owner saja (aturanToko ditulis owner); akun tablet melihat angkanya saja
+  function gambarAturLabel(s) {
+    const A = LB.lbAtur(); const a = s.lbAtur; const owner = akunOwner();
+    const ring = h`<div class="ket" data-k="lb-ring">Label kemasan: kelas mutu · berat bersih · dikemas · ${A.kedaluwarsa ? 'baik dipakai sebelum (tanggal kemas + ' + A.umurBulan + ' bulan)' : '"baik dipakai sebelum" TIDAK dicetak'} · nama & alamat toko (kop struk) · QR. Tanda dekat ≤ ${A.ambangHari} hari${A.dariOwner ? ' · diatur owner' + (A.sejak ? ' ' + tanggalPendek(A.sejak) : '') : ' · angka bawaan'}.</div>`;
+    if (!a) return h`${ring}${owner ? h`<div class="kaca-btn kecil" data-aksi="lbAturBuka" style="align-self: flex-start;" data-k="lb-atur-buka">Atur label · umur simpan & kelas mutu ›</div>` : ''}`;
+    const kem = (rakKini().kemasan || []);
+    return h`${ring}<div class="kartu lb-atur" data-k="lb-atur" style="gap: 8px;"><div class="label">Atur label · angka owner</div>
+      <div class="ps-form dua"><div><div class="ket">Umur simpan (bulan, 1–24)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.umurBulan}" data-ketik="lbAturKetik" data-kolom="umurBulan"></div>
+        <div><div class="ket">Tanda "dekat" (hari sebelum, 1–180)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.ambangHari}" data-ketik="lbAturKetik" data-kolom="ambangHari"></div></div>
+      <div class="bendera"><span class="pil ${a.kedaluwarsa ? 'nyala' : ''}" data-aksi="lbAturKedaluwarsa">${a.kedaluwarsa ? 'cetak "baik dipakai sebelum"' : 'tanpa "baik dipakai sebelum"'}</span></div>
+      <div class="label" style="margin-top: 2px;">Kelas mutu per kemasan</div>
+      ${kem.length ? kem.map((c, i) => h`<div class="at-baris" data-k="lb-k-${i}"><div>${c.nama} ${c.ukuran || ''}</div><div class="hg-pil">${LB.LB_KELAS.map((k) => h`<span class="seg ${(a.kelas || {})[c.kunci] === k ? 'aktif' : ''}" data-aksi="lbAturKelas" data-kunci="${c.kunci}" data-kelas="${k}">${k}</span>`)}</div></div>`) : h`<div class="ket">Tidak ada kemasan di rak saat ini.</div>`}
+      <div class="tombol-baris" style="grid-template-columns: 1fr 1fr;"><div class="kaca-btn" data-aksi="lbAturBuka">batal</div><div class="kaca-btn aktif emas" data-aksi="lbAturSimpan">SIMPAN SETELAN LABEL</div></div>
+      <div class="ket" style="font-size: 11px;">Kelas yang belum dipilih = baris kelas tidak dicetak. Saran awal diambil dari peta HET (medium / premium) bila ada. Mengubah umur simpan menggeser tanggal semua kemasan yang belum laku. Pastikan isi label sesuai aturan label beras yang berlaku — cek di kalender kepatuhan tiap 3 bulan.</div></div>`;
+  }
   // paket S4 (19 Nov 2026): lembar "Label & kartu". Tiga tab: Barcode (kode → barang), Kartu (kartu NFC → pembeli), Buat label (barang di rak →
   // label ber-QR). Hanya pasangan yang BERLAKU yang tampil (tkDaftarKini); kabar ditampilkan DI DALAM lembar — kabar di belakang lembar tidak terlihat.
   function gambarTandaKenal(s, L1, muncul, kepala) {
     const semua = TK.tkDaftarKini(ambilTandaKenal()); const tab = s.tkTab === 'nfc' || s.tkTab === 'label' ? s.tkTab : 'barcode';
     const bc = semua.filter((x) => x.jenis === 'barcode'); const kartu = semua.filter((x) => x.jenis === 'nfc'); const rak = rakKini();
     const nKini = TK.tkJumlahLabel(s.tkLabelN) || 1;
-    const kotakLabel = (k) => h`<div class="pita-info emas" data-k="tk-cetak-${k}"><div class="bendera"><span class="ket" style="align-self: center;">berapa lembar</span>${[1, 2, 5, 10, 20, 50].map((n) => h`<span class="pil ${nKini === n ? 'nyala' : ''}" data-aksi="tkLabelN" data-n="${n}">${n}</span>`)}</div>
+    // owner 26 Nov 2026: pilihan isi label — kemasan: tanggal kemas (adukan yang masih tersisa); karung: QR kasir atau label tanggal masuk per kedatangan
+    const pilihanLabel = (t) => { if (!t || t.kode) return ''; const pil = s.tkPilih || '';
+      if (t.jalur === 'kemasan') { const P = LB.lbPilihanKemas(String(t.kunci), s.sekarang || undefined); const A = LB.lbAtur(); const I = LB.lbIsiKemasan({ kunci: String(t.kunci), nama: '' }, '', { tanggal: pil || (P[0] ? P[0].tanggal : '') }, A, LB.lbKop(), '');
+        return h`<div class="bendera" data-k="tk-pilih"><span class="ket" style="align-self: center;">tanggal kemas</span>${P.length ? P.slice(0, 5).map((x, i) => h`<span class="pil ${(pil ? pil === x.tanggal : i === 0) ? 'nyala' : ''}" data-aksi="tkPilih" data-v="${x.tanggal}">${tanggalPendek(x.tanggal)}${x.status === 'lewat' ? ' · lewat' : x.status === 'dekat' ? ' · dekat' : ''}</span>`) : h`<span class="ket">belum ada adukan bertanggal — label tanpa tanggal</span>`}</div>
+          <div class="ket" data-k="tk-isi">${I.baris.join(' · ')}${I.kurang.length ? ' · belum ada: ' + I.kurang.join(', ') : ''}</div>`; }
+      if (t.jalur === 'karung') { const D = LB.lbKedatanganMerek(String(t.kunci), 4);
+        return h`<div class="bendera" data-k="tk-pilih"><span class="pil ${pil ? '' : 'nyala'}" data-aksi="tkPilih" data-v="">QR kasir</span>${D.map((x) => h`<span class="pil ${pil === x.id ? 'nyala' : ''}" data-aksi="tkPilih" data-v="${x.id}">masuk ${tanggalPendek(x.tanggal)}</span>`)}</div>
+          ${pil ? h`<div class="ket" data-k="tk-isi">label tanggal masuk tumpukan (tanpa QR): ${(() => { const KD = D.find((x) => x.id === pil); return KD ? LB.lbIsiTumpukan(String(t.kunci), KD.tanggal, KD.baris).baris.join(' · ') : ''; })()}</div>` : ''}`; }
+      return ''; };
+    const kotakLabel = (k) => h`<div class="pita-info emas" data-k="tk-cetak-${k}">${pilihanLabel(s.tkLabel)}<div class="bendera"><span class="ket" style="align-self: center;">berapa lembar</span>${[1, 2, 5, 10, 20, 50].map((n) => h`<span class="pil ${nKini === n ? 'nyala' : ''}" data-aksi="tkLabelN" data-n="${n}">${n}</span>`)}</div>
       <div class="tombol-baris" style="grid-template-columns: 1fr 1fr; grid-auto-flow: row;"><div class="kaca-btn" data-aksi="tkLabelBatal">batal</div><div class="kaca-btn aktif emas" data-aksi="tkLabelCetak">CETAK ${nKini} LABEL</div></div></div>`;
     const kotakLepas = (x, k) => h`<div class="pita-info awas" data-k="tk-lepas-${k}">Lepas ${x.jenis === 'nfc' ? 'kartu' : 'barcode'} <b>${TK.tkRingkasKode(x.kode)}</b> dari ${x.sasaran.nama}? Sesudah dilepas, ${x.jenis === 'nfc' ? 'kartu itu tidak memilih siapa pun' : 'scan kode itu tidak memilih barang apa pun'} sampai dipasangkan lagi.
       <div class="tombol-baris" style="grid-template-columns: 1fr 1fr; grid-auto-flow: row;"><div class="kaca-btn" data-aksi="tkLepasBatal">batal</div><div class="kaca-btn awas" data-aksi="tkLepas">YA, LEPAS</div></div></div>`;
@@ -1413,7 +1460,8 @@ export function pasangLayarJual(akar, opsi) {
       ${tab === 'nfc' ? h`<div class="ket">Mendaftarkan kartu baru: tutup lembar ini, tempelkan kartunya ke tablet, lalu pilih pembelinya. Kartu hilang → Lepas di sini.</div>
         <div class="daftar-nama" style="max-height: 52vh;">${kartu.map(barisKartu)}${kartu.length ? '' : h`<div class="ket">Belum ada kartu yang dipasangkan.</div>`}</div>` : ''}
       ${tab === 'label' ? h`<div class="ket">Untuk karung & kemasan yang tidak punya barcode pabrik: toko membuat kodenya sendiri, mencetaknya sebagai QR, lalu ditempel di kemasan. Scan label itu = barangnya terpilih. Kertas & ukuran label diatur di <a class="tautan" href="uji-cetak.html">Printer tablet ini</a>.</div>
-        <div class="daftar-nama" style="max-height: 52vh;">${isiRak.map(barisRak)}${isiRak.length ? '' : h`<div class="ket">Tidak ada karung atau kemasan di rak saat ini.</div>`}</div>` : ''}
+        <div class="daftar-nama" style="max-height: 52vh;">${isiRak.map(barisRak)}${isiRak.length ? '' : h`<div class="ket">Tidak ada karung atau kemasan di rak saat ini.</div>`}</div>
+        ${gambarAturLabel(s)}` : ''}
     </div>`;
   }
 

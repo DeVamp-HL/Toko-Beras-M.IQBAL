@@ -87,3 +87,25 @@ exports.tarikAcuan = onSchedule({ schedule: 'every friday 06:00', timeZone: 'Asi
   await getFirestore().collection('aturanToko').doc('acuanTarik').set(d);
   console.log('tarikAcuan', d.status, d.harga.length, 'harga', d.pesan);
 });
+
+// paket Stok minus, label & kepatuhan (owner 26 Nov 2026: "Oh iya adakan/pasang notifikasi"): PUSH PAGI KALENDER KEPATUHAN tiap hari 07.00 WIB — butir kalender
+// (aturanToko/kepatuhan; belum ada = butir bawaan) yang belum ditandai dikerjakan (kepatuhanCek) dan sedang dalam jendela ingatnya. Satu notifikasi ringkas ke HP /
+// Mac owner (notifOwner, pesan data seperti kabarOwner) dan ke tablet Penjaga laci yang aktif (aksesAkun peran ben → notifPerangkat). Kapan mengirim & isinya:
+// functions/patuh.js (murni, diuji). Tidak menulis data toko; token mati dibuang.
+const { pesanPatuh, hariWib } = require('./patuh');
+exports.kabarPatuh = onSchedule({ schedule: 'every day 07:00', timeZone: 'Asia/Jakarta', timeoutSeconds: 60, retryCount: 0 }, async () => {
+  const db = getFirestore(); const W = hariWib(new Date());
+  const dok = await db.collection('aturanToko').doc('kepatuhan').get(); const cek = await db.collection('kepatuhanCek').get();
+  const p = pesanPatuh(dok.exists ? dok.data() : null, cek.docs.map((d) => d.data()), W.iso, W.hari);
+  if (!p.kirim) { console.log('kabarPatuh', W.iso, 'tidak dikirim', p.n, 'urusan dalam jendela'); return; }
+  const owner = (await db.collection('notifOwner').get()).docs.map((d) => ({ ref: d.ref, token: d.get('token') })).filter((x) => typeof x.token === 'string' && x.token);
+  const ben = (await db.collection('aksesAkun').where('peran', '==', 'ben').where('aktif', '==', true).get()).docs.map((d) => d.id).slice(0, 30);
+  const tablet = ben.length ? (await db.collection('notifPerangkat').where('uid', 'in', ben).get()).docs.map((d) => ({ ref: d.ref, token: d.get('token') })).filter((x) => typeof x.token === 'string' && x.token) : [];
+  const mati = []; let kirim = 0;
+  if (owner.length) { const r = await getMessaging().sendEachForMulticast({ tokens: owner.map((x) => x.token), data: { judul: p.judul, isi: p.isi, tag: p.tag, layar: p.layar }, webpush: { headers: { Urgency: 'normal', TTL: '43200' } } });
+    kirim += r.successCount; r.responses.forEach((x, i) => { if (!x.success && x.error && tokenMati(x.error.code)) mati.push(owner[i].ref); }); }
+  if (tablet.length) { const r = await getMessaging().sendEachForMulticast(kirimanTablet({ judul: p.judul, isi: p.isi, tag: p.tag, layar: p.layar }, tablet.map((x) => x.token)));
+    kirim += r.successCount; r.responses.forEach((x, i) => { if (!x.success && x.error && tokenMati(x.error.code)) mati.push(tablet[i].ref); }); }
+  await Promise.all(mati.map((ref) => ref.delete()));
+  console.log('kabarPatuh', W.iso, p.n, 'urusan · terkirim', kirim, '· token mati dibuang', mati.length);
+});

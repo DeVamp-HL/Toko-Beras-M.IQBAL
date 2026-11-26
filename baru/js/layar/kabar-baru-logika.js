@@ -79,7 +79,7 @@ export function kbRingkas(ev) {
 export const KB_LIHAT = 'miqbal_lonceng_v1';
 export const KB_MAKS = 30;
 const KB_STATUS = { menunggu: 'menunggu owner', disetujui: 'disetujui', ditolak: 'DITOLAK', dibaca: 'dibaca owner' };
-export const KB_NAMA_LAYAR = { uang: 'Uang', menu: 'Menu', jual: 'Jual' };
+export const KB_NAMA_LAYAR = { uang: 'Uang', menu: 'Menu', jual: 'Jual', pengingat: 'Menu › Toko ini › Pengingat' };
 const urutBuat = (m) => String(m.tanggal || '') + ' ' + String(m.jam || '');
 const urutPutus = (m) => String(m.diputusTanggal || m.tanggal || '') + ' ' + String(m.diputusJam || m.jam || '');
 const waktuTampil = (tgl, jam) => (tgl ? tanggalPendek(tgl) : '') + (jam ? ' ' + jam : '');
@@ -106,7 +106,12 @@ const gelembung = (o) => ({ id: o.id, kunci: o.kunci || o.id, dari: o.dari, nama
  * obrolan). Hasil { owner, daftar (KABAR: permintaan selain pesan, terbaru dulu, ≤ KB_MAKS), obrolan (utas, terlama dulu, ≤ KB_MAKS_OBROLAN), n (belum dibuka,
  * kabar + obrolan), nKabar, nObrolan, menunggu, lebih, lebihObrolan, belumDibaca (owner: id pesan tablet yang menunggu), lihat / lihatObrolan / dilihat (kbTandai) }.
  */
-export function kbLonceng(akun, daftar, dilihat, hariIni) {
+// owner 26 Nov 2026 (stok minus, label & kepatuhan — "pasang notifikasi"): pengingat yang SUDAH JATUH (kalender kepatuhan · kemasan dekat "baik dipakai sebelum" ·
+// buku stok minus) ikut lonceng sebagai kabar — dihitung app.js (ssPengingat, orang yang diingatkan saja) dan diberikan lewat `pengingat`; dibuka = sudah dilihat
+// (peta dilihat yang sama). Tidak ada tulisan: menyelesaikannya tetap di Menu › Toko ini › Pengingat / layarnya.
+export const KB_PENGINGAT = 'pengingat';
+export const KB_JUDUL_PENGINGAT = { patuh: 'Kalender kepatuhan', kemasan: 'Kemasan dekat kedaluwarsa', minus: 'Stok minus' };
+export function kbLonceng(akun, daftar, dilihat, hariIni, pengingat) {
   const D = daftar || cacheMentah('persetujuan'); const L = dilihat || {}; const owner = !!akun && akun.jenis === 'owner'; const uid = String((akun && akun.uid) || '');
   const out = []; const ob = [];
   D.forEach((m) => {
@@ -135,6 +140,9 @@ export function kbLonceng(akun, daftar, dilihat, hariIni) {
     out.push({ id, status: st, tindakan: t, judul: (KB_JUDUL[t] || 'Permintaan') + ' · ' + (KB_STATUS[st] || st), isi: kbIsi(m), alasan: String(m.alasanTolak || ''), balasan: String(m.balasan || ''),
       waktu: putus ? waktuTampil(m.diputusTanggal || m.tanggal, m.diputusJam || m.jam) : waktuTampil(m.tanggal, m.jam), urut: putus ? urutPutus(m) : urutBuat(m), layar: 'menu', bisaBalas: false, baru: putus && L[id] !== st });
   });
+  (Array.isArray(pengingat) ? pengingat : []).forEach((p) => { if (!p || !p.id) return; const id = 'pg|' + String(p.id);
+    out.push({ id, status: 'jatuh', tindakan: KB_PENGINGAT, judul: (KB_JUDUL_PENGINGAT[p.jenis] || 'Pengingat') + ' · ' + String(p.teks || ''), isi: String(p.sisaTeks || '') + (p.ket ? ' · ' + String(p.ket) : ''),
+      alasan: '', balasan: '', waktu: tanggalPendek(String(p.jatuh || '')), urut: String(p.jatuh || '') + ' 00:00', layar: 'pengingat', bisaBalas: false, baru: L[id] !== 'jatuh' }); });
   out.sort((a, b) => (a.urut < b.urut ? 1 : a.urut > b.urut ? -1 : 0));
   ob.sort((a, b) => (a.urut < b.urut ? -1 : a.urut > b.urut ? 1 : 0));
   const lihat = {}; out.forEach((x) => { lihat[x.id] = x.status; });

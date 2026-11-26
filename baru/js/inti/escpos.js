@@ -188,6 +188,9 @@ export function epSusunGambar(gambar, opsi) {
 // isi = { judul (nama barang), ket (baris kecil), kode (isi QR, yang dibaca scanner), teksKode (kode yang dibaca orang) }.
 const bulat = (v, min, maks, bawaan) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(min, Math.min(maks, n)) : bawaan; };
 export const EP_LABEL_MAKS = 50;
+export const EP_LABEL_BARIS = 8;   // baris kecil tambahan paling banyak (label lengkap kemasan: 5 baris; alamat boleh terbungkus)
+/** Baris tambahan label: tiap teks dibungkus ke `kolom` huruf, kosong dibuang, paling banyak `maks` baris cetak. Tanpa `baris` = [] (cetakan lama persis). */
+export function epBarisLabel(baris, kolom, maks) { const out = []; (Array.isArray(baris) ? baris : []).forEach((t) => { if (out.length >= maks) return; epBungkus(String(t || ''), kolom).filter((s) => s !== '').forEach((s) => { if (out.length < maks) out.push(s); }); }); return out; }
 
 /** Label di kertas bersambung: nama barang besar, baris kecil, QR, kode — lalu potong; diulang `jumlah` kali (tiap lembar dipotong sendiri).
  *  opsi: { kertas, potong, umpan, qrUkuran, jumlah }. Hasil { byte, teks (satu lembar, untuk pratinjau & uji), jumlah }. */
@@ -196,12 +199,15 @@ export function epSusunLabel(isi, opsi) {
   const n = bulat(o.jumlah, 1, EP_LABEL_MAKS, 1);
   const judul = epBungkus(x.judul || '', Math.floor(lebar / 2)).filter((s) => s !== '').slice(0, 3);
   const ket = x.ket ? epBungkus(x.ket, lebar).slice(0, 1) : [];
+  const tambah = epBarisLabel(x.baris, lebar, EP_LABEL_BARIS);
   for (let i = 0; i < n; i++) {
     w.byte(ESC, 0x40).byte(ESC, 0x74, 0x00).byte(ESC, 0x61, 1);
     // GS ! 0x11 = huruf dua kali lebar & tinggi (nama barang terbaca dari jauh); dikembalikan sebelum baris kecil
     w.byte(GS, 0x21, 0x11).byte(ESC, 0x45, 1); judul.forEach((s) => { w.baris(s); if (!i) teks.push(s); });
     w.byte(GS, 0x21, 0x00).byte(ESC, 0x45, 0);
     ket.forEach((s) => { w.baris(s); if (!i) teks.push(s); });
+    // paket label & kedaluwarsa (owner 26 Nov 2026): baris kecil tambahan (kelas mutu, berat bersih, tanggal kemas, baik dipakai sebelum, alamat / tanggal masuk)
+    tambah.forEach((s) => { w.baris(s); if (!i) teks.push(s); });
     if (x.kode) { tulisQr(w, x.kode, o.qrUkuran || 6); w.byte(LF); if (!i) teks.push('[QR ' + epAscii(x.kode) + ']'); }
     if (x.teksKode) { w.baris(x.teksKode); if (!i) teks.push(epAscii(x.teksKode)); }
     w.byte(ESC, 0x61, 0);
@@ -229,7 +235,15 @@ export function epTsplLabel(isi, opsi) {
   // QR 4 titik per modul: kode sampai 64 huruf ≤ 41 modul = 164 titik → teks mulai di kanan lebar itu
   const xTeks = tepi + 164 + 12;
   if (x.teksKode && xTeks + 12 * 6 <= W) baris.push('TEXT ' + xTeks + ',' + y + ',"0",0,1,1,"' + kutip(x.teksKode) + '"');
-  if (x.ket && xTeks + 8 * 8 <= W) baris.push('TEXT ' + xTeks + ',' + (y + 34) + ',"1",0,1,1,"' + kutip(x.ket).slice(0, Math.max(0, Math.floor((W - xTeks - tepi) / 8))) + '"');
+  const tanpaQrBaris = !x.kode && Array.isArray(x.baris) && x.baris.length > 0;   // label tanpa QR berbaris (tanggal masuk): nama toko & baris dari tepi kiri
+  if (x.ket && xTeks + 8 * 8 <= W && !tanpaQrBaris) baris.push('TEXT ' + xTeks + ',' + (y + 34) + ',"1",0,1,1,"' + kutip(x.ket).slice(0, Math.max(0, Math.floor((W - xTeks - tepi) / 8))) + '"');
+  // paket label & kedaluwarsa (owner 26 Nov 2026): baris kecil tambahan — di kanan QR (di bawah kode & nama toko), atau dari tepi kiri bila label tanpa QR;
+  // huruf "1" (8×12 titik), 16 titik per baris, berhenti sebelum tepi bawah label. Tanpa `baris` = perintah lama persis.
+  if (Array.isArray(x.baris) && x.baris.length) {
+    const xb = x.kode ? xTeks : tepi; const kol = Math.max(0, Math.floor((W - xb - tepi) / 8)); let yb = x.kode ? y + (x.ket ? 54 : 34) : y + (x.ket ? 20 : 0);
+    if (!x.kode && x.ket) baris.push('TEXT ' + tepi + ',' + y + ',"1",0,1,1,"' + kutip(x.ket).slice(0, kol) + '"');
+    if (kol >= 8) epBarisLabel(x.baris, kol, EP_LABEL_BARIS).forEach((s) => { if (yb + 12 > tg * 8 - 8) return; baris.push('TEXT ' + xb + ',' + yb + ',"1",0,1,1,"' + kutip(s) + '"'); yb += 16; });
+  }
   baris.push('PRINT ' + n); if (o.potong) baris.push('CUT');
   const teks = baris.join('\n') + '\n'; const w = Penulis();
   for (let i = 0; i < teks.length; i++) w.byte(teks.charCodeAt(i));

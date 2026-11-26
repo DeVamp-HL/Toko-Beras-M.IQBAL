@@ -804,13 +804,13 @@ def periksa_statis(perangkat_js):
     # 19 Nov 2026 (ketahuan saat layar Perangkat dicoba): label contoh dulu selalu lewat jalur TERSIMPAN walau formulir memilih jalur lain
     ok('printer.js S4: label contoh memakai jalur yang dipilih di formulir (timpa.jalur), bukan hanya yang tersimpan — hanya di aplikasi',
        "const pilih = timpa && asliAda() && PR_JALUR.some((x) => x[0] === timpa.jalur) ? (timpa.jalur === 'usb' ? 'aplikasi' : timpa.jalur) : '';" in pr
-       and "const r = await cetakLabel(LABEL_CONTOH, 1, a);" in ujs and "await PR.cetakLabel(TK.tkIsiLabel(sasaran, kode), n);" in baca('baru', 'js', 'layar', 'jual.js'))
+       and "const r = await cetakLabel(LABEL_CONTOH, 1, a);" in ujs and "const r = await PR.cetakLabel(isiL, n);" in baca('baru', 'js', 'layar', 'jual.js') and ": TK.tkIsiLabel(sasaran, kode);" in baca('baru', 'js', 'layar', 'jual.js'))   # 26 Nov 2026: kemasan = label lengkap (label-logika), karung = tkIsiLabel
     ok('printer.js S4: setelan label di luar batas dibuang (bawaan tetap)', "if (Number.isInteger(d[k]) && d[k] >= b[0] && d[k] <= b[1]) a[k] = d[k];" in pr and "PR_LABEL_BATAS = { labelLebar: [20, 80], labelTinggi: [15, 200], labelCelah: [0, 10] }" in pr)
     jual = baca('baru', 'js', 'layar', 'jual.js')
     # 19 Nov 2026: panggilan lampu yang melempar di alur simpan membuat nota yang SUDAH tercatat dilaporkan "GAGAL mencatat" (ditangkap uji_keranjang_tahan)
     ok('jual.js: lampu hanya lewat pembungkus yang menelan galat — tidak ada panggilan lampu telanjang di alur simpan / cetak',
        "function lampu(nama) { try { const f = PK[nama]; if (typeof f === 'function') {" in jual and "} catch (e) { /* tanpa lampu */ } }" in jual
-       and jual.count("lampu('lampuBerhasil')") == 1 and jual.count("lampu('lampuGagal')") == 2   # cetak struk gagal + cetak label gagal (paket S4)
+       and jual.count("lampu('lampuBerhasil')") == 1 and jual.count("lampu('lampuGagal')") == 3   # cetak struk gagal + cetak label gagal (paket S4) + label tanggal masuk gagal (26 Nov 2026)
        and not re.search(r'(?<![\'\w.])lampu(Berhasil|Gagal)\(', jual) and not re.search(r'PK\.lampu\w*\(', jual))
     ok('jual.js: lampu hijau hanya sesudah nota SUNGGUH tercatat (sesudah cabang DITOLAK), bukan saat simulasi',
        jual.index("return set({ kabar: 'DITOLAK, nota tidak tersimpan: '") < jual.index("if (!(h && h.simulasi)) lampu('lampuBerhasil');") < jual.index('const lamaAdegan = adeganNota('))

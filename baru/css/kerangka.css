@@ -296,3 +296,5 @@ body.gelap .lo-gel.saya .lo-centang.dibaca { color: #0b4f72; }
 @keyframes masukGel { from { opacity: 0; transform: translateY(8px) scale(0.94); } to { opacity: 1; transform: none; } }
 @keyframes kirimTerbang { 0% { transform: translateX(1px); opacity: 1; } 50% { transform: translate(7px, -7px); opacity: 0; } 51% { transform: translate(-6px, 6px); opacity: 0; } 100% { transform: translateX(1px); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .lonceng, .lonceng svg, .lonceng-n, .lembar-lonceng, .ll-baris, .lo-gel, .ll-tab-n, .lo-kirim svg { animation: none !important; transition: none; } .ll-tab-garis { transition: none; } }
+/* owner 26 Nov 2026 ("pasang notifikasi"): pengingat jatuh di lonceng (kalender kepatuhan · kemasan dekat kedaluwarsa · stok minus) bergaris emas */
+.ll-baris.jatuh { border-left: 3px solid var(--emas-garis); }

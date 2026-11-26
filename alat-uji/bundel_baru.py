@@ -118,8 +118,18 @@ LG_MODUL = 'baru/js/inti/langit-logika.js'
 LG_PEMAKAI = ('sistem-logika.js', 'menu.js')
 
 
+# paket Stok minus, label & kepatuhan (owner 26 Nov 2026): Dasbor memakai gudang-logika (buku minus, hilang & rusak per jenis, tugas gudang — membaca belanja-logika
+# untuk pesanan ke pemasok, jenis-beras-logika, label-logika untuk kemasan bertanggal) dan patuh-logika (kalender kepatuhan). Semua modul daun / sudah ada di bundel
+# Dasbor; ikut OTOMATIS (sekali, di belakang) bila pemakainya ada. gudang-logika sengaja TIDAK memakai sistem-logika (sistem-logika menerimanya lewat lokal.gudang).
+GD_MODUL = ['baru/js/layar/gudang-logika.js', 'baru/js/layar/label-logika.js', 'baru/js/layar/patuh-logika.js', 'baru/js/layar/belanja-logika.js', 'baru/js/layar/jenis-beras-logika.js']
+GD_PEMAKAI = ('dasbor-logika.js', 'gudang-logika.js')
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in GD_PEMAKAI for x in d):
+        for m in GD_MODUL:
+            if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)
     if any(os.path.basename(x) in KR_PEMAKAI for x in d) and not any(x.endswith('kas-rekening-logika.js') for x in d):
         d.append(KR_MODUL)
     if any(os.path.basename(x) in SH_PEMAKAI for x in d) and not any(x.endswith('susut-harga-logika.js') for x in d):

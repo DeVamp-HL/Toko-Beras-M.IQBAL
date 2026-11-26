@@ -289,3 +289,7 @@ main.layar-jual .kaca-btn.kecil { min-height: 30px; font-size: 11.5px; padding: 
 .km-uk.habis .stok, .km-uk.kurang .stok { color: var(--awas); font-weight: 600; }
 @keyframes kmUkMasuk { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .kartu-kemasan, .km-uk { animation: none; transition: none; } }
+/* owner 26 Nov 2026 (label & kedaluwarsa): Atur label (owner) memegas saat dibuka; hormat reduced motion */
+.lb-atur { animation: lbAturPegas 520ms cubic-bezier(.2,.8,.2,1) both; border-color: var(--emas-garis); }
+@keyframes lbAturPegas { 0% { opacity: 0; transform: translateY(6px) scale(0.98); } 100% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .lb-atur { animation: none; } }

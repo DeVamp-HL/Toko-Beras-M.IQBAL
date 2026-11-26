@@ -10,7 +10,7 @@ import { pasangLayarUang } from './layar/uang.js';
 import { pasangLayarLaporan } from './layar/laporan.js';
 import * as fb from './data/firebase.js';
 import { muatCadangan } from './data/cadangan.js';
-import { dengarkan, sumberData, tulisDokumen, dokDiCache } from './data/toko.js';
+import { dengarkan, sumberData, tulisDokumen, dokDiCache, ingatPerVersi } from './data/toko.js';
 import { bolehLayar, bisaBekerja, teksMasukSebagai } from './data/akses.js';
 import { ssAtur } from './layar/sistem-logika.js';
 // owner 7 Okt (JS2-C): jatah nego akun yang masuk ikut ke penjaga kiriman
@@ -24,6 +24,12 @@ import { kalimatIsianKeluar } from './inti/isian.js';
 import { pjSumberPengingat } from './layar/pajak-logika.js';
 // owner 26 Nov 2026: pengingat setor ke bank & cocok saldo rekening akhir bulan (owner saja — butuh uang), diteruskan seperti pengingat pajak
 import { khSumberPengingat } from './layar/kas-rekening-logika.js';
+// owner 26 Nov 2026 (stok minus, label & kepatuhan — "pasang notifikasi"): kalender kepatuhan (owner & Penjaga laci, rules v22) · kemasan dekat "baik dipakai sebelum" ·
+// buku stok minus → Pengingat (lokal.patuh / lokal.gudang) dan lonceng (tiga jenis ini saja, yang sudah jatuh: lewat & hari ini)
+import { ptSumberPengingat } from './layar/patuh-logika.js';
+import { gdSumberPengingat } from './layar/gudang-logika.js';
+import { lbSumberPengingat } from './layar/label-logika.js';
+import { ssPengingat } from './layar/sistem-logika.js';
 import { nanti, setelMuat } from './inti/jadwal.js';
 import { pasangGerbang } from './inti/gerbang.js';
 // owner 26 Nov 2026: lokasi cuaca gerbang dari setelan toko → simpanan perangkat
@@ -50,8 +56,10 @@ ntPasang({ simpan: (t) => fb.simpanTokenTablet(t), hapus: () => fb.hapusTokenTab
 ntPadaKetuk((t) => { if (['uang', 'menu', 'jual'].indexOf(t) >= 0) pindah(t); });
 let _ntSegar = '';
 // owner 23 Nov 2026: LONCENG kabar & pesan di kepala tiap layar (Mac, HP, tablet) — owner membalas pesan langsung dari lonceng
-import { pasangLonceng, loncengSegarkan, pintuLonceng } from './layar/lonceng.js';   // layar menerima ikonnya lewat opsi.lonceng (tanpa impor sendiri)
+import { pasangLonceng, loncengSegarkan, pintuLonceng, loncengPengingat } from './layar/lonceng.js';   // layar menerima ikonnya lewat opsi.lonceng (tanpa impor sendiri)
 pasangLonceng({ pindah: (t) => pindah(t), sekarang: () => sekarangCadangan });
+// owner 26 Nov 2026 ("pasang notifikasi"): pengingat yang jatuh (kalender kepatuhan · kemasan · buku minus) ikut lonceng; "Buka" → Menu › Toko ini › Pengingat
+loncengPengingat({ ambil: (a) => pengingatLonceng(a), buka: () => { pindah('menu'); menu.buka('pengingat'); } });
 // owner 19 Nov 2026 ("masih berat di Android, terutama tablet"): pencatat tersendat DI PERANGKAT ini — dibaca di Menu › Sistem › Perangkat
 import { pasangUkurMulus } from './inti/ukur-mulus.js';
 
@@ -252,12 +260,28 @@ const ownerTablet = {
     return h.ok ? { ok: true, kalimat: OW.owNamaAksi(aksi) + ' — tersimpan atas nama owner (' + OW.OW_DI + ')' } : { ok: false, kalimat: h.pesan || 'Belum tersimpan' };
   },
 };
+// owner 26 Nov 2026 (stok minus, label & kepatuhan — "pasang notifikasi"): sumber pengingat yang dihitung modulnya sendiri (tanpa impor balik ke sistem-logika).
+// Kalender kepatuhan = owner & Penjaga laci (aturanToko/kepatuhan dibaca ben sejak rules v22); kemasan & buku minus = semua akun yang bekerja (data stok dibaca semua).
+function sumberPatuh() { const a = akunKini(); if (!a || !(a.jenis === 'owner' || (a.jenis === 'aktif' && a.peran === 'ben'))) return []; try { return ptSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat kepatuhan', e); return []; } }
+function sumberGudang() { const a = akunKini(); if (!a || !(a.jenis === 'owner' || a.jenis === 'aktif')) return []; const k = sekarangCadangan || new Date(); const out = [];
+  try { gdSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat stok minus', e); }
+  try { lbSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat kemasan', e); }
+  return out; }
+// Lonceng: pengingat TIGA jenis paket ini yang sudah jatuh (lewat & hari ini), untuk orang yang diingatkan (Atur pengingat › ke) — owner melihat semuanya.
+const LC_JENIS = ['patuh', 'kemasan', 'minus'];
+function pengingatLonceng(a) {
+  if (!a || !(a.jenis === 'owner' || a.jenis === 'aktif')) return []; const k = sekarangCadangan || new Date(); const nama = String(a.nama || '').trim().split(/\s+/)[0].toLowerCase();
+  try { return ingatPerVersi('lcPengingat|' + k.toISOString().slice(0, 10) + '|' + (a.uid || ''), () => ssPengingat(k, { patuh: sumberPatuh(), gudang: sumberGudang() }).aktif
+    .filter((p) => LC_JENIS.indexOf(p.jenis) >= 0 && p.sisa <= 0 && (a.jenis === 'owner' || (p.ke || []).some((n) => String(n || '').trim().split(/\s+/)[0].toLowerCase() === nama)))
+    .map((p) => ({ id: p.id, jenis: p.jenis, teks: p.teks, ket: p.ket || '', sisaTeks: p.sisaTeks, jatuh: p.jatuhEfektif || p.jatuh }))); } catch (e) { console.error('lonceng pengingat', e); return []; }
+}
 // Menu (putaran 14): laci N1 + pita jam + Sistem (SS1–SS5). Tujuan baris = layar lain lewat pintu yang sama dengan ketukan di layar itu.
 const menu = pasangLayarMenu(document.getElementById('layarMenu'), { lonceng: pintuLonceng, gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab) => { pindah('stok'); stok.buka(lembar, tab); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); }, bukaLaporan: (keluarga, t) => { pindah('laporan'); laporan.buka(keluarga, t); }, bukaJual: (lembar) => { pindah('jual'); layar.keadaan.setel({ lembar, kabar: '' }); },
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
     pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })(),
-    uang: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return khSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat uang', e); return []; } })() }),   // putaran 24: pengingat pajak, owner saja
+    uang: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return khSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat uang', e); return []; } })(),
+    patuh: sumberPatuh(), gudang: sumberGudang() }),   // putaran 24: pengingat pajak, owner saja · 26 Nov 2026: kalender kepatuhan (owner & Penjaga laci), kemasan & buku minus (semua)
   periksaSambungan: () => fb.periksaSambungan(4000), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n),
   akun: akunKini, statusUang: () => statusFb.uang, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah),
   // hemat baca (owner 7 Okt 2026): Menu › Toko ini › Perangkat & antrean › Hemat baca — keadaan, daftar siap-nyala, saklar perangkat ini, tombol baca penuh

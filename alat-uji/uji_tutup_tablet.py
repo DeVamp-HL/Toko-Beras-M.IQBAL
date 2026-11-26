@@ -199,7 +199,7 @@ def periksa_statis(t):
     ok('kabar dalam aplikasi → layar Uang untuk hitungan laci', "hitungLaci: 'Hitungan laci dari tablet'" in t[KB] and "m.tindakan === 'hitungLaci' ? 'uang' : 'menu'" in t[KB])
     ok('push HP menyebut hitungan laci & membuka Uang', "hitungLaci: 'Hitungan laci'" in t[FN] and "t === 'barangMasuk' || t === 'hitungLaci' ? 'uang' : 'menu'" in t[FN])
     ok('index.html memuat logika & panel tutup hari tablet (modulepreload)', '<link rel="modulepreload" href="js/layar/tutup-tablet-logika.js">' in t[IDX] and '<link rel="modulepreload" href="js/layar/tutup-tablet-panel.js">' in t[IDX])
-    ok('rules v16: hitungan lewat stafHitungLaci([ben]) && tglStaf; aturanToko/tutupHari terbaca ben', "(stafHitungLaci(['ben']) && tglStaf('tanggal'))" in t[RULES] and "(id == 'tutupHari' && staf(['ben']))" in t[RULES])
+    ok('rules v16: hitungan lewat stafHitungLaci([ben]) && tglStaf; aturanToko/tutupHari terbaca ben', "(stafHitungLaci(['ben']) && tglStaf('tanggal'))" in t[RULES] and ("(id == 'tutupHari' && staf(['ben']))" in t[RULES] or "(id in ['tutupHari', 'kepatuhan'] && staf(['ben']))" in t[RULES]))   # v22 (26 Nov 2026): + kalender kepatuhan di baris yang sama
     return c
 
 
@@ -224,7 +224,7 @@ def main():
             ('hitungan bertanggal tulis, bukan hari yang ditutup', HLL, L.replace("tanggal: H.iso, jam: w.jam, tanggalTulis: w.tanggal", "tanggal: w.tanggal, jam: w.jam, tanggalTulis: w.tanggal")),
             ('Ben tidak memindah tapi amankan dianggap beres', HLL, L.replace("amankan: b.amankan > 0 ? 'beres' : 'lewat'", "amankan: 'beres'")),
             ('karyawan boleh mengirim hitungan (penjaga kiriman)', AK, A.replace("if (P !== 'ben' || (hak.hitungLaci || 'tidak') === 'tidak'", "if ((hak.hitungLaci || 'tidak') === 'tidak'")),
-            ('akun tablet tidak mendengar setelan tutup hari', AK, A.replace(".concat(akun.peran === 'ben' ? DOK_BEN[n] || [] : [])", ".concat([])")),
+            ('akun tablet tidak mendengar setelan tutup hari', AK, A.replace(".concat(akun.peran === 'ben' ? (DOK_BEN[n] || []).concat(DOK_BEN_PATUH[n] || []) : [])", ".concat(akun.peran === 'ben' ? (DOK_BEN_PATUH[n] || []) : [])")),   # v22: DOK_BEN (tutup hari) hilang, kalender tetap
             ('catatan sesudah hitungan tidak dihitung (selisih berubah)', TDL, T.replace("const hitungKini = hitung + (tablet ? tablet.sesudah.net : 0);", "const hitungKini = hitung;")),
             ('hitungan lewat tengah malam ikut ditambah catatan sesudahnya', TDL, T.replace("if (!/^\\d\\d:\\d\\d$/.test(J) || String(tglTulis || '') !== String(iso)) return out;", "if (!/^\\d\\d:\\d\\d$/.test(J)) return out;")),
             ('laci tutupHari = hitungan tablet, bukan laci saat ditutup', TDL, T.replace("kasFisikLaci: H.hitungKini,", "kasFisikLaci: H.hitung,")),

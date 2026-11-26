@@ -277,7 +277,7 @@ def periksa_statis(t):
     # paket Banding pemasok (owner 26 Nov 2026): SATU-SATUNYA tulisan yang boleh = hasil tarik harga acuan ke aturanToko/acuanTarik (usulan, bukan uang / stok)
     TARIK = "await getFirestore().collection('aturanToko').doc('acuanTarik').set(d);"
     ok('fungsi server tidak menulis data toko (hanya membuang token mati — kabarOwner, kabarTablet & kabarDariOwner, owner 23 Nov 2026; + satu dokumen hasil tarik harga acuan, owner 26 Nov 2026)',
-       t[FIX].count(TARIK) == 1 and not re.search(r"\.(set|update|add)\(", t[FIX].replace(TARIK, '')) and t[FIX].count('.delete()') == 3 and t[FIX].count('ref.delete()') == 3)
+       t[FIX].count(TARIK) == 1 and not re.search(r"\.(set|update|add)\(", t[FIX].replace(TARIK, '')) and t[FIX].count('.delete()') == 4 and t[FIX].count('ref.delete()') == 4)   # + kabarPatuh (owner 26 Nov 2026: push pagi kalender kepatuhan) — juga hanya membuang token mati
     ok('skrip pasang: lokasi dari database Firestore → .env, deploy fungsi saja', 'gcloud firestore databases describe' in t[PAS] and "printf 'LOKASI=%s\\n'" in t[PAS] and 'deploy --only functions' in t[PAS])
     ok('service worker notifikasi tidak menyimpan salinan halaman & tidak membaca data toko', not re.search(r"caches\.|fetch\(|firestore", t[SWN]))
     return h

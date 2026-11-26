@@ -169,3 +169,7 @@ main.layar-menu.masuk > header, main.layar-menu.masuk > .mn-gulir > .jalur, main
 @keyframes mnBpgBuka { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .mn-bpg-isi { animation: none; } }
 
+/* owner 26 Nov 2026 (kalender kepatuhan dari tablet, rules v22): kartu "sudah dikerjakan" memegas saat dibuka; hormat reduced motion */
+.pt-centang { animation: ptCentangPegas 520ms cubic-bezier(.2,.8,.2,1) both; border-color: var(--emas-garis); }
+@keyframes ptCentangPegas { 0% { opacity: 0; transform: translateY(6px) scale(0.98); } 100% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pt-centang { animation: none; } }
