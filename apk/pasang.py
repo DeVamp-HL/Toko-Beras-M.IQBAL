@@ -12,7 +12,7 @@ pasang.py — dijalankan GitHub Actions (apk.yml) SESUDAH `npx cap add android`:
     (BLUETOOTH_CONNECT dkk.) TIDAK ditambahkan di sini: manifest pustaka printer SUNMI sudah membawanya
   · owner 23 Nov 2026 — PUSH APLIKASI TABLET: berkas Firebase google-services.json dari rahasia repo GOOGLE_SERVICES_JSON (tanpa rahasia = APK tanpa push,
     tombol notifikasi tablet menolak dengan kalimat yang jelas), izin POST_NOTIFICATIONS (Android 13+), ikon & saluran bawaan notifikasi "Kabar toko"
-  · ikon & layar pembuka: logo M (icon-sistem-512.png + apk/ikon-depan-432.png, dibuat apk/ikon_m.py)
+  · ikon & layar pembuka: logo padi + M stensil, ikon bening + varian malam (apk/ikon-*.png, dibuat apk/ikon_m.py)
   · versionCode/versionName dari nomor jalan Actions (APK baru bisa dipasang menimpa yang lama bila kuncinya sama)
   · Google Play (23 Nov 2026): compileSdk & targetSdk = SDK_SASARAN (36) di variables.gradle — aplikasi BARU di Play wajib menyasar Android 16 sejak
     31 Agu 2026 (Capacitor 7 bawaannya 35). Perilaku baru Android 15/16 hanya berlaku di perangkat Android 15/16; CPad = Android 14 → tidak berubah
@@ -241,37 +241,38 @@ def pasang_versi(versi):
     tulis(p, g); print('  versi: 1.%d (kode %d) · pustaka: %s' % (versi, versi, ', '.join(PUSTAKA + PUSTAKA_LAIN)))
 
 
-LATAR_IKON = '#101314'   # = apk/ikon_m.py LATAR_APK (latar belakang ikon adaptif & layar pembuka; hitam malam)
+LATAR_IKON = '#14110d'      # = apk/ikon_m.py LATAR_APK (layar pembuka; hitam kecokelatan logo B)
+LATAR_ADAPTIF = '#00000000' # = apk/ikon_m.py LATAR_ADAPTIF — latar belakang ikon adaptif BENING (owner 26 Nov: "transparan seperti SunmiSubScreen")
 
 
 def pasang_ikon():
-    """Logo "M" (owner 23 Nov 2026). Ikon adaptif Android = latar DEPAN transparan (apk/ikon-depan-432.png: cincin + M di dalam lingkar aman) di atas
-    latar BELAKANG warna polos LATAR_IKON — rapi di bentuk peluncur apa pun. Dulu ikon 512 utuh (berkotak) ditempel ke latar depan → kotak di dalam kotak.
-    Ikon lama (Android < 8): icon-sistem-512.png; versi bulat dipotong lingkaran. Semua gambar dibuat apk/ikon_m.py."""
+    """Logo toko padi + M stensil (owner 26 Nov 2026, menggantikan logo "M" bercincin 23 Nov). Ikon adaptif Android = latar DEPAN bening
+    (apk/ikon-depan-432.png, emas gelap — terbaca di peluncur terang) di atas latar BELAKANG BENING → peluncur menampilkan logonya saja, tanpa kotak.
+    Mode gelap: mipmap-night-* memakai apk/ikon-depan-malam-432.png (emas asli). Ikon lama (Android < 8) = gambar yang sama (bening).
+    Layar pembuka = logo emas (apk/ikon-pembuka-432.png) di atas LATAR_IKON. Semua gambar dibuat apk/ikon_m.py."""
     try:
-        from PIL import Image, ImageDraw
+        from PIL import Image
     except ImportError:
         print('  ikon: Pillow tidak ada — ikon bawaan Capacitor dipakai'); return
-    sumber = Image.open(os.path.join(AKAR, 'icon-sistem-512.png')).convert('RGBA')
     depan = Image.open(os.path.join(AKAR, 'apk', 'ikon-depan-432.png')).convert('RGBA')
-    def bulat(n):
-        g = sumber.resize((n * 4, n * 4), Image.LANCZOS); topeng = Image.new('L', g.size, 0); ImageDraw.Draw(topeng).ellipse((0, 0, g.size[0] - 1, g.size[1] - 1), fill=255)
-        hasil = Image.new('RGBA', g.size, (0, 0, 0, 0)); hasil.paste(g, (0, 0), topeng); return hasil.resize((n, n), Image.LANCZOS)
+    malam = Image.open(os.path.join(AKAR, 'apk', 'ikon-depan-malam-432.png')).convert('RGBA')
+    pembuka = Image.open(os.path.join(AKAR, 'apk', 'ikon-pembuka-432.png')).convert('RGBA')
     ukuran = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
     for d, n in ukuran.items():
-        p = os.path.join(UTAMA, 'res', 'mipmap-' + d, 'ic_launcher.png')
-        if os.path.exists(p): sumber.resize((n, n), Image.LANCZOS).save(p)
-        p = os.path.join(UTAMA, 'res', 'mipmap-' + d, 'ic_launcher_round.png')
-        if os.path.exists(p): bulat(n).save(p)
-        p = os.path.join(UTAMA, 'res', 'mipmap-' + d, 'ic_launcher_foreground.png')
-        if os.path.exists(p): depan.resize(Image.open(p).size, Image.LANCZOS).save(p)
+        for gambar, folder in ((depan, 'mipmap-' + d), (malam, 'mipmap-night-' + d)):
+            for nama in ('ic_launcher.png', 'ic_launcher_round.png', 'ic_launcher_foreground.png'):
+                asal = os.path.join(UTAMA, 'res', 'mipmap-' + d, nama)
+                if not os.path.exists(asal): continue
+                ke = os.path.join(UTAMA, 'res', folder, nama); os.makedirs(os.path.dirname(ke), exist_ok=True)
+                w = Image.open(asal).size if nama == 'ic_launcher_foreground.png' else (n, n)
+                gambar.resize(w, Image.LANCZOS).save(ke)
     latar = os.path.join(UTAMA, 'res', 'values', 'ic_launcher_background.xml')
-    if os.path.exists(latar): tulis(latar, re.sub(r'#[0-9A-Fa-f]{6,8}', LATAR_IKON, baca(latar)))
+    if os.path.exists(latar): tulis(latar, re.sub(r'#[0-9A-Fa-f]{6,8}', LATAR_ADAPTIF, baca(latar)))
     warna = tuple(int(LATAR_IKON[i:i + 2], 16) for i in (1, 3, 5))
     for p in glob.glob(os.path.join(UTAMA, 'res', 'drawable*', 'splash.png')):
-        w, h = Image.open(p).size; kanvas = Image.new('RGB', (w, h), warna); s = int(min(w, h) * 0.62); g = depan.resize((s, s), Image.LANCZOS)
+        w, h = Image.open(p).size; kanvas = Image.new('RGB', (w, h), warna); s = int(min(w, h) * 0.5); g = pembuka.resize((s, s), Image.LANCZOS)
         kanvas.paste(g, ((w - s) // 2, (h - s) // 2), g); kanvas.save(p)
-    print('  ikon (logo M, latar ' + LATAR_IKON + ') & layar pembuka dari icon-sistem-512.png + apk/ikon-depan-432.png')
+    print('  ikon (logo padi + M stensil, latar bening, varian malam) & layar pembuka (latar ' + LATAR_IKON + ') dari apk/ikon-*.png')
 
 
 def main():

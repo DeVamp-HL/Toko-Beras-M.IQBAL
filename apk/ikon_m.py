@@ -1,118 +1,129 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ikon_m.py — logo aplikasi "M" (owner 23 Nov 2026: "Ikon logo aplikasi gak rapi di tablet … ganti logo" → "logo M aja gak perlu IQ").
-Huruf M bergaya serif kontras tinggi (batang tipis–tebal) berwarna emas di dalam cincin tipis, di atas latar hitam malam (identitas Kaca Emas Malam).
+ikon_m.py — logo toko di semua ikon. Owner 24–26 Nov 2026: padi emas (geometri persis logo "B" papan 23 Nov) + huruf M stensil tebal miring
+bergaris bawah, ikon tablet TANPA LATAR ("transparan seperti SunmiSubScreen", juga di mode gelap), "samakan semua" (struk, layar, ikon).
+Menggantikan logo "M" bercincin 23 Nov. Geometri = baru/js/inti/logo-toko.js (dicocokkan alat-uji/uji_tablet_tampilan.py); satuan kotak 108.
 
 Satu sumber geometri → semua berkas ikon, TANPA Pillow / numpy (Mac owner tidak punya; CI tidak perlu):
-    icon-sistem.svg            vektor (sumber yang bisa dilihat; geometri sama persis)
-    icon-sistem-512.png        PWA "any maskable" (latar penuh; simbol di dalam zona aman 80 %)
-    icon-sistem-192.png        PWA + ikon notifikasi
-    icon-sistem-180.png        apple-touch-icon
-    icon-sistem-32.png         favicon (tanpa cincin — terlalu tipis di 32 px; huruf diperbesar)
-    apk/ikon-depan-432.png     latar DEPAN ikon adaptif Android (transparan, simbol saja, di dalam lingkar aman 66 dp dari kanvas 108 dp)
-Latar BELAKANG ikon adaptif = warna polos LATAR_APK (apk/pasang.py). Dulu pasang.py menempel ikon 512 utuh (dengan kotak & lingkaran krem) ke latar
-depan → "kotak di dalam kotak" di peluncur tablet; sekarang simbol transparan + latar warna = rapi di bentuk apa pun (lingkaran, squircle, kotak).
+    icon-sistem.svg                vektor (latar ubin hitam + logo emas; geometri sama persis)
+    icon-sistem-512.png / -192     PWA "any maskable" — ubin hitam PENUH (peramban/iOS mengisi bagian bening dengan warnanya sendiri), logo di zona aman
+    icon-sistem-180.png            apple-touch-icon        icon-sistem-32.png   favicon (logo diperbesar)
+    icon-kasir-180.png / -32.png   ikon kasir darurat — sama dengan ikon sistem
+    apk/ikon-depan-432.png         latar DEPAN ikon adaptif Android, BENING, emas gelap (terbaca di peluncur terang), di dalam lingkar aman 66/108
+    apk/ikon-depan-malam-432.png   idem emas asli — dipasang ke mipmap-night-* (peluncur/sistem mode gelap)
+    apk/ikon-pembuka-432.png       logo emas bening untuk layar pembuka (pasang.py menaruhnya di atas LATAR_APK)
+Latar BELAKANG ikon adaptif = LATAR_ADAPTIF (bening) → peluncur menampilkan logo saja, tanpa kotak.
 
     python3 apk/ikon_m.py            → tulis ulang semua berkas di atas
     python3 apk/ikon_m.py --periksa  → keluar 1 bila berkas di repo berbeda dari hasil geometri ini (dipakai uji)
-Perender: poligon cembung + cincin, 4×4 sampel per piksel (tepi halus), PNG lewat zlib.
+Perender: elips, tangkai (kurva → ruas), huruf (poligon genap-ganjil), 4×4 sampel per piksel (tepi halus), PNG lewat zlib.
 """
-import os, sys, zlib, struct, math
+import os, sys, zlib, struct, math, re
 
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 
-LATAR_DALAM = (0x1d, 0x21, 0x22); LATAR_LUAR = (0x08, 0x0a, 0x0b)   # gradasi radial hitam malam
-LATAR_APK = '#101314'                                                 # warna latar belakang ikon adaptif Android (rata-rata gradasi)
-EMAS = [(0.0, (0xf8, 0xe7, 0xb4)), (0.55, (0xd6, 0xb0, 0x5a)), (1.0, (0xa8, 0x7f, 0x2f))]   # gradasi emas diagonal
+LATAR_APK = '#14110d'          # ubin & layar pembuka (hitam kecokelatan logo B)
+LATAR_ADAPTIF = '#00000000'    # latar belakang ikon adaptif Android: BENING
+LATAR = (0x14, 0x11, 0x0d)
+EMAS = ((0xc9, 0xb3, 0x7a), (0xe6, 0xd7, 0xad))          # [batang, bulir] — mode gelap / di atas latar gelap
+EMAS_GELAP = ((0x7a, 0x5a, 0x2a), (0x9a, 0x7a, 0x44))    # [batang, bulir] — di atas latar terang
 
-# Huruf M dalam kotak 202 × 176 (titik kiri-atas = 0,0): batang kiri tipis, diagonal kiri tebal, diagonal kanan tipis, batang kanan tebal, kaki (serif) rambut.
-M_LEBAR, M_TINGGI = 202.0, 176.0
-M_BENTUK = [
-    [(16, 0), (25, 0), (25, 176), (16, 176)],                 # batang kiri (tipis)
-    [(18, 0), (51, 0), (107, 160), (100, 176), (93, 176)],    # diagonal kiri (tebal)
-    [(95, 168), (170, 0), (180, 0), (104, 176), (99, 176)],   # diagonal kanan (tipis)
-    [(154, 0), (186, 0), (186, 176), (154, 176)],             # batang kanan (tebal)
-    [(2, 0), (25, 0), (25, 4), (2, 4)],                       # kaki atas kiri
-    [(0, 172), (42, 172), (42, 176), (0, 176)],               # kaki bawah kiri
-    [(138, 172), (202, 172), (202, 176), (138, 176)],         # kaki bawah kanan
-    [(186, 0), (202, 0), (202, 4), (186, 4)],                 # kaki atas kanan
-]
-
-
-def campur(stops, t):
-    t = max(0.0, min(1.0, t))
-    for i in range(1, len(stops)):
-        if t <= stops[i][0]:
-            a, ca = stops[i - 1]; b, cb = stops[i]; u = (t - a) / (b - a) if b > a else 0
-            return tuple(ca[k] + (cb[k] - ca[k]) * u for k in range(3))
-    return stops[-1][1]
+# ---- geometri (satuan 108) — SAMA dengan baru/js/inti/logo-toko.js ----
+BATANG = ((38, 84), (50, 66), (58, 48), (70, 26)); BATANG_TEBAL = 2.4
+BULIR = [(62, 36, 4, 8, 30), (71, 42, 4, 8, 70), (56, 48, 4, 8, 25), (65, 55, 4, 8, 70), (50, 61, 4, 8, 20), (59, 67, 4, 8, 70), (70, 28, 3.5, 7, 35)]
+M_JALUR = ('M39.05 34.73 L38.33 37.6 Q38.2 38.11 38.51 38.29 Q38.63 38.37 38.8 38.42 L38.8 38.42 Q38.96 38.46 39.1 38.56 L38.98 39 L36.17 39 '
+           'L36.28 38.56 Q36.43 38.46 36.62 38.41 L36.62 38.41 Q36.8 38.37 36.96 38.29 Q37.35 38.11 37.48 37.6 L38.77 32.46 L39.05 34.73Z'
+           'M39.24 31.51 Q39.2 31.24 39.17 31.04 Q39.01 31 38.84 30.96 L38.84 30.96 Q38.68 30.93 38.52 30.89 Q38.17 30.79 37.99 30.71 L38.17 29.98 '
+           'L41.23 29.98 L42.18 37.18 L41.27 39 L40.18 39 L39.24 31.51Z'
+           'M42.51 35.15 L45.1 29.98 L48.45 29.98 L48.33 30.46 Q48.14 30.53 47.98 30.56 L47.98 30.56 Q47.81 30.6 47.66 30.66 Q47.35 30.8 47.25 31.2 '
+           'L45.6 37.79 Q45.5 38.19 45.75 38.33 Q45.86 38.39 46.01 38.43 L46.01 38.43 Q46.16 38.46 46.31 38.53 L46.2 39 L42.33 39 L42.45 38.53 '
+           'Q42.64 38.46 42.81 38.43 L42.81 38.43 Q42.98 38.39 43.12 38.33 Q43.44 38.19 43.54 37.79 L45.15 31.34 L45.12 31.34 L42.66 36.26 L42.51 35.15Z')
+GARIS = (33.5, 48.5, 42, 0.72)
+KOTAK = (33.5, 20.5, 79, 85.5)          # x0, y0, x1, y1 — isi logo; pusat & tinggi untuk menskala
+PUSAT = ((KOTAK[0] + KOTAK[2]) / 2, (KOTAK[1] + KOTAK[3]) / 2); TINGGI = KOTAK[3] - KOTAK[1]
 
 
-def susun(ukuran, cincin=True, skala_m=1.12, latar=True, skala_simbol=1.0):
-    """Daftar lapisan dalam koordinat piksel kanvas `ukuran`. skala_simbol mengecilkan simbol (cincin + M) terhadap pusat (ikon adaptif)."""
-    k = ukuran / 512.0; c = ukuran / 2.0; s = k * skala_simbol
-    lap = []
-    if latar: lap.append(('latar', None))
-    if cincin:
-        lap.append(('cincin', (c, c, 190 * s, 5 * s, 0.95)))
-        lap.append(('cincin', (c, c, 176 * s, 1.6 * s, 0.42)))
-    sm = s * skala_m; x0 = c - M_LEBAR * sm / 2; y0 = c - M_TINGGI * sm / 2
-    lap.append(('m', [[(x0 + x * sm, y0 + y * sm) for (x, y) in p] for p in M_BENTUK]))
-    return lap
+def _kontur():
+    """M_JALUR → daftar poligon (kurva Q dipecah 6 ruas)."""
+    out, cur, p = [], [], None
+    for k, angka in re.findall(r'([MLQZ])([^MLQZ]*)', M_JALUR):
+        v = [float(x) for x in angka.replace(',', ' ').split()]
+        if k == 'M': cur = [(v[0], v[1])]; p = cur[-1]
+        elif k == 'L': cur.append((v[0], v[1])); p = cur[-1]
+        elif k == 'Q':
+            for i in range(1, 7):
+                t = i / 6; u = 1 - t
+                cur.append((u * u * p[0] + 2 * u * t * v[0] + t * t * v[2], u * u * p[1] + 2 * u * t * v[1] + t * t * v[3]))
+            p = cur[-1]
+        elif k == 'Z': out.append(cur); cur = []
+    return out
 
 
-def dalam_poligon(p, x, y):
-    """Poligon cembung searah jarum jam (sumbu y ke bawah): semua sisi di kanan."""
-    n = len(p)
-    for i in range(n):
-        ax, ay = p[i]; bx, by = p[(i + 1) % n]
-        if (bx - ax) * (y - ay) - (by - ay) * (x - ax) < 0: return False
-    return True
+def _ruas_batang(n=24):
+    (x0, y0), (x1, y1), (x2, y2), (x3, y3) = BATANG; t_ = []
+    for i in range(n + 1):
+        t = i / n; u = 1 - t
+        t_.append((u ** 3 * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t ** 3 * x3, u ** 3 * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t ** 3 * y3))
+    return [(t_[i], t_[i + 1]) for i in range(n)]
 
 
-def render(ukuran, lapisan):
-    N = 4; off = [(i + 0.5) / N for i in range(N)]
-    px = [[0.0, 0.0, 0.0, 0.0] for _ in range(ukuran * ukuran)]   # RGBA premultiplied 0..1
-    def tumpuk(i, rgb, a):
-        if a <= 0: return
-        q = px[i]; r = 1 - a
-        q[0] = rgb[0] / 255 * a + q[0] * r; q[1] = rgb[1] / 255 * a + q[1] * r; q[2] = rgb[2] / 255 * a + q[2] * r; q[3] = a + q[3] * r
-    for jenis, d in lapisan:
-        if jenis == 'latar':
-            c = ukuran / 2.0; R = ukuran * 0.72
-            for y in range(ukuran):
-                for x in range(ukuran):
-                    t = math.hypot(x + 0.5 - c, y + 0.5 - ukuran * 0.42) / R
-                    tumpuk(y * ukuran + x, campur([(0, LATAR_DALAM), (1, LATAR_LUAR)], t), 1.0)
-        elif jenis == 'cincin':
-            cx, cy, r, w, alfa = d; r0, r1 = r - w / 2, r + w / 2
-            lo, hi = max(0, int(cx - r1 - 1)), min(ukuran, int(cx + r1 + 2))
-            for y in range(lo, hi):
-                for x in range(lo, hi):
-                    dd = math.hypot(x + 0.5 - cx, y + 0.5 - cy)
-                    if dd < r0 - 1 or dd > r1 + 1: continue
-                    n = 0
-                    for oy in off:
-                        for ox in off:
-                            e = math.hypot(x + ox - cx, y + oy - cy)
-                            if r0 <= e <= r1: n += 1
-                    if n:
-                        t = ((x - (cx - r1)) + (y - (cy - r1))) / (4 * r1)
-                        tumpuk(y * ukuran + x, campur(EMAS, t), alfa * n / (N * N))
-        elif jenis == 'm':
-            xs = [x for p in d for (x, _) in p]; ys = [y for p in d for (_, y) in p]
-            bx0, by0, bx1, by1 = min(xs), min(ys), max(xs), max(ys)
-            for y in range(max(0, int(by0) - 1), min(ukuran, int(by1) + 2)):
-                for x in range(max(0, int(bx0) - 1), min(ukuran, int(bx1) + 2)):
-                    n = 0
-                    for oy in off:
-                        for ox in off:
-                            sx, sy = x + ox, y + oy
-                            if any(dalam_poligon(p, sx, sy) for p in d): n += 1
-                    if n:
-                        t = ((x - bx0) / (bx1 - bx0) * 0.6 + (y - by0) / (by1 - by0) * 0.4)
-                        tumpuk(y * ukuran + x, campur(EMAS, t), n / (N * N))
+KONTUR = _kontur(); RUAS = _ruas_batang()
+
+
+def _dalam_poligon(polis, x, y):
+    dalam = False
+    for p in polis:
+        n = len(p)
+        for i in range(n):
+            ax, ay = p[i]; bx, by = p[(i + 1) % n]
+            if (ay > y) != (by > y) and x < ax + (y - ay) * (bx - ax) / (by - ay): dalam = not dalam
+    return dalam
+
+
+def _jarak_ruas(x, y, a, b):
+    dx, dy = b[0] - a[0], b[1] - a[1]; L = dx * dx + dy * dy
+    t = max(0.0, min(1.0, ((x - a[0]) * dx + (y - a[1]) * dy) / L)) if L else 0.0
+    return math.hypot(x - a[0] - t * dx, y - a[1] - t * dy)
+
+
+def lapisan(warna):
+    """Daftar (warna, kotak satuan, uji(u, v) → bool) dari bawah ke atas."""
+    batang, bulir = warna; r = BATANG_TEBAL / 2; L = []
+    for a, b in RUAS:
+        L.append((batang, (min(a[0], b[0]) - r, min(a[1], b[1]) - r, max(a[0], b[0]) + r, max(a[1], b[1]) + r), (lambda a, b: lambda u, v: _jarak_ruas(u, v, a, b) <= r)(a, b)))
+    for cx, cy, rx, ry, sd in BULIR:
+        c, s = math.cos(math.radians(sd)), math.sin(math.radians(sd)); ex = math.hypot(rx * c, ry * s); ey = math.hypot(rx * s, ry * c)
+        L.append((bulir, (cx - ex, cy - ey, cx + ex, cy + ey), (lambda cx, cy, rx, ry, c, s: lambda u, v: (((u - cx) * c + (v - cy) * s) / rx) ** 2 + ((-(u - cx) * s + (v - cy) * c) / ry) ** 2 <= 1)(cx, cy, rx, ry, c, s)))
+    xs = [x for p in KONTUR for x, _ in p]; ys = [y for p in KONTUR for _, y in p]
+    L.append((batang, (min(xs), min(ys), max(xs), max(ys)), lambda u, v: _dalam_poligon(KONTUR, u, v)))
+    x0, x1, gy, gt = GARIS
+    L.append((batang, (x0, gy - gt / 2, x1, gy + gt / 2), lambda u, v: x0 <= u <= x1 and abs(v - gy) <= gt / 2))
+    return L
+
+
+def lukis(px, W, H, cx, cy, tinggi, warna):
+    """Tumpuk logo (berpusat di cx, cy; tinggi isi `tinggi` piksel) ke px (RGBA premultiplied 0..1, W × H)."""
+    N = 4; off = [(i + 0.5) / N for i in range(N)]; s = tinggi / TINGGI
+    for rgb, (a0, b0, a1, b1), uji in lapisan(warna):
+        X0 = max(0, int(cx + (a0 - PUSAT[0]) * s) - 1); X1 = min(W, int(cx + (a1 - PUSAT[0]) * s) + 2)
+        Y0 = max(0, int(cy + (b0 - PUSAT[1]) * s) - 1); Y1 = min(H, int(cy + (b1 - PUSAT[1]) * s) + 2)
+        for y in range(Y0, Y1):
+            for x in range(X0, X1):
+                n = 0
+                for oy in off:
+                    v = PUSAT[1] + (y + oy - cy) / s
+                    for ox in off:
+                        if uji(PUSAT[0] + (x + ox - cx) / s, v): n += 1
+                if n:
+                    a = n / (N * N); q = px[y * W + x]; k = 1 - a
+                    q[0] = rgb[0] / 255 * a + q[0] * k; q[1] = rgb[1] / 255 * a + q[1] * k; q[2] = rgb[2] / 255 * a + q[2] * k; q[3] = a + q[3] * k
+
+
+def render(ukuran, warna=EMAS, isi=0.6, latar=True):
+    """Kanvas persegi `ukuran`: latar ubin penuh (latar=True) atau bening, logo setinggi isi × ukuran di tengah."""
+    px = [[LATAR[0] / 255, LATAR[1] / 255, LATAR[2] / 255, 1.0] if latar else [0.0, 0.0, 0.0, 0.0] for _ in range(ukuran * ukuran)]
+    lukis(px, ukuran, ukuran, ukuran / 2, ukuran / 2, ukuran * isi, warna)
     return px
 
 
@@ -129,31 +140,37 @@ def png(ukuran, px):
 
 
 def svg():
-    hx = lambda c: '#%02x%02x%02x' % c
-    sm = 1.12; x0 = 256 - M_LEBAR * sm / 2; y0 = 256 - M_TINGGI * sm / 2   # = skala_m bawaan susun()
-    m = ''.join('<polygon points="%s"/>' % ' '.join('%g,%g' % (round(x0 + x * sm, 2), round(y0 + y * sm, 2)) for (x, y) in p) for p in M_BENTUK)
+    hx = lambda c: '#%02x%02x%02x' % c; b, u = hx(EMAS[0]), hx(EMAS[1])
+    s = 512 * 0.6 / TINGGI; tx, ty = 256 - PUSAT[0] * s, 256 - PUSAT[1] * s
+    bulir = ''.join('<ellipse cx="%g" cy="%g" rx="%g" ry="%g" transform="rotate(%g %g %g)"/>' % (x, y, rx, ry, a, x, y) for x, y, rx, ry, a in BULIR)
+    (x0, y0), (x1, y1), (x2, y2), (x3, y3) = BATANG
     return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">\n'
-            '  <!-- Logo "M" (owner 23 Nov 2026). Dibuat apk/ikon_m.py — ubah geometrinya DI SANA, lalu jalankan ulang (PNG ikut). -->\n'
-            '  <defs><radialGradient id="malam" cx="50%%" cy="42%%" r="72%%"><stop offset="0" stop-color="%s"/><stop offset="1" stop-color="%s"/></radialGradient>\n'
-            '    <linearGradient id="emas" x1="0" y1="0" x2="1" y2="1">%s</linearGradient></defs>\n'
-            '  <rect width="512" height="512" fill="url(#malam)"/>\n'
-            '  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#emas)" stroke-width="5" opacity=".95"/>\n'
-            '  <circle cx="256" cy="256" r="176" fill="none" stroke="url(#emas)" stroke-width="1.6" opacity=".42"/>\n'
-            '  <g fill="url(#emas)">%s</g>\n</svg>\n') % (hx(LATAR_DALAM), hx(LATAR_LUAR), ''.join('<stop offset="%g" stop-color="%s"/>' % (o, hx(c)) for o, c in EMAS), m)
+            '  <!-- Logo toko: padi + M stensil (owner 26 Nov 2026). Dibuat apk/ikon_m.py — ubah geometrinya DI SANA (dan baru/js/inti/logo-toko.js), lalu jalankan ulang. -->\n'
+            '  <rect width="512" height="512" fill="%s"/>\n'
+            '  <g transform="translate(%.3f %.3f) scale(%.5f)">\n'
+            '    <path d="M%g %g C %g %g, %g %g, %g %g" fill="none" stroke="%s" stroke-width="%g" stroke-linecap="round"/>\n'
+            '    <g fill="%s">%s</g>\n    <path d="%s" fill="%s"/>\n'
+            '    <path d="M%g %gL%g %g" stroke="%s" stroke-width="%g"/>\n  </g>\n</svg>\n') % (
+        LATAR_APK, tx, ty, s, x0, y0, x1, y1, x2, y2, x3, y3, b, BATANG_TEBAL, u, bulir, M_JALUR, b, GARIS[0], GARIS[2], GARIS[1], GARIS[2], b, GARIS[3])
 
 
+# nama, ukuran, warna, tinggi isi (bagian kanvas), latar ubin
 BERKAS = [
-    ('icon-sistem-512.png', 512, {}),
-    ('icon-sistem-192.png', 192, {}),
-    ('icon-sistem-180.png', 180, {}),
-    ('icon-sistem-32.png', 32, {'cincin': False, 'skala_m': 1.95}),
-    ('apk/ikon-depan-432.png', 432, {'latar': False, 'skala_simbol': 0.78}),   # cincin luar Ø ≈ 0,59 kanvas — di dalam lingkar aman 66/108 dp = 0,61
+    ('icon-sistem-512.png', 512, EMAS, 0.6, True),     # setengah diagonal isi ≈ 0,37 kanvas < lingkar aman maskable 0,4
+    ('icon-sistem-192.png', 192, EMAS, 0.6, True),
+    ('icon-sistem-180.png', 180, EMAS, 0.66, True),
+    ('icon-sistem-32.png', 32, EMAS, 0.9, True),
+    ('icon-kasir-180.png', 180, EMAS, 0.66, True),
+    ('icon-kasir-32.png', 32, EMAS, 0.9, True),
+    ('apk/ikon-depan-432.png', 432, EMAS_GELAP, 0.48, False),        # setengah diagonal isi ≈ 0,29 kanvas < lingkar aman 33/108 = 0,305
+    ('apk/ikon-depan-malam-432.png', 432, EMAS, 0.48, False),
+    ('apk/ikon-pembuka-432.png', 432, EMAS, 0.8, False),
 ]
 
 
 def semua():
     out = {'icon-sistem.svg': svg().encode('utf-8')}
-    for nama, n, o in BERKAS: out[nama] = png(n, render(n, susun(n, **o)))
+    for nama, n, w, isi, lt in BERKAS: out[nama] = png(n, render(n, w, isi, lt))
     return out
 
 
@@ -161,7 +178,7 @@ def main():
     hasil = semua()
     if '--periksa' in sys.argv:
         beda = [n for n, b in hasil.items() if not os.path.exists(os.path.join(AKAR, n)) or open(os.path.join(AKAR, n), 'rb').read() != b]
-        print('IKON M: ' + ('SAMA dengan geometri' if not beda else 'BEDA: ' + ', '.join(beda))); sys.exit(1 if beda else 0)
+        print('IKON LOGO: ' + ('SAMA dengan geometri' if not beda else 'BEDA: ' + ', '.join(beda))); sys.exit(1 if beda else 0)
     for n, b in hasil.items():
         with open(os.path.join(AKAR, n), 'wb') as f: f.write(b)
         print('  tulis %s (%d byte)' % (n, len(b)))

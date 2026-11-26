@@ -1253,8 +1253,10 @@ def cek_kanvas(src):
     if badan.count('c.fillText(') != 1 or 'const isiHuruf = (t, x, yb, tb) => { c.fillText(t, x, yb); if (tb) {' not in badan or 'c.strokeText(t, x, yb)' not in badan:
         g.append('statis · Sertifikat: ada teks yang digambar tanpa goresan tepi (garis rambut hilang di printer: 44.000 terbaca 11.000)')
     if 'const tb = stTebalHuruf(f, k);' not in badan: g.append('statis · Sertifikat: tebal goresan tidak dari stTebalHuruf')
-    l0 = src.find('export function gambarLogoToko('); l1 = src.find('\n}\n', l0)
-    if l0 < 0 or "c.strokeText('M', cx, cy + h * 0.2)" not in src[l0:l1]: g.append('statis · logo: huruf M tanpa goresan tepi (tercetak "VI")')
+    l0 = src.find('export function gambarLogoToko('); l1 = src.find('\n', l0)
+    # owner 26 Nov 2026 ("samakan semua"): logo struk = logo toko logo-toko.js — huruf M sudah BENTUK ISI (garis huruf stensil), bukan huruf font
+    # bergaris rambut; yang dulu tercetak "VI" (M Bodoni tanpa goresan tepi) tidak ada lagi. Dijaga: struk tidak kembali menggambar M dari font.
+    if l0 < 0 or "return lgGambarKanvas(c, cx, y, h, '#000');" not in src[l0:l1] or 'fillText(' in src[l0:l1]: g.append('statis · logo: struk tidak memakai logo toko (logo-toko.js) / M kembali dari huruf font (tercetak "VI")')
     # cetak CPad 18 Nov: baris rincian "2 L × 20.000" dengan Cormorant miring (angka gaya lama) tercetak "a L × ao.ooo" → wajib Jost tegak
     r0 = badan.find('b.rinci.forEach('); r1 = badan.find('});', r0)
     rinci = badan[r0:r1] if r0 >= 0 and r1 > r0 else ''
@@ -1569,7 +1571,7 @@ if __name__ == '__main__':
         rusak_kanvas = {
             'kanvas: tulisan Sertifikat tanpa goresan tepi': KANVAS.replace('const tb = stTebalHuruf(f, k);', 'const tb = 0;'),
             'kanvas: teks digambar langsung tanpa isiHuruf': KANVAS.replace("c.textAlign = align || 'left'; isiHuruf(t, x, yb, tb); return;", "c.textAlign = align || 'left'; c.fillText(t, x, yb); return;"),
-            'kanvas: huruf M logo tanpa goresan': KANVAS.replace("c.strokeText('M', cx, cy + h * 0.2);", ''),
+            'kanvas: logo struk kembali huruf M dari font': KANVAS.replace("export function gambarLogoToko(c, cx, y, h) { return lgGambarKanvas(c, cx, y, h, '#000'); }", "export function gambarLogoToko(c, cx, y, h) { c.fillText('M', cx, y + h); return h; }"),
             'kanvas: label bayar kembali Jost 400': KANVAS.replace('F_SANS(b.tebal ? 600 : 500, P(20))', 'F_SANS(b.tebal ? 600 : 400, P(20))'),
             'kanvas: label Tanggal/Pembeli bukan Cinzel': KANVAS.replace('const F_LABEL = F_CIN(700, P(15));', 'const F_LABEL = F_SANS(500, P(15));'),
             'kanvas: baris rincian kembali ke Cormorant miring': KANVAS.replace('tulis(t, F_SANS(500, P(19)), L + P(10), y + P(16));', 'tulis(t, F_ITA(500, P(20)), L + P(10), y + P(16));'),

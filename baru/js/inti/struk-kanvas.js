@@ -3,12 +3,13 @@
 // berubah hanya rupa. Bagian DOM (kanvas); hitungan murninya (hitam-putih, raster, buang emoji) di escpos.js & struk-model.js supaya teruji di jsc.
 // Poles sesudah uji cetak owner 16 Nov: emoji dibuang, huruf isi lebih tebal (ambang 160), TOTAL tanpa pita hitam (blok hitam lebar selalu bergaris
 // putih tipis di printer Sunmi — owner memilih "tanpa pita, garis tebal").
-// owner 17 Nov 2026 (butir 3): gaya SERTIFIKAT + logo F mahkota padi (huruf M) — pilihan owner dari halaman contoh. Pita guilloché atas & bawah, nama toko
+// owner 17 Nov 2026 (butir 3): gaya SERTIFIKAT + logo toko (26 Nov: padi + M stensil, logo-toko.js; dulu logo F mahkota padi) — pilihan owner dari halaman contoh. Pita guilloché atas & bawah, nama toko
 // huruf pahat (Cinzel), Nota Nº (Bodoni), isian bertitik, tabel uraian, TOTAL bergaris ganda, tanda tangan yang melayani bergaya tulisan (Cormorant miring),
 // cap kecil bertangkai padi. Garis yang tidak bertanda `jenis` (contoh lama) tetap digambar gaya polos di bawah.
 import { EP_TITIK, epHitamPutih, epTanpaEmoji } from './escpos.js';
 import { stModelSertifikat, stTebalHuruf } from './struk-model.js';
 import { qrSusun, qrTitikMuat, QR_TENANG } from './qr.js';
+import { lgGambarKanvas } from './logo-toko.js';
 
 const HURUF = 'Jost, "Helvetica Neue", Arial, sans-serif';
 const F_SANS = (b, px) => b + ' ' + px + 'px Jost, "Helvetica Neue", Arial, sans-serif';
@@ -138,25 +139,9 @@ function padi(c, p, mulai, s, tebal, n) {
     [-1, 1].forEach((kk) => bulir(c, q[0] + Math.cos(a + kk * Math.PI / 2) * 5.5 * s * kc, q[1] + Math.sin(a + kk * Math.PI / 2) * 5.5 * s * kc, a + kk * 0.5 + Math.PI / 2, 3.4 * s * kc, 8 * s * kc));
   }
 }
-function berlian(c, x, y, r) { c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r, y); c.lineTo(x, y + r); c.lineTo(x - r, y); c.closePath(); c.fill(); }
-/** LOGO TOKO pilihan owner 17 Nov: logo F "mahkota padi" — dua tangkai berbulir melingkar, berlian di puncak, huruf M Bodoni. Kotak tinggi h. */
-export function gambarLogoToko(c, cx, y, h) {
-  const r = h * 0.48, cy = y + h * 0.55; const s = h / 160; c.lineWidth = Math.max(2.5, 4 * s); c.lineCap = 'round';
-  [-1, 1].forEach((sisi) => {
-    c.beginPath();
-    for (let i = 0; i <= 20; i++) { const a = Math.PI / 2 + sisi * (0.25 + i / 20 * 2.35); const px = cx + r * Math.cos(a), py = cy + r * Math.sin(a); if (i) c.lineTo(px, py); else c.moveTo(px, py); }
-    c.stroke();
-    for (let i = 1; i <= 9; i++) {
-      const a = Math.PI / 2 + sisi * (0.25 + i / 10 * 2.35); const px = cx + r * Math.cos(a), py = cy + r * Math.sin(a);
-      [-1, 1].forEach((kk) => { c.save(); c.translate(px, py); c.rotate(a + kk * 0.7); c.beginPath(); c.ellipse(0, -13 * s, 4.5 * s, 10 * s, 0, 0, Math.PI * 2); c.fill(); c.restore(); });
-    }
-  });
-  berlian(c, cx, y + 6 * s, 6 * s);
-  c.font = F_BOD(600, Math.round(h * 0.6)); c.textAlign = 'center'; c.fillText('M', cx, cy + h * 0.2);
-  // owner 17 Nov (uji cetak CPad): batang tipis M hilang di printer → M terbaca "VI"; tepinya digores supaya garis rambutnya tercetak
-  c.save(); c.lineWidth = Math.max(3, 3.4 * s); c.lineJoin = 'round'; c.strokeText('M', cx, cy + h * 0.2); c.restore();
-  return h;
-}
+/** LOGO TOKO (owner 26 Nov 2026: "samakan semua") — padi emas + M stensil bergaris bawah dari logo-toko.js, hitam di kertas. Kotak tinggi h.
+ *  Menggantikan logo F "mahkota padi" 17 Nov. */
+export function gambarLogoToko(c, cx, y, h) { return lgGambarKanvas(c, cx, y, h, '#000'); }
 
 /** Struk nota gaya Sertifikat. Isi dari model garis (struk-model.js); opsi: { kertas, logo (bitmap perangkat), logoToko (bool: logo F),
  *  qr (teks QR nota; digambar di antara tanda tangan dan cap bila muat) }. Hasil jadiBit + qrDiGambar (true = QR sudah ada di gambar). */

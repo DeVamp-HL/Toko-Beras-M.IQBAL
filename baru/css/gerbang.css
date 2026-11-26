@@ -74,9 +74,7 @@ body.gelap .gerbang-masuk { --gm-kaca-pintu: rgba(255,255,255,0.045); --gm-reed:
 .gm-logo { position: relative; display: flex; align-items: center; gap: 12px; height: calc(var(--gm-mono) + 24px); background: var(--gm-papan-bg); border: 1px solid var(--gm-papan-tepi); box-shadow: 0 18px 30px -16px var(--bayang), inset 0 1px 0 var(--kaca-sorot); }
 .gm-pintu.kiri .gm-logo { padding: 0 var(--gm-sela) 0 24px; border-right: 0; border-radius: 16px 0 0 16px; }
 .gm-pintu.kanan .gm-logo { padding: 0 24px 0 var(--gm-sela); border-left: 0; border-radius: 0 16px 16px 0; }
-.gm-logo .monogram { flex: none; display: flex; align-items: center; justify-content: center; letter-spacing: 0.02em; background: linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3));
-  color: var(--logam-teks); border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 8px 18px -10px var(--bayang), inset 0 1px 0 rgba(255,255,255,0.7); box-sizing: border-box;   /* .monogram aplikasi hanya bergaya di menu samping */
-  width: var(--gm-mono); height: var(--gm-mono); border-radius: calc(var(--gm-mono) * 0.3); font-size: calc(var(--gm-mono) * 0.38); }
+.gm-logo .monogram { flex: none; display: flex; align-items: center; justify-content: center; width: var(--gm-mono); height: var(--gm-mono); }   /* owner 26 Nov: logo toko tanpa kotak emas */
 .gm-baut { position: absolute; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: linear-gradient(160deg, var(--logam1), var(--logam3)); box-shadow: 0 1px 1px rgba(0,0,0,0.3); }
 .gm-baut.kiri { left: 9px; } .gm-baut.kanan { right: 9px; }
 .gm-teks { display: flex; flex-direction: column; gap: 5px; } .gm-pintu.kiri .gm-teks { align-items: flex-end; }

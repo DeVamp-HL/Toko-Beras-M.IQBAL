@@ -117,8 +117,9 @@ main.layar-jual > input[type="hidden"] { display: none; }
     transition: width 260ms cubic-bezier(.2,.8,.2,1), box-shadow 260ms ease, background-color 260ms ease; }
   .side.buka { width: 236px; box-shadow: 18px 0 40px -28px var(--bayang); background: var(--nav); }
   .side .merek { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 4px 12px; cursor: pointer; white-space: nowrap; }
-  .side .monogram { flex: none; width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 17px; letter-spacing: 0.02em;
-    background: linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3)); color: var(--logam-teks); border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 8px 18px -10px var(--bayang), inset 0 1px 0 rgba(255,255,255,0.7); }
+  /* owner 26 Nov 2026: monogram = logo toko (padi + M stensil) TANPA kotak emas — bening di mode terang & gelap, warna ikut --logo-batang/--logo-bulir */
+  .side .monogram { flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+  .monogram svg { display: block; width: auto; height: 100%; overflow: visible; }
   .side .merek .teks { display: flex; flex-direction: column; gap: 2px; }
   .side .teks { opacity: 0; transform: translateX(-6px); transition: opacity 180ms ease 40ms, transform 220ms cubic-bezier(.2,.8,.2,1) 40ms; white-space: nowrap; }
   .side.buka .teks { opacity: 1; transform: none; }

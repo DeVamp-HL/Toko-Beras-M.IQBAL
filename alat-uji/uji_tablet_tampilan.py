@@ -20,7 +20,7 @@ uji_tablet_tampilan.py — paket tampilan tablet (owner 23 Nov 2026): push aplik
     python3 alat-uji/uji_tablet_tampilan.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tablet_tampilan.py --kontrol  → kerusakan wajib ketahuan (keluar 3 kalau ada yang diam)
 """
-import os, re, sys, json, subprocess, tempfile
+import os, re, sys, json, math, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru, uji_titipan  # noqa: E402
@@ -29,9 +29,9 @@ JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Help
 NT = 'baru/js/data/notif-tablet.js'; PR = 'baru/js/inti/perangkat.js'; KBL = 'baru/js/layar/kabar-baru-logika.js'; FMT = 'baru/js/inti/format.js'
 TPL = 'baru/js/layar/titipan-logika.js'; PSN = 'functions/pesan.js'; FIX = 'functions/index.js'; PAS = 'apk/pasang.py'; IKM = 'apk/ikon_m.py'
 IDX = 'baru/index.html'; KER = 'baru/css/kerangka.css'; APP = 'baru/js/app.js'; MA = 'apk/tambahan/MainActivity.java'; PP = 'apk/tambahan/PerangkatPlugin.java'
-FB = 'baru/js/data/firebase.js'; SIS = 'baru/js/layar/sistem-logika.js'; MENU = 'baru/js/layar/menu.js'; LC = 'baru/js/layar/lonceng.js'; YML = '.github/workflows/apk.yml'; PKG = 'apk/package.json'
+FB = 'baru/js/data/firebase.js'; SIS = 'baru/js/layar/sistem-logika.js'; LGK = 'baru/js/inti/logo-toko.js'; SKV = 'baru/js/inti/struk-kanvas.js'; MENU = 'baru/js/layar/menu.js'; LC = 'baru/js/layar/lonceng.js'; YML = '.github/workflows/apk.yml'; PKG = 'apk/package.json'
 LAYAR = ['harga', 'jual', 'laporan', 'pelanggan', 'menu', 'stok', 'uang', 'ringkasan']
-BERKAS = [NT, PR, KBL, FMT, TPL, PSN, FIX, PAS, IKM, IDX, KER, APP, MA, PP, FB, MENU, LC, YML, PKG, SIS] + ['baru/js/layar/%s.js' % n for n in LAYAR]
+BERKAS = [NT, PR, KBL, FMT, TPL, PSN, FIX, PAS, IKM, IDX, KER, APP, MA, PP, FB, MENU, LC, YML, PKG, SIS, LGK, SKV] + ['baru/js/layar/%s.js' % n for n in LAYAR]
 
 
 def baca(ganti=None):
@@ -241,6 +241,18 @@ def ikon_dari(teks):
     return _IKON[teks]
 
 
+def alfa_semua(png):
+    """Seluruh kanal alfa PNG RGBA 8-bit (filter 0 tiap baris, seperti ikon_m.png()) → (lebar, daftar baris)."""
+    import struct, zlib
+    w = struct.unpack('>I', png[16:20])[0]; i = 8; idat = b''
+    while i < len(png):
+        n = struct.unpack('>I', png[i:i + 4])[0]
+        if png[i + 4:i + 8] == b'IDAT': idat += png[i + 8:i + 8 + n]
+        i += 12 + n
+    d = zlib.decompress(idat); baris = 1 + w * 4
+    return w, [[d[y * baris + 1 + x * 4 + 3] for x in range(w)] for y in range(len(d) // baris)]
+
+
 def piksel_alfa(png, x, y):
     """Alfa satu piksel PNG RGBA 8-bit tanpa interlace yang ditulis ikon_m.png() (filter 0 tiap baris)."""
     import struct, zlib
@@ -282,17 +294,33 @@ def periksa_python(t):
     ok('gradle: plugin google-services diterapkan & classpath-nya ditambah bila cetakan tidak membawanya', "apply plugin: 'com.google.gms.google-services'" in a2 and "classpath 'com.google.gms:google-services:" in r2 and r2.index('tools.build:gradle') < r2.index('google-services'))
     ok('gradle: cetakan yang sudah membawanya tidak diubah (dua kali = sama)', ruang['ubah_gradle_gs'](a2, r2) == (a2, r2))
     ok('gradle: build.gradle akar tanpa classpath Android DITOLAK', ditolak(ruang['ubah_gradle_gs'], app_g, 'buildscript {}'))
-    # ---- logo M (owner 23 Nov 2026: "ikon logo aplikasi gak rapi di tablet … ganti logo" → "logo M aja gak perlu IQ")
+    # ---- logo toko (owner 24–26 Nov 2026: padi + M stensil, ikon tablet BENING seperti SunmiSubScreen, juga di mode gelap, "samakan semua")
     hasil, ikm = ikon_dari(t[IKM])
     beda = [n for n, b in hasil.items() if not os.path.exists(os.path.join(AKAR, n)) or open(os.path.join(AKAR, n), 'rb').read() != b]
-    ok('logo M: icon-sistem.svg + PNG 512/192/180/32 + latar depan APK = hasil apk/ikon_m.py (satu sumber geometri)', not beda, beda)
-    dp = hasil['apk/ikon-depan-432.png']
-    ok('logo M: latar depan ikon adaptif TRANSPARAN di luar simbol (bukan kotak), cincin emas di dalam lingkar aman 66/108', piksel_alfa(dp, 0, 0) == 0 and piksel_alfa(dp, 431, 431) == 0
-       and piksel_alfa(dp, 216 + 125, 216) > 0 and 125 * 2 / 432 < 66 / 108, [piksel_alfa(dp, 0, 0), piksel_alfa(dp, 341, 216)])
-    ok('logo M: tanpa tulisan "IQ" / "BERAS" di ikon', 'IQ' not in hasil['icon-sistem.svg'].decode('utf-8') and 'BERAS' not in hasil['icon-sistem.svg'].decode('utf-8') and '<text' not in hasil['icon-sistem.svg'].decode('utf-8'))
-    ok('logo M: pasang.py — latar depan = apk/ikon-depan-432.png, latar belakang = LATAR_IKON hitam malam (sama dengan ikon_m.LATAR_APK), ikon bulat dipotong lingkaran',
-       "if os.path.exists(p): depan.resize(Image.open(p).size, Image.LANCZOS).save(p)" in t[PAS] and ruang.get('LATAR_IKON') == ikm['LATAR_APK'] and "re.sub(r'#[0-9A-Fa-f]{6,8}', LATAR_IKON, baca(latar))" in t[PAS]
-       and "if os.path.exists(p): bulat(n).save(p)" in t[PAS])
+    ok('logo: icon-sistem.svg + PNG 512/192/180/32 + ikon kasir + latar depan APK (siang & malam) + pembuka = hasil apk/ikon_m.py (satu sumber geometri)', not beda, beda)
+    js = t[LGK]
+    jsm = re.search(r"export const LG_M = '([^']+)'", js); jsb = re.search(r'export const LG_BULIR = (\[\[.*?\]\]);', js)
+    ok('logo: geometri ikon (apk/ikon_m.py) = geometri layar & struk (baru/js/inti/logo-toko.js) — huruf M, bulir, tangkai, garis bawah',
+       jsm is not None and jsm.group(1) == ikm['M_JALUR'] and jsb is not None and json.loads(jsb.group(1)) == [list(b) for b in ikm['BULIR']]
+       and "export const LG_BATANG = 'M%g %g C %g %g, %g %g, %g %g';" % tuple(v for p in ikm['BATANG'] for v in p) in js
+       and 'export const LG_GARIS = [%g, %g, %g, %g];' % ikm['GARIS'] in js and 'export const LG_BATANG_TEBAL = %g;' % ikm['BATANG_TEBAL'] in js)
+    for nama in ('apk/ikon-depan-432.png', 'apk/ikon-depan-malam-432.png'):
+        w, A = alfa_semua(hasil[nama]); c = w / 2; aman = w * 33 / 108
+        luar = [(x, y) for y in range(w) for x in range(w) if A[y][x] and math.hypot(x + 0.5 - c, y + 0.5 - c) > aman]
+        ok('logo: %s BENING di luar logo (tanpa kotak), logo terisi & seluruhnya di dalam lingkar aman 66/108' % nama,
+           A[0][0] == 0 and A[w - 1][w - 1] == 0 and sum(1 for r in A for v in r if v) > w * w * 0.03 and not luar, luar[:3])
+    ok('logo: ikon malam beda warna dari ikon siang (emas asli vs emas gelap)', hasil['apk/ikon-depan-malam-432.png'] != hasil['apk/ikon-depan-432.png'] and ikm['EMAS'] != ikm['EMAS_GELAP'])
+    svg = hasil['icon-sistem.svg'].decode('utf-8')
+    ok('logo: tanpa tulisan "IQ" / "BERAS" / huruf yang bergantung font di ikon (huruf M = garis)', 'IQ' not in svg and 'BERAS' not in svg and '<text' not in svg and ikm['M_JALUR'] in svg)
+    ok('logo: pasang.py — latar depan siang = ikon-depan, mipmap-night = ikon-depan-malam, latar belakang adaptif BENING (= ikon_m.LATAR_ADAPTIF), pembuka di atas LATAR_IKON (= ikon_m.LATAR_APK)',
+       "for gambar, folder in ((depan, 'mipmap-' + d), (malam, 'mipmap-night-' + d)):" in t[PAS] and "'ikon-depan-malam-432.png'" in t[PAS]
+       and ruang.get('LATAR_ADAPTIF') == ikm['LATAR_ADAPTIF'] and re.fullmatch(r'#00[0-9A-Fa-f]{6}', ruang.get('LATAR_ADAPTIF') or '') is not None
+       and "re.sub(r'#[0-9A-Fa-f]{6,8}', LATAR_ADAPTIF, baca(latar))" in t[PAS] and ruang.get('LATAR_IKON') == ikm['LATAR_APK'] and "'ikon-pembuka-432.png'" in t[PAS])
+    ok('logo: menu samping & gerbang memakai logo toko (huruf M yang sama), bukan monogram "IQ"; warna ikut --logo-batang/--logo-bulir',
+       t[IDX].count('<span class="monogram" title="Toko Beras M.IQBAL"><svg') == 2 and t[IDX].count(ikm['M_JALUR']) == 2 and '>IQ</span>' not in t[IDX]
+       and t[IDX].count('var(--logo-batang)') >= 4)
+    ok('logo: struk memakai logo toko yang sama (logo-toko.js), bukan logo F mahkota padi', "export function gambarLogoToko(c, cx, y, h) { return lgGambarKanvas(c, cx, y, h, '#000'); }" in t[SKV]
+       and "import { lgGambarKanvas } from './logo-toko.js';" in t[SKV] and 'berlian(' not in t[SKV])
     ok('pasang.py memasang berkas Firebase dari rahasia GOOGLE_SERVICES_JSON & menyalin ikon notifikasi', "os.environ.get('GOOGLE_SERVICES_JSON'" in t[PAS] and "'ic_kabar.xml'" in t[PAS] and 'pasang_firebase();' in t[PAS])
     ok('apk.yml meneruskan rahasia GOOGLE_SERVICES_JSON ke langkah pasang & menulis ringkasan ada-tidaknya push', 'GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}' in t[YML] and 'Push tablet: TANPA berkas Firebase' in t[YML])
     ok('apk/package.json membawa plugin resmi @capacitor/push-notifications seri 7', json.loads(t[PKG])['dependencies'].get('@capacitor/push-notifications', '').startswith('^7'))
@@ -393,9 +421,13 @@ KONTROL = [
     ('push dari owner tanpa isi', [(PSN, "  const isi = teks(d.teks); if (!isi) return null;\n  return { judul: 'Pesan dari owner'", "  const isi = teks(d.teks);\n  return { judul: 'Pesan dari owner'")]),
     ('HP owner dikabari pesannya sendiri', [(PSN, "  if (d.tindakan === 'pesanOwner') return null;", "")]),
     ('papan Persetujuan memuat pesan owner', [(SIS, ".filter((m) => m && m.tindakan !== 'pesanOwner')", "")]),
-    ('latar depan ikon adaptif kembali ikon 512 berkotak', [(PAS, "if os.path.exists(p): depan.resize(Image.open(p).size, Image.LANCZOS).save(p)", "if os.path.exists(p): sumber.resize(Image.open(p).size, Image.LANCZOS).save(p)")]),
-    ('latar belakang ikon adaptif kembali terang', [(PAS, "LATAR_IKON = '#101314'", "LATAR_IKON = '#E2E7EC'")]),
-    ('geometri logo diubah tanpa membuat ulang PNG', [(IKM, "def susun(ukuran, cincin=True, skala_m=1.12,", "def susun(ukuran, cincin=True, skala_m=1.2,")]),
+    ('ikon tablet kembali berlatar (latar belakang adaptif tidak bening)', [(PAS, "LATAR_ADAPTIF = '#00000000'", "LATAR_ADAPTIF = '#14110dff'")]),
+    ('mode gelap memakai ikon siang (emas gelap di peluncur gelap)', [(PAS, "(malam, 'mipmap-night-' + d)", "(depan, 'mipmap-night-' + d)")]),
+    ('geometri logo diubah tanpa membuat ulang PNG', [(IKM, "GARIS = (33.5, 48.5, 42, 0.72)", "GARIS = (33.5, 48.5, 43, 0.72)")]),
+    ('huruf M layar berbeda dari ikon', [(LGK, "L42.66 36.26 L42.51 35.15Z';", "L42.66 36.26 L42.5 35.15Z';")]),
+    ('logo ikon tidak muat di lingkar aman', [(IKM, "('apk/ikon-depan-432.png', 432, EMAS_GELAP, 0.48, False)", "('apk/ikon-depan-432.png', 432, EMAS_GELAP, 0.7, False)")]),
+    ('menu samping kembali monogram IQ', [(IDX, '<div class="merek" data-side="toggle" title="buka / tutup menu samping"><span class="monogram" title="Toko Beras M.IQBAL">', '<div class="merek" data-side="toggle" title="buka / tutup menu samping"><span class="monogram serif">IQ</span><span hidden>')]),
+    ('struk kembali logo F', [(SKV, "export function gambarLogoToko(c, cx, y, h) { return lgGambarKanvas(c, cx, y, h, '#000'); }", "export function gambarLogoToko(c, cx, y, h) { return h; }")]),
     ('kabarTablet mengirim ke semua token', [(FIX, ".collection('notifPerangkat').where('uid', '==', p.uid).get()", ".collection('notifPerangkat').get()")]),
 ]
 
