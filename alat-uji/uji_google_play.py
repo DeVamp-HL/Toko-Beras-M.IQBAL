@@ -149,7 +149,21 @@ def periksa_statis(t):
        re.search(r'jarsigner -keystore "\$RUNNER_TEMP/kunci\.jks" -storepass:env KEYSTORE_PASSWORD -keypass:env KEY_PASSWORD .*\n.*"\$KEY_ALIAS"', tanda) is not None, tanda[:400])
     ok('apk.yml: tanda tangan AAB diverifikasi (jar verified) sebelum disimpan', 'jarsigner -verify "$AAB"' in tanda and "grep -q 'jar verified'" in tanda)
     ok('apk.yml: targetSdk dibaca dari APK hasil bangun yang sama, < 36 = merah', 'dump badging "$APK"' in tanda and '[ "${SASARAN:-0}" -ge 36 ]' in tanda)
-    ok('apk.yml: minSdk dibaca dari APK hasil bangun yang sama, < 24 = merah', "s/^sdkVersion:" in tanda and '[ "${MINIMUM:-0}" -ge 24 ]' in tanda)
+    ok('apk.yml: minSdk dibaca dari APK hasil bangun yang sama, < 24 = merah', 'MINIMUM=$("$BT/aapt2" dump badging "$APK" |' in tanda and '[ "${MINIMUM:-0}" -ge 24 ]' in tanda)
+    # baris SASARAN= & MINIMUM= dijalankan sungguhan di bash atas keluaran aapt2 dump badging contoh (bentuk build-tools 35/36)
+    contoh = ("package: name='id.miqbal.tokoberas' versionCode='47' versionName='1.47' platformBuildVersionName='16' platformBuildVersionCode='36' "
+              "compileSdkVersion='36' compileSdkVersionCodename='16'\nminSdkVersion:'24'\ntargetSdkVersion:'36'\nuses-permission: name='android.permission.INTERNET'\n")
+    def baca_sdk(teks):
+        baris = [x.strip() for x in tanda.split('\n') if x.strip().startswith(('SASARAN=$(', 'MINIMUM=$('))]
+        if len(baris) != 2: return None
+        import tempfile as _tf
+        with _tf.TemporaryDirectory() as d:
+            p = os.path.join(d, 'badging.txt'); open(p, 'w').write(teks)
+            skrip = '; '.join(x.replace('"$BT/aapt2" dump badging "$APK"', 'cat "$CONTOH"') for x in baris) + '; printf "%s %s" "$SASARAN" "$MINIMUM"'
+            return subprocess.run(['bash', '-c', skrip], capture_output=True, text=True, env={'CONTOH': p, 'PATH': os.environ.get('PATH', '')}).stdout
+    sdk2 = baca_sdk(contoh); sdk1 = baca_sdk(contoh.replace("minSdkVersion:'24'", "sdkVersion:'24'"))
+    ok('apk.yml: keluaran aapt2 sungguhan (minSdkVersion:/targetSdkVersion:) terbaca 36 & 24 — juga bentuk aapt lama sdkVersion: (run #46/#47 merah palsu)',
+       sdk2 == '36 24' and sdk1 == '36 24', (sdk2, sdk1))
     ok('apk.yml: tanda tangan APK diverifikasi untuk Android ≤ 23 (minSdk 24 membuat apksigner melewati V1 — syarat SUNMI App Store tetap dibuktikan)',
        re.search(r'apksigner" verify -v --min-sdk-version (\d+) ', bangun) is not None and int(re.search(r'apksigner" verify -v --min-sdk-version (\d+) ', bangun).group(1)) <= 23
        and "grep -q 'Verified using v1 scheme (JAR signing): true'" in bangun, bangun[bangun.find('apksigner" verify'):][:200])
@@ -223,6 +237,7 @@ KONTROL = [
     ('SDK minimum kembali 23', [(PAS, 'SDK_MINIMUM = 24', 'SDK_MINIMUM = 23')]),
     ('minSdk tidak diubah', [(PAS, "(('minSdkVersion', minimum), ('compileSdkVersion', sdk)", "(('compileSdkVersion', sdk)")]),
     ('verifikasi APK tanpa --min-sdk-version (V1 dilewati di minSdk 24)', [(YML, 'apksigner" verify -v --min-sdk-version 23 ', 'apksigner" verify -v ')]),
+    ('minSdk dibaca dengan pola aapt lama saja (bug 26 Nov)', [(YML, """sed -nE "s/^(minSdkVersion|sdkVersion):'([0-9]+)'.*/\\2/p" """, """sed -nE "s/^(sdkVersion):'([0-9]+)'.*/\\2/p" """)]),
     ('minSdk tidak diperiksa di apk.yml', [(YML, '[ "${MINIMUM:-0}" -ge 24 ]', '[ "${MINIMUM:-0}" -ge 0 ]')]),
     ('angka SDK diturunkan', [(PAS, 'str(max(angka, int(mm.group(2))))', 'str(angka)')]),
     ('pola variables.gradle asing diterima diam-diam', [(PAS, '        if len(cocok) != 1: raise Tolak(', '        if len(cocok) > 9: raise Tolak(')]),
