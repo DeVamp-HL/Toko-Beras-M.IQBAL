@@ -142,6 +142,8 @@ AS_PEMAKAI = ('uang-logika.js',)
 # layar Laporan memakai aset-panel.js (Laporan › Aset tetap) — ikut OTOMATIS di belakang bila laporan.js ada.
 ASP_MODUL = 'baru/js/layar/aset-panel.js'
 ASP_PEMAKAI = ('laporan.js',)
+# Laporan › Jurnal (owner 26 Nov 2026, modul ERP no. 69): jurnal-logika.js + jurnal-panel.js ikut OTOMATIS di belakang bila laporan.js ada.
+JR_MODUL = ('baru/js/layar/jurnal-logika.js', 'baru/js/layar/jurnal-panel.js')
 
 
 def lengkapi(daftar):
@@ -151,6 +153,9 @@ def lengkapi(daftar):
         d.insert(i, AS_MODUL)
     if any(os.path.basename(x) in ASP_PEMAKAI for x in d) and not any(x.endswith('aset-panel.js') for x in d):
         d.append(ASP_MODUL)
+    if any(os.path.basename(x) in ASP_PEMAKAI for x in d):
+        for m in JR_MODUL:
+            if not any(x.endswith(m) for x in d): d.append(m)
     if any(os.path.basename(x) in GD_PEMAKAI for x in d):
         for m in GD_MODUL:
             if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)

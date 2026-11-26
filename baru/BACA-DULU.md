@@ -4183,6 +4183,29 @@ isian lama `aturanToko/laporan.asetTetap` diganti daftar (di cadangan 25 Nov dok
 - Uji `alat-uji/uji_jurnal_aset.py` (kotak pasir angka harapan dihitung terpisah + statis + `--kontrol` + asap cadangan toko); `peta_akses.py` (`susunAset`,
   `susunHapusAset`, `susunAturAset`). Belum dicoba di data toko: menyimpan daftar ke Firestore sungguhan, laba Desember di HP owner.
 
+## Jurnal berpasangan (owner 26 Nov 2026, modul ERP no. 69 — sensus ulang 26 Nov bagian 2; cabang `claude/jurnal-berpasangan` di atas cabang aset tetap; tanpa rules baru, mesin beku tidak diubah)
+
+Keputusan owner (AskUserQuestion 26 Nov 2026): jurnal = **turunan + koreksi owner**. Tidak ada catatan baru di tiap transaksi (mesin beku tidak boleh dibuka);
+jurnal DISUSUN dari catatan yang sudah ada. Satu-satunya tulisan baru = entri koreksi yang owner ketik sendiri.
+- **Logika** `baru/js/layar/jurnal-logika.js` (awalan `jr`). Bagan akun `JR_AKUN` (harta · kewajiban · modal & penyesuaian · laba; `khusus` = baris yang hanya ada di jurnal,
+  `penyesuaian` = penjelas beda "belum terjelaskan buku", `koreksi` = boleh dipakai koreksi owner). `jrKejadian()` = satu entri dua sisi per catatan (nota, bon pelanggan,
+  retur, kasbon, modal & pinjaman owner, barang masuk & potongan pemasok, bon pemasok, bayar biaya bulanan & upah, uang keluar, utang ke owner, kantong & bahan, susut,
+  selisih laci tutup hari, amplop, pindah uang, aset tetap, koreksi). Baris uang diletakkan dengan penentu tempat yang SAMA dengan saldoKantong (`kantongGerakan`).
+  Per periode (`jrPeriode`): + jatah biaya bulanan per hari (mesin `jatahBiayaBulananHari`, pasangannya "biaya bulanan & upah yang belum dibayar") + penyusutan (laba / sebelum
+  mulai) + uang disetel ke patokan (`khPatokan`: hitungan tutup hari / titik kas; bedanya ke "uang dihitung ulang", bukan laba) + penilaian akhir (stok ke nilai Neraca,
+  saldo minus buku pembantu ke kelebihan bayar, sisa = "beda buku pembantu"). `jrSaldo(s)` = saldo semua akun di akhir hari s.
+- **Penjaga** (uji): tiap entri seimbang; saldo awal + entri = saldo akhir tiap akun; Σ saldo = 0; baris uang = gerakan kas mesin + amplop + pindah per hari per tempat;
+  laba jurnal = `ugLabaBersih` tiap bulan (+ koreksi owner, disebut); uang per tempat = `saldoKantong`; tiap baris Neraca (uang, stok, piutang, kasbon, piutang pemasok,
+  aset tetap, utang pemasok, utang owner, modal) = `neracaTanggal`; `selisihBuku` Neraca = Σ pecahan bernama (`jrCocok`), beda buku & akun antara nol.
+- **Koreksi owner**: `aturanToko/jurnalKoreksi` { entri: [{ id, tanggal, ket, baris: [{ akun, d, k }] }] } — owner saja (rules sudah begitu). Hanya akun laba, utang lain,
+  harta lain, koreksi modal (uang, stok, bon, utang pemasok & modal owner lewat layarnya sendiri); seimbang; tanggal di bulan yang belum dikunci; ≤ 300 entri.
+  `susunKoreksi` / `susunHapusKoreksi` (dua ketukan). Koreksi mengubah laba & neraca JURNAL saja — laba Laporan tidak berubah.
+- **Layar** Laporan › keluarga baru **Jurnal** (`jurnal-panel.js`): pilih bulan, empat lampu penjaga (seimbang · laba = Laporan · uang = tempat uang · neraca = Laporan),
+  tab Neraca saldo (awal · debit · kredit · akhir per akun, pita debit/kredit tumbuh), Entri (per jenis, 40 per halaman), Buku besar (saldo berjalan), Cocokkan (uang per
+  tempat, neraca, laba, pecahan beda belum terjelaskan dengan pita), Koreksi owner. Layar lebar: Cocokkan selalu di kolom kanan.
+- Uji `alat-uji/uji_jurnal_aset.py` (bagian JR: kotak pasir kaya + kontrol + asap cadangan toko: semua bulan sejak catatan pertama), `peta_akses.py` (`susunKoreksi`,
+  `susunHapusKoreksi`). Batas: tahun yang sudah ditutup buku — catatannya diarsip, jurnalnya ditolak dengan sebabnya (belum dicoba: sesudah tutup buku 2026).
+
 ## Paket Dasbor (owner 26 Nov 2026, sensus ulang 1c: B1 B9 B88 B89 B90 B91 B95 B109 B113 B127; cabang `claude/dasbor-sensus-fbcdb5`; tanpa rules baru, mesin beku tidak diubah)
 
 Grup Dasbor terakhir sensus 1c sebelum sistem beku 15 Des 2026. Dijaga `alat-uji/uji_dasbor_sensus.py` (kotak pasir + statis + `--kontrol` + asap cadangan toko).
