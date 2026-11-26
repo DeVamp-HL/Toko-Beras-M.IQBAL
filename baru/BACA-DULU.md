@@ -4251,7 +4251,8 @@ buku tempat itu begitu tutup berikutnya menulis titik baru. Laci sudah aman seja
   kasus nyata, kontrol, asap cadangan toko: daftar patokan yang dulu kehilangan catatan).
 - **Tutup buku 31 Des** (owner 26 Nov 2026, "Terima + tambal 31 Des"): satu pintu `ugSaldoDenganSusulan(sampai, t)` (uang-logika) = saldoKantong dari patokan
   lampau + `ugSusulan(t)`. `titikTahun` kini membawa `diubahPada` patokannya (titik kas / dokumen tutup hari), jadi `barisBuku` (12 baris, berita acara, titik kas
-  31 Des yang ditulis saat kunci) membawa uang yang dicatat sesudah tutup hari 31 Des. Kas akhir bulan Laporan (`lpKasAkhirBulan`, juga potret Desember saat kunci)
+  31 Des yang ditulis saat kunci) membawa uang yang dicatat sesudah tutup hari 31 Des. `barisBuku` tanpa patokan (patokan "hari ini" saat kunci, potret
+  harian) juga memakai susulan titik kas sekarang — tanpa itu pemeriksaan ulang sesudah kunci menyebut "Uang di laci TIDAK SAMA" (gladi pintu 27 Nov 2026). Kas akhir bulan Laporan (`lpKasAkhirBulan`, juga potret Desember saat kunci)
   dan uang pada tanggal lampau (`lpKasPadaTanggal`, Pondasi) memakai aturan yang sama. Berita acara / titik lama tanpa `diubahPada` = angka lama persis; titik
   31 Des yang ditulis tutup buku dipasang Januari = tanpa susulan (catatan bertanggal ≤ 31 Des yang masuk sesudah kunci tetap lewat daftar susulan tutup buku
   A9). Batalkan tutup buku mengembalikan titik lama dengan `diubahPada` baru (HP lain wajib mengambilnya — `ambilTitikKas` memilih yang terbaru) DAN jam pasang

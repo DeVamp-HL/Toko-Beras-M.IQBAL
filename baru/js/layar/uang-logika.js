@@ -103,7 +103,8 @@ export function ugSusulan(t) {
  * buku & kas akhir bulan melewatinya. `t` tanpa diubahPada (berita acara / titik lama) = tanpa susulan, persis seperti dulu. → bentuk saldoKantong + susulan.
  */
 export function ugSaldoDenganSusulan(sampai, t) {
-  const K = saldoKantong(sampai, t); if (!K.ada || !t) return K; const su = ugSusulan(t); const n = (k) => K[k] + su[k];
+  // t kosong = titik kas sekarang (bentuk saldoKantong biasa, mesin ikut diisi) + catatan susulannya
+  const K = saldoKantong(sampai, t || undefined); const T = t || K.titik; if (!K.ada || !T) return K; const su = ugSusulan(T); const n = (k) => K[k] + su[k];
   return Object.assign({}, K, { laci: n('laci'), brankas: n('brankas'), rekening: n('rekening'), amplop: n('amplop'), total: K.total + su.laci + su.brankas + su.rekening + su.amplop, susulan: su,
     minus: ['laci', 'brankas', 'rekening', 'amplop'].filter((k) => n(k) < -0.5) });
 }
