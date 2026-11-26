@@ -14,7 +14,7 @@ import { akhirBulanIso, bulanDari, namaBulanPanjang, caraBayarKunci, hppTercatat
 import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilPiutangMutasi, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota, returUangPerHari, ambilHargaTerbit, eraBuku, tahunDiarsip, potretTahun, potretBulan, potretHari, catatanPertama, ingatGerakanKas, ingatKasPada, ingatNeraca,
   ambilRetur, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, petaBukuWadah, merkAsalKunci, petaUkuran, ukuranDigabung, ingatStokKarung, ingatStokKemasan, ambilProduksiBerlaku , ingatPerVersi , kunciLuarCache } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, lebihBayarDari, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/format.js';
-import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian, adalahMdr, ugLabaBersih, ugBayaran, saldoKantong, ugLebihKurangKas, ugEfekAset } from './uang-logika.js';
+import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian, adalahMdr, ugLabaBersih, ugBayaran, saldoKantong, ugLebihKurangKas, ugEfekAset, ugSaldoDenganSusulan } from './uang-logika.js';
 // owner 26 Nov 2026 (modul ERP no. 70): aset tetap & penyusutan — nilai buku per tanggal di Neraca, baris penyusutan di Laba
 import { astPada } from './aset-tetap-logika.js';
 import { bkEra } from './tutup-buku-logika.js';
@@ -732,9 +732,12 @@ export function lpKasAkhirBulan(key) {
   const awal = key + '-01', akhir = akhirBulanIso(key); const nama = lpNamaBulan(key); const th = ambilTutupHari().filter((d) => d && d.tanggal && d.tanggal >= awal && d.tanggal <= akhir);
   const d = th.filter((x) => x.titik).sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)))[0];
   if (!d) { const kenapa = th.length ? 'tutup hari ' + nama + ' belum menyimpan isi tempat uang sesudah tutup (tutup hari lama)' : 'tidak ada tutup hari di ' + nama; return { kas: null, kenapa, sumber: '', tolak: 'Kas akhir ' + nama + ' belum bisa dihitung — ' + kenapa + '. Bulan final memakai hitungan fisik tutup hari akhir bulan, bukan titik kas sekarang' }; }
-  const t = { tanggal: d.tanggal, laci: Number(d.titik.laci) || 0, rekening: Number(d.titik.rekening) || 0, amplop: Number(d.titik.amplop) || 0, brankas: Number(d.titik.brankas) || 0 };
-  return { kas: saldoKantong(akhir, t).total, kenapa: '', sumber: 'hitungan fisik tutup hari ' + tanggalPendek(t.tanggal) + (t.tanggal < akhir ? ' + catatan uang sesudahnya sampai ' + tanggalPendek(akhir) : ''), tolak: '' };
+  // owner 26 Nov 2026 ("tambal 31 Des"): + catatan susulan hitungan itu (dicatat sesudah tutup, bertanggal hari itu) — aturan ugSusulan, sama dengan tutup buku 31 Des
+  const t = { tanggal: d.tanggal, laci: Number(d.titik.laci) || 0, rekening: Number(d.titik.rekening) || 0, amplop: Number(d.titik.amplop) || 0, brankas: Number(d.titik.brankas) || 0, diubahPada: String(d.diubahPada || '') };
+  const K = ugSaldoDenganSusulan(akhir, t);
+  return { kas: K.total, kenapa: '', sumber: 'hitungan fisik tutup hari ' + tanggalPendek(t.tanggal) + (t.tanggal < akhir || lpAdaSusulan(K) ? ' + catatan uang sesudahnya sampai ' + tanggalPendek(akhir) : ''), tolak: '' };
 }
+const lpAdaSusulan = (K) => !!(K && K.susulan) && ['laci', 'brankas', 'rekening', 'amplop'].some((k) => Math.abs(K.susulan[k]) >= 0.5);
 /**
  * Pondasi (owner 24 Nov 2026): uang toko pada SATU tanggal lampau. Titik kas sekarang maju tiap tutup hari, jadi mesin (kasPada) tidak menghitung mundur; yang
  * dipakai = hitungan fisik tutup hari TERAKHIR pada/sebelum tanggal itu (kolom `titik`, aturan yang sama dengan lpKasAkhirBulan) + catatan uang sesudahnya
@@ -744,8 +747,9 @@ export function lpKasPadaTanggal(iso) {
   if (lpTutup(iso)) return { kas: null, kenapa: 'catatan ' + String(iso).slice(0, 4) + ' sudah diarsip (tutup buku)', sumber: '' };
   const d = ambilTutupHari().filter((x) => x && x.titik && x.tanggal && x.tanggal <= iso).sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)))[0];
   if (!d) return { kas: null, kenapa: 'tidak ada tutup hari yang menyimpan isi tempat uang pada atau sebelum ' + tanggalPendek(iso), sumber: '' };
-  const t = { tanggal: d.tanggal, laci: Number(d.titik.laci) || 0, rekening: Number(d.titik.rekening) || 0, amplop: Number(d.titik.amplop) || 0, brankas: Number(d.titik.brankas) || 0 };
-  return { kas: saldoKantong(iso, t).total, kenapa: '', sumber: 'hitungan fisik tutup hari ' + tanggalPendek(t.tanggal) + (t.tanggal < iso ? ' + catatan uang sesudahnya sampai ' + tanggalPendek(iso) : '') };
+  const t = { tanggal: d.tanggal, laci: Number(d.titik.laci) || 0, rekening: Number(d.titik.rekening) || 0, amplop: Number(d.titik.amplop) || 0, brankas: Number(d.titik.brankas) || 0, diubahPada: String(d.diubahPada || '') };
+  const K = ugSaldoDenganSusulan(iso, t);
+  return { kas: K.total, kenapa: '', sumber: 'hitungan fisik tutup hari ' + tanggalPendek(t.tanggal) + (t.tanggal < iso || lpAdaSusulan(K) ? ' + catatan uang sesudahnya sampai ' + tanggalPendek(iso) : '') };
 }
 /**
  * Tinjauan 39b UU36-2: neraca LAYAR untuk tanggal yang dipilih (Laporan → Neraca, layar & kertasnya). Bulan FINAL: akhir bulan = kas dari hitungan fisik tutup
