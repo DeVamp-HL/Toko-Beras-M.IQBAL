@@ -21,7 +21,7 @@
 // Butir 10 (nota terbesar) = riwayat-logika rwTerbesar · 13 = bon-pemasok-logika bpHariBayar · 14 = sistem-logika (pengingat cek gudang) · 15 = pesanan-logika poLamaPenuhi.
 import { keManaLabaKotor, jenisBulan, lpJenisRentang, merekBulan, lpMerekBuku, lpNamaBulan, rekapHari, LP_JENIS } from './laporan-logika.js';
 import { kendaliBulan, titikImpas } from './kendali-biaya-logika.js';
-import { pjPerkiraanBulan, PJ_LABEL } from './pajak-logika.js';
+import { pjPerkiraanBulan, PJ_LABEL, pjTahun } from './pajak-logika.js';
 import { ugAturDok, ugAngka, ugKosong, saldoKantong, ugNamaTempat } from './uang-logika.js';
 import { umRingkas, umNilaiRata } from './stok-logika.js';
 import { tertagihBon } from './bon-logika.js';
@@ -31,7 +31,7 @@ import { rwTerbesar } from './riwayat-logika.js';
 import { ckHppLewat } from './stok-catat-logika.js';
 import { aturHarga } from './harga-logika.js';
 import { JAM_BUKA, JAM_TUTUP } from './ringkasan-logika.js';
-import { ambilPengeluaranHarian, cacheMentah, ingatStokKarung, ingatPerVersi } from '../data/toko.js';
+import { ambilPengeluaranHarian, cacheMentah, ingatStokKarung, ingatStokKemasan, ingatPerVersi, catatanPertama } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { akhirBulanIso } from '../mesin/pembantu.js';
 
@@ -55,12 +55,18 @@ export function klHargaSaran(modal, targetPct, bulat) {
 }
 
 // ---------- setelan owner: aturanToko/kpiLaba ----------
-/** { targetHarian (Rp, 0 = bawaan omzet impas), kasMinimum (Rp, 0 = mati), targetMargin { jenis: % } (tidak ada = bawaan 3 bulan), dariOwner }. */
+/** { targetHarian (Rp, 0 = bawaan omzet impas), kasMinimum (Rp, 0 = mati), targetMargin { jenis: % } (tidak ada = bawaan 3 bulan),
+ *    bungaModal (% per tahun, A121 — tidak ada = bawaan KL_BUNGA_BAWAAN, 0 = mati), bungaDariOwner, dariOwner }. */
 export function klAtur() {
   const a = ugAturDok(KL_ID) || {}; const rp = (v) => { const n = Number(v); return isFinite(n) && n > 0 && n <= KL_RP_MAKS ? Math.round(n) : 0; };
   const tm = {}; KL_JENIS.forEach((j) => { const n = Number(a.targetMargin && a.targetMargin[j.id]); if (isFinite(n) && n > 0 && n <= KL_TARGET_MAKS) tm[j.id] = Math.round(n * 100) / 100; });
-  return { targetHarian: rp(a.targetHarian), kasMinimum: rp(a.kasMinimum), targetMargin: tm, dariOwner: !!ugAturDok(KL_ID), tanggal: a.tanggal || '' };
+  const bm = a.bungaModalPersen; const bn = Number(bm); const bOwn = bm !== undefined && bm !== null && bm !== '' && isFinite(bn) && bn >= 0 && bn <= KL_BUNGA_MAKS;
+  return { targetHarian: rp(a.targetHarian), kasMinimum: rp(a.kasMinimum), targetMargin: tm, bungaModal: bOwn ? Math.round(bn * 100) / 100 : KL_BUNGA_BAWAAN, bungaDariOwner: bOwn, dariOwner: !!ugAturDok(KL_ID), tanggal: a.tanggal || '' };
 }
+/** A121 (owner 27 Nov 2026): bunga / biaya modal per tahun untuk "biaya modal yang tertahan di stok" — BAWAAN 6 % (angka contoh brief riset owner butir A121,
+ *  dipilih owner 27 Nov 2026) sampai owner mengetik angkanya sendiri di Menu › Toko ini › Target & ambang; 0 = mati. Maks = penjaga salah ketik, bukan kebijakan. */
+export const KL_BUNGA_BAWAAN = 6;
+export const KL_BUNGA_MAKS = 50;
 /**
  * Simpan setelan. isi boleh berisi sebagian: { targetHarian, kasMinimum, targetMargin: { jenis: ketikan } } — kolom yang TIDAK dikirim tetap seperti tersimpan
  * (Menu menyimpan target & kas, Harga menyimpan target margin, tidak saling menimpa). Kosong = bawaan / mati. Ketikan rusak DITOLAK dengan kalimat (tidak dibulatkan diam-diam).
@@ -70,6 +76,12 @@ export function susunAturKpi(isi, w) {
   const rupiah = (k, nama) => { if (!isi || !(k in isi)) return ''; const v = isi[k]; if (ugKosong(v)) { data[k] = 0; ubah.push(nama + ' kosong'); return ''; } const n = ugAngka(v);
     if (!(n >= 0) || n > KL_RP_MAKS || Math.round(n) !== n) return nama + ' ditulis dalam rupiah bulat, 0 sampai ' + RP(KL_RP_MAKS); data[k] = n; ubah.push(nama + ' ' + (n ? RP(n) : 'kosong')); return ''; };
   let tolak = rupiah('targetHarian', 'Target omzet harian') || rupiah('kasMinimum', 'Ambang kas minimum');
+  // A121: bunga modal % per tahun — kosong = kembali ke bawaan (kolom dihapus), 0 = mati, koma boleh (6,5 = 6,5 %)
+  if (!tolak && isi && 'bungaModal' in isi) { const v = isi.bungaModal;
+    if (ugKosong(v)) { delete data.bungaModalPersen; ubah.push('bunga modal bawaan ' + klPctTeks(KL_BUNGA_BAWAAN) + ' per tahun'); }
+    else { const t = String(v).trim(); const n = /^\d{1,3}([.,]\d{1,2})?$/.test(t) ? Number(t.replace(',', '.')) : NaN;
+      if (!(n >= 0) || n > KL_BUNGA_MAKS) tolak = 'Bunga modal ditulis dalam persen per tahun, 0 sampai ' + KL_BUNGA_MAKS + ' (6 = 6 % setahun, 0 = mati) — kosong = bawaan ' + KL_BUNGA_BAWAAN + ' %';
+      else { data.bungaModalPersen = Math.round(n * 100) / 100; ubah.push(n ? 'bunga modal ' + klPctTeks(data.bungaModalPersen) + ' per tahun' : 'bunga modal mati'); } } }
   if (!tolak && isi && isi.targetMargin) { const tm = Object.assign({}, lama.targetMargin || {});
     KL_JENIS.forEach((j) => { if (tolak || !(j.id in isi.targetMargin)) return; const v = isi.targetMargin[j.id]; if (ugKosong(v)) { delete tm[j.id]; ubah.push('target ' + j.nama.toLowerCase() + ' bawaan'); return; }
       const n = ugAngka(v); if (!(n > 0) || n > KL_TARGET_MAKS) { tolak = 'Target margin ' + j.nama.toLowerCase() + ' ditulis dalam persen: lebih dari 0 sampai ' + KL_TARGET_MAKS + ' (2,5 = 2,5 %) — kosong = bawaan 3 bulan'; return; }
@@ -245,3 +257,65 @@ export const klLamaPesanan = (kini) => poLamaPenuhi(kini, 90);
 export { bpHariTeks };
 /** Setelan owner tersimpan apa adanya (untuk lembar Atur). */
 export const klDokAtur = () => cacheMentah('aturan').find((d) => String(d.id) === KL_ID) || null;
+
+// ---------- A121 · modal tertahan di stok dalam rupiah (owner 27 Nov 2026, paket sisa sensus) ----------
+const KL_TITIK_MAKS = 62;   // rentang panjang (mis. Tahun ini) dirata-rata dari paling banyak 62 hari berjarak sama — disebut di kalimat, bukan diam-diam
+const klGeserHari = (iso, n) => new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + n)).toISOString().slice(0, 10);
+const klSelisihHari = (a, b) => Math.round((Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)) - Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10))) / 86400000);
+/** Nilai stok satu hari (modal yang tertanam): beras karung = sisa × modal per kg buku (cara nilai neraca & Umur & putaran), kemasan = sisa unit × modal rata-rata
+ *  per unit (neraca). Buku minus dihitung 0 (tidak ada uang yang tertahan di barang yang tidak ada) — sama dengan umNilaiRata. → { rp, buku: { nama: rp } } */
+function klNilaiStokHari(t) {
+  const buku = {}; let rp = 0; const B = ingatStokKarung(t); Object.keys(B).forEach((k) => { const x = B[k]; const kg = Math.max(0, Number(x.sisaKg) || 0); if (!(kg > 0)) return; const v = kg * (Number(x.hppTerakhirPerKg) || 0); rp += v; const m = lpMerekBuku(k) || k; buku[m] = (buku[m] || 0) + v; });
+  const K = ingatStokKemasan(t); Object.keys(K).forEach((k) => { const x = K[k]; const u = Math.max(0, Number(x.sisaUnit) || 0); if (!(u > 0)) return; const v = u * (Number(x.hppRataRataPerUnit) || 0); rp += v; const m = String(x.namaProduk || k) + ' ' + x.ukuranKemasan + ' kg'; buku[m] = (buku[m] || 0) + v; });
+  return { rp, buku };
+}
+/**
+ * MODAL TERTAHAN DI STOK (A121): rata-rata nilai stok (beras karung + kemasan, nilai modal) per hari di [dari, sampai] × bunga modal % per tahun (setelan owner,
+ * bawaan 6 %) × hari ÷ 365 = biaya modal periode itu — uang yang "diam" di gudang kalau dihitung seperti pinjaman / tabungan. BUKAN biaya di laba bersih (tidak
+ * keluar dari laci) — angka bantu, disebut begitu. Sampai paling jauh hari ini; sebelum catatan pertama tidak dihitung. Rentang > 62 hari dirata-rata dari 62 titik
+ * hari berjarak sama (disebut). Siklus uang (hari) ikut disebut supaya rupiahnya terbaca bersama lamanya uang berputar.
+ */
+export function klModalTertahan(kini, dari, sampai) {
+  const iso = hariIniIso(kini); const p = catatanPertama() || iso; let a = String(dari || iso.slice(0, 8) + '01'); let b = String(sampai || iso); if (b > iso) b = iso; if (a < p) a = p;
+  return ingatPerVersi('klModalTertahan|' + a + '|' + b, () => klModalTertahanHitung(a, b, iso));
+}
+function klModalTertahanHitung(a, b, iso) {
+  const A = klAtur(); const bunga = A.bungaModal; const nHari = a <= b ? klSelisihHari(a, b) + 1 : 0;
+  if (!nHari) return { dari: a, sampai: b, nHari: 0, bunga, dariOwner: A.bungaDariOwner, rata: null, kini: null, biaya: null, sebulan: null, buku: [], kalimat: 'Belum ada hari yang bisa dihitung di rentang ini.' };
+  const langkah = Math.max(1, Math.ceil(nHari / KL_TITIK_MAKS)); const titik = []; for (let i = 0; i < nHari; i += langkah) titik.push(klGeserHari(a, i)); if (titik[titik.length - 1] !== b) titik.push(b);
+  let jum = 0; const per = {}; titik.forEach((t) => { const X = klNilaiStokHari(t); jum += X.rp; Object.keys(X.buku).forEach((m) => { per[m] = (per[m] || 0) + X.buku[m]; }); });
+  const rata = jum / titik.length; const akhir = klNilaiStokHari(b).rp; const biaya = bunga > 0 ? rata * bunga / 100 * nHari / 365 : 0; const sebulan = bunga > 0 ? rata * bunga / 100 / 12 : 0;
+  const buku = Object.keys(per).map((m) => ({ nama: m, rata: per[m] / titik.length, biaya: bunga > 0 ? per[m] / titik.length * bunga / 100 * nHari / 365 : 0 })).filter((x) => x.rata > 0.5).sort((x, y) => y.rata - x.rata || x.nama.localeCompare(y.nama));
+  const bTeks = klPctTeks(bunga) + ' per tahun' + (A.bungaDariOwner ? '' : ' (bawaan)');
+  return { dari: a, sampai: b, nHari, nTitik: titik.length, sampel: langkah > 1, bunga, dariOwner: A.bungaDariOwner, rata, kini: akhir, biaya, sebulan, buku, sampaiHariIni: b === iso,
+    rumus: 'Biaya modal = rata-rata nilai stok (beras karung + kemasan, nilai modal) × bunga ' + bTeks + ' × ' + nHari + ' hari ÷ 365' + (langkah > 1 ? ' · rata-rata dari ' + titik.length + ' titik hari berjarak ' + langkah + ' hari' : ''),
+    kalimat: !(bunga > 0) ? 'Rata-rata ' + RP(Math.round(rata)) + ' modal tertahan di stok (' + tanggalPendek(a) + ' – ' + tanggalPendek(b) + '); bunga modal mati — atur di Menu › Toko ini › Target & ambang.'
+      : 'Rata-rata ' + RP(Math.round(rata)) + ' modal tertahan di stok (' + tanggalPendek(a) + ' – ' + tanggalPendek(b) + ') — dengan bunga ' + bTeks + ' setara biaya ' + RP(Math.round(biaya)) + ' dalam ' + nHari + ' hari (±' + RP(Math.round(sebulan)) + ' sebulan). Bukan uang keluar; tidak memotong laba bersih.' };
+}
+
+// ---------- A47 · PPh final sebagai pos anggaran (owner 27 Nov 2026, paket sisa sensus) ----------
+/**
+ * PPh FINAL (PERKIRAAN) sebagai POS ANGGARAN di Laporan › Biaya. Keputusan owner 27 Nov 2026: POS SENDIRI — laba bersih & titik impas TETAP angka mesin (pajak
+ * belum dibayar bukan uang keluar; yang sudah dibayar dari laci & dicatat di uang keluar sudah memotong laba). K = kendaliBulan(key). Perkiraan = pajak-logika
+ * pjTahun (omzet kumulatif tahun itu di atas batas bebas × tarif; bulan berjalan = sampai hari ini). Anggaran = aturanToko/kendaliBiaya.anggaran.pph (owner;
+ * 0 = belum diatur). Bulan berjalan: pajak ikut omzet → dibanding jatah sampai hari ke-N + perkiraan sebulan, lampu dengan ambang kendali biaya yang sama.
+ * Sisihkan = perkiraan − sudah disetor (pajakSetoran masa itu). Semua angka PERKIRAAN (PJ_LABEL).
+ */
+export function klPph(K, kini) {
+  const key = K.key; let B = null, hitung = false, galat = '', badan = false;
+  try { const T = pjTahun(Number(key.slice(0, 4)), kini); hitung = !!T.hitung; badan = !!(T.P && T.P.jenisWp === 'badan'); B = T.daftar.find((x) => x.key === key) || null; } catch (e) { galat = String((e && e.message) || e); }
+  const n = B && hitung && B.pph !== null && B.pph !== undefined ? Math.round(B.pph) : null; const ang = K.A && K.A.anggaran ? Math.round(Number(K.A.anggaran.pph) || 0) : 0; const ambang = K.A ? K.A.ambang : 10;
+  const setor = B ? Number(B.jumlahSetor) || 0 : 0; const D = klPajakDiBiaya(key);
+  const proyeksi = n !== null && K.berjalan && K.hariJalan > 0 ? Math.round(n / K.hariJalan * K.nHari) : null;
+  let lampu = 'tanpa', dasar = null, selisih = null, lampuTeks = 'anggaran belum diatur';
+  if (ang > 0 && n !== null) { dasar = K.berjalan ? Math.round(ang * K.hariJalan / K.nHari) : ang; selisih = n - dasar; const pct = dasar > 0 ? selisih / dasar * 100 : null;
+    lampu = selisih <= 0 ? 'hijau' : pct !== null && pct <= ambang ? 'amber' : 'merah';
+    lampuTeks = (K.berjalan ? 'jatah sampai hari ke-' + K.hariJalan + ' ' + RP(dasar) : 'anggaran ' + RP(ang)) + ' · ' + (selisih <= 0 ? 'sisa ' + RP(-selisih) : 'LEWAT ' + RP(selisih)); }
+  else if (ang > 0) lampuTeks = 'anggaran ' + RP(ang) + ' · perkiraan belum bisa dihitung';
+  const keadaan = galat ? 'galat' : n === null ? 'tanpa' : 'ada';
+  return { id: 'pph', nama: 'PPh final (perkiraan)', key, n, keadaan, galat, lengkap: !!(B && B.lengkapSejauhIni), anggaran: ang, dasar, selisih, lampu, lampuTeks, proyeksi, setor, sisihkan: n === null ? null : Math.max(0, n - setor),
+    diBiaya: D.rp, nDiBiaya: D.n, label: PJ_LABEL, tujuan: { ke: 'laporan', keluarga: 'pajak' }, berjalan: !!K.berjalan,
+    ket: 'pos sisihan — di luar laba bersih & titik impas (keputusan owner 27 Nov 2026); setoran yang dibayar dari laci & dicatat di uang keluar sudah ikut biaya toko',
+    teks: keadaan === 'galat' ? 'PPh final gagal dihitung: ' + galat : keadaan === 'tanpa' ? (badan ? 'PPh final tidak diperkirakan — bentuk usaha di profil pajak = badan (hitungan ini untuk orang pribadi)' : !hitung ? 'PPh final belum bisa diperkirakan — tarif pajak belum diatur: tekan "Pakai aturan" di Laporan › Pajak' : 'PPh final ' + lpNamaBulan(key) + ' belum bisa diperkirakan')
+      : 'Sisihkan ' + RP(Math.max(0, n - setor)) + ' untuk PPh final ' + lpNamaBulan(key) + (n === 0 ? ' (omzet setahun belum melewati batas bebas)' : '') + (setor ? ' · sudah disetor ' + RP(setor) : '') + (proyeksi !== null ? ' · perkiraan sebulan ' + RP(proyeksi) : '') + (B && !B.lengkapSejauhIni ? ' · omzet tahun ini belum lengkap' : '') };
+}

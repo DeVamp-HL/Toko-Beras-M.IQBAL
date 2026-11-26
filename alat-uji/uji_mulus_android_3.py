@@ -232,7 +232,8 @@ RUSAK = [
     ('kunci menit kembali di semua hitungan Ringkasan', {RG: [("(menit ? Math.floor(k.getTime() / 60000) : '')", "Math.floor(k.getTime() / 60000)")]}, None),
     ('pemanasan dasbor mati', {RG: [("    const token = ++_panas; let i = 0;", "    return; const token = ++_panas; let i = 0;")]}, None),
     ('pemanasan dasbor untuk bukan owner', {RG: [("if (!pemilik() || tampilan !== 'dasbor' ||", "if (tampilan !== 'dasbor' ||")]}, None),
-    ('dasbor tidak memakai kelompok yang dipanaskan', {RG: [("dbHasil = susunDasbor(k, r, null, ingatDb(k));", "dbHasil = susunDasbor(k, r);")]}, None),
+    # paket sisa sensus (owner 27 Nov 2026, B94): panggilan membawa saringan Dasbor (S) — kerusakannya tetap sama: ingatan kelompok tidak dipakai
+    ('dasbor tidak memakai kelompok yang dipanaskan', {RG: [("dbHasil = susunDasbor(k, r, null, ingatDb(k), S);", "dbHasil = susunDasbor(k, r, null, null, S);")]}, None),
     ('tebakan karcis tidak diingat', {KC: [("return ingatPerVersi('kcTebak|' + n, () => tebakanKarcisHitung(n)); }", "return tebakanKarcisHitung(n); }")]}, None),
     ('rincian hari ini tidak diingat', {KC: [("{ return ingatPerVersi('kcRinciHari|' + iso, () => riwayatRinciHitung(iso)); }", "{ return riwayatRinciHitung(iso); }")]}, None),
     ('rtHitung tidak diingat', {RT: [("return ingatPerVersi('rtHitung|' + iso + '|' + K.st + '|' + K.teks, () => rtHitungIsi(iso, K));", "return rtHitungIsi(iso, K);")]}, None),

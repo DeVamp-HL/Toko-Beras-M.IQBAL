@@ -37,6 +37,7 @@ function WG_KARTU() {
     LAMA('kHari', 'Hari ini', 'hari', 6), LAMA('kKpi', 'Margin & target', 'kpi', 6), LAMA('kTren', 'Omzet & laba kotor', 'tren', 12), LAMA('kBulan', 'Bulan ini', 'bulan', 6),
     LAMA('kPemicu', 'Pemicu biaya yang naik', 'bulan', 6), LAMA('kStok', 'Stok per merek', 'stok', 6), LAMA('kPondasi', 'Pondasi toko', 'pondasi', 6), LAMA('kWadah', 'Wadah literan', 'stok', 6),
     LAMA('kTagihan', 'Piutang & utang pemasok', 'tagihan', 6), LAMA('kMutu', 'Mutu usaha', 'mutu', 6), LAMA('kB2b', 'Pelanggan usaha', 'b2b', 6),
+    LAMA('kBeli', 'Pembelian', 'beli', 6),   // B68 (owner 27 Nov 2026): grafik pembelian per hari · minggu · bulan (dasbor.js kartuBeli)
     K('kPerhatian', 'Perlu perhatian', 'perhatian', 'lebar', (D) => { const P = (D.perhatian || []).filter((x) => x && x.teks);
       return { nilai: P.length ? P.length + ' hal' : 'tidak ada', ket: P.length ? 'yang merah didahulukan' : 'tidak ada bon, utang, stok, atau pesanan yang menunggu', awas: P.some((x) => x.awas),
         baris: P.slice().sort((a, b) => (b.awas ? 1 : 0) - (a.awas ? 1 : 0)).slice(0, 4).map((x) => [x.teks, x.nilai || '']), tujuan: null }; }),
@@ -123,8 +124,27 @@ export const WG_KATALOG = [
     const akhir = p[p.length - 1]; if (!akhir) return { nilai: 'belum bisa', ket: E.galatPosisi || (E.posisi[0] ? E.posisi[0].kenapa : 'titik kas belum disetel'), awas: false, rinci: [], tujuan: E.posisiTujuan };
     return { nilai: RP(akhir.kas), ket: 'kas · piutang ' + wgRpPendek(akhir.piutang) + ' · stok ' + wgRpPendek(akhir.stok) + ' · ' + akhir.nama, awas: false,
       tren: E.posisi.map((x) => ({ label: x.nama, n: x.ada ? x.kas : null, berjalan: x.berjalan })), rinci: p.map((x) => [x.nama, 'kas ' + wgRpPendek(x.kas) + ' · piutang ' + wgRpPendek(x.piutang) + ' · stok ' + wgRpPendek(x.stok)]), tujuan: E.posisiTujuan }; } },
+  // ---------- paket sisa sensus (owner 27 Nov 2026): B68 · B35 · A121 · A47 — membaca kelompok dasbor yang SAMA dengan kartunya ----------
+  { id: 'pembelian', nama: 'Pembelian', ukuran: 'lebar', kel: 'beli', ikut: true, isi: (D) => { const B = D.beli; if (!ada(B)) return wgGalat('beli', B); const P = B.saring; const T = B.tren.bulan;
+    return { nilai: RP(P.rp), ket: B.periodeNama + ' · ' + P.n + ' kedatangan · bon ' + wgRpPendek(P.bon.rp), awas: false, tren: T.batang.map((x) => ({ label: x.label, n: x.absen ? null : x.rp, berjalan: !!x.berjalan })),
+      rinci: [['Bon (dibayar nanti)', RP(P.bon.rp)], ['Dibayar langsung', RP(P.langsung.rp)]].concat(B.bulan ? [[B.bulanNama, RP(B.bulan.rp) + ' · ' + B.bulan.n + ' kedatangan']] : []), tujuan: B.tujuan }; } },
+  { id: 'telatBayar', nama: 'Diperkirakan telat bayar', ukuran: 'kecil', kel: 'tagihan', isi: (D) => { const G = D.tagihan; if (!ada(G)) return wgGalat('tagihan', G); const T = G.piutang.telat; if (!ada(T)) return wgGalat('telat', T);
+    return { nilai: T.n ? T.n + ' orang' : 'tidak ada', ket: T.n ? RP(T.rp) + ' belum jatuh tempo · 2 dari 3 bon terakhir telat' : T.kalimat, awas: T.n > 0, rinci: T.daftar.map((o) => [o.nama, RP(o.rp)]), tujuan: G.piutang.telatTujuan }; } },
+  { id: 'modalTertahan', nama: 'Modal tertahan di stok', ukuran: 'kecil', kel: 'kpi', ikut: true, isi: (D) => { const Q = D.kpi; if (!ada(Q) || !ada(Q.modal)) return wgGalat('kpi', ada(Q) ? Q.modal : Q); const M = Q.modal;
+    if (M.rata === null) return { nilai: '—', ket: M.kalimat, awas: false, rinci: [], tujuan: Q.tujuan };
+    return { nilai: wgRpPendek(M.rata), ket: M.bunga > 0 ? 'rata-rata · biaya modal ' + wgRpPendek(M.biaya) + ' (' + M.nHari + ' hari, ' + DESIMAL(M.bunga) + '%/th)' : 'rata-rata · bunga modal mati', awas: false,
+      rinci: [['Nilai stok terakhir', RP(Math.round(M.kini))], ['± sebulan', RP(Math.round(M.sebulan))]].concat(M.buku.slice(0, 3).map((x) => [x.nama, RP(Math.round(x.rata))])), tujuan: { ke: 'sistem', sistem: 'target' } }; } },
+  { id: 'pphBulan', nama: 'Sisihkan PPh final', ukuran: 'kecil', kel: 'bulan', ikut: true, isi: (D) => { const B = D.bulan; if (!ada(B)) return wgGalat('bulan', B); const X = B.pph; if (!X) return wgGalat('pph', X);
+    if (X.n === null) return { nilai: '—', ket: X.teks, awas: false, rinci: [], tujuan: X.tujuan };
+    return { nilai: RP(X.sisihkan), ket: 'perkiraan ' + wgRpPendek(X.n) + (X.anggaran > 0 ? ' · ' + X.lampuTeks : ' · anggaran belum diatur') + ' · di luar laba bersih', awas: X.lampu === 'merah', lampu: X.lampu === 'tanpa' ? '' : X.lampu,
+      rinci: [['Perkiraan', RP(X.n)], ['Sudah disetor', RP(X.setor)]].concat(X.proyeksi !== null ? [['Perkiraan sebulan', RP(X.proyeksi)]] : []), tujuan: X.tujuan }; } },
 ].map((w) => Object.assign({ jenis: 'angka' }, w)).concat(WG_KARTU()).map((K) => Object.assign({ w: WG_LEBAR_UKURAN[K.ukuran] || 6, minW: K.jenis === 'angka' ? 2 : 3 }, K));
 const wgKat = (id) => WG_KATALOG.find((w) => w.id === id) || null;
+/** B94 (owner 27 Nov 2026): angka yang membaca kelompok YANG IKUT saringan (hari · bulan · kpi bulanan · mutu · pembelian) ganti nama sesuai periodenya — angka
+ *  "Laba kotor hari ini" tidak boleh memajang 7 hari. Yang bernama "hari ini" dan membaca pembanding jam segini (banding) tetap hari ini. */
+const WG_NAMA_SARING = { labaKotorHari: (S) => 'Laba kotor · ' + S.nama, labaBersihBulan: (S) => 'Laba bersih · ' + S.bulanNama, biayaBulan: (S) => 'Biaya · ' + S.bulanNama,
+  marginBulan: (S) => 'Margin · ' + S.bulanNama, susut: (S) => 'Susut beras · ' + S.bulanNama, pembelian: (S) => 'Pembelian · ' + S.nama, modalTertahan: (S) => 'Modal tertahan di stok · ' + S.nama, pphBulan: (S) => 'Sisihkan PPh · ' + S.bulanNama };
+export const wgNama = (K, S) => (S && !S.bawaan && WG_NAMA_SARING[K.id] ? WG_NAMA_SARING[K.id](S) : K.nama);
 /** Bawaan (belum pernah diatur owner) = urutan kartu lama ("Tampilan saat ini yang paling penting"), Mac: Hari ini | Margin & target · Tren selebar kisi · lalu
  *  kartu lajur kiri & kanan lama bergantian (kisi merapat mengisinya seperti dua lajur dulu). Tinggi = setinggi isinya. Widget tambahan = di katalog. */
 export const WG_BAWAAN = ['kHari', 'kKpi', 'kTren', 'kBulan', 'kWadah', 'kPemicu', 'kTagihan', 'kStok', 'kMutu', 'kPondasi', 'kB2b'].map((id) => ({ id, w: (WG_KATALOG.find((K) => K.id === id) || {}).w || 6, h: null }));
@@ -168,5 +188,5 @@ export function susunAturDasbor(daftar, w) {
 export function wgSusun(daftar, D) {
   return wgBersih(daftar).map((w) => { const K = wgKat(w.id); let isi;
     try { isi = K.isi(D || {}); } catch (e) { isi = wgGalat(K.kel, { galat: String((e && e.message) || e) }); }
-    return Object.assign({ id: w.id, w: w.w, h: w.h, nama: K.nama, kel: K.kel, jenis: K.jenis, khusus: !!K.khusus, minW: K.minW }, isi); });
+    return Object.assign({ id: w.id, w: w.w, h: w.h, nama: wgNama(K, D && D.saring), kel: K.kel, jenis: K.jenis, khusus: !!K.khusus, minW: K.minW }, isi); });
 }
