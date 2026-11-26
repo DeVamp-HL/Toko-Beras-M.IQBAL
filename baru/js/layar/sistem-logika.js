@@ -28,6 +28,8 @@ import { tpSusunPutus, tpTeks, TP_TINDAKAN, TP_PESAN, TP_KABAR } from './titipan
 // paket Banding pemasok (owner 26 Nov 2026): pengingat mingguan (harga ≥ N pemasok) & bulanan (banding bulan lalu) + usul harga tawaran / acuan dari tablet
 // (rules v21) — modul DAUN banding-catat-logika (tanpa mesin laporan)
 import { bcSumberPengingat, bcPasangUsul, bcTeksUsul, BC_TINDAKAN } from './banding-catat-logika.js';
+// owner 26 Nov 2026: lokasi langit & cuaca gerbang (atur Perangkat)
+import { lgLokasiSah } from '../inti/langit-logika.js';
 
 export const ssHariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const ssTambahHari = (iso, n) => new Date((ssHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
@@ -57,7 +59,7 @@ export const SS_PENERIMA = ['Owner', 'Ben'];
 
 // ---------- ATUR SENDIRI — angka & daftar kebijakan owner, satu dokumen aturanToko per layar; bawaan = angka desain terkunci ----------
 export const SS_ATUR_BAWAAN = {
-  perangkat: { batasAntre: 30, batasDenyut: 15, pemegang: ['Owner', 'Ben'] },
+  perangkat: { batasAntre: 30, batasDenyut: 15, pemegang: ['Owner', 'Ben'], cuaca: null },   // cuaca: lokasi langit gerbang { nama, lat, lon } (owner 26 Nov 2026)
   // owner 7 Okt (JS2-C): jatah nego per peran (% margin) + per akun (uid → %, kosong = ikut peran), siapa boleh di bawah modal ('owner' | peran | 'uid:…'), langkah batas
   peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: NG_BAWAAN.ben, jatahKaryawan: NG_BAWAAN.karyawan, jatahAkun: {}, bawahModal: NG_BAWAAN.bawahModal.slice(), langkahNego: NG_BAWAAN.langkah, jejak: [],
     operator: {}, ringkasOrang: '', intipDetik: 60 },   // owner 22 Nov 2026 (sidik jari Tahap A): intip uang tertutup sendiri sesudah intipDetik tidak disentuh · putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js · owner 21 Nov: orang yang membuka Ringkas hari ini (kode orang, '' = mati)
@@ -101,7 +103,8 @@ export function susunAturSistem(id, isi, w) {
   const A = ssAtur(id); const o = {}; const nama = (arr, maks) => (Array.isArray(arr) ? arr : []).map((x) => String(x == null ? '' : x).trim()).filter(Boolean).slice(0, maks || 20);
   const angka = (k, min, maks, satuan) => { const n = ssAngka(isi[k] !== undefined ? isi[k] : A[k], min, maks); if (n === null) return k + ' harus ' + min + '–' + maks + (satuan ? ' ' + satuan : ''); o[k] = Math.round(n); return ''; };
   let tolak = '';
-  if (id === 'perangkat') { tolak = angka('batasAntre', 1, 600, 'menit') || angka('batasDenyut', 1, 600, 'menit'); o.pemegang = nama(isi.pemegang !== undefined ? isi.pemegang : A.pemegang); if (!tolak && !o.pemegang.some((x) => x.toLowerCase() === 'owner')) tolak = 'Owner tidak bisa dihapus dari daftar pencatat'; }
+  if (id === 'perangkat') { tolak = angka('batasAntre', 1, 600, 'menit') || angka('batasDenyut', 1, 600, 'menit'); o.pemegang = nama(isi.pemegang !== undefined ? isi.pemegang : A.pemegang); if (!tolak && !o.pemegang.some((x) => x.toLowerCase() === 'owner')) tolak = 'Owner tidak bisa dihapus dari daftar pencatat';
+    o.cuaca = lgLokasiSah(isi.cuaca !== undefined ? isi.cuaca : A.cuaca); }   // owner 26 Nov 2026: lokasi langit & cuaca gerbang (null = langit ikut jam saja)
   else if (id === 'peran') { tolak = angka('batasSekaligus', 0, 50000000, 'rupiah') || angka('jatahBen', 0, 100, '%') || angka('jatahKaryawan', 0, 100, '%') || angka('langkahNego', 1, 1000000, 'rupiah') || angka('intipDetik', 15, 600, 'detik'); o.hak = ssSalin(A.hak); o.jejak = (A.jejak || []).slice(0, 40);
     // owner 7 Okt (JS2-C): jatah per akun — kosong = ikut perannya; di bawah modal — kunci yang dikenal saja (owner, peran, uid akun terdaftar)
     const ja = isi.jatahAkun !== undefined ? isi.jatahAkun : A.jatahAkun; o.jatahAkun = {};

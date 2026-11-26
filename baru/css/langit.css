@@ -1,0 +1,182 @@
+/* LANGIT GERBANG — owner 26 Nov 2026: langit ikut jam & cuaca sungguhan, "mewah", "terbaik tapi optimal" (js/inti/langit.js, langit-logika.js).
+   Semua lapisan di BELAKANG pintu kaca (.gm-latar) kecuali embun (di kaca) dan kilasan kilat (di atas pintu). Pintu, papan logo, cincin kunci, kotak Masuk
+   = desain G4 yang dikunci owner 29 Sep, tidak disentuh.
+   OPTIMAL: gerak yang berjalan terus HANYA transform / opacity (dikomposit kartu grafis); letak & warna berubah sekali per menit tanpa transisi tata letak;
+   lapisan cuaca yang tidak dipakai display: none. */
+
+/* ---------- warna langit (dihitung per menit: fajar · pagi · siang · sore · senja · petang · malam; mendung menarik ke abu) ---------- */
+.lg-langit { position: absolute; inset: 0; background: linear-gradient(180deg, var(--lg-l1, transparent) 0%, var(--lg-l2, transparent) 56%, var(--lg-l3, transparent) 100%); }
+.gm-bola { transition: opacity 2s ease; }
+.gerbang-masuk.lg-malam .gm-bola.emas { opacity: 0.3; }
+
+/* ---------- bintang: tiga kelompok berkelip bergantian (kecil, sedang, terang) ---------- */
+.lg-bintang { position: absolute; left: 0; right: 0; top: 0; height: 72%; display: none; opacity: var(--lg-bintang, 0); transition: opacity 2.4s ease; }
+.gerbang-masuk.lg-ada-bintang .lg-bintang { display: block; }
+.lg-bintang svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: #fffaf0; will-change: opacity; }
+.lg-bintang-a { animation: lgKelip 4.6s ease-in-out infinite alternate; }
+.lg-bintang-b { animation: lgKelip 6.3s ease-in-out -2.2s infinite alternate; }
+.lg-bintang-c { fill: #fff6dc; animation: lgKelip 3.1s ease-in-out -1.1s infinite alternate; }
+@keyframes lgKelip { from { opacity: 1; } to { opacity: 0.32; } }
+
+/* ---------- letak matahari & bulan (owner 26 Nov 2026: jam 12 matahari dulu di belakang papan nama): lintasan tropis dua versi dari langit-logika.js —
+   gerbang BERTUMPUK (HP, tablet berdiri: cincin di atas kotak Masuk) = lintasan tegak; gerbang DUA KOLOM = lintasan datar. Syarat dua kolom = gerbang.css. ---------- */
+.gerbang-masuk { --lg-sx: var(--lg-surya-tx, 50%); --lg-sy: var(--lg-surya-ty, 30%); --lg-bx: var(--lg-bulan-tx, 50%); --lg-by: var(--lg-bulan-ty, 30%); }
+@media (min-width: 1100px), (min-width: 900px) and (orientation: landscape) {
+  .gerbang-masuk { --lg-sx: var(--lg-surya-x, 50%); --lg-sy: var(--lg-surya-y, 30%); --lg-bx: var(--lg-bulan-x, 50%); --lg-by: var(--lg-bulan-y, 30%); }
+}
+
+/* ---------- bulan: fase hari ini (bayangan digeser), pendar lembut ---------- */
+.lg-bulan { position: absolute; left: var(--lg-bx, 50%); top: var(--lg-by, 30%); width: clamp(48px, 6.4vw, 88px); aspect-ratio: 1; transform: translate(-50%, -50%);
+  display: none; opacity: var(--lg-bulan-op, 0); transition: opacity 2.4s ease; }
+.gerbang-masuk.lg-ada-bulan .lg-bulan { display: block; }
+.lg-bulan svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; }
+.lg-bulan-pendar { position: absolute; inset: -140%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 246, 214, 0.3), rgba(206, 216, 255, 0.1) 32%, rgba(206, 216, 255, 0) 62%);
+  will-change: transform, opacity; animation: lgDenyut 9s ease-in-out infinite alternate; }
+
+/* ---------- matahari: inti (putih → jingga dekat cakrawala), pendar berdenyut, berkas cahaya fajar & senja yang berputar pelan ---------- */
+.lg-surya { position: absolute; left: var(--lg-sx, 50%); top: var(--lg-sy, 30%); width: clamp(64px, 8.6vw, 118px); aspect-ratio: 1; transform: translate(-50%, -50%);
+  display: none; opacity: var(--lg-surya-op, 0); transition: opacity 2.4s ease; }
+.gerbang-masuk.lg-ada-surya .lg-surya { display: block; }
+.lg-inti { position: absolute; inset: 31%; border-radius: 50%; background: radial-gradient(circle at 44% 40%, #fffef7, #fff0c2 52%, #ffd98a 100%); }
+.lg-inti::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 46% 42%, #ffe2b0, #ff9f4a 70%, #f0782e 100%);
+  opacity: calc(1 - var(--lg-surya-hangat, 1)); }
+.lg-pendar { position: absolute; inset: -70%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 238, 176, 0.62), rgba(255, 206, 120, 0.24) 30%, rgba(255, 190, 100, 0) 66%);
+  will-change: transform, opacity; animation: lgDenyut 7s ease-in-out infinite alternate; }
+.lg-sinar { position: absolute; inset: -290%; border-radius: 50%; display: none; opacity: var(--lg-sinar-op, 0); transition: opacity 3s ease;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 222, 150, 0.2) 0deg 3.5deg, rgba(255, 222, 150, 0) 3.5deg 11deg);
+  -webkit-mask: radial-gradient(circle, #000 6%, rgba(0, 0, 0, 0.45) 30%, transparent 64%); mask: radial-gradient(circle, #000 6%, rgba(0, 0, 0, 0.45) 30%, transparent 64%);
+  will-change: transform; animation: lgPutar 160s linear infinite; }
+.gerbang-masuk.lg-ada-sinar .lg-sinar { display: block; }
+/* TERIK siang tropis (owner 26 Nov 2026: "Indonesia kan negara tropis. Lalu matahari sama sekali gak muncul beserta pancarannya."): silau putih menyebar
+   (di belakang kaca), pancaran panjang tak beraturan yang berputar sangat pelan + kilau bintang + cakram tajam (DI DEPAN kaca — di balik kaca buram Mac/iPhone
+   keduanya lebur jadi bercak), suar lensa samar. Kekuatan = --lg-terik 0–1 (±10.00–14.00 cerah). */
+.lg-terik, .lg-terik-depan { position: absolute; inset: 0; display: none; opacity: var(--lg-terik, 0); transition: opacity 3s ease; }
+.gerbang-masuk.lg-ada-terik .lg-terik, .gerbang-masuk.lg-ada-terik .lg-terik-depan { display: block; }
+.lg-surya-depan { position: absolute; left: var(--lg-sx, 50%); top: var(--lg-sy, 30%); width: clamp(64px, 8.6vw, 118px); aspect-ratio: 1; transform: translate(-50%, -50%);
+  display: none; opacity: var(--lg-surya-op, 0); transition: opacity 2.4s ease; }
+.gerbang-masuk.lg-ada-surya .lg-surya-depan { display: block; }
+.lg-surya-depan .lg-inti { box-shadow: 0 0 14px 4px rgba(255, 250, 228, 0.6), 0 0 40px 12px rgba(255, 238, 190, 0.28); }
+.lg-silau { position: absolute; inset: -260%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 252, 0.95) 0%, rgba(255, 252, 236, 0.66) 5%, rgba(255, 246, 214, 0.34) 12%, rgba(255, 242, 204, 0.14) 24%, rgba(255, 242, 204, 0) 48%); }
+.lg-pancar { position: absolute; inset: -440%; border-radius: 50%;
+  background: repeating-conic-gradient(from 2deg, rgba(255, 253, 240, 0.5) 0deg 0.9deg, rgba(255, 253, 240, 0) 0.9deg 9deg),
+    repeating-conic-gradient(from 6deg, rgba(255, 246, 214, 0.26) 0deg 3deg, rgba(255, 246, 214, 0) 3deg 23deg);
+  -webkit-mask: radial-gradient(circle, #000 2%, rgba(0, 0, 0, 0.55) 11%, rgba(0, 0, 0, 0.18) 26%, transparent 50%); mask: radial-gradient(circle, #000 2%, rgba(0, 0, 0, 0.55) 11%, rgba(0, 0, 0, 0.18) 26%, transparent 50%);
+  will-change: transform; animation: lgPutar 300s linear infinite; }
+.lg-kilau { position: absolute; inset: -120%; background: repeating-conic-gradient(from 22deg, rgba(255, 255, 255, 0.95) 0deg 0.6deg, rgba(255, 255, 255, 0) 0.6deg 45deg);
+  -webkit-mask: radial-gradient(circle, #000 5%, rgba(0, 0, 0, 0.35) 20%, transparent 48%); mask: radial-gradient(circle, #000 5%, rgba(0, 0, 0, 0.35) 20%, transparent 48%);
+  will-change: opacity; animation: lgKilau 4.2s ease-in-out infinite alternate; }
+@keyframes lgKilau { from { opacity: 0.4; } to { opacity: 1; } }
+/* suar lensa: empat lingkaran samar di garis matahari → tengah layar (k = jarak; 1 = tepat di tengah). Diam, tanpa JS per bingkai. */
+.lg-suar { position: absolute; inset: 0; display: none; opacity: calc(var(--lg-terik, 0) * 0.75); transition: opacity 3s ease; }
+.gerbang-masuk.lg-ada-terik .lg-suar { display: block; }
+.lg-suar i { position: absolute; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%);
+  left: calc(var(--lg-sx, 50%) + (50% - var(--lg-sx, 50%)) * var(--k, 0.5)); top: calc(var(--lg-sy, 30%) + (50% - var(--lg-sy, 30%)) * var(--k, 0.5)); }
+.lg-suar i:nth-child(1) { --k: 0.32; width: clamp(18px, 2.2vw, 30px); background: radial-gradient(circle, rgba(255, 238, 180, 0.5), rgba(255, 238, 180, 0) 70%); }
+.lg-suar i:nth-child(2) { --k: 0.58; width: clamp(8px, 1vw, 14px); background: rgba(170, 226, 255, 0.42); }
+.lg-suar i:nth-child(3) { --k: 0.86; width: clamp(40px, 5vw, 70px); background: radial-gradient(circle, rgba(255, 214, 150, 0) 52%, rgba(255, 214, 150, 0.24) 66%, rgba(255, 214, 150, 0) 74%); }
+.lg-suar i:nth-child(4) { --k: 1.24; width: clamp(16px, 2vw, 26px); background: radial-gradient(circle, rgba(196, 170, 255, 0.36), rgba(196, 170, 255, 0) 70%); }
+@keyframes lgDenyut { from { opacity: 0.72; transform: scale(0.95); } to { opacity: 1; transform: scale(1.05); } }
+@keyframes lgPutar { to { transform: rotate(360deg); } }
+
+/* ---------- awan: dua lapis bergerak beda kecepatan (paralaks), tebal menurut tutupan awan, warnanya ikut langit ---------- */
+.lg-awan { position: absolute; left: 0; width: 200%; display: none; will-change: transform; transition: opacity 3s ease; }
+.gerbang-masuk.lg-berawan .lg-awan { display: block; }
+.lg-awan svg { display: block; width: 100%; height: 100%; }
+.lg-awan.jauh { top: 3%; height: 30%; opacity: calc(var(--lg-awan-op, 0) * 0.75); animation: lgGeser 280s linear infinite; }
+.lg-awan.dekat { top: 9%; height: 50%; opacity: var(--lg-awan-op, 0); animation: lgGeser 160s linear -40s infinite; }
+@keyframes lgGeser { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+
+/* ---------- kabut: dua pita rendah melayang berlawanan arah ---------- */
+.lg-kabut { position: absolute; left: 0; right: 0; top: 34%; bottom: 0; display: none; opacity: var(--lg-kabut-op, 0); transition: opacity 3s ease; }
+.gerbang-masuk.lg-berkabut .lg-kabut { display: block; }
+.lg-kabut i { position: absolute; left: 0; top: 0; width: 200%; height: 64%; will-change: transform; animation: lgGeser 95s linear infinite;
+  background: radial-gradient(ellipse 28% 46% at 25% 55%, rgba(236, 239, 244, 0.6), rgba(236, 239, 244, 0) 72%), radial-gradient(ellipse 28% 46% at 75% 50%, rgba(236, 239, 244, 0.52), rgba(236, 239, 244, 0) 72%); }
+.lg-kabut i.b { top: 36%; animation-duration: 140s; animation-direction: reverse; opacity: 0.85; }
+body.gelap .lg-kabut i { background: radial-gradient(ellipse 28% 46% at 25% 55%, rgba(150, 160, 178, 0.4), rgba(150, 160, 178, 0) 72%), radial-gradient(ellipse 28% 46% at 75% 50%, rgba(150, 160, 178, 0.34), rgba(150, 160, 178, 0) 72%); }
+
+/* ---------- hujan: dua lapis garis (jauh tipis & lambat, dekat tebal & cepat) — ubin digambar sekali, lapisnya yang digeser ---------- */
+.lg-hujan { position: absolute; left: -12%; right: -12%; bottom: 0; display: none; background-repeat: repeat; will-change: transform; }
+.lg-hujan.jauh { top: -360px; background-size: 240px 360px; opacity: 0.42; animation: lgHujanJauh 1.15s linear infinite; }
+.lg-hujan.dekat { top: -450px; background-size: 300px 450px; opacity: 0.58; animation: lgHujanDekat 0.62s linear infinite; }
+.gerbang-masuk.lg-hujan-1 .lg-hujan.jauh, .gerbang-masuk.lg-hujan-2 .lg-hujan, .gerbang-masuk.lg-hujan-3 .lg-hujan { display: block; }
+.gerbang-masuk.lg-hujan-1 .lg-hujan.jauh { opacity: 0.3; animation-duration: 1.4s; }
+.gerbang-masuk.lg-hujan-3 .lg-hujan.jauh { opacity: 0.6; animation-duration: 0.86s; }
+.gerbang-masuk.lg-hujan-3 .lg-hujan.dekat { opacity: 0.78; animation-duration: 0.47s; }
+@keyframes lgHujanJauh { from { transform: translate3d(0, 0, 0) skewX(-7deg); } to { transform: translate3d(0, 360px, 0) skewX(-7deg); } }
+@keyframes lgHujanDekat { from { transform: translate3d(0, 0, 0) skewX(-9deg); } to { transform: translate3d(0, 450px, 0) skewX(-9deg); } }
+
+/* ---------- embun di kaca pintu: titik air diam + tetes yang meluncur turun (hanya saat hujan) ---------- */
+.lg-embun { position: absolute; inset: 0; display: none; pointer-events: none; }
+.gerbang-masuk.lg-hujan-1 .lg-embun, .gerbang-masuk.lg-hujan-2 .lg-embun, .gerbang-masuk.lg-hujan-3 .lg-embun { display: block; }
+.gerbang-masuk.lg-hujan-1 .lg-embun .lg-titik { opacity: 0.55; }
+.lg-embun .lg-titik { position: absolute; inset: 0; width: 100%; height: 100%; }
+.lg-luncur { position: absolute; width: 6px; height: 9px; border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%; will-change: transform, opacity; animation: lgLuncur 12s cubic-bezier(.55, 0, .85, 1) infinite;
+  background: radial-gradient(circle at 38% 34%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.25) 40%, rgba(90, 104, 120, 0.4) 100%); }
+.lg-luncur::before { content: ""; position: absolute; left: 50%; bottom: 80%; width: 1.4px; height: 46px; margin-left: -0.7px; border-radius: 1px; background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.4)); }
+@keyframes lgLuncur { 0% { transform: translate3d(0, 0, 0); opacity: 0; } 10% { opacity: 1; } 35% { transform: translate3d(0, 6vh, 0); } 80% { opacity: 1; } 100% { transform: translate3d(0, 62vh, 0); opacity: 0; } }
+
+/* ---------- petir (owner 26 Nov 2026 digarap ulang): kilasan langit di BELAKANG awan (awan jadi siluet saat menyala), berpusat di titik sambaran; sambaran
+   bercabang acak di depan awan — inti putih + cahaya biru-ungu (filter statis, digambar sekali per sambaran); kilasan tipis di atas pintu. Semua opacity. ---------- */
+.lg-kilat { position: absolute; inset: 0; display: none; opacity: 0; will-change: opacity;
+  background: radial-gradient(ellipse 58% 62% at var(--lg-kilat-x, 50%) 12%, rgba(232, 238, 255, 0.95), rgba(186, 196, 255, 0.4) 42%, rgba(186, 196, 255, 0) 76%); }
+.lg-sambar { position: absolute; z-index: 3; left: 0; right: 0; top: 0; height: 74%; display: none; pointer-events: none; }   /* di depan pintu kaca (z 2), sejajar makhluk hidup */
+.lg-petir { position: absolute; top: 0; left: 40%; width: 120px; height: 100%; opacity: 0; overflow: visible; will-change: opacity; }
+.lg-petir path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.lg-petir-cahaya path { stroke: rgba(176, 168, 255, 0.55); stroke-width: 7; vector-effect: non-scaling-stroke; }
+.lg-petir-cahaya { filter: drop-shadow(0 0 10px rgba(150, 140, 255, 0.85)) drop-shadow(0 0 26px rgba(120, 130, 255, 0.55)); }
+.lg-petir-inti path { stroke: #fbfbff; stroke-width: 2.2; vector-effect: non-scaling-stroke; }
+.lg-petir .lg-cabang { stroke-width: 1.1; } .lg-petir-cahaya .lg-cabang { stroke-width: 4; }
+.lg-kilas { position: absolute; inset: 0; z-index: 5; display: none; opacity: 0; pointer-events: none; background: rgba(236, 240, 255, 0.2); will-change: opacity; }
+.gerbang-masuk.lg-ada-petir .lg-kilat, .gerbang-masuk.lg-ada-petir .lg-kilas, .gerbang-masuk.lg-ada-petir .lg-sambar { display: block; }
+.gerbang-masuk.t-membuka .lg-sambar, .gerbang-masuk.t-menutup .lg-sambar { visibility: hidden; }   /* pintu sedang bergerak: sambaran di depan kaca tidak ikut */
+
+/* ---------- makhluk hidup menurut jam & cuaca: burung & capung siang tanpa hujan, kunang-kunang malam ---------- */
+.gerbang-masuk.lg-tanpa-burung .gm-kawanan, .gerbang-masuk.lg-tanpa-capung .gm-capung, .gerbang-masuk:not(.lg-kunang) .gm-kunang { display: none; }
+
+/* ---------- SUASANA: satwa menurut jam & cuaca (langit-logika lgSatwa) — kotak TERBANG (translate) berisi SVG yang MENGEPAK (scale): dua-duanya transform ---------- */
+.lg-satwa { position: absolute; left: 0; display: none; will-change: transform; animation-timing-function: linear; animation-iteration-count: infinite; }
+.lg-satwa svg { display: block; width: 100%; height: 100%; overflow: visible; will-change: transform; }
+.gerbang-masuk.lg-ada-kelelawar .lg-kelelawar, .gerbang-masuk.lg-ada-kupu .lg-kupu, .gerbang-masuk.lg-ada-elang .lg-elang, .gerbang-masuk.lg-ada-bangau .lg-bangau { display: block; }
+/* kelelawar: terbang patah-patah, kepak cepat */
+.lg-kelelawar { top: calc(var(--lg-tinggi, 20) * 1%); width: calc(30px * var(--lg-ukur, 1)); height: calc(14px * var(--lg-ukur, 1)); animation-name: lgKelelawar; }
+.lg-kelelawar svg { fill: var(--gm-burung); transform-origin: 50% 40%; animation: lgKepakKelelawar 0.17s ease-in-out infinite alternate; }
+body.gelap .lg-kelelawar { filter: drop-shadow(0 0 1.5px rgba(201, 179, 122, 0.55)); }
+@keyframes lgKelelawar { 0% { transform: translate3d(-8vw, 0, 0); } 12% { transform: translate3d(8vw, -5vh, 0); } 22% { transform: translate3d(16vw, 4vh, 0); } 34% { transform: translate3d(27vw, -7vh, 0); }
+  46% { transform: translate3d(40vw, 1vh, 0); } 58% { transform: translate3d(52vw, -9vh, 0); } 70% { transform: translate3d(66vw, -1vh, 0); } 84% { transform: translate3d(82vw, -8vh, 0); } 100% { transform: translate3d(108vw, -3vh, 0); } }
+@keyframes lgKepakKelelawar { from { transform: scaleY(1); } to { transform: scaleY(0.3); } }
+/* kupu-kupu: rendah di atas sawah, melayang naik-turun, sayap membuka-menutup */
+.lg-kupu { bottom: calc(var(--gm-sawah-h) + 18px + var(--lg-tinggi, 6) * 1vh); width: calc(20px * var(--lg-ukur, 1)); height: calc(18px * var(--lg-ukur, 1)); animation-name: lgKupu; }
+.lg-kupu svg { fill: rgba(236, 178, 74, 0.95); animation: lgKepakKupu 0.22s ease-in-out infinite alternate; }
+.lg-kupu .lg-corak { fill: rgba(70, 44, 18, 0.55); } .lg-kupu .lg-badan-kupu { stroke: rgba(60, 40, 20, 0.9); stroke-width: 1.1; stroke-linecap: round; }
+body.gelap .lg-kupu svg { fill: rgba(222, 176, 92, 0.9); }
+@keyframes lgKupu { 0% { transform: translate3d(-6vw, 0, 0); } 15% { transform: translate3d(10vw, -4vh, 0); } 30% { transform: translate3d(22vw, 2vh, 0); } 45% { transform: translate3d(34vw, -6vh, 0); }
+  60% { transform: translate3d(50vw, 0, 0); } 75% { transform: translate3d(64vw, -5vh, 0); } 90% { transform: translate3d(82vw, 1vh, 0); } 100% { transform: translate3d(106vw, -3vh, 0); } }
+@keyframes lgKepakKupu { from { transform: scaleX(1); } to { transform: scaleX(0.16); } }
+/* elang: melayang berputar lebar di langit tinggi, sayap nyaris diam */
+.lg-elang { left: 60%; top: 13%; width: 0; height: 0; animation-name: lgPutarElang; }
+.lg-elang-putar { position: absolute; left: 0; top: 0; width: 64px; height: 20px; margin: -10px 0 0 -32px; transform: translate3d(11vw, 0, 0) rotate(90deg); }
+.lg-elang svg { fill: var(--gm-burung); animation: lgMelayang 3.2s ease-in-out infinite alternate; }
+body.gelap .lg-elang svg { filter: drop-shadow(0 0 1.5px rgba(201, 179, 122, 0.5)); }
+@keyframes lgPutarElang { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes lgMelayang { from { transform: scale(1); } to { transform: scale(0.9); } }
+/* bangau / kuntul putih: melintas rendah pelan, kepak lambat */
+.lg-bangau { top: calc(46% + var(--lg-tinggi, 10) * 1%); width: calc(54px * var(--lg-ukur, 1)); height: calc(21px * var(--lg-ukur, 1)); animation-name: lgBangau; }
+.lg-bangau svg { fill: rgba(250, 248, 240, 0.96); animation: lgKepakBangau 1.3s ease-in-out infinite alternate; }
+.lg-bangau .lg-kaki { fill: none; stroke: rgba(70, 60, 40, 0.7); stroke-width: 0.9; stroke-linecap: round; }
+body.gelap .lg-bangau svg { fill: rgba(220, 216, 204, 0.88); }
+@keyframes lgBangau { from { transform: translate3d(-10vw, 0, 0); } to { transform: translate3d(110vw, -6vh, 0); } }
+@keyframes lgKepakBangau { from { transform: scaleY(1); } to { transform: scaleY(0.62); } }
+/* bintang jatuh (malam cerah, sesekali): Web Animations di langit.js */
+.lg-meteor { position: absolute; width: 140px; height: 2px; border-radius: 2px; opacity: 0; transform-origin: 100% 50%; will-change: transform, opacity;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 250, 235, 0.85) 82%, #fff); }
+
+/* ---------- kalimat cuaca di pil jam ---------- */
+.gm-cuaca { margin-left: 0.55em; padding-left: 0.55em; border-left: 1px solid var(--gm-etsa-garis); font-size: 0.78em; letter-spacing: 0.02em; opacity: 0.85; white-space: nowrap; }
+.gm-cuaca[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-bintang svg, .lg-pendar, .lg-bulan-pendar, .lg-sinar, .lg-pancar, .lg-kilau, .lg-awan, .lg-kabut i, .lg-hujan, .lg-luncur { animation: none; }
+  .gerbang-masuk.lg-ada-petir .lg-kilat, .gerbang-masuk.lg-ada-petir .lg-kilas, .gerbang-masuk.lg-ada-petir .lg-sambar { display: none; }
+  .lg-satwa, .lg-meteor { display: none !important; }
+}

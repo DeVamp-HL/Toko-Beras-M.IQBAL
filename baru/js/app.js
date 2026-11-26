@@ -10,7 +10,7 @@ import { pasangLayarUang } from './layar/uang.js';
 import { pasangLayarLaporan } from './layar/laporan.js';
 import * as fb from './data/firebase.js';
 import { muatCadangan } from './data/cadangan.js';
-import { dengarkan, sumberData, tulisDokumen } from './data/toko.js';
+import { dengarkan, sumberData, tulisDokumen, dokDiCache } from './data/toko.js';
 import { bolehLayar, bisaBekerja, teksMasukSebagai } from './data/akses.js';
 import { ssAtur } from './layar/sistem-logika.js';
 // owner 7 Okt (JS2-C): jatah nego akun yang masuk ikut ke penjaga kiriman
@@ -26,6 +26,8 @@ import { pjSumberPengingat } from './layar/pajak-logika.js';
 import { khSumberPengingat } from './layar/kas-rekening-logika.js';
 import { nanti, setelMuat } from './inti/jadwal.js';
 import { pasangGerbang } from './inti/gerbang.js';
+// owner 26 Nov 2026: lokasi cuaca gerbang dari setelan toko → simpanan perangkat
+import { langitSimpanLokasi } from './inti/langit.js';
 // putaran T1 langkah 3 (owner 16 Nov 2026): satu akun tablet + PIN per orang
 import * as TB from './layar/tablet-logika.js';
 import { rtBukaUang } from './layar/ringkas-tablet-logika.js';
@@ -148,7 +150,10 @@ const layar = pasangLayarJual(akar, { lonceng: pintuLonceng, akun: () => akunKin
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan · 27: Isi barang habis
   // B3 (owner 18 Nov 2026): bukti terima antar (tanda tangan & foto) — koleksi buktiTerima dibaca sekali saat dibuka (tidak didengar); mode cadangan = simulasi di panel
   bukti: { ada: () => sumberData().jenis === 'firestore', baca: (idSJ) => fb.bacaBuktiTerima(idSJ), simpan: (d) => fb.simpanBuktiTerima(d) } });
-dengarkan(() => { versi += 1; setTimeout(periksaTablet, 0); setTimeout(periksaKabarBaru, 0); });   // T1-3: daftar orang / libur berubah → gerbang ikut
+dengarkan(() => { versi += 1; setTimeout(periksaTablet, 0); setTimeout(periksaKabarBaru, 0); setTimeout(simpanLokasiCuaca, 0); });   // T1-3: daftar orang / libur berubah → gerbang ikut
+// owner 26 Nov 2026: lokasi cuaca gerbang (Menu › Sistem › Perangkat › Atur) disalin ke perangkat ini — gerbang tampil SEBELUM masuk akun, saat data toko belum
+// terbaca. Hanya bila dokumen setelannya SUDAH terbaca (cache kosong saat membuka ≠ owner mencabut lokasi).
+function simpanLokasiCuaca() { try { if (dokDiCache('aturanToko', 'perangkat')) langitSimpanLokasi(ssAtur('perangkat').cuaca); } catch (e) { /* setelan belum terbaca */ } }
 
 // ---- NOTIFIKASI DALAM APLIKASI (owner 21 Nov 2026) ----
 // Owner (HP / Mac): titipan uang keluar, pesan, dan permintaan lain dari tablet yang BARU masuk. Akun tablet: permintaannya yang baru diputus owner.
@@ -351,7 +356,7 @@ function pindah(tujuan) {
 //      (readonly sampai diketuk = pengisi-otomatis peramban tidak menempelkan sandi tersimpan; sisanya setelan peramban tablet — putaran tablet). ----
 const KUNCI_EMAIL = 'miqbal_baru_email_terakhir';
 const modal = document.getElementById('modalMasuk');
-const gerbang = pasangGerbang({ gantiMode: () => gantiMode() });
+const gerbang = pasangGerbang({ gantiMode: () => gantiMode(), mode: () => mode });
 const formMasuk = document.getElementById('formMasuk'), panelAkun = document.getElementById('panelAkun');
 const pesanMasuk = document.getElementById('pesanMasuk');
 const salahMasuk = document.getElementById('salahMasuk');

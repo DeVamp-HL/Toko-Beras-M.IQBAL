@@ -420,6 +420,10 @@ jobs:
       - name: "Kelancaran perangkat (owner 19 Nov): catatan tersendat menutup per jenis & per tempat, ambang, batas daftar/tempat, hari berganti, satu ketukan = satu kejadian, kalimat kartu; owner 23 Nov: penyebab bingkai panjang (skrip / gaya & tata letak / fungsi terberat); tidak menulis ke server, simpanan lokal dijaga (jsc + statis, 24 kontrol)"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_ukur_mulus.py && python3 alat-uji/uji_ukur_mulus.py --kontrol
+      # ---- owner 26 Nov: langit gerbang ikut jam & cuaca sungguhan ("mewah", "terbaik tapi optimal") ----
+      - name: "Langit gerbang (owner 26 Nov): fajar–siang–senja–malam bergulir tiap menit, cuaca Open-Meteo (mendung kelabu, hujan, petir, kabut, basi diabaikan, ambil tiap 30 mnt), lokasi 3 desimal tanpa GPS, gerak hanya transform/opacity, kelas keadaan ≠ kelas lapisan, kilat tanpa paksa tata letak, CSP dua alamat; owner 26 Nov: tampilan G4 asli dijaga (petang cerah gelap, sore cerah terang) & suasana satwa ikut jam & cuaca; petir bercabang acak di depan kaca, langit badai gelap; owner 26 Nov: siang tropis — matahari tak pernah di balik papan nama (Mac, CPad), terik ±10–14 dengan cakram & pancaran di depan kaca, biru tropis (jsc + statis + 35 kontrol)"
+        if: matrix.bagian == 2
+        run: python3 alat-uji/uji_langit_gerbang.py && python3 alat-uji/uji_langit_gerbang.py --kontrol
       # ---- owner 23 Nov: "app masih lag … terutama masalah responsif" (kartu Kelancaran CPad) — mulus Android paket 3 ----
       - name: "Mulus Android 3 (owner 23 Nov): ingatan melewati denyut & jejak (yang membaca keduanya dihitung ulang, bersarang, galat), Ringkasan detak menit & denyut tanpa hitung ulang, Dasbor dipanaskan di latar = segar, tebakan karcis / rincian / ringkas tablet diingat, kartu Kelancaran di Menu staf, mode ringan Android tanpa kaca buram, animasi tanpa henti hanya transform/opacity (jsc + statis + 19 kontrol)"
         if: matrix.bagian == 2

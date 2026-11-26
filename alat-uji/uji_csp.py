@@ -55,6 +55,7 @@ CSP_PENGALIH = {'default-src': ["'none'"], 'img-src': ["'self'"], 'style-src': [
 FIREBASE = ['https://firestore.googleapis.com', 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com']
 # owner 21 Nov 2026: notifikasi HP owner — SDK Firebase Messaging (/baru/ saja) mendaftarkan token lewat dua host ini; kasir darurat tidak memakainya
 FCM = ['https://firebaseinstallations.googleapis.com', 'https://fcmregistrations.googleapis.com']
+CUACA = ['https://api.open-meteo.com', 'https://geocoding-api.open-meteo.com']   # owner 26 Nov 2026: langit gerbang ikut cuaca (baru/js/inti/langit-logika.js)
 # Kasir darurat: direktif selain script-src, PERSIS (urutan sumber diabaikan). script-src = hash script sebaris saja.
 CSP_DARURAT = {'default-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'img-src': ["'self'"], 'connect-src': ["'self'"] + FIREBASE,
                'worker-src': ["'self'"], 'object-src': ["'none'"], 'base-uri': ["'none'"], 'form-action': ["'none'"]}
@@ -156,9 +157,12 @@ def periksa(t):
               and (('https://fonts.googleapis.com' not in luar_gaya) or 'https://fonts.gstatic.com' in D.get('font-src', [])), sorted(luar_gaya)))
     c.append(('connect-src: Firestore & Auth Firebase (' + ', '.join(x.split('//')[1].split('.')[0] for x in FIREBASE) + ')', all(h in cs for h in FIREBASE), cs))
     # SDK Firebase dimuat dari gstatic; host lain di connect-src = celah tanpa guna
-    lebih = [h for h in cs if h not in FIREBASE + FCM + ["'self'", 'https://www.gstatic.com']]
+    lebih = [h for h in cs if h not in FIREBASE + FCM + CUACA + ["'self'", 'https://www.gstatic.com']]
     c.append(('connect-src: pendaftaran token notifikasi HP (' + ', '.join(x.split('//')[1].split('.')[0] for x in FCM) + ')', all(h in cs for h in FCM), cs))
     c.append(('connect-src tidak membuka host lain', not lebih, lebih))
+    # owner 26 Nov 2026: langit gerbang ikut cuaca — Open-Meteo (cuaca + cari tempat) dibuka HANYA kalau kodenya memang memakainya
+    pakai = [h for h in CUACA if any(h in isi for p, isi in t.items() if p.endswith('langit-logika.js'))]
+    c.append(('connect-src: cuaca gerbang (Open-Meteo cuaca & cari tempat) dibuka hanya bila dipakai langit-logika.js', sorted(pakai) == sorted(h for h in cs if h in CUACA), (pakai, cs)))
     # semua halaman ber-CSP (/baru/ + templatnya, kasir darurat, pengalih): handler sebaris diblokir
     sebaris = []
     for p, isi in t.items():
