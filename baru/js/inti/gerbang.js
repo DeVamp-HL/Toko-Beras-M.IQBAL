@@ -9,6 +9,8 @@
 //   menutup   sesudah keluar: pintu merapat memantul, cincin kembali
 // Kelas 'tampil' TETAP arti lamanya (gerbang menghalangi layar); animasi membuka memakai kelas 'membuka' tanpa menghalangi ketukan.
 import { GM_SAWAH, GM_PADI } from './gerbang-hiasan.js';
+// owner 26 Nov 2026: langit di balik kaca ikut jam & cuaca sungguhan (js/inti/langit.js)
+import { pasangLangit } from './langit.js';
 
 const HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -33,6 +35,7 @@ export function pasangGerbang(opsi) {
   // hiasan kaca (siluet sawah + padi merunduk) disalin ke KEDUA daun — satu pemandangan yang menyambung di sambungan & ikut terbelah
   g.querySelectorAll('.gm-hiasan').forEach((el) => { el.innerHTML = GM_SAWAH + '<div class="gm-bingkai"><span class="a"></span><span class="b"></span><span class="c"></span><span class="d"></span></div>' + GM_PADI; });
 
+  const langit = pasangLangit(g, { mode: () => (opsi.mode ? opsi.mode() : 'terang'), cari: typeof location !== 'undefined' ? location.search : '' });
   let tahap = 'awal', rot = { e: 210, s: 128, k: 160 }, jamDetik = null, jamTahap = [], goyang = 0;
   const bersihTahap = () => { jamTahap.forEach((t) => clearTimeout(t)); jamTahap = []; };
   const nanti = (ms, f) => { jamTahap.push(setTimeout(f, ms)); };
@@ -63,8 +66,9 @@ export function pasangGerbang(opsi) {
     if ($('gmTanggalRingkas') && $('gmTanggalRingkas').textContent !== tr) $('gmTanggalRingkas').textContent = tr;
     const j = dua(d.getHours()) + '.' + dua(d.getMinutes()); if ($('gmJam') && $('gmJam').textContent !== j) $('gmJam').textContent = j;
     if (cincin.detik) { const s = d.getSeconds(); cincin.detik.classList.toggle('lompat', s === 0); cincin.detik.style.strokeDasharray = (KEL.detik * (s + 1) / 60).toFixed(1) + ' ' + KEL.detik.toFixed(1); }
+    langit.detik();   // langit dihitung ulang sekali per menit
   }
-  function nyalakanJam(ya) { clearInterval(jamDetik); jamDetik = null; if (ya) { jam(); jamDetik = setInterval(jam, 1000); } }
+  function nyalakanJam(ya) { clearInterval(jamDetik); jamDetik = null; langit.nyala(ya); if (ya) { jam(); jamDetik = setInterval(jam, 1000); } }
   function ikonAkun(jenis) { const el = $('ikonAkun'); if (!el) return; el.className = 'gm-status' + (jenis === 'belum' || jenis === 'nonaktif' ? ' awas' : '');
     el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + (IKON_STATUS[jenis] || IKON_STATUS.belum) + '</svg>'; }
 
@@ -95,7 +99,7 @@ export function pasangGerbang(opsi) {
 
   // ketikan menggerakkan cincin (G2): email mengisi cincinnya, tiap huruf sandi memutar satu takik
   ['isianEmail', 'isianSandi'].forEach((id) => { const el = $(id); if (el) el.addEventListener('input', () => { if (tahap === 'salah') { kelas('masuk'); } putarCincin(); }); });
-  const tm = $('gmMode'); if (tm) tm.addEventListener('click', () => opsi.gantiMode());
+  const tm = $('gmMode'); if (tm) tm.addEventListener('click', () => { opsi.gantiMode(); langit.perbarui(); });
 
   return {
     /** Sebelum Firebase menjawab: gerbang tertutup tanpa formulir. */
