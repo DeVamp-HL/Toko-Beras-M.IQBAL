@@ -4126,6 +4126,31 @@ Label) · kalender = semua usulan + tambahan yang masuk akal (owner: "belum kepi
   (karyawan tidak memasang pendengarnya). Pembanding `firestore.rules.v21`, `periksa_rules.py` (★Q1–★Q21, kontrol), emulator bagian V22, `docs/uji-rules-v22.md`,
   `peta_akses.py --kiriman` (tanda Ben 2/20 access call). **Owner menerbitkan v22 SEBELUM merge.**
 
+## Aset tetap & penyusutan (owner 26 Nov 2026, modul ERP no. 70 — sensus ulang 26 Nov bagian 2; cabang `claude/jurnal-aset-tetap-cd2022`; tanpa rules baru, mesin beku tidak diubah)
+
+Keputusan owner (satu AskUserQuestion 26 Nov 2026): daftar aset = **isian owner + bawaan** (umur per jenis: peralatan kecil 4 th · peralatan besar & mesin 8 th ·
+kendaraan 8 th · bangunan 20 th; nilai sisa 0; garis lurus) **dan boleh menunjuk catatan Uang keluar** · penyusutan **memotong laba bersih** · **mulai 1 Des 2026**,
+isian lama `aturanToko/laporan.asetTetap` diganti daftar (di cadangan 25 Nov dokumen itu tidak ada). Jurnal berpasangan (no. 69) = paket berikutnya (PR terpisah).
+- **Logika** `baru/js/layar/aset-tetap-logika.js` (awalan `ast`, modul DAUN: data/toko.js + format saja — uang-logika memakainya). Dokumen `aturanToko/asetTetap`
+  { mulai, aset: [{ id, nama, jenis, harga, tanggalBeli, umurBulan, sisa, dariKeluar?, catatan?, dicatat, diubah }] } — owner saja (rules sudah begitu; staf tidak
+  membacanya, jadi laba di perangkat staf tanpa penyusutan — staf tidak menampilkan laba bersih). Susut terkumpul s.d. akhir hari t = round((harga − sisa) × hari
+  terpakai / hari umur) (`astSusut`), penyusutan rentang = S(b) − S(a − 1): Σ hari = bulan persis. `astEfekLaba(dari, sampai)` = penyusutan hari ≥ mulai + uang keluar
+  yang ditunjuk (≤ harga aset, bulan catatannya — boleh sebelum mulai) + `sebelum` (bagian sebelum mulai, tidak memotong laba). `astPada(t)` = nilai buku per tanggal.
+- **Satu pintu laba**: `ugLabaBersih` (uang-logika) menambah kolom `penyusutan`, `asetDariBiaya`, `nAsetDariBiaya` HANYA bila daftar tidak kosong; `labaBersih =
+  labaMesin + lebihKurangKas − penyusutan + asetDariBiaya`; `ugEfekAset(L)`. Identitas yang menyusun laba dari bagiannya ikut ditambal: `keManaLabaKotor` (baris
+  `asetBiaya` & `penyusutan`), `labaBulan` terjun, laba-rugi berkop (baris + catatan), Kendali biaya (`menutup`, terjun, titik impas: penyusutan = biaya, uang
+  keluar yang dipindah bukan), KPI laba usaha (penyusutan = biaya usaha), Menu "untung berapa". Tutup hari: dasar sisihan tetap `labaMesin` (uang tunai).
+- **Neraca** (`neracaPada`): daftar punya ≥ 1 barang → baris "Aset tetap (N barang · harga beli − penyusutan)" = nilai buku per tanggal, isian lama tidak dipakai,
+  `total` (kekayaan) ikut nilai buku, catatan menyebut aset bawaan owner & penyusutan sebelum mulai (bagian dari beda "belum terjelaskan"). Daftar kosong = objek
+  byte-sama dengan sebelumnya (ASAP GLOBAL).
+- **Bulan terkunci**: `astGeserKunci` menolak simpan / hapus / ganti tanggal mulai yang membuat laba bulan terkunci (Kunci bulan atau tahun yang ditutup) berubah.
+- **Layar** Laporan › keluarga baru **Aset tetap** (`aset-panel.js`): nilai hari ini bergulir + pita, penyusutan bulan ini & s.d. hari ini, 12 bulan ke depan (batang),
+  daftar (baris bergiliran, pita nilai buku), lembar catat/ubah (jenis → umur bawaan, "dibawa owner / sebelum sistem" atau tunjuk Uang keluar dengan cari; calon di
+  bulan terkunci / sudah ditunjuk diredupkan; pratinjau susut per bulan & laba yang naik), hapus dua ketukan, atur tanggal mulai. Neraca: tombol "Aset tetap · buka
+  daftar aset" menggantikan lembar isian satu angka.
+- Uji `alat-uji/uji_jurnal_aset.py` (kotak pasir angka harapan dihitung terpisah + statis + `--kontrol` + asap cadangan toko); `peta_akses.py` (`susunAset`,
+  `susunHapusAset`, `susunAturAset`). Belum dicoba di data toko: menyimpan daftar ke Firestore sungguhan, laba Desember di HP owner.
+
 ## Paket Dasbor (owner 26 Nov 2026, sensus ulang 1c: B1 B9 B88 B89 B90 B91 B95 B109 B113 B127; cabang `claude/dasbor-sensus-fbcdb5`; tanpa rules baru, mesin beku tidak diubah)
 
 Grup Dasbor terakhir sensus 1c sebelum sistem beku 15 Des 2026. Dijaga `alat-uji/uji_dasbor_sensus.py` (kotak pasir + statis + `--kontrol` + asap cadangan toko).

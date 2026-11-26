@@ -131,8 +131,22 @@ SM_PEMAKAI = ('belanja-logika.js', 'ringkasan-logika.js', 'dasbor-logika.js')
 SMP_MODUL = 'baru/js/layar/stok-minimum-panel.js'
 
 
+# owner 26 Nov 2026 (modul ERP no. 70): aset tetap & penyusutan — modul DAUN aset-tetap-logika.js (data/toko.js + format saja) dibaca uang-logika (ugLabaBersih).
+# Ikut OTOMATIS (sekali) DI DEPAN uang-logika.js bila pemakainya ada: konstanta `const` modul itu sudah hidup sebelum modul lain memanggilnya.
+AS_MODUL = 'baru/js/layar/aset-tetap-logika.js'
+AS_PEMAKAI = ('uang-logika.js',)
+# layar Laporan memakai aset-panel.js (Laporan › Aset tetap) — ikut OTOMATIS di belakang bila laporan.js ada.
+ASP_MODUL = 'baru/js/layar/aset-panel.js'
+ASP_PEMAKAI = ('laporan.js',)
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in AS_PEMAKAI for x in d) and not any(x.endswith('aset-tetap-logika.js') for x in d):
+        i = next(i for i, x in enumerate(d) if os.path.basename(x) in AS_PEMAKAI)
+        d.insert(i, AS_MODUL)
+    if any(os.path.basename(x) in ASP_PEMAKAI for x in d) and not any(x.endswith('aset-panel.js') for x in d):
+        d.append(ASP_MODUL)
     if any(os.path.basename(x) in GD_PEMAKAI for x in d):
         for m in GD_MODUL:
             if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)
@@ -202,7 +216,9 @@ var _ssm = susunSimpanMasuk; susunSimpanMasuk = function (d, w, y) { return _ssm
 """
 
 
-MODUL_DATA = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js']
+# owner 26 Nov 2026: aset-tetap-logika.js (modul daun: toko.js + format) ikut di sini — uang-logika (laba bersih) memakainya, dan banyak alat uji menyusun daftar modulnya
+# sendiri dari MODUL_DATA tanpa lengkapi().
+MODUL_DATA = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/layar/aset-tetap-logika.js']
 
 if __name__ == '__main__':
     import sys

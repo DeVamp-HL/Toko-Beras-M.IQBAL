@@ -17,6 +17,8 @@ import { RP, ANGKA, hariIniIso, tanggalPendek, jamKini } from '../inti/format.js
 import { TEMPAT_UANG, aturBon } from './bon-pemasok-logika.js';
 // owner 21 Nov 2026: titipan uang keluar & pesan dari tablet — satu pintu memutus (bundel uji jsc: impor bernama, bukan namespace)
 import { tpMenunggu, tpSusunPutus } from './titipan-logika.js';
+// owner 26 Nov 2026 (modul ERP no. 70): aset tetap & penyusutan — modul daun, dibaca laba bersih (ugLabaBersih)
+import { astEfekLaba } from './aset-tetap-logika.js';
 
 export const NAMA_KASBON_OWNER = 'Owner';
 // owner 26 Nov 2026: + Rekening (cocok rekening usaha ke mutasi bank — kas-rekening-logika.js)
@@ -128,10 +130,16 @@ export function ugLabaBersih(dari, sampai, bayaran) {
   if (!kosong && bayaran !== ugBayaran()) return ugLabaBersihHitung(dari, sampai, bayaran);
   return ingatPerVersi('ugLabaBersih|' + String(dari) + '|' + String(sampai), () => ugLabaBersihHitung(dari, sampai, kosong ? undefined : bayaran));
 }
+// Aset tetap (owner 26 Nov 2026, modul ERP no. 70): penyusutan MEMOTONG laba bersih (hari ≥ tanggal mulai, bawaan 1 Des 2026) dan uang keluar yang ditunjuk sebagai
+// pembelian aset dikeluarkan dari biaya bulan catatannya (`asetDariBiaya`). Kolomnya hanya ada bila daftar aset tidak kosong — tanpa aset objek ini byte-sama dengan
+// sebelumnya. labaBersih = labaMesin + lebihKurangKas − penyusutan + asetDariBiaya (aset-tetap-logika.js astEfekLaba).
 function ugLabaBersihHitung(dari, sampai, bayaran) {
-  const L = hitungLabaBersihRentang(dari, sampai, bayaran); const K = ugLebihKurangKas(dari, sampai);
-  return Object.assign(L, { labaMesin: L.labaBersih, lebihKurangKas: K.n, nLebihKurang: K.malam, labaBersih: L.labaBersih + K.n });
+  const L = hitungLabaBersihRentang(dari, sampai, bayaran); const K = ugLebihKurangKas(dari, sampai); const AS = astEfekLaba(dari, sampai);
+  return Object.assign(L, { labaMesin: L.labaBersih, lebihKurangKas: K.n, nLebihKurang: K.malam, labaBersih: L.labaBersih + K.n },
+    AS.ada ? { penyusutan: AS.penyusutan, asetDariBiaya: AS.dariBiaya, nAsetDariBiaya: AS.nDariBiaya, labaBersih: L.labaBersih + K.n - AS.penyusutan + AS.dariBiaya } : {});
 }
+/** Akibat aset tetap pada laba satu objek laba (ugLabaBersih / potret): + uang keluar dipindah jadi aset − penyusutan (0 bila tidak ada aset). */
+export const ugEfekAset = (L) => Math.round((Number(L && L.asetDariBiaya) || 0) - (Number(L && L.penyusutan) || 0));
 
 // ---------- angka owner-toko yang dibaca banyak layar ----------
 /** Modal owner yang tertanam = Σ setor − Σ tarik (modalOwner + setoranKas lama lewat daftarModalOwner); pinjaman owner ke toko TIDAK dihitung modal. */
