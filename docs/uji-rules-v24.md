@@ -66,4 +66,9 @@ sasarannya wajib berbalik). Semua kasus v23 sampai v7 lama tetap dijalankan atas
 
 ## Hasil Playground & terbit
 
-Belum terbit — diisi sesudah owner menerbitkan v24 di Console.
+**v24 TERBIT 27 Nov 2026 ±05.35 WIB.** Owner menempel isi `firestore.rules` (commit `e2bc820`, berkas mentah GitHub di tab Chrome Claude — sidiknya dicek lebih
+dulu = repo) ke editor Rules Console. Isi editor sebelum Publish dan isi yang aktif sesudah halaman dimuat ulang sama persis dengan `firestore.rules` cabang ini:
+SHA-256 berawalan `d7e257189bce8abf`, 88.131 byte, baris 2 `ATURAN FIRESTORE v24 FINAL` (sebelumnya aktif v23 `a0dbb75b`, 85.924 byte).
+Playground (akun uji owner: UID `uid-uji`, email `owner@tokoberasmiqbal.web.app`): ★I2 get `pesananPemasok/1796090000000.5` → *Simulated read allowed* ·
+★I1 create (dokumen contoh `status` menunggu) → *Simulated write allowed* · ★I3 update (`janjiTanggal` 2026-12-03) → *Simulated write allowed* — ketiganya
+sesuai kolom Wajib. Kasus staf (★I4–★I19) dibuktikan emulator CI bagian V24.
