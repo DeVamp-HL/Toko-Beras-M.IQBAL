@@ -127,7 +127,9 @@ jobs:
             "$BT/apksigner" sign --ks "$RUNNER_TEMP/kunci.jks" --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias "$KEY_ALIAS" \
               --key-pass env:KEY_PASSWORD --v1-signing-enabled true --v2-signing-enabled true \
               --out "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" "$RUNNER_TEMP/rata.apk"
-            "$BT/apksigner" verify -v "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" | tee "$RUNNER_TEMP/tanda.txt"
+            # minSdk 24 (Google Play, 26 Nov 2026): apksigner verify memeriksa skema menurut minSdk APK — sejak 24 V1 DILEWATI ("v1 ... false") walau
+            # tanda tangannya ada. --min-sdk-version 23 = verifikasi seolah untuk Android 6, jadi V1 sungguh diperiksa (bukan dianggap lulus).
+            "$BT/apksigner" verify -v --min-sdk-version 23 "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" | tee "$RUNNER_TEMP/tanda.txt"
             grep -q 'Verified using v1 scheme (JAR signing): true' "$RUNNER_TEMP/tanda.txt" || { echo "GAGAL: APK tidak bertanda tangan V1"; exit 1; }
             grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RUNNER_TEMP/tanda.txt" || { echo "GAGAL: APK tidak bertanda tangan V2"; exit 1; }
             rm -f "$RUNNER_TEMP/kunci.jks"
@@ -170,6 +172,9 @@ jobs:
           APK=$(ls ../keluaran/*.apk | head -1)
           SASARAN=$("$BT/aapt2" dump badging "$APK" | sed -n "s/^targetSdkVersion:'\([0-9]*\)'.*/\1/p" | head -1)
           [ "${SASARAN:-0}" -ge 36 ] || { echo "GAGAL: targetSdk ${SASARAN:-?} < 36 — Google Play menolak aplikasi baru yang tidak menyasar Android 16 (apk/pasang.py SDK_SASARAN)"; exit 1; }
+          # aapt2 menulis "minSdkVersion:'24'" (aapt lama: "sdkVersion:'24'") — run #46/#47 26 Nov: pola lama saja = kosong = merah palsu
+          MINIMUM=$("$BT/aapt2" dump badging "$APK" | sed -nE "s/^(minSdkVersion|sdkVersion):'([0-9]+)'.*/\2/p" | head -1)
+          [ "${MINIMUM:-0}" -ge 24 ] || { echo "GAGAL: minSdk ${MINIMUM:-?} < 24 — perlindungan otomatis Google Play menolak bundel (apk/pasang.py SDK_MINIMUM)"; exit 1; }
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kunci.jks"
           keytool -list -v -keystore "$RUNNER_TEMP/kunci.jks" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" > "$RUNNER_TEMP/kunci.txt" || true
           ALGO=$(grep -m1 'Subject Public Key Algorithm' "$RUNNER_TEMP/kunci.txt" | sed 's/^[^:]*: *//' || true)
