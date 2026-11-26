@@ -492,6 +492,10 @@ OWNER_JALUR = {
     'susunBayarSesudahHapus': 'dibayar sesudah dihapus buku (Paket F2): paling banyak 2 piutangMutasi (hapus buku minus + bayar) bertanggal hari ini',
     'susunBayarTagihan': '1 dokumen: biayaBulanan bulan INI atau pengeluaranHarian hari ini', 'susunBonus': '2 dokumen: biayaBulanan bulan INI + slipUpah hari ini',
     'susunKasbonKaryawan': '1 kasbonMutasi bertanggal hari ini', 'susunKeluar': 'uang keluar: paling banyak 2 dokumen (pengeluaranHarian + kasbon) bertanggal hari ini',
+    # modul ERP no. 70 aset tetap (owner 26 Nov 2026): SATU dokumen aturanToko/asetTetap (setelan owner, tidak dikunci rules, 0 pemeriksaan) — laba bulan terkunci dijaga
+    # logika (astGeserKunci menolak simpan / hapus / ganti tanggal mulai yang menggeser bulan terkunci); uang keluar yang ditunjuk TIDAK diubah dokumennya
+    'susunAset': '1 dokumen aturanToko/asetTetap (owner, tidak dikunci) — bulan terkunci dijaga logika', 'susunHapusAset': '1 dokumen aturanToko/asetTetap (owner, tidak dikunci)',
+    'susunAturAset': '1 dokumen aturanToko/asetTetap (tanggal mulai; owner, tidak dikunci) — bulan terkunci dijaga logika',
     'susunTandaNota': 'owner 26 Nov 2026 (kas kecil): tandai nota satu catatan uang keluar = 1 pengeluaranHarian DIUBAH (salinan catatannya + nota/alasan/foto) — bulan terkunci ditolak rules (tglUbah); foto nota ditulis terpisah di fotoBon (bukan koleksi bertanggal)',
     'susunPindah': 'pindah uang: pindahUang + paling banyak 1 biaya admin hari ini · pindah tempat stok: pengaturan tempatSimpan & pindahTempat (tidak dikunci)',
     'susunUrungPindah': 'urung pindah: hapus 1 pindahUang + paling banyak 1 biaya admin (dokumen barusan)',
