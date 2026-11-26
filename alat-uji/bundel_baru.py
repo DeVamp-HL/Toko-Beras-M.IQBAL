@@ -125,8 +125,22 @@ GD_MODUL = ['baru/js/layar/gudang-logika.js', 'baru/js/layar/label-logika.js', '
 GD_PEMAKAI = ('dasbor-logika.js', 'gudang-logika.js')
 
 
+# owner 26 Nov 2026 (modul ERP no. 70): aset tetap & penyusutan — modul DAUN aset-tetap-logika.js (data/toko.js + format saja) dibaca uang-logika (ugLabaBersih).
+# Ikut OTOMATIS (sekali) DI DEPAN uang-logika.js bila pemakainya ada: konstanta `const` modul itu sudah hidup sebelum modul lain memanggilnya.
+AS_MODUL = 'baru/js/layar/aset-tetap-logika.js'
+AS_PEMAKAI = ('uang-logika.js',)
+# layar Laporan memakai aset-panel.js (Laporan › Aset tetap) — ikut OTOMATIS di belakang bila laporan.js ada.
+ASP_MODUL = 'baru/js/layar/aset-panel.js'
+ASP_PEMAKAI = ('laporan.js',)
+
+
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in AS_PEMAKAI for x in d) and not any(x.endswith('aset-tetap-logika.js') for x in d):
+        i = next(i for i, x in enumerate(d) if os.path.basename(x) in AS_PEMAKAI)
+        d.insert(i, AS_MODUL)
+    if any(os.path.basename(x) in ASP_PEMAKAI for x in d) and not any(x.endswith('aset-panel.js') for x in d):
+        d.append(ASP_MODUL)
     if any(os.path.basename(x) in GD_PEMAKAI for x in d):
         for m in GD_MODUL:
             if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)

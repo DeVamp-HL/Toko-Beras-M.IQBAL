@@ -95,7 +95,9 @@ export function klPajakDiBiaya(key) {
 export function klMarginBulan(key, kini) {
   const K = keManaLabaKotor(key, kini); const L = K.L || {}; const omzet = Number(L.omzetHitung) || 0;
   const mdr = K.pilah && isFinite(Number(K.pilah.mdr)) ? Number(K.pilah.mdr) : 0; const lk = Number(L.lebihKurangKas) || 0;
-  const labaKotor = K.labaKotor; const labaUsaha = K.labaKotor - K.biayaToko - K.biayaKaryawan + K.susut; const labaBersih = K.labaBersih;
+  // aset tetap (owner 26 Nov 2026): penyusutan = biaya usaha; uang keluar yang dipindah jadi aset bukan biaya lagi (asetEA = 0 tanpa aset)
+  const asetPen = Number(L.penyusutan) || 0, asetDari = Number(L.asetDariBiaya) || 0;
+  const labaKotor = K.labaKotor; const labaUsaha = K.labaKotor - K.biayaToko - K.biayaKaryawan + K.susut - asetPen + asetDari; const labaBersih = K.labaBersih;
   const identitas = { usaha: labaUsaha, hapus: K.hapusBuku, lebihKurang: lk, bersih: labaBersih, beda: labaUsaha - K.hapusBuku + lk - labaBersih };
   const tutupUsaha = Math.abs(identitas.beda) < 0.5;
   // PPh final: perkiraan modul pajak (owner saja); yang sudah dibayar dari laci & dicatat sebagai uang keluar toko sudah memotong laba bersih
@@ -108,11 +110,11 @@ export function klMarginBulan(key, kini) {
   const pctGrosir = grosir && grosir.margin !== null ? klPct(grosir.margin, grosir.omzet) : null; const pctEcer = ecer && ecer.ada ? klPct(ecer.margin, ecer.omzet) : null;
   const tangga = [
     { id: 'kotor', nama: 'Margin laba kotor', rp: labaKotor, pct: klPct(labaKotor, omzet), ket: 'laba kotor ÷ omzet ber-HPP' },
-    { id: 'usaha', nama: 'Margin laba usaha', rp: labaUsaha, pct: klPct(labaUsaha, omzet), ket: 'laba kotor − biaya toko − biaya karyawan − potongan QRIS − susut & selisih stok' },
+    { id: 'usaha', nama: 'Margin laba usaha', rp: labaUsaha, pct: klPct(labaUsaha, omzet), ket: 'laba kotor − biaya toko − biaya karyawan − potongan QRIS − susut & selisih stok' + (asetPen || asetDari ? ' − penyusutan aset tetap' + (asetDari ? ' + uang keluar yang jadi aset' : '') : '') },
     { id: 'bersih', nama: 'Margin laba bersih', rp: labaBersih, pct: klPct(labaBersih, omzet), ket: 'laba bersih mesin (Laporan › Laba)' },
   ].concat(pph === null ? [] : [{ id: 'pph', nama: 'Sesudah perkiraan PPh final', rp: sesudahPph, pct: klPct(sesudahPph, omzet), ket: PJ_LABEL + ' · PPh ' + RP(pph) + (D.rp ? ' − sudah dicatat di uang keluar ' + RP(D.rp) + ' = dipotong ' + RP(potong) : '') + (P.lengkap ? '' : ' · omzet tahun ini belum lengkap') }]);
   tangga.forEach((t) => { t.markup = klMarkup(t.pct); });
-  const rincianUsaha = [['Laba kotor', labaKotor], ['Biaya toko (tanpa potongan QRIS)', -(K.biayaToko - mdr)], ['Biaya karyawan', -K.biayaKaryawan]].concat(mdr ? [['Potongan QRIS', -mdr]] : []).concat([['Susut & selisih stok', K.susut], ['Laba usaha', labaUsaha]])
+  const rincianUsaha = [['Laba kotor', labaKotor], ['Biaya toko (tanpa potongan QRIS)', -(K.biayaToko - mdr)], ['Biaya karyawan', -K.biayaKaryawan]].concat(mdr ? [['Potongan QRIS', -mdr]] : []).concat([['Susut & selisih stok', K.susut]]).concat(asetDari ? [['Uang keluar dipindah jadi aset tetap', asetDari]] : []).concat(asetPen ? [['Penyusutan aset tetap', -asetPen]] : []).concat([['Laba usaha', labaUsaha]])
     .concat(K.hapusBuku ? [['Hapus buku piutang', -K.hapusBuku]] : []).concat(lk ? [['Lebih/kurang kas', lk]] : []).concat([['Laba bersih', labaBersih]]).map((r) => ({ nama: r[0], n: r[1] }));
   return { key, nama: K.nama || lpNamaBulan(key), berjalan: K.berjalan, final: K.final, diarsip: !!K.diarsip, tanpaCatatan: !!K.tanpaCatatan, omzet, omzetTanpaHpp: Number(L.omzetTanpaHpp) || 0,
     labaKotor, labaUsaha, labaBersih, mdr, pph, pajakDiBiaya: D, potongPph: potong, sesudahPph, tangga, rincianUsaha, identitas, tutupUsaha,

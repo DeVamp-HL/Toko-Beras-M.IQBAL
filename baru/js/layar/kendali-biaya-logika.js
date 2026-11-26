@@ -25,7 +25,7 @@ import { hitungArusKasInti, bayaranBiayaBulanan } from '../mesin/beku.js';
 import { akhirBulanIso, bulanDari, POS_BIAYA_BULANAN, hppTercatat, caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPengeluaranHarian, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilPiutangMutasi, ambilKasbonMutasi, potretBulan } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { ugAturDok, ugAngka, ugKosong, ugUntukDok, adalahMdr, ugLabaBersih, ugBayaran } from './uang-logika.js';
+import { ugAturDok, ugAngka, ugKosong, ugUntukDok, adalahMdr, ugLabaBersih, ugBayaran, ugEfekAset } from './uang-logika.js';
 import { lpFinal, lpNamaBulan, lpBulanPendek, daftarBulan, lpAwalBuku, lpKetSebelumBuku } from './laporan-logika.js';
 import { semuaUpah } from './upah-logika.js';
 // B3 (owner 18 Nov 2026): ongkir antar yang DITAGIH ke pembeli dibaca di samping biaya Bensin & angkut (ongkir = pendapatan nota, bukan pengurang biaya)
@@ -99,7 +99,7 @@ function kbInti(key, kini, B, A) {
   const harian = JENIS_BIAYA.filter((j) => j.sifat === 'variabel').reduce((a, j) => a + per[j.id].n, 0); const cocokHarian = Math.abs(harian - L.harianToko) < 0.5;
   const susut = -(L.susutStok || 0); const hapus = L.hapusBuku || 0; const semuaBiaya = L.biayaToko + hapus + susut;
   let kgTerjual = 0, kgHitung = 0, nKg = 0; ambilPenjualan().forEach((p) => { if (!p.tanggal || p.tanggal < awal || p.tanggal > akhir) return; const kg = Number(p.totalKg) || 0; if (kg > 0) { kgTerjual += kg; nKg += 1; if (hppTercatat(p)) kgHitung += kg; } });
-  const menutup = Math.abs(L.margin - L.biayaToko - hapus + (L.susutStok || 0) + L.lebihKurangKas - L.labaBersih) < 0.5 && Math.abs(per.upah.n + per.tetap.n - L.jatahBulanan) < 0.5 && cocokHarian && cocokTetap;
+  const menutup = Math.abs(L.margin - L.biayaToko - hapus + (L.susutStok || 0) + L.lebihKurangKas + ugEfekAset(L) - L.labaBersih) < 0.5 && Math.abs(per.upah.n + per.tetap.n - L.jatahBulanan) < 0.5 && cocokHarian && cocokTetap;
   const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && L.nSusut === 0 && !rows.length;
   return { key, nama: lpNamaBulan(key), pendek: lpBulanPendek(key, true), berjalan, final: lpFinal(key), nHari, hariJalan, L, per, posSemua, susut, hapus, semuaBiaya, biayaToko: L.biayaToko, omzet: L.omzetPenuh, omzetHitung: L.omzetHitung, margin: L.margin, labaBersih: L.labaBersih,
     kgTerjual, kgHitung, nKg, belumDipilah, nBelum, dariKata, menutup, cocokHarian, cocokTetap, tanpaCatatan, cakupan: L.omzetHitung + L.omzetTanpaHpp > 0 ? L.omzetHitung / (L.omzetHitung + L.omzetTanpaHpp) : null, awal, akhir };
@@ -160,7 +160,7 @@ export function kendaliBulan(key, kini, bayaran) {
   const merah = baris.filter((r) => r.lampu === 'merah').length, amber = baris.filter((r) => r.lampu === 'amber').length, hijau = baris.filter((r) => r.lampu === 'hijau').length;
   const terjun = [{ nama: 'Margin kotor', n: K.margin, kelas: 'jumlah', ket: 'omzet ber-HPP − HPP (mesin laba)' }]
     .concat(JENIS_BIAYA.map((j) => ({ nama: j.nama, n: -K.per[j.id].n, ket: K.per[j.id].jumlah + ' catatan' })))
-    .concat([{ nama: 'Hapus buku piutang', n: -K.hapus, ket: K.L.nHapus + ' catatan' }, { nama: 'Susut & selisih stok', n: -K.susut, ket: K.L.nSusut + ' baris' }]).concat(K.L.lebihKurangKas ? [{ nama: 'Lebih/kurang kas', n: K.L.lebihKurangKas, ket: 'selisih laci tutup hari · ' + K.L.nLebihKurang + ' malam' }] : []).concat([{ nama: 'Laba bersih', n: K.labaBersih, kelas: 'jumlah', ket: 'mesin yang sama dengan Laba' }]);
+    .concat([{ nama: 'Hapus buku piutang', n: -K.hapus, ket: K.L.nHapus + ' catatan' }, { nama: 'Susut & selisih stok', n: -K.susut, ket: K.L.nSusut + ' baris' }]).concat(K.L.lebihKurangKas ? [{ nama: 'Lebih/kurang kas', n: K.L.lebihKurangKas, ket: 'selisih laci tutup hari · ' + K.L.nLebihKurang + ' malam' }] : []).concat(K.L.asetDariBiaya ? [{ nama: 'Uang keluar dipindah jadi aset tetap', n: K.L.asetDariBiaya, ket: K.L.nAsetDariBiaya + ' catatan · sudah ada di jenis biayanya, dikeluarkan dari laba' }] : []).concat(K.L.penyusutan ? [{ nama: 'Penyusutan aset tetap', n: -K.L.penyusutan, ket: 'garis lurus, dibagi rata per hari' }] : []).concat([{ nama: 'Laba bersih', n: K.labaBersih, kelas: 'jumlah', ket: 'mesin yang sama dengan Laba' }]);
   return Object.assign(K, { A, KL, U, UL, baris, terjun, merah, amber, hijau, nLampu: merah + amber + hijau, sebelum: sebelum.map((x) => x.key), pctBiaya: kbPct(K.semuaBiaya, K.omzet), pctBiayaToko: kbPct(K.biayaToko, K.omzet), biayaPerKg: K.kgTerjual > 0 ? Math.round(K.semuaBiaya / K.kgTerjual) : null,
     pct: (a) => kbPctTeks(kbPct(a, K.omzet)) });
 }
@@ -170,16 +170,17 @@ export function drafDariAcuan(K, draf) { const d = Object.assign({}, draf || {})
 // ---------- titik impas ----------
 /** Omzet yang harus dicapai supaya margin kotor menutup biaya di bawahnya: biaya ÷ rasio margin (margin ÷ omzet ber-HPP). Bulan berjalan: juga "sampai hari ini" dari mesin (awal bulan → hari ini). */
 export function titikImpas(K, kini, bayaran) {
-  const rasio = K.omzetHitung > 0 ? K.margin / K.omzetHitung : null; const biaya = K.semuaBiaya; const omzetImpas = rasio > 0 ? Math.round(biaya / rasio) : null;
+  // aset tetap (owner 26 Nov 2026): penyusutan ikut biaya di bawah margin; uang keluar yang dipindah jadi aset bukan biaya lagi (0 tanpa aset)
+  const rasio = K.omzetHitung > 0 ? K.margin / K.omzetHitung : null; const biaya = K.semuaBiaya - ugEfekAset(K.L); const omzetImpas = rasio > 0 ? Math.round(biaya / rasio) : null;
   // Paket B: bulan yang sudah ditutup buku (catatannya diarsip) = laba sebulan penuh dari potret, bentuk sama dengan ugLabaBersih
   const iso = hariIniIso(kini); const sampai = K.berjalan ? (iso < K.akhir ? iso : K.akhir) : K.akhir; const Lj = K.diarsip && !K.berjalan ? K.L : ugLabaBersih(K.awal, sampai, bayaran || ugBayaran());
   // 39b no. 38: impas = margin kotor menutup biaya — lebih/kurang kas bukan biaya, jadi dihitung dari laba mesin; laba bersih yang DISEBUT = laba bersih toko
-  const menutupKini = Lj.labaMesin >= 0; const kurang = menutupKini ? 0 : -Lj.labaMesin; const omzetKurang = kurang > 0 && rasio > 0 ? Math.round(kurang / rasio) : 0;
+  const labaImpas = Lj.labaMesin + ugEfekAset(Lj); const menutupKini = labaImpas >= 0; const kurang = menutupKini ? 0 : -labaImpas; const omzetKurang = kurang > 0 && rasio > 0 ? Math.round(kurang / rasio) : 0;
   const hariSisa = K.berjalan ? K.nHari - K.hariJalan : 0;
   const teks = rasio === null ? 'Belum ada omzet ber-HPP bulan ini — rasio margin tidak bisa dihitung.' : rasio <= 0 ? 'Margin kotor bulan ini nol atau minus — berapa pun omzetnya biaya tidak tertutup; bahasannya harga jual, bukan jatah.'
     : 'Dari tiap Rp1.000.000 omzet tersisa ' + RP(Math.round(rasio * 1000000)) + ' sebelum biaya. Biaya di bawah margin ' + RP(biaya) + ' → butuh omzet ' + RP(omzetImpas) + ' sebulan (' + RP(Math.round(omzetImpas / K.nHari)) + ' per hari).';
   return { rasio, rasioTeks: rasio === null ? '—' : kbPctTeks(rasio * 100), biaya, omzetImpas, omzetImpasHari: omzetImpas !== null ? Math.round(omzetImpas / K.nHari) : null, omzetHari: K.hariJalan > 0 ? Math.round(K.omzetHitung / K.hariJalan) : 0,
-    sampai, menutupKini, kurang, omzetKurang, hariSisa, labaSampai: Lj.labaBersih, marginSampai: Lj.margin, biayaSampai: Lj.biayaToko + (Lj.hapusBuku || 0) - (Lj.susutStok || 0), teks,
+    sampai, menutupKini, kurang, omzetKurang, hariSisa, labaSampai: Lj.labaBersih, marginSampai: Lj.margin, biayaSampai: Lj.biayaToko + (Lj.hapusBuku || 0) - (Lj.susutStok || 0) - ugEfekAset(Lj), teks,
     kiniTeks: K.berjalan ? (menutupKini ? 'Sampai ' + tanggalPendek(sampai) + ' margin kotor ' + RP(Lj.margin) + ' sudah menutup biaya sampai hari itu — laba bersih ' + RP(Lj.labaBersih) + '.' : 'Sampai ' + tanggalPendek(sampai) + ' biaya masih lebih besar ' + RP(kurang) + ' dari margin kotor' + (omzetKurang ? ' — kira-kira butuh omzet tambahan ' + RP(omzetKurang) + (hariSisa ? ' dalam ' + hariSisa + ' hari tersisa' : '') : '') + '.')
       : (menutupKini ? 'Bulan ini menutup: laba bersih ' + RP(Lj.labaBersih) + '.' : 'Bulan ini TIDAK menutup: biaya lebih besar ' + RP(kurang) + ' dari margin kotor.'),
     catatan: [K.cakupan !== null && K.cakupan < 0.999 ? 'Rasio margin dari omzet ber-HPP saja (' + kbPctTeks(K.cakupan * 100) + ' omzet) — ' + K.L.jumlahTanpaHpp + ' baris tanpa modal belum ikut.' : '', K.U && K.U.total > 0 ? 'Belum termasuk ' + K.U.teks + ' (' + RP(K.U.total) + ').' : ''].filter(Boolean) };
