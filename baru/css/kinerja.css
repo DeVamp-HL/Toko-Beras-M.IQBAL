@@ -36,6 +36,9 @@ html.ringan body { --nav: rgba(250,251,252,0.94); }
 html.ringan body.gelap { --nav: rgba(18,22,23,0.95); }
 html.ringan .kabar-baru, html.ringan .omzet-toast, html.ringan .lembar-akun.kartu, html.ringan .layar-stok .tp-zona { background: var(--nav); }
 @media (max-width: 719px) { html.ringan .jual-keranjang { background: var(--nav); } }   /* laci keranjang HP (di tablet sudah tanpa buram sejak 19 Sep) */
-html.ringan body .gerbang-masuk { --gm-kaca-pelat: var(--nav); --gm-kaca-pintu: rgba(238,241,244,0.88); }   /* pintu kaca & pelat Masuk: tanpa buram → lebih pekat */
-html.ringan body.gelap .gerbang-masuk { --gm-kaca-pintu: rgba(17,21,23,0.9); }
+/* gerbang (owner 26 Nov: "terlalu gelap"): pintu kaca TETAP warna aslinya — yang di belakangnya cuma gradasi lembut (bola cahaya & senja), jadi tanpa buram
+   pun tampak sama; dulu dipekatkan 88–90% dan menutup cahaya senja (mode gelap jadi hitam). Hanya pelat Masuk sedikit lebih pekat supaya tulisannya terbaca
+   di atas garis-garis pintu. */
+html.ringan body .gerbang-masuk { --gm-kaca-pelat: rgba(255,255,255,0.8); }
+html.ringan body.gelap .gerbang-masuk { --gm-kaca-pelat: rgba(20,23,25,0.82); }
 html.ringan .daftar-nota > .baris-nota, html.ringan .mn-gulir > .mn-grup { content-visibility: auto; contain-intrinsic-size: auto 64px; }
