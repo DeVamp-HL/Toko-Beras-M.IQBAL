@@ -52,6 +52,13 @@ KG_PEMAKAI = ('jual-logika.js', 'wadah-bernama-logika.js', 'harga-logika.js', 'h
 # impor; semua namanya tk… / TK_… / tiga nama pribadi yang tidak dipakai modul lain). Ikut OTOMATIS di belakang bila pemakainya ada; fungsinya terangkat.
 TK_MODUL = 'baru/js/layar/tanda-kenal-logika.js'
 TK_PEMAKAI = ('struk-logika.js', 'pindai-logika.js')
+# cap langganan (owner 26 Nov 2026): struk-logika menulis baris cap pembeli bernama (cap-logika.js — membaca data/toko.js & pembantu saja). Ikut otomatis.
+CP_MODUL = 'baru/js/layar/cap-logika.js'
+CP_PEMAKAI = ('struk-logika.js',)
+# karcis ambil nanti (owner 26 Nov 2026, rules v23): jual-logika menulis catatan titip bersama nota, struk-logika & pindai-logika membacanya (ambil-logika.js —
+# membaca data/toko.js & pembantu saja). Ikut otomatis di belakang.
+AB_MODUL = 'baru/js/layar/ambil-logika.js'
+AB_PEMAKAI = ('jual-logika.js', 'struk-logika.js', 'pindai-logika.js')
 BA_MODUL = 'baru/js/layar/berat-asli-logika.js'
 BA_PEMAKAI = ('stok-catat-logika.js', 'jual-logika.js', 'retur-logika.js', 'tutup-buku-logika.js')
 
@@ -202,6 +209,10 @@ def lengkapi(daftar):
         d.append(SM_MODUL)
     if any(os.path.basename(x) in TK_PEMAKAI for x in d) and not any(x.endswith('tanda-kenal-logika.js') for x in d):
         d.append(TK_MODUL)
+    if any(os.path.basename(x) in CP_PEMAKAI for x in d) and not any(x.endswith('cap-logika.js') for x in d):
+        d.append(CP_MODUL)
+    if any(os.path.basename(x) in AB_PEMAKAI for x in d) and not any(x.endswith('ambil-logika.js') for x in d):
+        d.append(AB_MODUL)
     return d
 
 

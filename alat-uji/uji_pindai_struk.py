@@ -18,7 +18,8 @@ sys.path.insert(0, SINI)
 import bundel_baru, uji_faktur  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 PD = 'baru/js/layar/pindai-logika.js'; STL = 'baru/js/layar/struk-logika.js'
-MODUL = bundel_baru.lengkapi([m for m in uji_faktur.MODUL] + [PD])
+RW = 'baru/js/layar/riwayat-logika.js'   # paket QR kedua: retur sekali scan memakai rwNotaLengkap
+MODUL = bundel_baru.lengkapi([m for m in uji_faktur.MODUL if m != RW] + [RW, PD])
 SUMBER = {'pages': '.github/workflows/pages.yml', 'baca': 'baru/BACA-DULU.md', 'rules': 'firestore.rules'}
 JAM = "var __KINI = new Date('2026-11-28T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
@@ -91,6 +92,12 @@ terapkanKeCache([{ koleksi: 'piutangMutasi', data: { id: 202, tanggal: '2026-11-
 var A2b = K('a2'), A3b = K('a3');
 ok('BN: sesudah pembayaran 150.000 nota 10 Nov tertutup, nota 20 Nov jadi yang tertua (nominal terisi)', A2b.bon.sisaNota === 0 && A3b.bon.tertua && A3b.bayar.nominal === '150000', J([A2b.bon, A3b.bayar]));
 
+// ==================== RT · RETUR SEKALI SCAN (paket QR kedua) ====================
+ok('RT: baris karung nota tunai berlaku ikut daftar retur pita (bisa / sebabnya) dengan id baris aslinya', T1.barisRetur.length === 1 && T1.barisRetur[0].id === '106' && /karung 50 kg/.test(T1.barisRetur[0].teks) && (T1.barisRetur[0].bisa || T1.barisRetur[0].sebab !== ''), J(T1.barisRetur));
+ok('RT: baris yang TIDAK bisa diretur tetap disebut beserta sebabnya (nota bon tanpa nama)', Kt.barisRetur.length === 1 && Kt.barisRetur[0].bisa === false && /tanpa nama pembeli/.test(Kt.barisRetur[0].sebab), J(Kt.barisRetur));
+ok('RT: nota dibatalkan tidak menawarkan retur', X1.barisRetur.length === 0 && X2.barisRetur.length === 0, J([X1.barisRetur, X2.barisRetur]));
+ok('RT: daftar retur = penyusun Riwayat yang sama (rwNotaLengkap), bukan hitungan baru', (function () { var L = rwNotaLengkap(rwKunci(notaDari({ trxId: 't1' }).baris[0])); var b = L.baris[0]; return T1.barisRetur[0].bisa === !!b.bisaRetur && T1.barisRetur[0].sebab === (b.bisaRetur ? '' : String(b.sebabRetur || '')); })());
+
 // ==================== SJ · SURAT JALAN ====================
 var D1 = K('d1');
 ok('SJ: nota diantar menyebut surat jalan, keadaannya, dan uang bayar di tempat yang belum pulang (awas)', ada(D1, /^Diantar · surat jalan SJ26-AB-0001 · diterima · uang bayar di tempat belum pulang Rp ?120\.000$/) && D1.awas, J(D1));
@@ -116,6 +123,7 @@ RUSAK = [
     ('bayar: nota batal tetap menawarkan bayar', PD, "else if (status === 'berlaku' && kunciPelanggan(nota.nama)) {", "else if (kunciPelanggan(nota.nama)) {"),
     ('bon: sisa nota memakai sisa semua bon', PD, "const sisaNota = x ? Math.round(x.sisa) : 0;", "const sisaNota = b ? Math.round(b.sisa) : 0;"),
     ('ingatan: keadaan tidak dihitung ulang sesudah data berubah', PD, "return ingatPerVersi('spKeadaan|' + kunci + '|' + iso, () => spHitung(nota, iso, kini || new Date()));", "if (!spKeadaanNota._i) spKeadaanNota._i = {}; return spKeadaanNota._i[kunci] || (spKeadaanNota._i[kunci] = spHitung(nota, iso, kini || new Date()));"),
+    ('retur: sebab tidak bisa retur dibuang', PD, "sebab: b.bisaRetur ? '' : String(b.sebabRetur || '') }))", "sebab: '' }))"),
     ('setelan: nomor WA disimpan apa adanya', STL, "const wa = waKetik ? tkWaNomor(waKetik) : '';", "const wa = waKetik;"),
     ('setelan: nomor WA salah ketik diterima', STL, "  if (waKetik && !wa) return { tolak:", "  if (false) return { tolak:"),
 ]

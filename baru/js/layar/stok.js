@@ -35,6 +35,7 @@ import * as KM from './kelas-merek-logika.js';
 // owner 26 Nov 2026 (stok minus, label & kepatuhan): tab Tugas gudang (stok minus · hilang & rusak per jenis · tugas terbuka · kemasan bertanggal) + label sesudah
 // adukan / Barang masuk (label-panel: satu pintu cetak label, tulisannya cuma kode label toko baru — tandaKenal)
 import * as GD from './gudang-logika.js';
+import * as AB from './ambil-logika.js';   // owner 26 Nov 2026: barang titipan pembeli disebut di Cocokkan
 import * as LB from './label-logika.js';
 import { kartuLabelAdukan, kartuLabelMasuk, aksiPanelLabel } from './label-panel.js';
 // owner 26 Nov 2026 (Dasbor sensus B127, "Hari + kg per barang"): lembar stok minimum per barang (Stok › Gudang; Dasbor & Belanja membaca angka yang sama)
@@ -1252,6 +1253,7 @@ export function pasangLayarStok(akar, opsi) {
       <div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Cocokkan · hitung gudang</div><div class="ket">${judulTab[c.tab] || ''} · kurang = susut memotong laba, lebih = stok naik tanpa mengubah modal</div></div>
         <div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>
       <div class="jalur kisi4" data-k="tab-cocok">${C.TAB_COCOK.map(([id, nm]) => h`<div class="seg ${c.tab === id ? 'aktif' : ''}" data-aksi="cTab" data-t="${id}">${nm}</div>`)}</div>
+      ${(() => { const T = AB.abRingkasBarang(); return T.length ? h`<div class="pita-info emas" data-k="cocok-titipan"><b>Barang titipan pembeli — sudah terjual, masih di toko. JANGAN ikut dihitung:</b> ${T.map((x) => x.nama + ' ' + AB.abJumlahTeks(x.jumlah, x.satuan) + ' (' + x.nota + ' nota)').join(' · ')}</div>` : ''; })()}
       <div class="op-ringkas" data-k="ringkas-cocok"><div>dihitung<b>${r.dihitung} / ${r.semua}</b></div><div>susut (potong laba)<b>${RP(r.susutRp)}</b></div><div>lebih (stok naik)<b>${RP(r.lebihRp)}</b></div></div>
       <div class="kaca-btn ${r.dihitung ? 'aktif emas' : 'mati'}" data-aksi="cSimpan">${r.tolak && !r.perluYakin ? r.tolak : c.tab === 'wadah' ? 'SIMPAN COCOKKAN WADAH · ' + ((n) => (n[0] ? n[0] + ' wadah' : '') + (n[1] ? (n[0] ? ' + ' : '') + n[1] + ' karung' : '') || '0 wadah')([r.baris.filter((b) => b.ada && b.jenis !== 'karung').length, r.baris.filter((b) => b.ada && b.jenis === 'karung').length]) : 'SIMPAN COCOKKAN · ' + r.berubah + ' berubah'}</div>
       ${c.tab === 'tumpukan' ? (() => { const G = C.ckCalonGabungUkuran(); if (!G.length) return ''; return h`<div class="kartu" data-k="gabung-ukuran" style="gap: 6px;">

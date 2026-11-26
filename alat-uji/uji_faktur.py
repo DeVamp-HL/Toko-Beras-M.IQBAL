@@ -24,6 +24,9 @@ FK = 'baru/js/layar/faktur-logika.js'; JL = 'baru/js/layar/jual-logika.js'; SL =
 BN = 'baru/js/layar/bon-logika.js'; PL = 'baru/js/layar/pelanggan-logika.js'; STK = 'baru/js/layar/struk-logika.js'; SM = 'baru/js/inti/struk-model.js'
 MODUL = [m for m in uji_harga_tingkat.MODUL if m != FK] + [SM, FK]   # Dasbor (dbTagihan = fkPengingat apa adanya) dijaga statis — bundel Dasbor tidak satu lingkup dengan bundel Jual
 MODUL = [m for i, m in enumerate(MODUL) if m not in MODUL[:i]]
+# QR satu pintu & cap langganan (owner 26 Nov 2026): struk-logika memakai tanda-kenal-logika (nomor WA toko) & cap-logika (baris cap di struk) — modul daun,
+# ikut di belakang (uji_antar & uji_pesanan memakai daftar ini juga)
+MODUL = MODUL + [m for m in ('baru/js/layar/tanda-kenal-logika.js', 'baru/js/layar/cap-logika.js', 'baru/js/layar/ambil-logika.js') if m not in MODUL]
 SUMBER = {'pelanggan': 'baru/js/layar/pelanggan.js', 'jual': 'baru/js/layar/jual.js', 'index': 'baru/index.html', 'pages': '.github/workflows/pages.yml',
           'rules': 'firestore.rules', 'app': 'baru/js/app.js', 'dasbor': 'baru/js/layar/dasbor.js', 'dasborL': 'baru/js/layar/dasbor-logika.js', 'kanvas': 'baru/js/inti/struk-kanvas.js', 'riwayatL': 'baru/js/layar/riwayat-logika.js'}
 

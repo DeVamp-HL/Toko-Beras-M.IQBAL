@@ -443,7 +443,7 @@ def periksa_kiriman(src):
     if "const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean, batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null) });" not in S: cacat.append('stok.js: panel isi ulang wadah tidak menerima batas dokumen akun (keranjangJual)')   # 39b no. 21
     # tinjauan 7 Okt: nota dicatat lewat SBN() (= SB() + akun nego, untuk baris yang dipulihkan) — SBN wajib dibangun dari SB() supaya batas baris tetap ikut
     if "return Object.assign(SB(), { negoAkun: a, negoHak: hakAkun(a, 'nego')," not in J: cacat.append('jual.js: SBN() tidak dibangun dari SB() — batas baris hilang di jalur nego / catat nota')
-    for pang in ['L.simpanNota(Object.assign(SBN(), { tembusYakin: tembusYakin === true, dilayani: dilayaniSah() }))', 'L.masukkan(SB(), Number(n))', 'L.masukkan(SB())', 'L.ulangiPembelian(SB(), rakKini(), g)']:
+    for pang in ['L.simpanNota(Object.assign(SBN(), { tembusYakin: tembusYakin === true, dilayani: dilayaniSah() }))', 'L.masukkan(SB(), Number(n))', 'L.masukkan(SB())', 'L.ulangiPembelian(SB(), rakKini(), g)', 'L.ulangiBarisNota(SB(), rakKini(), ']:
         if pang not in J: cacat.append('jual.js: ' + pang + ' tidak ada — jalur itu melewati batas baris')
     if 'L.simpanNota(S())' in J or re.search(r'L\.masukkan\(S\(\)', J): cacat.append('jual.js masih memanggil logika nota tanpa batas baris (S() bukan SB())')
     if "A.susunSimpanAdukan(Object.assign({}, d, { batasHasil: batasHasilAdukan(opsi.akun ? opsi.akun() : null) })" not in S: cacat.append('stok.js tidak menyerahkan batas hasil adukan ke logika')

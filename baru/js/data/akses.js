@@ -24,7 +24,7 @@ export const BATAS_HASIL_ADUKAN_STAF = 8;   // adukan: 8 hasil × (produksi + ka
 // rules v7 (owner 7 Okt, JS2-C): persetujuan — yang minta nego membaca keputusan owner (pendengar koleksi utuh; rules bukan saringan)
 export const BACA_STAF = ['penjualan', 'piutangMutasi', 'pelangganCatatan', 'pelangganTitip', 'pesanan', 'tagihPelanggan', 'strukKeluar', 'tandaKenal',
   'batchMasuk', 'produksiKemasan', 'penyesuaianStok', 'penyesuaianKemasan', 'retur', 'karantina', 'stokBahanKemasan', 'stokBahanLiteran', 'wadahLiteran', 'pindahTempat',
-  'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan', 'suratJalan', 'orderRutin', 'cekGudang'];   // v19 (paket KPI laba): cek mingguan gudang   // rules v10 (B3): surat jalan & antar · v11 (B4): jadwal order rutin
+  'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan', 'suratJalan', 'orderRutin', 'cekGudang', 'ambilBarang'];   // v23: titipan & ambil barang (bonPublik TIDAK — owner saja)   // v19 (paket KPI laba): cek mingguan gudang   // rules v10 (B3): surat jalan & antar · v11 (B4): jadwal order rutin
 export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip', 'bukuPegangan'], pengaturan: ['tempatSimpan'] };
 // rules v8 (B1, owner 16 Nov 2026): + hargaTingkat (harga pelanggan usaha dipakai kasir) + produkArsip (barang yang diarsipkan tidak tampil sebagai chip habis di tablet)
 // rules v14 (owner 21 Nov 2026): RINGKAS HARI INI di tablet — akun Penjaga laci yang DITANDAI owner (aksesAkun.bacaUang) membaca data uang untuk laci
@@ -49,7 +49,7 @@ export function pendengarUang(akun) {
 // §4 — CREATE bukan-owner: koleksi → peran yang boleh. Menambah peran nanti = menambah satu nama di sini DAN di daftar yang sama di firestore.rules.
 export const BUAT_STAF = { penjualan: ['ben', 'karyawan'], piutangMutasi: ['ben', 'karyawan'], stokBahanLiteran: ['ben', 'karyawan'], stokBahanKemasan: ['ben', 'karyawan'],
   produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], tandaKenal: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'], cekGudang: ['ben'],   /* rules v19 (paket KPI laba, owner 24 Nov 2026): cek gudang = ben */ kepatuhanCek: ['ben'],   /* rules v22 (owner 26 Nov 2026): tanda kalender kepatuhan = ben */
-  wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'] };   // rules v11 (B4): pesanan & jadwal rutin = ben   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
+  wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'], ambilBarang: ['ben', 'karyawan'] };   // rules v23: karcis ambil nanti (bonPublik owner saja)   // rules v11 (B4): pesanan & jadwal rutin = ben   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
 // rules v7 (owner 7 Okt, JS2-C): persetujuan hanya PERMINTAAN NEGO "menunggu" atas nama sendiri, tanpa kolom keputusan (stafMintaNego; periksaKiriman di bawah)
 export const TIPE_WADAH_STAF = ['takar', 'karung', 'karungIsi', 'cek'];   // = stafBuatWadah di rules v5
 export const KREDIT_STAF = ['ben'];   // penjualan caraBayar Kredit (jualBon): ben `sendiri`, karyawan `owner`
@@ -292,6 +292,13 @@ export function cekPatuhSah(d) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(d.tanggal || '')) && typeof d.butir === 'string' && /^[a-z0-9-]{1,40}$/.test(d.butir) && typeof d.periode === 'string' && /^[0-9K-]{4,10}$/.test(d.periode)
     && typeof d.catatan === 'string' && d.catatan.length <= 160;
 }
+// rules v23 (owner 26 Nov 2026): bentuk dokumen ambilBarang yang boleh ditulis bukan-owner (= stafAmbilBarang). Kolom atribusi penulis pusat ikut boleh.
+export const AMBIL_KOLOM = ['id', 'tanggal', 'jam', 'jenis', 'trxId', 'namaPelanggan', 'isi', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi'].concat(KOLOM_ATRIBUSI_UBAH);
+export function ambilBarangSah(d) {
+  if (!d || typeof d !== 'object') return false; if (Object.keys(d).some((k) => AMBIL_KOLOM.indexOf(k) < 0)) return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(d.tanggal || '')) && (d.jenis === 'titip' || d.jenis === 'ambil') && typeof d.trxId === 'string' && d.trxId.length > 0 && d.trxId.length <= 60
+    && Array.isArray(d.isi) && d.isi.length > 0 && d.isi.length <= 20 && (d.catatan === undefined || (typeof d.catatan === 'string' && d.catatan.length <= 160));
+}
 export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
   if (!akun) return { tolak: 'Belum masuk' };
   if (akun.jenis === 'owner') return { accessCall: 0 };
@@ -321,6 +328,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'cekGudang' && !cekGudangSah(d)) return { tolak: 'Bentuk catatan cek gudang tidak sah — isi ulang lembarnya' };
       // rules v22 (owner 26 Nov 2026): tanda kalender kepatuhan dari tablet — butir & putaran berbentuk tetap, catatan ≤ 160 huruf (stafCekPatuh)
       if (x.koleksi === 'kepatuhanCek' && !cekPatuhSah(d)) return { tolak: 'Bentuk tanda kalender kepatuhan tidak sah — buka lagi butirnya' };
+      // rules v23 (owner 26 Nov 2026): titipan & barang diambil dari tablet — jenis titip|ambil, isi 1–20 baris, catatan ≤ 160 huruf (stafAmbilBarang)
+      if (x.koleksi === 'ambilBarang' && !ambilBarangSah(d)) return { tolak: 'Bentuk catatan titipan / ambil barang tidak sah — buka lagi lembarnya' };
       if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return { tolak: tolakTindakan('hargaBeli') };
       // rules v5 (putaran 39): karyawan menulis wadahLiteran hanya takar / karung / karungIsi / cek (aturan wadah & titik samakan isi = owner), batchMasuk hanya batch LAHIR BUKU 0 kg
       if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };

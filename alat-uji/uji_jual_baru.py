@@ -758,6 +758,10 @@ ok('U (putaran 25): nota sistem baru 2 baris (trxId sama, tanpa grupNota) → "H
 var ULU = XU ? ulangiPembelian(Object.assign({}, s, { keranjang: [] }), susunRak(s), XU.grup) : {};
 ok('U (putaran 25): belanja terakhir Bu Suti membaca nota itu UTUH (grup = trxId, 2 baris, total = Σ baris, tidak terpecah per baris); ulangi → kedua barisnya masuk keranjang', !!XU && XU.baris.length === 2 && XU.total === pjU[0].hargaTotal + pjU[1].hargaTotal
   && PU.filter(function (x) { return x.baris.some(function (p) { return p.trxId === NU.trxId; }); }).length === 1 && !!ULU.keranjang && ULU.keranjang.length === 2, JSON.stringify([PU.map(function (x) { return [x.grup, x.baris.length, x.total]; }), ULU.kabar]));
+// paket QR kedua (owner 26 Nov 2026): "Ulangi belanja ini" dari lembar struk = ulangiBarisNota (nota mana pun, jalan yang sama dengan ulangiPembelian)
+var ULN = XU ? ulangiBarisNota(Object.assign({}, s, { keranjang: [] }), susunRak(s), { tanggal: XU.tanggal, baris: XU.baris }) : {};
+ok('U (QR kedua): ulangi dari struk = hasil yang SAMA dengan ulangi belanja terakhir (baris, harga hari ini); nota tanpa baris ditolak berkabar', !!ULN.keranjang && JSON.stringify(ULN.keranjang.map(function (b) { return [b.trx.jenis, b.trx.jumlah, b.trx.hargaTotal]; })) === JSON.stringify(ULU.keranjang.map(function (b) { return [b.trx.jenis, b.trx.jumlah, b.trx.hargaTotal]; }))
+  && ulangiBarisNota(s, susunRak(s), { tanggal: '2026-09-19', baris: [] }).kabarAwas === true && !ulangiBarisNota(s, susunRak(s), null).keranjang, JSON.stringify(ULN.kabar));
 terapkanKeCache(NU.dokumen.map(function (d) { return { koleksi: d.koleksi, hapus: d.data.id }; })); terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00'), pelanggan: 'Bu Suti' }));
 pasok('pelangganTitip', [{ id: 'tt1', dari: 'bang ojek contoh', untuk: 'bu suti', apa: 'disuruh belanja', kali: 2, tanggal: '2026-09-18' }]);
 var SB = saranBenang('Bang Ojek Contoh');
