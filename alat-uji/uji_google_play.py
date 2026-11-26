@@ -160,6 +160,16 @@ def periksa_statis(t):
     jalan = k.split('run: |', 1)[-1]
     ok('play-kunci.yml: isian owner lewat env, TIDAK disisipkan ${{ }} ke skrip (anti suntik perintah)', 'KUNCI_ENKRIPSI: ${{ inputs.kunci_enkripsi }}' in k and '${{' not in jalan.split('- name: Simpan')[0])
     ok('play-kunci.yml: isian hanya PEM kunci publik atau heksa — lainnya ditolak', "-----BEGIN PUBLIC KEY-----" in jalan and "grep -qE '^[0-9a-fA-F]{64,}$'" in jalan and "grep -qE '^[A-Za-z0-9+/=]+$'" in jalan)
+    pem = '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0abc+/=\nQUJD\n-----END PUBLIC KEY-----\n'
+    baris = [x for x in jalan.split('\n') if 'BADAN=$(' in x]
+    if len(baris) == 1:
+        import tempfile as _tf
+        with _tf.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, 'pepk')); open(os.path.join(d, 'pepk', 'isian.txt'), 'w').write(pem)
+            r = subprocess.run(['bash', '-c', baris[0].strip() + '; printf %s "$BADAN"'], capture_output=True, text=True, env={'RUNNER_TEMP': d, 'PATH': os.environ.get('PATH', '')})
+        badan = r.stdout
+    else: badan = ''
+    ok('play-kunci.yml: PEM dari Play Console (berkas encryption_public_key.pem utuh) → badan base64 bersih tanpa kepala/ekor', badan == 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0abc+/=QUJD', badan[:80])
     ok('play-kunci.yml: pepk.jar dicocokkan sidik SHA-256 sebelum dijalankan', re.search(r'SIDIK_PEPK: [0-9a-f]{64}\n', k) is not None and 'sha256sum -c -' in jalan and jalan.find('sha256sum -c') < jalan.find('java -jar'))
     ok('play-kunci.yml: sandi ke PEPK dari env rahasia, sertifikat ikut (--include-cert), kunci dihapus sesudahnya',
        '--keystore-pass="$KEYSTORE_PASSWORD" --key-pass="$KEY_PASSWORD"' in jalan and '--include-cert' in jalan and jalan.find('rm -f "$RUNNER_TEMP/kunci.jks"') > jalan.find('java -jar'))
@@ -221,6 +231,7 @@ KONTROL = [
     ('isian kunci disisipkan langsung ke skrip', [(KUNCI, 'printf \'%s\\n\' "$KUNCI_ENKRIPSI"', 'printf \'%s\\n\' "${{ inputs.kunci_enkripsi }}"')]),
     ('isian apa saja diterima sebagai heksa', [(KUNCI, "grep -qE '^[0-9a-fA-F]{64,}$'", "grep -qE '.*'")]),
     ('pepk.jar tidak dicocokkan sidiknya', [(KUNCI, '          echo "$SIDIK_PEPK  $RUNNER_TEMP/pepk/pepk.jar" | sha256sum -c - ||', '          true ||')]),
+    ('kepala PEM dibuang sesudah spasi dibuang (bug 26 Nov)', [(KUNCI, """BADAN=$(sed -e 's/-----BEGIN PUBLIC KEY-----//' -e 's/-----END PUBLIC KEY-----//' "$RUNNER_TEMP/pepk/isian.txt" | tr -d '\\n \\t')""", """BADAN=$(tr -d '\\n ' < "$RUNNER_TEMP/pepk/isian.txt" | sed -e 's/-----BEGIN PUBLIC KEY-----//' -e 's/-----END PUBLIC KEY-----//')""")]),
     ('artefak kunci hidup 30 hari', [(KUNCI, '          retention-days: 1\n', '          retention-days: 30\n')]),
     ('grafis unggulan beralfa (diganti ikon RGBA)', [(GRAFIS, None, 'IKON')]),
     ('ikon salah ukuran (diganti grafis)', [(IKON, None, 'GRAFIS')]),
