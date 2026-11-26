@@ -68,8 +68,11 @@ export function kantongGerakan() { const peta = ugPetaKantong(); return (r) => u
  * ini tutup berikutnya menganggapnya lebih/kurang laci dan no. 38 menghitungnya lagi di laba. Titik tanpa jam pasang, atau yang dipasang lewat tengah malam
  * (hari kalender berikutnya), tidak punya catatan susulan. Baris uang keluar dari mesin tidak berjam — jamnya dibaca dari dokumennya.
  */
+// owner 26 Nov 2026 ("tambal 31 Des"): jam patokan DIPASANG. Biasanya = diubahPada; titik yang dikembalikan saat Batalkan tutup buku membawa diubahPada BARU
+// (supaya HP lain mengambilnya — ambilTitikKas memilih diubahPada terbaru) dan jam pasang aslinya di dipasangPada, jadi catatan susulannya tidak hilang
+export const ugPasangDari = (t) => String((t && (t.dipasangPada || t.diubahPada)) || '');
 export function ugSesudahTitik(t) {
-  const d = t && t.diubahPada ? new Date(t.diubahPada) : null;
+  const p = ugPasangDari(t); const d = p ? new Date(p) : null;
   if (!d || !isFinite(d.getTime()) || hariIniIso(d) !== t.tanggal) return () => false;
   const jamT = jamKini(d); const jamDok = {}; ambilPengeluaranHarian().forEach((h) => { if (h.id !== undefined && h.id !== null && h.jam) jamDok[String(h.id)] = String(h.jam); });
   return (r) => { const j = String(r.jam || jamDok[String(r.id)] || '').slice(0, 5); return r.t === t.tanggal && /^\d\d:\d\d$/.test(j) && j > jamT; };
@@ -82,7 +85,7 @@ export function ugSesudahTitik(t) {
  * & laci seharusnya), dan Catat isi rekening / brankas. → { laci, brankas, rekening, amplop } (bertanda: masuk +, keluar −).
  */
 /** Jam patokan dipasang (HH:MM setempat) bila dipasang pada hari tanggalnya sendiri; selain itu '' (tidak ada catatan susulan). Aturan ugSesudahTitik. */
-export const ugJamPasang = (t) => { const d = t && t.diubahPada ? new Date(t.diubahPada) : null; return d && isFinite(d.getTime()) && hariIniIso(d) === t.tanggal ? jamKini(d) : ''; };
+export const ugJamPasang = (t) => { const p = ugPasangDari(t); const d = p ? new Date(p) : null; return d && isFinite(d.getTime()) && hariIniIso(d) === t.tanggal ? jamKini(d) : ''; };
 export function ugSusulan(t) {
   const s = { laci: 0, brankas: 0, rekening: 0, amplop: 0 }; if (!t) return s; const susul = ugSesudahTitik(t); const tempat = kantongGerakan();
   ingatGerakanKas().forEach((r) => { if (!susul(r)) return; const k = tempat(r); if (s[k] === undefined) return; if (r.masuk > 0) s[k] += r.masuk; if (r.keluar > 0) s[k] -= r.keluar; });
@@ -93,6 +96,17 @@ export function ugSusulan(t) {
     ambilPindahUang().forEach((p) => { if (String(p.id) === 'pd-' + t.tanggal || !lewat(p)) return; const n = Number(p.nominal) || 0; if (s[p.dari] !== undefined) s[p.dari] -= n; if (s[p.ke] !== undefined) s[p.ke] += n; });
   }
   return s;
+}
+/**
+ * owner 26 Nov 2026 ("Terima + tambal 31 Des"): saldo tiap tempat dari patokan LAMPAU `t` (hitungan tutup hari / titik kas yang dipakai tutup buku 31 Des,
+ * kas akhir bulan Laporan) + catatan susulan patokan itu (ugSusulan — aturan yang SAMA dengan tutup hari & Catat isi). Dulu titik 31 Des yang ditulis tutup
+ * buku & kas akhir bulan melewatinya. `t` tanpa diubahPada (berita acara / titik lama) = tanpa susulan, persis seperti dulu. → bentuk saldoKantong + susulan.
+ */
+export function ugSaldoDenganSusulan(sampai, t) {
+  // t kosong = titik kas sekarang (bentuk saldoKantong biasa, mesin ikut diisi) + catatan susulannya
+  const K = saldoKantong(sampai, t || undefined); const T = t || K.titik; if (!K.ada || !T) return K; const su = ugSusulan(T); const n = (k) => K[k] + su[k];
+  return Object.assign({}, K, { laci: n('laci'), brankas: n('brankas'), rekening: n('rekening'), amplop: n('amplop'), total: K.total + su.laci + su.brankas + su.rekening + su.amplop, susulan: su,
+    minus: ['laci', 'brankas', 'rekening', 'amplop'].filter((k) => n(k) < -0.5) });
 }
 function ugKantongBaris(r, peta) {
   if (r.id && peta.id[String(r.id)]) return peta.id[String(r.id)];
