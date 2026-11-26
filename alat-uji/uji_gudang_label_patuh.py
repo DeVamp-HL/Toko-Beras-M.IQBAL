@@ -14,7 +14,7 @@ uji_gudang_label_patuh.py — PAKET STOK MINUS, LABEL & KEPATUHAN (keputusan own
     python3 alat-uji/uji_gudang_label_patuh.py            → N lulus · 0 gagal
     python3 alat-uji/uji_gudang_label_patuh.py --kontrol  → kerusakan wajib ketahuan (keluar 3 kalau ada yang diam)
 """
-import os, sys, json, subprocess, tempfile, glob
+import os, sys, json, subprocess, tempfile, glob, hashlib
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru, uji_antar, uji_jual_baru, uji_ringkasan_baru, uji_kunci_periode, uji_susut_harga  # noqa: E402
@@ -369,8 +369,17 @@ def jsc(skrip):
     return r, out
 
 
+# Sidik BEKU keluaran label escpos.js SEBELUM paket ini (main d9dd788, dihitung 26 Nov 2026 dari EP_LAMA). Pembanding byte-sama label tanpa `baris`
+# tidak bergantung pada git: checkout CI dangkal tidak punya origin/main. Kalau git terbaca, sidik ini dicocokkan dulu dengan escpos.js di main.
+SIDIK_EP_LAMA = '33bd9415e0f79835a948f6b4252313c11e1c99adc01625c500c5baea3f406da0'
+
+
+def sidik_ep(x):
+    return hashlib.sha256(json.dumps(x, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
 def ep_lama():
-    """Keluaran label dari escpos.js SEBELUM paket ini (git HEAD dari cabang dasar) — pembanding byte-sama untuk label tanpa `baris`."""
+    """Keluaran label dari escpos.js SEBELUM paket ini (git origin/main) — hanya untuk mencocokkan SIDIK_EP_LAMA; None kalau tidak terbaca."""
     for rev in ('origin/main', 'HEAD'):
         r = subprocess.run(['git', '-C', AKAR, 'show', rev + ':' + EP], capture_output=True, text=True)
         if r.returncode == 0 and 'tambah.forEach' not in r.stdout: break
@@ -379,16 +388,15 @@ def ep_lama():
     return json.loads(out) if rr.returncode == 0 and out.startswith('{') else None
 
 
-def jalan(teks, lama=None):
+def jalan(teks):
     js = bundel_js(teks)
     jam = "var __KINI = new Date('2026-11-18T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
     fp = ("var FPX = (function () { var module = { exports: {} }; var exports = module.exports; var require = function () { return {}; };\n" + teks[FP] + '\nreturn module.exports; })();\n')
     r, out = jsc(jam + js + fp + '\nvar KOTAK0 = ' + json.dumps(uji_jual_baru.KOTAK) + ';\nvar GK = ' + json.dumps(KOTAK) + ';\nvar ATUR = ' + json.dumps(ATUR) + ';\n' + SKENARIO)
     if r.returncode != 0 or not out.startswith('{'): return 0, ['JSC JATUH: ' + (r.stderr or r.stdout)[-900:]]
     h = json.loads(out); g = list(h['gagal']); l = h['lulus']
-    if lama is not None:
-        if h['ep'] == lama: l += 1
-        else: g.append('7: label TANPA baris tidak byte-sama dengan escpos.js sebelum paket ini (cetakan lama berubah)')
+    if sidik_ep(h['ep']) == SIDIK_EP_LAMA: l += 1
+    else: g.append('7: label TANPA baris tidak byte-sama dengan escpos.js sebelum paket ini (cetakan lama berubah)')
     return l, g
 
 
@@ -412,11 +420,11 @@ def muat():
 if __name__ == '__main__':
     teks, src = muat()
     if '--kontrol' in sys.argv:
-        kode = 0; lama = ep_lama()
+        kode = 0
         for nama, berkas, a, b in RUSAK:
             if teks[berkas].count(a) != 1: print('KONTROL BASI  ' + nama + ' (' + str(teks[berkas].count(a)) + '×)'); kode = 3; continue
             T = dict(teks); T[berkas] = T[berkas].replace(a, b)
-            l, g = jalan(T, lama)
+            l, g = jalan(T)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:150] if g else '-'))
             if not g: kode = 3
         for nama, berkas, a, b in RUSAK_STATIS:
@@ -426,8 +434,10 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     lama = ep_lama()
-    if lama is None: print('PERINGATAN: escpos.js sebelum paket ini tidak terbaca dari git — pembanding byte-sama dilewati')
-    l, g = jalan(teks, lama); ls, gs = statis(src)
+    l, g = jalan(teks); ls, gs = statis(src)
+    if lama is None: print('escpos.js di main tidak terbaca dari git (checkout dangkal) — label tanpa baris dibanding sidik beku saja')
+    elif sidik_ep(lama) != SIDIK_EP_LAMA: g.append('sidik beku label lama BASI: escpos.js di main sudah berubah — hitung ulang SIDIK_EP_LAMA dari EP_LAMA')
+    else: print('Sidik beku label lama = escpos.js di main (git)')
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     print('STATIS: %d lulus · %d gagal' % (ls, len(gs)))
