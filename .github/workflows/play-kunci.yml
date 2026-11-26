@@ -59,7 +59,8 @@ jobs:
           printf '%s\n' "$KUNCI_ENKRIPSI" | tr -d '\r' > "$RUNNER_TEMP/pepk/isian.txt"
           if grep -q -- '-----BEGIN PUBLIC KEY-----' "$RUNNER_TEMP/pepk/isian.txt"; then
             # isian satu baris dari kotak teks: pulihkan baris PEM (kepala, badan base64 per 64 huruf, ekor)
-            BADAN=$(tr -d '\n ' < "$RUNNER_TEMP/pepk/isian.txt" | sed -e 's/-----BEGIN PUBLIC KEY-----//' -e 's/-----END PUBLIC KEY-----//')
+            # kepala & ekor dibuang SEBELUM spasi dibuang (26 Nov 2026: urutan terbalik menyisakan "-----BEGINPUBLICKEY-----" → ditolak "bukan base64")
+            BADAN=$(sed -e 's/-----BEGIN PUBLIC KEY-----//' -e 's/-----END PUBLIC KEY-----//' "$RUNNER_TEMP/pepk/isian.txt" | tr -d '\n \t')
             echo "$BADAN" | grep -qE '^[A-Za-z0-9+/=]+$' || { echo "GAGAL: isi PEM bukan base64"; exit 1; }
             { echo '-----BEGIN PUBLIC KEY-----'; echo "$BADAN" | fold -w 64; echo '-----END PUBLIC KEY-----'; } > "$RUNNER_TEMP/pepk/enkripsi.pem"
             CARA=(--rsa-aes-encryption "--encryption-key-path=$RUNNER_TEMP/pepk/enkripsi.pem")
