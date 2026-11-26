@@ -255,7 +255,8 @@ def periksa_statis(t):
     # sampai 2 Okt: HURUF DEMI HURUF dengan teks index.html; sejak sistem lama pensiun (3 Okt) pembandingnya kunci sidik pembantu.sha256
     ok('penyusun isi katalog /baru/ (pembantu.js) = susunIsiKatalogKasir() sistem lama: terkunci sidik (pembantu.sha256)', beku2.terkunci('susunIsiKatalogKasir', t['baru/js/mesin/pembantu.js']))
     fb = t['baru/js/data/firebase.js']; tb = fungsi(fb, 'tulisBerkas')
-    i_mentah = tb.find('if (kkMentah(x.koleksi)) { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }')
+    # rules v23 (owner 26 Nov 2026): ringkasan cek bon (bonPublik) ikut jalur mentah yang sama — dibaca tanpa login, tanpa atribusi
+    i_mentah = tb.find("if (kkMentah(x.koleksi) || x.koleksi === 'bonPublik') { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }")
     ok('penulis pusat: dokumen katalog ditulis APA ADANYA sebelum atribusi & baris jejak', i_mentah >= 0 and i_mentah < tb.find('beriAtribusiAkun(x.data'))
     pn = fungsi(fb, 'terbitkanKatalogOtomatis')
     ok('penerbit otomatis: lewat gerbang kkBolehTerbit, hanya kalau isi BERBEDA (kkTertinggal(isi) === true), setDoc bentuk kkDokumen, tanpa jejak',
@@ -404,7 +405,7 @@ KONTROL = [
     ('terbit harga tidak menyertakan katalog kasir', {'baru/js/layar/harga.js': [("hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(kkSertakanKiriman(r, waktu().kini)))", "hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(r))")]}, ('statis',)),
     ('gerbang terbit dari salinan perangkat', {'baru/js/data/katalog-kasir.js': [("if (k.dariCache > 0) return", "if (false) return")]}, ('jsc',)),
     ('gerbang terbit tanpa katalog server terbaca', {'baru/js/data/katalog-kasir.js': [("if (_kkServer.ada === null || !_kkServer.dariServer) return", "if (false) return")]}, ('jsc',)),
-    ('katalog ditulis dengan atribusi & jejak', {'baru/js/data/firebase.js': [("    if (kkMentah(x.koleksi)) { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }", "")]}, ('statis',)),
+    ('katalog ditulis dengan atribusi & jejak', {'baru/js/data/firebase.js': [("    if (kkMentah(x.koleksi) || x.koleksi === 'bonPublik') { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }", "")]}, ('statis',)),
     ('penerbit otomatis terbit walau isinya sama', {'baru/js/data/firebase.js': [("if (!isi || kkTertinggal(isi) !== true) return;", "if (!isi) return;")]}, ('statis',)),
     # (pensiun 3 Okt 2026) kontrol penjaga tulis index.html, buku kecil bayar bon kasir.html, dan K2 (waktu server katalog darurat) dihapus bersama objeknya
     ('Beranda diam soal perubahan yang belum sampai', {'baru/js/data/katalog-kasir.js': [("  if (tg) out.push({ teks: 'Katalog kasir: ada perubahan", "  if (false) out.push({ teks: 'Katalog kasir: ada perubahan")]}, ('jsc',)),
