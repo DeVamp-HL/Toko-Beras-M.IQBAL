@@ -4254,4 +4254,6 @@ buku tempat itu begitu tutup berikutnya menulis titik baru. Laci sudah aman seja
   31 Des yang ditulis saat kunci) membawa uang yang dicatat sesudah tutup hari 31 Des. Kas akhir bulan Laporan (`lpKasAkhirBulan`, juga potret Desember saat kunci)
   dan uang pada tanggal lampau (`lpKasPadaTanggal`, Pondasi) memakai aturan yang sama. Berita acara / titik lama tanpa `diubahPada` = angka lama persis; titik
   31 Des yang ditulis tutup buku dipasang Januari = tanpa susulan (catatan bertanggal ≤ 31 Des yang masuk sesudah kunci tetap lewat daftar susulan tutup buku
-  A9). Tanpa rules baru, ritual tidak berubah. Uji: blok TS `alat-uji/uji_tutup_buku_bertahap.py` (+ 4 jangkar kontrol).
+  A9). Batalkan tutup buku mengembalikan titik lama dengan `diubahPada` baru (HP lain wajib mengambilnya — `ambilTitikKas` memilih yang terbaru) DAN jam pasang
+  aslinya di `dipasangPada`; `ugPasangDari(t)` = dipasangPada || diubahPada dipakai `ugSesudahTitik` / `ugJamPasang`, jadi susulannya tidak hilang di
+  percobaan berikutnya. Tanpa rules baru, ritual tidak berubah. Uji: blok TS `alat-uji/uji_tutup_buku_bertahap.py` (+ 5 jangkar kontrol).

@@ -30,7 +30,7 @@ import { potonganMenunggu, piutangPemasokPada, ambilPenjualan, ambilPenjualanSem
 import { KOLEKSI } from '../data/koleksi.js';
 import { KP_BATAS_GET, kpPotong, kpNilaiKiriman, kpBulanDok, kpBebas, kpIdx, kpWib, kpNamaBulan, KP_ID_PINTU, KP_PINTU_JAM, KP_PINTU_SISA_JAM, kpPecahBiaya } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, jamKini, tanggalPendek, lebihBayarDari, kalimatLebih } from '../inti/format.js';
-import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam, ugSaldoDenganSusulan } from './uang-logika.js';
+import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam, ugSaldoDenganSusulan, ugPasangDari } from './uang-logika.js';
 import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
 import { ringkasPelangganTahun } from './pelanggan-logika.js';
 import { ringkasPemasokTahun, ringkasPesananTahun } from './bon-pemasok-logika.js';
@@ -264,7 +264,7 @@ export function barisBuku(sampai, sampaiKas, titikPakai) {
 export function titikTahun(tahun) {
   const c = tbCutoff(tahun); const t = ambilTitikKas();
   // owner 26 Nov 2026 ("tambal 31 Des"): diubahPada = saat patokan dipasang (titik kas / dokumen tutup hari) — dasar catatan susulannya (ugSusulan); ikut berita acara
-  const pasang = (x) => (x && x.diubahPada ? { diubahPada: String(x.diubahPada) } : {});
+  const pasang = (x) => (ugPasangDari(x) ? { diubahPada: ugPasangDari(x) } : {});
   if (t && t.tanggal && t.tanggal <= c) return Object.assign({ tanggal: t.tanggal, laci: Number(t.laci) || 0, rekening: Number(t.rekening) || 0, amplop: Number(t.amplop) || 0, brankas: Number(t.brankas) || 0, dari: 'titikKas' }, pasang(t));
   const th = ambilTutupHari().filter((d) => d && d.tanggal && d.tanggal <= c && d.titik).sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)))[0];
   return th ? Object.assign({ tanggal: th.tanggal, laci: Number(th.titik.laci) || 0, rekening: Number(th.titik.rekening) || 0, amplop: Number(th.titik.amplop) || 0, brankas: Number(th.titik.brankas) || 0, dari: 'tutupHari' }, pasang(th)) : null;
@@ -878,7 +878,7 @@ export function susunBatal(tahun, arsipDok, w, L) {
   if (acara.status === 'terkunci') {
     const eraLama = bkEraTanpa(tahun); awal.push({ koleksi: 'pengaturan', data: { id: 'tutupBuku', tahunDitutup: eraLama === null ? 0 : eraLama, padaTanggal: w.tanggal, dibatalkan: tahun } });
     // titik kas dikembalikan HANYA bila titik sekarang masih yang ditulis tutup buku ini (31 Des) — kalau tutup hari sudah memajukannya, hitungan fisik itu dipertahankan
-    const tk = ambilTitikKas(); if (acara.titikDitulis && acara.titikSebelum && acara.titikSebelum.tanggal && tk && tk.tanggal === tbCutoff(tahun)) { titik = Object.assign({}, acara.titikSebelum, { id: 'titikKas', diubahPada: w.kini }); awal.push({ koleksi: 'pengaturan', data: titik }); }
+    const tk = ambilTitikKas(); if (acara.titikDitulis && acara.titikSebelum && acara.titikSebelum.tanggal && tk && tk.tanggal === tbCutoff(tahun)) { titik = Object.assign({}, acara.titikSebelum, { id: 'titikKas', diubahPada: w.kini }, ugPasangDari(acara.titikSebelum) ? { dipasangPada: ugPasangDari(acara.titikSebelum) } : {}); awal.push({ koleksi: 'pengaturan', data: titik }); }
   }
   // v7 (K8): pintu (bila ada bulan terkunci) ikut kiriman PERTAMA — tarik saldo pembuka bertanggal lama, pengembalian arsip & titik kas lewat pintu
   const pintu = (susunPintu(tahun, w).dokumen || [])[0] || null; if (pintu) awal.push(pintu);

@@ -31,7 +31,7 @@ export function khPatokan(iso) {
   ambilTutupHari().forEach((d) => { if (!d || !d.titik || !khIsoSah(d.tanggal) || d.tanggal > iso) return;
     ada.push({ tanggal: d.tanggal, laci: khN(d.titik.laci), brankas: khN(d.titik.brankas), rekening: khN(d.titik.rekening), amplop: khN(d.titik.amplop), diubahPada: String(d.diubahPada || ''), sumber: 'hitungan tutup hari ' + tanggalPendek(d.tanggal) }); });
   const t = ambilTitikKas();
-  if (t && khIsoSah(t.tanggal) && t.tanggal <= iso) ada.push({ tanggal: t.tanggal, laci: khN(t.laci), brankas: khN(t.brankas), rekening: khN(t.rekening), amplop: khN(t.amplop), diubahPada: String(t.diubahPada || ''), sumber: 'patokan kas ' + tanggalPendek(t.tanggal) });
+  if (t && khIsoSah(t.tanggal) && t.tanggal <= iso) ada.push({ tanggal: t.tanggal, laci: khN(t.laci), brankas: khN(t.brankas), rekening: khN(t.rekening), amplop: khN(t.amplop), diubahPada: String(t.diubahPada || ''), dipasangPada: String(t.dipasangPada || ''), sumber: 'patokan kas ' + tanggalPendek(t.tanggal) });
   ada.sort((a, b) => a.tanggal.localeCompare(b.tanggal) || a.diubahPada.localeCompare(b.diubahPada));
   return ada.length ? ada[ada.length - 1] : null;
 }

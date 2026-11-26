@@ -745,6 +745,13 @@ coba('TS4', function () { tsKotak(TS_PASANG, { id: 'titikKas', tanggal: '2027-01
   var ti = R.tolak ? null : [].concat.apply([], R.kiriman.map(function (k) { return k.dokumen; })).find(function (x) { return x.koleksi === 'pengaturan' && x.data.id === 'titikKas'; });
   ok('TS4 titik kas sudah maju ke Januari: patokan = dokumen tutup hari 31 Des + jam pasangnya → 12 baris membawa catatan sesudah tutup; titik Januari dipertahankan (tidak ditulis)',
     T0 && T0.dari === 'tutupHari' && T0.diubahPada === TS_PASANG && J(tsKas(B)) === J(TS_HARAP) && !R.tolak && !ti, J([T0, tsKas(B), R.tolak, ti && ti.data])); });
+coba('TS6', function () { tsKotak(TS_PASANG); var R = susunKunci(2026, D, jam('2027-01-05T10:00:00+07:00')); R.kiriman.forEach(kirim);
+  var Wb = jam('2027-01-06T09:00:00+07:00'); var Bt = susunBatal(2026, [], Wb); var tk = Bt.tolak ? null : Bt.titik;
+  ok('TS6 Batalkan sesudah kunci: titik lama dikembalikan berjam BARU (HP lain mengambilnya) dan membawa jam pasang aslinya (dipasangPada)',
+    !Bt.tolak && tk && tk.tanggal === '2026-12-31' && tk.diubahPada === Wb.kini && tk.dipasangPada === TS_PASANG && tk.laci === 2000000 && tk.brankas === 10000000, J([Bt.tolak, tk]));
+  (Bt.kiriman || []).slice(0, 1).forEach(kirim); var su = ugSusulan(ambilTitikKas()); var T0 = titikTahun(2026);
+  ok('TS6 sesudah dikembalikan: catatan sesudah tutup 31 Des ikut lagi (tutup hari berikutnya & percobaan tutup buku berikutnya), tidak hilang',
+    su.laci === -300000 && su.brankas === 200000 && su.rekening === 50000 && su.amplop === -50000 && T0 && T0.diubahPada === TS_PASANG && J(tsKas(barisTahun(2026))) === J(TS_HARAP), J([ambilTitikKas(), su, T0, tsKas(barisTahun(2026))])); });
 coba('TS5', function () { var lewat = '2026-12-31T17:30:00.000Z'; tsKotak(lewat); var B = barisTahun(2026);
   ok('TS5 tutup 31 Des lewat tengah malam (00.30 1 Jan): aturan lama — tanpa catatan susulan', J(tsKas(B)) === J({ laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }), J(tsKas(B))); });
 
@@ -1367,7 +1374,8 @@ JAM_RESET_LAMA = JAM_RESET_BARU.replace("if (j === 0) return 14; if (j === 23) r
 RUSAK = [
     # ---- owner 26 Nov 2026 ("Terima + tambal 31 Des"): catatan sesudah tutup hari 31 Des ikut titik tutup buku & kas akhir bulan
     ('Tambal 31 Des · 12 baris & titik tutup buku tanpa catatan susulan (cacat lama)', 'baru/js/layar/tutup-buku-logika.js', "const K = titikPakai ? ugSaldoDenganSusulan(sampaiKas || sampai, titikPakai) : saldoKantong(sampaiKas || sampai);", "const K = saldoKantong(sampaiKas || sampai, titikPakai);"),
-    ('Tambal 31 Des · patokan tutup buku tanpa jam pasang', 'baru/js/layar/tutup-buku-logika.js', "const pasang = (x) => (x && x.diubahPada ? { diubahPada: String(x.diubahPada) } : {});", "const pasang = (x) => ({});"),
+    ('Tambal 31 Des · patokan tutup buku tanpa jam pasang', 'baru/js/layar/tutup-buku-logika.js', "const pasang = (x) => (ugPasangDari(x) ? { diubahPada: ugPasangDari(x) } : {});", "const pasang = (x) => ({});"),
+    ('Tambal 31 Des · Batalkan mengembalikan titik tanpa jam pasang aslinya (susulan hilang lagi)', 'baru/js/layar/tutup-buku-logika.js', ", ugPasangDari(acara.titikSebelum) ? { dipasangPada: ugPasangDari(acara.titikSebelum) } : {}); awal.push(", "); awal.push("),
     ('Tambal 31 Des · kas akhir bulan Laporan tanpa catatan susulan', 'baru/js/layar/laporan-logika.js', "const K = ugSaldoDenganSusulan(akhir, t);", "const K = saldoKantong(akhir, t);"),
     ('Tambal 31 Des · susulan juga untuk patokan yang dipasang hari lain (dihitung dua kali)', 'baru/js/layar/uang-logika.js', "if (!d || !isFinite(d.getTime()) || hariIniIso(d) !== t.tanggal) return () => false;", "if (!d || !isFinite(d.getTime())) return () => false;"),
     # ---- Tahap 6 (owner 25 Nov 2026, "bawa berat asli"): saldo pembuka membawa berat asli karung sisa kedatangan ikut timbang
