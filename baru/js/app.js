@@ -17,6 +17,8 @@ import { ssAtur } from './layar/sistem-logika.js';
 import { ngJatah } from './layar/nego-logika.js';
 import { terkunci, setelKunci } from './inti/kunci.js';
 import { kalimatKeranjangKeluar } from './layar/jual-logika.js';
+// owner 26 Nov 2026 (rules v23): ringkasan cek bon dari HP ditulis ulang dari perangkat owner
+import * as BP from './layar/bon-publik-logika.js';
 // B2 (owner 17 Nov 2026): nomor faktur per perangkat (aman tanpa internet) — id perangkat dipasang sekali ke logika faktur
 import { fkPasangPerangkat } from './layar/faktur-logika.js';
 fkPasangPerangkat(fb.idPerangkat());
@@ -160,7 +162,20 @@ const layar = pasangLayarJual(akar, { lonceng: pintuLonceng, akun: () => akunKin
   bukti: { ada: () => sumberData().jenis === 'firestore', baca: (idSJ) => fb.bacaBuktiTerima(idSJ), simpan: (d) => fb.simpanBuktiTerima(d) },
   // owner 26 Nov 2026 (QR satu pintu): struk bon / faktur di-scan → Pelanggan › Bon orang itu dengan lembar bayar terbuka (pindah ditolak hak akun = kabar, tidak dibuka)
   bukaBayarBon: (orang, isi) => { if (pindah('pelanggan') && tabKini === 'pelanggan') pelanggan.buka('bon', orang, null, { bayar: isi }); } });
-dengarkan(() => { versi += 1; setTimeout(periksaTablet, 0); setTimeout(periksaKabarBaru, 0); setTimeout(simpanLokasiCuaca, 0); });   // T1-3: daftar orang / libur berubah → gerbang ikut
+// owner 26 Nov 2026 (cek bon dari HP, rules v23): ringkasan bonPublik ditulis ulang dari perangkat OWNER begitu bon berubah — hanya sesudah SEMUA data terbaca
+// dari server (data separuh = sisa bon salah di HP pelanggan), tidak saat offline / simulasi cadangan; satu kiriman berisi hanya ringkasan yang berbeda.
+let _bpJam = 0; let _bpJalan = false;
+function sinkronCekBon() {
+  clearTimeout(_bpJam);
+  _bpJam = setTimeout(async () => {
+    const a = akunKini(); if (_bpJalan || !a || a.jenis !== 'owner' || sumberData().jenis !== 'firestore' || statusFb.offline || !(statusFb.koleksiTotal > 0 && statusFb.koleksiSiap >= statusFb.koleksiTotal)) return;
+    let d = []; try { d = BP.bpPerluTulis(new Date(), { kini: new Date().toISOString() }); } catch (e) { console.error('cek bon', e); return; }
+    if (!d.length) return;
+    _bpJalan = true; try { await tulisDokumen(d); } catch (e) { console.error('cek bon', e); } finally { _bpJalan = false; }
+  }, 8000);
+}
+dengarkan(sinkronCekBon);
+dengarkan(() => { versi += 1; setTimeout(periksaTablet,0); setTimeout(periksaKabarBaru, 0); setTimeout(simpanLokasiCuaca, 0); });   // T1-3: daftar orang / libur berubah → gerbang ikut
 // owner 26 Nov 2026: lokasi cuaca gerbang (Menu › Sistem › Perangkat › Atur) disalin ke perangkat ini — gerbang tampil SEBELUM masuk akun, saat data toko belum
 // terbaca. Hanya bila dokumen setelannya SUDAH terbaca (cache kosong saat membuka ≠ owner mencabut lokasi).
 function simpanLokasiCuaca() { try { if (dokDiCache('aturanToko', 'perangkat')) langitSimpanLokasi(ssAtur('perangkat').cuaca); } catch (e) { /* setelan belum terbaca */ } }
@@ -208,7 +223,8 @@ let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diun
 const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   keTujuan: (t) => keTujuan(t) });   // putaran 40: ketukan dasbor owner → layar sumber angkanya (keTujuan didefinisikan di bawah; dipanggil sesudah semua layar terpasang)
 const stok = pasangLayarStok(document.getElementById('layarStok'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, versiData: () => versi, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); }, keTujuan: (t) => keTujuan(t) });
-const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
+// owner 26 Nov 2026 (cek bon dari HP): proyekId = proyek uji bila dipasang (tautan cek bon menyebutnya), '' = proyek toko
+const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { proyekId: () => ((fb.proyekUji && fb.proyekUji()) || {}).projectId || '', lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   keTujuan: (t) => keTujuan(t) });   // owner 7 Okt: lembar bon → Kartu piutang berkop di Laporan (keTujuan didefinisikan di bawah; dipanggil saat ketukan)
 // owner 22 Nov 2026 (sidik jari Tahap A): pintu Menu tablet — nyalakan / matikan (orang pilihan owner yang jaga), intip uang (orang lain jaga)
 function tutupIntip() { if (!_intip) return; _intip = false; segarkanUang(); try { menu.gambar(); } catch (e) { /* Menu belum terpasang */ } }

@@ -19,6 +19,8 @@ import { hetAtur, hetUnit, hetNilai } from './het-logika.js';
 import { klBonKg, klModalPerKg } from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 2026, butir 11): bon dalam kg beras (owner saja — memuat modal per kg)
 // owner 26 Nov 2026: cap langganan (setelan di Atur, hitungan di kartu)
 import * as CG from './cap-logika.js';
+// owner 26 Nov 2026 (rules v23): cek bon dari HP pelanggan — tautan rahasia per pelanggan
+import * as BP from './bon-publik-logika.js';
 import * as FK from './faktur-logika.js';   // B2 (owner 17 Nov 2026): faktur bertempo, batas kredit, rekap faktur
 
 const IKON = {
@@ -62,7 +64,7 @@ export function pasangLayarPelanggan(akar, opsi) {
     tahun: (opsi.sekarang() || new Date()).getFullYear(), thrOrang: null, beri: { bentuk: '', lain: '', nilai: '' }, usulBentuk: null, atur: null, bersih: null,
     tabU: 'tingkat', uEdit: null, uT: null, uCariB: '', uBarang: null, uPasang: null, uCariO: '', uKhusus: null, uCariK: '', uCariKB: '' });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['kartu', 'baru', 'gabung', 'atur', 'bayar', 'hapusIsi', 'pulih', 'beri', 'titip', 'uEdit', 'uBarang', 'uKhusus', 'uGrosir'], []);
+  const ISIAN = pasangIsian(K, awal, ['kartu', 'baru', 'gabung', 'atur', 'bayar', 'hapusIsi', 'pulih', 'beri', 'titip', 'uEdit', 'uBarang', 'uKhusus', 'uGrosir', 'capIsi'], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif, titik kas perangkat (kunciLuarCache) atau JAM
@@ -199,6 +201,14 @@ export function pasangLayarPelanggan(akar, opsi) {
     uTutupK: () => set({ uKhusus: null, kabar: '' }),
     // ---- atur (angka & daftar kebijakan owner)
     // owner 26 Nov 2026 (cap langganan): isian cap & simpan sendiri — mulai = hari disimpan pertama kali; hentikan = cap berhenti bertambah (nota lama tetap)
+    // owner 26 Nov 2026 (cek bon dari HP, rules v23)
+    cekBonBuat: async ({ kunci }) => { if (bukanOwner(opsi.akun ? opsi.akun() : null)) return set({ kabar: 'Tautan cek bon dibuat owner', kabarAwas: true }); const O = B.lembarBon(kini(), kunci); if (O) await tulis(BP.bpSusunBuat(O.nama, kini(), waktu())); },
+    cekBonCabutTanya: ({ kunci }) => set({ cekBonCabut: kunci }),
+    cekBonCabut: async ({ kunci }) => { const O = B.lembarBon(kini(), kunci); if (O && await tulis(BP.bpSusunCabut(O.nama))) set({ cekBonCabut: null }); },
+    cekBonWa: ({ kunci }) => { const O = B.lembarBon(kini(), kunci); const D = O ? BP.bpUntuk(O.nama) : null; if (!D) return;
+      const url = BP.bpTautan(D.id, dasarTautan(), opsi.proyekId ? opsi.proyekId() : ''); const digit = String(O.kontak || '').replace(/\D/g, '');
+      const nomor = !digit ? '' : digit.indexOf('0') === 0 ? '62' + digit.slice(1) : digit.indexOf('62') === 0 ? digit : digit.indexOf('8') === 0 ? '62' + digit : digit;
+      try { window.open('https://wa.me/' + nomor + '?text=' + encodeURIComponent(BP.bpPesanWa(O.nama, url)), '_blank'); } catch (e) { set({ kabar: 'WhatsApp tidak bisa dibuka — salin tautannya', kabarAwas: true }); } },
     capKetik: (v, el) => { const A = CG.capAtur(); const c = Object.assign({ minRp: String(A.minRp), penuh: String(A.penuh), hadiah: A.hadiah }, st().capIsi || {}); c[el.dataset.kolom] = String(v || '').slice(0, el.dataset.kolom === 'hadiah' ? 80 : 12); set({ capIsi: c }); },
     capSimpan: async () => { const A = CG.capAtur(); const w = waktu(); if (await tulis(CG.susunAturCap(Object.assign({}, st().capIsi || {}, { mulai: A.mulai || w.tanggal }), w))) set({ capIsi: null }); },
     capHenti: async () => { if (await tulis(CG.susunAturCap({ mulai: '' }, waktu()))) set({ capIsi: null }); },
@@ -434,12 +444,24 @@ export function pasangLayarPelanggan(akar, opsi) {
       ${Tg.lunas.n ? h`<div class="tg-rinci" data-k="tg-rinci">${bagian.map(([k, judul, x]) => h`<span data-k="tg-${k}"><i class="tg-titik tg-warna ${k}"></i>${judul} · ${x.n} bon</span>${rp(x.rp)}`)}<span class="jumlah">Semua bon yang lunas · ${Tg.lunas.n} bon</span><span class="jumlah">${rp(Tg.lunas.rp)}</span></div>` : ''}
       <div class="ket">Periode ${Tg.hari} hari & batas kelompok umur bisa diubah di Atur.</div></div>`;
   }
+  // owner 26 Nov 2026 (cek bon dari HP, rules v23): tautan rahasia per pelanggan — buat, kirim lewat WhatsApp, cabut. OWNER saja (bonPublik ditulis & didaftar owner).
+  const dasarTautan = () => { try { return new URL('.', location.href).href; } catch (e) { return ''; } };
+  const jamPerbarui = (iso) => { const d = new Date(iso || ''); return isNaN(d) ? '—' : tanggalPendek(hariIniIso(d)) + ' ' + jamKini(d); };
+  function gambarCekBon(s, O) {
+    const D = BP.bpUntuk(O.nama); const url = D ? BP.bpTautan(D.id, dasarTautan(), opsi.proyekId ? opsi.proyekId() : '') : '';
+    return h`<div class="kartu" data-k="cek-bon-${O.kunci}" style="gap: 6px;"><div class="label">Cek bon dari HP pelanggan</div>
+      ${D ? h`<div class="ket">Tautan rahasia — siapa pun yang memegangnya bisa melihat sisa bon ${O.nama}. Diperbarui ${jamPerbarui(D.diperbarui)} (ditulis ulang sendiri dari HP/Mac owner tiap bonnya berubah).</div>
+        <div class="wa-pesan" data-k="cek-bon-tautan" style="word-break: break-all;">${url}</div>
+        <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="cekBonWa" data-kunci="${O.kunci}">Kirim lewat WhatsApp</div>${s.cekBonCabut === O.kunci ? h`<div class="kaca-btn putus" data-aksi="cekBonCabut" data-kunci="${O.kunci}">YA, CABUT — tautan lama mati</div>` : h`<div class="kaca-btn" data-aksi="cekBonCabutTanya" data-kunci="${O.kunci}">Cabut tautan</div>`}</div>`
+      : h`<div class="ket">Pelanggan bisa membuka sisa bonnya sendiri lewat tautan rahasia, tanpa login. Isinya cuma nama panggilan, sisa bon, dan nota yang belum lunas. Tautan bisa dicabut kapan saja.</div><div class="kaca-btn" data-aksi="cekBonBuat" data-kunci="${O.kunci}" data-k="cek-bon-buat">Buat tautan cek bon</div>`}</div>`;
+  }
   function gambarLembarBon(s, d, O) {
     const p = s.lembarBon === 'tagih' ? B.pesanTagih(d, O.kunci) : null; const by = s.bayar; const hp = s.hapusIsi;
     return h`<div class="kartu rincian-wadah" data-k="lembar-bon-${O.kunci}" style="gap: 8px;"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">${O.nama}</div><div class="ket">${O.sisa > 0 ? RP(O.sisa) + ' · ' + O.ket : O.status === 'lebih' ? h`<span class="awas-teks">${O.ket}</span>` : 'tidak ada bon yang terbuka'}${O.dikenali ? '' : ' · belum dikenali (kasir menolak bon baru)'}</div></div><div class="kaca-btn" data-aksi="bonTutup">tutup</div></div>
       ${O.status === 'lebih' ? h`<div class="pita-info awas" data-k="lebih-lembar">${O.lebihUang > 0.5 ? 'Uang yang masuk ' + RP(O.lebihUang) + ' lebih banyak dari semua bonnya. ' : ''}${O.lebihHapus > 0.5 ? RP(O.lebihHapus) + ' dibayar padahal sudah dihapus dari buku — hapus bukunya yang perlu dibalik (bukan uang pelanggan, jangan dikembalikan) — ketuk "Balik hapus buku" di bawah. ' : ''}Bukunya tidak bisa dibayar atau dihapus lagi; nota Kredit berikutnya atas nama ini memakai sisa di bawah nol ini lebih dulu.${O.lebihUang > 0.5 ? ' Uang yang dikembalikan tunai belum punya catatan di sistem baru.' : ''}</div>` : ''}
       ${O.rinci.map((r, i) => h`<div class="jawab" data-k="rb-${i}" style="cursor: default;"><span class="kiri"><div><span class="nm">${r.teks}</span><span class="w">${r.tgl}</span></div></span><span class="n">${RP(r.n)}</span></div>`)}
       <div class="ket tg-orang ${O.tertagih.keadaan}" data-k="tertagih-orang">Rata-rata hari bayar (${O.tertagih.periodeTeks}): <b>${O.tertagih.rataTeks}</b> · ${O.tertagih.teks}</div>
+      ${!bukanOwner(opsi.akun ? opsi.akun() : null) && (O.sisa > 0 || BP.bpUntuk(O.nama)) ? gambarCekBon(s, O) : ''}
       ${opsi.keTujuan && bolehBukaLayar(opsi.akun ? opsi.akun() : null, 'laporan') ? h`<div class="tombol-baris" data-k="kartu-piutang"><div class="kaca-btn" data-aksi="kartuPiutang" data-kunci="${O.kunci}">Kartu piutang berkop · cetak / PDF / WA</div></div>` : ''}
       ${O.sisa > 0 ? h`<div class="tombol-baris"><div class="kaca-btn ${s.lembarBon === 'tagih' ? 'aktif' : ''}" data-aksi="lembarBon" data-l="tagih">Tagih lewat WhatsApp</div><div class="kaca-btn ${s.lembarBon === 'bayar' ? 'aktif emas' : 'aktif'}" data-aksi="lembarBon" data-l="bayar">Catat pembayaran</div><div class="kaca-btn ${s.lembarBon === 'hapus' ? 'awas' : 'putus'}" data-aksi="lembarBon" data-l="hapus">Hapus dari buku</div></div>` : ''}
       ${O.dihapus > 0.5 && !bukanOwner(opsi.akun ? opsi.akun() : null) && (O.status !== 'lebih' || O.lebihHapus > 0.5) ? h`<div class="tombol-baris" data-k="pulih-tombol"><div class="kaca-btn ${s.lembarBon === 'pulih' ? 'aktif emas' : ''}" data-aksi="lembarBon" data-l="pulih">${O.status === 'lebih' ? 'Balik hapus buku · ' + RP(Math.min(O.lebihHapus, O.dihapus)) : 'Dibayar sesudah dihapus buku · pernah dihapus ' + RP(O.dihapus)}</div></div>` : ''}

@@ -521,7 +521,9 @@ export async function tulisBerkas(daftar, hapus, opsi) {
   if (!owner) { const p = periksaKiriman(akun, isi, H, _sumberHak(), new Date()); if (p.tolak) return { gagal: true, pesan: p.tolak }; }   // pasti ditolak rules → tidak dikirim
   const b = writeBatch(db); const ditulis = [];
   isi.forEach((x) => {
-    if (kkMentah(x.koleksi)) { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }   // 25c: katalog kasir apa adanya — tanpa atribusi & jejak
+    // 25c: katalog kasir apa adanya — tanpa atribusi & jejak · rules v23 (owner 26 Nov 2026): ringkasan cek bon (bonPublik) DIBACA TANPA LOGIN — nama, uid,
+    // perangkat & lokasi penulis TIDAK boleh ikut; yang ditulis hanya isi penyusun bon-publik-logika
+    if (kkMentah(x.koleksi) || x.koleksi === 'bonPublik') { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }
     // owner 22 Nov 2026 (riwayat & batal tahap 3): setelan owner membawa riwayatUbah (kolom dari → ke) — riwayat lama dari salinan cache tidak pernah hilang
     const d = rsdSertakan(x.koleksi, beriAtribusiAkun(x.data, akun, k, x.ada), x.lama, owner, k.kini);
     // owner 7 Okt: koleksi hemat bercap jam server (SESUDAH penjaga kiriman; salinan antre & `ditulis` tetap tanpa sentinel)

@@ -113,4 +113,12 @@ export const KOLEKSI = [
   //  TAMBAH-SAJA; owner & Penjaga laci (tablet) membuatnya (rules v22: owner || stafCekPatuh(ben), kolom dibatasi), ubah & hapus owner. Bukan uang & bukan stok —
   //  tanpa cap jam server, jadi 'tetap' seperti cekGudang.
   { nama: 'kepatuhanCek',        urut: 'id',    cache: 'kepatuhanCek', kelas: 'tetap' },
+  // owner 26 Nov 2026 (paket QR kedua, rules v23) — KARCIS AMBIL NANTI: catatan 'titip' (barang nota yang ditinggal di toko: nama, jumlah, satuan per baris) dan
+  //  'ambil' (barang yang diserahkan). TAMBAH-SAJA, owner & staf tablet membuatnya (stafAmbilBarang), ubah & hapus owner. Bukan uang & bukan stok (stok & uang
+  //  tetap di nota) — berdiri sendiri (tidak menunjuk baris penjualan yang diarsip tutup buku) dan TIDAK diarsip tutup buku (tbDaftarKoleksi), jadi titipan
+  //  akhir Desember tetap terbaca sesudah tutup buku. Tanpa cap jam server → 'tetap'.
+  { nama: 'ambilBarang',         urut: 'id',    cache: 'ambilBarang', kelas: 'tetap' },
+  // owner 26 Nov 2026 (rules v23) — CEK BON DARI HP: ringkasan bon satu pelanggan bernama kode acak (≥ 20 huruf) yang dibaca halaman bon.html TANPA login.
+  //  Didengar & ditulis OWNER saja (list owner; staf tidak memasang pendengarnya — tidak ada di BACA_STAF). Salinan ringkas, bukan data toko.
+  { nama: 'bonPublik',           urut: 'id',    cache: 'bonPublik', kelas: 'tetap' },
 ];

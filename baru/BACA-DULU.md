@@ -3479,6 +3479,27 @@ Owner 26 Nov 2026 memilih satu paket (A + B + C). Halaman saja — tanpa APK, ta
 - Uji: `uji_pindai_struk.py` (+ retur), `uji_jual_baru.py` (+ ulangiBarisNota), `uji_tanda_kenal.py` (sambungan), `uji_cap_langganan.py` (baru), `peta_akses.py`
   (jalur ulangi lewat SB()). `bundel_baru.lengkapi` membawa `cap-logika.js` bila `struk-logika.js` ada; `uji_faktur.MODUL` membawa tanda-kenal & cap-logika.
 
+### Karcis ambil nanti & cek bon dari HP — rules v23 (owner 26 Nov 2026: "bangun bareng")
+
+**Rules v23 WAJIB terbit di Console SEBELUM merge** (`docs/uji-rules-v23.md`, Wajib ★C1–★C4; `periksa_rules` ★C1–★C24 + kontrol; emulator V23).
+
+- **Karcis ambil nanti** (`ambil-logika.js`, koleksi `ambilBarang`; keputusan owner: stok berkurang saat bayar + daftar titipan, boleh sebagian): Jual › Bayar
+  saklar **Barang diambil nanti** (hanya bila keranjang punya karung / kemasan; diantar ≠ dititip) → `susunNotaDokumen` menulis nota seperti biasa + SATU catatan
+  `titip` di kiriman yang SAMA (`abIsiTitip`: tiap baris karung/kemasan = id baris, nama, jumlah, satuan — disalin, jadi tetap terbaca sesudah nota diarsip tutup
+  buku; `ambilBarang` TIDAK diarsip `tbDaftarKoleksi`). Struk = karcisnya (`abBarisStruk`: "DITITIP DI TOKO — ambil dengan struk ini"). Scan struk → pita
+  "DITITIP — belum diambil …" + **Serahkan barang titipan ›** → lembar `ambil` (jumlah per baris, boleh sebagian; melebihi sisa / pecahan kemasan / ⅓ karung
+  ditolak) → catatan `ambil`. Jual › **Titipan · N** = daftar (tertua dulu). Nota yang DIBATALKAN → titipannya gugur (`abNotaBatal`); nota yang sudah diarsip →
+  tetap. Stok › Cocokkan menyebut barang titipan ("JANGAN ikut dihitung"). Tidak ada rupiah; mesin beku tidak membaca koleksi ini.
+- **Cek bon dari HP** (`bon-publik-logika.js`, koleksi `bonPublik`, halaman `baru/bon.html` + `js/bon-halaman.js`): owner di Pelanggan › Bon › orang → **Buat tautan
+  cek bon** (kode acak 22 huruf, `crypto.getRandomValues`, byte ≥ 248 dibuang) → **Kirim lewat WhatsApp** / **Cabut tautan** (dua ketukan; hapus dokumen = tautan
+  mati). Isi dokumen = ringkasan `bpRingkas` (semuaBon & pnNota: nama, sisa, nota belum lunas, jatuh tempo) + `diperbarui`. HP/Mac OWNER menulis ulang ringkasan
+  yang berubah (`app.js` › `sinkronCekBon`, 8 dtk sesudah data berubah, hanya bila SEMUA koleksi terbaca & bukan simulasi). Penulis pusat menulis `bonPublik` APA
+  ADANYA — tanpa nama / uid / perangkat / lokasi penulis (dokumennya dibaca tanpa login). Halaman: kode di `#k=` (tidak terkirim ke server Pages), satu GET REST
+  tanpa kredensial, CSP `connect-src` hanya Firestore, tanpa penyimpanan / tautan keluar, `noindex` + `no-referrer`. Batas: tablet tidak menulis ringkasan (owner
+  saja) → bon yang dicatat di tablet baru masuk sesudah HP/Mac owner terbuka; jamnya tampil di halaman.
+- Uji: `uji_ambil_bon.py` (30 + statis + kontrol), `periksa_rules.py` (v23), `uji_rules_emulator.py` (V23, akun tamu tanpa token). `bundel_baru.lengkapi` membawa
+  `ambil-logika.js` bila jual / struk / pindai ada.
+
 ## Gladi ulang tutup buku 2026 atas cadangan 23 Nov — fitur November × tahun yang ditutup (23 Nov 2026, cabang `perbaikan/tutup-buku-fitur-nov`)
 
 Gladi ulang semua alat tutup buku atas cadangan toko 23 Nov (lokal, `_privat/`): ritual lulus (14 baris sama, kartu pemeriksaan 27/27, Batalkan persis). Yang

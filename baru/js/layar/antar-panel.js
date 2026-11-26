@@ -115,7 +115,7 @@ export function buatPanelAntar(ctx) {
 
   const aksi = {
     // ---- draf antar di Bayar
-    ajBuat: () => { const tb = tombolAkun(akun(), 'antar'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ antar: AJ.ajDrafBaru(S().pelanggan), kabar: '' }); },
+    ajBuat: () => { const tb = tombolAkun(akun(), 'antar'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ antar: AJ.ajDrafBaru(S().pelanggan), ambilNanti: false, kabar: '' }); },   // diantar ≠ dititip (owner 26 Nov 2026: karcis ambil nanti)
     ajLepas: () => { const s = S(); set({ antar: null, cara: s.antar && s.antar.cod ? 'Tunai' : s.cara, kabar: 'Tidak jadi diantar — nota ini nota biasa', kabarAwas: false }); },
     ajKetik: (v, el) => { const s = S(); if (!s.antar) return; const k = el.dataset.kolom; if (['alamat', 'ongkir', 'catatan'].indexOf(k) < 0 && !(k === 'pengantar' && s.antar.pengantarKetik)) return;
       const o = {}; o[k] = String(v || '').slice(0, k === 'ongkir' ? 12 : k === 'pengantar' ? 30 : 160); set({ antar: Object.assign({}, s.antar, o) }); },

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<!-- owner 26 Nov 2026 (rules v23): cek sisa bon dari HP pelanggan. Halaman TANPA login: kode ada di bagian # alamat (tidak terkirim ke server Pages), satu GET
+     REST ke bonPublik/<kode> (rules: get per kode ≥ 20 huruf, tidak bisa didaftar). Tanpa SDK Firebase, tanpa penyimpanan, tanpa tautan keluar. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://firestore.googleapis.com; base-uri 'none'; form-action 'none'">
+<title>Cek sisa bon · Toko Beras M.IQBAL</title>
+<style>
+  :root { --latar: #f6f3ec; --kartu: #ffffff; --teks: #2b2620; --redup: #7a7066; --emas: #9a7a2e; --garis: #e6dfd2; --awas: #a23a2a; }
+  @media (prefers-color-scheme: dark) { :root { --latar: #16130f; --kartu: #221d17; --teks: #f1ebe0; --redup: #a89c8c; --emas: #d4b066; --garis: #3a3229; --awas: #e08a76; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--latar); color: var(--teks); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 16px; }
+  main { max-width: 480px; margin: 0 auto; }
+  .kartu { background: var(--kartu); border: 1px solid var(--garis); border-radius: 18px; padding: 18px; margin-top: 14px; }
+  .toko { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--emas); font-weight: 600; }
+  h1 { font-size: 20px; margin: 6px 0 0; }
+  .angka { font-size: 34px; font-weight: 700; margin: 6px 0 2px; }
+  .redup { color: var(--redup); font-size: 13px; }
+  .baris { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--garis); }
+  .baris:first-child { border-top: 0; }
+  .lewat { color: var(--awas); }
+  .awas { color: var(--awas); }
+</style>
+</head>
+<body>
+<main id="isi">
+  <div class="kartu"><div class="toko">Toko Beras M.IQBAL</div><h1>Cek sisa bon</h1><p class="redup">Memuat…</p></div>
+</main>
+<script src="js/bon-halaman.js"></script>
+</body>
+</html>

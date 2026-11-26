@@ -13,6 +13,8 @@ import { fkNota } from './faktur-logika.js';
 import { ajUntukNota, ajKeadaan } from './antar-logika.js';
 // paket QR kedua (owner 26 Nov 2026): retur sekali scan — baris karung & kemasan yang bisa diretur, dihitung penyusun Riwayat yang sama (rwNotaLengkap)
 import { rwNotaLengkap, rwKunci } from './riwayat-logika.js';
+// karcis ambil nanti (owner 26 Nov 2026): barang titipan nota yang di-scan
+import { abKeadaan, abJumlahTeks } from './ambil-logika.js';
 import { kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
 import { RP, hariIniIso } from '../inti/format.js';
 
@@ -83,5 +85,8 @@ function spHitung(nota, iso, kini) {
   // retur sekali scan (paket QR kedua): baris karung & kemasan nota yang masih berlaku — bisa diretur (tombol di pita) atau sebabnya tidak bisa
   const L = status === 'berlaku' && (nota.baris || []).length ? rwNotaLengkap(rwKunci(nota.baris[0])) : null;
   const barisRetur = L ? L.baris.filter((b) => b.bisaRetur || b.sebabRetur).map((b) => ({ id: String(b.id), teks: b.teks, bisa: !!b.bisaRetur, sebab: b.bisaRetur ? '' : String(b.sebabRetur || '') })) : [];
-  return { status, judul, awas, baris, retur: rt.length, bon, bayar, barisRetur };
+  // karcis ambil nanti: struk = karcisnya — barang yang masih dititip & tombol serahkan (Jual) bila ada sisa
+  const T = status === 'berlaku' && nota.trxId ? abKeadaan(nota.trxId) : null;
+  if (T && !T.batal) baris.push(T.habis ? 'Barang titipan sudah diambil semua' : 'DITITIP — belum diambil: ' + T.isi.filter((x) => x.sisa > 0).map((x) => x.nama + ' ' + abJumlahTeks(x.sisa, x.satuan)).join(', '));
+  return { status, judul, awas, baris, retur: rt.length, bon, bayar, barisRetur, titip: T && !T.batal && !T.habis ? { trxId: T.trxId } : null };
 }

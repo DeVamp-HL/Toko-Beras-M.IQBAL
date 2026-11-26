@@ -16,6 +16,8 @@ import { ajOngkirNota, ajPelunasan, ajUntukNota } from './antar-logika.js';
 import { tkWaNomor } from './tanda-kenal-logika.js';
 // owner 26 Nov 2026: cap langganan di struk
 import { capHitung, capTeks } from './cap-logika.js';
+// owner 26 Nov 2026: karcis ambil nanti — barang titipan nota ini di struknya
+import { abBarisStruk } from './ambil-logika.js';
 
 export const ST_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 export const ST_KOLOM = { 58: 30, 80: 42 };
@@ -268,6 +270,8 @@ export function susunStruk(nota, atur, pilih) {
   }
   // owner 26 Nov 2026 (cap langganan, cap-logika.js): cap pembeli bernama SAAT struk disusun (seperti sisa bon) — hanya bila owner sudah memulai cap
   if (nota.nama && nota.berlaku) { const C = capHitung(nota.nama); if (C) baris(capTeks(C), '', { jenis: 'catatan' }); }
+  // owner 26 Nov 2026 (karcis ambil nanti): barang yang masih dititip SAAT struk disusun — struk ini = karcis ambilnya
+  if (nota.berlaku && nota.trxId) abBarisStruk(nota.trxId).forEach((t, i) => baris(t, '', { jenis: 'bon', tebal: i === 0 }));   // karcis: tebal di bawah TOTAL, bukan catatan miring
   // B3: nota yang diantar — nomor surat jalan & alamat antarnya (baris catatan, tanpa angka)
   if (nota.noSJ) { const sjN = ajUntukNota(nota.trxId)[0]; baris('Diantar · surat jalan ' + nota.noSJ + (sjN && sjN.alamat ? ' · ' + sjN.alamat : ''), '', { jenis: 'catatan' }); }
   // B4: nomor PO dari pelanggan (instansi / catering) — baris catatan supaya semua gaya struk (teks & Sertifikat) menampilkannya
