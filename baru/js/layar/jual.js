@@ -12,6 +12,7 @@ import * as ST from './struk-logika.js';
 import * as PK from '../inti/perangkat.js';   // paket S1 (19 Nov 2026): lampu CPad — hijau nota tersimpan, merah kedip cetak gagal; tanpa lampu = diam
 import * as PR from '../inti/printer.js';   // T1 (16 Nov 2026): printer USB tablet kasir — aplikasi CPad / WebUSB; tanpa printer = dialog cetak
 import * as TK from './tanda-kenal-logika.js';
+import * as SP from './pindai-logika.js';   // owner 26 Nov 2026 (QR satu pintu): keadaan nota menurut data saat struknya di-scan
 // owner 26 Nov 2026 (label & kedaluwarsa): label kemasan LENGKAP (kelas mutu, berat bersih, nama & alamat toko, tanggal kemas, baik dipakai sebelum) + label tanggal masuk
 // tumpukan karung dicetak ulang dari sini; Atur label (owner): umur simpan, tanda dekat, kelas mutu per kemasan (aturanToko/catatStok.label — dibaca tablet)
 import * as LB from './label-logika.js';
@@ -43,6 +44,7 @@ import { tbDaftar } from './tablet-logika.js';
 import * as GP from './ganti-pembeli-logika.js';
 import * as BN from './batal-nota-logika.js';   // owner 17 Nov (butir 2): batal nota apa pun dari Riwayat (owner)
 import { buatPanelAntar } from './antar-panel.js';   // B3 (owner 18 Nov 2026): surat jalan & antar — Bayar › Antar, daftar Antar, tanda terima
+import * as AJ from './antar-logika.js';   // owner 26 Nov 2026 (QR satu pintu): scan lembar toko surat jalan
 // B4 (owner 18 Nov 2026): lembar Pesanan — pesanan dari katalog, PO, uang muka, batal, jadwal rutin & pengingatnya, cek stok
 import { buatPanelPesanan } from './pesanan-panel.js';
 import * as RW from './riwayat-logika.js';   // riwayat penjualan (owner 28 Sep): Jual › tab Riwayat   // 25c: saring rak per jenis beras (owner 27 Sep)
@@ -357,14 +359,22 @@ export function pasangLayarJual(akar, opsi) {
     aturWadahKetik: (v, el) => { const isi = Object.assign({}, S().aturWadah || {}); isi[el.dataset.jenis] = String(v || '').replace(/[^\d]/g, '').slice(0, 7); set({ aturWadah: isi }); },
     simpanAturWadah: () => tulisUmum(WJ.susunAturHargaWadah(S().aturWadah || {}, L.waktuSekarang(S().sekarang || undefined))),
     // ---- putaran 15: struk (JS3-A kertas & WA, JS3-C aturan otomatis) ----
-    bukaStruk: ({ trx, grup, id }) => set({ lembar: 'struk', strukKunci: { trxId: trx || null, grupNota: grup || null, id: id || null }, strukKertas: null, strukSertakan: null, kabar: '' }),
+    // owner 26 Nov 2026 (QR satu pintu): dibuka dari SCAN struk → pita keadaan nota menurut data (pindai-logika) tampil di atas lembar; ketukan biasa tidak
+    bukaStruk: ({ trx, grup, id, scan }) => set({ lembar: 'struk', strukKunci: { trxId: trx || null, grupNota: grup || null, id: id || null }, strukKertas: null, strukScan: !!scan, strukSertakan: null, kabar: '' }),
+    // QR satu pintu: tombol "Bayar bon / faktur ›" di pita scan → Pelanggan › Bon orang itu, lembar bayar terbuka (faktur nota itu terpilih, nominal bila
+    // jelas — pindai-logika). Pencatatannya tetap susunBayarBon di layar Pelanggan; di sini tidak ada yang ditulis.
+    scanBayar: () => { const n = notaStruk(); const K = n ? SP.spKeadaanNota(n.nota, S().sekarang || new Date()) : null; if (!K || !K.bayar) return;
+      const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'terimaBon'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true });
+      if (!opsi.bukaBayarBon) return set({ kabar: 'Bayar bon dicatat di layar Pelanggan › Bon', kabarAwas: true });
+      opsi.bukaBayarBon(K.bayar.orang, { nominal: K.bayar.nominal, faktur: K.bayar.faktur.slice(), catatan: K.bayar.catatan }); },
     strukKertas: ({ mm }) => set({ strukKertas: Number(mm) }),
     strukSertakan: ({ nama }) => { const kini = Object.assign({}, ST.stAtur().sertakan, S().strukSertakan || {}); const t = Object.assign({}, S().strukSertakan || {}); t[nama] = !kini[nama]; set({ strukSertakan: t }); },
     kirimWa: () => { const n = notaStruk(); if (!n) return; const st = ST.susunStruk(n.nota, n.atur, n.pilih); const w = bukaWa(st.wa);
       catatStruk(n.nota, 'wa', w ? 'dibuka di WhatsApp (tanpa nomor tujuan)' : 'jendela WhatsApp ditahan peramban');
       set({ kabar: w ? 'WhatsApp dibuka dengan struk ' + (n.nota.nama || 'tanpa nama') + ' ' + RP(n.nota.total) + ' — tanpa nomor tujuan, WhatsApp yang bertanya ke siapa' : 'Peramban menahan jendela WhatsApp — izinkan pop-up untuk alamat ini, lalu ketuk lagi', kabarAwas: !w }); },
     cetakStruk: () => { const n = notaStruk(); if (n) cetak(n.nota, n.atur, n.pilih, ''); },
-    bukaAturStruk: () => set({ lembar: 'aturStruk', aturStruk: ST.stAtur(), kabar: '' }),
+    // nomor WA tersimpan (62…) dibuka dalam bentuk yang biasa dibaca (0…); disimpan lagi = dibakukan lagi oleh susunAturStruk
+    bukaAturStruk: () => { const a = ST.stAtur(); a.kop.wa = TK.tkWaTampil(a.kop.wa); set({ lembar: 'aturStruk', aturStruk: a, kabar: '' }); },
     aturStrukKop: (v, el) => { const a = drafStruk(); a.kop[el.dataset.kolom] = String(v || '').slice(0, 80); set({ aturStruk: a }); },
     aturStrukKaki: (v) => { const a = drafStruk(); a.kaki = String(v || '').slice(0, 80); set({ aturStruk: a }); },
     aturStrukKertas: ({ mm }) => { const a = drafStruk(); a.kertas = Number(mm); set({ aturStruk: a }); },
@@ -392,6 +402,8 @@ export function pasangLayarJual(akar, opsi) {
   // Selama `mencetak`, tombolnya bertulisan "Mencetak…" dan ketukan berikutnya hanya dijawab kabar; tidak ada yang dikirim ke printer.
   // `mencetak` = saat cetakan yang sedang ditunggu dimulai (0 = tidak ada); sesudah PK.BATAS_SIBUK_MS dianggap selesai supaya tombol tidak macet.
   let mencetak = 0;
+  // owner 26 Nov 2026 (QR satu pintu): isi QR struk — nomor WhatsApp toko dari setelan struk + nomor nota pendek & tanggal yang SAMA dengan tulisan struknya
+  const qrStruk = (nota) => TK.tkQrStruk(nota, { wa: ST.stAtur().kop.wa, no: ST.stNoNota(nota), tgl: nota && nota.tanggal });
   // Kabar gagal cetak tidak boleh hidup lebih lama dari gagalnya: begitu struk berikutnya SUNGGUH keluar, kabar gagal yang masih terpampang dibuang.
   let kabarGagal = '';
   const kabariGagal = (teks) => { kabarGagal = teks; set({ kabar: teks, kabarAwas: true }); };
@@ -406,7 +418,8 @@ export function pasangLayarJual(akar, opsi) {
       if (j === 'dialog') { cetakDialog(st, nota, ket); return; }
       // paket S2a: QR nomor nota di struk bila setelan printer perangkat ini menyertakan QR ("Printer tablet ini") — scan struk itu membuka notanya.
       // Gaya gambar: digambar di samping tanda tangan (owner 20 Nov 2026); gaya teks: dicetak printer di bawah struk.
-      const qr = PR.prAtur().qr ? TK.tkQrNota(nota) : '';
+      // owner 26 Nov 2026 (QR satu pintu): nomor WhatsApp toko diisi → QR = chat WA toko berpesan nomor nota; tablet tetap membuka nota dari QR itu
+      const qr = PR.prAtur().qr ? qrStruk(nota) : '';
       k = mencetak = Date.now(); set({});
       return PR.cetakGaris(st.garis, { logoToko: st.logo, qr }).then((r) => {   // owner 17 Nov (butir 3): logo toko bersama bila setelan struk menyertakannya
         usaiCetak(k);
@@ -1348,18 +1361,25 @@ export function pasangLayarJual(akar, opsi) {
     }
     return '';
   }
+  // owner 26 Nov 2026 (QR satu pintu, B): struk yang di-SCAN → keadaan nota menurut DATA toko (bukan menurut kertasnya) + tombol bayar bon/faktur nota itu
+  function pitaScan(nota, s) {
+    const K = SP.spKeadaanNota(nota, s.sekarang || new Date()); if (!K) return '';
+    return h`<div class="pita-info ${K.awas ? 'awas' : 'emas'}" data-k="pita-scan"><b>${K.judul}</b>${K.baris.map((t, i) => h`<div data-k="ps-${i}">${t}</div>`)}</div>
+      ${K.bayar ? h`<div class="kaca-btn aktif" data-aksi="scanBayar" data-k="scan-bayar">${K.bayar.faktur.length ? 'Bayar faktur ' + K.bayar.faktur[0] : 'Bayar bon ' + K.bayar.nama} ›</div>` : ''}`;
+  }
   function gambarStruk(s, L1, muncul, kepala) {
     const n = notaStruk();
     if (!n) return h`${L1}<div class="lembar ${muncul}" data-k="lembar-struk">${kepala('Struk', 'nota tidak ditemukan')}<div class="pita-info awas">Nota ini tidak ada di data yang dimuat perangkat ini.</div></div>`;
     const st = ST.susunStruk(n.nota, n.atur, n.pilih); const o = ST.putusOto(n.atur, n.nota); const riw = ST.riwayatStruk(hariIniIso(s.sekarang));
     return h`${L1}<div class="lembar ${muncul}" data-k="lembar-struk">
       ${kepala('Struk · ' + (n.nota.nama || 'tanpa nama'), tanggalPendek(n.nota.tanggal) + (n.nota.jam ? ' ' + n.nota.jam : '') + ' · ' + RP(n.nota.total) + ' · ' + (n.nota.cara === 'Kredit' ? 'Bon' : n.nota.cara) + (n.nota.berlaku ? '' : ' · SUDAH ' + (n.nota.dibatalkan ? 'DIBATALKAN' : 'DIKOREKSI')))}
+      ${s.strukScan ? pitaScan(n.nota, s) : ''}
       <div class="bendera"><span class="ket" style="align-self: center;">kertas</span>${[58, 80].map((k) => h`<span class="pil ${n.pilih.kertas === k ? 'nyala' : ''}" data-aksi="strukKertas" data-mm="${k}">${k} mm</span>`)}<span class="ket tautan" style="margin-left: auto; align-self: center;" data-aksi="bukaAturStruk">atur kop & aturan ›</span></div>
       <div class="bendera">${ST.ST_SERTAKAN.map(([k, nm]) => h`<span class="pil ${n.pilih.sertakan[k] ? 'nyala' : ''}" data-aksi="strukSertakan" data-nama="${k}">${nm}</span>`)}</div>
       ${akunOwner() ? h`<div class="label">Dilayani · ketuk untuk mengubah</div><div class="bendera" data-k="ubah-dilayani">${[namaOwner()].concat(daftarPelayan()).map((nm) => h`<span class="pil ${ST.stPelayan(n.nota) === nm ? 'nyala' : ''}" data-aksi="ubahDilayani" data-n="${nm}" data-k="udl-${nm}">${nm}</span>`)}</div>` : ''}
       ${n.nota.noFaktur ? h`<div class="ket" data-k="struk-faktur">FAKTUR ${n.nota.noFaktur}${(() => { const F = FK.fkNota(n.nota.trxId || n.nota.grupNota || n.nota.id, s.sekarang || new Date()); return F ? ' · ' + FK.fkTeksTempo(F) + (F.sisa > 0.5 ? ' · sisa ' + RP(F.sisa) : '') : ''; })()}</div>`
         : akunOwner() && n.nota.berlaku && n.nota.nama ? h`<div class="kaca-btn" data-aksi="jadikanFaktur" data-k="jadikan-faktur">Jadikan faktur · nomor + jatuh tempo, tempo ${FK.fkTempoTeks(FK.fkTempo(n.nota.nama))}</div>` : ''}
-      ${(() => { const url = pratinjauStruk(st, n.pilih.kertas, PR.prAtur().qr ? TK.tkQrNota(n.nota) : ''); return url ? h`<div class="st-gambar-bingkai" data-k="gambar-struk"><img class="st-gambar k${n.pilih.kertas}" src="${url}" alt="Pratinjau struk seperti keluar dari printer tablet"></div>` : h`<pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>`; })()}
+      ${(() => { const url = pratinjauStruk(st, n.pilih.kertas, PR.prAtur().qr ? qrStruk(n.nota) : ''); return url ? h`<div class="st-gambar-bingkai" data-k="gambar-struk"><img class="st-gambar k${n.pilih.kertas}" src="${url}" alt="Pratinjau struk seperti keluar dari printer tablet"></div>` : h`<pre class="st-kertas k${n.pilih.kertas}" data-k="kertas-struk">${st.teks}</pre>`; })()}
       <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="kirimWa">Kirim WhatsApp</div><div class="kaca-btn" data-aksi="cetakStruk" data-k="tombol-cetak-struk">${sedangCetak() ? 'Mencetak…' : 'Cetak'}</div><a class="kaca-btn" href="uji-cetak.html" style="text-decoration: none; color: inherit;">Printer tablet ini</a></div>
       ${pitaTolak(s, 'struk')}
       <div class="ket">Struk yang sama untuk kertas dan WhatsApp — cuma menyusun nota yang sudah tersimpan, tidak ada angka baru. WhatsApp dibuka tanpa nomor tujuan (WhatsApp yang bertanya ke siapa; nomor pembeli tidak disimpan). Cetak = printer tablet ini bila sudah diatur ("Printer tablet ini": gaya, logo, jalur), selain itu dialog cetak perangkat ini.</div>
@@ -1378,6 +1398,8 @@ export function pasangLayarJual(akar, opsi) {
       <input class="ketik-nama sempit" id="stKopNama" type="text" value="${a.kop.nama}" data-ketik="aturStrukKop" data-kolom="nama" placeholder="Nama toko (kop)">
       <input class="ketik-nama sempit" id="stKopAlamat" type="text" value="${a.kop.alamat}" data-ketik="aturStrukKop" data-kolom="alamat" placeholder="Alamat (boleh kosong)">
       <input class="ketik-nama sempit" id="stKopTelp" type="text" value="${a.kop.telp}" data-ketik="aturStrukKop" data-kolom="telp" placeholder="Telepon / WhatsApp toko (boleh kosong)">
+      <input class="ketik-nama sempit" id="stKopWa" type="tel" inputmode="tel" value="${a.kop.wa || ''}" data-ketik="aturStrukKop" data-kolom="wa" placeholder="Nomor WhatsApp toko untuk QR struk (boleh kosong)">
+      <div class="ket" data-k="st-wa-ket">${TK.tkWaNomor(a.kop.wa) ? 'QR struk = chat WhatsApp ' + TK.tkWaTampil(TK.tkWaNomor(a.kop.wa)) + ': pembeli scan pakai kamera HP → WhatsApp toko terbuka dengan nomor notanya. Tablet toko tetap membuka nota dari QR yang sama.' : String(a.kop.wa || '').trim() ? 'Nomor ini belum dikenali — tulis seperti 0858… atau 62858….' : 'Kosong = QR struk hanya berguna untuk tablet toko (membuka nota).'}</div>
       <input class="ketik-nama sempit" id="stKaki" type="text" value="${a.kaki}" data-ketik="aturStrukKaki" placeholder="Kalimat kaki, mis. Terima kasih 🙏">
       <div class="label">Lebar kertas</div><div class="bendera">${[58, 80].map((k) => pil(a.kertas === k, 'aturStrukKertas', { mm: k }, k + ' mm'))}</div>
       <div class="label">Disertakan (bawaan; bisa diubah per struk)</div><div class="bendera">${ST.ST_SERTAKAN.map(([k, nm]) => pil(!!a.sertakan[k], 'aturStrukSertakan', { nama: k }, nm))}</div>
@@ -1508,10 +1530,23 @@ export function pasangLayarJual(akar, opsi) {
     const u = TK.tkUraiPindai(teks); if (!u || terkunci()) return;
     if (u.jenis === 'lain') return pindaiBarcode(u.kode);
     if (u.jenis === 'rusak') { lampu('lampuAsing'); return set({ kabar: 'QR struk tidak terbaca utuh — scan ulang, atau cari notanya di Riwayat', kabarAwas: true }); }
+    if (u.jenis === 'sj') return pindaiSJ(u.id);   // owner 26 Nov 2026 (QR satu pintu): lembar surat jalan
     if (!TK.tkLembarBolehDiganti(S().lembar)) return set({ kabar: 'Struk ter-scan, tapi lembar ini masih terbuka — tutup dulu, lalu scan lagi', kabarAwas: true });
     if (!ST.notaDari(u.kunci)) return set({ kabar: 'Nota dari struk ini tidak ada di data perangkat ini — mungkin nota lama yang sudah ditutup bukunya', kabarAwas: true });
     lampu('lampuKenal');
-    aksi.bukaStruk({ trx: u.kunci.trxId, grup: u.kunci.grupNota, id: u.kunci.id });
+    aksi.bukaStruk({ trx: u.kunci.trxId, grup: u.kunci.grupNota, id: u.kunci.id, scan: true });
+  }
+  // owner 26 Nov 2026 (QR satu pintu, A): lembar toko surat jalan yang dibawa pulang pengantar di-scan → masih di jalan: tanda terimanya terbuka (uang
+  // bayar di tempat terisi sisa tagihnya — ajTerimaBuka yang sama dengan tombol "diterima →", hak akun ikut diperiksa di sana); sudah diterima tapi uang
+  // bayar di tempat belum pulang: isian setor terbuka (ajSetorBuka); selain itu daftar Antar tersaring ke surat jalan itu + kabar keadaannya.
+  function pindaiSJ(id) {
+    const s = S(); if (!TK.tkLembarBolehDiganti(s.lembar) && s.lembar !== 'antar') return set({ kabar: 'Surat jalan ter-scan, tapi lembar ini masih terbuka — tutup dulu, lalu scan lagi', kabarAwas: true });
+    const sj = AJ.ajCari(id); if (!sj) { lampu('lampuAsing'); return set({ kabar: 'Surat jalan dari kertas ini tidak ada di data perangkat ini', kabarAwas: true }); }
+    lampu('lampuKenal');
+    if (sj.status === 'berangkat') return aksi.ajTerimaBuka({ id: sj.id });
+    const K = AJ.ajKeadaan(sj, hariIniIso(s.sekarang || new Date()));
+    set({ lembar: 'antar', ajSaring: String(sj.noSJ || ''), ajAlasan: null, ajSetor: null, kabar: 'Surat jalan ' + sj.noSJ + ' sudah ' + K.statusTeks + (K.sisaTagih > 0 ? ' — uang bayar di tempat ' + RP(K.sisaTagih) + ' belum disetor' : ''), kabarAwas: K.sisaTagih > 0 });
+    if (K.sisaTagih > 0 && sj.status === 'diterima') aksi.ajSetorBuka({ id: sj.id });
   }
   // paket S2b: barcode barang. Dikenal → lembar jumlah barang itu terbuka (jalur yang sama dengan mengetuk chipnya: tidak ada logika harga baru);
   // belum dikenal → mode daftar: kasir mengetuk barangnya di rak, sekali, lalu barcode itu dikenal seterusnya.

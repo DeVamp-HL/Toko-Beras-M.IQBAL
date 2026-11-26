@@ -6,6 +6,7 @@ import { h } from '../inti/dom.js';
 import { RP, tanggalPendek, hariIniIso } from '../inti/format.js';
 import * as AJ from './antar-logika.js';
 import * as ST from './struk-logika.js';
+import * as TK from './tanda-kenal-logika.js';   // owner 26 Nov 2026 (QR satu pintu): QR lembar surat jalan
 import * as PR from '../inti/printer.js';
 import { hasilTakDiketahui, masihMencetak, printerSibuk, KALIMAT_MASIH_MENCETAK, asliAda } from '../inti/perangkat.js';
 import { fbnKecilkan, fbnSrc, fbnKB } from './foto-bon-logika.js';
@@ -78,7 +79,11 @@ export function buatPanelAntar(ctx) {
       if (j === 'dialog') return dialog();
       // dua lembar berurutan, masing-masing dipotong printer: lembar pembeli dulu, lalu lembar toko (yang ditandatangani & dibawa pulang)
       let n = 0;
-      return lembar.reduce((p, g) => p.then(() => PR.susunCetak(g, { gaya: 'teks' })).then((x) => PR.kirimCetak(x.byte, j)).then(() => { n += 1; }), Promise.resolve())
+      // owner 26 Nov 2026 (QR satu pintu): QR per lembar bila setelan printer perangkat ini menyertakan QR — LEMBAR TOKO = kunci surat jalan (dibawa pulang,
+      // di-scan di tablet → tanda terimanya terbuka), LEMBAR PEMBELI = chat WhatsApp toko berpesan nomor surat jalan (hanya bila nomor WA toko diisi)
+      const qrLembar = (i) => (PR.prAtur().qr ? TK.tkQrSJ(sj, { wa: atur.kop.wa }, i === 0 ? 'pembeli' : 'toko') : '');
+      const garisLembar = (g, i) => (i === 1 && qrLembar(i) ? g.concat([{ kiri: 'Atau scan QR ini di tablet.', kanan: '' }]) : g);
+      return lembar.reduce((p, g, i) => p.then(() => PR.susunCetak(garisLembar(g, i), { gaya: 'teks' }, { qr: qrLembar(i) })).then((x) => PR.kirimCetak(x.byte, j)).then(() => { n += 1; }), Promise.resolve())
         .then(() => set({ kabar: 'Surat jalan ' + sj.noSJ + ' dicetak 2 lembar: LEMBAR PEMBELI ditinggal, LEMBAR TOKO ditandatangani penerima & dibawa pulang', kabarAwas: false }))
         .catch((e) => {
           // uji owner 20 Nov 2026: printer diam sesudah data dikirim = hasil lembar itu TIDAK DIKETAHUI, bukan "gagal". Kertasnya dilihat dulu;

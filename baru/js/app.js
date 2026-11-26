@@ -157,7 +157,9 @@ const akar = document.getElementById('layar');
 const layar = pasangLayarJual(akar, { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusAwas, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat(),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); },   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan · 27: Isi barang habis
   // B3 (owner 18 Nov 2026): bukti terima antar (tanda tangan & foto) — koleksi buktiTerima dibaca sekali saat dibuka (tidak didengar); mode cadangan = simulasi di panel
-  bukti: { ada: () => sumberData().jenis === 'firestore', baca: (idSJ) => fb.bacaBuktiTerima(idSJ), simpan: (d) => fb.simpanBuktiTerima(d) } });
+  bukti: { ada: () => sumberData().jenis === 'firestore', baca: (idSJ) => fb.bacaBuktiTerima(idSJ), simpan: (d) => fb.simpanBuktiTerima(d) },
+  // owner 26 Nov 2026 (QR satu pintu): struk bon / faktur di-scan → Pelanggan › Bon orang itu dengan lembar bayar terbuka (pindah ditolak hak akun = kabar, tidak dibuka)
+  bukaBayarBon: (orang, isi) => { if (pindah('pelanggan') && tabKini === 'pelanggan') pelanggan.buka('bon', orang, null, { bayar: isi }); } });
 dengarkan(() => { versi += 1; setTimeout(periksaTablet, 0); setTimeout(periksaKabarBaru, 0); setTimeout(simpanLokasiCuaca, 0); });   // T1-3: daftar orang / libur berubah → gerbang ikut
 // owner 26 Nov 2026: lokasi cuaca gerbang (Menu › Sistem › Perangkat › Atur) disalin ke perangkat ini — gerbang tampil SEBELUM masuk akun, saat data toko belum
 // terbaca. Hanya bila dokumen setelannya SUDAH terbaca (cache kosong saat membuka ≠ owner mencabut lokasi).
@@ -705,8 +707,24 @@ document.addEventListener('keydown', (ev) => {
   _ketikTampung = ketikTambah(_ketikTampung, k, ev.timeStamp);
   clearTimeout(_ketikJam); _ketikJam = setTimeout(lepasKetik, KETIK_TUNGGU);
 });
+// owner 21 Nov 2026 (dibereskan 26 Nov, QR satu pintu): scanner CPad juga MENGETIK isi kode ke kotak isian yang sedang terfokus — teks QR struk nyasar ke
+// kotak cari Riwayat → "0 nota". Isi kotak dipotret di awal tiap rentetan ketikan (beforeinput berjarak > 60 ms dari ketikan sebelumnya); sesudah layar Jual
+// memakai hasil scan, kotak yang isinya cuma bertambah potongan awal kode itu dikembalikan ke potretnya — begitu ketikan berhenti (ketikan scanner bisa
+// datang sesudah siarannya). Ketikan orang di sela-selanya / kotak lain tidak disentuh.
+let _potretKetik = null; let _ketikAkhir = 0;
+document.addEventListener('beforeinput', (ev) => { const t = ev.target; const kini = Date.now();
+  if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName) && (kini - _ketikAkhir > 60 || !_potretKetik || _potretKetik.el !== t)) _potretKetik = { el: t, nilai: String(t.value || '') };
+  _ketikAkhir = kini; }, true);
+function hapusKetikanScan(data) {
+  const kode = String(data || '').trim(); if (kode.length < 4) return;
+  const bersih = () => { const p = _potretKetik; const el = document.activeElement; if (!p || el !== p.el || typeof el.value !== 'string' || Date.now() - _ketikAkhir < 100) return;
+    const v = el.value.replace(/[\r\n]+$/, ''); if (v.length <= p.nilai.length || (p.nilai + kode).indexOf(v) !== 0) return;
+    el.value = p.nilai; el.dispatchEvent(new Event('input', { bubbles: true })); };
+  [150, 400, 900, 1600, 2500].forEach((ms) => setTimeout(bersih, ms));
+}
 padaPindai((x) => {
   _pindaiPada = Date.now();
+  if (panelOrang.hidden && tabKini === 'jual') hapusKetikanScan(x && x.data);
   // paket S2a: panel jaga tertutup & layar Jual di depan → hasil scan milik layar Jual (QR struk → notanya terbuka)
   if (panelOrang.hidden) { if (tabKini === 'jual') { try { layar.pindai(x && x.data); } catch (e) { console.error('pindai jual', e); } } return; }
   if (!_pilihOrang || _tanyaGanti) return;

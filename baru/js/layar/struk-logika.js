@@ -12,6 +12,8 @@ import { RP, hariIniIso, LEBIH_AMBANG, pecahLebih } from '../inti/format.js';
 import { fkKartu } from './faktur-logika.js';
 // B3 (owner 18 Nov 2026): ongkir antar = baris struk sendiri (kolom ongkirAntar menempel di satu baris nota), surat jalan & bayar di tempat
 import { ajOngkirNota, ajPelunasan, ajUntukNota } from './antar-logika.js';
+// owner 26 Nov 2026 (QR satu pintu): nomor WhatsApp toko di setelan struk dibakukan sekali di sini, dipakai QR struk & surat jalan
+import { tkWaNomor } from './tanda-kenal-logika.js';
 
 export const ST_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 export const ST_KOLOM = { 58: 30, 80: 42 };
@@ -20,7 +22,8 @@ export const ST_OTO_WA = [['tidak', 'tidak'], ['bon', 'bon saja'], ['semua', 'se
 export const ST_PILIHAN_ORANG = [['ikut', 'ikut aturan'], ['wa', 'selalu WA'], ['cetak', 'selalu cetak'], ['tidak', 'tidak perlu']];
 export const ST_SERTAKAN = [['logo', 'logo toko'], ['rincian', 'rincian barang'], ['bon', 'sisa bon'], ['kaki', 'kalimat kaki'], ['pelayan', 'siapa yang melayani']];   // owner 17 Nov (butir 3): + logo
 // bawaan: aturan otomatis MATI dua-duanya (printer tertanam belum ada; WA yang dibuka sendiri sering ditahan peramban HP)
-export const ST_ATUR_BAWAAN = { kop: { nama: 'Toko Beras M.IQBAL', alamat: '', telp: '' }, kaki: 'Terima kasih 🙏', kertas: 58,
+// kop.wa (owner 26 Nov 2026, QR satu pintu): nomor WhatsApp toko untuk QR struk — kosong = QR berisi kunci nota saja (seperti dulu); tidak dicetak sebagai tulisan
+export const ST_ATUR_BAWAAN = { kop: { nama: 'Toko Beras M.IQBAL', alamat: '', telp: '', wa: '' }, kaki: 'Terima kasih 🙏', kertas: 58,
   sertakan: { logo: true, rincian: true, bon: true, kaki: true, pelayan: true }, oto: { cetak: 'tidak', wa: 'tidak' }, perOrang: {} };
 
 const salin = (o) => JSON.parse(JSON.stringify(o));
@@ -45,7 +48,10 @@ export function susunAturStruk(isi, w) {
   if (!ST_OTO_WA.some((x) => x[0] === oto.wa)) return { tolak: 'Pilihan WhatsApp otomatis tidak dikenal' };
   const perOrang = {}; Object.keys(a.perOrang || {}).forEach((k) => { const v = a.perOrang[k]; if (ST_PILIHAN_ORANG.some((x) => x[0] === v) && v !== 'ikut' && kunciPelanggan(k)) perOrang[kunciPelanggan(k)] = v; });
   const sertakan = {}; Object.keys(ST_ATUR_BAWAAN.sertakan).forEach((k) => { sertakan[k] = a.sertakan && typeof a.sertakan[k] === 'boolean' ? a.sertakan[k] : ST_ATUR_BAWAAN.sertakan[k]; });
-  const data = { id: 'struk', tanggal: w.tanggal, jam: w.jam, kop: { nama: nama.slice(0, 40), alamat: String(kop.alamat || '').trim().slice(0, 80), telp: String(kop.telp || '').trim().slice(0, 30) },
+  // nomor WA toko disimpan dalam bentuk wa.me (62…) supaya QR, tablet, dan layar membaca angka yang sama; salah ketik ditolak, bukan disimpan diam-diam
+  const waKetik = String(kop.wa || '').trim(); const wa = waKetik ? tkWaNomor(waKetik) : '';
+  if (waKetik && !wa) return { tolak: 'Nomor WhatsApp toko "' + waKetik.slice(0, 20) + '" tidak dikenali — tulis seperti 0858… atau 62858…, atau kosongkan' };
+  const data = { id: 'struk', tanggal: w.tanggal, jam: w.jam, kop: { nama: nama.slice(0, 40), alamat: String(kop.alamat || '').trim().slice(0, 80), telp: String(kop.telp || '').trim().slice(0, 30), wa },
     kaki: String(a.kaki || '').trim().slice(0, 80), kertas, sertakan, oto: { cetak: oto.cetak, wa: oto.wa }, perOrang };
   return { dokumen: [{ koleksi: 'aturanToko', data }], patch: { lembar: 'struk', aturStruk: null, kabar: 'Setelan struk tersimpan — kop, kertas ' + kertas + ' mm, cetak otomatis: ' + oto.cetak + ', WhatsApp otomatis: ' + oto.wa, kabarAwas: false } };
 }

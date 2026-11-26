@@ -22,11 +22,60 @@ export function tkQrNota(nota) {
   return CETAK.test(String(pilih[1])) && teks.length <= TK_PANJANG_MAKS ? teks : '';
 }
 
-/** Hasil scan → { jenis: 'nota', kunci: { trxId } | { grupNota } | { id } } · { jenis: 'rusak', kode } (berawalan struk toko tapi tidak utuh)
- *  · { jenis: 'lain', kode } (bukan struk toko: barcode kemasan dsb.) · null (kosong). Kunci selalu TEKS — notaDari membandingkan sebagai teks. */
+// ---------- QR satu pintu (owner 26 Nov 2026): QR yang berguna untuk PEMBELI juga, dan lembar toko surat jalan ber-QR ----------
+// Pembeli scan struk pakai kamera HP → WhatsApp toko terbuka dengan pesan berisi nomor nota. Tablet toko men-scan QR yang SAMA → notanya terbuka:
+// kunci nota ditaruh di belakang '#' tautan itu (bagian '#' tidak ikut terkirim ke WhatsApp). Nomor WA toko = setelan struk (owner), bukan kode.
+/** Awalan QR lembar toko surat jalan: 'MIQ:J:<id surat jalan>' — lembar yang dibawa pulang pengantar di-scan → tanda terimanya terbuka. */
+export const TK_AWALAN_SJ = 'MIQ:J:';
+/** Tautan WhatsApp terpanjang: inti/qr.js menggambar QR sampai versi 6 (koreksi M = 106 huruf) — lebih panjang, QR tidak muat di gambar struk. */
+export const TK_QR_WA_MAKS = 106;
+// tautan WhatsApp yang dicetak toko: kunci di belakang '#' — t/g/i = kunci nota (bentuk tkQrNota tanpa awalan), j = id surat jalan
+const WA_TAUTAN = /^https?:\/\/(?:wa\.me|api\.whatsapp\.com)\/[^#\s]*#([tgij]):(.+)$/;
+/** Nomor WhatsApp toko → bentuk wa.me (62…, angka saja). 0858… · +62 858-… · 62858… · 858… diterima; '' = bukan nomor yang bisa dipakai. */
+export function tkWaNomor(teks) {
+  const d = String(teks === undefined || teks === null ? '' : teks).trim().replace(/[\s.()-]/g, '').replace(/^\+/, '');
+  if (!/^\d+$/.test(d)) return '';
+  const n = d.charAt(0) === '0' ? '62' + d.slice(1) : d.charAt(0) === '8' ? '62' + d : d;
+  return /^62[1-9]\d{7,12}$/.test(n) ? n : '';
+}
+/** Nomor WA untuk DIBACA orang: bentuk wa.me 62… → 0…; selain itu apa adanya (sedang diketik / belum sah). */
+export function tkWaTampil(teks) { const n = tkWaNomor(teks); return n && String(teks).trim() === n ? '0' + n.slice(2) : String(teks === undefined || teks === null ? '' : teks); }
+/** Tautan wa.me ke nomor toko dengan pesan terisi; ekor = kunci yang dibaca tablet (di belakang '#'). */
+export function tkTautanWa(wa, pesan, ekor) { return 'https://wa.me/' + wa + '?text=' + encodeURIComponent(String(pesan || '')) + (ekor ? '#' + ekor : ''); }
+/** 'YYYY-MM-DD' → 'DD/MM/YYYY'; '' bila bukan tanggal. */
+const tglPendek = (iso) => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(String(iso || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; };
+/** Isi QR struk. o = { wa (nomor WA toko, setelan struk), no (nomor nota pendek stNoNota), tgl ('YYYY-MM-DD') }.
+ *  Nomor WA sah → tautan WhatsApp toko berpesan "Halo, nota No. … (tanggal)"; pesan dipendekkan bila tautannya kepanjangan. Tanpa nomor WA, atau tetap
+ *  kepanjangan → QR kunci nota seperti dulu (tablet tetap bisa membuka nota). '' = nota tanpa kunci yang bisa dicetak → struk tanpa QR. */
+export function tkQrStruk(nota, o) {
+  const kunci = tkQrNota(nota); if (!kunci) return '';
+  const wa = tkWaNomor(o && o.wa); if (!wa) return kunci;
+  const no = String((o && o.no) || '').replace(/\D/g, ''); const tgl = tglPendek(o && o.tgl); const ekor = kunci.slice(TK_AWALAN_NOTA.length);
+  const pesan = [no && tgl ? 'Halo, nota No. ' + no + ' (' + tgl + ')' : '', no ? 'Halo, nota No. ' + no : '', no ? 'Nota No. ' + no : '', 'Halo'].filter(Boolean);
+  for (let i = 0; i < pesan.length; i++) { const t = tkTautanWa(wa, pesan[i], ekor); if (t.length <= TK_QR_WA_MAKS) return t; }
+  return kunci;
+}
+/** Isi QR surat jalan per lembar. 'toko' = 'MIQ:J:<id>' (dibawa pulang & di-scan di tablet); 'pembeli' = tautan WhatsApp toko berpesan nomor surat
+ *  jalan (kunci yang sama di belakang '#') bila nomor WA toko sah, selain itu tanpa QR. '' = tanpa QR. */
+export function tkQrSJ(sj, o, lembar) {
+  const id = sj && sj.id !== undefined && sj.id !== null ? String(sj.id) : '';
+  if (!id || !CETAK.test(id) || (TK_AWALAN_SJ + id).length > TK_PANJANG_MAKS) return '';
+  if (lembar !== 'pembeli') return TK_AWALAN_SJ + id;
+  const wa = tkWaNomor(o && o.wa); if (!wa) return '';
+  const no = String((sj && sj.noSJ) || '').trim(); const pesan = [no ? 'Halo, surat jalan ' + no : '', 'Halo'].filter(Boolean);
+  for (let i = 0; i < pesan.length; i++) { const t = tkTautanWa(wa, pesan[i], 'j:' + id); if (t.length <= TK_QR_WA_MAKS) return t; }
+  return '';
+}
+
+/** Hasil scan → { jenis: 'nota', kunci: { trxId } | { grupNota } | { id } } · { jenis: 'sj', id } (surat jalan) · { jenis: 'rusak', kode } (berawalan
+ *  QR toko tapi tidak utuh) · { jenis: 'lain', kode } (bukan QR toko: barcode kemasan, tautan lain, dsb.) · null (kosong).
+ *  Tautan WhatsApp toko (tkQrStruk / tkQrSJ) dibaca dari kunci di belakang '#'. Kunci selalu TEKS — notaDari membandingkan sebagai teks. */
 export function tkUraiPindai(teks) {
   const t = String(teks === undefined || teks === null ? '' : teks).trim();
   if (!t) return null;
+  const wa = WA_TAUTAN.exec(t);
+  if (wa) { const u = tkUraiPindai(wa[1] === 'j' ? TK_AWALAN_SJ + wa[2] : TK_AWALAN_NOTA + wa[1] + ':' + wa[2]); return u && u.jenis === 'rusak' ? { jenis: 'rusak', kode: t } : u; }
+  if (t.indexOf(TK_AWALAN_SJ) === 0) { const id = t.slice(TK_AWALAN_SJ.length); return id && CETAK.test(id) && t.length <= TK_PANJANG_MAKS ? { jenis: 'sj', id } : { jenis: 'rusak', kode: t }; }
   if (t.indexOf(TK_AWALAN_NOTA) !== 0) return { jenis: 'lain', kode: t };
   const sisa = t.slice(TK_AWALAN_NOTA.length); const kolom = KUNCI_DARI[sisa.charAt(0)]; const nilai = sisa.slice(2);
   if (!kolom || sisa.charAt(1) !== ':' || !CETAK.test(nilai) || t.length > TK_PANJANG_MAKS) return { jenis: 'rusak', kode: t };
