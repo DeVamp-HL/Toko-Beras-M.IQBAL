@@ -703,6 +703,51 @@ coba('TRV6-EKOR balik', function () { kotak(5); var d = arsipBuku(2026).daftar.s
   ok('TRV6-EKOR balik · percobaan sama = tidak diarsipkan lagi; percobaan lain terkunci = { koleksi, id: idAsli, data: dok } (bentuk arsipBuku/arsipkanDokumen)',
     !!sama && sama.length === 0 && !!lain && lain.length === 2 && lain.every(function (x, i) { return x.koleksi === d[i].koleksi && x.id === d[i].idAsli && x.data === d[i].dok; }), J([sama, lain && lain.map(function (x) { return [x.koleksi, x.id]; })])); });
 
+// ---- TS · owner 26 Nov 2026 ("Terima + tambal 31 Des"): uang yang dicatat SESUDAH tutup hari 31 Des (bertanggal 31 Des) ikut titik kas yang ditulis tutup buku,
+// berita acara, dan kas akhir Desember (aturan ugSusulan, sama dengan tutup hari) — titik / berita acara lama tanpa jam pasang tetap seperti dulu
+var TS_PASANG = '2026-12-31T14:00:00.000Z';   // 21.00 WIB
+function tsKotak(pasang, titikSekarang) {
+  kotak(5); var T = Object.assign({ id: 'titikKas' }, TITIK31, pasang ? { diubahPada: pasang } : {});
+  localStorage.setItem('miqbal_titik_kas_v1', J(titikSekarang || T));
+  pasok('tutupHari', [{ id: '2026-12-31', tanggal: '2026-12-31', jam: '21:00', selisihLaci: 0, diubahPada: pasang || '', sistemBaru: true, titik: { laci: T.laci, brankas: T.brankas, rekening: T.rekening, amplop: T.amplop } }]);
+  pasok('pindahUang', [{ id: 'ts0', tanggal: '2026-12-31', jam: '20:00', dari: 'laci', ke: 'brankas', nominal: 70000, alasan: 'sebelum tutup (sudah termuat hitungan)', biayaAdmin: 0 },
+    { id: 'pd-2026-12-31', tanggal: '2026-12-31', jam: '21:00', dari: 'laci', ke: 'brankas', nominal: 40000, alasan: 'Amankan laci (tutup hari)', biayaAdmin: 0 },
+    { id: 'ts1', tanggal: '2026-12-31', jam: '22:00', dari: 'laci', ke: 'brankas', nominal: 300000, alasan: 'Amankan ke brankas', biayaAdmin: 0 }]);
+  pasok('amplopLaba', [{ id: 'ts2', tanggal: '2026-12-31', jam: '22:10', tipe: 'ambil', nominal: 50000, ke: 'rekening', catatan: 'Ambil amplop ke rekening' }]);
+  pasok('pengeluaranHarian', [{ id: 'ts3', tanggal: '2026-12-31', jam: '22:30', kategori: 'toko', untuk: 'toko', keterangan: 'Bensin', nominal: 100000, dari: 'brankas' }]);
+}
+function tsKas(B) { var o = baris(B); return { laci: o.laci, brankas: o.brankas, rekening: o.rekening, amplop: o.amplop }; }
+var TS_HARAP = { laci: 1700000, brankas: 10200000, rekening: 3050000, amplop: 950000 };   // titik 31 Des + catatan sesudah tutup 21.00 (yang 20.00 & amankan tutup itu sendiri tidak)
+coba('TS1', function () { tsKotak(TS_PASANG); var T0 = titikTahun(2026); var su = ugSusulan(T0); var B = barisTahun(2026);
+  ok('TS1 patokan tutup buku membawa jam pasangnya (titik kas 31 Des, dipasang 21.00) → catatan sesudah tutup per tempat: laci −300.000 · brankas +300.000 −100.000 · rekening +50.000 · amplop −50.000',
+    T0 && T0.dari === 'titikKas' && T0.diubahPada === TS_PASANG && su.laci === -300000 && su.brankas === 200000 && su.rekening === 50000 && su.amplop === -50000, J([T0, su]));
+  ok('TS1 berita acara / 12 baris 31 Des: uang per tempat = hitungan 31 Des + catatan sesudah tutup', J(tsKas(B)) === J(TS_HARAP), J(tsKas(B)));
+  var KA = lpKasAkhirBulan('2026-12'); var jml = TS_HARAP.laci + TS_HARAP.brankas + TS_HARAP.rekening + TS_HARAP.amplop;
+  ok('TS1 kas akhir Desember (Neraca berkop, potret Desember saat kunci) = jumlah uang berita acara, satu aturan; sumbernya menyebut catatan sesudahnya', KA.kas === jml && /\+ catatan uang sesudahnya sampai/.test(KA.sumber), J([KA, jml])); });
+coba('TS2', function () { tsKotak(TS_PASANG); var Wt = jam('2027-01-05T10:00:00+07:00'); var R = susunKunci(2026, D, Wt);
+  var ti = R.tolak ? null : [].concat.apply([], R.kiriman.map(function (k) { return k.dokumen; })).find(function (x) { return x.koleksi === 'pengaturan' && x.data.id === 'titikKas'; });
+  var ac = R.tolak ? null : R.acara;
+  ok('TS2 kunci 5 Jan: titik kas 31 Des yang ditulis MEMBAWA catatan sesudah tutup (dulu hilang dari buku brankas / rekening / amplop)', !R.tolak && ti && ti.data.tanggal === '2026-12-31'
+    && ti.data.laci === TS_HARAP.laci && ti.data.brankas === TS_HARAP.brankas && ti.data.rekening === TS_HARAP.rekening && ti.data.amplop === TS_HARAP.amplop, J([R.tolak, ti && ti.data]));
+  ok('TS2 berita acara mencatat patokan + jam pasangnya, baris uang "sebelum" = titik yang ditulis', ac && ac.titikDitulis === true && ac.titikTahun && ac.titikTahun.diubahPada === TS_PASANG
+    && ac.sebelum.some(function (b) { return b.id === 'brankas' && b.n === TS_HARAP.brankas; }), J(ac && [ac.titikDitulis, ac.titikTahun, ac.sebelum.filter(function (b) { return ['laci', 'brankas', 'rekening', 'amplop'].indexOf(b.id) >= 0; })]));
+  R.kiriman.forEach(kirim); var tb = ambilTitikKas(); var su2 = ugSusulan(tb);
+  ok('TS2 sesudah kunci: titik 31 Des dipasang 5 Jan → tidak punya catatan susulan (catatan 31 Des tidak dihitung dua kali; yang masuk sesudah tutup buku = daftar susulan tutup buku)',
+    tb.tanggal === '2026-12-31' && su2.laci === 0 && su2.brankas === 0 && su2.rekening === 0 && su2.amplop === 0, J([tb, su2])); });
+coba('TS3', function () { tsKotak(TS_PASANG);
+  var lama = { tanggal: '2026-12-31', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000, dari: 'titikKas' };   // berita acara / titik tanpa jam pasang (sebelum tambalan)
+  var Bl = barisBuku('2026-12-31', '2026-12-31', lama); var tbLama = { id: 'titikKas', tanggal: '2026-12-31', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000, diubahPada: '2027-01-05T03:00:00.000Z' };
+  var Sl = ugSaldoDenganSusulan('2026-12-31', tbLama);
+  ok('TS3 titik tutup buku LAMA tidak berubah: patokan tanpa jam pasang = angka lama persis; titik 31 Des yang ditulis tutup buku (dipasang Januari) tanpa susulan',
+    J(tsKas(Bl)) === J({ laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }) && Sl.laci === 2000000 && Sl.brankas === 10000000 && Sl.rekening === 3000000 && Sl.amplop === 1000000, J([tsKas(Bl), Sl])); });
+coba('TS4', function () { tsKotak(TS_PASANG, { id: 'titikKas', tanggal: '2027-01-02', laci: 1500000, brankas: 9000000, rekening: 3200000, amplop: 950000, diubahPada: '2027-01-02T14:00:00.000Z' });
+  var T0 = titikTahun(2026); var B = barisTahun(2026); var R = susunKunci(2026, D, jam('2027-01-05T10:00:00+07:00'));
+  var ti = R.tolak ? null : [].concat.apply([], R.kiriman.map(function (k) { return k.dokumen; })).find(function (x) { return x.koleksi === 'pengaturan' && x.data.id === 'titikKas'; });
+  ok('TS4 titik kas sudah maju ke Januari: patokan = dokumen tutup hari 31 Des + jam pasangnya → 12 baris membawa catatan sesudah tutup; titik Januari dipertahankan (tidak ditulis)',
+    T0 && T0.dari === 'tutupHari' && T0.diubahPada === TS_PASANG && J(tsKas(B)) === J(TS_HARAP) && !R.tolak && !ti, J([T0, tsKas(B), R.tolak, ti && ti.data])); });
+coba('TS5', function () { var lewat = '2026-12-31T17:30:00.000Z'; tsKotak(lewat); var B = barisTahun(2026);
+  ok('TS5 tutup 31 Des lewat tengah malam (00.30 1 Jan): aturan lama — tanpa catatan susulan', J(tsKas(B)) === J({ laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }), J(tsKas(B))); });
+
 __SIAP2027__
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
@@ -1320,6 +1365,11 @@ JAM_RESET_BARU = '\n'.join([
 JAM_RESET_LAMA = JAM_RESET_BARU.replace("if (j === 0) return 14; if (j === 23) return 15; }", "void j; }").replace("return d > minggu(2, 2) && d <= minggu(10, 1) ? 14 : 15;", "return d >= minggu(2, 2) && d < minggu(10, 1) ? 14 : 15;")
 
 RUSAK = [
+    # ---- owner 26 Nov 2026 ("Terima + tambal 31 Des"): catatan sesudah tutup hari 31 Des ikut titik tutup buku & kas akhir bulan
+    ('Tambal 31 Des · 12 baris & titik tutup buku tanpa catatan susulan (cacat lama)', 'baru/js/layar/tutup-buku-logika.js', "const K = titikPakai ? ugSaldoDenganSusulan(sampaiKas || sampai, titikPakai) : saldoKantong(sampaiKas || sampai);", "const K = saldoKantong(sampaiKas || sampai, titikPakai);"),
+    ('Tambal 31 Des · patokan tutup buku tanpa jam pasang', 'baru/js/layar/tutup-buku-logika.js', "const pasang = (x) => (x && x.diubahPada ? { diubahPada: String(x.diubahPada) } : {});", "const pasang = (x) => ({});"),
+    ('Tambal 31 Des · kas akhir bulan Laporan tanpa catatan susulan', 'baru/js/layar/laporan-logika.js', "const K = ugSaldoDenganSusulan(akhir, t);", "const K = saldoKantong(akhir, t);"),
+    ('Tambal 31 Des · susulan juga untuk patokan yang dipasang hari lain (dihitung dua kali)', 'baru/js/layar/uang-logika.js', "if (!d || !isFinite(d.getTime()) || hariIniIso(d) !== t.tanggal) return () => false;", "if (!d || !isFinite(d.getTime())) return () => false;"),
     # ---- Tahap 6 (owner 25 Nov 2026, "bawa berat asli"): saldo pembuka membawa berat asli karung sisa kedatangan ikut timbang
     ('Tahap 6 · saldo pembuka tanpa berat asli (karung sisa dianggap 50 kg lagi)', 'baru/js/layar/tutup-buku-logika.js', "baris(x.sisaKg, x.sisaKg * x.hppPerKg, 0), ba ? { beratAsli: ba } : {}));", "baris(x.sisaKg, x.sisaKg * x.hppPerKg, 0), {}));"),
     # ---- modal FIFO menyeberang tahun (owner 25 Nov 2026: "bangun per kedatangan" + "simpan apa adanya")

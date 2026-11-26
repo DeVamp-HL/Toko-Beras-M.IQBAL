@@ -4249,3 +4249,9 @@ buku tempat itu begitu tutup berikutnya menulis titik baru. Laci sudah aman seja
   hitungan + catatan susulan patokan lama (dulu ikut hilang). Patokan, bukan laba.
 - Titik yang sudah tersimpan TIDAK diubah: tambalan berlaku untuk tutup / catat isi berikutnya. Uji `alat-uji/uji_brankas_susulan.py` (kotak pasir angka contoh pola dua
   kasus nyata, kontrol, asap cadangan toko: daftar patokan yang dulu kehilangan catatan).
+- **Tutup buku 31 Des** (owner 26 Nov 2026, "Terima + tambal 31 Des"): satu pintu `ugSaldoDenganSusulan(sampai, t)` (uang-logika) = saldoKantong dari patokan
+  lampau + `ugSusulan(t)`. `titikTahun` kini membawa `diubahPada` patokannya (titik kas / dokumen tutup hari), jadi `barisBuku` (12 baris, berita acara, titik kas
+  31 Des yang ditulis saat kunci) membawa uang yang dicatat sesudah tutup hari 31 Des. Kas akhir bulan Laporan (`lpKasAkhirBulan`, juga potret Desember saat kunci)
+  dan uang pada tanggal lampau (`lpKasPadaTanggal`, Pondasi) memakai aturan yang sama. Berita acara / titik lama tanpa `diubahPada` = angka lama persis; titik
+  31 Des yang ditulis tutup buku dipasang Januari = tanpa susulan (catatan bertanggal ≤ 31 Des yang masuk sesudah kunci tetap lewat daftar susulan tutup buku
+  A9). Tanpa rules baru, ritual tidak berubah. Uji: blok TS `alat-uji/uji_tutup_buku_bertahap.py` (+ 4 jangkar kontrol).

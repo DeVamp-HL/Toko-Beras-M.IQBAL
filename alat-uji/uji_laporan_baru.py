@@ -863,7 +863,7 @@ if __name__ == '__main__':
             'UU36-1: baris lebih/kurang kas arus kas bernama lain dari laba-rugi': js.replace("[{ nama: lpNamaLebihKurang({ nLebihKurang: LKK.malam }), n: lk }]", "[{ nama: 'Penyesuaian titik kas (disetel ulang dalam periode)', n: lk }]"),
             '39b-36: kas awal arus kas bulan final tetap kasPada': js.replace("KW = final ? lpKasAkhirBulan(lpGeserBulan(bulan[0], -1)) : null;", "KW = null;"),
             '39b-36: tutup hari PERTAMA di bulan itu, bukan terakhir': js.replace("const d = th.filter((x) => x.titik).sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)))[0];", "const d = th.filter((x) => x.titik).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)))[0];"),
-            '39b-36: catatan uang sesudah tutup hari terakhir sampai akhir bulan diabaikan': js.replace("kas: saldoKantong(akhir, t).total,", "kas: saldoKantong(t.tanggal, t).total,"),
+            '39b-36: catatan uang sesudah tutup hari terakhir sampai akhir bulan diabaikan': js.replace("const K = ugSaldoDenganSusulan(akhir, t);", "const K = ugSaldoDenganSusulan(t.tanggal, t);"),
             '39b-36: paket bank tidak meneruskan tolak dokumennya': js.replace("tolak: tolak || tolakDok, daftar,", "tolak, daftar,"),
             '39b-36: kalimat tolak bulan final kembali "titik kas belum disetel"': js.replace("tolak: KB && !kasAda ? KB.tolak : tolak, seimbang:", "tolak, seimbang:"),
             '39b-36: tutup hari lama (tanpa isi tempat uang) disebut "tidak ada tutup hari"': js.replace("const kenapa = th.length ?", "const kenapa = false ?"),

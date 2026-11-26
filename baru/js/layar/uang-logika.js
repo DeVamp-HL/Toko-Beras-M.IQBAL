@@ -94,6 +94,16 @@ export function ugSusulan(t) {
   }
   return s;
 }
+/**
+ * owner 26 Nov 2026 ("Terima + tambal 31 Des"): saldo tiap tempat dari patokan LAMPAU `t` (hitungan tutup hari / titik kas yang dipakai tutup buku 31 Des,
+ * kas akhir bulan Laporan) + catatan susulan patokan itu (ugSusulan — aturan yang SAMA dengan tutup hari & Catat isi). Dulu titik 31 Des yang ditulis tutup
+ * buku & kas akhir bulan melewatinya. `t` tanpa diubahPada (berita acara / titik lama) = tanpa susulan, persis seperti dulu. → bentuk saldoKantong + susulan.
+ */
+export function ugSaldoDenganSusulan(sampai, t) {
+  const K = saldoKantong(sampai, t); if (!K.ada || !t) return K; const su = ugSusulan(t); const n = (k) => K[k] + su[k];
+  return Object.assign({}, K, { laci: n('laci'), brankas: n('brankas'), rekening: n('rekening'), amplop: n('amplop'), total: K.total + su.laci + su.brankas + su.rekening + su.amplop, susulan: su,
+    minus: ['laci', 'brankas', 'rekening', 'amplop'].filter((k) => n(k) < -0.5) });
+}
 function ugKantongBaris(r, peta) {
   if (r.id && peta.id[String(r.id)]) return peta.id[String(r.id)];
   if (!r.id) { const m = String(r.label || '').match(/^(.*?)(?: \(kotor.*)? — biaya (.+)$/); if (m) { const bulan = ugBulanDariNama(m[2]); const t = peta.bulanan[bulan + '|' + m[1]]; if (t) return t; } }

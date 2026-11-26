@@ -30,7 +30,7 @@ import { potonganMenunggu, piutangPemasokPada, ambilPenjualan, ambilPenjualanSem
 import { KOLEKSI } from '../data/koleksi.js';
 import { KP_BATAS_GET, kpPotong, kpNilaiKiriman, kpBulanDok, kpBebas, kpIdx, kpWib, kpNamaBulan, KP_ID_PINTU, KP_PINTU_JAM, KP_PINTU_SISA_JAM, kpPecahBiaya } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, jamKini, tanggalPendek, lebihBayarDari, kalimatLebih } from '../inti/format.js';
-import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
+import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam, ugSaldoDenganSusulan } from './uang-logika.js';
 import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
 import { ringkasPelangganTahun } from './pelanggan-logika.js';
 import { ringkasPemasokTahun, ringkasPesananTahun } from './bon-pemasok-logika.js';
@@ -232,7 +232,9 @@ export function barisBuku(sampai, sampaiKas, titikPakai) {
     + ') TIDAK ikut menyeberang: saldo pembuka hanya membawa bon yang bersisa dan catatan pembayarannya diarsipkan, jadi sesudah tahun dikunci jejaknya hilang dari buku'
     + (lebih.uang.n ? ' — uangnya tetap di kas.' : '.') + (lebih.hapus.n ? ' Hapus buku yang ternyata dibayar perlu dibalik sebelum tahun dikunci.' : '');
   const kasbonK = kasbon.filter((x) => x.kunci !== kO).reduce((a, x) => a + x.sisa, 0); const kasbonO = kasbon.filter((x) => x.kunci === kO).reduce((a, x) => a + x.sisa, 0);
-  const K = saldoKantong(sampaiKas || sampai, titikPakai); const amplop = saldoAmplop(sampai); const up = hitungUtangPemasok(sampai); const tekorP = up.reduce((a, x) => a + (x.tekor || 0), 0); const utangP = up.reduce((a, x) => a + x.totalUtang, 0) - tekorP, nBon = up.reduce((a, x) => a + x.bon.length, 0); const uo = hitungUtangOwner(sampai);
+  // owner 26 Nov 2026 ("tambal 31 Des"): patokan tutup buku (titikTahun) MEMBAWA catatan susulannya — uang yang dicatat sesudah tutup hari terakhir bertanggal
+  // hari itu (aturan ugSusulan). Dulu titik 31 Des yang ditulis dari K ini menghapusnya dari buku tempat itu. Tanpa titikPakai = titik kas sekarang, seperti dulu.
+  const K = titikPakai ? ugSaldoDenganSusulan(sampaiKas || sampai, titikPakai) : saldoKantong(sampaiKas || sampai); const amplop = saldoAmplop(sampai); const up = hitungUtangPemasok(sampai); const tekorP = up.reduce((a, x) => a + (x.tekor || 0), 0); const utangP = up.reduce((a, x) => a + x.totalUtang, 0) - tekorP, nBon = up.reduce((a, x) => a + x.bon.length, 0); const uo = hitungUtangOwner(sampai);
   const ppBuku = piutangPemasokPada(sampai);
   const kas = (k) => (K.ada ? Math.round(K[k]) : null); const kataMin = (n) => (n ? ' · ' + n + ' MINUS' : '');
   const harta = [{ id: 'beras', nama: 'Stok beras · ' + KG(Math.round(kg * 10) / 10) + ' · ' + nK + ' merek', n: rpK }, { id: 'kemasan', nama: 'Kemasan jadi · ' + ANGKA(unit) + ' kantong' + kataMin(minM), n: Math.round(rpM) }, { id: 'bahan', nama: 'Kantong kosong & paper bag · ' + ANGKA(pcs) + ' lembar' + kataMin(minB), n: rpB },
@@ -261,9 +263,11 @@ export function barisBuku(sampai, sampaiKas, titikPakai) {
  */
 export function titikTahun(tahun) {
   const c = tbCutoff(tahun); const t = ambilTitikKas();
-  if (t && t.tanggal && t.tanggal <= c) return { tanggal: t.tanggal, laci: Number(t.laci) || 0, rekening: Number(t.rekening) || 0, amplop: Number(t.amplop) || 0, brankas: Number(t.brankas) || 0, dari: 'titikKas' };
+  // owner 26 Nov 2026 ("tambal 31 Des"): diubahPada = saat patokan dipasang (titik kas / dokumen tutup hari) — dasar catatan susulannya (ugSusulan); ikut berita acara
+  const pasang = (x) => (x && x.diubahPada ? { diubahPada: String(x.diubahPada) } : {});
+  if (t && t.tanggal && t.tanggal <= c) return Object.assign({ tanggal: t.tanggal, laci: Number(t.laci) || 0, rekening: Number(t.rekening) || 0, amplop: Number(t.amplop) || 0, brankas: Number(t.brankas) || 0, dari: 'titikKas' }, pasang(t));
   const th = ambilTutupHari().filter((d) => d && d.tanggal && d.tanggal <= c && d.titik).sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)))[0];
-  return th ? { tanggal: th.tanggal, laci: Number(th.titik.laci) || 0, rekening: Number(th.titik.rekening) || 0, amplop: Number(th.titik.amplop) || 0, brankas: Number(th.titik.brankas) || 0, dari: 'tutupHari' } : null;
+  return th ? Object.assign({ tanggal: th.tanggal, laci: Number(th.titik.laci) || 0, rekening: Number(th.titik.rekening) || 0, amplop: Number(th.titik.amplop) || 0, brankas: Number(th.titik.brankas) || 0, dari: 'tutupHari' }, pasang(th)) : null;
 }
 /** 12 baris pada 31 Des tahun itu dengan titik kas tahun (layar K6, berita acara, susunKunci). */
 export function barisTahun(tahun) { const c = tbCutoff(tahun); return barisBuku(c, c, titikTahun(tahun)); }
