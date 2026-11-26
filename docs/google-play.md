@@ -26,6 +26,7 @@ pernah menekan **Produksi** atau **Uji terbuka** (uji terbuka = siapa pun bisa b
 |---|---|
 | AAB bertanda tangan kunci toko, artefak terpisah **`aab-google-play`**, di samping APK yang tetap seperti biasa | `.github/workflows/apk.yml`, pemeriksa `apk/periksa_aab.py` |
 | targetSdk & compileSdk **36** (syarat aplikasi baru di Play sejak 31 Agu 2026; Capacitor 7 bawaannya 35) | `apk/pasang.py` (`SDK_SASARAN`) |
+| minSdk **24** = Android 7.0 (26 Nov 2026: unggahan AAB 1.43 ditolak — perlindungan otomatis Play wajib minSdk ≥ 24; Capacitor 7 bawaannya 23) | `apk/pasang.py` (`SDK_MINIMUM`) |
 | Workflow sekali-jalan untuk menyerahkan **kunci toko** ke Play App Signing (alat PEPK Google, di runner — Mac tanpa Java) | `.github/workflows/play-kunci.yml` |
 | Ikon 512, grafis unggulan 1024 × 500 (logo M, hitam malam + emas) | `docs/google-play/` (perender `apk/bahan_play.py` dari geometri logo M `apk/ikon_m.py`) |
 | Nama, deskripsi pendek & lengkap | `docs/google-play/teks-toko.md` |

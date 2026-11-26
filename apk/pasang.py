@@ -16,6 +16,8 @@ pasang.py — dijalankan GitHub Actions (apk.yml) SESUDAH `npx cap add android`:
   · versionCode/versionName dari nomor jalan Actions (APK baru bisa dipasang menimpa yang lama bila kuncinya sama)
   · Google Play (23 Nov 2026): compileSdk & targetSdk = SDK_SASARAN (36) di variables.gradle — aplikasi BARU di Play wajib menyasar Android 16 sejak
     31 Agu 2026 (Capacitor 7 bawaannya 35). Perilaku baru Android 15/16 hanya berlaku di perangkat Android 15/16; CPad = Android 14 → tidak berubah
+  · Google Play (26 Nov 2026): minSdk = SDK_MINIMUM (24) — unggahan AAB 1.43 DITOLAK: "Perlindungan otomatis Google Play memerlukan versi SDK minimum
+    24 atau yang lebih tinggi" (Capacitor 7 bawaannya 23 = Android 6). 24 = Android 7.0; CPad = Android 14 → tidak berubah
 
     python3 apk/pasang.py --versi 12
 """
@@ -167,15 +169,19 @@ def ubah_gradle(g, versi):
 # Google Play (23 Nov 2026): "Starting August 31, 2026: New apps and app updates must target Android 16 (API level 36) or higher" (Play Console Help
 # 11926878; perpanjangan sampai 1 Nov 2026 sudah lewat). Satu angka untuk APK & AAB — keduanya dari satu bangun, versionCode sama.
 SDK_SASARAN = 36
+# Google Play (26 Nov 2026, Play Console saat unggah AAB pertama): "Perlindungan otomatis Google Play memerlukan versi SDK minimum 24 atau yang lebih
+# tinggi. App Bundle yang diupload memiliki versi SDK minimum 23." Capacitor 7 bawaannya 23.
+SDK_MINIMUM = 24
 
 
-def ubah_variabel(v, sdk=SDK_SASARAN):
-    """apk/android/variables.gradle Capacitor → compileSdkVersion & targetSdkVersion = sdk (tidak pernah MENURUNKAN). Murni; boleh dijalankan ulang."""
-    for nama in ('compileSdkVersion', 'targetSdkVersion'):
+def ubah_variabel(v, sdk=SDK_SASARAN, minimum=SDK_MINIMUM):
+    """apk/android/variables.gradle Capacitor → minSdkVersion = minimum, compileSdkVersion & targetSdkVersion = sdk (tidak pernah MENURUNKAN).
+    Murni; boleh dijalankan ulang."""
+    for nama, angka in (('minSdkVersion', minimum), ('compileSdkVersion', sdk), ('targetSdkVersion', sdk)):
         pola = r'(?m)^([ \t]*%s[ \t]*=[ \t]*)(\d+)([ \t]*)$' % nama
         cocok = re.findall(pola, v)
         if len(cocok) != 1: raise Tolak('variables.gradle punya %d baris %s — pola Capacitor berubah, sasaran SDK Play tidak bisa dipasang' % (len(cocok), nama))
-        v = re.sub(pola, lambda mm: mm.group(1) + str(max(sdk, int(mm.group(2)))) + mm.group(3), v, count=1)
+        v = re.sub(pola, lambda mm: mm.group(1) + str(max(angka, int(mm.group(2)))) + mm.group(3), v, count=1)
     return v
 
 
@@ -183,7 +189,7 @@ def pasang_sdk():
     p = os.path.join(ANDROID, 'variables.gradle')
     try: v = ubah_variabel(baca(p))
     except Tolak as e: gagal(str(e))
-    tulis(p, v); print('  SDK: compileSdk & targetSdk = %s (syarat Google Play aplikasi baru)' % ', '.join(re.findall(r'(?m)^[ \t]*(?:compile|target)SdkVersion[ \t]*=[ \t]*(\d+)', v)))
+    tulis(p, v); print('  SDK: minSdk, compileSdk, targetSdk = %s (syarat Google Play)' % ', '.join(re.findall(r'(?m)^[ \t]*(?:min|compile|target)SdkVersion[ \t]*=[ \t]*(\d+)', v)))
 
 
 def periksa_gs(teks):

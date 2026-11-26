@@ -170,6 +170,8 @@ jobs:
           APK=$(ls ../keluaran/*.apk | head -1)
           SASARAN=$("$BT/aapt2" dump badging "$APK" | sed -n "s/^targetSdkVersion:'\([0-9]*\)'.*/\1/p" | head -1)
           [ "${SASARAN:-0}" -ge 36 ] || { echo "GAGAL: targetSdk ${SASARAN:-?} < 36 — Google Play menolak aplikasi baru yang tidak menyasar Android 16 (apk/pasang.py SDK_SASARAN)"; exit 1; }
+          MINIMUM=$("$BT/aapt2" dump badging "$APK" | sed -n "s/^sdkVersion:'\([0-9]*\)'.*/\1/p" | head -1)
+          [ "${MINIMUM:-0}" -ge 24 ] || { echo "GAGAL: minSdk ${MINIMUM:-?} < 24 — perlindungan otomatis Google Play menolak bundel (apk/pasang.py SDK_MINIMUM)"; exit 1; }
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kunci.jks"
           keytool -list -v -keystore "$RUNNER_TEMP/kunci.jks" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" > "$RUNNER_TEMP/kunci.txt" || true
           ALGO=$(grep -m1 'Subject Public Key Algorithm' "$RUNNER_TEMP/kunci.txt" | sed 's/^[^:]*: *//' || true)
