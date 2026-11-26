@@ -11,6 +11,8 @@ import { ambilRetur, kunciNota, ingatPerVersi } from '../data/toko.js';
 import { semuaBon, pnNota } from './bon-logika.js';
 import { fkNota } from './faktur-logika.js';
 import { ajUntukNota, ajKeadaan } from './antar-logika.js';
+// paket QR kedua (owner 26 Nov 2026): retur sekali scan — baris karung & kemasan yang bisa diretur, dihitung penyusun Riwayat yang sama (rwNotaLengkap)
+import { rwNotaLengkap, rwKunci } from './riwayat-logika.js';
 import { kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
 import { RP, hariIniIso } from '../inti/format.js';
 
@@ -26,7 +28,8 @@ const spNoPendek = (nota) => String((nota && (nota.trxId || nota.grupNota || not
 /**
  * Keadaan satu nota untuk pita scan. nota = bentuk notaDari / notaDariBaris (struk-logika); kini = Date (bawaan sekarang).
  * Hasil null (tanpa nota) atau { status: 'berlaku' | 'batal' | 'koreksi', judul, awas (perlu perhatian), baris: [teks], retur: banyak retur,
- *   bon: null | { sisaNota, sisaOrang, nama, tertua, faktur }, bayar: null | { orang, nama, faktur: [no], nominal: '' | teks angka, catatan } }.
+ *   bon: null | { sisaNota, sisaOrang, nama, tertua, faktur }, bayar: null | { orang, nama, faktur: [no], nominal: '' | teks angka, catatan },
+ *   barisRetur: [{ id (baris nota), teks, bisa, sebab }] — karung & kemasan nota yang masih berlaku (paket QR kedua: retur sekali scan) }.
  * bayar.nominal hanya diisi bila jelas: faktur (sisa faktur itu — pembayaran menunjuk faktur), atau bon eceran yang memang TERTUA (pembayaran bon
  * menutup yang tertua dulu, jadi angka nota lain akan menutup nota yang salah). Selain itu kosong — kasir mengetik sendiri.
  */
@@ -77,5 +80,8 @@ function spHitung(nota, iso, kini) {
     baris.push('Diantar · surat jalan ' + nota.noSJ + (K ? ' · ' + K.statusTeks + (K.sisaTagih > 0 ? ' · uang bayar di tempat belum pulang ' + RP(K.sisaTagih) : '') : ''));
     if (K && K.sisaTagih > 0 && K.status !== 'berangkat') awas = true;
   }
-  return { status, judul, awas, baris, retur: rt.length, bon, bayar };
+  // retur sekali scan (paket QR kedua): baris karung & kemasan nota yang masih berlaku — bisa diretur (tombol di pita) atau sebabnya tidak bisa
+  const L = status === 'berlaku' && (nota.baris || []).length ? rwNotaLengkap(rwKunci(nota.baris[0])) : null;
+  const barisRetur = L ? L.baris.filter((b) => b.bisaRetur || b.sebabRetur).map((b) => ({ id: String(b.id), teks: b.teks, bisa: !!b.bisaRetur, sebab: b.bisaRetur ? '' : String(b.sebabRetur || '') })) : [];
+  return { status, judul, awas, baris, retur: rt.length, bon, bayar, barisRetur };
 }

@@ -1365,7 +1365,9 @@ export function pasangLayarJual(akar, opsi) {
   function pitaScan(nota, s) {
     const K = SP.spKeadaanNota(nota, s.sekarang || new Date()); if (!K) return '';
     return h`<div class="pita-info ${K.awas ? 'awas' : 'emas'}" data-k="pita-scan"><b>${K.judul}</b>${K.baris.map((t, i) => h`<div data-k="ps-${i}">${t}</div>`)}</div>
-      ${K.bayar ? h`<div class="kaca-btn aktif" data-aksi="scanBayar" data-k="scan-bayar">${K.bayar.faktur.length ? 'Bayar faktur ' + K.bayar.faktur[0] : 'Bayar bon ' + K.bayar.nama} ›</div>` : ''}`;
+      ${K.bayar ? h`<div class="kaca-btn aktif" data-aksi="scanBayar" data-k="scan-bayar">${K.bayar.faktur.length ? 'Bayar faktur ' + K.bayar.faktur[0] : 'Bayar bon ' + K.bayar.nama} ›</div>` : ''}
+      ${K.barisRetur.length ? h`<div class="tombol-baris" data-k="scan-retur">${K.barisRetur.filter((b) => b.bisa).map((b) => h`<div class="kaca-btn" data-aksi="tunjukNota" data-id="${b.id}" data-k="sr-${b.id}">Retur ${b.teks} ›</div>`)}</div>
+        ${K.barisRetur.filter((b) => !b.bisa).map((b) => h`<div class="ket" data-k="srs-${b.id}">retur ${b.teks}: ${b.sebab}</div>`)}` : ''}`;
   }
   function gambarStruk(s, L1, muncul, kepala) {
     const n = notaStruk();
