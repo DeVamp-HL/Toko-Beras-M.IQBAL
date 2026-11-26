@@ -4182,3 +4182,53 @@ isian lama `aturanToko/laporan.asetTetap` diganti daftar (di cadangan 25 Nov dok
   daftar aset" menggantikan lembar isian satu angka.
 - Uji `alat-uji/uji_jurnal_aset.py` (kotak pasir angka harapan dihitung terpisah + statis + `--kontrol` + asap cadangan toko); `peta_akses.py` (`susunAset`,
   `susunHapusAset`, `susunAturAset`). Belum dicoba di data toko: menyimpan daftar ke Firestore sungguhan, laba Desember di HP owner.
+
+## Paket Dasbor (owner 26 Nov 2026, sensus ulang 1c: B1 B9 B88 B89 B90 B91 B95 B109 B113 B127; cabang `claude/dasbor-sensus-fbcdb5`; tanpa rules baru, mesin beku tidak diubah)
+
+Grup Dasbor terakhir sensus 1c sebelum sistem beku 15 Des 2026. Dijaga `alat-uji/uji_dasbor_sensus.py` (kotak pasir + statis + `--kontrol` + asap cadangan toko).
+
+**Keputusan owner (satu AskUserQuestion 26 Nov 2026):** angka utama = **widget yang owner atur sendiri** (kata owner: "Gua aja yang atur, bisa di pindah, bisa
+dihapus. bisa di sesuaikan ukurannya. Seperti halnya menambahkah widget di layar HP, memindahkan aplikasi dengan di tekan") · headline = **omzet + laba + yang
+mendesak** · pembanding omzet = **kemarin + hari yang sama minggu lalu, sampai jam yang sama** · stok minimum = **hari + kg per barang**.
+
+- **Banding & rata-rata nota (B1 B9 B113).** `dbBanding` (dasbor-logika): omzet & nota hari ini = `rekapHari` (Laporan › Harian); kemarin jam segini & hari yang
+  sama minggu lalu jam segini = rumus Cincin `rkJamSegini` (ringkasan-logika, membungkus `rkJumlahRentang`; indeks `rkIndeks` diingat per versi data) — nota
+  sesudah jam sekarang belum ikut; sebelum toko mencatat / rincian per jam ikut arsip tutup buku = disebut, bukan Rp0. Rata-rata nilai nota = `lpRataNota`
+  (laporan-logika: omzet sesudah retur ÷ nota, dari `lpHariRentang`); bulan ini vs bulan lalu sampai tanggal yang sama (`dbBulanBanding`, bulan pendek = tanggal
+  terakhirnya; bulan lalu yang tidak utuh = disebut). Kunci ingatan banding bergeser tiap 5 menit (`dbKunciTambahan`), jadi "jam segini" tidak beku sejak pagi.
+- **Saringan tanggal (B95).** `DB_PERIODE` Hari ini · Kemarin · 7 hari · Bulan ini · Bulan lalu · Tahun ini (tahun buku 1 Jan – 31 Des) · Pilih tanggal; `dbPeriode`
+  = omzet, laba kotor, nota, rata-rata nota, retur (`lpRataNota`) + pembanding periode sebelumnya (Hari ini = kemarin jam segini). Laba bersih & biaya HANYA untuk
+  pilihan berbulan = Σ `kendaliBulan` (mesin Laporan › Laba, tagihan bulanan sebulan penuh); rentang hari bebas: disebut, tidak dipecah per hari. Pilihan terakhir
+  diingat per perangkat (`miqbal_baru_dasbor_periode`).
+- **Cap "data per HH.MM" (B109).** `firebase.js` `status.dataPer` { hidup = masuk + semua koleksi dijawab server + tidak offline, putus = saat hidup berhenti,
+  tersimpan = jam tersambung terakhir di perangkat ini (`miqbal_baru_terakhir_tersambung`, diperbarui tiap menit selama tersambung) }; app.js meneruskannya ke
+  Ringkasan (`dataPer`). `dbCapData`: tersambung = jam sekarang · tanpa internet = jam terakhir tersambung (hari lain disebut harinya) + awas · cadangan = saat
+  diunduh. Cap di kepala tiap kartu Dasbor & headline; diganti tiap menit tanpa menggambar ulang.
+- **Headline (B91).** `dbHeadline(D, perhatian)`: omzet hari ini vs kemarin jam segini · laba bersih bulan ini sampai hari ini vs titik impas (`titikImpas.kurang`) ·
+  N hal perlu perhatian & yang paling mendesak (daftar Perlu perhatian Ringkasan apa adanya, yang awas didahulukan). Tiap bagian diketuk = layarnya.
+- **Enam bulan (B113).** `dbEnam`: laba bersih & biaya per bulan = `trenBiaya` (Laporan › Biaya); kas, piutang, stok per akhir bulan = `pdPosisiBulan` (pondasi-logika:
+  `pdKekayaan` yang sama — bulan item kini membawa kas · piutang · stok · utangPemasok dari neraca bulan itu). Kartu "Enam bulan" = panel tambahan (12/12).
+- **Stok minimum per barang (B127) — `stok-minimum-logika.js` (awalan sm, modul DAUN: data/toko.js + format).** Setelan `aturanToko/stokMinimum` { barang:
+  { 'karung|<merek>' | 'kemasan|<kunci>': { hari } | { min } } } (owner saja; aturanToko/{id} sudah owner create/update). Bawaan semua barang = `smHariBawaan` =
+  `aturanToko/belanja.ambangHari` dibaca dengan aturan yang SAMA dengan `aturBelanja` (uji menutupnya, termasuk null/teks/rusak); hari tersisa `smHari` = `hariHabis`
+  Belanja. Di bawah minimum: buku minus · sisa < minimum jumlah · hari ≤ batas. `smBawahDari` = SATU penghitung untuk Dasbor (`dbStokMin`, kartu Stok per merek
+  `dbStok.merek.awas`) dan Perlu perhatian (`susunPerhatian`) — dulu konstanta `AMBANG_HARI_KRITIS` 4 hari. Belanja: `smAturKelompok` (batas kelompok harga =
+  batas terbesar anggotanya; minimum kg → hari dengan laju merek itu) & `smHariMerek` (daftar "Di bawah stok minimum"); tanpa angka per barang = Belanja sama persis.
+  Lembar Stok › Gudang › "Stok minimum per barang" (`stok-minimum-panel.js`, keadaan dipratinjau dari ketikan). Tablet penjaga tetap ≤ 4 hari (tidak membaca setelan
+  owner). Di `bundel_baru.py` modulnya ikut otomatis (`SM_PEMAKAI`).
+- **Tata letak (owner 26 Nov 2026, empat pratinjau).** Desain ulang "semua kartu jadi widget ringkas" DITOLAK ("Jelek. Bagusan seperti semula"); kartu
+  lama tetap UTUH. Lalu "Gak rapet … besar kecil-nya kartu bisa gua sesuaikan … Bukan hanya klik jadi besar atau kecil" → tiap kartu Dasbor = PANEL yang lebar
+  & tingginya ditarik sendiri; pilihan owner: **merapat otomatis** & **HP satu kolom**. Mode Dasbor: kolom samping (Perlu perhatian, catatan katalog)
+  DISEMBUNYIKAN ("kartu perlu perhatian ganggu"), Dasbor selebar layar di Mac. Cincin tetap seperti dulu.
+- **Panel (B88 B89) — `dasbor-widget-logika.js` (awalan wg, tanpa rumus uang) + `dasbor-kisi.js`.** Susunan = daftar `{ id, w, h }`: `w` lebar 2–12 kolom
+  (kartu ≥ 3), `h` tinggi dalam baris 8 px (10–250) atau `null` = ikut isi. BAWAAN = urutan kartu lama (Hari ini, Margin & target, Tren 12/12, Bulan ini, Wadah,
+  Pemicu, Piutang, Stok, Mutu, Pondasi, Pelanggan usaha; lebar 6/12, tinggi ikut isi) — isi kartunya fungsi `kartuX` yang sama (`kartuPenuh` di dasbor.js).
+  Katalog "+ Tambah kartu": kartu Dasbor yang dihapus · tambahan (Ringkas hari ini = headline B91, Periode = saringan tanggal B95, Enam bulan B113, Perlu
+  perhatian) · 22 angka (omzet/banding, rata-rata nota, uang toko, laba bersih vs impas, piutang lewat, bon pemasok, stok minimum, …; `isi(D)` membaca kelompok
+  dasbor yang SAMA, uji menutupnya ke kartunya). `wgBersih` membuang id tak dikenal/kembar, menjepit lebar & tinggi, membaca `ukuran` lama (kecil/lebar/besar/
+  penuh). Disimpan di `aturanToko/dasbor` { widget: [{ id, w, h }] } (owner saja, ikut semua perangkat owner). Kisi CSS grid 12 kolom × baris 8 px,
+  `grid-auto-flow: row dense` = merapat: panel tinggi-otomatis diukur `ResizeObserver` → `grid-row-end: span n`; panel bertinggi tarikan menggulir isinya.
+  Tekan lama (`TEKAN_LAMA` 520 ms) / Atur = mode atur: seret = pindah (geser FLIP), pegangan kanan = lebar, bawah = tinggi, sudut = keduanya (melekat ke
+  kolom & baris, chip "w/12 · N px"), "tinggi otomatis", × hapus, + tambah, Kembalikan bawaan, Batal; "Selesai" menyimpan SEKALI (`simpanWidget` →
+  `tulisDokumen`). HP (< 720 px): satu kolom, urutan sama, ukuran tarikan diabaikan, pegangan tidak tampil. Angka yang berubah berkilau lewat Web Animations
+  (markup tidak berubah → gambar yang hidup = gambar segar, `uji_layar_mulus`).

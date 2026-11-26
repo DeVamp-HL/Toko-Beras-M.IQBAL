@@ -12,6 +12,9 @@ import { hitungLabaRentang, hitungPiutang, hitungUtangPemasok, hitungLajuPakai, 
 import { bakuCaraBayar, pesananBelumTuntas, namaBulanPanjang, AMBANG_HARI_KRITIS, kunciPelanggan } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja, kunciNota, returUangPerHari, lajuLintas, potretTahun, potretHari, tahunDiarsip, awalPotret, ingatStokKarung, ingatStokKemasan, ingatGerakanKas, ingatKasPada, ambilPemasokCatatan } from '../data/toko.js';
 import { hariIniIso, RP, lebihBayarDari } from '../inti/format.js';
+// owner 26 Nov 2026 (B127): stok minimum per barang — satu penghitung dengan Dasbor
+import { smBawahDari } from './stok-minimum-logika.js';
+import { ingatPerVersi } from '../data/toko.js';
 
 export const SKALA = [['langsung', 'Langsung'], ['menit', 'Menit'], ['jam', 'Jam'], ['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan'], ['tahun', 'Tahun']];
 const LAPISAN = { langsung: ['m15', 'menit', 'jam'], menit: ['menit', 'jam', 'hari'], jam: ['jam', 'hari', 'bulan'], hari: ['hari', 'minggu', 'bulan'], minggu: ['minggu', 'bulan', 'tahun'], bulan: ['bulan', 'tahun', null], tahun: ['tahun', null, null] };
@@ -78,6 +81,16 @@ function rkJumlahRentang(ix, dariIso, sampaiIso, sampaiMenitHariAkhir) {
     } else { omzet += h.omzet; h.nota.forEach((k) => nota.add(k)); notaArsip += h.notaArsip || 0; hariBuka += 1; }
   });
   return { omzet: omzet - retur, penjualan: omzet, retur, nota: nota.size + notaArsip, hariBuka };
+}
+
+/** owner 26 Nov 2026 (Dasbor sensus B1/B113): indeks cincin diingat per versi data & tahun jam sekarang — Dasbor memakai pembanding "jam segini" yang SAMA dengan
+ *  Cincin (satu sumber: rkJumlahRentang), tanpa membangun indeks sendiri. */
+export function rkIndeks() { return ingatPerVersi('rkIndeks|' + hariIniIso(new Date(Date.now())).slice(0, 4), () => bangunIndeks()); }
+/** Omzet & nota satu hari sampai menit tertentu (null = sehari penuh) — rumus Cincin "kemarin jam segini". ket ≠ '' = tidak bisa dibandingkan (sebabnya). */
+export function rkJamSegini(ix, iso, menit) {
+  const ket = !ix.mulai || ix.mulai > iso ? 'belum ada catatan' : rkKetJam(ix, iso);
+  if (ket && !(menit == null && ix.arsip && ix.arsip[iso])) return { iso, ket, omzet: null, nota: null };
+  const R = rkJumlahRentang(ix, iso, iso, menit == null ? undefined : menit); return { iso, ket: '', omzet: R.omzet, nota: R.nota, retur: R.retur };
 }
 
 /** Sel-sel satu lapis cincin: {sel:[{v, kelas}], jalan, vmax}. v null = sebelum ada catatan, 'rel' = belum terjadi. */
@@ -268,11 +281,13 @@ export function susunPerhatian() {
   const gulir = {}; ambilPemasokCatatan().forEach((c) => { if (c && c.bonLamaBergulir === true) gulir[String(c.id)] = true; });
   const bonTertua = Math.max(0, ...up.map((x) => Math.max(0, ...(x.bon || []).filter((b) => !(b.jenis === 'saldoAwal' && gulir[kunciPelanggan(x.pemasok)])).map((b) => b.umurHari || 0))));
   if (totalUp > 0) out.push({ teks: 'Utang ke pemasok · ' + up.filter((x) => x.totalUtang > 0).length + ' pemasok' + (bonTertua ? ' · bon tertua ' + bonTertua + ' hari' : ''), nilai: RP(totalUp), awas: false });
-  const laju = lajuLintas(hitungLajuPakai()); const stokK = ingatStokKarung(); const stokM = ingatStokKemasan(); const tipis = [];
-  Object.keys(stokMerekSaja(stokK)).forEach((m) => { const l = (laju.kgMerk || {})[m] || 0; const sisa = stokK[m].sisaKg || 0; if (l > 0 && sisa / l <= AMBANG_HARI_KRITIS) tipis.push({ nama: m, hari: Math.max(0, sisa / l) }); });
-  Object.keys(stokM).forEach((k) => { const l = (laju.unitKemasan || {})[k] || 0; const sisa = stokM[k].sisaUnit || 0; if (l > 0 && sisa / l <= AMBANG_HARI_KRITIS) tipis.push({ nama: stokM[k].namaProduk + ' ' + stokM[k].ukuranKemasan + ' kg', hari: Math.max(0, sisa / l) }); });
-  tipis.sort((a, b) => a.hari - b.hari);
-  if (tipis.length) out.push({ teks: 'Menipis (≤ ' + AMBANG_HARI_KRITIS + ' hari menurut laju jual): ' + tipis.slice(0, 3).map((x) => x.nama).join(', ') + (tipis.length > 3 ? ' …' : ''), nilai: tipis.length + ' barang', awas: true });
+  // owner 26 Nov 2026 (sensus B127, "Hari + kg per barang"): menipis = di bawah STOK MINIMUM per barang (stok-minimum-logika smBawahDari — penghitung yang SAMA
+  // dengan Dasbor). Bawaan = angka hari Belanja (dulu konstanta ≤ AMBANG_HARI_KRITIS 4 hari); buku minus & minimum jumlah ikut.
+  const laju = lajuLintas(hitungLajuPakai()); const stokK = stokMerekSaja(ingatStokKarung()); const stokM = ingatStokKemasan();
+  const baris = Object.keys(stokK).map((m) => ({ jenis: 'karung', kunci: m, nama: m, sisa: stokK[m].sisaKg || 0, laju: (laju.kgMerk || {})[m] || 0 }))
+    .concat(Object.keys(stokM).map((k) => ({ jenis: 'kemasan', kunci: k, nama: stokM[k].namaProduk + ' ' + stokM[k].ukuranKemasan + ' kg', sisa: stokM[k].sisaUnit || 0, laju: (laju.unitKemasan || {})[k] || 0 })));
+  const SM = smBawahDari(baris);
+  if (SM.n) out.push({ teks: 'Di bawah stok minimum: ' + SM.daftar.slice(0, 3).map((x) => x.nama).join(', ') + (SM.n > 3 ? ' …' : ''), nilai: SM.n + ' barang', awas: true });
   const ps = ambilPesanan().filter(pesananBelumTuntas);
   if (ps.length) out.push({ teks: 'Pesanan belum dibayar · ' + ps.filter((p) => p.status === 'diantar').length + ' sudah diantar', nilai: ps.length + ' pesanan', awas: false });
   return out;

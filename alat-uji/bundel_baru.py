@@ -127,6 +127,12 @@ LG_PEMAKAI = ('sistem-logika.js', 'menu.js')
 # Dasbor; ikut OTOMATIS (sekali, di belakang) bila pemakainya ada. gudang-logika sengaja TIDAK memakai sistem-logika (sistem-logika menerimanya lewat lokal.gudang).
 GD_MODUL = ['baru/js/layar/gudang-logika.js', 'baru/js/layar/label-logika.js', 'baru/js/layar/patuh-logika.js', 'baru/js/layar/belanja-logika.js', 'baru/js/layar/jenis-beras-logika.js']
 GD_PEMAKAI = ('dasbor-logika.js', 'gudang-logika.js')
+# paket Dasbor sensus (owner 26 Nov 2026, B127 "Hari + kg per barang"): stok minimum per barang — modul DAUN stok-minimum-logika.js (data/toko.js + format), dipakai
+# Belanja (batas per merek), Ringkasan (Perlu perhatian) & Dasbor. Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada; fungsi terangkat, urutan tidak menentukan.
+SM_MODUL = 'baru/js/layar/stok-minimum-logika.js'
+SM_PEMAKAI = ('belanja-logika.js', 'ringkasan-logika.js', 'dasbor-logika.js')
+# layar Stok (stok.js) memasang lembar stok minimum (stok-minimum-panel.js → stok-minimum-logika + daftarBarang stok-logika) — ikut OTOMATIS bila stok.js dibundel
+SMP_MODUL = 'baru/js/layar/stok-minimum-panel.js'
 
 
 # owner 26 Nov 2026 (modul ERP no. 70): aset tetap & penyusutan — modul DAUN aset-tetap-logika.js (data/toko.js + format saja) dibaca uang-logika (ugLabaBersih).
@@ -185,6 +191,10 @@ def lengkapi(daftar):
         d.append(KG_MODUL)
     if any(os.path.basename(x) in BA_PEMAKAI for x in d) and not any(x.endswith('berat-asli-logika.js') for x in d):
         d.append(BA_MODUL)
+    if any(os.path.basename(x) == 'stok.js' for x in d) and not any(x.endswith('stok-minimum-panel.js') for x in d):
+        d.append(SMP_MODUL)
+    if any(os.path.basename(x) in SM_PEMAKAI + ('stok-minimum-panel.js',) for x in d) and not any(x.endswith('stok-minimum-logika.js') for x in d):
+        d.append(SM_MODUL)
     if any(os.path.basename(x) in TK_PEMAKAI for x in d) and not any(x.endswith('tanda-kenal-logika.js') for x in d):
         d.append(TK_MODUL)
     return d
