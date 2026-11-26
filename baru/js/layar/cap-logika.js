@@ -8,7 +8,7 @@
 // (cap per hadiah), hadiah (keterangan) } — dokumen yang SUDAH dibaca tablet. Batas: cap dihitung dari nota di buku berjalan; sesudah tutup buku nota tahun
 // lalu diarsip → cap mulai lagi dari nol (disebut di layar setelan).
 import { cacheMentah, ambilPenjualan, kunciNota } from '../data/toko.js';
-import { kunciPelanggan, penjualanMasihBerlaku } from '../mesin/pembantu.js';
+import { kunciPelanggan, penjualanMasihBerlaku, formatTanggal } from '../mesin/pembantu.js';
 import { RP } from '../inti/format.js';
 
 export const CAP_BAWAAN = { mulai: '', minRp: 0, penuh: 10, hadiah: '' };
@@ -59,5 +59,5 @@ export function susunAturCap(isi, w) {
   const hadiah = a.hadiah === undefined ? kini.hadiah : String(a.hadiah || '').trim().slice(0, 80);
   const d = cacheMentah('aturan').find((x) => String(x.id) === 'pelanggan');
   const data = Object.assign({}, d || { id: 'pelanggan' }, { id: 'pelanggan', tanggal: w.tanggal, jam: w.jam, cap: { mulai, minRp, penuh, hadiah } });
-  return { dokumen: [{ koleksi: 'aturanToko', data }], patch: { kabar: mulai ? 'Cap langganan berjalan sejak ' + mulai + ' · ' + penuh + ' cap = 1 hadiah' + (minRp > 0 ? ' · nota ≥ ' + RP(minRp) : '') + (hadiah ? ' · hadiah: ' + hadiah : ' · hadiah belum ditentukan') : 'Cap langganan dihentikan (cap yang sudah ada tidak dihapus)', kabarAwas: false } };
+  return { dokumen: [{ koleksi: 'aturanToko', data }], patch: { kabar: mulai ? 'Cap langganan berjalan sejak ' + formatTanggal(mulai) + ' · ' + penuh + ' cap = 1 hadiah' + (minRp > 0 ? ' · nota ≥ ' + RP(minRp) : '') + (hadiah ? ' · hadiah: ' + hadiah : ' · hadiah belum ditentukan') : 'Cap langganan dihentikan (cap yang sudah ada tidak dihapus)', kabarAwas: false } };
 }
