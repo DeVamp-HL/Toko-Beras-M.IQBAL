@@ -13,6 +13,8 @@
 // ({ ke, keluarga, tab, lembar, … }) untuk keTujuan() di app.js. Satu kelompok yang galat tidak mematikan kelompok lain. BACA SAJA.
 import { AMBANG_HARI_KRITIS, JENDELA_LAJU_HARI, akhirBulanIso, kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
+// paket Dasbor sensus: kalimat headline
+import { RP } from '../inti/format.js';
 import { rekapHari, hariTerakhir, daftarMinggu, daftarBulan, lpPertama, lpHariRentang, merekBulan, merekTeratas } from './laporan-logika.js';
 import { kendaliBulan, titikImpas, pemicuBiaya, peringatanBiaya } from './kendali-biaya-logika.js';
 import { saldoKantong, ugNamaTempat, ksHari, ugSetor, ugTambahHari } from './uang-logika.js';
@@ -43,6 +45,14 @@ import { shDasborSusut, shRingkasHarga } from './susut-harga-logika.js';
 // paket Stok minus, label & kepatuhan (owner 26 Nov 2026): buku minus, tugas gudang, hilang & rusak per jenis, kemasan bertanggal (gudang-logika) · kalender kepatuhan (patuh-logika) — APA ADANYA
 import { gdDasbor } from './gudang-logika.js';
 import { ptDasbor } from './patuh-logika.js';
+// paket Dasbor sensus (owner 26 Nov 2026, sensus ulang 1c: B1 B9 B88–B91 B95 B109 B113 B127) — APA ADANYA dari fungsi sumber: pembanding "jam segini" Cincin
+// (ringkasan-logika rkJamSegini), rata-rata nilai nota (laporan-logika lpRataNota), stok minimum per barang (stok-minimum-logika), enam bulan (kendali-biaya
+// trenBiaya · pondasi pdPosisiBulan). Widget angka utama: dasbor-widget-logika.js (membaca hasil dasbor ini, tanpa rumus uang).
+import { rkIndeks, rkJamSegini } from './ringkasan-logika.js';
+import { lpRataNota, LP_RUMUS_RATA_NOTA, lpNamaBulan } from './laporan-logika.js';
+import { trenBiaya } from './kendali-biaya-logika.js';
+import { pdPosisiBulan } from './pondasi-logika.js';
+import { smBawahDari, smCek, smKunci, smPeta, smHariBawaan, smBatas } from './stok-minimum-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
@@ -90,15 +100,17 @@ export function dbBulanIni(kini) {
 
 /** STOK: kg per merek & perkiraan hari tersisa (Stok › Gudang), wadah literan (Stok › Wadah literan) + cek wadah hari tutup aktif (Tutup hari). */
 export function dbStok(kini) {
+  const SMP = smPeta(); const SMB = smHariBawaan();
   const merek = daftarBarang().filter((b) => b.jenis === 'karung' && !b.wadahStok && Math.abs(b.sisa) > 0.004)
-    .map((b) => ({ nama: b.nama, kg: b.sisa, laju: b.laju, hari: b.hariHabis, minus: b.sisa < 0, awas: b.sisa < 0 || (b.hariHabis !== null && b.hariHabis <= AMBANG_HARI_KRITIS) }))
+    .map((b) => { const C = smCek({ kunci: smKunci('karung', b.kunci), sisa: b.sisa, laju: b.laju }, SMP, SMB);   // owner 26 Nov 2026 (B127): batas = stok minimum per barang
+      return { nama: b.nama, kg: b.sisa, laju: b.laju, hari: b.hariHabis, minus: b.sisa < 0, awas: C.bawah, batasTeks: C.batas.teks, urut: C.minus ? -1 : C.kenapa === 'hari' ? C.hari : C.kenapa === 'jumlah' ? 0.5 : 1e6 }; })
     .sort((a, b) => b.kg - a.kg || a.nama.localeCompare(b.nama));
   const SW = susunWadah(null); const hariCek = tanggalTutupAktif(kini); const C = wbCekHari(hariCek);
   const wadah = SW.daftar.map((w) => { const c = C.daftar.find((x) => x.W === w.nama) || {};
     return { no: w.no, nama: w.nama, merek: w.stokSendiri ? w.karungAsal : w.karungNama, banding: w.resep.length > 1 ? w.resep.map((r) => r.takar).join(' : ') + ' — ' + w.resep.map((r) => r.merk).join(' : ') : '',
       diketahui: !!w.diketahui, isiKg: w.diketahui ? w.sisaKg : null, penuhKg: w.penuhKg, bagian: w.diketahui ? w.bagian : 0, perluIsi: !!(w.diketahui && w.perluIsi), lewat: w.lewat || 0,
       terakhirTanggal: w.isiTerakhirTanggal || '', terakhirJam: w.isiTerakhirJam || '', aktif: !!c.aktif, dicek: !!c.dicek, hasilTeks: c.hasilTeks || '', jamCek: c.jam || '' }; });
-  return { periode: 'Sekarang · laju jual ' + JENDELA_LAJU_HARI + ' hari terakhir', sumber: 'Stok › Gudang', tujuan: { ke: 'stok', tab: 'gudang' }, merek, ambangHari: AMBANG_HARI_KRITIS,
+  return { periode: 'Sekarang · laju jual ' + JENDELA_LAJU_HARI + ' hari terakhir', sumber: 'Stok › Gudang', tujuan: { ke: 'stok', tab: 'gudang' }, merek, ambangHari: SMB, batasTeks: 'stok minimum · bawaan ≤ ' + SMB + ' hari' + (Object.keys(SMP).length ? ' · ' + Object.keys(SMP).length + ' barang punya angka sendiri' : ''), smTujuan: { ke: 'stok', tab: 'gudang', lembar: 'stokMin' },
     wadah, wadahSumber: 'Stok › Wadah literan', wadahTujuan: { ke: 'stok', tab: 'wadah' }, hariCek, nAktif: C.nAktif, nDicek: C.nDicek, belumDicek: C.belum, perluIsi: SW.perluIsi, belumDitandai: SW.belumDitandai,
     // owner 26 Nov 2026 (B49 B50 B53 B54 A62): satu yang galat tidak mematikan kartu stok
     gudang: dbCoba(() => gdDasbor(kini)) };
@@ -216,7 +228,7 @@ const DB_KELOMPOK = { hari: ['hari ini', dbHariIni], bulan: ['bulan ini', dbBula
 export function dbKelompok(kel, kini, rentang, ingat) {
   const aman = (nama, f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor ' + nama, e); return { galat: String((e && e.message) || e) }; } };
   const hitung = kel === 'tren' ? () => aman('tren', () => dbTren(rentang, kini)) : () => aman(DB_KELOMPOK[kel][0], () => DB_KELOMPOK[kel][1](kini));
-  return ingat ? ingat(kel === 'tren' ? 'tren|' + rentang : kel, hitung) : hitung();
+  return ingat ? ingat(kel === 'tren' ? 'tren|' + rentang : dbKunciTambahan(kel, kini), hitung) : hitung();   // paket Dasbor sensus: banding berkunci 5 menit
 }
 // mulus Android paket 3 (owner 23 Nov 2026): ingat(kunci, f) dari layar (Ringkasan: ingatan per versi + kunci luar) — tiap kelompok diingat sendiri, jadi
 // pemanasan di latar bisa menghitungnya SATU PER SATU dan Dasbor yang dibuka sesudahnya tinggal menggambar. Tanpa ingat = hitung langsung seperti dulu.
@@ -227,3 +239,163 @@ export function susunDasbor(kini, rentang, lama, ingat) {
 }
 /** Urutan pemanasan dasbor di latar: yang paling atas di layar dulu. */
 export const DB_PANAS = ['hari', 'kpi', 'bulan', 'stok', 'tagihan', 'tren', 'mutu', 'b2b', 'pondasi'];
+
+
+// ==================== paket Dasbor sensus (owner 26 Nov 2026) ====================
+const dbP2 = (n) => String(n).padStart(2, '0');
+const dbJamTeks = (d) => dbP2(d.getHours()) + '.' + dbP2(d.getMinutes());
+const DB_NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const dbHariMinggu = (iso) => DB_NAMA_HARI[new Date(iso + 'T12:00:00').getDay()];
+const dbPct = (a, b) => (b > 0 ? (a / b - 1) * 100 : null);
+const dbBulanGeser = (key, n) => { const t = Number(key.slice(0, 4)), m = Number(key.slice(5, 7)) - 1 + n; const y = t + Math.floor(m / 12), mm = ((m % 12) + 12) % 12; return y + '-' + dbP2(mm + 1); };
+/** "13 Nov" dari ISO (tanpa tahun). */
+const dbTglPendek = (iso) => tanggalPendek(iso).replace(/ \d{4}$/, '');
+
+/**
+ * B1 · B9 · B113 — OMZET HARI INI DIBANDINGKAN sampai jam yang sama (owner 26 Nov 2026: "kemarin + minggu lalu"): kemarin jam segini & hari yang sama minggu
+ * lalu jam segini = rumus Cincin (rkJamSegini, satu sumber); omzet & nota hari ini = Laporan › Harian (rekapHari). Rata-rata nilai nota hari ini & bulan ini
+ * (lpRataNota) + bulan lalu sampai tanggal yang sama. ket ≠ '' = pembanding tidak bisa dihitung (sebelum toko mencatat / rincian per jam ikut arsip tutup buku).
+ */
+export function dbBanding(kini) {
+  const iso = hariIniIso(kini); const menit = kini.getHours() * 60 + kini.getMinutes(); const jam = dbJamTeks(kini);
+  const R = rekapHari(iso); const ix = rkIndeks(); const H = rkJamSegini(ix, iso, null);
+  const satu = (t, nama) => { const X = rkJamSegini(ix, t, menit); const tujuan = { ke: 'laporan', keluarga: 'harian', hari: t };
+    if (X.ket) return { ada: false, iso: t, nama, ket: X.ket, tujuan };
+    return { ada: true, iso: t, nama, omzet: X.omzet, nota: X.nota, rata: X.nota > 0 ? X.omzet / X.nota : null, selisih: R.omzet - X.omzet, pct: dbPct(R.omzet, X.omzet), tujuan }; };
+  const kmr = ugTambahHari(iso, -1), mg = ugTambahHari(iso, -7);
+  return { iso, jam, periode: 'Hari ini sampai ' + jam, sumber: 'Laporan › Harian', tujuan: { ke: 'laporan', keluarga: 'harian', hari: iso },
+    nota: R.n, omzet: R.omzet, rata: R.n > 0 ? R.omzet / R.n : null, cincin: H.ket ? null : { omzet: H.omzet, nota: H.nota },
+    kemarin: satu(kmr, 'kemarin'), mingguLalu: satu(mg, dbHariMinggu(mg) + ' lalu'), bulan: dbBulanBanding(kini), rumusRata: LP_RUMUS_RATA_NOTA };
+}
+/** Bulan ini (tanggal 1 sampai hari ini) vs bulan lalu sampai tanggal yang sama: omzet, laba kotor, nota, rata-rata nilai nota (lpRataNota). */
+export function dbBulanBanding(kini) {
+  const iso = hariIniIso(kini); const key = iso.slice(0, 7); const ini = lpRataNota(key + '-01', iso); const kL = dbBulanGeser(key, -1);
+  const akhirL = akhirBulanIso(kL); const sampaiL = kL + '-' + iso.slice(8, 10) > akhirL ? akhirL : kL + '-' + iso.slice(8, 10); const pertama = lpPertama();
+  const lalu = !pertama || pertama > sampaiL ? { ada: false, ket: 'bulan lalu belum ada catatan' } : pertama > kL + '-01' ? { ada: false, ket: 'catatan toko baru mulai ' + tanggalPendek(pertama) + ' — bulan lalu tidak utuh' }
+    : Object.assign({ ada: true }, lpRataNota(kL + '-01', sampaiL));
+  return { key, nama: lpNamaBulan(key), namaLalu: lpNamaBulan(kL), sampaiLalu: sampaiL, ini, lalu,
+    pctOmzet: lalu.ada ? dbPct(ini.omzet, lalu.omzet) : null, pctRata: lalu.ada && ini.rata !== null && lalu.rata ? dbPct(ini.rata, lalu.rata) : null,
+    tujuan: { ke: 'laporan', keluarga: 'bulanan', bulan: key }, tujuanLalu: { ke: 'laporan', keluarga: 'bulanan', bulan: kL } };
+}
+
+/** B127 — barang di bawah STOK MINIMUM per barang (beras karung & kemasan), penghitung yang SAMA dengan Perlu perhatian (smBawahDari) atas Stok › Gudang. */
+export function dbStokMin(kini) {
+  const S = smBawahDari(daftarBarang());
+  return Object.assign(S, { periode: 'Sekarang · bawaan ≤ ' + S.bawaan + ' hari', sumber: 'Stok › Gudang › Stok minimum', tujuan: { ke: 'stok', tab: 'gudang', lembar: 'stokMin' },
+    kalimat: S.n ? S.n + ' dari ' + S.dicek + ' barang di bawah stok minimum' : 'Semua ' + S.dicek + ' barang di atas stok minimum' });
+}
+
+/** B113 — ENAM BULAN: laba bersih, biaya & omzet per bulan (Laporan › Biaya trenBiaya) · kas, piutang, stok & utang pemasok per akhir bulan (Laporan › Pondasi). */
+export function dbEnam(kini) {
+  const B = trenBiaya(kini, 6); let P = []; let galatP = '';
+  try { P = pdPosisiBulan(kini, 6); } catch (e) { galatP = String((e && e.message) || e); }
+  return { periode: '6 bulan terakhir', sumber: 'Laporan › Biaya', tujuan: { ke: 'laporan', keluarga: 'biaya' }, posisiSumber: 'Laporan › Pondasi', posisiTujuan: { ke: 'laporan', keluarga: 'pondasi' },
+    bulan: B.daftar.map((b) => ({ key: b.key, pendek: b.pendek, berjalan: !!b.berjalan, tanpaCatatan: !!b.tanpaCatatan, sebelumBuku: !!b.sebelumBuku, omzet: b.omzet, margin: b.margin, semuaBiaya: b.semuaBiaya, labaBersih: b.labaBersih, tujuan: { ke: 'laporan', keluarga: 'biaya', bulan: b.key } })),
+    sebelumBuku: B.sebelumBuku, ada: B.ada,
+    posisi: P.map((b) => ({ key: b.key, nama: b.nama, berjalan: !!b.berjalan, ada: !!b.ada, kenapa: b.kenapa || '', kas: b.ada ? b.kas : null, piutang: b.ada ? b.piutang : null, stok: b.ada ? b.stok : null, utangPemasok: b.ada ? b.utangPemasok : null })), galatPosisi: galatP };
+}
+
+/** B95 — SARINGAN TANGGAL Dasbor. Preset + "Pilih tanggal"; Tahun ini = tahun buku toko (1 Jan – 31 Des, tutup buku 31 Des). */
+export const DB_PERIODE = [['hari', 'Hari ini'], ['kemarin', 'Kemarin'], ['h7', '7 hari'], ['bulan', 'Bulan ini'], ['bulanLalu', 'Bulan lalu'], ['tahun', 'Tahun ini'], ['pilih', 'Pilih tanggal']];
+const DB_ISO = /^\d{4}-\d{2}-\d{2}$/;
+const dbSelisihHari = (a, b) => Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000);
+/** Rentang satu pilihan: { id, nama, dari, sampai, banding: { dari, sampai, nama, jamSegini }, bulan: [key…] (laba bersih dihitung kalau bulannya utuh/berjalan) } | { tolak }. */
+export function dbRentangPeriode(pil, kini) {
+  const P = pil || {}; const id = DB_PERIODE.some((x) => x[0] === P.id) ? P.id : 'hari'; const iso = hariIniIso(kini); const key = iso.slice(0, 7); const nama = DB_PERIODE.find((x) => x[0] === id)[1];
+  const kmr = ugTambahHari(iso, -1); const kL = dbBulanGeser(key, -1);
+  if (id === 'hari') return { id, nama, dari: iso, sampai: iso, banding: { dari: kmr, sampai: kmr, nama: 'kemarin jam segini', jamSegini: true }, bulan: [], tujuan: { ke: 'laporan', keluarga: 'harian', hari: iso } };
+  if (id === 'kemarin') { const k2 = ugTambahHari(iso, -2); return { id, nama, dari: kmr, sampai: kmr, banding: { dari: k2, sampai: k2, nama: dbHariMinggu(k2) + ' ' + dbTglPendek(k2) }, bulan: [], tujuan: { ke: 'laporan', keluarga: 'harian', hari: kmr } }; }
+  if (id === 'h7') { const d = ugTambahHari(iso, -6); return { id, nama, dari: d, sampai: iso, banding: { dari: ugTambahHari(iso, -13), sampai: ugTambahHari(iso, -7), nama: '7 hari sebelumnya' }, bulan: [], ket: 'termasuk hari ini yang masih berjalan', tujuan: { ke: 'laporan', keluarga: 'harian', hari: iso } }; }
+  if (id === 'bulan') { const B = dbBulanBanding(kini); return { id, nama: B.nama, dari: key + '-01', sampai: iso, banding: { dari: kL + '-01', sampai: B.sampaiLalu, nama: B.namaLalu + ' sampai tanggal ' + Number(B.sampaiLalu.slice(8, 10)) }, bulan: [key], berjalan: true, tujuan: B.tujuan }; }
+  if (id === 'bulanLalu') { const k2 = dbBulanGeser(key, -2); return { id, nama: lpNamaBulan(kL), dari: kL + '-01', sampai: akhirBulanIso(kL), banding: { dari: k2 + '-01', sampai: akhirBulanIso(k2), nama: lpNamaBulan(k2) }, bulan: [kL], tujuan: { ke: 'laporan', keluarga: 'bulanan', bulan: kL } }; }
+  if (id === 'tahun') { const t = iso.slice(0, 4); const t1 = String(Number(t) - 1); const bulan = []; for (let m = 1; m <= Number(key.slice(5, 7)); m++) bulan.push(t + '-' + dbP2(m));
+    const sampaiL = t1 + iso.slice(4) > akhirBulanIso(t1 + iso.slice(4, 7)) ? akhirBulanIso(t1 + iso.slice(4, 7)) : t1 + iso.slice(4);
+    return { id, nama: 'Tahun ' + t, dari: t + '-01-01', sampai: iso, banding: { dari: t1 + '-01-01', sampai: sampaiL, nama: 'tahun ' + t1 + ' sampai tanggal yang sama' }, bulan, berjalan: true, ket: 'tahun buku toko = 1 Januari – 31 Desember', tujuan: { ke: 'laporan', keluarga: 'tahunan' } }; }
+  // pilih tanggal
+  const dari = String(P.dari || ''), sampai = String(P.sampai || '');
+  if (!DB_ISO.test(dari) || !DB_ISO.test(sampai)) return { id, nama, tolak: 'Pilih tanggal awal dan tanggal akhir' };
+  if (dari > sampai) return { id, nama, tolak: 'Tanggal awal sesudah tanggal akhir — tukar keduanya' };
+  if (sampai > iso) return { id, nama, tolak: 'Tanggal akhir sesudah hari ini (' + tanggalPendek(iso) + ') — belum terjadi' };
+  const n = dbSelisihHari(dari, sampai) + 1;
+  return { id, nama: dari === sampai ? tanggalPendek(dari) : tanggalPendek(dari) + ' – ' + tanggalPendek(sampai), dari, sampai, nHari: n, banding: { dari: ugTambahHari(dari, -n), sampai: ugTambahHari(dari, -1), nama: n + ' hari sebelumnya' }, bulan: [],
+    tujuan: { ke: 'laporan', keluarga: 'harian', hari: sampai } };
+}
+/**
+ * Angka satu periode Dasbor: omzet, laba kotor, nota, rata-rata nilai nota, retur (lpRataNota) + pembanding (periode sebelumnya; Hari ini = kemarin jam segini,
+ * rumus Cincin). Laba bersih & biaya hanya untuk pilihan berbulan (Bulan ini / Bulan lalu / Tahun ini) = Σ kendaliBulan per bulan (mesin laba Laporan › Laba,
+ * tagihan bulanan dipotong sebulan penuh). Rentang hari bebas: laba bersih TIDAK dihitung (tagihan bulanan tidak dipecah per hari) — disebut.
+ */
+export function dbPeriode(pil, kini) {
+  const R = dbRentangPeriode(pil, kini); if (R.tolak) return R;
+  const X = lpRataNota(R.dari, R.sampai); const pertama = lpPertama(); const iso = hariIniIso(kini);
+  let B;
+  if (R.banding.jamSegini) { const J = rkJamSegini(rkIndeks(), R.banding.dari, kini.getHours() * 60 + kini.getMinutes()); B = J.ket ? { ada: false, ket: J.ket, nama: R.banding.nama } : { ada: true, nama: R.banding.nama, omzet: J.omzet, nota: J.nota, rata: J.nota > 0 ? J.omzet / J.nota : null, margin: null }; }
+  else if (!pertama || pertama > R.banding.sampai) B = { ada: false, nama: R.banding.nama, ket: 'belum ada catatan (toko mulai mencatat ' + (pertama ? tanggalPendek(pertama) : '—') + ')' };
+  else if (pertama > R.banding.dari) B = { ada: false, nama: R.banding.nama, ket: 'tidak utuh — catatan toko baru mulai ' + tanggalPendek(pertama) };
+  else B = Object.assign({ ada: true, nama: R.banding.nama }, lpRataNota(R.banding.dari, R.banding.sampai));
+  const sebelum = pertama && R.dari < pertama ? 'catatan toko baru mulai ' + tanggalPendek(pertama) + ' — sebelum itu tidak ada angka' : '';
+  let laba = null;
+  if (R.bulan.length) {
+    const bln = R.bulan.filter((k) => !pertama || k >= pertama.slice(0, 7)); const K = bln.map((k) => { const x = kendaliBulan(k, kini); return { key: k, labaBersih: x.labaBersih, semuaBiaya: x.semuaBiaya, berjalan: !!x.berjalan, final: !!x.final }; });
+    laba = { bulan: K, labaBersih: K.reduce((a, x) => a + x.labaBersih, 0), semuaBiaya: K.reduce((a, x) => a + x.semuaBiaya, 0), berjalan: K.some((x) => x.berjalan), tujuan: R.id === 'tahun' ? { ke: 'laporan', keluarga: 'tahunan' } : { ke: 'laporan', keluarga: 'laba', bulan: R.bulan[0] } };
+  }
+  return { id: R.id, nama: R.nama, dari: R.dari, sampai: R.sampai, ket: [R.ket || '', sebelum].filter(Boolean).join(' · '), hariIni: R.sampai === iso,
+    omzet: X.omzet, margin: X.margin, nota: X.nota, rata: X.rata, retur: X.retur, tanpaHpp: X.tanpaHpp, tanpaPotret: X.tanpaPotret, banding: B,
+    pctOmzet: B.ada ? dbPct(X.omzet, B.omzet) : null, pctNota: B.ada ? dbPct(X.nota, B.nota) : null, pctRata: B.ada && X.rata !== null && B.rata ? dbPct(X.rata, B.rata) : null,
+    laba, labaKet: R.bulan.length ? '' : 'laba bersih dihitung per bulan penuh — pilih Bulan ini / Bulan lalu / Tahun ini, atau buka Laporan › Laba', rumusRata: LP_RUMUS_RATA_NOTA,
+    sumber: R.id === 'tahun' ? 'Laporan › Tahunan' : R.bulan.length ? 'Laporan › Bulanan' : 'Laporan › Harian', tujuan: R.tujuan };
+}
+
+/**
+ * B109 — CAP "data per HH.MM": seberapa segar angka di layar. info = { jenis: 'firestore'|'cadangan'|'', masuk, memuat, hidup, putus: ms, tersimpan: ms, keterangan }.
+ * Tersambung (semua koleksi dijawab server) = angka ikut berubah begitu ada catatan → "data per <jam sekarang>". Tanpa internet = jam terakhir tersambung
+ * (putus; dibuka tanpa internet = jam tersambung terakhir yang diingat perangkat). Cadangan = saat cadangan diunduh. Tidak ada yang ditebak.
+ */
+export function dbCapData(info, kini) {
+  const I = info || {}; const k = kini || new Date();
+  if (I.jenis === 'cadangan') return { teks: 'data cadangan · ' + dbTglPendek(hariIniIso(k)) + ' ' + dbJamTeks(k), awas: true, hidup: false, judul: 'Angka dari ' + (I.keterangan || 'cadangan') + ' — "sekarang" dianggap saat cadangan itu diunduh' };
+  if (I.jenis !== 'firestore' || !I.masuk) return { teks: 'belum ada data toko', awas: true, hidup: false, judul: 'Belum masuk ke data toko' };
+  if (I.memuat) return { teks: 'memuat data…', awas: false, hidup: false, judul: 'Sebagian koleksi masih dimuat — angka bisa bertambah' };
+  if (I.hidup) return { teks: 'data per ' + dbJamTeks(k), awas: false, hidup: true, judul: 'Tersambung ke server — angka berubah sendiri begitu ada catatan baru' };
+  const t = Number(I.putus) || Number(I.tersimpan) || 0;
+  if (!t) return { teks: 'data dari simpanan perangkat', awas: true, hidup: false, judul: 'Belum tersambung ke server sejak layar dibuka — catatan dari perangkat lain belum masuk' };
+  const d = new Date(t); const lain = hariIniIso(d) !== hariIniIso(k); const kapan = (lain ? dbHariMinggu(hariIniIso(d)) + ' ' + dbTglPendek(hariIniIso(d)) + ' ' : '') + dbJamTeks(d);
+  return { teks: 'data per ' + kapan + ' · tanpa internet', awas: true, hidup: false, judul: 'Terakhir tersambung ke server ' + kapan + ' — catatan sesudah itu dari perangkat lain belum masuk; catatan dari perangkat ini mengantre' };
+}
+
+/**
+ * B91 — HEADLINE satu kalimat (owner 26 Nov 2026: "omzet + laba + mendesak"): omzet hari ini vs kemarin jam segini · laba bersih bulan ini sampai hari ini vs
+ * titik impas (Laporan › Biaya titikImpas) · berapa hal perlu perhatian & yang paling mendesak (daftar Perlu perhatian Ringkasan, apa adanya). Tiap bagian
+ * membawa tujuannya. Tanpa rumus baru: semua angka dari D (susunDasbor + dbTambahan) dan daftar perhatian.
+ */
+export function dbHeadline(D, perhatian) {
+  const bag = []; const Bd = D && D.banding; const Bl = D && D.bulan; const pc = (x) => DESIMAL_1(Math.abs(x)) + '%';
+  if (Bd && !Bd.galat) {
+    const K = Bd.kemarin; let t = 'Omzet hari ini ' + RP(Bd.omzet);
+    if (!K.ada) t += ' (kemarin ' + K.ket + ')';
+    else if (K.pct === null) t += K.omzet === 0 ? (Bd.omzet > 0 ? ', kemarin jam segini belum ada jualan' : ', kemarin jam segini juga belum ada jualan') : ', kemarin jam segini ' + RP(K.omzet);
+    else t += Math.abs(K.pct) < 0.05 ? ', sama dengan kemarin jam segini' : ', ' + (K.pct > 0 ? 'naik ' : 'turun ') + pc(K.pct) + ' dari kemarin jam segini';
+    bag.push({ id: 'omzet', teks: t, awas: K.ada && K.pct !== null && K.pct < 0, tujuan: Bd.tujuan });
+  }
+  if (Bl && !Bl.galat && !Bl.tanpaCatatan && Bl.impas) {
+    const I = Bl.impas; const nm = String(Bl.nama || '').split(' ')[0];
+    const t = 'laba bersih ' + nm + (Bl.berjalan ? ' sampai hari ini ' : ' ') + RP(I.labaSampai) + (I.menutup ? ', biaya sudah tertutup margin kotor' : I.kurang > 0 ? ', biaya masih ' + RP(I.kurang) + ' lebih besar dari margin kotor (belum impas)' : '');
+    bag.push({ id: 'laba', teks: t, awas: !I.menutup, tujuan: Bl.labaTujuan });
+  }
+  const P = (perhatian || []).filter((x) => x && x.teks); const top = P.find((x) => x.awas) || P[0];
+  bag.push(P.length ? { id: 'perhatian', teks: P.length + ' hal perlu perhatian, paling mendesak: ' + top.teks + (top.nilai ? ' (' + top.nilai + ')' : ''), awas: P.some((x) => x.awas), tujuan: null }
+    : { id: 'perhatian', teks: 'tidak ada yang perlu perhatian', awas: false, tujuan: null });
+  const teks = bag.map((b) => b.teks).join(' · ');
+  return { bagian: bag, teks: teks.charAt(0).toUpperCase() + teks.slice(1) + '.', awas: bag.some((b) => b.awas), nPerhatian: P.length };
+}
+const DESIMAL_1 = (x) => String(Math.round(x * 10) / 10).replace('.', ',');
+
+/** Kelompok tambahan paket sensus — dihitung & diingat per kelompok seperti yang lama (dbKelompok); ikut pemanasan di latar. */
+Object.assign(DB_KELOMPOK, { banding: ['banding jam segini', dbBanding], stokMin: ['stok minimum', dbStokMin], enam: ['enam bulan', dbEnam] });
+DB_PANAS.push('banding', 'stokMin', 'enam');
+export const DB_TAMBAHAN = ['banding', 'stokMin', 'enam'];
+/** Kunci ingatan kelompok tambahan: "jam segini" bergeser tiap 5 menit walau tidak ada catatan baru (dulu: angka pembanding pagi dipakai sampai sore). */
+export const dbKunciTambahan = (n, kini) => (n === 'banding' ? 'banding|' + Math.floor((kini.getHours() * 60 + kini.getMinutes()) / 5) : n);
+/** Hasil susunDasbor + kelompok paket sensus (banding · stokMin · enam), diambil dari ingatan yang sama — dipanggil sesudah tiap susunDasbor (ganti rentang:
+ *  susunDasbor membuat objek baru dari hasil lama; kelompok tambahan diingat, jadi tidak dihitung ulang). */
+export function dbTambahan(hasil, kini, ingat) { const H = hasil || {}; DB_TAMBAHAN.forEach((n) => { H[n] = dbKelompok(n, kini, null, ingat); }); return H; }

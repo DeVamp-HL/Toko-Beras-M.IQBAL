@@ -19,6 +19,8 @@ import { arPeta, arBeras } from './arsip-logika.js';
 import { wbNamaKelas } from './wadah-bernama-logika.js';
 import { kmKelasMerk, kmKelasSendiri, kmTerisi } from './kelas-merek-logika.js';
 import { vrBatas } from './varian-logika.js';
+// owner 26 Nov 2026 (sensus B127, "Hari + kg per barang"): stok minimum per barang — bawaannya = ambangHari di bawah ini; angka per barang menggeser batas merek itu
+import { smAturKelompok, smHariMerek, smPeta } from './stok-minimum-logika.js';
 
 export const ATUR_BELANJA_BAWAAN = { ambangHari: 7, targetHari: 14, muatanKg: 0 };
 export const TAB_BELANJA = [['truk', 'Isi truk'], ['hari', 'Kapan habis'], ['kertas', 'Daftar']];
@@ -109,11 +111,12 @@ function blKunci(b, uk) {
  * Karung saran dibagi ke merek di dalamnya satu-satu ke yang paling cepat habis sesudah pembagian (merek tanpa laju & yang sudah dipesan tidak menerima).
  * Satu baris yang punya pesanan menunggu = sudah dipesan (tidak disarankan lagi). Merek sendirian = rumus lama persis.
  */
-function blBagiSaran(rows, atur, uk) {
-  const kel = {}; const urut = [];
+function blBagiSaran(rows, aturUmum, uk) {
+  const kel = {}; const urut = []; const smP = smPeta();
   rows.forEach((x) => { const K = blKunci(x, uk); const k = (x.pakai ? x.pakai.pemasok : '') + '|' + K.kunci;
     if (!kel[k]) { kel[k] = { kunci: K.kunci, pemasok: x.pakai ? x.pakai.pemasok : '', harga: K.harga, berat: K.berat, isi: [] }; urut.push(kel[k]); } kel[k].isi.push(x); });
   urut.forEach((G) => {
+    const atur = smAturKelompok(aturUmum, G.isi, smP);   // stok minimum per barang: batas hari kelompok = batas terbesar anggotanya (tanpa angka per barang = aturUmum)
     const sisa = Math.round(G.isi.reduce((a, x) => a + x.sisa, 0) * 100) / 100; const laju = G.isi.reduce((a, x) => a + x.laju, 0); const hari = hariHabis(sisa, laju); const dipesan = G.isi.some((x) => !!x.dipesan);
     const butuh = laju > 0 ? Math.max(0, laju * atur.targetHari - sisa) : 0; const saranK = Math.ceil(butuh / G.berat);
     const perlu = hari !== null && hari <= atur.ambangHari && saranK > 0 && !dipesan;
@@ -168,10 +171,13 @@ export function hitungBelanja(pesan, kini) {
   const perluSemua = baris.filter((b) => b.perlu && !b.k && b.termurah);
   const urutHari = (a, b) => (a.hari === null ? 999 : a.hari) - (b.hari === null ? 999 : b.hari);
   const kelompok = []; const tambah = (judul, ket, awas, d) => { if (d.length) kelompok.push({ judul, ket, awas, isi: d.slice().sort(urutHari) }); };
-  tambah('Habis dalam ' + atur.ambangHari + ' hari', 'perlu dipesan', true, baris.filter((b) => !b.dipesan && b.hari !== null && b.hari <= atur.ambangHari && !b.tutup));
+  // stok minimum per barang (owner 26 Nov 2026): batas tiap merek = angkanya sendiri, selain itu ambangHari — tanpa angka per barang judul & isinya sama dengan dulu
+  const smP = smPeta(); const adaSm = Object.keys(smP).length > 0; const batasB = (b) => smHariMerek(b.merk, b.laju, atur, smP);
+  const judulHabis = adaSm ? 'Di bawah stok minimum (bawaan ' + atur.ambangHari + ' hari)' : 'Habis dalam ' + atur.ambangHari + ' hari';
+  tambah(judulHabis, 'perlu dipesan', true, baris.filter((b) => !b.dipesan && b.hari !== null && b.hari <= batasB(b) && !b.tutup));
   // tinjauan E1: stok merek ini sendiri tipis, tapi baris harganya (merek seharga dari pemasok yang sama) menutupnya — tidak dipesan terpisah
-  tambah('Habis dalam ' + atur.ambangHari + ' hari — ada yang seharga', 'tidak dipesan terpisah', false, baris.filter((b) => !b.dipesan && b.hari !== null && b.hari <= atur.ambangHari && !!b.tutup));
-  tambah('Masih aman', 'lebih dari ' + atur.ambangHari + ' hari', false, baris.filter((b) => !b.dipesan && b.hari !== null && b.hari > atur.ambangHari));
+  tambah(judulHabis + ' — ada yang seharga', 'tidak dipesan terpisah', false, baris.filter((b) => !b.dipesan && b.hari !== null && b.hari <= batasB(b) && !!b.tutup));
+  tambah('Masih aman', adaSm ? 'di atas stok minimum' : 'lebih dari ' + atur.ambangHari + ' hari', false, baris.filter((b) => !b.dipesan && b.hari !== null && b.hari > batasB(b)));
   tambah('Belum bisa dihitung', 'belum ada penjualan ' + JENDELA_LAJU_HARI + ' hari ini', false, baris.filter((b) => !b.dipesan && b.hari === null));
   tambah('Sudah dipesan', 'menunggu datang', false, baris.filter((b) => !!b.dipesan));
   // owner 7 Okt + tinjauan E1: lembar daftar belanja = satu baris per harga; baris yang perlu (gabungan) atau sudah berisi tampil LENGKAP dengan merek seharganya

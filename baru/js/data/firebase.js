@@ -87,7 +87,20 @@ function akunPenulis() {
 }
 const KOLEKSI_LOG = 'logAktivitas';
 const pendengarStatus = new Set();
-const beriTahu = () => pendengarStatus.forEach((f) => f(Object.assign({}, status)));
+// owner 26 Nov 2026 (Dasbor sensus B109): cap "data per HH.MM". hidup = masuk, semua koleksi sudah dijawab SERVER (bukan salinan perangkat) & tidak offline;
+// putus = saat keadaan hidup pertama kali berhenti (internet putus / jawaban jatuh ke salinan perangkat); tersimpan = jam tersambung terakhir yang diingat
+// perangkat ini (dibuka tanpa internet). Hanya membaca keadaan pendengar — tidak menulis apa pun ke server.
+const KUNCI_TERSAMBUNG = 'miqbal_baru_terakhir_tersambung';
+let _hidupTadi = false, _putusPada = null, _ingatTersambung = 0;
+const ingatTersambung = (t) => { _ingatTersambung = t; try { localStorage.setItem(KUNCI_TERSAMBUNG, String(t)); } catch (e) { /* abaikan */ } };
+function hitungDataPer() {
+  const siap = status.koleksiTotal > 0 && status.koleksiSiap >= status.koleksiTotal; let cache = false; try { cache = adaDariCache(); } catch (e) { cache = true; } const hidup = !!status.masuk && siap && !status.offline && !cache; const t = Date.now();
+  if (hidup) { _putusPada = null; if (t - _ingatTersambung > 60000) ingatTersambung(t); } else if (_hidupTadi) { _putusPada = t; ingatTersambung(t); }
+  _hidupTadi = hidup; let simpan = 0; try { simpan = Number(localStorage.getItem(KUNCI_TERSAMBUNG)) || 0; } catch (e) { simpan = 0; }
+  status.dataPer = { hidup, putus: _putusPada, tersimpan: simpan, memuat: !!status.masuk && !siap && !status.offline };
+}
+if (typeof setInterval === 'function') setInterval(() => { if (_hidupTadi) ingatTersambung(Date.now()); }, 60000);   // tersambung & sepi: jam tersambung tetap diingat tiap menit (dibuka lagi tanpa internet)
+const beriTahu = () => { hitungDataPer(); pendengarStatus.forEach((f) => f(Object.assign({}, status))); };
 let _pendengarKoleksi = [];
 let _perDok = {};            // setelan per dokumen (bukan-owner): koleksi → id → isi — dipakai bersama pendengar dasar & pendengar uang (pengaturan/titikKas)
 

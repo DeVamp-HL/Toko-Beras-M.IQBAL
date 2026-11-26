@@ -304,6 +304,9 @@ jobs:
       - name: "Stok minus, label & kepatuhan (owner 26 Nov 2026): buku minus = minusBuku berrupiah & urut terdalam, hilang & rusak per jenis menutup ke Laporan, tugas gudang = sumber pengingat, kemasan bertanggal FIFO, label lengkap & tanggal masuk (ESC/POS & TSPL tanpa baris = byte lama), kalender kepatuhan + push pagi server = rumus yang sama (rules v22)"
         if: matrix.bagian == 3
         run: python3 alat-uji/uji_gudang_label_patuh.py && python3 alat-uji/uji_gudang_label_patuh.py --kontrol
+      - name: "Dasbor sensus (owner 26 Nov 2026, sensus ulang 1c B1 B9 B88–B91 B95 B109 B113 B127): banding kemarin & minggu lalu jam segini (rumus Cincin), rata-rata nilai nota, saringan tanggal, cap data per jam, headline, enam bulan, stok minimum per barang (= Belanja, = Perlu perhatian), widget angka utama yang owner atur — tiap widget menutup ke kartunya"
+        if: matrix.bagian == 3
+        run: python3 alat-uji/uji_dasbor_sensus.py && python3 alat-uji/uji_dasbor_sensus.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

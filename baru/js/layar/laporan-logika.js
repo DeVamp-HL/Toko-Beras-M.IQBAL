@@ -112,6 +112,14 @@ export function lpHariRentang(dari, sampai) {
   return out;
 }
 
+/** owner 26 Nov 2026 (Dasbor sensus B9): RATA-RATA NILAI NOTA rentang [dari, sampai] = omzet sesudah retur ÷ jumlah nota — dua angka lpHariRentang apa adanya
+ *  (hari di tahun yang ditutup buku dari potret hari). rata null = tidak ada nota. */
+export const LP_RUMUS_RATA_NOTA = 'Rata-rata nilai nota = omzet sesudah retur ÷ jumlah nota (nota bon ikut dihitung)';
+export function lpRataNota(dari, sampai) {
+  const R = lpHariRentang(dari, sampai);
+  return { dari, sampai, omzet: R.omzetPenuh, nota: R.nota, rata: R.nota > 0 ? R.omzetPenuh / R.nota : null, margin: R.margin, retur: R.returUang, tanpaHpp: R.jumlahTanpaHpp, tanpaPotret: R.tanpaPotret || 0 };
+}
+
 // ==================== LABA · tiga angka per bulan ====================
 /** 39b no. 39 (owner 30 Sep): margin bon DITAHAN dari "diterima tunai" sampai bonnya tertutup, dengan urutan potong yang SAMA dengan buku bon (mesin
  *  hitungPiutang / rincianBelumLunas): pembayaran & hapus buku memadamkan bon TERTUA dulu, uang lebih menunggu bon berikutnya, bon yang baru tertutup
