@@ -313,6 +313,9 @@ jobs:
       - name: "Dasbor sensus (owner 26 Nov 2026, sensus ulang 1c B1 B9 B88–B91 B95 B109 B113 B127): banding kemarin & minggu lalu jam segini (rumus Cincin), rata-rata nilai nota, saringan tanggal, cap data per jam, headline, enam bulan, stok minimum per barang (= Belanja, = Perlu perhatian), widget angka utama yang owner atur — tiap widget menutup ke kartunya"
         if: matrix.bagian == 3
         run: python3 alat-uji/uji_dasbor_sensus.py && python3 alat-uji/uji_dasbor_sensus.py --kontrol
+      - name: "Brankas & catatan sesudah tutup (owner 26 Nov 2026): uang brankas / rekening / amplop yang dicatat sesudah tutup hari (bertanggal hari itu) ikut tutup berikutnya — titik membawanya, laci seharusnya ikut pindah/amplop sesudah tutup (kertas Σ baris = seharusnya, Σ fisik − seharusnya = selisih), tutup ulang ikut; Catat isi brankas menurut hitungan (patokan, bukan laba, tempat lain membawa catatan susulan); tanpa rules baru, mesin beku tidak diubah (kotak pasir + statis + kontrol + asap cadangan toko)"
+        if: matrix.bagian == 2
+        run: python3 alat-uji/uji_brankas_susulan.py && python3 alat-uji/uji_brankas_susulan.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

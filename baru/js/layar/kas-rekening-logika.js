@@ -16,7 +16,7 @@
 import { caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilTutupHari, ambilTitikKas, ambilAmplopLaba, ambilPindahUang, ambilPenjualan, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ingatGerakanKas, cacheMentah, kunciNota } from '../data/toko.js';
 import { RP, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
-import { saldoKantong, ugTambahHari, ugHariKe, ugSesudahTitik, kantongGerakan, ugAmplopLawan, ugNamaTempat, ugAngka, ugKosong, ugAturDok, adalahMdr, ugSetor } from './uang-logika.js';
+import { saldoKantong, ugTambahHari, ugHariKe, ugSesudahTitik, kantongGerakan, ugAmplopLawan, ugNamaTempat, ugAngka, ugKosong, ugAturDok, adalahMdr, ugSetor, ugSusulan } from './uang-logika.js';
 
 export const KH_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
 export const CR_NAMA = 'Rekening usaha';
@@ -35,19 +35,9 @@ export function khPatokan(iso) {
   ada.sort((a, b) => a.tanggal.localeCompare(b.tanggal) || a.diubahPada.localeCompare(b.diubahPada));
   return ada.length ? ada[ada.length - 1] : null;
 }
-/** Jam patokan dipasang (HH:MM setempat) bila dipasang pada hari tanggalnya sendiri; selain itu '' (tidak ada catatan susulan). Aturan ugSesudahTitik. */
-function khJamPasang(t) { const d = t && t.diubahPada ? new Date(t.diubahPada) : null; return d && isFinite(d.getTime()) && hariIniIso(d) === t.tanggal ? jamKini(d) : ''; }
-/** Catatan bertanggal hari patokan yang dicatat SESUDAH patokan dipasang — per tempat (gerakan kas + amplop laba + pindah uang; sisihan & amankan tutup itu sendiri tidak). */
-export function khSusulan(t) {
-  const s = khNol(); if (!t) return s; const susul = ugSesudahTitik(t); const tempat = kantongGerakan(); const jamT = khJamPasang(t);
-  ingatGerakanKas().forEach((r) => { if (!susul(r)) return; const k = tempat(r); if (r.masuk > 0) s[k] += r.masuk; if (r.keluar > 0) s[k] -= r.keluar; });
-  if (jamT) {
-    const lewat = (x) => x.tanggal === t.tanggal && /^\d\d:\d\d/.test(String(x.jam || '')) && String(x.jam).slice(0, 5) > jamT;
-    ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || String(a.id) === 'am-' + t.tanggal || !lewat(a)) return; const n = khN(a.nominal); const lain = ugAmplopLawan(a); if (a.tipe === 'ambil') { s.amplop -= n; s[lain] += n; } else { s[lain] -= n; s.amplop += n; } });
-    ambilPindahUang().forEach((p) => { if (String(p.id) === 'pd-' + t.tanggal || !lewat(p)) return; const n = khN(p.nominal); if (s[p.dari] !== undefined) s[p.dari] -= n; if (s[p.ke] !== undefined) s[p.ke] += n; });
-  }
-  return s;
-}
+/** Catatan bertanggal hari patokan yang dicatat SESUDAH patokan dipasang — per tempat (gerakan kas + amplop laba + pindah uang; sisihan & amankan tutup itu
+ *  sendiri tidak). Satu aturan dengan tutup hari & Catat isi tempat: ugSusulan (uang-logika, owner 26 Nov 2026 — paket brankas & catatan susulan). */
+export function khSusulan(t) { return ugSusulan(t); }
 /** Isi tiap tempat uang pada AKHIR hari iso. ada=false + sebab bila tidak ada patokan pada/sebelum hari itu (tidak ditebak). */
 export function khPosisi(iso) {
   const t = khPatokan(iso); if (!t) return { ada: false, iso, sebab: 'belum ada hitungan tutup hari atau patokan kas pada atau sebelum ' + tanggalPendek(iso) };
