@@ -4160,7 +4160,7 @@ owner di tengah kerja: **"Oh iya adakan/pasang notifikasi"**. Dijaga `alat-uji/u
 **Keputusan owner (satu AskUserQuestion 26 Nov 2026):** label kemasan adukan = **Lengkap** (merek, kelas mutu, berat bersih, nama & alamat toko, tanggal kemas,
 "baik dipakai sebelum", QR toko; umur simpan bawaan 6 bulan, diatur owner) · label tanggal masuk tumpukan = **sesudah Barang masuk** (+ cetak ulang dari Jual ›
 Label) · kalender = semua usulan + tambahan yang masuk akal (owner: "belum kepikiran … tambahkan isi apa saja yang perlu") · yang menandai "sudah dikerjakan" =
-**Owner + Ben dari tablet** (rules v22).
+**Owner + Penjaga laci dari tablet** (rules v22).
 
 - **Gudang — `baru/js/layar/gudang-logika.js` (awalan gd, BACA SAJA, tanpa sistem-logika).** `gdMinus` = buku minus dengan ambang yang SAMA dengan `minusBuku`
   (gerbang tutup buku: beras termasuk buku wadah ≤ −0,01 kg, kemasan & kantong < −0,001), rupiah = sisa × nilai per satuan neraca (`barisBuku`), urut terdalam,
@@ -4356,3 +4356,40 @@ laba bersih & titik impas TETAP angka mesin.
 - **A121 · modal tertahan di stok** (`klModalTertahan`; setelan `aturanToko/kpiLaba.bungaModalPersen`, `KL_BUNGA_BAWAAN` 6, 0 = mati, kosong = bawaan — Menu › Toko ini ›
   Target & ambang): rata-rata nilai stok harian (beras karung = cara nilai `umNilaiRata`/GMROI + kemasan, buku minus = 0) × bunga × hari ÷ 365; rentang > 62 hari
   disampel 62 titik (disebut). Bukan uang keluar, tidak memotong laba bersih. Dasbor › Margin & target (bawaan bulan ini) + angka `modalTertahan`.
+
+## Tanggal janji (owner 27 Nov 2026, sensus ulang 26 Nov: B55 B58 B60 B61 B65; cabang `claude/paket-tanggal-janji-ca7d1c`; RULES v24, mesin beku tidak diubah)
+
+Sebab: sistem tidak pernah menyimpan KAPAN barang dijanjikan datang (dari pemasok) atau sampai (ke pelanggan), jadi operasi gudang terlambat (B55), rata-rata
+keterlambatan (B58), pesanan terpenuhi utuh / sebagian (B60), antar tepat waktu (B61), dan % pemasok tepat waktu (B65) tidak bisa dihitung.
+Keputusan owner (satu AskUserQuestion, memori `tanggal-janji-keputusan`): janji pemasok **owner + Penjaga laci dari tablet** (rules v24) · janji antar = **tanggal kirim
+pesanan + isian "dijanjikan sampai" di Bayar › Antar** · toleransi telat bawaan **0 hari** (setelan owner, terpisah pemasok & antar) · utuh = **jumlah karung /
+barang lengkap** (kurang timbang per karung tidak membuat "sebagian" — sudah dicatat di klaim Barang masuk).
+- **Logika**: `baru/js/layar/janji-logika.js` (tanpa DOM, awalan `jn`) — satu sumber untuk Dasbor, Tugas gudang, Pondasi, Belanja, dan Barang masuk tablet.
+  Ikut otomatis di bundel uji (`bundel_baru.JN_MODUL`).
+- **Di mana janji dicatat**:
+  - pesanan ke pemasok (`pesananPemasok`): kolom `janjiTanggal` + `janjiRiwayat` [{ tanggal, pada, oleh }] (≤ 30). Owner memilih saat kirim WA di Harga › Belanja
+    (belum tahu · hari ini · besok · lusa · tanggal; WA mendapat baris "Mohon dikirim …"), atau "isi janji" / "geser janji" di daftar Pesanan ke pemasok.
+    Penjaga laci: kartu "Pesanan ke pemasok yang menunggu · janji datang" di Barang masuk tablet (`jnSusunJanjiPemasok`; kolom janji saja).
+  - pesanan pelanggan: `tanggalKirim` yang sudah ada sejak B4 (label kini "Tanggal kirim · dijanjikan ke pemesan"). Ubahan tanggal kirim mencatat `kirimDari` →
+    `kirimKe` di baris riwayat ubahnya (`riwayatStatus` sudah kolom ubah Penjaga laci rules v11 — tanpa rules baru).
+  - surat jalan: `janjiTanggal` ditulis saat surat jalan lahir (`ajJanjiAntar`: isian Antar > tanggal kirim pesanan yang diikat > hari itu; rules v10
+    `stafBuatSJ` tidak membatasi kolom baru).
+- **Pilihan Claude (belum ditanyakan owner)**: janji yang DIHITUNG = janji PERTAMA (`jnJanjiDariUrutan`): dibetulkan di hari yang sama = salah ketik; digeser hari
+  lain = geser (tercatat & disebut, telatnya tetap dihitung; geser yang dibetulkan lagi di hari yang sama = satu geser). Tanpa janji = "belum ada tanggal janji",
+  disebut jumlahnya, TIDAK dianggap tepat. Telat = tanggal datang / sampai − janji pertama; tepat = telat ≤ toleransi; rata-rata keterlambatan = rata-rata hari telat
+  semua yang berjanji & sudah datang (lebih cepat = 0), terlama disebut. Gagal antar = tidak tepat. Jendela 30 / 90 (bawaan) / 180 hari menurut tanggal dibuat;
+  daftar lewat janji tanpa jendela.
+- **Datang & isi (B60)**: pemasok — "datang" = aturan Belanja (`bpPesananDatang`); karung yang memenuhi pesanan = kedatangan pemasok itu di hari datangnya, sesudah
+  pesanan, yang belum dipakai pesanan lain (tertua dulu; dua trip sehari dijumlah). Ditandai datang tanpa Barang masuk / kedatangan diarsip = isi "tidak terukur".
+  Pelanggan — baris katalog pesanan vs baris nota yang berlaku (karung merek & berat, kemasan nama & ukuran, literan merek / wadah); kiriman = surat jalan (tidak
+  batal, nota tidak dibatalkan; sampai = diterima) + pesanan tanpa surat jalan (sampai = diantar / jadi nota, yang lebih dulu).
+- **Layar**: Dasbor › Margin & target — baris "Tepat janji · pemasok / antar" (lembar rinci + lewat janji) · Stok › Tugas gudang — baris "Lewat janji datang /
+  antar" (B55) · Laporan › Pondasi — kartu "Tepat janji" (jendela, lewat janji, kalimat dua arah, per pemasok, Atur toleransi `aturanToko/janji`) · Harga ›
+  Belanja · Barang masuk tablet · Bayar › Antar (isian "Dijanjikan sampai") · Jual › Pesanan (label + "LEWAT JANJI n hari").
+- **Rules v24** (`firestore.rules`, pembanding `firestore.rules.v23`, uji `docs/uji-rules-v24.md`, model 19 kasus ★I, Wajib owner ★I1–★I3): blok `pesananPemasok`
+  dipecah — read + `staf(['ben'])`, update + `stafJanjiPemasok(['ben'])` (status tersimpan menunggu, `janjiTanggal` YYYY-MM-DD, `janjiRiwayat` daftar ≤ 30,
+  `affectedKeys` janji + atribusi, `diubahOlehUid` = penulis); buat & hapus owner. `akses.js`: `BACA_BEN_JANJI`, `KOLOM_JANJI_PEMASOK`, `UBAH_STAF.pesananPemasok`,
+  `janjiPemasokSah`, tindakan kedatangan. **Owner menerbitkan v24 di Console SEBELUM merge**; kalau terbalik, pendengar pesanan pemasok di tablet ditolak server
+  (Sistem › Perangkat) dan janji dari tablet ditolak — Belanja, janji antar, dan hitungan tetap jalan.
+- Uji: `alat-uji/uji_tanggal_janji.py` (kotak pasir + Belanja + statis + kontrol + asap cadangan toko), `periksa_rules.py` (v24 = v23 + blok & fungsi, kontrol),
+  `uji_rules_emulator.py` bagian V24, `peta_akses.py --kiriman` bagian 12 (janji dari tablet = 2 access call).

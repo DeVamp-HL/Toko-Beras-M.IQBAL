@@ -1,0 +1,1039 @@
+// ============================================================================
+// ATURAN FIRESTORE v23 FINAL — Toko Beras M.IQBAL (DRAF 26 Nov 2026, KARCIS AMBIL NANTI & CEK BON DARI HP) = v22 FINAL + PERSIS satu fungsi baru dan dua
+// blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v22; uji server: docs/uji-rules-v23.md). Owner menerbitkan v23 SEKALI lewat
+// Console SEBELUM cabang paket QR kedua digabung (tanpa v23 pendengar ambilBarang di tablet ditolak server dan disebut di Sistem › Perangkat; titipan & cek bon
+// dari HP belum bisa dipakai; layar owner yang lain tetap jalan):
+//   (v23-1) blok ambilBarang — karcis ambil nanti (owner 26 Nov 2026: "stok berkurang saat bayar + daftar titipan", boleh diambil sebagian): catatan TAMBAH-SAJA
+//           'titip' (barang nota yang ditinggal di toko) dan 'ambil' (barang yang diserahkan). read owner || staf(ben, karyawan) · create owner ||
+//           stafAmbilBarang(ben, karyawan) — atas nama penulisnya (olehUid), kolom id = id dokumen, tanggal YYYY-MM-DD, jenis titip|ambil, trxId nota 1–60 huruf,
+//           isi daftar 1–20 baris, catatan ≤ 160 huruf, kolom dibatasi · ubah & hapus OWNER saja. Tidak ada rupiah; stok & uang tetap di nota (penjualan).
+//   (v23-2) blok bonPublik — cek sisa bon dari HP pelanggan (owner 26 Nov 2026: "bangun bareng"): ringkasan bon satu pelanggan bernama KODE ACAK (≥ 20 huruf).
+//           get: SIAPA PUN yang tahu kodenya (tanpa login — halaman bon.html) · list: OWNER saja (tidak ada yang bisa menelusuri kode orang lain) · tulis &
+//           hapus (cabut tautan): OWNER saja. Isinya salinan ringkas (nama panggilan, sisa, nota terbuka), bukan data toko.
+// Sisanya = v22 FINAL di bawah ini, apa adanya. Kepala v22:
+// ATURAN FIRESTORE v22 FINAL — Toko Beras M.IQBAL (DRAF 26 Nov 2026, KALENDER KEPATUHAN dari tablet) = v21 FINAL + PERSIS satu nama dokumen di satu baris
+// baca, satu fungsi baru, dan satu blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v21; uji server: docs/uji-rules-v22.md). Owner
+// menerbitkan v22 SEKALI lewat Console SEBELUM cabang stok minus, label & kepatuhan digabung (tanpa v22 pendengar aturanToko/kepatuhan & kepatuhanCek di tablet
+// Penjaga laci ditolak server dan disebut di Sistem › Perangkat; layar owner tetap jalan):
+//   (v22-1) aturanToko read: + dokumen 'kepatuhan' untuk Penjaga laci (ben) — daftar butir kalender kepatuhan & bentuk usaha yang diisi owner (owner 26 Nov 2026:
+//           "Owner + Ben dari tablet"). Karyawan TIDAK. Tulis TETAP owner saja. Bukan data uang / stok.
+//   (v22-2) blok kepatuhanCek — tanda "sudah dikerjakan" satu putaran butir kalender: tambah-saja. read owner || staf(ben) · create owner || stafCekPatuh(ben) — atas
+//           nama penulisnya (olehUid), kolom id = id dokumen, tanggal YYYY-MM-DD, butir = id butir [a-z0-9-] 1–40, periode 4–10 huruf [0-9K-], catatan ≤ 160 huruf,
+//           kolom dibatasi · ubah & hapus OWNER saja. Tidak ada rupiah, kg, atau tanggal buku yang dikunci periode.
+// Sisanya = v21 FINAL di bawah ini, apa adanya. Kepala v21:
+// ATURAN FIRESTORE v21 FINAL — Toko Beras M.IQBAL (DRAF 26 Nov 2026, USUL HARGA BANDING dari tablet) = v20 FINAL + PERSIS satu fungsi baru dan satu
+// sambungan di baris create persetujuan (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v20; uji server: docs/uji-rules-v21.md). Owner
+// menerbitkan v21 SEKALI lewat Console SEBELUM cabang Banding pemasok digabung (tanpa v21 usul harga dari tablet ditolak server — layar owner tetap jalan):
+//   (v21-1) persetujuan create: + stafUsulBanding(ben) — USUL harga tawaran pemasok / harga acuan resmi dari Penjaga laci (owner 26 Nov 2026: "Owner + Ben
+//           lewat usul"): bentuk "menunggu" bertindakan hargaBanding atas nama penulisnya, jenis tawaran | acuan, harga per kg bulat 1.000–100.000, kalimat
+//           1–300 huruf, tanpa kolom keputusan. Catatan bandingnya ditulis OWNER saat menyetujui (aturanToko, owner saja). Tidak ada uang, stok, atau tanggal buku.
+// Sisanya = v20 FINAL di bawah ini, apa adanya. Kepala v20:
+// ATURAN FIRESTORE v20 FINAL — Toko Beras M.IQBAL (DRAF 24 Nov 2026, BUKU PEGANGAN terbaca staf) = v19 FINAL + PERSIS satu nama dokumen di satu baris baca
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v19; uji server: docs/uji-rules-v20.md). Owner menerbitkan v20 SEKALI lewat Console
+// SEBELUM cabang buku pegangan digabung (tanpa v20 pendengar aturanToko/bukuPegangan di HP/tablet staf ditolak server dan disebut di Sistem › Perangkat):
+//   (v20-1) aturanToko read: + dokumen 'bukuPegangan' untuk ben & karyawan — aturan kerja tertulis yang diisi owner (Pondasi paket kedua, owner 24 Nov 2026:
+//           "Tetap rules v20"), dibaca staf di tablet. Tulis TETAP owner saja. Bukan data uang / stok: tidak ada rupiah, kg, atau tanggal buku.
+// Sisanya = v19 FINAL di bawah ini, apa adanya. Kepala v19:
+// ATURAN FIRESTORE v19 FINAL — Toko Beras M.IQBAL (DRAF 24 Nov 2026, CEK GUDANG dari tablet) = v18 FINAL + PERSIS satu fungsi baru dan satu blok baru
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v18; uji server: docs/uji-rules-v19.md). Owner menerbitkan v19 SEKALI lewat Console
+// SEBELUM cabang paket KPI laba digabung (tanpa v19 pendengar cekGudang di HP/tablet staf ditolak server dan disebut di Sistem › Perangkat):
+//   (v19-1) blok cekGudang — cek mingguan timbangan & gudang (owner 24 Nov 2026: "Ben juga dari tablet"): satu dokumen per cek, tambah-saja.
+//           read owner || staf(ben, karyawan) · create owner || stafCekGudang(ben) — atas nama penulisnya (olehUid), kolom id = id dokumen, tanggal YYYY-MM-DD,
+//           cek = peta lima hal (timbangan · palet · bocor · lembap · kutu) bernilai benar/salah, catatan ≤ 160 huruf, kolom dibatasi · ubah & hapus OWNER saja.
+//           Bukan data uang / stok: tidak ada rupiah, kg, atau tanggal buku yang dikunci periode.
+// Sisanya = v18 FINAL di bawah ini, apa adanya. Kepala v18:
+// ATURAN FIRESTORE v18 FINAL — Toko Beras M.IQBAL (DRAF 24 Nov 2026, DENYUT STAF TERIKAT) = v17 FINAL + PERSIS satu ubahan fungsi dan satu baris pemanggilnya
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v17; uji server: docs/uji-rules-v18.md). Owner menerbitkan v18 lewat Console kapan saja
+// (halaman TIDAK berubah: perangkat staf sudah menulis denyutnya ke id perangkat~uid sejak putaran denyut per akun):
+//   (v18-1) stafDenyut(peranBoleh, id) — temuan tinjauan 30 Sep (d): denyut ben / karyawan di perangkatStatus kini TERIKAT ke penulisnya: id dokumen wajib
+//           '<perangkat>~<uid penulis>' dan kolom id = id dokumen; dokumen yang sudah ada hanya bisa ditimpa bila akunUid-nya = penulis (dulu dokumen tanpa
+//           akunUid — denyut owner / kasir@ / bentuk lama — bisa ditimpa staf). Owner & kasir@ tidak berubah.
+// Sisanya = v17 FINAL di bawah ini, apa adanya. Kepala v17:
+// ATURAN FIRESTORE v17 FINAL — Toko Beras M.IQBAL (DRAF 23 Nov 2026, PUSH APLIKASI TABLET) = v16 FINAL + PERSIS satu fungsi baru dan satu blok baru
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v16; uji server: docs/uji-rules-v17.md). Owner menerbitkan v17 SEKALI lewat Console
+// SEBELUM menyalakan notifikasi di tablet (halaman boleh digabung lebih dulu: tanpa v17 tombol Nyalakan di tablet ditolak server, tidak ada yang rusak):
+//   (v17-1) blok notifPerangkat — token push Android aplikasi tablet (owner 23 Nov 2026: "Push penuh lewat Google"): satu dokumen per akun × perangkat,
+//           id = uid penulis + '_' + perangkatId. create/update owner || stafTokenPush(ben, karyawan) — atas nama penulisnya (uid & olehUid), kolom dibatasi,
+//           platform 'android', token ≤ 4096 huruf (kosong = dimatikan); baca & hapus OWNER saja. Fungsi server kabarTablet membacanya lewat Admin SDK
+//           untuk mengirim jawaban owner ke akun yang meminta. Bukan data toko: tidak ada uang, stok, atau tanggal buku.
+// Sisanya = v16 FINAL di bawah ini, apa adanya. Kepala v16:
+// ATURAN FIRESTORE v16 FINAL — Toko Beras M.IQBAL (DRAF 22 Nov 2026, TUTUP HARI dari tablet) = v15 FINAL + PERSIS satu fungsi baru dan dua ubahan baris
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v15; uji server: docs/uji-rules-v16.md). Owner menerbitkan v16 SEKALI lewat Console
+// SEBELUM cabang tutup hari tablet digabung:
+//   (v16-1) persetujuan create: + stafHitungLaci(ben) && tglStaf — HITUNGAN LACI dari tablet (tindakan 'hitungLaci', status 'menunggu', atas nama penulisnya,
+//           hitungan rupiah bulat > 0, yang sudah dipindah ke brankas 0..hitungan, tanpa keputusan). Hari ditutup OWNER dari lembar Tutup hari: tutupHari,
+//           titik kas, amplop, pindah uang & penyesuaian stok tetap ditulis owner saja.
+//   (v16-2) aturanToko read: + dokumen 'tutupHari' untuk Penjaga laci (ben) — uang kembalian yang ditinggal di laci (angka owner) dipakai tablet untuk
+//           "pindahkan Rp… ke brankas". Tulis tetap owner.
+// Sisanya = v15 FINAL di bawah ini, apa adanya. Kepala v15:
+// ATURAN FIRESTORE v15 FINAL — Toko Beras M.IQBAL (DRAF 22 Nov 2026, BARANG MASUK & BAYAR SUPIR di tablet) = v14 FINAL + PERSIS dua fungsi baru, satu
+// ubahan fungsi, dan dua baris tulis (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v14; uji server: docs/uji-rules-v15.md). Owner
+// menerbitkan v15 SEKALI lewat Console SEBELUM cabang barang masuk tablet digabung:
+//   (v15-1) batchMasuk create: + stafCatatMasuk(ben) — kedatangan dari tablet: dariTablet, caraBayar 'utang' (langsung jadi bon pemasok), biayaBongkar 0,
+//           pemasok 1–60 huruf (bukan LAHIR BUKU), 1–20 baris barang, tanpa kolom buku baru / stok awal / tutup buku / koreksi owner; bulan tidak terkunci.
+//           Ubah & hapus kedatangan tetap owner.
+//   (v15-2) stafMintaKeluar: jenis titipan + 'bongkar' (wajib batchId = kedatangannya) dan 'bayarBon' (wajib nama pemasok) — uang ke kuli & supir dari laci
+//           tetap TITIPAN: owner yang menulis upah bongkar ke kedatangan / pembayaran bon (memilih bonnya) saat menyetujui.
+//   (v15-3) persetujuan create: + stafKabarMasuk(ben) — kabar barang masuk untuk owner (tindakan 'barangMasuk', menunjuk kedatangannya, tanpa keputusan).
+// Sisanya = v14 FINAL di bawah ini, apa adanya. Kepala v14:
+// ATURAN FIRESTORE v14 FINAL — Toko Beras M.IQBAL (DRAF 21 Nov 2026, RINGKAS HARI INI di tablet) = v13 FINAL + PERSIS dua fungsi baru dan sebelas baris
+// baca (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v13; uji server: docs/uji-rules-v14.md). Owner menerbitkan v14 SEKALI lewat Console
+// SEBELUM cabang ringkas hari ini digabung:
+//   (v14-1) stafBacaUang() + bacaUangDari() — akun Penjaga laci (peran ben, aktif) yang DITANDAI owner di aksesAkun/{uid}.bacaUang == true.
+//   (v14-2) baca: + stafBacaUang() di biayaBulanan, pengeluaranHarian, kasbonMutasi, tutupHari, setoranKas, amplopLaba, modalOwner, utangOwnerMutasi,
+//           utangPemasokMutasi, pindahUang, dan pengaturan/titikKas — data yang dipakai hitungan laci seharusnya & uang keluar. TULIS tidak berubah (owner).
+//           Tanpa tanda bacaUang (akun staf lain, karyawan, kasir@) = sama dengan v13. aksesAkun ditulis owner saja (sejak v3), jadi tanda itu hanya dari owner.
+// Sisanya = v13 FINAL di bawah ini, apa adanya. Kepala v13:
+// ATURAN FIRESTORE v13 FINAL — Toko Beras M.IQBAL (DRAF 21 Nov 2026, titipan uang keluar & pesan dari tablet + notifikasi HP owner) = v12 FINAL + PERSIS
+// satu ubahan, dua fungsinya, dan satu blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v12; uji server: docs/uji-rules-v13.md).
+// Owner menerbitkan v13 SEKALI lewat Console SEBELUM cabang titipan digabung:
+//   (v13-1) persetujuan create: + stafMintaKeluar(ben, karyawan) — TITIPAN uang keluar dari tablet: tindakan 'uangKeluar', status 'menunggu', mintaUid = penulis,
+//           jenis toko / karyawan / kasbon, nominal bulat > 0, tanpa kolom keputusan / betulan owner. Uangnya (pengeluaranHarian / kasbonMutasi) ditulis
+//           OWNER saat menyetujui — rules uang tidak berubah, akun tablet tetap tidak menulis dokumen uang.
+//           + stafKirimPesan(ben, karyawan) — PESAN untuk owner: tindakan 'pesan', status 'menunggu', mintaUid = penulis, teks 1–500 huruf, tanpa keputusan /
+//           balasan. Owner menandai dibaca & membalas lewat update (owner saja, sejak v7).
+//   (v13-2) blok notifOwner — token notifikasi HP / Mac owner (push saat aplikasi tertutup; dikirim fungsi server lewat Admin SDK): baca & tulis owner saja.
+// Sisanya = v12 FINAL di bawah ini, apa adanya. Kepala v12:
+// ATURAN FIRESTORE v12 FINAL — Toko Beras M.IQBAL (DRAF 19 Nov 2026, paket S2b tanda kenal) = v11 FINAL + PERSIS satu blok baru, tanpa fungsi baru
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v11; uji server: docs/uji-rules-v12.md). Owner menerbitkan v12 SEKALI lewat Console
+// SEBELUM cabang S2b digabung:
+//   (v12-1) blok tandaKenal — pasangan kode → sasaran: barcode kemasan → barang di rak; nomor seri kartu NFC → pembeli. Catatan TAMBAH-SAJA (yang terbaru
+//           menang): baca owner/ben/karyawan; create owner || stafBuat(ben, karyawan) — scanner & pembaca NFC hanya ada di tablet (akun tablet), jadi
+//           pendaftaran harus bisa dari akun itu, atas nama penulisnya; ubah & hapus owner. Bukan uang, bukan stok.
+// Sisanya = v11 FINAL di bawah ini, apa adanya. Kepala v11:
+// ATURAN FIRESTORE v11 FINAL — (B4 pesanan, PO & order rutin) = v10 FINAL + PERSIS tiga ubahan & tiga fungsinya
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v10; uji server: docs/uji-rules-v11.md). Owner menerbitkan v11 SEKALI lewat Console
+// SEBELUM cabang B4 digabung:
+//   (v11-1) pesanan create: owner || stafBuatPesanan(ben) — pesanan baru dari tablet: atas nama penulisnya, 'dipesan', belum bernota, tanpa kolom batal.
+//   (v11-2) pesanan update: + stafAturPesanan(ben) — Ben mengubah isi / PO / tanggal kirim / alamat, mengantar, atau membatalkan pesanan yang belum jadi nota
+//           (status dipesan / diantar → dipesan / diantar / batal), kolom dibatasi. Jadi nota tetap stafUbahPesanan (ben & karyawan) sejak v1. Uang muka =
+//           piutangMutasi bayar yang sudah terbuka untuk ben & karyawan sejak v3 — rules uang tidak berubah.
+//   (v11-3) blok orderRutin — jadwal pesanan rutin pelanggan: baca owner/ben/karyawan; create owner || stafBuat(ben); update owner || stafUbahRutin(ben)
+//           (kolom dibatasi); hapus owner.
+// Sisanya = v10 FINAL di bawah ini, apa adanya. Kepala v10:
+// ATURAN FIRESTORE v10 FINAL — (B3 surat jalan & antar) = v9 FINAL + PERSIS dua blok baru & tiga fungsinya
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v9; uji server: docs/uji-rules-v10.md). Owner menerbitkan v10 SEKALI lewat Console
+// SEBELUM cabang B3 digabung:
+//   (v10-1) blok suratJalan — baca owner/ben/karyawan; create owner || stafBuatSJ(ben): surat jalan BERSAMA notanya, status 'berangkat', tanpa kolom
+//           penerimaan / keputusan; update owner || stafTandaiSJ(ben, karyawan): pengantar menandai surat jalan yang masih di jalan jadi 'diterima' /
+//           'gagal', kolom dibatasi (uang & nota tidak tersentuh — pelunasan bayar di tempat lewat piutangMutasi bayar yang sudah terbuka sejak v3);
+//           hapus owner. Membatalkan surat jalan = owner.
+//   (v10-2) blok buktiTerima — tanda tangan & foto penerima: baca owner/ben/karyawan; create owner || stafBuat(ben, karyawan) dengan bentuk buktiSah
+//           (id = id dokumen, idSJ teks, jenisBukti ttd/foto, jenis gambar, base64 ≤ 960.000 huruf); tanpa ubah; hapus owner. Koleksi ini SENGAJA tidak di
+//           baru/js/data/koleksi.js (dibaca saat surat jalan dibuka).
+// Sisanya = v9 FINAL di bawah ini, apa adanya:
+// (v9) ATURAN FIRESTORE v9 FINAL — Toko Beras M.IQBAL (DRAF 17 Nov 2026, B2 faktur bertempo & batas kredit) = v8 FINAL + PERSIS satu ubahan
+// (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v8; uji server: docs/uji-rules-v9.md). Owner menerbitkan v9 SEKALI lewat Console
+// SEBELUM cabang B2 digabung:
+//   (v9-1) persetujuan create: + stafMintaKredit — ben (yang boleh mencatat bon) MEMINTA PERSETUJUAN BON saat batas kredit pelanggan terlewati (tindakan
+//          'kredit', status 'menunggu', mintaUid = uid penulis, tanpa kolom keputusan). Memutus tetap owner; nota bon tetap lewat stafBuatJual (ben).
+// Sisanya = v8 FINAL di bawah ini, apa adanya:
+// (v8) ATURAN FIRESTORE v8 FINAL — Toko Beras M.IQBAL (DRAF 16 Nov 2026, B1 harga pelanggan usaha) = v7 FINAL + PERSIS tiga ubahan (alat-uji/periksa_rules.py
+// membandingkannya dengan firestore.rules.v7; uji server: docs/uji-rules-v8.md). Owner menerbitkan v8 SEKALI lewat Console SEBELUM cabang B1 digabung:
+//   (v8-1) aturanToko/hargaTingkat dibaca ben/karyawan (harga pelanggan usaha dipakai kasir di Jual) — tulis tetap owner saja;
+//   (v8-2) aturanToko/produkArsip dibaca ben/karyawan (barang yang diarsipkan owner tidak tampil sebagai chip habis di rak Jual tablet);
+//   (v8-3) persetujuan create: + stafUsulHarga — ben/karyawan mengirim USUL harga pelanggan (tindakan 'hargaPelanggan', status 'menunggu', usulUid = uid
+//          penulis, tanpa kolom keputusan). Memutus tetap owner; saat menyetujui, perangkat owner menulis aturanToko/hargaTingkat (owner saja).
+// Sisanya = v7 FINAL di bawah ini, apa adanya:
+// (v7) ATURAN FIRESTORE v7 FINAL — Toko Beras M.IQBAL (DRAF 7 Okt 2026 — owner menerbitkan SEKALI lewat Console SEBELUM cabang perbaikan/hemat-baca
+// digabung; langkahnya: docs/uji-rules-v7.md "Urutan"). v6 + lima perubahan:
+// Berkas KANONIK ber-versi. DEPLOY: salin-tempel ke Console > Firestore > Rules (owner; pola putaran 25).
+// Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep; pintu tutup buku K8 7 Okt)
+// + docs/peta-wadah-satu-buku.md §8 (v5) + docs/rancangan-tutup-buku-bertahap.md §11 (v6) + docs/rancangan-hemat-baca.md (v7).
+// Diperiksa statis oleh alat-uji/periksa_rules.py (CI: v7 = firestore.rules.v6 + PERSIS daftar ubahan di bawah, dinilai juga dengan penafsir rules mini
+// alat-uji/rules_mini.py). Uji server: docs/uji-rules-v7.md (Playground ★; v6: docs/uji-rules-v6.md).
+// v7 yang berubah dari v6 (owner 7 Okt 2026):
+//   (1) HEMAT BACA — fungsi ulangKasirBercap() + satu suku di update penjualan: kasir darurat kasir-v33 mengirim nota lewat REST :commit dengan
+//       capServer = REQUEST_TIME — kirim ulang karcis yang sama hanya berbeda di capServer, dan capServer itu jam server permintaan ini, ATAU capServer
+//       tidak ada sama sekali (HP yang masih kasir-v32 mengirim ulang nota yang sudah disentuh perangkat owner yang hemat baca). Blok batuNisan (owner saja):
+//       satu dokumen per catatan koleksi hemat yang dihapus owner, di writeBatch yang sama dengan hapusnya; capServer wajib jam server. Tanpa get().
+//   (2) PERSETUJUAN NEGO (JS2-C, PR #109): ben/karyawan membuat permintaan nego ke owner — persetujuan create HANYA tindakan 'nego', status 'menunggu',
+//       negoUid = olehUid = uid penulis, tanpa kolom keputusan (stafMintaNego); ben/karyawan membaca koleksi persetujuan (keputusan owner). Ubah & hapus
+//       tetap owner. 1 get() aksesAkun seperti tulisan staf lain.
+//   (3) FOTO BON (paket E-2): blok fotoBon — owner baca / buat / hapus, tanpa ubah; bentuk dibatasi (id = id dokumen, idBon teks, jenis gambar, base64
+//       ≤ 960.000 huruf ≈ 700 KB foto). Koleksi ini SENGAJA tidak di baru/js/data/koleksi.js (dibaca sekali saat bon dibuka).
+//   (4) PANGKAS kasir@ (kasir.html pensiun 3 Okt; kasir darurat hanya: nota penjualan, denyut perangkatStatus, baca ringkasanKasir): DICABUT create &
+//       tulis-ulang piutangMutasi / stokBahanLiteran, create logAktivitas, baca pengaturan/aksesKasir. (pengaturan/keamanan memang owner saja sejak v3.)
+//   (5) PINTU TUTUP BUKU (keputusan owner 7 Okt, K8 "pengecualian sempit"; dipersempit sesudah sanggahan rules 7 Okt) — tutup buku tahun Y yang bulannya
+//       sudah dikunci: dokumen pengaturan/pintuBuku = { tahun: Y, status: 'berjalan', sampai: <timestamp> } dibuat OWNER hanya bila Y = TAHUN LALU (WIB),
+//       sampai ≤ jam server + 72 jam, dan berita acara tutupBukuAcara/Y SUDAH ADA SEBELUM kiriman itu (get, bukan getAfter — ikatan ke ritual tidak bisa
+//       dikarang dalam satu kiriman) berstatus berjalan / terkunci / membatalkan, dimulai (paraf.pada) sesudah 31 Des Y. Berita acara BARU wajib berbentuk
+//       tutup buku sungguhan (id = tahun, tahun lampau, mode sungguhan, berjalan / terkunci) dengan jam mulai = tanggal server ± 1 hari; berita acara hanya
+//       boleh dihapus bila 'dibatalkan' (yang 'selesai' tidak bisa dihapus lalu dibuat lagi). Berita acara jadi 'selesai' / 'dibatalkan' hanya bila pintu
+//       tahun itu TERTUTUP sesudah kiriman itu — jadi pintu tidak pernah terbuka untuk berita acara yang selesai / dibatalkan. Selama pintu terbuka & belum
+//       lewat `sampai`, OWNER boleh (hanya catatan bertanggal ≤ Desember Y di bulan terkunci):
+//         (a) MENGHAPUS catatan yang SALINANNYA di arsipTahun/'Y|koleksi|id' sesudah batch itu = isi catatan yang dihapus (hanya capServer boleh beda;
+//             arsip = pindah, bukan buang), atau saldo pembuka tahun Y (tutupBuku + tahunDari Y) di 10 koleksi yang memang punya saldo pembuka
+//             (kolPembuka = toko.js CACHE_PEMBUKA) — tarik saldo pembuka saat Batalkan;
+//         (b) MEMBUAT saldo pembuka tahun Y di 10 koleksi itu, atau MENGEMBALIKAN catatan dari arsipTahun/'Y|koleksi|id' yang isinya SAMA dengan salinannya
+//             (Batalkan); titik kas pengaturan/titikKas bertanggal 31 Des Y, atau PERSIS titikSebelum di berita acara Y (pengembaliannya saat Batalkan).
+//       SALINAN ARSIP terikat ke aslinya: arsipTahun ditulis hanya berbentuk 'Y|koleksi|id' untuk 18 koleksi yang diarsip, dan salinan catatan bulan
+//       terkunci WAJIB = catatan aslinya sebelum batch (arsip karangan tidak bisa dipakai untuk "mengembalikan" catatan baru).
+//       TIDAK ada pintu untuk UPDATE, untuk catatan lain di bulan terkunci (nota / uang keluar bertanda tutupBuku tetap ditolak), untuk pindahUang /
+//       slipUpah (tidak diarsip), untuk kasir@ / staf. pengaturan/pintuBuku status 'tutup' boleh kapan saja oleh owner. Access call (cache tidak
+//       diandalkan): saldo pembuka & titik 31 Des 2 (kunci + pintu), titik kembali 3 (+ berita acara), hapus arsip & kembalikan 3 (kunci + pintu +
+//       salinan), tulis salinan arsip 1 (kunci; bulan terkunci + 1 catatan asli), buka pintu 1 (berita acara), berita acara selesai / dibatalkan 1
+//       (pintu) — layar memecah kiriman ≤ 18 (baru/js/data/kunci-periode.js kpNilaiKiriman).
+// SENGAJA tidak berubah: create penjualan kasir@ (capServer boleh ada atau tidak), denyut & pesanan staf, urutan berita acara v6 (majuBuku dkk.), semua update
+//   catatan bertanggal.
+// Jalan mundur v7: JANGAN tempel firestore.rules.v6 selama kode bercap berjalan — hapus /baru/ (ber-batu nisan) akan DITOLAK, permintaan nego staf
+//   ditolak (masuk daftar "ditolak" di perangkatnya), foto bon ditolak. Mundur hemat baca = saklar (Menu › Sistem › Perangkat › Hemat baca, atau
+//   /baru/?hemat=mati), bukan rules. v6 baru boleh ditempel balik SESUDAH cabang hemat baca dibalik (git revert) dan HP kasir kembali ke kasir-v32.
+// Jalan mundur v6: firestore.rules.v5 (disimpan utuh) — tempel v5 = berita acara tutup buku kembali owner-saja tanpa urutan (kiriman telat bisa menimpanya);
+// firestore.rules.v4 = karyawan tidak bisa menuang/mengecek wadah dari akunnya; firestore.rules.v3 = kunci periode MATI, semua bulan bisa ditulis lagi.
+// v6 yang berubah dari v5: HANYA update tutupBukuAcara (+ 6 fungsi kecil di atas bloknya, tanpa get()). Dalam satu percobaan (paraf.pada) status hanya
+//   maju; percobaan baru hanya di atas 'dibatalkan' dan jam mulainya lebih baru; pemegang hanya berganti lewat ambil alih. Baca, create, delete = owner, sama.
+// v5 yang berubah dari v4 (keputusan owner 29 Sep, "lewat Console"): wadahLiteran create oleh ben/karyawan hanya tipe takar / karung / karungIsi / cek (stafBuatWadah);
+//   batchMasuk create oleh ben/karyawan hanya batch LAHIR BUKU 0 kg (stafBuatLahir); produksiKemasan create karyawan sudah terbuka sejak v3 (pindah buku isi ulang memakainya).
+//
+// KUNCI PERIODE — penegakan di SERVER, untuk SEMUA penulis (owner, kasir@, peran lain, sistem lama, tablet offline):
+//   aturanToko/kunciPeriode = { sampaiBulan: 'YYYY-MM' | null, riwayat: [{ aksi: 'kunci'|'buka', bulan, pada, olehUid, alasan, … }] }.
+//   Semua bulan ≤ sampaiBulan TERKUNCI: create / update / delete ditolak bila tanggal dokumen (nilai BARU atau nilai LAMA) jatuh di bulan terkunci.
+//   Koleksi bertanggal & field-nya (peta §2): tanggal — penjualan, retur, pengeluaranHarian, piutangMutasi, kasbonMutasi, utangOwnerMutasi, batchMasuk,
+//   produksiKemasan, stokBahanKemasan, stokBahanLiteran, penyesuaianStok, penyesuaianKemasan, amplopLaba, modalOwner, setoranKas, tutupHari, pindahUang,
+//   slipUpah · bulan — biayaBulanan · utangPemasokMutasi: tanggal, tipe saldoAwal = bonTanggal (K4) · pengaturan: dokumen titikKas saja (nilai BARU
+//   saat simpan — titik boleh maju dari bulan terkunci; nilai LAMA saat dihapus). pajakSetoran & pajakOmzetLuar TIDAK dikunci (K6).
+//   Tulis-ulang yang isinya SAMA PERSIS tidak dinilai (tidak mengubah apa pun: kirim-ulang kasir@, muat cadangan atas dokumen yang sudah ada).
+//   aturanToko/kunciPeriode: owner saja; sampaiBulan naik TEPAT satu bulan (pertama kali: bulan mana pun yang sudah lewat tenggang) atau turun TEPAT
+//   satu bulan dengan alasan ≥ 10 huruf; riwayat hanya bertambah satu entri, entri lama tidak berubah; tidak pernah dihapus.
+//   TENGGANG MINIMAL ditegakkan di sini (tenggangMin() = 3 = KP_TENGGANG_MIN di baru/js/data/kunci-periode.js; owner 25 Sep): bulan M paling cepat
+//   dikunci tanggal 4 bulan M+1. Selama tanggal 1–3 itu, tulisan bertanggal bulan lalu PASTI belum terkunci → tanpa get().
+//
+// ACCESS CALL (batas Firebase 10 per operasi, 20 per batch/transaksi; cache TIDAK diandalkan — keputusan owner 24 & 25 Sep):
+//   owner  : 0 untuk bulan berjalan & masa tenggang; 1 get() dokumen kunci per operasi yang menyentuh bulan lampau (update: bulan TERTUA dari lama/baru).
+//            Kiriman owner > 18 pemeriksaan tidak dikirim layar; jalur besar dipecah (toko.js tulisBertahap). logAktivitas tidak dikunci (0).
+//   kasir@ : create penjualan dinilai kunci PERSIS seperti owner (tglBaru): bulan berjalan / tanggal 1–3 tanpa get(),
+//            selain itu 1 get() dan DITOLAK bila terkunci. Update hanya tulis-ulang identik; hapus TIDAK PERNAH. kasir*.html mengirim 1 dokumen per
+//            permintaan REST → ≤ 1 get() per permintaan (batas 10). Bukan aturan staf: nota offline > 3 hari lewat awal bulan akan ditolak walau
+//            belum ada kunci, dan antrean kasir*.html macet (25b).
+//   bukan-owner: 1 get() aksesAkun per dokumen seperti v3; dokumen kunci TIDAK PERNAH dibaca — hanya bulan berjalan / masa tenggang (tglStaf).
+//   Hitungan tiap jalur: alat-uji/peta_akses.py --kiriman (CI, dua keadaan: tanpa & dengan bulan terkunci; gagal bila > 18).
+//
+// PAYUNG DIHAPUS (putaran 25): tiap koleksi yang dipakai sistem baru, sistem lama (index.html), dan kasir*.html punya blok sendiri; path yang tidak disebut
+//   = DITOLAK. periksa_rules.py GAGAL bila ada match rekursif ({…=**}) yang memberi izin tulis.
+//
+// URUTAN PASANG (putaran 25):
+//   Lengkap: docs/uji-rules-v4.md "Urutan". Ringkas: (1) dokumen uji aturanToko/kunciPeriode (v3 masih terbit) → (2) Playground ★A dengan v4 di
+//   EDITOR (belum Publish) → (3) HAPUS dokumen uji → (4) Claude membaca Console lewat Chrome: dokumen itu benar-benar tidak ada → (5) Playground ★B
+//   (tanpa dokumen kunci = keadaan sesudah terbit) & ★ v3 diulang → (6) merge cabang, Pages hijau → (7) Claude bilang siap → Publish v4 →
+//   (8) SATU nota kasir darurat masuk; tidak masuk → tempel firestore.rules.v3 → (9) kunci bulan PERTAMA baru sesudah putaran 25b dan hanya kalau
+//   daftar periksanya bersih (Uang › Tutup buku › Kunci bulan).
+//   MUNDUR = tempel firestore.rules.v3 (kunci periode mati; aturan akun v3 tetap).
+//
+// AKUN & PERAN (v3, tidak berubah):
+//   owner@tokoberasmiqbal.web.app  -> OWNER, dikenali lewat EMAIL. Tidak pernah lewat dokumen apa pun.
+//   kasir@tokoberasmiqbal.web.app  -> KASIR DARURAT (v7): create penjualan + kirim ulang nota (tulis-ulang-sama / bercap), denyut perangkatStatus,
+//                                     baca ringkasanKasir. Tidak ada yang lain (v7 mencabut jalur kasir.html yang pensiun).
+//   akun lain                      -> peran dari aksesAkun/{uid} yang ditulis OWNER: { uid, nama, email, peran: 'ben'|'karyawan', aktif: bool }.
+//                                     Tanpa aksesAkun aktif = NOL akses (kecuali create permintaanAkses miliknya). Tiap tulisan wajib olehUid = uid penulis.
+//   UTANG: id peran 'ben' memakai nama orang — peran harus bernama jabatan (dicatat owner 24 Sep).
+// MENAMBAH PERAN: tambahkan satu nama di daftar peran tiap koleksi (staf(...) / stafBuat(...)) DAN di baru/js/data/akses.js — periksa_rules.py memastikan
+//   keduanya sama. GERBANG TABLET (sebelum akun bukan-owner pertama disetujui): lihat kepala firestore.rules.v3 & docs/peta-hak-akses.md §8.
+// ============================================================================
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function masuk() { return request.auth != null; }
+    function owner() {
+      return masuk() && request.auth.token.email == 'owner@tokoberasmiqbal.web.app';
+    }
+    function kasir() {
+      return masuk() && request.auth.token.email == 'kasir@tokoberasmiqbal.web.app';
+    }
+    // KIRIM-ULANG ANTREAN KASIR WAJIB IDEMPOTEN (v2, dipertahankan untuk kasir@): update hanya kalau isinya SAMA PERSIS.
+    function tulisUlangSama() {
+      return request.resource.data == resource.data;
+    }
+    // v7 (hemat baca): kirim-ulang kasir@ — isinya sama persis KECUALI capServer, dan capServer = jam server permintaan ini (REST :commit + transform
+    // REQUEST_TIME, kasir-v33) ATAU tidak ada sama sekali (HP kasir-v32: PATCH utuh tanpa cap atas nota yang sudah disentuh perangkat owner)
+    function ulangKasirBercap() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer'])
+        && (!request.resource.data.keys().hasAny(['capServer']) || request.resource.data.capServer == request.time);
+    }
+
+    // ---- akun bukan-owner (aksesAkun/{uid}) — SATU get() per evaluasi ----
+    function akun() { return get(/databases/$(database)/documents/aksesAkun/$(request.auth.uid)).data; }
+    function aktifDengan(a, peranBoleh) { return a.aktif == true && a.peran in peranBoleh; }
+    function jujur() { return request.resource.data.olehUid == request.auth.uid; }
+    function staf(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh); }
+    function stafBuat(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh) && jujur(); }
+    // v17 (owner 23 Nov 2026): token push aplikasi tablet atas nama penulisnya — id = uid penulis + '_' + perangkatId, kolom dibatasi, tanpa data toko
+    function stafTokenPush(peranBoleh, id) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('uid', '') == request.auth.uid && d.get('perangkatId', 0) is string && d.perangkatId.size() > 0 && d.perangkatId.size() <= 40
+        && id == request.auth.uid + '_' + d.perangkatId && d.get('token', 0) is string && d.token.size() <= 4096 && d.get('platform', '') == 'android'
+        && d.keys().hasOnly(['id', 'uid', 'olehUid', 'perangkatId', 'token', 'platform', 'perangkat', 'pada']);
+    }
+    // v19 (owner 24 Nov 2026): cek mingguan timbangan & gudang dari tablet — atas nama penulisnya, id = kolom id, lima hal benar/salah, kolom dibatasi
+    function stafCekGudang(peranBoleh, id) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && d.get('cek', 0) is map && d.cek.keys().hasOnly(['timbangan', 'palet', 'bocor', 'lembap', 'kutu'])
+        && d.cek.get('timbangan', true) is bool && d.cek.get('palet', true) is bool && d.cek.get('bocor', true) is bool && d.cek.get('lembap', true) is bool && d.cek.get('kutu', true) is bool
+        && d.get('catatan', 0) is string && d.catatan.size() <= 160
+        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'minggu', 'cek', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v22 (owner 26 Nov 2026): tanda kalender kepatuhan dari tablet — bentuk tetap, atas nama penulisnya (stafBuat → jujur), tanpa rupiah / kg / tanggal buku
+    function stafCekPatuh(peranBoleh, id) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && d.get('butir', 0) is string && d.butir.matches('[a-z0-9-]{1,40}') && d.get('periode', 0) is string && d.periode.matches('[0-9K-]{4,10}')
+        && d.get('catatan', 0) is string && d.catatan.size() <= 160
+        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir', 'periode', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v23 (owner 26 Nov 2026): titipan & barang diambil dari tablet — catatan tambah-saja atas nama penulisnya (stafBuat → jujur), bentuk tetap, tanpa rupiah
+    function stafAmbilBarang(peranBoleh, id) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && d.get('jenis', '') in ['titip', 'ambil'] && d.get('trxId', 0) is string && d.trxId.size() > 0 && d.trxId.size() <= 60
+        && d.get('isi', 0) is list && d.isi.size() > 0 && d.isi.size() <= 20 && d.get('catatan', '') is string && d.get('catatan', '').size() <= 160
+        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'jenis', 'trxId', 'namaPelanggan', 'isi', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    function stafBuatTipe(peranBoleh, tipe) { return stafBuat(peranBoleh) && request.resource.data.tipe == tipe; }
+    // v5 (putaran 39, owner 29 Sep 2026): karyawan menuang & mengecek wadah literan — hanya catatan takar / karung / karungIsi / cek (aturan wadah & titik samakan isi tetap owner)
+    function stafBuatWadah(peranBoleh) { return stafBuat(peranBoleh) && request.resource.data.tipe in ['takar', 'karung', 'karungIsi', 'cek']; }
+    // v5: buku baru (karung belakang / stok wadah) lahir lewat batch stokAwal 0 kg — bukan kedatangan: tanpa kg, tanpa rupiah, tanpa pemasok sungguhan
+    function stafBuatLahir(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('lahirBuku', false) == true && d.get('stokAwal', false) == true && d.get('biayaBongkar', 0) == 0 && d.get('pemasok', '') == 'LAHIR BUKU';
+    }
+    function stafBuatJual(peranBoleh, peranKredit) {
+      let a = akun();
+      let d = request.resource.data;
+      return masuk() && aktifDengan(a, peranBoleh) && jujur()
+        && !d.keys().hasAny(['dibatalkan', 'dikoreksiOleh', 'dikoreksiPada', 'dibatalkanPada', 'namaDihapus'])
+        && (string(d.get('caraBayar', '')).lower() != 'kredit' || a.peran in peranKredit);
+    }
+    function stafJejak(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.dokumen is list && d.dokumen.size() >= 1 && d.dokumen.size() <= 17;   // 17 dokumen + jejak = 18 access call (batas 20, sisa 2)
+    }
+    // peta §5 baris 1: pesanan yang belum tuntas jadi 'dibayar' — kolom dibatasi, uang/berat tidak tersentuh
+    function stafUbahPesanan(peranBoleh) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid
+        && !(resource.data.get('status', '') in ['dibayar', 'batal']) && request.resource.data.status == 'dibayar'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riwayatStatus', 'trxIdJual', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // peta §5 baris 2: denyut perangkat — dokumen perangkatnya sendiri, kolom denyut saja
+    function stafDenyut(peranBoleh, id) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.akunUid == request.auth.uid
+        && id.matches('[^~/]{1,40}~' + request.auth.uid) && request.resource.data.get('id', '') == id
+        && (resource == null || resource.data.get('akunUid', '') == request.auth.uid)
+        && request.resource.data.keys().hasOnly(['id', 'nama', 'akun', 'akunUid', 'aplikasi', 'pada', 'antrean', 'gagal', 'versi', 'pemegang', 'lokasi']);
+    }
+    // v7 (owner 7 Okt, JS2-C): permintaan nego ke owner — bentuk "menunggu" bertindakan nego saja, atas nama penulisnya sendiri, tanpa kolom keputusan
+    function stafMintaNego(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'nego' && d.get('status', '') == 'menunggu' && d.get('negoUid', '') == request.auth.uid
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
+    }
+    // v8 (B1, owner 16 Nov 2026): usul harga pelanggan usaha ke owner — bentuk "menunggu" bertindakan hargaPelanggan, atas nama penulisnya sendiri (usulUid),
+    // tanpa kolom keputusan. Isi ubahannya tidak diikat rules: papan persetujuan owner menghitung ulang kalimatnya dari setelan sekarang sebelum memutus.
+    function stafUsulHarga(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'hargaPelanggan' && d.get('status', '') == 'menunggu' && d.get('usulUid', '') == request.auth.uid
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
+    }
+    // v9 (B2, owner 17 Nov 2026): permintaan bon ke owner saat batas kredit pelanggan terlewati — bentuk "menunggu" bertindakan kredit, atas nama penulisnya
+    // sendiri (mintaUid), tanpa kolom keputusan. Nominal & nama tidak diikat rules: papan persetujuan owner menghitung ulang kalimatnya dari buku bon sekarang.
+    function stafMintaKredit(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'kredit' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);
+    }
+    // v13 (owner 21 Nov 2026): TITIPAN uang keluar dari tablet — bentuk "menunggu" bertindakan uangKeluar atas nama penulisnya (mintaUid), jenis toko / karyawan /
+    // kasbon, nominal bulat > 0, tanpa kolom keputusan & betulan owner. Bukan dokumen uang: uangnya ditulis owner saat menyetujui.
+    function stafMintaKeluar(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'uangKeluar' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('jenis', '') in ['toko', 'karyawan', 'kasbon', 'bongkar', 'bayarBon'] && d.get('nominal', 0) is int && d.get('nominal', 0) > 0
+        && (d.get('jenis', '') != 'bongkar' || (d.get('batchId', 0) is string && d.batchId.size() > 0))
+        && (d.get('jenis', '') != 'bayarBon' || (d.get('pemasok', 0) is string && d.pemasok.size() > 0 && d.pemasok.size() <= 60))
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'koreksiOwner', 'balasan']);
+    }
+    // v13: PESAN untuk owner dari tablet — bentuk "menunggu" bertindakan pesan atas nama penulisnya, teks 1–500 huruf, tanpa keputusan / balasan
+    function stafKirimPesan(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'pesan' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('teks', 0) is string && d.teks.size() > 0 && d.teks.size() <= 500
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan']);
+    }
+    // v14 (owner 21 Nov 2026): RINGKAS HARI INI di tablet — akun Penjaga laci yang DITANDAI owner (aksesAkun.bacaUang) membaca data uang (titik kas, uang
+    // keluar, kasbon, upah, ambil pribadi, pindah uang, tutup hari) untuk laci seharusnya; layar menampilkannya hanya saat orang yang jaga = pilihan owner.
+    // Baca saja — tulis uang tetap owner. 1 get() aksesAkun seperti staf().
+    function stafBacaUang() { return masuk() && bacaUangDari(akun()); }
+    function bacaUangDari(a) { return a.aktif == true && a.peran == 'ben' && a.get('bacaUang', false) == true; }
+    // v15 (owner 22 Nov 2026): BARANG MASUK dari tablet — Penjaga laci mencatat kedatangan yang LANGSUNG jadi stok + BON pemasok (caraBayar 'utang'), harga dari
+    // nota supir; upah bongkar 0 di kedatangan (bongkar & bayar ke supir = titipan ke owner); bukan buku baru / stok awal / tutup buku, tanpa kolom koreksi owner.
+    function stafCatatMasuk(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('dariTablet', false) == true && d.get('caraBayar', '') == 'utang' && d.get('biayaBongkar', -1) == 0
+        && d.get('pemasok', 0) is string && d.pemasok.size() > 0 && d.pemasok.size() <= 60 && d.pemasok != 'LAHIR BUKU'
+        && d.get('merkList', 0) is list && d.merkList.size() > 0 && d.merkList.size() <= 20
+        && !d.keys().hasAny(['lahirBuku', 'stokAwal', 'tutupBuku', 'riwayat', 'alasanKoreksi', 'noBon', 'bongkarTitipan']);
+    }
+    // v15: KABAR barang masuk untuk owner — bentuk "menunggu" bertindakan barangMasuk atas nama penulisnya, menunjuk kedatangannya, tanpa keputusan
+    function stafKabarMasuk(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'barangMasuk' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('batchId', 0) is string && d.batchId.size() > 0
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan']);
+    }
+    // v16 (owner 22 Nov 2026): HITUNGAN LACI dari tablet untuk tutup hari — bentuk "menunggu" bertindakan hitungLaci atas nama penulisnya, hitungan rupiah bulat
+    // > 0, yang sudah dipindah ke brankas 0..hitungan, tanpa keputusan. Hari ditutup OWNER (tutupHari & titik kas tetap owner saja).
+    function stafHitungLaci(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'hitungLaci' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('hitung', 0) is int && d.get('hitung', 0) > 0 && d.get('hitung', 0) <= 1000000000
+        && d.get('amankan', -1) is int && d.get('amankan', -1) >= 0 && d.get('amankan', -1) <= d.get('hitung', 0)
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan', 'koreksiOwner']);
+    }
+    // v21 (paket Banding pemasok, owner 26 Nov 2026: "Owner + Ben lewat usul"): USUL harga tawaran pemasok / harga acuan resmi dari tablet — bentuk "menunggu"
+    // bertindakan hargaBanding atas nama penulisnya, jenis tawaran | acuan, harga per kg rupiah bulat 1.000–100.000, kalimat 1–300 huruf, tanpa keputusan.
+    // Catatan bandingnya (aturanToko/banding-YYYY-MM) ditulis OWNER saat menyetujui; isian lain (peta isi) dicek ulang di perangkat owner. Tanpa get().
+    function stafUsulBanding(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') == 'hargaBanding' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid
+        && d.get('hargaPerKg', 0) is int && d.get('hargaPerKg', 0) >= 1000 && d.get('hargaPerKg', 0) <= 100000 && d.get('jenis', '') in ['tawaran', 'acuan']
+        && d.get('teks', 0) is string && d.teks.size() > 0 && d.teks.size() <= 300
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan']);
+    }
+    // v10 (B3, owner 18 Nov 2026): SURAT JALAN dibuat ben BERSAMA notanya — status 'berangkat', tanpa kolom penerimaan / keputusan
+    function stafBuatSJ(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('status', '') == 'berangkat'
+        && !d.keys().hasAny(['penerima', 'diterimaPada', 'diterimaTanggal', 'diterimaJam', 'buktiTtd', 'buktiFoto', 'uangDiterima', 'pelunasanId', 'alasanGagal', 'batalPada', 'alasanBatal']);
+    }
+    // v10: pengantar (ben / karyawan) menandai surat jalan yang masih di jalan → diterima / gagal antar; kolom dibatasi (nota & uang tidak tersentuh)
+    function stafTandaiSJ(peranBoleh) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid
+        && resource.data.get('status', '') == 'berangkat' && request.resource.data.get('status', '') in ['diterima', 'gagal']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riwayatStatus', 'penerima', 'diterimaPada', 'diterimaTanggal', 'diterimaJam', 'catatanTerima', 'buktiTtd', 'buktiFoto', 'uangDiterima', 'caraUang', 'pelunasanId', 'alasanGagal', 'ditandaiOleh', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v11 (B4, owner 18 Nov 2026): pesanan baru dari tablet — atas nama penulisnya, 'dipesan', belum bernota, tanpa kolom batal
+    function stafBuatPesanan(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('status', '') == 'dipesan' && d.get('trxIdJual', null) == null && !d.keys().hasAny(['dibatalkan', 'alasanBatal', 'nasibUangMuka']);
+    }
+    // v11: Ben mengubah / mengantar / membatalkan pesanan yang belum jadi nota — kolom dibatasi (uang & nota tidak tersentuh; jadi nota = stafUbahPesanan)
+    function stafAturPesanan(peranBoleh) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid
+        && resource.data.get('status', '') in ['dipesan', 'diantar'] && request.resource.data.get('status', '') in ['dipesan', 'diantar', 'batal']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riwayatStatus', 'baris', 'isi', 'noPO', 'tanggalKirim', 'alamat', 'nilaiPerkiraan', 'catatan', 'alasanBatal', 'nasibUangMuka', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v11: Ben mengubah jadwal order rutin — kolom dibatasi (pembuat & tanggal dibuat tetap)
+    function stafUbahRutin(peranBoleh) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['namaPelanggan', 'baris', 'isi', 'alamat', 'noPO', 'catatan', 'ulang', 'hari', 'tanggalBulan', 'mulai', 'aktif', 'lewati', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v10: bukti terima antar (tanda tangan / foto penerima) — bentuk dibatasi seperti fotoBon
+    function buktiSah(id) {
+      let d = request.resource.data;
+      return d.get('id', '') == id && d.get('idSJ', 0) is string && d.idSJ.size() > 0 && d.get('jenisBukti', '') in ['ttd', 'foto']
+        && d.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp'] && d.get('base64', 0) is string && d.base64.size() > 0 && d.base64.size() <= 960000;
+    }
+
+    // ---- KUNCI PERIODE (putaran 25) — inti klien yang sama: baru/js/data/kunci-periode.js ----
+    // Bulan = tahun × 12 + bulan. WIB = request.time + 7 jam lewat timestamp.value(toMillis()) — fungsi terdokumentasi, tanpa aritmetika timestamp.
+    function wib() { return timestamp.value(request.time.toMillis() + 25200000); }
+    function bulanIni() { return wib().year() * 12 + wib().month(); }
+    function tenggangMin() { return 3; }   // = KP_TENGGANG_MIN (owner 25 Sep): bulan M paling cepat dikunci tanggal (1 + tenggangMin()) = 4 bulan M+1
+    function bulanDari(s) { return int(s[0:4]) * 12 + int(s[5:7]); }
+    function bulanNilai(v) { return v is string && v.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?') ? bulanDari(v) : 0; }   // tidak ada / rusak = 0 (paling tua)
+    function bulanDok(d, f) { return bulanNilai(d.get(f, null)); }
+    function bulanUP(d) { return d.get('tipe', '') == 'saldoAwal' ? bulanNilai(d.get('bonTanggal', null)) : bulanDok(d, 'tanggal'); }   // K4: bon lama = bonTanggal
+    function lebihTua(a, b) { return a < b ? a : b; }
+    // tanpa get(): bulan berjalan (atau sesudahnya), atau bulan lalu selama tenggang minimal — bulan itu PASTI belum bisa dikunci (lihat bolehDikunci)
+    function bebas(b) { return b >= bulanIni() || (b == bulanIni() - 1 && wib().day() <= tenggangMin()); }
+    // SATU-SATUNYA get() dokumen kunci; dipanggil hanya di belakang bebas() == false. Dokumen belum ada / sampaiBulan null = tidak ada yang terkunci.
+    function terkunci(b) {
+      let k = get(/databases/$(database)/documents/aturanToko/kunciPeriode);
+      return k != null && k.data.get('sampaiBulan', null) is string && b <= bulanNilai(k.data.sampaiBulan);
+    }
+    function bolehBulan(b) { return bebas(b) || !terkunci(b); }
+    // owner: create = nilai BARU · update = bulan TERTUA dari lama & baru (tulis-ulang identik bebas) · delete = nilai LAMA — tiap operasi ≤ 1 get(). kasir@: create saja (tglBaru)
+    function tglBaru(f) { return bolehBulan(bulanDok(request.resource.data, f)); }
+    function tglUbah(f) { return tulisUlangSama() || bolehBulan(lebihTua(bulanDok(request.resource.data, f), bulanDok(resource.data, f))); }
+    function tglLama(f) { return resource == null || bolehBulan(bulanDok(resource.data, f)); }   // hapus dokumen yang tidak ada = tidak mengubah apa pun (mis. kantong id+1 adukan tanpa kantong)
+    function upBaru() { return bolehBulan(bulanUP(request.resource.data)); }
+    function upUbah() { return tulisUlangSama() || bolehBulan(lebihTua(bulanUP(request.resource.data), bulanUP(resource.data))); }
+    function upLama() { return resource == null || bolehBulan(bulanUP(resource.data)); }
+    // bukan-owner (tablet): dokumen kunci TIDAK PERNAH dibaca — hanya bulan berjalan / masa tenggang; sisanya ditulis owner (daftar "ditolak server")
+    function tglStaf(f) { return bebas(bulanDok(request.resource.data, f)); }
+    // aturanToko/kunciPeriode: naik tepat satu (pertama kali: bulan mana pun yang sudah lewat tenggang minimal), turun tepat satu dengan alasan ≥ 10 huruf
+    function bolehDikunci(b) { return b < bulanIni() - 1 || (b == bulanIni() - 1 && wib().day() > tenggangMin()); }
+    function kunciPertama() {
+      let d = request.resource.data;
+      return d.riwayat is list && d.riwayat.size() == 1 && d.sampaiBulan is string && d.sampaiBulan.matches('[0-9]{4}-[0-9]{2}')
+        && d.riwayat[0].aksi == 'kunci' && d.riwayat[0].bulan == d.sampaiBulan && d.riwayat[0].olehUid == request.auth.uid && bolehDikunci(bulanDari(d.sampaiBulan));
+    }
+    function kunciGeser() {
+      let d = request.resource.data;
+      let lama = resource.data.get('riwayat', []);
+      let s0 = resource.data.get('sampaiBulan', null);
+      // (lama.size() == 0 || …): irisan list[0:0] GALAT di server (Playground 25 Sep: "Index out of bound. Index: [-1]"), bukan list kosong
+      return d.riwayat is list && d.riwayat.size() == lama.size() + 1 && (lama.size() == 0 || d.riwayat[0:lama.size()] == lama) && d.riwayat[lama.size()].olehUid == request.auth.uid
+        && d.sampaiBulan is string && d.sampaiBulan.matches('[0-9]{4}-[0-9]{2}')
+        && ((d.riwayat[lama.size()].aksi == 'kunci' && d.riwayat[lama.size()].bulan == d.sampaiBulan && bolehDikunci(bulanDari(d.sampaiBulan))
+              && (!(s0 is string) || bulanDari(d.sampaiBulan) == bulanDari(s0) + 1))
+          || (d.riwayat[lama.size()].aksi == 'buka' && s0 is string && d.riwayat[lama.size()].bulan == s0 && bulanDari(d.sampaiBulan) == bulanDari(s0) - 1
+              && d.riwayat[lama.size()].alasan is string && d.riwayat[lama.size()].alasan.size() >= 10));
+    }
+
+    // ---- v7 PINTU TUTUP BUKU (owner 7 Okt 2026, K8 "pengecualian sempit"; sanggahan rules 7 Okt) — hanya OWNER, hanya selama pintu tahun Y terbuka; dipanggil
+    // hanya SESUDAH tglBaru / tglLama / upBaru / upLama menolak (bulan terkunci), jadi tulisan biasa tidak pernah membaca dokumen pintu. Inti klien yang sama:
+    // baru/js/data/kunci-periode.js (kpPintu, kpLewatPintu). Dokumen PINTU dibaca getAfter (saldo pembuka boleh satu kiriman dengan pintunya); BERITA ACARA
+    // dibaca get = SEBELUM batch (pintu hanya mengikuti tutup buku yang sudah tercatat — tidak bisa dikarang dalam satu kiriman).
+    // tahun Y yang pintunya terbuka & belum lewat `sampai`; 0 = tertutup
+    function pintuTahun() {
+      let p = getAfter(/databases/$(database)/documents/pengaturan/pintuBuku);
+      return p != null && p.data.get('status', '') == 'berjalan' && p.data.get('tahun', '') is number && p.data.get('sampai', null) is timestamp
+        && request.time < p.data.sampai ? int(p.data.tahun) : 0;
+    }
+    // koleksi yang memang punya SALDO PEMBUKA tutup buku (= toko.js CACHE_PEMBUKA = kunci-periode.js KP_KOLEKSI_PEMBUKA); nota, retur, uang keluar dll. TIDAK
+    function kolPembuka(kol) {
+      return kol in ['batchMasuk', 'piutangMutasi', 'kasbonMutasi', 'produksiKemasan', 'stokBahanKemasan', 'stokBahanLiteran', 'utangPemasokMutasi', 'utangOwnerMutasi',
+        'amplopLaba', 'modalOwner'];
+    }
+    // koleksi yang DIARSIP tutup buku (= tbDaftarKoleksi mesin ∩ KP_KOLEKSI = kunci-periode.js KP_KOLEKSI_PINTU; periksa_rules.py membandingkan)
+    function kolArsip(kol) {
+      return kol in ['penjualan', 'batchMasuk', 'produksiKemasan', 'retur', 'pengeluaranHarian', 'setoranKas', 'penyesuaianKemasan', 'amplopLaba', 'modalOwner',
+        'utangPemasokMutasi', 'utangOwnerMutasi', 'stokBahanKemasan', 'stokBahanLiteran', 'piutangMutasi', 'kasbonMutasi', 'penyesuaianStok', 'tutupHari', 'biayaBulanan'];
+    }
+    // salinan arsip a (arsipTahun/'Y|koleksi|id', sama dengan firebase.js arsipkanBerkas) = catatan `isi` — hanya capServer boleh beda (cache perangkat mengupasnya)
+    function salinanArsip(a, y, kol, id, isi) {
+      return a != null && a.data.get('tahun', 0) == y && a.data.get('koleksi', '') == kol && a.data.get('idAsli', '') == id
+        && isi.diff(a.data.get('dok', {})).affectedKeys().hasOnly(['capServer']);
+    }
+    // KEMBALI dari arsip (Batalkan): catatan yang ditulis = salinan arsipnya sebelum batch
+    function pulihArsip(kol, id, y) {
+      return salinanArsip(get(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)), y, kol, id, request.resource.data);
+    }
+    // CREATE bulan terkunci: saldo pembuka tahun Y (tutupBuku + tahunDari Y, koleksi pembuka saja), atau catatan yang dikembalikan dari arsip Y. b = bulan catatan
+    function pintuTulis(kol, id, b) {
+      let y = pintuTahun();
+      let d = request.resource.data;
+      return y > 0 && b <= y * 12 + 12
+        && ((kolPembuka(kol) && d.get('tutupBuku', false) == true && d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y));
+    }
+    // DELETE bulan terkunci: catatan yang SALINANNYA di arsip Y sesudah batch ini = isinya (arsip = pindah), atau saldo pembuka tahun Y (tarik saat Batalkan)
+    function pintuHapus(kol, id, b) {
+      let y = pintuTahun();
+      return y > 0 && b <= y * 12 + 12
+        && ((kolPembuka(kol) && resource.data.get('tutupBuku', false) == true && resource.data.get('tahunDari', 0) == y)
+          || salinanArsip(getAfter(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)), y, kol, id, resource.data));
+    }
+    // titik kas yang dikembalikan saat Batalkan = PERSIS titikSebelum di berita acara tahun Y (sebelum batch): tanggal & keempat kantong
+    function titikSebelum(y, d) {
+      let s = get(/databases/$(database)/documents/tutupBukuAcara/$(string(y))).data.get('titikSebelum', null);
+      return s is map && d.get('tanggal', '') == s.get('tanggal', null) && d.get('laci', null) == s.get('laci', null) && d.get('brankas', null) == s.get('brankas', null)
+        && d.get('rekening', null) == s.get('rekening', null) && d.get('amplop', null) == s.get('amplop', null);
+    }
+    // titik kas pengaturan/titikKas di bulan terkunci: hanya 31 Des Y (titik tutup buku) atau titikSebelum berita acara Y (pengembaliannya saat Batalkan)
+    function pintuTitik() {
+      let y = pintuTahun();
+      let d = request.resource.data;
+      return y > 0 && bulanDok(d, 'tanggal') <= y * 12 + 12 && (d.get('tanggal', '') == string(y) + '-12-31' || titikSebelum(y, d));
+    }
+    // membuka pintu: TAHUN LALU saja, sampai ≤ jam server + 72 jam, berita acara tahun itu SUDAH ADA sebelum batch (get), berjalan / terkunci / membatalkan, dan
+    // percobaannya dimulai sesudah 31 Des tahun itu (paraf.pada UTC ≥ 31 Des 17.00 = 1 Jan 00.00 WIB)
+    function pintuSah() {
+      let d = request.resource.data;
+      let y = d.get('tahun', 0);
+      let a = get(/databases/$(database)/documents/tutupBukuAcara/$(string(y)));
+      return d.get('status', '') == 'berjalan' && y is int && y == wib().year() - 1
+        && d.get('sampai', null) is timestamp && d.sampai > request.time && d.sampai <= request.time + duration.value(72, 'h')
+        && a != null && a.data.get('tahun', 0) == y && a.data.get('status', '') in ['berjalan', 'terkunci', 'membatalkan']
+        && a.data.get('paraf', {}).get('pada', '') >= string(y) + '-12-31T17:00:00.000Z';
+    }
+    // pintu tahun y tidak terbuka (tidak ada / tutup / tahun lain / lewat `sampai`) — p = dokumen pintu sesudah batch
+    function pintuMati(p, y) {
+      return p == null || p.data.get('status', '') != 'berjalan' || p.data.get('tahun', 0) != y || !(p.data.get('sampai', null) is timestamp) || !(request.time < p.data.sampai);
+    }
+    // berita acara jadi 'selesai' / 'dibatalkan' hanya bila pintu tahunnya tertutup sesudah kiriman itu (aplikasi menutupnya di kiriman yang sama) — 1 access call
+    // hanya untuk dua status akhir itu
+    function acaraTutupPintu(b) {
+      return !(b.get('status', '') in ['selesai', 'dibatalkan']) || pintuMati(getAfter(/databases/$(database)/documents/pengaturan/pintuBuku), b.get('tahun', 0));
+    }
+    function duaDigit(n) { return n < 10 ? '0' + string(n) : string(n); }
+    function hariUtc(t) { return string(t.year()) + '-' + duaDigit(t.month()) + '-' + duaDigit(t.day()); }
+    // berita acara BARU = tutup buku sungguhan tahun lampau (id = tahun), mulai berjalan / terkunci, jam mulai (paraf.pada, toISOString) = tanggal server ± 1 hari
+    function acaraBaru(id) {
+      let d = request.resource.data;
+      let p = d.get('paraf', {}).get('pada', '');
+      return d.get('tahun', '') is int && id == string(d.tahun) && d.tahun < wib().year() && d.get('mode', '') == 'sungguhan' && d.get('status', '') in ['berjalan', 'terkunci']
+        && p is string && p.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z')
+        && p[0:10] in [hariUtc(request.time - duration.value(1, 'd')), hariUtc(request.time), hariUtc(request.time + duration.value(1, 'd'))];
+    }
+    // salinan arsip: bulan catatan aslinya (field tanggal per koleksi = rules di atas)
+    function bulanArsip(kol, dok) { return kol == 'utangPemasokMutasi' ? bulanUP(dok) : bulanDok(dok, kol == 'biayaBulanan' ? 'bulan' : 'tanggal'); }
+    // salinan = catatan aslinya SEBELUM batch (hanya capServer boleh beda)
+    function salinanAsli(d) {
+      let asli = get(/databases/$(database)/documents/$(d.koleksi)/$(d.idAsli));
+      return asli != null && asli.data.diff(d.dok).affectedKeys().hasOnly(['capServer']);
+    }
+    // arsipTahun/'Y|koleksi|id': bentuk firebase.js arsipkanBerkas, koleksi = yang diarsip tutup buku (tbDaftarKoleksi mesin). Catatan bulan TERKUNCI wajib salinan
+    // persis aslinya (bulan terbuka: kunci saja, 1 access call). karantina / pesanan / tembusanStok tidak kena kunci periode (owner menulisnya bebas) — 0 access call
+    function arsipSah(id) {
+      let d = request.resource.data;
+      return d.get('tahun', '') is int && d.get('idAsli', '') is string && d.get('dok', null) is map && id == string(d.tahun) + '|' + d.get('koleksi', '') + '|' + d.idAsli
+        && (d.koleksi in ['karantina', 'pesanan', 'tembusanStok'] || (kolArsip(d.koleksi) && (bolehBulan(bulanArsip(d.koleksi, d.dok)) || salinanAsli(d))));
+    }
+
+    // ---- satu blok per koleksi di baru/js/data/koleksi.js (+ arsipTahun, ringkasanKasir, aksesAkun, permintaanAkses, fotoBon). Tanpa payung: yang tidak disebut = ditolak. ----
+    match /batchMasuk/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('batchMasuk', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatLahir(['ben', 'karyawan']) && tglStaf('tanggal')) || (stafCatatMasuk(['ben']) && tglStaf('tanggal'));   // v15: + kedatangan dari tablet (Penjaga laci) · v5: batch LAHIR BUKU 0 kg saja
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('batchMasuk', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /biayaBulanan/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if (owner() && tglBaru('bulan')) || (owner() && pintuTulis('biayaBulanan', id, bulanDok(request.resource.data, 'bulan')));
+      allow update: if owner() && tglUbah('bulan');
+      allow delete: if owner() && (tglLama('bulan') || pintuHapus('biayaBulanan', id, bulanDok(resource.data, 'bulan')));
+    }
+
+    match /penjualan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (owner() && pintuTulis('penjualan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatJual(['ben', 'karyawan'], ['ben']) && tglStaf('tanggal'));   // Kredit (jualBon): ben saja
+      allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('penjualan', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /produksiKemasan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('produksiKemasan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuat(['ben', 'karyawan']) && tglStaf('tanggal'));   // adukan
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('produksiKemasan', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /retur/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('retur', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('retur', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /karantina/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /pengeluaranHarian/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('pengeluaranHarian', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('pengeluaranHarian', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /stokBahanKemasan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('stokBahanKemasan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatTipe(['ben', 'karyawan'], 'pakai') && tglStaf('tanggal'));   // bukan beli
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('stokBahanKemasan', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /stokBahanLiteran/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('stokBahanLiteran', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatTipe(['ben', 'karyawan'], 'pakai') && tglStaf('tanggal'));   // bukan beli
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('stokBahanLiteran', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /katalogHargaLiteran/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /katalogHargaKemasan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /katalogHargaKarung/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /piutangMutasi/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('piutangMutasi', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatTipe(['ben', 'karyawan'], 'bayar') && tglStaf('tanggal'));   // bukan hapusBuku / saldoAwal
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('piutangMutasi', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /kasbonMutasi/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('kasbonMutasi', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('kasbonMutasi', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /penyesuaianStok/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('penyesuaianStok', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('penyesuaianStok', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /tutupHari/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('tutupHari', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('tutupHari', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /pelangganCatatan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuat(['ben', 'karyawan']);   // pelanggan baru; kartu yang sudah ada = update = owner
+      allow update, delete: if owner();
+    }
+
+    match /pesanan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuatPesanan(['ben']);   // v11 (B4): pesanan dari tablet
+      allow update: if owner() || stafUbahPesanan(['ben', 'karyawan']) || stafAturPesanan(['ben']);   // peta §5 baris 1: jadi dibayar · v11: Ben mengubah pesanan
+      allow delete: if owner();
+    }
+
+    // v10 (B3, owner 18 Nov 2026): surat jalan & antar — owner & ben membuat (bersama nota), pengantar menandai, membatalkan & menghapus = owner
+    match /suratJalan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuatSJ(['ben']);
+      allow update: if owner() || stafTandaiSJ(['ben', 'karyawan']);
+      allow delete: if owner();
+    }
+
+    match /titipanHarian/{id} {
+      allow read, write: if owner();
+    }
+
+    match /setoranKas/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('setoranKas', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('setoranKas', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /penyesuaianKemasan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('penyesuaianKemasan', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('penyesuaianKemasan', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /amplopLaba/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('amplopLaba', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('amplopLaba', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /modalOwner/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('modalOwner', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('modalOwner', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /utangOwnerMutasi/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('utangOwnerMutasi', id, bulanDok(request.resource.data, 'tanggal')));
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('utangOwnerMutasi', id, bulanDok(resource.data, 'tanggal')));
+    }
+
+    match /tembusanStok/{id} {
+      allow read, write: if owner();
+    }
+
+    match /utangPemasokMutasi/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if (owner() && upBaru()) || (owner() && pintuTulis('utangPemasokMutasi', id, bulanUP(request.resource.data)));
+      allow update: if owner() && upUbah();
+      allow delete: if owner() && (upLama() || pintuHapus('utangPemasokMutasi', id, bulanUP(resource.data)));
+    }
+
+    match /thrPelanggan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pemasokCatatan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /wadahLiteran/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuatWadah(['ben', 'karyawan']);   // v5: karyawan menuang & mengecek wadah (takar / karung / karungIsi / cek); atur & isi tetap owner
+      allow update: if owner();
+      allow delete: if owner();
+    }
+
+    match /aturanToko/{id} {
+      allow read: if owner() || (id in ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat', 'hargaTingkat', 'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])) || (id in ['tutupHari', 'kepatuhan'] && staf(['ben']));   // per dokumen (peta §3) · v8: + hargaTingkat, produkArsip · v16: + tutupHari (ben) · v20: + bukuPegangan
+      allow create: if owner() && (id != 'kunciPeriode' || kunciPertama());
+      allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());
+      allow delete: if owner() && id != 'kunciPeriode';   // dokumen kunci tidak pernah dihapus (menghapusnya = membuka semua bulan)
+    }
+
+    match /bukuHapus/{id} {
+      allow read, write: if owner();
+    }
+
+    match /tagihPelanggan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /pelangganTitip/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /perangkatStatus/{id} {
+      allow read: if owner();
+      allow create, update: if owner() || kasir() || stafDenyut(['ben', 'karyawan'], id);   // peta §5 baris 2
+      allow delete: if owner();
+    }
+
+    match /logAktivitas/{id} {
+      allow read: if owner();
+      allow create: if owner() || stafJejak(['ben', 'karyawan']);   // bukan-owner: SATU baris per kiriman berisi daftar dokumen (v7: kasir@ dicabut)
+      allow update, delete: if owner();
+    }
+
+    // v7 (hemat baca): batu nisan — satu dokumen per catatan koleksi hemat yang DIHAPUS owner lewat /baru/ ('<koleksi>|<id>'), ditulis di writeBatch YANG SAMA
+    // dengan hapusnya. capServer wajib jam server permintaan itu. Owner saja (staf belum memakai hemat baca). Tanpa get(): 0 access call. Tidak pernah dihapus otomatis.
+    match /batuNisan/{id} {
+      allow read: if owner();
+      allow create, update: if owner() && request.resource.data.capServer == request.time;
+      allow delete: if owner();
+    }
+
+    match /cadanganCatatan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pengingat/{id} {
+      allow read, write: if owner();
+    }
+
+    match /persetujuan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta membaca keputusan owner (pendengar koleksi utuh — rules bukan saringan)
+      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']) || (stafHitungLaci(['ben']) && tglStaf('tanggal')) || stafUsulBanding(['ben']);   // v21: + usul harga banding · v16: + hitungan laci tutup hari · v15: + kabar barang masuk · v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
+      allow update, delete: if owner();   // memutus (setuju / tolak) = owner
+    }
+
+    match /pindahStok/{id} {
+      allow read, write: if owner();
+    }
+
+    match /hargaWadah/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /strukKeluar/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuat(['ben', 'karyawan']);
+      allow update, delete: if owner();
+    }
+
+    match /pengaturan/{id} {
+      allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan'])) || (id == 'titikKas' && stafBacaUang());   // keamanan, aksesKasir, pintuBuku: owner saja (v7: kasir@ dicabut); titikKas: + akun bacaUang (v14)
+      // titik kas boleh MAJU dari bulan terkunci, tidak boleh mundur ke dalamnya — kecuali lewat pintu tutup buku (≤ 31 Des tahun pintu). v7: pintu tutup buku
+      // (pintuBuku) dibuka hanya dengan syarat pintuSah(); ditutup (status 'tutup') kapan saja
+      allow create, update: if owner() && (id != 'titikKas' || tglBaru('tanggal') || pintuTitik()) && (id != 'pintuBuku' || request.resource.data.get('status', '') == 'tutup' || pintuSah());
+      allow delete: if owner() && (id != 'titikKas' || tglLama('tanggal'));
+    }
+
+    match /pindahTempat/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /koreksiHpp/{id} {
+      allow read, write: if owner();
+    }
+
+    match /hargaPasar/{id} {
+      allow read, write: if owner();
+    }
+
+    match /hargaTerbit/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pesananPemasok/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pindahUang/{id} {
+      allow read: if owner() || stafBacaUang();
+      allow create: if owner() && tglBaru('tanggal');
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && tglLama('tanggal');
+    }
+
+    match /absenKaryawan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /slipUpah/{id} {
+      allow read: if owner();
+      allow create: if owner() && tglBaru('tanggal');
+      allow update: if owner() && tglUbah('tanggal');
+      allow delete: if owner() && tglLama('tanggal');
+    }
+
+    // ---- v6 (draf): berita acara tutup buku HANYA MAJU — tulisan yang tertahan di antrean perangkat lain lalu mendarat belakangan tidak boleh memundurkan
+    // atau menimpanya (rancangan §11: jalan MULAI, ambil alih, ekor pembatalan HP beku). b = isi baru, l = isi lama. Tanpa get(): 0 access call.
+    // Percobaan = paraf.pada: jam mulai dari toISOString() (UTC 'Z', selalu 24 huruf) → urutan huruf = urutan waktu. Sama di semua tulisan satu percobaan.
+    function percobaanBuku(d) { return d.get('paraf', {}).get('pada', ''); }
+    function pemegangBuku(d) { return d.get('pemegang', {}).get('id', ''); }
+    // percobaan yang SAMA: status hanya maju. 'dibatalkan' → 'membatalkan' = sisa saldo pembuka yang mendarat belakangan ditarik lagi (jam batalnya tetap)
+    function majuBuku(b, l) {
+      return (l.get('status', '') + '>' + b.get('status', '')) in ['berjalan>berjalan', 'berjalan>terkunci', 'berjalan>membatalkan', 'terkunci>terkunci',
+          'terkunci>membatalkan', 'terkunci>selesai', 'membatalkan>membatalkan', 'membatalkan>dibatalkan', 'dibatalkan>membatalkan']
+        && (l.get('status', '') != 'dibatalkan' || b.get('dibatalkanPada', '') == l.get('dibatalkanPada', ''));
+    }
+    // pemegang tetap — kecuali AMBIL ALIH (status sama, pemegangLama = pemegang sekarang, jam ambil alih lebih baru) atau pembatalan lanjutan dari 'dibatalkan'
+    function pemegangBukuSah(b, l) {
+      return pemegangBuku(b) == pemegangBuku(l)
+        || (b.get('status', '') == l.get('status', '') && pemegangBuku(l) != '' && b.get('pemegangLama', {}).get('id', '') == pemegangBuku(l)
+          && b.get('diambilAlihPada', '') > l.get('diambilAlihPada', ''))
+        || (l.get('status', '') == 'dibatalkan' && b.get('status', '') == 'membatalkan');
+    }
+    // percobaan BARU: hanya di atas 'dibatalkan'; mulai 'berjalan' (banyak kiriman) atau langsung 'terkunci' (satu kiriman); jam mulainya lebih baru
+    function mulaiLagiBuku(b, l) {
+      return l.get('status', '') == 'dibatalkan' && b.get('status', '') in ['berjalan', 'terkunci']
+        && percobaanBuku(b).matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z') && percobaanBuku(b) > percobaanBuku(l);
+    }
+    function ubahBukuSah(b, l) {
+      return (percobaanBuku(b) == percobaanBuku(l) && majuBuku(b, l) && pemegangBukuSah(b, l)) || mulaiLagiBuku(b, l);
+    }
+    match /tutupBukuAcara/{id} {
+      allow read: if owner();
+      // v7 (sanggahan rules 7 Okt): berita acara baru berbentuk tutup buku sungguhan, jam mulainya = tanggal server ± 1 hari (pintu tutup buku mengikutinya)
+      allow create: if owner() && acaraBaru(id);
+      // kirim ulang identik (SDK mengulang mutasi yang jawabannya hilang) tidak mengubah apa pun → boleh juga di atas 'selesai' / 'dibatalkan'.
+      // v7: selesai / dibatalkan hanya bila pintu tutup buku tahun itu tertutup sesudah kiriman itu
+      allow update: if owner() && (tulisUlangSama() || (ubahBukuSah(request.resource.data, resource.data) && acaraTutupPintu(request.resource.data)));
+      // v7: hanya berita acara yang 'dibatalkan' — yang selesai tidak bisa dihapus lalu dibuat lagi (pintu tahun itu tidak bisa dibuka lagi)
+      allow delete: if owner() && resource.data.get('status', '') == 'dibatalkan';
+    }
+
+    match /dokumenCetak/{id} {
+      allow read, write: if owner();
+    }
+    // putaran 24: modul pajak — owner saja (omzet diketik owner & jejak setoran; tanpa NIK/NPWP/rekening)
+    match /pajakOmzetLuar/{id} {
+      allow read, write: if owner();
+    }
+    match /pajakSetoran/{id} {
+      allow read, write: if owner();
+    }
+
+    match /aksesAkun/{uid} {
+      allow read: if owner() || (masuk() && request.auth.uid == uid);
+      allow create, update: if owner() && request.resource.data.uid == uid && request.resource.data.peran in ['ben', 'karyawan'] && request.resource.data.aktif is bool;   // tak pernah owner
+      allow delete: if owner();
+    }
+
+    match /permintaanAkses/{uid} {
+      allow create: if masuk() && request.auth.uid == uid && !owner() && !kasir()
+        && !exists(/databases/$(database)/documents/aksesAkun/$(uid))
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'nama', 'pada']) && request.resource.data.uid == uid
+        && request.resource.data.email == string(request.auth.token.email).lower()
+        && request.resource.data.nama is string && request.resource.data.nama.size() >= 2 && request.resource.data.nama.size() <= 40;
+      allow read, delete: if owner();
+    }
+
+    match /arsipTahun/{id} {
+      allow read: if owner();   // arsip tutup buku: owner saja
+      // v7 (sanggahan rules 7 Okt): salinan berbentuk 'Y|koleksi|id' dan — bila catatan aslinya di bulan terkunci — persis catatan aslinya
+      allow create, update: if owner() && arsipSah(id);
+      allow delete: if owner();
+    }
+
+    // v7 (paket E-2): foto kertas bon pemasok, satu dokumen per foto (base64 JPEG yang dikecilkan di perangkat; Storage tidak dipakai). Tidak diubah —
+    // foto salah = hapus lalu foto lagi. Koleksi ini SENGAJA tidak ada di baru/js/data/koleksi.js (tidak didengar; dibaca saat bon dibuka).
+    match /fotoBon/{id} {
+      allow read: if owner();
+      allow create: if owner() && request.resource.data.get('id', '') == id && request.resource.data.get('idBon', 0) is string && request.resource.data.idBon.size() > 0
+        && request.resource.data.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp']
+        && request.resource.data.get('base64', 0) is string && request.resource.data.base64.size() > 0 && request.resource.data.base64.size() <= 960000;
+      allow delete: if owner();
+    }
+
+    // v10 (B3): bukti terima antar — dibaca saat surat jalan dibuka (tidak didengar); dibuat penulisnya sendiri; tanpa ubah (salah = owner hapus)
+    match /buktiTerima/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if (owner() || stafBuat(['ben', 'karyawan'])) && buktiSah(id);
+      allow delete: if owner();
+    }
+
+    // v11 (B4, owner 18 Nov 2026): jadwal order rutin pelanggan — owner & ben membuat dan mengubah (kolom terbatas), hapus owner
+    match /orderRutin/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuat(['ben']);
+      allow update: if owner() || stafUbahRutin(['ben']);
+      allow delete: if owner();
+    }
+
+    // v12 (paket S2b, owner 19 Nov 2026): tanda kenal — pasangan kode (barcode kemasan / nomor seri kartu NFC) → sasaran (barang di rak / pembeli).
+    // Tambah-saja; didaftarkan dari tablet (akun tablet) atas nama penulisnya; ubah & hapus owner
+    match /tandaKenal/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuat(['ben', 'karyawan']);
+      allow update, delete: if owner();
+    }
+
+    // v13 (owner 21 Nov 2026): token notifikasi HP / Mac owner — ditulis perangkat owner saat notifikasi dinyalakan; dibaca fungsi server lewat Admin SDK
+    match /notifOwner/{id} {
+      allow read, write: if owner();
+    }
+
+    // v17 (owner 23 Nov 2026): token push APLIKASI TABLET (FCM Android) — ditulis akun yang masuk di tablet atas namanya (id = uid + '_' + perangkatId);
+    // dibaca fungsi server kabarTablet lewat Admin SDK. Bukan-owner tidak membaca & tidak menghapus (dimatikan = token dikosongkan).
+    match /notifPerangkat/{id} {
+      allow read, delete: if owner();
+      allow create, update: if owner() || stafTokenPush(['ben', 'karyawan'], id);
+    }
+
+    // v19 (owner 24 Nov 2026): cek mingguan timbangan & gudang — dicatat owner atau Penjaga laci dari tablet (tambah-saja); dibaca owner & staf (jadwal berikutnya)
+    match /cekGudang/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafCekGudang(['ben'], id);
+      allow update, delete: if owner();
+    }
+
+    // v22 (owner 26 Nov 2026): tanda "sudah dikerjakan" kalender kepatuhan — dicatat owner atau Penjaga laci dari tablet (tambah-saja); dibaca owner & Penjaga laci
+    match /kepatuhanCek/{id} {
+      allow read: if owner() || staf(['ben']);
+      allow create: if owner() || stafCekPatuh(['ben'], id);
+      allow update, delete: if owner();
+    }
+
+    // v23 (owner 26 Nov 2026): karcis ambil nanti — titipan barang yang sudah dibayar & barang yang diserahkan (tambah-saja); dibaca owner, Penjaga laci & karyawan
+    match /ambilBarang/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafAmbilBarang(['ben', 'karyawan'], id);
+      allow update, delete: if owner();
+    }
+
+    // v23 (owner 26 Nov 2026): cek sisa bon dari HP pelanggan — ringkasan per pelanggan bernama kode acak; dibaca SIAPA PUN yang tahu kodenya, tidak bisa didaftar
+    match /bonPublik/{kode} {
+      allow get: if kode.size() >= 20;
+      allow list: if owner();
+      allow create, update, delete: if owner();
+    }
+
+    match /ringkasanKasir/{id} {
+      allow read: if owner() || kasir();
+      allow write: if owner();
+    }
+  }
+}

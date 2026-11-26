@@ -19,6 +19,8 @@ import { JB_BELUM } from './jenis-beras-logika.js';
 import { pesananSemua } from './belanja-logika.js';
 import { ajDaftar } from './antar-logika.js';
 import { poDaftarAktif, poHariKe } from './pesanan-logika.js';
+// paket tanggal janji (owner 27 Nov 2026, sensus B55): kedatangan & antaran yang LEWAT JANJI — satu sumber dengan Laporan › Pondasi › Tepat janji
+import { jnLewat, jnKataJanji } from './janji-logika.js';
 import { daftarKarantina } from './stok-karantina-logika.js';
 import { susunWadah } from './stok-logika.js';
 import { lbRingkasKemasan } from './label-logika.js';
@@ -120,6 +122,9 @@ export function gdTugas(kini, w) {
     return { n: d.length, ket: d.length ? d.slice(0, 3).map((p) => (p.pemasok || 'pemasok') + ' ' + tanggalPendek(p.tanggal)).join(' · ') : 'tidak ada', awas: false, tujuan: { ke: 'harga', keluarga: 'belanja' } }; });
   baris('pesanan', 'Pesanan pelanggan belum dikirim', () => { const hP = poHariKe(iso); const d = poDaftarAktif('').filter((o) => o.status === 'dipesan'); const segera = d.filter((o) => o.tanggalKirim && poHariKe(o.tanggalKirim) - hP <= 1);
     return { n: d.length, ket: d.length ? (segera.length ? segera.length + ' dikirim hari ini / besok · ' : '') + d.slice(0, 3).map((o) => o.nama + (o.tanggalKirim ? ' ' + tanggalPendek(o.tanggalKirim) : '')).join(' · ') : 'tidak ada', awas: segera.length > 0, tujuan: { ke: 'jual', lembar: 'pesanan' } }; });
+  baris('janji', 'Lewat janji datang / antar', () => { const L = jnLewat(kini); const P = L.filter((x) => x.jenis === 'pemasok'); const A = L.filter((x) => x.jenis !== 'pemasok');
+    return { n: L.length, ket: L.length ? [P.length ? P.length + ' pesanan pemasok' : '', A.length ? A.length + ' kiriman pelanggan' : ''].filter(Boolean).join(' · ') + ' · ' + L.slice(0, 3).map((x) => x.nama + ' ' + jnKataJanji(x.janji) + ' (telat ' + x.telat + ' hr)').join(' · ') : 'tidak ada yang lewat janji',
+      awas: L.length > 0, tujuan: L.length ? L[0].tujuan : { ke: 'laporan', keluarga: 'pondasi' }, daftar: L }; });
   baris('antar', 'Antar masih di jalan / gagal', () => { const A = ajDaftar(iso, ''); const n = A.jalan.length + A.gagal.length;
     return { n, ket: n ? A.jalan.length + ' di jalan · ' + A.gagal.length + ' gagal belum dibereskan' : 'tidak ada', awas: A.gagal.length > 0, tujuan: { ke: 'jual', lembar: 'antar' } }; });
   baris('karantina', 'Karantina menunggu keputusan', () => { const K = daftarKarantina(W);

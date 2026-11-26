@@ -11,7 +11,7 @@ import * as PR from '../inti/printer.js';
 import { hasilTakDiketahui, masihMencetak, printerSibuk, KALIMAT_MASIH_MENCETAK, asliAda } from '../inti/perangkat.js';
 import { fbnKecilkan, fbnSrc, fbnKB } from './foto-bon-logika.js';
 import { tombolAkun, bukanOwner } from './akses-layar.js';
-import { tulisDokumen, kabarKiriman, ambilPenjualanSemua } from '../data/toko.js';
+import { tulisDokumen, kabarKiriman, ambilPenjualanSemua, ambilPesanan } from '../data/toko.js';
 
 const KABAR_PERMISI = 'Server belum membuka tempat surat jalan / bukti terima (rules v10 — diterbitkan owner di Firebase Console). Sesudah terbit, coba lagi.';
 const isiRingkas = (x) => (x.isi || []).map((b) => b.nama + ' ' + String(b.jumlah).replace('.', ',') + ' ' + b.satuan).join(' · ');
@@ -117,8 +117,10 @@ export function buatPanelAntar(ctx) {
     // ---- draf antar di Bayar
     ajBuat: () => { const tb = tombolAkun(akun(), 'antar'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ antar: AJ.ajDrafBaru(S().pelanggan), ambilNanti: false, kabar: '' }); },   // diantar ≠ dititip (owner 26 Nov 2026: karcis ambil nanti)
     ajLepas: () => { const s = S(); set({ antar: null, cara: s.antar && s.antar.cod ? 'Tunai' : s.cara, kabar: 'Tidak jadi diantar — nota ini nota biasa', kabarAwas: false }); },
-    ajKetik: (v, el) => { const s = S(); if (!s.antar) return; const k = el.dataset.kolom; if (['alamat', 'ongkir', 'catatan'].indexOf(k) < 0 && !(k === 'pengantar' && s.antar.pengantarKetik)) return;
-      const o = {}; o[k] = String(v || '').slice(0, k === 'ongkir' ? 12 : k === 'pengantar' ? 30 : 160); set({ antar: Object.assign({}, s.antar, o) }); },
+    ajKetik: (v, el) => { const s = S(); if (!s.antar) return; const k = el.dataset.kolom; if (['alamat', 'ongkir', 'catatan', 'janji'].indexOf(k) < 0 && !(k === 'pengantar' && s.antar.pengantarKetik)) return;
+      const o = {}; o[k] = String(v || '').slice(0, k === 'ongkir' ? 12 : k === 'pengantar' ? 30 : k === 'janji' ? 10 : 160); set({ antar: Object.assign({}, s.antar, o) }); },
+    // paket tanggal janji (owner 27 Nov 2026): "dijanjikan sampai" — pil hari ini / besok, atau tanggal lain (kosong = bawaan: tanggal kirim pesanan / hari ini)
+    ajJanji: ({ t }) => { const s = S(); if (!s.antar) return; set({ antar: Object.assign({}, s.antar, { janji: String(t || '') }) }); },
     ajPilih: ({ kolom, n }) => { const s = S(); if (!s.antar || ['pengantar', 'kendaraan'].indexOf(kolom) < 0) return; const o = {}; o[kolom] = s.antar[kolom] === n && kolom === 'kendaraan' ? '' : String(n || ''); if (kolom === 'pengantar') o.pengantarKetik = false; set({ antar: Object.assign({}, s.antar, o) }); },
     // yang mengantar bukan dari daftar (kurir lepas / bukan pegawai tetap): ketik namanya
     ajPengantarLain: () => { const s = S(); if (!s.antar || s.antar.pengantarKetik) return; set({ antar: Object.assign({}, s.antar, { pengantar: '', pengantarKetik: true }), kabar: '' }); },
@@ -207,11 +209,22 @@ export function buatPanelAntar(ctx) {
         <div><div class="ket">Catatan untuk pengantar</div><input class="ketik-nama" type="text" value="${a.catatan}" data-ketik="ajKetik" data-kolom="catatan" data-k="aj-catatan" placeholder="mis. taruh di dapur"></div>
       </div>
       ${ongkirSah ? (t.ongkir ? h`<div class="ket">ongkir ${RP(t.ongkir)} masuk nota sebagai baris sendiri (bukan jualan beras)</div>` : '') : h`<div class="ket awas-teks">Ongkir: ketik angka rupiah (0 – ${RP(AJ.AJ_TARIF_MAKS)})</div>`}
+      ${gambarJanji(s, a)}
       <div class="label">Yang mengantar</div>${gambarPengantar(a, A)}
       ${A.kendaraan.length ? h`<div class="label">Kendaraan</div>${pil('kendaraan', A.kendaraan)}` : ''}
       <div class="tombol-baris"><div class="kaca-btn ${a.cod ? 'aktif emas' : ''}" data-aksi="ajCod" data-k="aj-cod">${a.cod ? '✓ Bayar di tempat' : 'Bayar di tempat'}</div></div>
       ${a.cod ? h`<div class="pita-info emas" data-k="aj-cod-pita">BAYAR DI TEMPAT — nota dicatat sekarang sebagai bon sementara atas nama ${s.pelanggan || '… (pilih nama pembelinya)'}; ${a.pengantar || 'pengantar'} menagih ${RP(Math.max(0, t.total))} dan membawa uangnya pulang. Bebas batas kredit hari ini; kalau sampai tutup hari uangnya belum disetor, Dasbor & tutup hari memerah.</div>` : ''}
     </div>`;
+  }
+  /** paket tanggal janji: dijanjikan sampai ke pembeli. Bawaan = tanggal kirim pesanan yang diikat ke keranjang, atau hari ini (antar-logika ajJanjiAntar). */
+  function gambarJanji(s, a) {
+    const ps = s.pesananId ? (ambilPesanan() || []).find((p) => String(p.id) === String(s.pesananId)) : null; const iso = hari();
+    const J = AJ.ajJanjiAntar(a, ps && ps.tanggalKirim, iso); const besok = new Date(Date.parse(iso + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
+    const pil = [[iso, 'hari ini'], [besok, 'besok']].concat(J.sumber === 'pesanan' && J.tanggal !== iso && J.tanggal !== besok ? [[J.tanggal, 'tanggal kirim pesanan']] : []);
+    const lain = !pil.some(([t]) => t === J.tanggal);
+    return h`<div data-k="aj-janji"><div class="label">Dijanjikan sampai</div><div class="bendera">${pil.map(([t, nm]) => h`<span class="pil ${J.tanggal === t ? 'nyala' : ''}" data-aksi="ajJanji" data-t="${t}" data-k="aj-janji-${nm}">${nm} · ${tanggalPendek(t).replace(/ \d{4}$/, '')}</span>`)}</div>
+      <input class="ketik-nama" type="date" value="${lain ? J.tanggal : ''}" data-ketik="ajKetik" data-kolom="janji" data-k="aj-janji-tgl" aria-label="tanggal dijanjikan sampai lain">
+      <div class="ket">${J.sumber === 'pesanan' ? 'Dari tanggal kirim pesanannya' + (J.tanggal < iso ? ' — sudah lewat, tetap dicatat apa adanya' : '') + '. ' : J.sumber === 'hari' ? 'Bawaan: sampai hari ini. ' : ''}Dipakai menghitung antar tepat waktu (Laporan › Pondasi › Tepat janji).</div></div>`;
   }
   /** Pilihan yang mengantar: daftar Atur + yang pernah mengantar (kurir lepas) + "orang lain" (ketik nama). */
   function gambarPengantar(a, A) {

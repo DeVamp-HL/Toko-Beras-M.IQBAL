@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.join(AKAR, 'alat-uji'))
 import bundel_baru  # noqa: E402
 import peta_akses   # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = peta_akses.MODUL_KIRIM + ['baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js']
+MODUL = list(dict.fromkeys(peta_akses.MODUL_KIRIM + ['baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js']))   # paket tanggal janji: MODUL_KIRIM kini memuat bon-pemasok-logika (janji-logika) — tanpa modul ganda
 
 SKENARIO = r"""
 var lulus = 0, gagal = [];

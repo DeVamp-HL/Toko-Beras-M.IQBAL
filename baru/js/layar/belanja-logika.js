@@ -280,15 +280,19 @@ export function penuhiTruk(H, pemasok, pesan) {
  * yang berganti-ganti. Dokumen tetap mencatat baris per merek (penanda "sudah dipesan" per merek) + barisHarga = apa yang dikirim ke pemasok.
  * Tinjauan E1: harga yang lebih tua dari kiriman terakhir pemasok itu ditulis umurnya — "• IR64 Rp…/kg (harga 18 Sep) — …" — supaya tidak terbaca harga yang diminta toko.
  */
-export function susunPesanan(pesan, pemasok, w, waHarga) {
+export function susunPesanan(pesan, pemasok, w, waHarga, janji, oleh) {
   const H = hitungBelanja(pesan, new Date(w.kini)); const R = H.perP.find((r) => r.pemasok === pemasok); if (!R) return { tolak: 'Pemasok itu tidak dikenal' }; if (!R.karung) return { tolak: 'Belum ada karung untuk ' + pemasok + ' di daftar' };
-  const baris = ['*Pesanan Toko Beras M.IQBAL*', tanggalPendek(w.tanggal) + ' · untuk ' + R.pemasok].concat(R.g.map((g) => g.teks)).concat(['Jumlah ' + R.karung + ' karung · ' + blKG(R.kg)]).concat(waHarga ? ['Perkiraan ' + RP(R.rp)] : []);
+  // paket tanggal janji (owner 27 Nov 2026): janji datang boleh dipilih saat mengirim (bentuk = janji-logika jnKolomJanjiBaru; kosong = belum ada janji, diisi
+  // sesudah pemasok membalas). Janji sebelum hari ini tidak dipakai. Ikut tertulis di pesan WA supaya pemasok tahu tanggal yang diminta.
+  const jt = String(janji || '').trim(); const adaJanji = /^\d{4}-\d{2}-\d{2}$/.test(jt) && jt >= w.tanggal;
+  const baris = ['*Pesanan Toko Beras M.IQBAL*', tanggalPendek(w.tanggal) + ' · untuk ' + R.pemasok].concat(R.g.map((g) => g.teks)).concat(['Jumlah ' + R.karung + ' karung · ' + blKG(R.kg)]).concat(waHarga ? ['Perkiraan ' + RP(R.rp)] : []).concat(adaJanji ? ['Mohon dikirim ' + tanggalPendek(jt)] : []);
   const nomor = nomorWa(R.kontak); const tautan = 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(baris.join('\n'));
   const data = { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, pemasok: R.pemasok, baris: R.d.map((b) => ({ merk: b.merk, karung: b.k, berat: b.berat, kg: b.kg, hargaPerKg: b.pakai.harga })),
     barisHarga: R.g.map((g) => ({ hargaPerKg: g.harga, berat: g.berat, jenis: g.jenis, karung: g.k, kg: g.kg, merk: g.merk.filter((b) => b.k > 0).map((b) => b.merk) })), karung: R.karung, kg: R.kg, rp: R.rp, status: 'menunggu', teks: baris.join('\n'), keNomor: nomor };
+  if (adaJanji) { data.janjiTanggal = jt; data.janjiRiwayat = [{ tanggal: jt, pada: w.kini, oleh: String(oleh || '').slice(0, 40) }]; }
   const sisa = Object.assign({}, pesan || {}); R.d.forEach((b) => { delete sisa[b.merk]; });
   return { dokumen: [{ koleksi: 'pesananPemasok', data }], tautan, baris, pesanSisa: sisa, lebihTeks: R.lebih ? 'Pesanan ini ' + blKG(R.kg) + ' — lebih ' + blKG(R.lebih) + ' dari satu truk (' + blKG(H.atur.muatanKg) + '). Boleh, tapi berarti lebih dari satu kali antar.' : '', uangTeks: R.uangTeks,
-    patch: { wa: null, kabar: 'Pesanan ' + R.pemasok + ' (' + R.karung + ' karung) dicatat sebagai menunggu datang' + (nomor ? ' · WhatsApp ke ' + R.kontak : ' · nomor pemasok belum ada di kartu — WhatsApp menanyakan tujuannya') + '. Dicocokkan dengan kedatangannya di Barang masuk.', kabarAwas: false } };
+    patch: { wa: null, kabar: 'Pesanan ' + R.pemasok + ' (' + R.karung + ' karung) dicatat sebagai menunggu datang' + (adaJanji ? ', janji datang ' + tanggalPendek(jt) : ', janji datang belum diisi') + (nomor ? ' · WhatsApp ke ' + R.kontak : ' · nomor pemasok belum ada di kartu — WhatsApp menanyakan tujuannya') + '. Dicocokkan dengan kedatangannya di Barang masuk.', kabarAwas: false } };
 }
 export function susunUbahPesanan(id, status, w) {
   const p = ambilPesananPemasok().find((x) => String(x.id) === String(id)); if (!p) return { tolak: 'Pesanan itu sudah tidak ada' }; if (status !== 'batal' && status !== 'datang') return { tolak: 'Keadaan tidak dikenal' };

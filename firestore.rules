@@ -1,4 +1,13 @@
 // ============================================================================
+// ATURAN FIRESTORE v24 FINAL — Toko Beras M.IQBAL (DRAF 27 Nov 2026, JANJI DATANG PEMASOK dari tablet) = v23 FINAL + PERSIS satu fungsi baru dan satu blok
+// yang dipecah (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v23; uji server: docs/uji-rules-v24.md). Owner menerbitkan v24 SEKALI lewat
+// Console SEBELUM cabang paket tanggal janji digabung (tanpa v24 pendengar pesananPemasok di tablet Penjaga laci ditolak server dan disebut di Sistem › Perangkat;
+// janji datang dari tablet belum bisa disimpan; Belanja owner, janji antar, dan hitungan tepat janji tetap jalan):
+//   (v24-1) pesananPemasok read: + staf(['ben']) — Penjaga laci melihat pesanan ke pemasok (pemasok, isi karung, tanggal pesan, janji datang) di Barang masuk
+//           tablet. Karyawan TIDAK. Buat & hapus TETAP owner saja.
+//   (v24-2) pesananPemasok update: + stafJanjiPemasok(['ben']) — mengisi / menggeser JANJI DATANG pesanan yang masih menunggu, atas nama pengubahnya
+//           (diubahOlehUid): kolom janjiTanggal (YYYY-MM-DD) & janjiRiwayat (daftar ≤ 30) + atribusi saja. Isi pesanan, status, rupiah tidak tersentuh.
+// Sisanya = v23 FINAL di bawah ini, apa adanya. Kepala v23:
 // ATURAN FIRESTORE v23 FINAL — Toko Beras M.IQBAL (DRAF 26 Nov 2026, KARCIS AMBIL NANTI & CEK BON DARI HP) = v22 FINAL + PERSIS satu fungsi baru dan dua
 // blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v22; uji server: docs/uji-rules-v23.md). Owner menerbitkan v23 SEKALI lewat
 // Console SEBELUM cabang paket QR kedua digabung (tanpa v23 pendengar ambilBarang di tablet ditolak server dan disebut di Sistem › Perangkat; titipan & cek bon
@@ -16,7 +25,7 @@
 // menerbitkan v22 SEKALI lewat Console SEBELUM cabang stok minus, label & kepatuhan digabung (tanpa v22 pendengar aturanToko/kepatuhan & kepatuhanCek di tablet
 // Penjaga laci ditolak server dan disebut di Sistem › Perangkat; layar owner tetap jalan):
 //   (v22-1) aturanToko read: + dokumen 'kepatuhan' untuk Penjaga laci (ben) — daftar butir kalender kepatuhan & bentuk usaha yang diisi owner (owner 26 Nov 2026:
-//           "Owner + Ben dari tablet"). Karyawan TIDAK. Tulis TETAP owner saja. Bukan data uang / stok.
+//           "Owner + Penjaga laci dari tablet"). Karyawan TIDAK. Tulis TETAP owner saja. Bukan data uang / stok.
 //   (v22-2) blok kepatuhanCek — tanda "sudah dikerjakan" satu putaran butir kalender: tambah-saja. read owner || staf(ben) · create owner || stafCekPatuh(ben) — atas
 //           nama penulisnya (olehUid), kolom id = id dokumen, tanggal YYYY-MM-DD, butir = id butir [a-z0-9-] 1–40, periode 4–10 huruf [0-9K-], catatan ≤ 160 huruf,
 //           kolom dibatasi · ubah & hapus OWNER saja. Tidak ada rupiah, kg, atau tanggal buku yang dikunci periode.
@@ -288,6 +297,13 @@ service cloud.firestore {
         && d.get('jenis', '') in ['titip', 'ambil'] && d.get('trxId', 0) is string && d.trxId.size() > 0 && d.trxId.size() <= 60
         && d.get('isi', 0) is list && d.isi.size() > 0 && d.isi.size() <= 20 && d.get('catatan', '') is string && d.get('catatan', '').size() <= 160
         && d.keys().hasOnly(['id', 'tanggal', 'jam', 'jenis', 'trxId', 'namaPelanggan', 'isi', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v24 (paket tanggal janji, owner 27 Nov 2026: "Owner + Penjaga laci dari tablet"): Penjaga laci mengisi / menggeser JANJI DATANG pesanan ke pemasok yang masih menunggu
+    function stafJanjiPemasok(peranBoleh) {
+      let d = request.resource.data;
+      return masuk() && aktifDengan(akun(), peranBoleh) && d.get('diubahOlehUid', '') == request.auth.uid && resource.data.get('status', '') == 'menunggu'
+        && d.get('janjiTanggal', 0) is string && d.janjiTanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}') && d.get('janjiRiwayat', 0) is list && d.janjiRiwayat.size() <= 30
+        && d.diff(resource.data).affectedKeys().hasOnly(['janjiTanggal', 'janjiRiwayat', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
     }
     function stafBuatTipe(peranBoleh, tipe) { return stafBuat(peranBoleh) && request.resource.data.tipe == tipe; }
     // v5 (putaran 39, owner 29 Sep 2026): karyawan menuang & mengecek wadah literan — hanya catatan takar / karung / karungIsi / cek (aturan wadah & titik samakan isi tetap owner)
@@ -866,8 +882,11 @@ service cloud.firestore {
       allow read, write: if owner();
     }
 
+    // v24 (paket tanggal janji, owner 27 Nov 2026): Penjaga laci membaca pesanan ke pemasok & mengisi / menggeser janji datangnya; buat & hapus owner
     match /pesananPemasok/{id} {
-      allow read, write: if owner();
+      allow read: if owner() || staf(['ben']);
+      allow create, delete: if owner();
+      allow update: if owner() || stafJanjiPemasok(['ben']);
     }
 
     match /pindahUang/{id} {

@@ -145,7 +145,10 @@ export function poSusunPesanan(draf, w, opsi) {
     const lama = poAmbil(d.id); if (!lama) return { tolak: 'Pesanan tidak ditemukan' };
     if (!pesananBelumTuntas(lama)) return { tolak: 'Pesanan ini sudah ' + (lama.status === 'batal' ? 'dibatalkan' : 'jadi nota') + ' — tidak bisa diubah' };
     if (kunciPelanggan(lama.namaPelanggan) !== kunciPelanggan(nama)) return { tolak: 'Nama pemesan tidak bisa diganti (uang muka & bon atas nama ' + lama.namaPelanggan + ') — batalkan lalu buat pesanan baru' };
-    ps = Object.assign({}, lama, kolom, { riwayatStatus: (lama.riwayatStatus || []).concat([{ status: lama.status || 'dipesan', pada: w.kini, ubah: true }]) });
+    // paket tanggal janji (owner 27 Nov 2026): tanggal kirim = JANJI ke pelanggan — ubahannya tercatat di baris riwayat ubah (kirimDari → kirimKe) supaya tepat waktu
+    // dihitung dari janji pertama (janji-logika jnJanjiPesanan). riwayatStatus sudah di kolom ubah Penjaga laci (rules v11) — tanpa rules baru.
+    const geserKirim = String(lama.tanggalKirim || '') !== tk ? { kirimDari: String(lama.tanggalKirim || ''), kirimKe: tk } : {};
+    ps = Object.assign({}, lama, kolom, { riwayatStatus: (lama.riwayatStatus || []).concat([Object.assign({ status: lama.status || 'dipesan', pada: w.kini, ubah: true }, geserKirim)]) });
   } else {
     ps = Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, namaPelanggan: nama }, kolom, { status: 'dipesan', trxIdJual: null, riwayatStatus: [{ status: 'dipesan', pada: w.kini }] });
     if (d.dariJadwal && d.dariJadwal.id) { ps.jadwalId = String(d.dariJadwal.id); ps.jadwalTanggal = String(d.dariJadwal.tanggal || ''); }

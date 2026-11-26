@@ -32,7 +32,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru, peta_akses  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = peta_akses.MODUL_KIRIM + ['baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/tablet-logika.js']
+MODUL = list(dict.fromkeys(peta_akses.MODUL_KIRIM + ['baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/tablet-logika.js']))   # paket tanggal janji: MODUL_KIRIM kini memuat bon-pemasok-logika (janji-logika) — tanpa modul ganda
 STATIS = ['baru/js/data/firebase.js', 'baru/js/app.js', 'baru/index.html', 'baru/js/layar/menu.js', 'baru/css/gerbang.css', 'baru/js/data/akses.js', 'baru/js/layar/sistem-logika.js', 'baru/css/identitas.css']
 JAM = "var __KINI = new Date('2026-11-16T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 

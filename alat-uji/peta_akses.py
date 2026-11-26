@@ -191,6 +191,7 @@ MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru
                'baru/js/layar/titipan-logika.js',   # owner 21 Nov 2026: titipan dari tablet — Uang, papan Persetujuan & tutup hari memakainya
                'baru/js/layar/banding-catat-logika.js',   # paket Banding pemasok (owner 26 Nov 2026, rules v21): usul harga tawaran / acuan dari tablet
                'baru/js/layar/patuh-logika.js',   # paket Stok minus, label & kepatuhan (owner 26 Nov 2026, rules v22): tanda kalender kepatuhan dari tablet
+               'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/janji-logika.js',   # paket tanggal janji (owner 27 Nov 2026, rules v24): janji datang pesanan pemasok dari tablet
                'baru/js/layar/berat-asli-logika.js']   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Jual, retur, Barang masuk)
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
@@ -402,6 +403,20 @@ pasok('katalogHargaLiteran', [{ id: 'Campur Enam', merk: 'Campur Enam', hargaPer
   if (p === 'karyawan' && !kirim(p, TC.dokumen).dilewati) salah('perangkat karyawan meloloskan tanda kalender — rules v22 hanya Penjaga laci');
   if (p === 'ben' && kirim(p, TC.dokumen).dilewati) salah('perangkat Penjaga laci menolak tanda kalender yang sah: ' + kirim(p, TC.dokumen).dilewati);
 });
+
+// ---- 12 · paket tanggal janji (owner 27 Nov 2026, rules v24 stafJanjiPemasok): janji datang pesanan ke pemasok dari tablet = SATU pesananPemasok diubah
+//        (kolom janji saja — Penjaga laci, tindakan kedatangan; karyawan ditolak perangkat & server). Pesanannya sendiri dibuat owner (Belanja).
+pasok('pesananPemasok', [{ id: 'pp1', tanggal: W.tanggal, jam: '08:00', pemasok: 'Pemasok Contoh', karung: 10, kg: 500, rp: 6000000, baris: [{ merk: 'Angsa', karung: 10, berat: 50, kg: 500, hargaPerKg: 12000 }], status: 'menunggu' }]);
+['ben', 'karyawan'].forEach(function (p) {
+  var ak = { uid: p === 'ben' ? 'uid-ben' : 'uid-kry', nama: p === 'ben' ? 'Ben Contoh' : 'Karyawan Contoh', peran: p };
+  var JP = jnSusunJanjiPemasok('pp1', W.tanggal, W, ak.nama); if (JP.tolak) { salah('janji pemasok contoh ditolak: ' + JP.tolak); return; }
+  var lama = ambilPesananPemasok()[0]; var DJ = JP.dokumen.map(function (x) { return { koleksi: x.koleksi, data: x.data, ada: true, lama: lama }; });
+  var rJ = periksaKiriman(AKUN[p], DJ, [], HAK_LONGGAR);
+  catat('janji pemasok', p, 'isi / geser janji datang (satu pesananPemasok diubah, kolom janji)', rJ.tolak ? { dilewati: rJ.tolak } : { ac: DJ.length + 1, dok: DJ.length, ditolakPerangkat: false });
+  if (p === 'karyawan' && !rJ.tolak) salah('perangkat karyawan meloloskan janji pemasok — rules v24 hanya Penjaga laci');
+  if (p === 'ben' && rJ.tolak) salah('perangkat Penjaga laci menolak janji pemasok yang sah: ' + rJ.tolak);
+});
+pasok('pesananPemasok', []);
 
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas
 var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru', isiUlang: 'isi ulang wadah', antar: 'antar', terimaAntar: 'terima antar', pesanan: 'pesanan', kedatangan: 'barang masuk' };
