@@ -62,3 +62,10 @@ Di **v20** kasus ★E4 & ★E5 DITOLAK (bentuk usul banding belum dibuka); kasus
 `alat-uji/uji_rules_emulator.py` bagian **V21** (workflow *Uji rules di emulator*, jalan otomatis di PR yang mengubah `firestore.rules`): kesembilan belas kasus
 di atas atas `firestore.rules` (v21) dan atas `firestore.rules.v20` — yang berbeda wajib persis ★E4 & ★E5 — plus kontrol (ubahan v21 dirusak → kasus
 sasarannya wajib berbalik). Semua kasus v20 sampai v7 lama tetap dijalankan atas v21 dan wajib sama hasilnya.
+
+## Hasil Playground & terbit
+
+**v21 TERBIT 26 Nov 2026 07.56 WIB** (riwayat Console "Today • 7:56 AM"). Isi editor sebelum Publish dan isi yang terbit sesudah halaman dimuat ulang sama
+persis dengan `firestore.rules` cabang ini: SHA-256 berawalan `2d076497ff87cf6a`, 80.082 byte, baris 2 `ATURAN FIRESTORE v21 FINAL`.
+Playground (akun uji owner: UID `uid-uji`, email `owner@tokoberasmiqbal.web.app`): ★E3 get → *Simulated read allowed* · ★E1 create (id, bulan) →
+*Simulated write allowed* · ★E2 update (status disetujui) → *Simulated write allowed* — ketiganya sesuai kolom Wajib.
