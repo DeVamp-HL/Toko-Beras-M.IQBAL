@@ -576,6 +576,16 @@ export function rekapHari(iso, bayaran) {
   return { iso, jenis: geRingkas((t) => t === iso), omzet: L.omzetPenuh, retur: Math.round(((returUangPerHari()[iso] || {}).uang) || 0), n: jumlahNota((t) => t === iso), margin: L.margin, jumlahTanpaHpp: L.jumlahTanpaHpp, tunai: K.pos.tunai, qris: K.pos.qris, transfer: K.pos.transfer || 0, kredit: K.kreditBulanIni, nKredit: jumlahNota((t) => t === iso, (p) => caraBayarKunci(p) === 'kredit'), pelunasan: K.pos.pelunasan, refund: K.pos.refund, keluarHarian: K.pos.harian, prive: K.pos.prive, setoran: K.pos.setoran, belanja: K.pos.belanja, bayarBon: K.pos.bayarBon, biayaBulanan: K.pos.biayaBulanan,
     totalMasuk: K.totalMasuk, totalKeluar: K.totalKeluar, bersih: K.bersih, masuk: K.masuk.filter((x) => x.nominal > 0), keluar: K.keluar.filter((x) => x.nominal > 0), perJam, maksJam, tutup: tutup ? { jam: tutup.jam || '', selisih: Number(tutup.selisihLaci || tutup.selisih || 0), sistemBaru: !!tutup.sistemBaru } : null, buku, kosong: L.jumlahTrx === 0 && K.totalMasuk === 0 && K.totalKeluar === 0 };
 }
+/** B94 (owner 27 Nov 2026, saringan Dasbor untuk semua kartu): rekap RENTANG [dari, sampai] untuk kartu Hari ini yang disaring — omzet, laba kotor, nota, retur =
+ *  lpRataNota (lpHariRentang, sama dengan kartu Periode); uang per cara bayar = arus kas mesin rentang itu (hitungArusKasInti, rumus yang sama dengan rekapHari per
+ *  hari). Rentang yang menyentuh tahun yang diarsip tutup buku: cara bayar & per jenis null + diarsip (catatannya ikut arsip — disebut, bukan Rp0). */
+export function lpRekapRentang(dari, sampai, bayaran) {
+  const X = lpRataNota(dari, sampai); const arsip = lpBulanDitutup(dari, sampai).length > 0; const cocok = (t) => !!t && t >= dari && t <= sampai;
+  const K = arsip ? null : hitungArusKasInti(cocok, bayaran || ugBayaran());
+  return { dari, sampai, jenis: arsip ? null : geRingkas(cocok), omzet: X.omzet, n: X.nota, retur: X.retur, margin: X.margin, jumlahTanpaHpp: X.tanpaHpp, rata: X.rata,
+    tunai: K ? K.pos.tunai : null, qris: K ? K.pos.qris : null, transfer: K ? K.pos.transfer || 0 : null, kredit: K ? K.kreditBulanIni : null,
+    nKredit: arsip ? null : jumlahNota(cocok, (p) => caraBayarKunci(p) === 'kredit'), diarsip: arsip };
+}
 /** Paket B · rekap hari di tahun yang sudah ditutup buku: omzet, nota, margin dari potret hari; uang per cara bayar, per jam, arus kas & buku kas hari itu
  *  ikut arsip → null / kosong dan `diarsip` (layar menyebutnya, tidak menggambar Rp0). Tahun tanpa potret: `tanpaPotret`. */
 function lpHariArsip(iso) {

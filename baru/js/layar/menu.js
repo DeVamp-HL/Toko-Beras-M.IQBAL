@@ -210,7 +210,7 @@ export function pasangLayarMenu(akar, opsi) {
     pindahIsi: (v, el) => { const p = Object.assign({}, st().pindah); p[el.dataset.kolom] = String(v).slice(0, 10); set({ pindah: p }); }, pindahPilih: ({ kolom, nilai }) => { const p = Object.assign({}, st().pindah); p[kolom] = p[kolom] === nilai ? '' : nilai; set({ pindah: p, kabar: '' }); },
     pindahSimpan: async () => { const p = st().pindah; if (await tulis(S.susunPindahStok(p.merk, p.dari, p.ke, p.kg, p.pengantar, waktu()))) set({ pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' } }); },
     // paket KPI laba: Target & ambang (aturanToko/kpiLaba)
-    kpiKetik: (v, el) => { const A = KL.klAtur(); const a = Object.assign({ targetHarian: A.targetHarian ? String(A.targetHarian) : '', kasMinimum: A.kasMinimum ? String(A.kasMinimum) : '' }, st().aturKpi || {}); a[el.dataset.kolom] = String(v).slice(0, 16); set({ aturKpi: a }); },
+    kpiKetik: (v, el) => { const A = KL.klAtur(); const a = Object.assign({ targetHarian: A.targetHarian ? String(A.targetHarian) : '', kasMinimum: A.kasMinimum ? String(A.kasMinimum) : '', bungaModal: A.bungaDariOwner ? String(A.bungaModal).replace('.', ',') : '' }, st().aturKpi || {}); a[el.dataset.kolom] = String(v).slice(0, 16); set({ aturKpi: a }); },
     // paket KPI laba (butir 14): cek mingguan gudang — jawab hal, catatan, simpan (owner & Penjaga laci)
     cgHal: ({ hal, v }) => { const a = Object.assign({ cek: {}, catatan: '' }, st().cekG || {}); a.cek = Object.assign({}, a.cek, { [hal]: v === '1' }); set({ cekG: a }); },
     cgCatatan: (v) => { const a = Object.assign({ cek: {}, catatan: '' }, st().cekG || {}); a.catatan = String(v).slice(0, 160); set({ cekG: a }); },
@@ -786,13 +786,17 @@ export function pasangLayarMenu(akar, opsi) {
   function gambarTarget(s, d) {
     const A = KL.klAtur(); const T = KL.klTargetHari(d); const C = KL.klKasMinimum(); const a = s.aturKpi;
     const nilai = (n) => (n > 0 ? String(n) : '');
-    const isian = (k, label, ket, ph) => h`<div class="at-baris" data-k="kpi-${k}"><div>${label}<div class="k2">${ket}</div></div><input class="ketik-nama" type="text" inputmode="numeric" placeholder="${ph}" value="${a ? a[k] : nilai(A[k])}" data-ketik="kpiKetik" data-kolom="${k}"><span class="k2">rupiah</span></div>`;
+    const isian = (k, label, ket, ph, satuan, isiAwal) => h`<div class="at-baris" data-k="kpi-${k}"><div>${label}<div class="k2">${ket}</div></div><input class="ketik-nama" type="text" inputmode="${satuan ? 'decimal' : 'numeric'}" placeholder="${ph}" value="${a ? a[k] : isiAwal !== undefined ? isiAwal : nilai(A[k])}" data-ketik="kpiKetik" data-kolom="${k}"><span class="k2">${satuan || 'rupiah'}</span></div>`;
+    // A121 (owner 27 Nov 2026): bunga modal stok — kosong = bawaan 6 % setahun, 0 = mati; Dasbor › Margin & target menghitung biaya modal yang tertahan di stok
+    const MT = (() => { try { return KL.klModalTertahan(d, null, null); } catch (e) { return null; } })();
     return h`<div class="kartu" data-k="kpi-keadaan" style="gap: 6px;"><div class="label">Sekarang</div>
         <div class="pg-baris" data-k="kpi-t"><div><div style="font-weight: 600;">Omzet hari ini ${RP(T.omzet)}${T.target ? ' dari ' + RP(T.target) : ''}</div><div class="k2">${T.teks}</div></div><div class="n"><span class="pg-cap ${T.lampu === 'merah' ? 'awas' : ''}">${T.lampu === 'tanpa' ? 'tanpa target' : T.lampu}</span></div></div>
-        <div class="pg-baris" data-k="kpi-k"><div><div style="font-weight: 600;">${C.nyala ? 'Kas ' + (C.kas === null ? '—' : RP(C.kas)) + ' · ambang ' + RP(C.batas) : 'Ambang kas minimum mati'}</div><div class="k2">${C.teks}</div></div><div class="n">${C.bawah ? h`<span class="pg-cap awas">kurang</span>` : ''}</div></div></div>
+        <div class="pg-baris" data-k="kpi-k"><div><div style="font-weight: 600;">${C.nyala ? 'Kas ' + (C.kas === null ? '—' : RP(C.kas)) + ' · ambang ' + RP(C.batas) : 'Ambang kas minimum mati'}</div><div class="k2">${C.teks}</div></div><div class="n">${C.bawah ? h`<span class="pg-cap awas">kurang</span>` : ''}</div></div>
+        ${MT && MT.rata !== null ? h`<div class="pg-baris" data-k="kpi-m"><div><div style="font-weight: 600;">Modal tertahan di stok ${RP(Math.round(MT.rata))} rata-rata · bunga ${KL.klPctTeks(MT.bunga)}${MT.dariOwner ? '' : ' (bawaan)'}</div><div class="k2">${MT.kalimat}</div></div></div>` : ''}</div>
       <div class="kartu" data-k="kpi-atur" style="gap: 8px;"><div class="serif" style="font-size: 18px;">Atur sendiri · Target & ambang</div>
         ${isian('targetHarian', 'Target omzet harian', T.bawaan ? 'kosong = omzet impas per hari ' + RP(T.bawaan) + ' (Laporan › Biaya)' : 'kosong = omzet impas per hari (belum bisa dihitung)', T.bawaan ? 'impas ' + RP(T.bawaan) : 'impas')}
         ${isian('kasMinimum', 'Ambang kas minimum', 'Dasbor memperingatkan bila laci + brankas + rekening + amplop di bawah angka ini · kosong = mati', 'mati')}
+        ${isian('bungaModal', 'Bunga modal stok', 'biaya modal yang tertahan di stok = rata-rata nilai stok × bunga ini · kosong = bawaan ' + KL.KL_BUNGA_BAWAAN + ' % setahun · 0 = mati · bukan biaya di laba bersih', 'bawaan ' + KL.KL_BUNGA_BAWAAN, '% setahun', A.bungaDariOwner ? String(A.bungaModal).replace('.', ',') : '')}
         <div class="tombol-baris" style="grid-template-columns: 1fr 1fr;"><div class="kaca-btn" data-aksi="kpiBatal">batal</div><div class="kaca-btn aktif emas" data-aksi="kpiSimpan">SIMPAN</div></div>
         <div class="k2">Target margin per jenis diatur di Harga & Pemasok › Katalog (saran harga). Batas HPP per kg per merek diatur di Stok › Barang masuk. Lampu target: hijau = tercapai · kuning = sesuai laju jam toko · merah = di bawah laju.</div></div>`;
   }

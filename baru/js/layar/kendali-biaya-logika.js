@@ -45,6 +45,10 @@ export const JENIS_BIAYA = [
 /** Dua baris yang mesin taruh di BAWAH laba kotor tapi bukan biaya toko: hapus buku piutang & susut. Susut boleh diberi anggaran (= toleransi). */
 export const JENIS_BAWAH = [{ id: 'hapus', nama: 'Hapus buku piutang', sifat: 'lain', ket: 'piutangMutasi tipe hapusBuku (mesin laba)' }, { id: 'susut', nama: 'Susut & selisih stok', sifat: 'lain', ket: 'penyesuaian stok/kemasan & opname kantong (mesin laba) — positif = stok berkurang = biaya' }];
 export const ID_ANGGARAN = JENIS_BIAYA.filter((j) => j.id !== 'lain').map((j) => j.id).concat(['susut']);
+/** A47 (owner 27 Nov 2026): PPh final (perkiraan) = POS ANGGARAN SENDIRI — anggarannya disimpan di dokumen yang sama (anggaran.pph), tapi BUKAN baris biaya
+ *  (tidak ikut Σ jenis = biaya mesin, laba bersih, titik impas; keputusan owner: pos sisihan). Angkanya: kpi-laba-logika klPph. */
+export const ID_ANGGARAN_PAJAK = 'pph';
+const KB_ID_SIMPAN = ID_ANGGARAN.concat([ID_ANGGARAN_PAJAK]);
 export const ATUR_KENDALI_BAWAAN = { anggaran: {}, ambang: 10, ambangPemicu: 10, kata: {} };
 const KB_POS_TETAP = POS_BIAYA_BULANAN.map((p) => p.kunci);
 
@@ -59,7 +63,7 @@ const kbBiayaBank = (h) => !!(h.dariBayarBon || h.dariPindah) || /^biaya admin/i
 
 // ---------- aturan owner ----------
 export function aturKendali() {
-  const a = ugAturDok('kendaliBiaya') || {}; const anggaran = {}; ID_ANGGARAN.forEach((id) => { const n = Number(a.anggaran && a.anggaran[id]); anggaran[id] = isFinite(n) && n > 0 ? Math.round(n) : 0; });
+  const a = ugAturDok('kendaliBiaya') || {}; const anggaran = {}; KB_ID_SIMPAN.forEach((id) => { const n = Number(a.anggaran && a.anggaran[id]); anggaran[id] = isFinite(n) && n > 0 ? Math.round(n) : 0; });
   const persen = (v, b) => (isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= 100 ? Math.round(Number(v) * 10) / 10 : b);
   const kata = {}; JENIS_BIAYA.forEach((j) => { const d = a.kata && Array.isArray(a.kata[j.id]) ? a.kata[j.id] : []; kata[j.id] = d.map(kbPolos).filter(Boolean); });
   return { anggaran, ambang: persen(a.ambang, ATUR_KENDALI_BAWAAN.ambang), ambangPemicu: persen(a.ambangPemicu, ATUR_KENDALI_BAWAAN.ambangPemicu), kata, dariOwner: !!ugAturDok('kendaliBiaya'), nAnggaran: ID_ANGGARAN.filter((id) => anggaran[id] > 0).length, tanggal: a.tanggal || '' };
@@ -254,17 +258,17 @@ export function belumDipilah(K, maks) {
 }
 
 // ---------- atur: anggaran, ambang, kata kunci — satu dokumen aturanToko/kendaliBiaya ----------
-export function drafAtur() { const A = aturKendali(); const anggaran = {}; ID_ANGGARAN.forEach((id) => { anggaran[id] = A.anggaran[id] ? String(A.anggaran[id]) : ''; }); const kata = {}; JENIS_BIAYA.forEach((j) => { kata[j.id] = (A.kata[j.id] || []).join(', '); }); return { anggaran, ambang: String(A.ambang), ambangPemicu: String(A.ambangPemicu), kata }; }
+export function drafAtur() { const A = aturKendali(); const anggaran = {}; KB_ID_SIMPAN.forEach((id) => { anggaran[id] = A.anggaran[id] ? String(A.anggaran[id]) : ''; }); const kata = {}; JENIS_BIAYA.forEach((j) => { kata[j.id] = (A.kata[j.id] || []).join(', '); }); return { anggaran, ambang: String(A.ambang), ambangPemicu: String(A.ambangPemicu), kata }; }
 const kbPecahKata = (teks) => { const out = []; String(teks || '').split(/[,;\n]/).forEach((x) => { const k = kbPolos(x); if (k && out.indexOf(k) < 0) out.push(k); }); return out; };
 export function susunAturKendali(isi, w) {
-  const anggaran = {}; for (const id of ID_ANGGARAN) { const v = isi.anggaran ? isi.anggaran[id] : ''; const n = ugKosong(v) ? 0 : ugAngka(v); if (n < 0) return { tolak: 'Anggaran ' + id + ' tidak boleh minus' }; if (n > 1000000000) return { tolak: 'Anggaran ' + id + ' terlalu besar (maksimal Rp1.000.000.000 sebulan)' }; anggaran[id] = Math.round(n); }
+  const anggaran = {}; for (const id of KB_ID_SIMPAN) { const v = isi.anggaran ? isi.anggaran[id] : ''; const n = ugKosong(v) ? 0 : ugAngka(v); if (n < 0) return { tolak: 'Anggaran ' + id + ' tidak boleh minus' }; if (n > 1000000000) return { tolak: 'Anggaran ' + id + ' terlalu besar (maksimal Rp1.000.000.000 sebulan)' }; anggaran[id] = Math.round(n); }
   const ambang = ugKosong(isi.ambang) ? ATUR_KENDALI_BAWAAN.ambang : Number(String(isi.ambang).replace(',', '.')); if (!(isFinite(ambang) && ambang >= 0 && ambang <= 100)) return { tolak: 'Ambang lampu ditulis dalam persen 0–100 (10 = amber sampai 10 % di atas anggaran)' };
   const ambangPemicu = ugKosong(isi.ambangPemicu) ? ATUR_KENDALI_BAWAAN.ambangPemicu : Number(String(isi.ambangPemicu).replace(',', '.')); if (!(isFinite(ambangPemicu) && ambangPemicu >= 0 && ambangPemicu <= 100)) return { tolak: 'Ambang pemicu ditulis dalam persen 0–100' };
   const kata = {}; const punya = {}; let nKata = 0;
   for (const j of JENIS_BIAYA) { if (j.id === 'upah' || j.id === 'tetap' || j.id === 'lain') continue; const d = kbPecahKata(isi.kata ? isi.kata[j.id] : ''); for (const k of d) { if (k.length > 40) return { tolak: 'Kata kunci "' + k.slice(0, 20) + '…" terlalu panjang (maksimal 40 huruf)' }; if (punya[k] && punya[k] !== j.id) return { tolak: '"' + k + '" ada di ' + punya[k] + ' DAN ' + j.id + ' — satu kata satu jenis' }; punya[k] = j.id; } if (d.length > 40) return { tolak: 'Kata kunci ' + j.nama + ' lebih dari 40 — ringkas dulu' }; kata[j.id] = d; nKata += d.length; }
   const nAnggaran = ID_ANGGARAN.filter((id) => anggaran[id] > 0).length;
   return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'kendaliBiaya', tanggal: w.tanggal, jam: w.jam, anggaran, ambang: Math.round(ambang * 10) / 10, ambangPemicu: Math.round(ambangPemicu * 10) / 10, kata } }],
-    patch: { aturB: null, kabar: 'Aturan kendali biaya disimpan — ' + nAnggaran + ' anggaran diisi · ambang lampu ' + kbPctTeks(ambang) + ' · ambang pemicu ' + kbPctTeks(ambangPemicu) + ' · ' + nKata + ' kata kunci owner', kabarAwas: false } };
+    patch: { aturB: null, kabar: 'Aturan kendali biaya disimpan — ' + nAnggaran + ' anggaran diisi' + (anggaran.pph > 0 ? ' · PPh final ' + RP(anggaran.pph) + ' sebulan' : '') + ' · ambang lampu ' + kbPctTeks(ambang) + ' · ambang pemicu ' + kbPctTeks(ambangPemicu) + ' · ' + nKata + ' kata kunci owner', kabarAwas: false } };
 }
 /** Satu keterangan "belum dipilah" diberi jenis = keterangannya (dipolos) ditambahkan ke kata kunci owner jenis itu; semua catatan seketerangan ikut berpindah (sekarang & seterusnya). */
 export function susunTambahKata(jenis, teks, w) {

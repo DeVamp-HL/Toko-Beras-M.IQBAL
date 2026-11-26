@@ -14,11 +14,11 @@
 //
 // SUSUT di harga: TIDAK masuk harga minimum (rumus yang owner setujui: modal + biaya + laba). Ditampilkan di sampingnya sebagai "HPP layak jual" (A64) = modal
 // beras ÷ (1 − target susut) dan "minimum kalau susut ikut" — angka bantu, tidak menyalakan tanda. Kemasan hasil adukan tidak dikenai: susut adukannya sudah di modalnya.
-import { akhirBulanIso, MULAI_SUSUT_LABA } from '../mesin/pembantu.js';
-import { ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilProduksiBerlaku, ingatPerVersi, ingatNeraca, tahunDiarsip, catatanPertama } from '../data/toko.js';
+import { akhirBulanIso, MULAI_SUSUT_LABA, batchDiutang } from '../mesin/pembantu.js';
+import { ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilProduksiBerlaku, ingatPerVersi, ingatNeraca, tahunDiarsip, catatanPertama, ambilAbsenKaryawan } from '../data/toko.js';
 import { RP, KG, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { ugAturDok, ugAngka, ugKosong, ugLabaBersih } from './uang-logika.js';
-import { aturMerek, merekBulan, susutRentang, lpPersenTeks, daftarBulan, lpNamaBulan } from './laporan-logika.js';
+import { ugAturDok, ugAngka, ugKosong, ugLabaBersih, ugTambahHari } from './uang-logika.js';
+import { aturMerek, merekBulan, susutRentang, lpPersenTeks, daftarBulan, lpNamaBulan, daftarMinggu } from './laporan-logika.js';
 import { kbBiayaKgBulan } from './kendali-biaya-logika.js';
 import { hgSemua } from './harga-logika.js';
 import { hetKatalog, hetAtur } from './het-logika.js';
@@ -241,8 +241,9 @@ function shHppPeriodeHitung(key, kini) {
   const d = new Date(Date.UTC(Number(awal.slice(0, 4)), Number(awal.slice(5, 7)) - 1, 1) - 86400000).toISOString().slice(0, 10); const pertama = catatanPertama() || '';
   const N0 = pertama && d >= pertama ? ingatNeraca(d) : null; const N1 = ingatNeraca(sampai); const dalam = (t) => !!t && t >= awal && t <= sampai;
   let beli = 0, dicatat = 0, nBeli = 0;
-  ambilSemuaBatch().forEach((b) => { if (!b || b.lahirBuku || !dalam(b.tanggal)) return; const rp = (b.merkList || []).reduce((a, m) => a + (Number(m && m.subtotalHarga) || 0), 0) + (Number(b.biayaBongkar) || 0);
-    if (b.stokAwal || b.tutupBuku) dicatat += rp; else { beli += rp; nBeli += 1; } });
+  // paket sisa sensus (owner 27 Nov 2026, B68): satu aturan nilai kedatangan dengan grafik pembelian (shNilaiKedatangan) — "+ Pembelian" = batang bulannya
+  ambilSemuaBatch().forEach((b) => { if (!dalam(b && b.tanggal)) return; const V = shNilaiKedatangan(b); if (V.jenis === 'lewat') return;
+    if (V.jenis === 'dicatat') dicatat += V.rp; else { beli += V.rp; nBeli += 1; } });
   const bahan = ambilBahanKemasan().concat(ambilBahanLiteran()).reduce((a, x) => a + (x.tipe === 'beli' && dalam(x.tanggal) && Number(x.jumlah) > 0 ? Number(x.hargaTotal) || 0 : 0), 0);
   const upah = ambilProduksiBerlaku().reduce((a, p) => a + (dalam(p.tanggal) ? Number(p.upahRepacking) || 0 : 0), 0);
   const stokAwal = N0 ? N0.stok : 0; const stokAkhir = N1.stok; const hppPeriode = stokAwal + beli + dicatat + bahan + upah - stokAkhir;
@@ -266,3 +267,93 @@ export function shDasborSusut(M, kini) {
 }
 /** Laporan › Mingguan: susut per merek minggu itu (susutRentang apa adanya) + target untuk pembanding. */
 export function shMinggu(awal, akhir, kini) { const R = susutRentang(awal, akhir); const T = shTarget(kini); return Object.assign({}, R, { target: T, status: R.susut ? shBandingTarget(R.susut.pct, T.pct) : null }); }
+
+// ==================== PAKET SISA SENSUS (owner 27 Nov 2026) · B68 PEMBELIAN & A74 SUSUT PER PENJAGA ====================
+/**
+ * B68 — SATU KEDATANGAN SEBAGAI PEMBELIAN: rupiah = Σ harga beras di nota pemasok (merkList.subtotalHarga) + bongkar — aturan yang SAMA dengan baris "+ Pembelian"
+ * HPP periode (shHppPeriode memanggil fungsi ini). Kedatangan "lahir buku" (bukan barang datang) = 'lewat'; stok awal / saldo pembuka tutup buku = 'dicatat'
+ * (bukan belanja). bon = kedatangan yang dibayar nanti (caraBayar utang, pembantu batchDiutang — sama dengan Bon pemasok); selain itu dibayar langsung.
+ */
+export function shNilaiKedatangan(b) {
+  if (!b || b.lahirBuku) return { jenis: 'lewat', rp: 0, kg: 0, bon: false };
+  const rp = (b.merkList || []).reduce((a, m) => a + (Number(m && m.subtotalHarga) || 0), 0) + (Number(b.biayaBongkar) || 0);
+  const kg = (b.merkList || []).reduce((a, m) => a + (m && m.bentuk !== 'bal' ? Number(m.totalKg) || 0 : 0), 0);
+  return { jenis: b.stokAwal || b.tutupBuku ? 'dicatat' : 'beli', rp, kg, bon: batchDiutang(b) };
+}
+const shNamaPemasok = (b) => String(b.pemasok || '').trim() || '(tanpa nama pemasok)';
+/** Pembelian rentang [dari, sampai]: rupiah, kg, jumlah kedatangan, BON vs dibayar langsung, pemasok terbesar. Menyentuh tahun yang diarsip tutup buku = disebut. */
+export function shPembelian(dari, sampai) { return ingatPerVersi('shPembelian|' + dari + '|' + sampai, () => shPembelianHitung(String(dari), String(sampai))); }
+function shPembelianHitung(dari, sampai) {
+  const dalam = (t) => !!t && t >= dari && t <= sampai; const out = { dari, sampai, rp: 0, kg: 0, n: 0, bon: { rp: 0, n: 0 }, langsung: { rp: 0, n: 0 }, dicatat: 0, nDicatat: 0, pemasok: [] }; const per = {};
+  ambilSemuaBatch().forEach((b) => { if (!dalam(b && b.tanggal)) return; const V = shNilaiKedatangan(b); if (V.jenis === 'lewat') return;
+    if (V.jenis === 'dicatat') { out.dicatat += V.rp; out.nDicatat += 1; return; }
+    out.rp += V.rp; out.kg += V.kg; out.n += 1; const c = V.bon ? out.bon : out.langsung; c.rp += V.rp; c.n += 1;
+    const nm = shNamaPemasok(b); const g = per[nm] || (per[nm] = { pemasok: nm, rp: 0, kg: 0, n: 0 }); g.rp += V.rp; g.kg += V.kg; g.n += 1; });
+  out.kg = shBulat(out.kg); out.pemasok = Object.keys(per).map((k) => per[k]).sort((a, b) => b.rp - a.rp || a.pemasok.localeCompare(b.pemasok));
+  out.diarsip = tahunDiarsip(dari) || tahunDiarsip(sampai);
+  return out;
+}
+export const SH_RENTANG_BELI = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
+/** Grafik pembelian per hari (14) · minggu (8, Senin–Minggu) · bulan (6) — rentang sama dengan tren omzet Dasbor (Laporan › Harian/Mingguan/Bulanan). Batang bulan
+ *  menutup ke "+ Pembelian" HPP periode bulan itu. Sebelum toko mencatat / tahun yang diarsip = absen (disebut), bukan Rp0. */
+export function shTrenBeli(rentang, kini) {
+  const k = shKini(kini); const iso = hariIniIso(k); const pertama = catatanPertama() || '';
+  const satu = (dari, sampai, x) => { const absen = !pertama || sampai < pertama || tahunDiarsip(sampai); const P = absen ? null : shPembelian(dari, sampai);
+    return Object.assign({ dari, sampai, absen, rp: P ? P.rp : 0, bon: P ? P.bon.rp : 0, langsung: P ? P.langsung.rp : 0, kg: P ? P.kg : 0, n: P ? P.n : 0, nBon: P ? P.bon.n : 0 }, x); };
+  let batang; const r = SH_RENTANG_BELI.some((x) => x[0] === rentang) ? rentang : 'bulan';
+  if (r === 'minggu') batang = daftarMinggu(k, 8).reverse().map((m) => satu(m.awal, m.akhir, { id: m.awal, label: m.pendek, panjang: 'Minggu ' + m.label, berjalan: m.berjalan, tujuan: { ke: 'stok', lembar: 'masuk' } }));
+  else if (r === 'hari') { batang = []; for (let i = 13; i >= 0; i--) { const t = ugTambahHari(iso, -i); batang.push(satu(t, t, { id: t, label: String(Number(t.slice(8, 10))), panjang: tanggalPendek(t) + (i === 0 ? ' · hari ini' : ''), berjalan: i === 0, tujuan: { ke: 'stok', lembar: 'masuk' } })); } }
+  else batang = daftarBulan(k, 6).reverse().map((b) => satu(b.key + '-01', akhirBulanIso(b.key), { id: b.key, label: b.pendek, panjang: b.nama, berjalan: b.berjalan, tujuan: { ke: 'laporan', keluarga: 'bulanan', bulan: b.key } }));
+  const ada = batang.filter((b) => !b.absen);
+  return { rentang: r, batang, maks: Math.max(1, ...ada.map((b) => b.rp)), rp: ada.reduce((a, b) => a + b.rp, 0), bon: ada.reduce((a, b) => a + b.bon, 0), n: ada.reduce((a, b) => a + b.n, 0),
+    periode: r === 'hari' ? '14 hari terakhir' : r === 'minggu' ? batang.length + ' minggu terakhir (Senin–Minggu)' : batang.length + ' bulan terakhir', sumber: 'Stok › Barang masuk', tujuan: { ke: 'stok', lembar: 'masuk' },
+    rumus: 'Pembelian = Σ harga beras di nota pemasok + bongkar per kedatangan (stok awal & saldo pembuka bukan belanja) — sama dengan "+ Pembelian" HPP periode Laporan › Bulanan' };
+}
+
+/**
+ * A74 — SUSUT PER PENJAGA (keputusan owner 27 Nov 2026: "yang jaga di rentang itu"; cuma laporan, TIDAK memotong upah). Tiap baris susut & selisih stok
+ * (baris yang sama dengan Laporan: hitungan beras karung, kemasan, kantong & bahan bernilai Rp ≠ 0 sejak MULAI_SUSUT_LABA) dibagi ke orang yang MASUK KERJA
+ * menurut hari kerja (absenKaryawan: 1 = sehari, ½ = setengah) SESUDAH hitungan sebelumnya barang yang sama sampai hari hitungan ini — hitungan cocok persis
+ * (Rp0) ikut jadi batas. Belum pernah dihitung sebelumnya = sejak catatan pertama toko. Owner tidak tercatat di hari kerja → tidak kebagian. Rentang tanpa satu
+ * pun hari kerja tercatat = "tanpa catatan hari kerja". Bagian terakhir menerima sisa pembulatan: Σ orang + tanpa catatan = Σ baris susut, persis.
+ */
+export const SH_TANPA_JAGA = '(tanpa catatan hari kerja)';
+export const SH_RUMUS_PENJAGA = 'Susut tiap hitungan dibagi ke yang masuk kerja (Uang › Upah › hari kerja) sejak hitungan sebelumnya barang itu sampai hari hitungan ini, sebanding hari kerjanya. Owner tidak tercatat di hari kerja, jadi tidak kebagian. Laporan saja — upah tidak dipotong.';
+const shKunciHitung = (jenis, x) => (jenis === 'stok' ? 'k|' + String(x.merk || '') : jenis === 'kemasan' ? 'm|' + String(x.namaProduk || '') + '|' + String(x.ukuranKemasan || '') : 'b|' + jenis + '|' + String(x.jenis || ''));
+/** Hari kerja per tanggal: { iso: { nama: bobot } } dari absenKaryawan (1 · 0,5; 0 / kosong = tidak masuk). */
+function shPetaJaga() {
+  const peta = {}; ambilAbsenKaryawan().forEach((d) => { const nm = String((d && d.nama) || '').trim(); if (!nm || !d.hari || typeof d.hari !== 'object') return;
+    Object.keys(d.hari).forEach((t) => { const v = Number(d.hari[t]); if (!/^\d{4}-\d\d-\d\d$/.test(t) || !(v === 1 || v === 0.5)) return; const h = peta[t] || (peta[t] = {}); h[nm] = (h[nm] || 0) + v; }); });
+  return peta;
+}
+export function shSusutPenjaga(awal, akhir) { return ingatPerVersi('shSusutPenjaga|' + awal + '|' + akhir, () => shSusutPenjagaHitung(String(awal), String(akhir))); }
+function shSusutPenjagaHitung(awal, akhir) {
+  // semua hitungan (juga yang cocok persis / sebelum MULAI_SUSUT_LABA / di luar rentang) = batas rentang jaga; rework karantina (kgFisik null) bukan hitungan
+  const hitung = []; const tambah = (jenis, x, kg, nama, batas) => { if (!x || !x.tanggal) return; hitung.push({ jenis, x, kunci: shKunciHitung(jenis, x), tanggal: String(x.tanggal), jam: String(x.jam || ''), id: Number(x.id) || 0, kg, nama, batas: batas !== false }); };
+  // rework karantina (kgFisik null) tetap baris susut Laporan, tapi bukan hitungan gudang → tidak menjadi batas rentang jaga
+  ambilPenyesuaianStok().forEach((x) => tambah('stok', x, Number(x && x.selisihKg) || 0, String((x && x.merk) || '(karung)'), !(x && (x.dariRework || x.kgFisik === null))));
+  ambilPenyesuaianKemasan().forEach((x) => tambah('kemasan', x, 0, String((x && x.namaProduk) || '') + ' ' + (x && x.ukuranKemasan) + ' kg'));
+  ambilBahanKemasan().forEach((x) => { if (x && x.tipe === 'opname') tambah('bahanKemasan', x, 0, 'kantong & bahan'); });
+  ambilBahanLiteran().forEach((x) => { if (x && x.tipe === 'opname') tambah('bahanLiteran', x, 0, 'kantong literan'); });
+  hitung.sort((a, b) => a.tanggal.localeCompare(b.tanggal) || a.jam.localeCompare(b.jam) || a.id - b.id);
+  const sebelum = {}; const pertama = catatanPertama() || ''; const J = shPetaJaga(); const per = {}; let total = 0, n = 0;
+  const orang = (nm) => (per[nm] = per[nm] || { nama: nm, nBaris: 0, susutKg: 0, susutRp: 0, naikKg: 0, naikRp: 0, hariJaga: 0 });
+  hitung.forEach((h) => {
+    const lalu = sebelum[h.kunci]; if (h.batas) sebelum[h.kunci] = h.tanggal; const rp = h.x.nilaiRp;
+    if (typeof rp !== 'number' || !isFinite(rp) || rp === 0 || h.tanggal < MULAI_SUSUT_LABA || h.tanggal < awal || h.tanggal > akhir) return;
+    total += rp; n += 1;
+    // rentang jaga: sesudah hari hitungan sebelumnya sampai hari ini (hitungan sebelumnya di hari yang sama → hari itu saja); belum pernah → sejak catatan pertama
+    const mulai = lalu ? (lalu < h.tanggal ? ugTambahHari(lalu, 1) : h.tanggal) : (pertama && pertama <= h.tanggal ? pertama : h.tanggal);
+    const bobot = {}; for (let t = mulai, i = 0; t <= h.tanggal && i < 400; t = ugTambahHari(t, 1), i++) { const d = J[t]; if (d) Object.keys(d).forEach((nm) => { bobot[nm] = (bobot[nm] || 0) + d[nm]; }); }
+    const nama = Object.keys(bobot).sort(); const tot = nama.reduce((a, k) => a + bobot[k], 0); const bagi = tot > 0 ? nama.map((k) => ({ nama: k, w: bobot[k] })) : [{ nama: SH_TANPA_JAGA, w: 1 }]; const tb = tot > 0 ? tot : 1;
+    let jalan = 0; bagi.forEach((y, j) => { const g = orang(y.nama); const r = j === bagi.length - 1 ? rp - jalan : rp * y.w / tb; jalan += r; const kg = h.kg * y.w / tb; g.nBaris += 1;
+      if (h.kg < 0 || (h.kg === 0 && rp < 0)) { g.susutKg -= kg; g.susutRp += r; } else { g.naikKg += kg; g.naikRp += r; } });
+  });
+  // hari kerja tiap orang DI rentang laporan (bukan rentang jaga yang bertumpuk antar barang)
+  Object.keys(J).forEach((t) => { if (t < awal || t > akhir) return; Object.keys(J[t]).forEach((nm) => { if (per[nm]) per[nm].hariJaga += J[t][nm]; }); });
+  const daftar = Object.keys(per).map((k) => per[k]).map((g) => Object.assign(g, { susutKg: shBulat(g.susutKg), naikKg: shBulat(g.naikKg), bersih: g.susutRp + g.naikRp, tanpa: g.nama === SH_TANPA_JAGA }))
+    .sort((a, b) => (a.tanpa ? 1 : 0) - (b.tanpa ? 1 : 0) || a.bersih - b.bersih || a.nama.localeCompare(b.nama));
+  const jumlah = daftar.reduce((a, g) => a + g.bersih, 0); const menutup = Math.abs(jumlah - total) < 0.5;
+  return { awal, akhir, orang: daftar, total, nBaris: n, jumlah, menutup, rumus: SH_RUMUS_PENJAGA, adaJaga: Object.keys(J).length > 0,
+    kalimat: !n ? 'Belum ada susut & selisih stok tercatat di rentang ini.' : menutup ? 'Σ per penjaga = susut & selisih stok ' + RP(total) + ' (' + n + ' baris) — menutup persis sampai rupiah.' : 'TIDAK MENUTUP: Σ per penjaga ' + RP(jumlah) + ' ≠ baris susut ' + RP(total) + ' — laporkan.' };
+}

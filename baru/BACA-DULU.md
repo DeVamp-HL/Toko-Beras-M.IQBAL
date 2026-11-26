@@ -4321,3 +4321,38 @@ buku tempat itu begitu tutup berikutnya menulis titik baru. Laci sudah aman seja
   A9). Batalkan tutup buku mengembalikan titik lama dengan `diubahPada` baru (HP lain wajib mengambilnya — `ambilTitikKas` memilih yang terbaru) DAN jam pasang
   aslinya di `dipasangPada`; `ugPasangDari(t)` = dipasangPada || diubahPada dipakai `ugSesudahTitik` / `ugJamPasang`, jadi susulannya tidak hilang di
   percobaan berikutnya. Tanpa rules baru, ritual tidak berubah. Uji: blok TS `alat-uji/uji_tutup_buku_bertahap.py` (+ 5 jangkar kontrol).
+
+## Paket sisa sensus — B94 · B68 · A74 · B35 · A47 · A121 (owner 27 Nov 2026, "Gua mau kelar semuanya"; cabang `claude/paket-kecil-sensus-23eb85`; tanpa rules baru, mesin beku tidak diubah)
+
+Enam butir terakhir sensus ulang 26 Nov yang owner minta dikerjakan sebelum beku 15 Des 2026. Dijaga `alat-uji/uji_sisa_sensus.py` (kotak pasir angka contoh + statis +
+`--kontrol` + asap cadangan toko; angka rupiah toko tidak dicetak). Tidak ada pintu tulis baru: dua setelan baru menumpang dokumen owner yang sudah ada.
+
+**Keputusan owner (satu AskUserQuestion 27 Nov 2026):** bunga modal stok **6 % setahun** (angka contoh brief riset A121) sampai owner menggantinya · "bakal telat" =
+**2 dari 3 bon terakhir lunas lewat jatuh tempo** · susut dibebankan ke **yang jaga di rentang itu** (laporan saja, upah tidak dipotong) · PPh final = **pos sendiri**,
+laba bersih & titik impas TETAP angka mesin.
+
+- **B94 · satu saringan Dasbor** (`dasbor-logika.js` `dbSaring` · `DB_IKUT_SARING` · `DB_SARING_TETAP`; pita di atas kisi `dasbor-kisi.js` `htmlSaring`, pilihan
+  diingat perangkat dengan kunci kartu Periode yang SAMA). Tujuh pilihan `DB_PERIODE`. Kelompok yang ikut: Hari ini (omzet, laba kotor, nota, retur, cara bayar & per
+  jenis rentang itu — `lpRekapRentang`, pembanding periode sebelumnya = kartu Periode; uang toko sebelum periode), Bulan ini & Pemicu, Margin (bulan) + nota terbesar,
+  HPP lewat & modal tertahan (rentang), Mutu (merek & susut per bulan), Pelanggan usaha, Pembelian. Kartu bulanan memakai satu bulan: Bulan lalu = bulan lalu,
+  selain itu bulan tanggal akhir (lintas bulan disebut). TETAP sekarang & diberi cap "sekarang · tidak ikut saringan": uang per tempat, stok & wadah, piutang & utang,
+  pondasi, target harian, kas minimum, siklus uang; tren & enam bulan punya rentang sendiri; angka "hari ini" (jam segini) tetap hari ini. Angka widget yang ikut
+  berganti nama periodenya (`wgNama`). Saringan Hari ini = Dasbor PERSIS seperti dulu (kunci ingatan & angka sama). Headline tetap ringkas hari ini. Pilihan yang
+  ditolak (tanggal belum terjadi) = Dasbor Hari ini + kalimat tolak. Ringkasan menyusun ulang lewat jalur `mintaRentang` yang sama (`saringKini`).
+- **B68 · pembelian** (`susut-harga-logika.js` `shNilaiKedatangan` · `shPembelian` · `shTrenBeli`): kedatangan = Σ harga beras di nota pemasok + bongkar; lahir buku =
+  bukan kedatangan; stok awal / saldo pembuka = dicatat, bukan belanja; bon = `batchDiutang`. `shHppPeriode` memakai `shNilaiKedatangan` yang sama → batang bulan =
+  "+ Pembelian" HPP periode. Kartu Dasbor **Pembelian** (`kBeli`, pita Hari · Minggu · Bulan, bon di bawah / dibayar langsung di atas, angka periode saringan) ada di
+  katalog "+ Tambah kartu" — bawaan Dasbor tetap kartu lama (keputusan 26 Nov); angka `pembelian` juga di katalog.
+- **A74 · susut per penjaga** (`shSusutPenjaga`): tiap baris susut & selisih stok (beras, kemasan, kantong & bahan; baris yang sama dengan Laporan) dibagi ke yang
+  masuk kerja (`absenKaryawan`, 1 / ½) SESUDAH hitungan sebelumnya barang itu sampai hari hitungan — cocok persis ikut jadi batas, rework karantina tidak; belum pernah
+  dihitung = sejak catatan pertama; tanpa hari kerja tercatat = kelompok sendiri. Σ = susut Laporan persis. Laporan › Laba › Susut (3 bulan) & Pondasi › Organisasi (30 hari).
+- **B35 · perkiraan telat bayar** (`bon-logika.js` `pnKebiasaanBayar` · `pnPerkiraanTelat`, `PN_TELAT_TIGA`/`PN_TELAT_MIN`): 3 bon terakhir yang lunas lewat PEMBAYARAN
+  (bukan hapus buku / retur / saldo awal / bayar di meja), jatuh tempo = aturan piutang per nota (faktur → jatuh temponya; selain itu tanggal + tempo kartu, kosong =
+  "waktunya ditagih"). Hanya bon BELUM jatuh tempo yang diperkirakan; yang sudah lewat & pelanggan tanpa riwayat disebut. Pelanggan › Bon › Jatuh tempo + Dasbor Piutang.
+- **A47 · PPh final pos anggaran** (`kpi-laba-logika.js` `klPph`; anggaran di `aturanToko/kendaliBiaya.anggaran.pph`, `ID_ANGGARAN_PAJAK` — BUKAN `ID_ANGGARAN`): perkiraan
+  = `pjTahun` bulan itu; bulan berjalan dibanding jatah sampai hari ke-N + perkiraan sebulan, lampu ambang kendali biaya; sisihkan = perkiraan − setoran masa itu.
+  Laporan › Biaya (kartu + baris Atur) & Dasbor Bulan ini ("Pos sisihan · di luar biaya & laba bersih"). Σ biaya, laba bersih, titik impas tidak berubah (uji).
+  Tarif pajak belum diatur (cadangan 25 Nov) → "belum bisa diperkirakan — tekan Pakai aturan di Laporan › Pajak".
+- **A121 · modal tertahan di stok** (`klModalTertahan`; setelan `aturanToko/kpiLaba.bungaModalPersen`, `KL_BUNGA_BAWAAN` 6, 0 = mati, kosong = bawaan — Menu › Toko ini ›
+  Target & ambang): rata-rata nilai stok harian (beras karung = cara nilai `umNilaiRata`/GMROI + kemasan, buku minus = 0) × bunga × hari ÷ 365; rentang > 62 hari
+  disampel 62 titik (disebut). Bukan uang keluar, tidak memotong laba bersih. Dasbor › Margin & target (bawaan bulan ini) + angka `modalTertahan`.

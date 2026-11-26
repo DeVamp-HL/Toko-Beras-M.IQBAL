@@ -345,3 +345,48 @@ export function pnHariTagih(kini, semua) {
   return { nyala: true, iso, hari: h, nama, hariIni: geser === 0, berikut, lagi: geser, daftar, rp,
     teks: geser === 0 ? 'Hari ini hari tagih (' + nama + ') · ' + (daftar.length ? daftar.length + ' orang · ' + RP(rp) + ' jatuh tempo sampai hari ini' : 'tidak ada bon yang jatuh tempo') : 'Hari tagih berikutnya ' + nama + ' ' + formatTanggal(berikut) + ' (' + geser + ' hari lagi) · ' + (daftar.length ? daftar.length + ' orang · ' + RP(rp) + ' jatuh tempo sampai hari itu' : 'belum ada bon yang jatuh tempo sampai hari itu') };
 }
+
+// ==================== B35 · PERKIRAAN PELANGGAN YANG BAKAL TELAT BAYAR (owner 27 Nov 2026, paket sisa sensus) ====================
+// Keputusan owner (AskUserQuestion 27 Nov 2026): dicap "biasanya telat" kalau PALING SEDIKIT 2 DARI 3 BON TERAKHIRNYA yang lunas dibayar SESUDAH jatuh tempo —
+// pola yang sama dengan "kebiasaan bayar" pemasok (3 kedatangan terakhir); satu kali telat belum cukup. Jatuh tempo bon lama = aturan yang SAMA dengan piutang
+// per nota (pnNota): faktur = jatuh tempo fakturnya; bon lain = tanggal nota + tempo di kartu pelanggan, kosong = "waktunya ditagih" (pnTempo). Bon yang lunas
+// dihitung lewat jalanTutupBon (urutan potong buku bon); yang ditutup hapus buku / retur / catatan lain, saldo awal (tanggal perkiraan), dan bon yang dibayar
+// di meja saat beli (bukan bon yang ditagih) tidak ikut. Hasilnya PERKIRAAN, bukan vonis: dipakai menagih lebih awal.
+export const PN_TELAT_TIGA = 3, PN_TELAT_MIN = 2;
+export const PN_RUMUS_TELAT = 'Diperkirakan telat = paling sedikit 2 dari 3 bon terakhirnya yang lunas dibayar sesudah jatuh tempo (tanggal nota + tempo kartu pelanggan, kosong = "waktunya ditagih"; faktur = jatuh tempo fakturnya)';
+/** Riwayat bayar tiap pelanggan: bon yang lunas lewat PEMBAYARAN, terbaru dulu → { kunci: { kunci, nama, bon: [{ tanggal, jatuhTempo, lunas, telat, telatHari }], tiga, nTelat, biasaTelat, rataTelat } }. */
+export function pnKebiasaanBayar(kini) {
+  const beli = bnSaatBeli(); const fk = {}; fkSemua(kini).forEach((f) => { if (f.kredit && f.berlaku) (f.baris || []).forEach((p) => { fk[String(p.id)] = f; }); });
+  const out = {};
+  hitungPiutang().forEach((d) => { const T = pnTempo(d.nama); const bon = [];
+    jalanTutupBon(d, beli).forEach((b) => {
+      if (!b.lunas || b.saldoAwal || !(b.nominal > 1e-6) || !b.lunasTanggal || !tglSahBon(b.tanggal) || !b.potong.length) return;
+      if (b.potong.some((p) => p.jenis !== 'bayar') || b.potong.every((p) => p.beli)) return;   // ditutup hapus buku / retur / lain, atau lunas di meja saat beli
+      const f = b.idTrx !== null && b.idTrx !== undefined ? fk[String(b.idTrx)] : null;
+      const jt = f && pnIsoSah(f.jatuhTempo) ? String(f.jatuhTempo) : new Date((hariKe(b.tanggal) + T.hari) * 86400000).toISOString().slice(0, 10);
+      const telatHari = hariKe(b.lunasTanggal) - hariKe(jt); bon.push({ tanggal: b.tanggal, jatuhTempo: jt, lunas: b.lunasTanggal, nominal: b.nominal, telat: telatHari > 0, telatHari: Math.max(0, telatHari) }); });
+    bon.sort((a, b) => b.lunas.localeCompare(a.lunas) || b.tanggal.localeCompare(a.tanggal));
+    const tiga = bon.slice(0, PN_TELAT_TIGA); const nTelat = tiga.filter((x) => x.telat).length; const telat = tiga.filter((x) => x.telat);
+    out[d.kunci] = { kunci: d.kunci, nama: d.nama, bon, tiga, n: tiga.length, nTelat, biasaTelat: nTelat >= PN_TELAT_MIN, tempo: T.hari, sumberTempo: T.sumber,
+      rataTelat: telat.length ? telat.reduce((a, x) => a + x.telatHari, 0) / telat.length : null }; });
+  return out;
+}
+/**
+ * Bon terbuka yang BELUM jatuh tempo milik pelanggan yang biasanya telat → "diperkirakan telat" (bisa ditagih lebih awal). Yang sudah lewat jatuh tempo tetap di
+ * kelompok "Lewat jatuh tempo" (pnRingkas) — disebut jumlahnya di sini, tidak dihitung dua kali. Pelanggan berbon tanpa satu pun bon lunas lewat pembayaran = belum
+ * bisa diperkirakan (disebut). semua = semuaBon(kini) bila sudah dihitung.
+ */
+export function pnPerkiraanTelat(kini, semua) {
+  const iso = hariIniIso(kini); const N = pnNota(kini, semua); const K = pnKebiasaanBayar(kini); const per = {}; const tanpa = {}; let nLewatBiasa = 0, rpLewatBiasa = 0;
+  N.nota.forEach((x) => { const k = K[x.orang]; if (!k || !k.n) { tanpa[x.orang] = (tanpa[x.orang] || 0) + x.sisa; return; } if (!k.biasaTelat) return;
+    if (x.status === 'lewat') { nLewatBiasa += 1; rpLewatBiasa += x.sisa; return; } if (x.status === 'tanpa') return;
+    const o = per[x.orang] || (per[x.orang] = { kunci: x.orang, nama: x.nama, rp: 0, nNota: 0, jatuhTerdekat: x.jatuhTempo, nTelat: k.nTelat, n: k.n, rataTelat: k.rataTelat, tempo: k.tempo, tiga: k.tiga, tujuan: { ke: 'pelanggan', keluarga: 'bon', orang: x.orang } });
+    o.rp += x.sisa; o.nNota += 1; if (x.jatuhTempo < o.jatuhTerdekat) o.jatuhTerdekat = x.jatuhTempo; });
+  const daftar = Object.keys(per).map((k) => per[k]).map((o) => Object.assign(o, { rp: Math.round(o.rp * 100) / 100, hariLagi: hariKe(o.jatuhTerdekat) - hariKe(iso),
+    kalimat: o.nTelat + ' dari ' + o.n + ' bon terakhir lunas lewat jatuh tempo' + (o.rataTelat !== null ? ' (rata-rata telat ' + satuKoma(o.rataTelat) + ' hari)' : '') + ' · jatuh tempo terdekat ' + formatTanggal(o.jatuhTerdekat) }))
+    .sort((a, b) => a.jatuhTerdekat.localeCompare(b.jatuhTerdekat) || b.rp - a.rp);
+  const rp = daftar.reduce((a, o) => a + o.rp, 0); const nTanpa = Object.keys(tanpa).length;
+  return { iso, daftar, n: daftar.length, rp, nLewatBiasa, rpLewatBiasa, nTanpaRiwayat: nTanpa, rpTanpaRiwayat: Object.keys(tanpa).reduce((a, k) => a + tanpa[k], 0), rumus: PN_RUMUS_TELAT,
+    kalimat: (daftar.length ? daftar.length + ' orang · ' + RP(rp) + ' belum jatuh tempo tapi diperkirakan telat — tagih lebih awal' : 'Tidak ada bon belum jatuh tempo milik pelanggan yang biasanya telat')
+      + (nTanpa ? ' · ' + nTanpa + ' pelanggan berbon belum bisa diperkirakan (belum pernah melunasi bon)' : '') };
+}
