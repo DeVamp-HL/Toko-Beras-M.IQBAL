@@ -17,6 +17,8 @@ import { kartuTutupTablet, aksiTutupTablet, hlTampil, HL_DRAF_KOSONG } from './t
 // owner 21 Nov 2026: Ringkas hari ini di tablet — kartu paling atas Menu akun tablet, hanya saat orang pilihan owner jaga (rules v14: data uang)
 import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
 import * as SJ from './sidik-logika.js';
+// owner 26 Nov 2026: lokasi langit & cuaca gerbang (atur Perangkat) — cari tempat lewat Open-Meteo
+import { lgUrlCari, lgBacaCari, lgLokasiSah } from '../inti/langit-logika.js';
 import * as OW from './owner-tablet-logika.js';   // owner 22 Nov 2026: sidik jari owner di tablet (Tahap A)
 import * as RU from './riwayat-uang-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 1 uang
 import * as RB from './riwayat-barang-logika.js';   // owner 22 Nov 2026: riwayat & batal — tahap 2 barang
@@ -69,7 +71,7 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, aturKpi: null, bpgDraf: null, yakinBpg: null, bpgBuka: {}, cekG: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), ub: UB_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), ub: UB_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null, cuacaCari: '', cuacaHasil: [], cuacaSibuk: false, cuacaKabar: '' });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'aturKpi', 'bpgDraf', 'tgsDraf', ['cekG', (v) => !!(v && (Object.keys(v.cek || {}).length || String(v.catatan || '').trim()))], 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ub', (v) => !!(v && (String(v.hargaPerKg || '').trim() || String(v.pemasok || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
@@ -231,7 +233,7 @@ export function pasangLayarMenu(akar, opsi) {
     saklarG: async ({ jenis }) => { await tulis(S.susunSaklarPengingat(jenis, waktu())); }, keG: async ({ jenis, nama }) => { await tulis(S.susunKePengingat(jenis, nama, waktu())); },
     // ---- ATUR SENDIRI per lembar Sistem (angka & daftar owner)
     bukaAtur: () => { if (st().atur) return set({ atur: null }); const id = st().sistem; const a = S.ssAtur(id); const d = { id };
-      if (id === 'perangkat') Object.assign(d, { batasAntre: String(a.batasAntre), batasDenyut: String(a.batasDenyut), pemegang: a.pemegang.slice() });
+      if (id === 'perangkat') Object.assign(d, { batasAntre: String(a.batasAntre), batasDenyut: String(a.batasDenyut), pemegang: a.pemegang.slice(), cuaca: a.cuaca ? Object.assign({}, a.cuaca) : null });
       // owner 7 Okt (JS2-C): batas nego per orang — jatah per peran & per akun (kosong = ikut peran), siapa boleh di bawah modal, langkah harga
       if (id === 'peran') { const ja = {}; Object.keys(a.jatahAkun || {}).forEach((u) => { ja[u] = String(a.jatahAkun[u]); });
         Object.assign(d, { batasSekaligus: String(a.batasSekaligus), jatahBen: String(a.jatahBen), jatahKaryawan: String(a.jatahKaryawan), langkahNego: String(a.langkahNego), jatahAkun: ja, bawahModal: (a.bawahModal || []).slice() }); }
@@ -261,6 +263,18 @@ export function pasangLayarMenu(akar, opsi) {
       set({ yakinTb: null }); await tulis(TB.tbSusunHapus(id, waktu())); },
     aturJatahAkun: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); a.jatahAkun = a.jatahAkun || {}; a.jatahAkun[el.dataset.uid] = String(v).replace(/[^\d]/g, '').slice(0, 3); set({ atur: a }); },
     aturBawahModal: ({ kunci }) => { const a = JSON.parse(JSON.stringify(st().atur)); const L = a.bawahModal || []; const i = L.indexOf(kunci); if (i >= 0) L.splice(i, 1); else L.push(kunci); a.bawahModal = L; set({ atur: a }); },
+    // owner 26 Nov 2026: lokasi langit & cuaca gerbang — ketik nama tempat, cari (Open-Meteo, Indonesia saja), pilih; tersimpan bersama SIMPAN ATURAN
+    cuacaCariKetik: (v) => set({ cuacaCari: String(v).slice(0, 60) }),
+    cuacaCari: async () => {
+      const url = lgUrlCari(st().cuacaCari); if (!url) return set({ cuacaKabar: 'Ketik paling sedikit 3 huruf nama kelurahan, kecamatan, atau kota', cuacaHasil: [] });
+      set({ cuacaSibuk: true, cuacaKabar: '' });
+      try { const r = await fetch(url, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' }); const hasil = r.ok ? lgBacaCari(await r.json()) : [];
+        set({ cuacaSibuk: false, cuacaHasil: hasil, cuacaKabar: r.ok ? (hasil.length ? '' : 'Tidak ketemu — coba nama kecamatan atau kota') : 'Pencarian ditolak (' + r.status + ') — coba lagi nanti' }); }
+      catch (e) { set({ cuacaSibuk: false, cuacaKabar: 'Tidak bisa mencari tempat (internet?) — coba lagi nanti' }); }
+    },
+    cuacaPilih: ({ i }) => { const r = st().cuacaHasil[Number(i)]; const l = r ? lgLokasiSah({ nama: r.nama + (r.wilayah ? ', ' + r.wilayah.split(', ').slice(-2).join(', ') : ''), lat: r.lat, lon: r.lon }) : null;
+      if (!l) return; set({ atur: Object.assign({}, st().atur, { cuaca: l }), cuacaHasil: [], cuacaCari: '', cuacaKabar: '' }); },
+    cuacaCabut: () => set({ atur: Object.assign({}, st().atur, { cuaca: null }), cuacaHasil: [], cuacaKabar: '' }),
     simpanAtur: async () => { const a = st().atur; if (!a) return; const isi = Object.assign({}, a); delete isi.id; if (await tulis(S.susunAturSistem(a.id, isi, waktu()))) set({ atur: null }); },
     // owner 21 Nov 2026: notifikasi HP / Mac owner saat aplikasi tertutup. Kunci publik web push proyek (aturanToko/notif) ditempel owner SEKALI;
     // tiap perangkat lalu menyalakan sendiri (izin diminta langsung dari ketukan — Safari menolak bila tidak).
@@ -817,11 +831,22 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="label" style="margin-top: 4px;">Boleh jual di bawah modal (wajib alasan; bukan-owner tetap minta owner)</div>
       <div class="hg-pil" data-k="at-bawah-modal">${pil('owner', 'Owner')}${S.SS_PERAN_AKUN.map((p) => pil(p.id, p.nama))}${akun.map((x) => pil('uid:' + x.uid, x.nama || x.email))}</div>`;
   }
+  // owner 26 Nov 2026: langit gerbang ikut jam & cuaca sungguhan di lokasi toko — lokasi dipilih di sini (tingkat kelurahan/kota, tanpa GPS perangkat)
+  function aturCuaca(s, a) {
+    return h`<div class="label" style="margin-top: 4px;" data-k="at-cuaca">Langit & cuaca di gerbang</div>
+      <div class="k2" data-k="at-cuaca-kini">${a.cuaca ? 'Lokasi: ' + a.cuaca.nama : 'Belum ada lokasi — langit gerbang ikut jam saja (fajar, siang, senja, malam)'}</div>
+      <div class="at-baris" data-k="at-cuaca-cari"><input class="ketik-nama" type="text" placeholder="nama kelurahan / kecamatan / kota" value="${s.cuacaCari}" data-ketik="cuacaCariKetik" maxlength="60">
+        <div class="kaca-btn kecil" data-aksi="cuacaCari">${s.cuacaSibuk ? '…' : 'cari'}</div></div>
+      ${s.cuacaKabar ? h`<div class="pita-info awas" data-k="at-cuaca-kabar">${s.cuacaKabar}</div>` : ''}
+      ${s.cuacaHasil.length ? h`<div class="hg-pil" data-k="at-cuaca-hasil">${s.cuacaHasil.map((r, i) => h`<div class="seg" data-aksi="cuacaPilih" data-i="${i}">${r.nama}${r.wilayah ? ' · ' + r.wilayah : ''}</div>`)}</div>` : ''}
+      ${a.cuaca ? h`<div class="hg-pil" data-k="at-cuaca-cabut"><div class="seg" data-aksi="cuacaCabut">cabut lokasi</div></div>` : ''}
+      <div class="k2" data-k="at-cuaca-ket">Cuaca diambil dari Open-Meteo (gratis) paling sering tiap 30 menit, hanya memakai titik lokasi ini — tidak ada data toko yang dikirim. Berlaku di semua perangkat sesudah SIMPAN ATURAN.</div>`;
+  }
   function gambarAtur(s) {
     const a = s.atur; const angka = (k, label, satuan) => h`<div class="at-baris" data-k="at-${k}"><div>${label}</div><input class="ketik-nama sempit" type="text" inputmode="numeric" value="${a[k]}" data-ketik="aturKetik" data-kolom="${k}"><span class="k2">${satuan}</span></div>`;
     const daftar = (k, label, contoh) => h`<div class="label" style="margin-top: 4px;">${label}</div>${a[k].map((x, i) => h`<div class="at-baris" data-k="at-${k}-${i}"><input class="ketik-nama" type="text" placeholder="${contoh}" value="${x}" data-ketik="aturKetik" data-kolom="${k}" data-i="${i}"><span class="mn-x" data-aksi="aturLepas" data-daftar="${k}" data-i="${i}">×</span></div>`)}<div class="kaca-btn putus" data-aksi="aturTambah" data-daftar="${k}">＋ tambah</div>`;
     return h`<div class="kartu" data-k="atur-${a.id}" style="gap: 8px;"><div class="serif" style="font-size: 18px;">Atur sendiri · ${JUDUL_SISTEM[a.id]}</div>
-      ${a.id === 'perangkat' ? [angka('batasAntre', 'Antrean dianggap lama', 'menit'), angka('batasDenyut', 'Denyut dianggap lama', 'menit'), daftar('pemegang', 'Boleh mencatat di perangkat (Owner tak terhapus)', 'nama orang')]
+      ${a.id === 'perangkat' ? [angka('batasAntre', 'Antrean dianggap lama', 'menit'), angka('batasDenyut', 'Denyut dianggap lama', 'menit'), aturCuaca(s, a), daftar('pemegang', 'Boleh mencatat di perangkat (Owner tak terhapus)', 'nama orang')]
       : a.id === 'peran' ? [angka('batasSekaligus', 'Batas setujui sekaligus', 'rupiah'), angka('jatahBen', 'Jatah nego Ben', '% margin'), angka('jatahKaryawan', 'Jatah nego karyawan', '% margin'), angka('langkahNego', 'Langkah harga nego', 'rupiah'), aturNegoOrang(a)]
       : a.id === 'cadangan' ? [angka('cadanganTiap', 'Ingatkan cadangan tiap', 'hari'), angka('simpanHari', 'Simpan catatan cadangan', 'hari'), angka('ambangKuota', 'Ambang kuota simpanan lokal', '%')]
       : a.id === 'lokasi' ? [h`<div class="label">Lokasi (tepat satu utama)</div>`, a.daftar.map((l, i) => h`<div class="at-lokasi" data-k="at-l-${i}"><input class="ketik-nama" type="text" placeholder="nama lokasi (cabang, gudang)" value="${l.nama}" data-ketik="aturKetik" data-kolom="daftar" data-i="${i}" data-sub="nama"><input class="ketik-nama" type="text" placeholder="alamat (boleh kosong)" value="${l.alamat}" data-ketik="aturKetik" data-kolom="daftar" data-i="${i}" data-sub="alamat"><div class="seg ${l.utama ? 'aktif' : ''}" data-aksi="aturUtama" data-i="${i}">${l.utama ? 'utama' : 'jadikan utama'}</div><span class="mn-x" data-aksi="aturLepas" data-daftar="daftar" data-i="${i}">×</span></div>`), h`<div class="kaca-btn putus" data-aksi="aturTambah" data-daftar="daftar">＋ tambah lokasi</div>`, daftar('pengantar', 'Pengantar pindah stok', 'nama pengantar')]

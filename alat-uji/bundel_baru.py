@@ -113,6 +113,9 @@ SH_PEMAKAI = ('dasbor-logika.js',)
 # hanya dipakai layar Harga & Pemasok — bundel ujinya menyebutnya sendiri.
 BC_MODUL = 'baru/js/layar/banding-catat-logika.js'
 BC_PEMAKAI = ('sistem-logika.js', 'banding-pemasok-logika.js')
+# owner 26 Nov 2026: lokasi langit & cuaca gerbang — atur Perangkat (sistem-logika) & pemilih tempat (menu.js) memakai langit-logika (modul DAUN, tanpa impor)
+LG_MODUL = 'baru/js/inti/langit-logika.js'
+LG_PEMAKAI = ('sistem-logika.js', 'menu.js')
 
 
 def lengkapi(daftar):
@@ -128,6 +131,8 @@ def lengkapi(daftar):
         d.append(KL_MODUL)
     if any(os.path.basename(x) in PD_PEMAKAI for x in d) and not any(x.endswith('pondasi-logika.js') for x in d):
         d.append(PD_MODUL)
+    if any(os.path.basename(x) in LG_PEMAKAI for x in d) and not any(x.endswith('langit-logika.js') for x in d):
+        d.append(LG_MODUL)
     if any(os.path.basename(x) in TP_PEMAKAI for x in d) and not any(x.endswith('titipan-logika.js') for x in d):
         d.append(TP_MODUL)
     if any(os.path.basename(x) in GE_PEMAKAI for x in d) and not any(x.endswith('grosir-ecer-logika.js') for x in d):

@@ -198,7 +198,7 @@ def statis(ubah=None):
     def ok(nama, syarat, ket=''): hasil.append({'nama': nama, 'ok': bool(syarat), 'ket': '' if syarat else str(ket)[:400]})
     k = t['baru/css/kinerja.css']
     ok('ringan: SEMUA kaca buram mati (html.ringan * / ::before / ::after, !important)', 'html.ringan *, html.ringan *::before, html.ringan *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }' in k)
-    ok('ringan: permukaan yang tadinya buram memakai warna pekat (nav, pita kabar, pintu & pelat Masuk)', 'html.ringan body { --nav: rgba(' in k and 'html.ringan body.gelap { --nav: rgba(' in k and '--gm-kaca-pintu: rgba(' in k and 'html.ringan .kabar-baru' in k)
+    ok('ringan: permukaan yang tadinya buram memakai warna pekat (nav, pita kabar, pelat Masuk); pintu kaca gerbang TETAP warna aslinya (owner 26 Nov: "terlalu gelap")', 'html.ringan body { --nav: rgba(' in k and 'html.ringan body.gelap { --nav: rgba(' in k and 'html.ringan body .gerbang-masuk { --gm-kaca-pelat: rgba(' in k and 'html.ringan body.gelap .gerbang-masuk { --gm-kaca-pelat: rgba(' in k and '--gm-kaca-pintu' not in k and 'html.ringan .kabar-baru' in k)
     ok('ringan: isi panjang di luar layar tidak dicat (content-visibility: auto + ukuran tebakan)', re.search(r'html\.ringan [^{]*\{ content-visibility: auto; contain-intrinsic-size: auto \d+px; \}', k) is not None)
     ok('app: kelas ringan dari user agent Android (?ringan=1/0 memaksa)', "classList.toggle('ringan', r === '1' || (r !== '0' && /Android/i.test(String(navigator.userAgent || ''))))" in t['baru/js/app.js'])
     # animasi tanpa henti hanya boleh menggerakkan transform / opacity
@@ -242,6 +242,7 @@ RUSAK = [
                                                      '<line class="jarum-detik" id="rkDetik" x1="100" y1="34" x2="100" y2="24"></line></svg></div></div>')]}, None),
     ('kaca buram ringan hanya sebagian', None, [('baru/css/kinerja.css', 'html.ringan *, html.ringan *::before, html.ringan *::after { backdrop-filter', 'html.ringan .nav { backdrop-filter')]),
     ('animasi box-shadow tanpa henti kembali', None, [('baru/css/menu.css', '@keyframes prDenyut { 0% { transform: scale(1); opacity: 1; }', '@keyframes prDenyut { 0% { box-shadow: 0 0 0 0 red; transform: scale(1); opacity: 1; }')]),
+    ('pintu kaca gerbang dipekatkan lagi di ringan (mode gelap jadi hitam)', None, [('baru/css/kinerja.css', "html.ringan body.gelap .gerbang-masuk { --gm-kaca-pelat:", "html.ringan body.gelap .gerbang-masuk { --gm-kaca-pintu: rgba(17,21,23,0.9); --gm-kaca-pelat:")]),
     ('ringan tidak dipasang dari user agent', None, [('baru/js/app.js', "/Android/i.test(", "/TidakAda/i.test(")]),
 ]
 
