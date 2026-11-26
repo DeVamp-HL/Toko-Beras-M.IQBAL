@@ -150,6 +150,9 @@ def periksa_statis(t):
     ok('apk.yml: tanda tangan AAB diverifikasi (jar verified) sebelum disimpan', 'jarsigner -verify "$AAB"' in tanda and "grep -q 'jar verified'" in tanda)
     ok('apk.yml: targetSdk dibaca dari APK hasil bangun yang sama, < 36 = merah', 'dump badging "$APK"' in tanda and '[ "${SASARAN:-0}" -ge 36 ]' in tanda)
     ok('apk.yml: minSdk dibaca dari APK hasil bangun yang sama, < 24 = merah', "s/^sdkVersion:" in tanda and '[ "${MINIMUM:-0}" -ge 24 ]' in tanda)
+    ok('apk.yml: tanda tangan APK diverifikasi untuk Android ≤ 23 (minSdk 24 membuat apksigner melewati V1 — syarat SUNMI App Store tetap dibuktikan)',
+       re.search(r'apksigner" verify -v --min-sdk-version (\d+) ', bangun) is not None and int(re.search(r'apksigner" verify -v --min-sdk-version (\d+) ', bangun).group(1)) <= 23
+       and "grep -q 'Verified using v1 scheme (JAR signing): true'" in bangun, bangun[bangun.find('apksigner" verify'):][:200])
     ok('apk.yml: kunci unggah wajib RSA ≥ 2048 bit', "grep -q 'RSA'" in tanda and '[ "${BIT:-0}" -lt 2048 ]' in tanda)
     ok('apk.yml: sertifikat kunci (memuat nama pemilik) TIDAK dicetak — keytool ke berkas sementara, hanya baris algoritma & SHA-256 yang diambil, lalu dihapus',
        'keytool -list -v -keystore "$RUNNER_TEMP/kunci.jks" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" > "$RUNNER_TEMP/kunci.txt"' in tanda
@@ -219,6 +222,7 @@ KONTROL = [
     ('targetSdk tidak diubah (hanya compileSdk)', [(PAS, "('compileSdkVersion', sdk), ('targetSdkVersion', sdk)):", "('compileSdkVersion', sdk)):")]),
     ('SDK minimum kembali 23', [(PAS, 'SDK_MINIMUM = 24', 'SDK_MINIMUM = 23')]),
     ('minSdk tidak diubah', [(PAS, "(('minSdkVersion', minimum), ('compileSdkVersion', sdk)", "(('compileSdkVersion', sdk)")]),
+    ('verifikasi APK tanpa --min-sdk-version (V1 dilewati di minSdk 24)', [(YML, 'apksigner" verify -v --min-sdk-version 23 ', 'apksigner" verify -v ')]),
     ('minSdk tidak diperiksa di apk.yml', [(YML, '[ "${MINIMUM:-0}" -ge 24 ]', '[ "${MINIMUM:-0}" -ge 0 ]')]),
     ('angka SDK diturunkan', [(PAS, 'str(max(angka, int(mm.group(2))))', 'str(angka)')]),
     ('pola variables.gradle asing diterima diam-diam', [(PAS, '        if len(cocok) != 1: raise Tolak(', '        if len(cocok) > 9: raise Tolak(')]),

@@ -127,7 +127,9 @@ jobs:
             "$BT/apksigner" sign --ks "$RUNNER_TEMP/kunci.jks" --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias "$KEY_ALIAS" \
               --key-pass env:KEY_PASSWORD --v1-signing-enabled true --v2-signing-enabled true \
               --out "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" "$RUNNER_TEMP/rata.apk"
-            "$BT/apksigner" verify -v "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" | tee "$RUNNER_TEMP/tanda.txt"
+            # minSdk 24 (Google Play, 26 Nov 2026): apksigner verify memeriksa skema menurut minSdk APK — sejak 24 V1 DILEWATI ("v1 ... false") walau
+            # tanda tangannya ada. --min-sdk-version 23 = verifikasi seolah untuk Android 6, jadi V1 sungguh diperiksa (bukan dianggap lulus).
+            "$BT/apksigner" verify -v --min-sdk-version 23 "../keluaran/toko-beras-kasir-1.${{ github.run_number }}.apk" | tee "$RUNNER_TEMP/tanda.txt"
             grep -q 'Verified using v1 scheme (JAR signing): true' "$RUNNER_TEMP/tanda.txt" || { echo "GAGAL: APK tidak bertanda tangan V1"; exit 1; }
             grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RUNNER_TEMP/tanda.txt" || { echo "GAGAL: APK tidak bertanda tangan V2"; exit 1; }
             rm -f "$RUNNER_TEMP/kunci.jks"

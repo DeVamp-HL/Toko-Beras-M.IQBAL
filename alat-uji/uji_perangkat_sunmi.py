@@ -905,7 +905,7 @@ def periksa_statis(perangkat_js):
        and "await kirimCetak(u.byte, 'sunmi-bt');" in ujs and "if (k.cadanganDari) { r = { pita: n, byte: u.byte.length, status: 'gagal'" in ujs
        and "if (r.status === 'gagal' || r.status === 'sibuk') break;" in ujs and 'const K = kesimpulanUkuran(hasil);' in ujs and 'epUjiUkuran(n, {' in ujs)
     alur = baca('.github', 'workflows', 'apk.yml')
-    ok('apk.yml: tanda tangan V1 dan V2 dinyalakan & dibuktikan', '--v1-signing-enabled true --v2-signing-enabled true' in alur and "grep -q 'Verified using v1 scheme (JAR signing): true'" in alur and "grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true'" in alur)
+    ok('apk.yml: tanda tangan V1 dan V2 dinyalakan & dibuktikan', '--v1-signing-enabled true --v2-signing-enabled true' in alur and 'apksigner" verify -v --min-sdk-version 23 ' in alur and "grep -q 'Verified using v1 scheme (JAR signing): true'" in alur and "grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true'" in alur)
     return h
 
 
