@@ -1,7 +1,7 @@
 {
   "name": "toko-beras-fungsi",
   "private": true,
-  "description": "Fungsi server Toko Beras M.IQBAL: notifikasi HP owner untuk permintaan dari tablet",
+  "description": "Fungsi server Toko Beras M.IQBAL: notifikasi HP owner untuk permintaan dari tablet + tarik harga acuan beras mingguan",
   "main": "index.js",
   "engines": {
     "node": "22"

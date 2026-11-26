@@ -108,6 +108,12 @@ KR_PEMAKAI = ('dasbor-logika.js',)
 SH_MODUL = 'baru/js/layar/susut-harga-logika.js'
 SH_PEMAKAI = ('dasbor-logika.js',)
 
+# paket Banding pemasok (owner 26 Nov 2026): pengingat mingguan / bulanan & papan Persetujuan (usul harga tawaran / acuan dari tablet) — sistem-logika memakai
+# banding-catat-logika (modul DAUN: data + pembantu + format). Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada. Hitungan banding (banding-pemasok-logika)
+# hanya dipakai layar Harga & Pemasok — bundel ujinya menyebutnya sendiri.
+BC_MODUL = 'baru/js/layar/banding-catat-logika.js'
+BC_PEMAKAI = ('sistem-logika.js', 'banding-pemasok-logika.js')
+
 
 def lengkapi(daftar):
     d = list(daftar)
@@ -115,6 +121,8 @@ def lengkapi(daftar):
         d.append(KR_MODUL)
     if any(os.path.basename(x) in SH_PEMAKAI for x in d) and not any(x.endswith('susut-harga-logika.js') for x in d):
         d.append(SH_MODUL)
+    if any(os.path.basename(x) in BC_PEMAKAI for x in d) and not any(x.endswith('banding-catat-logika.js') for x in d):
+        d.append(BC_MODUL)
     if any(os.path.basename(x) in KL_PEMAKAI for x in d) and not any(x.endswith('kpi-laba-logika.js') for x in d):
         if not any(x.endswith('riwayat-logika.js') for x in d): d.append(RW_MODUL)
         d.append(KL_MODUL)

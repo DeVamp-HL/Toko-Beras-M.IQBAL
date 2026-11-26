@@ -154,3 +154,30 @@ main.layar-harga.masuk > header, main.layar-harga.masuk > .jalur { animation: rk
 .layar-harga .sh-hitung .hg-dua-kolom .n.emas-teks { color: var(--emas-garis); font-weight: 700; }
 @keyframes hgShMasuk { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .layar-harga .sh-minimum .het-baris, .layar-harga .sh-hitung .sh-hasil > div { animation: none; } }
+/* paket Banding pemasok (owner 26 Nov 2026): keluarga keempat Harga & Pemasok — jajaran harga per kelas, urutan layak jual, rapor, acuan, tren.
+   Gerak: kartu kelas masuk bergiliran (--i), batang tren & sel termurah bertransisi (tempo DATA 480 ms, kurva owner); prefers-reduced-motion = diam. */
+.layar-harga .hg-banding { display: flex; flex-direction: column; gap: 8px; }
+.layar-harga .bd-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; } .layar-harga .bd-nav .nm { text-align: center; font-weight: 600; font-size: 13px; }
+.layar-harga .bd-kelas, .layar-harga .bd-rapor { gap: 4px; animation: bd-masuk 480ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(min(var(--i, 0), 8) * 45ms); }
+@keyframes bd-masuk { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.layar-harga .bd-jajar { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.layar-harga .bd-sel { border-radius: 12px; padding: 7px 9px; background: var(--seg); border: 1px solid var(--kaca-tepi); display: flex; flex-direction: column; gap: 1px; transition: border-color 480ms cubic-bezier(.2,.8,.2,1), transform 160ms ease; }
+.layar-harga .bd-sel .pm { font-size: 11.5px; font-weight: 600; } .layar-harga .bd-sel .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 18px; font-variant-numeric: tabular-nums; }
+.layar-harga .bd-sel.murah { border-color: var(--emas-garis); background: var(--seg-aktif); } .layar-harga .bd-sel.tawar { border-style: dashed; }
+.layar-harga .bd-urut { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; grid-template-areas: "no pm n" "no pc pc"; gap: 2px 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--garis); font-size: 12px; }
+.layar-harga .bd-urut .no { grid-area: no; font-family: 'Bodoni Moda', Georgia, serif; font-size: 16px; color: var(--redup); align-self: start; } .layar-harga .bd-urut .pm { grid-area: pm; min-width: 0; }
+.layar-harga .bd-urut .n { grid-area: n; font-family: 'Bodoni Moda', Georgia, serif; font-size: 17px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.layar-harga .bd-urut .pecah { grid-area: pc; display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 10.5px; color: var(--redup); font-variant-numeric: tabular-nums; } .layar-harga .bd-urut .pecah .tb { color: inherit; font-weight: 600; }
+.layar-harga .bd-urut.murah .n { color: var(--aktif); } .layar-harga .bd-urut.tawar .pm b::after { content: " · tawaran"; font-weight: 400; color: var(--redup); }
+.layar-harga .bd-entri { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 40px; padding: 4px 0; border-bottom: 1px dashed var(--garis); font-size: 12px; }
+.layar-harga .bd-rp { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 14px; } .layar-harga .bd-rp-baris { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 3px 0; border-bottom: 1px dashed var(--garis); } .layar-harga .bd-rp-baris span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.layar-harga .bd-acuan { display: flex; flex-direction: column; gap: 2px; } .layar-harga .bd-acuan .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 20px; }
+.layar-harga .bd-tren { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 11.5px; min-height: 24px; }
+.layar-harga .bd-tren .bt { height: 8px; border-radius: 4px; background: var(--seg); overflow: hidden; } .layar-harga .bd-tren .bt.kosong { background: transparent; border: 1px dashed var(--garis); }
+.layar-harga .bd-tren .bt i { display: block; height: 100%; border-radius: 4px; background: var(--emas-garis); transition: width 480ms cubic-bezier(.2,.8,.2,1); animation: bd-batang 560ms cubic-bezier(.2,.8,.2,1) both; transform-origin: left; }
+@keyframes bd-batang { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.layar-harga .bd-tren .n { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; } .layar-harga .bd-tren small { margin-left: 4px; font-size: 10px; } .layar-harga .bd-tren small.naik { color: var(--awas); } .layar-harga .bd-tren small.turun { color: var(--aktif); }
+.layar-harga .bd-chip .seg { font-size: 11px; padding: 3px 8px; }
+.layar-harga .bd-urut .n .k2, .layar-harga .bd-acuan .n .k2 { font-family: Jost, "Helvetica Neue", Arial, sans-serif; font-size: 10.5px; color: var(--redup); }
+.layar-harga .bd-kelas > .k2, .layar-harga .bd-rapor > .k2, .layar-harga .bd-sel .k2 { font-size: 11px; color: var(--redup); line-height: 1.35; }
+@media (prefers-reduced-motion: reduce) { .layar-harga .bd-kelas, .layar-harga .bd-rapor, .layar-harga .bd-tren .bt i { animation: none; transition: none; } }

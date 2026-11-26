@@ -6,7 +6,8 @@
 #
 # Yang dilakukan: (1) membaca lokasi database Firestore proyek → lokasi fungsi (pemicu wajib satu lokasi dengan database), ditulis ke
 # functions/.env; (2) memasang paket fungsi; (3) firebase deploy --only functions. Firebase CLI meminta login sekali (ikuti tautannya) dan
-# menawarkan menyalakan API yang dibutuhkan (Cloud Functions, Cloud Build, Artifact Registry, Eventarc, Cloud Run, Pub/Sub) — jawab Y.
+# menawarkan menyalakan API yang dibutuhkan (Cloud Functions, Cloud Build, Artifact Registry, Eventarc, Cloud Run, Pub/Sub, Cloud Scheduler) — jawab Y.
+# Sejak paket Banding pemasok (26 Nov 2026) ikut fungsi terjadwal tarikAcuan (Jumat 06.00 WIB, harga acuan beras Panel Harga Bapanas → aturanToko/acuanTarik).
 # Tidak menyentuh rules Firestore (rules tetap diterbitkan owner lewat Console).
 set -euo pipefail
 PROYEK="${PROYEK:-toko-beras-m-iqbal}"
@@ -22,3 +23,4 @@ npm install --no-audit --no-fund
 cd ..
 npx --yes firebase-tools@15 deploy --only functions --project "$PROYEK"
 echo "Selesai. Di HP / Mac: Menu › Toko ini › Perangkat & antrean › Notifikasi di perangkat ini › Nyalakan."
+echo "Tarik harga acuan jalan tiap Jumat 06.00 WIB — hasilnya di Harga & Pemasok › Banding pemasok › Harga acuan (Pakai satu per satu)."

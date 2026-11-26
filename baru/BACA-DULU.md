@@ -4045,3 +4045,36 @@ bon eceran = **paket saran** (jatuh tempo per nota, hari tagih Sabtu, syarat bon
 Alat uji: `uji_kas_rekening.py` (kotak pasir + kontrol + asap cadangan), `uji_bon_eceran.py` (kotak pasir + kontrol + asap), `peta_akses.py` (`susunTandaNota`),
 `uji_isian_lokal.py` (`crBerkas` bukan isian), `uji_menu_baru.py` (hari tagih dimatikan di kotaknya). Belum dicoba di data toko: menyimpan setelan & centang ke
 Firestore sungguhan, foto nota dari HP owner, berkas mutasi asli dari bank.
+
+## Banding pemasok (owner 26 Nov 2026) — sensus ulang 1c: A6 · A18 · A19 · A95 · A129 · A137; cabang `claude/banding-pemasok-9396fc`; RULES v21
+
+Keputusan owner (satu AskUserQuestion, 26 Nov 2026): harga tawaran & acuan dicatat **owner + Ben lewat usul** (rules v21) · pengingat **Jumat** (harga ≥ N pemasok
+minggu ini, sebelum belanja Senin) & **tanggal 1** (banding bulan lalu) · layak jual **plus susut gudang dan plus potongan mutu Rp** · acuan **ketik manual + coba
+tarik otomatis**. Angka kebijakan (N pemasok, hari, tanggal, potongan mutu per tanda, daftar sumber, wilayah) = setelan `aturanToko/bandingPemasok` (lembar Atur).
+
+- **Hitungan — `baru/js/layar/banding-pemasok-logika.js` (awalan bd, baca saja).** Satu baris = satu merek satu kedatangan (`bdBaris`): nilai & porsi bongkar +
+  ongkir = mesin `hitungHppMerkDalamBatch`; kg diterima = kg buku (baris ikut timbang) · hasil timbang / sampel − kg retur (baris lama) · kg nota bila belum
+  ditimbang (disebut "nota"). Modal sampai toko = (nilai + bongkar) ÷ kg diterima; pecahan nota + bongkar & ongkir + timbang MENUTUP (sisa pembulatan di
+  bagian terakhir, `bdTutup`). Layak jual = (modal + potongan mutu) ÷ (kg × (1 − susut gudang pemasok)) — susut = `shSusutPemasok` 3 bulan (#214), potongan mutu
+  = Rp/kg owner × tanda AWAS `tmBaris.tanda` (stok-catat, ditambah paket ini — satu penilai ambang). Harga tawaran = PERKIRAAN (ongkir tidak disebut → rata-rata
+  toko, bongkar rata-rata toko, susut rata-rata toko; mutu belum diketahui). Banding per KELAS (`hetUnit`). Penjaga: Σ modal baris + bagian lewat (bal / tanpa kg)
+  = nilai kedatangan bulan itu di sapuan Bon pemasok (`daftarPemasok`). `bdBulan` (A95 urutan + hemat), `bdMinggu` (A129 berjajar + tanggal), `bdRapor` (A137:
+  timbang = `rekapTimbangMutu`, retur/tolak/klaim = `cpBaca`, susut, lama kirim, tawaran), `bdAcuan` (A19 terbaru per sumber × tingkat × mutu vs modal kelas HET
+  30 hari), `bdTren` (A6, 6 bulan), `bdCalon`, `bdRingkas`.
+- **Catatan — `baru/js/layar/banding-catat-logika.js` (awalan bc, modul DAUN: toko.js + pembantu + format).** Satu penjaga isian `bcBacaIsi` untuk owner, tablet,
+  dan saat menyetujui usul (harga rupiah bulat 1.000–100.000 per kg, pecahan DITOLAK; tanggal ≤ hari ini & ≤ 62 hari lalu). Simpan TANPA koleksi baru:
+  `aturanToko/banding-YYYY-MM` { entri[], dibanding } (bulan = bulan tanggal harga; catatan, dilewati riwayat setelan — `RSD_LEWAT_AWALAN`). Pengingat
+  `bcSumberPengingat` dipanggil `ssSumberPengingat` (jenis `banding` & `bandingBulan`). Usul tablet `bcSusunUsul` → persetujuan `hargaBanding`; owner Setujui di
+  papan Persetujuan → `bcPasangUsul` (catatan atas nama pengusul, `dariUsul`). Hasil tarik otomatis `bcTarik` = USULAN, owner Pakai satu per satu.
+- **Layar.** Harga & Pemasok › keluarga keempat **Banding pemasok** (tab Minggu ini · Banding bulan · Rapor pemasok · Harga acuan · Tren modal; lembar + Harga
+  tawaran / + Harga acuan / Atur; tandai bulan sudah dibanding). Menu › baris Banding pemasok. Tablet Penjaga laci: kartu "Harga dari pemasok lain"
+  (`banding-panel.js`). Papan Persetujuan: usul tampil satu per satu (tidak ikut setujui sekaligus).
+- **Rules v21** = v20 + `stafUsulBanding(['ben'])` di create `persetujuan` (bentuk: tindakan hargaBanding, menunggu, mintaUid penulis, jenis tawaran | acuan,
+  harga bulat 1.000–100.000, kalimat 1–300, tanpa keputusan). Cermin perangkat `akses.js usulBandingSah`. Pembanding `firestore.rules.v20`, `periksa_rules.py`
+  (kasus ★E1–★E19, kontrol), emulator bagian V21, `docs/uji-rules-v21.md`, sidik di `docs/prosedur-pulih-darurat.md`. **Owner menerbitkan v21 SEBELUM merge.**
+- **Fungsi server** `tarikAcuan` (functions/index.js, Jumat 06.00 WIB) + `functions/acuan.js` (murni, diuji jsc): GET alamat publik Panel Harga Bapanas
+  (`/front/harga-pangan-informasi`, dibaca dari kode halaman panel) → sisir JSON: objek bernama "beras premium/medium" (bukan SPHP/Bulog) + angka harga
+  1.000–100.000 → `aturanToko/acuanTarik`. Bentuk jawaban & arti `level_harga_id` BELUM pernah terlihat (server tidak menjawab dari jaringan pengembang) — tingkat
+  ditandai tebakan; gagal = status gagal + potongan jawaban. Dipasang owner lewat `functions/pasang.sh` (Cloud Shell; menyalakan Cloud Scheduler).
+- Uji: `alat-uji/uji_banding_pemasok.py` (kotak pasir dua bundel: hitungan & sistem-logika, + statis, `--kontrol`, asap cadangan toko); `peta_akses.py --kiriman`
+  mengukur usul tablet (2/20 access call).

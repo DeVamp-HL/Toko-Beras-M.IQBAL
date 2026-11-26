@@ -253,7 +253,7 @@ export function tmBaris(isi, kgNota, harga, atur) {
                 : kelasMutu && !TM_KELAS.some((k) => k[0] === kelasMutu) ? 'kelas mutu "' + kelasMutu + '" tidak dikenal'
                   : (TM_RINCI.slice(1).map(([id, nm, sat, maks]) => (rinci[id] !== null && !(rinci[id] >= 0 && rinci[id] <= maks) ? nm + ' harus angka 0–' + maks + ' ' + sat + ' — kosongkan kalau tidak dicek' : '')).filter(Boolean)[0] || '');
   const nota = ckB2(Number(kgNota) || 0); const hasil = { ada, masalah, kgNota: nota, timbangKg: null, selisihKg: null, selisihPersen: null, kgKurang: 0, kgLebih: 0, nilaiKurang: 0,
-    kadarAir: null, kutu: '', bau: '', butirPatah: null, dicek: false, awas: [], kolom: {}, sampel: null, perkiraan: false, kelasMutu: '', rinci: {} };
+    kadarAir: null, kutu: '', bau: '', butirPatah: null, dicek: false, awas: [], tanda: [], kolom: {}, sampel: null, perkiraan: false, kelasMutu: '', rinci: {} };
   if (masalah) return Object.assign(hasil, { timbangTeks: masalah, mutuTeks: masalah });
   // timbang sampel: rata-rata per karung × jumlah karung baris = PERKIRAAN berat seluruh baris (hanya dipakai bila seluruh baris tidak ditimbang)
   const jmlKarung = Number(ckUbahAman(x.jumlahKarung)) || 0, label = Number(ckUbahAman(x.beratKarung)) || 0;
@@ -268,11 +268,14 @@ export function tmBaris(isi, kgNota, harga, atur) {
     : (hasil.perkiraan ? 'PERKIRAAN dari sampel ' + hasil.sampel.karung + ' karung (rata-rata ' + tmD(hasil.sampel.rata) + ' kg per karung): ' : 'timbang ') + tmD(timbang) + ' kg · nota ' + tmD(nota) + ' kg → ' + (hasil.selisihKg === 0 ? 'pas' : (hasil.selisihKg < 0 ? 'KURANG ' : 'lebih ') + tmD(Math.abs(hasil.selisihKg)) + ' kg (' + (hasil.selisihKg > 0 ? '+' : '−') + tmD(Math.abs(hasil.selisihPersen)) + ' %)');
   hasil.kadarAir = air !== null ? ckB2(air) : null; hasil.butirPatah = pt !== null ? ckB2(pt) : null; hasil.kutu = kutu; hasil.bau = bau;
   hasil.dicek = hasil.kadarAir !== null || hasil.butirPatah !== null || !!kutu || !!bau;
-  if (hasil.kadarAir !== null && hasil.kadarAir > A.kadarAirMaks) hasil.awas.push('kadar air ' + tmD(hasil.kadarAir) + ' % > maks ' + tmD(A.kadarAirMaks) + ' %');
-  if (kutu === 'ada') hasil.awas.push('ada kutu');
-  if (bau === 'apek') hasil.awas.push('bau apek');
-  if (bau === 'lain') hasil.awas.push('bau tidak normal');
-  if (hasil.butirPatah !== null && hasil.butirPatah > A.patahMaks) hasil.awas.push('butir patah ' + tmD(hasil.butirPatah) + ' % > maks ' + tmD(A.patahMaks) + ' %');
+  // banding pemasok (owner 26 Nov 2026): `tanda` = id tiap tanda AWAS (kadarAir · kutu · bau · butirPatah · menir · kuning · butirLain · gabah) — SATU penilai
+  // ambang; potongan mutu Rp/kg di banding-pemasok-logika membaca id ini, bukan menyalin ambangnya
+  const tanda = (id) => { if (hasil.tanda.indexOf(id) < 0) hasil.tanda.push(id); };
+  if (hasil.kadarAir !== null && hasil.kadarAir > A.kadarAirMaks) { hasil.awas.push('kadar air ' + tmD(hasil.kadarAir) + ' % > maks ' + tmD(A.kadarAirMaks) + ' %'); tanda('kadarAir'); }
+  if (kutu === 'ada') { hasil.awas.push('ada kutu'); tanda('kutu'); }
+  if (bau === 'apek') { hasil.awas.push('bau apek'); tanda('bau'); }
+  if (bau === 'lain') { hasil.awas.push('bau tidak normal'); tanda('bau'); }
+  if (hasil.butirPatah !== null && hasil.butirPatah > A.patahMaks) { hasil.awas.push('butir patah ' + tmD(hasil.butirPatah) + ' % > maks ' + tmD(A.patahMaks) + ' %'); tanda('butirPatah'); }
   const nm = (daftar, id) => (daftar.find((k) => k[0] === id) || ['', id])[1];
   hasil.mutuTeks = !hasil.dicek ? 'tidak dicek' : [hasil.kadarAir !== null ? 'kadar air ' + tmD(hasil.kadarAir) + ' %' : 'kadar air tidak dicek', kutu ? 'kutu ' + nm(TM_KUTU, kutu) : 'kutu tidak dicek',
     bau ? 'bau ' + nm(TM_BAU, bau) : 'bau tidak dicek', hasil.butirPatah !== null ? 'butir patah ' + tmD(hasil.butirPatah) + ' %' : 'butir patah tidak dicek'].join(' · ');
@@ -280,7 +283,7 @@ export function tmBaris(isi, kgNota, harga, atur) {
   hasil.kelasMutu = kelasMutu; TM_RINCI.slice(1).forEach(([id]) => { hasil.rinci[id] = rinci[id] !== null ? ckB2(rinci[id]) : null; }); if (adaRinci) hasil.dicek = true;
   if (kelasMutu) { const K = (A.mutuKelas || TM_KELAS_BAWAAN)[kelasMutu] || {}; const nmK = TM_KELAS.find((k) => k[0] === kelasMutu)[1].toLowerCase();
     TM_RINCI.forEach(([id, nmR, sat]) => { const v = id === 'butirPatah' ? hasil.butirPatah : hasil.rinci[id]; const maks = Number(K[id]) || 0; if (v === null || v === undefined || !(maks > 0) || !(v > maks)) return;
-      const teks = nmR + ' ' + tmD(v) + ' ' + sat + ' > maks ' + nmK + ' ' + tmD(maks); if (id === 'butirPatah') hasil.awas = hasil.awas.filter((t) => t.indexOf('butir patah') !== 0); hasil.awas.push(teks); }); }
+      const teks = nmR + ' ' + tmD(v) + ' ' + sat + ' > maks ' + nmK + ' ' + tmD(maks); if (id === 'butirPatah') hasil.awas = hasil.awas.filter((t) => t.indexOf('butir patah') !== 0); hasil.awas.push(teks); tanda(id); }); }
   if (adaRinci || kelasMutu) hasil.mutuTeks = (hasil.mutuTeks === 'tidak dicek' ? '' : hasil.mutuTeks + ' · ') + (kelasMutu ? 'kelas ' + kelasMutu : 'kelas mutu belum dipilih — rincian tidak dinilai') + TM_RINCI.slice(1).filter(([id]) => hasil.rinci[id] !== null).map(([id, nmR, sat]) => ' · ' + nmR + ' ' + tmD(hasil.rinci[id]) + (sat === '%' ? ' %' : ' butir')).join('');
   if (tb !== null) hasil.kolom.timbangKg = timbang;
   if (hasil.sampel) { hasil.kolom.sampelKarung = hasil.sampel.karung; hasil.kolom.sampelKg = hasil.sampel.kg; }

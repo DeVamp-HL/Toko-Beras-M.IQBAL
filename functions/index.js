@@ -13,6 +13,8 @@ const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 const { pesanNotif, pesanPutus, pesanDariOwner, kirimanTablet, tokenMati } = require('./pesan');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { ACUAN_ALAMAT, ACUAN_LEVEL, dokTarik } = require('./acuan');
 
 initializeApp();
 setGlobalOptions({ region: process.env.LOKASI || 'asia-southeast2', maxInstances: 2, memory: '256MiB' });
@@ -66,4 +68,22 @@ exports.kabarDariOwner = onDocumentCreated('persetujuan/{id}', async (event) => 
   r.responses.forEach((x, i) => { if (!x.success && x.error && tokenMati(x.error.code)) mati.push(tujuan[i].ref); });
   await Promise.all(mati.map((ref) => ref.delete()));
   console.log('kabarDariOwner', event.params.id, 'terkirim', r.successCount, 'gagal', r.failureCount, 'token mati dibuang', mati.length);
+});
+
+// paket Banding pemasok (owner 26 Nov 2026: "Ketik manual + coba tarik otomatis"): TARIK HARGA ACUAN beras dari Panel Harga Bapanas tiap Jumat 06.00 WIB —
+// hasilnya SATU dokumen aturanToko/acuanTarik (dibaca owner saja). Layar Harga & Pemasok › Banding › Harga acuan menampilkannya sebagai USULAN yang owner
+// Pakai satu per satu; fungsi ini tidak pernah menulis catatan banding. Gagal (server tidak menjawab / bentuk jawaban tidak dikenali) = status 'gagal' + pesan.
+// Hanya membaca alamat publik pemerintah (GET, tanpa kunci rahasia). Bentuk jawaban & arti level_harga_id belum terlihat dari jaringan pengembang — lihat acuan.js.
+exports.tarikAcuan = onSchedule({ schedule: 'every friday 06:00', timeZone: 'Asia/Jakarta', timeoutSeconds: 120, retryCount: 0 }, async () => {
+  const hasil = [];
+  for (const L of ACUAN_LEVEL) {
+    try {
+      const r = await fetch(ACUAN_ALAMAT + '?province_id=&city_id=&level_harga_id=' + L.id, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(30000) });
+      if (!r.ok) { hasil.push({ tingkat: L.tingkat, galat: 'server menjawab ' + r.status }); continue; }
+      hasil.push({ tingkat: L.tingkat, json: await r.json() });
+    } catch (e) { hasil.push({ tingkat: L.tingkat, galat: String((e && e.message) || e) }); }
+  }
+  const d = dokTarik(hasil, new Date());
+  await getFirestore().collection('aturanToko').doc('acuanTarik').set(d);
+  console.log('tarikAcuan', d.status, d.harga.length, 'harga', d.pesan);
 });

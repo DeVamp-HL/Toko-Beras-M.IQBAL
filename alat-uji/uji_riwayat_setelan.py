@@ -213,7 +213,7 @@ def main():
             ('penulis owner tidak memanggil pencatat', FB, F.replace("const d = rsdSertakan(x.koleksi, beriAtribusiAkun(x.data, akun, k, x.ada), x.lama, owner, k.kini);", "const d = beriAtribusiAkun(x.data, akun, k, x.ada);")),
             ('setelan tanpa catatan tidak tampil', RSL, L.replace("if (!R.length && !(Array.isArray(a.riwayat) && a.riwayat.length) && id !== 'kunciPeriode') {", "if (false) {")),
             ('jam UTC tidak digambar setempat', RSL, L.replace("return { tanggal: ok ? hariIniIso(d) : String(tgl || ''), jam: ok ? jamSetempat(pada) : rsJam(jam) };", "return { tanggal: String(tgl || (pada || '').slice(0, 10)), jam: rsJam(jam || String(pada || '').slice(11, 16)) };")),
-            ('dokumen sistem tampil', RSL, L.replace("const RS_SISTEM = { hematHarian: true };", "const RS_SISTEM = {};")),
+            ('dokumen sistem tampil', RSL, L.replace("const RS_SISTEM = { hematHarian: true, acuanTarik: true };", "const RS_SISTEM = {};")),
             ('urut terlama di atas', RSL, L.replace("return out.sort((a, b) => (b.tanggal + ' ' + b.jam).localeCompare(a.tanggal + ' ' + a.jam) || b.id.localeCompare(a.id));", "return out.sort((a, b) => (a.tanggal + ' ' + a.jam).localeCompare(b.tanggal + ' ' + b.jam));")),
             ('terbitan baru tanpa harga lama tertulis Rp0', RSL, L.replace("const rsRp = (n) => (Number(n) > 0 ? RP(Number(n)) : 'belum ada');", "const rsRp = (n) => RP(Number(n) || 0);")),
             ('panel tab setelan hilang', MN, M.replace("    if (tab === 'setelan') {", "    if (false) {")),

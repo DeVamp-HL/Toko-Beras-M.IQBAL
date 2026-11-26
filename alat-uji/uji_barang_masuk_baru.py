@@ -783,10 +783,10 @@ RUSAK = {
     'koreksi tidak membawa isian': ("{ kgRetur: String(m.kgRetur).replace('.', ',') } : {}, tmDraf(m)))", "{ kgRetur: String(m.kgRetur).replace('.', ',') } : {}))"),
     'ambang kadar air owner diabaikan': ("kadarAirMaks: airMilik ? Number(a.kadarAirMaks) : ATUR_CATAT_BAWAAN.kadarAirMaks", "kadarAirMaks: ATUR_CATAT_BAWAAN.kadarAirMaks"),
     'ambang butir patah owner diabaikan': ("patahMaks: patahMilik ? Number(a.patahMaks) : ATUR_CATAT_BAWAAN.patahMaks", "patahMaks: ATUR_CATAT_BAWAAN.patahMaks"),
-    'kadar air di atas ambang tidak ditandai': ("if (hasil.kadarAir !== null && hasil.kadarAir > A.kadarAirMaks) hasil.awas.push(", "if (false) hasil.awas.push("),
-    'kutu ada tidak ditandai': ("if (kutu === 'ada') hasil.awas.push('ada kutu');", ""),
-    'bau apek tidak ditandai': ("if (bau === 'apek') hasil.awas.push('bau apek');", ""),
-    'butir patah di atas ambang tidak ditandai': ("if (hasil.butirPatah !== null && hasil.butirPatah > A.patahMaks) hasil.awas.push(", "if (false) hasil.awas.push("),
+    'kadar air di atas ambang tidak ditandai': ("if (hasil.kadarAir !== null && hasil.kadarAir > A.kadarAirMaks) { hasil.awas.push(", "if (false) { hasil.awas.push("),   # banding pemasok: + tanda terstruktur di blok yang sama
+    'kutu ada tidak ditandai': ("if (kutu === 'ada') { hasil.awas.push('ada kutu'); tanda('kutu'); }", ""),
+    'bau apek tidak ditandai': ("if (bau === 'apek') { hasil.awas.push('bau apek'); tanda('bau'); }", ""),
+    'butir patah di atas ambang tidak ditandai': ("if (hasil.butirPatah !== null && hasil.butirPatah > A.patahMaks) { hasil.awas.push(", "if (false) { hasil.awas.push("),
     'kadar air mustahil diterima': (": air !== null && !(air >= 0 && air <= 100) ?", ": false ?"),
     'ketikan bukan angka dianggap 0': (r"if (!/^[\d.,]*\d[\d.,]*$/.test(t)) return NaN;", "return ckAngka(t);"),   # jangkar disesuaikan tinjauan no. 13
     'tinjauan no. 13: pemisah ganda / di ujung ("15,,5") dianggap 0 %': ("const n = ckUbah(t); return isFinite(n) ? n : NaN; };", "const n = ckUbah(t); return isFinite(n) ? n : 0; };"),

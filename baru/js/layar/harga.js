@@ -31,6 +31,9 @@ import * as SH from './susut-harga-logika.js';
 import { kunciKemasan } from '../mesin/pembantu.js';   // 25c: setelan jenis beras pindah dari sistem lama
 // putaran 29: bayar bon menjaga isi kantong yang dipilih (tunai laci/brankas · transfer rekening) — saldo per tempat dari uang-logika
 import { saldoKantong } from './uang-logika.js';
+// paket Banding pemasok (owner 26 Nov 2026): keluarga keempat — harga tawaran & acuan (catatan), banding bulanan, laporan mingguan, rapor pemasok, tren modal
+import * as BC from './banding-catat-logika.js';
+import * as BD from './banding-pemasok-logika.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -42,26 +45,28 @@ const IKON = {
 const KUNCI_KELUARGA = 'miqbal_baru_harga_keluarga', KUNCI_TAB = 'miqbal_baru_harga_tab', KUNCI_DRAF_BELANJA = 'miqbal_baru_draf_belanja';
 const simpanLokal = (k, v) => { try { if (v !== null && v !== undefined) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 const bacaLokal = (k, json) => { try { const v = localStorage.getItem(k); return v === null ? null : json ? JSON.parse(v) : v; } catch (e) { return null; } };
-const KELUARGA = [['katalog', 'Katalog harga'], ['bon', 'Bon pemasok'], ['belanja', 'Belanja']];
+const KELUARGA = [['katalog', 'Katalog harga'], ['bon', 'Bon pemasok'], ['belanja', 'Belanja'], ['banding', 'Banding pemasok']];
+const KELUARGA_ID = KELUARGA.map((k) => k[0]);
 
 export function pasangLayarHarga(akar, opsi) {
   const tabLokal = bacaLokal(KUNCI_TAB, true) || {};
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
-  const awal = () => ({ keluarga: ['katalog', 'bon', 'belanja'].indexOf(bacaLokal(KUNCI_KELUARGA)) >= 0 ? bacaLokal(KUNCI_KELUARGA) : 'katalog', kabar: '', kabarAwas: false,
+  const awal = () => ({ keluarga: KELUARGA_ID.indexOf(bacaLokal(KUNCI_KELUARGA)) >= 0 ? bacaLokal(KUNCI_KELUARGA) : 'katalog', kabar: '', kabarAwas: false,
+    tabD: tabLokal.d || 'minggu', bdSenin: null, bdBulan: null, bdCatat: null, aturBd: null, bdYakinHapus: null, bdTandai: '',   // paket Banding pemasok
     tabH: tabLokal.h || 'papan', ubah: null, ketik: '', ketikApa: 'jual', terbit: false, yakinRugi: false, kal: { arah: 'naik', merek: 'semua', satuan: 'semua', rp: 100 }, papanSisi: 'owner', wa: false, bedah: { merek: '', satuan: '', bayar: 'tunai' }, aturH: null,
     aturTm: null,   // paket KPI laba: draf target margin per jenis
     aturMin: null, hb: null, minBuka: false,   // paket HPP & harga minimum: draf setelan (target laba, jarak HET) · ketikan kalkulator sebelum beli · daftar lengkap
     tabB: tabLokal.b || 'tusuk', bukuNama: '', bayar: null, lama: null, kartu: null, urung: null, aturB: null, betul: null, foto: null,
     tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, kmUbah: null, kmDaftar: false, hetBuka: false, aturHet: null, vrBaru: null, vrYakin: false, arYakin: '', arBuka: false, ltYakin: '' });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturHet', 'aturTm', 'aturMin', 'hb', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))]], [KUNCI_DRAF_BELANJA]);
+  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturHet', 'aturTm', 'aturMin', 'hb', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))], 'bdCatat', 'aturBd', ['bdTandai', (v) => !!String(v || '').trim()]], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
   // berubah sejak gambar terakhir (kunciLuarCache) — semuanya tidak menaikkan versi data
   let _kunciLuar = ''; const kunciLuar = () => kunciLuarCache(kini());
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
-  const ingatTab = () => simpanLokal(KUNCI_TAB, { h: st().tabH, b: st().tabB, l: st().tabL });
+  const ingatTab = () => simpanLokal(KUNCI_TAB, { h: st().tabH, b: st().tabB, l: st().tabL, d: st().tabD });
 
   async function tulis(r) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
@@ -276,6 +281,27 @@ export function pasangLayarHarga(akar, opsi) {
     bukaAturL: () => { const a = BL.aturBelanja(); set({ aturL: st().aturL ? null : { ambangHari: String(a.ambangHari), targetHari: String(a.targetHari), muatanKg: String(a.muatanKg) } }); },
     blAturKetik: (v, el) => { const a = Object.assign({}, st().aturL || {}); a[el.dataset.kolom] = String(v).slice(0, 7); set({ aturL: a }); },
     simpanAturL: async () => { const a = st().aturL; if (a) await tulis(BL.susunAturBelanja(a, waktu())); },
+    // ---- H4 BANDING PEMASOK (owner 26 Nov 2026): catatan ditulis lewat banding-catat-logika (satu penjaga isian untuk owner, tablet & usul)
+    tabD: ({ t }) => { set({ tabD: t, kabar: '' }); ingatTab(); },
+    bdMinggu: ({ arah }) => { const ini = BC.bcSenin(waktu().tanggal); const n = BC.bcTambahHari(st().bdSenin || ini, 7 * Number(arah)); set({ bdSenin: n >= ini ? null : n }); },
+    bdGeserBulan: ({ arah }) => { const ini = waktu().tanggal.slice(0, 7); const n = BC.bcBulanGeser(st().bdBulan || ini, Number(arah)); set({ bdBulan: n >= ini ? null : n, bdTandai: '' }); },
+    bdBuka: ({ jenis }) => { const d = st().bdCatat; set({ bdCatat: d && d.jenis === jenis ? null : bdDrafBaru(jenis), kabar: '' }); keAtas(); },
+    bdJenis: ({ jenis }) => set({ bdCatat: Object.assign(bdDrafBaru(jenis), st().bdCatat || {}, { jenis }) }),
+    bdKetik: (v, el) => { const d = Object.assign({}, st().bdCatat || {}); const k = el.dataset.kolom; d[k] = String(v).slice(0, k === 'catatan' ? 160 : 60); set({ bdCatat: d }); },
+    bdPilihKolom: ({ kolom, v }) => set({ bdCatat: Object.assign({}, st().bdCatat || {}, { [kolom]: v }) }),
+    bdSampai: () => { const d = Object.assign({}, st().bdCatat || {}); d.sampaiToko = !d.sampaiToko; if (d.sampaiToko) d.ongkirPerKg = ''; set({ bdCatat: d }); },
+    bdSimpan: async () => { const d = st().bdCatat; if (d) await tulis(BC.susunCatatBanding(d.jenis, d, waktu(), 'Owner')); },
+    bdHapus: async ({ id }) => { if (st().bdYakinHapus !== id) return set({ bdYakinHapus: id, kabar: 'Ketuk "YAKIN — hapus" sekali lagi untuk menghapus catatan itu', kabarAwas: true }); await tulis(BC.susunHapusBanding(id, waktu())); },
+    bdPakaiTarik: async ({ i }) => { const x = BC.bcTarik().harga[Number(i)]; if (!x) return;
+      await tulis(BC.susunCatatBanding('acuan', { tanggal: x.tanggal, sumber: x.sumber, tingkat: x.tingkat, mutu: x.mutu, wilayah: x.wilayah, hargaPerKg: x.hargaPerKg, otomatis: true, catatan: x.nama }, waktu(), 'Owner · tarik otomatis')); },
+    bdTandaiKetik: (v) => set({ bdTandai: String(v).slice(0, 160) }),
+    bdTandaiSimpan: async ({ bulan }) => { await tulis(BC.susunTandaiBanding(bulan, st().bdTandai || '', waktu())); },
+    bukaAturBd: () => { const a = BC.bcAtur(); const pm = {}; BC.BC_TANDA.forEach(([id]) => { pm[id] = a.potongMutu[id] ? String(a.potongMutu[id]) : ''; });
+      set({ aturBd: st().aturBd ? null : { minPemasok: String(a.minPemasok), hariMinggu: a.hariMinggu, tanggalBulan: String(a.tanggalBulan), wilayah: a.wilayah, sumber: a.sumber.join(', '), potongMutu: pm } }); },
+    bdAturKetik: (v, el) => { const a = Object.assign({}, st().aturBd || {}); const k = el.dataset.kolom;
+      if (k.indexOf('pm.') === 0) a.potongMutu = Object.assign({}, a.potongMutu || {}, { [k.slice(3)]: String(v).slice(0, 7) }); else a[k] = String(v).slice(0, k === 'sumber' ? 500 : 60); set({ aturBd: a }); },
+    bdAturHari: ({ h }) => set({ aturBd: Object.assign({}, st().aturBd || {}, { hariMinggu: Number(h) }) }),
+    simpanAturBd: async () => { const a = st().aturBd; if (a) await tulis(BC.susunAturBanding(Object.assign({}, a, { sumber: String(a.sumber || '').split(/[,\n]/).map((x) => x.trim()).filter(Boolean) }), waktu())); },
   };
   delegasi(akar, AKSI);
   // owner 7 Okt: pilihan berkas foto bon — peristiwa 'change' (Safari iOS menembakkannya untuk input berkas); penangan yang jatuh tetap dikabarkan
@@ -294,7 +320,7 @@ export function pasangLayarHarga(akar, opsi) {
       </header>
       <div class="jalur rapat" data-k="keluarga">${KELUARGA.map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-nama="${id}" data-k="kg-${id}">${nm}</div>`)}</div>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
-      ${s.keluarga === 'katalog' ? gambarKatalog(s, L) : s.keluarga === 'bon' ? gambarBon(s, L) : gambarBelanja(s, L)}
+      ${s.keluarga === 'katalog' ? gambarKatalog(s, L) : s.keluarga === 'bon' ? gambarBon(s, L) : s.keluarga === 'banding' ? gambarBanding(s, L) : gambarBelanja(s, L)}
     `);
     gulirkan(akar, RP);
   }
@@ -820,9 +846,134 @@ export function pasangLayarHarga(akar, opsi) {
       : h`<div class="kaca-btn kecil" data-aksi="bukaAturL" style="align-self: flex-start;">Atur kapan disarankan, target hari & muatan truk · ${H.atur.dariOwner ? 'diatur owner' : 'bawaan'} ›</div>`;
   }
 
+  // ---------- H4 BANDING PEMASOK (owner 26 Nov 2026, sensus ulang 1c: A6 · A18 · A19 · A95 · A129 · A137) ----------
+  // Angka dari banding-pemasok-logika (baca saja); catatan & setelan lewat banding-catat-logika. Satu markup tiga lebar: tabel per kelas jadi baris bertumpuk di HP.
+  function bdDrafBaru(jenis) { const A = BC.bcAtur(); return { jenis, tanggal: waktu().tanggal, pemasok: '', kelas: '', merek: '', hargaPerKg: '', ongkirPerKg: '', sampaiToko: false, catatan: '', sumber: A.sumber[0] || '', tingkat: 'grosir', mutu: 'medium', wilayah: A.wilayah }; }
+  const bdTgl = (t) => tanggalPendek(t).replace(/ \d{4}$/, '');
+  const bdPersen = (v) => (v === null || v === undefined ? 'belum terukur' : DESIMAL(Math.round(v * 10) / 10) + ' %');
+  const bdKg = (n) => DESIMAL(Math.round(n * 10) / 10) + ' kg';
+  function gambarBanding(s, L) {
+    const iso = waktu().tanggal; const tab = BD.BD_TAB.some(([id]) => id === s.tabD) ? s.tabD : 'minggu'; const SM = BC.bcStatusMinggu(iso);
+    const lalu = BC.bcBulanGeser(iso.slice(0, 7), -1); const dib = BC.bcDibanding(lalu); const nUsul = BC.bcUsulMenunggu(); const A = BC.bcAtur();
+    const ac = BC.bcEntri(BC.bcTambahHari(iso, -62), iso).filter((e) => e.jenis === 'acuan'); const acAkhir = ac[ac.length - 1] || null;
+    const panel = tab === 'bulan' ? gambarBdBulan(s) : tab === 'rapor' ? gambarBdRapor(s) : tab === 'acuan' ? gambarBdAcuan(s) : tab === 'tren' ? gambarBdTren() : gambarBdMinggu(s);
+    return h`<section class="hg-banding" data-k="banding">
+      <div class="hg-ringkas" data-k="bd-ringkas">
+        <div class="${SM.cukup ? '' : 'nyala'}" data-k="bd-r-minggu" data-aksi="tabD" data-t="minggu"><span class="a">${SM.n}/${SM.min}</span><span class="l">pemasok berharga minggu ini</span></div>
+        <div class="${dib ? '' : 'nyala'}" data-k="bd-r-bulan" data-aksi="tabD" data-t="bulan"><span class="a">${dib ? '✓' : '—'}</span><span class="l">banding ${lalu.slice(5, 7)}/${lalu.slice(2, 4)} ${dib ? 'sudah dibaca' : 'belum dibaca'}</span></div>
+        <div data-k="bd-r-acuan" data-aksi="tabD" data-t="acuan"><span class="a">${acAkhir ? bdTgl(acAkhir.tanggal) : '—'}</span><span class="l">harga acuan terakhir</span></div>
+        <div class="${nUsul ? 'nyala' : ''}" data-k="bd-r-usul"><span class="a">${nUsul}</span><span class="l">usul tablet menunggu</span></div></div>
+      ${nUsul ? h`<div class="pita-info emas" data-k="bd-usul">${nUsul} usul harga dari tablet menunggu — putuskan di Menu › Toko ini › Peran & persetujuan › Persetujuan (Setujui = dicatat di sini atas nama pengusulnya).</div>` : ''}
+      <div class="tombol-baris" data-k="bd-tombol" style="grid-template-columns: 1fr 1fr auto;">
+        <div class="kaca-btn ${s.bdCatat && s.bdCatat.jenis === 'tawaran' ? 'aktif' : ''} emas" data-aksi="bdBuka" data-jenis="tawaran" data-k="bd-buka-tawaran">+ Harga tawaran</div>
+        <div class="kaca-btn ${s.bdCatat && s.bdCatat.jenis === 'acuan' ? 'aktif' : ''}" data-aksi="bdBuka" data-jenis="acuan" data-k="bd-buka-acuan">+ Harga acuan</div>
+        <div class="kaca-btn ${s.aturBd ? 'aktif' : ''}" data-aksi="bukaAturBd" data-k="bd-buka-atur">Atur</div></div>
+      ${s.bdCatat ? gambarBdCatat(s) : ''}${s.aturBd ? gambarBdAtur(s) : ''}
+      ${tabBaris(BD.BD_TAB, tab, 'tabD', L === 'hp' ? 'enam' : '')}
+      <div class="bd-panel" data-k="bd-panel-${tab}">${panel}</div>
+      <div class="ket" style="font-size: 11px;" data-k="bd-rumus">${BD.BD_RUMUS.modal}. ${BD.BD_RUMUS.layak}${A.adaPotong ? '' : ' (potongan mutu belum diatur — Rp0)'}. ${BD.BD_RUMUS.tawaran}. Pengingat tiap ${(BC.BC_HARI.find((x) => x[0] === A.hariMinggu) || ['', ''])[1]} (harga ${A.minPemasok} pemasok) & tanggal ${A.tanggalBulan} (banding bulan lalu) — Menu › Toko ini › Pengingat.</div>
+    </section>`;
+  }
+  function gambarBdCatat(s) {
+    const d = s.bdCatat; const A = BC.bcAtur(); const C = BD.bdCalon(kini()); const taw = d.jenis === 'tawaran';
+    const isian = (kolom, judul, ph, tipe) => h`<div><div class="ket">${judul}</div><input class="ketik-nama" type="${tipe === 'date' ? 'date' : 'text'}" ${tipe === 'angka' ? 'inputmode="numeric"' : ''} value="${d[kolom] || ''}" placeholder="${ph || ''}" data-ketik="bdKetik" data-kolom="${kolom}" data-k="bd-i-${kolom}"></div>`;
+    const pil = (kolom, daftar) => h`<div class="jalur bungkus rapat" data-k="bd-pil-${kolom}">${daftar.map(([v, nm]) => h`<div class="seg ${String(d[kolom]) === String(v) ? 'aktif' : ''}" data-aksi="bdPilihKolom" data-kolom="${kolom}" data-v="${v}">${nm}</div>`)}</div>`;
+    const chip = (kolom, daftar) => (daftar.length ? h`<div class="jalur bungkus rapat bd-chip" data-k="bd-chip-${kolom}">${daftar.slice(0, 12).map((v) => h`<div class="seg ${d[kolom] === v ? 'aktif' : ''}" data-aksi="bdPilihKolom" data-kolom="${kolom}" data-v="${v}">${v}</div>`)}</div>` : '');
+    return h`<div class="kartu pegas bd-catat" data-k="bd-catat" style="gap: 8px;"><div class="label">${taw ? 'Harga tawaran pemasok (tidak / belum dibeli)' : 'Harga acuan resmi (untuk tawar-menawar harga beli)'}</div>
+      <div class="jalur rapat" data-k="bd-jenis">${BC.BC_JENIS.map(([id, nm]) => h`<div class="seg ${d.jenis === id ? 'aktif' : ''}" data-aksi="bdJenis" data-jenis="${id}">${nm}</div>`)}</div>
+      ${taw ? h`<div class="ps-form tiga">${isian('pemasok', 'Pemasok yang menawarkan', 'nama pemasok')}${isian('kelas', 'Kelas / jenis beras', 'mis. IR64 Elevate')}${isian('merek', 'Merek dia (boleh kosong)', '')}</div>
+          ${chip('pemasok', C.pemasok)}${chip('kelas', C.kelas)}
+          <div class="ps-form tiga">${isian('hargaPerKg', 'Harga per kg', '12.900', 'angka')}${d.sampaiToko ? h`<div><div class="ket">Ongkos kirim per kg</div><div class="k2" style="padding-top: 8px;">sudah termasuk (harga sampai toko)</div></div>` : isian('ongkirPerKg', 'Ongkos kirim per kg (kosong = belum tahu)', '', 'angka')}${isian('tanggal', 'Tanggal ditanya', '', 'date')}</div>
+          <div class="seg ${d.sampaiToko ? 'aktif' : ''}" data-aksi="bdSampai" data-k="bd-sampai" style="align-self: flex-start;">${d.sampaiToko ? '✓ ' : ''}harga sudah sampai toko (tanpa ongkos kirim)</div>`
+        : h`<div class="ket">Sumber</div>${pil('sumber', A.sumber.map((x) => [x, x]))}<div class="ket">Tingkat harga</div>${pil('tingkat', BC.BC_TINGKAT)}<div class="ket">Mutu</div>${pil('mutu', BC.BC_MUTU)}
+          <div class="ps-form tiga">${isian('hargaPerKg', 'Harga per kg', '13.100', 'angka')}${isian('wilayah', 'Wilayah', 'mis. nasional / provinsi')}${isian('tanggal', 'Tanggal datanya', '', 'date')}</div>`}
+      ${isian('catatan', 'Catatan (boleh kosong)', taw ? 'mis. minimal 5 ton, tempo 14 hari' : '')}
+      <div class="tombol-baris"><div class="kaca-btn" data-aksi="bdBuka" data-jenis="${d.jenis}">batal</div><div class="kaca-btn aktif emas" data-aksi="bdSimpan" data-k="bd-simpan">SIMPAN ${taw ? 'HARGA TAWARAN' : 'HARGA ACUAN'}</div></div></div>`;
+  }
+  function gambarBdAtur(s) {
+    const a = s.aturBd; const isian = (kolom, judul, ph) => h`<div><div class="ket">${judul}</div><input class="ketik-nama" type="text" inputmode="${kolom === 'sumber' || kolom === 'wilayah' ? 'text' : 'numeric'}" value="${kolom.indexOf('pm.') === 0 ? (a.potongMutu || {})[kolom.slice(3)] || '' : a[kolom] || ''}" placeholder="${ph || ''}" data-ketik="bdAturKetik" data-kolom="${kolom}" data-k="bd-a-${kolom}"></div>`;
+    return h`<div class="kartu pegas" data-k="bd-atur" style="gap: 8px;"><div class="label">Atur banding pemasok · angka owner</div>
+      <div class="ps-form tiga">${isian('minPemasok', 'Pemasok minimal per minggu & bulan', '3')}${isian('tanggalBulan', 'Tanggal banding bulanan (1–28)', '1')}${isian('wilayah', 'Wilayah harga acuan', 'mis. Jawa Barat')}</div>
+      <div class="ket">Hari pengingat mingguan (catat harga sebelum belanja)</div>
+      <div class="jalur bungkus rapat" data-k="bd-a-hari">${BC.BC_HARI.map(([n, nm]) => h`<div class="seg ${Number(a.hariMinggu) === n ? 'aktif' : ''}" data-aksi="bdAturHari" data-h="${n}">${nm}</div>`)}</div>
+      ${isian('sumber', 'Sumber harga acuan (pisahkan dengan koma)', 'Panel Harga Bapanas, PIHPS BI, BPS')}
+      <div class="ket">Potongan mutu — rupiah per kg yang ditambahkan ke modal layak jual untuk tiap tanda AWAS saat barang datang (kosong / 0 = tidak dipotong). Ambang tandanya diatur di Stok › Barang masuk › Atur.</div>
+      <div class="ps-form tiga">${BC.BC_TANDA.map(([id, nm]) => isian('pm.' + id, nm, 'Rp/kg'))}</div>
+      <div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAturBd">batal</div><div class="kaca-btn aktif emas" data-aksi="simpanAturBd" data-k="bd-a-simpan">SIMPAN ATURAN</div></div></div>`;
+  }
+  // daftar catatan (tawaran / acuan) satu rentang + hapus dua ketukan
+  function gambarBdEntri(s, E, judul) {
+    if (!E.length) return '';
+    return h`<div class="kartu" data-k="bd-entri" style="gap: 2px;"><div class="label">${judul} · ${E.length}</div>${E.slice().reverse().map((e) => h`<div class="bd-entri" data-k="bd-e-${e.id}"><div><div>${BC.bcTeks(e)}</div><div class="k2">${e.oleh ? 'dicatat ' + e.oleh : ''}${e.dariUsul ? ' · dari usul tablet' : ''}${e.catatan ? ' · ' + e.catatan : ''}</div></div>
+      <div class="kaca-btn kecil ${s.bdYakinHapus === e.id ? 'awas' : 'putus'}" data-aksi="bdHapus" data-id="${e.id}">${s.bdYakinHapus === e.id ? 'YAKIN — hapus' : 'hapus'}</div></div>`)}</div>`;
+  }
+  function gambarBdMinggu(s) {
+    const iso = waktu().tanggal; const senin = s.bdSenin || BC.bcSenin(iso); const M = BD.bdMinggu(senin, kini()); const E = BC.bcEntri(M.senin, M.akhir);
+    const het = (x) => (x ? h`<span class="hg-cap">HET ${x}</span>` : '');
+    return h`<div class="bd-nav" data-k="bd-nav-minggu"><div class="kaca-btn kecil" data-aksi="bdMinggu" data-arah="-1">‹ minggu lalu</div><div class="nm">${bdTgl(M.senin)} – ${bdTgl(M.minggu)}${M.berjalan ? ' · minggu ini' : ''}</div><div class="kaca-btn kecil ${s.bdSenin ? '' : 'mati'}" data-aksi="bdMinggu" data-arah="1">berikutnya ›</div></div>
+      <div class="pita-info ${M.cukup ? 'emas' : 'awas'}" data-k="bd-minggu-kal">${M.kalimat}</div>
+      ${M.kelas.length ? M.kelas.map((g, gi) => h`<div class="kartu bd-kelas" data-k="bd-mk-${g.kelas}" style="--i: ${gi};"><div class="hg-kepala"><span class="nm">${g.kelas} ${het(g.het)}</span><span class="md">${g.nPemasok} pemasok · harga beli per kg</span></div>
+        <div class="bd-jajar">${g.kolom.map((c, i) => h`<div class="bd-sel ${i === 0 ? 'murah' : ''} ${c.jenis === 'tawaran' ? 'tawar' : ''}" data-k="bd-ms-${c.kunci}-${c.jenis}"><div class="pm">${c.pemasok}</div><div class="n">${RP(c.harga)}</div>
+          <div class="k2">${c.jenis === 'tawaran' ? 'tawaran · ditanya ' + c.tanggal.map(bdTgl).join(', ') : 'datang ' + c.tanggal.map(bdTgl).join(', ') + ' · ' + bdKg(c.kg)}${i > 0 ? ' · +' + RP(c.lebih) : ''}</div></div>`)}</div></div>`)
+        : h`<div class="kartu" data-k="bd-minggu-kosong"><div class="k2">Belum ada kedatangan maupun harga tawaran minggu ini. Tanya harga ke pemasok lalu ketuk "+ Harga tawaran".</div></div>`}
+      ${M.acuan.length ? h`<div class="kartu" data-k="bd-minggu-acuan" style="gap: 2px;"><div class="label">Harga acuan minggu ini</div>${M.acuan.map((e) => h`<div class="k2">${BC.bcTeks(e)}</div>`)}</div>` : ''}
+      ${gambarBdEntri(s, E, 'Catatan harga minggu ini')}`;
+  }
+  function gambarBdBulan(s) {
+    const iso = waktu().tanggal; const key = s.bdBulan || iso.slice(0, 7); const B = BD.bdBulan(key, kini()); const A = BC.bcAtur();
+    const baris = (x, i) => h`<div class="bd-urut ${x.jenis === 'tawaran' ? 'tawar' : ''} ${i === 0 ? 'murah' : ''}" data-k="bd-u-${x.kunci}-${x.jenis}">
+      <div class="no">${x.urut}</div><div class="pm"><b>${x.pemasok}</b><div class="k2">${x.jenis === 'tawaran' ? 'TAWARAN · perkiraan' + (x.ongkirDitebak ? ' · ongkir rata-rata toko' : '') : x.n + ' baris · ' + bdKg(x.kgNyata) + (x.nBelumTimbang ? ' · ' + x.nBelumTimbang + ' belum ditimbang' : '') + (x.nAwas ? ' · ' + x.nAwas + ' mutu AWAS' : '')}</div></div>
+      <div class="pecah"><span>nota ${RP(x.hargaKg)}</span><span>+ bongkar & ongkir ${RP(x.bongkarKg)}</span><span>${x.timbangKg >= 0 ? '+' : '−'} timbang ${RP(Math.abs(x.timbangKg))}</span><span class="tb">= modal ${RP(x.modalKg)}</span>
+        <span>+ mutu ${RP(x.mutuKg)}</span><span>+ susut ${RP(x.susutKg)} (${bdPersen(x.susutPct)})</span></div>
+      <div class="n">${RP(x.layakKg)}<div class="k2">${i === 0 ? 'termurah' : '+' + RP(x.lebihMahal) + '/kg'}</div></div></div>`;
+    return h`<div class="bd-nav" data-k="bd-nav-bulan"><div class="kaca-btn kecil" data-aksi="bdGeserBulan" data-arah="-1">‹ bulan lalu</div><div class="nm">${B.nama}${B.berjalan ? ' · berjalan' : ''}</div><div class="kaca-btn kecil ${s.bdBulan ? '' : 'mati'}" data-aksi="bdGeserBulan" data-arah="1">berikutnya ›</div></div>
+      <div class="pita-info ${!B.menutup ? 'awas' : B.cukup ? 'emas' : 'awas'}" data-k="bd-bulan-kal">${B.kalimat}</div>
+      ${B.kelas.map((g, gi) => h`<div class="kartu bd-kelas" data-k="bd-bk-${g.kelas}" style="--i: ${gi};"><div class="hg-kepala"><span class="nm">${g.kelas}${g.het ? h` <span class="hg-cap">HET ${g.het}</span>` : ''}</span><span class="md">${bdKg(g.kg)} · layak jual per kg, termurah dulu</span></div>
+        ${g.baris.map(baris)}<div class="k2" style="margin-top: 4px;">${g.kalimat}</div></div>`)}
+      <div class="kartu" data-k="bd-tandai" style="gap: 6px;"><div class="label">Ritual bulanan · ${B.nama}</div>
+        ${B.dibanding ? h`<div class="k2">Sudah dibanding ${tanggalPendek(B.dibanding.tanggal)} ${B.dibanding.jam || ''}${B.dibanding.catatan ? ' — ' + B.dibanding.catatan : ''}</div>`
+          : h`<div class="k2">Baca urutan di atas (minimal ${A.minPemasok} pemasok), tulis keputusannya kalau ada (mis. "kelas X pindah ke pemasok Y"), lalu tandai. Pengingat tanggal ${A.tanggalBulan} berhenti sesudah ditandai.</div>
+            <input class="ketik-nama" type="text" placeholder="Keputusan / temuan (boleh kosong)" value="${s.bdTandai || ''}" data-ketik="bdTandaiKetik" data-k="bd-tandai-ketik">
+            <div class="kaca-btn aktif emas" data-aksi="bdTandaiSimpan" data-bulan="${B.key}" data-k="bd-tandai-simpan" style="align-self: flex-start;">Tandai ${B.nama} sudah dibanding</div>`}</div>
+      <div class="ket" style="font-size: 11px;" data-k="bd-bulan-ket">Penjaga: Σ modal semua baris (+ ${B.dilewati} baris kemasan jadi / tanpa kg) ${B.menutup ? '=' : '≠'} nilai kedatangan bulan ini di Bon pemasok (${RP(B.sapuan)}). Susut gudang = Laporan › Susut per pemasok, ${BD.BD_BULAN_SUSUT} bulan s.d. ${tanggalPendek(B.susut.akhir)}; rata-rata toko ${bdPersen(B.susut.rataPct)} (dipakai harga tawaran).</div>`;
+  }
+  function gambarBdRapor(s) {
+    const iso = waktu().tanggal; const key = s.bdBulan || iso.slice(0, 7); const R = BD.bdRapor(key, kini());
+    const baris = (a, b) => h`<div class="bd-rp-baris"><span>${a}</span><span>${b}</span></div>`;
+    return h`<div class="bd-nav" data-k="bd-nav-rapor"><div class="kaca-btn kecil" data-aksi="bdGeserBulan" data-arah="-1">‹ bulan lalu</div><div class="nm">Rapor ${R.nama}${R.berjalan ? ' · berjalan' : ''}</div><div class="kaca-btn kecil ${s.bdBulan ? '' : 'mati'}" data-aksi="bdGeserBulan" data-arah="1">berikutnya ›</div></div>
+      <div class="pita-info emas" data-k="bd-rapor-kal">${R.kalimat}</div>
+      ${R.pemasok.map((p, i) => { const G = p.kelompok; const T = p.timbang; return h`<div class="kartu bd-rapor" data-k="bd-rp-${p.kunci}" style="--i: ${i};"><div class="hg-kepala"><span class="nm">${p.pemasok}</span><span class="md">${G ? p.kedatangan + ' kedatangan · ' + p.kelas.length + ' kelas' : p.kedatangan ? p.kedatangan + ' kedatangan kemasan jadi' : 'hanya tawaran'}</span></div>
+        ${G ? h`<div class="bd-rp">${baris('Belanja (sesudah klaim/retur)', RP(G.uang))}${baris('Bongkar & ongkos kirim', RP(G.bongkar) + ' · ' + RP(G.bongkarKg) + '/kg')}${baris('Kg nota → diterima', bdKg(G.kgNota) + ' → ' + bdKg(G.kgNyata))}
+          ${baris('Modal sampai toko', RP(G.modalKg) + '/kg')}${baris('Layak jual', RP(G.layakKg) + '/kg')}</div>` : ''}
+        ${G ? h`<div class="bd-rp">${baris('Timbang', T ? (T.ditimbang + T.sebagian ? (T.selisihKg === 0 ? 'pas' : (T.selisihKg < 0 ? 'kurang ' : 'lebih ') + bdKg(Math.abs(T.selisihKg))) + ' (' + bdPersen(T.persen) + ')' + (T.nilaiKurang ? ' · nilai kurang ' + RP(T.nilaiKurang) : '') : 'belum ditimbang') + (T.belumTimbang ? ' · ' + T.belumTimbang + ' kedatangan belum' : '') : '—')}
+          ${baris('Mutu', p.tanda.length ? p.tanda.map((x) => x.nama + ' ×' + x.n).join(', ') + (p.potMutuRp ? ' · potongan ' + RP(p.potMutuRp) : '') : T && T.dicek ? 'dicek, tanpa AWAS' : 'belum dicek')}
+          ${baris('Retur / ditolak', p.retur.n || p.tolak.n ? bdKg(p.retur.kg) + ' (' + RP(p.retur.rp) + ') · ditolak ' + bdKg(p.tolak.kg) + ' (' + RP(p.tolak.rp) + ')' : 'tidak ada')}
+          ${baris('Klaim', p.klaim.n || p.klaim.diminta || p.klaim.disetujui || p.klaim.ditolak ? (p.klaim.rp ? RP(p.klaim.rp) + ' dipotong' : 'belum dipotong') + (p.klaim.diminta ? ' · ' + p.klaim.diminta + ' diminta' : '') + (p.klaim.ditolak ? ' · ' + p.klaim.ditolak + ' ditolak' : '') : 'tidak ada')}
+          ${baris('Susut gudang (3 bulan)', bdPersen(p.susut ? p.susut.pct : null))}${baris('Dipesan → datang', p.kirim ? BP.bpHariTeks(p.kirim.rataHari) + ' (' + p.kirim.n + ' pesanan)' : 'belum ada pesanan lewat Belanja')}</div>` : ''}
+        ${p.tawaran.length ? h`<div class="k2">Harga tawaran: ${p.tawaran.map((e) => e.kelas + ' ' + RP(e.hargaPerKg) + ' (' + bdTgl(e.tanggal) + ')').join(' · ')}</div>` : ''}${G ? '' : h`<div class="k2">${p.kalimat}</div>`}</div>`; })}
+      ${R.pemasok.length ? '' : h`<div class="kartu"><div class="k2">Belum ada kedatangan ${R.nama}.</div></div>`}`;
+  }
+  function gambarBdAcuan(s) {
+    const A = BD.bdAcuan(kini()); const T = A.tarik; const E = BC.bcEntri(A.dari, A.iso).filter((e) => e.jenis === 'acuan');
+    return h`<div class="pita-info emas" data-k="bd-acuan-kal">${A.kalimat}</div>
+      ${A.acuan.map((e, i) => h`<div class="kartu bd-kelas" data-k="bd-ac-${e.id}" style="--i: ${i};"><div class="hg-kepala"><span class="nm">${e.sumber} · ${e.tingkatNama.split(' /')[0]} ${e.mutu}</span><span class="md">${bdTgl(e.tanggal)}${e.wilayah ? ' · ' + e.wilayah : ''}</span></div>
+        <div class="bd-acuan"><div class="n">${RP(e.hargaPerKg)}<span class="k2">/kg${e.gerak ? (e.gerak > 0 ? ' ▲ ' : ' ▼ ') + RP(Math.abs(e.gerak)) : ''}</span></div><div class="k2">${e.kalimat}</div></div></div>`)}
+      <div class="kartu" data-k="bd-tarik" style="gap: 4px;"><div class="label">Tarik otomatis · ${T.sumber || 'Panel Harga Bapanas'}</div><div class="${T.ada && T.status === 'gagal' ? 'pita-info awas' : 'k2'}">${T.kalimat}</div>
+        ${(T.harga || []).map((x, i) => h`<div class="bd-entri" data-k="bd-t-${i}"><div><div>${x.nama || x.mutu} · ${x.tingkat} ${x.mutu} · ${RP(x.hargaPerKg)}/kg</div><div class="k2">${bdTgl(x.tanggal)}${x.wilayah ? ' · ' + x.wilayah : ''}</div></div>
+          <div class="kaca-btn kecil ${x.dipakai ? 'mati' : 'aktif'}" data-aksi="bdPakaiTarik" data-i="${i}">${x.dipakai ? 'sudah dicatat' : 'Pakai'}</div></div>`)}</div>
+      ${gambarBdEntri(s, E, 'Catatan harga acuan 62 hari')}`;
+  }
+  function gambarBdTren() {
+    const T = BD.bdTren(kini(), BD.BD_TREN); const maks = Math.max(1, ...T.kelas.map((k) => Math.max(0, ...k.titik.filter((t) => t.ada).map((t) => t.modalKg))));
+    const min = Math.min(...T.kelas.map((k) => Math.min(Infinity, ...k.titik.filter((t) => t.ada).map((t) => t.modalKg))).filter(isFinite), maks); const lebar = (v) => Math.round(8 + 92 * (v - min * 0.97) / Math.max(1, maks - min * 0.97));
+    return h`<div class="pita-info emas" data-k="bd-tren-kal">${T.kalimat} Modal sampai toko per kg, semua pemasok digabung (tertimbang kg).</div>
+      ${T.kelas.map((k, i) => h`<div class="kartu bd-kelas" data-k="bd-tr-${k.kelas}" style="--i: ${i};"><div class="hg-kepala"><span class="nm">${k.kelas}${k.het ? h` <span class="hg-cap">HET ${k.het}</span>` : ''}</span><span class="md">${k.kalimat}</span></div>
+        ${k.titik.map((t) => h`<div class="bd-tren" data-k="bd-tt-${k.kelas}-${t.key}"><span class="bl">${t.nama}</span>${t.ada ? h`<span class="bt"><i style="width: ${lebar(t.modalKg)}%;"></i></span><span class="n">${RP(t.modalKg)}${t.gerak ? h`<small class="${t.gerak > 0 ? 'naik' : 'turun'}">${t.gerak > 0 ? '▲' : '▼'}${RP(Math.abs(t.gerak))}</small>` : ''}</span>` : h`<span class="bt kosong"></span><span class="n k2">tidak ada kedatangan</span>`}</div>`)}</div>`)}`;
+  }
+
   K.dengar(gambar); dengarkan(() => nanti(gambar));
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
   // dipanggil layar Menu / Stok: buka keluarga (katalog | bon | belanja) — lewat penangan yang sama dengan ketukan; pemasok = buka bukunya
-  const buka = (keluarga, t) => { AKSI.keluarga({ nama: ['katalog', 'bon', 'belanja'].indexOf(keluarga) >= 0 ? keluarga : 'katalog' }); if (t && t.pemasok) set({ bukuNama: t.pemasok, tabB: 'buku' }); if (t && t.tab) set(keluarga === 'katalog' ? { tabH: t.tab } : keluarga === 'bon' ? { tabB: t.tab } : { tabL: t.tab }); };
+  const buka = (keluarga, t) => { AKSI.keluarga({ nama: KELUARGA_ID.indexOf(keluarga) >= 0 ? keluarga : 'katalog' }); if (t && t.pemasok) set({ bukuNama: t.pemasok, tabB: 'buku' }); if (t && t.tab) set(keluarga === 'katalog' ? { tabH: t.tab } : keluarga === 'bon' ? { tabB: t.tab } : keluarga === 'banding' ? { tabD: t.tab } : { tabL: t.tab }); };
   return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } };
 }

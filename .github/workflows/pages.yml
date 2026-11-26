@@ -298,6 +298,9 @@ jobs:
       - name: "Susut + HPP & harga minimum (owner 26 Nov 2026): target susut terukur 3 bulan selesai (digabung) / angka owner, kuning ≤ merah, susut mingguan = rumus bulanan (penjaga menutup ke mesin), alami (timbang sampel) vs operasional, susut per pemasok (kedatangan terbaru dulu) menutup ke rupiah, opname bulan ini + jejak cocok persis (mesin tidak bergerak), biaya toko per kg digabung, harga minimum = modal + biaya + laba (tegas <), alarm HET, kalkulator sebelum beli (kg timbang, tidak menulis), HPP periode menutup ke HPP nota + susut (kotak pasir + kontrol + asap cadangan toko)"
         if: matrix.bagian == 3
         run: python3 alat-uji/uji_susut_harga.py && python3 alat-uji/uji_susut_harga.py --kontrol
+      - name: "Banding pemasok (owner 26 Nov 2026): modal sampai toko per kg (kg diterima = timbang / sampel / nota, retur dikurangi; pecahan menutup), layak jual = + potongan mutu ÷ (1 − susut gudang pemasok 3 bulan), harga tawaran = perkiraan, urutan per kelas + minimal N pemasok, penjaga = sapuan Bon pemasok, laporan mingguan berjajar, rapor bulanan, harga acuan, tren; catatan & usul tablet (rules v21), pengingat Jumat & tanggal 1, tarik otomatis (sisir JSON)"
+        if: matrix.bagian == 1
+        run: python3 alat-uji/uji_banding_pemasok.py && python3 alat-uji/uji_banding_pemasok.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

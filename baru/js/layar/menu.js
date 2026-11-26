@@ -12,6 +12,7 @@ import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini, jamSetempat, waktuSetemp
 import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
 import { kartuTitipan, aksiTitipan, TP_DRAF_KOSONG } from './titipan-panel.js';
+import { kartuUsulBanding, aksiUsulBanding, UB_DRAF_KOSONG } from './banding-panel.js';   // paket Banding pemasok (owner 26 Nov 2026, rules v21): usul harga tawaran / acuan dari tablet
 import { kartuTutupTablet, aksiTutupTablet, hlTampil, HL_DRAF_KOSONG } from './tutup-tablet-panel.js';   // owner 22 Nov 2026 (paket ④): tutup hari dari tablet   // owner 21 Nov 2026: uang keluar & pesan dari tablet
 // owner 21 Nov 2026: Ringkas hari ini di tablet — kartu paling atas Menu akun tablet, hanya saat orang pilihan owner jaga (rules v14: data uang)
 import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
@@ -68,9 +69,9 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, aturKpi: null, bpgDraf: null, yakinBpg: null, bpgBuka: {}, cekG: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), ub: UB_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'aturKpi', 'bpgDraf', 'tgsDraf', ['cekG', (v) => !!(v && (Object.keys(v.cek || {}).length || String(v.catatan || '').trim()))], 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
+  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'aturKpi', 'bpgDraf', 'tgsDraf', ['cekG', (v) => !!(v && (Object.keys(v.cek || {}).length || String(v.catatan || '').trim()))], 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ub', (v) => !!(v && (String(v.hargaPerKg || '').trim() || String(v.pemasok || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -314,7 +315,7 @@ export function pasangLayarMenu(akar, opsi) {
     rtIntip: ({ d }) => tulis(S.susunAturSistem('peran', { intipDetik: Number(d) }, waktu())),   // owner 22 Nov 2026: lama intip uang (detik)
     rtBacaUang: async ({ uid, nyala }) => { const kunci = uid + ':' + nyala; const r = S.susunUbahAkun(uid, { bacaUang: nyala === '1' }, waktu(), st().yakinRt === kunci);
       if (r.perluYakin) return set({ yakinRt: kunci, kabar: r.tolak, kabarAwas: true }); set({ yakinRt: null }); await tulis(r); },
-  }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }), aksiTutupTablet({ set, st, tulis, akun: opsi.akun, waktu }), aksiRingkas({ set, st, akun: opsi.akun, uang: opsi.statusUang, waktu, kini }));
+  }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }), aksiUsulBanding({ set, st, tulis, akun: opsi.akun, waktu }), aksiTutupTablet({ set, st, tulis, akun: opsi.akun, waktu }), aksiRingkas({ set, st, akun: opsi.akun, uang: opsi.statusUang, waktu, kini }));
   const vapidToko = () => { const d = cacheMentah('aturan').find((x) => String(x.id) === 'notif'); return d && d.vapid ? String(d.vapid) : ''; };
   delegasi(akar, AKSI);
 
@@ -415,6 +416,7 @@ export function pasangLayarMenu(akar, opsi) {
       ${hlTampil(akunM) ? kartuTutupTablet(s, { akun: akunM, kini: kini() }) : ''}
       <div class="kartu" data-k="staf-akun" style="gap: 4px;"><div class="label">Masuk sebagai</div><div class="serif" style="font-size: 20px;">${akunM.nama}</div><div class="k2">${namaP} · ${L.namaPerangkat || 'perangkat ini'}</div></div>
       ${akunM.peran === 'ben' ? kartuCekGudang(s, d) : ''}
+      ${akunM.peran === 'ben' ? kartuUsulBanding(s, { akun: akunM }) : ''}
       ${kartuPegangan(s, akunM)}
       <div class="tombol-baris" data-k="staf-layar">${[['jual', 'Jual'], ['pelanggan', 'Pelanggan'], ['stok', 'Stok']].map(([t, n]) => h`<div class="kaca-btn aktif" data-aksi="stafKe" data-t="${t}">${n}</div>`)}</div>
       <div class="kartu" data-k="staf-antre" style="gap: 4px;"><div class="label">Catatan dari perangkat ini</div>
