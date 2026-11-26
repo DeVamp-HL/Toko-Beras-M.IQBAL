@@ -4079,3 +4079,49 @@ tarik otomatis**. Angka kebijakan (N pemasok, hari, tanggal, potongan mutu per t
   Gagal = status gagal + potongan jawaban. Dipasang owner lewat `functions/pasang.sh` (Cloud Shell; menyalakan Cloud Scheduler).
 - Uji: `alat-uji/uji_banding_pemasok.py` (kotak pasir dua bundel: hitungan & sistem-logika, + statis, `--kontrol`, asap cadangan toko); `peta_akses.py --kiriman`
   mengukur usul tablet (2/20 access call).
+
+## Paket Stok minus, label & kepatuhan (owner 26 Nov 2026, sensus ulang 1c; cabang `claude/stok-label-kepatuhan-a74880`; rules v22, mesin beku tidak diubah)
+
+Tiga kelompok sensus ulang bagian 1c: **Stok minus & gudang** (B49 B50 B53 B54), **Label & kedaluwarsa** (A49 A62 A78), **Kepatuhan** (A16 A38 A45), plus permintaan
+owner di tengah kerja: **"Oh iya adakan/pasang notifikasi"**. Dijaga `alat-uji/uji_gudang_label_patuh.py` (kotak pasir + statis + `--kontrol` + asap cadangan toko).
+
+**Keputusan owner (satu AskUserQuestion 26 Nov 2026):** label kemasan adukan = **Lengkap** (merek, kelas mutu, berat bersih, nama & alamat toko, tanggal kemas,
+"baik dipakai sebelum", QR toko; umur simpan bawaan 6 bulan, diatur owner) · label tanggal masuk tumpukan = **sesudah Barang masuk** (+ cetak ulang dari Jual ›
+Label) · kalender = semua usulan + tambahan yang masuk akal (owner: "belum kepikiran … tambahkan isi apa saja yang perlu") · yang menandai "sudah dikerjakan" =
+**Owner + Ben dari tablet** (rules v22).
+
+- **Gudang — `baru/js/layar/gudang-logika.js` (awalan gd, BACA SAJA, tanpa sistem-logika).** `gdMinus` = buku minus dengan ambang yang SAMA dengan `minusBuku`
+  (gerbang tutup buku: beras termasuk buku wadah ≤ −0,01 kg, kemasan & kantong < −0,001), rupiah = sisa × nilai per satuan neraca (`barisBuku`), urut terdalam,
+  yang belum bisa dinilai di belakang, 10 teratas (B49 B50). `gdBuang(bulan)` = baris `merekBulan` (susut & selisih kurang/lebih) dikelompokkan per JENIS beras
+  (`jenisUntukMerk`) + kantong & bahan + retur tidak layak jual (kg + taksiran modal `hppTaksiranRetur`, nasibnya di karantina); penjaga: Σ rupiah = "Susut &
+  selisih stok" Laporan (B53). `gdTugas` = sepuluh jenis tugas terbuka dengan tujuan layarnya (kabar barang masuk menunggu, pesanan ke pemasok belum datang,
+  pesanan pelanggan belum dikirim, antar di jalan/gagal, karantina, opname rutin, cek mingguan, wadah perlu diisi, buku minus, kemasan lewat/dekat); pindah antar
+  lokasi = disebut tidak berlaku selama satu lokasi (B54). Setelan opname/cek gudang/lokasi dibaca langsung dari `aturanToko` (bentuk `ssAtur`), diuji sama dengan
+  sumber pengingat sistem-logika.
+- **Label & kedaluwarsa — `baru/js/layar/label-logika.js` (awalan lb).** Setelan `aturanToko/catatStok.label` { umurBulan, ambangHari, kedaluwarsa, kelas{kunci kemasan} }
+  — dokumen yang SUDAH dibaca tablet; `susunAturLabel` menyalin catatStok utuh. TANPA kolom baru di dokumen adukan: "baik dipakai sebelum" = tanggal adukan +
+  umur simpan (`lbTambahBulan`, akhir bulan dijepit). `lbRingkasKemasan` = lapisan adukan tersisa FIFO (yang laku = adukan terlama), lewat/dekat/aman, stok
+  awal beli jadi = tanpa tanggal kemas (A62). `lbIsiKemasan` (A49) & `lbIsiTumpukan` (A78) = bentuk `tkIsiLabel` + `baris`. Alamat = kop struk (dibaca tablet).
+  `escpos.js` `epSusunLabel`/`epTsplLabel` mencetak `baris` (TSPL: kanan QR, berhenti sebelum tepi bawah — label lengkap butuh stiker ≥ 40 mm); tanpa `baris` =
+  byte lama persis (uji membandingkan dengan escpos.js sebelum paket ini). Panel `label-panel.js`: kartu label sesudah adukan (Stok › Adukan, rincian) & sesudah
+  Barang masuk (di samping tanda terima); satu-satunya tulisan = kode label toko baru (`tandaKenal`, pintu Jual). Jual › Label & kartu › Buat label: kemasan =
+  label lengkap + pilih tanggal kemas; karung = QR kasir atau label tanggal masuk per kedatangan; **Atur label** (owner).
+- **Kepatuhan — `baru/js/layar/patuh-logika.js` (awalan pt).** Butir & bentuk usaha = `aturanToko/kepatuhan` (owner menulis; v22: Penjaga laci membaca). Bawaan
+  `PT_BAWAAN`: SPT Tahunan (tanggal kosong = ikut bentuk usaha: orang pribadi 31 Mar, badan 30 Apr), cek HET / potongan QRIS / aturan pajak tiap tanggal 1 (A16;
+  kuning bila terakhir dicek > 30 hari, belum pernah = kuning sesudah putaran pertamanya lewat), izin & legalitas (sekali, owner isi tanggal), periksa label tiap 3
+  bulan, tera ulang timbangan, THR karyawan, tutup buku 31 Des. Putaran `ptPutaran`: yang terakhir jatuh (≥ `PT_MULAI` 26 Nov 2026) bila belum dikerjakan, selain itu
+  berikutnya; bulanan/3 bulanan yang terlewat tidak menumpuk. Tanda = koleksi BARU `kepatuhanCek` (tambah-saja, `susunCentangPatuh`; lewat wajib catatan).
+  `ptCocokPajak` (A45): bentuk usaha vs jenis WP profil pajak, PKP = PPN belum dicatat, belum dikonfirmasi ke KPP. Layar: Laporan › Pajak › kartu Kalender
+  kepatuhan + Atur (`patuh-panel.js`); Menu › Pengingat → kartu "sudah dikerjakan" (owner & tablet Penjaga laci).
+- **Notifikasi.** Pengingat (`SS_JENIS_PENGINGAT` + `patuh`, `kemasan`, `minus`; hari sebelum dibawa sumbernya) — sumbernya dihitung modulnya dan diteruskan app.js
+  lewat `lokal.patuh` / `lokal.gudang`. **Lonceng**: pengingat ketiga jenis itu yang sudah jatuh (lewat & hari ini) masuk sebagai kabar `pg|…` untuk orang yang
+  diingatkan (owner semuanya) — `kbLonceng(…, pengingat)`; "Buka" → Menu › Pengingat. **Push pagi**: fungsi server `kabarPatuh` (functions/index.js, tiap hari
+  07.00 WIB) + `functions/patuh.js` (murni; rumus putaran = cermin `ptPutaran`, uji membandingkan ±1.500 kombinasi): kirim bila ada butir tepat H-ingatkan / H-7 /
+  H-3 / H-1 / hari H, atau yang lewat pada hari Senin; ke HP/Mac owner (`notifOwner`) dan tablet Penjaga laci aktif (`notifPerangkat`). Kemasan & stok minus TIDAK
+  di-push dari server (butuh mesin stok) — hanya lonceng & pengingat. Dipasang owner lewat `functions/pasang.sh`.
+- **Dasbor.** Kartu Stok + blok Gudang (buku minus berrupiah, tugas terbuka, kemasan bertanggal, beras hilang bulan ini per jenis) = `gdDasbor`; Mutu usaha + baris
+  Kalender kepatuhan = `ptDasbor`. Stok › tab baru **Tugas gudang** (empat kartu, baris diketuk → layarnya).
+- **Rules v22** = v21 + `(id in ['tutupHari', 'kepatuhan'] && staf(['ben']))` di baca `aturanToko` + fungsi `stafCekPatuh` + blok `kepatuhanCek` (read owner ||
+  ben, create owner || stafCekPatuh(ben), ubah & hapus owner). Cermin perangkat: `akses.js` `DOK_BEN_PATUH`, `BACA_BEN`, `CEK_PATUH_KOLOM`, `cekPatuhSah`
+  (karyawan tidak memasang pendengarnya). Pembanding `firestore.rules.v21`, `periksa_rules.py` (★Q1–★Q21, kontrol), emulator bagian V22, `docs/uji-rules-v22.md`,
+  `peta_akses.py --kiriman` (tanda Ben 2/20 access call). **Owner menerbitkan v22 SEBELUM merge.**

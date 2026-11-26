@@ -26,7 +26,7 @@ import { KG, tanggalPendek } from '../inti/format.js';
 export const HARI_TARGET = 7;      // "isi untuk tujuh hari" — angka papan S9; kebijakan owner
 export const HARI_MANDEK = 30;     // sisa cukup untuk lebih dari ini = modal diam
 export const HARI_COCOK_AWAS = 7;  // belum dicocokkan selama ini = perlu dihitung lagi
-export const TAB_STOK = [['gudang', 'Gudang'], ['wadah', 'Wadah literan'], ['kapur', 'Papan Kapur'], ['karantina', 'Karantina'], ['umur', 'Umur & putaran']];   // paket brief 9 Okt: tab umur stok FIFO & perputaran
+export const TAB_STOK = [['gudang', 'Gudang'], ['wadah', 'Wadah literan'], ['kapur', 'Papan Kapur'], ['karantina', 'Karantina'], ['umur', 'Umur & putaran'], ['tugas', 'Tugas gudang']];   // owner 26 Nov 2026: stok minus · hilang & rusak per jenis · tugas terbuka · kemasan bertanggal   // paket brief 9 Okt: tab umur stok FIFO & perputaran
 
 const skKG = (n) => String(Math.round(n * 10) / 10).replace('.', ',') + ' kg';
 const skHari = (n) => String(Math.round(n * 10) / 10).replace('.', ',');

@@ -12,6 +12,7 @@ import { pasangIsian } from '../inti/isian.js';
 import { RP, ANGKA, KG, tanggalPendek } from '../inti/format.js';
 import * as LP from './laporan-logika.js';
 import * as PJ from './pajak-logika.js';
+import { kartuKalender, aksiPanelPatuh } from './patuh-panel.js';   // owner 26 Nov 2026 (A16 A38 A45): kalender kepatuhan, cek aturan bulanan, bentuk usaha
 import * as KB from './kendali-biaya-logika.js';
 import * as PG from './laba-pelanggan-logika.js';   // B5 (owner 18 Nov 2026): kartu Per pelanggan di Laba
 import * as KL from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 2026): margin & mark-up, GMROI, batas HPP, nota terbesar
@@ -54,7 +55,7 @@ export function pasangLayarLaporan(akar, opsi) {
     bulanK: null, bukaKb: {}, aturB: null, pilahK: null,
     bukaPd: {}, aturPd: null, pcDraf: null, yakinPc: null, drafPribadi: null, phDraf: null, yakinPh: null, tjDraf: null, yakinTj: null, kuartalQ: null, aturTq: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq', 'pcDraf', 'drafPribadi', 'phDraf', 'tjDraf'], []);
+  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq', 'pcDraf', 'drafPribadi', 'phDraf', 'tjDraf', 'ptAtur', ['ptCatatan', (v) => !!String(v || '').trim()]], []);   // 26 Nov 2026: Atur kalender & catatan tanda kepatuhan
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -220,6 +221,7 @@ export function pasangLayarLaporan(akar, opsi) {
     stPutar: async ({ d }) => { const P = LP.pakaiKop(); const pakai = {}; pakai[d] = P.pakai[d] === 'penuh' ? 'ringkas' : 'penuh'; const r = LP.susunAturDokumen({ pakai }, waktu()); if (r.patch) r.patch.kabar = (LP.DOKUMEN_KOP.find((x) => x.id === d) || {}).nama + ' kini memakai ' + (pakai[d] === 'penuh' ? 'kop penuh (dengan NPWP/NIB)' : 'kop ringkas (tanpa NPWP/NIB)'); await tulis(r); },
     stAturBuka: () => set({ aturD: { nomorAwal: String(LP.pakaiKop().nomorAwal) } }), stAturTutup: () => set({ aturD: null }), stAturKetik: (v) => set({ aturD: { nomorAwal: v } }), stAturSimpan: () => tulis(LP.susunAturDokumen(st().aturD || {}, waktu())),
   };
+  Object.assign(AKSI, aksiPanelPatuh({ set, st, tulis, waktu, kini }));   // owner 26 Nov 2026: kalender kepatuhan (Laporan › Pajak)
   delegasi(akar, AKSI);
 
   // ---------- pembantu gambar ----------
@@ -668,8 +670,9 @@ export function pasangLayarLaporan(akar, opsi) {
     const pitaHemat = HB ? h`<div class="pita-info awas" data-k="pj-hemat"><b>?</b> Angka pajak belum bisa dipastikan — ${HB}. Rekap untuk konsultan & catat setoran ditahan sampai lengkap.</div>` : '';
     const cetak = h`${kertas(Dk, null, 'kertas-pajak')}${tigaTombol('pjKeluar', Dk.tolak)}`;
     const sumber = h`<div class="kartu platina" data-k="pj-sumber" style="gap: 2px;"><div class="label">Sumber aturan · dilihat 24 Sep 2026 · diperiksa untuk tahun pajak ${PJ.PJ_SUMBER_TAHUN}</div>${T.aturanTahun.belum ? h`<div class="pita-info awas" data-k="pj-aturan-tahun">${T.aturanTahun.teks}</div>` : ''}${PJ.PJ_SUMBER.map((x, i) => h`<div class="k2" data-k="sa-${i}">${x.terverifikasi ? '' : h`<b class="awas-teks">[BELUM TERVERIFIKASI]</b> `}${x.klaim}</div>`)}</div>`;
-    if (L === 'hp') return h`<section data-k="pajak">${pitaHemat}${label}${pilihTahun}${bulan}${profil}${tawar}${setoran}${kartuLuar}${cetak}${sumber}</section>`;
-    return h`<section data-k="pajak">${pitaHemat}${label}${grid(L, [h`${pilihTahun}${bulan}`, h`${profil}${tawar}${kartuLuar}`, h`${setoran}${cetak}${sumber}`])}</section>`;
+    const kalender = kartuKalender(s, kini(), P.jenisWp, P.statusPkp);   // owner 26 Nov 2026 (A16 A38 A45): kalender kepatuhan & bentuk usaha
+    if (L === 'hp') return h`<section data-k="pajak">${pitaHemat}${label}${pilihTahun}${bulan}${kalender}${profil}${tawar}${setoran}${kartuLuar}${cetak}${sumber}</section>`;
+    return h`<section data-k="pajak">${pitaHemat}${label}${grid(L, [h`${pilihTahun}${bulan}`, h`${kalender}${profil}${tawar}${kartuLuar}`, h`${setoran}${cetak}${sumber}`])}</section>`;
   }
 
   // ---------- NERACA

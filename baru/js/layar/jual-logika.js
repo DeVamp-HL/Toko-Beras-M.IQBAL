@@ -1006,7 +1006,7 @@ export const kalimatKeranjangKeluar = (n) => 'Keranjang berisi ' + n + ' baris b
 // putaran 23d: isian Jual SELAIN keranjang — pesanan yang sedang diketik, retur (tanpa/dengan nota), repack, setelan struk/wadah yang terbuka, karcis yang dirinci, tukar
 // owner 7 Okt (JS2-C): alasan nego di bawah modal & alasan owner menolak permintaan nego = isian ketik juga
 const ISIAN_JUAL_LAIN = ['psNama', 'psIsi', 'psAlamat', 'psNilai', 'aturStruk', 'aturWadah', 'karcis', 'kcBatal', 'bnBuka', 'tukar', 'namaRepack', 'rpWadah', 'rpLembar', 'rpUpah', 'setengahHarga',
-  'rtNotaId', 'rtAlasan', 'rtNominal', 'rtAlasanTimpa', 'rtBarang', 'rtSelisih', 'rtPengganti', 'negoAlasan', 'ngAlasanTolak', 'ajTerima', 'ajAlasan', 'ajSetor', 'psDraf', 'psBuka', 'psDp', 'psAlasan', 'psJumlah', 'gpBuka'];   // B3: isian Antar · B4: isian Pesanan · 24 Nov: ganti pembeli
+  'rtNotaId', 'rtAlasan', 'rtNominal', 'rtAlasanTimpa', 'rtBarang', 'rtSelisih', 'rtPengganti', 'negoAlasan', 'ngAlasanTolak', 'ajTerima', 'ajAlasan', 'ajSetor', 'psDraf', 'psBuka', 'psDp', 'psAlasan', 'psJumlah', 'gpBuka', 'lbAtur'];   // 26 Nov 2026: draf Atur label (owner)   // B3: isian Antar · B4: isian Pesanan · 24 Nov: ganti pembeli
 export function adaIsianLain(s) { const a = keadaanAwal(); return ISIAN_JUAL_LAIN.some((k) => JSON.stringify(s[k] === undefined ? null : s[k]) !== JSON.stringify(a[k] === undefined ? null : a[k])); }
 /** Keadaan Jual untuk orang berikutnya: keranjang, parkir, nama pembeli, potongan, retur tukar, karcis, pesanan, isian — dibuang semua; yang tinggal cuma
  *  "sekarang" (mode cadangan). Kunci yang tidak ada di keadaanAwal ikut dikosongkan. Cermin keranjang di lapisan data (stok yang dipegang) ikut dilepas. */

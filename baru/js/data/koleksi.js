@@ -109,4 +109,8 @@ export const KOLEKSI = [
   //  Catatan TAMBAH-SAJA; owner & Penjaga laci (tablet) membuatnya (rules v19: owner || stafCekGudang(ben), kolom dibatasi), ubah & hapus owner. Bukan uang
   //  & bukan stok — tanpa cap jam server, jadi 'tetap' seperti pesanan.
   { nama: 'cekGudang',           urut: 'id',    cache: 'cekGudang', kelas: 'tetap' },
+  // owner 26 Nov 2026 (stok minus, label & kepatuhan) — KALENDER KEPATUHAN: satu dokumen per tanda "sudah dikerjakan" satu putaran butir (butir, periode, catatan).
+  //  TAMBAH-SAJA; owner & Penjaga laci (tablet) membuatnya (rules v22: owner || stafCekPatuh(ben), kolom dibatasi), ubah & hapus owner. Bukan uang & bukan stok —
+  //  tanpa cap jam server, jadi 'tetap' seperti cekGudang.
+  { nama: 'kepatuhanCek',        urut: 'id',    cache: 'kepatuhanCek', kelas: 'tetap' },
 ];

@@ -190,6 +190,7 @@ MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru
                'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
                'baru/js/layar/titipan-logika.js',   # owner 21 Nov 2026: titipan dari tablet — Uang, papan Persetujuan & tutup hari memakainya
                'baru/js/layar/banding-catat-logika.js',   # paket Banding pemasok (owner 26 Nov 2026, rules v21): usul harga tawaran / acuan dari tablet
+               'baru/js/layar/patuh-logika.js',   # paket Stok minus, label & kepatuhan (owner 26 Nov 2026, rules v22): tanda kalender kepatuhan dari tablet
                'baru/js/layar/berat-asli-logika.js']   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Jual, retur, Barang masuk)
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
@@ -390,6 +391,16 @@ pasok('katalogHargaLiteran', [{ id: 'Campur Enam', merk: 'Campur Enam', hargaPer
   catat('usul banding', p, 'usul harga acuan resmi (satu persetujuan menunggu)', kirim(p, UA.dokumen));
   if (p === 'karyawan' && !kirim(p, UT.dokumen).dilewati) salah('perangkat karyawan meloloskan usul harga banding — rules v21 hanya Penjaga laci');
   if (p === 'ben' && kirim(p, UT.dokumen).dilewati) salah('perangkat Penjaga laci menolak usul harga banding yang sah: ' + kirim(p, UT.dokumen).dilewati);
+});
+
+// ---- 11 · paket Stok minus, label & kepatuhan (owner 26 Nov 2026, rules v22 stafCekPatuh): tanda "sudah dikerjakan" kalender kepatuhan dari tablet = SATU
+//        dokumen kepatuhanCek atas nama penulisnya (Penjaga laci; karyawan ditolak perangkat & server). Setelan kalender ditulis owner — bukan kiriman staf.
+['ben', 'karyawan'].forEach(function (p) {
+  var TC = susunCentangPatuh('cek-het', '', '', W, new Date(W.kini));
+  if (TC.tolak) { salah('tanda kalender contoh ditolak: ' + TC.tolak); return; }
+  catat('tanda kalender', p, 'tanda sudah dikerjakan satu butir kalender (satu kepatuhanCek)', kirim(p, TC.dokumen));
+  if (p === 'karyawan' && !kirim(p, TC.dokumen).dilewati) salah('perangkat karyawan meloloskan tanda kalender — rules v22 hanya Penjaga laci');
+  if (p === 'ben' && kirim(p, TC.dokumen).dilewati) salah('perangkat Penjaga laci menolak tanda kalender yang sah: ' + kirim(p, TC.dokumen).dilewati);
 });
 
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas

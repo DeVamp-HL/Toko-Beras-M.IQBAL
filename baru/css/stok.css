@@ -186,3 +186,12 @@ body.gelap .layar-stok .iso-toko .sisi-atas.karung { fill: #cdb98b; } body.gelap
   /* owner 3 Okt: baris di dalam columns TANPA gerak masuk — Safari/WebKit tidak menggambar elemen beranimasi di dalam columns (kartu dasbor kosong sampai diketuk) */
   .layar-stok .daftar-jawab > .jawab { break-inside: avoid; animation: none; }
 }
+/* owner 26 Nov 2026 (stok minus, label & kepatuhan): tab Tugas gudang & kartu cetak label — baris masuk bergiliran (--urut), bilah minus tumbuh, hormat reduced motion */
+.layar-stok .stok-tugas .jawab.beres { opacity: 0.62; }
+.layar-stok .stok-tugas .jawab.beres .n { color: var(--redup); }
+.layar-stok .lbp-kartu { border-color: var(--emas-garis); }
+.layar-stok .lbp-baris { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--garis); animation: lbpMasuk 480ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--urut, 0) * 60ms); }
+.layar-stok .lbp-baris:last-of-type { border-bottom: 0; }
+.layar-stok .lbp-cetak { display: flex; gap: 6px; align-items: center; } .layar-stok .lbp-cetak .ketik-nama.sempit { width: 52px; text-align: center; }
+@keyframes lbpMasuk { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .layar-stok .lbp-baris { animation: none; } }

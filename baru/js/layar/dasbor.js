@@ -137,7 +137,20 @@ export function pasangDasbor(akar, opsi) {
         + (banyak.length ? '<div class="db-sub">Terbanyak di gudang</div>' + banyak.map((m, i) => baris(m, i + awas.length)).join('') : '');
     return '<div class="kartu db-kartu db-stok">' + kepala('Stok per merek', S.periode, 'sumber:stok', S.sumber, S.tujuan) + isi
       + (sisa > 0 ? '<div class="ket db-ketuk" data-db-ke="sumber:stok">' + esc('+' + sisa + ' merek lain di Stok › Gudang') + ' ›</div>' : '')
-      + '</div>';
+      + barisGudang(S.gudang) + '</div>';
+  }
+
+  // owner 26 Nov 2026 (B49 B50 B53 B54 A62): GUDANG — buku minus (semua jenis buku, dengan rupiah), tugas terbuka, kemasan bertanggal, beras hilang bulan ini.
+  // DL.dbStok.gudang = gudang-logika gdDasbor apa adanya (angka yang sama dengan Stok › Tugas gudang); tiap baris diketuk = rincian, ketuk lagi = layarnya.
+  function barisGudang(G) {
+    if (!G) return ''; if (G.galat) return '<div class="ket awas-teks" data-k="db-gudang-galat">Tugas gudang gagal dihitung: ' + esc(G.galat) + '</div>';
+    const r = (id, nama, nilai, awas, isi) => '<div class="db-baris db-ketuk' + (awas ? ' awas-teks' : '') + '"' + daftar('gudang:' + id, isi) + '><span class="db-nama">' + esc(nama) + '</span><span class="db-nilai">' + esc(nilai) + '</span></div>';
+    const ke = 'Stok › Tugas gudang'; const M = G.minus, T = G.tugas, K = G.kemasan, B = G.buang;
+    return '<div class="db-sub" data-k="db-gudang">Gudang</div>'
+      + r('minus', 'Buku minus', M.n ? M.n + ' · ' + RP(M.rp) : 'tidak ada', M.n > 0, { judul: 'Buku stok minus', baris: M.top.map((x) => [x.nama, x.teks + (x.dinilai ? ' · ' + RP(x.rp) : ' · belum bisa dinilai')]).concat([['Ringkas', M.kalimat]]), tujuan: G.tujuan, ke })
+      + r('tugas', 'Tugas gudang terbuka', T.n ? T.n + ' di ' + T.nJenis + ' jenis' : 'beres', T.awas, { judul: 'Tugas gudang yang terbuka', baris: T.terbuka.length ? T.terbuka.map((x) => [x.nama, x.n + ' · ' + x.ket]) : [['Keadaan', 'semua beres']], tujuan: G.tujuan, ke })
+      + r('kemasan', 'Kemasan bertanggal', K.lewat ? K.lewat + ' lewat' + (K.dekat ? ' · ' + K.dekat + ' dekat' : '') : K.dekat ? K.dekat + ' ≤ ' + K.ambang + ' hari' : 'aman', K.lewat > 0, { judul: 'Kemasan · baik dipakai sebelum', baris: K.nama.length ? K.nama.map((n) => [n, '']) : [['Keadaan', 'tidak ada yang dekat']], tujuan: G.tujuan, ke })
+      + (B.diarsip ? '' : r('hilang', 'Beras hilang ' + B.nama, dbKg(B.hilangKg) + ' · ' + RP(-B.hilangRp), B.menutup === false, { judul: 'Beras hilang & rusak per jenis · ' + B.nama, baris: B.jenis.map((x) => [x.jenis, dbKg(x.kg) + ' · ' + RP(-x.rp) + (x.rusakKg ? ' · rusak ' + dbKg(x.rusakKg) : '')]).concat([['Ringkas', B.kalimat]]), tujuan: G.tujuan, ke }));
   }
 
   // ---------- WADAH ----------
@@ -237,6 +250,11 @@ export function pasangDasbor(akar, opsi) {
       out.push(baris('minimum', 'Harga di bawah minimum', HM.keadaanMin === 'tanpaBiaya' ? 'belum bisa dihitung' : String(HM.nBawah), HM.nBawah > 0, { judul: 'Harga kasir di bawah harga minimum', baris: [['Biaya toko per kg', HM.biayaKg === null ? 'belum bisa dihitung' : RP(Math.round(HM.biayaKg))]].concat(HM.bawah.map((x) => [x.judul, RP(x.n) + ' < ' + RP(x.minimum)])).concat([['Keterangan', HM.kalimatMin]]), tujuan: HM.tujuan, ke: 'Harga › Katalog' }));
       out.push(baris('dekatHet', 'Modal + biaya dekat HET', HM.keadaanHet === 'ada' ? (HM.nLewat ? HM.nLewat + ' lewat · ' : '') + HM.nDekat + ' dekat' : HM.keadaanHet === 'belumDipetakan' ? 'belum dipetakan' : 'belum bisa dihitung', HM.nLewat + HM.nDekat > 0, { judul: 'Modal + biaya per kg vs HET', baris: HM.alarm.map((x) => [x.merk + ' · ' + x.kategori, RP(Math.round(x.biayaKg)) + '/kg · HET ' + RP(x.het) + (x.status === 'lewat' ? ' · LEWAT' : '')]).concat([['Keterangan', HM.kalimatHet]]), tujuan: HM.tujuan, ke: 'Harga › Katalog › Harga minimum & HET' }));
     }
+    // paket Stok minus, label & kepatuhan (owner 26 Nov 2026): kalender kepatuhan & cek aturan bulanan (patuh-logika ptDasbor apa adanya)
+    const P = Q.patuh;
+    if (P && P.galat) out.push(salah('patuh', 'Kalender kepatuhan', P));
+    else if (P) out.push(baris('patuh', 'Kalender kepatuhan', P.n ? P.n + ' urusan' + (P.lewat ? ' · ' + P.lewat + ' lewat' : '') : P.basi.length ? 'cek aturan belum' : 'tidak ada yang dekat', P.lewat > 0 || P.basi.length > 0,
+      { judul: 'Kalender kepatuhan', baris: (P.daftar.length ? P.daftar.map((x) => [x.nama, x.teks]) : [['Keadaan', P.kalimat]]).concat(P.basi.length ? [['Cek aturan > 30 hari / belum pernah', P.basi.join(', ')]] : []), tujuan: P.tujuan, ke: 'Laporan › Pajak › Kalender' }));
     out.push(R.galat ? salah('mutu', 'Mutu kedatangan', R) : baris('mutu', 'Kedatangan mutu AWAS', R.awas ? R.awas + ' kedatangan' : R.ditimbang || R.awas ? '0' : 'belum dicek', R.awas > 0, { judul: 'Timbang & mutu kedatangan', baris: [['Ditimbang', R.ditimbang + ' dari ' + R.kedatangan + ' kedatangan'], ['Kurang timbang', dbKg(R.kgKurang)], ['Mutu AWAS', String(R.awas)]], tujuan: R.tujuan, ke: 'Stok › Barang masuk' }));
     return '<div class="kartu db-kartu db-mutu">' + kepala('Mutu usaha', Q.periode, 'sumber:mutu', Q.sumber, Q.tujuan) + out.join('') + '</div>';
   }

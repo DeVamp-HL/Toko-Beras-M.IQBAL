@@ -199,7 +199,7 @@ def periksa_statis(t):
     ok('kabar dalam aplikasi → layar Uang untuk hitungan laci', "hitungLaci: 'Hitungan laci dari tablet'" in t[KB] and "m.tindakan === 'hitungLaci' ? 'uang' : 'menu'" in t[KB])
     ok('push HP menyebut hitungan laci & membuka Uang', "hitungLaci: 'Hitungan laci'" in t[FN] and "t === 'barangMasuk' || t === 'hitungLaci' ? 'uang' : 'menu'" in t[FN])
     ok('index.html memuat logika & panel tutup hari tablet (modulepreload)', '<link rel="modulepreload" href="js/layar/tutup-tablet-logika.js">' in t[IDX] and '<link rel="modulepreload" href="js/layar/tutup-tablet-panel.js">' in t[IDX])
-    ok('rules v16: hitungan lewat stafHitungLaci([ben]) && tglStaf; aturanToko/tutupHari terbaca ben', "(stafHitungLaci(['ben']) && tglStaf('tanggal'))" in t[RULES] and "(id == 'tutupHari' && staf(['ben']))" in t[RULES])
+    ok('rules v16: hitungan lewat stafHitungLaci([ben]) && tglStaf; aturanToko/tutupHari terbaca ben', "(stafHitungLaci(['ben']) && tglStaf('tanggal'))" in t[RULES] and ("(id == 'tutupHari' && staf(['ben']))" in t[RULES] or "(id in ['tutupHari', 'kepatuhan'] && staf(['ben']))" in t[RULES]))   # v22 (26 Nov 2026): + kalender kepatuhan di baris yang sama
     return c
 
 

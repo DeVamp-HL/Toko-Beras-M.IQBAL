@@ -176,3 +176,13 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
 @keyframes lpShMasuk { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes lpShTumbuh { from { transform: scaleY(0.1); } to { transform: scaleY(1); } }
 @media (prefers-reduced-motion: reduce) { .layar-laporan .lp-sh-target > div, .layar-laporan .lp-sh-tren i { animation: none; } }
+/* owner 26 Nov 2026 (A16 A38 A45): kalender kepatuhan — baris masuk bergiliran, lewat bergaris merah, kartu tanda muncul memegas; hormat reduced motion */
+.layar-laporan .pt-baris { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 12px; border: 1px solid transparent; animation: ptMasuk 480ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--urut, 0) * 50ms); }
+.layar-laporan .pt-baris.lewat { border-left: 3px solid var(--awas); } .layar-laporan .pt-baris.hariIni, .layar-laporan .pt-baris.segera { border-left: 3px solid var(--emas-garis); }
+.layar-laporan .pt-baris.mati, .layar-laporan .pt-baris.selesai { opacity: 0.6; }
+.layar-laporan .pt-baris .n { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.layar-laporan .pt-centang, .layar-laporan .pt-atur { animation: ptPegas 520ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-laporan .pt-atur-baris { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--garis); }
+@keyframes ptMasuk { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@keyframes ptPegas { 0% { opacity: 0; transform: scale(0.97); } 70% { opacity: 1; transform: scale(1.01); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .layar-laporan .pt-baris, .layar-laporan .pt-centang, .layar-laporan .pt-atur { animation: none; } }

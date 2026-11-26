@@ -248,7 +248,7 @@ jobs:
           GCLOUD_PROJECT: demo-uji
         run: |
           npm install --no-audit --no-fund
-          node -e "const f = require('./index.js'); if (!f.kabarOwner) { console.error('kabarOwner tidak diekspor'); process.exit(1); } const p = require('./pesan.js'); if (!p.pesanNotif({ tindakan: 'pesan', teks: 'uji' }, 'x')) process.exit(1); console.log('kabarOwner termuat; pesanNotif jalan')"
+          node -e "const f = require('./index.js'); if (!f.kabarOwner) { console.error('kabarOwner tidak diekspor'); process.exit(1); } if (!f.kabarPatuh) { console.error('kabarPatuh tidak diekspor'); process.exit(1); } const p = require('./pesan.js'); if (!p.pesanNotif({ tindakan: 'pesan', teks: 'uji' }, 'x')) process.exit(1); const k = require('./patuh.js'); if (!k.pesanPatuh(null, [], '2027-03-01', 1).kirim) { console.error('pesanPatuh tidak mengirim SPT H-30'); process.exit(1); } console.log('kabarOwner & kabarPatuh termuat; pesanNotif & pesanPatuh jalan')"
 
       - name: "Cangkang SUNMI (paket S1, 19 Nov): pintu perangkat — jalur SDK SUNMI jatuh ke USB hanya bila belum ada byte terkirim (tidak ada struk dobel), scan tidak terbaca sebagai PIN, lampu & pindai diam di luar aplikasi; pemasang APK: pustaka resmi SUNMI, <queries>, penjaga hapus data; tanda tangan V1+V2 (jsc + python + statis + kontrol)"
         if: matrix.bagian == 3
@@ -301,6 +301,9 @@ jobs:
       - name: "Banding pemasok (owner 26 Nov 2026): modal sampai toko per kg (kg diterima = timbang / sampel / nota, retur dikurangi; pecahan menutup), layak jual = + potongan mutu ÷ (1 − susut gudang pemasok 3 bulan), harga tawaran = perkiraan, urutan per kelas + minimal N pemasok, penjaga = sapuan Bon pemasok, laporan mingguan berjajar, rapor bulanan, harga acuan, tren; catatan & usul tablet (rules v21), pengingat Jumat & tanggal 1, tarik otomatis (sisir JSON)"
         if: matrix.bagian == 1
         run: python3 alat-uji/uji_banding_pemasok.py && python3 alat-uji/uji_banding_pemasok.py --kontrol
+      - name: "Stok minus, label & kepatuhan (owner 26 Nov 2026): buku minus = minusBuku berrupiah & urut terdalam, hilang & rusak per jenis menutup ke Laporan, tugas gudang = sumber pengingat, kemasan bertanggal FIFO, label lengkap & tanggal masuk (ESC/POS & TSPL tanpa baris = byte lama), kalender kepatuhan + push pagi server = rumus yang sama (rules v22)"
+        if: matrix.bagian == 3
+        run: python3 alat-uji/uji_gudang_label_patuh.py && python3 alat-uji/uji_gudang_label_patuh.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

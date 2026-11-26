@@ -40,6 +40,9 @@ import { klMarginBulan, klTargetHari, klKasMinimum, klSiklusUang, klNotaTerbesar
 import { pdPondasi } from './pondasi-logika.js';
 // paket Susut + HPP & harga minimum (owner 26 Nov 2026): target & dua ambang susut, opname bulan ini, harga di bawah minimum, alarm dekat HET — APA ADANYA dari susut-harga-logika.js
 import { shDasborSusut, shRingkasHarga } from './susut-harga-logika.js';
+// paket Stok minus, label & kepatuhan (owner 26 Nov 2026): buku minus, tugas gudang, hilang & rusak per jenis, kemasan bertanggal (gudang-logika) · kalender kepatuhan (patuh-logika) — APA ADANYA
+import { gdDasbor } from './gudang-logika.js';
+import { ptDasbor } from './patuh-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
@@ -96,7 +99,9 @@ export function dbStok(kini) {
       diketahui: !!w.diketahui, isiKg: w.diketahui ? w.sisaKg : null, penuhKg: w.penuhKg, bagian: w.diketahui ? w.bagian : 0, perluIsi: !!(w.diketahui && w.perluIsi), lewat: w.lewat || 0,
       terakhirTanggal: w.isiTerakhirTanggal || '', terakhirJam: w.isiTerakhirJam || '', aktif: !!c.aktif, dicek: !!c.dicek, hasilTeks: c.hasilTeks || '', jamCek: c.jam || '' }; });
   return { periode: 'Sekarang · laju jual ' + JENDELA_LAJU_HARI + ' hari terakhir', sumber: 'Stok › Gudang', tujuan: { ke: 'stok', tab: 'gudang' }, merek, ambangHari: AMBANG_HARI_KRITIS,
-    wadah, wadahSumber: 'Stok › Wadah literan', wadahTujuan: { ke: 'stok', tab: 'wadah' }, hariCek, nAktif: C.nAktif, nDicek: C.nDicek, belumDicek: C.belum, perluIsi: SW.perluIsi, belumDitandai: SW.belumDitandai };
+    wadah, wadahSumber: 'Stok › Wadah literan', wadahTujuan: { ke: 'stok', tab: 'wadah' }, hariCek, nAktif: C.nAktif, nDicek: C.nDicek, belumDicek: C.belum, perluIsi: SW.perluIsi, belumDitandai: SW.belumDitandai,
+    // owner 26 Nov 2026 (B49 B50 B53 B54 A62): satu yang galat tidak mematikan kartu stok
+    gudang: dbCoba(() => gdDasbor(kini)) };
 }
 
 /** PIUTANG (Pelanggan › Bon) & UTANG PEMASOK (Harga & Pemasok › Bon pemasok) — yang jatuh tempo didahulukan. */
@@ -172,6 +177,8 @@ export function dbMutu(kini) {
     // paket Susut + HPP & harga minimum (owner 26 Nov 2026)
     susut: SS === null ? null : SS.galat ? SS : Object.assign({}, SS, { tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key }, opnameTujuan: { ke: 'stok', lembar: 'cocok' } }),
     harga: HM.galat ? HM : Object.assign({}, HM, { tujuan: { ke: 'harga', keluarga: 'katalog' } }),
+    // paket Stok minus, label & kepatuhan (owner 26 Nov 2026): kalender kepatuhan & cek aturan bulanan
+    patuh: aman(() => ptDasbor(kini)),
   };
 }
 
