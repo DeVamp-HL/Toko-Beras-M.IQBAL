@@ -873,9 +873,9 @@ if __name__ == '__main__':
             'nota yang dibatalkan boleh dicetak ulang': js.replace("if (X.batal) tolak = 'Nota dibatalkan tidak dicetak ulang';", ""),
             'nota batal tidak ditandai di daftar cetak ulang': js.replace("batal: !N.berlaku || N.dibatalkan, salinan:", "batal: false, salinan:"),
             # ---- 39b no. 38 (owner 30 Sep): selisih laci = baris lebih/kurang kas di laba
-            '39b-38: Laba tanpa baris lebih/kurang kas (tangga tidak menutup)': js.replace(".concat(L.lebihKurangKas ? [[lpNamaLebihKurang(L), L.lebihKurangKas]] : []).concat([['Laba bersih', L.labaBersih, 'jumlah']])", ".concat([['Laba bersih', L.labaBersih, 'jumlah']])"),
+            '39b-38: Laba tanpa baris lebih/kurang kas (tangga tidak menutup)': js.replace(".concat(L.lebihKurangKas ? [[lpNamaLebihKurang(L), L.lebihKurangKas]] : []).concat(L.asetDariBiaya ?", ".concat(L.asetDariBiaya ?"),
             '39b-38: laba-rugi berkop tanpa baris lebih/kurang kas': js.replace(".concat(L.lebihKurangKas ? [{ nama: lpNamaLebihKurang(L), n: L.lebihKurangKas }] : [])", ""),
-            '39b-38: Ke mana laba kotor diam soal lebih/kurang kas (tidak menutup)': js.replace("+ L.susutStok + L.lebihKurangKas) - L.labaBersih) < 0.5", "+ L.susutStok) - L.labaBersih) < 0.5"),
+            '39b-38: Ke mana laba kotor diam soal lebih/kurang kas (tidak menutup)': js.replace("+ L.susutStok + L.lebihKurangKas + EA) - L.labaBersih) < 0.5", "+ L.susutStok + EA) - L.labaBersih) < 0.5"),
             '39b-38: selisih tutup hari sistem lama (tanpa selisihLaci) tidak dibaca': js.replace("const sel = (x) => Number((x && (x.selisihLaci || x.selisih)) || 0);", "const sel = (x) => Number((x && x.selisihLaci) || 0);"),
             '39b-38: neraca memakai laba mesin (laba berjalan tanpa lebih/kurang kas)': js.replace("return { laba: ugLabaBersih(pertama, s || iso).labaBersih, prive };", "return { laba: ugLabaBersih(pertama, s || iso).labaMesin, prive };"),
             '39b-38: Banding tanpa baris lebih/kurang kas': js.replace(".concat(A1.kas || A2.kas ? [['Lebih/kurang kas', 'kas']] : [])", ""),

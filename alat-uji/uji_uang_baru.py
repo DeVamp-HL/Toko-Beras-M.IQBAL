@@ -594,7 +594,7 @@ if __name__ == '__main__':
             'kasbon owner di saldo pembuka kehilangan tanda owner': js.replace("kunciPelanggan(x.nama) === kunciPelanggan(NAMA_KASBON_OWNER) ? { owner: true } : {}, tb)", "{}, tb)"),
             'titik kas 31 Des tidak ditulis saat kunci (kas tahun lama menguap)': js.replace("const titik = K.ada && T0 && T0.dari === 'titikKas' ? { id: 'titikKas', tanggal: T.cutoff,", "const titik = false ? { id: 'titikKas', tanggal: T.cutoff,"),
             # ---- 39b no. 38 (owner 30 Sep): selisih laci = baris lebih/kurang kas di laba
-            '39b-38: lebih/kurang kas tidak masuk laba bersih (desain lama)': js.replace("labaBersih: L.labaBersih + K.n });", "labaBersih: L.labaBersih });"),
+            '39b-38: lebih/kurang kas tidak masuk laba bersih (desain lama)': js.replace("labaBersih: L.labaBersih + K.n },", "labaBersih: L.labaBersih },"),
             '39b-38: tutup ulang menghapus selisih tutup pertama (riwayat tidak dihitung)': js.replace(".reduce((a, x) => a + sel(x), sel(t));", ".reduce((a, x) => a, sel(t));"),
             '39b-38: lembar tutup memakai laba yang sudah memuat selisih laci (dasar sisihan bergeser)': js.replace("const labaSebelumMdr = L.labaMesin + mdrTercatat;", "const labaSebelumMdr = L.labaBersih + mdrTercatat;"),
             # ---- tinjauan 39b UU38-1: catatan bertanggal hari yang sudah ditutup, dicatat sesudah tutup

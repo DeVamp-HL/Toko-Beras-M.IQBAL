@@ -206,7 +206,9 @@ var _ssm = susunSimpanMasuk; susunSimpanMasuk = function (d, w, y) { return _ssm
 """
 
 
-MODUL_DATA = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js']
+# owner 26 Nov 2026: aset-tetap-logika.js (modul daun: toko.js + format) ikut di sini — uang-logika (laba bersih) memakainya, dan banyak alat uji menyusun daftar modulnya
+# sendiri dari MODUL_DATA tanpa lengkapi().
+MODUL_DATA = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/layar/aset-tetap-logika.js']
 
 if __name__ == '__main__':
     import sys
