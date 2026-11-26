@@ -695,6 +695,11 @@ export function pasangLayarPelanggan(akar, opsi) {
   dengarkan(() => nanti(gambar));
   // dipanggil layar Menu: buka keluarga (kenali | bon | thr), dan kalau ada, kartu / bon satu orang — lewat penangan yang sama dengan ketukan
   // B2: tab Usaha (mis. 'faktur' dari kartu Dasbor)
-  const buka = (keluarga, orang, tab) => { AKSI.keluarga({ ke: keluarga || 'kenali' }); if (tab && keluarga === 'usaha') AKSI.tabU({ t: tab }); if (orang && keluarga === 'bon') AKSI.bukaOrangBon({ kunci: orang }); else if (orang) AKSI.bukaKartu({ kunci: orang }); };
+  // isi.bayar (owner 26 Nov 2026, QR satu pintu — struk bon / faktur di-scan di Jual): lembar bayar orang itu langsung terbuka, faktur nota itu terpilih,
+  // nominal & catatan terisi bila jelas. Pencatatannya tetap tombol bayar di lembar ini (susunBayarBon) — tidak ada yang ditulis saat dibuka.
+  const buka = (keluarga, orang, tab, isi) => { AKSI.keluarga({ ke: keluarga || 'kenali' }); if (tab && keluarga === 'usaha') AKSI.tabU({ t: tab }); if (orang && keluarga === 'bon') AKSI.bukaOrangBon({ kunci: orang }); else if (orang) AKSI.bukaKartu({ kunci: orang });
+    const by = isi && isi.bayar; if (!by || keluarga !== 'bon' || !orang || st().orangBon !== orang) return;
+    AKSI.lembarBon({ l: 'bayar' });
+    set({ bayar: Object.assign({}, st().bayar, { nominal: String(by.nominal || '').replace(/\D/g, '').slice(0, 14), catatan: String(by.catatan || '').slice(0, 60), faktur: Array.isArray(by.faktur) ? by.faktur.map(String) : [] }) }); };
   return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } };
 }

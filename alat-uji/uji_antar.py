@@ -279,7 +279,7 @@ STATIS = [
      "AJ.ajCaraTerima(x) === 'kertas' ? ' · tanda tangan di kertas (foto lembar)'", "d.isiBukti === 'kertas' ? 'foto lembar bertanda tangan'"]),
     ('panel: yang mengantar = daftar + pernah mengantar + "orang lain" (ketik nama)', 'panel', ['const P = AJ.ajPilihanPengantar(hari());', 'data-aksi="ajPengantarLain"', 'data-kolom="pengantar" data-k="aj-pengantar-ketik"',
      "!(k === 'pengantar' && s.antar.pengantarKetik)", "if (kolom === 'pengantar') o.pengantarKetik = false;", '${gambarPengantar(a, A)}']),
-    ('panel: cetak surat jalan = 2 lembar berurutan di printer & dialog', 'panel', ['const lembar = AJ.ajLembarCetak(sj, atur.kop);', 'return lembar.reduce((p, g) => p.then(() => PR.susunCetak(g, { gaya: \'teks\' }))',
+    ('panel: cetak surat jalan = 2 lembar berurutan di printer & dialog', 'panel', ['const lembar = AJ.ajLembarCetak(sj, atur.kop);', 'return lembar.reduce((p, g, i) => p.then(() => PR.susunCetak(garisLembar(g, i), { gaya: \'teks\' }, { qr: qrLembar(i) }))',
      "lembar.map((g) => AJ.ajTeksCetak(g, kertas === 58 ? 32 : 48)).join("]),
     ('modul baru di-modulepreload', 'index', ['<link rel="modulepreload" href="js/layar/antar-logika.js">', '<link rel="modulepreload" href="js/layar/antar-panel.js">']),
     ('Pelanggan › Atur: tarif ongkir, pengantar, kendaraan', 'pelanggan', ['data-kolom="tarifOngkir"', "daftar('pengantarAntar',", "daftar('kendaraanAntar',"]),

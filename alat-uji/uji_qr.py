@@ -181,7 +181,7 @@ def periksa_statis():
        and "const sg = epSusunGambar(g, g.qrDiGambar ? Object.assign({}, o, { qr: '' }) : o);" in pr)
     ok('escpos.js: QR bawaan printer tetap ada untuk gaya teks dan struk yang QR-nya tidak muat di gambar', 'if (o.qr) { w.byte(ESC, 0x61, 1); tulisQr(w, o.qr, o.qrUkuran);' in ep)
     ok('Jual: pratinjau struk memuat QR yang sama dengan cetakan (setelan printer perangkat ini), dan pratinjau lama tidak dipakai ulang saat QR berubah',
-       "const url = pratinjauStruk(st, n.pilih.kertas, PR.prAtur().qr ? TK.tkQrNota(n.nota) : '');" in jl and "const kunci = kertas + '|' + (st.logo ? 'L' : '') + '|' + (qr || '') + '|' + st.teks;" in jl
+       "const url = pratinjauStruk(st, n.pilih.kertas, PR.prAtur().qr ? qrStruk(n.nota) : '');" in jl and "const qr = PR.prAtur().qr ? qrStruk(nota) : '';" in jl and "const kunci = kertas + '|' + (st.logo ? 'L' : '') + '|' + (qr || '') + '|' + st.teks;" in jl
        and "gambarStrukKanvas(st.garis, { kertas, logoToko: st.logo, qr: qr || '' })" in jl)
     uj = baca('baru', 'js', 'layar', 'uji-cetak.js')
     ok('layar Perangkat: pratinjau "persis yang keluar dari printer" memuat QR contoh yang sama dengan Cetak contoh, dan digambar ulang saat centang QR berubah',
