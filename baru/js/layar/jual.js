@@ -12,7 +12,8 @@ import * as ST from './struk-logika.js';
 import * as PK from '../inti/perangkat.js';   // paket S1 (19 Nov 2026): lampu CPad — hijau nota tersimpan, merah kedip cetak gagal; tanpa lampu = diam
 import * as PR from '../inti/printer.js';   // T1 (16 Nov 2026): printer USB tablet kasir — aplikasi CPad / WebUSB; tanpa printer = dialog cetak
 import * as TK from './tanda-kenal-logika.js';
-import * as SP from './pindai-logika.js';   // owner 26 Nov 2026 (QR satu pintu): keadaan nota menurut data saat struknya di-scan
+import * as SP from './pindai-logika.js';
+import * as CP from './cap-logika.js';   // owner 26 Nov 2026: cap langganan   // owner 26 Nov 2026 (QR satu pintu): keadaan nota menurut data saat struknya di-scan
 // owner 26 Nov 2026 (label & kedaluwarsa): label kemasan LENGKAP (kelas mutu, berat bersih, nama & alamat toko, tanggal kemas, baik dipakai sebelum) + label tanggal masuk
 // tumpukan karung dicetak ulang dari sini; Atur label (owner): umur simpan, tanda dekat, kelas mutu per kemasan (aturanToko/catatStok.label — dibaca tablet)
 import * as LB from './label-logika.js';
@@ -100,6 +101,10 @@ export function pasangLayarJual(akar, opsi) {
     chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(Object.assign({ isiW: null }, L.ketukChip(S(), c))); },
     sering: ({ id }) => { const c = rakKini().sering.find((x) => x.id === id); if (c) set(L.ketukChip(S(), c)); },
     ulangiTerakhir: ({ g }) => { const r = L.ulangiPembelian(SB(), rakKini(), g); set(r); if (r.keranjang) setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 60); },
+    // owner 26 Nov 2026 (cap langganan): tandai nota ini membawa hadiah cap — hanya bila pembelinya punya hadiah yang belum diberikan (batal = ketuk lagi)
+    capTandai: () => { const s = S(); const C = s.pelanggan ? CP.capHitung(s.pelanggan) : null;
+      if (!s.capTukar && !(C && C.tersedia > 0)) return set({ kabar: 'Belum ada hadiah cap untuk ' + (s.pelanggan || 'pembeli tanpa nama'), kabarAwas: true });
+      set({ capTukar: !s.capTukar, kabar: s.capTukar ? '' : 'Nota ini ditandai: hadiah cap diberikan' + (C && C.hadiah ? ' (' + C.hadiah + ')' : '') + ' — berikan hadiahnya lewat Potongan / bonus seperti biasa', kabarAwas: false }); },
     // paket QR kedua (owner 26 Nov 2026): "Ulangi belanja ini" dari lembar struk (struk di-scan / dibuka dari Riwayat) — barang & jumlah nota itu masuk keranjang
     // dengan HARGA HARI INI lewat jalan ulangiPembelian (ulangiBarisNota). Pembeli nota itu dipasang dulu (harga tingkat ikut); keranjang berisi belanja
     // ORANG LAIN tidak dicampur.
@@ -1305,6 +1310,8 @@ export function pasangLayarJual(akar, opsi) {
         ${!kunciKredit && bonN > 0 && s.pelanggan && FK.fkUsaha(s.pelanggan) ? h`<div class="ket" data-k="faktur-akan">jadi FAKTUR · jatuh tempo ${tanggalPendek(FK.fkTambahHari(hariIniIso(s.sekarang || new Date()), FK.fkTempo(s.pelanggan).hari))} · tempo ${FK.fkTempoTeks(FK.fkTempo(s.pelanggan))}</div>` : ''}
         ${s.kreditDibuka && s.cara === 'Kredit' ? h`<div class="ket">kredit dibuka sekali oleh owner — nota membawa tanda kreditDibukaOwner</div>` : ''}
         <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli'}</div>
+        ${(() => { const C = s.pelanggan ? CP.capHitung(s.pelanggan) : null; if (!C) return '';   // owner 26 Nov 2026: cap langganan (cap-logika.js) — hadiahnya diberikan lewat jalan biasa, nota ini ditandai
+          return h`<div class="ket" data-k="cap-bayar">${CP.capTeksBayar(C, Math.max(0, t.total))}</div>${C.tersedia > 0 || s.capTukar ? h`<div class="kaca-btn ${s.capTukar ? 'aktif' : ''}" data-aksi="capTandai" data-k="cap-tandai">${s.capTukar ? 'Hadiah cap DIBERIKAN di nota ini — ketuk untuk batal' : 'Tandai: hadiah cap diberikan di nota ini'}${C.hadiah ? ' · ' + C.hadiah : ''}</div>` : ''}`; })()}
         ${AP.gambarBayar(s, t)}
         ${akunOwner() ? h`<div class="label">Dilayani</div><div class="bendera" data-k="dilayani">${[''].concat(daftarPelayan()).map((nm) => h`<span class="pil ${dilayaniSah() === nm ? 'nyala' : ''}" data-aksi="pilihDilayani" data-n="${nm}" data-k="dl-${nm || 'owner'}">${nm || namaOwner()}</span>`)}</div>${daftarPelayan().length ? '' : h`<div class="ket">Belum ada karyawan aktif — atur di Uang › Orang & upah.</div>`}` : ''}
         ${pitaTolak(s, 'bayar')}${s.tembusTanya && s.tembusTanya.length && s.keranjang.length ? h`<div class="kaca-btn awas" data-aksi="simpanTembus" data-k="tembus-bayar">JUAL DULU, TANDAI</div>` : ''}

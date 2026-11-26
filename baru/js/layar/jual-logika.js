@@ -83,7 +83,7 @@ export function keadaanAwal() {
   return {
     jalur: 'sering', lembar: null, pilih: null, ketik: '', satuanKarung: 50, namaRepack: '',
     rwCari: '', rwPeriode: 'semua', rwJenis: '', rwCara: '', rwBatal: false, rwN: 50, rwBuka: null,   // RIWAYAT PENJUALAN (owner 28 Sep): saringan tab Riwayat (riwayat-logika.js)
-    keranjang: [], negoId: null, potongan: 0, penggantiTanya: null,
+    keranjang: [], negoId: null, potongan: 0, penggantiTanya: null, capTukar: false,   // capTukar (owner 26 Nov 2026, cap langganan): nota ini membawa hadiah cap
     negoAlasan: '', negoMinta: null, ngAlasanTolak: '', bonusMinta: null,   // owner 23 Nov: bonusMinta = { id, teks } bonus +1 yang perlu minta owner   // owner 7 Okt (JS2-C): alasan di bawah modal · nego yang perlu minta owner · alasan owner menolak (Buku Nego)
     pelanggan: '', cariPelanggan: '', cara: 'Tunai', uang: 0,
     antrean: [], aktifId: 1, idBerikut: 2, urutBaris: 0,
@@ -841,7 +841,7 @@ export function parkir(s) {
   // B3: draf antar (alamat, ongkir, pengantar, bayar di tempat) milik struk ini — ikut diparkir
   const beku = { items: s.keranjang, pelanggan: s.pelanggan, cara: s.cara, uang: s.uang, potongan: s.potongan, pesananId: s.pesananId || null, tukar: s.tukar || null, pada: new Date(Date.now()).toISOString(), kreditDibuka: !!s.kreditDibuka, antar: s.antar || null };
   const antrean = s.antrean.filter((a) => a.id !== s.aktifId).concat([{ id: s.aktifId, beku }]);
-  return { antrean, keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, negoMinta: null, bonusMinta: null, negoAlasan: '', lembar: null, pesananId: null, tukar: null, penggantiTanya: null, kreditDibuka: false, antar: null,
+  return { antrean, keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, capTukar: false, negoId: null, negoMinta: null, bonusMinta: null, negoAlasan: '', lembar: null, pesananId: null, tukar: null, penggantiTanya: null, kreditDibuka: false, antar: null,
     aktifId: s.idBerikut, idBerikut: s.idBerikut + 1, kabar: (s.pelanggan || 'Struk') + ' diparkir — stoknya tetap dipegang', kabarAwas: false };
 }
 export function pakaiAntrean(s, id) {
@@ -977,7 +977,7 @@ export function tingkatPembeli(nama, kini) {
  * Uang yang sudah diterima dikosongkan kalau ada harga yang berubah (totalnya berubah).
  */
 export function gantiPelanggan(s, nama) {
-  const nm = String(nama || '').trim(); const patch = { pelanggan: nm };
+  const nm = String(nama || '').trim(); const patch = { pelanggan: nm, capTukar: false };   // cap langganan: tanda hadiah melekat pada pembeli yang ditandai
   // B3: alamat antar yang masih kosong diisi dari kartu pembeli yang baru dipilih
   if (s.antar && !String(s.antar.alamat || '').trim()) { const al = ajDrafBaru(nm).alamat; if (al) patch.antar = Object.assign({}, s.antar, { alamat: al }); }
   if (!(s.keranjang || []).length) return patch;
@@ -1330,6 +1330,7 @@ export function susunNotaDokumen(s, w) {
     if (faktur) Object.assign(d, faktur);   // B2: nota bon pelanggan usaha = faktur (noFaktur, jatuhTempo, tempoHari)
     if (noSJ) { d.noSJ = noSJ; if (antar.cod) d.bayarDiTempat = true; }   // B3: nota yang diantar (semua baris) · bayar di tempat = bon sementara
     if (noPO) d.noPO = noPO;   // B4: nomor PO dari pelanggan (semua baris — struk, faktur, surat jalan, riwayat membacanya)
+    if (s.capTukar && nama) d.capDitukar = 1;   // owner 26 Nov 2026 (cap langganan): hadiah cap diberikan di nota ini (cap-logika menghitung per nota)
     if (muka > 0 && !dokumen.some((x) => x.koleksi === 'penjualan')) d.uangMukaPesanan = muka;   // B4: baris pertama membawa DP yang dipotong (struk)
     if (uang > 0 && cara === 'Tunai') { d.uangDiterima = uang; d.kembalian = Math.max(0, uang - (totalBayar - kreditTukar)); }
     dokumen.push({ koleksi: 'penjualan', data: d });
@@ -1477,7 +1478,7 @@ export function simpanNota(s0, w) {
   const s2 = tembus.length ? Object.assign({}, s, { keranjang: s.keranjang.map((b) => (ids[b.id] ? Object.assign({}, b, { trx: Object.assign({}, b.trx, { perluCocokkan: true, selisihKg: ids[b.id].selisihKg }) }) : b)) }) : s;
   const n = susunNotaDokumen(s2, w || waktuSekarang(s.sekarang || undefined));
   if (n.tolak) return { tolak: n.tolak };
-  const patch = { keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, negoMinta: null, bonusMinta: null, negoAlasan: '', lembar: null, ketik: '', kreditDibuka: false, pesananId: null, penggantiTanya: null, tukar: null, tembusTanya: null, tembusYakin: false, antar: null,
+  const patch = { keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, capTukar: false, negoId: null, negoMinta: null, bonusMinta: null, negoAlasan: '', lembar: null, ketik: '', kreditDibuka: false, pesananId: null, penggantiTanya: null, tukar: null, tembusTanya: null, tembusYakin: false, antar: null,
     pulihPeriksa: (s.pulihPeriksa || []).filter((id) => !s.keranjang.some((b) => String(b.id) === String(id))),
     notaTerakhir: { trxId: n.trxId, idPenjualan: n.idPenjualan, piutangId: n.piutangId, pesanan: n.pesanan, retur: n.retur, pada: Date.now(), ringkas: n.ringkas, nama: String(s.pelanggan || '').trim() },
     kabar: 'Tersimpan — ' + n.ringkas + (tembus.length ? ' · TEMBUS STOK, tandai dicocokkan: ' + tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' ' + kgTeks(t.selisihKg)).join(', ') : ''), kabarAwas: false };

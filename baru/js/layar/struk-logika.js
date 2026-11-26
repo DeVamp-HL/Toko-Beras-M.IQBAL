@@ -14,6 +14,8 @@ import { fkKartu } from './faktur-logika.js';
 import { ajOngkirNota, ajPelunasan, ajUntukNota } from './antar-logika.js';
 // owner 26 Nov 2026 (QR satu pintu): nomor WhatsApp toko di setelan struk dibakukan sekali di sini, dipakai QR struk & surat jalan
 import { tkWaNomor } from './tanda-kenal-logika.js';
+// owner 26 Nov 2026: cap langganan di struk
+import { capHitung, capTeks } from './cap-logika.js';
 
 export const ST_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 export const ST_KOLOM = { 58: 30, 80: 42 };
@@ -264,6 +266,8 @@ export function susunStruk(nota, atur, pilih) {
     baris('Bayar: ' + nota.cara, '', { jenis: 'bayar' });
     if (nota.uangDiterima > 0) { baris('Uang diterima', RP(nota.uangDiterima), { jenis: 'bayar' }); if (nota.kembalian > 0) baris('Kembali', RP(nota.kembalian), { jenis: 'bayar' }); }
   }
+  // owner 26 Nov 2026 (cap langganan, cap-logika.js): cap pembeli bernama SAAT struk disusun (seperti sisa bon) — hanya bila owner sudah memulai cap
+  if (nota.nama && nota.berlaku) { const C = capHitung(nota.nama); if (C) baris(capTeks(C), '', { jenis: 'catatan' }); }
   // B3: nota yang diantar — nomor surat jalan & alamat antarnya (baris catatan, tanpa angka)
   if (nota.noSJ) { const sjN = ajUntukNota(nota.trxId)[0]; baris('Diantar · surat jalan ' + nota.noSJ + (sjN && sjN.alamat ? ' · ' + sjN.alamat : ''), '', { jenis: 'catatan' }); }
   // B4: nomor PO dari pelanggan (instansi / catering) — baris catatan supaya semua gaya struk (teks & Sertifikat) menampilkannya

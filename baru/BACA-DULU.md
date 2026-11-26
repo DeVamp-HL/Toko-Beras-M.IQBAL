@@ -3457,8 +3457,27 @@ Owner 26 Nov 2026 memilih satu paket (A + B + C). Halaman saja — tanpa APK, ta
   (begitu ketikan berhenti). Ketikan orang di kotak lain / di sela-selanya tidak disentuh. Belum terbukti di CPad (pemicunya hanya ada di perangkat).
 - Uji: `uji_tanda_kenal.py` (isi QR, pengurai, sambungan Jual/app/antar/setelan; kontrol), `uji_pindai_struk.py` (keadaan nota, bon/faktur/surat jalan,
   setelan WA; kontrol). `bundel_baru.lengkapi` kini ikut membawa `tanda-kenal-logika.js` bila `struk-logika.js` / `pindai-logika.js` ada.
-- **Belum terbukti:** tautan WA dibuka kamera HP Android & iPhone (bagian `#` diabaikan WhatsApp — dari aturan tautan, belum dicoba di HP), QR 41 modul
-  @ 3 titik (±15 mm) terbaca kamera HP dari kertas termal, ketikan scanner benar-benar dibuang di CPad.
+- **Belum terbukti:** QR 41 modul @ 3 titik (±15 mm) terbaca kamera HP dari kertas termal, ketikan scanner benar-benar dibuang di CPad.
+  **Terbukti owner 26 Nov:** tautan WA dari QR dibuka kamera HP → WhatsApp toko (bagian `#` tidak mengganggu).
+
+## Paket QR kedua — retur sekali scan, ulangi belanja, cap langganan (owner 26 Nov 2026, cabang `fitur/qr-paket-2` di atas `fitur/qr-satu-pintu`)
+
+- **Retur sekali scan** (karung & kemasan): pita scan (`spKeadaanNota` › `barisRetur`, dihitung `rwNotaLengkap` yang sama dengan Riwayat) punya tombol
+  **Retur <barang> ›** tiap baris yang bisa diretur → lembar retur baris itu (`tunjukNota`); yang tidak bisa disebut sebabnya. Nota tidak berlaku = tanpa retur.
+  Scan tetap membuka lembar struk dulu (scan yang sama dipakai bayar bon & cetak ulang) — retur = satu ketukan.
+- **Ulangi belanja** (QR struk tetap chat umum — keputusan owner): lembar struk punya **Ulangi belanja ini · harga hari ini** → `ulangiBarisNota` (inti
+  `ulangiPembelian` 23 Sep yang dipecah: nota mana pun, lewat `masukkan()` + batas baris akun `SB()`, yang tidak ada / melampaui stok dilewati & disebut).
+  Pembeli nota dipasang dulu (`gantiPelanggan`, harga tingkat ikut); keranjang berisi belanja orang lain ditolak berkabar; nota tidak berlaku tidak diulang.
+- **Cap langganan** (`cap-logika.js`; owner: "adakan aja dulu", hadiah belum diputuskan): tiap NOTA atas nama pelanggan sejak tanggal mulai = 1 cap (tanpa
+  scan); tiap `penuh` cap = 1 hadiah. Setelan di Pelanggan › Atur › **Cap langganan** (`aturanToko/pelanggan` › `cap { mulai, minRp, penuh, hadiah }`, dokumen
+  yang sudah dibaca tablet; `susunAturCap` menulis dokumen UTUH, `susunAturPelanggan` membawa `cap` supaya tidak terhapus). Bawaan = **belum dimulai** (tidak
+  tampil di mana pun) sampai owner mengetuk "Mulai cap hari ini". Hadiah diberikan lewat Potongan / bonus seperti biasa; di Jual › Bayar tombol **Tandai: hadiah
+  cap diberikan** (hanya bila ada hadiah tersedia) → `s.capTukar` → baris nota bernama membawa `capDitukar: 1` (staf boleh menulis kolom tambahan di penjualan,
+  rules tidak berubah; mesin uang tidak membacanya). `capHitung` = cap per nota (dibatalkan / sebelum mulai / di bawah minimal tidak), tersedia = penuh − ditandai.
+  Tampil: lembar Bayar (`capTeksBayar`, "nota ini jadi 3/10" / CAP PENUH), struk (baris catatan saat struk disusun), kartu pelanggan. Batas: cap dihitung dari
+  nota buku berjalan — sesudah tutup buku mulai dari nol (disebut di setelan).
+- Uji: `uji_pindai_struk.py` (+ retur), `uji_jual_baru.py` (+ ulangiBarisNota), `uji_tanda_kenal.py` (sambungan), `uji_cap_langganan.py` (baru), `peta_akses.py`
+  (jalur ulangi lewat SB()). `bundel_baru.lengkapi` membawa `cap-logika.js` bila `struk-logika.js` ada; `uji_faktur.MODUL` membawa tanda-kenal & cap-logika.
 
 ## Gladi ulang tutup buku 2026 atas cadangan 23 Nov — fitur November × tahun yang ditutup (23 Nov 2026, cabang `perbaikan/tutup-buku-fitur-nov`)
 

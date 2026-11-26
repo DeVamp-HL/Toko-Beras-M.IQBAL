@@ -17,6 +17,8 @@ import * as HT from './harga-tingkat-logika.js';
 import { rakBarang } from './jual-logika.js';
 import { hetAtur, hetUnit, hetNilai } from './het-logika.js';
 import { klBonKg, klModalPerKg } from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 2026, butir 11): bon dalam kg beras (owner saja — memuat modal per kg)
+// owner 26 Nov 2026: cap langganan (setelan di Atur, hitungan di kartu)
+import * as CG from './cap-logika.js';
 import * as FK from './faktur-logika.js';   // B2 (owner 17 Nov 2026): faktur bertempo, batas kredit, rekap faktur
 
 const IKON = {
@@ -196,6 +198,10 @@ export function pasangLayarPelanggan(akar, opsi) {
     uHapusK: async () => { const x = st().uKhusus; if (x && x.id && await tulis(susunHT({ jenis: 'hapusKhusus', id: x.id }))) set({ uKhusus: null }); },
     uTutupK: () => set({ uKhusus: null, kabar: '' }),
     // ---- atur (angka & daftar kebijakan owner)
+    // owner 26 Nov 2026 (cap langganan): isian cap & simpan sendiri — mulai = hari disimpan pertama kali; hentikan = cap berhenti bertambah (nota lama tetap)
+    capKetik: (v, el) => { const A = CG.capAtur(); const c = Object.assign({ minRp: String(A.minRp), penuh: String(A.penuh), hadiah: A.hadiah }, st().capIsi || {}); c[el.dataset.kolom] = String(v || '').slice(0, el.dataset.kolom === 'hadiah' ? 80 : 12); set({ capIsi: c }); },
+    capSimpan: async () => { const A = CG.capAtur(); const w = waktu(); if (await tulis(CG.susunAturCap(Object.assign({}, st().capIsi || {}, { mulai: A.mulai || w.tanggal }), w))) set({ capIsi: null }); },
+    capHenti: async () => { if (await tulis(CG.susunAturCap({ mulai: '' }, waktu()))) set({ capIsi: null }); },
     bukaAtur: () => { if (st().atur) return set({ atur: null }); const a = P.aturPelanggan(); set({ atur: { hariIngatRutin: String(a.hariIngatRutin), tarifOngkir: String(a.tarifOngkir), pengantarAntar: a.pengantarAntar.slice(), kendaraanAntar: a.kendaraanAntar.slice(), tempoBawaan: String(a.tempoBawaan), stopBonHari: String(a.stopBonHari), hariTagih: String(a.hariTagih), syaratBulan: String(a.syaratBulan), syaratNota: String(a.syaratNota), syaratHari: String(a.syaratHari), kosongKali: String(a.kosongKali / 10).replace('.', ','), notaBesar: String(a.notaBesar), tagihHari: String(a.tagihHari), macetHari: String(a.macetHari), anggaranThr: String(a.anggaranThr), umurBatas: a.umurBatas.map(String), tertagihHari: String(a.tertagihHari), salamTagih: a.salamTagih, ciriDaftar: a.ciriDaftar.map((c) => Object.assign({}, c)), arahDaftar: a.arahDaftar.slice(), titipDaftar: a.titipDaftar.slice(), alasanHapus: a.alasanHapus.slice(), bentukThr: a.bentukThr.map((b) => Object.assign({}, b)) }, bersih: null, kabar: '' }); },
     aturKetik: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); const k = el.dataset.kolom; const i = el.dataset.i; const sub = el.dataset.sub; if (i === undefined) a[k] = String(v).slice(0, k === 'salamTagih' ? 200 : 14); else if (sub) a[k][Number(i)][sub] = String(v).slice(0, 40); else a[k][Number(i)] = String(v).slice(0, 40); set({ atur: a }); },
     aturHariTagih: ({ h: hr }) => { const a = JSON.parse(JSON.stringify(st().atur)); a.hariTagih = String(hr); set({ atur: a }); },   // owner 26 Nov 2026 (A105)
@@ -351,6 +357,7 @@ export function pasangLayarPelanggan(akar, opsi) {
         <div class="ps-form dua"><input class="ketik-nama" id="kAsli" type="text" placeholder="Nama asli" value="${d.asli}" data-ketik="kKetik" data-kolom="asli"><input class="ketik-nama" id="kKontak" type="text" inputmode="tel" placeholder="Nomor WhatsApp" value="${d.kontak}" data-ketik="kKetik" data-kolom="kontak"></div>
         <div class="ps-form dua"><input class="ketik-nama" id="kAlamat" type="text" placeholder="Alamat antar (pelanggan usaha)" value="${d.alamat || ''}" data-ketik="kKetik" data-kolom="alamat"><input class="ketik-nama" id="kNpwp" type="text" inputmode="numeric" placeholder="NPWP (boleh kosong)" value="${d.npwp || ''}" data-ketik="kKetik" data-kolom="npwp"></div>
         ${gambarHargaKartu(d)}
+        ${(() => { const C = CG.capHitung(o.nama || d.nama); return C ? h`<div class="ket" data-k="kartu-cap">${CG.capTeks(C)}${C.dapat ? ' · total cap ' + C.n + ', hadiah diraih ' + C.dapat + ', diberikan ' + C.ditukar : ''}</div>` : ''; })()}
         <div class="pita-info ${dikenali ? '' : 'awas'}">${dikenali ? 'Dikenali → kasir BOLEH mencatat bon baru atas namanya.' : 'Belum dikenali → kasir MENOLAK bon baru (aturan KR1). Isi salah satu: ciri, catatan, atau arah datangnya.'}</div>
         <div class="tombol-baris"><div class="kaca-btn" data-aksi="keBon" data-kunci="${d.kunci}">${o.utang > 0 ? 'buku bonnya · ' + RP(o.utang) : o.lebih > 0 ? 'buku bonnya · ' + ringkasLebih({ uang: o.lebihUang, hapus: o.lebihHapus }) : 'buku bon'}</div><div class="kaca-btn aktif emas" data-aksi="kSimpan">SIMPAN KARTU</div></div>
         ${(() => { const RH = P.rincianHapusNama(kini(), d.kunci); return h`<div class="ket tautan ${s.yakinHapusNama ? 'awas-teks' : ''}" data-aksi="kHapusNama" data-k="hapus-nama" style="align-self: flex-start;">${s.yakinHapusNama ? 'YAKIN — hapus nama "' + o.nama + '" (' + RH.arti + ')' : RH.tolak ? 'nama ini tidak bisa dihapus: ' + RH.tolak : 'nama salah ketik? hapus nama ini (' + o.nota + ' nota jadi tanpa nama, rupiah tetap)'}</div>`; })()}</div>
@@ -652,6 +659,17 @@ export function pasangLayarPelanggan(akar, opsi) {
       <div class="ket ${sah ? '' : 'awas-teks'}" data-k="atur-umur-label">${sah ? 'Kelompoknya: ' + B.kelompokUmur(ub).map((e) => e.label).join(' · ') : 'Batasnya harus bilangan bulat 1–3650 yang naik, mis. 7 · 30 · 90'}</div>
       <div><div class="ket">Rata-rata hari bon tertagih dihitung dari bon yang lunas dalam … hari terakhir (bawaan 90)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.tertagihHari}" data-ketik="aturKetik" data-kolom="tertagihHari"></div></div>`;
   }
+  // owner 26 Nov 2026 (cap langganan, cap-logika.js): setelan sendiri & simpan sendiri — dokumen setelan pelanggan yang sama; SIMPAN ATURAN tidak menghapusnya
+  function gambarAturCap(s) {
+    const A = CG.capAtur(); const c = s.capIsi || { minRp: String(A.minRp), penuh: String(A.penuh), hadiah: A.hadiah };
+    return h`<div class="kartu" data-k="atur-cap" style="gap: 8px;"><div class="label">Cap langganan · ${A.mulai ? 'berjalan sejak ' + tanggalPendek(A.mulai) : 'belum dimulai'}</div>
+      <div class="ket">Tiap nota atas nama pelanggan (nama dipilih / kartu NFC ditempel) = 1 cap; tiap cap penuh = 1 hadiah. Hadiahnya diberikan lewat Potongan / bonus seperti biasa, lalu di Jual › Bayar nota itu ditandai "hadiah cap diberikan". Cap dihitung dari nota buku berjalan — sesudah tutup buku mulai dari nol.</div>
+      <div class="ps-form dua">
+        <div><div class="ket">Belanja minimal satu nota supaya dapat cap (Rp) — 0 = semua nota</div><input class="ketik-nama" type="text" inputmode="numeric" value="${c.minRp}" data-ketik="capKetik" data-kolom="minRp" data-k="atur-cap-min"></div>
+        <div><div class="ket">Cap penuh (cap per hadiah)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${c.penuh}" data-ketik="capKetik" data-kolom="penuh" data-k="atur-cap-penuh"></div>
+        <div><div class="ket">Hadiahnya (keterangan, mis. potongan Rp5.000) — boleh kosong dulu</div><input class="ketik-nama" type="text" value="${c.hadiah}" data-ketik="capKetik" data-kolom="hadiah" data-k="atur-cap-hadiah"></div></div>
+      <div class="tombol-baris">${A.mulai ? h`<div class="kaca-btn" data-aksi="capHenti">Hentikan cap</div>` : ''}<div class="kaca-btn aktif" data-aksi="capSimpan">${A.mulai ? 'Simpan cap' : 'Mulai cap hari ini'}</div></div></div>`;
+  }
   function gambarAtur(s) {
     const a = s.atur; const daftar = (k, judul, ket, tambah) => h`<div class="kartu" data-k="atur-${k}" style="gap: 6px;"><div class="label">${judul}</div><div class="ket">${ket}</div>
       ${a[k].map((x, i) => h`<div style="display: grid; grid-template-columns: minmax(0, 1fr) ${k === 'ciriDaftar' || k === 'bentukThr' ? 'auto' : ''} auto; gap: 6px; align-items: center;" data-k="${k}-${i}">
@@ -679,6 +697,7 @@ export function pasangLayarPelanggan(akar, opsi) {
         <div><div class="ket">Minimal nota belanja</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.syaratNota}" data-ketik="aturKetik" data-kolom="syaratNota" data-k="atur-syarat-nota"></div>
         <div><div class="ket">…dalam berapa hari terakhir</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.syaratHari}" data-ketik="aturKetik" data-kolom="syaratHari" data-k="atur-syarat-hari"></div></div>
         <div class="ket">Tidak lolos = bon baru ditahan lewat pintu yang sama dengan batas kredit: karyawan minta izin, lu buka dua ketukan. Orang yang batas kreditnya lu isi di kartu dianggap lolos.</div></div>
+      ${gambarAturCap(s)}
       ${gambarAturUmur(a)}
       ${daftar('pengantarAntar', 'Yang bisa mengantar', 'Pilihan "yang mengantar" di Jual › Bayar › Antar. Minimal satu nama. (Hanya yang bisa berkendara.) Kurir lepas tidak perlu didaftar — ketik namanya di Bayar › Antar › + orang lain.', '+ pengantar')}
       ${daftar('kendaraanAntar', 'Kendaraan antar', 'Boleh kosong. Tercetak di surat jalan.', '+ kendaraan')}
