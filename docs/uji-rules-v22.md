@@ -71,4 +71,7 @@ kasus sasarannya wajib berbalik). Semua kasus v21 sampai v7 lama tetap dijalanka
 
 ## Hasil Playground & terbit
 
-Belum terbit — diisi sesudah owner menerbitkan (riwayat Console, SHA-256 isi editor, hasil ★Q1–★Q3).
+**v22 TERBIT 26 Nov 2026 12.03 WIB** (riwayat Console "Today • 12:03 PM"). Isi editor sebelum Publish dan isi yang terbit sesudah halaman dimuat ulang sama
+persis dengan `firestore.rules` cabang ini: SHA-256 berawalan `5a4939e817f96951`, 82.629 byte, baris 2 `ATURAN FIRESTORE v22 FINAL`.
+Playground (akun uji owner: UID `uid-uji`, email `owner@tokoberasmiqbal.web.app`): ★Q2 get → *Simulated read allowed* · ★Q1 create (butir, periode) →
+*Simulated write allowed* · ★Q3 create `aturanToko/kepatuhan` → *Simulated write allowed* — ketiganya sesuai kolom Wajib.
