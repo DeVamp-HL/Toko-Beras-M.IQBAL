@@ -325,7 +325,7 @@ MUTASI = [
     ('papan Persetujuan menandai titipan tanpa menulis uang', SL, "  if (m.tindakan === TP_TINDAKAN) return tpSusunPutus(id, setuju ? 'setuju' : 'tolak', setuju ? {} : { alasan }, w);\n", ''),
     ('tutup hari diam soal titipan', TH, "titipan: tpMenungguSampai(iso),", ''),
     ('rules: token notifikasi terbaca staf', RULES, "    match /notifOwner/{id} {\n      allow read, write: if owner();", "    match /notifOwner/{id} {\n      allow read, write: if owner() || staf(['ben', 'karyawan']);"),
-    ('CSP kehilangan pendaftaran token', IDX, " https://fcmregistrations.googleapis.com;", ";"),
+    ('CSP kehilangan pendaftaran token', IDX, " https://fcmregistrations.googleapis.com https://api.open-meteo.com", " https://api.open-meteo.com"),   # sesudahnya: cuaca langit gerbang (26 Nov)
     ('fungsi server di region tetap (tidak ikut lokasi database)', FIX, "region: process.env.LOKASI || 'asia-southeast2'", "region: 'us-central1'"),
     ('fungsi server tidak membuang token mati', FIX, "  await Promise.all(mati.map((ref) => ref.delete()));\n", ''),
     ('pembanding notifikasi sebelum data lengkap', APP, "if (!a || !a.uid || !dataLengkap()) { _kb = null; return; }", "if (!a || !a.uid) { _kb = null; return; }"),
