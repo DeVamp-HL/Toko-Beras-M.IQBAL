@@ -4074,7 +4074,8 @@ tarik otomatis**. Angka kebijakan (N pemasok, hari, tanggal, potongan mutu per t
   (kasus ★E1–★E19, kontrol), emulator bagian V21, `docs/uji-rules-v21.md`, sidik di `docs/prosedur-pulih-darurat.md`. **Owner menerbitkan v21 SEBELUM merge.**
 - **Fungsi server** `tarikAcuan` (functions/index.js, Jumat 06.00 WIB) + `functions/acuan.js` (murni, diuji jsc): GET alamat publik Panel Harga Bapanas
   (`/front/harga-pangan-informasi`, dibaca dari kode halaman panel) → sisir JSON: objek bernama "beras premium/medium" (bukan SPHP/Bulog) + angka harga
-  1.000–100.000 → `aturanToko/acuanTarik`. Bentuk jawaban & arti `level_harga_id` BELUM pernah terlihat (server tidak menjawab dari jaringan pengembang) — tingkat
-  ditandai tebakan; gagal = status gagal + potongan jawaban. Dipasang owner lewat `functions/pasang.sh` (Cloud Shell; menyalakan Cloud Scheduler).
+  1.000–100.000 → `aturanToko/acuanTarik`. Bentuk jawaban TERLIHAT 26 Nov 2026 (`data[].name` · `today` = harga hari ini · `yesterday`/`yesterday_date` = kemarin,
+  tidak dipakai · 0 = belum ada data): level 1 = produsen (nama "… Penggilingan"), 3 = eceran, 2 = pedagang besar (TEBAKAN — bernilai 0 hari itu, ditandai di layar).
+  Gagal = status gagal + potongan jawaban. Dipasang owner lewat `functions/pasang.sh` (Cloud Shell; menyalakan Cloud Scheduler).
 - Uji: `alat-uji/uji_banding_pemasok.py` (kotak pasir dua bundel: hitungan & sistem-logika, + statis, `--kontrol`, asap cadangan toko); `peta_akses.py --kiriman`
   mengukur usul tablet (2/20 access call).

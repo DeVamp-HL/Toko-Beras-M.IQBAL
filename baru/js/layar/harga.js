@@ -959,7 +959,7 @@ export function pasangLayarHarga(akar, opsi) {
       ${A.acuan.map((e, i) => h`<div class="kartu bd-kelas" data-k="bd-ac-${e.id}" style="--i: ${i};"><div class="hg-kepala"><span class="nm">${e.sumber} · ${e.tingkatNama.split(' /')[0]} ${e.mutu}</span><span class="md">${bdTgl(e.tanggal)}${e.wilayah ? ' · ' + e.wilayah : ''}</span></div>
         <div class="bd-acuan"><div class="n">${RP(e.hargaPerKg)}<span class="k2">/kg${e.gerak ? (e.gerak > 0 ? ' ▲ ' : ' ▼ ') + RP(Math.abs(e.gerak)) : ''}</span></div><div class="k2">${e.kalimat}</div></div></div>`)}
       <div class="kartu" data-k="bd-tarik" style="gap: 4px;"><div class="label">Tarik otomatis · ${T.sumber || 'Panel Harga Bapanas'}</div><div class="${T.ada && T.status === 'gagal' ? 'pita-info awas' : 'k2'}">${T.kalimat}</div>
-        ${(T.harga || []).map((x, i) => h`<div class="bd-entri" data-k="bd-t-${i}"><div><div>${x.nama || x.mutu} · ${x.tingkat} ${x.mutu} · ${RP(x.hargaPerKg)}/kg</div><div class="k2">${bdTgl(x.tanggal)}${x.wilayah ? ' · ' + x.wilayah : ''}</div></div>
+        ${(T.harga || []).map((x, i) => h`<div class="bd-entri" data-k="bd-t-${i}"><div><div>${x.nama || x.mutu} · ${x.tingkat} ${x.mutu} · ${RP(x.hargaPerKg)}/kg</div><div class="k2">${bdTgl(x.tanggal)}${x.wilayah ? ' · ' + x.wilayah : ''}${x.tebakTingkat ? ' · tingkat harga DITEBAK — periksa di panelharga.badanpangan.go.id sebelum Pakai' : ''}</div></div>
           <div class="kaca-btn kecil ${x.dipakai ? 'mati' : 'aktif'}" data-aksi="bdPakaiTarik" data-i="${i}">${x.dipakai ? 'sudah dicatat' : 'Pakai'}</div></div>`)}</div>
       ${gambarBdEntri(s, E, 'Catatan harga acuan 62 hari')}`;
   }

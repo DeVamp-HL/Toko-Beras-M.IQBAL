@@ -1,22 +1,26 @@
 // TARIK HARGA ACUAN BERAS (paket Banding pemasok, owner 26 Nov 2026: "Ketik manual + coba tarik otomatis"). Murni: tanpa Firebase, tanpa jaringan — diuji di
 // jsc oleh alat-uji/uji_banding_pemasok.py. Dipakai functions/index.js (tarikAcuan, terjadwal tiap Jumat pagi WIB).
 //
-// JUJUR SOAL BATASNYA: alamat & parameter di bawah dibaca dari kode halaman publik Panel Harga Bapanas (panelharga.badanpangan.go.id, berkas main.js:
-// apiURL + "/front/harga-pangan-informasi", GET tanpa login). Bentuk JAWABANNYA belum pernah terlihat — server itu tidak menjawab dari jaringan pengembang.
-// Karena itu pembacanya MENYISIR seluruh JSON: objek yang namanya "beras premium" / "beras medium" dan punya angka harga 1.000–100.000 per kg. Tingkat harga
-// (produsen / grosir / eceran) = TEBAKAN dari parameter level_harga_id yang diminta — ditandai `tebakTingkat`, owner memeriksa sebelum menekan Pakai.
+// Alamat & parameter dibaca dari kode halaman publik Panel Harga Bapanas (panelharga.badanpangan.go.id, berkas main.js: apiURL +
+// "/front/harga-pangan-informasi", GET tanpa login). BENTUK JAWABAN TERLIHAT 26 Nov 2026 (percobaan pertama sempat tidak dijawab 25 detik, percobaan kedua 2 detik):
+//   { status: 'success', message, data: [{ id, name: 'Beras Premium', satuan: 'Rp./Kg', today: 16070, yesterday: 16199, yesterday_date: '25-11-2026', gap, … }], request_data }
+//   level_harga_id 1 = 'Beras Medium/Premium Penggilingan' (PRODUSEN, terbukti dari namanya) · 3 = 'Beras Premium/Medium' + 'Beras SPHP' + 'Beras Medium Non SPHP'
+//   (KONSUMEN / eceran — besarnya sama dengan harga eceran yang dikutip berita) · 2 = 'Beras Premium/Medium' bernilai 0 hari itu (diduga pedagang besar: TEBAKAN).
+// `today` = harga HARI INI → bertanggal hari tarik (WIB); `yesterday` & `yesterday_date` milik kemarin dan TIDAK dipakai. Nilai 0 = belum ada data (dilewati).
+// Pembacanya tetap menyisir seluruh JSON (bentuk bisa berubah): objek bernama "beras premium" / "beras medium" (bukan SPHP / Bulog) + angka harga 1.000–100.000.
 // Hasil yang tidak dikenali = status 'gagal' + potongan jawaban (data publik) supaya bisa dibetulkan, BUKAN angka karangan.
 'use strict';
 
 const ACUAN_SUMBER = 'Panel Harga Bapanas';
 const ACUAN_ALAMAT = 'https://api-panelhargav2.badanpangan.go.id/api/front/harga-pangan-informasi';
-const ACUAN_LEVEL = [{ id: 3, tingkat: 'eceran' }, { id: 1, tingkat: 'produsen' }];   // TEBAKAN arti level_harga_id (belum terlihat dari sini)
+const ACUAN_LEVEL = [{ id: 3, tingkat: 'eceran', tebak: false }, { id: 1, tingkat: 'produsen', tebak: false }, { id: 2, tingkat: 'grosir', tebak: true }];   // 1 & 3 terbukti 26 Nov 2026; 2 = tebakan
 const ACUAN_MAKS = 12;
 const HARGA_MIN = 1000, HARGA_MAKS = 100000;
 
 const bersih = (v) => String(v === undefined || v === null ? '' : v).replace(/\s+/g, ' ').trim();
 const KUNCI_NAMA = /^(nama|name|komoditas|commodity|nama_komoditas|komoditas_nama|label|title)$/i;
 const KUNCI_HARGA = /(harga|price|rata|today|geomean|nilai|value)/i;
+const KUNCI_KEMARIN = /(yesterday|kemarin|lalu|prev|before|gap)/i;   // angka & tanggal KEMARIN / selisih — bukan harga hari ini
 const KUNCI_TANGGAL = /(tanggal|date|periode|period)/i;
 const KUNCI_WILAYAH = /(provinsi|province|wilayah|region|kota|city)/i;
 /** '2026-11-27', '27/11/2026', '27-11-2026' → '2026-11-27'; selain itu ''. */
@@ -36,7 +40,7 @@ function angkaHarga(v) {
  * Sisir satu jawaban JSON → [{ nama, mutu, tingkat, tebakTingkat, hargaPerKg, tanggal, wilayah }] (paling banyak ACUAN_MAKS, satu per mutu × wilayah).
  * tingkat = tingkat yang diminta (tebakan); tanggalCadangan = tanggal tarik (WIB) bila jawaban tidak menyebut tanggal.
  */
-function sisirHarga(json, tingkat, tanggalCadangan) {
+function sisirHarga(json, tingkat, tanggalCadangan, tebak) {
   const out = []; const ada = {}; let langkah = 0;
   const jalan = (o, wilayahInduk) => {
     if (langkah++ > 20000 || out.length >= ACUAN_MAKS || o === null || typeof o !== 'object') return;
@@ -44,12 +48,13 @@ function sisirHarga(json, tingkat, tanggalCadangan) {
     const kunci = Object.keys(o); let nama = '', harga = null, tanggal = '', wilayah = wilayahInduk;
     kunci.forEach((k) => { const v = o[k];
       if (!nama && KUNCI_NAMA.test(k) && typeof v === 'string') nama = bersih(v);
-      if (!tanggal && KUNCI_TANGGAL.test(k) && (typeof v === 'string')) tanggal = isoDari(v);
+      if (!tanggal && KUNCI_TANGGAL.test(k) && !KUNCI_KEMARIN.test(k) && (typeof v === 'string')) tanggal = isoDari(v);
       if (KUNCI_WILAYAH.test(k) && typeof v === 'string' && bersih(v)) wilayah = bersih(v).slice(0, 60); });
     const m = /beras\s+(premium|medium)/i.exec(nama);
-    if (m && !/sphp|bulog/i.test(nama)) { kunci.forEach((k) => { if (harga === null && KUNCI_HARGA.test(k) && !KUNCI_TANGGAL.test(k)) harga = angkaHarga(o[k]); });
+    if (m && !/sphp|bulog/i.test(nama)) { if ('today' in o) harga = angkaHarga(o.today);   // bentuk Panel Harga (terbukti 26 Nov 2026)
+      kunci.forEach((k) => { if (harga === null && !('today' in o) && KUNCI_HARGA.test(k) && !KUNCI_TANGGAL.test(k) && !KUNCI_KEMARIN.test(k)) harga = angkaHarga(o[k]); });
       const mutu = m[1].toLowerCase(); const w = wilayah || 'nasional'; const id = mutu + '|' + w.toLowerCase();
-      if (harga !== null && !ada[id]) { ada[id] = true; out.push({ nama: nama.slice(0, 60), mutu, tingkat, tebakTingkat: true, hargaPerKg: harga, tanggal: tanggal || tanggalCadangan, wilayah: w }); } }
+      if (harga !== null && !ada[id]) { ada[id] = true; out.push({ nama: nama.slice(0, 60), mutu, tingkat, tebakTingkat: tebak !== false, hargaPerKg: harga, tanggal: tanggal || tanggalCadangan, wilayah: w }); } }
     kunci.forEach((k) => { const v = o[k]; if (v && typeof v === 'object') jalan(v, wilayah); });
   };
   jalan(json, '');
@@ -60,7 +65,7 @@ function dokTarik(hasil, kini) {
   const pada = (kini || new Date()).toISOString(); const tanggal = new Date((kini || new Date()).getTime() + 7 * 3600000).toISOString().slice(0, 10);   // tanggal WIB
   const harga = []; const pesan = []; let contoh = '';
   (hasil || []).forEach((h) => { if (h.galat) { pesan.push(h.tingkat + ': ' + bersih(h.galat).slice(0, 120)); return; }
-    const x = sisirHarga(h.json, h.tingkat, tanggal); if (!x.length) { pesan.push(h.tingkat + ': jawaban tidak memuat harga beras premium / medium yang dikenali'); if (!contoh) contoh = bersih(JSON.stringify(h.json)).slice(0, 400); }
+    const x = sisirHarga(h.json, h.tingkat, tanggal, h.tebak); if (!x.length) { pesan.push(h.tingkat + ': jawaban tidak memuat harga beras premium / medium yang dikenali'); if (!contoh) contoh = bersih(JSON.stringify(h.json)).slice(0, 400); }
     x.forEach((y) => { if (harga.length < ACUAN_MAKS) harga.push(y); }); });
   return { id: 'acuanTarik', pada, tanggal, sumber: ACUAN_SUMBER, alamat: ACUAN_ALAMAT, status: harga.length ? 'ok' : 'gagal', pesan: pesan.join(' · ').slice(0, 300), harga, contoh };
 }

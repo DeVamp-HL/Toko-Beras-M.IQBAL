@@ -222,7 +222,7 @@ export function bcTarik() {
   const sumber = bcBersih(d.sumber) || 'Panel Harga Bapanas'; const semua = bcEntri('', '');
   const harga = (Array.isArray(d.harga) ? d.harga : []).filter((x) => x && Number.isInteger(Number(x.hargaPerKg)) && Number(x.hargaPerKg) > 0 && BC_MUTU.some((m) => m[0] === x.mutu) && BC_TINGKAT.some((t) => t[0] === x.tingkat) && bcIsoSah(x.tanggal))
     .map((x) => { const h = { nama: bcBersih(x.nama).slice(0, 60), mutu: x.mutu, tingkat: x.tingkat, hargaPerKg: Number(x.hargaPerKg), tanggal: x.tanggal, wilayah: bcBersih(x.wilayah).slice(0, BC_BATAS.wilayah), sumber };
-      return Object.assign(h, { dipakai: semua.some((e) => bcSama(e, Object.assign({ jenis: 'acuan' }, h))) }); });
+      return Object.assign(h, { dipakai: semua.some((e) => bcSama(e, Object.assign({ jenis: 'acuan' }, h))), tebakTingkat: x.tebakTingkat !== false }); });
   const status = d.status === 'ok' ? 'ok' : 'gagal';
   return { ada: true, pada: String(d.pada || ''), tanggal: String(d.tanggal || ''), status, pesan: bcBersih(d.pesan).slice(0, 300), sumber, harga,
     kalimat: status === 'ok' ? (harga.length ? harga.length + ' harga ditarik dari ' + sumber + ' (' + tanggalPendek(String(d.tanggal || '')) + ') — periksa, lalu Pakai yang benar.' : 'Tarik otomatis jalan tapi tidak menemukan harga beras medium / premium — ketik manual.')

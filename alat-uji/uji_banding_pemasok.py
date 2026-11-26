@@ -212,6 +212,16 @@ ok('sisir: beras premium & medium dikenali (angka "13.100" terbaca), SPHP / Bulo
    && H1[1].hargaPerKg === 13100 && H1[1].tanggal === '2026-11-27' && H1.every(function (x) { return x.tebakTingkat && x.tingkat === 'eceran'; }), J(H1));
 var H2 = FA.sisirHarga({ status: 'ok', data: { items: [{ commodity: 'Beras Medium', geomean_today: 13250.6, province_name: 'Wilayah Contoh' }] } }, 'produsen', '2026-11-27');
 ok('sisir bentuk lain (bersarang, kunci inggris): wilayah terbawa, harga dibulatkan rupiah', H2.length === 1 && H2[0].hargaPerKg === 13251 && H2[0].wilayah === 'Wilayah Contoh', J(H2));
+// bentuk jawaban Panel Harga yang TERLIHAT 26 Nov 2026 (angka contoh): today = hari ini, yesterday & yesterday_date = kemarin (tidak dipakai), 0 = belum ada data
+var BAP = function (rows) { return { status: 'success', message: 'Berhasil mendapatkan data', data: rows, request_data: { level_harga_id: '3' } }; };
+var bar = function (id, nama, today, kemarin) { return { id: id, name: nama, satuan: 'Rp./Kg', today: today, yesterday: kemarin, yesterday_date: '25-11-2026', gap: today - kemarin, gap_percentage: 0.1, gap_change: 'down', gap_color: 'green', background: 'https://contoh/ikon.png' }; };
+var H3 = FA.sisirHarga(BAP([bar(1, 'Gula Pasir', 18000, 18100), bar(27, 'Beras Premium', 15800, 15900), bar(28, 'Beras Medium', 13400, 13500), bar(109, 'Beras SPHP', 12400, 12450), bar(165, 'Beras Medium Non SPHP', 14100, 14200)]), 'eceran', '2026-11-26', false);
+ok('bentuk Panel Harga: harga HARI INI (today), bertanggal hari tarik — bukan yesterday_date; SPHP & Non SPHP dilewati; tingkat terbukti (bukan tebakan)', H3.length === 2 && H3[0].hargaPerKg === 15800 && H3[0].tanggal === '2026-11-26' && H3[1].hargaPerKg === 13400 && H3[1].mutu === 'medium'
+   && H3.every(function (x) { return x.tebakTingkat === false && x.wilayah === 'nasional'; }), J(H3));
+var H4 = FA.sisirHarga(BAP([bar(5, 'Beras Medium Penggilingan', 12900, 13000), bar(6, 'Beras Premium Penggilingan', 14600, 14700)]), 'produsen', '2026-11-26', false);
+var H5 = FA.sisirHarga(BAP([bar(15, 'Beras Premium', 0, 0), bar(16, 'Beras Medium', 0, 0)]), 'grosir', '2026-11-26', true);
+ok('level produsen (Penggilingan) terbaca; harga 0 = belum ada data → dilewati, bukan Rp0', H4.length === 2 && H4[0].mutu === 'medium' && H4[0].hargaPerKg === 12900 && H5.length === 0, J([H4, H5]));
+ok('fungsi menarik tiga tingkat: eceran & produsen terbukti, grosir ditandai tebakan', J(FA.ACUAN_LEVEL.map(function (L) { return [L.id, L.tingkat, L.tebak]; })) === J([[3, 'eceran', false], [1, 'produsen', false], [2, 'grosir', true]]));
 var D0 = FA.dokTarik([{ tingkat: 'eceran', json: { message: 'kosong' } }, { tingkat: 'produsen', galat: 'server menjawab 403' }], new Date('2026-11-26T23:00:00Z'));
 ok('tarik tanpa harga dikenali = status gagal + pesan + potongan jawaban (bukan angka karangan); tanggal WIB', D0.status === 'gagal' && D0.harga.length === 0 && /403/.test(D0.pesan) && D0.contoh.indexOf('kosong') >= 0 && D0.tanggal === '2026-11-27', J(D0));
 var D1 = FA.dokTarik([{ tingkat: 'eceran', json: S1 }], new Date('2026-11-27T00:00:00Z'));
@@ -326,6 +336,9 @@ RUSAK = [
     ('tmBaris tanpa tanda kadar air', 'A', CK, "hasil.awas.push('kadar air ' + tmD(hasil.kadarAir) + ' % > maks ' + tmD(A.kadarAirMaks) + ' %'); tanda('kadarAir'); }", "hasil.awas.push('kadar air ' + tmD(hasil.kadarAir) + ' % > maks ' + tmD(A.kadarAirMaks) + ' %'); }"),
     ('sisir acuan ikut SPHP', 'A', FA, "if (m && !/sphp|bulog/i.test(nama)) {", "if (m) {"),
     ('tarik tanpa harga ditulis ok', 'A', FA, "status: harga.length ? 'ok' : 'gagal'", "status: 'ok'"),
+    ('tarik memakai tanggal kemarin (yesterday_date) untuk harga hari ini', 'A', FA, "if (!tanggal && KUNCI_TANGGAL.test(k) && !KUNCI_KEMARIN.test(k) && (typeof v === 'string')) tanggal = isoDari(v);", "if (!tanggal && KUNCI_TANGGAL.test(k) && (typeof v === 'string')) tanggal = isoDari(v);"),
+    ('tarik memakai harga kemarin', 'A', FA, "if ('today' in o) harga = angkaHarga(o.today);", "if ('yesterday' in o) harga = angkaHarga(o.yesterday);"),
+    ('tingkat terbukti tetap ditandai tebakan', 'A', FA, "tebakTingkat: tebak !== false,", "tebakTingkat: true,"),
     ('papan Persetujuan memasang usul banding sekaligus', 'B', SL, "if (m.tindakan === BC_TINDAKAN) Object.assign(b, { n: 0, sekaligus: false,", "if (m.tindakan === BC_TINDAKAN) Object.assign(b, { n: 0, sekaligus: true,"),
     ('setujui usul banding tidak menulis catatan', 'B', SL, " : setuju && m.tindakan === BC_TINDAKAN ? bcPasangUsul(m, w) : null;", " : null;"),
     ('pengingat banding tidak masuk sumber Pengingat', 'B', SL, "  bcSumberPengingat(iso).forEach((p) => out.push(p));\n", ""),
