@@ -18,16 +18,16 @@ ditanam sebagai angka.
     python3 alat-uji/uji_jurnal_aset.py            → N lulus · 0 gagal
     python3 alat-uji/uji_jurnal_aset.py --kontrol  → kerusakan wajib ketahuan (keluar 3 kalau ada yang diam)
 """
-import os, sys, json, glob, subprocess, tempfile
+import os, re, sys, json, glob, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru, uji_kpi_laba, uji_kunci_periode, uji_ringkasan_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 AS = 'baru/js/layar/aset-tetap-logika.js'; UG = 'baru/js/layar/uang-logika.js'; LG = 'baru/js/layar/laporan-logika.js'; KB = 'baru/js/layar/kendali-biaya-logika.js'
-KL = 'baru/js/layar/kpi-laba-logika.js'
-MODUL = bundel_baru.lengkapi(list(dict.fromkeys(uji_kpi_laba.MODUL + [AS])))
+KL = 'baru/js/layar/kpi-laba-logika.js'; JL = 'baru/js/layar/jurnal-logika.js'
+MODUL = bundel_baru.lengkapi(list(dict.fromkeys(uji_kpi_laba.MODUL + [AS, JL])))
 SUMBER = {'laporan': 'baru/js/layar/laporan.js', 'panel': 'baru/js/layar/aset-panel.js', 'as': AS, 'index': 'baru/index.html', 'pages': '.github/workflows/pages.yml', 'baca': 'baru/BACA-DULU.md',
-          'rules': 'firestore.rules', 'css': 'baru/css/laporan.css', 'peta': 'alat-uji/peta_akses.py', 'bundel': 'alat-uji/bundel_baru.py', 'lg': LG}
+          'rules': 'firestore.rules', 'css': 'baru/css/laporan.css', 'peta': 'alat-uji/peta_akses.py', 'bundel': 'alat-uji/bundel_baru.py', 'lg': LG, 'jl': JL, 'jp': 'baru/js/layar/jurnal-panel.js'}
 JAM = "var __KINI = new Date('2026-12-20T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 KOTAK = {
@@ -52,6 +52,92 @@ KOTAK = {
 HARAP = {'A1': {'2026-01-15': 3285, '2026-11-26': 1038193, '2026-11-30': 1051335, '2026-12-20': 1117043, '2026-12-31': 1153183, '2030-01-14': 4800000},
          'A2': {'2026-11-30': 21561, '2026-12-20': 42094, '2026-12-31': 53388},
          'A1des20': 65708, 'A1des': 101848, 'duaDes20': 86241, 'duaDes': 133675, 'rakDes': 10267, 'tigaDes': 143942, 'bukuA1': 3682957, 'bukuA2': 1457906}
+
+
+# ---------- JURNAL (modul ERP no. 69): kotak pasir kaya = kotak uji_laporan_baru (jam 19 Sep 2026) + catatan yang menyentuh semua jalur jurnal ----------
+import copy, uji_laporan_baru  # noqa: E402
+KOTAK_JR = copy.deepcopy(uji_laporan_baru.KOTAK)
+KOTAK_JR['penjualan'] += [
+  {'id': 'k1', 'tanggal': '2026-09-11', 'jam': '10:00', 'caraBayar': 'Kredit', 'namaPelanggan': 'Pak Lebih', 'jenis': 'karung', 'merkSumber': 'Angsa', 'totalKg': 20, 'hargaTotal': 300000, 'hppTotalSaatJual': 260000, 'trxId': 'k1'},
+  {'id': 'q9', 'tanggal': '2026-09-18', 'jam': '10:00', 'caraBayar': 'QRIS', 'jenis': 'karung', 'merkSumber': 'Angsa', 'totalKg': 8, 'hargaTotal': 120000, 'hppTotalSaatJual': 100000, 'trxId': 'q9'},
+  {'id': 'k9', 'tanggal': '2026-09-18', 'jam': '11:00', 'caraBayar': 'Kredit', 'namaPelanggan': '', 'jenis': 'karung', 'merkSumber': 'Angsa', 'totalKg': 5, 'hargaTotal': 80000, 'hppTotalSaatJual': 70000, 'trxId': 'k9'},
+  {'id': 'n9', 'tanggal': '2026-09-18', 'jam': '12:00', 'caraBayar': 'Tunai', 'jenis': 'karung', 'merkSumber': 'Angsa', 'totalKg': 4, 'hargaTotal': 60000, 'trxId': 'n9'}]
+KOTAK_JR['piutangMutasi'] += [{'id': 802, 'tipe': 'bayar', 'namaPelanggan': 'Pak Lebih', 'nominal': 350000, 'tanggal': '2026-09-12', 'jam': '10:00', 'caraBayar': 'QRIS'},
+  {'id': 803, 'tipe': 'saldoAwal', 'namaPelanggan': 'Bu Hapus', 'nominal': 200000, 'tanggal': '2026-08-15'}, {'id': 804, 'tipe': 'hapusBuku', 'namaPelanggan': 'Bu Hapus', 'nominal': 150000, 'tanggal': '2026-09-14', 'alasan': 'pindah kota'}]
+KOTAK_JR['retur'] = [{'id': 'r1', 'tanggal': '2026-09-13', 'jam': '12:00', 'kondisi': 'utuh', 'jenisAsal': 'karung', 'merkSumber': 'Angsa', 'totalKg': 10, 'nominalRefund': 140000, 'hppKembali': 130000},
+  {'id': 'r2', 'tanggal': '2026-09-14', 'jam': '12:00', 'kondisi': 'tidak_utuh', 'jenisAsal': 'karung', 'merkSumber': 'IR64 Apex', 'totalKg': 2, 'nominalRefund': 0, 'selisihHargaTukar': -25000, 'tukarModel': 'kreditBarang'}]
+KOTAK_JR['kasbonMutasi'] += [{'id': 702, 'tipe': 'bayar', 'namaPegawai': 'Alfa Contoh', 'nominal': 50000, 'tanggal': '2026-09-12', 'caraBayar': 'Tunai'}, {'id': 703, 'tipe': 'bayar', 'namaPegawai': 'Alfa Contoh', 'nominal': 100000, 'tanggal': '2026-08-31', 'caraBayar': 'Potong gaji'}]
+KOTAK_JR['modalOwner'] += [{'id': 'm2', 'tanggal': '2026-09-15', 'jam': '09:00', 'tipe': 'tarik', 'nominal': 1000000, 'tempat': 'brankas', 'catatan': 'Usaha lain'},
+  {'id': 'm3', 'tanggal': '2026-09-16', 'jam': '09:00', 'tipe': 'setor', 'pinjaman': True, 'pasangan': 'uo1', 'nominal': 2000000, 'tempat': 'rekening', 'catatan': 'Pinjaman owner ke toko (bukan modal)'}]
+KOTAK_JR['utangOwnerMutasi'] = [{'id': 'uo1', 'tanggal': '2026-09-16', 'jam': '09:00', 'tipe': 'saldoAwal', 'pinjaman': True, 'nominal': 2000000}, {'id': 'uo2', 'tanggal': '2026-09-18', 'jam': '09:00', 'tipe': 'bayar', 'nominal': 500000, 'dari': 'laci'}]
+KOTAK_JR['pengeluaranHarian'] += [{'id': 'h9', 'kategori': 'tokoDompet', 'tanggal': '2026-09-17', 'jam': '09:00', 'keterangan': 'Timbangan', 'nominal': 1200000}]
+KOTAK_JR['batchMasuk'] += [{'id': 'b2', 'tanggal': '2026-09-05', 'jam': '08:00', 'pemasok': 'TOKO TUNAI', 'caraBayar': 'tunai', 'biayaBongkar': 50000, 'merkList': [{'id': 'b20', 'merk': 'Angsa', 'satuan': 'karung', 'beratKarung': 50, 'jumlahKarung': 4, 'totalKg': 200, 'hargaPerKg': 13200, 'subtotalHarga': 2640000}]},
+  {'id': 'b0', 'tanggal': '2026-08-08', 'jam': '07:00', 'pemasok': 'STOK AWAL', 'stokAwal': True, 'biayaBongkar': 0, 'merkList': [{'id': 'b00', 'merk': 'Kembang', 'satuan': 'karung', 'beratKarung': 25, 'jumlahKarung': 4, 'totalKg': 100, 'hargaPerKg': 12000, 'subtotalHarga': 1200000}]}]
+KOTAK_JR['utangPemasokMutasi'] += [{'id': 902, 'tipe': 'saldoAwal', 'pemasok': 'SEJATI CONTOH', 'nominal': 3000000, 'bonTanggal': '2026-07-31', 'tanggal': '2026-08-08'}]
+KOTAK_JR['stokBahanKemasan'] = [{'id': 'bk1', 'tipe': 'beli', 'jenis': 'kantong5', 'jumlah': 100, 'hargaTotal': 150000, 'tanggal': '2026-09-06'}]
+KOTAK_JR['tutupHari'] = [{'id': '2026-09-15', 'tanggal': '2026-09-15', 'jam': '21:00', 'selisihLaci': 0, 'diubahPada': '2026-09-15T14:00:00.000Z', 'sistemBaru': True, 'titik': {'laci': 2000000, 'brankas': 10000000, 'rekening': 3000000, 'amplop': 1000000}},
+  {'id': '2026-09-16', 'tanggal': '2026-09-16', 'jam': '21:05', 'selisihLaci': 0}, {'id': '2026-09-17', 'tanggal': '2026-09-17', 'jam': '21:00', 'selisihLaci': -5000, 'diubahPada': '2026-09-17T14:10:00.000Z', 'sistemBaru': True, 'titik': {'laci': 2500000, 'brankas': 9000000, 'rekening': 5100000, 'amplop': 1050000}}]
+KOTAK_JR['pengaturan'] = [{'id': 'titikKas', 'tanggal': '2026-09-17', 'laci': 2500000, 'brankas': 9000000, 'rekening': 5100000, 'amplop': 1050000, 'diubahPada': '2026-09-17T14:10:00.000Z'}]
+KOTAK_JR['pindahUang'] = [{'id': 'pd1', 'tanggal': '2026-09-18', 'jam': '10:00', 'dari': 'laci', 'ke': 'brankas', 'nominal': 300000, 'alasan': 'Amankan laci', 'biayaAdmin': 0}]
+KOTAK_JR['amplopLaba'] += [{'id': 'am2', 'tanggal': '2026-09-18', 'jam': '11:00', 'tipe': 'ambil', 'nominal': 20000, 'ke': 'laci'}]
+KOTAK_JR['aturanToko'] = [{'id': 'asetTetap', 'mulai': '2026-09-01', 'aset': [{'id': 'as1', 'nama': 'Rak besi', 'jenis': 'kecil', 'harga': 2400000, 'tanggalBeli': '2026-06-01', 'umurBulan': 48, 'sisa': 0},
+  {'id': 'as2', 'nama': 'Timbangan', 'jenis': 'kecil', 'harga': 1200000, 'tanggalBeli': '2026-09-17', 'umurBulan': 48, 'sisa': 0, 'dariKeluar': 'h9'}]}]
+JAM_JR = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
+
+SKENARIO_JR = r"""
+var lulus = 0, gagal = [];
+function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + String(ket).slice(0, 700) : '')); }
+var J = function (x) { return JSON.stringify(x); };
+var KINI = new Date('2026-09-19T10:00:00+07:00'); var nId = 950000;
+var W = { tanggal: '2026-09-19', jam: '10:00', kini: '2026-09-19T03:00:00.000Z', idUnik: function () { nId += 1; return nId; } };
+__dom['jualKarungBerat'] = { value: '50' };
+var K0 = JSON.parse(J(KOTAK_JR)); Object.keys(K0).forEach(function (n) { pasok(n, K0[n]); }); setelSumber('cadangan', 'kotak pasir jurnal');
+var E = jrKejadian(); var jml = function (e) { return e.b.reduce(function (a, x) { return a + x[1]; }, 0); };
+ok('JR1 tiap entri kejadian seimbang (Σ debit = Σ kredit)', E.length > 20 && E.every(function (e) { return Math.abs(jml(e)) < 0.005; }), J(E.filter(function (e) { return Math.abs(jml(e)) >= 0.005; }).slice(0, 3)));
+// baris uang tiap kejadian = gerakan kas mesin + amplop + pindah, per hari per tempat (penentu tempat yang sama)
+var place = kantongGerakan(); var G = {}, Jm = {}; var tambah = function (M, t, k, n) { var key = t + '|' + k; M[key] = (M[key] || 0) + n; };
+ingatGerakanKas().forEach(function (r) { tambah(G, r.t, place(r), (r.masuk || 0) - (r.keluar || 0)); });
+ambilAmplopLaba().forEach(function (a) { if (a.tutupBuku) return; var n = Number(a.nominal) || 0, l = ugAmplopLawan(a); if (a.tipe === 'ambil') { tambah(G, a.tanggal, 'amplop', -n); tambah(G, a.tanggal, l, n); } else { tambah(G, a.tanggal, l, -n); tambah(G, a.tanggal, 'amplop', n); } });
+ambilPindahUang().forEach(function (p) { var n = Number(p.nominal) || 0; tambah(G, p.tanggal, p.dari, -n); tambah(G, p.tanggal, p.ke, n); });
+E.forEach(function (e) { if (e.k === 'tutup') return; e.b.forEach(function (x) { if (JR_UANG.indexOf(x[0]) >= 0) tambah(Jm, e.t, x[0], x[1]); }); });
+var beda = Object.keys(G).concat(Object.keys(Jm)).filter(function (k, i, a) { return a.indexOf(k) === i && Math.abs((G[k] || 0) - (Jm[k] || 0)) >= 0.5; });
+ok('JR2 baris uang jurnal = gerakan kas mesin + amplop + pindah, per hari per tempat', beda.length === 0 && Object.keys(G).length > 10, J(beda.map(function (k) { return [k, G[k], Jm[k]]; })));
+var jrCari = function (id) { return E.find(function (e) { return e.id === String(id); }); }; var akun = function (e) { return e ? e.b.map(function (x) { return x[0] + ':' + x[1]; }).join(' ') : 'tidak ada'; };
+ok('JR3 nota bon bernama: piutang + / penjualan − / HPP + / persediaan −', akun(jrCari('k1')) === 'piutang:300000 penjualan:-300000 hpp:260000 persediaan:-260000', akun(jrCari('k1')));
+ok('JR3 nota QRIS masuk rekening; bon tanpa nama ke "bon tanpa nama"; nota tanpa modal ke "penjualan tanpa harga modal" (di luar laba)', akun(jrCari('q9')) === 'rekening:120000 penjualan:-120000 hpp:100000 persediaan:-100000' && /^bonTanpaNama:80000 penjualan:-80000/.test(akun(jrCari('k9'))) && akun(jrCari('n9')) === 'laci:60000 jualTanpaModal:-60000', [akun(jrCari('q9')), akun(jrCari('k9')), akun(jrCari('n9'))].join(' | '));
+ok('JR3 pinjaman owner: uang masuk rekening ↔ akun antara ↔ utang ke owner (antara nol)', akun(jrCari('m3')) === 'rekening:2000000 antara:-2000000' && akun(jrCari('uo1')) === 'antara:2000000 utangOwner:-2000000', akun(jrCari('m3')) + ' | ' + akun(jrCari('uo1')));
+ok('JR3 kasbon potong gaji = upah belum dibayar berkurang (bukan uang masuk); belanja dompet owner = utang ke owner', akun(jrCari(703)) === 'biayaBelum:100000 kasbon:-100000' && akun(jrCari('h9')) === 'biayaHarian:1200000 utangOwner:-1200000', akun(jrCari(703)) + ' | ' + akun(jrCari('h9')));
+ok('JR3 retur: uang kembali dari laci + modal kembali ke stok; tukar tambah = uang masuk di luar laba', /^retur:140000 laci:-140000 persediaan:\d+ hppKembali:-\d+$/.test(akun(jrCari('r1'))) && akun(jrCari('r2')) === 'laci:25000 tukarTambah:-25000', akun(jrCari('r1')) + ' | ' + akun(jrCari('r2')));
+ok('JR3 stok awal & bon pemasok lama = saldo awal; beras tunai + bongkar dari laci', akun(jrCari('b0')) === 'persediaan:1200000 saldoAwal:-1200000' && akun(jrCari(902)) === 'saldoAwal:3000000 utangPemasok:-3000000' && akun(jrCari('b2')) === 'persediaan:2690000 laci:-2690000', [akun(jrCari('b0')), akun(jrCari(902)), akun(jrCari('b2'))].join(' | '));
+ok('JR3 aset: barang bawaan = modal berupa barang; barang dari uang keluar dompet = keluar dari biaya', akun(jrCari('as1')) === 'asetTetap:2400000 asetBawaan:-2400000' && akun(jrCari('as2')) === 'asetTetap:1200000 biayaJadiAset:-1200000', akun(jrCari('as1')) + ' | ' + akun(jrCari('as2')));
+['2026-08', '2026-09'].forEach(function (k) {
+  var sampai = k === '2026-09' ? '2026-09-19' : '2026-08-31'; var P = jrPeriode(k + '-01', sampai); var L = jrLaba(k + '-01', sampai);
+  ok('JR4 ' + k + ': semua entri seimbang, saldo awal + entri = saldo akhir tiap akun, Σ saldo = 0', P.seimbang && P.menutup && P.awalNol && P.akhirNol && P.debit === P.kredit, J([P.tidakSeimbang, P.tidakMenutup.slice(0, 3)]));
+  ok('JR5 ' + k + ': laba jurnal = laba Laporan (ugLabaBersih) sampai rupiah, termasuk penyusutan & uang keluar yang jadi aset', L.cocok && L.laba === ugLabaBersih(k + '-01', sampai).labaBersih, J([L.laba, L.laporan, L.beda]));
+});
+var Lag = jrLaba('2026-08-01', '2026-08-31'); ok('JR5 Agustus: penyusutan sebelum mulai (1 Sep) TIDAK di laba — masuk "penyusutan sebelum mulai"', !Lag.rinci.find(function (r) { return r.akun === 'penyusutan'; }).n && jrPeriode('2026-08-01', '2026-08-31').baris.find(function (r) { return r.akun === 'susutSebelum'; }).debit > 0);
+var C = jrCocok('2026-09-19', KINI);
+ok('JR6 uang per tempat jurnal = saldoKantong (laci · brankas · rekening · amplop)', C.uangAda && C.uangCocok && C.uang.every(function (u) { return u.mesin !== null; }), J(C.uang));
+ok('JR7 neraca: tiap baris bersama = Neraca Laporan (uang, stok, piutang, kasbon, piutang pemasok, aset tetap, utang pemasok, utang owner, modal)', C.bersamaCocok && C.bersama.every(function (r) { return r.laporan !== null; }), J(C.bersama));
+ok('JR7 beda "belum terjelaskan" Neraca terurai PERSIS jadi baris bernama; beda buku pembantu 0; akun antara 0', C.pecahCocok && C.bedaBuku === 0 && C.antara === 0 && C.selisihBuku !== null, J([C.selisihBuku, C.pecahanJumlah, C.pecahan]));
+ok('JR7 uang dihitung ulang dipecah: patokan pertama 15 Sep (posisi uang awal) + sesudahnya; jumlah keduanya = akun', C.uangPertama && C.uangPertama.tanggal === '2026-09-15' && C.pecahan.some(function (r) { return /patokan pertama 15 Sep 2026/.test(r.nama); }) && Math.abs(C.pecahan.filter(function (r) { return /^Uang /.test(r.nama); }).reduce(function (a, r) { return a + r.n; }, 0) - C.penyesuaian.find(function (r) { return r.akun === 'kasDihitung'; }).n) < 1, J([C.uangPertama, C.pecahan]));
+ok('JR7 baris khusus: kelebihan bayar Pak Lebih 50.000 (kewajiban), bon tanpa nama 80.000 (harta), upah belum dibayar muncul', C.khusus.some(function (r) { return r.akun === 'lebihPelanggan' && r.n === 50000; }) && C.khusus.some(function (r) { return r.akun === 'bonTanpaNama' && r.n === 80000; }), J(C.khusus));
+ok('JR7 stok jurnal = stok Neraca (dinilai ulang ke harga modal terakhir; selisihnya di "selisih nilai persediaan")', C.bersama[1].jurnal === C.NP.N.stok && C.penyesuaian.some(function (r) { return r.akun === 'nilaiStok'; }), J(C.penyesuaian));
+var B = jrBukuBesar('laci', '2026-09-01', '2026-09-19'); ok('JR8 buku besar uang di laci: saldo berjalan = saldo akhir', B.cocok && B.baris.length > 3, J([B.awal, B.akhir, B.baris.length]));
+var C8 = jrCocok('2026-08-31', KINI); ok('JR8 neraca 31 Agu (sebelum ada patokan uang): uang belum bisa dicocokkan, baris lain tetap sama', !C8.uangAda && C8.bersama.filter(function (r) { return r.laporan !== null; }).every(function (r) { return r.cocok; }), J(C8.bersama));
+// koreksi owner
+var tolakK = function (d) { return susunKoreksi(d, W, KINI).tolak || ''; };
+var dK = { tanggal: '2026-09-18', ket: 'Upah lembur lupa dicatat', baris: [{ akun: 'labaKoreksi', d: '75.000', k: '' }, { akun: 'utangLain', d: '', k: '75.000' }] };
+ok('JR9 koreksi: akun uang / stok / piutang ditolak; tidak seimbang ditolak; dua sisi di satu baris ditolak; alasan wajib', /tidak bisa dikoreksi/.test(tolakK({ tanggal: '2026-09-18', ket: 'x uji', baris: [{ akun: 'laci', d: '1000' }, { akun: 'labaKoreksi', k: '1000' }] })) && /tidak bisa dikoreksi/.test(tolakK({ tanggal: '2026-09-18', ket: 'x uji', baris: [{ akun: 'persediaan', d: '1000' }, { akun: 'labaKoreksi', k: '1000' }] }))
+  && /Belum seimbang/.test(tolakK({ tanggal: '2026-09-18', ket: 'x uji', baris: [{ akun: 'labaKoreksi', d: '1000' }, { akun: 'utangLain', k: '900' }] })) && /SATU sisi/.test(tolakK({ tanggal: '2026-09-18', ket: 'x uji', baris: [{ akun: 'labaKoreksi', d: '1000', k: '1000' }, { akun: 'utangLain', k: '0' }] })) && /alasan/.test(tolakK({ tanggal: '2026-09-18', ket: '', baris: dK.baris })));
+pasok('aturanToko', cacheMentah('aturan').concat([{ id: 'kunciPeriode', sampaiBulan: '2026-08', riwayat: [] }]));
+ok('JR9 koreksi bertanggal bulan terkunci ditolak', /sudah dikunci/.test(tolakK(Object.assign({}, dK, { tanggal: '2026-08-20' }))));
+var LL = ugLabaBersih('2026-09-01', '2026-09-19').labaBersih; var RK = susunKoreksi(dK, W, KINI); terapkanKeCache(RK.dokumen);
+var Lk = jrLaba('2026-09-01', '2026-09-19'); var Ck = jrCocok('2026-09-19', KINI);
+ok('JR9 sesudah koreksi: laba JURNAL turun 75.000, laba Laporan TETAP; selisihnya disebut sebagai koreksi; neraca tetap terurai', Lk.cocok && Lk.koreksi === -75000 && Lk.laba === LL - 75000 && ugLabaBersih('2026-09-01', '2026-09-19').labaBersih === LL && Ck.cocok && Ck.khusus.some(function (r) { return r.akun === 'utangLain' && r.n === 75000; }) && /laba JURNAL September 2026 turun Rp75\.000/.test(RK.patch.kabar), J([Lk, RK.patch.kabar]));
+var idK = jrKoreksi().entri[0].id; var Hy = susunHapusKoreksi(idK, W, false); ok('JR9 hapus koreksi: ketukan pertama minta yakin, kedua menghapus', Hy.perluYakin && !Hy.dokumen && susunHapusKoreksi(idK, W, true).dokumen[0].data.entri.length === 0);
+print(JSON.stringify({ lulus: lulus, gagal: gagal }));
+"""
 
 SKENARIO = r"""
 var lulus = 0, gagal = [];
@@ -187,6 +273,21 @@ try {
   hasil.menutup = { keMana: KM.menutup, kendali: KK.menutup, kpi: M.tutupUsaha, terjun: Math.abs(B.terjun.slice(i0, B.terjun.length - 1).reduce(function (a, r) { return a + r.n; }, 0) - B.labaBersih) < 0.5,
     berkop: DB.baris[DB.baris.length - 1].n === ugLabaBersih(aw, akhirBulanIso(key)).labaBersih, neraca: NP.seimbang, asetNeraca: NP.asetTetap === astPada(akhir).buku };
 } catch (e) { galat.push(e.message + ' ' + (e.stack || '').split('\n').slice(0, 2).join(' / ')); }
+// JURNAL di data toko (aset contoh di atas ikut): tiap entri seimbang, tiap bulan menutup & laba = Laporan, uang per tempat & neraca = Laporan, beda terurai
+try {
+  var E = jrKejadian(); var takSeimbang = E.filter(function (e) { return Math.abs(e.b.reduce(function (a, x) { return a + x[1]; }, 0)) >= 0.005; }).length;
+  var place = kantongGerakan(); var G = {}, Jm = {}; var tb = function (M, t, k, n) { var kk = t + '|' + k; M[kk] = (M[kk] || 0) + n; };
+  ingatGerakanKas().forEach(function (r) { tb(G, r.t, place(r), (r.masuk || 0) - (r.keluar || 0)); });
+  ambilAmplopLaba().forEach(function (a) { if (a.tutupBuku) return; var n = Number(a.nominal) || 0, l = ugAmplopLawan(a); if (a.tipe === 'ambil') { tb(G, a.tanggal, 'amplop', -n); tb(G, a.tanggal, l, n); } else { tb(G, a.tanggal, l, -n); tb(G, a.tanggal, 'amplop', n); } });
+  ambilPindahUang().forEach(function (p) { var n = Number(p.nominal) || 0; if (JR_UANG.indexOf(p.dari) >= 0) tb(G, p.tanggal, p.dari, -n); if (JR_UANG.indexOf(p.ke) >= 0) tb(G, p.tanggal, p.ke, n); });
+  E.forEach(function (e) { if (e.k === 'tutup') return; e.b.forEach(function (x) { if (JR_UANG.indexOf(x[0]) >= 0) tb(Jm, e.t, x[0], x[1]); }); });
+  var bedaUang = Object.keys(G).concat(Object.keys(Jm)).filter(function (k, i, a) { return a.indexOf(k) === i && Math.abs((G[k] || 0) - (Jm[k] || 0)) >= 0.5; });
+  var bulan = []; var k = catatanPertama().slice(0, 7); for (var i = 0; i < 36 && k <= key; i++) { var sp = k === key ? akhir : akhirBulanIso(k); var P = jrPeriode(k + '-01', sp), Lj = jrLaba(k + '-01', sp);
+    bulan.push({ k: k, entri: P.entri.length, seimbang: P.seimbang, menutup: P.menutup, laba: Lj.laba, laporan: Lj.laporan, cocok: Lj.cocok }); k = astTambahBulan(k + '-01', 1).slice(0, 7); }
+  var C = jrCocok(akhir, KINI);
+  hasil.jurnal = { kejadian: E.length, takSeimbang: takSeimbang, bedaUang: bedaUang.slice(0, 5), bulan: bulan, uangCocok: C.uangCocok, bersamaCocok: C.bersamaCocok, pecahCocok: C.pecahCocok, selisihBuku: C.selisihBuku, bedaBuku: C.bedaBuku, antara: C.antara,
+    pecahan: C.pecahan.map(function (r) { return [r.nama.slice(0, 40), r.n]; }), khusus: C.khusus.map(function (r) { return [r.akun, r.n]; }) };
+} catch (e) { galat.push('jurnal: ' + e.message + ' ' + (e.stack || '').split('\n').slice(0, 2).join(' / ')); }
 print(JSON.stringify({ galat: galat, akhir: akhir, hasil: hasil }));
 """
 
@@ -215,11 +316,30 @@ RUSAK = [
     ('kendali biaya tidak menutup', KB, "+ L.lebihKurangKas + ugEfekAset(L) - L.labaBersih) < 0.5", "+ L.lebihKurangKas - L.labaBersih) < 0.5"),
     ('titik impas tanpa penyusutan', KB, "const biaya = K.semuaBiaya - ugEfekAset(K.L);", "const biaya = K.semuaBiaya;"),
     ('KPI laba usaha tanpa penyusutan', KL, "+ K.susut - asetPen + asetDari;", "+ K.susut;"),
+    ('jurnal: nota QRIS / transfer masuk laci', JL, "const kantongBayar = (x) => (caraBayarKunci(x) === 'qris' || caraBayarKunci(x) === 'transfer' ? 'rekening' : 'laci');", "const kantongBayar = (x) => 'laci';"),
+    ('jurnal: HPP tanpa pasangan persediaan (entri tidak seimbang)', JL, "if (ber) { const h = jrN(p.hppTotalSaatJual); b.push(['hpp', h], ['persediaan', -h]); }", "if (ber) { const h = jrN(p.hppTotalSaatJual); b.push(['hpp', h]); }"),
+    ('jurnal: bayar biaya bulanan langsung jadi biaya (dua kali dengan jatah)', JL, "[['biayaBelum', x.nominal], [kas(0,", "[['biayaBulanan', x.nominal], [kas(0,"),
+    ('jurnal: kasbon potong gaji dianggap uang masuk', JL, "        if (kasbonPotongGaji(m)) {", "        if (false) {"),
+    ('jurnal: belanja dompet owner keluar dari laci', JL, "[['biayaHarian', n], ['utangOwner', -n]]", "[['biayaHarian', n], ['laci', -n]]"),
+    ('jurnal: uang tidak disetel ke patokan', JL, "if (v) b.push([k, v], ['kasDihitung', -v]);", "if (false) b.push([k, v], ['kasDihitung', -v]);"),
+    ('jurnal: jatah biaya bulanan tidak dibukukan per periode', JL, "jrJatah(dari, sampai).forEach((x) => E.push(", "[].forEach((x) => E.push("),
+    ('jurnal: kelebihan bayar pelanggan tidak dipisah', JL, "sub('piutang', hitungPiutang(s), 'lebihPelanggan');", "sub('piutang', hitungPiutang(s).filter((x) => x.sisa > 0), 'lebihPelanggan');"),
+    ('jurnal: pecahan beda tanpa penyesuaian modal', JL, "['Ambil pribadi mesin − jurnal', NP.prive - priveJ]].concat(penjelas)", "['Ambil pribadi mesin − jurnal', NP.prive - priveJ]].concat([])"),
+    ('jurnal: uang patokan pertama dipecah tanpa sisanya', JL, "uangPertama.n], ['Uang dihitung ulang sesudah '", "uangPertama.n], ['Uang dihitung ulang sesudah ' + '', 0], ['x'"),
+    ('jurnal: lebih/kurang laci bertanda terbalik', JL, "[['laci', s], ['lebihKurang', -s]]", "[['laci', -s], ['lebihKurang', s]]"),
+    ('jurnal: penyusutan sebelum mulai masuk laba', JL, "sebelum += pre; laba += tot - pre;", "sebelum += 0; laba += tot;"),
+    ('jurnal: koreksi tidak ikut jurnal', JL, "    jrKoreksi().entri.forEach((x) => out.push(", "    [].forEach((x) => out.push("),
+    ('jurnal: pinjaman owner dibukukan sebagai modal', JL, "      else if (x.pinjaman) out.push(", "      else if (false) out.push("),
+    ('jurnal: stok tidak dinilai ulang ke nilai Neraca', JL, "r.stok = Math.round(N.stok - (S.persediaan || 0)); b.push(['persediaan', r.stok], ['nilaiStok', -r.stok]);", "r.stok = 0;"),
+    ('jurnal: tambah uang tukar dianggap penjualan', JL, "if (sel < 0) b.push([kas(r.id, '', -sel, 0), -sel], ['tukarTambah', sel]);", "if (sel < 0) b.push([kas(r.id, '', -sel, 0), -sel], ['penjualan', sel]);"),
+    ('koreksi: akun uang & stok boleh dikoreksi', JL, "export const JR_AKUN_KOREKSI = JR_AKUN.filter((a) => a.kel === 'laba' || a.sifat === 'koreksi').map((a) => a.id);", "export const JR_AKUN_KOREKSI = JR_AKUN.map((a) => a.id);"),
+    ('koreksi: tidak seimbang boleh', JL, "if (sd !== sk) return { tolak:", "if (false) return { tolak:"),
+    ('koreksi: bulan terkunci boleh', JL, "  if (jrTerkunci(t)) return { tolak: 'Bulan '", "  if (false) return { tolak: 'Bulan '"),
 ]
 STATIS = [
     ('Laporan: keluarga Aset tetap terdaftar & digambar panelnya', 'laporan', ["import { gambarAset, aksiPanelAset } from './aset-panel.js';", "s.keluarga === 'aset' ? gambarAset(s, L, kini(), grid, LP.aturLaporan())", 'Object.assign(AKSI, aksiPanelAset({ set, st, tulis, waktu, kini, iso }));']),
     ('Laporan › Neraca: tombol membuka daftar aset (isian satu angka dicabut)', 'laporan', ['data-aksi="keluarga" data-nama="aset" data-k="aturN-buka"']),
-    ('laporan-logika: keluarga aset di daftar', 'lg', ["['neraca', 'Neraca'], ['aset', 'Aset tetap'], ['pondasi', 'Pondasi']"]),
+    ('laporan-logika: keluarga aset di daftar', 'lg', ["['neraca', 'Neraca'], ['aset', 'Aset tetap'], ['jurnal', 'Jurnal'], ['pondasi', 'Pondasi']"]),
     ('panel: gerak (gulir, pita, baris bergiliran) & tiga jalur tulis', 'panel', ['data-gulir="${P.buku}"', 'class="lp-pita"', '--urut:', 'susunAset(', 'susunHapusAset(', 'susunAturAset(']),
     ('CSS: baris bergiliran & hormati gerak dikurangi', 'css', ['.layar-laporan .as-baris {', 'animation-delay: calc(var(--urut, 0) * 40ms)', '@media (prefers-reduced-motion: reduce) { .layar-laporan .as-baris']),
     ('modul dipramuat', 'index', ['<link rel="modulepreload" href="js/layar/aset-tetap-logika.js">', '<link rel="modulepreload" href="js/layar/aset-panel.js">']),
@@ -227,6 +347,12 @@ STATIS = [
     ('peta akses: jalur tulis aset terdaftar', 'peta', ["'susunAset'", "'susunHapusAset'", "'susunAturAset'"]),
     ('pages.yml menjalankan uji ini', 'pages', ['python3 alat-uji/uji_jurnal_aset.py && python3 alat-uji/uji_jurnal_aset.py --kontrol']),
     ('BACA-DULU menyebut modul ini', 'baca', ['## Aset tetap & penyusutan', 'aset-tetap-logika.js', 'aturanToko/asetTetap']),
+    ('Laporan: keluarga Jurnal terdaftar & digambar panelnya', 'laporan', ["import { gambarJurnal, aksiPanelJurnal } from './jurnal-panel.js';", "s.keluarga === 'jurnal' ? gambarJurnal(s, L, kini(), LP.daftarBulan(kini(), 24), grid)", 'Object.assign(AKSI, aksiPanelJurnal({ set, st, tulis, waktu, kini, iso }));']),
+    ('panel jurnal: gerak (gulir, pita debit/kredit, baris bergiliran, lampu penjaga) & satu jalur tulis (koreksi)', 'jp', ['data-gulir="${B.J.debit}"', 'class="jr-pita"', '--urut:', 'class="jr-lampu"', 'susunKoreksi(', 'susunHapusKoreksi(']),
+    ('CSS jurnal: gerak, hover hanya di penunjuk, gerak dikurangi', 'css', ['.layar-laporan .jr-pita i {', '@media (hover: hover) and (pointer: fine) { .layar-laporan .jr-akun:hover', '@media (prefers-reduced-motion: reduce) { .layar-laporan .jr-akun']),
+    ('modul jurnal dipramuat & ikut bundel layar', 'index', ['<link rel="modulepreload" href="js/layar/jurnal-logika.js">', '<link rel="modulepreload" href="js/layar/jurnal-panel.js">']),
+    ('peta akses: jalur tulis koreksi terdaftar', 'peta', ["'susunKoreksi'", "'susunHapusKoreksi'"]),
+    ('BACA-DULU menyebut jurnal', 'baca', ['## Jurnal berpasangan', 'jurnal-logika.js', 'aturanToko/jurnalKoreksi']),
 ]
 RUSAK_STATIS = [
     ('Laporan tanpa keluarga Aset tetap', 'laporan', "s.keluarga === 'aset' ? gambarAset(s, L, kini(), grid, LP.aturLaporan())", "false ? gambarAset(s, L, kini(), grid, LP.aturLaporan())"),
@@ -243,8 +369,8 @@ def bundel(teks):
     return js.replace(B, B.replace('susunBon(', 'bpSusunBon(')) if js.count(B) == 1 else js
 
 
-def jalan(teks, isi=None):
-    js = JAM + bundel(teks) + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar HARAP = ' + json.dumps(HARAP) + ';\n' + (isi or SKENARIO)
+def jalan(teks, isi=None, jam=None):
+    js = (jam or JAM) + bundel(teks) + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar HARAP = ' + json.dumps(HARAP) + ';\nvar KOTAK_JR = ' + json.dumps(KOTAK_JR) + ';\n' + (isi or SKENARIO)
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f: f.write(js); p = f.name
     r = subprocess.run([JSC, p], capture_output=True, text=True, env=dict(os.environ, TZ='Asia/Jakarta')); os.unlink(p)
     out = r.stdout.strip().split('\n')[-1] if r.stdout.strip() else ''
@@ -261,7 +387,10 @@ def statis(src):
     if 'document.' in a or 'tulisDokumen' in a: g.append('aset-tetap-logika menyentuh DOM / menulis langsung — modul ini cuma menyusun')
     imp = [l for l in a.split('\n') if l.startswith('import ')]
     if any("from '../data/toko.js'" not in l and "from '../inti/format.js'" not in l for l in imp): g.append('aset-tetap-logika bukan modul daun lagi: ' + ' | '.join(imp)[:160])
-    if 'asetTetap' in src['rules'] or src['rules'].count('match /aturanToko/{id} {') != 1: g.append('rules disentuh — modul ini sengaja tanpa rules baru (aturanToko sudah owner saja)')
+    if 'asetTetap' in src['rules'] or 'jurnalKoreksi' in src['rules'] or src['rules'].count('match /aturanToko/{id} {') != 1: g.append('rules disentuh — modul ini sengaja tanpa rules baru (aturanToko sudah owner saja)')
+    j = src['jl']
+    if 'document.' in j or 'tulisDokumen' in j: g.append('jurnal-logika menyentuh DOM / menulis langsung — jurnal hanya menyusun')
+    if j.count("koleksi: 'aturanToko'") != 2 or re.search(r"koleksi: '(?!aturanToko)", j): g.append('jurnal-logika menulis selain aturanToko/jurnalKoreksi — jurnal TURUNAN tidak boleh menulis catatan')
     return len(STATIS) - len(g), g
 
 
@@ -277,6 +406,7 @@ if __name__ == '__main__':
         for nama, berkas, a, b in RUSAK:
             if teks[berkas].count(a) != 1: print('KONTROL BASI  ' + nama + ' (' + str(teks[berkas].count(a)) + '×)'); kode = 3; continue
             T = dict(teks); T[berkas] = T[berkas].replace(a, b); h, e = jalan(T); g = e if h is None else h['gagal']
+            if not g: h, e = jalan(T, SKENARIO_JR, JAM_JR); g = e if h is None else h['gagal']
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:150] if g else '-'))
             if not g: kode = 3
         for nama, berkas, a, b in RUSAK_STATIS:
@@ -287,8 +417,12 @@ if __name__ == '__main__':
         sys.exit(kode)
     h, e = jalan(teks); ls, gs = statis(src)
     g = e if h is None else h['gagal']
-    print('KOTAK PASIR: %d lulus · %d gagal' % (0 if h is None else h['lulus'], len(g)))
+    print('KOTAK PASIR aset tetap: %d lulus · %d gagal' % (0 if h is None else h['lulus'], len(g)))
     for x in g: print('   ✗ ' + x)
+    hj, ej = jalan(teks, SKENARIO_JR, JAM_JR); gj = ej if hj is None else hj['gagal']
+    print('KOTAK PASIR jurnal: %d lulus · %d gagal' % (0 if hj is None else hj['lulus'], len(gj)))
+    for x in gj: print('   ✗ ' + x)
+    g = list(g) + list(gj)
     print('STATIS: %d lulus · %d gagal' % (ls, len(gs)))
     for x in gs: print('   ✗ ' + x)
     cad = sorted(glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '..', '..', '..', '_privat', 'backup-batch-*.json')), key=os.path.basename)
@@ -296,7 +430,9 @@ if __name__ == '__main__':
         ha, ea = jalan(teks, ASAP.replace('__CAD__', open(cad[-1], encoding='utf-8').read()))
         if ha is None: print('ASAP DATA TOKO: JSC JATUH ' + ea[0][:600]); g = list(g) + ['asap']
         else:
-            H = ha['hasil']; M = H.get('menutup') or {}; beres = not ha['galat'] and H.get('kosongSama') and (H.get('laba') or {}).get('cocok') and M and all(M.values())
+            H = ha['hasil']; M = H.get('menutup') or {}; JJ = H.get('jurnal') or {}
+            beres = (not ha['galat'] and H.get('kosongSama') and (H.get('laba') or {}).get('cocok') and M and all(M.values()) and JJ.get('takSeimbang') == 0 and not JJ.get('bedaUang')
+                     and all(b['seimbang'] and b['menutup'] and b['cocok'] for b in JJ.get('bulan', [])) and JJ.get('uangCocok') and JJ.get('bersamaCocok') and JJ.get('pecahCocok') and JJ.get('antara') == 0)
             print('ASAP DATA TOKO (%s, hari terakhir %s): %s — %s · galat %s' % (os.path.basename(cad[-1]), ha['akhir'], 'LULUS' if beres else 'GAGAL', json.dumps(H, ensure_ascii=False), json.dumps(ha['galat'], ensure_ascii=False)))
             if not beres: g = list(g) + ['asap']
     sys.exit(1 if g or gs else 0)

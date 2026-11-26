@@ -496,6 +496,9 @@ OWNER_JALUR = {
     # logika (astGeserKunci menolak simpan / hapus / ganti tanggal mulai yang menggeser bulan terkunci); uang keluar yang ditunjuk TIDAK diubah dokumennya
     'susunAset': '1 dokumen aturanToko/asetTetap (owner, tidak dikunci) — bulan terkunci dijaga logika', 'susunHapusAset': '1 dokumen aturanToko/asetTetap (owner, tidak dikunci)',
     'susunAturAset': '1 dokumen aturanToko/asetTetap (tanggal mulai; owner, tidak dikunci) — bulan terkunci dijaga logika',
+    # modul ERP no. 69 jurnal berpasangan (owner 26 Nov 2026): jurnal TURUNAN tidak menulis apa pun; satu-satunya tulisan = entri koreksi owner di SATU dokumen
+    # aturanToko/jurnalKoreksi (owner, tidak dikunci rules, 0 pemeriksaan) — tanggal koreksi di bulan terkunci ditolak logika
+    'susunKoreksi': '1 dokumen aturanToko/jurnalKoreksi (owner, tidak dikunci) — bulan terkunci ditolak logika', 'susunHapusKoreksi': '1 dokumen aturanToko/jurnalKoreksi (owner, tidak dikunci)',
     'susunTandaNota': 'owner 26 Nov 2026 (kas kecil): tandai nota satu catatan uang keluar = 1 pengeluaranHarian DIUBAH (salinan catatannya + nota/alasan/foto) — bulan terkunci ditolak rules (tglUbah); foto nota ditulis terpisah di fotoBon (bukan koleksi bertanggal)',
     'susunPindah': 'pindah uang: pindahUang + paling banyak 1 biaya admin hari ini · pindah tempat stok: pengaturan tempatSimpan & pindahTempat (tidak dikunci)',
     'susunUrungPindah': 'urung pindah: hapus 1 pindahUang + paling banyak 1 biaya admin (dokumen barusan)',
