@@ -284,8 +284,8 @@ if __name__ == '__main__':
             # ---- 39b no. 38 (owner 30 Sep): selisih laci = baris lebih/kurang kas di laba
             '39b-38: Biaya memakai laba mesin (laba bersih ≠ Laba)': js.replace("const L = ugLabaBersih(awal, akhir, B);\n  const berjalan = key === kbKey(iso);", "const L = Object.assign(ugLabaBersih(awal, akhir, B), {}); L.labaBersih = L.labaMesin; L.lebihKurangKas = 0;\n  const berjalan = key === kbKey(iso);"),
             '39b-38: tangga Biaya tanpa baris lebih/kurang kas': js.replace(".concat(K.L.lebihKurangKas ? [{ nama: 'Lebih/kurang kas', n: K.L.lebihKurangKas,", ".concat(false ? [{ nama: 'Lebih/kurang kas', n: K.L.lebihKurangKas,"),
-            '39b-38: menutup Biaya tidak menghitung lebih/kurang kas': js.replace("+ (L.susutStok || 0) + L.lebihKurangKas - L.labaBersih) < 0.5", "+ (L.susutStok || 0) - L.labaBersih) < 0.5"),
-            '39b-38: titik impas ikut lebih/kurang kas (kurang kas dianggap biaya)': js.replace("const menutupKini = Lj.labaMesin >= 0; const kurang = menutupKini ? 0 : -Lj.labaMesin;", "const menutupKini = Lj.labaBersih >= 0; const kurang = menutupKini ? 0 : -Lj.labaBersih;"),
+            '39b-38: menutup Biaya tidak menghitung lebih/kurang kas': js.replace("+ (L.susutStok || 0) + L.lebihKurangKas + ugEfekAset(L) - L.labaBersih) < 0.5", "+ (L.susutStok || 0) + ugEfekAset(L) - L.labaBersih) < 0.5"),
+            '39b-38: titik impas ikut lebih/kurang kas (kurang kas dianggap biaya)': js.replace("const labaImpas = Lj.labaMesin + ugEfekAset(Lj);", "const labaImpas = Lj.labaBersih;"),
         }
         kode = 0
         for nama, isi in [('39b-25 laporan.js kembali memakai "belum dipilah" untuk jenis yang belum dikenali', lap.replace('jenisnya belum dikenali</span>', 'belum dipilah</span>', 1)),

@@ -252,7 +252,7 @@ RUSAK = [
     ('setor: brankas tepat di batas dianggap lewat / pakai total', UG, "const lewat = dasar.nyala && S.brankas > A.setorBatas;", "const lewat = dasar.nyala && S.total > A.setorBatas;"),
     ('setor: rutin menyetor semua brankas (tanpa sisakan)', UG, "n: Math.max(0, Math.round(S.brankas - A.setorSisa)), bisa: S.brankas - A.setorSisa >= 1,", "n: Math.max(0, Math.round(S.brankas)), bisa: S.brankas >= 1,"),
     ('setor: aturan pindah menghapus kolom lama', UG, "data: Object.assign({}, lama, { id: 'pindahUang',", "data: Object.assign({}, {}, { id: 'pindahUang',"),
-    ('buku kas: catatan sesudah tutup tidak dihitung', KR, "  ingatGerakanKas().forEach((r) => { if (!susul(r)) return; const k = tempat(r); if (r.masuk > 0) s[k] += r.masuk; if (r.keluar > 0) s[k] -= r.keluar; });\n", ""),
+    ('buku kas: catatan sesudah tutup tidak dihitung', UG, "  ingatGerakanKas().forEach((r) => { if (!susul(r)) return; const k = tempat(r); if (s[k] === undefined) return; if (r.masuk > 0) s[k] += r.masuk; if (r.keluar > 0) s[k] -= r.keluar; });\n", ""),   # 26 Nov 2026: aturan susulan pindah ke uang-logika ugSusulan
     ('buku kas: beda dihitung dengan tanda terbalik', KR, "Math.round(akhir - awal - gerak)", "Math.round(awal + gerak - akhir)"),
     ('buku kas: patokan = titik kas sekarang saja (tutup hari lampau diabaikan)', KR, "  ambilTutupHari().forEach((d) => { if (!d || !d.titik || !khIsoSah(d.tanggal) || d.tanggal > iso) return;", "  [].forEach((d) => { if (!d || !d.titik || !khIsoSah(d.tanggal) || d.tanggal > iso) return;"),
     ('rekening: QRIS per baris penjualan, bukan per nota', KR, "dorong('n:' + kunciNota(p), r.t,", "dorong('n:' + p.id, r.t,"),

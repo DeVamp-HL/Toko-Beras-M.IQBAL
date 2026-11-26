@@ -221,7 +221,9 @@ function periksaKabarBaru() {
 const KUNCI_TAB = 'miqbal_baru_tab';
 let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diunduh
 const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
-  keTujuan: (t) => keTujuan(t) });   // putaran 40: ketukan dasbor owner → layar sumber angkanya (keTujuan didefinisikan di bawah; dipanggil sesudah semua layar terpasang)
+  keTujuan: (t) => keTujuan(t),   // putaran 40: ketukan dasbor owner → layar sumber angkanya (keTujuan didefinisikan di bawah; dipanggil sesudah semua layar terpasang)
+  // owner 26 Nov 2026 (Dasbor sensus B109): keadaan data untuk cap "data per HH.MM" (firebase.js dataPer; cadangan = saat diunduh)
+  dataPer: () => Object.assign({ jenis: sumberData().jenis, keterangan: sumberData().keterangan, masuk: !!statusFb.masuk }, statusFb.dataPer || {}) });
 const stok = pasangLayarStok(document.getElementById('layarStok'), { lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, versiData: () => versi, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); }, keTujuan: (t) => keTujuan(t) });
 // owner 26 Nov 2026 (cek bon dari HP): proyekId = proyek uji bila dipasang (tautan cek bon menyebutnya), '' = proyek toko
 const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { proyekId: () => ((fb.proyekUji && fb.proyekUji()) || {}).projectId || '', lonceng: pintuLonceng, akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),

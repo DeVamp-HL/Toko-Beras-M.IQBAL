@@ -510,7 +510,7 @@ print(J({ lulus: lulus, gagal: gagal }));
 STATIS = [
     ('Laporan memasang tab Pondasi + lembar ambang', 'laporan', ["import * as PD from './pondasi-logika.js';", "s.keluarga === 'pondasi' ? gambarPondasi(s, L)", 'function gambarPondasi(s, L)', 'PD.pdPondasi(kini())', 'PD.pdDisiplin(kini())', 'data-aksi="pdBuka"',
                                                      'pdAturSimpan: () => tulis(PD.susunAturPondasi(st().aturPd || {}, waktu()))', "'aturPd'", 'bukaPd: {}, aturPd: null']),
-    ('Laporan: keluarga Pondasi terdaftar', 'laporanL', ["['neraca', 'Neraca'], ['pondasi', 'Pondasi'], ['dokumen', 'Dokumen']"]),
+    ('Laporan: keluarga Pondasi terdaftar', 'laporanL', ["['neraca', 'Neraca'], ['aset', 'Aset tetap'], ['jurnal', 'Jurnal'], ['pondasi', 'Pondasi'], ['dokumen', 'Dokumen']"]),
     ('Dasbor memasang kartu Pondasi', 'dasbor', ['function kartuPondasi(Q)', 'kartuPondasi(D.pondasi)', "daftar('pondasi:' + l.id"]),
     ('Dasbor logika: kelompok pondasi, dipertahankan & dipanaskan', 'dasborL', ["import { pdPondasi } from './pondasi-logika.js';", "pondasi: ['pondasi toko', dbPondasi]", 'pondasi: lama.pondasi', "pondasi: k('pondasi')", "'b2b', 'pondasi'];"]),
     ('modul dipramuat', 'index', ['<link rel="modulepreload" href="js/layar/pondasi-logika.js">']),

@@ -17,6 +17,8 @@ import { RP, ANGKA, hariIniIso, tanggalPendek, jamKini } from '../inti/format.js
 import { TEMPAT_UANG, aturBon } from './bon-pemasok-logika.js';
 // owner 21 Nov 2026: titipan uang keluar & pesan dari tablet — satu pintu memutus (bundel uji jsc: impor bernama, bukan namespace)
 import { tpMenunggu, tpSusunPutus } from './titipan-logika.js';
+// owner 26 Nov 2026 (modul ERP no. 70): aset tetap & penyusutan — modul daun, dibaca laba bersih (ugLabaBersih)
+import { astEfekLaba } from './aset-tetap-logika.js';
 
 export const NAMA_KASBON_OWNER = 'Owner';
 // owner 26 Nov 2026: + Rekening (cocok rekening usaha ke mutasi bank — kas-rekening-logika.js)
@@ -71,6 +73,26 @@ export function ugSesudahTitik(t) {
   if (!d || !isFinite(d.getTime()) || hariIniIso(d) !== t.tanggal) return () => false;
   const jamT = jamKini(d); const jamDok = {}; ambilPengeluaranHarian().forEach((h) => { if (h.id !== undefined && h.id !== null && h.jam) jamDok[String(h.id)] = String(h.jam); });
   return (r) => { const j = String(r.jam || jamDok[String(r.id)] || '').slice(0, 5); return r.t === t.tanggal && /^\d\d:\d\d$/.test(j) && j > jamT; };
+}
+/**
+ * owner 26 Nov 2026 (paket brankas & catatan susulan): catatan bertanggal hari patokan `t` yang dicatat SESUDAH patokan dipasang, PER TEMPAT — gerakan kas mesin
+ * (aturan ugSesudahTitik) + amplop laba + pindah uang yang jamnya lewat jam pasang (sisihan 'am-' & amankan 'pd-' tutup itu sendiri sudah termuat patokan).
+ * saldoKantong hanya membaca catatan bertanggal SESUDAH patokan, jadi tanpa ini catatan susulan di brankas / rekening / amplop hilang dari buku tempat itu
+ * begitu patokan berikutnya ditulis (laci sudah aman lewat hitungan fisik + rumus laci). Dipakai buku kas harian (khSusulan), tutup hari (titik berikutnya
+ * & laci seharusnya), dan Catat isi rekening / brankas. → { laci, brankas, rekening, amplop } (bertanda: masuk +, keluar −).
+ */
+/** Jam patokan dipasang (HH:MM setempat) bila dipasang pada hari tanggalnya sendiri; selain itu '' (tidak ada catatan susulan). Aturan ugSesudahTitik. */
+export const ugJamPasang = (t) => { const d = t && t.diubahPada ? new Date(t.diubahPada) : null; return d && isFinite(d.getTime()) && hariIniIso(d) === t.tanggal ? jamKini(d) : ''; };
+export function ugSusulan(t) {
+  const s = { laci: 0, brankas: 0, rekening: 0, amplop: 0 }; if (!t) return s; const susul = ugSesudahTitik(t); const tempat = kantongGerakan();
+  ingatGerakanKas().forEach((r) => { if (!susul(r)) return; const k = tempat(r); if (s[k] === undefined) return; if (r.masuk > 0) s[k] += r.masuk; if (r.keluar > 0) s[k] -= r.keluar; });
+  const jamT = ugJamPasang(t);
+  if (jamT) {
+    const lewat = (x) => x.tanggal === t.tanggal && /^\d\d:\d\d/.test(String(x.jam || '')) && String(x.jam).slice(0, 5) > jamT;
+    ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || String(a.id) === 'am-' + t.tanggal || !lewat(a)) return; const n = Number(a.nominal) || 0; const lain = ugAmplopLawan(a); if (a.tipe === 'ambil') { s.amplop -= n; s[lain] += n; } else { s[lain] -= n; s.amplop += n; } });
+    ambilPindahUang().forEach((p) => { if (String(p.id) === 'pd-' + t.tanggal || !lewat(p)) return; const n = Number(p.nominal) || 0; if (s[p.dari] !== undefined) s[p.dari] -= n; if (s[p.ke] !== undefined) s[p.ke] += n; });
+  }
+  return s;
 }
 function ugKantongBaris(r, peta) {
   if (r.id && peta.id[String(r.id)]) return peta.id[String(r.id)];
@@ -128,10 +150,16 @@ export function ugLabaBersih(dari, sampai, bayaran) {
   if (!kosong && bayaran !== ugBayaran()) return ugLabaBersihHitung(dari, sampai, bayaran);
   return ingatPerVersi('ugLabaBersih|' + String(dari) + '|' + String(sampai), () => ugLabaBersihHitung(dari, sampai, kosong ? undefined : bayaran));
 }
+// Aset tetap (owner 26 Nov 2026, modul ERP no. 70): penyusutan MEMOTONG laba bersih (hari ≥ tanggal mulai, bawaan 1 Des 2026) dan uang keluar yang ditunjuk sebagai
+// pembelian aset dikeluarkan dari biaya bulan catatannya (`asetDariBiaya`). Kolomnya hanya ada bila daftar aset tidak kosong — tanpa aset objek ini byte-sama dengan
+// sebelumnya. labaBersih = labaMesin + lebihKurangKas − penyusutan + asetDariBiaya (aset-tetap-logika.js astEfekLaba).
 function ugLabaBersihHitung(dari, sampai, bayaran) {
-  const L = hitungLabaBersihRentang(dari, sampai, bayaran); const K = ugLebihKurangKas(dari, sampai);
-  return Object.assign(L, { labaMesin: L.labaBersih, lebihKurangKas: K.n, nLebihKurang: K.malam, labaBersih: L.labaBersih + K.n });
+  const L = hitungLabaBersihRentang(dari, sampai, bayaran); const K = ugLebihKurangKas(dari, sampai); const AS = astEfekLaba(dari, sampai);
+  return Object.assign(L, { labaMesin: L.labaBersih, lebihKurangKas: K.n, nLebihKurang: K.malam, labaBersih: L.labaBersih + K.n },
+    AS.ada ? { penyusutan: AS.penyusutan, asetDariBiaya: AS.dariBiaya, nAsetDariBiaya: AS.nDariBiaya, labaBersih: L.labaBersih + K.n - AS.penyusutan + AS.dariBiaya } : {});
 }
+/** Akibat aset tetap pada laba satu objek laba (ugLabaBersih / potret): + uang keluar dipindah jadi aset − penyusutan (0 bila tidak ada aset). */
+export const ugEfekAset = (L) => Math.round((Number(L && L.asetDariBiaya) || 0) - (Number(L && L.penyusutan) || 0));
 
 // ---------- angka owner-toko yang dibaca banyak layar ----------
 /** Modal owner yang tertanam = Σ setor − Σ tarik (modalOwner + setoranKas lama lewat daftarModalOwner); pinjaman owner ke toko TIDAK dihitung modal. */
@@ -455,22 +483,33 @@ export function susunUrungPindah(id) {
 }
 /** putaran 29 (Bagian 4): CATAT ISI REKENING menurut m-banking. Tutup hari tidak pernah menghitung rekening (ia hanya memotong MDR), jadi titik kas
  *  rekening bisa 0 = belum pernah diisi — dan transfer ke pemasok akan ditolak "rekening tidak cukup". Ditulis sebagai pengaturan/titikKas (jenis yang
- *  sudah ada) bertanggal KEMARIN: laci/brankas/amplop = hasil hitung sampai kemarin, rekening = isi yang diketik DIKURANGI gerakan rekening hari ini,
- *  supaya gerakan hari ini tetap terhitung. Bila titik sudah bertanggal hari ini (sesudah Tutup hari), titik hari ini ditulis ulang dengan rekening yang
- *  diketik. Kas total bergeser sebesar selisihnya; di laporan arus kas ia muncul sebagai titik yang disetel ulang (baris bernama), tidak disembunyikan. */
-export function hitungTitikRekening(ketik, w) {
+ *  sudah ada) bertanggal KEMARIN: tempat lain = hasil hitung sampai kemarin, tempat yang dicatat = isi yang diketik DIKURANGI gerakan tempat itu hari ini,
+ *  supaya gerakan hari ini tetap terhitung. Bila titik sudah bertanggal hari ini (sesudah Tutup hari), titik hari ini ditulis ulang dengan angka yang
+ *  diketik. Kas total bergeser sebesar selisihnya; di laporan arus kas ia muncul sebagai titik yang disetel ulang (baris bernama), tidak disembunyikan.
+ *  owner 26 Nov 2026 (paket brankas & catatan susulan): hal yang sama untuk BRANKAS ("Catat isi brankas menurut hitungan" — tutup hari tidak pernah
+ *  menghitung brankas fisik). Patokan, bukan laba. Tempat lain kini MEMBAWA catatan susulan patokan lama (ugSusulan) — dulu hilang saat titik baru ditulis. */
+export const UG_CATAT_ISI = { rekening: { nama: 'rekening', dari: 'menurut m-banking', ketik: 'Ketik isi rekening menurut m-banking' }, brankas: { nama: 'brankas', dari: 'menurut hitungan', ketik: 'Hitung isi brankas lalu ketik jumlahnya' } };
+export function hitungTitikTempat(tempat, ketik, w) {
+  const C = UG_CATAT_ISI[tempat]; if (!C) return { n: 0, tolak: 'Tempat uang tidak dikenal' };
   const S = saldoKantong(); const n = Math.round(ugAngka(ketik)); const kemarin = ugTambahHari(w.tanggal, -1);
-  if (!S.ada) return { n, tolak: 'Titik kas belum disetel — Tutup hari dulu malam ini, sesudahnya isi rekening bisa dicatat', S, belumPernah: true };
-  if (ugKosong(ketik) || n < 0) return { n, tolak: 'Ketik isi rekening menurut m-banking', S, belumPernah: !(Number(S.titik.rekening) > 0) };
-  const T = S.titik; let dasar, tanggal, rekening;
-  if (kemarin >= T.tanggal) { dasar = saldoKantong(kemarin); tanggal = kemarin; rekening = n - (S.rekening - dasar.rekening); } else { dasar = S; tanggal = T.tanggal; rekening = n; }
-  const selisih = n - S.rekening; const titik = { id: 'titikKas', tanggal, laci: Math.round(dasar.laci), brankas: Math.round(dasar.brankas), rekening: Math.round(rekening), amplop: Math.round(dasar.amplop), diubahPada: w.kini };
-  return { n, tolak: '', S, titik, selisih, belumPernah: !(Number(T.rekening) > 0), arti: 'Rekening jadi ' + RP(n) + ' (' + (selisih === 0 ? 'sama dengan hitungan' : (selisih > 0 ? 'naik ' : 'turun ') + RP(Math.abs(selisih)) + ' dari hitungan ' + RP(S.rekening)) + ') · laci, brankas, amplop tidak berubah · laba tidak berubah · patokan kas pindah ke ' + tanggalPendek(tanggal) };
+  if (!S.ada) return { n, tolak: 'Titik kas belum disetel — Tutup hari dulu malam ini, sesudahnya isi ' + C.nama + ' bisa dicatat', S, belumPernah: true };
+  if (ugKosong(ketik) || n < 0) return { n, tolak: C.ketik, S, belumPernah: !(Number(S.titik[tempat]) > 0) };
+  const T = S.titik; const su = ugSusulan(T); let dasar, tanggal, isi;
+  if (kemarin >= T.tanggal) { dasar = saldoKantong(kemarin); tanggal = kemarin; isi = n - (S[tempat] - dasar[tempat]); } else { dasar = S; tanggal = T.tanggal; isi = n; }
+  const lain = (k) => Math.round(dasar[k] + su[k]);   // tempat lain: hitungan + catatan susulan patokan lama (tidak hilang lagi)
+  const titik = { id: 'titikKas', tanggal, laci: lain('laci'), brankas: lain('brankas'), rekening: lain('rekening'), amplop: lain('amplop'), diubahPada: w.kini }; titik[tempat] = Math.round(isi);
+  const hitungan = S[tempat] + su[tempat]; const selisih = n - hitungan; const nSu = ['laci', 'brankas', 'rekening', 'amplop'].filter((k) => k !== tempat && Math.abs(su[k]) >= 0.5);
+  const sisa = ['laci', 'brankas', 'rekening', 'amplop'].filter((k) => k !== tempat).map((k) => ugNamaTempat(k).toLowerCase()).join(', ');
+  return { n, tolak: '', S, titik, selisih, hitungan, susulan: su, belumPernah: !(Number(T[tempat]) > 0),
+    arti: ugNamaTempat(tempat) + ' jadi ' + RP(n) + ' (' + (Math.abs(selisih) < 0.5 ? 'sama dengan hitungan' : (selisih > 0 ? 'naik ' : 'turun ') + RP(Math.abs(selisih)) + ' dari hitungan ' + RP(hitungan)) + ') · ' + sisa + ' tidak berubah' + (nSu.length ? ' (catatan sesudah tutup ' + tanggalPendek(T.tanggal) + ' ikut terbawa)' : '') + ' · laba tidak berubah' };
 }
-export function susunTitikRekening(ketik, w) {
-  const H = hitungTitikRekening(ketik, w); if (H.tolak) return { tolak: H.tolak };
-  return { dokumen: [{ koleksi: 'pengaturan', data: H.titik }], titik: H.titik, patch: { rekIsi: null, kabar: 'Isi rekening dicatat ' + RP(H.n) + ' — ' + H.arti, kabarAwas: false } };
+export const hitungTitikRekening = (ketik, w) => hitungTitikTempat('rekening', ketik, w);
+export function susunTitikTempat(tempat, ketik, w) {
+  const H = hitungTitikTempat(tempat, ketik, w); if (H.tolak) return { tolak: H.tolak };
+  return { dokumen: [{ koleksi: 'pengaturan', data: H.titik }], titik: H.titik, patch: tempat === 'brankas' ? { brkIsi: null, kabar: 'Isi brankas dicatat ' + RP(H.n) + ' — ' + H.arti, kabarAwas: false } : { rekIsi: null, kabar: 'Isi rekening dicatat ' + RP(H.n) + ' — ' + H.arti, kabarAwas: false } };
 }
+export const susunTitikRekening = (ketik, w) => susunTitikTempat('rekening', ketik, w);
+export const susunTitikBrankas = (ketik, w) => susunTitikTempat('brankas', ketik, w);
 /** Rutin sekali ketuk: angkanya dihitung dari isi tempat uang SAAT INI (bukan angka mati). */
 export function rutinPindah() {
   const S = saldoKantong(); const A = aturPindah(); if (!S.ada) return { ada: false, S, jaga: A.jaga, daftar: [] };

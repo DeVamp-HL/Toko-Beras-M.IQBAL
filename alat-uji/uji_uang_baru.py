@@ -594,14 +594,14 @@ if __name__ == '__main__':
             'kasbon owner di saldo pembuka kehilangan tanda owner': js.replace("kunciPelanggan(x.nama) === kunciPelanggan(NAMA_KASBON_OWNER) ? { owner: true } : {}, tb)", "{}, tb)"),
             'titik kas 31 Des tidak ditulis saat kunci (kas tahun lama menguap)': js.replace("const titik = K.ada && T0 && T0.dari === 'titikKas' ? { id: 'titikKas', tanggal: T.cutoff,", "const titik = false ? { id: 'titikKas', tanggal: T.cutoff,"),
             # ---- 39b no. 38 (owner 30 Sep): selisih laci = baris lebih/kurang kas di laba
-            '39b-38: lebih/kurang kas tidak masuk laba bersih (desain lama)': js.replace("labaBersih: L.labaBersih + K.n });", "labaBersih: L.labaBersih });"),
+            '39b-38: lebih/kurang kas tidak masuk laba bersih (desain lama)': js.replace("labaBersih: L.labaBersih + K.n },", "labaBersih: L.labaBersih },"),
             '39b-38: tutup ulang menghapus selisih tutup pertama (riwayat tidak dihitung)': js.replace(".reduce((a, x) => a + sel(x), sel(t));", ".reduce((a, x) => a, sel(t));"),
             '39b-38: lembar tutup memakai laba yang sudah memuat selisih laci (dasar sisihan bergeser)': js.replace("const labaSebelumMdr = L.labaMesin + mdrTercatat;", "const labaSebelumMdr = L.labaBersih + mdrTercatat;"),
             # ---- tinjauan 39b UU38-1: catatan bertanggal hari yang sudah ditutup, dicatat sesudah tutup
             'UU38-1: catatan sesudah tutup tidak ikut "seharusnya" laci (lebih/kurang palsu dihitung lagi di laba)': js.replace("const susul = ugSesudahTitik(t);", "const susul = () => false;"),
             'UU38-1: jam uang keluar tidak dibaca dari dokumennya (baris mesin tanpa jam)': js.replace("const j = String(r.jam || jamDok[String(r.id)] || '').slice(0, 5);", "const j = String(r.jam || '').slice(0, 5);"),
             'UU38-1: titik yang dipasang lewat tengah malam dianggap punya catatan susulan': js.replace("|| hariIniIso(d) !== t.tanggal) return () => false;", ") return () => false;"),
-            'UU38-1: kasSeharusnya dokumen tutup tidak ikut catatan susulan (Σ fisik − seharusnya ≠ selisih)': js.replace("kasTotal: S1.total + nSusul,", "kasTotal: S1.total,"),
+            'UU38-1: kasSeharusnya dokumen tutup tidak ikut catatan susulan (Σ fisik − seharusnya ≠ selisih)': js.replace("kasTotal: S1.total + suTotal,", "kasTotal: S1.total,"),
         }
         kode = 0
         for nama, isi in rusak.items():

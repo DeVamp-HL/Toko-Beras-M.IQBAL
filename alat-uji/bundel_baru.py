@@ -134,10 +134,35 @@ LG_PEMAKAI = ('sistem-logika.js', 'menu.js')
 # Dasbor; ikut OTOMATIS (sekali, di belakang) bila pemakainya ada. gudang-logika sengaja TIDAK memakai sistem-logika (sistem-logika menerimanya lewat lokal.gudang).
 GD_MODUL = ['baru/js/layar/gudang-logika.js', 'baru/js/layar/label-logika.js', 'baru/js/layar/patuh-logika.js', 'baru/js/layar/belanja-logika.js', 'baru/js/layar/jenis-beras-logika.js']
 GD_PEMAKAI = ('dasbor-logika.js', 'gudang-logika.js')
+# paket Dasbor sensus (owner 26 Nov 2026, B127 "Hari + kg per barang"): stok minimum per barang — modul DAUN stok-minimum-logika.js (data/toko.js + format), dipakai
+# Belanja (batas per merek), Ringkasan (Perlu perhatian) & Dasbor. Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada; fungsi terangkat, urutan tidak menentukan.
+SM_MODUL = 'baru/js/layar/stok-minimum-logika.js'
+SM_PEMAKAI = ('belanja-logika.js', 'ringkasan-logika.js', 'dasbor-logika.js')
+# layar Stok (stok.js) memasang lembar stok minimum (stok-minimum-panel.js → stok-minimum-logika + daftarBarang stok-logika) — ikut OTOMATIS bila stok.js dibundel
+SMP_MODUL = 'baru/js/layar/stok-minimum-panel.js'
+
+
+# owner 26 Nov 2026 (modul ERP no. 70): aset tetap & penyusutan — modul DAUN aset-tetap-logika.js (data/toko.js + format saja) dibaca uang-logika (ugLabaBersih).
+# Ikut OTOMATIS (sekali) DI DEPAN uang-logika.js bila pemakainya ada: konstanta `const` modul itu sudah hidup sebelum modul lain memanggilnya.
+AS_MODUL = 'baru/js/layar/aset-tetap-logika.js'
+AS_PEMAKAI = ('uang-logika.js',)
+# layar Laporan memakai aset-panel.js (Laporan › Aset tetap) — ikut OTOMATIS di belakang bila laporan.js ada.
+ASP_MODUL = 'baru/js/layar/aset-panel.js'
+ASP_PEMAKAI = ('laporan.js',)
+# Laporan › Jurnal (owner 26 Nov 2026, modul ERP no. 69): jurnal-logika.js + jurnal-panel.js ikut OTOMATIS di belakang bila laporan.js ada.
+JR_MODUL = ('baru/js/layar/jurnal-logika.js', 'baru/js/layar/jurnal-panel.js')
 
 
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in AS_PEMAKAI for x in d) and not any(x.endswith('aset-tetap-logika.js') for x in d):
+        i = next(i for i, x in enumerate(d) if os.path.basename(x) in AS_PEMAKAI)
+        d.insert(i, AS_MODUL)
+    if any(os.path.basename(x) in ASP_PEMAKAI for x in d) and not any(x.endswith('aset-panel.js') for x in d):
+        d.append(ASP_MODUL)
+    if any(os.path.basename(x) in ASP_PEMAKAI for x in d):
+        for m in JR_MODUL:
+            if not any(x.endswith(m) for x in d): d.append(m)
     if any(os.path.basename(x) in GD_PEMAKAI for x in d):
         for m in GD_MODUL:
             if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)
@@ -178,6 +203,10 @@ def lengkapi(daftar):
         d.append(KG_MODUL)
     if any(os.path.basename(x) in BA_PEMAKAI for x in d) and not any(x.endswith('berat-asli-logika.js') for x in d):
         d.append(BA_MODUL)
+    if any(os.path.basename(x) == 'stok.js' for x in d) and not any(x.endswith('stok-minimum-panel.js') for x in d):
+        d.append(SMP_MODUL)
+    if any(os.path.basename(x) in SM_PEMAKAI + ('stok-minimum-panel.js',) for x in d) and not any(x.endswith('stok-minimum-logika.js') for x in d):
+        d.append(SM_MODUL)
     if any(os.path.basename(x) in TK_PEMAKAI for x in d) and not any(x.endswith('tanda-kenal-logika.js') for x in d):
         d.append(TK_MODUL)
     if any(os.path.basename(x) in CP_PEMAKAI for x in d) and not any(x.endswith('cap-logika.js') for x in d):
@@ -209,7 +238,9 @@ var _ssm = susunSimpanMasuk; susunSimpanMasuk = function (d, w, y) { return _ssm
 """
 
 
-MODUL_DATA = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js']
+# owner 26 Nov 2026: aset-tetap-logika.js (modul daun: toko.js + format) ikut di sini — uang-logika (laba bersih) memakainya, dan banyak alat uji menyusun daftar modulnya
+# sendiri dari MODUL_DATA tanpa lengkapi().
+MODUL_DATA = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/layar/aset-tetap-logika.js']
 
 if __name__ == '__main__':
     import sys

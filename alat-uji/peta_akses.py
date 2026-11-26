@@ -486,12 +486,21 @@ OWNER_JALUR = {
     'susunPintu': 'rules v7 pintu tutup buku (owner 7 Okt, K8): 1 dokumen pengaturan/pintuBuku — bukan titikKas, tidak dikunci; membuka pintu = 1 access call (berita acara, rules pintuSah)',
     'susunSelesai': 'berita acara selesai (tidak dikunci; rules v7 membaca dokumen pintu = 1 access call) + paling banyak 1 pengaturan/pintuBuku status tutup (bukan titikKas, 0 pemeriksaan) — jumlah tetap',
     'susunCatatSusulan': 'siap 2027 (A9): 1 dokumen pengaturan/susulan<tahun> (jumlah & id catatan susulan) — bukan titikKas, tidak dikunci (0 pemeriksaan)',
+    # owner 26 Nov 2026 (paket brankas & catatan susulan): Catat isi brankas = pola Catat isi rekening (satu penyusun susunTitikTempat)
+    'susunTitikTempat': 'catat isi rekening / brankas: 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (pola susunTitikRekening)', 'susunTitikBrankas': 'catat isi brankas: 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (pola susunTitikRekening)',
     'susunTitikRekening': 'catat isi rekening (putaran 29): 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (nilai baru dinilai; tenggang 3 hari melindungi tanggal 1–3)',
     'susunPesananBatal': 'B4 batal pesanan: 1 pesanan (tidak dikunci) + paling banyak 1 piutangMutasi pengembalian uang muka bertanggal hari ini (owner) — jumlah tetap',
     'susunBayarBon': 'terima bon: 1 piutangMutasi bertanggal hari ini', 'susunHapusBon': 'hapus buku piutang: 1 piutangMutasi bertanggal hari ini',
     'susunBayarSesudahHapus': 'dibayar sesudah dihapus buku (Paket F2): paling banyak 2 piutangMutasi (hapus buku minus + bayar) bertanggal hari ini',
     'susunBayarTagihan': '1 dokumen: biayaBulanan bulan INI atau pengeluaranHarian hari ini', 'susunBonus': '2 dokumen: biayaBulanan bulan INI + slipUpah hari ini',
     'susunKasbonKaryawan': '1 kasbonMutasi bertanggal hari ini', 'susunKeluar': 'uang keluar: paling banyak 2 dokumen (pengeluaranHarian + kasbon) bertanggal hari ini',
+    # modul ERP no. 70 aset tetap (owner 26 Nov 2026): SATU dokumen aturanToko/asetTetap (setelan owner, tidak dikunci rules, 0 pemeriksaan) — laba bulan terkunci dijaga
+    # logika (astGeserKunci menolak simpan / hapus / ganti tanggal mulai yang menggeser bulan terkunci); uang keluar yang ditunjuk TIDAK diubah dokumennya
+    'susunAset': '1 dokumen aturanToko/asetTetap (owner, tidak dikunci) — bulan terkunci dijaga logika', 'susunHapusAset': '1 dokumen aturanToko/asetTetap (owner, tidak dikunci)',
+    'susunAturAset': '1 dokumen aturanToko/asetTetap (tanggal mulai; owner, tidak dikunci) — bulan terkunci dijaga logika',
+    # modul ERP no. 69 jurnal berpasangan (owner 26 Nov 2026): jurnal TURUNAN tidak menulis apa pun; satu-satunya tulisan = entri koreksi owner di SATU dokumen
+    # aturanToko/jurnalKoreksi (owner, tidak dikunci rules, 0 pemeriksaan) — tanggal koreksi di bulan terkunci ditolak logika
+    'susunKoreksi': '1 dokumen aturanToko/jurnalKoreksi (owner, tidak dikunci) — bulan terkunci ditolak logika', 'susunHapusKoreksi': '1 dokumen aturanToko/jurnalKoreksi (owner, tidak dikunci)',
     'susunTandaNota': 'owner 26 Nov 2026 (kas kecil): tandai nota satu catatan uang keluar = 1 pengeluaranHarian DIUBAH (salinan catatannya + nota/alasan/foto) — bulan terkunci ditolak rules (tglUbah); foto nota ditulis terpisah di fotoBon (bukan koleksi bertanggal)',
     'susunPindah': 'pindah uang: pindahUang + paling banyak 1 biaya admin hari ini · pindah tempat stok: pengaturan tempatSimpan & pindahTempat (tidak dikunci)',
     'susunUrungPindah': 'urung pindah: hapus 1 pindahUang + paling banyak 1 biaya admin (dokumen barusan)',

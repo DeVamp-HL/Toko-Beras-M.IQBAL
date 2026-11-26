@@ -360,7 +360,9 @@ function pdKekayaanHitung(kini) {
     try { KB = b.berjalan ? null : lpKasAkhirBulan(b.key); N = b.berjalan ? neracaPada(null, kini) : neracaPada(per, kini, KB); } catch (e) { galat = String((e && e.message) || e); }
     if (!N || !pdBilangan(N.aset) || !pdBilangan(N.kewajiban)) return { key: b.key, nama: b.pendek, per, berjalan: !!b.berjalan, ada: false,
       kenapa: galat ? 'gagal dihitung: ' + galat : KB && KB.kas === null && KB.kenapa ? 'uang toko akhir bulan ini belum bisa dihitung — ' + KB.kenapa : (N && N.tolak) || 'uang toko akhir bulan itu belum bisa dihitung' };
-    return { key: b.key, nama: b.pendek, per, berjalan: !!b.berjalan, ada: true, aset: N.aset, kewajiban: N.kewajiban, bersih: N.aset - N.kewajiban };
+    return { key: b.key, nama: b.pendek, per, berjalan: !!b.berjalan, ada: true, aset: N.aset, kewajiban: N.kewajiban, bersih: N.aset - N.kewajiban,
+      // owner 26 Nov 2026 (Dasbor sensus B113): posisi akhir bulan per pos — dari neraca yang SAMA (kartu Enam bulan di Dasbor)
+      kas: (N.N || {}).kas, piutang: (N.N || {}).piutang, stok: (N.N || {}).stok, utangPemasok: (N.N || {}).utangPemasok };
   });
   const ada = bulan.filter((b) => b.ada);
   bulan.forEach((b, i) => { if (!b.ada) return; const lalu = bulan.slice(i + 1).find((x) => x.ada); b.naik = lalu ? b.bersih - lalu.bersih : null; });
@@ -370,6 +372,10 @@ function pdKekayaanHitung(kini) {
     kalimat: !kini0 ? 'Kekayaan toko belum bisa dihitung — titik kas belum disetel.' : ubah === null ? 'Baru satu titik yang bisa dihitung (' + kini0.nama + ') — belum ada pembanding.'
       : 'Sejak ' + awal0.nama + ' kekayaan bersih toko ' + (ubah >= 0 ? 'NAIK ' : 'TURUN ') + RP(Math.abs(ubah)) + ' (' + RP(awal0.bersih) + ' → ' + RP(kini0.bersih) + ').' };
 }
+
+/** owner 26 Nov 2026 (Dasbor sensus B113): kas · piutang · stok · utang pemasok per akhir bulan, n bulan terakhir (terlama dulu) — APA ADANYA dari pdKekayaan
+ *  (neraca per akhir bulan; bulan berjalan = sekarang). Bulan yang uang tokonya belum bisa dihitung tetap ada, ditandai (kenapa). */
+export function pdPosisiBulan(kini, n) { const K = pdKekayaan(kini); return K.bulan.slice(0, n || 6).reverse().map((b) => Object.assign({}, b)); }
 
 // ---------- rantai pasok: per pemasok ----------
 /**

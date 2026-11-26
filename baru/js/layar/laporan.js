@@ -12,7 +12,9 @@ import { pasangIsian } from '../inti/isian.js';
 import { RP, ANGKA, KG, tanggalPendek } from '../inti/format.js';
 import * as LP from './laporan-logika.js';
 import * as PJ from './pajak-logika.js';
-import { kartuKalender, aksiPanelPatuh } from './patuh-panel.js';   // owner 26 Nov 2026 (A16 A38 A45): kalender kepatuhan, cek aturan bulanan, bentuk usaha
+import { kartuKalender, aksiPanelPatuh } from './patuh-panel.js';
+import { gambarAset, aksiPanelAset } from './aset-panel.js';   // owner 26 Nov 2026 (modul ERP no. 70): aset tetap & penyusutan
+import { gambarJurnal, aksiPanelJurnal } from './jurnal-panel.js';   // owner 26 Nov 2026 (modul ERP no. 69): jurnal berpasangan turunan + koreksi owner   // owner 26 Nov 2026 (A16 A38 A45): kalender kepatuhan, cek aturan bulanan, bentuk usaha
 import * as KB from './kendali-biaya-logika.js';
 import * as PG from './laba-pelanggan-logika.js';   // B5 (owner 18 Nov 2026): kartu Per pelanggan di Laba
 import * as KL from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 2026): margin & mark-up, GMROI, batas HPP, nota terbesar
@@ -48,14 +50,14 @@ export function pasangLayarLaporan(akar, opsi) {
       // B5: kartu Per pelanggan — rentang 1/3/12 bulan & daftar pelanggan usaha lengkap   // paket brief 9 Okt: kartu Per merek — urutan barang teratas (kg terjual | margin Rp) & draf Atur-nya
     hariH: null, bukaBuku: false, mingguM: null, tahunT: null,
     bulanB: null, tabB: 'ringkas', aturR: null, yakinBatal: false, pilihBukti: {},
-    sampaiN: '', aturN: null,
+    sampaiN: '', drafAs: null, yakinAs: null, aturAs: null, cariAs: '', hariAs: '', bulanJr: null, tabJr: 'saldo', jenisJr: '', halJr: 0, akunJr: 'laci', drafJk: null, yakinJk: null, hariJr: '',
     tabD: 'laporan', jenisD: 'labarugi', keD: null, rentangD: 1, bandingD: null, paket: PAKET_AWAL(), jenisK: 'setor', pilihK: {}, cariK: '',
     drafI: null, isiI: null, aturD: null, sibuk: false,
     drafPj: null, drafSetor: null, drafLuar: null, yakinPj: null, tahunPj: null,   // Paket B: tahun yang dibuka di Pajak (null = bawaan: Jan–Mar tahun lalu selama ada masa terutang)
     bulanK: null, bukaKb: {}, aturB: null, pilahK: null,
     bukaPd: {}, aturPd: null, pcDraf: null, yakinPc: null, drafPribadi: null, phDraf: null, yakinPh: null, tjDraf: null, yakinTj: null, kuartalQ: null, aturTq: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['ptAtur', ['ptCatatan', (v) => !!String(v || '').trim()], 'drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq', 'pcDraf', 'drafPribadi', 'phDraf', 'tjDraf'], []);
+  const ISIAN = pasangIsian(K, awal, ['ptAtur', ['ptCatatan', (v) => !!String(v || '').trim()], 'drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'drafAs', 'drafJk', 'aturAs', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq', 'pcDraf', 'drafPribadi', 'phDraf', 'tjDraf'], []);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -194,7 +196,7 @@ export function pasangLayarLaporan(akar, opsi) {
     pjKeluar: async ({ cara }) => { const T = PJ.pjTahun(tahunPajak(), kini()); const D = PJ.dokRekapPajak(T, LP.kopUntuk(LP.pakaiKop().pakai.omzet, LP.identitasUsaha())); const I = LP.identitasUsaha(); if (!I.lengkap) D.tolak = 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)'; const hbK = hematPajak(); if (hbK) D.tolak = 'Rekap pajak ditahan — angka pajak belum bisa dipastikan: ' + hbK; await keluarkan(D, { jenis: 'pajak', judul: 'Rekap pajak untuk konsultan', periode: String(T.tahun), draf: !T.lengkap }, cara); },
     // ---- NERACA
     nrSampai: (v) => set({ sampaiN: /^\d{4}-\d{2}-\d{2}$/.test(v) && v <= iso() ? v : '', kabar: '' }), nrHariIni: () => set({ sampaiN: '' }),
-    nrAturBuka: () => { const A = LP.aturLaporan(); set({ aturN: { asetTetap: A.asetTetap ? String(A.asetTetap) : '', asetKet: A.asetKet } }); }, nrAturTutup: () => set({ aturN: null }), nrAturKetik: (v, el) => { const a = Object.assign({}, st().aturN); a[el.dataset.kunci] = v; set({ aturN: a }); }, nrAturSimpan: () => tulis(LP.susunAturLaporan(st().aturN || {}, waktu())),
+    // modul aset tetap (owner 26 Nov 2026): lembar isian satu angka (nrAtur*) dicabut — daftar aset di Laporan › Aset tetap (aset-panel.js)
     nrKeluar: async ({ cara }) => { const D = LP.laporanBerkop('neraca', (st().sampaiN || iso()).slice(0, 7), 1, kini()); if (st().sampaiN) { const NP = LP.neracaTanggal(st().sampaiN, kini(), D.final); D.sub = 'per ' + tanggalPendek(st().sampaiN) + ' · ' + (D.final ? 'FINAL' : 'DRAF — belum tutup buku'); D.baris = barisNeraca(NP); D.catatan = LP.catatanNeracaBerkop(NP); D.tolak = NP.tolak || D.tolak; } tahanDok(D, ['*']); await keluarkan(D, { jenis: 'neraca', judul: 'Neraca', periode: D.sub.split(' · ')[0], draf: !D.final }, cara); },
     // ---- DOKUMEN
     dkTab: ({ t }) => set({ tabD: t, kabar: '' }), dkJenis: ({ j }) => set({ jenisD: j, kabar: '' }), dkKe: ({ b }) => set({ keD: b, kabar: '' }), dkRentang: ({ n }) => set({ rentangD: Number(n) }), dkBanding: ({ b }) => set({ bandingD: b }),
@@ -221,7 +223,9 @@ export function pasangLayarLaporan(akar, opsi) {
     stPutar: async ({ d }) => { const P = LP.pakaiKop(); const pakai = {}; pakai[d] = P.pakai[d] === 'penuh' ? 'ringkas' : 'penuh'; const r = LP.susunAturDokumen({ pakai }, waktu()); if (r.patch) r.patch.kabar = (LP.DOKUMEN_KOP.find((x) => x.id === d) || {}).nama + ' kini memakai ' + (pakai[d] === 'penuh' ? 'kop penuh (dengan NPWP/NIB)' : 'kop ringkas (tanpa NPWP/NIB)'); await tulis(r); },
     stAturBuka: () => set({ aturD: { nomorAwal: String(LP.pakaiKop().nomorAwal) } }), stAturTutup: () => set({ aturD: null }), stAturKetik: (v) => set({ aturD: { nomorAwal: v } }), stAturSimpan: () => tulis(LP.susunAturDokumen(st().aturD || {}, waktu())),
   };
-  Object.assign(AKSI, aksiPanelPatuh({ set, st, tulis, waktu, kini }));   // owner 26 Nov 2026: kalender kepatuhan (Laporan › Pajak)
+  Object.assign(AKSI, aksiPanelPatuh({ set, st, tulis, waktu, kini }));
+  Object.assign(AKSI, aksiPanelAset({ set, st, tulis, waktu, kini, iso }));   // owner 26 Nov 2026: Laporan › Aset tetap
+  Object.assign(AKSI, aksiPanelJurnal({ set, st, tulis, waktu, kini, iso }));   // owner 26 Nov 2026: Laporan › Jurnal   // owner 26 Nov 2026: kalender kepatuhan (Laporan › Pajak)
   delegasi(akar, AKSI);
 
   // ---------- pembantu gambar ----------
@@ -246,7 +250,7 @@ export function pasangLayarLaporan(akar, opsi) {
       </header>
       <div class="jalur rapat" data-k="keluarga">${LP.KELUARGA_LAPORAN.map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-nama="${id}" data-k="kg-${id}">${nm}</div>`)}</div>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
-      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'biaya' ? gambarBiaya(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'mingguan' ? gambarMingguan(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'kuartal' ? gambarKuartal(s, L) : s.keluarga === 'pajak' ? gambarPajak(s, L) : s.keluarga === 'tahunan' ? gambarTahunan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'pondasi' ? gambarPondasi(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
+      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'biaya' ? gambarBiaya(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'mingguan' ? gambarMingguan(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'kuartal' ? gambarKuartal(s, L) : s.keluarga === 'pajak' ? gambarPajak(s, L) : s.keluarga === 'tahunan' ? gambarTahunan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'aset' ? gambarAset(s, L, kini(), grid, LP.aturLaporan()) : s.keluarga === 'jurnal' ? gambarJurnal(s, L, kini(), LP.daftarBulan(kini(), 24), grid) : s.keluarga === 'pondasi' ? gambarPondasi(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
     `);
     gulirkan(akar, RP);
   }
@@ -255,7 +259,7 @@ export function pasangLayarLaporan(akar, opsi) {
   function gambarLaba(s, L) {
     const daftar = LP.daftarBulan(kini(), 24); const key = s.bulanL && daftar.some((b) => b.key === s.bulanL) ? s.bulanL : bulanKini(); const B = LP.labaBulan(key, kini()); const Lb = B.L; const arah = (n) => (n < 0 ? 'rugi' : '');
     const keping = h`<div class="kartu" data-k="keping" style="gap: 8px;"><div class="label">${B.nama} · tiga angka yang tidak boleh tertukar${B.final ? (B.diarsip ? ' · dari potret tutup buku' : '') : ' · belum tutup buku'}</div>
-      <div class="lp-keping">${[['kotor', 'Margin kotor', B.margin, B.pct(B.margin, Lb.omzetHitung) + ' dari omzet ber-HPP'], ['bersih', 'Laba bersih', B.labaBersih, 'sudah − biaya, hapus buku & susut' + (Lb.lebihKurangKas ? ' ± lebih/kurang kas' : '')], ['tunai', 'Diterima tunai', B.tunai, 'laba yang sudah jadi uang']].map(([id, nm, n, ket]) => h`<div class="lp-petak ${s.kepingL === id ? 'aktif' : ''} ${arah(n)}" data-aksi="lbKeping" data-kp="${id}" data-k="kp-${id}"><span class="l">${nm}</span><b data-gulir="${n}">${RP(n)}</b><i>${ket}</i></div>`)}</div>
+      <div class="lp-keping">${[['kotor', 'Margin kotor', B.margin, B.pct(B.margin, Lb.omzetHitung) + ' dari omzet ber-HPP'], ['bersih', 'Laba bersih', B.labaBersih, 'sudah − biaya, hapus buku & susut' + (Lb.lebihKurangKas ? ' ± lebih/kurang kas' : '') + (Lb.penyusutan ? ' − penyusutan' : '')], ['tunai', 'Diterima tunai', B.tunai, 'laba yang sudah jadi uang']].map(([id, nm, n, ket]) => h`<div class="lp-petak ${s.kepingL === id ? 'aktif' : ''} ${arah(n)}" data-aksi="lbKeping" data-kp="${id}" data-k="kp-${id}"><span class="l">${nm}</span><b data-gulir="${n}">${RP(n)}</b><i>${ket}</i></div>`)}</div>
       ${B.tanpaCatatan ? h`<div class="pita-info awas">Tidak ada satu pun catatan bertanggal ${B.nama} — sistem tidak tahu apa-apa tentang bulan itu; itu beda dari bulan yang untungnya nol.</div>` : ''}</div>`;
     let panel;
     if (s.kepingL === 'kotor') panel = h`<div class="kartu" data-k="panel-kotor" style="gap: 6px;"><div class="label">Syarat margin kotor</div><div class="lp-besar ${arah(B.margin)}">${RP(B.margin)}</div>
@@ -684,13 +688,13 @@ export function pasangLayarLaporan(akar, opsi) {
       <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;"><input class="ketik-nama" type="date" value="${s.sampaiN}" max="${iso()}" data-ketik="nrSampai" style="max-width: 170px; min-height: 36px;">${s.sampaiN ? h`<div class="kaca-btn kecil" data-aksi="nrHariIni">hari ini</div>` : h`<span class="k2">pilih tanggal untuk melihat neraca hari lain</span>`}</div></div>`;
     const dua = h`<div class="kartu" data-k="dua" style="gap: 8px;"><div class="lp-dua-sisi"><div><div class="label">Harta</div>${NP.harta.map((r, i) => h`<div class="lp-terjun" data-k="ha-${i}"><span>${r.nama}${r.ket ? h`<small> · ${r.ket}</small>` : ''}</span><b class="${arah(r.n)}">${r.n === null ? '—' : RP(r.n)}</b></div>`)}<div class="lp-terjun jumlah"><span>Jumlah harta</span><b>${NP.aset === null ? '—' : RP(NP.aset)}</b></div></div>
       <div><div class="label">Kewajiban & modal</div>${NP.pasiva.map((r, i) => h`<div class="lp-terjun" data-k="pa-${i}"><span>${r.nama}</span><b class="${arah(r.n)}">${r.n === null ? '—' : RP(r.n)}</b></div>`)}<div class="lp-terjun jumlah"><span>Jumlah</span><b>${NP.aset === null ? '—' : RP(NP.kewajiban + NP.modal + NP.labaDitahan)}</b></div></div></div>
-      <div class="lp-seimbang ${NP.tolak ? 'awas' : ''}">${NP.tolak || LP.catatanLayarNeraca(NP, NL)}</div>${NL.kata ? h`<div class="pita-info awas" data-k="nr-lebih">${NL.kata} Lihat Pelanggan → Bon.</div>` : ''}${NP.N.adaStokMinus ? h`<div class="kaca-btn kecil" data-aksi="tujuan" data-ke="stok" data-lembar="cocok" style="align-self: flex-start;">cocokkan stok di Stok ›</div>` : ''}</div>`;
+      <div class="lp-seimbang ${NP.tolak ? 'awas' : ''}">${NP.tolak || LP.catatanLayarNeraca(NP, NL)}</div>${!NP.tolak && NP.selisihBuku !== null && Math.abs(NP.selisihBuku) > 0.5 ? h`<div class="kaca-btn kecil" data-aksi="jrKeCocok" data-k="nr-ke-jurnal" style="align-self: flex-start;">pecah beda "belum terjelaskan" di Jurnal ›</div>` : ''}${NL.kata ? h`<div class="pita-info awas" data-k="nr-lebih">${NL.kata} Lihat Pelanggan → Bon.</div>` : ''}${NP.N.adaStokMinus ? h`<div class="kaca-btn kecil" data-aksi="tujuan" data-ke="stok" data-lembar="cocok" style="align-self: flex-start;">cocokkan stok di Stok ›</div>` : ''}</div>`;
     if (sampai) { D.sub = 'per ' + tanggalPendek(sampai) + ' · ' + (D.final ? 'FINAL' : 'DRAF — belum tutup buku'); D.baris = barisNeraca(NP); D.catatan = LP.catatanNeracaBerkop(NP); D.tolak = NP.tolak || D.tolak; }
     tahanDok(D, ['*']);
     const kertasN = h`${kertas(D, null, 'kertas-neraca')}${tigaTombol('nrKeluar', D.tolak)}`;
-    const atur = s.aturN ? h`<div class="kartu lp-lembar" data-k="aturN" style="gap: 8px;"><div class="kepala-lembar"><div class="serif" style="font-size: 18px;">Aset tetap</div><div class="kaca-btn" data-aksi="nrAturTutup">tutup</div></div><div class="label">Nilai timbangan, mesin jahit, kendaraan dsb. (rupiah) — isian owner sampai modul aset tetap ada</div><input class="ketik-nama" type="text" inputmode="numeric" value="${s.aturN.asetTetap}" data-ketik="nrAturKetik" data-kunci="asetTetap"><div class="label">Keterangan</div><input class="ketik-nama" type="text" value="${s.aturN.asetKet}" data-ketik="nrAturKetik" data-kunci="asetKet" placeholder="mis. timbangan digital, mesin jahit karung"><div class="utama" data-aksi="nrAturSimpan">SIMPAN</div></div>`
-      : h`<div class="kaca-btn" data-aksi="nrAturBuka" data-k="aturN-buka" style="min-height: 38px; font-size: 12px;">Atur aset tetap · ${NP.asetTetap ? RP(NP.asetTetap) : 'belum diisi (tidak ikut dihitung)'}</div>`;
-    const kaki = h`<div class="lp-kaki">Stok dinilai dengan HPP (modal), bukan harga jual — sengaja konservatif. Stok minus MENGURANGI kekayaan, tidak dinilai nol. Laba ditahan dihitung sebagai sisa; pembandingnya laba kumulatif mesin, bedanya disebut, tidak disembunyikan. Batas BAWAH: aset tetap hanya isian owner.</div>`;
+    // modul aset tetap (owner 26 Nov 2026): isian satu angka diganti daftar aset — tombolnya membuka Laporan › Aset tetap
+    const atur = h`<div class="kaca-btn" data-aksi="keluarga" data-nama="aset" data-k="aturN-buka" style="min-height: 38px; font-size: 12px;">Aset tetap · ${NP.asetTetap ? RP(NP.asetTetap) : 'belum ada barang'} · buka daftar aset ›</div>`;
+    const kaki = h`<div class="lp-kaki">Stok dinilai dengan HPP (modal), bukan harga jual — sengaja konservatif. Stok minus MENGURANGI kekayaan, tidak dinilai nol. Laba ditahan dihitung sebagai sisa; pembandingnya laba kumulatif mesin, bedanya disebut, tidak disembunyikan. Aset tetap = nilai hari ini dari daftar aset (harga beli − penyusutan).</div>`;
     if (L === 'hp') return h`<section data-k="neraca">${hero}${dua}${atur}${kertasN}${kaki}</section>`;
     return h`<section data-k="neraca">${grid(L, [h`${hero}${atur}${kaki}`, h`${dua}`, h`${kertasN}`])}</section>`;
   }
