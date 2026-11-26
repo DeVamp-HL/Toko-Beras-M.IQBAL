@@ -3,12 +3,13 @@
 """
 uji_google_play.py — jalur Google Play privat (owner 23 Nov 2026, docs/google-play.md). Tanpa peramban, tanpa jaringan, tanpa Pillow.
 
-  PYTHON  apk/pasang.py — targetSdk & compileSdk dinaikkan ke SDK_SASARAN (≥ 36, syarat aplikasi baru di Play) di variables.gradle, tidak pernah
+  PYTHON  apk/pasang.py — targetSdk & compileSdk dinaikkan ke SDK_SASARAN (≥ 36, syarat aplikasi baru di Play) dan minSdk ke SDK_MINIMUM (≥ 24,
+          syarat perlindungan otomatis Play, 26 Nov 2026) di variables.gradle, tidak pernah
           menurunkan, pola asing DITOLAK (bangun gagal, bukan AAB yang diam-diam ditolak Play); dipanggil dari main.
           apk/periksa_aab.py — bundel sintetis: lengkap & bertanda tangan = lulus; tanpa tanda tangan / bukan ZIP / pustaka native 64-bit p_align 4 KB
           = GAGAL; pustaka 32-bit 4 KB tidak diwajibkan.
   STATIS  apk.yml — APK tetap (nama & isi artefak sama), AAB artefak terpisah, bundleRelease gagal tidak menggagalkan langkah APK, AAB ditandatangani
-          lewat :env (sandi tidak di baris perintah), targetSdk ≥ 36 & RSA ≥ 2048 diperiksa, kunci dihapus, sertifikat (memuat nama pemilik) tidak
+          lewat :env (sandi tidak di baris perintah), targetSdk ≥ 36, minSdk ≥ 24 & RSA ≥ 2048 diperiksa, kunci dihapus, sertifikat (memuat nama pemilik) tidak
           dicetak, periksa_aab dipanggil.
           play-kunci.yml — hanya manual, isian lewat env (bukan disisipkan ke skrip), hanya PEM/heksa, pepk.jar dicocokkan SHA-256, kunci dihapus,
           artefak 1 hari.
@@ -100,11 +101,14 @@ def periksa_python(t):
     ok('pasang.py: SDK_SASARAN ≥ 36 (Play: aplikasi baru wajib menyasar Android 16 sejak 31 Agu 2026)', P.get('SDK_SASARAN', 0) >= 36, P.get('SDK_SASARAN'))
     try: v = P['ubah_variabel'](VARIABEL)
     except Exception as e: v = repr(e)
-    ok('variables.gradle Capacitor 7: compileSdkVersion & targetSdkVersion 35 → 36, minSdk & pustaka tidak disentuh',
-       'compileSdkVersion = 36' in v and 'targetSdkVersion = 36' in v and 'minSdkVersion = 23' in v and "androidxAppCompatVersion = '1.7.0'" in v, v)
+    ok('pasang.py: SDK_MINIMUM ≥ 24 (Play 26 Nov 2026: perlindungan otomatis menolak bundel minSdk 23)', P.get('SDK_MINIMUM', 0) >= 24, P.get('SDK_MINIMUM'))
+    ok('variables.gradle Capacitor 7: minSdkVersion 23 → 24, compileSdkVersion & targetSdkVersion 35 → 36, pustaka tidak disentuh',
+       'minSdkVersion = 24' in v and 'compileSdkVersion = 36' in v and 'targetSdkVersion = 36' in v and "androidxAppCompatVersion = '1.7.0'" in v, v)
     ok('variables.gradle: dijalankan dua kali = sama', P['ubah_variabel'](v) == v if 'Sdk' in v else False)
     v37 = VARIABEL.replace('targetSdkVersion = 35', 'targetSdkVersion = 37')
     ok('variables.gradle: angka yang sudah lebih tinggi (37) TIDAK diturunkan', 'targetSdkVersion = 37' in P['ubah_variabel'](v37))
+    ok('variables.gradle: minSdk yang sudah lebih tinggi (26) TIDAK diturunkan', 'minSdkVersion = 26' in P['ubah_variabel'](VARIABEL.replace('minSdkVersion = 23', 'minSdkVersion = 26')))
+    ok('variables.gradle tanpa minSdkVersion DITOLAK', ditolak(P['ubah_variabel'], VARIABEL.replace('    minSdkVersion = 23\n', '')))
     ok('variables.gradle tanpa targetSdkVersion DITOLAK (pola Capacitor berubah = bangun gagal)', ditolak(P['ubah_variabel'], VARIABEL.replace('    targetSdkVersion = 35\n', '')))
     ok('variables.gradle dengan compileSdkVersion dua kali DITOLAK', ditolak(P['ubah_variabel'], VARIABEL + 'compileSdkVersion = 34\n'))
     ok('pasang.py main() memanggil pasang_sdk() (angka SDK sungguh dipasang ke proyek)', re.search(r'(?m)^    pasang_java\(\);.*\bpasang_sdk\(\);', t[PAS]) is not None)
@@ -145,6 +149,24 @@ def periksa_statis(t):
        re.search(r'jarsigner -keystore "\$RUNNER_TEMP/kunci\.jks" -storepass:env KEYSTORE_PASSWORD -keypass:env KEY_PASSWORD .*\n.*"\$KEY_ALIAS"', tanda) is not None, tanda[:400])
     ok('apk.yml: tanda tangan AAB diverifikasi (jar verified) sebelum disimpan', 'jarsigner -verify "$AAB"' in tanda and "grep -q 'jar verified'" in tanda)
     ok('apk.yml: targetSdk dibaca dari APK hasil bangun yang sama, < 36 = merah', 'dump badging "$APK"' in tanda and '[ "${SASARAN:-0}" -ge 36 ]' in tanda)
+    ok('apk.yml: minSdk dibaca dari APK hasil bangun yang sama, < 24 = merah', 'MINIMUM=$("$BT/aapt2" dump badging "$APK" |' in tanda and '[ "${MINIMUM:-0}" -ge 24 ]' in tanda)
+    # baris SASARAN= & MINIMUM= dijalankan sungguhan di bash atas keluaran aapt2 dump badging contoh (bentuk build-tools 35/36)
+    contoh = ("package: name='id.miqbal.tokoberas' versionCode='47' versionName='1.47' platformBuildVersionName='16' platformBuildVersionCode='36' "
+              "compileSdkVersion='36' compileSdkVersionCodename='16'\nminSdkVersion:'24'\ntargetSdkVersion:'36'\nuses-permission: name='android.permission.INTERNET'\n")
+    def baca_sdk(teks):
+        baris = [x.strip() for x in tanda.split('\n') if x.strip().startswith(('SASARAN=$(', 'MINIMUM=$('))]
+        if len(baris) != 2: return None
+        import tempfile as _tf
+        with _tf.TemporaryDirectory() as d:
+            p = os.path.join(d, 'badging.txt'); open(p, 'w').write(teks)
+            skrip = '; '.join(x.replace('"$BT/aapt2" dump badging "$APK"', 'cat "$CONTOH"') for x in baris) + '; printf "%s %s" "$SASARAN" "$MINIMUM"'
+            return subprocess.run(['bash', '-c', skrip], capture_output=True, text=True, env={'CONTOH': p, 'PATH': os.environ.get('PATH', '')}).stdout
+    sdk2 = baca_sdk(contoh); sdk1 = baca_sdk(contoh.replace("minSdkVersion:'24'", "sdkVersion:'24'"))
+    ok('apk.yml: keluaran aapt2 sungguhan (minSdkVersion:/targetSdkVersion:) terbaca 36 & 24 — juga bentuk aapt lama sdkVersion: (run #46/#47 merah palsu)',
+       sdk2 == '36 24' and sdk1 == '36 24', (sdk2, sdk1))
+    ok('apk.yml: tanda tangan APK diverifikasi untuk Android ≤ 23 (minSdk 24 membuat apksigner melewati V1 — syarat SUNMI App Store tetap dibuktikan)',
+       re.search(r'apksigner" verify -v --min-sdk-version (\d+) ', bangun) is not None and int(re.search(r'apksigner" verify -v --min-sdk-version (\d+) ', bangun).group(1)) <= 23
+       and "grep -q 'Verified using v1 scheme (JAR signing): true'" in bangun, bangun[bangun.find('apksigner" verify'):][:200])
     ok('apk.yml: kunci unggah wajib RSA ≥ 2048 bit', "grep -q 'RSA'" in tanda and '[ "${BIT:-0}" -lt 2048 ]' in tanda)
     ok('apk.yml: sertifikat kunci (memuat nama pemilik) TIDAK dicetak — keytool ke berkas sementara, hanya baris algoritma & SHA-256 yang diambil, lalu dihapus',
        'keytool -list -v -keystore "$RUNNER_TEMP/kunci.jks" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" > "$RUNNER_TEMP/kunci.txt"' in tanda
@@ -211,8 +233,13 @@ def jalankan(t):
 KONTROL = [
     ('SDK sasaran kembali 35', [(PAS, 'SDK_SASARAN = 36', 'SDK_SASARAN = 35')]),
     ('pasang_sdk tidak dipanggil', [(PAS, 'pasang_versi(max(1, x.versi)); pasang_sdk(); ', 'pasang_versi(max(1, x.versi)); ')]),
-    ('targetSdk tidak diubah (hanya compileSdk)', [(PAS, "    for nama in ('compileSdkVersion', 'targetSdkVersion'):", "    for nama in ('compileSdkVersion',):")]),
-    ('angka SDK diturunkan', [(PAS, 'str(max(sdk, int(mm.group(2))))', 'str(sdk)')]),
+    ('targetSdk tidak diubah (hanya compileSdk)', [(PAS, "('compileSdkVersion', sdk), ('targetSdkVersion', sdk)):", "('compileSdkVersion', sdk)):")]),
+    ('SDK minimum kembali 23', [(PAS, 'SDK_MINIMUM = 24', 'SDK_MINIMUM = 23')]),
+    ('minSdk tidak diubah', [(PAS, "(('minSdkVersion', minimum), ('compileSdkVersion', sdk)", "(('compileSdkVersion', sdk)")]),
+    ('verifikasi APK tanpa --min-sdk-version (V1 dilewati di minSdk 24)', [(YML, 'apksigner" verify -v --min-sdk-version 23 ', 'apksigner" verify -v ')]),
+    ('minSdk dibaca dengan pola aapt lama saja (bug 26 Nov)', [(YML, """sed -nE "s/^(minSdkVersion|sdkVersion):'([0-9]+)'.*/\\2/p" """, """sed -nE "s/^(sdkVersion):'([0-9]+)'.*/\\2/p" """)]),
+    ('minSdk tidak diperiksa di apk.yml', [(YML, '[ "${MINIMUM:-0}" -ge 24 ]', '[ "${MINIMUM:-0}" -ge 0 ]')]),
+    ('angka SDK diturunkan', [(PAS, 'str(max(angka, int(mm.group(2))))', 'str(angka)')]),
     ('pola variables.gradle asing diterima diam-diam', [(PAS, '        if len(cocok) != 1: raise Tolak(', '        if len(cocok) > 9: raise Tolak(')]),
     ('periksa_aab: halaman 4 KB dianggap cukup', [(AAB, 'HALAMAN_16K = 16384', 'HALAMAN_16K = 4096')]),
     ('periksa_aab: tanda tangan tidak diperiksa', [(AAB, "h.append((bool(sf) and bool(blok),", "h.append((True,")]),
