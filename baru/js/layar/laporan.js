@@ -19,6 +19,7 @@ import * as KB from './kendali-biaya-logika.js';
 import * as PG from './laba-pelanggan-logika.js';   // B5 (owner 18 Nov 2026): kartu Per pelanggan di Laba
 import * as KL from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 2026): margin & mark-up, GMROI, batas HPP, nota terbesar
 import * as PD from './pondasi-logika.js';
+import * as JN from './janji-logika.js';   // paket tanggal janji (owner 27 Nov 2026): Pondasi › Tepat janji — B55 B58 B60 B61 B65
 import * as KR from './kas-rekening-logika.js';   // owner 26 Nov 2026 (A55): buku kas harian semua tempat — saldo awal & akhir laci · brankas · rekening · amplop
 import * as SH from './susut-harga-logika.js';   // paket Susut + HPP & harga minimum (owner 26 Nov 2026): target & tren susut, opname, per pemasok, mingguan, HPP periode
 import * as KW from './kuartal-logika.js';   // Kuartal (owner 24 Nov 2026, paket Pondasi kedua): K1–K4 = Σ tiga bulan Laporan › Tahunan + kekayaan & potret lampu akhir kuartal   // Pondasi (owner 24 Nov 2026): delapan lampu pondasi toko — hanya membaca fungsi sumber layar lain
@@ -55,9 +56,9 @@ export function pasangLayarLaporan(akar, opsi) {
     drafI: null, isiI: null, aturD: null, sibuk: false,
     drafPj: null, drafSetor: null, drafLuar: null, yakinPj: null, tahunPj: null,   // Paket B: tahun yang dibuka di Pajak (null = bawaan: Jan–Mar tahun lalu selama ada masa terutang)
     bulanK: null, bukaKb: {}, aturB: null, pilahK: null,
-    bukaPd: {}, aturPd: null, pcDraf: null, yakinPc: null, drafPribadi: null, phDraf: null, yakinPh: null, tjDraf: null, yakinTj: null, kuartalQ: null, aturTq: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
+    bukaPd: {}, aturPd: null, aturJn: null, jnHari: JN.JN_HARI_BAWAAN, pcDraf: null, yakinPc: null, drafPribadi: null, phDraf: null, yakinPh: null, tjDraf: null, yakinTj: null, kuartalQ: null, aturTq: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['ptAtur', ['ptCatatan', (v) => !!String(v || '').trim()], 'drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'drafAs', 'drafJk', 'aturAs', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq', 'pcDraf', 'drafPribadi', 'phDraf', 'tjDraf'], []);
+  const ISIAN = pasangIsian(K, awal, ['ptAtur', ['ptCatatan', (v) => !!String(v || '').trim()], 'drafI', 'aturJn', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'drafAs', 'drafJk', 'aturAs', 'aturD', 'aturB', 'aturM', 'aturPd', 'aturTq', 'pcDraf', 'drafPribadi', 'phDraf', 'tjDraf'], []);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -146,6 +147,11 @@ export function pasangLayarLaporan(akar, opsi) {
     pdAturBuka: () => set({ aturPd: PD.pdDrafAtur(), kabar: '' }), pdAturTutup: () => set({ aturPd: null }),
     pdAturKetik: (v, el) => { const a = Object.assign({}, st().aturPd || PD.pdDrafAtur()); a[el.dataset.kunci] = v; set({ aturPd: a }); },
     pdAturSimpan: () => tulis(PD.susunAturPondasi(st().aturPd || {}, waktu())),
+    // paket tanggal janji (owner 27 Nov 2026): toleransi telat pemasok & antar (setelan owner, bawaan 0 hari) · jendela 30 / 90 / 180 hari
+    jnHari: ({ n }) => set({ jnHari: Number(n) || JN.JN_HARI_BAWAAN }),
+    jnAturBuka: () => { const A = JN.jnAtur(); set({ aturJn: { tolPemasok: String(A.tolPemasok), tolAntar: String(A.tolAntar) }, kabar: '' }); }, jnAturTutup: () => set({ aturJn: null }),
+    jnAturKetik: (v, el) => { const a = Object.assign({}, st().aturJn || {}); a[el.dataset.kunci] = v; set({ aturJn: a }); },
+    jnAturSimpan: () => tulis(JN.jnSusunAtur(st().aturJn || {}, waktu())),
     // Pondasi paket keempat (owner 25 Nov 2026): catatan percobaan — owner menulis apa yang dicoba; angkanya diukur pdPercobaan dari nota
     pcBaru: () => set({ pcDraf: PD.pdDrafPercobaan('', iso()), yakinPc: null, kabar: '' }), pcUbah: ({ id }) => set({ pcDraf: PD.pdDrafPercobaan(id, iso()), yakinPc: null, kabar: '' }), pcBatal: () => set({ pcDraf: null }),
     pcKetik: (v, el) => { const a = Object.assign({}, st().pcDraf || PD.pdDrafPercobaan('', iso())); const k = el.dataset.kolom; a[k] = k === 'mulai' || k === 'selesai' ? (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '') : String(v).slice(0, PD.pdPercobaanMaks().teks + 50); set({ pcDraf: a }); },
@@ -763,6 +769,22 @@ export function pasangLayarLaporan(akar, opsi) {
           <div class="lp-mr-pita"><span style="width: ${lebarPita(b.aset, KY.maks)}%;"></span></div><div class="lp-mr-pita lp-pd-pita-utang"><span style="width: ${lebarPita(b.kewajiban, KY.maks)}%;"></span></div></div><div class="n"><b class="${b.bersih < 0 ? 'rugi' : ''}">${RP(b.bersih)}</b></div></div>`
         : h`<div class="lp-mr-baris" data-k="pdk-${b.key}"><div class="no">·</div><div class="isi"><div>${b.nama}</div><div class="k2">${b.kenapa}</div></div><div class="n"><span class="lp-mr-belum">—</span></div></div>`)}
       <div class="k2">Pita atas = harta, pita bawah = utang. Stok dinilai dengan harga modal; uang akhir bulan lampau = hitungan fisik tutup hari akhir bulan itu.</div>`}</div>`;
+    // paket tanggal janji (owner 27 Nov 2026, sensus B55 B58 B60 B61 B65): tepat janji dua arah — janji-logika apa adanya; yang belum punya janji DISEBUT
+    const nJn = s.jnHari || JN.JN_HARI_BAWAAN; const JP = aman('janji pemasok', () => JN.jnPemasok(kini(), nJn)); const JA = aman('janji antar', () => JN.jnPelanggan(kini(), nJn));
+    const JL = aman('lewat janji', () => ({ daftar: JN.jnLewat(kini()) })); const JT = JN.jnAtur(); const dj = s.aturJn;
+    const janji = h`<div class="kartu" data-k="pd-janji" style="gap: 4px;"><div class="label">Tepat janji · datang dari pemasok &amp; antar ke pelanggan</div>
+      <div class="hg-pil" data-k="pdj-hari">${JN.JN_HARI_PILIHAN.map((n) => h`<span class="seg ${n === nJn ? 'aktif' : ''}" data-aksi="jnHari" data-n="${n}" data-k="pdj-h${n}">${n} hari</span>`)}</div>
+      ${JL.galat ? gagal(JL) : JL.daftar.length ? h`<div class="pita-info awas" data-k="pdj-lewat"><b>Lewat janji sekarang · ${JL.daftar.length}</b>${JL.daftar.slice(0, 6).map((x, i) => h`<div class="k2" data-k="pdj-l${i}">${x.teks}</div>`)}</div>` : h`<div class="k2" data-k="pdj-lewat">Tidak ada kedatangan atau antaran yang lewat janji.</div>`}
+      ${JP.galat ? gagal(JP) : h`<div class="k2" data-k="pdj-pemasok">${JP.kalimat}</div>
+        ${JP.perPemasok.map((p, i) => h`<div class="lp-mr-baris" data-aksi="tujuan" data-ke="harga" data-keluarga="belanja" data-tab="" data-lembar="" data-sistem="" data-k="pdj-p${i}" style="cursor: pointer;"><div class="no">${i + 1}</div><div class="isi"><div>${p.nama}</div><div class="k2">${JN.jnKataRingkas(p.ringkas)}</div>
+          ${p.ringkas.pct !== null ? h`<div class="lp-mr-pita"><span style="width: ${lebarPita(p.ringkas.pct, 100)}%;"></span></div>` : ''}</div>
+          <div class="n">${p.ringkas.pct !== null ? h`<b>${JN.jnPctTeks(p.ringkas.pct)}</b>` : h`<span class="lp-mr-belum">—</span>`}</div></div>`)}`}
+      ${JA.galat ? gagal(JA) : h`<div class="k2" data-k="pdj-antar">${JA.kalimat}</div>`}
+      ${dj ? h`<div class="lp-kb-form" data-k="form-jn"><label for="jnA-tolPemasok"><div>Toleransi telat pemasok (hari)</div><div class="k2">datang paling lambat janji + sekian hari = masih tepat</div></label><input id="jnA-tolPemasok" class="ketik-nama" type="text" inputmode="numeric" value="${dj.tolPemasok || ''}" data-ketik="jnAturKetik" data-kunci="tolPemasok" placeholder="0">
+          <label for="jnA-tolAntar"><div>Toleransi telat antar (hari)</div><div class="k2">sampai ke pembeli paling lambat janji + sekian hari</div></label><input id="jnA-tolAntar" class="ketik-nama" type="text" inputmode="numeric" value="${dj.tolAntar || ''}" data-ketik="jnAturKetik" data-kunci="tolAntar" placeholder="0"></div>
+        <div class="tombol-baris"><div class="kaca-btn" data-aksi="jnAturTutup">batal</div><div class="kaca-btn aktif emas" data-aksi="jnAturSimpan">SIMPAN TOLERANSI</div></div>`
+        : h`<div class="kaca-btn kecil" data-aksi="jnAturBuka" data-k="pdj-atur" style="align-self: flex-start;">Toleransi telat · pemasok ${JT.tolPemasok} hari · antar ${JT.tolAntar} hari · ${JT.dariOwner.pemasok || JT.dariOwner.antar ? 'diatur owner' : 'bawaan'} ›</div>`}
+      <div class="k2">Janji datang diisi di Harga › Belanja (owner) atau Barang masuk tablet (Penjaga laci); janji antar = tanggal kirim pesanan atau "dijanjikan sampai" di Bayar › Antar. Dihitung dari janji PERTAMA — janji yang digeser tetap disebut. Pesanan tanpa tanggal janji tidak dianggap tepat waktu. Utuh = jumlah karung / barang lengkap (kurang timbang dicatat di klaim Barang masuk).</div></div>`;
     const rantai = h`<div class="kartu" data-k="pd-rantai" style="gap: 4px;"><div class="label">Rantai pasok · per pemasok</div>${RN.galat ? gagal(RN) : h`<div class="k2">${RN.kalimat}</div>
       ${RN.pemasok.map((p, i) => h`<div class="lp-mr-baris" data-aksi="tujuan" data-ke="harga" data-keluarga="bon" data-tab="" data-lembar="" data-sistem="" data-k="pdp-${i}" style="cursor: pointer;"><div class="no">${i + 1}</div><div class="isi"><div>${p.nama}</div><div class="k2">${p.kalimat}</div>
           ${p.gerak.length ? h`<div class="k2">${p.gerak.map((g) => g.merek + ' ' + RP(g.dari) + ' → ' + RP(g.ke) + '/kg').join(' · ')}</div>` : ''}${p.pct !== null ? h`<div class="lp-mr-pita"><span style="width: ${lebarPita(p.pct, 100)}%;"></span></div>` : ''}</div>
@@ -872,8 +894,8 @@ export function pasangLayarLaporan(akar, opsi) {
         <div class="utama" data-aksi="pdAturSimpan">SIMPAN</div></div>`
       : h`<div class="kaca-btn" data-aksi="pdAturBuka" data-k="aturPd-buka" style="min-height: 38px; font-size: 12px;">Atur ambang lampu · ${PD.PD_ATUR.filter((x) => P.atur[x.id] > 0).length} dari ${PD.PD_ATUR.length} diatur</div>`;
     const kaki = h`<div class="lp-kaki">Layar ini hanya membaca: tiap angka diambil dari layar asalnya (Neraca, Laba, Biaya, Bon pemasok, Uang) dan tidak ada rumus uang baru. Lampu mengukur dan mengingatkan — keputusan menambah cabang, gudang, atau utang tetap di owner. Prakiraan memakai 30 hari terakhir sebagai patokan, jadi bulan yang tidak biasa (Lebaran, panen) akan meleset.</div>`;
-    if (L === 'hp') return h`<section data-k="pondasi">${hero}${daftar}${risiko}${kekayaan}${rantai}${upahAntar}${pelanggan}${nilaiTambah}${pribadi}${lembarTj}${tinjauan}${lembarPc}${percobaan}${disiplin}${organisasi}${lembarPh}${pihak}${atur}${luar}${kaki}</section>`;
-    return h`<section data-k="pondasi">${grid(L, [h`${hero}${lembarTj}${tinjauan}${atur}${kekayaan}${pribadi}${lembarPc}${percobaan}${kaki}`, h`${daftar}${risiko}${pelanggan}${nilaiTambah}`, h`${disiplin}${organisasi}${lembarPh}${pihak}${rantai}${upahAntar}${luar}`])}</section>`;
+    if (L === 'hp') return h`<section data-k="pondasi">${hero}${daftar}${risiko}${kekayaan}${rantai}${janji}${upahAntar}${pelanggan}${nilaiTambah}${pribadi}${lembarTj}${tinjauan}${lembarPc}${percobaan}${disiplin}${organisasi}${lembarPh}${pihak}${atur}${luar}${kaki}</section>`;
+    return h`<section data-k="pondasi">${grid(L, [h`${hero}${lembarTj}${tinjauan}${atur}${kekayaan}${pribadi}${lembarPc}${percobaan}${kaki}`, h`${daftar}${risiko}${pelanggan}${nilaiTambah}`, h`${disiplin}${organisasi}${lembarPh}${pihak}${rantai}${janji}${upahAntar}${luar}`])}</section>`;
   }
 
   // ---------- DOKUMEN · DK2 + DK4

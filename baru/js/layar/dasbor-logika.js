@@ -38,6 +38,8 @@ import { rekapTimbangMutu } from './stok-catat-logika.js';
 // paket KPI laba (owner 24 Nov 2026): tiga margin + pembanding BPS, target harian, kas minimum, siklus uang, nota terbesar, kedatangan lewat batas HPP,
 // lama pemenuhan pesanan, bon dalam kg beras — APA ADANYA dari kpi-laba-logika.js (yang memanggil fungsi sumber layar lain)
 import { klMarginBulan, klTargetHari, klKasMinimum, klSiklusUang, klNotaTerbesar, klHppLewatBulan, klLamaPesanan, klBonKg, klModalPerKg } from './kpi-laba-logika.js';
+// paket tanggal janji (owner 27 Nov 2026, sensus B55 B58 B60 B61 B65): tepat janji pemasok & antar — janji-logika apa adanya
+import { jnRingkas } from './janji-logika.js';
 // Pondasi (owner 24 Nov 2026): delapan lampu pondasi toko — APA ADANYA dari pondasi-logika.js (yang memanggil fungsi sumber layar lain)
 import { pdPondasi } from './pondasi-logika.js';
 // paket Susut + HPP & harga minimum (owner 26 Nov 2026): target & dua ambang susut, opname bulan ini, harga di bawah minimum, alarm dekat HET — APA ADANYA dari susut-harga-logika.js
@@ -201,7 +203,7 @@ export function dbKpi(kini) {
   const aman = (f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor kpi', e); return { galat: String((e && e.message) || e) }; } };
   return { periode: 'Bulan ini & hari ini', sumber: 'Laporan › Laba', tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key },
     margin: aman(() => klMarginBulan(key, kini)), target: aman(() => klTargetHari(kini)), kas: aman(() => klKasMinimum()), siklus: aman(() => klSiklusUang(kini)),
-    nota: aman(() => klNotaTerbesar('hari', kini, 3)), hpp: aman(() => klHppLewatBulan(key)), pesanan: aman(() => klLamaPesanan(kini)) };
+    nota: aman(() => klNotaTerbesar('hari', kini, 3)), hpp: aman(() => klHppLewatBulan(key)), pesanan: aman(() => klLamaPesanan(kini)), janji: aman(() => jnRingkas(kini)) };
 }
 
 /** B5 PELANGGAN USAHA bulan ini (owner 18 Nov 2026): porsi laba kotor & omzet pelanggan usaha, tiga teratas menurut laba kotor, faktur lewat jatuh tempo — APA

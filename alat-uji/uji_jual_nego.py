@@ -22,7 +22,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru, peta_akses, uji_jual_baru, uji_wadah_bernama, uji_cache_chip_literan, uji_rak_inkremental  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = peta_akses.MODUL_KIRIM + [m for m in uji_jual_baru.MODUL if m not in peta_akses.MODUL_KIRIM] + ['baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/akses-layar.js']
+MODUL = list(dict.fromkeys(peta_akses.MODUL_KIRIM + [m for m in uji_jual_baru.MODUL if m not in peta_akses.MODUL_KIRIM] + ['baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/akses-layar.js']))   # paket tanggal janji: MODUL_KIRIM kini memuat bon-pemasok-logika (janji-logika) — tanpa modul ganda
 MODUL = MODUL + [m for m in ['baru/js/layar/titipan-logika.js'] if m not in MODUL]   # owner 21 Nov 2026: papan Persetujuan memutus titipan lewat titipan-logika (sekali saja)
 SUMBER = {'jual': 'baru/js/layar/jual.js', 'menu': 'baru/js/layar/menu.js', 'app': 'baru/js/app.js'}
 

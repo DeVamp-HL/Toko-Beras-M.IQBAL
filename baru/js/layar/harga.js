@@ -13,6 +13,7 @@ import * as KL from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 20
 // owner 7 Okt: foto kertas bon pemasok — dikecilkan di perangkat, satu dokumen per foto di koleksi fotoBon (dibaca saat bon dibuka)
 import * as FB from './foto-bon-logika.js';
 import * as BL from './belanja-logika.js';
+import * as JN from './janji-logika.js';   // paket tanggal janji (owner 27 Nov 2026): janji datang pesanan ke pemasok
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, kabarKiriman, ingatStokKemasan, kunciLuarCache, cacheMentah } from '../data/toko.js';
@@ -57,9 +58,9 @@ export function pasangLayarHarga(akar, opsi) {
     aturTm: null,   // paket KPI laba: draf target margin per jenis
     aturMin: null, hb: null, minBuka: false,   // paket HPP & harga minimum: draf setelan (target laba, jarak HET) · ketikan kalkulator sebelum beli · daftar lengkap
     tabB: tabLokal.b || 'tusuk', bukuNama: '', bayar: null, lama: null, kartu: null, urung: null, aturB: null, betul: null, foto: null,
-    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, kmUbah: null, kmDaftar: false, hetBuka: false, aturHet: null, vrBaru: null, vrYakin: false, arYakin: '', arBuka: false, ltYakin: '' });
+    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, waJanji: '', janjiP: null, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, kmUbah: null, kmDaftar: false, hetBuka: false, aturHet: null, vrBaru: null, vrYakin: false, arYakin: '', arBuka: false, ltYakin: '' });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturHet', 'aturTm', 'aturMin', 'hb', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))], 'bdCatat', 'aturBd', ['bdTandai', (v) => !!String(v || '').trim()]], [KUNCI_DRAF_BELANJA]);
+  const ISIAN = pasangIsian(K, awal, ['waJanji', ['janjiP', (v) => !!(v && v.tanggal)], 'ketik', 'aturH', 'aturHet', 'aturTm', 'aturMin', 'hb', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))], 'bdCatat', 'aturBd', ['bdTandai', (v) => !!String(v || '').trim()]], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -68,6 +69,7 @@ export function pasangLayarHarga(akar, opsi) {
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
   const ingatTab = () => simpanLokal(KUNCI_TAB, { h: st().tabH, b: st().tabB, l: st().tabL, d: st().tabD });
 
+  const namaPencatat = () => { const a = opsi.akun ? opsi.akun() : null; return (a && a.nama) || 'Owner'; };
   async function tulis(r) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
     try {
@@ -275,9 +277,16 @@ export function pasangLayarHarga(akar, opsi) {
     blKetukG: ({ p, g }) => { const H = BL.hitungBelanja(st().pesan, kini()); ubahPesan(BL.ketukKelompok(H, p, g, st().pesan)); },
     blWaBuka: ({ p }) => { set({ wa2: st().wa2 === p ? null : p, kabar: '' }); keAtas(); },
     blWaHarga: () => set({ waHarga: !st().waHarga }),
-    blKirim: async () => { const p = st().wa2; if (!p) return; const r = BL.susunPesanan(st().pesan, p, waktu(), st().waHarga); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); const w = bukaWa(r.tautan); if (await tulis(r)) { ubahPesan(r.pesanSisa); if (!w) set({ kabar: 'Pesanan dicatat, tapi peramban menahan jendela WhatsApp — buka lagi dari "Pesanan yang menunggu datang"', kabarAwas: true }); } },
+    blKirim: async () => { const p = st().wa2; if (!p) return; const r = BL.susunPesanan(st().pesan, p, waktu(), st().waHarga, st().waJanji, namaPencatat()); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); const w = bukaWa(r.tautan); if (await tulis(r)) { ubahPesan(r.pesanSisa); set({ waJanji: '' }); if (!w) set({ kabar: 'Pesanan dicatat, tapi peramban menahan jendela WhatsApp — buka lagi dari "Pesanan yang menunggu datang"', kabarAwas: true }); } },
     blBukaLagi: ({ id }) => { const p = BL.pesananSemua().find((x) => String(x.id) === String(id)); if (!p) return; bukaWa('https://wa.me/' + (p.keNomor || '') + '?text=' + encodeURIComponent(p.teks || '')); },
     blPesanan: async ({ id, status }) => { await tulis(BL.susunUbahPesanan(id, status, waktu())); },
+    // paket tanggal janji (owner 27 Nov 2026): janji datang dipilih saat kirim WA, diisi / digeser sesudah pemasok membalas (janji pertama tetap dihitung)
+    blWaJanji: ({ t }) => set({ waJanji: String(t || '') }),
+    blWaJanjiKetik: (v) => set({ waJanji: String(v || '') }),
+    blJanjiBuka: ({ id }) => { const x = JN.jnPesananPemasok(id, kini()); set({ janjiP: st().janjiP && st().janjiP.id === String(id) ? null : { id: String(id), tanggal: x && x.janji.akhir ? x.janji.akhir : '' }, kabar: '' }); },
+    blJanjiPilih: ({ t }) => { const j = st().janjiP; if (j) set({ janjiP: Object.assign({}, j, { tanggal: String(t || '') }) }); },
+    blJanjiKetik: (v) => { const j = st().janjiP; if (j) set({ janjiP: Object.assign({}, j, { tanggal: String(v || '') }) }); },
+    blJanjiSimpan: async () => { const j = st().janjiP; if (!j) return; await tulis(JN.jnSusunJanjiPemasok(j.id, j.tanggal, waktu(), namaPencatat())); },
     bukaAturL: () => { const a = BL.aturBelanja(); set({ aturL: st().aturL ? null : { ambangHari: String(a.ambangHari), targetHari: String(a.targetHari), muatanKg: String(a.muatanKg) } }); },
     blAturKetik: (v, el) => { const a = Object.assign({}, st().aturL || {}); a[el.dataset.kolom] = String(v).slice(0, 7); set({ aturL: a }); },
     simpanAturL: async () => { const a = st().aturL; if (a) await tulis(BL.susunAturBelanja(a, waktu())); },
@@ -821,19 +830,30 @@ export function pasangLayarHarga(akar, opsi) {
   }
   function gambarWaPesanan(s, H) {
     const R = H.perP.find((r) => r.pemasok === s.wa2); if (!R || !R.karung) return h`<div class="pita-info awas" data-k="wa-kosong">Belum ada karung untuk ${s.wa2} di daftar. <span data-aksi="blWaBuka" data-p="${s.wa2}" style="text-decoration: underline; cursor: pointer;">tutup</span></div>`;
-    const P = BL.susunPesanan(s.pesan, s.wa2, waktu(), s.waHarga);
+    const P = BL.susunPesanan(s.pesan, s.wa2, waktu(), s.waHarga, s.waJanji, namaPencatat());
     return h`<div class="kartu hg-lembar" data-k="wa-pesanan" style="gap: 8px;"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Pesanan untuk ${R.pemasok}</div><div class="ket">${R.kontak ? 'WhatsApp ke ' + R.kontak : 'nomor belum ada di kartu — WhatsApp menanyakan tujuannya'}</div></div><div class="kaca-btn" data-aksi="blWaBuka" data-p="${s.wa2}">tutup</div></div>
       <div class="jalur bungkus" data-k="wa-pem">${H.perP.filter((r) => r.karung).map((r) => h`<div class="seg ${r.pemasok === s.wa2 ? 'aktif' : ''}" data-aksi="blWaBuka" data-p="${r.pemasok}" data-k="wp-${r.kunci}">${r.pemasok}</div>`)}</div>
       <div class="hg-wa">${(P.baris || []).map((t, i) => h`<div data-k="wb-${i}">${i === 0 ? h`<b>${t.replace(/\*/g, '')}</b>` : t}</div>`)}</div>
       <div class="jalur rapat"><div class="seg ${s.waHarga ? 'aktif' : ''}" data-aksi="blWaHarga">${s.waHarga ? '✓ perkiraan jumlah uang ikut dikirim' : 'perkiraan jumlah uang TIDAK ikut dikirim'}</div></div>
       <div class="ket">Satu baris = satu harga beli terakhir dari ${R.pemasok} — pemasok mengenal barangnya dari harga; merek yang seharga digabung.</div>
       ${P.lebihTeks ? h`<div class="pita-info awas">${P.lebihTeks}</div>` : ''}${P.uangTeks ? h`<div class="pita-info">${P.uangTeks}</div>` : ''}
+      ${pilihJanji(s.waJanji, 'blWaJanji', 'blWaJanjiKetik', 'wj', 'Dijanjikan datang')}
       <div class="utama" data-aksi="blKirim">KIRIM KE WHATSAPP · catat sebagai pesanan</div></div>`;
+  }
+  /** paket tanggal janji: pil janji datang (belum tahu · hari ini · besok · lusa) + isian tanggal lain. aksi = pil, ketik = isian. */
+  function pilihJanji(nilai, aksi, ketik, k, judul) {
+    const iso = waktu().tanggal; const v = String(nilai || ''); const pil = JN.jnPilihan(iso); const lain = v && !pil.some(([t]) => t === v);
+    return h`<div data-k="${k}-janji"><div class="label">${judul}</div><div class="jalur rapat bungkus" data-k="${k}-pil">${pil.map(([t, nm]) => h`<div class="seg ${v === t ? 'aktif' : ''}" data-aksi="${aksi}" data-t="${t}" data-k="${k}-p-${nm}">${nm}${t ? ' · ' + tanggalPendek(t).replace(/ \d{4}$/, '') : ''}</div>`)}</div>
+      <input class="ketik-nama" type="date" min="${iso}" value="${lain ? v : ''}" data-ketik="${ketik}" data-k="${k}-tgl" aria-label="tanggal janji lain">
+      <div class="ket">${v ? 'Janji datang ' + tanggalPendek(v) + ' — dipakai menghitung pemasok tepat waktu (Laporan › Pondasi › Tepat janji).' : 'Belum tahu? Biarkan kosong, isi sesudah pemasok membalas — pesanan tanpa janji tidak dihitung tepat / telat.'}</div></div>`;
   }
   function gambarPesanan(H) {
     const semua = BL.pesananSemua().slice(0, 8); if (!semua.length) return '';
-    return h`<div class="kartu platina" data-k="pesanan" style="gap: 2px;"><div class="label">Pesanan ke pemasok</div>${semua.map((p) => h`<div class="hg-tugas" data-k="ps-${p.id}"><div><div>${p.pemasok} · dipesan ${tanggalPendek(p.tanggal)} ${p.jam || ''} · <b>${p.status === 'menunggu' ? 'menunggu datang' : p.status === 'datang' ? 'sudah datang' + (p.datangTanggal ? ' ' + tanggalPendek(p.datangTanggal) : '') : 'dibatalkan'}</b></div><div class="ket">${(Array.isArray(p.barisHarga) && p.barisHarga.length ? p.barisHarga.map((b) => (b.hargaPerKg > 0 ? (b.jenis || 'beras') + ' ' + RP(b.hargaPerKg) : (b.merk || []).join('/')) + ' ×' + b.karung) : (p.baris || []).map((b) => b.merk + ' ' + b.karung)).join(' · ')} · ${p.karung} karung · ${BL.blKG(p.kg)} · ±${RP(p.rp)}</div></div>
-      ${p.status === 'menunggu' ? h`<div class="hg-aksi-kecil"><div class="kaca-btn kecil" data-aksi="blBukaLagi" data-id="${p.id}">WA lagi</div><div class="kaca-btn kecil" data-aksi="blPesanan" data-id="${p.id}" data-status="datang">sudah datang</div><div class="kaca-btn kecil putus" data-aksi="blPesanan" data-id="${p.id}" data-status="batal">batalkan</div></div>` : ''}</div>`)}
+    const s = st(); const jp = s.janjiP;
+    return h`<div class="kartu platina" data-k="pesanan" style="gap: 2px;"><div class="label">Pesanan ke pemasok</div>${semua.map((p) => h`<div class="hg-tugas" data-k="ps-${p.id}"><div><div>${p.pemasok} · dipesan ${tanggalPendek(p.tanggal)} ${p.jam || ''} · <b>${p.status === 'menunggu' ? 'menunggu datang' : p.status === 'datang' ? 'sudah datang' + (p.datangTanggal ? ' ' + tanggalPendek(p.datangTanggal) : '') : 'dibatalkan'}</b></div><div class="ket">${(Array.isArray(p.barisHarga) && p.barisHarga.length ? p.barisHarga.map((b) => (b.hargaPerKg > 0 ? (b.jenis || 'beras') + ' ' + RP(b.hargaPerKg) : (b.merk || []).join('/')) + ' ×' + b.karung) : (p.baris || []).map((b) => b.merk + ' ' + b.karung)).join(' · ')} · ${p.karung} karung · ${BL.blKG(p.kg)} · ±${RP(p.rp)}</div>${(() => { const X = JN.jnPesananPemasok(p.id, kini()); return X ? h`<div class="ket ${X.keadaan === 'lewat' || X.keadaan === 'telat' || X.isi === 'sebagian' ? 'awas-teks' : ''}" data-k="psj-${p.id}">${JN.jnKataBaris(X)}</div>` : ''; })()}</div>
+      ${p.status === 'menunggu' ? h`<div class="hg-aksi-kecil"><div class="kaca-btn kecil" data-aksi="blBukaLagi" data-id="${p.id}">WA lagi</div><div class="kaca-btn kecil ${jp && jp.id === String(p.id) ? 'aktif' : ''}" data-aksi="blJanjiBuka" data-id="${p.id}">${p.janjiTanggal ? 'geser janji' : 'isi janji'}</div><div class="kaca-btn kecil" data-aksi="blPesanan" data-id="${p.id}" data-status="datang">sudah datang</div><div class="kaca-btn kecil putus" data-aksi="blPesanan" data-id="${p.id}" data-status="batal">batalkan</div></div>` : ''}
+</div>
+      ${p.status === 'menunggu' && jp && jp.id === String(p.id) ? h`<div class="kartu" data-k="psj-ubah-${p.id}" style="gap: 6px;">${pilihJanji(jp.tanggal, 'blJanjiPilih', 'blJanjiKetik', 'pj', p.janjiTanggal ? 'Geser janji datang (janji pertama tetap dihitung)' : 'Janji datang dari ' + p.pemasok)}<div class="tombol-baris rapat"><div class="kaca-btn" data-aksi="blJanjiBuka" data-id="${p.id}">batal</div><div class="kaca-btn aktif emas" data-aksi="blJanjiSimpan">SIMPAN JANJI</div></div></div>` : ''}`)}
       <div class="ket" style="padding-top: 4px;">"Sudah datang" dibaca sendiri dari kedatangan pemasok itu sesudah pesanan (Stok → Barang masuk); tombolnya untuk pesanan yang barangnya datang tanpa dicatat lewat Barang masuk (mis. dicatat sebelum sistem lama pensiun 3 Okt).</div></div>`;
   }
   function gambarAturL(s, H) {
