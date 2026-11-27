@@ -18,11 +18,18 @@ import { hppKeluar, hppKeluarPerKg } from '../mesin/modal-fifo.js';
 import { arPeta, arKunciKemasan, arDokPulihBanyak } from './arsip-logika.js';
 import { ckCocokTerakhir, ckCocokTerakhirKemasan, ckKalimatMundur } from './jual-logika.js';
 import { KANTONG_GABUNGAN_LAMA, kantongLama } from './wadah-jual-logika.js';
+// paket P5 (owner 27 Nov 2026, A50): kelas bahan vs label hasil (oplos DITAHAN) — modul daun kelas-het-logika (satu sumber dengan Harga › HET & Atur label)
+import { khCekAdukan } from './kelas-het-logika.js';
 
 export const UKURAN_BAHAN_KEMASAN = [50, 25];          // kemasan jadi yang boleh dibongkar lagi (UKURAN_KEMASAN_BOLEH_JADI_BAHAN index.html)
 export const UKURAN_HASIL_PILIHAN = [5, 10, 20, 25, 50];
 export const KG_KARUNG_ADUKAN = 50;                     // satu ketukan "+1 karung" di baris bahan
 export const BATAS_SUSUT_ADUKAN = 0.15;                 // selisih kg masuk vs jadi > 15 % ditanya (simpanProduksi)
+// paket P5 (A50): timbang SAMPEL isi kemasan ("5 kg = 5 kg") per baris hasil — kurang isi bila rata-rata per kantong < ukuran − 0,005 kg (pembulatan timbangan 10 g).
+// Sampel di luar 50–150 % ukurannya = salah ketik (ditolak dengan kalimat). OPLOS_ALASAN_MIN = alasan owner saat menyimpan adukan oplos.
+export const SAMPEL_ISI_TOLERANSI_KG = 0.005;
+export const SAMPEL_ISI_RASIO = [0.5, 1.5];
+export const OPLOS_ALASAN_MIN = 5;
 const adAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0;
   const n = Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return isFinite(n) ? n : 0; };
 const adB3 = (n) => Math.round(n * 1000) / 1000;      // tiga desimal di satu pintu masuk (bacaSumberProduksi) — penjumlahan pecahan tidak berekor
@@ -62,6 +69,7 @@ export function kantongUntuk(ukuran) {
   return JENIS_BAHAN_KEMASAN.concat(Object.keys(KANTONG_GABUNGAN_LAMA).filter((j) => ((st[j] || {}).sisaPcs || 0) > 0)).filter((j) => j.indexOf(awalan) === 0)
     .map((j) => ({ jenis: j, label: adLabelKantong(j), sisaPcs: (st[j] || {}).sisaPcs || 0, hppPerPcs: (st[j] || {}).hppPerPcs || 0, lama: kantongLama(j) }));
 }
+export const jenisProduksi = (p) => adJenisProduksi(p);   // paket P5: dipakai Stok › Produksi (stok-pantau-logika)
 const adJenisProduksi = (p) => (p.beliJadi || p.stokAwal || p.dariBatch ? 'beliJadi' : p.dariTakar || p.bukaKemasan ? 'pindahBuku' : p.jadiKarungUtuh ? 'gabungKarung' : /rework dari karantina/i.test(String(p.catatan || '')) ? 'rework' : 'adukan');
 
 /** Hitung draf: tiap baris + masalahnya, kg masuk/jadi, nilai bahan, kantong, upah, total, modal per unit tiap hasil (rumus sistem berjalan), susut. */
@@ -82,6 +90,15 @@ export function hitungAdukan(draf) {
     const pakaiKantong = !!kantongJenis && kantongJumlah > 0; const biayaKantong = pakaiKantong ? Math.round(((stokB[kantongJenis] || {}).hppPerPcs || 0) * kantongJumlah) : 0;
     return { ke: i + 1, nama, ukuran, unit, kantongJenis, kantongJumlah, terisi, masalah, sah: terisi && !masalah, kg: adB3(ukuran * unit), biayaKantong, kantongTanpaCacah: !!kantongJenis && !(kantongJumlah > 0),
       kantongLabel: kantongJenis ? adLabelKantong(kantongJenis) : 'tanpa kantong', kantongSisa: kantongJenis ? ((stokB[kantongJenis] || {}).sisaPcs || 0) : null, kunci: kunciKemasan(nama, ukuran) }; });
+  // paket P5 (A50): timbang sampel isi per baris hasil (boleh kosong). Diisi sebagian / tidak masuk akal = sampelSalah (ditolak saat simpan, angka lain tetap jalan).
+  hasil.forEach((h, i) => { const r = (draf.hasil || [])[i] || {}; const kosongU = adKosong(r.sampelUnit), kosongK = adKosong(r.sampelKg); if (kosongU && kosongK) { h.sampel = null; return; }
+    const u = adAngka(r.sampelUnit), kg = adB3(adAngka(r.sampelKg)); const S = { unit: u, kg, masalah: '' };
+    if (kosongU || kosongK) S.masalah = 'timbang sampel: isi dua-duanya — berapa kantong ditimbang dan berat seluruhnya';
+    else if (!(u > 0) || Math.round(u) !== u || !(kg > 0)) S.masalah = 'timbang sampel: jumlah kantong bilangan bulat, beratnya lebih dari 0';
+    else if (h.unit > 0 && u > h.unit) S.masalah = 'timbang sampel: ' + u + ' kantong ditimbang, padahal hasilnya cuma ' + h.unit + ' kantong';
+    else if (h.ukuran > 0 && (kg / u < h.ukuran * SAMPEL_ISI_RASIO[0] || kg / u > h.ukuran * SAMPEL_ISI_RASIO[1])) S.masalah = 'timbang sampel: rata-rata ' + adKG(kg / u) + ' per kantong ' + adUkuranTeks(h.ukuran) + ' kg tidak masuk akal — tulis berat SELURUH sampel';
+    if (!S.masalah && h.ukuran > 0) { S.rata = kg / u; S.selisihKg = S.rata - h.ukuran; S.persen = Math.round(S.selisihKg / h.ukuran * 1000) / 10; S.kurang = S.rata < h.ukuran - SAMPEL_ISI_TOLERANSI_KG; }
+    h.sampel = S; });
   const sahB = bahan.filter((b) => b.sah); const sahBK = bahanKemasan.filter((b) => b.sah); const sahH = hasil.filter((h) => h.sah);
   const kgDipakai = adB3(sahB.reduce((a, b) => a + b.kg, 0)); const kgKemasanDipakai = adB3(sahBK.reduce((a, b) => a + b.kg, 0)); const kgMasuk = adB3(kgDipakai + kgKemasanDipakai); const kgJadi = adB3(sahH.reduce((a, h) => a + h.kg, 0));
   const nilaiKarung = sahB.reduce((a, b) => a + b.nilai, 0); const nilaiKemasanBahan = sahBK.reduce((a, b) => a + b.nilai, 0); const nilaiBahan = nilaiKarung + nilaiKemasanBahan;
@@ -95,7 +112,11 @@ export function hitungAdukan(draf) {
   const lingkaran = sahBK.map((sk) => sahH.find((h) => h.kunci === kunciKemasan(sk.namaProduk, sk.ukuranKemasan))).filter(Boolean);
   const merkSumber = sahB.length === 0 ? (sahBK.length ? 'DARI KEMASAN JADI: ' + sahBK.map((k) => k.namaProduk + ' ' + k.ukuranKemasan + 'kg').join(' + ') : null) : (sahB.length === 1 ? sahB[0].merk : 'CAMPURAN: ' + sahB.map((s) => s.merk).join(' + '));
   const susutKg = adB3(kgMasuk - kgJadi); const susutPersen = kgMasuk > 0 ? susutKg / kgMasuk * 100 : 0;
-  return { bahan, bahanKemasan, hasil, sahB, sahBK, sahH, kgDipakai, kgKemasanDipakai, kgMasuk, kgJadi, nilaiKarung, nilaiKemasanBahan, nilaiBahan, hppSumberPerKg, biayaKantong, upah, total, susutKg, susutPersen, merkSumber,
+  // paket P5 (A50): hasil LEBIH BERAT dari bahannya (berapa pun, juga di bawah 15 %) = tanda; kelas bahan vs label hasil (oplos)
+  const lebihBerat = kgMasuk > 0 && kgJadi > kgMasuk + 0.0005;
+  const kelas = khCekAdukan(sahB.map((b) => ({ nama: b.merk })).concat(sahBK.map((k) => ({ nama: k.namaProduk, ukuran: k.ukuranKemasan }))), sahH.map((x) => ({ nama: x.nama, ukuran: x.ukuran })));
+  const sampelSalah = sahH.filter((x) => x.sampel && x.sampel.masalah); const sampelKurang = sahH.filter((x) => x.sampel && x.sampel.kurang);
+  return { lebihBerat, kelas, sampelSalah, sampelKurang, bahan, bahanKemasan, hasil, sahB, sahBK, sahH, kgDipakai, kgKemasanDipakai, kgMasuk, kgJadi, nilaiKarung, nilaiKemasanBahan, nilaiBahan, hppSumberPerKg, biayaKantong, upah, total, susutKg, susutPersen, merkSumber,
     bermasalah: bahan.concat(bahanKemasan, hasil).filter((x) => x.terisi && x.masalah), kurangBahan, kurangKemasan, kurangKantong, kantongTanpaCacah: sahH.filter((h) => h.kantongTanpaCacah), lingkaran,
     teksBahan: sahB.map((b) => adKG(b.kg) + ' ' + b.merk).concat(sahBK.map((k) => k.unit + ' × ' + k.namaProduk + ' ' + adUkuranTeks(k.ukuranKemasan) + ' kg')).join(' + '),
     teksHasil: sahH.map((h) => h.unit + ' × ' + h.nama + ' ' + adUkuranTeks(h.ukuran) + ' kg').join(' + ') };
@@ -112,6 +133,14 @@ export function susunSimpanAdukan(draf, w, yakin) {
   if (Number(draf.batasHasil) > 0 && h.sahH.length > Number(draf.batasHasil)) return { tolak: 'Satu adukan paling banyak ' + draf.batasHasil + ' baris hasil untuk akun bukan-owner — batas sekali kirim ke server. Simpan ' + draf.batasHasil + ' baris dulu, sisanya jadi adukan kedua.' };
   if (h.lingkaran.length) { const x = h.lingkaran[0]; return { tolak: 'Ditolak: ' + x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg dipakai sebagai BAHAN sekaligus jadi HASIL — itu memutar stok tanpa arti. Ukuran yang berbeda boleh' }; }
   if (h.upah < 0) return { tolak: 'Upah kemas tidak boleh minus' };
+  if (h.sampelSalah.length) { const x = h.sampelSalah[0]; return { tolak: 'Baris ' + x.ke + ' (' + x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg): ' + x.sampel.masalah + ' — lengkapi atau kosongkan sampelnya' }; }
+  // paket P5 (owner 27 Nov 2026, A50): OPLOS DITAHAN — akun staf (batasHasil > 0 = bukan owner, akses.js) tidak bisa menyimpan; owner dua ketukan + alasan
+  const bukanOwnerAd = Number(draf.batasHasil) > 0; const alasanOplos = String(draf.alasanOplos || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (h.kelas.status === 'oplos') {
+    if (bukanOwnerAd) return { tolak: 'DITAHAN — ' + h.kelas.teks + '. Bahan berkelas lebih rendah dari label hasilnya tidak boleh dikemas begitu (keputusan owner). Ganti bahannya / labelnya, atau minta owner yang menyimpan.', ditahan: true };
+    if (!Y.oplos) return { tolak: h.kelas.teks + '. Bahan berkelas lebih rendah dari label = oplos. Tulis alasannya di kotak oplos, lalu ketuk sekali lagi kalau tetap disimpan (adukan ini ditandai merah di laporan).', perluYakin: 'oplos' };
+    if (alasanOplos.length < OPLOS_ALASAN_MIN) return { tolak: 'Tulis alasan menyimpan adukan oplos ini (minimal ' + OPLOS_ALASAN_MIN + ' huruf) di kotak oplos', perluYakin: 'oplos' };
+  }
   if (!(h.kgJadi > 0)) return { tolak: 'Total kg hasil nol — biayanya tidak bisa dibagi per baris' };
   if (h.kurangBahan.length && !Y.bahan) { const x = h.kurangBahan[0]; return { tolak: 'Stok ' + x.merk + ' menurut buku cuma ' + adKG(x.sisa) + ', adukan ini pakai ' + adKG(x.butuh) + ' — ketuk sekali lagi kalau tetap disimpan (stok bisa jadi minus)', perluYakin: 'bahan' }; }
   if (h.kurangKemasan.length && !Y.kemasan) { const x = h.kurangKemasan[0]; return { tolak: 'Stok ' + x.nama + ' cuma sisa ' + x.sisa + ' unit, adukan ini membongkar ' + x.butuh + ' unit — ketuk sekali lagi kalau tetap disimpan (stok bisa jadi minus)', perluYakin: 'kemasan' }; }
@@ -124,11 +153,14 @@ export function susunSimpanAdukan(draf, w, yakin) {
   const batchId = w.idUnik(); const dokumen = [];
   h.sahH.forEach((x, i) => {
     const id = i === 0 ? batchId : w.idUnik();
-    dokumen.push({ koleksi: 'produksiKemasan', data: { id, tanggal: draf.tanggal, jam: w.jam, merkSumber: h.merkSumber, namaProduk: x.nama, ukuranKemasan: x.ukuran, jumlahUnit: x.unit,
+    dokumen.push({ koleksi: 'produksiKemasan', data: Object.assign({ id, tanggal: draf.tanggal, jam: w.jam, merkSumber: h.merkSumber, namaProduk: x.nama, ukuranKemasan: x.ukuran, jumlahUnit: x.unit,
       biayaKemasan: x.biayaKantong, upahRepacking: i === 0 ? h.upah : 0, kantongJenis: x.kantongJenis || null, kantongJumlah: x.kantongJumlah || 0, hppSumberPerKgDipakai: h.hppSumberPerKg, hppPerUnit: x.hppPerUnit,
       sumberList: i === 0 ? h.sahB.map((b) => ({ merk: b.merk, kg: b.kg })) : [], kgDipakai: i === 0 ? h.kgDipakai : 0,
       sumberKemasanList: i === 0 ? h.sahBK.map((k) => ({ namaProduk: k.namaProduk, ukuranKemasan: k.ukuranKemasan, unit: k.unit, hppPerUnitSaatDipakai: Math.round(k.hpp) })) : [], kgKemasanDipakai: i === 0 ? h.kgKemasanDipakai : 0,
-      batchProduksi: batchId, barisKe: i + 1, jumlahBaris: h.sahH.length, jadiKarungUtuh: false, merkTujuan: null } });
+      batchProduksi: batchId, barisKe: i + 1, jumlahBaris: h.sahH.length, jadiKarungUtuh: false, merkTujuan: null },
+      // paket P5 (A50): kolom tambahan HANYA bila ada — sampel isi baris ini; oplos yang disimpan owner (dokumen pertama). Mesin tidak membacanya.
+      x.sampel && !x.sampel.masalah ? { sampelIsi: { unit: x.sampel.unit, kg: x.sampel.kg } } : {},
+      i === 0 && h.kelas.status === 'oplos' ? { oplos: { teks: h.kelas.teks.slice(0, 300), alasan: alasanOplos } } : {}) });
     if (x.kantongJenis && x.kantongJumlah > 0) dokumen.push({ koleksi: 'stokBahanKemasan', data: { id: id + 1, tipe: 'pakai', jenis: x.kantongJenis, jumlah: x.kantongJumlah, hargaTotal: 0, tanggal: draf.tanggal, catatan: 'Otomatis dari produksi id ' + id } });
   });
   // putaran 27 (Bagian 3): hasil kemasan yang DIARSIPKAN dipulihkan di kiriman yang sama (disebut di kabar) — barangnya ada lagi
@@ -137,8 +169,9 @@ export function susunSimpanAdukan(draf, w, yakin) {
   const g = butuhGet(dokumen); if (g > KP_BATAS_GET) return { tolak: 'Adukan bertanggal bulan lalu menyentuh ' + g + ' catatan (batas ' + KP_BATAS_GET + ' sekali kirim) — pecah jadi dua adukan, atau catat bertanggal hari ini' };
   const modalTeks = h.sahH.map((x) => x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg ' + RP(Math.round(x.hppPerUnit)) + '/unit').join(' · ');
   return { dokumen, hitung: h, batchId, patch: { kabar: 'Adukan tersimpan: ' + h.teksBahan + ' → ' + h.teksHasil + ' · biaya ' + RP(Math.round(h.total)) + ' (bahan ' + RP(Math.round(h.nilaiBahan)) + (h.biayaKantong ? ' + kantong ' + RP(h.biayaKantong) : '') + (h.upah ? ' + upah ' + RP(h.upah) : '') + ') → modal ' + modalTeks
-    + (h.susutKg > 0 ? ' · susut ' + adKG(h.susutKg) + ' terserap ke modal hasil' : '') + '. Stok karung/kemasan asal turun, stok kemasan jadi naik' + (h.biayaKantong ? ', stok kantong turun' : '') + '. Kas tidak bergerak.'
-    + (dpAd ? ' Dipulihkan dari arsip: ' + pulihAd.map((k) => k.slice(2).replace('|', ' ') + ' kg').join(', ') + '.' : ''), kabarAwas: false } };
+    + (h.susutKg > 0 ? ' · susut ' + adKG(h.susutKg) + ' terserap ke modal hasil' : '') + (h.lebihBerat ? ' · HASIL LEBIH BERAT ' + adKG(h.kgJadi - h.kgMasuk) + ' dari bahannya (ditandai)' : '')
+    + (h.sampelKurang.length ? ' · KURANG ISI menurut sampel: ' + h.sampelKurang.map((x) => x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg rata-rata ' + adKG(x.sampel.rata)).join(', ') : '') + (h.kelas.status === 'oplos' ? ' · OPLOS (disimpan owner: ' + alasanOplos + ')' : '') + '. Stok karung/kemasan asal turun, stok kemasan jadi naik' + (h.biayaKantong ? ', stok kantong turun' : '') + '. Kas tidak bergerak.'
+    + (dpAd ? ' Dipulihkan dari arsip: ' + pulihAd.map((k) => k.slice(2).replace('|', ' ') + ' kg').join(', ') + '.' : ''), kabarAwas: h.kelas.status === 'oplos' || h.sampelKurang.length > 0 || h.lebihBerat } };
 }
 
 // ====================== BUKU ADUKAN: rincian, koreksi, hapus ======================

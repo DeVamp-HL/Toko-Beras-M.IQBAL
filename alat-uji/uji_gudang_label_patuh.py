@@ -86,7 +86,7 @@ ok('2: retur rusak Angsa 10 kg masuk IR64 + taksiran modal > 0 + nasib karantina
 
 // ==================== 3 · TUGAS GUDANG (B54) ====================
 var T = gdTugas(KINI, W); var t = function (id) { return T.daftar.find(function (x) { return x.id === id; }); };
-ok('3: dua belas jenis tugas tertulis (yang 0 tetap disebut; paket tanggal janji 27 Nov 2026: + lewat janji datang / antar; paket P3 27 Nov 2026: + nota "jual dulu, tandai")', T.daftar.length === 12 && T.daftar.some(function (x) { return x.id === 'janji'; }) && T.daftar.some(function (x) { return x.id === 'tembus'; }) && T.daftar.every(function (x) { return x.n !== null && x.tujuan; }), J(T.daftar.map(function (x) { return x.id + ':' + x.n; })));
+ok('3: empat belas jenis tugas tertulis (yang 0 tetap disebut; paket tanggal janji 27 Nov 2026: + lewat janji datang / antar; paket P3 27 Nov 2026: + nota "jual dulu, tandai"; paket P5 27 Nov 2026: + lewat batas simpan, tumpukan berhama)', T.daftar.length === 14 && T.daftar.some(function (x) { return x.id === 'janji'; }) && T.daftar.some(function (x) { return x.id === 'tembus'; }) && T.daftar.every(function (x) { return x.n !== null && x.tujuan; }), J(T.daftar.map(function (x) { return x.id + ':' + x.n; })));
 ok('3: kabar barang masuk menunggu = 1 · buku minus = gdMinus', t('masuk').n === 1 && t('minus').n === M.n, J([t('masuk'), t('minus').n]));
 ok('3: karantina = daftarKarantina apa adanya', t('karantina').n === daftarKarantina(W).antre.length, J(t('karantina')));
 var SP = ssSumberPengingat(KINI, {}); var op = SP.find(function (p) { return p.jenis === 'opname'; }); var O = gdOpname(KINI);

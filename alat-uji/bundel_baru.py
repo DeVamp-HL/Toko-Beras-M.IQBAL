@@ -170,6 +170,19 @@ RB_MODUL = 'baru/js/layar/rapor-bulan-logika.js'
 RB_PEMAKAI = ('dasbor-logika.js', 'laporan.js')
 
 
+# paket P5 (owner 27 Nov 2026, A50): Adukan memeriksa kelas bahan vs label hasil (oplos) lewat modul DAUN kelas-het-logika.js (data/toko.js + pembantu + jual-logika
+# aturWadah — semuanya sudah ada di tiap bundel yang memuat stok-adukan-logika). Ikut OTOMATIS (sekali, di belakang) bila stok-adukan-logika ada.
+KH_MODUL = 'baru/js/layar/kelas-het-logika.js'
+KH_PEMAKAI = ('stok-adukan-logika.js',)
+
+
+# paket P5 (owner 27 Nov 2026): stok-pantau-logika.js (kartu stok, barang masuk hari itu, hitung mingguan, opname kejutan, rencana beli, stok dipesan, produksi)
+# dibaca gudang-logika (Tugas gudang), Dasbor, Laporan, Stok, Harga & Sistem. Sumbernya (stok-catat, stok-adukan, pesanan, laporan-logika) sudah ada di bundel Dasbor;
+# ikut OTOMATIS (sekali, di belakang) bila pemakainya ada. Fungsi terangkat, konstantanya hanya dipakai di dalam fungsi — urutan tidak menentukan.
+SG_MODUL = 'baru/js/layar/stok-pantau-logika.js'
+SG_PEMAKAI = ('gudang-logika.js', 'dasbor-logika.js', 'laporan.js', 'stok.js', 'harga.js', 'app.js')
+
+
 # paket P6 (owner 27 Nov 2026): selisih laci (laci-logika, A119 + A82) dibaca Dasbor & layar Uang; daftar centang rutin (rutin-logika, A143) dibaca Dasbor, halaman tugas
 # staf & panelnya. Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada; rutin-logika membawa sumber butir otomatisnya (gudang, wadah bernama, kepatuhan) bila belum
 # ada — karcis-logika TIDAK ditarik (rantainya panjang; bundel Dasbor sudah memuatnya, alat uji lain menyebutnya sendiri).
@@ -182,6 +195,10 @@ RN_SUMBER = ('baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/patuh-logik
 
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in SG_PEMAKAI for x in d) and not any(x.endswith('stok-pantau-logika.js') for x in d):
+        d.append(SG_MODUL)
+    if any(os.path.basename(x) in KH_PEMAKAI for x in d) and not any(x.endswith('kelas-het-logika.js') for x in d):
+        d.append(KH_MODUL)
     if any(os.path.basename(x) in LH_PEMAKAI for x in d) and not any(x.endswith('laci-logika.js') for x in d):
         d.append(LH_MODUL)
     if any(os.path.basename(x) in RN_PEMAKAI for x in d) and not any(x.endswith('rutin-logika.js') for x in d):

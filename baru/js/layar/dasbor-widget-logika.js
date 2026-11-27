@@ -55,6 +55,15 @@ function WG_KARTU() {
       return { nilai: RP(t.omzet), ket: 'minggu ini · ' + (t.omzetPct === null ? 'minggu lalu belum ada' : wgPct(t.omzetPct) + ' ' + (M.berjalan ? 'vs minggu lalu s.d. hari yang sama' : 'vs minggu lalu')) + (t.marginKg !== null ? ' · untung ' + wgRpPendek(t.marginKg) + '/kg' : ''),
         awas: !M.menutup, tren: M.deret.map((x) => ({ label: x.label, n: x.omzet, berjalan: x.berjalan })),
         baris: M.merek.slice(0, 5).map((g) => [g.merek, wgRpPendek(g.omzet) + ' · ' + (g.baru ? 'baru' : g.hilang ? 'tidak laku minggu ini' : wgPct(g.omzetPct))]), tujuan: G.tujuan }; }),
+    // paket P5 (owner 27 Nov 2026, A125 · B72): barang masuk hari ini & produksi bulan ini (+ deret 6 bulan kg jadi) — kelompok dasbor `gudang5` apa adanya
+    K('kMasukHari', 'Barang masuk hari ini', 'gudang5', 'lebar', (D) => { const G = D.gudang5; if (!ada(G) || !ada(G.masuk)) return wgGalat('gudang5', ada(G) ? G.masuk : G); const M = G.masuk; const T = M.total;
+      return { nilai: T.n ? DESIMAL(Math.round(T.kg)) + ' kg' : 'tidak ada', ket: T.n ? T.n + ' kedatangan' + (T.kgNota > 0 ? ' · timbang ' + (T.selisihKg === 0 ? 'pas' : (T.selisihKg > 0 ? '+' : '−') + DESIMAL(Math.abs(T.selisihKg)) + ' kg') : '') + (T.awas ? ' · ' + T.awas + ' mutu AWAS' : '') : 'belum ada kedatangan hari ini',
+        awas: T.awas > 0 || T.selisihKg < 0 || !M.menutup, baris: M.daftar.slice(0, 4).map((x) => [(x.jam ? x.jam + ' ' : '') + x.pemasok, DESIMAL(Math.round(x.kg)) + ' kg' + (x.timbang.teks ? ' · ' + x.timbang.teks : '')]), tujuan: M.tujuan }; }),
+    K('kProduksi', 'Produksi bulan ini', 'gudang5', 'lebar', (D) => { const G = D.gudang5; if (!ada(G) || !ada(G.produksi)) return wgGalat('gudang5', ada(G) ? G.produksi : G); const P = G.produksi; const B = P[P.length - 1] || {};
+      const tanda = B.tanda ? B.tanda.oplos + B.tanda.kurangIsi + B.tanda.lebihBerat : 0;
+      return { nilai: B.sebelum || !B.key ? '—' : DESIMAL(Math.round(B.kgJadi)) + ' kg', ket: B.key && !B.sebelum ? B.adukan + ' adukan · susut ' + (B.susutPersen === null ? '—' : DESIMAL(B.susutPersen) + '%') + (tanda ? ' · ' + tanda + ' bertanda' : '') : '', awas: tanda > 0 || B.menutup === false,
+        tren: P.map((x) => ({ label: String(x.nama || x.key).slice(0, 3), n: x.sebelum ? null : x.kgJadi, berjalan: !!x.berjalan })),
+        baris: B.key && !B.sebelum ? [['Bahan → jadi', DESIMAL(Math.round(B.kgBahan)) + ' → ' + DESIMAL(Math.round(B.kgJadi)) + ' kg'], ['Kantong + upah', RP(B.kantongRp + B.upahRp) + (B.biayaPerKg !== null ? ' · ' + RP(Math.round(B.biayaPerKg)) + '/kg' : '')]].concat(B.tanda.oplos ? [['Oplos', B.tanda.oplos + ' adukan']] : []).concat(B.tanda.kurangIsi ? [['Kurang isi (sampel)', String(B.tanda.kurangIsi)]] : []) : [], tujuan: { ke: 'stok', tab: 'produksi' } }; }),
     K('kEnam', 'Enam bulan', 'enam', 'penuh', (D) => { const E = D.enam; if (!ada(E)) return wgGalat('enam', E); const b = E.bulan.filter((x) => !x.tanpaCatatan); const a = b[b.length - 1];
       return { nilai: a ? RP(a.labaBersih) : '—', ket: 'laba bersih ' + (a ? a.pendek + (a.berjalan ? ' (berjalan)' : '') : '') + ' · 6 bulan', awas: !!a && a.labaBersih < 0,
         tren: E.bulan.map((x) => ({ label: x.pendek, n: x.tanpaCatatan ? null : x.labaBersih, berjalan: x.berjalan })), baris: [['Biaya bulan ini', a ? RP(a.semuaBiaya) : '—']], tujuan: E.tujuan }; }),
@@ -196,6 +205,11 @@ export const WG_KATALOG = [
   { id: 'notaTembus', nama: 'Nota "jual dulu, tandai"', ukuran: 'kecil', kel: 'stok', isi: (D) => { const S = D.stok; const G = ada(S) ? S.gudang : S; if (!ada(G)) return wgGalat('stok', G);
     const T = (G.tugas.terbuka || []).find((x) => x.id === 'tembus');
     return { nilai: T ? T.n + ' nota' : 'tidak ada', ket: T ? T.ket : 'semua nota jual-dulu sudah dicocokkan', awas: !!T, rinci: [], tujuan: T ? T.tujuan : G.tujuan }; } },
+  // paket P5 (owner 27 Nov 2026): stok yang dipesan (B51) & lewat batas simpan (A43) — kelompok dasbor `gudang5` apa adanya
+  { id: 'pesananRp', nama: 'Stok yang dipesan', ukuran: 'kecil', kel: 'gudang5', isi: (D) => { const G = D.gudang5; if (!ada(G) || !ada(G.pesanan)) return wgGalat('gudang5', ada(G) ? G.pesanan : G); const P = G.pesanan;
+    return { nilai: P.nPesanan ? RP(P.rp) : 'tidak ada', ket: P.kalimat, awas: P.kurang.length > 0, rinci: P.daftar.slice(0, 5).map((x) => [x.nama, (x.satuan === 'kg' ? DESIMAL(x.jumlah) + ' kg' : x.jumlah + ' unit') + ' · ' + RP(x.rp) + (x.kurang > 0 ? ' · KURANG' : '')]).concat([['Nilai jual perkiraan', RP(P.rpJual)]]), tujuan: P.tujuan }; } },
+  { id: 'lewatSimpan', nama: 'Lewat batas simpan', ukuran: 'kecil', kel: 'gudang5', isi: (D) => { const G = D.gudang5; if (!ada(G) || !ada(G.simpan)) return wgGalat('gudang5', ada(G) ? G.simpan : G); const S = G.simpan;
+    return { nilai: S.n ? S.n + ' barang' : 'tidak ada', ket: S.n ? DESIMAL(Math.round(S.kg)) + ' kg · ' + S.nama.join(' · ') : 'batas ' + S.batas + ' hari', awas: S.n > 0, rinci: [['Batas simpan', S.batas + ' hari (Stok › Umur › Atur)']], tujuan: S.tujuan }; } },
 ].map((w) => Object.assign({ jenis: 'angka' }, w)).concat(WG_KARTU()).map((K) => Object.assign({ w: WG_LEBAR_UKURAN[K.ukuran] || 6, minW: K.jenis === 'angka' ? 2 : 3 }, K));
 const wgKat = (id) => WG_KATALOG.find((w) => w.id === id) || null;
 /** B94 (owner 27 Nov 2026): angka yang membaca kelompok YANG IKUT saringan (hari · bulan · kpi bulanan · mutu · pembelian) ganti nama sesuai periodenya — angka

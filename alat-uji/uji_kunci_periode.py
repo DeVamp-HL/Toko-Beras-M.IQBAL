@@ -23,7 +23,8 @@ _M = uji_laporan_baru.MODUL + ['baru/js/layar/stok-logika.js', 'baru/js/layar/va
                                 'baru/js/data/akses.js', 'baru/js/layar/kunci-periode-logika.js',
                                 'baru/js/layar/titipan-logika.js',   # owner 21 Nov 2026: Uang & tutup hari memakai titipan-logika
                                 'baru/js/layar/grosir-ecer-logika.js',   # owner 24 Nov 2026: rekap Harian & tutup hari memakai grosir-ecer-logika
-                                'baru/js/layar/berat-asli-logika.js']   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Barang masuk, Jual, Cocokkan)
+                                'baru/js/layar/berat-asli-logika.js',   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Barang masuk, Jual, Cocokkan)
+                                'baru/js/layar/kelas-het-logika.js']   # paket P5 (owner 27 Nov 2026): pemeriksa oplos Adukan (modul daun)
 MODUL = [m for i, m in enumerate(_M) if m not in _M[:i]]
 JAM_TETAP = "var __KINI = new Date('2026-09-24T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 

@@ -650,7 +650,7 @@ POT = [('Tahap 6: isian timbang baris ikut timbang selalu terbuka (tidak bisa di
        ('Tahap 4: isian timbang sampel di Cocokkan tumpukan', 'data-ketik="cKetik" data-kolom="sampelKarung"'),
        ('Tahap 4: berat sampel di Cocokkan tumpukan', 'data-ketik="cKetik" data-kolom="sampelKg"'),
        ('Tahap 4: hitungan tumpukan memakai rata-rata sampel', "if (tab === 'tumpukan') { const S = C.ccSampel(c, kunci.slice('tumpukan|'.length)); c.hitung[kunci] = String(S.kg);"),
-       ('Tahap 4: jejak sampel ikut ke simpan cocokkan', "C.susunSimpanCocok(c.tab, c.hitung, c.alasan, waktu(), st().yakinC, c.sampel)"),
+       ('Tahap 4: jejak sampel ikut ke simpan cocokkan', "C.susunSimpanCocok(c.tab, c.hitung, c.alasan, waktu(), st().yakinC, c.sampel, "),   # P5 (27 Nov 2026): + argumen ketujuh dihitung oleh / didampingi / hama
        ('Tahap 3: retur terbuka untuk kedatangan tunai', "${!K.kunci ? gambarRetur(s, id, K) : ''}"),
        ('Tahap 3: tablet punya isian ongkos kirim (titipan)', 'data-k="mt-ongkir"'),
        ('Tahap 3: tablet punya catatan bebas untuk pemasok', 'data-k="mt-bebas"'),

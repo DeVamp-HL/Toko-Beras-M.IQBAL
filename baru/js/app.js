@@ -30,6 +30,7 @@ import { khSumberPengingat } from './layar/kas-rekening-logika.js';
 // buku stok minus → Pengingat (lokal.patuh / lokal.gudang) dan lonceng (tiga jenis ini saja, yang sudah jatuh: lewat & hari ini)
 import { ptSumberPengingat } from './layar/patuh-logika.js';
 import { gdSumberPengingat } from './layar/gudang-logika.js';
+import { sgSumberPengingat } from './layar/stok-pantau-logika.js';   // paket P5 (owner 27 Nov 2026, A92): opname kejutan — owner saja
 import { lbSumberPengingat } from './layar/label-logika.js';
 // paket P3 (owner 27 Nov 2026, sensus A4): peringatan uang (biaya lewat anggaran, susut merah, modal lewat batas, harga di bawah minimum, untung per kg di bawah target,
 // kas di bawah ambang) → Pengingat (lokal.peringatan) & lonceng — owner saja
@@ -292,14 +293,17 @@ function sumberPatuh() { const a = akunKini(); if (!a || !(a.jenis === 'owner' |
 function sumberGudang() { const a = akunKini(); if (!a || !(a.jenis === 'owner' || a.jenis === 'aktif')) return []; const k = sekarangCadangan || new Date(); const out = [];
   try { gdSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat stok minus', e); }
   try { lbSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat kemasan', e); }
+  // opname kejutan: hanya owner (setelannya aturanToko/opnameKejutan tidak terbaca staf; yang dihitung tidak boleh tahu lebih dulu)
+  if (a.jenis === 'owner') { try { sgSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat opname kejutan', e); } }
   return out; }
 function sumberPeringatan() { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pwSumberPengingat(sekarangCadangan || new Date()).concat(sumberLaci()); } catch (e) { console.error('pengingat peringatan uang', e); return sumberLaci(); } }
 // paket P6: selisih laci (laci-logika) ikut lokal.peringatan — owner saja (dipanggil dari sumberPeringatan sesudah pemeriksaan owner); galatnya tidak mematikan peringatan uang
 function sumberLaci() { try { return lhSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat selisih laci', e); return []; } }   // paket P3: angka uang = owner saja
 // Lonceng: pengingat TIGA jenis paket ini yang sudah jatuh (lewat & hari ini), untuk orang yang diingatkan (Atur pengingat › ke) — owner melihat semuanya.
 const LC_JENIS = ['patuh', 'kemasan', 'minus'];
-LC_JENIS.push('anggaran', 'susut', 'hpp', 'harga', 'untungKg', 'kas');
-LC_JENIS.push('laci', 'jelaskan');   // paket P6 (owner 27 Nov 2026, A119 + A82): selisih laci berulang & belum dijelaskan (owner saja)   // paket P3 (owner 27 Nov 2026): peringatan uang ikut berbunyi di lonceng (owner saja — sumbernya hanya dihitung untuk owner)
+LC_JENIS.push('anggaran', 'susut', 'hpp', 'harga', 'untungKg', 'kas');   // paket P3 (owner 27 Nov 2026): peringatan uang ikut berbunyi di lonceng (owner saja — sumbernya hanya dihitung untuk owner)
+LC_JENIS.push('kejutan');   // paket P5 (owner 27 Nov 2026): + opname kejutan (sumbernya hanya di perangkat owner)
+LC_JENIS.push('laci', 'jelaskan');   // paket P6 (owner 27 Nov 2026, A119 + A82): selisih laci berulang & belum dijelaskan (owner saja)
 function pengingatLonceng(a) {
   if (!a || !(a.jenis === 'owner' || a.jenis === 'aktif')) return []; const k = sekarangCadangan || new Date(); const nama = String(a.nama || '').trim().split(/\s+/)[0].toLowerCase();
   try { return ingatPerVersi('lcPengingat|' + k.toISOString().slice(0, 10) + '|' + (a.uid || ''), () => ssPengingat(k, { peringatan: sumberPeringatan(), patuh: sumberPatuh(), gudang: sumberGudang() }).aktif
