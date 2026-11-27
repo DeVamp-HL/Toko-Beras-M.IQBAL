@@ -86,7 +86,7 @@ ok('2: retur rusak Angsa 10 kg masuk IR64 + taksiran modal > 0 + nasib karantina
 
 // ==================== 3 · TUGAS GUDANG (B54) ====================
 var T = gdTugas(KINI, W); var t = function (id) { return T.daftar.find(function (x) { return x.id === id; }); };
-ok('3: sepuluh jenis tugas tertulis (yang 0 tetap disebut)', T.daftar.length === 10 && T.daftar.every(function (x) { return x.n !== null && x.tujuan; }), J(T.daftar.map(function (x) { return x.id + ':' + x.n; })));
+ok('3: sebelas jenis tugas tertulis (yang 0 tetap disebut; paket tanggal janji 27 Nov 2026: + lewat janji datang / antar)', T.daftar.length === 11 && T.daftar.some(function (x) { return x.id === 'janji'; }) && T.daftar.every(function (x) { return x.n !== null && x.tujuan; }), J(T.daftar.map(function (x) { return x.id + ':' + x.n; })));
 ok('3: kabar barang masuk menunggu = 1 · buku minus = gdMinus', t('masuk').n === 1 && t('minus').n === M.n, J([t('masuk'), t('minus').n]));
 ok('3: karantina = daftarKarantina apa adanya', t('karantina').n === daftarKarantina(W).antre.length, J(t('karantina')));
 var SP = ssSumberPengingat(KINI, {}); var op = SP.find(function (p) { return p.jenis === 'opname'; }); var O = gdOpname(KINI);
@@ -320,7 +320,7 @@ RUSAK = [
     ('pengingat: kalender dari lokal tidak masuk', SL, "if (p && p.jenis === 'patuh' && /^\\d{4}-\\d{2}-\\d{2}$/.test(String(p.jatuh || ''))) out.push(p); });", "if (false) out.push(p); });"),
     ('lonceng: pengingat tidak masuk', KB, "  (Array.isArray(pengingat) ? pengingat : []).forEach((p) => { if (!p || !p.id) return;", "  ([]).forEach((p) => { if (!p || !p.id) return;"),
     ('akses: tanda kalender karyawan lolos perangkat', AK, "cekGudang: ['ben'],   /* rules v19 (paket KPI laba, owner 24 Nov 2026): cek gudang = ben */ kepatuhanCek: ['ben'],", "cekGudang: ['ben'],   /* rules v19 (paket KPI laba, owner 24 Nov 2026): cek gudang = ben */ kepatuhanCek: ['ben', 'karyawan'],"),
-    ('akses: pendengar ben tanpa kalender', AK, "const out = BACA_STAF.concat(akun.peran === 'ben' ? BACA_BEN : []).map((n) => ({ nama: n }));", "const out = BACA_STAF.map((n) => ({ nama: n }));"),
+    ('akses: pendengar ben tanpa kalender', AK, "const out = BACA_STAF.concat(akun.peran === 'ben' ? BACA_BEN : []).concat(akun.peran === 'ben' ? BACA_BEN_JANJI : []).map((n) => ({ nama: n }));", "const out = BACA_STAF.concat(akun.peran === 'ben' ? BACA_BEN_JANJI : []).map((n) => ({ nama: n }));"),
 ]
 RUSAK_STATIS = [
     ('Stok tanpa tab Tugas gudang', 'stok', "s.tab === 'tugas' ? gambarTugas(s)", "s.tab === 'tugasX' ? gambarTugas(s)"),

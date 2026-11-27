@@ -33,6 +33,8 @@ main.layar-harga.masuk > header, main.layar-harga.masuk > .jalur { animation: rk
 .layar-harga .hg-pil-l { font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--redup); margin-top: 4px; }
 .layar-harga .hg-kal { font-family: 'Bodoni Moda', Georgia, serif; font-size: 19px; line-height: 1.25; }
 .layar-harga .hg-tugas { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 44px; padding: 5px 0; border-bottom: 1px dashed var(--garis); font-size: 12.5px; } .layar-harga .hg-aksi-kecil { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+/* paket tanggal janji (27 Nov 2026): pesanan ke pemasok punya empat tombol (+ isi / geser janji) — di HP tombolnya turun ke bawah teks, teks tidak terjepit */
+@media (max-width: 719px) { .layar-harga [data-k="pesanan"] .hg-tugas { grid-template-columns: minmax(0, 1fr); } .layar-harga [data-k="pesanan"] .hg-aksi-kecil { justify-content: flex-start; } }
 .layar-harga .hg-wa { font-family: ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.5; padding: 10px 12px; border-radius: 4px 14px 14px 14px; background: var(--seg); border: 1px solid var(--kaca-tepi); display: flex; flex-direction: column; gap: 1px; white-space: pre-wrap; word-break: break-word; }
 .layar-harga .hg-legenda { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 10.5px; color: var(--redup); }
 /* dampak: batang lebar = rupiah per bulan */

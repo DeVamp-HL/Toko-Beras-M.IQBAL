@@ -17,7 +17,7 @@ export const WG_KOLOM = 12;       // kisi Mac / tablet: 12 kolom
 export const WG_BARIS_PX = 8;     // satu baris kisi = 8 px (tinggi kartu ditarik per 8 px)
 export const WG_H_MIN = 10, WG_H_MAKS = 250;   // tinggi yang ditarik: 80 px – 2.000 px (null = setinggi isinya)
 const WG_LEBAR_UKURAN = { kecil: 3, lebar: 6, besar: 6, penuh: 12 };   // ukuran lama (kecil/lebar/besar/penuh) → kolom
-export const WG_MAKS = 48;   // di atas jumlah katalog (semua widget boleh terpasang sekaligus)
+export const WG_MAKS = 64;   // di atas jumlah katalog (semua widget boleh terpasang sekaligus) — P1 (27 Nov 2026): 48 → 64, katalog kini > 48 (dijaga uji_kpi_kg)
 const wgRpPendek = (n) => { const a = Math.abs(n || 0); const s = n < 0 ? '−' : ''; return a >= 1e6 ? s + 'Rp' + DESIMAL(Math.round(a / 1e5) / 10) + ' jt' : a >= 1e3 ? s + 'Rp' + Math.round(a / 1e3) + ' rb' : s + 'Rp' + Math.round(a); };
 const wgPct = (x) => (x === null || x === undefined || !isFinite(x) ? '—' : (x < 0 ? '−' : x > 0 ? '+' : '') + DESIMAL(Math.round(Math.abs(x) * 10) / 10) + '%');
 const wgPctPolos = (x) => (x === null || x === undefined || !isFinite(x) ? '—' : (x < 0 ? '−' : '') + DESIMAL(Math.round(Math.abs(x) * 10) / 10) + '%');
@@ -166,6 +166,12 @@ export const WG_KATALOG = [
     if (X.dso === null) return { nilai: '—', ket: P.kalimat, awas: false, rinci: [], tujuan: P.tujuan };
     return { nilai: DESIMAL(Math.round(X.dso * 10) / 10) + ' hari', ket: 'piutang ' + wgRpPendek(X.piutang) + ' ÷ bon ' + wgRpPendek(X.perHari) + '/hari' + (P.beda !== null ? ' · ' + (Math.abs(P.beda) < 0.05 ? 'sama dengan akhir minggu lalu' : (P.beda > 0 ? '+' : '−') + DESIMAL(Math.round(Math.abs(P.beda) * 10) / 10) + ' hari vs akhir minggu lalu') : ''),
       awas: P.beda !== null && P.beda >= 0.05, rinci: [['Piutang berjalan', RP(Math.round(X.piutang)) + ' · ' + X.nOrang + ' orang'], ['Penjualan bon ' + X.hari + ' hari', RP(Math.round(X.jual))], ['Bon lunas rata-rata tertagih', P.tertagih.rataTeks], ['Cara hitung', P.rumus]], tujuan: P.tujuan }; } },
+  // B133 (P1): ketepatan kirim pemasok = B65 paket tanggal janji (#231) — kpi.janji (janji-logika jnRingkas) apa adanya, 90 hari terakhir, tidak ikut saringan
+  { id: 'tepatJanji', nama: 'Tepat janji pemasok', ukuran: 'kecil', kel: 'kpi', isi: (D) => { const Q = D.kpi; if (!ada(Q) || !ada(Q.janji)) return wgGalat('kpi', ada(Q) ? Q.janji : Q); const J = Q.janji; const P = J.pemasok;
+    const lewat = (J.lewat || []).filter((x) => x.tujuan && x.tujuan.ke === 'harga');
+    if (!P.n) return { nilai: '—', ket: J.kalimatPemasok, awas: lewat.length > 0, rinci: lewat.slice(0, 4).map((x) => ['Lewat janji', x.teks]), tujuan: J.tujuan };
+    return { nilai: wgPctPolos(P.pct), ket: P.tepat + ' dari ' + P.n + ' kiriman tepat janji · ' + J.hari + ' hari' + (lewat.length ? ' · ' + lewat.length + ' lewat janji' : ''), awas: lewat.length > 0,
+      rinci: [['Dari pemasok', J.kalimatPemasok]].concat(lewat.slice(0, 4).map((x) => ['Lewat janji', x.teks])), tujuan: J.tujuan }; } },
 ].map((w) => Object.assign({ jenis: 'angka' }, w)).concat(WG_KARTU()).map((K) => Object.assign({ w: WG_LEBAR_UKURAN[K.ukuran] || 6, minW: K.jenis === 'angka' ? 2 : 3 }, K));
 const wgKat = (id) => WG_KATALOG.find((w) => w.id === id) || null;
 /** B94 (owner 27 Nov 2026): angka yang membaca kelompok YANG IKUT saringan (hari · bulan · kpi bulanan · mutu · pembelian) ganti nama sesuai periodenya — angka

@@ -35,10 +35,13 @@ export const DOK_UANG = { pengaturan: ['titikKas'] };
 // rules v16 (owner 22 Nov 2026): TUTUP HARI dari tablet — Penjaga laci (ben) membaca aturanToko/tutupHari (uang kembalian yang ditinggal di laci = angka owner)
 // untuk "pindahkan Rp… ke brankas". Ikut pendengarPeran akun ben saja (karyawan tidak).
 export const DOK_BEN = { aturanToko: ['tutupHari'] };
-// rules v22 (owner 26 Nov 2026: "Owner + Ben dari tablet"): kalender kepatuhan dibaca PENJAGA LACI saja (karyawan tidak) — dokumen aturanToko/kepatuhan
+// rules v22 (owner 26 Nov 2026: "Owner + Penjaga laci dari tablet"): kalender kepatuhan dibaca PENJAGA LACI saja (karyawan tidak) — dokumen aturanToko/kepatuhan
 // (baris baca aturanToko: id in ['tutupHari', 'kepatuhan'] && staf(['ben'])) dan koleksi kepatuhanCek (read owner || staf(['ben']))
 export const DOK_BEN_PATUH = { aturanToko: ['kepatuhan'] };
 export const BACA_BEN = ['kepatuhanCek'];
+// rules v24 (paket tanggal janji, owner 27 Nov 2026: "Owner + Penjaga laci dari tablet"): pesanan ke pemasok dibaca PENJAGA LACI saja (karyawan tidak) — Barang masuk tablet
+// menampilkan pesanan yang menunggu datang & janji datangnya. Buat & hapus tetap owner; Penjaga laci hanya mengisi / menggeser janji (UBAH_STAF pesananPemasok).
+export const BACA_BEN_JANJI = ['pesananPemasok'];
 /** Akun ini DITANDAI owner boleh membaca data uang (rules v14 bacaUangDari): Penjaga laci aktif + bacaUang. Owner tidak perlu (membaca semuanya). */
 export const bacaUangAkun = (akun) => !!akun && akun.jenis === 'aktif' && akun.peran === 'ben' && akun.bacaUang === true;
 /** Pendengar data uang akun bertanda (bentuk = pendengarPeran): kosong bila akun tidak bertanda. */
@@ -68,9 +71,13 @@ export const KOLOM_ATUR_PESANAN = ['status', 'riwayatStatus', 'baris', 'isi', 'n
 export const KOLOM_UBAH_RUTIN = ['namaPelanggan', 'baris', 'isi', 'alamat', 'noPO', 'catatan', 'ulang', 'hari', 'tanggalBulan', 'mulai', 'aktif', 'lewati'];
 // rules v11 (B4): pesanan BARU buatan bukan-owner hanya 'dipesan', belum bernota, tanpa kolom batal (stafBuatPesanan)
 export const KOLOM_BUKAN_PESANAN_BARU = ['dibatalkan', 'alasanBatal', 'nasibUangMuka'];
+// rules v24 (paket tanggal janji, owner 27 Nov 2026): Penjaga laci mengisi / menggeser JANJI DATANG pesanan ke pemasok yang masih menunggu (= stafJanjiPemasok;
+// = JN_KOLOM_JANJI janji-logika.js). Isi pesanan, status, rupiah tidak tersentuh.
+export const KOLOM_JANJI_PEMASOK = ['janjiTanggal', 'janjiRiwayat'];
 export const UBAH_STAF = {
   pesanan: { peran: ['ben', 'karyawan'], kolom: KOLOM_JADI_NOTA.concat(KOLOM_ATUR_PESANAN.filter((k) => KOLOM_JADI_NOTA.indexOf(k) < 0), KOLOM_ATRIBUSI_UBAH) },
   orderRutin: { peran: ['ben'], kolom: KOLOM_UBAH_RUTIN.concat(KOLOM_ATRIBUSI_UBAH) },
+  pesananPemasok: { peran: ['ben'], kolom: KOLOM_JANJI_PEMASOK.concat(KOLOM_ATRIBUSI_UBAH) },
   suratJalan: { peran: ['ben', 'karyawan'], kolom: KOLOM_TANDAI_SJ.concat(KOLOM_ATRIBUSI_UBAH) },
   perangkatStatus: { peran: ['ben', 'karyawan'], kolom: ['id', 'nama', 'akun', 'akunUid', 'aplikasi', 'pada', 'antrean', 'gagal', 'versi', 'pemegang', 'lokasi'] },
 };
@@ -121,7 +128,7 @@ export function kalimatPermintaanGagal(kode) {
 export function pendengarPeran(akun) {
   if (!bisaBekerja(akun)) return [];
   if (akun.jenis === 'owner') return KOLEKSI.map((k) => ({ nama: k.nama }));
-  const out = BACA_STAF.concat(akun.peran === 'ben' ? BACA_BEN : []).map((n) => ({ nama: n }));   // v22: + BACA_BEN (ben)
+  const out = BACA_STAF.concat(akun.peran === 'ben' ? BACA_BEN : []).concat(akun.peran === 'ben' ? BACA_BEN_JANJI : []).map((n) => ({ nama: n }));   // v22: + BACA_BEN (ben) · v24: + BACA_BEN_JANJI (ben)
   Object.keys(DOK_STAF).forEach((n) => out.push({ nama: n, dok: DOK_STAF[n].concat(akun.peran === 'ben' ? (DOK_BEN[n] || []).concat(DOK_BEN_PATUH[n] || []) : []) }));   // v16: + DOK_BEN (ben) · v22: + DOK_BEN_PATUH (ben)
   return out;
 }
@@ -178,7 +185,7 @@ export function beriAtribusiAkun(data, akun, konteks, ada) {
 
 // koleksi/operasi → tindakan SS2 yang biasanya menulisnya (hanya untuk kalimat penolakan yang bisa dipahami)
 const TINDAKAN_DARI = { batchMasuk: 'kedatangan', pengeluaranHarian: 'uangKeluar', kasbonMutasi: 'uangKeluar', tutupHari: 'hitungLaci', aturanToko: 'atur', koreksiHpp: 'hargaBeli',
-  katalogHargaKarung: 'hargaBeli', katalogHargaKemasan: 'hargaBeli', katalogHargaLiteran: 'hargaBeli', wadahLiteran: 'isiUlang', suratJalan: 'antar', pesanan: 'pesanan', orderRutin: 'pesanan' };
+  katalogHargaKarung: 'hargaBeli', katalogHargaKemasan: 'hargaBeli', katalogHargaLiteran: 'hargaBeli', wadahLiteran: 'isiUlang', suratJalan: 'antar', pesanan: 'pesanan', orderRutin: 'pesanan', pesananPemasok: 'kedatangan' };
 const NAMA_TINDAKAN = { kedatangan: 'hitung truk & draf kedatangan', uangKeluar: 'catat uang keluar dari laci', hitungLaci: 'hitung & rapikan laci', atur: 'ubah setelan (Atur)',
   hargaBeli: 'isi harga beli / modal', hapus: 'hapus catatan', koreksi: 'koreksi nota yang sudah tersimpan', jualBon: 'jual dengan bon', isiUlang: 'isi ulang & cek wadah literan',
   jualTunai: 'jual tunai & kembalian', nego: 'nego di bawah jatah margin', terimaBon: 'terima pembayaran bon', adukan: 'catat adukan (bongkar kemasan)', pelangganBaru: 'daftarkan pelanggan baru',
@@ -201,6 +208,8 @@ export const usulBandingSah = (d, uid) => !!d && d.tindakan === 'hargaBanding' &
   && !['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan'].some((k) => k in d);
 // rules v13 + v15: jenis titipan uang keluar dari tablet (= stafMintaKeluar). bongkar wajib batchId (kedatangannya), bayarBon wajib nama pemasok.
 export const JENIS_TITIPAN = ['toko', 'karyawan', 'kasbon', 'bongkar', 'bayarBon'];
+// rules v24 (paket tanggal janji, owner 27 Nov 2026): janji datang pesanan ke pemasok dari tablet (= stafJanjiPemasok): tanggal YYYY-MM-DD, riwayat = daftar ≤ 30
+export const janjiPemasokSah = (d) => !!d && typeof d.janjiTanggal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.janjiTanggal) && Array.isArray(d.janjiRiwayat) && d.janjiRiwayat.length <= 30;
 
 /**
  * owner 7 Okt (JS2-C batas nego): satu baris penjualan yang harganya DITAWAR boleh dikirim bukan-owner tanpa tindakan "nego di bawah jatah margin" bila
@@ -260,6 +269,8 @@ export function tindakanKiriman(D, jatahNego) {
   if (ada('pesanan') || (D || []).some((x) => x.koleksi === 'orderRutin') || (D || []).some((x) => x.ada && x.koleksi === 'pesanan' && String((x.data || {}).status || '') !== 'dibayar')
     || baru.some((x) => x.koleksi === 'piutangMutasi' && x.data && x.data.untukPesanan && !x.data.notaTrxId)) t.pesanan = 1;
   if (ada('pelangganCatatan')) t.pelangganBaru = 1;
+  // rules v24 (paket tanggal janji): janji datang pesanan ke pemasok dari tablet = bagian tindakan KEDATANGAN (Penjaga laci yang mencatat barang masuk)
+  if ((D || []).some((x) => x.ada && x.koleksi === 'pesananPemasok')) t.kedatangan = 1;
   // rules v15 (owner 22 Nov 2026): kedatangan dari tablet = tindakan kedatangan (bukan isi ulang — batch LAHIR BUKU tetap isi ulang)
   if (baru.some((x) => x.koleksi === 'batchMasuk' && batchTablet(x.data))) t.kedatangan = 1;
   const adaWadah = ada('wadahLiteran') || baru.some((x) => x.koleksi === 'batchMasuk' && !batchTablet(x.data));
@@ -375,6 +386,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
         if (d.status === 'dibayar') { if (berubah.some((kk) => KOLOM_JADI_NOTA.concat(KOLOM_ATRIBUSI_UBAH).indexOf(kk) < 0)) return { tolak: tolakTindakan('koreksi') }; }
         else if (BUAT_STAF.pesanan.indexOf(P) < 0 || ['dipesan', 'diantar', 'batal'].indexOf(String(d.status || '')) < 0 || berubah.some((kk) => KOLOM_ATUR_PESANAN.concat(KOLOM_ATRIBUSI_UBAH).indexOf(kk) < 0)) return { tolak: tolakTindakan('pesanan') };
       }
+      // rules v24 (paket tanggal janji): janji datang pesanan ke pemasok yang MASIH MENUNGGU — Penjaga laci saja, bentuk tanggal & riwayat (stafJanjiPemasok)
+      if (x.koleksi === 'pesananPemasok' && (P !== 'ben' || String(lama.status || '') !== 'menunggu' || !janjiPemasokSah(d))) return { tolak: tolakTindakan('kedatangan') };
       // rules v10 (B3): surat jalan yang masih di jalan → diterima / gagal antar (stafTandaiSJ); batal = owner
       if (x.koleksi === 'suratJalan' && (String(lama.status || '') !== 'berangkat' || ['diterima', 'gagal'].indexOf(String(d.status || '')) < 0)) return { tolak: tolakTindakan('terimaAntar') };
     }

@@ -328,6 +328,9 @@ jobs:
       - name: "Brankas & catatan sesudah tutup (owner 26 Nov 2026): uang brankas / rekening / amplop yang dicatat sesudah tutup hari (bertanggal hari itu) ikut tutup berikutnya — titik membawanya, laci seharusnya ikut pindah/amplop sesudah tutup (kertas Σ baris = seharusnya, Σ fisik − seharusnya = selisih), tutup ulang ikut; Catat isi brankas menurut hitungan (patokan, bukan laba, tempat lain membawa catatan susulan); tanpa rules baru, mesin beku tidak diubah (kotak pasir + statis + kontrol + asap cadangan toko)"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_brankas_susulan.py && python3 alat-uji/uji_brankas_susulan.py --kontrol
+      - name: "Tanggal janji (owner 27 Nov 2026, sensus B55 B58 B60 B61 B65; rules v24): janji PERTAMA dihitung (salah ketik di hari yang sama bukan geser), tanpa janji = belum ada tanggal janji (tidak tepat), dari pemasok tepat / telat / lewat + rata-rata & terlama telat + utuh vs sebagian dari jumlah karung (dua trip sehari dijumlah, kedatangan tidak dipakai dua pesanan), ke pelanggan (surat jalan + pesanan, gagal antar tidak tepat, nota batal bukan kiriman), lewat janji di Tugas gudang, toleransi owner, janji dari tablet = penjaga kiriman (kotak pasir + statis + kontrol + asap cadangan toko)"
+        if: matrix.bagian == 1
+        run: python3 alat-uji/uji_tanggal_janji.py && python3 alat-uji/uji_tanggal_janji.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
       - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"

@@ -88,8 +88,9 @@ export function buatPanelPesanan(ctx) {
       <div class="judul">${d.id ? 'Ubah pesanan' : d.dariJadwal ? 'Pesanan dari jadwal rutin · kirim ' + tanggalPendek(d.tanggalKirim) : 'Pesanan baru'}</div>
       <input class="ketik-nama" id="psFNama" type="text" value="${d.nama}" data-ketik="psKetik" data-kolom="nama" placeholder="Nama pemesan" ${d.id ? 'disabled' : ''}>
       <input class="ketik-nama" id="psFPO" type="text" value="${d.noPO}" data-ketik="psKetik" data-kolom="noPO" placeholder="No. PO dari pelanggan (boleh kosong)">
-      <div class="label">Tanggal kirim</div>
+      <div class="label">Tanggal kirim · dijanjikan ke pemesan</div>
       <input class="ketik-nama" id="psFTgl" type="date" value="${d.tanggalKirim}" data-ketik="psKetik" data-kolom="tanggalKirim">
+      <div class="ket" data-k="ps-f-janji">Dipakai menghitung antar tepat waktu. Kosong = belum ada tanggal janji (tidak dihitung). Mengubahnya nanti tercatat sebagai geser — yang dihitung tetap janji pertama.</div>
       <input class="ketik-nama" id="psFAlamat" type="text" value="${d.alamat}" data-ketik="psKetik" data-kolom="alamat" placeholder="Alamat antar (boleh kosong)">
       <div class="label">Barang dari katalog${d.baris.length ? ' · ' + d.baris.length : ''}</div>
       ${d.isiLama ? h`<div class="ket">Isi lama (ditulis bebas): ${d.isiLama} — pilih barangnya dari katalog di bawah.</div>` : ''}
@@ -128,7 +129,9 @@ export function buatPanelPesanan(ctx) {
     </div>`;
   }
   function kartu(s, o, tb) {
-    const ket = [o.tanggalKirim ? 'kirim ' + tanggalPendek(o.tanggalKirim) : 'tanggal kirim belum ada', o.noPO ? 'PO ' + o.noPO : '', o.alamat, o.nilai ? 'perkiraan ' + RP(o.nilai) : '', o.rutin ? 'dari jadwal rutin' : ''].filter(Boolean).join(' · ');
+    // paket tanggal janji (owner 27 Nov 2026): pesanan yang belum dikirim & sudah lewat tanggal kirimnya disebut (toleransi & janji pertama: Laporan › Pondasi)
+    const lewat = o.status === 'dipesan' && o.tanggalKirim && PO.poHariKe(hari()) > PO.poHariKe(o.tanggalKirim) ? PO.poHariKe(hari()) - PO.poHariKe(o.tanggalKirim) : 0;
+    const ket = [o.tanggalKirim ? 'kirim ' + tanggalPendek(o.tanggalKirim) + (lewat ? ' · LEWAT JANJI ' + lewat + ' hari' : '') : 'tanggal kirim belum ada (belum ada tanggal janji)', o.noPO ? 'PO ' + o.noPO : '', o.alamat, o.nilai ? 'perkiraan ' + RP(o.nilai) : '', o.rutin ? 'dari jadwal rutin' : ''].filter(Boolean).join(' · ');
     const r = tb.boleh ? '' : 'redup';
     return h`<div class="ps-kartu" data-k="ps-${o.id}">
       <div class="atas"><b>${o.nama}</b><span class="pil status-${o.status}">${PS_STATUS[o.status] || o.status}</span></div>

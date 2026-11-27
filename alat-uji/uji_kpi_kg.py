@@ -164,12 +164,14 @@ ok('7: saringan Hari ini = Dasbor tanpa saringan PERSIS (kelompok kg & kpi)', J(
 ok('7: saringan 7 hari: terlaris & hari stok = 12–18 Nov; Bulan lalu: untung per kg = Oktober', D7.kg.terlaris.dari === '2026-11-12' && D7.kg.stok.dari === '2026-11-12' && DLl.kg.terlaris.dari === '2026-10-01' && DLl.kg.terlaris.sampai === '2026-10-31' && DLl.kpi.kg.key === '2026-10', J([D7.kg.terlaris.dari, DLl.kpi.kg.key]));
 var kunci = []; var ing = function (k, f) { kunci.push(k); return f(); }; dbTambahan(susunDasbor(KINI, 'hari', null, ing, S7), KINI, ing);
 ok('7: kelompok kg diingat dengan kunci saringan (kg|saring|…) — pemanasan & gambar memakai kunci yang sama', kunci.indexOf('kg|saring|' + S7.kunci) >= 0 && DB_PANAS.indexOf('kg') >= 0 && DB_IKUT_SARING.indexOf('kg') >= 0, J(kunci));
-var WS = wgSusun(['marginKg', 'hariStok', 'putaranStok', 'dso', 'kTerlaris', 'kTrenMerek'].map(function (id) { return { id: id }; }), D0); var w = function (id) { return WS.find(function (x) { return x.id === id; }); };
-ok('7: widget baru terisi dari kelompok yang sama (tanpa galat)', WS.length === 6 && WS.every(function (x) { return x.nilai !== 'gagal dihitung'; }) && w('marginKg').nilai === 'Rp663/kg' && w('kTerlaris').nilai === 'Angsa' && /^1\. Angsa/.test(w('kTerlaris').baris[0][0])
+var WS = wgSusun(['marginKg', 'hariStok', 'putaranStok', 'dso', 'kTerlaris', 'kTrenMerek', 'tepatJanji'].map(function (id) { return { id: id }; }), D0); var w = function (id) { return WS.find(function (x) { return x.id === id; }); };
+ok('7: semua isi katalog boleh terpasang sekaligus (WG_MAKS ≥ jumlah katalog) — kartu terakhir tidak terpotong', WG_KATALOG.length <= WG_MAKS && wgBersih(WG_KATALOG.map(function (k) { return { id: k.id }; })).length === WG_KATALOG.length, J([WG_KATALOG.length, WG_MAKS]));
+ok('7: B133: angka "Tepat janji pemasok" membaca kpi.janji (jnRingkas, paket tanggal janji) apa adanya — tanpa janji = "—" + kalimatnya', w('tepatJanji').nilai === '—' && w('tepatJanji').ket === D0.kpi.janji.kalimatPemasok && D0.kpi.janji.pemasok.n === 0, J(w('tepatJanji')));
+ok('7: widget baru terisi dari kelompok yang sama (tanpa galat)', WS.length === 7 && WS.every(function (x) { return x.nilai !== 'gagal dihitung'; }) && w('marginKg').nilai === 'Rp663/kg' && w('kTerlaris').nilai === 'Angsa' && /^1\. Angsa/.test(w('kTerlaris').baris[0][0])
   && w('dso').nilai === DESIMAL(Math.round(850000 / (1120000 / 30) * 10) / 10) + ' hari' && w('kTrenMerek').baris[0][0] === 'Angsa' && w('kTrenMerek').tren.length === 4, J(WS.map(function (x) { return [x.id, x.nilai, x.ket]; })));
 var W7 = wgSusun([{ id: 'hariStok' }, { id: 'kTerlaris' }, { id: 'marginKg' }, { id: 'dso' }], D7);
 ok('7: nama angka ikut periode saringan; lama piutang tetap "sekarang"', W7[0].nama === 'Hari stok · 7 hari' && W7[1].nama === 'Terlaris · 7 hari' && W7[2].nama === 'Untung per kg · November 2026' && W7[3].nama === 'Lama piutang (hari)', J(W7.map(function (x) { return x.nama; })));
-ok('7: keputusan owner: kartu & angka baru hanya di katalog "+ Tambah kartu" — susunan bawaan Dasbor tidak berubah', ['marginKg', 'hariStok', 'putaranStok', 'dso', 'kTerlaris', 'kTrenMerek'].every(function (id) { return WG_KATALOG.some(function (k) { return k.id === id; }) && !WG_BAWAAN.some(function (x) { return x.id === id; }); })
+ok('7: keputusan owner: kartu & angka baru hanya di katalog "+ Tambah kartu" — susunan bawaan Dasbor tidak berubah', ['marginKg', 'hariStok', 'putaranStok', 'dso', 'kTerlaris', 'kTrenMerek', 'tepatJanji'].every(function (id) { return WG_KATALOG.some(function (k) { return k.id === id; }) && !WG_BAWAAN.some(function (x) { return x.id === id; }); })
   && WG_BAWAAN.map(function (x) { return x.id; }).join() === 'kHari,kKpi,kTren,kBulan,kWadah,kPemicu,kTagihan,kStok,kMutu,kPondasi,kB2b');
 
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
@@ -186,7 +188,7 @@ STATIS = [
     ('Stok › Umur & putaran › Atur: target hari stok toko', 'stok', ["isian('umTargetMin', 'targetHariMin'", "isian('umTargetMaks', 'targetHariMaks'", 'targetHariMin: String(a.targetHariMin), targetHariMaks: String(a.targetHariMaks)', 'target hari stok toko ${A.targetHariMin}–${A.targetHariMaks} hari']),
     ('CSS deret, batang mini, pita target', 'css', ['.layar-laporan .lp-deret {', '.layar-laporan .lp-kg-mini {', '.layar-laporan .lp-kg-pita {', '.layar-laporan .lp-batang.delapan {']),
     ('pages.yml menjalankan uji ini', 'pages', ['python3 alat-uji/uji_kpi_kg.py && python3 alat-uji/uji_kpi_kg.py --kontrol']),
-    ('BACA-DULU menyebut paket ini', 'baca', ['Paket P1', 'lpMerekMinggu', 'lpTerlaris', 'klStokRp', 'klDeretBulan', 'pnDso', 'targetHariMin', 'kgHitung']),
+    ('BACA-DULU menyebut paket ini', 'baca', ['Paket P1', 'tepatJanji', 'lpMerekMinggu', 'lpTerlaris', 'klStokRp', 'klDeretBulan', 'pnDso', 'targetHariMin', 'kgHitung']),
 ]
 RUSAK = [
     ('kg tanpa modal ikut pembagi per kg (rentang)', LPL, "  if (tercatat) { g.adaHitung = true; g.omzetHitung += harga; g.hppHitung += p.hppTotalSaatJual || 0; g.kgHitung += Number(p.totalKg) || 0; } else { g.nTanpaHpp += 1; g.omzetTanpaHpp += harga; }\n  if (!ongkos) return;",
@@ -218,9 +220,11 @@ RUSAK = [
     ('DSO tanpa catatan pertama memotong jendela', BL, "if (p && p > mulai) { mulai = p; sebab = 'catatan toko mulai ' + formatTanggal(p); }", ""),
     ('Dasbor per kg tidak ikut saringan', DL, "const sar = !!(SR && !SR.bawaan); const dari = sar ? SR.dari", "const sar = false; const dari = sar ? SR.dari"),
     ('saringan tidak diteruskan ke kelompok tambahan', DL, "H[n] = dbKelompok(n, kini, null, ingat, H.saring || null);", "H[n] = dbKelompok(n, kini, null, ingat);"),
-    ('untung per kg Dasbor tetap bulan ini walau disaring', DL, "kg: aman(() => klKgBulan(key, kini)) };", "kg: aman(() => klKgBulan(iso.slice(0, 7), kini)) };"),
+    ('untung per kg Dasbor tetap bulan ini walau disaring', DL, "kg: aman(() => klKgBulan(key, kini)),", "kg: aman(() => klKgBulan(iso.slice(0, 7), kini)),"),
     ('kartu baru masuk susunan bawaan', WG, "export const WG_BAWAAN = ['kHari', 'kKpi', 'kTren', 'kBulan', 'kWadah', 'kPemicu', 'kTagihan', 'kStok', 'kMutu', 'kPondasi', 'kB2b']", "export const WG_BAWAAN = ['kHari', 'kKpi', 'kTren', 'kBulan', 'kWadah', 'kPemicu', 'kTagihan', 'kStok', 'kMutu', 'kPondasi', 'kB2b', 'kTerlaris']"),
     ('nama angka hari stok tidak ikut periode', WG, "hariStok: (S) => 'Hari stok · ' + S.nama,", ""),
+    ('batas panel di bawah jumlah katalog', WG, "export const WG_MAKS = 64;", "export const WG_MAKS = 48;"),
+    ('tepat janji tidak membaca kalimat pemasok', WG, "if (!P.n) return { nilai: '—', ket: J.kalimatPemasok,", "if (!P.n) return { nilai: '—', ket: J.kalimatAntar,"),
 ]
 RUSAK_STATIS = [
     ('deret bulanan tidak dipasang di Laba', 'laporan', '${keMana}${merek}${deret}${susutK}', '${keMana}${merek}${susutK}'),
@@ -250,7 +254,7 @@ var SM = aman('stok minggu', function () { return klStokRpMinggu(kini, 8); }); o
 var DS = aman('dso', function () { return pnDso(kini, 8); }); out.dso = DS ? DS.deret.map(function (x) { return x.dso === null ? null : Math.round(x.dso * 10) / 10; }) : null;
 var DB = aman('deret', function () { return klDeretBulan(kini, 6, 8); }); out.deret = DB ? { bulan: DB.bulan.length, merek: DB.merek.length, kotorSama: DB.bulan.every(function (b) { if (b.sebelum || b.galat) return true; var M = klMarginBulan(b.key, kini); return b.kotor === M.tangga[0].pct; }) } : null;
 out.saring = {}; ['hari', 'kemarin', 'h7', 'bulan', 'bulanLalu', 'tahun'].forEach(function (id) { var S = dbSaring({ id: id }, kini); var D = aman('susun ' + id, function () { return dbTambahan(susunDasbor(kini, 'hari', null, null, S), kini); });
-  var Wd = D ? aman('wg ' + id, function () { return wgSusun(['marginKg', 'hariStok', 'putaranStok', 'dso', 'kTerlaris', 'kTrenMerek'].map(function (x) { return { id: x }; }), D); }) : null;
+  var Wd = D ? aman('wg ' + id, function () { return wgSusun(['marginKg', 'hariStok', 'putaranStok', 'dso', 'kTerlaris', 'kTrenMerek', 'tepatJanji'].map(function (x) { return { id: x }; }), D); }) : null;
   out.saring[id] = D && Wd ? { galat: D.kg && D.kg.galat ? D.kg.galat : D.kpi && D.kpi.kg && D.kpi.kg.galat ? D.kpi.kg.galat : '', wgGalat: Wd.filter(function (w) { return w.nilai === 'gagal dihitung'; }).map(function (w) { return w.id; }) } : 'gagal'; });
 print(JSON.stringify(out));
 })();

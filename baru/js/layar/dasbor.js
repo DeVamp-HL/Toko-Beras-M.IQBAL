@@ -383,6 +383,15 @@ export function pasangDasbor(akar, opsi) {
         ['Biaya modal ' + MT.nHari + ' hari', RP(Math.round(MT.biaya))], ['± sebulan', RP(Math.round(MT.sebulan))]].concat(MT.buku.slice(0, 4).map((x) => ['· ' + x.nama, RP(Math.round(x.rata)) + (MT.bunga > 0 ? ' · biaya ' + RP(Math.round(x.biaya)) : '')])),
         tujuan: { ke: 'sistem', sistem: 'target' }, ke: 'Menu › Toko ini › Target & ambang', catatan: MT.rumus + '. Bukan uang keluar — tidak memotong laba bersih.' }));
     if (P && !P.galat && P.keadaan === 'ada') out.push(baris('pesanan', 'Pesanan dipenuhi', P.nota.teks + ' → nota', false, { judul: 'Lama pemenuhan pesanan · ' + P.hari + ' hari terakhir', baris: [['Dipesan → diantar', P.antar.teks + ' · ' + P.antar.n + ' pesanan'], ['Dipesan → jadi nota', P.nota.teks + ' · ' + P.nota.n + ' pesanan']], tujuan: { ke: 'jual', lembar: 'pesanan' }, ke: 'Jual › Pesanan' }));
+    // paket tanggal janji (owner 27 Nov 2026, sensus B55 B58 B60 B61 B65): tepat janji dua arah + yang lewat janji — janji-logika jnRingkas apa adanya
+    const JN = Q.janji;
+    if (JN && JN.galat) out.push(salah('janji', 'Tepat janji', JN));
+    else if (JN && JN.keadaan === 'ada') {
+      const nil = (r) => (r.n ? pc(r.pct) : '—'); const kosong = !JN.pemasok.n && !JN.antar.n;
+      out.push(baris('janji', 'Tepat janji · pemasok / antar', (kosong ? 'belum ada tanggal janji' : nil(JN.pemasok) + ' / ' + nil(JN.antar)) + (JN.lewat.length ? ' · ' + JN.lewat.length + ' lewat' : ''), JN.lewat.length > 0,
+        { judul: 'Tepat janji · ' + JN.hari + ' hari terakhir', baris: [['Dari pemasok', JN.kalimatPemasok], ['Antar ke pelanggan', JN.kalimatAntar]].concat(JN.lewat.slice(0, 6).map((x) => ['Lewat janji', x.teks]))
+          .concat([['Toleransi telat', 'pemasok ' + JN.tol.pemasok + ' hari · antar ' + JN.tol.antar + ' hari (setelan owner)']]), tujuan: JN.tujuan, ke: JN.sumber, catatan: 'Dihitung dari janji PERTAMA; yang belum punya tanggal janji disebut, tidak dianggap tepat waktu.' }));
+    }
     if (H && !H.galat && H.ada && H.daftar.length) out.push(baris('hpp', 'Kedatangan lewat batas HPP', H.daftar.length + ' baris', true, { judul: 'HPP per kg lewat batas · ' + H.nama, baris: H.daftar.slice(0, 6).map((x) => [x.merk + ' ' + dbTgl(x.tanggal), RP(Math.round(x.hppPerKg)) + '/kg · batas ' + RP(x.batas)]), tujuan: { ke: 'stok', lembar: 'masuk' }, ke: 'Stok › Barang masuk' }));
     if (N && !N.galat && N.daftar.length) { out.push('<div class="db-sub">Nota terbesar ' + esc(N.judul || 'hari ini') + '</div>'); N.daftar.forEach((o, i) => out.push(baris('nota' + i, esc((i + 1) + '. ' + (o.nama || 'tanpa nama')) + ' <span class="ket">' + esc(dbJam(o.jam) + ' · ' + o.caraTeks) + '</span>', RP(o.total) + ' ›', false, { judul: 'Nota ' + (o.nama || 'tanpa nama'), baris: [['Total', RP(o.total)], ['Jam', dbJam(o.jam)], ['Cara bayar', o.caraTeks], ['Baris', String(o.nBaris)]], tujuan: o.tujuan, ke: 'Jual › Riwayat' }))); }
     return '<div class="kartu db-kartu db-kpi" data-k="db-kpi">' + kepala('Margin & target', Q.periode, 'sumber:kpi', Q.sumber, Q.tujuan) + out.join('') + '</div>';

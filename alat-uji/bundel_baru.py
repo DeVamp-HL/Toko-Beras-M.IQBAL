@@ -152,9 +152,20 @@ ASP_PEMAKAI = ('laporan.js',)
 # Laporan › Jurnal (owner 26 Nov 2026, modul ERP no. 69): jurnal-logika.js + jurnal-panel.js ikut OTOMATIS di belakang bila laporan.js ada.
 JR_MODUL = ('baru/js/layar/jurnal-logika.js', 'baru/js/layar/jurnal-panel.js')
 
+# paket tanggal janji (owner 27 Nov 2026, rules v24): Dasbor (KPI), Stok › Tugas gudang, Laporan › Pondasi, Harga › Belanja & Barang masuk tablet memakai
+# janji-logika.js (membaca data/toko.js, pembantu, bon-pemasok-logika & pesanan-logika). Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada, bersama
+# dua sumbernya bila belum ada; fungsi terangkat, konstantanya hanya dipakai di dalam fungsi — urutan tidak menentukan.
+JN_MODUL = 'baru/js/layar/janji-logika.js'
+JN_PEMAKAI = ('dasbor-logika.js', 'gudang-logika.js', 'laporan.js', 'stok.js', 'harga.js')
+JN_SUMBER = ('baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/pesanan-logika.js')
+
 
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in JN_PEMAKAI for x in d) and not any(x.endswith('janji-logika.js') for x in d):
+        d.append(JN_MODUL)
+        for m in JN_SUMBER:
+            if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)
     if any(os.path.basename(x) in AS_PEMAKAI for x in d) and not any(x.endswith('aset-tetap-logika.js') for x in d):
         i = next(i for i, x in enumerate(d) if os.path.basename(x) in AS_PEMAKAI)
         d.insert(i, AS_MODUL)

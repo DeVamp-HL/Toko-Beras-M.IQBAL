@@ -98,6 +98,16 @@ export function ajDrafBaru(nama) {
   const A = ajAtur(); const k = ajKosong(nama) ? null : fkKartu(nama);
   return { alamat: String((k && k.alamat) || '').trim().slice(0, 160), ongkir: A.tarif ? String(A.tarif) : '', pengantar: A.pengantar[0] || '', kendaraan: A.kendaraan[0] || '', cod: false, catatan: '' };
 }
+/**
+ * paket tanggal janji (owner 27 Nov 2026): janji SAMPAI surat jalan = isian "dijanjikan sampai" (antar.janji); kosong = bawaannya — tanggal kirim pesanan yang
+ * diikat ke keranjang (tanggalKirim), atau hari itu. Ditulis sekali saat surat jalan lahir (kolom janjiTanggal; rules v10 stafBuatSJ tidak membatasi kolom baru).
+ */
+export const ajTanggalSah = (iso) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso || ''))) return false; const t = Date.parse(String(iso) + 'T00:00:00Z'); return isFinite(t) && new Date(t).toISOString().slice(0, 10) === String(iso); };
+export function ajJanjiAntar(antar, tanggalKirimPesanan, hariIni) {
+  const t = String((antar && antar.janji) || '').trim(); if (ajTanggalSah(t)) return { tanggal: t, sumber: 'isian' };
+  if (ajTanggalSah(tanggalKirimPesanan)) return { tanggal: String(tanggalKirimPesanan), sumber: 'pesanan' };
+  return { tanggal: String(hariIni || ''), sumber: 'hari' };
+}
 /** Ongkir draf dalam rupiah (salah ketik = 0; penolakannya di ajAlasanTolak). */
 export function ajOngkir(antar) { if (!antar) return 0; const n = ajRupiahSah(antar.ongkir); return n === null ? 0 : n; }
 /** Alasan draf antar belum bisa dicatat ('' = sah). s = keadaan Jual. */
@@ -110,6 +120,7 @@ export function ajAlasanTolak(s) {
   if (a.cod && ajKosong(s.pelanggan)) return 'Bayar di tempat = bon sementara — isi nama pembelinya';
   if (a.cod && s.cara !== 'Kredit') return 'Bayar di tempat dicatat sebagai bon sementara — ketuk "Bayar di tempat" lagi';
   if (String(a.alamat || '').length > 160) return 'Alamat antar terlalu panjang (maks. 160 huruf)';
+  if (String(a.janji || '').trim() && !ajTanggalSah(String(a.janji).trim())) return 'Tanggal dijanjikan sampai tidak terbaca';
   return '';
 }
 /** Patch Jual saat "bayar di tempat" dinyalakan / dimatikan. Nyala = nota bon sementara (cara Kredit, tanpa uang diterima). */
@@ -159,6 +170,8 @@ export function ajDokumenSJ(s, w, c) {
   // B4 (owner 18 Nov 2026): nomor PO pelanggan & uang muka yang sudah masuk ikut dicetak (kolom tambahan saat dibuat — rules v10 stafBuatSJ tidak membatasinya)
   if (String(c.noPO || '').trim()) d.noPO = String(c.noPO).trim().slice(0, 30);
   if (ajBulat(c.uangMuka) > 0) d.uangMuka = ajBulat(c.uangMuka);
+  // paket tanggal janji (owner 27 Nov 2026): janji sampai ke pembeli (c.janji = ajJanjiAntar(...).tanggal) — hanya bila tanggalnya sah
+  if (ajTanggalSah(c.janji)) d.janjiTanggal = String(c.janji);
   return d;
 }
 

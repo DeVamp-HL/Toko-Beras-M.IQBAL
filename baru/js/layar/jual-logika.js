@@ -35,7 +35,7 @@ import { htKolomBaris, htTandaiRak, htTingkatOrang, htPapanKhusus, HT_KOLOM_BARI
 // B2 (owner 17 Nov 2026): faktur bertempo & batas kredit — batas angka owner per pelanggan, minta persetujuan owner, bayar kurang ikut batas
 import { fkInfoKredit, fkSumberBatas, fkSetujuUntuk, fkKolomNota, fkRincian, fkStopBon, fkStopBonTeks, fkSyaratBon, fkSyaratBonTeks } from './faktur-logika.js';
 // B3 (owner 18 Nov 2026): surat jalan & antar — ongkir menempel di satu baris nota (ikut hargaTotal), bayar di tempat = bon sementara bebas batas hari itu
-import { ajOngkir, ajAlasanTolak, ajBarisPembawa, ajDokumenSJ, ajNomorBaru, ajBatalUntukNota, ajDrafBaru, ajUntukNota, ajKeadaan } from './antar-logika.js';
+import { ajOngkir, ajAlasanTolak, ajBarisPembawa, ajDokumenSJ, ajNomorBaru, ajBatalUntukNota, ajDrafBaru, ajUntukNota, ajKeadaan, ajJanjiAntar } from './antar-logika.js';
 // owner 26 Nov 2026 (karcis ambil nanti, rules v23): catatan titipan ikut kiriman nota
 import { abIsiTitip, abSusunTitip } from './ambil-logika.js';
 // B4 (owner 18 Nov 2026): pesanan dari katalog, PO pelanggan, uang muka (DP) yang memotong nota pesanannya, jadwal rutin
@@ -1354,7 +1354,9 @@ export function susunNotaDokumen(s, w) {
   // B3: SURAT JALAN lahir dalam batch yang sama dengan notanya (nota tanpa surat jalan / surat jalan tanpa nota tidak pernah setengah jadi)
   let suratJalan = null;
   if (noSJ) {
-    suratJalan = ajDokumenSJ(s, w, { trxId, nama, total: totalBayar, ongkir, noFaktur: faktur ? faktur.noFaktur : '', keranjang: s.keranjang, noSJ, uangMuka: muka, noPO });
+    // paket tanggal janji (owner 27 Nov 2026): janji sampai = isian Antar, atau tanggal kirim pesanan yang diikat, atau hari itu
+    const psJanji = s.pesananId ? ambilPesananDoc(s.pesananId) : null;
+    suratJalan = ajDokumenSJ(s, w, { trxId, nama, total: totalBayar, ongkir, noFaktur: faktur ? faktur.noFaktur : '', keranjang: s.keranjang, noSJ, uangMuka: muka, noPO, janji: ajJanjiAntar(s.antar, psJanji && psJanji.tanggalKirim, w.tanggal).tanggal });
     dokumen.push({ koleksi: 'suratJalan', data: suratJalan });
   }
   let piutangId = null;
