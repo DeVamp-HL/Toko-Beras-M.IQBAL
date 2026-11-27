@@ -10,13 +10,17 @@ import * as GE from './grosir-ecer-logika.js';
 import { esc } from '../inti/dom.js';
 import { RP, DESIMAL, tanggalPendek } from '../inti/format.js';
 import { DB_RENTANG } from './dasbor-logika.js';
+// P3 (owner 27 Nov 2026): B97 urut daftar per perangkat · B104 kepala kertas cetak (dasbor-logika, tanpa rumus uang)
+import { DB_URUT, dbUrutPilih, dbUrutkan, dbCetak } from './dasbor-logika.js';
 import { SH_RENTANG_BELI } from './susut-harga-logika.js';   // B68 (owner 27 Nov 2026): pita Hari · Minggu · Bulan kartu Pembelian
 // owner 26 Nov 2026: kisi panel berpegangan (dasbor-kisi.js) — kartu di bawah ini = isi panel, ukuran & tempat diatur owner
 import { pasangKisi } from './dasbor-kisi.js';
+import { asliAda } from '../inti/perangkat.js';   // P3 B104: aplikasi tablet tidak punya dialog cetak
 
 const KUNCI_RENTANG = 'miqbal_baru_dasbor_rentang';
 const KUNCI_BELI = 'miqbal_baru_dasbor_beli';
 const KUNCI_RAPOR = 'miqbal_baru_dasbor_rapor';   // P2 (owner 27 Nov 2026): saklar Laba | Kas kartu Rapor bulan, diingat per perangkat (bawaan Laba)   // B68: rentang grafik pembelian, diingat per perangkat (bawaan Bulan)
+const KUNCI_URUT = 'miqbal_baru_dasbor_urut';   // P3 B97: pilihan urut tiap daftar, diingat per perangkat
 const dbRpPendek = (n) => { const a = Math.abs(n || 0); const s = n < 0 ? '−' : ''; return a >= 1e6 ? s + DESIMAL(Math.round(a / 1e5) / 10) + ' jt' : a >= 1e3 ? s + Math.round(a / 1e3) + ' rb' : s + Math.round(a); };
 const dbKg = (n) => (n < 0 ? '−' : '') + DESIMAL(Math.round(Math.abs(n || 0) * 10) / 10) + ' kg';
 const dbTgl = (iso) => (iso ? tanggalPendek(iso).replace(/ \d{4}$/, '') : '');
@@ -29,6 +33,13 @@ export function pasangDasbor(akar, opsi) {
   let rentang = (() => { try { return localStorage.getItem(KUNCI_RENTANG) || 'hari'; } catch (e) { return 'hari'; } })();
   if (!DB_RENTANG.some((r) => r[0] === rentang)) rentang = 'hari';
   let reg = {}; let pilih = null; let D = null;
+  // P3 B98 (owner 27 Nov 2026): geser tren mundur g jendela (tidak diingat — buka Dasbor = jendela terbaru) · B97 urut daftar (diingat perangkat)
+  let geser = 0;
+  let urut = (() => { try { const x = JSON.parse(localStorage.getItem(KUNCI_URUT) || '{}'); const o = {}; Object.keys(DB_URUT).forEach((j) => { o[j] = dbUrutPilih(j, x && x[j]); }); return o; } catch (e) { const o = {}; Object.keys(DB_URUT).forEach((j) => { o[j] = dbUrutPilih(j, ''); }); return o; } })();
+  const pitaUrut = (jenis) => '<div class="db-urut" data-k="db-urut-' + jenis + '"><span class="ket">urut</span>' + DB_URUT[jenis].map(([id, nm]) => '<span class="db-urut-pil' + (urut[jenis] === id ? ' aktif' : '') + '" data-db-urut="' + jenis + ':' + id + '">' + esc(nm) + '</span>').join('') + '</div>';
+  // P3 B44 (owner 27 Nov 2026: "buka lembar catatnya"): tombol aksi = satu ketuk ke lembar pencatat di layar asalnya (tidak ada jalan tulis baru dari Dasbor)
+  const aksi = (id, daftarAksi) => '<div class="db-aksi" data-k="db-aksi-' + id + '">' + daftarAksi.map((x) => { reg['aksi:' + id + ':' + x.id] = { judul: x.nama, baris: [], tujuan: x.tujuan, ke: x.ke };
+    return '<span class="db-aksi-btn" data-db-ke="aksi:' + id + ':' + x.id + '" title="Buka ' + esc(x.ke) + '">' + esc(x.nama) + ' ›</span>'; }).join('') + '</div>';
   let rentangBeli = (() => { try { return localStorage.getItem(KUNCI_BELI) || 'bulan'; } catch (e) { return 'bulan'; } })(); if (!SH_RENTANG_BELI.some((r) => r[0] === rentangBeli)) rentangBeli = 'bulan';
   let modeRapor = (() => { try { return localStorage.getItem(KUNCI_RAPOR) === 'kas' ? 'kas' : 'laba'; } catch (e) { return 'laba'; } })();
   // P2 (B110 B124): lampu target owner untuk angka kartu lama — dari kelompok rapor (rbAmbangDasbor); tanpa target owner = '' (kartu seperti dulu)
@@ -69,6 +80,8 @@ export function pasangDasbor(akar, opsi) {
       + (H.rekening && !H.rekening.galat ? '<div class="ket db-ketuk' + (H.rekening.nBelum ? ' awas-teks' : '') + '" data-k="db-rekening"' + daftar('hari:rekening', { judul: 'Rekening usaha', baris: [['Menurut buku', H.rekening.bukuSekarang === null ? '—' : RP(H.rekening.bukuSekarang)], ['Belum dicek', H.rekening.nBelum + ' transaksi sejak ' + dbTgl(H.rekening.dari)], ['Cocok terakhir', H.rekening.akhir ? dbTgl(H.rekening.akhir.tanggal) : 'belum pernah']], tujuan: H.rekeningTujuan, ke: 'Uang › Rekening' }) + '>' + esc(H.rekening.teks) + ' ›</div>' : '')
       + '<div class="db-karcis db-ketuk' + (KC.n ? ' awas-teks' : '') + '"' + daftar('hari:karcis', { judul: 'Karcis kasir', baris: [['Karcis belum dirinci', KC.n + (KC.n ? ' · ' + RP(KC.rp) : '')], ['Nota jumlahnya belum pasti', String(KC.rapikan)], ['Karcis bertanggal hari ini', String(KC.hariIni)]], tujuan: H.karcisTujuan, ke: H.karcisSumber, catatan: 'Karcis = nota kasir yang baru nominalnya; barangnya belum dirinci, jadi modal & stoknya belum ikut.' }) + '>'
       + lampuDb('karcis') + esc(KC.n ? KC.n + ' karcis kasir belum dirinci · ' + RP(KC.rp) : 'Tidak ada karcis kasir yang menunggu dirinci') + (KC.rapikan ? ' · ' + esc(KC.rapikan + ' nota perlu dirapikan') : '') + ' ›</div>'
+      + aksi('hari', [{ id: 'tutup', nama: 'Tutup hari', tujuan: { ke: 'uang', keluarga: 'tutup' }, ke: 'Uang › Tutup hari' }, { id: 'keluar', nama: 'Catat uang keluar', tujuan: { ke: 'uang', keluarga: 'keluar' }, ke: 'Uang › Uang keluar' },
+        { id: 'pindah', nama: 'Pindah uang', tujuan: { ke: 'uang', keluarga: 'pindah' }, ke: 'Uang › Pindah uang' }].concat(KC.n ? [{ id: 'karcis', nama: 'Rinci karcis', tujuan: H.karcisTujuan, ke: H.karcisSumber }] : []))
       + '</div>';
   }
 
@@ -94,7 +107,10 @@ export function pasangDasbor(akar, opsi) {
 
   // ---------- TREN ----------
   function kartuTren(T) {
-    const pita = '<div class="pita db-rentang">' + DB_RENTANG.map(([id, nm]) => '<div class="seg' + (id === rentang ? ' aktif' : '') + '" data-db-rentang="' + id + '">' + esc(nm) + '</div>').join('') + '</div>';
+    const pita = '<div class="db-tren-pita"><div class="pita db-rentang">' + DB_RENTANG.map(([id, nm]) => '<div class="seg' + (id === rentang ? ' aktif' : '') + '" data-db-rentang="' + id + '">' + esc(nm) + '</div>').join('') + '</div>'
+      // P3 B98 (owner 27 Nov 2026): ‹ mundur satu jendela · › maju · "terbaru" kembali ke jendela yang memuat hari ini
+      + '<div class="db-geser" data-k="db-geser"><span class="db-geser-btn' + (T.bisaMundur ? '' : ' mati') + '" data-db-geser="-1" title="Rentang sebelumnya">‹</span><span class="db-geser-btn' + (T.bisaMaju ? '' : ' mati') + '" data-db-geser="1" title="Rentang sesudahnya">›</span>'
+      + (T.geser ? '<span class="db-geser-btn teks" data-db-geser="0">terbaru</span>' : '') + '</div></div>';
     if (T.galat) return '<div class="kartu db-kartu db-tren">' + pita + galat(T) + '</div>';
     // dua grafik, satu sumbu waktu: laba kotor ±2–5 % dari omzet → di skala omzet batangnya hilang; maka laba kotor punya skala SENDIRI (tertingginya disebut)
     const n = T.batang.length; const W = n * 100; const maksM = Math.max(1, ...T.batang.map((b) => (b.absen ? 0 : Math.max(0, b.margin))));
@@ -127,7 +143,7 @@ export function pasangDasbor(akar, opsi) {
         + '<line class="db-patok" x1="' + dbPersen(I.omzetImpas, skala).toFixed(2) + '" y1="0" x2="' + dbPersen(I.omzetImpas, skala).toFixed(2) + '" y2="10"></line></svg>'
         + '<div class="ket' + (I.menutup ? '' : ' awas-teks') + '">' + esc(I.kiniTeks) + '</div>';
     const maksB = Math.max(1, ...B.biaya.map((r) => Math.max(r.n, r.dasar || 0)));
-    const biaya = B.biaya.length ? B.biaya.map((r, i) => '<div class="db-baris db-ketuk"' + daftar('biaya:' + r.id, { judul: r.nama + ' · ' + B.periode, baris: [['Terpakai', RP(r.n) + (r.menggantung ? ' (termasuk upah belum dibayar ' + RP(r.menggantung) + ')' : '')], ['Lampu', DB_KATA_LAMPU[r.lampu] + (r.lampu === 'tanpa' ? '' : ' · ' + r.lampuTeks)]].concat(r.proyeksi !== null ? [['Perkiraan sebulan', RP(r.proyeksi)]] : []).concat([['Bulan lalu', RP(r.nLalu)]]), tujuan: B.tujuan, ke: B.sumber }) + '>'
+    const biaya = B.biaya.length ? dbUrutkan('biaya', B.biaya, urut.biaya).map((r, i) => '<div class="db-baris db-ketuk"' + daftar('biaya:' + r.id, { judul: r.nama + ' · ' + B.periode, baris: [['Terpakai', RP(r.n) + (r.menggantung ? ' (termasuk upah belum dibayar ' + RP(r.menggantung) + ')' : '')], ['Lampu', DB_KATA_LAMPU[r.lampu] + (r.lampu === 'tanpa' ? '' : ' · ' + r.lampuTeks)]].concat(r.proyeksi !== null ? [['Perkiraan sebulan', RP(r.proyeksi)]] : []).concat([['Bulan lalu', RP(r.nLalu)]]), tujuan: B.tujuan, ke: B.sumber }) + '>'
         + '<span class="db-nama"><i class="db-lampu ' + esc(r.lampu) + '"></i>' + esc(r.nama) + '</span>'
         + '<svg class="db-bilah" viewBox="0 0 100 10" preserveAspectRatio="none"><rect class="db-rel" x="0" y="4" width="100" height="2"></rect><rect class="db-tumbuh-x db-lampu-isi ' + esc(r.lampu) + '" style="--i:' + i + '" x="0" y="1.5" width="' + dbPersen(r.n, maksB).toFixed(2) + '" height="7"></rect>'
         + (r.dasar ? '<line class="db-patok" x1="' + dbPersen(r.dasar, maksB).toFixed(2) + '" y1="0" x2="' + dbPersen(r.dasar, maksB).toFixed(2) + '" y2="10"></line>' : '') + '</svg>'
@@ -142,11 +158,21 @@ export function pasangDasbor(akar, opsi) {
       + '</div>'
       + barisBandingBulan()
       + '<div class="db-sub">Menuju titik impas</div>' + impas
-      + '<div class="db-sub">Biaya per jenis · garis = jatah anggaran</div>' + biaya
+      + '<div class="db-sub db-sub-urut">Biaya per jenis · garis = jatah anggaran' + (B.biaya.length > 1 ? pitaUrut('biaya') : '') + '</div>' + biaya
       + barisPph(B.pph)
       + '<div class="db-baris db-ketuk' + (B.susut > 0 ? ' awas-teks' : '') + '"' + daftar('bulan:susut', { judul: 'Susut & selisih stok · ' + B.periode, baris: [['Susut & selisih', RP(B.susut)], ['Baris', String(B.nSusut)]], tujuan: B.susutTujuan, ke: 'Stok › Cocokkan', catatan: 'Biaya yang tidak keluar dari laci — sudah ikut di biaya & laba bersih di atas.' }) + '><span class="db-nama">Susut & selisih stok</span><span></span><span class="db-nilai angka">' + esc(RP(B.susut)) + ' ›</span></div>'
       + (B.menutup ? '' : '<div class="ket awas-teks">Pemilahan biaya TIDAK MENUTUP ke mesin laba bulan ini — jangan dipakai memutuskan; laporkan.</div>')
+      + barisPeringatan(B)
+      + aksi('bulan', [{ id: 'keluar', nama: 'Catat biaya', tujuan: { ke: 'uang', keluarga: 'keluar' }, ke: 'Uang › Uang keluar' }, { id: 'anggaran', nama: 'Atur anggaran', tujuan: B.tujuan, ke: 'Laporan › Biaya' }])
       + '</div>';
+  }
+  // P3 A4 (owner 27 Nov 2026): DAFTAR peringatan biaya (Laporan › Biaya peringatanBiaya, apa adanya) — merah dulu; tiap baris diketuk = rincian, ketuk lagi = pintunya
+  function barisPeringatan(B) {
+    const P = B.peringatan || []; if (!P.length) return '<div class="ket" data-k="db-peringatan">Peringatan biaya: tidak ada yang bengkak, hilang, atau belum lengkap.</div>';
+    return '<div class="db-sub" data-k="db-peringatan">Peringatan biaya · ' + P.length + '</div>' + P.slice(0, 6).map((w, i) => '<div class="db-baris db-ketuk db-pr-baris' + (w.tingkat === 'awas' ? ' awas-teks' : '') + '"'
+      + daftar('peringatan:' + w.id, { judul: 'Peringatan biaya · ' + B.nama, baris: [['', w.teks]], tujuan: w.tujuan, ke: 'layarnya', catatan: w.tingkat === 'awas' ? 'Merah = perlu tindakan (juga berbunyi di lonceng bila jenisnya menyala di Pengingat).' : '' })
+      + '><span class="db-nama"><i class="db-lampu ' + (w.tingkat === 'awas' ? 'merah' : 'amber') + '"></i>' + esc(w.teks) + '</span><span></span><span class="db-nilai">›</span></div>').join('')
+      + (P.length > 6 ? '<div class="ket db-ketuk" data-db-ke="sumber:bulan">+' + (P.length - 6) + ' peringatan lain di Laporan › Biaya ›</div>' : '');
   }
 
   // A47 (owner 27 Nov 2026): PPh final (perkiraan) = POS ANGGARAN SENDIRI — di luar "Semua biaya", laba bersih & titik impas (pos sisihan). D.bulan.pph = kpi-laba klPph.
@@ -171,8 +197,10 @@ export function pasangDasbor(akar, opsi) {
   function kartuStok(S) {
     if (S.galat) return '<div class="kartu db-kartu db-stok">' + galat(S) + '</div>';
     // dua kelompok supaya 10 detik cukup: yang HAMPIR HABIS dulu (hari tersisa tersedikit), lalu yang TERBANYAK di gudang; bilah satu skala kg
-    const awas = S.merek.filter((m) => m.awas).sort((a, b) => a.urut - b.urut || a.kg - b.kg).slice(0, 6);   // owner 26 Nov 2026 (B127): di bawah stok minimum per barang
-    const banyak = S.merek.filter((m) => awas.indexOf(m) < 0).slice(0, 6);
+    // P3 B97: urut "hampir habis" = dua kelompok lama (di bawah minimum dulu, lalu terbanyak); "terbanyak" / "nama" = satu daftar (12 teratas), yang awas tetap merah
+    const cara = urut.stok; const satuDaftar = cara !== 'habis';
+    const awas = satuDaftar ? [] : S.merek.filter((m) => m.awas).sort((a, b) => a.urut - b.urut || a.kg - b.kg).slice(0, 6);   // owner 26 Nov 2026 (B127): di bawah stok minimum per barang
+    const banyak = satuDaftar ? dbUrutkan('stok', S.merek, cara).slice(0, 12) : S.merek.filter((m) => awas.indexOf(m) < 0).slice(0, 6);
     const maks = Math.max(1, ...awas.concat(banyak).map((m) => Math.max(0, m.kg)));
     const sisa = S.merek.length - awas.length - banyak.length;
     const baris = (m, i) => '<div class="db-baris db-ketuk' + (m.awas ? ' awas-teks' : '') + '"' + daftar('stok:' + m.nama, { judul: m.nama, baris: [['Sisa menurut buku', dbKg(m.kg)], ['Laju jual', m.laju > 0 ? dbKg(m.laju) + '/hari' : 'tidak ada gerak keluar']].concat([['Perkiraan', m.minus ? 'buku MINUS — cocokkan' : dbHari(m.hari)]]).concat(m.batasTeks ? [['Stok minimum', m.batasTeks]] : []), tujuan: S.tujuan, ke: S.sumber }) + '>'
@@ -180,11 +208,12 @@ export function pasangDasbor(akar, opsi) {
       + '<span class="db-nilai">' + esc(dbKg(m.kg) + ' · ' + (m.minus ? 'minus' : dbHari(m.hari))) + '</span></div>';
     const isi = !S.merek.length ? '<div class="menolak">Belum ada beras karung di buku gudang.</div>'
       : (awas.length ? '<div class="db-sub awas-teks">Di bawah stok minimum · ' + esc(S.batasTeks || ('≤ ' + S.ambangHari + ' hari')) + ' · atau buku minus</div>' + awas.map(baris).join('') : '<div class="ket">Tidak ada merek di bawah stok minimum (' + esc(S.batasTeks || ('≤ ' + S.ambangHari + ' hari')) + ').</div>')
-        + (banyak.length ? '<div class="db-sub">Terbanyak di gudang</div>' + banyak.map((m, i) => baris(m, i + awas.length)).join('') : '');
-    return '<div class="kartu db-kartu db-stok">' + kepala('Stok per merek', S.periode, 'sumber:stok', S.sumber, S.tujuan, tetap()) + isi
+        + (banyak.length ? '<div class="db-sub">' + (satuDaftar ? (cara === 'kg' ? 'Semua merek · terbanyak dulu' : 'Semua merek · menurut nama') + (S.merek.some((m) => m.awas) ? ' · merah = di bawah stok minimum' : '') : 'Terbanyak di gudang') + '</div>' + banyak.map((m, i) => baris(m, i + awas.length)).join('') : '');
+    return '<div class="kartu db-kartu db-stok">' + kepala('Stok per merek', S.periode, 'sumber:stok', S.sumber, S.tujuan, tetap()) + (S.merek.length > 1 ? pitaUrut('stok') : '') + isi
       + (sisa > 0 ? '<div class="ket db-ketuk" data-db-ke="sumber:stok">' + esc('+' + sisa + ' merek lain di Stok › Gudang') + ' ›</div>' : '')
       + (S.smTujuan ? (reg['sumber:stokMin'] = { judul: 'Stok minimum', baris: [], tujuan: S.smTujuan, ke: 'Stok › Gudang' }, '<div class="ket db-ketuk" data-db-ke="sumber:stokMin" data-k="db-atur-stokmin">Atur stok minimum per barang (hari atau kg) ›</div>') : '')
-      + barisGudang(S.gudang) + '</div>';
+      + barisGudang(S.gudang) + aksi('stok', [{ id: 'masuk', nama: 'Catat barang masuk', tujuan: { ke: 'stok', lembar: 'masuk' }, ke: 'Stok › Barang masuk' }, { id: 'cocok', nama: 'Cocokkan stok', tujuan: { ke: 'stok', lembar: 'cocok' }, ke: 'Stok › Cocokkan' },
+        { id: 'belanja', nama: 'Daftar belanja', tujuan: { ke: 'harga', keluarga: 'belanja' }, ke: 'Harga & Pemasok › Belanja' }]) + '</div>';
   }
 
   // owner 26 Nov 2026 (B49 B50 B53 B54 A62): GUDANG — buku minus (semua jenis buku, dengan rupiah), tugas terbuka, kemasan bertanggal, beras hilang bulan ini.
@@ -197,6 +226,10 @@ export function pasangDasbor(akar, opsi) {
       + r('minus', 'Buku minus', M.n ? M.n + ' · ' + RP(M.rp) : 'tidak ada', M.n > 0, { judul: 'Buku stok minus', baris: M.top.map((x) => [x.nama, x.teks + (x.dinilai ? ' · ' + RP(x.rp) : ' · belum bisa dinilai')]).concat([['Ringkas', M.kalimat]]), tujuan: G.tujuan, ke })
       + r('tugas', 'Tugas gudang terbuka', T.n ? T.n + ' di ' + T.nJenis + ' jenis' : 'beres', T.awas, { judul: 'Tugas gudang yang terbuka', baris: T.terbuka.length ? T.terbuka.map((x) => [x.nama, x.n + ' · ' + x.ket]) : [['Keadaan', 'semua beres']], tujuan: G.tujuan, ke })
       + r('kemasan', 'Kemasan bertanggal', K.lewat ? K.lewat + ' lewat' + (K.dekat ? ' · ' + K.dekat + ' dekat' : '') : K.dekat ? K.dekat + ' ≤ ' + K.ambang + ' hari' : 'aman', K.lewat > 0, { judul: 'Kemasan · baik dipakai sebelum', baris: K.nama.length ? K.nama.map((n) => [n, '']) : [['Keadaan', 'tidak ada yang dekat']], tujuan: G.tujuan, ke })
+      // P3 B129 & B67 (owner 27 Nov 2026): nota "jual dulu, tandai" yang belum dicocokkan · pesanan ke pemasok yang menunggu (Rp & kg) — baris Tugas gudang yang SAMA
+      + (() => { const tb = (T.terbuka || []).find((x) => x.id === 'tembus'); const ps = (T.terbuka || []).find((x) => x.id === 'pesanPemasok');
+        return (tb ? r('tembus', 'Nota jual dulu, belum dicocokkan', tb.n + ' nota', true, { judul: 'Nota "jual dulu, tandai untuk dicocokkan"', baris: [['Belum dicocokkan', tb.n + ' nota'], ['Nama', tb.ket]], tujuan: tb.tujuan, ke: 'Stok › Cocokkan', catatan: 'Tandanya tuntas sendiri saat nama itu dicocokkan dengan tanggal ≥ notanya.' }) : '')
+          + (ps ? r('pesanPemasok', 'Pesanan pemasok menunggu', ps.n + ' · ' + (ps.kg ? dbKg(ps.kg) : '—') + ' · ' + (ps.rp ? RP(ps.rp) : 'tanpa harga'), false, { judul: 'Pesanan ke pemasok belum datang', baris: [['Pesanan', String(ps.n)], ['Berat', dbKg(ps.kg || 0)], ['Perkiraan', RP(ps.rp || 0)], ['', ps.ket]], tujuan: ps.tujuan, ke: 'Harga & Pemasok › Belanja', catatan: 'Perkiraan = harga beli terakhir saat pesanan dibuat.' }) : ''); })()
       + (B.diarsip ? '' : r('hilang', 'Beras hilang ' + B.nama, dbKg(B.hilangKg) + ' · ' + RP(-B.hilangRp), B.menutup === false, { judul: 'Beras hilang & rusak per jenis · ' + B.nama, baris: B.jenis.map((x) => [x.jenis, dbKg(x.kg) + ' · ' + RP(-x.rp) + (x.rusakKg ? ' · rusak ' + dbKg(x.rusakKg) : '')]).concat([['Ringkas', B.kalimat]]), tujuan: G.tujuan, ke }));
   }
 
@@ -216,7 +249,8 @@ export function pasangDasbor(akar, opsi) {
         + '<div class="db-wadah-teks ket">isi ' + esc(w.terakhirTanggal ? dbTgl(w.terakhirTanggal) + ' ' + dbJam(w.terakhirJam) : '—') + '</div>'
         + '<div class="db-wadah-teks ket' + (w.aktif && !w.dicek ? ' awas-teks' : '') + '">' + esc(cek) + '</div></div>';
     }).join('') + '</div>' : '<div class="menolak">Belum ada wadah literan yang diatur.</div>';
-    return '<div class="kartu db-kartu db-wadah-kartu">' + kepala('Wadah literan', 'cek tutup ' + dbTgl(S.hariCek) + ': ' + S.nDicek + ' dari ' + S.nAktif + ' wadah aktif' + (S.perluIsi ? ' · ' + S.perluIsi + ' perlu diisi' : ''), 'sumber:wadah', S.wadahSumber, S.wadahTujuan, tetap()) + isi + '</div>';
+    return '<div class="kartu db-kartu db-wadah-kartu">' + kepala('Wadah literan', 'cek tutup ' + dbTgl(S.hariCek) + ': ' + S.nDicek + ' dari ' + S.nAktif + ' wadah aktif' + (S.perluIsi ? ' · ' + S.perluIsi + ' perlu diisi' : ''), 'sumber:wadah', S.wadahSumber, S.wadahTujuan, tetap()) + isi
+      + (S.wadah.length ? aksi('wadah', [{ id: 'isi', nama: 'Isi ulang & cek wadah', tujuan: S.wadahTujuan, ke: S.wadahSumber }]) : '') + '</div>';
   }
 
   // ---------- PIUTANG & UTANG PEMASOK ----------
@@ -230,8 +264,8 @@ export function pasangDasbor(akar, opsi) {
       { id: 'jauh', rp: U.rpJauh, kelas: 'db-st-baru', isi: { judul: 'Bon pemasok, tempo masih jauh', baris: [['Bon', String(U.nJauh)], ['Sisa', RP(U.rpJauh)]], tujuan: U.tujuan, ke: U.sumber } },
       { id: 'tanpa', rp: U.rpTanpaTempo, kelas: 'db-st-menunggu', isi: { judul: 'Bon pemasok tanpa tempo', baris: [['Bon', String(U.nTanpaTempo)], ['Sisa', RP(U.rpTanpaTempo)]], tujuan: U.tujuan, ke: U.sumber, catatan: 'Tempo belum disepakati — jatuh temponya tidak diramal.' } }];
     const baris = (d, id) => '<div class="db-baris db-ketuk' + (d.awas ? ' awas-teks' : '') + '"' + daftar(id, d.isi) + '><span class="db-nama">' + esc(d.nama) + '</span><span class="ket">' + esc(d.ket) + '</span><span class="db-nilai angka">' + esc(RP(d.rp)) + ' ›</span></div>';
-    const jatuhP = P.jatuh.slice(0, 4).map((b) => baris({ nama: b.nama, ket: b.kata, rp: b.sisa, awas: true, isi: { judul: b.nama, baris: [['Sisa bon', RP(b.sisa)], ['Keadaan', b.kata], ['', b.ket]], tujuan: b.tujuan, ke: P.sumber } }, 'piutang:' + b.kunci)).join('');
-    const jatuhU = U.lewat.concat(U.dekat).slice(0, 4).map((b) => baris({ nama: b.pemasok, ket: b.tempoTeks, rp: b.sisa, awas: U.lewat.indexOf(b) >= 0, isi: { judul: b.pemasok + ' · bon ' + dbTgl(b.tanggal), baris: [['Sisa', RP(b.sisa)], ['Tempo', b.tempoTeks]], tujuan: b.tujuan, ke: U.sumber } }, 'pemasok:' + b.id)).join('');
+    const jatuhP = dbUrutkan('piutang', P.jatuh, urut.piutang).slice(0, 4).map((b) => baris({ nama: b.nama, ket: b.kata, rp: b.sisa, awas: true, isi: { judul: b.nama, baris: [['Sisa bon', RP(b.sisa)], ['Keadaan', b.kata], ['', b.ket]], tujuan: b.tujuan, ke: P.sumber } }, 'piutang:' + b.kunci)).join('');
+    const jatuhU = dbUrutkan('pemasok', U.lewat.concat(U.dekat), urut.pemasok).slice(0, 4).map((b) => baris({ nama: b.pemasok, ket: b.tempoTeks, rp: b.sisa, awas: U.lewat.indexOf(b) >= 0, isi: { judul: b.pemasok + ' · bon ' + dbTgl(b.tanggal), baris: [['Sisa', RP(b.sisa)], ['Tempo', b.tempoTeks]], tujuan: b.tujuan, ke: U.sumber } }, 'pemasok:' + b.id)).join('');
     return '<div class="kartu db-kartu db-tagihan">' + kepala('Piutang pelanggan', G.periode, 'sumber:piutang', P.sumber, P.tujuan, tetap())
       + '<div class="db-angka-baris">' + lampuDb('piutang') + '<span class="angka db-angka-kecil">' + esc(RP(P.total)) + '</span><span class="ket">' + esc(P.n + ' nama' + (P.nota && !P.nota.galat ? ' · per nota: lewat jatuh tempo ' + RP(P.nota.lewat) : ' · jatuh tempo ' + P.nJatuh + ' nama ' + RP(P.rpJatuh))) + '</span></div>'
       // owner 26 Nov 2026 (B29 · B30 · B31): jatuh tempo PER NOTA — bon kemarin tidak lagi ikut "jatuh tempo" hanya karena bon tertua orangnya sudah tua
@@ -243,7 +277,7 @@ export function pasangDasbor(akar, opsi) {
       + (P.telat && !P.telat.galat ? '<div class="ket db-ketuk' + (P.telat.n ? ' awas-teks' : '') + '" data-k="db-telat"' + daftar('piutang:telat', { judul: 'Diperkirakan telat bayar', baris: (P.telat.daftar.length ? P.telat.daftar.map((o) => [o.nama, RP(o.rp) + ' · ' + o.kalimat]) : [['Keadaan', P.telat.kalimat]])
         .concat(P.telat.nLewat ? [['Sudah lewat jatuh tempo (orang yang biasanya telat)', P.telat.nLewat + ' nota · ' + RP(P.telat.rpLewat)]] : []).concat(P.telat.nTanpa ? [['Belum bisa diperkirakan', P.telat.nTanpa + ' pelanggan (belum pernah melunasi bon)']] : []), tujuan: P.telatTujuan, ke: 'Pelanggan › Bon › Jatuh tempo', catatan: P.telat.rumus }) + '>'
         + esc(P.telat.n ? 'Diperkirakan telat: ' + P.telat.n + ' orang · ' + RP(P.telat.rp) + ' belum jatuh tempo' : 'Diperkirakan telat: tidak ada') + ' ›</div>' : '')
-      + tumpuk(bagP, P.total, 'piutangS:') + '<div class="db-legenda">' + P.perStatus.filter((s) => s.n).map((s) => '<span><i class="db-titik db-st-' + esc(s.status) + '"></i>' + esc(s.kata + ' ' + s.n) + '</span>').join('') + '</div>'
+      + tumpuk(bagP, P.total, 'piutangS:') + (P.jatuh.length > 1 ? pitaUrut('piutang') : '') + '<div class="db-legenda">' + P.perStatus.filter((s) => s.n).map((s) => '<span><i class="db-titik db-st-' + esc(s.status) + '"></i>' + esc(s.kata + ' ' + s.n) + '</span>').join('') + '</div>'
       + (jatuhP || '<div class="menolak">Tidak ada bon pelanggan yang lewat janji, waktunya ditagih, atau macet.</div>')
       + (P.nJatuh > 4 ? '<div class="ket db-ketuk" data-db-ke="sumber:piutang">+' + esc(P.nJatuh - 4) + ' nama lain ›</div>' : '')
       // B3 (owner 18 Nov 2026): bayar di tempat yang uangnya belum disetor — MERAH, atas nama pengantarnya; lewat hari = kini bon biasa
@@ -261,9 +295,10 @@ export function pasangDasbor(akar, opsi) {
         + G.pesanan.stok.map((t, i) => '<div class="ket awas-teks" data-k="db-ps-stok-' + i + '">' + esc(t) + '</div>').join('') : '')
       + kepala('Utang ke pemasok', U.nBon + ' bon · ' + U.nPemasok + ' pemasok', 'sumber:pemasok', U.sumber, U.tujuan)
       + '<div class="db-angka-baris"><span class="angka db-angka-kecil">' + esc(RP(U.total)) + '</span><span class="ket">' + esc(U.lewat.length + ' lewat tempo · ' + U.dekat.length + ' jatuh ≤ ' + U.dekatHari + ' hari · ' + U.nTanpaTempo + ' tanpa tempo') + '</span></div>'
-      + tumpuk(bagU, U.total, 'pemasokS:')
+      + tumpuk(bagU, U.total, 'pemasokS:') + (U.lewat.length + U.dekat.length > 1 ? pitaUrut('pemasok') : '')
       + (jatuhU || '<div class="menolak">Tidak ada bon pemasok yang lewat atau dekat jatuh tempo.</div>')
-      + '<div class="ket' + (U.kurang ? ' awas-teks' : '') + '">' + esc(U.cukupTeks) + '</div></div>';
+      + '<div class="ket' + (U.kurang ? ' awas-teks' : '') + '">' + esc(U.cukupTeks) + '</div>'
+      + aksi('tagihan', [{ id: 'terima', nama: 'Terima bayar bon', tujuan: { ke: 'pelanggan', keluarga: 'bon' }, ke: 'Pelanggan › Bon' }, { id: 'bayar', nama: 'Bayar bon pemasok', tujuan: { ke: 'harga', keluarga: 'bon' }, ke: 'Harga & Pemasok › Bon pemasok' }]) + '</div>';
   }
 
   // ---------- tooltip ----------
@@ -277,7 +312,13 @@ export function pasangDasbor(akar, opsi) {
     const salah = (id, nama, x) => baris(id, nama, 'gagal dihitung', true, { judul: nama, baris: [['Galat', x.galat]], tujuan: null, ke: '' });
     const T = Q.tertagih, U = Q.umur, M = Q.merek, H = Q.het, R = Q.mutu; const out = [];
     out.push(T.galat ? salah('tertagih', 'Bon tertagih', T) : baris('tertagih', 'Rata-rata bon tertagih', T.rataTeks, false, { judul: 'Rata-rata hari bon tertagih', baris: [['Periode', T.periodeTeks || T.hari + ' hari terakhir'], ['Rata-rata', T.rataTeks], ['Keterangan', T.teks]], tujuan: T.tujuan, ke: 'Pelanggan › Bon' }));
-    out.push(U.galat ? salah('umur', 'Umur stok', U) : baris('umur', 'Lambat laku', U.lambat ? U.lambat + ' barang' : 'tidak ada', U.lambat > 0, { judul: 'Umur & putaran stok', baris: [['Lambat laku', U.lambat ? U.lambat + ' barang' + (U.namaLambat.length ? ' (' + U.namaLambat.join(', ') + (U.lambat > 3 ? ', …' : '') + ')' : '') : 'tidak ada'], ['Stok tertua', U.tertua ? U.tertua.nama + ' · ' + U.tertua.hari + ' hari' : 'belum bisa dihitung'], ['Perputaran merek', U.putaran === null ? 'belum bisa dihitung' : DESIMAL(Math.round(U.putaran * 10) / 10) + '× / ' + U.periodeHari + ' hari']], tujuan: U.tujuan, ke: 'Stok › Umur & putaran' }));
+    // P3 B48 (owner 27 Nov 2026): "N lambat laku · Rp X modal diam" + umur stok dalam rupiah per lapisan (Q.modalDiam = kpi-laba klModalDiam, nilai = rumus modal tertahan)
+    const MD = Q.modalDiam && !Q.modalDiam.galat ? Q.modalDiam : null;
+    out.push(U.galat ? salah('umur', 'Umur stok', U) : baris('umur', 'Lambat laku', (U.lambat ? U.lambat + ' barang' : 'tidak ada') + (MD && MD.n ? ' · ' + dbRpPendek(MD.rp) + ' modal diam' : ''), U.lambat > 0, { judul: 'Umur & putaran stok', baris: (MD ? [['Modal diam di barang lambat laku', RP(Math.round(MD.rp)) + ' · ' + MD.n + ' barang']].concat(MD.daftar.slice(0, 4).map((x) => ['· ' + x.nama, RP(Math.round(x.rp)) + ' · ' + dbKg(x.kg)])) : []).concat([['Lambat laku', U.lambat ? U.lambat + ' barang' + (U.namaLambat.length ? ' (' + U.namaLambat.join(', ') + (U.lambat > 3 ? ', …' : '') + ')' : '') : 'tidak ada'], ['Stok tertua', U.tertua ? U.tertua.nama + ' · ' + U.tertua.hari + ' hari' : 'belum bisa dihitung'], ['Perputaran merek', U.putaran === null ? 'belum bisa dihitung' : DESIMAL(Math.round(U.putaran * 10) / 10) + '× / ' + U.periodeHari + ' hari']]), tujuan: U.tujuan, ke: 'Stok › Umur & putaran', catatan: MD ? MD.rumus : '' }));
+    if (Q.modalDiam && Q.modalDiam.galat) out.push(salah('lapisan', 'Umur stok dalam rupiah', Q.modalDiam));
+    else if (MD) out.push(baris('lapisan', 'Umur stok dalam rupiah', MD.lapisan.filter((b) => b.id === 'tua')[0] ? '> ' + MD.atur.tua + ' hari ' + dbRpPendek(MD.tuaRp) : '—', MD.tuaRp > 0.5 || !MD.menutup,
+      { judul: 'Umur stok dalam rupiah · per lapisan', baris: MD.lapisan.map((b) => [b.nama, RP(Math.round(b.rp)) + (b.kg !== null ? ' · ' + dbKg(b.kg) : '')]).concat([['Jumlah = nilai stok hari ini', RP(Math.round(MD.total)) + (MD.menutup ? ' · menutup' : ' · TIDAK MENUTUP — laporkan')]]),
+        tujuan: MD.tujuan, ke: 'Stok › Umur & putaran', catatan: 'Lapisan: ≤ ' + MD.atur.muda + ' hari (ambang umur) · sampai ' + MD.atur.tua + ' hari (batas stok lama' + (MD.atur.dariOwner ? '' : ', bawaan') + ') · lebih tua. ' + MD.rumus + '.' }));
     if (M.galat) out.push(salah('merek', 'Per merek', M));
     else if (M.arsip) out.push(baris('merek', 'Merek teratas ' + M.nama, 'rincian ikut arsip', false, { judul: 'Per merek ' + M.nama, baris: [['Keadaan', 'bulan sudah ditutup buku']], tujuan: M.tujuan, ke: 'Laporan › Laba' }));
     else {
@@ -442,7 +483,20 @@ export function pasangDasbor(akar, opsi) {
       + '<div class="db-legenda"><span><i class="db-titik db-beli-bon"></i>Bon (dibayar nanti)</span><span><i class="db-titik db-beli-langsung"></i>Dibayar langsung</span><span class="ket">tertinggi ' + esc(RP(T.maks)) + '</span></div>'
       + '<svg class="db-grafik db-grafik-beli" viewBox="0 0 ' + W + ' 100" preserveAspectRatio="none" role="img" aria-label="Pembelian ' + esc(T.periode) + '"><line class="db-dasar" x1="0" y1="100" x2="' + W + '" y2="100"></line>' + kol + '</svg>' + sumbu
       + (P ? angka('periode', Bl.periodeNama, P) : '') + (M ? angka('bulan', Bl.bulanNama, M) : '')
+      + barisMenunggu(Bl)
+      + aksi('beli', [{ id: 'masuk', nama: 'Catat barang masuk', tujuan: { ke: 'stok', lembar: 'masuk' }, ke: 'Stok › Barang masuk' }, { id: 'pesan', nama: 'Pesan ke pemasok', tujuan: { ke: 'harga', keluarga: 'belanja' }, ke: 'Harga & Pemasok › Belanja' }])
       + '<div class="ket db-pandu">Ketuk batang untuk angkanya · ketuk lagi untuk membuka ' + esc(T.rentang === 'bulan' ? 'Laporan › Bulanan' : 'Stok › Barang masuk') + '</div></div>';
+  }
+  // P3 B44 · B67 (owner 27 Nov 2026): barang yang MASIH DATANG — pesanan ke pemasok yang menunggu (Rp & kg, gudang-logika gdPesananPemasok) + kabar barang masuk dari
+  // tablet yang menunggu diperiksa (baris Tugas gudang yang sama). Sekarang, tidak ikut saringan.
+  function barisMenunggu(Bl) {
+    const P = Bl.pesanan; const G = D && D.stok && !D.stok.galat ? D.stok.gudang : null; const km = G && !G.galat ? (G.tugas.terbuka || []).find((x) => x.id === 'masuk') : null; let out = '';
+    if (P && P.galat) out += '<div class="ket awas-teks" data-k="db-beli-pesanan">Pesanan pemasok gagal dibaca: ' + esc(P.galat) + '</div>';
+    else if (P) out += '<div class="db-baris db-ketuk" data-k="db-beli-pesanan"' + daftar('beli:pesanan', { judul: 'Pesanan ke pemasok yang menunggu', baris: P.n ? [['Pesanan', P.n + ' · ' + P.karung + ' karung'], ['Berat', dbKg(P.kg)], ['Perkiraan', RP(Math.round(P.rp))]].concat(P.pemasok.slice(0, 4).map((g) => ['· ' + g.pemasok, dbKg(g.kg) + ' · ' + RP(Math.round(g.rp)) + (g.janji ? ' · janji ' + dbTgl(g.janji) : '')])).concat(P.tanpaHarga ? [['Tanpa harga', P.tanpaHarga + ' pesanan']] : []) : [['Keadaan', P.kalimat]],
+      tujuan: P.tujuan, ke: P.sumber, catatan: 'Perkiraan = harga beli terakhir saat pesanan dibuat. Tandanya pindah ke "datang" sendiri saat kedatangan pemasok itu dicatat.' })
+      + '><span class="db-nama">Pesanan menunggu datang</span><span class="ket">' + esc(P.n ? P.n + ' pesanan · ' + dbKg(P.kg) : 'tidak ada') + '</span><span class="db-nilai angka">' + esc(P.n ? RP(Math.round(P.rp)) : '—') + ' ›</span></div>';
+    if (km) out += '<div class="db-baris db-ketuk awas-teks" data-k="db-beli-kabar"' + daftar('beli:kabar', { judul: km.nama, baris: [['Menunggu', String(km.n)], ['', km.ket]], tujuan: km.tujuan, ke: 'Stok › Barang masuk' }) + '><span class="db-nama">' + esc(km.nama) + '</span><span class="ket">menunggu diperiksa</span><span class="db-nilai">' + esc(km.n + ' ›') + '</span></div>';
+    return out;
   }
   // P2 (owner 27 Nov 2026: A136 B112 B26): RAPOR BULAN — bulan ini vs bulan lalu vs target owner, % ubah & lampu; saklar Laba | Kas ("Dua-duanya"). D.rapor =
   // dasbor-logika dbRapor → rapor-bulan-logika rbRapor apa adanya. Bulan berjalan: angka yang menumpuk dibanding lewat perkiraan sebulan (disebut di kalimat).
@@ -491,6 +545,8 @@ export function pasangDasbor(akar, opsi) {
   akar.addEventListener('click', (ev) => {
     if (kisi.klik(ev)) { tutupTip(); return; }   // desain ulang 26 Nov 2026: mode atur, buka/tutup rincian, saringan tanggal, headline
     const rg = ev.target.closest('[data-db-rentang]'); if (rg) { gantiRentang(rg.dataset.dbRentang); return; }
+    const ur = ev.target.closest('[data-db-urut]'); if (ur) { const [j, c] = ur.dataset.dbUrut.split(':'); if (DB_URUT[j] && urut[j] !== dbUrutPilih(j, c)) { urut[j] = dbUrutPilih(j, c); try { localStorage.setItem(KUNCI_URUT, JSON.stringify(urut)); } catch (e) { /* abaikan */ } tutupTip(); gambar(null, false); } return; }   // P3 B97
+    const gs = ev.target.closest('[data-db-geser]'); if (gs) { if (!gs.classList.contains('mati')) { const d = Number(gs.dataset.dbGeser); const baru = d === 0 ? 0 : Math.max(0, geser - d); if (baru !== geser) { geser = baru; tutupTip(); opsi.mintaRentang(rentangKini()); } } return; }   // P3 B98: ‹ = mundur (geser +1)
     const rr = ev.target.closest('[data-db-rapor]'); if (rr) { const m = rr.dataset.dbRapor === 'kas' ? 'kas' : 'laba'; if (m !== modeRapor) { modeRapor = m; try { localStorage.setItem(KUNCI_RAPOR, m); } catch (e) { /* abaikan */ } tutupTip(); gambar(null, false); } return; }
     const rb = ev.target.closest('[data-db-beli]'); if (rb) { const r = rb.dataset.dbBeli; if (r !== rentangBeli && SH_RENTANG_BELI.some((x) => x[0] === r)) { rentangBeli = r; try { localStorage.setItem(KUNCI_BELI, r); } catch (e) { /* abaikan */ } tutupTip(); gambar(null, false); } return; }
     const ke = ev.target.closest('[data-db-ke]'); if (ke) { const isi = reg[ke.dataset.dbKe]; tutupTip(); if (isi && isi.tujuan) opsi.keTujuan(isi.tujuan); return; }
@@ -500,7 +556,9 @@ export function pasangDasbor(akar, opsi) {
   akar.addEventListener('pointerover', (ev) => { if (ev.pointerType !== 'mouse' || kisi.sedangAtur()) return; const el = ev.target.closest('[data-db]'); if (el && el.dataset.db !== pilih) tampilTip(el.dataset.db, el); });
 
   // ---------- pasang ----------
-  function gantiRentang(r) { if (r === rentang || !DB_RENTANG.some((x) => x[0] === r)) return; rentang = r; try { localStorage.setItem(KUNCI_RENTANG, r); } catch (e) { /* abaikan */ } opsi.mintaRentang(r); }
+  function gantiRentang(r) { if (r === rentang || !DB_RENTANG.some((x) => x[0] === r)) return; rentang = r; geser = 0; try { localStorage.setItem(KUNCI_RENTANG, r); } catch (e) { /* abaikan */ } opsi.mintaRentang(rentangKini()); }
+  /** P3 B98: rentang tren yang diminta ke Ringkasan — 'bulan' atau 'bulan@2' (mundur 2 jendela); kunci ingatan tren ikut berbeda. */
+  const rentangKini = () => (geser ? rentang + '@' + geser : rentang);
   /** Gambar seluruh dasbor dari hasil susunDasbor. masuk = animasi masuk ringan (buka dasbor / ganti rentang), bukan tiap data berubah.
    *  ekstra = { perhatian, cap } dari Ringkasan (headline & widget Perlu perhatian, cap "data per HH.MM"). */
   let perhatianKini = [];
@@ -523,7 +581,24 @@ export function pasangDasbor(akar, opsi) {
       kPondasi: () => kartuPondasi(D.pondasi), kWadah: () => kartuWadah(D.stok), kTagihan: () => kartuTagihan(D.tagihan), kMutu: () => kartuMutu(D.mutu), kB2b: () => kartuB2b(D.b2b), kEnam: () => kartuEnam(D.enam), kBeli: () => kartuBeli(D.beli), kRapor: () => kartuRapor(D.rapor), kArusKas: () => kartuArusKas(D.rapor) };
     return D && P[id] ? P[id]() : '';
   }
-  const kisi = pasangKisi(akar, { kini: () => (opsi.kini ? opsi.kini() : new Date()), ingat: opsi.ingat, gantiSaring: () => { tutupTip(); if (opsi.mintaRentang) opsi.mintaRentang(rentang); else gambar(null, false); }, /* B94: Ringkasan menyusun ulang dengan saringan baru */ simpanWidget: opsi.simpanWidget || (async () => ({ ok: false, kabar: 'Tidak bisa menyimpan dari sini' })),
+  // P3 B104 (owner 27 Nov 2026: "A4 tegak"): CETAK DASBOR — kartu yang sedang tampil disalin ke #cetakDokumen (pola kertas berkop Laporan) dengan kepala dari
+  // dasbor-logika dbCetak (kop toko, saringan, saat cetak, keadaan data). Tombol & pita (urut, geser, aksi) tidak ikut kertas; mode terang selama dialog cetak.
+  function cetakDasbor() {
+    if (asliAda()) return { ok: false, kabar: 'Dasbor tidak bisa dicetak dari aplikasi tablet — cetak dari Mac atau HP (dialog cetak peramban)' };
+    const w = document.getElementById('cetakDokumen'); const kisiEl = akar.querySelector('.wg-kisi'); if (!w || !kisiEl) return { ok: false, kabar: 'Kertas cetak tidak ditemukan — muat ulang' };
+    tutupTip(); const C = dbCetak(opsi.kini ? opsi.kini() : new Date(), D && D.saring, capKini);
+    const salin = kisiEl.cloneNode(true);
+    salin.querySelectorAll('.pn').forEach((el) => { const m = /span\s+(\d+)/.exec(el.style.gridColumn || ''); const n = m ? Number(m[1]) : 6; el.removeAttribute('style'); el.classList.add(n >= 9 ? 'dc-penuh' : 'dc-separuh'); });
+    salin.querySelectorAll('.db-tip, .db-aksi, .db-urut, .db-geser, .db-rentang, .pn-tarik, .wg-x, .pn-ukuran, .pn-otomatis, .db-pandu').forEach((el) => el.remove());
+    w.innerHTML = '<div class="db-cetak" data-k="db-cetak"><div class="dc-kop"><div class="dc-nama">' + esc(C.kop.nama) + '</div>' + (C.kop.alamat ? '<div class="dc-al">' + esc(C.kop.alamat + (C.kop.telepon ? ' · ' + C.kop.telepon : '')) + '</div>' : '') + '</div>'
+      + '<div class="dc-judul">' + esc(C.judul) + '</div><div class="dc-sub">' + esc(C.periode + ' · ' + C.dicetak + (C.cap ? ' · ' + C.cap : '')) + '</div><div class="layar-ringkasan dc-isi">' + salin.outerHTML + '</div><div class="dc-kaki">' + esc(C.kaki) + '</div></div>';
+    const gelap = document.body.classList.contains('gelap'); if (gelap) document.body.classList.remove('gelap');
+    let sudah = false; const lepas = () => { if (sudah) return; sudah = true; document.body.classList.remove('cetak-dokumen'); if (gelap) document.body.classList.add('gelap'); w.innerHTML = ''; window.removeEventListener('afterprint', lepas); };
+    document.body.classList.add('cetak-dokumen'); window.addEventListener('afterprint', lepas);
+    try { window.print(); } catch (e) { lepas(); return { ok: false, kabar: 'Dialog cetak tidak bisa dibuka: ' + (e && e.message ? e.message : e) }; }
+    setTimeout(lepas, 4000); return { ok: true };
+  }
+  const kisi = pasangKisi(akar, { cetak: cetakDasbor, kini: () => (opsi.kini ? opsi.kini() : new Date()), ingat: opsi.ingat, gantiSaring: () => { tutupTip(); if (opsi.mintaRentang) opsi.mintaRentang(rentang); else gambar(null, false); }, /* B94: Ringkasan menyusun ulang dengan saringan baru */ simpanWidget: opsi.simpanWidget || (async () => ({ ok: false, kabar: 'Tidak bisa menyimpan dari sini' })),
     keTujuan: (t) => opsi.keTujuan(t), kePerhatian: () => (opsi.kePerhatian ? opsi.kePerhatian() : null), daftar, kartuPenuh, gambarUlang: () => gambar(null, false) });
-  return { gambar, rentang: () => rentang, saring: () => kisi.pil(), tutupTip, sedangAtur: () => kisi.sedangAtur(), adaWidget: (id) => kisi.adaWidget(id), cap: (c) => { const ada = !!capKini; capKini = c; if (!ada) pasangCap(); else setelCap(c); } };
+  return { gambar, rentang: () => rentangKini(), saring: () => kisi.pil(), tutupTip, sedangAtur: () => kisi.sedangAtur(), adaWidget: (id) => kisi.adaWidget(id), cap: (c) => { const ada = !!capKini; capKini = c; if (!ada) pasangCap(); else setelCap(c); } };
 }

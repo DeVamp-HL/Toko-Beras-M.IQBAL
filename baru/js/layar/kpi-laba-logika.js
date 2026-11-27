@@ -23,7 +23,7 @@ import { keManaLabaKotor, jenisBulan, lpJenisRentang, merekBulan, lpMerekBuku, l
 import { kendaliBulan, titikImpas } from './kendali-biaya-logika.js';
 import { pjPerkiraanBulan, PJ_LABEL, pjTahun } from './pajak-logika.js';
 import { ugAturDok, ugAngka, ugKosong, saldoKantong, ugNamaTempat } from './uang-logika.js';
-import { umRingkas, umNilaiRata, umAtur } from './stok-logika.js';
+import { umRingkas, umNilaiRata, umAtur, umBarang } from './stok-logika.js';
 // P1 (owner 27 Nov 2026): per kg & per merek per rentang (merekRentang — pengumpul Per merek), target untung per kg (setelan Harga), minggu Senin–Minggu
 import { merekRentang, lpTargetKg, lpStatusKg, lpSenin, lpBulanPendek } from './laporan-logika.js';
 import { tertagihBon } from './bon-logika.js';
@@ -339,9 +339,10 @@ const klSelisihHari = (a, b) => Math.round((Date.UTC(+b.slice(0, 4), +b.slice(5,
 /** Nilai stok satu hari (modal yang tertanam): beras karung = sisa × modal per kg buku (cara nilai neraca & Umur & putaran), kemasan = sisa unit × modal rata-rata
  *  per unit (neraca). Buku minus dihitung 0 (tidak ada uang yang tertahan di barang yang tidak ada) — sama dengan umNilaiRata. → { rp, buku: { nama: rp } } */
 function klNilaiStokHari(t) {
-  const buku = {}; let rp = 0; const B = ingatStokKarung(t); Object.keys(B).forEach((k) => { const x = B[k]; const kg = Math.max(0, Number(x.sisaKg) || 0); if (!(kg > 0)) return; const v = kg * (Number(x.hppTerakhirPerKg) || 0); rp += v; const m = lpMerekBuku(k) || k; buku[m] = (buku[m] || 0) + v; });
+  const buku = {}; const kunci = {}; let rp = 0; const B = ingatStokKarung(t); Object.keys(B).forEach((k) => { const x = B[k]; const kg = Math.max(0, Number(x.sisaKg) || 0); if (!(kg > 0)) return; const v = kg * (Number(x.hppTerakhirPerKg) || 0); rp += v; const m = lpMerekBuku(k) || k; buku[m] = (buku[m] || 0) + v; kunci[k] = { rp: v, kg }; });
+  const karungRp = rp;   // paket P3 (B48): nilai per BUKU karung (kunci) ikut dikembalikan — rumus yang sama, dipakai klModalDiam
   const K = ingatStokKemasan(t); Object.keys(K).forEach((k) => { const x = K[k]; const u = Math.max(0, Number(x.sisaUnit) || 0); if (!(u > 0)) return; const v = u * (Number(x.hppRataRataPerUnit) || 0); rp += v; const m = String(x.namaProduk || k) + ' ' + x.ukuranKemasan + ' kg'; buku[m] = (buku[m] || 0) + v; });
-  return { rp, buku };
+  return { rp, buku, kunci, karungRp };
 }
 /**
  * MODAL TERTAHAN DI STOK (A121): rata-rata nilai stok (beras karung + kemasan, nilai modal) per hari di [dari, sampai] × bunga modal % per tahun (setelan owner,
@@ -365,6 +366,38 @@ function klModalTertahanHitung(a, b, iso) {
     rumus: 'Biaya modal = rata-rata nilai stok (beras karung + kemasan, nilai modal) × bunga ' + bTeks + ' × ' + nHari + ' hari ÷ 365' + (langkah > 1 ? ' · rata-rata dari ' + titik.length + ' titik hari berjarak ' + langkah + ' hari' : ''),
     kalimat: !(bunga > 0) ? 'Rata-rata ' + RP(Math.round(rata)) + ' modal tertahan di stok (' + tanggalPendek(a) + ' – ' + tanggalPendek(b) + '); bunga modal mati — atur di Menu › Toko ini › Target & ambang.'
       : 'Rata-rata ' + RP(Math.round(rata)) + ' modal tertahan di stok (' + tanggalPendek(a) + ' – ' + tanggalPendek(b) + ') — dengan bunga ' + bTeks + ' setara biaya ' + RP(Math.round(biaya)) + ' dalam ' + nHari + ' hari (±' + RP(Math.round(sebulan)) + ' sebulan). Bukan uang keluar; tidak memotong laba bersih.' };
+}
+
+// ---------- P3 · B48 modal diam & umur stok dalam rupiah (owner 27 Nov 2026, sensus ulang) ----------
+/**
+ * MODAL DIAM di barang LAMBAT LAKU + UMUR STOK DALAM RUPIAH per lapisan. Satu rumus nilai dengan A121 (klNilaiStokHari: sisa × modal per kg buku hari ini, kemasan × modal
+ * rata-rata per unit) — tidak ada rumus nilai kedua. Lambat laku = umBarang (Stok › Umur & putaran: umur > ambang, hari stok > ambang, atau tak ada gerak keluar).
+ * Lapisan umur = lapisan FIFO kedatangan yang masih tersisa (wadah campuran: umur rata-rata) dikelompokkan: ≤ ambang umur · sampai batas stok lama (setelan owner
+ * aturanToko/stokUmur.umurTuaHari, bawaan 60) · lebih tua · tanpa tanggal masuk; kg × modal per kg BUKUNYA. Kemasan jadi = baris sendiri (umurnya tidak dilacak).
+ * PENJAGA: Σ lapisan = nilai stok hari ini = modal tertahan A121 pada hari ini (`menutup`). Baca saja.
+ */
+export function klModalDiam(kini) { const iso = hariIniIso(kini); return ingatPerVersi('klModalDiam|' + iso, () => klModalDiamHitung(kini, iso)); }
+function klModalDiamHitung(kini, iso) {
+  const A = umAtur(); const muda = A.ambangUmurHari; const tua = Math.max(A.umurTuaHari, muda + 1); const N = klNilaiStokHari(iso); const R = umBarang(kini);
+  const nilai = (k) => N.kunci[k] || { rp: 0, kg: 0 }; const perKg = (k) => { const x = nilai(k); return x.kg > 0 ? x.rp / x.kg : 0; };
+  const L = [['muda', '≤ ' + muda + ' hari'], ['tengah', (muda + 1) + '–' + tua + ' hari'], ['tua', '> ' + tua + ' hari'], ['tanpa', 'tanpa tanggal masuk']].map((x) => ({ id: x[0], nama: x[1], kg: 0, rp: 0, buku: {} }));
+  const ke = (id, nama, kg, rp) => { const b = L.find((x) => x.id === id); b.kg += kg; b.rp += rp; b.buku[nama] = (b.buku[nama] || 0) + rp; };
+  const kelas = (umur) => (umur === null || umur === undefined ? 'tanpa' : umur <= muda ? 'muda' : umur <= tua ? 'tengah' : 'tua');
+  let karung = 0;
+  R.forEach((r) => { if (!r.ada || !r.umur) return; const v = perKg(r.kunci); const U = r.umur;
+    if (U.cara === 'fifo') U.lapisan.forEach((x) => { ke(kelas(x.umur), r.nama, x.kg, x.kg * v); karung += x.kg * v; });
+    else if (U.bertanggalKg > 0) { ke(kelas(U.umurRata), r.nama, U.bertanggalKg, U.bertanggalKg * v); karung += U.bertanggalKg * v; }
+    if (U.tanpaTanggalKg > 0) { ke('tanpa', r.nama, U.tanpaTanggalKg, U.tanpaTanggalKg * v); karung += U.tanpaTanggalKg * v; } });
+  // buku karung bernilai yang tidak punya baris umur — disebut sebagai "lain", tidak dibuang diam-diam
+  const lain = N.karungRp - karung;   // nilai buku karung yang tidak terbagi ke lapisan (buku tanpa baris umur / sisa beda) — biasanya 0
+  const lapisan = L.map((b) => ({ id: b.id, nama: b.nama, kg: b.kg, rp: b.rp, buku: Object.keys(b.buku).map((nm) => ({ nama: nm, rp: b.buku[nm] })).filter((x) => x.rp > 0.5).sort((x, y) => y.rp - x.rp || x.nama.localeCompare(y.nama)).slice(0, 5) }))
+    .concat([{ id: 'kemasan', nama: 'kemasan jadi (umur tidak dilacak)', kg: null, rp: N.rp - N.karungRp, buku: [] }]).concat(Math.abs(lain) > 0.5 ? [{ id: 'lain', nama: 'buku lain tanpa baris umur', kg: null, rp: lain, buku: [] }] : []);
+  const jumlah = lapisan.reduce((a, b) => a + b.rp, 0); const menutup = Math.abs(jumlah - N.rp) < 1;
+  const lambat = R.filter((r) => r.lambat && r.ada).map((r) => ({ kunci: r.kunci, nama: r.nama, kg: r.sisa, rp: nilai(r.kunci).rp, alasan: r.alasan.slice(), umur: r.umurAcuan, hariStok: r.hariStok })).sort((x, y) => y.rp - x.rp || x.nama.localeCompare(y.nama));
+  const rp = lambat.reduce((a, x) => a + x.rp, 0); const tuaRp = lapisan.filter((b) => b.id === 'tua').reduce((a, b) => a + b.rp, 0);
+  return { iso, n: lambat.length, rp, daftar: lambat, lapisan, total: N.rp, menutup, atur: { muda, tua, dariOwner: A.dariOwner }, tuaRp, tujuan: { ke: 'stok', tab: 'umur' },
+    rumus: 'nilai = sisa × modal per kg buku hari ini (kemasan × modal rata-rata per unit) — sama dengan modal tertahan di stok; umur = lapisan kedatangan yang masih tersisa (FIFO), wadah campuran = umur rata-rata',
+    kalimat: (lambat.length ? lambat.length + ' lambat laku · ' + RP(Math.round(rp)) + ' modal diam' : 'Tidak ada barang lambat laku') + ' · stok > ' + tua + ' hari ' + RP(Math.round(tuaRp)) + (menutup ? '' : ' · lapisan TIDAK MENUTUP ke nilai stok — laporkan') };
 }
 
 // ---------- A47 · PPh final sebagai pos anggaran (owner 27 Nov 2026, paket sisa sensus) ----------

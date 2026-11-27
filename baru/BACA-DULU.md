@@ -4455,3 +4455,39 @@ toko; angka rupiah toko tidak dicetak). Tidak ada pintu tulis baru: target hari 
   tren akhir tiap Minggu + hari ini, berdampingan dengan rata-rata hari bon tertagih (`tertagihBon`). Laporan › Mingguan + angka Dasbor `dso`.
 - **Dasbor:** kelompok tambahan `kg` (`dbKg`, ikut `DB_IKUT_SARING`, `DB_TAMBAHAN`, `DB_PANAS`); `dbTambahan` kini meneruskan saringan (`H.saring`) — kelompok yang tidak
   ikut saringan tetap mengabaikannya. Saringan Hari ini = Dasbor lama persis (uji).
+
+## Paket P3 · Dasbor & peringatan, sisa kecil (owner 27 Nov 2026 — sensus ulang A4 B44 B48 B67 B97 B98 B104 B129)
+
+Paket ketiga dari delapan sisa sensus ulang 27 Nov. Dijaga `alat-uji/uji_dasbor_p3.py` (kotak pasir angka contoh + statis + `--kontrol` + asap cadangan toko; angka rupiah
+toko tidak dicetak). Tidak ada pintu tulis baru: setelan menumpang dokumen owner yang sudah ada (`aturanToko/pengingat`, `aturanToko/stokUmur`); Dasbor tetap baca saja.
+
+**Keputusan owner (satu AskUserQuestion 27 Nov 2026):** yang berbunyi di lonceng (owner saja) = biaya lewat anggaran · susut beras merah · modal per kg lewat batas · harga di
+bawah minimum, + "kalau lu ada usulan, tambahkan asal masuk akal" → ditambah **untung per kg di bawah target** & **kas di bawah ambang minimum** · cetak Dasbor **A4 tegak** ·
+tren tahunan = **12 batang bulanan + tombol geser** · tombol aksi di kartu = **buka lembar catatnya** di layar asal.
+
+- **Peringatan uang → Pengingat & lonceng (A4).** Modul baru `peringatan-logika.js` (awalan `pw`): `pwSumberPengingat(kini)` menyusun baris sumber pengingat dari fungsi
+  layar lain APA ADANYA — `kendaliBulan` lampu merah (+ PPh final `klPph` merah) · `shDasborSusut(merekBulan).merah` · `ckHppLewat` 30 hari terakhir (`PW_HPP_HARI`, jatuh =
+  tanggal kedatangan) · `shRingkasHarga.bawah` (+ satu baris "N harga lain") · `klKgBulan.bawah` (target owner > 0) · `klKasMinimum` (ambang > 0). id stabil per bulan & hal
+  (Selesai berlaku sampai keadaannya berganti); kas satu per hari. Satu sumber galat → `tidakTerbaca`, yang lain jalan. Diingat per hari & versi data. `sistem-logika`: enam
+  jenis baru di `SS_JENIS_PENGINGAT` (nama SAMA dengan `PW_JENIS`), bawaan nyala · ke Owner · hari 0 (dijaga 0–7), sumbernya HANYA lewat `lokal.peringatan`
+  (`SS_JENIS_PERINGATAN`; jenis asing ditolak) — sistem-logika tidak mengimpor modul ini. `app.js` `sumberPeringatan()` = owner saja; ikut `lokal` Menu & lonceng;
+  `LC_JENIS` + enam jenis. Kartu **Bulan ini** memuat DAFTAR `peringatanBiaya` (Laporan › Biaya) apa adanya (`dbBulanIni.peringatan`); angka katalog **Peringatan uang (lonceng)**.
+- **Modal diam & umur stok dalam rupiah (B48).** `kpi-laba-logika` `klModalDiam(kini)`: nilai = rumus modal tertahan A121 (`klNilaiStokHari` kini juga mengembalikan nilai per
+  buku `kunci`); lambat laku = `umBarang` (Stok › Umur & putaran); lapisan = FIFO kedatangan yang tersisa (wadah campuran: umur rata-rata) → ≤ ambang umur · sampai **batas stok
+  lama** · lebih tua · tanpa tanggal · kemasan (umur tidak dilacak). PENJAGA Σ lapisan = nilai stok hari ini (`menutup`). Setelan baru `UM_ATUR_BAWAAN.umurTuaHari` (bawaan 60,
+  harus > ambang umur; Stok › Umur & putaran › Atur). Dasbor › Mutu usaha: "Lambat laku · N barang · Rp X modal diam" + baris **Umur stok dalam rupiah**; angka katalog **Modal diam**.
+- **Pesanan pemasok menunggu (B67) & kartu Pembelian (B44).** `gudang-logika` `gdPesananPemasok(d)`: jumlah, karung, kg, perkiraan Rp (kolom `rp`/`kg` dokumen pesanan; tanpa
+  harga disebut), per pemasok + janji terdekat. Baris Tugas gudang `pesanPemasok` membawa kg & Rp; `dbBeli.pesanan` (kartu Pembelian: pesanan menunggu + kabar barang masuk
+  dari tablet yang menunggu) — satu sumber. Angka katalog **Pesanan pemasok menunggu**.
+- **Nota "jual dulu, tandai" (B129).** Baris Tugas gudang baru `tembus` = `notaTembusBelumCocok` (jual-logika, sumber pita Jual) — tampil di Stok › Tugas gudang & Dasbor ›
+  Stok › Gudang; tuntas sendiri saat cocokkan bertanggal ≥ notanya. Angka katalog **Nota "jual dulu, tandai"**.
+- **Urut daftar (B97).** `DB_URUT` / `dbUrutkan` / `dbUrutPilih`: stok (hampir habis · terbanyak · nama), piutang (paling mendesak · terbesar · nama), utang pemasok (jatuh
+  tempo · terbesar · nama), biaya (urutan pos · terbesar · lampu dulu). Pilihan pertama = urutan lama; diingat per perangkat (`miqbal_baru_dasbor_urut`).
+- **Tren tahunan & geser (B98).** `DB_RENTANG` + Tahun (12 batang bulanan); `dbTren('bulan@2')` = mundur 2 jendela (14 hari · 8 minggu · 6 bulan · 12 bulan, maks
+  `DB_GESER_MAKS`); batang "berjalan" hanya yang memuat hari ini; `bisaMundur` berhenti di catatan pertama. Geser tidak diingat (buka Dasbor = jendela terbaru).
+- **Cetak Dasbor (B104).** Tombol **Cetak** di kepala Dasbor: kartu yang sedang tampil disalin ke `#cetakDokumen` (pola kertas berkop Laporan) dengan kepala `dbCetak` (kop =
+  `identitasUsaha`, saringan, saat cetak, cap data); tombol, pita urut & geser tidak ikut; mode terang selama dialog; `@page dasbor` A4 tegak dua kolom (`ringkasan.css`).
+  Aplikasi tablet ditolak berkalimat (tidak punya dialog cetak).
+- **Tombol aksi (B44).** Hari ini: Tutup hari · Catat uang keluar · Pindah uang (· Rinci karcis) · Bulan ini: Catat biaya · Atur anggaran · Stok: Catat barang masuk · Cocokkan ·
+  Daftar belanja · Piutang & utang: Terima bayar bon · Bayar bon pemasok · Pembelian: Catat barang masuk · Pesan ke pemasok · Wadah: Isi ulang & cek. Tiap tombol = tujuan
+  `keTujuan` yang sama dengan Menu (izin, peran & sidik jari layar asal tetap berlaku).
