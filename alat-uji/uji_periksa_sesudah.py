@@ -552,7 +552,7 @@ LAYAR_PAJAK = r"""
 var asliAda = function () { return false; };
 var __html = ''; pasang = function (akar, isi) { __html = isi && isi.__mentah ? isi.html : String(isi); }; var __aksi = null; delegasi = function (akar, a) { __aksi = a; }; gulirkan = function () {}; nanti = function () {}; segera = function () {};
 setelKunci(false); window.matchMedia = function (q) { return { matches: /1100px/.test(q) }; }; window.addEventListener = function () {}; if (typeof setTimeout === 'undefined') { var setTimeout = function () { return 0; }; var clearTimeout = function () {}; }
-var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP; var SH = LP; var KR = LP; var JN = LP;   // paket tanggal janji 27 Nov: JN = janji-logika (Pondasi › Tepat janji) · 26 Nov: buku kas semua tempat (Laporan › Harian)
+var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP; var SH = LP; var KR = LP; var JN = LP; var RB = LP;   // paket tanggal janji 27 Nov: JN = janji-logika (Pondasi › Tepat janji) · 26 Nov: buku kas semua tempat (Laporan › Harian)
 var akarL = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0 };
 var __hematL = null; var L9 = null; var gambarL = function (patch) { L9.keadaan.setel(patch || {}); L9.gambar(); return __html; };
 function hbHarianP(daftar) { var o = {}; daftar.forEach(function (k) { o[k] = { jenis: 'harian', sebab: hbSebabHarian('2027-01-05') }; }); return o; }
