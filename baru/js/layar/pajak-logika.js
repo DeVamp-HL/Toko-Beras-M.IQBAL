@@ -215,6 +215,22 @@ function pjPotonganBulanHitung(key) {
   });
   return { nota, tawar, jumlah: nota + tawar, n, tanpaDaftar };
 }
+/** P2 (owner 27 Nov 2026, B4): potongan nota & tawar PER HARI satu bulan — baris & rumus SAMA dengan pjPotonganBulan (Σ hari = bulan, dijaga uji_rapor_bulan).
+ *  → { hari: { 'YYYY-MM-DD': { nota, tawar, jumlah, n } }, nota, tawar, jumlah, n }. Bulan yang sudah ditutup buku: per hari ikut arsip (diarsip, hari kosong). */
+export function pjPotonganHarian(key) { return ingatPerVersi('pjPotonganHarian|' + key, () => pjPotonganHarianHitung(key)); }
+function pjPotonganHarianHitung(key) {
+  const Pt = potretBulan(key); if (Pt && Pt.potongan) return Object.assign({ hari: {}, diarsip: true }, Pt.potongan);
+  const hari = {}; let nota = 0, tawar = 0, n = 0;
+  ambilPenjualan().forEach((p) => {
+    if (!p.tanggal || bulanDari(p.tanggal) !== key || p.penggantiRetur) return;
+    const pot = Math.max(0, Math.round(Number(p.potonganTransaksi) || 0)); const dasar = (Number(p.hargaTotal) || 0) - (Number(p.pembulatan) || 0) + pot;
+    const asli = Number(p.hargaAsliSatuan) || 0, sel = Number(p.negoSelisih) || 0;
+    const tw = asli > 0 && sel < 0 && asli + sel > 0 && dasar > 0 ? Math.round(dasar * -sel / (asli + sel)) : 0;
+    if (!pot && !tw) return; const h = hari[p.tanggal] || (hari[p.tanggal] = { nota: 0, tawar: 0, jumlah: 0, n: 0 });
+    h.n += 1; h.nota += pot; h.tawar += tw; h.jumlah += pot + tw; n += 1; nota += pot; tawar += tw;
+  });
+  return { hari, nota, tawar, jumlah: nota + tawar, n, diarsip: false };
+}
 
 // ==================== hitungan per bulan ====================
 /**

@@ -15,7 +15,8 @@ import { SH_RENTANG_BELI } from './susut-harga-logika.js';   // B68 (owner 27 No
 import { pasangKisi } from './dasbor-kisi.js';
 
 const KUNCI_RENTANG = 'miqbal_baru_dasbor_rentang';
-const KUNCI_BELI = 'miqbal_baru_dasbor_beli';   // B68: rentang grafik pembelian, diingat per perangkat (bawaan Bulan)
+const KUNCI_BELI = 'miqbal_baru_dasbor_beli';
+const KUNCI_RAPOR = 'miqbal_baru_dasbor_rapor';   // P2 (owner 27 Nov 2026): saklar Laba | Kas kartu Rapor bulan, diingat per perangkat (bawaan Laba)   // B68: rentang grafik pembelian, diingat per perangkat (bawaan Bulan)
 const dbRpPendek = (n) => { const a = Math.abs(n || 0); const s = n < 0 ? '−' : ''; return a >= 1e6 ? s + DESIMAL(Math.round(a / 1e5) / 10) + ' jt' : a >= 1e3 ? s + Math.round(a / 1e3) + ' rb' : s + Math.round(a); };
 const dbKg = (n) => (n < 0 ? '−' : '') + DESIMAL(Math.round(Math.abs(n || 0) * 10) / 10) + ' kg';
 const dbTgl = (iso) => (iso ? tanggalPendek(iso).replace(/ \d{4}$/, '') : '');
@@ -29,6 +30,10 @@ export function pasangDasbor(akar, opsi) {
   if (!DB_RENTANG.some((r) => r[0] === rentang)) rentang = 'hari';
   let reg = {}; let pilih = null; let D = null;
   let rentangBeli = (() => { try { return localStorage.getItem(KUNCI_BELI) || 'bulan'; } catch (e) { return 'bulan'; } })(); if (!SH_RENTANG_BELI.some((r) => r[0] === rentangBeli)) rentangBeli = 'bulan';
+  let modeRapor = (() => { try { return localStorage.getItem(KUNCI_RAPOR) === 'kas' ? 'kas' : 'laba'; } catch (e) { return 'laba'; } })();
+  // P2 (B110 B124): lampu target owner untuk angka kartu lama — dari kelompok rapor (rbAmbangDasbor); tanpa target owner = '' (kartu seperti dulu)
+  const ambangDb = (k) => { const A = D && D.rapor && !D.rapor.galat && D.rapor.ambang && !D.rapor.ambang.galat ? D.rapor.ambang[k] : null; return A || null; };
+  const lampuDb = (k) => { const A = ambangDb(k); return A ? '<i class="db-lampu ' + esc(A.lampu) + '" title="' + esc(A.teks) + '"></i>' : ''; };
   // B94 (owner 27 Nov 2026): saringan Dasbor aktif (bukan Hari ini) → kartu yang TIDAK ikut diberi cap "sekarang · tidak ikut saringan" (bukan diam-diam)
   const saringAktif = () => !!(D && D.saring && !D.saring.bawaan);
   const tetap = (teks) => (saringAktif() ? '<span class="db-tetap" data-k="db-tetap">' + esc(teks || 'sekarang · tidak ikut saringan') + '</span>' : '');
@@ -48,7 +53,7 @@ export function pasangDasbor(akar, opsi) {
     return '<div class="kartu hero db-kartu db-hari' + (H.saring ? ' db-hari-saring' : '') + '">' + kepala(H.judul || 'Hari ini', H.periode, 'sumber:hari', H.sumber, H.tujuan)
       + '<div class="db-dua"><div' + daftar('hari:omzet', { judul: 'Omzet · ' + H.periode, baris: [['Omzet (sesudah retur)', RP(H.omzet)], ['Nota', String(H.nota)]].concat(H.retur ? [['Retur & refund', RP(H.retur)]] : []).concat((H.tunai === null ? [['Uang per cara bayar', 'ikut arsip tutup buku']] : [['Tunai', RP(H.tunai)], ['QRIS', RP(H.qris)]].concat(H.transfer ? [['Transfer', RP(H.transfer)]] : []).concat([['Bon', RP(H.kredit) + ' · ' + H.nKredit + ' nota']]))).concat(H.jenis ? GE.geBaris(H.jenis, RP) : []), tujuan: H.tujuan, ke: H.sumber }) + ' class="db-ketuk"><div class="label" style="color: var(--hero-label);">Omzet</div>'
       + '<div class="angka dagang db-angka-besar">' + esc(RP(H.omzet)) + '</div><div class="ket">' + esc(H.nota + ' nota' + (H.retur ? ' · sudah dikurangi retur ' + RP(H.retur) : '')) + '</div></div>'
-      + '<div' + daftar('hari:laba', { judul: 'Laba kotor · ' + H.periode, baris: [['Laba kotor (margin)', RP(H.margin)]].concat(H.tanpaHpp ? [['Baris tanpa modal', H.tanpaHpp + ' baris — tidak ikut dihitung']] : []), tujuan: H.tujuan, ke: H.sumber }) + ' class="db-ketuk"><div class="label" style="color: var(--hero-label);">Laba kotor</div>'
+      + '<div' + daftar('hari:laba', { judul: 'Laba kotor · ' + H.periode, baris: [['Laba kotor (margin)', RP(H.margin)]].concat(H.tanpaHpp ? [['Baris tanpa modal', H.tanpaHpp + ' baris — tidak ikut dihitung']] : []), tujuan: H.tujuan, ke: H.sumber }) + ' class="db-ketuk"><div class="label" style="color: var(--hero-label);">' + lampuDb('labaHari') + 'Laba kotor</div>'
       + '<div class="angka db-angka-sedang">' + esc(RP(H.margin)) + '</div><div class="ket">' + esc(H.tanpaHpp ? H.tanpaHpp + ' baris tanpa modal tidak ikut' : 'semua baris bermodal') + '</div></div></div>'
       + barisBandingHari()
       + '<div class="db-sub">Kas per tempat' + (kas.ada ? ' · ' + esc(RP(kas.total)) + ' · ' + esc(kas.titik) : '') + (H.saring ? ' · sekarang, tidak ikut saringan' : '') + '</div>'
@@ -63,7 +68,7 @@ export function pasangDasbor(akar, opsi) {
       + (H.setor && !H.setor.galat && H.setor.lewat ? '<div class="ket db-ketuk awas-teks" data-k="db-setor"' + daftar('hari:setor', { judul: 'Setor ke bank', baris: [['Brankas', RP(H.setor.brankas)], ['Batas', RP(H.setor.batas)], ['Setor', RP(H.setor.n)], ['Sisakan', RP(H.setor.sisakan)]], tujuan: H.setorTujuan, ke: 'Uang › Pindah uang' }) + '>' + esc(H.setor.teks) + ' ›</div>' : '')
       + (H.rekening && !H.rekening.galat ? '<div class="ket db-ketuk' + (H.rekening.nBelum ? ' awas-teks' : '') + '" data-k="db-rekening"' + daftar('hari:rekening', { judul: 'Rekening usaha', baris: [['Menurut buku', H.rekening.bukuSekarang === null ? '—' : RP(H.rekening.bukuSekarang)], ['Belum dicek', H.rekening.nBelum + ' transaksi sejak ' + dbTgl(H.rekening.dari)], ['Cocok terakhir', H.rekening.akhir ? dbTgl(H.rekening.akhir.tanggal) : 'belum pernah']], tujuan: H.rekeningTujuan, ke: 'Uang › Rekening' }) + '>' + esc(H.rekening.teks) + ' ›</div>' : '')
       + '<div class="db-karcis db-ketuk' + (KC.n ? ' awas-teks' : '') + '"' + daftar('hari:karcis', { judul: 'Karcis kasir', baris: [['Karcis belum dirinci', KC.n + (KC.n ? ' · ' + RP(KC.rp) : '')], ['Nota jumlahnya belum pasti', String(KC.rapikan)], ['Karcis bertanggal hari ini', String(KC.hariIni)]], tujuan: H.karcisTujuan, ke: H.karcisSumber, catatan: 'Karcis = nota kasir yang baru nominalnya; barangnya belum dirinci, jadi modal & stoknya belum ikut.' }) + '>'
-      + esc(KC.n ? KC.n + ' karcis kasir belum dirinci · ' + RP(KC.rp) : 'Tidak ada karcis kasir yang menunggu dirinci') + (KC.rapikan ? ' · ' + esc(KC.rapikan + ' nota perlu dirapikan') : '') + ' ›</div>'
+      + lampuDb('karcis') + esc(KC.n ? KC.n + ' karcis kasir belum dirinci · ' + RP(KC.rp) : 'Tidak ada karcis kasir yang menunggu dirinci') + (KC.rapikan ? ' · ' + esc(KC.rapikan + ' nota perlu dirapikan') : '') + ' ›</div>'
       + '</div>';
   }
 
@@ -228,7 +233,7 @@ export function pasangDasbor(akar, opsi) {
     const jatuhP = P.jatuh.slice(0, 4).map((b) => baris({ nama: b.nama, ket: b.kata, rp: b.sisa, awas: true, isi: { judul: b.nama, baris: [['Sisa bon', RP(b.sisa)], ['Keadaan', b.kata], ['', b.ket]], tujuan: b.tujuan, ke: P.sumber } }, 'piutang:' + b.kunci)).join('');
     const jatuhU = U.lewat.concat(U.dekat).slice(0, 4).map((b) => baris({ nama: b.pemasok, ket: b.tempoTeks, rp: b.sisa, awas: U.lewat.indexOf(b) >= 0, isi: { judul: b.pemasok + ' · bon ' + dbTgl(b.tanggal), baris: [['Sisa', RP(b.sisa)], ['Tempo', b.tempoTeks]], tujuan: b.tujuan, ke: U.sumber } }, 'pemasok:' + b.id)).join('');
     return '<div class="kartu db-kartu db-tagihan">' + kepala('Piutang pelanggan', G.periode, 'sumber:piutang', P.sumber, P.tujuan, tetap())
-      + '<div class="db-angka-baris"><span class="angka db-angka-kecil">' + esc(RP(P.total)) + '</span><span class="ket">' + esc(P.n + ' nama' + (P.nota && !P.nota.galat ? ' · per nota: lewat jatuh tempo ' + RP(P.nota.lewat) : ' · jatuh tempo ' + P.nJatuh + ' nama ' + RP(P.rpJatuh))) + '</span></div>'
+      + '<div class="db-angka-baris">' + lampuDb('piutang') + '<span class="angka db-angka-kecil">' + esc(RP(P.total)) + '</span><span class="ket">' + esc(P.n + ' nama' + (P.nota && !P.nota.galat ? ' · per nota: lewat jatuh tempo ' + RP(P.nota.lewat) : ' · jatuh tempo ' + P.nJatuh + ' nama ' + RP(P.rpJatuh))) + '</span></div>'
       // owner 26 Nov 2026 (B29 · B30 · B31): jatuh tempo PER NOTA — bon kemarin tidak lagi ikut "jatuh tempo" hanya karena bon tertua orangnya sudah tua
       + (P.nota && !P.nota.galat ? '<div class="ket db-ketuk' + (P.nota.lewat > 0 ? ' awas-teks' : '') + '" data-k="db-per-nota"' + daftar('piutang:nota', { judul: 'Piutang per nota', baris: [['Lewat jatuh tempo', RP(P.nota.lewat) + ' · ' + P.nota.nLewat + ' nota · ' + P.nota.orangLewat + ' orang'], ['Jatuh tempo hari ini', RP(P.nota.hariIni)], ['Jatuh tempo 7 hari ke depan', RP(P.nota.minggu)], ['Belum jatuh tempo', RP(P.nota.nanti)]].concat(P.nota.tanpa ? [['Tanpa tanggal', RP(P.nota.tanpa)]] : []).concat(P.nota.menutup ? [] : [['TIDAK MENUTUP', 'selisih ' + RP(P.nota.selisih) + ' — laporkan']]), tujuan: P.notaTujuan, ke: 'Pelanggan › Bon › Jatuh tempo' }) + '>'
         + esc('Jatuh tempo hari ini ' + RP(P.nota.hariIni) + ' · 7 hari ke depan ' + RP(P.nota.minggu) + (P.nota.menutup ? '' : ' · per nota TIDAK MENUTUP')) + ' ›</div>' : '')
@@ -359,7 +364,7 @@ export function pasangDasbor(akar, opsi) {
     if (M.galat) out.push(salah('margin', 'Margin bulan ini', M));
     else {
       const tg = (id) => M.tangga.find((x) => x.id === id) || { pct: null, rp: null, markup: null };
-      out.push(baris('margin', 'Margin ' + esc(M.nama) + ' · kotor / usaha / bersih', pc(tg('kotor').pct) + ' / ' + pc(tg('usaha').pct) + ' / ' + pc(tg('bersih').pct), M.menutup === false || (tg('bersih').rp !== null && tg('bersih').rp < 0),
+      out.push(baris('margin', lampuDb('margin') + 'Margin ' + esc(M.nama) + ' · kotor / usaha / bersih', pc(tg('kotor').pct) + ' / ' + pc(tg('usaha').pct) + ' / ' + pc(tg('bersih').pct), M.menutup === false || (tg('bersih').rp !== null && tg('bersih').rp < 0),
         { judul: 'Margin & mark-up · ' + M.nama, baris: M.tangga.map((r) => [r.nama, (r.rp === null ? '—' : RP(Math.round(r.rp))) + ' · ' + pc(r.pct) + ' · mark-up ' + pc(r.markup)])
           .concat(M.jenis.map((g) => ['· ' + g.nama, g.pct === null ? (g.keadaan === 'kosong' ? 'tidak ada jualan' : 'belum bisa dihitung') : pc(g.pct) + ' · mark-up ' + pc(g.markup)]))
           .concat([['Grosir toko · BPS', pc(M.bps.tokoGrosir) + ' · ' + pc(M.bps.grosir)], ['Ecer toko · BPS', pc(M.bps.tokoEcer) + ' · ' + pc(M.bps.eceran)]]).concat(M.menutup === false ? [['Peringatan', 'angka margin TIDAK menutup ke Laporan — buka Laporan']] : []),
@@ -439,6 +444,35 @@ export function pasangDasbor(akar, opsi) {
       + (P ? angka('periode', Bl.periodeNama, P) : '') + (M ? angka('bulan', Bl.bulanNama, M) : '')
       + '<div class="ket db-pandu">Ketuk batang untuk angkanya · ketuk lagi untuk membuka ' + esc(T.rentang === 'bulan' ? 'Laporan › Bulanan' : 'Stok › Barang masuk') + '</div></div>';
   }
+  // P2 (owner 27 Nov 2026: A136 B112 B26): RAPOR BULAN — bulan ini vs bulan lalu vs target owner, % ubah & lampu; saklar Laba | Kas ("Dua-duanya"). D.rapor =
+  // dasbor-logika dbRapor → rapor-bulan-logika rbRapor apa adanya. Bulan berjalan: angka yang menumpuk dibanding lewat perkiraan sebulan (disebut di kalimat).
+  function kartuRapor(Q) {
+    if (!Q) return ''; if (Q.galat) return '<div class="kartu db-kartu db-rapor">' + galat(Q) + '</div>';
+    const R = modeRapor === 'kas' && Q.kas && !Q.kas.galat ? Q.kas : Q.laba;
+    const pita = '<div class="pita db-rentang" data-k="db-rapor-pita">' + [['laba', 'Laba'], ['kas', 'Kas']].map(([id, nm]) => '<div class="seg' + (id === R.mode ? ' aktif' : '') + '" data-db-rapor="' + id + '">' + nm + '</div>').join('') + '</div>';
+    const baris = R.baris.concat(R.mode === 'laba' ? R.sekarang : []).map((b) => {
+      const arah = b.membaik === null || b.membaik === undefined ? '' : b.membaik ? ' db-naik' : ' db-turun';
+      const isi = { judul: b.nama + ' · ' + R.nama, baris: [[R.nama + (b.perkiraan ? ' (sampai hari ini)' : ''), b.iniTeks]].concat(b.perkiraan ? [['Perkiraan sebulan', b.perkiraanTeks]] : []).concat(b.laluTeks !== undefined ? [[R.namaLalu, b.laluTeks], ['Perubahan', b.ubahTeks || '—']] : [])
+        .concat(b.rpTeks ? [['Rupiah', b.rpTeks]] : []).concat(b.targetTeks ? [['Target owner', b.targetTeks + (b.lampuKata ? ' · ' + b.lampuKata : '')]] : [])
+        .concat(b.catatan ? [['Sebab', b.catatan.sebab || '—'], ['Tindakan', b.catatan.tindakan || '—']] : []), tujuan: b.tujuan || R.tujuan, ke: b.tujuan ? 'layarnya' : R.sumber, catatan: b.ket || '' };
+      return '<div class="db-baris db-ketuk db-rapor-baris' + (b.lampu === 'merah' ? ' awas-teks' : '') + '"' + daftar('rapor:' + R.mode + ':' + b.id, isi) + '><span class="db-nama">' + (b.lampu && b.lampu !== 'tanpa' ? '<i class="db-lampu ' + esc(b.lampu) + '"></i>' : '') + esc(b.nama) + '</span>'
+        + '<span class="db-nilai angka">' + esc(b.iniTeks) + '</span><span class="ket db-rapor-ubah' + arah + '">' + esc(b.ubahTeks === undefined ? 'sekarang' : b.ubahTeks) + '</span></div>'; }).join('');
+    return '<div class="kartu db-kartu db-rapor" data-k="db-rapor">' + kepala(Q.judul || 'Rapor bulan', Q.periode, 'sumber:rapor', Q.sumber, Q.tujuan) + pita
+      + '<div class="db-rapor-kepala ket"><span>angka ' + esc(R.pendek) + '</span><span>vs ' + esc(R.pendekLalu) + '</span></div>' + baris
+      + '<div class="ket db-pandu">' + esc(R.kalimat) + ' Ketuk baris untuk angka bulan lalu, target & sebabnya.</div></div>';
+  }
+  // P2 (owner 27 Nov 2026, B26): ARUS KAS BULAN INI — uang masuk, keluar, kas bersih vs bulan lalu + pembanding laba bersih (rbArusKas: intiBulan + rincian arus kas mesin)
+  function kartuArusKas(Q) {
+    if (!Q) return ''; if (Q.galat) return '<div class="kartu db-kartu db-arus">' + galat(Q) + '</div>'; const A = Q.arus; if (!A || A.galat) return '<div class="kartu db-kartu db-arus">' + galat(A || { galat: 'arus kas tidak ada' }) + '</div>';
+    const W = Math.max(1, Math.abs(A.masuk), Math.abs(A.keluar));
+    const bilah = (id, nama, n, lalu, kelas, rinci) => '<div class="db-baris db-ketuk"' + daftar('arus:' + id, { judul: nama + ' · ' + A.nama, baris: [[A.nama, RP(n)], [A.namaLalu, RP(lalu)]].concat((rinci || []).slice(0, 8).map((r) => ['· ' + r.nama, RP(r.n)])), tujuan: A.tujuan, ke: A.sumber })
+      + '><span class="db-nama">' + esc(nama) + '</span><svg class="db-bilah" viewBox="0 0 100 10" preserveAspectRatio="none"><rect class="db-rel" x="0" y="4" width="100" height="2"></rect><rect class="db-tumbuh-x ' + kelas + '" x="0" y="0" width="' + dbPersen(Math.abs(n), W).toFixed(2) + '" height="10"></rect></svg><span class="db-nilai angka">' + esc(RP(n)) + '</span></div>';
+    return '<div class="kartu db-kartu db-arus" data-k="db-arus">' + kepala(A.berjalan ? 'Arus kas bulan ini' : 'Arus kas ' + A.nama, A.nama + (A.berjalan ? ' · sampai hari ini' : '') + ' vs ' + A.namaLalu, 'sumber:arus', A.sumber, A.tujuan)
+      + '<div class="db-angka-baris"><span class="angka db-angka-kecil' + (A.bersih < 0 ? ' awas-teks' : '') + '">' + esc(RP(A.bersih)) + '</span><span class="ket">kas bersih' + esc(A.ubahBersih !== null ? ' · ' + (A.ubahBersih > 0 ? '▲ ' : '▼ ') + DESIMAL(Math.round(Math.abs(A.ubahBersih) * 10) / 10) + '% vs ' + A.namaLalu.split(' ')[0] : '') + '</span></div>'
+      + bilah('masuk', 'Uang masuk', A.masuk, A.laluMasuk, 'db-arus-masuk', A.rinciMasuk) + bilah('keluar', 'Uang keluar', A.keluar, A.laluKeluar, 'db-arus-keluar', A.rinciKeluar)
+      + '<div class="db-baris db-ketuk"' + daftar('arus:laba', { judul: 'Kas bersih vs laba bersih · ' + A.nama, baris: [['Kas bersih', RP(A.bersih)], ['Laba bersih', RP(A.labaBersih)], ['Beda', A.beda === null ? '—' : RP(A.beda)], ['Jual bon (laba, belum uang)', RP(A.bon)]], tujuan: A.tujuan, ke: A.sumber, catatan: 'Laba bersih ikut jual bon & tidak menghitung belanja stok; kas bersih menghitung uang yang benar-benar masuk dan keluar.' })
+      + '><span class="db-nama">Laba bersih (pembanding)</span><span class="ket">' + esc(A.beda === null ? '' : 'beda ' + (A.beda >= 0 ? '+' : '−') + dbRpPendek(Math.abs(A.beda))) + '</span><span class="db-nilai angka">' + esc(RP(A.labaBersih)) + ' ›</span></div></div>';
+  }
   let capKini = null;
   function pasangCap() { if (!capKini) return; akar.querySelectorAll('.db-kepala').forEach((k) => { if (!k.querySelector('.db-cap')) k.insertAdjacentHTML('beforeend', '<span class="db-cap"><i></i>' + esc(capKini.teks) + '</span>'); }); setelCap(capKini); }
   function setelCap(c) { capKini = c; akar.querySelectorAll('.db-cap').forEach((el) => { el.lastChild.textContent = c.teks; el.classList.toggle('awas', !!c.awas); el.classList.toggle('hidup', !!c.hidup); el.title = c.judul || ''; }); }
@@ -457,6 +491,7 @@ export function pasangDasbor(akar, opsi) {
   akar.addEventListener('click', (ev) => {
     if (kisi.klik(ev)) { tutupTip(); return; }   // desain ulang 26 Nov 2026: mode atur, buka/tutup rincian, saringan tanggal, headline
     const rg = ev.target.closest('[data-db-rentang]'); if (rg) { gantiRentang(rg.dataset.dbRentang); return; }
+    const rr = ev.target.closest('[data-db-rapor]'); if (rr) { const m = rr.dataset.dbRapor === 'kas' ? 'kas' : 'laba'; if (m !== modeRapor) { modeRapor = m; try { localStorage.setItem(KUNCI_RAPOR, m); } catch (e) { /* abaikan */ } tutupTip(); gambar(null, false); } return; }
     const rb = ev.target.closest('[data-db-beli]'); if (rb) { const r = rb.dataset.dbBeli; if (r !== rentangBeli && SH_RENTANG_BELI.some((x) => x[0] === r)) { rentangBeli = r; try { localStorage.setItem(KUNCI_BELI, r); } catch (e) { /* abaikan */ } tutupTip(); gambar(null, false); } return; }
     const ke = ev.target.closest('[data-db-ke]'); if (ke) { const isi = reg[ke.dataset.dbKe]; tutupTip(); if (isi && isi.tujuan) opsi.keTujuan(isi.tujuan); return; }
     const el = ev.target.closest('[data-db]'); if (el) { const id = el.dataset.db; if (pilih === id) { const isi = reg[id]; tutupTip(); if (isi && isi.tujuan) opsi.keTujuan(isi.tujuan); } else tampilTip(id, el); return; }
@@ -485,7 +520,7 @@ export function pasangDasbor(akar, opsi) {
   /** Isi panel kartu: kartu lama Dasbor apa adanya (+ Enam bulan, kartu tambahan). */
   function kartuPenuh(id) {
     const P = { kHari: () => kartuHari(D.hari), kKpi: () => kartuKpi(D.kpi), kTren: () => kartuTren(D.tren), kBulan: () => kartuBulan(D.bulan), kPemicu: () => kartuPemicu(D.bulan), kStok: () => kartuStok(D.stok),
-      kPondasi: () => kartuPondasi(D.pondasi), kWadah: () => kartuWadah(D.stok), kTagihan: () => kartuTagihan(D.tagihan), kMutu: () => kartuMutu(D.mutu), kB2b: () => kartuB2b(D.b2b), kEnam: () => kartuEnam(D.enam), kBeli: () => kartuBeli(D.beli) };
+      kPondasi: () => kartuPondasi(D.pondasi), kWadah: () => kartuWadah(D.stok), kTagihan: () => kartuTagihan(D.tagihan), kMutu: () => kartuMutu(D.mutu), kB2b: () => kartuB2b(D.b2b), kEnam: () => kartuEnam(D.enam), kBeli: () => kartuBeli(D.beli), kRapor: () => kartuRapor(D.rapor), kArusKas: () => kartuArusKas(D.rapor) };
     return D && P[id] ? P[id]() : '';
   }
   const kisi = pasangKisi(akar, { kini: () => (opsi.kini ? opsi.kini() : new Date()), ingat: opsi.ingat, gantiSaring: () => { tutupTip(); if (opsi.mintaRentang) opsi.mintaRentang(rentang); else gambar(null, false); }, /* B94: Ringkasan menyusun ulang dengan saringan baru */ simpanWidget: opsi.simpanWidget || (async () => ({ ok: false, kabar: 'Tidak bisa menyimpan dari sini' })),
