@@ -140,7 +140,8 @@ export function upahMenggantung(key, kini) {
 // ---------- satu bulan lengkap: baris per jenis + anggaran + lampu + perkiraan + acuan ----------
 /** Kendali biaya satu bulan. `kini` = jam layar. Acuan = median ≤ 3 bulan sebelumnya yang punya catatan (TERUKUR, bukan angka ideal). */
 export function kendaliBulan(key, kini, bayaran) {
-  const B = bayaran || ugBayaran(); const A = aturKendali(); const K = kbInti(key, kini, B, A); const KL = kbInti(kbGeser(key, -1), kini, B, A);
+  // P2 (owner 27 Nov 2026): anggaran umum ditimpa ANGKA KHUSUS bulan itu bila owner mengisinya (aturanToko/anggaranBulan.perBulan) — kata kunci & ambang tetap umum
+  const B = bayaran || ugBayaran(); const A = aturKendaliBulan(key); const K = kbInti(key, kini, B, A); const KL = kbInti(kbGeser(key, -1), kini, B, A);
   const sebelum = daftarBulan(kini, 36).map((b) => b.key).filter((k) => k < key).slice(0, 3).map((k) => (k === KL.key ? KL : kbInti(k, kini, B, A))).filter((x) => !x.tanpaCatatan);
   const U = upahMenggantung(key, kini), UL = upahMenggantung(KL.key, kini);   // bulan lampau yang upahnya belum dibayar TETAP terlihat (hariList upah-logika membentang sejak terakhir dibayar)
   const nilaiJenis = (X, id) => (id === 'susut' ? X.susut : id === 'hapus' ? X.hapus : X.per[id].n);
@@ -156,6 +157,7 @@ export function kendaliBulan(key, kini, bayaran) {
     else { r.dasar = K.berjalan && r.sifat === 'variabel' ? Math.round(r.anggaran * K.hariJalan / K.nHari) : r.anggaran; r.selisih = r.pakai - r.dasar; r.selisihPct = kbPct(r.selisih, r.dasar);
       r.lampu = r.selisih <= 0 ? 'hijau' : r.selisihPct <= A.ambang ? 'amber' : 'merah';
       r.lampuTeks = (K.berjalan && r.sifat === 'variabel' ? 'jatah sampai hari ke-' + K.hariJalan + ' ' + RP(r.dasar) : 'anggaran ' + RP(r.anggaran)) + ' · ' + (r.selisih <= 0 ? 'sisa ' + RP(-r.selisih) : 'LEWAT ' + RP(r.selisih) + ' (' + kbPctTeks(r.selisihPct) + ')'); }
+    r.khusus = !!(A.khusus && A.khusus[r.id]); if (r.khusus) r.lampuTeks += ' · angka khusus ' + K.nama;
     r.belumTercatat = r.id === 'tetap' && K.berjalan ? K.posSemua.filter((p) => !(p.n > 0)).length : 0; if (r.belumTercatat) r.lampuTeks += ' · ' + r.belumTercatat + ' pos belum dicatat bulan ini';
     const banding = r.proyeksi !== null ? r.proyeksi : r.pakai; r.delta = r.nLalu > 0 ? kbPct(banding - r.nLalu, r.nLalu) : null; r.deltaDari = r.proyeksi !== null ? 'perkiraan' : 'aktual';
     if (r.id === 'angkut') { const O = ajOngkirRentang(key + '-01', akhirBulanIso(key)); r.ongkirMasuk = O.rp; r.nAntar = O.nNota;
@@ -277,4 +279,137 @@ export function susunTambahKata(jenis, teks, w) {
   const A = aturKendali(); for (const x of JENIS_BIAYA) { if ((A.kata[x.id] || []).indexOf(k) >= 0) return x.id === jenis ? { tolak: '"' + k + '" sudah jadi kata kunci ' + j.nama } : { tolak: '"' + k + '" sudah dipakai ' + x.nama + ' — satu kata satu jenis' }; }
   const kata = {}; JENIS_BIAYA.forEach((x) => { kata[x.id] = (A.kata[x.id] || []).slice(); }); kata[jenis].push(k);
   return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'kendaliBiaya', tanggal: w.tanggal, jam: w.jam, anggaran: A.anggaran, ambang: A.ambang, ambangPemicu: A.ambangPemicu, kata } }], patch: { pilahK: null, kabar: '"' + k + '" → ' + j.nama + ' — berlaku untuk semua catatan yang keterangannya diawali kata itu', kabarAwas: false } };
+}
+
+// ==================== P2 (owner 27 Nov 2026) · TARGET BULANAN, ANGKA KHUSUS PER BULAN, SEBAB & TINDAKAN PER POS ====================
+// Keputusan owner 27 Nov 2026: semua pos target dipakai (kg terjual & laba kotor · HPP/kg & margin kotor % · piutang akhir bulan · karcis belum dirinci) + usulan
+// yang masuk akal (omzet, laba bersih, potongan & tawar %); anggaran SAMA tiap bulan, boleh diberi ANGKA KHUSUS per bulan. Semua angka = setelan owner; BAWAAN =
+// belum diatur (lampu mati) — tombol "isi dari acuan" hanya mengisi formulir. Dokumen: aturanToko/anggaranBulan (target umum + angka khusus per bulan, juga untuk
+// anggaran biaya per jenis & PPh) dan aturanToko/anggaranCatatan (sebab & tindakan per pos per bulan). Owner saja, tanpa rules baru; mesin uang tidak disentuh.
+export const AB_ID = 'anggaranBulan';
+export const AB_CATATAN_ID = 'anggaranCatatan';
+/** Pos target. arah: 'min' = makin besar makin baik (target) · 'maks' = batas paling banyak. jalan = bulan berjalan dibanding jatah sampai hari ke-N. */
+export const AB_TARGET = [
+  { id: 'omzet', pendek: 'rupiah sebulan · sesudah potongan & retur', nama: 'Omzet (penjualan bersih)', arah: 'min', satuan: 'rp', jalan: true, ket: 'omzet mesin sesudah potongan & retur · bulan berjalan dibanding jatah sampai hari ke-N' },
+  { id: 'kgTerjual', pendek: 'kg sebulan', nama: 'Kg terjual', arah: 'min', satuan: 'kg', jalan: true, ket: 'kg semua nota ber-kg · bulan berjalan dibanding jatah sampai hari ke-N' },
+  { id: 'labaKotor', pendek: 'rupiah sebulan · Dasbor: ÷ jumlah hari = target harian', nama: 'Laba kotor', arah: 'min', satuan: 'rp', jalan: true, ket: 'omzet ber-HPP − HPP (mesin laba) · bulan berjalan dibanding jatah sampai hari ke-N · Dasbor: target per hari = sebulan ÷ jumlah hari' },
+  { id: 'marginKotor', pendek: 'persen · laba kotor ÷ omzet ber-HPP', nama: 'Margin laba kotor', arah: 'min', satuan: 'pct', jalan: false, ket: 'laba kotor ÷ omzet ber-HPP (penyebut yang sama dengan Laporan › Laba)' },
+  { id: 'labaBersih', pendek: 'rupiah sebulan', nama: 'Laba bersih', arah: 'min', satuan: 'rp', jalan: true, ket: 'mesin laba · bulan berjalan: laba bersih sampai hari ini dibanding jatah sampai hari ke-N' },
+  { id: 'hppKg', pendek: 'rupiah per kg', nama: 'HPP rata-rata per kg', arah: 'maks', satuan: 'rpkg', jalan: false, ket: 'HPP mesin ÷ kg nota ber-HPP (= pemicu "HPP per kg terjual")' },
+  { id: 'piutangAkhir', pendek: 'rupiah · sisa bon di akhir bulan', nama: 'Piutang akhir bulan', arah: 'maks', satuan: 'rp', jalan: false, ket: 'sisa bon pelanggan akhir bulan (bulan berjalan: hari ini) — mesin yang sama dengan neraca' },
+  { id: 'potonganPct', pendek: 'persen dari penjualan kotor', nama: 'Potongan & tawar', arah: 'maks', satuan: 'pct', jalan: false, ket: 'potongan nota + tawar di bawah harga daftar ÷ penjualan kotor (Laporan › Pajak)' },
+  { id: 'karcisBelum', pendek: 'jumlah karcis · posisi sekarang', nama: 'Karcis kasir belum dirinci', arah: 'maks', satuan: 'n', jalan: false, ket: 'jumlah karcis kasir yang menunggu dirinci — posisi sekarang (Jual › Karcis kasir)' },
+];
+/** Penjaga salah ketik (bukan kebijakan). */
+export const AB_MAKS = { rp: 10000000000, kg: 10000000, rpkg: 1000000, pct: 100, n: 10000 };
+export const AB_BULAN_MAKS = 24;   // angka khusus & catatan disimpan paling banyak 24 bulan terbaru (dokumen tidak membengkak)
+export const AB_CATATAN_MAKS = 200;   // huruf per sebab / tindakan
+/** Pos yang boleh diberi sebab & tindakan: jenis biaya, hapus buku, susut, PPh, pos target, susut %. */
+export const AB_POS_CATATAN = JENIS_BIAYA.map((j) => j.id).concat(JENIS_BAWAH.map((j) => j.id), [ID_ANGGARAN_PAJAK], AB_TARGET.map((t) => t.id), ['susutPct', 'hariStok']);
+const abBulanSah = (k) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(k || ''));
+const abBulat = (n, satuan) => (satuan === 'pct' ? Math.round(n * 100) / 100 : satuan === 'kg' ? Math.round(n * 10) / 10 : Math.round(n));
+const abSah = (v, satuan) => { const n = Number(v); return isFinite(n) && n > 0 && n <= AB_MAKS[satuan] ? abBulat(n, satuan) : 0; };
+/** Angka tersimpan → teks formulir (koma desimal). */
+export const abTeks = (n, satuan) => (n === null || n === undefined || n === '' ? '' : satuan === 'pct' || satuan === 'kg' ? String(n).replace('.', ',') : String(Math.round(n)));
+const abUrut = (o) => { const out = {}; Object.keys(o || {}).sort().forEach((k) => { out[k] = o[k]; }); return out; };
+
+/** Setelan P2: { target: { id: angka (0 = mati) }, perBulan: { 'YYYY-MM': { anggaran: { id: angka }, target: { id: angka } } } (yang diisi saja; 0 = mati bulan itu), dariOwner, nTarget }. */
+export function aturAnggaranBulan() {
+  const a = ugAturDok(AB_ID) || {}; const target = {}; AB_TARGET.forEach((t) => { target[t.id] = abSah(a.target && a.target[t.id], t.satuan); });
+  const perBulan = {}; const pb = a.perBulan && typeof a.perBulan === 'object' ? a.perBulan : {};
+  Object.keys(pb).filter(abBulanSah).sort().forEach((k) => { const x = pb[k] || {}; const ang = {}, tg = {}; const ada = (o, id) => o && o[id] !== undefined && o[id] !== null && o[id] !== '' && isFinite(Number(o[id])) && Number(o[id]) >= 0;
+    KB_ID_SIMPAN.forEach((id) => { if (ada(x.anggaran, id)) ang[id] = Math.min(1000000000, Math.round(Number(x.anggaran[id]))); });
+    AB_TARGET.forEach((t) => { if (ada(x.target, t.id)) tg[t.id] = Number(x.target[t.id]) > 0 ? abSah(x.target[t.id], t.satuan) : 0; });
+    if (Object.keys(ang).length || Object.keys(tg).length) perBulan[k] = { anggaran: ang, target: tg }; });
+  return { target, perBulan, dariOwner: !!ugAturDok(AB_ID), nTarget: AB_TARGET.filter((t) => target[t.id] > 0).length, tanggal: a.tanggal || '' };
+}
+/** Aturan kendali SATU bulan: aturKendali (anggaran umum) yang anggarannya ditimpa angka khusus bulan itu. khusus = { id: true } pos yang ditimpa. */
+export function aturKendaliBulan(key) {
+  const A = aturKendali(); const P = aturAnggaranBulan().perBulan[String(key)];
+  if (!P || !Object.keys(P.anggaran).length) return Object.assign({}, A, { khusus: {} });
+  const anggaran = Object.assign({}, A.anggaran); const khusus = {}; Object.keys(P.anggaran).forEach((id) => { anggaran[id] = P.anggaran[id]; khusus[id] = true; });
+  return Object.assign({}, A, { anggaran, khusus, nAnggaran: ID_ANGGARAN.filter((id) => anggaran[id] > 0).length });
+}
+/** Target satu bulan per pos: angka khusus bulan itu bila diisi, selain itu angka umum. → { id: { nilai (0 = mati), khusus } } */
+export function targetBulan(key) {
+  const T = aturAnggaranBulan(); const P = T.perBulan[String(key)]; const out = {};
+  AB_TARGET.forEach((t) => { const k = !!(P && P.target[t.id] !== undefined); out[t.id] = { nilai: k ? P.target[t.id] : T.target[t.id], khusus: k }; });
+  return out;
+}
+/**
+ * Lampu satu target. t = pos AB_TARGET (atau { arah, jalan }), nilai = target owner, aktual = angka mesin, X = { berjalan, hariJalan, nHari }, ambang = ambang lampu kendali (%).
+ * min: HIJAU ≥ target · AMBER ≥ target − ambang % · MERAH di bawahnya. maks: HIJAU ≤ batas · AMBER ≤ batas + ambang % · MERAH di atasnya. Pos `jalan` di bulan berjalan
+ * dibanding JATAH SAMPAI HARI KE-N (target × hari jalan ÷ hari bulan) — sama dengan biaya variabel. Target 0 = 'tanpa'; aktual belum bisa dihitung = 'belum'.
+ */
+export function kbLampuTarget(t, nilai, aktual, X, ambang) {
+  if (!(nilai > 0)) return { lampu: 'tanpa', dasar: null, selisih: null, pct: null };
+  const dasar = t.jalan && X && X.berjalan && X.nHari > 0 ? nilai * X.hariJalan / X.nHari : nilai;
+  if (aktual === null || aktual === undefined || !isFinite(aktual)) return { lampu: 'belum', dasar, selisih: null, pct: null };
+  const a = (isFinite(Number(ambang)) ? Number(ambang) : ATUR_KENDALI_BAWAAN.ambang) / 100;
+  const lampu = t.arah === 'min' ? (aktual >= dasar - 1e-9 ? 'hijau' : aktual >= dasar * (1 - a) - 1e-9 ? 'amber' : 'merah') : (aktual <= dasar + 1e-9 ? 'hijau' : aktual <= dasar * (1 + a) + 1e-9 ? 'amber' : 'merah');
+  return { lampu, dasar, selisih: aktual - dasar, pct: dasar ? (aktual - dasar) / dasar * 100 : null };
+}
+/** Draf formulir Atur lengkap: drafAtur (anggaran umum, ambang, kata) + target umum + angka khusus bulan `key`. Kosong = ikut angka umum. */
+export function drafAturSemua(key) {
+  const d = drafAtur(); const T = aturAnggaranBulan(); const P = T.perBulan[String(key)] || null;
+  d.target = {}; AB_TARGET.forEach((t) => { d.target[t.id] = T.target[t.id] > 0 ? abTeks(T.target[t.id], t.satuan) : ''; });
+  d.khususBulan = String(key); d.khususNyala = !!P; d.khususA = {}; d.khususT = {};
+  KB_ID_SIMPAN.forEach((id) => { d.khususA[id] = P && P.anggaran[id] !== undefined ? String(P.anggaran[id]) : ''; });
+  AB_TARGET.forEach((t) => { d.khususT[t.id] = P && P.target[t.id] !== undefined ? abTeks(P.target[t.id], t.satuan) : ''; });
+  return d;
+}
+/** Satu ketikan target → { n } | { kosong } | { tolak }. Huruf / minus ditolak berkalimat (tidak dibulatkan diam-diam). */
+function abBaca(v, t, label) {
+  if (ugKosong(v)) return { kosong: true }; const s = String(v).trim();
+  if (!/^[0-9][0-9.,]*$/.test(s)) return { tolak: label + ' ditulis dengan angka saja (' + (t.satuan === 'pct' ? '8,5 = 8,5 %' : t.satuan === 'kg' ? 'kg' : t.satuan === 'n' ? 'jumlah karcis' : 'rupiah') + ')' };
+  const n = ugAngka(s); if (!(n >= 0) || n > AB_MAKS[t.satuan]) return { tolak: label + ' terlalu besar (paling banyak ' + (t.satuan === 'pct' ? '100 %' : ANGKA(AB_MAKS[t.satuan])) + ')' };
+  if (t.satuan === 'n' && Math.round(n) !== n) return { tolak: label + ' ditulis bilangan bulat (jumlah karcis)' };
+  return { n: abBulat(n, t.satuan) };
+}
+/**
+ * SIMPAN Atur (anggaran biaya + target + angka khusus satu bulan) dalam satu ketukan: dokumen kendaliBiaya (susunAturKendali, apa adanya) + dokumen anggaranBulan
+ * bila target / angka khusus berubah. isi = drafAturSemua yang diketik. Angka khusus: kosong = ikut angka umum, 0 = mati bulan itu; "angka khusus" dimatikan = dihapus.
+ */
+export function susunAturSemua(isi, w) {
+  const K = susunAturKendali(isi, w); if (K.tolak) return K;
+  const T = aturAnggaranBulan(); const target = {};
+  for (const t of AB_TARGET) { const v = isi.target ? isi.target[t.id] : undefined; if (v === undefined) { target[t.id] = T.target[t.id]; continue; }
+    const r = abBaca(v, t, 'Target ' + t.nama.toLowerCase()); if (r.tolak) return { tolak: r.tolak }; target[t.id] = r.kosong ? 0 : r.n; }
+  const perBulan = JSON.parse(JSON.stringify(T.perBulan)); const key = String(isi.khususBulan || ''); let kataKhusus = '';
+  if (abBulanSah(key)) {
+    if (key > kbGeser(String(w.tanggal).slice(0, 7), 12)) return { tolak: 'Angka khusus paling jauh 12 bulan ke depan' };
+    if (isi.khususNyala) { const ang = {}, tg = {};
+      for (const id of KB_ID_SIMPAN) { const v = isi.khususA ? isi.khususA[id] : ''; if (ugKosong(v)) continue; const s = String(v).trim(); const n = ugAngka(s);
+        if (!/^[0-9][0-9.,]*$/.test(s) || n > 1000000000) return { tolak: 'Angka khusus anggaran ' + id + ' ditulis rupiah 0 sampai Rp1.000.000.000 (0 = mati bulan itu)' }; ang[id] = Math.round(n); }
+      for (const t of AB_TARGET) { const v = isi.khususT ? isi.khususT[t.id] : ''; const r = abBaca(v, t, 'Angka khusus ' + t.nama.toLowerCase()); if (r.tolak) return { tolak: r.tolak }; if (!r.kosong) tg[t.id] = r.n; }
+      if (Object.keys(ang).length || Object.keys(tg).length) { perBulan[key] = { anggaran: ang, target: tg }; kataKhusus = ' · angka khusus ' + lpNamaBulan(key) + ' (' + (Object.keys(ang).length + Object.keys(tg).length) + ' pos)'; }
+      else if (perBulan[key]) { delete perBulan[key]; kataKhusus = ' · angka khusus ' + lpNamaBulan(key) + ' dihapus (semua kosong)'; } }
+    else if (perBulan[key]) { delete perBulan[key]; kataKhusus = ' · angka khusus ' + lpNamaBulan(key) + ' dihapus — bulan itu ikut angka umum'; }
+  }
+  const simpan = abUrut(perBulan); const kunci = Object.keys(simpan).sort().reverse().slice(0, AB_BULAN_MAKS); const pb = {}; kunci.sort().forEach((k) => { pb[k] = simpan[k]; });
+  const berubah = JSON.stringify({ target: T.target, perBulan: abUrut(T.perBulan) }) !== JSON.stringify({ target, perBulan: pb });
+  const nT = AB_TARGET.filter((t) => target[t.id] > 0).length;
+  const dokumen = K.dokumen.concat(berubah ? [{ koleksi: 'aturanToko', data: { id: AB_ID, tanggal: w.tanggal, jam: w.jam, target, perBulan: pb } }] : []);
+  return { dokumen, patch: Object.assign({}, K.patch, { kabar: K.patch.kabar + ' · ' + nT + ' target bulanan diisi' + kataKhusus }) };
+}
+/** Sebab & tindakan satu bulan: { pos: { sebab, tindakan, tanggal, jam } }. */
+export function catatanPos(key) {
+  const d = ugAturDok(AB_CATATAN_ID); const b = d && d.bulan && typeof d.bulan === 'object' ? d.bulan[String(key)] : null; const out = {};
+  if (b && typeof b === 'object') Object.keys(b).forEach((p) => { if (AB_POS_CATATAN.indexOf(p) < 0 || !b[p]) return; const sebab = String(b[p].sebab || '').trim(), tindakan = String(b[p].tindakan || '').trim(); if (sebab || tindakan) out[p] = { sebab, tindakan, tanggal: String(b[p].tanggal || ''), jam: String(b[p].jam || '') }; });
+  return out;
+}
+/** Tulis / ubah / hapus (dua-duanya kosong) sebab & tindakan satu pos satu bulan. Satu dokumen aturanToko/anggaranCatatan; 24 bulan terbaru disimpan. */
+export function susunCatatanPos(key, pos, sebab, tindakan, w) {
+  if (!abBulanSah(key)) return { tolak: 'Bulan tidak dikenal' }; if (AB_POS_CATATAN.indexOf(pos) < 0) return { tolak: 'Pos tidak dikenal' };
+  if (key > String(w.tanggal).slice(0, 7)) return { tolak: 'Bulan itu belum berjalan' };
+  const rapi = (t) => String(t || '').replace(/\r\n/g, '\n').trim(); const s = rapi(sebab), t = rapi(tindakan);
+  if (s.length > AB_CATATAN_MAKS || t.length > AB_CATATAN_MAKS) return { tolak: 'Sebab dan tindakan paling panjang ' + AB_CATATAN_MAKS + ' huruf' };
+  const d = ugAturDok(AB_CATATAN_ID); const bulan = JSON.parse(JSON.stringify(d && d.bulan && typeof d.bulan === 'object' ? d.bulan : {})); const lama = (bulan[key] || {})[pos] || null;
+  if (!s && !t && !lama) return { tolak: 'Tulis sebabnya atau tindakannya dulu' };
+  if (lama && String(lama.sebab || '').trim() === s && String(lama.tindakan || '').trim() === t) return { tolak: 'Tidak ada yang diubah' };
+  const satu = Object.assign({}, bulan[key] || {}); if (s || t) satu[pos] = { sebab: s, tindakan: t, tanggal: w.tanggal, jam: w.jam }; else delete satu[pos];
+  if (Object.keys(satu).length) bulan[key] = satu; else delete bulan[key];
+  const kunci = Object.keys(bulan).filter(abBulanSah).sort().reverse().slice(0, AB_BULAN_MAKS).sort(); const simpan = {}; kunci.forEach((k) => { simpan[k] = bulan[k]; });
+  return { dokumen: [{ koleksi: 'aturanToko', data: { id: AB_CATATAN_ID, tanggal: w.tanggal, jam: w.jam, bulan: simpan } }],
+    patch: { catAb: null, kabar: (s || t ? 'Sebab & tindakan disimpan' : 'Sebab & tindakan dihapus') + ' — ' + lpNamaBulan(key), kabarAwas: false } };
 }

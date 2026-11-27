@@ -4394,6 +4394,36 @@ barang lengkap** (kurang timbang per karung tidak membuat "sebagian" — sudah d
 - Uji: `alat-uji/uji_tanggal_janji.py` (kotak pasir + Belanja + statis + kontrol + asap cadangan toko), `periksa_rules.py` (v24 = v23 + blok & fungsi, kontrol),
   `uji_rules_emulator.py` bagian V24, `peta_akses.py --kiriman` bagian 12 (janji dari tablet = 2 access call).
 
+## Paket P2 · rapor bulanan, target & anggaran lengkap (owner 27 Nov 2026, sensus ulang 27 Nov: A109 A110 A111 A136 B4 B26 B110 B112 B124; TANPA rules baru, mesin beku tidak diubah)
+
+Keputusan owner (satu AskUserQuestion, memori `p2-rapor-bulanan-keputusan`): semua pos target dipakai (kg terjual & laba kotor · HPP/kg & margin kotor % · piutang
+akhir bulan · karcis belum dirinci) **+ usulan lain yang masuk akal** (omzet, laba bersih, potongan & tawar %) · anggaran **sama tiap bulan, boleh diberi angka khusus
+per bulan** · arus kas **dua-duanya** (kartu arus kas + saklar Laba | Kas di rapor) · kartu rapor di Dasbor **owner tambah sendiri** (katalog, bukan bawaan).
+- **Logika baca**: `baru/js/layar/rapor-bulan-logika.js` (tanpa DOM, awalan `rb`, ikut otomatis di bundel uji `bundel_baru.RB_MODUL`). Tidak ada rumus uang baru —
+  `rbBulan` memanggil `kendaliBulan`, `titikImpas`, `pjPotonganBulan`, `intiBulan`, `susutRentang`, `klModalTertahan`, `hitungPiutang` (sisa > 0 = neraca).
+  `rbRapor(key, kini, 'laba' | 'kas')` = lembar KPI / scorecard (ini · bulan lalu · % ubah · target · lampu; bulan berjalan: angka yang menumpuk dibanding lewat
+  PERKIRAAN SEBULAN linear — cara Peta biaya; rasio & posisi dibanding langsung; karcis & siklus uang = posisi sekarang). `rbAnggaranAktual` = semua pos (biaya per
+  jenis Peta biaya, PPh, pos target) + sebab & tindakan. `rbPecahSelisih` (A111) = volume · harga jual · harga beli, Σ = laba kotor − anggaran PERSIS; harga jual
+  anggaran = batas HPP/kg ÷ (1 − target margin); susut (kuantitas) = anggaran susut Peta biaya − susut, di bawah laba kotor. `rbKotorBersih` (B4) = kotor → potongan
+  nota → tawar → retur → bersih (= omzet mesin) + per hari. `rbArusKas` (B26) = `intiBulan` + rincian `hitungArusKasInti`. `rbAmbangDasbor` (B110 B124) = lampu target
+  untuk angka kartu lama. `rbDrafAcuanTarget` = isi FORMULIR target dari median ≤ 3 bulan selesai (tidak menimpa ketikan, tidak menyimpan).
+  Perputaran (disetahunkan) & hari stok = `klStokRp` dan lama piutang = `pnDsoPada` (akhir bulan / hari ini) — fungsi paket P1 (#232), SATU rumus dengan Dasbor;
+  hari stok berlampu dari target Stok › Umur (pas = hijau, tipis / diam = kuning).
+- **Setelan** (`kendali-biaya-logika.js`, owner, `aturanToko` tanpa rules): `aturanToko/anggaranBulan` = `target` umum (`AB_TARGET`, 0 = mati) + `perBulan['YYYY-MM']`
+  { anggaran (biaya per jenis & PPh), target } — kosong = ikut umum, 0 = mati bulan itu, ≤ 12 bulan ke depan, 24 bulan terbaru disimpan. `aturKendaliBulan(key)`
+  dipakai `kendaliBulan` (Peta biaya & PPh bulan itu memakai angka khusus; kata kunci & ambang tetap umum). `targetBulan(key)`, `kbLampuTarget` (min: hijau ≥ target ·
+  amber ≥ target − ambang % · merah; maks: kebalikannya; pos `jalan` bulan berjalan dibanding jatah sampai hari ke-N; ambang = ambang lampu kendali, bawaan 10 %).
+  `susunAturSemua` = SIMPAN Atur Biaya satu ketukan (kendaliBiaya apa adanya + anggaranBulan hanya bila berubah). `aturanToko/anggaranCatatan` = sebab & tindakan per
+  pos per bulan (`susunCatatanPos`, ≤ 200 huruf, dua-duanya kosong = hapus, bulan depan ditolak). Laba bersih, Σ biaya, titik impas TIDAK berubah oleh target (uji).
+- **Sumber tambahan**: `pajak-logika.js` `pjPotonganHarian` (baris & rumus `pjPotonganBulan`, Σ hari = bulan) · `laporan-logika.js` `lpHariBulan` (omzet, uang retur,
+  nota per hari satu lintasan — aturan `hariTerakhir`; Σ = omzet mesin; menggantikan 30× mesin laba supaya Laporan › Bulanan tetap ringan, uji_layar_mulus).
+- **Layar**: Laporan › Bulanan — Lembar KPI bulanan (saklar Laba | Kas), Penjualan kotor & bersih (+ hari yang ada potongan / semua hari), Arus kas · Laporan ›
+  Biaya — Anggaran vs aktual semua pos (ketuk = sebab & tindakan), Pecahan selisih laba kotor, Atur (+ Target bulanan, Angka khusus bulan yang dilihat, acuan
+  terukur) · Dasbor — kartu **Rapor bulan** (`kRapor`, saklar Laba | Kas, diingat per perangkat) & **Arus kas bulan ini** (`kArusKas`), angka `penjualanKotor` &
+  `kasBulan` (katalog, ikut saringan bulan); lampu target owner di kartu lama Hari ini (laba kotor hari ini: target sebulan ÷ hari, laju jam; karcis), Margin & target
+  (margin kotor), Piutang — dan widget `marginBulan` / `piutangTotal` / `karcis` / `labaKotorHari` (`wgTempelAmbang`). Tanpa target = tampilan seperti dulu.
+- Uji: `alat-uji/uji_rapor_bulan.py` (kotak pasir + statis + kontrol + asap cadangan toko). Riwayat setelan menamai dua dokumen baru.
+
 ## Paket P1 · KPI per kg, per minggu & deret bulanan — A3 · A112 · A113 · A114 · A115 · A116 · A130 · B6 · B7 · B133 (owner 27 Nov 2026, sensus ulang 27 Nov; tanpa rules baru, mesin beku tidak diubah)
 
 Paket pertama dari delapan sisa sensus ulang 27 Nov ("Gua mau kelar semuanya"). Dijaga `alat-uji/uji_kpi_kg.py` (kotak pasir angka contoh + statis + `--kontrol` + asap cadangan
