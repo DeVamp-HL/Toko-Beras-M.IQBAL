@@ -697,7 +697,8 @@ function lpHariBulanHitung(key) {
  *  kas (nominalRefund + selisih tukar). Kartu rekap & teks WA menyebutnya supaya omzet = tunai + QRIS + bon − refund − retur nota bon menutup. */
 export const lpReturBonHari = (R) => Math.max(0, Math.round((R.retur || 0) - (R.refund || 0)));
 /** Teks rekap untuk WhatsApp — kalimat kirimRekapHarianWa sistem lama, ditambah yang dulu tidak disebut (pelunasan bon, prive, margin). */
-export function teksRekapHari(R, kop) {
+// paket P5 (owner 27 Nov 2026, A125): `masuk` = satu baris ringkasan barang masuk hari itu (stok-pantau-logika sgMasukHari().teks) — diberikan layar; kosong = tidak ditulis.
+export function teksRekapHari(R, kop, masuk) {
   const b = ['*Rekap ' + ((kop && kop.nama) || IDENTITAS_BAWAAN.nama) + ' — ' + tanggalPendek(R.iso) + '*', 'Omzet: ' + RP(R.omzet) + ' (' + R.n + ' nota)', 'Tunai: ' + RP(R.tunai), 'QRIS: ' + RP(R.qris)];
   if (R.transfer) b.push('Transfer: ' + RP(R.transfer));
   if (R.jenis) geBaris(R.jenis, RP).forEach((x) => b.push(x[0] + ': ' + x[1]));
@@ -705,7 +706,7 @@ export function teksRekapHari(R, kop) {
   const rb = lpReturBonHari(R); if (rb) b.push('Retur nota bon (bon dipotong): ' + RP(rb));
   if (R.keluarHarian) b.push('Belanja & biaya toko: ' + RP(R.keluarHarian)); if (R.belanja) b.push('Belanja beras tunai + bongkar: ' + RP(R.belanja)); if (R.bayarBon) b.push('Bayar bon pemasok: ' + RP(R.bayarBon)); if (R.biayaBulanan) b.push('Tagihan bulanan: ' + RP(R.biayaBulanan));
   if (R.prive) b.push('Ambil pribadi owner: ' + RP(R.prive)); if (R.setoran) b.push('Setoran ke owner: ' + RP(R.setoran));
-  b.push('Kas bersih hari ini: ' + RP(R.bersih)); b.push('Margin kotor: ' + RP(R.margin) + (R.jumlahTanpaHpp ? ' (' + R.jumlahTanpaHpp + ' baris tanpa modal tidak ikut)' : '')); if (R.tutup) b.push('Sudah tutup hari' + (R.tutup.jam ? ' ' + R.tutup.jam : '')); return b.join('\n');
+  b.push('Kas bersih hari ini: ' + RP(R.bersih)); b.push('Margin kotor: ' + RP(R.margin) + (R.jumlahTanpaHpp ? ' (' + R.jumlahTanpaHpp + ' baris tanpa modal tidak ikut)' : '')); if (masuk) b.push(String(masuk)); if (R.tutup) b.push('Sudah tutup hari' + (R.tutup.jam ? ' ' + R.tutup.jam : '')); return b.join('\n');
 }
 
 // ==================== BULANAN · enam bulan, inti bulan, DK3 rekap omzet ====================

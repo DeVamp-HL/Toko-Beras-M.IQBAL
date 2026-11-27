@@ -26,6 +26,8 @@ import { wbKomposisi, wbBagianMerk, wbKomposisiBaru, wbKomposisiTurunanKg, wbMod
 import { vrPerluTanya, vrNama, vrDokJenis, vrAda, vrGerakBuku, VR_BATAS_BAWAAN } from './varian-logika.js';
 import { arBeras, arKunciBeras, arDokPulihBanyak, arPeta } from './arsip-logika.js';
 // putaran 30: kelas mutu merek (harga lalu per kelas, merek baru → kelas, kelas tanpa wadah)
+// paket P5 (owner 27 Nov 2026, A43): daftar hama per tumpukan — satu sumber dengan Stok › Umur & putaran
+import { UM_HAMA, umLabelHama } from './stok-logika.js';
 import { kmKelasMerk, kmKelasSendiri, kmCalonKelas, kmHargaLaluKelas, kmHargaLaluMerk, kmArah, kmKalimatKelas, kmDokKelas } from './kelas-merek-logika.js';
 
 // paket brief 9 Okt (butir 7): ambang mutu saat terima — kadar air maks 14 % & butir patah maks 25 % = angka bawaan (perkiraan), owner mengubahnya di Atur Barang masuk
@@ -982,9 +984,30 @@ function gandaBaruSaja(kunci, w, jendela) {
   const m1 = ckMenit(a.jam); const m2 = ckMenit(w.jam); return m1 !== null && m2 !== null && Math.abs(m2 - m1) <= jendela;
 }
 /** Susun dokumen cocokkan untuk semua baris yang dihitung dan selisihnya bukan nol. yakin = {aneh, susutPositif, sebagian, ganda}. */
-export function susunSimpanCocok(tab, hitung, alasan, w, yakin, sampel) {
+// paket P5 (owner 27 Nov 2026, A70 · A43): siapa yang MENGHITUNG & siapa yang MENDAMPINGI (boleh kosong — keputusan owner: isian, bukan wajib) ikut tiap
+// dokumen beras & kemasan hitungan itu (kolom dihitungOleh / didampingi, hanya bila diisi) + HAMA per tumpukan (kolom hama: UM_HAMA, hanya bila dipilih).
+// Kolom-kolom ini tidak dibaca mesin (stok, laba, kas tidak berubah) — dibaca Laporan › Mingguan (hitung karung) & Stok › Umur (hama).
+export const CC_ORANG_MAKS = 40;
+const ccNamaOrang = (v) => String(v === undefined || v === null ? '' : v).replace(/\s+/g, ' ').trim();
+/** Bentuk bersih isian catat → { dihitungOleh, didampingi, hama: { kunci: id } } atau { tolak }. */
+export function ccBacaCatat(catat) {
+  const K = catat || {}; const oleh = ccNamaOrang(K.dihitungOleh), damping = ccNamaOrang(K.didampingi);
+  if (oleh.length > CC_ORANG_MAKS || damping.length > CC_ORANG_MAKS) return { tolak: 'Nama yang menghitung / mendampingi paling panjang ' + CC_ORANG_MAKS + ' huruf' };
+  if (oleh && damping && oleh.toLowerCase() === damping.toLowerCase()) return { tolak: 'Yang mendampingi harus orang lain dari yang menghitung (' + oleh + ') — kosongkan kalau tidak didampingi' };
+  const hama = {}; let tolak = ''; Object.keys(K.hama || {}).forEach((k) => { const v = String(K.hama[k] || ''); if (!v) return; if (!umLabelHama(v)) tolak = 'Pilihan hama "' + v + '" tidak dikenal'; else hama[k] = v; });
+  return tolak ? { tolak } : { dihitungOleh: oleh, didampingi: damping, hama };
+}
+/** Nama yang pernah menghitung / mendampingi (hitungan sebelumnya, terbaru dulu) — calon pilihan cepat di layar; nama baru tetap boleh diketik. */
+export function ccCalonOrang() {
+  const urut = ambilPenyesuaianStok().concat(ambilPenyesuaianKemasan()).slice().sort((a, b) => String((b.tanggal || '') + (b.jam || '')).localeCompare(String((a.tanggal || '') + (a.jam || ''))));
+  const out = []; urut.forEach((d) => [d.dihitungOleh, d.didampingi].forEach((n) => { const x = ccNamaOrang(n); if (x && out.indexOf(x) < 0 && out.length < 8) out.push(x); }));
+  return out;
+}
+const ccKolomOrang = (K) => Object.assign({}, K.dihitungOleh ? { dihitungOleh: K.dihitungOleh } : {}, K.didampingi ? { didampingi: K.didampingi } : {});
+export function susunSimpanCocok(tab, hitung, alasan, w, yakin, sampel, catat) {
   const atur = aturCatat(); const c = susunCocok(tab, hitung, alasan, yakin);
   if (c.tolak) return { tolak: c.tolak, perluYakin: c.perluYakin };
+  const K = ccBacaCatat(catat); if (K.tolak) return { tolak: K.tolak };
   // wadah: hitungan yang cocok persis tetap jadi titik samakan. paket Susut (owner 26 Nov 2026, A135 opname penuh): tumpukan & kemasan yang cocok persis juga
   // DICATAT (selisih 0, nilaiRp 0, cocokPersis) — jejak "sudah dihitung" untuk opname bulanan; mesin laba & stok tidak bergerak (barisSusutStok melewati Rp0).
   // Kantong & bahan yang cocok persis tetap tidak ditulis (bukan beras).
@@ -992,29 +1015,29 @@ export function susunSimpanCocok(tab, hitung, alasan, w, yakin, sampel) {
   const nPersis = berubah.filter((b) => b.selisih === 0).length;
   const ganda = berubah.filter((b) => gandaBaruSaja(b.kunci, w, atur.jendelaGandaMenit));
   if (ganda.length && !(yakin || {}).ganda) return { tolak: ganda.map((b) => b.nama).join(', ') + ' baru saja dicocokkan kurang dari ' + atur.jendelaGandaMenit + ' menit lalu — angka sistemnya sudah termasuk hitungan itu. Ketuk sekali lagi kalau ini memang hitungan baru', perluYakin: 'ganda' };
-  if (tab === 'wadah') return ccSimpanWadah(c, berubah, w);
+  if (tab === 'wadah') return ccSimpanWadah(c, berubah, w, K);
   const dokumen = berubah.map((b) => { const al = String(b.alasan || '').trim() || 'Cocokkan stok';
     // putaran 27: yang dihitung cuma TUMPUKAN — kgSistem/kgFisik = buku sebelum/sesudah (mesin membaca selisihKg), bagian*Kg = tumpukan tercatat/dihitung
     if (b.tab === 'tumpukan') return { koleksi: 'penyesuaianStok', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk: b.nama, kgSistem: b.buku, kgFisik: ckB2(b.buku + b.selisih), selisihKg: b.selisih, alasan: al, nilaiRp: b.rp, hppPerKgSaatOpname: Math.round(b.modal),
       bagian: 'tumpukan', bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung }, ((x) => (x && x.karung > 0 && x.kgSampel > 0 ? { sampel: Object.assign({ karung: Number(x.karung), kg: Number(x.kgSampel), isiKarung: Number(x.isiKarung) || 0, rata: Number(x.rata) || 0 },
         // A71: bagian ALAMI dari selisih ini (sampel karung tertutup), bertanda, TIDAK dijepit — sisanya (selisih − alami) = operasional, boleh beda tanda
-        isFinite(Number(x.alamiKg)) && x.alamiKg !== null && x.alamiKg !== undefined && x.alamiKg !== '' ? { alamiKg: ckB2(Number(x.alamiKg)) } : {}) } : {}))((sampel || {})[b.kunci]), b.selisih === 0 ? { cocokPersis: true } : {}) };
-    if (b.tab === 'kemasan') return { koleksi: 'penyesuaianKemasan', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, namaProduk: b.namaProduk, ukuranKemasan: isFinite(Number(b.ukuranKemasan)) ? Number(b.ukuranKemasan) : b.ukuranKemasan, unitSistem: b.sistem, unitFisik: b.dihitung, selisihUnit: b.selisih, alasan: al, nilaiRp: b.rp, hppPerUnitSaatOpname: Math.round(b.modal) }, b.selisih === 0 ? { cocokPersis: true } : {}) };
+        isFinite(Number(x.alamiKg)) && x.alamiKg !== null && x.alamiKg !== undefined && x.alamiKg !== '' ? { alamiKg: ckB2(Number(x.alamiKg)) } : {}) } : {}))((sampel || {})[b.kunci]), b.selisih === 0 ? { cocokPersis: true } : {}, ccKolomOrang(K), K.hama[b.kunci] ? { hama: K.hama[b.kunci] } : {}) };
+    if (b.tab === 'kemasan') return { koleksi: 'penyesuaianKemasan', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, namaProduk: b.namaProduk, ukuranKemasan: isFinite(Number(b.ukuranKemasan)) ? Number(b.ukuranKemasan) : b.ukuranKemasan, unitSistem: b.sistem, unitFisik: b.dihitung, selisihUnit: b.selisih, alasan: al, nilaiRp: b.rp, hppPerUnitSaatOpname: Math.round(b.modal) }, b.selisih === 0 ? { cocokPersis: true } : {}, ccKolomOrang(K)) };
     return { koleksi: b.koleksi, data: { id: w.idUnik(), tipe: 'opname', jenis: b.jenis, jumlah: b.selisih, hargaTotal: 0, tanggal: w.tanggal, jam: w.jam, pcsSistem: b.sistem, pcsFisik: b.dihitung, catatan: al, nilaiRp: b.rp, hargaPerPcsSaatOpname: Math.round(b.modal) } }; });
   const dampak = w.tanggal < MULAI_SUSUT_LABA ? 'Kas, laba, dan omzet tidak berubah.' : (c.susutRp ? 'Laba bulan ini turun ' + RP(-c.susutRp) + ' lewat baris "Susut & selisih stok". ' : '') + (c.lebihRp ? 'Stok naik ' + RP(c.lebihRp) + ' tanpa mengubah modal per kg. ' : '') + 'Kas dan omzet tidak bergerak.';
-  const nUbah = berubah.length - nPersis;
-  return { dokumen, hitung: c, patch: { kabar: 'Cocokkan tersimpan: ' + c.dihitung + ' barang dihitung, ' + nUbah + ' berubah' + (nPersis ? ', ' + nPersis + ' cocok persis (dicatat sebagai sudah dihitung)' : '') + (c.belum ? ', ' + c.belum + ' belum dihitung' : '') + (!dokumen.length ? ' — semuanya cocok persis, tidak ada yang ditulis.' : nUbah ? ' — ' + dampak + ' Stok tercatat kini = hasil hitungan.' : ' — stok, laba, kas tidak bergerak.'), kabarAwas: false } };
+  const nUbah = berubah.length - nPersis; const nHama = Object.keys(K.hama).filter((k) => berubah.some((b) => b.kunci === k && b.tab === 'tumpukan')).length;
+  return { dokumen, hitung: c, patch: { kabar: 'Cocokkan tersimpan: ' + c.dihitung + ' barang dihitung' + (K.dihitungOleh ? ' oleh ' + K.dihitungOleh : '') + (K.didampingi ? ', didampingi ' + K.didampingi : (tab === 'tumpukan' || tab === 'kemasan') && dokumen.length ? ', tanpa pendamping' : '') + (nHama ? ', hama dicatat di ' + nHama + ' tumpukan' : '') + ', ' + nUbah + ' berubah' + (nPersis ? ', ' + nPersis + ' cocok persis (dicatat sebagai sudah dihitung)' : '') + (c.belum ? ', ' + c.belum + ' belum dihitung' : '') + (!dokumen.length ? ' — semuanya cocok persis, tidak ada yang ditulis.' : nUbah ? ' — ' + dampak + ' Stok tercatat kini = hasil hitungan.' : ' — stok, laba, kas tidak bergerak.'), kabarAwas: false } };
 }
 /** Simpan cocokkan wadah: penyesuaianStok per merek asal (bagian 'wadah') + titik samakan isi (komposisi baru) & karung terbuka, satu kiriman. */
-function ccSimpanWadah(c, berubah, w) {
+function ccSimpanWadah(c, berubah, w, K) {
   const stok = hitungStokKarungPerMerk(); const jalan = {}; const dokumen = []; let nMerk = 0;
   berubah.forEach((b) => { const al = String(b.alasan || '').trim() || (b.wajar ? (b.jenis === 'karung' ? 'Selisih timbang karung (dalam batas)' : 'Susut takar wajar') : 'Cocokkan wadah');
     Object.keys(b.alokasi).sort().forEach((m) => { const sel = b.alokasi[m]; const st = stok[m]; if (!st || Math.abs(sel) < 0.005) return;
       const kgS = jalan[m] !== undefined ? jalan[m] : ckB2(st.sisaKg || 0); jalan[m] = ckB2(kgS + sel); nMerk += 1;
       // modal FIFO (owner 9 Okt): merek karung = irisan karung terlama, berurutan dalam kiriman ini (keluar sebelumnya menggeser depan antrean)
       const fifo = st.metode === 'fifo'; const keluarDulu = ckB2((st.sisaKg || 0) - kgS); const rpSel = fifo ? Math.round(nilaiSelisihKg(st, sel, keluarDulu)) : Math.round(sel * (st.hppTerakhirPerKg || 0));
-      dokumen.push({ koleksi: 'penyesuaianStok', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk: m, kgSistem: kgS, kgFisik: jalan[m], selisihKg: sel, alasan: al, nilaiRp: rpSel,
-        hppPerKgSaatOpname: fifo ? Math.round(Math.abs(rpSel / sel)) : Math.round(st.hppTerakhirPerKg || 0), bagian: 'wadah', wadah: b.jenis === 'karung' ? b.lokasi : b.nama, bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung } }); });
+      dokumen.push({ koleksi: 'penyesuaianStok', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk: m, kgSistem: kgS, kgFisik: jalan[m], selisihKg: sel, alasan: al, nilaiRp: rpSel,
+        hppPerKgSaatOpname: fifo ? Math.round(Math.abs(rpSel / sel)) : Math.round(st.hppTerakhirPerKg || 0), bagian: 'wadah', wadah: b.jenis === 'karung' ? b.lokasi : b.nama, bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung }, K ? ccKolomOrang(K) : {}) }); });
     // putaran 28: wadah berstok sendiri — titik samakan tanpa komposisi (isinya = buku wadah itu, selisihnya sudah jadi penyesuaian di atas)
     if (b.isiH !== null) dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: b.nama, tipe: 'isi', isiKg: b.isiH }, b.stokSendiri ? Object.assign({ stokWadah: b.kunciStok }, ((k) => (Object.keys(k).length ? { komposisi: k } : {}))(wbKomposisiTurunanKg(b.nama, b.isiH))) : { komposisi: b.komposisiBaru || {} }, { dariCocok: true }) });   // 39b no. 16: komposisi turunan dibawa
     const di = b.jenis === 'karung' ? (b.lokasi ? { wadah: b.lokasi, diamSlot: true } : { lepas: true }) : { wadah: b.nama };   // karung kedua dst. tidak memindah karung terdepan
@@ -1027,10 +1050,12 @@ function ccSimpanWadah(c, berubah, w) {
 /** Hitungan fisik sebelumnya (semua jenis), dikelompokkan per tanggal+jam, terbaru dulu. */
 export function riwayatCocok(n) {
   const semua = [];
-  ambilPenyesuaianStok().forEach((d) => { if (hitunganFisik(d)) semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.merk + (d.bagian === 'wadah' ? (d.wadah ? ' (wadah ' + d.wadah + ')' : ' (karung lepas)') : d.bagian === 'tumpukan' ? ' (tumpukan' + (d.sampel && d.sampel.karung ? ' · sampel ' + d.sampel.karung + ' karung rata-rata ' + ukD(Number(d.sampel.rata) || 0) + ' kg' : '') + ')' : ''), teks: (d.selisihKg > 0 ? '+' : '') + String(Math.round((d.selisihKg || 0) * 100) / 100).replace('.', ',') + ' kg', rp: d.nilaiRp || 0, alasan: d.alasan || '' }); });
-  ambilPenyesuaianKemasan().forEach((d) => semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.namaProduk + ' ' + String(d.ukuranKemasan).replace('.', ',') + ' kg', teks: (d.selisihUnit > 0 ? '+' : '') + (d.selisihUnit || 0) + ' unit', rp: d.nilaiRp || 0, alasan: d.alasan || '' }));
+  ambilPenyesuaianStok().forEach((d) => { if (hitunganFisik(d)) semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.merk + (d.bagian === 'wadah' ? (d.wadah ? ' (wadah ' + d.wadah + ')' : ' (karung lepas)') : d.bagian === 'tumpukan' ? ' (tumpukan' + (d.sampel && d.sampel.karung ? ' · sampel ' + d.sampel.karung + ' karung rata-rata ' + ukD(Number(d.sampel.rata) || 0) + ' kg' : '') + ')' : ''), teks: (d.selisihKg > 0 ? '+' : '') + String(Math.round((d.selisihKg || 0) * 100) / 100).replace('.', ',') + ' kg', rp: d.nilaiRp || 0, alasan: d.alasan || '', oleh: d.dihitungOleh || '', damping: d.didampingi || '', hama: d.hama && d.hama !== 'tidak' ? umLabelHama(d.hama) : '' }); });
+  ambilPenyesuaianKemasan().forEach((d) => semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.namaProduk + ' ' + String(d.ukuranKemasan).replace('.', ',') + ' kg', teks: (d.selisihUnit > 0 ? '+' : '') + (d.selisihUnit || 0) + ' unit', rp: d.nilaiRp || 0, alasan: d.alasan || '', oleh: d.dihitungOleh || '', damping: d.didampingi || '' }));
   ambilBahanKemasan().concat(ambilBahanLiteran()).forEach((d) => { if (d.tipe === 'opname' && !d.lahirKarungBekas && !d.nilaiKarungBekas) semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: ccLabelBahan(d.jenis), teks: (d.jumlah > 0 ? '+' : '') + (d.jumlah || 0) + ' lembar', rp: d.nilaiRp || 0, alasan: d.catatan || '' }); });
-  const kel = {}; semua.forEach((x) => { const k = x.tanggal + ' ' + x.jam; if (!kel[k]) kel[k] = { kunci: k, tanggal: x.tanggal, jam: x.jam, baris: [], rp: 0 }; kel[k].baris.push(x); kel[k].rp += x.rp; });
+  const kel = {}; semua.forEach((x) => { const k = x.tanggal + ' ' + x.jam; if (!kel[k]) kel[k] = { kunci: k, tanggal: x.tanggal, jam: x.jam, baris: [], rp: 0 }; kel[k].baris.push(x); kel[k].rp += x.rp;
+    // paket P5 (A70): siapa menghitung / mendampingi kelompok hitungan ini (kolom yang sama di tiap dokumen satu kiriman)
+    if (x.oleh && !kel[k].oleh) kel[k].oleh = x.oleh; if (x.damping && !kel[k].damping) kel[k].damping = x.damping; });
   return Object.keys(kel).sort().reverse().slice(0, n || 8).map((k) => kel[k]);
 }
 

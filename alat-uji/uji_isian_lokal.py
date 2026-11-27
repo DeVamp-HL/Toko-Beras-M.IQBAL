@@ -26,6 +26,7 @@ BUKAN_ISIAN = {
              'cuacaCari': 'pencarian nama tempat untuk langit gerbang (owner 26 Nov 2026) — tempat yang DIPILIH masuk ke atur Perangkat (isian dijaga)'},
     'uang': {'crBerkas': 'isi berkas / tempelan mutasi rekening (owner 26 Nov 2026) — bisa ratusan KB, dibaca di perangkat saat itu juga; yang disimpan hanya centang & hasil cocoknya (bukan draf isian)'},
     'laporan': {'cariK': 'pencarian dokumen kecil', 'sampaiN': 'tanggal lihat neraca (saringan tampilan)'},
+    'stok': {'ksCari': 'pencarian nama beras di Kartu stok (paket P5, 27 Nov 2026) — saringan tampilan, bukan draf'},
     'jual': {'cariPelanggan': 'pencarian nama', 'psSaring': 'saringan daftar pesanan', 'rtCari': 'pencarian nota retur', 'rwCari': 'pencarian riwayat penjualan',
              'psCari': 'pencarian barang katalog di form pesanan (B4)'},
 }
