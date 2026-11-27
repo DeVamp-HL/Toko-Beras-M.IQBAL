@@ -16,6 +16,8 @@ import { kartuUsulBanding, aksiUsulBanding, UB_DRAF_KOSONG } from './banding-pan
 import { kartuTutupTablet, aksiTutupTablet, hlTampil, HL_DRAF_KOSONG } from './tutup-tablet-panel.js';   // owner 22 Nov 2026 (paket ④): tutup hari dari tablet   // owner 21 Nov 2026: uang keluar & pesan dari tablet
 // owner 21 Nov 2026: Ringkas hari ini di tablet — kartu paling atas Menu akun tablet, hanya saat orang pilihan owner jaga (rules v14: data uang)
 import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
+// paket P6 (owner 27 Nov 2026, B116 + A143): halaman tugas staf (kartu paling atas Menu akun staf) + daftar centang rutin (staf & Menu › Toko ini › Rutin owner)
+import { kartuTugasStaf, kartuRutin, gambarRutinOwner, aksiPanelRutin } from './rutin-panel.js';
 import * as SJ from './sidik-logika.js';
 // owner 26 Nov 2026: lokasi langit & cuaca gerbang (atur Perangkat) — cari tempat lewat Open-Meteo
 import { lgUrlCari, lgBacaCari, lgLokasiSah } from '../inti/langit-logika.js';
@@ -65,8 +67,8 @@ const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 // owner 7 Okt 2026: tab Hemat baca di Sistem › Perangkat (tab Kasir & PIN dicabut paket dokumen & sisa, #108)
-const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['setelan', 'Setelan & harga'], ['batal', 'Dibatalkan']], target: [], pegangan: [] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang)
-const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat', riwayat: 'Riwayat & batal', target: 'Target & ambang', pegangan: 'Buku pegangan' };   // paket KPI laba (owner 24 Nov 2026): target omzet harian & ambang kas minimum
+const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['setelan', 'Setelan & harga'], ['batal', 'Dibatalkan']], target: [], pegangan: [], rutin: [['hari', 'Hari ini'], ['riwayat', 'Siapa mencentang'], ['atur', 'Atur daftar']] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang) · paket P6: rutin
+const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat', riwayat: 'Riwayat & batal', target: 'Target & ambang', pegangan: 'Buku pegangan', rutin: 'Rutin' };   // paket KPI laba (owner 24 Nov 2026): target omzet harian & ambang kas minimum
 
 /** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
 export function pasangLayarMenu(akar, opsi) {
@@ -74,9 +76,9 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, aturKpi: null, bpgDraf: null, yakinBpg: null, bpgBuka: {}, cekG: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), ub: UB_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null, cuacaCari: '', cuacaHasil: [], cuacaSibuk: false, cuacaKabar: '' });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), ub: UB_DRAF_KOSONG(), hl: HL_DRAF_KOSONG(), hlCekYakin: null, rnAtur: null, rnCatat: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null, cuacaCari: '', cuacaHasil: [], cuacaSibuk: false, cuacaKabar: '' });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'aturKpi', 'bpgDraf', 'tgsDraf', ['ptCatatan', (v) => !!String(v || '').trim()], ['cekG', (v) => !!(v && (Object.keys(v.cek || {}).length || String(v.catatan || '').trim()))], 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ub', (v) => !!(v && (String(v.hargaPerKg || '').trim() || String(v.pemasok || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
+  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'aturKpi', 'bpgDraf', 'tgsDraf', 'rnAtur', 'rnCatat', ['ptCatatan', (v) => !!String(v || '').trim()], ['cekG', (v) => !!(v && (Object.keys(v.cek || {}).length || String(v.catatan || '').trim()))], 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ub', (v) => !!(v && (String(v.hargaPerKg || '').trim() || String(v.pemasok || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -332,7 +334,7 @@ export function pasangLayarMenu(akar, opsi) {
     rtIntip: ({ d }) => tulis(S.susunAturSistem('peran', { intipDetik: Number(d) }, waktu())),   // owner 22 Nov 2026: lama intip uang (detik)
     rtBacaUang: async ({ uid, nyala }) => { const kunci = uid + ':' + nyala; const r = S.susunUbahAkun(uid, { bacaUang: nyala === '1' }, waktu(), st().yakinRt === kunci);
       if (r.perluYakin) return set({ yakinRt: kunci, kabar: r.tolak, kabarAwas: true }); set({ yakinRt: null }); await tulis(r); },
-  }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }), aksiUsulBanding({ set, st, tulis, akun: opsi.akun, waktu }), aksiTutupTablet({ set, st, tulis, akun: opsi.akun, waktu }), aksiRingkas({ set, st, akun: opsi.akun, uang: opsi.statusUang, waktu, kini }));
+  }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }), aksiUsulBanding({ set, st, tulis, akun: opsi.akun, waktu }), aksiTutupTablet({ set, st, tulis, akun: opsi.akun, waktu }), aksiRingkas({ set, st, akun: opsi.akun, uang: opsi.statusUang, waktu, kini }), aksiPanelRutin({ set, st, tulis, waktu, kini, akun: opsi.akun, pergi }));
   const vapidToko = () => { const d = cacheMentah('aturan').find((x) => String(x.id) === 'notif'); return d && d.vapid ? String(d.vapid) : ''; };
   Object.assign(AKSI, aksiPanelPatuh({ set, st, tulis, waktu, kini }));   // owner 26 Nov 2026: kalender kepatuhan — tanda "sudah dikerjakan" dari Pengingat
   delegasi(akar, AKSI);
@@ -427,6 +429,7 @@ export function pasangLayarMenu(akar, opsi) {
     const AL = opsi.antreLokal ? opsi.antreLokal() : { belum: [], ditolak: [] };
     const orang = TB.tbDaftar().filter((o) => o.aktif).map((o) => o.nama);
     return h`<section class="mn-staf" data-k="staf" style="display: flex; flex-direction: column; gap: 10px;">
+      ${kartuTugasStaf(s, { akun: akunM, kini: kini() })}
       ${RT.rtTampil(akunM) || intipNyala() ? kartuRingkas(s, { akun: akunM, uang: opsi.statusUang ? opsi.statusUang() : null, kini: kini(), intip: intipNyala() ? SJ.sjIntipDetik() : 0 }) : ''}
       ${kartuSidik(s, akunM)}
       ${kartuOwnerTablet(s)}
@@ -435,6 +438,7 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="kartu" data-k="staf-akun" style="gap: 4px;"><div class="label">Masuk sebagai</div><div class="serif" style="font-size: 20px;">${akunM.nama}</div><div class="k2">${namaP} · ${L.namaPerangkat || 'perangkat ini'}</div></div>
       ${akunM.peran === 'ben' ? kartuCekGudang(s, d) : ''}
       ${akunM.peran === 'ben' ? kartuUsulBanding(s, { akun: akunM }) : ''}
+      ${kartuRutin(s, { akun: akunM, kini: kini() })}
       ${kartuPegangan(s, akunM)}
       <div class="tombol-baris" data-k="staf-layar">${[['jual', 'Jual'], ['pelanggan', 'Pelanggan'], ['stok', 'Stok']].map(([t, n]) => h`<div class="kaca-btn aktif" data-aksi="stafKe" data-t="${t}">${n}</div>`)}</div>
       <div class="kartu" data-k="staf-antre" style="gap: 4px;"><div class="label">Catatan dari perangkat ini</div>
@@ -469,7 +473,7 @@ export function pasangLayarMenu(akar, opsi) {
     return h`<section class="mn-gulir ss" data-k="sistem-${s.sistem}">
       <div class="mn-kembali" data-aksi="sistem" data-s="">‹ Menu</div>
       ${tabs.length ? h`<div class="jalur kisi${tabs.length}" data-k="tabS">${tabs.map(([id, nm]) => h`<div class="seg ${tab === id ? 'aktif' : ''}" data-aksi="tabS" data-t="${id}">${nm}</div>`)}</div>` : ''}
-      ${s.atur ? gambarAtur(s) : s.sistem === 'perangkat' ? gambarPerangkat(s, d, tab) : s.sistem === 'peran' ? gambarPeran(s, d, tab) : s.sistem === 'cadangan' ? gambarCadangan(s, d) : s.sistem === 'lokasi' ? gambarLokasi(s, d, tab) : s.sistem === 'riwayat' ? gambarRiwayat(s, tab) : s.sistem === 'target' ? gambarTarget(s, d) : s.sistem === 'pegangan' ? gambarPegangan(s) : gambarPengingat(s, d, tab)}
+      ${s.atur ? gambarAtur(s) : s.sistem === 'perangkat' ? gambarPerangkat(s, d, tab) : s.sistem === 'peran' ? gambarPeran(s, d, tab) : s.sistem === 'cadangan' ? gambarCadangan(s, d) : s.sistem === 'lokasi' ? gambarLokasi(s, d, tab) : s.sistem === 'riwayat' ? gambarRiwayat(s, tab) : s.sistem === 'target' ? gambarTarget(s, d) : s.sistem === 'pegangan' ? gambarPegangan(s) : s.sistem === 'rutin' ? gambarRutinOwner(s, { akun: opsi.akun ? opsi.akun() : null, kini: kini(), tab }) : gambarPengingat(s, d, tab)}
     </section>`;
   }
   const pintuAtur = (judul, ringkas) => h`<div class="at-pintu" data-k="pintu-atur" data-aksi="bukaAtur"><div><div style="font-weight: 600;">${judul}</div><div class="ket" style="font-size: 10.5px;">${ringkas}</div></div><div class="ket">ubah ›</div></div>`;

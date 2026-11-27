@@ -183,12 +183,28 @@ SG_MODUL = 'baru/js/layar/stok-pantau-logika.js'
 SG_PEMAKAI = ('gudang-logika.js', 'dasbor-logika.js', 'laporan.js', 'stok.js', 'harga.js', 'app.js')
 
 
+# paket P6 (owner 27 Nov 2026): selisih laci (laci-logika, A119 + A82) dibaca Dasbor & layar Uang; daftar centang rutin (rutin-logika, A143) dibaca Dasbor, halaman tugas
+# staf & panelnya. Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada; rutin-logika membawa sumber butir otomatisnya (gudang, wadah bernama, kepatuhan) bila belum
+# ada — karcis-logika TIDAK ditarik (rantainya panjang; bundel Dasbor sudah memuatnya, alat uji lain menyebutnya sendiri).
+LH_MODUL = 'baru/js/layar/laci-logika.js'
+LH_PEMAKAI = ('dasbor-logika.js', 'uang.js', 'app.js')
+RN_MODUL = 'baru/js/layar/rutin-logika.js'
+RN_PEMAKAI = ('dasbor-logika.js', 'tugas-staf-logika.js', 'rutin-panel.js')
+RN_SUMBER = ('baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/patuh-logika.js', 'baru/js/layar/gudang-logika.js')
+
+
 def lengkapi(daftar):
     d = list(daftar)
     if any(os.path.basename(x) in SG_PEMAKAI for x in d) and not any(x.endswith('stok-pantau-logika.js') for x in d):
         d.append(SG_MODUL)
     if any(os.path.basename(x) in KH_PEMAKAI for x in d) and not any(x.endswith('kelas-het-logika.js') for x in d):
         d.append(KH_MODUL)
+    if any(os.path.basename(x) in LH_PEMAKAI for x in d) and not any(x.endswith('laci-logika.js') for x in d):
+        d.append(LH_MODUL)
+    if any(os.path.basename(x) in RN_PEMAKAI for x in d) and not any(x.endswith('rutin-logika.js') for x in d):
+        d.append(RN_MODUL)
+        for m in RN_SUMBER:
+            if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)
     if any(os.path.basename(x) in JN_PEMAKAI for x in d) and not any(x.endswith('janji-logika.js') for x in d):
         d.append(JN_MODUL)
         for m in JN_SUMBER:

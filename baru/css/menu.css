@@ -173,3 +173,14 @@ main.layar-menu.masuk > header, main.layar-menu.masuk > .mn-gulir > .jalur, main
 .pt-centang { animation: ptCentangPegas 520ms cubic-bezier(.2,.8,.2,1) both; border-color: var(--emas-garis); }
 @keyframes ptCentangPegas { 0% { opacity: 0; transform: translateY(6px) scale(0.98); } 100% { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .pt-centang { animation: none; } }
+/* paket P6 (owner 27 Nov 2026, B116 + A143): halaman tugas staf + daftar centang rutin — baris masuk bergiliran, yang terbuka bertepi emas, yang awas merah */
+.layar-menu .ts-baris, .layar-menu .rn-baris { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--kaca-tepi); font-size: 13px; animation: masuk 420ms cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--urut, 0) * 40ms); }
+.layar-menu .ts-baris { cursor: pointer; } .layar-menu .ts-baris.buka { border-color: var(--emas-garis); } .layar-menu .ts-baris.awas { border-color: var(--awas); } .layar-menu .ts-baris.beres { opacity: .7; }
+.layar-menu .ts-n { min-width: 28px; height: 28px; border-radius: 14px; display: grid; place-items: center; font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid var(--emas-garis); color: var(--aktif); }
+.layar-menu .ts-baris.awas .ts-n { border-color: var(--awas); color: var(--awas); } .layar-menu .ts-baris.beres .ts-n { border-style: dashed; color: var(--redup); }
+.layar-menu .rn-baris.sudah { opacity: .72; } .layar-menu .rn-baris.lewat { border-color: var(--awas); } .layar-menu .rn-baris .n { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.layar-menu .rn-cap { font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--kaca-tepi); color: var(--redup); }
+.layar-menu .rn-cap.sudah { border-color: var(--emas-garis); color: var(--aktif); font-size: 13px; animation: rn-pop 360ms cubic-bezier(.2, 1.4, .4, 1) both; } .layar-menu .rn-cap.lewat { border-color: var(--awas); color: var(--awas); }
+.layar-menu .rn-baris .redup { color: var(--redup); }
+@keyframes rn-pop { from { transform: scale(.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .layar-menu .ts-baris, .layar-menu .rn-baris, .layar-menu .rn-cap.sudah { animation: none; } }
