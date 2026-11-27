@@ -119,8 +119,8 @@ KONTROL_V8 = [
     ('usul harga atas nama orang lain (tanpa usulUid)', [(" && d.get('usulUid', '') == request.auth.uid", "")], ['★H7']),
     ('usul harga tanpa syarat status "menunggu"', [("d.get('tindakan', '') == 'hargaPelanggan' && d.get('status', '') == 'menunggu' && ", "d.get('tindakan', '') == 'hargaPelanggan' && ")], ['★H8']),
     ('usul harga dicabut dari create persetujuan', [(" || stafUsulHarga(['ben', 'karyawan']) ||", " ||")], ['★H3']),
-    ('setelan harga tingkat tidak terbaca staf', [("'perangkat', 'hargaTingkat', 'produkArsip', 'bukuPegangan']", "'perangkat', 'produkArsip', 'bukuPegangan']")], ['★H1']),
-    ('setelan HET ikut terbaca staf', [("'hargaTingkat', 'produkArsip', 'bukuPegangan'] && staf(", "'hargaTingkat', 'produkArsip', 'bukuPegangan', 'het'] && staf(")], ['★H12']),
+    ('setelan harga tingkat tidak terbaca staf', [("'perangkat', 'hargaTingkat', 'produkArsip', 'bukuPegangan', 'rutin']", "'perangkat', 'produkArsip', 'bukuPegangan', 'rutin']")], ['★H1']),   # v25: + rutin di daftar baca staf
+    ('setelan HET ikut terbaca staf', [("'hargaTingkat', 'produkArsip', 'bukuPegangan', 'rutin'] && staf(", "'hargaTingkat', 'produkArsip', 'bukuPegangan', 'rutin', 'het'] && staf(")], ['★H12']),   # v25: + rutin
     ('staf boleh menulis setelan harga tingkat', [("      allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());",
                                                    "      allow update: if (owner() && (id != 'kunciPeriode' || kunciGeser())) || (id == 'hargaTingkat' && staf(['ben', 'karyawan']));")], ['★H11']),
 ]
@@ -228,11 +228,22 @@ KONTROL_V19 = [
 # ---- V20 (owner 24 Nov 2026, Pondasi paket kedua C: buku pegangan terbaca staf): kasus ★D docs/uji-rules-v20.md (periksa_rules.KASUS_V20) atas
 # firestore.rules (v20) dan atas firestore.rules.v19 — yang berbeda WAJIB persis periksa_rules.BEDA_V19. Kontrol: ubahan v20 dirusak.
 KONTROL_V20 = [
-    ('buku pegangan tidak terbaca staf (ubahan v20 dicabut)', [("'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", "'produkArsip'] && staf(['ben', 'karyawan'])")], ['★D3', '★D4']),
-    ('karyawan tidak boleh membaca buku pegangan', [("'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", "'produkArsip'] && staf(['ben', 'karyawan'])) || (id == 'bukuPegangan' && staf(['ben'])")], ['★D4']),
+    ('buku pegangan tidak terbaca staf (ubahan v20 dicabut)', [("'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", "'produkArsip', 'rutin'] && staf(['ben', 'karyawan'])")], ['★D3', '★D4']),   # v25: + rutin
+    ('karyawan tidak boleh membaca buku pegangan', [("'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", "'produkArsip', 'rutin'] && staf(['ben', 'karyawan'])) || (id == 'bukuPegangan' && staf(['ben'])")], ['★D4']),   # v25: + rutin
     ('Penjaga laci boleh mengubah buku pegangan', [("      allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());", "      allow update: if (owner() && (id != 'kunciPeriode' || kunciGeser())) || (id == 'bukuPegangan' && staf(['ben', 'karyawan']));")], ['★D5']),
-    ('kasir@ ikut membaca setelan staf', [("'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])) || (id in ['tutupHari', 'kepatuhan']", "'produkArsip', 'bukuPegangan'] && (kasir() || staf(['ben', 'karyawan']))) || (id in ['tutupHari', 'kepatuhan']")], ['★D8']),   # v22: bentuk baris baru
-    ('setelan pondasi ikut terbaca staf', [("'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", "'produkArsip', 'bukuPegangan', 'pondasi'] && staf(['ben', 'karyawan'])")], ['★D10']),
+    ('kasir@ ikut membaca setelan staf', [("'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])) || (id in ['tutupHari', 'kepatuhan']", "'produkArsip', 'bukuPegangan', 'rutin'] && (kasir() || staf(['ben', 'karyawan']))) || (id in ['tutupHari', 'kepatuhan']")], ['★D8']),   # v22: bentuk baris baru
+    ('setelan pondasi ikut terbaca staf', [("'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", "'produkArsip', 'bukuPegangan', 'rutin', 'pondasi'] && staf(['ben', 'karyawan'])")], ['★D10']),   # v25: + rutin
+]
+# ---- V25 (owner 27 Nov 2026, paket P6: daftar centang rutin dari tablet / HP staf — "Owner + Ben + karyawan"): kasus ★O docs/uji-rules-v25.md (periksa_rules.KASUS_V25)
+# atas firestore.rules (v25) dan atas firestore.rules.v24 — yang berbeda WAJIB persis periksa_rules.BEDA_V24. Kontrol: ubahan v25 dirusak.
+KONTROL_V25 = [
+    ('daftar rutin tidak dibaca staf', [("'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan']))", "'bukuPegangan'] && staf(['ben', 'karyawan']))")], ['★O4', '★O7']),
+    ('karyawan tidak boleh mencentang', [("stafCekRutin(['ben', 'karyawan'], id);", "stafCekRutin(['ben'], id);")], ['★O8']),
+    ('centang atas nama siapa saja (stafBuat → staf)', [("      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && d.get('butir', 0) is string && d.butir.matches('[a-z0-9-]{1,40}') && d.get('periode', 0) is string && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')",
+      "      return staf(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && d.get('butir', 0) is string && d.butir.matches('[a-z0-9-]{1,40}') && d.get('periode', 0) is string && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')")], ['★O11']),
+    ('putaran berbentuk bebas', [(" && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')", "")], ['★O15']),
+    ('catatan tanpa batas', [("d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')\n        && d.get('catatan', 0) is string && d.catatan.size() <= 160", "d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')\n        && d.get('catatan', 0) is string")], ['★O16']),
+    ('staf boleh mengubah centang', [("      allow create: if owner() || stafCekRutin(['ben', 'karyawan'], id);\n      allow update, delete: if owner();", "      allow create, update: if owner() || stafCekRutin(['ben', 'karyawan'], id);\n      allow delete: if owner();")], ['★O18']),
 ]
 # ---- V24 (owner 27 Nov 2026, paket tanggal janji: janji datang pemasok dari tablet): kasus ★I docs/uji-rules-v24.md (periksa_rules.KASUS_V24) atas
 # firestore.rules (v24) dan atas firestore.rules.v23 — yang berbeda WAJIB persis periksa_rules.BEDA_V23. Kontrol: ubahan v24 dirusak.
@@ -266,7 +277,7 @@ KONTROL_V22 = [
     ('karyawan ikut membaca kalender', [("(id in ['tutupHari', 'kepatuhan'] && staf(['ben']))", "(id in ['tutupHari', 'kepatuhan'] && staf(['ben', 'karyawan']))")], ['★Q7']),
     ('karyawan ikut menandai kalender', [("stafCekPatuh(['ben'], id)", "stafCekPatuh(['ben', 'karyawan'], id)")], ['★Q8']),
     ('karyawan ikut membaca tanda kalender', [("    match /kepatuhanCek/{id} {\n      allow read: if owner() || staf(['ben']);", "    match /kepatuhanCek/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);")], ['★Q9']),
-    ('tanda tanpa batas catatan', [(" && d.catatan.size() <= 160\n        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir'", "\n        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir'")], ['★Q15']),
+    ('tanda tanpa batas catatan', [("d.periode.matches('[0-9K-]{4,10}')\n        && d.get('catatan', 0) is string && d.catatan.size() <= 160", "d.periode.matches('[0-9K-]{4,10}')\n        && d.get('catatan', 0) is string")], ['★Q15']),   # v25: suku catatan kini kembar di stafCekRutin — jangkar ikut periode v22
     ('putaran berbentuk bebas', [(" && d.periode.matches('[0-9K-]{4,10}')", "")], ['★Q14']),
     ('Penjaga laci boleh mengubah tanda', [("      allow create: if owner() || stafCekPatuh(['ben'], id);\n      allow update, delete: if owner();", "      allow create: if owner() || stafCekPatuh(['ben'], id);\n      allow update: if owner() || staf(['ben']);\n      allow delete: if owner();")], ['★Q17']),
 ]
@@ -1020,6 +1031,28 @@ def jalankan_emulator():
         except Exception as e: k = {'nama': nama, 'sasaran': sasaran, 'hasil': [], 'berbunyi': False, 'galat': str(e)[:300]}
         lap['kontrolV21'].append(k)
         print('  %s %s → %s' % ('BERBUNYI' if k['berbunyi'] else 'DIAM!!  ', nama, k.get('galat') or ', '.join('%s %s (wajib %s)' % x for x in k['hasil'])), flush=True)
+    # ---- V25 (owner 27 Nov 2026, paket P6): kasus ★O atas firestore.rules cabang ini (v25) dan atas firestore.rules.v24; kontrol ubahan v25
+    v24lama_t = baca('firestore.rules.v24')
+    print('— V25 · %d kasus ★O atas firestore.rules (v25)' % len(P.KASUS_V25), flush=True)
+    H25 = jalankan_semua(J, v7, P.KASUS_V25); lap['v25'] = H25
+    for x in H25: print('  %s %-6s %-26s %-48s → %-13s wajib %-7s %s' % ('✓' if x['ok'] else '✗', x['no'], x['akun'] + ' ' + x['op'], x['jalur'][:48], x['hasil'], x['wajib'], x['ket'][:90]), flush=True)
+    print('— V25 · kasus yang sama atas firestore.rules.v24 (yang berbeda wajib persis BEDA_V24 = %s)' % ', '.join(sorted(P.BEDA_V24)), flush=True)
+    H25l = jalankan_semua(J, v24lama_t, P.KASUS_V25); lap['v25lama'] = []
+    for a, b in zip(H25, H25l):
+        harap = ('DITOLAK' if a['wajib'] == 'LOLOS' else 'LOLOS') if a['no'] in P.BEDA_V24 else a['wajib']
+        r25 = {'no': b['no'], 'jalur': b['jalur'], 'hasilV24': b['hasil'], 'hasilV25': a['hasil'], 'harapV24': harap, 'ok': b['hasil'] == harap and b['hasil'] != 'TIDAK TERUKUR'}
+        lap['v25lama'].append(r25)
+        if not r25['ok'] or a['no'] in P.BEDA_V24: print('  %s %-6s v24 %-13s v25 %-13s harap v24 %s' % ('✓' if r25['ok'] else '✗', r25['no'], r25['hasilV24'], r25['hasilV25'], harap), flush=True)
+    print('— V25 · KONTROL: ubahan v25 dirusak → kasus sasaran wajib berbalik', flush=True)
+    lap['kontrolV25'] = []; per25 = {K[0]: K for K in P.KASUS_V25}; utuh25 = {x['no']: x for x in H25}
+    for nama, ganti, sasaran in KONTROL_V25:
+        try:
+            R = rusak(v7, ganti); hs = jalankan_semua(J, R, [per25[s] for s in sasaran])
+            balik = [h for h in hs if h['hasil'] in ('LOLOS', 'DITOLAK') and h['hasil'] != h['wajib'] and utuh25.get(h['no'], {}).get('ok')]
+            k = {'nama': nama, 'sasaran': sasaran, 'hasil': [(h['no'], h['hasil'], h['wajib']) for h in hs], 'berbunyi': len(balik) == len(sasaran)}
+        except Exception as e: k = {'nama': nama, 'sasaran': sasaran, 'hasil': [], 'berbunyi': False, 'galat': str(e)[:300]}
+        lap['kontrolV25'].append(k)
+        print('  %s %s → %s' % ('BERBUNYI' if k['berbunyi'] else 'DIAM!!  ', nama, k.get('galat') or ', '.join('%s %s (wajib %s)' % x for x in k['hasil'])), flush=True)
     # ---- V24 (owner 27 Nov 2026, paket tanggal janji): kasus ★I atas firestore.rules cabang ini (v24) dan atas firestore.rules.v23; kontrol ubahan v24
     v23lama_t = baca('firestore.rules.v23')
     print('— V24 · %d kasus ★I atas firestore.rules (v24)' % len(P.KASUS_V24), flush=True)
@@ -1142,7 +1175,9 @@ def jalankan_emulator():
                       'v23': ringkas(lap['v23']), 'v23lama': {'kasus': len(lap['v23lama']), 'sesuai': sum(1 for x in lap['v23lama'] if x['ok'])},
                       'kontrolV23': {'jumlah': len(lap['kontrolV23']), 'berbunyi': sum(1 for x in lap['kontrolV23'] if x['berbunyi'])},
                       'v24': ringkas(lap['v24']), 'v24lama': {'kasus': len(lap['v24lama']), 'sesuai': sum(1 for x in lap['v24lama'] if x['ok'])},
-                      'kontrolV24': {'jumlah': len(lap['kontrolV24']), 'berbunyi': sum(1 for x in lap['kontrolV24'] if x['berbunyi'])}}
+                      'kontrolV24': {'jumlah': len(lap['kontrolV24']), 'berbunyi': sum(1 for x in lap['kontrolV24'] if x['berbunyi'])},
+                      'v25': ringkas(lap['v25']), 'v25lama': {'kasus': len(lap['v25lama']), 'sesuai': sum(1 for x in lap['v25lama'] if x['ok'])},
+                      'kontrolV25': {'jumlah': len(lap['kontrolV25']), 'berbunyi': sum(1 for x in lap['kontrolV25'] if x['berbunyi'])}}
     lap['lulus'] = (all(x['ok'] for x in A) and all(x['ok'] for x in lap['v6']) and all(x['berbunyi'] for x in lap['kontrol']) and lap['kontrolKasir']['berbunyi']
                     and all(x['ok'] for v in lap['kasir'].values() for x in v['cek'])
                     and all(x['ok'] for x in lap['v8']) and all(x['ok'] for x in lap['v8lama']) and all(x['berbunyi'] for x in lap['kontrolV8'])
@@ -1161,7 +1196,8 @@ def jalankan_emulator():
                     and all(x['ok'] for x in lap['v21']) and all(x['ok'] for x in lap['v21lama']) and all(x['berbunyi'] for x in lap['kontrolV21'])
                     and all(x['ok'] for x in lap['v22']) and all(x['ok'] for x in lap['v22lama']) and all(x['berbunyi'] for x in lap['kontrolV22'])
                     and all(x['ok'] for x in lap['v23']) and all(x['ok'] for x in lap['v23lama']) and all(x['berbunyi'] for x in lap['kontrolV23'])
-                    and all(x['ok'] for x in lap['v24']) and all(x['ok'] for x in lap['v24lama']) and all(x['berbunyi'] for x in lap['kontrolV24']))
+                    and all(x['ok'] for x in lap['v24']) and all(x['ok'] for x in lap['v24lama']) and all(x['berbunyi'] for x in lap['kontrolV24'])
+                    and all(x['ok'] for x in lap['v25']) and all(x['ok'] for x in lap['v25lama']) and all(x['berbunyi'] for x in lap['kontrolV25']))
     return lap
 
 
@@ -1207,7 +1243,9 @@ def ringkasan_md(lap):
            '- **V23 (karcis ambil nanti & cek bon dari HP)**: %s atas v23 · atas v22 %d/%d sesuai (berbeda tepat %s) · kontrol v23 %d/%d berbunyi'
            % (f(R['v23']), R['v23lama']['sesuai'], R['v23lama']['kasus'], ', '.join(sorted(P.BEDA_V22)), R['kontrolV23']['berbunyi'], R['kontrolV23']['jumlah']),
            '- **V24 (janji datang pemasok dari tablet)**: %s atas v24 · atas v23 %d/%d sesuai (berbeda tepat %s) · kontrol v24 %d/%d berbunyi'
-           % (f(R['v24']), R['v24lama']['sesuai'], R['v24lama']['kasus'], ', '.join(sorted(P.BEDA_V23)), R['kontrolV24']['berbunyi'], R['kontrolV24']['jumlah']), '']
+           % (f(R['v24']), R['v24lama']['sesuai'], R['v24lama']['kasus'], ', '.join(sorted(P.BEDA_V23)), R['kontrolV24']['berbunyi'], R['kontrolV24']['jumlah']),
+           '- **V25 (daftar centang rutin dari tablet / HP staf)**: %s atas v25 · atas v24 %d/%d sesuai (berbeda tepat %s) · kontrol v25 %d/%d berbunyi'
+           % (f(R['v25']), R['v25lama']['sesuai'], R['v25lama']['kasus'], ', '.join(sorted(P.BEDA_V24)), R['kontrolV25']['berbunyi'], R['kontrolV25']['jumlah']), '']
     out += ['### A · kasus (v7)', '', '| no | akun · operasi · jalur | wajib | emulator v7 | v6 |', '|---|---|---|---|---|']
     v6 = {x['no']: x for x in lap['v6']}
     for x in lap['v7']:

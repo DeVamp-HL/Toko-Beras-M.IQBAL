@@ -47,6 +47,9 @@ import { shDasborSusut, shRingkasHarga } from './susut-harga-logika.js';
 // paket Stok minus, label & kepatuhan (owner 26 Nov 2026): buku minus, tugas gudang, hilang & rusak per jenis, kemasan bertanggal (gudang-logika) · kalender kepatuhan (patuh-logika) — APA ADANYA
 import { gdDasbor } from './gudang-logika.js';
 import { ptDasbor } from './patuh-logika.js';
+// paket P6 (owner 27 Nov 2026): selisih laci malam terakhir + alarm berulang (A119, laci-logika) · rutin hari ini / minggu / bulan (A143, rutin-logika) — APA ADANYA
+import { lhDasbor } from './laci-logika.js';
+import { rnDasbor } from './rutin-logika.js';
 // paket Dasbor sensus (owner 26 Nov 2026, sensus ulang 1c: B1 B9 B88–B91 B95 B109 B113 B127) — APA ADANYA dari fungsi sumber: pembanding "jam segini" Cincin
 // (ringkasan-logika rkJamSegini), rata-rata nilai nota (laporan-logika lpRataNota), stok minimum per barang (stok-minimum-logika), enam bulan (kendali-biaya
 // trenBiaya · pondasi pdPosisiBulan). Widget angka utama: dasbor-widget-logika.js (membaca hasil dasbor ini, tanpa rumus uang).
@@ -110,6 +113,8 @@ export function dbHariIni(kini, SR) {
     kasKecil: dbCoba(() => ksHari(iso)), kasKecilTujuan: { ke: 'uang', keluarga: 'keluar' },
     setor: dbCoba(() => ugSetor()), setorTujuan: { ke: 'uang', keluarga: 'pindah' },
     rekening: dbCoba(() => crRingkas(kini)), rekeningTujuan: { ke: 'uang', keluarga: 'rekening' },
+    // paket P6 (A119): selisih laci — SEKARANG (tidak ikut saringan), angka = dokumen tutupHari (Uang › Tutup hari › Selisih laci)
+    laci: dbCoba(() => lhDasbor(kini)),
   };
 }
 const dbCoba = (f) => { try { return f(); } catch (e) { return { galat: String((e && e.message) || e) }; } };
@@ -248,6 +253,8 @@ export function dbMutu(kini, SR) {
     patuh: aman(() => ptDasbor(kini)),
     // P3 B48 (owner 27 Nov 2026): "N lambat laku · Rp X modal diam" + umur stok dalam rupiah per lapisan — klModalDiam (nilai = rumus modal tertahan A121), sekarang
     modalDiam: aman(() => klModalDiam(kini)),
+    // paket P6 (A143): daftar centang rutin — hari ini · minggu ini · bulan ini + harian yang terlewat kemarin (Menu › Toko ini › Rutin)
+    rutin: aman(() => rnDasbor(kini)),
   };
 }
 

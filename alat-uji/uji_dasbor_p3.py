@@ -302,7 +302,8 @@ def statis(src):
             ekor = uji_sisa_sensus.komentar_ekor(baris)
             if ekor and re.search(r"\b[a-zA-Z]\w*: (opsi\.|\(|async |\[|\{|'|`)|;\s*(const|let|return|if|export)\b|\)\s*=>", ekor): g.append(k + ':' + str(n + 1) + ': komentar // menelan kode → ' + ekor.strip()[:90])
     i = src['baca'].find('Paket P3')
-    if i >= 0 and ('rules v2' in src['baca'][i:i + 6000] or 'firestore.rules' in src['baca'][i:i + 6000]): g.append('BACA-DULU menyebut rules untuk paket ini (paket ini tanpa rules)')
+    j = src['baca'].find('\n## ', i + 1) if i >= 0 else -1; j = j if j > 0 else i + 6000   # paket P6: bagian sesudahnya (P6, rules v25) bukan bagian P3
+    if i >= 0 and ('rules v2' in src['baca'][i:j] or 'firestore.rules' in src['baca'][i:j]): g.append('BACA-DULU menyebut rules untuk paket ini (paket ini tanpa rules)')
     return len(STATIS) - len([x for x in g if ' → tidak ketemu' in x]), g
 
 

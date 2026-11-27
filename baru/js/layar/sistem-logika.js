@@ -66,6 +66,10 @@ export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon']
   ['untungKg', 'Untung per kg di bawah target', 'hariUntungKg'], ['kas', 'Kas di bawah ambang minimum', 'hariKas'],
   // paket P5 (owner 27 Nov 2026, A92): opname kejutan — tanggal & merek diundi (stok-pantau-logika), sumbernya diteruskan app.js lewat lokal.gudang HANYA di perangkat owner
   ['kejutan', 'Opname kejutan (diundi)', 'hariKejutan']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));   // gudang: paket KPI laba (owner 24 Nov 2026, butir 14)
+// paket P6 (owner 27 Nov 2026, A119 + A82): selisih laci BERULANG (alarm, angka di Uang › Tutup hari › Atur) · selisih yang "dicari besok" belum dijelaskan — dihitung
+// laci-logika (lhSumberPengingat, OWNER saja: angka uang) dan diteruskan app.js lewat lokal.peringatan. Baris sendiri supaya daftar di atas tidak bergeser.
+SS_JENIS_PENGINGAT.push({ id: 'laci', nama: 'Selisih laci berulang', kunci: 'hariLaci' }, { id: 'jelaskan', nama: 'Selisih laci belum dijelaskan', kunci: 'hariJelaskan' });
+export const SS_JENIS_LACI = ['laci', 'jelaskan'];   // = jenis lhSumberPengingat laci-logika
 export const SS_PENERIMA = ['Owner', 'Ben'];
 
 // ---------- ATUR SENDIRI — angka & daftar kebijakan owner, satu dokumen aturanToko per layar; bawaan = angka desain terkunci ----------
@@ -79,6 +83,8 @@ export const SS_ATUR_BAWAAN = {
   pengingat: { nyala: { anggaran: true, susut: true, hpp: true, harga: true, untungKg: true, kas: true, bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true, gudang: true, setor: true, rekening: true, tagih: true, kuartal: true, tinjauan: true, banding: true, bandingBulan: true, patuh: true, kemasan: true, minus: true, kejutan: true }, ke: { anggaran: ['Owner'], susut: ['Owner'], hpp: ['Owner'], harga: ['Owner'], untungKg: ['Owner'], kas: ['Owner'], bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'], gudang: ['Owner', 'Ben'], setor: ['Owner'], rekening: ['Owner'], tagih: ['Owner', 'Ben'], kuartal: ['Owner'], tinjauan: ['Owner'], banding: ['Owner', 'Ben'], bandingBulan: ['Owner'], patuh: ['Owner', 'Ben'], kemasan: ['Owner', 'Ben'], minus: ['Owner'], kejutan: ['Owner'] },
     hariAnggaran: 0, hariSusut: 0, hariHpp: 0, hariHarga: 0, hariUntungKg: 0, hariKas: 0, hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, hariFaktur: 3, hariGudang: 0, hariSetor: 0, hariRekening: 1, hariTagih: 0, hariKuartal: 7, hariTinjauan: 0, hariBanding: 0, hariBandingBulan: 0, hariPatuh: 0, hariKemasan: 0, hariMinus: 0, hariKejutan: 0, tundaHari: 2, maksTunda: 2, opnameTiap: 14, gudangTiap: 7 },
 };
+// paket P6: bawaan dua jenis pengingat selisih laci — menyala, ke Owner, tanpa hari sebelum (pola peringatan uang P3)
+Object.assign(SS_ATUR_BAWAAN.pengingat.nyala, { laci: true, jelaskan: true }); Object.assign(SS_ATUR_BAWAAN.pengingat.ke, { laci: ['Owner'], jelaskan: ['Owner'] }); Object.assign(SS_ATUR_BAWAAN.pengingat, { hariLaci: 0, hariJelaskan: 0 });
 const ssSalin = (x) => JSON.parse(JSON.stringify(x));
 // ---------- orang di tablet (putaran T1 langkah 3, owner 16 Nov 2026) — bentuk yang boleh ditulis; diatur lewat tablet-logika.js ----------
 export const SS_MAKS_ORANG_TABLET = 12;
@@ -135,6 +141,7 @@ export function susunAturSistem(id, isi, w) {
     o.daftar = daftar; o.pengantar = nama(isi.pengantar !== undefined ? isi.pengantar : A.pengantar); }
   else if (id === 'pengingat') { tolak = angka('hariBon', 0, 60, 'hari') || angka('hariJanji', 0, 60, 'hari') || angka('hariKantong', 0, 90, 'hari') || angka('hariOpname', 0, 60, 'hari') || angka('hariCadangan', 0, 60, 'hari') || angka('hariPajak', 0, 14, 'hari') || angka('hariFaktur', 0, 30, 'hari') || angka('hariGudang', 0, 7, 'hari') || angka('hariKuartal', 0, 30, 'hari') || angka('hariTinjauan', 0, 14, 'hari') || angka('hariSetor', 0, 14, 'hari') || angka('hariRekening', 0, 14, 'hari') || angka('hariTagih', 0, 6, 'hari') || angka('hariPatuh', 0, 60, 'hari') || angka('hariKemasan', 0, 60, 'hari') || angka('hariMinus', 0, 7, 'hari') || angka('hariKejutan', 0, 7, 'hari') || angka('tundaHari', 1, 30, 'hari') || angka('maksTunda', 0, 10, 'kali') || angka('opnameTiap', 1, 90, 'hari') || angka('gudangTiap', 1, 30, 'hari');
     tolak = tolak || ['hariAnggaran', 'hariSusut', 'hariHpp', 'hariHarga', 'hariUntungKg', 'hariKas'].map((k) => angka(k, 0, 7, 'hari')).find((x) => x) || '';   // paket P3: jenis peringatan uang
+    tolak = tolak || ['hariLaci', 'hariJelaskan'].map((k) => angka(k, 0, 7, 'hari')).find((x) => x) || '';   // paket P6: selisih laci
     o.nyala = Object.assign({}, A.nyala, isi.nyala || {}); o.ke = Object.assign({}, A.ke); Object.keys(isi.ke || {}).forEach((j) => { o.ke[j] = nama(isi.ke[j], 4); }); SS_JENIS_PENGINGAT.forEach((j) => { if (!tolak && o.nyala[j.id] && !(o.ke[j.id] || []).length) tolak = 'Minimal satu orang yang diingatkan untuk ' + j.nama.toLowerCase(); }); }
   else return { tolak: 'Setelan tidak dikenal' };
   if (tolak) return { tolak };
@@ -495,6 +502,8 @@ export function ssSumberPengingat(kini, lokal) {
   (lokal && Array.isArray(lokal.gudang) ? lokal.gudang : []).forEach((p) => { if (p && (p.jenis === 'kemasan' || p.jenis === 'minus' || p.jenis === 'kejutan') && /^\d{4}-\d{2}-\d{2}$/.test(String(p.jatuh || ''))) out.push(p); });
   // paket P3 (owner 27 Nov 2026, A4): peringatan uang — dihitung peringatan-logika (owner saja, butuh angka uang) dan diteruskan app.js lewat lokal.peringatan
   (lokal && Array.isArray(lokal.peringatan) ? lokal.peringatan : []).forEach((p) => { if (p && SS_JENIS_PERINGATAN.indexOf(p.jenis) >= 0 && /^\d{4}-\d{2}-\d{2}$/.test(String(p.jatuh || ''))) out.push(p); });
+  // paket P6 (owner 27 Nov 2026, A119 + A82): selisih laci berulang & belum dijelaskan — laci-logika lewat lokal.peringatan (owner saja)
+  (lokal && Array.isArray(lokal.peringatan) ? lokal.peringatan : []).forEach((p) => { if (p && SS_JENIS_LACI.indexOf(p.jenis) >= 0 && /^\d{4}-\d{2}-\d{2}$/.test(String(p.jatuh || ''))) out.push(p); });
   out.bonTanpaTanggal = bonTanpaTanggal; return out;
 }
 /** Jenis pengingat yang sumbernya peringatan-logika (paket P3) — sama dengan PW_JENIS. */

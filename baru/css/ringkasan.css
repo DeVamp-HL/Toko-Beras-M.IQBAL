@@ -402,3 +402,9 @@ main.layar-ringkasan.mode-dasbor > .rk-samping { display: none; }
 .layar-ringkasan .db-arus-masuk { fill: var(--emas-garis); fill-opacity: 0.75; } .layar-ringkasan .db-arus-keluar { fill: var(--platina2, var(--redup)); fill-opacity: 0.7; }
 .layar-ringkasan .db-angka-baris > .db-lampu, .layar-ringkasan .label > .db-lampu, .layar-ringkasan .db-karcis > .db-lampu { margin-right: 6px; vertical-align: middle; }
 @media (max-width: 719px) { .layar-ringkasan .db-rapor-baris { grid-template-columns: minmax(0, 1fr) auto 64px; font-size: 12px; } }
+/* paket P6 (owner 27 Nov 2026, A119): tujuh titik selisih laci per malam di kartu Hari ini — lebih emas, kurang merah, dimaafkan redup; muncul satu per satu */
+.layar-ringkasan .db-laci-titik { display: inline-flex; gap: 2px; margin-right: 6px; vertical-align: -1px; }
+.layar-ringkasan .db-laci-titik i { display: inline-block; width: 5px; height: 11px; border-radius: 2px; background: var(--redup); opacity: .45; animation: db-laci-muncul 420ms cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+.layar-ringkasan .db-laci-titik i.lebih { background: var(--aktif); opacity: 1; } .layar-ringkasan .db-laci-titik i.kurang { background: var(--awas); opacity: 1; } .layar-ringkasan .db-laci-titik i.tanpa { opacity: .2; }
+@keyframes db-laci-muncul { from { transform: scaleY(0); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .layar-ringkasan .db-laci-titik i { animation: none; } }

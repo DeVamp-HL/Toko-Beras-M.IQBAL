@@ -18,8 +18,8 @@ import { wbCekHari } from './wadah-bernama-logika.js';
 
 export { HL_TINDAKAN };
 export const HL_STATUS = { menunggu: 'menunggu owner', disetujui: 'hari ditutup owner', ditolak: 'owner minta hitung ulang', dibaca: 'tidak dipakai owner' };
-export const HL_BATAS = { alasan: 80, lembar: 100000 };
-export const HL_DRAF_KOSONG = () => ({ buka: false, lembar: {}, receh: '', timbang: {}, amankan: '' });
+export const HL_BATAS = { alasan: 80, lembar: 100000, catatan: 160 };   // catatan: paket P6 (owner 27 Nov 2026, A82) — catatan bebas Penjaga laci untuk owner
+export const HL_DRAF_KOSONG = () => ({ buka: false, lembar: {}, receh: '', timbang: {}, amankan: '', catatan: '' });
 const hlKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 const hlB1 = (x) => Math.round(x * 10) / 10;
 /** Rupiah bulat yang diketik (titik ribuan & "Rp" boleh); kosong = 0; bukan angka = NaN. */
@@ -65,9 +65,12 @@ export function hlSusunKirim(draf, akun, w) {
   const ada = cacheMentah('persetujuan').find((m) => m.tindakan === HL_TINDAKAN && (m.status || 'menunggu') === 'menunggu' && hlMilik(m, akun) && String(m.tanggal || '') === H.iso && Number(m.hitung) === H.hitung && Number(m.amankan) === amankan);
   if (ada) return { tolak: 'Hitungan yang sama (' + RP(H.hitung) + ', jam ' + (ada.jam || '?') + ') masih menunggu owner — tidak dikirim dua kali' };
   const lembar = {}; H.pecahan.forEach((x) => { if (x.n > 0) lembar[String(x.p)] = x.n; });
+  // paket P6 (owner 27 Nov 2026, A82): catatan BEBAS untuk owner (mis. "bensin 20 rb belum dicatat") — ikut dokumen hitungan; tablet tetap hitung buta
+  const catatan = String(d.catatan === undefined || d.catatan === null ? '' : d.catatan).replace(/\s+/g, ' ').trim(); if (catatan.length > HL_BATAS.catatan) return { tolak: 'Catatan untuk owner paling panjang ' + HL_BATAS.catatan + ' huruf' };
   const data = { id: w.idUnik(), tindakan: HL_TINDAKAN, status: 'menunggu', tanggal: H.iso, jam: w.jam, tanggalTulis: w.tanggal, hitung: H.hitung, lembar, receh: H.receh, amankan,
     kembalian: H.amankanBisa ? H.kembalian : null, timbang: H.timbang.filter((m) => m.fisik !== null).map((m) => ({ merk: m.merk, fisik: m.fisik, sistem: m.sistem })),
     cekWadah: { dicek: H.cek.dicek, aktif: H.cek.aktif }, mintaUid: String(akun.uid), dari: String(akun.nama || ''), peran: String(akun.peran || ''), pada: w.kini };
+  if (catatan) data.catatan = catatan;
   return { dokumen: [{ koleksi: 'persetujuan', data }], patch: { kabar: 'Hitungan laci ' + tanggalPendek(H.iso) + ' terkirim ke owner — ' + RP(H.hitung) + (amankan ? ' · ' + RP(amankan) + ' dipindah ke brankas, laci tinggal ' + RP(H.hitung - amankan) : '') + '. Owner yang menutup hari di HP.', kabarAwas: false } };
 }
 
@@ -80,7 +83,7 @@ export function hlBaris(m) {
     timbang: Array.isArray(m.timbang) ? m.timbang.map((t) => ({ merk: String(t.merk || ''), fisik: Number(t.fisik) || 0, sistem: Number(t.sistem) || 0 })) : [],
     cek: m.cekWadah ? { dicek: Number(m.cekWadah.dicek) || 0, aktif: Number(m.cekWadah.aktif) || 0 } : null,
     status: st, namaStatus: HL_STATUS[st] || st, alasan: String(m.alasanTolak || ''), balasan: String(m.balasan || ''), tutupJam: String(m.tutupJam || ''),
-    diputus: m.diputusTanggal ? tanggalPendek(m.diputusTanggal) + (m.diputusJam ? ' ' + m.diputusJam : '') : '' };
+    diputus: m.diputusTanggal ? tanggalPendek(m.diputusTanggal) + (m.diputusJam ? ' ' + m.diputusJam : '') : '', catatan: String(m.catatan || '').slice(0, HL_BATAS.catatan) };
 }
 /** Hitungan laci dari akun ini: yang menunggu (semua) + yang sudah diputus dalam 7 hari, terbaru di atas. */
 export function hlMilikSaya(akun, iso) {
@@ -109,12 +112,12 @@ export function hlTerapkan(id, statusLama) {
   const timbang = {}; b.timbang.forEach((t) => { timbang[t.merk] = String(t.fisik).replace('.', ','); });
   const perlu = barangTimbang(b.tanggal).map((x) => x.merk); const semuaDitimbang = perlu.length > 0 && perlu.every((mk) => timbang[mk] !== undefined);
   const status = Object.assign({}, statusLama || {}, { laci: 'beres', amankan: b.amankan > 0 ? 'beres' : 'lewat' }); if (semuaDitimbang) status.timbang = 'beres';
-  return { patch: { lembar, receh: b.receh, timbang, status, dariHitung: b.id, hitungTgl: b.tanggalTulis, hitungJam: b.jam, hitungOleh: b.dari, amankanTetap: b.amankan > 0 ? b.amankan : null },
+  return { patch: { lembar, receh: b.receh, timbang, status, dariHitung: b.id, hitungTgl: b.tanggalTulis, hitungJam: b.jam, hitungOleh: b.dari, amankanTetap: b.amankan > 0 ? b.amankan : null, hitungCatatan: b.catatan || null },
     kabar: 'Hitungan ' + b.dari + ' jam ' + b.jam + ' dipakai — ' + RP(b.hitung) + (b.amankan ? ' · ' + RP(b.amankan) + ' sudah di brankas' : ' · tidak dipindah ke brankas') + (perlu.length && !semuaDitimbang ? ' · timbang belum lengkap' : '') + '. Cek QRIS (atau lewati), lalu Tutup.' };
 }
 /** Owner melepas hitungan tablet dari draf (kembali ke hitungan sendiri). */
 export function hlLepas(statusLama) {
-  return { lembar: {}, receh: 0, timbang: {}, status: Object.assign({}, statusLama || {}, { laci: 'belum', timbang: 'belum', amankan: 'belum' }), dariHitung: null, hitungTgl: null, hitungJam: null, hitungOleh: null, amankanTetap: null };
+  return { lembar: {}, receh: 0, timbang: {}, status: Object.assign({}, statusLama || {}, { laci: 'belum', timbang: 'belum', amankan: 'belum' }), dariHitung: null, hitungTgl: null, hitungJam: null, hitungOleh: null, amankanTetap: null, hitungCatatan: null };
 }
 /** Owner minta hitung ulang = hitungan ditolak dengan alasan (terbaca di tablet). */
 export function hlSusunTolak(id, alasan, w) {
@@ -136,6 +139,7 @@ export function hlTeksCetak(b, kop, dicetak) {
   if (b.amankan) { g.push('Dipindah ke brankas  ' + RP(b.amankan)); g.push('Tinggal di laci  ' + RP(b.hitung - b.amankan)); } else g.push('Brankas  tidak dipindah');
   if (b.timbang.length) { g.push(''); g.push('Timbang cepat:'); b.timbang.forEach((t) => g.push(t.merk + '  ' + KG(t.fisik))); }
   if (b.cek) g.push('Cek wadah  ' + b.cek.dicek + ' dari ' + b.cek.aktif);
+  if (b.catatan) { g.push(''); g.push('Catatan untuk owner:'); g.push(b.catatan); }
   g.push(''); g.push('Status  ' + b.namaStatus + (b.diputus ? ' ' + b.diputus : '')); if (b.alasan) g.push('Owner: ' + b.alasan); if (b.balasan) g.push('Owner: ' + b.balasan);
   if (C.tanggal) g.push('Dicetak ' + tanggalPendek(C.tanggal) + (C.jam ? ' ' + C.jam : '') + (C.oleh ? ', ' + C.oleh : ''));
   g.push(''); g.push('Paraf yang menghitung:'); g.push(''); g.push('(.............)');

@@ -54,7 +54,7 @@ ok('akun: yang belum terdaftar, nonaktif, kasir@, keluar = NOL pendengar koleksi
 var PO = pendengarPeran(OWN).map(function (p) { return p.nama; }); var PK = pendengarPeran(KRY); var PKn = PK.map(function (p) { return p.nama; });
 var UANG = ['pengeluaranHarian', 'modalOwner', 'amplopLaba', 'setoranKas', 'tutupHari', 'pindahUang', 'kasbonMutasi', 'biayaBulanan', 'slipUpah', 'absenKaryawan', 'utangOwnerMutasi', 'utangPemasokMutasi', 'pemasokCatatan', 'koreksiHpp', 'thrPelanggan', 'logAktivitas', 'cadanganCatatan', 'aksesAkun', 'permintaanAkses'];
 ok('pendengar: owner = SEMUA koleksi.js (' + KOLEKSI.length + '); karyawan = daftar peta §3 — nol koleksi uang/HPP/THR/jejak/akun; aturanToko & pengaturan PER DOKUMEN (tanpa upah, identitas, hpp, titikKas, keamanan)',
-  PO.length === KOLEKSI.length && PKn.length === BACA_STAF.length + 2 && !PKn.some(function (n) { return UANG.indexOf(n) >= 0; })
+  PO.length === KOLEKSI.length && PKn.length === BACA_STAF.length + BACA_RUTIN.length + 2 && PKn.indexOf('rutinCek') >= 0 && !PKn.some(function (n) { return UANG.indexOf(n) >= 0; })
   && PK.filter(function (p) { return p.dok; }).length === 2 && PK.find(function (p) { return p.nama === 'aturanToko'; }).dok.indexOf('upah') < 0 && PK.find(function (p) { return p.nama === 'aturanToko'; }).dok.indexOf('hpp') < 0
   && PK.find(function (p) { return p.nama === 'pengaturan'; }).dok.join() === 'tempatSimpan' && PK.find(function (p) { return p.nama === 'aturanToko'; }).dok.indexOf('peran') >= 0, JSON.stringify(PKn));
 ok('layar: karyawan & Ben hanya Jual, Pelanggan, Stok, Menu — layar Uang/Ringkasan/Harga/Laporan tertutup; owner semua; akun belum terdaftar tidak membuka layar apa pun',

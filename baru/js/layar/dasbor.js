@@ -56,6 +56,19 @@ export function pasangDasbor(akar, opsi) {
   const galat = (x) => '<div class="menolak awas-teks">Bagian ini gagal dihitung (' + esc(x.galat) + ') — kelompok lain tetap. Buka layar sumbernya untuk angka yang sama.</div>';
 
   // ---------- HARI INI ----------
+  // paket P6 (owner 27 Nov 2026, A119 + A82): selisih laci malam terakhir · alarm berulang · belum dijelaskan · 7 titik malam (laci-logika lhDasbor apa adanya)
+  function barisLaci(L) {
+    if (!L) return '';
+    if (L.galat) return '<div class="ket awas-teks" data-k="db-laci">Selisih laci gagal dihitung: ' + esc(L.galat) + '</div>';
+    const T = L.terakhir; if (!T) return '<div class="ket" data-k="db-laci">Selisih laci: belum ada malam yang ditutup</div>';
+    const kata = (m) => (m.selisih === null ? 'tidak dihitung' : m.selisih === 0 ? 'pas' : (m.selisih > 0 ? 'lebih ' : 'kurang ') + RP(Math.abs(m.selisih)));
+    const A = L.alarm; const awas = A.nyala || L.belumJelas > 0;
+    const isi = { judul: 'Selisih laci · ' + L.tren.length + ' malam terakhir', baris: [['Malam terakhir · ' + tanggalPendek(T.tanggal), kata(T) + (T.alasan ? ' · ' + T.alasan : '')], ['Alarm berulang', (A.nyala ? 'MENYALA · ' : '') + A.kalimat]]
+      .concat(L.tren.slice().reverse().map((m) => [tanggalPendek(m.tanggal), kata(m) + (m.selisih && !m.lewat ? ' · dimaafkan' : '')])).concat(L.belumJelas ? [['Belum dijelaskan', L.belumJelas + ' malam — tulis di kartu Selisih laci']] : []), tujuan: L.tujuan, ke: L.sumber };
+    const titik = '<span class="db-laci-titik" aria-hidden="true">' + L.tren.map((m, i) => '<i class="' + (m.selisih === null ? 'tanpa' : m.lewat ? (m.selisih > 0 ? 'lebih' : 'kurang') : 'maaf') + '" style="--i:' + i + '"></i>').join('') + '</span>';
+    return '<div class="db-karcis db-ketuk' + (awas ? ' awas-teks' : '') + '" data-k="db-laci"' + daftar('hari:laci', isi) + '>' + titik + esc('Selisih laci ' + tanggalPendek(T.tanggal) + ': ' + kata(T)
+      + (A.nyala ? ' · berulang ' + (A.beruntun >= A.A.beruntun ? A.beruntun + ' malam berturut-turut' : A.dalam + ' dari ' + A.jendela + ' malam') : '') + (L.belumJelas ? ' · ' + L.belumJelas + ' belum dijelaskan' : '')) + ' ›</div>';
+  }
   function kartuHari(H) {
     if (H.galat) return '<div class="kartu hero db-kartu db-hari">' + galat(H) + '</div>';
     const kas = H.kas; const pos = kas.ada ? kas.tempat.filter((t) => t.n > 0) : []; const totalPos = pos.reduce((a, t) => a + t.n, 0); let x = 0;
@@ -80,6 +93,7 @@ export function pasangDasbor(akar, opsi) {
       + (H.rekening && !H.rekening.galat ? '<div class="ket db-ketuk' + (H.rekening.nBelum ? ' awas-teks' : '') + '" data-k="db-rekening"' + daftar('hari:rekening', { judul: 'Rekening usaha', baris: [['Menurut buku', H.rekening.bukuSekarang === null ? '—' : RP(H.rekening.bukuSekarang)], ['Belum dicek', H.rekening.nBelum + ' transaksi sejak ' + dbTgl(H.rekening.dari)], ['Cocok terakhir', H.rekening.akhir ? dbTgl(H.rekening.akhir.tanggal) : 'belum pernah']], tujuan: H.rekeningTujuan, ke: 'Uang › Rekening' }) + '>' + esc(H.rekening.teks) + ' ›</div>' : '')
       + '<div class="db-karcis db-ketuk' + (KC.n ? ' awas-teks' : '') + '"' + daftar('hari:karcis', { judul: 'Karcis kasir', baris: [['Karcis belum dirinci', KC.n + (KC.n ? ' · ' + RP(KC.rp) : '')], ['Nota jumlahnya belum pasti', String(KC.rapikan)], ['Karcis bertanggal hari ini', String(KC.hariIni)]], tujuan: H.karcisTujuan, ke: H.karcisSumber, catatan: 'Karcis = nota kasir yang baru nominalnya; barangnya belum dirinci, jadi modal & stoknya belum ikut.' }) + '>'
       + lampuDb('karcis') + esc(KC.n ? KC.n + ' karcis kasir belum dirinci · ' + RP(KC.rp) : 'Tidak ada karcis kasir yang menunggu dirinci') + (KC.rapikan ? ' · ' + esc(KC.rapikan + ' nota perlu dirapikan') : '') + ' ›</div>'
+      + barisLaci(H.laci)   // paket P6 (owner 27 Nov 2026, A119): selisih laci malam terakhir + alarm berulang
       + aksi('hari', [{ id: 'tutup', nama: 'Tutup hari', tujuan: { ke: 'uang', keluarga: 'tutup' }, ke: 'Uang › Tutup hari' }, { id: 'keluar', nama: 'Catat uang keluar', tujuan: { ke: 'uang', keluarga: 'keluar' }, ke: 'Uang › Uang keluar' },
         { id: 'pindah', nama: 'Pindah uang', tujuan: { ke: 'uang', keluarga: 'pindah' }, ke: 'Uang › Pindah uang' }].concat(KC.n ? [{ id: 'karcis', nama: 'Rinci karcis', tujuan: H.karcisTujuan, ke: H.karcisSumber }] : []))
       + '</div>';
@@ -347,6 +361,12 @@ export function pasangDasbor(akar, opsi) {
     if (P && P.galat) out.push(salah('patuh', 'Kalender kepatuhan', P));
     else if (P) out.push(baris('patuh', 'Kalender kepatuhan', P.n ? P.n + ' urusan' + (P.lewat ? ' · ' + P.lewat + ' lewat' : '') : P.basi.length ? 'cek aturan belum' : 'tidak ada yang dekat', P.lewat > 0 || P.basi.length > 0,
       { judul: 'Kalender kepatuhan', baris: (P.daftar.length ? P.daftar.map((x) => [x.nama, x.teks]) : [['Keadaan', P.kalimat]]).concat(P.basi.length ? [['Cek aturan > 30 hari / belum pernah', P.basi.join(', ')]] : []), tujuan: P.tujuan, ke: 'Laporan › Pajak › Kalender' }));
+    // paket P6 (owner 27 Nov 2026, A143): daftar centang rutin (rutin-logika rnDasbor apa adanya)
+    const RN = Q.rutin;
+    if (RN && RN.galat) out.push(salah('rutin', 'Rutin', RN));
+    else if (RN) out.push(baris('rutin', 'Rutin hari ini', RN.harian.nSudah + ' dari ' + RN.harian.n + (RN.nLewat ? ' · ' + RN.nLewat + ' lewat' : '') + (RN.terlewat.length ? ' · kemarin ' + RN.terlewat.length + ' terlewat' : ''), RN.nLewat > 0 || RN.terlewat.length > 0,
+      { judul: 'Rutin harian · mingguan · bulanan', baris: [['Hari ini', RN.harian.nSudah + ' dari ' + RN.harian.n], ['Minggu ini', RN.mingguan.nSudah + ' dari ' + RN.mingguan.n], ['Bulan ini', RN.bulanan.nSudah + ' dari ' + RN.bulanan.n]]
+        .concat(RN.lewat.length ? [['Lewat', RN.lewat.join(', ')]] : []).concat(RN.terlewat.length ? [['Terlewat ' + tanggalPendek(RN.kemarin), RN.terlewat.slice(0, 6).join(', ') + (RN.terlewat.length > 6 ? ', …' : '')]] : []), tujuan: RN.tujuan, ke: RN.sumber }));
     out.push(R.galat ? salah('mutu', 'Mutu kedatangan', R) : baris('mutu', 'Kedatangan mutu AWAS', R.awas ? R.awas + ' kedatangan' : R.ditimbang || R.awas ? '0' : 'belum dicek', R.awas > 0, { judul: 'Timbang & mutu kedatangan', baris: [['Ditimbang', R.ditimbang + ' dari ' + R.kedatangan + ' kedatangan'], ['Kurang timbang', dbKg(R.kgKurang)], ['Mutu AWAS', String(R.awas)]], tujuan: R.tujuan, ke: 'Stok › Barang masuk' }));
     return '<div class="kartu db-kartu db-mutu">' + kepala('Mutu usaha', Q.periode, 'sumber:mutu', Q.sumber, Q.tujuan) + out.join('') + '</div>';
   }
