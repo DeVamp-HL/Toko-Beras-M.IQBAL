@@ -15,6 +15,8 @@ import * as FB from './foto-bon-logika.js';
 import * as BL from './belanja-logika.js';
 import * as SG from './stok-pantau-logika.js';   // paket P5 (owner 27 Nov 2026, A20): rencana beli bulan depan (tanpa musim)
 import * as JN from './janji-logika.js';   // paket tanggal janji (owner 27 Nov 2026): janji datang pesanan ke pemasok
+// paket P4 (owner 27 Nov 2026): piutang di garis jatuh tempo (A5) · umur utang per pemasok (B40 B78)
+import * as PB from './pembelian-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, kabarKiriman, ingatStokKemasan, kunciLuarCache, cacheMentah } from '../data/toko.js';
@@ -59,9 +61,9 @@ export function pasangLayarHarga(akar, opsi) {
     aturTm: null,   // paket KPI laba: draf target margin per jenis
     aturMin: null, hb: null, minBuka: false,   // paket HPP & harga minimum: draf setelan (target laba, jarak HET) · ketikan kalkulator sebelum beli · daftar lengkap
     tabB: tabLokal.b || 'tusuk', bukuNama: '', bayar: null, lama: null, kartu: null, urung: null, aturB: null, betul: null, foto: null,
-    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, waJanji: '', janjiP: null, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, kmUbah: null, kmDaftar: false, hetBuka: false, aturHet: null, vrBaru: null, vrYakin: false, arYakin: '', arBuka: false, ltYakin: '' });
+    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, waJanji: '', janjiP: null, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, kmUbah: null, kmDaftar: false, hetBuka: false, aturHet: null, vrBaru: null, vrYakin: false, arYakin: '', arBuka: false, ltYakin: '', garisPiutang: true, umAtur: null });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturHet', 'waJanji', ['janjiP', (v) => !!(v && v.tanggal)], 'aturTm', 'aturMin', 'hb', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))], 'bdCatat', 'aturBd', ['bdTandai', (v) => !!String(v || '').trim()]], [KUNCI_DRAF_BELANJA]);
+  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturHet', 'waJanji', ['janjiP', (v) => !!(v && v.tanggal)], 'aturTm', 'aturMin', 'hb', 'aturB', 'umAtur', 'aturL', 'bayar', 'lama', 'kartu', 'betul', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))], 'bdCatat', 'aturBd', ['bdTandai', (v) => !!String(v || '').trim()]], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
   // sanggahan layar mulus 7 Okt: dibuka lagi tanpa data baru tetap digambar ulang bila hari, hari tutup aktif (jam 12 siang) atau titik kas perangkat
@@ -216,6 +218,14 @@ export function pasangLayarHarga(akar, opsi) {
     bpBayarBuka: ({ pemasok, bon }) => { const B = BP.susunBon(kini()); const d = B.bon.filter((b) => b.pemasok === pemasok).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))); const b0 = d.find((b) => b.id === String(bon)) || d[0]; if (!b0) return set({ kabar: 'Tidak ada bon terbuka untuk ' + pemasok, kabarAwas: true });
       set({ bayar: { pemasok, bonId: b0.id, ketik: String(b0.sisa), dari: '', adminI: -1, catatan: '' }, lama: null, kartu: null, kabar: '' }); keAtas(); },
     bpBayarBon: ({ bon }) => { const B = BP.susunBon(kini()); const b0 = B.bon.find((b) => b.id === String(bon)); set({ bayar: Object.assign({}, st().bayar, { bonId: String(bon), ketik: b0 ? String(b0.sisa) : '' }) }); },
+    // paket P4 (owner 27 Nov 2026): A5 piutang di garis jatuh tempo (saklar, bawaan nyala) · B40 B78 kelompok umur utang (setelan owner aturanToko/umurUtang)
+    bpGarisPiutang: () => set({ garisPiutang: !st().garisPiutang }),
+    bpKePiutang: ({ orang }) => { if (opsi.keTujuan) opsi.keTujuan({ ke: 'pelanggan', keluarga: 'bon', orang }); },
+    umAturBuka: () => { const A = PB.pbAturUmur(); set({ umAtur: st().umAtur ? null : { umur: A.umurBatas.map(String), lewat: A.lewatBatas.map(String) }, kabar: '' }); },
+    umKetik: (v, el) => { const d = JSON.parse(JSON.stringify(st().umAtur || { umur: ['', '', ''], lewat: ['', ''] })); const k = el.dataset.kolom === 'lewat' ? 'lewat' : 'umur'; d[k][Number(el.dataset.i) || 0] = String(v).replace(/[^\d]/g, '').slice(0, 4); set({ umAtur: d }); },
+    umBuku: ({ nama }) => { set({ bukuNama: nama, tabB: 'buku' }); ingatTab(); },
+    umSimpan: async () => { await tulis(PB.pbSusunAturUmur(st().umAtur, waktu())); },
+    umBawaan: async () => { await tulis(PB.pbSusunAturUmur({ umur: [], lewat: [] }, waktu())); },
     bpKetik: (v, el) => { const b = Object.assign({}, st().bayar || {}); b[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'catatan' ? 80 : 14); set({ bayar: b }); },
     bpDari: ({ d }) => set({ bayar: Object.assign({}, st().bayar, { dari: d, adminI: d === 'rekening' ? st().bayar.adminI : -1 }) }),
     // putaran 29: TUNAI (laci/brankas) atau TRANSFER (rekening) — cara bayar dibaca dari `dari`, tanpa kolom baru
@@ -642,6 +652,7 @@ export function pasangLayarHarga(akar, opsi) {
       ${L === 'mac' ? h`<div class="hg-grid mac tiga" data-k="grid-bon"><div class="hg-kolom" data-k="k1">${gambarTusukan(s, B)}</div><div class="hg-kolom" data-k="k2">${gambarGaris(B)}</div><div class="hg-kolom" data-k="k3">${gambarBuku(s, B)}</div></div>`
         : L === 'tablet' ? h`<div class="hg-grid tablet" data-k="grid-bon"><div class="hg-kolom" data-k="k1">${gambarTusukan(s, B)}</div><div class="hg-kolom" data-k="k2">${tabBaris(tabAda.map(([id, nm]) => [id, nama(id, nm)]), tab, 'tabB')}${panel(tab)}</div></div>`
         : h`<div class="hg-kolom" data-k="grid-bon">${tabBaris(tabAda.map(([id, nm]) => [id, nama(id, nm)]), tab, 'tabB')}${panel(tab)}</div>`}
+      ${gambarUmurUtang(s)}
       ${gambarHariBayar()}
       <div class="tombol-baris rapat"><div class="kaca-btn putus" data-aksi="bpLamaBuka">＋ Catat bon lama (sebelum sistem)</div>${gambarAturB(s, B)}</div>
       <div class="ket" style="font-size: 11px;">Sisa bon = nilai − yang sudah dibayar (mesin yang sama dengan sistem lama); bon yang dibayar sebagian TETAP di daftar. Satu pembayaran = satu bon; bon tertua cuma saran — lu yang memilih. Jatuh tempo = tanggal barang datang + tempo di kartu pemasok (atau tempo umum di Atur Barang masuk) — ramalan, bukan janji tertulis. Membayar bon tidak mengubah laba; biaya admin transfer masuk biaya toko.</div>
@@ -662,11 +673,38 @@ export function pasangLayarHarga(akar, opsi) {
         ${t.bon.map((b, i) => bonSlip(b, i))}${t.tekor ? h`<div class="pita-info awas" style="margin: 6px 0;">Kelebihan bayar ${RP(t.tekor)} — ada kedatangan yang bonnya belum masuk buku.</div>` : ''}<div class="bn-dasar"></div></div>`) : h`<div class="menolak" style="padding: 10px 0;">Tidak ada bon yang masih terbuka.</div>`}
       <div class="ket" style="padding-top: 6px;">Ketuk kertas bonnya untuk membayar. Ketuk nama pemasok untuk kartunya (orang, nomor, tempo).</div></div>`;
   }
+  // paket P4 (owner 27 Nov 2026, A5): piutang per nota yang jatuh tempo ikut garis sebagai uang MASUK kalau dibayar tepat waktu (PB.pbGarisPiutang; saklar, bawaan nyala).
+  // Bon & penanda lama tetap; baris piutang disisipkan menurut jatuh temponya, penanda kedua = kas + piutang. Saklar mati = garis lama persis (B.garis).
   function gambarGaris(B) {
-    return h`<div class="hg-kolom" data-k="garis"><div class="hg-ringkas tiga" data-k="ringkas-bon">${B.ringkas.map((r, i) => h`<div class="${r.nyala ? 'nyala' : ''}" data-k="rb-${i}"><span class="a">${r.a}</span><span class="l">${r.l}</span></div>`)}</div>
+    const sP = st(); const GP = sP.garisPiutang ? PB.pbGarisPiutang(B, kini()) : null; const garisP = GP ? GP.garis : B.garis;
+    const barisPiutang = (g) => h`<div class="bn-titik piutang" data-k="gp-${g.id}" data-aksi="bpKePiutang" data-orang="${g.orang}"><div><div>Piutang · ${g.nama}${g.faktur ? h`<span class="bn-cap redup">faktur ${g.faktur}</span>` : ''}</div><div class="ket">${g.tempoTeks}</div></div><div class="n">+${RP(g.sisa)}</div></div>`;
+    return h`<div class="hg-kolom" data-k="garis"><div class="tombol-baris rapat" data-k="garis-piutang-saklar"><div class="kaca-btn kecil ${sP.garisPiutang ? 'aktif' : ''}" data-aksi="bpGarisPiutang">${sP.garisPiutang ? '✓ piutang ikut garis' : '+ tampilkan piutang yang jatuh tempo'}</div>${GP ? h`<span class="ket">${GP.nMasuk} nota · ${RP(GP.rpMasuk)} masuk kalau tepat waktu</span>` : ''}</div>
+      ${GP && GP.cukupTeks2 ? h`<div class="pita-info ${GP.kurang2 ? 'awas' : ''}" data-k="garis-piutang-cukup">${GP.cukupTeks2}</div>` : ''}
+      <div class="hg-ringkas tiga" data-k="ringkas-bon">${B.ringkas.map((r, i) => h`<div class="${r.nyala ? 'nyala' : ''}" data-k="rb-${i}"><span class="a">${r.a}</span><span class="l">${r.l}</span></div>`)}</div>
       <div class="pita-info ${B.kurang ? 'awas' : ''}">${B.cukupTeks}</div>
-      <div class="kartu" style="gap: 0;"><div class="bn-garis">${B.garis.length ? B.garis.map((g, i) => (g.tanda ? h`<div class="bn-tanda ${g.kelas}" data-k="gt-${i}">${g.teks}</div>` : h`<div class="bn-titik ${g.status}" data-k="gb-${g.id}" data-aksi="bpBayarBuka" data-pemasok="${g.pemasok}" data-bon="${g.id}"><div><div>${g.pemasok} · Bon ${g.gulir || g.tanggal ? tanggalPendek(g.gulir || g.tanggal) : '(tanpa tanggal)'}${g.cap ? h`<span class="bn-cap ${g.jenis === 'saldoAwal' ? 'redup' : ''}">${g.cap}</span>` : ''}</div><div class="ket ${g.status === 'lewat' ? 'awas-teks' : ''}">${g.tempoTeks}</div></div><div class="n">${RP(g.sisa)}</div></div>`)) : h`<div class="menolak" style="padding: 10px 0;">Tidak ada bon yang masih terbuka.</div>`}</div></div>
-      <div class="ket">Jatuh tempo = tanggal barang datang + tempo pemasoknya. Penanda "uang toko habis di sini" memakai total kas dari titik kas — kalau titik kas belum disetel, penanda itu tidak digambar.</div></div>`;
+      <div class="kartu" style="gap: 0;"><div class="bn-garis">${garisP.length ? garisP.map((g, i) => (g.tanda ? h`<div class="bn-tanda ${g.kelas}" data-k="gt-${i}">${g.teks}</div>` : g.piutang ? barisPiutang(g) : h`<div class="bn-titik ${g.status}" data-k="gb-${g.id}" data-aksi="bpBayarBuka" data-pemasok="${g.pemasok}" data-bon="${g.id}"><div><div>${g.pemasok} · Bon ${g.gulir || g.tanggal ? tanggalPendek(g.gulir || g.tanggal) : '(tanpa tanggal)'}${g.cap ? h`<span class="bn-cap ${g.jenis === 'saldoAwal' ? 'redup' : ''}">${g.cap}</span>` : ''}</div><div class="ket ${g.status === 'lewat' ? 'awas-teks' : ''}">${g.tempoTeks}</div></div><div class="n">${RP(g.sisa)}</div></div>`)) : h`<div class="menolak" style="padding: 10px 0;">Tidak ada bon yang masih terbuka.</div>`}</div></div>
+      <div class="ket">Jatuh tempo = tanggal barang datang + tempo pemasoknya. Penanda "uang toko habis di sini" memakai total kas dari titik kas — kalau titik kas belum disetel, penanda itu tidak digambar.${GP ? ' ' + GP.rumus + (GP.nanti.n ? ' ' + GP.nanti.n + ' nota (' + RP(GP.nanti.rp) + ') jatuh tempo sesudahnya tidak digambar.' : '') : ''}</div></div>`;
+  }
+  // paket P4 (owner 27 Nov 2026, B40 · B78): UMUR UTANG per pemasok — umur sejak barang datang (bawaan ≤ 7 · 8–30 · 1–3 bln · > 3 bln) + lewat tempo berapa lama.
+  // Kelompoknya setelan owner (aturanToko/umurUtang); angka = PB.pbUmurUtang (sisa bon mesin yang sama dengan Tusukan & Jatuh tempo).
+  function gambarUmurUtang(s) {
+    const U = PB.pbUmurUtang(kini()); const KLS = ['u1', 'u2', 'u3', 'u4'];
+    const bilah = (o) => { let x = 0; return h`<span class="bn-umur-bilah">${o.umur.concat([{ id: 'tanpa', rp: o.tanpaUmur.rp }]).filter((e) => e.rp > 0).map((e) => { const w = o.total > 0 ? e.rp / o.total * 100 : 0; const el = h`<i class="${KLS[o.umur.indexOf(e)] || 'u0'}" style="left: ${x.toFixed(2)}%; width: ${w.toFixed(2)}%;"></i>`; x += w; return el; })}</span>`; };
+    const tempo = (o) => o.lewat.filter((x) => x.rp > 0).map((x) => x.label + ' ' + RP(x.rp)).concat(o.belum.rp ? ['belum jatuh tempo ' + RP(o.belum.rp)] : []).concat(o.tanpaTempo.rp ? ['tanpa tempo ' + RP(o.tanpaTempo.rp)] : []).join(' · ');
+    const A = s.umAtur;
+    return h`<div class="kartu" data-k="umur-utang" style="gap: 4px;"><div style="display: flex; justify-content: space-between; align-items: baseline;"><div class="label">Umur utang per pemasok · sekarang</div><div class="ket tautan" data-aksi="umAturBuka" data-k="umur-atur-buka">${A ? 'tutup' : 'ubah kelompok ›'}</div></div>
+      <div class="bn-umur-legenda ket">${U.kelompok.map((e, i) => h`<span><i class="${KLS[i]}"></i>${e.label}</span>`)}${U.total.tanpaUmur.n ? h`<span><i class="u0"></i>tanpa tanggal</span>` : ''}</div>
+      ${U.daftar.length ? U.daftar.map((o) => h`<div class="hg-dua-kolom bn-umur" data-k="um-${o.pemasok}" data-aksi="umBuku" data-nama="${o.pemasok}"><span>${o.pemasok}<br><span class="ket">${o.umur.filter((e) => e.rp > 0).map((e) => e.label + ' ' + RP(e.rp)).join(' · ')}${o.tanpaUmur.rp ? ' · tanpa tanggal ' + RP(o.tanpaUmur.rp) : ''}</span>${bilah(o)}<span class="ket ${o.rpLewat > 0 ? 'awas-teks' : ''}">${o.lewatTeks}${tempo(o) ? ' · ' + tempo(o) : ''}</span></span><span class="n">${RP(o.total)}</span></div>`)
+        : h`<div class="menolak" style="padding: 8px 0;">Tidak ada utang ke pemasok.</div>`}
+      ${U.daftar.length > 1 ? h`<div class="hg-dua-kolom" data-k="um-total"><span><b>Semua pemasok</b><br><span class="ket ${U.total.rpLewat > 0 ? 'awas-teks' : ''}">lewat tempo ${RP(U.total.rpLewat)}${U.total.lewatTerlama ? ' · paling lama ' + U.total.lewatTerlama + ' hari' : ''}</span></span><span class="n">${RP(U.total.total)}</span></div>` : ''}
+      ${U.menutup ? '' : h`<div class="pita-info awas">Kelompok umur tidak menutup ke sisa bon — laporkan.</div>`}
+      ${A ? h`<div class="kartu" data-k="umur-atur" style="gap: 6px;"><div class="label">Kelompok umur utang · ${U.atur.dariOwner ? 'setelan lu' : 'bawaan'}</div>
+        <div class="ket">Umur sejak barang datang — tiga batas hari (bawaan 7 · 30 · 90 = ≤ 7 · 8–30 · 1–3 bulan · > 3 bulan):</div>
+        <div class="tombol-baris rapat">${[0, 1, 2].map((i) => h`<input class="ketik-nama sempit" type="text" inputmode="numeric" value="${A.umur[i] || ''}" data-ketik="umKetik" data-kolom="umur" data-i="${i}" style="width: 72px;">`)}</div>
+        <div class="ket">Lewat jatuh tempo — dua batas hari (bawaan 7 · 30 = 1–7 · 8–30 · > 30 hari lewat):</div>
+        <div class="tombol-baris rapat">${[0, 1].map((i) => h`<input class="ketik-nama sempit" type="text" inputmode="numeric" value="${A.lewat[i] || ''}" data-ketik="umKetik" data-kolom="lewat" data-i="${i}" style="width: 72px;">`)}</div>
+        <div class="tombol-baris"><div class="kaca-btn" data-aksi="umBawaan">pakai bawaan</div><div class="kaca-btn aktif emas" data-aksi="umSimpan">SIMPAN KELOMPOK</div></div></div>` : ''}
+      <div class="ket" style="font-size: 11px;">${U.rumus} Ketuk pemasok untuk buku bonnya. Kartu yang sama ada di Dasbor (Atur › + Tambah kartu › Umur utang pemasok).</div></div>`;
   }
   function gambarBuku(s, B) {
     const pem = BP.daftarPemasok(); const nm = pem.some((p) => p.nama === s.bukuNama) ? s.bukuNama : (B.tusukan[0] ? B.tusukan[0].pemasok : (pem[0] ? pem[0].nama : '')); const P = BP.cariPemasok(nm); const buku = nm ? BP.bukuBon(nm) : { baris: [], saldo: 0 }; const terbuka = B.bon.filter((b) => b.pemasok === nm);

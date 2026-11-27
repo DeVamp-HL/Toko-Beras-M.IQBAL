@@ -223,6 +223,9 @@ jobs:
       - name: "Paket P8 · Arsip, audit & bagikan (owner 27 Nov 2026, A94 B13 B81 B103; rules v26): foto nota kedatangan tunai & bon dari owner + tablet Penjaga laci (tanda ringan fotoTanda, hitungan belum berfoto Dasbor, arsip foto per bulan terpisah dari cadangan), omzet per perangkat (Σ menutup ke nota), log hari lain & riwayat satu catatan (rentang WIB, cadangan membawa log 30 hari), tautan beku Dasbor (centang bagian, 1/7/30/90 hari, server menolak sesudah lewat, tanpa nama orang) — kotak pasir + statis + kontrol"
         if: matrix.bagian == 1
         run: python3 alat-uji/uji_arsip_audit_p8.py && python3 alat-uji/uji_arsip_audit_p8.py --kontrol
+      - name: "Paket P4 · Pembelian, pemasok & utang (owner 27 Nov 2026, A5 A25 A57 B40 B57 B62 B63 B64 B78 B134; tanpa rules): tarif bongkar kuli per karung (berlaku sejak tanggalnya, cuma tanda di Barang masuk owner & tablet), buku pembelian per periode (Σ = kartu Pembelian, status bayar per kedatangan), per pemasok vs bulan lalu s.d. tanggal sama + pesanan datang/menunggu/batal, umur utang per pemasok (Σ = sisa bon mesin), piutang di garis jatuh tempo Bon pemasok, beban gudang 7 hari (janji terakhir + laju + pesanan) (kotak pasir + kontrol)"
+        if: matrix.bagian == 1
+        run: python3 alat-uji/uji_pembelian_p4.py && python3 alat-uji/uji_pembelian_p4.py --kontrol
 
       - name: "Sidik jari owner di tablet, Tahap A (owner 22 Nov 2026): masuk & intip lewat kunci penanda (sidik jari kuat), hangus = mati + kabar owner, intip tertutup sendiri (setelan owner), jejak bertanda sidik jari (jsc + kontrol)"
         if: matrix.bagian == 1

@@ -17,7 +17,7 @@ export const WG_KOLOM = 12;       // kisi Mac / tablet: 12 kolom
 export const WG_BARIS_PX = 8;     // satu baris kisi = 8 px (tinggi kartu ditarik per 8 px)
 export const WG_H_MIN = 10, WG_H_MAKS = 250;   // tinggi yang ditarik: 80 px – 2.000 px (null = setinggi isinya)
 const WG_LEBAR_UKURAN = { kecil: 3, lebar: 6, besar: 6, penuh: 12 };   // ukuran lama (kecil/lebar/besar/penuh) → kolom
-export const WG_MAKS = 64;   // di atas jumlah katalog (semua widget boleh terpasang sekaligus) — P1 (27 Nov 2026): 48 → 64, katalog kini > 48 (dijaga uji_kpi_kg)
+export const WG_MAKS = 80;   // di atas jumlah katalog (semua widget boleh terpasang sekaligus) — P1 (27 Nov 2026): 48 → 64, katalog kini > 48 (dijaga uji_kpi_kg) · P4 (27 Nov 2026): 64 → 80, katalog kini > 64
 const wgRpPendek = (n) => { const a = Math.abs(n || 0); const s = n < 0 ? '−' : ''; return a >= 1e6 ? s + 'Rp' + DESIMAL(Math.round(a / 1e5) / 10) + ' jt' : a >= 1e3 ? s + 'Rp' + Math.round(a / 1e3) + ' rb' : s + 'Rp' + Math.round(a); };
 const wgPct = (x) => (x === null || x === undefined || !isFinite(x) ? '—' : (x < 0 ? '−' : x > 0 ? '+' : '') + DESIMAL(Math.round(Math.abs(x) * 10) / 10) + '%');
 const wgPctPolos = (x) => (x === null || x === undefined || !isFinite(x) ? '—' : (x < 0 ? '−' : '') + DESIMAL(Math.round(Math.abs(x) * 10) / 10) + '%');
@@ -40,6 +40,9 @@ function WG_KARTU() {
     LAMA('kBeli', 'Pembelian', 'beli', 6),   // B68 (owner 27 Nov 2026): grafik pembelian per hari · minggu · bulan (dasbor.js kartuBeli)
     // P2 (owner 27 Nov 2026: "Lu tambah sendiri" — TIDAK masuk bawaan): rapor bulan (saklar Laba | Kas) & arus kas bulan ini (dasbor.js kartuRapor / kartuArusKas)
     LAMA('kRapor', 'Rapor bulan', 'rapor', 6), LAMA('kArusKas', 'Arus kas bulan ini', 'rapor', 6),
+    // paket P4 (owner 27 Nov 2026: buku pembelian & beban gudang "Dasbor aja" — TIDAK masuk bawaan, dipasang lewat Atur › + Tambah kartu): A57 B63 buku pembelian,
+    // B62 B134 B63 B64 per pemasok vs bulan lalu, B40 B78 umur utang pemasok, B57 beban gudang 7 hari (dasbor.js kartuBukuBeli / kartuPemasokBeli / kartuUmurUtang / kartuBeban)
+    LAMA('kBukuBeli', 'Buku pembelian', 'beli4', 12), LAMA('kPemasokBeli', 'Pembelian per pemasok', 'beli4', 12), LAMA('kUmurUtang', 'Umur utang pemasok', 'beli4', 6), LAMA('kBeban', 'Beban gudang 7 hari', 'beli4', 6),
     K('kPerhatian', 'Perlu perhatian', 'perhatian', 'lebar', (D) => { const P = (D.perhatian || []).filter((x) => x && x.teks);
       return { nilai: P.length ? P.length + ' hal' : 'tidak ada', ket: P.length ? 'yang merah didahulukan' : 'tidak ada bon, utang, stok, atau pesanan yang menunggu', awas: P.some((x) => x.awas),
         baris: P.slice().sort((a, b) => (b.awas ? 1 : 0) - (a.awas ? 1 : 0)).slice(0, 4).map((x) => [x.teks, x.nilai || '']), tujuan: null }; }),

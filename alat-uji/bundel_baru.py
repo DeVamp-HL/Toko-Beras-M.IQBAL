@@ -208,6 +208,12 @@ AF_MODUL = 'baru/js/layar/arsip-foto-logika.js'
 AF_PEMAKAI = ('dasbor-logika.js', 'foto-nota-panel.js', 'arsip-audit-panel.js', 'app.js')
 
 
+# paket P4 (owner 27 Nov 2026): pembelian-logika.js (awalan pb) — buku pembelian, per pemasok, umur utang, beban gudang, tarif bongkar, piutang di garis jatuh tempo
+PB_MODUL = 'baru/js/layar/pembelian-logika.js'
+PB_PEMAKAI = ('dasbor-logika.js', 'harga.js', 'stok.js')
+PB_SUMBER = ('baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/susut-harga-logika.js', 'baru/js/layar/belanja-logika.js', 'baru/js/layar/janji-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/pesanan-logika.js')
+
+
 def lengkapi(daftar):
     d = list(daftar)
     if any(os.path.basename(x) in HJ_PEMAKAI for x in d) and not any(x.endswith('het-jual-logika.js') for x in d):
@@ -295,6 +301,10 @@ def lengkapi(daftar):
         d.append(AB_MODUL)
     if any(os.path.basename(x) in RB_PEMAKAI for x in d) and not any(x.endswith('rapor-bulan-logika.js') for x in d):
         d.append(RB_MODUL)
+    if any(os.path.basename(x) in PB_PEMAKAI for x in d) and not any(x.endswith('pembelian-logika.js') for x in d):
+        for m in PB_SUMBER:
+            if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)
+        d.append(PB_MODUL)
     return d
 
 

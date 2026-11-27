@@ -524,6 +524,96 @@ export function pasangDasbor(akar, opsi) {
     if (km) out += '<div class="db-baris db-ketuk awas-teks" data-k="db-beli-kabar"' + daftar('beli:kabar', { judul: km.nama, baris: [['Menunggu', String(km.n)], ['', km.ket]], tujuan: km.tujuan, ke: 'Stok › Barang masuk' }) + '><span class="db-nama">' + esc(km.nama) + '</span><span class="ket">menunggu diperiksa</span><span class="db-nilai">' + esc(km.n + ' ›') + '</span></div>';
     return out;
   }
+  // ---------- PAKET P4 (owner 27 Nov 2026: "Dasbor aja"): pembelian, pemasok & utang — D.beli4 = dasbor-logika dbBeli4 → pembelian-logika APA ADANYA ----------
+  const p4Galat = (kelas, X, nama) => '<div class="kartu db-kartu ' + kelas + '">' + galat(X && X.galat ? X : { galat: nama + ' tidak ada' }) + '</div>';
+  const p4Pct = (x) => (x === null || x === undefined || !isFinite(x) ? '—' : (x > 0 ? '+' : x < 0 ? '−' : '') + DESIMAL(Math.round(Math.abs(x) * 10) / 10) + '%');
+  const p4Bilah = (seg, total, id) => '<svg class="db-p4-bilah" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">' + (() => { let x = 0; return seg.filter((g) => g.rp > 0).map((g, i) => {
+    const w = dbPersen(g.rp, total); const r = '<rect class="db-tumbuh-x ' + esc(g.kelas) + '" style="--i:' + i + '" x="' + x.toFixed(3) + '" y="0" width="' + w.toFixed(3) + '" height="10"' + (g.isi ? daftar(id + ':' + g.id, g.isi) : '') + '></rect>'; x += w; return r; }).join(''); })() + '</svg>';
+  // A57 · B63: BUKU PEMBELIAN — tiap kedatangan di periode saringan (bawaan bulan ini) dengan status bayar sekarang & cek tarif bongkar
+  function kartuBukuBeli(X) {
+    if (!X) return ''; if (X.galat) return p4Galat('db-buku4', X); const B = X.buku; if (!B || B.galat) return p4Galat('db-buku4', B, 'buku pembelian');
+    const lunas = B.baris.filter((x) => x.status === 'lunas'), sisa = B.baris.filter((x) => x.status === 'sisa'), lgs = B.baris.filter((x) => x.status === 'langsung');
+    const rp = (d) => d.reduce((a, x) => a + x.rp, 0);
+    const seg = [{ id: 'lunas', kelas: 'db-p4-lunas', rp: rp(lunas), isi: { judul: 'Bon lunas · ' + X.periode, baris: [['Kedatangan', String(lunas.length)], ['Nilai', RP(rp(lunas))]], tujuan: { ke: 'harga', keluarga: 'bon' }, ke: 'Bon pemasok' } },
+      { id: 'sisa', kelas: 'db-p4-sisa', rp: rp(sisa), isi: { judul: 'Bon masih bersisa · ' + X.periode, baris: [['Kedatangan', String(sisa.length)], ['Nilai', RP(rp(sisa))], ['Sisa sekarang', RP(B.bon.sisa)]], tujuan: { ke: 'harga', keluarga: 'bon' }, ke: 'Bon pemasok' } },
+      { id: 'langsung', kelas: 'db-p4-langsung', rp: rp(lgs), isi: { judul: 'Dibayar langsung · ' + X.periode, baris: [['Kedatangan', String(lgs.length)], ['Nilai', RP(rp(lgs))]], tujuan: B.tujuan, ke: 'Stok › Barang masuk' } }];
+    const tarif = !B.tarifAda ? 'Tarif bongkar kuli belum ditulis — tulis di Stok › Barang masuk › Atur tarif bongkar supaya upah bongkar dicek otomatis' : B.bedaTarif.n ? B.bedaTarif.n + ' kedatangan upah bongkarnya beda dari tarif (selisih ' + RP(B.bedaTarif.rp) + ')' : 'Upah bongkar semua kedatangan sesuai tarif (atau belum bisa dicek)';
+    const baris = B.baris.slice(0, B.maks).map((x) => '<div class="db-baris db-ketuk db-p4-baris' + (x.tarif.awas ? ' awas-teks' : '') + '" data-k="db-buku4-' + esc(x.id) + '"' + daftar('buku4:' + x.id, { judul: x.pemasok + ' · ' + tanggalPendek(x.tanggal) + (x.jam ? ' ' + dbJam(x.jam) : ''),
+      baris: [['Barang', x.merek || '—'], ['Beras datang', dbKg(x.kg) + (x.karung ? ' · ' + x.karung + ' karung' : '')], ['Nilai', RP(x.rp) + (x.bongkarSemua ? ' (beras ' + RP(x.beras) + ' + bongkar ' + RP(x.bongkarSemua) + ')' : '')], ['Bayar', x.statusTeks]]
+        .concat(x.noBon ? [['No. bon', x.noBon]] : []).concat([['Upah bongkar', x.tarif.teks]]), tujuan: x.tujuan, ke: x.bon ? 'Harga & Pemasok › Bon pemasok' : 'Stok › Barang masuk', catatan: B.rumus })
+      + '><span class="db-nama">' + esc(dbTgl(x.tanggal) + ' · ' + x.pemasok) + '</span><span class="ket">' + esc(dbKg(x.kg) + ' · ' + x.statusTeks + (x.tarif.awas ? ' · bongkar beda tarif' : '')) + '</span><span class="db-nilai angka">' + esc(RP(x.rp)) + ' ›</span></div>').join('');
+    return '<div class="kartu db-kartu db-buku4" data-k="db-buku4">' + kepala('Buku pembelian', X.periode, 'sumber:buku4', B.sumber, B.tujuan)
+      + '<div class="db-dua"><div' + daftar('buku4:total', { judul: 'Pembelian · ' + X.periode, baris: [['Pembelian', RP(B.rp) + ' · ' + B.n + ' kedatangan'], ['Bon', RP(B.bon.rp) + ' · ' + B.bon.n + ' kedatangan'], ['Sisa bon sekarang', RP(B.bon.sisa) + ' · ' + B.bon.nSisa + ' kedatangan'], ['Dibayar langsung', RP(B.langsung.rp) + ' · ' + B.langsung.n], ['Beras datang', dbKg(B.kg) + ' · ' + B.karung + ' karung']]
+        .concat(B.dicatat ? [['Stok awal / saldo pembuka (bukan belanja)', RP(B.dicatat)]] : []), tujuan: B.tujuan, ke: 'Stok › Barang masuk', catatan: B.rumus }) + '><div class="angka db-angka-sedang">' + esc(RP(B.rp)) + '</div><div class="ket">' + esc(B.n + ' kedatangan · ' + dbKg(B.kg)) + '</div></div>'
+      + '<div' + daftar('buku4:rata', { judul: 'Rata-rata · ' + X.periode, baris: [['Per kedatangan', B.rata === null ? '—' : RP(Math.round(B.rata))], ['Pesanan dibuat', B.pesanan.n + (B.pesanan.nBatal ? ' · ' + B.pesanan.nBatal + ' batal' : '')], ['Per pesanan (perkiraan saat dipesan)', B.pesanan.rata === null ? '—' : RP(Math.round(B.pesanan.rata))]].concat(B.pesanan.tanpaHarga ? [['Pesanan tanpa harga', String(B.pesanan.tanpaHarga)]] : []),
+        tujuan: { ke: 'harga', keluarga: 'belanja' }, ke: 'Harga & Pemasok › Belanja' }) + '><div class="angka db-angka-sedang">' + esc(B.rata === null ? '—' : RP(Math.round(B.rata))) + '</div><div class="ket">' + esc('rata-rata per kedatangan' + (B.pesanan.rata !== null ? ' · per pesanan ' + RP(Math.round(B.pesanan.rata)) : '')) + '</div></div></div>'
+      + p4Bilah(seg, B.rp, 'buku4') + '<div class="db-legenda"><span><i class="db-titik db-p4-lunas"></i>bon lunas <b>' + lunas.length + '</b></span><span><i class="db-titik db-p4-sisa"></i>bon bersisa <b>' + sisa.length + '</b> · sisa ' + esc(RP(B.bon.sisa)) + '</span><span><i class="db-titik db-p4-langsung"></i>dibayar langsung <b>' + lgs.length + '</b></span></div>'
+      + '<div class="ket' + (B.bedaTarif.n ? ' awas-teks' : '') + '" data-k="db-buku4-tarif">' + esc(tarif) + '</div>'
+      + (B.diarsip ? '<div class="ket">Sebagian periode ikut arsip tutup buku — kedatangannya tidak dibaca di sini.</div>' : '') + (B.menutup ? '' : '<div class="ket awas-teks">Buku ini TIDAK MENUTUP ke kartu Pembelian — laporkan.</div>')
+      + '<div class="db-p4-daftar">' + (baris || '<div class="menolak">Belum ada kedatangan di periode ini.</div>') + '</div>' + (B.terpotong ? '<div class="ket">' + esc('Tampil ' + B.maks + ' kedatangan terbaru dari ' + B.n + ' — jumlah di atas tetap seluruh periode.') + '</div>' : '')
+      + aksi('buku4', [{ id: 'masuk', nama: 'Catat barang masuk', tujuan: { ke: 'stok', lembar: 'masuk' }, ke: 'Stok › Barang masuk' }, { id: 'bon', nama: 'Bon pemasok', tujuan: { ke: 'harga', keluarga: 'bon' }, ke: 'Harga & Pemasok › Bon pemasok' }])
+      + '<div class="ket db-pandu">Ketuk baris untuk rinciannya · ketuk lagi untuk membuka layarnya</div></div>';
+  }
+  // B62 · B134 · B63 · B64: PEMBELIAN PER PEMASOK — bulan kartu bulanan vs bulan lalu (berjalan: s.d. tanggal yang sama), rata-rata, pesanan datang · menunggu · batal
+  function kartuPemasokBeli(X) {
+    if (!X) return ''; if (X.galat) return p4Galat('db-pemasok4', X); const P = X.pemasok; if (!P || P.galat) return p4Galat('db-pemasok4', P, 'pembelian per pemasok');
+    const maks = Math.max(1, ...P.daftar.map((g) => Math.max(g.ini.rp, g[P.banding].rp)));
+    const ps = (q) => q.n ? q.n + ' pesanan: ' + q.datang + ' datang · ' + q.menunggu + ' menunggu · ' + q.batal + ' batal' : 'tanpa pesanan';
+    const baris = (g, i, total) => { const L = g[P.banding]; const arah = g.ubahPct === null ? '' : g.ubahPct >= 0 ? ' db-naik' : ' db-turun';
+      const isi = { judul: (total ? 'Semua pemasok' : g.pemasok) + ' · ' + P.nama, baris: [[P.nama + (P.berjalan ? ' (s.d. hari ini)' : ''), RP(g.ini.rp) + ' · ' + g.ini.n + ' kedatangan · ' + dbKg(g.ini.kg)], ['Rata-rata per kedatangan', g.ini.rata === null ? '—' : RP(Math.round(g.ini.rata))],
+        [P.pembandingTeks, RP(L.rp) + ' · ' + L.n + ' kedatangan']].concat(P.berjalan ? [[P.namaLalu + ' penuh', RP(g.lalu.rp) + ' · ' + g.lalu.n + ' kedatangan']] : []).concat([['Perubahan', p4Pct(g.ubahPct) + (g.ubahRp ? ' (' + (g.ubahRp > 0 ? '+' : '−') + RP(Math.abs(g.ubahRp)) + ')' : '')], ['Pesanan ' + P.nama, ps(g.pesanan)], ['Rata-rata per pesanan', g.pesanan.rata === null ? '—' : RP(Math.round(g.pesanan.rata))]]),
+        tujuan: P.tujuan, ke: 'Harga & Pemasok › Banding pemasok', catatan: P.rumus };
+      return '<div class="db-p4-pem db-ketuk' + (total ? ' db-p4-total' : '') + '" data-k="db-pemasok4-' + esc(total ? 'semua' : g.kunci) + '"' + daftar('pemasok4:' + (total ? 'semua' : g.kunci), isi) + '><div class="db-p4-pem-atas"><span class="db-nama">' + esc(total ? 'Semua pemasok' : g.pemasok) + '</span>'
+        + '<span class="db-nilai angka">' + esc(RP(g.ini.rp)) + '</span><span class="db-nilai angka redup">' + esc(RP(L.rp)) + '</span><span class="db-rapor-ubah' + arah + '">' + esc(g.baru ? 'baru' : g.hilang ? 'tidak beli' : p4Pct(g.ubahPct)) + '</span></div>'
+        + (total ? '' : '<svg class="db-p4-dua" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect class="db-tumbuh-x db-p4-ini" style="--i:' + i + '" x="0" y="0" width="' + dbPersen(g.ini.rp, maks).toFixed(2) + '" height="2.6"></rect><rect class="db-tumbuh-x db-p4-lalu" style="--i:' + i + '" x="0" y="3.4" width="' + dbPersen(L.rp, maks).toFixed(2) + '" height="2.6"></rect></svg>')
+        + '<div class="ket">' + esc(g.ini.n + ' kedatangan' + (g.ini.rata !== null ? ' · rata-rata ' + dbRpPendek(g.ini.rata) : '') + ' · ' + ps(g.pesanan)) + '</div></div>'; };
+    return '<div class="kartu db-kartu db-pemasok4" data-k="db-pemasok4">' + kepala('Pembelian per pemasok', P.nama + ' vs ' + P.pembandingTeks, 'sumber:pemasok4', P.sumber, P.tujuan)
+      + '<div class="db-legenda"><span><i class="db-titik db-p4-ini"></i>' + esc(P.nama) + '</span><span><i class="db-titik db-p4-lalu"></i>' + esc(P.pembandingTeks) + '</span></div>'
+      + '<div class="db-p4-pem-kepala ket"><span>pemasok</span><span>' + esc(P.nama.replace(/ \d{4}$/, '')) + '</span><span>' + esc(P.namaLalu.replace(/ \d{4}$/, '')) + '</span><span>ubah</span></div>'
+      + (P.daftar.length ? P.daftar.map((g, i) => baris(g, i, false)).join('') + baris(Object.assign({ pemasok: 'Semua pemasok', kunci: 'semua', ubahPct: P.total.ubahPct, ubahRp: P.total.ini.rp - P.total[P.banding].rp, baru: false, hilang: false }, P.total), 0, true) : '<div class="menolak">Belum ada pembelian di ' + esc(P.nama) + ' maupun ' + esc(P.namaLalu) + '.</div>')
+      + (P.diarsip ? '<div class="ket">Bulan yang ikut arsip tutup buku tidak dibaca di sini.</div>' : '') + (P.menutup ? '' : '<div class="ket awas-teks">Jumlah per pemasok TIDAK MENUTUP ke kartu Pembelian — laporkan.</div>')
+      + '<div class="ket db-pandu">' + esc(P.berjalan ? 'Bulan berjalan dibanding ' + P.pembandingTeks + ' · ' : '') + 'Ketuk pemasok untuk bulan lalu penuh, rata-rata & pesanannya</div></div>';
+  }
+  // B40 · B78: UMUR UTANG PEMASOK — per pemasok: umur sejak barang datang (4 kelompok) + lewat tempo berapa lama. Sekarang, tidak ikut saringan.
+  function kartuUmurUtang(X) {
+    if (!X) return ''; if (X.galat) return p4Galat('db-umur4', X); const U = X.umur; if (!U || U.galat) return p4Galat('db-umur4', U, 'umur utang');
+    const KLS = ['db-p4-u1', 'db-p4-u2', 'db-p4-u3', 'db-p4-u4'];
+    const seg = (o, id) => o.umur.map((e, i) => ({ id: e.id, kelas: KLS[i], rp: e.rp, isi: { judul: (o.pemasok || 'Semua pemasok') + ' · umur ' + e.label, baris: [['Sisa bon', RP(e.rp) + ' · ' + e.n + ' bon']], tujuan: U.tujuan, ke: U.sumber, catatan: U.rumus } }))
+      .concat([{ id: 'tanpa', kelas: 'db-p4-u0', rp: o.tanpaUmur.rp, isi: { judul: (o.pemasok || 'Semua pemasok') + ' · tanpa tanggal', baris: [['Sisa bon', RP(o.tanpaUmur.rp) + ' · ' + o.tanpaUmur.n + ' bon']], tujuan: U.tujuan, ke: U.sumber } }]);
+    const tempo = (o) => o.lewat.filter((x) => x.rp > 0).map((x) => x.label + ' ' + dbRpPendek(x.rp)).concat(o.belum.rp ? ['belum jatuh tempo ' + dbRpPendek(o.belum.rp)] : []).concat(o.tanpaTempo.rp ? ['tanpa tempo ' + dbRpPendek(o.tanpaTempo.rp)] : []).join(' · ');
+    const rinci = (o) => o.umur.map((e) => ['Umur ' + e.label, RP(e.rp) + ' · ' + e.n + ' bon']).concat(o.tanpaUmur.n ? [['Tanpa tanggal', RP(o.tanpaUmur.rp)]] : []).concat(o.lewat.map((x) => [x.label.charAt(0).toUpperCase() + x.label.slice(1), RP(x.rp) + ' · ' + x.n + ' bon'])).concat([['Belum jatuh tempo', RP(o.belum.rp)], ['Tempo belum disepakati', RP(o.tanpaTempo.rp)]]);
+    const satu = (o, i) => '<div class="db-p4-umur db-ketuk' + (o.rpLewat > 0 ? ' lewat' : '') + '" data-k="db-umur4-' + esc(o.pemasok) + '"' + daftar('umur4:' + o.pemasok, { judul: o.pemasok + ' · sisa ' + RP(o.total), baris: rinci(o).concat([['Lewat paling lama', o.lewatTerlama ? o.lewatTerlama + ' hari' : '—'], ['Bon tertua', o.tertua === null ? '—' : o.tertua + ' hari']]), tujuan: { ke: 'harga', keluarga: 'bon', pemasok: o.pemasok }, ke: 'Bon pemasok', catatan: U.rumus })
+      + '><div class="db-p4-pem-atas"><span class="db-nama">' + esc(o.pemasok) + '</span><span class="db-nilai angka">' + esc(RP(o.total)) + '</span></div>' + p4Bilah(seg(o), o.total, 'umur4:' + i) + '<div class="ket' + (o.rpLewat > 0 ? ' awas-teks' : '') + '">' + esc(o.lewatTeks + (tempo(o) ? ' · ' + tempo(o) : '')) + '</div></div>';
+    return '<div class="kartu db-kartu db-umur4" data-k="db-umur4">' + kepala('Umur utang pemasok', 'Sekarang · ' + U.total.n + ' bon', 'sumber:umur4', U.sumber, U.tujuan, tetap())
+      + '<div class="db-dua"><div' + daftar('umur4:total', { judul: 'Utang ke pemasok · sekarang', baris: rinci(U.total), tujuan: U.tujuan, ke: U.sumber, catatan: U.rumus }) + '><div class="angka db-angka-sedang">' + esc(RP(U.total.total)) + '</div><div class="ket">' + esc(U.daftar.length + ' pemasok · ' + U.total.n + ' bon') + '</div></div>'
+      + '<div><div class="angka db-angka-sedang' + (U.total.rpLewat ? ' awas-teks' : '') + '">' + esc(RP(U.total.rpLewat)) + '</div><div class="ket">' + esc('lewat tempo' + (U.total.lewatTerlama ? ' · paling lama ' + U.total.lewatTerlama + ' hari' : '')) + '</div></div></div>'
+      + p4Bilah(seg(U.total), U.total.total, 'umur4:semua') + '<div class="db-legenda">' + U.kelompok.map((e, i) => '<span><i class="db-titik ' + KLS[i] + '"></i>' + esc(e.label) + '</span>').join('') + (U.total.tanpaUmur.n ? '<span><i class="db-titik db-p4-u0"></i>tanpa tanggal</span>' : '') + '</div>'
+      + (U.daftar.length ? U.daftar.map(satu).join('') : '<div class="menolak">Tidak ada utang ke pemasok.</div>') + (U.menutup ? '' : '<div class="ket awas-teks">Kelompok umur TIDAK MENUTUP ke sisa bon — laporkan.</div>')
+      + '<div class="ket db-pandu">Umur = sejak barang datang · ' + esc(U.atur.dariOwner ? 'kelompok setelan lu' : 'kelompok bawaan') + ' (ubah di Bon pemasok › Umur utang)</div></div>';
+  }
+  // B57: BEBAN GUDANG 7 HARI — kedatangan berjanji & kg masuk vs keluar per hari, isi gudang akhir hari. Perkiraan, sekarang, tidak ikut saringan.
+  function kartuBeban(X) {
+    if (!X) return ''; if (X.galat) return p4Galat('db-beban4', X); const G = X.beban; if (!G || G.galat) return p4Galat('db-beban4', G, 'beban gudang');
+    const maks = Math.max(1, ...G.hari.map((h) => Math.max(h.masuk.kg, h.keluar.kg))); const n = G.hari.length;
+    const kol = G.hari.map((h, i) => { const hm = dbPersen(h.masuk.kg, maks) * 0.92, hk = dbPersen(h.keluar.kg, maks) * 0.92;
+      const isi = { judul: h.label, baris: [['Masuk', h.masuk.n ? dbKg(h.masuk.kg) + ' · ' + h.masuk.n + ' kedatangan · ' + h.masuk.karung + ' karung' : 'tidak ada kedatangan berjanji']].concat(h.masuk.pemasok.map((o) => ['· ' + o.pemasok, dbKg(o.kg) + (o.rp ? ' · ±' + RP(o.rp) : '')]))
+        .concat([['Keluar (perkiraan)', dbKg(h.keluar.kg) + ' = laju ' + dbKg(h.keluar.laju) + (h.keluar.pesanan ? ' + pesanan ' + dbKg(h.keluar.pesanan) : '')]]).concat(h.keluar.siapa.length ? [['Pesanan pelanggan', h.keluar.siapa.slice(0, 4).join(', ')]] : []).concat([['Isi gudang akhir hari', dbKg(h.akhir) + (h.kurang ? ' — HABIS' : '')]]),
+        tujuan: G.tujuan, ke: 'Harga & Pemasok › Belanja', catatan: G.rumus };
+      return '<g class="db-kol' + (i === 0 ? ' berjalan' : '') + '"' + daftar('beban4:' + h.iso, isi) + '><rect class="db-kena" x="' + (i * 100) + '" y="0" width="100" height="100"></rect>'
+        + '<rect class="db-p4-masuk db-tumbuh-y" style="--i:' + i + '" x="' + (i * 100 + 14) + '" y="' + (100 - hm).toFixed(2) + '" width="34" height="' + hm.toFixed(2) + '"></rect>'
+        + '<rect class="db-p4-keluar db-tumbuh-y" style="--i:' + i + '" x="' + (i * 100 + 52) + '" y="' + (100 - hk).toFixed(2) + '" width="34" height="' + hk.toFixed(2) + '"></rect>' + (h.kurang ? '<rect class="db-p4-habis" x="' + (i * 100 + 8) + '" y="98" width="84" height="2"></rect>' : '') + '</g>'; }).join('');
+    const tunggu = (d, judul, kata) => !d.length ? '' : '<div class="db-baris db-ketuk awas-teks" data-k="db-beban4-' + kata + '"' + daftar('beban4:' + kata, { judul, baris: d.slice(0, 8).map((o) => [o.pemasok, dbKg(o.kg) + (o.janji ? ' · janji ' + dbTgl(o.janji) + (o.telat ? ' (lewat ' + o.telat + ' hari)' : '') : ' · dipesan ' + dbTgl(o.dibuat))]), tujuan: G.tujuan, ke: 'Harga & Pemasok › Belanja' })
+      + '><span class="db-nama">' + esc(judul) + '</span><span class="ket">' + esc(d.length + ' pesanan · ' + dbKg(d.reduce((a, o) => a + o.kg, 0))) + '</span><span class="db-nilai">›</span></div>';
+    return '<div class="kartu db-kartu db-beban4" data-k="db-beban4">' + kepala('Beban gudang 7 hari', 'Mulai hari ini · perkiraan', 'sumber:beban4', G.sumber, G.tujuan, tetap())
+      + '<div class="db-legenda"><span><i class="db-titik db-p4-masuk"></i>masuk (janji pemasok) <b>' + esc(dbKg(G.masukKg)) + '</b></span><span><i class="db-titik db-p4-keluar"></i>keluar (laju + pesanan) <b>' + esc(dbKg(G.keluarKg)) + '</b></span></div>'
+      + '<svg class="db-grafik db-grafik-pendek db-grafik-beban" viewBox="0 0 ' + (n * 100) + ' 100" preserveAspectRatio="none" role="img" aria-label="Beban gudang 7 hari"><line class="db-dasar" x1="0" y1="100" x2="' + (n * 100) + '" y2="100"></line>' + kol + '</svg>'
+      + '<div class="db-sumbu">' + G.hari.map((h, i) => '<span class="' + (i === 0 ? 'aktif' : '') + (h.kurang ? ' awas-teks' : '') + '">' + esc(h.label.split(' ')[0].slice(0, 3) + ' ' + h.iso.slice(8)) + '</span>').join('') + '</div>'
+      + '<div class="db-baris db-p4-baris" data-k="db-beban4-isi"><span class="db-nama">Isi gudang</span><span class="ket">' + esc('beras karung ' + dbKg(G.kgKini) + ' · laku ±' + dbKg(G.laju) + '/hari') + '</span><span class="db-nilai angka' + (G.akhir < 0 ? ' awas-teks' : '') + '">' + esc('→ ' + dbKg(G.akhir)) + '</span></div>'
+      + tunggu(G.lewatJanji, 'Lewat janji, masih ditunggu', 'lewat') + tunggu(G.tanpaJanji, 'Belum ada tanggal janji', 'tanpa')
+      + '<div class="ket' + (G.kurang ? ' awas-teks' : '') + '">' + esc(G.kalimat) + '</div>'
+      + aksi('beban4', [{ id: 'pesan', nama: 'Pesan ke pemasok', tujuan: { ke: 'harga', keluarga: 'belanja' }, ke: 'Harga & Pemasok › Belanja' }])
+      + '<div class="ket db-pandu">Ketuk hari untuk kedatangan & pesanannya</div></div>';
+  }
   // P2 (owner 27 Nov 2026: A136 B112 B26): RAPOR BULAN — bulan ini vs bulan lalu vs target owner, % ubah & lampu; saklar Laba | Kas ("Dua-duanya"). D.rapor =
   // dasbor-logika dbRapor → rapor-bulan-logika rbRapor apa adanya. Bulan berjalan: angka yang menumpuk dibanding lewat perkiraan sebulan (disebut di kalimat).
   function kartuRapor(Q) {
@@ -604,7 +694,8 @@ export function pasangDasbor(akar, opsi) {
   /** Isi panel kartu: kartu lama Dasbor apa adanya (+ Enam bulan, kartu tambahan). */
   function kartuPenuh(id) {
     const P = { kHari: () => kartuHari(D.hari), kKpi: () => kartuKpi(D.kpi), kTren: () => kartuTren(D.tren), kBulan: () => kartuBulan(D.bulan), kPemicu: () => kartuPemicu(D.bulan), kStok: () => kartuStok(D.stok),
-      kPondasi: () => kartuPondasi(D.pondasi), kWadah: () => kartuWadah(D.stok), kTagihan: () => kartuTagihan(D.tagihan), kMutu: () => kartuMutu(D.mutu), kB2b: () => kartuB2b(D.b2b), kEnam: () => kartuEnam(D.enam), kBeli: () => kartuBeli(D.beli), kRapor: () => kartuRapor(D.rapor), kArusKas: () => kartuArusKas(D.rapor) };
+      kPondasi: () => kartuPondasi(D.pondasi), kWadah: () => kartuWadah(D.stok), kTagihan: () => kartuTagihan(D.tagihan), kMutu: () => kartuMutu(D.mutu), kB2b: () => kartuB2b(D.b2b), kEnam: () => kartuEnam(D.enam), kBeli: () => kartuBeli(D.beli), kRapor: () => kartuRapor(D.rapor), kArusKas: () => kartuArusKas(D.rapor),
+      kBukuBeli: () => kartuBukuBeli(D.beli4), kPemasokBeli: () => kartuPemasokBeli(D.beli4), kUmurUtang: () => kartuUmurUtang(D.beli4), kBeban: () => kartuBeban(D.beli4) };   // paket P4 (owner 27 Nov 2026)
     return D && P[id] ? P[id]() : '';
   }
   // P3 B104 (owner 27 Nov 2026: "A4 tegak"): CETAK DASBOR — kartu yang sedang tampil disalin ke #cetakDokumen (pola kertas berkop Laporan) dengan kepala dari
