@@ -348,7 +348,7 @@ RUSAK = [
 RUSAK_STATIS = [
     ('opname kejutan tampil untuk staf', 'stok', "${bukanOwner(opsi.akun ? opsi.akun() : null) ? '' : gambarKejutan(s)}", "${gambarKejutan(s)}"),
     ('pengingat kejutan untuk semua akun', 'app', "if (a.jenis === 'owner') { try { sgSumberPengingat(k)", "if (true) { try { sgSumberPengingat(k)"),
-    ('rules: staf membaca setelan kejutan', 'rules', "'produkArsip', 'bukuPegangan']", "'produkArsip', 'bukuPegangan', 'opnameKejutan']"),
+    ('rules: staf membaca setelan kejutan', 'rules', "'produkArsip', 'bukuPegangan', 'rutin']", "'produkArsip', 'bukuPegangan', 'rutin', 'opnameKejutan']"),   # v25 (paket P6): daftar baca staf kini berakhir 'rutin'
     ('modul tidak dipramuat', 'index', '<link rel="modulepreload" href="js/layar/stok-pantau-logika.js">', ''),
     ('komentar // menelan kode', 'sg', "export function sgAcak(s) {", "// pengundi\nexport function sgAcak(s) { // FNV; const x = 1;\n"),
     ('modul logika menyentuh DOM', 'kh', "export function khPetaHet() {", "export function khPetaHet() { document.title = '';"),
