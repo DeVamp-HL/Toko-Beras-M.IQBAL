@@ -216,3 +216,8 @@ body.gelap .layar-stok .iso-toko .sisi-atas.karung { fill: #cdb98b; } body.gelap
 .layar-stok .ks-b.awas > span:first-child b { color: var(--awas); }
 .layar-stok .ks-b.emas > span:first-child b { color: var(--emas, inherit); }
 @media (max-width: 420px) { .layar-stok .ks-b { grid-template-columns: minmax(0, 1fr) 52px 52px 60px; font-size: 12px; } }
+/* paket P8 (owner 27 Nov 2026, A94): foto nota kedatangan (tunai & bon) — kisi foto, foto besar (pola foto bon Harga & Pemasok) */
+.layar-stok .fn-kisi { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.layar-stok .fn-foto { display: flex; flex-direction: column; gap: 3px; } .layar-stok .fn-foto img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; border: 1px solid var(--garis, rgba(0,0,0,.12)); cursor: zoom-in; }
+.layar-stok .fn-besar { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border-radius: 10px; background: rgba(10, 10, 12, 0.86); cursor: zoom-out; }
+.layar-stok .fn-besar img { width: 100%; max-height: 82vh; object-fit: contain; border-radius: 6px; } .layar-stok .fn-besar .ket { color: #e6e1d6; }

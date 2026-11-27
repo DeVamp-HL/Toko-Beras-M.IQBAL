@@ -36,6 +36,7 @@ import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanj
 import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';
 // owner 26 Nov 2026 (kalender kepatuhan, rules v22): butir kalender di Pengingat → kartu "sudah dikerjakan" (owner & Penjaga laci)
 import * as PT from './patuh-logika.js';
+import { kartuOmzetPerangkat, kartuCariLog, gambarArsipFoto, gambarTautanDasbor, aaSertakanLog, aksiPanelArsipAudit } from './arsip-audit-panel.js';   // paket P8 (owner 27 Nov 2026): arsip foto, log, omzet per perangkat, tautan Dasbor
 import { kartuCentang, aksiPanelPatuh } from './patuh-panel.js';
 // owner 19 Nov 2026 (lag di Android): kelancaran PERANGKAT INI — dicatat perangkat sendiri, dibaca di Sistem › Perangkat
 import { ukurMulusRingkas, ukurMulusSalin, ukurMulusKosongkan } from '../inti/ukur-mulus.js';
@@ -67,7 +68,7 @@ const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
 // owner 7 Okt 2026: tab Hemat baca di Sistem › Perangkat (tab Kasir & PIN dicabut paket dokumen & sisa, #108)
-const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['setelan', 'Setelan & harga'], ['batal', 'Dibatalkan']], target: [], pegangan: [], rutin: [['hari', 'Hari ini'], ['riwayat', 'Siapa mencentang'], ['atur', 'Atur daftar']] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang) · paket P6: rutin
+const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat'], ['hemat', 'Hemat baca']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['tablet', 'Orang di tablet']], cadangan: [['berkas', 'Cadangan'], ['foto', 'Arsip foto'], ['tautan', 'Tautan Dasbor']], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']], riwayat: [['uang', 'Uang'], ['barang', 'Barang'], ['setelan', 'Setelan & harga'], ['batal', 'Dibatalkan']], target: [], pegangan: [], rutin: [['hari', 'Hari ini'], ['riwayat', 'Siapa mencentang'], ['atur', 'Atur daftar']] };   // owner 22 Nov 2026: riwayat & batal (tahap 1 uang) · paket P6: rutin
 const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat', riwayat: 'Riwayat & batal', target: 'Target & ambang', pegangan: 'Buku pegangan', rutin: 'Rutin' };   // paket KPI laba (owner 24 Nov 2026): target omzet harian & ambang kas minimum
 
 /** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
@@ -82,6 +83,7 @@ export function pasangLayarMenu(akar, opsi) {
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
+  const dasarTautan = () => { try { return new URL('.', location.href).href; } catch (e) { return ''; } };   // paket P8: folder /baru/ untuk tautan beku Dasbor
   // owner 3 Okt (patah-patah): Menu yang dibuka lagi TANPA data baru tidak digambar ulang. Sanggahan 7 Okt: isinya juga membaca tanggal (kepala, jatuh tempo
   // bon, pengingat pajak), pita jam (Pagi / Malam …) dan titik kas perangkat — semuanya tidak menaikkan versi data. Kunci gambar terakhir = kunciLuarCache
   // + pita jam (+ menit selagi Sistem › Perangkat terbuka: "denyut N menit lalu", antrean lama); dibuka lagi dengan kunci lain = digambar ulang.
@@ -186,7 +188,8 @@ export function pasangLayarMenu(akar, opsi) {
     hematConsole: () => { const ok = !!(opsi.hematBacaPenuh && opsi.hematBacaPenuh('owner mengubah data lewat Console', true)); set({ kabar: ok ? 'Perangkat ini membaca penuh dan menandai catatan yang berubah tanpa cap — perangkat lain menerimanya lewat ubahan' : 'Hemat baca belum berjalan di perangkat ini', kabarAwas: !ok }); },
     hematSemua: async () => { if (st().yakinHemat !== 'semua') return set({ yakinHemat: 'semua', kabar: 'Ketuk sekali lagi: SEMUA perangkat owner yang hemat baca membaca penuh sekali (±3 × 9 rb baca)', kabarAwas: true });
       const r = opsi.hematMintaSemua ? await opsi.hematMintaSemua() : { gagal: true, pesan: 'tidak tersedia' }; set({ yakinHemat: null, kabar: r && r.gagal ? 'Gagal: ' + r.pesan : 'Semua perangkat owner diminta membaca penuh', kabarAwas: !!(r && r.gagal) }); },
-    unduhCadangan: async () => { const b = S.ssBerkasCadangan(kini(), opsi.hemat ? opsi.hemat() : null); const teks = JSON.stringify(b.isi, null, 2); let bytes = teks.length;
+    // paket P8 (owner 27 Nov 2026, B81): berkas cadangan membawa log aktivitas 30 hari terakhir (dibaca sekali dari server saat diunduh — arsip-audit-panel aaSertakanLog)
+    unduhCadangan: async () => { set({ kabar: 'Menyiapkan cadangan (log 30 hari dibaca dari server)…', kabarAwas: false }); const b = await aaSertakanLog(S.ssBerkasCadangan(kini(), opsi.hemat ? opsi.hemat() : null), kini(), opsi, opsi.akun ? opsi.akun() : null); const teks = JSON.stringify(b.isi, null, 2); let bytes = teks.length;
       try { const blob = new Blob([teks], { type: 'application/json' }); bytes = blob.size; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = b.nama; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 2000); }
       catch (e) { set({ kabar: 'Peramban ini tidak bisa mengunduh berkas: ' + (e && e.message ? e.message : e), kabarAwas: true }); return; }
       await tulis(S.susunCatatCadangan(b, bytes, waktu(), (opsi.lokal ? opsi.lokal() : {}).namaPerangkat || '')); ukurSimpanan(); },
@@ -337,6 +340,8 @@ export function pasangLayarMenu(akar, opsi) {
   }, aksiTitipan({ set, st, tulis, akun: opsi.akun, waktu }), aksiUsulBanding({ set, st, tulis, akun: opsi.akun, waktu }), aksiTutupTablet({ set, st, tulis, akun: opsi.akun, waktu }), aksiRingkas({ set, st, akun: opsi.akun, uang: opsi.statusUang, waktu, kini }), aksiPanelRutin({ set, st, tulis, waktu, kini, akun: opsi.akun, pergi }));
   const vapidToko = () => { const d = cacheMentah('aturan').find((x) => String(x.id) === 'notif'); return d && d.vapid ? String(d.vapid) : ''; };
   Object.assign(AKSI, aksiPanelPatuh({ set, st, tulis, waktu, kini }));   // owner 26 Nov 2026: kalender kepatuhan — tanda "sudah dikerjakan" dari Pengingat
+  Object.assign(AKSI, aksiPanelArsipAudit({ set, st, tulis, waktu, kini, opsi, akun: opsi.akun, dasar: () => dasarTautan(), proyek: () => (opsi.proyekId ? opsi.proyekId() : ''),
+    keTujuan: (t) => (t && t.ke === 'stok' && opsi.bukaStok ? opsi.bukaStok(t.lembar || null, t.tab || null, t.isi || null) : pergi(t)) }));   // paket P8: arsip foto, log, omzet per perangkat, tautan Dasbor
   delegasi(akar, AKSI);
 
   // ---------- GAMBAR ----------
@@ -473,7 +478,7 @@ export function pasangLayarMenu(akar, opsi) {
     return h`<section class="mn-gulir ss" data-k="sistem-${s.sistem}">
       <div class="mn-kembali" data-aksi="sistem" data-s="">‹ Menu</div>
       ${tabs.length ? h`<div class="jalur kisi${tabs.length}" data-k="tabS">${tabs.map(([id, nm]) => h`<div class="seg ${tab === id ? 'aktif' : ''}" data-aksi="tabS" data-t="${id}">${nm}</div>`)}</div>` : ''}
-      ${s.atur ? gambarAtur(s) : s.sistem === 'perangkat' ? gambarPerangkat(s, d, tab) : s.sistem === 'peran' ? gambarPeran(s, d, tab) : s.sistem === 'cadangan' ? gambarCadangan(s, d) : s.sistem === 'lokasi' ? gambarLokasi(s, d, tab) : s.sistem === 'riwayat' ? gambarRiwayat(s, tab) : s.sistem === 'target' ? gambarTarget(s, d) : s.sistem === 'pegangan' ? gambarPegangan(s) : s.sistem === 'rutin' ? gambarRutinOwner(s, { akun: opsi.akun ? opsi.akun() : null, kini: kini(), tab }) : gambarPengingat(s, d, tab)}
+      ${s.atur ? gambarAtur(s) : s.sistem === 'perangkat' ? gambarPerangkat(s, d, tab) : s.sistem === 'peran' ? gambarPeran(s, d, tab) : s.sistem === 'cadangan' ? gambarCadangan(s, d, tab) : s.sistem === 'lokasi' ? gambarLokasi(s, d, tab) : s.sistem === 'riwayat' ? gambarRiwayat(s, tab) : s.sistem === 'target' ? gambarTarget(s, d) : s.sistem === 'pegangan' ? gambarPegangan(s) : s.sistem === 'rutin' ? gambarRutinOwner(s, { akun: opsi.akun ? opsi.akun() : null, kini: kini(), tab }) : gambarPengingat(s, d, tab)}
     </section>`;
   }
   const pintuAtur = (judul, ringkas) => h`<div class="at-pintu" data-k="pintu-atur" data-aksi="bukaAtur"><div><div style="font-weight: 600;">${judul}</div><div class="ket" style="font-size: 10.5px;">${ringkas}</div></div><div class="ket">ubah ›</div></div>`;
@@ -534,12 +539,14 @@ export function pasangLayarMenu(akar, opsi) {
         ${J.tampil.length ? J.tampil.map((l) => h`<div class="pr-jejak" data-k="l-${l.id}"><span class="j">${l.tanggal === hariIniIso(d) ? l.jam : tanggalPendek(l.tanggal)}</span><span>${l.teks}<div class="k2">${l.oleh} · ${l.perangkat}</div></span><span class="pr-cap ${l.sampai ? 'ok' : 'awas'}">${l.sampai ? 'sampai' : 'belum'}</span></div>`) : h`<div class="ket">Belum ada jejak yang terbaca${sumberData().jenis === 'cadangan' ? ' — cadangan sistem lama tidak memuat jejak' : ''}.</div>`}
         ${J.terbatas ? h`<div class="ket">Hanya ${J.batas} tulisan terakhir yang dibaca — bukan seluruh riwayat.</div>` : ''}</div>
       <div class="kartu" data-k="perorang" style="gap: 2px;"><div class="label">Per orang</div>${J.perOrang.map((o) => h`<div style="display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0;" data-k="o-${o.nama}"><span>${o.nama}</span><span class="k2">${o.n} tulisan · hari ini ${o.hariIni}${o.belum ? ' · ' + o.belum + ' belum sampai' : ''}</span></div>`)}</div>
+      ${kartuCariLog(s, d, opsi.akun ? opsi.akun() : null, S.ssNamaKoleksi)}
       ${pintuAtur('Atur batas antrean, denyut & pencatat', 'antrean lama ' + P.atur.batasAntre + ' menit · denyut lama ' + P.atur.batasDenyut + ' menit · ' + P.atur.pemegang.length + ' pencatat')}`; }
     return h`<div class="ket" data-k="ringkas" style="font-size: 11.5px;">${P.ringkas}</div>
       <div style="display: flex; flex-direction: column; gap: 6px;" data-k="kartu-p">${P.daftar.map((p) => h`<div class="pr-kartu ${pilih && pilih.id === p.id ? 'aktif' : ''} ${p.hidup ? '' : 'diam'}" data-k="p-${p.id}" data-aksi="pilihP" data-id="${p.id}">
         <div class="pr-kepala"><b><span class="pr-titik ${p.hidup ? '' : p.hariIni ? 'lama' : 'putus'}"></span>${p.nama}${p.ini ? ' · perangkat ini' : ''}</b><span class="pr-n ${p.antrean || p.ditolak ? '' : 'k2'}">${p.antrean ? p.antrean + ' belum sampai' : 'semua sampai'}${p.ditolak ? ' · ' + p.ditolak + ' ditolak server' : ''}</span></div>
         <div class="k2">${p.aplikasi}${p.versi && p.versi !== 'baru' ? ' · ' + p.versi : ''}${p.pemegang ? ' · dipegang ' + p.pemegang : ''}${p.lokasi ? ' · di ' + ((S.ssLokasi().daftar.find((l) => l.id === p.lokasi) || {}).nama || p.lokasi) : ''}</div><div class="k2">${p.denyutTeks}${p.akun ? ' · ' + p.akun : ''}</div></div>`)}
       ${!P.daftar.length ? h`<div class="ket">Denyut ditulis tiap perangkat yang masuk (sistem baru & kasir darurat) paling cepat sekali per menit. Kalau daftar ini kosong padahal HP sedang dipakai, aturan Firestore untuk koleksi perangkatStatus belum terpasang.</div>` : ''}</div>
+      ${kartuOmzetPerangkat(s, d)}
       ${pilih && pilih.ini ? h`<div class="kartu" data-k="panel-ini" style="gap: 6px;"><div style="font-weight: 700;">Perangkat ini</div>
         <div class="label">Nama perangkat ini</div><div style="display: flex; gap: 6px;"><input class="ketik-nama" type="text" placeholder="${L.namaPerangkat || 'mis. iPhone owner, Mac toko'}" value="${s.namaBaru || ''}" data-ketik="namaiPerangkat"><div class="kaca-btn aktif" style="min-width: 84px;" data-aksi="namaiSimpan">simpan</div></div>
         <div class="label">Yang mencatat di perangkat ini</div><div class="pita-info" data-k="masuk-sebagai">Masuk sebagai: <b>${(() => { const a = opsi.akun ? opsi.akun() : null; return a ? (a.jenis === 'owner' ? 'Owner' : a.nama + ' (' + ((S.SS_PERAN.find((p) => p.id === a.peran) || {}).nama || a.peran) + ')') : 'Owner'; })()}</b></div>
@@ -651,7 +658,10 @@ export function pasangLayarMenu(akar, opsi) {
           <div class="seg ${a.bacaUang ? '' : 'aktif'}" data-aksi="rtBacaUang" data-uid="${a.uid}" data-nyala="0">tidak</div></div></div>`) : h`<div class="k2">Belum ada akun Penjaga laci terdaftar.</div>`}
       <div class="pita-info ${pilih && adaTanda ? 'emas' : ''}" data-k="rt-status">${!pilih ? 'Mati — tidak ada kartu Ringkas di tablet.' : !adaTanda ? 'Kartu tampil untuk ' + (op ? op.nama : 'orang terpilih') + ', tapi laci & uang keluar tidak dihitung sampai akun tablet ditandai membaca data uang.' : 'Kartu tampil untuk ' + (op ? op.nama : 'orang terpilih') + ' dengan laci & uang keluar. Data uang dimuat ke tablet hanya selama ' + (op ? op.nama : 'orang itu') + ' jaga, dan dibuang dari layar begitu orang lain jaga.'} Butuh aturan server v14 (docs/uji-rules-v14.md).</div></div>`;
   }
-  function gambarCadangan(s, d) {
+  function gambarCadangan(s, d, tab) {
+    // paket P8 (owner 27 Nov 2026): tab Arsip foto (A94) & Tautan Dasbor (B103) — arsip-audit-panel.js
+    if (tab === 'foto') return gambarArsipFoto(s, d, opsi.akun ? opsi.akun() : null);
+    if (tab === 'tautan') return gambarTautanDasbor(s, d, opsi.akun ? opsi.akun() : null, dasarTautan(), opsi.proyekId ? opsi.proyekId() : '');
     const C = S.ssCadangan(d, lokal(), s.hariC);
     return h`<div class="kartu" data-k="kuota" style="gap: 6px;"><div class="label">Simpanan lokal di perangkat ini</div>
         ${C.kuota.adaAngka ? h`<div class="cd-bar ${C.kuota.awas ? 'awas' : ''}"><div style="width: ${Math.min(100, C.kuota.pct)}%;"></div></div>` : ''}<div class="k2">${C.kuota.teks}${C.kuota.ket ? ' · ' + C.kuota.ket : ''}</div>${C.kuota.awasTeks ? h`<div class="pita-info ${C.kuota.awas ? 'awas' : ''}" style="font-size: 11.5px;">${C.kuota.awasTeks}</div>` : ''}

@@ -367,6 +367,12 @@ export function pasangDasbor(akar, opsi) {
     else if (RN) out.push(baris('rutin', 'Rutin hari ini', RN.harian.nSudah + ' dari ' + RN.harian.n + (RN.nLewat ? ' · ' + RN.nLewat + ' lewat' : '') + (RN.terlewat.length ? ' · kemarin ' + RN.terlewat.length + ' terlewat' : ''), RN.nLewat > 0 || RN.terlewat.length > 0,
       { judul: 'Rutin harian · mingguan · bulanan', baris: [['Hari ini', RN.harian.nSudah + ' dari ' + RN.harian.n], ['Minggu ini', RN.mingguan.nSudah + ' dari ' + RN.mingguan.n], ['Bulan ini', RN.bulanan.nSudah + ' dari ' + RN.bulanan.n]]
         .concat(RN.lewat.length ? [['Lewat', RN.lewat.join(', ')]] : []).concat(RN.terlewat.length ? [['Terlewat ' + tanggalPendek(RN.kemarin), RN.terlewat.slice(0, 6).join(', ') + (RN.terlewat.length > 6 ? ', …' : '')]] : []), tujuan: RN.tujuan, ke: RN.sumber }));
+    // paket P8 (owner 27 Nov 2026, A94): nota kedatangan (tunai & bon) & nota kas kecil yang belum berfoto (arsip-foto-logika afBelum apa adanya)
+    const FT = Q.foto;
+    if (FT && FT.galat) out.push(salah('foto', 'Belum berfoto', FT));
+    else if (FT) out.push(baris('foto', 'Nota & bon belum berfoto', FT.n ? FT.n + (FT.belum.length ? ' · ' + FT.nTunai + ' tunai' : '') : FT.kedatangan ? 'semua berfoto' : 'tidak ada', FT.n > 0,
+      { judul: 'Foto nota & bon · ' + FT.hari + ' hari terakhir', baris: [['Kedatangan berfoto', FT.berfoto + ' dari ' + FT.kedatangan], ['Belum berfoto', FT.belum.length + ' (' + FT.nTunai + ' tunai · ' + FT.nBon + ' bon)'], ['Nota kas kecil belum difoto', String(FT.kas.length)]]
+        .concat(FT.belum.slice(0, 6).map((x) => [tanggalPendek(x.tanggal) + ' · ' + x.pemasok, x.jenis === 'tunai' ? 'tunai' : 'bon'])).concat(FT.catatanLama ? [['Catatan', FT.catatanLama]] : []), tujuan: FT.tujuan, ke: 'Menu › Toko ini › Cadangan & simpanan › Arsip foto' }));
     out.push(R.galat ? salah('mutu', 'Mutu kedatangan', R) : baris('mutu', 'Kedatangan mutu AWAS', R.awas ? R.awas + ' kedatangan' : R.ditimbang || R.awas ? '0' : 'belum dicek', R.awas > 0, { judul: 'Timbang & mutu kedatangan', baris: [['Ditimbang', R.ditimbang + ' dari ' + R.kedatangan + ' kedatangan'], ['Kurang timbang', dbKg(R.kgKurang)], ['Mutu AWAS', String(R.awas)]], tujuan: R.tujuan, ke: 'Stok › Barang masuk' }));
     return '<div class="kartu db-kartu db-mutu">' + kepala('Mutu usaha', Q.periode, 'sumber:mutu', Q.sumber, Q.tujuan) + out.join('') + '</div>';
   }

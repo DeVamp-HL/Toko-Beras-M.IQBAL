@@ -79,7 +79,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 EMAIL_OWNER = 'owner@tokoberasmiqbal.web.app'; EMAIL_KASIR = 'kasir@tokoberasmiqbal.web.app'
 PERAN = ['ben', 'karyawan']
 FUNGSI_JUJUR = {'stafCekGudang', 'stafBuat', 'stafBuatTipe', 'stafBuatJual', 'stafJejak', 'stafUbahPesanan', 'stafDenyut', 'stafBuatWadah', 'stafBuatLahir', 'stafMintaNego', 'stafUsulHarga', 'stafMintaKredit', 'stafBuatSJ', 'stafTandaiSJ',
-                'stafBuatPesanan', 'stafAturPesanan', 'stafUbahRutin', 'stafMintaKeluar', 'stafKirimPesan', 'stafCatatMasuk', 'stafKabarMasuk', 'stafHitungLaci', 'stafTokenPush', 'stafUsulBanding', 'stafCekPatuh', 'stafAmbilBarang', 'stafJanjiPemasok', 'stafCekRutin'}   # v25: centang rutin (lewat stafBuat)   # v24: janji datang pemasok (diubahOlehUid = penulis)   # v21: usul harga banding tablet (lewat stafBuat)   # v16: hitungan laci tablet (lewat stafBuat)   # v15: barang masuk tablet (lewat stafBuat)   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
+                'stafBuatPesanan', 'stafAturPesanan', 'stafUbahRutin', 'stafMintaKeluar', 'stafKirimPesan', 'stafCatatMasuk', 'stafKabarMasuk', 'stafHitungLaci', 'stafTokenPush', 'stafUsulBanding', 'stafCekPatuh', 'stafAmbilBarang', 'stafJanjiPemasok', 'stafCekRutin', 'stafFotoNota', 'stafTandaFoto'}   # v25: centang rutin (lewat stafBuat)   # v24: janji datang pemasok (diubahOlehUid = penulis)   # v21: usul harga banding tablet (lewat stafBuat)   # v16: hitungan laci tablet (lewat stafBuat)   # v15: barang masuk tablet (lewat stafBuat)   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
 LUAR_KOLEKSI = ['aksesAkun', 'permintaanAkses', 'arsipTahun', 'ringkasanKasir', 'batuNisan', 'fotoBon', 'buktiTerima', 'notifOwner', 'notifPerangkat']   # blok rules di luar baru/js/data/koleksi.js (v7: fotoBon)
 
 
@@ -2676,11 +2676,161 @@ def periksa_v25(rules, r24, c25, akses_js):
         if h24.boleh != harap24: cacat.append('model v25 %s atas firestore.rules.v24 → %s, harap %s (%s)' % (no, 'LOLOS' if h24.boleh else 'DITOLAK', 'LOLOS' if harap24 else 'DITOLAK', 'ubahan v25' if no in BEDA_V24 else 'wajib sama'))
     return cacat
 
+# ---- v26 (paket P8, owner 27 Nov 2026: FOTO NOTA KEDATANGAN dari tablet — "owner + tablet Penjaga laci" — & TAUTAN BEKU DASBOR — owner saja, 1–90 hari): v25 + satu baris
+# create fotoBon diperluas (stafFotoNota(['ben'])), dua fungsi (stafFotoNota, stafTandaFoto), dua blok (fotoTanda: tanda tanpa gambar, dibaca owner, dibuat owner / Penjaga laci;
+# dasborPublik: get tanpa login per kode ≥ 20 huruf SELAMA jam server < sampai, list owner, tulis owner dengan sampai = jam ≤ 91 hari). Kolom = akses.js FOTO_NOTA_KOLOM /
+# TANDA_FOTO_KOLOM (+ atribusi); penjaga kiriman fotoNotaSah / tandaFotoSah; penyusun tanda = arsip-foto-logika AF_TANDA_KOLOM.
+GANTI_V26 = [("allow create: if (owner() || stafFotoNota(['ben'])) && request.resource.data.get('id', '') == id && request.resource.data.get('idBon', 0) is string",
+              "allow create: if owner() && request.resource.data.get('id', '') == id && request.resource.data.get('idBon', 0) is string", 'v26 fotoBon create + Penjaga laci (stafFotoNota)')]
+FUNGSI_V26 = ['stafFotoNota', 'stafTandaFoto']
+DPB_TULIS_V26 = "if owner() && request.resource.data.get('sampai', 0) is timestamp && request.resource.data.sampai <= request.time + duration.value(91, 'd')"
+BLOK_V26 = {'fotoTanda': {'read': 'if owner()', 'create': "if owner() || stafTandaFoto(['ben'], id)", 'update': 'if owner()', 'delete': 'if owner()'},
+            'dasborPublik': {'get': 'if kode.size() >= 20 && resource.data.sampai > request.time', 'list': 'if owner()', 'create': DPB_TULIS_V26, 'update': DPB_TULIS_V26, 'delete': 'if owner()'}}
+FOTO_NOTA_KOLOM_V26 = ['id', 'idBon', 'pemasok', 'tanggalBon', 'noBon', 'tanggal', 'jam', 'jenis', 'base64', 'byte', 'lebar', 'tinggi', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']
+TANDA_FOTO_KOLOM_V26 = ['id', 'idBon', 'jenis', 'pemasok', 'tanggalBon', 'tanggal', 'jam', 'byte', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']
+FOTO_NOTA_WAJIB = ("let d = request.resource.data; return stafBuat(peranBoleh) && d.get('idBon', 0) is string && d.idBon.matches('[0-9]{10,16}([.][0-9]{1,6})?')"
+                   " && d.keys().hasOnly(['id', 'idBon', 'pemasok', 'tanggalBon', 'noBon', 'tanggal', 'jam', 'jenis', 'base64', 'byte', 'lebar', 'tinggi', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);")
+TANDA_FOTO_WAJIB = ("let d = request.resource.data; return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('idBon', 0) is string && d.idBon.matches('[0-9]{10,16}([.][0-9]{1,6})?')"
+                    " && d.get('jenis', '') in ['bon', 'tunai'] && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')"
+                    " && d.keys().hasOnly(['id', 'idBon', 'jenis', 'pemasok', 'tanggalBon', 'tanggal', 'jam', 'byte', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);")
+V25_TEKS = None   # kontrol: pengganti isi firestore.rules.v25
+BANDING_V25 = True
+DOK_V26_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v26.md
+AKSES_V26_TEKS = None   # kontrol: pengganti isi baru/js/data/akses.js (bagian foto nota)
+AF_V26_TEKS = None   # kontrol: pengganti isi baru/js/layar/arsip-foto-logika.js
+# ---- MODEL v26: kasus ★FD docs/uji-rules-v26.md — staf = U11 (ben, uid-uji-b; karyawan lewat U11_KARYAWAN); 'tamu' = tanpa login (halaman dasbor-publik.html).
+FD_ID = 'fn-uji-1'; FD_BON = '1764000000001.5'
+FD_ATR = {'oleh': 'UJI B', 'olehUid': 'uid-uji-b', 'perangkat': 'Tablet uji', 'diubahOleh': 'UJI B', 'diubahOlehUid': 'uid-uji-b', 'diubahPerangkat': 'Tablet uji', 'diubahPada': '2026-10-09T03:00:00.000Z'}
+FD_FOTO = dict({'id': FD_ID, 'idBon': FD_BON, 'pemasok': 'Pemasok Contoh', 'tanggalBon': '2026-10-09', 'noBon': '', 'tanggal': '2026-10-09', 'jam': '10:00', 'jenis': 'image/jpeg', 'base64': 'QUJD', 'byte': 3, 'lebar': 1, 'tinggi': 1}, **FD_ATR)
+FD_TANDA = dict({'id': FD_ID, 'idBon': FD_BON, 'jenis': 'bon', 'pemasok': 'Pemasok Contoh', 'tanggalBon': '2026-10-09', 'tanggal': '2026-10-09', 'jam': '10:00', 'byte': 3}, **FD_ATR)
+FD_OWNER = dict(FD_TANDA, oleh='Owner', olehUid='uid-uji', diubahOleh='Owner', diubahOlehUid='uid-uji', jenis='tunai')
+FD_KODE = 'Dp7Qp2Xz9LmN4rT8vW1yZb'
+FD_DASBOR = {'id': FD_KODE, 'toko': 'Toko Beras M.IQBAL', 'dibuat': '2026-10-09T03:00:00.000Z', 'sampai': TS.dari_iso('2026-10-16T03:00:00Z'), 'hari': 7, 'untuk': 'Bank Contoh', 'bagian': ['omzet'],
+             'bulan': [{'key': '2026-10', 'nama': 'Oktober 2026', 'berjalan': True, 'sampaiTanggal': '2026-10-09', 'omzet': 1000000, 'nota': 10}]}
+FD_LEWAT = dict(FD_DASBOR, sampai=TS.dari_iso('2026-10-08T03:00:00Z'))
+DB_FT = {'fotoTanda/' + FD_ID: FD_TANDA}; DB_FB = {'fotoBon/' + FD_ID: FD_FOTO}; DB_DP = {'dasborPublik/' + FD_KODE: FD_DASBOR}
+WAJIB_V26 = ['★FD1', '★FD2', '★FD3', '★FD4']   # ★FD4 di Playground: matikan "Authenticated" (tamu); kasus staf dibuktikan emulator — boleh juga di Playground dengan U11
+KASUS_V26 = [
+    ('★FD1', 'owner mencatat tanda foto nota', 'owner', 'create', 'fotoTanda', FD_ID, FD_OWNER, None, True, 0),
+    ('★FD2', 'owner membaca tanda foto', 'owner', 'get', 'fotoTanda', FD_ID, None, DB_FT, True, 0),
+    ('★FD3', 'owner membuat tautan beku Dasbor 7 hari', 'owner', 'create', 'dasborPublik', FD_KODE, FD_DASBOR, None, True, 0),
+    ('★FD4', 'tamu (tanpa login) membaca tautan yang belum lewat', 'tamu', 'get', 'dasborPublik', FD_KODE, None, DB_DP, True, 0),
+    ('★FD5', 'Penjaga laci memotret nota kedatangan atas namanya', 'staf', 'create', 'fotoBon', FD_ID, FD_FOTO, None, True, None),
+    ('★FD6', 'Penjaga laci mencatat tanda fotonya', 'staf', 'create', 'fotoTanda', FD_ID, FD_TANDA, None, True, None),
+    ('★FD7', 'karyawan memotret nota', 'staf', 'create', 'fotoBon', FD_ID, FD_FOTO, U11_KARYAWAN, False, None),
+    ('★FD8', 'karyawan mencatat tanda foto', 'staf', 'create', 'fotoTanda', FD_ID, FD_TANDA, U11_KARYAWAN, False, None),
+    ('★FD9', 'foto atas nama akun lain (olehUid)', 'staf', 'create', 'fotoBon', FD_ID, dict(FD_FOTO, olehUid='uid-lain'), None, False, None),
+    ('★FD10', 'foto nota kas kecil dari tablet (idBon uk-…)', 'staf', 'create', 'fotoBon', FD_ID, dict(FD_FOTO, idBon='uk-501'), None, False, None),
+    ('★FD11', 'foto membawa kolom lain (hargaTotal)', 'staf', 'create', 'fotoBon', FD_ID, dict(FD_FOTO, hargaTotal=700000), None, False, None),
+    ('★FD12', 'berkas bukan gambar (text/html)', 'staf', 'create', 'fotoBon', FD_ID, dict(FD_FOTO, jenis='text/html'), None, False, None),
+    ('★FD13', 'Penjaga laci membaca foto', 'staf', 'get', 'fotoBon', FD_ID, None, DB_FB, False, None),
+    ('★FD14', 'Penjaga laci menghapus foto', 'staf', 'delete', 'fotoBon', FD_ID, None, DB_FB, False, None),
+    ('★FD15', 'tanda berjenis kas (bukan kedatangan)', 'staf', 'create', 'fotoTanda', FD_ID, dict(FD_TANDA, jenis='kas'), None, False, None),
+    ('★FD16', 'tanda: kolom id beda dari id dokumen', 'staf', 'create', 'fotoTanda', FD_ID, dict(FD_TANDA, id='fn-lain'), None, False, None),
+    ('★FD17', 'Penjaga laci membaca tanda foto', 'staf', 'get', 'fotoTanda', FD_ID, None, DB_FT, False, None),
+    ('★FD18', 'tamu membaca tautan yang SUDAH LEWAT', 'tamu', 'get', 'dasborPublik', FD_KODE, None, {'dasborPublik/' + FD_KODE: FD_LEWAT}, False, None),
+    ('★FD19', 'tamu mendaftar semua tautan', 'tamu', 'list', 'dasborPublik', FD_KODE, None, DB_DP, False, None),
+    ('★FD20', 'tamu menulis tautan', 'tamu', 'create', 'dasborPublik', FD_KODE, FD_DASBOR, None, False, None),
+    ('★FD21', 'Penjaga laci membuat tautan', 'staf', 'create', 'dasborPublik', FD_KODE, FD_DASBOR, None, False, None),
+    ('★FD22', 'owner membuat tautan tanpa batas (tahun 2100, lewat 91 hari)', 'owner', 'create', 'dasborPublik', FD_KODE, dict(FD_DASBOR, sampai=TS.dari_iso('2100-01-01T00:00:00Z')), None, False, None),   # jam mutlak: emulator tidak menggesernya
+    ('★FD23', 'owner membuat tautan tanpa jam berlaku (teks)', 'owner', 'create', 'dasborPublik', FD_KODE, dict(FD_DASBOR, sampai='2026-10-16T03:00:00.000Z'), None, False, None),
+    ('★FD24', 'tamu membaca kode pendek (tebakan)', 'tamu', 'get', 'dasborPublik', 'abc123', None, {'dasborPublik/abc123': dict(FD_DASBOR, id='abc123')}, False, None),
+    ('★FD25', 'akun tablet yang dinonaktifkan owner memotret', 'staf', 'create', 'fotoBon', FD_ID, FD_FOTO, U11_MATI, False, None),
+    ('★FD26', 'kasir@ mencatat tanda foto', 'kasir', 'create', 'fotoTanda', FD_ID, FD_TANDA, None, False, None),
+    ('★FD27', 'owner mendaftar tautan (kelola)', 'owner', 'list', 'dasborPublik', FD_KODE, None, DB_DP, True, 0),
+]
+BEDA_V25 = {'★FD1', '★FD2', '★FD3', '★FD4', '★FD5', '★FD6', '★FD27'}   # yang DIBUKA v26 (ditolak v25: koleksi fotoTanda & dasborPublik belum ada, fotoBon owner saja); lain wajib sama
+
+
+def ke_v25(R):
+    """v26 → v25: cabut PERSIS ubahan v26 (satu baris create fotoBon; dua blok; dua fungsi). Kembali (teks, cacat)."""
+    cacat = []
+    for baru, lama, nama in GANTI_V26:
+        k = R.count(baru)
+        if k != 1: cacat.append('v26 ≠ v25 + ubahan yang tercatat: %s — %r ditemukan %d× (wajib 1×)' % (nama, baru[:90], k))
+        else: R = R.replace(baru, lama)
+    for n in BLOK_V26:
+        ms = list(re.finditer(r'\n    match /' + n + r'/\{\w+\} \{\n.*?\n    \}', R, re.S))
+        if len(ms) != 1: cacat.append('blok v26 %s ditemukan %d× (wajib 1×)' % (n, len(ms))); continue
+        R = R[:ms[0].start()] + R[ms[0].end():]
+    for f in FUNGSI_V26:
+        R2 = buang_fungsi(R, f)
+        if R2 == R: cacat.append('fungsi v26 ' + f + '() tidak ada')
+        R = R2
+    return R, cacat
+
+
+def periksa_v26(rules, r25, c26, akses_js):
+    """30 · v26: bentuk persis satu baris create fotoBon, dua fungsi & dua blok + sisanya = firestore.rules.v25 + penjaga akses.js / penyusun tanda = bentuk rules +
+    model kasus ★FD (v26 & v25, beda = BEDA_V25)."""
+    cacat = list(c26); B = blok_rules(rules); F = fungsi_rules(rules); rata = lambda t: re.sub(r'\s+', ' ', t).strip()
+    for n, ops in BLOK_V26.items():
+        for op in OPERASI:
+            xs = [rata(x) for x in allow(B.get(n, ''), op)]
+            w = ops.get(op) or (ops.get('read') if op in ('get', 'list') else None)
+            if (xs != [w]) if w else xs: cacat.append('%s: allow %s bukan "%s" (v26): %s' % (n, op, w or '(tidak ada)', xs))
+    fc = [rata(x) for x in allow(B.get('fotoBon', ''), 'create')]
+    if len(fc) != 1 or not fc[0].startswith("if (owner() || stafFotoNota(['ben'])) && request.resource.data.get('id', '') == id") or 'base64.size() <= 960000' not in fc[0]:
+        cacat.append('fotoBon: create bukan bentuk v26 (owner atau stafFotoNota([\'ben\']) DAN bentuk foto v7 tetap): %s' % fc)
+    for op in ('get', 'list', 'update', 'delete'):
+        for x in [rata(y) for y in allow(B.get('fotoBon', ''), op)]:
+            if x != 'if owner()': cacat.append('fotoBon: allow %s tidak lagi owner saja (v26: baca & hapus foto tetap owner): %s' % (op, x))
+    if rata(F.get('stafFotoNota', '')) != rata(FOTO_NOTA_WAJIB): cacat.append('stafFotoNota() bukan bentuk v26 yang tercatat: %s' % rata(F.get('stafFotoNota', '(tidak ada)')))
+    if rata(F.get('stafTandaFoto', '')) != rata(TANDA_FOTO_WAJIB): cacat.append('stafTandaFoto() bukan bentuk v26 yang tercatat: %s' % rata(F.get('stafTandaFoto', '(tidak ada)')))
+    for n, b in B.items():
+        if 'stafFotoNota' in b and n != 'fotoBon': cacat.append(n + ': stafFotoNota() dipakai di luar fotoBon (v26)')
+        if 'stafTandaFoto' in b and n != 'fotoTanda': cacat.append(n + ': stafTandaFoto() dipakai di luar fotoTanda (v26)')
+        if n not in ('bonPublik', 'dasborPublik') and re.search(r'allow (get|read|list)[^:]*: if (true|kode\.)', b): cacat.append(n + ': dibuka untuk siapa saja (hanya bonPublik & dasborPublik get per kode, v26)')
+    for n, badan in F.items():
+        for f in FUNGSI_V26:
+            if n != f and f + '(' in badan: cacat.append(f + '() dipanggil dari fungsi ' + n)
+    ak = AKSES_V26_TEKS if AKSES_V26_TEKS is not None else akses_js
+    m3 = re.search(r"export const KOLOM_ATRIBUSI_UBAH = \[([^\]]*)\];", ak); atr = re.findall(r"'(\w+)'", m3.group(1)) if m3 else []
+    for nama, wajib in (('FOTO_NOTA_KOLOM', FOTO_NOTA_KOLOM_V26), ('TANDA_FOTO_KOLOM', TANDA_FOTO_KOLOM_V26)):
+        m1 = re.search(r"export const " + nama + r" = \[([^\]]*)\]\.concat\(KOLOM_ATRIBUSI_UBAH\);", ak); kol = (re.findall(r"'(\w+)'", m1.group(1)) + atr) if m1 and m3 else None
+        if kol is None or sorted(kol) != sorted(wajib): cacat.append('akses.js %s (+ atribusi) ≠ daftar kolom rules v26: %s' % (nama, kol))
+    if "export const FOTO_STAF = ['ben'];" not in ak or r"export const ID_KEDATANGAN_SAH = /^[0-9]{10,16}(\.[0-9]{1,6})?$/;" not in ak: cacat.append("akses.js FOTO_STAF / ID_KEDATANGAN_SAH bukan cermin v26 (['ben'], idBon = id kedatangan)")
+    if "if (x.koleksi === 'fotoTanda' && !tandaFotoSah(d))" not in ak: cacat.append('akses.js periksaKiriman tidak menjaga bentuk fotoTanda (rules v26) — kiriman yang pasti ditolak server akan dikirim')
+    if "(d.jenis === 'bon' || d.jenis === 'tunai')" not in ak: cacat.append("akses.js tandaFotoSah tidak membatasi jenis bon|tunai (rules v26)")
+    bu = re.search(r"export const BUAT_STAF = \{(.*?)\};", ak, re.S); bs = re.search(r"export const BACA_STAF = \[(.*?)\];", ak, re.S)
+    if not bu or "fotoTanda: ['ben']" not in bu.group(1) or 'dasborPublik' in bu.group(1) or 'fotoBon' in bu.group(1): cacat.append("akses.js BUAT_STAF bukan cermin v26 (fotoTanda: ['ben']; fotoBon lewat penjaga sendiri; dasborPublik owner saja)")
+    if not bs or 'fotoTanda' in bs.group(1) or 'dasborPublik' in bs.group(1): cacat.append('akses.js BACA_STAF bukan cermin v26 (fotoTanda & dasborPublik dibaca owner saja)')
+    af = AF_V26_TEKS if AF_V26_TEKS is not None else baca('baru/js/layar/arsip-foto-logika.js')
+    m4 = re.search(r"const AF_TANDA_KOLOM = \[([^\]]*)\];", af)
+    if not m4 or not set(re.findall(r"'(\w+)'", m4.group(1))) <= set(TANDA_FOTO_KOLOM_V26) or 'base64' in m4.group(1): cacat.append('arsip-foto-logika AF_TANDA_KOLOM memuat kolom di luar stafTandaFoto rules v26')
+    v25 = V25_TEKS if V25_TEKS is not None else baca('firestore.rules.v25')
+    a, b = rata(r25), rata(tanpa_komentar(v25))
+    if BANDING_V25 and a != b:
+        i = next((j for j in range(min(len(a), len(b))) if a[j] != b[j]), min(len(a), len(b)))
+        cacat.append('v26 mengubah lebih dari ubahan yang tercatat atas firestore.rules.v25 — dekat "…%s…" (v25: "…%s…")' % (a[max(0, i - 60):i + 60], b[max(0, i - 60):i + 60]))
+    dok = DOK_V26_TEKS if DOK_V26_TEKS is not None else (baca('docs/uji-rules-v26.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v26.md')) else '')
+    v7dok = baca('docs/uji-rules-v7.md') if os.path.exists(os.path.join(AKAR, 'docs/uji-rules-v7.md')) else ''
+    lama = set(re.findall(r'(★[A-Z]+\d+)', v7dok)) | set(k[0] for k in KASUS_V25 + KASUS_V24 + KASUS_V23 + KASUS_V22 + KASUS_V21 + KASUS_V20 + KASUS_V19 + KASUS_V18 + KASUS_V17 + KASUS_V16 + KASUS_V15 + KASUS_V14 + KASUS_V13 + KASUS_V12 + KASUS_V11 + KASUS_V10 + KASUS_V9 + KASUS_V8 + KASUS_V7)
+    bentrok = sorted(set(k[0] for k in KASUS_V26) & lama)
+    if bentrok: cacat.append('nomor kasus v26 bertabrakan dengan v7–v25: ' + ', '.join(bentrok))
+    di_dok = set(re.findall(r'^\|(?: \d+ \|)? (★FD\d+) \|', dok, re.M)); di_model = set(k[0] for k in KASUS_V26)
+    if di_dok != di_model: cacat.append('docs/uji-rules-v26.md tidak sama dengan kasus model v26 — hanya di berkas: %s · hanya di model: %s' % (sorted(di_dok - di_model), sorted(di_model - di_dok)))
+    mw = re.search(r'\n## Wajib owner[^\n]*\n(.*?)\n## ', dok, re.S)
+    wajib = re.findall(r'^\| \d+ \| (★FD\d+) \|', mw.group(1), re.M) if mw else []
+    if wajib != WAJIB_V26: cacat.append('docs/uji-rules-v26.md bagian "Wajib owner" bukan WAJIB_V26 — berkas: %s · model: %s' % (wajib, WAJIB_V26))
+    try: M26 = rules_mini.Rules(rules); M25 = rules_mini.Rules(tanpa_komentar(v25))
+    except Exception as e: return cacat + ['model v26: rules tidak bisa diurai penafsir mini — %s' % e]
+    for no, nama, aud, op, kol_, id_, data, ubah_db, boleh, maks in KASUS_V26:
+        db = dict(DB_UJI_V7); db.update(ubah_db or {}); db = dict((k, v) for k, v in db.items() if v is not None)
+        h = M26.nilai(op, kol_, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7)
+        if h.boleh != boleh: cacat.append('model v26 %s %s → %s, wajib %s%s' % (no, nama, 'LOLOS' if h.boleh else 'DITOLAK', 'LOLOS' if boleh else 'DITOLAK', (' (' + h.galat + ')') if h.galat else ''))
+        elif maks is not None and h.akses > maks: cacat.append('model v26 %s %s: %d access call (batas jalur ini %d)' % (no, nama, h.akses, maks))
+        h25 = M25.nilai(op, kol_, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7); harap25 = (not boleh) if no in BEDA_V25 else boleh
+        if h25.boleh != harap25: cacat.append('model v26 %s atas firestore.rules.v25 → %s, harap %s (%s)' % (no, 'LOLOS' if h25.boleh else 'DITOLAK', 'LOLOS' if harap25 else 'DITOLAK', 'ubahan v26' if no in BEDA_V25 else 'wajib sama'))
+    return cacat
+
 def periksa(rules, koleksi_js, akses_js):
     cacat = []
     rules = tanpa_komentar(rules)
-    r24, c25 = ke_v24(rules)       # 29 · v25 → v24 (cabut balik satu nama dokumen baca aturanToko, satu blok & satu fungsi v25)
-    cacat += periksa_v25(rules, r24, c25, akses_js)
+    r25, c26 = ke_v25(rules)       # 30 · v26 → v25 (cabut balik satu baris create fotoBon, dua blok & dua fungsi v26)
+    cacat += periksa_v26(rules, r25, c26, akses_js)
+    r24, c25 = ke_v24(r25)         # 29 · v25 → v24 (cabut balik satu nama dokumen baca aturanToko, satu blok & satu fungsi v25)
+    cacat += periksa_v25(r25, r24, c25, akses_js)
     r23, c24 = ke_v23(r24)         # 28 · v24 → v23 (cabut balik blok pesananPemasok yang dipecah & satu fungsi v24)
     cacat += periksa_v24(r24, r23, c24, akses_js)
     r22, c23 = ke_v22(r23)         # 27 · v23 → v22 (cabut balik dua blok & satu fungsi v23)
@@ -2960,11 +3110,21 @@ if __name__ == '__main__':
             'v19: cek gudang atas nama siapa saja (stafBuat → staf)': R.replace("      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && d.get('cek', 0) is map", "      return staf(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && d.get('cek', 0) is map"),
             'v19: cek gudang tanpa batas kolom': R.replace("        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'minggu', 'cek', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);\n    }", "        ;\n    }"),
             'v19: Penjaga laci boleh mengubah cek': R.replace("      allow create: if owner() || stafCekGudang(['ben'], id);\n      allow update, delete: if owner();", "      allow create, update: if owner() || stafCekGudang(['ben'], id);\n      allow delete: if owner();"),
+            'v26: karyawan boleh memotret nota': R.replace("allow create: if (owner() || stafFotoNota(['ben'])) && request", "allow create: if (owner() || stafFotoNota(['ben', 'karyawan'])) && request"),
+            'v26: foto nota atas nama siapa saja (stafBuat → staf)': R.replace("      return stafBuat(peranBoleh) && d.get('idBon', 0) is string && d.idBon.matches('[0-9]{10,16}([.][0-9]{1,6})?')\n        && d.keys().hasOnly(['id', 'idBon', 'pemasok',", "      return staf(peranBoleh) && d.get('idBon', 0) is string && d.idBon.matches('[0-9]{10,16}([.][0-9]{1,6})?')\n        && d.keys().hasOnly(['id', 'idBon', 'pemasok',"),
+            'v26: foto nota kas kecil dari tablet (idBon bebas)': R.replace("      return stafBuat(peranBoleh) && d.get('idBon', 0) is string && d.idBon.matches('[0-9]{10,16}([.][0-9]{1,6})?')\n        && d.keys().hasOnly(['id', 'idBon', 'pemasok',", "      return stafBuat(peranBoleh) && d.get('idBon', 0) is string\n        && d.keys().hasOnly(['id', 'idBon', 'pemasok',"),
+            'v26: Penjaga laci membaca foto': R.replace("    match /fotoBon/{id} {\n      allow read: if owner();", "    match /fotoBon/{id} {\n      allow read: if owner() || staf(['ben']);"),
+            'v26: tanda foto berjenis bebas': R.replace(" && d.get('jenis', '') in ['bon', 'tunai'] && d.get('tanggal', 0) is string", " && d.get('tanggal', 0) is string"),
+            'v26: Penjaga laci membaca tanda foto': R.replace("    match /fotoTanda/{id} {\n      allow read: if owner();", "    match /fotoTanda/{id} {\n      allow read: if owner() || staf(['ben']);"),
+            'v26: tautan Dasbor terbaca walau sudah lewat': R.replace("allow get: if kode.size() >= 20 && resource.data.sampai > request.time;", "allow get: if kode.size() >= 20;"),
+            'v26: tautan Dasbor bisa didaftar siapa saja': R.replace("    match /dasborPublik/{kode} {\n      allow get: if kode.size() >= 20 && resource.data.sampai > request.time;\n      allow list: if owner();", "    match /dasborPublik/{kode} {\n      allow get: if kode.size() >= 20 && resource.data.sampai > request.time;\n      allow list: if true;"),
+            'v26: tautan Dasbor tanpa batas lama berlaku': R.replace(" && request.resource.data.sampai <= request.time + duration.value(91, 'd');", ";"),
+            'v26: Penjaga laci membuat tautan Dasbor': R.replace("      allow create, update: if owner() && request.resource.data.get('sampai', 0) is timestamp", "      allow create, update: if (owner() || staf(['ben'])) && request.resource.data.get('sampai', 0) is timestamp"),
             'v25: daftar rutin tidak dibaca staf': R.replace("'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan']))", "'bukuPegangan'] && staf(['ben', 'karyawan']))"),
             'v25: karyawan tidak boleh mencentang': R.replace("stafCekRutin(['ben', 'karyawan'], id);", "stafCekRutin(['ben'], id);"),
             'v25: centang atas nama siapa saja (stafBuat → staf)': R.replace("      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && d.get('butir', 0) is string && d.butir.matches('[a-z0-9-]{1,40}') && d.get('periode', 0) is string && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')", "      return staf(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && d.get('butir', 0) is string && d.butir.matches('[a-z0-9-]{1,40}') && d.get('periode', 0) is string && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')"),
             'v25: putaran berbentuk bebas': R.replace(" && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')", ""),
-            'v25: centang tanpa batas kolom': R.replace("        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir', 'periode', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);\n    }\n    function stafBuatTipe(", "        ;\n    }\n    function stafBuatTipe("),
+            'v25: centang tanpa batas kolom': R.replace("        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir', 'periode', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);\n    }\n    // v26 (paket P8", "        ;\n    }\n    // v26 (paket P8"),   # v26: fungsi foto nota kini menyusul stafCekRutin (dulu stafBuatTipe)
             'v25: staf boleh mengubah centang': R.replace("      allow create: if owner() || stafCekRutin(['ben', 'karyawan'], id);\n      allow update, delete: if owner();", "      allow create, update: if owner() || stafCekRutin(['ben', 'karyawan'], id);\n      allow delete: if owner();"),
             'v25: karyawan ikut membaca kalender kepatuhan': R.replace("|| (id in ['tutupHari', 'kepatuhan'] && staf(['ben']));", "|| (id in ['tutupHari', 'kepatuhan'] && staf(['ben', 'karyawan']));"),
             'v24: karyawan ikut membaca pesanan ke pemasok': R.replace("      allow read: if owner() || staf(['ben']);\n      allow create, delete: if owner();\n      allow update: if owner() || stafJanjiPemasok(['ben']);", "      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create, delete: if owner();\n      allow update: if owner() || stafJanjiPemasok(['ben']);"),
@@ -3113,12 +3273,12 @@ if __name__ == '__main__':
             if isi == R: print('KONTROL BASI  ' + nama); kode = 3; continue
             # kontrol lama (sebelum v7) WAJIB tertangkap pemeriksa KHUSUSNYA — pembanding "sama dengan v6" (yang menangkap perubahan apa pun) dimatikan untuknya;
             # 'model:' — bentuk v7 (persetujuan, fotoBon, pintu) juga dimatikan: yang wajib berbunyi = penafsir rules mini pada kasus Playground ★/M
-            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:'); BANDING_V9 = BANDING_V8 or nama.startswith('v10:'); BANDING_V10 = BANDING_V9 or nama.startswith('v11:'); BANDING_V11 = BANDING_V10 or nama.startswith('v12:'); BANDING_V12 = BANDING_V11 or nama.startswith('v13:'); BANDING_V13 = BANDING_V12 or nama.startswith('v14:'); BANDING_V14 = BANDING_V13 or nama.startswith('v15:'); BANDING_V15 = BANDING_V14 or nama.startswith('v16:'); BANDING_V16 = BANDING_V15 or nama.startswith('v17:'); BANDING_V17 = BANDING_V16 or nama.startswith('v18:'); BANDING_V18 = BANDING_V17 or nama.startswith('v19:'); BANDING_V19 = BANDING_V18 or nama.startswith('v20:'); BANDING_V20 = BANDING_V19 or nama.startswith('v21:'); BANDING_V21 = BANDING_V20 or nama.startswith('v22:'); BANDING_V22 = BANDING_V21 or nama.startswith('v23:'); BANDING_V23 = BANDING_V22 or nama.startswith('v24:'); BANDING_V24 = BANDING_V23 or nama.startswith('v25:')
+            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:'); BANDING_V7 = BANDING_V6 or nama.startswith('v8:'); BANDING_V8 = BANDING_V7 or nama.startswith('v9:'); BANDING_V9 = BANDING_V8 or nama.startswith('v10:'); BANDING_V10 = BANDING_V9 or nama.startswith('v11:'); BANDING_V11 = BANDING_V10 or nama.startswith('v12:'); BANDING_V12 = BANDING_V11 or nama.startswith('v13:'); BANDING_V13 = BANDING_V12 or nama.startswith('v14:'); BANDING_V14 = BANDING_V13 or nama.startswith('v15:'); BANDING_V15 = BANDING_V14 or nama.startswith('v16:'); BANDING_V16 = BANDING_V15 or nama.startswith('v17:'); BANDING_V17 = BANDING_V16 or nama.startswith('v18:'); BANDING_V18 = BANDING_V17 or nama.startswith('v19:'); BANDING_V19 = BANDING_V18 or nama.startswith('v20:'); BANDING_V20 = BANDING_V19 or nama.startswith('v21:'); BANDING_V21 = BANDING_V20 or nama.startswith('v22:'); BANDING_V22 = BANDING_V21 or nama.startswith('v23:'); BANDING_V23 = BANDING_V22 or nama.startswith('v24:'); BANDING_V24 = BANDING_V23 or nama.startswith('v25:'); BANDING_V25 = BANDING_V24 or nama.startswith('v26:')
             c = periksa(isi, K, A)
-            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ', 'model v10 ', 'model v11 ', 'model v12 ', 'model v13 ', 'model v14 ', 'model v15 ', 'model v16 ', 'model v17 ', 'model v18 ', 'model v19 ', 'model v20 ', 'model v21 ', 'model v22 ', 'model v23 ', 'model v24 ', 'model v25 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
+            if nama.startswith('model:') and c and not all(x.startswith(('model v7 ', 'model v8 ', 'model v9 ', 'model v10 ', 'model v11 ', 'model v12 ', 'model v13 ', 'model v14 ', 'model v15 ', 'model v16 ', 'model v17 ', 'model v18 ', 'model v19 ', 'model v20 ', 'model v21 ', 'model v22 ', 'model v23 ', 'model v24 ', 'model v25 ', 'model v26 ')) for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
-        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; BANDING_V9 = True; BANDING_V10 = True; BANDING_V11 = True; BANDING_V12 = True; BANDING_V13 = True; BANDING_V14 = True; BANDING_V15 = True; BANDING_V16 = True; BANDING_V17 = True; BANDING_V18 = True; BANDING_V19 = True; BANDING_V20 = True; BANDING_V21 = True; BANDING_V22 = True; BANDING_V23 = True; BANDING_V24 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
+        BANDING_V6 = True; BENTUK_V7 = True; BANDING_V7 = True; BANDING_V8 = True; BANDING_V9 = True; BANDING_V10 = True; BANDING_V11 = True; BANDING_V12 = True; BANDING_V13 = True; BANDING_V14 = True; BANDING_V15 = True; BANDING_V16 = True; BANDING_V17 = True; BANDING_V18 = True; BANDING_V19 = True; BANDING_V20 = True; BANDING_V21 = True; BANDING_V22 = True; BANDING_V23 = True; BANDING_V24 = True; BANDING_V25 = True; KP_TEKS = None   # kontrol tenggang terakhir mengganti kunci-periode.js — dikembalikan sebelum kontrol berkas
         for nama, isi in rusak_dok.items():
             DOK_V7_TEKS = isi; c = periksa(R, K, A); DOK_V7_TEKS = None
             c = [x for x in c if 'docs/uji-rules-v7.md' in x]   # berbunyi karena SEBABNYA (berkas Playground), bukan kegagalan lain
@@ -3157,6 +3317,20 @@ if __name__ == '__main__':
                                        'v21: penjaga kiriman tanpa batas atas harga': (None, None, AK21.replace('d.hargaPerKg >= 1000 && d.hargaPerKg <= 100000', 'd.hargaPerKg >= 1000'))}.items():
             if (dkx is not None and dkx == DOK21) or (v20x is not None and v20x == V20S) or (akx is not None and akx == AK21): print('KONTROL BASI  ' + nama); kode = 3; continue
             DOK_V21_TEKS, V20_TEKS, AKSES_V21_TEKS = dkx, v20x, akx; c = periksa(R, K, A); DOK_V21_TEKS = V20_TEKS = AKSES_V21_TEKS = None
+            print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
+            if not c: kode = 3
+        # v26: berkas uji server, salinan v25, penjaga kiriman foto & tanda, penyusun tanda — catatan ★FD berkurang / pembanding berubah / penjaga longgar wajib ketahuan
+        DOK26 = baca('docs/uji-rules-v26.md'); V25S = baca('firestore.rules.v25'); AK26 = baca('baru/js/data/akses.js'); AF26 = baca('baru/js/layar/arsip-foto-logika.js')
+        for nama, (dkx, v25x, akx, afx) in {'v26: catatan uji server kehilangan kasus ★FD18': (re.sub(r'\n\| ★FD18 \|[^\n]*', '', DOK26), None, None, None),
+                                            'v26: Wajib owner tanpa ★FD4': (re.sub(r'\n\| 4 \| ★FD4 \|[^\n]*', '', DOK26), None, None, None),
+                                            'v26: salinan firestore.rules.v25 sudah memuat dasborPublik (pembanding ikut berubah)': (None, V25S.replace("    match /ringkasanKasir/{id} {", "    match /dasborPublik/{kode} {\n      allow get: if kode.size() >= 20;\n    }\n\n    match /ringkasanKasir/{id} {"), None, None),
+                                            'v26: periksaKiriman tanpa penjaga tanda foto': (None, None, AK26.replace("if (x.koleksi === 'fotoTanda' && !tandaFotoSah(d))", "if (false)"), None),
+                                            'v26: penjaga tanda foto membolehkan kolom lain': (None, None, AK26.replace("export const TANDA_FOTO_KOLOM = ['id', 'idBon', 'jenis',", "export const TANDA_FOTO_KOLOM = ['id', 'idBon', 'jenis', 'base64',"), None),
+                                            'v26: karyawan boleh memotret (FOTO_STAF)': (None, None, AK26.replace("export const FOTO_STAF = ['ben'];", "export const FOTO_STAF = ['ben', 'karyawan'];"), None),
+                                            'v26: tanda dibaca staf (BACA_STAF)': (None, None, AK26.replace("'cekGudang', 'ambilBarang'];", "'cekGudang', 'ambilBarang', 'fotoTanda'];"), None),
+                                            'v26: penyusun tanda membawa gambar': (None, None, None, AF26.replace("const AF_TANDA_KOLOM = ['id', 'idBon', 'jenis', 'pemasok', 'tanggalBon', 'tanggal', 'jam', 'byte'];", "const AF_TANDA_KOLOM = ['id', 'idBon', 'jenis', 'pemasok', 'tanggalBon', 'tanggal', 'jam', 'byte', 'base64'];"))}.items():
+            if (dkx is not None and dkx == DOK26) or (v25x is not None and v25x == V25S) or (akx is not None and akx == AK26) or (afx is not None and afx == AF26): print('KONTROL BASI  ' + nama); kode = 3; continue
+            DOK_V26_TEKS, V25_TEKS, AKSES_V26_TEKS, AF_V26_TEKS = dkx, v25x, akx, afx; c = periksa(R, K, akx if akx is not None else A); DOK_V26_TEKS = V25_TEKS = AKSES_V26_TEKS = AF_V26_TEKS = None
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
         # v25: berkas uji server, salinan v24, penjaga kiriman & bacaan staf, penyusun rutin — catatan ★O berkurang / pembanding berubah / staf tak mendengar wajib ketahuan
@@ -3228,7 +3402,8 @@ if __name__ == '__main__':
     if c: print('RULES CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
     KOL, TMIN = kp_js()
     nS = sum(1 for k in KASUS_BUKU if k[4]); nT = len(KASUS_BUKU) - nS
-    print('RULES v25 LULUS: v25 = firestore.rules.v24 + daftar centang rutin dari tablet / HP staf (aturanToko/rutin dibaca Penjaga laci & karyawan; rutinCek: centang atas nama penulisnya, butir & putaran berbentuk tetap, catatan ≤ 160; ubah & hapus owner) (model %d kasus ★O, beda v24 = %d kasus) · ' % (len(KASUS_V25), len(BEDA_V24))
+    print('RULES v26 LULUS: v26 = firestore.rules.v25 + foto nota kedatangan dari tablet Penjaga laci (fotoBon create atas nama penulisnya, idBon = id kedatangan, kolom dibatasi; baca & hapus owner) + tanda foto (fotoTanda: tanpa gambar, jenis bon|tunai; dibaca owner) + tautan beku Dasbor (dasborPublik: get tanpa login per kode ≥ 20 huruf SELAMA belum lewat sampai; tulis owner, sampai ≤ 91 hari) (model %d kasus ★FD, beda v25 = %d kasus) · ' % (len(KASUS_V26), len(BEDA_V25))
+          + 'v25 = firestore.rules.v24 + daftar centang rutin dari tablet / HP staf (aturanToko/rutin dibaca Penjaga laci & karyawan; rutinCek: centang atas nama penulisnya, butir & putaran berbentuk tetap, catatan ≤ 160; ubah & hapus owner) (model %d kasus ★O, beda v24 = %d kasus) · ' % (len(KASUS_V25), len(BEDA_V24))
           + 'v24 = firestore.rules.v23 + janji datang pesanan ke pemasok dari tablet (pesananPemasok dibaca Penjaga laci; ubah = janjiTanggal YYYY-MM-DD & janjiRiwayat ≤ 30 atas nama pengubahnya, pesanan yang menunggu saja; buat & hapus owner) (model %d kasus ★I, beda v23 = %d kasus) · ' % (len(KASUS_V24), len(BEDA_V23))
           + 'v23 = firestore.rules.v22 + karcis ambil nanti (ambilBarang: titip / ambil atas nama penulisnya, isi 1–20 baris, kolom dibatasi; ubah & hapus owner) + cek bon dari HP (bonPublik: get tanpa login per kode ≥ 20 huruf; list & tulis owner) (model %d kasus ★C, beda v22 = %d kasus) · ' % (len(KASUS_V23), len(BEDA_V22))
           + 'v22 = firestore.rules.v21 + kalender kepatuhan dari tablet (aturanToko/kepatuhan dibaca Penjaga laci; kepatuhanCek: tanda atas nama penulisnya, butir & putaran berbentuk tetap, catatan ≤ 160; ubah & hapus owner) (model %d kasus ★Q, beda v21 = %d kasus) · ' % (len(KASUS_V22), len(BEDA_V21))

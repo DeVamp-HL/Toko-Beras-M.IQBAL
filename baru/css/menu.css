@@ -184,3 +184,10 @@ main.layar-menu.masuk > header, main.layar-menu.masuk > .mn-gulir > .jalur, main
 .layar-menu .rn-baris .redup { color: var(--redup); }
 @keyframes rn-pop { from { transform: scale(.4); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .layar-menu .ts-baris, .layar-menu .rn-baris, .layar-menu .rn-cap.sudah { animation: none; } }
+/* paket P8 (owner 27 Nov 2026, B13): omzet per perangkat — baris + batang yang tumbuh saat digambar */
+.layar-menu .aa-orp { display: flex; flex-direction: column; gap: 3px; padding: 4px 0; }
+.layar-menu .aa-orp-atas { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.layar-menu .aa-batang { height: 6px; border-radius: 4px; background: rgba(127, 127, 127, 0.16); overflow: hidden; }
+.layar-menu .aa-batang i { display: block; height: 100%; border-radius: 4px; background: var(--emas, #b8962e); transform-origin: left center; animation: aa-tumbuh 700ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes aa-tumbuh { from { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .layar-menu .aa-batang i { animation: none; } }

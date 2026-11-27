@@ -123,4 +123,11 @@ export const KOLEKSI = [
   // owner 26 Nov 2026 (rules v23) — CEK BON DARI HP: ringkasan bon satu pelanggan bernama kode acak (≥ 20 huruf) yang dibaca halaman bon.html TANPA login.
   //  Didengar & ditulis OWNER saja (list owner; staf tidak memasang pendengarnya — tidak ada di BACA_STAF). Salinan ringkas, bukan data toko.
   { nama: 'bonPublik',           urut: 'id',    cache: 'bonPublik', kelas: 'tetap' },
+  // paket P8 (owner 27 Nov 2026, rules v26) — TANDA FOTO: satu dokumen ringan per foto nota / bon (id = id foto; idBon, jenis bon|tunai|kas|saldoAwal, tanggal, byte —
+  //  TANPA gambar) supaya Dasbor bisa menghitung kedatangan yang belum berfoto tanpa membaca fotonya. Ditulis bersama fotonya (owner, atau Penjaga laci dari tablet —
+  //  stafTandaFoto), dihapus bersama fotonya. Didengar OWNER saja (staf tidak membacanya — tidak ada di BACA_STAF). Tanpa cap jam server → 'tetap'.
+  { nama: 'fotoTanda',           urut: 'id',    cache: 'fotoTanda', kelas: 'tetap' },
+  // paket P8 (owner 27 Nov 2026, rules v26) — TAUTAN BEKU DASBOR untuk pihak luar: angka Dasbor yang DIBEKUKAN owner (bagian yang dicentang), bernama kode acak
+  //  (≥ 20 huruf), dibaca halaman dasbor-publik.html TANPA login sampai jam `sampai` (server menolak sesudahnya). Didengar & ditulis OWNER saja (kelola tautan).
+  { nama: 'dasborPublik',        urut: 'id',    cache: 'dasborPublik', kelas: 'tetap' },
 ];

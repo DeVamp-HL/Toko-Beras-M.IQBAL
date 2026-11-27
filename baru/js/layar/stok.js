@@ -21,6 +21,7 @@ import { gambarWadah, gambarKarungStok } from './gambar.js';
 import { tombolAkun, tombolLuarKisi, bukanOwner, batasHasilAdukan, batasDokumenKirim } from './akses-layar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 import { kartuTerima, lembarTerima, aksiPanelTerima } from './terima-barang-panel.js';   // owner 21 Nov 2026: tanda terima barang masuk untuk supir pemasok
+import { kartuFotoNota, aksiPanelFotoNota } from './foto-nota-panel.js';   // paket P8 (owner 27 Nov 2026, A94 · rules v26): foto nota kedatangan tunai & bon — owner + tablet Penjaga laci
 import { adeganIsiUlang, adeganBukaKarung, adeganAdukan } from './adegan.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman, kunciLuarCache } from '../data/toko.js';
@@ -453,6 +454,7 @@ export function pasangLayarStok(akar, opsi) {
     gdBulan: ({ b }) => set({ gdBulan: b === 'lalu' ? 'lalu' : 'ini' }),
     gdSemua: () => set({ gdSemua: !st().gdSemua }),
   });
+  Object.assign(AKSI, aksiPanelFotoNota({ set, st, akun: opsi.akun, waktu, foto: opsi.foto || null, akar }));   // paket P8: foto nota kedatangan (owner + tablet Penjaga laci)
   delegasi(akar, AKSI);
 
   const angka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0; const n = Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return isFinite(n) ? n : 0; };
@@ -948,6 +950,7 @@ export function pasangLayarStok(akar, opsi) {
         <div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>
       ${koreksi ? kartuTerima(d.id, { akun: opsi.akun ? opsi.akun() : null }) : s.tbm ? kartuTerima(s.tbm.id, { akun: opsi.akun ? opsi.akun() : null, tutup: true }) : ''}
       ${!koreksi && s.tbm ? kartuLabelMasuk(s.tbm.id, s) : ''}
+      ${kartuFotoNota(koreksi ? d.id : s.tbm ? s.tbm.id : null, { s, akun: opsi.akun ? opsi.akun() : null })}
       ${gambarBetulTimbang(s, koreksi ? d.id : null)}
       ${(s.varianTawar || []).length ? h`<div class="kartu" data-k="varian-tawar" style="gap: 8px;"><div class="label">Harga jual varian · belum ada harganya</div>
         ${s.varianTawar.map((x) => { const usul = VR.vrUsulHarga(x.modalKg, aturHarga()); return h`<div data-k="vt-${x.merk}" style="display: flex; flex-direction: column; gap: 6px;"><div><b>${x.merk}</b> · modal ${RP(Math.round(x.modalKg))}/kg (dari kedatangan ini) · usul ${RP(usul)}/kg = modal + target untung katalog</div>
@@ -1193,6 +1196,7 @@ export function pasangLayarStok(akar, opsi) {
       <div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Barang masuk</div><div class="ket">${tanggalPendek(w.tanggal)} · langsung jadi stok &amp; BON pemasok · harga dari nota supir · uang dari laci dititip ke owner</div></div>
         <div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>
       ${s.tbm ? kartuTerima(s.tbm.id, { akun: ak, tutup: true }) : ''}
+      ${s.tbm ? kartuFotoNota(s.tbm.id, { s, akun: ak }) : ''}
       ${s.tbm ? kartuLabelMasuk(s.tbm.id, s) : ''}
       ${kartuJanjiTablet(s, ak)}
       <div class="kartu" data-k="masuk-kepala" style="gap: 8px;">
@@ -1572,6 +1576,6 @@ export function pasangLayarStok(akar, opsi) {
   K.dengar(gambar);
   dengarkan(() => nanti(gambar));
   // dipanggil layar Menu: buka lembar (masuk | cocok | adukan) atau tab (gudang | wadah | kapur | karantina) — lewat penangan yang sama dengan ketukan
-  const buka = (lembar, tab, isi) => { set({ lembar: null }); if (lembar === 'masuk') { AKSI.bukaMasuk({}); if (isi && isi.merk) { ubahMasuk((d) => { const i = d.baris.findIndex((b) => !String(b.merk || '').trim()); if (i >= 0) d.baris[i].merk = isi.merk; else d.baris.push(Object.assign(C.barisMasukKosong(), { merk: isi.merk })); }); set({ kabar: 'Barang masuk untuk ' + isi.merk + ' — isi jumlah karung & harga per kg', kabarAwas: false }); } } else if (lembar === 'cocok') AKSI.bukaCocok({}); else if (lembar === 'adukan') AKSI.bukaAdukan({}); else if (lembar === 'kantong') AKSI.bukaKantong({}); else if (lembar === 'tempat') AKSI.bukaTempat({}); else if (lembar === 'hpp') AKSI.bukaHpp({}); else if (lembar === 'stokMin') AKSI.smBuka({}); else if (tab) AKSI.tab({ t: tab }); };
+  const buka = (lembar, tab, isi) => { set({ lembar: null }); if (lembar === 'masuk') { AKSI.bukaMasuk({}); if (isi && isi.koreksi) AKSI.mKoreksi({ id: String(isi.koreksi) }); if (isi && isi.merk) { ubahMasuk((d) => { const i = d.baris.findIndex((b) => !String(b.merk || '').trim()); if (i >= 0) d.baris[i].merk = isi.merk; else d.baris.push(Object.assign(C.barisMasukKosong(), { merk: isi.merk })); }); set({ kabar: 'Barang masuk untuk ' + isi.merk + ' — isi jumlah karung & harga per kg', kabarAwas: false }); } } else if (lembar === 'cocok') AKSI.bukaCocok({}); else if (lembar === 'adukan') AKSI.bukaAdukan({}); else if (lembar === 'kantong') AKSI.bukaKantong({}); else if (lembar === 'tempat') AKSI.bukaTempat({}); else if (lembar === 'hpp') AKSI.bukaHpp({}); else if (lembar === 'stokMin') AKSI.smBuka({}); else if (tab) AKSI.tab({ t: tab }); };
   return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild || _kunciLuar !== kunciLuar())) segera(gambar); } };
 }

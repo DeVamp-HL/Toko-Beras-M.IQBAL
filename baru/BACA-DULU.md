@@ -4591,3 +4591,50 @@ laci berulang bawaan **3 malam berturut-turut / 4 dari 7 malam** (setelan owner)
 - **Akses & data.** `akses.js`: `DOK_STAF_RUTIN`, `BACA_RUTIN` (disambung `pendengarPeran` untuk ben & karyawan), `BUAT_STAF.rutinCek`, `CEK_RUTIN_KOLOM` + `cekRutinSah` di
   `periksaKiriman`. `koleksi.js`: `rutinCek` kelas tetap. `bundel_baru.py`: `LH_MODUL` / `RN_MODUL` ikut otomatis. `index.html`: modulepreload 4 modul baru.
 - **Belum dicoba di data asli:** centang dari tablet (butuh v25 terbit), alarm & pengingat di HP owner, mendarat di halaman tugas di CPad, cetak slip hitungan laci dengan catatan.
+
+## Paket P8 · Arsip, audit & bagikan (owner 27 Nov 2026 — sensus ulang A94 B13 B81 B103)
+
+Paket kedelapan dari delapan sisa sensus ulang 27 Nov. Dijaga `alat-uji/uji_arsip_audit_p8.py` (kotak pasir angka contoh + statis + `--kontrol` + asap cadangan toko; angka
+rupiah toko tidak dicetak). **Butuh rules v26** (= v25 + `fotoBon` create untuk Penjaga laci lewat `stafFotoNota` + koleksi `fotoTanda` (`stafTandaFoto`) + koleksi
+`dasborPublik`; salinan `firestore.rules.v25`, `docs/uji-rules-v26.md` kasus ★FD, `periksa_rules.py` & `uji_rules_emulator.py` bagian V26, prosedur pulih darurat v26) —
+owner menerbitkan di Console SEBELUM merge.
+
+**Keputusan owner (dua AskUserQuestion 27 Nov 2026):** A94 foto nota **owner + tablet Penjaga laci**, foto tetap di Firestore, arsip foto **terpisah** dari cadangan berkas (unduh per
+bulan) · B81 log **cari per tanggal saat dibuka**, saring orang / jenis / satu catatan, cadangan berkas membawa log **30 hari** · B13 omzet per perangkat **dibangun** · B103
+tautan beku Dasbor: **owner mencentang bagian** tiap bikin (bawaan omzet & nota · kg · laba kotor), nama orang tidak pernah ikut, berlaku **1 · 7 · 30 · 90 hari (bawaan 7)**,
+**owner saja** yang bikin & cabut.
+
+- **Foto nota kedatangan (A94).** Modul baru `arsip-foto-logika.js` (awalan `af`) + panel `foto-nota-panel.js` di Stok › Barang masuk: kartu **Foto nota** untuk satu
+  kedatangan (tunai ATAU bon) sesudah disimpan, dan di koreksi kedatangan (owner). Foto dikecilkan seperti foto bon pemasok (`foto-bon-logika`, ± 300 KB), disimpan di
+  `fotoBon` dengan `idBon` = id kedatangan. Owner melihat / memperbesar / menghapus (dibaca saat diketuk); **Penjaga laci (tablet) hanya menambah** — rules v26: idBon wajib
+  id kedatangan, kolom dibatasi, baca & hapus owner; karyawan tidak. Tiap foto ditulis bersama **TANDA** ringan `fotoTanda` (id foto, idBon, jenis tunai/bon/kas/saldoAwal,
+  tanggal, byte — TANPA gambar; `afTandaDari`) dalam SATU kiriman (`firebase.js simpanFotoBon(data, tanda)`; Penjaga laci dijaga `fotoNotaSah` / `tandaFotoSah`, satu baris
+  jejak kiriman); hapus foto ikut menghapus tandanya. Foto bon pemasok & nota kas kecil dari HP owner juga bertanda (app.js `AF.afTandaDari`).
+  **Belum berfoto** (`afBelum`): kedatangan nyata 30 hari terakhir (bukan stok awal / lahir buku / tutup buku) tanpa tanda + nota kas kecil "nota ada" tanpa foto
+  (`pengeluaranHarian.fotoNota`). Tampil di Dasbor › Mutu usaha (baris **Nota & bon belum berfoto**) dan **Menu › Toko ini › Cadangan & simpanan › Arsip foto** (daftar + tombol
+  foto ›, membuka koreksi kedatangan di Stok). **Arsip foto per bulan** (`afBulan`, `afBerkasArsip`): tombol unduh membaca foto bulan itu SEKALI (`fb.bacaFotoBulan`, rentang
+  tanggal foto, owner) → satu berkas HTML mandiri (foto tampil tanpa internet, nama di-escape, daftar JSON di dalamnya). Foto lama tanpa tanda didaftarkan saat bulannya
+  diunduh (`afSusunTandaKurang`, ≤ 200 sekali kirim) — sampai itu kalimat "belum berfoto" menyebut kemungkinannya. Cadangan berkas TETAP tanpa foto.
+- **Log aktivitas lebih dari 150 (B81).** Modul baru `jejak-cari-logika.js` (awalan `jc`, modul daun). Pendengar tetap 150 terbaru (koleksi.js tidak berubah). Menu › Toko
+  ini › Perangkat & antrean › **Jejak pencatat**: kartu **Cari log hari lain** — pilih tanggal → `fb.bacaLog({ dari, sampai })` membaca log satu hari SETEMPAT (rentang `pada`
+  UTC dari jam perangkat WIB, `jcRentangHari`, ≤ 3.000 tulisan; terpotong = disebut), saring orang · jenis catatan · kata (teks / id catatan), dan **riwayat ›** satu catatan
+  (`fb.bacaLog({ idDok })`). Jumlah baca disebut di layar. **Cadangan berkas** membawa `logAktivitas` 30 hari terakhir + `logRentang` (`aaSertakanLog` / `jcSertakanLog`;
+  gagal baca = berkas tetap jadi, gagalnya tertulis); `isiDariCadangan` memasoknya lagi saat cadangan dibuka.
+- **Omzet per perangkat (B13).** Modul baru `omzet-perangkat-logika.js` (awalan `orp`, baca saja): Σ `hargaTotal` nota berlaku (`ambilPenjualan`, sama dengan omzet per lokasi)
+  per kolom `perangkat` pencatat, SEBELUM retur; nota kasir darurat (`asalDarurat` / id `d-`) dikenali; nota lama tanpa nama = "tidak tercatat"; nota unik per grup. Jenis
+  (Mac / komputer · tablet · HP · kasir darurat · HP kasir lama) = TEBAKAN dari nama & denyut (`perangkatStatus.aplikasi`), disebut tebakan. Kartu **Omzet per perangkat**
+  (hari ini · bulan ini · bulan lalu, batang bergerak) di Menu › Toko ini › Perangkat & antrean › Perangkat.
+- **Tautan beku Dasbor (B103).** Modul baru `dasbor-publik-logika.js` (awalan `dpb`) + halaman tamu `baru/dasbor-publik.html` (skrip klasik `js/dasbor-publik-halaman.js`, CSP
+  & pola sama dengan `bon.html`: kode di bagian #, satu GET REST tanpa kredensial, 403/404 = "tidak berlaku"). Satu dokumen `dasborPublik/<kode 22 huruf>` (kode = `bpKodeBaru`)
+  berisi angka yang DIBEKUKAN saat dibuat (tidak pernah diperbarui): per bulan (bulan ini + 3 sebelumnya) omzet & nota (`lpRekapRentang`), kg (`klKgBulan`), laba kotor &
+  margin / laba bersih (`klMarginBulan`); posisi stok (kg `daftarBarang`, nilai `neracaPada`), piutang & utang pemasok (`neracaPada`), kas (`saldoKantong`) — HANYA bagian yang
+  dicentang, tanpa nama orang. `sampai` = jam (Date → timestamp); rules v26 menolak get sesudahnya dan menolak tulis > 91 hari. Ditulis penulis pusat APA ADANYA (tanpa
+  atribusi, seperti `bonPublik`). Kelola di **Menu › Toko ini › Cadangan & simpanan › Tautan Dasbor** (pratinjau angka, YAKIN dua ketuk, salin / WhatsApp, cabut, bersihkan yang
+  lewat); Dasbor punya tombol **Bagikan** ke sana. Owner saja.
+- **Akses & data.** `koleksi.js`: `fotoTanda` & `dasborPublik` kelas tetap (owner). `akses.js`: `BUAT_STAF.fotoTanda` (ben), `FOTO_STAF`, `ID_KEDATANGAN_SAH`, `FOTO_NOTA_KOLOM`,
+  `TANDA_FOTO_KOLOM`, `fotoNotaSah`, `tandaFotoSah`, `bolehFotoNota`, penjaga `fotoTanda` di `periksaKiriman`. `firebase.js`: `simpanFotoBon(data, tanda)`, `hapusFotoBon` (+ tanda),
+  `bacaFotoBulan`, `bacaLog`, `dasborPublik` tanpa atribusi. `menu.js`: tab Cadangan & simpanan = Cadangan · Arsip foto · Tautan Dasbor (`arsip-audit-panel.js`). `stok.js`:
+  `buka('masuk', null, { koreksi })`. `bundel_baru.py`: `AF_MODUL` ikut otomatis bila Dasbor dibundel. `peta_akses.py`: kiriman tanda foto Penjaga laci diukur. `index.html`:
+  modulepreload 6 modul baru.
+- **Belum dicoba di data asli:** foto dari tablet CPad (butuh v26 terbit), tautan Dasbor dibuka dari HP pihak luar, unduh arsip foto bulan berfoto lama (berkas besar), baca log
+  satu hari sibuk di Blaze.

@@ -1,4 +1,18 @@
 // ============================================================================
+// ATURAN FIRESTORE v26 FINAL — Toko Beras M.IQBAL (DRAF 27 Nov 2026, FOTO NOTA KEDATANGAN dari tablet & TAUTAN BEKU DASBOR) = v25 FINAL + PERSIS satu
+// baris create fotoBon yang diperluas, dua fungsi baru, dan dua blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v25; uji server:
+// docs/uji-rules-v26.md). Owner menerbitkan v26 SEKALI lewat Console SEBELUM cabang paket P8 digabung (tanpa v26: foto nota dari tablet ditolak server,
+// pendengar fotoTanda & dasborPublik di HP/Mac owner ditolak dan disebut di Menu › Toko ini › Perangkat & antrean, tautan Dasbor belum bisa dibuat / dibuka;
+// layar lain tetap jalan):
+//   (v26-1) fotoBon create: + stafFotoNota(['ben']) — Penjaga laci memotret nota / bon KEDATANGAN dari tablet (owner 27 Nov 2026: "owner + tablet Penjaga laci"):
+//           atas nama penulisnya (olehUid), idBon = id kedatangan (angka), kolom dibatasi. Bentuk foto (id = id dokumen, jenis gambar, base64 ≤ 960.000 huruf)
+//           tetap sama. Baca & hapus foto TETAP owner saja.
+//   (v26-2) blok fotoTanda — tanda ringan "kedatangan / bon ini sudah berfoto" (tanpa gambar), satu per foto, untuk hitungan "belum berfoto" di Dasbor:
+//           read owner · create owner || stafTandaFoto(['ben'], id) (atas nama penulisnya, id = id dokumen, jenis bon|tunai, kolom dibatasi) · ubah & hapus owner.
+//   (v26-3) blok dasborPublik — tautan beku Dasbor untuk pihak luar (owner 27 Nov 2026: owner saja, centang bagian, berlaku 1–90 hari): angka yang dibekukan owner,
+//           bernama KODE ACAK (≥ 20 huruf). get: SIAPA PUN yang tahu kodenya SELAMA jam server belum lewat `sampai` (sesudahnya server menolak, bukan cuma
+//           halamannya) · list: owner · tulis: owner, `sampai` wajib jam (timestamp) paling lama 91 hari dari jam server · hapus (cabut): owner.
+// Sisanya = v25 FINAL di bawah ini, apa adanya. Kepala v25:
 // ATURAN FIRESTORE v25 FINAL — Toko Beras M.IQBAL (DRAF 27 Nov 2026, DAFTAR CENTANG RUTIN dari tablet) = v24 FINAL + PERSIS satu nama dokumen di satu baris
 // baca, satu fungsi baru, dan satu blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v24; uji server: docs/uji-rules-v25.md). Owner
 // menerbitkan v25 SEKALI lewat Console SEBELUM cabang paket P6 digabung (tanpa v25 pendengar aturanToko/rutin & rutinCek di tablet / HP staf ditolak server dan
@@ -322,6 +336,20 @@ service cloud.firestore {
         && d.get('butir', 0) is string && d.butir.matches('[a-z0-9-]{1,40}') && d.get('periode', 0) is string && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')
         && d.get('catatan', 0) is string && d.catatan.size() <= 160
         && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir', 'periode', 'catatan', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v26 (paket P8, owner 27 Nov 2026: "owner + tablet Penjaga laci"): foto nota / bon KEDATANGAN dari tablet Penjaga laci — atas nama penulisnya (stafBuat → jujur),
+    // idBon = id kedatangan (angka), kolom dibatasi; bentuk foto (id, jenis gambar, base64) tetap diperiksa di baris create fotoBon
+    function stafFotoNota(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('idBon', 0) is string && d.idBon.matches('[0-9]{10,16}([.][0-9]{1,6})?')
+        && d.keys().hasOnly(['id', 'idBon', 'pemasok', 'tanggalBon', 'noBon', 'tanggal', 'jam', 'jenis', 'base64', 'byte', 'lebar', 'tinggi', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v26: tanda "sudah berfoto" (tanpa gambar), satu per foto — atas nama penulisnya, id = id dokumen, idBon = id kedatangan, jenis bon|tunai, kolom dibatasi
+    function stafTandaFoto(peranBoleh, id) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('idBon', 0) is string && d.idBon.matches('[0-9]{10,16}([.][0-9]{1,6})?')
+        && d.get('jenis', '') in ['bon', 'tunai'] && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && d.keys().hasOnly(['id', 'idBon', 'jenis', 'pemasok', 'tanggalBon', 'tanggal', 'jam', 'byte', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
     }
     function stafBuatTipe(peranBoleh, tipe) { return stafBuat(peranBoleh) && request.resource.data.tipe == tipe; }
     // v5 (putaran 39, owner 29 Sep 2026): karyawan menuang & mengecek wadah literan — hanya catatan takar / karung / karungIsi / cek (aturan wadah & titik samakan isi tetap owner)
@@ -997,9 +1025,10 @@ service cloud.firestore {
 
     // v7 (paket E-2): foto kertas bon pemasok, satu dokumen per foto (base64 JPEG yang dikecilkan di perangkat; Storage tidak dipakai). Tidak diubah —
     // foto salah = hapus lalu foto lagi. Koleksi ini SENGAJA tidak ada di baru/js/data/koleksi.js (tidak didengar; dibaca saat bon dibuka).
+    // v26 (paket P8): + Penjaga laci MEMBUAT foto nota / bon kedatangan dari tablet (stafFotoNota); baca & hapus tetap owner.
     match /fotoBon/{id} {
       allow read: if owner();
-      allow create: if owner() && request.resource.data.get('id', '') == id && request.resource.data.get('idBon', 0) is string && request.resource.data.idBon.size() > 0
+      allow create: if (owner() || stafFotoNota(['ben'])) && request.resource.data.get('id', '') == id && request.resource.data.get('idBon', 0) is string && request.resource.data.idBon.size() > 0
         && request.resource.data.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp']
         && request.resource.data.get('base64', 0) is string && request.resource.data.base64.size() > 0 && request.resource.data.base64.size() <= 960000;
       allow delete: if owner();
@@ -1073,6 +1102,21 @@ service cloud.firestore {
       allow get: if kode.size() >= 20;
       allow list: if owner();
       allow create, update, delete: if owner();
+    }
+
+    // v26 (paket P8, owner 27 Nov 2026): tanda "sudah berfoto" satu per foto (tanpa gambar) — dibaca owner (hitungan Dasbor), dibuat owner atau Penjaga laci
+    match /fotoTanda/{id} {
+      allow read: if owner();
+      allow create: if owner() || stafTandaFoto(['ben'], id);
+      allow update, delete: if owner();
+    }
+
+    // v26 (paket P8, owner 27 Nov 2026): tautan beku Dasbor untuk pihak luar — dibaca SIAPA PUN yang tahu kodenya sampai `sampai` lewat; tidak bisa didaftar
+    match /dasborPublik/{kode} {
+      allow get: if kode.size() >= 20 && resource.data.sampai > request.time;
+      allow list: if owner();
+      allow create, update: if owner() && request.resource.data.get('sampai', 0) is timestamp && request.resource.data.sampai <= request.time + duration.value(91, 'd');
+      allow delete: if owner();
     }
 
     match /ringkasanKasir/{id} {
