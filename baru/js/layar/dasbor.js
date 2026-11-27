@@ -366,6 +366,13 @@ export function pasangDasbor(akar, opsi) {
           tujuan: Q.tujuan, ke: 'Laporan › Laba', catatan: 'Penyebut sama: omzet ber-HPP. BPS: ' + M.bps.sumber + ' — konteks, bukan target.' }));
       out.push('<div class="ket" data-k="db-kpi-bps">Pembanding ' + esc(M.bps.pendek) + ': grosir toko ' + esc(pc(M.bps.tokoGrosir)) + ' vs BPS ' + esc(pc(M.bps.grosir)) + ' · ecer toko ' + esc(pc(M.bps.tokoEcer)) + ' vs BPS ' + esc(pc(M.bps.eceran)) + '</div>');
     }
+    // P1 A112 (owner 27 Nov 2026: untung per kg = baris TETAP di kartu ini): bulan itu vs bulan lalu & target untung per kg (setelan Harga) — kpi-laba klKgBulan apa adanya
+    const G = Q.kg;
+    if (G && G.galat) out.push(salah('kg', 'Untung per kg', G));
+    else if (G && G.marginKg !== null && G.marginKg !== undefined) out.push(baris('kg', 'Untung per kg <span class="ket">' + (G.lalu && G.lalu.marginKg !== null ? esc(G.lalu.pendek) + ' ' + RP(Math.round(G.lalu.marginKg)) : esc(G.nama)) + '</span>', RP(Math.round(G.marginKg)) + '/kg', G.target.rp > 0 && G.marginKg < G.target.rp,
+      { judul: 'Untung per kg · ' + G.nama, baris: [['Untung per kg', RP(Math.round(G.marginKg)) + '/kg'], ['HPP per kg', RP(Math.round(G.hppKg)) + '/kg'], ['Harga jual per kg', RP(Math.round(G.jualKg)) + '/kg'], ['Target untung', G.target.teks]]
+        .concat(G.lalu ? [[G.lalu.nama, G.lalu.marginKg === null ? '—' : RP(Math.round(G.lalu.marginKg)) + '/kg']] : []).concat(G.target.rp > 0 ? [['Merek di bawah target', G.nBawah + ' dari ' + (G.nBawah + G.nCapai)]] : []).concat(G.bawah.slice(0, 5).map((x) => ['· ' + x.merek, RP(Math.round(x.marginKg)) + '/kg'])),
+        tujuan: G.tujuan, ke: 'Laporan › Laba › Per merek', catatan: 'Untung per kg = laba kotor ÷ kg nota yang modalnya tercatat (sesudah nego & retur) — sama dengan Laporan › Biaya.' }));
     if (S.galat) out.push(salah('siklus', 'Siklus uang', S));
     else out.push(baris('siklus', 'Siklus uang' + (saringAktif() ? ' <span class="db-tetap" title="tidak ikut saringan">90 hari</span>' : ''), S.hari === null ? 'belum bisa' : '±' + DESIMAL(Math.round(S.hari * 10) / 10) + ' hari', false, { judul: 'Siklus uang (hari)', baris: S.bagian.map((x) => [(x.tanda < 0 ? '− ' : '+ ') + x.nama, (x.hari === null ? '—' : DESIMAL(Math.round(x.hari * 10) / 10) + ' hari') + ' · ' + x.ket]).concat([['Keadaan', S.kalimat]]), tujuan: (S.bagian[0] || {}).tujuan || null, ke: 'Stok › Umur & putaran' }));
     // A121 (owner 27 Nov 2026): modal tertahan di stok dalam rupiah + biaya modalnya (bunga setelan owner, bawaan 6 % per tahun) — kpi-laba klModalTertahan apa adanya

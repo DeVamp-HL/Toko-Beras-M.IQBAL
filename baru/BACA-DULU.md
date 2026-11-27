@@ -4356,3 +4356,34 @@ laba bersih & titik impas TETAP angka mesin.
 - **A121 · modal tertahan di stok** (`klModalTertahan`; setelan `aturanToko/kpiLaba.bungaModalPersen`, `KL_BUNGA_BAWAAN` 6, 0 = mati, kosong = bawaan — Menu › Toko ini ›
   Target & ambang): rata-rata nilai stok harian (beras karung = cara nilai `umNilaiRata`/GMROI + kemasan, buku minus = 0) × bunga × hari ÷ 365; rentang > 62 hari
   disampel 62 titik (disebut). Bukan uang keluar, tidak memotong laba bersih. Dasbor › Margin & target (bawaan bulan ini) + angka `modalTertahan`.
+
+## Paket P1 · KPI per kg, per minggu & deret bulanan — A3 · A112 · A113 · A114 · A115 · A116 · A130 · B6 · B7 · B133 (owner 27 Nov 2026, sensus ulang 27 Nov; tanpa rules baru, mesin beku tidak diubah)
+
+Paket pertama dari delapan sisa sensus ulang 27 Nov ("Gua mau kelar semuanya"). Dijaga `alat-uji/uji_kpi_kg.py` (kotak pasir angka contoh + statis + `--kontrol` + asap cadangan
+toko; angka rupiah toko tidak dicetak). Tidak ada pintu tulis baru: target hari stok menumpang dokumen owner yang sudah ada (`aturanToko/stokUmur`, `susunAturUmur`).
+
+**Keputusan owner (satu AskUserQuestion 27 Nov 2026):** target hari stok toko **7–14 hari** (bawaan, dekat keadaan toko Sep–Nov) sampai owner menggantinya · Dasbor:
+**untung per kg = baris tetap di kartu Margin & target**, angka & kartu baru lainnya hanya lewat "+ Tambah kartu" (susunan bawaan Dasbor tidak berubah).
+
+- **Per kg terwujud (A3 · A112 · A130).** `laporan-logika` `lpMerekKosong`/`lpNotaKeMerek`/`lpKumpulMerek` kini menghitung `kgHitung` (kg nota yang modalnya tercatat);
+  `lpJadiMerek` → `marginKg` · `hppKg` · `jualKg` (÷ `kgHitung`, aturan yang SAMA dengan Laporan › Biaya `pemicuBiaya` marginKg — uji: Okt per merek = Biaya) dan `omzetSemua`
+  (nota bermodal + tanpa modal − uang retur). Target = `lpTargetKg` (setelan Harga › Atur `targetPerKg`; belum diketik = rata-rata untung katalog karung); `lpStatusKg` di bawah =
+  TEGAS < target. `lpRingkasKg` = se-toko + merek di bawah target. Laporan › Laba › Per merek: untung & HPP per kg tiap merek, cip "untung/kg di bawah target", ringkasan
+  `kgMerek`; urut `LP_URUT_MEREK` + **omzet Rp** & **untung/kg**.
+- **Terlaris rentang bebas (B7)** `lpTerlaris(dari, sampai, n)`: merek urut omzet penuh, N teratas + sisa + di luar merek; penjaga `lpJagaRentang` = Σ kelompok = omzet & laba
+  kotor mesin (`lpHariRentang`) persis sampai rupiah. Dasbor kartu **Terlaris** (katalog) mengikuti saringan (bawaan = bulan ini; "Pilih tanggal" = rentang bebas).
+- **Tren per merek per minggu (B6 · B133)** `lpMerekMinggu(awal, kini, n)`: minggu Senin–Minggu; minggu BERJALAN dibanding minggu lalu SAMPAI HARI YANG SAMA; merek yang minggu
+  ini tidak laku tetap tampil ("tidak laku minggu ini"); deret n minggu omzet per merek & per kg se-toko. Laporan › Mingguan kartu **Per merek · minggu** (batang mini 8 minggu)
+  + Dasbor kartu **Tren per merek · mingguan** (katalog, 4 minggu). Ketepatan kirim pemasok (bagian B133 = B65) ada di PR tanggal janji (#231), belum di main saat paket ini.
+- **Stok dalam rupiah (A114 · A115)** `kpi-laba-logika` `klStokRp(kini, dari, sampai)`: nilai stok rata-rata = `klModalTertahan` (beras karung + kemasan, angka yang SAMA dengan
+  modal tertahan), modal terjual = `merekRentang` semua.hpp; perputaran = HPP ÷ nilai stok, disetahunkan × 365 ÷ hari; hari stok = nilai stok ÷ HPP per hari; target
+  `umAtur().targetHariMin/targetHariMaks` (`UM_ATUR_BAWAAN` 7 / 14, bawah > atas ditolak; Stok › Umur & putaran › Atur): tipis · pas · diam. Deret `klStokRpBulan` &
+  `klStokRpMinggu`. Laporan › Mingguan kartu **Stok & piutang · per minggu** (pita target) + angka Dasbor `hariStok` · `putaranStok`.
+- **Deret bulanan (A113)** `klDeretBulan(kini, n, nMerek)`: margin kotor / usaha / bersih % (`klMarginBulan` apa adanya) + grosir/ecer, untung · HPP · jual per kg, perputaran
+  & hari stok, + untung per kg per merek per bulan (kg bermodal terbanyak). Laporan › Laba kartu **Deret 6 bulan** (ketuk bulan = buka bulannya). Angka Dasbor `marginKg`
+  dari `klKgBulan(key)` (bulan saringan; baris tetap di kartu Margin & target via `dbKpi` `kg`).
+- **Lama piutang (A116)** `bon-logika` `pnDso(kini, n)` / `pnDsoPada(t)`: piutang berjalan (Σ sisa > 0 buku bon mesin `hitungPiutang(t)` — lebih bayar tidak mengurangi) ÷
+  penjualan bon per hari `PN_DSO_HARI` 30 hari (baris nota Kredit di buku bon; saldo awal bukan penjualan; jendela dipendekkan bila catatan toko / tahun buku baru mulai — disebut);
+  tren akhir tiap Minggu + hari ini, berdampingan dengan rata-rata hari bon tertagih (`tertagihBon`). Laporan › Mingguan + angka Dasbor `dso`.
+- **Dasbor:** kelompok tambahan `kg` (`dbKg`, ikut `DB_IKUT_SARING`, `DB_TAMBAHAN`, `DB_PANAS`); `dbTambahan` kini meneruskan saringan (`H.saring`) — kelompok yang tidak
+  ikut saringan tetap mengabaikannya. Saringan Hari ini = Dasbor lama persis (uji).

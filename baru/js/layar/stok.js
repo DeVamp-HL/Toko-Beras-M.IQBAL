@@ -411,7 +411,7 @@ export function pasangLayarStok(akar, opsi) {
     // ---- UMUR & PUTARAN (paket brief 9 Okt, butir 2): kartu pertanyaan, rincian buku yang diketuk, Atur ambang (aturanToko/stokUmur)
     umTanya: ({ id }) => set({ umTanya: id, umPilih: null }),
     umPilih: ({ kunci }) => set({ umPilih: st().umPilih === kunci ? null : kunci }),
-    bukaAturUm: () => { const a = S.umAtur(); set({ aturUm: st().aturUm ? null : { ambangUmurHari: String(a.ambangUmurHari), ambangHariStok: String(a.ambangHariStok), periodeHari: String(a.periodeHari) } }); },
+    bukaAturUm: () => { const a = S.umAtur(); set({ aturUm: st().aturUm ? null : { ambangUmurHari: String(a.ambangUmurHari), ambangHariStok: String(a.ambangHariStok), periodeHari: String(a.periodeHari), targetHariMin: String(a.targetHariMin), targetHariMaks: String(a.targetHariMaks) } }); },
     umKetikAtur: (v, el) => { const a = Object.assign({}, st().aturUm || {}); a[el.dataset.kolom] = String(v).slice(0, 4); set({ aturUm: a }); },
     simpanAturUm: async () => { const a = st().aturUm; if (a) await tulis(S.susunAturUmur(a, waktu())); },
   }, aksiPanelWadah({ set, st, tulis, keranjang: keranjangJual, waktu,
@@ -1344,10 +1344,13 @@ export function pasangLayarStok(akar, opsi) {
       </div>
       ${au ? h`<div class="kartu" data-k="atur-um" style="gap: 8px;"><div class="label">Ambang umur & putaran · angka owner</div><div class="ps-form dua">
         ${isian('umAmbangUmur', 'ambangUmurHari', 'Lambat laku bila umur stok lebih dari (hari)')}${isian('umAmbangHari', 'ambangHariStok', 'Lambat laku bila hari stok lebih dari (hari)')}${isian('umPeriode', 'periodeHari', 'Periode perputaran (hari, 7–120)')}</div>
+        <div class="label" data-k="atur-um-target">Target hari stok toko · dalam rupiah (Laporan › Mingguan & Dasbor)</div><div class="ps-form dua">
+        ${isian('umTargetMin', 'targetHariMin', 'Stok tipis bila cukup untuk kurang dari (hari)')}${isian('umTargetMaks', 'targetHariMaks', 'Modal kebanyakan diam bila lebih dari (hari)')}</div>
+        <div class="ket" style="font-size: 11px;">Hari stok toko = nilai modal stok (beras karung + kemasan) ÷ modal barang yang terjual per hari. Bawaan 7–14 hari (keputusan owner 27 Nov 2026).</div>
         <div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAturUm">batal</div><div class="kaca-btn aktif emas" data-aksi="simpanAturUm">SIMPAN AMBANG</div></div></div>`
       : bukanOwner(ak) ? h`<div class="kaca-btn kecil mati" data-aksi="tombolMati" data-kal="Ambang umur & putaran diatur owner" style="align-self: flex-start;">Atur ambang · owner saja</div>`
       : h`<div class="kaca-btn kecil" data-aksi="bukaAturUm" style="align-self: flex-start;">Atur ambang umur, hari stok & periode putaran ›</div>`}
-      <div class="ket" style="font-size: 11px;" data-k="um-ambang">Ambang sekarang: umur stok > ${A.ambangUmurHari} hari · hari stok > ${A.ambangHariStok} hari · perputaran ${A.periodeHari} hari — ${A.dariOwner ? 'diatur owner' + (A.sejak ? ' ' + tanggalPendek(A.sejak) : '') : 'angka bawaan (perkiraan) — bisa diubah di Atur'}${bukanOwner(ak) && !A.dariOwner ? ' · akun ini tidak membaca setelan owner, jadi memakai angka bawaan' : ''}.</div>
+      <div class="ket" style="font-size: 11px;" data-k="um-ambang">Ambang sekarang: umur stok > ${A.ambangUmurHari} hari · hari stok > ${A.ambangHariStok} hari · perputaran ${A.periodeHari} hari · target hari stok toko ${A.targetHariMin}–${A.targetHariMaks} hari — ${A.dariOwner ? 'diatur owner' + (A.sejak ? ' ' + tanggalPendek(A.sejak) : '') : 'angka bawaan (perkiraan) — bisa diubah di Atur'}${bukanOwner(ak) && !A.dariOwner ? ' · akun ini tidak membaca setelan owner, jadi memakai angka bawaan' : ''}.</div>
     </section>`;
   }
 
