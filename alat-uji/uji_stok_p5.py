@@ -167,7 +167,7 @@ terapkanKeCache(susunAturUmur({ batasSimpanHari: '120' }, W).dokumen);
 
 // ==================== 6 · OPNAME KEJUTAN (A92) ====================
 ok('6: belum dinyalakan = mati (bukan bawaan menyala); tidak ada pengingat', !sgKejutanAtur().aktif && sgSumberPengingat(KINI).length === 0 && sgKejutanTanggal('2026-12').length === 0);
-ok('6: atur: pecahan / di luar batas / pengundi kosong ditolak', !!susunAturKejutan({ kaliSebulan: '2,5', benih: 'benihcontoh0001' }, W).tolak && !!susunAturKejutan({ nMerek: '11', benih: 'benihcontoh0001' }, W).tolak && /belum siap/.test(susunAturKejutan({ benih: 'abc' }, W).tolak || ''));
+ok('6: atur: pecahan / di luar batas / pengundi kosong ditolak', !!susunAturKejutan({ kaliSebulan: '2,5', benih: 'benihcontoh0001' }, W).tolak && !!susunAturKejutan({ nMerek: '51', benih: 'benihcontoh0001' }, W).tolak && !!susunAturKejutan({ kaliSebulan: '32', benih: 'benihcontoh0001' }, W).tolak && !susunAturKejutan({ kaliSebulan: '15', nMerek: '15', benih: 'benihcontoh0001' }, W).tolak && /belum siap/.test(susunAturKejutan({ benih: 'abc' }, W).tolak || ''));
 var AK1 = susunAturKejutan({ kaliSebulan: '2', nMerek: '2', benih: 'benihcontoh0001' }, W); terapkanKeCache(AK1.dokumen);
 var A1 = sgKejutanAtur(); var D12 = sgKejutanTanggal('2026-12'); var D12b = sgKejutanTanggal('2026-12');
 ok('6: menyala: 2× sebulan, 2 merek; Desember 2 tanggal berbeda & urut, undian TETAP (benih sama = tanggal sama)', A1.aktif && A1.kaliSebulan === 2 && A1.nMerek === 2 && D12.length === 2 && D12[0] < D12[1] && J(D12) === J(D12b) && AK1.dokumen[0].data.id === 'opnameKejutan', J([A1, D12]));
@@ -192,6 +192,11 @@ ok('6: satu dari dua dihitung, lewat tenggang 2 hari → "terlewat", yang belum 
 pasok('penyesuaianStok', ambilPenyesuaianStok().concat([{ id: 'kj2', tanggal: sgTambah(d, 2), jam: '11:00', merk: M[1], kgSistem: 10, kgFisik: 10, selisihKg: 0, bagian: 'tumpukan', cocokPersis: true, alasan: 'Cocokkan stok' }]));
 ok('6: keduanya dihitung dalam tenggang → "selesai"; hitungan tutup hari / wadah tidak dihitung kejutan', sgKejutanRentang(d, d, kd3)[0].keadaan === 'selesai', J(sgKejutanRentang(d, d, kd3)));
 ok('6: pengundi FNV-1a tetap: "a" → 3826002220', sgAcak('a') === 3826002220, sgAcak('a'));
+terapkanKeCache(susunAturKejutan({ kaliSebulan: '31', nMerek: '50', benih: 'benihcontoh0001' }, W).dokumen);
+var T31 = sgKejutanTanggal('2027-01'), T28 = sgKejutanTanggal('2027-02'), M50 = sgKejutanMerek('2027-01-10'); var isi = Object.keys(stokMerekSaja(ingatStokKarung('2027-01-09'))).filter(function (m) { return (ingatStokKarung('2027-01-09')[m].sisaKg || 0) > 0.05; });
+ok('6: batas longgar (owner): 31× sebulan = SETIAP hari tanpa kembar (Februari 28); 50 merek = semua merek berisi, tanpa kembar', T31.length === 31 && T28.length === 28 && T31.filter(function (t, i) { return T31.indexOf(t) === i; }).length === 31
+  && M50.length === isi.length && M50.filter(function (m, i) { return M50.indexOf(m) === i; }).length === M50.length, J([T31.length, T28.length, M50, isi]));
+terapkanKeCache(susunAturKejutan({ kaliSebulan: '2', nMerek: '2', benih: 'benihcontoh0001' }, W).dokumen);
 terapkanKeCache(susunAturKejutan({ aktif: false }, W).dokumen);
 ok('6: dimatikan → tidak ada undian / pengingat', !sgKejutanAtur().aktif && sgKejutanTanggal('2026-12').length === 0 && sgSumberPengingat(kd).length === 0);
 
@@ -305,11 +310,12 @@ RUSAK = [
     ('teks WA: baris barang masuk tidak ditulis', LPL, "if (masuk) b.push(String(masuk));", ""),
     ('hitung minggu: timbang tutup hari ikut', SG, "hitunganFisik(d) && !d.dariTutup && d.bagian !== 'wadah'", "hitunganFisik(d) && d.bagian !== 'wadah'"),
     ('hitung minggu: Senin salah hari', SG, "return sgIso(n - (((n + 3) % 7) + 7) % 7);", "return sgIso(n - (((n + 4) % 7) + 7) % 7);"),
-    ('kejutan: benih tidak dipakai', SG, "const d = 1 + (sgAcak(A.benih + '|' + key + '|' + i) % n);", "const d = 1 + (sgAcak('|' + key + '|' + i) % n);"),
+    ('kejutan: benih tidak dipakai', SG, "return sgKocok(hari, A.benih + '|' + key)", "return sgKocok(hari, '|' + key)"),
+    ('kejutan: tanggal kembar (kocok rusak)', SG, "const j = sgAcak(kunci + '|' + i) % (i + 1);", "const j = 0;"),
     ('kejutan: tenggang 0 hari', SG, "export const SG_KEJUTAN_TENGGANG = 2;", "export const SG_KEJUTAN_TENGGANG = 0;"),
     ('kejutan: benih lama tidak dipertahankan', SG, "const benih = kini.benih && !I.undiUlang ? kini.benih : baru;", "const benih = baru || kini.benih;"),
     ('kejutan: menyala tanpa dinyalakan owner', SG, "aktif: !!d && d.aktif !== false && !!benih,", "aktif: true, benihX: !!benih,"),
-    ('kejutan: merek kosong ikut diundi', SG, ".filter((m) => (Number(st[m].sisaKg) || 0) > 0.05).sort();", ".sort();"),
+    ('kejutan: merek kosong ikut diundi', SG, "const kolam = Object.keys(st).filter((m) => (Number(st[m].sisaKg) || 0) > 0.05).sort();", "const kolam = Object.keys(st).sort();"),
     ('rencana: cadangan hari stok hilang', SG, "const cadangan = laju * A.targetHariMin;", "const cadangan = 0;"),
     ('rencana: pindah buku ke merek lain dihitung pemakaian', SG, "(r.jenis === 'aduk' && (!r.tujuan || !!bw[r.tujuan]))", "r.jenis === 'aduk'"),
     ('rencana: turun tajam tidak dipakai', SG, "lajuAkhir < lajuRata * 0.5 ? 'turun'", "false ? 'turun'"),

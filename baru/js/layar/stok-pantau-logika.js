@@ -147,7 +147,8 @@ export function sgHitungMinggu(awal, kini) {
 // ==================== A92 · OPNAME KEJUTAN (tanggal & merek diundi) ====================
 export const SG_KEJUTAN_ID = 'opnameKejutan';
 export const SG_KEJUTAN_BAWAAN = { kaliSebulan: 2, nMerek: 3 };   // bawaan — pilihan owner 27 Nov 2026 ("dua-duanya"), bisa diubah di Stok › Tugas gudang
-export const SG_KEJUTAN_BATAS = { kaliSebulan: [1, 8], nMerek: [1, 10] };
+// batas = penjaga salah ketik saja (owner 27 Nov 2026: "gak boleh lebih?" → dilonggarkan): sampai tiap hari (31×) & 50 merek; merek berisi lebih sedikit = semuanya dihitung
+export const SG_KEJUTAN_BATAS = { kaliSebulan: [1, 31], nMerek: [1, 50] };
 export const SG_KEJUTAN_TENGGANG = 2;   // hitungan merek itu sampai 2 hari sesudah tanggal kejutan masih dihitung "selesai"; sesudahnya "terlewat"
 const SG_KEJUTAN_NAMA = { kaliSebulan: 'Opname kejutan per bulan', nMerek: 'Merek per kejutan' };
 const sgDokAtur = (id) => cacheMentah('aturan').find((d) => String(d.id) === id) || null;
@@ -176,18 +177,18 @@ export function susunAturKejutan(isi, w) {
 }
 /** FNV-1a 32 bit — pengundi tetap: benih + tanggal yang sama selalu memberi undian yang sama (tanpa menulis apa pun tiap bulan). */
 export function sgAcak(s) { let h = 0x811c9dc5; const t = String(s); for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; }
+/** Kocok tetap (Fisher–Yates) dengan pengundi sgAcak(kunci|i): k teratas = k pilihan BERBEDA tanpa ulang-undi, berapa pun k-nya. Salinan; asli tidak diubah. */
+export function sgKocok(daftar, kunci) { const a = daftar.slice(); for (let i = a.length - 1; i > 0; i--) { const j = sgAcak(kunci + '|' + i) % (i + 1); const x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
 /** Tanggal kejutan satu bulan ('YYYY-MM') — kaliSebulan hari berbeda, urut. Bulan sebelum owner menyalakan = tidak ada; bulan mulai = hanya tanggal sesudah mulai. */
 export function sgKejutanTanggal(key, A0) {
-  const A = A0 || sgKejutanAtur(); if (!A.aktif) return []; const n = Number(sgAkhirBulan(key).slice(8)); const pilih = [];
-  for (let i = 0; pilih.length < Math.min(A.kaliSebulan, n) && i < 200; i++) { const d = 1 + (sgAcak(A.benih + '|' + key + '|' + i) % n); if (pilih.indexOf(d) < 0) pilih.push(d); }
-  return pilih.sort((a, b) => a - b).map((d) => key + '-' + String(d).padStart(2, '0')).filter((t) => !A.sejak || t >= A.sejak);
+  const A = A0 || sgKejutanAtur(); if (!A.aktif) return []; const n = Number(sgAkhirBulan(key).slice(8)); const hari = []; for (let d = 1; d <= n; d++) hari.push(d);
+  return sgKocok(hari, A.benih + '|' + key).slice(0, Math.min(A.kaliSebulan, n)).sort((a, b) => a - b).map((d) => key + '-' + String(d).padStart(2, '0')).filter((t) => !A.sejak || t >= A.sejak);
 }
 /** Merek yang diundi untuk tanggal itu: nMerek buku merek (bukan wadah) yang berisi pada pagi hari itu (buku sampai kemarin), diundi tetap dari benih. */
 export function sgKejutanMerek(iso, A0) {
   const A = A0 || sgKejutanAtur(); if (!A.aktif) return []; const st = stokMerekSaja(ingatStokKarung(sgGeser(iso, -1)));
-  const kolam = Object.keys(st).filter((m) => (Number(st[m].sisaKg) || 0) > 0.05).sort(); const out = [];
-  for (let i = 0; out.length < Math.min(A.nMerek, kolam.length) && i < 300; i++) { const m = kolam[sgAcak(A.benih + '|' + iso + '|m' + i) % kolam.length]; if (out.indexOf(m) < 0) out.push(m); }
-  return out.sort();
+  const kolam = Object.keys(st).filter((m) => (Number(st[m].sisaKg) || 0) > 0.05).sort();
+  return sgKocok(kolam, A.benih + '|' + iso + '|m').slice(0, A.nMerek).sort();
 }
 /** Tiap tanggal kejutan dari–sampai: merek yang diundi, yang sudah dihitung (Cocokkan tumpukan, tanggal itu s.d. + tenggang), keadaan nanti · hari ini · selesai · terlewat. */
 export function sgKejutanRentang(dari, sampai, kini) {

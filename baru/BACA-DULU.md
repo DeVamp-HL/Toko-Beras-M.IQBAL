@@ -4488,8 +4488,9 @@ akun staf tidak bisa menyimpan, owner dua ketukan + alasan · opname **didamping
   tumpukan terbaru yang mencatat hama. Tugas gudang: + **Stok lewat batas simpan** & **Tumpukan berhama** (13 baris, `uji_gudang_label_patuh` ikut diperbarui),
   Dasbor › Mutu usaha baris umur menyebut lewat batas simpan; angka katalog `lewatSimpan`. Cadangan 25 Nov: belum ada stok yang lewat 120 hari (tertua 68 hari).
 - **Opname kejutan (A92)** `sgKejutanAtur` / `susunAturKejutan` / `sgKejutanTanggal` / `sgKejutanMerek` / `sgKejutanRentang` / `sgSumberPengingat`: owner menyalakan sekali
-  (Stok › Tugas gudang, kartu hanya untuk owner); perangkat owner membuat BENIH rahasia (`crypto.getRandomValues`) → tiap bulan `kaliSebulan` tanggal & tiap tanggal `nMerek`
-  merek berisi (buku sampai kemarin) diundi TETAP dari benih (FNV-1a `sgAcak`, tanpa menulis tiap bulan). Staf tidak bisa membaca `aturanToko/opnameKejutan` (rules
+  (Stok › Tugas gudang, kartu hanya untuk owner); perangkat owner membuat BENIH rahasia (`crypto.getRandomValues`) → tiap bulan `kaliSebulan` (1–31) tanggal & tiap tanggal `nMerek` (1–50)
+  merek berisi (buku sampai kemarin) diundi TETAP dari benih (kocok Fisher–Yates `sgKocok` di atas FNV-1a `sgAcak`: tanpa kembar, tanpa menulis tiap bulan). Batasnya penjaga salah
+  ketik saja (owner 27 Nov: "gak boleh lebih?"). Staf tidak bisa membaca `aturanToko/opnameKejutan` (rules
   aturanToko read = daftar id, dijaga statis). Selesai = merek itu dihitung di Cocokkan tumpukan sampai `SG_KEJUTAN_TENGGANG` 2 hari sesudahnya, selain itu terlewat.
   Pengingat jenis `kejutan` (Sistem › Pengingat, bawaan ke Owner saja) lewat `lokal.gudang`, sumbernya ditambah app.js HANYA untuk akun owner; ikut lonceng.
   Simpan ulang mempertahankan benih (undian tidak berubah); "undi ulang" = benih baru. Pengingat opname rutin tiap N hari tetap jalan.
