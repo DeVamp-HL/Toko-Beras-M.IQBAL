@@ -364,7 +364,8 @@ main.layar-ringkasan.mode-dasbor > .rk-samping { display: none; }
 /* ---- P3 (owner 27 Nov 2026): B44 tombol aksi · B97 pita urut · B98 geser tren · A4 peringatan biaya · B104 cetak Dasbor A4 tegak ---- */
 .layar-ringkasan .db-aksi { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; margin-top: 2px; border-top: 1px dashed var(--garis); }
 .layar-ringkasan .db-aksi-btn { display: inline-flex; align-items: center; min-height: 30px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--emas-garis); color: var(--aktif); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; transition: background-color 180ms ease, transform 180ms ease; }
-.layar-ringkasan .db-aksi-btn:hover { background: var(--seg); } .layar-ringkasan .db-aksi-btn:active { transform: scale(0.97); background: var(--seg-aktif); }
+@media (hover: hover) and (pointer: fine) { .layar-ringkasan .db-aksi-btn:hover { background: var(--seg); } }   /* iPad sentuh: :hover menempel — hanya penunjuk halus (uji_safari_webkit) */
+.layar-ringkasan .db-aksi-btn:active { transform: scale(0.97); background: var(--seg-aktif); }
 .layar-ringkasan .db-urut { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 2px 0; font-size: 11px; letter-spacing: 0; text-transform: none; font-weight: 500; }
 .layar-ringkasan .db-urut .ket { font-size: 10.5px; margin-right: 2px; }
 .layar-ringkasan .db-urut-pil { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--kaca-tepi); color: var(--redup); cursor: pointer; white-space: nowrap; transition: background-color 180ms ease, color 180ms ease; }
@@ -375,7 +376,8 @@ main.layar-ringkasan.mode-dasbor > .rk-samping { display: none; }
 .layar-ringkasan .db-geser { display: inline-flex; gap: 4px; }
 .layar-ringkasan .db-geser-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 30px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--kaca-tepi); color: var(--teks); font-size: 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color 180ms ease; }
 .layar-ringkasan .db-geser-btn.teks { font-size: 11.5px; color: var(--aktif); }
-.layar-ringkasan .db-geser-btn:hover { background: var(--seg); } .layar-ringkasan .db-geser-btn.mati { opacity: 0.32; cursor: default; pointer-events: none; }
+@media (hover: hover) and (pointer: fine) { .layar-ringkasan .db-geser-btn:hover { background: var(--seg); } }
+.layar-ringkasan .db-geser-btn.mati { opacity: 0.32; cursor: default; pointer-events: none; }
 .layar-ringkasan .db-pr-baris .db-nama { white-space: normal; line-height: 1.3; padding: 3px 0; } .layar-ringkasan .db-pr-baris { grid-template-columns: minmax(0, 1fr) 0 auto; }
 @media (prefers-reduced-motion: reduce) { .layar-ringkasan .db-aksi-btn, .layar-ringkasan .db-urut-pil, .layar-ringkasan .db-geser-btn { transition: none; } }
 /* cetak Dasbor: hanya kertas #cetakDokumen yang keluar (aturan body.cetak-dokumen di laporan.css); A4 tegak, dua kolom kartu, warna terang */
