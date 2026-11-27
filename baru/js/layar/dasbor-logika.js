@@ -193,19 +193,19 @@ export function dbTagihan(kini) {
  *  bisa dibuka di sana. Omzet & nota dari daftar Laporan, laba kotor dari mesin laba yang sama.
  *  P3 B98 (owner 27 Nov 2026: "12 bulan + tombol geser"): + 'tahun' = 12 batang bulanan; GESER g = mundur g jendela (14 hari · 8 minggu · 6 bulan · 12 bulan) — rentang
  *  ditulis 'bulan@2' (dari pita Dasbor). Geser 0 = persis seperti dulu. Batang "berjalan" = yang memuat hari ini. Tidak bisa mundur melewati catatan pertama. */
-export function dbTren(rentang, kini, geser) {
+export function dbTren(rentang, kiniAsli, geser) {
   const R0 = String(rentang || 'hari').split('@'); rentang = R0[0]; const g = Math.max(0, Math.min(DB_GESER_MAKS, parseInt(geser !== undefined && geser !== null ? geser : R0[1], 10) || 0));
-  const iso = hariIniIso(kini); const pertama = lpPertama(); const key = iso.slice(0, 7);
-  const kiniG = !g ? kini : new Date((rentang === 'minggu' ? ugTambahHari(iso, -56 * g) : rentang === 'bulan' ? akhirBulanIso(dbBulanGeser(key, -6 * g)) : rentang === 'tahun' ? akhirBulanIso(dbBulanGeser(key, -12 * g)) : ugTambahHari(iso, -14 * g)) + 'T12:00:00');
+  const iso = hariIniIso(kiniAsli); const pertama = lpPertama(); const key = iso.slice(0, 7);
+  const kini = !g ? kiniAsli : new Date((rentang === 'minggu' ? ugTambahHari(iso, -56 * g) : rentang === 'bulan' ? akhirBulanIso(dbBulanGeser(key, -6 * g)) : rentang === 'tahun' ? akhirBulanIso(dbBulanGeser(key, -12 * g)) : ugTambahHari(iso, -14 * g)) + 'T12:00:00');
   const satu = (dari, sampai, x) => { const L = lpHariRentang(dari, sampai); return Object.assign({ omzet: L.omzetPenuh, margin: L.margin, tanpaHpp: L.jumlahTanpaHpp, retur: L.returUang, nota: L.nota }, L.tanpaPotret ? { tanpaPotret: L.tanpaPotret } : {}, x); };
-  const perBulan = (n) => daftarBulan(kiniG, n).reverse().map((b) => satu(b.key + '-01', akhirBulanIso(b.key), { id: b.key, label: b.pendek, panjang: b.nama, berjalan: b.key === key, absen: false, tujuan: { ke: 'laporan', keluarga: 'bulanan', bulan: b.key } }));
+  const perBulan = (n) => daftarBulan(kini, n).reverse().map((b) => satu(b.key + '-01', akhirBulanIso(b.key), { id: b.key, label: b.pendek, panjang: b.nama, berjalan: b.key === key, absen: false, tujuan: { ke: 'laporan', keluarga: 'bulanan', bulan: b.key } }));
   let batang;
-  if (rentang === 'minggu') batang = daftarMinggu(kiniG, 8).reverse().map((m) => satu(m.awal, m.akhir, { id: m.awal, label: m.pendek, panjang: 'Minggu ' + m.label, berjalan: m.awal <= iso && m.akhir >= iso, absen: false, tujuan: { ke: 'laporan', keluarga: 'mingguan', awal: m.awal } }));
+  if (rentang === 'minggu') batang = daftarMinggu(kini, 8).reverse().map((m) => satu(m.awal, m.akhir, { id: m.awal, label: m.pendek, panjang: 'Minggu ' + m.label, berjalan: m.awal <= iso && m.akhir >= iso, absen: false, tujuan: { ke: 'laporan', keluarga: 'mingguan', awal: m.awal } }));
   else if (rentang === 'bulan') batang = perBulan(6);
   else if (rentang === 'tahun') batang = perBulan(12);
   else {
     rentang = 'hari';
-    batang = hariTerakhir(kiniG, 14).reverse().map((d) => { const absen = !pertama || d.iso < pertama || !!d.tanpaPotret;   // Paket B: hari tahun yang ditutup tanpa potret = tidak ada angka
+    batang = hariTerakhir(kini, 14).reverse().map((d) => { const absen = !pertama || d.iso < pertama || !!d.tanpaPotret;   // Paket B: hari tahun yang ditutup tanpa potret = tidak ada angka
       const x = satu(d.iso, d.iso, { id: d.iso, label: String(Number(d.iso.slice(8, 10))), panjang: tanggalPendek(d.iso) + (d.iso === iso ? ' · hari ini' : ''), berjalan: d.iso === iso, absen, tujuan: { ke: 'laporan', keluarga: 'harian', hari: d.iso } });
       x.omzetDaftar = d.omzet; x.notaDaftar = d.n; return x; });
   }
