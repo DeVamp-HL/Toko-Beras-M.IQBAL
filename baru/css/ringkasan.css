@@ -408,3 +408,33 @@ main.layar-ringkasan.mode-dasbor > .rk-samping { display: none; }
 .layar-ringkasan .db-laci-titik i.lebih { background: var(--aktif); opacity: 1; } .layar-ringkasan .db-laci-titik i.kurang { background: var(--awas); opacity: 1; } .layar-ringkasan .db-laci-titik i.tanpa { opacity: .2; }
 @keyframes db-laci-muncul { from { transform: scaleY(0); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .layar-ringkasan .db-laci-titik i { animation: none; } }
+/* paket P4 (owner 27 Nov 2026): buku pembelian · per pemasok · umur utang · beban gudang 7 hari — warna dari token identitas (gelap ikut sendiri) */
+.layar-ringkasan .db-p4-bilah { display: block; width: 100%; height: 10px; border-radius: 5px; overflow: hidden; background: var(--seg); margin: 6px 0 2px; }
+.layar-ringkasan .db-p4-bilah rect { cursor: pointer; }
+.layar-ringkasan .db-p4-lunas { fill: var(--platina1); } .layar-ringkasan i.db-p4-lunas { background: var(--platina1); }
+.layar-ringkasan .db-p4-sisa { fill: var(--emas-garis); } .layar-ringkasan i.db-p4-sisa { background: var(--emas-garis); }
+.layar-ringkasan .db-p4-langsung { fill: var(--platina2); fill-opacity: 0.45; } .layar-ringkasan i.db-p4-langsung { background: var(--platina2); opacity: 0.5; }
+.layar-ringkasan .db-p4-daftar { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; margin-top: 4px; }
+.layar-ringkasan .db-p4-baris { grid-template-columns: minmax(0, 38%) minmax(0, 1fr) auto; }
+.layar-ringkasan .db-p4-pem-kepala, .layar-ringkasan .db-p4-pem-atas { display: grid; grid-template-columns: minmax(0, 1fr) 92px 92px 62px; gap: 8px; align-items: baseline; }
+.layar-ringkasan .db-p4-pem-kepala { font-size: 10.5px; opacity: 0.8; padding: 2px 0; } .layar-ringkasan .db-p4-pem-kepala span:not(:first-child) { text-align: right; }
+.layar-ringkasan .db-p4-pem, .layar-ringkasan .db-p4-umur { padding: 6px 0; border-bottom: 1px solid var(--garis); font-size: 12.5px; cursor: pointer; }
+.layar-ringkasan .db-p4-pem.db-p4-total { font-weight: 600; border-bottom: none; }
+.layar-ringkasan .db-p4-pem .redup { color: var(--redup); }
+.layar-ringkasan .db-p4-pem > .ket, .layar-ringkasan .db-p4-umur > .ket { font-size: 11px; margin-top: 2px; }
+.layar-ringkasan .db-p4-dua { display: block; width: 100%; height: 6px; margin-top: 4px; }
+.layar-ringkasan .db-p4-ini { fill: var(--emas-garis); } .layar-ringkasan i.db-p4-ini { background: var(--emas-garis); }
+.layar-ringkasan .db-p4-lalu { fill: var(--platina1); fill-opacity: 0.55; } .layar-ringkasan i.db-p4-lalu { background: var(--platina1); opacity: 0.6; }
+.layar-ringkasan .db-p4-umur .db-p4-pem-atas { grid-template-columns: minmax(0, 1fr) auto; }
+.layar-ringkasan .db-p4-umur.lewat .db-nama { color: var(--awas); }
+.layar-ringkasan .db-p4-u1 { fill: var(--platina1); fill-opacity: 0.55; } .layar-ringkasan i.db-p4-u1 { background: var(--platina1); opacity: 0.6; }
+.layar-ringkasan .db-p4-u2 { fill: var(--emas-garis); fill-opacity: 0.55; } .layar-ringkasan i.db-p4-u2 { background: var(--emas-garis); opacity: 0.6; }
+.layar-ringkasan .db-p4-u3 { fill: var(--emas3); } .layar-ringkasan i.db-p4-u3 { background: var(--emas3); }
+.layar-ringkasan .db-p4-u4 { fill: var(--awas); } .layar-ringkasan i.db-p4-u4 { background: var(--awas); }
+.layar-ringkasan .db-p4-u0 { fill: var(--redup); fill-opacity: 0.4; } .layar-ringkasan i.db-p4-u0 { background: var(--redup); opacity: 0.45; }
+.layar-ringkasan .db-p4-masuk { fill: var(--emas-garis); fill-opacity: 0.8; } .layar-ringkasan i.db-p4-masuk { background: var(--emas-garis); }
+.layar-ringkasan .db-p4-keluar { fill: var(--platina1); fill-opacity: 0.6; } .layar-ringkasan i.db-p4-keluar { background: var(--platina1); opacity: 0.65; }
+.layar-ringkasan .db-p4-habis { fill: var(--awas); }
+.layar-ringkasan .db-grafik-beban { height: 86px; }
+@media (max-width: 719px) { .layar-ringkasan .db-p4-pem-kepala, .layar-ringkasan .db-p4-pem-atas { grid-template-columns: minmax(0, 1fr) 78px 78px 52px; font-size: 12px; } .layar-ringkasan .db-p4-daftar { max-height: 360px; }
+  .layar-ringkasan .db-p4-baris { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0; padding: 4px 0; } .layar-ringkasan .db-p4-baris > .ket { grid-column: 1 / -1; grid-row: 2; white-space: normal; } }

@@ -85,6 +85,8 @@ import { gdPesananPemasok } from './gudang-logika.js';
 import { identitasUsaha } from './laporan-logika.js';
 // paket P5 (owner 27 Nov 2026): barang masuk hari ini (A125) · produksi bulan ini (B72) · stok dipesan (B51) — kartu & angka lewat "+ Tambah kartu" (katalog)
 import { sgMasukHari, sgProduksiDeret, sgPesananRp } from './stok-pantau-logika.js';
+// paket P4 (owner 27 Nov 2026): kelompok tambahan beli4
+import { pbBukuPembelian, pbPemasokBulan, pbUmurUtang, pbBebanGudang } from './pembelian-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 DB_RENTANG.push(['tahun', 'Tahun']);   // P3 B98 (owner 27 Nov 2026): 12 batang bulanan
@@ -601,3 +603,16 @@ export function dbGudang5(kini) {
     simpan: U.galat ? U : { n: U.lewatSimpan.length, kg: U.kgLewatSimpan, batas: U.atur.batasSimpanHari, nama: U.lewatSimpan.slice(0, 3).map((r) => r.nama + ' ' + r.umurAcuan + ' hr'), tujuan: { ke: 'stok', tab: 'umur' } } };
 }
 DB_KELOMPOK.gudang5 = ['stok, gudang & produksi', dbGudang5]; DB_TAMBAHAN.push('gudang5'); DB_PANAS.push('gudang5');
+
+/**
+ * Paket P4 · PEMBELIAN, PEMASOK & UTANG (owner 27 Nov 2026: buku pembelian & beban gudang "Dasbor aja"): kelompok tambahan `beli4` — APA ADANYA dari
+ * pembelian-logika (satu sumber dengan Bon pemasok & kartu Pembelian). IKUT saringan: buku pembelian = rentang saringan (bawaan Hari ini = bulan ini sampai hari
+ * ini, seperti kartu per kg); per pemasok = bulan kartu bulanan (SR.bulan) vs bulan sebelumnya. Umur utang & beban gudang 7 hari = SEKARANG (disebut di kartunya).
+ */
+export function dbBeli4(kini, SR) {
+  const iso = hariIniIso(kini); const ikut = !!(SR && !SR.bawaan); const dari = ikut ? SR.dari : iso.slice(0, 8) + '01'; const sampai = ikut ? SR.sampai : iso; const nama = ikut ? SR.nama : 'Bulan ini';
+  const aman = (f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor pembelian P4', e); return { galat: String((e && e.message) || e) }; } };
+  return { periode: nama + (dari !== sampai ? ' · ' + dbTglPendek(dari) + ' – ' + dbTglPendek(sampai) : ''), periodeNama: nama, saring: ikut ? SR.nama : '',
+    buku: aman(() => pbBukuPembelian(dari, sampai, kini)), pemasok: aman(() => pbPemasokBulan(ikut ? SR.bulan : iso.slice(0, 7), kini)), umur: aman(() => pbUmurUtang(kini)), beban: aman(() => pbBebanGudang(kini)) };
+}
+DB_KELOMPOK.beli4 = ['pembelian & pemasok', dbBeli4]; DB_IKUT_SARING.push('beli4'); DB_TAMBAHAN.push('beli4'); DB_PANAS.push('beli4');

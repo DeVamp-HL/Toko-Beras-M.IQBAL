@@ -4680,3 +4680,55 @@ tautan beku Dasbor: **owner mencentang bagian** tiap bikin (bawaan omzet & nota 
   modulepreload 6 modul baru.
 - **Belum dicoba di data asli:** foto dari tablet CPad (butuh v26 terbit), tautan Dasbor dibuka dari HP pihak luar, unduh arsip foto bulan berfoto lama (berkas besar), baca log
   satu hari sibuk di Blaze.
+
+## Paket P4 · Pembelian, pemasok & utang — A5 · A25 · A57 · B40 · B57 · B62 · B63 · B64 · B78 · B134 (owner 27 Nov 2026, sensus ulang 27 Nov b; tanpa rules baru, mesin beku tidak diubah)
+
+Dijaga `alat-uji/uji_pembelian_p4.py` (kotak pasir angka contoh + statis + `--kontrol` + asap cadangan toko; angka rupiah toko tidak dicetak; jam uji dibekukan termasuk
+`new Date()` karena umur bon mesin beku memakai jam perangkat). Logika baru tanpa DOM: `baru/js/layar/pembelian-logika.js` (awalan `pb`), dipakai `dasbor-logika.js`
+(kelompok tambahan `beli4`), `dasbor.js` (empat kartu), `harga.js` (Bon pemasok) dan `stok.js` (Barang masuk). Pintu tulis baru = setelan owner saja di `aturanToko`
+(koleksi tidak bertanggal): kolom `catatStok.tarifBongkar` (dokumen yang sudah dibaca tablet — kolom lain catatStok disalin utuh, juga oleh `susunAturCatat`) dan dokumen
+`umurUtang` (staf tidak membacanya — daftar baca aturanToko staf tidak berubah, dijaga statis). Uang, stok, bon, dan `biayaBongkar` kedatangan TIDAK ditulis paket ini.
+
+**Keputusan owner (AskUserQuestion 27 Nov 2026):** kuli bongkar = orang pasar (bukan dari pemasok, bukan karyawan) → **satu tarif toko per karung, sama untuk semua kuli**
+(karung 50 kg & 25 kg boleh beda), dicek otomatis dan **cuma ditandai** · upah **borongan tidak perlu** (`SATUAN_UPAH` tetap hari · minggu · bulan; mesin beku memang tidak
+membaca satuan upah — hanya total gaji yang dibayar) · kelompok umur utang **bawaan ≤ 7 · 8–30 · 1–3 bln · > 3 bln** + lewat tempo berapa lama · buku pembelian & beban gudang
+**"Dasbor aja"**.
+
+**Keputusan yang diambil sendiri:** per pemasok / rata-rata / jumlah pesanan (B62 B134 B63 B64) ikut Dasbor (sebelah kartu Pembelian B68) · bulan berjalan dibanding bulan
+lalu **sampai tanggal yang sama** (bulan lalu penuh tetap disebut) · rata-rata per pesanan = perkiraan rupiah pesanan saat dibuat ÷ pesanan yang tidak batal · tarif berlaku
+**sejak tanggalnya** (kedatangan lama dicek dengan tarif di harinya) · ongkos kirim bukan upah bongkar · kedatangan tablet yang upahnya masih titipan tidak ditandai ·
+piutang yang sudah lewat jatuh tempo **tidak dihitung** sebagai uang masuk · beban gudang memakai tanggal janji **terakhir** (sesudah digeser) · empat kartu Dasbor baru
+**tidak masuk bawaan** (owner memasangnya lewat Dasbor › Atur › + Tambah kartu › Kartu Dasbor).
+
+- **Tarif bongkar kuli (A25)** `pbTarifDaftar` / `pbTarifPada(berat, iso)` / `pbTarifKini` / `pbSusunTarif` / `pbCekBongkar(baris, bongkar, tanggal)` / `pbCekKedatangan(b)`:
+  `catatStok.tarifBongkar = [{ mulai, berat, rp }]`; tarif satu ukuran pada satu tanggal = entri yang mulai paling akhir ≤ tanggal itu. Upah menurut tarif = Σ karung ×
+  tarif ukurannya (baris bal, kemasan jadi & yang ditolak tidak dihitung). Keadaan: cocok · lebih · kurang · belum diisi · sebagian (ada ukuran tanpa tarif — tidak dicek) ·
+  tarif belum ditulis · titipan tablet. Stok › Barang masuk (owner & tablet Penjaga laci) menampilkan tandanya di bawah "Upah bongkar" + "pakai Rp… ›" (mengisi kolom);
+  kedatangan tetap boleh disimpan. Owner menulis tarif di Barang masuk › "Atur tarif bongkar kuli per karung" (ukuran = isi karung yang bisa dipilih + ukuran yang pernah
+  bertarif; kosong = tidak diubah; 0 = tanpa upah; maks Rp100.000/karung = penjaga salah ketik; tanggal & ukuran sama = diganti). Cadangan 25 Nov: tarif BELUM ditulis →
+  semua kedatangan "tidak dicek". **TUGAS OWNER: tulis tarif per karung** supaya Barang masuk & Buku pembelian mulai mengecek.
+- **Buku pembelian (A57 · B63)** `pbBukuPembelian(dari, sampai, kini)`: semua kedatangan di rentang (bon + dibayar langsung; stok awal / saldo pembuka = "dicatat", bukan belanja;
+  lahir buku dilewati) — rupiah per kedatangan = `shNilaiKedatangan` (aturan yang sama dengan kartu Pembelian & "+ Pembelian" HPP periode), Σ dicek = `shPembelian`. Status bayar
+  SEKARANG per kedatangan dari sisa bon mesin (`hitungUtangPemasok`): dibayar langsung · bon LUNAS · bon sisa Rp. Ringkas: total, jumlah, rata-rata per kedatangan, bon & sisa,
+  langsung, kg & karung, upah bongkar yang beda tarif, pesanan dibuat di rentang & rata-rata per pesanan. Dasbor kartu **Buku pembelian** (ikut saringan Dasbor; bawaan = bulan
+  ini s.d. hari ini; 80 baris terbaru digambar, jumlah tetap seluruh rentang).
+- **Per pemasok (B62 · B134 · B63 · B64)** `pbPemasokBulan(key, kini)`: per pemasok Rp · kg · kedatangan · rata-rata bulan itu vs bulan sebelumnya (berjalan: s.d. tanggal yang
+  sama), % ubah, baru / tidak beli; pesanan ke pemasok yang DIBUAT bulan itu: datang · menunggu · batal (status sekarang = `pesananSemua` Belanja) + rata-rata per pesanan. Σ per
+  pemasok dicek = `shPembelian` bulan ini & bulan lalu. Dasbor kartu **Pembelian per pemasok** (bulan = bulan kartu bulanan saringan).
+- **Umur utang (B40 · B78)** `pbUmurUtang(kini)` / `pbAturUmur` / `pbSusunAturUmur`: sisa bon SEKARANG (`susunBon` Bon pemasok, mesin yang sama) per pemasok dipecah (1) umur sejak
+  barang datang (bon bergulir = sejak kedatangan terakhir; label = `kelompokUmur` piutang) + "tanpa tanggal", (2) belum jatuh tempo · lewat 1–7 · 8–30 · > 30 hari · tempo belum
+  disepakati, + lewat paling lama & bon tertua. Σ tiap pecahan = sisa (dicek per pemasok). Setelan `aturanToko/umurUtang { umurBatas: [3], lewatBatas: [2] }` (owner; kosong =
+  bawaan). Harga & Pemasok › Bon pemasok kartu **Umur utang per pemasok** (+ "ubah kelompok") & Dasbor kartu **Umur utang pemasok** (sekarang, tidak ikut saringan).
+- **Piutang di garis jatuh tempo (A5)** `pbGarisPiutang(B, kini)`: garis Jatuh tempo Bon pemasok + piutang per nota (`pnNota` — aturan jatuh tempo Pelanggan: tanggal nota + tempo
+  kartu pelanggan, faktur = jatuh temponya) yang jatuh tempo hari ini s.d. bon bertempo terakhir (paling sedikit 7 hari) sebagai **uang masuk kalau dibayar tepat waktu**.
+  Bon & penanda lama tidak diubah urutannya (fungsi tidak menyentuh `B.garis`); hari yang sama = bon dulu (hati-hati). Penanda kedua "uang toko + piutang … pun habis di
+  sini" memakai kas + piutang yang sudah masuk menurut tanggal. Piutang lewat jatuh tempo disebut di bawah "hari ini", tidak dihitung. Saklar "piutang ikut garis" (bawaan
+  nyala; mati = garis lama persis). Ketuk baris piutang = Pelanggan › Bon orang itu.
+- **Beban gudang 7 hari (B57)** `pbBebanGudang(kini)`: hari ini + 6 hari: MASUK = pesanan ke pemasok yang masih ditunggu (`jnPemasokSemua`, tanggal janji terakhir) — kedatangan,
+  kg, karung, perkiraan Rp; KELUAR = laju pakai beras karung (`hitungLajuPakai` lintas arsip, jendela Belanja) + pesanan pelanggan terjadwal jalur karung (`poKebutuhan`); isi
+  gudang akhir hari = beras karung buku sekarang (wadah literan tidak ikut) + masuk − keluar; hari pertama yang minus disebut. Lewat janji · tanpa tanggal janji · janji di luar
+  7 hari disebut terpisah. Dasbor kartu **Beban gudang 7 hari** (perkiraan, sekarang).
+- Asap cadangan 25 Nov (simulasi, baca saja): buku bulan berjalan & bulan lalu menutup ke kartu Pembelian, per pemasok menutup, umur utang menutup (belum ada bon lewat tempo),
+  garis membawa piutang yang jatuh tempo (yang lewat disebut), beban gudang menyebut beras karung diperkirakan habis dalam 7 hari (belum ada pesanan pemasok yang ditunggu).
+- Belum dicoba di data asli (cadangan baca saja): menulis tarif bongkar & kelompok umur utang dari layar, tanda tarif di tablet Penjaga laci sesudah owner menulis tarif,
+  empat kartu Dasbor di perangkat owner sesudah dipasang.

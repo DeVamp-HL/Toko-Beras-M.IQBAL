@@ -223,7 +223,7 @@ RUSAK = [
     ('untung per kg Dasbor tetap bulan ini walau disaring', DL, "kg: aman(() => klKgBulan(key, kini)),", "kg: aman(() => klKgBulan(iso.slice(0, 7), kini)),"),
     ('kartu baru masuk susunan bawaan', WG, "export const WG_BAWAAN = ['kHari', 'kKpi', 'kTren', 'kBulan', 'kWadah', 'kPemicu', 'kTagihan', 'kStok', 'kMutu', 'kPondasi', 'kB2b']", "export const WG_BAWAAN = ['kHari', 'kKpi', 'kTren', 'kBulan', 'kWadah', 'kPemicu', 'kTagihan', 'kStok', 'kMutu', 'kPondasi', 'kB2b', 'kTerlaris']"),
     ('nama angka hari stok tidak ikut periode', WG, "hariStok: (S) => 'Hari stok · ' + S.nama,", ""),
-    ('batas panel di bawah jumlah katalog', WG, "export const WG_MAKS = 64;", "export const WG_MAKS = 48;"),
+    ('batas panel di bawah jumlah katalog', WG, "export const WG_MAKS = 80;", "export const WG_MAKS = 48;"),   # P4 (27 Nov 2026): 64 → 80
     ('tepat janji tidak membaca kalimat pemasok', WG, "if (!P.n) return { nilai: '—', ket: J.kalimatPemasok,", "if (!P.n) return { nilai: '—', ket: J.kalimatAntar,"),
 ]
 RUSAK_STATIS = [
