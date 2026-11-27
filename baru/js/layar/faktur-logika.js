@@ -88,6 +88,12 @@ export function fkSyaratBon(nama, iso) {
 }
 export const fkSyaratBonTeks = (nama, Y) => 'Syarat bon: ' + nama + ' ' + Y.kurang.join(' · ') + ' — minta izin owner, atau owner isi batas kredit di kartunya';
 export const fkStopBonTeks = (nama, S) => 'Stop bon: bon tertua ' + nama + ' belum lunas sejak ' + tanggalPendek(S.tanggal) + ' (' + S.umur + ' hari, batas ' + S.hari + ' hari; sisa bon ' + RP(S.sisa) + ')';
+// ---------- BON DIHENTIKAN (paket P7, owner 27 Nov 2026, sensus A108 — "bon barunya ditahan"): owner memakai usul HENTI di Pelanggan › Bon › Usul batas →
+// kartu pelangganCatatan membawa bonDihentikan { tanggal, jam, alasan }. Bon baru ditahan (KR1, kunciKr1) sampai owner membukanya lagi dari kartu; pintu owner
+// yang sudah ada tetap berlaku (owner membuka sekali / persetujuan owner atas permintaan bon staf). Kolom kartu = tulisan owner (rules: update kartu = owner).
+/** Bon orang ini dihentikan owner? → { tanggal, jam, alasan } | null. */
+export function fkHentiBon(nama) { const c = fkKartu(nama); const H = c && c.bonDihentikan; return H && typeof H === 'object' && H.tanggal ? { tanggal: String(H.tanggal), jam: String(H.jam || ''), alasan: String(H.alasan || '') } : null; }
+export const fkHentiBonTeks = (nama, H) => 'Bon ' + nama + ' DIHENTIKAN owner sejak ' + tanggalPendek(H.tanggal) + (H.alasan ? ' (' + H.alasan + ')' : '') + ' — bon baru ditahan; owner yang membuka lagi dari kartunya';
 /** Kartu pelanggan mentah (pelangganCatatan) menurut kunci nama. */
 export function fkKartu(nama) { const k = kunciPelanggan(nama); if (!k) return null; return (ambilPelangganCatatan() || []).find((c) => kunciPelanggan(c.nama || c.id) === k) || null; }
 /** Tempo yang berlaku untuk seorang pelanggan: kartunya → bawaan toko. */
