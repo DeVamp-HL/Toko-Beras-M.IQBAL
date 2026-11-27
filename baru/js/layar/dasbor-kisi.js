@@ -37,6 +37,7 @@ export function pasangKisi(akar, opsi) {
     const A = wgAtur();
     return '<div class="wg-kepala" data-k="wg-kepala"><div class="label">Dasbor</div><div class="ket">' + esc(atur ? 'tarik pegangan kanan / bawah / sudut untuk mengubah ukuran · seret kartu untuk memindah · × hapus' : (A.dariOwner ? 'susunan lu' : 'susunan bawaan') + ' · tekan lama kartu (atau Atur) untuk mengubah ukuran & tempat')
       + '</div>' + (atur ? '' : htmlCap()) + (atur ? '' : '<div class="kaca-btn kecil" data-da-aksi="cetak" data-k="wg-tombol-cetak" title="Cetak Dasbor · A4 tegak">Cetak</div>')   // P3 B104 (owner 27 Nov 2026: A4 tegak)
+      + (atur ? '' : '<div class="kaca-btn kecil" data-da-aksi="bagikan" data-k="wg-tombol-bagikan" title="Tautan beku Dasbor untuk pihak luar (owner)">Bagikan</div>')   // paket P8 (owner 27 Nov 2026, B103)
       + '<div class="kaca-btn kecil' + (atur ? ' aktif emas' : '') + '" data-da-aksi="' + (atur ? 'selesai' : 'atur') + '" data-k="wg-tombol-atur">' + (atur ? (simpanJalan ? 'menyimpan…' : 'Selesai') : 'Atur') + '</div></div>';
   }
   function htmlBilahAtur() {
@@ -185,6 +186,7 @@ export function pasangKisi(akar, opsi) {
     const a = ds('[data-da-aksi]', 'daAksi');
     if (a) { const x = a.dataset.daAksi;
       if (x === 'cetak') { const h = opsi.cetak ? opsi.cetak() : { ok: false, kabar: 'Cetak belum terpasang di sini' }; if (h && !h.ok) { kabar = h.kabar; kabarAwas = true; opsi.gambarUlang(); } return true; }   // P3 B104
+      if (x === 'bagikan') { if (opsi.keTujuan) opsi.keTujuan({ ke: 'sistem', sistem: 'cadangan', tab: 'tautan' }); return true; }   // paket P8 (B103): Menu › Toko ini › Cadangan & simpanan › Tautan Dasbor
       if (x === 'atur') mulaiAtur(null); else if (x === 'selesai') selesaiAtur(); else if (x === 'batal') { atur = null; tambahBuka = false; kabar = ''; gambarGeser(); }
       else if (x === 'tambah') { tambahBuka = !tambahBuka; opsi.gambarUlang(); } else if (x === 'bawaan') ubahDraf(WG_BAWAAN.map((w) => Object.assign({}, w)));
       return true; }

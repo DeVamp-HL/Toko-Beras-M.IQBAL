@@ -87,8 +87,9 @@ def statis(teks=None):
     fb = baca('baru/js/data/firebase.js')
     m = re.search(r'export async function bacaFotoBon\(idBon\) \{(.*?)\n\}', fb, re.S); n += 1
     if not m or "getDocs(query(collection(db, KOLEKSI_FOTO_BON), where('idBon', '==', String(idBon))))" not in m.group(1) or 'onSnapshot' in m.group(1): g.append('bacaFotoBon bukan baca sekali per bon (getDocs + where idBon)')
-    m2 = re.search(r'export async function simpanFotoBon\(data\) \{(.*?)\n\}', fb, re.S); n += 1
-    if not m2 or 'antre.tambah' in m2.group(1) or 'pemilikSaja()' not in m2.group(1): g.append('simpanFotoBon menyalin foto ke antre lokal / tidak owner saja')
+    # paket P8 (owner 27 Nov 2026, rules v26): simpan = owner ATAU Penjaga laci (bolehFotoNota) dengan penjaga bentuk = rules; tanda ringan ikut (simpanFotoBon(data, tanda))
+    m2 = re.search(r'export async function simpanFotoBon\(data, tanda\) \{(.*?)\n\}', fb, re.S); n += 1
+    if not m2 or 'antre.tambah' in m2.group(1) or 'if (!owner0 && !bolehFotoNota(akun0))' not in m2.group(1) or 'if (!owner0 && (!fotoNotaSah(d) || (t && !tandaFotoSah(t))))' not in m2.group(1): g.append('simpanFotoBon menyalin foto ke antre lokal / bukan owner & Penjaga laci saja (rules v26) / tanpa penjaga bentuk')
     m3 = re.search(r'export async function hapusFotoBon\(id, idBon\) \{(.*?)\n\}', fb, re.S); n += 1
     if not m3 or 'pemilikSaja()' not in m3.group(1): g.append('hapusFotoBon tidak owner saja')
     hj = baca('baru/js/layar/harga.js'); n += 1

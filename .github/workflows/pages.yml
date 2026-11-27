@@ -220,6 +220,9 @@ jobs:
       - name: "Paket P6 · rutinitas, tutup hari & halaman staf (owner 27 Nov 2026, A82 A119 A143 B116): daftar centang rutin harian/mingguan/bulanan (rutinCek, rules v25: owner + Penjaga laci + karyawan), alarm selisih laci berulang (bawaan 3 berturut / 4 dari 7) + tren + Dasbor, alasan selisih bebas + catatan tablet + ditagih sampai dijelaskan, halaman tugas staf (sama untuk semua) — kotak pasir + statis + kontrol"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_rutin_staf.py && python3 alat-uji/uji_rutin_staf.py --kontrol
+      - name: "Paket P8 · Arsip, audit & bagikan (owner 27 Nov 2026, A94 B13 B81 B103; rules v26): foto nota kedatangan tunai & bon dari owner + tablet Penjaga laci (tanda ringan fotoTanda, hitungan belum berfoto Dasbor, arsip foto per bulan terpisah dari cadangan), omzet per perangkat (Σ menutup ke nota), log hari lain & riwayat satu catatan (rentang WIB, cadangan membawa log 30 hari), tautan beku Dasbor (centang bagian, 1/7/30/90 hari, server menolak sesudah lewat, tanpa nama orang) — kotak pasir + statis + kontrol"
+        if: matrix.bagian == 1
+        run: python3 alat-uji/uji_arsip_audit_p8.py && python3 alat-uji/uji_arsip_audit_p8.py --kontrol
 
       - name: "Sidik jari owner di tablet, Tahap A (owner 22 Nov 2026): masuk & intip lewat kunci penanda (sidik jari kuat), hangus = mati + kabar owner, intip tertutup sendiri (setelan owner), jejak bertanda sidik jari (jsc + kontrol)"
         if: matrix.bagian == 1

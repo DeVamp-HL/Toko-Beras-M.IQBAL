@@ -202,6 +202,10 @@ LH_PEMAKAI = ('dasbor-logika.js', 'uang.js', 'app.js')
 RN_MODUL = 'baru/js/layar/rutin-logika.js'
 RN_PEMAKAI = ('dasbor-logika.js', 'tugas-staf-logika.js', 'rutin-panel.js')
 RN_SUMBER = ('baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/patuh-logika.js', 'baru/js/layar/gudang-logika.js')
+# paket P8 (owner 27 Nov 2026, A94): Dasbor › Mutu menghitung nota & bon yang belum berfoto (arsip-foto-logika.js — membaca data/toko.js, pembantu & format saja; semua
+# namanya af… / AF_…). Ikut OTOMATIS di belakang bila pemakainya ada; fungsinya terangkat.
+AF_MODUL = 'baru/js/layar/arsip-foto-logika.js'
+AF_PEMAKAI = ('dasbor-logika.js', 'foto-nota-panel.js', 'arsip-audit-panel.js', 'app.js')
 
 
 def lengkapi(daftar):
@@ -219,6 +223,8 @@ def lengkapi(daftar):
         d.append(KH_MODUL)
     if any(os.path.basename(x) in LH_PEMAKAI for x in d) and not any(x.endswith('laci-logika.js') for x in d):
         d.append(LH_MODUL)
+    if any(os.path.basename(x) in AF_PEMAKAI for x in d) and not any(x.endswith('arsip-foto-logika.js') for x in d):
+        d.append(AF_MODUL)
     if any(os.path.basename(x) in RN_PEMAKAI for x in d) and not any(x.endswith('rutin-logika.js') for x in d):
         d.append(RN_MODUL)
         for m in RN_SUMBER:

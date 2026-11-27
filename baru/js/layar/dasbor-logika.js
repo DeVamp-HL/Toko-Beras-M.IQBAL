@@ -50,6 +50,8 @@ import { ptDasbor } from './patuh-logika.js';
 // paket P6 (owner 27 Nov 2026): selisih laci malam terakhir + alarm berulang (A119, laci-logika) · rutin hari ini / minggu / bulan (A143, rutin-logika) — APA ADANYA
 import { lhDasbor } from './laci-logika.js';
 import { rnDasbor } from './rutin-logika.js';
+// paket P8 (owner 27 Nov 2026, A94): kedatangan (tunai & bon) & nota kas kecil yang belum berfoto 30 hari terakhir (arsip-foto-logika afBelum) — APA ADANYA
+import { afBelum } from './arsip-foto-logika.js';
 // paket Dasbor sensus (owner 26 Nov 2026, sensus ulang 1c: B1 B9 B88–B91 B95 B109 B113 B127) — APA ADANYA dari fungsi sumber: pembanding "jam segini" Cincin
 // (ringkasan-logika rkJamSegini), rata-rata nilai nota (laporan-logika lpRataNota), stok minimum per barang (stok-minimum-logika), enam bulan (kendali-biaya
 // trenBiaya · pondasi pdPosisiBulan). Widget angka utama: dasbor-widget-logika.js (membaca hasil dasbor ini, tanpa rumus uang).
@@ -255,6 +257,8 @@ export function dbMutu(kini, SR) {
     modalDiam: aman(() => klModalDiam(kini)),
     // paket P6 (A143): daftar centang rutin — hari ini · minggu ini · bulan ini + harian yang terlewat kemarin (Menu › Toko ini › Rutin)
     rutin: aman(() => rnDasbor(kini)),
+    // paket P8 (A94): nota & bon belum berfoto — SEKARANG (30 hari terakhir, tidak ikut saringan); tanda foto = koleksi fotoTanda (owner)
+    foto: aman(() => afBelum(kini)),
   };
 }
 

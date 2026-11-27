@@ -1538,6 +1538,7 @@ TULIS = re.compile(r'\b(setDoc|updateDoc|addDoc)\(|\bb\.(set|update)\(')
 # (pola baris, alasan) — tulisan SENGAJA tanpa cap: koleksinya bukan hemat (didengar penuh / tidak didengar), atau bentuknya dikunci aturan lain
 TANPA_CAP = [
     (r"if \(kkMentah\(x\.koleksi\) \|\| x\.koleksi === 'bonPublik'\) \{ b\.set\(doc\(db, x\.koleksi, String\(x\.data\.id\)\), x\.data\)", 'katalog kasir (ringkasanKasir): bentuk dokumen beku = sistem lama, didengar sebagai satu dokumen · bonPublik (rules v23, owner 26 Nov 2026): kelas tetap, dibaca TANPA LOGIN di bon.html — isi persis penyusun bon-publik-logika, tanpa atribusi & cap'),
+    (r"if \(x\.koleksi === 'dasborPublik'\) \{ b\.set\(doc\(db, x\.koleksi, String\(x\.data\.id\)\), x\.data\)", 'dasborPublik (rules v26, owner 27 Nov 2026): kelas tetap, dibaca TANPA LOGIN di dasbor-publik.html — isi persis penyusun dasbor-publik-logika (angka beku), tanpa atribusi & cap'),
     (r"b\.set\(doc\(db, KOLEKSI_LOG, ", 'jejak logAktivitas: kelas jejak (pendengar berbatas 150, tidak lewat delta)'),
     (r"b\.set\(F\.doc\(d2, KOLEKSI_LOG, ", 'jejak logAktivitas putusan owner di tablet (sidik jari Tahap B, 23 Nov 2026): kelas jejak, sama dengan baris jejak penulis utama'),
     (r"setDoc\(doc\(db, 'permintaanAkses', ", 'permintaanAkses: kelas tetap; rules keys().hasOnly menolak kolom lain'),

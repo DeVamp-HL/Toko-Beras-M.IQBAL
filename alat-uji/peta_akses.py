@@ -193,7 +193,8 @@ MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru
                'baru/js/layar/patuh-logika.js',   # paket Stok minus, label & kepatuhan (owner 26 Nov 2026, rules v22): tanda kalender kepatuhan dari tablet
                'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/janji-logika.js',   # paket tanggal janji (owner 27 Nov 2026, rules v24): janji datang pesanan pemasok dari tablet
                'baru/js/layar/berat-asli-logika.js',   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Jual, retur, Barang masuk)
-               'baru/js/layar/rutin-logika.js']   # paket P6 (owner 27 Nov 2026, rules v25): centang daftar rutin dari tablet / HP staf (butir manual — sumber otomatisnya tidak dibundel)
+               'baru/js/layar/rutin-logika.js',   # paket P6 (owner 27 Nov 2026, rules v25): centang daftar rutin dari tablet / HP staf (butir manual — sumber otomatisnya tidak dibundel)
+               'baru/js/layar/arsip-foto-logika.js']   # paket P8 (owner 27 Nov 2026, rules v26): tanda foto nota kedatangan dari tablet Penjaga laci
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 
@@ -429,6 +430,20 @@ pasok('aturanToko', [{ id: 'rutin', tanggal: W.tanggal, butir: [{ id: 'sapu', na
   if (p === 'karyawan' && !susunCentangRutin('harga', '', W, AKUN[p], new Date(W.kini)).tolak) salah('karyawan boleh mencentang butir Penjaga laci');
 });
 pasok('aturanToko', []);
+
+// ---- 14 · paket P8 (owner 27 Nov 2026, rules v26 stafFotoNota + stafTandaFoto): FOTO NOTA KEDATANGAN dari tablet Penjaga laci = SATU kiriman berisi 1 fotoBon
+//        (bentuk dijaga fotoNotaSah di firebase.js simpanFotoBon — fotoBon bukan koleksi.js, tidak lewat periksaKiriman) + 1 tanda fotoTanda (dijaga periksaKiriman)
+//        + 1 baris jejak kiriman. Yang diukur = tanda ASLI afTandaDari atas foto kedatangan bon contoh; access call kiriman nyata = tanda + 1 (fotoBon) + jejak.
+//        Karyawan TIDAK boleh (keputusan owner "owner + tablet Penjaga laci").
+pasok('batchMasuk', [{ id: '1764000000009.5', tanggal: W.tanggal, jam: '08:00', caraBayar: 'utang', pemasok: 'Pemasok Contoh', merkList: [{ merk: 'Angsa', totalKg: 500, subtotalHarga: 6500000 }] }]);
+var TF = afTandaDari({ id: '9009.5', idBon: '1764000000009.5', pemasok: 'Pemasok Contoh', tanggalBon: W.tanggal, tanggal: W.tanggal, jam: '09:00', byte: 250000 });
+if (!TF || TF.jenis !== 'bon') salah('tanda foto contoh tidak berjenis bon: ' + JSON.stringify(TF));
+else {
+  catat('tanda foto nota', 'ben', 'foto nota kedatangan dari tablet: 1 fotoTanda (+ 1 fotoBon dijaga fotoNotaSah, + jejak)', kirim('ben', [{ koleksi: 'fotoTanda', data: TF }]));
+  if (kirim('ben', [{ koleksi: 'fotoTanda', data: TF }]).dilewati) salah('perangkat ben menolak tanda foto yang sah: ' + kirim('ben', [{ koleksi: 'fotoTanda', data: TF }]).dilewati);
+  if (!kirim('karyawan', [{ koleksi: 'fotoTanda', data: TF }]).dilewati) salah('karyawan boleh mengirim tanda foto nota (keputusan owner: Penjaga laci saja)');
+}
+pasok('batchMasuk', []);
 
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas
 var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru', isiUlang: 'isi ulang wadah', antar: 'antar', terimaAntar: 'terima antar', pesanan: 'pesanan', kedatangan: 'barang masuk' };

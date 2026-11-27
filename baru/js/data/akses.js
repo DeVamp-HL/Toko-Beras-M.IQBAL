@@ -56,7 +56,7 @@ export function pendengarUang(akun) {
 // §4 — CREATE bukan-owner: koleksi → peran yang boleh. Menambah peran nanti = menambah satu nama di sini DAN di daftar yang sama di firestore.rules.
 export const BUAT_STAF = { penjualan: ['ben', 'karyawan'], piutangMutasi: ['ben', 'karyawan'], stokBahanLiteran: ['ben', 'karyawan'], stokBahanKemasan: ['ben', 'karyawan'],
   produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], tandaKenal: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'], cekGudang: ['ben'],   /* rules v19 (paket KPI laba, owner 24 Nov 2026): cek gudang = ben */ kepatuhanCek: ['ben'],   /* rules v22 (owner 26 Nov 2026): tanda kalender kepatuhan = ben */
-  rutinCek: ['ben', 'karyawan'],   /* rules v25 (paket P6, owner 27 Nov 2026): centang rutin = ben & karyawan */ wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'], ambilBarang: ['ben', 'karyawan'] };   // rules v23: karcis ambil nanti (bonPublik owner saja)   // rules v11 (B4): pesanan & jadwal rutin = ben   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
+  fotoTanda: ['ben'],   /* rules v26 (paket P8, owner 27 Nov 2026): tanda foto nota kedatangan = ben */ rutinCek: ['ben', 'karyawan'],   /* rules v25 (paket P6, owner 27 Nov 2026): centang rutin = ben & karyawan */ wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'], ambilBarang: ['ben', 'karyawan'] };   // rules v23: karcis ambil nanti (bonPublik owner saja)   // rules v11 (B4): pesanan & jadwal rutin = ben   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
 // rules v7 (owner 7 Okt, JS2-C): persetujuan hanya PERMINTAAN NEGO "menunggu" atas nama sendiri, tanpa kolom keputusan (stafMintaNego; periksaKiriman di bawah)
 export const TIPE_WADAH_STAF = ['takar', 'karung', 'karungIsi', 'cek'];   // = stafBuatWadah di rules v5
 export const KREDIT_STAF = ['ben'];   // penjualan caraBayar Kredit (jualBon): ben `sendiri`, karyawan `owner`
@@ -322,6 +322,23 @@ export function ambilBarangSah(d) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(d.tanggal || '')) && (d.jenis === 'titip' || d.jenis === 'ambil') && typeof d.trxId === 'string' && d.trxId.length > 0 && d.trxId.length <= 60
     && Array.isArray(d.isi) && d.isi.length > 0 && d.isi.length <= 20 && (d.catatan === undefined || (typeof d.catatan === 'string' && d.catatan.length <= 160));
 }
+// rules v26 (paket P8, owner 27 Nov 2026: "owner + tablet Penjaga laci"): foto nota / bon KEDATANGAN dari tablet Penjaga laci (= stafFotoNota) dan tanda "sudah berfoto"
+// (= stafTandaFoto). idBon = id kedatangan (angka, bentuk w.idUnik). Foto & tandanya ditulis firebase.js simpanFotoBon (bukan lewat tulisBerkas) — penjaga ini
+// dipanggil di sana sebelum kirim. Kolom atribusi penulis pusat ikut boleh. Baca & hapus foto tetap owner.
+export const FOTO_STAF = ['ben'];
+export const ID_KEDATANGAN_SAH = /^[0-9]{10,16}(\.[0-9]{1,6})?$/;
+export const FOTO_NOTA_KOLOM = ['id', 'idBon', 'pemasok', 'tanggalBon', 'noBon', 'tanggal', 'jam', 'jenis', 'base64', 'byte', 'lebar', 'tinggi', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi'].concat(KOLOM_ATRIBUSI_UBAH);
+export const TANDA_FOTO_KOLOM = ['id', 'idBon', 'jenis', 'pemasok', 'tanggalBon', 'tanggal', 'jam', 'byte', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi'].concat(KOLOM_ATRIBUSI_UBAH);
+export function fotoNotaSah(d) {
+  if (!d || typeof d !== 'object') return false; if (Object.keys(d).some((k) => FOTO_NOTA_KOLOM.indexOf(k) < 0)) return false;
+  return ID_KEDATANGAN_SAH.test(String(d.idBon || '')) && typeof d.idBon === 'string' && /^image\/(jpeg|png|webp)$/.test(String(d.jenis || '')) && typeof d.base64 === 'string' && d.base64.length > 0 && d.base64.length <= 960000;
+}
+export function tandaFotoSah(d) {
+  if (!d || typeof d !== 'object') return false; if (Object.keys(d).some((k) => TANDA_FOTO_KOLOM.indexOf(k) < 0)) return false;
+  return typeof d.idBon === 'string' && ID_KEDATANGAN_SAH.test(d.idBon) && (d.jenis === 'bon' || d.jenis === 'tunai') && /^\d{4}-\d{2}-\d{2}$/.test(String(d.tanggal || '')) && typeof d.id === 'string' && d.id.length > 0;
+}
+/** Akun ini boleh memotret nota kedatangan (rules v26): owner, atau akun staf aktif berperan FOTO_STAF. */
+export const bolehFotoNota = (akun) => !!akun && (akun.jenis === 'owner' || (bisaBekerja(akun) && akun.jenis !== 'owner' && FOTO_STAF.indexOf(akun.peran) >= 0));
 export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
   if (!akun) return { tolak: 'Belum masuk' };
   if (akun.jenis === 'owner') return { accessCall: 0 };
@@ -355,6 +372,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'ambilBarang' && !ambilBarangSah(d)) return { tolak: 'Bentuk catatan titipan / ambil barang tidak sah — buka lagi lembarnya' };
       // rules v25 (paket P6, owner 27 Nov 2026): centang rutin dari tablet / HP staf — butir & putaran berbentuk tetap, catatan ≤ 160 huruf (stafCekRutin)
       if (x.koleksi === 'rutinCek' && !cekRutinSah(d)) return { tolak: 'Bentuk centang rutin tidak sah — buka lagi daftarnya' };
+      // rules v26 (paket P8, owner 27 Nov 2026): tanda foto nota kedatangan dari tablet — idBon = id kedatangan, jenis bon|tunai, kolom dibatasi (stafTandaFoto)
+      if (x.koleksi === 'fotoTanda' && !tandaFotoSah(d)) return { tolak: 'Bentuk tanda foto tidak sah — foto ulang notanya' };
       if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return { tolak: tolakTindakan('hargaBeli') };
       // rules v5 (putaran 39): karyawan menulis wadahLiteran hanya takar / karung / karungIsi / cek (aturan wadah & titik samakan isi = owner), batchMasuk hanya batch LAHIR BUKU 0 kg
       if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };

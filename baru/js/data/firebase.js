@@ -20,6 +20,8 @@ import { HB_VERSI, HB_LIMIT_F, HB_KOLEKSI_NISAN, HB_ID_KLAIM, HB_MULAI_MS, hbHem
 import { serverTiruan, configTiruan } from './server-tiruan.js';
 // owner 22 Nov 2026: riwayat setelan (tahap 3) — perubahan setelan owner dicatat dari → ke
 import { rsdSertakan } from './riwayat-setelan.js';
+// paket P8 (owner 27 Nov 2026, rules v26): foto nota kedatangan dari tablet Penjaga laci — penjaga bentuk foto & tandanya (= stafFotoNota / stafTandaFoto)
+import { fotoNotaSah, tandaFotoSah, bolehFotoNota } from './akses.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA',
@@ -537,6 +539,8 @@ export async function tulisBerkas(daftar, hapus, opsi) {
     // 25c: katalog kasir apa adanya — tanpa atribusi & jejak · rules v23 (owner 26 Nov 2026): ringkasan cek bon (bonPublik) DIBACA TANPA LOGIN — nama, uid,
     // perangkat & lokasi penulis TIDAK boleh ikut; yang ditulis hanya isi penyusun bon-publik-logika
     if (kkMentah(x.koleksi) || x.koleksi === 'bonPublik') { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }
+    // paket P8 (owner 27 Nov 2026, rules v26): tautan beku Dasbor (dasborPublik) juga DIBACA TANPA LOGIN — ditulis apa adanya, tanpa nama / uid / perangkat penulis
+    if (x.koleksi === 'dasborPublik') { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }
     // owner 22 Nov 2026 (riwayat & batal tahap 3): setelan owner membawa riwayatUbah (kolom dari → ke) — riwayat lama dari salinan cache tidak pernah hilang
     const d = rsdSertakan(x.koleksi, beriAtribusiAkun(x.data, akun, k, x.ada), x.lama, owner, k.kini);
     // owner 7 Okt: koleksi hemat bercap jam server (SESUDAH penjaga kiriman; salinan antre & `ditulis` tetap tanpa sentinel)
@@ -852,12 +856,20 @@ export async function tulisSebagaiOwner(sandi, daftar, hapus) {
     try { await A.signOut(au); } catch (e) { /* sesi di memori — hilang juga saat aplikasi ditutup */ }
   }
 }
-export async function simpanFotoBon(data) {
+// paket P8 (owner 27 Nov 2026, rules v26): foto nota / bon KEDATANGAN juga dari tablet Penjaga laci (bolehFotoNota) — foto + TANDA ringannya (fotoTanda, tanpa gambar;
+// hitungan "belum berfoto" Dasbor) dalam SATU kiriman. Owner: satu baris jejak per foto (seperti dulu). Penjaga laci: bentuk dijaga fotoNotaSah / tandaFotoSah (= rules),
+// SATU baris jejak kiriman (stafJejak). tanda = dokumen fotoTanda dari arsip-foto-logika afTandaDari (null = tanpa tanda, mis. foto lama).
+const KOLEKSI_TANDA_FOTO = 'fotoTanda';
+export async function simpanFotoBon(data, tanda) {
   if (!db) throw new Error('belum tersambung');
-  if (pemilikSaja()) return { gagal: true, pesan: pemilikSaja() };
-  const akun = status.akun; const k = konteksTulis(); const d = beriAtribusiAkun(data, akun, k, false);
-  const b = writeBatch(db); b.set(doc(db, KOLEKSI_FOTO_BON, String(d.id)), d);
-  const log = { id: idUnik(), pada: k.kini, aksi: 'tulis', koleksi: KOLEKSI_FOTO_BON, idDok: String(d.id), oleh: akun.nama, olehUid: akun.uid, perangkat: k.perangkat, ringkas: 'foto bon ' + String(d.idBon) + ' · ' + Math.round((Number(d.byte) || 0) / 1024) + ' KB' };
+  const akun0 = status.akun; const owner0 = !!akun0 && akun0.jenis === 'owner';
+  if (!owner0 && !bolehFotoNota(akun0)) return { gagal: true, pesan: 'Hanya owner dan Penjaga laci yang boleh memotret nota' };
+  const akun = owner0 ? akun0 : akunPenulis(); const k = konteksTulis(); const d = beriAtribusiAkun(data, akun, k, false);
+  const t = tanda ? beriAtribusiAkun(tanda, akun, k, false) : null;
+  if (!owner0 && (!fotoNotaSah(d) || (t && !tandaFotoSah(t)))) return { gagal: true, pesan: 'Foto ini tidak berbentuk foto nota kedatangan — foto ulang dari lembar kedatangannya' };
+  const b = writeBatch(db); b.set(doc(db, KOLEKSI_FOTO_BON, String(d.id)), d); if (t) b.set(doc(db, KOLEKSI_TANDA_FOTO, String(t.id)), t);
+  const log = owner0 ? { id: idUnik(), pada: k.kini, aksi: 'tulis', koleksi: KOLEKSI_FOTO_BON, idDok: String(d.id), oleh: akun.nama, olehUid: akun.uid, perangkat: k.perangkat, ringkas: 'foto bon ' + String(d.idBon) + ' · ' + Math.round((Number(d.byte) || 0) / 1024) + ' KB' }
+    : jejakKiriman(akun, [{ koleksi: KOLEKSI_FOTO_BON, data: d }].concat(t ? [{ koleksi: KOLEKSI_TANDA_FOTO, data: t }] : []), Object.assign({ idJejak: idUnik() }, k));
   b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
   const janji = b.commit();
   try { const h = await tungguServer(janji, 20000); return h.lewat ? { antre: true, data: d, selesai: janji.then(() => ({ ok: true }), (e) => ({ gagal: true, pesan: String((e && (e.code || e.message)) || e) })) } : { ok: true, data: d }; }
@@ -867,10 +879,34 @@ export async function hapusFotoBon(id, idBon) {
   if (!db) throw new Error('belum tersambung');
   if (pemilikSaja()) return { gagal: true, pesan: pemilikSaja() };
   const akun = status.akun; const k = konteksTulis(); const b = writeBatch(db); b.delete(doc(db, KOLEKSI_FOTO_BON, String(id)));
+  b.delete(doc(db, KOLEKSI_TANDA_FOTO, String(id)));   // paket P8: tandanya ikut dihapus (tanda yang tidak ada = tidak mengubah apa pun)
   const log = { id: idUnik(), pada: k.kini, aksi: 'hapus', koleksi: KOLEKSI_FOTO_BON, idDok: String(id), oleh: akun.nama, olehUid: akun.uid, perangkat: k.perangkat, ringkas: 'foto bon ' + String(idBon || '') + ' dihapus' };
   b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
   try { const h = await tungguServer(b.commit(), 20000); return h.lewat ? { antre: true } : { ok: true }; }
   catch (e) { return { gagal: true, pesan: String((e && (e.code || e.message)) || e) }; }
+}
+// paket P8 (owner 27 Nov 2026, A94): ARSIP FOTO per bulan — semua foto (bon pemasok, nota kedatangan, nota kas kecil) yang DIAMBIL di bulan `key` (YYYY-MM), dibaca
+// SEKALI saat owner menekan Unduh arsip foto (± 300 KB per foto; satu dokumen = satu baca). Owner saja. Query satu kolom (rentang `tanggal`) = indeks bawaan.
+export async function bacaFotoBulan(key) {
+  if (!db) throw new Error('belum tersambung');
+  if (pemilikSaja()) throw new Error(pemilikSaja());
+  if (!/^\d{4}-\d{2}$/.test(String(key || ''))) throw new Error('bulan tidak sah');
+  const h = await tungguServer(getDocs(query(collection(db, KOLEKSI_FOTO_BON), where('tanggal', '>=', key + '-01'), where('tanggal', '<=', key + '-31'))), 60000);
+  if (h.lewat) throw new Error('server belum menjawab dalam 60 detik');
+  const out = []; h.x.forEach((d) => out.push(d.data())); out.dariCache = !!(h.x.metadata && h.x.metadata.fromCache); return out;
+}
+// paket P8 (owner 27 Nov 2026, B81: "cari per tanggal pas dibuka"): LOG AKTIVITAS di luar 150 tulisan terbaru yang didengar — dibaca SEKALI saat owner meminta
+// (satu dokumen log = satu baca). saring = { dari, sampai } (ISO UTC, rentang `pada`: satu hari WIB / 30 hari untuk cadangan berkas) ATAU { idDok } (riwayat satu
+// catatan). batas = paling banyak dokumen yang dibaca (log-cari-logika LG_MAKS_*). Owner saja (rules: logAktivitas read owner). Indeks bawaan satu kolom.
+export async function bacaLog(saring, batas) {
+  if (!db) throw new Error('belum tersambung');
+  if (pemilikSaja()) throw new Error(pemilikSaja());
+  const S = saring || {}; const n = Math.max(1, Math.min(20000, Number(batas) || 3000));
+  const q = S.idDok ? query(collection(db, KOLEKSI_LOG), where('idDok', '==', String(S.idDok)), limit(n))
+    : query(collection(db, KOLEKSI_LOG), where('pada', '>=', String(S.dari || '')), where('pada', '<', String(S.sampai || '')), orderBy('pada', 'desc'), limit(n));
+  const h = await tungguServer(getDocs(q), 60000);
+  if (h.lewat) throw new Error('server belum menjawab dalam 60 detik');
+  const out = []; h.x.forEach((d) => out.push(d.data())); out.dariCache = !!(h.x.metadata && h.x.metadata.fromCache); out.penuh = out.length >= n; return out;
 }
 
 // ---- BUKTI TERIMA ANTAR (B3, owner 18 Nov 2026): koleksi `buktiTerima` (tanda tangan & foto penerima) TIDAK ada di KOLEKSI → tidak didengar, tidak ikut baca
