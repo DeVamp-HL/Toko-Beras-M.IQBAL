@@ -16,7 +16,8 @@ export const RS_JUDUL = { bandingPemasok: 'Banding pemasok', catatStok: 'Pencata
   hargaTingkat: 'Harga tingkat (warung · catering · instansi)', het: 'HET', kelasMerek: 'Kelas merek', pengingat: 'Pengingat', pelangganKembar: 'Pelanggan kembar',
   produkArsip: 'Produk diarsipkan', harga: 'Aturan harga', kendaliBiaya: 'Kendali biaya', kantong: 'Kantong', laporan: 'Laporan', dokumen: 'Dokumen', stokUmur: 'Umur stok',
   hpp: 'Modal (HPP)', hargaMinimum: 'Harga minimum & HET', merekLaporan: 'Susut & per merek', kepatuhan: 'Kalender kepatuhan', tutupBuku: 'Tutup buku', pelanggan: 'Pelanggan', kunciPeriode: 'Kunci bulan', perangkat: 'Perangkat',
-  dasbor: 'Susunan Dasbor', stokMinimum: 'Stok minimum' };   // paket Dasbor sensus (owner 26 Nov 2026): widget angka utama · stok minimum per barang
+  dasbor: 'Susunan Dasbor', stokMinimum: 'Stok minimum',
+  anggaranBulan: 'Target bulanan & angka khusus', anggaranCatatan: 'Sebab & tindakan anggaran' };   // paket P2 (owner 27 Nov 2026)   // paket Dasbor sensus (owner 26 Nov 2026): widget angka utama · stok minimum per barang
 const RS_GOLONG_HARGA = { harga: true, hargaTingkat: true, het: true, karungBekas: true, hargaMinimum: true };
 const RS_SISTEM = { hematHarian: true, acuanTarik: true };   // dokumen sistem (klaim baca penuh harian · hasil tarik harga acuan fungsi server) — bukan setelan owner
 const rsJam = (j) => String(j || '').slice(0, 5);

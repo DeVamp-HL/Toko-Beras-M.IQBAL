@@ -160,6 +160,13 @@ JN_PEMAKAI = ('dasbor-logika.js', 'gudang-logika.js', 'laporan.js', 'stok.js', '
 JN_SUMBER = ('baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/pesanan-logika.js')
 
 
+# paket P2 (owner 27 Nov 2026): rapor bulanan (lembar KPI, anggaran vs aktual, pecahan selisih, kotor vs bersih, arus kas) — rapor-bulan-logika.js dibaca Dasbor
+# (kelompok rapor) dan layar Laporan. Ia hanya memanggil modul yang sudah ada di bundel Dasbor / Laporan (kendali-biaya, pajak, kpi-laba, laporan, susut-harga, karcis,
+# uang, mesin) — ikut OTOMATIS (sekali, di belakang) bila pemakainya ada; fungsi terangkat, urutan tidak menentukan.
+RB_MODUL = 'baru/js/layar/rapor-bulan-logika.js'
+RB_PEMAKAI = ('dasbor-logika.js', 'laporan.js')
+
+
 def lengkapi(daftar):
     d = list(daftar)
     if any(os.path.basename(x) in JN_PEMAKAI for x in d) and not any(x.endswith('janji-logika.js') for x in d):
@@ -224,6 +231,8 @@ def lengkapi(daftar):
         d.append(CP_MODUL)
     if any(os.path.basename(x) in AB_PEMAKAI for x in d) and not any(x.endswith('ambil-logika.js') for x in d):
         d.append(AB_MODUL)
+    if any(os.path.basename(x) in RB_PEMAKAI for x in d) and not any(x.endswith('rapor-bulan-logika.js') for x in d):
+        d.append(RB_MODUL)
     return d
 
 

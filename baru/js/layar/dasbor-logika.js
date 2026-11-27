@@ -63,6 +63,10 @@ import { shTrenBeli, shPembelian, SH_RENTANG_BELI } from './susut-harga-logika.j
 import { pnPerkiraanTelat } from './bon-logika.js';
 import { rwTerbesar } from './riwayat-logika.js';
 import { ckHppLewat } from './stok-catat-logika.js';
+// paket P2 (owner 27 Nov 2026: A136 B112 B26 B110 B124) — rapor bulanan (ini · lalu · target), arus kas bulan ini, lampu target owner untuk kartu lama — APA ADANYA
+// dari rapor-bulan-logika (yang memanggil fungsi sumber layar lain); laba kotor hari ini & karcis = rekapHari / daftarKarcis yang sama dengan kartu Hari ini
+import { rbRapor, rbArusKas, rbAmbangDasbor } from './rapor-bulan-logika.js';
+import { klBagianHari } from './kpi-laba-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
@@ -273,11 +277,29 @@ export function susunDasbor(kini, rentang, lama, ingat, saring) {
     if (lama) return { hari: lama.hari, bulan: lama.bulan, stok: lama.stok, tagihan: lama.tagihan, mutu: lama.mutu, b2b: lama.b2b, kpi: lama.kpi, pondasi: lama.pondasi, tren: k('tren') };
     return { hari: k('hari'), bulan: k('bulan'), stok: k('stok'), tagihan: k('tagihan'), mutu: k('mutu'), b2b: k('b2b'), kpi: k('kpi'), pondasi: k('pondasi'), tren: k('tren') };
   };
-  return Object.assign(inti(), lama ? { beli: lama.beli, saring: lama.saring } : { beli: k('beli'), saring: SR });
+  const D = Object.assign(inti(), lama ? { beli: lama.beli, saring: lama.saring } : { beli: k('beli'), saring: SR });
+  return Object.assign(D, lama ? { rapor: lama.rapor } : { rapor: k('rapor') });   // P2: rapor bulanan (ikut saringan: bulan kartu bulanan)
 }
 /** Urutan pemanasan dasbor di latar: yang paling atas di layar dulu. */
 export const DB_PANAS = ['hari', 'kpi', 'bulan', 'stok', 'tagihan', 'tren', 'mutu', 'b2b', 'pondasi'];
 DB_PANAS.push('beli');   // B68 (owner 27 Nov 2026): kartu Pembelian ikut dipanaskan
+DB_PANAS.push('rapor');   // P2 (owner 27 Nov 2026): rapor bulanan ikut dipanaskan
+DB_IKUT_SARING.push('rapor');   // P2: rapor memakai bulan saringan (sama dengan kartu Bulan ini)
+DB_KELOMPOK.rapor = ['rapor bulan', dbRapor];
+
+/**
+ * P2 (owner 27 Nov 2026) — RAPOR BULAN untuk Dasbor: scorecard mode Laba & mode Kas (saklar, owner: "Dua-duanya"), arus kas bulan ini, dan lampu target owner untuk
+ * angka yang SUDAH tampil di kartu lama (margin kotor %, piutang, karcis belum dirinci, laba kotor hari ini). Semua = rapor-bulan-logika apa adanya. Saringan: bulan
+ * kartu bulanan (SR.bulan); lampu laba kotor HARI INI hanya tanpa saringan (kartu Hari ini yang disaring memajang rentang, bukan hari ini).
+ */
+export function dbRapor(kini, SR) {
+  const iso = hariIniIso(kini); const sar = !!(SR && !SR.bawaan); const key = sar ? SR.bulan : iso.slice(0, 7);
+  const R = rbRapor(key, kini, 'laba'); const RK = dbCoba(() => rbRapor(key, kini, 'kas')); const AK = dbCoba(() => rbArusKas(key, kini));
+  const kiniBulan = key === iso.slice(0, 7); const RH = kiniBulan && !sar ? dbCoba(() => rekapHari(iso)) : null; const KC = kiniBulan ? dbCoba(() => daftarKarcis(kini)) : null;
+  const ambang = dbCoba(() => rbAmbangDasbor(R, kini, klBagianHari(kini), RH && !RH.galat ? RH.margin : null, kiniBulan ? R.X.piutang : null, KC && !KC.galat ? KC.nKarcis : null));
+  return { key, nama: R.nama, periode: R.nama + (R.berjalan ? ' · hari ke-' + R.hariJalan + ' dari ' + R.nHari : R.diarsip ? ' · tutup buku' : '') + ' vs ' + R.namaLalu, sumber: R.sumber, tujuan: R.tujuan,
+    laba: R, kas: RK, arus: AK, ambang, judul: kiniBulan ? 'Rapor bulan ini' : 'Rapor ' + R.nama };
+}
 
 /** B68 (owner 27 Nov 2026): PEMBELIAN — tren per hari (14) · minggu (8) · bulan (6) dari kedatangan barang (susut-harga-logika shTrenBeli; batang bulan = "+ Pembelian"
  *  HPP periode Laporan › Bulanan) + jumlah di periode saringan (bawaan: hari ini & bulan ini). Ketiga rentang dihitung sekali (murah), pita di kartu hanya memilih. */

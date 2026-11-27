@@ -598,6 +598,15 @@ export function hariTerakhir(kini, n) { const iso = hariIniIso(kini); const per 
   ambilPenjualan().forEach((p) => { if (!p.tanggal) return; if (!per[p.tanggal]) { per[p.tanggal] = { n: 0, omzet: 0 }; notaHari[p.tanggal] = new Set(); } notaHari[p.tanggal].add(kunciNota(p)); per[p.tanggal].n = notaHari[p.tanggal].size; per[p.tanggal].omzet += p.hargaTotal || 0; }); const out = []; for (let i = 0; i < (n || 14); i++) { const t = ugTambahHari(iso, -i);
     if (lpTutup(t)) { const P = potretHari(t); out.push({ iso: t, n: P ? P.nota : 0, omzet: P ? P.omzet : 0, hariIni: i === 0, diarsip: true, tanpaPotret: !P }); continue; }
     out.push({ iso: t, n: per[t] ? per[t].n : 0, omzet: (per[t] ? per[t].omzet : 0) - ((retur[t] || {}).uang || 0), hariIni: i === 0 }); } return out; }
+/** P2 (owner 27 Nov 2026, B4): omzet, uang retur & nota PER HARI satu bulan dalam SATU lintasan — aturan yang sama dengan hariTerakhir & rekap hari (omzet = Σ harga
+ *  nota − uang retur hari itu; nota = nota berbeda). Σ hari = omzet mesin bulan itu (dijaga uji_rapor_bulan). Bulan di tahun yang ditutup buku: {} (per hari ikut arsip). */
+export function lpHariBulan(key) { return ingatPerVersi('lpHariBulan|' + key, () => lpHariBulanHitung(String(key))); }
+function lpHariBulanHitung(key) {
+  const out = {}; if (lpTutup(key)) return out; const nota = {}; const retur = returUangPerHari(); const satu = (t) => out[t] || (out[t] = { omzet: 0, retur: 0, nota: 0 });
+  ambilPenjualan().forEach((p) => { const t = p.tanggal; if (!t || String(t).slice(0, 7) !== key) return; const d = satu(t); if (!nota[t]) nota[t] = new Set(); nota[t].add(kunciNota(p)); d.nota = nota[t].size; d.omzet += p.hargaTotal || 0; });
+  Object.keys(retur).forEach((t) => { if (t.slice(0, 7) !== key) return; const d = satu(t); d.retur = retur[t].uang || 0; d.omzet -= d.retur; });
+  return out;
+}
 /** Audit 39b no. 37 tinjauan U37-U4: retur nota BON hari itu (bon dipotong, bukan uang laci) = uang retur rekap (uangKembaliRetur, termasuk potongBon) − refund
  *  kas (nominalRefund + selisih tukar). Kartu rekap & teks WA menyebutnya supaya omzet = tunai + QRIS + bon − refund − retur nota bon menutup. */
 export const lpReturBonHari = (R) => Math.max(0, Math.round((R.retur || 0) - (R.refund || 0)));
