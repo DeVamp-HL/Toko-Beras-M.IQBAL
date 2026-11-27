@@ -75,4 +75,12 @@ wajib berbalik). Semua kasus v24 sampai v7 lama tetap dijalankan atas v25 dan wa
 
 ## Hasil Playground & terbit
 
-Belum terbit (DRAF). Diisi sesudah owner menerbitkan: jam terbit, sidik SHA-256 isi editor = berkas cabang, hasil ★O1–★O3.
+**v25 TERBIT 27 Nov 2026 ±13.07 WIB** — SESUDAH PR #236 (paket P6) digabung ke `main` (`44d580b`), bukan sebelumnya seperti urutan di atas. Di antara
+gabung dan terbit, pendengar `aturanToko/rutin` & `rutinCek` di tablet / HP staf ditolak server dan centang rutin dari staf tidak tersimpan; layar owner tetap
+jalan. Centang staf yang ditolak di jendela itu perlu dicentang ulang.
+Owner menempel isi `firestore.rules` (commit `44d580b`, berkas mentah GitHub di tab Chrome Claude — sidiknya dicek lebih dulu = repo) ke editor Rules Console.
+Isi editor sebelum Publish, sesudah uji Playground, dan isi yang aktif sesudah halaman dimuat ulang sama persis dengan `firestore.rules` di `main`:
+SHA-256 berawalan `e6718c5577d2555f`, 90.788 byte, baris 2 `ATURAN FIRESTORE v25 FINAL` (sebelumnya aktif v24 `d7e25718`, 88.131 byte).
+Playground (akun uji owner: UID `uid-uji`, email `owner@tokoberasmiqbal.web.app`, email terverifikasi): ★O2 get `rutinCek/rc-2026-12-01-uji1` →
+*Simulated read allowed* · ★O1 create `rutinCek/rc-2026-12-01-uji1` (dokumen contoh `butir` bersih) → *Simulated write allowed* · ★O3 create
+`aturanToko/rutin` → *Simulated write allowed* — ketiganya sesuai kolom Wajib. Kasus staf (★O4–★O23) dibuktikan emulator CI bagian V25.
