@@ -23,7 +23,9 @@ import { keManaLabaKotor, jenisBulan, lpJenisRentang, merekBulan, lpMerekBuku, l
 import { kendaliBulan, titikImpas } from './kendali-biaya-logika.js';
 import { pjPerkiraanBulan, PJ_LABEL, pjTahun } from './pajak-logika.js';
 import { ugAturDok, ugAngka, ugKosong, saldoKantong, ugNamaTempat } from './uang-logika.js';
-import { umRingkas, umNilaiRata } from './stok-logika.js';
+import { umRingkas, umNilaiRata, umAtur } from './stok-logika.js';
+// P1 (owner 27 Nov 2026): per kg & per merek per rentang (merekRentang — pengumpul Per merek), target untung per kg (setelan Harga), minggu Senin–Minggu
+import { merekRentang, lpTargetKg, lpStatusKg, lpSenin, lpBulanPendek } from './laporan-logika.js';
 import { tertagihBon } from './bon-logika.js';
 import { bpHariBayar, bpHariTeks } from './bon-pemasok-logika.js';
 import { poLamaPenuhi } from './pesanan-logika.js';
@@ -195,6 +197,78 @@ export function klSiklusUang(kini) {
       : 'Uang toko berputar ±' + String(Math.round(hari * 10) / 10).replace('.', ',') + ' hari: beras ' + klHari(hariStok) + ' di rak + bon ' + klHari(T.rataHari) + ' baru tertagih − pemasok dibayar ' + klHari(B.rataHari) + ' sesudah datang' };
 }
 const klHari = (h) => (h === null || !isFinite(h) ? '—' : String(Math.round(h * 10) / 10).replace('.', ',') + ' hari');
+
+// ---------- P1 · KPI per kg, stok dalam RUPIAH & deret bulanan (owner 27 Nov 2026, sensus ulang 27 Nov: A112 · A113 · A114 · A115 · A130) ----------
+// Tidak ada rumus uang baru: margin % = klMarginBulan apa adanya (Laporan › Laba), per kg = merekRentang (Per merek, ÷ kg nota bermodal = aturan Laporan › Biaya),
+// nilai stok = klModalTertahan (rata-rata nilai modal stok beras karung + kemasan, angka yang SAMA dengan "modal tertahan di stok"), HPP = modal barang terjual
+// (merekRentang semua.hpp: modal tersimpan di nota − modal retur utuh). Yang dihitung di sini hanya PERBANDINGANNYA: perputaran = HPP ÷ nilai stok rata-rata,
+// disetahunkan × 365 ÷ hari; hari stok = nilai stok rata-rata ÷ HPP per hari; target hari stok = setelan owner aturanToko/stokUmur (bawaan 7–14 hari).
+const klGeserMinggu = (senin, n) => klGeserHari(senin, 7 * n);
+/** STOK DALAM RUPIAH untuk [dari, sampai] (A114 · A115). Belum bisa dihitung (tanpa modal terjual / tanpa stok / tahun sudah ditutup buku) = null + kalimat, bukan 0. */
+export function klStokRp(kini, dari, sampai) {
+  const MT = klModalTertahan(kini, dari, sampai); const A = umAtur(); const T = { min: A.targetHariMin, maks: A.targetHariMaks, dariOwner: A.dariOwner, teks: A.targetHariMin + '–' + A.targetHariMaks + ' hari' + (A.dariOwner ? '' : ' (bawaan)') };
+  const dasar = { dari: MT.dari, sampai: MT.sampai, nHari: MT.nHari, target: T, tujuanAtur: { ke: 'stok', tab: 'umur' } };
+  if (!MT.nHari) return Object.assign(dasar, { rata: null, hpp: null, hari: null, putaran: null, putaranTahun: null, status: null, kalimat: MT.kalimat });
+  const R = merekRentang(MT.dari, MT.sampai); if (R.arsip) return Object.assign(dasar, { diarsip: true, rata: null, hpp: null, hari: null, putaran: null, putaranTahun: null, status: null, kalimat: 'Rentang ini menyentuh tahun yang sudah ditutup buku — nota & stok per harinya ikut arsip.' });
+  const hpp = R.semua.hpp; const rata = MT.rata; const n = MT.nHari; const hppHari = hpp > 0 ? hpp / n : null;
+  const hari = hppHari !== null && rata > 0.5 ? rata / hppHari : null; const putaran = hpp > 0 && rata > 0.5 ? hpp / rata : null; const tahun = putaran !== null ? putaran * 365 / n : null;
+  const status = hari === null ? null : hari < T.min ? 'tipis' : hari > T.maks ? 'diam' : 'pas';
+  const rentang = tanggalPendek(MT.dari) + (MT.dari !== MT.sampai ? ' – ' + tanggalPendek(MT.sampai) : '');
+  return Object.assign(dasar, { rata, kini: MT.kini, hpp, hppHari, hari, putaran, putaranTahun: tahun, status, sampel: MT.sampel, nTitik: MT.nTitik,
+    rumus: 'Hari stok = rata-rata nilai modal stok ' + RP(Math.round(rata)) + ' ÷ modal barang terjual per hari ' + (hppHari === null ? '—' : RP(Math.round(hppHari))) + ' · perputaran = modal terjual ÷ nilai stok rata-rata, disetahunkan × 365 ÷ ' + n + ' hari' + (MT.sampel ? ' · nilai stok dari ' + MT.nTitik + ' titik hari' : ''),
+    kalimat: hari === null ? (hpp > 0 ? 'Belum ada stok bernilai di ' + rentang + ' — hari stok belum bisa dihitung.' : 'Belum ada barang bermodal yang terjual di ' + rentang + ' — hari stok belum bisa dihitung.')
+      : 'Stok ' + rentang + ' rata-rata cukup untuk ' + klHari(hari) + ' jualan (target ' + T.teks + ')' + (status === 'tipis' ? ' — STOK TIPIS' : status === 'diam' ? ' — modal kebanyakan diam di gudang' : ' — pas') + '; berputar ' + String(Math.round(tahun * 10) / 10).replace('.', ',') + '× setahun.' });
+}
+/** Deret per bulan (A114): klStokRp tiap bulan, n bulan terakhir (bulan berjalan sampai hari ini); bulan sebelum catatan pertama = sebelum (tidak dihitung). */
+export function klStokRpBulan(kini, n) {
+  const iso = hariIniIso(kini); const p = catatanPertama() || iso; const out = [];
+  for (let i = (n || 6) - 1; i >= 0; i--) { const key = klGeserBulan(iso.slice(0, 7), -i); const akhir = akhirBulanIso(key);
+    out.push(akhir < p ? { key, pendek: lpBulanPendek(key), sebelum: true } : Object.assign({ key, pendek: lpBulanPendek(key), berjalan: key === iso.slice(0, 7) }, klStokRp(kini, key + '-01', akhir))); }
+  return out;
+}
+/** Deret per minggu Senin–Minggu (A115 tren mingguan): klStokRp tiap minggu, n minggu terakhir (minggu ini sampai hari ini). */
+export function klStokRpMinggu(kini, n) {
+  const iso = hariIniIso(kini); const p = catatanPertama() || iso; const senin = lpSenin(iso); const out = [];
+  for (let i = (n || 8) - 1; i >= 0; i--) { const a = klGeserMinggu(senin, -i); const b = klGeserHari(a, 6);
+    out.push(b < p ? { awal: a, label: tanggalPendek(a).replace(/ \d{4}$/, ''), sebelum: true } : Object.assign({ awal: a, label: tanggalPendek(a).replace(/ \d{4}$/, ''), berjalan: i === 0 }, klStokRp(kini, a, b))); }
+  return out;
+}
+/** Per kg satu BULAN (A112 · A3; Dasbor "Margin & target"): untung · HPP · harga jual per kg se-toko (merekRentang semua = Laporan › Biaya untuk bulan penuh), bulan
+ *  lalu, merek yang untung per kg-nya di bawah target (setelan Harga). Tanpa kg bermodal = null, bukan Rp0. */
+export function klKgBulan(key, kini) {
+  const iso = hariIniIso(kini); const awal = key + '-01'; const akhir = akhirBulanIso(key); const sampai = akhir < iso ? akhir : iso; const T = lpTargetKg(); const nama = lpNamaBulan(key);
+  const kL = klGeserBulan(key, -1); const dasar = { key, nama, target: T, tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key }, tujuanAtur: { ke: 'harga', keluarga: 'katalog' } };
+  if (sampai < awal) return Object.assign(dasar, { marginKg: null, hppKg: null, jualKg: null, bawah: [], nBawah: 0, kalimat: nama + ' belum mulai' });
+  const R = merekRentang(awal, sampai); if (R.arsip) return Object.assign(dasar, { diarsip: true, marginKg: null, hppKg: null, jualKg: null, bawah: [], nBawah: 0, kalimat: 'Rincian ' + nama + ' ikut arsip tutup buku.' });
+  const RL = merekRentang(kL + '-01', akhirBulanIso(kL)); const S = R.semua; const SL = RL.arsip ? null : RL.semua;
+  const beras = Object.keys(R.merek).map((m) => R.merek[m]); const bawah = beras.filter((g) => lpStatusKg(g, T) === 'bawah').sort((a, b) => b.kgHitung - a.kgHitung || a.merek.localeCompare(b.merek));
+  return Object.assign(dasar, { berjalan: key === iso.slice(0, 7), sampai, marginKg: S.marginKg, hppKg: S.hppKg, jualKg: S.jualKg, kgHitung: S.kgHitung, kg: S.kg,
+    lalu: SL ? { key: kL, nama: lpNamaBulan(kL), pendek: lpBulanPendek(kL), marginKg: SL.marginKg, hppKg: SL.hppKg, jualKg: SL.jualKg } : null, beda: SL && S.marginKg !== null && SL.marginKg !== null ? S.marginKg - SL.marginKg : null,
+    bawah: bawah.map((g) => ({ merek: g.merek, marginKg: g.marginKg, kg: g.kgHitung })), nBawah: bawah.length, nCapai: beras.filter((g) => lpStatusKg(g, T) === 'capai').length,
+    kalimat: S.marginKg === null ? 'Belum ada nota bermodal ' + nama + ' — untung per kg belum bisa dihitung.' : 'Untung ' + RP(Math.round(S.marginKg)) + '/kg (HPP ' + RP(Math.round(S.hppKg)) + '/kg, jual ' + RP(Math.round(S.jualKg)) + '/kg)' + (T.rp > 0 ? ' · ' + bawah.length + ' merek di bawah target ' + RP(T.rp) + '/kg' : '') });
+}
+/**
+ * DERET BULANAN berdampingan (A113 margin % · A112/A130 per kg · A114 perputaran rupiah): n bulan terakhir (bawaan 6) — margin kotor / usaha / bersih % (klMarginBulan),
+ * grosir & ecer % (pembanding BPS kartu Margin), untung · HPP · jual per kg se-toko, perputaran setahun & hari stok (klStokRp), + untung & HPP per kg PER MEREK per bulan
+ * untuk `nMerek` merek dengan kg terbanyak di deret itu. Bulan sebelum catatan pertama = sebelum; bulan yang ditutup buku = diarsip (disebut).
+ */
+export function klDeretBulan(kini, n, nMerek) {
+  const iso = hariIniIso(kini); const p = catatanPertama() || iso; const N = n || 6; const T = lpTargetKg(); const kg = {}; const per = {};
+  const bulan = []; for (let i = N - 1; i >= 0; i--) { const key = klGeserBulan(iso.slice(0, 7), -i); const akhir = akhirBulanIso(key); const sampai = akhir < iso ? akhir : iso;
+    if (akhir < p) { bulan.push({ key, pendek: lpBulanPendek(key), nama: lpNamaBulan(key), sebelum: true }); continue; }
+    let M = null; try { M = klMarginBulan(key, kini); } catch (e) { M = { galat: String((e && e.message) || e) }; }
+    const R = merekRentang(key + '-01', sampai); const tg = (id) => (M && !M.galat ? (M.tangga.find((x) => x.id === id) || {}).pct : null);
+    if (!R.arsip) Object.keys(R.merek).forEach((m) => { const g = R.merek[m]; kg[m] = (kg[m] || 0) + (g.kgHitung || 0); (per[m] = per[m] || {})[key] = { marginKg: g.marginKg, hppKg: g.hppKg, kg: g.kgHitung }; });
+    const S = klStokRp(kini, key + '-01', akhir);
+    bulan.push({ key, pendek: lpBulanPendek(key), nama: lpNamaBulan(key), berjalan: key === iso.slice(0, 7), final: M && !M.galat ? !!M.final : false, diarsip: !!R.arsip || !!(M && M.diarsip), galat: M && M.galat ? M.galat : '',
+      kotor: tg('kotor'), usaha: tg('usaha'), bersih: tg('bersih'), grosir: M && !M.galat ? M.bps.tokoGrosir : null, ecer: M && !M.galat ? M.bps.tokoEcer : null, omzet: M && !M.galat ? M.omzet : null,
+      marginKg: R.arsip ? null : R.semua.marginKg, hppKg: R.arsip ? null : R.semua.hppKg, jualKg: R.arsip ? null : R.semua.jualKg, putaranTahun: S.putaranTahun, hariStok: S.hari, statusStok: S.status, nilaiStok: S.rata }); }
+  const merek = Object.keys(kg).filter((m) => kg[m] > 0).sort((a, b) => kg[b] - kg[a] || a.localeCompare(b)).slice(0, nMerek || 8)
+    .map((m) => ({ merek: m, kg: kg[m], bulan: bulan.map((b) => { const x = per[m] && per[m][b.key]; return x ? { key: b.key, marginKg: x.marginKg, hppKg: x.hppKg, kg: x.kg, status: lpStatusKg(x, T) } : { key: b.key, marginKg: null, hppKg: null, kg: 0, status: null }; }) }));
+  const A = umAtur();
+  return { bulan, merek, target: T, targetStok: { min: A.targetHariMin, maks: A.targetHariMaks, dariOwner: A.dariOwner }, sumber: 'Laporan › Laba (margin %) · Per merek (per kg) · modal tertahan di stok (nilai stok)',
+    rumus: 'Margin % = ÷ omzet bermodal (kartu Margin & mark-up) · per kg = ÷ kg nota bermodal (Laporan › Biaya) · perputaran = modal terjual ÷ rata-rata nilai modal stok, disetahunkan · hari stok = nilai stok ÷ modal terjual per hari' };
+}
 
 // ---------- 8 · omzet hari ini vs target harian ----------
 /** Bagian hari toko yang sudah lewat (jam cincin Ringkasan JAM_BUKA–JAM_TUTUP, WIB perangkat): 0 sebelum buka, 1 sesudah tutup. */

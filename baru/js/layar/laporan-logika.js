@@ -27,7 +27,7 @@ import { cpIsiSurat, cpDaftar } from './stok-catat-logika.js';
 import { bukuOwner } from './owner-toko-logika.js';
 import { pjOmzetSistem, pjGabungRekap, pjTahun, PJ_LABEL } from './pajak-logika.js';
 // owner 7 Okt: daftar harga & harga yang naik untuk pelanggan dibaca dari katalog yang dipakai kasir
-import { hgSemua } from './harga-logika.js';
+import { hgSemua, aturHarga } from './harga-logika.js';
 
 export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['biaya', 'Biaya'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['kuartal', 'Kuartal'], ['pajak', 'Pajak'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['aset', 'Aset tetap'], ['jurnal', 'Jurnal'], ['pondasi', 'Pondasi'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep · Biaya: kendali biaya, putaran 38 (kendali-biaya-logika.js) · Aset tetap & Jurnal: owner 26 Nov 2026 (aset-tetap-logika.js, jurnal-logika.js)
 export const JENIS_LAPORAN = [['labarugi', 'Laba-Rugi'], ['neraca', 'Neraca'], ['aruskas', 'Arus Kas']];
@@ -263,7 +263,7 @@ export const LP_MEREK_ID = 'merekLaporan';
 // paket Susut (owner 26 Nov 2026): ambangSusutPersen = MERAH ("susut tinggi" yang sudah ada), ambangSelidikPersen = KUNING (perlu diselidiki), targetSusutPersen =
 // target se-toko per bulan — null = TERUKUR (susut 3 bulan terakhir yang tercatat, dihitung susut-harga-logika shTarget), angka = ketikan owner.
 export const LP_MEREK_BAWAAN = { ambangSusutPersen: 1, teratas: 10, ambangSelidikPersen: 0.5 };
-export const LP_URUT_MEREK = [['kg', 'kg terjual'], ['margin', 'margin Rp']].map((x) => ({ id: x[0], nama: x[1] }));
+export const LP_URUT_MEREK = [['kg', 'kg terjual'], ['margin', 'margin Rp'], ['omzet', 'omzet Rp'], ['marginKg', 'untung/kg']].map((x) => ({ id: x[0], nama: x[1] }));   // P1 (B7 · A3): omzet Rp & untung per kg
 export const LP_LUAR_MEREK = [['wadah', 'Wadah dijual (karung bekas, kantong)'], ['ongkir', 'Ongkir antar (bukan jualan beras)'], ['darurat', 'Nota darurat yang belum dirinci'], ['tanpaNama', 'Baris tanpa nama merek'], ['bahan', 'Kantong & bahan (cocokkan, nilai karung bekas)']].map((x) => ({ id: x[0], nama: x[1] }));   // B3: ongkir antar
 export const LP_RUMUS_SUSUT = 'Susut % per merek = beras yang hilang (kg) ÷ (beras terjual + beras yang diaduk/ditakar jadi nama jual lain + beras yang hilang) di bulan itu';
 /** Persen untuk layar: di bawah 1% dua angka di belakang koma, selain itu satu; null = '—' (tidak tahu, bukan 0). */
@@ -310,8 +310,8 @@ const lpMerekBaris = (p, P) => (p.jenis === 'wadah' ? { luar: 'wadah' } : p.jeni
 /** Penyaring barisSusutStok (mesin beku) — baris yang masuk "Susut & selisih stok" Laporan; rupiahnya nilaiRp terkunci saat dicatat. */
 const lpSusutMasuk = (x, cocok) => typeof x.nilaiRp === 'number' && isFinite(x.nilaiRp) && x.nilaiRp !== 0 && !!x.tanggal && x.tanggal >= MULAI_SUSUT_LABA && cocok(x.tanggal);
 // paket Susut (owner 26 Nov 2026, A71): alamiKg/alamiRp = bagian selisih dari TIMBANG SAMPEL karung tertutup (bertanda, minus = menyusut); sisanya operasional
-const lpMerekKosong = (merek) => ({ merek, nOngkir: 0, nBaris: 0, kgNota: 0, nKgTakTahu: 0, kgKembali: 0, kgRusak: 0, omzetHitung: 0, hppHitung: 0, adaHitung: false, nTanpaHpp: 0, omzetTanpaHpp: 0, nRetur: 0, returUang: 0, returHpp: 0, nSusut: 0, susutKg: 0, susutRp: 0, naikKg: 0, naikRp: 0, kgDicocok: 0, kgKeluar: 0, kgKeluarDicocok: 0, alamiKg: 0, alamiRp: 0, nSampel: 0, nSampelLama: 0 });
-const LP_JUMLAH_MEREK = ['nOngkir', 'nBaris', 'kgNota', 'nKgTakTahu', 'kgKembali', 'kgRusak', 'omzetHitung', 'hppHitung', 'nTanpaHpp', 'omzetTanpaHpp', 'nRetur', 'returUang', 'returHpp', 'nSusut', 'susutKg', 'susutRp', 'naikKg', 'naikRp', 'kgDicocok', 'kgKeluar', 'kgKeluarDicocok', 'alamiKg', 'alamiRp', 'nSampel', 'nSampelLama'];
+const lpMerekKosong = (merek) => ({ merek, nOngkir: 0, nBaris: 0, kgNota: 0, kgHitung: 0, nKgTakTahu: 0, kgKembali: 0, kgRusak: 0, omzetHitung: 0, hppHitung: 0, adaHitung: false, nTanpaHpp: 0, omzetTanpaHpp: 0, nRetur: 0, returUang: 0, returHpp: 0, nSusut: 0, susutKg: 0, susutRp: 0, naikKg: 0, naikRp: 0, kgDicocok: 0, kgKeluar: 0, kgKeluarDicocok: 0, alamiKg: 0, alamiRp: 0, nSampel: 0, nSampelLama: 0 });
+const LP_JUMLAH_MEREK = ['nOngkir', 'nBaris', 'kgNota', 'kgHitung', 'nKgTakTahu', 'kgKembali', 'kgRusak', 'omzetHitung', 'hppHitung', 'nTanpaHpp', 'omzetTanpaHpp', 'nRetur', 'returUang', 'returHpp', 'nSusut', 'susutKg', 'susutRp', 'naikKg', 'naikRp', 'kgDicocok', 'kgKeluar', 'kgKeluarDicocok', 'alamiKg', 'alamiRp', 'nSampel', 'nSampelLama'];
 /** Angka turunan satu kelompok. Margin = (omzet ber-HPP − uang retur) − (HPP − modal retur utuh); null bila kelompok itu tidak menyumbang apa pun ke margin mesin —
  *  keadaanMargin 'belum' (semua barisnya tanpa modal: "belum bisa dihitung", BUKAN margin 100%) atau 'kosong' (tidak ada jualan maupun retur bulan itu).
  *  Susut % hanya untuk beras, hanya bulan yang susutnya sudah dicatat, dan hanya merek yang PUNYA selisih stok tercatat bulan itu (kgDicocok = beras terjual merek
@@ -331,7 +331,12 @@ function lpJadiMerek(g, dihitung, ambang, kuning) {
   return Object.assign(g, { omzet, hpp, margin, keadaanMargin: margin !== null ? 'ada' : g.nTanpaHpp > 0 ? 'belum' : 'kosong', pct: margin !== null && omzet > 0 ? margin / omzet * 100 : null, kg, kgDicocok, kgKeluarDicocok, susutPct, keadaanSusut, tinggi: susutPct !== null && susutPct > ambang,
     // paket Susut (owner 26 Nov 2026): dua tingkat — kuning = di atas ambang selidik, belum merah (merah = tinggi). Tanpa ambang kuning = tidak pernah kuning
     selidik: susutPct !== null && kuning !== undefined && kuning !== null && susutPct > kuning && !(susutPct > ambang),
-    operasionalKg: g.naikKg - g.susutKg - g.alamiKg, operasionalRp: g.naikRp + g.susutRp - g.alamiRp });
+    operasionalKg: g.naikKg - g.susutKg - g.alamiKg, operasionalRp: g.naikRp + g.susutRp - g.alamiRp,
+    // P1 (owner 27 Nov 2026, A3 · A112 · A130): per kg TERWUJUD (sesudah nego & retur) — dibagi kg nota yang modalnya tercatat (kgHitung), aturan yang SAMA dengan
+    // Laporan › Biaya (pemicuBiaya marginKg = laba kotor ÷ kg nota ber-HPP); null = belum bisa dihitung (tanpa kg bermodal), bukan Rp0.
+    // omzetSemua = omzet penuh kelompok itu (nota bermodal + tanpa modal − uang retur) — urutan "terlaris menurut omzet Rp" (B7).
+    marginKg: margin !== null && g.kgHitung > 0 ? margin / g.kgHitung : null, hppKg: g.kgHitung > 0 ? hpp / g.kgHitung : null, jualKg: g.kgHitung > 0 ? omzet / g.kgHitung : null,
+    omzetSemua: g.omzetHitung + g.omzetTanpaHpp - g.returUang });
 }
 /** Beberapa kelompok jadi satu baris (sisa di luar N teratas, atau "di luar merek"): kolom mentah dijumlah, angka turunan dihitung ulang — margin = Σ margin yang
  *  bisa dihitung (yang null tidak menyumbang apa pun ke mesin); nBelum = berapa yang belum bisa dihitung, nKosong = berapa yang tidak ada jualannya. */
@@ -374,7 +379,7 @@ function kemasRentangHitung(awal, akhir) {
 /** Satu baris nota masuk kelompok mereknya — pola merekBulan, dipakai merekRentang: ongkir antar dipisah ke kelompok luar 'ongkir' (HPP 0). */
 function lpNotaKeMerek(p, g, luar) {
   g.nBaris += 1; g.kgNota += Number(p.totalKg) || 0; const ongkos = Math.round(Number(p.ongkirAntar) || 0); const harga = (p.hargaTotal || 0) - ongkos; const tercatat = hppTercatat(p);
-  if (tercatat) { g.adaHitung = true; g.omzetHitung += harga; g.hppHitung += p.hppTotalSaatJual || 0; } else { g.nTanpaHpp += 1; g.omzetTanpaHpp += harga; }
+  if (tercatat) { g.adaHitung = true; g.omzetHitung += harga; g.hppHitung += p.hppTotalSaatJual || 0; g.kgHitung += Number(p.totalKg) || 0; } else { g.nTanpaHpp += 1; g.omzetTanpaHpp += harga; }
   if (!ongkos) return; const o = luar.ongkir; o.nOngkir = o.nOngkir + 1;
   if (tercatat) { o.adaHitung = true; o.omzetHitung += ongkos; } else { o.nTanpaHpp += 1; o.omzetTanpaHpp += ongkos; }
 }
@@ -410,7 +415,7 @@ function lpKumpulMerek(awal, akhir, P) {
   // barangnya tanpa ongkir. Jumlah semua kelompok tetap = mesin laba (tidak ada rupiah yang hilang / bertambah).
   ambilPenjualan().forEach((p) => { if (!cocok(p.tanggal)) return; const g = ke(lpMerekBaris(p, P)); const kg = Number(p.totalKg) || 0; g.nBaris += 1; g.kgNota += kg; if (p.totalKg === undefined || p.totalKg === null) g.nKgTakTahu += 1;
     const ong = Math.round(Number(p.ongkirAntar) || 0); const harga = (p.hargaTotal || 0) - ong; const tercatat = hppTercatat(p);
-    if (tercatat) { g.adaHitung = true; g.omzetHitung += harga; g.hppHitung += p.hppTotalSaatJual || 0; } else { g.nTanpaHpp += 1; g.omzetTanpaHpp += harga; }
+    if (tercatat) { g.adaHitung = true; g.omzetHitung += harga; g.hppHitung += p.hppTotalSaatJual || 0; g.kgHitung += Number(p.totalKg) || 0; } else { g.nTanpaHpp += 1; g.omzetTanpaHpp += harga; }
     if (ong) { const o = luar.ongkir; o.nOngkir += 1; if (tercatat) { o.adaHitung = true; o.omzetHitung += ong; } else { o.nTanpaHpp += 1; o.omzetTanpaHpp += ong; } } });
   // retur rentang itu — uang kembali memotong omzet (uangKembaliRetur), modal dibatalkan HANYA yang utuh (hppTaksiranRetur atas buku stok sekarang — ingatStokKarung /
   // ingatStokKemasan = hitungStokKarungPerMerk / hitungStokKemasan tanpa batas tanggal, diingat per versi data: angka sama dengan mesin, tidak dihitung dua kali)
@@ -501,19 +506,100 @@ export function merekBulan(key, kini, bayaran) {
     tanpaCatatan: !semua.length });
 }
 const lpUrutMargin = (a, b) => (a.margin === null ? (b.margin === null ? 0 : 1) : b.margin === null ? -1 : b.margin - a.margin);
+/** Besar dulu; null (belum bisa dihitung) paling bawah — untung per kg (P1). */
+const lpUrutNull = (x, y) => (x === null ? (y === null ? 0 : 1) : y === null ? -1 : y - x);
 /** Barang teratas: merek diurut per kg terjual (bawaan) atau per margin Rp (yang belum bisa dihitung paling bawah), N teratas dirinci, sisanya SATU baris gabungan,
  *  lalu di luar merek. tergambar = Σ margin yang DIGAMBAR (dibulatkan seperti di layar) → menutup hanya bila = laba kotor Laporan dan penjaga merekBulan menutup. */
 export function merekTeratas(M, urut, n) {
-  const by = urut === 'margin' ? 'margin' : 'kg'; const N = n || (M && M.atur ? M.atur.teratas : LP_MEREK_BAWAAN.teratas);
+  const by = LP_URUT_MEREK.some((u) => u.id === urut) ? urut : 'kg'; const N = n || (M && M.atur ? M.atur.teratas : LP_MEREK_BAWAAN.teratas);
   if (!M || M.diarsip) return { urut: by, n: N, daftar: [], sisa: null, luar: null, baris: [], lebar: [], tergambar: null, menutup: null };
-  const cmp = (a, b) => (by === 'kg' ? b.kg - a.kg || lpUrutMargin(a, b) : lpUrutMargin(a, b) || b.kg - a.kg) || a.merek.localeCompare(b.merek);
+  const cmp = (a, b) => (by === 'kg' ? b.kg - a.kg || lpUrutMargin(a, b) : by === 'omzet' ? b.omzetSemua - a.omzetSemua || b.kg - a.kg : by === 'marginKg' ? lpUrutNull(a.marginKg, b.marginKg) || b.kg - a.kg : lpUrutMargin(a, b) || b.kg - a.kg) || a.merek.localeCompare(b.merek);
   const urutan = M.merek.slice().sort(cmp); const daftar = urutan.slice(0, N); const lain = urutan.slice(N);
   const sisa = lain.length ? lpGabungMerek(lain, 'Sisa ' + lain.length + ' merek', M.dihitung, M.atur.ambangSusutPersen, false, M.atur.ambangSelidikPersen) : null;
   const baris = daftar.concat(sisa ? [sisa] : [], M.luar ? [M.luar] : []); const tergambar = baris.reduce((a, g) => a + Math.round(g.margin || 0), 0);
   // lebar pita per baris (0–100, hanya gambar): ukuran urutan yang sedang dipakai dibanding baris merek terbesar; di luar merek tanpa pita
-  const ukur = (g) => (by === 'kg' ? g.kg : g.margin || 0); const maks = Math.max(1, ...daftar.concat(sisa ? [sisa] : []).map((g) => Math.abs(ukur(g))));
+  const ukur = (g) => (by === 'kg' ? g.kg : by === 'omzet' ? g.omzetSemua : by === 'marginKg' ? g.marginKg || 0 : g.margin || 0); const maks = Math.max(1, ...daftar.concat(sisa ? [sisa] : []).map((g) => Math.abs(ukur(g))));
   const lebar = baris.map((g) => (g.luar ? null : Math.round(Math.max(0, ukur(g)) / maks * 1000) / 10));
   return { urut: by, n: N, daftar, sisa, luar: M.luar, baris, lebar, tergambar, menutup: !!M.menutup && tergambar === Math.round(M.L.margin) };
+}
+
+// ==================== P1 · PER KG, PER MINGGU & TERLARIS (owner 27 Nov 2026, sensus ulang 27 Nov: A3 · A112 · A130 · B6 · B7 · B133) ====================
+// TANPA rumus uang baru: semua dari merekRentang (nota & retur rentang itu, modal TERSIMPAN di nota — pengumpul & peta merek yang sama dengan Per merek) dan
+// lpHariRentang (penjaga: Σ kelompok = omzet & laba kotor mesin rentang itu, persis sampai rupiah). Per kg = ÷ kg nota bermodal (lpJadiMerek marginKg — aturan
+// Laporan › Biaya). Target untung per kg = setelan Harga › Atur (aturHarga().targetPerKg; belum diketik owner = rata-rata untung katalog karung, targetTerukur).
+// Minggu = Senin–Minggu (Laporan › Mingguan). Minggu yang masih berjalan dibanding minggu lalu SAMPAI HARI YANG SAMA (Senin s.d. hari ini vs Senin s.d. hari itu
+// minggu lalu) — kalau tidak, minggu berjalan selalu terlihat turun.
+/** Target untung per kg (A3): { rp, dariOwner, teks }. */
+export function lpTargetKg() {
+  const A = aturHarga(); const rp = Number(A.targetPerKg) || 0;
+  return { rp, dariOwner: !A.targetDariRata, teks: rp > 0 ? RP(rp) + '/kg' + (A.targetDariRata ? ' (bawaan: rata-rata untung katalog karung)' : ' (setelan owner di Harga › Atur)') : 'belum ada — atur di Harga › Atur' };
+}
+/** Satu kelompok dibanding target untung per kg: 'bawah' · 'capai' · null (belum bisa dihitung / target belum ada). Di bawah = TEGAS < target. */
+export const lpStatusKg = (g, T) => (!g || g.marginKg === null || g.marginKg === undefined || !(T && T.rp > 0) ? null : g.marginKg < T.rp ? 'bawah' : 'capai');
+/** Per kg se-toko dari daftar kelompok (merek + di luar merek): Σ laba kotor ÷ Σ kg nota bermodal — sama dengan Laporan › Biaya untuk bulan penuh. */
+export function lpRingkasKg(daftar, T) {
+  const d = (daftar || []).filter(Boolean); const kg = d.reduce((a, g) => a + (g.kgHitung || 0), 0); const m = d.reduce((a, g) => a + (g.margin || 0), 0);
+  const hpp = d.reduce((a, g) => a + (g.kgHitung > 0 ? g.hpp || 0 : 0), 0); const om = d.reduce((a, g) => a + (g.kgHitung > 0 ? g.omzet || 0 : 0), 0);
+  const beras = d.filter((g) => !g.luar && !g.gabungan); const bawah = beras.filter((g) => lpStatusKg(g, T) === 'bawah').sort((a, b) => a.marginKg - b.marginKg || a.merek.localeCompare(b.merek));
+  return { kgHitung: kg, marginKg: kg > 0 ? m / kg : null, hppKg: kg > 0 ? hpp / kg : null, jualKg: kg > 0 ? om / kg : null, target: T || null,
+    bawah: bawah.map((g) => ({ merek: g.merek, marginKg: g.marginKg, kg: g.kgHitung })), nBawah: bawah.length, nCapai: beras.filter((g) => lpStatusKg(g, T) === 'capai').length,
+    nTanpa: beras.filter((g) => g.marginKg === null && (g.nBaris || g.nRetur)).length };
+}
+/** Penjaga rentang: Σ semua kelompok merekRentang = omzet penuh & laba kotor mesin (lpHariRentang) — kalau meleset, angkanya jangan dipakai memutuskan. */
+function lpJagaRentang(R, dari, sampai) {
+  const H = lpHariRentang(dari, sampai); const om = R.semua.omzetSemua; const mg = R.semua.margin === null ? 0 : R.semua.margin;
+  const menutup = Math.abs(om - H.omzetPenuh) < 0.5 && Math.abs(mg - H.margin) < 0.5;
+  return { menutup, omzet: H.omzetPenuh, margin: H.margin, kalimat: menutup ? 'Σ per merek + di luar merek = omzet ' + RP(H.omzetPenuh) + ' & laba kotor ' + RP(H.margin) + ' mesin — menutup persis sampai rupiah.'
+    : 'TIDAK MENUTUP: per merek omzet ' + RP(om) + ' / laba kotor ' + RP(mg) + ' ≠ mesin ' + RP(H.omzetPenuh) + ' / ' + RP(H.margin) + '. Angka per merek jangan dipakai memutuskan — laporkan.' };
+}
+const lpUrutOmzet = (a, b) => b.omzetSemua - a.omzetSemua || b.kg - a.kg || a.merek.localeCompare(b.merek);
+const lpBarisKg = (g, T, total) => ({ merek: g.merek, omzet: g.omzetSemua, kg: g.kg, margin: g.margin, marginKg: g.marginKg, hppKg: g.hppKg, jualKg: g.jualKg, kgHitung: g.kgHitung,
+  porsi: total > 0 ? g.omzetSemua / total * 100 : null, status: lpStatusKg(g, T), nTanpaHpp: g.nTanpaHpp, omzetTanpaHpp: g.omzetTanpaHpp });
+/**
+ * TERLARIS menurut OMZET Rp untuk rentang tanggal bebas (B7): merek diurut omzet penuh (nota bermodal + tanpa modal − retur), N teratas dirinci (kg, laba kotor,
+ * untung & HPP per kg, porsi omzet, keadaan vs target untung per kg), sisanya satu baris, lalu di luar merek (wadah, ongkir, karcis belum dirinci). Σ = omzet mesin.
+ */
+export function lpTerlaris(dari, sampai, n) {
+  const a = String(dari), b = String(sampai); const R = merekRentang(a, b); const N = n || 10; const T = lpTargetKg();
+  if (R.arsip) return { dari: a, sampai: b, diarsip: true, daftar: [], sisa: null, luar: 0, total: null, target: T, menutup: null, n: 0, kalimat: 'Rentang ini menyentuh tahun yang sudah ditutup buku — notanya ikut arsip, urutan terlaris tidak bisa disusun.' };
+  const merek = Object.keys(R.merek).map((k) => R.merek[k]).filter((g) => g.nBaris || g.nRetur).sort(lpUrutOmzet); const total = R.semua.omzetSemua;
+  const lain = merek.slice(N); const sumOm = (d) => d.reduce((x, g) => x + g.omzetSemua, 0); const J = lpJagaRentang(R, a, b);
+  return { dari: a, sampai: b, diarsip: false, n: merek.length, daftar: merek.slice(0, N).map((g) => lpBarisKg(g, T, total)), total, target: T,
+    sisa: lain.length ? { n: lain.length, omzet: sumOm(lain), kg: lain.reduce((x, g) => x + g.kg, 0), porsi: total > 0 ? sumOm(lain) / total * 100 : null } : null,
+    luar: total - sumOm(merek), menutup: J.menutup, kalimat: J.kalimat,
+    toko: { marginKg: R.semua.marginKg, hppKg: R.semua.hppKg, jualKg: R.semua.jualKg, margin: R.semua.margin, kg: R.semua.kg, nBawah: merek.filter((g) => lpStatusKg(g, T) === 'bawah').length } };
+}
+/**
+ * TREN PER MEREK PER MINGGU (B6 · B133 · A130 · A112): minggu `awal` (Senin) — omzet, laba kotor, kg, untung & HPP per kg tiap merek, dibanding minggu lalu (minggu
+ * berjalan: sampai hari yang sama), + deret N minggu (bawaan 8) omzet per merek & per kg se-toko. Merek yang minggu ini kosong tapi minggu lalu laku tetap tampil
+ * (turun ke Rp0). Minggu di tahun yang ditutup buku = diarsip (disebut, bukan Rp0).
+ */
+export function lpMerekMinggu(awal, kini, n) {
+  const iso = hariIniIso(kini); const N = Math.max(2, Math.min(12, n || 8)); const a = lpSenin(String(awal)); const akhir = ugTambahHari(a, 6); const berjalan = akhir >= iso; const sampai = berjalan ? iso : akhir;
+  const aL = ugTambahHari(a, -7); const sL = ugTambahHari(sampai, -7); const T = lpTargetKg(); const p = lpPertama();
+  const minggu = []; for (let i = N - 1; i >= 0; i--) { const wa = ugTambahHari(a, -7 * i); const wb0 = ugTambahHari(wa, 6); const wb = wb0 > iso ? iso : wb0; const R = wa > iso ? null : merekRentang(wa, wb);
+    minggu.push({ awal: wa, akhir: wb0, sampai: wb, label: tanggalPendek(wa).replace(/ \d{4}$/, ''), berjalan: wb0 >= iso, sebelum: !!p && wb0 < p, arsip: !!(R && R.arsip), R }); }
+  const dasar = { awal: a, akhir, sampai, berjalan, label: tanggalPendek(a) + ' – ' + tanggalPendek(akhir), laluDari: aL, laluSampai: sL, target: T,
+    bandingTeks: berjalan ? 'dibanding ' + tanggalPendek(aL).replace(/ \d{4}$/, '') + ' – ' + tanggalPendek(sL).replace(/ \d{4}$/, '') + ' (minggu lalu sampai hari yang sama)' : 'dibanding minggu sebelumnya ' + tanggalPendek(aL).replace(/ \d{4}$/, '') + ' – ' + tanggalPendek(sL).replace(/ \d{4}$/, '') };
+  const I = merekRentang(a, sampai); const L = merekRentang(aL, sL);
+  const deretToko = minggu.map((w) => ({ awal: w.awal, label: w.label, berjalan: w.berjalan, sebelum: w.sebelum, arsip: w.arsip,
+    omzet: !w.R || w.arsip ? null : w.R.semua.omzetSemua, margin: !w.R || w.arsip ? null : w.R.semua.margin, marginKg: !w.R || w.arsip ? null : w.R.semua.marginKg, hppKg: !w.R || w.arsip ? null : w.R.semua.hppKg }));
+  if (I.arsip) return Object.assign(dasar, { diarsip: true, merek: [], toko: null, deret: deretToko, minggu: minggu.map((w) => ({ awal: w.awal, label: w.label, berjalan: w.berjalan })), menutup: null, kalimat: 'Minggu ini menyentuh tahun yang sudah ditutup buku — notanya ikut arsip.' });
+  const nama = {}; Object.keys(I.merek).concat(L.arsip ? [] : Object.keys(L.merek)).forEach((m) => { nama[m] = 1; });
+  const pct = (x, y) => (y > 0 ? (x - y) / y * 100 : null);
+  const merek = Object.keys(nama).map((m) => { const x = I.merek[m] || null; const y = L.arsip ? null : L.merek[m] || null; const ini = x ? lpBarisKg(x, T, I.semua.omzetSemua) : null; const lalu = y ? lpBarisKg(y, T, L.semua.omzetSemua) : null;
+    const om = ini ? ini.omzet : 0, omL = lalu ? lalu.omzet : 0;
+    return { merek: m, ini, lalu, omzet: om, omzetLalu: omL, omzetPct: lalu ? pct(om, omL) : null, baru: !lalu && om > 0, hilang: !ini && omL > 0,
+      marginKgBeda: ini && lalu && ini.marginKg !== null && lalu.marginKg !== null ? ini.marginKg - lalu.marginKg : null, status: ini ? ini.status : null,
+      deret: minggu.map((w) => (!w.R || w.arsip ? null : w.R.merek[m] ? w.R.merek[m].omzetSemua : 0)) }; })
+    .filter((g) => (g.ini && (g.ini.omzet || g.ini.kg)) || (g.lalu && (g.lalu.omzet || g.lalu.kg)))
+    .sort((x, y) => y.omzet - x.omzet || y.omzetLalu - x.omzetLalu || x.merek.localeCompare(y.merek));
+  const J = lpJagaRentang(I, a, sampai); const S = I.semua, SL = L.arsip ? null : L.semua;
+  const toko = { omzet: S.omzetSemua, margin: S.margin, kg: S.kg, marginKg: S.marginKg, hppKg: S.hppKg, jualKg: S.jualKg, omzetLalu: SL ? SL.omzetSemua : null, omzetPct: SL ? pct(S.omzetSemua, SL.omzetSemua) : null,
+    marginKgLalu: SL ? SL.marginKg : null, hppKgLalu: SL ? SL.hppKg : null, marginKgBeda: SL && S.marginKg !== null && SL.marginKg !== null ? S.marginKg - SL.marginKg : null,
+    hppKgBeda: SL && S.hppKg !== null && SL.hppKg !== null ? S.hppKg - SL.hppKg : null, nBawah: merek.filter((g) => g.status === 'bawah').length };
+  return Object.assign(dasar, { diarsip: false, laluArsip: !!L.arsip, merek, toko, deret: deretToko, minggu: minggu.map((w) => ({ awal: w.awal, label: w.label, berjalan: w.berjalan, sebelum: w.sebelum, arsip: w.arsip })),
+    naik: merek.filter((g) => g.omzetPct !== null && g.omzetPct > 0).length, turun: merek.filter((g) => (g.omzetPct !== null && g.omzetPct < 0) || g.hilang).length, menutup: J.menutup, kalimat: J.kalimat });
 }
 
 // ==================== PER JENIS · laba kotor & margin % karung · kemasan · literan · repack (paket KPI laba, owner 24 Nov 2026, butir 1) ====================

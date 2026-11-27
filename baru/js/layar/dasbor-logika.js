@@ -63,6 +63,11 @@ import { shTrenBeli, shPembelian, SH_RENTANG_BELI } from './susut-harga-logika.j
 import { pnPerkiraanTelat } from './bon-logika.js';
 import { rwTerbesar } from './riwayat-logika.js';
 import { ckHppLewat } from './stok-catat-logika.js';
+// P1 (owner 27 Nov 2026: A3 A112 A114 A115 A116 B6 B7) — APA ADANYA dari fungsi sumber: untung per kg bulan (kpi-laba klKgBulan), stok dalam rupiah (klStokRp),
+// terlaris & tren per merek per minggu (laporan-logika lpTerlaris / lpMerekMinggu), lama piutang (bon-logika pnDso)
+import { klKgBulan, klStokRp } from './kpi-laba-logika.js';
+import { lpTerlaris, lpMerekMinggu, lpSenin } from './laporan-logika.js';
+import { pnDso } from './bon-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
@@ -229,6 +234,7 @@ export function dbKpi(kini, SR) {
     nota: aman(() => (sar ? Object.assign({ rentang: 'saring', judul: SR.nama }, rwTerbesar(SR.dari, SR.sampai, 3)) : Object.assign({ judul: 'hari ini' }, klNotaTerbesar('hari', kini, 3)))),
     hpp: aman(() => (sar ? Object.assign({ key, nama: SR.nama }, ckHppLewat(SR.dari, SR.sampai)) : klHppLewatBulan(key))), pesanan: aman(() => klLamaPesanan(kini)),
     modal: aman(() => (sar ? klModalTertahan(kini, SR.dari, SR.sampai) : klModalTertahan(kini, iso.slice(0, 8) + '01', iso))), saring: sar ? SR.nama : '',
+    kg: aman(() => klKgBulan(key, kini)),   // P1 A112: untung per kg bulan (kartu Margin & target — baris tetap, keputusan owner 27 Nov 2026)
     // paket tanggal janji (owner 27 Nov 2026): tepat janji = 90 hari terakhir sampai sekarang (tidak ikut saringan — rinciannya di Laporan › Pondasi)
     janji: aman(() => jnRingkas(kini)) };
 }
@@ -468,4 +474,17 @@ export const DB_TAMBAHAN = ['banding', 'stokMin', 'enam'];
 export const dbKunciTambahan = (n, kini) => (n === 'banding' ? 'banding|' + Math.floor((kini.getHours() * 60 + kini.getMinutes()) / 5) : n);
 /** Hasil susunDasbor + kelompok paket sensus (banding · stokMin · enam), diambil dari ingatan yang sama — dipanggil sesudah tiap susunDasbor (ganti rentang:
  *  susunDasbor membuat objek baru dari hasil lama; kelompok tambahan diingat, jadi tidak dihitung ulang). */
-export function dbTambahan(hasil, kini, ingat) { const H = hasil || {}; DB_TAMBAHAN.forEach((n) => { H[n] = dbKelompok(n, kini, null, ingat); }); return H; }
+export function dbTambahan(hasil, kini, ingat) { const H = hasil || {}; DB_TAMBAHAN.forEach((n) => { H[n] = dbKelompok(n, kini, null, ingat, H.saring || null); }); return H; }   // P1: saringan ikut (hanya kelompok DB_IKUT_SARING yang membacanya)
+
+/**
+ * P1 · PER KG & PER MINGGU (owner 27 Nov 2026; keputusan: kartu & angkanya lewat "+ Tambah kartu", untung per kg = baris tetap di Margin & target). Kelompok tambahan
+ * yang IKUT saringan: terlaris & stok dalam rupiah = rentang saringan (bawaan Hari ini = bulan ini sampai hari ini, seperti modal tertahan); tren per merek = 4 minggu
+ * terakhir (rentangnya sendiri); lama piutang = sekarang vs akhir minggu lalu. Semua APA ADANYA dari fungsi sumber Laporan / Pelanggan.
+ */
+export function dbKg(kini, SR) {
+  const iso = hariIniIso(kini); const sar = !!(SR && !SR.bawaan); const dari = sar ? SR.dari : iso.slice(0, 8) + '01'; const sampai = sar ? SR.sampai : iso; const nama = sar ? SR.nama : 'Bulan ini';
+  const aman = (f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor per kg', e); return { galat: String((e && e.message) || e) }; } };
+  return { periode: nama + (dari !== sampai ? ' · ' + dbTglPendek(dari) + ' – ' + dbTglPendek(sampai) : ''), periodeNama: nama, sumber: 'Laporan › Mingguan · Per merek', tujuan: { ke: 'laporan', keluarga: 'mingguan' },
+    terlaris: aman(() => lpTerlaris(dari, sampai, 5)), stok: aman(() => klStokRp(kini, dari, sampai)), tren: aman(() => lpMerekMinggu(lpSenin(iso), kini, 4)), dso: aman(() => pnDso(kini, 2)), saring: sar ? SR.nama : '' };
+}
+DB_KELOMPOK.kg = ['per kg & minggu', dbKg]; DB_IKUT_SARING.push('kg'); DB_TAMBAHAN.push('kg'); DB_PANAS.push('kg');
