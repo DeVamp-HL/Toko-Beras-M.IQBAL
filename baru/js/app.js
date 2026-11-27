@@ -31,6 +31,9 @@ import { khSumberPengingat } from './layar/kas-rekening-logika.js';
 import { ptSumberPengingat } from './layar/patuh-logika.js';
 import { gdSumberPengingat } from './layar/gudang-logika.js';
 import { lbSumberPengingat } from './layar/label-logika.js';
+// paket P3 (owner 27 Nov 2026, sensus A4): peringatan uang (biaya lewat anggaran, susut merah, modal lewat batas, harga di bawah minimum, untung per kg di bawah target,
+// kas di bawah ambang) → Pengingat (lokal.peringatan) & lonceng — owner saja
+import { pwSumberPengingat } from './layar/peringatan-logika.js';
 import { ssPengingat } from './layar/sistem-logika.js';
 import { nanti, setelMuat } from './inti/jadwal.js';
 import { pasangGerbang } from './inti/gerbang.js';
@@ -287,11 +290,13 @@ function sumberGudang() { const a = akunKini(); if (!a || !(a.jenis === 'owner' 
   try { gdSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat stok minus', e); }
   try { lbSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat kemasan', e); }
   return out; }
+function sumberPeringatan() { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pwSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat peringatan uang', e); return []; } }   // paket P3: angka uang = owner saja
 // Lonceng: pengingat TIGA jenis paket ini yang sudah jatuh (lewat & hari ini), untuk orang yang diingatkan (Atur pengingat › ke) — owner melihat semuanya.
 const LC_JENIS = ['patuh', 'kemasan', 'minus'];
+LC_JENIS.push('anggaran', 'susut', 'hpp', 'harga', 'untungKg', 'kas');   // paket P3 (owner 27 Nov 2026): peringatan uang ikut berbunyi di lonceng (owner saja — sumbernya hanya dihitung untuk owner)
 function pengingatLonceng(a) {
   if (!a || !(a.jenis === 'owner' || a.jenis === 'aktif')) return []; const k = sekarangCadangan || new Date(); const nama = String(a.nama || '').trim().split(/\s+/)[0].toLowerCase();
-  try { return ingatPerVersi('lcPengingat|' + k.toISOString().slice(0, 10) + '|' + (a.uid || ''), () => ssPengingat(k, { patuh: sumberPatuh(), gudang: sumberGudang() }).aktif
+  try { return ingatPerVersi('lcPengingat|' + k.toISOString().slice(0, 10) + '|' + (a.uid || ''), () => ssPengingat(k, { peringatan: sumberPeringatan(), patuh: sumberPatuh(), gudang: sumberGudang() }).aktif
     .filter((p) => LC_JENIS.indexOf(p.jenis) >= 0 && p.sisa <= 0 && (a.jenis === 'owner' || (p.ke || []).some((n) => String(n || '').trim().split(/\s+/)[0].toLowerCase() === nama)))
     .map((p) => ({ id: p.id, jenis: p.jenis, teks: p.teks, ket: p.ket || '', sisaTeks: p.sisaTeks, jatuh: p.jatuhEfektif || p.jatuh }))); } catch (e) { console.error('lonceng pengingat', e); return []; }
 }
@@ -301,7 +306,7 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { lonceng: pi
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
     pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })(),
     uang: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return khSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat uang', e); return []; } })(),
-    patuh: sumberPatuh(), gudang: sumberGudang() }),   // putaran 24: pengingat pajak, owner saja · 26 Nov 2026: kalender kepatuhan (owner & Penjaga laci), kemasan & buku minus (semua)
+    peringatan: sumberPeringatan(), patuh: sumberPatuh(), gudang: sumberGudang() }),   // putaran 24: pengingat pajak, owner saja · 26 Nov 2026: kalender kepatuhan (owner & Penjaga laci), kemasan & buku minus (semua)
   periksaSambungan: () => fb.periksaSambungan(4000), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n),
   akun: akunKini, statusUang: () => statusFb.uang, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah),
   // hemat baca (owner 7 Okt 2026): Menu › Toko ini › Perangkat & antrean › Hemat baca — keadaan, daftar siap-nyala, saklar perangkat ini, tombol baca penuh

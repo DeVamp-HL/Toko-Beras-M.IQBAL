@@ -68,8 +68,15 @@ import { ckHppLewat } from './stok-catat-logika.js';
 import { klKgBulan, klStokRp } from './kpi-laba-logika.js';
 import { lpTerlaris, lpMerekMinggu, lpSenin } from './laporan-logika.js';
 import { pnDso } from './bon-logika.js';
+// P3 (owner 27 Nov 2026: A4 B44 B48 B67 B97 B98 B104 B129) — APA ADANYA dari fungsi sumber: peringatan uang = sumber lonceng (peringatan-logika pwRingkas), modal diam & umur
+// stok rupiah (kpi-laba klModalDiam = rumus nilai A121), pesanan pemasok menunggu (gudang-logika gdPesananPemasok), kop cetak (laporan-logika identitasUsaha)
+import { pwRingkas } from './peringatan-logika.js';
+import { klModalDiam } from './kpi-laba-logika.js';
+import { gdPesananPemasok } from './gudang-logika.js';
+import { identitasUsaha } from './laporan-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
+DB_RENTANG.push(['tahun', 'Tahun']);   // P3 B98 (owner 27 Nov 2026): 12 batang bulanan
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
 // urutan status bon pelanggan di dasbor: yang paling mendesak dulu; tiga yang pertama = "jatuh tempo" (aturan tagih/macet di Pelanggan › Atur)
 const DB_STATUS_BON = ['janjiLewat', 'macet', 'perluTagih', 'menunggu', 'baru'];
@@ -120,6 +127,8 @@ export function dbBulanIni(kini, SR) {
     ambangPemicu: P.ambang, pendekLalu: P.pendekLalu, nPemicu: P.baris.filter((r) => r.n !== null).length,
     // A47 (owner 27 Nov 2026): PPh final (perkiraan) = pos anggaran sendiri — di luar "Semua biaya", laba bersih & titik impas (klPph apa adanya)
     pph: dbCoba(() => klPph(K, kini)), judul: key === hariIniIso(kini).slice(0, 7) ? 'Bulan ini' : K.nama,
+    // P3 A4 (owner 27 Nov 2026): DAFTAR peringatanBiaya (Laporan › Biaya) apa adanya — yang bengkak, belum dicatat, atau belum lengkap; tiap baris menunjuk pintunya
+    peringatan: W.map((w) => ({ id: w.id, teks: w.teks, tingkat: w.tingkat, tujuan: w.tujuan || { ke: 'laporan', keluarga: 'biaya', bulan: key } })),
   };
 }
 
@@ -177,23 +186,34 @@ export function dbTagihan(kini) {
 }
 
 /** TREN omzet & laba kotor per hari (14) · minggu (8) · bulan (6) — rentang yang SAMA dengan pemilih Laporan › Harian / Mingguan / Bulanan, jadi tiap batang
- *  bisa dibuka di sana. Omzet & nota dari daftar Laporan, laba kotor dari mesin laba yang sama. */
-export function dbTren(rentang, kini) {
-  const iso = hariIniIso(kini); const pertama = lpPertama();
+ *  bisa dibuka di sana. Omzet & nota dari daftar Laporan, laba kotor dari mesin laba yang sama.
+ *  P3 B98 (owner 27 Nov 2026: "12 bulan + tombol geser"): + 'tahun' = 12 batang bulanan; GESER g = mundur g jendela (14 hari · 8 minggu · 6 bulan · 12 bulan) — rentang
+ *  ditulis 'bulan@2' (dari pita Dasbor). Geser 0 = persis seperti dulu. Batang "berjalan" = yang memuat hari ini. Tidak bisa mundur melewati catatan pertama. */
+export function dbTren(rentang, kini, geser) {
+  const R0 = String(rentang || 'hari').split('@'); rentang = R0[0]; const g = Math.max(0, Math.min(DB_GESER_MAKS, parseInt(geser !== undefined && geser !== null ? geser : R0[1], 10) || 0));
+  const iso = hariIniIso(kini); const pertama = lpPertama(); const key = iso.slice(0, 7);
+  const kiniG = !g ? kini : new Date((rentang === 'minggu' ? ugTambahHari(iso, -56 * g) : rentang === 'bulan' ? akhirBulanIso(dbBulanGeser(key, -6 * g)) : rentang === 'tahun' ? akhirBulanIso(dbBulanGeser(key, -12 * g)) : ugTambahHari(iso, -14 * g)) + 'T12:00:00');
   const satu = (dari, sampai, x) => { const L = lpHariRentang(dari, sampai); return Object.assign({ omzet: L.omzetPenuh, margin: L.margin, tanpaHpp: L.jumlahTanpaHpp, retur: L.returUang, nota: L.nota }, L.tanpaPotret ? { tanpaPotret: L.tanpaPotret } : {}, x); };
+  const perBulan = (n) => daftarBulan(kiniG, n).reverse().map((b) => satu(b.key + '-01', akhirBulanIso(b.key), { id: b.key, label: b.pendek, panjang: b.nama, berjalan: b.key === key, absen: false, tujuan: { ke: 'laporan', keluarga: 'bulanan', bulan: b.key } }));
   let batang;
-  if (rentang === 'minggu') batang = daftarMinggu(kini, 8).reverse().map((m) => satu(m.awal, m.akhir, { id: m.awal, label: m.pendek, panjang: 'Minggu ' + m.label, berjalan: m.berjalan, absen: false, tujuan: { ke: 'laporan', keluarga: 'mingguan', awal: m.awal } }));
-  else if (rentang === 'bulan') batang = daftarBulan(kini, 6).reverse().map((b) => satu(b.key + '-01', akhirBulanIso(b.key), { id: b.key, label: b.pendek, panjang: b.nama, berjalan: b.berjalan, absen: false, tujuan: { ke: 'laporan', keluarga: 'bulanan', bulan: b.key } }));
+  if (rentang === 'minggu') batang = daftarMinggu(kiniG, 8).reverse().map((m) => satu(m.awal, m.akhir, { id: m.awal, label: m.pendek, panjang: 'Minggu ' + m.label, berjalan: m.awal <= iso && m.akhir >= iso, absen: false, tujuan: { ke: 'laporan', keluarga: 'mingguan', awal: m.awal } }));
+  else if (rentang === 'bulan') batang = perBulan(6);
+  else if (rentang === 'tahun') batang = perBulan(12);
   else {
     rentang = 'hari';
-    batang = hariTerakhir(kini, 14).reverse().map((d) => { const absen = !pertama || d.iso < pertama || !!d.tanpaPotret;   // Paket B: hari tahun yang ditutup tanpa potret = tidak ada angka
-      const x = satu(d.iso, d.iso, { id: d.iso, label: String(Number(d.iso.slice(8, 10))), panjang: tanggalPendek(d.iso) + (d.hariIni ? ' · hari ini' : ''), berjalan: d.hariIni, absen, tujuan: { ke: 'laporan', keluarga: 'harian', hari: d.iso } });
+    batang = hariTerakhir(kiniG, 14).reverse().map((d) => { const absen = !pertama || d.iso < pertama || !!d.tanpaPotret;   // Paket B: hari tahun yang ditutup tanpa potret = tidak ada angka
+      const x = satu(d.iso, d.iso, { id: d.iso, label: String(Number(d.iso.slice(8, 10))), panjang: tanggalPendek(d.iso) + (d.iso === iso ? ' · hari ini' : ''), berjalan: d.iso === iso, absen, tujuan: { ke: 'laporan', keluarga: 'harian', hari: d.iso } });
       x.omzetDaftar = d.omzet; x.notaDaftar = d.n; return x; });
   }
   const nama = DB_RENTANG.find((r) => r[0] === rentang)[1];
-  return { rentang, batang, maks: Math.max(1, ...batang.map((b) => Math.max(b.omzet, 0))), periode: rentang === 'hari' ? '14 hari terakhir' : rentang === 'minggu' ? batang.length + ' minggu terakhir (Senin–Minggu)' : batang.length + ' bulan terakhir',
-    sumber: 'Laporan › ' + (rentang === 'hari' ? 'Harian' : rentang === 'minggu' ? 'Mingguan' : 'Bulanan'), nama, hariIni: iso };
+  const awalBatang = (b) => (!b ? '' : rentang === 'bulan' || rentang === 'tahun' ? b.id + '-01' : b.id); const a0 = awalBatang(batang[0]);
+  const rentangTeks = batang.length ? (rentang === 'hari' ? dbTglPendek(batang[0].id) + ' – ' + dbTglPendek(batang[batang.length - 1].id) : batang[0].label + ' – ' + batang[batang.length - 1].label) : '';
+  const periode = g ? rentangTeks + ' · mundur ' + g + '×' : rentang === 'hari' ? '14 hari terakhir' : rentang === 'minggu' ? batang.length + ' minggu terakhir (Senin–Minggu)' : batang.length + ' bulan terakhir';
+  return { rentang, batang, maks: Math.max(1, ...batang.map((b) => Math.max(b.omzet, 0))), periode,
+    sumber: 'Laporan › ' + (rentang === 'hari' ? 'Harian' : rentang === 'minggu' ? 'Mingguan' : 'Bulanan'), nama, hariIni: iso,
+    geser: g, bisaMaju: g > 0, bisaMundur: !!pertama && !!a0 && a0 > pertama && g < DB_GESER_MAKS };
 }
+export const DB_GESER_MAKS = 60;
 
 /** MUTU USAHA (paket brief awal 9 Okt, owner "sesuaikan saja dulu"): lima KPI yang tayang 9 Okt, tiap baris = fungsi sumber layarnya APA ADANYA —
  *  rata-rata hari bon tertagih (Pelanggan › Bon), lambat laku & stok tertua & perputaran (Stok › Umur & putaran), merek teratas & susut % bulan ini
@@ -219,6 +239,8 @@ export function dbMutu(kini, SR) {
     harga: HM.galat ? HM : Object.assign({}, HM, { tujuan: { ke: 'harga', keluarga: 'katalog' } }),
     // paket Stok minus, label & kepatuhan (owner 26 Nov 2026): kalender kepatuhan & cek aturan bulanan
     patuh: aman(() => ptDasbor(kini)),
+    // P3 B48 (owner 27 Nov 2026): "N lambat laku · Rp X modal diam" + umur stok dalam rupiah per lapisan — klModalDiam (nilai = rumus modal tertahan A121), sekarang
+    modalDiam: aman(() => klModalDiam(kini)),
   };
 }
 
@@ -291,7 +313,8 @@ export function dbBeli(kini, SR) {
   const iso = hariIniIso(kini); const tren = {}; SH_RENTANG_BELI.forEach((r) => { tren[r[0]] = shTrenBeli(r[0], kini); });
   const P = SR ? shPembelian(SR.dari, SR.sampai) : shPembelian(iso, iso); const B = shPembelian(iso.slice(0, 8) + '01', iso);
   return { periode: SR ? SR.nama + (SR.dari !== SR.sampai ? ' · ' + dbTglPendek(SR.dari) + ' – ' + dbTglPendek(SR.sampai) : '') : 'Hari ini & bulan ini', sumber: 'Stok › Barang masuk', tujuan: { ke: 'stok', lembar: 'masuk' },
-    tren, rumus: tren.bulan.rumus, periodeNama: SR ? SR.nama : 'Hari ini', saring: P, bulan: SR ? null : B, bulanNama: lpNamaBulan(iso.slice(0, 7)) };
+    tren, rumus: tren.bulan.rumus, periodeNama: SR ? SR.nama : 'Hari ini', saring: P, bulan: SR ? null : B, bulanNama: lpNamaBulan(iso.slice(0, 7)),
+    pesanan: dbCoba(() => gdPesananPemasok()) };   // P3 B67 (owner 27 Nov 2026): pesanan ke pemasok yang masih menunggu — Rp & kg, sekarang (tidak ikut saringan)
 }
 
 /**
@@ -488,3 +511,45 @@ export function dbKg(kini, SR) {
     terlaris: aman(() => lpTerlaris(dari, sampai, 5)), stok: aman(() => klStokRp(kini, dari, sampai)), tren: aman(() => lpMerekMinggu(lpSenin(iso), kini, 4)), dso: aman(() => pnDso(kini, 2)), saring: sar ? SR.nama : '' };
 }
 DB_KELOMPOK.kg = ['per kg & minggu', dbKg]; DB_IKUT_SARING.push('kg'); DB_TAMBAHAN.push('kg'); DB_PANAS.push('kg');
+
+// ==================== P3 · Dasbor & peringatan, sisa kecil (owner 27 Nov 2026; sensus ulang A4 B44 B48 B67 B97 B98 B104 B129) ====================
+/** A4: kelompok tambahan "peringatan uang" = sumber lonceng & Pengingat (peringatan-logika pwRingkas) apa adanya — sekarang, tidak ikut saringan. */
+export function dbPeringatan(kini) { return Object.assign({ periode: 'Sekarang', sumber: 'Menu › Toko ini › Pengingat' }, pwRingkas(kini)); }
+DB_KELOMPOK.peringatan = ['peringatan uang', dbPeringatan]; DB_TAMBAHAN.push('peringatan'); DB_PANAS.push('peringatan');
+
+/**
+ * B97 — URUTKAN ULANG daftar di kartu Dasbor (pilihan per perangkat, bukan setelan toko). Urutan pertama tiap daftar = urutan lama (bawaan). Hanya menyusun
+ * baris yang SAMA — tidak menyaring, tidak menghitung. jenis: stok (merek) · piutang (nama jatuh tempo) · pemasok (bon lewat/dekat) · biaya (per jenis).
+ */
+export const DB_URUT = {
+  stok: [['habis', 'hampir habis'], ['kg', 'terbanyak'], ['nama', 'nama']],
+  piutang: [['desak', 'paling mendesak'], ['rp', 'terbesar'], ['nama', 'nama']],
+  pemasok: [['tempo', 'jatuh tempo'], ['rp', 'terbesar'], ['nama', 'nama']],
+  biaya: [['pos', 'urutan pos'], ['rp', 'terbesar'], ['lampu', 'lampu dulu']],
+};
+/** Pilihan urut yang sah untuk satu daftar (tak dikenal = bawaan, pilihan pertama). */
+export const dbUrutPilih = (jenis, cara) => { const U = DB_URUT[jenis] || [['', '']]; return U.some((x) => x[0] === cara) ? cara : U[0][0]; };
+const DB_URUT_LAMPU = { merah: 0, amber: 1, hijau: 2, tanpa: 3 };
+const dbUrutNama = (x) => String(x.nama || x.pemasok || '');
+/** Salinan daftar dalam urutan pilihan; urutan bawaan = daftar apa adanya. Seri = urutan lama dipertahankan (sort stabil + indeks). */
+export function dbUrutkan(jenis, daftar, cara) {
+  const c = dbUrutPilih(jenis, cara); const d = (daftar || []).map((x, i) => ({ x, i })); const bawaan = (DB_URUT[jenis] || [['']])[0][0];
+  if (c === bawaan) return d.map((y) => y.x);
+  const nilai = (x) => (jenis === 'stok' ? Number(x.kg) || 0 : jenis === 'biaya' ? Number(x.n) || 0 : Number(x.sisa) || 0);
+  const f = c === 'nama' ? (a, b) => dbUrutNama(a.x).localeCompare(dbUrutNama(b.x)) : c === 'lampu' ? (a, b) => (DB_URUT_LAMPU[a.x.lampu] === undefined ? 9 : DB_URUT_LAMPU[a.x.lampu]) - (DB_URUT_LAMPU[b.x.lampu] === undefined ? 9 : DB_URUT_LAMPU[b.x.lampu]) || nilai(b.x) - nilai(a.x)
+    : (a, b) => nilai(b.x) - nilai(a.x);
+  return d.sort((a, b) => f(a, b) || a.i - b.i).map((y) => y.x);
+}
+
+/**
+ * B104 — CETAK DASBOR (owner 27 Nov 2026: A4 tegak). Kepala kertas: kop toko (Laporan › Dokumen › Kop, identitasUsaha — satu sumber dengan dokumen berkop), judul,
+ * saringan yang berlaku, saat cetak, keadaan data (cap "data per"). Isi kertas = kartu yang sedang tampil (layar menyalinnya) — tidak ada angka yang dihitung di sini.
+ */
+export const DB_CETAK_KERTAS = { id: 'A4', arah: 'tegak', kolom: 2, teks: 'A4 tegak · dua kolom kartu' };
+export function dbCetak(kini, saring, cap) {
+  const k = kini || new Date(); const S = saring || null; const iso = hariIniIso(k); let kop; try { kop = identitasUsaha(); } catch (e) { kop = { nama: '', alamat: '' }; }
+  const per = !S || S.bawaan ? 'Hari ini · ' + tanggalPendek(iso) + ' (kartu bulanan: ' + lpNamaBulan(iso.slice(0, 7)) + ')' : S.nama + (S.dari !== S.sampai ? ' · ' + tanggalPendek(S.dari) + ' – ' + tanggalPendek(S.sampai) : '') + (S.bulanKet ? ' · ' + S.bulanKet : '');
+  return { kop: { nama: String(kop.nama || ''), alamat: String(kop.alamat || ''), telepon: String(kop.telepon || '') }, judul: 'Dasbor owner', periode: per,
+    dicetak: 'Dicetak ' + DB_NAMA_HARI[k.getDay()] + ' ' + tanggalPendek(iso) + ' ' + dbJamTeks(k), cap: cap && cap.teks ? cap.teks : '', kertas: DB_CETAK_KERTAS,
+    kaki: 'Angka = layar sumbernya masing-masing (nama sumber di kepala tiap kartu). Kartu yang tidak ikut saringan bertanda "sekarang".' };
+}

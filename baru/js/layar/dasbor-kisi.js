@@ -36,7 +36,8 @@ export function pasangKisi(akar, opsi) {
   function htmlKepala() {
     const A = wgAtur();
     return '<div class="wg-kepala" data-k="wg-kepala"><div class="label">Dasbor</div><div class="ket">' + esc(atur ? 'tarik pegangan kanan / bawah / sudut untuk mengubah ukuran · seret kartu untuk memindah · × hapus' : (A.dariOwner ? 'susunan lu' : 'susunan bawaan') + ' · tekan lama kartu (atau Atur) untuk mengubah ukuran & tempat')
-      + '</div>' + (atur ? '' : htmlCap()) + '<div class="kaca-btn kecil' + (atur ? ' aktif emas' : '') + '" data-da-aksi="' + (atur ? 'selesai' : 'atur') + '" data-k="wg-tombol-atur">' + (atur ? (simpanJalan ? 'menyimpan…' : 'Selesai') : 'Atur') + '</div></div>';
+      + '</div>' + (atur ? '' : htmlCap()) + (atur ? '' : '<div class="kaca-btn kecil" data-da-aksi="cetak" data-k="wg-tombol-cetak" title="Cetak Dasbor · A4 tegak">Cetak</div>')   // P3 B104 (owner 27 Nov 2026: A4 tegak)
+      + '<div class="kaca-btn kecil' + (atur ? ' aktif emas' : '') + '" data-da-aksi="' + (atur ? 'selesai' : 'atur') + '" data-k="wg-tombol-atur">' + (atur ? (simpanJalan ? 'menyimpan…' : 'Selesai') : 'Atur') + '</div></div>';
   }
   function htmlBilahAtur() {
     if (!atur) return kabar ? '<div class="ket' + (kabarAwas ? ' awas-teks' : '') + '" data-k="wg-kabar">' + esc(kabar) + '</div>' : '';
@@ -183,6 +184,7 @@ export function pasangKisi(akar, opsi) {
     const ds = (sel, k) => { const el = ev.target.closest(sel); return el && el.dataset && el.dataset[k] !== undefined ? el : null; };   // elemen yang benar-benar membawa atributnya
     const a = ds('[data-da-aksi]', 'daAksi');
     if (a) { const x = a.dataset.daAksi;
+      if (x === 'cetak') { const h = opsi.cetak ? opsi.cetak() : { ok: false, kabar: 'Cetak belum terpasang di sini' }; if (h && !h.ok) { kabar = h.kabar; kabarAwas = true; opsi.gambarUlang(); } return true; }   // P3 B104
       if (x === 'atur') mulaiAtur(null); else if (x === 'selesai') selesaiAtur(); else if (x === 'batal') { atur = null; tambahBuka = false; kabar = ''; gambarGeser(); }
       else if (x === 'tambah') { tambahBuka = !tambahBuka; opsi.gambarUlang(); } else if (x === 'bawaan') ubahDraf(WG_BAWAAN.map((w) => Object.assign({}, w)));
       return true; }
