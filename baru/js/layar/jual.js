@@ -20,6 +20,8 @@ import * as AB from './ambil-logika.js';   // owner 26 Nov 2026: karcis ambil na
 import * as LB from './label-logika.js';
 import { lbpCetak } from './label-panel.js';
 import { hetAtur } from './het-logika.js';   // paket S2a (19 Nov 2026): QR nomor nota di struk; scan struk → notanya terbuka
+// paket P7 (owner 27 Nov 2026, A15): harga per kg baris beras vs HET — CUMA DITANDAI di Bayar & lembar nego (owner; staf tidak membaca setelan HET)
+import { hjKeranjang, hjSatuHarga } from './het-jual-logika.js';
 // owner 17 Nov (butir 3): pratinjau struk gambar + logo toko bersama
 import { gambarStruk as gambarStrukKanvas, siapkanHuruf } from '../inti/struk-kanvas.js';
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
@@ -1143,6 +1145,7 @@ export function pasangLayarJual(akar, opsi) {
         <div class="ket" data-k="ng-tangga">${tangga}</div>
         <div class="angka">${s.ketik ? RP(ketik) : 'Rp0'}</div>
         ${p ? h`<div class="pita-info ${kelas}" data-k="ng-putus">${RP(p.harga)}${sat} · ${p.teks}</div>` : ''}
+        ${p && owner ? gambarHetNego(b.trx, p.harga) : ''}
         ${p && p.dibawahModal && NG.ngBolehBawahModal(a, A) ? h`<input class="ketik-nama" id="negoAlasan" type="text" value="${s.negoAlasan}" data-ketik="negoAlasan" placeholder="Alasan di bawah modal, mis. karung sobek (wajib, tercatat di nota)">` : ''}
         ${m ? h`<div class="kartu" data-k="ng-minta" style="gap: 6px;"><div class="ket">${mb.boleh ? 'Harga nota tetap ' + RP(b.trx.hargaSatuan) + sat + ' sampai owner menyetujui. Pembeli menunggu? ' + (batasPakai ? 'Pakai batas jatah dulu, parkir' : 'Parkir') + ' struk ini, atau owner yang mencatat nota ini.'
             : 'Harga nota tetap ' + RP(b.trx.hargaSatuan) + sat + '. Yang bisa sekarang: ' + (batasPakai ? 'pakai batas jatah, ' : '') + 'parkir struk ini sampai owner datang, atau owner yang mencatat nota ini.'}</div>
@@ -1306,6 +1309,7 @@ export function pasangLayarJual(akar, opsi) {
         ${t.kredit ? h`<div class="ket">keranjang ${RP(t.subtotal - t.potongan)} − barang kembali (tukar) ${RP(t.kredit)}</div>` : ''}
         <div class="total"><span class="label">${t.kredit ? 'Pembeli bayar' : 'Ditagih'}</span><span class="n">${RP(Math.max(0, t.total))}</span></div>
         ${t.ongkir ? h`<div class="ket" data-k="ongkir-tagih">termasuk ongkir antar ${RP(t.ongkir)}</div>` : ''}
+        ${gambarHetBayar(s)}
         ${t.bulat ? h`<div class="ket">termasuk pembulatan ke Rp500 ${RP(t.bulat)} (${s.cara === 'Kredit' ? 'bon ikut dibulatkan' : 'tunai'})</div>` : ''}
         ${t.muka > 0 ? h`<div class="pita-info emas" data-k="uang-muka-tagih">uang muka pesanan ${RP(t.muka)} sudah masuk — yang dibayar sekarang <b>${RP(t.perlu)}</b>${t.dpSisa > 0 ? ' · sisa uang muka ' + RP(t.dpSisa) + ' tetap jadi saldo ' + s.pelanggan : ''}${s.cara === 'Kredit' ? ' (bon ' + RP(t.perlu) + ')' : ''}</div>` : ''}
         <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Transfer', 'Transfer'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''} ${c === 'Kredit' && !tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon').boleh ? 'mati' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
@@ -1336,6 +1340,20 @@ export function pasangLayarJual(akar, opsi) {
       </div>`;
     }
     return '';
+  }
+
+  // ---------- paket P7 (owner 27 Nov 2026, A15): HET di Bayar & lembar nego — CUMA DITANDAI (nota tetap boleh dicatat). Owner saja: akun staf tidak membaca
+  // setelan HET (rules aturanToko/het), jadi di perangkat staf semuanya akan terbaca "belum dipetakan" — lebih baik tidak digambar sama sekali.
+  function gambarHetBayar(s) {
+    if (bukanOwner(opsi.akun ? opsi.akun() : null)) return '';
+    const K = (() => { try { return hjKeranjang(s.keranjang); } catch (e) { return null; } })(); if (!K || !K.teks) return '';
+    return K.keadaan === 'atas' ? h`<div class="pita-info awas" data-k="het-bayar">${K.teks}</div>` : h`<div class="ket" data-k="het-bayar">${K.teks}</div>`;
+  }
+  function gambarHetNego(t, harga) {
+    const v = (() => { try { return hjSatuHarga(t, harga); } catch (e) { return null; } })(); if (!v) return '';
+    if (v.status === 'atas') return h`<div class="pita-info awas" data-k="het-nego">${RP(Math.round(v.perKg))}/kg ${v.teks} — tetap boleh dipakai; barisnya ditandai di rekap HET Laporan › Mingguan</div>`;
+    if (v.status === 'belum') return h`<div class="ket" data-k="het-nego">HET: kelas ${v.unit} belum dipetakan (Harga › HET) — harga ini belum dibandingkan</div>`;
+    return v.status === 'dalam' ? h`<div class="ket" data-k="het-nego">${RP(Math.round(v.perKg))}/kg · ${v.teks}</div>` : '';
   }
 
   // ---------- owner 7 Okt (JS2-C): BUKU NEGO — tiap nego hari ini (siapa · barang · katalog → nego · selisih) + permintaan yang menunggu owner ----------

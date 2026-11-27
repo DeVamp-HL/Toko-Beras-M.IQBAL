@@ -25,6 +25,8 @@ import * as KR from './kas-rekening-logika.js';   // owner 26 Nov 2026 (A55): bu
 import { pnDso } from './bon-logika.js';
 import * as SG from './stok-pantau-logika.js';   // paket P5 (owner 27 Nov 2026): barang masuk hari itu (Harian + WA) · hitung karung mingguan (Mingguan)   // P1 (owner 27 Nov 2026, A116): lama piutang per minggu
 import * as SH from './susut-harga-logika.js';   // paket Susut + HPP & harga minimum (owner 26 Nov 2026): target & tren susut, opname, per pemasok, mingguan, HPP periode
+// paket P7 (owner 27 Nov 2026, A132): rekap & riwayat kepatuhan HET per minggu (baris nota dinilai ulang dengan aturan Harga › HET)
+import { hjMinggu, hjRiwayat, hjRiwayatTeks } from './het-jual-logika.js';
 import * as KW from './kuartal-logika.js';   // Kuartal (owner 24 Nov 2026, paket Pondasi kedua): K1–K4 = Σ tiga bulan Laporan › Tahunan + kekayaan & potret lampu akhir kuartal   // Pondasi (owner 24 Nov 2026): delapan lampu pondasi toko — hanya membaca fungsi sumber layar lain
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan } from '../inti/gerak.js';
@@ -130,6 +132,7 @@ export function pasangLayarLaporan(akar, opsi) {
     lbBulan: ({ b }) => set({ bulanL: b, kabar: '', bukaTT: false, bukaRugi: false }), lbKeping: ({ kp }) => set({ kepingL: kp }), lbBukaTT: () => set({ bukaTT: !st().bukaTT }), lbBukaRugi: () => set({ bukaRugi: !st().bukaRugi }), lbBukaSusut: () => set({ bukaSusut: !st().bukaSusut }),
     // paket brief 9 Okt (butir 3·4·5): Per merek — ketuk untuk ganti urutan; Atur = ambang susut tinggi & jumlah merek teratas (aturanToko/merekLaporan)
     mrUrut: ({ u }) => set({ urutM: LP.LP_URUT_MEREK.some((x) => x.id === u) ? u : 'kg' }), kgMingguSemua: () => set({ kgMingguSemua: !st().kgMingguSemua }), hitMingguSemua: () => set({ hitMingguSemua: !st().hitMingguSemua }), mrAturBuka: () => { const A = LP.aturMerek(); set({ aturM: { ambangSusutPersen: String(A.ambangSusutPersen).replace('.', ','), teratas: String(A.teratas), ambangSelidikPersen: String(A.ambangSelidikPersen).replace('.', ','), targetSusutPersen: A.targetSusutPersen === null ? '' : String(A.targetSusutPersen).replace('.', ',') }, kabar: '' }); },
+    hetMingguSemua: () => set({ hetMingguSemua: !st().hetMingguSemua }),   // paket P7 (owner 27 Nov 2026, A132)
     pgRentang: ({ n }) => set({ pgN: [1, 3, 12].indexOf(Number(n)) >= 0 ? Number(n) : 1 }), pgSemua: () => set({ pgSemua: !st().pgSemua }),
     mrAturTutup: () => set({ aturM: null }), mrAturKetik: (v, el) => { const a = Object.assign({}, st().aturM); a[el.dataset.kunci] = String(v).slice(0, 12); set({ aturM: a }); }, mrAturSimpan: () => tulis(LP.susunAturMerek(st().aturM || {}, waktu())),
     // ---- BIAYA (putaran 38)
@@ -672,8 +675,9 @@ export function pasangLayarLaporan(akar, opsi) {
     const susutM = kartuSusutMinggu(R);
     const kgM = kartuMerekMinggu(LP.lpMerekMinggu(awal, kini(), 8), s); const uangM = kartuStokPiutangMinggu(KL.klStokRpMinggu(kini(), 8), pnDso(kini(), 8), awal);   // P1 (owner 27 Nov 2026)
     const hitM = kartuHitungMinggu(SG.sgHitungMinggu(awal, kini()), s);   // paket P5 (owner 27 Nov 2026, A127 · A70 · A92)
-    if (L === 'hp') return h`<section data-k="mingguan">${pilih}${hero}${inti}${kgM}${susutM}${uangM}${perHari}${hitM}${kaki}</section>`;
-    return h`<section data-k="mingguan">${grid(L, [h`${pilih}${hero}${uangM}${kaki}`, h`${inti}${kgM}${susutM}`, h`${hitM}${perHari}`])}</section>`;
+    const hetM = kartuHetMinggu(hjMinggu(awal), hjRiwayat(awal, 8), s);   // paket P7 (owner 27 Nov 2026, A132)
+    if (L === 'hp') return h`<section data-k="mingguan">${pilih}${hero}${inti}${kgM}${susutM}${uangM}${perHari}${hitM}${hetM}${kaki}</section>`;
+    return h`<section data-k="mingguan">${grid(L, [h`${pilih}${hero}${uangM}${kaki}`, h`${inti}${kgM}${susutM}`, h`${hitM}${hetM}${perHari}`])}</section>`;
   }
   // ---------- paket P5 (owner 27 Nov 2026, A125): BARANG MASUK HARI ITU — kedatangan, kg, timbang & mutu (SG.sgMasukHari; Σ = rekap Stok › Barang masuk) ----------
   function kartuMasukHari(M) {
@@ -682,6 +686,23 @@ export function pasangLayarLaporan(akar, opsi) {
       ${T.n ? h`<div class="lp-sh-target ${T.awas || T.selisihKg < 0 ? 'awas' : ''}" data-k="mh-tiga"><div><span class="l">kg masuk buku</span><b>${KGt(T.kg)}</b></div><div><span class="l">timbang vs nota</span><b>${T.kgNota > 0 ? (T.selisihKg > 0 ? '+' : '') + KGt(T.selisihKg) : '—'}</b></div><div><span class="l">mutu awas</span><b>${T.awas}</b></div></div>
         ${M.daftar.map((x) => h`<div class="lp-terjun" data-k="mh-${x.id}"><span>${x.jam ? x.jam + ' · ' : ''}${x.pemasok}<small> · ${x.merek}${x.timbang.teks ? ' · ' + x.timbang.teks : x.timbang.nBaris ? ' · belum ditimbang' : ''}${x.awas ? ' · ' + x.timbang.awas.map((a) => a.merk + ': ' + a.alasan.join(', ')).join(' · ') : ''}</small></span><b>${KGt(x.kg)}</b></div>`)}` : h`<div class="k2">Tidak ada kedatangan barang tercatat hari itu.</div>`}
       <div class="k2" data-k="mh-ket">${M.teks}. Ikut di teks WA rekap. Rincian & koreksi di Stok › Barang masuk.${M.menutup ? '' : ' TIDAK MENUTUP ke rekap timbang Stok — laporkan.'}</div></div>`;
+  }
+  // ---------- paket P7 (owner 27 Nov 2026, A132 · A15): KEPATUHAN HET MINGGU ITU + riwayat 8 minggu. Baris nota beras dinilai ulang dengan HET & peta kelas yang berlaku
+  // SEKARANG (HJ.hjMinggu — aturan Harga › HET); "kelas belum dipetakan" BUKAN patuh. Keputusan owner: harga di atas HET cuma ditandai (nota tetap tersimpan).
+  function kartuHetMinggu(M, R, s) {
+    const N = s.hetMingguSemua ? 40 : 6; const atas = M.merek.slice(0, N);
+    const awas = M.keadaan === 'belum' || M.hit.atas > 0;
+    return h`<div class="kartu ${M.hit.atas ? 'awas' : ''}" data-k="het-minggu" style="gap: 4px;"><div class="label">Kepatuhan HET · minggu ${M.label}</div>
+      <div class="${awas ? 'awas-teks' : ''}" data-k="hetm-judul" style="font-weight: 600;">${M.judul}</div>
+      ${M.rincian ? h`<div class="k2" data-k="hetm-rinci">${M.rincian}</div>` : ''}
+      ${M.hit.atas ? h`<div class="k2" data-k="hetm-lebih">Lebih dari HET: ${KG(M.kgAtas)} · ${RP(Math.round(M.rpLebih))} di atas harga tertinggi (Σ selisih per kg × kg).</div>` : ''}
+      ${atas.map((g) => h`<div class="lp-baris" data-k="hetm-${g.merk}"><div class="j">HET ${g.kategori}</div><div><div>${g.merk}</div><div class="k2">${g.n} baris · ${KG(g.kg)} · paling mahal ${RP(Math.round(g.perKgMaks))}/kg · HET ${RP(g.het)}/kg</div></div><div class="n">+${RP(Math.round(g.rpLebih))}</div></div>`)}
+      ${M.merek.length > 6 ? h`<div class="kaca-btn kecil" data-aksi="hetMingguSemua" style="align-self: flex-start;">${s.hetMingguSemua ? 'ringkas' : 'lihat semua ' + M.merek.length + ' merek'}</div>` : ''}
+      ${M.unitBelum.length ? h`<div class="k2 awas-teks" data-k="hetm-belum">Belum dipetakan (${M.unitBelum.length} kelas/merek): ${M.unitBelum.slice(0, 8).join(' · ')}${M.unitBelum.length > 8 ? ' …' : ''} — TUGAS OWNER: petakan di Harga › HET.</div>` : ''}
+      ${M.hit.takBisa ? h`<div class="k2" data-k="hetm-takbisa">Tidak bisa dinilai: ${Object.keys(M.takBisa).map((k) => M.takBisa[k] + ' ' + k).join(' · ')}.</div>` : ''}
+      <div class="label" style="margin-top: 6px;">Riwayat 8 minggu</div>
+      ${R.map((r) => h`<div class="lp-baris" data-k="hetr-${r.awal}" data-aksi="mgMinggu" data-a="${r.awal}" style="cursor: pointer;${r.awal === M.awal ? ' font-weight: 600;' : ''}"><div class="j">${r.label}${r.awal === M.awal ? ' ◂' : ''}</div><div><div class="${r.nAtas ? 'awas-teks' : ''}">${hjRiwayatTeks(r)}</div></div><div class="n">${r.nAtas ? r.nAtas : r.keadaan === 'lengkap' || r.keadaan === 'sebagian' ? '✓' : '—'}</div></div>`)}
+      <div class="k2" data-k="hetm-kaki">Dinilai dengan ${M.hetTeks} dan peta kelas Harga › HET saat ini. Harga per kg = harga satuan yang dibayar (sesudah harga pelanggan & nego, sebelum potongan nota) ÷ kg satuannya. Di atas HET cuma ditandai — nota tetap tersimpan.</div></div>`;
   }
   // ---------- paket P5 (owner 27 Nov 2026, A127 · A70 · A92): HITUNG KARUNG MINGGU ITU vs KARTU STOK — Cocokkan › Tumpukan gudang Senin–Minggu ----------
   function kartuHitungMinggu(H, s) {

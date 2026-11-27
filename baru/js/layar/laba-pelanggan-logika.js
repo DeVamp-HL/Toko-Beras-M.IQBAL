@@ -216,3 +216,36 @@ export function pgKetTempo(g) {
     T.sisa ? 'sisa bon ' + RP(T.sisa) + (T.umurTertua !== null ? ', tertua ' + T.umurTertua + ' hari' : '') : '', W.n ? 'LEWAT TEMPO ' + RP(W.rp) + ' (' + W.n + ' faktur, terlama ' + W.hariMaks + ' hari)' : '',
     T.lebih ? 'uang pelanggan dipegang toko ' + RP(T.lebih) : ''].filter(Boolean).join(' · ');
 }
+
+// ==================== P7 · HALAMAN PELANGGAN (owner 27 Nov 2026, sensus ulang 27 Nov B18) ====================
+/**
+ * SATU pelanggan per bulan: n bulan sampai bulan berjalan (terlama dulu). Aturan baris = pgHitung apa adanya (omzet barang tanpa ongkir − uang retur nota asalnya,
+ * modal = hppTotalSaatJual tersimpan, retur utuh membatalkan modal taksiran, ongkir ber-modal masuk laba kotor) lewat pgKosong / pgDilepas / pgJadi yang SAMA — uji
+ * memeriksa tiap bulan sama persis dengan pelangganBulan(bulan, 1).pembeli orang itu. Bulan yang tahunnya sudah tutup buku = diarsip (tidak dipilah).
+ * → [{ key, nama, diarsip, berjalan, omzet, kg, nNota, labaKotor, pct, nTanpaHpp, keadaan, dilepas }].
+ */
+export function pgOrangBulan(kunci, kini, n) {
+  const iso = hariIniIso(kini); const k = String(kunci || ''); const N = Math.max(1, Math.min(24, Math.round(Number(n) || 12)));
+  return ingatPerVersi('pgOrang|' + k + '|' + N + '|' + iso, () => {
+    const akhir = pgKey(iso); const bulan = []; for (let i = N - 1; i >= 0; i--) bulan.push(pgGeser(akhir, -i));
+    const per = {}; bulan.forEach((b) => { if (!tahunDiarsip(b)) per[b] = pgKosong(); });
+    ambilPenjualan().forEach((p) => {
+      const g = per[String(p.tanggal || '').slice(0, 7)]; if (!g || !k || kunciPelanggan(p.namaPelanggan) !== k) return;
+      g.nBaris += 1; g.nota[kunciNota(p)] = 1; g.kgNota += Number(p.totalKg) || 0;
+      const ongkir = Math.round(Number(p.ongkirAntar) || 0); const barang = (p.hargaTotal || 0) - ongkir;
+      if (hppTercatat(p)) { g.adaHitung = true; g.omzetHitung += barang; g.hppHitung += p.hppTotalSaatJual || 0; g.ongkirHitung += ongkir; } else { g.nTanpaHpp += 1; g.omzetTanpaHpp += barang; g.ongkirTanpaHpp += ongkir; }
+      if (ongkir) g.nOngkir += 1;
+      const D = pgDilepas(p); g.lepasTingkat += D.tingkat; g.lepasNego += D.nego; g.lepasNota += D.nota;
+    });
+    const retur = (ambilRetur() || []).filter((r) => !!per[String(r.tanggal || '').slice(0, 7)]);
+    if (retur.length) {
+      const asal = {}; (ambilPenjualanSemua() || []).forEach((p) => { asal[String(p.id)] = p; }); const adaUtuh = retur.some((r) => r.kondisi === 'utuh');
+      const stokKrg = adaUtuh ? ingatStokKarung() : null; const stokKem = adaUtuh ? ingatStokKemasan() : null;
+      retur.forEach((r) => { const pa = asal[String(r.notaAsalId)]; const namaAsal = pa ? pa.namaPelanggan : r.namaPelanggan; if (!k || kunciPelanggan(namaAsal) !== k) return;
+        const g = per[String(r.tanggal || '').slice(0, 7)]; g.nRetur += 1; g.returUang += uangKembaliRetur(r); g.kgKembali += Number(r.totalKg) || 0;
+        if (r.kondisi === 'utuh') g.returHpp += hppTaksiranRetur(r, stokKrg, stokKem); });
+    }
+    return bulan.map((b) => { if (!per[b]) return { key: b, nama: lpBulanPendek(b, true), diarsip: true, berjalan: b === akhir, omzet: 0, kg: 0, nNota: 0, labaKotor: null, pct: null, nTanpaHpp: 0, keadaan: 'diarsip' };
+      const G = pgJadi(per[b]); return { key: b, nama: lpBulanPendek(b, true), diarsip: false, berjalan: b === akhir, omzet: G.omzet, kg: G.kg, nNota: G.nNota, labaKotor: G.labaKotor, pct: G.pct, nTanpaHpp: G.nTanpaHpp, keadaan: G.keadaan, dilepas: G.dilepas }; });
+  });
+}

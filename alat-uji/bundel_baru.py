@@ -89,6 +89,7 @@ GE_MODUL = 'baru/js/layar/grosir-ecer-logika.js'
 GE_PEMAKAI = ('laporan-logika.js', 'tutup-hari-logika.js', 'dasbor-logika.js')
 PG_MODUL = 'baru/js/layar/laba-pelanggan-logika.js'
 PG_PEMAKAI = ('dasbor-logika.js',)
+PG_PEMAKAI = PG_PEMAKAI + ('halaman-pelanggan-logika.js',)   # paket P7 (27 Nov 2026): halaman pelanggan memakai pgOrangBulan
 
 
 
@@ -182,9 +183,26 @@ KH_PEMAKAI = ('stok-adukan-logika.js',)
 SG_MODUL = 'baru/js/layar/stok-pantau-logika.js'
 SG_PEMAKAI = ('gudang-logika.js', 'dasbor-logika.js', 'laporan.js', 'stok.js', 'harga.js', 'app.js')
 
+# paket P7 (owner 27 Nov 2026, A15 · A132 · A108 · B18): het-jual-logika.js (HET di Bayar / nego & rekap mingguan — dipakai jual.js & laporan.js, butuh het-logika &
+# kelas-merek-logika), usul-bon-logika.js & halaman-pelanggan-logika.js (dipakai pelanggan.js; halaman butuh laba-pelanggan-logika → ikut lewat PG_PEMAKAI).
+# Ikut OTOMATIS (sekali, di belakang) bila pemakainya ada; fungsi terangkat, urutan tidak menentukan.
+HJ_MODUL = 'baru/js/layar/het-jual-logika.js'
+HJ_PEMAKAI = ('jual.js', 'laporan.js')
+HJ_SUMBER = ('baru/js/layar/het-logika.js', 'baru/js/layar/kelas-merek-logika.js')
+UL_MODUL = 'baru/js/layar/usul-bon-logika.js'
+HN_MODUL = 'baru/js/layar/halaman-pelanggan-logika.js'
+PL_PEMAKAI = ('pelanggan.js',)
+
 
 def lengkapi(daftar):
     d = list(daftar)
+    if any(os.path.basename(x) in HJ_PEMAKAI for x in d) and not any(x.endswith('het-jual-logika.js') for x in d):
+        for m in HJ_SUMBER:
+            if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)
+        d.append(HJ_MODUL)
+    if any(os.path.basename(x) in PL_PEMAKAI for x in d):
+        for m in (UL_MODUL, HN_MODUL):
+            if not any(x.endswith(os.path.basename(m)) for x in d): d.append(m)
     if any(os.path.basename(x) in SG_PEMAKAI for x in d) and not any(x.endswith('stok-pantau-logika.js') for x in d):
         d.append(SG_MODUL)
     if any(os.path.basename(x) in KH_PEMAKAI for x in d) and not any(x.endswith('kelas-het-logika.js') for x in d):
