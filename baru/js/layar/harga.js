@@ -13,6 +13,7 @@ import * as KL from './kpi-laba-logika.js';   // paket KPI laba (owner 24 Nov 20
 // owner 7 Okt: foto kertas bon pemasok — dikecilkan di perangkat, satu dokumen per foto di koleksi fotoBon (dibaca saat bon dibuka)
 import * as FB from './foto-bon-logika.js';
 import * as BL from './belanja-logika.js';
+import * as SG from './stok-pantau-logika.js';   // paket P5 (owner 27 Nov 2026, A20): rencana beli bulan depan (tanpa musim)
 import * as JN from './janji-logika.js';   // paket tanggal janji (owner 27 Nov 2026): janji datang pesanan ke pemasok
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
@@ -270,6 +271,7 @@ export function pasangLayarHarga(akar, opsi) {
     // tinjauan E1: saran = per BARIS HARGA (stok & laju gabungan merek seharga), dibagi ke mereknya — satu pintu di belanja-logika (pakaiSaran)
     blSaranPa: ({ p }) => { const H = BL.hitungBelanja(st().pesan, kini()); const r = BL.pakaiSaran(H, st().pesan, p); if (!r.merk) return; ubahPesan(r.pesan); set({ kabar: r.baris + ' baris harga (' + r.karung + ' karung) masuk daftar ' + p, kabarAwas: false }); },
     blPenuhi: ({ p }) => { const H = BL.hitungBelanja(st().pesan, kini()); const r = BL.penuhiTruk(H, p, st().pesan); ubahPesan(r.pesan); set({ kabar: r.tambahan ? r.tambahan + ' karung ditambahkan — dibagi ke baris harga yang paling cepat habis' : H.atur.muatanKg > 0 ? 'Truknya sudah penuh' : 'Muatan truk belum diketahui — isi di Atur', kabarAwas: false }); },
+    rbBuka: () => set({ rbBuka: !st().rbBuka }),
     blKosongkan: ({ p }) => { const H = BL.hitungBelanja(st().pesan, kini()); const R = H.perP.find((r) => r.pemasok === p); const o = Object.assign({}, st().pesan); (R ? R.d : []).forEach((b) => { delete o[b.merk]; }); ubahPesan(o); set({ kabar: 'Daftar ' + p + ' dikosongkan', kabarAwas: false }); },
     blSaranSemua: () => { const H = BL.hitungBelanja(st().pesan, kini()); const r = BL.pakaiSaran(H, st().pesan, ''); if (!r.merk) return; ubahPesan(r.pesan); set({ kabar: r.baris + ' baris harga (' + r.karung + ' karung) masuk daftar belanja', kabarAwas: false }); },
     // owner 7 Okt: daftar & truk per HARGA — − / + / centang satu baris harga membagi karungnya ke merek di dalamnya (belanja-logika ubahKelompok / ketukKelompok)
@@ -786,7 +788,7 @@ export function pasangLayarHarga(akar, opsi) {
       ${L === 'mac' ? h`<div class="hg-grid mac tiga" data-k="grid-bl"><div class="hg-kolom" data-k="k1">${gambarTruk(s, H, pa)}</div><div class="hg-kolom" data-k="k2">${gambarHari(H)}</div><div class="hg-kolom" data-k="k3">${gambarKertas(s, H)}</div></div>`
         : L === 'tablet' ? h`<div class="hg-grid tablet" data-k="grid-bl"><div class="hg-kolom" data-k="k1">${gambarTruk(s, H, pa)}</div><div class="hg-kolom" data-k="k2">${tabBaris(tabAda.map(([id, nm]) => [id, nama(id, nm)]), tab, 'tabL')}${panel(tab)}</div></div>`
         : h`<div class="hg-kolom" data-k="grid-bl">${tabBaris(tabAda.map(([id, nm]) => [id, nama(id, nm)]), tab, 'tabL')}${panel(tab)}</div>`}
-      ${bilah}${gambarHitungBeli(s)}${gambarPesanan(H)}${gambarAturL(s, H)}
+      ${bilah}${gambarHitungBeli(s)}${gambarPesanan(H)}${gambarRencanaBulan(s)}${gambarAturL(s, H)}
       <div class="ket" style="font-size: 11px;">Saran = baris harga (merek seharga dari pemasok yang sama — barang yang sama di mata pemasok) yang stok GABUNGANNYA habis ≤ ${H.atur.ambangHari} hari menurut laju penjualan 14 hari; jumlahnya supaya cukup ${H.atur.targetHari} hari, dibulatkan ke karung penuh, lalu dibagi ke merek yang paling cepat habis. Tanpa penjualan 14 hari tidak ditebak; nama yang diarsipkan tidak dibeli. Harga = harga beli terakhir tiap pemasok dari kedatangan nyata (tanggalnya selalu ditulis; harga yang lebih tua dari kiriman terakhir pemasok itu ditulis umurnya, juga di WhatsApp). Merek berkelas mutu ikut harga kiriman terbaru kelas yang sama dari pemasok itu bila bedanya masih dalam batas "sama barangnya" (Barang masuk › Atur). Muatan truk ${H.atur.muatanTerukur ? 'terukur dari kedatangan nyata (median)' : 'diatur owner'}. Pesanan yang dikirim dicatat & dicocokkan dengan kedatangannya di Barang masuk.${H.D.tanpaPemasok.length ? ' Belum tahu pemasoknya: ' + H.D.tanpaPemasok.join(', ') + ' (belum pernah tercatat datang dari pemasok).' : ''}</div>
     </section>`;
   }
@@ -799,6 +801,17 @@ export function pasangLayarHarga(akar, opsi) {
   const barisHargaBelanja = (g, p) => h`<div class="bl-baris" data-k="blh-${g.kunci}"><div><div class="nm ${g.kritis ? 'awas-teks' : ''}">${g.label}</div>${g.merk.map((b) => h`<div class="ket" data-k="blhm-${b.merk}">${b.merk}${b.k ? ' · ' + b.k + ' krg' : ''} · ${b.sisaTeks}</div>`)}</div>
     <div>${g.k > 0 ? h`<span class="step"><span data-aksi="blUbahG" data-p="${p}" data-g="${g.kunci}" data-arah="-1">−</span><span class="n" style="min-width: 74px; font-size: 12.5px;">${g.k} karung</span><span data-aksi="blUbahG" data-p="${p}" data-g="${g.kunci}" data-arah="1">+</span></span>` : h`<div class="kaca-btn kecil" data-aksi="blKetukG" data-p="${p}" data-g="${g.kunci}">${g.saranTeks}</div>`}</div>
     <div class="sd">${g.hariTeks ? g.hariTeks + ' · ' : ''}${g.hargaTeks}${g.kodeTeks ? ' · ' + g.kodeTeks : ''}${g.k > 0 ? ' · ' + BL.blKG(g.kg) + ' · ±' + RP(g.rp) : ''}</div></div>`;
+  // ---------- paket P5 (owner 27 Nov 2026, A20): RENCANA BELI BULAN DEPAN — total kg dari rata-rata pemakaian per bulan, tanpa musim ----------
+  function gambarRencanaBulan(s) {
+    const R = SG.sgRencanaBeli(kini()); const KGt = (n) => ANGKA(Math.round(n)) + ' kg'; const daftar = R.daftar.filter((x) => x.karung > 0);
+    return h`<div class="kartu" data-k="rencana-bulan" style="gap: 4px;"><div class="hg-kepala"><span class="nm">Rencana beli ${R.namaDepan}</span><span class="md">${R.total.karung ? ANGKA(R.total.karung) + ' karung · ' + KGt(R.total.kg) : 'cukup'}</span></div>
+      <div class="ket" data-k="rb-kal">${R.kalimat}. Butuh ${R.namaDepan} ±${KGt(R.total.butuh)} menurut rata-rata ${R.bulan.map((b) => b.nama.split(' ')[0]).join(', ')}.</div>
+      <div class="pita-info" data-k="rb-musim">${R.musim}</div>
+      ${s.rbBuka ? h`${daftar.map((x) => h`<div class="hg-daftar tiga" data-k="rb-${x.merk}"><span class="ket">${x.karung} krg</span><span><b>${x.merk}</b><span class="ket" style="display: block; font-size: 10.5px;">pakai ${x.perBulan.map((n) => ANGKA(Math.round(n))).join(' / ')} kg${x.arah ? ' · ' + (x.arah === 'naik' ? 'naik — pakai bulan terakhir' : 'turun — pakai bulan terakhir') : ''} · sisa ${KGt(x.sisa)} → 1 ${R.namaDepan.split(' ')[0]} ±${KGt(x.sisaAwal)} · cadangan ${R.targetHariMin} hari ${KGt(x.cadangan)}</span></span><span>${x.harga > 0 ? '±' + RP(x.rp) : 'harga ?'}</span></div>`)}
+        ${R.berhenti.length ? h`<div class="ket" data-k="rb-henti" style="font-size: 10.5px;">Tidak diramal (bulan terakhir & bulan ini tanpa pemakaian — mis. nama lama yang sudah diganti): ${R.berhenti.slice(0, 10).map((x) => x.merk).join(', ')}${R.berhenti.length > 10 ? ' …' : ''}</div>` : ''}
+        <div class="ket" style="font-size: 10.5px;" data-k="rb-rumus">${R.rumus}.${R.total.tanpaHarga ? ' ' + R.total.tanpaHarga + ' merek belum punya harga beli — rupiahnya tidak dihitung.' : ''}</div>` : ''}
+      <div class="kaca-btn kecil" data-aksi="rbBuka" style="align-self: flex-start;">${s.rbBuka ? 'tutup rincian' : 'lihat per merek ›'}</div></div>`;
+  }
   function gambarTruk(s, H, pa) {
     const T = BL.susunTruk(H, pa); if (!T) return h`<div class="pita-info" data-k="truk-kosong">Belum ada pemasok yang pernah mengirim barang — catat kedatangan pertama di Stok → Barang masuk.</div>`; const R = T.R;
     return h`<div class="hg-kolom" data-k="truk"><div class="jalur bungkus" data-k="pem-tab">${H.perP.map((p) => h`<div class="seg ${p.pemasok === pa ? 'aktif' : ''}" data-aksi="blPemasok" data-p="${p.pemasok}" data-k="pt-${p.kunci}">${p.pemasok}${p.karung ? ' · ' + p.karung : ''}</div>`)}</div>

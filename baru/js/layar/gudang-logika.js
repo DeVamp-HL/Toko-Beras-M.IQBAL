@@ -22,7 +22,9 @@ import { poDaftarAktif, poHariKe } from './pesanan-logika.js';
 // paket tanggal janji (owner 27 Nov 2026, sensus B55): kedatangan & antaran yang LEWAT JANJI — satu sumber dengan Laporan › Pondasi › Tepat janji
 import { jnLewat, jnKataJanji } from './janji-logika.js';
 import { daftarKarantina } from './stok-karantina-logika.js';
-import { susunWadah } from './stok-logika.js';
+import { susunWadah, umRingkas, umHama } from './stok-logika.js';
+// paket P5 (owner 27 Nov 2026): lewat batas simpan & hama per tumpukan (A43) · nilai modal stok yang sudah dipesan pelanggan (B51) — satu sumber dengan Stok › Umur / Produksi
+import { sgPesananRp } from './stok-pantau-logika.js';
 import { lbRingkasKemasan } from './label-logika.js';
 
 export const GD_TOP = 10;
@@ -121,7 +123,8 @@ export function gdTugas(kini, w) {
   baris('pesanPemasok', 'Pesanan ke pemasok belum datang', () => { const d = pesananSemua().filter((p) => p.status === 'menunggu');
     return { n: d.length, ket: d.length ? d.slice(0, 3).map((p) => (p.pemasok || 'pemasok') + ' ' + tanggalPendek(p.tanggal)).join(' · ') : 'tidak ada', awas: false, tujuan: { ke: 'harga', keluarga: 'belanja' } }; });
   baris('pesanan', 'Pesanan pelanggan belum dikirim', () => { const hP = poHariKe(iso); const d = poDaftarAktif('').filter((o) => o.status === 'dipesan'); const segera = d.filter((o) => o.tanggalKirim && poHariKe(o.tanggalKirim) - hP <= 1);
-    return { n: d.length, ket: d.length ? (segera.length ? segera.length + ' dikirim hari ini / besok · ' : '') + d.slice(0, 3).map((o) => o.nama + (o.tanggalKirim ? ' ' + tanggalPendek(o.tanggalKirim) : '')).join(' · ') : 'tidak ada', awas: segera.length > 0, tujuan: { ke: 'jual', lembar: 'pesanan' } }; });
+    const P = sgPesananRp(kini);   // B51: modal stok yang sudah dipesan (semua pesanan yang belum jadi nota)
+    return { n: d.length, ket: d.length ? (segera.length ? segera.length + ' dikirim hari ini / besok · ' : '') + d.slice(0, 3).map((o) => o.nama + (o.tanggalKirim ? ' ' + tanggalPendek(o.tanggalKirim) : '')).join(' · ') + (P.rp ? ' · modal dipesan ' + RP(P.rp) : '') + (P.kurang.length ? ' · ' + P.kurang.length + ' barang kurang' : '') : 'tidak ada', awas: segera.length > 0 || P.kurang.length > 0, tujuan: { ke: 'jual', lembar: 'pesanan' }, rp: P.rp }; });
   baris('janji', 'Lewat janji datang / antar', () => { const L = jnLewat(kini); const P = L.filter((x) => x.jenis === 'pemasok'); const A = L.filter((x) => x.jenis !== 'pemasok');
     return { n: L.length, ket: L.length ? [P.length ? P.length + ' pesanan pemasok' : '', A.length ? A.length + ' kiriman pelanggan' : ''].filter(Boolean).join(' · ') + ' · ' + L.slice(0, 3).map((x) => x.nama + ' ' + jnKataJanji(x.janji) + ' (telat ' + x.telat + ' hr)').join(' · ') : 'tidak ada yang lewat janji',
       awas: L.length > 0, tujuan: L.length ? L[0].tujuan : { ke: 'laporan', keluarga: 'pondasi' }, daftar: L }; });
@@ -133,6 +136,11 @@ export function gdTugas(kini, w) {
     return { n: O.perlu ? 1 : 0, ket: O.akhir ? 'terakhir ' + tanggalPendek(O.akhir) + ' · ' + (O.perlu ? 'sudah waktunya (tiap ' + O.tiap + ' hari)' : 'berikutnya ' + tanggalPendek(O.jatuh)) : 'belum pernah dicocokkan', awas: O.perlu, tujuan: { ke: 'stok', lembar: 'cocok' } }; });
   baris('cekGudang', 'Cek mingguan timbangan & gudang', () => { const G = gdCekGudang(kini); const perlu = G.sisa <= 0;
     return { n: perlu ? 1 : 0, ket: G.teks, awas: G.sisa < 0, tujuan: { ke: 'sistem', sistem: 'pengingat' } }; });
+  // paket P5 (A43): tanda KEDUA umur stok & hama per tumpukan (Cocokkan › Tumpukan gudang)
+  baris('simpan', 'Stok lewat batas simpan', () => { const U = umRingkas(kini); const L = U.lewatSimpan;
+    return { n: L.length, ket: L.length ? KG(U.kgLewatSimpan) + ' · ' + L.slice(0, 3).map((r) => r.nama + ' ' + r.umurAcuan + ' hr').join(' · ') + ' — keluarkan / jual dulu' : 'tidak ada (batas ' + U.atur.batasSimpanHari + ' hari)', awas: L.length > 0, tujuan: { ke: 'stok', tab: 'umur' } }; });
+  baris('hama', 'Tumpukan berhama', () => { const H = umHama(); const K = ingatStokKarung(iso); const d = Object.keys(H).filter((m) => H[m].ada && K[m] && (Number(K[m].sisaKg) || 0) > 0.05).sort();
+    return { n: d.length, ket: d.length ? d.slice(0, 4).map((m) => m + ' (' + H[m].label + ', ' + tanggalPendek(H[m].tanggal) + ')').join(' · ') + ' — pisahkan & periksa' : 'tidak ada yang tercatat', awas: d.length > 0, tujuan: { ke: 'stok', lembar: 'cocok' } }; });
   baris('wadah', 'Wadah literan perlu diisi', () => { const S = susunWadah(null); const n = S.daftar.filter((x) => x.diketahui && x.perluIsi).length;
     return { n, ket: n ? S.daftar.filter((x) => x.diketahui && x.perluIsi).slice(0, 4).map((x) => x.nama).join(', ') : 'semua cukup', awas: false, tujuan: { ke: 'stok', tab: 'wadah' } }; });
   baris('minus', 'Buku minus perlu dicocokkan', () => { const M = gdMinus(kini); return { n: M.n, ket: M.n ? M.top.slice(0, 3).map((x) => x.nama + ' ' + x.teksJumlah).join(' · ') : 'tidak ada', awas: M.n > 0, tujuan: { ke: 'stok', tab: 'tugas' } }; });

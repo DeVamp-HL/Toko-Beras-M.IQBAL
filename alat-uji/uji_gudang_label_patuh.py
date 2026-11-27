@@ -86,7 +86,7 @@ ok('2: retur rusak Angsa 10 kg masuk IR64 + taksiran modal > 0 + nasib karantina
 
 // ==================== 3 · TUGAS GUDANG (B54) ====================
 var T = gdTugas(KINI, W); var t = function (id) { return T.daftar.find(function (x) { return x.id === id; }); };
-ok('3: sebelas jenis tugas tertulis (yang 0 tetap disebut; paket tanggal janji 27 Nov 2026: + lewat janji datang / antar)', T.daftar.length === 11 && T.daftar.some(function (x) { return x.id === 'janji'; }) && T.daftar.every(function (x) { return x.n !== null && x.tujuan; }), J(T.daftar.map(function (x) { return x.id + ':' + x.n; })));
+ok('3: tiga belas jenis tugas tertulis (yang 0 tetap disebut; paket tanggal janji 27 Nov 2026: + lewat janji datang / antar; paket P5 27 Nov 2026: + lewat batas simpan, tumpukan berhama)', T.daftar.length === 13 && T.daftar.some(function (x) { return x.id === 'janji'; }) && T.daftar.every(function (x) { return x.n !== null && x.tujuan; }), J(T.daftar.map(function (x) { return x.id + ':' + x.n; })));
 ok('3: kabar barang masuk menunggu = 1 · buku minus = gdMinus', t('masuk').n === 1 && t('minus').n === M.n, J([t('masuk'), t('minus').n]));
 ok('3: karantina = daftarKarantina apa adanya', t('karantina').n === daftarKarantina(W).antre.length, J(t('karantina')));
 var SP = ssSumberPengingat(KINI, {}); var op = SP.find(function (p) { return p.jenis === 'opname'; }); var O = gdOpname(KINI);

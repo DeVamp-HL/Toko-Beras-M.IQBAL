@@ -4455,3 +4455,60 @@ toko; angka rupiah toko tidak dicetak). Tidak ada pintu tulis baru: target hari 
   tren akhir tiap Minggu + hari ini, berdampingan dengan rata-rata hari bon tertagih (`tertagihBon`). Laporan › Mingguan + angka Dasbor `dso`.
 - **Dasbor:** kelompok tambahan `kg` (`dbKg`, ikut `DB_IKUT_SARING`, `DB_TAMBAHAN`, `DB_PANAS`); `dbTambahan` kini meneruskan saringan (`H.saring`) — kelompok yang tidak
   ikut saringan tetap mengabaikannya. Saringan Hari ini = Dasbor lama persis (uji).
+
+## Paket P5 · Stok, gudang & produksi — A20 · A43 · A50 · A56 · A70 · A92 · A125 · A127 · B51 · B72 (owner 27 Nov 2026, sensus ulang 27 Nov; tanpa rules baru, mesin beku tidak diubah)
+
+Dijaga `alat-uji/uji_stok_p5.py` (kotak pasir angka contoh + statis + `--kontrol` + asap cadangan toko; angka rupiah toko tidak dicetak). Logika baca baru di
+`baru/js/layar/stok-pantau-logika.js` (awalan `sg`, tanpa DOM; ikut otomatis di bundel uji lewat `bundel_baru.SG_MODUL`) dan modul daun
+`baru/js/layar/kelas-het-logika.js` (awalan `kh`, ikut otomatis bila `stok-adukan-logika` dibundel). Satu-satunya pintu tulis baru = setelan owner
+`aturanToko/opnameKejutan` (`susunAturKejutan`); kolom tambahan menumpang dokumen yang sudah ditulis owner / staf tanpa daftar kolom (`penyesuaianStok`,
+`penyesuaianKemasan`, `produksiKemasan`) dan hanya ditulis bila diisi.
+
+**Keputusan owner (satu AskUserQuestion 27 Nov 2026):** batas simpan kedua **120 hari** (bawaan) · bahan berkelas HET lebih rendah dari label hasil (oplos) **DITAHAN**:
+akun staf tidak bisa menyimpan, owner dua ketukan + alasan · opname **didampingi + kejutan** (bawaan 2× sebulan, 3 merek, pengingat owner saja) · rencana beli bulanan
+**dibangun sekarang tanpa musim** (musim tetap janji ±Agustus 2027).
+
+- **Kartu stok per merek (A56)** `sgGerak(sampai)` / `sgKartuStok(kunci, dari, sampai, rinci)`: gerak buku karung PERSIS aturan `hitungStokKarungPerMerk` — kedatangan (baris
+  bukan bal, `hitungHppMerkDalamBatch`: harga beli/kg + modal/kg dengan bongkar), nota karung · repack · literan, adukan & pindah buku (`sumberList` / `kgDipakai`),
+  retur utuh, hitungan gudang / timbang tutup hari / penyesuaian (`selisihKg`), adukan jadi karung utuh ke `merkTujuan`. Nota, adukan, retur & cocokkan hanya memotong
+  buku yang LAHIR dari kedatangan (buku yang lahir dari adukan jadi karung tidak dipotong notanya — urutan mesin). Dijumlah per gram; sisa berjalan terakhir = buku
+  mesin (`menutup`; beda ≤ 0,01 kg = pembulatan, disebut). Stok › Gudang › **Kartu stok** (owner): 7 / 30 / 90 hari / semua, "per nota" (bawaan: nota satu jalur
+  sehari digabung). Asap cadangan 25 Nov: 131 buku semua menutup.
+- **Barang masuk hari itu (A125)** `sgMasukHari(iso)`: kedatangan bertanggal itu (buku lahir / stok awal / saldo pembuka bukan kedatangan) + timbang & mutu per
+  kedatangan (`tmKedatangan`); penjaga = `rekapTimbangMutu` hari yang sama. Laporan › Harian kartu **Barang masuk**, baris rekap & teks WA (`teksRekapHari(R, kop, masuk)`
+  — tanpa `masuk` teks lama persis), Dasbor kartu **Barang masuk hari ini** (katalog).
+- **Hitung karung mingguan (A127) + didampingi (A70)** `sgHitungMinggu(awal, kini)`: hitungan tumpukan Cocokkan (`sgHitungTumpukan`: bukan timbang tutup hari, bukan wadah,
+  bukan rework) Senin–Minggu per merek — buku vs dihitung, selisih kg & karung, siapa menghitung, didampingi, hama; merek berisi yang belum dihitung; opname kejutan
+  minggu itu. Laporan › Mingguan kartu **Hitung karung vs kartu stok**. Cocokkan: isian **Dihitung oleh / Didampingi** (boleh kosong, orang yang sama ditolak, ≤ 40 huruf,
+  pilihan cepat = nama hitungan sebelumnya `ccCalonOrang`) → kolom `dihitungOleh` / `didampingi` di tiap dokumen beras & kemasan kiriman itu (`ccBacaCatat`;
+  `susunSimpanCocok(…, catat)` argumen ketujuh). Riwayat hitungan menyebutnya.
+- **Batas simpan kedua + hama (A43)** `stok-logika`: `UM_ATUR_BAWAAN.batasSimpanHari` 120 (2–730, wajib > ambang lambat laku; setelan `aturanToko/stokUmur` yang
+  sama), `umBarang` → `lewatSimpan` & `kgLewat` (lapisan FIFO yang umurnya lewat; wadah campuran = isinya), `umRingkas.lewatSimpan`, kartu kelima **Mana yang lewat batas
+  simpan?** (merah). Hama per tumpukan: Cocokkan › Tumpukan gudang pilihan `UM_HAMA` (tidak ada · kutu · ngengat · tikus · hama lain) → kolom `hama`; `umHama()` = hitungan
+  tumpukan terbaru yang mencatat hama. Tugas gudang: + **Stok lewat batas simpan** & **Tumpukan berhama** (13 baris, `uji_gudang_label_patuh` ikut diperbarui),
+  Dasbor › Mutu usaha baris umur menyebut lewat batas simpan; angka katalog `lewatSimpan`. Cadangan 25 Nov: belum ada stok yang lewat 120 hari (tertua 68 hari).
+- **Opname kejutan (A92)** `sgKejutanAtur` / `susunAturKejutan` / `sgKejutanTanggal` / `sgKejutanMerek` / `sgKejutanRentang` / `sgSumberPengingat`: owner menyalakan sekali
+  (Stok › Tugas gudang, kartu hanya untuk owner); perangkat owner membuat BENIH rahasia (`crypto.getRandomValues`) → tiap bulan `kaliSebulan` tanggal & tiap tanggal `nMerek`
+  merek berisi (buku sampai kemarin) diundi TETAP dari benih (FNV-1a `sgAcak`, tanpa menulis tiap bulan). Staf tidak bisa membaca `aturanToko/opnameKejutan` (rules
+  aturanToko read = daftar id, dijaga statis). Selesai = merek itu dihitung di Cocokkan tumpukan sampai `SG_KEJUTAN_TENGGANG` 2 hari sesudahnya, selain itu terlewat.
+  Pengingat jenis `kejutan` (Sistem › Pengingat, bawaan ke Owner saja) lewat `lokal.gudang`, sumbernya ditambah app.js HANYA untuk akun owner; ikut lonceng.
+  Simpan ulang mempertahankan benih (undian tidak berubah); "undi ulang" = benih baru. Pengingat opname rutin tiap N hari tetap jalan.
+- **Rencana beli bulan depan (A20)** `sgRencanaBeli(kini)`: pemakaian per merek (nota + adukan + pindah ke karung belakang / wadah − retur utuh; pindah buku ke MEREK lain dan
+  selisih cocokkan bukan pemakaian) ÷ hari tercatat 3 bulan selesai terakhir; bulan terakhir berubah tajam (< ½ / > 2× rata-rata) = laju bulan terakhir; tanpa pemakaian
+  bulan terakhir & bulan ini = berhenti dipakai (tidak diramal, disebut). Beli = laju × hari bulan depan + cadangan (batas bawah hari stok P1, bawaan 7 hari) − perkiraan sisa
+  awal bulan depan, dibulatkan ke karung penuh; rupiah = perkiraan × harga beli terakhir. Tanpa musim (kalimatnya tampil). Harga › Belanja kartu **Rencana beli <bulan>**.
+- **Stok yang dipesan (B51)** `sgPesananRp(kini)`: pesanan pelanggan belum jadi nota (`pesananBelumTuntas`) ber-baris katalog × modal di buku (karung `hppTerakhirPerKg`,
+  kemasan `hppRataRataPerUnit` = nilai neraca), sisa & kurang; pesanan tanpa barang katalog disebut. Tugas gudang baris pesanan + angka katalog `pesananRp`.
+  "Dipegang" keranjang / struk parkir tetap per perangkat (bukan pesanan).
+- **Produksi per bulan + rencana produksi (B72)** `sgProduksiBulan(key)` / `sgProduksiDeret` / `sgRencanaProduksi`: angka bulan = `kemasRentang` (Laporan › Pondasi, satu
+  aturan baris pengemasan) + per adukan susut % · kantong · upah · sampel isi · oplos · lebih berat; penjaga Σ per adukan = kemasRentang. Rencana produksi = "aduk N unit"
+  yang SAMA dengan Stok › Gudang (laju 14 hari × `HARI_TARGET` − sisa) untuk kemasan yang diaduk sendiri 90 hari terakhir, bahan = campuran adukan terakhir hasil itu
+  (kg bahan memperhitungkan susutnya), kantong & sisanya — dihitung, tidak disimpan. Stok › tab **Produksi**; Dasbor kartu **Produksi bulan ini** (katalog).
+- **Adukan: isi sesuai label, tanpa oplos (A50)** `stok-adukan-logika`: per baris hasil **timbang sampel** (kantong + berat seluruh, boleh kosong; sebagian / di luar 50–150 %
+  ditolak) → rata-rata per kantong, KURANG ISI bila < ukuran − 0,005 kg (ditandai, tetap tersimpan) → kolom `sampelIsi {unit, kg}`; hasil **lebih berat** dari bahan (berapa pun,
+  juga di bawah 15 %) ditandai; **kelas** `khCekAdukan` (bahan: peta HET owner atas satuan pemetaan merek = aturan `hetUnit`, kemasan dibongkar: kelas label; hasil: kelas
+  mutu Atur label bila diisi, selain itu peta HET nama hasil). Bahan lebih rendah dari label = OPLOS: staf (`batasHasil` > 0) DITAHAN, owner ketuk dua kali + alasan ≥ 5 huruf
+  → dokumen pertama `oplos {teks, alasan}`. Premium dikemas medium tidak ditandai; belum dipetakan disebut. `jenisProduksi` diekspor untuk Produksi.
+- Dasbor: kelompok tambahan `gudang5` (`dbGudang5`, tidak ikut saringan) — widget `kMasukHari`, `kProduksi`, `pesananRp`, `lewatSimpan` hanya lewat "+ Tambah kartu"
+  (susunan bawaan tidak berubah, dijaga uji).
+- Belum dicoba di data asli (cadangan baca saja): menulis setelan opname kejutan, Cocokkan dengan pendamping & hama, adukan bersampel / oplos dari tablet staf.

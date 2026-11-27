@@ -26,7 +26,7 @@ import { KG, tanggalPendek } from '../inti/format.js';
 export const HARI_TARGET = 7;      // "isi untuk tujuh hari" — angka papan S9; kebijakan owner
 export const HARI_MANDEK = 30;     // sisa cukup untuk lebih dari ini = modal diam
 export const HARI_COCOK_AWAS = 7;  // belum dicocokkan selama ini = perlu dihitung lagi
-export const TAB_STOK = [['gudang', 'Gudang'], ['wadah', 'Wadah literan'], ['kapur', 'Papan Kapur'], ['karantina', 'Karantina'], ['umur', 'Umur & putaran'], ['tugas', 'Tugas gudang']];   // owner 26 Nov 2026: stok minus · hilang & rusak per jenis · tugas terbuka · kemasan bertanggal   // paket brief 9 Okt: tab umur stok FIFO & perputaran
+export const TAB_STOK = [['gudang', 'Gudang'], ['wadah', 'Wadah literan'], ['kapur', 'Papan Kapur'], ['karantina', 'Karantina'], ['umur', 'Umur & putaran'], ['tugas', 'Tugas gudang'], ['produksi', 'Produksi']];   // paket P5 (owner 27 Nov 2026, B72): produksi per bulan + rencana produksi   // owner 26 Nov 2026: stok minus · hilang & rusak per jenis · tugas terbuka · kemasan bertanggal   // paket brief 9 Okt: tab umur stok FIFO & perputaran
 
 const skKG = (n) => String(Math.round(n * 10) / 10).replace('.', ',') + ' kg';
 const skHari = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
@@ -242,10 +242,12 @@ export function susunKarantina() {
 // dekat keadaan toko Sep–Nov). Di bawah batas bawah = stok tipis, di atas batas atas = modal kebanyakan diam. Dokumen yang SAMA (aturanToko/stokUmur), dibaca
 // kpi-laba-logika klStokRp. Berbeda dengan ambangHariStok (per barang, kg ÷ laju 14 hari, penanda lambat laku).
 export const UM_ATUR_BAWAAN = { ambangUmurHari: 30, ambangHariStok: 30, periodeHari: 30, targetHariMin: 7, targetHariMaks: 14 };   // angka bawaan — bisa diubah di Atur
-export const UM_BATAS = { ambangUmurHari: [1, 365], ambangHariStok: [1, 365], periodeHari: [7, 120], targetHariMin: [1, 120], targetHariMaks: [1, 365] };
+// paket P5 (owner 27 Nov 2026, A43): batasSimpanHari = tanda KEDUA (merah) — umur stok lewat batas simpan; bawaan 120 hari (±4 bulan) pilihan owner, wajib > ambang umur
+UM_ATUR_BAWAAN.batasSimpanHari = 120;
+export const UM_BATAS = { ambangUmurHari: [1, 365], ambangHariStok: [1, 365], periodeHari: [7, 120], targetHariMin: [1, 120], targetHariMaks: [1, 365], batasSimpanHari: [2, 730] };
 export const UM_JEJAK_HARI = 60;   // jejak rata-rata wadah paling jauh 60 hari (isi wadah berputar dalam hitungan hari); isi yang sudah ada sebelumnya = tanpa tanggal
-export const TAB_UMUR = [['lambat', 'Apa yang lambat laku?'], ['umur', 'Stok mana yang paling lama?'], ['putaran', 'Berapa cepat stok berputar?'], ['tanpa', 'Mana yang belum bertanggal?']];
-const UM_NAMA_ATUR = { ambangUmurHari: 'Ambang umur stok', ambangHariStok: 'Ambang hari stok', periodeHari: 'Periode perputaran', targetHariMin: 'Batas bawah hari stok toko', targetHariMaks: 'Batas atas hari stok toko' };
+export const TAB_UMUR = [['lambat', 'Apa yang lambat laku?'], ['umur', 'Stok mana yang paling lama?'], ['putaran', 'Berapa cepat stok berputar?'], ['tanpa', 'Mana yang belum bertanggal?'], ['simpan', 'Mana yang lewat batas simpan?']];
+const UM_NAMA_ATUR = { ambangUmurHari: 'Ambang umur stok', ambangHariStok: 'Ambang hari stok', periodeHari: 'Periode perputaran', targetHariMin: 'Batas bawah hari stok toko', targetHariMaks: 'Batas atas hari stok toko', batasSimpanHari: 'Batas simpan' };
 const umSen = (n) => Math.round((Number(n) || 0) * 100);   // kg → seperseratus kg (bilangan bulat: bagian-bagian menutup persis)
 const umHariGeser = (iso, n) => hariIniIso(new Date(new Date(iso + 'T12:00:00').getTime() + n * 86400000));
 const umTgl = (iso) => tanggalPendek(iso).replace(/ \d{4}$/, '');
@@ -265,8 +267,9 @@ export function susunAturUmur(isi, w) {
     if (!isFinite(n) || Math.round(n) !== n || n < b[0] || n > b[1]) tolak = UM_NAMA_ATUR[k] + ' harus bilangan bulat ' + b[0] + '–' + b[1] + ' hari'; else o[k] = n; });
   if (tolak) return { tolak };
   if (o.targetHariMin > o.targetHariMaks) return { tolak: 'Batas bawah hari stok toko (' + o.targetHariMin + ' hari) tidak boleh di atas batas atasnya (' + o.targetHariMaks + ' hari)' };
+  if (o.batasSimpanHari <= o.ambangUmurHari) return { tolak: 'Batas simpan (' + o.batasSimpanHari + ' hari) harus lebih lama dari ambang umur lambat laku (' + o.ambangUmurHari + ' hari) — ini tanda kedua, sesudah lambat laku' };
   return { dokumen: [{ koleksi: 'aturanToko', data: Object.assign({ id: 'stokUmur', tanggal: w.tanggal, jam: w.jam }, o) }],
-    patch: { aturUm: null, kabar: 'Ambang disimpan — lambat laku: umur stok > ' + o.ambangUmurHari + ' hari atau hari stok > ' + o.ambangHariStok + ' hari · perputaran ' + o.periodeHari + ' hari · target hari stok toko ' + o.targetHariMin + '–' + o.targetHariMaks + ' hari', kabarAwas: false } };
+    patch: { aturUm: null, kabar: 'Ambang disimpan — lambat laku: umur stok > ' + o.ambangUmurHari + ' hari atau hari stok > ' + o.ambangHariStok + ' hari · perputaran ' + o.periodeHari + ' hari · target hari stok toko ' + o.targetHariMin + '–' + o.targetHariMaks + ' hari · batas simpan ' + o.batasSimpanHari + ' hari', kabarAwas: false } };
 }
 
 /** Pindah buku MASUK ke satu buku khusus (produksi berlaku jadiKarungUtuh → merkTujuan; kg = ukuran × unit, rumus mesin). Pindahan awal / ganti nama = isinya
@@ -355,8 +358,11 @@ function umBarangHitung(hari) {
     const alasan = [];
     if (umurAcuan !== null && umurAcuan > A.ambangUmurHari) alasan.push('umur');
     if (ada && !(b.laju > 0)) alasan.push('diam'); else if (hariStok !== null && hariStok > A.ambangHariStok) alasan.push('hari');
+    // paket P5 (A43): lewat batas simpan = umur acuan (FIFO: lapisan tertua yang tersisa · wadah campuran: rata-rata) > batasSimpanHari; kg lewat = lapisan FIFO yang umurnya lewat
+    const lewatSimpan = umurAcuan !== null && umurAcuan > A.batasSimpanHari;
+    const kgLewat = !lewatSimpan ? 0 : cara === 'rata' ? b.sisa : U.lapisan.filter((x) => x.umur > A.batasSimpanHari).reduce((a, x) => a + umSen(x.kg), 0) / 100;
     return { kunci: k, nama: b.nama, kelompok, cara, wadah: bw[k] ? bw[k].wadah : '', sisa: b.sisa, ada, minus, umur: U, umurAcuan, laju: b.laju, hariStok, keluarKg, terjualKg, rataSisa, putaran,
-      tinggal: putaran ? P.n / putaran : null, lambat: alasan.length > 0, alasan };
+      tinggal: putaran ? P.n / putaran : null, lambat: alasan.length > 0, alasan, lewatSimpan, kgLewat };
   }).filter((r) => r.ada || r.minus || r.keluarKg > 0);
 }
 
@@ -375,6 +381,17 @@ function umNilaiRataHitung(dari, sampai) {
   return { dari, sampai, n: hari.length, buku };
 }
 
+// paket P5 (owner 27 Nov 2026, A43): HAMA PER TUMPUKAN — dicatat di Cocokkan › Tumpukan gudang bersama hitungannya (kolom `hama` dokumen penyesuaianStok, owner).
+// Yang berlaku per merek = hitungan tumpukan TERBARU yang membawa kolom hama ('tidak' = dicek, bersih). Hitungan tanpa kolom hama tidak mengubah keadaan.
+export const UM_HAMA = [['tidak', 'tidak ada hama'], ['kutu', 'kutu'], ['ngengat', 'ngengat'], ['tikus', 'tikus'], ['lain', 'hama lain']];
+export const umLabelHama = (v) => ((UM_HAMA.find((x) => x[0] === v) || [])[1] || '');
+/** { merk: { tanggal, jam, hama, label, ada (hama sungguhan), catatan } } dari hitungan tumpukan terbaru yang mencatat hama. */
+export function umHama() {
+  const out = {}; ambilPenyesuaianStok().forEach((d) => { if (!d || !d.merk || !d.hama || !umLabelHama(d.hama) || d.bagian === 'wadah') return; const cap = (d.tanggal || '') + ' ' + (d.jam || '') + ' ' + String(d.id || '');
+    const lama = out[d.merk]; if (lama && lama.cap >= cap) return; out[d.merk] = { cap, tanggal: d.tanggal || '', jam: d.jam || '', hama: d.hama, label: umLabelHama(d.hama), ada: d.hama !== 'tidak', catatan: String(d.hamaCatatan || '') }; });
+  return out;
+}
+
 /** Ringkas untuk dasbor kelak: lambat laku, 5 merek tertua, kg bertanggal / tanpa tanggal / minus (menutup ke Σ sisa positif), putaran tumpukan merek. */
 export function umRingkas(kini) {
   const R = umBarang(kini); const berisi = R.filter((r) => r.ada); const A = umAtur();
@@ -384,6 +401,7 @@ export function umRingkas(kini) {
   return { atur: A, periode: umPeriode(hariIniIso(kini), A.periodeHari), lambat: R.filter((r) => r.lambat),
     tertua: merek.filter((r) => r.umurAcuan !== null).sort((a, b) => b.umurAcuan - a.umurAcuan || a.nama.localeCompare(b.nama)).slice(0, 5),
     sisaKg: berisi.reduce((a, r) => a + umSen(r.sisa), 0) / 100, bertanggalKg: bt / 100, tanpaTanggalKg: tt / 100, minus: R.filter((r) => r.minus),
+    lewatSimpan: R.filter((r) => r.lewatSimpan).sort((a, b) => b.umurAcuan - a.umurAcuan || a.nama.localeCompare(b.nama)), kgLewatSimpan: R.reduce((a, r) => a + umSen(r.kgLewat || 0), 0) / 100,
     putaranMerek: kel > 0 && rs > 0 ? kel / rs : null, keluarMerek: kel, rataSisaMerek: rs };
 }
 
@@ -423,6 +441,8 @@ function umRinci(r, P) {
     if (U.tanpaTanggalKg > 0) out.push({ teks: 'Tanpa tanggal: ' + umAsalTanpa(r) + '.', awas: false });
     out.push({ teks: (U.hariTuang ? U.hariTuang + ' hari bertuang dalam ' + UM_JEJAK_HARI + ' hari terakhir, tuang terakhir ' + umTgl(U.tuangTerakhir) : 'Tidak ada tuangan tercatat dalam ' + UM_JEJAK_HARI + ' hari terakhir') + '. Yang keluar mengambil merata dari isi (bukan FIFO).', awas: false });
   }
+  if (r.lewatSimpan) out.push({ teks: 'LEWAT BATAS SIMPAN ' + umAtur().batasSimpanHari + ' hari — ' + KG(r.kgLewat) + ' berumur lebih dari itu. Keluarkan / jual dulu, periksa mutu & hama.', awas: true });
+  { const Hm = umHama()[r.kunci]; if (Hm) out.push({ teks: 'Hama (hitungan tumpukan ' + umTgl(Hm.tanggal) + '): ' + Hm.label + (Hm.catatan ? ' — ' + Hm.catatan : ''), awas: Hm.ada }); }
   if (r.ada) out.push({ teks: r.hariStok === null ? 'Hari stok: belum ada laju — tak ada gerak keluar ' + JENDELA_LAJU_HARI + ' hari (bukan 0).' : 'Hari stok: sisa ' + KG(r.sisa) + ' ÷ laju ' + JENDELA_LAJU_HARI + ' hari ' + KG(r.laju) + '/hari = ' + umKali(r.hariStok) + ' hari', awas: false });
   out.push({ teks: P.n <= 0 ? 'Perputaran: periode kosong.' : 'Periode ' + P.n + ' hari (' + umTgl(P.dari) + ' – ' + umTgl(P.sampai) + ')' + (P.catat ? ' · ' + P.catat : '') + ': keluar ' + KG(r.keluarKg) + ' (terjual ' + KG(r.terjualKg) + ' · diaduk / dipindah ' + KG(r.keluarKg - r.terjualKg) + ')'
     + (r.putaran !== null ? ' ÷ rata-rata sisa akhir hari ' + KG(r.rataSisa) + ' = putaran ' + umKali(r.putaran) + '× · rata-rata tinggal di rak ' + umKali(r.tinggal) + ' hari' : r.keluarKg > 0 ? ' · rata-rata sisa ' + KG(r.rataSisa || 0) + ' tidak positif — putaran belum bisa dihitung' : ' — belum ada laju, putaran tidak dihitung (bukan 0)'), awas: false });
@@ -436,11 +456,15 @@ export function umPapan(kini, tanya, pilih) {
   const baris = (r, n, nKet, ket, awas, isi) => ({ kunci: r.kunci, nama: r.nama, n, nKet, ket, awas: !!awas, isi: Math.max(0.02, Math.min(1, isi || 0)), rinci: r.kunci === pilih ? umRinci(r, P) : null });
   const isiUmur = (r) => (r.umurAcuan === null ? 0 : r.umurAcuan / (A.ambangUmurHari * 2));
   const tuaDulu = (a, b) => (b.umurAcuan === null ? -1 : b.umurAcuan) - (a.umurAcuan === null ? -1 : a.umurAcuan) || a.nama.localeCompare(b.nama);
-  const berisi = R.filter((r) => r.ada); let kelompok = [];
+  const berisi = R.filter((r) => r.ada); let kelompok = []; const HM = umHama();
+  const ketHama = (r) => (HM[r.kunci] ? (HM[r.kunci].ada ? 'HAMA: ' : 'hama: ') + HM[r.kunci].label + ' (hitungan ' + umTgl(HM[r.kunci].tanggal) + ')' : '');
   const ketUmum = (r) => ['sisa ' + KG(r.sisa), umTeksLapisan(r), aktif === 'lambat' && r.alasan.indexOf('hari') >= 0 ? '' : umTeksHariStok(r), umTeksPutaran(r, P)].filter(Boolean).join(' · ');
   if (aktif === 'lambat') {
     kelompok = [{ id: 'lambat', label: '', baris: G.lambat.slice().sort(tuaDulu).map((r) => baris(r, umTeksUmur(r), r.alasan.indexOf('diam') >= 0 ? 'tak bergerak' : 'lambat laku', umTeksAlasan(r, A) + ' · ' + ketUmum(r), true,
       r.hariStok === null ? 1 : Math.max(isiUmur(r), r.hariStok / (A.ambangHariStok * 2)))) }];
+  } else if (aktif === 'simpan') {
+    // paket P5 (A43): tanda KEDUA — umur stok lewat batas simpan (merah); kg lewat = lapisan FIFO yang umurnya lewat, wadah campuran = seluruh isinya
+    kelompok = !G.lewatSimpan.length ? [] : [{ id: 'simpan', label: '', baris: G.lewatSimpan.map((r) => baris(r, umTeksUmur(r), 'lewat ' + (r.umurAcuan - A.batasSimpanHari) + ' hari', [KG(r.kgLewat) + ' lewat batas simpan ' + A.batasSimpanHari + ' hari', ketHama(r), ketUmum(r)].filter(Boolean).join(' · '), true, r.umurAcuan / (A.batasSimpanHari * 1.5))) }];
   } else if (aktif === 'umur' || aktif === 'tanpa') {
     const pakai = aktif === 'tanpa' ? berisi.filter((r) => r.umur.tanpaTanggalKg > 0) : R.filter((r) => r.ada || r.minus);
     kelompok = ['merek', 'belakang', 'wadah'].map((g) => ({ id: g, label: UM_LABEL_KELOMPOK[g], baris: pakai.filter((r) => r.kelompok === g).sort(tuaDulu)
@@ -459,6 +483,7 @@ export function umPapan(kini, tanya, pilih) {
     { id: 'umur', q: TAB_UMUR[1][1], a: tua ? tua.umurAcuan + ' hari' : 'belum bisa dihitung', awas: !!tua && tua.umurAcuan > A.ambangUmurHari },
     { id: 'putaran', q: TAB_UMUR[2][1], a: G.putaranMerek !== null ? umKali(G.putaranMerek) + '× / ' + P.n + ' hari' : G.keluarMerek > 0 ? 'belum bisa dihitung' : 'belum ada laju', awas: false },
     { id: 'tanpa', q: TAB_UMUR[3][1], a: G.tanpaTanggalKg > 0 ? KG(G.tanpaTanggalKg) : 'tidak ada', awas: G.tanpaTanggalKg > 0 },
+    { id: 'simpan', q: TAB_UMUR[4][1], a: G.lewatSimpan.length ? G.lewatSimpan.length + ' barang · ' + KG(G.kgLewatSimpan) : 'tidak ada', awas: G.lewatSimpan.length > 0, merah: G.lewatSimpan.length > 0 },
   ];
   const tutup = 'Sisa di buku yang positif ' + KG(G.sisaKg) + ' = bertanggal ' + KG(G.bertanggalKg) + ' + tanpa tanggal masuk ' + KG(G.tanpaTanggalKg)
     + (G.minus.length ? ' · buku MINUS (tidak berumur, cocokkan): ' + G.minus.map((r) => r.nama + ' ' + KG(r.sisa)).join(', ') : '');
@@ -467,13 +492,14 @@ export function umPapan(kini, tanya, pilih) {
     umur: 'FIFO (owner): barang lama keluar duluan → sisa = kedatangan TERBARU; umur stok = lapisan tertua yang masih tersisa. Wadah literan campuran = umur rata-rata (owner 9 Okt). Sisa melebihi kedatangan tercatat = tanpa tanggal masuk, bukan umur 0.',
     putaran: 'putaran ' + P.n + ' hari = kg keluar (terjual + diaduk + dipindah ke wadah, saringan laju yang sama) ÷ rata-rata sisa akhir hari; rata-rata tinggal di rak = ' + P.n + ' hari ÷ putaran. Kartu = tumpukan merek saja (pindah antarbuku tidak dihitung dua kali).' + (P.catat ? ' Periode dipendekkan: ' + P.catat + '.' : ''),
     tanpa: 'tanpa tanggal masuk = sisa yang melebihi semua kedatangan tercatat (stok awal, saldo pembuka, pindah buku, adukan jadi karung, retur, selisih cocokkan) — umurnya belum bisa dihitung · ' + nTanpa + ' buku',
+    simpan: 'lewat batas simpan = umur stok (FIFO: lapisan tertua yang masih tersisa · wadah campuran: rata-rata) > ' + A.batasSimpanHari + ' hari (' + (A.dariOwner ? 'setelan owner' : 'bawaan') + ', tanda kedua sesudah lambat laku ' + A.ambangUmurHari + ' hari) — keluarkan / jual dulu, periksa mutu & hama. Hama dicatat per tumpukan di Cocokkan › Tumpukan gudang.',
   }[aktif];
-  const kosong = { lambat: 'Tidak ada yang lambat laku dengan ambang sekarang.', umur: 'Belum ada beras karung bersisa di buku.', putaran: 'Belum ada gerak keluar di periode ini.', tanpa: 'Semua sisa bertanggal masuk.' }[aktif];
+  const kosong = { lambat: 'Tidak ada yang lambat laku dengan ambang sekarang.', umur: 'Belum ada beras karung bersisa di buku.', putaran: 'Belum ada gerak keluar di periode ini.', tanpa: 'Semua sisa bertanggal masuk.', simpan: 'Tidak ada stok yang lewat batas simpan ' + A.batasSimpanHari + ' hari.' }[aktif];
   return { atur: A, periode: P, kartu, aktif, judul: TAB_UMUR.find((t) => t[0] === aktif)[1], kelompok, rumus, kosong, tutup, banyak: R.length };
 }
 /** Baris ringkas untuk detail merek di lembar lain (Stok › HPP / modal): '' bila buku itu tidak punya sisa atau gerak. */
 export function umKalimat(kunci, kini) {
   const r = umBarang(kini).find((x) => x.kunci === kunci); if (!r) return '';
   const P = umPeriode(hariIniIso(kini), umAtur().periodeHari);
-  return 'Umur stok ' + (r.cara === 'rata' ? '(wadah campuran, rata-rata) ' : '(FIFO) ') + umTeksUmur(r) + (umTeksLapisan(r) ? ' — ' + umTeksLapisan(r) : '') + (umTeksHariStok(r) ? ' · ' + umTeksHariStok(r) : '') + ' · ' + umTeksPutaran(r, P) + (r.lambat ? ' · LAMBAT LAKU' : '');
+  return 'Umur stok ' + (r.cara === 'rata' ? '(wadah campuran, rata-rata) ' : '(FIFO) ') + umTeksUmur(r) + (umTeksLapisan(r) ? ' — ' + umTeksLapisan(r) : '') + (umTeksHariStok(r) ? ' · ' + umTeksHariStok(r) : '') + ' · ' + umTeksPutaran(r, P) + (r.lambat ? ' · LAMBAT LAKU' : '') + (r.lewatSimpan ? ' · LEWAT BATAS SIMPAN' : '');
 }

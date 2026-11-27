@@ -360,7 +360,7 @@ MODUL_LAYAR = list(dict.fromkeys(list(dict.fromkeys(bundel_baru.lengkapi(MODUL) 
 LAYAR = r"""
 var __html = ''; pasang = function (akar, isi) { __html = isi && isi.__mentah ? isi.html : String(isi); }; delegasi = function () {}; gulirkan = function () {}; nanti = function () {}; segera = function () {};
 setelKunci(false); window.matchMedia = function (q) { return { matches: /1100px/.test(q) }; }; window.addEventListener = function () {}; if (typeof setTimeout === 'undefined') { var setTimeout = function () { return 0; }; var clearTimeout = function () {}; }
-var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP; var PG = LP; var GE = LP; var KL = LP; var SH = LP; var KR = LP; var JN = LP; var RB = LP;   // paket tanggal janji 27 Nov: JN = janji-logika (Pondasi › Tepat janji) · B5: kartu Per pelanggan (laba-pelanggan-logika) · 24 Nov: grosir/ecer per jenis · paket KPI laba: margin, GMROI, nota terbesar
+var LP = new Proxy({}, { get: function (o, k) { return (0, eval)(String(k)); } }); var PJ = LP; var KB = LP; var PG = LP; var GE = LP; var KL = LP; var SH = LP; var KR = LP; var JN = LP; var RB = LP; var SG = LP;   // paket tanggal janji 27 Nov: JN = janji-logika (Pondasi › Tepat janji) · B5: kartu Per pelanggan (laba-pelanggan-logika) · 24 Nov: grosir/ecer per jenis · paket KPI laba: margin, GMROI, nota terbesar
 var akarL = { classList: { add: function () {}, remove: function () {} }, firstElementChild: null, offsetWidth: 0 };
 var L9 = null; var gambarL = function (patch) { L9.keadaan.setel(patch); L9.gambar(); return __html; };
 coba('P9', function () {

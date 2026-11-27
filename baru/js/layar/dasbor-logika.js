@@ -72,6 +72,8 @@ import { klBagianHari } from './kpi-laba-logika.js';
 import { klKgBulan, klStokRp } from './kpi-laba-logika.js';
 import { lpTerlaris, lpMerekMinggu, lpSenin } from './laporan-logika.js';
 import { pnDso } from './bon-logika.js';
+// paket P5 (owner 27 Nov 2026): barang masuk hari ini (A125) · produksi bulan ini (B72) · stok dipesan (B51) — kartu & angka lewat "+ Tambah kartu" (katalog)
+import { sgMasukHari, sgProduksiDeret, sgPesananRp } from './stok-pantau-logika.js';
 
 export const DB_RENTANG = [['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan']];
 const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];
@@ -213,6 +215,7 @@ export function dbMutu(kini, SR) {
     periode: 'Sekarang · merek & susut ' + (M.galat ? key : M.nama), sumber: 'Laporan › Laba › Per merek', tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key },
     tertagih: T.galat ? T : { keadaan: T.keadaan, rataTeks: T.rataTeks, hari: T.hari, teks: T.teks, periodeTeks: T.periodeTeks, tujuan: { ke: 'pelanggan', keluarga: 'bon' } },
     umur: U.galat ? U : { lambat: U.lambat.length, namaLambat: U.lambat.slice(0, 3).map((r) => r.nama), tertua: U.tertua.length ? { nama: U.tertua[0].nama, hari: U.tertua[0].umurAcuan } : null,
+      lewatSimpan: U.lewatSimpan.length, kgLewat: U.kgLewatSimpan, batasSimpan: U.atur.batasSimpanHari,   // paket P5 (A43): tanda kedua
       putaran: U.putaranMerek, periodeHari: U.atur.periodeHari, tujuan: { ke: 'stok', tab: 'umur' } },
     merek: M.galat ? M : TT.galat ? TT : { nama: M.nama, arsip: !!M.diarsip, menutup: M.menutup, teratas: TT.daftar.map((g) => ({ merek: g.merek, margin: g.margin, pct: g.pct, keadaanMargin: g.keadaanMargin })),
       susutPct: M.susut ? M.susut.pct : null, susutTinggi: M.susut ? (Array.isArray(M.susut.tinggi) ? M.susut.tinggi.length : Number(M.susut.tinggi) || 0) : 0, tujuan: { ke: 'laporan', keluarga: 'laba', bulan: key } },
@@ -510,3 +513,15 @@ export function dbKg(kini, SR) {
     terlaris: aman(() => lpTerlaris(dari, sampai, 5)), stok: aman(() => klStokRp(kini, dari, sampai)), tren: aman(() => lpMerekMinggu(lpSenin(iso), kini, 4)), dso: aman(() => pnDso(kini, 2)), saring: sar ? SR.nama : '' };
 }
 DB_KELOMPOK.kg = ['per kg & minggu', dbKg]; DB_IKUT_SARING.push('kg'); DB_TAMBAHAN.push('kg'); DB_PANAS.push('kg');
+
+/**
+ * Paket P5 · STOK, GUDANG & PRODUKSI (owner 27 Nov 2026): kelompok tambahan `gudang5` — TIDAK ikut saringan (barang masuk = HARI INI, produksi = bulan ini & 6 bulan,
+ * pesanan = sekarang, umur = sekarang). Semua APA ADANYA dari stok-pantau-logika / stok-logika (sumber yang sama dengan Stok & Laporan); widgetnya hanya di katalog.
+ */
+export function dbGudang5(kini) {
+  const iso = hariIniIso(kini); const aman = (f) => { try { return f(); } catch (e) { if (typeof console !== 'undefined') console.error('dasbor gudang P5', e); return { galat: String((e && e.message) || e) }; } };
+  const U = aman(() => umRingkas(kini));
+  return { periode: 'Sekarang', sumber: 'Stok › Produksi · Laporan › Harian', masuk: aman(() => sgMasukHari(iso)), produksi: aman(() => sgProduksiDeret(kini, 6)), pesanan: aman(() => sgPesananRp(kini)),
+    simpan: U.galat ? U : { n: U.lewatSimpan.length, kg: U.kgLewatSimpan, batas: U.atur.batasSimpanHari, nama: U.lewatSimpan.slice(0, 3).map((r) => r.nama + ' ' + r.umurAcuan + ' hr'), tujuan: { ke: 'stok', tab: 'umur' } } };
+}
+DB_KELOMPOK.gudang5 = ['stok, gudang & produksi', dbGudang5]; DB_TAMBAHAN.push('gudang5'); DB_PANAS.push('gudang5');

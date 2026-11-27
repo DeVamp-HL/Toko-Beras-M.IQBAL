@@ -187,7 +187,7 @@ def baca_per_layar():
 BATAS_CI = 18   # batas Firebase 20 per batch − sisa 2 (keputusan owner). Sengaja TIDAK dibaca dari akses.js: menaikkan batas di sana tidak melonggarkan CI.
 MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/modal-fifo.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/layar/arsip-logika.js',
                'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/harga-tingkat-logika.js', 'baru/js/layar/faktur-logika.js', 'baru/js/layar/antar-logika.js', 'baru/js/layar/pesanan-logika.js', 'baru/js/layar/kg-liter-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
-               'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
+               'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/kelas-het-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',   # P5 (27 Nov 2026): kelas-het = pemeriksa oplos Adukan (modul daun)
                'baru/js/layar/titipan-logika.js',   # owner 21 Nov 2026: titipan dari tablet — Uang, papan Persetujuan & tutup hari memakainya
                'baru/js/layar/banding-catat-logika.js',   # paket Banding pemasok (owner 26 Nov 2026, rules v21): usul harga tawaran / acuan dari tablet
                'baru/js/layar/patuh-logika.js',   # paket Stok minus, label & kepatuhan (owner 26 Nov 2026, rules v22): tanda kalender kepatuhan dari tablet

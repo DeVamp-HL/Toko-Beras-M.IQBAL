@@ -30,6 +30,7 @@ import { khSumberPengingat } from './layar/kas-rekening-logika.js';
 // buku stok minus → Pengingat (lokal.patuh / lokal.gudang) dan lonceng (tiga jenis ini saja, yang sudah jatuh: lewat & hari ini)
 import { ptSumberPengingat } from './layar/patuh-logika.js';
 import { gdSumberPengingat } from './layar/gudang-logika.js';
+import { sgSumberPengingat } from './layar/stok-pantau-logika.js';   // paket P5 (owner 27 Nov 2026, A92): opname kejutan — owner saja
 import { lbSumberPengingat } from './layar/label-logika.js';
 import { ssPengingat } from './layar/sistem-logika.js';
 import { nanti, setelMuat } from './inti/jadwal.js';
@@ -286,9 +287,12 @@ function sumberPatuh() { const a = akunKini(); if (!a || !(a.jenis === 'owner' |
 function sumberGudang() { const a = akunKini(); if (!a || !(a.jenis === 'owner' || a.jenis === 'aktif')) return []; const k = sekarangCadangan || new Date(); const out = [];
   try { gdSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat stok minus', e); }
   try { lbSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat kemasan', e); }
+  // opname kejutan: hanya owner (setelannya aturanToko/opnameKejutan tidak terbaca staf; yang dihitung tidak boleh tahu lebih dulu)
+  if (a.jenis === 'owner') { try { sgSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat opname kejutan', e); } }
   return out; }
 // Lonceng: pengingat TIGA jenis paket ini yang sudah jatuh (lewat & hari ini), untuk orang yang diingatkan (Atur pengingat › ke) — owner melihat semuanya.
 const LC_JENIS = ['patuh', 'kemasan', 'minus'];
+LC_JENIS.push('kejutan');   // paket P5 (owner 27 Nov 2026): + opname kejutan (sumbernya hanya di perangkat owner)
 function pengingatLonceng(a) {
   if (!a || !(a.jenis === 'owner' || a.jenis === 'aktif')) return []; const k = sekarangCadangan || new Date(); const nama = String(a.nama || '').trim().split(/\s+/)[0].toLowerCase();
   try { return ingatPerVersi('lcPengingat|' + k.toISOString().slice(0, 10) + '|' + (a.uid || ''), () => ssPengingat(k, { patuh: sumberPatuh(), gudang: sumberGudang() }).aktif
