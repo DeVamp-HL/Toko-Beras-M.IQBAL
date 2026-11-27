@@ -4591,3 +4591,45 @@ laci berulang bawaan **3 malam berturut-turut / 4 dari 7 malam** (setelan owner)
 - **Akses & data.** `akses.js`: `DOK_STAF_RUTIN`, `BACA_RUTIN` (disambung `pendengarPeran` untuk ben & karyawan), `BUAT_STAF.rutinCek`, `CEK_RUTIN_KOLOM` + `cekRutinSah` di
   `periksaKiriman`. `koleksi.js`: `rutinCek` kelas tetap. `bundel_baru.py`: `LH_MODUL` / `RN_MODUL` ikut otomatis. `index.html`: modulepreload 4 modul baru.
 - **Belum dicoba di data asli:** centang dari tablet (butuh v25 terbit), alarm & pengingat di HP owner, mendarat di halaman tugas di CPad, cetak slip hitungan laci dengan catatan.
+
+## Paket P7 · Pelanggan & HET — A15 · A108 · A132 · B18 (owner 27 Nov 2026, sensus ulang 27 Nov; tanpa rules baru, mesin beku tidak diubah)
+
+Dijaga `alat-uji/uji_pelanggan_het_p7.py` (kotak pasir angka contoh + statis + `--kontrol` + asap cadangan toko; angka rupiah toko tidak dicetak). Logika baru tanpa DOM:
+`baru/js/layar/het-jual-logika.js` (awalan `hj`, baca saja), `baru/js/layar/usul-bon-logika.js` (awalan `ul`), `baru/js/layar/halaman-pelanggan-logika.js` (awalan `hn`,
+baca saja), + `pgOrangBulan` di `laba-pelanggan-logika.js` dan `fkHentiBon` / `fkHentiBonTeks` di `faktur-logika.js`. Pintu tulis baru (owner saja, koleksi tidak
+bertanggal): kartu `pelangganCatatan` lewat "Pakai usul" / "Buka lagi" (rules: ubah kartu = owner) dan setelan `aturanToko/usulBon` (staf tidak membacanya — daftar baca
+aturanToko staf tidak berubah, dijaga statis).
+
+**Keputusan owner (satu AskUserQuestion 27 Nov 2026):** harga nota / nego di atas HET **cuma ditandai** (nota tetap tersimpan siapa pun yang mencatat) · usul batas bon
+memakai **aturan bawaan** (lihat 3 bulan · naik 25 % bila 3 bon terakhir tepat waktu & pernah ≥ 80 % batas · turun 25 % bila 2 dari 3 telat · henti bila lewat stop bon /
+macet) · usul HENTI yang dipakai = **bon baru ditahan** sampai owner membuka lagi · halaman pelanggan **owner lengkap, staf tanpa laba**.
+
+- **HET di nota (A15)** `hjNilaiBaris(p)`: harga per kg = harga satuan yang dibayar (keranjang `hargaSatuan`; nota tersimpan `hargaAsliSatuan + negoSelisih` — sesudah
+  harga pelanggan usaha / grosir / nego, sebelum potongan nota) ÷ kg satuannya (karung = berat label, kemasan = ukuran, literan = `rasioPakai` nota, repack = per kg); kemasan
+  berbonus = unit yang dibayar. Merek = nama baris katalognya (kemasan = nama produk, literan wadah = nama WADAH, buku per ukuran `Merek 25 kg` = merek induknya, `petaUkuran`).
+  Penilaian = `hetNilai(perKg, hetAtur().peta[hetUnit(merek).unit])` — SATU rumus dengan Harga › HET & Dasbor (tidak ada angka HET di modul ini, dijaga statis).
+  Wadah yang dijual & barang pengganti retur tidak dinilai; nota nominal kasir darurat & nota lama tanpa harga satuan = "tidak bisa dinilai" (disebut). Jual › Bayar
+  (`hjKeranjang`) dan lembar nego (`hjSatuHarga`) menampilkan tandanya **di akun owner saja** — akun staf tidak membaca `aturanToko/het` (rules), di perangkat staf semuanya akan
+  terbaca "belum dipetakan"; nota staf tetap dinilai di rekap mingguan (owner). Tidak ada kolom baru di nota: tanda = penilaian ulang dengan setelan HET yang berlaku.
+- **Rekap HET per minggu (A132)** `hjMinggu(awal)` (Senin–Minggu, diingat per versi data) & `hjRiwayat(iso, 8)`: baris nota beras minggu itu — literan wadah campuran yang
+  dipecah per merek asal (`takaranId`) = satu baris — Σ di atas · sama/di bawah · belum dipetakan · bukan beras HET · tidak bisa dinilai = semua baris; kg & rupiah di atas HET
+  (Σ selisih per kg × kg dibayar), jumlah nota, per merek. Peta kelas kosong = keadaan "belum" ("BUKAN berarti patuh"). Laporan › Mingguan kartu **Kepatuhan HET** + riwayat 8
+  minggu (ketuk = pindah minggu). Cadangan 25 Nov: peta kelas HET toko KOSONG → semua minggu "belum dipetakan" (16 kelas/merek dijual minggu terakhir).
+  **TUGAS OWNER: petakan kelas di Harga › HET** — tanpa itu tanda Bayar, rekap mingguan, alarm dekat HET, dan oplos P5 tidak pernah menyala.
+- **Usul batas bon bulanan (A108)** `ulDaftar(kini)` / `ulAtur` / `ulSusunAtur` / `ulSusunPakai` / `ulSusunBuka`: orang yang ber-bon dalam periode, masih punya sisa, berbatas
+  owner, atau sedang dihentikan. Batas = yang berlaku di kasir (`fkInfoKredit`: angka owner / 2× rata belanja bulanan). Riwayat bayar = 3 bon terakhir yang lunas lewat
+  pembayaran (`pnKebiasaanBayar`, satu rumus dengan "diperkirakan telat" B35); pemakaian = sisa bon tertinggi sejak awal periode (`ulPuncak`, urutan waktu buku bon mesin) ÷
+  batas. Urutan putusan: dihentikan → HENTI (`fkStopBon` / status macet `semuaBon`) → TURUN (≥ 2 dari 3 telat) → NAIK (3 lunas, 0 telat, pakai ≥ ambang) → TETAP (riwayat
+  < 3 disebut). Naik dibulatkan ke ATAS, turun ke BAWAH (paling rendah satu langkah). Setelan `aturanToko/usulBon` (bulan 1–12, naik 1–200 %, ambang 1–100 %, turun 1–90 %,
+  langkah Rp1.000–Rp1.000.000), bawaan disebut "bawaan". Pelanggan › Bon › tab **Usul batas** (owner): "Pakai usul" = kartu `batasKredit` baru (atas batas rumus = jadi angka
+  owner, yang juga meloloskan syarat bon baru — disebut) atau `bonDihentikan { tanggal, jam, alasan }` + jejak `usulBon { bulan, jenis, dari, ke, … }`; usul yang sama
+  tidak bisa dipakai dua kali sebulan. **Henti**: `kunciKr1` (jual-logika) menolak bon baru sebelum batas & syarat (`fkHentiBon`); pintu owner yang sudah ada tetap (owner
+  membuka sekali / persetujuan owner atas permintaan bon staf). "Buka lagi" dari tab Usul atau halaman pelanggan menghapus `bonDihentikan` (`hentiDibuka` mencatat kapan).
+- **Halaman pelanggan (B18)** `hnHalaman(kini, kunci, nama, { laba })`: bagian di atas kartu orang (Pelanggan › Kenali › ketuk nama; tautan "halaman pelanggan" di lembar bon):
+  nota terakhir (per nota, tanggal · isi · total · cara bayar · faktur), belanja 12 bulan per bulan (batang) & per tahun (tahun tutup buku = ringkasan tutup buku, Σ nota tanpa
+  potongan retur, disebut), pesanan belum jadi nota (`pesananBelumTuntas` mesin) + uang muka + order rutin aktif, bon (sisa, nota terbuka & lewat jatuh tempo, batas & sumbernya,
+  kebiasaan bayar, faktur terbuka, stop / henti), usul batas bulan ini (owner). Belanja & laba per bulan = `pgOrangBulan` — aturan baris `pelangganBulan` apa adanya (retur ikut
+  nama di nota asalnya); uji membandingkan tiap pembeli tiap bulan dengan Laporan › Laba › Per pelanggan (kotak pasir & cadangan toko). Laba kotor 1 / 3 / 12 bulan HANYA
+  untuk owner: untuk staf `hnHalaman(…, { laba: false })` tidak mengembalikan angka laba sama sekali.
+- Belum dicoba di data asli (cadangan baca saja): menulis "Pakai usul" / "Buka lagi" / setelan usul bon, kasir menolak bon orang yang dihentikan, tanda HET di Bayar sesudah
+  owner memetakan kelas.

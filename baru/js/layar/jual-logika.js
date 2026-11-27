@@ -34,6 +34,8 @@ import { tkSetTertaut, caraBayarKunci } from '../mesin/pembantu.js';
 import { htKolomBaris, htTandaiRak, htTingkatOrang, htPapanKhusus, HT_KOLOM_BARIS, htGrosir } from './harga-tingkat-logika.js';
 // B2 (owner 17 Nov 2026): faktur bertempo & batas kredit — batas angka owner per pelanggan, minta persetujuan owner, bayar kurang ikut batas
 import { fkInfoKredit, fkSumberBatas, fkSetujuUntuk, fkKolomNota, fkRincian, fkStopBon, fkStopBonTeks, fkSyaratBon, fkSyaratBonTeks } from './faktur-logika.js';
+// paket P7 (owner 27 Nov 2026, A108): bon dihentikan owner — gerbang KR1 kunciKr1
+import { fkHentiBon, fkHentiBonTeks } from './faktur-logika.js';
 // B3 (owner 18 Nov 2026): surat jalan & antar — ongkir menempel di satu baris nota (ikut hargaTotal), bayar di tempat = bon sementara bebas batas hari itu
 import { ajOngkir, ajAlasanTolak, ajBarisPembawa, ajDokumenSJ, ajNomorBaru, ajBatalUntukNota, ajDrafBaru, ajUntukNota, ajKeadaan, ajJanjiAntar } from './antar-logika.js';
 // owner 26 Nov 2026 (karcis ambil nanti, rules v23): catatan titipan ikut kiriman nota
@@ -1123,6 +1125,7 @@ export function uangKetik(s) { const n = angkaKetik(s.ketik); return n > 0 ? { u
 export function kunciKr1(nama, totalKredit) {
   const info = fkInfoKredit(nama);   // siap 2027 (owner 7 Okt, A7): 90 hari menyeberang tutup buku lewat ringkasan tahun lalu (kreditLintas di dalamnya)
   if (!info || !info.ada) return 'Isi nama pelanggan untuk penjualan kredit.';
+  const HB = fkHentiBon(nama); if (HB) return fkHentiBonTeks(nama, HB) + '.';   // paket P7 (owner 27 Nov 2026, A108): bon dihentikan owner — sebelum batas & syarat
   if (!info.terdaftar) return nama + ' belum terdaftar di buku Pelanggan — kredit dimatikan (KR1). Isi ciri, catatan, atau rute di kartunya dulu.';
   // owner 26 Nov 2026 (A101): syarat bon baru — batas kredit yang diisi owner di kartu = lolos (owner sudah memutuskan orangnya)
   if (info.sumber !== 'owner') { const Y = fkSyaratBon(nama, hariIniIso(new Date(Date.now()))); if (Y) return fkSyaratBonTeks(nama, Y) + '.'; }

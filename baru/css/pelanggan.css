@@ -120,3 +120,26 @@ main.layar-pelanggan { display: flex; flex-direction: column; gap: 10px; padding
 @keyframes htMasuk { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .layar-pelanggan .ht-tingkat, .layar-pelanggan .ht-ubah, .layar-pelanggan .ht-pilih, .layar-pelanggan .ht-usul { animation: none; } .layar-pelanggan .ht-barang .n { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .layar-pelanggan .jd-orang.harap::after { animation: none; } }
+/* paket P7 (owner 27 Nov 2026, B18 · A108): halaman pelanggan (angka · batang 12 bulan · nota) + usul batas bon */
+.layar-pelanggan .hn-halaman { animation: htMasuk 420ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-pelanggan .hn-angka { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.layar-pelanggan .hn-angka > div { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; background: var(--seg); }
+.layar-pelanggan .hn-angka b { font-family: 'Bodoni Moda', Georgia, serif; font-size: 19px; font-weight: 500; white-space: nowrap; }
+.layar-pelanggan .hn-bulan { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; align-items: end; height: 76px; }
+.layar-pelanggan .hn-bulan > div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; }
+.layar-pelanggan .hn-bulan i { display: block; width: 100%; max-width: 22px; border-radius: 4px 4px 1px 1px; background: linear-gradient(180deg, #f1d684, #d2a640); transform-origin: bottom; animation: hnTumbuh 700ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-pelanggan .hn-bulan > div:nth-child(2n) i { animation-delay: 40ms; } .layar-pelanggan .hn-bulan > div:nth-child(3n) i { animation-delay: 80ms; }
+.layar-pelanggan .hn-bulan > div.aktif i { background: linear-gradient(180deg, #fff1c2, #e4b54a); box-shadow: 0 0 10px rgba(228, 181, 74, 0.45); }
+.layar-pelanggan .hn-bulan > div.arsip i { background: var(--seg); }
+.layar-pelanggan .hn-bulan span { font-size: 9px; opacity: 0.7; }
+@keyframes hnTumbuh { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.layar-pelanggan .hn-nota { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--seg); }
+.layar-pelanggan .hn-nota .nm { font-weight: 600; font-size: 13px; } .layar-pelanggan .hn-nota .ket { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layar-pelanggan .hn-nota .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 15px; text-align: right; white-space: nowrap; display: flex; flex-direction: column; } .layar-pelanggan .hn-nota .n small { font-family: inherit; font-size: 10px; opacity: 0.7; }
+.layar-pelanggan .ul-baris { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--seg); animation: htMasuk 380ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-pelanggan .ul-baris.henti, .layar-pelanggan .ul-baris.dihentikan { border-color: var(--awas); } .layar-pelanggan .ul-baris.naik { border-color: #d2a640; }
+.layar-pelanggan .ul-baris .nm { font-weight: 600; }
+.layar-pelanggan .ul-cip { display: inline-block; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; background: var(--seg); font-weight: 600; vertical-align: 1px; }
+.layar-pelanggan .ul-cip.naik { background: rgba(210, 166, 64, 0.25); } .layar-pelanggan .ul-cip.turun, .layar-pelanggan .ul-cip.henti, .layar-pelanggan .ul-cip.dihentikan { background: rgba(200, 70, 60, 0.18); color: var(--awas); }
+.layar-pelanggan .ul-tetap .ul-baris { border: 0; padding: 4px 0; animation: none; }
+@media (prefers-reduced-motion: reduce) { .layar-pelanggan .hn-halaman, .layar-pelanggan .hn-bulan i, .layar-pelanggan .ul-baris { animation: none; } }
