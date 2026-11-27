@@ -8,7 +8,8 @@
 //   retur, omzet & nota per hari                              → lpHariBulan (aturan rekap hari / hariTerakhir, satu lintasan per bulan)
 //   susut % & target susut                                    → susutRentang (Per merek / Mingguan) · shTarget (target susut owner)
 //   piutang akhir bulan                                       → hitungPiutang mesin (sisa > 0 — sama dengan neraca)
-//   nilai stok rata-rata                                      → klModalTertahan (karung + kemasan, nilai modal)
+//   perputaran & hari stok (rupiah)                           → klStokRp (paket P1: nilai stok rata-rata = klModalTertahan, target hari stok = Stok › Umur)
+//   hari bon pelanggan (DSO)                                  → pnDsoPada (paket P1, bon-logika: 30 hari sampai akhir bulan / hari ini)
 //   uang masuk / keluar / kas bersih / bon baru               → intiBulan (Laporan › Bulanan, arus kas mesin) · rincian = hitungArusKasInti
 //   siklus uang, PPh final                                    → klSiklusUang · klPph (kpi-laba)
 //   karcis belum dirinci                                      → daftarKarcis (Jual › Karcis kasir)
@@ -17,7 +18,9 @@
 // Bulan berjalan: arus (omzet, kg, laba) dibanding bulan lalu memakai PERKIRAAN SEBULAN (linear) — cara yang sama dengan Peta biaya — dan disebut "perkiraan".
 import { kendaliBulan, titikImpas, targetBulan, kbLampuTarget, catatanPos, AB_TARGET, abTeks } from './kendali-biaya-logika.js';
 import { pjPotonganBulan, pjPotonganHarian } from './pajak-logika.js';
-import { klModalTertahan, klSiklusUang, klPph, klPctTeks } from './kpi-laba-logika.js';
+import { klStokRp, klSiklusUang, klPph, klPctTeks } from './kpi-laba-logika.js';
+// P1 (#232): satu rumus lama piutang untuk Dasbor, Laporan & rapor
+import { pnDsoPada } from './bon-logika.js';
 import { lpBulanPendek, lpHariBulan, intiBulan, susutRentang, daftarBulan } from './laporan-logika.js';
 import { shTarget } from './susut-harga-logika.js';
 import { daftarKarcis } from './karcis-logika.js';
@@ -56,15 +59,17 @@ function rbBulanHitung(key, kini, iso) {
   let piutang = null, nPiutang = 0; if (diarsip) { const Pt = potretBulan(key); const N = Pt && Pt.neraca && Pt.neraca.N; if (N && N.piutang !== null && N.piutang !== undefined) { piutang = Number(N.piutang) || 0; nPiutang = Number(N.nPiutang) || 0; } }
   else { const d = hitungPiutang(sampai).filter((x) => x.sisa > 0); piutang = d.reduce((a, x) => a + x.sisa, 0); nPiutang = d.length; }
   const I = intiBulan(key, kini, B); const bon = Number(I.kredit) || 0;
-  const MT = diarsip ? null : klModalTertahan(kini, awal, sampai); const rataStok = MT && MT.rata !== null && MT.nHari > 0 ? MT.rata : null;
-  const hpp = Number(L.hpp) || 0; const perputaran = rataStok > 0.5 ? hpp / rataStok : null; const hariStok = perputaran > 0 ? hari / perputaran : null;
+  // perputaran & hari stok = klStokRp (P1 #232, satu sumber dengan Dasbor Hari stok / Perputaran & Stok › Umur) — perputaran DISETAHUNKAN supaya bulan 25 hari & 31 hari sebanding
+  const SR = diarsip ? null : klStokRp(kini, awal, sampai); const rataStok = SR && SR.rata !== null && SR.rata !== undefined ? SR.rata : null;
+  const hpp = Number(L.hpp) || 0; const perputaran = SR && SR.putaranTahun !== null && SR.putaranTahun !== undefined ? SR.putaranTahun : null; const hariStok = SR && SR.hari !== null && SR.hari !== undefined ? SR.hari : null;
+  const DS = diarsip ? null : pnDsoPada(sampai);   // lama piutang = pnDsoPada (P1 #232) di akhir bulan / hari ini
   const S = susutRentang(awal, sampai); const susutPct = S && S.susut && S.susut.pct !== undefined ? S.susut.pct : null;
   return { key, nama: K.nama, pendek: lpBulanPendek(key, true), berjalan: K.berjalan, final: K.final, diarsip, tanpaCatatan: !!K.tanpaCatatan, hariJalan: hari, nHari: K.nHari, awal, sampai,
     omzet: K.omzet, retur, potNota: PT.nota, potTawar: PT.tawar, potongan: PT.jumlah, nPotongan: PT.n, kotor, potPct: kotor > 0 ? PT.jumlah / kotor * 100 : null,
     kg: K.kgTerjual, kgHitung: K.kgHitung, omzetHitung: K.omzetHitung, hpp, hppKg: rbBagi(hpp, K.kgHitung), jualKg: rbBagi(K.omzetHitung, K.kgHitung),
     labaKotor: K.margin, marginKotor: rbPct(K.margin, K.omzetHitung), biaya: K.semuaBiaya, labaBersih: K.labaBersih, labaSampai: T.labaSampai, marginBersih: rbPct(K.labaBersih, K.omzetHitung),
-    susut: K.susut, susutPct, susutDiarsip: !!(S && S.diarsip), piutang, nPiutang, bon, dso: piutang !== null && bon > 0 && hari > 0 ? piutang / (bon / hari) : null,
-    rataStok, perputaran, hariStok, masuk: I.masuk, keluar: I.keluar, kasBersih: I.bersih, cakupan: K.cakupan, tanpaHpp: L.jumlahTanpaHpp || 0, menutup: K.menutup, K };
+    susut: K.susut, susutPct, susutDiarsip: !!(S && S.diarsip), piutang, nPiutang, bon, dso: DS ? DS.dso : null, dsoHari: DS ? DS.hari : null,
+    rataStok, perputaran, hariStok, stokStatus: SR ? SR.status : null, stokTarget: SR ? SR.target : null, masuk: I.masuk, keluar: I.keluar, kasBersih: I.bersih, cakupan: K.cakupan, tanpaHpp: L.jumlahTanpaHpp || 0, menutup: K.menutup, K };
 }
 /** Perkiraan sebulan (linear dari hari yang sudah jalan) untuk angka arus di bulan berjalan; selain itu angka itu sendiri. */
 const rbSebulan = (X, n) => (n === null || n === undefined ? null : X.berjalan && X.hariJalan > 0 ? n / X.hariJalan * X.nHari : n);
@@ -83,9 +88,9 @@ const RB_BARIS = [
   { id: 'marginBersih', nama: 'Margin laba bersih', satuan: 'pct', baik: 'naik', ambil: (X) => X.marginBersih, ket: 'laba bersih ÷ omzet ber-HPP' },
   { id: 'susutPct', nama: 'Susut beras', satuan: 'pct', baik: 'turun', ambil: (X) => X.susutPct, ket: 'kg hilang ÷ beras keluar (Per merek) · target = target susut owner' },
   { id: 'piutangAkhir', nama: 'Piutang akhir bulan', satuan: 'rp', baik: 'turun', tg: 'piutangAkhir', ambil: (X) => X.piutang, ket: 'sisa bon pelanggan (bulan berjalan: hari ini)' },
-  { id: 'dso', nama: 'Hari bon pelanggan', satuan: 'hari', baik: 'turun', ambil: (X) => X.dso, ket: 'piutang akhir bulan ÷ jual bon per hari BULAN KALENDER itu (bukan jendela 30 hari bergulir)' },
-  { id: 'perputaran', nama: 'Perputaran stok', satuan: 'kali', baik: 'naik', ambil: (X) => X.perputaran, ket: 'HPP bulan itu ÷ rata-rata nilai stok (karung + kemasan) — sebulan, tidak disetahunkan' },
-  { id: 'hariStok', nama: 'Hari stok', satuan: 'hari', baik: 'turun', ambil: (X) => X.hariStok, ket: 'rata-rata nilai stok ÷ HPP per hari' },
+  { id: 'dso', nama: 'Lama piutang (hari)', satuan: 'hari', baik: 'turun', ambil: (X) => X.dso, ket: 'piutang berjalan ÷ penjualan bon per hari, 30 hari sampai akhir bulan (bulan berjalan: hari ini) — rumus yang sama dengan Dasbor Lama piutang' },
+  { id: 'perputaran', nama: 'Perputaran stok (setahun)', satuan: 'kali', baik: 'naik', ambil: (X) => X.perputaran, ket: 'modal terjual ÷ rata-rata nilai stok, disetahunkan × 365 ÷ hari (klStokRp — sama dengan Dasbor Perputaran stok)' },
+  { id: 'hariStok', nama: 'Hari stok', satuan: 'hari', baik: 'pas', ambil: (X) => X.hariStok, ket: 'rata-rata nilai stok ÷ modal terjual per hari (klStokRp) · target = Stok › Umur (setelan owner)' },
 ];
 /** Baris mode KAS (saklar Kas | Laba, owner 27 Nov 2026 "Dua-duanya"). */
 const RB_BARIS_KAS = [
@@ -103,13 +108,15 @@ function rbSusunBaris(daftar, X, XL, TB, ambang, catatan, ST) {
     let L = { lampu: 'tanpa', dasar: null, selisih: null, pct: null }, target = null, targetTeks = ''; const aktual = b.sampai && X.berjalan ? b.sampai(X) : ini;   // laba bersih bulan berjalan: yang dibanding = sampai hari ini
     if (t && tb && tb.nilai > 0) { L = kbLampuTarget(t, tb.nilai, aktual, ctx, ambang); target = tb.nilai;
       targetTeks = (t.arah === 'min' ? 'target ' : 'batas ') + rbNilaiTeks(tb.nilai, b.satuan) + (t.jalan && X.berjalan ? ' · sampai hari ke-' + X.hariJalan + ' ' + rbNilaiTeks(L.dasar, b.satuan) : '') + (b.sampai && X.berjalan ? ' · tercapai sampai hari ini ' + rbNilaiTeks(aktual, b.satuan) : '') + (tb.khusus ? ' · angka khusus ' + X.nama : ''); }
+    else if (b.id === 'hariStok' && X.stokStatus && X.stokTarget) {   // P1: target hari stok (Stok › Umur, bawaan 7–14) — tipis / diam = kuning, pas = hijau
+      target = X.stokTarget.min; L = { lampu: X.stokStatus === 'pas' ? 'hijau' : 'amber', dasar: null, selisih: null, pct: null }; targetTeks = 'target ' + X.stokTarget.teks + (X.stokStatus === 'tipis' ? ' · STOK TIPIS' : X.stokStatus === 'diam' ? ' · modal kebanyakan diam' : ''); }
     else if (b.id === 'susutPct' && ST && ST.pct !== null && ST.pct !== undefined) {   // target susut = setelan susut yang sudah ada (shTarget), lampu dengan ambang yang sama
       target = ST.pct; L = kbLampuTarget({ arah: 'maks', jalan: false }, ST.pct, ini, ctx, ambang); targetTeks = 'target susut ' + klPctTeks(ST.pct) + (ST.dariOwner ? '' : ' (terukur, bukan angka owner)'); }
-    const membaik = ubah === null ? null : b.baik === 'naik' ? ubah > 0 : ubah < 0;
+    const membaik = ubah === null || b.baik === 'pas' ? null : b.baik === 'naik' ? ubah > 0 : ubah < 0;
     const c = catatan[b.id] || null;
     return { id: b.id, nama: b.nama, satuan: b.satuan, ket: b.ket, ini, lalu, pembanding, perkiraan: b.arus && X.berjalan, ubah, ubahTeks: rbUbahTeks(ubah), membaik, baik: b.baik,
       iniTeks: rbNilaiTeks(ini, b.satuan), laluTeks: rbNilaiTeks(lalu, b.satuan), perkiraanTeks: b.arus && X.berjalan ? rbNilaiTeks(pembanding, b.satuan) : '', rpTeks: b.rp ? rbNilaiTeks(b.rp(X), 'rp') : '',
-      tgId: b.tg || (b.id === 'susutPct' ? 'susutPct' : ''), target, targetTeks, lampu: L.lampu, lampuKata: rbKataLampu(t ? t.arah : 'maks', L.lampu), dasar: L.dasar, selisih: L.selisih, aktual, aktualTeks: rbNilaiTeks(aktual, b.satuan), catatan: c };
+      tgId: b.tg || (b.id === 'susutPct' || b.id === 'hariStok' ? b.id : ''), target, targetTeks, lampu: L.lampu, lampuKata: b.id === 'hariStok' ? (L.lampu === 'hijau' ? 'pas' : L.lampu === 'amber' ? (X.stokStatus === 'tipis' ? 'stok tipis' : 'modal diam') : '') : rbKataLampu(t ? t.arah : 'maks', L.lampu), dasar: L.dasar, selisih: L.selisih, aktual, aktualTeks: rbNilaiTeks(aktual, b.satuan), catatan: c };
   });
 }
 /**

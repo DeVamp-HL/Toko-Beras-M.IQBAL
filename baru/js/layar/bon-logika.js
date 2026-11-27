@@ -14,6 +14,8 @@ import { RP, hariIniIso, LEBIH_AMBANG, kalimatLebih, pecahLebih } from '../inti/
 import { aturPelanggan, kartuTersimpan, hariKe, hariMingguKe, HARI_PANJANG } from './pelanggan-logika.js';
 // B2 (owner 17 Nov 2026): pembayaran boleh menunjuk faktur tertentu — pembagian sisa ke baris bon dipusatkan di faktur-logika (fkAlokasi)
 import { fkRincian, fkAdaAlamat, fkTerbukaOrang, fkKartu, fkHariSah, fkSemua } from './faktur-logika.js';
+// P1 (owner 27 Nov 2026, A116): lama piutang (DSO) — penjualan bon dihitung sejak catatan pertama toko
+import { catatanPertama } from '../data/toko.js';
 
 const bnAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0;
   const n = Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return isFinite(n) ? n : 0; };
@@ -389,4 +391,33 @@ export function pnPerkiraanTelat(kini, semua) {
   return { iso, daftar, n: daftar.length, rp, nLewatBiasa, rpLewatBiasa, nTanpaRiwayat: nTanpa, rpTanpaRiwayat: Object.keys(tanpa).reduce((a, k) => a + tanpa[k], 0), rumus: PN_RUMUS_TELAT,
     kalimat: (daftar.length ? daftar.length + ' orang · ' + RP(rp) + ' belum jatuh tempo tapi diperkirakan telat — tagih lebih awal' : 'Tidak ada bon belum jatuh tempo milik pelanggan yang biasanya telat')
       + (nTanpa ? ' · ' + nTanpa + ' pelanggan berbon belum bisa diperkirakan (belum pernah melunasi bon)' : '') };
+}
+
+// ==================== P1 · LAMA PIUTANG (DSO) dalam hari penjualan bon (owner 27 Nov 2026, sensus ulang 27 Nov A116) ====================
+// Beda dengan tertagihBon (rata-rata hari bon yang SUDAH lunas): DSO memasukkan bon yang BELUM lunas. Piutang berjalan = Σ sisa bon > 0 buku bon mesin (hitungPiutang
+// per tanggal — angka yang sama dengan Neraca); penjualan bon = baris nota Kredit di buku bon yang sama (jenis 'jual'), 30 hari sampai tanggal itu (dipendekkan bila
+// catatan toko / tahun buku baru mulai sesudahnya — disebut). Saldo awal & saldo pembuka bukan penjualan bon. Tanpa penjualan bon = belum bisa dihitung, bukan 0.
+export const PN_DSO_HARI = 30;
+export const PN_RUMUS_DSO = 'Lama piutang (DSO) = piutang berjalan (semua bon yang belum lunas, buku bon) ÷ rata-rata penjualan bon per hari, ' + PN_DSO_HARI + ' hari terakhir';
+/** DSO pada satu tanggal (akhir hari itu). */
+export function pnDsoPada(t) {
+  const P = hitungPiutang(t); let piutang = 0, nOrang = 0, jual = 0, nJual = 0;
+  let mulai = tambahHari(t, -(PN_DSO_HARI - 1)); let sebab = ''; const p = catatanPertama(); const era = eraBuku();
+  if (p && p > mulai) { mulai = p; sebab = 'catatan toko mulai ' + formatTanggal(p); }
+  if (era !== null && (era + 1) + '-01-01' > mulai) { mulai = (era + 1) + '-01-01'; sebab = 'tahun ' + era + ' sudah tutup buku'; }
+  P.forEach((d) => { if (d.sisa > 0) { piutang += d.sisa; nOrang += 1; } d.mutasi.forEach((m) => { if (m.jenis === 'jual' && String(m.tanggal || '') >= mulai && String(m.tanggal || '') <= t) { jual += Number(m.nominal) || 0; nJual += 1; } }); });
+  const hari = mulai <= t ? hariKe(t) - hariKe(mulai) + 1 : 0; const perHari = hari > 0 ? jual / hari : 0;
+  return { t, piutang, nOrang, jual, nJual, mulai, hari, perHari, dso: perHari > 0 ? piutang / perHari : null, pendek: hari < PN_DSO_HARI ? sebab : '' };
+}
+/** DSO hari ini + tren per minggu: akhir tiap minggu toko (Minggu) n − 1 minggu terakhir, lalu hari ini. Bersama rata-rata hari bon tertagih (bon yang sudah lunas). */
+export function pnDso(kini, n) {
+  const iso = hariIniIso(kini); const N = Math.max(2, Math.min(12, n || 8)); const dow = (new Date(iso + 'T00:00:00Z').getUTCDay() + 6) % 7; const mingguLalu = tambahHari(iso, -dow - 1);
+  const titik = []; for (let i = N - 2; i >= 0; i--) titik.push(tambahHari(mingguLalu, -7 * i)); titik.push(iso); const p = catatanPertama();
+  const deret = titik.map((t) => Object.assign(p && t < p ? { t, sebelum: true, dso: null, piutang: null } : pnDsoPada(t), { label: t === iso ? 'hari ini' : formatTanggal(t).replace(/ \d{4}$/, ''), hariIni: t === iso }));
+  const D = deret[deret.length - 1]; const L = deret.length > 1 ? deret[deret.length - 2] : null; const T = tertagihBon(kini);
+  const beda = L && L.dso !== null && D.dso !== null ? D.dso - L.dso : null;
+  return { iso, kini: D, lalu: L, deret, beda, rumus: PN_RUMUS_DSO, tertagih: { keadaan: T.keadaan, rataHari: T.rataHari, rataTeks: T.rataTeks, hari: T.hari }, tujuan: { ke: 'pelanggan', keluarga: 'bon' },
+    kalimat: D.dso === null ? (D.piutang > 0 ? 'Lama piutang belum bisa dihitung — tidak ada penjualan bon ' + PN_DSO_HARI + ' hari terakhir (piutang ' + RP(D.piutang) + ').' : 'Tidak ada piutang berjalan & penjualan bon ' + PN_DSO_HARI + ' hari terakhir.')
+      : 'Piutang berjalan ' + RP(Math.round(D.piutang)) + ' (' + D.nOrang + ' orang) = ' + satuKoma(D.dso) + ' hari penjualan bon (rata-rata ' + RP(Math.round(D.perHari)) + '/hari, ' + D.hari + ' hari terakhir' + (D.pendek ? ' — ' + D.pendek : '') + ')'
+        + (beda !== null ? ' · ' + (Math.abs(beda) < 0.05 ? 'sama dengan' : beda > 0 ? 'naik ' + satuKoma(beda) + ' hari dari' : 'turun ' + satuKoma(-beda) + ' hari dari') + ' akhir minggu lalu' : '') + '.' };
 }

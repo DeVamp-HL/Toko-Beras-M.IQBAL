@@ -305,7 +305,7 @@ export const AB_MAKS = { rp: 10000000000, kg: 10000000, rpkg: 1000000, pct: 100,
 export const AB_BULAN_MAKS = 24;   // angka khusus & catatan disimpan paling banyak 24 bulan terbaru (dokumen tidak membengkak)
 export const AB_CATATAN_MAKS = 200;   // huruf per sebab / tindakan
 /** Pos yang boleh diberi sebab & tindakan: jenis biaya, hapus buku, susut, PPh, pos target, susut %. */
-export const AB_POS_CATATAN = JENIS_BIAYA.map((j) => j.id).concat(JENIS_BAWAH.map((j) => j.id), [ID_ANGGARAN_PAJAK], AB_TARGET.map((t) => t.id), ['susutPct']);
+export const AB_POS_CATATAN = JENIS_BIAYA.map((j) => j.id).concat(JENIS_BAWAH.map((j) => j.id), [ID_ANGGARAN_PAJAK], AB_TARGET.map((t) => t.id), ['susutPct', 'hariStok']);
 const abBulanSah = (k) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(k || ''));
 const abBulat = (n, satuan) => (satuan === 'pct' ? Math.round(n * 100) / 100 : satuan === 'kg' ? Math.round(n * 10) / 10 : Math.round(n));
 const abSah = (v, satuan) => { const n = Number(v); return isFinite(n) && n > 0 && n <= AB_MAKS[satuan] ? abBulat(n, satuan) : 0; };

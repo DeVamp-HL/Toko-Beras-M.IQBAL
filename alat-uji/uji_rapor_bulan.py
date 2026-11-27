@@ -62,9 +62,12 @@ ok('1: HPP/kg = pemicu "HPP per kg terjual" · margin kotor % = Laporan › Laba
 ok('1: penjualan kotor = bersih + potongan nota + tawar + retur (Rp5.000 potongan · tawar Rp5.000 dari 130.000 × 500 ÷ 12.500 · retur Rp20.000)', PT.nota === 5000 && PT.tawar === 5200 && X.retur === 20000 && X.kotor === X.omzet + 20000 + 10200 && dekat(X.potPct, 10200 / X.kotor * 100, 1e-9), J([PT, X.retur, X.kotor, X.omzet]));
 var Hp = hitungPiutang(iso).filter(function (x) { return x.sisa > 0; });
 ok('1: ada kelebihan bayar (sisa minus) di mesin — tidak ikut piutang', hitungPiutang(iso).some(function (x) { return x.sisa < 0; }), J(hitungPiutang(iso).map(function (x) { return x.sisa; })));
-ok('1: piutang akhir bulan (berjalan: hari ini) = sisa bon mesin (sama dengan neraca) · hari bon = piutang ÷ (bon baru ÷ 18 hari)', X.piutang === Hp.reduce(function (a, x) { return a + x.sisa; }, 0) && X.piutang > 0 && X.bon === I.kredit && dekat(X.dso, X.piutang / (I.kredit / 18), 1e-9), J([X.piutang, X.bon, X.dso]));
-var MT = klModalTertahan(KINI, '2026-11-01', iso);
-ok('1: perputaran = HPP ÷ rata-rata nilai stok (klModalTertahan) · hari stok = nilai rata ÷ HPP per hari', dekat(X.perputaran, X.hpp / MT.rata, 1e-9) && dekat(X.hariStok, MT.rata / (X.hpp / 18), 1e-9), J([X.perputaran, X.hariStok]));
+var DSn = pnDsoPada(iso);
+ok('1: piutang akhir bulan (berjalan: hari ini) = sisa bon mesin (sama dengan neraca) · lama piutang = pnDsoPada hari ini (P1, satu rumus dengan Dasbor)', X.piutang === Hp.reduce(function (a, x) { return a + x.sisa; }, 0) && X.piutang > 0 && X.bon === I.kredit && DSn.dso !== null && X.dso === DSn.dso && X.piutang === DSn.piutang, J([X.piutang, X.bon, X.dso, DSn]));
+var MT = klModalTertahan(KINI, '2026-11-01', iso); var SRk = klStokRp(KINI, '2026-11-01', iso);
+ok('1: perputaran (disetahunkan) & hari stok = klStokRp (P1, satu sumber dengan Dasbor) · nilai stok rata-rata = klModalTertahan', SRk.putaranTahun !== null && X.perputaran === SRk.putaranTahun && X.hariStok === SRk.hari && X.rataStok === MT.rata && X.stokStatus === SRk.status, J([X.perputaran, X.hariStok, SRk.status]));
+var bHs = rbRapor('2026-11', KINI).baris.find(function (x) { return x.id === 'hariStok'; });
+ok('1: hari stok berlampu dari target Stok › Umur (pas = hijau, tipis / diam = kuning) · masuk tabel anggaran vs aktual', bHs.lampu === (SRk.status === 'pas' ? 'hijau' : 'amber') && /target/.test(bHs.targetTeks) && rbAnggaranAktual('2026-11', KINI).baris.some(function (r) { return r.id === 'hariStok'; }), J(bHs));
 ok('1: arus kas = intiBulan (Laporan › Bulanan) · susut % = susutRentang (Per merek)', X.masuk === I.masuk && X.keluar === I.keluar && X.kasBersih === I.bersih && X.susutPct === (susutRentang('2026-11-01', iso).susut || {}).pct, J([X.masuk, I.masuk]));
 
 // ==================== 2 · B4 KOTOR vs BERSIH PER HARI ====================
@@ -210,7 +213,8 @@ RUSAK = [
     ('harga beli terbalik', RB, "hargaBeli = kgA * (hB - hA);", "hargaBeli = kgA * (hA - hB);"),
     ('kg anggaran tidak dijatah', RB, "const kgB = X.berjalan ? TB.kgTerjual.nilai * X.hariJalan / X.nHari : TB.kgTerjual.nilai;", "const kgB = TB.kgTerjual.nilai;"),
     ('piutang ikut kelebihan bayar', RB, "const d = hitungPiutang(sampai).filter((x) => x.sisa > 0);", "const d = hitungPiutang(sampai);"),
-    ('hari bon memakai hari sebulan penuh', RB, "piutang / (bon / hari) : null,", "piutang / (bon / K.nHari) : null,"),
+    ('lama piutang diukur di awal bulan', RB, "const DS = diarsip ? null : pnDsoPada(sampai);", "const DS = diarsip ? null : pnDsoPada(awal);"),
+    ('perputaran tidak disetahunkan', RB, "SR.putaranTahun !== null && SR.putaranTahun !== undefined ? SR.putaranTahun : null", "SR.putaran !== null && SR.putaran !== undefined ? SR.putaran : null"),
     ('laba kotor hari ini tanpa laju jam', RB, "const laju = harian * Math.max(0, Math.min(1, bagianHari));", "const laju = harian;"),
     ('acuan menimpa ketikan owner', RB, "if (!f || String(tg[t.id] || '').trim()) return;", "if (!f) return;"),
     ('rapor tidak ikut saringan', DL, "const R = rbRapor(key, kini, 'laba');", "const R = rbRapor(iso.slice(0, 7), kini, 'laba');"),

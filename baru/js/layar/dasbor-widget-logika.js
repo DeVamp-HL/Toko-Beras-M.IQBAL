@@ -17,7 +17,7 @@ export const WG_KOLOM = 12;       // kisi Mac / tablet: 12 kolom
 export const WG_BARIS_PX = 8;     // satu baris kisi = 8 px (tinggi kartu ditarik per 8 px)
 export const WG_H_MIN = 10, WG_H_MAKS = 250;   // tinggi yang ditarik: 80 px – 2.000 px (null = setinggi isinya)
 const WG_LEBAR_UKURAN = { kecil: 3, lebar: 6, besar: 6, penuh: 12 };   // ukuran lama (kecil/lebar/besar/penuh) → kolom
-export const WG_MAKS = 48;   // di atas jumlah katalog (semua widget boleh terpasang sekaligus)
+export const WG_MAKS = 64;   // di atas jumlah katalog (semua widget boleh terpasang sekaligus) — P1 (27 Nov 2026): 48 → 64, katalog kini > 48 (dijaga uji_kpi_kg)
 const wgRpPendek = (n) => { const a = Math.abs(n || 0); const s = n < 0 ? '−' : ''; return a >= 1e6 ? s + 'Rp' + DESIMAL(Math.round(a / 1e5) / 10) + ' jt' : a >= 1e3 ? s + 'Rp' + Math.round(a / 1e3) + ' rb' : s + 'Rp' + Math.round(a); };
 const wgPct = (x) => (x === null || x === undefined || !isFinite(x) ? '—' : (x < 0 ? '−' : x > 0 ? '+' : '') + DESIMAL(Math.round(Math.abs(x) * 10) / 10) + '%');
 const wgPctPolos = (x) => (x === null || x === undefined || !isFinite(x) ? '—' : (x < 0 ? '−' : '') + DESIMAL(Math.round(Math.abs(x) * 10) / 10) + '%');
@@ -45,6 +45,16 @@ function WG_KARTU() {
         baris: P.slice().sort((a, b) => (b.awas ? 1 : 0) - (a.awas ? 1 : 0)).slice(0, 4).map((x) => [x.teks, x.nilai || '']), tujuan: null }; }),
     K('kHeadline', 'Ringkas hari ini', 'headline', 'penuh', () => ({ nilai: '', ket: '', baris: [], tujuan: null }), { khusus: true }),
     K('kPeriode', 'Periode (saringan tanggal)', 'periode', 'penuh', () => ({ nilai: '', ket: '', baris: [], tujuan: null }), { khusus: true }),
+    // P1 (owner 27 Nov 2026, B7 · B6 · B133): terlaris menurut omzet Rp (rentang saringan; bawaan bulan ini) & tren per merek per minggu — kelompok dasbor `kg` apa adanya
+    K('kTerlaris', 'Terlaris (omzet Rp)', 'kg', 'lebar', (D) => { const G = D.kg; if (!ada(G)) return wgGalat('kg', G); const T = G.terlaris; if (!ada(T)) return wgGalat('terlaris', T);
+      if (T.diarsip) return { nilai: '—', ket: T.kalimat, awas: false, baris: [], tujuan: G.tujuan };
+      const a = T.daftar[0]; return { nilai: a ? a.merek : 'belum ada jualan', ket: G.periodeNama + ' · ' + T.n + ' merek · omzet ' + wgRpPendek(T.total) + (T.menutup ? '' : ' · TIDAK MENUTUP ke mesin — laporkan'), awas: !T.menutup,
+        baris: T.daftar.map((g, i) => [(i + 1) + '. ' + g.merek, wgRpPendek(g.omzet) + ' · ' + wgPctPolos(g.porsi) + (g.marginKg !== null ? ' · ' + wgRpPendek(g.marginKg) + '/kg' : '')]), tujuan: G.tujuan }; }, { ikut: true }),
+    K('kTrenMerek', 'Tren per merek · mingguan', 'kg', 'lebar', (D) => { const G = D.kg; if (!ada(G)) return wgGalat('kg', G); const M = G.tren; if (!ada(M)) return wgGalat('tren merek', M);
+      if (M.diarsip) return { nilai: '—', ket: M.kalimat, awas: false, baris: [], tujuan: G.tujuan }; const t = M.toko;
+      return { nilai: RP(t.omzet), ket: 'minggu ini · ' + (t.omzetPct === null ? 'minggu lalu belum ada' : wgPct(t.omzetPct) + ' ' + (M.berjalan ? 'vs minggu lalu s.d. hari yang sama' : 'vs minggu lalu')) + (t.marginKg !== null ? ' · untung ' + wgRpPendek(t.marginKg) + '/kg' : ''),
+        awas: !M.menutup, tren: M.deret.map((x) => ({ label: x.label, n: x.omzet, berjalan: x.berjalan })),
+        baris: M.merek.slice(0, 5).map((g) => [g.merek, wgRpPendek(g.omzet) + ' · ' + (g.baru ? 'baru' : g.hilang ? 'tidak laku minggu ini' : wgPct(g.omzetPct))]), tujuan: G.tujuan }; }),
     K('kEnam', 'Enam bulan', 'enam', 'penuh', (D) => { const E = D.enam; if (!ada(E)) return wgGalat('enam', E); const b = E.bulan.filter((x) => !x.tanpaCatatan); const a = b[b.length - 1];
       return { nilai: a ? RP(a.labaBersih) : '—', ket: 'laba bersih ' + (a ? a.pendek + (a.berjalan ? ' (berjalan)' : '') : '') + ' · 6 bulan', awas: !!a && a.labaBersih < 0,
         tren: E.bulan.map((x) => ({ label: x.pendek, n: x.tanpaCatatan ? null : x.labaBersih, berjalan: x.berjalan })), baris: [['Biaya bulan ini', a ? RP(a.semuaBiaya) : '—']], tujuan: E.tujuan }; }),
@@ -149,13 +159,38 @@ export const WG_KATALOG = [
   { id: 'kasBulan', nama: 'Kas bersih bulan ini', ukuran: 'kecil', kel: 'rapor', ikut: true, isi: (D) => { const R = D.rapor; if (!ada(R) || !ada(R.arus)) return wgGalat('rapor', ada(R) ? R.arus : R); const A = R.arus;
     return { nilai: RP(A.bersih), ket: 'masuk ' + wgRpPendek(A.masuk) + ' − keluar ' + wgRpPendek(A.keluar) + (A.ubahBersih !== null ? ' · ' + wgPct(A.ubahBersih) + ' vs ' + A.namaLalu.split(' ')[0] : ''), awas: A.bersih < 0,
       rinci: [['Uang masuk', RP(A.masuk)], ['Uang keluar', RP(A.keluar)], ['Kas bersih', RP(A.bersih)], ['Laba bersih (pembanding)', RP(A.labaBersih)], ['Jual bon (belum jadi uang)', RP(A.bon)]], tujuan: A.tujuan }; } },
+  // ---------- P1 (owner 27 Nov 2026): A112 untung per kg · A115 hari stok · A114 perputaran stok · A116 lama piutang — kelompok dasbor kpi.kg & kg apa adanya ----------
+  { id: 'marginKg', nama: 'Untung per kg bulan ini', ukuran: 'kecil', kel: 'kpi', ikut: true, isi: (D) => { const Q = D.kpi; if (!ada(Q) || !ada(Q.kg)) return wgGalat('kpi', ada(Q) ? Q.kg : Q); const G = Q.kg;
+    if (G.marginKg === null) return { nilai: '—', ket: G.kalimat, awas: false, rinci: [], tujuan: G.tujuan };
+    return { nilai: RP(Math.round(G.marginKg)) + '/kg', ket: 'HPP ' + RP(Math.round(G.hppKg)) + '/kg' + (G.lalu && G.lalu.marginKg !== null ? ' · ' + G.lalu.pendek + ' ' + RP(Math.round(G.lalu.marginKg)) + '/kg' : '') + (G.target.rp > 0 ? ' · ' + G.nBawah + ' merek di bawah target ' + wgRpPendek(G.target.rp) + '/kg' : ''),
+      awas: G.target.rp > 0 && G.marginKg < G.target.rp, rinci: [['Untung per kg', RP(Math.round(G.marginKg)) + '/kg'], ['HPP per kg', RP(Math.round(G.hppKg)) + '/kg'], ['Harga jual per kg', RP(Math.round(G.jualKg)) + '/kg'], ['Target untung', G.target.teks]]
+        .concat(G.lalu ? [[G.lalu.nama, G.lalu.marginKg === null ? '—' : RP(Math.round(G.lalu.marginKg)) + '/kg']] : []).concat(G.bawah.slice(0, 3).map((x) => ['· ' + x.merek, RP(Math.round(x.marginKg)) + '/kg'])), tujuan: G.tujuan }; } },
+  { id: 'hariStok', nama: 'Hari stok (rupiah)', ukuran: 'kecil', kel: 'kg', ikut: true, isi: (D) => { const G = D.kg; if (!ada(G) || !ada(G.stok)) return wgGalat('kg', ada(G) ? G.stok : G); const S = G.stok;
+    if (S.hari === null) return { nilai: '—', ket: S.kalimat, awas: false, rinci: [], tujuan: S.tujuanAtur };
+    return { nilai: DESIMAL(Math.round(S.hari * 10) / 10) + ' hari', ket: (S.status === 'tipis' ? 'STOK TIPIS · ' : S.status === 'diam' ? 'modal kebanyakan diam · ' : 'pas · ') + 'target ' + S.target.teks + ' · ' + G.periodeNama,
+      awas: S.status !== 'pas', lampu: S.status === 'pas' ? 'hijau' : 'amber', rinci: [['Rata-rata nilai stok', RP(Math.round(S.rata))], ['Modal terjual per hari', RP(Math.round(S.hppHari))], ['Target', S.target.teks], ['Cara hitung', S.rumus]], tujuan: S.tujuanAtur }; } },
+  { id: 'putaranStok', nama: 'Perputaran stok (rupiah)', ukuran: 'kecil', kel: 'kg', ikut: true, isi: (D) => { const G = D.kg; if (!ada(G) || !ada(G.stok)) return wgGalat('kg', ada(G) ? G.stok : G); const S = G.stok;
+    if (S.putaranTahun === null) return { nilai: '—', ket: S.kalimat, awas: false, rinci: [], tujuan: S.tujuanAtur };
+    return { nilai: DESIMAL(Math.round(S.putaranTahun * 10) / 10) + '× setahun', ket: DESIMAL(Math.round(S.putaran * 100) / 100) + '× dalam ' + S.nHari + ' hari · ' + G.periodeNama, awas: false,
+      rinci: [['Modal terjual', RP(Math.round(S.hpp))], ['Rata-rata nilai stok', RP(Math.round(S.rata))], ['Dalam ' + S.nHari + ' hari', DESIMAL(Math.round(S.putaran * 100) / 100) + '×'], ['Cara hitung', S.rumus]], tujuan: S.tujuanAtur }; } },
+  { id: 'dso', nama: 'Lama piutang (hari)', ukuran: 'kecil', kel: 'kg', isi: (D) => { const G = D.kg; if (!ada(G) || !ada(G.dso)) return wgGalat('kg', ada(G) ? G.dso : G); const P = G.dso; const X = P.kini;
+    if (X.dso === null) return { nilai: '—', ket: P.kalimat, awas: false, rinci: [], tujuan: P.tujuan };
+    return { nilai: DESIMAL(Math.round(X.dso * 10) / 10) + ' hari', ket: 'piutang ' + wgRpPendek(X.piutang) + ' ÷ bon ' + wgRpPendek(X.perHari) + '/hari' + (P.beda !== null ? ' · ' + (Math.abs(P.beda) < 0.05 ? 'sama dengan akhir minggu lalu' : (P.beda > 0 ? '+' : '−') + DESIMAL(Math.round(Math.abs(P.beda) * 10) / 10) + ' hari vs akhir minggu lalu') : ''),
+      awas: P.beda !== null && P.beda >= 0.05, rinci: [['Piutang berjalan', RP(Math.round(X.piutang)) + ' · ' + X.nOrang + ' orang'], ['Penjualan bon ' + X.hari + ' hari', RP(Math.round(X.jual))], ['Bon lunas rata-rata tertagih', P.tertagih.rataTeks], ['Cara hitung', P.rumus]], tujuan: P.tujuan }; } },
+  // B133 (P1): ketepatan kirim pemasok = B65 paket tanggal janji (#231) — kpi.janji (janji-logika jnRingkas) apa adanya, 90 hari terakhir, tidak ikut saringan
+  { id: 'tepatJanji', nama: 'Tepat janji pemasok', ukuran: 'kecil', kel: 'kpi', isi: (D) => { const Q = D.kpi; if (!ada(Q) || !ada(Q.janji)) return wgGalat('kpi', ada(Q) ? Q.janji : Q); const J = Q.janji; const P = J.pemasok;
+    const lewat = (J.lewat || []).filter((x) => x.tujuan && x.tujuan.ke === 'harga');
+    if (!P.n) return { nilai: '—', ket: J.kalimatPemasok, awas: lewat.length > 0, rinci: lewat.slice(0, 4).map((x) => ['Lewat janji', x.teks]), tujuan: J.tujuan };
+    return { nilai: wgPctPolos(P.pct), ket: P.tepat + ' dari ' + P.n + ' kiriman tepat janji · ' + J.hari + ' hari' + (lewat.length ? ' · ' + lewat.length + ' lewat janji' : ''), awas: lewat.length > 0,
+      rinci: [['Dari pemasok', J.kalimatPemasok]].concat(lewat.slice(0, 4).map((x) => ['Lewat janji', x.teks])), tujuan: J.tujuan }; } },
 ].map((w) => Object.assign({ jenis: 'angka' }, w)).concat(WG_KARTU()).map((K) => Object.assign({ w: WG_LEBAR_UKURAN[K.ukuran] || 6, minW: K.jenis === 'angka' ? 2 : 3 }, K));
 const wgKat = (id) => WG_KATALOG.find((w) => w.id === id) || null;
 /** B94 (owner 27 Nov 2026): angka yang membaca kelompok YANG IKUT saringan (hari · bulan · kpi bulanan · mutu · pembelian) ganti nama sesuai periodenya — angka
  *  "Laba kotor hari ini" tidak boleh memajang 7 hari. Yang bernama "hari ini" dan membaca pembanding jam segini (banding) tetap hari ini. */
 const WG_NAMA_SARING = { labaKotorHari: (S) => 'Laba kotor · ' + S.nama, labaBersihBulan: (S) => 'Laba bersih · ' + S.bulanNama, biayaBulan: (S) => 'Biaya · ' + S.bulanNama,
   marginBulan: (S) => 'Margin · ' + S.bulanNama, susut: (S) => 'Susut beras · ' + S.bulanNama, pembelian: (S) => 'Pembelian · ' + S.nama, modalTertahan: (S) => 'Modal tertahan di stok · ' + S.nama, pphBulan: (S) => 'Sisihkan PPh · ' + S.bulanNama,
-  penjualanKotor: (S) => 'Penjualan kotor · ' + S.bulanNama, kasBulan: (S) => 'Kas bersih · ' + S.bulanNama };
+  penjualanKotor: (S) => 'Penjualan kotor · ' + S.bulanNama, kasBulan: (S) => 'Kas bersih · ' + S.bulanNama,
+  marginKg: (S) => 'Untung per kg · ' + S.bulanNama, hariStok: (S) => 'Hari stok · ' + S.nama, putaranStok: (S) => 'Perputaran stok · ' + S.nama, kTerlaris: (S) => 'Terlaris · ' + S.nama };
 export const wgNama = (K, S) => (S && !S.bawaan && WG_NAMA_SARING[K.id] ? WG_NAMA_SARING[K.id](S) : K.nama);
 /** Bawaan (belum pernah diatur owner) = urutan kartu lama ("Tampilan saat ini yang paling penting"), Mac: Hari ini | Margin & target · Tren selebar kisi · lalu
  *  kartu lajur kiri & kanan lama bergantian (kisi merapat mengisinya seperti dua lajur dulu). Tinggi = setinggi isinya. Widget tambahan = di katalog. */

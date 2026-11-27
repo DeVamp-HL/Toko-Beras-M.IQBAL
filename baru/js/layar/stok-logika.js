@@ -238,11 +238,14 @@ export function susunKarantina() {
 //  · Hari stok = sisa ÷ laju keluar 14 hari yang SAMA dengan papan Gudang (tak ada gerak → "belum ada laju", bukan 0). Perputaran periode = kg keluar (saringan
 //    laju yang sama: terjual + diaduk + dipindah ke wadah — lajuHarian) ÷ rata-rata sisa akhir hari periode itu; rata-rata tinggal di rak = periode ÷ perputaran.
 //  · Lambat laku = umur stok > ambang ATAU hari stok > ambang (sisa tanpa gerak keluar 14 hari = lebih dari ambang apa pun). Ambang & periode = aturanToko/stokUmur.
-export const UM_ATUR_BAWAAN = { ambangUmurHari: 30, ambangHariStok: 30, periodeHari: 30 };   // angka bawaan (perkiraan) — bisa diubah di Atur
-export const UM_BATAS = { ambangUmurHari: [1, 365], ambangHariStok: [1, 365], periodeHari: [7, 120] };
+// P1 (owner 27 Nov 2026, A115): TARGET HARI STOK SE-TOKO dalam rupiah (nilai modal stok ÷ modal barang terjual per hari) — bawaan 7–14 hari (pilihan owner 27 Nov 2026,
+// dekat keadaan toko Sep–Nov). Di bawah batas bawah = stok tipis, di atas batas atas = modal kebanyakan diam. Dokumen yang SAMA (aturanToko/stokUmur), dibaca
+// kpi-laba-logika klStokRp. Berbeda dengan ambangHariStok (per barang, kg ÷ laju 14 hari, penanda lambat laku).
+export const UM_ATUR_BAWAAN = { ambangUmurHari: 30, ambangHariStok: 30, periodeHari: 30, targetHariMin: 7, targetHariMaks: 14 };   // angka bawaan — bisa diubah di Atur
+export const UM_BATAS = { ambangUmurHari: [1, 365], ambangHariStok: [1, 365], periodeHari: [7, 120], targetHariMin: [1, 120], targetHariMaks: [1, 365] };
 export const UM_JEJAK_HARI = 60;   // jejak rata-rata wadah paling jauh 60 hari (isi wadah berputar dalam hitungan hari); isi yang sudah ada sebelumnya = tanpa tanggal
 export const TAB_UMUR = [['lambat', 'Apa yang lambat laku?'], ['umur', 'Stok mana yang paling lama?'], ['putaran', 'Berapa cepat stok berputar?'], ['tanpa', 'Mana yang belum bertanggal?']];
-const UM_NAMA_ATUR = { ambangUmurHari: 'Ambang umur stok', ambangHariStok: 'Ambang hari stok', periodeHari: 'Periode perputaran' };
+const UM_NAMA_ATUR = { ambangUmurHari: 'Ambang umur stok', ambangHariStok: 'Ambang hari stok', periodeHari: 'Periode perputaran', targetHariMin: 'Batas bawah hari stok toko', targetHariMaks: 'Batas atas hari stok toko' };
 const umSen = (n) => Math.round((Number(n) || 0) * 100);   // kg → seperseratus kg (bilangan bulat: bagian-bagian menutup persis)
 const umHariGeser = (iso, n) => hariIniIso(new Date(new Date(iso + 'T12:00:00').getTime() + n * 86400000));
 const umTgl = (iso) => tanggalPendek(iso).replace(/ \d{4}$/, '');
@@ -261,8 +264,9 @@ export function susunAturUmur(isi, w) {
     if (!t) { o[k] = kini[k]; return; } const n = Number(t);
     if (!isFinite(n) || Math.round(n) !== n || n < b[0] || n > b[1]) tolak = UM_NAMA_ATUR[k] + ' harus bilangan bulat ' + b[0] + '–' + b[1] + ' hari'; else o[k] = n; });
   if (tolak) return { tolak };
+  if (o.targetHariMin > o.targetHariMaks) return { tolak: 'Batas bawah hari stok toko (' + o.targetHariMin + ' hari) tidak boleh di atas batas atasnya (' + o.targetHariMaks + ' hari)' };
   return { dokumen: [{ koleksi: 'aturanToko', data: Object.assign({ id: 'stokUmur', tanggal: w.tanggal, jam: w.jam }, o) }],
-    patch: { aturUm: null, kabar: 'Ambang disimpan — lambat laku: umur stok > ' + o.ambangUmurHari + ' hari atau hari stok > ' + o.ambangHariStok + ' hari · perputaran ' + o.periodeHari + ' hari', kabarAwas: false } };
+    patch: { aturUm: null, kabar: 'Ambang disimpan — lambat laku: umur stok > ' + o.ambangUmurHari + ' hari atau hari stok > ' + o.ambangHariStok + ' hari · perputaran ' + o.periodeHari + ' hari · target hari stok toko ' + o.targetHariMin + '–' + o.targetHariMaks + ' hari', kabarAwas: false } };
 }
 
 /** Pindah buku MASUK ke satu buku khusus (produksi berlaku jadiKarungUtuh → merkTujuan; kg = ukuran × unit, rumus mesin). Pindahan awal / ganti nama = isinya
