@@ -253,7 +253,7 @@ STATIS = [
      ["pilihPelanggan: ({ nama }) => set(Object.assign({ lembar: null, cariPelanggan: '', kabar: '' }, L.gantiPelanggan(SBN(), nama)))", "lepasPelanggan: () => set(Object.assign({ kabar: '' }, L.gantiPelanggan(SBN(), '')))", "L.gantiPelanggan(SBN(), n)", "const g = L.gantiPelanggan(SBN(), nama)"]),
     ('modul harga tingkat dipramuat', 'index', ['<link rel="modulepreload" href="js/layar/harga-tingkat-logika.js">']),
     ('CI menjalankan uji ini (+ kontrol)', 'pages', ['python3 alat-uji/uji_harga_tingkat.py && python3 alat-uji/uji_harga_tingkat.py --kontrol']),
-    ('rules v8: staf membaca hargaTingkat & produkArsip, usul harga lewat stafUsulHarga', 'rules', ["'perangkat', 'hargaTingkat', 'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", "|| stafUsulHarga(['ben', 'karyawan'])", "d.get('tindakan', '') == 'hargaPelanggan'"]),
+    ('rules v8: staf membaca hargaTingkat & produkArsip, usul harga lewat stafUsulHarga', 'rules', ["'perangkat', 'hargaTingkat', 'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", "|| stafUsulHarga(['ben', 'karyawan'])", "d.get('tindakan', '') == 'hargaPelanggan'"]),
 ]
 
 RUSAK = [

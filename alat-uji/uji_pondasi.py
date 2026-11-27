@@ -526,7 +526,7 @@ STATIS = [
     ('kalimat modal awal tidak lagi bilang "hanya setoran modal yang tercatat"', 'pd', ['hasil atas modal di sini memakai posisi toko pada hari pertama sistem mencatat']),
     ('Pondasi memasang kartu Percobaan + baris Siapa pegang apa (paket keempat), dibungkus sendiri', 'laporan', ['data-k="pd-percobaan"', 'data-k="pd-tugas"', "aman('percobaan', () => PD.pdPercobaan(kini()))", "aman('tugas', () => PD.pdTugas())", 'data-aksi="pcSimpan"', 'data-k="pc-semua"', "'aturTq', 'pcDraf', 'drafPribadi',", 'pcSimpan: () => tulis(PD.pdSusunPercobaan(st().pcDraf || {}, waktu()))', '${kekayaan}${pribadi}${lembarPc}${percobaan}${kaki}']),
     ('Menu: owner menulis pembagian tugas, staf membacanya di tablet', 'menu', ['data-k="tgs-daftar"', 'tgsSimpan: () => tulis(S.susunTugas(st().tgsDraf || {}, waktu()))', 'function kartuTugas()', 'data-k="staf-tugas"', '${lembar}${daftar}${lembarT}${tugas}', '</div>${kartuTugas()}`;']),
-    ('percobaan tidak masuk daftar baca staf (owner saja)', 'rules', ["'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])"]),
+    ('percobaan tidak masuk daftar baca staf (owner saja)', 'rules', ["'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])"]),   # v25 (paket P6): + rutin
     ('Pondasi memasang kartu Upah & antar + Harta pribadi (paket kelima), dibungkus sendiri', 'laporan', ['data-k="pd-upah-antar"', 'data-k="pd-upah"', 'data-k="pd-antar"', 'data-k="pd-pribadi"', "aman('upah', () => PD.pdUpah(kini()))", "aman('antar', () => PD.pdAntar(kini()))", "aman('pribadi', () => PD.pdPribadi(kini()))", 'data-aksi="pdPribadiSimpan"', '${rantai}${janji}${upahAntar}${luar}']),
     ('Pondasi memasang kartu Nilai tambah + skenario harga beli naik (paket keenam)', 'laporan', ['data-k="pd-nilai"', 'data-k="pdn-tambah"', 'data-k="pdn-r-${x.id}"', 'data-k="pdn-kemas"', "aman('nilai tambah', () => PD.pdNilaiTambah(kini()))", 'data-k="pd-beli"', 'data-k="pdh-${x.naikPct}"']),
     ('laporan-logika mengimpor geJenis yang dipakai jenisRentang (bundel uji tidak melihat impor yang hilang)', 'laporanL', ["import { geRingkas, geBaris, geJenis } from './grosir-ecer-logika.js';", 'lpNotaKeMerek(p, g[geJenis(p)], luar)']),
@@ -541,7 +541,7 @@ STATIS = [
     ('Menu owner memasang lembar Buku pegangan + pintunya di Toko ini', 'menu', ["pegangan: 'Buku pegangan'", "s.sistem === 'pegangan' ? gambarPegangan(s)", 'function gambarPegangan(s)', 'bpgSimpan: () => tulis(S.susunBabPegangan(st().bpgDraf || {}, waktu()))', "'aturKpi', 'bpgDraf',", 'target: [], pegangan: []']),
     ('Menu staf (tablet) memasang kartu baca Buku pegangan untuk perannya', 'menu', ['${kartuPegangan(s, akunM)}', 'function kartuPegangan(s, akunM)', 'S.ssPeganganUntuk(akunM.peran)']),
     ('Toko ini: baris Buku pegangan', 'menuL', ["baris('pegangan', 'dokumen', 'Buku pegangan',", "sistem: 'pegangan'"]),
-    ('rules v20 & halaman sepakat: bukuPegangan di daftar baca staf, salinan v19 tanpa itu, dokumen uji ada', 'rules', ["'hargaTingkat', 'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", 'ATURAN FIRESTORE v20 FINAL']),
+    ('rules v20 & halaman sepakat: bukuPegangan di daftar baca staf, salinan v19 tanpa itu, dokumen uji ada', 'rules', ["'hargaTingkat', 'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", 'ATURAN FIRESTORE v20 FINAL']),   # v25: + rutin
     ('akses.js: staf mendengar dokumen bukuPegangan', 'akses', ["'hargaTingkat', 'produkArsip', 'bukuPegangan'], pengaturan:"]),
     ('salinan firestore.rules.v19 = rules sebelum buku pegangan', 'rules19', ["'hargaTingkat', 'produkArsip'] && staf(['ben', 'karyawan'])", 'ATURAN FIRESTORE v19 FINAL']),
     ('dokumen uji server v20 untuk owner', 'dok20', ['## Wajib owner', '★D1', '★D11', 'Terbitkan v20 SEBELUM PR']),
@@ -680,7 +680,7 @@ RUSAK_STATIS = [
     ('tablet staf tanpa kartu Buku pegangan', 'menu', '${kartuPegangan(s, akunM)}', ''),
     ('Menu owner tanpa lembar Buku pegangan', 'menu', "s.sistem === 'pegangan' ? gambarPegangan(s) : ", ''),
     ('halaman tidak mendengar bukuPegangan di perangkat staf', 'akses', "'produkArsip', 'bukuPegangan'], pengaturan:", "'produkArsip'], pengaturan:"),
-    ('rules tidak membuka bukuPegangan untuk staf', 'rules', "'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", "'produkArsip'] && staf(['ben', 'karyawan'])"),
+    ('rules tidak membuka bukuPegangan untuk staf', 'rules', "'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", "'produkArsip', 'rutin'] && staf(['ben', 'karyawan'])"),   # v25: + rutin
     ('Kuartal tanpa rapor berkop', 'laporan', "tigaTombol('kwKeluar', DR.tolak)", "''"),
     ('Laporan tanpa keluarga Kuartal', 'laporan', "s.keluarga === 'kuartal' ? gambarKuartal(s, L) : ", ''),
     ('Pondasi tanpa kartu risiko', 'laporan', 'data-k="pd-risiko"', 'data-k="x"'),

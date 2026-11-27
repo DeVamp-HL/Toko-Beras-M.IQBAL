@@ -34,6 +34,9 @@ import { lbSumberPengingat } from './layar/label-logika.js';
 // paket P3 (owner 27 Nov 2026, sensus A4): peringatan uang (biaya lewat anggaran, susut merah, modal lewat batas, harga di bawah minimum, untung per kg di bawah target,
 // kas di bawah ambang) → Pengingat (lokal.peringatan) & lonceng — owner saja
 import { pwSumberPengingat } from './layar/peringatan-logika.js';
+// paket P6 (owner 27 Nov 2026, A119 + A82): selisih laci berulang & selisih belum dijelaskan → Pengingat & lonceng (owner saja) · B116: staf mendarat di halaman tugasnya
+import { lhSumberPengingat } from './layar/laci-logika.js';
+import { tsMendarat } from './layar/tugas-staf-logika.js';
 import { ssPengingat } from './layar/sistem-logika.js';
 import { nanti, setelMuat } from './inti/jadwal.js';
 import { pasangGerbang } from './inti/gerbang.js';
@@ -290,10 +293,13 @@ function sumberGudang() { const a = akunKini(); if (!a || !(a.jenis === 'owner' 
   try { gdSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat stok minus', e); }
   try { lbSumberPengingat(k).forEach((x) => out.push(x)); } catch (e) { console.error('pengingat kemasan', e); }
   return out; }
-function sumberPeringatan() { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pwSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat peringatan uang', e); return []; } }   // paket P3: angka uang = owner saja
+function sumberPeringatan() { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pwSumberPengingat(sekarangCadangan || new Date()).concat(sumberLaci()); } catch (e) { console.error('pengingat peringatan uang', e); return sumberLaci(); } }
+// paket P6: selisih laci (laci-logika) ikut lokal.peringatan — owner saja (dipanggil dari sumberPeringatan sesudah pemeriksaan owner); galatnya tidak mematikan peringatan uang
+function sumberLaci() { try { return lhSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat selisih laci', e); return []; } }   // paket P3: angka uang = owner saja
 // Lonceng: pengingat TIGA jenis paket ini yang sudah jatuh (lewat & hari ini), untuk orang yang diingatkan (Atur pengingat › ke) — owner melihat semuanya.
 const LC_JENIS = ['patuh', 'kemasan', 'minus'];
-LC_JENIS.push('anggaran', 'susut', 'hpp', 'harga', 'untungKg', 'kas');   // paket P3 (owner 27 Nov 2026): peringatan uang ikut berbunyi di lonceng (owner saja — sumbernya hanya dihitung untuk owner)
+LC_JENIS.push('anggaran', 'susut', 'hpp', 'harga', 'untungKg', 'kas');
+LC_JENIS.push('laci', 'jelaskan');   // paket P6 (owner 27 Nov 2026, A119 + A82): selisih laci berulang & belum dijelaskan (owner saja)   // paket P3 (owner 27 Nov 2026): peringatan uang ikut berbunyi di lonceng (owner saja — sumbernya hanya dihitung untuk owner)
 function pengingatLonceng(a) {
   if (!a || !(a.jenis === 'owner' || a.jenis === 'aktif')) return []; const k = sekarangCadangan || new Date(); const nama = String(a.nama || '').trim().split(/\s+/)[0].toLowerCase();
   try { return ingatPerVersi('lcPengingat|' + k.toISOString().slice(0, 10) + '|' + (a.uid || ''), () => ssPengingat(k, { peringatan: sumberPeringatan(), patuh: sumberPatuh(), gudang: sumberGudang() }).aktif
@@ -439,6 +445,7 @@ document.getElementById('lupakanEmail').addEventListener('click', () => { try { 
 //      Setiap <main> dikosongkan dan tidak digambar (layar memeriksa terkunci()); nav & menu samping disembunyikan. Tidak ada angka, nama, atau kartu
 //      yang digambar dari cache — termasuk penyimpanan lokal peramban (titik kas, keranjang). Terbuka hanya untuk owner / akun aktif, atau mode cadangan.
 const SEMUA_LAYAR = () => [ringkasan, stok, pelanggan, menu, harga, uang, laporan];
+const _mendarat = {};   // paket P6 (B116): orang|akun → hari terakhir didaratkan di halaman tugas (memori saja)
 function terapkanKunci(akunMasuk) {
   const akun = efektifDari(akunMasuk);   // T1-3: akun tablet yang menunggu orang = tertutup seperti belum masuk (isian tidak dibuang — jagaIsian memakai akun yang masuk)
   const kunci = !q.get('cadangan') && !bisaBekerja(akun); const tadi = terkunci();
@@ -449,6 +456,10 @@ function terapkanKunci(akunMasuk) {
   if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); SEMUA_LAYAR().forEach((l) => l.tampilkan(false)); layar.tampilkan(false);
     ['omzetPil', 'omzetToast', 'omzetNaik', 'koinOmzet', 'cincinOmzet', 'kilauOmzet', 'panggung'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); });
     document.getElementById('lembarAkun').classList.remove('buka'); return; }
+  // paket P6 (owner 27 Nov 2026, B116): staf yang baru masuk (PIN tablet / akun staf) MENDARAT di halaman tugasnya (Menu akun staf, kartu Tugas hari ini), satu ketuk ke Jual
+  // sekali per orang per hari (kunci tablet 5 menit diam → masuk lagi tidak dilempar dari Jual di tengah melayani)
+  if (tadi && tsMendarat(akun)) { const k = String(akun.uid || '') + '|' + String(akun.operatorId || ''); const d0 = new Date(sekarangCadangan || Date.now()); const hari = d0.getFullYear() + '-' + (d0.getMonth() + 1) + '-' + d0.getDate();   // tanggal setempat (WIB), bukan UTC
+    if (_mendarat[k] !== hari) { _mendarat[k] = hari; pindah('menu'); layar.gambar(); return; } }
   if (tadi) { pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual'); layar.gambar(); }
 }
 // ---- GANTI ORANG (23c keranjang → 23d SEMUA isian lokal, owner 24 Sep): isian yang belum disimpan — keranjang Jual, form & lembar atur di Stok, Pelanggan,

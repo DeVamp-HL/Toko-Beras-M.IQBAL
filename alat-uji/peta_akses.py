@@ -192,7 +192,8 @@ MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru
                'baru/js/layar/banding-catat-logika.js',   # paket Banding pemasok (owner 26 Nov 2026, rules v21): usul harga tawaran / acuan dari tablet
                'baru/js/layar/patuh-logika.js',   # paket Stok minus, label & kepatuhan (owner 26 Nov 2026, rules v22): tanda kalender kepatuhan dari tablet
                'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/janji-logika.js',   # paket tanggal janji (owner 27 Nov 2026, rules v24): janji datang pesanan pemasok dari tablet
-               'baru/js/layar/berat-asli-logika.js']   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Jual, retur, Barang masuk)
+               'baru/js/layar/berat-asli-logika.js',   # Tahap 6 (owner 25 Nov 2026): berat asli karung per kedatangan (Jual, retur, Barang masuk)
+               'baru/js/layar/rutin-logika.js']   # paket P6 (owner 27 Nov 2026, rules v25): centang daftar rutin dari tablet / HP staf (butir manual — sumber otomatisnya tidak dibundel)
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 
@@ -418,6 +419,17 @@ pasok('pesananPemasok', [{ id: 'pp1', tanggal: W.tanggal, jam: '08:00', pemasok:
 });
 pasok('pesananPemasok', []);
 
+// ---- 13 · paket P6 (owner 27 Nov 2026, rules v25 stafCekRutin): centang daftar rutin dari tablet / HP staf = SATU dokumen rutinCek atas nama penulisnya
+//        (Penjaga laci & karyawan — keputusan owner "Owner + Ben + karyawan"). Daftar butir ditulis owner (aturanToko/rutin) — bukan kiriman staf.
+pasok('aturanToko', [{ id: 'rutin', tanggal: W.tanggal, butir: [{ id: 'sapu', nama: 'Sapu toko', ulang: 'harian', untuk: 'semua', nyala: true }, { id: 'harga', nama: 'Cek papan harga', ulang: 'harian', untuk: 'penjaga', nyala: true }] }]);
+['ben', 'karyawan'].forEach(function (p) {
+  var RC = susunCentangRutin('sapu', '', W, AKUN[p], new Date(W.kini)); if (RC.tolak) { salah('centang rutin contoh ditolak: ' + RC.tolak); return; }
+  catat('centang rutin', p, 'centang satu butir rutin (satu rutinCek)', kirim(p, RC.dokumen));
+  if (kirim(p, RC.dokumen).dilewati) salah('perangkat ' + p + ' menolak centang rutin yang sah: ' + kirim(p, RC.dokumen).dilewati);
+  if (p === 'karyawan' && !susunCentangRutin('harga', '', W, AKUN[p], new Date(W.kini)).tolak) salah('karyawan boleh mencentang butir Penjaga laci');
+});
+pasok('aturanToko', []);
+
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas
 var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru', isiUlang: 'isi ulang wadah', antar: 'antar', terimaAntar: 'terima antar', pesanan: 'pesanan', kedatangan: 'barang masuk' };
 Object.keys(SERVER_BUKA).forEach(function (t) { if (!DIHITUNG[t] || !hasil.baris.some(function (b) { return b.jenis === DIHITUNG[t]; })) salah('tindakan "' + t + '" dibuka server untuk bukan-owner, tapi kirimannya tidak dihitung di sini'); });
@@ -500,6 +512,7 @@ OWNER_JALUR = {
     'susunPeriksaArsip': 'hasil beku periksa ulang tutup buku (putaran 4 P4-4): 1 dokumen pengaturan/periksaArsip<tahun> — bukan titikKas, tidak dikunci (0 pemeriksaan)',
     'susunPintu': 'rules v7 pintu tutup buku (owner 7 Okt, K8): 1 dokumen pengaturan/pintuBuku — bukan titikKas, tidak dikunci; membuka pintu = 1 access call (berita acara, rules pintuSah)',
     'susunSelesai': 'berita acara selesai (tidak dikunci; rules v7 membaca dokumen pintu = 1 access call) + paling banyak 1 pengaturan/pintuBuku status tutup (bukan titikKas, 0 pemeriksaan) — jumlah tetap',
+    'susunJelaskanLaci': 'paket P6 (owner 27 Nov 2026, A82): penjelasan susulan satu malam = 1 dokumen tutupHari malam itu ditulis ulang apa adanya + penjelasan (owner; malam di bulan terkunci ditolak rules tglUbah) — jumlah tetap',
     'susunCatatSusulan': 'siap 2027 (A9): 1 dokumen pengaturan/susulan<tahun> (jumlah & id catatan susulan) — bukan titikKas, tidak dikunci (0 pemeriksaan)',
     # owner 26 Nov 2026 (paket brankas & catatan susulan): Catat isi brankas = pola Catat isi rekening (satu penyusun susunTitikTempat)
     'susunTitikTempat': 'catat isi rekening / brankas: 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (pola susunTitikRekening)', 'susunTitikBrankas': 'catat isi brankas: 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (pola susunTitikRekening)',

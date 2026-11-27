@@ -23,7 +23,7 @@ export function kartuTutupTablet(s, opsi) {
   const daftar = saya.length ? h`<div class="label" data-k="hl-daftar">Hitungan dari tablet ini · 7 hari</div>${saya.map((b) => h`<div class="tp-baris ${kelasStatus(b.status)}" data-k="hl-${b.id}"><div style="min-width: 0;">
       <div>Hitungan laci ${tanggalPendek(b.tanggal)} · <b>${RP(b.hitung)}</b>${b.amankan ? ' · ' + RP(b.amankan) + ' ke brankas' : ''}</div>
       <div class="k2">${b.jam} · ${b.dari} · <b>${b.namaStatus}</b>${b.diputus ? ' ' + b.diputus : ''}</div>
-      ${b.alasan ? h`<div class="k2 awas-teks">Owner: ${b.alasan}</div>` : ''}${b.balasan ? h`<div class="k2">Owner: ${b.balasan}</div>` : ''}</div>
+      ${b.alasan ? h`<div class="k2 awas-teks">Owner: ${b.alasan}</div>` : ''}${b.balasan ? h`<div class="k2">Owner: ${b.balasan}</div>` : ''}${b.catatan ? h`<div class="k2">Catatanmu: ${b.catatan}</div>` : ''}</div>
       <div class="kaca-btn kecil tp-cetak" data-aksi="hlCetak" data-id="${b.id}">Cetak</div></div>`)}` : '';
   if (!d.buka) return h`<div class="kartu" data-k="hl-kartu" style="gap: 8px;">${kepala}
       <div class="ket" style="font-size: 11px;">Hitung uang di laci, timbang cepat, cek wadah, lalu pindahkan uang lebih ke brankas. Hitungannya dikirim ke owner; owner yang menutup hari di HP.</div>
@@ -54,6 +54,7 @@ export function kartuTutupTablet(s, opsi) {
   return h`<div class="kartu" data-k="hl-kartu" style="gap: 8px;">${kepala}
     ${H.kalimatTanggal ? h`<div class="pita-info emas" data-k="hl-lewat-malam">${H.kalimatTanggal}</div>` : ''}
     <div class="label" style="font-size: 9.5px;">1 · Hitung uang di laci</div>${pecah}${timbang}${cek}${aman}
+    <div data-k="hl-catatan"><div class="label" style="font-size: 9.5px;">5 · Catatan untuk owner (boleh kosong)</div><input class="ketik-nama" type="text" placeholder="mis. bensin 20 rb belum dicatat" value="${d.catatan || ''}" data-ketik="hlCatatan"><div class="ket" style="font-size: 10.5px;">Ikut terkirim bersama hitungan — dibaca owner saat menutup hari.</div></div>
     <div class="kaca-btn aktif emas" data-aksi="hlKirim" data-k="hl-kirim">${H.tolakHitung ? H.tolakHitung : 'KIRIM HITUNGAN KE OWNER · ' + RP(H.hitung)}</div>
     <div class="tombol-baris rapat"><div class="kaca-btn kecil" data-aksi="hlTutupLembar">tutup lembar</div></div>
     <div class="ket" style="font-size: 11px;">Owner melihat hitunganmu di HP dan menutup hari dari sana. Kalau owner minta hitung ulang, alasannya muncul di bawah.</div>${daftar}</div>`;
@@ -82,6 +83,7 @@ export function aksiTutupTablet({ set, st, tulis, akun, waktu }) {
     hlPecahan: ({ p, arah }) => { const l = Object.assign({}, draf().lembar); l[p] = Math.max(0, (Number(l[p]) || 0) + Number(arah)); ubah({ lembar: l }); },
     hlPecahanKetik: (v, el) => { const l = Object.assign({}, draf().lembar); l[el.dataset.p] = Math.max(0, Math.floor(Number(String(v).replace(/[^\d]/g, '')) || 0)); ubah({ lembar: l }); },
     hlKetik: (v, el) => ubah({ [el.dataset.kolom]: String(v).slice(0, 14) }),
+    hlCatatan: (v) => ubah({ catatan: String(v).slice(0, HL.HL_BATAS.catatan) }),   // paket P6 (A82): catatan bebas untuk owner
     hlTimbang: (v, el) => { const t = Object.assign({}, draf().timbang); t[el.dataset.merk] = String(v).slice(0, 10); ubah({ timbang: t }); },
     hlAman: ({ p }) => ubah({ amankan: draf().amankan === p ? '' : p }),
     hlMati: ({ kal }) => set({ kabar: kal, kabarAwas: true }),

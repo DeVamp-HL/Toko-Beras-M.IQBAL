@@ -4491,3 +4491,44 @@ tren tahunan = **12 batang bulanan + tombol geser** · tombol aksi di kartu = **
 - **Tombol aksi (B44).** Hari ini: Tutup hari · Catat uang keluar · Pindah uang (· Rinci karcis) · Bulan ini: Catat biaya · Atur anggaran · Stok: Catat barang masuk · Cocokkan ·
   Daftar belanja · Piutang & utang: Terima bayar bon · Bayar bon pemasok · Pembelian: Catat barang masuk · Pesan ke pemasok · Wadah: Isi ulang & cek. Tiap tombol = tujuan
   `keTujuan` yang sama dengan Menu (izin, peran & sidik jari layar asal tetap berlaku).
+
+## Paket P6 · Rutinitas, tutup hari & halaman staf (owner 27 Nov 2026 — sensus ulang A82 A119 A143 B116)
+
+Paket keenam dari delapan sisa sensus ulang 27 Nov. Dijaga `alat-uji/uji_rutin_staf.py` (kotak pasir angka contoh + statis + `--kontrol` + asap cadangan toko; angka rupiah
+toko tidak dicetak). **Butuh rules v25** (= v24 + dokumen `aturanToko/rutin` terbaca Penjaga laci & karyawan + koleksi `rutinCek` + fungsi `stafCekRutin`; salinan
+`firestore.rules.v24`, `docs/uji-rules-v25.md` kasus ★O, `periksa_rules.py` & `uji_rules_emulator.py` bagian V25) — owner menerbitkan di Console SEBELUM merge.
+
+**Keputusan owner (satu AskUserQuestion 27 Nov 2026):** halaman tugas staf **sama untuk semua** (Penjaga laci & karyawan, termasuk janji bayar & sisa bon) · alarm selisih
+laci berulang bawaan **3 malam berturut-turut / 4 dari 7 malam** (setelan owner) · daftar rutin dicentang **owner + Ben + karyawan** (→ rules v25) · alasan selisih bebas
+**owner + catatan dari tablet** (tablet tetap hitung buta).
+
+- **Daftar centang rutin (A143).** Modul baru `rutin-logika.js` (awalan `rn`). Butir = `aturanToko/rutin` (owner) atau `RN_BAWAAN` (30 butir disusun Claude dari ritual yang
+  sudah ada + yang lazim — sumber 30 butir dokumen riset owner tidak ada di repo). Putaran: harian = tanggal · mingguan = tanggal **Senin** · bulanan = `YYYY-MM`; jatuh
+  mingguan pada `hari` 1–7, bulanan pada tanggal 1–28 (0 = akhir bulan). Lewat = sudah jatuh & belum dicentang (jatuh sebelum `RN_MULAI` 27 Nov tidak ditagih). Untuk siapa:
+  `semua` (Penjaga laci & karyawan), `penjaga`, `owner` (owner melihat & boleh mencentang semuanya). Centang = SATU dokumen `rutinCek` { id, tanggal, jam, butir, periode,
+  catatan } + atribusi (`susunCentangRutin`; dua centang bersamaan = yang PERTAMA dihitung); batal = owner hapus (`susunBatalRutin`). Butir **otomatis** tidak dicentang
+  tangan — terbaca dari layarnya: hitungan laci tablet (persetujuan `hitungLaci` hari itu, yang ditolak tidak), tutup hari (`tutupHari`), cek wadah (`wbCekHari`), karcis
+  hari ini (`daftarKarcis`), cek mingguan gudang (`gdCekGudang` ≥ Senin), cadangan (`cadanganCatatan`, owner), opname (`gdOpname`), cek aturan bulanan (kalender kepatuhan,
+  kelompok `aturan`); yang tidak terbaca akun itu disebut "owner", tidak dihitung. Tempat: kartu **Rutin** di Menu akun staf; owner **Menu › Toko ini › Rutin** (Hari ini ·
+  Siapa mencentang 14 hari · Atur daftar ≤ 40 butir); Dasbor › Mutu usaha baris **Rutin hari ini** (x dari y · lewat · harian manual yang terlewat kemarin, `rnDasbor`).
+- **Alarm & tren selisih laci (A119).** Modul baru `laci-logika.js` (awalan `lh`), baca saja dari cache (Dasbor tidak memuat tutup-hari-logika): selisih tiap malam = dokumen
+  `tutupHari` apa adanya (bentuk `bacaTutup`), batas maaf = `aturanToko/tutupHari.maafSelisih`. Alarm = malam tutup berturut-turut yang lewat batas ≥ N, ATAU ≥ M dari W malam
+  terakhir — bawaan 3 / 4 / 7 (`LH_BAWAAN`; setelan owner `aturanToko/selisihLaci` lewat Uang › Tutup hari › Atur, kiriman yang sama dengan `susunAturTutup` — penyusun itu
+  tidak diubah); malam > 30 hari tidak ikut alarm. "Malam" = hari yang DITUTUP. Kartu baru **Selisih laci** di Uang › Tutup hari (semua tata letak, di samping "Malam-malam
+  sebelumnya"): pita alarm, batang 7 / 30 malam (lebih ke atas, kurang ke bawah, dimaafkan abu), per orang yang menghitung (tablet = nama Penjaga laci), malam yang belum
+  dijelaskan + yang sudah. Pengingat & lonceng OWNER saja: jenis `laci` & `jelaskan` (`SS_JENIS_LACI`; `lhSumberPengingat` diteruskan `app.js` lewat `lokal.peringatan`,
+  sistem-logika tidak mengimpornya). Dasbor › Hari ini: baris **Selisih laci** + 7 titik malam (`lhDasbor`).
+- **Alasan bebas, catatan tablet & cari besok (A82).** Lembar Tutup hari: isian "atau tulis alasan sendiri" (120 huruf, tersimpan di `alasanSelisih` apa adanya) + pilihan
+  **"Belum ketemu — cari besok"** (`LH_CARI`; alasan bawaan lama "Belum tahu — dicari besok" ikut). Malam itu ditagih pengingat `jelaskan` mulai besok sampai owner menulis
+  penjelasan susulan di kartu Selisih laci (`susunJelaskanLaci`: dokumen `tutupHari` malam itu ditulis ulang apa adanya + `penjelasan { teks, tanggal, jam }`, riwayat tidak
+  bertambah; terdaftar di `peta_akses` OWNER_JALUR). Tablet: isian **Catatan untuk owner** (160 huruf) di kartu Tutup hari — ikut dokumen hitungan (`catatan`; rules v16
+  `stafHitungLaci` tidak membatasi kolom), tampil di pita hitungan owner, dibawa "Pakai hitungan ini" (`hitungCatatan`) ke `tutupHari.dariTablet.catatan`. Tablet tetap tanpa
+  angka seharusnya / selisih.
+- **Halaman tugas staf (B116).** Modul baru `tugas-staf-logika.js` (awalan `ts`, baca saja) + panel `rutin-panel.js`: kartu **Tugas hari ini** PALING ATAS Menu akun staf —
+  rutin yang belum · wadah literan perlu diisi + cek saat tutup · pesanan dikirim hari ini / besok + antar di jalan / gagal · janji bayar hari ini / lewat (nama + sisa bon) ·
+  karcis belum dirinci · barang titipan belum diambil; tiap baris membuka layar staf yang sesuai; tombol **MULAI JUALAN ›**. Semua sumbernya sudah di daftar baca staf (+ v25).
+  `app.js`: staf (Penjaga laci / karyawan) yang baru masuk MENDARAT di Menu (halaman tugas) — **sekali per orang per hari** (masuk lagi sesudah kunci 5 menit tetap ke layar
+  terakhir).
+- **Akses & data.** `akses.js`: `DOK_STAF_RUTIN`, `BACA_RUTIN` (disambung `pendengarPeran` untuk ben & karyawan), `BUAT_STAF.rutinCek`, `CEK_RUTIN_KOLOM` + `cekRutinSah` di
+  `periksaKiriman`. `koleksi.js`: `rutinCek` kelas tetap. `bundel_baru.py`: `LH_MODUL` / `RN_MODUL` ikut otomatis. `index.html`: modulepreload 4 modul baru.
+- **Belum dicoba di data asli:** centang dari tablet (butuh v25 terbit), alarm & pengingat di HP owner, mendarat di halaman tugas di CPad, cetak slip hitungan laci dengan catatan.

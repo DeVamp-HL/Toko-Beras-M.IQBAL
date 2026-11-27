@@ -217,6 +217,8 @@ export function susunTutup(D, w, yakinUlang) {
     sistemBaru: true, dihitung: { laci: true, rekening: !!D.rekPilih, amplop: false, brankas: false }, langkah: H.status.map((s) => s.id + ':' + s.st).join(' '), mdr: { kira: H.R.mdrKira, jadi: H.mdrDicatat ? H.mdrJadi : 0, nyata: H.rekNyata, pilih: D.rekPilih || '' }, sisihJadi: H.sisihJadi, amankanJadi: H.amankanJadi, timbang: H.timbang.filter((m) => m.nyata !== null).map((m) => ({ merk: m.merk, sistem: m.sistem, fisik: m.nyata })), selisihLaci: H.selisih, labaHari: H.labaHari, dilewati: H.dilewati };
   // owner 22 Nov 2026: laci dihitung di tablet — siapa, jam, hitungan asli, uang laci sesudahnya, yang sudah dipindah ke brankas (kasFisikLaci = laci saat ditutup)
   if (H.tablet) dokTutup.dariTablet = { id: H.tablet.id, oleh: H.tablet.oleh, jam: H.tablet.jam, hitung: H.hitung, sesudah: H.tablet.sesudah.net, amankan: H.amankanTetap || 0 };
+  // paket P6 (owner 27 Nov 2026, A82): catatan bebas Penjaga laci yang ikut hitungannya — tersimpan di malam itu (dibaca kartu Selisih laci, laci-logika)
+  if (H.tablet && D.hitungCatatan) dokTutup.dariTablet.catatan = String(D.hitungCatatan).slice(0, 160);
   thDorongRiwayat(dokTutup, H.R.sudah);
   const dokumen = [{ koleksi: 'tutupHari', data: dokTutup }, { koleksi: 'amplopLaba', data: { id: 'am-' + iso, tanggal: iso, jam: w.jam, tipe: 'setor', nominal: H.sisihJadi, catatan: 'Sisihan tutup hari' } },
     { koleksi: 'setoranKas', data: { id: 'st-' + iso, tanggal: iso, jam: w.jam, nominal: 0, catatan: 'Tutup hari' } }, { koleksi: 'modalOwner', data: { id: 'mo-st-' + iso, tanggal: iso, jam: w.jam, tipe: 'tarik', nominal: 0, catatan: 'Setoran tutup hari', dariSetoran: 'st-' + iso } }];

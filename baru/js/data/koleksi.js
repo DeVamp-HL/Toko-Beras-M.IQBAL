@@ -118,6 +118,8 @@ export const KOLEKSI = [
   //  tetap di nota) — berdiri sendiri (tidak menunjuk baris penjualan yang diarsip tutup buku) dan TIDAK diarsip tutup buku (tbDaftarKoleksi), jadi titipan
   //  akhir Desember tetap terbaca sesudah tutup buku. Tanpa cap jam server → 'tetap'.
   { nama: 'ambilBarang',         urut: 'id',    cache: 'ambilBarang', kelas: 'tetap' },
+  // paket P6 (owner 27 Nov 2026, A143 — rules v25): centang daftar rutin, tambah-saja dari tablet / HP staf, ditulis tanpa cap jam server → 'tetap' seperti kepatuhanCek.
+  { nama: 'rutinCek',            urut: 'id',    cache: 'rutinCek', kelas: 'tetap' },
   // owner 26 Nov 2026 (rules v23) — CEK BON DARI HP: ringkasan bon satu pelanggan bernama kode acak (≥ 20 huruf) yang dibaca halaman bon.html TANPA login.
   //  Didengar & ditulis OWNER saja (list owner; staf tidak memasang pendengarnya — tidak ada di BACA_STAF). Salinan ringkas, bukan data toko.
   { nama: 'bonPublik',           urut: 'id',    cache: 'bonPublik', kelas: 'tetap' },
