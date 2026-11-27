@@ -26,6 +26,8 @@ import { susunWadah, umRingkas, umHama } from './stok-logika.js';
 // paket P5 (owner 27 Nov 2026): lewat batas simpan & hama per tumpukan (A43) · nilai modal stok yang sudah dipesan pelanggan (B51) — satu sumber dengan Stok › Umur / Produksi
 import { sgPesananRp } from './stok-pantau-logika.js';
 import { lbRingkasKemasan } from './label-logika.js';
+// paket P3 (owner 27 Nov 2026, sensus B129): nota "jual dulu, tandai untuk dicocokkan" yang belum tuntas — satu sumber dengan pita Jual & kartu Gudang (jual-logika)
+import { notaTembusBelumCocok } from './jual-logika.js';
 
 export const GD_TOP = 10;
 export const GD_JENIS_STOK = { beras: 'Beras (karung & wadah)', kemasan: 'Kemasan jadi', kantong: 'Kantong & paper bag' };
@@ -121,7 +123,11 @@ export function gdTugas(kini, w) {
   baris('masuk', 'Kabar barang masuk dari tablet', () => { const d = cacheMentah('persetujuan').filter((m) => m && m.tindakan === 'barangMasuk' && (m.status || 'menunggu') === 'menunggu');
     return { n: d.length, ket: d.length ? 'menunggu diperiksa owner · ' + d.slice(0, 2).map((m) => String(m.teks || '').slice(0, 60)).join(' · ') : 'tidak ada yang menunggu', awas: d.length > 0, tujuan: { ke: 'stok', lembar: 'masuk' } }; });
   baris('pesanPemasok', 'Pesanan ke pemasok belum datang', () => { const d = pesananSemua().filter((p) => p.status === 'menunggu');
-    return { n: d.length, ket: d.length ? d.slice(0, 3).map((p) => (p.pemasok || 'pemasok') + ' ' + tanggalPendek(p.tanggal)).join(' · ') : 'tidak ada', awas: false, tujuan: { ke: 'harga', keluarga: 'belanja' } }; });
+    // paket P3 (owner 27 Nov 2026, B67): + kg & perkiraan Rp yang masih menunggu (gdPesananPemasok — satu sumber dengan Dasbor › Pembelian)
+    const P = gdPesananPemasok(d); return { n: d.length, kg: P.kg, rp: P.rp, ket: d.length ? P.kalimat + ' · ' + d.slice(0, 3).map((p) => (p.pemasok || 'pemasok') + ' ' + tanggalPendek(p.tanggal)).join(' · ') : 'tidak ada', awas: false, tujuan: { ke: 'harga', keluarga: 'belanja' } }; });
+  // paket P3 (owner 27 Nov 2026, B129): nota "jual dulu, tandai untuk dicocokkan" yang belum dicocokkan — tuntas sendiri saat cocokkan nama itu bertanggal ≥ notanya
+  baris('tembus', 'Nota "jual dulu, tandai" belum dicocokkan', () => { const T = notaTembusBelumCocok();
+    return { n: T.n, ket: T.n ? T.nama.slice(0, 3).map((x) => x.nama + ' ' + KG(x.kg) + ' (' + x.n + ' nota)').join(' · ') + (T.nama.length > 3 ? ' · +' + (T.nama.length - 3) + ' nama' : '') + ' — cocokkan nama itu' : 'tidak ada', awas: T.n > 0, tujuan: { ke: 'stok', lembar: 'cocok' }, nama: T.nama }; });
   baris('pesanan', 'Pesanan pelanggan belum dikirim', () => { const hP = poHariKe(iso); const d = poDaftarAktif('').filter((o) => o.status === 'dipesan'); const segera = d.filter((o) => o.tanggalKirim && poHariKe(o.tanggalKirim) - hP <= 1);
     const P = sgPesananRp(kini);   // B51: modal stok yang sudah dipesan (semua pesanan yang belum jadi nota)
     return { n: d.length, ket: d.length ? (segera.length ? segera.length + ' dikirim hari ini / besok · ' : '') + d.slice(0, 3).map((o) => o.nama + (o.tanggalKirim ? ' ' + tanggalPendek(o.tanggalKirim) : '')).join(' · ') + (P.rp ? ' · modal dipesan ' + RP(P.rp) : '') + (P.kurang.length ? ' · ' + P.kurang.length + ' barang kurang' : '') : 'tidak ada', awas: segera.length > 0 || P.kurang.length > 0, tujuan: { ke: 'jual', lembar: 'pesanan' }, rp: P.rp }; });
@@ -150,6 +156,19 @@ export function gdTugas(kini, w) {
   const terbuka = out.filter((x) => x.n > 0); const n = terbuka.reduce((a, x) => a + x.n, 0);
   return { iso, daftar: out, terbuka, n, nJenis: terbuka.length, awas: out.some((x) => x.awas), pindahLokasi: L < 2 ? 'Pindah stok antar lokasi: toko satu lokasi — tidak berlaku sampai lokasi kedua ditambahkan di Menu › Toko ini › Lokasi.' : '',
     kalimat: terbuka.length ? n + ' tugas terbuka di ' + terbuka.length + ' jenis' : 'Semua tugas gudang beres', sumber: 'Stok › Tugas gudang', tujuan: { ke: 'stok', tab: 'tugas' } };
+}
+
+/**
+ * B67 (paket P3, owner 27 Nov 2026) — pesanan ke pemasok yang MASIH MENUNGGU: jumlah, karung, kg, dan perkiraan rupiah (harga beli terakhir yang dipakai saat
+ * pesanan dibuat — kolom rp & kg dokumen pesananPemasok, Harga & Pemasok › Belanja). d = daftar menunggu (bawaan pesananSemua). Pesanan lama tanpa harga = disebut.
+ */
+export function gdPesananPemasok(d) {
+  const D = d || pesananSemua().filter((p) => p.status === 'menunggu'); const per = {};
+  D.forEach((p) => { const k = String(p.pemasok || 'pemasok'); const g = per[k] = per[k] || { pemasok: k, n: 0, kg: 0, rp: 0, karung: 0, janji: '' }; g.n += 1; g.kg += Number(p.kg) || 0; g.rp += Number(p.rp) || 0; g.karung += Number(p.karung) || 0;
+    const jt = String(p.janjiTanggal || ''); if (jt && (!g.janji || jt < g.janji)) g.janji = jt; });
+  const kg = D.reduce((a, p) => a + (Number(p.kg) || 0), 0), rp = D.reduce((a, p) => a + (Number(p.rp) || 0), 0), karung = D.reduce((a, p) => a + (Number(p.karung) || 0), 0); const tanpaHarga = D.filter((p) => !(Number(p.rp) > 0)).length;
+  return { n: D.length, kg, rp, karung, tanpaHarga, pemasok: Object.keys(per).map((k) => per[k]).sort((a, b) => b.rp - a.rp || b.kg - a.kg || a.pemasok.localeCompare(b.pemasok)),
+    kalimat: D.length ? KG(kg) + ' · ±' + RP(rp) + (tanpaHarga ? ' (' + tanpaHarga + ' pesanan tanpa harga)' : '') : 'tidak ada pesanan yang menunggu', sumber: 'Harga & Pemasok › Belanja', tujuan: { ke: 'harga', keluarga: 'belanja' } };
 }
 
 /** Sumber pengingat jenis 'minus' (diteruskan app.js lewat lokal.gudang, pola lokal.pajak): satu baris per HARI selama ada buku minus. */

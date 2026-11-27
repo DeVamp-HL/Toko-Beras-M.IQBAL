@@ -9,7 +9,7 @@
 // Susunan = setelan aturanToko/dasbor { widget: [{ id, w, h }] } (owner saja; ikut ke semua perangkat owner). Belum pernah diatur = BAWAAN = urutan kartu lama.
 // ATURAN: TIDAK ADA RUMUS UANG di sini. Widget-angka & kartu tambahan membaca hasil dasbor-logika (susunDasbor + dbTambahan) APA ADANYA (uji_dasbor_sensus
 // memeriksa tiap widget menutup ke kartunya). Kartu lama digambar dasbor.js apa adanya.
-import { RP, DESIMAL } from '../inti/format.js';
+import { RP, DESIMAL, ANGKA } from '../inti/format.js';
 import { cacheMentah } from '../data/toko.js';
 
 export const WG_ID = 'dasbor';
@@ -192,6 +192,19 @@ export const WG_KATALOG = [
     if (!P.n) return { nilai: '—', ket: J.kalimatPemasok, awas: lewat.length > 0, rinci: lewat.slice(0, 4).map((x) => ['Lewat janji', x.teks]), tujuan: J.tujuan };
     return { nilai: wgPctPolos(P.pct), ket: P.tepat + ' dari ' + P.n + ' kiriman tepat janji · ' + J.hari + ' hari' + (lewat.length ? ' · ' + lewat.length + ' lewat janji' : ''), awas: lewat.length > 0,
       rinci: [['Dari pemasok', J.kalimatPemasok]].concat(lewat.slice(0, 4).map((x) => ['Lewat janji', x.teks])), tujuan: J.tujuan }; } },
+  // ---------- P3 (owner 27 Nov 2026): A4 peringatan uang · B48 modal diam · B67 pesanan pemasok · B129 nota jual-dulu — kelompok dasbor apa adanya, hanya lewat katalog ----------
+  { id: 'peringatanUang', nama: 'Peringatan uang (lonceng)', ukuran: 'lebar', kel: 'peringatan', isi: (D) => { const P = D.peringatan; if (!ada(P)) return wgGalat('peringatan', P);
+    return { nilai: P.n ? P.n + ' menyala' : 'tidak ada', ket: P.n ? P.jenis.filter((j) => j.n).map((j) => j.nama.toLowerCase() + ' ' + j.n).join(' · ') : 'biaya, susut, modal, harga, untung per kg & kas aman', awas: P.n > 0,
+      rinci: P.daftar.slice(0, 6).map((x) => [x.teks, x.n ? RP(x.n) : '']).concat(P.tidakTerbaca.length ? [['Tidak terbaca', P.tidakTerbaca.join(' · ').slice(0, 120)]] : []), tujuan: P.tujuan }; } },
+  { id: 'modalDiam', nama: 'Modal diam (lambat laku)', ukuran: 'kecil', kel: 'mutu', isi: (D) => { const Q = D.mutu; if (!ada(Q) || !ada(Q.modalDiam)) return wgGalat('mutu', ada(Q) ? Q.modalDiam : Q); const M = Q.modalDiam;
+    return { nilai: M.n ? wgRpPendek(M.rp) : 'tidak ada', ket: M.n + ' lambat laku · stok > ' + M.atur.tua + ' hari ' + wgRpPendek(M.tuaRp) + (M.menutup ? '' : ' · TIDAK MENUTUP'), awas: M.n > 0 || !M.menutup,
+      rinci: M.lapisan.map((b) => [b.nama, RP(Math.round(b.rp))]).concat(M.daftar.slice(0, 3).map((x) => ['· ' + x.nama, RP(Math.round(x.rp))])), tujuan: M.tujuan }; } },
+  { id: 'pesananPemasok', nama: 'Pesanan pemasok menunggu', ukuran: 'kecil', kel: 'beli', isi: (D) => { const B = D.beli; if (!ada(B) || !ada(B.pesanan)) return wgGalat('beli', ada(B) ? B.pesanan : B); const P = B.pesanan;
+    return { nilai: P.n ? ANGKA(Math.round(P.kg)) + ' kg' : 'tidak ada', ket: P.n ? P.n + ' pesanan · ±' + wgRpPendek(P.rp) + (P.tanpaHarga ? ' · ' + P.tanpaHarga + ' tanpa harga' : '') : 'semua pesanan sudah datang / dibatalkan', awas: false,
+      rinci: P.pemasok.slice(0, 5).map((g) => [g.pemasok, ANGKA(Math.round(g.kg)) + ' kg · ' + RP(Math.round(g.rp)) + (g.janji ? ' · janji ' + g.janji.slice(8, 10) + '/' + g.janji.slice(5, 7) : '')]), tujuan: P.tujuan }; } },
+  { id: 'notaTembus', nama: 'Nota "jual dulu, tandai"', ukuran: 'kecil', kel: 'stok', isi: (D) => { const S = D.stok; const G = ada(S) ? S.gudang : S; if (!ada(G)) return wgGalat('stok', G);
+    const T = (G.tugas.terbuka || []).find((x) => x.id === 'tembus');
+    return { nilai: T ? T.n + ' nota' : 'tidak ada', ket: T ? T.ket : 'semua nota jual-dulu sudah dicocokkan', awas: !!T, rinci: [], tujuan: T ? T.tujuan : G.tujuan }; } },
   // paket P5 (owner 27 Nov 2026): stok yang dipesan (B51) & lewat batas simpan (A43) — kelompok dasbor `gudang5` apa adanya
   { id: 'pesananRp', nama: 'Stok yang dipesan', ukuran: 'kecil', kel: 'gudang5', isi: (D) => { const G = D.gudang5; if (!ada(G) || !ada(G.pesanan)) return wgGalat('gudang5', ada(G) ? G.pesanan : G); const P = G.pesanan;
     return { nilai: P.nPesanan ? RP(P.rp) : 'tidak ada', ket: P.kalimat, awas: P.kurang.length > 0, rinci: P.daftar.slice(0, 5).map((x) => [x.nama, (x.satuan === 'kg' ? DESIMAL(x.jumlah) + ' kg' : x.jumlah + ' unit') + ' · ' + RP(x.rp) + (x.kurang > 0 ? ' · KURANG' : '')]).concat([['Nilai jual perkiraan', RP(P.rpJual)]]), tujuan: P.tujuan }; } },
