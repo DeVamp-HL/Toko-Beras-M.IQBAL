@@ -2709,7 +2709,7 @@ FD_DASBOR = {'id': FD_KODE, 'toko': 'Toko Beras M.IQBAL', 'dibuat': '2026-10-09T
              'bulan': [{'key': '2026-10', 'nama': 'Oktober 2026', 'berjalan': True, 'sampaiTanggal': '2026-10-09', 'omzet': 1000000, 'nota': 10}]}
 FD_LEWAT = dict(FD_DASBOR, sampai=TS.dari_iso('2026-10-08T03:00:00Z'))
 DB_FT = {'fotoTanda/' + FD_ID: FD_TANDA}; DB_FB = {'fotoBon/' + FD_ID: FD_FOTO}; DB_DP = {'dasborPublik/' + FD_KODE: FD_DASBOR}
-WAJIB_V26 = ['★FD1', '★FD2', '★FD3', '★FD4']   # ★FD4 di Playground: matikan "Authenticated" (tamu); kasus staf dibuktikan emulator — boleh juga di Playground dengan U11
+WAJIB_V26 = ['★FD1', '★FD2']   # terbit 27 Nov: ★FD3 (timestamp ketikan = map) & ★FD4 (get tamu butuh dokumen nyata) TIDAK bisa dinilai Playground — emulator saja
 KASUS_V26 = [
     ('★FD1', 'owner mencatat tanda foto nota', 'owner', 'create', 'fotoTanda', FD_ID, FD_OWNER, None, True, 0),
     ('★FD2', 'owner membaca tanda foto', 'owner', 'get', 'fotoTanda', FD_ID, None, DB_FT, True, 0),
@@ -3322,7 +3322,7 @@ if __name__ == '__main__':
         # v26: berkas uji server, salinan v25, penjaga kiriman foto & tanda, penyusun tanda — catatan ★FD berkurang / pembanding berubah / penjaga longgar wajib ketahuan
         DOK26 = baca('docs/uji-rules-v26.md'); V25S = baca('firestore.rules.v25'); AK26 = baca('baru/js/data/akses.js'); AF26 = baca('baru/js/layar/arsip-foto-logika.js')
         for nama, (dkx, v25x, akx, afx) in {'v26: catatan uji server kehilangan kasus ★FD18': (re.sub(r'\n\| ★FD18 \|[^\n]*', '', DOK26), None, None, None),
-                                            'v26: Wajib owner tanpa ★FD4': (re.sub(r'\n\| 4 \| ★FD4 \|[^\n]*', '', DOK26), None, None, None),
+                                            'v26: Wajib owner tanpa ★FD2': (re.sub(r'\n\| 2 \| ★FD2 \|[^\n]*', '', DOK26), None, None, None),
                                             'v26: salinan firestore.rules.v25 sudah memuat dasborPublik (pembanding ikut berubah)': (None, V25S.replace("    match /ringkasanKasir/{id} {", "    match /dasborPublik/{kode} {\n      allow get: if kode.size() >= 20;\n    }\n\n    match /ringkasanKasir/{id} {"), None, None),
                                             'v26: periksaKiriman tanpa penjaga tanda foto': (None, None, AK26.replace("if (x.koleksi === 'fotoTanda' && !tandaFotoSah(d))", "if (false)"), None),
                                             'v26: penjaga tanda foto membolehkan kolom lain': (None, None, AK26.replace("export const TANDA_FOTO_KOLOM = ['id', 'idBon', 'jenis',", "export const TANDA_FOTO_KOLOM = ['id', 'idBon', 'jenis', 'base64',"), None),

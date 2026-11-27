@@ -29,27 +29,28 @@ belum berfoto), dan tautan Dasbor tidak bisa dibuat / dibuka. Foto bon pemasok &
 ## Urutan (± 5 menit)
 
 1. Console › Firestore › **Rules** — salin isi `firestore.rules` cabang ini (seluruhnya) ke editor.
-2. Klik **Rules Playground**, jalankan bagian **Wajib owner** di bawah (empat kasus). Hasilnya harus sama dengan kolom Wajib. ★FD4 = matikan "Authenticated" (tamu).
+2. Klik **Rules Playground**, jalankan bagian **Wajib owner** di bawah (dua kasus). Hasilnya harus sama dengan kolom Wajib. ★FD3 & ★FD4 TIDAK bisa dinilai Playground
+   (timestamp dari "Build document" dikirim sebagai map → `is timestamp` salah = DITOLAK palsu; get tamu butuh dokumen nyata) — dibuktikan emulator CI bagian V26.
 3. Klik **Publish** — sebelum PR digabung.
 4. Sesudah terbit dan PR digabung: di tablet (Penjaga laci) catat satu Barang masuk → kartu **Foto nota** → Ambil foto. Di HP owner: Stok › Barang masuk ›
    koreksi kedatangan itu → **lihat foto**. Lalu Dasbor › **Bagikan** → buat tautan 1 hari → buka tautannya di jendela penyamaran (tanpa login).
 
-## Wajib owner (4 kasus — tanpa dokumen uji staf)
+## Wajib owner (2 kasus — tanpa dokumen uji staf, tanpa timestamp ketikan)
 
 | # | Kasus | Akun | Operasi · jalur | Isi | Wajib | Kenapa |
 |---|---|---|---|---|---|---|
-| 1 | ★FD1 | owner@ | create `fotoTanda/fn-uji-1` | tanda foto kedatangan tunai | LOLOS | owner mencatat tanda bersama fotonya |
+| 1 | ★FD1 | owner@ | create `fotoTanda/fn-uji-1` | tanda foto kedatangan (dokumen kosong — owner tidak dibatasi bentuk) | LOLOS | owner mencatat tanda bersama fotonya |
 | 2 | ★FD2 | owner@ | get `fotoTanda/fn-uji-1` | — | LOLOS | Dasbor owner membaca tanda |
-| 3 | ★FD3 | owner@ | create `dasborPublik/Dp7Qp2Xz9LmN4rT8vW1yZb` | `sampai` = jam sekarang + 7 hari (tipe timestamp) | LOLOS | owner membuat tautan 7 hari |
-| 4 | ★FD4 | tamu (tanpa login) | get `dasborPublik/Dp7Qp2Xz9LmN4rT8vW1yZb` | dokumen dengan `sampai` besok | LOLOS | pihak luar membuka tautan yang belum lewat |
 
 ## Opsional — sudah dinilai model CI & emulator
 
 Kasus staf butuh akun uji staf aktif (U11 dari `docs/uji-rules-v7.md`: `aksesAkun/uid-uji-b`, peran ben; kasus karyawan = peran diganti karyawan). Tanpa itu
-cukup percaya bukti emulator di bawah (mesin rules yang sama dengan server).
+cukup percaya bukti emulator di bawah (mesin rules yang sama dengan server). ★FD3 & ★FD4 tidak bisa dinilai Playground (lihat Urutan no. 2) — emulator saja.
 
 | Kasus | Akun | Operasi · jalur | Isi | Wajib | Kenapa |
 |---|---|---|---|---|---|
+| ★FD3 | owner@ | create `dasborPublik/Dp7Qp2Xz9LmN4rT8vW1yZb` | `sampai` = jam sekarang + 7 hari (tipe timestamp) | LOLOS | owner membuat tautan 7 hari |
+| ★FD4 | tamu (tanpa login) | get `dasborPublik/Dp7Qp2Xz9LmN4rT8vW1yZb` | dokumen dengan `sampai` besok | LOLOS | pihak luar membuka tautan yang belum lewat |
 | ★FD5 | Penjaga laci | create `fotoBon/fn-uji-1` | foto nota kedatangan atas namanya | LOLOS | Penjaga laci memotret nota dari tablet (keputusan owner) |
 | ★FD6 | Penjaga laci | create `fotoTanda/fn-uji-1` | tanda bon atas namanya | LOLOS | tanda ikut kiriman foto |
 | ★FD7 | karyawan | create `fotoBon/fn-uji-1` | foto | DITOLAK | memotret = owner & Penjaga laci saja |
@@ -85,4 +86,12 @@ jam emulator, jadi ★FD4 / ★FD18 menguji "belum lewat" / "sudah lewat" terhad
 
 ## Hasil Playground & terbit
 
-Belum diterbitkan (DRAF). Diisi sesudah owner menjalankan bagian Wajib owner dan menekan Publish.
+**v26 TERBIT 27 Nov 2026 ±16.02 WIB** — SEBELUM PR #239 (paket P8) digabung, sesuai urutan di atas. Owner menempel isi `firestore.rules` (commit `5becd54`, berkas
+mentah GitHub di tab Chrome — sidiknya dicek lebih dulu = repo) ke editor Rules Console; Claude menjalankan Playground & menekan Publish atas permintaan owner
+("gua copy-paste, sisanya lu yang kerjain"). Isi editor sebelum Publish, sesudah uji Playground, dan isi yang aktif sesudah halaman dimuat ulang sama persis dengan
+`firestore.rules` cabang ini: SHA-256 berawalan `6e71bf925be5d78d`, 95.198 byte, baris 2 `ATURAN FIRESTORE v26 FINAL` (sebelumnya aktif v25 `e6718c55`, 90.788 byte).
+Playground (akun uji owner: UID `uid-uji`, email `owner@tokoberasmiqbal.web.app`, email terverifikasi): ★FD2 get `fotoTanda/fn-uji-1` → *Simulated read allowed* ·
+★FD1 create `fotoTanda/fn-uji-1` → *Simulated write allowed* — keduanya sesuai kolom Wajib. ★FD3 create `dasborPublik/Dp7Qp2Xz9LmN4rT8vW1yZb` dengan `sampai`
+4 Des 2026 16.00 dari "Build document" → *Simulated write denied*, rincian evaluasi `… is timestamp` = **false**: batas Playground yang sudah tercatat sejak v7
+(timestamp ketikan dikirim sebagai map `{type, seconds, nanoseconds}`), bukan hasil aturan. ★FD3, ★FD4 dan kasus staf (★FD5–★FD27) dibuktikan emulator CI
+bagian V26 commit `5becd54` (run 45968139049): 27/27 lulus atas v26 · 27/27 sesuai atas v25 (berbeda tepat ★FD1–★FD6, ★FD27) · kontrol v26 9/9 berbunyi.

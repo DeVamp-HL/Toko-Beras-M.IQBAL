@@ -4639,7 +4639,7 @@ macet) · usul HENTI yang dipakai = **bon baru ditahan** sampai owner membuka la
 Paket kedelapan dari delapan sisa sensus ulang 27 Nov. Dijaga `alat-uji/uji_arsip_audit_p8.py` (kotak pasir angka contoh + statis + `--kontrol` + asap cadangan toko; angka
 rupiah toko tidak dicetak). **Butuh rules v26** (= v25 + `fotoBon` create untuk Penjaga laci lewat `stafFotoNota` + koleksi `fotoTanda` (`stafTandaFoto`) + koleksi
 `dasborPublik`; salinan `firestore.rules.v25`, `docs/uji-rules-v26.md` kasus ★FD, `periksa_rules.py` & `uji_rules_emulator.py` bagian V26, prosedur pulih darurat v26) —
-owner menerbitkan di Console SEBELUM merge.
+**TERBIT 27 Nov 2026 ±16.02 WIB** sebelum merge (isi aktif = repo, sidik `6e71bf92`; Playground ★FD1–★FD2, sisanya emulator).
 
 **Keputusan owner (dua AskUserQuestion 27 Nov 2026):** A94 foto nota **owner + tablet Penjaga laci**, foto tetap di Firestore, arsip foto **terpisah** dari cadangan berkas (unduh per
 bulan) · B81 log **cari per tanggal saat dibuka**, saring orang / jenis / satu catatan, cadangan berkas membawa log **30 hari** · B13 omzet per perangkat **dibangun** · B103
