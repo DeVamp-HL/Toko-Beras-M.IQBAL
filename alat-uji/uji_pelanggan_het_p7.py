@@ -258,7 +258,7 @@ RUSAK_STATIS = [
     ('rumus HET kedua', 'hj', "export function hjSatuHarga(", "const HJ_HET = 13500;\nexport function hjSatuHarga("),
     ('usul menulis koleksi lain', 'ul', "return { dokumen: [{ koleksi: 'pelangganCatatan', data }], patch: { kabar: 'Bon ' + lama.nama", "return { dokumen: [{ koleksi: 'penjualan', data }], patch: { kabar: 'Bon ' + lama.nama"),
     ('komentar // menelan kode', 'hn', "export function hnRingkas(H) {", "// ringkas\nexport function hnRingkas(H) { // kalimat; const x = 1;\n"),
-    ('rules: staf membaca setelan usul bon', 'rules', "'produkArsip', 'bukuPegangan']", "'produkArsip', 'bukuPegangan', 'usulBon']"),
+    ('rules: staf membaca setelan usul bon', 'rules', "'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", "'bukuPegangan', 'rutin', 'usulBon'] && staf(['ben', 'karyawan'])"),   # daftar baca staf rules v25 (berakhir 'rutin')
 ]
 
 ASAP = r"""
