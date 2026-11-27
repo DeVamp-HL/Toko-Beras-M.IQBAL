@@ -774,7 +774,7 @@ if __name__ == '__main__':
                           ('K9 laporan.js: kertas Neraca tanggal pilihan memakai catatan neraca saja (tanpa kalimat modal awal)', lap.replace('D.catatan = LP.catatanNeracaBerkop(NP);', 'D.catatan = NP.catatan;', 1)),
                           ('UU36-2 laporan.js: hero Neraca bulan final kembali "titik kas belum disetel"', lap.replace("(sampai && D.final ? NP.tolak + '.' :", "(false ? NP.tolak + '.' :", 1)),
                           # ---- paket brief 9 Okt (butir 3·4·5): kartu Per merek
-                          ('paket brief laporan.js: kartu Per merek tidak dipasang di Laba tablet/Mac', lap.replace('h`${panel}${keMana}${merek}`', 'h`${panel}${keMana}`', 1)),
+                          ('paket brief laporan.js: kartu Per merek tidak dipasang di Laba tablet/Mac', lap.replace('h`${panel}${deret}${keMana}${merek}`', 'h`${panel}${deret}${keMana}`', 1)),   # P1 (27 Nov 2026): kartu Deret bulanan disisipkan di kolom yang sama — jangkar diperbarui
                           ('paket brief laporan.js: penjaga Per merek yang meleset digambar sebagai teks biasa (diam)', lap.replace('h`<div class="pita-info awas" data-k="mr-jaga">', 'h`<div class="k2" data-k="mr-jaga">', 1)),
                           ('paket brief laporan.js: margin yang belum bisa dihitung digambar sebagai rupiah', lap.replace("g.keadaanMargin === 'ada' ? h`<b class=\"${arah(g.margin)}\"", "true ? h`<b class=\"${arah(g.margin)}\"", 1)),
                           ('paket brief laporan.js: susut tanpa selisih tercatat tidak disebut', lap.replace("'susut — (tidak ada selisih stok tercatat)'", "''", 1)),
