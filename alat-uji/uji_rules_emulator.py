@@ -228,11 +228,11 @@ KONTROL_V19 = [
 # ---- V20 (owner 24 Nov 2026, Pondasi paket kedua C: buku pegangan terbaca staf): kasus ★D docs/uji-rules-v20.md (periksa_rules.KASUS_V20) atas
 # firestore.rules (v20) dan atas firestore.rules.v19 — yang berbeda WAJIB persis periksa_rules.BEDA_V19. Kontrol: ubahan v20 dirusak.
 KONTROL_V20 = [
-    ('buku pegangan tidak terbaca staf (ubahan v20 dicabut)', [("'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", "'produkArsip'] && staf(['ben', 'karyawan'])")], ['★D3', '★D4']),
-    ('karyawan tidak boleh membaca buku pegangan', [("'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", "'produkArsip'] && staf(['ben', 'karyawan'])) || (id == 'bukuPegangan' && staf(['ben'])")], ['★D4']),
+    ('buku pegangan tidak terbaca staf (ubahan v20 dicabut)', [("'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", "'produkArsip', 'rutin'] && staf(['ben', 'karyawan'])")], ['★D3', '★D4']),   # v25: + rutin
+    ('karyawan tidak boleh membaca buku pegangan', [("'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", "'produkArsip', 'rutin'] && staf(['ben', 'karyawan'])) || (id == 'bukuPegangan' && staf(['ben'])")], ['★D4']),   # v25: + rutin
     ('Penjaga laci boleh mengubah buku pegangan', [("      allow update: if owner() && (id != 'kunciPeriode' || kunciGeser());", "      allow update: if (owner() && (id != 'kunciPeriode' || kunciGeser())) || (id == 'bukuPegangan' && staf(['ben', 'karyawan']));")], ['★D5']),
-    ('kasir@ ikut membaca setelan staf', [("'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])) || (id in ['tutupHari', 'kepatuhan']", "'produkArsip', 'bukuPegangan'] && (kasir() || staf(['ben', 'karyawan']))) || (id in ['tutupHari', 'kepatuhan']")], ['★D8']),   # v22: bentuk baris baru
-    ('setelan pondasi ikut terbaca staf', [("'produkArsip', 'bukuPegangan'] && staf(['ben', 'karyawan'])", "'produkArsip', 'bukuPegangan', 'pondasi'] && staf(['ben', 'karyawan'])")], ['★D10']),
+    ('kasir@ ikut membaca setelan staf', [("'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])) || (id in ['tutupHari', 'kepatuhan']", "'produkArsip', 'bukuPegangan', 'rutin'] && (kasir() || staf(['ben', 'karyawan']))) || (id in ['tutupHari', 'kepatuhan']")], ['★D8']),   # v22: bentuk baris baru
+    ('setelan pondasi ikut terbaca staf', [("'produkArsip', 'bukuPegangan', 'rutin'] && staf(['ben', 'karyawan'])", "'produkArsip', 'bukuPegangan', 'rutin', 'pondasi'] && staf(['ben', 'karyawan'])")], ['★D10']),   # v25: + rutin
 ]
 # ---- V25 (owner 27 Nov 2026, paket P6: daftar centang rutin dari tablet / HP staf — "Owner + Ben + karyawan"): kasus ★O docs/uji-rules-v25.md (periksa_rules.KASUS_V25)
 # atas firestore.rules (v25) dan atas firestore.rules.v24 — yang berbeda WAJIB persis periksa_rules.BEDA_V24. Kontrol: ubahan v25 dirusak.
@@ -242,7 +242,7 @@ KONTROL_V25 = [
     ('centang atas nama siapa saja (stafBuat → staf)', [("      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && d.get('butir', 0) is string && d.butir.matches('[a-z0-9-]{1,40}') && d.get('periode', 0) is string && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')",
       "      return staf(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && d.get('butir', 0) is string && d.butir.matches('[a-z0-9-]{1,40}') && d.get('periode', 0) is string && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')")], ['★O11']),
     ('putaran berbentuk bebas', [(" && d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')", "")], ['★O15']),
-    ('catatan tanpa batas', [(" && d.catatan.size() <= 160\n        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir', 'periode', 'catatan',", "\n        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir', 'periode', 'catatan',")], ['★O16']),
+    ('catatan tanpa batas', [("d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')\n        && d.get('catatan', 0) is string && d.catatan.size() <= 160", "d.periode.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?')\n        && d.get('catatan', 0) is string")], ['★O16']),
     ('staf boleh mengubah centang', [("      allow create: if owner() || stafCekRutin(['ben', 'karyawan'], id);\n      allow update, delete: if owner();", "      allow create, update: if owner() || stafCekRutin(['ben', 'karyawan'], id);\n      allow delete: if owner();")], ['★O18']),
 ]
 # ---- V24 (owner 27 Nov 2026, paket tanggal janji: janji datang pemasok dari tablet): kasus ★I docs/uji-rules-v24.md (periksa_rules.KASUS_V24) atas
@@ -277,7 +277,7 @@ KONTROL_V22 = [
     ('karyawan ikut membaca kalender', [("(id in ['tutupHari', 'kepatuhan'] && staf(['ben']))", "(id in ['tutupHari', 'kepatuhan'] && staf(['ben', 'karyawan']))")], ['★Q7']),
     ('karyawan ikut menandai kalender', [("stafCekPatuh(['ben'], id)", "stafCekPatuh(['ben', 'karyawan'], id)")], ['★Q8']),
     ('karyawan ikut membaca tanda kalender', [("    match /kepatuhanCek/{id} {\n      allow read: if owner() || staf(['ben']);", "    match /kepatuhanCek/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);")], ['★Q9']),
-    ('tanda tanpa batas catatan', [(" && d.catatan.size() <= 160\n        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir'", "\n        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'butir'")], ['★Q15']),
+    ('tanda tanpa batas catatan', [("d.periode.matches('[0-9K-]{4,10}')\n        && d.get('catatan', 0) is string && d.catatan.size() <= 160", "d.periode.matches('[0-9K-]{4,10}')\n        && d.get('catatan', 0) is string")], ['★Q15']),   # v25: suku catatan kini kembar di stafCekRutin — jangkar ikut periode v22
     ('putaran berbentuk bebas', [(" && d.periode.matches('[0-9K-]{4,10}')", "")], ['★Q14']),
     ('Penjaga laci boleh mengubah tanda', [("      allow create: if owner() || stafCekPatuh(['ben'], id);\n      allow update, delete: if owner();", "      allow create: if owner() || stafCekPatuh(['ben'], id);\n      allow update: if owner() || staf(['ben']);\n      allow delete: if owner();")], ['★Q17']),
 ]
