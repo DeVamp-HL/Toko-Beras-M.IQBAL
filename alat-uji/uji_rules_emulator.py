@@ -310,8 +310,8 @@ KONTROL_V22 = [
 # ---- V21 (owner 26 Nov 2026, paket Banding pemasok: usul harga tawaran / acuan dari tablet): kasus ★E docs/uji-rules-v21.md (periksa_rules.KASUS_V21) atas
 # firestore.rules (v21) dan atas firestore.rules.v20 — yang berbeda WAJIB persis periksa_rules.BEDA_V20. Kontrol: ubahan v21 dirusak.
 KONTROL_V21 = [
-    ('usul banding tidak dibuka (ubahan v21 dicabut)', [(" || stafUsulBanding(['ben']);", ";")], ['★E4', '★E5']),
-    ('karyawan ikut mengirim usul banding', [("|| stafUsulBanding(['ben']);", "|| stafUsulBanding(['ben', 'karyawan']);")], ['★E6']),
+    ('usul banding tidak dibuka (ubahan v21 dicabut)', [(" || stafUsulBanding(['ben']) || stafUsulTablet(", " || stafUsulTablet(")], ['★E4', '★E5']),   # v27: usul tablet menyusul di baris yang sama
+    ('karyawan ikut mengirim usul banding', [("|| stafUsulBanding(['ben']) || stafUsulTablet(", "|| stafUsulBanding(['ben', 'karyawan']) || stafUsulTablet(")], ['★E6']),
     ('usul harga tanpa batas atas', [(" && d.get('hargaPerKg', 0) <= 100000", "")], ['★E9']),
     ('usul tanpa batas kalimat', [(" && d.teks.size() > 0 && d.teks.size() <= 300", "")], ['★E11', '★E12']),
     ('usul atas nama siapa saja', [("d.get('tindakan', '') == 'hargaBanding' && d.get('status', '') == 'menunggu' && d.get('mintaUid', '') == request.auth.uid", "d.get('tindakan', '') == 'hargaBanding' && d.get('status', '') == 'menunggu'")], ['★E13']),
