@@ -4746,3 +4746,20 @@ catatannya yang di tulis/catat di barang masuk … Sekalian struk cetak 2 lembar
 - Cetak: printer tablet / jaringan memakai gaya setelan perangkat (`prAtur().gaya`, bawaan gambar); **Bluetooth tetap teks** (kiriman gambar besar lewat Bluetooth sering
   hilang). Dialog cetak HP / Mac gaya gambar = gambar lembar yang sama, satu halaman per lembar (`#cetakStruk.gambar`, jual.css).
 - Alat uji: `uji_terima_barang.py` (176, kontrol 57). Belum dicoba: cetak di NT320 asli dari CPad.
+
+## Harga beli per kelas + varian & terlaris per varian (28 Nov 2026)
+Owner 28 Nov 2026 (kata-katanya): "tambahkan Harga beli per merek mutu karena saat ini merek itu sering berubah-ubah. Agar ketahuan mana yang naik harga dari pemasok dan
+mana yang paling laris terjual … Grand, Royal, Signature itu nama merek yang ada di sistem yang gua namai sendiri (varian merek), bukan dari pemasok." Keputusan owner
+(AskUserQuestion 28 Nov): kelompok = **KELAS + VARIAN** — cadangan 25 Nov: Royal ada di IR64 Apex (AJ/55/Ikan Mas Rp14.500) & IR42 Select (Pamanukan/SB Rp16.200–16.300).
+- **Kunci** `kmKunciVarian(nama)` (kelas-merek-logika): varian = bagian sesudah " · " TERAKHIR ("AJ · Royal" → Royal); kelas = `kmKelasMerk` → "IR64 Apex · Royal". Buku per
+  ukuran ikut induk (`petaUkuran`); nama tanpa varian = dirinya; varian tanpa kelas = "tanpa kelas · …" (disebut supaya dipetakan di Harga › Katalog › Kelas mutu).
+- **Riwayat** `kmRiwayatVarian()`: nama dari buku stok karung, kedatangan dari `riwayatModal` (nyata saja — stok awal / fondasi & buku lahir 0 kg tidak ikut). Satu
+  kedatangan × satu kelompok = satu garis (kg dijumlah, harga rata-rata tertimbang). ▲▼= dibanding garis SEBELUMNYA di kelompok yang sama, pemasok mana pun.
+- **Rentang** `kmHargaVarian(dari, sampai)`: perubahan = harga terakhir di rentang vs kedatangan terakhir SEBELUM rentang; daftar naik terbesar; jumlah kedatangan = mobil unik.
+- **Laporan › Harga beli** (tab baru sesudah Kuartal; `lpHargaBeli`, `lpRentangHargaBeli`, `lpKartuKelas`): rentang Bulan ini · Bulan lalu · 3 · 6 bulan · Semua; kartu
+  "Naik dari pemasok"; daftar per kelas + varian (Terlaris · Naik terbesar · Nama; ketuk = riwayat 12 kedatangan + nama buku yang terjual); kartu Per kelas mutu (sama dengan
+  Stok › HPP). Jualan = `merekRentang` digulung `lpGabungMerek` (jualan literan / wadah sudah ke merek asal lewat `lpMerekBuku`); penjaga Σ kelompok + di luar varian = omzet
+  & laba kotor mesin (`lpJagaRentang`). Tanpa rumus uang baru.
+- **Barang masuk** (owner & tablet): tanda "Varian ▲ naik Rp… dari IR64 Apex · Royal terakhir (… · merek pemasok · tanggal · pemasok)" (`kmBandingVarian`, kelas baris dipakai
+  untuk merek baru). Cuma tanda, tidak memblokir simpan.
+- Alat uji: `uji_harga_varian.py` (23 lulus, kontrol 14). Tanpa rules baru, mesin beku tidak disentuh.

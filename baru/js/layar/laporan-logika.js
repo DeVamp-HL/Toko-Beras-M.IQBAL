@@ -28,8 +28,10 @@ import { bukuOwner } from './owner-toko-logika.js';
 import { pjOmzetSistem, pjGabungRekap, pjTahun, PJ_LABEL } from './pajak-logika.js';
 // owner 7 Okt: daftar harga & harga yang naik untuk pelanggan dibaca dari katalog yang dipakai kasir
 import { hgSemua, aturHarga } from './harga-logika.js';
+// owner 28 Nov 2026: harga beli per kelas + varian & terlaris per varian (Laporan › Harga beli)
+import { kmHargaVarian, kmKunciVarian, kmKartuKelas } from './kelas-merek-logika.js';
 
-export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['biaya', 'Biaya'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['kuartal', 'Kuartal'], ['pajak', 'Pajak'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['aset', 'Aset tetap'], ['jurnal', 'Jurnal'], ['pondasi', 'Pondasi'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep · Biaya: kendali biaya, putaran 38 (kendali-biaya-logika.js) · Aset tetap & Jurnal: owner 26 Nov 2026 (aset-tetap-logika.js, jurnal-logika.js)
+export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['biaya', 'Biaya'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['kuartal', 'Kuartal'], ['hargabeli', 'Harga beli'], ['pajak', 'Pajak'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['aset', 'Aset tetap'], ['jurnal', 'Jurnal'], ['pondasi', 'Pondasi'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep · Biaya: kendali biaya, putaran 38 (kendali-biaya-logika.js) · Aset tetap & Jurnal: owner 26 Nov 2026 (aset-tetap-logika.js, jurnal-logika.js)
 export const JENIS_LAPORAN = [['labarugi', 'Laba-Rugi'], ['neraca', 'Neraca'], ['aruskas', 'Arus Kas']];
 export const RENTANG_LAPORAN = [[1, '1 bulan'], [3, '3 bulan'], [12, '12 bulan']];
 export const JENIS_KECIL = [['setor', 'Bukti setoran modal', 'dari catatan Owner & toko'], ['upah', 'Slip upah', 'dari buku upah'], ['piutang', 'Kartu piutang', 'per pelanggan'], ['bon', 'Rekap bon pemasok', 'per pemasok'], ['nota', 'Cetak ulang nota', 'SALINAN bercap'], ['pemasok', 'Catatan untuk pemasok', 'per kedatangan'],
@@ -568,6 +570,49 @@ export function lpTerlaris(dari, sampai, n) {
     sisa: lain.length ? { n: lain.length, omzet: sumOm(lain), kg: lain.reduce((x, g) => x + g.kg, 0), porsi: total > 0 ? sumOm(lain) / total * 100 : null } : null,
     luar: total - sumOm(merek), menutup: J.menutup, kalimat: J.kalimat,
     toko: { marginKg: R.semua.marginKg, hppKg: R.semua.hppKg, jualKg: R.semua.jualKg, margin: R.semua.margin, kg: R.semua.kg, nBawah: merek.filter((g) => lpStatusKg(g, T) === 'bawah').length } };
+}
+
+// ==================== HARGA BELI PER KELAS + VARIAN & TERLARIS PER VARIAN (owner 28 Nov 2026) ====================
+// Owner: "Agar ketahuan mana yang naik harga dari pemasok dan mana yang paling laris terjual. Karena saat ini belum ada di layar laporan." Kelompok = kelas + varian
+// (kmKunciVarian, kelas-merek-logika). Harga beli = kmHargaVarian (riwayatModal). Jualan = merekRentang (nota & retur rentang itu, jualan literan / wadah sudah
+// dipetakan ke merek asal lewat lpMerekBuku) digulung ke kelompok yang sama dengan lpGabungMerek — TANPA rumus uang baru; penjaga Σ = omzet & laba kotor mesin.
+export const LP_HB_RENTANG = [['bulan', 'Bulan ini'], ['lalu', 'Bulan lalu'], ['3', '3 bulan'], ['6', '6 bulan'], ['semua', 'Semua']];
+export const LP_HB_URUT = [['laris', 'Terlaris'], ['naik', 'Naik terbesar'], ['nama', 'Nama']];
+/** Rentang tanggal pilihan Harga beli: { pilih, dari, sampai, nama }. 'semua' = dari awal catatan. */
+export function lpRentangHargaBeli(pilih, kini) {
+  const iso = hariIniIso(kini); const y = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7)); const p = LP_HB_RENTANG.some((x) => x[0] === pilih) ? pilih : 'bulan';
+  const awalBulan = (yy, mm) => { let Y = yy, M = mm; while (M < 1) { M += 12; Y -= 1; } return Y + '-' + String(M).padStart(2, '0') + '-01'; };
+  const nama = (LP_HB_RENTANG.find((x) => x[0] === p) || [])[1] || '';
+  if (p === 'lalu') { const dari = awalBulan(y, m - 1); return { pilih: p, dari, sampai: akhirBulanIso(dari.slice(0, 7)), nama }; }
+  if (p === '3' || p === '6') return { pilih: p, dari: awalBulan(y, m - Number(p) + 1), sampai: iso, nama };
+  if (p === 'semua') return { pilih: p, dari: '0000-01-01', sampai: iso, nama };
+  return { pilih: p, dari: awalBulan(y, m), sampai: iso, nama };
+}
+/** Kartu "Harga beli per kelas mutu" (Stok › HPP) yang sama, ikut tampil di Laporan › Harga beli. */
+export function lpKartuKelas() { return kmKartuKelas(); }
+/**
+ * Laporan › Harga beli: per kelompok kelas + varian — harga beli (terakhir, perubahan di rentang, kedatangan) + jualan di rentang (kg, omzet, laba kotor, untung per kg,
+ * porsi). urut = 'laris' | 'naik' | 'nama'. Kelompok tanpa kedatangan s.d. `sampai` dan tanpa jualan di rentang tidak tampil.
+ */
+export function lpHargaBeli(dari, sampai, urut) {
+  const a = String(dari), b = String(sampai); const H = kmHargaVarian(a, b); const R = merekRentang(a, b); const T = lpTargetKg();
+  const per = {}; H.kelompok.forEach((g) => { per[g.kunci] = { kunci: g.kunci, nama: g.nama, kelas: g.kelas, varian: g.varian, beli: g, jual: null, anggota: [] }; });
+  let menutup = null, kalimat = '', total = null, luar = 0;
+  if (!R.arsip) {
+    const isi = {}; Object.keys(R.merek).forEach((m) => { const g = R.merek[m]; if (!(g.nBaris || g.nRetur)) return; const K = kmKunciVarian(m); const k = K ? K.kunci : m;
+      (isi[k] = isi[k] || { nama: K ? K.nama : m, kelas: K ? K.kelas : '', varian: K ? K.varian : '', daftar: [] }).daftar.push(g); });
+    total = R.semua.omzetSemua; let sum = 0;
+    Object.keys(isi).forEach((k) => { const I = isi[k]; const G = lpGabungMerek(I.daftar, I.nama, false, 0, false); sum += G.omzetSemua;
+      const row = per[k] = per[k] || { kunci: k, nama: I.nama, kelas: I.kelas, varian: I.varian, beli: null, jual: null, anggota: [] };
+      row.jual = lpBarisKg(G, T, total); row.anggota = I.daftar.map((x) => x.merek).sort((x, y) => x.localeCompare(y)); });
+    luar = total - sum; const J = lpJagaRentang(R, a, b); menutup = J.menutup; kalimat = J.kalimat;
+  } else kalimat = 'Rentang ini menyentuh tahun yang sudah ditutup buku — notanya ikut arsip, jualan per varian tidak bisa disusun (harga beli tetap tampil).';
+  const u = LP_HB_URUT.some((x) => x[0] === urut) ? urut : 'laris';
+  const om = (r) => (r.jual ? r.jual.omzet : 0); const naikRp = (r) => (r.beli && r.beli.ubah.arah ? r.beli.ubah.selisih : -Infinity);
+  const baris = Object.keys(per).map((k) => per[k]).filter((r) => (r.beli && r.beli.semua.length) || (r.jual && (r.jual.omzet || r.jual.kg)))
+    .sort((x, y) => (u === 'naik' ? naikRp(y) - naikRp(x) : u === 'laris' ? om(y) - om(x) || (y.jual ? y.jual.kg : 0) - (x.jual ? x.jual.kg : 0) : 0) || x.nama.localeCompare(y.nama));
+  return { dari: a, sampai: b, urut: u, diarsip: !!R.arsip, baris, naik: H.naik, nKedatangan: H.nKedatangan, nNaik: baris.filter((r) => r.beli && r.beli.ubah.arah === 'naik').length,
+    nTurun: baris.filter((r) => r.beli && r.beli.ubah.arah === 'turun').length, total, luar, menutup, kalimat, target: T, tanpaKelas: H.tanpaKelas };
 }
 /**
  * TREN PER MEREK PER MINGGU (B6 · B133 · A130 · A112): minggu `awal` (Senin) — omzet, laba kotor, kg, untung & HPP per kg tiap merek, dibanding minggu lalu (minggu

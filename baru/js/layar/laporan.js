@@ -58,6 +58,7 @@ export function pasangLayarLaporan(akar, opsi) {
     bulanB: null, tabB: 'ringkas', aturR: null, yakinBatal: false, pilihBukti: {},
     sampaiN: '', drafAs: null, yakinAs: null, aturAs: null, cariAs: '', hariAs: '', bulanJr: null, tabJr: 'saldo', jenisJr: '', halJr: 0, akunJr: 'laci', drafJk: null, yakinJk: null, hariJr: '',
     tabD: 'laporan', jenisD: 'labarugi', keD: null, rentangD: 1, bandingD: null, paket: PAKET_AWAL(), jenisK: 'setor', pilihK: {}, cariK: '',
+    hbRentang: 'bulan', hbUrut: 'laris', hbBuka: null, hbSemua: false,   // owner 28 Nov 2026: Harga beli per kelas + varian
     drafI: null, isiI: null, aturD: null, sibuk: false,
     drafPj: null, drafSetor: null, drafLuar: null, yakinPj: null, tahunPj: null,   // Paket B: tahun yang dibuka di Pajak (null = bawaan: Jan–Mar tahun lalu selama ada masa terutang)
     bulanK: null, bukaKb: {}, aturB: null, pilahK: null, raporM: 'laba', bukaHariKB: false, catAb: null,   // P2: saklar Laba | Kas rapor bulanan · potongan per hari · draf sebab & tindakan
@@ -153,6 +154,8 @@ export function pasangLayarLaporan(akar, opsi) {
     abCatHapus: () => { const a = st().catAb; if (a) tulis(KB.susunCatatanPos(a.bulan, a.pos, '', '', waktu())); },
     // Pondasi (owner 24 Nov 2026): buka rincian satu lampu · lembar ambang owner (aturanToko/pondasi)
     kwPilih: ({ q }) => set({ kuartalQ: q, kabar: '', aturTq: null }),
+    hbRentang: ({ r }) => set({ hbRentang: r, hbBuka: null }), hbUrut: ({ u }) => set({ hbUrut: u }),
+    hbBuka: ({ kunci }) => set({ hbBuka: st().hbBuka === kunci ? null : kunci }), hbSemua: () => set({ hbSemua: !st().hbSemua }),
     // Pondasi paket kedua B (owner 24 Nov 2026): target owner per kuartal (aturanToko/pondasi.targetKuartal) & rapor kuartal berkop (Cetakan bernomor)
     kwTargetBuka: () => set({ aturTq: PD.pdDrafTarget(kwKeyAktif()), kabar: '' }), kwTargetTutup: () => set({ aturTq: null }),
     kwTargetKetik: (v, el) => { const a = Object.assign({}, st().aturTq || PD.pdDrafTarget(kwKeyAktif())); a[el.dataset.kunci] = v; set({ aturTq: a }); },
@@ -272,7 +275,7 @@ export function pasangLayarLaporan(akar, opsi) {
       </header>
       <div class="jalur rapat" data-k="keluarga">${LP.KELUARGA_LAPORAN.map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-nama="${id}" data-k="kg-${id}">${nm}</div>`)}</div>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
-      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'biaya' ? gambarBiaya(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'mingguan' ? gambarMingguan(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'kuartal' ? gambarKuartal(s, L) : s.keluarga === 'pajak' ? gambarPajak(s, L) : s.keluarga === 'tahunan' ? gambarTahunan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'aset' ? gambarAset(s, L, kini(), grid, LP.aturLaporan()) : s.keluarga === 'jurnal' ? gambarJurnal(s, L, kini(), LP.daftarBulan(kini(), 24), grid) : s.keluarga === 'pondasi' ? gambarPondasi(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
+      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'biaya' ? gambarBiaya(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'mingguan' ? gambarMingguan(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'kuartal' ? gambarKuartal(s, L) : s.keluarga === 'hargabeli' ? gambarHargaBeli(s, L) : s.keluarga === 'pajak' ? gambarPajak(s, L) : s.keluarga === 'tahunan' ? gambarTahunan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'aset' ? gambarAset(s, L, kini(), grid, LP.aturLaporan()) : s.keluarga === 'jurnal' ? gambarJurnal(s, L, kini(), LP.daftarBulan(kini(), 24), grid) : s.keluarga === 'pondasi' ? gambarPondasi(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
     `);
     gulirkan(akar, RP);
   }
@@ -923,6 +926,48 @@ export function pasangLayarLaporan(akar, opsi) {
 
   // ---------- KUARTAL (owner 24 Nov 2026, paket Pondasi kedua): K1–K4 = Σ tiga bulan Laporan › Tahunan, kekayaan & potret lampu akhir kuartal. Angka apa adanya dari kuartal-logika
   const kwKeyAktif = () => { const d = KW.kwDaftar(kini()); const q = st().kuartalQ; return q && d.some((k) => k.key === q) ? q : d[0].key; };
+  // ---------- HARGA BELI per kelas + varian & terlaris per varian (owner 28 Nov 2026: "agar ketahuan mana yang naik harga dari pemasok dan mana yang paling laris").
+  // Angka dari LP.lpHargaBeli (kelas-merek-logika kmHargaVarian + merekRentang); layar cuma menggambar.
+  const HB_TERATAS = 15;
+  function gambarHargaBeli(s, L) {
+    const RG = LP.lpRentangHargaBeli(s.hbRentang, kini()); const H = LP.lpHargaBeli(RG.dari, RG.sampai, s.hbUrut);
+    const ubahKls = (a) => (a === 'naik' ? 'awas' : a === 'turun' ? 'emas' : '');
+    const rentang = h`<div class="lp-pg-rentang" data-k="hb-rentang">${LP.LP_HB_RENTANG.map(([id, nm]) => h`<div class="seg ${RG.pilih === id ? 'aktif' : ''}" data-aksi="hbRentang" data-r="${id}" data-k="hbr-${id}">${nm}</div>`)}</div>`;
+    const urut = h`<div class="lp-pg-rentang" data-k="hb-urut">${LP.LP_HB_URUT.map(([id, nm]) => h`<div class="seg ${H.urut === id ? 'aktif' : ''}" data-aksi="hbUrut" data-u="${id}" data-k="hbu-${id}">${nm}</div>`)}</div>`;
+    const periode = RG.pilih === 'semua' ? 'semua catatan s.d. ' + tanggalPendek(RG.sampai) : tanggalPendek(RG.dari) + ' – ' + tanggalPendek(RG.sampai);
+    const hero = h`<div class="kartu hero" data-k="hb-hero" style="gap: 6px;"><div class="label">Harga beli & terlaris per varian · ${RG.nama} · ${periode}</div>${rentang}
+      <div class="lp-status" data-k="hb-tiga"><div>kedatangan<b>${H.nKedatangan}</b></div><div>varian naik<b class="${H.nNaik ? 'rugi' : ''}">${H.nNaik}</b></div><div>varian turun<b>${H.nTurun}</b></div></div>
+      <div class="k2">Kelompok = KELAS + VARIAN (mis. IR64 Apex · Royal terpisah dari IR42 Select · Royal). Naik / turun = harga beli terakhir di rentang ini dibanding kedatangan terakhir SEBELUMNYA di kelompok yang sama, pemasok mana pun.</div></div>`;
+    const naik = h`<div class="kartu" data-k="hb-naik" style="gap: 2px;"><div class="label">Naik dari pemasok · ${RG.nama}</div>
+      ${H.naik.length ? H.naik.slice(0, 8).map((x, i) => h`<div class="lp-mr-baris" data-k="hbn-${i}"><div class="no">${i + 1}</div><div class="isi"><div>${x.nama}</div>
+        <div class="k2">${x.tanggalTeks} · ${x.merkPemasok || x.merk} · ${x.pemasok} · dari ${RP(x.lalu.harga)} (${x.lalu.tanggalTeks}${x.lalu.pemasok && x.lalu.pemasok !== x.pemasok ? ' · ' + x.lalu.pemasok : ''})</div></div>
+        <div class="n"><b class="rugi">${RP(x.harga)}</b><div class="k2">▲ ${RP(x.selisih)}</div></div></div>`) : h`<div class="k2" data-k="hb-naik-kosong">Tidak ada harga beli yang naik di rentang ini.</div>`}</div>`;
+    const tampil = s.hbSemua ? H.baris : H.baris.slice(0, HB_TERATAS);
+    const baris = (r, i) => { const B = r.beli; const J = r.jual; const buka = s.hbBuka === r.kunci;
+      const beli = B ? h`<div class="k2" data-k="hbb-${i}">beli terakhir <b>${RP(B.terakhir.harga)}/kg</b> · ${B.terakhir.tanggalTeks} · ${B.terakhir.merkPemasok || B.terakhir.merk} · ${B.terakhir.pemasok}</div>
+        <div class="k2 ${B.ubah.arah === 'naik' ? 'awas-teks' : ''}">${B.ubah.teks}${B.n ? ' · ' + B.n + ' kedatangan · rata-rata ' + RP(B.rata) + '/kg' : ''}</div>` : h`<div class="k2">belum ada kedatangan bernama ini (dijual dari buku lain / kemasan)</div>`;
+      const jual = J && (J.omzet || J.kg) ? h`<div class="k2">terjual ${KG(J.kg)}${J.marginKg !== null && J.marginKg !== undefined ? ' · untung ' + RP(Math.round(J.marginKg)) + '/kg' : ''}${J.porsi !== null ? ' · ' + J.porsi.toFixed(1).replace('.', ',') + ' % omzet' : ''}</div>
+        ${J.porsi !== null ? h`<div class="lp-mr-pita"><span style="width: ${Math.max(0, Math.min(100, J.porsi)).toFixed(1)}%;"></span></div>` : ''}` : h`<div class="k2">tidak terjual di rentang ini</div>`;
+      const rinci = buka ? h`<div data-k="hbd-${i}" style="padding-top: 4px;">${r.anggota.length ? h`<div class="k2">nama buku yang terjual: ${r.anggota.join(', ')}</div>` : ''}
+        ${B ? B.semua.slice(-12).reverse().map((x, j) => h`<div class="lp-baris" data-k="hbg-${i}-${j}" style="cursor: default;"><div class="j">${x.tanggalTeks}</div><div><div>${x.merkPemasok || x.merk}</div><div class="k2">${x.pemasok} · ${KG(x.kg)}${x.dikoreksi ? ' · dikoreksi' : ''}</div></div>
+          <div class="n"><b>${RP(x.harga)}</b><div class="k2 ${ubahKls(x.arah)}">${x.arah ? x.teks : 'pertama'}</div></div></div>`) : ''}</div>` : '';
+      return h`<div class="lp-mr-baris" data-k="hbv-${i}" data-aksi="hbBuka" data-kunci="${r.kunci}" style="cursor: pointer;"><div class="no">${i + 1}</div>
+        <div class="isi"><div>${r.nama}${B && B.ubah.arah === 'naik' ? h` <span class="lp-cip awas">naik</span>` : B && B.ubah.arah === 'turun' ? h` <span class="lp-cip">turun</span>` : ''}</div>${beli}${jual}${rinci}</div>
+        <div class="n">${J && J.omzet ? h`<b>${RP(Math.round(J.omzet))}</b><div class="k2">omzet</div>` : h`<span class="lp-mr-belum">—</span>`}</div></div>`; };
+    const daftar = h`<div class="kartu" data-k="hb-daftar" style="gap: 4px;"><div class="label">Per kelas + varian · ${H.baris.length} kelompok · ketuk untuk riwayat kedatangan</div>${urut}
+      ${H.baris.length ? tampil.map(baris) : h`<div class="k2" data-k="hb-kosong">Belum ada kedatangan maupun jualan di rentang ini.</div>`}
+      ${H.baris.length > HB_TERATAS ? h`<div class="kaca-btn kecil" data-aksi="hbSemua" data-k="hb-semua" style="align-self: flex-start;">${s.hbSemua ? 'ringkas ke ' + HB_TERATAS + ' teratas' : 'lihat semua ' + H.baris.length + ' kelompok'}</div>` : ''}
+      ${H.diarsip ? h`<div class="pita-info" data-k="hb-arsip">${H.kalimat}</div>` : h`<div class="${H.menutup ? 'k2' : 'pita-info awas'}" data-k="hb-jaga">${H.kalimat}${H.luar ? ' Di luar varian (wadah dijual, ongkir, karcis belum dirinci): ' + RP(Math.round(H.luar)) + '.' : ''}</div>`}
+      ${H.tanpaKelas.length ? h`<div class="k2" data-k="hb-tanpa">${H.tanpaKelas.length} nama bervarian belum punya kelas (masuk "tanpa kelas"): ${H.tanpaKelas.join(', ')} — petakan di Harga › Katalog › Kelas mutu.</div>` : ''}</div>`;
+    const K = LP.lpKartuKelas();
+    const kelas = h`<div class="kartu" data-k="hb-kelas" style="gap: 2px;"><div class="label">Harga beli per kelas mutu · semua waktu</div><div class="k2">${K.periodeTeks}.</div>
+      ${K.kartu.filter((k) => !k.kosong).map((k, i) => { const akhir = k.baris[k.baris.length - 1]; const bl = k.perBulan[k.perBulan.length - 1];
+        return h`<div class="lp-mr-baris" data-k="hbk-${i}"><div class="no">·</div><div class="isi"><div>${k.kelas}</div><div class="k2">${k.ketAnggota}</div>
+          ${bl ? h`<div class="k2">${bl.bulanTeks} rata-rata ${RP(bl.rata)}/kg · ${bl.teks}</div>` : ''}</div><div class="n"><b>${RP(akhir.harga)}</b><div class="k2">${akhir.tanggalTeks}</div></div></div>`; })}</div>`;
+    const kaki = h`<div class="lp-kaki">Harga beli = harga per kg di nota kedatangan (tanpa upah bongkar & ongkir — itu masuk modal, lihat Stok › HPP). Jualan = nota & retur rentang ini dengan modal tersimpan di nota; jualan literan & wadah dihitung ke merek karung asalnya. Σ semua kelompok + di luar varian = omzet Laporan.</div>`;
+    if (L === 'hp') return h`<section data-k="hargabeli">${hero}${naik}${daftar}${kelas}${kaki}</section>`;
+    return h`<section data-k="hargabeli">${grid(L, [h`${hero}${naik}${kaki}`, h`${daftar}`, h`${kelas}`])}</section>`;
+  }
   function gambarKuartal(s, L) {
     const daftar = KW.kwDaftar(kini()); const key = kwKeyAktif(); const Q = KW.kwRekap(key, kini()); const T = KW.kwTahun(KW.kwTahunDari(key), kini());
     const rp = (n) => (n === null || n === undefined ? '—' : RP(n)); const arah = (n) => (n !== null && n !== undefined && n < 0 ? 'rugi' : '');

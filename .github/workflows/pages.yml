@@ -404,6 +404,10 @@ jobs:
       - name: "Kelas mutu merek (30): peta baca/tulis, tebakan tiga sumber, riwayat kelas = riwayatModal, harga lalu kelas per pemasok & batch dikoreksi, ▲▼= & kalimat lunak tidak memblokir, simpan satu kiriman + tebakan tercatat sebagai tebakan, kelas tanpa wadah = buku kelas + merkPemasok & mesin mengabaikannya, kartu per bulan tertimbang & kalimat periode, ganti nama wadah membawa peta (kotak pasir + statis + kontrol)"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_kelas_merek.py && python3 alat-uji/uji_kelas_merek.py --kontrol
+      # ---- owner 28 Nov 2026 — harga beli per KELAS + VARIAN & terlaris per varian (Laporan › Harga beli) ----
+      - name: "Harga beli per kelas + varian: Royal IR64 Apex ≠ Royal IR42 Select, buku per ukuran ikut induk, fondasi tidak ikut, satu garis per kedatangan, ▲▼ dibanding kedatangan sebelumnya, perubahan rentang, tanda varian di Barang masuk, terlaris per varian menutup ke omzet mesin (kotak pasir + statis + kontrol)"
+        if: matrix.bagian == 2
+        run: python3 alat-uji/uji_harga_varian.py && python3 alat-uji/uji_harga_varian.py --kontrol
       # ---- PUTARAN 31 — pemantapan serah terima 28 Sep: karcis bertanya nama seharga (31.1), penjaga catatan bertanggal mundur (31.3) ----
       - name: "Pemantapan 31: rinci karcis bertanya nama kalau harganya sama (tidak memilih diam-diam); barang masuk & adukan bertanggal sebelum cocokkan terakhir ditanya dua ketukan dengan tanggalnya (kotak pasir + statis + kontrol)"
         if: matrix.bagian == 2

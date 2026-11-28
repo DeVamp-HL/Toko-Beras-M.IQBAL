@@ -9,7 +9,7 @@
 // Tebakan kelas hanya dari tiga sumber: nama = nama wadah, catatan karung ber-`wadah`, resep wadah. Tidak dari harga, tidak dari jenis beras (petunjuk saja).
 // Tanpa DOM; nama berawalan km (bundel uji satu lingkup). Dijaga alat-uji/uji_kelas_merek.py.
 import { jenisUntukMerk } from '../mesin/pembantu.js';
-import { cacheMentah, ambilWadahLiteran, ambilHargaKarung, petaBukuWadah, petaUkuran, ingatStokKarung } from '../data/toko.js';
+import { cacheMentah, ambilWadahLiteran, ambilHargaKarung, petaBukuWadah, petaUkuran, ingatStokKarung, ingatPerVersi } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 import { aturWadah, wdTerbaru } from './jual-logika.js';
 import { wbLiteranLangsung, wbSusunGantiNama } from './wadah-bernama-logika.js';
@@ -194,4 +194,82 @@ export function kmKartuKelas() {
   const periodeTeks = !dari ? 'belum ada kedatangan nyata' : 'data kedatangan ' + kmTgl(dari) + ' ' + String(dari).slice(0, 4) + '–' + kmTgl(sampai) + ' ' + String(sampai).slice(0, 4) + ' (' + nBulan + ' bulan' + (nKuartal >= 2 ? ', ' + nKuartal + ' kuartal' : '') + ')' + (nKuartal < 2 ? ' — per kuartal belum bisa dibandingkan' : '');
   const D = kmDaftar(); const tanpaKelas = D.baris.filter((b) => !b.wadah && !b.sendiri && !b.kelas && !b.varian).map((b) => b.merk);
   return { kartu, periode: { dari, sampai, nBulan, nKuartal, kuartalBisa: nKuartal >= 2 }, periodeTeks, tanpaKelas, belumKonfirmasi: D.belumKonfirmasi };
+}
+
+// ==================== HARGA BELI PER KELAS + VARIAN (owner 28 Nov 2026) ====================
+// Owner: "tambahkan Harga beli per merek mutu karena saat ini merek itu sering berubah-ubah. Agar ketahuan mana yang naik harga dari pemasok dan mana yang paling
+// laris terjual … Grand, Royal, Signature itu nama merek yang ada di sistem yang gua namai sendiri (varian merek), bukan dari pemasok."
+// Keputusan owner 28 Nov 2026: dikelompokkan KELAS + VARIAN — "Royal" di IR64 Apex (Rp14.500) terpisah dari "Royal" di IR42 Select (Rp16.300), jadi naik-turun
+// hanya dibanding Royal di kelas yang sama. Varian = bagian sesudah " · " TERAKHIR nama buku ("AJ · Royal" → Royal); kelas = kmKelasMerk. Nama tanpa " · "
+// (Angsa, Perahu Layar) = kelompok namanya sendiri; buku per ukuran ("Perahu Layar 25 kg") ikut induknya. Angka = riwayatModal (kedatangan nyata saja, sama
+// dengan kartu Per kelas) — TIDAK ada rumus uang baru.
+/** Kunci kelompok satu nama buku → { kunci, nama (tampil), kelas, varian, induk } atau null. */
+export function kmKunciVarian(nama) {
+  let n = kmBersih(nama); if (!n) return null;
+  const uk = petaUkuran(); if (uk[n] && uk[n].induk) n = kmBersih(uk[n].induk);   // buku per ukuran → induknya (harga per kg sama)
+  const i = n.lastIndexOf(VR_PEMISAH); const varian = i >= 0 ? kmBersih(n.slice(i + VR_PEMISAH.length)) : ''; const induk = i >= 0 ? kmBersih(n.slice(0, i)) : '';
+  const kelas = kmKelasMerk(n).kelas;
+  if (!varian) return { kunci: n, nama: n, kelas, varian: '', induk: n };
+  const depan = kelas || 'tanpa kelas';
+  return { kunci: depan + VR_PEMISAH + varian, nama: depan + VR_PEMISAH + varian, kelas, varian, induk };
+}
+// tanpa pembanding (l = 0) = selisih 0, bukan harga penuh
+const kmAngkaArah = (h, l) => { const d = l > 0 ? Math.round(h - l) : 0; const p = l > 0 ? Math.round(d / l * 1000) / 10 : 0; return { arah: !(l > 0) ? '' : d > 0 ? 'naik' : d < 0 ? 'turun' : 'sama', selisih: d, persen: Math.abs(p) }; };
+const kmTeksArah = (A, dasar) => (A.arah === 'naik' ? '▲ naik ' + RP(A.selisih) + ' (' + String(A.persen).replace('.', ',') + ' %)' : A.arah === 'turun' ? '▼ turun ' + RP(-A.selisih) + ' (' + String(A.persen).replace('.', ',') + ' %)' : A.arah === 'sama' ? '= sama' : (dasar || 'kedatangan pertama'));
+/**
+ * Riwayat kedatangan semua kelompok kelas + varian, lama → baru (semua waktu). Satu kedatangan × satu kelompok = SATU garis (baris-baris kedatangan yang sama
+ * dalam satu kelompok — mis. Perahu Layar & Perahu Layar 25 kg — digabung: kg dijumlah, harga = rata-rata tertimbang kg). Tiap garis dibanding garis SEBELUMNYA
+ * di kelompok yang sama (pemasok mana pun). → { kunci: { kunci, nama, kelas, varian, garis: [...] } }.
+ */
+export function kmRiwayatVarian() {
+  return ingatPerVersi('kmRiwayatVarian', () => {
+    // nama = semua buku stok karung (mesin: tiap nama yang pernah datang, termasuk buku per ukuran) — riwayatModal yang membaca kedatangannya
+    const nama = {}; Object.keys(ingatStokKarung()).forEach((m) => { nama[m] = true; });
+    const per = {};
+    Object.keys(nama).forEach((m) => { const K = kmKunciVarian(m); if (!K) return;
+      riwayatModal(m).forEach((r) => { if (r.jenis !== 'kedatangan' || r.fondasi || !(r.totalKg > 0) || !(r.hargaPerKg > 0)) return;
+        const g = per[K.kunci] = per[K.kunci] || { kunci: K.kunci, nama: K.nama, kelas: K.kelas, varian: K.varian, _k: {} };
+        const id = String(r.batchId); const x = g._k[id] = g._k[id] || { batchId: r.batchId, tanggal: r.tanggal, jam: r.jam, pemasok: r.pemasok, merk: [], merkPemasok: [], kg: 0, nilai: 0, dikoreksi: false };
+        if (x.merk.indexOf(m) < 0) x.merk.push(m); if (r.merkPemasok && x.merkPemasok.indexOf(r.merkPemasok) < 0) x.merkPemasok.push(r.merkPemasok);
+        x.kg += r.totalKg; x.nilai += r.hargaPerKg * r.totalKg; x.dikoreksi = x.dikoreksi || !!r.dikoreksi; }); });
+    Object.keys(per).forEach((k) => { const g = per[k];
+      g.garis = Object.keys(g._k).map((id) => g._k[id]).sort(kmUrut).map((x) => ({ batchId: x.batchId, tanggal: x.tanggal, tanggalTeks: kmTgl(x.tanggal), jam: x.jam, pemasok: x.pemasok,
+        merk: x.merk.join(', '), merkPemasok: x.merkPemasok.join(', '), kg: Math.round(x.kg * 100) / 100, harga: Math.round(x.nilai / x.kg), dikoreksi: x.dikoreksi }));
+      g.garis.forEach((x, i) => { const A = kmAngkaArah(x.harga, i > 0 ? g.garis[i - 1].harga : 0); Object.assign(x, A, { teks: kmTeksArah(A), lalu: i > 0 ? g.garis[i - 1] : null }); });
+      delete g._k; });
+    return per;
+  });
+}
+/**
+ * Harga beli per kelas + varian untuk rentang [dari, sampai] (tanggal kedatangan). Per kelompok: harga terakhir s.d. `sampai`, kedatangan di rentang (garis, kg,
+ * rata-rata tertimbang), perubahan rentang = harga terakhir di rentang dibanding harga terakhir SEBELUM rentang (tanpa itu: dibanding kedatangan pertama di
+ * rentang). Kelompok tanpa kedatangan sampai `sampai` tidak tampil. → { kelompok: [...], naik: [garis naik di rentang, terbesar dulu], nKedatangan,
+ * tanpaKelas: [nama buku berkelompok "tanpa kelas"] }.
+ */
+export function kmHargaVarian(dari, sampai) {
+  const a = String(dari || ''), b = String(sampai || '9999-12-31'); const R = kmRiwayatVarian(); const naik = []; const tanpa = {}; const batch = {};
+  const kelompok = Object.keys(R).map((k) => { const g = R[k]; const s = g.garis.filter((x) => x.tanggal <= b); if (!s.length) return null;
+    const di = s.filter((x) => x.tanggal >= a); const sebelum = s.filter((x) => x.tanggal < a); const akhir = s[s.length - 1];
+    const kg = di.reduce((t, x) => t + x.kg, 0); const rata = kg > 0 ? Math.round(di.reduce((t, x) => t + x.harga * x.kg, 0) / kg) : null;
+    const dasar = sebelum.length ? sebelum[sebelum.length - 1] : di.length > 1 ? di[0] : null;
+    const P = di.length && dasar ? kmAngkaArah(di[di.length - 1].harga, dasar.harga) : { arah: '', selisih: 0, persen: 0 };
+    di.forEach((x) => { batch[String(x.batchId)] = true; if (x.arah === 'naik') naik.push(Object.assign({ kunci: g.kunci, nama: g.nama }, x)); });
+    if (g.varian && !g.kelas) g.garis.forEach((x) => x.merk.split(', ').forEach((m) => { tanpa[m] = true; }));
+    return { kunci: g.kunci, nama: g.nama, kelas: g.kelas, varian: g.varian, terakhir: akhir, garis: di, semua: s, n: di.length, kg: Math.round(kg * 100) / 100, rata,
+      ubah: Object.assign({}, P, { dari: dasar, teks: !di.length ? 'tidak ada kedatangan di rentang ini' : !dasar ? 'satu kedatangan — belum ada pembanding' : kmTeksArah(P) + ' dari ' + RP(dasar.harga) + ' (' + dasar.tanggalTeks + (dasar.pemasok ? ' · ' + dasar.pemasok : '') + ')' }) };
+  }).filter(Boolean);
+  naik.sort((x, y) => y.selisih - x.selisih || String(y.tanggal).localeCompare(String(x.tanggal)));
+  // nKedatangan = kedatangan (mobil) unik di rentang — satu kedatangan bisa membawa beberapa kelompok
+  return { dari: a, sampai: b, kelompok, naik, nKedatangan: Object.keys(batch).length, tanpaKelas: Object.keys(tanpa).sort() };
+}
+/**
+ * Harga yang diketik di Barang masuk dibanding kedatangan TERAKHIR kelompok kelas + varian-nya (pemasok mana pun). kelasPakai = kelas yang dipilih di baris (merek
+ * baru belum dipetakan). null = tidak ada pembanding / nama tanpa varian.
+ */
+export function kmBandingVarian(merk, harga, kecualiBatchId, kelasPakai) {
+  const K0 = kmKunciVarian(merk); const h = Math.round(Number(harga) || 0); if (!K0 || !K0.varian || !(h > 0)) return null;
+  const kp = kmBersih(kelasPakai); const K = kp && kp !== K0.kelas ? Object.assign({}, K0, { kelas: kp, kunci: kp + VR_PEMISAH + K0.varian, nama: kp + VR_PEMISAH + K0.varian }) : K0;
+  const g = kmRiwayatVarian()[K.kunci]; const s = g ? g.garis.filter((x) => !kecualiBatchId || String(x.batchId) !== String(kecualiBatchId)) : []; if (!s.length) return null;
+  const l = s[s.length - 1]; const A = kmAngkaArah(h, l.harga); if (!A.arah) return null;
+  return Object.assign({ kunci: K.kunci, nama: K.nama, lalu: l }, A, { teks: kmTeksArah(A) + ' dari ' + K.nama + ' terakhir (' + RP(l.harga) + ' · ' + (l.merkPemasok || l.merk) + ' · ' + l.tanggalTeks + (l.pemasok ? ' · ' + l.pemasok : '') + ')' });
 }

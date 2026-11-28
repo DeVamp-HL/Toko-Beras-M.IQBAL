@@ -520,7 +520,7 @@ STATIS = [
     ('Dasbor: baris lampu dua kolom', 'cssR', ['.layar-ringkasan .db-pd-baris']),
     ('BACA-DULU menyebut paket ini', 'baca', ['## Pondasi', 'uji_pondasi.py', 'js/layar/pondasi-logika.js']),
     ('Laporan memasang keluarga Kuartal', 'laporan', ["import * as KW from './kuartal-logika.js';", "s.keluarga === 'kuartal' ? gambarKuartal(s, L)", 'function gambarKuartal(s, L)', 'KW.kwRekap(key, kini())', 'KW.kwTahun(KW.kwTahunDari(key), kini())', 'data-aksi="kwPilih"', 'kwPilih: ({ q }) => set({ kuartalQ: q']),
-    ('Laporan: keluarga Kuartal terdaftar sesudah Bulanan', 'laporanL', ["['bulanan', 'Bulanan'], ['kuartal', 'Kuartal'], ['pajak', 'Pajak']"]),
+    ('Laporan: keluarga Kuartal terdaftar sesudah Bulanan (+ Harga beli sesudah Kuartal, owner 28 Nov 2026)', 'laporanL', ["['bulanan', 'Bulanan'], ['kuartal', 'Kuartal'], ['hargabeli', 'Harga beli'], ['pajak', 'Pajak']"]),
     ('Pondasi memasang kartu Pelanggan (paket ketiga), dibungkus sendiri, di HP & layar lebar', 'laporan', ['data-k="pd-pelanggan"', "aman('pelanggan', () => PD.pdPelanggan(kini()))", '${rantai}${janji}${upahAntar}${pelanggan}${nilaiTambah}${pribadi}${lembarTj}${tinjauan}${lembarPc}${percobaan}${disiplin}', '${daftar}${risiko}${pelanggan}${nilaiTambah}', 'data-k="pdg-dikenal"', 'data-k="pdg-datang"']),
     ('pondasi-logika membaca pelanggan lewat fungsi sumber + ambang satu pembeli', 'pd', ["import { pelangganBulan } from './laba-pelanggan-logika.js';", "import { semuaOrang } from './pelanggan-logika.js';", "{ id: 'pembeliMaks', nama: 'Omzet dari satu pembeli paling banyak'"]),
     ('kalimat modal awal tidak lagi bilang "hanya setoran modal yang tercatat"', 'pd', ['hasil atas modal di sini memakai posisi toko pada hari pertama sistem mencatat']),

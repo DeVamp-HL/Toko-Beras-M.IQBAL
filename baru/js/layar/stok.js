@@ -984,6 +984,7 @@ export function pasangLayarStok(akar, opsi) {
         <div class="ps-form tiga"><div><div class="ket">${b.kemasan ? 'Jumlah kemasan' : 'Karung'}</div><input class="ketik-nama" id="mJml${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].jumlahKarung}" data-ketik="mKetik" data-kolom="jumlahKarung" data-i="${i}"></div>
           <div><div class="ket">Harga / kg${b.lalu ? ' · lalu ' + RP(b.lalu.harga) + (b.lalu.tanggalTeks ? ' · ' + b.lalu.tanggalTeks : '') + (b.lalu.pemasok && !b.lalu.fondasi ? ' · ' + b.lalu.pemasok : b.lalu.fondasi ? ' · stok awal' : '') : b.hargaLalu ? ' · lalu ' + RP(b.hargaLalu) : ''}</div><input class="ketik-nama" id="mHarga${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].hargaPerKg}" data-ketik="mKetik" data-kolom="hargaPerKg" data-i="${i}"></div>
           <div><div class="ket">${b.kemasan ? 'Isi per kemasan' : 'Isi karung'}</div>${pilUkuran(d.baris[i], i)}</div></div>
+        ${b.arahVarian ? h`<div class="ket ${b.arahVarian.arah === 'naik' ? 'awas-teks' : ''}" data-k="mav-${i}">Varian ${b.arahVarian.teks}</div>` : ''}
         ${koreksi ? '' : h`<div class="ket tautan" data-k="mkj-${i}" data-aksi="mPilih" data-kolom="masuk" data-i="${i}" data-nilai="${b.kemasan ? '' : 'kemasan'}">${b.kemasan ? 'KEMASAN JADI — masuk buku Kemasan, dijual per kemasan (ketuk untuk kembali ke beras per kg)' : 'karung kecil yang dijual utuh per kemasan? jadikan baris ini KEMASAN JADI'}</div>`}
         ${koreksi || b.kemasan || d.baris[i].ditolak ? '' : pilPotong(b, d.baris[i], i)}
         ${koreksi || b.kemasan ? '' : pilTolak(d.baris[i], i)}
@@ -1238,6 +1239,7 @@ export function pasangLayarStok(akar, opsi) {
         <div class="ps-form tiga"><div><div class="ket">${b.kemasan ? 'Jumlah kemasan' : 'Karung'}</div><input class="ketik-nama" id="mJml${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].jumlahKarung}" data-ketik="mKetik" data-kolom="jumlahKarung" data-i="${i}"></div>
           <div><div class="ket">Harga / kg (nota supir)${b.lalu ? ' · lalu ' + RP(b.lalu.harga) : b.hargaLalu ? ' · lalu ' + RP(b.hargaLalu) : ''}</div><input class="ketik-nama" id="mHarga${i}" type="text" inputmode="numeric" placeholder="0" value="${d.baris[i].hargaPerKg}" data-ketik="mKetik" data-kolom="hargaPerKg" data-i="${i}"></div>
           <div><div class="ket">${b.kemasan ? 'Isi per kemasan' : 'Isi karung'}</div>${pilUkuran(d.baris[i], i)}</div></div>
+        ${b.arahVarian ? h`<div class="ket ${b.arahVarian.arah === 'naik' ? 'awas-teks' : ''}" data-k="mt-av-${i}">Varian ${b.arahVarian.teks}</div>` : ''}
         <div class="ket tautan" data-k="mt-kj-${i}" data-aksi="mPilih" data-kolom="masuk" data-i="${i}" data-nilai="${b.kemasan ? '' : 'kemasan'}">${b.kemasan ? 'KEMASAN JADI — masuk buku Kemasan, dijual per kemasan (ketuk untuk kembali ke beras per kg)' : 'karung kecil yang dijual utuh per kemasan? jadikan baris ini KEMASAN JADI'}</div>
         ${b.kemasan || d.baris[i].ditolak ? '' : pilPotong(b, d.baris[i], i)}
         ${b.kemasan ? '' : pilTolak(d.baris[i], i)}

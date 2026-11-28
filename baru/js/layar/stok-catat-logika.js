@@ -28,7 +28,7 @@ import { arBeras, arKunciBeras, arDokPulihBanyak, arPeta } from './arsip-logika.
 // putaran 30: kelas mutu merek (harga lalu per kelas, merek baru → kelas, kelas tanpa wadah)
 // paket P5 (owner 27 Nov 2026, A43): daftar hama per tumpukan — satu sumber dengan Stok › Umur & putaran
 import { UM_HAMA, umLabelHama } from './stok-logika.js';
-import { kmKelasMerk, kmKelasSendiri, kmCalonKelas, kmHargaLaluKelas, kmHargaLaluMerk, kmArah, kmKalimatKelas, kmDokKelas } from './kelas-merek-logika.js';
+import { kmKelasMerk, kmKelasSendiri, kmCalonKelas, kmHargaLaluKelas, kmHargaLaluMerk, kmArah, kmKalimatKelas, kmDokKelas, kmBandingVarian } from './kelas-merek-logika.js';
 
 // paket brief 9 Okt (butir 7): ambang mutu saat terima — kadar air maks 14 % & butir patah maks 25 % = angka bawaan (perkiraan), owner mengubahnya di Atur Barang masuk
 export const ATUR_CATAT_BAWAAN = { minKarung: 60, tempoHari: 21, batasSelisih: 3, ambangSusutPositif: 250000, jendelaGandaMenit: 10, batasVarian: VR_BATAS_BAWAAN, kadarAirMaks: 14, patahMaks: 25 };
@@ -437,13 +437,15 @@ export function hitungMasuk(draf) {
     // harga lalu: merek dikenal = mesin (+ tanggal & pemasok dari riwayat); merek baru berkelas = kedatangan terakhir KELAS itu (pemasok yang dipilih diutamakan)
     const lalu = merk && !masalah ? kmHargaLaluMerk(merk, draf.id) : null; const laluKelas = baru && kelasBaris && !keSendiri ? kmHargaLaluKelas(kelasBaris, pemasokDraf, null) : null;
     const arah = kmArah(harga, lalu ? lalu.harga : laluKelas ? laluKelas.harga : 0); const kelasTanya = baru && !keSendiri && laluKelas ? kmKalimatKelas(harga, laluKelas) : '';
+    // owner 28 Nov 2026: harga beli dibanding kedatangan terakhir KELAS + VARIAN yang sama (mis. IR64 Apex · Royal, pemasok / merek pemasok mana pun) — cuma tanda
+    const arahVarian = merk && !masalah ? kmBandingVarian(merkVarian, harga, draf.id, kelasBaris) : null;
     // owner 7 Okt (FJN berbuku + FJN · Imperial di katalog): nama yang SUDAH berbuku tapi punya varian → pita "yang datang ini yang mana?" — bukan penolakan,
     // supaya karung yang dimaksud varian tidak masuk buku induk diam-diam. Koreksi kedatangan, baris yang sudah dijawab sama/beda mutu: tidak ditawari.
     const varianInduk = !draf.id && !baru && !!merk && !pilih && merk.indexOf('·') < 0 && !wadahStok[merk] && !ukuran[merk] && !kelas[merk] && !sendiri[merk] ? ckSaranVarian(merk).filter((v) => v.nama.indexOf(' · ') > 0) : [];
     return { ke: i + 1, merk, merkSimpan, indukUkuran, merkAsal: asalKoreksi, varian: pilih, namaMutu: String(b.namaMutu || ''), vr, jumlahKarung: jumlah, beratKarung: berat, hargaPerKg: harga, totalKg: kgBuku, kgNota, kgPotong: potong, kgTagih, subtotalHarga: Math.round(kgTagih * harga), terisi, masalah, ditolak, alasanTolak, sah: terisi && !masalah && !ditolak,
       ikutTimbang: ikut, kgTerima, kgRetur, belumTimbang,
       hargaLalu: merk ? hargaSebelumnya(merk) : 0,
-      merkKetik, baru, saranVarian, varianInduk, kelas: kelasBaris, kelasAsal, kelasPilih, keSendiri, merkPemasok, lalu, laluKelas, arah, kelasTanya, calonKelas: baru ? calonKelas : [], cek }; });
+      merkKetik, baru, saranVarian, varianInduk, kelas: kelasBaris, kelasAsal, kelasPilih, keSendiri, merkPemasok, lalu, laluKelas, arah, arahVarian, kelasTanya, calonKelas: baru ? calonKelas : [], cek }; });
   const sah = baris.filter((b) => b.sah); const tolakDatang = baris.filter((b) => b.terisi && !b.masalah && b.ditolak);
   const bal = ckBarisBal(lamaB); const nilaiBal = bal.reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0);
   const kms = baris.filter((b) => b.kemasanSah); const nilaiKemasan = kms.reduce((a, b) => a + b.subtotalHarga, 0);
