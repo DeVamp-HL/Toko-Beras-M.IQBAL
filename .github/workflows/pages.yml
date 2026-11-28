@@ -412,6 +412,10 @@ jobs:
       - name: "Tablet saat owner pergi: hak tablet per peran (bawaan mati, foto nota per akun), usul tablet tanpa kolom keputusan, Setujui harga jual = terbit satu harga (di bawah modal ditolak), kabar toko sekali sehari, tugas wajib foto, setelan kabar, absen jaga tanpa tebakan, fungsi server kabarJaga & periksaToko (kotak pasir + statis + kontrol)"
         if: matrix.bagian == 1
         run: python3 alat-uji/uji_tablet_pergi.py && python3 alat-uji/uji_tablet_pergi.py --kontrol
+      # ---- owner 28 Nov 2026 — serah terima laci saat ganti jaga (hitung buta, wajib) + daftar belanja tablet per harga ----
+      - name: "Serah terima laci: orang yang datang menghitung buta per pecahan bila hari itu sudah ada orang lain yang jaga, wajib sebelum jual, seharusnya pada jam serah = rumus laci − uang sesudahnya (owner saja), papan & push; Belanja tablet per baris harga (kotak pasir + statis + kontrol)"
+        if: matrix.bagian == 3
+        run: python3 alat-uji/uji_serah_laci.py && python3 alat-uji/uji_serah_laci.py --kontrol
       # ---- PUTARAN 31 — pemantapan serah terima 28 Sep: karcis bertanya nama seharga (31.1), penjaga catatan bertanggal mundur (31.3) ----
       - name: "Pemantapan 31: rinci karcis bertanya nama kalau harganya sama (tidak memilih diam-diam); barang masuk & adukan bertanggal sebelum cocokkan terakhir ditanya dua ketukan dengan tanggalnya (kotak pasir + statis + kontrol)"
         if: matrix.bagian == 2

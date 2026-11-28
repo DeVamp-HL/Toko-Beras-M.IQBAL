@@ -4,7 +4,7 @@
 
 const JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit', hargaBanding: 'Usul harga tawaran / acuan',
   hargaJual: 'Usul harga jual', belanja: 'Daftar belanja dari tablet', kabarToko: 'Kabar toko', tugasSelesai: 'Tugas selesai' };   // + banding pemasok (owner 26 Nov 2026, rules v21) · + tablet saat owner pergi (owner 28 Nov 2026, rules v27)
-const KABAR_TOKO = { habis: 'Barang habis', menipis: 'Perlu dipesan', bawahModal: 'Jual di bawah modal' };   // persetujuan kabarToko.jenis (tablet, rules v27)
+const KABAR_TOKO = { habis: 'Barang habis', menipis: 'Perlu dipesan', bawahModal: 'Jual di bawah modal', serahLaci: 'Serah terima laci' };   // + serah terima laci saat ganti jaga (owner 28 Nov 2026)   // persetujuan kabarToko.jenis (tablet, rules v27)
 const JENIS = { toko: 'Belanja toko', karyawan: 'Untuk karyawan', kasbon: 'Kasbon karyawan', bongkar: 'Upah bongkar', bayarBon: 'Bayar bon pemasok' };   // + barang masuk dari tablet (owner 22 Nov 2026, rules v15)
 const BATAS_ISI = 160;
 

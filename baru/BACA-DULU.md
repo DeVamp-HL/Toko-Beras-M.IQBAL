@@ -4787,3 +4787,20 @@ Termasuk mencatat, mengatur, ubah harga jika gua izinkan dari notifikasi. Semua 
   `buktiSah`) lalu persetujuan `tugasSelesai`; owner membuka foto di papan Persetujuan ("lihat foto", `bacaFotoBukti`, owner saja). Tugas owner tidak tampil di papan.
 - Rules v27 (`docs/uji-rules-v27.md`, ★ wajib owner): owner TERBITKAN dulu di Console, baru merge, lalu Cloud Shell `git pull && bash functions/pasang.sh`.
 - Alat uji: `uji_tablet_pergi.py` (52 lulus, kontrol 28/28) + jangkar alat uji lama yang ikut berubah. Mesin beku tidak disentuh.
+
+## Serah terima laci saat ganti jaga + Belanja tablet per harga (28 Nov 2026)
+Keputusan owner (ditanya di depan): orang yang DATANG menghitung, sebelum mulai jaga · WAJIB · per pecahan seperti Tutup hari · Belanja tablet per harga, harga per kg
+selalu tampil (total rupiah tetap ikut hak harga beli).
+- **Pemicu** (`app.js` `cekSerahLaci`, `serah-laci-logika` `slSesudahPin`): sesudah PIN / sidik jari, bila di tablet ini sudah ada orang LAIN yang jaga hari itu. Orang
+  pertama hari itu & orang yang sama masuk lagi tidak menghitung. Disimpan per perangkat (`SL_KUNCI_TERAKHIR`, `SL_KUNCI_WAJIB`); kemarin = gugur. Akun owner & mode
+  cadangan tidak pernah.
+- **Wajib**: selama belum terkirim, `pindah()` menahan layar lain di Menu; kartu serah terima PALING ATAS Menu tablet (`serah-laci-panel.js`), di atas Tugas hari ini.
+- **Hitung buta** (`slHitung` = pecahan & receh setelan Tutup hari): tablet tidak pernah menampilkan seharusnya / selisih. Kiriman = persetujuan `kabarToko` jenis
+  `serahLaci` (rules v27 `stafUsulTablet` — tanpa rules baru): hitung, lembar, receh, dari → ke, jam.
+- **Owner** (papan Persetujuan, `slSelisih`): seharusnya pada jam serah = `rumusLaci` hari itu − uang laci yang tercatat SESUDAH jam itu (`tdSesudahHitung`, sama dengan
+  hitungan tutup tablet) → LEBIH / KURANG / PAS + jaga siapa. Ditandai dibaca (boleh dibalas). Push HP: "Serah terima laci · <yang datang>".
+- **Belanja tablet** (`harga.js` `gambarStafBelanja`): sama dengan daftar belanja owner — per pemasok, satu baris per HARGA beli terakhir (`blKelompokHarga` label
+  "beras Rp…/kg"), merek seharga jadi keterangan; + − / saran lewat `ubahKelompok` / `ketukKelompok`; usul ke owner menyebut baris harganya.
+- **Tutup hari tablet rapi**: baris hitung per pecahan, timbang cepat & cek wadah (tiga tombol sebaris) di Menu tablet memakai gaya yang sama dengan Uang ›
+  Tutup hari (`menu.css` `.layar-menu .th-*`, `.cw-*`); tiap bagian dipisah garis. Dulu gayanya hanya ada di layar Uang.
+- Alat uji: `uji_serah_laci.py` (27 lulus, kontrol 16/16).

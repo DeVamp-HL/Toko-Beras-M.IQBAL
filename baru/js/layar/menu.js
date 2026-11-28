@@ -13,7 +13,9 @@ import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
 import { kartuTitipan, aksiTitipan, TP_DRAF_KOSONG } from './titipan-panel.js';
 import { kartuUsulBanding, aksiUsulBanding, UB_DRAF_KOSONG } from './banding-panel.js';
-import { kartuTugasOwner, aksiTugasOwner, TO_DRAF_KOSONG } from './tugas-owner-panel.js';   // owner 28 Nov 2026 (rules v27): tugas dari owner + foto bukti   // paket Banding pemasok (owner 26 Nov 2026, rules v21): usul harga tawaran / acuan dari tablet
+import { kartuTugasOwner, aksiTugasOwner, TO_DRAF_KOSONG } from './tugas-owner-panel.js';
+import { kartuSerahLaci, aksiSerahLaci } from './serah-laci-panel.js';   // owner 28 Nov 2026: serah terima laci saat ganti jaga
+import { SL_DRAF_KOSONG, slSelisih } from './serah-laci-logika.js';   // owner 28 Nov 2026 (rules v27): tugas dari owner + foto bukti   // paket Banding pemasok (owner 26 Nov 2026, rules v21): usul harga tawaran / acuan dari tablet
 import { kartuTutupTablet, aksiTutupTablet, hlTampil, HL_DRAF_KOSONG } from './tutup-tablet-panel.js';   // owner 22 Nov 2026 (paket ④): tutup hari dari tablet   // owner 21 Nov 2026: uang keluar & pesan dari tablet
 // owner 21 Nov 2026: Ringkas hari ini di tablet — kartu paling atas Menu akun tablet, hanya saat orang pilihan owner jaga (rules v14: data uang)
 import { kartuRingkas, aksiRingkas } from './ringkas-tablet-panel.js';
@@ -78,9 +80,9 @@ export function pasangLayarMenu(akar, opsi) {
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, aturKpi: null, bpgDraf: null, yakinBpg: null, bpgBuka: {}, cekG: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false, yakinHemat: null,
-    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), ub: UB_DRAF_KOSONG(), to: TO_DRAF_KOSONG(), toSibuk: false, fotoBukti: null, hl: HL_DRAF_KOSONG(), hlCekYakin: null, rnAtur: null, rnCatat: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null, cuacaCari: '', cuacaHasil: [], cuacaSibuk: false, cuacaKabar: '' });   // T1-3: orang di tablet
+    tb: { nama: '', peran: 'karyawan', pin: '', pin2: '' }, tbGanti: null, tbPinBaru: { pin: '', pin2: '' }, yakinTb: null, tbSibuk: false, tp: TP_DRAF_KOSONG(), ub: UB_DRAF_KOSONG(), to: TO_DRAF_KOSONG(), toSibuk: false, fotoBukti: null, sl: SL_DRAF_KOSONG(), slSibuk: false, hl: HL_DRAF_KOSONG(), hlCekYakin: null, rnAtur: null, rnCatat: null, sjSibuk: false, owBukaNyala: false, owSandi: '', owSibuk: false, owTolak: null, owAlasan: '', yakinOw: false, ruHari: '', ruSaring: '', ruBuka: null, ruAlasan: '', yakinRu: null, rsSaring: '', rsN: 40, nhVapid: '', nhSibuk: false, ntSibuk: false, ntInfo: null, lpSibuk: false, rtRinci: false, yakinRt: null, cuacaCari: '', cuacaHasil: [], cuacaSibuk: false, cuacaKabar: '' });   // T1-3: orang di tablet
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'aturKpi', 'bpgDraf', 'tgsDraf', 'rnAtur', 'rnCatat', ['ptCatatan', (v) => !!String(v || '').trim()], ['cekG', (v) => !!(v && (Object.keys(v.cek || {}).length || String(v.catatan || '').trim()))], 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ub', (v) => !!(v && (String(v.hargaPerKg || '').trim() || String(v.pemasok || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)], 'kt', ['to', (v) => !!(v && String(v.catatan || '').trim())]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
+  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'aturKpi', 'bpgDraf', 'tgsDraf', 'rnAtur', 'rnCatat', ['ptCatatan', (v) => !!String(v || '').trim()], ['cekG', (v) => !!(v && (Object.keys(v.cek || {}).length || String(v.catatan || '').trim()))], 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], 'tb', 'tbPinBaru', 'nhVapid', ['tp', (v) => !!(v && (String(v.nominal || '').trim() || String(v.teks || '').trim() || String(v.pesan || '').trim()))], ['ub', (v) => !!(v && (String(v.hargaPerKg || '').trim() || String(v.pemasok || '').trim()))], ['ruAlasan', (v) => !!String(v || '').trim() && !RU.RU_ALASAN.some((x) => x[1] === v)], 'kt', ['to', (v) => !!(v && String(v.catatan || '').trim())], ['sl', (v) => !!(v && (String(v.receh || '').trim() || Object.keys(v.lembar || {}).some((k) => Number(v.lembar[k]) > 0)))]], []);   // ruAlasan: hanya alasan yang DIKETIK (pil bawaan bukan isian)
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -356,6 +358,7 @@ export function pasangLayarMenu(akar, opsi) {
       catch (e) { const kode = String((e && (e.code || e.message)) || e); set({ fotoBukti: { tugas: String(tugas), muat: 'galat', daftar: [], pesan: /permission/i.test(kode) ? 'Server belum membuka foto bukti (rules v27 — terbitkan dulu di Firebase Console)' : 'Foto belum bisa dibaca: ' + kode } }); }
     },
   });
+  Object.assign(AKSI, aksiSerahLaci({ set, st, tulis, akun: opsi.akun, waktu, kini, serah: opsi.serahLaci }));
   akar.addEventListener('change', (ev) => { const el = ev.target && ev.target.closest ? ev.target.closest('[data-to-foto]') : null; if (!el) return;
     AKSI.toFotoDipilih(el).catch((e) => set({ kabar: 'Foto gagal diproses: ' + (e && e.message ? e.message : e), kabarAwas: true })); });
   delegasi(akar, AKSI);
@@ -446,6 +449,11 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="kaca-btn kecil" data-aksi="owMatikan" data-k="ow-matikan" style="align-self: flex-start;">${s.yakinOw ? 'KETUK LAGI · matikan' : 'Matikan putusan owner'}</div></div>`;
   }
   // owner 28 Nov 2026 (rules v27): foto bukti jawaban tugas — dibaca sekali saat owner mengetuk "lihat foto" (tidak didengar, tidak ikut cadangan)
+  // owner 28 Nov 2026: serah terima laci — seharusnya pada jam serah terima & selisihnya (hanya di perangkat owner; tablet menghitung buta)
+  function gambarSerahSelisih(m) {
+    const D = cacheMentah('persetujuan').find((x) => String(x.id) === String(m.id)); const R = slSelisih(D || m);
+    return h`<div class="pita-info ${R.ada && R.selisih ? 'awas' : 'emas'}" data-k="sl-selisih-${m.id}" style="font-size: 12px;">${R.ada ? R.teks : R.teks || 'Seharusnya belum bisa dihitung'}</div>`;
+  }
   function gambarFotoBukti(s, tugasId) {
     const F = s.fotoBukti && s.fotoBukti.tugas === String(tugasId) ? s.fotoBukti : null;
     return h`<div data-k="fbk-${tugasId}" style="display: flex; flex-direction: column; gap: 6px;"><div class="kaca-btn kecil ${F ? 'aktif' : 'emas aktif'}" data-aksi="lihatFotoBukti" data-tugas="${tugasId}" style="align-self: flex-start;">${F ? 'tutup foto' : 'lihat foto'}</div>
@@ -455,7 +463,9 @@ export function pasangLayarMenu(akar, opsi) {
     const namaP = (S.SS_PERAN.find((p) => p.id === akunM.peran) || {}).nama || akunM.peran; const L = lokal();
     const AL = opsi.antreLokal ? opsi.antreLokal() : { belum: [], ditolak: [] };
     const orang = TB.tbDaftar().filter((o) => o.aktif).map((o) => o.nama);
+    // owner 28 Nov 2026: serah terima laci yang belum dikirim = kartu PALING ATAS (tablet tertahan di Menu sampai terkirim); selain itu Tugas hari ini tetap paling atas
     return h`<section class="mn-staf" data-k="staf" style="display: flex; flex-direction: column; gap: 10px;">
+      ${kartuSerahLaci(s, { wajib: opsi.serahLaci ? opsi.serahLaci.baca() : null, kini: kini() })}
       ${kartuTugasStaf(s, { akun: akunM, kini: kini() })}
       ${kartuTugasOwner(s, { akun: akunM })}
       ${RT.rtTampil(akunM) || intipNyala() ? kartuRingkas(s, { akun: akunM, uang: opsi.statusUang ? opsi.statusUang() : null, kini: kini(), intip: intipNyala() ? SJ.sjIntipDetik() : 0 }) : ''}
@@ -619,7 +629,7 @@ export function pasangLayarMenu(akar, opsi) {
     if (tab === 'tablet') return gambarTablet(s);
     if (tab === 'minta') { const Q = S.ssPersetujuan(d); const m = Q.menunggu.find((x) => x.id === s.mintaKe) || null; return h`<div class="ket" data-k="judul-minta" style="font-size: 11.5px;">${Q.judul}</div>
       <div style="display: flex; flex-direction: column; gap: 6px;" data-k="minta">${Q.menunggu.map((x) => h`<div class="pn-minta ${m && m.id === x.id ? 'aktif' : ''}" data-k="m-${x.id}" data-aksi="mintaKe" data-id="${x.id}"><div style="display: flex; justify-content: space-between; gap: 8px;"><b style="font-size: 12.5px;">${x.dari} · ${x.jam}</b><span class="n">${x.n ? RP(x.n) : ''}</span></div><div style="font-size: 12px;">${x.teks}</div><div class="k2">${x.modul} · ${x.namaTindakan}</div></div>`)}</div>
-      ${m ? h`<div class="kartu" data-k="putus" style="gap: 6px;"><div class="k2">${m.saran}</div>${m.fotoId && m.tugasId ? gambarFotoBukti(s, m.tugasId) : ''}<input class="ketik-nama" type="text" placeholder="Alasan kalau menolak (wajib)" value="${s.alasan}" data-ketik="alasan"><div class="pn-dua"><div class="kaca-btn aktif emas" data-aksi="setujui">SETUJUI</div><div class="kaca-btn awas" data-aksi="tolak">tolak</div></div></div>` : ''}
+      ${m ? h`<div class="kartu" data-k="putus" style="gap: 6px;"><div class="k2">${m.saran}</div>${m.fotoId && m.tugasId ? gambarFotoBukti(s, m.tugasId) : ''}${m.jenis === 'serahLaci' ? gambarSerahSelisih(m) : ''}<input class="ketik-nama" type="text" placeholder="Alasan kalau menolak (wajib)" value="${s.alasan}" data-ketik="alasan"><div class="pn-dua"><div class="kaca-btn aktif emas" data-aksi="setujui">SETUJUI</div><div class="kaca-btn awas" data-aksi="tolak">tolak</div></div></div>` : ''}
       ${Q.menunggu.length ? h`<div class="kaca-btn" data-k="kecil" data-aksi="setujuiKecil">setujui semua yang kecil (≤ ${RP(Q.batas)}) · ${Q.kecil}</div>` : ''}
       ${Q.riwayat.length ? h`<div class="kartu" data-k="riwayat" style="gap: 2px;"><div class="label">Keputusan sebelumnya</div>${Q.riwayat.map((x) => h`<div class="k2" data-k="r-${x.id}">${tanggalPendek(x.diputusTanggal)} · ${x.status.toUpperCase()}: ${x.teks} (${x.dari})${x.alasanTolak ? ' · ' + x.alasanTolak : ''}</div>`)}</div>` : ''}
       ${pintuAtur('Atur batas setujui sekaligus & jatah nego', 'sekaligus ≤ ' + RP(P.batasSekaligus) + ' · jatah nego Ben ' + P.jatahBen + '% · karyawan ' + P.jatahKaryawan + '% margin')}`; }

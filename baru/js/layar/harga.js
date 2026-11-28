@@ -115,7 +115,7 @@ export function pasangLayarHarga(akar, opsi) {
     const a = AKUN(); const P = st().pesanStaf || {}; if (!Object.keys(P).length) return { tolak: 'Daftar belanja masih kosong — tambah karung dulu' };
     let H; try { H = BL.hitungBelanja(P, kini()); } catch (e) { return { tolak: 'Daftar belanja tidak bisa dihitung di tablet ini: ' + (e && e.message ? e.message : e) }; }
     const per = H.perP.filter((p) => p.karung > 0); if (!per.length) return { tolak: 'Belum ada barang yang berpemasok di daftar' };
-    const teks = ('Daftar belanja: ' + per.map((p) => p.pemasok + ' ' + p.karung + ' karung (' + p.d.map((b) => b.merk + ' ' + b.k).join(', ') + ')').join(' · ')).slice(0, 500); const w = waktu();
+    const teks = ('Daftar belanja: ' + per.map((p) => p.pemasok + ' ' + p.karung + ' karung (' + p.g.filter((g) => g.k > 0).map((g) => g.label + ' ' + g.k + ' krg').join(', ') + ')').join(' · ')).slice(0, 500);   // owner 28 Nov 2026: per harga, seperti daftar owner const w = waktu();
     return { dokumen: [{ koleksi: 'persetujuan', data: { id: w.idUnik(), tindakan: 'belanja', status: 'menunggu', mintaUid: String((a && a.uid) || ''), dari: namaPencatat(), teks, pesan: P,
       karung: H.totKarung, tanggal: w.tanggal, jam: w.jam } }], patch: { kabar: 'Daftar belanja terkirim ke owner (' + H.totKarung + ' karung) — owner yang memesan ke pemasok', kabarAwas: false } };
   }
@@ -166,17 +166,26 @@ export function pasangLayarHarga(akar, opsi) {
       <div class="kartu" data-k="sb-varian" style="gap: 4px;"><div class="label">Harga beli per kelas + varian · 90 hari${lihat ? '' : ' · rupiah disembunyikan (hak owner)'}</div>
       ${daftar.length ? daftar.map((g, i) => h`<div class="jawab" data-k="sb-${i}" style="cursor: default;"><span class="kiri"><span class="nm">${g.nama}</span><span class="w">${g.terakhir.tanggalTeks} · ${g.terakhir.merkPemasok || g.terakhir.merk} · ${g.terakhir.pemasok}${lihat ? ' · ' + g.ubah.teks : g.ubah.arah === 'naik' ? ' · ▲ naik' : g.ubah.arah === 'turun' ? ' · ▼ turun' : ''}</span></span><span class="kanan"><span class="n ${g.ubah.arah === 'naik' ? 'awas-teks' : ''}">${lihat ? RP(g.terakhir.harga) + '/kg' : g.ubah.arah === 'naik' ? '▲' : g.ubah.arah === 'turun' ? '▼' : '='}</span></span></div>`) : h`<div class="ket">Belum ada kedatangan 90 hari terakhir.</div>`}</div>`;
   }
+  // owner 28 Nov 2026: daftar belanja tablet = daftar belanja OWNER (Harga › Belanja › Daftar): per pemasok, satu baris per HARGA BELI terakhir ("beras Rp14.500/kg" —
+  // pemasok mengenal barangnya dari harga), merek seharga jadi keterangan kecil. Keputusan owner: harga per kg SELALU tampil di sini; total rupiah tetap ikut hak harga beli.
   function gambarStafBelanja(s) {
     let H = null; let galat = ''; try { H = BL.hitungBelanja(s.pesanStaf || {}, kini()); } catch (e) { galat = String(e && e.message ? e.message : e); }
     if (!H) return h`<div class="kartu" data-k="sbl-galat"><div class="ket awas-teks">Daftar belanja tidak bisa dihitung di tablet ini: ${galat}</div></div>`;
-    const baris = (b) => { const p = b.sumber ? b.sumber.pemasok : b.termurah ? b.termurah.pemasok : ''; return h`<div class="jawab" data-k="sbl-${b.merk}" style="cursor: default;"><span class="kiri"><span class="nm">${b.merk}</span><span class="w">${b.hari === null ? 'laju belum terukur' : 'habis ±' + b.hari + ' hari'} · ${p || 'pemasok belum ada'}${hakStaf('hargaBeli') && b.pakai ? ' · ' + RP(b.pakai.harga) + '/kg' : ''}${b.dipesanTeks ? ' · ' + b.dipesanTeks : ''}</span></span>
-      <span class="kanan" style="display: flex; flex-direction: row; gap: 6px; align-items: center;">${p ? h`<div class="kaca-btn kecil" data-aksi="blStaf" data-merk="${b.merk}" data-p="${p}" data-d="-1">−</div><span class="n">${b.k || 0}</span><div class="kaca-btn kecil" data-aksi="blStaf" data-merk="${b.merk}" data-p="${p}" data-d="1">+</div>${b.saranK > 0 && !b.k ? h`<div class="kaca-btn kecil" data-aksi="blStafSaran" data-merk="${b.merk}" data-p="${p}" data-k2="${b.saranK}">saran ${b.saranK}</div>` : ''}` : ''}</span></div>`; };
+    const rp = hakStaf('hargaBeli');
+    const baris = (r, g) => h`<div class="jawab" data-k="sbl-${r.kunci}-${g.kunci}" style="cursor: default;"><span class="kiri"><span class="nm ${g.kritis ? 'awas-teks' : ''}">${g.label}${g.basi ? h` <span class="w">· harga ${tanggalPendek(g.tanggal)}</span>` : ''}</span>
+        ${g.kodeTeks || g.hariTeks ? h`<span class="w">${[g.kodeTeks, g.hariTeks].filter(Boolean).join(' · ')}</span>` : ''}${g.merk.map((b) => h`<span class="w" data-k="sblm-${b.merk}">${b.merk}${b.k ? ' · ' + b.k + ' krg' : ''} · ${b.sisaTeks}</span>`)}${g.k > 0 && rp ? h`<span class="w">±${RP(Math.round(g.rp))}</span>` : ''}</span>
+      <span class="kanan" style="display: flex; flex-direction: row; gap: 6px; align-items: center;">${g.k > 0 ? h`<div class="kaca-btn kecil" data-aksi="blStafUbahG" data-p="${r.pemasok}" data-g="${g.kunci}" data-arah="-1">−</div><span class="n">${g.k}</span><div class="kaca-btn kecil" data-aksi="blStafUbahG" data-p="${r.pemasok}" data-g="${g.kunci}" data-arah="1">+</div>`
+        : h`<div class="kaca-btn kecil" data-aksi="blStafKetukG" data-p="${r.pemasok}" data-g="${g.kunci}">${g.saranTeks}</div>`}</span></div>`;
     const per = H.perP.filter((p) => p.karung > 0);
-    return h`${per.length ? h`<div class="kartu" data-k="sbl-ringkas" style="gap: 6px;"><div class="label">Daftar yang akan dikirim ke owner · ${H.totKarung} karung</div>${per.map((p) => h`<div class="ket" data-k="sblp-${p.pemasok}"><b>${p.pemasok}</b> · ${p.karung} karung: ${p.d.map((b) => b.merk + ' ' + b.k).join(', ')}${hakStaf('hargaBeli') ? ' · ±' + RP(Math.round(p.rp)) : ''}</div>`)}
+    return h`${per.length ? h`<div class="kartu" data-k="sbl-ringkas" style="gap: 6px;"><div class="label">Daftar yang akan dikirim ke owner · ${H.totKarung} karung</div>${per.map((p) => h`<div class="ket" data-k="sblp-${p.pemasok}"><b>${p.pemasok}</b> · ${p.karung} karung: ${p.g.filter((g) => g.k > 0).map((g) => g.label + ' ' + g.k + ' krg').join(', ')}${rp ? ' · ±' + RP(Math.round(p.rp)) : ''}</div>`)}
         <div class="tombol-baris rapat"><div class="kaca-btn aktif emas" data-aksi="blStafKirim" data-k="sbl-kirim">KIRIM DAFTAR KE OWNER</div><div class="kaca-btn putus" data-aksi="blStafKosong">kosongkan</div></div>
         <div class="ket" style="font-size: 11px;">Owner yang memesan ke pemasok sesudah menyetujui. Tidak ada yang dipesan dari tablet.</div></div>` : ''}
-      ${H.kelompok.map((g, i) => h`<div class="kartu" data-k="sbl-g-${i}" style="gap: 2px;"><div class="label ${g.awas ? 'awas-teks' : ''}">${g.judul} · ${g.isi.length}</div><div class="ket">${g.ket}</div>${g.isi.slice(0, 40).map(baris)}</div>`)}`;
+      ${H.kertas.length ? '' : h`<div class="pita-info" data-k="sbl-cukup">Tidak ada yang perlu dibeli — semua stok cukup lebih dari ${H.atur.ambangHari} hari atau sudah dipesan.</div>`}
+      ${H.kertas.map((r) => h`<div class="kartu" data-k="sbl-p-${r.kunci}" style="gap: 2px;"><div class="label">${r.pemasok} · ${r.karung ? r.karung + ' karung · ' + BL.blKG(r.kg) : 'belum ada yang dipilih'}</div>${r.g.map((g) => baris(r, g))}</div>`)}
+      ${H.lainnya.length ? h`<div class="kartu" data-k="sbl-lain" style="gap: 2px;"><div class="label">Belum perlu — tapi boleh ditambah</div>${H.lainnya.map((b) => { const p = b.sumber ? b.sumber.pemasok : b.termurah ? b.termurah.pemasok : '';
+        return h`<div class="jawab" data-k="sbll-${b.merk}" style="cursor: default;"><span class="kiri"><span class="nm">${b.merk}</span><span class="w">${b.sisaTeks}${p ? ' · ' + p : ''}</span></span><span class="kanan">${p ? h`<div class="kaca-btn kecil" data-aksi="blStafSaran" data-merk="${b.merk}" data-p="${p}" data-k2="1">tambah</div>` : ''}</span></div>`; })}</div>` : ''}`;
   }
+
 
   // ---- owner 7 Okt: FOTO BON. Firestore: opsi.foto (app.js → firebase.js, koleksi fotoBon dibaca sekali saat lembar bon dibuka). Mode cadangan: simulasi di memori
   // layar ini saja (tidak tertulis ke mana pun). Alat gambar peramban (kanvas) diserahkan ke foto-bon-logika.js (diuji di jsc dengan kanvas tiruan).
@@ -235,6 +244,9 @@ export function pasangLayarHarga(akar, opsi) {
     blStaf: ({ merk, p, d }) => { const P = Object.assign({}, st().pesanStaf || {}); const o = P[merk] || { p, k: 0 }; const k = Math.max(0, (Number(o.k) || 0) + Number(d)); if (k) P[merk] = { p: o.p || p, k }; else delete P[merk]; ubahPesanStaf(P); },
     blStafSaran: ({ merk, p, k2 }) => { const P = Object.assign({}, st().pesanStaf || {}); P[merk] = { p, k: Math.max(1, Number(k2) || 1) }; ubahPesanStaf(P); },
     blStafKosong: () => ubahPesanStaf({}),
+    // owner 28 Nov 2026: baris HARGA (kelompok merek seharga) — sama dengan blUbahG / blKetukG owner, memakai daftar tablet
+    blStafUbahG: ({ p, g, arah }) => { const H = BL.hitungBelanja(st().pesanStaf || {}, kini()); ubahPesanStaf(BL.ubahKelompok(H, p, g, Number(arah), st().pesanStaf || {})); },
+    blStafKetukG: ({ p, g }) => { const H = BL.hitungBelanja(st().pesanStaf || {}, kini()); ubahPesanStaf(BL.ketukKelompok(H, p, g, st().pesanStaf || {})); },
     // owner: pakai / abaikan daftar belanja dari tablet (persetujuan ditandai dipakai — owner boleh mengubahnya)
     blPakaiTablet: async ({ id }) => { const m = cacheMentah('persetujuan').find((x) => String(x.id) === String(id)); if (!m || !m.pesan) return set({ kabar: 'Daftar itu sudah tidak ada', kabarAwas: true });
       const P = Object.assign({}, st().pesan || {}); Object.keys(m.pesan).forEach((k) => { const o = m.pesan[k]; if (o && Number(o.k) > 0) P[k] = { p: String(o.p || ''), k: Math.round(Number(o.k)) }; }); ubahPesan(P);
