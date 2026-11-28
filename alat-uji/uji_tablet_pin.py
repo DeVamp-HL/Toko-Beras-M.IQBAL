@@ -242,7 +242,7 @@ def periksa_statis(t):
     # akun tablet hanya punya empat menu (Ringkasan tersembunyi): bilah bawah dulu dibagi LIMA lajur mati → lajur kelima kosong di kanan
     ok('bilah menu bawah: lajurnya mengikuti jumlah menu yang TAMPIL (empat menu akun tablet terbagi rata, tanpa ruang kosong di kanan)',
        'display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: center; background: var(--nav);' in t['baru/css/identitas.css']
-       and 'repeat(5, minmax(0, 1fr)); align-items: center; background: var(--nav)' not in t['baru/css/identitas.css'] and "el.hidden = !!a && !bolehLayar(a, el.dataset.tujuan);" in app)
+       and 'repeat(5, minmax(0, 1fr)); align-items: center; background: var(--nav)' not in t['baru/css/identitas.css'] and "el.hidden = !!a && !bolehLayarIni(a, el.dataset.tujuan) || (el.dataset.staf === '1' && (!a || a.jenis === 'owner'));" in app)
     ak = t['baru/js/data/akses.js']; sl = t['baru/js/layar/sistem-logika.js']
     ok('nama peran di layar: "Penjaga laci" (owner 21 Nov 2026: bukan lagi "Ben (penjaga laci)"); kunci perannya tetap ben',
        "ben: 'Penjaga laci'" in ak and "['ben', 'Penjaga laci']" in sl and not [b for b in t if 'Ben (penjaga laci)' in t[b]])

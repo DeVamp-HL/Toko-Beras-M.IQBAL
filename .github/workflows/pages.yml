@@ -408,6 +408,10 @@ jobs:
       - name: "Harga beli per kelas + varian: Royal IR64 Apex ≠ Royal IR42 Select, buku per ukuran ikut induk, fondasi tidak ikut, satu garis per kedatangan, ▲▼ dibanding kedatangan sebelumnya, perubahan rentang, tanda varian di Barang masuk, terlaris per varian menutup ke omzet mesin (kotak pasir + statis + kontrol)"
         if: matrix.bagian == 2
         run: python3 alat-uji/uji_harga_varian.py && python3 alat-uji/uji_harga_varian.py --kontrol
+      # ---- owner 28 Nov 2026 (rules v27) — tablet saat owner pergi: hak per peran, usul harga & belanja, kabar ke HP, absen jaga, tugas & foto bukti ----
+      - name: "Tablet saat owner pergi: hak tablet per peran (bawaan mati, foto nota per akun), usul tablet tanpa kolom keputusan, Setujui harga jual = terbit satu harga (di bawah modal ditolak), kabar toko sekali sehari, tugas wajib foto, setelan kabar, absen jaga tanpa tebakan, fungsi server kabarJaga & periksaToko (kotak pasir + statis + kontrol)"
+        if: matrix.bagian == 1
+        run: python3 alat-uji/uji_tablet_pergi.py && python3 alat-uji/uji_tablet_pergi.py --kontrol
       # ---- PUTARAN 31 — pemantapan serah terima 28 Sep: karcis bertanya nama seharga (31.1), penjaga catatan bertanggal mundur (31.3) ----
       - name: "Pemantapan 31: rinci karcis bertanya nama kalau harganya sama (tidak memilih diam-diam); barang masuk & adukan bertanggal sebelum cocokkan terakhir ditanya dua ketukan dengan tanggalnya (kotak pasir + statis + kontrol)"
         if: matrix.bagian == 2

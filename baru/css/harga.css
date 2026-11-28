@@ -195,3 +195,12 @@ main.layar-harga.masuk > header, main.layar-harga.masuk > .jalur { animation: rk
 .layar-harga .u1 { background: var(--platina1); opacity: 0.6; } .layar-harga .u2 { background: var(--emas-garis); opacity: 0.65; } .layar-harga .u3 { background: var(--emas3); } .layar-harga .u4 { background: var(--awas); } .layar-harga .u0 { background: var(--redup); opacity: 0.45; }
 @keyframes bnUmurTumbuh { from { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .layar-harga .bn-umur-bilah i { animation: none; } }
+/* owner 28 Nov 2026 (rules v27): HARGA & PEMASOK DI TABLET (versi staf) — baris daftar sama dengan jawaban Stok; ketuk = usul / buka isi nota */
+.layar-harga .jawab { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 6px; border-bottom: 1px solid var(--garis); border-radius: 10px;
+  animation: masukChip 420ms cubic-bezier(.2,.8,.2,1) backwards; animation-delay: calc(var(--urut, 0) * 26ms); transition: background 160ms ease, transform 120ms ease; }
+.layar-harga .jawab[data-aksi] { cursor: pointer; } .layar-harga .jawab[data-aksi]:active { transform: scale(0.985); }
+.layar-harga .jawab:last-child { border-bottom: 0; } .layar-harga .jawab.dipilih { background: var(--seg-aktif); box-shadow: inset 0 0 0 1px var(--emas-garis); }
+.layar-harga .jawab .kiri { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .layar-harga .jawab .kanan { display: flex; flex-direction: column; gap: 1px; align-items: flex-end; }
+.layar-harga .jawab .nm { font-weight: 600; font-size: 14px; } .layar-harga .jawab .w { font-size: 11.5px; color: var(--redup); }
+.layar-harga .jawab .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .layar-harga .jawab { animation: none; } }

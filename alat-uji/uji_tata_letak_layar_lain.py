@@ -64,7 +64,8 @@ def periksa(t):
     petak = re.findall(r'<div[^>]*data-tujuan="(\w+)"[^>]*>(.*?)</div>', nav)
     ikonSide = dict((k, re.search(r'<svg viewBox="0 0 24 24">(.*?)</svg>', v).group(1)) for k, v in re.findall(r'<div class="item[^"]*" data-tujuan="(\w+)"[^>]*>(.*?)</div>', side))
     sama = [k for k, isi in petak if re.search(r'<svg[^>]*>(.*?)</svg>', isi) and re.search(r'<svg[^>]*>(.*?)</svg>', isi).group(1) == ikonSide.get(k)]
-    c.append(('menu bawah: kelima petak berikon (sama dengan menu samping) + teks', len(petak) == 5 and len(sama) == 5 and all('<span>' in isi for k, isi in petak), [k for k, _ in petak if k not in sama]))
+    # owner 28 Nov 2026 (rules v27): + petak Harga (data-staf, hanya akun tablet ber-hak) di antara Pelanggan dan Menu → enam petak, ikon tetap sama dengan menu samping
+    c.append(('menu bawah: keenam petak berikon (sama dengan menu samping) + teks — Harga di antara Pelanggan & Menu, hanya untuk tablet ber-hak', len(petak) == 6 and len(sama) == 6 and all('<span>' in isi for k, isi in petak) and [k for k, _ in petak][-2:] == ['harga', 'menu'] and 'data-tujuan="harga" data-staf="1" hidden' in nav, [k for k, _ in petak if k not in sama]))
     K = aturan(t['baru/css/kerangka.css'])
     c.append(('menu bawah: ikon digambar garis (fill none, stroke currentColor) — warna ikut petak aktif & mode gelap', any(s.strip() == '.nav > div > svg' and 'fill: none' in x and 'stroke: currentColor' in x for m, s, x in K if not m), ''))
     return c

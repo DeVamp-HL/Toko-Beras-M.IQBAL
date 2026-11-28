@@ -28,6 +28,8 @@ import { tpSusunPutus, tpTeks, TP_TINDAKAN, TP_PESAN, TP_KABAR } from './titipan
 // paket Banding pemasok (owner 26 Nov 2026): pengingat mingguan (harga ≥ N pemasok) & bulanan (banding bulan lalu) + usul harga tawaran / acuan dari tablet
 // (rules v21) — modul DAUN banding-catat-logika (tanpa mesin laporan)
 import { bcSumberPengingat, bcPasangUsul, bcTeksUsul, BC_TINDAKAN } from './banding-catat-logika.js';
+// owner 28 Nov 2026 (rules v27): usul harga jual dari tablet — disetujui = terbit satu harga
+import { susunTerbitSatu } from './harga-logika.js';
 // owner 26 Nov 2026: lokasi langit & cuaca gerbang (atur Perangkat)
 import { lgLokasiSah } from '../inti/langit-logika.js';
 
@@ -77,8 +79,11 @@ export const SS_ATUR_BAWAAN = {
   perangkat: { batasAntre: 30, batasDenyut: 15, pemegang: ['Owner', 'Ben'], cuaca: null },   // cuaca: lokasi langit gerbang { nama, lat, lon } (owner 26 Nov 2026)
   // owner 7 Okt (JS2-C): jatah nego per peran (% margin) + per akun (uid → %, kosong = ikut peran), siapa boleh di bawah modal ('owner' | peran | 'uid:…'), langkah batas
   peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: NG_BAWAAN.ben, jatahKaryawan: NG_BAWAAN.karyawan, jatahAkun: {}, bawahModal: NG_BAWAAN.bawahModal.slice(), langkahNego: NG_BAWAAN.langkah, jejak: [],
-    operator: {}, ringkasOrang: '', intipDetik: 60 },   // owner 22 Nov 2026 (sidik jari Tahap A): intip uang tertutup sendiri sesudah intipDetik tidak disentuh · putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js · owner 21 Nov: orang yang membuka Ringkas hari ini (kode orang, '' = mati)
+    operator: {}, ringkasOrang: '', intipDetik: 60, hakTablet: { ben: {}, karyawan: {} }, kabarTablet: { habis: true, menipis: true, bawahModal: true } },   // owner 28 Nov 2026: hak tablet per peran (SS_HAK_TABLET), bawaan semua mati   // owner 22 Nov 2026 (sidik jari Tahap A): intip uang tertutup sendiri sesudah intipDetik tidak disentuh · putaran T1 langkah 3 (owner 16 Nov): orang di tablet — tablet-logika.js · owner 21 Nov: orang yang membuka Ringkas hari ini (kode orang, '' = mati)
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
+  // owner 28 Nov 2026 (rules v27, tablet saat owner pergi): kabar ke HP owner dari fungsi server (functions/jaga.js ATUR_BAWAAN — bentuk & bawaan SAMA). Tiga kabar
+  // dari tablet sesudah nota (habis / perlu dipesan / di bawah modal) disimpan di aturanToko/peran.kabarTablet karena dokumen itu yang dibaca tablet.
+  kabarToko: { nyala: { buka: true, gantiJaga: true, telatBuka: true, belumTutup: true, putus: true, nyangkut: true }, jamBuka: '07:00', telatMenit: 30, jamTutup: '21:00', menitPutus: 30 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
   pengingat: { nyala: { anggaran: true, susut: true, hpp: true, harga: true, untungKg: true, kas: true, bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true, faktur: true, gudang: true, setor: true, rekening: true, tagih: true, kuartal: true, tinjauan: true, banding: true, bandingBulan: true, patuh: true, kemasan: true, minus: true, kejutan: true }, ke: { anggaran: ['Owner'], susut: ['Owner'], hpp: ['Owner'], harga: ['Owner'], untungKg: ['Owner'], kas: ['Owner'], bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'], faktur: ['Owner', 'Ben'], gudang: ['Owner', 'Ben'], setor: ['Owner'], rekening: ['Owner'], tagih: ['Owner', 'Ben'], kuartal: ['Owner'], tinjauan: ['Owner'], banding: ['Owner', 'Ben'], bandingBulan: ['Owner'], patuh: ['Owner', 'Ben'], kemasan: ['Owner', 'Ben'], minus: ['Owner'], kejutan: ['Owner'] },
     hariAnggaran: 0, hariSusut: 0, hariHpp: 0, hariHarga: 0, hariUntungKg: 0, hariKas: 0, hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, hariFaktur: 3, hariGudang: 0, hariSetor: 0, hariRekening: 1, hariTagih: 0, hariKuartal: 7, hariTinjauan: 0, hariBanding: 0, hariBandingBulan: 0, hariPatuh: 0, hariKemasan: 0, hariMinus: 0, hariKejutan: 0, tundaHari: 2, maksTunda: 2, opnameTiap: 14, gudangTiap: 7 },
@@ -115,6 +120,43 @@ export function ssAtur(id) {
   });
   return B;
 }
+// ---------- HAK TABLET PER PERAN (owner 28 Nov 2026, tablet saat owner pergi) ----------
+// Owner: staf penjaga laci "bisa liat nota dari pemasok dan foto nota atas izin gua melalui hak izin akses melalui peran dan hak yang bisa gua atur di akun owner.
+// Termasuk mencatat, mengatur, ubah harga jika gua izinkan dari notifikasi. Semua atas persetujuan gua." Disimpan di aturanToko/peran.hakTablet (dokumen yang SUDAH
+// dibaca tablet); layar tablet menyaring per ORANG yang jaga (peran orang di PIN). Yang mengubah sesuatu selalu USUL (owner Setujui). Foto nota dibuka SERVER per
+// akun: tanda aksesAkun.hakFotoNota (rules v27 stafHak) ditulis bersama untuk tiap akun tablet berperan Penjaga laci.
+export const SS_HAK_TABLET = [
+  { id: 'harga', nama: 'Buka layar Harga & Pemasok', ket: 'tanpa ini layar Harga tidak tampil di tablet' },
+  { id: 'notaPemasok', nama: 'Lihat nota pemasok', ket: 'kedatangan & isi notanya (jumlah, kg, pemasok)' },
+  { id: 'fotoNota', nama: 'Lihat foto nota', ket: 'Penjaga laci saja — server membukanya lewat tanda di akun tablet', hanya: 'ben' },
+  { id: 'hargaBeli', nama: 'Lihat harga beli & modal', ket: 'rupiah per kg dari pemasok; tanpa ini rupiah beli disembunyikan' },
+  { id: 'catatHargaBeli', nama: 'Catat harga beli pemasok', ket: 'usul harga tawaran / acuan — berlaku sesudah owner setujui', hanya: 'ben' },
+  { id: 'belanja', nama: 'Susun daftar belanja', ket: 'dikirim ke HP owner; owner yang mengirim pesanan ke pemasok' },
+  { id: 'hargaJual', nama: 'Usul ubah harga jual', ket: 'berlaku sesudah owner setujui dari HP' },
+];
+export const SS_PERAN_TABLET = ['ben', 'karyawan'];
+function ssBersihHakTablet(x) {
+  const out = {}; SS_PERAN_TABLET.forEach((p) => { const sumber = (x && typeof x === 'object' && x[p]) || {}; out[p] = {};
+    SS_HAK_TABLET.forEach((H) => { if (sumber[H.id] === true && (!H.hanya || H.hanya === p)) out[p][H.id] = true; }); });
+  return out;
+}
+/** Hak tablet satu peran: true / false. Owner selalu boleh. */
+export function ssHakTablet(peran, id) {
+  if (peran === 'owner') return true; const H = SS_HAK_TABLET.find((x) => x.id === id); if (!H || (H.hanya && H.hanya !== peran)) return false;
+  return ((ssBersihHakTablet(ssAtur('peran').hakTablet) || {})[peran] || {})[id] === true;
+}
+/** Nyalakan / matikan satu hak tablet untuk satu peran. fotoNota = juga tanda hakFotoNota di tiap akun tablet berperan Penjaga laci (rules v27). */
+export function susunHakTablet(peran, id, nyala, w) {
+  if (SS_PERAN_TABLET.indexOf(peran) < 0) return { tolak: 'Peran tidak dikenal' };
+  const H = SS_HAK_TABLET.find((x) => x.id === id); if (!H) return { tolak: 'Hak tidak dikenal' };
+  if (H.hanya && H.hanya !== peran) return { tolak: H.nama + ' hanya untuk Penjaga laci' };
+  const ht = ssBersihHakTablet(ssAtur('peran').hakTablet); if (nyala) ht[peran][id] = true; else delete ht[peran][id];
+  const r = susunAturSistem('peran', { hakTablet: ht }, w); if (r.tolak) return r;
+  if (id === 'fotoNota') cacheMentah('aksesAkun').filter((a) => a && a.peran === 'ben').forEach((a) => { if ((a.hakFotoNota === true) !== !!nyala) r.dokumen.push({ koleksi: 'aksesAkun', data: Object.assign({}, a, { hakFotoNota: !!nyala }) }); });
+  const nm = (SS_PERAN.find((p) => p.id === peran) || {}).nama || peran;
+  r.patch = Object.assign({}, r.patch, { kabar: nm + ': ' + H.nama.toLowerCase() + (nyala ? ' — DIBUKA' : ' — ditutup') + (id === 'fotoNota' ? ' (butuh rules v27 terbit)' : ''), kabarAwas: false });
+  return r;
+}
 /** Simpan setelan satu layar; ditolak menyebut sebabnya (nama kosong, angka di luar batas, lokasi utama hilang, dst.). */
 export function susunAturSistem(id, isi, w) {
   const A = ssAtur(id); const o = {}; const nama = (arr, maks) => (Array.isArray(arr) ? arr : []).map((x) => String(x == null ? '' : x).trim()).filter(Boolean).slice(0, maks || 20);
@@ -130,8 +172,15 @@ export function susunAturSistem(id, isi, w) {
     o.bawahModal = (Array.isArray(isi.bawahModal) ? isi.bawahModal : A.bawahModal).map(String).filter((k, i, L) => kenal.indexOf(k) >= 0 && L.indexOf(k) === i);
     const ot = ssBersihkanOrangTablet(isi.operator !== undefined ? isi.operator : A.operator); if (ot.tolak) tolak = tolak || ot.tolak; else o.operator = ot.peta;   // T1-3: dibawa utuh
     // owner 21 Nov 2026: Ringkas hari ini di tablet hanya untuk SATU orang pilihan owner — kode orang yang ada di daftar tablet, atau '' (mati). Dibawa utuh.
+    o.hakTablet = ssBersihHakTablet(isi.hakTablet !== undefined ? isi.hakTablet : A.hakTablet);   // owner 28 Nov 2026: dibawa utuh
+    const kt = isi.kabarTablet !== undefined ? isi.kabarTablet : A.kabarTablet; o.kabarTablet = {}; ['habis', 'menipis', 'bawahModal'].forEach((k) => { o.kabarTablet[k] = !kt || kt[k] !== false; });   // owner 28 Nov 2026: dibawa utuh
     const ro = String(isi.ringkasOrang !== undefined ? isi.ringkasOrang : (A.ringkasOrang || '')).trim(); if (ro && !(o.operator || {})[ro]) tolak = tolak || 'Orang pembuka Ringkas hari ini tidak ada di daftar tablet'; else o.ringkasOrang = ro;
     const h = isi.hak || {}; Object.keys(h).forEach((p) => { if (p === 'owner' || !SS_HAK_BAWAAN[p]) { tolak = tolak || 'Hak owner tidak diubah — owner selalu boleh semuanya'; return; } Object.keys(h[p]).forEach((t) => { if (SS_NILAI_HAK.indexOf(h[p][t]) < 0 || !SS_TINDAKAN.some((x) => x.id === t)) { tolak = tolak || 'Nilai hak tidak dikenal'; return; } o.hak[p][t] = h[p][t]; }); }); }
+  else if (id === 'kabarToko') {   // owner 28 Nov 2026 (rules v27): jam toko & kabar server — jam HH:MM, jam tutup sesudah jam buka
+    const jam = (k) => { const v = String(isi[k] !== undefined ? isi[k] : A[k]).trim(); if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) return (k === 'jamBuka' ? 'Jam buka' : 'Jam tutup') + ' harus berbentuk JJ:MM (mis. 07:00)'; o[k] = v; return ''; };
+    tolak = jam('jamBuka') || jam('jamTutup') || angka('telatMenit', 0, 240, 'menit') || angka('menitPutus', 10, 240, 'menit');
+    if (!tolak && o.jamTutup <= o.jamBuka) tolak = 'Jam tutup harus sesudah jam buka';
+    o.nyala = {}; Object.keys(SS_ATUR_BAWAAN.kabarToko.nyala).forEach((k) => { const v = isi.nyala && isi.nyala[k] !== undefined ? isi.nyala[k] : A.nyala[k]; o.nyala[k] = v !== false; }); }
   else if (id === 'cadangan') tolak = angka('simpanHari', 1, 365, 'hari') || angka('ambangKuota', 10, 100, '%') || angka('cadanganTiap', 1, 30, 'hari');
   else if (id === 'lokasi') { const daftar = (Array.isArray(isi.daftar) ? isi.daftar : A.daftar).map((l, i) => ({ id: String(l.id || ('lk' + (i + 1))).trim(), nama: String(l.nama || '').trim(), alamat: String(l.alamat || '').trim().slice(0, 80), utama: !!l.utama }));
     if (!daftar.length) tolak = 'Minimal satu lokasi'; else if (daftar.some((l) => !l.nama)) tolak = 'Ada lokasi yang belum bernama — beri nama atau hapus dulu'; else if (new Set(daftar.map((l) => l.id)).size !== daftar.length) tolak = 'Dua lokasi memakai kode yang sama';
@@ -258,6 +307,7 @@ export function susunDaftarkan(uid, peran, w) {
   const m = ssAkun().minta.find((x) => x.uid === String(uid)); if (!m) return { tolak: 'Permintaannya sudah tidak ada' };
   if (!SS_PERAN_AKUN.some((p) => p.id === peran)) return { tolak: 'Pilih perannya dulu (' + SS_PERAN_AKUN.map((p) => p.nama).join(' atau ') + ') — akun tidak pernah bisa jadi owner' };
   const data = { id: m.uid, uid: m.uid, nama: m.nama, email: m.email, peran, aktif: true, dibuatPada: w.kini };
+  if (peran === 'ben' && ssHakTablet('ben', 'fotoNota')) data.hakFotoNota = true;   // rules v27: hak foto nota per peran ikut ke akun Penjaga laci yang baru didaftarkan
   return { dokumen: [{ koleksi: 'aksesAkun', data }], hapus: [{ koleksi: 'permintaanAkses', id: m.uid }], jejakHapus: 'minta akses disetujui: ' + m.email + ' → ' + peran,
     patch: { akunPilih: {}, kabar: m.nama + ' (' + m.email + ') didaftarkan sebagai ' + (SS_PERAN.find((p) => p.id === peran) || {}).nama + ' — layarnya terbuka sendiri di perangkatnya.', kabarAwas: false } };
 }
@@ -280,14 +330,16 @@ export function susunUbahAkun(uid, ubah, w, yakin) {
     if (U.bacaUang && !yakin) return { tolak: 'Ketuk sekali lagi: akun ' + (a.nama || a.email) + ' akan MEMBACA data uang toko (titik kas, uang keluar, kasbon, upah, ambil pribadi). Di tablet angkanya tampil hanya saat orang pilihan lu yang jaga.', perluYakin: true };
   }
   const turunDariBen = U.peran !== undefined && U.peran !== 'ben';   // peran pindah dari Penjaga laci = tanda baca uang ikut mati
-  const data = Object.assign({}, a, U.peran !== undefined ? { peran: U.peran } : {}, U.aktif !== undefined ? { aktif: U.aktif === true } : {}, U.bacaUang !== undefined ? { bacaUang: U.bacaUang === true } : {}, turunDariBen && a.bacaUang ? { bacaUang: false } : {});
+  // rules v27: tanda baca foto nota mengikuti peran — pindah dari Penjaga laci = mati; jadi Penjaga laci = ikut setelan Hak tablet per peran
+  const hakFoto = U.peran === undefined ? {} : U.peran === 'ben' ? (ssHakTablet('ben', 'fotoNota') ? { hakFotoNota: true } : {}) : a.hakFotoNota ? { hakFotoNota: false } : {};
+  const data = Object.assign({}, a, U.peran !== undefined ? { peran: U.peran } : {}, U.aktif !== undefined ? { aktif: U.aktif === true } : {}, U.bacaUang !== undefined ? { bacaUang: U.bacaUang === true } : {}, turunDariBen && a.bacaUang ? { bacaUang: false } : {}, hakFoto);
   const teks = U.bacaUang !== undefined ? (U.bacaUang ? 'kini MEMBACA data uang untuk Ringkas hari ini di tablet' : 'tidak lagi membaca data uang') : U.peran !== undefined ? 'kini ' + (SS_PERAN.find((p) => p.id === U.peran) || {}).nama : U.aktif ? 'diaktifkan lagi' : 'DINONAKTIFKAN';
   return { dokumen: [{ koleksi: 'aksesAkun', data }], patch: { yakinAkun: null, kabar: (a.nama || a.email) + ' ' + teks + '.', kabarAwas: U.aktif === false } };
 }
 /** Permintaan "minta owner" (ditulis tablet/Mac ke koleksi persetujuan): yang menunggu + riwayat keputusan. */
 export function ssPersetujuan(kini) {
   // owner 23 Nov 2026: pesan owner KE tablet bukan permintaan yang diputus — tidak tampil di papan ini (menunggu / riwayat)
-  const semua = cacheMentah('persetujuan').filter((m) => m && m.tindakan !== 'pesanOwner').slice().sort(ssUrutTerbaru); const P = ssPeran();
+  const semua = cacheMentah('persetujuan').filter((m) => m && m.tindakan !== 'pesanOwner' && m.tindakan !== 'tugasOwner').slice().sort(ssUrutTerbaru); const P = ssPeran();   // + tugas owner (28 Nov 2026): tugas ke tablet juga bukan permintaan
   // B2 (owner 17 Nov 2026): permintaan BON lewat batas kredit — kalimatnya dihitung ulang dari buku bon sekarang (fkTeksMinta), tindakan kisinya = jualBon
   const tKisi = (m) => (m.tindakan === FK_TINDAKAN ? 'jualBon' : m.tindakan);
   const baris = (m) => { const Q = m.tindakan === 'nego' ? ngPeriksaMinta(m) : null; const HU = m.tindakan === HT_TINDAKAN ? htTeksUbah(m.ubah) : null; const KR = m.tindakan === FK_TINDAKAN ? fkTeksMinta(m) : null; return { id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: KR !== null ? 'Bon melewati batas kredit' : m.tindakan === TP_PESAN ? 'Pesan untuk owner' : (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: KR !== null ? 'Jual' : m.tindakan === TP_PESAN ? 'Pesan' : (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,
@@ -304,15 +356,44 @@ export function ssPersetujuan(kini) {
     if (m.tindakan === TP_KABAR) Object.assign(b, { teks: 'Barang masuk · ' + (m.teks || ''), saran: 'Kabar barang masuk dari tablet — tandai sudah diperiksa; harga & jumlah dibetulkan di Stok › Barang masuk' });
     // paket Banding pemasok (rules v21): usul harga tawaran / acuan dari tablet — bukan uang, dilihat satu per satu; Setujui = catatannya ditulis (dicek ulang)
     if (m.tindakan === BC_TINDAKAN) Object.assign(b, { n: 0, sekaligus: false, namaTindakan: m.jenis === 'acuan' ? 'Usul harga acuan resmi' : 'Usul harga tawaran pemasok', teks: bcTeksUsul(m), saran: 'Setujui = dicatat di Harga & Pemasok › Banding atas nama ' + (m.dari || 'tablet') + ' · Tolak = tulis alasannya' });
-    return Object.assign(b, { pesan: m.tindakan === TP_PESAN || m.tindakan === TP_KABAR, balasan: m.balasan || '' }); };
+    // owner 28 Nov 2026 (rules v27): usul dari tablet — harga jual (Setujui = terbit satu harga), daftar belanja (Setujui = siap dipakai di Harga › Belanja), kabar toko &
+    // tugas selesai (seperti pesan: ditandai dibaca, boleh dibalas). Bukan uang keluar → tidak ikut "setujui sekaligus".
+    if (SS_USUL_TABLET[m.tindakan]) Object.assign(b, { n: 0, sekaligus: false, namaTindakan: SS_USUL_TABLET[m.tindakan], teks: m.teks || '', saran: m.tindakan === 'hargaJual' ? 'Setujui = harga jual ini langsung TERBIT (rak Jual, label, katalog HP kasir); di bawah modal ditolak — terbitkan sendiri di Harga › Katalog kalau disengaja'
+      : m.tindakan === 'belanja' ? 'Setujui = daftar ini muncul di Harga & Pemasok › Belanja (kartu "Dari tablet") untuk lu kirim ke pemasok; belum ada yang dipesan sampai lu kirim'
+      : m.tindakan === 'tugasSelesai' ? 'Jawaban tugas dari tablet' + (m.fotoId ? ' — fotonya: ketuk "lihat foto"' : '') + '; tandai dibaca, boleh dibalas' : 'Kabar otomatis dari tablet — tandai dibaca, boleh dibalas', fotoId: m.fotoId || '', tugasId: m.tugasId || '' });
+    return Object.assign(b, { pesan: m.tindakan === TP_PESAN || m.tindakan === TP_KABAR || m.tindakan === 'kabarToko' || m.tindakan === 'tugasSelesai', balasan: m.balasan || '' }); };
   const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(barisTP); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(barisTP).slice(0, 20);
   return { menunggu, riwayat, kecil: menunggu.filter((m) => m.sekaligus && m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
 }
+// owner 28 Nov 2026 (rules v27): daftar KABAR KE HP OWNER saat owner pergi — dok 'kabarToko' = dikirim fungsi server; dok 'peran' = dikirim tablet sesudah nota tersimpan
+export const SS_KABAR_TOKO = [
+  { id: 'buka', nama: 'Toko dibuka', ket: 'orang pertama masuk PIN di tablet', dok: 'kabarToko' }, { id: 'gantiJaga', nama: 'Ganti jaga', ket: 'orang yang jaga berganti (jaga pagi → jaga sore)', dok: 'kabarToko' },
+  { id: 'telatBuka', nama: 'Belum dibuka', ket: 'lewat jam buka + menit telat belum ada PIN', dok: 'kabarToko' }, { id: 'belumTutup', nama: 'Belum ditutup', ket: 'lewat jam tutup belum ada hitungan laci / tutup hari', dok: 'kabarToko' },
+  { id: 'putus', nama: 'Tablet putus', ket: 'tidak berdenyut lebih dari menit putus, di jam toko', dok: 'kabarToko' }, { id: 'nyangkut', nama: 'Catatan nyangkut', ket: 'catatan tablet ditolak server / belum terkirim', dok: 'kabarToko' },
+  { id: 'habis', nama: 'Barang habis', ket: 'sesudah dijual, stok buku 0', dok: 'peran' }, { id: 'menipis', nama: 'Perlu dipesan', ket: 'di bawah stok minimum Belanja', dok: 'peran' },
+  { id: 'bawahModal', nama: 'Jual di bawah modal', ket: 'harga baris nota di bawah modal tercatat', dok: 'peran' }];
+/** Keadaan semua kabar: nyala per id + jam & menit dari aturanToko/kabarToko. */
+export function ssKabarToko() { const K = ssAtur('kabarToko'); const P = ssAtur('peran').kabarTablet || {}; const nyala = {}; SS_KABAR_TOKO.forEach((x) => { nyala[x.id] = x.dok === 'peran' ? P[x.id] !== false : K.nyala[x.id] !== false; });
+  return { nyala, jamBuka: K.jamBuka, telatMenit: K.telatMenit, jamTutup: K.jamTutup, menitPutus: K.menitPutus }; }
+/** Putar satu kabar (id SS_KABAR_TOKO) — menulis dokumen yang memegangnya. */
+export function susunPutarKabarToko(id, w) {
+  const x = SS_KABAR_TOKO.find((k) => k.id === id); if (!x) return { tolak: 'Kabar tidak dikenal' }; const nyala = !ssKabarToko().nyala[id];
+  const r = x.dok === 'peran' ? susunAturSistem('peran', { kabarTablet: Object.assign({}, ssAtur('peran').kabarTablet, { [id]: nyala }) }, w) : susunAturSistem('kabarToko', { nyala: Object.assign({}, ssAtur('kabarToko').nyala, { [id]: nyala }) }, w);
+  if (r.patch) r.patch = Object.assign({}, r.patch, { kabar: 'Kabar "' + x.nama + '" ' + (nyala ? 'DINYALAKAN' : 'dimatikan') + (x.dok === 'kabarToko' ? ' (dikirim fungsi server — pasang ulang fungsi sesudah rules v27 terbit)' : '') });
+  return r;
+}
+export const SS_USUL_TABLET = { hargaJual: 'Usul harga jual dari tablet', belanja: 'Daftar belanja dari tablet', kabarToko: 'Kabar toko', tugasSelesai: 'Tugas selesai' };   // owner 28 Nov 2026 (rules v27)
 export function susunPutusPersetujuan(id, setuju, alasan, w) {
   const m = cacheMentah('persetujuan').find((x) => String(x.id) === String(id)); if (!m) return { tolak: 'Permintaannya tidak ditemukan' }; if (m.status && m.status !== 'menunggu') return { tolak: 'Sudah diputus ' + (m.diputusTanggal ? tanggalPendek(m.diputusTanggal) : '') };
   // owner 21 Nov 2026: titipan uang keluar → uangnya ditulis di kiriman yang sama; pesan → ditandai dibaca (alasan = balasan). Dulu titipan hanya ditandai disetujui.
   if (m.tindakan === TP_TINDAKAN) return tpSusunPutus(id, setuju ? 'setuju' : 'tolak', setuju ? {} : { alasan }, w);
   if (m.tindakan === TP_PESAN || m.tindakan === TP_KABAR) return tpSusunPutus(id, 'dibaca', { balasan: alasan }, w);
+  // owner 28 Nov 2026 (rules v27): kabar toko & tugas selesai = ditandai dibaca (alasan = balasan, boleh kosong)
+  if (m.tindakan === 'kabarToko' || m.tindakan === 'tugasSelesai') { const bal = String(alasan || '').trim().slice(0, 200);
+    return { dokumen: [{ koleksi: 'persetujuan', data: Object.assign({}, m, { status: 'dibaca', balasan: bal, diputusTanggal: w.tanggal, diputusJam: w.jam, diputusPada: w.kini }) }], patch: { kabar: (SS_USUL_TABLET[m.tindakan] || 'Kabar') + ' ' + (m.dari || '') + ' ditandai dibaca' + (bal ? ' — balasan terbaca di tablet' : ''), kabarAwas: false } }; }
+  // usul harga jual: menyetujui = TERBIT satu harga di kiriman yang sama (dihitung ulang dari katalog sekarang)
+  if (setuju && m.tindakan === 'hargaJual') { const u = m.usul || {}; const T = susunTerbitSatu(String(u.kunci || ''), u.baru, w); if (T.tolak) return { tolak: T.tolak };
+    return { dokumen: [{ koleksi: 'persetujuan', data: Object.assign({}, m, { status: 'disetujui', alasanTolak: '', diputusTanggal: w.tanggal, diputusJam: w.jam, diputusPada: w.kini }) }].concat(T.dokumen), patch: { kabar: 'Disetujui & terbit — ' + T.patch.kabar, kabarAwas: false } }; }
   // owner 22 Nov 2026 (paket ④): menyetujui hitungan laci = menutup hari — hanya lewat lembar Tutup hari (dokumen uang ikut); menolak = minta hitung ulang (di bawah)
   if (m.tindakan === SS_HITUNG_LACI && setuju) return { tolak: 'Hitungan laci diselesaikan di Uang › Tutup hari — ketuk "Pakai hitungan ini", cek QRIS (atau lewati), lalu Tutup' };
   if (!setuju && ssKosong(alasan)) return { tolak: 'Menolak butuh alasan — supaya ' + (m.dari || 'peminta') + ' tahu sebabnya' };

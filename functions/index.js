@@ -20,8 +20,13 @@ initializeApp();
 setGlobalOptions({ region: process.env.LOKASI || 'asia-southeast2', maxInstances: 2, memory: '256MiB' });
 
 exports.kabarOwner = onDocumentCreated('persetujuan/{id}', async (event) => {
-  const snap = event.data; if (!snap) return;
-  const p = pesanNotif(snap.data(), event.params.id); if (!p) return;
+  const snap = event.data; if (!snap) return; const d = snap.data();
+  // owner 28 Nov 2026 (tablet saat owner pergi): hitungan laci dari tablet = kabar tutup hari — ikut omzet & jumlah nota hari itu (baris penjualan bertanggal sama)
+  let tambah = null;
+  if (d && d.tindakan === 'hitungLaci' && /^\d{4}-\d{2}-\d{2}$/.test(String(d.tanggal || ''))) {
+    try { tambah = omzetHari((await getFirestore().collection('penjualan').where('tanggal', '==', String(d.tanggal)).get()).docs.map((x) => x.data())); } catch (e) { console.error('kabarOwner omzet', e); }
+  }
+  const p = pesanNotif(d, event.params.id, tambah); if (!p) return;
   const q = await getFirestore().collection('notifOwner').get();
   const tujuan = q.docs.map((d) => ({ ref: d.ref, token: d.get('token') })).filter((x) => typeof x.token === 'string' && x.token);
   if (!tujuan.length) return;
@@ -108,4 +113,41 @@ exports.kabarPatuh = onSchedule({ schedule: 'every day 07:00', timeZone: 'Asia/J
     kirim += r.successCount; r.responses.forEach((x, i) => { if (!x.success && x.error && tokenMati(x.error.code)) mati.push(tablet[i].ref); }); }
   await Promise.all(mati.map((ref) => ref.delete()));
   console.log('kabarPatuh', W.iso, p.n, 'urusan · terkirim', kirim, '· token mati dibuang', mati.length);
+});
+
+// owner 28 Nov 2026 (rules v27, "owner tahu keadaan toko lewat kabar ke HP" saat pergi): ABSEN JAGA → kabar "Toko dibuka" (orang pertama hari itu) dan "Ganti jaga"
+// (orangnya beda dari yang sebelumnya), dari catatan jagaLog yang ditulis tablet tiap PIN / sidik jari berhasil. PERIKSA TOKO tiap 15 menit 06.00–23.45 WIB: belum
+// dibuka lewat jam, belum ditutup lewat jam, tablet putus, catatan nyangkut / ditolak server. Satu kejadian = satu kabar (notifStatus/{tanggal}, ditulis fungsi saja).
+// Setelan & jam: aturanToko/kabarToko (Menu › Toko ini › Orang di tablet › Kabar ke HP owner). Isi kabar: functions/jaga.js (murni, diuji). Tidak menulis data toko.
+// Bacaan per putaran (perkiraan, bukan angka tagihan): setelan 1 + status 1 + absen hari itu (beberapa) + tutup hari 1 + hitungan laci ≤ 1 + denyut perangkat (sejumlah perangkat).
+const { pesanJaga, periksaToko, waktuWib, omzetHari } = require('./jaga');
+async function kirimKeOwner(p) {
+  const q = await getFirestore().collection('notifOwner').get();
+  const tujuan = q.docs.map((d) => ({ ref: d.ref, token: d.get('token') })).filter((x) => typeof x.token === 'string' && x.token);
+  if (!tujuan.length) return 0;
+  const r = await getMessaging().sendEachForMulticast({ tokens: tujuan.map((x) => x.token), data: { judul: p.judul, isi: p.isi, tag: p.tag, layar: p.layar || 'menu' }, webpush: { headers: { Urgency: 'high', TTL: '43200' } } });
+  const mati = []; r.responses.forEach((x, i) => { if (!x.success && x.error && tokenMati(x.error.code)) mati.push(tujuan[i].ref); });
+  await Promise.all(mati.map((ref) => ref.delete()));
+  return r.successCount;
+}
+exports.kabarJaga = onDocumentCreated('jagaLog/{id}', async (event) => {
+  const snap = event.data; if (!snap) return; const d = Object.assign({ id: event.params.id }, snap.data()); const db = getFirestore();
+  const [atur, hari] = await Promise.all([db.collection('aturanToko').doc('kabarToko').get(), db.collection('jagaLog').where('tanggal', '==', String(d.tanggal || '')).get()]);
+  const p = pesanJaga(d, hari.docs.map((x) => Object.assign({ id: x.id }, x.data())), atur.exists ? atur.data() : null); if (!p) return;
+  const n = await kirimKeOwner({ judul: p.judul, isi: p.isi, tag: p.tag, layar: 'uang' });
+  console.log('kabarJaga', event.params.id, p.jenis, 'terkirim', n);
+});
+exports.periksaToko = onSchedule({ schedule: '*/15 6-23 * * *', timeZone: 'Asia/Jakarta', timeoutSeconds: 60, retryCount: 0 }, async () => {
+  const db = getFirestore(); const kini = new Date(); const W = waktuWib(kini);
+  const [atur, st, jaga, tutup, laci, perangkat] = await Promise.all([db.collection('aturanToko').doc('kabarToko').get(), db.collection('notifStatus').doc(W.iso).get(),
+    db.collection('jagaLog').where('tanggal', '==', W.iso).get(), db.collection('tutupHari').doc(W.iso).get(),
+    db.collection('persetujuan').where('tanggal', '==', W.iso).where('tindakan', '==', 'hitungLaci').limit(1).get(), db.collection('perangkatStatus').get()]);
+  const S = st.exists ? st.data() : {};
+  const H = periksaToko({ kini, atur: atur.exists ? atur.data() : null, jaga: jaga.docs.map((x) => x.data()), tutup: tutup.exists || !laci.empty,
+    perangkat: perangkat.docs.map((x) => Object.assign({ id: x.id }, x.data())), sudah: S.kirim || {}, antreLalu: S.antre || null });
+  let kirim = 0; for (const p of H.kabar) kirim += await kirimKeOwner({ judul: p.judul, isi: p.isi, tag: p.tag, layar: 'menu' });
+  const sudah = Object.assign({}, S.kirim || {}); H.kabar.forEach((p) => { sudah[p.kunci] = W.jam; }); H.pulih.forEach((k) => { delete sudah[k]; });
+  const baru = { tanggal: W.iso, kirim: sudah, antre: H.antre };
+  if (JSON.stringify(baru) !== JSON.stringify({ tanggal: S.tanggal, kirim: S.kirim || {}, antre: S.antre || {} })) await db.collection('notifStatus').doc(W.iso).set(Object.assign({ pada: kini.toISOString() }, baru));
+  console.log('periksaToko', W.iso, W.jam, H.kabar.length, 'kabar · terkirim', kirim);
 });
