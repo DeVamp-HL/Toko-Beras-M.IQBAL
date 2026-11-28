@@ -17,6 +17,10 @@ Yang dipegang:
   · tiap baris tercetak muat di kertas 80 mm (48 kolom) dan 58 mm (32 kolom), ASCII saja, angka rupiah menempel di tepi kanan
   · dua lembar: LEMBAR PEMASOK dan LEMBAR TOKO; nomornya turunan id kedatangan (dicetak ulang = nomor sama); lembar memuat kapan dicetak
   · stok awal / saldo pembuka / buku baru / tanpa pemasok / tanpa baris tidak diberi tanda terima
+  · owner 28 Nov 2026: CATATAN UNTUK PEMASOK yang ditulis toko ikut di kedua lembar & WhatsApp (tanpa "yang tertulis di nota" ber-harga per kg, tanpa
+    usul yang belum disimpan); tombol cetak catatan terpisah dihapus; tiap baris bertanda `jenis` 'tt…' dan model gambarnya (struk-model.js
+    stModelTandaTerima) memuat semua isi; printer tablet mencetak menurut gaya perangkat + logo toko (Bluetooth tetap teks); gambar tanda terima
+    mengikuti pelajaran cetak CPad (semua teks bergores tepi, tanpa Jost 400)
   · pemasangan: panel tidak menulis apa pun; satu cetakan pada satu waktu; di aplikasi tablet tidak membuka dialog cetak; rupiah tidak
     tampil di layar akun bukan-owner; tombol akun tablet, lembar daftar, dan kartu sesudah Simpan terpasang di layar Stok
 
@@ -34,8 +38,11 @@ AKSES_LAYAR = 'baru/js/layar/akses-layar.js'
 AKSES = 'baru/js/data/akses.js'
 CATAT = 'baru/js/layar/stok-catat-logika.js'
 INDEX = 'baru/index.html'
-RAKIT = ['baru/js/inti/format.js', 'baru/js/inti/escpos.js', LOGIKA]   # urutan rakit di jsc: ketiganya tanpa impor selain satu sama lain
-BERKAS = RAKIT + [PANEL, STOK, AKSES_LAYAR, AKSES, CATAT, INDEX]
+MODEL = 'baru/js/inti/struk-model.js'
+KANVAS = 'baru/js/inti/struk-kanvas.js'
+CSS = 'baru/css/jual.css'
+RAKIT = ['baru/js/inti/format.js', 'baru/js/inti/escpos.js', MODEL, LOGIKA]   # urutan rakit di jsc: keempatnya tanpa impor selain satu sama lain
+BERKAS = RAKIT + [PANEL, STOK, AKSES_LAYAR, AKSES, CATAT, INDEX, KANVAS, CSS]
 
 PEMERIKSA = r"""
 const hasil = [];
@@ -147,19 +154,46 @@ cek('dua lembar memuat angka yang sama', ['Nilai nota', 'SISA BON', 'Bayar 10 No
 const tw = teks(dSebagian, 58, '');
 cek('WhatsApp: tanpa nama lembar', !tw.some((s) => /LEMBAR|Arsip toko|Dibawa supir/.test(s)) && tw.some((s) => /SISA BON/.test(s)));
 
-// ---------- Tahap 5: STRUK CATATAN UNTUK PEMASOK (isi = cpIsiSurat; di sini bentuk yang sama, dibuat tangan) ----------
-const SURAT = { sub: 'PT Uji Beras · barang datang 10 Nov 2026 · bon', identitas: 'Dibuat dari catatan Barang masuk toko. Mohon dikonfirmasi.', baris: [
+// ---------- owner 28 Nov 2026: CATATAN UNTUK PEMASOK di kedua lembar (isi = cpIsiSurat; di sini bentuk yang sama, dibuat tangan) ----------
+const SURAT = { ada: true, sub: 'PT Uji Beras · barang datang 10 Nov 2026 · bon', identitas: 'Dibuat dari catatan Barang masuk toko. Mohon dikonfirmasi.', baris: [
   { nama: 'Yang tertulis di nota', n: '', kelas: 'kel' }, { nama: 'Angsa · 2000 kg @ Rp13.000/kg', n: 26000000, kelas: '' }, { nama: '   ditimbang 1987,5 kg — KURANG 12,5 kg', n: '', kelas: '' },
-  { nama: 'Catatan toko', n: '', kelas: 'kel' }, { nama: 'Kurang · Angsa · 12,5 kg — hasil timbang', n: '', kelas: '' },
+  { nama: 'Catatan toko', n: '', kelas: 'kel' }, { nama: 'Kurang · Angsa · 12,5 kg — hasil timbang', n: '', kelas: '' }, { nama: 'Mutu · Angsa — 2 karung sobek, minta diganti di kiriman berikut', n: '', kelas: '' },
   { nama: 'Sudah dibukukan toko', n: '', kelas: 'kel' }, { nama: '10 Nov 2026 · dipotong saat datang (kurang timbang) · 12,5 kg', n: -162500, kelas: '' },
+  { nama: 'Catatan', n: '', kelas: 'kel' }, { nama: 'Total selisih susut keseluruhan 15,4 kg', n: '', kelas: '' },
   { nama: 'Permintaan toko', n: '', kelas: 'kel' }, { nama: 'Minta dipotong / uang kembali', n: 162500, kelas: 'jumlah' }] };
-[58, 80].forEach((k) => { const L = k === 58 ? 32 : 48; const tc = epSusun(tbmGarisCatatan(SURAT, KOP, 'TT-1', CETAK), { kertas: k }).teks;
-  cek(k + ' mm · catatan pemasok: tidak ada baris lebih lebar dari kertas', tc.every((x) => x.length <= L), tc.filter((x) => x.length > L));
-  cek(k + ' mm · catatan pemasok: judul, nomor tanda terima, nama pemasok', tc.some((x) => x.trim() === 'CATATAN UNTUK PEMASOK') && tc.some((x) => /Tanda terima No\. TT-1/.test(x)) && tc.some((x) => /^Kepada: PT Uji Beras/.test(x)) && tc.some((x) => /barang datang 10 Nov 2026/.test(x)), tc.slice(0, 10));
-  cek(k + ' mm · catatan pemasok: judul kelompok huruf besar; nilai nota Rp26.000.000 & permintaan Rp162.500 di kanan; potongan yang sudah dibukukan bertanda minus', tc.some((x) => x.trim() === 'YANG TERTULIS DI NOTA') && tc.some((x) => x.trim() === 'PERMINTAAN TOKO') && tc.some((x) => /Rp26\.000\.000$/.test(x)) && tc.some((x) => /-Rp162\.500$/.test(x)) && tc.filter((x) => /(^|[^-])Rp162\.500$/.test(x)).length === 1, tc);
-  const gab = tc.join(' ').replace(/\s+/g, ' ');
-  cek(k + ' mm · catatan pemasok: hasil timbang, catatan toko, kalimat asal & kapan dicetak, tempat tanda tangan dua pihak', /KURANG 12,5 kg/.test(gab) && /Kurang - Angsa - 12,5 kg/.test(gab) && /Mohon dikonfirmasi\./.test(gab) && /Dicetak 21 Nov 2026 09:30, Uji/.test(gab) && /Dari toko,/.test(gab) && /Diterima pemasok \/ supir,/.test(gab), gab.slice(0, 400)); });
-cek('catatan pemasok: tanpa nomor & tanpa kapan dicetak tetap tersusun (WhatsApp)', (() => { const t = epSusun(tbmGarisCatatan(SURAT, null, '', null), { kertas: 58 }).teks; return t.some((x) => x.trim() === 'CATATAN UNTUK PEMASOK') && !t.some((x) => /Tanda terima No|Dicetak/.test(x)); })());
+const CAT = tbmCatatan(SURAT);
+cek('catatan: empat kelompok yang DITULIS toko, tanpa "yang tertulis di nota" (harga per kg)', CAT.length === 4 && CAT.map((k) => k.judul).join('|') === 'Catatan toko|Sudah dibukukan toko|Catatan|Permintaan toko', CAT.map((k) => k.judul));
+cek('catatan: baris & angka dibawa apa adanya (potongan minus, permintaan tebal)', CAT[0].baris.length === 2 && CAT[1].baris[0].n === -162500 && CAT[3].baris[0].n === 162500 && CAT[3].baris[0].tebal === true && CAT[0].baris[0].n === '', CAT);
+cek('catatan: kedatangan tanpa catatan tersimpan (hanya usul dari timbang) = tidak ada catatan', tbmCatatan(Object.assign({}, SURAT, { ada: false })).length === 0 && tbmCatatan(null).length === 0);
+const dCat = tbmData(kedatangan(), { terbaca: true, dibayar: 0, rinci: [] }, CAT);
+[80, 58].forEach((k) => { const L = EP_KOLOM[k];
+  ['pemasok', 'toko', ''].forEach((lb) => { const t = teks(dCat, k, lb); const gab = t.join(' ').replace(/\s+/g, ' ');
+    cek(k + ' mm · lembar ' + (lb || 'WhatsApp') + ': catatan ikut, ≤ ' + L + ' kolom & ASCII', t.some((s) => s.trim() === 'CATATAN UNTUK PEMASOK') && t.some((s) => s.trim() === 'CATATAN TOKO') && t.some((s) => s.trim() === 'PERMINTAAN TOKO')
+      && /Kurang - Angsa - 12,5 kg/.test(gab) && /Total selisih susut keseluruhan 15,4 kg/.test(gab) && t.every((s) => s.length <= L && ascii(s)), t.filter((s) => s.length > L || !ascii(s)));
+    cek(k + ' mm · lembar ' + (lb || 'WhatsApp') + ': potongan bertanda minus, permintaan di kanan, harga per kg nota TIDAK ikut', t.some((s) => /-Rp162\.500$/.test(s)) && t.some((s) => /Rp162\.500$/.test(s) && !/-Rp/.test(s)) && !/@ Rp|Rp13\.000|YANG TERTULIS DI NOTA|26\.000\.000/.test(gab), t.filter((s) => /Rp/.test(s)));
+    const iC = t.findIndex((s) => s.trim() === 'CATATAN UNTUK PEMASOK'); const iT = t.findIndex((s) => /^Diterima toko,/.test(s)); const iK = t.findIndex((s) => /^Keadaan per/.test(s));
+    cek(k + ' mm · lembar ' + (lb || 'WhatsApp') + ': catatan sesudah pembayaran, sebelum tanda tangan', iK >= 0 && iK < iC && iC < iT, [iK, iC, iT]); }); });
+cek('tanpa catatan: lembar tanpa bagian catatan', !teks(dBelum, 80).some((s) => /CATATAN UNTUK PEMASOK/.test(s)) && Array.isArray(dBelum.catatan) && dBelum.catatan.length === 0);
+const lC = tbmLembar(dCat, KOP, CETAK).map((g) => epSusun(g, { kertas: 80 }).teks);
+const isiCat = (t) => t.filter((s) => /Kurang|Mutu|Total selisih|Minta dipotong|-Rp162\.500/.test(s)).join('|');
+cek('dua lembar memuat catatan yang sama', isiCat(lC[0]) === isiCat(lC[1]) && lC[0].some((s) => /Minta dipotong/.test(s)));
+
+// ---------- owner 28 Nov 2026: gaya gambar berlogo — tiap baris bertanda, model memuat semua isi ----------
+const gP = tbmGaris(dCat, KOP, 'pemasok', CETAK); const gT = tbmGaris(dSebagian, KOP, 'toko', CETAK);
+cek('gambar: tiap baris tanda terima bertanda jenis tt… (tidak ada isi yang hilang di gaya gambar)', gP.concat(gT).every((g) => g.garis || /^tt[A-Z]/.test(g.jenis || '')), gP.concat(gT).filter((g) => !g.garis && !/^tt[A-Z]/.test(g.jenis || '')));
+cek('gambar: garis tanda terima dikenali, garis nota (jenis kop) tidak', stAdaTandaTerima(gP) && !stAdaTandaTerima([{ kiri: 'TOKO', jenis: 'kop' }, { kiri: 'Pembeli', jenis: 'pembeli' }]) && !stAdaTandaTerima([{ kiri: 'polos' }]));
+const MP = stModelTandaTerima(gP); const MT = stModelTandaTerima(gT);
+cek('model: kop, judul, nomor, lembar, datang, dari', MP.kop === 'TOKO UJI' && MP.judul === 'TANDA TERIMA BARANG' && MP.no === 'TT-261109-1262' && MP.lembar === 'pemasok' && MT.lembar === 'toko' && MP.datang === '9 Nov 2026 13:40' && MP.dari === 'PT Uji Beras', MP);
+cek('model: tiga baris barang (rinci karung × isi, kg), bal tanpa isi', MP.barang.length === 3 && MP.barang[0].nama === 'Beras A' && MP.barang[0].rinci === '12 karung × 50 kg' && MP.barang[0].kg === '600 kg' && MP.barang[1].nama === 'Beras B (Cap B)' && MP.barang[2].rinci === '3 bal' && MP.barang[2].kg === '30 kg', MP.barang);
+cek('model: jumlah & nilai nota sama dengan gaya teks', MP.jumlah === '13 karung, 3 bal, 655 kg' && MP.nilai === 'Rp9.250.000', [MP.jumlah, MP.nilai]);
+cek('model: pembayaran sama dengan gaya teks (bon sebagian: tanggal bayar + SISA BON)', MT.bayar.map((b) => b.label + '=' + b.n).join('|') === 'Cara bayar=BON, dibayar sebagian|Bayar 10 Nov 2026=Rp4.000.000|SISA BON=Rp5.250.000' && MT.bayar[2].tebal === true, MT.bayar);
+cek('model: catatan empat kelompok, baris & angka', MP.catatan.length === 4 && MP.catatan[0].judul === 'CATATAN TOKO' && MP.catatan[0].baris.length === 2 && MP.catatan[1].baris[0].n === '-Rp162.500' && MP.catatan[3].baris[0].n === 'Rp162.500' && MP.catatan[3].baris[0].tebal, MP.catatan);
+cek('model: tanda tangan dua pihak, nama supir hanya lembar toko, kaki', !!MP.ttd && MP.ttd.kiri === 'Diterima toko,' && MP.ttd.kanan === 'Supir / pengirim,' && !MP.namaSupir && MT.namaSupir && MP.kaki === 'Dibawa supir untuk pemilik PT Uji Beras.' && MT.kaki === 'Arsip toko.', [MP.ttd, MP.kaki, MT.kaki]);
+const MTb = stModelTandaTerima(tbmGaris(dTablet, KOP, 'pemasok', CETAK));
+cek('model: kapan dicetak & isian tulis tangan ikut', MP.keadaan === 'Keadaan per 21 Nov 2026 09:30, dicetak Uji' && MTb.bayar.some((b) => /^\.+$/.test(b.n)) && MTb.bayarKet.length === 1, [MP.keadaan, MTb.bayar, MTb.bayarKet]);
+const g6 = tbmGaris(tbmData(kedatangan({ merkList: [{ id: '1', merk: 'Beras A', satuan: 'karung', jumlahKarung: 12, beratKarung: 50, totalKg: 597.6, kgTerima: 597.6, hargaPerKg: 14000, subtotalHarga: 8400000 }] }), { terbaca: true, dibayar: 0 }), KOP, 'toko', CETAK);
+cek('model Tahap 6: kg nota di baris barang, hasil timbang di bawahnya', (() => { const B = stModelTandaTerima(g6).barang[0]; return B.kg === '600 kg' && B.timbang === '597,6 kg'; })(), stModelTandaTerima(g6).barang);
+cek('model: kop "TOKO BERAS M.IQBAL" dipecah seperti nota', (() => { const M = stModelTandaTerima(tbmGaris(dBelum, { nama: 'Toko Beras M.IQBAL' }, 'pemasok', CETAK)); return M.kopBesar === 'M.IQBAL' && M.kopKecil === 'TOKO BERAS'; })());
 
 // ---------- Tahap 6 (owner 25 Nov 2026): stok ikut timbang — kg nota & kg yang dibukukan sama-sama tertulis; uang tetap dari nota ----------
 const dT6 = tbmData(kedatangan({ merkList: [{ id: '1', merk: 'Beras A', satuan: 'karung', jumlahKarung: 12, beratKarung: 50, totalKg: 597.6, kgTerima: 597.6, sampelKarung: 2, sampelKg: 99.6, hargaPerKg: 14000, subtotalHarga: 8400000 }] }), { terbaca: true, dibayar: 0, rinci: [] });
@@ -204,7 +238,7 @@ def periksa_statis(t):
     ok('logika hanya mengimpor format (tanpa data toko, tanpa penulis)', re.findall(r"^import\s[^;]*;", lg, flags=re.M) == ["import { RP, KG, DESIMAL, tanggalPendek } from '../inti/format.js';"])
     ok('panel TIDAK menulis ke buku (tanpa tulisDokumen / hapusDokumen / tulisBertahap)', not re.search(r'tulisDokumen|hapusDokumen|tulisBertahap|\btulis\(', pn))
     ok('pembayaran pemasok dibaca hanya bila akun ini membacanya', "const KOLEKSI_BAYAR = 'utangPemasokMutasi';" in pn and "const terbaca = akunMembaca(akun, KOLEKSI_BAYAR); const bb = terbaca ? C.ckBayarBon(batch) : null;" in pn)
-    ok('angka "sudah dibayar" = angka buku utang pemasok (mesin), bukan hitungan sendiri', "TBM.tbmData(batch, { terbaca, dibayar: bb ? bb.dibayarMesin : 0, rinci: bb ? bb.bayar : [], titipSupir: titipSupir(batch, terbaca) })" in pn)
+    ok('angka "sudah dibayar" = angka buku utang pemasok (mesin), bukan hitungan sendiri', "TBM.tbmData(batch, { terbaca, dibayar: bb ? bb.dibayarMesin : 0, rinci: bb ? bb.bayar : [], titipSupir: titipSupir(batch, terbaca) }, TBM.tbmCatatan(" in pn)
     ok('akunMembaca: owner ya; selain owner hanya koleksi yang dibuka server', "export const akunMembaca = (akun, koleksi) => !bukanOwner(akun) || BACA_STAF.indexOf(koleksi) >= 0;" in al)
     m = re.search(r"export const BACA_STAF = \[(.*?)\];", ak, flags=re.S)
     ok('pembayaran pemasok memang belum dibuka untuk akun bukan-owner (kalau dibuka: lembar tablet otomatis memuat angkanya — perbarui uji ini)', bool(m) and 'utangPemasokMutasi' not in m.group(1))
@@ -219,17 +253,23 @@ def periksa_statis(t):
         letak = [cetak.find(x) for x in pola]
         return all(i >= 0 for i in letak) and letak == sorted(letak)
     ok('satu cetakan pada satu waktu: printer sibuk → tidak ada yang dikirim', urut('if (printerSibuk()) return set({ kabar: KALIMAT_MASIH_MENCETAK, kabarAwas: true });', 'PR.jalurCetak()'))
-    ok('dicetak gaya teks, dua lembar berurutan', "lembar.reduce((p, g) => p.then(() => PR.susunCetak(g, { gaya: 'teks' }, { qr: '' })).then((x) => PR.kirimCetak(x.byte, j)).then(() => { n += 1; }), Promise.resolve())" in cetak and 'TBM.tbmLembar(d, ST.stAtur().kop' in pn and "kirim(lembarCetak(r.d), { nama: 'Tanda terima'," in pn)
+    ok('dicetak menurut gaya printer perangkat + logo toko, Bluetooth tetap teks, dua lembar berurutan', "const timpa = j === 'sunmi-bt' ? { gaya: 'teks' } : null;" in cetak and "lembar.reduce((p, g) => p.then(() => PR.susunCetak(g, timpa, { qr: '', logoToko: pakaiLogo() })).then((x) => PR.kirimCetak(x.byte, j)).then(() => { n += 1; }), Promise.resolve())" in cetak and 'TBM.tbmLembar(d, ST.stAtur().kop' in pn and "kirim(lembarCetak(r.d), { nama: 'Tanda terima'," in pn)
     ok('printer diam sesudah data dikirim = "lihat kertasnya", sebelum cabang gagal & tanpa kirim ulang', urut('if (masihMencetak(e)) return set(', 'if (hasilTakDiketahui(e)) return set(', "const gagal = PR.sebutPrinter(j)"))
     ok('di aplikasi tablet dialog cetak tidak dibuka: kabarnya menyebut lembar TIDAK tercetak', "const dialog = () => { if (asliAda()) return set({ kabar: T.nama + ' TIDAK tercetak: di tablet ini hanya keluar lewat printer tablet" in cetak and "if (asliAda()) return set({ kabar: gagal + T.nama.toLowerCase() + ' TIDAK tercetak'" in cetak)
     ok('tombol WhatsApp tidak tampil di aplikasi tablet', "${asliAda() ? '' : h`<div class=\"kaca-btn\" data-aksi=\"tbmWa\" data-id=\"${id}\">WhatsApp</div>`}" in pn)
     ok('lembar memuat kapan & oleh siapa dicetak', "{ tanggal: w.tanggal, jam: w.jam, oleh: (a && a.nama) || '' }" in pn)
-    # Tahap 5 (owner 26 Nov 2026): catatan untuk pemasok dicetak dari kartu tanda terima
-    ok('catatan pemasok: tombolnya hanya muncul bila kedatangan punya catatan / usul dari timbang', "const S = C.cpIsiSurat(id); if (!S || !S.bisaCetak) return '';" in pn and '${catatanKartu(id)}' in pn and 'data-aksi="tbmCatatan" data-id="${id}"' in pn)
-    ok('catatan pemasok: isinya dari penyusun surat yang sama dengan Dokumen kecil (bukan rumus sendiri)', "garis: TBM.tbmGarisCatatan(S, ST.stAtur().kop," in pn and 'cpKedatangan(' not in pn and "export function cpIsiSurat(id, atur) {" in ct)
-    ok('catatan pemasok: dikirim lewat jalur cetak yang sama dengan tanda terima (printer tablet / dialog)', "kirim([G.garis], { nama: 'Catatan untuk pemasok'," in pn and "tbmCatatan: ({ id }) => cetakCatatan(id)," in pn)
-    ok('catatan pemasok: tanpa catatan & tanpa usul → ditolak dengan kalimat, tidak mencetak lembar kosong', "if (!S || !S.bisaCetak) return { tolak: 'Kedatangan ini tidak punya catatan untuk pemasok" in pn)
-    ok('catatan pemasok: WhatsApp tidak tampil di aplikasi tablet', "${asliAda() ? '' : h`<div class=\"kaca-btn\" data-aksi=\"tbmCatatanWa\"" in pn and "tbmCatatanWa: ({ id }) => wa(id, true)," in pn)
+    # owner 28 Nov 2026: catatan untuk pemasok ikut kedua lembar; tombol cetak catatan terpisah DIHAPUS; gambar berlogo
+    ok('catatan pemasok: tombol & aksi cetak catatan terpisah sudah tidak ada (cukup lewat Dokumen kecil)', 'CETAK CATATAN PEMASOK' not in pn and 'data-aksi="tbmCatatan' not in pn and 'tbmCatatan:' not in pn and 'cetakCatatan' not in pn and 'tbmGarisCatatan' not in pn and 'tbmGarisCatatan' not in lg and 'CETAK CATATAN PEMASOK' not in st)
+    ok('catatan pemasok: isinya dari penyusun surat yang sama dengan Dokumen kecil, diteruskan ke tanda terima', "TBM.tbmCatatan(C.cpIsiSurat(id))) };" in pn and 'cpKedatangan(' not in pn and "export function cpIsiSurat(id, atur) {" in ct)
+    ok('catatan pemasok: kartu menyebut catatan yang ikut tercetak', '${sebutCatatan(d)}' in pn and 'data-k="tbm-catatan"' in pn)
+    ok('catatan pemasok: lembar Barang masuk tidak lagi menyebut tombol lama', 'ikut tercetak di kedua lembar tanda terima (CETAK 2 LEMBAR)' in st)
+    ok('logo toko ikut menurut setelan struk (Jual › Struk › Sertakan logo)', "const pakaiLogo = () => { const A = ST.stAtur(); return !(A.sertakan && A.sertakan.logo === false); };" in pn)
+    ok('dialog cetak gaya gambar memuat gambar lembar yang sama, gaya teks tetap teks', "if (PR.prAtur().gaya === 'teks') return teks();" in pn and "im.src = gambarStruk(g, { kertas, logoToko: pakaiLogo() }).kanvas.toDataURL('image/png');" in pn and '#cetakStruk.gambar img {' in t[CSS])
+    kv = t[KANVAS]
+    ok('kanvas: garis tanda terima digambar gaya tanda terima SEBELUM pemeriksaan gaya Sertifikat', kv.find('if (stAdaTandaTerima(garis)) return gambarTandaTerima(garis, opsi);') >= 0 and kv.find('if (stAdaTandaTerima(garis)) return gambarTandaTerima(garis, opsi);') < kv.find('return gambarSertifikat(garis, opsi);'))
+    a0 = kv.find('function gambarTandaTerima('); a1 = kv.find('\n}\n', a0); gt = kv[a0:a1] if 0 <= a0 < a1 else ''
+    ok('kanvas tanda terima: semua teks lewat isiHuruf (isi + gores tepi stTebalHuruf) — garis rambut tidak hilang di printer', gt.count('c.fillText(') == 1 and 'const isiHuruf = (t, x, yb, tb) => { c.fillText(t, x, yb); if (tb) {' in gt and 'const tb = stTebalHuruf(f, k);' in gt and 'strokeText' in gt)
+    ok('kanvas tanda terima: tanpa Jost 400 (pudar di printer panas), label Cinzel 700, logo toko', bool(gt) and not __import__('re').search(r'F_SANS\([^,]*\b400\s*,', gt) and 'const F_LABEL = F_CIN(700' in gt and 'gambarLogoToko(c, cx, y,' in gt and 'jadiBit(kanvas, c, W, y)' in gt)
     # layar Stok
     ok('stok.js memasang panel', "import { kartuTerima, lembarTerima, aksiPanelTerima } from './terima-barang-panel.js';" in st and 'aksiPanelTerima({ set, akun: opsi.akun, waktu }));' in st)
     ok('keadaan awal punya tbm (ganti orang = kartu tertutup)', re.search(r"\n    tbm: null \}\);\n  const K = buatKeadaan\(awal\(\)\);", st) is not None)
@@ -256,11 +296,11 @@ def periksa(t, diam=False):
 
 
 MUTASI = [
-    ('Tahap 6: tanda terima mencetak kg yang dibukukan sebagai kg nota (jumlah × isi ≠ kg)', LOGIKA, "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.ikut ? x.kgNota : x.kg));", "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg));"),
-    ('Tahap 6: tanda terima tanpa baris hasil timbang', LOGIKA, "    if (x.ikut) b('  hasil timbang (dibukukan)', KG(x.kg)); });", "    });"),
+    ('Tahap 6: tanda terima mencetak kg yang dibukukan sebagai kg nota (jumlah × isi ≠ kg)', LOGIKA, "const kgNota = x.ikut ? x.kgNota : x.kg;", "const kgNota = x.kg;"),
+    ('Tahap 6: tanda terima tanpa baris hasil timbang', LOGIKA, "    if (x.ikut) b('  hasil timbang (dibukukan)', KG(x.kg), { jenis: 'ttTimbang' }); });", "    });"),
     ('nilai nota ikut upah bongkar', LOGIKA, "const nilai = Math.round(baris.reduce((a, x) => a + x.nilai, 0));", "const nilai = Math.round(baris.reduce((a, x) => a + x.nilai, 0)) + bil(batch.biayaBongkar);"),
     ('akun yang tidak membaca pembayaran dicetak "belum dibayar"', LOGIKA, "else if (!B.terbaca) hasil = {", "else if (false) hasil = {"),
-    ('pembayaran tidak terbaca mencetak sisa = nilai nota', LOGIKA, "b('Dibayar: Rp', TITIK); b('Sisa: Rp', TITIK);", "b('Sudah dibayar', RP(0)); b('SISA BON', RP(d.nilai));"),
+    ('pembayaran tidak terbaca mencetak sisa = nilai nota', LOGIKA, "by('Dibayar: Rp', TITIK); by('Sisa: Rp', TITIK);", "by('Sudah dibayar', RP(0)); by('SISA BON', RP(d.nilai));"),
     ('tunai dianggap bon', LOGIKA, "const bon = batch.caraBayar === 'utang';", "const bon = true;"),
     ('bon dianggap tunai', LOGIKA, "const bon = batch.caraBayar === 'utang';", "const bon = false;"),
     ('uang di atas nilai bon ikut dicetak', LOGIKA, "Math.max(0, Math.min(nilai, Math.round(bil(B.dibayar))))", "Math.max(0, Math.round(bil(B.dibayar)))"),
@@ -268,16 +308,16 @@ MUTASI = [
     ('rincian bayar dicetak walau jumlahnya tidak cocok', LOGIKA, "rinci: cocok ? rinci : [] };", "rinci };"),
     ('sisa bon tidak dikurangi yang dibayar', LOGIKA, "sisa: nilai - dibayar, rinci", "sisa: nilai, rinci"),
     ('bon lunas dicetak sebagai sebagian', LOGIKA, "dibayar >= nilai ? 'lunas' : 'sebagian'", "dibayar > nilai ? 'lunas' : 'sebagian'"),
-    ('subtotal per baris ikut tercetak', LOGIKA, "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.ikut ? x.kgNota : x.kg));", "x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.ikut ? x.kgNota : x.kg) + ' ' + RP(x.nilai));"),   # jangkar disesuaikan Tahap 6
+    ('subtotal per baris ikut tercetak', LOGIKA, ": x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(kgNota);", ": x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(kgNota) + ' ' + RP(x.nilai);"),   # jangkar disesuaikan Tahap 6 & 28 Nov
     ('baris bal dihitung karung', LOGIKA, "karung: baris.reduce((a, x) => a + (x.bal ? 0 : x.jumlah), 0)", "karung: baris.reduce((a, x) => a + x.jumlah, 0)"),
     ('stok awal diberi tanda terima', LOGIKA, "if (batch.stokAwal || batch.tutupBuku || batch.lahirBuku) return", "if (batch.tutupBuku || batch.lahirBuku) return"),
     ('kedatangan tanpa pemasok diberi tanda terima', LOGIKA, "if (!String(batch.pemasok || '').trim()) return", "if (false) return"),
     ('nomor tanpa tanggal kedatangan', LOGIKA, ".replace(/[^0-9]/g, '').slice(2, 8);", ".replace(/[^0-9]/g, '').slice(0, 0);"),
-    ('lembar toko tanpa tempat nama supir', LOGIKA, "if (lembar === 'toko') { b('Nama terang supir dan jam:');", "if (lembar === 'tokoX') { b('Nama terang supir dan jam:');"),
-    ('lembar pemasok tanpa namanya', LOGIKA, "if (lembar === 'pemasok') b('LEMBAR PEMASOK', '', { tebal: true, tengah: true });", "if (lembar === 'pemasokX') b('LEMBAR PEMASOK', '', { tebal: true, tengah: true });"),
+    ('lembar toko tanpa tempat nama supir', LOGIKA, "if (lembar === 'toko') { b('Nama terang supir dan jam:'", "if (lembar === 'tokoX') { b('Nama terang supir dan jam:'"),
+    ('lembar pemasok tanpa namanya', LOGIKA, "if (lembar === 'pemasok') b('LEMBAR PEMASOK'", "if (lembar === 'pemasokX') b('LEMBAR PEMASOK'"),
     ('kapan dicetak tidak dimuat', LOGIKA, "if (C.tanggal) b('Keadaan per '", "if (false) b('Keadaan per '"),
     ('titik-titik isian terlalu panjang untuk kertas 58 mm', LOGIKA, "const TITIK = '..................';", "const TITIK = '..............................';"),
-    ('tunai tidak dicetak lunas', LOGIKA, "b('Sisa', 'LUNAS', { tebal: true }); }", "b('Sisa', RP(d.nilai), { tebal: true }); }"),
+    ('tunai tidak dicetak lunas', LOGIKA, "by('Sisa', 'LUNAS', { tebal: true }); }", "by('Sisa', RP(d.nilai), { tebal: true }); }"),
     ('nama pemasok tidak dirapikan', LOGIKA, "pemasok: String(batch.pemasok || '').trim(), baris,", "pemasok: String(batch.pemasok || ''), baris,"),
     ('panel: pembayaran dianggap terbaca untuk semua akun', PANEL, "const terbaca = akunMembaca(akun, KOLEKSI_BAYAR);", "const terbaca = true;"),
     ('panel: angka bayar bukan dari buku utang pemasok', PANEL, "dibayar: bb ? bb.dibayarMesin : 0,", "dibayar: bb ? bb.dibayar : 0,"),
@@ -286,18 +326,26 @@ MUTASI = [
     ('panel: di aplikasi tablet dialog cetak dibuka', PANEL, "const dialog = () => { if (asliAda()) return set({ kabar: T.nama + ' TIDAK tercetak", "const dialog = () => { if (false) return set({ kabar: T.nama + ' TIDAK tercetak"),
     ('panel: printer diam dianggap gagal', PANEL, "          if (hasilTakDiketahui(e)) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-'", "          if (false) return set({ kabar: 'Printer tidak mengabari hasil cetak lembar ke-'"),
     ('panel: tombol WhatsApp tampil di aplikasi tablet', PANEL, "${asliAda() ? '' : h`<div class=\"kaca-btn\" data-aksi=\"tbmWa\"", "${false ? '' : h`<div class=\"kaca-btn\" data-aksi=\"tbmWa\""),
-    ('catatan pemasok: angka baris tidak dicetak', LOGIKA, "adaN ? (x.n < 0 ? '-' + RP(-x.n) : RP(x.n)) : ''", "''"),
-    ('catatan pemasok: potongan yang sudah dibukukan tanpa tanda minus', LOGIKA, "adaN ? (x.n < 0 ? '-' + RP(-x.n) : RP(x.n)) : ''", "adaN ? RP(Math.abs(x.n)) : ''"),
-    ('catatan pemasok: judul kelompok dibuang', LOGIKA, "if (x.kelas === 'kel') { g.push({ garis: true }); b(String(x.nama).toUpperCase(), '', { tebal: true }); return; }", "if (x.kelas === 'kel') return;"),
-    ('catatan pemasok: nama pemasok tidak dicetak', LOGIKA, "b(i === 0 ? 'Kepada: ' + t : t, '', i === 0 ? { tebal: true } : {})", "i && b(t, '')"),
-    ('catatan pemasok: kalimat asal catatan hilang', LOGIKA, "g.push({ garis: true }); b(S.identitas || '');", "g.push({ garis: true });"),
-    ('catatan pemasok: tanpa tempat tanda tangan', LOGIKA, "b('Dari toko,', 'Diterima pemasok / supir,');", ""),
-    ('catatan pemasok: kapan dicetak tidak dimuat', LOGIKA, "if (C.tanggal) b('Dicetak '", "if (false) b('Dicetak '"),
-    ('panel: tombol catatan pemasok selalu tampil', PANEL, "const S = C.cpIsiSurat(id); if (!S || !S.bisaCetak) return '';", "const S = C.cpIsiSurat(id); if (!S) return '';"),
-    ('panel: kartu tidak memuat tombol catatan pemasok', PANEL, "    ${catatanKartu(id)}\n", ""),
-    ('panel: catatan pemasok mencetak lembar kosong', PANEL, "if (!S || !S.bisaCetak) return { tolak: 'Kedatangan ini tidak punya catatan untuk pemasok", "if (!S) return { tolak: 'Kedatangan ini tidak punya catatan untuk pemasok"),
-    ('panel: aksi cetak catatan tidak terpasang', PANEL, "    tbmCatatan: ({ id }) => cetakCatatan(id),\n", ""),
-    ('panel: WhatsApp catatan tampil di aplikasi tablet', PANEL, "${asliAda() ? '' : h`<div class=\"kaca-btn\" data-aksi=\"tbmCatatanWa\"", "${false ? '' : h`<div class=\"kaca-btn\" data-aksi=\"tbmCatatanWa\""),
+    ('catatan: kelompok "yang tertulis di nota" (harga per kg) ikut', LOGIKA, "const TBM_BUKAN_CATATAN = /^yang tertulis di nota/i;", "const TBM_BUKAN_CATATAN = /^$/;"),
+    ('catatan: usul yang belum disimpan ikut tercetak', LOGIKA, "if (!S || !S.ada || !Array.isArray(S.baris)) return [];", "if (!S || !Array.isArray(S.baris)) return [];"),
+    ('catatan: tidak tercetak di lembar', LOGIKA, "  if ((d.catatan || []).length) {", "  if (false) {"),
+    ('catatan: potongan tanpa tanda minus', LOGIKA, "const tbmRpCatatan = (n) => (n === '' ? '' : n < 0 ? '-' + RP(-n) : RP(n));", "const tbmRpCatatan = (n) => (n === '' ? '' : RP(Math.abs(n)));"),
+    ('catatan: judul kelompok tidak tercetak', LOGIKA, "b(String(k.judul).toUpperCase(), '', { tebal: true, jenis: 'ttCatJudul' });", ""),
+    ('gambar: baris JUMLAH tanpa tanda jenis', LOGIKA, "b('JUMLAH', sebutJumlah(d.jumlah), { tebal: true, jenis: 'ttJumlah' });", "b('JUMLAH', sebutJumlah(d.jumlah), { tebal: true });"),
+    ('gambar: rincian karung tidak dibawa ke model', LOGIKA, "nilai: { nama, rinci, kg:", "nilai: { nama, rinci: '', kg:"),
+    ('model: hasil timbang diabaikan', MODEL, "else if (j === 'ttTimbang') { if (kini) kini.timbang = kanan; }", "else if (j === 'ttTimbang') { }"),
+    ('model: catatan diabaikan', MODEL, "kel.baris.push({ teks: kiri, n: kanan, tebal: !!g.tebal }); }", "}"),
+    ('model: garis nota dianggap tanda terima', MODEL, "/^tt[A-Z]/.test(g.jenis)", "!!g.jenis"),
+    ('panel: catatan tidak diteruskan ke tanda terima', PANEL, ", TBM.tbmCatatan(C.cpIsiSurat(id))) };", ") };"),
+    ('panel: Bluetooth mencetak gambar besar', PANEL, "const timpa = j === 'sunmi-bt' ? { gaya: 'teks' } : null;", "const timpa = null;"),
+    ('panel: logo tidak ikut ke printer', PANEL, "PR.susunCetak(g, timpa, { qr: '', logoToko: pakaiLogo() })", "PR.susunCetak(g, timpa, { qr: '', logoToko: false })"),
+    ('panel: masih dipaksa gaya teks', PANEL, "PR.susunCetak(g, timpa, { qr: '', logoToko: pakaiLogo() })", "PR.susunCetak(g, { gaya: 'teks' }, { qr: '', logoToko: pakaiLogo() })"),
+    ('panel: dialog cetak selalu teks', PANEL, "if (PR.prAtur().gaya === 'teks') return teks();", "return teks();"),
+    ('kanvas: tanda terima digambar gaya Sertifikat', KANVAS, "  if (stAdaTandaTerima(garis)) return gambarTandaTerima(garis, opsi);   // owner 28 Nov 2026: tanda terima barang masuk berlogo\n", ""),
+    ('kanvas: ada teks tanda terima tanpa gores tepi', KANVAS, "  // kop\n  pitaGuilloche(c, W, k, y, P(40)); y += P(62);", "  // kop\n  c.fillText('x', 0, 0); pitaGuilloche(c, W, k, y, P(40)); y += P(62);"),
+    ('kanvas: label tanda terima Jost 400', KANVAS, "tulis('nama & paraf', F_SANS(500, P(14))", "tulis('nama & paraf', F_SANS(400, P(14))"),
+    ('kanvas: tanpa logo toko', KANVAS, "} else if (o.logoToko) { y += gambarLogoToko(c, cx, y, P(150)) + P(16); }", "}"),
+    ('stok: lembar Barang masuk masih menyebut tombol lama', STOK, "ikut tercetak di kedua lembar tanda terima (CETAK 2 LEMBAR)", "bisa langsung dicetak (tombol \"CETAK CATATAN PEMASOK\")"),
     ('panel: menulis ke buku', PANEL, "import { bukanOwner, akunMembaca } from './akses-layar.js';", "import { bukanOwner, akunMembaca } from './akses-layar.js';\nimport { tulisDokumen } from '../data/toko.js';"),
     ('akses: akun bukan-owner dianggap membaca semua koleksi', AKSES_LAYAR, "!bukanOwner(akun) || BACA_STAF.indexOf(koleksi) >= 0;", "true;"),
     ('stok: tombol akun tablet hilang', STOK, " data-k=\"tombol-terima\" data-aksi=\"bukaTerima\">", " data-k=\"tombol-terima\" data-aksi=\"tombolMati\">"),
