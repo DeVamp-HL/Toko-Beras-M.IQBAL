@@ -55,7 +55,8 @@ import { asliAda, padaPindai, padaTempel, ketikTambah, ketikMesin, KETIK_TUNGGU 
 import * as SL from './inti/salinan.js';
 // owner 21 Nov 2026: notifikasi dalam aplikasi (titipan & pesan dari tablet → owner; putusan owner → tablet)
 import { kbSidik, kbBanding, kbRingkas, kbKabarToko } from './layar/kabar-baru-logika.js';
-import { hitungBelanja } from './layar/belanja-logika.js';   // owner 28 Nov 2026: kabar toko — merek yang perlu dipesan menurut Belanja
+import { hitungBelanja } from './layar/belanja-logika.js';
+import * as SLG from './layar/serah-laci-logika.js';   // owner 28 Nov 2026: serah terima laci saat ganti jaga   // owner 28 Nov 2026: kabar toko — merek yang perlu dipesan menurut Belanja
 import { lampuKejadian } from './inti/perangkat.js';
 import { nhPasang } from './data/notif-hp.js';
 nhPasang({ app: () => fb.appFirebase(), simpan: (t) => fb.simpanTokenNotif(t), hapus: () => fb.hapusTokenNotif() });   // notifikasi HP owner: alat Firebase untuk Menu › Perangkat
@@ -317,6 +318,7 @@ function pengingatLonceng(a) {
 // Menu (putaran 14): laci N1 + pita jam + Sistem (SS1–SS5). Tujuan baris = layar lain lewat pintu yang sama dengan ketukan di layar itu.
 const menu = pasangLayarMenu(document.getElementById('layarMenu'), { lonceng: pintuLonceng,
   buktiFoto: { ada: () => sumberData().jenis === 'firestore', simpan: (d) => fb.simpanFotoBukti(d), baca: (t) => fb.bacaFotoBukti(t) },   // owner 28 Nov 2026 (rules v27): foto bukti tugas owner
+  serahLaci: { baca: () => serahWajib(), selesai: () => serahSelesai() },   // owner 28 Nov 2026: serah terima laci saat ganti jaga (kartu paling atas Menu tablet)
   gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); }, bukaLaporan: (keluarga, t) => { pindah('laporan'); laporan.buka(keluarga, t); }, bukaJual: (lembar) => { pindah('jual'); layar.keadaan.setel({ lembar, kabar: '' }); },
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
@@ -411,6 +413,8 @@ const bolehLayarIni = (a, t) => bolehLayar(a, t) || (t === 'harga' && !!a && bis
 const navHargaTampil = () => { const el = document.querySelector('nav [data-tujuan="harga"]'); return !!el && !el.hidden; };
 function pindah(tujuan) {
   if (!LAYAR_ADA[tujuan]) return false;
+  // owner 28 Nov 2026: serah terima laci WAJIB sebelum mulai jaga — layar lain tertahan di Menu (kartu serah terima paling atas) sampai hitungannya terkirim
+  if (tujuan !== 'menu' && serahWajib()) { kabarSebentar('Hitung laci serah terima dulu — kartu paling atas di Menu. Sesudah terkirim, tablet bisa dipakai jual.'); if (tabKini === 'menu') return true; tujuan = 'menu'; }
   const a = akunKini(); if (a && bisaBekerja(a) && !bolehLayarIni(a, tujuan)) { kabarSebentar('Layar ini tidak termasuk hak ' + teksMasukSebagai(a) + '.'); return true; }
   const dari = tabKini; tabKini = tujuan;
   Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].hidden = k !== tujuan; });
@@ -720,6 +724,26 @@ function mulaiJaga(op, sidik) {
   gambarAkun(akunAsli()); gambarChipDanNav(); kabarSebentar(op.nama + ' jaga' + (sidik ? ' (sidik jari)' : '') + ' — catatan berikutnya atas nama ' + op.nama);
   setTimeout(kirimKabarHangus, 0);
   setTimeout(() => catatJaga(op), 0);   // owner 28 Nov 2026 (rules v27): absen jaga
+  setTimeout(() => cekSerahLaci(op), 0);   // owner 28 Nov 2026: serah terima laci saat ganti jaga
+}
+// owner 28 Nov 2026: SERAH TERIMA LACI — orang yang DATANG menghitung laci (buta, per pecahan) bila hari itu sudah ada orang LAIN yang jaga di tablet ini. Disimpan per
+// perangkat (localStorage) supaya membuka ulang aplikasi tidak melewatinya; gugur sendiri besoknya (hari itu sudah ditutup lewat Tutup hari). Akun owner tidak pernah.
+const slBaca = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+const slTulis = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* perangkat menolak — serah terima hanya di memori */ _slMemori[k] = v; } };
+const _slMemori = {};
+function slWaktu() { const d = new Date(); const dua = (n) => String(n).padStart(2, '0'); return { tanggal: d.getFullYear() + '-' + dua(d.getMonth() + 1) + '-' + dua(d.getDate()), jam: dua(d.getHours()) + ':' + dua(d.getMinutes()) }; }
+function serahWajib() {
+  const a = akunAsli(); if (!a || a.jenis === 'owner' || sumberData().jenis === 'cadangan') return null;
+  return SLG.slMasihWajib(slBaca(SLG.SL_KUNCI_WAJIB) || _slMemori[SLG.SL_KUNCI_WAJIB] || null, slWaktu().tanggal);
+}
+function serahSelesai() { slTulis(SLG.SL_KUNCI_WAJIB, null); delete _slMemori[SLG.SL_KUNCI_WAJIB]; gambarChipDanNav(); }
+function cekSerahLaci(op) {
+  try {
+    const a = akunAsli(); if (!a || a.jenis === 'owner' || !op || sumberData().jenis === 'cadangan') return; const w = slWaktu();
+    const r = SLG.slSesudahPin(slBaca(SLG.SL_KUNCI_TERAKHIR), op, w, SLG.slMasihWajib(slBaca(SLG.SL_KUNCI_WAJIB), w.tanggal));
+    slTulis(SLG.SL_KUNCI_TERAKHIR, r.terakhir); slTulis(SLG.SL_KUNCI_WAJIB, r.wajib);
+    if (r.wajib) { pindah('menu'); menu.gambar(); kabarSebentar('Serah terima laci: hitung laci bersama ' + (r.wajib.dari || 'penjaga sebelumnya') + ' dulu, baru mulai jaga'); }
+  } catch (e) { console.error('serah terima laci', e); }
 }
 // owner 28 Nov 2026 (rules v27, tablet saat owner pergi): ABSEN JAGA — satu catatan jagaLog tiap PIN / sidik jari berhasil (nama, peran, tanggal, jam). Kabar "toko dibuka" /
 // "ganti jaga" ke HP owner dikirim fungsi server kabarJaga dari catatan ini. Gagal (rules belum terbit / tanpa internet) tidak menghalangi jualan.

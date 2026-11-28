@@ -259,7 +259,7 @@ STATIS = [
     ('bundel jsc memuat laci & rutin otomatis', 'bundel', ["LH_MODUL = 'baru/js/layar/laci-logika.js'", "RN_MODUL = 'baru/js/layar/rutin-logika.js'"]),
     ('app.js: staf mendarat di halaman tugas (sekali per orang per hari) + lonceng & Pengingat selisih laci owner saja', 'app', ['if (tadi && tsMendarat(akun))', "pindah('menu'); layar.gambar(); return;", "LC_JENIS.push('laci', 'jelaskan');",
         'return pwSumberPengingat(sekarangCadangan || new Date()).concat(sumberLaci());', 'function sumberLaci()']),
-    ('Menu: kartu Tugas hari ini PALING ATAS akun staf + kartu Rutin + Menu › Toko ini › Rutin (owner)', 'menu', ["data-k=\"staf\" style=\"display: flex; flex-direction: column; gap: 10px;\">\n      ${kartuTugasStaf(s, { akun: akunM, kini: kini() })}", "${kartuRutin(s, { akun: akunM, kini: kini() })}",
+    ('Menu: kartu Tugas hari ini PALING ATAS akun staf (di bawah kartu serah terima laci yang hanya tampil saat wajib, owner 28 Nov 2026) + kartu Rutin + Menu › Toko ini › Rutin (owner)', 'menu', ["data-k=\"staf\" style=\"display: flex; flex-direction: column; gap: 10px;\">\n      ${kartuSerahLaci(s, { wajib: opsi.serahLaci ? opsi.serahLaci.baca() : null, kini: kini() })}\n      ${kartuTugasStaf(s, { akun: akunM, kini: kini() })}", "${kartuRutin(s, { akun: akunM, kini: kini() })}",
         "s.sistem === 'rutin' ? gambarRutinOwner(", "aksiPanelRutin({ set, st, tulis, waktu, kini, akun: opsi.akun, pergi })", "rutin: [['hari', 'Hari ini'], ['riwayat', 'Siapa mencentang'], ['atur', 'Atur daftar']]", "rutin: 'Rutin' };", "'rnAtur', 'rnCatat',"]),
     ('Menu › Toko ini: baris Rutin', 'mlog', ["baris('rutin', 'centang', 'Rutin',"]),
     ('panel: tombol MULAI JUALAN ke Jual + centang + atur', 'panel', ['data-aksi="stafKe" data-t="jual"', 'rnCentang: ({ id }) => centang(id)', 'rnAturSimpan: async () =>', 'tsKe: ({ id }) =>']),
@@ -277,7 +277,7 @@ STATIS = [
 RUSAK_STATIS = [
     ('staf tidak mendarat di tugas', 'app', 'if (tadi && tsMendarat(akun))', 'if (false && tsMendarat(akun))'),
     ('lonceng tanpa selisih laci', 'app', "LC_JENIS.push('laci', 'jelaskan');", ''),
-    ('kartu tugas tidak di atas', 'menu', "gap: 10px;\">\n      ${kartuTugasStaf(s, { akun: akunM, kini: kini() })}", "gap: 10px;\">\n"),
+    ('kartu tugas tidak di atas', 'menu', "kini: kini() })}\n      ${kartuTugasStaf(s, { akun: akunM, kini: kini() })}", "kini: kini() })}\n"),
     ('isian rutin tidak dijaga ganti orang', 'menu', "'rnAtur', 'rnCatat',", ''),
     ('kartu Selisih laci hilang dari satu tata letak', 'uang', '${riwayat}${selisihK}', '${riwayat}'),
     ('alasan bebas hilang', 'uang', "${H.perluAlasan ? alasanBebas(d, H) : ''}", ''),

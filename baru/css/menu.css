@@ -191,3 +191,22 @@ main.layar-menu.masuk > header, main.layar-menu.masuk > .mn-gulir > .jalur, main
 .layar-menu .aa-batang i { display: block; height: 100%; border-radius: 4px; background: var(--emas, #b8962e); transform-origin: left center; animation: aa-tumbuh 700ms cubic-bezier(.2,.8,.2,1) both; }
 @keyframes aa-tumbuh { from { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .layar-menu .aa-batang i { animation: none; } }
+/* owner 28 Nov 2026 ("tutup hari rapikan"): kartu Tutup hari & Serah terima laci di Menu tablet memakai baris yang sama dengan Uang › Tutup hari — hitung per pecahan,
+   timbang cepat, cek wadah literan (tiga tombol sebaris). Dulu gayanya hanya ada di layar Uang, jadi di tablet tombolnya melebar & angkanya menempel. */
+.layar-menu .th-pecah { display: grid; grid-template-columns: 78px auto minmax(0, 1fr); gap: 8px; align-items: center; min-height: 36px; font-size: 12.5px; border-bottom: 1px dashed var(--garis); } .layar-menu .th-pecah .jm { font-family: 'Bodoni Moda', Georgia, serif; font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; }
+.layar-menu .th-pecah .ketik-nama { min-height: 34px; width: 64px; text-align: center; padding: 0 4px; font-family: 'Bodoni Moda', Georgia, serif; font-size: 15px; }
+.layar-menu .th-baris { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 30px; font-size: 12.5px; } .layar-menu .th-baris .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 14.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.layar-menu .th-baris.jumlah { border-top: 1px solid var(--emas-garis); font-weight: 600; margin-top: 2px; padding-top: 2px; } .layar-menu .th-baris.awas .n { color: var(--awas); font-weight: 600; }
+.layar-menu .th-timb { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 44px; font-size: 12.5px; border-bottom: 1px dashed var(--garis); } .layar-menu .th-timb .ketik-nama { min-height: 36px; width: 84px; text-align: right; }
+.layar-menu .cw-baris { display: flex; flex-direction: column; gap: 5px; padding: 6px 0; border-bottom: 1px dashed var(--garis); transition: opacity 320ms ease; } .layar-menu .cw-baris.dicek { opacity: 0.82; }
+.layar-menu .cw-baris.pegas { animation: pegas 520ms cubic-bezier(.2,.8,.2,1); }
+.layar-menu .cw-atas { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12.5px; font-weight: 600; } .layar-menu .cw-atas .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 13.5px; font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.layar-menu .cw-aksi { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; } .layar-menu .cw-aksi .kaca-btn { min-height: 36px; font-size: 10.5px; line-height: 1.15; text-align: center; padding: 0 5px; }
+.layar-menu .cw-aksi .kaca-btn.mati { pointer-events: auto; cursor: not-allowed; }   /* tombol MATI tetap bisa diketuk untuk membaca sebabnya (pola data-aksi="tombolMati" data-kal) */
+.layar-menu .cw-aksi .kaca-btn.awas { border-color: var(--awas); color: var(--awas); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .layar-menu .cw-baris.pegas { animation: none; } }
+/* tiap bagian Tutup hari tablet dipisah garis tipis + jarak; nomor bagian tetap di judulnya */
+.layar-menu [data-k="hl-kartu"] > [data-k^="hl-timbang"], .layar-menu [data-k="hl-kartu"] > [data-k^="hl-cek"], .layar-menu [data-k="hl-kartu"] > [data-k^="hl-aman"],
+.layar-menu [data-k="hl-kartu"] > [data-k="hl-catatan"] { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--garis); padding-top: 10px; margin-top: 2px; }
+.layar-menu [data-k="hl-pecahan"], .layar-menu [data-k="sl-pecahan"] { display: flex; flex-direction: column; }
+
