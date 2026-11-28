@@ -3942,16 +3942,13 @@ juga di cetak lewat tanda terima, tidak hanya melewati dokumen." Mesin beku tida
   | catatan untuk pemasok (kurang / lebih / tertinggal / mutu) + cara klaim | hanya catatan bebas | ADA saat mencatat — kolom `catatanPemasok` & `klaim` (status "sudah disampaikan", nilai dari timbang) ikut tersimpan; "isi dari hasil timbang & cek mutu" satu ketukan |
   | memakai potongan yang menunggu | tidak ada | USUL — kolom `usulPakaiPotong` { rp, dari } di kedatangannya; bon dicatat PENUH; owner menyetujui di Koreksi kedatangan (`ptUsulPakai` → `susunSetujuPakaiPotong`: `potonganPakai` + satu bayar bon dari laci bertanggal HARI DISETUJUI + patokan laci + potongan; `susunLepasUsulPakai` = tidak dipakai) |
   | catatan & klaim belakangan, retur ke pemasok, koreksi, hapus kedatangan | tidak ada | USUL — lembar "Kedatangan tersimpan" (lembar tanda terima) punya kartu "Catatan & usul untuk owner": `mtSusunUsul` menulis SATU kabar barang masuk (`persetujuan`, tindakan `barangMasuk`, bentuk rules v15) berkolom `usul` { jenis catatan / retur / koreksi / hapus, … }. Owner melihatnya di Koreksi kedatangan (kartu "Usul dari tablet"): usul catatan / retur MENGISI lembarnya (`mtDrafDariUsul`), owner memeriksa lalu menyimpan sendiri — kiriman itu sekaligus menandai usulnya "sudah diperiksa" |
-  | tanda terima + cetak catatan pemasok | tanda terima | + cetak catatan (lihat bawah) |
+  | tanda terima + cetak catatan pemasok | tanda terima | 28 Nov: catatan ikut di kedua lembar tanda terima (lihat bawah) |
   | tanggal datang, tunai / bon, kelas & varian merek baru, uang kembali ke laci / rekening, potong bon membukukan, patokan kas, hapus, Atur (isi karung, ambang mutu, batas HPP) | owner saja | TETAP owner (keputusan owner 22 Nov: tablet selalu bon bertanggal hari ini, uang lewat titipan, koreksi / hapus oleh owner) |
   Akun tablet tidak pernah menulis kedatangan yang SUDAH tersimpan, `pengaturan/titikKas`, atau bayar bon — karena itu tidak ada rules baru. `akses.js`: pasangan
   beli-jadi kedatangan tablet dihitung tindakan KEDATANGAN (bukan adukan), jadi Penjaga laci yang kisi adukannya "tidak boleh" tetap bisa mencatat kemasan jadi.
-- **Catatan untuk pemasok dicetak dari kartu tanda terima** — tombol "CETAK CATATAN PEMASOK" (+ WhatsApp di luar aplikasi tablet) di kartu tanda terima (sesudah
-  simpan, saat koreksi, dan di lembar kedatangan tersimpan tablet). Muncul hanya bila kedatangan itu punya catatan / klaim / catatan bebas / baris ditolak /
-  potongan, ATAU usul dari timbang & cek mutu (`cpIsiSurat().bisaCetak`). Isinya SATU penyusun, `cpIsiSurat` (stok-catat-logika) — dipakai Laporan › Dokumen ›
-  Dokumen kecil (berkop) dan struk (`tbmGarisCatatan`: satu lembar, judul kelompok huruf besar, angka di kanan, potongan yang sudah dibukukan bertanda minus,
-  tempat tanda tangan toko & pemasok). Jalur cetaknya sama dengan tanda terima (`kirim`): printer tablet / jaringan, atau dialog cetak peramban (HP / Mac — bisa
-  disimpan PDF).
+- ~~Catatan untuk pemasok dicetak dari kartu tanda terima~~ — **DIGANTI 28 Nov 2026** (owner: "Fitur cetak catatan barang masuk hapus … cetak 2 lembar … ada
+  catatannya"): tombol "CETAK CATATAN PEMASOK" dan `tbmGarisCatatan` DIHAPUS. Catatan yang DITULIS toko ikut tercetak di KEDUA lembar tanda terima & teks
+  WhatsApp-nya — lihat bagian "Tanda terima 2 lembar berlogo (28 Nov 2026)" di bawah. Surat berkop tetap di Laporan › Dokumen › Dokumen kecil (`cpIsiSurat`).
 Alat uji: `uji_barang_masuk_baru.py` (185 pemeriksaan, kontrol 174), `uji_masuk_tablet.py` (88, kontrol 47), `uji_terima_barang.py` (145, kontrol 47),
 `peta_akses.py` (jalur `susunSetujuPakaiPotong` & `susunLepasUsulPakai` terdaftar; kiriman tablet terbesar diukur). Belum dicoba: menyimpan ke data toko, cetak di
 printer sungguhan, push kabar usul di HP owner.
@@ -4732,3 +4729,20 @@ piutang yang sudah lewat jatuh tempo **tidak dihitung** sebagai uang masuk · be
   garis membawa piutang yang jatuh tempo (yang lewat disebut), beban gudang menyebut beras karung diperkirakan habis dalam 7 hari (belum ada pesanan pemasok yang ditunggu).
 - Belum dicoba di data asli (cadangan baca saja): menulis tarif bongkar & kelompok umur utang dari layar, tanda tarif di tablet Penjaga laci sesudah owner menulis tarif,
   empat kartu Dasbor di perangkat owner sesudah dipasang.
+
+## Tanda terima 2 lembar berlogo (28 Nov 2026)
+Owner 28 Nov 2026 (kata-katanya): "Fitur cetak catatan barang masuk hapus. Maksud gua cetak catatan cukup bisa di cetak lewat dokumen. Sedangkan cetak 2 lembar … ada
+catatannya yang di tulis/catat di barang masuk … Sekalian struk cetak 2 lembar buat jauh lebih rapi dan lebih profesional termasuk adakan logo."
+- **Tombol cetak catatan terpisah DIHAPUS** dari kartu tanda terima (`catatanKartu`, aksi `tbmCatatan` / `tbmCatatanWa`, `tbmGarisCatatan`). Surat berkop tetap di
+  Laporan › Dokumen › Dokumen kecil › Catatan untuk pemasok (`cpIsiSurat`). Kartu tanda terima kini cukup menyebut "Catatan untuk pemasok · N baris — ikut tercetak".
+- **Catatan ikut di KEDUA lembar** (pemasok & toko) dan teks WhatsApp tanda terima, sesudah pembayaran & sebelum tanda tangan. Isinya `tbmCatatan(cpIsiSurat(id))`
+  (terima-barang-logika.js): kelompok surat yang DITULIS toko — catatan toko, ditolak saat datang, sudah dibukukan (minus), catatan bebas, permintaan toko. Kelompok "yang
+  tertulis di nota" (harga per kg) tidak ikut (aturan 4 tanda terima); kedatangan tanpa catatan tersimpan (`S.ada` false, cuma usul dari timbang) = tanpa bagian catatan.
+- **Gaya gambar berlogo**: tiap baris `tbmGaris` bertanda `jenis` 'tt…' → `stModelTandaTerima` (inti/struk-model.js, murni) → `gambarTandaTerima` (inti/struk-kanvas.js):
+  pita guilloché, logo toko (`gambarLogoToko`, ikut setelan struk "Sertakan logo"), M.IQBAL Cinzel, TANDA TERIMA BARANG + Nº, pita LEMBAR PEMASOK / LEMBAR TOKO, isian
+  bertitik (datang, dari), tabel barang (kg nota besar, "15 karung × 50 kg", hasil timbang), JUMLAH, NILAI NOTA bergaris ganda, pembayaran (titik-titik tulis tangan bila
+  tidak terbaca), kotak CATATAN UNTUK PEMASOK, dua tanda tangan bergaris, nama terang supir (lembar toko), kalimat kaki. Pelajaran cetak CPad dipakai: semua teks lewat
+  `isiHuruf` (gores tepi `stTebalHuruf`), tanpa Jost 400. Isi & angka = baris teks yang sama (tidak ada angka baru).
+- Cetak: printer tablet / jaringan memakai gaya setelan perangkat (`prAtur().gaya`, bawaan gambar); **Bluetooth tetap teks** (kiriman gambar besar lewat Bluetooth sering
+  hilang). Dialog cetak HP / Mac gaya gambar = gambar lembar yang sama, satu halaman per lembar (`#cetakStruk.gambar`, jual.css).
+- Alat uji: `uji_terima_barang.py` (176, kontrol 57). Belum dicoba: cetak di NT320 asli dari CPad.

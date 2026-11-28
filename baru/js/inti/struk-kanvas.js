@@ -7,7 +7,7 @@
 // huruf pahat (Cinzel), Nota Nº (Bodoni), isian bertitik, tabel uraian, TOTAL bergaris ganda, tanda tangan yang melayani bergaya tulisan (Cormorant miring),
 // cap kecil bertangkai padi. Garis yang tidak bertanda `jenis` (contoh lama) tetap digambar gaya polos di bawah.
 import { EP_TITIK, epHitamPutih, epTanpaEmoji } from './escpos.js';
-import { stModelSertifikat, stTebalHuruf } from './struk-model.js';
+import { stModelSertifikat, stTebalHuruf, stAdaTandaTerima, stModelTandaTerima } from './struk-model.js';
 import { qrSusun, qrTitikMuat, QR_TENANG } from './qr.js';
 import { lgGambarKanvas } from './logo-toko.js';
 
@@ -54,6 +54,7 @@ function bungkus(ctx, teks, lebar) {
  * Hasil: { bit, lebar, tinggi, kanvas } — kanvas = pratinjau persis (hitam/putih) yang akan keluar dari printer.
  */
 export function gambarStruk(garis, opsi) {
+  if (stAdaTandaTerima(garis)) return gambarTandaTerima(garis, opsi);   // owner 28 Nov 2026: tanda terima barang masuk berlogo
   if ((garis || []).some((g) => g && g.jenis)) return gambarSertifikat(garis, opsi);   // owner 17 Nov: struk nota = gaya Sertifikat
   return gambarPolos(garis, opsi);
 }
@@ -255,6 +256,137 @@ function gambarSertifikat(garis, opsi) {
   y += P(16); guilloche(y, P(40)); y += P(50);
   const jadi = jadiBit(kanvas, c, W, y); jadi.qrDiGambar = !!qrSisi;
   return jadi;
+}
+
+// ---------- TANDA TERIMA BARANG MASUK (owner 28 Nov 2026: "jauh lebih rapi dan lebih profesional termasuk adakan logo") ----------
+// Sekeluarga dengan nota Sertifikat (pita guilloché, logo toko, Cinzel / Bodoni / Jost), tapi bentuk DOKUMEN: judul & Nº, pita lembar, isian bertitik,
+// tabel barang, nilai nota bergaris ganda, pembayaran, kotak CATATAN UNTUK PEMASOK, dua tanda tangan bergaris. Pelajaran cetak CPad 17–18 Nov dipakai
+// sama: SEMUA teks lewat isiHuruf (isi + gores tepi stTebalHuruf), label Cinzel 700, angka Jost tegak / Bodoni bergores — tanpa Jost 400 dan tanpa
+// Cormorant miring untuk angka. Isi & angka = model stModelTandaTerima (garis tbmGaris yang sama dengan gaya teks & WhatsApp).
+function pitaGuilloche(c, W, k, yy, t) {
+  c.lineWidth = Math.max(1.5, 1.6 * k);
+  for (let g = 0; g < 5; g++) {
+    c.beginPath();
+    for (let px = 0; px <= W; px += 3) { const a = px / W * Math.PI * 2; const py = yy + t / 2 + Math.sin(a * 7 + g * 0.9) * t * 0.32 + Math.sin(a * 3 - g * 0.6) * t * 0.12; if (px) c.lineTo(px, py); else c.moveTo(px, py); }
+    c.stroke();
+  }
+  const tb = Math.max(2, Math.round(3 * k)); c.fillRect(0, Math.round(yy - 2), W, tb); c.fillRect(0, Math.round(yy + t), W, tb);
+}
+function gambarTandaTerima(garis, opsi) {
+  const o = opsi || {}; const W = EP_TITIK[o.kertas] || EP_TITIK[80]; const k = W / 576; const P = (n) => Math.round(n * k); const M = stModelTandaTerima(garis);
+  const nCat = M.catatan.reduce((a, x) => a + 2 + x.baris.length * 2, 0);
+  const kanvas = document.createElement('canvas'); kanvas.width = W;
+  kanvas.height = Math.round((2600 + 190 * M.barang.length + 70 * (M.bayar.length + M.bayarKet.length * 2) + 60 * nCat) * k);
+  const c = kanvas.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, W, kanvas.height); c.fillStyle = '#000'; c.strokeStyle = '#000'; c.textBaseline = 'alphabetic';
+  const L = P(24), R = W - P(24), cx = W / 2; let y = P(8);
+  const huruf = (f) => { c.font = f; };
+  const lebarT = (t, f, sp) => { huruf(f); return Array.from(String(t)).reduce((a, ch) => a + c.measureText(ch).width + (sp || 0), -(sp || 0)); };
+  const isiHuruf = (t, x, yb, tb) => { c.fillText(t, x, yb); if (tb) { c.save(); c.lineWidth = tb; c.lineJoin = 'round'; c.strokeText(t, x, yb); c.restore(); } };
+  const tulis = (t, f, x, yb, align, sp) => {
+    t = epTanpaEmoji(t); huruf(f); const tb = stTebalHuruf(f, k);
+    if (!sp) { c.textAlign = align || 'left'; isiHuruf(t, x, yb, tb); return; }
+    const w = lebarT(t, f, sp); let px = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x; c.textAlign = 'left';
+    for (const ch of t) { isiHuruf(ch, px, yb, tb); px += c.measureText(ch).width + sp; }
+  };
+  const garisH = (x0, x1, yy, t) => c.fillRect(Math.round(x0), Math.round(yy), Math.round(x1 - x0), Math.max(1, Math.round(t)));
+  const titik = (yy, x0, x1) => { for (let px = x0; px < x1; px += P(9)) c.fillRect(Math.round(px), Math.round(yy), Math.max(2, P(2)), Math.max(2, P(2))); };
+  const muatLebar = (t, fBuat, px0, maks, sp) => { let px = px0; while (px > 8 && lebarT(t, fBuat(px), sp) > maks) px -= 1; return px; };
+  const potong = (t, f, lebar) => { huruf(f); return bungkus(c, epTanpaEmoji(t), lebar); };
+  const F_LABEL = F_CIN(700, P(15));
+
+  // kop
+  pitaGuilloche(c, W, k, y, P(40)); y += P(62);
+  if (o.logo && o.logo.bit && o.logo.lebar <= W) {   // logo perangkat sendiri (Printer tablet ini) menang — sama dengan nota
+    const img = c.createImageData(o.logo.lebar, o.logo.tinggi);
+    for (let i = 0; i < o.logo.bit.length; i++) { const v = o.logo.bit[i] ? 0 : 255; img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
+    c.putImageData(img, Math.round((W - o.logo.lebar) / 2), y); y += o.logo.tinggi + P(16);
+  } else if (o.logoToko) { y += gambarLogoToko(c, cx, y, P(150)) + P(16); }
+  if (M.kopBesar) { const px = muatLebar(M.kopBesar, (n) => F_CIN(700, n), P(46), R - L, P(7)); tulis(M.kopBesar, F_CIN(700, px), cx, y + Math.round(px * 0.88), 'center', P(7)); y += Math.round(px * 1.12); }
+  if (M.kopKecil) { tulis(M.kopKecil, F_SANS(500, P(16)), cx, y + P(15), 'center', P(11)); y += P(28); }
+  const alamat = [M.alamat, M.telp ? 'Telp ' + M.telp : ''].filter(Boolean).join(' · ');
+  if (alamat) potong(alamat, F_SANS(500, P(17)), R - L).forEach((t) => { tulis(t, F_SANS(500, P(17)), cx, y + P(16), 'center'); y += P(24); });
+  y += P(12); garisH(L, R, y, Math.max(2, P(3))); garisH(L, R, y + P(7), Math.max(1.5, P(1.5))); y += P(30);
+
+  // judul, nomor, lembar
+  const judul = (M.judul || 'TANDA TERIMA BARANG').toUpperCase(); const no = M.no ? 'Nº ' + M.no : '';
+  const wJ = lebarT(judul, F_CIN(600, P(19)), P(3)); const wN = no ? lebarT(no, F_BOD(700, P(25)), P(1)) : 0;
+  if (wJ + wN + P(16) <= R - L) { tulis(judul, F_CIN(600, P(19)), L, y + P(18), 'left', P(3)); if (no) tulis(no, F_BOD(700, P(25)), R, y + P(21), 'right', P(1)); y += P(38); }
+  else { tulis(judul, F_CIN(600, P(19)), cx, y + P(18), 'center', P(3)); y += P(32); if (no) { tulis(no, F_BOD(700, P(25)), cx, y + P(21), 'center', P(1)); y += P(34); } }
+  if (M.lembar) {
+    const teks = M.lembar === 'toko' ? 'LEMBAR TOKO' : 'LEMBAR PEMASOK'; const f = F_CIN(700, P(17)); const w = lebarT(teks, f, P(4)) + P(40); const h = P(40);
+    c.lineWidth = Math.max(2, P(2)); c.strokeRect(Math.round(cx - w / 2), Math.round(y), Math.round(w), h); c.lineWidth = Math.max(1, P(1)); c.strokeRect(Math.round(cx - w / 2 + P(5)), Math.round(y + P(5)), Math.round(w - P(10)), h - P(10));
+    tulis(teks, f, cx, y + P(27), 'center', P(4)); y += h + P(18);
+  }
+
+  // isian bertitik
+  const isian = (kunci, nilai, fBuat, px0) => {
+    if (!nilai) return; const ku = String(kunci).toUpperCase(); const wk = lebarT(ku, F_LABEL, P(2)); const px = muatLebar(nilai, fBuat, px0, R - L - wk - P(30)); const f = fBuat(px); const wv = lebarT(nilai, f);
+    tulis(ku, F_LABEL, L, y + P(18), 'left', P(2)); titik(y + P(16), L + wk + P(10), R - wv - P(10)); tulis(nilai, f, R, y + P(18), 'right'); y += P(32);
+  };
+  isian('Datang', M.datang, (n) => F_SANS(500, n), P(19)); isian('Dari', M.dari, (n) => F_SANS(600, n), P(21)); y += P(8);
+
+  // tabel barang
+  if (M.barang.length) {
+    const atas = y; garisH(L, R, y, Math.max(2, P(2))); y += P(10);
+    tulis('URAIAN', F_LABEL, L + P(10), y + P(15), 'left', P(3)); tulis('JUMLAH', F_LABEL, R - P(10), y + P(15), 'right', P(3)); y += P(26);
+    garisH(L, R, y, Math.max(1.5, P(1.5))); y += P(14);
+    M.barang.forEach((b, i) => {
+      const fKg = F_BOD(600, P(24)); const wk = b.kg ? lebarT(b.kg, fKg) + P(16) : 0;
+      potong(b.nama, F_SANS(600, P(22)), R - L - P(20) - wk).forEach((t, j, arr) => { tulis(t, F_SANS(600, P(22)), L + P(10), y + P(19)); if (j === arr.length - 1 && b.kg) tulis(b.kg, fKg, R - P(10), y + P(20), 'right'); y += P(27); });
+      if (b.rinci) { tulis(b.rinci, F_SANS(500, P(19)), L + P(22), y + P(16)); y += P(24); }
+      if (b.timbang) { const fT = F_SANS(600, P(19)); tulis('Hasil timbang (dibukukan)', F_SANS(500, P(19)), L + P(22), y + P(16)); tulis(b.timbang, fT, R - P(10), y + P(16), 'right'); y += P(24); }
+      y += P(6); if (i < M.barang.length - 1) { titik(y, L + P(10), R - P(10)); y += P(14); }
+    });
+    y += P(4); garisH(L, R, y, Math.max(1.5, P(1.5))); c.lineWidth = Math.max(1.5, P(2)); c.strokeRect(L, atas, R - L, y - atas); y += P(20);
+  }
+
+  // jumlah & nilai nota
+  if (M.jumlah) { const px = muatLebar(M.jumlah, (n) => F_SANS(600, n), P(19), R - L - P(150)); tulis('JUMLAH', F_LABEL, L + P(10), y + P(17), 'left', P(3)); tulis(M.jumlah, F_SANS(600, px), R - P(10), y + P(17), 'right'); y += P(32); }
+  if (M.nilai) {
+    tulis('NILAI NOTA', F_CIN(700, P(20)), L + P(10), y + P(34), 'left', P(4));
+    const pxN = muatLebar(M.nilai, (n) => F_BOD(700, n), P(40), R - L - P(200)); tulis(M.nilai, F_BOD(700, pxN), R - P(10), y + P(38), 'right');
+    y += P(50); const xg = Math.min(P(260), R - P(220)); garisH(xg, R, y, Math.max(2, P(2))); garisH(xg, R, y + P(6), Math.max(2, P(2))); y += P(26);
+  }
+
+  // pembayaran
+  M.bayar.forEach((b) => {
+    const fL = F_SANS(b.tebal ? 600 : 500, P(20)); const fN = F_SANS(600, P(20)); const kosong = /^\.+$/.test(b.n);
+    const label = b.label.replace(/:\s*Rp$/, ''); const wn = kosong ? P(150) : b.n ? lebarT(b.n, fN) : 0;
+    const baris = potong(label, fL, R - L - P(30) - wn);
+    baris.forEach((t, j) => { tulis(t, fL, L + P(10), y + P(17)); if (j === baris.length - 1) {
+      if (kosong) { tulis('Rp', fN, R - P(150), y + P(17), 'left'); titik(y + P(15), R - P(150) + lebarT('Rp', fN) + P(8), R - P(10)); }
+      else if (b.n) tulis(b.n, fN, R - P(10), y + P(17), 'right'); } y += P(28); });
+  });
+  M.bayarKet.forEach((t) => potong(t, F_SANS(500, P(17)), R - L - P(20)).forEach((s) => { tulis(s, F_SANS(500, P(17)), L + P(10), y + P(15)); y += P(23); }));
+  if (M.keadaan) { y += P(4); potong(M.keadaan, F_SANS(500, P(16)), R - L - P(20)).forEach((s) => { tulis(s, F_SANS(500, P(16)), L + P(10), y + P(14)); y += P(22); }); }
+
+  // catatan untuk pemasok
+  if (M.catatan.length) {
+    y += P(16); const atas = y; y += P(12);
+    tulis('CATATAN UNTUK PEMASOK', F_CIN(700, P(16)), cx, y + P(16), 'center', P(3)); y += P(28); garisH(L + P(14), R - P(14), y, Math.max(1.5, P(1.5))); y += P(12);
+    M.catatan.forEach((kel, i) => {
+      if (i) y += P(6);
+      if (kel.judul) { tulis(kel.judul.toUpperCase(), F_CIN(700, P(13)), L + P(14), y + P(14), 'left', P(2)); y += P(24); }
+      kel.baris.forEach((x) => {
+        const fN = F_SANS(600, P(18)); const wn = x.n ? lebarT(x.n, fN) + P(14) : 0; const f = F_SANS(x.tebal ? 600 : 500, P(18));
+        const baris = potong(x.teks, f, R - L - P(42) - wn);
+        baris.forEach((t, j) => { if (j === 0) c.fillRect(L + P(14), y + P(8), Math.max(3, P(5)), Math.max(3, P(5))); tulis(t, f, L + P(26), y + P(15), 'left'); if (j === baris.length - 1 && x.n) tulis(x.n, fN, R - P(14), y + P(15), 'right'); y += P(24); });
+      });
+    });
+    y += P(10); c.lineWidth = Math.max(1.5, P(2)); c.strokeRect(L, atas, R - L, y - atas); y += P(10);
+  }
+
+  // tanda tangan
+  if (M.ttd) {
+    y += P(26); const kol = [L + (R - L) / 4, L + (R - L) * 3 / 4]; const lebarKol = (R - L) / 2 - P(24);
+    [M.ttd.kiri, M.ttd.kanan].forEach((t, i) => { const teks = String(t || '').replace(/,\s*$/, '').toUpperCase(); const px = muatLebar(teks, (n) => F_CIN(700, n), P(14), lebarKol, P(2)); tulis(teks, F_CIN(700, px), kol[i], y + P(14), 'center', P(2)); });
+    y += P(100); kol.forEach((x) => garisH(x - lebarKol / 2, x + lebarKol / 2, y, Math.max(1.5, P(1.5)))); y += P(8);
+    kol.forEach((x) => tulis('nama & paraf', F_SANS(500, P(14)), x, y + P(14), 'center')); y += P(28);
+    if (M.namaSupir) { y += P(10); tulis('NAMA TERANG SUPIR & JAM', F_CIN(700, P(13)), L, y + P(14), 'left', P(2)); y += P(62); garisH(L, R, y, Math.max(1.5, P(1.5))); y += P(16); }
+  }
+  if (M.kaki) { y += P(10); potong(M.kaki, F_ITA(600, P(23)), R - L).forEach((t) => { tulis(t, F_ITA(600, P(23)), cx, y + P(19), 'center'); y += P(28); }); }
+  y += P(16); pitaGuilloche(c, W, k, y, P(36)); y += P(46);
+  return jadiBit(kanvas, c, W, y);
 }
 
 /**

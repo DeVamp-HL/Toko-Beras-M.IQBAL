@@ -41,3 +41,34 @@ export function stTebalHuruf(font, k) {
   if (/Cinzel/.test(f)) return Math.max(1, 1.2 * kk);
   return 0;
 }
+
+// ---------- TANDA TERIMA BARANG MASUK (owner 28 Nov 2026: "struk cetak 2 lembar buat jauh lebih rapi dan lebih profesional termasuk adakan logo") ----------
+/** Garis tanda terima bergaya gambar? (baris bertanda `jenis` berawalan 'tt' — terima-barang-logika.js tbmGaris). */
+export const stAdaTandaTerima = (garis) => (garis || []).some((g) => g && typeof g.jenis === 'string' && /^tt[A-Z]/.test(g.jenis));
+/**
+ * Model gambar tanda terima dari garis tbmGaris(). Isi & angka TIDAK berubah: hanya dikelompokkan (kop · judul & nomor · lembar · isian · barang ·
+ * jumlah & nilai nota · pembayaran · catatan untuk pemasok · tanda tangan · kaki). Baris ttRuang (ruang tanda tangan gaya teks) diabaikan — gambarnya
+ * membuat ruang sendiri.
+ */
+export function stModelTandaTerima(garis) {
+  const M = { kop: '', kopBesar: '', kopKecil: '', alamat: '', telp: '', judul: '', no: '', lembar: '', datang: '', dari: '', barang: [], jumlah: '', nilai: '', bayar: [], bayarKet: [],
+    keadaan: '', catatan: [], ttd: null, namaSupir: false, kaki: '' };
+  let kini = null; let kel = null;
+  (garis || []).forEach((g) => {
+    if (!g || g.garis || typeof g.jenis !== 'string') return; const kiri = String(g.kiri || ''); const kanan = String(g.kanan || ''); const j = g.jenis;
+    if (j === 'ttKop') M.kop = kiri; else if (j === 'ttAlamat') M.alamat = kiri; else if (j === 'ttTelp') M.telp = String(g.nilai || kiri);
+    else if (j === 'ttJudul') M.judul = kiri; else if (j === 'ttNo') M.no = String(g.nilai || ''); else if (j === 'ttLembar') M.lembar = String(g.nilai || '');
+    else if (j === 'ttDatang') M.datang = String(g.nilai || ''); else if (j === 'ttDari') M.dari = String(g.nilai || '');
+    else if (j === 'ttBarang') { const v = g.nilai && typeof g.nilai === 'object' ? g.nilai : {}; kini = { nama: String(v.nama || kiri), rinci: String(v.rinci || ''), kg: String(v.kg || ''), timbang: '' }; M.barang.push(kini); }
+    else if (j === 'ttTimbang') { if (kini) kini.timbang = kanan; }
+    else if (j === 'ttJumlah') M.jumlah = kanan; else if (j === 'ttNilai') M.nilai = kanan;
+    else if (j === 'ttBayar') M.bayar.push({ label: kiri, n: kanan, tebal: !!g.tebal });
+    else if (j === 'ttBayarKet') M.bayarKet.push(kiri); else if (j === 'ttKeadaan') M.keadaan = kiri;
+    else if (j === 'ttCatJudul') { kel = { judul: kiri, baris: [] }; M.catatan.push(kel); }
+    else if (j === 'ttCat') { if (!kel) { kel = { judul: '', baris: [] }; M.catatan.push(kel); } kel.baris.push({ teks: kiri, n: kanan, tebal: !!g.tebal }); }
+    else if (j === 'ttTtd') M.ttd = { kiri, kanan }; else if (j === 'ttNamaSupir') M.namaSupir = true; else if (j === 'ttKaki') M.kaki = kiri;
+  });
+  const m = /^(TOKO BERAS)\s+(.+)$/i.exec(M.kop.trim());   // "TOKO BERAS M.IQBAL" → besar "M.IQBAL", kecil "TOKO BERAS" (sama dengan nota)
+  M.kopBesar = m ? m[2].trim() : M.kop.trim(); M.kopKecil = m ? 'TOKO BERAS' : '';
+  return M;
+}
