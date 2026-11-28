@@ -12,6 +12,13 @@
 //  5. KEADAAN BAYAR BERUBAH sesudah lembar dicetak (bon dicicil), jadi lembar memuat kapan ia dicetak. Nomornya turunan id kedatangan, bukan
 //     pencacah baru: dicetak ulang kapan pun nomornya sama.
 //  6. DUA LEMBAR: LEMBAR PEMASOK (dibawa supir) · LEMBAR TOKO (arsip, ditandatangani supir).
+//  7. CATATAN UNTUK PEMASOK ikut di kedua lembar (owner 28 Nov 2026: "cetak 2 lembar ... ada catatannya yang di tulis/catat di barang masuk"; tombol
+//     cetak catatan terpisah DIHAPUS — surat berkop tetap di Laporan › Dokumen › Dokumen kecil). Isinya = penyusun surat yang sama (cpIsiSurat), HANYA
+//     yang ditulis toko: catatan toko, ditolak, sudah dibukukan, catatan bebas, permintaan toko. Bagian "yang tertulis di nota" (harga per kg) tidak
+//     ikut (butir 4); usul dari timbang yang belum disimpan tidak ikut.
+//  8. TIAP BARIS BERTANDA `jenis` berawalan 'tt' (owner 28 Nov 2026: "jauh lebih rapi dan lebih profesional termasuk adakan logo"): printer tablet /
+//     pratinjau menggambarnya sebagai dokumen berlogo (inti/struk-model.js stModelTandaTerima + inti/struk-kanvas.js gambarTandaTerima). Gaya teks &
+//     WhatsApp memakai baris yang sama apa adanya — isi & angka satu sumber.
 // Bentuk garis = garis struk ({ kiri, kanan, tebal, tengah } / { garis: true }), dicetak gaya teks oleh inti/printer.js.
 import { RP, KG, DESIMAL, tanggalPendek } from '../inti/format.js';
 
@@ -44,7 +51,7 @@ export function tbmNomor(batch) {
  *   rinci   — pembayaran yang menunjuk bon ini [{ tanggal, nominal }]; dipakai hanya bila jumlahnya persis = dibayar.
  * Hasil.bayar.keadaan: 'tunai' | 'belum' | 'sebagian' | 'lunas' | 'takTerbaca'.
  */
-export function tbmData(batch, bayar) {
+export function tbmData(batch, bayar, catatan) {
   const B = bayar || {};
   const baris = (batch.merkList || []).map((m) => { const bal = m.bentuk === 'bal';
     return { nama: String(m.merk || ''), namaPemasok: String(m.merkPemasok || ''), bal, kemasan: bal && !!m.kemasanJadi, jumlah: bal ? bil(m.jumlahBal) : bil(m.jumlahKarung), berat: bal ? (m.kemasanJadi ? bil(m.ukuranBag) : 0) : bil(m.beratKarung), kg: bil(m.totalKg), nilai: bil(m.subtotalHarga),
@@ -68,8 +75,26 @@ export function tbmData(batch, bayar) {
   // owner 22 Nov 2026 (paket ③): uang yang dibayar ke supir lewat titipan tablet (belum / tidak terbaca di buku bon perangkat ini) — disebut apa adanya
   hasil.titipSupir = bon ? Math.max(0, Math.round(bil(B.titipSupir))) : 0;
   hasil.potongan = potongan;
-  return { no: tbmNomor(batch), tanggal: String(batch.tanggal || ''), jam: String(batch.jam || ''), pemasok: String(batch.pemasok || '').trim(), baris, jumlah, nilai, bon, bayar: hasil };
+  return { no: tbmNomor(batch), tanggal: String(batch.tanggal || ''), jam: String(batch.jam || ''), pemasok: String(batch.pemasok || '').trim(), baris, jumlah, nilai, bon, bayar: hasil,
+    catatan: Array.isArray(catatan) ? catatan : [] };
 }
+
+/** Kelompok surat yang TIDAK ikut tanda terima: baris nota ber-harga per kg (butir 4) — barang & hasil timbang sudah ada di lembar ini. */
+const TBM_BUKAN_CATATAN = /^yang tertulis di nota/i;
+/**
+ * Catatan untuk pemasok yang ikut tanda terima (butir 7). S = hasil cpIsiSurat(id) (stok-catat-logika) atau null. Hanya bila kedatangan itu PUNYA
+ * catatan tersimpan (S.ada) — usul dari timbang yang belum disimpan tidak dicetak. → [{ judul, baris: [{ teks, n ('' = tanpa angka), tebal }] }].
+ */
+export function tbmCatatan(S) {
+  if (!S || !S.ada || !Array.isArray(S.baris)) return [];
+  const out = []; let kini = null;
+  S.baris.forEach((x) => { if (!x) return; const nama = String(x.nama || '').trim();
+    if (x.kelas === 'kel') { kini = TBM_BUKAN_CATATAN.test(nama) ? null : { judul: nama, baris: [] }; if (kini) out.push(kini); return; }
+    if (!kini || !nama) return; const adaN = x.n !== '' && x.n !== null && x.n !== undefined && isFinite(Number(x.n));
+    kini.baris.push({ teks: nama, n: adaN ? Math.round(Number(x.n)) : '', tebal: x.kelas === 'jumlah' }); });
+  return out.filter((k) => k.baris.length);
+}
+const tbmRpCatatan = (n) => (n === '' ? '' : n < 0 ? '-' + RP(-n) : RP(n));
 
 /** Kalimat pendek keadaan bayar — untuk layar (kartu tanda terima), bukan untuk kertas. */
 export function tbmKalimatBayar(d) {
@@ -85,64 +110,58 @@ const sebutJumlah = (j) => [j.karung ? j.karung + ' karung' : '', j.kemasan ? j.
 
 /**
  * Garis cetak satu lembar. kop = { nama, alamat, telp } (setelan struk); lembar = 'pemasok' | 'toko' | '' (tanpa nama lembar: WhatsApp);
- * dicetak = { tanggal, jam, oleh } — kapan lembar ini dibuat (keadaan bayar berlaku pada saat itu).
+ * dicetak = { tanggal, jam, oleh } — kapan lembar ini dibuat (keadaan bayar berlaku pada saat itu). Tiap baris bertanda `jenis` 'tt…' (butir 8):
+ * ttKop · ttAlamat · ttTelp · ttJudul · ttNo · ttLembar · ttDatang · ttDari · ttBarang (nilai = { nama, rinci, kg }) · ttTimbang · ttJumlah · ttNilai ·
+ * ttBayar · ttBayarKet · ttKeadaan · ttCatKepala · ttCatJudul · ttCat · ttTtd · ttRuang · ttNamaSupir · ttKaki.
  */
 export function tbmGaris(d, kop, lembar, dicetak) {
   const g = []; const b = (kiri, kanan, o) => g.push(Object.assign({ kiri: String(kiri || ''), kanan: kanan === undefined || kanan === null ? '' : String(kanan) }, o || {}));
   const K = kop || {}; const C = dicetak || {};
-  if (K.nama) b(String(K.nama).toUpperCase(), '', { tebal: true, tengah: true }); if (K.alamat) b(K.alamat, '', { tengah: true }); if (K.telp) b('Telp ' + K.telp, '', { tengah: true });
-  g.push({ garis: true }); b('TANDA TERIMA BARANG', '', { tebal: true, tengah: true }); b('No. ' + d.no, '', { tengah: true });
-  if (lembar === 'pemasok') b('LEMBAR PEMASOK', '', { tebal: true, tengah: true }); else if (lembar === 'toko') b('LEMBAR TOKO', '', { tebal: true, tengah: true });
+  if (K.nama) b(String(K.nama).toUpperCase(), '', { tebal: true, tengah: true, jenis: 'ttKop' }); if (K.alamat) b(K.alamat, '', { tengah: true, jenis: 'ttAlamat' });
+  if (K.telp) b('Telp ' + K.telp, '', { tengah: true, jenis: 'ttTelp', nilai: String(K.telp) });
+  g.push({ garis: true }); b('TANDA TERIMA BARANG', '', { tebal: true, tengah: true, jenis: 'ttJudul' }); b('No. ' + d.no, '', { tengah: true, jenis: 'ttNo', nilai: d.no });
+  if (lembar === 'pemasok') b('LEMBAR PEMASOK', '', { tebal: true, tengah: true, jenis: 'ttLembar', nilai: 'pemasok' }); else if (lembar === 'toko') b('LEMBAR TOKO', '', { tebal: true, tengah: true, jenis: 'ttLembar', nilai: 'toko' });
   g.push({ garis: true });
-  b('Datang: ' + tanggalPendek(d.tanggal) + (d.jam ? ' ' + d.jam : ''));
-  b('Dari: ' + d.pemasok, '', { tebal: true });
+  const datang = tanggalPendek(d.tanggal) + (d.jam ? ' ' + d.jam : '');
+  b('Datang: ' + datang, '', { jenis: 'ttDatang', nilai: datang });
+  b('Dari: ' + d.pemasok, '', { tebal: true, jenis: 'ttDari', nilai: d.pemasok });
   g.push({ garis: true });
-  d.baris.forEach((x) => { b(x.nama + (x.namaPemasok ? ' (' + x.namaPemasok + ')' : ''), x.kemasan ? x.jumlah + ' kemasan x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg) : x.bal ? x.jumlah + ' bal' + (x.kg ? ' = ' + KG(x.kg) : '') : x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(x.ikut ? x.kgNota : x.kg));
-    if (x.ikut) b('  hasil timbang (dibukukan)', KG(x.kg)); });   // Tahap 6: stok ikut timbang — kg nota & kg yang dibukukan sama-sama tertulis
+  d.baris.forEach((x) => { const nama = x.nama + (x.namaPemasok ? ' (' + x.namaPemasok + ')' : '');
+    const kgNota = x.ikut ? x.kgNota : x.kg;
+    const kanan = x.kemasan ? x.jumlah + ' kemasan x ' + DESIMAL(x.berat) + ' = ' + KG(x.kg) : x.bal ? x.jumlah + ' bal' + (x.kg ? ' = ' + KG(x.kg) : '') : x.jumlah + ' x ' + DESIMAL(x.berat) + ' = ' + KG(kgNota);
+    const rinci = x.kemasan ? x.jumlah + ' kemasan \u00d7 ' + DESIMAL(x.berat) + ' kg' : x.bal ? x.jumlah + ' bal' : x.jumlah + ' karung \u00d7 ' + DESIMAL(x.berat) + ' kg';
+    b(nama, kanan, { jenis: 'ttBarang', nilai: { nama, rinci, kg: x.bal && !x.kemasan && !x.kg ? '' : KG(x.kemasan || x.bal ? x.kg : kgNota) } });
+    if (x.ikut) b('  hasil timbang (dibukukan)', KG(x.kg), { jenis: 'ttTimbang' }); });   // Tahap 6: stok ikut timbang — kg nota & kg yang dibukukan sama-sama tertulis
   g.push({ garis: true });
-  b('JUMLAH', sebutJumlah(d.jumlah), { tebal: true });
-  b('Nilai nota', RP(d.nilai), { tebal: true });
+  b('JUMLAH', sebutJumlah(d.jumlah), { tebal: true, jenis: 'ttJumlah' });
+  b('Nilai nota', RP(d.nilai), { tebal: true, jenis: 'ttNilai' });
   g.push({ garis: true });
-  const y = d.bayar;
-  if (y.potongan > 0) b('Potongan klaim / retur lalu', RP(y.potongan));
-  if (y.keadaan === 'tunai') { b('Cara bayar', 'TUNAI'); b('DIBAYAR', RP(d.nilai - (y.potongan || 0)), { tebal: true }); b('Sisa', 'LUNAS', { tebal: true }); }
-  else if (y.keadaan === 'takTerbaca') { b('Cara bayar', 'BON');
-    if (y.titipSupir > 0) { b('Dibayar ke supir', RP(y.titipSupir), { tebal: true }); b('Sisa: Rp', TITIK); b('Bayar ke supir dicatat ke bon oleh pemilik toko. Sisa ditulis tangan, diparaf toko dan supir.'); }
-    else { b('Dibayar: Rp', TITIK); b('Sisa: Rp', TITIK); b('Angka bayar ditulis tangan, diparaf toko dan supir.'); } }
+  const y = d.bayar; const by = (kiri, kanan, o) => b(kiri, kanan, Object.assign({ jenis: 'ttBayar' }, o || {})); const ket = (t) => b(t, '', { jenis: 'ttBayarKet' });
+  if (y.potongan > 0) by('Potongan klaim / retur lalu', RP(y.potongan));
+  if (y.keadaan === 'tunai') { by('Cara bayar', 'TUNAI'); by('DIBAYAR', RP(d.nilai - (y.potongan || 0)), { tebal: true }); by('Sisa', 'LUNAS', { tebal: true }); }
+  else if (y.keadaan === 'takTerbaca') { by('Cara bayar', 'BON');
+    if (y.titipSupir > 0) { by('Dibayar ke supir', RP(y.titipSupir), { tebal: true }); by('Sisa: Rp', TITIK); ket('Bayar ke supir dicatat ke bon oleh pemilik toko. Sisa ditulis tangan, diparaf toko dan supir.'); }
+    else { by('Dibayar: Rp', TITIK); by('Sisa: Rp', TITIK); ket('Angka bayar ditulis tangan, diparaf toko dan supir.'); } }
   else {
-    b('Cara bayar', y.keadaan === 'sebagian' ? 'BON, dibayar sebagian' : 'BON');
-    y.rinci.forEach((x) => b('Bayar ' + (x.tanggal ? tanggalPendek(x.tanggal) : 'tanpa tanggal'), RP(x.nominal)));
-    if (y.rinci.length !== 1) b('Sudah dibayar', RP(y.dibayar));
-    if (y.titipSupir > 0) b('Dibayar ke supir (belum dicatat)', RP(y.titipSupir));
-    b('SISA BON', y.keadaan === 'lunas' ? 'LUNAS' : RP(y.sisa), { tebal: true });
+    by('Cara bayar', y.keadaan === 'sebagian' ? 'BON, dibayar sebagian' : 'BON');
+    y.rinci.forEach((x) => by('Bayar ' + (x.tanggal ? tanggalPendek(x.tanggal) : 'tanpa tanggal'), RP(x.nominal)));
+    if (y.rinci.length !== 1) by('Sudah dibayar', RP(y.dibayar));
+    if (y.titipSupir > 0) by('Dibayar ke supir (belum dicatat)', RP(y.titipSupir));
+    by('SISA BON', y.keadaan === 'lunas' ? 'LUNAS' : RP(y.sisa), { tebal: true });
   }
-  if (C.tanggal) b('Keadaan per ' + tanggalPendek(C.tanggal) + (C.jam ? ' ' + C.jam : '') + (C.oleh ? ', dicetak ' + C.oleh : ''));
+  if (C.tanggal) b('Keadaan per ' + tanggalPendek(C.tanggal) + (C.jam ? ' ' + C.jam : '') + (C.oleh ? ', dicetak ' + C.oleh : ''), '', { jenis: 'ttKeadaan' });
+  // butir 7: catatan untuk pemasok yang DITULIS toko di Barang masuk — di kedua lembar & WhatsApp, sebelum tanda tangan
+  if ((d.catatan || []).length) {
+    g.push({ garis: true }); b('CATATAN UNTUK PEMASOK', '', { tebal: true, tengah: true, jenis: 'ttCatKepala' });
+    d.catatan.forEach((k) => { b(String(k.judul).toUpperCase(), '', { tebal: true, jenis: 'ttCatJudul' });
+      k.baris.forEach((x) => b(x.teks, tbmRpCatatan(x.n), Object.assign({ jenis: 'ttCat' }, x.tebal ? { tebal: true } : {}))); });
+  }
   g.push({ garis: true });
-  b('Diterima toko,', 'Supir / pengirim,'); b(''); b(''); b('(............)', '(............)');
-  if (lembar === 'toko') { b('Nama terang supir dan jam:'); b(''); b('(.............................)'); g.push({ garis: true }); b('Arsip toko.', '', { tengah: true }); }
-  else if (lembar === 'pemasok') { g.push({ garis: true }); b('Dibawa supir untuk pemilik ' + d.pemasok + '.', '', { tengah: true }); }
+  b('Diterima toko,', 'Supir / pengirim,', { jenis: 'ttTtd' }); b('', '', { jenis: 'ttRuang' }); b('', '', { jenis: 'ttRuang' }); b('(............)', '(............)', { jenis: 'ttRuang' });
+  if (lembar === 'toko') { b('Nama terang supir dan jam:', '', { jenis: 'ttNamaSupir' }); b('', '', { jenis: 'ttRuang' }); b('(.............................)', '', { jenis: 'ttRuang' }); g.push({ garis: true }); b('Arsip toko.', '', { tengah: true, jenis: 'ttKaki' }); }
+  else if (lembar === 'pemasok') { g.push({ garis: true }); b('Dibawa supir untuk pemilik ' + d.pemasok + '.', '', { tengah: true, jenis: 'ttKaki' }); }
   return g;
 }
 
 /** Dua lembar cetak: [LEMBAR PEMASOK, LEMBAR TOKO]. */
 export function tbmLembar(d, kop, dicetak) { return [tbmGaris(d, kop, 'pemasok', dicetak), tbmGaris(d, kop, 'toko', dicetak)]; }
-
-/**
- * Tahap 5 (owner 26 Nov 2026: "catatan bisa juga dicetak lewat tanda terima, tidak hanya melewati dokumen"): garis cetak STRUK "Catatan untuk pemasok" satu
- * kedatangan. S = hasil cpIsiSurat (stok-catat-logika) — isi yang SAMA dengan Laporan › Dokumen kecil › Catatan untuk pemasok; di sini hanya ditata untuk kertas
- * struk: judul kelompok = garis + huruf besar, baris berangka = angka di kanan (potongan yang sudah dibukukan bertanda minus). no = nomor tanda terimanya.
- */
-export function tbmGarisCatatan(S, kop, no, dicetak) {
-  const g = []; const b = (kiri, kanan, o) => g.push(Object.assign({ kiri: String(kiri || ''), kanan: kanan === undefined || kanan === null ? '' : String(kanan) }, o || {}));
-  const K = kop || {}; const C = dicetak || {};
-  if (K.nama) b(String(K.nama).toUpperCase(), '', { tebal: true, tengah: true }); if (K.alamat) b(K.alamat, '', { tengah: true }); if (K.telp) b('Telp ' + K.telp, '', { tengah: true });
-  g.push({ garis: true }); b('CATATAN UNTUK PEMASOK', '', { tebal: true, tengah: true }); if (no) b('Tanda terima No. ' + no, '', { tengah: true });
-  g.push({ garis: true }); String(S.sub || '').split(' \u00b7 ').filter(Boolean).forEach((t, i) => b(i === 0 ? 'Kepada: ' + t : t, '', i === 0 ? { tebal: true } : {}));
-  (S.baris || []).forEach((x) => { const adaN = x.n !== '' && x.n !== null && x.n !== undefined;
-    if (x.kelas === 'kel') { g.push({ garis: true }); b(String(x.nama).toUpperCase(), '', { tebal: true }); return; }
-    b(String(x.nama).replace(/^\s+/, '  '), adaN ? (x.n < 0 ? '-' + RP(-x.n) : RP(x.n)) : '', x.kelas === 'jumlah' ? { tebal: true } : {}); });
-  g.push({ garis: true }); b(S.identitas || '');
-  if (C.tanggal) b('Dicetak ' + tanggalPendek(C.tanggal) + (C.jam ? ' ' + C.jam : '') + (C.oleh ? ', ' + C.oleh : ''));
-  g.push({ garis: true }); b('Dari toko,', 'Diterima pemasok / supir,'); b(''); b(''); b('(............)', '(............)');
-  return g;
-}
