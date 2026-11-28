@@ -130,4 +130,7 @@ export const KOLEKSI = [
   // paket P8 (owner 27 Nov 2026, rules v26) — TAUTAN BEKU DASBOR untuk pihak luar: angka Dasbor yang DIBEKUKAN owner (bagian yang dicentang), bernama kode acak
   //  (≥ 20 huruf), dibaca halaman dasbor-publik.html TANPA login sampai jam `sampai` (server menolak sesudahnya). Didengar & ditulis OWNER saja (kelola tautan).
   { nama: 'dasborPublik',        urut: 'id',    cache: 'dasborPublik', kelas: 'tetap' },
+  // owner 28 Nov 2026 (rules v27, tablet saat owner pergi) — ABSEN JAGA: satu catatan tiap PIN "Siapa yang jaga?" berhasil (nama, peran, tanggal, jam). Ditulis tablet
+  //  (stafJaga), didengar OWNER saja (rekap absen di Uang › Upah; kabar buka / ganti jaga dikirim fungsi server kabarJaga). Tanpa cap jam server → 'tetap'.
+  { nama: 'jagaLog',             urut: 'id',    cache: 'jagaLog', kelas: 'tetap' },
 ];

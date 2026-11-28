@@ -9,12 +9,12 @@
 // Tablet menulis lewat tpSusunPesan (pintu yang sama dengan Menu › pesan untuk owner). Tidak ada koleksi atau rules baru.
 import { h, mentah, pasang } from '../inti/dom.js';
 import { tulisDokumen, kabarKiriman } from '../data/toko.js';
-import { kbLonceng, kbTandai, kbBacaLihat, kbTulisLihat, kbSusunPesanOwner, KB_LIHAT, KB_NAMA_LAYAR } from './kabar-baru-logika.js';
+import { kbLonceng, kbTandai, kbBacaLihat, kbTulisLihat, kbSusunPesanOwner, kbSusunTugasOwner, KB_LIHAT, KB_NAMA_LAYAR } from './kabar-baru-logika.js';
 import { tpSusunPutus, tpSusunPesan, TP_BATAS } from './titipan-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 
 let _lcN = 0; let _lcIsi = null; let _lcAkun = null; let _lcBuka = false; let _lcSibuk = ''; let _lcKabar = null;
-const _lcBalas = {}; let _lcTulis = '';   // _lcTulis = pesan obrolan yang sedang diketik (owner & tablet)
+const _lcBalas = {}; let _lcTulis = ''; let _lcJenis = 'pesan';   // owner 28 Nov 2026 (rules v27): kiriman owner = pesan / tugas / tugas wajib foto   // _lcTulis = pesan obrolan yang sedang diketik (owner & tablet)
 let _lcTab = 'obrolan'; let _lcKeBawah = false; const _lcMenandai = new Set();   // tab yang tampil · gulir ke pesan terbaru · id yang sedang ditandai dibaca
 let _lcOpsi = { pindah: () => {}, sekarang: () => null, berbunyi: () => {} };
 
@@ -92,9 +92,10 @@ function lcGambarObrolan(I) {
       ${I.lebihObrolan ? h`<div class="ket lo-lama" data-k="lo-lama">+ ${I.lebihObrolan} pesan lebih lama</div>` : ''}
       ${I.obrolan.length ? I.obrolan.map(gel) : h`<div class="lo-kosong" data-k="lo-kosong"><b>Belum ada obrolan</b><span class="ket">${owner ? 'Tulis pesan untuk tablet di bawah — balasan tablet muncul di sini.' : 'Tulis pesan untuk owner di bawah — balasan owner muncul di sini.'}</span></div>`}
     </div>
-    <div class="lo-tulis" data-k="lo-tulis"><textarea class="ketik-nama" rows="1" maxlength="${TP_BATAS.pesan}" placeholder="${owner ? 'Tulis pesan untuk tablet…' : 'Tulis pesan untuk owner…'}" aria-label="Tulis pesan" data-ll-tulis="1">${_lcTulis}</textarea>
+    ${owner ? h`<div class="jalur bungkus rapat" data-k="lo-jenis" style="padding: 0 2px 4px;">${[['pesan', 'Pesan'], ['tugas', 'Tugas'], ['tugasFoto', 'Tugas + wajib foto']].map(([k, n]) => h`<div class="seg ${_lcJenis === k ? 'aktif' : ''}" data-ll="jenis" data-jenis="${k}">${n}</div>`)}</div>` : ''}
+    <div class="lo-tulis" data-k="lo-tulis"><textarea class="ketik-nama" rows="1" maxlength="${TP_BATAS.pesan}" placeholder="${owner ? (_lcJenis === 'pesan' ? 'Tulis pesan untuk tablet…' : _lcJenis === 'tugas' ? 'Tulis tugas untuk penjaga — dijawab Selesai di tablet…' : 'Tulis tugas — penjaga menjawab dengan FOTO…') : 'Tulis pesan untuk owner…'}" aria-label="Tulis pesan" data-ll-tulis="1">${_lcTulis}</textarea>
       <button type="button" class="lo-kirim ${_lcSibuk === 'kirim' ? 'sibuk' : ''}" data-ll="kirim" aria-label="Kirim" title="Kirim">${mentah(IKON_KIRIM)}</button></div>
-    <div class="ket lo-tip" data-k="lo-tip">${owner ? 'sampai di lonceng & bilah notifikasi tablet' : 'sampai di lonceng & notifikasi HP / Mac owner'} · paling banyak ${TP_BATAS.pesan} huruf</div></div>`;
+    <div class="ket lo-tip" data-k="lo-tip">${owner ? (_lcJenis === 'pesan' ? 'sampai di lonceng & bilah notifikasi tablet' : 'tugas muncul di Menu tablet sampai dijawab' + (_lcJenis === 'tugasFoto' ? ' — dengan foto (tablet memotret hanya untuk tugas ini)' : '')) : 'sampai di lonceng & notifikasi HP / Mac owner'} · paling banyak ${TP_BATAS.pesan} huruf</div></div>`;
 }
 function lcGambarKabar(I) {
   const owner = I.owner;
@@ -124,14 +125,14 @@ function lcGambar() {
 // Kirim satu pesan obrolan: owner → kbSusunPesanOwner (pesan owner ke tablet), akun tablet → tpSusunPesan (pesan ke owner). Lewat pintu tulis biasa.
 async function lcKirim() {
   if (!_lcAkun || _lcSibuk) return;
-  const w = lcWaktu(); const r = _lcAkun.jenis === 'owner' ? kbSusunPesanOwner(_lcTulis, w, _lcAkun) : tpSusunPesan(_lcTulis, _lcAkun, w);
+  const w = lcWaktu(); const r = _lcAkun.jenis !== 'owner' ? tpSusunPesan(_lcTulis, _lcAkun, w) : _lcJenis === 'pesan' ? kbSusunPesanOwner(_lcTulis, w, _lcAkun) : kbSusunTugasOwner(_lcTulis, _lcJenis === 'tugasFoto', w, _lcAkun, '');
   if (r.tolak) { _lcKabar = { teks: r.tolak, awas: true }; lcGambar(); return; }
   _lcSibuk = 'kirim'; _lcKabar = null; lcGambar();
   try {
     const x = await tulisDokumen(r.dokumen || [], r.hapus);
     if (x && x.gagal) _lcKabar = { teks: 'DITOLAK: ' + x.pesan, awas: true };
     else { _lcTulis = ''; _lcKeBawah = true; const k = document.querySelector('[data-ll-tulis]'); if (k) { k.value = ''; k.style.height = ''; }
-      if (x && x.antre) _lcKabar = { teks: kabarKiriman(x, 'Pesan tersimpan'), awas: false }; }   // tanpa internet: menunggu dikirim (kalimat antrean biasa)
+      if (x && x.antre) _lcKabar = { teks: kabarKiriman(x, 'Pesan tersimpan'), awas: false }; else if (_lcJenis !== 'pesan' && r.patch) _lcKabar = { teks: r.patch.kabar, awas: false }; }   // tanpa internet: menunggu dikirim (kalimat antrean biasa)
   } catch (e) { _lcKabar = { teks: 'GAGAL mengirim: ' + String((e && e.message) || e), awas: true }; }
   _lcSibuk = ''; loncengSegarkan(_lcAkun); lcGambar();
 }
@@ -177,6 +178,7 @@ export function pasangLonceng(opsi) {
       else if (k === 'baca') lcTandaiBaca(a.dataset.id);
       else if (k === 'kirim') { lcKirim(); const tk = document.querySelector('[data-ll-tulis]'); if (tk) tk.focus(); }
       else if (k === 'tab') lcPilihTab(a.dataset.tab);
+      else if (k === 'jenis') { _lcJenis = ['pesan', 'tugas', 'tugasFoto'].indexOf(a.dataset.jenis) >= 0 ? a.dataset.jenis : 'pesan'; lcGambar(); }
       return;
     }
     if (_lcBuka && !t.closest('#lembarLonceng')) lcTutup();

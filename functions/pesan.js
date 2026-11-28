@@ -2,7 +2,9 @@
 // alat-uji/uji_titipan.py (+ pesanPutus / kirimanTablet: alat-uji/uji_tablet_tampilan.py). Dipakai functions/index.js. Kalimatnya sengaja pendek: notifikasi tampil di layar kunci HP.
 'use strict';
 
-const JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit', hargaBanding: 'Usul harga tawaran / acuan' };   // + banding pemasok (owner 26 Nov 2026, rules v21)
+const JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit', hargaBanding: 'Usul harga tawaran / acuan',
+  hargaJual: 'Usul harga jual', belanja: 'Daftar belanja dari tablet', kabarToko: 'Kabar toko', tugasSelesai: 'Tugas selesai' };   // + banding pemasok (owner 26 Nov 2026, rules v21) · + tablet saat owner pergi (owner 28 Nov 2026, rules v27)
+const KABAR_TOKO = { habis: 'Barang habis', menipis: 'Perlu dipesan', bawahModal: 'Jual di bawah modal' };   // persetujuan kabarToko.jenis (tablet, rules v27)
 const JENIS = { toko: 'Belanja toko', karyawan: 'Untuk karyawan', kasbon: 'Kasbon karyawan', bongkar: 'Upah bongkar', bayarBon: 'Bayar bon pemasok' };   // + barang masuk dari tablet (owner 22 Nov 2026, rules v15)
 const BATAS_ISI = 160;
 
@@ -15,11 +17,11 @@ const pendek = (s) => (s.length > BATAS_ISI ? s.slice(0, BATAS_ISI - 1) + '…' 
 
 /**
  * d = isi dokumen persetujuan, id = id dokumennya. Hasil { judul, isi, tag, layar } — semuanya teks (data pesan FCM wajib teks) — atau null bila tidak
- * perlu dikabarkan (bukan permintaan yang menunggu).
+ * perlu dikabarkan (bukan permintaan yang menunggu). tambah = { rp, nota } omzet hari itu (hanya untuk hitungan laci; null = tidak disebut).
  */
-function pesanNotif(d, id) {
+function pesanNotif(d, id, tambah) {
   if (!d || typeof d !== 'object') return null;
-  if (d.tindakan === 'pesanOwner') return null;   // owner 23 Nov 2026: pesan owner KE tablet — bukan kabar untuk HP owner (kabarDariOwner)
+  if (d.tindakan === 'pesanOwner' || d.tindakan === 'tugasOwner') return null;   // pesan / tugas owner KE tablet — bukan kabar untuk HP owner (kabarDariOwner)   // owner 23 Nov 2026: pesan owner KE tablet — bukan kabar untuk HP owner (kabarDariOwner)
   if ((d.status || 'menunggu') !== 'menunggu') return null;
   const t = String(d.tindakan || '');
   const dari = teks(d.dari) || 'Tablet';
@@ -30,7 +32,10 @@ function pesanNotif(d, id) {
   } else if (t === 'pesan' || t === 'barangMasuk') {
     isi = teks(d.teks);
   } else if (t === 'hitungLaci') {   // owner 22 Nov 2026 (paket ④, rules v16): tutup hari dari tablet — owner menutup hari di Uang › Tutup hari
-    isi = 'Laci ' + teks(d.tanggal) + ' dihitung ' + rp(d.hitung) + (Number(d.amankan) > 0 ? ' · ' + rp(d.amankan) + ' ke brankas' : '') + ' · tutup hari di HP';
+    isi = 'Laci ' + teks(d.tanggal) + ' dihitung ' + rp(d.hitung) + (Number(d.amankan) > 0 ? ' · ' + rp(d.amankan) + ' ke brankas' : '')
+      + (tambah && Number(tambah.nota) > 0 ? ' · omzet ' + rp(tambah.rp) + ' dari ' + Math.round(Number(tambah.nota)) + ' nota' : '') + ' · tutup hari di HP';   // owner 28 Nov 2026: omzet kotor (retur belum dikurangi)
+  } else if (t === 'kabarToko') {   // owner 28 Nov 2026 (rules v27): kabar otomatis tablet sesudah nota tersimpan
+    return { judul: (KABAR_TOKO[d.jenis] || 'Kabar toko') + ' · ' + dari, isi: pendek(teks(d.teks)), tag: 'persetujuan-' + String(id || ''), layar: 'menu' };
   } else {
     const n = Math.round(Number(d.nominal) || 0); const k = teks(d.teks);
     isi = (k || JUDUL[t] || 'Permintaan') + (n > 0 && !/Rp/.test(k) ? ' · ' + rp(n) : '');
@@ -39,7 +44,8 @@ function pesanNotif(d, id) {
 }
 
 // ---- PUSH APLIKASI TABLET (owner 23 Nov 2026: "Push penuh lewat Google") — jawaban owner atas permintaan dari tablet, untuk akun yang memintanya ----
-const JUDUL_TABLET = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan', barangMasuk: 'Kabar barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon', hargaBanding: 'Usul harga tawaran / acuan' };
+const JUDUL_TABLET = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan', barangMasuk: 'Kabar barang masuk', hitungLaci: 'Hitungan laci', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon', hargaBanding: 'Usul harga tawaran / acuan',
+  hargaJual: 'Usul harga jual', belanja: 'Daftar belanja', kabarToko: 'Kabar toko', tugasSelesai: 'Jawaban tugas' };   // + owner 28 Nov 2026 (rules v27)
 const PUTUS_TABLET = { disetujui: 'disetujui owner', ditolak: 'DITOLAK owner', dibaca: 'dibaca owner' };
 const SALURAN_TABLET = 'kabar';   // saluran "Kabar toko" yang dibuat aplikasi tablet (MainActivity)
 
@@ -55,7 +61,7 @@ function pesanPutus(sebelum, sesudah, id) {
   const t = String(sesudah.tindakan || '');
   // owner 23 Nov 2026 (obrolan di lonceng, "seperti WhatsApp"): owner MEMBUKA obrolan = pesan tablet ditandai dibaca tanpa balasan → cukup centang dua
   // di tablet, BUKAN notifikasi (balasan owner = pesan owner baru → kabarDariOwner). Dibaca DENGAN balasan (jalur lama Uang › titipan) tetap dikabarkan.
-  if (t === 'pesan' && st === 'dibaca' && !teks(sesudah.balasan)) return null;
+  if ((t === 'pesan' || t === 'kabarToko') && st === 'dibaca' && !teks(sesudah.balasan)) return null;   // + kabar toko (owner 28 Nov 2026): ditandai dibaca tanpa balasan = tanpa push
   let pokok;
   if (t === 'uangKeluar') pokok = [JENIS[sesudah.jenis] || JENIS.toko, teks(sesudah.teks), rp(sesudah.nominal)].filter(Boolean).join(' · ');
   else if (t === 'hitungLaci') pokok = 'Laci ' + teks(sesudah.tanggal) + ' ' + rp(sesudah.hitung);
@@ -69,9 +75,10 @@ function pesanPutus(sebelum, sesudah, id) {
  * 'pesanOwner'). Hasil { judul, isi, tag, layar, untukUid } atau null (bukan pesan owner / kosong). untukUid kosong = semua tablet yang menyalakan notifikasi.
  */
 function pesanDariOwner(d, id) {
-  if (!d || typeof d !== 'object' || d.tindakan !== 'pesanOwner') return null;
+  if (!d || typeof d !== 'object' || (d.tindakan !== 'pesanOwner' && d.tindakan !== 'tugasOwner')) return null;   // + tugas owner (owner 28 Nov 2026, rules v27)
   const isi = teks(d.teks); if (!isi) return null;
-  return { judul: 'Pesan dari owner', isi: pendek(isi), tag: 'owner-' + String(id || ''), layar: 'menu', untukUid: teks(d.untukUid) };
+  const tugas = d.tindakan === 'tugasOwner';
+  return { judul: tugas ? 'Tugas dari owner' + (d.wajibFoto ? ' · wajib foto' : '') : 'Pesan dari owner', isi: pendek(isi), tag: 'owner-' + String(id || ''), layar: 'menu', untukUid: teks(d.untukUid) };
 }
 
 /** Kiriman FCM untuk aplikasi tablet (Android): notifikasi sistem (tampil walau aplikasi ditutup) di saluran "Kabar toko", data layar tujuan. */
@@ -94,4 +101,4 @@ function lokasiFungsi(lokasiDb) {
   return l;
 }
 
-module.exports = { pesanNotif, pesanPutus, pesanDariOwner, kirimanTablet, tokenMati, lokasiFungsi, rp, JUDUL, JENIS, JUDUL_TABLET, SALURAN_TABLET, TOKEN_MATI, BATAS_ISI };
+module.exports = { pesanNotif, pesanPutus, pesanDariOwner, kirimanTablet, tokenMati, lokasiFungsi, rp, JUDUL, JENIS, JUDUL_TABLET, SALURAN_TABLET, TOKEN_MATI, BATAS_ISI, KABAR_TOKO };

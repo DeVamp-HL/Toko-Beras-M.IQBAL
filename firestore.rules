@@ -1,4 +1,19 @@
 // ============================================================================
+// ATURAN FIRESTORE v27 FINAL — Toko Beras M.IQBAL (DRAF 28 Nov 2026, TABLET SAAT OWNER PERGI) = v26 FINAL + PERSIS: baca fotoBon diperluas, satu sambungan
+// create persetujuan, empat fungsi baru, dan dua blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v26; uji server:
+// docs/uji-rules-v27.md). Owner menerbitkan v27 SEKALI lewat Console SEBELUM cabang fitur/tablet-pergi digabung (tanpa v27: usul harga jual / daftar belanja /
+// kabar toko / tugas selesai dari tablet, absen jaga, foto bukti, dan foto nota di tablet ditolak server; layar lain tetap jalan):
+//   (v27-1) fotoBon read: + stafHak('hakFotoNota') — Penjaga laci yang DITANDAI owner (aksesAkun.hakFotoNota, owner 28 Nov 2026: "liat nota dari pemasok dan
+//           foto nota atas izin gua melalui hak izin akses melalui peran") melihat foto nota kedatangan di tablet. Tulis & hapus tidak berubah.
+//   (v27-2) persetujuan create: + stafUsulTablet(['ben', 'karyawan']) — USUL dari tablet yang berlaku sesudah owner setujui: hargaJual (usul harga jual katalog),
+//           belanja (daftar belanja), kabarToko (barang habis / di bawah stok minimum / jual di bawah harga minimum), tugasSelesai (jawaban tugas owner, foto
+//           bila diminta). Status 'menunggu', atas nama penulisnya, teks 1–500 huruf, tanpa kolom keputusan. Isinya dicek ulang di perangkat owner.
+//   (v27-3) blok jagaLog — ABSEN JAGA: satu catatan tiap PIN "Siapa yang jaga?" berhasil. read owner · create owner || stafJaga (atas nama penulisnya, id =
+//           kolom id, tanggal & jam berbentuk, nama 1–40 huruf, peran ben|karyawan, kolom dibatasi) · ubah & hapus owner.
+//   (v27-4) blok fotoBukti — FOTO BUKTI yang DIMINTA owner (tugas owner berwajib foto). read owner · create owner || stafFotoBukti (atas nama penulisnya, id =
+//           kolom id, tugasId 1–40 huruf, jenis gambar, base64 ≤ 960.000 huruf, kolom dibatasi) · hapus owner, tanpa ubah.
+// Kepala v26 di bawah ini apa adanya.
+// ----------------------------------------------------------------------------
 // ATURAN FIRESTORE v26 FINAL — Toko Beras M.IQBAL (DRAF 27 Nov 2026, FOTO NOTA KEDATANGAN dari tablet & TAUTAN BEKU DASBOR) = v25 FINAL + PERSIS satu
 // baris create fotoBon yang diperluas, dua fungsi baru, dan dua blok baru (alat-uji/periksa_rules.py membandingkannya dengan firestore.rules.v25; uji server:
 // docs/uji-rules-v26.md). Owner menerbitkan v26 SEKALI lewat Console SEBELUM cabang paket P8 digabung (tanpa v26: foto nota dari tablet ditolak server,
@@ -350,6 +365,31 @@ service cloud.firestore {
       return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('idBon', 0) is string && d.idBon.matches('[0-9]{10,16}([.][0-9]{1,6})?')
         && d.get('jenis', '') in ['bon', 'tunai'] && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
         && d.keys().hasOnly(['id', 'idBon', 'jenis', 'pemasok', 'tanggalBon', 'tanggal', 'jam', 'byte', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v27 (owner 28 Nov 2026, tablet saat owner pergi): hak baca yang DITANDAI owner per akun Penjaga laci (aksesAkun/{uid}.<k> == true) — satu get() seperti staf()
+    function stafHak(k) { return masuk() && hakDari(akun(), k); }
+    function hakDari(a, k) { return a.aktif == true && a.peran == 'ben' && a.get(k, false) == true; }
+    // v27: USUL dari tablet — hargaJual · belanja · kabarToko · tugasSelesai; "menunggu", atas nama penulisnya (mintaUid), teks 1–500 huruf, tanpa kolom keputusan
+    function stafUsulTablet(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('tindakan', '') in ['hargaJual', 'belanja', 'kabarToko', 'tugasSelesai'] && d.get('status', '') == 'menunggu'
+        && d.get('mintaUid', '') == request.auth.uid && d.get('teks', 0) is string && d.teks.size() > 0 && d.teks.size() < 501
+        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan', 'koreksiOwner', 'dipakai']);
+    }
+    // v27: ABSEN JAGA — satu catatan tiap PIN berhasil; atas nama penulisnya, id = kolom id, kolom dibatasi
+    function stafJaga(peranBoleh, id) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tanggal', 0) is string && d.tanggal.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && d.get('jam', 0) is string && d.jam.matches('[0-9]{2}:[0-9]{2}') && d.get('nama', 0) is string && d.nama.size() > 0 && d.nama.size() <= 40
+        && d.get('peran', '') in ['ben', 'karyawan']
+        && d.keys().hasOnly(['id', 'tanggal', 'jam', 'pada', 'nama', 'peran', 'orangId', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // v27: FOTO BUKTI yang diminta owner — atas nama penulisnya, id = kolom id, tugasId = id tugas owner, bentuk foto seperti fotoBon, kolom dibatasi
+    function stafFotoBukti(peranBoleh, id) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.get('id', '') == id && d.get('tugasId', 0) is string && d.tugasId.size() > 0 && d.tugasId.size() <= 40
+        && d.get('base64', 0) is string && d.base64.size() > 0 && d.base64.size() <= 960000 && d.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp']
+        && d.keys().hasOnly(['id', 'tugasId', 'tanggal', 'jam', 'jenis', 'base64', 'byte', 'lebar', 'tinggi', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
     }
     function stafBuatTipe(peranBoleh, tipe) { return stafBuat(peranBoleh) && request.resource.data.tipe == tipe; }
     // v5 (putaran 39, owner 29 Sep 2026): karyawan menuang & mengecek wadah literan — hanya catatan takar / karung / karungIsi / cek (aturan wadah & titik samakan isi tetap owner)
@@ -884,7 +924,7 @@ service cloud.firestore {
 
     match /persetujuan/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta membaca keputusan owner (pendengar koleksi utuh — rules bukan saringan)
-      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']) || (stafHitungLaci(['ben']) && tglStaf('tanggal')) || stafUsulBanding(['ben']);   // v21: + usul harga banding · v16: + hitungan laci tutup hari · v15: + kabar barang masuk · v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
+      allow create: if owner() || stafMintaNego(['ben', 'karyawan']) || stafUsulHarga(['ben', 'karyawan']) || stafMintaKredit(['ben']) || stafMintaKeluar(['ben', 'karyawan']) || stafKirimPesan(['ben', 'karyawan']) || stafKabarMasuk(['ben']) || (stafHitungLaci(['ben']) && tglStaf('tanggal')) || stafUsulBanding(['ben']) || stafUsulTablet(['ben', 'karyawan']);   // v27: + usul tablet (harga jual, belanja, kabar toko, tugas selesai) · v21: + usul harga banding · v16: + hitungan laci tutup hari · v15: + kabar barang masuk · v7 (JS2-C): permintaan nego "menunggu" atas nama sendiri · v8 (B1): usul harga pelanggan · v9 (B2): minta persetujuan bon (ben)
       allow update, delete: if owner();   // memutus (setuju / tolak) = owner
     }
 
@@ -1027,7 +1067,7 @@ service cloud.firestore {
     // foto salah = hapus lalu foto lagi. Koleksi ini SENGAJA tidak ada di baru/js/data/koleksi.js (tidak didengar; dibaca saat bon dibuka).
     // v26 (paket P8): + Penjaga laci MEMBUAT foto nota / bon kedatangan dari tablet (stafFotoNota); baca & hapus tetap owner.
     match /fotoBon/{id} {
-      allow read: if owner();
+      allow read: if owner() || stafHak('hakFotoNota');   // v27: Penjaga laci yang ditandai owner melihat foto nota kedatangan di tablet
       allow create: if (owner() || stafFotoNota(['ben'])) && request.resource.data.get('id', '') == id && request.resource.data.get('idBon', 0) is string && request.resource.data.idBon.size() > 0
         && request.resource.data.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp']
         && request.resource.data.get('base64', 0) is string && request.resource.data.base64.size() > 0 && request.resource.data.base64.size() <= 960000;
@@ -1109,6 +1149,20 @@ service cloud.firestore {
       allow read: if owner();
       allow create: if owner() || stafTandaFoto(['ben'], id);
       allow update, delete: if owner();
+    }
+
+    // v27 (owner 28 Nov 2026, tablet saat owner pergi): ABSEN JAGA — satu catatan tiap PIN "Siapa yang jaga?" berhasil; dibaca owner (rekap & kabar ganti jaga)
+    match /jagaLog/{id} {
+      allow read: if owner();
+      allow create: if owner() || stafJaga(['ben', 'karyawan'], id);
+      allow update, delete: if owner();
+    }
+
+    // v27: FOTO BUKTI yang diminta owner (tugas berwajib foto) — dibaca owner saja, tambah-saja dari tablet
+    match /fotoBukti/{id} {
+      allow read: if owner();
+      allow create: if owner() || stafFotoBukti(['ben', 'karyawan'], id);
+      allow delete: if owner();
     }
 
     // v26 (paket P8, owner 27 Nov 2026): tautan beku Dasbor untuk pihak luar — dibaca SIAPA PUN yang tahu kodenya sampai `sampai` lewat; tidak bisa didaftar

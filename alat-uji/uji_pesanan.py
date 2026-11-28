@@ -225,7 +225,7 @@ STATIS = [
     ('Dasbor: order rutin perlu dibuat, pesanan dikirim dekat, stok kurang', 'dasbor', ['data-k="db-pesanan"', 'G.pesanan.ingat.map(', 'G.pesanan.stok.map(']),
     ('Dasbor membaca pengingat dari pesanan-logika', 'dasborL', ['const ING = poPengingat(isoP);', 'poCekStok(isoP, daftarBarang())']),
     ('kisi peran: pesanan (ben boleh sendiri, karyawan tidak)', 'sistem', ["['pesanan', 'Bikin & ubah pesanan, PO, jadwal rutin & uang muka', 'Jual']", "terimaAntar: 'sendiri', pesanan: 'sendiri' }", "terimaAntar: 'sendiri', pesanan: 'tidak' } };"]),
-    ('server membuka tindakan pesanan untuk ben (rules v11)', 'akses', ["pesanan: ['ben'], kedatangan: ['ben'] };", "suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'], ambilBarang: ['ben', 'karyawan'] };"]),
+    ('server membuka tindakan pesanan untuk ben (rules v11)', 'akses', ["pesanan: ['ben'], kedatangan: ['ben'] };", "suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'], ambilBarang: ['ben', 'karyawan'], jagaLog: ['ben', 'karyawan'], fotoBukti: ['ben', 'karyawan'] };"]),
     ('CI menjalankan uji ini', 'pages', ['python3 alat-uji/uji_pesanan.py && python3 alat-uji/uji_pesanan.py --kontrol']),
 ]
 

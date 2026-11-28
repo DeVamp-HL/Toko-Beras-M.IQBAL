@@ -25,7 +25,9 @@ import { tombolAkun } from './akses-layar.js';
 import { waktuSekarang, webAppMandiri } from './jual-logika.js';
 import { ssBerkasCadangan, susunCatatCadangan } from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip, kabarKiriman, kunciLuarCache } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip, kabarKiriman, kunciLuarCache, cacheMentah } from '../data/toko.js';
+import { kbSusunTugasOwner, KB_TUGAS_OWNER } from './kabar-baru-logika.js';
+import * as JG from './jaga-logika.js';   // owner 28 Nov 2026 (rules v27): absen jaga dari PIN tablet   // owner 28 Nov 2026 (rules v27): minta foto bukti titipan
 import { hbKalimatBelum } from '../data/hemat-baca.js';   // hemat baca nyala (#111): SATU sumber kelengkapan data perangkat ini
 import * as PR from '../inti/printer.js';   // owner 21 Nov 2026: slip upah & rekap tutup hari dicetak langsung di tablet
 import { asliAda, printerSibuk, masihMencetak, hasilTakDiketahui, KALIMAT_MASIH_MENCETAK, KALIMAT_TAK_DIKABARI } from '../inti/perangkat.js';
@@ -196,7 +198,12 @@ export function pasangLayarUang(akar, opsi) {
     // owner 21 Nov 2026: titipan dari tablet — Setujui apa adanya · Betulkan (nominal, keterangan, jenis, nama) lalu setujui · Tolak beralasan. Pesan: tandai dibaca (+ balasan).
     ukTitipan: async ({ id, setuju }) => { if (setuju === '1') { if (await tulis(UG.susunPutusTitipan(id, true, '', waktu()))) set({ ttBuka: null }); return; } set({ ttBuka: st().ttBuka && st().ttBuka.id === id && st().ttBuka.mode === 'tolak' ? null : { id, mode: 'tolak', alasan: '' } }); },
     ukTtBetul: ({ id }) => { const b = TP.tpMenunggu().find((x) => x.id === id); if (!b) return; set({ ttBuka: st().ttBuka && st().ttBuka.id === id && st().ttBuka.mode === 'betul' ? null : { id, mode: 'betul', nominal: String(b.nominal), teks: b.teks, jenis: b.jenis, nama: b.nama, bonId: b.jenis === 'bayarBon' ? TP.tpBonPilihan(id, kini()).bawaan : '' } }); },
-    ukTtBon: ({ b }) => set({ ttBuka: Object.assign({}, st().ttBuka, { bonId: String(b) }) }),   // owner 22 Nov 2026: bayar bon lewat supir — owner memilih bonnya
+    ukTtBon: ({ b }) => set({ ttBuka: Object.assign({}, st().ttBuka, { bonId: String(b) }) }),
+    // owner 28 Nov 2026 (rules v27, "foto bukti hanya saat gua minta"): satu tugas wajib foto ke tablet yang menunjuk titipan ini — tablet memotret, owner melihat fotonya
+    ukMintaFoto: async ({ id }) => { const t = TP.tpMenunggu().find((x) => x.id === id); if (!t) return set({ kabar: 'Titipan itu sudah tidak menunggu', kabarAwas: true });
+      if (fotoDiminta(t.id).tugas) return set({ kabar: 'Foto bukti titipan ini sudah diminta', kabarAwas: false });
+      const ak = (opsi.akun && opsi.akun()) || { jenis: 'owner', nama: 'Owner', uid: '' };
+      await tulis(kbSusunTugasOwner('Foto bukti titipan ' + t.namaJenis + (t.teks ? ' · ' + t.teks : '') + ' · ' + RP(t.n) + ' (' + t.oleh + ', ' + tanggalPendek(t.tanggal) + ' ' + t.jam + ')', true, waktu(), ak, t.id)); },   // owner 22 Nov 2026: bayar bon lewat supir — owner memilih bonnya
     ukTtJenis: ({ j }) => set({ ttBuka: Object.assign({}, st().ttBuka, { jenis: j }) }),
     ukTtNama: ({ n }) => set({ ttBuka: Object.assign({}, st().ttBuka, { nama: n }) }),
     ukTtKetik: (v, el) => { const k = el.dataset.kolom; set({ ttBuka: Object.assign({}, st().ttBuka, { [k]: String(v).slice(0, k === 'nominal' ? 14 : k === 'balasan' ? TP.TP_BATAS.balasan : 80) }) }); },
@@ -560,6 +567,9 @@ export function pasangLayarUang(akar, opsi) {
     const P = TP.tpBonPilihan(t.id, kini()); const b = P.bon.find((x) => String(x.id) === String(P.bawaan));
     return b ? ' · disetujui = bayar bon ' + b.pemasok + ' ' + tanggalPendek(b.tanggal) + ' (sisa ' + RP(b.sisa) + ') — bon lain: Betulkan' : ' · ' + (t.pemasok || 'pemasok ini') + ' tidak punya bon yang masih bersisa';
   }
+  // owner 28 Nov 2026 (rules v27): tugas foto bukti yang menunjuk satu titipan + jawabannya (persetujuan tugasSelesai) — fotonya dibuka di Menu › Toko ini › Peran & persetujuan › Persetujuan
+  function fotoDiminta(id) { const D = cacheMentah('persetujuan'); const tugas = D.find((m) => m && m.tindakan === KB_TUGAS_OWNER && String(m.rujukan || '') === String(id)) || null;
+    return { tugas, jawab: tugas ? D.find((m) => m && m.tindakan === 'tugasSelesai' && String(m.tugasId || '') === String(tugas.id)) || null : null }; }
   function gambarTitipan(s, TT) {
     const P = TP.tpMenunggu().filter((b) => b.pesan); const T = s.ttBuka || {};
     const namaKasbon = UP.aturUpah().aktif.map((o) => o.nama);
@@ -572,8 +582,8 @@ export function pasangLayarUang(akar, opsi) {
           <div class="kaca-btn aktif emas" data-aksi="ukTtSetujuBetul">Setujui dengan betulan</div></div>` : '';
       const tolak = buka && buka.mode === 'tolak' ? h`<div style="display: flex; gap: 6px; margin-top: 4px;"><input class="ketik-nama" type="text" placeholder="alasan menolak" value="${buka.alasan}" data-ketik="ukTolakKetik"><div class="kaca-btn kecil awas" data-aksi="ukTolakKirim">tolak</div></div>` : '';
       return h`<div class="ug-baris dua tunggu" data-k="tt-${t.id}"><div style="min-width: 0;"><div>${t.oleh} · ${t.namaJenis}${t.nama ? ' · ' + t.nama : ''}${t.pemasok && (t.teks || '').indexOf(t.pemasok) < 0 ? ' · ' + t.pemasok : ''}${t.teks ? ' · ' + t.teks : ''} · <b>${RP(t.n)}</b></div>
-          <div class="k2">${tanggalPendek(t.tanggal)} ${t.jam} · dari tablet · laci${tujuanTitip(t)}</div>${t.ks && t.ks.lewat ? h`<div class="ket awas-teks" data-k="tt-ks-${t.id}">Kas kecil: ${t.ks.teks}</div>` : ''}${t.ks && t.ks.perluNota ? h`<div class="k2" data-k="tt-nota-${t.id}">≥ ${RP(t.ks.atur.notaMin)}: sesudah disetujui, tandai notanya di daftar Hari ini${t.ks.fotoWajib ? ' (foto nota wajib)' : ''}</div>` : ''}${tolak}${betul}</div>
-        <div style="display: flex; gap: 6px; align-items: flex-start;"><div class="kaca-btn kecil" data-aksi="ukTitipan" data-id="${t.id}" data-setuju="0">Tolak</div><div class="kaca-btn kecil" data-aksi="ukTtBetul" data-id="${t.id}">Betulkan</div><div class="kaca-btn kecil aktif" data-aksi="ukTitipan" data-id="${t.id}" data-setuju="1">Setujui</div></div></div>`; };
+          <div class="k2">${tanggalPendek(t.tanggal)} ${t.jam} · dari tablet · laci${tujuanTitip(t)}</div>${t.ks && t.ks.lewat ? h`<div class="ket awas-teks" data-k="tt-ks-${t.id}">Kas kecil: ${t.ks.teks}</div>` : ''}${t.ks && t.ks.perluNota ? h`<div class="k2" data-k="tt-nota-${t.id}">≥ ${RP(t.ks.atur.notaMin)}: sesudah disetujui, tandai notanya di daftar Hari ini${t.ks.fotoWajib ? ' (foto nota wajib)' : ''}</div>` : ''}${(() => { const F = fotoDiminta(t.id); return F.tugas ? h`<div class="k2" data-k="tt-foto-${t.id}">${F.jawab ? (F.jawab.fotoId ? 'Foto bukti SUDAH dikirim ' + F.jawab.jam + ' — lihat di Menu › Toko ini › Peran & persetujuan › Persetujuan' : 'Dijawab tanpa foto: ' + F.jawab.teks) : 'Foto bukti diminta ' + F.tugas.jam + ' — menunggu tablet'}</div>` : ''; })()}${tolak}${betul}</div>
+        <div style="display: flex; gap: 6px; align-items: flex-start;">${fotoDiminta(t.id).tugas ? '' : h`<div class="kaca-btn kecil" data-aksi="ukMintaFoto" data-id="${t.id}">Minta foto</div>`}<div class="kaca-btn kecil" data-aksi="ukTitipan" data-id="${t.id}" data-setuju="0">Tolak</div><div class="kaca-btn kecil" data-aksi="ukTtBetul" data-id="${t.id}">Betulkan</div><div class="kaca-btn kecil aktif" data-aksi="ukTitipan" data-id="${t.id}" data-setuju="1">Setujui</div></div></div>`; };
     const pesan = (p) => { const buka = T.id === p.id && T.mode === 'baca' ? T : null;
       return h`<div class="ug-baris dua tunggu" data-k="ps-${p.id}"><div style="min-width: 0;"><div>${p.kabar ? h`<b>Barang masuk</b> · ${p.dari}: ${p.teks}` : h`${p.dari}: ${p.teks}`}</div><div class="k2">${tanggalPendek(p.tanggal)} ${p.jam} · ${p.kabar ? 'kabar dari tablet — harga & jumlah bisa dibetulkan di Stok › Barang masuk (koreksi kedatangan)' : 'pesan dari tablet'}</div>
           ${buka ? h`<div style="display: flex; gap: 6px; margin-top: 4px;"><input class="ketik-nama" type="text" placeholder="balasan singkat (boleh kosong)" value="${buka.balasan}" data-ketik="ukTtKetik" data-kolom="balasan"></div>` : ''}</div>
@@ -711,10 +721,15 @@ export function pasangLayarUang(akar, opsi) {
         <div class="kaca-btn kecil" data-aksi="upKaryawanBuka" style="align-self: flex-start;">Upah per orang (harian · mingguan · bulanan, bertanggal berlaku) & daftar karyawan ada di lembar Karyawan ›</div>${daftarAtur('Alasan kasbon', s.aturU.alasan, 'upAturKetik', 'upAturTambah', 'upAturLepas', 'alasan', '', 'mis. Bayar sekolah anak')}
         <div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAturU">batal</div><div class="kaca-btn aktif emas" data-aksi="simpanAturU">SIMPAN ATURAN</div></div></div>`
       : h`<div class="kaca-btn kecil" data-aksi="bukaAturU" style="align-self: flex-start;">Atur upah sehari & alasan kasbon · ${A.dariOwner ? 'diatur owner' : 'bawaan'} ›</div>`;
+    // owner 28 Nov 2026 (rules v27): ABSEN JAGA 7 hari dari PIN tablet — bahan mengisi kalender upah, tidak mengubah apa pun
+    const AJ = nama ? JG.jgRekapOrang(nama, iso(), 7) : null;
+    const absen = AJ ? h`<div class="kartu" data-k="absen" style="gap: 2px;"><div class="label">Absen jaga · 7 hari · dari PIN tablet</div>
+      ${AJ.hari.map((x) => h`<div class="or-baris ${x.ada ? '' : 'kosong'}" data-k="aj-${x.tanggal}"><div><div>${tanggalPendek(x.tanggal)}</div><div class="k2">${x.teks}</div></div></div>`)}
+      <div class="ket" style="font-size: 10.5px;">${AJ.nJaga} dari ${AJ.nHari} hari ada PIN atas nama ini. "Sampai" = jam orang berikutnya masuk; jaga terakhir hari itu tertulis "tutup" (tablet tidak mencatat jam pulang). Tanpa PIN ≠ tidak masuk — hanya bahan mengisi kalender di atas.</div></div>` : '';
     const kaki = h`<div class="ug-kaki">Upah dihitung sejak terakhir dibayar. Bayar = baris gaji di buku biaya bulanan sistem lama (dibagi rata per hari di laba, uang keluar di tanggal bayar) + potongan kasbon + slip. Bonus (rajin/lembur/hari raya) ikut baris gaji & slip; bonus tanpa hari kerja = baris gaji hari 0. Rokok & makan karyawan dicatat di Uang keluar.</div>`;
-    if (L === 'hp') return h`<section data-k="k2">${tab}${lembar}${hero}${kal}${buku}${panel}${riwayat}${atur}${kaki}</section>`;
-    if (L === 'tablet') return h`<section data-k="k2">${tab}${lembar}<div class="ug-grid tablet"><div class="ug-kolom">${hero}${kal}${buku}${kaki}</div><div class="ug-kolom">${panel}${riwayat}${atur}</div></div></section>`;
-    return h`<section data-k="k2">${tab}${lembar}<div class="ug-grid mac"><div class="ug-kolom">${hero}${kal}${riwayat}</div><div class="ug-kolom">${buku}${kaki}</div><div class="ug-kolom">${panel}${atur}</div></div></section>`;
+    if (L === 'hp') return h`<section data-k="k2">${tab}${lembar}${hero}${kal}${absen}${buku}${panel}${riwayat}${atur}${kaki}</section>`;
+    if (L === 'tablet') return h`<section data-k="k2">${tab}${lembar}<div class="ug-grid tablet"><div class="ug-kolom">${hero}${kal}${absen}${buku}${kaki}</div><div class="ug-kolom">${panel}${riwayat}${atur}</div></div></section>`;
+    return h`<section data-k="k2">${tab}${lembar}<div class="ug-grid mac"><div class="ug-kolom">${hero}${kal}${absen}${riwayat}</div><div class="ug-kolom">${buku}${kaki}</div><div class="ug-kolom">${panel}${atur}</div></div></section>`;
   }
 
   // ---------- K3 · OWNER & TOKO (Timbangan)

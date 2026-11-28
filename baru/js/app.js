@@ -10,9 +10,9 @@ import { pasangLayarUang } from './layar/uang.js';
 import { pasangLayarLaporan } from './layar/laporan.js';
 import * as fb from './data/firebase.js';
 import { muatCadangan } from './data/cadangan.js';
-import { dengarkan, sumberData, tulisDokumen, dokDiCache, ingatPerVersi } from './data/toko.js';
+import { dengarkan, sumberData, tulisDokumen, dokDiCache, ingatPerVersi, cacheMentah, ingatStokKarung } from './data/toko.js';
 import { bolehLayar, bisaBekerja, teksMasukSebagai } from './data/akses.js';
-import { ssAtur } from './layar/sistem-logika.js';
+import { ssAtur, ssHakTablet } from './layar/sistem-logika.js';
 // owner 7 Okt (JS2-C): jatah nego akun yang masuk ikut ke penjaga kiriman
 import { ngJatah } from './layar/nego-logika.js';
 import { terkunci, setelKunci } from './inti/kunci.js';
@@ -54,7 +54,8 @@ import { asliAda, padaPindai, padaTempel, ketikTambah, ketikMesin, KETIK_TUNGGU 
 // putaran T1 langkah 4 (owner 16 Nov 2026): salinan aplikasi di tablet — bisa DIBUKA tanpa internet (pekerjanya sw-baru.js, dicap saat terbit)
 import * as SL from './inti/salinan.js';
 // owner 21 Nov 2026: notifikasi dalam aplikasi (titipan & pesan dari tablet → owner; putusan owner → tablet)
-import { kbSidik, kbBanding, kbRingkas } from './layar/kabar-baru-logika.js';
+import { kbSidik, kbBanding, kbRingkas, kbKabarToko } from './layar/kabar-baru-logika.js';
+import { hitungBelanja } from './layar/belanja-logika.js';   // owner 28 Nov 2026: kabar toko — merek yang perlu dipesan menurut Belanja
 import { lampuKejadian } from './inti/perangkat.js';
 import { nhPasang } from './data/notif-hp.js';
 nhPasang({ app: () => fb.appFirebase(), simpan: (t) => fb.simpanTokenNotif(t), hapus: () => fb.hapusTokenNotif() });   // notifikasi HP owner: alat Firebase untuk Menu › Perangkat
@@ -314,7 +315,9 @@ function pengingatLonceng(a) {
     .map((p) => ({ id: p.id, jenis: p.jenis, teks: p.teks, ket: p.ket || '', sisaTeks: p.sisaTeks, jatuh: p.jatuhEfektif || p.jatuh }))); } catch (e) { console.error('lonceng pengingat', e); return []; }
 }
 // Menu (putaran 14): laci N1 + pita jam + Sistem (SS1–SS5). Tujuan baris = layar lain lewat pintu yang sama dengan ketukan di layar itu.
-const menu = pasangLayarMenu(document.getElementById('layarMenu'), { lonceng: pintuLonceng, gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
+const menu = pasangLayarMenu(document.getElementById('layarMenu'), { lonceng: pintuLonceng,
+  buktiFoto: { ada: () => sumberData().jenis === 'firestore', simpan: (d) => fb.simpanFotoBukti(d), baca: (t) => fb.bacaFotoBukti(t) },   // owner 28 Nov 2026 (rules v27): foto bukti tugas owner
+  gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); }, bukaLaporan: (keluarga, t) => { pindah('laporan'); laporan.buka(keluarga, t); }, bukaJual: (lembar) => { pindah('jual'); layar.keadaan.setel({ lembar, kabar: '' }); },
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
     pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })(),
@@ -402,12 +405,16 @@ function dockLipat(lipat, simpan) {
 }
 try { dockLipat(localStorage.getItem(KUNCI_DOCK) === '1', false); } catch (e) { /* bawaan: dock terbuka */ }
 document.addEventListener('click', (ev) => { const b = ev.target && ev.target.closest ? ev.target.closest('[data-dock]') : null; if (!b) return; ev.preventDefault(); dockLipat(b.dataset.dock === 'lipat', true); });
+// owner 28 Nov 2026 (rules v27): layar Harga & Pemasok terbuka untuk orang di tablet bila owner mengizinkan perannya (Hak tablet per peran)
+const bolehLayarIni = (a, t) => bolehLayar(a, t) || (t === 'harga' && !!a && bisaBekerja(a) && a.jenis !== 'owner' && ssHakTablet(a.peran, 'harga'));
+// owner 28 Nov 2026: di tablet ber-hak, Harga & Pemasok punya petak sendiri di nav bawah — petak Menu tidak ikut menyala
+const navHargaTampil = () => { const el = document.querySelector('nav [data-tujuan="harga"]'); return !!el && !el.hidden; };
 function pindah(tujuan) {
   if (!LAYAR_ADA[tujuan]) return false;
-  const a = akunKini(); if (a && bisaBekerja(a) && !bolehLayar(a, tujuan)) { kabarSebentar('Layar ini tidak termasuk hak ' + teksMasukSebagai(a) + '.'); return true; }
+  const a = akunKini(); if (a && bisaBekerja(a) && !bolehLayarIni(a, tujuan)) { kabarSebentar('Layar ini tidak termasuk hak ' + teksMasukSebagai(a) + '.'); return true; }
   const dari = tabKini; tabKini = tujuan;
   Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].hidden = k !== tujuan; });
-  document.querySelectorAll('[data-tujuan]').forEach((el) => el.classList.toggle('aktif', el.dataset.tujuan === tujuan || ((tujuan === 'harga' || tujuan === 'uang' || tujuan === 'laporan') && el.dataset.tujuan === 'menu' && el.closest('nav'))));   // Harga & Pemasok / Uang tidak punya petak di nav bawah: petak Menu yang menyala (pintunya)
+  document.querySelectorAll('[data-tujuan]').forEach((el) => el.classList.toggle('aktif', el.dataset.tujuan === tujuan || (((tujuan === 'harga' && !navHargaTampil()) || tujuan === 'uang' || tujuan === 'laporan') && el.dataset.tujuan === 'menu' && el.closest('nav'))));   // Harga & Pemasok / Uang tidak punya petak di nav bawah: petak Menu yang menyala (pintunya)
   document.body.classList.toggle('di-jual', tujuan === 'jual');
   layar.tampilkan(tujuan === 'jual'); ringkasan.tampilkan(tujuan === 'ringkasan'); stok.tampilkan(tujuan === 'stok'); pelanggan.tampilkan(tujuan === 'pelanggan'); menu.tampilkan(tujuan === 'menu'); harga.tampilkan(tujuan === 'harga'); uang.tampilkan(tujuan === 'uang'); laporan.tampilkan(tujuan === 'laporan');
   try { localStorage.setItem(KUNCI_TAB, tujuan); } catch (e) { /* abaikan */ }
@@ -610,9 +617,10 @@ document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') tutupLem
 function gambarChipDanNav() {
   const a = akunKini();
   if (lembarAkun.classList.contains('buka')) isiLembarAkun();
-  document.querySelectorAll('[data-tujuan]').forEach((el) => { el.hidden = !!a && !bolehLayar(a, el.dataset.tujuan); });
+  // owner 28 Nov 2026: petak nav bertanda data-staf (Harga & Pemasok di tablet) hanya untuk akun staf yang diizinkan — owner tetap lewat Menu / menu samping
+  document.querySelectorAll('[data-tujuan]').forEach((el) => { el.hidden = !!a && !bolehLayarIni(a, el.dataset.tujuan) || (el.dataset.staf === '1' && (!a || a.jenis === 'owner')); });
   const tab = (() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })();
-  if (a && bisaBekerja(a) && !bolehLayar(a, tab)) pindah('jual');
+  if (a && bisaBekerja(a) && !bolehLayarIni(a, tab)) pindah('jual');
 }
 
 // ---- PANEL "SIAPA YANG JAGA?" (T1-3) — di dalam gerbang masuk; tombol digambar di sini, klik lewat delegasi (CSP: tanpa handler sebaris) ----
@@ -711,7 +719,38 @@ function mulaiJaga(op, sidik) {
   _tanyaGanti = null; _pilihOrang = ''; _pinKetik = ''; _jaga = { id: op.id, uid: (akunAsli() || {}).uid || '', sidik: !!sidik }; _jagaTerakhir = { id: op.id, nama: op.nama }; _sentuh = Date.now(); _intip = false;
   gambarAkun(akunAsli()); gambarChipDanNav(); kabarSebentar(op.nama + ' jaga' + (sidik ? ' (sidik jari)' : '') + ' — catatan berikutnya atas nama ' + op.nama);
   setTimeout(kirimKabarHangus, 0);
+  setTimeout(() => catatJaga(op), 0);   // owner 28 Nov 2026 (rules v27): absen jaga
 }
+// owner 28 Nov 2026 (rules v27, tablet saat owner pergi): ABSEN JAGA — satu catatan jagaLog tiap PIN / sidik jari berhasil (nama, peran, tanggal, jam). Kabar "toko dibuka" /
+// "ganti jaga" ke HP owner dikirim fungsi server kabarJaga dari catatan ini. Gagal (rules belum terbit / tanpa internet) tidak menghalangi jualan.
+function catatJaga(op) {
+  try {
+    const a = akunAsli(); if (!a || a.jenis === 'owner' || sumberData().jenis !== 'firestore' || !op) return;
+    const d = new Date(); const dua = (n) => String(n).padStart(2, '0');
+    const data = { id: 'jg-' + d.getTime() + '-' + Math.floor(Math.random() * 1e4), tanggal: d.getFullYear() + '-' + dua(d.getMonth() + 1) + '-' + dua(d.getDate()), jam: dua(d.getHours()) + ':' + dua(d.getMinutes()),
+      pada: d.toISOString(), nama: String(op.nama || '').slice(0, 40), peran: op.peran === 'ben' ? 'ben' : 'karyawan', orangId: String(op.id || '') };
+    tulisDokumen([{ koleksi: 'jagaLog', data }]).catch((e) => console.error('absen jaga', e));
+  } catch (e) { console.error('absen jaga', e); }
+}
+// owner 28 Nov 2026 (rules v27): KABAR TOKO dari tablet — sesudah nota BARU dari akun ini tersimpan: barang habis / perlu dipesan (Belanja) / terjual di bawah modal.
+// Nota yang sudah ada saat aplikasi dibuka tidak dikabarkan (hanya yang lahir sesudahnya). Satu kabar per barang per jenis per hari (kbKabarToko).
+const _ktLihat = new Set(); let _ktSiap = false; let _ktTunda = null;
+function periksaKabarToko() {
+  try {
+    const a = akunKini(); const asli = akunAsli(); if (!a || !asli || asli.jenis === 'owner' || !bisaBekerja(a) || sumberData().jenis !== 'firestore') return;
+    const semua = cacheMentah('penjualan');
+    if (!_ktSiap) { semua.forEach((p) => p && _ktLihat.add(String(p.id))); _ktSiap = true; return; }
+    const baru = semua.filter((p) => p && !_ktLihat.has(String(p.id)) && String(p.olehUid || '') === String(asli.uid || '')); semua.forEach((p) => p && _ktLihat.add(String(p.id)));
+    if (!baru.length) return;
+    const stok = {}; const S = ingatStokKarung(); Object.keys(S).forEach((m) => { stok[m] = S[m].sisaKg; });
+    const perlu = {}; try { const H = hitungBelanja({}, new Date()); (H.kelompok[0] && H.kelompok[0].awas ? H.kelompok[0].isi : []).forEach((b) => { perlu[b.merk] = b.hari === null ? 'stok tipis' : 'habis ±' + b.hari + ' hari (' + H.kelompok[0].judul.toLowerCase() + ')'; }); } catch (e) { /* Belanja tidak terhitung: cukup habis & di bawah modal */ }
+    const d = new Date(); const dua = (n) => String(n).padStart(2, '0');
+    const w = { tanggal: d.getFullYear() + '-' + dua(d.getMonth() + 1) + '-' + dua(d.getDate()), jam: dua(d.getHours()) + ':' + dua(d.getMinutes()) };
+    const KT = ssAtur('peran').kabarTablet || {};   // owner mematikan kabar tertentu di Menu › Toko ini › Peran & persetujuan › Orang di tablet › Kabar ke HP owner
+    const dok = kbKabarToko(baru, stok, perlu, cacheMentah('persetujuan'), w, asli, a.nama).filter((x) => KT[x.data.jenis] !== false); if (dok.length) tulisDokumen(dok).catch((e) => console.error('kabar toko', e));
+  } catch (e) { console.error('kabar toko', e); }
+}
+dengarkan(() => { clearTimeout(_ktTunda); _ktTunda = setTimeout(periksaKabarToko, 1500); });
 /** Kembali ke "Siapa yang jaga?" (tombol Ganti orang, atau tidak disentuh 5 menit). Isian TIDAK dibuang. */
 function kunciOrang() {
   if (!_jaga) return; _jaga = null; _pilihOrang = ''; _pinKetik = ''; _tanyaGanti = null; pesanOrang(''); _intip = false;

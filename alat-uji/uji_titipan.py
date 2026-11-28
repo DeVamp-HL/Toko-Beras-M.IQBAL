@@ -276,8 +276,9 @@ def periksa_statis(t):
     ok('fungsi server: pemicu persetujuan baru, region dari LOKASI, pesan DATA, token mati dibuang', "onDocumentCreated('persetujuan/{id}'" in t[FIX] and "region: process.env.LOKASI || 'asia-southeast2'" in t[FIX] and 'data: { judul: p.judul, isi: p.isi, tag: p.tag, layar: p.layar },' in t[FIX] and 'mati.map((ref) => ref.delete())' in t[FIX])
     # paket Banding pemasok (owner 26 Nov 2026): SATU-SATUNYA tulisan yang boleh = hasil tarik harga acuan ke aturanToko/acuanTarik (usulan, bukan uang / stok)
     TARIK = "await getFirestore().collection('aturanToko').doc('acuanTarik').set(d);"
-    ok('fungsi server tidak menulis data toko (hanya membuang token mati — kabarOwner, kabarTablet & kabarDariOwner, owner 23 Nov 2026; + satu dokumen hasil tarik harga acuan, owner 26 Nov 2026)',
-       t[FIX].count(TARIK) == 1 and not re.search(r"\.(set|update|add)\(", t[FIX].replace(TARIK, '')) and t[FIX].count('.delete()') == 4 and t[FIX].count('ref.delete()') == 4)   # + kabarPatuh (owner 26 Nov 2026: push pagi kalender kepatuhan) — juga hanya membuang token mati
+    STATUS = "await db.collection('notifStatus').doc(W.iso).set("   # owner 28 Nov 2026 (rules v27): periksaToko mencatat kabar yang sudah dikirim hari itu
+    ok('fungsi server tidak menulis data toko (hanya membuang token mati — kabarOwner, kabarTablet & kabarDariOwner, owner 23 Nov 2026; + satu dokumen hasil tarik harga acuan, owner 26 Nov 2026; + status kabar harian notifStatus, owner 28 Nov 2026)',
+       t[FIX].count(TARIK) == 1 and t[FIX].count(STATUS) == 1 and not re.search(r"\.(set|update|add)\(", t[FIX].replace(TARIK, '').replace(STATUS, '')) and t[FIX].count('.delete()') == 5 and t[FIX].count('ref.delete()') == 5)   # + kabarPatuh (owner 26 Nov 2026: push pagi kalender kepatuhan) — juga hanya membuang token mati
     ok('skrip pasang: lokasi dari database Firestore → .env, deploy fungsi saja', 'gcloud firestore databases describe' in t[PAS] and "printf 'LOKASI=%s\\n'" in t[PAS] and 'deploy --only functions' in t[PAS])
     ok('service worker notifikasi tidak menyimpan salinan halaman & tidak membaca data toko', not re.search(r"caches\.|fetch\(|firestore", t[SWN]))
     return h

@@ -344,6 +344,24 @@ export function susunTerbit(w, yakin) {
   dokumen.push({ koleksi: 'hargaTerbit', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, n: d.length, daftar } });
   return { dokumen, daftar, nLabel: label.length, patch: { terbit: false, yakinRugi: false, ubah: null, kabar: d.length + ' harga terbit sekaligus — katalog yang dibaca kasir berganti mulai sekarang' + (label.length ? ' · ' + label.length + ' label di toko perlu diganti' : '') + '. Katalog HP kasir ikut berganti di kiriman yang sama.', kabarAwas: false } };
 }
+/**
+ * owner 28 Nov 2026 (tablet saat owner pergi): TERBITKAN SATU HARGA — usul harga jual dari tablet yang disetujui owner. Bentuk sama dengan susunTerbit untuk satu baris
+ * (dokumen katalog, label rak, riwayat hargaTerbit); draf barang itu dibuang, draf barang lain TIDAK disentuh. Di bawah modal = ditolak dengan kalimat (owner
+ * menerbitkannya sendiri di Harga › Katalog kalau memang disengaja). → { dokumen, patch } | { tolak }.
+ */
+export function susunTerbitSatu(k, harga, w) {
+  const S = hgSemua(new Date(w.kini)); const b0 = S.baris.find((x) => x.k === k); if (!b0) return { tolak: 'Barang itu sudah tidak ada di katalog' };
+  const n = Math.round(Number(harga) || 0); if (!(n > 0)) return { tolak: 'Harga usulnya tidak sah' };
+  if (n === b0.lamaN) return { tolak: b0.judul + ' sudah ' + RP(n) + ' — tidak ada yang berubah' };
+  const N = nilaiHarga(n, b0.modalUnit, b0.st.kg, S.target, b0.naik);
+  if (N && N.status === 'rugi') return { tolak: b0.judul + ' ' + RP(n) + ' DI BAWAH modal — kalau memang disengaja, terbitkan sendiri di Harga › Katalog (dua ketukan)' };
+  const b = Object.assign({}, b0, { n }); const dokumen = [{ koleksi: b0.koleksi, data: hgDokKatalog(b, w) }];
+  const L = daftarLabel(); const ada = L.find((x) => x.k === k); const tertulis = ada ? Number(ada.lama) || 0 : b0.lamaN; const label = L.filter((x) => x.k !== k); if (tertulis !== n) label.push({ k, lama: tertulis, tanggal: w.tanggal });
+  dokumen.push({ koleksi: 'aturanToko', data: { id: 'hargaLabel', tanggal: w.tanggal, jam: w.jam, daftar: label } });
+  if (S.draf && S.draf[k] !== undefined) { const d = Object.assign({}, S.draf); delete d[k]; dokumen.push(hgDokDraf(d, w)); }
+  dokumen.push({ koleksi: 'hargaTerbit', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, n: 1, daftar: [{ kunci: k, nama: b0.judul, lama: b0.lamaN, baru: n, koleksi: b0.koleksi }], dari: 'usul tablet' } });
+  return { dokumen, patch: { kabar: b0.judul + ' terbit ' + RP(n) + (b0.lamaN ? ' (dulu ' + RP(b0.lamaN) + ')' : '') + ' — rak Jual & katalog HP kasir ikut.' + (tertulis !== n ? ' Label rak perlu diganti.' : ''), kabarAwas: false } };
+}
 /** Bentuk dokumen katalog persis simpanHarga* index.html; id lama dipakai lagi bila sudah ada. */
 function hgDokKatalog(b, w) {
   const id = b.dok ? b.dok.id : b.st.id === 'K' + b.st.kg ? b.merk.toLowerCase().replace(/\s+/g, '_') + '_' + b.st.kg + 'kg' : b.merk;

@@ -8,13 +8,62 @@ import { cacheMentah } from '../data/toko.js';
 import { RP, tanggalPendek } from '../inti/format.js';
 import { tpTeks, TP_TINDAKAN, TP_PESAN, TP_KABAR, TP_BATAS } from './titipan-logika.js';
 
-export const KB_JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk dari tablet', hitungLaci: 'Hitungan laci dari tablet', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit', pesanOwner: 'Pesan dari owner' };
+export const KB_JUDUL = { uangKeluar: 'Titipan uang keluar', pesan: 'Pesan dari tablet', barangMasuk: 'Barang masuk dari tablet', hitungLaci: 'Hitungan laci dari tablet', nego: 'Minta nego harga', hargaPelanggan: 'Usul harga pelanggan', kredit: 'Minta bon lewat batas kredit', pesanOwner: 'Pesan dari owner',
+  hargaJual: 'Usul harga jual dari tablet', belanja: 'Daftar belanja dari tablet', kabarToko: 'Kabar toko', tugasSelesai: 'Tugas selesai', tugasOwner: 'Tugas dari owner' };   // owner 28 Nov 2026 (rules v27)
 // owner 23 Nov 2026 ("gimana gua kirim pesan lewat mac/HP ke tablet?"): PESAN OWNER KE TABLET — dokumen persetujuan bertindakan 'pesanOwner', status
 // 'terkirim' (BUKAN 'menunggu': tidak masuk daftar menunggu owner, tidak memicu push ke HP owner, tidak ikut papan Persetujuan). Rules tetap v17: owner
 // menulis persetujuan, akun tablet (ben/karyawan) membacanya. Tablet tidak bisa menandai dibaca di server (update = owner) — "sudah dibuka" dicatat
 // lonceng per perangkat. Push ke tablet = fungsi server kabarDariOwner (functions/).
 export const KB_PESAN_OWNER = 'pesanOwner';
 export const KB_STATUS_TERKIRIM = 'terkirim';
+// owner 28 Nov 2026 (tablet saat owner pergi): TUGAS DARI OWNER — persetujuan bertindakan 'tugasOwner', status 'terkirim' (seperti pesan owner: dibaca tablet, push
+// lewat kabarDariOwner). wajibFoto = tablet wajib melampirkan foto saat menjawab ("foto bukti hanya saat gua minta"). rujukan = id permintaan yang dimintai foto
+// (titipan uang keluar / hitungan laci) atau ''. Jawabannya = persetujuan 'tugasSelesai' dari tablet (rules v27) yang menunjuk tugasId.
+export const KB_TUGAS_OWNER = 'tugasOwner';
+/** Susun tugas owner untuk tablet. teks 1–500 huruf. w = waktuSekarang(). Hasil { dokumen, patch } atau { tolak }. */
+export function kbSusunTugasOwner(teks, wajibFoto, w, akun, rujukan) {
+  if (!akun || akun.jenis !== 'owner') return { tolak: 'Tugas ke tablet hanya dari akun owner' };
+  const isi = String(teks || '').replace(/\s+/g, ' ').trim(); if (!isi) return { tolak: 'Tulis dulu tugasnya' };
+  if (isi.length > TP_BATAS.pesan) return { tolak: 'Tugas terlalu panjang — paling banyak ' + TP_BATAS.pesan + ' huruf' };
+  const data = { id: w.idUnik(), tindakan: KB_TUGAS_OWNER, status: KB_STATUS_TERKIRIM, untuk: 'tablet', teks: isi, wajibFoto: !!wajibFoto, rujukan: String(rujukan || ''), dari: 'Owner', tanggal: w.tanggal, jam: w.jam, dibuatPada: w.kini };
+  return { dokumen: [{ koleksi: 'persetujuan', data }], patch: { kabar: 'Tugas terkirim ke tablet' + (wajibFoto ? ' — wajib dijawab dengan foto' : ''), kabarAwas: false } };
+}
+/** Tugas owner yang BELUM dijawab tablet (tidak ada tugasSelesai yang menunjuknya), terbaru dulu. */
+export function kbTugasTerbuka(daftar) {
+  const D = daftar || cacheMentah('persetujuan'); const jawab = {}; D.forEach((m) => { if (m && m.tindakan === 'tugasSelesai' && m.tugasId) jawab[String(m.tugasId)] = true; });
+  return D.filter((m) => m && m.tindakan === KB_TUGAS_OWNER && !jawab[String(m.id)] && m.status !== 'batal').sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || String(b.jam || '').localeCompare(String(a.jam || '')));
+}
+/** Jawaban tablet atas satu tugas owner → persetujuan 'tugasSelesai' (rules v27 stafUsulTablet). fotoId = id dokumen fotoBukti yang dikirim bersama ('' = tanpa foto). */
+export function kbSusunTugasSelesai(tugas, catatan, fotoId, w, akun, dari) {
+  if (!tugas) return { tolak: 'Tugasnya tidak ditemukan' }; if (!akun || akun.jenis === 'owner') return { tolak: 'Jawaban tugas dikirim dari tablet' };
+  if (tugas.wajibFoto && !fotoId) return { tolak: 'Owner meminta FOTO untuk tugas ini — ambil fotonya dulu' };
+  const cat = String(catatan || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  const teks = ('Selesai: ' + String(tugas.teks || '').slice(0, 120) + (cat ? ' — ' + cat : '') + (fotoId ? ' (dengan foto)' : '')).slice(0, 500);
+  const data = { id: w.idUnik(), tindakan: 'tugasSelesai', status: 'menunggu', mintaUid: String(akun.uid || ''), dari: String(dari || akun.nama || ''), teks, tugasId: String(tugas.id), fotoId: String(fotoId || ''), tanggal: w.tanggal, jam: w.jam };
+  return { dokumen: [{ koleksi: 'persetujuan', data }], patch: { kabar: 'Tugas dijawab — owner dapat kabarnya' + (fotoId ? ' beserta fotonya' : ''), kabarAwas: false } };
+}
+// owner 28 Nov 2026: KABAR TOKO otomatis dari tablet sesudah nota tersimpan — barang habis / perlu dipesan menurut stok minimum Belanja, dan baris yang terjual di
+// bawah modal tersimpan di notanya. Satu kabar per barang per jenis per hari (id tetap → yang sudah ada tidak dikirim lagi). Harga MINIMUM (modal + biaya toko + target
+// laba) tidak bisa dihitung di tablet (biaya = data uang owner) — peringatan harga minimum katalog sudah ada di lonceng owner (paket P3).
+export const KB_KABAR_TOKO = 'kabarToko';
+const kbSlug = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'x';
+/**
+ * baris = baris nota yang baru tersimpan (penjualan); stok = { merk: sisaKg }; perlu = { merk: kalimat } (merek yang menurut Belanja perlu dipesan); ada = persetujuan
+ * yang sudah ada (cache). → dokumen persetujuan kabarToko yang BELUM pernah dikirim hari ini.
+ */
+export function kbKabarToko(baris, stok, perlu, ada, w, akun, dari) {
+  if (!akun || akun.jenis === 'owner') return [];
+  const sudah = {}; (ada || []).forEach((m) => { if (m && m.id !== undefined) sudah[String(m.id)] = true; }); const out = []; const pernah = {};
+  const tambah = (jenis, merk, teks) => { const id = 'kt-' + String(w.tanggal).replace(/-/g, '') + '-' + jenis + '-' + kbSlug(merk); if (sudah[id] || pernah[id]) return; pernah[id] = true;
+    out.push({ koleksi: 'persetujuan', data: { id, tindakan: KB_KABAR_TOKO, jenis, merk: String(merk), status: 'menunggu', mintaUid: String(akun.uid || ''), dari: String(dari || akun.nama || ''), teks: String(teks).slice(0, 500), tanggal: w.tanggal, jam: w.jam } }); };
+  (baris || []).forEach((p) => { if (!p || p.dibatalkan) return; const m = String(p.merkSumber || p.namaProduk || '').trim(); if (!m) return;
+    const sisa = stok && stok[m] !== undefined ? Number(stok[m]) : null;
+    if (sisa !== null && sisa <= 0.5) tambah('habis', m, m + ' HABIS di buku sesudah nota ' + (p.trxId || '') + ' — sisa ' + String(Math.max(0, Math.round(sisa * 10) / 10)).replace('.', ',') + ' kg');
+    else if (perlu && perlu[m]) tambah('menipis', m, m + ' perlu dipesan — ' + perlu[m]);
+    const hpp = Number(p.hppTotalSaatJual) || 0; const harga = (Number(p.hargaTotal) || 0) - (Number(p.ongkirAntar) || 0);
+    if (hpp > 0 && harga > 0 && harga + 0.5 < hpp) tambah('bawahModal', m + '-' + (p.trxId || ''), 'Terjual DI BAWAH MODAL: ' + m + ' ' + RP(Math.round(harga)) + ' (modal ' + RP(Math.round(hpp)) + ')' + (p.namaPelanggan ? ' · ' + p.namaPelanggan : '') + ' · nota ' + (p.trxId || '')); });
+  return out;
+}
 /** Susun pesan owner untuk tablet. teks 1–500 huruf (TP_BATAS.pesan). w = waktuSekarang(). Hasil { dokumen, patch } atau { tolak }. */
 export function kbSusunPesanOwner(teks, w, akun) {
   if (!akun || akun.jenis !== 'owner') return { tolak: 'Pesan ke tablet hanya dari akun owner' };
@@ -45,7 +94,7 @@ export function kbSidik(akun, daftar) {
   D.forEach((m) => {
     if (!m || m.id === undefined) return; const id = String(m.id); const st = m.status || 'menunggu';
     if (owner) { if (st === 'menunggu') { out.menunggu[id] = { judul: KB_JUDUL[m.tindakan] || 'Permintaan dari tablet', isi: kbIsi(m), layar: layarOwner(m), tindakan: String(m.tindakan || '') }; out.n += 1; } return; }
-    if (m.tindakan === KB_PESAN_OWNER) { out.pesan[id] = { isi: String(m.teks || '').replace(/\s+/g, ' ').slice(0, 160) }; return; }   // owner 23 Nov 2026: pesan owner untuk tablet
+    if (m.tindakan === KB_PESAN_OWNER || m.tindakan === KB_TUGAS_OWNER) { out.pesan[id] = { isi: (m.tindakan === KB_TUGAS_OWNER ? 'TUGAS' + (m.wajibFoto ? ' (wajib foto)' : '') + ': ' : '') + String(m.teks || '').replace(/\s+/g, ' ').slice(0, 160) }; return; }   // owner 23 Nov 2026: pesan owner untuk tablet
     if (uid && uidPeminta(m) === uid) out.milik[id] = { status: st, tindakan: String(m.tindakan || ''), isi: kbIsi(m), alasan: String(m.alasanTolak || ''), balasan: String(m.balasan || '') };
   });
   return out;
@@ -116,8 +165,8 @@ export function kbLonceng(akun, daftar, dilihat, hariIni, pengingat) {
   const out = []; const ob = [];
   D.forEach((m) => {
     if (!m || m.id === undefined) return; const id = String(m.id); const st = m.status || 'menunggu'; const t = String(m.tindakan || '');
-    if (t === KB_PESAN_OWNER) {   // pesan owner: owner = gelembung sendiri; tablet = masuk (belum dibuka bila peta dilihat belum mencatatnya)
-      ob.push(gelembung({ id, dari: 'owner', nama: 'Owner', teks: m.teks, tanggal: m.tanggal, jam: m.jam, urut: urutWaktu(m.tanggal, m.jam, m.dibuatPada), status: st, baru: !owner && L[id] !== st, lihat: !owner }));
+    if (t === KB_PESAN_OWNER || t === KB_TUGAS_OWNER) {   // pesan owner (+ tugas owner, 28 Nov 2026): owner = gelembung sendiri; tablet = masuk (belum dibuka bila peta dilihat belum mencatatnya)
+      ob.push(gelembung({ id, dari: 'owner', nama: 'Owner', teks: (t === KB_TUGAS_OWNER ? 'TUGAS' + (m.wajibFoto ? ' (wajib foto)' : '') + ': ' : '') + m.teks, tanggal: m.tanggal, jam: m.jam, urut: urutWaktu(m.tanggal, m.jam, m.dibuatPada), status: st, baru: !owner && L[id] !== st, lihat: !owner }));
       return;
     }
     if (t === TP_PESAN) {

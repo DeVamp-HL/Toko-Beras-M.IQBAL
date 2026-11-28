@@ -18,7 +18,7 @@ PEMBANTU = {'ubahMasuk': 'masuk', 'ubahCocok': 'cocok', 'ubahAdukan': 'adukan', 
 LOKAL_KE_KUNCI = {'KUNCI_DRAF_MASUK': 'masuk', 'KUNCI_DRAF_COCOK': 'cocok', 'KUNCI_DRAF_ADUKAN': 'adukan', 'KUNCI_DRAF_BELANJA': 'pesan', 'KUNCI_DRAF_TUTUP': 'draf'}
 # sengaja BUKAN isian — tetap ikut dikosongkan (seluruh keadaan layar kembali ke awal), tapi tidak ditanyakan saat Keluar
 BUKAN_ISIAN = {
-    'harga': {'kal': 'alat hitung naik/turun massal — hasilnya baru jadi isian lewat draf katalog di server'},
+    'harga': {'kal': 'alat hitung naik/turun massal — hasilnya baru jadi isian lewat draf katalog di server', 'cariStaf': 'pencarian barang di Harga & Pemasok versi tablet (owner 28 Nov 2026) — saringan tampilan'},
     'pelanggan': {'cari': 'pencarian', 'titipCari': 'pencarian', 'uCariO': 'pencarian nama (Usaha › + pelanggan)', 'uCariB': 'pencarian barang (Usaha › Harga barang)',
                   'uCariK': 'pencarian nama (Usaha › harga khusus)', 'uCariKB': 'pencarian barang (Usaha › harga khusus)'},
     'menu': {'cari': 'pencarian', 'owSandi': 'sandi akun owner (sidik jari Tahap B, 23 Nov 2026) — SENGAJA tidak pernah disimpan sebagai draf / ditanyakan; dikosongkan begitu Nyalakan diketuk',
@@ -111,7 +111,8 @@ if __name__ == '__main__':
             ('Uang lupa menjaga form uang keluar (catat)', 'uang', "['catat', ", "["),
             ('Laporan lupa menjaga draf setoran pajak', 'laporan', "'drafSetor', ", ''),
             ('Stok lupa draf lokal barang masuk', 'stok', '[KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);', '[KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);'),
-            ('Harga lupa draf lokal belanja', 'harga', '[KUNCI_DRAF_BELANJA]);', '[]);'),
+            ('Harga lupa draf lokal belanja', 'harga', '[KUNCI_DRAF_BELANJA, KUNCI_DRAF_STAF]);', '[KUNCI_DRAF_STAF]);'),
+            ('Harga lupa draf belanja tablet', 'harga', '[KUNCI_DRAF_BELANJA, KUNCI_DRAF_STAF]);', '[KUNCI_DRAF_BELANJA]);'),
             ('Jual lupa isian pesanan', '_jl', "'ajSetor', 'psDraf', ", "'ajSetor', "),
             ('Menu tidak meneruskan penjaga', 'menu', 'belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan', 'belumDisimpan: () => false, lupakanOrang: () => {}'),
             ('Jual lupa menghapus simpanan keranjang saat ganti orang (owner 7 Okt)', 'jual', 'lupakanOrang: () => { lupakanSimpanan(); K.setel(', 'lupakanOrang: () => { K.setel('),

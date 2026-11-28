@@ -56,7 +56,7 @@ export function pendengarUang(akun) {
 // §4 — CREATE bukan-owner: koleksi → peran yang boleh. Menambah peran nanti = menambah satu nama di sini DAN di daftar yang sama di firestore.rules.
 export const BUAT_STAF = { penjualan: ['ben', 'karyawan'], piutangMutasi: ['ben', 'karyawan'], stokBahanLiteran: ['ben', 'karyawan'], stokBahanKemasan: ['ben', 'karyawan'],
   produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], tandaKenal: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'], cekGudang: ['ben'],   /* rules v19 (paket KPI laba, owner 24 Nov 2026): cek gudang = ben */ kepatuhanCek: ['ben'],   /* rules v22 (owner 26 Nov 2026): tanda kalender kepatuhan = ben */
-  fotoTanda: ['ben'],   /* rules v26 (paket P8, owner 27 Nov 2026): tanda foto nota kedatangan = ben */ rutinCek: ['ben', 'karyawan'],   /* rules v25 (paket P6, owner 27 Nov 2026): centang rutin = ben & karyawan */ wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'], ambilBarang: ['ben', 'karyawan'] };   // rules v23: karcis ambil nanti (bonPublik owner saja)   // rules v11 (B4): pesanan & jadwal rutin = ben   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
+  fotoTanda: ['ben'],   /* rules v26 (paket P8, owner 27 Nov 2026): tanda foto nota kedatangan = ben */ rutinCek: ['ben', 'karyawan'],   /* rules v25 (paket P6, owner 27 Nov 2026): centang rutin = ben & karyawan */ wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'], suratJalan: ['ben'], pesanan: ['ben'], orderRutin: ['ben'], ambilBarang: ['ben', 'karyawan'], jagaLog: ['ben', 'karyawan'], fotoBukti: ['ben', 'karyawan'] };   // rules v27 (owner 28 Nov 2026): absen jaga & foto bukti yang diminta owner   // rules v23: karcis ambil nanti (bonPublik owner saja)   // rules v11 (B4): pesanan & jadwal rutin = ben   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
 // rules v7 (owner 7 Okt, JS2-C): persetujuan hanya PERMINTAAN NEGO "menunggu" atas nama sendiri, tanpa kolom keputusan (stafMintaNego; periksaKiriman di bawah)
 export const TIPE_WADAH_STAF = ['takar', 'karung', 'karungIsi', 'cek'];   // = stafBuatWadah di rules v5
 export const KREDIT_STAF = ['ben'];   // penjualan caraBayar Kredit (jualBon): ben `sendiri`, karyawan `owner`
@@ -105,7 +105,8 @@ export function keadaanAkun(email, uid, dok) {
   if (dok.aktif !== true) return { jenis: 'nonaktif', peran: null, nama: String(dok.nama || ''), uid, email: e, kalimat: 'Akun ini dinonaktifkan owner' };
   if (PERAN_BUKAN_OWNER.indexOf(peran) < 0) return { jenis: 'nonaktif', peran: null, nama: String(dok.nama || ''), uid, email: e, kalimat: 'Peran akun ini tidak dikenal ("' + peran + '") — minta owner memperbaikinya' };
   // rules v14: tanda bacaUang hanya berarti untuk Penjaga laci (bacaUangDari) — dibawa ke akun supaya firebase.js tahu boleh memasang pendengar uang
-  return { jenis: 'aktif', peran, nama: String(dok.nama || '').trim() || e, uid, email: e, bacaUang: peran === 'ben' && dok.bacaUang === true };
+  // rules v27 (owner 28 Nov 2026): tanda hakFotoNota (ditulis owner lewat Hak tablet per peran) = akun Penjaga laci boleh MEMBACA foto nota pemasok (fotoBon)
+  return { jenis: 'aktif', peran, nama: String(dok.nama || '').trim() || e, uid, email: e, bacaUang: peran === 'ben' && dok.bacaUang === true, hakFotoNota: peran === 'ben' && dok.hakFotoNota === true };
 }
 export const bisaBekerja = (akun) => !!akun && (akun.jenis === 'owner' || akun.jenis === 'aktif');
 export const teksMasukSebagai = (akun) => (!akun || !bisaBekerja(akun) ? '' : akun.jenis === 'owner' ? 'Owner' : akun.nama + ' (' + namaPeran(akun.peran) + ')');
@@ -337,6 +338,27 @@ export function tandaFotoSah(d) {
   if (!d || typeof d !== 'object') return false; if (Object.keys(d).some((k) => TANDA_FOTO_KOLOM.indexOf(k) < 0)) return false;
   return typeof d.idBon === 'string' && ID_KEDATANGAN_SAH.test(d.idBon) && (d.jenis === 'bon' || d.jenis === 'tunai') && /^\d{4}-\d{2}-\d{2}$/.test(String(d.tanggal || '')) && typeof d.id === 'string' && d.id.length > 0;
 }
+// rules v27 (owner 28 Nov 2026, tablet saat owner pergi) — cermin stafUsulTablet / stafJaga / stafFotoBukti / stafHak:
+//  · USUL dari tablet yang berlaku sesudah owner setujui: empat tindakan, "menunggu", atas nama sendiri (mintaUid), teks 1–500, tanpa kolom keputusan / dipakai;
+//  · ABSEN JAGA (jagaLog) & FOTO BUKTI (fotoBukti): atas nama penulis, id = kolom id, kolom dibatasi;
+//  · hak baca foto nota per akun Penjaga laci = aksesAkun.<HAK_FOTO_NOTA> (ditulis owner bersama Hak tablet per peran).
+export const USUL_TABLET = ['hargaJual', 'belanja', 'kabarToko', 'tugasSelesai'];
+export const HAK_FOTO_NOTA = 'hakFotoNota';
+export const JAGA_KOLOM = ['id', 'tanggal', 'jam', 'pada', 'nama', 'peran', 'orangId', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'];
+export const BUKTI_KOLOM = ['id', 'tugasId', 'tanggal', 'jam', 'jenis', 'base64', 'byte', 'lebar', 'tinggi', 'oleh', 'olehUid', 'operatorId', 'perangkat', 'lokasi', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'];
+const KEPUTUSAN_USUL = ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan', 'koreksiOwner', 'dipakai'];
+export const usulTabletSah = (d, uid) => !!d && USUL_TABLET.indexOf(d.tindakan) >= 0 && d.status === 'menunggu' && String(d.mintaUid || '') === String(uid || '') && typeof d.teks === 'string'
+  && d.teks.length > 0 && d.teks.length <= 500 && !KEPUTUSAN_USUL.some((k) => k in d);
+export function jagaSah(d) {
+  if (!d || typeof d !== 'object' || Object.keys(d).some((k) => JAGA_KOLOM.indexOf(k) < 0)) return false;
+  return typeof d.id === 'string' && d.id.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(String(d.tanggal || '')) && /^\d{2}:\d{2}$/.test(String(d.jam || '')) && typeof d.nama === 'string' && d.nama.length > 0 && d.nama.length <= 40
+    && (d.peran === 'ben' || d.peran === 'karyawan');
+}
+export function buktiSah(d) {
+  if (!d || typeof d !== 'object' || Object.keys(d).some((k) => BUKTI_KOLOM.indexOf(k) < 0)) return false;
+  return typeof d.id === 'string' && d.id.length > 0 && typeof d.tugasId === 'string' && d.tugasId.length > 0 && d.tugasId.length <= 40 && /^image\/(jpeg|png|webp)$/.test(String(d.jenis || ''))
+    && typeof d.base64 === 'string' && d.base64.length > 0 && d.base64.length <= 960000;
+}
 /** Akun ini boleh memotret nota kedatangan (rules v26): owner, atau akun staf aktif berperan FOTO_STAF. */
 export const bolehFotoNota = (akun) => !!akun && (akun.jenis === 'owner' || (bisaBekerja(akun) && akun.jenis !== 'owner' && FOTO_STAF.indexOf(akun.peran) >= 0));
 export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
@@ -374,6 +396,9 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'rutinCek' && !cekRutinSah(d)) return { tolak: 'Bentuk centang rutin tidak sah — buka lagi daftarnya' };
       // rules v26 (paket P8, owner 27 Nov 2026): tanda foto nota kedatangan dari tablet — idBon = id kedatangan, jenis bon|tunai, kolom dibatasi (stafTandaFoto)
       if (x.koleksi === 'fotoTanda' && !tandaFotoSah(d)) return { tolak: 'Bentuk tanda foto tidak sah — foto ulang notanya' };
+      // rules v27: absen jaga & foto bukti dari tablet — bentuk dicek di sini supaya kiriman yang pasti ditolak server tidak dikirim
+      if (x.koleksi === 'jagaLog' && !jagaSah(d)) return { tolak: 'Bentuk absen jaga tidak sah' };
+      if (x.koleksi === 'fotoBukti' && !buktiSah(d)) return { tolak: 'Bentuk foto bukti tidak sah — foto ulang' };
       if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return { tolak: tolakTindakan('hargaBeli') };
       // rules v5 (putaran 39): karyawan menulis wadahLiteran hanya takar / karung / karungIsi / cek (aturan wadah & titik samakan isi = owner), batchMasuk hanya batch LAHIR BUKU 0 kg
       if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };
@@ -404,6 +429,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'persetujuan' && d.tindakan === 'hitungLaci') { if (P !== 'ben' || (hak.hitungLaci || 'tidak') === 'tidak' || !hitungLaciSah(d, akun.uid)) return { tolak: tolakTindakan('hitungLaci') }; continue; }
       // rules v21: USUL harga tawaran / acuan (banding pemasok) — Penjaga laci saja (stafUsulBanding); catatannya ditulis owner saat menyetujui
       if (x.koleksi === 'persetujuan' && d.tindakan === 'hargaBanding') { if (P !== 'ben' || !usulBandingSah(d, akun.uid)) return { tolak: 'Usul harga tawaran / acuan hanya dari Penjaga laci, atas nama orang yang jaga, harga per kg Rp1.000–Rp100.000' }; continue; }
+      // rules v27: USUL dari tablet (harga jual, daftar belanja, kabar toko, tugas selesai) — atas nama sendiri, "menunggu", teks 1–500 (stafUsulTablet)
+      if (x.koleksi === 'persetujuan' && USUL_TABLET.indexOf(d.tindakan) >= 0) { if (!usulTabletSah(d, akun.uid)) return { tolak: 'Usul dari tablet harus atas nama orang yang jaga, menunggu owner, dengan kalimat 1–500 huruf' }; continue; }
       // rules v13: PESAN untuk owner — bentuk "menunggu" bertindakan pesan atas nama sendiri, teks 1–500 huruf, tanpa keputusan / balasan (stafKirimPesan)
       if (x.koleksi === 'persetujuan' && d.tindakan === 'pesan') { if (d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak', 'balasan'].some((k) => k in d) || typeof d.teks !== 'string' || !d.teks.length || d.teks.length > 500 || String(d.mintaUid || '') !== String(akun.uid || '')) return { tolak: 'Pesan untuk owner harus berisi 1–500 huruf, atas nama orang yang jaga' }; continue; }
       if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].some((k) => k in d) || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };

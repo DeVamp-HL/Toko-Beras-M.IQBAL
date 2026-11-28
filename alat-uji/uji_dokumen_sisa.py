@@ -360,11 +360,11 @@ KONTROL = [
     # ---- prosedur pulih darurat (sanggahan audit akhir P1, 8 Okt 2026)
     ('prosedur: firestore.rules berubah (ukuran sama), sidik di langkah 3 tidak diperbarui', {RULES: [('DRAF 7 Okt 2026 — owner menerbitkan SEKALI', 'DRAF 8 Okt 2026 — owner menerbitkan SEKALI')]}, ('prosedur',)),
     ('prosedur: sidik aturan darurat v3 salah ketik', {PROS: [('SHA-256 berawalan `32c55d58`', 'SHA-256 berawalan `32c55d59`')]}, ('prosedur',)),
-    ('prosedur: satu kutipan baris 2 masih menyebut versi lama (rules v26 foto nota tablet & tautan Dasbor)', {PROS: [('(b) Baris 2 editor berbunyi `ATURAN FIRESTORE v26 FINAL`', '(b) Baris 2 editor berbunyi `ATURAN FIRESTORE v25 FINAL`')]}, ('prosedur',)),
+    ('prosedur: satu kutipan baris 2 masih menyebut versi lama (rules v27 tablet saat owner pergi)', {PROS: [('(b) Baris 2 editor berbunyi `ATURAN FIRESTORE v27 FINAL`', '(b) Baris 2 editor berbunyi `ATURAN FIRESTORE v26 FINAL`')]}, ('prosedur',)),
     ('prosedur: jalur "Menu › Sistem › Perangkat" kembali', {PROS: [('31 Des malam: Menu › Toko ini › Perangkat & antrean', '31 Des malam: Menu › Sistem › Perangkat')]}, ('prosedur',)),
     ('prosedur: langkah 4 kembali menunjuk kasus uji-rules-v6.md', {PROS: [('Isian & akunnya di `docs/uji-rules-v7.md`', 'Isian & akunnya di `docs/uji-rules-v6.md`')]}, ('prosedur',)),
     ('prosedur: langkah 4 berhenti walau baris 2 bukan v7 (aturan darurat tertinggal — sanggahan 8 Okt, sedang)',
-     {PROS: [('**(b) baris 2 BUKAN `ATURAN FIRESTORE v26 FINAL`** (aturan darurat atau aturan lain masih terpasang) → JANGAN berhenti.', '(b) baris 2 berbeda → sama seperti di bawah.')]}, ('prosedur',)),
+     {PROS: [('**(b) baris 2 BUKAN `ATURAN FIRESTORE v27 FINAL`** (aturan darurat atau aturan lain masih terpasang) → JANGAN berhenti.', '(b) baris 2 berbeda → sama seperti di bawah.')]}, ('prosedur',)),
     ('prosedur: langkah 4 menyalin ulang firestore.rules.v3 (aturan darurat) saat baris 2 bukan v7',
      {PROS: [('`git show origin/main:firestore.rules | LANG=en_US.UTF-8 pbcopy`, tempel, Publish', '`git show origin/main:firestore.rules.v3 | LANG=en_US.UTF-8 pbcopy`, tempel, Publish')]}, ('prosedur',)),
     ('prosedur: kutipan pita "arsip habis" kembali (teks layar: "Tahun 2026 terkunci dan arsipnya habis")', {PROS: [('jangan dibuka sampai pita "Tahun 2026 terkunci dan arsipnya habis"', 'jangan dibuka sampai pita "arsip habis"')]}, ('prosedur',)),

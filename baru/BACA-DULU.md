@@ -4763,3 +4763,27 @@ mana yang paling laris terjual … Grand, Royal, Signature itu nama merek yang a
 - **Barang masuk** (owner & tablet): tanda "Varian ▲ naik Rp… dari IR64 Apex · Royal terakhir (… · merek pemasok · tanggal · pemasok)" (`kmBandingVarian`, kelas baris dipakai
   untuk merek baru). Cuma tanda, tidak memblokir simpan.
 - Alat uji: `uji_harga_varian.py` (23 lulus, kontrol 14). Tanpa rules baru, mesin beku tidak disentuh.
+
+## Tablet saat owner pergi (28 Nov 2026, rules v27 + fungsi server)
+Owner 28 Nov 2026: penjaga laci "bisa liat nota dari pemasok dan foto nota atas izin gua melalui hak izin akses melalui peran dan hak yang bisa gua atur di akun owner.
+Termasuk mencatat, mengatur, ubah harga jika gua izinkan dari notifikasi. Semua atas persetujuan gua." + daftar belanja, usul harga jual; kabar ke HP (buka / ganti jaga
+/ tutup, stok habis & jual murah, tablet putus / nyangkut); foto bukti HANYA saat owner minta; absen jaga; tugas dari owner. Tidak ada yang langsung berubah dari tablet.
+- **Hak tablet per peran** (Menu › Toko ini › Peran & persetujuan › Orang di tablet): `sistem-logika` `SS_HAK_TABLET` di `aturanToko/peran.hakTablet` (bawaan semua MATI);
+  layar menyaring per ORANG yang jaga (`ssHakTablet(peran, id)`). Foto nota dibuka SERVER per akun: `aksesAkun.hakFotoNota` (rules v27 `stafHak`) — ditulis bersama
+  saklar, ikut akun baru / pindah peran (`susunDaftarkan`, `susunUbahAkun`), dibawa `keadaanAkun`; `bacaFotoBon` menerima akun bertanda.
+- **Harga & Pemasok di tablet** (`harga.js` `gambarStaf`, `app.js` `bolehLayarIni`): Harga jual (ketuk = usul `hargaJual`), Nota pemasok (+ foto bila hak), Harga beli per
+  kelas + varian 90 hari (rupiah hanya dengan hak harga beli), Belanja (`hitungBelanja`; kirim = usul `belanja`). Owner Setujui usul harga jual = `harga-logika`
+  `susunTerbitSatu` (dokumen katalog sama dengan terbit owner; DI BAWAH modal ditolak); daftar belanja disetujui muncul di Harga › Belanja (kartu "Dari tablet").
+- **Kabar toko dari tablet** (`kabar-baru-logika` `kbKabarToko`, dipanggil `app.js` sesudah nota BARU akun itu): habis (stok buku ≤ 0,5 kg) · perlu dipesan (kelompok awas
+  Belanja) · di bawah modal (harga baris < `hppTotalSaatJual`). Satu kabar per barang per jenis per hari; saklar owner di `aturanToko/peran.kabarTablet`.
+- **Kabar dari server** (`functions/jaga.js`, `functions/index.js`): `kabarJaga` (jagaLog dibuat → "Toko dibuka" / "Ganti jaga"), `periksaToko` tiap 15 menit 06.00–23.45
+  WIB (belum dibuka lewat jam buka + telat · belum ditutup lewat jam tutup · tablet berdenyut lalu diam > menit putus · ditolak server · antrean menunggu dua pemeriksaan).
+  Sekali sehari per kejadian (`notifStatus/{tanggal}`, ditulis fungsi saja); tablet berdenyut lagi = putus berikutnya dikabarkan lagi. Kabar hitungan laci menyebut omzet
+  kotor & jumlah nota hari itu. Setelan: `aturanToko/kabarToko` (bawaan `SS_ATUR_BAWAAN.kabarToko` = `ATUR_BAWAAN` functions/jaga.js — dijaga uji).
+- **Absen jaga** (`app.js` `catatJaga`): satu `jagaLog` tiap PIN / sidik jari berhasil (akun staf, Firestore saja). Rekap 7 hari di Uang › Orang & upah (`jaga-logika`
+  `jgRekapOrang`): "sampai" = jam orang berikutnya masuk; jaga terakhir = "tutup" (tidak ditebak); tanpa PIN ≠ tidak masuk. Hanya tampil, upah tidak berubah.
+- **Tugas & foto bukti**: owner kirim dari lonceng › Obrolan (Pesan · Tugas · Tugas + wajib foto, `kbSusunTugasOwner`) atau Uang › titipan menunggu › "Minta foto"
+  (tugas menunjuk titipan). Tablet: kartu "Tugas dari owner" di Menu (`tugas-owner-panel.js`) — Selesai + catatan, foto dikecilkan (`fbnKecilkan`) → `fotoBukti` (bentuk
+  `buktiSah`) lalu persetujuan `tugasSelesai`; owner membuka foto di papan Persetujuan ("lihat foto", `bacaFotoBukti`, owner saja). Tugas owner tidak tampil di papan.
+- Rules v27 (`docs/uji-rules-v27.md`, ★ wajib owner): owner TERBITKAN dulu di Console, baru merge, lalu Cloud Shell `git pull && bash functions/pasang.sh`.
+- Alat uji: `uji_tablet_pergi.py` (52 lulus, kontrol 28/28) + jangkar alat uji lama yang ikut berubah. Mesin beku tidak disentuh.

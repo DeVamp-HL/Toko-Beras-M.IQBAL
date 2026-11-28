@@ -364,11 +364,11 @@ def periksa_statis(t):
     # ---- push sisi server & rules
     F = t[FIX]
     ok('fungsi kabarTablet: pemicu UBAH persetujuan, token notifPerangkat milik uid peminta, token kosong dilewati', "exports.kabarTablet = onDocumentUpdated('persetujuan/{id}'" in F and ".collection('notifPerangkat').where('uid', '==', p.uid)" in F and "typeof x.token === 'string' && x.token" in F)
-    ok('obrolan: satu kotak ketik di lonceng — owner menulis lewat kbSusunPesanOwner, akun tablet lewat tpSusunPesan (pintu yang sama dengan Menu)', "const r = _lcAkun.jenis === 'owner' ? kbSusunPesanOwner(_lcTulis, w, _lcAkun) : tpSusunPesan(_lcTulis, _lcAkun, w);" in L and 'data-ll="kirim"' in L and 'data-ll-tulis="1"' in L)
+    ok('obrolan: satu kotak ketik di lonceng — owner menulis lewat kbSusunPesanOwner, akun tablet lewat tpSusunPesan (pintu yang sama dengan Menu)', "const r = _lcAkun.jenis !== 'owner' ? tpSusunPesan(_lcTulis, _lcAkun, w) : _lcJenis === 'pesan' ? kbSusunPesanOwner(_lcTulis, w, _lcAkun) : kbSusunTugasOwner(_lcTulis, _lcJenis === 'tugasFoto', w, _lcAkun, '');" in L and 'data-ll="kirim"' in L and 'data-ll-tulis="1"' in L)
     ok('obrolan: owner membuka tab Obrolan = pesan tablet yang menunggu ditandai dibaca TANPA balasan, satu kiriman, tiap id sekali per pembukaan', "if (_lcTab === 'obrolan' && _lcIsi.owner && !document.hidden) lcBacaSemua();" in L and "tpSusunPutus(id, 'dibaca', { balasan: '' }, w)" in L and "_lcIsi.belumDibaca.filter((id) => !_lcMenandai.has(id))" in L and 'const x = await tulisDokumen(dok);' in L)
     ok('obrolan: tab Obrolan | Kabar, gelembung kiri-kanan, centang, label hari, gelembung & penanda tab beranimasi', 'data-ll="tab" data-tab="${k}"' in L and "${x.centang === 2 ? '✓✓' : '✓'}" in L and '.lo-gel.saya {' in K and '.lo-gel.dia {' in K and 'animation: masukGel' in K and 'transform: translateX(calc(var(--x, 0) * 100%)); transition: transform' in K and '.lo-hari {' in K)
     ok('obrolan: Enter = kirim hanya dengan papan ketik fisik (layar sentuh: baris baru), kotak ketik ikut tinggi tulisannya', "fisik = matchMedia('(pointer: fine)').matches;" in L and 'if (fisik) { ev.preventDefault(); lcKirim(); }' in L and 'const lcTinggi = (k) =>' in L)
-    ok('pesan owner: papan Persetujuan tidak memuat pesan owner', "cacheMentah('persetujuan').filter((m) => m && m.tindakan !== 'pesanOwner')" in t[SIS])
+    ok('pesan owner: papan Persetujuan tidak memuat pesan owner (+ tugas owner, 28 Nov 2026)', "cacheMentah('persetujuan').filter((m) => m && m.tindakan !== 'pesanOwner' && m.tindakan !== 'tugasOwner')" in t[SIS])
     ok('fungsi kabarDariOwner: pemicu BUAT persetujuan, token notifPerangkat (semua / satu akun), token kosong dilewati', "exports.kabarDariOwner = onDocumentCreated('persetujuan/{id}'" in F and "(p.untukUid ? kol.where('uid', '==', p.untukUid) : kol)" in F)
     ok('firebase.js: token tablet atas nama akun yang masuk, id = uid_perangkat, mati = dikosongkan', "const id = uid + '_' + pid;" in t[FB] and "export const hapusTokenTablet = () => tulisTokenTablet('');" in t[FB])
     ok('app.js: token tablet diperbarui diam-diam sekali per akun; notifikasi diketuk = pindah layar', 'ntSegarkan().catch(() => {})' in A and "ntPadaKetuk((t) => { if (['uang', 'menu', 'jual'].indexOf(t) >= 0) pindah(t); });" in A)
@@ -404,23 +404,23 @@ KONTROL = [
     ('app.js lupa menyuntik lonceng ke Uang', [(APP, "pasangLayarUang(document.getElementById('layarUang'), { lonceng: pintuLonceng,", "pasangLayarUang(document.getElementById('layarUang'), {")]),
     ('karyawan tablet boleh membalas dari lonceng', [(LC, "async function lcTandaiBaca(id) {\n  if (!_lcAkun || _lcAkun.jenis !== 'owner' || _lcSibuk) return;", "async function lcTandaiBaca(id) {\n  if (!_lcAkun || _lcSibuk) return;")]),
     ('pesan owner berstatus menunggu (masuk daftar menunggu owner)', [(KBL, "tindakan: KB_PESAN_OWNER, status: KB_STATUS_TERKIRIM,", "tindakan: KB_PESAN_OWNER, status: 'menunggu',")]),
-    ('obrolan tablet tidak memuat pesan owner', [(KBL, "      ob.push(gelembung({ id, dari: 'owner', nama: 'Owner', teks: m.teks,", "      if (owner) ob.push(gelembung({ id, dari: 'owner', nama: 'Owner', teks: m.teks,")]),
+    ('obrolan tablet tidak memuat pesan owner', [(KBL, "      ob.push(gelembung({ id, dari: 'owner', nama: 'Owner', teks: (t === KB_TUGAS_OWNER", "      if (owner) ob.push(gelembung({ id, dari: 'owner', nama: 'Owner', teks: (t === KB_TUGAS_OWNER")]),
     ('obrolan tablet memuat pesan akun lain', [(KBL, "      if (!owner && (!uid || uidPeminta(m) !== uid)) return;\n", "")]),
     ('obrolan owner: belum dibaca dari peta perangkat (bukan keadaan server)', [(KBL, "centang: st === 'menunggu' ? 1 : 2, baru: owner && st === 'menunggu' }));", "centang: st === 'menunggu' ? 1 : 2, baru: owner && L[id] !== st }));")]),
     ('balasan lama hilang dari obrolan', [(KBL, "      if (bal && st !== 'menunggu') ob.push(", "      if (false) ob.push(")]),
     ('membuka satu tab menandai kedua tab', [(KBL, "  if (bagian !== 'obrolan') Object.assign(out, kab);", "  Object.assign(out, kab);")]),
     ('obrolan tanpa label hari', [(KBL, "x.pisah = !s || s.tanggal !== x.tanggal ? kbLabelHari(x.tanggal, hariIni) : '';", "x.pisah = '';")]),
     ('obrolan tanpa batas gelembung', [(KBL, "  const utas = ob.slice(Math.max(0, ob.length - KB_MAKS_OBROLAN));", "  const utas = ob;")]),
-    ('push tablet saat owner sekadar membuka obrolan', [(PSN, "  if (t === 'pesan' && st === 'dibaca' && !teks(sesudah.balasan)) return null;\n", "")]),
+    ('push tablet saat owner sekadar membuka obrolan', [(PSN, "  if ((t === 'pesan' || t === 'kabarToko') && st === 'dibaca' && !teks(sesudah.balasan)) return null;", "")]),
     ('tablet berbunyi untuk centang dua', [(KBL, "\n    && !(baru.milik[id].tindakan === TP_PESAN && baru.milik[id].status === 'dibaca' && !baru.milik[id].balasan)", "")]),
     ('owner membuka obrolan tidak menandai dibaca', [(LC, "  if (_lcTab === 'obrolan' && _lcIsi.owner && !document.hidden) lcBacaSemua();\n", "")]),
     ('pesan owner meratakan baris baru', [(KBL, ".replace(/[ \\t\\f\\v]+/g, ' ')", ".replace(/\\s+/g, ' ')")]),
     ('kabar dalam aplikasi diam saat pesan owner datang', [(KBL, "  return pesan.concat(putus);", "  return putus;")]),
-    ('tablet menulis pesan owner dari obrolan', [(LC, "_lcAkun.jenis === 'owner' ? kbSusunPesanOwner(_lcTulis, w, _lcAkun) : tpSusunPesan(_lcTulis, _lcAkun, w)", "kbSusunPesanOwner(_lcTulis, w, _lcAkun)")]),
-    ('pesan owner tanpa batas panjang', [(KBL, "  if (isi.length > TP_BATAS.pesan) return { tolak:", "  if (false) return { tolak:")]),
-    ('push dari owner tanpa isi', [(PSN, "  const isi = teks(d.teks); if (!isi) return null;\n  return { judul: 'Pesan dari owner'", "  const isi = teks(d.teks);\n  return { judul: 'Pesan dari owner'")]),
-    ('HP owner dikabari pesannya sendiri', [(PSN, "  if (d.tindakan === 'pesanOwner') return null;", "")]),
-    ('papan Persetujuan memuat pesan owner', [(SIS, ".filter((m) => m && m.tindakan !== 'pesanOwner')", "")]),
+    ('tablet menulis pesan owner dari obrolan', [(LC, "_lcAkun.jenis !== 'owner' ? tpSusunPesan(_lcTulis, _lcAkun, w) : _lcJenis === 'pesan'", "false ? tpSusunPesan(_lcTulis, _lcAkun, w) : _lcJenis === 'pesan'")]),
+    ('pesan owner tanpa batas panjang', [(KBL, "  if (isi.length > TP_BATAS.pesan) return { tolak: 'Pesan terlalu panjang", "  if (false) return { tolak: 'Pesan terlalu panjang")]),
+    ('push dari owner tanpa isi', [(PSN, "  const isi = teks(d.teks); if (!isi) return null;\n  const tugas = d.tindakan === 'tugasOwner';", "  const isi = teks(d.teks);\n  const tugas = d.tindakan === 'tugasOwner';")]),
+    ('HP owner dikabari pesannya sendiri', [(PSN, "  if (d.tindakan === 'pesanOwner' || d.tindakan === 'tugasOwner') return null;", "")]),
+    ('papan Persetujuan memuat pesan owner', [(SIS, ".filter((m) => m && m.tindakan !== 'pesanOwner' && m.tindakan !== 'tugasOwner')", "")]),
     ('ikon tablet kembali berlatar (latar belakang adaptif tidak bening)', [(PAS, "LATAR_ADAPTIF = '#00000000'", "LATAR_ADAPTIF = '#14110dff'")]),
     ('mode gelap memakai ikon siang (emas gelap di peluncur gelap)', [(PAS, "(malam, 'mipmap-night-' + d)", "(depan, 'mipmap-night-' + d)")]),
     ('geometri logo diubah tanpa membuat ulang PNG', [(IKM, "GARIS = (33.5, 48.5, 42, 0.72)", "GARIS = (33.5, 48.5, 43, 0.72)")]),

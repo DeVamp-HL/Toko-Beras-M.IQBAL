@@ -287,7 +287,7 @@ def main():
             ('cetak lupa kalimat barang habis', RTL, R.replace('    if (R.habis && R.habis.n) g.push(rtTeksHabis(R.habis)); }', '    }')),
             ('baris akun kembali memakai nama saat minta didaftarkan', MN, M.replace('<b>Akun tablet</b> <span class="k2">${a.email} · ', '<b>${a.nama || a.email}</b> <span class="k2">${a.email} · ')),
             ('pesanan tuntas ikut', RTL, R.replace("['dipesan', 'diantar'].indexOf(String(x.status || '')) >= 0 && ", '')),
-            ('tanda bacaUang untuk karyawan juga', AK, A.replace("bacaUang: peran === 'ben' && dok.bacaUang === true };", "bacaUang: dok.bacaUang === true };")),
+            ('tanda bacaUang untuk karyawan juga', AK, A.replace("bacaUang: peran === 'ben' && dok.bacaUang === true, hakFotoNota:", "bacaUang: dok.bacaUang === true, hakFotoNota:")),
             ('koleksi uang masuk pendengar dasar (layar staf lain ikut membaca uang)', AK, A.replace("const out = BACA_STAF.concat(akun.peran === 'ben' ? BACA_BEN : []).concat(akun.peran === 'ben' ? BACA_BEN_JANJI : []).map((n) => ({ nama: n }));", "const out = BACA_STAF.concat(BACA_UANG).concat(akun.peran === 'ben' ? BACA_BEN : []).concat(akun.peran === 'ben' ? BACA_BEN_JANJI : []).map((n) => ({ nama: n }));")),   # v22: + BACA_BEN (kalender kepatuhan)
             ('orang Ringkas tidak diperiksa ada di daftar', SL, S.replace("if (ro && !(o.operator || {})[ro]) tolak = tolak || 'Orang pembuka Ringkas hari ini tidak ada di daftar tablet'; else o.ringkasOrang = ro;", 'o.ringkasOrang = ro;')),
             ('menandai akun tanpa ketukan kedua', SL, S.replace('if (U.bacaUang && !yakin) return', 'if (false) return')),
